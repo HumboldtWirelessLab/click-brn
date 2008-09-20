@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef NODEIDENTITYELEMENT_HH
-#define NODEIDENTITYELEMENT_HH
+#ifndef BRN2NODEIDENTITYELEMENT_HH
+#define BRN2NODEIDENTITYELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
@@ -28,8 +28,6 @@
 
 CLICK_DECLS
 
-class DeviceInfo;
-
 /*
  * =c
  * BRN2NodeIdentity()
@@ -37,7 +35,7 @@ class DeviceInfo;
  * stores the ethernet address of associated node (clients, brn nodes) ...
  * =d
  */
-class NodeIdentity : public Element {
+class BRN2NodeIdentity : public Element {
 
  public:
   //
@@ -51,7 +49,7 @@ class NodeIdentity : public Element {
   BRN2NodeIdentity();
   ~BRN2NodeIdentity();
 
-  const char *class_name() const	{ return "NodeIdentity"; }
+  const char *class_name() const	{ return "BRN2NodeIdentity"; }
   const char *processing() const	{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
@@ -67,7 +65,7 @@ class NodeIdentity : public Element {
   //
   //member
   //
- Vector<DeviceInfo> _node_devices;
+   Vector<BRN2Device*> _node_devices;
 
 };
 

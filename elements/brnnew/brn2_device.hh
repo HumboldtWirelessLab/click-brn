@@ -14,18 +14,21 @@ CLICK_DECLS
  * =d
  */
 
+
 class DeviceInfo {
-  String device_name;
-  EtherAddress device_etheraddress;
-  String device_type;
+  public:
+    String device_name;
+    EtherAddress *device_etheraddress;
+    String device_type;
 
-  DeviceInfo() {
-  }
+    DeviceInfo() {
+    }
 
-  ~DeviceInfo() {
-  }
+    ~DeviceInfo() {
+    }
 
-}
+};
+
 
 class BRN2Device : public Element {
 
@@ -48,19 +51,19 @@ class BRN2Device : public Element {
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const { return false; }
 
-    const String& getDeviceName();
-    void setDeviceName(String dev_name);
-
     int initialize(ErrorHandler *);
     void add_handlers();
+
+    const String& getDeviceName();
+    void setDeviceName(String dev_name);
+    EtherAddress *getEtherAddress();
+    const String& getDeviceType();
 
   private:
     //
     //member
     //
-    String _dev_name;
-    EtherAddress *_dev_ether_address;
-    String _dev_type;
+    DeviceInfo _dev_info;
 
 };
 
