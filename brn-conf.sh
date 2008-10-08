@@ -1,5 +1,5 @@
 #! /bin/sh
-#TODO: add support
+#TODO: add support for
 
 CONFOPTION="--enable-wifi --enable-brnnew --enable-dhcp --enable-analysis --enable-tools=host"
 
