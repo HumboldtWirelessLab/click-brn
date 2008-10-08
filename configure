@@ -1362,6 +1362,8 @@ Optional Features:
   --enable-test           include regression test elements
   --disable-threads       do not include thread management elements
   --enable-wifi           include wifi elements and support
+  --enable-brn            include brn support
+  --enable-brnnew         include brnnew support
   --enable-experimental   enable experimental elements in normal groups
   --disable-int64         disable 64-bit integer support
   --enable-nanotimestamp  enable nanosecond timestamps
@@ -6156,6 +6158,28 @@ if test "x$enable_wifi" = xyes; then
     :
 
 fi
+# Check whether --enable-brn was given.
+if test "${enable_brn+set}" = set; then
+  enableval=$enable_brn;
+else
+  enable_brn=NO
+fi
+test "x$enable_all_elements" = xyes -a "x$enable_brn" = xNO && enable_brn=yes
+if test "x$enable_brn" = xyes; then
+    :
+
+fi
+# Check whether --enable-brnnew was given.
+if test "${enable_brnnew+set}" = set; then
+  enableval=$enable_brnnew;
+else
+  enable_brnnew=NO
+fi
+test "x$enable_all_elements" = xyes -a "x$enable_brnnew" = xNO && enable_brnnew=yes
+if test "x$enable_brnnew" = xyes; then
+    :
+
+fi
 # Check whether --enable-experimental was given.
 if test "${enable_experimental+set}" = set; then
   enableval=$enable_experimental; :
@@ -8974,7 +8998,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 8977 "configure"
+#line 9001 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
