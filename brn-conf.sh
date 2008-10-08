@@ -32,3 +32,8 @@ echo "./configure $CONFOPTION"
 eval ./configure $CONFOPTION 
 
 exit 0
+
+
+#########################################
+# NOTICE for git: git reset --hard HEAD #
+#########################################
