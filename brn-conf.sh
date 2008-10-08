@@ -1,4 +1,5 @@
 #! /bin/sh
+#TODO: add
 
 CONFOPTION="--enable-wifi --enable-brnnew --enable-dhcp --enable-analysis --enable-tools=host"
 
