@@ -1,4 +1,5 @@
 #! /bin/sh
+#TODO: add support for mips
 
 CONFOPTION="--enable-wifi --enable-brnnew --enable-dhcp --enable-analysis --enable-tools=host"
 
@@ -31,3 +32,8 @@ echo "./configure $CONFOPTION"
 eval ./configure $CONFOPTION 
 
 exit 0
+
+
+#########################################
+# NOTICE for git: git reset --hard HEAD #
+#########################################
