@@ -123,6 +123,9 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
 		    NameInfo::define(NameInfo::T_IP_ADDR, this, parts[0], &d[0], 4);
 	    } else if (cp_ethernet_address(parts[j], &d[0]))
 		NameInfo::define(NameInfo::T_ETHERNET_ADDR, this, parts[0], &d[0], 6);
+              else if (query_ethernet(parts[j],&d[0], this)) 
+		NameInfo::define(NameInfo::T_ETHERNET_ADDR, this, parts[0], &d[0], 6);
+		    
 #ifdef HAVE_IP6
 	    else if (cp_ip6_address(parts[j], &d[0]))
 		NameInfo::define(NameInfo::T_IP6_ADDR, this, parts[0], &d[0], 16);
