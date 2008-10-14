@@ -1,7 +1,7 @@
 #ifndef CLICK_LOADBALANCER_HH
 #define CLICK_LOADBALANCER_HH
 
-#include "elements/brn/brnlinkstat.hh"
+#include "../../brnlinkstat.hh"
 
 CLICK_DECLS
 
