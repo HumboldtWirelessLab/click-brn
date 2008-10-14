@@ -184,7 +184,12 @@ query_netdevice(const String &s, unsigned char *store, int type, int len)
 		    String dev_name = f.substring(word, colon);
 		    strcpy(ifr.ifr_name, dev_name.c_str());
 		    if (ioctl(query_fd, SIOCGIFHWADDR, &ifr) >= 0
-			&& ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER) {
+			&& (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER ||
+                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211 ||
+                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM ||
+                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP ||
+                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC ||
+                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT)) {
 			device_names.push_back(dev_name);
 			device_addrs.push_back(String('e') + String(ifr.ifr_hwaddr.sa_data, 6));
 		    }
@@ -419,7 +424,10 @@ BRNAddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
 #  define dev_put(dev) /* nada */
 # endif
     net_device *dev = dev_get_by_name(s.c_str());
-    if (dev && (dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211)) {
+    if (dev && (dev->type == ARPHRD_ETHER ||
+                dev->type == ARPHRD_80211 ||
+                dev->type == ARPHRD_80211_PRISM ||
+                dev->type == ARPHRD_80211_ATHDESC)) {
 	memcpy(store, dev->dev_addr, 6);
 	dev_put(dev);
 	return true;

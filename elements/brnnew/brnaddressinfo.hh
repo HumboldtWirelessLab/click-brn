@@ -85,6 +85,12 @@ These defaults are not available on all platforms.
 
 PortInfo */
 
+
+#define ARPHRD_80211_PRISM     802       /* wifi + Prism2 header */
+#define ARPHRD_80211_RADIOTAP  803       /* wifi + Radiotap header */
+#define ARPHRD_80211_ATHDESC   804       /* wifi + Atheros header */
+#define ARPHRD_80211_ATHDESCEXT   805       /* wifi + Atheros header + X */
+
 class BRNAddressInfo : public Element { public:
   
   BRNAddressInfo();
