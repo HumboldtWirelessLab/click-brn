@@ -151,16 +151,31 @@ InfrastructureClient::find_best_ap()
 {
 
   _ap_available = false;
-
+  int rssi = 0;
+  
+//  click_chatter("try to find good ap");
+  
   for (BRNBeaconScanner::APIter iter = _beaconscanner->_waps.begin(); iter.live(); iter++) {
     BRNBeaconScanner::wap ap = iter.value();
     
-    int rssi = 0;
+/*    click_chatter("Next AP");
+    StringAccum sa;
+ 
+    sa << "WirelessInfo:";
 
+    sa << "AP-SSID: " << ap._ssid << " -> ";
+    sa << "MY-SSID: " << _wireless_info->_ssid;
+    sa << "AP-CHANNEL: " << ap._channel << " -> ";
+    sa << "MY-CHANNEL: " << _wireless_info->_channel;
+    sa << "AP-RSSI: " << ap._rssi << " -> ";
+    sa << "BEST-RSSI: " << rssi;
+
+    click_chatter("%s",sa.c_str());
+*/
     // as long as we do not change the channel, we MUST check it!
     if ( ap._ssid == _wireless_info->_ssid 
       && _wireless_info->_channel == ap._channel
-      && rssi < ap._rssi )
+      && rssi <= ap._rssi )
     {
       _wireless_info->_bssid = ap._eth; // NOTE: _eth is the bssid
       _wireless_info->_wep = false;
