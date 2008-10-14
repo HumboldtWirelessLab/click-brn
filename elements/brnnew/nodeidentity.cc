@@ -31,7 +31,7 @@
 #include <click/straccum.hh>
 
 #include <click/standard/addressinfo.hh>
-
+#include "brnaddressinfo.hh"
 
 CLICK_DECLS
 
@@ -82,7 +82,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   if( EtherAddress() != me_wlan ) {
     _me_wlan = new EtherAddress(me_wlan);
   } else {
-    val = AddressInfo::query_ethernet(_dev_wlan_name + ":eth", en, this);
+    val = BRNAddressInfo::query_ethernet(_dev_wlan_name + ":eth", en, this);
     if (val) {
       _me_wlan = new EtherAddress(en);
       BRN_DEBUG(" * ether address of #1 device (wlan): %s", _me_wlan->s().c_str());
@@ -97,7 +97,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   if( EtherAddress() != me_vlan0 ) {
     _me_vlan0 = new EtherAddress(me_vlan0);
   } else {
-    val = AddressInfo::query_ethernet(_dev_vlan0_name + ":eth", en, this);
+    val = BRNAddressInfo::query_ethernet(_dev_vlan0_name + ":eth", en, this);
     if (val) {
       _me_vlan0 = new EtherAddress(en);
       BRN_DEBUG(" * ether address of #2 device (vlan0): %s", _me_vlan0->s().c_str());
@@ -112,7 +112,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   if( EtherAddress() != me_vlan1 ) {
     _me_vlan1 = new EtherAddress(me_vlan1);
   } else {
-    val = AddressInfo::query_ethernet(_dev_vlan1_name + ":eth", en, this);
+    val = BRNAddressInfo::query_ethernet(_dev_vlan1_name + ":eth", en, this);
     if (val) {
       _me_vlan1 = new EtherAddress(en);
       BRN_DEBUG(" * ether address of #3 device (vlan1): %s", _me_vlan1->s().c_str());
