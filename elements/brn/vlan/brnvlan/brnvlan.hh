@@ -23,6 +23,8 @@
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 #include <elements/brn/brnelement.hh>
+#include <click/error.hh>
+#include <click/timer.hh>
 
 CLICK_DECLS
 

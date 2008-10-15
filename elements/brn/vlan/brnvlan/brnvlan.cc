@@ -24,9 +24,11 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include <click/error.hh>
+#include <click/timer.hh>
 
 // to generate dht packets
-#include <elements/brn/dhtcommunication.hh>
+#include <elements/brn/dht/dhtcommunication.hh>
 
 CLICK_DECLS
 

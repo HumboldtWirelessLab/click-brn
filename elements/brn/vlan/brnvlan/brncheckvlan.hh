@@ -21,6 +21,8 @@
 #ifndef CLICK_BRNCHECKVLAN_HH
 #define CLICK_BRNCHECKVLAN_HH
 #include <elements/brn/brnelement.hh>
+#include <click/error.hh>
+#include <click/timer.hh>
 
 CLICK_DECLS
 

@@ -21,8 +21,10 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 #include <click/etheraddress.hh>
-#include <elements/brnnew/assoclist.hh>
-#include <elements/brnnew/brn.h>
+#include <click/error.hh>
+#include <click/timer.hh>
+#include <elements/brn/assoclist.hh>
+#include <elements/brn/brn.h>
 #include "brncheckvlan.hh"
 #include "brnvlan.hh"
 

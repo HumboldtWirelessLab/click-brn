@@ -19,7 +19,8 @@
  */
 
 #include <click/config.h>
-
+#include <click/error.hh>
+#include <click/timer.hh>
 #include <click/confparse.hh>
 
 #include "brnsetgatewayonflow.hh"

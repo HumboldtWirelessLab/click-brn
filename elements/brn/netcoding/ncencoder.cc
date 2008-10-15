@@ -24,7 +24,7 @@
 #include "ncencoder.hh"
 #include "ncforwardbatch.hh"
 #include "galois.hh"
-#include <elements/brnnew/brn.h>
+#include <elements/brn/brn.h>
 
 #define ETHERTYPE_BRN          0x8086
 

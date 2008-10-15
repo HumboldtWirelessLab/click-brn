@@ -30,7 +30,7 @@
 #include <string.h>
 
 // to generate dht packets
-#include <elements/brn/dhtcommunication.hh>
+#include <elements/brn/dht/dhtcommunication.hh>
 
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"

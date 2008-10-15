@@ -33,14 +33,14 @@
 // protocol structures
 #include <clicknet/ether.h>
 #include <clicknet/ip.h>
-#include <elements/brnnew/brn.h>
+#include <elements/brn/brn.h>
 
 // elements
 #include <elements/analysis/aggregateipflows.hh>
 #include <elements/ethernet/arptable.hh>
 
 // used BRN elements
-#include <elements/brnnew/brnlinktable.hh>
+#include <elements/brn/brnlinktable.hh>
 
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"

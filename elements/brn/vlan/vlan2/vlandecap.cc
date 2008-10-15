@@ -22,7 +22,7 @@
 #include "vlandecap.hh"
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-#include "elements/brnnew/brn.h"
+#include "elements/brn/brn.h"
 
 CLICK_DECLS
 

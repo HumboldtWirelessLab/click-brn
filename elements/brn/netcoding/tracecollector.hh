@@ -21,6 +21,8 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+#include <elements/brn/brn.h>
+#include <click/straccum.hh>
 
 CLICK_DECLS
 

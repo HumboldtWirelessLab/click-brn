@@ -36,8 +36,8 @@
 #include "gateway.h"
 
 // used BRN elements
-#include <elements/brnnew/brnlinktable.hh>
-#include <elements/brnnew/brn.h>
+#include <elements/brn/brnlinktable.hh>
+#include <elements/brn/brn.h>
 
 
 #include "brnsetgateway.hh"

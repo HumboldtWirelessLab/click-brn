@@ -26,7 +26,7 @@
 
 // protocol structures
 #include <clicknet/ether.h>
-#include <elements/brnnew/brn.h>
+#include <elements/brn/brn.h>
 #include "gateway.h"
 
 #include "brngateway.hh"

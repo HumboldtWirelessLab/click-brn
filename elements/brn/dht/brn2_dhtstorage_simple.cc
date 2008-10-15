@@ -10,7 +10,7 @@
 
 #include "brn2_dhtstorage_simple.hh"
 #include "brn2_db.hh"
-#include "elements/brn/dhtcommunication.hh"
+#include "elements/brn/dht/dhtcommunication.hh"
 
 CLICK_DECLS
 

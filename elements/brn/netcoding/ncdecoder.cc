@@ -24,7 +24,7 @@
 #include <click/router.hh>
 
 #include "ncdecoder.hh"
-#include <elements/brnnew/brn.h>
+#include <elements/brn/brn.h>
 #define ETHERTYPE_BRN          0x8086
 CLICK_DECLS
 

@@ -9,9 +9,9 @@
 
 #include "brn2_dhtrouting_omniscient.hh"
 
-#include "elements/brnnew/nblist.hh"
-#include "elements/brnnew/brnlinkstat.hh"
-#include "elements/brnnew/dht/dhtcommunication.hh"
+#include "elements/brn/nblist.hh"
+#include "elements/brn/brnlinkstat.hh"
+#include "elements/brn/dht/dhtcommunication.hh"
 
 
 CLICK_DECLS

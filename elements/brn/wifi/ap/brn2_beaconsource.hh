@@ -3,7 +3,7 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 
-#include <elements/brnnew/vlan/brnvlan/brnvlan.hh>
+#include <elements/brn/vlan/brnvlan/brnvlan.hh>
 #include "../brn2_setchannel.hh"
 
 CLICK_DECLS
