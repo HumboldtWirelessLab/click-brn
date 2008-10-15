@@ -213,7 +213,7 @@ BRN2SetChannel::set_channel(int channel)
   char arg[150];
   click_chatter("set Channel to %d",channel);
   sprintf(arg,"iwconfig %s channel %d",_dev_name.c_str(),channel);
-  system(arg);
+//  system(arg);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -350,6 +350,7 @@ BRN2SetChannel::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel)
 EXPORT_ELEMENT(BRN2SetChannel)
 
 ////////////////////////////////////////////////////////////////////////

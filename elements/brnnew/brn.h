@@ -47,6 +47,7 @@ CLICK_CXX_PROTECT
  #define DPRINTF 
 #endif
 
+#define ETHERTYPE_BRN          0x8086 /* Berlin Roofnet Protocol */
 
 /* define structure of Berlin Roofnet packet (BRN) */
 struct click_brn {
