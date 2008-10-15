@@ -1,7 +1,7 @@
 #! /bin/sh
 #TODO: add support for mips
 
-CONFOPTION="--enable-wifi --enable-brnnew --enable-dhcp --enable-analysis --enable-tools=host"
+CONFOPTION="--enable-wifi --enable-brn --enable-dhcp --enable-analysis --enable-tools=host"
 
 for op in $@; do
   
