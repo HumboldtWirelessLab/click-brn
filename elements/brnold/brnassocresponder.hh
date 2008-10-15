@@ -30,7 +30,7 @@
 #include <click/dequeue.hh>
 #include "assoclist.hh"
 
-#include <elements/brn/brnvlan/brnvlan.hh>
+#include <elements/brnvlan/brnvlan.hh>
 
 CLICK_DECLS
 
