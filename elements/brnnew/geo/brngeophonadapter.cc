@@ -23,7 +23,7 @@
  */
 
 #include <click/config.h>
-#include "common.hh"
+#include "../common.hh"
 #include "brngeophonadapter.hh"
 #include <click/confparse.hh>
 #include <click/error.hh>
