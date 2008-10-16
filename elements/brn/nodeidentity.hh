@@ -24,7 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
 #include <click/element.hh>
-#include "brnlinktable.hh"
+#include "elements/brn/routing/linkstat/brnlinktable.hh"
 //BRNNEW #include "routequerier.hh"
 
 CLICK_DECLS

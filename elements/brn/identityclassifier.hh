@@ -23,7 +23,7 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "nodeidentity.hh"
+#include "elements/brn/nodeidentity.hh"
 
 CLICK_DECLS
 /*

@@ -29,7 +29,7 @@
 #include "ncencodingbatch.hh"
 #include "ncsourcebatch.hh"
 #include "ncforwardbatch.hh"
-#include <elements/brn/assoclist.hh>
+#include <elements/brn/wifi/ap/assoclist.hh>
 
 CLICK_DECLS
 

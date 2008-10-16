@@ -20,7 +20,7 @@
 #define NCBATCH_HH
 
 #include <elements/brn/brn.h>
-#include <elements/brn/brnlinktable.hh>
+#include <elements/brn/routing/linkstat/brnlinktable.hh>
 #include <click/dequeue.hh>
 #include <click/timestamp.hh>
 #include "netcoding.h"

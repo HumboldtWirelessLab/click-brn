@@ -26,9 +26,9 @@
 #include <click/bighashmap.hh>
 #include <click/element.hh>
 #include "brn.h"
-#include "nodeidentity.hh"
-#include "assoclist.hh"
-#include "brnlinktable.hh"
+#include "elements/brn/nodeidentity.hh"
+#include "elements/brn/wifi/ap/assoclist.hh"
+#include "elements/brn/routing/linkstat/brnlinktable.hh"
 
 CLICK_DECLS
 /*

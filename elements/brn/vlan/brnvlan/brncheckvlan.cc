@@ -23,7 +23,7 @@
 #include <click/etheraddress.hh>
 #include <click/error.hh>
 #include <click/timer.hh>
-#include <elements/brn/assoclist.hh>
+#include <elements/brn/wifi/ap/assoclist.hh>
 #include <elements/brn/brn.h>
 #include "brncheckvlan.hh"
 #include "brnvlan.hh"

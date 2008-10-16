@@ -25,7 +25,7 @@
 #include <click/element.hh>
 #include <click/userutils.hh>
 #include <click/handlercall.hh>
-#include "nodeidentity.hh"
+#include "elements/brn/nodeidentity.hh"
 
 
 CLICK_DECLS

@@ -31,7 +31,7 @@
 #include <click/notifier.hh>
 #include <click/confparse.hh>
 
-#include "common.hh"
+#include "elements/brn/common.hh"
 CLICK_DECLS
 
 ReadHandlerFilter::ReadHandlerFilter() :

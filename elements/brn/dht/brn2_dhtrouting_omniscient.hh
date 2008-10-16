@@ -2,7 +2,7 @@
 #define CLICK_DHTROUTING_OMNISCIENT_HH
 #include <click/timer.hh>
 
-#include "elements/brn/md5.h"
+#include "md5.h"
 
 #include "brn2_dhtnode.hh"
 #include "brn2_dhtnodelist.hh"

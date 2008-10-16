@@ -30,8 +30,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include <click/standard/addressinfo.hh>
-#include "brnaddressinfo.hh"
+#include <elements/brn/standard/brnaddressinfo.hh>
 
 CLICK_DECLS
 

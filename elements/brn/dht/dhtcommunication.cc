@@ -20,7 +20,7 @@
 
 
 #include <click/config.h>
-#include "../common.hh"
+#include "elements/brn/common.hh"
 
 #include "dhtcommunication.hh"
 

@@ -22,7 +22,7 @@
 #include "brnvlantag.hh"
 #include <click/confparse.hh>
 #include <click/etheraddress.hh>
-#include <elements/brn/assoclist.hh>
+#include <elements/brn/wifi/ap/assoclist.hh>
 #include "brnvlan.hh"
 
 CLICK_DECLS

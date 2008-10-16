@@ -1,7 +1,7 @@
 #ifndef CLICK_DHTROUTING_FALCON_HH
 #define CLICK_DHTROUTING_FALCON_HH
 
-#include "elements/brn/md5.h"
+#include "md5.h"
 
 #include "brn2_dhtrouting.hh"
 

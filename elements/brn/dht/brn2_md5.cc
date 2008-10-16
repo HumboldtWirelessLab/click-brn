@@ -1,4 +1,4 @@
-#include "./elements/brn/md5.h"
+#include "md5.h"
 #include "brn2_md5.hh"
 
 CLICK_DECLS

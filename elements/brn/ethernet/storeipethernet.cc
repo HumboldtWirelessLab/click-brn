@@ -24,7 +24,7 @@
  */
 
 #include <click/config.h>
-#include "../common.hh"
+#include "elements/brn/common.hh"
 #include "storeipethernet.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>

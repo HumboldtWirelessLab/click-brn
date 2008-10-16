@@ -23,7 +23,7 @@
 
 #include <click/element.hh>
 // Brn Logger
-#include "common.hh"
+#include "elements/brn/common.hh"
 
 CLICK_DECLS
 

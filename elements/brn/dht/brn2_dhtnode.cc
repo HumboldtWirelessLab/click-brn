@@ -4,7 +4,7 @@
 
 #include "brn2_dhtnode.hh"
 
-#include "./elements/brn/md5.h"
+#include "md5.h"
 
 CLICK_DECLS
 

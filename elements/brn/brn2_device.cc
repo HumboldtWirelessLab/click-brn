@@ -4,8 +4,8 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "common.hh"
-#include <click/standard/addressinfo.hh>
+#include "elements/brn/common.hh"
+#include <elements/brn/standard/brnaddressinfo.hh>
 
 CLICK_DECLS
 
@@ -38,7 +38,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
   if( EtherAddress() != me ) {
     _dev_info.device_etheraddress = new EtherAddress(me);
   } else {
-    val = AddressInfo::query_ethernet(_dev_info.device_name + ":eth", en, this);
+    val = BRNAddressInfo::query_ethernet(_dev_info.device_name + ":eth", en, this);
     if (val) {
       _dev_info.device_etheraddress = new EtherAddress(en);
       BRN_DEBUG(" * ether address of device : %s", _dev_info.device_etheraddress->s().c_str());

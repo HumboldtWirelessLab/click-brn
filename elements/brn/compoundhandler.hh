@@ -22,7 +22,7 @@
 #define COMPOUNDHANDLER_HH_
 
 #include <click/element.hh>
-#include "common.hh"
+#include "elements/brn/common.hh"
 
 CLICK_DECLS
 

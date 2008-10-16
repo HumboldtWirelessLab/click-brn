@@ -9,8 +9,8 @@
 
 #include "brn2_dhtrouting_falcon.hh"
 
-#include "elements/brn/nblist.hh"
-#include "elements/brn/brnlinkstat.hh"
+#include "elements/brn/routing/nblist.hh"
+#include "elements/brn/routing/linkstat/brnlinkstat.hh"
 
 CLICK_DECLS
 

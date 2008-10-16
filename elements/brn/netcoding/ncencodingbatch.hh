@@ -150,7 +150,7 @@
 
 
 #include <elements/brn/brn.h>
-#include <elements/brn/brnlinktable.hh>
+#include <elements/brn/routing/linkstat/brnlinktable.hh>
 #include "netcoding.h"
 #include "ncbatch.hh"
 

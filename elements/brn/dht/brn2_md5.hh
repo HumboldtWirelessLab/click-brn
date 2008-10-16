@@ -1,7 +1,7 @@
 #ifndef BRN2_MD5_HH
 #define BRN2_MD5_HH
 
-#include "./elements/brn/md5.h"
+#include "md5.h"
 
 CLICK_DECLS
 

@@ -13,7 +13,7 @@
 
 #include "brn2_loadbalancer_redirect.hh"
 
-#include "../../brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brnlinkstat.hh"
 
 CLICK_DECLS
 

@@ -21,7 +21,7 @@
 
 
 #include <elements/brn/brn.h>
-#include <elements/brn/brnlinktable.hh>
+#include <elements/brn/routing/linkstat/brnlinktable.hh>
 #include "ncbatch.hh"
 #include "netcoding.h"
 

@@ -5,8 +5,8 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include <click/standard/addressinfo.hh>
-#include "common.hh"
+#include <elements/brn/standard/brnaddressinfo.hh>
+#include "elements/brn/common.hh"
 
 CLICK_DECLS
 
