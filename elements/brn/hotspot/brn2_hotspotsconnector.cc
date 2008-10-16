@@ -26,7 +26,7 @@ BRN2HotSpotsConnector::~BRN2HotSpotsConnector()
 int
 BRN2HotSpotsConnector::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpKeywords,
       "STARTOFFSET", cpInteger, "offset", &_start_offset,

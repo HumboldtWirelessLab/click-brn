@@ -37,8 +37,8 @@
 #include <elements/wifi/station/openauthrequester.hh>
 #include <elements/wifi/station/associationrequester.hh>
 #include "elements/brn/nodeidentity.hh"
-#include "brnettmetric.hh"
-#include "brnetxmetric.hh"
+#include "elements/brn/routing/metric/brnettmetric.hh"
+#include "elements/brn/routing/metric/brnetxmetric.hh"
 #include <click/timestamp.hh>
 
 CLICK_DECLS

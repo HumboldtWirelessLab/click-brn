@@ -22,6 +22,7 @@
 #include "brnelement.hh"
 
 #include <click/confparse.hh>
+#include <click/error.hh>
 
 CLICK_DECLS
 
@@ -57,9 +58,9 @@ write_debug(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
     case H_DEBUG: {    //debug
       int debug;
-//BRNNEW 
-/*      if (!cp_integer(s, &debug)) 
-        return errh->error("debug parameter must be integer");*/
+
+      if (!cp_integer(s, &debug)) 
+        return errh->error("debug parameter must be integer");
       f->_debug = debug;
       break;
     }

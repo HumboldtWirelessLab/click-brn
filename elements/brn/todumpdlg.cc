@@ -40,7 +40,7 @@ ToDumpDlg::~ToDumpDlg()
 int
 ToDumpDlg::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    if (cp_va_parse(conf, this, errh,
+    if (cp_va_kparse(conf, this, errh,
         cpElement, "Element to print to", &_to_dump,
 		    cpEnd) < 0)
 	return -1;

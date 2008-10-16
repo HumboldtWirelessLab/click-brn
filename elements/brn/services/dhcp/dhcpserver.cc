@@ -38,7 +38,7 @@
 #include <click/string.hh>
 
 #include "dhcppacketutil.hh"
-#include "dht/dhtcommunication.hh"
+#include "elements/brn/dht/dhtcommunication.hh"
 
 #include "elements/brn/dht/md5.h"
 

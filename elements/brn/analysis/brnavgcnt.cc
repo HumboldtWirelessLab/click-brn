@@ -51,7 +51,7 @@ BrnAvgCnt::reset()
 int
 BrnAvgCnt::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
     cpOptional,
     cpElement, "NodeIdentity", &_me,
     cpEnd) < 0)
@@ -122,7 +122,7 @@ brnavgcnt_read_count_handler(Element *e, void *)
   for (BrnAvgCnt::StatMap::iterator i = c->_stat_map.begin(); i.live(); i++) {
     EtherAddress dst = i.key();
     uint32_t &count = i.value();
-    sa << "<link from='" << c->_me->getMyWirelessAddress()->s() << "' to='" << dst.s() << "' count='" << count << "' />\n";
+    sa << "<link from='" << c->_me->getMyWirelessAddress()->unparse() << "' to='" << dst.unparse() << "' count='" << count << "' />\n";
   }
   sa << "</traffic>\n";
 

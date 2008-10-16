@@ -37,7 +37,7 @@
 #include "elements/brn/routing/linkstat/brnlinktable.hh"
 #include "brniappnotifyhandler.hh"
 #include "brniappdatahandler.hh"
-#include "brnassocresponder.hh"
+#include "elements/brn/wifi/ap/brnassocresponder.hh"
 #include "signal.hh"
 CLICK_DECLS
 

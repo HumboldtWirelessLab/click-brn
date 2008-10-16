@@ -19,7 +19,7 @@ BRN2CRCerror::~BRN2CRCerror()
 int
 BRN2CRCerror::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpString, "label", &_label,
       cpInteger, "rate", &_rate,
@@ -44,7 +44,7 @@ BRN2CRCerror::simple_action(Packet *p_in)
   StringAccum sa;
   uint32_t seq_num;
   uint32_t bit_pos;
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p_in->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p_in->anno();
 
   if ( ( _rate == 0 ) || ( ( _rate != 0 ) && ( _rate == ceh->rate ) ) )
   { 

@@ -30,7 +30,7 @@ int FragmentReceiver::configure(Vector<String> &conf, ErrorHandler *errh) {
 	tracer = NULL;
 	fragmentDataLength = 0;
 	opportunistic = true;
-	if (cp_va_parse(conf, this, errh, cpKeywords, 
+	if (cp_va_kparse(conf, this, errh, cpKeywords, 
 			"NODE_IDENTITY", cpElement, "node identity", &me, 
 			"NC_CACHE", cpElement, "packet cache", &cache,
 			"TRACE_COLLECTOR", cpElement, "trace collector", &tracer,

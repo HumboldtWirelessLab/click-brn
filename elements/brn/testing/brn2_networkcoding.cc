@@ -21,7 +21,7 @@ BRN2Networkcoding::~BRN2Networkcoding()
 int
 BRN2Networkcoding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpString, "label", &_label,
       cpEnd) < 0)

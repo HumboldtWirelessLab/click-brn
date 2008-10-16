@@ -32,7 +32,7 @@
 #include <click/straccum.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-//BRNNEW #include "brniappstationtracker.hh"
+//BRNNEW #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////

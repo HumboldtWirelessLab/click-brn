@@ -58,7 +58,7 @@ CLICK_DECLS
 #define BRN_DEBUG click_chatter
 
 #else
-#warning "No Click_LinuxModule"
+//#warning "No Click_LinuxModule"
 
 // TODO check if log level of this element is appropriate!
 #define BRN_LOG     BrnLogger(__FILE__,__LINE__,this).log
@@ -444,7 +444,7 @@ print_packet(Packet *p, const String& label, unsigned  bytes)
   // sa.reserve() must return non-null; we checked capacity above
   int len;
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
-  sa.forward(len);
+  sa.adjust_length(len);
 
   char *buf = sa.data() + sa.length();
   int pos = 0;
@@ -454,7 +454,7 @@ print_packet(Packet *p, const String& label, unsigned  bytes)
     pos += 2;
     if ((i % 4) == 3) buf[pos++] = ' ';
   }
-  sa.forward(pos);
+  sa.adjust_length(pos);
 
   click_chatter("%s", sa.c_str());
 }

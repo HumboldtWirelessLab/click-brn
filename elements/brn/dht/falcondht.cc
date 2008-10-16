@@ -84,7 +84,7 @@ FalconDHT::configure(Vector<String> &conf, ErrorHandler *errh)
   int max_jitter;
   _fake_arp_for_simulator = false;
 
- if (cp_va_parse(conf, this, errh,
+ if (cp_va_kparse(conf, this, errh,
     cpOptional,
     cpEtherAddress, "ether address", &_me,
     cpElement, "BRNLinkStat", &_linkstat,
@@ -178,7 +178,7 @@ FalconDHT::push( int port, Packet *packet )
   {
 
     BRN_DEBUG("DHT: Hab was von DHT");
-    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von DHT-Node",_me.s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von DHT-Node",_me.unparse().c_str() );
 
     dht_intern_packet(packet);
   }
@@ -187,7 +187,7 @@ FalconDHT::push( int port, Packet *packet )
   {
 
     BRN_DEBUG("DHT: Hab was von DHCP/ARP");
-    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von ARP/DHCP",_me.s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von ARP/DHCP",_me.unparse().c_str() );
 
     struct dht_packet_header *dht_p_header = (struct dht_packet_header *)packet->data();
     memcpy( dht_p_header->sender_hwa, _me.data(), 6 );                                    //ich bin sender
@@ -200,7 +200,7 @@ FalconDHT::push( int port, Packet *packet )
   {
 
     BRN_DEBUG("DHT: Hab was von DSR");
-    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von DSR",_me.s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Habe ein Packet von DSR",_me.unparse().c_str() );
 
     //jump over DSR and BRN
 
@@ -281,7 +281,7 @@ FalconDHT::push( int port, Packet *packet )
 
     if ( myself < (unsigned int)dht_members.size() )
     {
-       BRN_DEBUG("DHT_DSR: my range is %s",dht_members[myself].start_ip_range.s().c_str());
+       BRN_DEBUG("DHT_DSR: my range is %s",dht_members[myself].start_ip_range.unparse().c_str());
     }
     else
     {
@@ -377,7 +377,7 @@ FalconDHT::dht_operation(Packet *p_in)
 
   if ( *cor_node != _me )
   {
-    BRN_DEBUG("DHT (Node:%s) : pack and forward to: %s", _me.s().c_str(), cor_node->s().c_str());
+    BRN_DEBUG("DHT (Node:%s) : pack and forward to: %s", _me.unparse().c_str(), cor_node->unparse().c_str());
 
     DHTPacketUtil::dht_pack_payload(p_in);
 
@@ -407,7 +407,7 @@ FalconDHT::dht_operation(Packet *p_in)
    {
      BRN_DEBUG("DHT: ich bin nicht der richtige fuer den Key");
      BRN_DEBUG("DHT: Info:%s",routing_info().c_str());
-     BRN_DEBUG("DHT: Key ist %s",IPAddress(_dht_entry->key_data).s().c_str());
+     BRN_DEBUG("DHT: Key ist %s",IPAddress(_dht_entry->key_data).unparse().c_str());
    }
 
 // L O C A L - O P E R A T I O N !!
@@ -593,7 +593,7 @@ FalconDHT::dht_operation(Packet *p_in)
   else
   {
     BRN_DEBUG("DHT: Zum Client");
-    BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an ARP/DHCP (LOCAL)",_me.s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an ARP/DHCP (LOCAL)",_me.unparse().c_str() );
 
     output( 1 ).push( dht_p_out );
     return(0);
@@ -606,7 +606,7 @@ int FalconDHT::dht_read(DHTentry *_dht_entry)
 {
   BRN_DEBUG("DHT: Function: dht_read: start");
   if (NULL != _dht_entry && _dht_entry->key_type == TYPE_IP) {
-    BRN_DEBUG("dht_read: looking for %s", IPAddress(_dht_entry->key_data).s().c_str());
+    BRN_DEBUG("dht_read: looking for %s", IPAddress(_dht_entry->key_data).unparse().c_str());
   }
 
   for(int i = 0; i < dht_list.size(); i++ ) {
@@ -1062,7 +1062,7 @@ FalconDHT::forward_packet_to_node(Packet *fwd_packet, EtherAddress *rcv_node)
   else
   {
     BRN_DEBUG("DHT: Forward DHT-Paket");
-    BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.s().c_str(), rcv_node->s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.unparse().c_str(), rcv_node->unparse().c_str() );
 
     memcpy( dht_p_header->sender_hwa, _me.data(), 6 );                                    //ich bin sender
   }    
@@ -1092,12 +1092,12 @@ FalconDHT::send_packet_to_node(Packet *send_packet,uint8_t *rcv_hwa )
   ether->ether_type = 0x8680; /*0*/
 
   out_packet->set_ether_header(ether);
-  out_packet->set_user_anno_c( BRN_DSR_PAYLOADTYPE_KEY, BRN_DSR_PAYLOADTYPE_DHT );
+  out_packet->set_anno_u8( BRN_DSR_PAYLOADTYPE_KEY, BRN_DSR_PAYLOADTYPE_DHT );
 
 
   EtherAddress eth_add(rcv_hwa);
-  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.s().c_str(), eth_add.s().c_str() );
-  BRN_DEBUG("DHT SRC: %s DEST: %s",_me.s().c_str(), eth_add.s().c_str() );
+  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.unparse().c_str(), eth_add.unparse().c_str() );
+  BRN_DEBUG("DHT SRC: %s DEST: %s",_me.unparse().c_str(), eth_add.unparse().c_str() );
 
   unsigned int j = (unsigned int ) ( _min_jitter +( random() % ( _jitter ) ) );
   packet_queue.push_back( BufferedPacket(out_packet, j ));
@@ -1107,7 +1107,7 @@ FalconDHT::send_packet_to_node(Packet *send_packet,uint8_t *rcv_hwa )
 //  BRN_DEBUG("FalconDHT: Timer after %d ms", j );
   _sendbuffer_timer.schedule_after_msec(j);
 
-  BRN_DEBUG("DHT (Node:%s) : Packet buffered", _me.s().c_str());
+  BRN_DEBUG("DHT (Node:%s) : Packet buffered", _me.unparse().c_str());
 }
 
 void
@@ -1132,15 +1132,15 @@ FalconDHT::send_packet_to_node_direct(Packet *send_packet,uint8_t *rcv_hwa )
   ether->ether_type = 0x8680; /*0*/
 
   out_packet->set_ether_header(ether);
-  out_packet->set_user_anno_c( BRN_DSR_PAYLOADTYPE_KEY, BRN_DSR_PAYLOADTYPE_DHT );
+  out_packet->set_anno_u8( BRN_DSR_PAYLOADTYPE_KEY, BRN_DSR_PAYLOADTYPE_DHT );
 
   EtherAddress eth_add(rcv_hwa);
-  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.s().c_str(), eth_add.s().c_str() );
-  BRN_DEBUG("DHT SRC: %s DEST: %s",_me.s().c_str(), eth_add.s().c_str() );
+  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT-Node %s",_me.unparse().c_str(), eth_add.unparse().c_str() );
+  BRN_DEBUG("DHT SRC: %s DEST: %s",_me.unparse().c_str(), eth_add.unparse().c_str() );
 
   output( 0 ).push( out_packet );
  
-  BRN_DEBUG("DHT (Node:%s) : Packet sent", _me.s().c_str());
+  BRN_DEBUG("DHT (Node:%s) : Packet sent", _me.unparse().c_str());
 }
 
 void
@@ -1259,7 +1259,7 @@ FalconDHT::sendNodeInfoToAll(uint8_t type)
   
   dht_packet->set_ether_header(ether_he);
 
-  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT via Broadcast",_me.s().c_str() );
+  BRN_DEBUG("DHT (Node:%s) : Sende ein Packet an DHT via Broadcast",_me.unparse().c_str() );
 
   unsigned int j = (unsigned int ) ( _min_jitter +( random() % ( _jitter ) ) );
   packet_queue.push_back( BufferedPacket(dht_packet, j ));
@@ -1272,7 +1272,7 @@ FalconDHT::sendNodeInfoToAll(uint8_t type)
 
 //output( 0 ).push( dht_packet );
  
-  BRN_DEBUG("DHT (Node:%s) : Packet buffered",_me.s().c_str());
+  BRN_DEBUG("DHT (Node:%s) : Packet buffered",_me.unparse().c_str());
 }
 
 void
@@ -1355,7 +1355,7 @@ FalconDHT::dht_intern_packet(Packet *dht_packet)
     if ( routing_header->_type == ROUTE_REQUEST )
     {
       EtherAddress *neighbor_ether = new EtherAddress(dht_header->sender_hwa);
-      BRN_DEBUG("DHT: Sende Antwort auf Route_Request an %s",neighbor_ether->s().c_str());
+      BRN_DEBUG("DHT: Sende Antwort auf Route_Request an %s",neighbor_ether->unparse().c_str());
 
       sendNodeInfoTo( neighbor_ether , ROUTE_REPLY);
       delete neighbor_ether;
@@ -1457,7 +1457,7 @@ FalconDHT::dht_intern_packet(Packet *dht_packet)
     EtherAddress *sender_ether = new EtherAddress(dht_header->sender_hwa);
 
     BRN_DEBUG("DHT: DHT-operation over DHT-Port (DHT-OPERATION)");
-    BRN_DEBUG("DHT (Node:%s) : Hab ein Packet (DHT-Operation) von %s",_me.s().c_str(), sender_ether->s().c_str() );
+    BRN_DEBUG("DHT (Node:%s) : Hab ein Packet (DHT-Operation) von %s",_me.unparse().c_str(), sender_ether->unparse().c_str() );
 
     if ( *sender_ether == _me ) 
     { 
@@ -1475,14 +1475,14 @@ FalconDHT::dht_intern_packet(Packet *dht_packet)
 
           dht_header->receiver = forward_list[i]._sender;
 
-          BRN_DEBUG("DHT (Node:%s) : Loesche %d Element aus forwardliste",_me.s().c_str(),i );
+          BRN_DEBUG("DHT (Node:%s) : Loesche %d Element aus forwardliste",_me.unparse().c_str(),i );
 
           forward_list[i]._fwd_packet->kill();
           delete (forward_list[i]._ether_add);
 
           forward_list.erase(forward_list.begin() + i);
 
-          BRN_DEBUG("DHT (Node:%s) : Unpack and pack ! Sende ein Packet an ARP/DHCP",_me.s().c_str() );
+          BRN_DEBUG("DHT (Node:%s) : Unpack and pack ! Sende ein Packet an ARP/DHCP",_me.unparse().c_str() );
 
           DHTPacketUtil::dht_unpack_payload(dht_packet);
           DHTPacketUtil::dht_pack_payload(dht_packet);
@@ -1832,7 +1832,7 @@ FalconDHT::my_finger_is_better(EtherAddress *cur_src , EtherAddress *cur_dest , 
 
   if ( _dht_entry->key_type == TYPE_IP )
   {
-    BRN_DEBUG("DHT_DSR: KEY: %s",IPAddress(_dht_entry->key_data).s().c_str());
+    BRN_DEBUG("DHT_DSR: KEY: %s",IPAddress(_dht_entry->key_data).unparse().c_str());
 
 // dest is final-dest (key between src und dest ?)
     if ( ( ! zero_jump ) && 
@@ -2072,7 +2072,7 @@ FalconDHT::falcon_dht_balance(Vector<DHTnode> *new_members)
         {
           if ( ( packet_size + dht_list[j].key_len + dht_list[j].value_len ) > MAX_DHT_PACKET_SIZE )
           {
-            BRN_DEBUG("DHT: Infos werden verschoben nach %s", (*new_members)[i].ether_addr.s().c_str());
+            BRN_DEBUG("DHT: Infos werden verschoben nach %s", (*new_members)[i].ether_addr.unparse().c_str());
 
             forward_packet_to_node( dht_packet, &((*new_members)[i].ether_addr) );
             packet_size = 0;
@@ -2134,7 +2134,7 @@ FalconDHT::falcon_dht_balance(Vector<DHTnode> *new_members)
 
       if ( packet_size != 0 )
       {
-        BRN_DEBUG("DHT: Infos werden verschoben nach %s", (*new_members)[i].ether_addr.s().c_str());
+        BRN_DEBUG("DHT: Infos werden verschoben nach %s", (*new_members)[i].ether_addr.unparse().c_str());
         forward_packet_to_node( dht_packet, &((*new_members)[i].ether_addr) );
       }
     }
@@ -2265,7 +2265,7 @@ FalconDHT::lookup_timer_hook()
   if ( node_detection_time == 0 )
   {
 //    if(_debug)
-  //    BRN_DEBUG("DHT (Node:%s) : Ich kenne %d DHT-Knoten",_me.s().c_str(), dht_members.size()  );
+  //    BRN_DEBUG("DHT (Node:%s) : Ich kenne %d DHT-Knoten",_me.unparse().c_str(), dht_members.size()  );
     nodeDetection();
   }
 
@@ -2286,7 +2286,7 @@ FalconDHT::packet_retransmission()
   click_gettimeofday(&_time_now);
 
   if ( forward_list.size() > 0 )
-   BRN_DEBUG("DHT (Node:%s) : Retransmission. Size: %d",_me.s().c_str(), forward_list.size() );
+   BRN_DEBUG("DHT (Node:%s) : Retransmission. Size: %d",_me.unparse().c_str(), forward_list.size() );
 
   Packet *fwd_packet;
 
@@ -2308,7 +2308,7 @@ FalconDHT::packet_retransmission()
 
     if ( diff_in_ms(_time_now, forward_list[i]._send_time) > retransmission_time )
     {
-      BRN_DEBUG("DHT (Node:%s) : Retransmission. Timediff: %d",_me.s().c_str(), diff_in_ms(_time_now, forward_list[i]._send_time) );
+      BRN_DEBUG("DHT (Node:%s) : Retransmission. Timediff: %d",_me.unparse().c_str(), diff_in_ms(_time_now, forward_list[i]._send_time) );
 
       assert( ( i >= 0 ) && ( i < forward_list.size() ) );
 
@@ -2521,7 +2521,7 @@ FalconDHT::processDhtPayloadFromLinkProbe(uint8_t *ptr,unsigned int dht_payload_
       _ac_node_info = (struct dht_node_info *)&ptr[ i * sizeof(struct dht_node_info)];
   
       BRN_DEBUG("DHT_LINKPROP: Checke node %s", 
-        EtherAddress(_ac_node_info->_ether_addr).s().c_str());
+        EtherAddress(_ac_node_info->_ether_addr).unparse().c_str());
 
       for ( j = 0; j < extra_finger_table.size(); j++ )
       {
@@ -2668,9 +2668,9 @@ read_param(Element *e, void *thunk)
     case H_STARTUP_TIME : return String(fdht->_startup_time);
     case H_DEBUG : return String(fdht->_startup_time);
     case H_FAKE_ARP : return String(fdht->_fake_arp_for_simulator);
-    case H_ETHER_ADDRESS : return fdht->_me.s();
-    case H_NETWORK_ADDRESS: return fdht->_net_address.s();
-    case H_SUBNET_MASK: return fdht->_subnet_mask.s();
+    case H_ETHER_ADDRESS : return fdht->_me.unparse();
+    case H_NETWORK_ADDRESS: return fdht->_net_address.unparse();
+    case H_SUBNET_MASK: return fdht->_subnet_mask.unparse();
     case H_MINIMAL_JITTER: return String(fdht->_min_jitter);
     case H_MAXIMAL_JITTER: return String(fdht->_jitter+fdht->_min_jitter);
     case H_JITTER: return String(fdht->_min_dist);
@@ -2815,12 +2815,12 @@ FalconDHT::routing_info(void)
   char digest[16*2 + 1];
   int hops;
 
-  sa << "Routing Info ( Node: " << _me.s() << " )\n";
-  sa << "IP-Net: " << _net_address.s() << "\tMask: " << _subnet_mask.s() << "\n";
+  sa << "Routing Info ( Node: " << _me.unparse() << " )\n";
+  sa << "IP-Net: " << _net_address.unparse() << "\tMask: " << _subnet_mask.unparse() << "\n";
   sa << "Neighbors:\n";
   for (int i = 0; i < my_neighbors.size(); i++ )
   {
-    sa << "  " << my_neighbors[i].s() << "\n";
+    sa << "  " << my_neighbors[i].unparse() << "\n";
   }
 
   sa << "DHT-Neighbors:\n";
@@ -2828,7 +2828,7 @@ FalconDHT::routing_info(void)
   {
     dht_neighbors[i].printDigest(digest);
     hops = dht_neighbors[i].hops;
-    sa << "  " << dht_neighbors[i].ether_addr.s() << "\t" << hops << "\t" << digest << "\t" << dht_neighbors[i].start_ip_range.s() << "\n";
+    sa << "  " << dht_neighbors[i].ether_addr.unparse() << "\t" << hops << "\t" << digest << "\t" << dht_neighbors[i].start_ip_range.unparse() << "\n";
   }
 
   unsigned int finger_pos,node_pos;
@@ -2840,7 +2840,7 @@ FalconDHT::routing_info(void)
 
     dht_members[i].printDigest(digest);
     hops = dht_members[i].hops;
-    sa << "  " << dht_members[i].ether_addr.s() << "\t" << hops << "\t" << digest << "\t" << dht_members[i].start_ip_range.s() << "\t" << node_pos << "\n";
+    sa << "  " << dht_members[i].ether_addr.unparse() << "\t" << hops << "\t" << digest << "\t" << dht_members[i].start_ip_range.unparse() << "\t" << node_pos << "\n";
   }
 
   
@@ -2857,7 +2857,7 @@ FalconDHT::routing_info(void)
     finger_table[i].printDigest(digest);
     hops = finger_table[i].hops;
     
-    sa << "  " << i << "\t" << finger_pos << "\t" << node_pos << "\t" << finger_table[i].ether_addr.s() << "\t" << hops << "\t" << digest << "\n";
+    sa << "  " << i << "\t" << finger_pos << "\t" << node_pos << "\t" << finger_table[i].ether_addr.unparse() << "\t" << hops << "\t" << digest << "\n";
   }
   
   return sa.take_string();
@@ -2878,7 +2878,7 @@ FalconDHT::table_info(void)
   click_gettimeofday(&_time_now);
   uint32_t rel_time;
 
-  sa << "Table Info ( Node: " << _me.s() << " )\n";
+  sa << "Table Info ( Node: " << _me.unparse() << " )\n";
   sa << "Push_backs: " << push_backs << "\n";
   sa << "Message forwards: " << msg_forward << "\n";
   for (int i = 0; i < dht_list.size(); i++ )
@@ -2892,14 +2892,14 @@ FalconDHT::table_info(void)
       rel_time = lease - _time_now.tv_sec;
 
       cor_node = find_corresponding_node(&dht_list[i]);
-      sa << " IP: " << _ip->s() << "\tMAC: " << _mac->s() << "\tLease: " << rel_time << "\tNode: " << cor_node->s() << "\n";
+      sa << " IP: " << _ip->unparse() << "\tMAC: " << _mac->unparse() << "\tLease: " << rel_time << "\tNode: " << cor_node->unparse() << "\n";
       delete _ip;
       delete _mac;
     }
     else
     {
       cor_node = find_corresponding_node(&dht_list[i]);
-      sa << " Type unbekannt" << "\tNode: " << cor_node->s() << "\n";
+      sa << " Type unbekannt" << "\tNode: " << cor_node->unparse() << "\n";
     }
 
   }

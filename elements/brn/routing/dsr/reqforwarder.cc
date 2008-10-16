@@ -30,7 +30,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include "brniappstationtracker.hh"
+#include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
 
 CLICK_DECLS
 

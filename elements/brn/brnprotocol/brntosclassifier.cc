@@ -54,7 +54,7 @@ BrnTosClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
   UNREFERENCED_PARAMETER(errh);
   
   _debug = 0;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
