@@ -105,7 +105,7 @@ static const true_false_string yes_no_tfs = { "Yes", "No" };
 static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request", "Decline",
                                        "Ack", "Nak", "Release", "Inform" };
 #define COUNT_OPTIONS 8
-      
+
 static struct opt_info opt[] = {
 		/*   0 */ { "Padding",					none, NULL },
 		/*   1 */ { "Subnet Mask",				ipv4, NULL },

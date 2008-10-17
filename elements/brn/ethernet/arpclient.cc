@@ -52,7 +52,7 @@ ARPClient::configure(Vector<String> &conf, ErrorHandler *errh)
   String router_ip;
 
   _active = true;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
     cpOptional,
       cpIPAddress, "Client IP address", &_client_ip,
       cpEthernetAddress, "Client ethernet address", &_client_ethernet,

@@ -64,7 +64,7 @@ BRNGateway::simple_action(Packet *p_in)
 int
 BRNGeophonAdapter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
         cpOptional,
         cpBool, "debug", &_debug,
         cpUnsignedShort, "port number", &_portno,

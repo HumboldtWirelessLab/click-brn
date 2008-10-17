@@ -26,7 +26,7 @@ BRN2PacketSource::~BRN2PacketSource()
 int
 BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpInteger, "size", &_size,
       cpInteger, "interval", &_interval,

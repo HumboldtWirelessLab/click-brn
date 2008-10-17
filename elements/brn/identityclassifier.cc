@@ -45,7 +45,7 @@ int
 IdentityClassifier::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   bool drop_own = false, drop_other = true;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpElement, "NodeIdentity", &_id,
       cpOptional,
       cpBool, "Drop packets from us?", &drop_own,

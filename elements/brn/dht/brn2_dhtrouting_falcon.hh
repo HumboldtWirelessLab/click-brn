@@ -38,7 +38,7 @@ class DHTRoutingFalcon : public DHTRouting
 
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
-    int set_notify_callback(void *info_func, void *info_obj) { return 0; };
+    int set_notify_callback(void *info_func, void *info_obj);
 
   private:
 

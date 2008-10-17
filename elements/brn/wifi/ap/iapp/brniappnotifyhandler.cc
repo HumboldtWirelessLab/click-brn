@@ -62,7 +62,7 @@ BrnIappNotifyHandler::~BrnIappNotifyHandler()
 int 
 BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       /* not required */
       cpKeywords,
       "RESEND_NOTIFY", cpUnsigned, "resend notify (ms)", &_notify_ms,

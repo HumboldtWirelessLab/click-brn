@@ -45,7 +45,7 @@ int
 ClientDS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
 
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpString, "#1 device (wlan)", &_dev_wlan_name,
       cpString, "#2 device (vlan1)", &_dev_vlan1_name,

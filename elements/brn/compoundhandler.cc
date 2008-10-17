@@ -44,7 +44,7 @@ CompoundHandler::~CompoundHandler()
 int
 CompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpString, "handler", &_handler,
       cpString, "classes", &_items,
       cpOptional,

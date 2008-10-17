@@ -47,7 +47,7 @@ BrnFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int max_jitter;
 
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpInteger, "minimal Jitter", &_min_jitter,
       cpInteger, "maximal Jitter", &max_jitter,

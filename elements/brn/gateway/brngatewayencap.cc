@@ -40,7 +40,7 @@ BRNGatewayEncap::~BRNGatewayEncap() {}
 
 int
 BRNGatewayEncap::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpKeywords,
                   cpEnd) < 0)

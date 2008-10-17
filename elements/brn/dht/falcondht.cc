@@ -84,7 +84,7 @@ FalconDHT::configure(Vector<String> &conf, ErrorHandler *errh)
   int max_jitter;
   _fake_arp_for_simulator = false;
 
- if (cp_va_kparse(conf, this, errh,
+ if (cp_va_parse(conf, this, errh,
     cpOptional,
     cpEtherAddress, "ether address", &_me,
     cpElement, "BRNLinkStat", &_linkstat,

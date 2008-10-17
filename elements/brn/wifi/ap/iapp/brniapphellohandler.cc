@@ -67,7 +67,7 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _hello_trigger_interval_ms = 0;
   
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,

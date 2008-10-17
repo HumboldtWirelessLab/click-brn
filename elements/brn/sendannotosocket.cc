@@ -68,7 +68,7 @@ int
 SendAnnoToSocket::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   String socktype;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
 		  cpString, "type of socket (`TCP' or `UDP' or `UNIX')", &socktype,
 		  cpIgnoreRest,
 		  cpEnd) < 0)
@@ -95,7 +95,7 @@ SendAnnoToSocket::configure(Vector<String> &conf, ErrorHandler *errh)
     click_chatter(" sockettype: %s \n", socktype.c_str());
     _socktype = socktype == "TCP" ? SOCK_STREAM : SOCK_DGRAM;
     _protocol = socktype == "TCP" ? IPPROTO_TCP : IPPROTO_UDP;
-    if (cp_va_kparse(conf, this, errh,
+    if (cp_va_parse(conf, this, errh,
 		    cpIgnore,
 		    cpIPAddress, "IP address", &_ip,
 		    cpUnsignedShort, "port number", &_port,
@@ -107,7 +107,7 @@ SendAnnoToSocket::configure(Vector<String> &conf, ErrorHandler *errh)
     _family = PF_UNIX;
     _socktype = SOCK_STREAM;
     _protocol = 0;
-    if (cp_va_kparse(conf, this, errh,
+    if (cp_va_parse(conf, this, errh,
 		    cpIgnore,
 		    cpString, "filename", &_pathname,
 		    cpEnd) < 0)

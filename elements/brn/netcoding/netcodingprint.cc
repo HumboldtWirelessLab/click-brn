@@ -30,7 +30,7 @@ int
 NetcodingPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _debug = BrnLogger::DEBUG;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
 		  cpOptional,
 		  cpString, "label", &_label,
 		  cpEnd) < 0)

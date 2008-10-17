@@ -29,7 +29,7 @@ LoadBalancerRedirect::~LoadBalancerRedirect()
 
 int LoadBalancerRedirect::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
     cpOptional,
     cpEtherAddress, "ether address", &_me,
     cpKeywords,

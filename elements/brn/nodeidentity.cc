@@ -58,7 +58,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   EtherAddress me_wlan, me_vlan0, me_vlan1;
 
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpString, "#1 device (wlan)", &_dev_wlan_name,
       cpString, "#2 device (vlan0)", &_dev_vlan0_name,

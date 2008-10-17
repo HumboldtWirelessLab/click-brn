@@ -30,7 +30,7 @@ BRN2PrintPacketStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _timestamp = false;
-  ret = cp_va_kparse(conf, this, errh,
+  ret = cp_va_parse(conf, this, errh,
                   cpOptional,
 		  cpString, "label", &_label,
 		  cpKeywords,

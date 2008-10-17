@@ -59,7 +59,7 @@ FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _active = true;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
 		  /* not required */
 		  cpKeywords,
       "ACTIVE", cpBool, "Active", &_active,

@@ -34,7 +34,7 @@ int NetcodingDecoder::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int usecTimeout = 0;
   tracer = NULL;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
                   cpKeywords, "NC_CACHE", cpElement, "netcoding cache", &cache,
                   "HARD_TIMEOUT", cpInteger, "hard timeout", &usecTimeout,
                   "TRACE_COLLECTOR", cpElement, "trace collector", &tracer,

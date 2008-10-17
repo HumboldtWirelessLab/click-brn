@@ -70,7 +70,7 @@ int
 BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int stale_period = 120;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,

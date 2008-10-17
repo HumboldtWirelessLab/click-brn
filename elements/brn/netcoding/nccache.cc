@@ -43,7 +43,7 @@ NetcodingCache::~NetcodingCache() {
 int NetcodingCache::configure(Vector<String> &conf, ErrorHandler *errh) {
 	bitsInMultiplier = 0;
 	fragmentsInBatch = 0;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpKeywords, "NODE_IDENTITY",
       cpElement, "node identity", &me,
       "ASSOC_LIST", cpElement, "association list", &associated,

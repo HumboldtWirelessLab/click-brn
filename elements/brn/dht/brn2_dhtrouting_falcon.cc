@@ -47,6 +47,13 @@ void DHTRoutingFalcon::push( int port, Packet *packet )
 {
 }
 
+int DHTRoutingFalcon::set_notify_callback(void *info_func, void *info_obj)
+{
+  if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
+
+  return 0;
+}
+
 void DHTRoutingFalcon::add_handlers()
 {
 }

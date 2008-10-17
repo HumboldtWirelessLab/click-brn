@@ -67,7 +67,7 @@ DHCPRequester::configure(Vector<String> &conf, ErrorHandler* errh)
   BRN_DEBUG("DHCPRequester: Configure");
 
   _active = true;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
         cpEthernetAddress, "First EtherAddress", &_hw_addr,
         cpIPAddress, "First IPAddress", &_ip_addr,

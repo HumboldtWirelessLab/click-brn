@@ -70,7 +70,7 @@ int
 BRNAssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _debug = false;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
 		  /* not required */
 		  cpKeywords,
 		  "DEBUG", cpInteger, "Debug", &_debug,

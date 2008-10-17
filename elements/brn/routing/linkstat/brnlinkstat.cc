@@ -204,7 +204,7 @@ int
 BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
-  int res = cp_va_kparse(conf, this, errh,
+  int res = cp_va_parse(conf, this, errh,
 			cpKeywords,
 			"ETHTYPE", cpUnsigned, "Ethernet encapsulation type", &_et,
       "NODEIDENTITY", cpElement, "NodeIdentity", &_me,

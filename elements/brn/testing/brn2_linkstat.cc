@@ -30,7 +30,7 @@ BRN2Linkstat::~BRN2Linkstat()
 int
 BRN2Linkstat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpEtherAddress, "etheraddress", &_me,
       cpInteger, "interval", &_interval,

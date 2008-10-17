@@ -52,7 +52,7 @@ StationHandover::~StationHandover()
 int
 StationHandover::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpElement, "BRNAssocRequester", &_station_assoc,
       cpElement, "WirelessInfo", &_winfo,
       cpInteger, "use #number of beacons to calculate the average rssi value", &_delta,

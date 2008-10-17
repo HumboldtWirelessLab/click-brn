@@ -54,7 +54,7 @@ int
 InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpKeywords,
       "WIRELESS_INFO", cpElement, "Wirelessinfo", &_wireless_info,
       "RT", cpElement, "AvailabeRates", &_rtable,

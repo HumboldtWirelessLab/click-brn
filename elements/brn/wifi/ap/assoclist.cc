@@ -99,7 +99,7 @@ int
 AssocList::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
-  ret = cp_va_kparse(conf, this, errh,
+  ret = cp_va_parse(conf, this, errh,
         cpElement, "Node identity", &_id,
         cpKeywords,
         "BUFFER", cpUnsigned, "Buffer for pre-handover packets", &_client_qsize_max,

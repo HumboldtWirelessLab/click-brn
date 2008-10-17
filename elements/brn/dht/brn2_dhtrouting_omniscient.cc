@@ -45,7 +45,7 @@ int DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   _update_interval = 1000;                   //update interval -> 1 sec
   _min_dist = 100;                           //min. time distance between 2 packages
                                         //maybe this is only important for simulation
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
     cpOptional,
     cpKeywords,
     "LINKSTAT", cpElement, "LinkStat", &_linkstat,

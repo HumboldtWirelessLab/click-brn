@@ -104,7 +104,7 @@ Mono::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     Element *e = NULL;
     
-    if (cp_va_kparse(conf, this, errh,
+    if (cp_va_parse(conf, this, errh,
 		    cpKeywords,
 		    "NOTIFIER", cpElement, "event notifier", &e,
 		    cpEnd) < 0)

@@ -51,7 +51,7 @@ UniquePacketSource::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int packet_size = 100;
   
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpOptional,
         cpInteger, "packet size", &packet_size,
       cpKeywords,

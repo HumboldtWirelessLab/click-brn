@@ -97,7 +97,7 @@ BrnLinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
   int stale_period = 120;
-  ret = cp_va_kparse(conf, this, errh,
+  ret = cp_va_parse(conf, this, errh,
         cpOptional,
 //        cpElement, "NodeIdentity", &_node_identity,
         cpElement, "BrnRouteCache", &_brn_routecache,

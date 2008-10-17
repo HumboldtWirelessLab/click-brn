@@ -57,7 +57,7 @@ BRNGateway::~BRNGateway() {}
 int
 BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
                   cpEthernetAddress, "My ethernet address", &_my_eth_addr,
                   cpElement, "BRNSetGatewayOnFlow", &_flows,
                   cpKeywords,

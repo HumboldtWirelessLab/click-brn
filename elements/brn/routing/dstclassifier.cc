@@ -43,7 +43,7 @@ DstClassifier::~DstClassifier()
 int
 DstClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
                   cpElement, "NodeIdentity", &_me,
                   cpElement, "Client assoc list", &_client_assoc_lst,
                   cpOptional,

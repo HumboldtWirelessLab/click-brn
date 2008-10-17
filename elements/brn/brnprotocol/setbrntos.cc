@@ -54,7 +54,7 @@ SetBrnTos::configure(Vector<String> &conf, ErrorHandler *errh)
   
   _debug = 0;
   _tos = BRN_TOS_BE;
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
       cpUnsigned, "TOS to set", &_tos,
       /* not required */
       cpKeywords,

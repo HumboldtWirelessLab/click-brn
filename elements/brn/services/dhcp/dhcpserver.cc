@@ -66,7 +66,7 @@ DHCPServer::configure(Vector<String> &conf, ErrorHandler* errh)
 {
     BRN_DEBUG("DHCPServer: Configure");
 
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
     cpOptional,
     cpEthernetAddress, "EtherAddress", &_me,
     cpIPPrefix, "address prefix", &_net_address, &_subnet_mask,   /* e.g. "10.9.0.0/16" */

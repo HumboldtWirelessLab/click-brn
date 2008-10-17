@@ -43,7 +43,7 @@ BRNGatewaySupervisor::~BRNGatewaySupervisor() {}
 
 int
 BRNGatewaySupervisor::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_kparse(conf, this, errh,
+  if (cp_va_parse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpElement, "BrnLinkTable", &_link_table,
                   cpKeywords,
