@@ -71,8 +71,8 @@ class DHCPRequester : public Element {
       eth_add = EtherAddress(_mac);
       ip_add = IPAddress(_ip);
 
-      click_gettimeofday(&_time_start);
-      click_gettimeofday(&_time_last_action);
+      _time_start = Timestamp::now().timeval();
+      _time_last_action = Timestamp::now().timeval();
 
       _last_action = 0;
 
@@ -85,8 +85,8 @@ class DHCPRequester : public Element {
       xid =_xid;
       eth_add = EtherAddress(_mac);
 
-      click_gettimeofday(&_time_start);
-      click_gettimeofday(&_time_last_action);
+      _time_start = Timestamp::now().timeval();
+      _time_last_action = Timestamp::now().timeval();
 
       _last_action = 0;
 

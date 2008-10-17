@@ -40,7 +40,7 @@ BRNGatewayEncap::~BRNGatewayEncap() {}
 
 int
 BRNGatewayEncap::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpKeywords,
                   cpEnd) < 0)
@@ -117,7 +117,7 @@ BRNGatewayEncap::push(int port, Packet *p) {
     }
 	  else {
 		  brn_gw->metric = gwe->get_metric();
-      BRN_INFO("Sending feedback with metric %u for gw %s", brn_gw->metric, EtherAddress(ether_new->ether_shost).s().c_str());
+      BRN_INFO("Sending feedback with metric %u for gw %s", brn_gw->metric, EtherAddress(ether_new->ether_shost).unparse().c_str());
     }
 
     output(0).push(q);

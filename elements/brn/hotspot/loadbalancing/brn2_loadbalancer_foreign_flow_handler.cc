@@ -76,7 +76,7 @@ void LoadBalancerForeignFlowHandler::push( int port, Packet *packet )
     srcPort = ntohs(udp_header->uh_sport);
     dstPort = ntohs(udp_header->uh_dport);
 
-//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->s().c_str(),fromIP->s().c_str(),srcPort,toIP->s().c_str(),dstPort);
+//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->unparse().c_str(),fromIP->unparse().c_str(),srcPort,toIP->unparse().c_str(),dstPort);
 
     foreignFlow = (ForeignFlowInfo*)getFlow(fromIP, toIP, srcPort, dstPort);
 
@@ -104,7 +104,7 @@ void LoadBalancerForeignFlowHandler::push( int port, Packet *packet )
 
     foreignFlow = (ForeignFlowInfo*)getFlow(toIP, fromIP, dstPort, srcPort);
     
-//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",foreignFlow->_src_address->s().c_str(),fromIP->s().c_str(),srcPort,toIP->s().c_str(),dstPort);
+//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",foreignFlow->_src_address->unparse().c_str(),fromIP->unparse().c_str(),srcPort,toIP->unparse().c_str(),dstPort);
 
     if (foreignFlow != NULL )
     {

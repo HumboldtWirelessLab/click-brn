@@ -30,7 +30,7 @@ BRN2Linkstat::~BRN2Linkstat()
 int
 BRN2Linkstat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpEtherAddress, "etheraddress", &_me,
       cpInteger, "interval", &_interval,
@@ -129,12 +129,12 @@ read_neighbors(Element *e, void *thunk)
   StringAccum sa;
    uint32_t last_sn;
 
-  sa << "Neighbors of " << lt->_me.s() << ":\n";
+  sa << "Neighbors of " << lt->_me.unparse() << ":\n";
   sa << "\tAddress\t\t\tLast Sequencenumber\t# of " << lt->_interval_size << " Probes\n";
   for (int i = 0; i < lt->neighbors_ls_info.size(); i++ )
   {
     last_sn = lt->neighbors_ls_info[i]._linkprobe_squen.size() - 1;
-    sa << "\t" << lt->neighbors_ls_info[i]._node_address.s() << "\t" << lt->neighbors_ls_info[i]._linkprobe_squen[last_sn]  << "\t\t\t" << ( last_sn + 1 ) << "\n";
+    sa << "\t" << lt->neighbors_ls_info[i]._node_address.unparse() << "\t" << lt->neighbors_ls_info[i]._linkprobe_squen[last_sn]  << "\t\t\t" << ( last_sn + 1 ) << "\n";
   }
 
   return sa.take_string();

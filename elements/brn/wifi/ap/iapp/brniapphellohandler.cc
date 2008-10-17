@@ -67,7 +67,7 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _hello_trigger_interval_ms = 0;
   
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -152,7 +152,7 @@ BrnIappHelloHandler::push(int, Packet *p)
   p->kill();
   
   BRN_DEBUG("received hello curr %s cand %s (client %s)", 
-    ap_curr.s().c_str(), ap_cand.s().c_str(), sta.s().c_str());
+    ap_curr.unparse().c_str(), ap_cand.unparse().c_str(), sta.unparse().c_str());
 
   // Generate iapp hello reply, if it is our client
   if (_id->isIdentical(&ap_curr)
@@ -187,7 +187,7 @@ BrnIappHelloHandler::send_iapp_hello(
   EtherAddress& dst(to_curr ? ap_curr : ap_cand);
 
   BRN_DEBUG("send hello from %s to %s (client %s)", 
-    src.s().c_str(), dst.s().c_str(), sta.s().c_str());
+    src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str());
     
   // push out
   Packet* p = _encap->create_iapp_hello(sta, ap_cand, ap_curr, to_curr);
@@ -210,7 +210,7 @@ BrnIappHelloHandler::schedule_hello(
 
   // Add the sta to the parameter list
   _sta_hello_queue.push_back(sta);
-  BRN_DEBUG("added sta %s to hello queue", sta.s().c_str());
+  BRN_DEBUG("added sta %s to hello queue", sta.unparse().c_str());
 
   // if already scheduled, then do not reschedule
   if (_timer_hello.scheduled())
@@ -241,7 +241,7 @@ BrnIappHelloHandler::send_hello()
     // Could be null in the case the client moved away in the meantime
     if (pClient == NULL) {
         BRN_INFO("canceling hello for client %s, since it is unknown now.", 
-          sta.s().c_str());
+          sta.unparse().c_str());
         continue;
     }
        

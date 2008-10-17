@@ -54,7 +54,7 @@ ReplyForwarder::~ReplyForwarder()
 int
 ReplyForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "DSRDecap", &_dsr_decap,
@@ -137,7 +137,7 @@ ReplyForwarder::push(int port, Packet *p_in)
 
     for (int j = 0; j < reply_route.size(); j++) {
       BRN_DEBUG(" RREP - %d   %s (%d)",
-                  j, reply_route[j].ether().s().c_str(),
+                  j, reply_route[j].ether().unparse().c_str(),
                   reply_route[j]._metric);
     }
 
@@ -154,7 +154,7 @@ ReplyForwarder::push(int port, Packet *p_in)
     const click_ether * ether = (const click_ether *)p_in->ether_header();
     EtherAddress last_forwarder(ether->ether_shost);
 
-    BRN_DEBUG(" last_forwarder is %s", last_forwarder.s().c_str());
+    BRN_DEBUG(" last_forwarder is %s", last_forwarder.unparse().c_str());
 
     _route_querier->set_blacklist(last_forwarder, BRN_DSR_BLACKLIST_NOENTRY);
 
@@ -165,13 +165,13 @@ ReplyForwarder::push(int port, Packet *p_in)
       // might be doing reply-from-cache  
       EtherAddress reply_dst = EtherAddress(brn_dsr->dsr_src.data);
       BRN_DEBUG(" * killed (route to %s reached final destination, %s, #ID %d)",
-          reply_dst.s().c_str(), dst_addr.s().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+          reply_dst.unparse().c_str(), dst_addr.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
       _route_querier->stop_issuing_request(reply_dst);
       p_in->kill();
       return;
     } else {
       BRN_DEBUG(" * forwarding RREP towards destination %s, #ID %d",
-        dst_addr.s().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+        dst_addr.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
       forward_rrep(p_in); // determines next hop, sets dest ip anno, and then pushes out to arp table.
       return;
     }
@@ -229,8 +229,8 @@ ReplyForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
 
     if (ret)
       BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d\n",
-        route[i].ether().s().c_str(), route[i].ip().s().c_str(),
-        route[i+1].ether().s().c_str(), route[i+1].ip().s().c_str(), metric);
+        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
   }
 
   BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());

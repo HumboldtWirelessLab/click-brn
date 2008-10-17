@@ -28,7 +28,7 @@ class DHTRoutingOmni : public DHTRouting
         {
           assert(p);
           _p=p;
-          click_gettimeofday(&_send_time);
+	  _send_time = Timestamp::now().timeval();
           _send_time.tv_sec += ( time_diff / 1000 );
           _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
           while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
@@ -81,11 +81,11 @@ class DHTRoutingOmni : public DHTRouting
     Vector<EtherAddress> my_neighbors;
 
     Timer _lookup_timer;
-    static void static_queue_timer_hook(Timer *, void *v);
+    static void static_queue_timer_hook(Timer *, void *);
     void nodeDetection();
 
     Timer _sendbuffer_timer;
-    static void static_lookup_timer_hook(Timer *, void *v);
+    static void static_lookup_timer_hook(Timer *, void *);
     SendBuffer packet_queue;
     int get_min_jitter_in_queue();
     void queue_timer_hook();

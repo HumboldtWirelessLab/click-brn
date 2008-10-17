@@ -60,7 +60,7 @@ BRNETXMetric::cast(const char *n)
 int
 BRNETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int res = cp_va_parse(conf, this, errh,
+  int res = cp_va_kparse(conf, this, errh,
     cpKeywords,
     "LT", cpElement, "LinkTable element", &_link_table, 
     cpEnd);
@@ -90,12 +90,12 @@ BRNETXMetric::update_link(EtherAddress from, EtherAddress to,
   if (metric && 
       _link_table && 
       !_link_table->update_link(from, to, seq, 0, metric)) {
-    BRN_WARN(" couldn't update link %s > %d > %s\n", from.s().c_str(), metric, to.s().c_str());
+    BRN_WARN(" couldn't update link %s > %d > %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
   }
   if (metric && 
       _link_table && 
       !_link_table->update_link(to, from, seq, 0, metric)){
-    BRN_WARN(" couldn't update link %s < %d < %s\n", from.s().c_str(), metric, to.s().c_str());
+    BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
   }
 }
 

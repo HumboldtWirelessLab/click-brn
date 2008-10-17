@@ -93,7 +93,7 @@ class FalconDHT : public Element {
 //      click_chatter("md5 + net32: %u",md5_int);
       start_ip_range = IPAddress(md5_int);
 
-      //BRN_DEBUG("DHT: Node: %s IP-Range: %s",ether_addr.s().c_str(),start_ip_range.s().c_str());
+      //BRN_DEBUG("DHT: Node: %s IP-Range: %s",ether_addr.unparse().c_str(),start_ip_range.unparse().c_str());
     }
 
     ~DHTnode()
@@ -201,15 +201,15 @@ class FalconDHT : public Element {
     EtherAddress *_ether_add;
 
     uint8_t _retry;
- 
+
     ForwardInfo( uint8_t sender, uint8_t id, EtherAddress *rcv_node, Packet *fwd_packet )
     {
       _sender = sender;
       _id = id;
-      click_gettimeofday(&_send_time);
-     
+      _send_time = Timestamp::now().timeval();
+
       _retry = 0;
-  
+
       _ether_add = new EtherAddress( rcv_node->data() );
 
       _fwd_packet = fwd_packet;
@@ -231,7 +231,7 @@ class FalconDHT : public Element {
      {
        assert(p);
        _p=p;
-       click_gettimeofday(&_send_time);
+       _send_time = Timestamp::now().timeval();
        _send_time.tv_sec += ( time_diff / 1000 );
        _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
        while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow

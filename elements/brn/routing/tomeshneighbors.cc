@@ -44,7 +44,7 @@ ToMeshNeighbors::~ToMeshNeighbors()
 int
 ToMeshNeighbors::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  cpOptional,
       cpElement, "NodeIdentity", &_id,
 		  cpEnd) < 0)
@@ -90,7 +90,7 @@ ToMeshNeighbors::push(int, Packet *p_in)
   }
 
   // packet is not for a mesh neighbor
-  BRN_WARN("Dropped frame for unknown mesh neighbor %s", dst_addr.s().c_str());
+  BRN_WARN("Dropped frame for unknown mesh neighbor %s", dst_addr.unparse().c_str());
   checked_output_push(1, p_in);
 }
 

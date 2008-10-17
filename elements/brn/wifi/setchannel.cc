@@ -139,7 +139,7 @@ SetChannel::SetChannel() :
 int
 SetChannel::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh, 
+  if (cp_va_kparse(conf, this, errh, 
       cpOptional,
         cpString, "device name", &_dev_name, 
         cpBool, "rotate channels", &_rotate,

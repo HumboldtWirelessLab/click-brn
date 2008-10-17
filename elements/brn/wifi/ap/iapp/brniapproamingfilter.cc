@@ -55,7 +55,7 @@ BrnIappRoamingFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(errh);
   
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -113,7 +113,7 @@ BrnIappRoamingFilter::pull(int port)
     // Check if this client moved away
     EtherAddress ether_dst(wifi->i_addr1);
     if (NULL != _assoc_list && _assoc_list->is_roaming(ether_dst)) {
-      BRN_DEBUG("filtered packet to roamed sta %s", ether_dst.s().c_str());
+      BRN_DEBUG("filtered packet to roamed sta %s", ether_dst.unparse().c_str());
       
       checked_output_push(1, p);
       p = NULL;

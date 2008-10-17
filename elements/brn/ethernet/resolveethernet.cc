@@ -80,7 +80,7 @@ ResolveEthernet::simple_action(Packet *p_in)
 
   EtherAddress dst_ether_addr(_arp_table->lookup(dst_ip_addr));
 
-  BRN_DEBUG(" * resolved: %s -> %s", dst_ip_addr.s().c_str(), dst_ether_addr.s().c_str());
+  BRN_DEBUG(" * resolved: %s -> %s", dst_ip_addr.unparse().c_str(), dst_ether_addr.unparse().c_str());
 
   if (WritablePacket *q = p_in->push(14)) {
     click_ether *ether = (click_ether *) q->data();
@@ -91,7 +91,7 @@ ResolveEthernet::simple_action(Packet *p_in)
     ether->ether_type = htons(ETHERTYPE_IP);
 
     BRN_DEBUG(" * encapsulate in ethernet header: %s | %s | %d",
-          dst_ether_addr.s().c_str(), _me->getMyWirelessAddress()->s().c_str(), ETHERTYPE_IP);
+          dst_ether_addr.unparse().c_str(), _me->getMyWirelessAddress()->unparse().c_str(), ETHERTYPE_IP);
 
     // set ether anno
     q->set_ether_header(ether);

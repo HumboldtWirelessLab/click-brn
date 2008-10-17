@@ -52,7 +52,7 @@ RouteQuerier::RouteQuerier()
     _use_blacklist(true)
 {
   timeval tv;
-  click_gettimeofday(&tv);
+  tv = Timestamp::now().timeval();
   _rreq_id = random() % 0xffff;
 
   //add_input();  // incoming packets
@@ -78,7 +78,7 @@ RouteQuerier::~RouteQuerier()
 int
 RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "DSREncap", &_dsr_encap,
@@ -174,8 +174,8 @@ RouteQuerier::push(int, Packet *p_in)
     && ((*fixed_route)[0] == dst_addr) 
     && ((*fixed_route)[fixed_route->size() - 1] == src_addr) ) {
       BRN_DEBUG("* Using fixed route. %s, (%s), %s, (%s)", 
-        (*fixed_route)[0].s().c_str(), dst_addr.s().c_str(),
-        (*fixed_route)[fixed_route->size() - 1].s().c_str(), src_addr.s().c_str());
+        (*fixed_route)[0].unparse().c_str(), dst_addr.unparse().c_str(),
+        (*fixed_route)[fixed_route->size() - 1].unparse().c_str(), src_addr.unparse().c_str());
     route = *fixed_route;
     metric_of_route = 1;
   } else {
@@ -195,7 +195,7 @@ RouteQuerier::push(int, Packet *p_in)
     if(_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" * have cached route:");
       for (int j=0; j < route.size(); j++) {
-        BRN_DEBUG(" - %d  %s", j, route[j].s().c_str());
+        BRN_DEBUG(" - %d  %s", j, route[j].unparse().c_str());
       }
     }
 
@@ -217,9 +217,9 @@ RouteQuerier::push(int, Packet *p_in)
         BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
       }
       for (int j=0; j < route.size(); j++) {
-        BRN_DEBUG(" - %d  %s", j, route[j].s().c_str());
+        BRN_DEBUG(" - %d  %s", j, route[j].unparse().c_str());
       }
-      BRN_DEBUG("* don't have route to %s; buffering packet.", dst_addr.s().c_str());
+      BRN_DEBUG("* don't have route to %s; buffering packet.", dst_addr.unparse().c_str());
     }
 
     IPAddress dst_ip_addr;
@@ -233,7 +233,7 @@ RouteQuerier::push(int, Packet *p_in)
       dst_ip_addr = iph->ip_dst;
       src_ip_addr = iph->ip_src;
 
-      BRN_DEBUG(" * IP-Clients: %s --> %s", src_ip_addr.s().c_str(), dst_ip_addr.s().c_str());
+      BRN_DEBUG(" * IP-Clients: %s --> %s", src_ip_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
       // initiate dsr route request: move this packet to output port
       start_issuing_request(dst_addr, dst_ip_addr, src_addr, src_ip_addr);
@@ -381,7 +381,7 @@ RouteQuerier::buffer_packet(Packet *p)
     dst = EtherAddress(ether->ether_dhost);
     src = EtherAddress(ether->ether_shost);
   }
-  BRN_DEBUG(" * buffering packet from %s to %s", src.s().c_str(), dst.s().c_str());
+  BRN_DEBUG(" * buffering packet from %s to %s", src.unparse().c_str(), dst.unparse().c_str());
 
   // find the right sendbuffer for the given dst and src
   // _sendbuffer_map is a hashtable of hashtables
@@ -400,7 +400,7 @@ RouteQuerier::buffer_packet(Packet *p)
   }
 
   if (sb->size() >= BRN_DSR_SENDBUFFER_MAX_LENGTH) { // TODO think about this restriction
-    BRN_WARN("too many packets for host %s; killing", dst.s().c_str());
+    BRN_WARN("too many packets for host %s; killing", dst.unparse().c_str());
     p->kill();
 	return false;
   } else {
@@ -413,7 +413,7 @@ RouteQuerier::buffer_packet(Packet *p)
         const click_ether *tmp = (const click_ether *)tmp_buff->begin()->_p->ether_header();
         EtherAddress tmp_dst(tmp->ether_dhost);
         EtherAddress tmp_src(tmp->ether_shost);
-        BRN_DEBUG("* buffering packet ... %s -> %s", tmp_src.s().c_str(), tmp_dst.s().c_str());
+        BRN_DEBUG("* buffering packet ... %s -> %s", tmp_src.unparse().c_str(), tmp_dst.unparse().c_str());
       } else {
         BRN_DEBUG("* buffer is null");
       }
@@ -444,7 +444,7 @@ RouteQuerier::issue_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, I
     _dsr_decap->extract_source_route(brn_p, request_route);
     for (int j = 0; j < request_route.size(); j++)
       BRN_DEBUG(" RREQX - %d   %s (%d)",
-                    j, request_route[j].ether().s().c_str(), request_route[j]._metric);
+                    j, request_route[j].ether().unparse().c_str(), request_route[j]._metric);
   }
 
   EtherAddress bcast((const unsigned char *)"\xff\xff\xff\xff\xff\xff"); //receiver
@@ -469,7 +469,7 @@ RouteQuerier::start_issuing_request(EtherAddress dst, IPAddress dst_ip, EtherAdd
 
   if (r) {
     BRN_DEBUG(" * start_issuing_request:  already issuing requests from %s for %s",
-        src.s().c_str(), dst.s().c_str());
+        src.unparse().c_str(), dst.unparse().c_str());
     return;
   } else {
     // send out the initial request and add an entry to the table (_initiated_rreq_map)
@@ -489,7 +489,7 @@ RouteQuerier::stop_issuing_request(EtherAddress host)
 {
   InitiatedReq *r = _initiated_rreq_map.findp(host);
   if (!r) {
-    BRN_DEBUG(" * stop_issuing_request:  no entry in request table for %s", host.s().c_str());
+    BRN_DEBUG(" * stop_issuing_request:  no entry in request table for %s", host.unparse().c_str());
     return;
   } else {
     _initiated_rreq_map.remove(host);
@@ -518,7 +518,7 @@ RouteQuerier::rreq_expire_hook()
   // reply in the meantime.
 
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   Vector<ForwardedReqKey> remove_list;
   for (FWReqIter i = _forwarded_rreq_map.begin(); i.live(); i++) {
@@ -564,15 +564,15 @@ RouteQuerier::rreq_expire_hook()
       }
     }
 /*
-     click_chatter("i.key is %s %s %d %d\n", i.key()._src.s().c_str(), 
- 		  i.key()._target.s().c_str(), i.key()._id,
+     click_chatter("i.key is %s %s %d %d\n", i.key()._src.unparse().c_str(), 
+ 		  i.key()._target.unparse().c_str(), i.key()._id,
  		  diff_in_ms(curr_time, i.value()._time_forwarded));
 */
     if (diff_in_ms(curr_time, i.value()._time_forwarded) > BRN_DSR_RREQ_TIMEOUT) {
       EtherAddress src(i.key()._src);
       EtherAddress dst(i.key()._target);
       unsigned int id = i.key()._id;
-      BRN_DEBUG(" RREQ entry has expired; %s -> %s (%d)", src.s().c_str(), dst.s().c_str(), id);
+      BRN_DEBUG(" RREQ entry has expired; %s -> %s (%d)", src.unparse().c_str(), dst.unparse().c_str(), id);
 
       remove_list.push_back(i.key());
     }
@@ -591,7 +591,7 @@ RouteQuerier::sendbuffer_timer_hook()
 {
 
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   int total = 0; // total packets sent this scheduling
   bool check_next_time = false;
@@ -622,8 +622,8 @@ RouteQuerier::sendbuffer_timer_hook()
           BRN_DEBUG(" * send buffer has %d packet%s with source %s and destination %s",
                         sb.size(),
                         sb.size() == 1 ? "" : "s",
-                        src.s().c_str(),
-                        dst.s().c_str());
+                        src.unparse().c_str(),
+                        dst.unparse().c_str());
 
         // search route for destination in the link cache first
         int metric_of_route = -1;
@@ -647,7 +647,7 @@ RouteQuerier::sendbuffer_timer_hook()
             BRN_DEBUG(" * have a route:");
             for (int j=0; j<route.size(); j++) {
               BRN_DEBUG(" SRC - %d  %s",
-                          j, route[j].s().c_str());
+                          j, route[j].unparse().c_str());
             }
           }
 
@@ -680,7 +680,7 @@ RouteQuerier::sendbuffer_timer_hook()
           // expired packets if there is a route for that host
           continue;
         } else {
-          BRN_DEBUG(" * still no route to %s", dst.s().c_str());
+          BRN_DEBUG(" * still no route to %s", dst.unparse().c_str());
         }
       //}
 
@@ -718,14 +718,14 @@ void
 RouteQuerier::blacklist_timer_hook()
 {
   timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   for (BlacklistIter i = _blacklist.begin(); i.live(); i++) {
     if ((i.value()._status == BRN_DSR_BLACKLIST_UNI_PROBABLE) &&
 	(diff_in_ms(curr_time, i.value()._time_updated) > BRN_DSR_BLACKLIST_ENTRY_TIMEOUT)) {
 
       BlacklistEntry &e = i.value();
-      BRN_DEBUG(" * downgrading blacklist entry for host %s", i.key().s().c_str());
+      BRN_DEBUG(" * downgrading blacklist entry for host %s", i.key().unparse().c_str());
       e._status = BRN_DSR_BLACKLIST_UNI_QUESTIONABLE;
     }
   }
@@ -741,7 +741,7 @@ RouteQuerier::rreq_issue_hook()
   // look through the initiated rreqs and check if it's time to send
   // anything out
   timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   EtherAddresses remove_list;
 
@@ -761,7 +761,7 @@ RouteQuerier::rreq_issue_hook()
       BRN_DEBUG(" BUGTRACK: * Metric for route is %d\n * Route is", metric_of_route);
 
       for (int j=0; j < route.size(); j++) {
-        BRN_DEBUG(" - %d  %s", j, route[j].s().c_str());
+        BRN_DEBUG(" - %d  %s", j, route[j].unparse().c_str());
       }
     }
 
@@ -770,7 +770,7 @@ RouteQuerier::rreq_issue_hook()
       continue;
     } else {
       if (diff_in_ms(curr_time, ir._time_last_issued) > ir._backoff_interval) {
-        BRN_DEBUG(" * time to issue new request for host %s", ir._target.s().c_str());
+        BRN_DEBUG(" * time to issue new request for host %s", ir._target.unparse().c_str());
 	
 	if (ir._times_issued == 1) {
 	  // if this is the second request
@@ -822,13 +822,13 @@ void
 RouteQuerier::set_blacklist(EtherAddress ether, int s)
 {
 
-  BRN_DEBUG(" set blacklist: %s %d", ether.s().c_str(), s);
+  BRN_DEBUG(" set blacklist: %s %d", ether.unparse().c_str(), s);
   BRN_DEBUG(" set blacklist: %d", check_blacklist(ether));
 
   _blacklist.remove(ether);
   if (s != BRN_DSR_BLACKLIST_NOENTRY) {
     BlacklistEntry e;
-    click_gettimeofday(&(e._time_updated));
+    e._time_updated = Timestamp::now().timeval();
     e._status = s;
     _blacklist.insert(ether, e);
   }
@@ -1011,12 +1011,12 @@ read_handler(Element *e, void * vparam)
       for (RouteQuerier::RouteMap::const_iterator iter = rq->fixed_routes.begin(); 
           iter.live(); ++iter) {
         const RouteQuerier::EtherPair& pair = iter.key();
-        ret += pair.first.s() + " -> " + pair.second.s() + ":\n";
+        ret += pair.first.unparse() + " -> " + pair.second.unparse() + ":\n";
         
         const EtherAddresses& route = iter.value();
         for (int i = 0; i < route.size(); i++) {
           const EtherAddress& addr = route.at(i);
-          ret += "    " + addr.s() + "\n";
+          ret += "    " + addr.unparse() + "\n";
         }
           ret += "\n";
       }
@@ -1057,7 +1057,7 @@ write_handler(const String &in_s, Element *e, void *vparam,
         EtherAddress m;
         if (!cp_ethernet_address(token, &m)) 
           return errh->error("fixed_route parameter must be etheraddress:%s.", token.c_str());
-        click_chatter("add ether %s to route\n", m.s().c_str());
+        click_chatter("add ether %s to route\n", m.unparse().c_str());
         routeForward.push_back(m);
         routeReverse.insert(routeReverse.begin(), m);
       }

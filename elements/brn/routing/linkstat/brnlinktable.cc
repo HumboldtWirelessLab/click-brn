@@ -53,7 +53,7 @@ BrnLinkTable::~BrnLinkTable()
 
     get_inodes(inodes);
     for (int i = 0; i < inodes.size(); i++) {
-      BRN_INFO(" Inode: %s ", inodes[i].s().c_str());
+      BRN_INFO(" Inode: %s ", inodes[i].unparse().c_str());
     }
   }
 
@@ -97,7 +97,7 @@ BrnLinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
   int stale_period = 120;
-  ret = cp_va_parse(conf, this, errh,
+  ret = cp_va_kparse(conf, this, errh,
         cpOptional,
 //        cpElement, "NodeIdentity", &_node_identity,
         cpElement, "BrnRouteCache", &_brn_routecache,
@@ -203,15 +203,15 @@ BrnLinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
 {
   // Flush the route cache
   //_brn_routecache->on_link_changed( from, to );
-  BRN_DEBUG("update_link: %s %s %d", from.s().c_str(), to.s().c_str(), metric);
+  BRN_DEBUG("update_link: %s %s %d", from.unparse().c_str(), to.unparse().c_str(), metric);
 
   if (!from || !to || !metric) {
-    BRN_ERROR("ERROR: wrong arguments %s %s %d", from.s().c_str(), to.s().c_str(), metric);
+    BRN_ERROR("ERROR: wrong arguments %s %s %d", from.unparse().c_str(), to.unparse().c_str(), metric);
     return false;
   }
   if (_stale_timeout.tv_sec < (int) age
       && false == permanent ) {
-    BRN_WARN(" * not inserting to old link %s -> %s.", from.s().c_str(), to.s().c_str());
+    BRN_WARN(" * not inserting to old link %s -> %s.", from.unparse().c_str(), to.unparse().c_str());
     return true;
   }
 
@@ -274,7 +274,7 @@ BrnLinkTable::remove_node(const EtherAddress& node)
     
     if (node == nfo._from || node == nfo._to) {
       BRN_DEBUG(" * link %s -> %s cleansed.", 
-        nfo._from.s().c_str(), nfo._to.s().c_str() );
+        nfo._from.unparse().c_str(), nfo._to.unparse().c_str() );
       
       LTable::iterator tmp = iter;
       iter++;
@@ -374,7 +374,7 @@ BrnLinkTable::get_link_age(EtherAddress from, EtherAddress to)
     return 0;
   }
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   return nfo->age();
 }
 
@@ -488,7 +488,7 @@ BrnLinkTable::best_route(EtherAddress dst, bool from_me)
 //    //  click_chatter(" * New route:\n");
 //      for (int j=0; j < reverse_route.size(); j++) 
 //      {
-//    //    click_chatter(" - %d  %s\n", j, reverse_route[j].s().c_str());
+//    //    click_chatter(" - %d  %s\n", j, reverse_route[j].unparse().c_str());
 //      }
 //    }
 //    last_route = reverse_route;
@@ -525,7 +525,7 @@ BrnLinkTable::print_links()
 
   for (LTIter iter = _links.begin(); iter.live(); ++iter) {
     BrnLinkInfo n = iter.value();
-    sa << "\t" << n._from.s().c_str() << " " << n._to.s().c_str();
+    sa << "\t" << n._from.unparse().c_str() << " " << n._to.unparse().c_str();
     sa << " " << n._metric;
     sa << " " << n._seq << " " << n.age() << "\n";
   }
@@ -548,7 +548,7 @@ BrnLinkTable::print_routes(bool from_me)
     EtherAddress ether = ether_addrs[x];
     Vector <EtherAddress> r = best_route(ether, from_me);
     if (valid_route(r)) {
-      sa << ether.s().c_str() << " ";
+      sa << ether.unparse().c_str() << " ";
       for (int i = 0; i < r.size(); i++) {
 	sa << " " << r[i] << " ";
 	if (i != r.size()-1) {
@@ -591,7 +591,7 @@ BrnLinkTable::get_inodes(Vector<EtherAddress> &ether_addrs)
     if (iter.value()._ip == IPAddress()) {
       ether_addrs.push_back(iter.key());
     } else {
-      BRN_DEBUG(" * skip client node: %s (%s)", iter.key().s().c_str(), iter.value()._ip.s().c_str());
+      BRN_DEBUG(" * skip client node: %s (%s)", iter.key().unparse().c_str(), iter.value()._ip.unparse().c_str());
     }
   }
 }
@@ -608,7 +608,7 @@ BrnLinkTable::clear_stale()
         && (unsigned) _stale_timeout.tv_sec < nfo.age()) 
     {
       BRN_DEBUG(" * link %s -> %s timed out.", 
-        nfo._from.s().c_str(), nfo._to.s().c_str() );
+        nfo._from.unparse().c_str(), nfo._to.unparse().c_str() );
       
       LTable::iterator tmp = iter;
       iter++;
@@ -653,7 +653,7 @@ BrnLinkTable::dijkstra(EtherAddress src, bool from_me)
   struct timeval start;
   struct timeval finish;
 
-  click_gettimeofday(&start);
+  start = Timestamp::now().timeval();
 
   typedef HashMap<EtherAddress, bool> EtherMap;
   EtherMap ether_addrs;
@@ -752,7 +752,7 @@ BrnLinkTable::dijkstra(EtherAddress src, bool from_me)
     }
   }
 
-  click_gettimeofday(&finish);
+  finish = Timestamp::now().timeval();
   timersub(&finish, &start, &dijkstra_time);
   //StringAccum sa;
   //sa << "dijstra took " << finish - start;
@@ -853,7 +853,7 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam,
     Vector<EtherAddress> route = f->best_route(m, true);
 
     for (int j=0; j<route.size(); j++) {
-      click_chatter(" - %d  %s", j, route[j].s().c_str());
+      click_chatter(" - %d  %s", j, route[j].unparse().c_str());
     }
     break;
   }
@@ -873,7 +873,7 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam,
     Vector<EtherAddress> route = f->best_route(dst, true);
 
     for (int j=0; j<route.size(); j++) {
-      click_chatter(" - %d  %s", j, route[j].s().c_str());
+      click_chatter(" - %d  %s", j, route[j].unparse().c_str());
     }
     break;
   }

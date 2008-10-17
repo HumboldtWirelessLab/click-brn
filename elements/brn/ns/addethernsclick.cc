@@ -48,7 +48,7 @@ AddEtherNsclick::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _strict = false;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
 		  cpKeywords,
 		  "DEBUG", cpInteger, "Debug", &_debug,
@@ -139,12 +139,12 @@ AddEtherNsclick::simple_action(Packet *p)
   p_out_ether->ether_type = htons(ether_type);
 
   if(_debug)
-    click_chatter(" %s -> %s\n", EtherAddress(p_out_ether->ether_shost).s().c_str(),
-        EtherAddress(p_out_ether->ether_dhost).s().c_str());
+    click_chatter(" %s -> %s\n", EtherAddress(p_out_ether->ether_shost).unparse().c_str(),
+        EtherAddress(p_out_ether->ether_dhost).unparse().c_str());
 
   if (_debug) {
     click_chatter("%{element}: dir %d src %s dst %s bssid %s\n",
-		  this, dir, src.s().c_str(), dst.s().c_str(), bssid.s().c_str());
+		  this, dir, src.unparse().c_str(), dst.unparse().c_str(), bssid.unparse().c_str());
   }
 
   return p_out;

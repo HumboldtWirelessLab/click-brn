@@ -45,7 +45,7 @@ int
 ClientDS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
 
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpString, "#1 device (wlan)", &_dev_wlan_name,
       cpString, "#2 device (vlan1)", &_dev_vlan1_name,
@@ -96,7 +96,7 @@ ClientDS::push(int, Packet *p_in)
   } else if (device == _dev_vlan_debug_name) {
     out_port = 3;
   } else {
-    BRN_WARN("Unknown client %s (%s); drop packet.", dst.s().c_str(), device.c_str());
+    BRN_WARN("Unknown client %s (%s); drop packet.", dst.unparse().c_str(), device.c_str());
     p_in->kill();
     return;
   }

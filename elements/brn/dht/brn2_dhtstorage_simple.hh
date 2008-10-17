@@ -60,7 +60,7 @@ class DHTStorageSimple : public Element
         {
           _sender = sender;
           _id = id;
-          click_gettimeofday(&_send_time);
+          _send_time = Timestamp::now().timeval();
      
           _retry = 0;
   

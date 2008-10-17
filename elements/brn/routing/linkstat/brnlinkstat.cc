@@ -204,7 +204,7 @@ int
 BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
-  int res = cp_va_parse(conf, this, errh,
+  int res = cp_va_kparse(conf, this, errh,
 			cpKeywords,
 			"ETHTYPE", cpUnsigned, "Ethernet encapsulation type", &_et,
       "NODEIDENTITY", cpElement, "NodeIdentity", &_me,
@@ -306,7 +306,7 @@ BRNLinkStat::take_state(Element *e, ErrorHandler *errh)
   _start = q->_start;
 
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
 
   if (timercmp(&now, &q->_next, <)) {
     _timer->unschedule();
@@ -335,7 +335,7 @@ add_jitter2(unsigned int max_jitter, struct timeval *t) {
   return;
 }
 
-void 
+void
   BRNLinkStat::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<int> fwd, Vector<int> rev, uint32_t seq)
 {
 
@@ -358,8 +358,8 @@ void
 }
 
 /* called at {@link _next} time */
-void 
-BRNLinkStat::send_probe_hook() 
+void
+BRNLinkStat::send_probe_hook()
 {
   BRN_DEBUG("send_probe_hook()");
 
@@ -385,7 +385,7 @@ BRNLinkStat::send_probe_hook()
  * to inform neighbor nodes about his links.
  */
 void
-BRNLinkStat::send_probe() 
+BRNLinkStat::send_probe()
 {
   if (!_ads_rs.size()) {
     BRN_WARN(" no probes to send at.");
@@ -421,10 +421,10 @@ BRNLinkStat::send_probe()
 
   // each probe packet is annotated with a timestamp
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   p->set_timestamp_anno(now);
 
-  // fill brn header header 
+  // fill brn header header
   click_brn *brn = (click_brn *) p->data();
   brn->dst_port = BRN_PORT_LINK_PROBE;
   brn->src_port = BRN_PORT_LINK_PROBE;
@@ -529,8 +529,8 @@ BRNLinkStat::send_probe()
     }
     probe_list_t *probe = _bcast_stats.findp(_neighbors[_next_neighbor_to_ad]);
     if (!probe) {
-      BRN_DEBUG(" lookup for %s, %d failed in ad", 
-        _neighbors[_next_neighbor_to_ad].s().c_str(), _next_neighbor_to_ad);
+      BRN_DEBUG(" lookup for %s, %d failed in ad",
+        _neighbors[_next_neighbor_to_ad].unparse().c_str(), _next_neighbor_to_ad);
     } else {
       // size = (probe type count) x ...
       int size = probe->_probe_types.size() * sizeof(link_info) + sizeof(link_entry);
@@ -566,7 +566,7 @@ BRNLinkStat::send_probe()
         rev.push_back(lnfo->_rev);
       }
       // update my own link table
-      update_link(*(_me->getMyWirelessAddress()), EtherAddress(entry->_ether), 
+      update_link(*(_me->getMyWirelessAddress()), EtherAddress(entry->_ether),
         rates, fwd, rev, entry->_seq);
 
       ptr += probe->_probe_types.size() * sizeof(link_info);
@@ -589,7 +589,7 @@ int
 BRNLinkStat::initialize(ErrorHandler *errh)
 {
   if (noutputs() > 0) {
-    if (!_me) 
+    if (!_me)
       return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
 
     _timer = new Timer(static_send_hook, this);
@@ -598,7 +598,7 @@ BRNLinkStat::initialize(ErrorHandler *errh)
     _stale_timer.initialize(this);
     _stale_timer.schedule_now();
     struct timeval now;
-    click_gettimeofday(&now);
+    now = Timestamp::now().timeval();
 
     now.tv_sec = now.tv_sec + 1;
 
@@ -646,7 +646,7 @@ BRNLinkStat::simple_action(Packet *p)
   BRN_DEBUG(" * simple_action()");
 
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   click_ether *eh = (click_ether *) p->ether_header();
   click_brn *brn = (click_brn *) p->data();
 
@@ -670,7 +670,7 @@ BRNLinkStat::simple_action(Packet *p)
     if (!version_warning) {
       version_warning = true;
       BRN_WARN(" unknown sr version %x from %s", 
-        lp->_version, EtherAddress(eh->ether_shost).s().c_str());
+        lp->_version, EtherAddress(eh->ether_shost).unparse().c_str());
     }
 
     p->kill();
@@ -691,7 +691,7 @@ BRNLinkStat::simple_action(Packet *p)
   EtherAddress ether = EtherAddress(lp->_ether);
 
   if (ether == *(_me->getMyWirelessAddress())) {
-    BRN_WARN("got own packet; drop it. %s", ether.s().c_str());
+    BRN_WARN("got own packet; drop it. %s", ether.unparse().c_str());
     p->kill();
     return 0;
   }
@@ -729,16 +729,16 @@ BRNLinkStat::simple_action(Packet *p)
     _neighbors.push_back(ether);
   } else if (l->_period != new_period) {
     BRN_INFO("%s has changed its link probe period from %u to %u; clearing probe info",
-      ether.s().c_str(), l->_period, new_period);
+      ether.unparse().c_str(), l->_period, new_period);
     l->_probes.clear();
   } else if (l->_tau != lp->_tau) {
     BRN_INFO("%s has changed its link tau from %u to %u; clearing probe info",
-      ether.s().c_str(), l->_tau, lp->_tau);
+      ether.unparse().c_str(), l->_tau, lp->_tau);
     l->_probes.clear();
   }
 
   if (lp->_sent < (unsigned)l->_sent) {
-    BRN_INFO("%s has reset; clearing probe info", ether.s().c_str());
+    BRN_INFO("%s has reset; clearing probe info", ether.unparse().c_str());
     l->_probes.clear();
   }
 
@@ -835,7 +835,7 @@ BRNLinkStat::simple_action(Packet *p)
     int num_rates = entry->_num_rates;
 
     BRN_DEBUG("on link number %d / %d: neighbor %s, num_rates %d",
-      link_number, lp->_num_links, neighbor.s().c_str(), num_rates);
+      link_number, lp->_num_links, neighbor.unparse().c_str(), num_rates);
 
     ptr += sizeof(struct link_entry);
     Vector<BrnRateSize> rates;
@@ -845,7 +845,7 @@ BRNLinkStat::simple_action(Packet *p)
       struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
 
       BRN_DEBUG(" %s neighbor %s: size %d rate %d fwd %d rev %d",
-        ether.s().c_str(), neighbor.s().c_str(), nfo->_size, nfo->_rate, nfo->_fwd, nfo->_rev);
+        ether.unparse().c_str(), neighbor.unparse().c_str(), nfo->_size, nfo->_rate, nfo->_fwd, nfo->_rev);
 
       BrnRateSize rs = BrnRateSize(nfo->_rate, nfo->_size);
       // update other link stuff
@@ -963,7 +963,7 @@ BRNLinkStat::bad_nodes() {
   for (BadTable::const_iterator i = _bad_table.begin(); i.live(); i++) {
     uint8_t version = i.value();
     EtherAddress dst = i.key();
-    sa << this << " eth " << dst.s().c_str() << " version " << (int) version << "\n";
+    sa << this << " eth " << dst.unparse().c_str() << " version " << (int) version << "\n";
   }
 
   return sa.take_string();
@@ -978,13 +978,14 @@ BRNLinkStat::clear_stale()
   Vector<EtherAddress> new_neighbors;
 
   struct timeval now;
-  click_gettimeofday(&now);
+
+  now = Timestamp::now().timeval();
   for (int x = 0; x < _neighbors.size(); x++) {
     EtherAddress n = _neighbors[x];
     probe_list_t *l = _bcast_stats.findp(n);
     if (!l || (unsigned) now.tv_sec - l->_last_rx.tv_sec > 2 * l->_tau/1000) {
       BRN_DEBUG(" clearing stale neighbor %s age %d(brn_0)",
-        n.s().c_str(), now.tv_sec - l->_last_rx.tv_sec);
+        n.unparse().c_str(), now.tv_sec - l->_last_rx.tv_sec);
       _bcast_stats.remove(n);
     } else {
       new_neighbors.push_back(n);
@@ -1004,7 +1005,7 @@ BRNLinkStat::reset()
   _bcast_stats.clear();
   _seq = 0;
   _sent = 0;
-  click_gettimeofday(&_start);
+  _start = Timestamp::now().timeval();
 }
 
 void

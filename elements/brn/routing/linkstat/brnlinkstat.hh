@@ -212,7 +212,7 @@ public:
       struct timeval now;
       struct timeval p = { _tau / 1000, 1000 * (_tau % 1000) };
       struct timeval earliest;
-      click_gettimeofday(&now);
+      now = Timestamp::now().timeval();
       timersub(&now, &p, &earliest);
 
       if (_period == 0) {

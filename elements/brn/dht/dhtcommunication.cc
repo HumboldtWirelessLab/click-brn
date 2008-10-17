@@ -234,7 +234,7 @@ int dht_unpack_payload(Packet *dht_packet)
   dht_payload = &dht_payload[sizeof(struct dht_packet_header)];
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
   uint32_t end_time;
   uint32_t *rel_time_p;
   uint32_t rel_time;
@@ -274,7 +274,7 @@ int dht_unpack_payload(uint8_t *new_dht_payload, int len)
   dht_payload = (uint8_t *)new_dht_payload;
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
   uint32_t end_time;
   uint32_t *rel_time_p;
   uint32_t rel_time;
@@ -317,7 +317,7 @@ int dht_pack_payload(Packet *dht_packet)
   dht_payload = &dht_payload[sizeof(struct dht_packet_header)];
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
   uint32_t rel_time;
   uint32_t *end_time_p;
   uint32_t end_time;
@@ -356,7 +356,7 @@ int dht_pack_payload(uint8_t *new_dht_payload, int len)
   dht_payload = (uint8_t *)new_dht_payload;
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
   uint32_t end_time;
   uint32_t *end_time_p;
   uint32_t rel_time;

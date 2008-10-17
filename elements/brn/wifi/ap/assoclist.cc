@@ -87,7 +87,7 @@ AssocList::print_content() const
     }
 
     sa << "\n *) on SSID " << nfo.get_ssid() << " " << nfo.get_eth() << state << nfo.get_dev_name() << " " 
-      << nfo.get_ap().s() << " " << nfo.get_age() << " " << nfo.get_last_updated();
+      << nfo.get_ap().unparse() << " " << nfo.get_age() << " " << nfo.get_last_updated();
   }
 
   return sa.take_string();
@@ -99,7 +99,7 @@ int
 AssocList::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
-  ret = cp_va_parse(conf, this, errh,
+  ret = cp_va_kparse(conf, this, errh,
         cpElement, "Node identity", &_id,
         cpKeywords,
         "BUFFER", cpUnsigned, "Buffer for pre-handover packets", &_client_qsize_max,
@@ -134,7 +134,7 @@ AssocList::is_associated(const EtherAddress& v) const
   if (NULL == pClient)
     return false;
   
-	return (ASSOCIATED == pClient->get_state());
+  return (ASSOCIATED == pClient->get_state());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +172,7 @@ AssocList::get_device_name(const EtherAddress& v) const
   if (!pClient->get_dev_name()) 
   {
     BRN_WARN("missing device name. ethernet address = %s; device = %s", 
-        pClient->get_eth().s().c_str(), pClient->get_dev_name().c_str());
+             pClient->get_eth().unparse().c_str(), pClient->get_dev_name().c_str());
   }
 
   return (pClient->get_dev_name());
@@ -193,7 +193,7 @@ AssocList::get_ssid(const EtherAddress& v) const
   if (!pClient->get_ssid()) 
   {
     BRN_WARN("missing SSID for ethernet address %s", 
-        pClient->get_eth().s().c_str());
+             pClient->get_eth().unparse().c_str());
   }
 
   return (pClient->get_ssid());
@@ -208,11 +208,11 @@ AssocList::insert(  EtherAddress    eth,
                     EtherAddress    ap_old /*= EtherAddress()*/,
                     uint8_t         seq_no /*= SEQ_NO_INF*/)
 {
-  BRN_DEBUG("Inserting address %s on device %s.", eth.s().c_str(), dev_name.c_str());
+  BRN_DEBUG("Inserting address %s on device %s.", eth.unparse().c_str(), dev_name.c_str());
 
   // dirty assertion - jkm
   BRN_CHECK_EXPR_RETURN(!eth || !dev_name,
-    ("You idiot, you tried to insert %s, %s", eth.s().c_str(), dev_name.c_str()),
+                         ("You idiot, you tried to insert %s, %s", eth.unparse().c_str(), dev_name.c_str()),
     return false;);
 
   ClientInfo *client_info = _client_list->findp(eth);
@@ -221,7 +221,7 @@ AssocList::insert(  EtherAddress    eth,
     _client_list->insert(eth, ClientInfo(NON_EXIST, eth, *_id->getMyWirelessAddress(), dev_name, ssid));
     client_info = _client_list->findp(eth);
 
-    BRN_DEBUG("new entry added: %s, %s", eth.s().c_str(), dev_name.c_str());
+    BRN_DEBUG("new entry added: %s, %s", eth.unparse().c_str(), dev_name.c_str());
   }
 
   // update entry
@@ -249,10 +249,10 @@ AssocList::roamed(
   ClientInfo* pClient = get_entry(client);
   
   BRN_CHECK_EXPR_RETURN(NULL == pClient,
-    ("client %s not known, not marked as roaming.", client.s().c_str()), return;);
+                        ("client %s not known, not marked as roaming.", client.unparse().c_str()), return;);
 
-  BRN_DEBUG("client %s roamed from %s to %s.", client.s().c_str(), 
-    ap_old.s().c_str(), ap_new.s().c_str());
+  BRN_DEBUG("client %s roamed from %s to %s.", client.unparse().c_str(),
+            ap_old.unparse().c_str(), ap_new.unparse().c_str());
 
   pClient->update(0);
   pClient->set_state(ROAMED);
@@ -269,7 +269,7 @@ AssocList::disassociated(
 {
   assert (client);
 
-  BRN_DEBUG("client %s disassociated.", client.s().c_str());
+  BRN_DEBUG("client %s disassociated.", client.unparse().c_str());
 
   _client_list->remove(client);
   
@@ -284,7 +284,7 @@ AssocList::disassociated(
 //    return;
 //  }
 //
-//  BRN_DEBUG("disassociation of STA %s reported.", client.s().c_str());
+//  BRN_DEBUG("disassociation of STA %s reported.", client.unparse().c_str());
 //
 //  // the client becomes a zombie (state other, but no ap)
 //  // It is removed when the entry times out, but if the sta reassociates we
@@ -306,7 +306,7 @@ AssocList::client_seen(
 {
   assert (ether_sta && ether_bssid);
   BRN_DEBUG("sighting of STA %s on BSSID %s reported.", 
-    ether_sta.s().c_str(), ether_bssid.s().c_str());
+            ether_sta.unparse().c_str(), ether_bssid.unparse().c_str());
   
   // Find entry in client list, create if necessary
   ClientInfo *client_info = _client_list->findp(ether_sta);
@@ -316,13 +316,13 @@ AssocList::client_seen(
     _client_list->insert(ether_sta, ClientInfo(SEEN_OTHER, ether_sta, ether_bssid, dev_name, ""));
     client_info = _client_list->findp(ether_sta);
 
-    BRN_DEBUG("new entry added: %s, %s", ether_sta.s().c_str(), dev_name.c_str());
+    BRN_DEBUG("new entry added: %s, %s", ether_sta.unparse().c_str(), dev_name.c_str());
   }
 
   // Check switch in device, genereate a notice
   if (dev_name != client_info->get_dev_name()) 
   {
-    BRN_DEBUG("client %s changed dev from %s to %s", ether_sta.s().c_str(),
+    BRN_DEBUG("client %s changed dev from %s to %s", ether_sta.unparse().c_str(),
     client_info->get_dev_name().c_str(), dev_name.c_str());
     client_info->set_dev_name(dev_name);
   }
@@ -330,8 +330,8 @@ AssocList::client_seen(
   // Check change in access point
   if (client_info->get_ap() != ether_bssid) 
   {
-    BRN_DEBUG("client %s changed ap from %s to %s", ether_sta.s().c_str(),
-      client_info->get_ap().s().c_str(), ether_bssid.s().c_str());
+    BRN_DEBUG("client %s changed ap from %s to %s", ether_sta.unparse().c_str(),
+              client_info->get_ap().unparse().c_str(), ether_bssid.unparse().c_str());
 
     // otherwise it would be a handoff which we could not handle here...
     assert (ASSOCIATED != client_info->get_state());
@@ -372,7 +372,7 @@ AssocList::set_state(
   if (NULL == pClient)
     return;
     
-  BRN_DEBUG("client %s changing state to %d.", v.s().c_str(), new_state);
+  BRN_DEBUG("client %s changing state to %d.", v.unparse().c_str(), new_state);
   
   pClient->set_state(new_state);
 }
@@ -385,7 +385,7 @@ AssocList::get_ap(const EtherAddress& client) const
   ClientInfo* pClient = _client_list->findp(client);
   
   if (NULL == pClient) {
-    BRN_ERROR("client %s not known (get_ap).", client.s().c_str());
+    BRN_ERROR("client %s not known (get_ap).", client.unparse().c_str());
     return EtherAddress();
   }
   
@@ -402,7 +402,7 @@ AssocList::set_ap(
   ClientInfo* pClient = _client_list->findp(sta);
   
   if (NULL == pClient) {
-    BRN_ERROR("client %s not known (set_ap).", sta.s().c_str());
+    BRN_ERROR("client %s not known (set_ap).", sta.unparse().c_str());
     return;
   }
   
@@ -422,7 +422,7 @@ AssocList::buffer_packet(
   ClientInfo* pClient = get_entry(ether_dst);
   
   if (NULL == pClient) {
-    BRN_ERROR("client %s not known, packet killed.", ether_dst.s().c_str());
+    BRN_ERROR("client %s not known, packet killed.", ether_dst.unparse().c_str());
     p->kill();
     return;
   }
@@ -431,7 +431,7 @@ AssocList::buffer_packet(
   pClient->_clear_counter = 0;
   if (_client_qsize_max < pClient->get_failed_q().size()) {
     BRN_WARN("roaming buffer overflow for client %s (max size %d), killing packet.",
-      ether_dst.s().c_str(), _client_qsize_max);
+             ether_dst.unparse().c_str(), _client_qsize_max);
 
     pClient->get_failed_q().front()->kill();
     pClient->get_failed_q().pop_front();
@@ -448,7 +448,7 @@ AssocList::get_buffered_packets(
   
   
   if (NULL == pClient) {
-    BRN_ERROR("client %s not known (get_buffered_packets).", ether_dst.s().c_str());
+    BRN_ERROR("client %s not known (get_buffered_packets).", ether_dst.unparse().c_str());
     return PacketList();
   }
   
@@ -468,13 +468,13 @@ bool
 AssocList::update(EtherAddress sta)
 {
   BRN_CHECK_EXPR_RETURN(!sta,
-    ("You idiot, you tried to update %s", sta.s().c_str()), return false;);
+                         ("You idiot, you tried to update %s", sta.unparse().c_str()), return false;);
 
   ClientInfo* pClient = get_entry(sta);
   if (!pClient 
     ||ASSOCIATED != pClient->get_state())
   {
-    BRN_DEBUG("Client %s not found or not associated", sta.s().c_str());
+    BRN_DEBUG("Client %s not found or not associated", sta.unparse().c_str());
     return (false);
   }
   
@@ -567,7 +567,7 @@ static_insert(const String &arg, Element *e, void *p, ErrorHandler *errh)
     return errh->error("Couldn't read ssid out of arg");
   }
   
-  click_chatter(" * inserting client node: %s from %s with SSID %s\n", eth.s().c_str(), dev_name.c_str(), ssid.c_str());
+  click_chatter(" * inserting client node: %s from %s with SSID %s\n", eth.unparse().c_str(), dev_name.c_str(), ssid.c_str());
   if (!f->insert(eth, dev_name, ssid)) 
   {
     errh->message("Node already listed!");

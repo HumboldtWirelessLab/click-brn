@@ -43,7 +43,7 @@ BRNGatewayDecap::~BRNGatewayDecap() {}
 
 int
 BRNGatewayDecap::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpKeywords,
                   cpEnd) < 0)
@@ -86,7 +86,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
   
   if (p->length() == sizeof(click_brn) + sizeof(brn_gateway)) {
     // just a fake packet to test for the route
-    BRN_WARN("Got a test packet from %s", EtherAddress(p->ether_header()->ether_shost).s().c_str());
+    BRN_WARN("Got a test packet from %s", EtherAddress(p->ether_header()->ether_shost).unparse().c_str());
     
     p->kill();
     return;
@@ -101,7 +101,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
 	uint8_t metric = brn_gw->metric;
 	
 	if (metric == 0) {
-		BRN_INFO("Choosed gw %s failed", chosen_gw.s().c_str());      
+		BRN_INFO("Choosed gw %s failed", chosen_gw.unparse().c_str());      
 	
 		// remove chosen gateway
 		_gw->remove_gateway(chosen_gw);
@@ -111,7 +111,7 @@ BRNGatewayDecap::push(int port, Packet *p) {
 		
 		// extract metric from packet and update in memory
 		if ((gwe = _gw->get_gateways()->findp(chosen_gw)) != NULL) {
-			BRN_INFO("Stored metric %u for gw %s", metric, chosen_gw.s().c_str());
+			BRN_INFO("Stored metric %u for gw %s", metric, chosen_gw.unparse().c_str());
       gwe->set_metric(metric);
 		}
 	}

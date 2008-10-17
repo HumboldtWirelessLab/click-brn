@@ -114,7 +114,7 @@ BrnFlooding::push( int port, Packet *packet )
 
     EtherAddress new_eth = EtherAddress((uint8_t*)&bcast_header->dsr_src);
     int new_id = bcast_header->bcast_id;
-    click_chatter("Queue size:%d Hab %s:%d kommt vom Client",bcast_queue.size(),new_eth.s().c_str(),new_id);
+    click_chatter("Queue size:%d Hab %s:%d kommt vom Client",bcast_queue.size(),new_eth.unparse().c_str(),new_id);
 
     bcast_queue.push_back(BrnBroadcast( bcast_id, &src_hwa[0] ) );
 
@@ -145,7 +145,7 @@ BrnFlooding::push( int port, Packet *packet )
 
     if ( i == bcast_queue.size() ) // paket noch nie gesehen
     {
-      click_chatter("Queue size:%d Hab %s:%d noch nie gesehen",bcast_queue.size(),new_eth.s().c_str(),new_id);
+      click_chatter("Queue size:%d Hab %s:%d noch nie gesehen",bcast_queue.size(),new_eth.unparse().c_str(),new_id);
       bcast_queue.push_back(BrnBroadcast( bcast_header->bcast_id, (uint8_t*)&bcast_header->dsr_src ) );
       if ( bcast_queue.size() > MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
 
@@ -176,7 +176,7 @@ void
 BrnFlooding::queue_timer_hook()
 {
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   for ( int i = 0; i < packet_queue.size(); i++)
   {
@@ -237,7 +237,7 @@ BrnFlooding::get_min_jitter_in_queue()
       }
     }
 
-    click_gettimeofday(&_time_now);
+    _time_now = Timestamp::now().timeval();
 
     next_jitter = diff_in_ms(_next_send, _time_now);
 

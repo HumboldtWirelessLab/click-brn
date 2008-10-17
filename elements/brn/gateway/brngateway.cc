@@ -57,7 +57,7 @@ BRNGateway::~BRNGateway() {}
 int
 BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpEthernetAddress, "My ethernet address", &_my_eth_addr,
                   cpElement, "BRNSetGatewayOnFlow", &_flows,
                   cpKeywords,
@@ -201,7 +201,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
     // iterate over all known gateways
     for (BRNGatewayList::const_iterator i = gw->_known_gateways.begin(); i.live(); i++) {
     	BRNGatewayEntry gwe = i.value();
-      sa << i.key().s().c_str() << "\t"
+      sa << i.key().unparse().c_str() << "\t"
          << (uint32_t) gwe.get_metric() << "\t"
          << gwe.get_ip_address() << "\t"
          << gwe.is_behind_NAT() << "\n";
@@ -296,7 +296,7 @@ BRNGateway::add_gateway(BRNGatewayEntry gwe) {
 	else {
 		// and insert new entry
     if (!_known_gateways.insert(_my_eth_addr, gwe)) {
-    	BRN_WARN("Could not insert gateway %s with values %s.", _my_eth_addr.s().c_str(), gwe.s().c_str());
+    	BRN_WARN("Could not insert gateway %s with values %s.", _my_eth_addr.unparse().c_str(), gwe.s().c_str());
       return -1;
     }
 		
@@ -313,13 +313,13 @@ int
 BRNGateway::remove_gateway() {
     
   if (remove_gateway(_my_eth_addr)) {	
-    BRN_INFO("Removed gateway %s from list", _my_eth_addr.s().c_str());
+    BRN_INFO("Removed gateway %s from list", _my_eth_addr.unparse().c_str());
     	
     // delete gateway from dht
     output(0).push(remove_gateway_from_dht());
   }
   else {
-    BRN_WARN("Gateway %s was already removed. Did not find it.", _my_eth_addr.s().c_str());
+    BRN_WARN("Gateway %s was already removed. Did not find it.", _my_eth_addr.unparse().c_str());
   }
     
   return 0;
@@ -546,7 +546,7 @@ BRNGateway::update_gateways_from_dht_response(Packet* p) {
 		  	memcpy(&gwe, &dht_data[index + DHT_PAYLOAD_OVERHEAD], sizeof(gwe));
 		  	
 		  	//gwe = (BRNGatewayEntry) dht_data[index + DHT_PAYLOAD_OVERHEAD];
-		  	BRN_INFO("Found gateway %s in dht response with values %s", eth_addr.s().c_str(), gwe.s().c_str());
+		  	BRN_INFO("Found gateway %s in dht response with values %s", eth_addr.unparse().c_str(), gwe.s().c_str());
 	  	}
 	  	else {
 		  	BRN_ERROR("BRNGateway: Not supported");

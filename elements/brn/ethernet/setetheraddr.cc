@@ -69,12 +69,12 @@ SetEtherAddr::smaction(Packet *p)
   	
     if (_src) {
     	memcpy(ether->ether_shost, _src.data(), 6);
-    	BRN_DEBUG("Setting src address %s.", _src.s().c_str());
+    	BRN_DEBUG("Setting src address %s.", _src.unparse().c_str());
     }
     	
     if (_dst) {
     	memcpy(ether->ether_dhost, _dst.data(), 6);
-    	BRN_DEBUG("Setting dst address %s.", _dst.s().c_str());
+    	BRN_DEBUG("Setting dst address %s.", _dst.unparse().c_str());
     }
     	
     return q;

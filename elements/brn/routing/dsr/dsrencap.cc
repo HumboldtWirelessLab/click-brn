@@ -45,7 +45,7 @@ DSREncap::~DSREncap()
 int
 DSREncap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  cpOptional,
 		  cpElement, "NodeIdentity", &_me,
                   cpElement, "Link table", &_link_table,
@@ -121,8 +121,8 @@ DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
       dsr_source->dsr_ip_src = src_ip_addr.in_addr();
 
       BRN_DEBUG(" ** IP-Clients2 %s(%s) --> %s(%s)",
-        src_route[route_len - 1].s().c_str(), src_ip_addr.s().c_str(),
-        src_route[0].s().c_str(), dst_ip_addr.s().c_str());
+        src_route[route_len - 1].unparse().c_str(), src_ip_addr.unparse().c_str(),
+        src_route[0].unparse().c_str(), dst_ip_addr.unparse().c_str());
     }
   }
 //
@@ -144,7 +144,7 @@ DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
       EtherAddress prev(dsr_source->dsr_src.data);
       uint32_t last_hop_m = _link_table->get_link_metric(prev, curr);
       dsr_source->addr[i].metric = htons(last_hop_m);
-      BRN_DEBUG(" * setting last hop metric: %s->%s=%d", prev.s().c_str(), curr.s().c_str(), last_hop_m);
+      BRN_DEBUG(" * setting last hop metric: %s->%s=%d", prev.unparse().c_str(), curr.unparse().c_str(), last_hop_m);
     }
   }
 
@@ -156,11 +156,11 @@ DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   // set destination anno
   if (hop_count > 0) { // next hop on tour
     EtherAddress next_hop(src_route[route_len - 2].data());
-    BRN_DEBUG(" * testing next hop %s", next_hop.s().c_str());
+    BRN_DEBUG(" * testing next hop %s", next_hop.unparse().c_str());
 //BRNNEW    p->set_dst_ether_anno(next_hop); //think about this
   } else { // final destination is the last hop
     EtherAddress next_hop(src_route[0].data());
-    BRN_DEBUG(" * next hop %s", next_hop.s().c_str());
+    BRN_DEBUG(" * next hop %s", next_hop.unparse().c_str());
  //BRNNEW   p->set_dst_ether_anno(next_hop); //think about this
   }
   return p;
@@ -262,7 +262,7 @@ DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, IPAd
     p->set_dst_ether_anno(EtherAddress(dst.data()));
   }
 */
-  BRN_DEBUG(" * next hop: %s", EtherAddress(dsr->addr[index].hw.data).s().c_str());
+  BRN_DEBUG(" * next hop: %s", EtherAddress(dsr->addr[index].hw.data).unparse().c_str());
   BRN_DEBUG(" * issue_rrep: filling hops done , index= %d", index);
 
   return p;
@@ -317,7 +317,7 @@ DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   // fill in the source route
   dsr_rerr->dsr_segsleft = 0;
   for (i = 0; i < src_hop_count; i++) {
-    BRN_DEBUG(" * hop in err lst: %s", source_route[i + 1].ether_address.s().c_str());
+    BRN_DEBUG(" * hop in err lst: %s", source_route[i + 1].ether_address.unparse().c_str());
     memcpy(dsr_rerr->addr[i].hw.data, (uint8_t *)source_route[i + 1].ether_address.data(), 6 * sizeof(uint8_t));
     //dsr_rerr->addr[i-1].metric = 0; //TODO think about Metric
   }
@@ -334,13 +334,13 @@ DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
 
   // set destination anno
 /*BRNNEW  if (src_hop_count > 0) { // next hop on tour
-    BRN_DEBUG(" * set dst anno: %s, index %d", EtherAddress(dsr_rerr->addr[index].hw.data).s().c_str(), index);
+    BRN_DEBUG(" * set dst anno: %s, index %d", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str(), index);
     p->set_dst_ether_anno(EtherAddress(dsr_rerr->addr[index].hw.data));
   } else { // final destination is the last hop
     p->set_dst_ether_anno(EtherAddress(src.data()));
   }
 */
-  BRN_DEBUG(" * next hop: %s", EtherAddress(dsr_rerr->addr[index].hw.data).s().c_str());
+  BRN_DEBUG(" * next hop: %s", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str());
   return p;
 }
 
@@ -376,7 +376,7 @@ DSREncap::set_packet_to_next_hop(Packet * p_in)
   assert(segments <= source_hops);
 
   BRN_DEBUG(" * DSREncap::set_packet_to_next_hop(): from %s to %s",
-      EtherAddress(brn_dsr->dsr_src.data).s().c_str(), EtherAddress(brn_dsr->dsr_dst.data).s().c_str());
+      EtherAddress(brn_dsr->dsr_src.data).unparse().c_str(), EtherAddress(brn_dsr->dsr_dst.data).unparse().c_str());
 
   // this is the index of the address to which this packet should be forwarded
   // update link metric in src packet
@@ -387,11 +387,11 @@ DSREncap::set_packet_to_next_hop(Packet * p_in)
     if (index < 2) { // use src addr
       EtherAddress prev_node(brn_dsr->dsr_src.data);
       metric = _link_table->get_link_metric(prev_node, me);
-      BRN_DEBUG(" * updating metric in src_packet: %s -> %s with %d", prev_node.s().c_str(), me.s().c_str(), metric);
+      BRN_DEBUG(" * updating metric in src_packet: %s -> %s with %d", prev_node.unparse().c_str(), me.unparse().c_str(), metric);
     } else {
       EtherAddress prev_node(brn_dsr->addr[index - 2].hw.data);
       metric = _link_table->get_link_metric(prev_node, me);
-      BRN_DEBUG(" * updating metric in src_packet: %s -> %s with %d", prev_node.s().c_str(), me.s().c_str(), metric);
+      BRN_DEBUG(" * updating metric in src_packet: %s -> %s with %d", prev_node.unparse().c_str(), me.unparse().c_str(), metric);
     }
     brn_dsr->addr[index - 1].metric = htons(metric);
   }

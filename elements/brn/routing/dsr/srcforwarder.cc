@@ -59,7 +59,7 @@ SrcForwarder::~SrcForwarder()
 int
 SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "Client assoc list", &_client_assoc_lst,
@@ -128,7 +128,7 @@ SrcForwarder::push(int port, Packet *p_in)
       BRN_DEBUG(" * learned from SRCPacket ...");
       for (int j = 0; j < source_route.size(); j++)
         BRN_DEBUG(" SRC - %d   %s (%d)",
-          j, source_route[j].ether().s().c_str(), source_route[j]._metric);
+          j, source_route[j].ether().unparse().c_str(), source_route[j]._metric);
     }
 
     // update link table
@@ -143,7 +143,7 @@ SrcForwarder::push(int port, Packet *p_in)
       Packet *p = strip_all_headers(p_in);
       output(1).push(p);
     } else {
-      BRN_DEBUG(" * need to forward to %s", dst_addr.s().c_str());
+      BRN_DEBUG(" * need to forward to %s", dst_addr.unparse().c_str());
       // determines next hop
       forward_data(p_in); //use port 0
     }
@@ -191,7 +191,7 @@ SrcForwarder::forward_data(Packet *p_in)
 
   // Check if the next hop exists in link table    
   if (BRN_DSR_INVALID_ROUTE_METRIC == _link_table->get_link_metric(me, next)) {
-    BRN_DEBUG(" * SrcForwarder: no link between %s and %s, broken source route.", me.s().c_str(), next.s().c_str());
+    BRN_DEBUG(" * SrcForwarder: no link between %s and %s, broken source route.", me.unparse().c_str(), next.unparse().c_str());
     BRN_DEBUG(_link_table->print_links().c_str());
 
     WritablePacket* p = p_in->uniqueify();
@@ -281,8 +281,8 @@ SrcForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
 
     if (ret) {
       BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().s().c_str(), route[i].ip().s().c_str(),
-        route[i+1].ether().s().c_str(), route[i+1].ip().s().c_str(), metric);
+        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
     }
   }
 }

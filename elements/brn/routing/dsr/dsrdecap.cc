@@ -47,7 +47,7 @@ DSRDecap::~DSRDecap()
 int
 DSRDecap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpEnd) < 0)
@@ -92,7 +92,7 @@ DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, RouteQuerie
   IPAddress dst_ip_addr(dsr_rreq->dsr_ip_dst);
 
   BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)",
-        src_addr.s().c_str(), src_ip_addr.s().c_str(), dst_addr.s().c_str(), dst_ip_addr.s().c_str());
+        src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(), dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   assert(dsr_rreq->dsr_type == BRN_DSR_RREQ);
 
@@ -110,7 +110,7 @@ DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, RouteQuerie
 
   for (int i=0; i<num_addr; i++) {
     click_dsr_hop hop = dsr_rreq->addr[i];
-    BRN_DEBUG(" * extract route %s with m=%d", EtherAddress(hop.hw.data).s().c_str(), ntohs(hop.metric));
+    BRN_DEBUG(" * extract route %s with m=%d", EtherAddress(hop.hw.data).unparse().c_str(), ntohs(hop.metric));
     route.push_back(RouteQuerierHop(hop.hw, ntohs(hop.metric)));
   }
 
@@ -130,7 +130,7 @@ DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, RouteQuerie
   *ref_metric = metric;
 
   BRN_DEBUG(_link_table->print_links().c_str());
-  BRN_DEBUG(" * my (%s) metric for last hop (%s) is) %d", my_rec_addr->s().c_str(), last_node_addr.s().c_str(), metric);
+  BRN_DEBUG(" * my (%s) metric for last hop (%s) is) %d", my_rec_addr->unparse().c_str(), last_node_addr.unparse().c_str(), metric);
 
   route.push_back(RouteQuerierHop(last_node_addr, metric));
 }
@@ -159,7 +159,7 @@ DSRDecap::extract_reply_route(const Packet *p, RouteQuerierRoute &route)
   IPAddress dst_ip_addr(dsr->dsr_ip_dst);
 
   BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)",
-        src_ether.s().c_str(), src_ip_addr.s().c_str(), dest_ether.s().c_str(), dst_ip_addr.s().c_str());
+        src_ether.unparse().c_str(), src_ip_addr.unparse().c_str(), dest_ether.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   assert(dsr->dsr_type == BRN_DSR_RREP);
 
@@ -206,7 +206,7 @@ DSRDecap::extract_source_route(const Packet *p_in, RouteQuerierRoute &route)
   IPAddress dst_ip_addr(dsr->dsr_ip_dst);
 
   BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s).",
-        src_addr.s().c_str(), src_ip_addr.s().c_str(), dst_addr.s().c_str(), dst_ip_addr.s().c_str());
+        src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(), dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   // put the originator of this rreq into dsr route
   route.push_back(RouteQuerierHop(src_addr, src_ip_addr, 0)); //TODO Metric not used
@@ -215,7 +215,7 @@ DSRDecap::extract_source_route(const Packet *p_in, RouteQuerierRoute &route)
     click_dsr_hop hop = dsr->addr[i];
     route.push_back(RouteQuerierHop(hop.hw, ntohs(hop.metric)));
     EtherAddress eth_ = EtherAddress(hop.hw.data);
-    BRN_DEBUG("Adress: %s Metric: %d", eth_.s().c_str(), ntohs(hop.metric));
+    BRN_DEBUG("Adress: %s Metric: %d", eth_.unparse().c_str(), ntohs(hop.metric));
   }
 
   // put the originator of this rreq into dsr route

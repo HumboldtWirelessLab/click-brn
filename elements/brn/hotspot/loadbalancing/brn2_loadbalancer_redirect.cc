@@ -55,7 +55,7 @@ int LoadBalancerRedirect::initialize(ErrorHandler *)
 void LoadBalancerRedirect::push( int port, Packet *packet )
 {
 	uint8_t *p_data = (uint8_t *)packet->data();
-  FlowInfo *flow;
+  //FlowInfo *flow;
   EtherAddress *redirectNode;
 
   EtherAddress *fromEther;
@@ -90,7 +90,7 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
     srcPort = ntohs(udp_header->uh_sport);
     dstPort = ntohs(udp_header->uh_dport);
 
-//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->s().c_str(),fromIP->s().c_str(),srcPort,toIP->s().c_str(),dstPort);
+//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->unparse().c_str(),fromIP->unparse().c_str(),srcPort,toIP->unparse().c_str(),dstPort);
 
     redirectNode = getNodeForFlow(fromIP, toIP, srcPort, dstPort);
 
@@ -122,7 +122,7 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
 	{
 //    click_chatter("Now back to client");
 
-    click_ether *ether = (click_ether *)packet->data();
+    //click_ether *ether = (click_ether *)packet->data();
     click_ip *ip_header = (click_ip *)&packet->data()[14];
 
     toEther = new EtherAddress(&p_data[0]);
@@ -137,13 +137,13 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
     srcPort = ntohs(udp_header->uh_sport);
     dstPort = ntohs(udp_header->uh_dport);
 
-//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->s().c_str(),fromIP->s().c_str(),srcPort,toIP->s().c_str(),dstPort);
+//    click_chatter("Ether: %s src: %s:%d dst: %s:%d",fromEther->unparse().c_str(),fromIP->unparse().c_str(),srcPort,toIP->unparse().c_str(),dstPort);
 
     EtherAddress *srcNode = getSrcForFlow(toIP, fromIP, dstPort, srcPort);
 
     if ( srcNode != NULL )
     {
-//      click_chatter("Got Flow: src is %s",srcNode->s().c_str());
+//      click_chatter("Got Flow: src is %s",srcNode->unparse().c_str());
       click_ether *ether = (click_ether *)packet->data();
       memcpy(&p_data[0] , srcNode->data(), 6);
       memcpy(&p_data[6] , _me.data(), 6 );
@@ -216,7 +216,7 @@ EtherAddress *LoadBalancerRedirect::getSrcForFlow( IPAddress *srcIP, IPAddress *
 
     if ( ( *(acFlow->_src_ip) == *srcIP ) && (*(acFlow->_dst_ip) == *dstIP ) && ( (acFlow->_src_port) == srcPort ) && ( (acFlow->_dst_port) = dstPort ) )
     {
-//      click_chatter("ME. %s Redirected AP: %s  Client: %s",_me.s().c_str(),acFlow->_redirect_ap->s().c_str(),acFlow->_src_address->s().c_str());
+//      click_chatter("ME. %s Redirected AP: %s  Client: %s",_me.unparse().c_str(),acFlow->_redirect_ap->unparse().c_str(),acFlow->_src_address->unparse().c_str());
 
       return acFlow->_src_address;
     }
@@ -230,6 +230,7 @@ EtherAddress* LoadBalancerRedirect::getBestNodeForFlow(EtherAddress *srcEtherAdd
   Vector<EtherAddress> neighbors;
   EtherAddress *bestNode;
 
+  if ( ( srcEtherAddress == NULL ) || ( srcIP == NULL ) || ( dstIP == NULL ) || ( srcPort = 0 ) || ( dstPort == 0 ) ) return NULL;
   bestNode = NULL;
 
   if ( _linkstat != NULL )

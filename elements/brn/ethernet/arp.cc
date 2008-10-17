@@ -110,9 +110,9 @@ Arp::arp_reply(Packet *p)
 
   if ( ntohs(arpp->ea_hdr.ar_op) == ARPOP_REQUEST )
   {
-    BRN_DEBUG("ARP: Packet ist ARP-Request for %s\n", IPAddress(arpp->arp_tpa).s().c_str());
+    BRN_DEBUG("ARP: Packet ist ARP-Request for %s\n", IPAddress(arpp->arp_tpa).unparse().c_str());
 
-    BRN_DEBUG("ARP: %s %s\n", _src_ip.s().c_str(), _src_ip_mask.s().c_str()); 
+    BRN_DEBUG("ARP: %s %s\n", _src_ip.unparse().c_str(), _src_ip_mask.unparse().c_str()); 
 
     if ( memcmp ( _router_ip.data(),arpp->arp_tpa, 4 ) == 0
         || _src_ip_mask && !IPAddress(arpp->arp_tpa).matches_prefix(_src_ip, _src_ip_mask) ) 
@@ -123,7 +123,7 @@ Arp::arp_reply(Packet *p)
     {
       long time_now;
       struct timeval now;
-      click_gettimeofday(&now);
+      now = Timestamp::now().timeval();
 
       time_now = now.tv_sec;
 
@@ -230,7 +230,7 @@ Arp::dht_answer(Packet *dht_p_in)
 
 		
     EtherAddress _mac(mac);
-    BRN_DEBUG("ARP: MAC: %s",_mac.s().c_str());
+    BRN_DEBUG("ARP: MAC: %s",_mac.unparse().c_str());
     BRN_DEBUG("ARP: queuesize = %d",request_queue.size());
 
     dht_p_in->kill();

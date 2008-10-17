@@ -81,7 +81,7 @@ ARPClient::initialize(ErrorHandler *)
   _count_reply = 0;
   _count_timeout = 0;
 
-  BRN_INFO("ReqIP: %s _range: %d Start: %d Interval: %d",_start_range.s().c_str(),
+  BRN_INFO("ReqIP: %s _range: %d Start: %d Interval: %d",_start_range.unparse().c_str(),
     _range,_client_start,_client_interval);
 
   _request_timer.initialize(this);
@@ -103,7 +103,7 @@ ARPClient::cleanup(CleanupStage stage)
   BRN_INFO("ARPClient: Timeouts: %d",_count_timeout);
   BRN_INFO("ARPClient: Undefined: %d",_request_queue.size());
 
-  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.s().c_str(),
+  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());
 
   _request_queue.clear();
@@ -115,7 +115,7 @@ ARPClient::run_timer()
   long time_diff;
   //BRN_DEBUG("ARPClient: Timer");
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
 
   int i;
 
@@ -125,7 +125,7 @@ ARPClient::run_timer()
     if ( time_diff > _timeout )
     {
        _count_timeout++;
-       BRN_INFO("ARPClient:_timeout for IP: %s",_request_queue[i].ip_add.s().c_str());
+       BRN_INFO("ARPClient:_timeout for IP: %s",_request_queue[i].ip_add.unparse().c_str());
        BRN_INFO("ARPClient: TIME: %d", time_diff);
        _request_queue.erase( _request_queue.begin() + i );
     }
@@ -133,7 +133,7 @@ ARPClient::run_timer()
   
   if ( ! ( ( _count > 0 ) || ( _count == -1 ) ) )  //wenn ich nicht mehr nach IPs fargen muss dann raus
   {
-    BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.s().c_str(),
+    BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
       _count_request,_count_reply,_count_timeout,_request_queue.size());
     _request_timer.schedule_after_msec(_client_interval);
     return;
@@ -165,11 +165,11 @@ ARPClient::run_timer()
 
     if ( i != _request_queue.size() )
     {
-      BRN_DEBUG("ARPClient: Nach IP: %s wird schon gefragt",ip_add.s().c_str());
+      BRN_DEBUG("ARPClient: Nach IP: %s wird schon gefragt",ip_add.unparse().c_str());
     } 
     else
     {
-      BRN_DEBUG("ARPClient: ich frage nach IP: %s",ip_add.s().c_str());
+      BRN_DEBUG("ARPClient: ich frage nach IP: %s",ip_add.unparse().c_str());
       _request_queue.push_back( ARPClientRequest(requested_ip) );
       send_arp_request( ip_add.data() );
 
@@ -177,7 +177,7 @@ ARPClient::run_timer()
     }
   }
 
-  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.s().c_str(),
+  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());
   _request_timer.schedule_after_msec(_client_interval);
  
@@ -193,7 +193,7 @@ ARPClient::push( int port, Packet *packet )
   if ( port == 0 )
     result = arp_reply(packet);
 
-  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.s().c_str(),
+  BRN_DEBUG("ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());
 }
 
@@ -207,7 +207,7 @@ ARPClient::arp_reply(Packet *p)
   BRN_DEBUG("ARPClient: Packet\n");
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
 
   click_ether *ethp = (click_ether *) p->data();                  //etherhaeder rausholen
   click_ether_arp *arpp = (click_ether_arp *) (ethp + 1);         //arpheader rausholen
@@ -231,7 +231,7 @@ ARPClient::arp_reply(Packet *p)
       }
     }
 
-    BRN_INFO("ARPClient: IP: %s  MAC: %s\n",ip_add.s().c_str(),eth_add.s().c_str());
+    BRN_INFO("ARPClient: IP: %s  MAC: %s\n",ip_add.unparse().c_str(),eth_add.unparse().c_str());
   }  
   else
   {
@@ -326,11 +326,11 @@ read_param(Element *e, void *thunk)
   case H_DEBUG:
     return String(td->_debug) + "\n";
   case H_CLIENT_IP:
-    return td->_client_ip.s() + "\n";
+    return td->_client_ip.unparse() + "\n";
   case H_CLIENT_ETHERNET:
-    return td->_client_ethernet.s() + "\n";
+    return td->_client_ethernet.unparse() + "\n";
   case H_START_RANGE:
-    return td->_start_range.s() + "\n";
+    return td->_start_range.unparse() + "\n";
   case H_RANGE:
     return String(td->_range) + "\n";
   case H_CLIENT_START:

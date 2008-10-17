@@ -78,12 +78,12 @@ StoreVLAN::push(int, Packet *p)
   uint16_t *vid = _table->_vlans.findp(src);
   if (vid == NULL) {
     _table->_vlans.insert(src, vlanid);
-    //click_chatter("Storing src %s - VID %u", src.s().c_str(), vlanid);
+    //click_chatter("Storing src %s - VID %u", src.unparse().c_str(), vlanid);
   }
   else {
     // update
     *vid = vlanid;
-    //click_chatter("Updating src %s - VID %u", src.s().c_str(), vlanid);
+    //click_chatter("Updating src %s - VID %u", src.unparse().c_str(), vlanid);
   }
   
   output(0).push(p);

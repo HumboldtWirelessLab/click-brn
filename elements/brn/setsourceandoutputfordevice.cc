@@ -81,22 +81,22 @@ SetSourceAndOutputForDevice::initialize(ErrorHandler *errh)
   if (!_ports.insert(*_id->getMyWirelessAddress(), 0))
   {
     BRN_WARN(" **** Could not insert ethernet addess %s to port 0.",
-     *_id->getMyWirelessAddress()->s().c_str());
+     *_id->getMyWirelessAddress()->unparse().c_str());
     return errh->error(" **** Could not insert ethernet addess %s to port 0.",
-      *_id->getMyWirelessAddress()->s().c_str());
+      *_id->getMyWirelessAddress()->unparse().c_str());
   }
   if (!_ports.insert(*_id->getMyVlan0Address(), 1))
   {
     BRN_DEBUG(" **** Could not insert ethernet addess %s to port 1.",
-         _id->getMyVlan0Address()->s().c_str());
+         _id->getMyVlan0Address()->unparse().c_str());
     return errh->error(" **** Could not insert ethernet addess %s to port 1.",
-         _id->getMyVlan0Address()->s().c_str());
+         _id->getMyVlan0Address()->unparse().c_str());
   }
 
   /*
   if (!_ports.insert(*_id->getMyVlan1Address(), 2))
   {
-    click_chatter(" **** %s: Could not insert ethernet addess %s to port 2.", this->name().c_str(), _id->getMyVlan1Address()->s().c_str());
+    click_chatter(" **** %s: Could not insert ethernet addess %s to port 2.", this->name().c_str(), _id->getMyVlan1Address()->unparse().c_str());
     return -1;
   }
   */
@@ -133,8 +133,8 @@ SetSourceAndOutputForDevice::push(int, Packet *p_in)
   EtherAddress src_addr(ether->ether_shost);
 
   BRN_DEBUG(" The dst address %s (0x%x)and the src address %s (0x%x)",
-      dst_addr.s().c_str(), &dst_addr, src_addr.s().c_str(), &src_addr);
-  //click_chatter(" XXX The dst address %s (0x%x)and the src address %s (0x%x)", dst_addr2.s().c_str(), &dst_addr2, src_addr2.s().c_str(), &src_addr2);
+      dst_addr.unparse().c_str(), &dst_addr, src_addr.unparse().c_str(), &src_addr);
+  //click_chatter(" XXX The dst address %s (0x%x)and the src address %s (0x%x)", dst_addr2.unparse().c_str(), &dst_addr2, src_addr2.unparse().c_str(), &src_addr2);
   BRN_DEBUG(" **** _ports has %d entries.", _ports.size());
 
   if (dst_addr.is_broadcast())
@@ -164,7 +164,7 @@ SetSourceAndOutputForDevice::handle_broadcast(Packet* p_in)
     memcpy(ether->ether_shost, _id->getMyWirelessAddress()->data(), 6); 
 
     BRN_DEBUG(" **** WIRELESS Packet with dst %s and src %s is sent to port %d.",
-      dst_addr.s().c_str(), _id->getMyWirelessAddress()->s().c_str(), 
+      dst_addr.unparse().c_str(), _id->getMyWirelessAddress()->unparse().c_str(), 
       _ports.find(*_id->getMyWirelessAddress()));
 
 //BRNNEW    p_wlan->set_udevice_anno(_id->getWlan0DeviceName().c_str());
@@ -183,7 +183,7 @@ SetSourceAndOutputForDevice::handle_broadcast(Packet* p_in)
     memcpy(ether->ether_shost, _id->getMyVlan0Address()->data(), 6); 
 
     BRN_DEBUG(" **** VLAN0 Packet with dst %s is sent to port %d.",
-        dst_addr.s().c_str(), _ports.find(*_id->getMyVlan0Address()));
+        dst_addr.unparse().c_str(), _ports.find(*_id->getMyVlan0Address()));
 
 //    p_vlan0->set_udevice_anno(_id->getVlan0DeviceName().c_str());
     p_vlan0->set_ether_header(ether);
@@ -210,7 +210,7 @@ SetSourceAndOutputForDevice::handle_broadcast(Packet* p_in)
     ether = (click_ether *) p_local->data();
 
     BRN_DEBUG(" **** LOCAL Packet with dst %s is sent to port %d.",
-        dst_addr.s().c_str(), _ports.size());
+        dst_addr.unparse().c_str(), _ports.size());
 
 //BRNNEW    p_local->set_udevice_anno("local");
     p_local->set_ether_header(ether);
@@ -237,8 +237,8 @@ SetSourceAndOutputForDevice::handle_unicast(Packet* p_in)
   // packet to me
   if (_id->isIdentical(&dst_addr)) 
   {
-    BRN_DEBUG(" * Packet (%s) for me (%s,%s) - push to port %u", dst_addr.s().c_str(),
-      _id->getMyWirelessAddress()->s().c_str(), _id->getMyVlan0Address()->s().c_str(),
+    BRN_DEBUG(" * Packet (%s) for me (%s,%s) - push to port %u", dst_addr.unparse().c_str(),
+      _id->getMyWirelessAddress()->unparse().c_str(), _id->getMyVlan0Address()->unparse().c_str(),
       _ports.size());
 
     // TODO do I need to change the src address ??

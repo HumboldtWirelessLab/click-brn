@@ -22,7 +22,7 @@ SetTXTries::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _offset = 0;
   _tries = WIFI_MAX_RETRIES+1;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  cpKeywords, 
 		  "TRIES", cpUnsigned, "tries", &_tries,
 		  "OFFSET", cpUnsigned, "offset", &_offset,

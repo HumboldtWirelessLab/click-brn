@@ -58,7 +58,7 @@ DHCPRequester::cleanup(CleanupStage stage)
   BRN_DEBUG("DHCPRequester: end");
   BRN_INFO  ("DHCPRequester: Configured Clients: %d von %d", 
     count_configured_clients, _ip_range);
-  BRN_DEBUG("DHCPRequester:Skript%s %d %d", _hw_addr.s().c_str(), 
+  BRN_DEBUG("DHCPRequester:Skript%s %d %d", _hw_addr.unparse().c_str(), 
     count_configured_clients, _ip_range);
 }
 int
@@ -67,7 +67,7 @@ DHCPRequester::configure(Vector<String> &conf, ErrorHandler* errh)
   BRN_DEBUG("DHCPRequester: Configure");
 
   _active = true;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
         cpEthernetAddress, "First EtherAddress", &_hw_addr,
         cpIPAddress, "First IPAddress", &_ip_addr,
@@ -298,9 +298,9 @@ DHCPRequester::dhcpbound(DHCPClientInfo *client_info)
   count_configured_clients++;
 
   BRN_INFO("DHCPRequester: Client is configured: MAC: %s IP: %s", 
-    client_info->eth_add.s().c_str(), client_info->ip_add.s().c_str());
+    client_info->eth_add.unparse().c_str(), client_info->ip_add.unparse().c_str());
 
-  BRN_DEBUG("DHCPRequester:Skript%s %d %d", _hw_addr.s().c_str(), 
+  BRN_DEBUG("DHCPRequester:Skript%s %d %d", _hw_addr.unparse().c_str(), 
     count_configured_clients,_ip_range);
 
 }
@@ -379,9 +379,9 @@ read_param(Element *e, void *thunk)
   case H_DEBUG:
     return String(td->_debug) + "\n";
   case H_HW_ADDR:
-    return td->_hw_addr.s() + "\n";
+    return td->_hw_addr.unparse() + "\n";
   case H_IP_ADDR:
-    return td->_ip_addr.s() + "\n";
+    return td->_ip_addr.unparse() + "\n";
   case H_IP_RANGE:
     return String(td->_ip_range) + "\n";
   case H_START_TIME:

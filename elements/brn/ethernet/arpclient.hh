@@ -49,7 +49,7 @@ class ARPClient : public Element {
 
    ARPClientRequest( int _ip )
    {
-     click_gettimeofday(&_time_start);
+     _time_start = Timestamp::now().timeval();
      ip_add = IPAddress(_ip);
    }
 

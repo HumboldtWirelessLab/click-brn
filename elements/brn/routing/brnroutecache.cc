@@ -72,7 +72,7 @@ BrnRouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
   uint32_t ullSlice = m_tvLifetimeSlice.tv_sec * 1000000 +
                       m_tvLifetimeSlice.tv_usec;
   
-  ret = cp_va_parse(conf, this, errh,
+  ret = cp_va_kparse(conf, this, errh,
     cpKeywords,
     "DEBUG", cpInteger, "Debug indicator", &_debug,
     "ACTIVE", cpBool, "Active indicator", &m_bActive,
@@ -109,7 +109,7 @@ BrnRouteCache::get_cached_route(
   route.clear();
   
   BRN_DEBUG("wuery for route %s -> %s.",
-    addrSrc.s().c_str(), addrDst.s().c_str());
+    addrSrc.unparse().c_str(), addrDst.unparse().c_str());
   
   // Find the corresponding entry
   pEntry = m_mapRoutes.findp( AddressPairType(addrSrc,addrDst) );
@@ -152,7 +152,7 @@ BrnRouteCache::insert_route(
     return;
 
   BRN_DEBUG("inserting route %s -> %s.",
-    addrSrc.s().c_str(), addrDst.s().c_str());
+    addrSrc.unparse().c_str(), addrDst.unparse().c_str());
   
   EntryType entry;
   AddressPairType pairSrcDst(addrSrc,addrDst);
@@ -186,8 +186,8 @@ BrnRouteCache::insert_route(
     if( iter_link == pLinkVector->end() )
     {
       BRN_DEBUG("associate route %s -> %s with link %s -> %s.",
-        addrSrc.s().c_str(), addrDst.s().c_str(), 
-        iter_a->s().c_str(), iter_b->s().c_str() );
+        addrSrc.unparse().c_str(), addrDst.unparse().c_str(), 
+        iter_a->unparse().c_str(), iter_b->unparse().c_str() );
 
       pLinkVector->push_back( pairSrcDst );
     }
@@ -211,7 +211,7 @@ BrnRouteCache::remove_route(
   AddressPairType pairSrcDst(addrSrc,addrDst);
 
   BRN_DEBUG("removing route %s -> %s.",
-    addrSrc.s().c_str(), addrDst.s().c_str());
+    addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
   // Remove the mappings link to route
   EntryType* pEntry = m_mapRoutes.findp( pairSrcDst );
@@ -264,7 +264,7 @@ BrnRouteCache::on_link_changed(
   AddressPairType addrPairAB(addrLinkNodeA,addrLinkNodeB);
   
   BRN_DEBUG("link %s -> %s changed.",
-    addrLinkNodeA.s().c_str(), addrLinkNodeB.s().c_str());
+    addrLinkNodeA.unparse().c_str(), addrLinkNodeB.unparse().c_str());
 
   // Find the route vector for the link
   AddrPairVectorType* pLinkVector = m_mapLinkToRoute.findp( addrPairAB );
@@ -285,7 +285,7 @@ BrnRouteCache::on_link_changed(
     }
 
     BRN_DEBUG("flushing affected route %s -> %s.",
-      iter_link->first.s().c_str(), iter_link->second.s().c_str() );
+      iter_link->first.unparse().c_str(), iter_link->second.unparse().c_str() );
 
     // ...and delete all associated routes
     remove_route( iter_link->first, iter_link->second );

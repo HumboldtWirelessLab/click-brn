@@ -63,7 +63,7 @@ BRNAssocRequester::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _debug = false;
   _associated = false;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -181,7 +181,7 @@ BRNAssocRequester::send_reassoc_req()
   }
   
   if (!rates.size()) {
-    BRN_WARN(" couldn't lookup rates for %s\n", newAp.s().c_str());
+    BRN_WARN(" couldn't lookup rates for %s\n", newAp.unparse().c_str());
   }
 
   struct click_wifi *w = (struct click_wifi *) p->data();
@@ -270,7 +270,7 @@ BRNAssocRequester::send_reassoc_req()
 
   // each probe packet is annotated with a timestamp
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   p->set_timestamp_anno(now);
 
   p->take(max_len - actual_length);
@@ -360,7 +360,7 @@ BRNAssocRequester::process_response(Packet *p)
   if (status == 0) {
     _associated = true;
     _bssid = bssid;
-    BRN_INFO("associated with bssid %s", bssid.s().c_str());
+    BRN_INFO("associated with bssid %s", bssid.unparse().c_str());
   }
   return;
 }
@@ -449,7 +449,7 @@ BRNAssocRequester::process_reassoc_resp(Packet *p)
   if (status == 0) {
     _associated = true;
     _bssid = bssid;
-    BRN_INFO("reassociated with bssid %s", bssid.s().c_str());
+    BRN_INFO("reassociated with bssid %s", bssid.unparse().c_str());
   }
   return;
 }

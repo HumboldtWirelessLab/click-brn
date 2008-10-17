@@ -19,7 +19,7 @@ int FalconDHT::dht_read(DHTentry *_dht_entry)
 {
   BRN_DEBUG("DHT: Function: dht_read: start");
   if (NULL != _dht_entry && _dht_entry->key_type == TYPE_IP) {
-    BRN_DEBUG("dht_read: looking for %s", IPAddress(_dht_entry->key_data).s().c_str());
+    BRN_DEBUG("dht_read: looking for %s", IPAddress(_dht_entry->key_data).unparse().c_str());
   }
 
   for(int i = 0; i < dht_list.size(); i++ ) {

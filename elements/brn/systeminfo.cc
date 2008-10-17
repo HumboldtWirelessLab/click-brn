@@ -78,7 +78,7 @@ read_handler(Element *e, void *)
 
   StringAccum sa;
 
-  sa << "<system id='" << si->_me->getMyWirelessAddress()->s() << "'>\n";
+  sa << "<system id='" << si->_me->getMyWirelessAddress()->unparse() << "'>\n";
 
   //sdp info
   if (si->_handler) {

@@ -52,7 +52,7 @@ StationHandover::~StationHandover()
 int
 StationHandover::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpElement, "BRNAssocRequester", &_station_assoc,
       cpElement, "WirelessInfo", &_winfo,
       cpInteger, "use #number of beacons to calculate the average rssi value", &_delta,
@@ -104,13 +104,13 @@ StationHandover::push(int, Packet *p_in)
       switch (subtype) {
         case WIFI_FC0_SUBTYPE_BEACON: {
           EtherAddress bssid = retrieve_bssid(p_in, _winfo->_ssid);
-          BRN_DEBUG(" received beacon from %s with rssi %d.", bssid.s().c_str(), ceha->rssi);
+          BRN_DEBUG(" received beacon from %s with rssi %d.", bssid.unparse().c_str(), ceha->rssi);
 
           RSSIVector *rssi_vec = _ap_map->findp(bssid);
 
           if (!rssi_vec) {
             _ap_map->insert(bssid, RSSIVector());
-            BRN_DEBUG("* _ap_map: new entry added: %s, %d", bssid.s().c_str(), ceha->rssi);
+            BRN_DEBUG("* _ap_map: new entry added: %s, %d", bssid.unparse().c_str(), ceha->rssi);
             rssi_vec = _ap_map->findp(bssid);
           } else {
             // check the number of entries
@@ -146,7 +146,7 @@ StationHandover::check_for_handover() {
   for (AccessPointMap::iterator i = _ap_map->begin(); i.live(); i++) {
     RSSIVector &rssi_vec = i.value();
 
-    BRN_DEBUG(" %s with %d", i.key().s().c_str(), rssi_vec.size());
+    BRN_DEBUG(" %s with %d", i.key().unparse().c_str(), rssi_vec.size());
 
     if (rssi_vec.size() < _delta) // we need at least _delta entries for each AP
       continue;
@@ -158,7 +158,7 @@ StationHandover::check_for_handover() {
     }
     rssi_avg /= rssi_vec.size();
 
-    BRN_DEBUG("* rssi_vec for %s has size %d and rssi_avg %d.", i.key().s().c_str(), rssi_vec.size(), rssi_avg);
+    BRN_DEBUG("* rssi_vec for %s has size %d and rssi_avg %d.", i.key().unparse().c_str(), rssi_vec.size(), rssi_avg);
 
     // save the rssi value for the current used AP
     if (i.key() == _winfo->_bssid) {
@@ -171,14 +171,14 @@ StationHandover::check_for_handover() {
     }
   }
 
-  BRN_DEBUG("* best bssid is %s (%d), old is %s %d", best_bssid.s().c_str(), best_rssi,
-    _winfo->_bssid.s().c_str(), old_rssi);
+  BRN_DEBUG("* best bssid is %s (%d), old is %s %d", best_bssid.unparse().c_str(), best_rssi,
+    _winfo->_bssid.unparse().c_str(), old_rssi);
 
   if (_winfo->_bssid != best_bssid) {
     if (best_rssi > (old_rssi + _rssi_min_diff) ) {
 
       BRN_INFO("* need to reassoc: old %s (%d), new %s (%d)",
-        _winfo->_bssid.s().c_str(), old_rssi, best_bssid.s().c_str(), best_rssi);
+        _winfo->_bssid.unparse().c_str(), old_rssi, best_bssid.unparse().c_str(), best_rssi);
 
       if (!_winfo->_bssid) { //base station is currently not associated 
         BRN_DEBUG("* send_assoc_req");

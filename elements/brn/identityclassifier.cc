@@ -92,7 +92,7 @@ IdentityClassifier::simple_action(Packet *p_in)
 
   if (_drop_own && _id->isIdentical(&src_addr)) 
   {
-    BRN_DEBUG(" *  filter packet from %s to %s", src_addr.s().c_str(), dst_addr.s().c_str());
+    BRN_DEBUG(" *  filter packet from %s to %s", src_addr.unparse().c_str(), dst_addr.unparse().c_str());
 
     checked_output_push(1, p_in);
     return NULL;
@@ -117,7 +117,7 @@ IdentityClassifier::simple_action(Packet *p_in)
   if (!_drop_other)
     return (p_in);
 
-  BRN_DEBUG(" * filter packet from %s to %s", src_addr.s().c_str(), dst_addr.s().c_str());
+  BRN_DEBUG(" * filter packet from %s to %s", src_addr.unparse().c_str(), dst_addr.unparse().c_str());
 
   checked_output_push(1, p_in);
   return (NULL);

@@ -62,7 +62,7 @@ BrnIappNotifyHandler::~BrnIappNotifyHandler()
 int 
 BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "RESEND_NOTIFY", cpUnsigned, "resend notify (ms)", &_notify_ms,
@@ -134,7 +134,7 @@ BrnIappNotifyHandler::recv_handover_notify(
   uint8_t seq_no = pHo->seq_no;
 
   BRN_DEBUG("received notify from %s to %s (client %s)", 
-    apNew.s().c_str(), apOld.s().c_str(), client.s().c_str());
+    apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
 
   if (CLICK_BRN_IAPP_PAYLOAD_EMPTY == pIapp->payload_type)
   {
@@ -171,7 +171,7 @@ BrnIappNotifyHandler::recv_handover_reply(
   EtherAddress apNew(pHo->addr_mnew);
   
   BRN_DEBUG("received reply to %s from %s (client %s)", 
-    apNew.s().c_str(), apOld.s().c_str(), client.s().c_str());
+    apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
   
   if (CLICK_BRN_IAPP_PAYLOAD_EMPTY == pIapp->payload_type)
   {
@@ -212,10 +212,10 @@ BrnIappNotifyHandler::send_handover_notify(
 {
   // Sanity check
   BRN_CHECK_EXPR(!_id->isIdentical(&apNew),
-    ("send handover notify with new mesh node %s", apNew.s().c_str()));
+    ("send handover notify with new mesh node %s", apNew.unparse().c_str()));
   
   BRN_DEBUG("send notify from %s to %s (client %s)", 
-    apNew.s().c_str(), apOld.s().c_str(), client.s().c_str());
+    apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
 
   // push out
   Packet* p = _encap->create_handover_notify(client, apNew, apOld, seq_no);
@@ -226,7 +226,7 @@ BrnIappNotifyHandler::send_handover_notify(
   
   
   // starting timer
-  BRN_DEBUG("Starting timer for client %s", client.s().c_str());
+  BRN_DEBUG("Starting timer for client %s", client.unparse().c_str());
   Timer *t = new Timer(this);
   t->initialize(this);
   
@@ -252,7 +252,7 @@ BrnIappNotifyHandler::send_handover_reply(
 {
   // Sanity check
   BRN_CHECK_EXPR(!_id->isIdentical(&apOld),
-    ("send handover notify with old mesh node %s", apOld.s().c_str()));
+    ("send handover notify with old mesh node %s", apOld.unparse().c_str()));
   
   // push out
   Packet* p = _encap->create_handover_reply(client, apNew, apOld, seq_no);

@@ -53,7 +53,7 @@ BRNSetGateway::~BRNSetGateway() {}
 
 int
 BRNSetGateway::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpElement, "BrnLinkTable", &_link_table,
                   cpEnd) < 0)
@@ -127,7 +127,7 @@ BRNSetGateway::choose_gateway() {
 		 // improve lookup
 		 // but update round robin from time to time
 			
-     BRN_WARN("Sending packet to %s to test metric.", gw.s().c_str());
+     BRN_WARN("Sending packet to %s to test metric.", gw.unparse().c_str());
             
      // packet for checking the route
      if (WritablePacket* p = Packet::make(sizeof(click_ether) + sizeof(click_brn) + sizeof(brn_gateway))) {
@@ -176,7 +176,7 @@ BRNSetGateway::choose_gateway() {
   }
 
   BRN_INFO("Choose gateway %s which is reachable with a metric of %u.",
- 					best_gw.s().c_str(), best_metric_to_reach_gw);
+ 					best_gw.unparse().c_str(), best_metric_to_reach_gw);
   return best_gw;
 }
 
@@ -200,7 +200,7 @@ BRNSetGateway::set_gateway_on_packet(Packet *p_in, const EtherAddress gw) {
   // rewrite packet with new gateway
   click_ether *ether = p->ether_header();
   memcpy(ether->ether_dhost, gw.data(), 6);
-  BRN_INFO("Rewriting packet for gateway %s and sending it to port 0", gw.s().c_str());
+  BRN_INFO("Rewriting packet for gateway %s and sending it to port 0", gw.unparse().c_str());
   output(0).push(p);
 }
 

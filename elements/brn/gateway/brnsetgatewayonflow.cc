@@ -56,7 +56,7 @@ BRNSetGatewayOnFlow::~BRNSetGatewayOnFlow() {}
 
 int
 BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpElement, "BRNGateway", &_gw,
                   cpElement, "AggregateIPFlows", &_aggflows,
                   cpElement, "BrnLinkTable", &_link_table,
@@ -128,13 +128,13 @@ BRNSetGatewayOnFlow::choose_gateway() {
     const BRNGatewayEntry gwe = i.value();
     unsigned new_metric;
 
-    BRN_DEBUG("Running over gateway %s", gw.s().c_str());
+    BRN_DEBUG("Running over gateway %s", gw.unparse().c_str());
       
     // find a route
     Vector<EtherAddress> route = _link_table->best_route(gw, true);
 
     if (!_link_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
-		  BRN_DEBUG("Don't know metric to gateway %s.", gw.s().c_str());
+		  BRN_DEBUG("Don't know metric to gateway %s.", gw.unparse().c_str());
          
       // run Dijstra to look for new route
       _link_table->dijkstra(gw, true);
@@ -178,7 +178,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
 				// set failed to sent this packet to internet
 				//brn_gw->failed = 0;
       
-      	BRN_DEBUG("Sending packet to %s to test metric.", gw.s().c_str());
+      	BRN_DEBUG("Sending packet to %s to test metric.", gw.unparse().c_str());
 				output(0).push(p);
     	}
     	continue;
@@ -189,18 +189,18 @@ BRNSetGatewayOnFlow::choose_gateway() {
       
     if ((_gw->_my_eth_addr == gw) || ((new_metric
               < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) { // TODO better combination of metric to gateway and gateway metric may be nedded
-      BRN_DEBUG("Gateway %s (%u) is better than %s (%u)", gw.s().c_str(), new_metric, best_gw.s().c_str(), best_metric_to_reach_gw);
+      BRN_DEBUG("Gateway %s (%u) is better than %s (%u)", gw.unparse().c_str(), new_metric, best_gw.unparse().c_str(), best_metric_to_reach_gw);
       // save new best gateway
       best_metric_to_reach_gw = new_metric;
       best_gw_metric = gwe.get_metric();
       best_gw = gw;
     }
       
-    BRN_DEBUG("Current best gateway is %s with metric %u", best_gw.s().c_str(), best_metric_to_reach_gw);
+    BRN_DEBUG("Current best gateway is %s with metric %u", best_gw.unparse().c_str(), best_metric_to_reach_gw);
   }
 
   BRN_INFO("Choose gateway %s which is reachable with a metric of %u.",
-  					best_gw.s().c_str(), best_metric_to_reach_gw);
+  					best_gw.unparse().c_str(), best_metric_to_reach_gw);
   return best_gw;
 }
 
@@ -245,10 +245,10 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 	      gw = _flows_handover.find(flow);
 	      _flows_handover.remove(flow);
 	      
-	      BRN_INFO("Flow %s and its gateway %s known from handover. Using gw %s.", flow.s().c_str(), gw.s().c_str(), gw.s().c_str());
+	      BRN_INFO("Flow %s and its gateway %s known from handover. Using gw %s.", flow.unparse().c_str(), gw.unparse().c_str(), gw.unparse().c_str());
 	    }
 	    else {
-	      BRN_INFO("Flow %s unknown => choosing a gateway", flow.s().c_str());
+	      BRN_INFO("Flow %s unknown => choosing a gateway", flow.unparse().c_str());
 	      gw = choose_gateway();
 	    }
 	    
@@ -264,22 +264,22 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 	      BRN_ERROR("Could not insert new gateway for flow");
 	    }
 	       	
-	    BRN_INFO("Inserting gw %s for flow %s (#flows = %u)", gw.s().c_str(), _flows.find(agg).s().c_str(), _flow2gw.size());
+	    BRN_INFO("Inserting gw %s for flow %s (#flows = %u)", gw.unparse().c_str(), _flows.find(agg).unparse().c_str(), _flow2gw.size());
 	  }
 	  else
 	  {
 	    if (_flows_handover.findp(flow) != NULL) {
 	      _flows_handover.remove(flow);
-	      BRN_INFO("Got a packet for handed over flow %s. Removing this handed over flow.", flow.s().c_str());
+	      BRN_INFO("Got a packet for handed over flow %s. Removing this handed over flow.", flow.unparse().c_str());
 	    }
 	    
-	    BRN_DEBUG("Using existing gw %s for flow %s (#flows = %u)", gw.s().c_str(), _flows.find(agg).s().c_str(), _flow2gw.size());
+	    BRN_DEBUG("Using existing gw %s for flow %s (#flows = %u)", gw.unparse().c_str(), _flows.find(agg).unparse().c_str(), _flow2gw.size());
 	  }
 	  
 	  // test whether the chosen gateway is really a choosable gateway
 	  if (_gw->get_gateways()->findp(gw) == NULL) {
 	    BRN_INFO("Gateway %s not known on this node. Must be known from handover and gateways from dht not refreshed yet.",
-	              gw.s().c_str());
+	              gw.unparse().c_str());
 	  }
 	  
 	  // now a gateway is set
@@ -287,7 +287,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
 	    // rewrite packet with new gateway
 	    click_ether *ether = q->ether_header();
 	    memcpy(ether->ether_dhost, gw.data(), 6);
-	    BRN_DEBUG("Rewriting packet for gateway %s and sending it to port 0", gw.s().c_str());
+	    BRN_DEBUG("Rewriting packet for gateway %s and sending it to port 0", gw.unparse().c_str());
 	    output(0).push(q);
 	    return;
 	  }
@@ -338,7 +338,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
           
           add_handover_flow_from_client(f, gw);
           
-          BRN_INFO("Handed over flow %s with gateway %s.", f.s().c_str(), gw.s().c_str());
+          BRN_INFO("Handed over flow %s with gateway %s.", f.unparse().c_str(), gw.unparse().c_str());
         
           uint32_t agg = 0;
           agg = _flow2agg.find(f, 0);
@@ -346,10 +346,10 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
             // client has sent already packets for this flow, which are buffered
             // => flush packets from buffer          
             _buffer->flush_bucket(agg);
-            BRN_INFO("Notified packet buffer to flush packets with flow %s (bucket %u)", f.s().c_str(), agg);
+            BRN_INFO("Notified packet buffer to flush packets with flow %s (bucket %u)", f.unparse().c_str(), agg);
           }
           else {
-            BRN_INFO("Flow %s not yet known. Don't need to flush packet buffer.", f.s().c_str());
+            BRN_INFO("Flow %s not yet known. Don't need to flush packet buffer.", f.unparse().c_str());
           }
         }
         p->kill();
@@ -560,19 +560,19 @@ BRNSetGatewayOnFlow::aggregate_notify(uint32_t agg, AggregateEvent event, const 
       // quick fix
       // I may get the the reverse flow packet first
       if (!flow.saddr().matches_prefix(_src_ip, _src_ip_mask)) {
-        BRN_INFO("Rewriting flow %s.", flow.s().c_str());
+        BRN_INFO("Rewriting flow %s.", flow.unparse().c_str());
         flow = IPFlowID(flow.daddr(), flow.dport(), flow.saddr(), flow.sport());
       }
       
       _flows.insert(agg, flow);
       _flow2agg.insert(flow, agg);
       
-      BRN_INFO("Adding flow: %s with agg = %u", flow.s().c_str(), agg);
+      BRN_INFO("Adding flow: %s with agg = %u", flow.unparse().c_str(), agg);
 			break;	
 		}
 		case DELETE_AGG: {
       IPFlowID flow = _flows.find(agg);
-			BRN_INFO("Removing flow: %s with agg = %u and its gw %s", flow.s().c_str(), agg, _flow2gw.find(agg).s().c_str());
+			BRN_INFO("Removing flow: %s with agg = %u and its gw %s", flow.unparse().c_str(), agg, _flow2gw.find(agg).unparse().c_str());
 			_flows.remove(agg);
       _flow2agg.remove(flow);
 			_flow2gw.remove(agg);
@@ -608,7 +608,7 @@ BRNSetGatewayOnFlow::read_handler(Element *e, void *thunk) {
 	      uint32_t agg = i.key();
 	      IPFlowID flow = gws->_flows.find(agg);
 	      //assert(flow);
-	      sa << flow.s() << "\t" << i.value().s() << "\n";
+	      sa << flow.unparse() << "\t" << i.value().unparse() << "\n";
 	  }
 	  sa << "Tracking " << (uint32_t) gws->_flow2gw.size() << " connections.\n";
 	  return sa.take_string();
@@ -618,7 +618,7 @@ BRNSetGatewayOnFlow::read_handler(Element *e, void *thunk) {
 	  sa << "Flow\t\t\t\tGateway\n";
 	  // iterate over all known gateways
 	  for (FlowsHandover::const_iterator i = gws->_flows_handover.begin(); i.live(); i++) {
-	      sa << i.key().s() << "\t" << i.value().s() << "\n";
+	      sa << i.key().unparse() << "\t" << i.value().unparse() << "\n";
 	  }
 	  sa << (uint32_t) gws->_flows_handover.size() << " connections are handed over.\n";
 	  return sa.take_string();

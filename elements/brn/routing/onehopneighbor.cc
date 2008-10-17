@@ -48,7 +48,7 @@ OneHopNeighbor::~OneHopNeighbor()
 int
 OneHopNeighbor::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  cpOptional,
 		  cpElement, "NodeIdentity", &_me,
       cpElement, "Client assoc list", &_client_assoc_lst,
@@ -87,7 +87,7 @@ OneHopNeighbor::push(int, Packet *p_in)
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
 
-  BRN_DEBUG(" * got Ethernet packet (without BRN) with destination is %s", dst_addr.s().c_str());
+  BRN_DEBUG(" * got Ethernet packet (without BRN) with destination is %s", dst_addr.unparse().c_str());
 
   if (!(_client_assoc_lst->is_associated(src_addr) || _me->isIdentical(&src_addr))) { // sender is not associated with us
     BRN_DEBUG(" * sender is not associated with us; drop packet.");

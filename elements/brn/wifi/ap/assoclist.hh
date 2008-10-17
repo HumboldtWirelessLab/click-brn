@@ -112,13 +112,13 @@ public:
     ClientInfo(client_state state, EtherAddress eth,  EtherAddress ap, 
       const String& dev_name, const String& ssid) : 
         _state(state), _eth(eth), _ap(ap), _dev_name(dev_name), _ssid(ssid), _age(0) { 
-      click_gettimeofday(&_last_updated);
+      _last_updated = Timestamp::now().timeval();
     }
-    
+
     inline client_state get_state() const {
       return (_state); 
     }
-    
+
     inline EtherAddress get_eth() const { 
       return (_eth); 
     }
@@ -163,7 +163,7 @@ public:
 
     uint32_t age() {
       struct timeval now;
-      click_gettimeofday(&now);
+      now = Timestamp::now().timeval();
       return _age + (now.tv_sec - _last_updated.tv_sec);
     }
 
@@ -221,7 +221,7 @@ public:
 
     void update(uint32_t age) {
       _age = age;
-      click_gettimeofday(&_last_updated);
+      _last_updated = Timestamp::now().timeval();
       if (_clear_counter++ >= UPDATE_CHANCES) {
         _failed_q.clear();
          _clear_counter = 0;

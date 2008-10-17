@@ -27,7 +27,7 @@ class BRN2_LinkstatInfo {
     BRN2_LinkstatInfo(EtherAddress node_address, uint32_t sequencenr, uint32_t max_sequnr)
     {
       _node_address = node_address;
-      click_gettimeofday(&_last_updated);
+      _last_updated = Timestamp::now().timeval();
       _linkprobe_squen.push_back(sequencenr);
       _max_sequnr = max_sequnr;
     }

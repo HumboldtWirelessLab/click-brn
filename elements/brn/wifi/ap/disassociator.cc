@@ -57,7 +57,7 @@ Disassociator::~Disassociator()
 int
 Disassociator::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
         cpKeywords,
         //"Ethernet", cpEtherAddress, "Ethernet address", &_ether,
         "ASSOC_RESP", cpElement, "BRNAssocResponder", &_assocresp,
@@ -102,7 +102,7 @@ Disassociator::simple_action(Packet *p_in)
   // client is not associated
   if (!_sta_tracker->update(src_addr)) {
     // TODO test if station is wireless station
-    BRN_INFO(" Station %s is not associated. Sending dissassoc.", src_addr.s().c_str());
+    BRN_INFO(" Station %s is not associated. Sending dissassoc.", src_addr.unparse().c_str());
     _assocresp->send_disassociation(src_addr, WIFI_REASON_NOT_ASSOCED);
     
     p_in->kill();
@@ -110,7 +110,7 @@ Disassociator::simple_action(Packet *p_in)
   }
 
   BRN_DEBUG(" Station %s is associated (refresh assoc list with dev %s).", 
-      src_addr.s().c_str(), device.c_str());
+      src_addr.unparse().c_str(), device.c_str());
 
   return p_in;
 }

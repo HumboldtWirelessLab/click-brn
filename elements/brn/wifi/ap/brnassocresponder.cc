@@ -70,7 +70,7 @@ int
 BRNAssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _debug = false;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
 		  cpKeywords,
 		  "DEBUG", cpInteger, "Debug", &_debug,
@@ -130,8 +130,8 @@ BRNAssocResponder::push(int, Packet *p)
   
   // Filter all packets not for us
   BRN_CHECK_EXPR_RETURN(_winfo->_bssid != addr1 || _winfo->_bssid != addr3,
-    ("received wrong packet for %s with bssid %s", addr1.s().c_str(),
-    addr3.s().c_str()), p->kill(); return;);
+    ("received wrong packet for %s with bssid %s", addr1.unparse().c_str(),
+    addr3.unparse().c_str()), p->kill(); return;);
 
   // From here up the packet is for us, packets for others are filtered.
   // look for subtype 
@@ -172,7 +172,7 @@ BRNAssocResponder::recv_disassociation(
   struct click_wifi *w = (struct click_wifi *) p->data();
   EtherAddress addr2(w->i_addr2);  // sta
 
-  BRN_DEBUG("received disassocation from %s", addr2.s().c_str());
+  BRN_DEBUG("received disassocation from %s", addr2.unparse().c_str());
 
 
   /*
@@ -190,7 +190,7 @@ BRNAssocResponder::recv_disassociation(
   if (vlan != NULL)
     vlan->remove_member(addr2);
   else
-    BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", addr2.s().c_str(), ssid.c_str());
+    BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", addr2.unparse().c_str(), ssid.c_str());
   */
 
   p->kill();
@@ -333,7 +333,7 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
 
   uint16_t associd = 0xc000 | _associd++;
 
-  BRN_DEBUG("association %s associd %d", src.s().c_str(), associd);
+  BRN_DEBUG("association %s associd %d", src.unparse().c_str(), associd);
   p->kill();
 
   uint16_t status = WIFI_STATUS_SUCCESS;
@@ -359,7 +359,7 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
       send_reassociation_response(src, status, associd);
   
     if (status == WIFI_STATUS_SUCCESS) {
-      BRN_DEBUG("successfully associated; %s\n", src.s().c_str());
+      BRN_DEBUG("successfully associated; %s\n", src.unparse().c_str());
   
       // trigger handover
 //BRNNEW      _iapp->sta_associated(src, _winfo->_bssid, current_ap, device, ssid);
@@ -371,7 +371,7 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
       if (vlan != NULL)
         vlan->add_member(src);
       else
-        BRN_ERROR("Client %s is associated with ssid %s, but no VLAN known for this SSID.", src.s().c_str(), ssid.c_str());
+        BRN_ERROR("Client %s is associated with ssid %s, but no VLAN known for this SSID.", src.unparse().c_str(), ssid.c_str());
       */
     } else {
       BRN_DEBUG("association failed.\n");
@@ -496,7 +496,7 @@ BRNAssocResponder::response_timer_hook()
     send_reassociation_response(resp->src, resp->status, resp->associd);
 
   if (resp->status == WIFI_STATUS_SUCCESS) {
-    BRN_DEBUG("successfully associated; %s\n", resp->src.s().c_str());
+    BRN_DEBUG("successfully associated; %s\n", resp->src.unparse().c_str());
 
     // trigger handover
 //BRNNEW    _iapp->sta_associated(resp->src, _winfo->_bssid, resp->current_ap, resp->device, resp->ssid);
@@ -548,7 +548,7 @@ BRNAssocResponder::send_disassociation(EtherAddress dst, uint16_t reason)
   if (vlan != NULL)
     vlan->remove_member(dst);
   else
-    BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", dst.s().c_str(), ssid.c_str());
+    BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", dst.unparse().c_str(), ssid.c_str());
   */
   
   output(0).push(p);

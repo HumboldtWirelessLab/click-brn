@@ -84,7 +84,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     val = BRNAddressInfo::query_ethernet(_dev_wlan_name + ":eth", en, this);
     if (val) {
       _me_wlan = new EtherAddress(en);
-      BRN_DEBUG(" * ether address of #1 device (wlan): %s", _me_wlan->s().c_str());
+      BRN_DEBUG(" * ether address of #1 device (wlan): %s", _me_wlan->unparse().c_str());
     }
   }
 
@@ -99,7 +99,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     val = BRNAddressInfo::query_ethernet(_dev_vlan0_name + ":eth", en, this);
     if (val) {
       _me_vlan0 = new EtherAddress(en);
-      BRN_DEBUG(" * ether address of #2 device (vlan0): %s", _me_vlan0->s().c_str());
+      BRN_DEBUG(" * ether address of #2 device (vlan0): %s", _me_vlan0->unparse().c_str());
     }
   }
 
@@ -114,7 +114,7 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     val = BRNAddressInfo::query_ethernet(_dev_vlan1_name + ":eth", en, this);
     if (val) {
       _me_vlan1 = new EtherAddress(en);
-      BRN_DEBUG(" * ether address of #3 device (vlan1): %s", _me_vlan1->s().c_str());
+      BRN_DEBUG(" * ether address of #3 device (vlan1): %s", _me_vlan1->unparse().c_str());
     }
   }
 
@@ -224,16 +224,16 @@ NodeIdentity::skipInMemoryHops(Packet *p_in)
 
   EtherAddress dest(brn_dsr->addr[index].hw.data);
 
-  BRN_DEBUG(" * test next hop: %s", dest.s().c_str());
+  BRN_DEBUG(" * test next hop: %s", dest.unparse().c_str());
   BRN_DEBUG(" * HC, Index, SL. %d %d %d", brn_dsr->dsr_hop_count, index, brn_dsr->dsr_segsleft);
 
   while (isIdentical(&dest) && (brn_dsr->dsr_segsleft > 0)) {
-    BRN_DEBUG(" * skip next hop: %s", dest.s().c_str());
+    BRN_DEBUG(" * skip next hop: %s", dest.unparse().c_str());
     brn_dsr->dsr_segsleft--;
     index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
 
     dest = EtherAddress(brn_dsr->addr[index].hw.data);
-    BRN_DEBUG(" * check next hop (maybe skip required): %s", dest.s().c_str());
+    BRN_DEBUG(" * check next hop (maybe skip required): %s", dest.unparse().c_str());
   }
 
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst

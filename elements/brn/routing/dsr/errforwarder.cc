@@ -54,7 +54,7 @@ ErrorForwarder::~ErrorForwarder()
 int
 ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "Client assoc list", &_client_assoc_lst,
@@ -120,11 +120,11 @@ ErrorForwarder::push(int port, Packet *p_in)
     EtherAddress bad_dst(ether->ether_dhost);
 
     BRN_DEBUG("* packet had bad source route with next hop %s and curr hop %s",
-        bad_dst.s().c_str(), bad_src.s().c_str());
+        bad_dst.unparse().c_str(), bad_src.unparse().c_str());
 
     if (dsr->dsr_type == BRN_DSR_RREP) {
       BRN_DEBUG("* tx error sending route reply; adding entry to blacklist for %s",
-          bad_dst.s().c_str());
+          bad_dst.unparse().c_str());
       _route_querier->set_blacklist(bad_dst, BRN_DSR_BLACKLIST_UNI_PROBABLE);
 
     } else if (dsr->dsr_type == BRN_DSR_RREQ) {
@@ -133,7 +133,7 @@ ErrorForwarder::push(int port, Packet *p_in)
       _route_querier->set_blacklist(bad_dst, BRN_DSR_BLACKLIST_UNI_PROBABLE);
     }
 
-    BRN_DEBUG("- removing link from %s to %s", bad_src.s().c_str(), bad_dst.s().c_str());
+    BRN_DEBUG("- removing link from %s to %s", bad_src.unparse().c_str(), bad_dst.unparse().c_str());
 
     // remove all links between nodes bad_src and bad_dst
     _link_table->update_both_links(bad_src, bad_dst, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
@@ -156,7 +156,7 @@ ErrorForwarder::push(int port, Packet *p_in)
         old_metric = BRN_DSR_INVALID_ROUTE_METRIC;
 
       BRN_DEBUG("- punish link from %s to %s", 
-          neighbors[i].s().c_str(), bad_dst.s().c_str());
+          neighbors[i].unparse().c_str(), bad_dst.unparse().c_str());
 
       _link_table->update_both_links(neighbors[i], bad_dst, 0, 0, old_metric);
     }
@@ -173,7 +173,7 @@ ErrorForwarder::push(int port, Packet *p_in)
 
     if(_debug)
       for (int j = 0; j < trunc_route.size(); j++) {
-        BRN_DEBUG(" trunc_route - %d  %s", j, trunc_route[j].ether_address.s().c_str());
+        BRN_DEBUG(" trunc_route - %d  %s", j, trunc_route[j].ether_address.unparse().c_str());
       }
 
     if (! trunc_route.size()) {
@@ -237,7 +237,7 @@ ErrorForwarder::push(int port, Packet *p_in)
 
     // now remove the entries from the linkcache
     BRN_DEBUG(" - removing link from %s to %s; rerr destination is %s",
-        err_src.s().c_str(), unreachable.s().c_str(), err_dst.s().c_str());
+        err_src.unparse().c_str(), unreachable.unparse().c_str(), err_dst.unparse().c_str());
 
     // XXX DSR_INVALID_HOP_METRIC isn't really an appropriate name here
     _link_table->update_both_links(err_src, unreachable, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);

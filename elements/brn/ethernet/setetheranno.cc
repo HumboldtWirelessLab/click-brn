@@ -65,7 +65,7 @@ SetEtherAnno::simple_action(Packet *p)
   click_ether *ether = (click_ether *) (p->data() + _offset);
   p->set_ether_header(ether);
 
-//  click_chatter(" * %s -> %s\n", EtherAddress(ether->ether_shost).s().c_str(), EtherAddress(ether->ether_dhost).s().c_str());
+//  click_chatter(" * %s -> %s\n", EtherAddress(ether->ether_shost).unparse().c_str(), EtherAddress(ether->ether_dhost).unparse().c_str());
 
 //click_chatter("%s\n", p->udevice_anno());
   return p;

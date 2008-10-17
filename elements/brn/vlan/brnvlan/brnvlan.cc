@@ -509,7 +509,7 @@ BRNVLAN::read_handler(Element *e, void *thunk) {
               VLANMembers *members = vlan.get_members();
               
               for (MembersConstIter l = members->begin(); l.live(); l++) {
-                sa  << " " << l.key().s();  
+                sa  << " " << l.key().unparse();  
               } 
               
               sa << "\n";

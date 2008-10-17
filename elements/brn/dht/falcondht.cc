@@ -2283,7 +2283,7 @@ FalconDHT::packet_retransmission()
 
   int retransmission_time;
 
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
 
   if ( forward_list.size() > 0 )
    BRN_DEBUG("DHT (Node:%s) : Retransmission. Size: %d",_me.unparse().c_str(), forward_list.size() );
@@ -2554,7 +2554,7 @@ void
 FalconDHT::queue_timer_hook()
 {
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   for ( int i = ( packet_queue.size() - 1 ) ; i >= 0; i--)
   {
@@ -2616,11 +2616,11 @@ FalconDHT::get_min_jitter_in_queue()
         _next_send.tv_usec = packet_queue[i]._send_time.tv_usec;
       }
     }
-   
-    click_gettimeofday(&_time_now);
+
+    _time_now = Timestamp::now().timeval();
 
     next_jitter = diff_in_ms(_next_send, _time_now);
-   
+
     if ( next_jitter <= 1 ) return( 1 );
     else return( next_jitter );   
 
@@ -2875,7 +2875,7 @@ FalconDHT::table_info(void)
   uint32_t *lease_p;
 
   struct timeval _time_now;
-  click_gettimeofday(&_time_now);
+  _time_now = Timestamp::now().timeval();
   uint32_t rel_time;
 
   sa << "Table Info ( Node: " << _me.unparse() << " )\n";

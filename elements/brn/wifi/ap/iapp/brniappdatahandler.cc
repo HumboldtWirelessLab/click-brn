@@ -59,7 +59,7 @@ BrnIappDataHandler::~BrnIappDataHandler()
 int 
 BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -149,8 +149,8 @@ BrnIappDataHandler::recv_handover_data(
   EtherAddress apNew(pHo->addr_mnew);
 
   BRN_DEBUG("received data sta %s new %s old %s (src %s -> dst %s)", 
-    client.s().c_str(), apNew.s().c_str(), apOld.s().c_str(),
-    src.s().c_str(), dst.s().c_str());
+    client.unparse().c_str(), apNew.unparse().c_str(), apOld.unparse().c_str(),
+    src.unparse().c_str(), dst.unparse().c_str());
 
   // case 1: packet is for the current node or associated client
   if (_id->isIdentical(&dst) || _assoc_list->is_associated(dst))
@@ -163,7 +163,7 @@ BrnIappDataHandler::recv_handover_data(
   // if not case 1, check if roamed: if neighter roamed nor assoc'd, discard
   AssocList::ClientInfo* pClient = _assoc_list->get_entry(client);
   BRN_CHECK_EXPR_RETURN(NULL == pClient || AssocList::ROAMED != pClient->get_state(),
-    ("station %s unknown or in unexpected state %d", dst.s().c_str(),
+    ("station %s unknown or in unexpected state %d", dst.unparse().c_str(),
       pClient ? pClient->get_state() : -1), p->kill(); return;);
   
   // Sta roamed, check in which direction the packet should flow...
@@ -177,7 +177,7 @@ BrnIappDataHandler::recv_handover_data(
   {
     EtherAddress cn(ether->ether_dhost);
     BRN_DEBUG("forwarding packet from sta %s to cn %s.", 
-      pClient->get_eth().s().c_str(), cn.s().c_str());
+      pClient->get_eth().unparse().c_str(), cn.unparse().c_str());
     
     // send the data to the cn
     send_handover_data( cn,
@@ -216,7 +216,7 @@ BrnIappDataHandler::recv_ether(Packet* p)
   if (NULL == pClient)
   {
     BRN_INFO("node %s is not a known sta, discard ether packet.", 
-      ether_dst.s().c_str());
+      ether_dst.unparse().c_str());
     p->kill();
     return;
   }
@@ -232,7 +232,7 @@ BrnIappDataHandler::recv_ether(Packet* p)
     }
     
     BRN_DEBUG("buffering not delivered packet for STA %s (roamed?).", 
-      ether_dst.s().c_str());
+      ether_dst.unparse().c_str());
     
     _assoc_list->buffer_packet(ether_dst, p); 
     p = NULL;
@@ -246,7 +246,7 @@ BrnIappDataHandler::recv_ether(Packet* p)
     // route: if the packet does not make the hop to the next node, we get
     // this message here.
     BRN_INFO("killing packet for STA %s neighter assoc'd nor roaming.", 
-      ether_dst.s().c_str());
+      ether_dst.unparse().c_str());
     p->kill();
     return;
   }
@@ -260,11 +260,11 @@ BrnIappDataHandler::recv_ether(Packet* p)
 
   EtherAddress ap_new = _assoc_list->get_ap(ether_dst);
   BRN_CHECK_EXPR_RETURN(!ap_new,
-    ("could not determine new ap for STA %s.", ether_dst.s().c_str()),
+    ("could not determine new ap for STA %s.", ether_dst.unparse().c_str()),
     p->kill();return;);
   
   BRN_DEBUG("forwarding packet for STA %s to %s.", 
-    pClient->get_eth().s().c_str(), pClient->get_ap().s().c_str());
+    pClient->get_eth().unparse().c_str(), pClient->get_ap().unparse().c_str());
   
   handle_handover_data( pClient->get_eth(), 
                         pClient->get_ap(), 
@@ -305,7 +305,7 @@ BrnIappDataHandler::handle_handover_data(
     
     AssocList::ClientInfo* pClient = _assoc_list->get_entry(sta);
     BRN_CHECK_EXPR(NULL == pClient,
-      ("client %s not found", sta.s().c_str()));
+      ("client %s not found", sta.unparse().c_str()));
 
     // Send handover route update, only once per cn
     if (pClient && !pClient->contains_cn(cn) && cn != src)
@@ -352,8 +352,8 @@ BrnIappDataHandler::send_handover_data(
   Packet*      p_in ) 
 {
   BRN_DEBUG("send data from %s to %s (sta %s, new %s, old %s)", 
-    src.s().c_str(), dst.s().c_str(), client.s().c_str(), 
-    apNew.s().c_str(), apOld.s().c_str());
+    src.unparse().c_str(), dst.unparse().c_str(), client.unparse().c_str(), 
+    apNew.unparse().c_str(), apOld.unparse().c_str());
 
   p_in = _encap->create_handover_data(dst, src, client, apNew, apOld, p_in);
 

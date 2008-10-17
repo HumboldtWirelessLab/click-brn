@@ -59,7 +59,7 @@ FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _active = true;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
 		  cpKeywords,
       "ACTIVE", cpBool, "Active", &_active,
@@ -131,13 +131,13 @@ FilterBSSID::push(int, Packet *p)
   // If not active, simply print out a debug message
   if (!_active) 
   {
-    BRN_WARN("packet with wrong bssid %s", bssid.s().c_str());
+    BRN_WARN("packet with wrong bssid %s", bssid.unparse().c_str());
 
     output(0).push(p);
     return; 
   }
 
-  BRN_INFO("packet with bssid %s send to output 1", bssid.s().c_str());
+  BRN_INFO("packet with bssid %s send to output 1", bssid.unparse().c_str());
   checked_output_push(1, p);
 }
 

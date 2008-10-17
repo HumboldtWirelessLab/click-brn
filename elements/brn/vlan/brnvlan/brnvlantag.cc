@@ -89,12 +89,12 @@ BRNVLANTag::smaction(Packet *p)
   	if (cinfo == NULL)
   	{
           if (src == _me) {
-  		      BRN_WARN("Station %s is an virtual station. Check policies anyway.", src.s().c_str());
+  		      BRN_WARN("Station %s is an virtual station. Check policies anyway.", src.unparse().c_str());
             return p;
           }
 
           // TODO
-  		  BRN_WARN("We got a packet for the unknown (not in assoc list) client %s. The source may be the service MAC. Pass it, but fix me.", src.s().c_str());
+  		  BRN_WARN("We got a packet for the unknown (not in assoc list) client %s. The source may be the service MAC. Pass it, but fix me.", src.unparse().c_str());
   		  p->kill();
   		  return NULL;
   	}
@@ -102,7 +102,7 @@ BRNVLANTag::smaction(Packet *p)
   	String ssid(cinfo->get_ssid());
   	
   	if (!(cinfo->get_state() == AssocList::ASSOCIATED && ssid != "")) {
-    	BRN_ERROR("Client %s is not associated and its ssid is %s. But a packet from it must be tagged. Maybe a packet from ARP.", src.s().c_str(), ssid.c_str());
+    	BRN_ERROR("Client %s is not associated and its ssid is %s. But a packet from it must be tagged. Maybe a packet from ARP.", src.unparse().c_str(), ssid.c_str());
     }
   	
   	// and find matching VID
@@ -113,7 +113,7 @@ BRNVLANTag::smaction(Packet *p)
 		// set VID
   		vlanh->ether_vlan_tci = htons((vid & 0x0FFF) | (ntohs(vlanh->ether_vlan_tci) & 0xF000));
 	
-		BRN_INFO("Setting vid %u on packet from %s with SSID %s", vid, src.s().c_str(), ssid.c_str());
+		BRN_INFO("Setting vid %u on packet from %s with SSID %s", vid, src.unparse().c_str(), ssid.c_str());
 	}
 	else {
 		BRN_WARN("VLAN for SSID %s not known, but requested.", ssid.c_str());	

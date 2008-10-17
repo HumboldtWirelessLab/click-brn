@@ -43,7 +43,7 @@ DstClassifier::~DstClassifier()
 int
 DstClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
                   cpElement, "NodeIdentity", &_me,
                   cpElement, "Client assoc list", &_client_assoc_lst,
                   cpOptional,
@@ -93,18 +93,18 @@ DstClassifier::push(int, Packet *p_in)
     output(1).push(p_in);
   } else {
   	if (_element != NULL) {
-	  	bool ethernet_station = HandlerCall::call_write(_element, _hname, dst_addr.s())  == 1 ? true : false;
+	  	bool ethernet_station = HandlerCall::call_write(_element, _hname, dst_addr.unparse())  == 1 ? true : false;
 	  	
 	  	if (ethernet_station) {
-	  	  BRN_DEBUG(" * packet with dst %s is for an ethernet client.", dst_addr.s().c_str());
+	  	  BRN_DEBUG(" * packet with dst %s is for an ethernet client.", dst_addr.unparse().c_str());
 	      output(2).push(p_in);
 	    } else {
-	      BRN_DEBUG(" * routing required; destination: %s.", dst_addr.s().c_str());
+	      BRN_DEBUG(" * routing required; destination: %s.", dst_addr.unparse().c_str());
 	      output(3).push(p_in);
 	    }
   	}
   	else {
-    	BRN_DEBUG(" * routing required; destination: %s.", dst_addr.s().c_str());
+    	BRN_DEBUG(" * routing required; destination: %s.", dst_addr.unparse().c_str());
     	output(2).push(p_in);
   	}
   }

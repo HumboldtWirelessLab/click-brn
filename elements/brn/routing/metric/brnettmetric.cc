@@ -58,7 +58,7 @@ BRNETTMetric::cast(const char *n)
 int
 BRNETTMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int res = cp_va_parse(conf, this, errh,
+  int res = cp_va_kparse(conf, this, errh,
     cpKeywords,
     "LT", cpElement, "LinkTable element", &_link_table, 
     cpEnd);
@@ -85,7 +85,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to,
 
   if (!from || !to) {
     click_chatter("%{element}::update_link called with %s %s\n",
-		  this, from.s().c_str(), to.s().c_str()); 
+		  this, from.unparse().c_str(), to.unparse().c_str()); 
     return;
   }
 
@@ -163,10 +163,10 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to,
   if (fwd_metric && _link_table) {
     if (!_link_table->update_link(from, to, seq, 0, fwd_metric)) {
       click_chatter("%{element} couldn't update link %s > %d > %s\n",
-                    this, from.s().c_str(), fwd_metric, to.s().c_str());
+                    this, from.unparse().c_str(), fwd_metric, to.unparse().c_str());
     } else {
       //click_chatter("XXX: %{element} update link %s > %d > %s\n",
-      //              this, from.s().c_str(), fwd_metric, to.s().c_str());
+      //              this, from.unparse().c_str(), fwd_metric, to.unparse().c_str());
     }
   }
   if (rev_metric && _link_table) {
@@ -176,10 +176,10 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to,
     }
     if (!_link_table->update_link(to, from, seq, 0, rev_metric)) {
       click_chatter("%{element} couldn't update link %s < %d < %s\n",
-                    this, from.s().c_str(), rev_metric, to.s().c_str());
+                    this, from.unparse().c_str(), rev_metric, to.unparse().c_str());
     } else {
       //click_chatter("XXX: %{element} update link %s < %d < %s\n",
-      //              this, from.s().c_str(), rev_metric, to.s().c_str());
+      //              this, from.unparse().c_str(), rev_metric, to.unparse().c_str());
     }
   }
 }

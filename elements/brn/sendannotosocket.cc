@@ -279,7 +279,7 @@ SendAnnoToSocket::handle_ip(WritablePacket *p, String &msg)
        //unsigned seqlen = payload_len - (tcph->th_off << 2);
        //int ackp = tcph->th_flags & TH_ACK;
 
-       msg += "tcp" + src.s() + ":" + String(srcp) + ">" + dst.s() + ":" + String(dstp) + ",";
+       msg += "tcp" + src.unparse() + ":" + String(srcp) + ">" + dst.unparse() + ":" + String(dstp) + ",";
        /*
        if (tcph->th_flags & TH_SYN)
 	 sa << 'S', seqlen++;
@@ -308,14 +308,14 @@ SendAnnoToSocket::handle_ip(WritablePacket *p, String &msg)
        unsigned short srcp = ntohs(udph->uh_sport);
        unsigned short dstp = ntohs(udph->uh_dport);
        //unsigned len = ntohs(udph->uh_ulen);
-       msg += "udp" + src.s() + ":" + String(srcp) + ">" + dst.s() + ":" + String(dstp) + ",";
+       msg += "udp" + src.unparse() + ":" + String(srcp) + ">" + dst.unparse() + ":" + String(dstp) + ",";
        break;
      }
 
 #define swapit(x) (_swap ? ((((x) & 0xff) << 8) | ((x) >> 8)) : (x))
   
      case IP_PROTO_ICMP: {
-       msg += "icmp" + src.s() + ">" + dst.s() + ",";
+       msg += "icmp" + src.unparse() + ">" + dst.unparse() + ",";
        //sa << src << " > " << dst << ": icmp";
        const click_icmp *icmph = p->icmp_header();
        if (icmph->icmp_type == ICMP_ECHOREPLY) {
@@ -331,7 +331,7 @@ SendAnnoToSocket::handle_ip(WritablePacket *p, String &msg)
      }
   
      default: {
-       msg += src.s() + ">" + dst.s() + ":ip-proto-" + String((int)iph->ip_p);
+       msg += src.unparse() + ">" + dst.unparse() + ":ip-proto-" + String((int)iph->ip_p);
        break;
      }
   
@@ -339,7 +339,7 @@ SendAnnoToSocket::handle_ip(WritablePacket *p, String &msg)
     
   } else {			// not first fragment
 
-    msg += src.s() + ">" + dst.s() + ":";
+    msg += src.unparse() + ">" + dst.unparse() + ":";
     switch (iph->ip_p) {
      case IP_PROTO_TCP:		msg += "tcp"; break;
      case IP_PROTO_UDP:		msg += "udp"; break;
@@ -443,7 +443,7 @@ SendAnnoToSocket::handle_brn_dsr(WritablePacket *p, String &msg)
                 EtherAddress dsr_unreachable_src(brn_dsr->body.rerr.dsr_unreachable_src.data);
                 EtherAddress dsr_unreachable_dst(brn_dsr->body.rerr.dsr_unreachable_dst.data);
                 EtherAddress dsr_msg_originator(brn_dsr->body.rerr.dsr_msg_originator.data);
-                msg = msg + "RERR(" + "un_rea_src" + dsr_unreachable_src.s() + "un_rea_dst" + dsr_unreachable_dst.s() + "origin" + dsr_msg_originator.s() + ")";
+                msg = msg + "RERR(" + "un_rea_src" + dsr_unreachable_src.unparse() + "un_rea_dst" + dsr_unreachable_dst.unparse() + "origin" + dsr_msg_originator.unparse() + ")";
             break;
             }
         case BRN_DSR_SRC:
@@ -472,9 +472,9 @@ SendAnnoToSocket::handle_brn_dsr(WritablePacket *p, String &msg)
     }
 
     EtherAddress dst(brn_dsr->dsr_dst.data);
-    msg += "dst_" + dst.s() + ",";
+    msg += "dst_" + dst.unparse() + ",";
     EtherAddress src(brn_dsr->dsr_src.data);
-    msg += "src_" + src.s() + ",";
+    msg += "src_" + src.unparse() + ",";
 
     msg += "sl_" + String((uint16_t) brn_dsr->dsr_segsleft) + ",";
     msg += "hops_" + String((uint16_t) brn_dsr->dsr_hop_count) + "(";
@@ -482,7 +482,7 @@ SendAnnoToSocket::handle_brn_dsr(WritablePacket *p, String &msg)
     for (int i = 0; i < (uint16_t) brn_dsr->dsr_hop_count; i++) 
     {
         EtherAddress hop(brn_dsr->addr[i].hw.data);
-        msg += hop.s() + ",";
+        msg += hop.unparse() + ",";
     }
     msg += "),";
 }
@@ -621,25 +621,25 @@ SendAnnoToSocket::handle_wifi(WritablePacket *p, String &msg)
     dst = EtherAddress(w->i_addr1);
     src = EtherAddress(w->i_addr2);
     bssid = EtherAddress(w->i_addr3);
-    msg = msg + _me->s() + " " + src.s() + " NODS";
+    msg = msg + _me->unparse() + " " + src.unparse() + " NODS";
     break;
   case WIFI_FC1_DIR_TODS:
     bssid = EtherAddress(w->i_addr1);
     src = EtherAddress(w->i_addr2);
     dst = EtherAddress(w->i_addr3);
-    msg = msg + _me->s() + " " + src.s() + " TODS";
+    msg = msg + _me->unparse() + " " + src.unparse() + " TODS";
     break;
   case WIFI_FC1_DIR_FROMDS:
     dst = EtherAddress(w->i_addr1);
     bssid = EtherAddress(w->i_addr2);
     src = EtherAddress(w->i_addr3);
-    msg = msg + _me->s() + " " + bssid.s() + " FROMDS";
+    msg = msg + _me->unparse() + " " + bssid.unparse() + " FROMDS";
     break;
   case WIFI_FC1_DIR_DSTODS:
     dst = EtherAddress(w->i_addr1);
     src = EtherAddress(w->i_addr2);
     bssid = EtherAddress(w->i_addr3);
-    msg = msg + _me->s() + " " + src.s() + " DSTODS";
+    msg = msg + _me->unparse() + " " + src.unparse() + " DSTODS";
     break;
   default:
     dst = EtherAddress(w->i_addr1);

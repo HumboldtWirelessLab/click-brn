@@ -42,7 +42,7 @@ DHTStorageSimple::~DHTStorageSimple()
 int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
     cpOptional,
     cpKeywords,
     "DHTROUTING", cpElement, "Routinglayer", &_dht_routing,

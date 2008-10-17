@@ -58,7 +58,7 @@ BrnIappRouteUpdateHandler::~BrnIappRouteUpdateHandler()
 int 
 BrnIappRouteUpdateHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -113,12 +113,12 @@ BrnIappRouteUpdateHandler::send_handover_routeupdate(
 {
   BRN_CHECK_EXPR_RETURN(dst == src || *_id->getMyWirelessAddress() == dst,
     ("called with invalid arguments: src %s, dst %s, sta %s, new %s, old %s", 
-    src.s().c_str(), dst.s().c_str(), sta.s().c_str(), 
-    ap_new.s().c_str(), ap_old.s().c_str()), return);
+    src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str(), 
+    ap_new.unparse().c_str(), ap_old.unparse().c_str()), return);
 
   BRN_DEBUG("send route update from %s to %s (sta %s, new %s, old %s)", 
-    src.s().c_str(), dst.s().c_str(), sta.s().c_str(), 
-    ap_new.s().c_str(), ap_old.s().c_str());
+    src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str(), 
+    ap_new.unparse().c_str(), ap_old.unparse().c_str());
 
 
   // push out
@@ -149,7 +149,7 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
   uint8_t      seq_no(pHo->seq_no);
 
   BRN_DEBUG("received route update for sta %s, new %s and old %s", 
-    sta.s().c_str(), ap_new.s().c_str(), ap_old.s().c_str());
+    sta.unparse().c_str(), ap_new.unparse().c_str(), ap_old.unparse().c_str());
   
   // Check if the link update really proceeded
   if (_debug >= BrnLogger::INFO) {
@@ -158,12 +158,12 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
     BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(ap_new, sta) 
       || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(sta, ap_new),
         ("corrupted link table, missing link from sta %s to new ap %s",
-          sta.s().c_str(), ap_new.s().c_str()));
+          sta.unparse().c_str(), ap_new.unparse().c_str()));
 
     BRN_CHECK_EXPR(BRN_DSR_ROAMED_STATION_METRIC > _link_table->get_link_metric(ap_old, sta) 
       || BRN_DSR_INVALID_ROUTE_METRIC > _link_table->get_link_metric(sta, ap_old),
         ("corrupted link table, link from sta %s to old ap %s still exists",
-          sta.s().c_str(), ap_old.s().c_str()));
+          sta.unparse().c_str(), ap_old.unparse().c_str()));
   }
   
   // get the ether header

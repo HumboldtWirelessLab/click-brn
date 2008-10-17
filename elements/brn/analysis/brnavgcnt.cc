@@ -87,7 +87,7 @@ BrnAvgCnt::simple_action(Packet *p)
   }
 
   uint32_t new_value = (*item) + 1;
-  //click_chatter(" * updating %s with %d\n", dst.s().c_str(), new_value);
+  //click_chatter(" * updating %s with %d\n", dst.unparse().c_str(), new_value);
 
   _stat_map.insert(dst, new_value);
 

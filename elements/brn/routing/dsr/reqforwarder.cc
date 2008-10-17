@@ -57,7 +57,7 @@ RequestForwarder::~RequestForwarder()
 int
 RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "DSRDecap", &_dsr_decap,
@@ -141,7 +141,7 @@ RequestForwarder::push(int, Packet *p_in)
     EtherAddress prev_node(ether->ether_shost);
 
     BRN_DEBUG(" got route request for destination %s from %s with #ID %d",
-        dst_addr.s().c_str(), prev_node.s().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+        dst_addr.unparse().c_str(), prev_node.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
 
     int last_hop_metric;
     // get the so far estimated route from rreq
@@ -172,7 +172,7 @@ RequestForwarder::push(int, Packet *p_in)
 #endif
       // estimate link metric to prev node
       int metric = _link_table->get_link_metric(prev_node, *device_addr);
-      BRN_DEBUG("* RREQ: metric to prev node (%s) is %d.", prev_node.s().c_str(), metric);
+      BRN_DEBUG("* RREQ: metric to prev node (%s) is %d.", prev_node.unparse().c_str(), metric);
 
       // the requested client is associated with this node
       if (_client_assoc_lst->is_associated(dst_addr)) {
@@ -181,7 +181,7 @@ RequestForwarder::push(int, Packet *p_in)
 
         //clients are always connected via wireless (insert an inmemory hop)
         if ( (device == _me->getVlan0DeviceName()) || (device == _me->getVlan1DeviceName()) ) {
-          BRN_DEBUG(" * addr of current node added to route(1): %s.", device_addr->s().c_str());
+          BRN_DEBUG(" * addr of current node added to route(1): %s.", device_addr->unparse().c_str());
 
           //put myself into request route; use the metric to reach the client
           request_route.push_back(RouteQuerierHop(*device_addr, BRN_DSR_MEMORY_MEDIUM_METRIC));
@@ -189,7 +189,7 @@ RequestForwarder::push(int, Packet *p_in)
           //put my wlan ether address into rreq
           request_route.push_back(RouteQuerierHop(*my_wlan_addr, 0)); // metric is not used
         } else {
-          BRN_DEBUG(" * addr of current node added to route(2): %s.", my_wlan_addr->s().c_str());
+          BRN_DEBUG(" * addr of current node added to route(2): %s.", my_wlan_addr->unparse().c_str());
 
           //put myself into request route; use the metric to reach the client
           request_route.push_back(RouteQuerierHop(*device_addr, 100)); // link to associated clients is always 100
@@ -208,7 +208,7 @@ RequestForwarder::push(int, Packet *p_in)
     BRN_DEBUG("* learned from RREQ ...");
     for (int j = 0; j < request_route.size(); j++)
       BRN_DEBUG(" RREQ - %d   %s (%d)",
-                    j, request_route[j].ether().s().c_str(), request_route[j]._metric);
+                    j, request_route[j].ether().unparse().c_str(), request_route[j]._metric);
 
     // refresh own link table
     add_route_to_link_table(request_route);
@@ -228,7 +228,7 @@ RequestForwarder::push(int, Packet *p_in)
 
     if (_me->isIdentical(&src_addr) || _client_assoc_lst->is_associated(src_addr)) {
       BRN_DEBUG("* I (=%s) sourced this RREQ; ignore., #ID %d",
-          _me->getMyWirelessAddress()->s().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+          _me->getMyWirelessAddress()->unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
       p_in->kill();
       return;
     } else if (_me->isIdentical(&dst_addr) || _client_assoc_lst->is_associated(dst_addr)) { // rreq reached destination  
@@ -241,7 +241,7 @@ RequestForwarder::push(int, Packet *p_in)
       BRN_DEBUG("* Generating route reply with source route");
       for (int j = 0; j < reply_route.size(); j++) {
         BRN_DEBUG(" - %d   %s (%d)",
-                    j, reply_route[j].ether().s().c_str(),
+                    j, reply_route[j].ether().unparse().c_str(),
                     reply_route[j]._metric);
       }
 
@@ -331,14 +331,14 @@ RequestForwarder::push(int, Packet *p_in)
         ForwardedReqVal new_frv; // new entry for _forwarded_rreq_map
 
         struct timeval current_time;
-        click_gettimeofday(&current_time);
+        current_time = Timestamp::now().timeval();
         new_frv._time_forwarded = current_time;
 
         //EtherAddress last_forwarder = EtherAddress(DSR_LAST_HOP_IP_ANNO(p_in));
         // or:
         EtherAddress last_forwarder = request_route[request_route.size()-2].ether();
 
-        BRN_DEBUG("* last_forwarder is %s", last_forwarder.s().c_str());
+        BRN_DEBUG("* last_forwarder is %s", last_forwarder.unparse().c_str());
 
         if (old_frv && old_frv->p) {
           // if we're here, then we've already forwarded this
@@ -408,7 +408,7 @@ RequestForwarder::forward_rreq(Packet *p_in)
   if (me) {
     // set the metric no my previous node
     int metric = _link_table->get_link_metric(prev_node, *me);
-    BRN_DEBUG("* append prev node (%s) to rreq with metric %d.", prev_node.s().c_str(), metric);
+    BRN_DEBUG("* append prev node (%s) to rreq with metric %d.", prev_node.unparse().c_str(), metric);
     dsr_rreq->addr[hop_count].metric = htons(metric);
   } else {
     BRN_DEBUG("* device unknown: %s", device.c_str());
@@ -469,7 +469,7 @@ void
 RequestForwarder::queue_timer_hook()
 {
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
+  curr_time = Timestamp::now().timeval();
 
   for ( int i = 0; i < _packet_queue.size(); i++)
   {
@@ -532,7 +532,7 @@ RequestForwarder::get_min_jitter_in_queue()
       }
     }
 
-    click_gettimeofday(&_time_now);
+    _time_now = Timestamp::now().timeval();
 
     next_jitter = diff_in_ms(_next_send, _time_now);
 
@@ -575,8 +575,8 @@ RequestForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
 
     if (ret)
       BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().s().c_str(), route[i].ip().s().c_str(),
-        route[i+1].ether().s().c_str(), route[i+1].ip().s().c_str(), metric);
+        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
   }
 }
 

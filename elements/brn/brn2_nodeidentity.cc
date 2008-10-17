@@ -38,7 +38,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     else {
       click_chatter("Device: %s EtherAddress: %s Type: %s",
                     brn_device->getDeviceName().c_str(),
-                    brn_device->getEtherAddress()->s().c_str(),
+                    brn_device->getEtherAddress()->unparse().c_str(),
                     brn_device->getDeviceType().c_str());
       _node_devices.push_back(brn_device);
     }

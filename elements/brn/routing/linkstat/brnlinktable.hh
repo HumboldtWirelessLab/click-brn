@@ -245,7 +245,7 @@ private:
       _seq = seq;
       _age = age;
       _permanent = permanent;
-      click_gettimeofday(&_last_updated);
+      _last_updated = Timestamp::now().timeval();
     }
 
     BrnLinkInfo(const BrnLinkInfo &p) : 
@@ -258,7 +258,7 @@ private:
 
     uint32_t age() {
       struct timeval now;
-      click_gettimeofday(&now);
+      now = Timestamp::now().timeval();
       return _age + (now.tv_sec - _last_updated.tv_sec);
     }
     void update(uint32_t seq, uint32_t age, unsigned metric) {
@@ -268,7 +268,7 @@ private:
       _metric = metric; 
       _seq = seq;
       _age = age;
-      click_gettimeofday(&_last_updated); 
+      _last_updated = Timestamp::now().timeval();
     }
 
   };

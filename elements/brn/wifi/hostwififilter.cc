@@ -57,7 +57,7 @@ HostWifiFilter::~HostWifiFilter()
 int
 HostWifiFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
         cpEthernetAddress, "Ethernet address", &_addr,
         cpElement, "wirleess_info", &_winfo,
       /* not required */
@@ -71,7 +71,7 @@ HostWifiFilter::configure(Vector<String> &conf, ErrorHandler *errh)
     return errh->error("WIRELESS_INFO element is not a WirelessInfo");
 
   if (!_addr || _addr.is_broadcast() || _addr.is_group())
-    return errh->error("Invalid ethernet address given (%s).", _addr.s().c_str());
+    return errh->error("Invalid ethernet address given (%s).", _addr.unparse().c_str());
 
   if (STRICT != _mode
     && NOADHOCBSSID != _mode
@@ -123,7 +123,7 @@ HostWifiFilter::push(int, Packet *p)
     && !addr_receiver.is_broadcast()
     && !addr_receiver.is_group()) {
     BRN_DEBUG("packet with receiver address %s send to output 1", 
-      addr_receiver.s().c_str());
+      addr_receiver.unparse().c_str());
     checked_output_push(1, p);
     return;
   }
@@ -155,9 +155,9 @@ HostWifiFilter::push(int, Packet *p)
   
   if (!bssid) {
     BRN_WARN("unable to determine bssid (a1=%s, a2=%s, a3=%s).", 
-      EtherAddress(w->i_addr1).s().c_str(),
-      EtherAddress(w->i_addr2).s().c_str(), 
-      EtherAddress(w->i_addr3).s().c_str()), 
+      EtherAddress(w->i_addr1).unparse().c_str(),
+      EtherAddress(w->i_addr2).unparse().c_str(), 
+      EtherAddress(w->i_addr3).unparse().c_str()), 
 
     p->kill();
     return;
@@ -184,13 +184,13 @@ HostWifiFilter::push(int, Packet *p)
   
   // If not active, simply print out a debug message
   if (NOBSSID == _mode) {
-    BRN_INFO("packet with wrong bssid %s", bssid.s().c_str());
+    BRN_INFO("packet with wrong bssid %s", bssid.unparse().c_str());
 
     output(0).push(p);
     return; 
   }
   
-  BRN_DEBUG("packet with bssid %s send to output 1", bssid.s().c_str());
+  BRN_DEBUG("packet with bssid %s send to output 1", bssid.unparse().c_str());
   checked_output_push(1, p);
 }
 

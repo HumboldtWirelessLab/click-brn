@@ -41,7 +41,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
     val = BRNAddressInfo::query_ethernet(_dev_info.device_name + ":eth", en, this);
     if (val) {
       _dev_info.device_etheraddress = new EtherAddress(en);
-      BRN_DEBUG(" * ether address of device : %s", _dev_info.device_etheraddress->s().c_str());
+      BRN_DEBUG(" * ether address of device : %s", _dev_info.device_etheraddress->unparse().c_str());
     }
   }
 
@@ -106,7 +106,7 @@ read_device_info(Element *e, void *)
 {
   BRN2Device *dev = (BRN2Device *)e;
   return "Device: " + dev->getDeviceName() +
-         "\nEtherAddress: " + dev->getEtherAddress()->s() +
+         "\nEtherAddress: " + dev->getEtherAddress()->unparse() +
          "\nType: " + dev->getDeviceType() + "\n";
 }
 

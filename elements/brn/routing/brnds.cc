@@ -48,7 +48,7 @@ BRNDS::~BRNDS()
 int
 BRNDS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
       cpElement, "NeighborList", &_nb_lst,
@@ -95,7 +95,7 @@ BRNDS::push(int port, Packet *p_in)
 //BRNNEW  String device(p_in->udevice_anno());
   String device("ath0");
 
-  BRN_DEBUG("* dst ethernet anno: %s", dst_anno.s().c_str());
+  BRN_DEBUG("* dst ethernet anno: %s", dst_anno.unparse().c_str());
 
   //estimate packet type
   if (brn_dsr->dsr_type == BRN_DSR_RREQ) { // broadcast packet
@@ -183,7 +183,7 @@ BRNDS::push(int port, Packet *p_in)
     } 
     else 
     {
-      BRN_WARN("* Warning: Neighbor with ether address %s unknown.", dst_anno.s().c_str());
+      BRN_WARN("* Warning: Neighbor with ether address %s unknown.", dst_anno.unparse().c_str());
       BRN_DEBUG("* LinkTable: %s", _link_table->print_links().c_str());
       BRN_DEBUG("* Neighbors: %s", _nb_lst->printNeighbors().c_str());
 

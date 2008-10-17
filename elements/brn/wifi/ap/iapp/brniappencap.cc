@@ -52,7 +52,7 @@ BrnIappEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(errh);
   
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -123,7 +123,7 @@ BrnIappEncap::create_handover_notify(
   uint8_t       seq_no)
 {
   BRN_DEBUG("Create notify sta %s new %s old %s seq %d", 
-    client.s().c_str(), apNew.s().c_str(), apOld.s().c_str(), seq_no);
+    client.unparse().c_str(), apNew.unparse().c_str(), apOld.unparse().c_str(), seq_no);
 
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
@@ -167,7 +167,7 @@ BrnIappEncap::create_handover_reply(
   uint8_t      seq_no )
 {
   BRN_DEBUG("Create reply sta %s new %s old %s seq %d", 
-    client.s().c_str(), apNew.s().c_str(), apOld.s().c_str(), seq_no);
+    client.unparse().c_str(), apNew.unparse().c_str(), apOld.unparse().c_str(), seq_no);
 
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
@@ -216,8 +216,8 @@ BrnIappEncap::create_handover_data(
     ("invalid arguments"), if (p_in) p_in->kill();return (NULL););
   
   BRN_DEBUG("Create handover data src %s dst %s (sta %s, new %s, old %s)", 
-    src.s().c_str(), dst.s().c_str(), client.s().c_str(), 
-    apNew.s().c_str(), apOld.s().c_str());
+    src.unparse().c_str(), dst.unparse().c_str(), client.unparse().c_str(), 
+    apNew.unparse().c_str(), apOld.unparse().c_str());
 
   uint16_t payload_len = p_in->length();
   WritablePacket* p = p_in->push( sizeof(click_brn_iapp) + 
@@ -264,8 +264,8 @@ BrnIappEncap::create_handover_routeupdate(
   uint8_t      seq_no)
 {
   BRN_DEBUG("Create route update from %s to %s (sta %s, new %s, old %s, seq %d)", 
-    src.s().c_str(), dst.s().c_str(), sta.s().c_str(), 
-    ap_new.s().c_str(), ap_old.s().c_str(), seq_no);
+    src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str(), 
+    ap_new.unparse().c_str(), ap_old.unparse().c_str(), seq_no);
 
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);
@@ -312,7 +312,7 @@ BrnIappEncap::create_iapp_hello(
   EtherAddress& dst(to_curr ? ap_curr : ap_cand);
 
   BRN_DEBUG("Create hello from %s to %s (client %s)", 
-    src.s().c_str(), dst.s().c_str(), sta.s().c_str());
+    src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str());
     
   // Create an empty iapp packet
   size_t size = sizeof(click_ether) + sizeof(click_brn) + sizeof(click_brn_iapp);

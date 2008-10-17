@@ -17,8 +17,8 @@
 CLICK_DECLS
 
 DHTRoutingOmni::DHTRoutingOmni():
-  _sendbuffer_timer(static_queue_timer_hook,this),
-  _lookup_timer(static_lookup_timer_hook,this)
+  _lookup_timer(static_lookup_timer_hook,this),
+  _sendbuffer_timer(static_queue_timer_hook,this)
 {
 }
 
@@ -45,7 +45,7 @@ int DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   _update_interval = 1000;                   //update interval -> 1 sec
   _min_dist = 100;                           //min. time distance between 2 packages
                                         //maybe this is only important for simulation
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
     cpOptional,
     cpKeywords,
     "LINKSTAT", cpElement, "LinkStat", &_linkstat,
@@ -89,12 +89,15 @@ void DHTRoutingOmni::set_lookup_timer()
 
 void DHTRoutingOmni::static_lookup_timer_hook(Timer *t, void *f)
 {
+  if ( t == NULL ) click_chatter("Time is NULL");
   ((DHTRoutingOmni*)f)->nodeDetection();
   ((DHTRoutingOmni*)f)->set_lookup_timer();
 }
 
 void DHTRoutingOmni::push( int port, Packet *packet )
 {
+    if ( port == 0 )
+      output(0).push(packet);
 }
 
 Packet *DHTRoutingOmni::createInfoPacket( uint8_t type )
@@ -162,8 +165,7 @@ long diff_in_ms(timeval t1, timeval t2)
 void DHTRoutingOmni::queue_timer_hook()
 {
   struct timeval curr_time;
-  click_gettimeofday(&curr_time);
-
+  curr_time = Timestamp::now().timeval();
   for ( int i = ( packet_queue.size() - 1 ) ; i >= 0; i--)
   {
     if ( diff_in_ms( packet_queue[i]._send_time, curr_time ) <= 0 )
@@ -176,7 +178,7 @@ void DHTRoutingOmni::queue_timer_hook()
     }
   }
 
-  int j = get_min_jitter_in_queue();
+  unsigned int j = get_min_jitter_in_queue();
   if ( j < _min_dist ) j = _min_dist;
 
 //    BRN_DEBUG("FalconDHT: Timer after %d ms", j );
@@ -206,7 +208,7 @@ int DHTRoutingOmni::get_min_jitter_in_queue()
       }
     }
 
-    click_gettimeofday(&_time_now);
+    _time_now = Timestamp::now().timeval();
 
     next_jitter = diff_in_ms(_next_send, _time_now);
 
@@ -249,14 +251,14 @@ DHTRoutingOmni::sendNodeInfoToAll(uint8_t type)
 
   _sendbuffer_timer.schedule_after_msec(j);
 
-  //click_chatter("DHT (Node:%s) : Packet buffered",_me.s().c_str());
+  //click_chatter("DHT (Node:%s) : Packet buffered",_me.unparse().c_str());
   
 }
 
 
 void DHTRoutingOmni::nodeDetection()
 {
-  int j,i,k,l;
+  int j,i/*,k,l*/;
 
   Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
   Vector<EtherAddress> new_neighbors;                   // new neighbors

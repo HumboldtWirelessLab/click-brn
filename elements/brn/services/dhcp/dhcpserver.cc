@@ -66,7 +66,7 @@ DHCPServer::configure(Vector<String> &conf, ErrorHandler* errh)
 {
     BRN_DEBUG("DHCPServer: Configure");
 
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
     cpOptional,
     cpEthernetAddress, "EtherAddress", &_me,
     cpIPPrefix, "address prefix", &_net_address, &_subnet_mask,   /* e.g. "10.9.0.0/16" */
@@ -117,9 +117,9 @@ DHCPServer::initialize(ErrorHandler *)
   debug_count_dht_packet = 0;
 
 //  BRN_DEBUG("Configuration %s: Address space %s/%s, Router %s, ID %s, DNS %s, "
-//    "Name %s, Domain %s", _me.s().c_str(), _net_address.s().c_str(), 
-//    _subnet_mask.s().c_str(), _router.s().c_str(), _server_ident.s().c_str(),
-//    _name_server.s().c_str(), _sname.c_str(), _domain_name.c_str());
+//    "Name %s, Domain %s", _me.unparse().c_str(), _net_address.unparse().c_str(), 
+//    _subnet_mask.unparse().c_str(), _router.unparse().c_str(), _server_ident.unparse().c_str(),
+//    _name_server.unparse().c_str(), _sname.c_str(), _domain_name.c_str());
 
   return 0;
 }
@@ -491,7 +491,7 @@ DHCPServer::handle_dhcp_discover(Packet *p_in)
     if ((req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr()))
     {
       BRN_DEBUG("DHCPServer: Client wollte IP: %s ! Diese gehoert nicht zum Subnetz %s/%s",
-        req_ip.s().c_str(), _net_address.s().c_str(), _subnet_mask.s().c_str());
+        req_ip.unparse().c_str(), _net_address.unparse().c_str(), _subnet_mask.unparse().c_str());
       BRN_DEBUG("DHCPServer: Berechne ihm ne neue");
 	
       memcpy(&(client_info->_ciaddr),"\0\0\0\0",4);
@@ -648,7 +648,7 @@ DHCPServer::handle_dhcp_request(Packet *p_in)
   if ((req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr()))
   {
     BRN_DEBUG("DHCPServer: Client wollte IP: %s ! Diese gehoert nicht zum Subnetz %s/%s",
-      req_ip.s().c_str(), _net_address.s().c_str(), _subnet_mask.s().c_str());
+      req_ip.unparse().c_str(), _net_address.unparse().c_str(), _subnet_mask.unparse().c_str());
 
     result = send_dhcp_ack(client_info,DHCPNAK);
     delete client_info;  //löschen weil es nicht zur liste dazukam (TODO)
@@ -864,7 +864,7 @@ DHCPServer::find_client_ip(DHCPClientInfo *client_info)
 
     IPAddress _tmp_ip(new_ip);
 
-    BRN_DEBUG("DHCPServer: IP: %s",_tmp_ip.s().c_str()); 
+    BRN_DEBUG("DHCPServer: IP: %s",_tmp_ip.unparse().c_str()); 
 
     memcpy(&(client_info->_ciaddr),&new_ip,4);
   }
@@ -983,18 +983,18 @@ DHCPServer::server_info(void)
  StringAccum sa;
  
  sa << "DHCP-Server-INFO\n";
- sa << "Net: " << _net_address.s() << "\n";
- sa << "Mask: " <<  _subnet_mask.s() << "\n";
- sa << "Broadcast: " << _broadcast_address.s() << "\n";
+ sa << "Net: " << _net_address.unparse() << "\n";
+ sa << "Mask: " <<  _subnet_mask.unparse() << "\n";
+ sa << "Broadcast: " << _broadcast_address.unparse() << "\n";
 
- sa << "Router: " << _router.s() << "\n";
+ sa << "Router: " << _router.unparse() << "\n";
  sa << "Server: " << _server_ident << "\n";         //IP DHCP-Server
- sa << "DNS: " << _name_server.s() << "\n";        //IP
+ sa << "DNS: " << _name_server.unparse() << "\n";        //IP
 
  sa << "Domain: " << _domain_name << "\n";
  sa << "Queuesize: " << client_info_list.size() << "\n\n";
 
- sa << "Range: " << start_ip_range.s() << "\n\n";
+ sa << "Range: " << start_ip_range.unparse() << "\n\n";
  
  sa << "DHT Packet in Queue: " << debug_count_dht_packet << "\n"; 
  sa << "DHCP Pcket in Queue: " << debug_count_dhcp_packet << "\n"; 

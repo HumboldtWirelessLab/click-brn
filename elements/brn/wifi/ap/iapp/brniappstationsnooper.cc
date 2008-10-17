@@ -67,7 +67,7 @@ BrnIappStationSnooper::set_optimize(bool optimize)
 int 
 BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -195,7 +195,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
     to_ds = false;
   else {
     BRN_WARN("received management frame from %s to %s with invalid bssid %s", 
-      src.s().c_str(), dst.s().c_str(), bssid.s().c_str());
+      src.unparse().c_str(), dst.unparse().c_str(), bssid.unparse().c_str());
     return;
   }
   
@@ -208,7 +208,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
   case WIFI_FC0_SUBTYPE_ASSOC_REQ:
     {
       BRN_INFO("received (re)assocation request sta %s ap %s", 
-        sta.s().c_str(), ap.s().c_str());
+        sta.unparse().c_str(), ap.unparse().c_str());
       // Do not process since it may not be successfull
     }
     break;
@@ -216,7 +216,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
   case WIFI_FC0_SUBTYPE_REASSOC_RESP:
     {
       BRN_INFO("received (re)assocation response sta %s ap %s", 
-        sta.s().c_str(), ap.s().c_str());
+        sta.unparse().c_str(), ap.unparse().c_str());
 
       // Check the status and remember it
       uint8_t *ptr = (uint8_t *) p->data() + sizeof(struct click_wifi) + 2;
@@ -242,7 +242,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
     break;
   case WIFI_FC0_SUBTYPE_DISASSOC:
     {
-      BRN_INFO("received disassocation from %s", sta.s().c_str());
+      BRN_INFO("received disassocation from %s", sta.unparse().c_str());
 
       // Remember the disassoc
       _sta_tracker->sta_disassociated(sta);
@@ -289,13 +289,13 @@ BrnIappStationSnooper::peek_data(Packet *p)
   String dev("ath0");
   
   BRN_DEBUG("seen frame for STA %s with BSSID %s and CN %s", 
-    sta.s().c_str(), bssid.s().c_str(), cn.s().c_str());
+    sta.unparse().c_str(), bssid.unparse().c_str(), cn.unparse().c_str());
   
   // Filter tx feedback
   BRN_CHECK_EXPR_RETURN((WIFI_FC1_DIR_FROMDS == (wifi->i_fc[1] & WIFI_FC1_DIR_MASK))
     && _id->isIdentical(&bssid),
     ("seen tx feedbacked frame for STA %s with BSSID %s and CN %s", 
-      sta.s().c_str(), bssid.s().c_str(), cn.s().c_str()), return;);
+      sta.unparse().c_str(), bssid.unparse().c_str(), cn.unparse().c_str()), return;);
   
   // Check for roaming
   AssocList::client_state state = _assoc_list->get_state(sta);

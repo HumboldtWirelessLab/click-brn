@@ -74,7 +74,7 @@ BrnLogger::get_id(const Element* elem)
     return get_na();
   
   NodeIdentity* id = (NodeIdentity*)elem2;
-  _id_map->insert(router,id->getMyWirelessAddress()->s());
+  _id_map->insert(router,id->getMyWirelessAddress()->unparse());
   
 */  return (*_id_map->findp(router));
 }

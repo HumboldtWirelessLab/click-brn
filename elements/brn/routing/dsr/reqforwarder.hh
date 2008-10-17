@@ -66,7 +66,7 @@ class RequestForwarder : public Element {
      {
        assert(p);
        _p=p;
-       click_gettimeofday(&_send_time);
+       _send_time = Timestamp::now().timeval();
        _send_time.tv_sec += ( time_diff / 1000 );
        _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
        while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow

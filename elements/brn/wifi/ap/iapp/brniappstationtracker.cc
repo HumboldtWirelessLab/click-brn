@@ -70,7 +70,7 @@ int
 BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int stale_period = 120;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
       cpKeywords,
       "DEBUG", cpInteger, "Debug", &_debug,
@@ -159,7 +159,7 @@ BrnIappStationTracker::clear_stale()
       update_linktable(e, EtherAddress(), *_id->getMyWirelessAddress());
       
       // remove from assoclist and linktable
-      BRN_INFO("client %s timed out, removed.", e.s().c_str());
+      BRN_INFO("client %s timed out, removed.", e.unparse().c_str());
       _assoc_list->remove(e);
       
       // send disassoc with reason expired
@@ -203,7 +203,7 @@ BrnIappStationTracker::push(int, Packet* p)
       return;
 
     BRN_INFO("peeking hello curr %s cand %s (client %s)", 
-      ap_curr.s().c_str(), ap_cand.s().c_str(), sta.s().c_str());
+      ap_curr.unparse().c_str(), ap_cand.unparse().c_str(), sta.unparse().c_str());
   
     // Update link table
     update_linktable(sta, ap_curr);
@@ -237,7 +237,7 @@ BrnIappStationTracker::push(int, Packet* p)
     }
 
     BRN_INFO("peeking packet type %d (new %s, old %s, sta %s)", 
-      pIapp->type, apNew.s().c_str(), apOld.s().c_str(), client.s().c_str());
+      pIapp->type, apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
   
     p->kill();
   
@@ -252,12 +252,12 @@ BrnIappStationTracker::push(int, Packet* p)
       BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(apNew, client) 
         || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(client, apNew),
         ("corrupted link table, missing link from sta %s to new ap %s",
-          client.s().c_str(), apNew.s().c_str()));
+          client.unparse().c_str(), apNew.unparse().c_str()));
   
       BRN_CHECK_EXPR(BRN_DSR_ROAMED_STATION_METRIC > _link_table->get_link_metric(apOld, client) 
         || BRN_DSR_INVALID_ROUTE_METRIC > _link_table->get_link_metric(client, apOld),
         ("corrupted link table, link from sta %s to old ap %s still exists",
-          client.s().c_str(), apOld.s().c_str()));
+          client.unparse().c_str(), apOld.unparse().c_str()));
     }
   }  
 }
@@ -281,7 +281,7 @@ BrnIappStationTracker::sta_associated(
   // Sanity check  
   BRN_CHECK_EXPR(_debug && ap_old && AssocList::NON_EXIST == state,
     ("sta %s reassoc'd but not known in advance. Promisc forgotten?", 
-      sta.s().c_str()));
+      sta.unparse().c_str()));
 
   // Check the old ap, if not set (like in the assoc case), lookup in own data...
   EtherAddress stored_ap_old = _assoc_list->get_ap(sta);
@@ -299,7 +299,7 @@ BrnIappStationTracker::sta_associated(
   if (_id->isIdentical(&ap_new)) 
   {
     BRN_INFO("sta %s associated with %s on dev %s (old %s)", 
-      sta.s().c_str(), ap_new.s().c_str(), device.c_str(), ap_old.s().c_str());
+      sta.unparse().c_str(), ap_new.unparse().c_str(), device.c_str(), ap_old.unparse().c_str());
 
     // cleanse linktable, remove all links to/from the associating station
     _link_table->remove_node(sta);
@@ -354,7 +354,7 @@ void
 BrnIappStationTracker::sta_disassociated(
   EtherAddress  sta)
 {
-  BRN_INFO("station %s disassociated", sta.s().c_str());
+  BRN_INFO("station %s disassociated", sta.unparse().c_str());
 
   // Update link table
   update_linktable(sta, EtherAddress(), *_id->getMyWirelessAddress());
@@ -373,7 +373,7 @@ BrnIappStationTracker::sta_roamed(
   EtherAddress apOld )
 {
   BRN_INFO("station %s roamed from %s to %s", 
-    client.s().c_str(), apNew.s().c_str(), apOld.s().c_str());
+    client.unparse().c_str(), apNew.unparse().c_str(), apOld.unparse().c_str());
 
   // Update link table
   update_linktable(client, apNew, apOld); 
@@ -389,7 +389,7 @@ BrnIappStationTracker::sta_roamed(
     _assoc_list->roamed(client, apNew, apOld, SEQ_NO_INF);
     
     BRN_INFO("salvaged %d packets for sta %s during handover", 
-      pl.size(), client.s().c_str());
+      pl.size(), client.unparse().c_str());
   
     // Send buffered packets to the new mesh node
     for (;0 < pl.size(); pl.pop_front()) {
@@ -442,10 +442,10 @@ BrnIappStationTracker::filter_buffered_packet(
   EtherAddress sta_ap(pClient->get_ap());
   BRN_CHECK_EXPR(!_id->isIdentical(&sta_ap),
     ("sta %s has ap %s, which is different from me", 
-    src_addr.s().c_str(), pClient->get_ap().s().c_str()));
+    src_addr.unparse().c_str(), pClient->get_ap().unparse().c_str()));
 
   BRN_INFO("filtering buffered packet for STA %s and send it to old ap %s", 
-    pClient->get_eth().s().c_str(), pClient->get_old_ap().s().c_str());
+    pClient->get_eth().unparse().c_str(), pClient->get_old_ap().unparse().c_str());
   
   // Otherwise send the packet to the former ap instead of delaying it
   _data_handler->handle_handover_data(pClient->get_eth(), 
@@ -488,19 +488,19 @@ BrnIappStationTracker::update_linktable(
     ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        sta.s().c_str(), ap_new.s().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+        sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
   
     ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_STATION_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        ap_new.s().c_str(), sta.s().c_str(), BRN_DSR_STATION_METRIC);
+        ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_STATION_METRIC);
   }
   
   if (ap_old) {
     ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        sta.s().c_str(), ap_old.s().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+        sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
   
     // if not optimizing or the sta has no new ap, discart from route table
     int linkmetric_old_to_sta = BRN_DSR_ROAMED_STATION_METRIC;
@@ -513,7 +513,7 @@ BrnIappStationTracker::update_linktable(
     ret &= _link_table->update_link(ap_old, sta, 0, 0, linkmetric_old_to_sta);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        ap_old.s().c_str(), sta.s().c_str(), linkmetric_old_to_sta);
+        ap_old.unparse().c_str(), sta.unparse().c_str(), linkmetric_old_to_sta);
   }
   
   return (ret);
@@ -521,22 +521,22 @@ BrnIappStationTracker::update_linktable(
 //  bool ret = _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_ROAMED_STATION_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      sta.s().c_str(), ap_old.s().c_str(), BRN_DSR_ROAMED_STATION_METRIC);
+//      sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_ROAMED_STATION_METRIC);
 //
 //  ret = _link_table->update_link(ap_old, sta, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      ap_old.s().c_str(), sta.s().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+//      ap_old.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
 //
 //  ret = _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      sta.s().c_str(), ap_new.s().c_str(), BRN_DSR_STATION_METRIC);
+//      sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_STATION_METRIC);
 //
 //  ret = _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      ap_new.s().c_str(), sta.s().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+//      ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -553,7 +553,7 @@ BrnIappStationTracker::disassoc_all(int reason)
       update_linktable(e, EtherAddress(), *_id->getMyWirelessAddress());
 
       // remove from assoclist and linktable
-      BRN_INFO("client %s disassociated", e.s().c_str());
+      BRN_INFO("client %s disassociated", e.unparse().c_str());
       _assoc_list->remove(e);
       
       // send disassoc with reason expired

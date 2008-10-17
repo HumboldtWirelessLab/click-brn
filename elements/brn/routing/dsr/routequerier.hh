@@ -67,7 +67,7 @@ public:
     BufferedPacket(Packet *p) {
       assert(p);
       _p=p;
-      click_gettimeofday(&_time_added);
+      _time_added = Timestamp::now().timeval();
     }
     void check() const { assert(_p); }
   };
@@ -166,7 +166,7 @@ public:
       _times_issued = 1;
       _backoff_interval = BRN_DSR_RREQ_DELAY1;
 
-      click_gettimeofday(&_time_last_issued);
+      _time_last_issued = Timestamp::now().timeval();
 
       check();
     }

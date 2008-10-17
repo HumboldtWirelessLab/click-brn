@@ -43,7 +43,7 @@ DHCPPrint::~DHCPPrint()
 int
 DHCPPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       cpOptional,
       cpString, "label", &_label,
       cpEnd) < 0)
@@ -135,10 +135,10 @@ DHCPPrint::simple_action(Packet *p_in)
 
   click_chatter("* Flags (flags): 0x%x\n", ntohs(dhcp->flags));
 
-  click_chatter("* Client IP address (if already in use) (ciaddr): %s\n", IPAddress(dhcp->ciaddr).s().c_str());
-  click_chatter("* Client IP address (yiaddr): %s\n", IPAddress(dhcp->yiaddr).s().c_str());
-  click_chatter("* Next server IP address(siaddr): %s\n", IPAddress(dhcp->siaddr).s().c_str());
-  click_chatter("* DHCP relay agent IP address(giaddr): %s\n", IPAddress(dhcp->giaddr).s().c_str());
+  click_chatter("* Client IP address (if already in use) (ciaddr): %s\n", IPAddress(dhcp->ciaddr).unparse().c_str());
+  click_chatter("* Client IP address (yiaddr): %s\n", IPAddress(dhcp->yiaddr).unparse().c_str());
+  click_chatter("* Next server IP address(siaddr): %s\n", IPAddress(dhcp->siaddr).unparse().c_str());
+  click_chatter("* DHCP relay agent IP address(giaddr): %s\n", IPAddress(dhcp->giaddr).unparse().c_str());
 
   click_chatter("* Client MAC-address (chaddr): %s\n", print_hw_addr(dhcp->htype, dhcp->hlen, dhcp->chaddr));
 	

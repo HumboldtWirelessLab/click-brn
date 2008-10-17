@@ -205,7 +205,7 @@ static String
 read_ether_src_handler(Element *e, void *)
 {
   EtherIpAddrRewriter *rq = (EtherIpAddrRewriter *)e;
-  return rq->m_addrEtherSrc.s() + "\n";
+  return rq->m_addrEtherSrc.unparse() + "\n";
 }
 
 static int 
@@ -225,7 +225,7 @@ static String
 read_ether_dst_handler(Element *e, void *)
 {
   EtherIpAddrRewriter *rq = (EtherIpAddrRewriter *)e;
-  return rq->m_addrEtherDst.s() + "\n";
+  return rq->m_addrEtherDst.unparse() + "\n";
 }
 
 static int 
@@ -245,7 +245,7 @@ static String
 read_ip_src_handler(Element *e, void *)
 {
   EtherIpAddrRewriter *rq = (EtherIpAddrRewriter *)e;
-  return rq->m_addrIpSrc.s() + "\n";
+  return rq->m_addrIpSrc.unparse() + "\n";
 }
 
 static int 
@@ -265,7 +265,7 @@ String
 read_ip_dst_handler(Element *e, void *)
 {
   EtherIpAddrRewriter *rq = (EtherIpAddrRewriter *)e;
-  return rq->m_addrIpDst.s() + "\n";
+  return rq->m_addrIpDst.unparse() + "\n";
 }
 
 static int 

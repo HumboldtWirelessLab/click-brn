@@ -44,7 +44,7 @@ ToThisNode::~ToThisNode()
 int
 ToThisNode::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  cpOptional,
 		  cpElement, "NodeIdentity", &_id,
 		  cpEnd) < 0)

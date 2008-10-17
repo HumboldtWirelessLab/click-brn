@@ -68,7 +68,7 @@ NeighborList::simple_action(Packet *p_in)
     String device="";
     EtherAddress nb_node(ether->ether_shost);
 
-    //  BRN_DEBUG(" * NeighborList %s ::setting %s -> %s\n", id().c_str(), nb_node.s().c_str(), device.c_str());
+    //  BRN_DEBUG(" * NeighborList %s ::setting %s -> %s\n", id().c_str(), nb_node.unparse().c_str(), device.c_str());
     // dirty HACK, TODO
     if (device == "")
       device = String("ath0");
@@ -98,7 +98,7 @@ NeighborList::printNeighbors()
   StringAccum sa;
   for (NBMap::iterator i = _nb_list->begin(); i.live(); i++) {
     NeighborInfo &nb_info = i.value();
-    sa << " * nb: " << nb_info._eth.s() << " via device " << nb_info._dev_name << " reachable.\n";
+    sa << " * nb: " << nb_info._eth.unparse() << " via device " << nb_info._dev_name << " reachable.\n";
   }
   return sa.take_string();
 }
@@ -107,14 +107,14 @@ int
 NeighborList::insert(EtherAddress eth, String dev_name) 
 {
   if (!(eth && dev_name)) {
-    BRN_WARN("* You idiot, you tried to insert %s, %s", eth.s().c_str(), dev_name.c_str());
+    BRN_WARN("* You idiot, you tried to insert %s, %s", eth.unparse().c_str(), dev_name.c_str());
     return -1;
   }
 
   NeighborInfo *nb_info = _nb_list->findp(eth);
   if (!nb_info) {
     _nb_list->insert(eth, NeighborInfo(eth));
-    BRN_DEBUG(" * new entry added2: %s, %s", eth.s().c_str(), dev_name.c_str());
+    BRN_DEBUG(" * new entry added2: %s, %s", eth.unparse().c_str(), dev_name.c_str());
     nb_info = _nb_list->findp(eth);
   }
   nb_info->_dev_name = dev_name;

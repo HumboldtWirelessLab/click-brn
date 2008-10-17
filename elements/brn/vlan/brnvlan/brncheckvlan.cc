@@ -94,7 +94,7 @@ BRNCheckVLAN::smaction(Packet *p) {
   String dst_ssid = _assoc_list->get_ssid(dst);
   uint16_t dst_vid = _brn_vlans->get_vlan(dst_ssid);
 
-  BRN_INFO("Getting packet to %s (%s equals vid %u) with vid %u.", dst.s().c_str(), dst_ssid.c_str(), dst_vid, vlanid);
+  BRN_INFO("Getting packet to %s (%s equals vid %u) with vid %u.", dst.unparse().c_str(), dst_ssid.c_str(), dst_vid, vlanid);
 
   // TODO
   if (dst == _me) {
