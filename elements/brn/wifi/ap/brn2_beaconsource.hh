@@ -4,7 +4,7 @@
 #include <clicknet/ether.h>
 
 #include <elements/brn/vlan/brnvlan/brnvlan.hh>
-#include "../brn2_setchannel.hh"
+#include "elements/brn/wifi/brn2_setchannel.hh"
 
 CLICK_DECLS
 

@@ -32,6 +32,7 @@
 #include "brn2_beaconsource.hh"
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
+#include "elements/brn/wifi/brn2_setchannel.hh"
 
 CLICK_DECLS
 
