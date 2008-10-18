@@ -98,17 +98,25 @@ IPRouteTable::cast(const char *name)
 int
 IPRouteTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    int before = errh->nerrors();
-    IPRoute r;
+    int r = 0, r1, eexist = 0;
+    IPRoute route;
     for (int i = 0; i < conf.size(); i++) {
-	if (cp_ip_route(conf[i], &r, false, this)
-	    && r.port >= 0 && r.port < noutputs())
-	    (void) add_route(r, false, 0, errh);
-	else
+	if (cp_ip_route(conf[i], &route, false, this)
+	    && route.port >= 0 && route.port < noutputs()) {
+	    if ((r1 = add_route(route, false, 0, errh)) < 0) {
+		if (r1 == -EEXIST)
+		    ++eexist;
+		else
+		    r = r1;
+	    }
+	} else {
 	    errh->error("argument %d should be 'ADDR/MASK [GATEWAY] OUTPUT'", i+1);
+	    r = -EINVAL;
+	}
     }
-
-    return (errh->nerrors() != before ? -1 : 0);
+    if (eexist)
+	errh->warning("%d %s replaced by later versions", eexist, eexist > 1 ? "routes" : "route");
+    return r;
 }
 
 int
@@ -189,6 +197,8 @@ IPRouteTable::run_command(int command, const String &str, Vector<IPRoute>* old_r
 	errh->error("conflict with existing route '%s'", old_route.unparse().c_str());
     if (r == -ENOENT && errh->nerrors() == before)
 	errh->error("route '%s' not found", route.unparse().c_str());
+    if (r == -ENOMEM && errh->nerrors() == before)
+	errh->error("no memory to store route '%s'", route.unparse().c_str());
     return r;
 }
 
