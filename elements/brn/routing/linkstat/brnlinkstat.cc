@@ -471,8 +471,7 @@ BRNLinkStat::send_probe()
 
   // Piggybag dht stuff
   int dht_payload_size = 0;
-//BRNNEW
-  /*
+
   if (_dht) {
     uint8_t *dht_values;
     dht_payload_size = _dht->getNextDhtEntries(&dht_values);
@@ -489,7 +488,7 @@ BRNLinkStat::send_probe()
       dht_payload_size = 0;
     }
   }
-*/
+
   ptr += dht_payload_size;
 
   // dht stuff size
@@ -498,15 +497,11 @@ BRNLinkStat::send_probe()
   // Piggybag dht stuff
   int cs_payload_size = 0;
 
-//BRNNEW
-/*
   if (_cansel)
   {
     cs_payload_size = _cansel->writeCsPayloadToLinkProbe(ptr, (unsigned int)(end - ptr));
     // additional dht stuff
     if (ptr + cs_payload_size <= end) {
-
-     
       char buffer[250];
 
 //    BRN_DEBUG("BRNLinkStat: got and send Linkprop-Info: %s", buffer);
@@ -515,7 +510,7 @@ BRNLinkStat::send_probe()
       cs_payload_size = 0;
     }
   }
-*/
+
   ptr += cs_payload_size;
 
   // dht stuff size
@@ -790,11 +785,9 @@ BRNLinkStat::simple_action(Packet *p)
   }
 
   // dht stuff size
-
   int dht_payload_size = lp->_dht_payload_size;
 
-//BRNNEW
-  /*if (_dht && (dht_payload_size > 0) ) {
+  if (_dht && (dht_payload_size > 0) ) {
     char buffer[250];
 
     for ( int index = 0;  index < dht_payload_size; index ++ )
@@ -805,13 +798,12 @@ BRNLinkStat::simple_action(Packet *p)
     _dht->processDhtPayloadFromLinkProbe(ptr, dht_payload_size);
     ptr += dht_payload_size * sizeof(uint8_t);
   }
-*/
+
   // cs stuff size
 
   int cs_payload_size = lp->_cs_payload_size;
 
-//BRNNEW  if (_cansel && (cs_payload_size > 0) ) {
-//BRNNEW The next was already comment out
+  if (_cansel && (cs_payload_size > 0) ) {
  /*
     char buffer[250];
 
@@ -820,12 +812,11 @@ BRNLinkStat::simple_action(Packet *p)
 
     BRN_DEBUG("receive Linkprop-Info: %s", buffer);
  */
-//BRNNEW
-  /*    EtherAddress tmp_add(eh->ether_shost);
+   EtherAddress tmp_add(eh->ether_shost);
     _cansel->readCsPayloadFromLinkProbe(tmp_add, ptr, cs_payload_size);
     ptr += cs_payload_size * sizeof(uint8_t);
   }
-*/
+
   int link_number = 0;
   // fetch link entries
   while (ptr < end 
@@ -915,13 +906,12 @@ BRNLinkStat::read_bcast_stats(bool with_pos)
 
     int delta = -1;
     uint32_t traffic_cnt = 0;
-//BRNNEW
-    /*
+
     if (_packetCnt) {
       traffic_cnt = _packetCnt->get_traffic_count(ether, delta);
       //_packetCnt->reset();
     }
-*/
+
     for (int x = 0; x < pl->_probe_types.size(); x++) {
       sa << "\t\t<link_info size='" << pl->_probe_types[x]._size << "'";
       sa << " rate='" << pl->_probe_types[x]._rate << "'";
@@ -945,13 +935,11 @@ BRNLinkStat::read_bcast_stats(bool with_pos)
 
   sa << "</entry>\n";
   //sa << "</entries>";
-//BRNNEW
-  /*
+
   if (_packetCnt) {
     _packetCnt->reset();
   }
 
-*/
   return sa.take_string();
 }
 

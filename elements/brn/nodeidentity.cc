@@ -179,8 +179,8 @@ NodeIdentity::get_link_table()
   return (_link_table);
 }
 
-//BRNNEW
-/*int
+
+int
 NodeIdentity::findOwnIdentity(const RouteQuerierRoute &r)
 {
   for (int i=0; i<r.size(); i++) {
@@ -189,7 +189,7 @@ NodeIdentity::findOwnIdentity(const RouteQuerierRoute &r)
   }
   return -1;
 }
-*/
+
 EtherAddress *
 NodeIdentity::getEthernetAddress(String dev_name)
 {

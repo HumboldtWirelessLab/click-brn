@@ -57,6 +57,8 @@ RequestForwarder::~RequestForwarder()
 int
 RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _iapp = NULL;
+
   if (cp_va_parse(conf, this, errh,
       cpOptional,
       cpElement, "NodeIdentity", &_me,
@@ -88,8 +90,10 @@ RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_client_assoc_lst || !_client_assoc_lst->cast("AssocList")) 
     return errh->error("ClientAssocList not specified");
 
-//BRNNEW  if (!_iapp || !_iapp->cast("BrnIappStationTracker"))
-//BRNNEW    return errh->error("BrnIappStationTracker not specified");
+  if ( _iapp ) {
+    if ( !_iapp->cast("BrnIappStationTracker") )
+      return errh->error("BrnIappStationTracker not specified");
+  }
 
   return 0;
 }
@@ -292,14 +296,14 @@ RequestForwarder::push(int, Packet *p_in)
         return;
       } // ttl is decremented in forward_rreq
 */	
-/*BRNNEW      if (_me->findOwnIdentity(request_route) != -1) { // I am already listed
+      if (_me->findOwnIdentity(request_route) != -1) { // I am already listed
         // I'm in the route somewhere other than at the end
         BRN_DEBUG("* I'm already listed; killing packet, #ID %d",
             ntohs(brn_dsr->body.rreq.dsr_id));
         p_in->kill();
         return;
       }
-*/
+
       // check to see if we've seen this request lately, or if this
       // one is better
       ForwardedReqKey frk(src_addr, dst_addr, ntohs(dsr_rreq.dsr_id));

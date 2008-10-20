@@ -30,7 +30,7 @@
 #include <click/string.hh>
 #include <click/straccum.hh>
 #include "brn.h"
-//BRNNEW #include "brnlinktable.hh"
+#include "elements/brn/routing/linkstat/brnlinktable.hh"
 #include <stdarg.h>
 
 CLICK_DECLS

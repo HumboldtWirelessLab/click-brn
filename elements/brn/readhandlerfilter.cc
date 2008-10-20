@@ -30,6 +30,7 @@
 #include <click/handlercall.hh>
 #include <click/notifier.hh>
 #include <click/confparse.hh>
+#include <click/error.hh>
 
 #include "elements/brn/common.hh"
 CLICK_DECLS
@@ -66,7 +67,7 @@ ReadHandlerFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 ReadHandlerFilter::initialize(ErrorHandler *errh)
 {
-/*BRNNEW  if (input_is_pull(0) != output_is_pull(0))
+  if (input_is_pull(0) != output_is_pull(0))
     errh->error("ReadHandlerFilter: Input 0 must have the processing of output 0.");
   
   if (noutputs() > 1 && !output_is_push(1))
@@ -79,7 +80,7 @@ ReadHandlerFilter::initialize(ErrorHandler *errh)
     return errh->error("out of memory!");
   for (int i = 0; i < ninputs(); i++)
     _signals[i] = Notifier::upstream_empty_signal(this, i, 0);
-*/
+
   return 0;
 }
 
@@ -160,8 +161,7 @@ write_param(const String &in_s, Element *e, void *vparam,
   case H_DEBUG: {    //debug
     int debug;
     if (!cp_integer(s, &debug)) 
-      //BRNNEW return errh->error("debug parameter must be boolean");
-      return 0;
+      return errh->error("debug parameter must be boolean");
       
     f->_debug = debug;
     break;

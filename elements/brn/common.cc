@@ -29,7 +29,7 @@
 #include "common.hh"
 
 #include <click/router.hh>
-//BRNNEW #include "nodeidentity.hh"
+#include "nodeidentity.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,14 +69,14 @@ BrnLogger::get_id(const Element* elem)
     break;
   }
 
-//BRNNEW
-/*  if (NULL == elem2 || !elem2->cast("NodeIdentity"))
+
+  if (NULL == elem2 || !elem2->cast("NodeIdentity"))
     return get_na();
   
   NodeIdentity* id = (NodeIdentity*)elem2;
   _id_map->insert(router,id->getMyWirelessAddress()->unparse());
   
-*/  return (*_id_map->findp(router));
+  return (*_id_map->findp(router));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

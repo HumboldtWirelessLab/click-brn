@@ -57,7 +57,7 @@ BRNCandidateSelector::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
        return -1;
        
-  click_chatter("My Address: %s",_me.s().c_str());
+  click_chatter("My Address: %s",_me.unparse().c_str());
   return 0;
 }
 
@@ -146,7 +146,7 @@ unsigned int BRNCandidateSelector::writeCsPayloadToLinkProbe(uint8_t *ptr, unsig
   memcpy(ptr+size, &val_8, sizeof(val_8));
   size += sizeof(val_8);
 
-  //click_chatter("node: %s can: %d",_me.s().c_str(),val_8);
+  //click_chatter("node: %s can: %d",_me.unparse().c_str(),val_8);
 
   for( int i = 0; i < _cand.size(); i++ )
   {
@@ -234,7 +234,7 @@ void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint
   memcpy(&src_id, ptr + size, sizeof(src_id));
   size += sizeof(src_id);
 
-  click_chatter("LINKPROBEID: ME: %s SRC: %s id: %d",_me.s().c_str(),source.s().c_str(),src_id);
+  click_chatter("LINKPROBEID: ME: %s SRC: %s id: %d",_me.unparse().c_str(),source.unparse().c_str(),src_id);
 
   add_recv_linkprobe(source, src_id);
 
@@ -242,7 +242,7 @@ void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint
   size += sizeof(val_8);
   cand_size = val_8;
 
-  //click_chatter("----------------------------node %s: Linkprobe from %s with %d Candidates",_me.s().c_str(),source.s().c_str(),cand_size);
+  //click_chatter("----------------------------node %s: Linkprobe from %s with %d Candidates",_me.unparse().c_str(),source.unparse().c_str(),cand_size);
 
   for( unsigned int i = 0; i < cand_size; i++ )
   {
@@ -258,7 +258,7 @@ void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint
     size += sizeof(val_16);
     count_lp = val_16;
 
-    //click_chatter("----------------------------node %s: candidate %s with %d Linkprobes",_me.s().c_str(),cand_addr.s().c_str(),count_lp);
+    //click_chatter("----------------------------node %s: candidate %s with %d Linkprobes",_me.unparse().c_str(),cand_addr.unparse().c_str(),count_lp);
 
     if ( cand_addr == _me )
     {
@@ -282,7 +282,7 @@ void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint
       if ( count_lp > 0 )
       {
 
-        //click_chatter("---------------------------node %s: thats me. First LP: %d",_me.s().c_str(),first_lp);
+        //click_chatter("---------------------------node %s: thats me. First LP: %d",_me.unparse().c_str(),first_lp);
 
         memcpy(&first_lp, ptr + size, sizeof(first_lp));
         size += sizeof(first_lp);
@@ -623,12 +623,12 @@ String BRNCandidateSelector::printCandidateInfo()
 
   click_chatter("PrintInfo");
 
-  sa << "CandidateInfo ( Node: " << _me.s() << " )\n";
+  sa << "CandidateInfo ( Node: " << _me.unparse() << " )\n";
 
   for (int i = 0; i < _cand.size(); i++ )
   {
     _ci = _cand[i];
-    sa << "Candidate: " << _ci->_addr.s() << "\n";
+    sa << "Candidate: " << _ci->_addr.unparse() << "\n";
     sa << " i got beacon (" << _ci->_i_got_from_him.size() << "): ";
     for ( j = 0; j < _ci->_i_got_from_him.size(); j++ )
     {
@@ -660,7 +660,7 @@ String BRNCandidateSelector::printCandidateInfo()
         sel_cand.push_back(_cand[j]);
         per = calculatedCombinedPER(sel_cand, _note_lp);
         sel_cand.clear();
-        sa << "Combi PER : " << _cand[i]->_addr.s() << " <-> " << _cand[j]->_addr.s() << " : " << per << "\n";
+        sa << "Combi PER : " << _cand[i]->_addr.unparse() << " <-> " << _cand[j]->_addr.unparse() << " : " << per << "\n";
       }
     }
   }
@@ -678,7 +678,7 @@ String BRNCandidateSelector::printPerInfo()
 
   for (int i = 0; i < _cand.size(); i++ )
   {
-    sa << _cand[i]->_addr.s() << " -> ";
+    sa << _cand[i]->_addr.unparse() << " -> ";
     sa << calculatedPER(_cand[i]) << "\t";
   }
   
@@ -697,7 +697,7 @@ String BRNCandidateSelector::printRecvPerInfo()
 
   for (int i = 0; i < _cand.size(); i++ )
   {
-    sa << _cand[i]->_addr.s() << " -> ";
+    sa << _cand[i]->_addr.unparse() << " -> ";
     sa << calculatedRecvPER(_cand[i]) << "\t";
   }
   

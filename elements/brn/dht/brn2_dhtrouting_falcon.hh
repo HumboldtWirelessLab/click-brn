@@ -42,6 +42,7 @@ class DHTRoutingFalcon : public DHTRouting
 
   private:
 
+    EtherAddress _me;
     BRNLinkStat *_linkstat;
 
 };

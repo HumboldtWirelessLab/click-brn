@@ -25,7 +25,7 @@
 #include <click/vector.hh>
 #include <click/element.hh>
 #include "elements/brn/routing/linkstat/brnlinktable.hh"
-//BRNNEW #include "routequerier.hh"
+#include "elements/brn/routing/dsr/routequerier.hh"
 
 CLICK_DECLS
 
@@ -69,7 +69,7 @@ class NodeIdentity : public Element {
   EtherAddress *getMyVlan0Address();
   EtherAddress *getMyVlan1Address();
 
-//BRNNEW  int findOwnIdentity(const RouteQuerierRoute &r);
+  int findOwnIdentity(const RouteQuerierRoute &r);
 
   EtherAddress *getEthernetAddress(String);
 

@@ -30,11 +30,11 @@
 #include <click/dequeue.hh>
 #include "elements/brn/wifi/ap/assoclist.hh"
 
-//BRNNEW #include <elements/brn/brnvlan/brnvlan.hh>
+#include <elements/brn/vlan/brnvlan/brnvlan.hh>
 
 CLICK_DECLS
 
-//BRNNEW class BrnIappStationTracker;
+class BrnIappStationTracker;
 class DelayedResponse;
 
 /*
@@ -104,8 +104,8 @@ class BRNAssocResponder : public AssociationResponder {
  private:
 //  AssocList*    _client_assoc_lst;
 //  String        _device;
-//BRNNEW  BrnIappStationTracker*      _iapp;
-//BRNNEW  BRNVLAN*                    _brn_vlan;
+  BrnIappStationTracker*      _iapp;
+  BRNVLAN*                    _brn_vlan;
   Timer                       _response_timer;
   DelayedResponseQueue        _responses;
 };

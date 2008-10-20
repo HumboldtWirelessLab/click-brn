@@ -67,8 +67,7 @@ BRNICMPPingSourceGatewayTester::configure(Vector<String> &conf, ErrorHandler *er
     // remove first item
     conf.erase(conf.begin());
     // and pass the remaining conf to the base class
-//BRNNEW    return ICMPPingSource::configure(conf, errh);
-    return 0;
+    return ICMPPingSource::configure(conf, errh);
 }
 
 void * BRNICMPPingSourceGatewayTester::cast(const char *name) {
@@ -77,8 +76,7 @@ void * BRNICMPPingSourceGatewayTester::cast(const char *name) {
     else if (strcmp(name, "ICMPPingSource") == 0)
         return (ICMPPingSource *) this;
     else
-//BRNNEW        return ICMPPingSource::cast(name);
-      return 0;
+        return ICMPPingSource::cast(name);
 }
 
 /*
@@ -98,8 +96,8 @@ BRNICMPPingSourceGatewayTester::push(int port, Packet *p) {
 
 
 
-//BRNNEW    int metric = (this->_receiver->time_sum / (this->_receiver->nreceived ? this->_receiver->nreceived : 1));
-    int metric = 1000;
+    //int metric = (this->_receiver->time_sum / (this->_receiver->nreceived ? this->_receiver->nreceived : 1));
+    int metric = 0;
     // adjust metric to uint8_t
     if (metric > 1000000) // latency bigger than 1s
         metric = 1000000;

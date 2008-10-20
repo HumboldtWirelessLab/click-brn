@@ -35,6 +35,13 @@ void *DHTRoutingFalcon::cast(const char *name)
 
 int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  if (cp_va_parse(conf, this, errh,
+      cpOptional,
+      cpKeywords,
+      "ETHERADDRESS", cpEtherAddress, "etheraddress", &_me,
+      cpEnd) < 0)
+    return -1;
+
   return 0;
 }
 
@@ -45,6 +52,7 @@ int DHTRoutingFalcon::initialize(ErrorHandler *)
 
 void DHTRoutingFalcon::push( int port, Packet *packet )
 {
+  if ( ( port == 0 ) && ( packet != NULL ) ) output(0).push(packet);
 }
 
 int DHTRoutingFalcon::set_notify_callback(void *info_func, void *info_obj)

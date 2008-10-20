@@ -100,8 +100,8 @@ RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_dsr_decap || !_dsr_decap->cast("DSRDecap")) 
     return errh->error("DSRDecap not specified");
 
-//BRNNEW  if (!_brn_iapp || !_brn_iapp->cast("BrnIappStationTracker"))
-//BRNNEW    return errh->error("BrnIappStationTracker not specified");
+  if ( _brn_iapp && !_brn_iapp->cast("BrnIappStationTracker"))
+    return errh->error("BrnIappStationTracker not specified");
 
   return 0;
 }

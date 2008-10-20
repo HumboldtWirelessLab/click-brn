@@ -52,7 +52,7 @@ public:
       _note_lp = note_lp;
       if ( last_send_lp < 0 ) _last_lp_he_was_able_to_hear = 0;
       else _last_lp_he_was_able_to_hear = last_send_lp;
-      click_gettimeofday(&_last_seen);
+      _last_seen = Timestamp::now().timeval();
    };
 
    ~CandidateInfo()
@@ -80,9 +80,9 @@ public:
      struct timeval _time_now;
      long _time_diff_ms;
 
-     click_gettimeofday(&_time_now);
+     _time_now = Timestamp::now().timeval();
      diff_in_ms(_time_now,_last_seen);
-     
+
      if ( _lp_interval_in_ms == 0 )
        return (_last_lp);
      else
@@ -91,7 +91,7 @@ public:
 
    void add_recv_linkprobe(unsigned int lp_id, unsigned int last_send_lp)
    {
-     int i;
+     //int i;
 
      int j = _i_got_from_him.size();
 
@@ -109,8 +109,8 @@ public:
        }
        else                                             // no, so
        {
-         if ( _i_got_from_him.size() > ( 2 * _note_lp) ) _i_got_from_him.erase(_i_got_from_him.begin());
-        
+         if ( _i_got_from_him.size() > (int)( 2 * _note_lp) ) _i_got_from_him.erase(_i_got_from_him.begin());
+
          _i_got_from_him.push_back(lp_id);
        }
      }
@@ -118,12 +118,12 @@ public:
      if ( _i_got_from_him.size() > 1 )   //need more than 1 llp to calculate the values
      {
         struct timeval _time_now;
-        click_gettimeofday(&_time_now);
+        _time_now = Timestamp::now().timeval();
 
         _lp_interval_in_ms =  diff_in_ms(_time_now,_last_seen) / ( lp_id - _last_lp );
      }
 
-     click_gettimeofday(&_last_seen);
+     _last_seen = Timestamp::now().timeval();
      _last_lp = lp_id;
      _last_lp_he_was_able_to_hear = last_send_lp;
 
@@ -137,7 +137,7 @@ public:
      for( i=0; (i < _he_got_from_me.size()) && (_he_got_from_me[i] != id); i++ );
      if ( i == _he_got_from_me.size() )
      {
-        if ( _he_got_from_me.size() > ( 2 * _note_lp) ) _he_got_from_me.erase(_he_got_from_me.begin());
+        if ( _he_got_from_me.size() > (int)( 2 * _note_lp) ) _he_got_from_me.erase(_he_got_from_me.begin());
 
         _he_got_from_me.push_back(id);
      }

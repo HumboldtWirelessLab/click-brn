@@ -27,12 +27,12 @@
 #include "elements/brn/common.hh"
 
 #include "brnassocresponder.hh"
-#include <click/error.hh>
+
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-//BRNNEW #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
+#include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,8 +52,8 @@ BRNAssocResponder::BRNAssocResponder() :
 //  _client_assoc_lst(),
   _debug(BrnLogger::DEFAULT),
   _response_delay_ms(0),
-//BRNNEW  _iapp(NULL),
-//BRNNEW  _brn_vlan(NULL),
+  _iapp(NULL),
+  _brn_vlan(NULL),
   _response_timer(static_response_timer_hook, this)
 {
 }
@@ -77,8 +77,8 @@ BRNAssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
       "RESPONSE_DELAY", cpInteger, "Response delay in ms", &_response_delay_ms,
 		  "WIRELESS_INFO", cpElement, "wireless_info", &_winfo,
 		  "RT", cpElement, "availablerates", &_rtable,
-//BRNNEW      "IAPP", cpElement, "IAPP element", &_iapp,
-//BRNNEW		  "BRNVLAN", cpElement, "brn vlans", &_brn_vlan,
+      "IAPP", cpElement, "IAPP element", &_iapp,
+		  "BRNVLAN", cpElement, "brn vlans", &_brn_vlan,
 		  cpEnd) < 0)
     return -1;
 
@@ -88,13 +88,12 @@ BRNAssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_winfo || _winfo->cast("WirelessInfo") == 0) 
     return errh->error("WirelessInfo element is not provided or not a WirelessInfo");
 
-//BRNNEW
-/*  if (!_iapp || _iapp->cast("BrnIappStationTracker") == 0) 
+  if (_iapp && _iapp->cast("BrnIappStationTracker") == 0)
     return errh->error("IAPP element is not provided or not a BrnIappStationTracker");
 
   if (_brn_vlan && _brn_vlan->cast("BRNVLAN") == NULL)
     return errh->error("BRNVLAN element not a BRNVLAN");
-*/
+
   return 0;
 }
 
@@ -174,24 +173,20 @@ BRNAssocResponder::recv_disassociation(
 
   BRN_DEBUG("received disassocation from %s", addr2.unparse().c_str());
 
-
-  /*
-  // get station's ssid
-  String ssid = _iapp->_assoc_list->get_ssid(addr2);
-  */
-
   // Remember the disassoc
-//BRNNEW  _iapp->sta_disassociated(addr2);
-  
-//BRNNEW
-  /*
-  uint16_t vid = _brn_vlan->get_vlan(ssid);
-  BRNVLAN::VLAN* vlan = _brn_vlan->get_vlan(vid);
-  if (vlan != NULL)
-    vlan->remove_member(addr2);
-  else
-    BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", addr2.unparse().c_str(), ssid.c_str());
-  */
+  if ( _iapp != NULL ) {
+    // get station's ssid
+    String ssid = _iapp->_assoc_list->get_ssid(addr2);
+
+    _iapp->sta_disassociated(addr2);
+
+    uint16_t vid = _brn_vlan->get_vlan(ssid);
+    BRNVLAN::VLAN* vlan = _brn_vlan->get_vlan(vid);
+    if (vlan != NULL)
+      vlan->remove_member(addr2);
+    else
+      BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", addr2.unparse().c_str(), ssid.c_str());
+  }
 
   p->kill();
 }
@@ -269,8 +264,8 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
 
     /* respond to blank ssid probes also */
   //if ((ssid != "" && ssid != my_ssid) || (_brn_vlan && _brn_vlan->is_vlan(ssid))) {
-//BRNNEW
-/*  if (_brn_vlan != NULL) {
+
+  if (_brn_vlan != NULL) {
     if (ssid != "" && ssid != my_ssid && !_brn_vlan->is_vlan(ssid)) {
         BRN_WARN(" other ssid %s wanted %s", ssid.c_str(), my_ssid.c_str());
         p->kill();
@@ -278,12 +273,12 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
     }
   }
   else {
-*/    if (ssid != "" && ssid != my_ssid) {
+    if (ssid != "" && ssid != my_ssid) {
         BRN_WARN(" other ssid %s wanted %s", ssid.c_str(), my_ssid.c_str());
         p->kill();
         return;
     }
-//BRNNEW  }
+  }
 
   StringAccum sa;
 
@@ -357,27 +352,28 @@ BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
       send_association_response(src, status, associd);
     else
       send_reassociation_response(src, status, associd);
-  
+
     if (status == WIFI_STATUS_SUCCESS) {
       BRN_DEBUG("successfully associated; %s\n", src.unparse().c_str());
-  
+
       // trigger handover
-//BRNNEW      _iapp->sta_associated(src, _winfo->_bssid, current_ap, device, ssid);
-      
-      /*
-      // add station to vlan
-      uint16_t vid = _brn_vlan->get_vlan(ssid);
-      BRNVLAN::VLAN* vlan = _brn_vlan->get_vlan(vid);
-      if (vlan != NULL)
-        vlan->add_member(src);
-      else
-        BRN_ERROR("Client %s is associated with ssid %s, but no VLAN known for this SSID.", src.unparse().c_str(), ssid.c_str());
-      */
+      if ( _iapp != NULL )
+        _iapp->sta_associated(src, _winfo->_bssid, current_ap, device, ssid);
+
+      if ( _brn_vlan != NULL ) {
+        // add station to vlan
+        uint16_t vid = _brn_vlan->get_vlan(ssid);
+        BRNVLAN::VLAN* vlan = _brn_vlan->get_vlan(vid);
+        if (vlan != NULL)
+          vlan->add_member(src);
+        else
+          BRN_ERROR("Client %s is associated with ssid %s, but no VLAN known for this SSID.", src.unparse().c_str(), ssid.c_str());
+      }
     } else {
       BRN_DEBUG("association failed.\n");
     }
   }
-  
+
   return;
 }
 
@@ -499,7 +495,8 @@ BRNAssocResponder::response_timer_hook()
     BRN_DEBUG("successfully associated; %s\n", resp->src.unparse().c_str());
 
     // trigger handover
-//BRNNEW    _iapp->sta_associated(resp->src, _winfo->_bssid, resp->current_ap, resp->device, resp->ssid);
+    if ( _iapp != NULL )
+     _iapp->sta_associated(resp->src, _winfo->_bssid, resp->current_ap, resp->device, resp->ssid);
   } else {
     BRN_DEBUG("association failed.\n");
   }
