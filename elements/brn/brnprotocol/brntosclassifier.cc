@@ -31,6 +31,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "brntosclassifier.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,9 +81,8 @@ BrnTosClassifier::push(int, Packet * p_in)
   BRN_CHECK_EXPR_RETURN(NULL == p_in,
     ("invalid arguments"), return);
 
-//BRNNEW  int out_port = p_in->tos_anno();
-  int out_port = 0;
-  
+  int out_port = BRNPacketAnno::tos_anno(p_in);
+
   if (out_port >= noutputs())
   {
     BRN_WARN("Output %d not connected, discarding packet.", out_port);

@@ -15,7 +15,7 @@ BRNPacketAnno::~BRNPacketAnno()
 }
 
 EtherAddress
-BRNPacketAnno::dst_ether_anno(Packet *p) const
+BRNPacketAnno::dst_ether_anno(Packet *p)
 {
   return EtherAddress((const unsigned char *) (((uint8_t*)p->addr_anno()) + sizeof(uint32_t)));
 }
@@ -27,7 +27,7 @@ BRNPacketAnno::set_dst_ether_anno(Packet *p, const EtherAddress &a)
 }
 
 String
-BRNPacketAnno::udevice_anno(Packet *p) const
+BRNPacketAnno::udevice_anno(Packet *p)
 {
   char device[6];
   memset(device, 0, 6);
@@ -50,7 +50,7 @@ BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
 }
 
 uint8_t
-BRNPacketAnno::tos_anno(Packet *p) const
+BRNPacketAnno::tos_anno(Packet *p)
 {
   uint8_t* dst = (uint8_t*) ((uint8_t*)(p->addr_anno()) + sizeof(uint32_t) + 6 + 5);
   return (dst[0]);

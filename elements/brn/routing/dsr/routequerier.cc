@@ -100,8 +100,8 @@ RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_dsr_decap || !_dsr_decap->cast("DSRDecap")) 
     return errh->error("DSRDecap not specified");
 
-  if (!_brn_iapp || !_brn_iapp->cast("BrnIappStationTracker")) 
-    return errh->error("BrnIappStationTracker not specified");
+//BRNNEW  if (!_brn_iapp || !_brn_iapp->cast("BrnIappStationTracker"))
+//BRNNEW    return errh->error("BrnIappStationTracker not specified");
 
   return 0;
 }
@@ -358,9 +358,11 @@ RouteQuerier::flush_sendbuffer()
 bool
 RouteQuerier::buffer_packet(Packet *p)
 {
-  p = _brn_iapp->filter_buffered_packet(p);
-  if (NULL == p)
-    return false;
+  if ( _brn_iapp != NULL ) {
+    p = _brn_iapp->filter_buffered_packet(p);
+    if (NULL == p)
+      return false;
+  }
 
   EtherAddress dst;
   EtherAddress src;

@@ -31,6 +31,10 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+#include "elements/brn/analysis/brnavgcnt.hh"
+#include "elements/brn/dht/falcondht.hh"
+#include "elements/brn/routing/correlation/brncansel.hh"
+
 CLICK_DECLS
 
 // packet data should be 4 byte aligned
@@ -46,13 +50,11 @@ enum {
   H_DEBUG
 };
 
-//BRNNEW start
  int EtherAddressHashcode(const EtherAddress &ea)
 {
   const uint16_t *d = ea.sdata();
   return (d[2] | (d[1] << 16)) ^ (d[0] << 9);
 }
-//BRNNEW end
 
 static String 
 BRNLinkStat_read_param(Element *e, void *thunk)
@@ -171,15 +173,15 @@ BRNLinkStat::BRNLinkStat()
     _me(),
     _ett_metric(0),
     _etx_metric(0),
-//BRNNEW    _dht(NULL),
-//BRNNEW    _cansel(NULL),
+    _dht(NULL),
+    _cansel(NULL),
     _debug(BrnLogger::DEFAULT),
     _next_neighbor_to_ad(0),
     _timer(0),
     _stale_timer(this),
     _ads_rs_index(0),
     _rtable(0),
-//BRNNEW    _packetCnt(0),
+    _packetCnt(0),
     _log(false),
     _log_timeout_timer(log_timeout_hook, this)
 //    _log_fp(0),
@@ -215,9 +217,9 @@ BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 			"PROBES", cpString, "PROBES", &probes,
 			"RT", cpElement, "AvailabeRates", &_rtable,
 			"LOGGING", cpBool, "Logging", &_log,
-//BRNNEW			"BRNAVGCNT", cpElement, "BrnAvgCnt", &_packetCnt,
-//BRNNEW			"DHT", cpElement, "DHT", &_dht,
-//BRNNEW			"CANSELECTOR", cpElement, "CANSEL" , &_cansel,
+			"BRNAVGCNT", cpElement, "BrnAvgCnt", &_packetCnt,
+			"DHT", cpElement, "DHT", &_dht,
+			"CANSELECTOR", cpElement, "CANSEL" , &_cansel,
   //                      "LOG_INTERVALL", cpInteger, "Logging Interval (in msecs)", &_log_interval,
   //                      "LOG_FILENAME", cpFilename, "log filename", &_log_filename,
 			cpEnd);
@@ -245,8 +247,8 @@ BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_rtable || !_rtable->cast("AvailableRates"))
     return errh->error("RT element is not a AvailableRates");
 
-//BRNNEW
-/*  if (_dht) {
+
+  if (_dht) {
     if (!_dht->cast("FalconDHT"))
       return errh->error("DHT element is not a FalconDHT");
   }
@@ -255,12 +257,11 @@ BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
     if (!_cansel->cast("BRNCandidateSelector"))
       return errh->error("Cansel element is not a Cansel");
   }
-*/
-/*
+
   if (_packetCnt && _packetCnt->cast("BrnAvgCnt") == 0) {
     return errh->error("RT element is not a BrnAvgCnt");
   }
-*/
+
   if (_log) {
     BRN_INFO(" * Logging activated.");
   }

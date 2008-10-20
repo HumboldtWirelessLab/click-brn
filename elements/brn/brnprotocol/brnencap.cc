@@ -30,6 +30,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 BRNEncap::BRNEncap()
@@ -85,7 +86,7 @@ BRNEncap::add_brn_header(Packet *p_in, unsigned int ttl)
   brn->src_port = BRN_PORT_DSR;
 
   brn->ttl = ttl;
-//BRNNEW  brn->tos = p_in->tos_anno();
+  brn->tos = BRNPacketAnno::tos_anno(p_in);
 
   return p;
 }

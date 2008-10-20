@@ -14,14 +14,14 @@ class BRNPacketAnno : public Element { public:
 
   const char *class_name() const	{ return "BRNPacketAnno"; }
 
-  String udevice_anno(Packet *p) const;
-  void set_udevice_anno(Packet *p, const char *device);
+  static String udevice_anno(Packet *p);
+  static void set_udevice_anno(Packet *p, const char *device);
 
-  uint8_t tos_anno(Packet *p) const;
-  void set_tos_anno(Packet *p, uint8_t tos);
+  static uint8_t tos_anno(Packet *p);
+  static void set_tos_anno(Packet *p, uint8_t tos);
 
-  EtherAddress dst_ether_anno(Packet *p) const;
-  void set_dst_ether_anno(Packet *p, const EtherAddress &);
+  static EtherAddress dst_ether_anno(Packet *p);
+  static void set_dst_ether_anno(Packet *p, const EtherAddress &);
 
 };
 

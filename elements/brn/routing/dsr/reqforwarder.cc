@@ -88,8 +88,8 @@ RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_client_assoc_lst || !_client_assoc_lst->cast("AssocList")) 
     return errh->error("ClientAssocList not specified");
 
-  if (!_iapp || !_iapp->cast("BrnIappStationTracker"))
-    return errh->error("BrnIappStationTracker not specified");
+//BRNNEW  if (!_iapp || !_iapp->cast("BrnIappStationTracker"))
+//BRNNEW    return errh->error("BrnIappStationTracker not specified");
 
   return 0;
 }
@@ -222,8 +222,10 @@ RequestForwarder::push(int, Packet *p_in)
       && 1 <= request_route.size()
       && false == _me->isIdentical(&first_ether)) {
 
-      // Remove the assocation from assoc_list
-      _iapp->sta_roamed(src_addr, first_ether, *_me->getMyWirelessAddress());
+      if ( _iapp != NULL ) {
+        // Remove the assocation from assoc_list
+        _iapp->sta_roamed(src_addr, first_ether, *_me->getMyWirelessAddress());
+      }
     }
 
     if (_me->isIdentical(&src_addr) || _client_assoc_lst->is_associated(src_addr)) {

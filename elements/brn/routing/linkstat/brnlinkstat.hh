@@ -76,9 +76,9 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include "elements/brn/routing/metric/brnettmetric.hh"
 #include "elements/brn/routing/metric/brnetxmetric.hh"
 #include <click/timestamp.hh>
-//BRNNEW #include "brnavgcnt.hh"
-//BRNNEW #include "falcondht.hh"
-//BRNNEW #include "brncansel.hh"
+#include "elements/brn/analysis/brnavgcnt.hh"
+#include "elements/brn/dht/falcondht.hh"
+#include "elements/brn/routing/correlation/brncansel.hh"
 
 CLICK_DECLS
 
@@ -170,8 +170,8 @@ public:
   class BRNETXMetric *_etx_metric;
   uint16_t _et;     // This protocol's ethertype
 
-//BRNNEW  class FalconDHT *_dht;
-//BRNNEW  class BRNCandidateSelector *_cansel;
+  class FalconDHT *_dht;
+  class BRNCandidateSelector *_cansel;
 
   struct timeval _start;
   // record probes received from other hosts
@@ -280,7 +280,7 @@ public:
 
   class AvailableRates *_rtable;
 
-//BRNNEW  BrnAvgCnt *_packetCnt;
+  BrnAvgCnt *_packetCnt;
 
   typedef HashMap<EtherAddress, uint8_t> BadTable;
   typedef BadTable::const_iterator BTIter;
