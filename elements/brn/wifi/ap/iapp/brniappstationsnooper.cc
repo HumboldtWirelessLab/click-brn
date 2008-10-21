@@ -34,6 +34,7 @@
 #include "elements/brn/wifi/ap/assoclist.hh"
 #include "brniapphellohandler.hh"
 #include "brniappstationtracker.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,8 +185,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
     return;
   }
 
-//BRNNEW  String dev(p->udevice_anno());
-  String dev("ath0");
+  String dev(BRNPacketAnno::udevice_anno(p));
   bool to_ds = false;
 
   // check bssid address
@@ -226,7 +226,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
 
       // take the state of the sta before and after the tracker was called
       AssocList::client_state state = _assoc_list->get_state(sta);
- //BRNNEW     _sta_tracker->sta_associated(sta, ap, EtherAddress(), p->udevice_anno(), "");
+      _sta_tracker->sta_associated(sta, ap, EtherAddress(), BRNPacketAnno::udevice_anno(p), "");
 
       // Generate iapp hello message, if not already known
       // NOTE: since we run in promisc, we also hear others assoc's!
@@ -285,9 +285,8 @@ BrnIappStationSnooper::peek_data(Packet *p)
     return;
   }
 
-//BRNNEW  String dev(p->udevice_anno());
-  String dev("ath0");
-  
+  String dev(BRNPacketAnno::udevice_anno(p));
+
   BRN_DEBUG("seen frame for STA %s with BSSID %s and CN %s", 
     sta.unparse().c_str(), bssid.unparse().c_str(), cn.unparse().c_str());
   

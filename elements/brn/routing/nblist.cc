@@ -29,6 +29,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 NeighborList::NeighborList() :
@@ -64,14 +65,18 @@ NeighborList::simple_action(Packet *p_in)
   const click_ether *ether = (click_ether *)p_in->ether_header();
 
   if (ether) {
-//BRNNEW String device(p_in->udevice_anno());
-    String device="";
+    String device(BRNPacketAnno::udevice_anno(p_in));
     EtherAddress nb_node(ether->ether_shost);
 
     //  BRN_DEBUG(" * NeighborList %s ::setting %s -> %s\n", id().c_str(), nb_node.unparse().c_str(), device.c_str());
     // dirty HACK, TODO
+#ifdef CLICK_NS  //TODO: should be remove, also the annotation-stuff for device (whats that kind of routing ??
+    if (device == "")
+      device = String("eth0");
+#else
     if (device == "")
       device = String("ath0");
+#endif
 
     insert(nb_node, device);
   }

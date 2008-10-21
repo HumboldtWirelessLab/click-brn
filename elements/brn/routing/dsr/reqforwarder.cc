@@ -31,6 +31,7 @@
 #include <click/straccum.hh>
 
 #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -123,8 +124,8 @@ RequestForwarder::uninitialize()
 void
 RequestForwarder::push(int, Packet *p_in)
 {
- //BRNNEW   String device(p_in->udevice_anno());
-  String device("ath0");
+    String device(BRNPacketAnno::udevice_anno(p_in));
+
     BRN_DEBUG("* receiving dsr_rreq packet (packet_anno %s)", device.c_str());
 
     const click_brn_dsr *brn_dsr =
@@ -362,7 +363,7 @@ RequestForwarder::push(int, Packet *p_in)
           old_frv->p->kill();
           old_frv->p = NULL;
         }
-     //BRNNEW   BRN_DEBUG("* forwarding this RREQ %s %s", device.c_str(), p_in->udevice_anno().c_str());
+        BRN_DEBUG("* forwarding this RREQ %s %s", device.c_str(), (BRNPacketAnno::udevice_anno(p_in)).c_str());
 
         new_frv.p = NULL;
         new_frv.best_metric = this_metric;
@@ -382,8 +383,7 @@ RequestForwarder::push(int, Packet *p_in)
 void
 RequestForwarder::forward_rreq(Packet *p_in)
 {
-//BRNNEW  String device(p_in->udevice_anno());
-  String device("ath0");
+  String device(BRNPacketAnno::udevice_anno(p_in));
   // add my address to the end of the packet
   WritablePacket *p=p_in->uniqueify();
 
@@ -427,10 +427,10 @@ RequestForwarder::forward_rreq(Packet *p_in)
   brn->ttl--;
 
   // set destination anno
- //BRNNEW p->set_dst_ether_anno(EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff"));
+  BRNPacketAnno::set_dst_ether_anno(p,EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff"));
 
   // copy device anno
-//BRNNEW  p->set_udevice_anno(device.c_str());
+  BRNPacketAnno::set_udevice_anno(p,device.c_str());
   BRN_DEBUG(" * current dev_anno %s.", device.c_str());
 
   // Buffering + Jitter

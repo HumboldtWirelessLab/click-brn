@@ -33,6 +33,7 @@
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,8 +198,7 @@ void
 BRNAssocResponder::recv_association_request(Packet *p, uint8_t subtype)
 {
   // saves packet's device annotation
-//BRNNEW  String device = String(p->udevice_anno());
-  String device = "ath0"; //BRNNEW : nur für den fall
+  String device = String(BRNPacketAnno::udevice_anno(p));
   bool reassoc = (subtype == WIFI_FC0_SUBTYPE_REASSOC_REQ) ? true : false;
   EtherAddress current_ap;
 

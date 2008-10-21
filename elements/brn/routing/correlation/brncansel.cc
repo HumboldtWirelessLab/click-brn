@@ -330,7 +330,7 @@ int BRNCandidateSelector::calculatedRecvPER(CandidateInfo *cand, int number_of_c
   struct timeval _timenow;
   long timediff_in_ms;
 
-  click_gettimeofday(&_timenow);
+  _timenow = Timestamp::now().timeval();
   timediff_in_ms = cand->diff_in_ms(_timenow,cand->_last_seen);
   count_missed_lp = timediff_in_ms / cand->_lp_interval_in_ms;  //calculate missed lp ( not received but send
 

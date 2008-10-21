@@ -25,6 +25,7 @@
 #include "ncforwardbatch.hh"
 #include "galois.hh"
 #include <elements/brn/brn.h>
+#include "elements/brn/standard/brnpacketanno.hh"
 
 #define ETHERTYPE_BRN          0x8086
 
@@ -432,7 +433,7 @@ Packet * NetcodingEncoder::getStartOrStop(NCForwardBatch * batch,
 		ether->ether_shost[i] = me->getMyWirelessAddress()->data()[i];
 	assert(ether->ether_dhost[5] != ether->ether_shost[5]);
 	ether->ether_type = htons(ETHERTYPE_BRN);
-//BRNNEW	start->set_tos_anno(1);
+  BRNPacketAnno::set_tos_anno(start,1);
 	*mode = numPackets;
 	*next = startNext;
 	return start;

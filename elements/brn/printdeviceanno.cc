@@ -29,6 +29,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 PrintDeviceAnno::PrintDeviceAnno()
@@ -42,9 +43,8 @@ PrintDeviceAnno::~PrintDeviceAnno()
 Packet *
 PrintDeviceAnno::simple_action(Packet *p_in)
 {
-//BRNNEW String dev_name(p_in->udevice_anno());
-  String dev_name("ath0");
-	
+  String dev_name(BRNPacketAnno::udevice_anno(p_in));
+
   // set device anno
   if (!(dev_name == "ath0" || dev_name == "eth0" || dev_name == "local")) {
     click_chatter(dev_name.c_str());

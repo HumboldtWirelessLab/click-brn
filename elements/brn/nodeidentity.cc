@@ -31,6 +31,7 @@
 #include <click/straccum.hh>
 
 #include <elements/brn/standard/brnaddressinfo.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -238,9 +239,9 @@ NodeIdentity::skipInMemoryHops(Packet *p_in)
 
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-//BRNNEW    p_in->set_dst_ether_anno(EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
   } else {
-//BRNNEW    p_in->set_dst_ether_anno(EtherAddress(brn_dsr->addr[index].hw.data));
+    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->addr[index].hw.data));
   }
 
   return p_in;

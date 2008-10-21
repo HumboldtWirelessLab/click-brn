@@ -34,6 +34,7 @@
 
 #include "brnassocresponder.hh"
 #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -97,8 +98,7 @@ Disassociator::simple_action(Packet *p_in)
   }
 
   EtherAddress src_addr(ether->ether_shost);
-//BRNNEW  String device(p_in->udevice_anno());
-  String device("ath0");
+  String device(BRNPacketAnno::udevice_anno(p_in));
   // client is not associated
   if (!_sta_tracker->update(src_addr)) {
     // TODO test if station is wireless station

@@ -32,6 +32,7 @@
 #include <click/hashmap.hh>
 
 #include "setsourceandoutputfordevice.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -167,7 +168,7 @@ SetSourceAndOutputForDevice::handle_broadcast(Packet* p_in)
       dst_addr.unparse().c_str(), _id->getMyWirelessAddress()->unparse().c_str(), 
       _ports.find(*_id->getMyWirelessAddress()));
 
-//BRNNEW    p_wlan->set_udevice_anno(_id->getWlan0DeviceName().c_str());
+    BRNPacketAnno::set_udevice_anno(p_wlan, _id->getWlan0DeviceName().c_str());
     p_wlan->set_ether_header(ether);
     output(_ports.find(*_id->getMyWirelessAddress())).push(p_wlan);
   }
@@ -212,7 +213,7 @@ SetSourceAndOutputForDevice::handle_broadcast(Packet* p_in)
     BRN_DEBUG(" **** LOCAL Packet with dst %s is sent to port %d.",
         dst_addr.unparse().c_str(), _ports.size());
 
-//BRNNEW    p_local->set_udevice_anno("local");
+    BRNPacketAnno::set_udevice_anno(p_local,"local");
     p_local->set_ether_header(ether);
     output(_ports.size()).push(p_local);
   }

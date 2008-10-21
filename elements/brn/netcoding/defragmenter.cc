@@ -18,6 +18,7 @@
 
 #include <click/packet_anno.hh>
 #include "defragmenter.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -30,7 +31,7 @@ void Defragmenter::push(int, Packet * packet) {
   receivedPackets.push_back(packet);
   if (EXTRA_PACKETS_ANNO(packet)) {
     WritablePacket * result = Packet::make(sizeof(click_brn) + sizeof(click_brn_dsr));
-//BRNNEW    result->set_udevice_anno(packet->udevice_anno().c_str());
+    BRNPacketAnno::set_udevice_anno(result,(BRNPacketAnno::udevice_anno(packet)).c_str());
     unsigned pos = result->length();
     memcpy(result->data(), packet->data(), sizeof(click_brn) + sizeof(click_brn_dsr));
     while (receivedPackets.size()) {

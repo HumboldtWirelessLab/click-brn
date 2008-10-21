@@ -30,6 +30,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn/nodeidentity.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -79,8 +80,7 @@ DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, RouteQuerie
 {
   BRN_DEBUG(" * extract_request_route from dsr packet.");
 
-//BRNNEW  String device(p_in->udevice_anno());
-  String device("ath0");
+  String device(BRNPacketAnno::udevice_anno((Packet *)p_in));
   // address of the node originating the rreq
   const click_brn_dsr *dsr_rreq =
       (const click_brn_dsr *)(p_in->data() + sizeof(click_brn));

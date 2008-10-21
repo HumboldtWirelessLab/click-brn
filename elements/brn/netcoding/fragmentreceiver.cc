@@ -23,6 +23,7 @@
 #include <click/packet_anno.hh>
 #include <click/crc32.h>
 #include "fragmentreceiver.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -142,8 +143,7 @@ void FragmentReceiver::push(int port, Packet * packet) {
 		memcpy(&(ncHeader.last_fragments), &(ncPacketHeader.last_fragments), LAST_FRAGMENTS_LENGTH);
 		//endianness matters here
 		ncHeader.fragments_in_batch = ncPacketHeader.fragments_in_batch;
-		// BRNNEW String udevice = packet->udevice_anno();
-    String udevice = String("ath0");
+    String udevice = BRNPacketAnno::udevice_anno(packet);
     
 		unsigned numFragments = 0;
 		unsigned packetLength = packet->length();
@@ -172,7 +172,7 @@ void FragmentReceiver::push(int port, Packet * packet) {
 			memcpy(out->data() + sizeof(click_brn) + sizeof(click_brn_dsr)
 					+ sizeof(click_brn_netcoding), packet->data(), fragmentDataLength
 					+ 4);
-//BRNNEW			out->set_udevice_anno(udevice.c_str());
+      BRNPacketAnno::set_udevice_anno(out,udevice.c_str());
 			out->set_timestamp_anno(Timestamp::now());
 			SET_PAINT_ANNO(out, routePosition);
 			output(FRAGMENT_RECEIVER_OUTPUT_DATA).push(out);

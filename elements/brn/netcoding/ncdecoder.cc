@@ -25,6 +25,7 @@
 
 #include "ncdecoder.hh"
 #include <elements/brn/brn.h>
+#include "elements/brn/standard/brnpacketanno.hh"
 #define ETHERTYPE_BRN          0x8086
 CLICK_DECLS
 
@@ -147,8 +148,8 @@ Packet * NetcodingDecoder::assembleStopPacket(NCDecodingBatch * batch, uint8_t n
     ether->ether_dhost[i] = shost.data[i];
   // ether_shost is filled in at FragmentReceiver as we know the NodeIdentity there
   ether->ether_type = htons(ETHERTYPE_BRN);
-//BRNNEW  stop->set_tos_anno(1);
-  
+  BRNPacketAnno::set_tos_anno(stop,1);
+
   *innovation = numPackets;
   batch->setStopSent();
   batch->setStartSent();

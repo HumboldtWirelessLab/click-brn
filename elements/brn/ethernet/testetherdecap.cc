@@ -29,6 +29,8 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
+
 CLICK_DECLS
 
 TestEtherDecap::TestEtherDecap()
@@ -75,7 +77,7 @@ TestEtherDecap::smaction(Packet *p)
   p_out->pull(sizeof(click_ether));
 
   //save packet anno
- //BRNNEW p_out->set_udevice_anno(p->udevice_anno().c_str());
+  BRNPacketAnno::set_udevice_anno(p_out,(BRNPacketAnno::udevice_anno(p)).c_str());
 
   return p_out;
 }

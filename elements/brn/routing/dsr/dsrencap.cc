@@ -29,6 +29,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 CLICK_DECLS
 
 DSREncap::DSREncap()
@@ -151,17 +152,17 @@ DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   BRN_DEBUG(" * add_dsr_header: new packet size is %d, old was %d", p->length(), old_len);
 
   // copy packet destination annotation from incoming packet
-//BRNNEW  p->set_udevice_anno(p_in->udevice_anno().c_str());
+  BRNPacketAnno::set_udevice_anno(p,(BRNPacketAnno::udevice_anno(p_in)).c_str());
 
   // set destination anno
   if (hop_count > 0) { // next hop on tour
     EtherAddress next_hop(src_route[route_len - 2].data());
     BRN_DEBUG(" * testing next hop %s", next_hop.unparse().c_str());
-//BRNNEW    p->set_dst_ether_anno(next_hop); //think about this
+    BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
   } else { // final destination is the last hop
     EtherAddress next_hop(src_route[0].data());
     BRN_DEBUG(" * next hop %s", next_hop.unparse().c_str());
- //BRNNEW   p->set_dst_ether_anno(next_hop); //think about this
+    BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
   }
   return p;
 }
@@ -256,12 +257,12 @@ DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, IPAd
   int index = reply_hop_count - segments;
 
   // set destination anno
-/*BRNNEW  if (reply_hop_count > 0) { // next hop on tour
-    p->set_dst_ether_anno(EtherAddress(dsr->addr[index].hw.data));
+  if (reply_hop_count > 0) { // next hop on tour
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dsr->addr[index].hw.data));
   } else { // final destination is the last hop
-    p->set_dst_ether_anno(EtherAddress(dst.data()));
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dst.data()));
   }
-*/
+
   BRN_DEBUG(" * next hop: %s", EtherAddress(dsr->addr[index].hw.data).unparse().c_str());
   BRN_DEBUG(" * issue_rrep: filling hops done , index= %d", index);
 
@@ -333,13 +334,13 @@ DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   int index = src_hop_count - segments;
 
   // set destination anno
-/*BRNNEW  if (src_hop_count > 0) { // next hop on tour
+  if (src_hop_count > 0) { // next hop on tour
     BRN_DEBUG(" * set dst anno: %s, index %d", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str(), index);
-    p->set_dst_ether_anno(EtherAddress(dsr_rerr->addr[index].hw.data));
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dsr_rerr->addr[index].hw.data));
   } else { // final destination is the last hop
-    p->set_dst_ether_anno(EtherAddress(src.data()));
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(src.data()));
   }
-*/
+
   BRN_DEBUG(" * next hop: %s", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str());
   return p;
 }
@@ -399,11 +400,11 @@ DSREncap::set_packet_to_next_hop(Packet * p_in)
   // skip own addresses
   _me->skipInMemoryHops(p);
 
-/*BRNNEW  if (brn_dsr->dsr_segsleft == 0) {
+  if (brn_dsr->dsr_segsleft == 0) {
     BRN_DEBUG(" * no segments in route available; use final dest as next hop addr.");
-    p->set_dst_ether_anno(EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(brn_dsr->dsr_dst.data));
   }
-*/
+
   return p;
 }
 

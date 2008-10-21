@@ -31,6 +31,8 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "checkbrnheader.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,16 +80,16 @@ CheckBrnHeader::simple_action(Packet *p_in)
 {
   BRN_CHECK_EXPR_RETURN(NULL == p_in || p_in->length() < sizeof(click_brn),
     ("invalid arguments"), if (p_in) p_in->kill();return(NULL););
-  
+
   click_brn* pBrn = (click_brn*) p_in->data();
-  
-//BRNNEW  p_in->set_tos_anno(pBrn->tos);
-  
+
+  BRNPacketAnno::set_tos_anno(p_in, pBrn->tos);
+
   if (BRN_TOS_BE != pBrn->tos)
   {
     BRN_DEBUG("seen frame with tos %d for port %d", pBrn->tos, pBrn->dst_port);
   }
-  
+
   return (p_in);
 }
 

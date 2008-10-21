@@ -30,6 +30,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -91,9 +92,8 @@ BRNDS::push(int port, Packet *p_in)
   //append ethernet header
   click_brn_dsr *brn_dsr =
         (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
-  EtherAddress dst_anno = EtherAddress();//BRNNEW p_in->dst_ether_anno();
-//BRNNEW  String device(p_in->udevice_anno());
-  String device("ath0");
+  EtherAddress dst_anno = BRNPacketAnno::dst_ether_anno(p_in);
+  String device(BRNPacketAnno::udevice_anno(p_in));
 
   BRN_DEBUG("* dst ethernet anno: %s", dst_anno.unparse().c_str());
 
@@ -136,9 +136,9 @@ BRNDS::push(int port, Packet *p_in)
       }
 
       //set device anno
-//BRNNEW      p_wlan0->set_udevice_anno(_me->getWlan0DeviceName().c_str());
-//BRNNEW      p_vlan0->set_udevice_anno(_me->getVlan0DeviceName().c_str());
-//BRNNEW      p_vlan1->set_udevice_anno(_me->getVlan1DeviceName().c_str());
+      BRNPacketAnno::set_udevice_anno(p_wlan0,_me->getWlan0DeviceName().c_str());
+      BRNPacketAnno::set_udevice_anno(p_vlan0,_me->getVlan0DeviceName().c_str());
+      BRNPacketAnno::set_udevice_anno(p_vlan1,_me->getVlan1DeviceName().c_str());
 
       //output packets on all available devices
       output(0).push(p_wlan0);
