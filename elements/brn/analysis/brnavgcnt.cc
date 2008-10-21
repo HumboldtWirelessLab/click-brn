@@ -51,9 +51,8 @@ BrnAvgCnt::reset()
 int
 BrnAvgCnt::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpElement, "NodeIdentity", &_me,
+  if (cp_va_kparse(conf, this, errh,
+    "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     cpEnd) < 0)
     return -1;
 

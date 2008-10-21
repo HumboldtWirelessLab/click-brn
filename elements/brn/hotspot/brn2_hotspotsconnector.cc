@@ -26,15 +26,13 @@ BRN2HotSpotsConnector::~BRN2HotSpotsConnector()
 int
 BRN2HotSpotsConnector::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpKeywords,
-      "STARTOFFSET", cpInteger, "offset", &_start_offset,
-      "UPDATEINTERVAL", cpInteger, "interval", &_renew_interval,
-      "CLICKIP", cpIPAddress, "ip of click", &_click_ip,
-      "CLICKPORT", cpInteger, "port of click", &_click_port,
-      "PACKETIP", cpIPAddress, "ip of packet", &_packet_ip,
-      "PACKETPORT", cpInteger, "port of packet", &_packet_port,
+  if (cp_va_kparse(conf, this, errh,
+      "STARTOFFSET", cpkP+cpkM, cpInteger, /*"offset",*/ &_start_offset,
+      "UPDATEINTERVAL", cpkP+cpkM, cpInteger, /*"interval",*/ &_renew_interval,
+      "CLICKIP", cpkP+cpkM, cpIPAddress, /*"ip of click",*/ &_click_ip,
+      "CLICKPORT", cpkP+cpkM, cpInteger, /*"port of click",*/ &_click_port,
+      "PACKETIP", cpkP+cpkM, cpIPAddress, /*"ip of packet",*/ &_packet_ip,
+      "PACKETPORT", cpkP+cpkM, cpInteger, /*"port of packet",*/ &_packet_port,
       cpEnd) < 0)
         return -1;
  
@@ -53,7 +51,7 @@ BRN2HotSpotsConnector::initialize(ErrorHandler *)
 }
 
 void
-BRN2HotSpotsConnector::run_timer(Timer *t)
+BRN2HotSpotsConnector::run_timer(Timer *)
 {
   Packet *packet_out;
 
@@ -70,11 +68,11 @@ Packet *
 BRN2HotSpotsConnector::createpacket()
 {
   WritablePacket *new_packet = WritablePacket::make(sizeof(struct hscinfo));
-  struct hscinfo info;
+ // struct hscinfo info;
 
   uint8_t *data;
   uint16_t port;
-  
+
   data = new_packet->data();
   
   /*port = (uint16_t)_click_port;

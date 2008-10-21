@@ -30,12 +30,11 @@ BRN2PrintPacketStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _timestamp = false;
-  ret = cp_va_parse(conf, this, errh,
-                  cpOptional,
-		  cpString, "label", &_label,
-		  cpKeywords,
-		    "TIMESTAMP", cpBool, "print timestamp", &_timestamp,
-		    cpEnd);
+  ret = cp_va_kparse(conf, this, errh,
+      "LABEL", cpkP, cpString, &_label,
+      "TIMESTAMP", cpkP, cpBool, &_timestamp,
+      cpEnd);
+
   return ret;
 }
 
@@ -64,10 +63,10 @@ Packet *
 BRN2PrintPacketStat::simple_action(Packet *p)
 {
   struct click_wifi *wh = (struct click_wifi *) p->data();
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();  
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
-  int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
-  int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
+//  int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
+//  int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
   EtherAddress src;
   EtherAddress dst;
   EtherAddress bssid;
@@ -81,21 +80,21 @@ BRN2PrintPacketStat::simple_action(Packet *p)
 
   int len;
   len = sprintf(sa.reserve(9), "%4d ", p->length());
-  sa.forward(len);
+  sa.adjust_length(len);
 
   if (ceh->rate == 11) {
     sa << " 5.5";
   } else {
     len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
-    sa.forward(len);
+    sa.adjust_length(len);
   }
   sa << " ";
 
   len = sprintf(sa.reserve(9), "%2d ", ceh->rssi);
-  sa.forward(len);
+  sa.adjust_length(len);
 
   len = sprintf(sa.reserve(9), "%2d ", ceh->silence);
-  sa.forward(len);
+  sa.adjust_length(len);
 
   switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
   case WIFI_FC1_DIR_NODS:
@@ -124,7 +123,7 @@ BRN2PrintPacketStat::simple_action(Packet *p)
     bssid = EtherAddress();
   }
 
-  uint8_t *ptr = (uint8_t *) p->data() + sizeof(click_wifi);
+//  uint8_t *ptr = (uint8_t *) p->data() + sizeof(click_wifi);
   switch (type) {
   case WIFI_FC0_TYPE_MGT:
     sa << "mgmt ";
@@ -155,7 +154,7 @@ BRN2PrintPacketStat::simple_action(Packet *p)
 
   if (p->length() >= sizeof(click_wifi)) {
     uint16_t seq = le16_to_cpu(*(u_int16_t *)wh->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
-    uint8_t frag = le16_to_cpu(*(u_int16_t *)wh->i_seq) & WIFI_SEQ_FRAG_MASK;
+//    uint8_t frag = le16_to_cpu(*(u_int16_t *)wh->i_seq) & WIFI_SEQ_FRAG_MASK;
     sa <<  (int) seq << " ";
   }
   else
@@ -167,7 +166,7 @@ BRN2PrintPacketStat::simple_action(Packet *p)
   uint8_t channel,power,bitrate;
 
   mactype = 0;
-  packetid = 4294967295;
+  packetid = 2000000000;
   interval = 0;
   channel = 0;
   bitrate = 0;

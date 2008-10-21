@@ -43,10 +43,9 @@ FromDevSim::~FromDevSim()
 int
 FromDevSim::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpOptional,
-		  cpString, "device name", &_dev_name,
-		  cpEnd) < 0)
+  if (cp_va_kparse(conf, this, errh,
+      "DEVICENAME", cpkP+cpkM, cpString, &_dev_name,
+      cpEnd) < 0)
     return -1;
 
   return 0;

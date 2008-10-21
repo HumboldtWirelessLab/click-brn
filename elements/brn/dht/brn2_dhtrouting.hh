@@ -17,9 +17,10 @@ class DHTRouting : public Element
     virtual int max_replication() const = 0;
 
     virtual int set_notify_callback(void *info_func, void *info_obj) {
-	if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
-	else return 0;
+      if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
+      else return 0;
     }
+
     virtual bool is_me(EtherAddress *addr) { return ( addr != NULL ); }
 //  virtual nodeaddress get_responsibly_node( md5 keyid );
 //  virtual Vector<nodeaddress> get_all_responsibly_nodes( md5_keyid);

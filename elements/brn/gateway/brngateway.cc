@@ -57,12 +57,11 @@ BRNGateway::~BRNGateway() {}
 int
 BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 
-  if (cp_va_parse(conf, this, errh,
-                  cpEthernetAddress, "My ethernet address", &_my_eth_addr,
-                  cpElement, "BRNSetGatewayOnFlow", &_flows,
-                  cpKeywords,
-                  "UPDATE_GATEWAYS_INTERVAL", cpSeconds, "time between to updates of gateway list", &_update_gateways_interval,
-                  "UPDATE_DHT_INTERVAL", cpSeconds, "time between to updates of gateway", &_update_dht_interval,
+  if (cp_va_kparse(conf, this, errh,
+                  "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_my_eth_addr,
+                  "SETGATEWAYONFLOW", cpkP+cpkM, cpElement, &_flows,
+                  "UPDATE_GATEWAYS_INTERVAL", cpkP+cpkM, cpSeconds, &_update_gateways_interval,
+                  "UPDATE_DHT_INTERVAL", cpkP+cpkM, cpSeconds, &_update_dht_interval,
                   cpEnd) < 0)
     return -1;
 

@@ -52,20 +52,18 @@ ARPClient::configure(Vector<String> &conf, ErrorHandler *errh)
   String router_ip;
 
   _active = true;
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-      cpIPAddress, "Client IP address", &_client_ip,
-      cpEthernetAddress, "Client ethernet address", &_client_ethernet,
-      cpIPAddress, "Requested IP address Start", &_start_range,
-      cpInteger, "Requested Address _range", &_range,
-      cpInteger, "Start", &_client_start,
-      cpInteger, "Interval", &_client_interval,
-      cpInteger, "_count", &_count,
-      cpInteger, "Requests at once", &_requests_at_once,
-      cpInteger, "_timeout in ms", &_timeout,
-    cpKeywords,
-      "ACTIVE", cpBool, "ACTIVE", &_active,
-      "DEBUG",  cpInteger, "DEBUG", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "CLIENTIP", cpkP+cpkM, cpIPAddress, &_client_ip,
+      "CLIENTETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_client_ethernet,
+      "STARTIP", cpkP+cpkM, cpIPAddress, &_start_range,
+      "ADDRESSRANGE", cpkP+cpkM, cpInteger, &_range,
+      "START", cpkP+cpkM, cpInteger, &_client_start,
+      "INTERVAL", cpkP+cpkM, cpInteger, &_client_interval,
+      "COUNT", cpkP+cpkM, cpInteger, &_count,
+      "REQUESTSPERTIME",  cpkP+cpkM, cpInteger, &_requests_at_once,
+      "TIMEOUT", cpkP+cpkM, cpInteger, &_timeout,
+      "ACTIVE", cpkP+cpkM, cpBool, &_active,
+      "DEBUG",  cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 
@@ -149,7 +147,7 @@ ARPClient::run_timer()
     int requested_ip = ntohl(_start_range.addr()) + _range_index;
     
     // do not ask for own ip, simply use the next one
-    if (requested_ip == ntohl(_client_ip.addr()))
+    if (requested_ip == (int)ntohl(_client_ip.addr()))
       requested_ip++;
     
     requested_ip = htonl(requested_ip);

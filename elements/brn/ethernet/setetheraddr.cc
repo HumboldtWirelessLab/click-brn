@@ -42,11 +42,9 @@ SetEtherAddr::~SetEtherAddr()
 int
 SetEtherAddr::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-  		  cpOptional,
-  		  cpKeywords,
-		  "SRC", cpEthernetAddress, "src ether address", &_src,
-		  "DST", cpEthernetAddress, "dst ether address", &_dst,
+  if (cp_va_kparse(conf, this, errh,
+      "SRC", cpkP+cpkM, cpEthernetAddress, &_src,
+      "DST", cpkP+cpkM, cpEthernetAddress, &_dst,
 		  cpEnd) < 0)
     return -1;
   

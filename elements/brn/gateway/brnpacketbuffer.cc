@@ -38,9 +38,9 @@ BRNPacketBuffer::~BRNPacketBuffer() {}
 int
 BRNPacketBuffer::configure(Vector<String> &conf, ErrorHandler *errh) {
 
-  if (cp_va_parse(conf, this, errh,
-                  cpElement, "BRNSetGatewayOnFlow", &_trigger,
-                  cpUnsigned, "time (ms) to buffer packets of a bucket", &_stamp,
+  if (cp_va_kparse(conf, this, errh,
+                  "SETGATEWAYONFLOW", cpkP+cpkM, cpElement, &_trigger,
+                  "BUFFERTIME", cpkP+cpkM, cpUnsigned,/* "time (ms) to buffer packets of a bucket",*/ &_stamp,
                   cpEnd) < 0)
     return -1;
 

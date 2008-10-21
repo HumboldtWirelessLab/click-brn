@@ -63,13 +63,11 @@ int
 Arp::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   String router_ip;
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpIPAddress, "Router IP address", &_router_ip,                       /* e.g. "10.9.0.1" */
-    cpEthernetAddress, "Router ethernet address", &_router_ethernet,
-    cpKeywords,
-    "DEBUG", cpInteger, "Debug", &_debug,
-    "PREFIX", cpIPPrefix, "src IP address with prefix", &_src_ip, &_src_ip_mask,
+  if (cp_va_kparse(conf, this, errh,
+    "ROUTERIP", cpkP+cpkM, cpIPAddress, &_router_ip,             /* e.g. "10.9.0.1" */
+    "ROUTERETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_router_ethernet,
+    "DEBUG", cpkP, cpInteger, &_debug,
+    "PREFIX", cpkP+cpkM, cpIPPrefix, &_src_ip, &_src_ip_mask,
     cpEnd) < 0)
       return -1;
 

@@ -35,10 +35,9 @@ void *DHTRoutingFalcon::cast(const char *name)
 
 int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpKeywords,
-      "ETHERADDRESS", cpEtherAddress, "etheraddress", &_me,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_me,
+      "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       cpEnd) < 0)
     return -1;
 

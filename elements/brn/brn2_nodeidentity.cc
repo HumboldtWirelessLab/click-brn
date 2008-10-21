@@ -25,9 +25,9 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
  /* if (conf.size() != noutputs())
     return errh->error("need %d arguments, one per output port", noutputs());
 */
-  int before = errh->nerrors();
+  //int before = errh->nerrors();
 
-  Element *e;
+  //Element *e;
 
   for (int slot = 0; slot < conf.size(); slot++) {
     Element *e = cp_element(conf[slot], this, errh);
@@ -55,7 +55,7 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
 
 /* returns true if the given ethernet address belongs to this node (e.g. wlan-dev)*/
 bool
-BRN2NodeIdentity::isIdentical(EtherAddress *e)
+BRN2NodeIdentity::isIdentical(EtherAddress *)
 {
 /*  if (!_me_wlan || !_me_vlan0)
     return false;

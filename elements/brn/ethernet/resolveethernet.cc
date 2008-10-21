@@ -45,13 +45,12 @@ ResolveEthernet::~ResolveEthernet()
 int
 ResolveEthernet::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpEthernetAddress, "Client ethernet address", &_src,
-		  cpOptional,
+  if (cp_va_kparse(conf, this, errh,
+    "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_src,
                   //cpElement, "NodeIdentity", &_me,
-                  cpElement, "ARP table", &_arp_table,
-		  cpEnd) < 0)
-    return -1;
+    "ARPTABLE", cpkP+cpkM, cpElement, &_arp_table,
+    cpEnd) < 0)
+      return -1;
 
 /*
   if (!_me || !_me->cast("NodeIdentity")) 

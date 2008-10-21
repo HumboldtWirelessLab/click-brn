@@ -51,12 +51,10 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _timestamp = false;
-  ret = cp_va_parse(conf, this, errh,
-                  cpOptional,
-		  cpString, "label", &_label,
-		  cpKeywords,
-		    "TIMESTAMP", cpBool, "print timestamp", &_timestamp,
-		    cpEnd);
+  ret = cp_va_kparse(conf, this, errh,
+      "LABEL", cpkP, cpString, &_label,
+      "TIMESTAMP", cpkP, cpBool, &_timestamp,
+      cpEnd);
   return ret;
 }
 
@@ -323,7 +321,7 @@ Packet *
 BRN2PrintWifi::simple_action(Packet *p)
 {
   struct click_wifi *wh = (struct click_wifi *) p->data();
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();  
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
   int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
   int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
@@ -343,24 +341,24 @@ BRN2PrintWifi::simple_action(Packet *p)
 
   int len;
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
-  sa.forward(len);
+  sa.adjust_length(len);
 
   if (ceh->rate == 11) {
     sa << " 5.5";
   } else {
     len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
-    sa.forward(len);
+    sa.adjust_length(len);
   }
   sa << "Mb ";
   
   len = sprintf(sa.reserve(9), "+%2d/", ceh->rssi);
-  sa.forward(len);
+  sa.adjust_length(len);
 
   len = sprintf(sa.reserve(9), "%2d | ", ceh->silence);
-  sa.forward(len);
+  sa.adjust_length(len);
 
   len = sprintf(sa.reserve(6), "Type ");
-  sa.forward(len);
+  sa.adjust_length(len);
 
   switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
   case WIFI_FC1_DIR_NODS:
@@ -574,7 +572,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     pos += 2;
     if (((i+2) % 4) == 3) buf[pos++] = ' ';
   }
-  sb.forward(pos);
+  sb.adjust_length(pos);
 
   click_chatter("%s EXTRA: %s\n", sa.c_str(), sb.c_str());
   return p;

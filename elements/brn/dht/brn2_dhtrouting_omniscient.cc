@@ -1,3 +1,8 @@
+/* OMNISCIENT
+  DHT knows all othe nodes in the network. For Discovery, flooding is used.
+  Everytime the routingtable of a node changed, it floods all new information.
+  Node-fault detection is done by neighboring nodes
+*/
 #include <click/config.h>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
@@ -6,7 +11,6 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-
 #include "brn2_dhtrouting_omniscient.hh"
 
 #include "elements/brn/routing/nblist.hh"
@@ -45,15 +49,14 @@ int DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   _update_interval = 1000;                   //update interval -> 1 sec
   _min_dist = 100;                           //min. time distance between 2 packages
                                         //maybe this is only important for simulation
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpKeywords,
-    "LINKSTAT", cpElement, "LinkStat", &_linkstat,
-    "UPDATEINT", cpInteger, "updateinterval", &_update_interval,
-    "JITTER", cpInteger, "jitter", &_jitter,
-    "MINJITTER", cpInteger, "minjitter", &_min_jitter,
-    "SIMULATOR", cpInteger, "simulator", &_simulator,
-    "DEBUG", cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+    "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_me,
+    "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
+    "UPDATEINT", cpkP, cpInteger, &_update_interval,
+    "JITTER", cpkP, cpInteger, &_jitter,
+    "MINJITTER", cpkP, cpInteger, &_min_jitter,
+    "SIMULATOR", cpkP, cpInteger, &_simulator,
+    "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 

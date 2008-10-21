@@ -64,17 +64,15 @@ BRNGateway::simple_action(Packet *p_in)
 int
 BRNGeophonAdapter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-        cpOptional,
-        cpBool, "debug", &_debug,
-        cpUnsignedShort, "port number", &_portno,
-        cpString, "serial port", &_sSerialPort,
-        cpInteger, "gather interval", &_gather_intv,
-        cpKeywords,
-        "DEBUG", cpInteger, "debug", &_debug,
-        "PORT", cpUnsignedShort, "port number", &_portno,
-        "SERIAL", cpString, "serial port", &_sSerialPort,
-        "INTERVAL", cpInteger, "gather interval", &_gather_intv,
+  if (cp_va_kparse(conf, this, errh,
+        "DEBUG", cpkP+cpkM, cpBool, /*"debug",*/ &_debug,
+        "PORTNUMBER", cpkP+cpkM, cpUnsignedShort, /*"port number",*/ &_portno,
+        "SERIALPORT", cpkP+cpkM, cpString, /*"serial port",*/ &_sSerialPort,
+        "GATHERINTERVAL", cpkP+cpkM, cpInteger, /*"gather interval",*/ &_gather_intv,
+        "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
+        "PORT", cpkP+cpkM, cpUnsignedShort, /*"port number",*/ &_portno,
+        "SERIAL", cpkP+cpkM, cpString, /*"serial port",*/ &_sSerialPort,
+        "INTERVAL", cpkP+cpkM, cpInteger, /*"gather interval",*/ &_gather_intv,
          cpEnd) < 0)
     return -1;
 

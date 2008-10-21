@@ -84,19 +84,17 @@ FalconDHT::configure(Vector<String> &conf, ErrorHandler *errh)
   int max_jitter;
   _fake_arp_for_simulator = false;
 
- if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpEtherAddress, "ether address", &_me,
-    cpElement, "BRNLinkStat", &_linkstat,
-    cpIPPrefix, "address prefix", &_net_address, &_subnet_mask, /* e.g. "10.9.0.0/16" */
-    cpInteger, "Startup Time", &_startup_time,
-    cpInteger, "minimal Jitter", &_min_jitter,
-    cpInteger, "maximal Jitter", &max_jitter,
-    cpInteger, "min Jitter between 2 Packets", &_min_dist,
-  cpKeywords,
-//  "FINGER", cpUnsigned, "fingers", &max_fingers,
-    "DEBUG", cpInteger, "debug", &_debug,
-    "FAKE_ARP", cpBool, "fake arp for simulator", &_fake_arp_for_simulator,
+ if (cp_va_kparse(conf, this, errh,
+    "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &_me,
+    "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
+    "ADDRESSPREFIX", cpkP+cpkM, cpIPPrefix, &_net_address, &_subnet_mask, /* e.g. "10.9.0.0/16" */
+    "STARTIME", cpkP+cpkM, cpInteger, &_startup_time,
+    "MINJITTER", cpkP, cpInteger, &_min_jitter,
+    "MAXJITTER", cpkP, cpInteger, &max_jitter,
+    "MIN2PACKETSJITTER", cpkP, cpInteger, &_min_dist,
+    "FINGER", cpkP, cpUnsigned, &max_fingers,
+    "DEBUG", cpkP, cpInteger, &_debug,
+    "FAKE_ARP", cpkP, cpBool, &_fake_arp_for_simulator,
     cpEnd) < 0)
       return -1;
 	

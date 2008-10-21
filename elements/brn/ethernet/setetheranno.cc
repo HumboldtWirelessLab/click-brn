@@ -44,8 +44,8 @@ SetEtherAnno::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 	_offset = 0;
 
-  if (cp_va_parse_remove_keywords(conf, 0, this, errh,
-		"OFFSET", cpUnsigned, "Ether header offset", &_offset,
+  if (cp_va_kparse_remove_keywords(conf,/*0,*/ this, errh,
+		"OFFSET", cpkP+cpkM, cpUnsigned, /*"Ether header offset",*/ &_offset,
 		cpEnd) < 0)
     return -1;
 

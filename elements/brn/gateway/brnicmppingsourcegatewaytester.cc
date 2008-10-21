@@ -55,8 +55,8 @@ BRNICMPPingSourceGatewayTester::configure(Vector<String> &conf, ErrorHandler *er
     conf_for_this.erase(conf_for_this.begin()+1, conf_for_this.end());
 
     // and parse it
-    if (cp_va_parse(conf_for_this, this, errh,
-                    cpElement, "BRNGateway", &_gw,
+    if (cp_va_kparse(conf_for_this, this, errh,
+                    "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
                     cpEnd) < 0)
         return -1;
 

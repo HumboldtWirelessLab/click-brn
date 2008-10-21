@@ -25,9 +25,8 @@ BRN2HotSpotsPacketEncap::~BRN2HotSpotsPacketEncap()
 int
 BRN2HotSpotsPacketEncap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpKeywords,
+  if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP+cpkM, cpInteger, &_debug,
       cpEnd) < 0)
         return -1;
  

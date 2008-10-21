@@ -53,9 +53,9 @@ BRNSetGateway::~BRNSetGateway() {}
 
 int
 BRNSetGateway::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
-                  cpElement, "BRNGateway", &_gw,
-                  cpElement, "BrnLinkTable", &_link_table,
+  if (cp_va_kparse(conf, this, errh,
+      "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
                   cpEnd) < 0)
     return -1;
 

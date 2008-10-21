@@ -43,9 +43,8 @@ BRNGatewayDecap::~BRNGatewayDecap() {}
 
 int
 BRNGatewayDecap::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
-                  cpElement, "BRNGateway", &_gw,
-                  cpKeywords,
+  if (cp_va_kparse(conf, this, errh,
+                  "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
                   cpEnd) < 0)
     return -1;
 

@@ -56,14 +56,13 @@ BRNSetGatewayOnFlow::~BRNSetGatewayOnFlow() {}
 
 int
 BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
-  if (cp_va_parse(conf, this, errh,
-                  cpElement, "BRNGateway", &_gw,
-                  cpElement, "AggregateIPFlows", &_aggflows,
-                  cpElement, "BrnLinkTable", &_link_table,
-                  cpElement, "ARPTable", &_arp,
-                  cpElement, "BRNPacketBuffer", &_buffer,
-                  cpIPPrefix, "src IP address with prefix", &_src_ip, &_src_ip_mask,
-                  cpKeywords,
+  if (cp_va_kparse(conf, this, errh,
+                  "BRNGATEWAY", cpkP+cpkM, cpElement,/* "BRNGateway",*/ &_gw,
+                  "AGGIPFLOWS", cpkP+cpkM, cpElement,/* "AggregateIPFlows",*/ &_aggflows,
+                  "LINKTABLE", cpkP+cpkM, cpElement,/* "BrnLinkTable",*/ &_link_table,
+                  "ARPTABLE", cpkP+cpkM, cpElement,/* "ARPTable",*/ &_arp,
+                  "PACKETBUFFER", cpkP+cpkM, cpElement,/* "BRNPacketBuffer",*/ &_buffer,
+                  "IP", cpkP+cpkM, cpIPPrefix,/* "src IP address with prefix",*/ &_src_ip, &_src_ip_mask,
                   cpEnd) < 0)
       return -1;
 

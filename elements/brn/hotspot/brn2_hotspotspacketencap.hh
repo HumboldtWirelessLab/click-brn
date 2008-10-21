@@ -18,7 +18,6 @@ class BRN2HotSpotsPacketEncap : public Element {
 
  public:
 
-   int _debug;
   //
   //methods
   //
@@ -39,7 +38,7 @@ class BRN2HotSpotsPacketEncap : public Element {
   void add_handlers();
 
  private:
-
+  int _debug;
 
 };
 

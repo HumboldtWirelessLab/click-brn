@@ -42,11 +42,9 @@ DHTStorageSimple::~DHTStorageSimple()
 int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpKeywords,
-    "DHTROUTING", cpElement, "Routinglayer", &_dht_routing,
-    "DEBUG", cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+    "DHTROUTING", cpkN, cpElement, &_dht_routing,
+    "DEBUG", cpkN, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 
@@ -138,12 +136,13 @@ void DHTStorageSimple::dht_unlook()
 {
 
 }
-
+/*
 void static handle_routing_changes(void *dht)
 {
   DHTStorageSimple *dht_handle = (DHTStorageSimple*)dht;
+  if ( dht_handle == NULL ) click_chatter("Error");
 }
-
+*/
 void DHTStorageSimple::add_handlers()
 {
 }

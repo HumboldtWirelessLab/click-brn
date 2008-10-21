@@ -44,11 +44,10 @@ CompoundHandler::~CompoundHandler()
 int
 CompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpString, "handler", &_handler,
-      cpString, "classes", &_items,
-      cpOptional,
-      cpString, "value", &_value,
+  if (cp_va_kparse(conf, this, errh,
+      "HANDLER", cpkP+cpkM, cpString, &_handler,
+      "CLASSES", cpkP+cpkM, cpString, &_items,
+      "VALUE", cpkP+cpkM, cpString, &_value,
       cpEnd) < 0)
     return -1;
 
@@ -142,7 +141,7 @@ CompoundHandler::set_value( const String& value, ErrorHandler *errh )
     ContextErrorHandler cerrh( errh, "In write handler '" + 
       pHandler->unparse_name(pElement) + "':");
 
-    pHandler->call_write( _value, pElement, true, &cerrh );
+    pHandler->call_write( _value, pElement, &cerrh );
   }
 }
 

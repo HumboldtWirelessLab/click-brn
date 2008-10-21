@@ -117,30 +117,28 @@ freq2channel(int freq)
   
   return( channel );
 }
-
+/*
 static int 
 channel2freq(int channel)
 {
   int frq[] = { -1, 241200000, 241700000, 242200000, 242700000, 
     243200000, 243700000, 244200000, 244700000, 245200000, 245700000,
     246200000, 246700000, 247200000, 248400000 };
-  
+
   if( channel > 14 )
     return( -1 );
-  
+
   return( frq[channel] );
 }
-
+*/
 int
 BRN2SetChannel::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh, 
-      cpOptional,
-        cpString, "device name", &_dev_name, 
-        cpBool, "rotate channels", &_rotate,
-      cpKeywords,
-        "DEV", cpString, "device name", &_dev_name, 
-        "ROTATE", cpBool, "rotate channels", &_rotate,
+  if (cp_va_kparse(conf, this, errh, 
+        "DEVICENAME", cpkP+cpkM, cpString, /*"device name",*/ &_dev_name,
+        "ROTATECHANNELS", cpkP+cpkM, cpBool, /*"rotate channels",*/ &_rotate,
+        "DEV", cpkP+cpkM, cpString, /*"device name",*/ &_dev_name,
+        "ROTATE", cpkP+cpkM, cpBool, /*"rotate channels",*/ &_rotate,
       cpEnd) < 0)
     return -1;
 
@@ -152,7 +150,7 @@ BRN2SetChannel::configure(Vector<String> &conf, ErrorHandler *errh)
 
 ////////////////////////////////////////////////////////////////////////
 Packet*
-BRN2SetChannel::pull(int port)
+BRN2SetChannel::pull(int)
 {
   Packet *p = NULL;
   p = input(0).pull();
@@ -177,7 +175,6 @@ BRN2SetChannel::pull(int port)
         /*chack packet for being beacon with channelswicth*/
         bool packet_to_switch = false;
 
-        
         if (packet_to_switch) _switch_on_next = true;
       }
     }
@@ -223,8 +220,8 @@ BRN2SetChannel::set_channel(int channel)
 int
 BRN2SetChannel::get_freq() {
  // struct net_device* dev = NULL;
-  int ret = -1;
-  double dFreq = .0;
+  //int ret = -1;
+  //double dFreq = .0;
 /*  struct iwreq iwr;
 
   dev = dev_get_by_name( _dev_name.c_str() );
@@ -265,10 +262,10 @@ BRN2SetChannel::get_freq() {
 ////////////////////////////////////////////////////////////////////////
 
 void
-BRN2SetChannel::set_freq(int freq) {
+BRN2SetChannel::set_freq(int /*freq*/) {
   //struct net_device* dev = NULL;
-  int ret = -1;
-  double dFreq = .0;
+  //int ret = -1;
+  //double dFreq = .0;
  /* struct iwreq iwr;
 
   dev = dev_get_by_name( _dev_name.c_str() );
