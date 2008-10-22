@@ -62,7 +62,7 @@ InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
       "AUTH_REQUESTER", cpkP+cpkM, cpElement, /*"AuthRequester",*/ &_authreq,
       "ASSOC_REQUESTER", cpkP+cpkM, cpElement, /*"AssocRequester",*/ &_assocreq,
       "WIFIENCAP", cpkP+cpkM, cpElement, /*"Wifiencap",*/ &_wifiencap,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
+      "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
 
       return -1;

@@ -53,21 +53,13 @@ EtherIpAddrRewriter::~EtherIpAddrRewriter()
 int 
 EtherIpAddrRewriter::configure(Vector<String> & conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-        cpInteger, "DEBUG", &_debug,
-        cpBool, "ACTIVE", &m_bActive,
-        cpEthernetAddress, "ETHER_SRC", &m_addrEtherSrc,
-        cpEthernetAddress, "ETHER_DST", &m_addrEtherDst,
-        cpIPAddress,  "IP_SRC", &m_addrIpSrc,
-        cpIPAddress,  "IP_DST", &m_addrIpDst,
-      cpKeywords,
-        "DEBUG", cpInteger, "DEBUG", &_debug,
-        "ACTIVE", cpBool, "ACTIVE", &m_bActive,
-        "ETHER_SRC", cpEthernetAddress, "ETHER_SRC", &m_addrEtherSrc,
-        "ETHER_DST", cpEthernetAddress, "ETHER_DST", &m_addrEtherDst,
-        "IP_SRC", cpIPAddress, "IP_SRC", &m_addrIpSrc,
-        "IP_DST", cpIPAddress, "IP_DST", &m_addrIpDst,
+  if (cp_va_kparse(conf, this, errh,
+        "DEBUG", cpkP+cpkM, cpInteger, /*"DEBUG",*/ &_debug,
+        "ACTIVE", cpkP+cpkM, cpBool, /*"ACTIVE",*/ &m_bActive,
+        "ETHER_SRC", cpkP+cpkM, cpEthernetAddress, /*"ETHER_SRC",*/ &m_addrEtherSrc,
+        "ETHER_DST", cpkP+cpkM, cpEthernetAddress, /*"ETHER_DST",*/ &m_addrEtherDst,
+        "IP_SRC", cpkP+cpkM, cpIPAddress, /*"IP_SRC",*/ &m_addrIpSrc,
+        "IP_DST", cpkP+cpkM, cpIPAddress, /*"IP_DST",*/ &m_addrIpDst,
       cpEnd) < 0)
     return -1;
 
