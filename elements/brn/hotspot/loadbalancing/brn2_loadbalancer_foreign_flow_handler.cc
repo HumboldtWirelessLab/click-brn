@@ -27,7 +27,7 @@ int LoadBalancerForeignFlowHandler::configure(Vector<String> &conf, ErrorHandler
 {
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"ether address",*/ &_me,
-    "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
+    "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
 

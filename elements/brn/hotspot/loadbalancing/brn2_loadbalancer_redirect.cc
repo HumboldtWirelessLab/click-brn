@@ -14,6 +14,8 @@
 #include "brn2_loadbalancer_redirect.hh"
 
 #include "elements/brn/routing/linkstat/brnlinkstat.hh"
+#include "brn2_lb_rerouting.hh"
+
 
 CLICK_DECLS
 
@@ -31,8 +33,9 @@ int LoadBalancerRedirect::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"ether address",*/ &_me,
-    "LINKSTAT", cpkP+cpkM, cpElement, "LinkStat", &_linkstat,
-    "DEBUG", cpkP+cpkM, cpInteger, "debug", &_debug,
+    "LINKSTAT", cpkP+cpkM, cpElement, /*"LinkStat",*/ &_linkstat,
+    "ROUTING", cpkP+cpkM, cpElement, &_rerouting,
+    "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
 
@@ -41,6 +44,9 @@ int LoadBalancerRedirect::configure(Vector<String> &conf, ErrorHandler *errh)
     _linkstat = NULL;
     click_chatter("kein Linkstat");
   }
+
+  click_chatter("Name: %s",_rerouting->lb_routing_name());
+
   return 0;
 }
 
@@ -227,6 +233,10 @@ EtherAddress* LoadBalancerRedirect::getBestNodeForFlow(EtherAddress *srcEtherAdd
 {
   Vector<EtherAddress> neighbors;
   EtherAddress *bestNode;
+
+  click_chatter("bla");
+  _rerouting->getBestNodeForFlow();
+  click_chatter("bla");
 
   if ( ( srcEtherAddress == NULL ) || ( srcIP == NULL ) || ( dstIP == NULL ) || ( srcPort = 0 ) || ( dstPort == 0 ) ) return NULL;
   bestNode = NULL;

@@ -2,6 +2,7 @@
 #define CLICK_LOADBALANCER_HH
 
 #include "elements/brn/routing/linkstat/brnlinkstat.hh"
+#include "elements/brn/hotspot/loadbalancing/brn2_lb_rerouting.hh"
 
 CLICK_DECLS
 
@@ -63,7 +64,7 @@ class LoadBalancerRedirect : public Element
     EtherAddress *getNodeForFlow(IPAddress *srcIP, IPAddress *dstIP, uint16_t srcPort, uint16_t dstPort);
 
     EtherAddress* getBestNodeForFlow(EtherAddress *srcEtherAddress, IPAddress *srcIP, IPAddress *dstIP,uint16_t srcPort, uint16_t dstPort);
-    
+
     EtherAddress *getSrcForFlow(IPAddress *srcIP, IPAddress *dstIP, uint16_t srcPort, uint16_t dstPort);
 
     void nodeDetection();
@@ -77,6 +78,8 @@ class LoadBalancerRedirect : public Element
     Vector<EtherAddress> _neighbors;
 
     Vector<FlowInfo *> redirectFlows;
+
+    LoadbalancingRerouting *_rerouting;
 
     int _debug;
 
