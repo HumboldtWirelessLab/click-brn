@@ -41,6 +41,8 @@ How often beacon packets are sent, in milliseconds.
 
 */
 
+#define WIFI_ELEMID_CSA  37
+
 class BRN2BeaconSource : public Element { public:
   
   BRN2BeaconSource();

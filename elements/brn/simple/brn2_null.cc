@@ -18,9 +18,8 @@ BRN2Null::~BRN2Null()
 int
 BRN2Null::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpString, "label", &_label,
+  if (cp_va_kparse(conf, this, errh,
+      "LABEL", cpkP, cpString, /*"label",*/ &_label,
       cpEnd) < 0)
        return -1;
   return 0;

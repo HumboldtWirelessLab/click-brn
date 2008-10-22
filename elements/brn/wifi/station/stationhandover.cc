@@ -52,11 +52,11 @@ StationHandover::~StationHandover()
 int
 StationHandover::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpElement, "BRNAssocRequester", &_station_assoc,
-      cpElement, "WirelessInfo", &_winfo,
-      cpInteger, "use #number of beacons to calculate the average rssi value", &_delta,
-      cpInteger, "min rssi (dBm) difference for handover to avoid oscillations", &_rssi_min_diff,
+  if (cp_va_kparse(conf, this, errh,
+      "BRNASSOCREQU", cpkP+cpkM, cpElement, /* "BRNAssocRequester",*/ &_station_assoc,
+      "WIRELESSINFO", cpkP+cpkM, cpElement, /*"WirelessInfo",*/ &_winfo,
+      "COUNTBEACONS", cpkP+cpkM, cpInteger, /*"use #number of beacons to calculate the average rssi value",*/ &_delta,
+      "RSSIDIFF", cpkP+cpkM, cpInteger, /*"min rssi (dBm) difference for handover to avoid oscillations",*/ &_rssi_min_diff,
       cpEnd) < 0)
     return -1;
 
@@ -92,7 +92,7 @@ StationHandover::push(int, Packet *p_in)
   if( false == _active )
     return;
 
-  struct click_wifi_extra *ceha = (struct click_wifi_extra *) p_in->all_user_anno();
+  struct click_wifi_extra *ceha = (struct click_wifi_extra *) p_in->anno();
   struct click_wifi *wh = (struct click_wifi *) p_in->data();
 
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;

@@ -48,11 +48,9 @@ AddEtherNsclick::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _strict = false;
-  if (cp_va_parse(conf, this, errh,
-		  /* not required */
-		  cpKeywords,
-		  "DEBUG", cpInteger, "Debug", &_debug,
-		  "STRICT", cpBool, "strict header check", &_strict,
+  if (cp_va_kparse(conf, this, errh,
+		  "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
+		  "STRICT", cpkP, cpBool, /*"strict header check",*/ &_strict,
 		  cpEnd) < 0)
     return -1;
   return 0;

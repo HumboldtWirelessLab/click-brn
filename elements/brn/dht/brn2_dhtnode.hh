@@ -60,6 +60,7 @@ class DHTnode
     EtherAddress _ether_addr;
     void *_extra;
     uint8_t _distance;
+    uint8_t _status;
 
     DHTnode()
     {

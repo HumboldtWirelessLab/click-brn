@@ -20,31 +20,30 @@ extern "C" {
 
 int DHTnodelist::add_dhtnode(DHTnode *_new_node)
 {
-  int i,index;
+  DHTnode *node;
 
-  /*index = -1;
-  for( i = 0; ( i < _nodelist.size() ) && ( index == -1 ); i++)
+  if ( _new_node != NULL )
   {
-    if ( memcmp(_nodelist[i]->ether_addr.data(), _etheradd, 6) == 0 ) index = i;
+    node = get_dhtnode(_new_node);
+    if ( node != NULL ) erase_dhtnode(&(node->_ether_addr));
+
+    _nodelist.push_back(_new_node);
   }
-*/
+
   return 0;
 }
 
 DHTnode* DHTnodelist::get_dhtnode(DHTnode *_search_node)
 {
-  return 0;
+  return get_dhtnode(&(_search_node->_ether_addr));
 }
 
 DHTnode* DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
 {
-  int i,index;
+  int i;
 
-  index = -1;
-  for( i = 0; ( i < _nodelist.size() ) && ( index == -1 ); i++)
-  {
-    if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 ) index = i;
-  }
+  for( i = 0; i < _nodelist.size(); i++)
+    if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 ) break;
 
   if ( i < _nodelist.size() )
     return _nodelist[i];
@@ -54,6 +53,15 @@ DHTnode* DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
 
 int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
+  int i;
+
+  for( i = 0; i < _nodelist.size(); i++)
+    if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 )
+    {
+      _nodelist.erase(_nodelist.begin() + i);
+      break;
+    }
+
   return 0;
 }
 

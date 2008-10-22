@@ -25,11 +25,9 @@ LoadBalancerForeignFlowHandler::~LoadBalancerForeignFlowHandler()
 
 int LoadBalancerForeignFlowHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpEtherAddress, "ether address", &_me,
-    cpKeywords,
-    "DEBUG", cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+    "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"ether address",*/ &_me,
+    "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
 
@@ -59,7 +57,7 @@ void LoadBalancerForeignFlowHandler::push( int port, Packet *packet )
   {
 //    click_chatter("Paket from Neighbor! Try to push it to Internet");
 
-    click_ether *ether = (click_ether *)packet->data();
+//    click_ether *ether = (click_ether *)packet->data();
     click_ip *ip_header = (click_ip *)&packet->data()[14];
 
     p_data = (uint8_t *)packet->data();

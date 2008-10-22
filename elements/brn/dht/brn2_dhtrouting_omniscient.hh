@@ -76,30 +76,17 @@ class DHTRoutingOmni : public DHTRouting
 
     DHTnode _me;
     DHTnodelist _dhtnodes;
-    DHTnodelist _dhtneighbors;
 
-    Vector<EtherAddress> my_neighbors;
 
     Timer _lookup_timer;
-    static void static_queue_timer_hook(Timer *, void *);
+    static void static_lookup_timer_hook(Timer *, void *);
+    void set_lookup_timer();
     void nodeDetection();
 
-    Timer _sendbuffer_timer;
-    static void static_lookup_timer_hook(Timer *, void *);
-    SendBuffer packet_queue;
-    int get_min_jitter_in_queue();
-    void queue_timer_hook();
-    unsigned int _min_dist;
-
-    int _min_jitter,_jitter,_simulator,_update_interval;
-
-    void sendNodeInfoToAll(uint8_t type);
-    Packet *createInfoPacket( uint8_t type );
+    int _update_interval;
 
     void *_info_func;
     void *_info_obj;
-
-    void set_lookup_timer();
 
 };
 

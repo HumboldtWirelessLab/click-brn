@@ -54,16 +54,15 @@ int
 InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
-  if (cp_va_parse(conf, this, errh,
-      cpKeywords,
-      "WIRELESS_INFO", cpElement, "Wirelessinfo", &_wireless_info,
-      "RT", cpElement, "AvailabeRates", &_rtable,
-      "BEACONSCANNER", cpElement, "Beaconscanner", &_beaconscanner,
-      "PROBE_REQUESTER", cpElement, "ProbeRequester", &_probereq,
-      "AUTH_REQUESTER", cpElement, "AuthRequester", &_authreq,
-      "ASSOC_REQUESTER", cpElement, "AssocRequester", &_assocreq,
-      "WIFIENCAP", cpElement, "Wifiencap", &_wifiencap,
-      "DEBUG", cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"Wirelessinfo",*/ &_wireless_info,
+      "RT", cpkP+cpkM, cpElement, /*"AvailabeRates",*/ &_rtable,
+      "BEACONSCANNER", cpkP+cpkM, cpElement, /*"Beaconscanner",*/ &_beaconscanner,
+      "PROBE_REQUESTER", cpkP+cpkM, cpElement, /*"ProbeRequester",*/ &_probereq,
+      "AUTH_REQUESTER", cpkP+cpkM, cpElement, /*"AuthRequester",*/ &_authreq,
+      "ASSOC_REQUESTER", cpkP+cpkM, cpElement, /*"AssocRequester",*/ &_assocreq,
+      "WIFIENCAP", cpkP+cpkM, cpElement, /*"Wifiencap",*/ &_wifiencap,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
 
       return -1;
