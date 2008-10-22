@@ -1,9 +1,9 @@
 #ifndef CLICK_DHTROUTING_FALCON_HH
 #define CLICK_DHTROUTING_FALCON_HH
 
-#include "md5.h"
+#include "elements/brn/dht/md5.h"
 
-#include "brn2_dhtrouting.hh"
+#include "elements/brn/dht/routing/brn2_dhtrouting.hh"
 
 CLICK_DECLS
 
@@ -38,7 +38,6 @@ class DHTRoutingFalcon : public DHTRouting
 
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
-    int set_notify_callback(void *info_func, void *info_obj);
 
   private:
 

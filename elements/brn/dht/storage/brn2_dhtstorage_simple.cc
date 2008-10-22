@@ -62,8 +62,17 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+static void callback_func(void *e, int status)
+{
+  DHTStorageSimple *s = (DHTStorageSimple *)e;
+
+  click_chatter("callback %s: Status %d",s->class_name(),status);
+  click_chatter("New Neighbours");
+}
+
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
+  _dht_routing->set_notify_callback(callback_func,(void*)this);
   return 0;
 }
 
@@ -136,13 +145,7 @@ void DHTStorageSimple::dht_unlook()
 {
 
 }
-/*
-void static handle_routing_changes(void *dht)
-{
-  DHTStorageSimple *dht_handle = (DHTStorageSimple*)dht;
-  if ( dht_handle == NULL ) click_chatter("Error");
-}
-*/
+
 void DHTStorageSimple::add_handlers()
 {
 }

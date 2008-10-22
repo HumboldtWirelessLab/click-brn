@@ -2,11 +2,11 @@
 #define CLICK_DHTROUTING_OMNISCIENT_HH
 #include <click/timer.hh>
 
-#include "md5.h"
+#include "elements/brn/dht/md5.h"
 
-#include "brn2_dhtnode.hh"
-#include "brn2_dhtnodelist.hh"
-#include "brn2_dhtrouting.hh"
+#include "elements/brn/dht/standard/brn2_dhtnode.hh"
+#include "elements/brn/dht/standard/brn2_dhtnodelist.hh"
+#include "elements/brn/dht/routing/brn2_dhtrouting.hh"
 
 CLICK_DECLS
 
@@ -28,7 +28,7 @@ class DHTRoutingOmni : public DHTRouting
         {
           assert(p);
           _p=p;
-	  _send_time = Timestamp::now().timeval();
+          _send_time = Timestamp::now().timeval();
           _send_time.tv_sec += ( time_diff / 1000 );
           _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
           while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
@@ -65,7 +65,6 @@ class DHTRoutingOmni : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingOmni"; }
 
-    int set_notify_callback(void *, void *);
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
 
@@ -84,9 +83,6 @@ class DHTRoutingOmni : public DHTRouting
     void nodeDetection();
 
     int _update_interval;
-
-    void *_info_func;
-    void *_info_obj;
 
 };
 

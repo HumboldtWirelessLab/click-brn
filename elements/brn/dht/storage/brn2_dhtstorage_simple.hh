@@ -9,7 +9,7 @@
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 
-#include "brn2_dhtrouting.hh"
+#include "elements/brn/dht/routing/brn2_dhtrouting.hh"
 #include "brn2_db.hh"
 
 CLICK_DECLS

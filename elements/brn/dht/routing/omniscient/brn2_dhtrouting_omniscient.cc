@@ -96,14 +96,8 @@ void DHTRoutingOmni::nodeDetection()
 
   _linkstat->get_neighbors(&neighbors);
   click_chatter("Have %d neigh",neighbors.size());
-}
 
-int DHTRoutingOmni::set_notify_callback(void *info_func, void *info_obj)
-{
-  _info_func = info_func;
-  _info_obj = info_obj;
-
-  return 0;
+  notify_callback(5);
 }
 
 void DHTRoutingOmni::add_handlers()

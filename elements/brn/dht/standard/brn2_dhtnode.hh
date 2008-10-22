@@ -4,7 +4,7 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
-#include "brn2_md5.hh"
+#include "elements/brn/dht/brn2_md5.hh"
 
 CLICK_DECLS
 

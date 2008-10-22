@@ -3,7 +3,7 @@
 #include <click/etheraddress.hh>
 #include "brn2_dhtnode.hh"
 #include "brn2_dhtnodelist.hh"
-#include "brn2_md5.hh"
+#include "elements/brn/dht/brn2_md5.hh"
 
 
 CLICK_DECLS
