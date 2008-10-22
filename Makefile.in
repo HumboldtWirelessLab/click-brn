@@ -49,6 +49,8 @@ linuxmodule: Makefile click-buildtool stamp-h
 	@cd linuxmodule && $(MAKE) all
 ns: Makefile click-buildtool stamp-h
 	@cd ns && $(MAKE) all
+jist: Makefile click-buildtool stamp-h
+	@cd jist && $(MAKE) all
 userlevel: Makefile click-buildtool click-compile stamp-h
 	@cd userlevel && $(MAKE) all
 exopc: Makefile click-buildtool stamp-h
@@ -224,7 +226,7 @@ distdir: $(srcdir)/configure
 
 
 .PHONY: all always elemlist elemlists \
-	bsdmodule exopc linuxmodule ns tools userlevel \
+	bsdmodule exopc linuxmodule ns jist tools userlevel \
 	clean distclean dist distdir \
 	install install-doc install-lib install-man install-local install-include install-local-include \
 	uninstall uninstall-local uninstall-local-include

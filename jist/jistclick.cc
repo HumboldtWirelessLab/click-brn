@@ -1,0 +1,628 @@
+/* Copyright (C) 2005 BerlinRoofNet Lab
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ *
+ * For additional licensing options, consult http://www.BerlinRoofNet.de 
+ * or contact brn@informatik.hu-berlin.de. 
+ */
+
+#include <click/config.h>
+#include <click/pathvars.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#if HAVE_UNISTD_H
+#include <unistd.h>
+#endif //HAVE_UNISTD_H
+
+//#include <clicknet/wifi.h>
+
+#include <click/router.hh>
+#include <click/error.hh>
+#include <click/string.hh>
+#include <click/glue.hh>
+#include <click/driver.hh>
+#include <click/master.hh>
+#include <click/simclick.h>
+#include <click/handlercall.hh>
+
+#include "jni_click_runtime_ClickAdapter.hh"
+#include "clickadapter.hh"
+#include "java_array.hh"
+
+CLICK_USING_DECLS
+
+#define IFID_LASTIF 32
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// State for each simulated machine
+//
+
+class SimState {
+public:
+  Router *router;
+  bool* _nics_ready;
+  int64_t last_scheduled;
+
+  SimState() {
+    router = NULL;
+    _nics_ready = new bool[IFID_LASTIF];
+    last_scheduled = -1L;
+  }
+
+  ~SimState() {
+    delete[] _nics_ready;
+  }
+
+  static SimState* simmain(simclick_sim siminst,const char* router_file);
+  static bool didinit_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+bool SimState::didinit_ = false;
+
+static simclick_simstate cursimclickstate;
+static SimState* router_state = NULL;
+
+JNIEnv     *javaEnv = NULL;
+jobject    javaException;
+
+static ErrorHandler *errh;
+
+// functions for packages
+
+////////////////////////////////////////////////////////////////////////////////
+
+// main
+
+SimState*
+SimState::simmain(simclick_sim siminst, const char *router_file)
+{
+  if (!didinit_) {
+    click_static_initialize();
+    errh = ErrorHandler::default_handler();
+    didinit_ = true;
+  }
+
+  bool warnings = true;
+
+  SimState* newstate = new SimState();
+
+  // lex
+  newstate->router = click_read_router(router_file, false, errh, false);
+  if (!newstate->router)
+    exit(1);
+  
+  newstate->router->master()->initialize_ns(siminst, (simclick_click)newstate);
+
+  if (newstate->router->nelements() == 0 && warnings)
+    errh->warning("%s: configuration has no elements", router_file);
+
+  if (errh->nerrors() > 0 || newstate->router->initialize(errh) < 0)
+    exit(1);
+
+  newstate->router->activate(errh);
+  return newstate;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+//
+// XXX
+// OK, this bit of code here should work fine as long as your simulator
+// isn't multithreaded. If it is, there could be multiple threads stomping
+// on each other and potentially causing subtle or unsubtle problems.
+//
+static void setsimstate(JNIEnv * env, int64_t simtime_ns) {
+  cursimclickstate.curtime.tv_sec  = simtime_ns / 1000000000L;
+  cursimclickstate.curtime.tv_usec = (simtime_ns / 1000L) % 1000000L;
+  
+  javaEnv = env;
+}
+
+static simclick_simstate* getsimstate() {
+  return &cursimclickstate;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_gettimeofday(struct timeval* tv) {
+  simclick_simstate* sstate = getsimstate();
+  if (sstate) {
+    *tv = sstate->curtime;
+  }
+  else {
+    fprintf(stderr,"Hey! Called simclick_gettimeofday without simstate set!\n");
+  }
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Java natives
+////////////////////////////////////////////////////////////////////////////////
+
+inline bool is_null(JNIEnv* env, void* ptr)
+{
+  if (ptr == NULL)
+  {
+    jclass exc = env->FindClass("java/lang/NullPointerException");
+    if (exc != NULL)
+      env->ThrowNew(exc, "(in C++ code)");
+    return true;
+  }
+  return false;
+}
+
+inline void throw_click_exception(JNIEnv* env, const char* text)
+{
+  jclass exc = env->FindClass("brn/click/ClickException");
+  if (exc != NULL)
+    env->ThrowNew(exc, text);
+}
+
+inline bool check_handle(JNIEnv* env, jint handle)
+{
+  if (handle == 0)
+  {
+    throw_click_exception(env, "Invalid click handle");
+    return false;
+  }
+  return true;
+}
+
+class smart_jstring
+{
+  JNIEnv * _env;
+  jstring _js;
+  const char* _s;
+public:
+  smart_jstring(JNIEnv* env, const char* s) : _env(env), _s(NULL) {
+    _js = _env->NewStringUTF(s);
+  }
+  smart_jstring(JNIEnv* env, jstring& js) : _env(env), _js(js), _s(NULL) {}
+  ~smart_jstring() {release();}
+  const char* c_str() {
+    if (NULL == _s && NULL == _js)
+      return (NULL);
+    if (NULL == _s)
+      _s = _env->GetStringUTFChars(_js, NULL);
+    return (_s);
+  }
+  jstring j_str() {
+    return (_js);
+  }
+protected:
+  void release() {
+    if (_s)
+      _env->ReleaseStringUTFChars(_js, _s);
+    _s = NULL;
+  }    
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT jlong JNICALL Java_click_runtime_ClickAdapter_click_1create
+  (JNIEnv * env, jobject obj, jstring routerFile, jlong startSimulationTime)
+{
+  try {
+    if (is_null(env, routerFile))
+      return 0;
+
+    setsimstate(env, startSimulationTime);
+    smart_jstring router = smart_jstring(env, routerFile);
+
+    // Since we store obj across native function calls, we need a global reference
+    // we use weak reference to not confuse the jvmgc
+    jweak weak = env->NewWeakGlobalRef(obj);
+    if (NULL == weak)
+	    return 0;
+
+    SimState* state = SimState::simmain(weak,router.c_str());
+    return (jlong) state;         
+  } 
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT void JNICALL Java_click_runtime_ClickAdapter_click_1run
+  (JNIEnv *env, jobject, jlong clickHandle, jlong currSimulationTime,
+  jbooleanArray jnics_ready)
+{
+  try {
+    if (!check_handle(env, clickHandle))
+      return;
+
+    setsimstate(env, currSimulationTime);
+
+    if (NULL != router_state) {
+      throw_click_exception(env, "invalid router state");
+      return;
+    }
+
+    SimState* state = (SimState*)clickHandle;
+    router_state = state;
+    Router* r = state->router;
+
+    if (NULL == r) {
+      throw_click_exception(env, "call with null router");
+      return;
+    }
+    if (NULL == router_state) {
+      throw_click_exception(env, "invalid router state");
+      return;
+    }
+
+    jboolean* nics_ready = env->GetBooleanArrayElements(jnics_ready, NULL);
+    for (int i = 0; i < env->GetArrayLength(jnics_ready); i++) {
+      state->_nics_ready[i] = nics_ready[i];
+    }
+
+    r->master()->thread(0)->driver();
+    router_state = NULL;
+  } 
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT void JNICALL Java_click_runtime_ClickAdapter_click_1kill
+  (JNIEnv *env, jobject, jlong clickHandle, jlong currSimulationTime)
+{
+  try {
+    if (!check_handle(env, clickHandle))
+      return;
+
+    setsimstate(env, currSimulationTime);
+
+    SimState* state = (SimState*)clickHandle;
+    Router* r = state->router;
+    if (NULL == r) {
+      throw_click_exception(env, "call with null router");
+      return;
+    }
+
+    // Release weak reference
+    if (NULL != r->master()) {
+	    jweak wobj = (jweak)r->master()->siminst();
+      
+      env->DeleteWeakGlobalRef(wobj);
+    }
+
+    state->router = NULL;
+    delete r;
+  } 
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT jint JNICALL Java_click_runtime_ClickAdapter_click_1send
+  (JNIEnv *env, jobject, jlong clickHandle, jlong currSimulationTime,
+  jint jifid, jint jtype, jbyteArray jdata, jint id, jint fid, jint simtype,
+  jboolean txfeedback, jbooleanArray jnics_ready)
+{
+  int result = 0;
+  try {
+    if (!check_handle(env, clickHandle))
+      return -1;
+
+    setsimstate(env, currSimulationTime);
+
+    if (NULL != router_state) {
+      throw_click_exception(env, "invalid router state");
+      return -1;
+    }
+
+    SimState* state = (SimState*)clickHandle;
+    router_state = state;
+    Router* r = state->router;
+
+    if (NULL == r) {
+      throw_click_exception(env, "call with null router");
+      return -1;
+    }
+    if (NULL == router_state) {
+      throw_click_exception(env, "invalid router state");
+      return -1;
+    }
+    jboolean* nics_ready = env->GetBooleanArrayElements(jnics_ready, NULL);
+    for (int i = 0; i < env->GetArrayLength(jnics_ready); i++) {
+      state->_nics_ready[i] = nics_ready[i];
+    }
+
+    // TODO we do not use sim packet info
+    simclick_simpacketinfo info;
+    info.id = id;
+    info.fid = fid;
+    info.simtype = simtype;
+    info.tx_feedback = txfeedback;
+    info.retries = 0;
+    info.rx_power = 0;
+    
+    int len = env->GetArrayLength(jdata);
+    jbyte* data = env->GetByteArrayElements(jdata, NULL);
+
+//    if (SIMCLICK_PTYPE_WIFI_EXTRA == jtype) {
+//      click_wifi_extra* eh = (click_wifi_extra*)data;
+//      if (txfeedback)
+//        assert(WIFI_EXTRA_TX == (eh->flags & WIFI_EXTRA_TX));
+//      else
+//        assert(0 == (eh->flags & WIFI_EXTRA_TX));
+//    }
+
+    // Click will copy the data
+    r->sim_incoming_packet(jifid, jtype, (unsigned char*)data, len, &info);
+
+    env->ReleaseByteArrayElements(jdata, data, JNI_ABORT);
+                                        
+    // sim_incoming_packet is not atomic, nested invocations are possible 
+    // so we MUST set the simulation time again since it is stored in a global var
+    setsimstate(env, currSimulationTime);
+    r->master()->thread(0)->driver();
+    router_state = NULL;
+} 
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT jstring JNICALL Java_click_runtime_ClickAdapter_click_1read_1handler
+  (JNIEnv *env, jobject, jlong clickHandle, jlong currSimulationTime,
+  jstring elemName, jstring handlerName)
+{
+  try {
+    if (!check_handle(env, clickHandle) || is_null(env, handlerName))
+      return 0;
+
+    setsimstate(env, currSimulationTime);
+
+    SimState* state = (SimState*)clickHandle;
+    Router* r = state->router;
+    if (NULL == r) {
+      throw_click_exception(env, "call with null router");
+      return 0;
+    }
+
+    smart_jstring element = smart_jstring(env, elemName);
+    smart_jstring handler = smart_jstring(env, handlerName);
+
+    String hdesc = String(element.c_str()) + "." + String(handler.c_str());
+    ErrorHandler *errh = ErrorHandler::default_handler();
+    
+    int before = errh->nerrors();
+    String result = HandlerCall::call_read(hdesc, r->root_element(), errh);
+    
+    if (!result && errh->nerrors() != before)
+      return 0;
+
+    return smart_jstring(env, result.c_str()).j_str();
+  }
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+
+  return (0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+JNIEXPORT jint JNICALL Java_click_runtime_ClickAdapter_click_1write_1handler
+  (JNIEnv *env, jobject, jlong clickHandle, jlong currSimulationTime,
+  jstring elemName, jstring handlerName, jstring jvalue)
+{
+  int ret = 0;
+
+  try {
+    if (!check_handle(env, clickHandle) 
+      || is_null(env, elemName) || is_null(env, handlerName) || is_null(env, jvalue))
+      return -3;
+
+    setsimstate(env, currSimulationTime);
+
+    SimState* state = (SimState*)clickHandle;
+    Router* r = state->router;
+    if (NULL == r) {
+      throw_click_exception(env, "call with null router");
+      return -3;
+    }
+
+    smart_jstring element = smart_jstring(env, elemName);
+    smart_jstring handler = smart_jstring(env, handlerName);
+    smart_jstring value = smart_jstring(env, jvalue);
+
+    String hdesc = String(element.c_str()) + "." + String(handler.c_str());
+    ret = HandlerCall::call_write( hdesc, 
+                                  String(value.c_str()), 
+                                  r->root_element(), 
+                                  ErrorHandler::default_handler());
+  }
+  catch (jthrowable& exc) {
+    env->Throw(exc);
+  }
+  catch(...) {
+    throw_click_exception(env, "internal error (click crashed)");
+  }
+
+  return (ret);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Call stubs into the simulator
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_ifid_from_name(simclick_sim siminst,const char* ifname)
+{
+  // TODO check weak reference? or produces the jvm a meaningfull exception?
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+  
+  return click_adapter.sim_ifid_from_name(ifname);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void simclick_sim_ipaddr_from_name(simclick_sim siminst,const char* ifname,
+           char* buf,int len)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+  
+  const char* result = click_adapter.sim_ipaddr_from_name(ifname);
+  if (result) {
+    strncpy(buf, result, len);
+    delete[] result;
+  }
+  else {
+    buf[0] = '\0';
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void simclick_sim_macaddr_from_name(simclick_sim siminst,const char* ifname,
+            char* buf,int len)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+  
+  const char* result = click_adapter.sim_macaddr_from_name(ifname);
+  if (result) {
+    strncpy(buf, result, len);
+    delete[] result;
+  }
+  else {
+    buf = '\0';
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_send_to_if(simclick_sim siminst,simclick_click clickinst,
+          int ifid,int type, const unsigned char* data,
+          int len,simclick_simpacketinfo* info)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  if (NULL == router_state || NULL == router_state->_nics_ready)
+    throw_click_exception(javaEnv, "route state null");
+
+  router_state->_nics_ready[ifid] = false;
+
+  JavaByteArray jdata((const char*)data, len);
+  return click_adapter.sim_send_to_if((long)clickinst, ifid, type, &jdata, info->id, info->fid, info->simtype);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_schedule(simclick_sim siminst,simclick_click clickinst,
+        struct timeval* when)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  int64_t lwhen = (int64_t)(when->tv_sec) * 1000000000L
+    + (int64_t)(when->tv_usec) * 1000L;
+
+  // TODO prevent driver from scheduling the same timer twice
+  if (router_state->last_scheduled == lwhen)
+    return 0; // already sheduled
+  
+  router_state->last_scheduled = lwhen;
+  return click_adapter.sim_schedule((long)clickinst, lwhen);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void simclick_sim_get_node_name(simclick_sim siminst,char* buf,int len)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  const char* result = click_adapter.sim_get_node_name();
+  if (result) {
+    strncpy(buf, result, len);
+    delete[] result;
+  }
+  else {
+    buf = '\0';
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_if_ready(simclick_sim, simclick_click, int ifid)
+{
+  //brn::click::ClickAdapter click_adapter((jobject) siminst);
+  //return click_adapter.sim_if_ready((int)clickinst, ifid);
+
+  return router_state->_nics_ready[ifid];
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_trace(simclick_sim siminst, simclick_click clickinst, const char* event)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  return click_adapter.sim_trace((long)clickinst, event);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_get_node_id(simclick_sim siminst, simclick_click clickinst)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  return click_adapter.sim_get_node_id((long)clickinst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+int simclick_sim_get_next_pkt_id(simclick_sim siminst, simclick_click clickinst)
+{
+  brn::click::ClickAdapter click_adapter((jobject) siminst);
+
+  return click_adapter.sim_get_next_pkt_id((long)clickinst);
+}
+
+////////////////////////////////////////////////////////////////////////////////
