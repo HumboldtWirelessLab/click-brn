@@ -22,6 +22,9 @@ class DHTnodelist {
     int add_dhtnode(DHTnode *_new_node);
     DHTnode* get_dhtnode(DHTnode *_search_node);
     DHTnode* get_dhtnode(EtherAddress *_etheradd);
+
+    DHTnode* get_dhtnode(int i);
+
     int erase_dhtnode(EtherAddress *_etheradd);
     int size();
     void sort();

@@ -50,7 +50,12 @@ DHTnode* DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
 
   return NULL;
 }
-
+DHTnode*
+DHTnodelist::get_dhtnode(int i)
+{
+  if ( i < _nodelist.size() ) return _nodelist[i];
+  else return NULL;
+}
 int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
   int i;
@@ -79,4 +84,5 @@ void DHTnodelist::sort()
 template class Vector<DHTnode*>;
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(DHTnode)
 ELEMENT_PROVIDES(DHTnodelist)

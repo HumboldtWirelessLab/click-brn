@@ -73,9 +73,8 @@ class DHTRoutingOmni : public DHTRouting
     int _debug;
     BRNLinkStat *_linkstat;
 
-    DHTnode _me;
+    DHTnode *_me;
     DHTnodelist _dhtnodes;
-
 
     Timer _lookup_timer;
     static void static_lookup_timer_hook(Timer *, void *);
@@ -83,6 +82,8 @@ class DHTRoutingOmni : public DHTRouting
     void nodeDetection();
 
     int _update_interval;
+
+    void handle_hello_request(Packet *p);
 
 };
 

@@ -20,44 +20,24 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-#ifndef DHT_PROTOCOL_HH
-#define DHT_PROTOCOL_HH
+#ifndef DHT_PROTOCOL_OMNI_HH
+#define DHT_PROTOCOL_OMNI_HH
 
 #include <click/element.hh>
 
 CLICK_DECLS
 
-/* Operations */
-/* field: code */
-
-#define HELLO               1
-#define HELLO_REQUEST       2
-#define ROUTETABLE_REQUEST  3
-#define ROUTETABLE_REPLY    4
-#define ROUTE_REQUEST       5
-
-#define MESSAGE
-
-#define ROUTING_OMNI        1
-#define ROUTING_FALCON      2
-
-struct dht_packet_header {
-  uint8_t  routing;
-  uint8_t  type;
-  uint16_t payload_len;
+struct dht_omni_node_entry {
+  uint8_t  etheraddr[6];
+  uint8_t  status;
 };
 
-#define DHT_PACKET_HEADER_SIZE sizeof(dht_packet_header)
-
-class DHTProtocol {
+class DHTProtocolOmni {
   public:
-    static WritablePacket *new_dht_packet(uint8_t routing, uint8_t type, uint16_t payload_len);
-    static struct dht_packet_header *get_header(Packet *p);
-
-    static uint8_t get_routing(Packet *p);
-    static uint8_t get_type(Packet *p);
-    static uint16_t get_payload_len(Packet *p);
-    static uint8_t *get_payload(Packet *p);
+    static WritablePacket *new_hello_packet(EtherAddress *etheraddr);
+    static WritablePacket *new_hello_request_packet(EtherAddress *etheraddr);
+    static WritablePacket *new_route_request_packet(EtherAddress *me, DHTnodelist *list);
+    static WritablePacket *new_route_reply_packet(EtherAddress *me, DHTnodelist *list);
 
 };
 

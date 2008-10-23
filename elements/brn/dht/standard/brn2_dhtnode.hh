@@ -8,6 +8,11 @@
 
 CLICK_DECLS
 
+#define STATUS_UNKNOWN 0
+#define STATUS_OK      1
+#define STATUS_MISSED  2
+#define STATUS_AWAY    3
+
 class DHTnode
 {
 
