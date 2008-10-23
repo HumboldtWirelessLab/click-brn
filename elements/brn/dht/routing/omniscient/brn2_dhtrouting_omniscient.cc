@@ -117,6 +117,7 @@ void DHTRoutingOmni::handle_hello_request(Packet *p)
 {
   click_ether *ether_header = (click_ether*)p->ether_header();
   click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(), EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+  if ( is_me(ether_header->ether_dhost) ) click_chatter("is for me");
   p->kill();
 }
 

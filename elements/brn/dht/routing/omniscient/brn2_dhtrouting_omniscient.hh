@@ -73,7 +73,6 @@ class DHTRoutingOmni : public DHTRouting
     int _debug;
     BRNLinkStat *_linkstat;
 
-    DHTnode *_me;
     DHTnodelist _dhtnodes;
 
     Timer _lookup_timer;

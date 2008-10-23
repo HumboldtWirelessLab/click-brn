@@ -37,14 +37,15 @@ class DHTRouting : public Element
       (*_info_func)(_info_obj,status);
     }
 
-    bool is_me(EtherAddress *addr) { return ( addr != NULL ); }
+    bool is_me(EtherAddress *addr) { return ( *addr != _me->_ether_addr ); }
+    bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
 //  virtual nodeaddress get_responsibly_node( md5 keyid );
 //  virtual Vector<nodeaddress> get_all_responsibly_nodes( md5_keyid);
 
     void (*_info_func)(void*,int);
     void *_info_obj;
 
-    EtherAddress *_me;
+    DHTnode *_me;
 
 };
 
