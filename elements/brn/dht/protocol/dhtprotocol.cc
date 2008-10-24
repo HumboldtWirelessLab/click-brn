@@ -72,5 +72,34 @@ DHTProtocol::get_payload(Packet *p)
     return NULL;
 }
 
+EtherAddress *
+DHTProtocol::get_src(Packet *p)
+{
+  struct dht_packet_header *dht_header = NULL;
+
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+  {
+    dht_header = (struct dht_packet_header*)p->data();
+    return (new EtherAddress(dht_header->src));
+  }
+  else
+    return NULL;
+}
+
+EtherAddress *
+DHTProtocol::get_dst(Packet *p)
+{
+  struct dht_packet_header *dht_header = NULL;
+
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+  {
+    dht_header = (struct dht_packet_header*)p->data();
+    return (new EtherAddress(dht_header->dst));
+  }
+  else
+    return NULL;
+}
+
+
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DHTProtocol)

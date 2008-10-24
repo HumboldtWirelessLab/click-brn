@@ -29,15 +29,20 @@ CLICK_DECLS
 
 struct dht_omni_node_entry {
   uint8_t  etheraddr[6];
+  uint8_t  age_sec;
   uint8_t  status;
 };
 
 class DHTProtocolOmni {
+
   public:
+
     static WritablePacket *new_hello_packet(EtherAddress *etheraddr);
     static WritablePacket *new_hello_request_packet(EtherAddress *etheraddr);
     static WritablePacket *new_route_request_packet(EtherAddress *me, DHTnodelist *list);
     static WritablePacket *new_route_reply_packet(EtherAddress *me, DHTnodelist *list);
+    static int get_dhtnodes(Packet *p,DHTnodelist *dhtlist);
+    static WritablePacket *push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst);
 
 };
 

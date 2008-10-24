@@ -18,6 +18,15 @@ extern "C" {
   }
 }
 
+DHTnodelist::DHTnodelist()
+{
+}
+
+DHTnodelist::~DHTnodelist()
+{
+  _nodelist.clear();
+}
+
 int DHTnodelist::add_dhtnode(DHTnode *_new_node)
 {
   DHTnode *node;
@@ -78,6 +87,11 @@ int DHTnodelist::size()
 void DHTnodelist::sort()
 {
   click_qsort(_nodelist.begin(), _nodelist.size(), sizeof(DHTnode*), bucket_sorter);
+}
+
+void DHTnodelist::clear()
+{
+  _nodelist.clear();
 }
 
 #include <click/vector.cc>

@@ -30,7 +30,8 @@ DHTRoutingOmni::~DHTRoutingOmni()
 {
 }
 
-void *DHTRoutingOmni::cast(const char *name)
+void *
+DHTRoutingOmni::cast(const char *name)
 {
   if (strcmp(name, "DHTRoutingOmni") == 0)
     return (DHTRoutingOmni *) this;
@@ -40,7 +41,8 @@ void *DHTRoutingOmni::cast(const char *name)
          return NULL;
 }
 
-int DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
+int
+DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   EtherAddress _my_ether_addr;
   _linkstat = NULL;                          //no linkstat
@@ -65,7 +67,8 @@ int DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-int DHTRoutingOmni::initialize(ErrorHandler *)
+int
+DHTRoutingOmni::initialize(ErrorHandler *)
 {
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _update_interval );
@@ -73,19 +76,22 @@ int DHTRoutingOmni::initialize(ErrorHandler *)
   return 0;
 }
 
-void DHTRoutingOmni::set_lookup_timer()
+void
+DHTRoutingOmni::set_lookup_timer()
 {
   _lookup_timer.schedule_after_msec( _update_interval );
 }
 
-void DHTRoutingOmni::static_lookup_timer_hook(Timer *t, void *f)
+void
+DHTRoutingOmni::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
   ((DHTRoutingOmni*)f)->nodeDetection();
   ((DHTRoutingOmni*)f)->set_lookup_timer();
 }
 
-void DHTRoutingOmni::push( int port, Packet *packet )
+void
+DHTRoutingOmni::push( int port, Packet *packet )
 {
   click_chatter("One Packet");
   if ( port == 0 )
@@ -100,9 +106,24 @@ void DHTRoutingOmni::push( int port, Packet *packet )
 
     switch (DHTProtocol::get_type(packet))
     {
+      case HELLO:
+              {
+                handle_hello(packet);
+                break;
+              }
       case HELLO_REQUEST:
               {
                 handle_hello_request(packet);
+                break;
+              }
+      case ROUTETABLE_REQUEST:
+              {
+                handle_routetable_request(packet);
+                break;
+              }
+      case ROUTETABLE_REPLY:
+              {
+                handle_routetable_reply(packet);
                 break;
               }
       default: click_chatter("Not implemented jet");
@@ -113,26 +134,184 @@ void DHTRoutingOmni::push( int port, Packet *packet )
 
 }
 
-void DHTRoutingOmni::handle_hello_request(Packet *p)
+void
+DHTRoutingOmni::handle_hello(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p->ether_header();
-  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(), EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
-  if ( is_me(ether_header->ether_dhost) ) click_chatter("is for me");
-  p->kill();
+  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  DHTnodelist dhtlist;
+  int count_nodes;
+
+  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+
+  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
+  update_nodes(&dhtlist);
+
+  dhtlist.clear();
 }
 
-void DHTRoutingOmni::nodeDetection()
+void
+DHTRoutingOmni::handle_hello_request(Packet *p_in)
+{
+  WritablePacket *p,*big_p; 
+  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  DHTnodelist dhtlist;
+  int count_nodes;
+  DHTnode *node;
+
+  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+
+  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
+  update_nodes(&dhtlist);
+
+  if ( is_me(ether_header->ether_dhost) )
+  {
+    node = _dhtnodes.get_dhtnode(0);
+    p = DHTProtocolOmni::new_hello_packet(&(_me->_ether_addr));
+    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr));
+
+    if ( big_p == NULL ) click_chatter("Push failed. No memory left ??");
+    else output(0).push(big_p);
+  }
+
+  dhtlist.clear();
+}
+
+void
+DHTRoutingOmni::handle_routetable_request(Packet *p_in)
+{
+  WritablePacket *p,*big_p;
+  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  DHTnodelist dhtlist;
+  int count_nodes;
+  DHTnode *node,*srcnode;
+  DHTnodelist tmp_list;
+
+  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+                EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+
+  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
+  update_nodes(&dhtlist);
+  srcnode = dhtlist.get_dhtnode(0);  //TODO: replace by srcnode from header
+  dhtlist.clear();
+
+  for ( int i = 0; i < _dhtnodes.size(); i++ )
+  {
+    node = _dhtnodes.get_dhtnode(i);
+    if ( node->_status == STATUS_OK )
+    {
+      tmp_list.add_dhtnode(node);
+
+      if ( tmp_list.size() == 100 )  //TODO: which max length
+      {
+        p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
+        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(srcnode->_ether_addr));
+        output(0).push(big_p);
+
+        tmp_list.clear();
+      }
+    }
+  }
+
+  if ( tmp_list.size() > 0 )        //send the rest
+  {
+    p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
+    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(srcnode->_ether_addr));
+    output(0).push(big_p);
+
+    tmp_list.clear();
+  }
+
+}
+
+void
+DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
+{
+  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  DHTnodelist dhtlist;
+  int count_nodes;
+
+  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+                EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+
+  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
+  update_nodes(&dhtlist);
+  dhtlist.clear();
+}
+
+void
+DHTRoutingOmni::send_routetable_update(EtherAddress *dst)
+{
+  WritablePacket *p,*big_p;
+  DHTnode *node;
+  DHTnodelist tmp_list;
+
+  for ( int i = 0; i < _dhtnodes.size(); i++ )
+  {
+    node = _dhtnodes.get_dhtnode(i);
+    if ( node->_status == STATUS_OK )
+    {
+      tmp_list.add_dhtnode(node);
+
+      if ( tmp_list.size() == 100 )  //TODO: which max length
+      {
+        p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
+        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
+        output(0).push(big_p);
+
+        tmp_list.clear();
+      }
+    }
+  }
+
+  if ( tmp_list.size() > 0 )        //send the rest
+  {
+    p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
+    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
+    output(0).push(big_p);
+
+    tmp_list.clear();
+  }
+
+}
+
+void
+DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
+{
+  DHTnode *node, *new_node;
+  int count_newnodes = 0;
+
+  for ( int i = 0; i < dhtlist->size(); i++)
+  {
+    new_node = dhtlist->get_dhtnode(i);
+    node = _dhtnodes.get_dhtnode(new_node);
+    if ( node == NULL )
+    {
+      node = new DHTnode(new_node->_ether_addr);
+      _dhtnodes.add_dhtnode(node);
+      count_newnodes++;
+    }
+
+    node->_status = STATUS_OK;
+  }
+
+  if ( count_newnodes > 0 )
+  {
+
+  }
+}
+
+void
+DHTRoutingOmni::nodeDetection()
 {
   Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
   WritablePacket *p,*big_p;
   DHTnode *node;
-  struct click_brn brn_header;
-  click_ether *ether_header;
 
   if ( _linkstat == NULL ) return;
 
   _linkstat->get_neighbors(&neighbors);
-  //click_chatter("Have %d neigh",neighbors.size());
 
   //Check for new neighbors
   for( int i = 0; i < neighbors.size(); i++ ) {
@@ -140,36 +319,46 @@ void DHTRoutingOmni::nodeDetection()
     if ( node == NULL ) {
       node = new DHTnode(neighbors[i]);
       node->_status = STATUS_UNKNOWN;
+      node->_neighbor = true;
       _dhtnodes.add_dhtnode(node);
 
       p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
-      big_p = p->push(sizeof(struct click_brn) + sizeof(click_ether));
+      big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]));
 
-      if ( big_p == NULL ) {
-        click_chatter("Push failed. No memory left ??");
-      }
-      else
-      {
-        ether_header = (click_ether *)p->data();
-        memcpy( ether_header->ether_dhost,&(neighbors[i]),6);
-        memcpy( ether_header->ether_shost,_me->_ether_addr.data(),6);
-        ether_header->ether_type = htons(ETHERTYPE_BRN);
-        p->set_ether_header(ether_header);
-
-        brn_header.dst_port = 10;
-        brn_header.src_port = 10;
-        brn_header.body_length = p->length();
-        brn_header.ttl = 100;
-        brn_header.tos = 0;
-
-        memcpy((void*)&(p->data()[14]),(void*)&brn_header, sizeof(brn_header));
-
-        output(0).push(p);
-      }
+      if ( big_p == NULL ) click_chatter("Error in DHT");
+      else output(0).push(big_p);
+    }
+    else
+    {
+      node->_status = STATUS_OK;
+      node->_neighbor = true;
     }
   }
 
   //check for missing Neighbors
+  for( int i = 0; i < _dhtnodes.size(); i++ )
+  {
+    node = _dhtnodes.get_dhtnode(i);
+    if ( node->_neighbor )
+    {
+      int j;
+
+      for ( j = 0; j < neighbors.size(); j++ )
+        if ( node->_ether_addr == neighbors[j] ) break;
+
+      if ( j == neighbors.size() )  //dhtneighbor is not my neighbor now
+      {
+        node->_status = STATUS_MISSED;
+        node->_neighbor = false;
+
+        p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
+        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr));
+
+        if ( big_p == NULL ) click_chatter("Error in DHT");
+        else output(0).push(big_p);
+      }
+    }
+  }
 }
 
 void DHTRoutingOmni::add_handlers()

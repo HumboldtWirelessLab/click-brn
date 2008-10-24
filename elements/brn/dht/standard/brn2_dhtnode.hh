@@ -64,16 +64,12 @@ class DHTnode
     md5_byte_t _md5_digest[16];
     EtherAddress _ether_addr;
     void *_extra;
-    uint8_t _distance;
     uint8_t _status;
+    Timestamp _age;
+    bool  _neighbor;
 
-    DHTnode()
-    {
-    };
-
-    ~DHTnode()
-    {
-    };
+    DHTnode() {};
+    ~DHTnode() {};
 
     DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);

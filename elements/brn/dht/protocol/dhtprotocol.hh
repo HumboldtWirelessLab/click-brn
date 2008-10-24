@@ -30,20 +30,25 @@ CLICK_DECLS
 /* Operations */
 /* field: code */
 
+#define ROUTING_OMNI        1
+#define ROUTING_FALCON      2
+#define ROUTING_KLIBS       3
+#define ROUTING_DART        4
+
 #define HELLO               1
 #define HELLO_REQUEST       2
 #define ROUTETABLE_REQUEST  3
 #define ROUTETABLE_REPLY    4
 #define ROUTE_REQUEST       5
+#define ROUTE_REPLAY        6
 
-#define MESSAGE
-
-#define ROUTING_OMNI        1
-#define ROUTING_FALCON      2
+#define MESSAGE           128
 
 struct dht_packet_header {
   uint8_t  routing;
   uint8_t  type;
+  uint8_t  src[6];
+  uint8_t  dst[6];
   uint16_t payload_len;
 };
 
@@ -58,6 +63,9 @@ class DHTProtocol {
     static uint8_t get_type(Packet *p);
     static uint16_t get_payload_len(Packet *p);
     static uint8_t *get_payload(Packet *p);
+
+    static EtherAddress *get_src(Packet *p);
+    static EtherAddress *get_dst(Packet *p);
 
 };
 

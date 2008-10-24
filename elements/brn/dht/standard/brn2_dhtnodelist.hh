@@ -11,13 +11,8 @@ CLICK_DECLS
 class DHTnodelist {
 
   public:
-    DHTnodelist()
-    {
-    }
-
-    ~DHTnodelist()
-    {
-    }
+    DHTnodelist();
+    ~DHTnodelist();
 
     int add_dhtnode(DHTnode *_new_node);
     DHTnode* get_dhtnode(DHTnode *_search_node);
@@ -28,6 +23,7 @@ class DHTnodelist {
     int erase_dhtnode(EtherAddress *_etheradd);
     int size();
     void sort();
+    void clear();
 
   private:
     Vector<DHTnode*> _nodelist;

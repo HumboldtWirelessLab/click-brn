@@ -64,7 +64,6 @@ class DHTRoutingOmni : public DHTRouting
 
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingOmni"; }
-
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
 
@@ -82,7 +81,12 @@ class DHTRoutingOmni : public DHTRouting
 
     int _update_interval;
 
+    void handle_hello(Packet *p);
     void handle_hello_request(Packet *p);
+    void handle_routetable_request(Packet *p);
+    void handle_routetable_reply(Packet *p);
+    void send_routetable_update(EtherAddress *dst);
+    void update_nodes(DHTnodelist *dhtlist);
 
 };
 
