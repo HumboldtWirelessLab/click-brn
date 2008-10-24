@@ -240,7 +240,7 @@ static RecycledSkbPool pool;
 #endif
 
 #define SKBMGR_DEF_TAILSZ 64
-#define SKBMGR_DEF_HEADSZ 64
+#define SKBMGR_DEF_HEADSZ 64 // must be divisible by 4
 
 
 #if __MTCLICK__
@@ -282,7 +282,12 @@ RecycledSkbPool::recycle(struct sk_buff *skbs)
     skbs = skbs->next;
 
     // where should sk_buff go?
-    int bucket = size_to_lower_bucket(skb->end - skb->head);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+    unsigned char *skb_end = skb_end_pointer(skb);
+#else
+    unsigned char *skb_end = skb->end;
+#endif
+    int bucket = size_to_lower_bucket(skb_end - skb->head);
 
     // try to put in that bucket
     if (bucket >= 0) {
@@ -384,7 +389,7 @@ skbmgr_cleanup()
 struct sk_buff *
 skbmgr_allocate_skbs(unsigned headroom, unsigned size, int *want)
 {
-  if (headroom < SKBMGR_DEF_HEADSZ)
+  if (headroom == 0)
     headroom = SKBMGR_DEF_HEADSZ;
   size += SKBMGR_DEF_TAILSZ;
 
