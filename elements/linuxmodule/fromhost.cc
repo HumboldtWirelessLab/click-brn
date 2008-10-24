@@ -34,13 +34,16 @@ CLICK_CXX_PROTECT
 #include <linux/inetdevice.h>
 #include <linux/if_arp.h>
 #include <net/route.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+# include <net/net_namespace.h>
+#endif
 CLICK_CXX_UNPROTECT
 #include <click/cxxunprotect.h>
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
-# define netif_start_queue(dev)	do { dev->start=1; dev->tbusy=0; } while (0)
-# define netif_stop_queue(dev)	do { dev->tbusy=1; } while (0)
-# define netif_wake_queue(dev)	do { dev->tbusy=0; } while (0)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+# define netdev_ioctl(cmd, arg)	dev_ioctl(&init_net, (cmd), (arg))
+#else
+# define netdev_ioctl(cmd, arg)	dev_ioctl((cmd), (arg))
 #endif
 
 static int fl_open(net_device *);
@@ -84,9 +87,7 @@ static void fromhost_inet_setup(struct net_device *dev)
 net_device *
 FromHost::new_device(const char *name)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
     read_lock(&dev_base_lock);
-#endif
     void (*setup)(struct net_device *) = (_macaddr ? ether_setup : fromhost_inet_setup);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
     net_device *dev = alloc_netdev(0, name, setup);
@@ -94,19 +95,10 @@ FromHost::new_device(const char *name)
     int errcode;
     net_device *dev = dev_alloc(name, &errcode);
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
     read_unlock(&dev_base_lock);
-#endif
     if (!dev)
 	return 0;
     
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
-    // need to zero out the dev structure
-    char *nameptr = dev->name;
-    memset(dev, 0, sizeof(*dev));
-    dev->name = nameptr;
-#endif
-
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
     setup(dev);
 #endif
@@ -138,7 +130,7 @@ FromHost::configure(Vector<String> &conf, ErrorHandler *errh)
     used = this;
     
     // check for existing device
-    _dev = dev_get_by_name(_devname.c_str());
+    _dev = AnyDevice::get_by_name(_devname.c_str());
     if (_dev) {
 	if (_dev->open != fl_open) {
 	    dev_put(_dev);
@@ -180,12 +172,10 @@ FromHost::configure(Vector<String> &conf, ErrorHandler *errh)
 static void
 dev_locks(int up)
 {
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
     if (up > 0)
 	rtnl_lock();
     else
 	rtnl_unlock();
-# endif
 }
 #endif
 
@@ -203,7 +193,7 @@ FromHost::set_device_addresses(ErrorHandler *errh)
     if (_macaddr) {
 	ifr.ifr_hwaddr.sa_family = _dev->type;
 	memcpy(ifr.ifr_hwaddr.sa_data, _macaddr.data(), 6);
-	if ((res = dev_ioctl(SIOCSIFHWADDR, &ifr)) < 0)
+	if ((res = netdev_ioctl(SIOCSIFHWADDR, &ifr)) < 0)
 	    errh->error("error %d setting hardware address for device '%s'", res, _devname.c_str());
     }
 
@@ -231,9 +221,9 @@ dev_updown(net_device *dev, int up, ErrorHandler *errh)
     mm_segment_t oldfs = get_fs();
     set_fs(get_ds());
 
-    (void) dev_ioctl(SIOCGIFFLAGS, &ifr);
+    (void) netdev_ioctl(SIOCGIFFLAGS, &ifr);
     ifr.ifr_flags = (up > 0 ? ifr.ifr_flags | flags : ifr.ifr_flags & ~flags);
-    if ((res = dev_ioctl(SIOCSIFFLAGS, &ifr)) < 0 && errh)
+    if ((res = netdev_ioctl(SIOCSIFFLAGS, &ifr)) < 0 && errh)
 	errh->error("error %d bringing %s device '%s'", res, (up > 0 ? "up" : "down"), dev->name);
 
     set_fs(oldfs);
