@@ -48,9 +48,8 @@ SetSourceAndOutputForDevice::~SetSourceAndOutputForDevice()
 int
 SetSourceAndOutputForDevice::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpKeywords,
-      "ASSOCLIST", cpElement, "AssocList element", &_stations,
+  if (cp_va_kparse(conf, this, errh,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_stations,
       cpEnd) < 0)
     return -1;
 

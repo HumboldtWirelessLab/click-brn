@@ -43,9 +43,8 @@ DHCPPrint::~DHCPPrint()
 int
 DHCPPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpString, "label", &_label,
+  if (cp_va_kparse(conf, this, errh,
+      "LABEL", cpkP+cpkM, cpString, /*"label",*/ &_label,
       cpEnd) < 0)
        return -1;
   return 0;

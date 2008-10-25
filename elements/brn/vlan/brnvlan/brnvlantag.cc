@@ -40,15 +40,15 @@ BRNVLANTag::~BRNVLANTag()
 int
 BRNVLANTag::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-  				  cpOptional,
+  if (cp_va_kparse(conf, this, errh,
+  		/*		  cpOptional,
                   cpElement, "AssocList", &_assoc_list,
                   cpElement, "BRNVLAN", &_brn_vlans,
                   cpEtherAddress, "EtherAddress", &_me,
-                  cpKeywords,
-                  "ASSOCLIST", cpElement, "AssocList", &_assoc_list,
-                  "BRNVLAN", cpElement, "BRNVLAN", &_brn_vlans,
-                  "ETHERADDRESS", cpEtherAddress, "EtherAddress", &_me,
+                  cpKeywords,*/
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList",*/ &_assoc_list,
+      "BRNVLAN", cpkP+cpkM, cpElement, /*"BRNVLAN",*/ &_brn_vlans,
+      "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"EtherAddress",*/ &_me,
           cpEnd) < 0)
     return -1;
   

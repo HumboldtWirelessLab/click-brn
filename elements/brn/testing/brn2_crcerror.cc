@@ -19,10 +19,9 @@ BRN2CRCerror::~BRN2CRCerror()
 int
 BRN2CRCerror::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpString, "label", &_label,
-      cpInteger, "rate", &_rate,
+  if (cp_va_kparse(conf, this, errh,
+      "LABEL", cpkP+cpkM, cpString, /*"label",*/ &_label,
+      "RATE", cpkP+cpkM, cpInteger, /*"rate",*/ &_rate,
       cpEnd) < 0)
        return -1;
   return 0;

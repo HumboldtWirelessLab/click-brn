@@ -67,16 +67,14 @@ DHCPRequester::configure(Vector<String> &conf, ErrorHandler* errh)
   BRN_DEBUG("DHCPRequester: Configure");
 
   _active = true;
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-        cpEthernetAddress, "First EtherAddress", &_hw_addr,
-        cpIPAddress, "First IPAddress", &_ip_addr,
-        cpInteger, "Range", &_ip_range,
-        cpInteger, "starttime (s)", &_start_time,
-        cpInteger, "time between dhcp_packets (s)", &_interval,
-      cpKeywords,
-        "ACTIVE", cpBool, "ACTIVE", &_active,
-        "DEBUG", cpInteger, "Debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "FIRSTETHERADDRESS", cpkP+cpkM, cpEthernetAddress, /*"First EtherAddress",*/ &_hw_addr,
+      "FIRSTIP", cpkP+cpkM, cpIPAddress, /*"First IPAddress",*/ &_ip_addr,
+      "RANGE", cpkP+cpkM, cpInteger, /*"Range",*/ &_ip_range,
+      "STARTTIME", cpkP+cpkM, cpInteger, /*"starttime (s)",*/ &_start_time,
+      "DIFF", cpkP+cpkM, cpInteger, /*"time between dhcp_packets (s)",*/ &_interval,
+      "ACTIVE",cpkP+cpkM, cpBool, /*"ACTIVE",*/ &_active,
+      "DEBUG", cpkP, cpInteger,/* "Debug",*/ &_debug,
       cpEnd) < 0)
         return -1;
  
@@ -125,7 +123,7 @@ DHCPRequester::run_timer(Timer* )
   Packet *packet_out;
 
   _timer.reschedule_after_msec(_interval);
-  assert(range_index < request_queue.size());
+  assert((int)range_index < request_queue.size());
 
   if ( _ip_range > 0 )
   {

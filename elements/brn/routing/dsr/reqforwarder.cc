@@ -60,16 +60,15 @@ RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _iapp = NULL;
 
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpElement, "NodeIdentity", &_me,
-      cpElement, "DSRDecap", &_dsr_decap,
-      cpElement, "DSREncap", &_dsr_encap,
-      cpElement, "BRNEncap", &_brn_encap,
-      cpElement, "RouteQuerier", &_route_querier,
-      cpElement, "Client assoc list", &_client_assoc_lst,
-      cpInteger, "Min metric for forwardd routerequest",&_min_metric_rreq_fwd,
-      cpElement, "BRN iapp", &_iapp,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "DSRDECAP", cpkP+cpkM, cpElement,/* "DSRDecap",*/ &_dsr_decap,
+      "DSRENCAP", cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
+      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
+      "ROUTEQUERIER", cpkP+cpkM, cpElement, /*"RouteQuerier",*/ &_route_querier,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
+      "MINMETRIC", cpkP+cpkM, cpInteger, /*"Min metric for forwardd routerequest",*/&_min_metric_rreq_fwd,
+      "IAPP", cpkP+cpkM, cpElement, /*"BRN iapp",*/ &_iapp,
       cpEnd) < 0)
     return -1;
 

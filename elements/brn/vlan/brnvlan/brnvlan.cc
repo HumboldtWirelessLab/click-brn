@@ -46,11 +46,9 @@ BRNVLAN::~BRNVLAN()
 int
 BRNVLAN::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-                 cpString, "ssid", &_my_ssid,
-                 cpOptional,
-                 cpKeywords,
-                 "INTERVAL", cpSeconds, "time (s) between to updates of known vlans", &_interval,
+  if (cp_va_kparse(conf, this, errh,
+      "SSID", cpkP+cpkM, cpString, /*"ssid",*/ &_my_ssid,
+      "INTERVAL", cpkP+cpkM, cpSeconds, /*"time (s) between to updates of known vlans",*/ &_interval,
                  cpEnd) < 0)
         return -1;
 

@@ -54,13 +54,12 @@ ReplyForwarder::~ReplyForwarder()
 int
 ReplyForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpElement, "NodeIdentity", &_me,
-      cpElement, "DSRDecap", &_dsr_decap,
-      cpElement, "RouteQuerier", &_route_querier,
-      cpElement, "Client assoc list", &_client_assoc_lst,
-      cpElement, "DSREncap", &_dsr_encap,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "DSRDECAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
+      "ROUTEQUERIER", cpkP+cpkM, cpElement, /*"RouteQuerier",*/ &_route_querier,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
+      "DSRENCAP", cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
       cpEnd) < 0)
     return -1;
 

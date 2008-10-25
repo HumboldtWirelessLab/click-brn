@@ -22,10 +22,10 @@ SetTXTries::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _offset = 0;
   _tries = WIFI_MAX_RETRIES+1;
-  if (cp_va_parse(conf, this, errh,
-		  cpKeywords, 
-		  "TRIES", cpUnsigned, "tries", &_tries,
-		  "OFFSET", cpUnsigned, "offset", &_offset,
+  if (cp_va_kparse(conf, this, errh,
+		  //cpKeywords, 
+      "TRIES", cpkP+cpkM, cpUnsigned, /*"tries",*/ &_tries,
+      "OFFSET", cpkP+cpkM, cpUnsigned, /*"offset",*/ &_offset,
 		  cpEnd) < 0) {
     return -1;
   }
@@ -40,7 +40,7 @@ SetTXTries::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 SetTXTries::simple_action(Packet *p_in)
 {
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p_in->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p_in->anno(); //p_in->all_user_anno();
   ceh->magic = WIFI_EXTRA_MAGIC;
   ceh->max_tries = _tries;
 

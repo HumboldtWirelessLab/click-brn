@@ -31,13 +31,13 @@ int FragmentReceiver::configure(Vector<String> &conf, ErrorHandler *errh) {
 	tracer = NULL;
 	fragmentDataLength = 0;
 	opportunistic = true;
-	if (cp_va_parse(conf, this, errh, cpKeywords, 
-			"NODE_IDENTITY", cpElement, "node identity", &me, 
-			"NC_CACHE", cpElement, "packet cache", &cache,
-			"TRACE_COLLECTOR", cpElement, "trace collector", &tracer,
-			"FRAGMENT_LENGTH", cpInteger, "fragment length", &fragmentDataLength,
-			"PACKER", cpElement, "header packer",	&packer, 
-			"OPPORTUNISTIC", cpBool, "use opportunistic reception", &opportunistic,
+	if (cp_va_kparse(conf, this, errh, 
+			"NODE_IDENTITY", cpkP+cpkM, cpElement, /*"node identity",*/ &me, 
+      "NC_CACHE", cpkP+cpkM, cpElement, /*"packet cache",*/ &cache,
+      "TRACE_COLLECTOR", cpkP+cpkM, cpElement, /*"trace collector",*/ &tracer,
+      "FRAGMENT_LENGTH", cpkP+cpkM, cpInteger, /*"fragment length",*/ &fragmentDataLength,
+      "PACKER", cpkP+cpkM, cpElement, /*"header packer",*/	&packer,
+      "OPPORTUNISTIC", cpkP+cpkM, cpBool, /*"use opportunistic reception",*/ &opportunistic,
 			cpEnd) < 0)
 		return -1;
 	if (!me || !me->cast("NodeIdentity"))

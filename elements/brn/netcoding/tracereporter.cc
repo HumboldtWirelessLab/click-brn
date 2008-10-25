@@ -32,11 +32,10 @@ CLICK_DECLS
 int TraceReporter::configure(Vector<String> & conf, ErrorHandler * errh) {
   mode = FORWARD;
   parent = NULL;
-  if (cp_va_parse(conf, this, errh,
-                  cpKeywords, 
-                  "MODE", cpInteger, "mode", &mode,
-                  "TRACE_COLLECTOR", cpElement, "trace collector", &parent,
-                  cpEnd) < 0)
+  if (cp_va_kparse(conf, this, errh,
+      "MODE", cpkP+cpkM, cpInteger, /*"mode",*/ &mode,
+      "TRACE_COLLECTOR", cpkP+cpkM, cpElement, /*"trace collector",*/ &parent,
+      cpEnd) < 0)
     return -1;
   if (!parent || !parent->cast("TraceCollector"))
     return -1;

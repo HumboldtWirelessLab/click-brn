@@ -42,8 +42,8 @@ RestoreVLAN::~RestoreVLAN()
 int
 RestoreVLAN::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-            cpElement, "VLANTable", &_table,
+  if (cp_va_kparse(conf, this, errh,
+      "VLANTABLE", cpkP+cpkM, cpElement, /*"VLANTable",*/ &_table,
 		  cpEnd) < 0)
     return -1;
   

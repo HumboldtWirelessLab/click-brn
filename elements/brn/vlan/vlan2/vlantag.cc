@@ -41,12 +41,12 @@ VLANTag::~VLANTag()
 int
 VLANTag::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-  				  cpOptional,
+  if (cp_va_kparse(conf, this, errh,
+  			/*	  cpOptional,
                   cpUnsignedShort, "VLAN identifier", &_vid,
-                  cpKeywords,
-                  "VLANID", cpUnsignedShort, "VLAN identifier", &_vid,
-                  "USER_PRIORITY", cpUnsignedShort, "User priority", &_prio,
+                  cpKeywords,*/
+      "VLANID", cpkP+cpkM, cpUnsignedShort, /*"VLAN identifier",*/ &_vid,
+      "USER_PRIORITY", cpkP, cpUnsignedShort, /*"User priority",*/ &_prio,
                   //"CFI", cpBool, "Canonical Format Indicator", &_cfi,
 		  cpEnd) < 0)
     return -1;

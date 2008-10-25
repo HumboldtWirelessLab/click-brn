@@ -68,14 +68,14 @@ BrnIappStationSnooper::set_optimize(bool optimize)
 int 
 BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "OPTIMIZE", cpBool, "Optimize", &_optimize,
-      "ASSOCLIST", cpElement, "AssocList element", &_assoc_list,
-      "STATRACK", cpElement, "StationTracker element", &_sta_tracker,
-      "HELLOHDL", cpElement, "HelloHandler element", &_hello_handler,
+      //cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "OPTIMIZE", cpkP+cpkM, cpBool,/* "Optimize",*/ &_optimize,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
+      "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
+      "HELLOHDL", cpkP+cpkM, cpElement, /*"HelloHandler element",*/ &_hello_handler,
       cpEnd) < 0)
     return -1;
 

@@ -26,10 +26,9 @@ BRNCandidateSelectorTest::~BRNCandidateSelectorTest()
 int
 BRNCandidateSelectorTest::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpInteger, "size", &_size,
-      cpInteger, "interval", &_interval,
+  if (cp_va_kparse(conf, this, errh,
+      "SIZE", cpkP+cpkM, cpInteger, /*"size",*/ &_size,
+      "INTERVAL", cpkP+cpkM, cpInteger, /*"interval",*/ &_interval,
       cpEnd) < 0)
         return -1;
  
@@ -46,7 +45,7 @@ BRNCandidateSelectorTest::initialize(ErrorHandler *)
 }
 
 void
-BRNCandidateSelectorTest::run_timer(Timer *t)
+BRNCandidateSelectorTest::run_timer(Timer *)
 {
   Packet *packet_out;
 
@@ -70,7 +69,7 @@ BRNCandidateSelectorTest::createpacket(int size)
   memcpy( &(new_packet_data[12]), &proto, sizeof(uint16_t) ) ;
   memcpy( &(new_packet_data[14]), &brnproto, sizeof(uint16_t) ) ;
 
-  click_ether *ether = (click_ether *)new_packet->data();
+  //click_ether *ether = (click_ether *)new_packet->data();
 
   return(new_packet);
 }

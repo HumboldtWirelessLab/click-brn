@@ -47,13 +47,11 @@ BRNCandidateSelector::~BRNCandidateSelector()
 int
 BRNCandidateSelector::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpEtherAddress, "ether address", &_me,
-      cpKeywords,
-      "DEBUG", cpInteger, "debug", &_debug,
-      "MAXPPPL", cpInteger, "maxlpperpacket", &_max_lp_per_packet,
-      "NOTE_LP",cpInteger, "notelinkprobe", &_note_lp,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"ether address",*/ &_me,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
+      "MAXPPPL", cpkP+cpkM, cpInteger, /*"maxlpperpacket",*/ &_max_lp_per_packet,
+      "NOTE_LP", cpkP+cpkM, cpInteger, /*"notelinkprobe",*/ &_note_lp,
       cpEnd) < 0)
        return -1;
        
@@ -214,7 +212,7 @@ unsigned int BRNCandidateSelector::writeCsPayloadToLinkProbe(uint8_t *ptr, unsig
   return(size);
 }
 
-void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint8_t *ptr, unsigned int payload_size)
+void BRNCandidateSelector::readCsPayloadFromLinkProbe(EtherAddress &source, uint8_t *ptr, unsigned int /*payload_size*/)
 {
   uint16_t size;
   uint32_t val_32;
@@ -312,8 +310,8 @@ uint8_t BRNCandidateSelector::has_lp(Vector<unsigned int> &lp_list, int lp_id)
 {
   for( int i = 0; i < lp_list.size(); i++ )
   {
-    if ( lp_id == lp_list[i] ) return(1);
-    if ( lp_id < lp_list[i] ) return(0);
+    if ( lp_id == (int)lp_list[i] ) return(1);
+    if ( lp_id < (int)lp_list[i] ) return(0);
   }
 
   return(0);
@@ -367,7 +365,7 @@ int BRNCandidateSelector::calculatedPER(CandidateInfo *cand, int number_of_calc_
   if ( cand->_he_got_from_me.size() > 0 )
   {
     highest_lp_id = cand->_he_got_from_me[ ( cand->_he_got_from_me.size() ) - 1];    // highest LP_is
-    if ( cand->_last_lp_he_was_able_to_hear > highest_lp_id )                        // my last lp he could hear if it
+    if ( (int)(cand->_last_lp_he_was_able_to_hear) > highest_lp_id )                        // my last lp he could hear if it
       highest_lp_id = cand->_last_lp_he_was_able_to_hear;                            // higher(should be every time)
     lowest_lp_id = cand->_he_got_from_me[0];                                         // highest LP_is
 
@@ -441,13 +439,13 @@ int BRNCandidateSelector::calculatedCombinedPER(Vector<CandidateInfo*> &sel_cand
 
       for( int i = 0; i < sel_cand.size(); i++)
       {
-        for ( j = 0; j <= highest_common_lp_id - start_common_lp_id; j ++)
+        for ( j = 0; j <= ((int)highest_common_lp_id - (int)start_common_lp_id); j ++)
         {
           common_lps[ j ] = common_lps[ j ] || has_lp(sel_cand[i]->_he_got_from_me, start_common_lp_id + j);
         }
       }
 
-      for ( get_lp = 0, j = 0; j <= highest_common_lp_id - start_common_lp_id; j ++)
+      for ( get_lp = 0, j = 0; j <= ((int)highest_common_lp_id - (int)start_common_lp_id); j ++)
       {
         get_lp += common_lps[ j ];
     //    click_chatter("---: %d %d %d",has_lp(sel_cand[0]->_he_got_from_me, start_common_lp_id + j),has_lp(sel_cand[1]->_he_got_from_me, start_common_lp_id + j),common_lps[ j ]);
@@ -458,12 +456,14 @@ int BRNCandidateSelector::calculatedCombinedPER(Vector<CandidateInfo*> &sel_cand
       return( 100 - ( ( get_lp * 100 ) / ( highest_common_lp_id - start_common_lp_id + 1 ) ) );
 
     }
-    
+
   }
   else
   {
     return 100;
   }
+
+  return 100;
 }
 
 /****************************************Algorithm A**********************************/
@@ -503,6 +503,8 @@ int BRNCandidateSelector::getAndTestPossibleCS(Vector<CandidateInfo*> *can,int c
       can->erase(can->begin() + i);
     }
   }
+
+  return 0;
 }
 
 int BRNCandidateSelector::getCandidateSet(Vector<CandidateInfo*> *can, int cssize, int *per)
@@ -671,10 +673,10 @@ String BRNCandidateSelector::printCandidateInfo()
 String BRNCandidateSelector::printPerInfo()
 {
   StringAccum sa;
-  CandidateInfo *_ci;
+  //CandidateInfo *_ci;
 
   Vector<CandidateInfo*> sel_cand;
-  int per,j;
+  //int per,j;
 
   for (int i = 0; i < _cand.size(); i++ )
   {
@@ -690,10 +692,10 @@ String BRNCandidateSelector::printPerInfo()
 String BRNCandidateSelector::printRecvPerInfo()
 {
   StringAccum sa;
-  CandidateInfo *_ci;
+ // CandidateInfo *_ci;
 
   Vector<CandidateInfo*> sel_cand;
-  int per,j;
+ // int per,j;
 
   for (int i = 0; i < _cand.size(); i++ )
   {

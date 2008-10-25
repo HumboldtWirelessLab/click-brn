@@ -43,13 +43,11 @@ BRNCandidateSelectorEvaluation::configure(Vector<String> &conf, ErrorHandler* er
 
   issender = isreceiver = 0;
 
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpKeywords,
-      "ETHERADDRESS", cpEtherAddress, "etheraddress", &_me,
-      "SENDER", cpInteger, "is sender", &issender,
-      "RECEIVER", cpInteger, "is receiver", &isreceiver,
-      "DEBUG", cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"etheraddress",*/ &_me,
+      "SENDER", cpkP+cpkM, cpInteger, /*"is sender",*/ &issender,
+      "RECEIVER", cpkP+cpkM, cpInteger, /*"is receiver",*/ &isreceiver,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -74,7 +72,7 @@ BRNCandidateSelectorEvaluation::initialize(ErrorHandler *)
 }
 
 void
-BRNCandidateSelectorEvaluation::push( int port, Packet *packet )
+BRNCandidateSelectorEvaluation::push( int /*port*/, Packet *packet )
 {
   uint32_t packet_id;
   uint8_t ui8_cssize, ui8_per;
@@ -108,7 +106,7 @@ BRNCandidateSelectorEvaluation::push( int port, Packet *packet )
     int_per = per;
 
     if ( cand == _me ) inc_cs = 1;
-    sa << cand.s() << " (Per:" << int_per << ")";
+    sa << cand.unparse() << " (Per:" << int_per << ")";
     if ( (i + 1) != ui8_cssize ) sa << ",";
   }
 
@@ -128,11 +126,11 @@ BRNCandidateSelectorEvaluation::push( int port, Packet *packet )
     data_offset += sizeof(ui8_val);
     int_per = ui8_val;
 
-    sa << cand.s() << " (Per:" << int_per << ")";
+    sa << cand.unparse() << " (Per:" << int_per << ")";
     if ( (i + 1) != ui8_cssize ) sa << ",";
   }
 
-  click_chatter("BRNExORPacketReceiver: %s PacketID: %d CSsize: %d Inc_CS: %d Per: %d CS: %s",_me.s().c_str(),packet_id,ui8_cssize,inc_cs,ui8_per,sa.take_string().c_str());
+  click_chatter("BRNExORPacketReceiver: %s PacketID: %d CSsize: %d Inc_CS: %d Per: %d CS: %s",_me.unparse().c_str(),packet_id,ui8_cssize,inc_cs,ui8_per,sa.take_string().c_str());
 
   packet->kill();
  

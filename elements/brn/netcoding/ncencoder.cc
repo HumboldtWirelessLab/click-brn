@@ -34,11 +34,13 @@ CLICK_DECLS
 int NetcodingEncoder::configure(Vector<String> &conf, ErrorHandler *errh) {
 	int bitRate = 0;
 	fragmentsInPacket = 0;
-	if (cp_va_parse(conf, this, errh, cpKeywords, "NC_CACHE", cpElement,
-			"netcoding cache", &cache, "NODE_IDENTITY", cpElement, "node identity",
-			&me, "SEND_QUEUE", cpElement, "sending queue", &sendQueue, "BITRATE",
-			cpInteger, "bit rate", &bitRate, "FRAGMENTS_IN_PACKET", cpInteger,
-			"no. fragments for each coded packet", &fragmentsInPacket, cpEnd) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "NC_CACHE", cpkP+cpkM, cpElement, /*"netcoding cache",*/ &cache,
+      "NODE_IDENTITY", cpkP+cpkM, cpElement, /*"node identity",*/ &me,
+      "SEND_QUEUE", cpkP+cpkM, cpElement, /*"sending queue",*/ &sendQueue,
+      "BITRATE", cpkP+cpkM, cpInteger, /*"bit rate",*/ &bitRate,
+      "FRAGMENTS_IN_PACKET", cpkP+cpkM, cpInteger, /*"no. fragments for each coded packet",*/ &fragmentsInPacket,
+       cpEnd) < 0)
 		return -1;
 	if ( !cache || !cache->cast("NetcodingCache") )
 		return -1;

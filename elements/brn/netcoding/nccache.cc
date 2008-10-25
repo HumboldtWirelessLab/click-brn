@@ -43,13 +43,12 @@ NetcodingCache::~NetcodingCache() {
 int NetcodingCache::configure(Vector<String> &conf, ErrorHandler *errh) {
 	bitsInMultiplier = 0;
 	fragmentsInBatch = 0;
-  if (cp_va_parse(conf, this, errh,
-      cpKeywords, "NODE_IDENTITY",
-      cpElement, "node identity", &me,
-      "ASSOC_LIST", cpElement, "association list", &associated,
-      "UPDATE_ROUTE", cpBool, "update the DSR route", &updateRoute,
-      "BITS_IN_MULTIPLIER", cpInteger, "bits in multiplier", &bitsInMultiplier,
-      "FRAGMENTS_IN_BATCH", cpInteger, "max fragments in batch", &fragmentsInBatch,
+  if (cp_va_kparse(conf, this, errh,
+      "NODE_IDENTITY", cpkP+cpkM, cpElement, /*"node identity",*/ &me,
+      "ASSOC_LIST", cpkP+cpkM, cpElement, /*"association list",*/ &associated,
+      "UPDATE_ROUTE", cpkP+cpkM, cpBool, /*"update the DSR route",*/ &updateRoute,
+      "BITS_IN_MULTIPLIER", cpkP+cpkM, cpInteger, /*"bits in multiplier",*/ &bitsInMultiplier,
+      "FRAGMENTS_IN_BATCH", cpkP+cpkM, cpInteger, /*"max fragments in batch",*/ &fragmentsInBatch,
       cpEnd) < 0)
     return -1;
   if (!me || !me->cast("NodeIdentity"))

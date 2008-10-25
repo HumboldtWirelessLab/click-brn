@@ -49,10 +49,9 @@ BRNDS::~BRNDS()
 int
 BRNDS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpElement, "NodeIdentity", &_me,
-      cpElement, "NeighborList", &_nb_lst,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "NEIGHBORLIST", cpkP+cpkM, cpElement, /*"NeighborList",*/ &_nb_lst,
       cpEnd) < 0)
     return -1;
 

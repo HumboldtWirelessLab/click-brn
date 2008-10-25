@@ -18,9 +18,8 @@ BRN2Debug::~BRN2Debug()
 int
 BRN2Debug::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpInteger, "debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
        return -1;
   return 0;

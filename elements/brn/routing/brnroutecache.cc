@@ -72,14 +72,13 @@ BrnRouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
   uint32_t ullSlice = m_tvLifetimeSlice.tv_sec * 1000000 +
                       m_tvLifetimeSlice.tv_usec;
   
-  ret = cp_va_parse(conf, this, errh,
-    cpKeywords,
-    "DEBUG", cpInteger, "Debug indicator", &_debug,
-    "ACTIVE", cpBool, "Active indicator", &m_bActive,
-    "DROP", cpInteger, "Route flush probability", &m_iDropProb,
-    "TTL", cpInteger, "Initial route ttl in slices", &m_iInitialTTL,
-    "SLICE", cpUnsigned, "Lifetime slice in us", &ullSlice,
-      cpEnd);
+  ret = cp_va_kparse(conf, this, errh,
+    "DEBUG", cpkP+cpkM, cpInteger, /*"Debug indicator",*/ &_debug,
+    "ACTIVE", cpkP+cpkM, cpBool, /*"Active indicator",*/ &m_bActive,
+    "DROP", cpkP+cpkM, cpInteger, /*"Route flush probability",*/ &m_iDropProb,
+    "TTL", cpkP+cpkM, cpInteger, /*"Initial route ttl in slices",*/ &m_iInitialTTL,
+    "SLICE", cpkP+cpkM, cpUnsigned, /*"Lifetime slice in us",*/ &ullSlice,
+    cpEnd);
   
   if( 0 != ullSlice )
   {

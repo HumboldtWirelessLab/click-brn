@@ -44,9 +44,9 @@ BRN2BeaconSource::BRN2BeaconSource()
   : _timer(this),
     _debug(false),
     _active(true),
+    _switch_channel_countdown(0),
     _rtable(0),
     _brn_vlan(NULL),
-    _switch_channel_countdown(0),
     _switch_channel(false),
     _sc(NULL)
 {
@@ -64,15 +64,15 @@ BRN2BeaconSource::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _active = true;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
-		  cpKeywords,
-		  "DEBUG", cpBool, "Debug", &_debug,
-		  "WIRELESS_INFO", cpElement, "wirleess_info", &_winfo,
-		  "RT", cpElement, "availablerates", &_rtable,
-		  "BRNVLAN", cpElement, "brn vlans", &_brn_vlan,
-      "ACTIVE", cpBool, "Active", &_active,
-      "SWITCHCHANNEL", cpElement, "SwicthChannel", &_sc,
+		//  cpKeywords,
+      "DEBUG", cpkP+cpkM, cpBool, /*"Debug",*/ &_debug,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
+      "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
+      "BRNVLAN", cpkP+cpkM, cpElement, /*"brn vlans",*/ &_brn_vlan,
+      "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
+      "SWITCHCHANNEL", cpkP+cpkM, cpElement, /*"SwicthChannel",*/ &_sc,
 		  cpEnd) < 0)
     return -1;
 

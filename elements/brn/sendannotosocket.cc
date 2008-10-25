@@ -68,9 +68,8 @@ int
 SendAnnoToSocket::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   String socktype;
-  if (cp_va_parse(conf, this, errh,
-		  cpString, "type of socket (`TCP' or `UDP' or `UNIX')", &socktype,
-		  cpIgnoreRest,
+  if (cp_va_kparse(conf, this, errh,
+      "SOCKETTYPE", cpkP+cpkM, cpString, /*"type of socket (`TCP' or `UDP' or `UNIX')",*/ &socktype,
 		  cpEnd) < 0)
     return -1;
   socktype = socktype.upper();

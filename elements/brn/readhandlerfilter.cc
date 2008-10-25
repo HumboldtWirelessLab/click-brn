@@ -51,16 +51,14 @@ int
 ReadHandlerFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(errh);
-  
-  if (cp_va_parse(conf, this, errh,
-      cpReadHandlerCall, "read handler", &_handler,
-      cpString, "matched pattern", &_pattern, 
-      /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
+
+  if (cp_va_kparse(conf, this, errh,
+      "READHANDLER", cpkP+cpkM, cpReadHandlerCall, /*"read handler",*/ &_handler,
+      "PATTERN", cpkP+cpkM, cpString, /*"matched pattern",*/ &_pattern,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
-  
+
   return 0;
 }
 

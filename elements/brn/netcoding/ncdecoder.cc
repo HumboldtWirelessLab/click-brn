@@ -35,10 +35,10 @@ int NetcodingDecoder::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int usecTimeout = 0;
   tracer = NULL;
-  if (cp_va_parse(conf, this, errh,
-                  cpKeywords, "NC_CACHE", cpElement, "netcoding cache", &cache,
-                  "HARD_TIMEOUT", cpInteger, "hard timeout", &usecTimeout,
-                  "TRACE_COLLECTOR", cpElement, "trace collector", &tracer,
+  if (cp_va_kparse(conf, this, errh,
+      "NC_CACHE", cpkP+cpkM, cpElement, /*"netcoding cache",*/ &cache,
+      "HARD_TIMEOUT", cpkP+cpkM, cpInteger, /*"hard timeout",*/ &usecTimeout,
+      "TRACE_COLLECTOR", cpkP+cpkM, cpElement, /*"trace collector",*/ &tracer,
                   cpEnd) < 0)
     return -1;
   if (usecTimeout != 0)
@@ -159,7 +159,11 @@ Packet * NetcodingDecoder::assembleStopPacket(NCDecodingBatch * batch, uint8_t n
 void NetcodingDecoder::handleStopFeedback(Packet * p) {
 	BRN_WARN ("start or stop failed");
 	click_ether ether = *(p->ether_header());
-	p->push_mac_header(14);
+	if ( p->push_mac_header(14) == NULL )
+  {
+    click_chatter("No tailroom");
+    return;
+  }
 	click_ether * pEther = (click_ether *)p->data();
 	*(pEther) = ether;
 	output(NCDECODER_OUTPUT_STOP).push(p);

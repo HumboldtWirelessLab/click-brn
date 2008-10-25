@@ -26,14 +26,13 @@ BRN2PacketSource::~BRN2PacketSource()
 int
 BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpInteger, "size", &_size,
-      cpInteger, "interval", &_interval,
-      cpInteger, "_max-seq_num", &_max_seq_num,
-      cpInteger, "_channel", &_channel,
-      cpInteger, "_bitrate", &_bitrate,
-      cpInteger, "_power", &_power,
+  if (cp_va_kparse(conf, this, errh,
+      "SIZE", cpkP+cpkM, cpInteger, /*"size",*/ &_size,
+      "INTERVAL", cpkP+cpkM, cpInteger, /*"interval",*/ &_interval,
+      "MAXSEQ", cpkP+cpkM, cpInteger, /*"_max-seq_num",*/ &_max_seq_num,
+      "CHANNEL", cpkP+cpkM, cpInteger, /*"_channel",*/ &_channel,
+      "BITRATE", cpkP+cpkM, cpInteger, /*"_bitrate",*/ &_bitrate,
+      "POWER", cpkP+cpkM, cpInteger, /*"_power",*/ &_power,
       cpEnd) < 0)
         return -1;
  

@@ -3,9 +3,9 @@
 
 CLICK_DECLS
 
-BRNDB::BRNDB(Vector<String> _col_names,Vector<int> _col_types)
+BRNDB::BRNDB(Vector<String> /*_col_names*/,Vector<int> /*_col_types*/)
 {
-  int i;
+  //int i;
   //for( i = 0; i < _col_names.size()
 }
 

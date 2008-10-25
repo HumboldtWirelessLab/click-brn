@@ -67,14 +67,14 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _hello_trigger_interval_ms = 0;
   
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "OPTIMIZE", cpBool, "Optimize", &_optimize,
-      "STALE", cpUnsigned, "Stale info timeout (ms)", &_hello_trigger_interval_ms,
-      "ASSOCLIST", cpElement, "AssocList element", &_assoc_list,
-      "ENCAP", cpElement, "BrnIapp encap element", &_encap,
+     // cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
+      "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout (ms)",*/ &_hello_trigger_interval_ms,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
+      "ENCAP", cpkP+cpkM, cpElement,/* "BrnIapp encap element",*/ &_encap,
       cpEnd) < 0)
     return -1;
 

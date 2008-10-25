@@ -59,12 +59,12 @@ FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _active = true;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
-		  cpKeywords,
-      "ACTIVE", cpBool, "Active", &_active,
-      "DEBUG", cpInteger, "Debug", &_debug,
-		  "WIRELESS_INFO", cpElement, "wirleess_info", &_winfo,
+		  //cpKeywords,
+      "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
 		  cpEnd) < 0)
     return -1;
 

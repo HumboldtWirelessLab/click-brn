@@ -54,14 +54,13 @@ ErrorForwarder::~ErrorForwarder()
 int
 ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpElement, "NodeIdentity", &_me,
-      cpElement, "Client assoc list", &_client_assoc_lst,
-      cpElement, "DSREncap", &_dsr_encap,
-      cpElement, "DSRDecap", &_dsr_decap,
-      cpElement, "RouteQuerier", &_route_querier,
-      cpElement, "BRNEncap", &_brn_encap,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
+      "DSRENCAP", cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
+      "DSRDECAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
+      "ROUTEQUERIER", cpkP+cpkM, cpElement, /*"RouteQuerier",*/ &_route_querier,
+      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
       cpEnd) < 0)
     return -1;
 

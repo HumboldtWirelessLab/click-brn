@@ -57,13 +57,13 @@ HostWifiFilter::~HostWifiFilter()
 int
 HostWifiFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-        cpEthernetAddress, "Ethernet address", &_addr,
-        cpElement, "wirleess_info", &_winfo,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, /*"Ethernet address",*/ &_addr,
+      "WIFIINFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
       /* not required */
-      cpKeywords,
-        "MODE", cpInteger, "Mode", &_mode,
-        "DEBUG", cpInteger, "Debug", &_debug,
+      //cpKeywords,
+      "MODE", cpkP, cpInteger, /*"Mode",*/ &_mode,
+      "DEBUG", cpkP, cpInteger,/* "Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
 

@@ -66,17 +66,15 @@ DHCPServer::configure(Vector<String> &conf, ErrorHandler* errh)
 {
     BRN_DEBUG("DHCPServer: Configure");
 
-  if (cp_va_parse(conf, this, errh,
-    cpOptional,
-    cpEthernetAddress, "EtherAddress", &_me,
-    cpIPPrefix, "address prefix", &_net_address, &_subnet_mask,   /* e.g. "10.9.0.0/16" */
-    cpIPAddress, "router", &_router,                  /* e.g. "10.9.0.1" */
-    cpIPAddress, "server_identifier", &_server_ident, /* e.g. "10.9.0.1" */
-    cpIPAddress, "name server", &_name_server,        /* e.g. "141.20.20.50" */
-    cpString, "servername", &_sname,                  /* e.g. "dhcp.brn.net" */
-    cpString, "domainname", &_domain_name,            /* e.g. "brn.net" */
-    cpKeywords,
-    "DEBUG", cpInteger, "Debug", &_debug,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, /*"EtherAddress",*/ &_me,
+      "ADDRESSPREFIX", cpkP+cpkM, cpIPPrefix, /*"address prefix",*/ &_net_address, &_subnet_mask,   /* e.g. "10.9.0.0/16" */
+      "ROUTER", cpkP+cpkM, cpIPAddress,/* "router",*/ &_router,                  /* e.g. "10.9.0.1" */
+      "SERVER", cpkP+cpkM, cpIPAddress, /*"server_identifier",*/ &_server_ident, /* e.g. "10.9.0.1" */
+      "DNS", cpkP+cpkM, cpIPAddress, /*"name server",*/ &_name_server,        /* e.g. "141.20.20.50" */
+      "SERVERNAME", cpkP+cpkM, cpString, /*"servername",*/ &_sname,                  /* e.g. "dhcp.brn.net" */
+      "DOMAIN", cpkP+cpkM, cpString, /*"domainname",*/ &_domain_name,            /* e.g. "brn.net" */
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
 

@@ -45,13 +45,12 @@ int
 ClientDS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
 
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpString, "#1 device (wlan)", &_dev_wlan_name,
-      cpString, "#2 device (vlan1)", &_dev_vlan1_name,
-      cpString, "#3 device (vlan2)", &_dev_vlan2_name,
-      cpString, "#4 device (debug)", &_dev_vlan_debug_name,
-      cpElement, "Client assoc list", &_client_assoc_lst,
+  if (cp_va_kparse(conf, this, errh,
+      "WLAN", cpkP+cpkM, cpString, /*"#1 device (wlan)",*/ &_dev_wlan_name,
+      "VLAN1", cpkP+cpkM, cpString, /*"#2 device (vlan1)",*/ &_dev_vlan1_name,
+      "VLAN2", cpkP+cpkM, cpString, /*"#3 device (vlan2)",*/ &_dev_vlan2_name,
+      "VLAN3", cpkP+cpkM, cpString, /*"#4 device (debug)",*/ &_dev_vlan_debug_name,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
       cpEnd) < 0)
     return -1;
 

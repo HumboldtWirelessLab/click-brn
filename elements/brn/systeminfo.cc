@@ -46,10 +46,9 @@ int
 SystemInfo::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String hndl_name;
-  if (cp_va_parse(conf, this, errh,
-		  cpOptional,
-                  cpElement, "NodeIdentity", &_me,
-                  cpString, "sdp meta handler", &hndl_name,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "SDP", cpkP+cpkM, cpString, /*"sdp meta handler",*/ &hndl_name,
 		  cpEnd) < 0)
     return -1;
 

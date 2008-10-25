@@ -43,11 +43,10 @@ DstClassifier::~DstClassifier()
 int
 DstClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-                  cpElement, "NodeIdentity", &_me,
-                  cpElement, "Client assoc list", &_client_assoc_lst,
-                  cpOptional,
-                  cpHandlerName, "write handler if ethernet station", &_element, &_hname,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
+      "HANDLER", cpkP, cpHandlerName, /*"write handler if ethernet station",*/ &_element, &_hname,
 		  cpEnd) < 0)
     return -1;
 

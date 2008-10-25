@@ -30,12 +30,11 @@ BRN2Linkstat::~BRN2Linkstat()
 int
 BRN2Linkstat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpEtherAddress, "etheraddress", &_me,
-      cpInteger, "interval", &_interval,
-      cpInteger, "interval_size" , &_interval_size,
-      cpInteger, "size",  &_size,
+  if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, /*"etheraddress",*/ &_me,
+      "INTERVAL", cpkP+cpkM, cpInteger, /*"interval",*/ &_interval,
+      "INTERVALSIZE", cpkP+cpkM, cpInteger, /*"interval_size" ,*/ &_interval_size,
+      "SIZE", cpkP+cpkM, cpInteger, /*"size",*/  &_size,
       cpEnd) < 0)
         return -1;
  
@@ -52,7 +51,7 @@ BRN2Linkstat::initialize(ErrorHandler *)
 }
 
 void
-BRN2Linkstat::run_timer(Timer *t)
+BRN2Linkstat::run_timer(Timer *)
 {
   Packet *packet_out;
 
@@ -123,7 +122,7 @@ read_handler(Element *, void *)
 }
 
 static String
-read_neighbors(Element *e, void *thunk)
+read_neighbors(Element *e, void */*thunk*/)
 {
   BRN2Linkstat *lt = (BRN2Linkstat *)e;
   StringAccum sa;

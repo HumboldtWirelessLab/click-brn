@@ -40,8 +40,14 @@ PushDSRHeader::simple_action(Packet *p)
 {
 
   int dsr_size = sizeof(click_brn_dsr);
-  p->push(dsr_size);
-  return p;
+  if ( p->push(dsr_size) != NULL )
+    return p;
+  else
+  {
+    click_chatter("Error on push in pushbrnheader");
+    p->kill();
+    return NULL;
+  }
 }
 
 CLICK_ENDDECLS

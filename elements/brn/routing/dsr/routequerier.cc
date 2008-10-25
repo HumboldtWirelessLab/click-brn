@@ -78,13 +78,12 @@ RouteQuerier::~RouteQuerier()
 int
 RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpOptional,
-      cpElement, "NodeIdentity", &_me,
-      cpElement, "DSREncap", &_dsr_encap,
-      cpElement, "BRNEncap", &_brn_encap,
-      cpElement, "DSRDecap", &_dsr_decap,
-      cpElement, "BrnIappStationTracker", &_brn_iapp,
+  if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+      "DSRENCAP",  cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
+      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
+      "DSRENCAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
+      "IAPPSTATIONTRACKER", cpkP+cpkM, cpElement, /*"BrnIappStationTracker",*/ &_brn_iapp,
       cpEnd) < 0)
     return -1;
 

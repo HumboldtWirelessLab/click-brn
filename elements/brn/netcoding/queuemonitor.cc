@@ -26,10 +26,10 @@
 CLICK_DECLS
 
 int QueueMonitor::configure ( Vector<String> & conf, ErrorHandler * errh ) {
-	if ( cp_va_parse ( conf, this, errh,
-	                   cpKeywords, "QUEUE", cpElement, "monitored queue", &queue,
-	                   "CLIENT", cpElement, "notified client", &client,
-	                   cpEnd ) < 0 )
+	if ( cp_va_kparse ( conf, this, errh,
+       "QUEUE", cpkP+cpkM, cpElement, /*"monitored queue",*/ &queue,
+       "CLIENT", cpkP+cpkM, cpElement, /*"notified client",*/ &client,
+	     cpEnd ) < 0 )
 		return -1;
 	if ( !queue || !queue->cast ( "SimpleQueue" ) )
 		return -1;

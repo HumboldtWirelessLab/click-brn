@@ -63,13 +63,13 @@ BRNAssocRequester::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _debug = false;
   _associated = false;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "ETH", cpEthernetAddress, "eth", &_eth,
-      "WIRELESS_INFO", cpElement, "wirleess_info", &_winfo,
-      "RT", cpElement, "availablerates", &_rtable,
+      //cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "ETH", cpkP+cpkM, cpEthernetAddress, /*"eth",*/ &_eth,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
+      "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
       cpEnd) < 0)
     return -1;
 
@@ -315,7 +315,7 @@ BRNAssocRequester::process_response(Packet *p)
     }
   }
 
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();//p->all_user_anno();
   StringAccum sa;
   sa << bssid << " ";
   int rssi = ceh->rssi;
@@ -402,7 +402,7 @@ BRNAssocRequester::process_reassoc_resp(Packet *p)
     }
   }
 
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno(); //p->all_user_anno();
   StringAccum sa;
   sa << bssid << " ";
   int rssi = ceh->rssi;

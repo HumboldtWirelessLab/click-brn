@@ -51,13 +51,13 @@ Signal::~Signal()
 int 
 Signal::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-      cpString, "signal name", &_signal,
-      cpString, "list of receptions", &_receptions,
+  if (cp_va_kparse(conf, this, errh,
+      "SIGNALNAME", cpkP+cpkM, cpString, /*"signal name",*/ &_signal,
+      "RECEPTIONLIST", cpkP+cpkM, cpString,/* "list of receptions",*/ &_receptions,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "ACTIVE", cpBool, "", &_active,
+      //cpKeywords,
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
+      "ACTIVE", cpkP, cpBool, /*"",*/ &_active,
       cpEnd) < 0)
     return -1;
   

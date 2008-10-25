@@ -58,11 +58,11 @@ Disassociator::~Disassociator()
 int
 Disassociator::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-        cpKeywords,
+  if (cp_va_kparse(conf, this, errh,
+       // cpKeywords,
         //"Ethernet", cpEtherAddress, "Ethernet address", &_ether,
-        "ASSOC_RESP", cpElement, "BRNAssocResponder", &_assocresp,
-        "STA_TRACKER", cpElement, "BrnIappStationTracker", &_sta_tracker,
+      "ASSOC_RESP", cpkP+cpkM, cpElement, /*"BRNAssocResponder",*/ &_assocresp,
+      "STA_TRACKER", cpkP+cpkM, cpElement, /*"BrnIappStationTracker",*/ &_sta_tracker,
         cpEnd) < 0)
     return -1;
 

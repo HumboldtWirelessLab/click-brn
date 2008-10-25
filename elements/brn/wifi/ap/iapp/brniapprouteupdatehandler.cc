@@ -58,13 +58,13 @@ BrnIappRouteUpdateHandler::~BrnIappRouteUpdateHandler()
 int 
 BrnIappRouteUpdateHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "ASSOCLIST", cpElement, "AssocList element", &_assoc_list,
-      "ENCAP", cpElement, "BrnIapp encap element", &_encap,
-      "HELLOHDL", cpElement, "HelloHandler element", &_hello_handler,
+      //cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
+      "ENCAP", cpkP+cpkM, cpElement, /*"BrnIapp encap element",*/ &_encap,
+      "HELLOHDL", cpkP+cpkM, cpElement, /*"HelloHandler element",*/ &_hello_handler,
       cpEnd) < 0)
     return -1;
 

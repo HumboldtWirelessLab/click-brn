@@ -25,8 +25,8 @@
 CLICK_DECLS
 
 int FragmentSender::configure(Vector<String> &conf, ErrorHandler *errh) {
-	if (cp_va_parse(conf, this, errh, cpKeywords, 
-			"PACKER",	cpElement, "header packer", &packer,
+	if (cp_va_kparse(conf, this, errh, 
+			"PACKER",	cpkP+cpkM, cpElement, /*"header packer",*/ &packer,
 			cpEnd) < 0)
 		return -1;
 	if (!packer || !packer->cast("HeaderPacker"))

@@ -44,9 +44,8 @@ TestSink::~TestSink()
 int
 TestSink::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpOptional,
-		  cpInteger, "count", &_MAX_COUNT,
+  if (cp_va_kparse(conf, this, errh,
+      "COUNT", cpkP+cpkM, cpInteger, /*"count",*/ &_MAX_COUNT,
 		  cpEnd) < 0)
     return -1;
   return 0;

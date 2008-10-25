@@ -60,9 +60,8 @@ BRNETXMetric::cast(const char *n)
 int
 BRNETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int res = cp_va_parse(conf, this, errh,
-    cpKeywords,
-    "LT", cpElement, "LinkTable element", &_link_table, 
+  int res = cp_va_kparse(conf, this, errh,
+    "LT", cpkP+cpkM, cpElement, /*"LinkTable element",*/ &_link_table,
     cpEnd);
   if (res < 0)
     return res;

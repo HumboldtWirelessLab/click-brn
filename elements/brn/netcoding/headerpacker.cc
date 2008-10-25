@@ -28,9 +28,9 @@ CLICK_DECLS
 int HeaderPacker::configure(Vector<String> &conf, ErrorHandler *errh) {
 	fragmentsInBatch = 0;
 	bitsInMultiplier = 0;
-	if (cp_va_parse(conf, this, errh, cpKeywords, "FRAGMENTS_IN_BATCH",
-			cpInteger, "fragments in batch", &fragmentsInBatch,
-			"BITS_IN_MULTIPLIER", cpInteger, "bits in multiplier", &bitsInMultiplier,
+	if (cp_va_kparse(conf, this, errh,
+      "FRAGMENTS_IN_BATCH", cpkP+cpkM, cpInteger, /*"fragments in batch",*/ &fragmentsInBatch,
+			"BITS_IN_MULTIPLIER", cpkP+cpkM, cpInteger, /*"bits in multiplier",*/ &bitsInMultiplier,
 			cpEnd) < 0)
 		return -1;
 	if (fragmentsInBatch == 0)

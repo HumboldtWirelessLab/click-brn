@@ -97,16 +97,14 @@ BrnLinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
   int stale_period = 120;
-  ret = cp_va_parse(conf, this, errh,
-        cpOptional,
+  ret = cp_va_kparse(conf, this, errh,
 //        cpElement, "NodeIdentity", &_node_identity,
-        cpElement, "BrnRouteCache", &_brn_routecache,
-        cpKeywords,
-        //"Ethernet", cpEtherAddress, "Ethernet address", &_ether,
-        "STALE", cpUnsigned, "Stale info timeout", &stale_period,
-        "SIMULATE", cpBool, "Simulation mode", &_sim_mode,
-        "CONSTMETRIC", cpInteger, "CONSTMETRIC", &_const_metric,
-        "MIN_LINK_METRIC_IN_ROUTE", cpInteger, "min link metric in route", &_brn_dsr_min_link_metric_within_route,
+        "ROUTECACHE", cpkP+cpkM, cpElement, /*"BrnRouteCache",*/ &_brn_routecache,
+        //"Ethernet", cpEtherAddress, "Ethernet address",*/ &_ether,
+        "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout",*/ &stale_period,
+        "SIMULATE", cpkP+cpkM, cpBool, /*"Simulation mode",*/ &_sim_mode,
+        "CONSTMETRIC", cpkP+cpkM, cpInteger, /*"CONSTMETRIC",*/ &_const_metric,
+        "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, /*"min link metric in route",*/ &_brn_dsr_min_link_metric_within_route,
         cpEnd);
 
 //  if (!_node_identity || !_node_identity->cast("NodeIdentity"))

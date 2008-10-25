@@ -45,9 +45,8 @@ ToStations::~ToStations()
 int
 ToStations::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpOptional,
-		  cpElement, "AssocList", &_stations,
+  if (cp_va_kparse(conf, this, errh,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList",*/ &_stations,
 		  cpEnd) < 0)
     return -1;
 

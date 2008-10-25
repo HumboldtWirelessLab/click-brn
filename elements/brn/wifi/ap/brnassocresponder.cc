@@ -71,15 +71,15 @@ int
 BRNAssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _debug = false;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
 		  /* not required */
-		  cpKeywords,
-		  "DEBUG", cpInteger, "Debug", &_debug,
-      "RESPONSE_DELAY", cpInteger, "Response delay in ms", &_response_delay_ms,
-		  "WIRELESS_INFO", cpElement, "wireless_info", &_winfo,
-		  "RT", cpElement, "availablerates", &_rtable,
-      "IAPP", cpElement, "IAPP element", &_iapp,
-		  "BRNVLAN", cpElement, "brn vlans", &_brn_vlan,
+		  //cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "RESPONSE_DELAY", cpkP+cpkM, cpInteger, /*"Response delay in ms",*/ &_response_delay_ms,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wireless_info",*/ &_winfo,
+      "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
+      "IAPP", cpkP, cpElement, /*"IAPP element",*/ &_iapp,
+      "BRNVLAN", cpkP, cpElement,/* "brn vlans",*/ &_brn_vlan,
 		  cpEnd) < 0)
     return -1;
 

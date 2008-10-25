@@ -40,8 +40,14 @@ PushBRNHeader::simple_action(Packet *p)
 {
 
   int brn_size = sizeof(click_brn);
-  p->push(brn_size);
-  return p;
+  if ( p->push(brn_size) != NULL )
+    return p;
+  else
+  {
+    p->kill();
+    click_chatter("Error on push in pushbrnheader");
+    return NULL;
+  }
 }
 
 CLICK_ENDDECLS

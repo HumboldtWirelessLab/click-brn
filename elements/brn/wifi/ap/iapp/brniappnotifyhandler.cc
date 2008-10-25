@@ -62,15 +62,15 @@ BrnIappNotifyHandler::~BrnIappNotifyHandler()
 int 
 BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "RESEND_NOTIFY", cpUnsigned, "resend notify (ms)", &_notify_ms,
-      "NUM_RESEND", cpInteger, "number to resend", &_num_resend,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "ASSOCLIST", cpElement, "AssocList element", &_assoc_list,
-      "ENCAP", cpElement, "BrnIappNotifyHandler encap element", &_encap,
-      "STATRACK", cpElement, "StationTracker element", &_sta_tracker,
+   //   cpKeywords,
+      "RESEND_NOTIFY", cpkP+cpkM, cpUnsigned, /*"resend notify (ms)",*/ &_notify_ms,
+      "NUM_RESEND", cpkP+cpkM, cpInteger, /*"number to resend",*/ &_num_resend,
+      "DEBUG", cpkP+cpkM, cpInteger,/* "Debug", &_debug,*/
+      "ASSOCLIST", cpkP+cpkM, cpElement,/* "AssocList element",*/ &_assoc_list,
+      "ENCAP", cpkP+cpkM, cpElement, /*"BrnIappNotifyHandler encap element",*/ &_encap,
+      "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
       cpEnd) < 0)
     return -1;
 

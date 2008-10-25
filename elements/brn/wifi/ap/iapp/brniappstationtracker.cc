@@ -70,16 +70,16 @@ int
 BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int stale_period = 120;
-  if (cp_va_parse(conf, this, errh,
+  if (cp_va_kparse(conf, this, errh,
       /* not required */
-      cpKeywords,
-      "DEBUG", cpInteger, "Debug", &_debug,
-      "STALE", cpUnsigned, "Stale info timeout", &stale_period,
-      "OPTIMIZE", cpBool, "Optimize", &_optimize,
-      "ASSOCLIST", cpElement, "AssocList element", &_assoc_list,
-      "NOTIFYHDL", cpElement, "NotifyHandler element", &_notify_handler,
-      "DATAHDL", cpElement, "DataHandler element", &_data_handler,
-      "ASSOC_RESP", cpElement, "AssocResponder element", &_assoc_responder,
+     // cpKeywords,
+      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
+      "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout",*/ &stale_period,
+      "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
+      "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
+      "NOTIFYHDL", cpkP+cpkM, cpElement, /*"NotifyHandler element",*/ &_notify_handler,
+      "DATAHDL", cpkP+cpkM, cpElement,/* "DataHandler element",*/ &_data_handler,
+      "ASSOC_RESP", cpkP+cpkM, cpElement, /*"AssocResponder element",*/ &_assoc_responder,
       //"SIG_ASSOC", cpElement, "SignalAssoc element", &_sig_assoc,
       cpEnd) < 0)
     return -1;

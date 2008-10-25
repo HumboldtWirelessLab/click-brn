@@ -206,20 +206,19 @@ int
 BRNLinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
-  int res = cp_va_parse(conf, this, errh,
-			cpKeywords,
-			"ETHTYPE", cpUnsigned, "Ethernet encapsulation type", &_et,
-      "NODEIDENTITY", cpElement, "NodeIdentity", &_me,
-			"PERIOD", cpUnsigned, "Probe broadcast period (msecs)", &_period,
-			"TAU", cpUnsigned, "Loss-rate averaging period (msecs)", &_tau,
-			"ETT", cpElement, "ETT Metric element", &_ett_metric,
-			"ETX", cpElement, "ETX Metric element", &_etx_metric,
-			"PROBES", cpString, "PROBES", &probes,
-			"RT", cpElement, "AvailabeRates", &_rtable,
-			"LOGGING", cpBool, "Logging", &_log,
-			"BRNAVGCNT", cpElement, "BrnAvgCnt", &_packetCnt,
-			"DHT", cpElement, "DHT", &_dht,
-			"CANSELECTOR", cpElement, "CANSEL" , &_cansel,
+  int res = cp_va_kparse(conf, this, errh,
+              "ETHTYPE", cpkP+cpkM, cpUnsigned, /*"Ethernet encapsulation type",*/ &_et,
+              "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+              "PERIOD", cpkP+cpkM, cpUnsigned, /*"Probe broadcast period (msecs)",*/ &_period,
+              "TAU", cpkP+cpkM, cpUnsigned, /*"Loss-rate averaging period (msecs)",*/ &_tau,
+              "ETT", cpkP+cpkM, cpElement,/* "ETT Metric element",*/ &_ett_metric,
+              "ETX", cpkP+cpkM, cpElement, /*"ETX Metric element",*/ &_etx_metric,
+              "PROBES", cpkP+cpkM, cpString, /*"PROBES",*/ &probes,
+              "RT", cpkP+cpkM, cpElement, /*"AvailabeRates",*/ &_rtable,
+              "LOGGING", cpkP+cpkM, cpBool, /*"Logging",*/ &_log,
+              "BRNAVGCNT", cpkP+cpkM, cpElement, /*"BrnAvgCnt",*/ &_packetCnt,
+              "DHT", cpkP+cpkM, cpElement, /*"DHT",*/ &_dht,
+              "CANSELECTOR", cpkP+cpkM, cpElement, /*"CANSEL" ,*/ &_cansel,
   //                      "LOG_INTERVALL", cpInteger, "Logging Interval (in msecs)", &_log_interval,
   //                      "LOG_FILENAME", cpFilename, "log filename", &_log_filename,
 			cpEnd);
@@ -502,7 +501,7 @@ BRNLinkStat::send_probe()
     cs_payload_size = _cansel->writeCsPayloadToLinkProbe(ptr, (unsigned int)(end - ptr));
     // additional dht stuff
     if (ptr + cs_payload_size <= end) {
-      char buffer[250];
+//      char buffer[250];
 
 //    BRN_DEBUG("BRNLinkStat: got and send Linkprop-Info: %s", buffer);
 //      memcpy(ptr, cs_values, cs_payload_size);
@@ -574,7 +573,7 @@ BRNLinkStat::send_probe()
   lp->_cksum = 0;
   lp->_cksum = click_in_cksum((unsigned char *) lp, lp->_psz);
 
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *)p->anno(); // p->all_user_anno();
   ceh->magic = WIFI_EXTRA_MAGIC;
   ceh->rate = rate; // this packet should be transmitted at the given rate
   checked_output_push(0, p);
@@ -696,7 +695,7 @@ BRNLinkStat::simple_action(Packet *p)
   uint16_t rate = lp->_rate;
 
 #ifndef CLICK_NS
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();//p->all_user_anno();
 
   // check if extra header is present !!!
   if (WIFI_EXTRA_MAGIC == ceh->magic) 
