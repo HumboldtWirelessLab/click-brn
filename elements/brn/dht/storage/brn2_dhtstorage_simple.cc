@@ -10,7 +10,7 @@
 
 #include "brn2_dhtstorage_simple.hh"
 #include "brn2_db.hh"
-#include "elements/brn/dht/dhtcommunication.hh"
+//#include "elements/brn/dht/dhtcommunication.hh"
 
 CLICK_DECLS
 
@@ -76,14 +76,14 @@ int DHTStorageSimple::initialize(ErrorHandler *)
   return 0;
 }
 
-void DHTStorageSimple::push( int port, Packet *packet )
+void DHTStorageSimple::push( int port, Packet */*packet*/ )
 {
   if ( _dht_routing != NULL )   //use dht-routing, ask routing for next node
   {
     if ( port == 0 )
     {
       //dht replay or request
-      struct dht_packet_header *dht_header = (struct dht_packet_header *)packet->data();
+/*      struct dht_packet_header *dht_header = (struct dht_packet_header *)packet->data();
       if ( ( dht_header->code & DHT_DATA ) != DHT_DATA )  // not data, it is a dht_operation
       {
         EtherAddress *sender_ether = new EtherAddress(dht_header->sender_hwa);
@@ -107,7 +107,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
             //break;
           }
         }
-      }
+      }*/
     }
 
     if ( port == 1 )
