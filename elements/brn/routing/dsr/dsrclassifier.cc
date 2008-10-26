@@ -82,7 +82,7 @@ void
 DSRClassifier::push(int, Packet *p)
 {
 
-  uint8_t dsr_payloadtype = p->user_anno_c(BRN_DSR_PAYLOADTYPE_KEY);
+  uint8_t dsr_payloadtype = p->anno_u8(BRN_DSR_PAYLOADTYPE_KEY); //p->user_anno_c(BRN_DSR_PAYLOADTYPE_KEY);
 
   int portNum;
   if( _msg_to_outport_map.find_pair(dsr_payloadtype) )

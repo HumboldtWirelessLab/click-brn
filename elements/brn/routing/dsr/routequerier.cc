@@ -453,7 +453,8 @@ RouteQuerier::issue_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, I
 //  brn_p->set_dst_ether_anno(bcast);
 
   // set ns2 anno
-  brn_p->set_user_anno_c(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
+  //brn_p->set_user_anno_c(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
+  brn_p->set_anno_u8(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
 
   output(0).push(brn_p); //vorher:0
 }
@@ -985,9 +986,9 @@ RouteQuerier::last_forwarder_eth(Packet *p)
   // TODO !!!!!!!!!!!!!!!!!!!
   // what going on here??????????
   uint16_t d[3];
-  d[0] = p->user_anno_us(9);
-  d[1] = p->user_anno_us(11);
-  d[2] = p->user_anno_us(13);
+  d[0] = p->anno_u16(9); //p->user_anno_us(9);
+  d[1] = p->anno_u16(11);
+  d[2] = p->anno_u16(13);
   
   return (EtherAddress((unsigned char *)d));
 }
