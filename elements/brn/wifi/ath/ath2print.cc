@@ -115,7 +115,6 @@ phy_errcode_to_string(int errcode)
   return "Unknown";
 }
 
-
 Packet *
 Ath2Print::simple_action(Packet *p)
 {
