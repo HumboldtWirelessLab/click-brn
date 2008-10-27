@@ -53,8 +53,8 @@ class Ath2Print : public Element {
     Packet *simple_action(Packet *);
 
   private:
-    int _printath;
     String _label;
+    int _complath;
 
 };
 

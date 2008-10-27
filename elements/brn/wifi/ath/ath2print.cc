@@ -23,13 +23,15 @@
  */
 
 #include <click/config.h>
-#include "ath2print.hh"
-#include "ah_desc.h"
 #include <click/straccum.hh>
 #include <clicknet/wifi.h>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
 #include <elements/wifi/athdesc.h>
+
+#include "ath2print.hh"
+#include "ah_desc.h"
+#include "ah_desc_brn.h"
 
 CLICK_DECLS
 
@@ -40,20 +42,20 @@ Ath2Print::Ath2Print()
 Ath2Print::~Ath2Print()
 {
 }
+
 int
 Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _label = "";
-  _printath = 0;
+  _complath = 0;
 
   ret = cp_va_kparse(conf, this, errh,
-                     "PRINTATH", cpkP, cpInteger, &_printath,
                      "LABEL", cpkP, cpString, &_label,
+                     "COMPLATH", cpkP, cpInteger, &_complath,
                      cpEnd);
   return ret;
 }
-
 
 inline String
 rx_errcode_to_string(int errcode)
@@ -118,15 +120,73 @@ Packet *
 Ath2Print::simple_action(Packet *p)
 {
   struct click_wifi_extra *ceha = WIFI_EXTRA_ANNO(p);
-  struct click_wifi_extra *cehp = (struct click_wifi_extra *) p->data();
   struct ath_tx_status *tx_status = NULL;
   struct ath_rx_status *rx_status = NULL;
+  struct ath_brn_info *brn_info;
   StringAccum sa;
+  StringAccum sa_ath1;
+  bool tx;
 
-  if ((ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_TX) ||
-      (cehp->magic == WIFI_EXTRA_MAGIC && cehp->flags & WIFI_EXTRA_TX))
+  if ( _complath == 1 )
   {
-    tx_status = (struct ath_tx_status *)p->data();
+    WritablePacket *q = p->uniqueify();
+    if (q)
+    {
+      sa_ath1 << "ATHDESC: ";
+      struct ar5212_desc *desc = (struct ar5212_desc *) (q->data() + 8);
+
+      if (desc->frame_len == 0)
+      {
+        tx = false;
+
+        struct ar5212_rx_status *rx_desc = (struct ar5212_rx_status *) (q->data() + 16);
+
+        if (!rx_desc->rx_ok)  sa_ath1 << "(RX) Status: (Err) ";
+        else                  sa_ath1 << "(RX) Status: (OK) ";
+
+        sa_ath1 << "Rate: " << ratecode_to_dot11(rx_desc->rx_rate);
+        sa_ath1 << " RSSI: " << rx_desc->rx_rssi;
+        sa_ath1 << " LEN: " << rx_desc->data_len;
+        sa_ath1 << " More: " << rx_desc->more;
+        sa_ath1 << " DCErr: " << rx_desc->decomperr;
+        sa_ath1 << " Ant: " << rx_desc->rx_ant;
+        sa_ath1 << " Done: " << rx_desc->done;
+        sa_ath1 << " CRCErr: " << rx_desc->crcerr;
+        sa_ath1 << " DecryptCRC: " << rx_desc->decryptcrc;
+      }
+      else
+      {
+        tx = true;
+
+        sa_ath1 << "(TX) ";
+        sa_ath1 << "Power: " << desc->xmit_power;
+        sa_ath1 << " ACKRSSI: " << desc->ack_sig_strength;
+        sa_ath1 << " Rate: " << ratecode_to_dot11(desc->xmit_rate0);
+        sa_ath1 << " FAILCOUNT: " << desc->data_fail_count;
+        sa_ath1 << " EXRetries: " << desc->excessive_retries;
+      }
+    }
+
+    if ( _label[0] != 0 )
+      click_chatter("%s: %s\n", _label.c_str(),sa_ath1.c_str());
+    else
+      click_chatter("%s\n", sa_ath1.c_str());
+  }
+  else
+  {
+    if (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_TX)
+      tx = true;
+    else
+      tx = false;
+  }
+
+  if (tx)
+  {
+    if ( _complath == 1 )
+      tx_status = (struct ath_tx_status *)&(p->data()[ATHDESC_HEADER_SIZE]);
+    else
+      tx_status = (struct ath_tx_status *)p->data();
+
     sa << "(TX) Seq: ";
     sa << (int)/*ntohs*/(tx_status->ts_seqnum);
     sa << " TS: ";sa << (int)ntohs(tx_status->ts_tstamp);
@@ -141,7 +201,11 @@ Ath2Print::simple_action(Packet *p)
   }
   else
   {
-    rx_status = (struct ath_rx_status *)p->data();
+    if ( _complath == 1 )
+      rx_status = (struct ath_rx_status *)&(p->data()[ATHDESC_HEADER_SIZE]);
+    else
+      rx_status = (struct ath_rx_status *)p->data();
+
     sa << "(RX) Len: ";
     sa << (int)/*ntohs*/(rx_status->rs_datalen);
     sa << " Status: ";sa << (int)rx_status->rs_status;sa << " (" << rx_errcode_to_string(rx_status->rs_status) << ")";
@@ -157,6 +221,15 @@ Ath2Print::simple_action(Packet *p)
     sa << " TS: ";sa << (unsigned int)/*ntohl*/(rx_status->rs_tstamp);
     sa << " Ant: ";sa << (unsigned int)/*ntohl*/(rx_status->rs_antenna);
   }
+
+  if ( _complath == 1 )
+    brn_info = (struct ath_brn_info *)&(p->data()[ATHDESC_HEADER_SIZE + sizeof(struct ath_desc_status)]);
+  else
+    brn_info = (struct ath_brn_info *)&(p->data()[sizeof(struct ath_desc_status)]);
+
+  sa << " Noise: ";sa << (int)brn_info->noise;
+  sa << " Hosttime: ";sa << (u_int64_t)brn_info->hosttime;
+  sa << " Mactime: ";sa << (u_int64_t)brn_info->mactime;
 
   if ( _label[0] != 0 )
     click_chatter("%s: %s\n", _label.c_str(),sa.c_str());

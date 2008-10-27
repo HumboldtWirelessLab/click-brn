@@ -23,8 +23,16 @@
  */
 
 #include <click/config.h>
+#include <click/straccum.hh>
+#include <clicknet/wifi.h>
+#include <click/confparse.hh>
+#include <click/packet_anno.hh>
+#include <elements/wifi/athdesc.h>
+
 #include "ath2decap.hh"
 #include "ah_desc.h"
+#include "ah_desc_brn.h"
+
 CLICK_DECLS
 
 Ath2Decap::Ath2Decap()
@@ -35,10 +43,25 @@ Ath2Decap::~Ath2Decap()
 {
 }
 
+int
+Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
+{
+  int ret;
+  _complath = 0;
+
+  ret = cp_va_kparse(conf, this, errh,
+                     "COMPLATH", cpkP, cpInteger, &_complath,
+                     cpEnd);
+  return ret;
+}
+
 Packet *
 Ath2Decap::simple_action(Packet *p)
 {
-  int ath2_size = sizeof(struct ath_desc_status);
+  int ath2_size = sizeof(struct ath_desc_status) + sizeof(struct ath_brn_info);
+
+  if ( _complath == 1 ) ath2_size += ATHDESC_HEADER_SIZE;
+
   p->pull(ath2_size);
   return p;
 }
