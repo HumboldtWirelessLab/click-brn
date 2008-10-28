@@ -226,9 +226,16 @@ Ath2Print::simple_action(Packet *p)
   else
     brn_info = (struct ath_brn_info *)&(p->data()[sizeof(struct ath_desc_status)]);
 
-  sa << " Noise: ";sa << (int)brn_info->noise;
-  sa << " Hosttime: ";sa << (u_int64_t)brn_info->hosttime;
-  sa << " Mactime: ";sa << (u_int64_t)brn_info->mactime;
+  if ( brn_info->id == ATHDESC2_BRN_ID )
+  {
+    sa << " Noise: ";sa << (int)brn_info->anno.rx.noise;
+    sa << " Hosttime: ";sa << (u_int64_t)brn_info->anno.rx.hosttime;
+    sa << " Mactime: ";sa << (u_int64_t)brn_info->anno.rx.mactime;
+  }
+  else
+  {
+    click_chatter("ATHDESC2_BRN_ID doesn't match");
+  }
 
   if ( _label[0] != 0 )
     click_chatter("%s: %s\n", _label.c_str(),sa.c_str());
