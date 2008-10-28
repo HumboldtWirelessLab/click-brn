@@ -30,8 +30,7 @@
 #include <elements/wifi/athdesc.h>
 
 #include "ath2decap.hh"
-#include "ah_desc.h"
-#include "ah_desc_brn.h"
+#include "ath2_desc.h"
 
 CLICK_DECLS
 
@@ -58,7 +57,7 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 Ath2Decap::simple_action(Packet *p)
 {
-  int ath2_size = sizeof(struct ath_desc_status) + sizeof(struct ath_brn_info);
+  int ath2_size = sizeof(struct ath2_header);
 
   if ( _complath == 1 ) ath2_size += ATHDESC_HEADER_SIZE;
 

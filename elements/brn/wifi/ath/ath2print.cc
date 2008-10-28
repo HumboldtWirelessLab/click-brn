@@ -30,8 +30,7 @@
 #include <elements/wifi/athdesc.h>
 
 #include "ath2print.hh"
-#include "ah_desc.h"
-#include "ah_desc_brn.h"
+#include "ath2_desc.h"
 
 CLICK_DECLS
 
@@ -119,9 +118,8 @@ Packet *
 Ath2Print::simple_action(Packet *p)
 {
   struct click_wifi_extra *ceha = WIFI_EXTRA_ANNO(p);
-  struct ath_tx_status *tx_status = NULL;
-  struct ath_rx_status *rx_status = NULL;
-  struct ath_brn_info *brn_info;
+  struct ath2_header *ath2_h = NULL;
+
   StringAccum sa;
   StringAccum sa_ath1;
   bool tx;
@@ -179,68 +177,56 @@ Ath2Print::simple_action(Packet *p)
       tx = false;
   }
 
-  if (tx)
-  {
-    if ( _complath == 1 )
-      tx_status = (struct ath_tx_status *)&(p->data()[ATHDESC_HEADER_SIZE]);
-    else
-      tx_status = (struct ath_tx_status *)p->data();
-
-    sa << "(TX) Seq: ";
-    sa << (int)/*ntohs*/(tx_status->ts_seqnum);
-    sa << " TS: ";sa << (int)ntohs(tx_status->ts_tstamp);
-    sa << " Status: ";sa << (int)tx_status->ts_status;sa << " (" << tx_errcode_to_string(tx_status->ts_status) << ")";
-    sa << " Rate: ";sa << (int)ratecode_to_dot11(tx_status->ts_rate);
-    sa << " RSSI: ";sa << (int)tx_status->ts_rssi;
-    sa << " SRetry: ";sa << (int)tx_status->ts_shortretry;
-    sa << " LRetry: ";sa << (int)tx_status->ts_longretry;
-    sa << " VCC: ";sa << (int)tx_status->ts_virtcol;
-    sa << " ant: ";sa << (int)tx_status->ts_antenna;
-    sa << " FinTSI: ";sa << (int)tx_status->ts_finaltsi;
-  }
-  else
-  {
-    if ( _complath == 1 )
-      rx_status = (struct ath_rx_status *)&(p->data()[ATHDESC_HEADER_SIZE]);
-    else
-      rx_status = (struct ath_rx_status *)p->data();
-
-    sa << "(RX) Len: ";
-    sa << (int)/*ntohs*/(rx_status->rs_datalen);
-    sa << " Status: ";sa << (int)rx_status->rs_status;sa << " (" << rx_errcode_to_string(rx_status->rs_status) << ")";
-    sa << " Phyerr: ";sa << (int)rx_status->rs_phyerr;
-    if ( rx_status->rs_status == 2 )
-      sa << " (" << phy_errcode_to_string(rx_status->rs_phyerr) << ")";
-    else
-      sa << " (none)";
-    sa << " RSSI: ";sa << (int)rx_status->rs_rssi;
-    sa << " Keyix: ";sa << (int)rx_status->rs_keyix;
-    sa << " Rate: ";sa << (int)ratecode_to_dot11(rx_status->rs_rate);
-    sa << " More: ";sa << (int)rx_status->rs_more;
-    sa << " TS: ";sa << (unsigned int)/*ntohl*/(rx_status->rs_tstamp);
-    sa << " Ant: ";sa << (unsigned int)/*ntohl*/(rx_status->rs_antenna);
-  }
-
   if ( _complath == 1 )
-    brn_info = (struct ath_brn_info *)&(p->data()[ATHDESC_HEADER_SIZE + sizeof(struct ath_desc_status)]);
+    ath2_h = (struct ath2_header*)&(p->data()[ATHDESC_HEADER_SIZE]);
   else
-    brn_info = (struct ath_brn_info *)&(p->data()[sizeof(struct ath_desc_status)]);
+    ath2_h = (struct ath2_header*)p->data();
 
-  if ( brn_info->id == ATHDESC2_BRN_ID )
+  if ( ath2_h->id == ATHDESC2_BRN_ID )
   {
-    sa << " Noise: ";sa << (int)brn_info->anno.rx.noise;
-    sa << " Hosttime: ";sa << (u_int64_t)brn_info->anno.rx.hosttime;
-    sa << " Mactime: ";sa << (u_int64_t)brn_info->anno.rx.mactime;
-  }
-  else
-  {
-    click_chatter("ATHDESC2_BRN_ID doesn't match");
-  }
+    if (tx)
+    {
+      sa << "(TX) Seq: ";
+      sa << (int)/*ntohs*/(ath2_h->anno.tx.ts_seqnum);
+      sa << " TS: ";sa << (int)ntohs(ath2_h->anno.tx.ts_tstamp);
+      sa << " Status: ";
+      sa << (int)ath2_h->anno.tx.ts_status;sa << " (" << tx_errcode_to_string(ath2_h->anno.tx.ts_status) << ")";
+      sa << " Rate: ";sa << (int)ratecode_to_dot11(ath2_h->anno.tx.ts_rate);
+      sa << " RSSI: ";sa << (int)ath2_h->anno.tx.ts_rssi;
+      sa << " SRetry: ";sa << (int)ath2_h->anno.tx.ts_shortretry;
+      sa << " LRetry: ";sa << (int)ath2_h->anno.tx.ts_longretry;
+      sa << " VCC: ";sa << (int)ath2_h->anno.tx.ts_virtcol;
+      sa << " ant: ";sa << (int)ath2_h->anno.tx.ts_antenna;
+      sa << " FinTSI: ";sa << (int)ath2_h->anno.tx.ts_finaltsi;
+      sa << " Noise: ";sa << (int)ath2_h->anno.tx.noise;
+      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.tx.hosttime;
+      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.tx.mactime;
+    }
+    else
+    {
+      sa << "(RX) Len: ";
+      sa << (int)/*ntohs*/(ath2_h->anno.rx.rs_datalen);
+      sa << " Status: ";
+      sa << (int)ath2_h->anno.rx.rs_status;sa << " (" << rx_errcode_to_string(ath2_h->anno.rx.rs_status) << ")";
+      sa << " Phyerr: ";sa << (int)ath2_h->anno.rx.rs_phyerr;
+      if ( ath2_h->anno.rx.rs_status == 2 )
+        sa << " (" << phy_errcode_to_string(ath2_h->anno.rx.rs_phyerr) << ")";
+      else
+        sa << " (none)";
+      sa << " RSSI: ";sa << (int)ath2_h->anno.rx.rs_rssi;
+      sa << " Rate: ";sa << (int)ratecode_to_dot11(ath2_h->anno.rx.rs_rate);
+      sa << " TS: ";sa << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_tstamp);
+      sa << " Ant: ";sa << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_antenna);
+      sa << " Noise: ";sa << (int)ath2_h->anno.rx.noise;
+      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.rx.hosttime;
+      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.rx.mactime;
+    }
 
-  if ( _label[0] != 0 )
-    click_chatter("%s: %s\n", _label.c_str(),sa.c_str());
-  else
-    click_chatter("%s\n", sa.c_str());
+    if ( _label[0] != 0 )
+      click_chatter("%s: %s\n", _label.c_str(),sa.c_str());
+    else
+      click_chatter("%s\n", sa.c_str());
+  }
 
   return p;
 }
