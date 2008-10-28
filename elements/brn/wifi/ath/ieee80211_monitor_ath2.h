@@ -13,7 +13,7 @@ struct ath2_rx_status {
     int8_t	  noise;
     u_int64_t	hosttime;
     u_int64_t	mactime;
-};
+} __attribute__ ((packed));
 
 struct ath2_tx_status {
     u_int16_t	ts_seqnum;    /* h/w assigned sequence number */
@@ -30,17 +30,16 @@ struct ath2_tx_status {
     int8_t    noise;
     u_int64_t hosttime;
     u_int64_t mactime;
-};
+} __attribute__ ((packed));
 
 struct ath2_tx_anno {
     int8_t channel;
     u_int8_t mac[6];
-};
+} __attribute__ ((packed));
 
 
 struct ath2_header {
     u_int16_t id;
-    u_int16_t pad;
 
     union {
       struct ath2_rx_status rx;
@@ -48,7 +47,7 @@ struct ath2_header {
       struct ath2_tx_anno tx_anno;
     } anno; 
 
-};
+} __attribute__ ((packed));
 
 #define ATHDESC2_BRN_ID 0xF2F2
 
