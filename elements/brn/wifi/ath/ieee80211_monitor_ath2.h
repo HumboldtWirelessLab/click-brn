@@ -40,6 +40,7 @@ struct ath2_tx_anno {
 
 struct ath2_header {
     u_int16_t id;
+    u_int16_t pad;
 
     union {
       struct ath2_rx_status rx;
