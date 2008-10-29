@@ -182,7 +182,7 @@ Ath2Print::simple_action(Packet *p)
   else
     ath2_h = (struct ath2_header*)p->data();
 
-  if ( ath2_h->id == ATHDESC2_BRN_ID )
+  if ( ath2_h->ath2_version == ATHDESC2_VERSION )
   {
     if (tx)
     {
@@ -198,9 +198,9 @@ Ath2Print::simple_action(Packet *p)
       sa << " VCC: ";sa << (int)ath2_h->anno.tx.ts_virtcol;
       sa << " ant: ";sa << (int)ath2_h->anno.tx.ts_antenna;
       sa << " FinTSI: ";sa << (int)ath2_h->anno.tx.ts_finaltsi;
-      sa << " Noise: ";sa << (int)ath2_h->anno.tx.noise;
-      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.tx.hosttime;
-      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.tx.mactime;
+      sa << " Noise: ";sa << (int)ath2_h->anno.tx.ts_noise;
+      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.tx.ts_hosttime;
+      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.tx.ts_mactime;
     }
     else
     {
@@ -215,11 +215,13 @@ Ath2Print::simple_action(Packet *p)
         sa << " (none)";
       sa << " RSSI: ";sa << (int)ath2_h->anno.rx.rs_rssi;
       sa << " Rate: ";sa << (int)ratecode_to_dot11(ath2_h->anno.rx.rs_rate);
+      sa << " More: ";sa << (int)ath2_h->anno.rx.rs_more;
+      sa << " Keyix: ";sa << (int)ath2_h->anno.rx.rs_keyix;
       sa << " TS: ";sa << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_tstamp);
       sa << " Ant: ";sa << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_antenna);
-      sa << " Noise: ";sa << (int)ath2_h->anno.rx.noise;
-      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.rx.hosttime;
-      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.rx.mactime;
+      sa << " Noise: ";sa << (int)ath2_h->anno.rx.rs_noise;
+      sa << " Hosttime: ";sa << (u_int64_t)ath2_h->anno.rx.rs_hosttime;
+      sa << " Mactime: ";sa << (u_int64_t)ath2_h->anno.rx.rs_mactime;
     }
 
     if ( _label[0] != 0 )
