@@ -60,13 +60,13 @@ NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   EtherAddress me_wlan, me_vlan0, me_vlan1;
 
   if (cp_va_kparse(conf, this, errh,
-      "WLAN0", cpkP+cpkM, cpString, /*"#1 device (wlan)",*/ &_dev_wlan_name,
-      "WLAN1", cpkP+cpkM, cpString, /*"#2 device (vlan0)",*/ &_dev_vlan0_name,
-      "WLAN2", cpkP+cpkM, cpString, /*"#3 device (vlan1)",*/ &_dev_vlan1_name,
-      "LINKTABLE", cpkP+cpkM, cpElement, /*"link table",*/ &_link_table,
-      "ADDR_WLAN", cpkP+cpkM, cpEtherAddress, /*"#1 device address (wlan)",*/ &me_wlan,
-      "ADDR_VLAN0", cpkP+cpkM, cpEtherAddress, /*"#2 device address (vlan0)",*/ &me_vlan0,
-      "ADDR_VLAN1", cpkP+cpkM, cpEtherAddress, /*"#3 device address (vlan1)",*/ &me_vlan1,
+      "WLAN0", cpkP, cpString, /*"#1 device (wlan)",*/ &_dev_wlan_name,
+      "WLAN1", cpkN, cpString, /*"#2 device (vlan0)",*/ &_dev_vlan0_name,
+      "WLAN2", cpkN, cpString, /*"#3 device (vlan1)",*/ &_dev_vlan1_name,
+      "LINKTABLE", cpkM, cpElement, /*"link table",*/ &_link_table,
+      "ADDR_WLAN", cpkN, cpEtherAddress, /*"#1 device address (wlan)",*/ &me_wlan,
+      "ADDR_VLAN0", cpkN, cpEtherAddress, /*"#2 device address (vlan0)",*/ &me_vlan0,
+      "ADDR_VLAN1", cpkN, cpEtherAddress, /*"#3 device address (vlan1)",*/ &me_vlan1,
       cpEnd) < 0)
     return -1;
 
