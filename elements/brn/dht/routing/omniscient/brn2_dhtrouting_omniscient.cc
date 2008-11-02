@@ -13,6 +13,8 @@
 #include <click/timer.hh>
 #include "brn2_dhtrouting_omniscient.hh"
 
+#include "elements/brn/standard/packetsendbuffer.hh"
+
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "dhtprotocol_omniscient.hh"
 
@@ -22,7 +24,8 @@
 CLICK_DECLS
 
 DHTRoutingOmni::DHTRoutingOmni():
-  _lookup_timer(static_lookup_timer_hook,this)
+  _lookup_timer(static_lookup_timer_hook,this),
+  _packet_buffer_timer(static_packet_buffer_timer_hook,this)
 {
 }
 
@@ -63,6 +66,9 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   }
 
   _me = new DHTnode(_my_ether_addr);
+  _me->_status = STATUS_OK;
+  _me->_neighbor = true;
+  _dhtnodes.add_dhtnode(_me);
 
   return 0;
 }
@@ -71,7 +77,9 @@ int
 DHTRoutingOmni::initialize(ErrorHandler *)
 {
   _lookup_timer.initialize(this);
-  _lookup_timer.schedule_after_msec( _update_interval );
+  _lookup_timer.schedule_after_msec( 5000 + _update_interval );
+  _packet_buffer_timer.initialize(this);
+  _packet_buffer_timer.schedule_after_msec( 10000 );
 
   return 0;
 }
@@ -91,15 +99,40 @@ DHTRoutingOmni::static_lookup_timer_hook(Timer *t, void *f)
 }
 
 void
+DHTRoutingOmni::static_packet_buffer_timer_hook(Timer *t, void *f)
+{
+  DHTRoutingOmni *dht;
+  PacketSendBuffer::BufferedPacket *bpacket;
+  int next_p;
+
+  dht = (DHTRoutingOmni*)f;
+
+  if ( t == NULL ) click_chatter("Timer is NULL");
+  bpacket = dht->packetBuffer.getNextPacket();
+
+  if ( bpacket != NULL )
+  {
+    dht->output(bpacket->_port).push(bpacket->_p);
+    next_p = dht->packetBuffer.getTimeToNext();
+    if ( next_p >= 0 )
+      dht->_packet_buffer_timer.schedule_after_msec( next_p );
+    else
+      dht->_packet_buffer_timer.schedule_after_msec( 10000 );
+  }
+  else
+  {
+    dht->_packet_buffer_timer.schedule_after_msec( 10000 );
+  }
+}
+
+void
 DHTRoutingOmni::push( int port, Packet *packet )
 {
-  click_chatter("One Packet");
+
   if ( port == 0 )
   {
-    click_chatter("Unicast");
     if ( DHTProtocol::get_routing(packet) != ROUTING_OMNI )
     {
-       click_chatter("Not OMNI");
        packet->kill();
        return;
     }
@@ -141,8 +174,8 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
   DHTnodelist dhtlist;
   int count_nodes;
 
-  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
-                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+//  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+//                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
@@ -159,15 +192,15 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
   int count_nodes;
   DHTnode *node;
 
-  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
-                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+//  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+//                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
 
   if ( is_me(ether_header->ether_dhost) )
   {
-    node = _dhtnodes.get_dhtnode(0);
+    node = dhtlist.get_dhtnode(0);
     p = DHTProtocolOmni::new_hello_packet(&(_me->_ether_addr));
     big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr));
 
@@ -181,47 +214,21 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
 void
 DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 {
-  WritablePacket *p,*big_p;
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
   int count_nodes;
-  DHTnode *node,*srcnode;
+  DHTnode *srcnode;
   DHTnodelist tmp_list;
 
-  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
-                EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+//  click_chatter("Got Route Table Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+//                EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
   srcnode = dhtlist.get_dhtnode(0);  //TODO: replace by srcnode from header
   dhtlist.clear();
 
-  for ( int i = 0; i < _dhtnodes.size(); i++ )
-  {
-    node = _dhtnodes.get_dhtnode(i);
-    if ( node->_status == STATUS_OK )
-    {
-      tmp_list.add_dhtnode(node);
-
-      if ( tmp_list.size() == 100 )  //TODO: which max length
-      {
-        p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
-        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(srcnode->_ether_addr));
-        output(0).push(big_p);
-
-        tmp_list.clear();
-      }
-    }
-  }
-
-  if ( tmp_list.size() > 0 )        //send the rest
-  {
-    p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
-    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(srcnode->_ether_addr));
-    output(0).push(big_p);
-
-    tmp_list.clear();
-  }
+  send_routetable_update(&(srcnode->_ether_addr), STATUS_ALL );
 
 }
 
@@ -232,8 +239,8 @@ DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
   DHTnodelist dhtlist;
   int count_nodes;
 
-  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
-                EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+//  click_chatter("GotRoute reply from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+//       EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
@@ -241,24 +248,32 @@ DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
 }
 
 void
-DHTRoutingOmni::send_routetable_update(EtherAddress *dst)
+DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
 {
   WritablePacket *p,*big_p;
   DHTnode *node;
   DHTnodelist tmp_list;
+  int jitter, next_p;
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
     node = _dhtnodes.get_dhtnode(i);
-    if ( node->_status == STATUS_OK )
+    if ( ( node->_status == status ) || ( status == STATUS_ALL ) )
     {
+      if ( node->_status == STATUS_NEW ) node->_status = STATUS_OK;
+
       tmp_list.add_dhtnode(node);
 
       if ( tmp_list.size() == 100 )  //TODO: which max length
       {
         p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
         big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
-        output(0).push(big_p);
+
+        jitter = (unsigned int ) ( click_random() % 500 );
+        packetBuffer.addPacket_ms(big_p, jitter, 0);
+        next_p = packetBuffer.getTimeToNext();
+        _packet_buffer_timer.schedule_after_msec( next_p );
+        //output(0).push(big_p);
 
         tmp_list.clear();
       }
@@ -269,36 +284,86 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst)
   {
     p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
     big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
-    output(0).push(big_p);
+    jitter = (unsigned int ) ( click_random() % 500 );
+    packetBuffer.addPacket_ms(big_p, jitter, 0);
+    next_p = packetBuffer.getTimeToNext();
+    _packet_buffer_timer.schedule_after_msec( next_p );
+    //output(0).push(big_p);
 
     tmp_list.clear();
   }
 
 }
-
+/****************************************************************************************
+********************* N O D E T A B L E O P E R A T I O N *******************************
+****************************************************************************************/
 void
 DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
 {
   DHTnode *node, *new_node;
   int count_newnodes = 0;
+  Timestamp now,n_age;
+
+  now = Timestamp::now();
 
   for ( int i = 0; i < dhtlist->size(); i++)
   {
     new_node = dhtlist->get_dhtnode(i);
     node = _dhtnodes.get_dhtnode(new_node);
+
     if ( node == NULL )
     {
-      node = new DHTnode(new_node->_ether_addr);
-      _dhtnodes.add_dhtnode(node);
-      count_newnodes++;
+      if ( new_node->_status == STATUS_OK )
+      {
+        node = new DHTnode(new_node->_ether_addr);
+        _dhtnodes.add_dhtnode(node);
+        count_newnodes++;
+        node->_status = STATUS_NEW;
+        node->_neighbor = false;                                  //TODO: take these info from node direct
+        node->set_age(&(new_node->_age));
+        node->set_last_ping(&(new_node->_last_ping));
+      }
     }
-
-    node->_status = STATUS_OK;
+    else
+    {
+      if ( new_node->_status == STATUS_AWAY )
+      {
+        if ( node->get_age_s() >= new_node->get_age_s() )    //his info is newer
+        {
+          node->_status = STATUS_AWAY;                      //mark node as away and set ping timestamp
+        }
+      }
+      else
+      {
+        if ( node->_status == STATUS_UNKNOWN )
+        {
+          count_newnodes++;
+          node->_status = STATUS_NEW;
+          node->set_age(&(new_node->_age));
+          node->set_last_ping(&(new_node->_last_ping));
+        }
+        else
+        {
+          if ( node->get_age_s() >= new_node->get_age_s() )    //his info is newer
+          {
+            if ( new_node->get_age_s() <= node->get_last_ping_s() )
+              if ( node->_status == STATUS_MISSED || node->_status == STATUS_AWAY )
+              {
+                node->_status = STATUS_OK;                    //he says node is ok
+                node->set_age(&(new_node->_age));
+                node->set_last_ping(&(new_node->_last_ping));
+                //remove now unneeded ping and so
+              }
+          }
+        }
+      }
+    }
   }
 
   if ( count_newnodes > 0 )
   {
-
+    EtherAddress broadcast = EtherAddress::make_broadcast();
+    DHTRoutingOmni::send_routetable_update(&broadcast, STATUS_NEW);
   }
 }
 
@@ -339,7 +404,7 @@ DHTRoutingOmni::nodeDetection()
   for( int i = 0; i < _dhtnodes.size(); i++ )
   {
     node = _dhtnodes.get_dhtnode(i);
-    if ( node->_neighbor )
+    if ( node->_neighbor && node != _me)
     {
       int j;
 
@@ -361,13 +426,59 @@ DHTRoutingOmni::nodeDetection()
   }
 }
 
-void DHTRoutingOmni::add_handlers()
+/*******************************************************************************************/
+/************************************* H A N D L E R ***************************************/
+/*******************************************************************************************/
+
+String 
+DHTRoutingOmni::routing_info(void)
 {
+  StringAccum sa;
+  DHTnode *node;
+
+  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << " )\n";
+  sa << "DHT-Nodes (" << (int)_dhtnodes.size() << ") :\n";
+
+  for( int i = 0; i < _dhtnodes.size(); i++ )
+  {
+    node = _dhtnodes.get_dhtnode(i);
+
+    sa << node->_ether_addr.unparse();
+    if ( node->_neighbor )
+      sa << "\ttrue";
+    else
+      sa << "\tfalse";
+
+    sa << "\t" << (int)node->_status;
+    sa << "\t" << node->_age;
+    sa << "\t" << node->_last_ping;
+
+    sa << "\n";
+  }
+
+  return sa.take_string();
 }
 
-#include <click/vector.cc>
+enum { 
+  H_ROUTING_INFO
+};
 
-template class Vector<DHTRoutingOmni::BufferedPacket>;
+static String
+read_param(Element *e, void *thunk)
+{
+  DHTRoutingOmni *dht_omni = (DHTRoutingOmni *)e;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_ROUTING_INFO : return ( dht_omni->routing_info( ) );
+    default: return String();
+  }
+}
+
+void DHTRoutingOmni::add_handlers()
+{
+  add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
+}
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(DHTProtocolOmni)
