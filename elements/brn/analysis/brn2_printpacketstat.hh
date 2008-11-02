@@ -21,20 +21,20 @@ CLICK_DECLS
  */
 
 class BRN2PrintPacketStat : public Element {
-  
+
   String _label;
-  
+
  public:
-  
+
   BRN2PrintPacketStat();
   ~BRN2PrintPacketStat();
-  
+
   const char *class_name() const		{ return "BRN2PrintPacketStat"; }
-  const char *port_count() const		{ return PORTS_1_1; }
+  const char *port_count() const		{ return "1/1"; }
   const char *processing() const		{ return AGNOSTIC; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
-  
+
   Packet *simple_action(Packet *);
   String unparse_beacon(Packet *p);
   String reason_string(int reason);

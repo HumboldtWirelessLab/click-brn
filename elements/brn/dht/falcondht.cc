@@ -121,7 +121,7 @@ FalconDHT::initialize(ErrorHandler *)
   init_routing(&_me);
   dht_packet_id = 0;
 
-  unsigned int sched_time = (unsigned int ) ( random() % ( BRN_FDHT_LOOKUP_TIMER_INTERVAL * NODE_DETECTION_INTERVAL ) );
+  unsigned int sched_time = (unsigned int ) ( click_random() % ( BRN_FDHT_LOOKUP_TIMER_INTERVAL * NODE_DETECTION_INTERVAL ) );
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _startup_time + sched_time );
 

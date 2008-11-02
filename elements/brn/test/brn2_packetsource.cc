@@ -104,7 +104,7 @@ BRN2PacketSource::createpacket(int size)
   memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) ]), &newpi.channel, sizeof(uint8_t));
   memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) ]), &newpi.bitrate, sizeof(uint8_t));
   memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) ]), &newpi.power, sizeof(uint8_t));
-  
+
   return(new_packet);
 }
 
