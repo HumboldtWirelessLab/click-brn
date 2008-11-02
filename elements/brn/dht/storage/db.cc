@@ -1,5 +1,5 @@
 #include <click/config.h>
-#include "brn2_db.hh"
+#include "db.hh"
 
 CLICK_DECLS
 

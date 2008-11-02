@@ -6,9 +6,9 @@
 
 #include "elements/brn/dht/md5.h"
 
-#include "elements/brn/dht/standard/brn2_dhtnode.hh"
-#include "elements/brn/dht/standard/brn2_dhtnodelist.hh"
-#include "elements/brn/dht/routing/brn2_dhtrouting.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
 
 CLICK_DECLS
 

@@ -8,9 +8,8 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "brn2_dhtstorage_simple.hh"
-#include "brn2_db.hh"
-//#include "elements/brn/dht/dhtcommunication.hh"
+#include "dhtstorage_simple.hh"
+#include "db.hh"
 
 CLICK_DECLS
 

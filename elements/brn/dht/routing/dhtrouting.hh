@@ -2,8 +2,8 @@
 #define DHT_ROUTING_HH
 #include <click/element.hh>
 #include <click/etheraddress.hh>
-#include "elements/brn/dht/standard/brn2_dhtnode.hh"
-#include "elements/brn/dht/standard/brn2_dhtnodelist.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
 
 CLICK_DECLS
 

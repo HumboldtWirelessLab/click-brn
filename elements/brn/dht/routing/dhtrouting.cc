@@ -1,5 +1,5 @@
 #include <click/config.h>
-#include "brn2_dhtrouting.hh"
+#include "dhtrouting.hh"
 
 CLICK_DECLS
 

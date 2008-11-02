@@ -3,7 +3,7 @@
 
 #include "elements/brn/dht/md5.h"
 
-#include "elements/brn/dht/routing/brn2_dhtrouting.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
 
 CLICK_DECLS
 

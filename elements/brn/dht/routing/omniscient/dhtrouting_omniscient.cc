@@ -11,7 +11,7 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include "brn2_dhtrouting_omniscient.hh"
+#include "dhtrouting_omniscient.hh"
 
 #include "elements/brn/standard/packetsendbuffer.hh"
 
@@ -302,6 +302,7 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
 {
   DHTnode *node, *new_node;
   int count_newnodes = 0;
+  int add_nodes = 0;
   Timestamp now,n_age;
 
   now = Timestamp::now();
@@ -318,6 +319,7 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
         node = new DHTnode(new_node->_ether_addr);
         _dhtnodes.add_dhtnode(node);
         count_newnodes++;
+        add_nodes++;
         node->_status = STATUS_NEW;
         node->_neighbor = false;                                  //TODO: take these info from node direct
         node->set_age(&(new_node->_age));
@@ -362,6 +364,8 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
 
   if ( count_newnodes > 0 )
   {
+    if ( add_nodes > 0 ) _dhtnodes.sort();
+
     EtherAddress broadcast = EtherAddress::make_broadcast();
     DHTRoutingOmni::send_routetable_update(&broadcast, STATUS_NEW);
   }
@@ -373,6 +377,7 @@ DHTRoutingOmni::nodeDetection()
   Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
   WritablePacket *p,*big_p;
   DHTnode *node;
+  int add_nodes = 0;
 
   if ( _linkstat == NULL ) return;
 
@@ -386,6 +391,7 @@ DHTRoutingOmni::nodeDetection()
       node->_status = STATUS_UNKNOWN;
       node->_neighbor = true;
       _dhtnodes.add_dhtnode(node);
+      add_nodes++;
 
       p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
       big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]));
@@ -424,6 +430,9 @@ DHTRoutingOmni::nodeDetection()
       }
     }
   }
+
+  if ( add_nodes > 0 ) _dhtnodes.sort();
+
 }
 
 /*******************************************************************************************/
@@ -435,6 +444,7 @@ DHTRoutingOmni::routing_info(void)
 {
   StringAccum sa;
   DHTnode *node;
+  char digest[16*2 + 1];
 
   sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << " )\n";
   sa << "DHT-Nodes (" << (int)_dhtnodes.size() << ") :\n";
@@ -444,6 +454,9 @@ DHTRoutingOmni::routing_info(void)
     node = _dhtnodes.get_dhtnode(i);
 
     sa << node->_ether_addr.unparse();
+    MD5::printDigest(node->_md5_digest, digest);
+
+    sa << "\t" << digest;
     if ( node->_neighbor )
       sa << "\ttrue";
     else

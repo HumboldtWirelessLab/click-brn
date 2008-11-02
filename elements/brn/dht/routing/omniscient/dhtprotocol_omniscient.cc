@@ -21,8 +21,8 @@
 #include <click/etheraddress.hh>
 #include "elements/brn/common.hh"
 
-#include "elements/brn/dht/standard/brn2_dhtnode.hh"
-#include "elements/brn/dht/standard/brn2_dhtnodelist.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "dhtprotocol_omniscient.hh"
 

@@ -1,9 +1,9 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/etheraddress.hh>
-#include "brn2_dhtnode.hh"
-#include "brn2_dhtnodelist.hh"
-#include "elements/brn/dht/brn2_md5.hh"
+#include "dhtnode.hh"
+#include "dhtnodelist.hh"
+#include "elements/brn/dht/md5.h"
 
 
 CLICK_DECLS
@@ -12,9 +12,9 @@ class DHTnode;
 
 extern "C" {
   static int bucket_sorter(const void *va, const void *vb) {
-      DHTnode *a = (DHTnode *)va, *b = (DHTnode *)vb;
+      DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
 
-      return DHTnode::MD5helper::hexcompare(a->_md5_digest, b->_md5_digest);
+      return MD5::hexcompare(a->_md5_digest, b->_md5_digest);
   }
 }
 

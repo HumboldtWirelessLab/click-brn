@@ -4,7 +4,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
-#include "brn2_dhtnode.hh"
+#include "dhtnode.hh"
 
 CLICK_DECLS
 
