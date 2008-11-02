@@ -42,6 +42,7 @@ class DHTRoutingOmni : public DHTRouting
     const char *dhtrouting_name() const { return "DHTRoutingOmni"; }
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
+    DHTnode *get_node_for_key(md5_byte_t *key);
 
     String routing_info(void);
     PacketSendBuffer packetBuffer;

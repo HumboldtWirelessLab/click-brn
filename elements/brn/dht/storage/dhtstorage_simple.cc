@@ -72,6 +72,7 @@ static void callback_func(void *e, int status)
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
   _dht_routing->set_notify_callback(callback_func,(void*)this);
+  _dht_routing->get_node_for_key(NULL);
   return 0;
 }
 

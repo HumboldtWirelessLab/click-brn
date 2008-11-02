@@ -16,6 +16,7 @@
 #include "elements/brn/standard/packetsendbuffer.hh"
 
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/md5.h"
 #include "dhtprotocol_omniscient.hh"
 
 #include "elements/brn/routing/nblist.hh"
@@ -294,6 +295,27 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
   }
 
 }
+
+/****************************************************************************************
+****************************** N O D E   F O R   K E Y *+********************************
+****************************************************************************************/
+DHTnode *
+DHTRoutingOmni::get_node_for_key(md5_byte_t *key)
+{
+  DHTnode *node;
+
+//  click_chatter("Omni gives node");
+
+  for ( int i = 0; i < _dhtnodes.size(); i++ )
+  {
+    node = _dhtnodes.get_dhtnode(i);
+    if ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) return node;
+  }
+
+  return _dhtnodes.get_dhtnode(0);
+
+}
+
 /****************************************************************************************
 ********************* N O D E T A B L E O P E R A T I O N *******************************
 ****************************************************************************************/

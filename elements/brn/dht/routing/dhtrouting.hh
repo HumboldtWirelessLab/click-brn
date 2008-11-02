@@ -2,6 +2,7 @@
 #define DHT_ROUTING_HH
 #include <click/element.hh>
 #include <click/etheraddress.hh>
+#include "elements/brn/dht/md5.h"
 #include "elements/brn/dht/standard/dhtnode.hh"
 #include "elements/brn/dht/standard/dhtnodelist.hh"
 
@@ -21,6 +22,8 @@ class DHTRouting : public Element
 
     virtual bool replication_support() const = 0;
     virtual int max_replication() const = 0;
+
+    virtual DHTnode *get_node_for_key(md5_byte_t *key) = 0;
 
     int set_notify_callback(void (*info_func)(void*,int), void *info_obj) {
       //click_chatter("Set notify");

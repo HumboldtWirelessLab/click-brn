@@ -54,6 +54,13 @@ void DHTRoutingFalcon::push( int port, Packet *packet )
   if ( ( port == 0 ) && ( packet != NULL ) ) output(0).push(packet);
 }
 
+DHTnode *
+DHTRoutingFalcon::get_node_for_key(md5_byte_t *key)
+{
+//  click_chatter("Falcon gives node");
+  return NULL;
+}
+
 void DHTRoutingFalcon::add_handlers()
 {
 }

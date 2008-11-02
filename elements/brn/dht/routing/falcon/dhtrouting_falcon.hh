@@ -22,7 +22,7 @@ class DHTRoutingFalcon : public DHTRouting
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "2/2"; }
+    const char *port_count() const  { return "1/2"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
@@ -38,6 +38,7 @@ class DHTRoutingFalcon : public DHTRouting
 
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
+    DHTnode *get_node_for_key(md5_byte_t *key);
 
   private:
 
