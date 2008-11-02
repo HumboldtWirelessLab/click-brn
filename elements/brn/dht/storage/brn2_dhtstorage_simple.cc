@@ -53,11 +53,11 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
     _dht_routing = NULL;
     click_chatter("kein Routing");
   }
-  else
+/*  else
   {
     click_chatter("Name: %s",_dht_routing->dhtrouting_name());
   }
-
+*/
 
   return 0;
 }

@@ -94,6 +94,8 @@ DHTProtocolOmni::new_route_reply_packet(EtherAddress *me, DHTnodelist *list)
   msg->status = STATUS_OK;
 
   DHTnode *n;
+  Timestamp now = Timestamp::now();
+
   for( int i = 0;i < listsize ;i++ ) {
     n = list->get_dhtnode(i);
     memcpy(msg[i+1].etheraddr,n->_ether_addr.data(),6);
@@ -111,6 +113,7 @@ DHTProtocolOmni::get_dhtnodes(Packet *p,DHTnodelist *dhtlist)
   uint16_t payload_len;
   struct dht_omni_node_entry *entry;
   int count = 0;
+  DHTnode *node;
 
   payload_len = DHTProtocol::get_payload_len(p);
   payload = DHTProtocol::get_payload(p);
@@ -118,7 +121,10 @@ DHTProtocolOmni::get_dhtnodes(Packet *p,DHTnodelist *dhtlist)
   for ( int i = 0; i < payload_len; i += sizeof(struct dht_omni_node_entry), count++ )
   {
     entry = (struct dht_omni_node_entry*)&payload[i];
-    dhtlist->add_dhtnode(new DHTnode(EtherAddress(entry->etheraddr)));
+    node = new DHTnode(EtherAddress(entry->etheraddr));
+    node->_status = entry->status;
+    node->_age = Timestamp::now() - Timestamp(entry->age_sec);
+    dhtlist->add_dhtnode(node);
   }
 
   return count;

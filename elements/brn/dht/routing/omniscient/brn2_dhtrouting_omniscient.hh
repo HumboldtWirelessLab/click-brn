@@ -2,6 +2,8 @@
 #define CLICK_DHTROUTING_OMNISCIENT_HH
 #include <click/timer.hh>
 
+#include "elements/brn/standard/packetsendbuffer.hh"
+
 #include "elements/brn/dht/md5.h"
 
 #include "elements/brn/dht/standard/brn2_dhtnode.hh"
@@ -18,32 +20,6 @@ class DHTRoutingOmni : public DHTRouting
     DHTRoutingOmni();
     ~DHTRoutingOmni();
 
-    class BufferedPacket
-    {
-      public:
-        Packet *_p;
-        struct timeval _send_time;
-
-        BufferedPacket(Packet *p, int time_diff)
-        {
-          assert(p);
-          _p=p;
-          _send_time = Timestamp::now().timeval();
-          _send_time.tv_sec += ( time_diff / 1000 );
-          _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
-          while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
-          {
-            _send_time.tv_usec -= 1000000;
-            _send_time.tv_sec++;
-          }
-        }
-
-        void check() const { assert(_p); }
-
-    };
-
-    typedef Vector<BufferedPacket> SendBuffer;
-
 /*ELEMENT*/
     const char *class_name() const  { return "DHTRoutingOmni"; }
 
@@ -51,7 +27,7 @@ class DHTRoutingOmni : public DHTRouting
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "2/2"; }
+    const char *port_count() const  { return "1/2"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
@@ -67,6 +43,9 @@ class DHTRoutingOmni : public DHTRouting
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
 
+    String routing_info(void);
+    PacketSendBuffer packetBuffer;
+
   private:
 
     int _debug;
@@ -75,7 +54,9 @@ class DHTRoutingOmni : public DHTRouting
     DHTnodelist _dhtnodes;
 
     Timer _lookup_timer;
+    Timer _packet_buffer_timer;
     static void static_lookup_timer_hook(Timer *, void *);
+    static void static_packet_buffer_timer_hook(Timer *, void *);
     void set_lookup_timer();
     void nodeDetection();
 
@@ -85,7 +66,7 @@ class DHTRoutingOmni : public DHTRouting
     void handle_hello_request(Packet *p);
     void handle_routetable_request(Packet *p);
     void handle_routetable_reply(Packet *p);
-    void send_routetable_update(EtherAddress *dst);
+    void send_routetable_update(EtherAddress *dst, int status);
     void update_nodes(DHTnodelist *dhtlist);
 
 };
