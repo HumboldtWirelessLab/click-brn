@@ -50,8 +50,9 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
   _complath = 0;
 
   ret = cp_va_kparse(conf, this, errh,
-                     "LABEL", cpkP, cpString, &_label,
-                     "COMPLATH", cpkP, cpInteger, &_complath,
+                     "LABEL", cpkN, cpString, &_label,
+                     "COMPLATH", cpkN, cpInteger, &_complath,
+                     "TIMESTAMP", cpkN, cpBool, &_timestamp,
                      cpEnd);
   return ret;
 }
@@ -129,6 +130,9 @@ Ath2Print::simple_action(Packet *p)
     WritablePacket *q = p->uniqueify();
     if (q)
     {
+      if (_timestamp)
+        sa_ath1 << p->timestamp_anno() << ": ";
+
       sa_ath1 << "ATHDESC: ";
       struct ar5212_desc *desc = (struct ar5212_desc *) (q->data() + 8);
 
@@ -184,6 +188,9 @@ Ath2Print::simple_action(Packet *p)
 
   if ( ath2_h->ath2_version == ATHDESC2_VERSION )
   {
+    if (_timestamp)
+      sa << p->timestamp_anno() << ": ";
+
     if (tx)
     {
       sa << "(TX) Seq: ";
