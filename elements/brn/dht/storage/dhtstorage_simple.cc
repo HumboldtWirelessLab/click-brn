@@ -9,6 +9,7 @@
 #include <click/vector.hh>
 
 #include "dhtstorage_simple.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
 #include "db.hh"
 
 CLICK_DECLS
@@ -38,6 +39,17 @@ DHTStorageSimple::~DHTStorageSimple()
   delete _db;
 }
 
+void *
+DHTStorageSimple::cast(const char *name)
+{
+  if (strcmp(name, "DHTStorageSimple") == 0)
+    return (DHTStorageSimple *) this;
+  else if (strcmp(name, "DHTStorage") == 0)
+    return (DHTStorage *) this;
+  else
+    return NULL;
+}
+
 int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
@@ -65,14 +77,32 @@ static void callback_func(void *e, int status)
 {
   DHTStorageSimple *s = (DHTStorageSimple *)e;
 
-  click_chatter("callback %s: Status %d",s->class_name(),status);
-  click_chatter("New Neighbours");
+//  click_chatter("callback %s: Status %d",s->class_name(),status);
 }
 
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
   _dht_routing->set_notify_callback(callback_func,(void*)this);
-  _dht_routing->get_node_for_key(NULL);
+  return 0;
+}
+
+int
+DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj )
+{
+  DHTnode *next;
+  md5_byte_t _md5_digest[16];
+  MD5::calculate_md5(op->key, op->keylen, _md5_digest);
+  next = _dht_routing->get_responsibly_node(_md5_digest);
+
+  if ( next != NULL )
+    click_chatter("Node: %s",next->_ether_addr.unparse().c_str());
+
+  if ( _dht_routing->is_me(next) )
+  {
+    click_chatter("store local");
+    op->set_reply();
+    info_func(info_obj,op);
+  }
   return 0;
 }
 
@@ -150,9 +180,5 @@ void DHTStorageSimple::add_handlers()
 {
 }
 
-#include <click/vector.cc>
-template class Vector<String>;
-template class Vector<int>;
-template class Vector<DHTStorageSimple::ForwardInfo>;
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DHTStorageSimple)

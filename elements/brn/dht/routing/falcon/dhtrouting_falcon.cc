@@ -55,7 +55,7 @@ void DHTRoutingFalcon::push( int port, Packet *packet )
 }
 
 DHTnode *
-DHTRoutingFalcon::get_node_for_key(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
 {
 //  click_chatter("Falcon gives node");
   return NULL;

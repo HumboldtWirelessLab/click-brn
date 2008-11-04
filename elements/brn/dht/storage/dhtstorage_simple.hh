@@ -10,19 +10,21 @@
 #include <click/vector.hh>
 
 #include "elements/brn/dht/routing/dhtrouting.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
 #include "db.hh"
 
 CLICK_DECLS
 
-//class DHTRouting;
-
-class DHTStorageSimple : public Element
+class DHTStorageSimple : public DHTStorage
 {
   public:
     DHTStorageSimple();
     ~DHTStorageSimple();
 
     const char *class_name() const  { return "DHTStorageSimple"; }
+    void *cast(const char *name);
+
     const char *processing() const  { return PUSH; }
 
     const char *port_count() const  { return "1/1"; }
@@ -36,6 +38,10 @@ class DHTStorageSimple : public Element
 
     void add_handlers();
 
+    const char *dhtstorage_name() const { return "DHTStorageSimple"; };
+
+    int dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
+
 /*DHT-Functions*/
     void dht_read();
     void dht_write();
@@ -44,38 +50,6 @@ class DHTStorageSimple : public Element
     void dht_unlook();
 
   private:
-    class ForwardInfo {
-      public:
-        uint8_t  _sender;
-        uint8_t  _id;
-
-        struct timeval _send_time;
-
-        Packet *_fwd_packet;
-        EtherAddress *_ether_add;
-
-        uint8_t _retry;
- 
-        ForwardInfo( uint8_t sender, uint8_t id, EtherAddress *rcv_node, Packet *fwd_packet )
-        {
-          _sender = sender;
-          _id = id;
-          _send_time = Timestamp::now().timeval();
-     
-          _retry = 0;
-  
-          _ether_add = new EtherAddress( rcv_node->data() );
-
-          _fwd_packet = fwd_packet;
-        }
-
-        ~ForwardInfo()
-        {
-        }
-
-    };
-
-    Vector<ForwardInfo> forward_list;
 
     DHTRouting *_dht_routing;
     BRNDB *_db;

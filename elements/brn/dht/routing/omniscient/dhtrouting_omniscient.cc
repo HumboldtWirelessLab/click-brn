@@ -300,19 +300,24 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
 ****************************** N O D E   F O R   K E Y *+********************************
 ****************************************************************************************/
 DHTnode *
-DHTRoutingOmni::get_node_for_key(md5_byte_t *key)
+DHTRoutingOmni::get_responsibly_node(md5_byte_t *key)
 {
   DHTnode *node;
 
-//  click_chatter("Omni gives node");
+  if ( _dhtnodes.size() == 0 || key == NULL ) return NULL;
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
     node = _dhtnodes.get_dhtnode(i);
-    if ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) return node;
+    if ( ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) && ( node->_status == STATUS_OK) )
+      return node;
   }
 
-  return _dhtnodes.get_dhtnode(0);
+  node = _dhtnodes.get_dhtnode(0);
+
+  if ( node->_status == STATUS_OK ) return node;
+
+  return NULL;
 
 }
 
@@ -390,6 +395,8 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
 
     EtherAddress broadcast = EtherAddress::make_broadcast();
     DHTRoutingOmni::send_routetable_update(&broadcast, STATUS_NEW);
+
+    notify_callback(ROUTING_STATUS_UPDATE);
   }
 }
 
@@ -494,7 +501,7 @@ DHTRoutingOmni::routing_info(void)
   return sa.take_string();
 }
 
-enum { 
+enum {
   H_ROUTING_INFO
 };
 

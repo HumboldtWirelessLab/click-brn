@@ -38,7 +38,7 @@ class DHTRoutingFalcon : public DHTRouting
 
     bool replication_support() const { return false; }
     int max_replication() const { return(1); }
-    DHTnode *get_node_for_key(md5_byte_t *key);
+    DHTnode *get_responsibly_node(md5_byte_t *key);
 
   private:
 
