@@ -99,45 +99,24 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 
   if ( _dht_routing->is_me(next) )
   {
-    click_chatter("store local");
+    click_chatter("handle local");
+    handle_dht_operation(op);
     op->set_reply();
     info_func(info_obj,op);
+  }
+  else
+  {
+    click_chatter("Send");
   }
   return 0;
 }
 
-void DHTStorageSimple::push( int port, Packet */*packet*/ )
+void DHTStorageSimple::push( int port, Packet *packet )
 {
   if ( _dht_routing != NULL )   //use dht-routing, ask routing for next node
   {
     if ( port == 0 )
     {
-      //dht replay or request
-/*      struct dht_packet_header *dht_header = (struct dht_packet_header *)packet->data();
-      if ( ( dht_header->code & DHT_DATA ) != DHT_DATA )  // not data, it is a dht_operation
-      {
-        EtherAddress *sender_ether = new EtherAddress(dht_header->sender_hwa);
-
-        if ( _dht_routing->is_me(sender_ether) )
-        {
-          int i;
-
-          if ( ( forward_list[i]._id == dht_header->id ) && ( forward_list[i]._sender == dht_header->prim_sender ) )
-          {
-            assert( ( i >=  0 ) && ( i < forward_list.size() ) );
-
-            dht_header->receiver = forward_list[i]._sender;
-
-            forward_list[i]._fwd_packet->kill();
-            delete (forward_list[i]._ether_add);
-
-            forward_list.erase(forward_list.begin() + i);
-
-            //now call callback with key and value
-            //break;
-          }
-        }
-      }*/
     }
 
     if ( port == 1 )
@@ -146,37 +125,111 @@ void DHTStorageSimple::push( int port, Packet */*packet*/ )
     }
  
   } else {
-    /*TODO: move check to initialize*/
     click_chatter("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
+    packet->kill();
   }
 }
 
-void DHTStorageSimple::dht_read()
+void
+DHTStorageSimple::handle_dht_operation(DHTOperation *op)
+{
+  int result;
+
+  if ( op->operation & OPERATION_INSERT == OPERATION_INSERT )
+  {
+    result = dht_insert(op);
+  }
+
+  if ( op->operation & OPERATION_LOCK == OPERATION_LOCK )
+  {
+    result = dht_lock(op);
+  }
+
+  if ( op->operation & OPERATION_INSERT != OPERATION_INSERT )
+  {
+    if ( op->operation & OPERATION_WRITE == OPERATION_WRITE )
+    {
+      if ( op->operation & OPERATION_READ == OPERATION_READ )
+      {
+        result = dht_read(op);
+        result = dht_write(op);
+      }
+      else
+      {
+        result = dht_write(op);
+      }
+    }
+    else
+    {
+      if ( op->operation & OPERATION_READ == OPERATION_READ )
+      {
+        if ( op->operation & OPERATION_REMOVE == OPERATION_REMOVE )
+        {
+          result = dht_read(op);
+          result = dht_remove(op);
+          return;
+        }
+        else
+        {
+          result = dht_read(op);
+        }
+      }
+      else
+      {
+        if ( op->operation & OPERATION_REMOVE == OPERATION_REMOVE )
+        {
+          result = dht_remove(op);
+          return;
+        }
+      }
+    }
+  }
+
+  if ( op->operation & OPERATION_UNLOCK == OPERATION_UNLOCK)
+  {
+    result = dht_unlock(op);
+  }
+
+}
+
+int
+DHTStorageSimple::dht_insert(DHTOperation *op)
+{
+  click_chatter("Insert");
+}
+
+int
+DHTStorageSimple::dht_write(DHTOperation *op)
 {
 
 }
 
-void DHTStorageSimple::dht_write()
+int
+DHTStorageSimple::dht_read(DHTOperation *op)
 {
 
 }
 
-void DHTStorageSimple::dht_delete()
+int
+DHTStorageSimple::dht_remove(DHTOperation *op)
 {
 
 }
 
-void DHTStorageSimple::dht_look()
+int
+DHTStorageSimple::dht_lock(DHTOperation *op)
 {
 
 }
 
-void DHTStorageSimple::dht_unlook()
+int
+DHTStorageSimple::dht_unlock(DHTOperation *op)
 {
 
 }
 
-void DHTStorageSimple::add_handlers()
+void
+DHTStorageSimple::add_handlers()
 {
 }
 

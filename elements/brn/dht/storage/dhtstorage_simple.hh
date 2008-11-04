@@ -36,18 +36,21 @@ class DHTStorageSimple : public DHTStorage
 
     void push( int port, Packet *packet );
 
-    void add_handlers();
-
     const char *dhtstorage_name() const { return "DHTStorageSimple"; };
 
     int dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
 
 /*DHT-Functions*/
-    void dht_read();
-    void dht_write();
-    void dht_delete();
-    void dht_look();
-    void dht_unlook();
+    void handle_dht_operation(DHTOperation *op);
+
+    int dht_read(DHTOperation *op);
+    int dht_write(DHTOperation *op);
+    int dht_insert(DHTOperation *op);
+    int dht_remove(DHTOperation *op);
+    int dht_lock(DHTOperation *op);
+    int dht_unlock(DHTOperation *op);
+
+    void add_handlers();
 
   private:
 
