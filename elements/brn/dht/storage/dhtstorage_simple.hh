@@ -55,7 +55,7 @@ class DHTStorageSimple : public DHTStorage
   private:
 
     DHTRouting *_dht_routing;
-    BRNDB *_db;
+    BRNDB _db;
     int _debug;
 };
 

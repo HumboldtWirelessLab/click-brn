@@ -2,7 +2,8 @@
 #define DHT_DB_HH
 #include <click/element.hh>
 #include <click/vector.hh>
-
+#include "elements/brn/dht/md5.h"
+#include <click/etheraddress.hh>
 
 #define DB_INT 0
 #define DB_ARRAY 1
@@ -15,8 +16,16 @@ class BRNDB
   public:
     class DBrow {
       public:
-        Vector<char*> _row_entries;
-        Vector<int> _row_entries_len;
+        md5_byte_t *md5_key;
+
+        uint8_t *value;
+        uint16_t valuelen;
+
+        uint8_t *key;
+        uint16_t keylen;
+
+        int lock;
+        EtherAddress lock_node;
 
         DBrow()
         {
@@ -31,14 +40,12 @@ class BRNDB
   public:
 
     //BRNDB();
-    BRNDB(Vector<String>,Vector<int>);
+    BRNDB();
     ~BRNDB();
 
   private:
 
-    Vector<String> _col_names;
-    Vector<int> _col_types;
-    Vector<DBrow> _rows;
+    Vector<DBrow*> _rows;
 
     int _debug;
 };

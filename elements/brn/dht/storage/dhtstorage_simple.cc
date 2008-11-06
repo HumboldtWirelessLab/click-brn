@@ -18,25 +18,10 @@ DHTStorageSimple::DHTStorageSimple():
   _dht_routing(NULL),
   _debug(0)
 {
-  Vector<String> _col_names;
-  Vector<int> _col_types;
-
-  _col_names.push_back("ID");
-  _col_names.push_back("KEY");
-  _col_names.push_back("VALUE");
-  _col_names.push_back("LOCK");
-
-  _col_types.push_back(DB_ARRAY);
-  _col_types.push_back(DB_ARRAY);
-  _col_types.push_back(DB_ARRAY);
-  _col_types.push_back(DB_INT);
-
-  _db = new BRNDB(_col_names,_col_types);
 }
 
 DHTStorageSimple::~DHTStorageSimple()
 {
-  delete _db;
 }
 
 void *
