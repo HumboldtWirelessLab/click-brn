@@ -17,8 +17,9 @@ CLICK_DECLS
 #define OPERATION_REPLY   128
 #define OPERATION_REPLY_REQUEST   128
 
-#define DHT_STATUS_UNKNOWN    0
-#define DHT_STATUS_OK         1
+#define DHT_STATUS_UNKNOWN        0
+#define DHT_STATUS_OK             1
+#define DHT_STATUS_KEY_NOT_FOUND  2
 
 struct DHTOperationHeader {
   uint32_t id;

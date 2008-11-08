@@ -258,7 +258,16 @@ DHTStorageSimple::dht_read(DHTOperation *op)
   BRNDB::DBrow *_row;
 
   _row = _db.getRow(op->header.key_digest);
-  op->set_value(_row->value, _row->valuelen);
+  if ( _row != NULL )
+  {
+    op->set_value(_row->value, _row->valuelen);
+    op->header.status = DHT_STATUS_OK;
+  }
+  else
+  {
+    op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  }
+
   op->set_reply();
 
   return 0;

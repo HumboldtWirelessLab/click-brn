@@ -77,7 +77,10 @@ static void callback_func(void *e, DHTOperation *op)
 
   if ( op->is_reply() )
   {
-    click_chatter("Result: %s = %d",string,my_key);
+    if ( op->header.status == DHT_STATUS_OK )
+      click_chatter("Result: %s = %d",string,my_key);
+    else
+      click_chatter("Result: %d not found",my_key);
   }
 
   delete op;
