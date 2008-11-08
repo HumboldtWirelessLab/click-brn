@@ -11,6 +11,9 @@
 
 #include "elements/brn/dht/storage/dhtstorage.hh"
 
+#define MODE_INSERT 0
+#define MODE_READ   1
+
 CLICK_DECLS
 
 class DHTStorageTest : public Element
@@ -33,9 +36,11 @@ class DHTStorageTest : public Element
 
     static void static_request_timer_hook(Timer *, void *);
 
+    DHTStorage *_dht_storage;
+
     uint32_t _key;
     int _interval;
-    DHTStorage *_dht_storage;
+    uint8_t _mode;
 
   private:
 
@@ -46,6 +51,8 @@ class DHTStorageTest : public Element
     int _starttime;
 
     int _countkey;
+
+    bool _write;
 };
 
 CLICK_ENDDECLS

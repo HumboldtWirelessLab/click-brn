@@ -10,6 +10,7 @@
 
 #include "dhtstorage_simple.hh"
 #include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "db.hh"
 
 CLICK_DECLS
@@ -75,33 +76,85 @@ int
 DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj )
 {
   DHTnode *next;
-  md5_byte_t _md5_digest[16];
-  MD5::calculate_md5(op->key, op->keylen, _md5_digest);
-  next = _dht_routing->get_responsibly_node(_md5_digest);
+  DHTOperationForward *fwd_op;
+  WritablePacket *p;
+
+  MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);
+  next = _dht_routing->get_responsibly_node(op->header.key_digest);
 
   if ( next != NULL )
-    click_chatter("Node: %s",next->_ether_addr.unparse().c_str());
-
-  if ( _dht_routing->is_me(next) )
   {
-    click_chatter("handle local");
-    handle_dht_operation(op);
-    op->set_reply();
-    info_func(info_obj,op);
+    if ( _dht_routing->is_me(next) )
+    {
+      handle_dht_operation(op);
+      op->set_reply();
+      info_func(info_obj,op);
+    }
+    else
+    {
+      memcpy(op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);   //Set my etheradress as sender
+      fwd_op = new DHTOperationForward(op,info_func,info_obj);
+      _fwd_queue.push_back(fwd_op);
+      p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, op->length());
+      op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
+      p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+      output(0).push(p);
+    }
   }
   else
   {
-    click_chatter("Send");
+    click_chatter("Found no node"); //TODO: handle this
   }
+
   return 0;
 }
 
 void DHTStorageSimple::push( int port, Packet *packet )
 {
+  DHTnode *next;
+  DHTOperation *_op;
+  WritablePacket *p;
+  DHTOperationForward *fwd;
+
   if ( _dht_routing != NULL )   //use dht-routing, ask routing for next node
   {
     if ( port == 0 )
     {
+      _op = new DHTOperation();
+      _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+      if ( _op->is_reply() )
+      {
+        for( int i = 0; i < _fwd_queue.size(); i++ )
+        {
+          fwd = _fwd_queue[i];
+          if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )
+          {
+            fwd->_info_func(fwd->_info_obj,_op);
+            _fwd_queue.erase(_fwd_queue.begin() + i);
+            delete fwd->_operation;
+            delete fwd;
+          }
+        }
+      }
+      else
+      {
+        next = _dht_routing->get_responsibly_node(_op->header.key_digest);
+        if ( _dht_routing->is_me(next) )
+        {
+          handle_dht_operation(_op);
+          _op->set_reply();
+          p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, _op->length());
+          _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+          EtherAddress src = EtherAddress(_op->header.etheraddress);
+          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
+          output(0).push(p);
+        }
+        else
+        {
+          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+          output(0).push(p);
+        }
+      }
     }
 
     if ( port == 1 )
@@ -120,21 +173,21 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
 {
   int result;
 
-  if ( op->operation & OPERATION_INSERT == OPERATION_INSERT )
+  if ( ( op->header.operation & OPERATION_INSERT ) == OPERATION_INSERT )
   {
     result = dht_insert(op);
   }
 
-  if ( op->operation & OPERATION_LOCK == OPERATION_LOCK )
+  if ( ( op->header.operation & OPERATION_LOCK ) == OPERATION_LOCK )
   {
     result = dht_lock(op);
   }
 
-  if ( op->operation & OPERATION_INSERT != OPERATION_INSERT )
+  if ( ( op->header.operation & OPERATION_INSERT ) != OPERATION_INSERT )
   {
-    if ( op->operation & OPERATION_WRITE == OPERATION_WRITE )
+    if ( ( op->header.operation & OPERATION_WRITE ) == OPERATION_WRITE )
     {
-      if ( op->operation & OPERATION_READ == OPERATION_READ )
+      if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
         result = dht_read(op);
         result = dht_write(op);
@@ -146,9 +199,9 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
     }
     else
     {
-      if ( op->operation & OPERATION_READ == OPERATION_READ )
+      if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
-        if ( op->operation & OPERATION_REMOVE == OPERATION_REMOVE )
+        if ( ( op->header.operation & OPERATION_REMOVE ) == OPERATION_REMOVE )
         {
           result = dht_read(op);
           result = dht_remove(op);
@@ -161,7 +214,7 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
       }
       else
       {
-        if ( op->operation & OPERATION_REMOVE == OPERATION_REMOVE )
+        if ( ( op->header.operation & OPERATION_REMOVE ) == OPERATION_REMOVE )
         {
           result = dht_remove(op);
           return;
@@ -170,7 +223,7 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
     }
   }
 
-  if ( op->operation & OPERATION_UNLOCK == OPERATION_UNLOCK)
+  if ( ( op->header.operation & OPERATION_UNLOCK ) == OPERATION_UNLOCK)
   {
     result = dht_unlock(op);
   }
@@ -180,7 +233,17 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
 int
 DHTStorageSimple::dht_insert(DHTOperation *op)
 {
-  click_chatter("Insert");
+  if ( _db.getRow(op->header.key_digest) == NULL )
+  {
+    _db.insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen, 0, (char*)op->header.etheraddress);
+  }
+  else
+  {
+    //TODO: Handle this in a proper way (error code,...)
+    click_chatter("Key already exists");
+  }
+
+  return 0;
 }
 
 int
@@ -192,7 +255,13 @@ DHTStorageSimple::dht_write(DHTOperation *op)
 int
 DHTStorageSimple::dht_read(DHTOperation *op)
 {
+  BRNDB::DBrow *_row;
 
+  _row = _db.getRow(op->header.key_digest);
+  op->set_value(_row->value, _row->valuelen);
+  op->set_reply();
+
+  return 0;
 }
 
 int
@@ -213,10 +282,34 @@ DHTStorageSimple::dht_unlock(DHTOperation *op)
 
 }
 
+enum {
+  H_DB_SIZE
+};
+
+static String
+read_param(Element *e, void *thunk)
+{
+  DHTStorageSimple *dhtstorage_simple = (DHTStorageSimple *)e;
+  StringAccum sa;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_DB_SIZE :
+                {
+                  sa << dhtstorage_simple->_db.size();
+                  return ( sa.take_string() );
+                }
+    default: return String();
+  }
+}
+
 void
 DHTStorageSimple::add_handlers()
 {
+  add_read_handler("db_size", read_param , (void *)H_DB_SIZE);
 }
+#include <click/vector.cc>
+template class Vector<DHTStorageSimple::DHTOperationForward*>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DHTStorageSimple)

@@ -25,7 +25,7 @@ class BRNDB
         uint16_t keylen;
 
         int lock;
-        EtherAddress lock_node;
+        char lock_node[6];
 
         DBrow()
         {
@@ -43,9 +43,16 @@ class BRNDB
     BRNDB();
     ~BRNDB();
 
+    int insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, int lock, char *lock_node);
+
+    BRNDB::DBrow *getRow(char *key, uint16_t keylen);
+    BRNDB::DBrow *getRow(md5_byte_t *md5_key);
+
+    int size();
+
   private:
 
-    Vector<DBrow*> _rows;
+    Vector<DBrow*> _table;
 
     int _debug;
 };

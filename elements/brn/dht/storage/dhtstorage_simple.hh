@@ -19,6 +19,34 @@ CLICK_DECLS
 class DHTStorageSimple : public DHTStorage
 {
   public:
+  class DHTOperationForward
+  {
+    public:
+      void (*_info_func)(void*,DHTOperation*);
+      DHTOperation *_operation;
+      void *_info_obj;
+      Timestamp _time;
+
+      DHTOperationForward()
+      {
+        _operation = NULL;
+        _info_obj = NULL;
+      }
+
+      ~DHTOperationForward() {}
+
+      DHTOperationForward(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj)
+      {
+        _operation = op;
+        _info_func = info_func;
+        _info_obj = info_obj;
+        _time = Timestamp::now();
+      }
+  };
+
+  typedef Vector<DHTOperationForward*> DHTForwardQueue;
+
+  public:
     DHTStorageSimple();
     ~DHTStorageSimple();
 
@@ -40,9 +68,16 @@ class DHTStorageSimple : public DHTStorage
 
     int dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
 
-/*DHT-Functions*/
-    void handle_dht_operation(DHTOperation *op);
+    BRNDB _db;
+  private:
 
+    DHTRouting *_dht_routing;
+
+    DHTForwardQueue _fwd_queue;
+
+    int _debug;
+
+    /*DHT-Functions*/
     int dht_read(DHTOperation *op);
     int dht_write(DHTOperation *op);
     int dht_insert(DHTOperation *op);
@@ -50,13 +85,10 @@ class DHTStorageSimple : public DHTStorage
     int dht_lock(DHTOperation *op);
     int dht_unlock(DHTOperation *op);
 
+    void handle_dht_operation(DHTOperation *op);
+
     void add_handlers();
 
-  private:
-
-    DHTRouting *_dht_routing;
-    BRNDB _db;
-    int _debug;
 };
 
 CLICK_ENDDECLS

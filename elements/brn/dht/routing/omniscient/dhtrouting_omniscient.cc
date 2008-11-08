@@ -203,7 +203,7 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
   {
     node = dhtlist.get_dhtnode(0);
     p = DHTProtocolOmni::new_hello_packet(&(_me->_ether_addr));
-    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr));
+    big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
 
     if ( big_p == NULL ) click_chatter("Push failed. No memory left ??");
     else output(0).push(big_p);
@@ -268,7 +268,7 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
       if ( tmp_list.size() == 100 )  //TODO: which max length
       {
         p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
-        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
+        big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
 
         jitter = (unsigned int ) ( click_random() % 500 );
         packetBuffer.addPacket_ms(big_p, jitter, 0);
@@ -284,7 +284,7 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
   if ( tmp_list.size() > 0 )        //send the rest
   {
     p = DHTProtocolOmni::new_route_reply_packet(&(_me->_ether_addr), &tmp_list);
-    big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), dst);
+    big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
     jitter = (unsigned int ) ( click_random() % 500 );
     packetBuffer.addPacket_ms(big_p, jitter, 0);
     next_p = packetBuffer.getTimeToNext();
@@ -423,7 +423,7 @@ DHTRoutingOmni::nodeDetection()
       add_nodes++;
 
       p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
-      big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]));
+      big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
 
       if ( big_p == NULL ) click_chatter("Error in DHT");
       else output(0).push(big_p);
@@ -452,7 +452,7 @@ DHTRoutingOmni::nodeDetection()
         node->_neighbor = false;
 
         p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
-        big_p = DHTProtocolOmni::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr));
+        big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
 
         if ( big_p == NULL ) click_chatter("Error in DHT");
         else output(0).push(big_p);
