@@ -42,7 +42,6 @@ class DHTProtocolOmni {
     static WritablePacket *new_route_request_packet(EtherAddress *me, DHTnodelist *list);
     static WritablePacket *new_route_reply_packet(EtherAddress *me, DHTnodelist *list);
     static int get_dhtnodes(Packet *p,DHTnodelist *dhtlist);
-    static WritablePacket *push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst);
 
 };
 

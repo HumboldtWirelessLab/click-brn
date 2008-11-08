@@ -130,40 +130,6 @@ DHTProtocolOmni::get_dhtnodes(Packet *p,DHTnodelist *dhtlist)
   return count;
 }
 
-WritablePacket *
-DHTProtocolOmni::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst)
-{
-  WritablePacket *big_p = NULL;
-  struct click_brn brn_header;
-  click_ether *ether_header = NULL;
-  int payload_len = p->length();
-
-  big_p = p->push(sizeof(struct click_brn) + sizeof(click_ether));
-
-  if ( big_p == NULL ) {
-    click_chatter("Push failed. No memory left ??");
-  }
-  else
-  {
-    ether_header = (click_ether *)big_p->data();
-    memcpy( ether_header->ether_dhost,dst->data(),6);
-    memcpy( ether_header->ether_shost,src->data(),6);
-    ether_header->ether_type = htons(ETHERTYPE_BRN);
-    big_p->set_ether_header(ether_header);
-
-    brn_header.dst_port = 10;
-    brn_header.src_port = 10;
-    brn_header.body_length = payload_len;
-    brn_header.ttl = 100;
-    brn_header.tos = 0;
-
-    memcpy((void*)&(big_p->data()[14]),(void*)&brn_header, sizeof(brn_header));
-  }
-
-  return big_p;
-}
-
-
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(DHTProtocol)
 ELEMENT_PROVIDES(DHTProtocolOmni)
