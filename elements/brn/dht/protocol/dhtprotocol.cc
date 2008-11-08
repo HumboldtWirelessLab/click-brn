@@ -27,7 +27,7 @@
 CLICK_DECLS
 
 WritablePacket *
-DHTProtocol::new_dht_packet(uint8_t routing, uint8_t type,uint16_t payload_len)
+DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payload_len)
 {
   WritablePacket *new_packet = NULL;
   struct dht_packet_header *dht_header = NULL;
@@ -35,8 +35,8 @@ DHTProtocol::new_dht_packet(uint8_t routing, uint8_t type,uint16_t payload_len)
   new_packet = WritablePacket::make( sizeof(struct dht_packet_header) + payload_len);
   dht_header = (struct dht_packet_header *)new_packet->data();
 
-  dht_header->routing = routing;
-  dht_header->type = type;
+  dht_header->major_type = major_type;
+  dht_header->minor_type = minor_type;
   dht_header->payload_len = htons(payload_len);
 
   return(new_packet);	
@@ -46,14 +46,14 @@ uint8_t
 DHTProtocol::get_routing(Packet *p)
 {
   struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
-  return ( dht_header->routing );
+  return ( dht_header->major_type );
 }
 
 uint8_t
 DHTProtocol::get_type(Packet *p)
 {
   struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
-  return ( dht_header->type );
+  return ( dht_header->minor_type );
 }
 
 uint16_t
@@ -100,6 +100,38 @@ DHTProtocol::get_dst(Packet *p)
     return NULL;
 }
 
+WritablePacket *
+DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst, uint8_t major_type)
+{
+  WritablePacket *big_p = NULL;
+  struct click_brn brn_header;
+  click_ether *ether_header = NULL;
+  int payload_len = p->length();
+
+  big_p = p->push(sizeof(struct click_brn) + sizeof(click_ether));
+
+  if ( big_p == NULL ) {
+    click_chatter("Push failed. No memory left ??");
+  }
+  else
+  {
+    ether_header = (click_ether *)big_p->data();
+    memcpy( ether_header->ether_dhost,dst->data(),6);
+    memcpy( ether_header->ether_shost,src->data(),6);
+    ether_header->ether_type = htons(ETHERTYPE_BRN);
+    big_p->set_ether_header(ether_header);
+
+    brn_header.dst_port = major_type;
+    brn_header.src_port = major_type;
+    brn_header.body_length = payload_len;
+    brn_header.ttl = 100;
+    brn_header.tos = 0;
+
+    memcpy((void*)&(big_p->data()[14]),(void*)&brn_header, sizeof(brn_header));
+  }
+
+  return big_p;
+}
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DHTProtocol)

@@ -27,13 +27,18 @@
 
 CLICK_DECLS
 
-/* Operations */
-/* field: code */
+#define BRN_PORT_DHTROUTING 10
+#define BRN_PORT_DHTSTORAGE 11
 
+/************* M A J O R *******************/
 #define ROUTING_OMNI        1
 #define ROUTING_FALCON      2
 #define ROUTING_KLIBS       3
 #define ROUTING_DART        4
+
+#define STORGAE_SIMPLE      128
+
+/***** M I N O R  - R O U T I N G **********/
 
 #define HELLO               1
 #define HELLO_REQUEST       2
@@ -42,11 +47,14 @@ CLICK_DECLS
 #define ROUTE_REQUEST       5
 #define ROUTE_REPLAY        6
 
-#define MESSAGE           128
+/***** M I N O R  - S T O R A G E **********/
+
+#define DHT_MESSAGE             1
+
 
 struct dht_packet_header {
-  uint8_t  routing;
-  uint8_t  type;
+  uint8_t  major_type;
+  uint8_t  minor_type;
   uint8_t  src[6];
   uint8_t  dst[6];
   uint16_t payload_len;
@@ -56,8 +64,11 @@ struct dht_packet_header {
 
 class DHTProtocol {
   public:
-    static WritablePacket *new_dht_packet(uint8_t routing, uint8_t type, uint16_t payload_len);
+    static WritablePacket *new_dht_packet(uint8_t major_type, uint8_t minor_type, uint16_t payload_len);
     static struct dht_packet_header *get_header(Packet *p);
+
+    static WritablePacket *push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst, uint8_t major_type);
+
 
     static uint8_t get_routing(Packet *p);
     static uint8_t get_type(Packet *p);
