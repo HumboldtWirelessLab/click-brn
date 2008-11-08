@@ -398,7 +398,8 @@ class MD5 {
  public:
   static int hexcompare(const md5_byte_t *sa, const md5_byte_t *sb)
   {
-    int len = sizeof(sa) > sizeof(sb) ? sizeof(sb): sizeof(sa);
+   // int len = sizeof(sa) > sizeof(sb) ? sizeof(sb): sizeof(sa);
+   int len = 16;
 
   /* Sort numbers in the usual way, where -0 == +0.  Put NaNs after
     conversion errors but before numbers; sort them by internal
