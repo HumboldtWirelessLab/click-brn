@@ -51,7 +51,7 @@ class Ath2Decap : public Element {
     Packet *simple_action(Packet *);
 
   private:
-    int _athdecap;
+    bool _athdecap;
 };
 
 CLICK_ENDDECLS
