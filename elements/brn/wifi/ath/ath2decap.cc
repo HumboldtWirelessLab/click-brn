@@ -28,6 +28,7 @@
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
 #include <elements/wifi/athdesc.h>
+#include <elements/brn/wifi/brnwifi.h>
 
 #include "ath2decap.hh"
 #include "ath2_desc.h"
@@ -46,10 +47,10 @@ int
 Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
-  _complath = 0;
+  _athdecap = false;
 
   ret = cp_va_kparse(conf, this, errh,
-                     "COMPLATH", cpkP, cpInteger, &_complath,
+                     "ATHDECAP", cpkP, cpBool, &_athdecap,
                      cpEnd);
   return ret;
 }
@@ -57,12 +58,85 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 Ath2Decap::simple_action(Packet *p)
 {
-  int ath2_size = sizeof(struct ath2_header);
+  WritablePacket *q;
+  click_wifi_extra *eh;
+  struct ath2_header *ath2_h = NULL;
 
-  if ( _complath == 1 ) ath2_size += ATHDESC_HEADER_SIZE;
+  q = p->uniqueify();
 
-  p->pull(ath2_size);
-  return p;
+  if ( !q ) return p;
+
+  if ( _athdecap )
+  {
+    struct ar5212_desc *desc = (struct ar5212_desc *) (q->data() + 8);
+    eh = WIFI_EXTRA_ANNO(q);
+    memset(eh, 0, sizeof(click_wifi_extra));
+    eh->magic = WIFI_EXTRA_MAGIC;
+    if (desc->frame_len == 0) {
+      struct ar5212_rx_status *rx_desc = (struct ar5212_rx_status *) (q->data() + 16);
+      /* rx */
+      eh->rate = ratecode_to_dot11(rx_desc->rx_rate);
+      eh->rssi = rx_desc->rx_rssi;
+      if (!rx_desc->rx_ok) {
+        eh->flags |= WIFI_EXTRA_RX_ERR;
+      }
+    } else {
+      eh->flags |= WIFI_EXTRA_TX;
+      /* tx */
+      eh->power = desc->xmit_power;
+      eh->rssi = desc->ack_sig_strength;
+      eh->rate = ratecode_to_dot11(desc->xmit_rate0);
+      eh->retries = desc->data_fail_count;
+      if (desc->excessive_retries)
+        eh->flags |= WIFI_EXTRA_TX_FAIL;
+
+      eh->rate = ratecode_to_dot11(desc->xmit_rate0);
+      eh->rate1 = ratecode_to_dot11(desc->xmit_rate1);
+      eh->rate2 = ratecode_to_dot11(desc->xmit_rate2);
+      eh->rate3 = ratecode_to_dot11(desc->xmit_rate3);
+
+      eh->max_tries = desc->xmit_tries0;
+      eh->max_tries1 = desc->xmit_tries1;
+      eh->max_tries2 = desc->xmit_tries2;
+      eh->max_tries3 = desc->xmit_tries3;
+    }
+    q->pull(ATHDESC_HEADER_SIZE);
+  }
+
+  eh = WIFI_EXTRA_ANNO(q);
+
+  ath2_h = (struct ath2_header*)(q->data());
+
+  if ( ( eh->magic == WIFI_EXTRA_MAGIC ) && ( eh->flags & WIFI_EXTRA_TX ) ) //TXFEEDBACK
+  {
+    eh->silence = ath2_h->anno.tx.ts_noise;
+    eh->virt_col = ath2_h->anno.tx.ts_virtcol;
+  }
+  else                                                                      //RX
+  {
+    switch (ath2_h->anno.rx.rs_status) {
+      //case 0:   //OK
+      case 1:   //CRC
+          {
+            eh->flags |= WIFI_EXTRA_RX_CRC_ERR;
+            break;
+          }
+      case 2:   //PHY
+          {
+            eh->flags |= WIFI_EXTRA_RX_PHY_ERR;
+            break;
+          }
+      //case 4:  //FIFO
+      //case 8:  //DECRYPT
+      //case 16: //MIC
+    }
+    eh->silence = ath2_h->anno.rx.rs_noise;
+    eh->power = eh->silence + eh->rssi;
+  }
+
+  q->pull(sizeof(struct ath2_header));
+
+  return q;
 }
 
 CLICK_ENDDECLS
