@@ -9027,11 +9027,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-<<<<<<< HEAD:configure
-#line 9024 "configure"
-=======
-#line 9018 "configure"
->>>>>>> cc8028dc717291485275fd78284a5cda4a0a76bb:configure
+#line 9030 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
