@@ -47,11 +47,11 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _label = "";
-  _complath = 0;
+  _includeath = false;
 
   ret = cp_va_kparse(conf, this, errh,
                      "LABEL", cpkN, cpString, &_label,
-                     "COMPLATH", cpkN, cpInteger, &_complath,
+                     "INCLUDEATH", cpkN, cpBool, &_includeath,
                      "TIMESTAMP", cpkN, cpBool, &_timestamp,
                      cpEnd);
   return ret;
@@ -125,7 +125,7 @@ Ath2Print::simple_action(Packet *p)
   StringAccum sa_ath1;
   bool tx;
 
-  if ( _complath == 1 )
+  if ( _includeath )
   {
     WritablePacket *q = p->uniqueify();
     if (q)
@@ -181,7 +181,7 @@ Ath2Print::simple_action(Packet *p)
       tx = false;
   }
 
-  if ( _complath == 1 )
+  if ( _includeath )
     ath2_h = (struct ath2_header*)&(p->data()[ATHDESC_HEADER_SIZE]);
   else
     ath2_h = (struct ath2_header*)p->data();

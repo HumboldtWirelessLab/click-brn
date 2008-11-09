@@ -56,7 +56,7 @@ class Ath2Print : public Element {
 
   private:
     String _label;
-    int _complath;
+    bool _includeath;
 
 };
 
