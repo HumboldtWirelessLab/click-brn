@@ -125,6 +125,15 @@ Ath2Print::simple_action(Packet *p)
   StringAccum sa_ath1;
   bool tx;
 
+  if ( ( _includeath && ( p->length() < ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
+         ( ( ! _includeath )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+  {
+    if ( noutputs() > 1 )
+      output(1).push(p);
+    else
+      p->kill();
+  }
+
   if ( _includeath )
   {
     WritablePacket *q = p->uniqueify();
