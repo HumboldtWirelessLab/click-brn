@@ -24,28 +24,39 @@ CLICK_CXX_UNPROTECT
 #endif
 
 // see static_assert in clickfs.cc
-#define HANDLER_REREAD			(Handler::DRIVER_FLAG_0)
+#define HANDLER_DIRECT			(Handler::DRIVER_FLAG_0)
 #define HANDLER_DONE			(Handler::DRIVER_FLAG_0 << 1)
 #define HANDLER_RAW			(Handler::DRIVER_FLAG_0 << 2)
 #define HANDLER_SPECIAL_INODE		(Handler::DRIVER_FLAG_0 << 3)
 #define HANDLER_WRITE_UNLIMITED		(Handler::DRIVER_FLAG_0 << 4)
-
+struct click_handler_direct_info;
 
 class KernelErrorHandler : public BaseErrorHandler { public:
-  
-  KernelErrorHandler()			: _pos(0), _generation(0) { }
-  void handle_text(Seriousness, const String &);
-  void clear_log()			{ _pos = 0; _generation += 2; }
-  inline String stable_string() const;
-  
- private:
-  
-  enum { LOGBUF_SIZ = 4096, LOGBUF_SAVESIZ = 2048 };
-  char _logbuf[LOGBUF_SIZ];
-  int _pos;
-  unsigned _generation;
-  void log_line(const char *begin, const char *end);
-  
+
+    KernelErrorHandler()
+	: _head(0), _tail(0), _wrapped(false) {
+    }
+
+    void *emit(const String &str, void *user_data, bool more);
+    void account(int level);
+
+    void clear_log() {
+	_head = _tail = 0;
+	_wrapped = false;
+    }
+    String read(click_handler_direct_info *hdi) const;
+
+  private:
+
+    enum { logbuf_siz = 4096 };
+    char _logbuf[logbuf_siz];
+    volatile uint32_t _head;
+    volatile uint32_t _tail;
+    bool _wrapped;
+
+    void buffer_store(uint32_t head, const char *begin, const char *end);
+    void log_line(String landmark, const char *begin, const char *end);
+
 };
 
 extern KernelErrorHandler *click_logged_errh;
@@ -71,6 +82,14 @@ struct click_fsmode_t {
 extern click_fsmode_t click_fsmode;
 
 extern "C" int click_parm(int which);
+
+struct click_handler_direct_info {
+    char *buffer;
+    size_t count;
+    loff_t *store_f_pos;
+    String *string;
+    int retval;
+};
 
 int init_clickfs();
 void cleanup_clickfs();

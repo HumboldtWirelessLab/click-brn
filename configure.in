@@ -12,7 +12,7 @@ dnl notice is a summary of the Click LICENSE file; the license in that file is
 dnl legally binding.
 
 AC_INIT([click], [1.6.9])
-AC_PREREQ(2.50)
+AC_PREREQ(2.60)
 AC_CONFIG_HEADER(include/click/config.h:config.h.in include/click/pathvars.h:pathvars.h.in include/click/config-bsdmodule.h:config-bsdmodule.h.in include/click/config-linuxmodule.h:config-linuxmodule.h.in include/click/config-ns.h:config-ns.h.in include/click/config-userlevel.h:config-userlevel.h.in)
 
 CLICK_VERSION=$PACKAGE_VERSION
@@ -1005,7 +1005,7 @@ if test $ac_have_linux_kernel = y; then
 	AC_MSG_CHECKING([for Linux 2.6 compilation flags])
 	echo "include ${linux_srcdir}Makefile
 fwablongie:
-	@echo \$(CFLAGS)" >conftest.mk
+	@echo \$(KBUILD_CFLAGS) \$(CFLAGS)" >conftest.mk
 	make -I $linux_builddir -C "${linux_srcdir}" M="`pwd`" $linux_makeargs -f "`pwd`/conftest.mk" --no-print-directory fwablongie >conftest.dat
 	if test $? != 0; then
 	    AC_MSG_RESULT([not found])

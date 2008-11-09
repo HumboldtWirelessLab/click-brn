@@ -14,6 +14,7 @@ class Timer;
 class Element;
 class ErrorHandler;
 class Bitvector;
+class EtherAddress;
 
 /** @file <click/element.hh>
  * @brief Click's Element class.
@@ -24,7 +25,7 @@ class Bitvector;
 #endif
 
 class Element { public:
-    
+
     Element();
     virtual ~Element();
     static int nelements_allocated;
@@ -41,7 +42,7 @@ class Element { public:
 #endif
 
     inline void checked_output_push(int port, Packet *p) const;
-    
+
     // ELEMENT CHARACTERISTICS
     virtual const char *class_name() const = 0;
 
@@ -51,7 +52,7 @@ class Element { public:
     static const char PORTS_1_0[];
     static const char PORTS_1_1[];
     static const char PORTS_1_1X2[];
-    
+
     virtual const char *processing() const;
     static const char AGNOSTIC[];
     static const char PUSH[];
@@ -59,10 +60,10 @@ class Element { public:
     static const char PUSH_TO_PULL[];
     static const char PULL_TO_PUSH[];
     static const char PROCESSING_A_AH[];
-    
+
     virtual const char *flow_code() const;
     static const char COMPLETE_FLOW[];
-    
+
     virtual const char *flags() const;
     int flag_value(int flag) const;
 
@@ -78,13 +79,13 @@ class Element { public:
 	CONFIGURE_PHASE_LAST = 2000
     };
     virtual int configure_phase() const;
-    
+
     virtual int configure(Vector<String> &conf, ErrorHandler *errh);
-    
+
     virtual void add_handlers();
-  
+
     virtual int initialize(ErrorHandler *errh);
-    
+
     virtual void take_state(Element *old_element, ErrorHandler *errh);
     virtual Element *hotswap_element() const;
 
@@ -107,7 +108,7 @@ class Element { public:
     String name() const;
     String landmark() const;
     virtual String declaration() const;
-  
+
     inline Router *router() const;
     inline int eindex() const;
     inline int eindex(Router *r) const;
@@ -135,10 +136,10 @@ class Element { public:
     inline bool output_is_push(int port) const;
     inline bool output_is_pull(int port) const;
     void port_flow(bool isoutput, int port, Bitvector*) const;
-  
+
     // LIVE RECONFIGURATION
     String configuration() const;
-  
+
     virtual bool can_live_reconfigure() const;
     virtual int live_reconfigure(Vector<String>&, ErrorHandler*);
 
@@ -150,15 +151,15 @@ class Element { public:
 #endif
 
     // HANDLERS
-    void add_read_handler(const String &name, ReadHandlerHook read_hook, const void *user_data = 0, uint32_t flags = 0);
-    void add_read_handler(const String &name, ReadHandlerHook read_hook, int user_data, uint32_t flags = 0);
-    void add_write_handler(const String &name, WriteHandlerHook write_hook, const void *user_data = 0, uint32_t flags = 0);
-    void add_write_handler(const String &name, WriteHandlerHook write_hook, int user_data, uint32_t flags = 0);
-    void set_handler(const String &name, int flags, HandlerHook hook, const void *user_data1 = 0, const void *user_data2 = 0);
-    void set_handler(const String &name, int flags, HandlerHook hook, int user_data1, int user_data2 = 0);
+    void add_read_handler(const String &name, ReadHandlerCallback read_callback, const void *user_data = 0, uint32_t flags = 0);
+    void add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags = 0);
+    void add_write_handler(const String &name, WriteHandlerCallback write_callback, const void *user_data = 0, uint32_t flags = 0);
+    void add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags = 0);
+    void set_handler(const String &name, int flags, HandlerCallback callback, const void *user_data1 = 0, const void *user_data2 = 0);
+    void set_handler(const String &name, int flags, HandlerCallback callback, int user_data1, int user_data2 = 0);
     int set_handler_flags(const String &name, int set_flags, int clear_flags = 0);
     void add_task_handlers(Task *task, const String& prefix = String());
-    
+
     void add_data_handlers(const String &name, int flags, uint8_t *data);
     void add_data_handlers(const String &name, int flags, bool *data);
     void add_data_handlers(const String &name, int flags, int *data);
@@ -175,12 +176,13 @@ class Element { public:
 #endif
     void add_data_handlers(const String &name, int flags, String *data);
     void add_data_handlers(const String &name, int flags, IPAddress *data);
+    void add_data_handlers(const String &name, int flags, EtherAddress *data);
 
     static String read_positional_handler(Element*, void*);
     static String read_keyword_handler(Element*, void*);
     static int reconfigure_positional_handler(const String&, Element*, void*, ErrorHandler*);
     static int reconfigure_keyword_handler(const String&, Element*, void*, ErrorHandler*);
-  
+
     virtual int llrpc(unsigned command, void* arg);
     int local_llrpc(unsigned command, void* arg);
 
@@ -190,13 +192,13 @@ class Element { public:
     uint64_t _self_cycles;  // Cycles spent in self and children.
     uint64_t _child_cycles; // Cycles spent in children.
 #endif
-  
+
     class Port { public:
-    
+
 	inline bool active() const;
 	inline Element* element() const;
 	inline int port() const;
-    
+
 	inline void push(Packet* p) const;
 	inline Packet* pull() const;
 
@@ -205,10 +207,10 @@ class Element { public:
 #endif
 
       private:
-    
+
 	Element* _e;
 	int _port;
-    
+
 #if CLICK_STATS >= 1
 	mutable unsigned _packets;	// How many packets have we moved?
 #endif
@@ -218,9 +220,9 @@ class Element { public:
 
 	inline Port();
 	inline Port(Element*, Element*, int);
-	
+
 	friend class Element;
-    
+
     };
 
     // DEPRECATED
@@ -228,7 +230,7 @@ class Element { public:
 
     virtual bool run_task() CLICK_ELEMENT_DEPRECATED;
     virtual void run_timer() CLICK_ELEMENT_DEPRECATED;
-    
+
   private:
 
     enum { INLINE_PORTS = 4 };
@@ -256,10 +258,10 @@ class Element { public:
 
     static String read_handlers_handler(Element *e, void *user_data);
     void add_default_handlers(bool writable_config);
-    void add_data_handlers(const String &name, int flags, ReadHandlerHook read_hook, WriteHandlerHook write_hook, void *data);
+    void add_data_handlers(const String &name, int flags, ReadHandlerCallback read_hook, WriteHandlerCallback write_hook, void *data);
 
     friend class Router;
-    
+
 };
 
 
@@ -338,7 +340,7 @@ Element::eindex() const
 }
 
 /** @brief Return the element's index within router @a r.
- * 
+ *
  * Returns -1 if @a r != router(). */
 inline int
 Element::eindex(Router* r) const
@@ -487,7 +489,7 @@ Element::Port::active() const
 {
     return _port >= 0;
 }
-    
+
 /** @brief Returns the element connected to this active port.
  *
  * Returns 0 if this port is not active(). */

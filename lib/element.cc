@@ -29,6 +29,7 @@
 #include <click/router.hh>
 #include <click/master.hh>
 #include <click/straccum.hh>
+#include <click/etheraddress.hh>
 #if CLICK_LINUXMODULE
 # include <click/cxxprotect.h>
 CLICK_CXX_PROTECT
@@ -1729,15 +1730,16 @@ Element::remove_select(int fd, int mask)
 /** @brief Register a read handler named @a name.
  *
  * @param name handler name
- * @param read_hook function called when handler is read
- * @param user_data user data parameter passed to @a read_hook
+ * @param read_callback function called when handler is read
+ * @param user_data user data parameter passed to @a read_callback
  * @param flags flags to set
  *
  * Adds a read handler named @a name for this element.  Reading the handler
- * returns the result of the @a read_hook function, which is called like this:
+ * returns the result of the @a read_callback function, which is called like
+ * this:
  *
  * @code
- * String result = read_hook(e, user_data);
+ * String result = read_callback(e, user_data);
  * @endcode
  *
  * @a e is this element pointer.
@@ -1750,39 +1752,39 @@ Element::remove_select(int fd, int mask)
  * parameters, use set_handler() or set_handler_flags().
  *
  * @sa read_positional_handler, read_keyword_handler: standard read handler
- * hook functions
+ * callback functions
  * @sa add_write_handler, set_handler, add_task_handlers
  */
 void
-Element::add_read_handler(const String &name, ReadHandlerHook read_hook, const void *user_data, uint32_t flags)
+Element::add_read_handler(const String &name, ReadHandlerCallback read_callback, const void *user_data, uint32_t flags)
 {
-    Router::add_read_handler(this, name, read_hook, (void *) user_data, flags);
+    Router::add_read_handler(this, name, read_callback, (void *) user_data, flags);
 }
 
 /** @brief Register a read handler named @a name.
  *
  * This version of add_read_handler() is useful when @a user_data is an
- * integer.  Note that the @a read_hook function must still cast its <tt>void
- * *</tt> argument to <tt>intptr_t</tt> to obtain the integer value.
+ * integer.  Note that the @a read_callback function must still cast its
+ * <tt>void *</tt> argument to <tt>intptr_t</tt> to obtain the integer value.
  */
 void
-Element::add_read_handler(const String &name, ReadHandlerHook read_hook, int user_data, uint32_t flags)
+Element::add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags)
 {
-    Router::add_read_handler(this, name, read_hook, (void *) (uintptr_t) user_data, flags);
+    Router::add_read_handler(this, name, read_callback, (void *) (uintptr_t) user_data, flags);
 }
 
 /** @brief Register a write handler named @a name.
  *
  * @param name handler name
- * @param write_hook function called when handler is written
- * @param user_data user data parameter passed to @a write_hook
+ * @param write_callback function called when handler is written
+ * @param user_data user data parameter passed to @a write_callback
  * @param flags flags to set
  *
  * Adds a write handler named @a name for this element.  Writing the handler
- * calls the @a write_hook function like this:
+ * calls the @a write_callback function like this:
  *
  * @code
- * int r = write_hook(data, e, user_data, errh);
+ * int r = write_callback(data, e, user_data, errh);
  * @endcode
  *
  * @a e is this element pointer.  The return value @a r should be negative on
@@ -1794,49 +1796,49 @@ Element::add_read_handler(const String &name, ReadHandlerHook read_hook, int use
  * add_read_handler(@a name) remains in effect.
  *
  * @sa reconfigure_positional_handler, reconfigure_keyword_handler: standard
- * write handler hook functions
+ * write handler callback functions
  * @sa add_read_handler, set_handler, add_task_handlers
  */
 void
-Element::add_write_handler(const String &name, WriteHandlerHook write_hook, const void *user_data, uint32_t flags)
+Element::add_write_handler(const String &name, WriteHandlerCallback write_callback, const void *user_data, uint32_t flags)
 {
-    Router::add_write_handler(this, name, write_hook, (void *) user_data, flags);
+    Router::add_write_handler(this, name, write_callback, (void *) user_data, flags);
 }
 
 /** @brief Register a write handler named @a name.
  *
  * This version of add_write_handler() is useful when @a user_data is an
- * integer.  Note that the @a write_hook function must still cast its <tt>void
- * *</tt> argument to <tt>intptr_t</tt> to obtain the integer value.
+ * integer.  Note that the @a write_callback function must still cast its
+ * <tt>void *</tt> argument to <tt>intptr_t</tt> to obtain the integer value.
  */
 void
-Element::add_write_handler(const String &name, WriteHandlerHook write_hook, int user_data, uint32_t flags)
+Element::add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags)
 {
-    Router::add_write_handler(this, name, write_hook, (void *) (uintptr_t) user_data, flags);
+    Router::add_write_handler(this, name, write_callback, (void *) (uintptr_t) user_data, flags);
 }
 
 /** @brief Register a comprehensive handler named @a name.
  *
  * @param name handler name
  * @param flags handler flags
- * @param hook function called when handler is written
+ * @param callback function called when handler is written
  * @param user_data1 user data parameter stored in the handler
  * @param user_data2 user data parameter stored in the handler
  *
  * Registers a comprehensive handler named @a name for this element.  The
  * handler handles the operations specified by @a flags, which can include
  * Handler::OP_READ, Handler::OP_WRITE, Handler::READ_PARAM, and others.
- * Reading the handler calls the @a hook function like this:
+ * Reading the handler calls the @a callback function like this:
  *
  * @code
  * String data;
- * int r = hook(Handler::OP_READ, data, e, h, errh);
+ * int r = callback(Handler::OP_READ, data, e, h, errh);
  * @endcode
  *
  * Writing the handler calls it like this:
  *
  * @code
- * int r = hook(Handler::OP_WRITE, data, e, h, errh);
+ * int r = callback(Handler::OP_WRITE, data, e, h, errh);
  * @endcode
  *
  * @a e is this element pointer, and @a h points to the Handler object for
@@ -1851,9 +1853,9 @@ Element::add_write_handler(const String &name, WriteHandlerHook write_hook, int 
  * name).
  */
 void
-Element::set_handler(const String& name, int flags, HandlerHook hook, const void *user_data1, const void *user_data2)
+Element::set_handler(const String& name, int flags, HandlerCallback callback, const void *user_data1, const void *user_data2)
 {
-    Router::set_handler(this, name, flags, hook, (void *) user_data1, (void *) user_data2);
+    Router::set_handler(this, name, flags, callback, (void *) user_data1, (void *) user_data2);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1863,9 +1865,9 @@ Element::set_handler(const String& name, int flags, HandlerHook hook, const void
  * values.
  */
 void
-Element::set_handler(const String &name, int flags, HandlerHook hook, int user_data1, int user_data2)
+Element::set_handler(const String &name, int flags, HandlerCallback callback, int user_data1, int user_data2)
 {
-    Router::set_handler(this, name, flags, hook, (void *) (uintptr_t) user_data1, (void *) (uintptr_t) user_data2);
+    Router::set_handler(this, name, flags, callback, (void *) (uintptr_t) user_data1, (void *) (uintptr_t) user_data2);
 }
 
 /** @brief Set flags for the handler named @a name.
@@ -2127,19 +2129,19 @@ uint8_t_write_data_handler(const String &str, Element *element, void *user_data,
 	return 0;
     } else
 	return errh->error("expected uint8_t");
-} 
+}
 
 static String
 bool_read_data_handler(Element *element, void *user_data)
 {
-    bool *ptr  = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return cp_unparse_bool(*ptr);
 }
 
 static int
 bool_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
 {
-    bool *ptr  = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     if (cp_bool(str, ptr))
 	return 0;
     else
@@ -2149,14 +2151,14 @@ bool_write_data_handler(const String &str, Element *element, void *user_data, Er
 template <typename T> static String
 integer_read_data_handler(Element *element, void *user_data)
 {
-    T *ptr  = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    T *ptr = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return String(*ptr);
 }
 
 template <typename T> static int
 integer_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
 {
-    T *ptr  = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    T *ptr = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     if (cp_integer(str, ptr))
 	return 0;
     else
@@ -2166,14 +2168,14 @@ integer_write_data_handler(const String &str, Element *element, void *user_data,
 static String
 atomic_uint32_t_read_data_handler(Element *element, void *user_data)
 {
-    atomic_uint32_t *ptr  = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    atomic_uint32_t *ptr = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return String(ptr->value());
 }
 
 static int
 atomic_uint32_t_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
 {
-    atomic_uint32_t *ptr  = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    atomic_uint32_t *ptr = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     uint32_t value;
     if (cp_integer(str, &value)) {
 	*ptr = value;
@@ -2186,14 +2188,14 @@ atomic_uint32_t_write_data_handler(const String &str, Element *element, void *us
 static String
 double_read_data_handler(Element *element, void *user_data)
 {
-    double *ptr  = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    double *ptr = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return String(*ptr);
 }
 
 static int
 double_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
 {
-    double *ptr  = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    double *ptr = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     if (cp_double(str, ptr))
 	return 0;
     else
@@ -2204,14 +2206,14 @@ double_write_data_handler(const String &str, Element *element, void *user_data, 
 static String
 string_read_data_handler(Element *element, void *user_data)
 {
-    String *ptr  = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    String *ptr = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return *ptr;
 }
 
 static int
 string_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *)
 {
-    String *ptr  = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    String *ptr = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     *ptr = str;
     return 0;
 }
@@ -2219,30 +2221,45 @@ string_write_data_handler(const String &str, Element *element, void *user_data, 
 static String
 ip_address_read_data_handler(Element *element, void *user_data)
 {
-    IPAddress *ptr  = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    IPAddress *ptr = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
     return ptr->unparse();
 }
 
 static int
 ip_address_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
 {
-    IPAddress *ptr  = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    IPAddress value;
-    if (cp_ip_address(str, &value)) {
-	*ptr = value;
+    IPAddress *ptr = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    if (cp_ip_address(str, ptr, element))
 	return 0;
-    } else
+    else
 	return errh->error("expected IP address");
 }
 
+static String
+ether_address_read_data_handler(Element *element, void *user_data)
+{
+    EtherAddress *ptr = reinterpret_cast<EtherAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    return ptr->unparse();
+}
+
+static int
+ether_address_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+{
+    EtherAddress *ptr = reinterpret_cast<EtherAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    if (cp_ethernet_address(str, ptr, element))
+	return 0;
+    else
+	return errh->error("expected Ethernet address");
+}
+
 void
-Element::add_data_handlers(const String &name, int flags, ReadHandlerHook read_hook, WriteHandlerHook write_hook, void *data)
+Element::add_data_handlers(const String &name, int flags, ReadHandlerCallback read_callback, WriteHandlerCallback write_callback, void *data)
 {
     uintptr_t x = reinterpret_cast<uintptr_t>(data) - reinterpret_cast<uintptr_t>(this);
-    if ((flags & Handler::OP_READ) && read_hook)
-	add_read_handler(name, read_hook, reinterpret_cast<void *>(x), flags);
-    if ((flags & Handler::OP_WRITE) && write_hook)
-	add_write_handler(name, write_hook, reinterpret_cast<void *>(x), flags);
+    if ((flags & Handler::OP_READ) && read_callback)
+	add_read_handler(name, read_callback, reinterpret_cast<void *>(x), flags);
+    if ((flags & Handler::OP_WRITE) && write_callback)
+	add_write_handler(name, write_callback, reinterpret_cast<void *>(x), flags);
 }
 
 /** @brief Register read and/or write handlers accessing @a data.
@@ -2353,6 +2370,13 @@ void
 Element::add_data_handlers(const String &name, int flags, IPAddress *data)
 {
     add_data_handlers(name, flags, ip_address_read_data_handler, ip_address_write_data_handler, data);
+}
+
+/** @overload */
+void
+Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
+{
+    add_data_handlers(name, flags, ether_address_read_data_handler, ether_address_write_data_handler, data);
 }
 
 
