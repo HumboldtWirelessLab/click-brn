@@ -93,8 +93,11 @@ Ath2Decap::simple_action(Packet *p)
       /* tx */
       eh->power = desc->xmit_power;
       eh->rssi = desc->ack_sig_strength;
-      eh->rate = ratecode_to_dot11(desc->xmit_rate0);
-      eh->retries = desc->data_fail_count;
+      if ( desc->data_fail_count > desc->xmit_tries0 )
+        eh->retries = desc->data_fail_count;
+      else
+        eh->retries = ath2_h->anno.tx.ts_longretry - 1;
+
       if (desc->excessive_retries)
         eh->flags |= WIFI_EXTRA_TX_FAIL;
 
@@ -107,7 +110,6 @@ Ath2Decap::simple_action(Packet *p)
       eh->max_tries1 = desc->xmit_tries1;
       eh->max_tries2 = desc->xmit_tries2;
       eh->max_tries3 = desc->xmit_tries3;
-      click_chatter("TXTries: %d %d ; %d %d ; %d %d ; %d %d ; ",eh->rate,eh->max_tries,eh->rate1,eh->max_tries1,eh->rate2,eh->max_tries2,eh->rate3,eh->max_tries3);
     }
     q->pull(ATHDESC_HEADER_SIZE);
   }
@@ -120,7 +122,6 @@ Ath2Decap::simple_action(Packet *p)
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
-    click_chatter("RETIRES: %d %d",ath2_h->anno.tx.ts_shortretry,ath2_h->anno.tx.ts_longretry);
   }
   else                                                                      //RX
   {
