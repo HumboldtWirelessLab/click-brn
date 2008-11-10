@@ -107,6 +107,7 @@ Ath2Decap::simple_action(Packet *p)
       eh->max_tries1 = desc->xmit_tries1;
       eh->max_tries2 = desc->xmit_tries2;
       eh->max_tries3 = desc->xmit_tries3;
+      click_chatter("TXTries: %d %d ; %d %d ; %d %d ; %d %d ; ",eh->rate,eh->max_tries,eh->rate1,eh->max_tries1,eh->rate2,eh->max_tries2,eh->rate3,eh->max_tries3);
     }
     q->pull(ATHDESC_HEADER_SIZE);
   }
@@ -119,6 +120,7 @@ Ath2Decap::simple_action(Packet *p)
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
+    click_chatter("RETIRES: %d %d",ath2_h->anno.tx.ts_shortretry,ath2_h->anno.tx.ts_longretry);
   }
   else                                                                      //RX
   {
