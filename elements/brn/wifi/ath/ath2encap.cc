@@ -23,9 +23,11 @@ Ath2Encap::~Ath2Encap()
 int
 Ath2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  _athencap = true;
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
+      "ATHENCAP", cpkP, cpBool, &_athencap,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;

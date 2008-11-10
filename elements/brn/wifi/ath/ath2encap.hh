@@ -24,6 +24,8 @@ class Ath2Encap : public Element { public:
 
  private:
 
+  bool _athencap;
+
 };
 
 CLICK_ENDDECLS
