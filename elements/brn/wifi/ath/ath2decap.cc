@@ -119,8 +119,8 @@ Ath2Decap::simple_action(Packet *p)
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
-    if ( eh->retries < ath2_h->anno.tx.ts_longretry - 1 )
-      eh->retries = ath2_h->anno.tx.ts_longretry - 1;
+    if ( eh->retries < ath2_h->anno.tx.ts_longretry )
+      eh->retries = ath2_h->anno.tx.ts_longretry;
   }
   else                                                                      //RX
   {
