@@ -141,7 +141,7 @@ Ath2Decap::simple_action(Packet *p)
       //case 16: //MIC
     }
     eh->silence = ath2_h->anno.rx.rs_noise;
-    eh->power = eh->silence + eh->rssi;
+    eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
   }
 
   q->pull(sizeof(struct ath2_header));
