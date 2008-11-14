@@ -93,8 +93,8 @@ Ath2Decap::simple_action(Packet *p)
       /* tx */
       eh->power = desc->xmit_power;
       eh->rssi = desc->ack_sig_strength;
-      eh->rate = ratecode_to_dot11(desc->xmit_rate0);
       eh->retries = desc->data_fail_count;
+
       if (desc->excessive_retries)
         eh->flags |= WIFI_EXTRA_TX_FAIL;
 
@@ -119,6 +119,8 @@ Ath2Decap::simple_action(Packet *p)
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
+    if ( eh->retries < ath2_h->anno.tx.ts_longretry )
+      eh->retries = ath2_h->anno.tx.ts_longretry;
   }
   else                                                                      //RX
   {
