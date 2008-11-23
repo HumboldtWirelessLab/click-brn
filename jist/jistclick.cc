@@ -761,9 +761,23 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
   int r = -1;
 
   if ( simnode == NULL ) printf("Node is NULL\n");
+/*
+#define SIMCLICK_VERSION    0  // none
+#define SIMCLICK_SUPPORTS   1  // int call
+#define SIMCLICK_IFID_FROM_NAME   2  // const char *ifname
+#define SIMCLICK_IPADDR_FROM_NAME 3  // const char *ifname, char *buf, int len
+#define SIMCLICK_MACADDR_FROM_NAME  4  // const char *ifname, char *buf, int len
+#define SIMCLICK_SCHEDULE   5  // struct timeval *when
+#define SIMCLICK_GET_NODE_NAME    6  // char *buf, int len
+#define SIMCLICK_IF_READY   7  // int ifid
+#define SIMCLICK_TRACE      8  // const char *event
+#define SIMCLICK_GET_NODE_ID    9  // none
+#define SIMCLICK_GET_NEXT_PKT_ID  10 // none
+#define SIMCLICK_CHANGE_CHANNEL   11 // int ifid, int channelid
+*/
 //  printf("command: %d\n",cmd);
   switch (cmd) {
-    case SIMCLICK_MACADDR_FROM_NAME:
+    case SIMCLICK_MACADDR_FROM_NAME:  //4
     {
       const char *ifname = va_arg(val, const char *);
       char *buf = va_arg(val, char *);
@@ -787,7 +801,7 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
 
       break;
     }
-    case SIMCLICK_IPADDR_FROM_NAME:
+    case SIMCLICK_IPADDR_FROM_NAME:   //3
     {
       const char *ifname = va_arg(val, const char *);
       char *buf = va_arg(val, char *);
@@ -804,7 +818,7 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
       }
       break;
     }
-    case SIMCLICK_IFID_FROM_NAME:
+    case SIMCLICK_IFID_FROM_NAME:    //2
     {
       const char *ifname = va_arg(val, const char *);
       char *buf = va_arg(val, char *);
@@ -812,6 +826,21 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
       brn::click::ClickAdapter click_adapter((jobject) simnode);
       r = click_adapter.sim_ifid_from_name(ifname);
       break;
+    }
+    case SIMCLICK_SCHEDULE:    //5
+    {
+      const struct timeval *when = va_arg(val, const struct timeval *);
+      brn::click::ClickAdapter click_adapter((jobject) simnode);
+
+      int64_t lwhen = (int64_t)(when->tv_sec) * 1000000000L
+                    + (int64_t)(when->tv_usec) * 1000L;
+
+  // TODO prevent driver from scheduling the same timer twice
+      if (router_state->last_scheduled == lwhen)
+          return 0; // already sheduled
+
+      router_state->last_scheduled = lwhen;
+      return click_adapter.sim_schedule((long)simnode, lwhen);
     }
     default:
     {
