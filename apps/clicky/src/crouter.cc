@@ -172,15 +172,14 @@ crouter::throb_after::~throb_after()
 void crouter::set_config(const String &conf, bool replace)
 {
     _gerrh.clear();
-    
+
     // check for archive
     _conf = conf;
     Vector<ArchiveElement> archive;
     if (_conf.length() && _conf[0] == '!'
 	&& ArchiveElement::parse(_conf, archive, &_gerrh) >= 0) {
-	int found = ArchiveElement::arindex(archive, "config");
-	if (found >= 0)
-	    _conf = archive[found].data;
+	if (ArchiveElement *ae = ArchiveElement::find(archive, "config"))
+	    _conf = ae->data;
 	else {
 	    _gerrh.error("archive has no 'config' section");
 	    _conf = String();
@@ -230,7 +229,7 @@ void crouter::set_config(const String &conf, bool replace)
 	delete emap;
 	delete processing;
     }
-    
+
     on_config_changed(replace, lexinfo);
 
     delete lexinfo;
@@ -306,7 +305,7 @@ static const char *parse_port(const char *s, const char *end, int &port)
 static void parse_port(const String &str, String &name, int &port)
 {
     const char *s = str.begin(), *end = str.end();
-    
+
     port = -1;
     s = parse_port(s, end, port);
     if (s != end && end[-1] == ']') {
@@ -320,7 +319,7 @@ static void parse_port(const String &str, String &name, int &port)
 		/* nada */;
 	}
     }
-    
+
     name = str.substring(s, end);
 }
 

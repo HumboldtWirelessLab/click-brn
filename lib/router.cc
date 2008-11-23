@@ -97,7 +97,7 @@ Router::~Router()
     // unuse the hotswap router
     if (_hotswap_router)
 	_hotswap_router->unuse();
-  
+
     // Delete the ArenaFactory, which detaches the Arenas
     delete _arena_factory;
 
@@ -113,7 +113,7 @@ Router::~Router()
 	for (int i = _elements.size() - 1; i >= 0; i--)
 	    _elements[i]->cleanup(Element::CLEANUP_NO_ROUTER);
     }
-  
+
     // Delete elements in reverse configuration order
     if (_element_configure_order.size())
 	for (int ord = _elements.size() - 1; ord >= 0; ord--)
@@ -121,7 +121,7 @@ Router::~Router()
     else
 	for (int i = 0; i < _elements.size(); i++)
 	    delete _elements[i];
-    
+
     delete _root_element;
 
 #if CLICK_LINUXMODULE
@@ -134,7 +134,7 @@ Router::~Router()
 # endif
     }
 #endif
-    
+
     for (int i = 0; i < _nhandlers_bufs; i += HANDLER_BUFSIZ)
 	delete[] _handler_bufs[i / HANDLER_BUFSIZ];
     delete[] _handler_bufs;
@@ -219,7 +219,7 @@ Router::find(const String &name, String context, ErrorHandler *errh) const
     }
 
     if (errh)
-	errh->error("no element named '%s'", name.c_str());
+	errh->error("no element named %<%s%>", name.c_str());
     return 0;
 }
 
@@ -324,7 +324,7 @@ Router::elandmark(int eindex) const
 }
 
 
-// CREATION 
+// CREATION
 
 #if CLICK_LINUXMODULE
 int
@@ -345,7 +345,7 @@ Router::add_module_ref(struct module *module)
     return 0;
 }
 #endif
-    
+
 int
 Router::add_element(Element *e, const String &ename, const String &conf, const String &landmark)
 {
@@ -371,7 +371,7 @@ Router::add_connection(int from_idx, int from_port, int to_idx, int to_port)
 	return -1;
 
     Connection c(from_idx, from_port, to_idx, to_port);
-    
+
     // check for continuing sorted order
     if (_conn_sorted && _conn.size() && c < _conn.back())
 	_conn_sorted = false;
@@ -437,9 +437,9 @@ Router::check_hookup_elements(ErrorHandler *errh)
 	for (int p = 0; p < 2; ++p) {
 	    if ((*cp)[p].idx < 0 || (*cp)[p].idx >= nelements()
 		|| !_elements[(*cp)[p].idx])
-		errh->error("bad element number '%d'", (*cp)[p].idx);
+		errh->error("bad element number %<%d%>", (*cp)[p].idx);
 	    if ((*cp)[p].port < 0)
-		errh->error("bad port number '%d'", (*cp)[p].port);
+		errh->error("bad port number %<%d%>", (*cp)[p].port);
 	}
 	if (errh->nerrors() != before)
 	    cp = remove_connection(cp);
@@ -472,7 +472,7 @@ Router::check_hookup_range(ErrorHandler *errh)
 	int before = errh->nerrors();
 	for (int p = 0; p < 2; ++p)
 	    if ((*cp)[p].port >= _elements[(*cp)[p].idx]->nports(p))
-		hookup_error((*cp)[p], p, "'%{element}' has no %s %d", errh);
+		hookup_error((*cp)[p], p, "%<%{element}%> has no %s %d", errh);
 	if (errh->nerrors() != before)
 	    cp = remove_connection(cp);
 	else
@@ -498,7 +498,7 @@ Router::check_hookup_completeness(ErrorHandler *errh)
 		if (likely(last != _conn[ci][p]))
 		    last = _conn[ci][p];
 		else if (_elements[last.idx]->port_active(p, last.port))
-		    hookup_error(last, p, "illegal reuse of '%{element}' %s %d", errh, true);
+		    hookup_error(last, p, "illegal reuse of %<%{element}%> %s %d", errh, true);
 	    }
 	}
 
@@ -518,7 +518,7 @@ Router::check_hookup_completeness(ErrorHandler *errh)
 		++cix;
 	    } else {
 		if (unlikely(conn != all))
-		    hookup_error(all, p, "'%{element}' %s %d unused", errh);
+		    hookup_error(all, p, "%<%{element}%> %s %d unused", errh);
 		++all.port;
 	    }
     }
@@ -614,11 +614,11 @@ Router::processing_error(const Connection &c, bool aggie,
     const char *type1 = (processing_from == Element::VPUSH ? "push" : "pull");
     const char *type2 = (processing_from == Element::VPUSH ? "pull" : "push");
     if (!aggie)
-	errh->error("'%{element}' %s output %d connected to '%{element}' %s input %d",
+	errh->error("%<%{element}%> %s output %d connected to %<%{element}%> %s input %d",
 		    _elements[c[1].idx], type1, c[1].port,
 		    _elements[c[0].idx], type2, c[0].port);
     else
-	errh->error("agnostic '%{element}' in mixed context: %s input %d, %s output %d",
+	errh->error("agnostic %<%{element}%> in mixed context: %s input %d, %s output %d",
 		    _elements[c[1].idx], type2, c[0].port, type1, c[1].port);
     return -1;
 }
@@ -628,7 +628,7 @@ Router::check_push_and_pull(ErrorHandler *errh)
 {
     if (!errh)
 	errh = ErrorHandler::default_handler();
-  
+
     // set up processing vectors
     Vector<int> input_pers(ngports(false), 0);
     Vector<int> output_pers(ngports(true), 0);
@@ -651,13 +651,13 @@ Router::check_push_and_pull(ErrorHandler *errh)
 			conn.push_back(Connection(ei, j, ei, port));
 	    }
     }
-    
+
     int before = errh->nerrors();
     Connection *first_agnostic = conn.begin() + _conn.size();
-  
+
     // spread personalities
     while (true) {
-    
+
 	bool changed = false;
 	for (Connection *cp = conn.begin(); cp != conn.end(); ++cp) {
 	    if ((*cp)[1].idx < 0)
@@ -687,14 +687,14 @@ Router::check_push_and_pull(ErrorHandler *errh)
 		    (*cp)[1].idx = -1;
 		}
 		break;
-	
+
 	    }
 	}
-    
+
 	if (!changed)
 	    break;
     }
-  
+
     if (errh->nerrors() != before)
 	return -1;
 
@@ -814,7 +814,7 @@ Router::global_port_flow(bool forward, Element* first_element, int first_port,
 	return -1;
 
     sort_connections();
-    
+
     results.clear();
     Bitvector result_bv(ngports(!forward), false), scratch;
 
@@ -1078,7 +1078,7 @@ Router::initialize(ErrorHandler *errh)
 #if CLICK_DMALLOC
     CLICK_DMALLOC_REG("iXXX");
 #endif
-  
+
     // If there were errors, uninitialize any elements that we initialized
     // successfully and return -1 (error). Otherwise, we're all set!
     if (all_ok) {
@@ -1099,10 +1099,10 @@ Router::initialize(ErrorHandler *errh)
 	    int i = _element_configure_order[ord];
 	    _elements[i]->cleanup((Element::CleanupStage) element_stage[i]);
 	}
-    
+
 	// Remove element-specific handlers
 	initialize_handlers(true, false);
-    
+
 	_runcount = 0;
 	return -1;
     }
@@ -1113,12 +1113,12 @@ Router::activate(bool foreground, ErrorHandler *errh)
 {
     if (_state != ROUTER_LIVE || _running != RUNNING_PREPARING)
 	return;
-  
+
     // Take state if appropriate
     if (_hotswap_router && _hotswap_router->_state == ROUTER_LIVE) {
 	// Unschedule tasks and timers
 	master()->kill_router(_hotswap_router);
-      
+
 	for (int i = 0; i < _elements.size(); i++) {
 	    Element *e = _elements[_element_configure_order[i]];
 	    if (Element *other = e->hotswap_element()) {
@@ -1193,18 +1193,17 @@ Handler::compatible(const Handler &x) const
 String
 Handler::call_read(Element* e, const String& param, ErrorHandler* errh) const
 {
-    if (!errh)
-	errh = ErrorHandler::silent_handler();
+    LocalErrorHandler lerrh(errh);
     if (param && !(_flags & READ_PARAM))
-	errh->error("read handler '%s' does not take parameters", unparse_name(e).c_str());
+	lerrh.error("read handler %<%s%> does not take parameters", unparse_name(e).c_str());
     else if ((_flags & (COMPREHENSIVE | OP_READ)) == OP_READ)
 	return _hook.rw.r(e, _thunk1);
     else if (_flags & OP_READ) {
 	String s(param);
-	if (_hook.h(OP_READ, s, e, this, errh) >= 0)
+	if (_hook.h(OP_READ, s, e, this, &lerrh) >= 0)
 	    return s;
     } else
-	errh->error("'%s' not a read handler", unparse_name(e).c_str());
+	lerrh.error("%<%s%> not a read handler", unparse_name(e).c_str());
     // error cases get here
     return String();
 }
@@ -1212,15 +1211,14 @@ Handler::call_read(Element* e, const String& param, ErrorHandler* errh) const
 int
 Handler::call_write(const String& value, Element* e, ErrorHandler* errh) const
 {
-    if (!errh)
-	errh = ErrorHandler::silent_handler();
+    LocalErrorHandler lerrh(errh);
     String value_copy(value);
     if ((_flags & (COMPREHENSIVE | OP_WRITE)) == OP_WRITE)
-	return _hook.rw.w(value_copy, e, _thunk2, errh);
+	return _hook.rw.w(value_copy, e, _thunk2, &lerrh);
     else if (_flags & OP_WRITE)
-	return _hook.h(OP_WRITE, value_copy, e, this, errh);
+	return _hook.h(OP_WRITE, value_copy, e, this, &lerrh);
     else {
-	errh->error("'%s' not a write handler", unparse_name(e).c_str());
+	lerrh.error("%<%s%> not a write handler", unparse_name(e).c_str());
 	return -EACCES;
     }
 }
@@ -1304,7 +1302,7 @@ Router::store_local_handler(int eindex, Handler &to_store, int type)
 	to_store.combine(*old_h, type);
 	old_h->_use_count--;
     }
-  
+
     // find the offset in _name_handlers
     int name_index;
     {
@@ -1411,7 +1409,7 @@ Router::store_global_handler(Handler &h, int type)
 	    globalh[i]._use_count = 1;
 	    return;
 	}
-  
+
     if (nglobalh >= globalh_cap) {
 	int n = (globalh_cap ? 2 * globalh_cap : 4);
 	Handler *hs = new Handler[n];
@@ -1835,7 +1833,7 @@ Router::unparse_requirements(StringAccum &sa, const String &indent) const
  */
 void
 Router::unparse_declarations(StringAccum &sa, const String &indent) const
-{  
+{
   // element classes
   Vector<String> conf;
   for (int i = 0; i < nelements(); i++) {
@@ -1845,7 +1843,7 @@ Router::unparse_declarations(StringAccum &sa, const String &indent) const
       sa << "(" << conf << ")";
     sa << ";\n";
   }
-  
+
   if (nelements() > 0)
     sa << "\n";
 }
@@ -1855,7 +1853,7 @@ Router::unparse_declarations(StringAccum &sa, const String &indent) const
  * Appends this router's connections to @a sa in parseable format. */
 void
 Router::unparse_connections(StringAccum &sa, const String &indent) const
-{  
+{
   int nc = _conn.size();
   Vector<int> next(nc, -1);
   Bitvector startchain(nc, true);
@@ -1899,7 +1897,7 @@ Router::unparse_connections(StringAccum &sa, const String &indent) const
 	used[d] = true;
 	d = next[d];
       }
-      
+
       sa << ";\n";
     }
 
