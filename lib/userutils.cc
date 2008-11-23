@@ -182,7 +182,7 @@ click_strcmp(const String &a, const String &b)
     const char *ad = a.begin(), *ae = a.end();
     const char *bd = b.begin(), *be = b.end();
     int raw_compare = 0;
-    
+
     while (ad < ae && bd < be) {
 	if (isdigit((unsigned char) *ad) && isdigit((unsigned char) *bd)) {
 	    // compare the two numbers, but don't treat them as numbers in
@@ -281,17 +281,21 @@ shell_quote(const String &str, bool quote_tilde)
 String
 shell_command_output_string(String cmdline, const String &input, ErrorHandler *errh)
 {
-  FILE *f = tmpfile();
-  if (!f)
-    errh->fatal("cannot create temporary file: %s", strerror(errno));
-  fwrite(input.data(), 1, input.length(), f);
-  fflush(f);
-  rewind(f);
-  
-  String new_cmdline = cmdline + " 0<&" + String(fileno(f));
-  FILE *p = popen(new_cmdline.c_str(), "r");
-  if (!p)
-    errh->fatal("'%s': %s", cmdline.c_str(), strerror(errno));
+    FILE *f = tmpfile();
+    if (!f) {
+	errh->fatal("cannot create temporary file: %s", strerror(errno));
+	return String();
+    }
+    fwrite(input.data(), 1, input.length(), f);
+    fflush(f);
+    rewind(f);
+
+    String new_cmdline = cmdline + " 0<&" + String(fileno(f));
+    FILE *p = popen(new_cmdline.c_str(), "r");
+    if (!p) {
+	errh->fatal("%<%s%>: %s", cmdline.c_str(), strerror(errno));
+	return String();
+    }
 
   StringAccum sa;
   while (!feof(p)) {
@@ -303,7 +307,7 @@ shell_command_output_string(String cmdline, const String &input, ErrorHandler *e
       break;
   }
   if (!feof(p))
-    errh->warning("'%s' output too long, truncated", cmdline.c_str());
+    errh->warning("%<%s%> output too long, truncated", cmdline.c_str());
 
   fclose(f);
   pclose(p);
@@ -349,7 +353,7 @@ file_string(String filename, ErrorHandler *errh)
     s = file_string(f, &perrh);
   } else
     s = file_string(f);
-  
+
   if (f != stdin)
     fclose(f);
   return s;
@@ -376,7 +380,7 @@ unique_tmpnam(const String &pattern, ErrorHandler *errh)
     right = pattern.substring(star + 1, pattern.end());
   } else
     left = "/" + pattern;
-  
+
   int uniqueifier = getpid();
   while (1) {
     String name = tmpdir + left + String(uniqueifier) + right;
@@ -497,16 +501,16 @@ path_find_file_2(const String &filename, const String &path,
     const char *begin = path.begin();
     const char *end = path.end();
     int before_size = results.size();
-    
+
     do {
 	String dir = path.substring(begin, find(begin, end, ':'));
 	begin = dir.end() + 1;
-    
+
 	if (!dir && default_path) {
 	    // look in default path
 	    if (path_find_file_2(filename, default_path, "", 0, results, exit_early) && exit_early)
 		return true;
-      
+
 	} else if (dir) {
 	    if (dir.back() != '/')
 		dir += "/";
@@ -554,20 +558,20 @@ clickpath_find_file(const String &filename, const char *subdir,
 	&& (strcmp(subdir, "bin") == 0 || strcmp(subdir, "sbin") == 0))
 	if (const char *path_variable = getenv("PATH"))
 	    path_find_file_2(filename, path_variable, "", 0, fns, true);
-  
+
     if (!fns.size() && errh) {
 	if (default_path) {
 	    // CLICKPATH set, left no opportunity to use default path
-	    errh->fatal("cannot find file '%s'\nin CLICKPATH '%s'", filename.c_str(), path);
+	    errh->fatal("cannot find file %<%s%>\nin CLICKPATH %<%s%>", filename.c_str(), path);
 	} else if (!path) {
 	    // CLICKPATH not set
-	    errh->fatal("cannot find file '%s'\nin install directory '%s'\n(Try setting the CLICKPATH environment variable.)", filename.c_str(), was_default_path.c_str());
+	    errh->fatal("cannot find file %<%s%>\nin install directory %<%s%>\n(Try setting the CLICKPATH environment variable.)", filename.c_str(), was_default_path.c_str());
 	} else {
 	    // CLICKPATH set, left opportunity to use default pathb
-	    errh->fatal("cannot find file '%s'\nin CLICKPATH or '%s'", filename.c_str(), was_default_path.c_str());
+	    errh->fatal("cannot find file %<%s%>\nin CLICKPATH or %<%s%>", filename.c_str(), was_default_path.c_str());
 	}
     }
-    
+
     return fns.size() ? fns[0] : String();
 }
 
@@ -612,7 +616,7 @@ click_mktmpdir(ErrorHandler *errh)
 #endif
     else
 	tmpdir = "/tmp";
-  
+
     int uniqueifier = getpid();
     while (1) {
 	String tmpsubdir = tmpdir + "/clicktmp" + String(uniqueifier);
@@ -644,7 +648,7 @@ parse_tabbed_lines(const String &str, Vector<String> *fields1, ...)
 
     const char *begin = str.begin();
     const char *end = str.end();
-  
+
     while (begin < end) {
 	// read a line
 	String line = str.substring(begin, find(begin, end, '\n'));
@@ -713,7 +717,7 @@ open_uncompress_pipe(const String &filename, const unsigned char *buf, int len, 
     if (FILE *p = popen(cmd.c_str(), "r"))
 	return p;
     else {
-	errh->error("'%s': %s", cmd.c_str(), strerror(errno));
+	errh->error("%<%s%>: %s", cmd.c_str(), strerror(errno));
 	return 0;
     }
 }
@@ -759,7 +763,7 @@ open_compress_pipe(const String &filename, ErrorHandler *errh)
     if (FILE *p = popen(cmd.c_str(), "w"))
 	return p;
     else {
-	errh->error("'%s': %s", cmd.c_str(), strerror(errno));
+	errh->error("%<%s%>: %s", cmd.c_str(), strerror(errno));
 	return 0;
     }
 }
@@ -785,10 +789,10 @@ clickdl_load_package(String package, ErrorHandler *errh)
     return errh->error("package %s", dlerror());
   void *init_sym = dlsym(handle, "init_module");
   if (!init_sym)
-    return errh->error("package '%s' has no 'init_module'", package.c_str());
+    return errh->error("package %<%s%> has no %<init_module%>", package.c_str());
   init_module_func init_func = (init_module_func)init_sym;
   if ((*init_func)() != 0)
-    return errh->error("error initializing package '%s'", package.c_str());
+    return errh->error("error initializing package %<%s%>", package.c_str());
   return 0;
 }
 

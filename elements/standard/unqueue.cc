@@ -65,7 +65,7 @@ Unqueue::run_task(Task *)
 	return false;
 
     int worked = 0;
-    while (worked < _burst) {
+    while (worked < _burst && _active) {
 	if (Packet *p = input(0).pull()) {
 	    worked++;
 	    output(0).push(p);
@@ -74,7 +74,7 @@ Unqueue::run_task(Task *)
 	else
 	    break;
     }
-    
+
     _task.fast_reschedule();
   out:
     _count += worked;
@@ -92,12 +92,12 @@ Unqueue::run_task(Task *)
 #endif
 #endif
 
-int 
+int
 Unqueue::write_param(const String &conf, Element *e, void *, ErrorHandler *errh)
 {
     Unqueue *u = (Unqueue *)e;
     if (!cp_bool(conf, &u->_active))
-	return errh->error("active parameter must be boolean");    
+	return errh->error("active parameter must be boolean");
     if (u->_active && !u->_task.scheduled())
 	u->_task.reschedule();
     return 0;

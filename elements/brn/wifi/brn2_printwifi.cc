@@ -321,16 +321,13 @@ Packet *
 BRN2PrintWifi::simple_action(Packet *p)
 {
   struct click_wifi *wh = (struct click_wifi *) p->data();
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
   int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
   int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
   EtherAddress src;
   EtherAddress dst;
   EtherAddress bssid;
-
-
-
 
   StringAccum sa;
   if (_label[0] != 0) {
@@ -354,7 +351,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "+%2d/", ceh->rssi);
   sa.adjust_length(len);
 
-  len = sprintf(sa.reserve(9), "%2d | ", ceh->silence);
+  len = sprintf(sa.reserve(9), "%2d | ", ((signed char)ceh->silence));
   sa.adjust_length(len);
 
   len = sprintf(sa.reserve(6), "Type ");

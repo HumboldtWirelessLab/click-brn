@@ -42,7 +42,6 @@ struct ChatterSocketErrorHandler : public ErrorVeneer {
 	: ErrorVeneer(errh) {
     }
 
-    ErrorHandler *base_errh() const	{ return _errh; }
     int nchatter_sockets() const	{ return _chatter_sockets.size(); }
 
     void add_chatter_socket(ChatterSocket *);
@@ -75,7 +74,7 @@ ChatterSocketErrorHandler::remove_chatter_socket(ChatterSocket *cs)
 void *
 ChatterSocketErrorHandler::emit(const String &str, void *user_data, bool more)
 {
-    user_data = _errh->emit(str, user_data, more);
+    user_data = ErrorVeneer::emit(str, user_data, more);
 
     String landmark;
     const char *s = parse_anno(str, str.begin(), str.end(),
@@ -123,7 +122,7 @@ ChatterSocket::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
   _greeting = greeting;
   _retry_warnings = retry_warnings;
-  
+
   socktype = socktype.upper();
   if (socktype == "TCP") {
     _tcp_socket = true;
@@ -166,7 +165,7 @@ ChatterSocket::configure(Vector<String> &conf, ErrorHandler *errh)
 
   // install ChatterSocketErrorHandler
   cserrh->add_chatter_socket(this);
-  
+
   return 0;
 }
 
@@ -229,7 +228,7 @@ ChatterSocket::initialize_socket(ErrorHandler *errh)
   // start listening
   if (listen(_socket_fd, 2) < 0)
     return initialize_socket_error(errh, "listen");
-  
+
   // nonblocking I/O and close-on-exec for the socket
   fcntl(_socket_fd, F_SETFL, O_NONBLOCK);
   fcntl(_socket_fd, F_SETFD, FD_CLOEXEC);
@@ -332,7 +331,7 @@ ChatterSocket::cleanup(CleanupStage)
       unlink(_unix_pathname.c_str());
     _socket_fd = -1;
   }
-  
+
   for (int i = 0; i < _fd_alive.size(); i++)
     if (_fd_alive[i]) {
       close(i);
@@ -400,7 +399,7 @@ ChatterSocket::flush(int fd)
 
   // store changed fd_pos
   _fd_pos[fd] = fd_pos;
-  
+
   // close out on error, or if socket falls too far behind
   if (useful_message < 0 || SEQ_LT(fd_pos, _max_pos - MAX_BACKLOG)) {
     close(fd);
@@ -411,7 +410,7 @@ ChatterSocket::flush(int fd)
     remove_select(fd, SELECT_WRITE);
   else
     add_select(fd, SELECT_WRITE);
-  
+
   return useful_message;
 }
 
@@ -452,7 +451,7 @@ ChatterSocket::selected(int fd)
 	click_chatter("%s: accept: %s", declaration().c_str(), strerror(errno));
       return;
     }
-    
+
     fcntl(new_fd, F_SETFL, O_NONBLOCK);
     fcntl(new_fd, F_SETFD, FD_CLOEXEC);
 

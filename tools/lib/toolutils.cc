@@ -59,18 +59,17 @@ RouterT *
 read_router_string(String text, const String &landmark, bool empty_ok,
 		   ErrorHandler *errh)
 {
-  // check for archive
-  Vector<ArchiveElement> archive;
-  if (text.length() && text[0] == '!') {
-    ArchiveElement::parse(text, archive, errh);
-    int found = ArchiveElement::arindex(archive, "config");
-    if (found >= 0)
-      text = archive[found].data;
-    else {
-      errh->lerror(landmark, "archive has no 'config' section");
-      text = String();
+    // check for archive
+    Vector<ArchiveElement> archive;
+    if (text.length() && text[0] == '!') {
+	ArchiveElement::parse(text, archive, errh);
+	if (ArchiveElement *ae = ArchiveElement::find(archive, "config"))
+	    text = ae->data;
+	else {
+	    errh->lerror(landmark, "archive has no %<config%> section");
+	    text = String();
+	}
     }
-  }
 
   // read router
   if (!text.length() && !empty_ok)
@@ -128,14 +127,14 @@ write_router_file(RouterT *r, FILE *f, ErrorHandler *errh)
 {
   if (!r)
     return;
-  
+
   String config_str = r->configuration_string();
-  
+
   // create archive if necessary
   const Vector<ArchiveElement> &archive = r->archive();
   if (archive.size()) {
     Vector<ArchiveElement> narchive;
-    
+
     // add configuration
     ArchiveElement config_ae;
     config_ae.name = "config";
@@ -145,7 +144,7 @@ write_router_file(RouterT *r, FILE *f, ErrorHandler *errh)
     config_ae.mode = 0644;
     config_ae.data = config_str;
     narchive.push_back(config_ae);
-    
+
     // add other archive elements
     for (int i = 0; i < archive.size(); i++)
       if (archive[i].live() && archive[i].name != "config")
@@ -154,7 +153,7 @@ write_router_file(RouterT *r, FILE *f, ErrorHandler *errh)
     if (narchive.size() > 1)
       config_str = ArchiveElement::unparse(narchive, errh);
   }
-  
+
   fwrite(config_str.data(), 1, config_str.length(), f);
 }
 
