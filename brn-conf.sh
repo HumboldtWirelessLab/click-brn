@@ -4,7 +4,7 @@
 CONFOPTION="--enable-wifi --enable-brn --enable-dhcp --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then
-  CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=no"
+  CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host"
 else
   CONFOPTION="$CONFOPTION --enable-tools=host"
 fi
