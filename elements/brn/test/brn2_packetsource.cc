@@ -82,7 +82,8 @@ void BRN2PacketSource::push( int port, Packet *packet )
 Packet *
 BRN2PacketSource::createpacket(int size)
 {
-  WritablePacket *new_packet = WritablePacket::make(size);
+  //WritablePacket *new_packet = WritablePacket::make(size);
+  WritablePacket *new_packet = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
   uint8_t *new_packet_data = (uint8_t*)new_packet->data();
 
   uint16_t pshort;
