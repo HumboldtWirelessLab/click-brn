@@ -39,11 +39,15 @@
 #include <click/simclick.h>
 #include <click/handlercall.hh>
 
+#include <clicknet/wifi.h>
 #include "jni_click_runtime_ClickAdapter.hh"
 #include "clickadapter.hh"
 #include "java_array.hh"
 
 CLICK_USING_DECLS
+
+#define SIMCLICK_PTYPE_WIFI 3
+#define SIMCLICK_PTYPE_WIFI_EXTRA 4
 
 #define IFID_LASTIF 32
 
@@ -495,20 +499,17 @@ JNIEXPORT jint JNICALL Java_click_runtime_ClickAdapter_click_1send
     info.id = id;
     info.fid = fid;
     info.simtype = simtype;
-/*    info.tx_feedback = txfeedback;
-    info.retries = 0;
-    info.rx_power = 0;*/
 
     int len = env->GetArrayLength(jdata);
     jbyte* data = env->GetByteArrayElements(jdata, NULL);
 
-//    if (SIMCLICK_PTYPE_WIFI_EXTRA == jtype) {
-//      click_wifi_extra* eh = (click_wifi_extra*)data;
-//      if (txfeedback)
-//        assert(WIFI_EXTRA_TX == (eh->flags & WIFI_EXTRA_TX));
-//      else
-//        assert(0 == (eh->flags & WIFI_EXTRA_TX));
-//    }
+    if (SIMCLICK_PTYPE_WIFI_EXTRA == jtype) {
+      click_wifi_extra* eh = (click_wifi_extra*)data;
+      if (txfeedback)
+        assert(WIFI_EXTRA_TX == (eh->flags & WIFI_EXTRA_TX));
+      else
+        assert(0 == (eh->flags & WIFI_EXTRA_TX));
+    }
 
     // Click will copy the data
     r->sim_incoming_packet(jifid, jtype, (unsigned char*)data, len, &info);
@@ -841,6 +842,11 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
 
       router_state->last_scheduled = lwhen;
       return click_adapter.sim_schedule((long)simnode, lwhen);
+    }
+    case SIMCLICK_IF_READY:    //7
+    {
+      int ifid = va_arg(val, int);
+      return router_state->_nics_ready[ifid];
     }
     default:
     {
