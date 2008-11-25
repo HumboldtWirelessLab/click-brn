@@ -49,10 +49,12 @@ BRN2PrintWifi::~BRN2PrintWifi()
 int
 BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _etheraddr = EtherAddress();
   int ret;
   _timestamp = false;
   ret = cp_va_kparse(conf, this, errh,
       "LABEL", cpkP, cpString, &_label,
+      "ETHERADDRESS", cpkP, cpEtherAddress, &_etheraddr,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
       cpEnd);
   return ret;
@@ -571,7 +573,11 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
   sb.adjust_length(pos);
 
-  click_chatter("%s EXTRA: %s\n", sa.c_str(), sb.c_str());
+  if ( _etheraddr != EtherAddress() )
+    click_chatter("%s %s EXTRA: %s\n", _etheraddr.unparse().c_str(), sa.c_str(), sb.c_str());
+  else
+   click_chatter("%s EXTRA: %s\n", sa.c_str(), sb.c_str());
+
   return p;
 }
 
