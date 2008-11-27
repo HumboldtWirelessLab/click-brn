@@ -57,7 +57,7 @@ SetTXRates::simple_action(Packet *p)
   ceh->rate2 = _rate2;
   ceh->rate3 = _rate3;
 
-  ceh->max_tries = _tries0;
+  ceh->max_tries = _tries0 + 1; //NOTE: Add 1 because because athdescencap will substract 1 since it means retries
   ceh->max_tries1 = _tries1;
   ceh->max_tries2 = _tries2;
   ceh->max_tries3 = _tries3;

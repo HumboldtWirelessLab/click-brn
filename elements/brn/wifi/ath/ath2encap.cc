@@ -52,7 +52,7 @@ Ath2Encap::simple_action(Packet *p)
   desc->xmit_rate2 = dot11_to_ratecode(ceh->rate2);
   desc->xmit_rate3 = dot11_to_ratecode(ceh->rate3);
 
-  if (ceh->max_tries > 0) desc->xmit_tries0 = ceh->max_tries;
+  if (ceh->max_tries > 0) desc->xmit_tries0 = ceh->max_tries - 1;  //NOTE: this is just to be compatible with AthdescEncap
   if (ceh->max_tries1 > 0) desc->xmit_tries1 = ceh->max_tries1;
   if (ceh->max_tries2 > 0) desc->xmit_tries2 = ceh->max_tries2;
   if (ceh->max_tries3 > 0) desc->xmit_tries3 = ceh->max_tries3;
