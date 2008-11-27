@@ -63,7 +63,7 @@ AthdescEncap::simple_action(Packet *p)
   desc->xmit_power = ceh->power;
   desc->xmit_rate0 = dot11_to_ratecode(ceh->rate);
   if (ceh->max_tries > 0) {
-    desc->xmit_tries0 = ceh->max_tries - 1;
+    desc->xmit_tries0 = ceh->max_tries;
   }
 
   return p_out;
