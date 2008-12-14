@@ -37,25 +37,34 @@ Ath2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 Ath2Encap::simple_action(Packet *p)
 {
+  WritablePacket *p_out;
 
-  WritablePacket *p_out = p->push(ATHDESC_HEADER_SIZE);
+  if ( _athencap )
+    p_out = p->push(ATHDESC2_HEADER_SIZE);       //ATH-HEADER and ATH_BRN-HEADER
+  else
+    p_out = p->push(ATHDESC2_BRN_HEADER_SIZE);   //ATH_BRN-HEADER only
+
   if (!p_out) { return 0; }
 
-  struct ar5212_desc *desc  = (struct ar5212_desc *) (p_out->data() + 8);
-  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
+  if ( _athencap ) {
+    struct ar5212_desc *desc  = (struct ar5212_desc *) (p_out->data() + 8);
+    click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
 
-  memset((void *)p_out->data(), 0, ATHDESC_HEADER_SIZE);
+    memset((void *)p_out->data(), 0, ATHDESC2_HEADER_SIZE);  //set all to zero
 
-  desc->xmit_power = ceh->power;
-  desc->xmit_rate0 = dot11_to_ratecode(ceh->rate);
-  desc->xmit_rate1 = dot11_to_ratecode(ceh->rate1);
-  desc->xmit_rate2 = dot11_to_ratecode(ceh->rate2);
-  desc->xmit_rate3 = dot11_to_ratecode(ceh->rate3);
+    desc->xmit_power = ceh->power;
+    desc->xmit_rate0 = dot11_to_ratecode(ceh->rate);
+    desc->xmit_rate1 = dot11_to_ratecode(ceh->rate1);
+    desc->xmit_rate2 = dot11_to_ratecode(ceh->rate2);
+    desc->xmit_rate3 = dot11_to_ratecode(ceh->rate3);
 
-  if (ceh->max_tries > 0) desc->xmit_tries0 = ceh->max_tries;
-  if (ceh->max_tries1 > 0) desc->xmit_tries1 = ceh->max_tries1;
-  if (ceh->max_tries2 > 0) desc->xmit_tries2 = ceh->max_tries2;
-  if (ceh->max_tries3 > 0) desc->xmit_tries3 = ceh->max_tries3;
+    if (ceh->max_tries > 0) desc->xmit_tries0 = ceh->max_tries;
+    if (ceh->max_tries1 > 0) desc->xmit_tries1 = ceh->max_tries1;
+    if (ceh->max_tries2 > 0) desc->xmit_tries2 = ceh->max_tries2;
+    if (ceh->max_tries3 > 0) desc->xmit_tries3 = ceh->max_tries3;
+  }
+  else
+    memset((void *)p_out->data(), 0, ATHDESC2_BRN_HEADER_SIZE);
 
   return p_out;
 

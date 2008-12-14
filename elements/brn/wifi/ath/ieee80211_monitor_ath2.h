@@ -46,30 +46,63 @@ struct ath2_tx_status {
 
 struct ath2_tx_anno {
 
-    int8_t channel;
+    int8_t operation;       //we use packets to configure the mac
 
-    u_int8_t mac[6];
+    int8_t channel;         //channel to set
+
+    u_int8_t mac[6];        //mac address use for sending or set as client for VA
+
+    u_int8_t va_position;   //position in VA
 
 } __attribute__ ((packed));
 
+struct ath2_rx_anno {
+
+  int8_t operation;       //we use packets to configure the mac
+
+  int8_t channel;         //channel to set
+
+  u_int8_t mac[6];        //mac address use for sending or set as client for VA
+
+  u_int8_t va_position;   //position in VA
+
+  u_int8_t status;
+
+} __attribute__ ((packed));
 
 struct ath2_header {
     u_int16_t ath2_version;
     u_int16_t madwifi_version;
 
+    u_int32_t flags;
+
     union {
-      struct ath2_rx_status rx;
-      struct ath2_tx_status tx;
-      struct ath2_tx_anno tx_anno;
-    } anno; 
+      struct ath2_rx_status rx;             //info of received packets
+      struct ath2_tx_status tx;             //inof of txfeedbackpackets
+      struct ath2_tx_anno tx_anno;          //annos fo send packets
+      struct ath2_rx_anno rx_anno;          //annos operation packets
+    } anno;
 
 } __attribute__ ((packed));
 
-#define ATHDESC2_VERSION 0xF2F2
+#define ATHDESC2_VERSION 0xF3F3
 
 #define MADWIFI_0940	0x03ac
 #define MADWIFI_3869	0x0f1d
+#define MADWIFI_3880  0x0f28
 
-#define MADWIFI_TRUNK MADWIFI_3869
+#define MADWIFI_TRUNK MADWIFI_3880
+
+#define ATH2_OPERATION_NONE        0
+#define ATH2_OPERATION_SETVACLIENT 1
+#define ATH2_OPERATION_SETCHANNEL  2
+#define ATH2_OPERATION_SETMAC      3
+
+#ifndef ARPHRD_IEEE80211_ATHDESC2
+#define ARPHRD_IEEE80211_ATHDESC2  805 /* IEEE 802.11 + atheros (long) descriptor */
+#endif /* ARPHRD_IEEE80211_ATHDESC2 */
+
+#define ATHDESC2_BRN_HEADER_SIZE sizeof(struct ath2_header)
+#define ATHDESC2_HEADER_SIZE    ( ATHDESC_HEADER_SIZE + ATHDESC2_BRN_HEADER_SIZE )
 
 #endif

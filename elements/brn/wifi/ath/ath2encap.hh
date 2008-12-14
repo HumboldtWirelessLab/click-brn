@@ -2,6 +2,8 @@
 #define CLICK_ATH2ENCAP_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+#include "ath2_desc.h"
+
 CLICK_DECLS
 
 class Ath2Encap : public Element { public:
