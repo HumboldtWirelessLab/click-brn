@@ -79,8 +79,8 @@ struct ath2_header {
     union {
       struct ath2_rx_status rx;             //info of received packets
       struct ath2_tx_status tx;             //inof of txfeedbackpackets
-      struct ath2_tx_anno tx_anno;          //annos fo send packets
-      struct ath2_rx_anno rx_anno;          //annos operation packets
+      struct ath2_tx_anno tx_anno;          //annos of send packets
+      struct ath2_rx_anno rx_anno;          //annos of operation packets (result)
     } anno;
 
 } __attribute__ ((packed));
