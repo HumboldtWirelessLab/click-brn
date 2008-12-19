@@ -23,14 +23,19 @@ Ath2Encap::~Ath2Encap()
 int
 Ath2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  int channel = 0;
   _athencap = true;
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
       "ATHENCAP", cpkN, cpBool, &_athencap,
+      "CHANNEL", cpkN, cpInteger, &channel,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _channel = channel;
+
   return 0;
 }
 
@@ -38,6 +43,7 @@ Packet *
 Ath2Encap::simple_action(Packet *p)
 {
   WritablePacket *p_out;
+  struct ath2_header *ath2_h;
 
   if ( _athencap )
     p_out = p->push(ATHDESC2_HEADER_SIZE);       //ATH-HEADER and ATH_BRN-HEADER
@@ -50,7 +56,8 @@ Ath2Encap::simple_action(Packet *p)
     struct ar5212_desc *desc  = (struct ar5212_desc *) (p_out->data() + 8);
     click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
 
-    memset((void *)p_out->data(), 0, ATHDESC2_HEADER_SIZE);  //set all to zero
+    memset((void *)p_out->data(), 0, ATHDESC2_HEADER_SIZE);  //set all to zero ( ath and ath_brn )
+    ath2_h = (struct ath2_header*)(p_out->data() + ATHDESC_HEADER_SIZE);
 
     desc->xmit_power = ceh->power;
     desc->xmit_rate0 = dot11_to_ratecode(ceh->rate);
@@ -64,7 +71,12 @@ Ath2Encap::simple_action(Packet *p)
     if (ceh->max_tries3 > 0) desc->xmit_tries3 = ceh->max_tries3;
   }
   else
+  {
     memset((void *)p_out->data(), 0, ATHDESC2_BRN_HEADER_SIZE);
+    ath2_h = (struct ath2_header*)(p_out->data());
+  }
+
+  ath2_h->anno.tx_anno.channel = _channel;
 
   return p_out;
 

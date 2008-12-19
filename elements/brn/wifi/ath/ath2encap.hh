@@ -27,6 +27,7 @@ class Ath2Encap : public Element { public:
  private:
 
   bool _athencap;
+  u_int8_t _channel;
 
 };
 
