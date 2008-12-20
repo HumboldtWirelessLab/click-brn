@@ -36,24 +36,11 @@ public:
 
   int configure(Vector<String> &, ErrorHandler *);
 
-  Packet *pull(int);
-
-  void add_handlers();
-
-  int get_channel();
-  void set_channel(int channel);
-  void switch_to_channel(int new_channel);
-
-  int get_freq();
-  void set_freq(int freq);
+  Packet *simple_action(Packet *);
 
 private:
-  String  _dev_name;
   bool    _rotate;
   int     _channel;
-
-  bool    _switch_soon;
-  bool    _switch_on_next;
 };
 
 

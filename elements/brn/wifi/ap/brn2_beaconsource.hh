@@ -79,9 +79,6 @@ class BRN2BeaconSource : public Element { public:
   BRNVLAN* _brn_vlan;
 
   bool _switch_channel;
-  BRN2SetChannel *_sc;
-
-
 };
 
 CLICK_ENDDECLS

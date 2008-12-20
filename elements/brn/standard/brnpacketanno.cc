@@ -17,31 +17,31 @@ BRNPacketAnno::~BRNPacketAnno()
 EtherAddress
 BRNPacketAnno::dst_ether_anno(Packet *p)
 {
-  return EtherAddress((const unsigned char *) (((uint8_t*)p->addr_anno()) + sizeof(uint32_t)));
+  return EtherAddress((const unsigned char *) ((p->anno_u8()) + DST_ETHER_ANNO_OFFSET));
 }
 
 void
 BRNPacketAnno::set_dst_ether_anno(Packet *p, const EtherAddress &a)
 {
-  memcpy(((uint8_t*)p->addr_anno()) + sizeof(uint32_t), a.data(), 6);
+  memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), a.data(), DST_ETHER_ANNO_SIZE);
 }
 
 String
 BRNPacketAnno::udevice_anno(Packet *p)
 {
-  char device[6];
-  memset(device, 0, 6);
-  memcpy(device, ((uint8_t*)p->addr_anno()) + sizeof(uint32_t) + 6, 5);
+  char device[UDEVICE_ANNO_SIZE + 1];
+  memset(device, 0, UDEVICE_ANNO_SIZE + 1);
+  memcpy(device, ((uint8_t*)p->anno_u8()) + UDEVICE_ANNO_OFFSET, UDEVICE_ANNO_SIZE);
   return String(device);
 }
 
 void
 BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
 {
-  if (strlen(device) <= Packet::ADDR_ANNO_SIZE - sizeof(uint32_t) - 6 - 1)
+  if (strlen(device) <= UDEVICE_ANNO_SIZE)
   {
-    void* dst = ((uint8_t*)p->addr_anno()) + sizeof(uint32_t) + 6;
-    memset(dst, 0, 5);
+    void* dst = (uint8_t*)(p->anno_u8()) + UDEVICE_ANNO_OFFSET;
+    memset(dst, 0, UDEVICE_ANNO_SIZE);
     memcpy(dst, device, strlen(device));
   }
   else
@@ -52,15 +52,38 @@ BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
 uint8_t
 BRNPacketAnno::tos_anno(Packet *p)
 {
-  uint8_t* dst = (uint8_t*) ((uint8_t*)(p->addr_anno()) + sizeof(uint32_t) + 6 + 5);
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
   return (dst[0]);
 }
 
 void
 BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos)
 {
-  uint8_t* dst = (uint8_t*) (((uint8_t*)p->addr_anno()) + sizeof(uint32_t) + 6 + 5);
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
   dst[0] = tos;
+}
+
+uint8_t
+BRNPacketAnno::channel_anno(Packet *p)
+{
+  uint8_t* channel = ((uint8_t*)(p->anno_u8()) + CHANNEL_ANNO_OFFSET);
+  return (channel[0]);
+}
+
+uint8_t
+BRNPacketAnno::operation_anno(Packet *p)
+{
+  uint8_t* op = ((uint8_t*)(p->anno_u8()) + OPERATION_ANNO_OFFSET);
+  return (op[0]);
+}
+
+void
+BRNPacketAnno::set_channel_anno(Packet *p, uint8_t channel, uint8_t operation)
+{
+  uint8_t* ch = (uint8_t*) ((p->anno_u8()) + CHANNEL_ANNO_OFFSET);
+  uint8_t* op = (uint8_t*) ((p->anno_u8()) + OPERATION_ANNO_OFFSET);
+  ch[0] = channel;
+  op[0] = operation;
 }
 
 CLICK_ENDDECLS

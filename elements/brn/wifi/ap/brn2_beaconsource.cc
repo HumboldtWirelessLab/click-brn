@@ -34,6 +34,8 @@
 #include <elements/wifi/wirelessinfo.hh>
 #include "elements/brn/wifi/brn2_setchannel.hh"
 
+#include "elements/brn/standard/brnpacketanno.hh"
+
 CLICK_DECLS
 
 
@@ -46,9 +48,7 @@ BRN2BeaconSource::BRN2BeaconSource()
     _active(true),
     _switch_channel_countdown(0),
     _rtable(0),
-    _brn_vlan(NULL),
-    _switch_channel(false),
-    _sc(NULL)
+    _brn_vlan(NULL)
 {
   _bcast = EtherAddress();
   memset(_bcast.data(), 0xff, 6);
@@ -72,8 +72,7 @@ BRN2BeaconSource::configure(Vector<String> &conf, ErrorHandler *errh)
       "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
       "BRNVLAN", cpkP+cpkM, cpElement, /*"brn vlans",*/ &_brn_vlan,
       "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
-      "SWITCHCHANNEL", cpkP+cpkM, cpElement, /*"SwicthChannel",*/ &_sc,
-		  cpEnd) < 0)
+    cpEnd) < 0)
     return -1;
 
 
@@ -112,12 +111,7 @@ BRN2BeaconSource::run_timer(Timer *)
 {
   if (_active)
     send_beacon(_bcast, false, "");
-  if ( ( _switch_channel== true ) && ( _sc != NULL ) ) {
-    click_chatter("BeaconSource: Switch Channel");
-    _sc->set_channel(_target_channel);
-    _switch_channel = false;
-    _winfo->_channel = _target_channel;
-  }
+
   _timer.schedule_after_msec(_winfo->_interval);
 }
 
@@ -254,12 +248,17 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
     ptr[2] = 0;                                                //Transsmission district
     ptr[3] = _target_channel;                                  // new channel
     ptr[4] = (uint8_t)_switch_channel_countdown;               //bitmap control
-    
+
     ptr += 2 + 3;
     actual_length += 2 + 3;
 
-    if ( _switch_channel_countdown == 0 ) _switch_channel = true;
+    if ( _switch_channel_countdown == 0 )
+    {
+      _winfo->_channel = _target_channel;
+      BRNPacketAnno::set_channel_anno(p, _winfo->_channel, OPERATION_SET_CHANNEL_AFTER_PACKET);
+    }
   }
+
   /* tim */
 
   ptr[0] = WIFI_ELEMID_TIM;
@@ -272,12 +271,10 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
   ptr += 2 + 4;
   actual_length += 2 + 4;
 
-
   p->take(max_len - actual_length);
+
   output(0).push(p);
 }
-
-
 
 void
 BRN2BeaconSource::push(int, Packet *p)

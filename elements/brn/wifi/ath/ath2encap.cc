@@ -8,6 +8,7 @@
 #include <clicknet/llc.h>
 #include "elements/wifi/athdesc.h"
 #include "ath2encap.hh"
+#include "elements/brn/standard/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -23,18 +24,14 @@ Ath2Encap::~Ath2Encap()
 int
 Ath2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int channel = 0;
   _athencap = true;
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
       "ATHENCAP", cpkN, cpBool, &_athencap,
-      "CHANNEL", cpkN, cpInteger, &channel,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
-
-  _channel = channel;
 
   return 0;
 }
@@ -44,6 +41,7 @@ Ath2Encap::simple_action(Packet *p)
 {
   WritablePacket *p_out;
   struct ath2_header *ath2_h;
+  uint8_t channel;
 
   if ( _athencap )
     p_out = p->push(ATHDESC2_HEADER_SIZE);       //ATH-HEADER and ATH_BRN-HEADER
@@ -76,7 +74,8 @@ Ath2Encap::simple_action(Packet *p)
     ath2_h = (struct ath2_header*)(p_out->data());
   }
 
-  ath2_h->anno.tx_anno.channel = _channel;
+  channel = BRNPacketAnno::channel_anno(p);
+  ath2_h->anno.tx_anno.channel = channel;
 
   return p_out;
 
