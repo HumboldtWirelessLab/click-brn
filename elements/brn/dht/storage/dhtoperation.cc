@@ -15,8 +15,17 @@ DHTOperation::DHTOperation()
 
 DHTOperation::~DHTOperation()
 {
-  if ( key != NULL ) delete key;
-  if ( value != NULL ) delete value;
+  if ( key != NULL )
+  {
+    delete[] key;
+    key = NULL;
+  }
+
+  if ( value != NULL )
+  {
+    delete[] value;
+    value = NULL;
+  }
 }
 
 void
@@ -89,7 +98,7 @@ void
 DHTOperation::set_value(uint8_t *new_value, uint16_t new_valuelen)
 {
   if ( value != NULL )
-    delete value;
+    delete[] value;
 
   if ( new_value != NULL && new_valuelen != 0 )
   {
@@ -117,7 +126,7 @@ DHTOperation::serialize(uint8_t **buffer, uint16_t *len) //TODO: hton for lens
   if ( serialize_buffer(pbuffer,plen) == -1 )
   {
 //    click_chatter("Unable to seralize DHT");
-    delete pbuffer;
+    delete[] pbuffer;
     *len = 0;
   }
 
@@ -133,8 +142,10 @@ DHTOperation::serialize_buffer(uint8_t *buffer, uint16_t maxlen) //TODO: hton fo
   if ( buffer == NULL || plen > maxlen ) return -1;
 
   memcpy(buffer,(void*)&header,SERIALIZE_STATIC_SIZE);
-  memcpy(&buffer[SERIALIZE_STATIC_SIZE], key, header.keylen);
-  memcpy(&buffer[SERIALIZE_STATIC_SIZE + header.keylen], value, header.valuelen);
+  if ( key != NULL )
+    memcpy(&buffer[SERIALIZE_STATIC_SIZE], key, header.keylen);
+  if ( value != NULL )
+    memcpy(&buffer[SERIALIZE_STATIC_SIZE + header.keylen], value, header.valuelen);
 
   return plen;
 }
@@ -146,9 +157,9 @@ DHTOperation::unserialize(uint8_t *buffer, uint16_t len)  //TODO: hton for lens
   if ( buffer == NULL || SERIALIZE_STATIC_SIZE > len ) return -1;
 
   memcpy((void*)&header, buffer, SERIALIZE_STATIC_SIZE);
-  key = new uint8_t[header.keylen];
+  key = new uint8_t[header.keylen ];
   memcpy(key, &buffer[SERIALIZE_STATIC_SIZE], header.keylen);
-  value = new uint8_t[header.valuelen];
+  value = new uint8_t[header.valuelen ];
   memcpy(value, &buffer[SERIALIZE_STATIC_SIZE + header.keylen], header.valuelen);
 
   return 0;

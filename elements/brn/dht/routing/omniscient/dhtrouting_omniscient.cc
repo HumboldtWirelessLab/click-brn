@@ -119,6 +119,8 @@ DHTRoutingOmni::static_packet_buffer_timer_hook(Timer *t, void *f)
       dht->_packet_buffer_timer.schedule_after_msec( next_p );
     else
       dht->_packet_buffer_timer.schedule_after_msec( 10000 );
+
+    delete bpacket;
   }
   else
   {
@@ -181,7 +183,8 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
 
-  dhtlist.clear();
+  //dhtlist.clear();
+  dhtlist.del();
 }
 
 void
@@ -209,7 +212,8 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
     else output(0).push(big_p);
   }
 
-  dhtlist.clear();
+  //dhtlist.clear();
+  dhtlist.del();
 }
 
 void
@@ -245,7 +249,8 @@ DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
-  dhtlist.clear();
+//  dhtlist.clear();
+  dhtlist.del();
 }
 
 void
@@ -343,7 +348,7 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
     {
       if ( new_node->_status == STATUS_OK )
       {
-        node = new DHTnode(new_node->_ether_addr);
+        node = new DHTnode(new_node->_ether_addr);                //TODO: use the nodes from list directly (save new-operation, but than check handle_routetable_reply
         _dhtnodes.add_dhtnode(node);
         count_newnodes++;
         add_nodes++;

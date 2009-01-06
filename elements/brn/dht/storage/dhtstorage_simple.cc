@@ -89,6 +89,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
       handle_dht_operation(op);
       op->set_reply();
       info_func(info_obj,op);
+      delete op;
     }
     else
     {
@@ -112,7 +113,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 void DHTStorageSimple::push( int port, Packet *packet )
 {
   DHTnode *next;
-  DHTOperation *_op;
+  DHTOperation *_op = NULL;
   WritablePacket *p;
   DHTOperationForward *fwd;
 
@@ -155,6 +156,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
           output(0).push(p);
         }
       }
+      if ( _op != NULL ) delete _op;
     }
 
     if ( port == 1 )
@@ -164,8 +166,10 @@ void DHTStorageSimple::push( int port, Packet *packet )
  
   } else {
     click_chatter("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
-    packet->kill();
   }
+
+  packet->kill();
+
 }
 
 void

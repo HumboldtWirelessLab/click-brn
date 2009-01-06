@@ -68,10 +68,13 @@ DHTnodelist::get_dhtnode(int i)
 int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
   int i;
+  DHTnode *node;
 
   for( i = 0; i < _nodelist.size(); i++)
     if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 )
     {
+ //     node = get_dhtnode(_etheradd);
+//      delete node;                                       //TODO:del node
       _nodelist.erase(_nodelist.begin() + i);
       break;
     }
@@ -94,6 +97,18 @@ void DHTnodelist::clear()
   _nodelist.clear();
 }
 
+void DHTnodelist::del()
+{
+  DHTnode *node;
+
+  for( int i = _nodelist.size()-1; i >= 0; i--)
+  {
+    node = _nodelist[i];
+    delete node;
+  }
+
+  clear();
+}
 #include <click/vector.cc>
 template class Vector<DHTnode*>;
 

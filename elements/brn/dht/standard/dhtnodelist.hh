@@ -24,6 +24,8 @@ class DHTnodelist {
     int size();
     void sort();
     void clear();
+    void del();                             //delete elements of list and clear
+
 
   private:
     Vector<DHTnode*> _nodelist;
