@@ -25,12 +25,12 @@
 #include <click/element.hh>
 #include "elements/brn/common.hh"
 #include "elements/brn/routing/linkstat/brnlinktable.hh"
-#include "elements/brn/brnprotocol/brnencap.hh"
+#include "brnencap.hh"
 #include "dsrencap.hh"
 #include "dsrdecap.hh"
 #include "reqforwarder.hh"
 #include <click/timer.hh>
-#include "elements/brn/routing/metric/genericmetric.hh"
+#include "elements/brn/routing/linkstat/metric/genericmetric.hh"
 
 CLICK_DECLS
 

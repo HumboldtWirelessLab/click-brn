@@ -87,14 +87,14 @@ enum field_type {
 };
 
 struct opt_info {
-  char	*text;
+  const char	*text;
   enum field_type ftype;
   const void *data;
 };
 
 typedef struct true_false_string {
-  char    *true_string;
-  char    *false_string;
+  const char    *true_string;
+  const char    *false_string;
 } true_false_string;
 
 

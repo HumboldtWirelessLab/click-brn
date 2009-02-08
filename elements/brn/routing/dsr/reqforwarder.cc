@@ -68,7 +68,7 @@ RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "ROUTEQUERIER", cpkP+cpkM, cpElement, /*"RouteQuerier",*/ &_route_querier,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"Client assoc list",*/ &_client_assoc_lst,
       "MINMETRIC", cpkP+cpkM, cpInteger, /*"Min metric for forwardd routerequest",*/&_min_metric_rreq_fwd,
-      "IAPP", cpkP+cpkM, cpElement, /*"BRN iapp",*/ &_iapp,
+      "IAPP", cpkP, cpElement, /*"BRN iapp",*/ &_iapp,
       cpEnd) < 0)
     return -1;
 

@@ -24,22 +24,25 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
   EtherAddress me;
 
   if (cp_va_kparse(conf, this, errh,
-      "DEVICENAME", cpkP+cpkM, cpString, &_dev_info.device_name,
+      "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
-      "DEVICETYPE", cpkP+cpkM, cpString, &_dev_info.device_type,
+      "DEVICETYPE", cpkP+cpkM, cpString, &device_type,
       cpEnd) < 0)
     return -1;
 
   unsigned char en[6];
   bool val;
 
+  if ( ( device_type != WIRELESS ) && ( device_type != WIRED ) )
+    return errh->error("Unsupported devicetype");
+
   if( EtherAddress() != me ) {
-    _dev_info.device_etheraddress = new EtherAddress(me);
+    device_etheraddress = new EtherAddress(me);
   } else {
-    val = BRNAddressInfo::query_ethernet(_dev_info.device_name + ":eth", en, this);
+    val = BRNAddressInfo::query_ethernet(device_name + ":eth", en, this);
     if (val) {
-      _dev_info.device_etheraddress = new EtherAddress(en);
-      BRN_DEBUG(" * ether address of device : %s", _dev_info.device_etheraddress->unparse().c_str());
+      device_etheraddress = new EtherAddress(en);
+      BRN_DEBUG(" * ether address of device : %s", device_etheraddress->unparse().c_str());
     }
   }
 
@@ -55,25 +58,25 @@ BRN2Device::initialize(ErrorHandler *)
 const String&
 BRN2Device::getDeviceName()
 {
-  return _dev_info.device_name;
+  return device_name;
 }
 
 void
 BRN2Device::setDeviceName(String dev_name)
 {
-  _dev_info.device_name = dev_name;
+  device_name = dev_name;
 }
 
 EtherAddress *
 BRN2Device::getEtherAddress()
 {
-  return _dev_info.device_etheraddress;
+  return device_etheraddress;
 }
 
 const String&
 BRN2Device::getDeviceType()
 {
-  return _dev_info.device_type;
+  return device_type;
 }
 
 //-----------------------------------------------------------------------------

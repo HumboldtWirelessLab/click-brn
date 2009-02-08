@@ -50,6 +50,20 @@ BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
 }
 
 uint8_t
+BRNPacketAnno::devicenumber_anno(Packet *p)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
+  return (dst[0]);
+}
+
+void
+BRNPacketAnno::set_devicenumber_anno(Packet *p, uint8_t devnum)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
+  dst[0] = devnum;
+}
+
+uint8_t
 BRNPacketAnno::tos_anno(Packet *p)
 {
   uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);

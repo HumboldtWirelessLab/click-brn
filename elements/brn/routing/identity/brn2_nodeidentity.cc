@@ -22,13 +22,6 @@ BRN2NodeIdentity::~BRN2NodeIdentity()
 int
 BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
- /* if (conf.size() != noutputs())
-    return errh->error("need %d arguments, one per output port", noutputs());
-*/
-  //int before = errh->nerrors();
-
-  //Element *e;
-
   for (int slot = 0; slot < conf.size(); slot++) {
     Element *e = cp_element(conf[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -36,10 +29,11 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     }
     else {
-      click_chatter("Device: %s EtherAddress: %s Type: %s",
+/*    click_chatter("Device: %s EtherAddress: %s Type: %s",
                     brn_device->getDeviceName().c_str(),
                     brn_device->getEtherAddress()->unparse().c_str(),
                     brn_device->getDeviceType().c_str());
+*/
       _node_devices.push_back(brn_device);
     }
   }
@@ -55,22 +49,43 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
 
 /* returns true if the given ethernet address belongs to this node (e.g. wlan-dev)*/
 bool
-BRN2NodeIdentity::isIdentical(EtherAddress *)
+BRN2NodeIdentity::isIdentical(EtherAddress *e)
 {
-/*  if (!_me_wlan || !_me_vlan0)
-    return false;
-
-  if ( (*e == *_me_wlan) || (*e == *_me_vlan0) ) {
-    return true;
-  } else {
-    return false;
-  }*/
-  return true;
+  return ( getDeviceNumber(e) != -1 );
 }
+
+int
+BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
+  BRN2Device *dev;
+
+  for ( int i = 0; i < _node_devices.size(); i++ ) {
+    dev = _node_devices[i];
+    if ( *e == *(dev->getEtherAddress()) ) return i;
+  }
+
+  return -1;
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
+
+static String
+read_devinfo_param(Element *e, void *)
+{
+  StringAccum sa;
+  BRN2Device *dev;
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  for ( int i = 0; i < id->_node_devices.size(); i++ ) {
+    dev = id->_node_devices[i];
+    sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
+    sa << " EtherAddress: " << dev->getEtherAddress()->unparse().c_str();// << "\n";
+    sa << " Type: " << dev->getDeviceType().c_str()  << "\n"; //<< "\n"; 
+  }
+
+  return sa.take_string();
+}
 
 static String
 read_debug_param(Element *e, void *)
@@ -97,6 +112,7 @@ BRN2NodeIdentity::add_handlers()
 {
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
+  add_read_handler("devinfo", read_devinfo_param, 0);
 }
 
 #include <click/vector.cc>

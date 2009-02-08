@@ -13,6 +13,9 @@ CLICK_DECLS
 #define UDEVICE_ANNO_OFFSET   10
 #define UDEVICE_ANNO_SIZE      6 
 
+#define DEVICENUMBER_ANNO_OFFSET   10
+#define DEVICENUMBER_ANNO_SIZE      1
+
 #define TOS_ANNO_OFFSET       20 
 #define TOS_ANNO_SIZE          1
 
@@ -34,6 +37,9 @@ class BRNPacketAnno : public Element { public:
 
   static String udevice_anno(Packet *p);
   static void set_udevice_anno(Packet *p, const char *device);
+
+  static uint8_t devicenumber_anno(Packet *p);
+  static void set_devicenumber_anno(Packet *p, uint8_t tos);
 
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);

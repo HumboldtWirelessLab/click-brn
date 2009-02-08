@@ -14,24 +14,16 @@ CLICK_DECLS
  * =d
  */
 
-
-class DeviceInfo {
-  public:
-    String device_name;
-    EtherAddress *device_etheraddress;
-    String device_type;
-
-    DeviceInfo() {
-    }
-
-    ~DeviceInfo() {
-    }
-
-};
+#define WIRELESS "WIRELESS"
+#define WIRED "WIRED" 
 
 
 class BRN2Device : public Element {
+  public:
 
+    String device_name;
+    EtherAddress *device_etheraddress;
+    String device_type;
 
   public:
     //
@@ -63,7 +55,7 @@ class BRN2Device : public Element {
     //
     //member
     //
-    DeviceInfo _dev_info;
+//    DeviceInfo _dev_info;
 
 };
 

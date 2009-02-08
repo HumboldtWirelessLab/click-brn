@@ -665,7 +665,7 @@ BRNLinkStat::simple_action(Packet *p)
   }
 
   // Default to the rate given in the packet.
-  uint8_t rate = lp->_rate;
+  uint16_t rate = lp->_rate;
 
 #ifndef CLICK_NS
   struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->all_user_anno();

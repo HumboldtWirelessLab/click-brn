@@ -28,7 +28,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include "routequerier.hh"
-#include "elements/brn/routing/metric/genericmetric.hh"
+#include "elements/brn/routing/linkstat/metric/genericmetric.hh"
 #include "elements/brn/wifi/ap/iapp/brniappstationtracker.hh"
 //#include "printetheranno.hh"
 
@@ -83,7 +83,7 @@ RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "DSRENCAP",  cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
       "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
       "DSRENCAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
-      "IAPPSTATIONTRACKER", cpkP+cpkM, cpElement, /*"BrnIappStationTracker",*/ &_brn_iapp,
+      "IAPPSTATIONTRACKER", cpkP, cpElement, /*"BrnIappStationTracker",*/ &_brn_iapp,
       cpEnd) < 0)
     return -1;
 
@@ -99,8 +99,8 @@ RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_dsr_decap || !_dsr_decap->cast("DSRDecap")) 
     return errh->error("DSRDecap not specified");
 
-  if ( _brn_iapp && !_brn_iapp->cast("BrnIappStationTracker"))
-    return errh->error("BrnIappStationTracker not specified");
+  //if ( _brn_iapp && !_brn_iapp->cast("BrnIappStationTracker"))
+  //  return errh->error("BrnIappStationTracker not specified");
 
   return 0;
 }

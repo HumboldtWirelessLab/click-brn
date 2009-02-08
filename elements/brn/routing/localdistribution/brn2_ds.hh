@@ -18,28 +18,28 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef SETSOURCEANDOUTPUTFORDEVICEELEMENT_HH
-#define SETSOURCEANDOUTPUTFORDEVICEELEMENT_HH
+#ifndef BRN2DSELEMENT_HH
+#define BRN2DSELEMENT_HH
 
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-#include <click/bighashmap.hh>
-#include <click/element.hh>
-#include "brn.h"
-#include "elements/brn/nodeidentity.hh"
-#include "elements/brn/wifi/ap/assoclist.hh"
-#include "elements/brn/routing/linkstat/brnlinktable.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
-CLICK_DECLS
 /*
  * =c
- * SetSourceAndOutputForDevice()
- * =s Find out the appropiate device from the packets destination address, set source address according to device
- * and output for device. Broadcasts are outputted on every device (MultiDeviceBroadcast)
- *
+ * BRN2DS()
+ * =s the brn distribution system
+ * forwards packet to the right device (wlan0, vlan0, vlan2, ...)
+ * packets which could not be forwarded are pushed out on optional output 3
  * =d
  */
-class SetSourceAndOutputForDevice : public Element {
+
+#include <click/element.hh>
+
+CLICK_DECLS
+
+
+class BRN2DS : public Element {
 
  public:
   //
@@ -50,11 +50,11 @@ class SetSourceAndOutputForDevice : public Element {
   //
   //methods
   //
-  SetSourceAndOutputForDevice();
-  ~SetSourceAndOutputForDevice();
+  BRN2DS();
+  ~BRN2DS();
 
-  const char *class_name() const  { return "SetSourceAndOutputForDevice"; }
-  const char *port_count() const  { return "1/-"; }
+  const char *class_name() const  { return "BRN2DS"; }
+  const char *port_count() const  { return "1/2-"; }
   const char *processing() const  { return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
@@ -67,19 +67,12 @@ class SetSourceAndOutputForDevice : public Element {
 
   void add_handlers();
 
-  void handle_unicast(Packet* p_in);
-  void handle_broadcast(Packet* p_in);
-
  private:
   //
   //member
   //
-  NodeIdentity *_id;
-  BrnLinkTable *_link_table;
-  AssocList *_stations;
-
-  typedef HashMap<EtherAddress, int> EtherAddress2OutputPort;
-  EtherAddress2OutputPort _ports;
+  BRN2NodeIdentity *_me;
+  int countDevices;
 };
 
 CLICK_ENDDECLS

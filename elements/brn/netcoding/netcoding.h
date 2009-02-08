@@ -12,7 +12,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
  */
 
@@ -48,7 +48,7 @@ CLICK_DECLS
 // The dimensions of the galois fields and external headers, as well as how many
 // of the provided fields are actually used are configured at run time.
 #define MAX_FRAGMENTS_IN_BATCH 256
-#define LAST_FRAGMENTS_LENGTH (MAX_FRAGMENTS_IN_BATCH / 8 + (MAX_FRAGMENTS_IN_BATCH % 8 ? 1 : 0))  
+#define LAST_FRAGMENTS_LENGTH (MAX_FRAGMENTS_IN_BATCH / 8 + (MAX_FRAGMENTS_IN_BATCH % 8 ? 1 : 0))
 
 #define PADDING_LENGTH(frags) ((BYTE_ALIGN - ((frags * sizeof(int) + 8 + LAST_FRAGMENTS_LENGTH) % BYTE_ALIGN)) % BYTE_ALIGN)
 
@@ -64,8 +64,11 @@ inline bool isBitSet(const uint8_t * const fragments, unsigned i) {
 		return fragByte & (1 << i % 8);
 }
 
-struct click_brn_netcoding
-{
+#ifdef _WIN32
+#pragma pack(push,1)
+#endif //_WIN32
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_brn_netcoding {,
 	unsigned & operator[] ( unsigned i )
 	{
 		return multipliers[i];
@@ -87,7 +90,7 @@ struct click_brn_netcoding
 			last_fragments[i] = 0;
 		fragments_in_batch = MAX_FRAGMENTS_IN_BATCH;
 	}
-	
+
 	bool valid() const
 	{
 		return batch_id != NETCODING_INVALID;
@@ -113,19 +116,21 @@ struct click_brn_netcoding
 	uint32_t fragments_in_batch;
 	uint8_t last_fragments[LAST_FRAGMENTS_LENGTH];
 	unsigned multipliers[MAX_FRAGMENTS_IN_BATCH];
-
-	// compiler adds a random padding automatically, so we better do that explicitly to avoid
-	// failing CRC; originally this should be eliminated with CLICK_CXX_PROTECT, but all the 
-	// convenience of get(), put(), contructors, operator[] would be lost ... :(
-	uint8_t padding[PADDING_LENGTH(MAX_FRAGMENTS_IN_BATCH)];
-};
+});
+#ifdef _WIN32
+#pragma pack(pop)
+#endif //_WIN32
 
 // the general netcoding header is packed into fragment and packet headers by the FragmentSender
 // and unpacked by the FragmentReceiver
 //
 // Fragment headers are just tightly packet bit salad, so they aren't declared here.
 // HeaderPacket knows how to deal with them
-typedef struct click_brn_netcoding_packet {
+#ifdef _WIN32
+#pragma pack(push,1)
+#endif //_WIN32
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_brn_netcoding_packet {,
 	bool isLastFragment(unsigned i) const {
 		return isBitSet(last_fragments, i);
 	}
@@ -145,9 +150,11 @@ typedef struct click_brn_netcoding_packet {
 	uint32_t batch_id;
 	uint32_t fragments_in_batch;
 	uint8_t last_fragments[LAST_FRAGMENTS_LENGTH];
-	uint8_t padding[BYTE_ALIGN - ((12 + LAST_FRAGMENTS_LENGTH) % BYTE_ALIGN)];
 	uint32_t crc; // crc32 over dsr and netcoding_packet header
-} click_brn_netcoding_packet;
+});
+#ifdef _WIN32
+#pragma pack(pop)
+#endif //_WIN32
 
 inline bool operator==(const EtherAddress & a, const hwaddr & b) {
 	const unsigned char * adata = a.data();

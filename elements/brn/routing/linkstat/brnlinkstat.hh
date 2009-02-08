@@ -73,8 +73,8 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <click/string.hh>
 #include <elements/wifi/availablerates.hh>
 #include "elements/brn/nodeidentity.hh"
-#include "elements/brn/routing/metric/brnettmetric.hh"
-#include "elements/brn/routing/metric/brnetxmetric.hh"
+#include "elements/brn/routing/linkstat/metric/brnettmetric.hh"
+#include "elements/brn/routing/linkstat/metric/brnetxmetric.hh"
 #include <click/timestamp.hh>
 #include "elements/brn/analysis/brnavgcnt.hh"
 #include "elements/brn/dht/falcondht.hh"

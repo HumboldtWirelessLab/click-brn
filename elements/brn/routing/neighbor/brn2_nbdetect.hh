@@ -18,54 +18,48 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef BRN2NODEIDENTITYELEMENT_HH
-#define BRN2NODEIDENTITYELEMENT_HH
+#ifndef NBDETECTELEMENT_HH
+#define NBDETECTELEMENT_HH
 
 #include <click/etheraddress.hh>
-#include <click/vector.hh>
+#include <click/bighashmap.hh>
+#include <elements/brn/routing/identity/brn2_device.hh>
+#include <elements/brn/routing/neighbor/brn2_nblist.hh>
 #include <click/element.hh>
-#include "brn2_device.hh"
 
 CLICK_DECLS
-
 /*
  * =c
- * BRN2NodeIdentity()
- * =s a list of ethernet addresses
- * stores the ethernet address of associated node (clients, brn nodes) ...
+ * NeighborDetect()
+ * =s a list of information about neighbor nodes (brn-nodes)
+ * stores the ethernet address of a neighbor node and a interface to reach it (e.g. wlan0).
  * =d
+ * 
+ * TODO currently not entries will removed from the the list, implement a way
+ * to remove them.
  */
-class BRN2NodeIdentity : public Element {
+class NeighborDetect : public Element {
 
  public:
-  //
-  //member
-  //
-  int _debug;
 
   //
   //methods
   //
-  BRN2NodeIdentity();
-  ~BRN2NodeIdentity();
+  NeighborDetect();
+  ~NeighborDetect();
 
-  const char *class_name() const	{ return "BRN2NodeIdentity"; }
+  const char *class_name() const	{ return "NeighborDetect"; }
+  const char *port_count() const	{ return "1/1"; }
   const char *processing() const	{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
-
-  //returns true if the given ethernet address belongs to this node (e.g. wlan-dev)
-  bool isIdentical(EtherAddress *);
-
+  Packet *simple_action(Packet *);
   int initialize(ErrorHandler *);
   void add_handlers();
 
- private:
-  //
-  //member
-  //
-   Vector<BRN2Device*> _node_devices;
+  BRN2NBList *_nblist;
+  BRN2Device *_device;
 
 };
 

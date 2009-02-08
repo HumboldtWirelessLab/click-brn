@@ -1,0 +1,2 @@
+Broadcast flags on Device to signal, whether device is able/allowed to send/receive broadcast.
+Should be used bey local distribution.
