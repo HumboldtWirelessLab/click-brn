@@ -20,19 +20,8 @@ CLICK_DECLS
 
 class BRN2Device : public Element {
   public:
-
-    String device_name;
-    EtherAddress *device_etheraddress;
-    String device_type;
-
-  public:
     //
-  //member
-    //
-    int _debug;
-
-    //
-  //methods
+    //methods
     //
     BRN2Device();
     ~BRN2Device();
@@ -50,12 +39,24 @@ class BRN2Device : public Element {
     void setDeviceName(String dev_name);
     EtherAddress *getEtherAddress();
     const String& getDeviceType();
+    void setDeviceNumber(uint8_t);
+    uint8_t getDeviceNumber();
+
+    //
+    //member
+    //
+    int _debug;
+
 
   private:
     //
     //member
     //
-//    DeviceInfo _dev_info;
+
+    String device_name;
+    EtherAddress *device_etheraddress;
+    String device_type;
+    uint8_t device_number;
 
 };
 

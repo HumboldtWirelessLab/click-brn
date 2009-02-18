@@ -10,7 +10,8 @@
 CLICK_DECLS
 
 BRN2Device::BRN2Device()
-  : _debug(BrnLogger::DEFAULT)
+  : _debug(BrnLogger::DEFAULT),
+    device_number(0)
 {
 }
 
@@ -78,6 +79,17 @@ BRN2Device::getDeviceType()
 {
   return device_type;
 }
+
+void
+BRN2Device::setDeviceNumber(uint8_t number) {
+  device_number = number;
+}
+
+uint8_t
+BRN2Device::getDeviceNumber() {
+  return device_number;
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
