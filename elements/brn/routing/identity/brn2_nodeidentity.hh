@@ -54,18 +54,19 @@ class BRN2NodeIdentity : public Element {
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
+  int initialize(ErrorHandler *);
+  void add_handlers();
 
   //returns true if the given ethernet address belongs to this node (e.g. wlan-dev)
   bool isIdentical(EtherAddress *);
 
+
   int getDeviceNumber(EtherAddress *);
-
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
-  Vector<BRN2Device*> _node_devices;
-
   int countDevices() { return _node_devices.size(); }
+  BRN2Device *getDeviceByNumber(uint8_t);
+
+
+  Vector<BRN2Device*> _node_devices;   //TODO: should be private
 
  private:
   //

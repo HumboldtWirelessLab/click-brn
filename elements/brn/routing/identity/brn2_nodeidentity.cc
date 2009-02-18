@@ -66,6 +66,12 @@ BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
   return -1;
 }
 
+BRN2Device *
+BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
+  if ( num < _node_devices.size() ) return _node_devices[num];
+
+  return NULL;
+}
 
 //-----------------------------------------------------------------------------
 // Handler
