@@ -298,6 +298,8 @@ inline unsigned int hashcode(const ForwardedReqKey &f) {
 			 hashcode(f._target) ^
 			 f._id));
 }
+//TODO: Remove next line
+#define FRHASHCODE
 
 CLICK_ENDDECLS
 #endif
