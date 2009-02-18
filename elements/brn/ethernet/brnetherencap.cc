@@ -29,6 +29,10 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
+#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brn.h"
+
+
 CLICK_DECLS
 
 BRNEtherEncap::BRNEtherEncap()
@@ -48,42 +52,48 @@ BRNEtherEncap::configure(Vector<String> &, ErrorHandler *)
 Packet *
 BRNEtherEncap::smaction(Packet *p)
 {
-  const click_ether *ether_anno = (const click_ether *)p->ether_header();
-  EtherAddress src_addr(ether_anno->ether_shost);
-  EtherAddress dst_addr(ether_anno->ether_dhost);
-
-  if (WritablePacket *q = p->push(14)) {
-    click_ether *ether = (click_ether *) q->data();
-    //invert addresses
-    memcpy(ether->ether_dhost, src_addr.data(), 6);
-    memcpy(ether->ether_shost, dst_addr.data(), 6);
-    ether->ether_type = ether_anno->ether_type;
-    return q;
-  } else {
-    return 0;
-  }
-
-  // read mac annotations - jkm 2005-05-25
-  // get mac anno
-/*
   click_ether *annotated_ether = (click_ether *)p->ether_header();
 
   // are the mac annotations available?
   if (annotated_ether) {
+
     if (WritablePacket *q = p->push(14)) {
+
       click_ether *ether = (click_ether *) q->data();
+
       memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
       memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
+
+      EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
+      memcpy(ether->ether_dhost, dst.data(), 6);
+
       ether->ether_type = annotated_ether->ether_type;
+
       return q;
     } else {
+      p->kill();
       return 0;
     }
   } else {
-    click_chatter("The mac header anno isn't set.\n");
-    return 0;
+    click_chatter("The mac header anno isn't set. Use annos\n");
+
+    if (WritablePacket *q = p->push(14)) {
+
+      click_ether *ether = (click_ether *) q->data();
+      q->set_ether_header(ether);
+
+      memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(p)).data(), 6);
+      memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(p)).data(), 6);
+      ether->ether_type = htons(ETHERTYPE_BRN);
+
+      return q;
+    } else {
+      p->kill();
+      return 0;
+    }
+
   }
-*/
+
 }
 
 void
