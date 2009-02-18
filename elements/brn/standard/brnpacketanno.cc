@@ -26,6 +26,18 @@ BRNPacketAnno::set_dst_ether_anno(Packet *p, const EtherAddress &a)
   memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), a.data(), DST_ETHER_ANNO_SIZE);
 }
 
+EtherAddress
+BRNPacketAnno::src_ether_anno(Packet *p)
+{
+  return EtherAddress((const unsigned char *) ((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET));
+}
+
+void
+BRNPacketAnno::set_src_ether_anno(Packet *p, const EtherAddress &a)
+{
+  memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), a.data(), SRC_ETHER_ANNO_SIZE);
+}
+
 String
 BRNPacketAnno::udevice_anno(Packet *p)
 {
@@ -50,7 +62,7 @@ BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
 }
 
 uint8_t
-BRNPacketAnno::devicenumber_anno(Packet *p)
+BRNPacketAnno::devicenumber_anno(const Packet *p)
 {
   uint8_t* dst = ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
   return (dst[0]);
