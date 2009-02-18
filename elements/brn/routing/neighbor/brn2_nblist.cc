@@ -63,7 +63,7 @@ BRN2NBList::printNeighbors()
     sa << " * nb: " << nb_info._eth.unparse() << " via device: ";
     for ( int d = 0; d < nb_info._devs.size(); d++ ) {
      dev = nb_info._devs[d];
-     sa << dev->device_name.c_str();
+     sa << dev->getDeviceName().c_str();
      if ( (d + 1) != nb_info._devs.size() ) 
        sa << ",";
     }
@@ -92,7 +92,7 @@ BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
   int d;
   for ( d = 0; d < nb_info->_devs.size(); d++ ) {
     acdev = nb_info->_devs[d];
-    if ( acdev->device_name == dev->device_name ) break;
+    if ( acdev->getDeviceName() == dev->getDeviceName() ) break;
   }
 
   if ( d == nb_info->_devs.size() )

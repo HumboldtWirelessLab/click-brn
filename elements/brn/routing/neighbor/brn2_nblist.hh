@@ -16,11 +16,16 @@ class BRN2NBList : public Element
     class NeighborInfo {
       public:
 
+      //  enum { FRIEND,    //dst of a packet was me
+      //         FOREIGN };  //only broadcast and foreign destination
+
         EtherAddress _eth;
         Vector<BRN2Device*> _devs;
 
         struct timeval _last_seen;
 
+        int type;
+ 
         NeighborInfo()
         {
         }

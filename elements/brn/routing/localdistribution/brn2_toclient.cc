@@ -50,7 +50,7 @@ BRN2ToStations::configure(Vector<String> &conf, ErrorHandler* errh)
     cpEnd) < 0)
     return -1;
 
-  if (!_stations || !_stations->cast("AssocList")) 
+  if (!_stations || !_stations->cast("BRN2AssocList")) 
     return errh->error("AssocList not specified");
 
   return 0;
