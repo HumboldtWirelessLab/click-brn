@@ -66,11 +66,11 @@ BRN2BeaconSource::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
 		  /* not required */
 		//  cpKeywords,
-      "DEBUG", cpkP+cpkM, cpBool, /*"Debug",*/ &_debug,
       "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
       "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
-      "BRNVLAN", cpkP+cpkM, cpElement, /*"brn vlans",*/ &_brn_vlan,
-      "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
+      "BRNVLAN", cpkP, cpElement, /*"brn vlans",*/ &_brn_vlan,
+      "ACTIVE", cpkP, cpBool, /*"Active",*/ &_active,
+      "DEBUG", cpkP, cpBool, /*"Debug",*/ &_debug,
     cpEnd) < 0)
     return -1;
 
