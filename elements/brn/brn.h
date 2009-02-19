@@ -50,13 +50,14 @@ CLICK_CXX_PROTECT
 #define ETHERTYPE_BRN          0x8086 /* Berlin Roofnet Protocol */
 
 /* define structure of Berlin Roofnet packet (BRN) */
-struct click_brn {
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_brn {,
     uint8_t   dst_port;
     uint8_t   src_port;
     uint16_t  body_length;
     uint8_t   ttl;
     uint8_t   tos;          ///< type of service
-};
+});
 
 #define BRN_TOS_BE     0
 #define BRN_TOS_HP     1
@@ -73,6 +74,7 @@ struct hwaddr {
 #define BRN_PORT_DHT              7
 #define BRN_PORT_IAPP             8
 #define BRN_PORT_GATEWAY          9 
+#define BRN_PORT_FLOW            10
 
 struct click_brn_neighbor_beacon {
   uint8_t      operation; /*rq/response*/
