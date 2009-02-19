@@ -56,7 +56,7 @@ BRN2PacketSource::run_timer(Timer *t)
 {
   Packet *packet_out;
 
-  if ( t == NULL ) click_chatter("Timmer is NULL");
+  if ( t == NULL ) click_chatter("Timer is NULL");
 
   _timer.reschedule_after_msec(_interval);
 
