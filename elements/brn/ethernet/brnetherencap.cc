@@ -52,48 +52,41 @@ BRNEtherEncap::configure(Vector<String> &, ErrorHandler *)
 Packet *
 BRNEtherEncap::smaction(Packet *p)
 {
-  click_ether *annotated_ether = (click_ether *)p->ether_header();
+  if (WritablePacket *q = p->push(14)) {
 
-  // are the mac annotations available?
-  if (annotated_ether) {
+    click_ether *ether = (click_ether *) q->data();
+    click_ether *annotated_ether = (click_ether *)p->ether_header();
 
-    if (WritablePacket *q = p->push(14)) {
-
-      click_ether *ether = (click_ether *) q->data();
+    if (annotated_ether) {  // are the mac annotations available?
 
       memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
       memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
-
-      EtherAddress dst = BRNPacketAnno::dst_ether_anno(p);
-      memcpy(ether->ether_dhost, dst.data(), 6);
-
       ether->ether_type = annotated_ether->ether_type;
 
-      return q;
+      //debug  //TODO: Remove this
+      if ( memcmp((BRNPacketAnno::dst_ether_anno(p)).data(),annotated_ether->ether_dhost,6) != 0 ) {
+        click_chatter("header is set, but DST Addresses differs");
+        click_chatter("Header: %s  Anno: %s",
+                       EtherAddress(annotated_ether->ether_dhost).unparse().c_str(),
+                       (BRNPacketAnno::dst_ether_anno(p)).unparse().c_str());
+      }
+
     } else {
-      p->kill();
-      return 0;
-    }
-  } else {
-    click_chatter("The mac header anno isn't set. Use annos\n");
 
-    if (WritablePacket *q = p->push(14)) {
-
-      click_ether *ether = (click_ether *) q->data();
-      q->set_ether_header(ether);
-
+      click_chatter("The mac header anno isn't set. Use annos\n");
       memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(p)).data(), 6);
       memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(p)).data(), 6);
-      ether->ether_type = htons(ETHERTYPE_BRN);
+      ether->ether_type = htons(BRNPacketAnno::ethertype_anno(p));
 
-      return q;
-    } else {
-      p->kill();
-      return 0;
     }
 
-  }
+    q->set_ether_header(ether);
+    return q;
 
+  } else {
+    p->kill();
+    return 0;
+  }
 }
 
 void
