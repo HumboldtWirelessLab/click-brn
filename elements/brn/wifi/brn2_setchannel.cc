@@ -5,7 +5,7 @@
 #include <click/straccum.hh>
 
 #include "brn2_setchannel.hh"
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

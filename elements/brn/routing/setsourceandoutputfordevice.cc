@@ -32,7 +32,7 @@
 #include <click/hashmap.hh>
 
 #include "setsourceandoutputfordevice.hh"
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

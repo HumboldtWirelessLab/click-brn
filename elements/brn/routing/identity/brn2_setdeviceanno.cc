@@ -29,7 +29,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 BRN2SetDeviceAnno::BRN2SetDeviceAnno()
@@ -77,19 +77,19 @@ BRN2SetDeviceAnno::simple_action(Packet *p_in)
 static String
 read_debug_param(Element *e, void *)
 {
-  BRN2SetDeviceAnno *nl = (BRN2SetDeviceAnno *)e;
+//  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
   return /*String(nl->_debug) + */"not supported\n";
 }
 
 static int 
 write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
-  BRN2SetDeviceAnno *nl = (BRN2SetDeviceAnno *)e;
+//  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 
     return errh->error("debug parameter must be an integer value between 0 and 4");
-  //nl->_debug = debug;
+  //da->_debug = debug;
   return 0;
 }
 

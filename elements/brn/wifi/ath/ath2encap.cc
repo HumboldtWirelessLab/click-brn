@@ -8,7 +8,7 @@
 #include <clicknet/llc.h>
 #include "elements/wifi/athdesc.h"
 #include "ath2encap.hh"
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

@@ -30,7 +30,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 BRN2DSREncap::BRN2DSREncap()

@@ -25,8 +25,8 @@
 
 #include "ncdecoder.hh"
 #include <elements/brn/brn.h>
-#include "elements/brn/standard/brnpacketanno.hh"
-#define ETHERTYPE_BRN          0x8086
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+//#define ETHERTYPE_BRN          0x8086
 CLICK_DECLS
 
 int NetcodingDecoder::_debug = BrnLogger::DEFAULT;

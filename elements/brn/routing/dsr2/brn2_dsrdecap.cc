@@ -31,7 +31,7 @@
 #include <click/straccum.hh>
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

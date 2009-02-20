@@ -32,7 +32,7 @@
 #include <click/straccum.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
