@@ -428,6 +428,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   //TODO: ANNO or header ??
   BRNPacketAnno::set_src_ether_anno(p,EtherAddress(indev->getEtherAddress()->data()));
   BRNPacketAnno::set_dst_ether_anno(p,EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff"));
+  BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
 
   click_ether *annotated_ether = (click_ether *)p->ether_header();
   memcpy(ether->ether_shost,indev->getEtherAddress()->data() , 6);

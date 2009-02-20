@@ -155,11 +155,20 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
     EtherAddress next_hop(src_route[route_len - 2].data());
     BRN_DEBUG(" * testing next hop %s", next_hop.unparse().c_str());
     BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   } else { // final destination is the last hop
     EtherAddress next_hop(src_route[0].data());
     BRN_DEBUG(" * next hop %s", next_hop.unparse().c_str());
     BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
+
+  //TODO: remove the next stuff
+  click_ether *cether = (click_ether *)p->ether_header();
+  if ( cether != NULL ) {
+    memcpy(cether->ether_dhost,(BRNPacketAnno::dst_ether_anno(p)).data() , 6);
+  }
+
   return p;
 }
 
@@ -256,8 +265,9 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   if (reply_hop_count > 0) { // next hop on tour
     BRNPacketAnno::set_src_ether_anno(p,EtherAddress(dsr->dsr_src.data));
     BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dsr->addr[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   } else { // final destination is the last hop
-    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dst.data()));
+    BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dst.data()));  BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
 
   BRN_DEBUG(" * next hop: %s", EtherAddress(dsr->addr[index].hw.data).unparse().c_str());
@@ -334,8 +344,10 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   if (src_hop_count > 0) { // next hop on tour
     BRN_DEBUG(" * set dst anno: %s, index %d", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str(), index);
     BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(dsr_rerr->addr[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   } else { // final destination is the last hop
     BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(src.data()));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
 
   BRN_DEBUG(" * next hop: %s", EtherAddress(dsr_rerr->addr[index].hw.data).unparse().c_str());
@@ -377,8 +389,10 @@ BRN2DSREncap::skipInMemoryHops(Packet *p_in)
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   } else {
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->addr[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   }
 
   return p_in;
@@ -442,6 +456,7 @@ BRN2DSREncap::set_packet_to_next_hop(Packet * p_in)
   if (brn_dsr->dsr_segsleft == 0) {
     BRN_DEBUG(" * no segments in route available; use final dest as next hop addr.");
     BRNPacketAnno::set_dst_ether_anno(p,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
 
   return p;

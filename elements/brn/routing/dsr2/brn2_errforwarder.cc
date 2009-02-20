@@ -307,8 +307,10 @@ BRN2ErrorForwarder::skipInMemoryHops(Packet *p_in)
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   } else {
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->addr[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   }
 
   return p_in;

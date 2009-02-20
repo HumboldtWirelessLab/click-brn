@@ -125,8 +125,10 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   } else {
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->addr[index].hw.data));
+    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   }
 
   return p_in;
@@ -139,12 +141,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
 
   if (port == 0) {  // previously generated src packet needs to be forwarded
     Packet *p_out = skipInMemoryHops(p_in);
-    // packet has to be forwarded
-    click_ether *ether = (click_ether *)p_out->ether_header();//TODO: CHECK: this is important ??
-    ether->ether_type = htons(ETHERTYPE_BRN);                //TODO: CHECK: this is important ??
-
     output(0).push(p_out);
-
   } else if (port == 1) { // src packets received by this node
     BRN_DEBUG(" * source routed packet received from other node.");
 
