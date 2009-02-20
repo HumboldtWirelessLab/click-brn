@@ -18,20 +18,25 @@ CLICK_DECLS
 #define UDEVICE_ANNO_OFFSET     10
 #define UDEVICE_ANNO_SIZE        6 
 
+/* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
-/* next annos ( byte 40-43 ) overwrites PERFCTR_ANNO */
+#define ETHERTYPE_ANNO_OFFSET    40
+#define ETHERTYPE_ANNO_SIZE       2
 
-#define DEVICENUMBER_ANNO_OFFSET   40
-#define DEVICENUMBER_ANNO_SIZE      1
+#define DEVICENUMBER_ANNO_OFFSET 42
+#define DEVICENUMBER_ANNO_SIZE    1
 
-#define TOS_ANNO_OFFSET         41 
-#define TOS_ANNO_SIZE            1
+#define VLAN_ANNO_OFFSET         43
+#define VLAN_ANNO_SIZE            1
 
-#define CHANNEL_ANNO_OFFSET     42
-#define CHANNEL_ANNO_SIZE        1
+#define TOS_ANNO_OFFSET          44 
+#define TOS_ANNO_SIZE             1
 
-#define OPERATION_ANNO_OFFSET   43
-#define OPERATION_ANNO_SIZE      1
+#define CHANNEL_ANNO_OFFSET      45
+#define CHANNEL_ANNO_SIZE         1
+
+#define OPERATION_ANNO_OFFSET    46
+#define OPERATION_ANNO_SIZE       1
 
 
 /* Operations */
@@ -53,11 +58,21 @@ class BRNPacketAnno : public Element { public:
   static EtherAddress src_ether_anno(Packet *p);
   static void set_src_ether_anno(Packet *p, const EtherAddress &);
 
+  static void set_src_and_dst_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &);
+
+  static void set_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &, uint16_t);
+
+  static uint16_t ethertype_anno(Packet *p);
+  static void set_ethertype_anno(Packet *p, uint16_t);
+
   static String udevice_anno(Packet *p);
   static void set_udevice_anno(Packet *p, const char *device);
 
   static uint8_t devicenumber_anno(const Packet *p);
   static void set_devicenumber_anno(Packet *, uint8_t);
+
+  static uint8_t vlan_anno(const Packet *p);
+  static void set_vlan_anno(Packet *, uint8_t);
 
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);

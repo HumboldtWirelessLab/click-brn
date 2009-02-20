@@ -38,6 +38,32 @@ BRNPacketAnno::set_src_ether_anno(Packet *p, const EtherAddress &a)
   memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), a.data(), SRC_ETHER_ANNO_SIZE);
 }
 
+void
+BRNPacketAnno::set_src_and_dst_ether_anno(Packet *p, const EtherAddress &src, const EtherAddress &dst) {
+  memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), src.data(), SRC_ETHER_ANNO_SIZE);
+  memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), dst.data(), DST_ETHER_ANNO_SIZE);
+}
+
+void
+BRNPacketAnno::set_ether_anno(Packet *p, const EtherAddress &src, const EtherAddress &dst, uint16_t type) {
+  memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), src.data(), SRC_ETHER_ANNO_SIZE);
+  memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), dst.data(), DST_ETHER_ANNO_SIZE);
+  uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
+  t[0] = htons(type);
+}
+
+uint16_t
+BRNPacketAnno::ethertype_anno(Packet *p) {
+  uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
+  return ntohs(t[0]); 
+}
+
+void
+BRNPacketAnno::set_ethertype_anno(Packet *p, uint16_t type) {
+  uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
+  t[0] = htons(type);
+}
+
 String
 BRNPacketAnno::udevice_anno(Packet *p)
 {
@@ -73,6 +99,20 @@ BRNPacketAnno::set_devicenumber_anno(Packet *p, uint8_t devnum)
 {
   uint8_t* dst = (uint8_t*) ((p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
   dst[0] = devnum;
+}
+
+uint8_t
+BRNPacketAnno::vlan_anno(const Packet *p)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + VLAN_ANNO_OFFSET);
+  return (dst[0]);
+}
+
+void
+BRNPacketAnno::set_vlan_anno(Packet *p, uint8_t vlan)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + VLAN_ANNO_OFFSET);
+  dst[0] = vlan;
 }
 
 uint8_t

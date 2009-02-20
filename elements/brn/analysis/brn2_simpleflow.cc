@@ -11,6 +11,7 @@
 #include <click/packet.hh>
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brn.h"
 
 CLICK_DECLS
@@ -122,19 +123,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->mode = htonl(f->_type);
   header->reply = 0;
 
-  BRNPacketAnno::set_dst_ether_anno(p, f->_dst);
-  BRNPacketAnno::set_src_ether_anno(p, f->_src);
-
-  //TODO: use brnprotocol-function
-
-  p_brn = p->push(sizeof(click_brn));
-  click_brn *brn_header = (click_brn*)p_brn->data();
-
-  brn_header->dst_port = BRN_PORT_FLOW;
-  brn_header->src_port = BRN_PORT_FLOW;
-  brn_header->body_length = htons(size);
-  brn_header->ttl = 255;
-  brn_header->tos = 0;
+  BRNPacketAnno::set_ether_anno(p, f->_src, f->_dst, ETHERTYPE_BRN );
+  p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 255, 0);
 
   return p_brn;
 }
