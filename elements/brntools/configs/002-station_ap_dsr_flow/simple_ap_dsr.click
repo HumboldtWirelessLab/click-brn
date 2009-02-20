@@ -274,12 +274,8 @@ toMeAfterDsr[2] -> Print("DSR-out: Foreign/Client") -> [1]device_wifi;
 //-> EtherEncap(0x8080, deviceaddress, 00:0f:00:00:00:00 )
 //-> [1]device_wifi;
 
-//BRN2PacketSource(500, 11000, 1000, 10,1,15)
-//-> EtherEncap(0x8080, deviceaddress, 00:0f:00:00:05:00 )
-//-> [0]dsr;
-
 Idle
--> sf::BRN2SimpleFlow(SRCADDRESS deviceaddress, DSTADDRESS 00:0f:00:00:05:00, RATE 500, SIZE 1000, MODE 0, DURATION 100000, ACTIVE 0)
+-> sf::BRN2SimpleFlow(SRCADDRESS deviceaddress, DSTADDRESS 00:0f:00:00:05:00, RATE 250, SIZE 1000, MODE 0, DURATION 100000, ACTIVE 0)
 -> BRNEtherEncap()
 -> Print("Packet Ether")
 -> [0]dsr;
@@ -292,9 +288,12 @@ Script(
   read lt.links,
   read lt.hosts,
   wait 3,
-  read device_wifi/ap/assoclist.stations,
-  wait 1, 
+  read device_wifi/ap/assoclist.stations, 
   write  sf.active 1,
   read lt.links,
-  read lt.routes
+  read lt.routes,
+  wait 2,
+  read sf.txflows,
+  wait 1,
+  read sf.txflows
 );

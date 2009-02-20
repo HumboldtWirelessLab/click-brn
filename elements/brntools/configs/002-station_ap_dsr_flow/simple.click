@@ -260,7 +260,7 @@ device_wifi
                                   -  );//other
                                     
 brn_clf[0] -> /*Print("DSR-Packet") -> */ [1]dsr;
-brn_clf[1] -> StripBRNHeader() -> BRN2SimpleFlow(SRCADDRESS deviceaddress, DSTADDRESS 00:0f:00:00:05:00, RATE 1200000, SIZE 1000, MODE 0, DURATION 100000, ACTIVE 0) -> Discard;
+brn_clf[1] -> StripBRNHeader() -> sf::BRN2SimpleFlow(SRCADDRESS deviceaddress, DSTADDRESS 00:0f:00:00:05:00, RATE 1200000, SIZE 1000, MODE 0, DURATION 100000, ACTIVE 0) -> Discard;
 brn_clf[2] -> Discard;
 
 device_wifi[1] -> /*Print("BRN-In") -> */ EtherDecap() -> brn_clf;
@@ -285,5 +285,8 @@ Script(
   read lt.links,
   read lt.hosts,
   wait 5,
-  read lt.links
+  read lt.links,
+  read sf.rxflows,
+  wait 1,
+  read sf.rxflows
 );
