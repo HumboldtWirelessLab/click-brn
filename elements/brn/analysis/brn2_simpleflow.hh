@@ -44,6 +44,7 @@ class BRN2SimpleFlow : public Element
     DIR_ME_RECEIVER = 1
   } FlowDir;
 
+ public:
   class Flow
   {
     public:
@@ -115,6 +116,7 @@ class BRN2SimpleFlow : public Element
     void run_timer(Timer *t);
 
     void set_active() { txFlow._active = true; }
+    uint32_t get_txpackets(void) { return txFlow._txPackets; }
 
   private:
 

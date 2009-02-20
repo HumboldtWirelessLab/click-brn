@@ -10,7 +10,7 @@
 #include <click/timer.hh>
 #include <click/packet.hh>
 
-#include "elements/brn/standard/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/brn.h"
 
 CLICK_DECLS
@@ -140,19 +140,31 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 }
 
 enum {
-  H_FLOWS_SHOW,
+  H_TXFLOWS_SHOW,
+  H_RXFLOWS_SHOW,
   H_FLOW_ACTIVE
 };
 
 static String
-BRN2SimpleFlow_read_param(Element */*e*/, void *thunk)
+BRN2SimpleFlow_read_param(Element *e, void *thunk)
 {
-//  BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
+  BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
 
   switch ((uintptr_t) thunk) {
-    case H_FLOWS_SHOW: {
+    case H_TXFLOWS_SHOW: {
       StringAccum sa;
-      sa << "Flows";
+      sa << "TxFlows:\n TxPackets: " << sf->get_txpackets();
+      return sa.take_string();
+    }
+    case H_RXFLOWS_SHOW: {
+      StringAccum sa;
+      sa << "RxFlows:\n";
+      for (BRN2SimpleFlow::FMIter fm = sf->_flowMap.begin(); fm.live(); fm++) {
+        BRN2SimpleFlow::Flow fl = fm.value();
+        sa << "Source: " << fl._src.unparse().c_str();
+        sa << " Packets: " << fl._rxPackets;
+        sa << "\n";
+      }
       return sa.take_string();
     }
     default:
@@ -177,7 +189,8 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
 
 void BRN2SimpleFlow::add_handlers()
 {
-  add_read_handler("flow", BRN2SimpleFlow_read_param, (void *)H_FLOWS_SHOW);
+  add_read_handler("txflows", BRN2SimpleFlow_read_param, (void *)H_TXFLOWS_SHOW);
+  add_read_handler("rxflows", BRN2SimpleFlow_read_param, (void *)H_RXFLOWS_SHOW);
   add_write_handler("active", BRN2SimpleFlow_write_param, (void *)H_FLOW_ACTIVE);
 }
 
