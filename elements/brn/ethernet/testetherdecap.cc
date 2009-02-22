@@ -29,7 +29,7 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

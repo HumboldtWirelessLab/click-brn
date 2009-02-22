@@ -1366,6 +1366,7 @@ Optional Features:
   --disable-threads       do not include thread management elements
   --enable-wifi           include wifi elements and support
   --enable-brn            include brn support
+  --enable-brn2           include brn2 support
   --enable-experimental   enable experimental elements in normal groups
   --disable-int64         disable 64-bit integer support
   --enable-nanotimestamp  enable nanosecond timestamps
@@ -6218,6 +6219,17 @@ if test "x$enable_brn" = xyes; then
     :
 
 fi
+# Check whether --enable-brn2 was given.
+if test "${enable_brn2+set}" = set; then
+  enableval=$enable_brn2;
+else
+  enable_brn2=NO
+fi
+test "x$enable_all_elements" = xyes -a "x$enable_brn2" = xNO && enable_brn2=yes
+if test "x$enable_brn2" = xyes; then
+    :
+
+fi
 # Check whether --enable-experimental was given.
 if test "${enable_experimental+set}" = set; then
   enableval=$enable_experimental; :
@@ -9036,7 +9048,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9039 "configure"
+#line 9051 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER

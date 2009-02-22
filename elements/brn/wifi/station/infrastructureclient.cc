@@ -32,7 +32,7 @@
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include <elements/wifi/wifiencap.hh>
-#include "brnbeaconscanner.hh"
+#include "elements/wifi/station/beaconscanner.hh"
 #include <elements/wifi/station/associationrequester.hh>
 #include <elements/wifi/station/openauthrequester.hh>
 #include "infrastructureclient.hh"

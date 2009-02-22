@@ -78,7 +78,7 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <click/timestamp.hh>
 #include "elements/brn/analysis/brnavgcnt.hh"
 #include "elements/brn/dht/falcondht.hh"
-#include "elements/brn/routing/correlation/brncansel.hh"
+#include "elements/brn2/routing/correlation/brncansel.hh"
 
 CLICK_DECLS
 

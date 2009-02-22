@@ -34,7 +34,7 @@
 #include "elements/brn/wifi/ap/assoclist.hh"
 #include "brniapphellohandler.hh"
 #include "brniappstationtracker.hh"
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////

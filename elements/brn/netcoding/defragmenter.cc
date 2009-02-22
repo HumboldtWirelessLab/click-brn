@@ -18,7 +18,7 @@
 
 #include <click/packet_anno.hh>
 #include "defragmenter.hh"
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

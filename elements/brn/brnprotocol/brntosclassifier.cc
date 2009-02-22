@@ -31,7 +31,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "brntosclassifier.hh"
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////

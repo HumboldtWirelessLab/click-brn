@@ -23,7 +23,7 @@
 #include <click/packet_anno.hh>
 #include <click/crc32.h>
 #include "fragmentreceiver.hh"
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

@@ -29,10 +29,6 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/brn.h"
-
-
 CLICK_DECLS
 
 BRNEtherEncap::BRNEtherEncap()
@@ -52,41 +48,42 @@ BRNEtherEncap::configure(Vector<String> &, ErrorHandler *)
 Packet *
 BRNEtherEncap::smaction(Packet *p)
 {
+  const click_ether *ether_anno = (const click_ether *)p->ether_header();
+  EtherAddress src_addr(ether_anno->ether_shost);
+  EtherAddress dst_addr(ether_anno->ether_dhost);
+
   if (WritablePacket *q = p->push(14)) {
-
     click_ether *ether = (click_ether *) q->data();
-    click_ether *annotated_ether = (click_ether *)p->ether_header();
+    //invert addresses
+    memcpy(ether->ether_dhost, src_addr.data(), 6);
+    memcpy(ether->ether_shost, dst_addr.data(), 6);
+    ether->ether_type = ether_anno->ether_type;
+    return q;
+  } else {
+    return 0;
+  }
 
-    if (annotated_ether) {  // are the mac annotations available?
+  // read mac annotations - jkm 2005-05-25
+  // get mac anno
+/*
+  click_ether *annotated_ether = (click_ether *)p->ether_header();
 
+  // are the mac annotations available?
+  if (annotated_ether) {
+    if (WritablePacket *q = p->push(14)) {
+      click_ether *ether = (click_ether *) q->data();
       memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
       memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
       ether->ether_type = annotated_ether->ether_type;
-
-      //debug  //TODO: Remove this
-      if ( memcmp((BRNPacketAnno::dst_ether_anno(p)).data(),annotated_ether->ether_dhost,6) != 0 ) {
-        click_chatter("header is set, but DST Addresses differs");
-        click_chatter("Header: %s  Anno: %s",
-                       EtherAddress(annotated_ether->ether_dhost).unparse().c_str(),
-                       (BRNPacketAnno::dst_ether_anno(p)).unparse().c_str());
-      }
-
+      return q;
     } else {
-
-      click_chatter("The mac header anno isn't set. Use annos\n");
-      memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(p)).data(), 6);
-      memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(p)).data(), 6);
-      ether->ether_type = htons(BRNPacketAnno::ethertype_anno(p));
-
+      return 0;
     }
-
-    q->set_ether_header(ether);
-    return q;
-
   } else {
-    p->kill();
+    click_chatter("The mac header anno isn't set.\n");
     return 0;
   }
+*/
 }
 
 void

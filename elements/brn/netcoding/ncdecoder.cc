@@ -25,7 +25,7 @@
 
 #include "ncdecoder.hh"
 #include <elements/brn/brn.h>
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 //#define ETHERTYPE_BRN          0x8086
 CLICK_DECLS
 
