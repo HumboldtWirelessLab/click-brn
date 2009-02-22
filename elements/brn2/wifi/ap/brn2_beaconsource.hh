@@ -43,14 +43,14 @@ How often beacon packets are sent, in milliseconds.
 #define WIFI_ELEMID_CSA  37
 
 class BRN2BeaconSource : public Element { public:
-  
+
   BRN2BeaconSource();
   ~BRN2BeaconSource();
 
   const char *class_name() const	{ return "BRN2BeaconSource"; }
   const char *port_count() const	{ return PORTS_1_1; }
   const char *processing() const	{ return PUSH; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return true; }
   void add_handlers();
@@ -58,6 +58,7 @@ class BRN2BeaconSource : public Element { public:
   int initialize (ErrorHandler *);
 
   void send_beacon(EtherAddress, bool, String);
+  void send_probe_beacon(EtherAddress, bool, String);
   void push(int, Packet *);
 
 

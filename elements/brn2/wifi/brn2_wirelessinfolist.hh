@@ -9,10 +9,17 @@
 
 CLICK_DECLS
 
+//RESPONSIBLE: Robert
+
+/*TODO:
+  - handle to remove WifiInfos
+  - check whether there is another WifiInfo  using the vlan-id
+  - what can be private
+*/
 
 class BRN2WirelessInfoList : public Element {
 
-  public:
+ public:
   class WifiInfo {
 
    public:
@@ -24,6 +31,8 @@ class BRN2WirelessInfoList : public Element {
 
     uint8_t _vlan;
 
+    Timestamp _send_last;
+
     WifiInfo() {
     }
 
@@ -33,7 +42,10 @@ class BRN2WirelessInfoList : public Element {
       _interval = interval;
       _wep = wep;
       _vlan = vlan;
+      updateTime();
     }
+
+    void updateTime() { _send_last = Timestamp::now(); }
   };
 
   typedef Vector<WifiInfo> WifiInfoList;
@@ -48,6 +60,13 @@ class BRN2WirelessInfoList : public Element {
   bool can_live_reconfigure() const		{ return true; }
 
   void add_handlers();
+
+  Timestamp getNextBeaconTime();
+
+  WifiInfo *getWifiInfoForBSSID(String bssid);
+  WifiInfo *getWifiInfo(int index);
+  bool includesBSSID(String bssid);
+  int countWifiInfo() { return _wifiInfoList.size(); }
 
   WifiInfoList _wifiInfoList;
   int _channel;

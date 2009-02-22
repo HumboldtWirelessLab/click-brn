@@ -37,6 +37,43 @@ BRN2WirelessInfoList::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+Timestamp
+BRN2WirelessInfoList::getNextBeaconTime() {
+  Timestamp next;
+  Timestamp ac;
+
+  if ( _wifiInfoList.size() > 0 ) {
+    BRN2WirelessInfoList::WifiInfo wi = _wifiInfoList[0];
+    next = wi._send_last + Timestamp( ( wi._interval / 1000 ), ( wi._interval % 1000 ));
+    for ( int i = 1; i < _wifiInfoList.size(); i++ ) {
+      wi = _wifiInfoList[i];
+      ac = wi._send_last + Timestamp( ( wi._interval / 1000 ), ( wi._interval % 1000 ));
+      if ( ac < next )
+        next = ac;
+    }
+  }
+
+  return next;
+}
+
+BRN2WirelessInfoList::WifiInfo*
+BRN2WirelessInfoList::getWifiInfoForBSSID(String bssid) {
+  return NULL;
+}
+
+bool
+BRN2WirelessInfoList::includesBSSID(String bssid) {
+  return false;
+}
+
+BRN2WirelessInfoList::WifiInfo *
+BRN2WirelessInfoList::getWifiInfo(int index) {
+  if ( index < _wifiInfoList.size() )
+    return &(_wifiInfoList[index]);
+
+  return NULL;
+}
+
 enum {
   H_DEBUG,
   H_READ,
@@ -67,6 +104,7 @@ BRN2WirelessInfoList_read_param(Element *e, void *thunk)
     return String();
   }
 }
+
 static int
 BRN2WirelessInfoList_write_param(const String &in_s, Element *e, void *vparam,
                                  ErrorHandler *errh)

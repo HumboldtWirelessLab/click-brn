@@ -22,17 +22,15 @@
  * brnassocresponder.{cc,hh} -- responds to stations assoc requests
  * A. Zubow
  */
-
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
-#include "brn2_brnassocresponder.hh"
-
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "brn2_brnassocresponder.hh"
+#include "../brn2_wirelessinfolist.hh"
+#include "../../brnprotocol/brnpacketanno.hh"
+#include "elements/brn/common.hh"
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +72,8 @@ BRN2AssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEBUG", cpkP+cpkM, cpInteger, &_debug,
       "DEVICE", cpkP+cpkM, cpElement, &_dev,
       "RESPONSE_DELAY", cpkP+cpkM, cpInteger, /*"Response delay in ms",*/ &_response_delay_ms,
-      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wireless_info",*/ &_winfo,
+      "WIRELESS_INFO", cpkP, cpElement, /*"wireless_info",*/ &_winfo,
+      "WIRELESSINFOLIST", cpkP, cpElement, /*"wireless_info",*/ &_winfolist,
       "ASSOCLIST", cpkP+cpkM, cpElement, &_assoc_list,
       "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
 		  cpEnd) < 0)

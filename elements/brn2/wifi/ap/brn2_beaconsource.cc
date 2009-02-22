@@ -29,14 +29,14 @@
 #include <click/packet_anno.hh>
 #include <click/timer.hh>
 #include <click/error.hh>
-#include "brn2_beaconsource.hh"
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "brn2_beaconsource.hh"
+#include "../brn2_wirelessinfolist.hh"
+#include "../../brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
-
 
 #define min(x,y)      ((x)<(y) ? (x) : (y))
 #define max(x,y)      ((x)>(y) ? (x) : (y))
@@ -91,7 +91,7 @@ BRN2BeaconSource::initialize (ErrorHandler *)
 {
   unsigned int _min_jitter  = 0 /* ms */;
   unsigned int _jitter      = _winfo->_interval;
-  
+
   unsigned int j = (unsigned int) ( _min_jitter +( random() % ( _jitter ) ) );
 
   _timer.initialize(this);
@@ -104,21 +104,36 @@ void
 BRN2BeaconSource::run_timer(Timer *)
 {
   if (_active)
-    send_beacon(_bcast, false, "");
+    send_probe_beacon(_bcast, false, "");
 
   _timer.schedule_after_msec(_winfo->_interval);
 }
 
 void
+BRN2BeaconSource::send_probe_beacon(EtherAddress dst, bool probe, String ssid) {
+  BRN2WirelessInfoList::WifiInfo *wi;
+
+  if ( ssid != "" )
+    send_beacon(dst, probe, ssid);
+  else {
+    if ( _winfo ) {
+      send_beacon(dst, probe, _winfo->_ssid);
+    }
+
+    if ( _winfolist ) {
+      for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
+        wi = _winfolist->getWifiInfo(i);
+        send_beacon(dst, probe, wi->_ssid);
+      }
+    }
+  }
+}
+
+void
 BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
 {
-  EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
-  String my_ssid;
-
-  if (probe && ssid != "")
-    my_ssid = ssid;
-  else
-    my_ssid = _winfo ? _winfo->_ssid : ""; 
+  EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();  //TODO:
+  String my_ssid = ssid;
 
   Vector<int> rates = _rtable->lookup(bssid);
   int max_len = sizeof (struct click_wifi) + 
@@ -290,7 +305,6 @@ BRN2BeaconSource::push(int, Packet *p)
   }
   struct click_wifi *w = (struct click_wifi *) p->data();
 
-
   dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
   type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
   subtype = w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
@@ -344,11 +358,10 @@ BRN2BeaconSource::push(int, Packet *p)
     ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
-
-    // Without VLAN
-    if (ssid != "" && ssid != _winfo->_ssid) {
+  if (ssid != "" && ssid != _winfo->_ssid) {
+    if ( ( _winfolist == NULL ) || ( _winfolist->getWifiInfoForBSSID(ssid) == NULL) ) {
       if (_debug) {
-        click_chatter("%{element} without VLAN: other ssid %s wanted %s\n",
+        click_chatter("%{element} other ssid %s wanted %s\n",
                       this,
                       ssid.c_str(),
                       _winfo->_ssid.c_str());
@@ -356,7 +369,7 @@ BRN2BeaconSource::push(int, Packet *p)
       p->kill();
       return;
     }
-
+  }
 
   EtherAddress src = EtherAddress(w->i_addr2);
 
@@ -381,8 +394,8 @@ BRN2BeaconSource::push(int, Packet *p)
 		  this,
 		  sa.take_string().c_str());
   }
-  send_beacon(src, true, ssid);
-  
+  send_probe_beacon(src, true, ssid);
+
   p->kill();
   return;
 }
@@ -434,7 +447,7 @@ BRN2BeaconSource_write_param(const String &in_s, Element *e, void *vparam,
   }
   return 0;
 }
- 
+
 void
 BRN2BeaconSource::add_handlers()
 {
@@ -447,7 +460,6 @@ BRN2BeaconSource::add_handlers()
   add_write_handler("channel", BRN2BeaconSource_write_param, (void *) H_CHANNEL);
 
 }
-
 
 #include <click/bighashmap.cc>
 #include <click/hashmap.cc>

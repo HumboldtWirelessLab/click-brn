@@ -24,12 +24,16 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/handlercall.hh>
-#include <elements/wifi/ap/associationresponder.hh>
 #include <clicknet/wifi.h>
 #include <click/timer.hh>
 #include <click/dequeue.hh>
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
+#include <elements/wifi/ap/associationresponder.hh>
+
+#include "../brn2_wirelessinfolist.hh"
+#include "../../brnprotocol/brnpacketanno.hh"
+#include "brn2_assoclist.hh"
+#include "../../routing/identity/brn2_device.hh"
+#include "elements/brn/common.hh"
 
 
 CLICK_DECLS
@@ -107,6 +111,7 @@ class BRN2AssocResponder : public AssociationResponder {
   DelayedResponseQueue        _responses;
   BRN2AssocList               *_assoc_list;
   BRN2Device                  *_dev;
+  BRN2WirelessInfoList        *_winfolist;
 };
 
 CLICK_ENDDECLS
