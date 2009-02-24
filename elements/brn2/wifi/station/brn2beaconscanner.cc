@@ -1,5 +1,5 @@
 /*
- * BRNBeaconScanner.{cc,hh} -- tracks 802.11 beacon sources
+ * BRN2BeaconScanner.{cc,hh} -- tracks 802.11 beacon sources
  * John Bicket
  *
  * Copyright (c) 2004 Massachusetts Institute of Technology
@@ -28,7 +28,7 @@
 #include <click/packet_anno.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "brnbeaconscanner.hh"
+#include "brn2beaconscanner.hh"
 
 
 CLICK_DECLS
@@ -38,18 +38,18 @@ CLICK_DECLS
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 
 
-BRNBeaconScanner::BRNBeaconScanner()
+BRN2BeaconScanner::BRN2BeaconScanner()
   : _rtable(0),
     _winfo(0)
 {
 }
 
-BRNBeaconScanner::~BRNBeaconScanner()
+BRN2BeaconScanner::~BRN2BeaconScanner()
 {
 }
 
 int
-BRNBeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
+BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   _debug = false;
@@ -67,7 +67,7 @@ BRNBeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 Packet *
-BRNBeaconScanner::simple_action(Packet *p)
+BRN2BeaconScanner::simple_action(Packet *p)
 {
 
 
@@ -228,7 +228,7 @@ BRNBeaconScanner::simple_action(Packet *p)
 
 
 String
-BRNBeaconScanner::scan_string()
+BRN2BeaconScanner::scan_string()
 {
   StringAccum sa;
   Timestamp now = Timestamp::now();
@@ -281,7 +281,7 @@ BRNBeaconScanner::scan_string()
 
 
 void 
-BRNBeaconScanner::reset() 
+BRN2BeaconScanner::reset()
 {
   _waps.clear();
 }
@@ -289,9 +289,9 @@ BRNBeaconScanner::reset()
 enum {H_DEBUG, H_SCAN, H_RESET};
 
 static String 
-BRNBeaconScanner_read_param(Element *e, void *thunk)
+BRN2BeaconScanner_read_param(Element *e, void *thunk)
 {
-  BRNBeaconScanner *td = (BRNBeaconScanner *)e;
+  BRN2BeaconScanner *td = (BRN2BeaconScanner *)e;
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
 	return String(td->_debug) + "\n";
@@ -302,10 +302,10 @@ BRNBeaconScanner_read_param(Element *e, void *thunk)
     }
 }
 static int 
-BRNBeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
+BRN2BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
 		      ErrorHandler *errh)
 {
-  BRNBeaconScanner *f = (BRNBeaconScanner *)e;
+  BRN2BeaconScanner *f = (BRN2BeaconScanner *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
@@ -323,14 +323,14 @@ BRNBeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
 }
  
 void
-BRNBeaconScanner::add_handlers()
+BRN2BeaconScanner::add_handlers()
 {
-  add_read_handler("debug", BRNBeaconScanner_read_param, (void *) H_DEBUG);
-  add_read_handler("scan", BRNBeaconScanner_read_param, (void *) H_SCAN);
+  add_read_handler("debug", BRN2BeaconScanner_read_param, (void *) H_DEBUG);
+  add_read_handler("scan", BRN2BeaconScanner_read_param, (void *) H_SCAN);
 
-  add_write_handler("debug", BRNBeaconScanner_write_param, (void *) H_DEBUG);
-  add_write_handler("reset", BRNBeaconScanner_write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("debug", BRN2BeaconScanner_write_param, (void *) H_DEBUG);
+  add_write_handler("reset", BRN2BeaconScanner_write_param, (void *) H_RESET, Handler::BUTTON);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRNBeaconScanner)
+EXPORT_ELEMENT(BRN2BeaconScanner)

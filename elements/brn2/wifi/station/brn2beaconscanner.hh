@@ -1,5 +1,5 @@
-#ifndef CLICK_BRNBEACONSCANNER_HH
-#define CLICK_BRNBEACONSCANNER_HH
+#ifndef CLICK_BRN2BEACONSCANNER_HH
+#define CLICK_BRN2BEACONSCANNER_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
@@ -10,7 +10,7 @@ CLICK_DECLS
 /*
 =c
 
-BRNBeaconScanner
+BRN2BeaconScanner
 
 =s Wifi, Wireless Station
 
@@ -37,19 +37,19 @@ If channel is less than 0, it will discard all beaconds
   -> Prism2Decap()
   -> ExtraDecap()
   -> Classifier(0/80%f0)  // only beacon packets
-  -> bs :: BRNBeaconScanner()
+  -> bs :: BRN2BeaconScanner()
   -> Discard;
 
 =a
 
 EtherEncap */
 
-class BRNBeaconScanner : public Element { public:
+class BRN2BeaconScanner : public Element { public:
   
-  BRNBeaconScanner();
-  ~BRNBeaconScanner();
+  BRN2BeaconScanner();
+  ~BRN2BeaconScanner();
 
-  const char *class_name() const	{ return "BRNBeaconScanner"; }
+  const char *class_name() const	{ return "BRN2BeaconScanner"; }
   const char *port_count() const	{ return PORTS_1_1; }
   const char *processing() const	{ return AGNOSTIC; }
   
@@ -85,7 +85,7 @@ class BRNBeaconScanner : public Element { public:
 
   typedef HashMap<EtherAddress, wap> APTable;
   typedef APTable::const_iterator APIter;
-  
+
   APTable _waps;
   AvailableRates *_rtable;
   WirelessInfo *_winfo;
