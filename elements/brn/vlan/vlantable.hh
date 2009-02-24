@@ -43,17 +43,27 @@ class VLANTable : public Element { public:
 
   VLANTable();
   ~VLANTable();
-  
+
   const char *class_name() const		{ return "VLANTable"; }
   const char *port_count() const		{ return "0/0"; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
+
+  void add_handlers();
+
+  String all_vlans();
+  void insert(EtherAddress ea, uint16_t id) { _vlans.insert(ea,id); }
+
+  int _debug;
+
+  typedef HashMap<EtherAddress, uint16_t> VlanTable;
+  typedef VlanTable::const_iterator VTIter;
 
  private:
   friend class StoreVLAN;
   friend class RestoreVLAN;
-  
-  HashMap<EtherAddress, uint16_t> _vlans; /// stores src -> vid
+
+  VlanTable _vlans; /// stores src -> vid
 };
 
 CLICK_ENDDECLS
