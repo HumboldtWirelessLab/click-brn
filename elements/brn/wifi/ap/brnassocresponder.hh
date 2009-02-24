@@ -30,7 +30,7 @@
 #include <click/dequeue.hh>
 #include "elements/brn/wifi/ap/assoclist.hh"
 
-#include <elements/brn/vlan/brnvlan/brnvlan.hh>
+#include <elements/brn/brnvlan/brnvlan.hh>
 
 CLICK_DECLS
 
