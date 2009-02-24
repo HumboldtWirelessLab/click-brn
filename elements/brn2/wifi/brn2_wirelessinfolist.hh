@@ -29,7 +29,7 @@ class BRN2WirelessInfoList : public Element {
     int _interval;
     bool _wep;
 
-    uint8_t _vlan;
+    uint16_t _vlan;
 
     Timestamp _send_last;
 

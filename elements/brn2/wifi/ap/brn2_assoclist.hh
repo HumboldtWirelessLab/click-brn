@@ -95,6 +95,8 @@ public:
 
     String         _ssid; ///< station's associated SSID
 
+    int            _vlan;
+
     // internals
   protected:
     uint32_t       _age;
@@ -260,10 +262,10 @@ public:
 
   String get_device_name(
     const EtherAddress&   v) const;
-    
+
   String get_ssid(
     const EtherAddress&   v) const;
-  
+
   bool is_associated(
     const EtherAddress&   v) const;
 
@@ -284,7 +286,7 @@ public:
 // Methods
 //------------------------------------------------------------------------------
 public:
-  
+
   bool insert(
     EtherAddress    eth, 
     BRN2Device      *dev,

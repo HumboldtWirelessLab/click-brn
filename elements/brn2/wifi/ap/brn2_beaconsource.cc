@@ -116,16 +116,16 @@ BRN2BeaconSource::send_probe_beacon(EtherAddress dst, bool probe, String ssid) {
   if ( ssid != "" )
     send_beacon(dst, probe, ssid);
   else {
-    if ( _winfo ) {
+   /* if ( _winfo ) {
       send_beacon(dst, probe, _winfo->_ssid);
-    }
+    }*/
 
-    if ( _winfolist ) {
+    /*if ( _winfolist ) {
       for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
         wi = _winfolist->getWifiInfo(i);
         send_beacon(dst, probe, wi->_ssid);
       }
-    }
+    }*/
   }
 }
 
@@ -360,12 +360,12 @@ BRN2BeaconSource::push(int, Packet *p)
 
   if (ssid != "" && ssid != _winfo->_ssid) {
     if ( ( _winfolist == NULL ) || ( _winfolist->getWifiInfoForBSSID(ssid) == NULL) ) {
-      if (_debug) {
+      //if (_debug) {
         click_chatter("%{element} other ssid %s wanted %s\n",
                       this,
                       ssid.c_str(),
                       _winfo->_ssid.c_str());
-      }
+     // }
       p->kill();
       return;
     }

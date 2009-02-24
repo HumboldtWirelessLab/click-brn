@@ -23,7 +23,7 @@ int
 VlanSetAnno::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "VLANNODEMAP", cpkP+cpkM, cpBool, &_vlm,
+      "VLANTABLE", cpkP+cpkM, cpBool, &_vlantable,
       cpEnd) < 0)
     return -1;
 

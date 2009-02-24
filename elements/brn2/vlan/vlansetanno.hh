@@ -2,7 +2,7 @@
 #define BRNVLANSETANNO_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
-#include "vlannodemap.hh"
+#include "../../brn/vlan/vlantable.hh"
 
 CLICK_DECLS
 
@@ -26,7 +26,7 @@ class VlanSetAnno : public Element {
   void push(int, Packet *);
   Packet *pull(int);
 
-  VlanNodeMap *_vlm;
+  VLANTable *_vlantable;
 };
 
 CLICK_ENDDECLS

@@ -28,13 +28,12 @@
 #include <click/timer.hh>
 #include <click/dequeue.hh>
 #include <elements/wifi/ap/associationresponder.hh>
-
+#include "elements/brn/common.hh"
+#include "brn2_assoclist.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
-#include "brn2_assoclist.hh"
 #include "../../routing/identity/brn2_device.hh"
-#include "elements/brn/common.hh"
-
+#include "../../../brn/vlan/vlantable.hh"
 
 CLICK_DECLS
 
@@ -50,7 +49,7 @@ class DelayedResponse;
 class BRN2AssocResponder : public AssociationResponder {
 
   protected:
-  
+
   typedef DEQueue<DelayedResponse*> DelayedResponseQueue;
 
  public:
@@ -71,7 +70,7 @@ class BRN2AssocResponder : public AssociationResponder {
 
   virtual void recv_association_request(
     Packet *p, uint8_t subtype);
-  
+
   virtual void recv_association_response(
     Packet *p, uint8_t subtype);
 
@@ -82,12 +81,12 @@ class BRN2AssocResponder : public AssociationResponder {
     EtherAddress dst, 
     uint16_t status, 
     uint16_t associd);
-  
+
   virtual void send_reassociation_response(
     EtherAddress dst, 
     uint16_t status, 
     uint16_t associd);
-  
+
   virtual void send_disassociation(
     EtherAddress, 
     uint16_t reason);
@@ -105,13 +104,12 @@ class BRN2AssocResponder : public AssociationResponder {
   int                         _response_delay_ms;
 
  private:
-//  AssocList*    _client_assoc_lst;
-//  String        _device;
   Timer                       _response_timer;
   DelayedResponseQueue        _responses;
   BRN2AssocList               *_assoc_list;
   BRN2Device                  *_dev;
   BRN2WirelessInfoList        *_winfolist;
+  VLANTable                   *_vlantable;
 };
 
 CLICK_ENDDECLS

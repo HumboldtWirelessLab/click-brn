@@ -30,6 +30,7 @@
 #include "brn2_brnassocresponder.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
+#include "../../../brn/vlan/vlantable.hh"
 #include "elements/brn/common.hh"
 CLICK_DECLS
 
@@ -47,12 +48,13 @@ class DelayedResponse { public:
 ////////////////////////////////////////////////////////////////////////////////
 
 BRN2AssocResponder::BRN2AssocResponder() :
-//  _client_assoc_lst(),
   _debug(BrnLogger::DEFAULT),
-  _response_timer(static_response_timer_hook, this),
   _response_delay_ms(0),
+  _response_timer(static_response_timer_hook, this),
   _assoc_list(NULL),
-  _dev(NULL)
+  _dev(NULL),
+  _winfolist(NULL),
+  _vlantable(NULL)
 {
 }
 
@@ -71,12 +73,13 @@ BRN2AssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "DEBUG", cpkP+cpkM, cpInteger, &_debug,
       "DEVICE", cpkP+cpkM, cpElement, &_dev,
-      "RESPONSE_DELAY", cpkP+cpkM, cpInteger, /*"Response delay in ms",*/ &_response_delay_ms,
-      "WIRELESS_INFO", cpkP, cpElement, /*"wireless_info",*/ &_winfo,
-      "WIRELESSINFOLIST", cpkP, cpElement, /*"wireless_info",*/ &_winfolist,
       "ASSOCLIST", cpkP+cpkM, cpElement, &_assoc_list,
-      "RT", cpkP+cpkM, cpElement, /*"availablerates",*/ &_rtable,
-		  cpEnd) < 0)
+      "RT", cpkP+cpkM, cpElement, &_rtable,
+      "WIRELESS_INFO", cpkP, cpElement, &_winfo,
+      "WIRELESSINFOLIST", cpkP, cpElement, &_winfolist,
+      "VLANTABLE", cpkP, cpElement, &_vlantable,
+      "RESPONSE_DELAY", cpkP, cpInteger, &_response_delay_ms,
+      cpEnd) < 0)
     return -1;
 
   if (!_rtable || _rtable->cast("AvailableRates") == 0) 
@@ -227,7 +230,10 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
   }
 
   String ssid;
-  String my_ssid = _winfo ? _winfo->_ssid : "";
+  String my_ssid = "";
+  int vlanid = 0;
+  BRN2WirelessInfoList::WifiInfo *wi;
+
   if (ssid_l && ssid_l[1]) {
     ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   } else {
@@ -235,8 +241,26 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
     ssid = "";
   }
 
-    /* respond to blank ssid probes also */
-  //if ((ssid != "" && ssid != my_ssid) || (_brn_vlan && _brn_vlan->is_vlan(ssid))) {
+  if ( ( _winfo == NULL ) && ( _winfolist == NULL ) ) {
+     my_ssid = "";
+  }
+  else {
+    if ( ( _winfo != NULL ) && ( _winfo->_ssid == ssid ) ) {
+      my_ssid = _winfo->_ssid;
+      click_chatter("Use WifiInfo");
+    } else {
+      if ( _winfolist ) {
+        for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
+          wi = _winfolist->getWifiInfo(i);
+          if ( ssid == wi->_ssid ) {
+            click_chatter("Use wifiinfolist");
+            my_ssid = wi->_ssid;
+            vlanid = wi->_vlan;
+          }
+        }
+      }
+    }
+  }
 
   if (ssid != "" && ssid != my_ssid) {
     BRN_WARN(" other ssid %s wanted %s", ssid.c_str(), my_ssid.c_str());
@@ -291,6 +315,8 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
   BRN_INFO("%s request %s", reassoc ? "reassoc" : "assoc" , sa.take_string().c_str());
 
   _assoc_list->insert( src, _dev, my_ssid, dst, 0 );
+  if ( _vlantable )
+    _vlantable->insert(src, vlanid);
 
   uint16_t associd = 0xc000 | _associd++;
 

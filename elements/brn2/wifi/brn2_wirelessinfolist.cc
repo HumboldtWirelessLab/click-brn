@@ -25,7 +25,7 @@ BRN2WirelessInfoList::configure(Vector<String> &conf, ErrorHandler *errh)
   _debug = false;
 
   if (cp_va_kparse(conf, this, errh,
-      "WIRELESS_INFO", cpkP+cpkM, cpElement, &_winfo,
+      "WIRELESS_INFO", cpkP, cpElement, &_winfo,
       "DEBUG", cpkP, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
@@ -58,6 +58,11 @@ BRN2WirelessInfoList::getNextBeaconTime() {
 
 BRN2WirelessInfoList::WifiInfo*
 BRN2WirelessInfoList::getWifiInfoForBSSID(String bssid) {
+  for ( int i = 0; i < _wifiInfoList.size(); i++ ) {
+    BRN2WirelessInfoList::WifiInfo wi = _wifiInfoList[i];
+    if ( wi._ssid == bssid ) return &(_wifiInfoList[i]);
+  }
+
   return NULL;
 }
 
