@@ -66,7 +66,7 @@ class DHTStorageSimple : public DHTStorage
 
     const char *dhtstorage_name() const { return "DHTStorageSimple"; };
 
-    int dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
+    uint32_t dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
 
     BRNDB _db;
   private:
@@ -86,9 +86,11 @@ class DHTStorageSimple : public DHTStorage
     int dht_unlock(DHTOperation *op);
 
     void handle_dht_operation(DHTOperation *op);
+    uint32_t get_next_dht_id();
 
     void add_handlers();
 
+    uint32_t _dht_id;
 };
 
 CLICK_ENDDECLS

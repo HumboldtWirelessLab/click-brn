@@ -17,7 +17,8 @@ CLICK_DECLS
 
 DHTStorageSimple::DHTStorageSimple():
   _dht_routing(NULL),
-  _debug(0)
+  _debug(0),
+  _dht_id(0)
 {
 }
 
@@ -63,7 +64,7 @@ static void callback_func(void *e, int status)
 {
   DHTStorageSimple *s = (DHTStorageSimple *)e;
 
-//  click_chatter("callback %s: Status %d",s->class_name(),status);
+ click_chatter("callback %s: Status %d",s->class_name(),status);
 }
 
 int DHTStorageSimple::initialize(ErrorHandler *)
@@ -72,12 +73,13 @@ int DHTStorageSimple::initialize(ErrorHandler *)
   return 0;
 }
 
-int
+uint32_t
 DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj )
 {
   DHTnode *next;
   DHTOperationForward *fwd_op;
   WritablePacket *p;
+  uint32_t dht_id = 0;
 
   MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);
   next = _dht_routing->get_responsibly_node(op->header.key_digest);
@@ -88,26 +90,35 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     {
       handle_dht_operation(op);
       op->set_reply();
-      info_func(info_obj,op);
-      delete op;
     }
     else
     {
-      memcpy(op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);   //Set my etheradress as sender
-      fwd_op = new DHTOperationForward(op,info_func,info_obj);
-      _fwd_queue.push_back(fwd_op);
-      p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, op->length());
-      op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
-      p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
-      output(0).push(p);
+      if ( info_func == NULL ) {
+        click_chatter("Request for local, but responsible is foreign node !");
+        op->set_status(DHT_STATUS_KEY_NOT_FOUND);
+        op->set_reply();
+      } else {
+        dht_id = get_next_dht_id();
+        memcpy(op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);   //Set my etheradress as sender
+        op->set_id(dht_id);
+
+        fwd_op = new DHTOperationForward(op,info_func,info_obj);
+        _fwd_queue.push_back(fwd_op);
+        p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, op->length());
+        op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
+        p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+        output(0).push(p);
+      }
     }
   }
   else
   {
-    click_chatter("Found no node"); //TODO: handle this
+    click_chatter("Found no node");
+    op->set_status(DHT_STATUS_KEY_NOT_FOUND);
+    op->set_reply();
   }
 
-  return 0;
+  return dht_id;
 }
 
 void DHTStorageSimple::push( int port, Packet *packet )
@@ -240,6 +251,7 @@ DHTStorageSimple::dht_insert(DHTOperation *op)
   if ( _db.getRow(op->header.key_digest) == NULL )
   {
     _db.insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen, 0, (char*)op->header.etheraddress);
+    op->header.status = DHT_STATUS_OK;
   }
   else
   {
@@ -253,7 +265,25 @@ DHTStorageSimple::dht_insert(DHTOperation *op)
 int
 DHTStorageSimple::dht_write(DHTOperation *op)
 {
+  BRNDB::DBrow *_row;
 
+  _row = _db.getRow(op->header.key_digest);
+  if ( _row != NULL )
+  {
+    if ( _row->value != NULL ) delete[] _row->value;
+    _row->value = new uint8_t[op->header.valuelen];
+    memcpy(_row->value,op->value,op->header.valuelen);
+    _row->valuelen = op->header.valuelen;
+    op->header.status = DHT_STATUS_OK;
+  }
+  else
+  {
+    op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  }
+
+  op->set_reply();
+
+  return 0;
 }
 
 int
@@ -278,21 +308,28 @@ DHTStorageSimple::dht_read(DHTOperation *op)
 }
 
 int
-DHTStorageSimple::dht_remove(DHTOperation *op)
+DHTStorageSimple::dht_remove(DHTOperation */*op*/)
 {
-
+  return 0;
 }
 
 int
-DHTStorageSimple::dht_lock(DHTOperation *op)
+DHTStorageSimple::dht_lock(DHTOperation */*op*/)
 {
-
+  return 0;
 }
 
 int
-DHTStorageSimple::dht_unlock(DHTOperation *op)
+DHTStorageSimple::dht_unlock(DHTOperation */*op*/)
 {
+  return 0;
+}
 
+uint32_t
+DHTStorageSimple::get_next_dht_id()
+{
+  if ( (_dht_id++) == 0 ) _dht_id = 1;
+  return _dht_id;
 }
 
 enum {

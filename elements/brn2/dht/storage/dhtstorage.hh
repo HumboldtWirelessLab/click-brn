@@ -21,7 +21,7 @@ class DHTStorage : public Element
     ~DHTStorage();
 
     virtual const char *dhtstorage_name() const = 0;
-    virtual int dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj ) = 0;
+    virtual uint32_t dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj ) = 0;
 
   private:
     int _debug;

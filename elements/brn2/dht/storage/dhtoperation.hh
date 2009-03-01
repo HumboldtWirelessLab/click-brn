@@ -20,6 +20,7 @@ CLICK_DECLS
 #define DHT_STATUS_UNKNOWN        0
 #define DHT_STATUS_OK             1
 #define DHT_STATUS_KEY_NOT_FOUND  2
+#define DHT_STATUS_TIMEOUT        3
 
 struct DHTOperationHeader {
   uint32_t id;
@@ -59,6 +60,7 @@ class DHTOperation {
     bool is_reply();
     void set_id(uint32_t _id);
     uint32_t get_id();
+    void set_status(uint8_t status);
 
     int length();
     int serialize(uint8_t **buffer, uint16_t *len);

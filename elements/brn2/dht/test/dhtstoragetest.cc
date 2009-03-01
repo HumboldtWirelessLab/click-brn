@@ -83,6 +83,7 @@ static void callback_func(void *e, DHTOperation *op)
       click_chatter("Result: %d not found",my_key);
   }
 
+  delete op;
 }
 
 void
@@ -91,12 +92,8 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
   DHTOperation *req;
   int result;
   char *my_value;
-  char *my_key;
 
   DHTStorageTest *s = (DHTStorageTest *)f;
-
-  my_key = new char[sizeof(uint32_t)];
-  memcpy(my_key, (char*)&s->_key, sizeof(uint32_t));
 
   req = new DHTOperation();
 
@@ -106,7 +103,8 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
     sprintf(my_value,">%d<",s->_key);
 
     click_chatter("Insert Key: %d",s->_key);
-    req->insert((uint8_t*)my_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    req->insert((uint8_t*)&s->_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    delete[] my_value;
     s->_key++;
     if ( s->_key == s->_countkey )
     {
@@ -117,15 +115,19 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
   else
   {
     click_chatter("Read Key: %d",s->_key);
-    req->read((uint8_t*)my_key, sizeof(uint32_t));
+    req->read((uint8_t*)&s->_key, sizeof(uint32_t));
     s->_key++;
     if ( s->_key == s->_countkey )
       s->_key = 0;
   }
 
   result = s->_dht_storage->dht_request(req, callback_func, (void*)s );
+  if ( result == 0 )
+  {
+    click_chatter("Got direct-reply (local)");
+    callback_func(s,req);
+  }
   t->schedule_after_msec( s->_interval );
-
 }
 
 void DHTStorageTest::add_handlers()

@@ -17,8 +17,8 @@ DHTOperation::~DHTOperation()
 {
   if ( key != NULL )
   {
-    delete[] key;
-    key = NULL;
+   delete[] key;
+   key = NULL;
   }
 
   if ( value != NULL )
@@ -31,10 +31,14 @@ DHTOperation::~DHTOperation()
 void
 DHTOperation::insert(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = _value;
+
+  value = new uint8_t[_valuelen];
+  memcpy(value, _value, _valuelen);
   header.valuelen = _valuelen;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_INSERT;
 }
@@ -42,10 +46,14 @@ DHTOperation::insert(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t 
 void
 DHTOperation::remove(uint8_t *_key, uint16_t _keylen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = NULL;                          //TODO: clear if not NULL
+
+  if ( value != NULL ) delete[] value;
+  value = NULL;
   header.valuelen = 0;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_REMOVE;
 }
@@ -53,10 +61,14 @@ DHTOperation::remove(uint8_t *_key, uint16_t _keylen)
 void
 DHTOperation::read(uint8_t *_key, uint16_t _keylen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = NULL;                          //TODO: clear if not NULL
+
+  if ( value != NULL ) delete[] value;
+  value = NULL;
   header.valuelen = 0;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_READ;
 }
@@ -64,10 +76,14 @@ DHTOperation::read(uint8_t *_key, uint16_t _keylen)
 void
 DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = _value;
+
+  value = new uint8_t[_valuelen];
+  memcpy(value, _value, _valuelen);
   header.valuelen = _valuelen;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_WRITE;
 }
@@ -75,10 +91,14 @@ DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _
 void
 DHTOperation::lock(uint8_t *_key, uint16_t _keylen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = NULL;                          //TODO: clear if not NULL
+
+  if ( value != NULL ) delete[] value;
+  value = NULL;
   header.valuelen = 0;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_LOCK;
 }
@@ -86,10 +106,14 @@ DHTOperation::lock(uint8_t *_key, uint16_t _keylen)
 void
 DHTOperation::unlock(uint8_t *_key, uint16_t _keylen)
 {
-  key = _key;
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
   header.keylen = _keylen;
-  value = NULL;                          //TODO: clear if not NULL
+
+  if ( value != NULL ) delete[] value;
+  value = NULL;
   header.valuelen = 0;
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_UNLOCK;
 }
@@ -175,6 +199,12 @@ void
 DHTOperation::set_reply()
 {
   header.operation |= (uint8_t)OPERATION_REPLY;
+}
+
+void
+DHTOperation::set_status(uint8_t status)
+{
+  header.status = status;
 }
 
 bool
