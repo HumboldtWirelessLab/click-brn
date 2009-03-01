@@ -73,7 +73,7 @@ DHCPRequester::configure(Vector<String> &conf, ErrorHandler* errh)
       "RANGE", cpkP+cpkM, cpInteger, /*"Range",*/ &_ip_range,
       "STARTTIME", cpkP+cpkM, cpInteger, /*"starttime (s)",*/ &_start_time,
       "DIFF", cpkP+cpkM, cpInteger, /*"time between dhcp_packets (s)",*/ &_interval,
-      "ACTIVE",cpkP+cpkM, cpBool, /*"ACTIVE",*/ &_active,
+      "ACTIVE", cpkP, cpBool, /*"ACTIVE",*/ &_active,
       "DEBUG", cpkP, cpInteger,/* "Debug",*/ &_debug,
       cpEnd) < 0)
         return -1;
@@ -109,9 +109,10 @@ DHCPRequester::init_state() {
   //client_mac[5] = 0;
   for( int i = 0; i < _ip_range; i++)
   { 
-     //client_mac[5] = ( client_mac[5] + i ) % 255;
+     click_chatter("ID: %d",(int)client_mac[4]);
      uint32_t xid = random();
      request_queue.push_back(DHCPClientInfo( xid, client_mac , htonl(requested_ip + i) ));
+     client_mac[4] = ( client_mac[4] + 1 );
   }
 }
 

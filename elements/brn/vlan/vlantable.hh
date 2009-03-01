@@ -53,6 +53,7 @@ class VLANTable : public Element { public:
 
   String all_vlans();
   void insert(EtherAddress ea, uint16_t id) { _vlans.insert(ea,id); }
+  uint16_t find(EtherAddress ea) { return _vlans.find(ea, 0xFFFF); }
 
   int _debug;
 
