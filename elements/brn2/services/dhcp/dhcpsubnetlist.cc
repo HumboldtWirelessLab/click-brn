@@ -31,6 +31,26 @@ BRN2DHCPSubnetList::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+BRN2DHCPSubnetList::DHCPSubnet *
+BRN2DHCPSubnetList::getSubnet(int index) {
+  if ( index < _subnet_list.size() )
+    return &(_subnet_list[index]);
+
+  return NULL;
+}
+
+BRN2DHCPSubnetList::DHCPSubnet *
+BRN2DHCPSubnetList::getSubnetByVlanID(int id) {
+  BRN2DHCPSubnetList::DHCPSubnet *sn;
+
+  for ( int i = 0; i < _subnet_list.size(); i++ ) {
+    sn = &(_subnet_list[i]);
+    if ( sn->_vlan == id ) return sn;
+  }
+
+  return NULL;
+}
+
 
 enum {
   H_DEBUG,

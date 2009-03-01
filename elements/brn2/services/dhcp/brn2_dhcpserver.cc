@@ -37,15 +37,21 @@
 #include <click/straccum.hh>
 #include <click/string.hh>
 
+#include "elements/brn2/dht/storage/dhtoperation.hh"
+#include "elements/brn2/dht/storage/dhtstorage.hh"
+
 #include "elements/brn/services/dhcp/dhcppacketutil.hh"
-#include "elements/brn/dht/dhtcommunication.hh"
 
 #include "elements/brn/dht/md5.h"
 
 CLICK_DECLS
 
+#define NO_DHT
+
 BRN2DHCPServer::BRN2DHCPServer() :
-  _debug(BrnLogger::DEFAULT)
+  _debug(BrnLogger::DEFAULT),
+  _dhcpsubnetlist(NULL),
+  _vlantable(NULL)
 {
 }
 
@@ -74,6 +80,10 @@ BRN2DHCPServer::configure(Vector<String> &conf, ErrorHandler* errh)
       "DNS", cpkP+cpkM, cpIPAddress, /*"name server",*/ &_name_server,        /* e.g. "141.20.20.50" */
       "SERVERNAME", cpkP+cpkM, cpString, /*"servername",*/ &_sname,                  /* e.g. "dhcp.brn.net" */
       "DOMAIN", cpkP+cpkM, cpString, /*"domainname",*/ &_domain_name,            /* e.g. "brn.net" */
+      "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
+      "DHCPSUBNETLIST", cpkP, cpElement, &_dhcpsubnetlist,
+      "VLANTABLE", cpkP, cpElement, &_vlantable,
+      "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
       "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
@@ -88,7 +98,7 @@ BRN2DHCPServer::initialize(ErrorHandler *)
   md5_state_t state;
 
   char buf[24];
-  
+
   uint8_t *eth_me = _me.data();
 
   sprintf(buf, "%02x%02x%02x%02x%02x%02x", eth_me[0], eth_me[1], eth_me[2], eth_me[3], eth_me[4], eth_me[5]);
@@ -109,20 +119,168 @@ BRN2DHCPServer::initialize(ErrorHandler *)
   start_ip_range = IPAddress(md5_int);
 
   _default_lease = 3600;
-  dht_packet_id = 0;
 
   debug_count_dhcp_packet = 0;
-  debug_count_dht_packet = 0;
 
 //  BRN_DEBUG("Configuration %s: Address space %s/%s, Router %s, ID %s, DNS %s, "
-//    "Name %s, Domain %s", _me.unparse().c_str(), _net_address.unparse().c_str(), 
+//    "Name %s, Domain %s", _me.unparse().c_str(), _net_address.unparse().c_str(),
 //    _subnet_mask.unparse().c_str(), _router.unparse().c_str(), _server_ident.unparse().c_str(),
 //    _name_server.unparse().c_str(), _sname.c_str(), _domain_name.c_str());
 
   return 0;
 }
 
+static void callback_func(void *e, DHTOperation *op)
+{
+  BRN2DHCPServer *s = (BRN2DHCPServer *)e;
 
+  BRN2DHCPServer::DHCPClientInfo *client_info = s->get_client_by_dht_id(op->get_id());
+
+  if ( client_info != NULL ) {
+    s->handle_dht_reply(client_info,op);
+  } else {
+    click_chatter("No Client info for DHT-ID");
+    delete op;
+  }
+}
+
+void
+BRN2DHCPServer::dht_request(DHCPClientInfo *client_info, DHTOperation *op)
+{
+  //click_chatter("send storage request");
+  uint32_t result = _dht_storage->dht_request(op, callback_func, (void*)this );
+
+  if ( result == 0 )
+  {
+    //click_chatter("Got direct-reply (local)");
+    handle_dht_reply(client_info,op);
+  } else {
+    client_info->_id = result;
+  }
+}
+
+void
+BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
+{
+  int result;
+
+  BRN_DEBUG("BRN2DHCPServer: Handle DHT-Answer");
+  BRN_DEBUG("BRN2DHCPServer: Client_status: %d",client_info->_status);
+
+  switch ( client_info->_status )
+  {
+    case DHCPINIT:
+    {
+      if ( client_info->_dht_op == MODE_READ )
+      {
+        if ( ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) ||
+             ( ( op->header.status == DHT_STATUS_OK ) && ( op->header.valuelen == 6 ) && ( memcmp(op->value, client_info->_chaddr, 6 ) == 0 ) ) )
+        {
+          BRN_DEBUG("BRN2DHCPServer: IP/Mac is not used or used by the Client !!!");
+          result = send_dhcp_offer(client_info);
+          delete op;
+        }
+        else
+        {
+          BRN_DEBUG("BRN2DHCPServer: IP/Mac used by another Client");
+
+          uint16_t vlanid = getVlanID(EtherAddress(client_info->_chaddr));
+          if ( vlanid != 0xFFFF ) {
+            find_client_ip( client_info, vlanid );
+            delete op;
+            result = send_dht_request(client_info);
+           // return(result);
+          } else {
+            click_chatter("Client has no vlan");
+            result = 1;
+            delete op;
+            //TODO: remove client info
+          }
+        }
+      }
+      else
+      {
+        BRN_ERROR("UNKNOWN DHT-OPERATION FOR DHCPINIT");
+        delete op;
+        result = 1;
+      }
+
+      break;
+    }
+    case DHCPINITREBOOT:
+    case DHCPSELECTING:
+    case DHCPRENEWING:
+    case DHCPREBINDING:
+    {
+      switch ( client_info->_dht_op )
+      {
+        case MODE_READ:
+        {
+          if ( ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) ||
+                 ( ( op->header.status == DHT_STATUS_OK ) && ( op->header.valuelen == 6 ) && ( memcmp(op->value, client_info->_chaddr, 6 ) == 0 ) ) )
+          {
+            BRN_DEBUG("BRN2DHCPServer: IP is not used or used by this client. Write new MAC to DHT!");
+
+            client_info->_dht_op = MODE_WRITE;
+            delete op;
+
+            result = send_dht_request(client_info);
+        //    return(result);
+          }
+          else
+          {
+            BRN_DEBUG("BRN2DHCPServer: IP is used by another Client");
+            delete op;
+            result = send_dhcp_ack(client_info,DHCPNAK );
+          }
+          break;
+        }
+        case MODE_WRITE:
+        {
+          BRN_DEBUG("BRN2DHCPServer: Write IP to DHT");
+          if ( op->header.status == DHT_STATUS_OK ) //all O.K.
+          {
+            result = send_dhcp_ack(client_info, DHCPACK );
+          }
+          else
+          {
+            BRN_ERROR("BRN2DHCPServer: ERROR: COULDN'T WRITE TO DHT");
+            result = send_dhcp_ack(client_info, DHCPNAK );
+          }
+          delete op;
+          break;
+        }
+        default:
+        {
+          BRN_ERROR("BRN2DHCPServer: ERROR: UNKNOWN DHT-OPERATION");
+          result = 1;
+          delete op;
+          break;
+        }
+      }
+      break;
+    }
+    case DHCPBOUND:
+    {
+      if ( client_info->_dht_op == MODE_REMOVE )
+      {
+        BRN_DEBUG("BRN2DHCPServer: Client wurde entfernt");
+        client_info->_client_packet->kill();
+        debug_count_dhcp_packet--;
+        result = remove_client(client_info);
+        delete op;
+      }
+      break;
+    }
+    default:
+    {
+      BRN_DEBUG("BRN2DHCPServer: dht-answer unknown client status !");
+      result = 1;
+      delete op;
+      break;
+    }
+  }
+}
 
 //Frage von client -> frage an dht -> antwort von dht -> antwort für client
 
@@ -130,7 +288,7 @@ void
 BRN2DHCPServer::push( int port, Packet *p_in )
 {
   int result = -1;
- 
+
   BRN_DEBUG("BRN2DHCPServer: PUSH an Port %d",port);
 
   if ( port == 0 )
@@ -138,7 +296,7 @@ BRN2DHCPServer::push( int port, Packet *p_in )
     debug_count_dhcp_packet++;
 
     BRN_DEBUG("BRN2DHCPServer: Responder::dhcpresponse");
-	
+
     int packet_type = DHCPPacketUtil::retrieve_dhcptype(p_in);
 
     switch (packet_type) {
@@ -168,53 +326,25 @@ BRN2DHCPServer::push( int port, Packet *p_in )
         }
     }
   }
-
-  if ( port == 1 )
-  {
-    debug_count_dht_packet++;
-
-    result = handle_dht_answer(p_in);
-  }
 }
 
 int
-BRN2DHCPServer::send_dht_question(DHCPClientInfo *client_info)
+BRN2DHCPServer::send_dht_request(DHCPClientInfo *client_info)
 {
-  WritablePacket *dht_p_out;
-
-#ifdef NO_DHT
-  struct dht_packet_header *dht_p = NULL;
-#endif
-
   BRN_DEBUG("BRN2DHCPServer: Packet for DHT");
+
+  DHTOperation *op;
 
   switch ( client_info->_status )
   {
     case DHCPINIT:
     {
-	      /* HEADER */
-      dht_p_out = DHTPacketUtil::new_dht_packet();
-
-      debug_count_dht_packet++;
-
-      dht_packet_id++;
-      client_info->_id = dht_packet_id;
-      DHTPacketUtil::set_header(dht_p_out, DHCP, DHT, 0, READ, dht_packet_id );
-			
-      dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_IP, 4,(uint8_t*) &client_info->_ciaddr);	
-
       BRN_DEBUG("BRN2DHCPServer: Clientstatus: DHCPINIT");
       BRN_DEBUG("BRN2DHCPServer: Send packet to DHT");
 
-      debug_count_dht_packet--;
-
-#ifndef NO_DHT
-      output( 1 ).push( dht_p_out );
-#else
-      dht_p = (struct dht_packet_header *)dht_p_out->data();
-      dht_p->flags = KEY_NOT_FOUND;
-      handle_dht_answer(dht_p_out);
-#endif
+      op = new DHTOperation();
+      op->read((uint8_t*) &client_info->_ciaddr, 4);
+      dht_request(client_info,op);
 
       break;
     }
@@ -223,65 +353,31 @@ BRN2DHCPServer::send_dht_question(DHCPClientInfo *client_info)
     case DHCPRENEWING:
     case DHCPREBINDING:
     {
-      if ( client_info->_dht_op == READ )
+      if ( client_info->_dht_op == MODE_READ )
       {
         BRN_DEBUG("BRN2DHCPServer: Clientstatus: DHCPSELECTING READ");
 
-        dht_p_out = DHTPacketUtil::new_dht_packet();
-        debug_count_dht_packet++;
-
-        dht_packet_id++;
-        client_info->_id = dht_packet_id;
-
-        DHTPacketUtil::set_header(dht_p_out, DHCP, DHT, 0, READ, dht_packet_id );
-        dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_IP, 4,(uint8_t*) &client_info->_ciaddr);	
+        op = new DHTOperation();
+        op->read((uint8_t*) &client_info->_ciaddr, 4);
       }
-      else if ( client_info->_dht_op == WRITE )
+      else if ( client_info->_dht_op == MODE_WRITE )
       {
         BRN_DEBUG("BRN2DHCPServer: Clientstatus: DHCPSELECTING WRITE");
-        dht_p_out = DHTPacketUtil::new_dht_packet();
-        debug_count_dht_packet++;
 
-        dht_packet_id++;
-        client_info->_id = dht_packet_id;
-					
-        DHTPacketUtil::set_header(dht_p_out, DHCP, DHT, 0, WRITE, dht_packet_id );
-
-        dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_IP, 4,(uint8_t*) &client_info->_ciaddr);	
-        dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 1, TYPE_MAC, 6,(uint8_t*) &client_info->_chaddr);	
-
-        uint32_t lease_time = htonl(_default_lease);
-        dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 2, TYPE_REL_TIME, 4,(uint8_t*)&lease_time );	
-      }   
+        op = new DHTOperation();
+        op->insert((uint8_t*) &client_info->_ciaddr, 4, (uint8_t*) &client_info->_chaddr, 6);
+      }
       else
       {
         BRN_ERROR("BRN2DHCPServer: send_dht_question: ERROR: UNKNOWN DHT-OPERATION");
 
         client_info->_client_packet->kill();
-        debug_count_dhcp_packet--;
         remove_client(client_info);
         return( -1 );
       }
 
       BRN_DEBUG("BRN2DHCPServer: Send packet to DHT");
-
-#ifndef NO_DHT
-      output( 1 ).push( dht_p_out );
-#else
-      dht_p = (struct dht_packet_header *)dht_p_out->data();
-      if ( client_info->_dht_op == READ )
-      {
-        dht_p->flags = KEY_NOT_FOUND;
-      }
-      else if ( client_info->_dht_op == WRITE )
-      {
-        dht_p->flags == 0
-      }
-
-      handle_dht_answer(dht_p_out);
-#endif
-
-      debug_count_dht_packet--;
+      dht_request(client_info,op);
 
       break;
     }	
@@ -293,138 +389,6 @@ BRN2DHCPServer::send_dht_question(DHCPClientInfo *client_info)
    }
 
    return(0);
-}
-
-int
-BRN2DHCPServer::handle_dht_answer(Packet *dht_p_in)
-{
-  int result = -1;
-
-  struct dht_packet_header *dht_p;
-  DHCPClientInfo *client_info;
-
-    BRN_DEBUG("BRN2DHCPServer: Handle DHT-Answer");
-
-  uint8_t *dht_p_data = (uint8_t*)dht_p_in->data();
-  dht_p_data = &dht_p_data[sizeof(struct dht_packet_header)];
-
-  dht_p = (struct dht_packet_header *)dht_p_in->data();
-
-  client_info = (DHCPClientInfo *)get_client_by_dht_id(dht_p->id);
-  
-  if ( client_info == NULL )
-  {
-    BRN_DEBUG("BRN2DHCPServer: handle_dht_answer: client mit id %d nicht gefunden", dht_p->id );
-    dht_p_in->kill();
-    debug_count_dht_packet--;
-    return( 1 );
-  }
-
-  BRN_DEBUG("BRN2DHCPServer: Client_status: %d",client_info->_status);
-
-  switch ( client_info->_status )
-  {
-    case DHCPINIT:
-    {
-      if ( client_info->_dht_op == READ )
-      {
-        if ( ( dht_p->flags == KEY_NOT_FOUND ) || ( memcmp(&(dht_p_data[10]), client_info->_chaddr, 6 ) == 0 ) )
-        {
-          BRN_DEBUG("BRN2DHCPServer: IP/Mac is not used or used by the Client !!!");
-
-          result = send_dhcp_offer(client_info);
-        }
-        else
-        {
-          BRN_DEBUG("BRN2DHCPServer: IP/Mac used by another Client");
-
-          find_client_ip( client_info );
-          dht_p_in->kill();
-          debug_count_dht_packet--;
-          result = send_dht_question(client_info);
-          return(result);  //robert
-        }
-      }
-      else
-      {
-        BRN_ERROR("UNKNOWN DHT-OPERATION FOR DHCPINIT");
-        result = 1;
-      }
-
-      break;
-    }
-    case DHCPINITREBOOT:
-    case DHCPSELECTING:
-    case DHCPRENEWING:
-    case DHCPREBINDING:
-    {	
-      switch ( client_info->_dht_op )
-      {
-        case READ:
-        {
-          if ( ( dht_p->flags == KEY_NOT_FOUND ) || ( memcmp(&(dht_p_data[10]),client_info->_chaddr,6 ) == 0 ) )
-          {
-             BRN_DEBUG("BRN2DHCPServer: IP is not used or used by this client. Write new MAC to DHT!");
-
-             client_info->_dht_op = WRITE;
-             dht_p_in->kill();
-             debug_count_dht_packet--;
-             result = send_dht_question(client_info);
-             return(result);
-          }
-          else
-          {
-            BRN_DEBUG("BRN2DHCPServer: IP is used by another Client");
-            result = send_dhcp_ack(client_info,DHCPNAK );
-          }
-          break;
-        }
-        case WRITE:
-        {
-          BRN_DEBUG("BRN2DHCPServer: Write IP to DHT");
-          if ( dht_p->flags == 0 ) //all O.K.
-          {
-            result = send_dhcp_ack(client_info, DHCPACK );
-          }
-          else
-          {
-            BRN_ERROR("BRN2DHCPServer: ERROR: COULDN'T WRITE TO DHT");
-            result = send_dhcp_ack(client_info, DHCPNAK );
-          }
-          break;
-        }
-        default:
-        {
-          BRN_ERROR("BRN2DHCPServer: ERROR: UNKNOWN DHT-OPERATION");
-          result = 1;
-          break;
-        }
-      }
-      break;
-    }
-    case DHCPBOUND:
-    {
-      if ( client_info->_dht_op == REMOVE )
-      {
-        BRN_DEBUG("BRN2DHCPServer: Client wurde entfernt");
-        client_info->_client_packet->kill();
-        debug_count_dhcp_packet--;
-        result = remove_client(client_info);
-      }
-      break;
-    }
-    default:
-    {
-      BRN_DEBUG("BRN2DHCPServer: dht-answer unknown client status !");
-      result = 1;
-      break;
-    }
-  }
-  
-  dht_p_in->kill();
-  debug_count_dht_packet--;
-	
-  return(result);
 }
 
 // Client: DHCP-Server suchen   ( p_in )
@@ -458,12 +422,12 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     debug_count_dhcp_packet--;
     return(0);
   }
-  
+
   client_info->_status = DHCPINIT;
-  client_info->_dht_op = READ;
+  client_info->_dht_op = MODE_READ;
   client_info->_broadcast = true;
   client_info->_xid = new_dhcp_packet->xid;
-  memcpy(client_info->_chaddr,new_dhcp_packet->chaddr,6);
+  memcpy(client_info->_chaddr, new_dhcp_packet->chaddr, 6);
 
   client_info->_client_packet = p_in;
 
@@ -473,8 +437,13 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
   if ( ( requested_ip == NULL ) && ( memcmp(&new_dhcp_packet->ciaddr,"\0\0\0\0",4) == 0 ) )
   {
     memcpy(&(client_info->_ciaddr),"\0\0\0\0",4);
-    find_client_ip(client_info);
-  }     
+    uint16_t vlanid = getVlanID(EtherAddress(client_info->_chaddr));
+    if ( vlanid != 0xFFFF ) {
+      find_client_ip(client_info, vlanid);
+    } else {
+      return 1;  //ERROR. TODO: better Error-Handling
+    }
+  }
   else
   {
     BRN_DEBUG("BRN2DHCPServer: INIT. Client want special IP");
@@ -485,15 +454,46 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
       req_ip = IPAddress(requested_ip);
     else
       req_ip = IPAddress(new_dhcp_packet->ciaddr);
-   
-    if ((req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr()))
+
+    bool wanted_ip_ok = (req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr());
+    uint16_t vlanid = 0;
+    IPAddress req_subnet_mask;
+    IPAddress req_net_address;
+
+    if (  _vlantable != NULL ) {
+      vlanid = _vlantable->find(EtherAddress(new_dhcp_packet->chaddr));
+      wanted_ip_ok = wanted_ip_ok && ( vlanid == 0 );                   //major subnet alway mapped to vlan0
+      if ( wanted_ip_ok ) {
+        req_subnet_mask = _subnet_mask;
+        req_net_address = _net_address;
+      }
+    }
+
+    if ( ( _vlantable != NULL ) && ( _dhcpsubnetlist != NULL ) && ( ! wanted_ip_ok ) ) {
+     if ( vlanid != 0xFFFF ) {
+        BRN2DHCPSubnetList::DHCPSubnet *sn;
+        for ( int i = 0; i < _dhcpsubnetlist->countSubnets(); i++ ) {
+          sn = _dhcpsubnetlist->getSubnet(i);
+          wanted_ip_ok = wanted_ip_ok ||
+              ( ( (req_ip.addr() & sn->_subnet_mask.addr()) != ( sn->_net_address.addr() & sn->_subnet_mask.addr()) ) &&
+              ( sn->_vlan == vlanid ) );
+          if ( wanted_ip_ok ) {
+            req_subnet_mask = sn->_subnet_mask;
+            req_net_address = sn->_net_address;
+            break;
+          }
+        }
+      }
+    }
+
+    if ( ! wanted_ip_ok )
     {
       BRN_DEBUG("BRN2DHCPServer: Client wollte IP: %s ! Diese gehoert nicht zum Subnetz %s/%s",
-        req_ip.unparse().c_str(), _net_address.unparse().c_str(), _subnet_mask.unparse().c_str());
+        req_ip.unparse().c_str(), req_net_address.unparse().c_str(), req_subnet_mask.unparse().c_str());
       BRN_DEBUG("BRN2DHCPServer: Berechne ihm ne neue");
-	
+
       memcpy(&(client_info->_ciaddr),"\0\0\0\0",4);
-      find_client_ip(client_info);
+      find_client_ip(client_info, vlanid);
     }
     else
     {
@@ -504,11 +504,10 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
 
   client_info_list.push_back(client_info);
 
-  result = send_dht_question( client_info );
+  result = send_dht_request( client_info );
 
   return( result );
 }
-
 
 int
 BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
@@ -530,7 +529,7 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
 
   DHCPPacketUtil::insertMagicCookie(p_out);
   DHCPPacketUtil::del_all_options(p_out); //del option of old packet
-	
+
   message_type = DHCPOFFER;
   DHCPPacketUtil::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&message_type);
 
@@ -538,9 +537,9 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
 
   lease_time = htonl(_default_lease);
   DHCPPacketUtil::add_option(p_out,DHO_DHCP_LEASE_TIME ,4 ,(uint8_t *)&lease_time);
- 
+
   dhcp_add_standard_options(p_out);
-	
+
   BRN_DEBUG("BRN2DHCPServer: Send DHCP-Offer");
 
   result = remove_client(client_info);
@@ -562,7 +561,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
 
   DHCPClientInfo *client_info;
 
-    BRN_DEBUG("BRN2DHCPServer: Handle DHCP-Request");
+  BRN_DEBUG("BRN2DHCPServer: Handle DHCP-Request");
 
   struct dhcp_packet *new_dhcp_packet = (struct dhcp_packet *)p_in->data();
 
@@ -581,7 +580,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
 
   client_info = new DHCPClientInfo();
 
-  client_info->_dht_op = READ;
+  client_info->_dht_op = MODE_READ;
   client_info->_xid = new_dhcp_packet->xid;
   memcpy(client_info->_chaddr,new_dhcp_packet->chaddr, new_dhcp_packet->hlen );
   client_info->_broadcast = true;
@@ -605,17 +604,19 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
   {
     req_ip = IPAddress(requested_ip);
 
+    click_chatter("IPAddresse is: %s",req_ip.unparse().c_str());
+
     BRN_DEBUG("BRN2DHCPServer: Clientstatus: SELECTING or INIT-REBOOT");
 
     unsigned char *server_id = DHCPPacketUtil::getOption(p_in, DHO_DHCP_SERVER_IDENTIFIER,&op_size);
-			
+
     if ( server_id == NULL )
     {
       BRN_DEBUG("BRN2DHCPServer: Clientstatus: INIT-REBOOT");
 
       client_info->_status = DHCPINITREBOOT;
     }
-    else  
+    else
     {
 
       BRN_DEBUG("BRN2DHCPServer: Clientstatus: SELECTING");
@@ -642,11 +643,36 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
     client_info->_status = DHCPRENEWING;
   }
 
-   
-  if ((req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr()))
+  uint16_t vlanid = getVlanID(EtherAddress(new_dhcp_packet->chaddr));
+  IPAddress req_subnet_mask;
+  IPAddress req_net_address;
+
+  if ( vlanid == 0 ) {
+    req_subnet_mask = _subnet_mask;
+    req_net_address = _net_address;
+  } else {
+    if ( vlanid != 0xFFFF ) {
+      BRN2DHCPSubnetList::DHCPSubnet *sn;
+      for ( int i = 0; i < _dhcpsubnetlist->countSubnets(); i++ ) {
+        sn = _dhcpsubnetlist->getSubnet(i);
+        if ( sn->_vlan == vlanid ) {
+          req_subnet_mask = sn->_subnet_mask;
+          req_net_address = sn->_net_address;
+          break;
+        }
+      }
+    } else {
+      click_chatter("No vlan for client");
+      result = send_dhcp_ack(client_info,DHCPNAK);
+      delete client_info;  //löschen weil es nicht zur liste dazukam (TODO)
+      return( result );
+    }
+  }
+
+  if ((req_ip.addr() & req_subnet_mask.addr()) != (req_net_address.addr() & req_subnet_mask.addr()))
   {
     BRN_DEBUG("BRN2DHCPServer: Client wollte IP: %s ! Diese gehoert nicht zum Subnetz %s/%s",
-      req_ip.unparse().c_str(), _net_address.unparse().c_str(), _subnet_mask.unparse().c_str());
+      req_ip.unparse().c_str(), req_net_address.unparse().c_str(), req_subnet_mask.unparse().c_str());
 
     result = send_dhcp_ack(client_info,DHCPNAK);
     delete client_info;  //löschen weil es nicht zur liste dazukam (TODO)
@@ -661,17 +687,16 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
 
   client_info_list.push_back(client_info);
 
-  result = send_dht_question(client_info);
+  result = send_dht_request(client_info);
 
   return( result );
 }
 
-
 int
 BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
-{ 
+{
   int result;
-  
+
   WritablePacket *p_out = (WritablePacket *)client_info->_client_packet;
   struct dhcp_packet *dhcp_packet_out = (struct dhcp_packet *)p_out->data();
 
@@ -680,20 +705,20 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
   dhcp_packet_out->xid = client_info->_xid;
   dhcp_packet_out->secs += 0;
   dhcp_packet_out->flags = htons(BOOTP_BROADCAST);  // set Broadcast-Flag
-  
+
   memcpy(dhcp_packet_out->chaddr,client_info->_chaddr,6);  //set hw-addr
 
   BRN_DEBUG("BRN2DHCPServer: Reqest: set options!");
 
   DHCPPacketUtil::insertMagicCookie(p_out);
   DHCPPacketUtil::del_all_options(p_out);
-		
+
   DHCPPacketUtil::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&messagetype);
-  
+
   if ( messagetype == DHCPACK )
   {
     memcpy((void*)&dhcp_packet_out->yiaddr,&client_info->_ciaddr,4);
- 
+
     uint32_t lease_time;
 
     lease_time = htonl(_default_lease);
@@ -712,7 +737,7 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
   {
     dhcp_packet_out->flags = htons(0);  // set Broadcast-Flag
   }
-  
+
   result = remove_client(client_info);
 
   BRN_DEBUG("BRN2DHCPServer: Send DHCP-Reply");
@@ -724,13 +749,11 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
 
 }
 
-
-
 int
 BRN2DHCPServer::handle_dhcp_release(Packet *p_in)
 {
   struct dhcp_packet *dhcp_p = (struct dhcp_packet *)p_in->data();
-  
+
   DHCPClientInfo *client_info;
 
   client_info = (DHCPClientInfo *)get_client_by_mac(dhcp_p->chaddr);
@@ -750,33 +773,13 @@ BRN2DHCPServer::handle_dhcp_release(Packet *p_in)
   }
 
   client_info->_status = DHCPBOUND;
-  client_info->_dht_op = REMOVE;
-  dht_packet_id++;
-  client_info->_id = dht_packet_id;
+  client_info->_dht_op = MODE_REMOVE;
   client_info->_client_packet = p_in;
-
   memcpy(&client_info->_ciaddr,&dhcp_p->ciaddr,4);
-
-  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
-  debug_count_dht_packet++;
-
-
-  DHTPacketUtil::set_header(dht_p_out, DHCP, DHT, 0, REMOVE, dht_packet_id );
-
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_IP , 4,(uint8_t*) &dhcp_p->yiaddr);	
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 1, TYPE_MAC, 6,(uint8_t*) &dhcp_p->chaddr);	
-
   client_info_list.push_back(client_info);
+  int result = send_dht_request(client_info);
 
-#ifndef NO_DHT
-  output( 1 ).push( dht_p_out );
-#else
-  handle_dht_answer(dht_p_out);
-#endif
-
-  debug_count_dht_packet--;
- 
-  return(0);
+  return(result);
 
 }
 
@@ -812,20 +815,18 @@ BRN2DHCPServer::handle_dhcp_inform(Packet *p_in)
   return(0);
 }
 
-
-
 void
 BRN2DHCPServer::dhcp_add_standard_options(WritablePacket *p)
 {
   struct dhcp_packet *dhcp_p = (struct dhcp_packet *)p->data();
-  
+
   memcpy(dhcp_p->sname,_sname.data(),_sname.length());
   dhcp_p->sname[_sname.length()] = '\0';
 
   IPAddress server_ident;
   cp_ip_address(_server_ident, &server_ident, this);
   DHCPPacketUtil::add_option(p,DHO_DHCP_SERVER_IDENTIFIER ,4 ,(uint8_t *)server_ident.data());
-			
+
   IPAddress subnet_mask;
   cp_ip_address(_subnet_mask, &subnet_mask, this);
   DHCPPacketUtil::add_option(p,DHO_SUBNET_MASK ,4 ,(uint8_t *)subnet_mask.data());
@@ -845,18 +846,31 @@ BRN2DHCPServer::dhcp_add_standard_options(WritablePacket *p)
 
 /* This method returns an ip address to a given ethernet address. */
 void
-BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info)
+BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
 {
+  click_chatter("Find ip for Client is Vlan %d", (int)vlanid);
   StringAccum sa;
   uint32_t new_ip;
- 
+  click_chatter("id is %d EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
   if ( memcmp(&(client_info->_ciaddr),"\0\0\0\0",4) == 0 )
   {
 //just take the last byte of mac address --> TODO: ZeroConf
 
     BRN_DEBUG("BRN2DHCPServer: neue IP");
-     
-    new_ip = ntohl(_net_address.addr());
+
+    IPAddress vlan_net_address;
+
+    if ( vlanid == 0 ) {
+      vlan_net_address = _net_address;
+    } else {
+      BRN2DHCPSubnetList::DHCPSubnet *sn = _dhcpsubnetlist->getSubnetByVlanID(vlanid);
+      if ( sn != NULL ) {
+        vlan_net_address = sn->_net_address;
+      } else
+        vlan_net_address = _net_address;
+    }
+
+    new_ip = ntohl(vlan_net_address.addr());
     new_ip = new_ip + (int) client_info->_chaddr[5] + 5;
     new_ip = htonl(new_ip);
 
@@ -872,7 +886,7 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info)
     new_ip = ntohl(new_ip);
 
     new_ip += 1;
-    
+
     new_ip = htonl(new_ip);
     memcpy(&(client_info->_ciaddr),&new_ip,4);
   }
@@ -887,21 +901,21 @@ BRN2DHCPServer::find_lease(void)
 }
 
 
-void *
+BRN2DHCPServer::DHCPClientInfo *
 BRN2DHCPServer::get_client_by_mac(uint8_t *mac)
 {
   for ( int i = 0; i < client_info_list.size(); i++ )
     if ( memcmp(client_info_list[i]->_chaddr, mac, 6 ) == 0 ) return( client_info_list[i] );
- 
+
   return( NULL );
 }
 
-void *
-BRN2DHCPServer::get_client_by_dht_id(uint8_t id)
+BRN2DHCPServer::DHCPClientInfo *
+BRN2DHCPServer::get_client_by_dht_id(uint32_t id)
 {
   for ( int i = 0; i < client_info_list.size(); i++ )
     if ( client_info_list[i]->_id == id ) return( client_info_list[i] );
- 
+
   return( NULL );
 
 }
@@ -915,11 +929,15 @@ BRN2DHCPServer::remove_client(DHCPClientInfo *client_info)
       delete client_info_list[i];
       client_info_list.erase(client_info_list.begin() + i);
     }
-   
+
   return(0);
 }
 
-
+uint16_t
+BRN2DHCPServer::getVlanID(EtherAddress ea) {
+  if ( _vlantable == NULL ) return 0;
+  return _vlantable->find(ea);
+}
 
 
 enum { H_SERVER_INFO, H_DEBUG };
@@ -938,26 +956,27 @@ read_param(Element *e, void *thunk)
 
 static int 
 write_param(const String &in_s, Element *e, void *vparam,
-          ErrorHandler *errh)
+            ErrorHandler *errh)
 {
   BRN2DHCPServer *f = (BRN2DHCPServer *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
-  case H_DEBUG: {    //debug
-    int debug;
-    if (!cp_integer(s, &debug)) 
-      return errh->error("debug parameter must be boolean");
-    f->_debug = debug;
-    break;
-  }}
+    case H_DEBUG: {    //debug
+      int debug;
+      if (!cp_integer(s, &debug)) 
+        return errh->error("debug parameter must be boolean");
+      f->_debug = debug;
+      break;
+    }
+  }
   return 0;
 }
 
-static String                                                                                                                                                          
+static String
 BRN2DHCPServer_read_param(Element *e, void *thunk)
 {
   BRN2DHCPServer *dhcpd = (BRN2DHCPServer *)e;
-  
+
   switch ((uintptr_t) thunk)
   {
     case H_SERVER_INFO :  return ( dhcpd->server_info( ) );
@@ -979,7 +998,7 @@ String
 BRN2DHCPServer::server_info(void)
 {
  StringAccum sa;
- 
+
  sa << "DHCP-Server-INFO\n";
  sa << "Net: " << _net_address.unparse() << "\n";
  sa << "Mask: " <<  _subnet_mask.unparse() << "\n";
@@ -993,8 +1012,7 @@ BRN2DHCPServer::server_info(void)
  sa << "Queuesize: " << client_info_list.size() << "\n\n";
 
  sa << "Range: " << start_ip_range.unparse() << "\n\n";
- 
- sa << "DHT Packet in Queue: " << debug_count_dht_packet << "\n"; 
+
  sa << "DHCP Pcket in Queue: " << debug_count_dhcp_packet << "\n"; 
 
  return sa.take_string();

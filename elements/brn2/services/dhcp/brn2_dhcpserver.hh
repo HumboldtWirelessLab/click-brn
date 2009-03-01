@@ -24,7 +24,16 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include "../../../brn/vlan/vlantable.hh"
 #include "elements/brn/services/dhcp/dhcp.h"
+#include "dhcpsubnetlist.hh"
+
+#include "elements/brn2/dht/storage/dhtstorage.hh"
+
+#define MODE_WRITE  0
+#define MODE_READ   1
+#define MODE_REMOVE 2
+
 
 CLICK_DECLS
 
@@ -50,8 +59,8 @@ class BRN2DHCPServer : public Element {
    public:
     uint8_t _status;
 
-    uint8_t _dht_op;
-    uint8_t _id;
+    uint8_t _dht_op;                          //TODO: check ( puttogether with _status ?? )
+    uint32_t _id;
 
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
@@ -84,7 +93,7 @@ class BRN2DHCPServer : public Element {
   const char *class_name() const	{ return "BRN2DHCPServer"; }
   const char *processing() const	{ return PUSH; }
 
-  const char *port_count() const        { return "2/2"; } 
+  const char *port_count() const        { return "1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
@@ -106,21 +115,25 @@ class BRN2DHCPServer : public Element {
   int handle_dhcp_decline(Packet *p_in);
   int handle_dhcp_inform(Packet *p_in);
 
-  int handle_dht_answer(Packet *dht_p_in);
-
-  int send_dht_question(DHCPClientInfo *client_info);
-
   int send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype);
   int send_dhcp_offer(DHCPClientInfo *client_info);
 
   void dhcp_add_standard_options(WritablePacket *p);
 
-  void *get_client_by_mac(uint8_t *mac);
-  void *get_client_by_dht_id(uint8_t id);
+ public:
+  int send_dht_request(DHCPClientInfo *client_info);
+  void dht_request(DHCPClientInfo *client_info, DHTOperation *op);
+
+  void handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op);
+
+ public:
+  BRN2DHCPServer::DHCPClientInfo *get_client_by_mac(uint8_t *mac);
+  BRN2DHCPServer::DHCPClientInfo *get_client_by_dht_id(uint32_t id);                              //TODO: remove
   int remove_client(DHCPClientInfo *client_info);
 
-  void find_client_ip(DHCPClientInfo *client_info);
+  void find_client_ip(DHCPClientInfo *client_info, uint16_t vlan_id);
   uint32_t find_lease(void);
+  uint16_t getVlanID(EtherAddress ea);
 
   //
   //member
@@ -149,12 +162,13 @@ private:
 
   uint32_t _default_lease;
 
-  //DHT
-  uint8_t dht_packet_id; 
-
   //DEBUG
   int debug_count_dhcp_packet;
-  int debug_count_dht_packet;
+  int debug_count_dht_packets;
+
+  BRN2DHCPSubnetList *_dhcpsubnetlist;
+  VLANTable *_vlantable;
+  DHTStorage *_dht_storage;
 };
 
 CLICK_ENDDECLS

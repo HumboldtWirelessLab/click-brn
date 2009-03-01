@@ -80,6 +80,10 @@ class BRN2DHCPSubnetList : public Element {
 
   void add_handlers();
 
+  int countSubnets() { return _subnet_list.size(); }
+  DHCPSubnet *getSubnet(int index);
+  DHCPSubnet *getSubnetByVlanID(int id);
+
   SubnetList _subnet_list;
 
   int _debug;
