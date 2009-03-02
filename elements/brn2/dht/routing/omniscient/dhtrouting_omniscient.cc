@@ -11,8 +11,8 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include "dhtrouting_omniscient.hh"
 
+#include "dhtrouting_omniscient.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -20,7 +20,7 @@
 #include "dhtprotocol_omniscient.hh"
 
 #include "elements/brn/routing/nblist.hh"
-#include "elements/brn/routing/linkstat/brnlinkstat.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 
@@ -60,7 +60,7 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
     cpEnd) < 0)
       return -1;
 
-  if (!_linkstat || !_linkstat->cast("BRNLinkStat"))
+  if (!_linkstat || !_linkstat->cast("BRN2LinkStat"))
   {
     _linkstat = NULL;
     click_chatter("kein Linkstat");
@@ -419,6 +419,7 @@ DHTRoutingOmni::nodeDetection()
 
   //Check for new neighbors
   for( int i = 0; i < neighbors.size(); i++ ) {
+    click_chatter("New neighbors");
     node = _dhtnodes.get_dhtnode(&(neighbors[i]));
     if ( node == NULL ) {
       node = new DHTnode(neighbors[i]);

@@ -9,10 +9,11 @@
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/routing/dhtrouting.hh"
+//#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 
-class BRNLinkStat;
+class BRN2LinkStat;
 
 class DHTRoutingOmni : public DHTRouting
 {
@@ -50,7 +51,7 @@ class DHTRoutingOmni : public DHTRouting
   private:
 
     int _debug;
-    BRNLinkStat *_linkstat;
+    BRN2LinkStat *_linkstat;
 
     DHTnodelist _dhtnodes;
 

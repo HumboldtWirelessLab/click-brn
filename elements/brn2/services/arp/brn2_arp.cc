@@ -203,7 +203,7 @@ BRN2Arp::handle_dht_reply(DHTOperation *op)
         request_queue.erase( request_queue.begin() + i );
       }
     }
-
+    delete op;
     BRN_DEBUG("ARP: DHTanswer end !!!");
 
     return(1);
@@ -222,10 +222,10 @@ BRN2Arp::handle_dht_reply(DHTOperation *op)
         request_queue.erase( request_queue.begin() + i );
       }
     }
-
+    delete op;
     return(0);
   }
-
+  delete op;
   return(1);
 }
 

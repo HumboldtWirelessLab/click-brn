@@ -136,17 +136,24 @@ void DHTStorageSimple::push( int port, Packet *packet )
       _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
       if ( _op->is_reply() )
       {
+        bool found_fwd = false;
         for( int i = 0; i < _fwd_queue.size(); i++ )
         {
           fwd = _fwd_queue[i];
-          if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )
+          if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )  //TODO: better compare dht-id
           {
             fwd->_info_func(fwd->_info_obj,_op);
             _fwd_queue.erase(_fwd_queue.begin() + i);
             delete fwd->_operation;
             delete fwd;
+
+            found_fwd = true;
+
+            break;
           }
         }
+
+        if ( ! found_fwd ) delete _op; 
       }
       else
       {
@@ -159,15 +166,16 @@ void DHTStorageSimple::push( int port, Packet *packet )
           _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
           EtherAddress src = EtherAddress(_op->header.etheraddress);
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
+          delete _op;
           output(0).push(p);
         }
         else
         {
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+          delete _op;
           output(0).push(p);
         }
       }
-      if ( _op != NULL ) delete _op;
     }
 
     if ( port == 1 )
