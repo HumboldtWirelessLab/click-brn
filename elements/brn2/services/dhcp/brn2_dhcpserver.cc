@@ -46,8 +46,6 @@
 
 CLICK_DECLS
 
-#define NO_DHT
-
 BRN2DHCPServer::BRN2DHCPServer() :
   _debug(BrnLogger::DEFAULT),
   _dhcpsubnetlist(NULL),
