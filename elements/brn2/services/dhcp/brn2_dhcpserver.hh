@@ -19,7 +19,7 @@
  */
 
 #ifndef BRN2DHCPSERVERELEMENT_HH
-#define BRNDHCPSERVERELEMENT_HH
+#define BRN2DHCPSERVERELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
