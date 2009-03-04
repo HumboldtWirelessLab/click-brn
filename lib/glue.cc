@@ -383,9 +383,9 @@ uint32_t click_random_seed = 152;
 void
 click_random_srandom()
 {
-    static const int bufsiz = 16;
+    static const int bufsiz = 64;
     union {
-	uint8_t c[bufsiz];
+	char c[bufsiz];
 	uint32_t u32[bufsiz / 4];
     } buf;
     int pos = 0;
@@ -393,7 +393,7 @@ click_random_srandom()
     ((Timestamp *) (buf.c + pos))->set_now();
     pos += sizeof(Timestamp);
 
-#ifdef CLICK_USERLEVEL
+#if CLICK_USERLEVEL
 # ifdef O_NONBLOCK
     int fd = open("/dev/random", O_RDONLY | O_NONBLOCK);
 # elif defined(O_NDELAY)
@@ -541,16 +541,24 @@ click_qsort(void *base, size_t n, size_t size,
 	    }
 	    pm = cq_med3(p1, pm, p2, compar, thunk);
 	}
+
+	// 2009.Jan.21: A tiny change makes the sort complete even with a
+	// bogus comparator, such as "return 1;".  Guarantee that "a" holds
+	// the pivot.  This means we don't need to compare "a" against the
+	// pivot explicitly.  (See initialization of "pa = pb = a + size".)
+	// Subdivisions will thus never include the pivot, even if "cmp(pivot,
+	// pivot)" returns nonzero.  We will thus never run indefinitely.
 	cq_word_t pivottmp;
 	char *pivot;
 	if (swaptype)
-	    pivot = a, cq_swap(pivot, pm);
+	    pivot = a;
 	else
 	    pivot = (char *) &pivottmp, pivottmp = *(cq_word_t *) pm;
+	cq_swap(a, pm);
 
 	// partition
 	char *pa, *pb, *pc, *pd;
-	pa = pb = a;
+	pa = pb = a + size;
 	pc = pd = a + (n - 1) * size;
 	int r;
 	while (1) {
@@ -609,7 +617,6 @@ click_qsort(void *base, size_t n, size_t size,
 int
 click_qsort(void *base, size_t n, size_t size, int (*compar)(const void *, const void *))
 {
-    // XXX fix cast
     int (*compar2)(const void *, const void *, void *);
     compar2 = reinterpret_cast<int (*)(const void *, const void *, void *)>(compar);
     return click_qsort(base, n, size, compar2, 0);

@@ -224,7 +224,7 @@ click_compile_archive_file(const Vector<ArchiveElement> &archive,
 	package_file += ".bo";
 
     ContextErrorHandler cerrh
-	(errh, "While compiling package %<" + package_file + "%>:");
+	(errh, "While compiling package %<%s%>:", package_file.c_str());
 
     // write .cc file
     String filename = ae->name;
@@ -298,7 +298,7 @@ clickdl_load_requirement(String name, const Vector<ArchiveElement> *archive, Err
     if (!p || p->loaded)
 	return;
 
-    ContextErrorHandler cerrh(errh, "While loading package %<" + name + "%>:");
+    ContextErrorHandler cerrh(errh, "While loading package %<%s%>:", name.c_str());
     bool tmpdir_populated = false;
 
 #ifdef CLICK_TOOL
@@ -309,7 +309,7 @@ clickdl_load_requirement(String name, const Vector<ArchiveElement> *archive, Err
     String package;
 
     // check archive
-    const ArchiveElement *ae;
+    const ArchiveElement *ae = 0;
     if (archive && (ae = ArchiveElement::find(*archive, name + suffix))) {
 	if (!check_tmpdir(*archive, false, tmpdir_populated, &cerrh))
 	    return;
