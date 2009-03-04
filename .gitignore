@@ -18,3 +18,5 @@ depcomp
 installch
 *~
 *.so
+*.o
+*.d
