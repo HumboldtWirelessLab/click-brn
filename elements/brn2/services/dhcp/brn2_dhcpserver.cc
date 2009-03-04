@@ -81,7 +81,6 @@ BRN2DHCPServer::configure(Vector<String> &conf, ErrorHandler* errh)
       "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
       "DHCPSUBNETLIST", cpkP, cpElement, &_dhcpsubnetlist,
       "VLANTABLE", cpkP, cpElement, &_vlantable,
-      "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
       "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
