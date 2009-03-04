@@ -133,8 +133,8 @@ Signal::send_signal_action(const String& param, ErrorHandler *errh)
       errh = router()->chatter_channel(String("default"));
     }
 
-    ContextErrorHandler cerrh( errh, "In write handler '" + 
-      handler->unparse_name(elem) + "':");
+    ContextErrorHandler cerrh( errh, String("In write handler '" + 
+      handler->unparse_name(elem) + "':").c_str());
   
     handler->call_write( param, elem, true, &cerrh );
   }

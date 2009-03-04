@@ -138,8 +138,8 @@ CompoundHandler::set_value( const String& value, ErrorHandler *errh )
         " with value %s.", _handler.c_str(), pElement->declaration().c_str(),
         _value.c_str() );
 
-    ContextErrorHandler cerrh( errh, "In write handler '" + 
-      pHandler->unparse_name(pElement) + "':");
+    ContextErrorHandler cerrh( errh, String("In write handler '" + 
+      pHandler->unparse_name(pElement) + "':").c_str());
 
     pHandler->call_write( _value, pElement, &cerrh );
   }
