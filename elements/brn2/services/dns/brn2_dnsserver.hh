@@ -84,7 +84,7 @@ class BRN2DNSServer : public Element {
   const char *class_name() const	{ return "BRN2DNSServer"; }
   const char *processing() const	{ return PUSH; }
 
-  const char *port_count() const        { return "1/1"; }
+  const char *port_count() const        { return "1/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
