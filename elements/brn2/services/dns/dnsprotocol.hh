@@ -38,8 +38,7 @@ class DNSProtocol : public Element {
   static WritablePacket *new_dns_answer( String qname, uint16_t qtype, uint16_t qclass,
                                          uint32_t ttl, uint16_t rdlength, void *rdata);
 
-  static WritablePacket *dns_question_to_answer(uint32_t ttl, uint16_t rdlength, void *rdata);
-
+  static WritablePacket *dns_question_to_answer(Packet *p, void *name, uint16_t name_len, uint16_t rtype, uint16_t rclass, uint32_t ttl, uint16_t rdlength, void *rdata);
   static char* get_name(Packet *p);
   static struct dns_header* get_dns_header(Packet *p);
   static bool isInDomain(String name, String domain );

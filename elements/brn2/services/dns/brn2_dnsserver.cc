@@ -81,9 +81,6 @@ BRN2DNSServer::configure(Vector<String> &conf, ErrorHandler* errh)
 
   _full_sname = String(_sname.c_str());
   _full_sname += _domain_name;
-  click_chatter("bla");
-  click_chatter("full: %s",_full_sname.c_str());
-  click_chatter("foo");
 
   return 0;
 
@@ -151,8 +148,15 @@ BRN2DNSServer::push( int port, Packet *p_in )
 
     if ( name == _sname || name == _full_sname ) {
       click_chatter("fragt nach mir");
+
+      uint16_t nameoffset = 0x0cc0;
+      WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
+                                                                1, 1, 300, 4, _server_ident.data());
+      output(0).push(ans);
+
     } else if ( DNSProtocol::isInDomain( name, _domain_name ) ) {
       click_chatter("fragt nach rechner der domain");
+
     } else {
        click_chatter("fragt nach anderen");
       //TODO: fragt nach anderen -> weiterleiten (NAT ??)
