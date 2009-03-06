@@ -94,6 +94,17 @@ VLANTable_write_param(const String &in_s, Element *e, void *vparam,
       f->_debug = debug;
       break;
     }
+    case H_INSERT: {
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      EtherAddress _ea;
+      uint32_t _vlan;
+      cp_ethernet_address(args[0], &_ea);
+      cp_integer(args[1], &_vlan);
+
+      f->insert(_ea, _vlan);
+    }
   }
 
   return 0;
