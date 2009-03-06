@@ -106,11 +106,11 @@ BRN2DHCPClient::init_state() {
 
   int requested_ip = ntohl(_ip_addr.addr());
   memcpy( &client_mac[0], _hw_addr.data(), 6 );
-  
+
   //client_mac[5] = 0;
   for( int i = 0; i < _ip_range; i++)
   { 
-     //client_mac[5] = ( client_mac[5] + i ) % 255;
+     client_mac[5] = ( client_mac[5] + 1 ) % 255;
      uint32_t xid = random();
      request_queue.push_back(DHCPClientInfo( xid, client_mac , htonl(requested_ip + i) ));
   }
