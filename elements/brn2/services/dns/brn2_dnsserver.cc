@@ -89,13 +89,19 @@ BRN2DNSServer::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2DNSServer::initialize(ErrorHandler *)
 {
+  IPAddress ip = IPAddress("192.168.0.13");
+  DHTOperation *op = new DHTOperation();
+  String name = ".blo.bloblo.org";
+
+  op->insert((uint8_t*)name.data(), name.length(),(uint8_t*)ip.data(), 4);
+  uint32_t result = _dht_storage->dht_request(op, NULL, (void*)this );
+
   return 0;
 }
 
 static void callback_func(void *e, DHTOperation *op)
 {
   BRN2DNSServer *s = (BRN2DNSServer *)e;
-
   BRN2DNSServer::DNSClientInfo *client_info = s->get_client_by_dht_id(op->get_id());
 
   if ( client_info != NULL ) {
@@ -109,12 +115,11 @@ static void callback_func(void *e, DHTOperation *op)
 void
 BRN2DNSServer::dht_request(DNSClientInfo *client_info, DHTOperation *op)
 {
-  //click_chatter("send storage request");
   uint32_t result = _dht_storage->dht_request(op, callback_func, (void*)this );
 
   if ( result == 0 )
   {
-    //click_chatter("Got direct-reply (local)");
+    click_chatter("Got direct-reply (local)");
     handle_dht_reply(client_info,op);
   } else {
     client_info->_id = result;
@@ -127,7 +132,24 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
   int result;
 
   BRN_DEBUG("BRN2DNSServer: Handle DHT-Answer");
+  if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
+  {
+    char *name = new char[op->header.keylen + 1];
+    memcpy(name,op->key, op->header.keylen);
+    name[op->header.keylen] = '\0';
 
+    click_chatter("No client with name %s !",name);
+    delete name;
+
+  } else {
+    uint16_t nameoffset = 0x0cc0;
+    WritablePacket *ans = DNSProtocol::dns_question_to_answer(client_info->_client_packet, &nameoffset,
+                                                               sizeof(nameoffset), 1, 1, 300,
+                                                               op->header.valuelen, op->value);
+    output(0).push(ans);
+    delete op;
+    remove_client(client_info);
+  }
 }
 
 //Frage von client -> frage an dht -> antwort von dht -> antwort für client
@@ -160,28 +182,17 @@ BRN2DNSServer::push( int port, Packet *p_in )
     } else if ( DNSProtocol::isInDomain( name, _domain_name ) ) {
       click_chatter("fragt nach rechner der domain");
 
+      DNSClientInfo *ci = new DNSClientInfo(p_in,IPAddress(0),name);
+      DHTOperation *op = new DHTOperation();
+      op->read((uint8_t*)name.data(), name.length());
+      dht_request(ci,op);
+
     } else {
-       click_chatter("fragt nach anderen");
-      //TODO: fragt nach anderen -> weiterleiten (NAT ??)
-      output(1).push(p_in);
+      click_chatter("fragt nach anderen");
+      output(1).push(p_in); //TODO: fragt nach anderen -> weiterleiten (NAT ??)
     }
   }
 }
-
-int
-BRN2DNSServer::send_dht_request(DNSClientInfo *client_info)
-{
-  BRN_DEBUG("BRN2DNSServer: Packet for DHT");
-
-  DHTOperation *op;
-
-  op = new DHTOperation();
-  op->read((uint8_t*) &client_info->_ciaddr, 4);
-  dht_request(client_info,op);
-
-  return(0);
-}
-
 
 BRN2DNSServer::DNSClientInfo *
 BRN2DNSServer::get_client_by_dht_id(uint32_t id)
@@ -197,7 +208,7 @@ int
 BRN2DNSServer::remove_client(DNSClientInfo *client_info)
 {
   for ( int i = 0; i < client_info_list.size(); i++ )
-    if ( memcmp(client_info_list[i]->_chaddr, client_info->_chaddr, 6 ) == 0 )
+    if ( client_info_list[i]->_id == client_info->_id )
     {
       delete client_info_list[i];
       client_info_list.erase(client_info_list.begin() + i);

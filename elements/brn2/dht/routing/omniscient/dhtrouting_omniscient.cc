@@ -54,8 +54,8 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
-    "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
-    "UPDATEINT", cpkP+cpkM, cpInteger, &_update_interval,
+    "LINKSTAT", cpkP, cpElement, &_linkstat,
+    "UPDATEINT", cpkP, cpInteger, &_update_interval,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;

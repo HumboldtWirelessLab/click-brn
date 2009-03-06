@@ -60,14 +60,24 @@ class BRN2DNSServer : public Element {
     uint32_t _id;
 
     unsigned char _chaddr[6];
-    struct in_addr _ciaddr;
+    IPAddress _ip;
+
+    String _domain;
 
     Packet *_client_packet;
 
     DNSClientInfo()
     {
       memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
-      memcpy(&(_ciaddr),"\0\0\0\0",4);
+    }
+
+    DNSClientInfo(Packet *p,IPAddress ip, String domain)
+    {
+      _ip = ip;
+      memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
+      _client_packet = p;
+      _domain = domain;
+      _id = 0;
     }
 
     ~DNSClientInfo()
@@ -101,7 +111,6 @@ class BRN2DNSServer : public Element {
   Vector<DNSClientInfo *> client_info_list;
 
  public:
-  int send_dht_request(DNSClientInfo *client_info);
   void dht_request(DNSClientInfo *client_info, DHTOperation *op);
 
   void handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op);
