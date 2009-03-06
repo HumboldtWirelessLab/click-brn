@@ -30,9 +30,13 @@
 
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
-#define MODE_WRITE  0
-#define MODE_READ   1
-#define MODE_REMOVE 2
+#define MODE_WRITE_IP  0
+#define MODE_READ_IP   1
+#define MODE_REMOVE_IP 2
+
+#define MODE_WRITE_NAME  3
+#define MODE_READ_NAME   4
+#define MODE_REMOVE_NAME 5
 
 
 CLICK_DECLS
@@ -64,6 +68,8 @@ class BRN2DHCPServer : public Element {
 
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
+
+    String name;
 
     uint32_t _xid;
     bool _broadcast;
