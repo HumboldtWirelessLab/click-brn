@@ -25,7 +25,7 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 #include <click/vector.hh>
-#include "elements/brn/services/dhcp/dhcp.h"
+#include "dhcp.h"
 
 CLICK_DECLS
 

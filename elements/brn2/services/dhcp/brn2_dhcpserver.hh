@@ -24,8 +24,9 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
 #include "../../../brn/vlan/vlantable.hh"
-#include "elements/brn/services/dhcp/dhcp.h"
+#include "dhcp.h"
 #include "dhcpsubnetlist.hh"
 
 #include "elements/brn2/dht/storage/dhtstorage.hh"

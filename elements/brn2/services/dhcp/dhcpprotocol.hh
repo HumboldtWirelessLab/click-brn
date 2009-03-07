@@ -5,20 +5,9 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 #include "elements/brn/brn.h"
+#include "dhcp.h"
 
 CLICK_DECLS
-/*
-CLICK_SIZE_PACKED_STRUCTURE(
-struct click_brn {,
-  uint8_t   dst_port;
-  uint8_t   src_port;
-  uint16_t  body_length;
-  uint8_t   ttl;
-  uint8_t   tos;
-});
-
-typedef struct click_brn brn_header;
-*/
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0
@@ -30,16 +19,23 @@ class DHCPProtocol : public Element { public:
   DHCPProtocol();
   ~DHCPProtocol();
 
-  const char *class_name() const	{ return "DHCPProtocol"; }
+  const char *class_name() const  { return "DHCPProtocol"; }
 
-  static WritablePacket *add_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint8_t ttl=DEFAULT_TTL, uint8_t tos=DEFAULT_TOS);
-  static int set_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl=DEFAULT_TTL, uint8_t tos=DEFAULT_TOS);
-  static void set_brn_header_data(uint8_t *data, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl=DEFAULT_TTL, uint8_t tos=DEFAULT_TOS);
+  static WritablePacket *new_dhcp_packet(void);
 
-  static struct click_brn* get_brnheader(Packet *p);
-  static Packet *pull_brn_header(Packet *p);
-  static WritablePacket *push_brn_header(Packet *p);
+  static int set_dhcp_header(Packet *p, uint8_t _op );
 
+  static int add_option(Packet *packet, int option_num,int option_size,uint8_t *option_val);
+  static void del_all_options(Packet *p);
+
+  static unsigned char *getOptionsField(Packet *packet);
+  static unsigned char *getOption(Packet *packet, int option,int *option_size);
+
+  static void padOptionsField(Packet *packet);
+
+  static int retrieve_dhcptype(Packet *packet);
+
+  static void insertMagicCookie(Packet *p);
 };
 
 CLICK_ENDDECLS

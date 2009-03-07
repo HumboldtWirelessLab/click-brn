@@ -23,21 +23,18 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
 #include <click/error.hh>
 #include <click/glue.hh>
-
-
-#include "brn2_dhcpclient.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-
-#include "elements/brn/services/dhcp/dhcppacketutil.hh"
+#include "brn2_dhcpclient.hh"
+#include "dhcpprotocol.hh"
+#include "elements/brn/common.hh"
 
 CLICK_DECLS
 
@@ -192,12 +189,12 @@ BRN2DHCPClient::push( int, Packet *packet )
   int option_size;
   uint8_t *server_id;
 
-  server_id = DHCPPacketUtil::getOption(packet,DHO_DHCP_SERVER_IDENTIFIER, &option_size);
+  server_id = DHCPProtocol::getOption(packet,DHO_DHCP_SERVER_IDENTIFIER, &option_size);
 
   if ( server_id != NULL )
    request_queue[index].server_add = IPAddress(server_id);
-   
-  int packet_type = DHCPPacketUtil::retrieve_dhcptype(packet);
+
+  int packet_type = DHCPProtocol::retrieve_dhcptype(packet);
 
   packet->kill();
 
@@ -231,12 +228,12 @@ BRN2DHCPClient::push( int, Packet *packet )
 Packet *
 BRN2DHCPClient::dhcpdiscover(DHCPClientInfo *client_info)
 {
-  WritablePacket *dhcp_packet_out = DHCPPacketUtil::new_dhcp_packet();
-	
+  WritablePacket *dhcp_packet_out = DHCPProtocol::new_dhcp_packet();
+
   struct dhcp_packet *new_packet = (struct dhcp_packet *)dhcp_packet_out->data();
 
-  DHCPPacketUtil::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
-	
+  DHCPProtocol::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
+
   new_packet->xid = client_info->xid;
   new_packet->flags = htons(BOOTP_BROADCAST);            // set Broadcast-Flag
 
@@ -245,15 +242,15 @@ BRN2DHCPClient::dhcpdiscover(DHCPClientInfo *client_info)
   memcpy((void*)&new_packet->ciaddr,client_info->ip_add.data(),4);
   memcpy(&new_packet->chaddr[0],client_info->eth_add.data(),6);      //set hw-addr
 
-  DHCPPacketUtil::del_all_options(dhcp_packet_out);
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\1");
+  DHCPProtocol::del_all_options(dhcp_packet_out);
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\1");
 
   client_info->status = DHCPINIT;
   client_info->_last_action = DHCPDISCOVER;
 
   BRN_DEBUG("BRN2DHCPClient: Send Discover");
   BRN_DEBUG("BRN2DHCPClient: Packet ist %d Bytes gross", dhcp_packet_out->length());
-	
+
   return(dhcp_packet_out);
 }
 
@@ -262,24 +259,24 @@ BRN2DHCPClient::dhcprequest(DHCPClientInfo *client_info)
 {
   struct dhcp_packet *new_packet;
 
-  WritablePacket *dhcp_packet_out = DHCPPacketUtil::new_dhcp_packet();
+  WritablePacket *dhcp_packet_out = DHCPProtocol::new_dhcp_packet();
   new_packet = (struct dhcp_packet *)dhcp_packet_out->data();
 
-  DHCPPacketUtil::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
+  DHCPProtocol::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
 
   new_packet->xid = client_info->xid;
   new_packet->secs = 0;
   new_packet->flags = htons(BOOTP_BROADCAST);  // set Broadcast-Flag
-  
-  memcpy(new_packet->chaddr,client_info->eth_add.data(),6);  //set hw-addr
-	
-  DHCPPacketUtil::del_all_options(dhcp_packet_out);
 
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\3");
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_DHCP_SERVER_IDENTIFIER,4,(uint8_t *)client_info->server_add.data());
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_DHCP_REQUESTED_ADDRESS,4,(uint8_t *)client_info->ip_add.data());
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_HOST_NAME,16,(uint8_t *)"DHCP_TEST_CLIENT");
-	
+  memcpy(new_packet->chaddr,client_info->eth_add.data(),6);  //set hw-addr
+
+  DHCPProtocol::del_all_options(dhcp_packet_out);
+
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\3");
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_DHCP_SERVER_IDENTIFIER,4,(uint8_t *)client_info->server_add.data());
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_DHCP_REQUESTED_ADDRESS,4,(uint8_t *)client_info->ip_add.data());
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_HOST_NAME,16,(uint8_t *)"DHCP_TEST_CLIENT");
+
   client_info->status = DHCPSELECTING;
   client_info->_last_action = DHCPREQUEST;
 
@@ -320,21 +317,21 @@ BRN2DHCPClient::dhcprebinding()
 Packet *
 BRN2DHCPClient::dhcprelease(DHCPClientInfo *client_info)
 {
-  WritablePacket *dhcp_packet_out = DHCPPacketUtil::new_dhcp_packet();
+  WritablePacket *dhcp_packet_out = DHCPProtocol::new_dhcp_packet();
   struct dhcp_packet *new_packet = (struct dhcp_packet *)dhcp_packet_out->data();
-	
+
   BRN_DEBUG("BRN2DHCPClient: Release start !");
 
-  DHCPPacketUtil::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
+  DHCPProtocol::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
   new_packet->xid = client_info->xid;
   new_packet->secs = 0;
   new_packet->flags = BOOTP_BROADCAST;  // set Broadcast-Flag
 
   memcpy(new_packet->chaddr,_hw_addr.data(),6);  //set hw-addr
-	
+
   memcpy((void*)&new_packet->yiaddr,client_info->ip_add.data(),4);
 
-  DHCPPacketUtil::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\7");
+  DHCPProtocol::add_option(dhcp_packet_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)"\7");
 
   BRN_DEBUG("BRN2DHCPClient: Release end !");
 
@@ -412,7 +409,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_HW_ADDR:
-    {    
+    {
       EtherAddress hw_addr;
       if (!cp_ethernet_address(s, &hw_addr)) 
         return errh->error("hw_addr parameter must be ether address");
@@ -421,7 +418,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_IP_ADDR:
-    {    
+    {
       IPAddress ip_addr;
       if (!cp_ip_address(s, &ip_addr)) 
         return errh->error("ip_addr parameter must be ip address");
@@ -430,7 +427,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_IP_RANGE:
-    {    
+    {
       int ip_range;
       if (!cp_integer(s, &ip_range)) 
         return errh->error("ip_range parameter must be int");
@@ -439,7 +436,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_START_TIME:
-    {    
+    {
       int start_time;
       if (!cp_integer(s, &start_time)) 
         return errh->error("start_time parameter must be int");
@@ -447,7 +444,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_INTERVAL:
-    {    
+    {
       int interval;
       if (!cp_integer(s, &interval)) 
         return errh->error("interval parameter must be int");
@@ -483,16 +480,16 @@ BRN2DHCPClient::add_handlers()
 
   add_read_handler("hw_addr", read_param, (void *) H_HW_ADDR);
   add_write_handler("hw_addr", write_param, (void *) H_HW_ADDR);
-  
+
   add_read_handler("ip_addr", read_param, (void *) H_IP_ADDR);
   add_write_handler("ip_addr", write_param, (void *) H_IP_ADDR);
-  
+
   add_read_handler("ip_range", read_param, (void *) H_IP_RANGE);
   add_write_handler("ip_range", write_param, (void *) H_IP_RANGE);
 
   add_read_handler("start_time", read_param, (void *) H_START_TIME);
   add_write_handler("start_time", write_param, (void *) H_START_TIME);
-  
+
   add_read_handler("interval", read_param, (void *) H_INTERVAL);
   add_write_handler("interval", write_param, (void *) H_INTERVAL);
 

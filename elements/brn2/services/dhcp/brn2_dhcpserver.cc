@@ -23,25 +23,22 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
 #include <click/error.hh>
 #include <click/glue.hh>
-
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/string.hh>
 
 #include "brn2_dhcpserver.hh"
-
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "dhcpprotocol.hh"
 
-#include "elements/brn/services/dhcp/dhcppacketutil.hh"
+#include "elements/brn/common.hh"
 
 CLICK_DECLS
 
@@ -313,7 +310,7 @@ BRN2DHCPServer::push( int port, Packet *p_in )
 
     BRN_DEBUG("BRN2DHCPServer: Responder::dhcpresponse");
 
-    int packet_type = DHCPPacketUtil::retrieve_dhcptype(p_in);
+    int packet_type = DHCPProtocol::retrieve_dhcptype(p_in);
 
     switch (packet_type) {
       case DHCPDISCOVER:
@@ -448,7 +445,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
   client_info->_client_packet = p_in;
 
   int op_size;
-  unsigned char *requested_ip = DHCPPacketUtil::getOption(p_in, DHO_DHCP_REQUESTED_ADDRESS ,&op_size);
+  unsigned char *requested_ip = DHCPProtocol::getOption(p_in, DHO_DHCP_REQUESTED_ADDRESS ,&op_size);
 
   if ( ( requested_ip == NULL ) && ( memcmp(&new_dhcp_packet->ciaddr,"\0\0\0\0",4) == 0 ) )
   {
@@ -537,7 +534,7 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
   uint8_t message_type;
   int result;
 
-  result = DHCPPacketUtil::set_dhcp_header(p_out, BOOTREPLY);
+  result = DHCPProtocol::set_dhcp_header(p_out, BOOTREPLY);
 
   dhcp_packet_out->xid = client_info->_xid;
   dhcp_packet_out->secs += 0;
@@ -545,16 +542,16 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
   memcpy((void*)&dhcp_packet_out->yiaddr,&client_info->_ciaddr,4);
   memcpy((void*)&dhcp_packet_out->chaddr[0],&client_info->_chaddr[0],6);  //set hw-addr
 
-  DHCPPacketUtil::insertMagicCookie(p_out);
-  DHCPPacketUtil::del_all_options(p_out); //del option of old packet
+  DHCPProtocol::insertMagicCookie(p_out);
+  DHCPProtocol::del_all_options(p_out); //del option of old packet
 
   message_type = DHCPOFFER;
-  DHCPPacketUtil::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&message_type);
+  DHCPProtocol::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&message_type);
 
   uint32_t lease_time;
 
   lease_time = htonl(_default_lease);
-  DHCPPacketUtil::add_option(p_out,DHO_DHCP_LEASE_TIME ,4 ,(uint8_t *)&lease_time);
+  DHCPProtocol::add_option(p_out,DHO_DHCP_LEASE_TIME ,4 ,(uint8_t *)&lease_time);
 
   dhcp_add_standard_options(p_out);
 
@@ -605,8 +602,8 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
   client_info->_client_packet = p_in;
 
   int name_size;
-  unsigned char *requested_ip = DHCPPacketUtil::getOption(p_in, DHO_DHCP_REQUESTED_ADDRESS ,&op_size);
-  unsigned char *requested_name = DHCPPacketUtil::getOption(p_in, DHO_HOST_NAME, &name_size);
+  unsigned char *requested_ip = DHCPProtocol::getOption(p_in, DHO_DHCP_REQUESTED_ADDRESS ,&op_size);
+  unsigned char *requested_name = DHCPProtocol::getOption(p_in, DHO_HOST_NAME, &name_size);
 
   if ( ( requested_ip == NULL ) && ( memcmp(&new_dhcp_packet->ciaddr,"\0\0\0\0",4) == 0 ) )
   {
@@ -628,7 +625,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
 
     BRN_DEBUG("BRN2DHCPServer: Clientstatus: SELECTING or INIT-REBOOT");
 
-    unsigned char *server_id = DHCPPacketUtil::getOption(p_in, DHO_DHCP_SERVER_IDENTIFIER,&op_size);
+    unsigned char *server_id = DHCPProtocol::getOption(p_in, DHO_DHCP_SERVER_IDENTIFIER,&op_size);
 
     if ( server_id == NULL )
     {
@@ -726,7 +723,7 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
   WritablePacket *p_out = (WritablePacket *)client_info->_client_packet;
   struct dhcp_packet *dhcp_packet_out = (struct dhcp_packet *)p_out->data();
 
-  DHCPPacketUtil::set_dhcp_header(p_out, BOOTREPLY );
+  DHCPProtocol::set_dhcp_header(p_out, BOOTREPLY );
 
   dhcp_packet_out->xid = client_info->_xid;
   dhcp_packet_out->secs += 0;
@@ -736,10 +733,10 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
 
   BRN_DEBUG("BRN2DHCPServer: Reqest: set options!");
 
-  DHCPPacketUtil::insertMagicCookie(p_out);
-  DHCPPacketUtil::del_all_options(p_out);
+  DHCPProtocol::insertMagicCookie(p_out);
+  DHCPProtocol::del_all_options(p_out);
 
-  DHCPPacketUtil::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&messagetype);
+  DHCPProtocol::add_option(p_out,DHO_DHCP_MESSAGE_TYPE,1,(uint8_t *)&messagetype);
 
   if ( messagetype == DHCPACK )
   {
@@ -748,15 +745,13 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
     uint32_t lease_time;
 
     lease_time = htonl(_default_lease);
-    DHCPPacketUtil::add_option(p_out,DHO_DHCP_LEASE_TIME ,4 ,(uint8_t *)&lease_time);
+    DHCPProtocol::add_option(p_out,DHO_DHCP_LEASE_TIME ,4 ,(uint8_t *)&lease_time);
 
     dhcp_add_standard_options(p_out);
   }
   else
   {
-    IPAddress server_ident;
-    cp_ip_address(_server_ident, &server_ident, this);
-    DHCPPacketUtil::add_option(p_out,DHO_DHCP_SERVER_IDENTIFIER ,4 ,(uint8_t *)server_ident.data());
+    DHCPProtocol::add_option(p_out,DHO_DHCP_SERVER_IDENTIFIER ,4 ,(uint8_t *)_server_ident.data());
   }
 
   if ( client_info->_broadcast == false )
@@ -831,8 +826,8 @@ BRN2DHCPServer::handle_dhcp_inform(Packet *p_in)
 {
   WritablePacket *p = p_in->put(0);
 
-  DHCPPacketUtil::insertMagicCookie(p);
-  DHCPPacketUtil::del_all_options(p);
+  DHCPProtocol::insertMagicCookie(p);
+  DHCPProtocol::del_all_options(p);
 
   dhcp_add_standard_options(p);
 
@@ -849,23 +844,11 @@ BRN2DHCPServer::dhcp_add_standard_options(WritablePacket *p)
   memcpy(dhcp_p->sname,_sname.data(),_sname.length());
   dhcp_p->sname[_sname.length()] = '\0';
 
-  IPAddress server_ident;
-  cp_ip_address(_server_ident, &server_ident, this);
-  DHCPPacketUtil::add_option(p,DHO_DHCP_SERVER_IDENTIFIER ,4 ,(uint8_t *)server_ident.data());
-
-  IPAddress subnet_mask;
-  cp_ip_address(_subnet_mask, &subnet_mask, this);
-  DHCPPacketUtil::add_option(p,DHO_SUBNET_MASK ,4 ,(uint8_t *)subnet_mask.data());
-
-  IPAddress router;
-  cp_ip_address(_router, &router, this);
-  DHCPPacketUtil::add_option(p,DHO_ROUTERS ,4 ,(uint8_t *)router.data());
-
-  IPAddress name_server;
-  cp_ip_address(_name_server, &name_server, this);
-  DHCPPacketUtil::add_option(p,DHO_DOMAIN_NAME_SERVERS ,4 ,(uint8_t *)name_server.data());
-
-  DHCPPacketUtil::add_option(p,DHO_DOMAIN_NAME, _domain_name.length(),(uint8_t *)_domain_name.data());
+  DHCPProtocol::add_option(p,DHO_DHCP_SERVER_IDENTIFIER ,4 ,(uint8_t *)_server_ident.data());
+  DHCPProtocol::add_option(p,DHO_SUBNET_MASK ,4 ,(uint8_t *)_subnet_mask.data());
+  DHCPProtocol::add_option(p,DHO_ROUTERS ,4 ,(uint8_t *)_router.data());
+  DHCPProtocol::add_option(p,DHO_DOMAIN_NAME_SERVERS ,4 ,(uint8_t *)_name_server.data());
+  DHCPProtocol::add_option(p,DHO_DOMAIN_NAME, _domain_name.length(),(uint8_t *)_domain_name.data());
 
   return;
 }
