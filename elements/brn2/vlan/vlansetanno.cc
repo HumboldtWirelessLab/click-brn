@@ -11,6 +11,9 @@
 
 CLICK_DECLS
 
+//Deprecated
+//TODO: CHeck whether this element is needed. Also check anno in BRNPacketAnno
+
 VlanSetAnno::VlanSetAnno()
 {
 }
