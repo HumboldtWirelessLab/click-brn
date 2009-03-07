@@ -82,6 +82,7 @@ class BRN2DNSServer : public Element {
 
     ~DNSClientInfo()
     {
+      if ( _client_packet != NULL ) _client_packet->kill();
     }
 
   };

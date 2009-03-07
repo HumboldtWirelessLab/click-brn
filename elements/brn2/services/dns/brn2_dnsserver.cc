@@ -19,7 +19,7 @@
  */
 
 /*
- * dhcpserver.{cc,hh} -- responds to dhcp requests
+ * dnsserver.{cc,hh} -- responds to dns requests
  */
 
 #include <click/config.h>
@@ -83,19 +83,11 @@ BRN2DNSServer::configure(Vector<String> &conf, ErrorHandler* errh)
   _full_sname += _domain_name;
 
   return 0;
-
 }
 
 int
 BRN2DNSServer::initialize(ErrorHandler *)
 {
-  IPAddress ip = IPAddress("192.168.0.13");
-  DHTOperation *op = new DHTOperation();
-  String name = ".blo.bloblo.org";
-
-  op->insert((uint8_t*)name.data(), name.length(),(uint8_t*)ip.data(), 4);
-  uint32_t result = _dht_storage->dht_request(op, NULL, (void*)this );
-
   return 0;
 }
 
@@ -139,20 +131,20 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
     name[op->header.keylen] = '\0';
 
     click_chatter("No client with name %s !",name);
-    delete name;
+    delete[] name;
 
   } else {
     uint16_t nameoffset = 0x0cc0;
     WritablePacket *ans = DNSProtocol::dns_question_to_answer(client_info->_client_packet, &nameoffset,
                                                                sizeof(nameoffset), 1, 1, 300,
                                                                op->header.valuelen, op->value);
+    client_info->_client_packet = NULL;                  //packet is send (and away) so remove reference)
     output(0).push(ans);
-    delete op;
-    remove_client(client_info);
   }
-}
 
-//Frage von client -> frage an dht -> antwort von dht -> antwort für client
+  delete op;
+  remove_client(client_info);
+}
 
 void
 BRN2DNSServer::push( int port, Packet *p_in )
@@ -168,9 +160,6 @@ BRN2DNSServer::push( int port, Packet *p_in )
     String name = String(cname);
     delete[] cname;
 
-//    click_chatter("Fullname: %s Sname: %s",_full_sname.c_str(),_sname.c_str());
-//    click_chatter("Frage nach : %s",name.c_str());
-
     if ( name == _sname || name == _full_sname ) {
       click_chatter("fragt nach mir");
 
@@ -183,6 +172,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
       click_chatter("fragt nach rechner der domain");
 
       DNSClientInfo *ci = new DNSClientInfo(p_in,IPAddress(0),name);
+      client_info_list.push_back(ci);
       DHTOperation *op = new DHTOperation();
       op->read((uint8_t*)name.data(), name.length());
       dht_request(ci,op);
@@ -283,7 +273,6 @@ BRN2DNSServer::server_info(void)
 
  return sa.take_string();
 }
-
 
 #include <click/vector.cc>
 template class Vector<BRN2DNSServer::DNSClientInfo *>;
