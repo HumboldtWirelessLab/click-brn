@@ -19,29 +19,29 @@
  */
 
 /*
- * DHCPPrint.{cc,hh} -- responds to dhcp requests
+ * BRN2DHCPPrint.{cc,hh} -- responds to dhcp requests
  * A. Zubow
  */
 
 #include <click/config.h>
 
-#include "dhcpprint.hh"
+#include "brn2_dhcpprint.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
 CLICK_DECLS
 
-DHCPPrint::DHCPPrint()
+BRN2DHCPPrint::BRN2DHCPPrint()
 {
 }
 
-DHCPPrint::~DHCPPrint()
+BRN2DHCPPrint::~BRN2DHCPPrint()
 {
 }
 
 int
-DHCPPrint::configure(Vector<String> &conf, ErrorHandler* errh)
+BRN2DHCPPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "LABEL", cpkP+cpkM, cpString, /*"label",*/ &_label,
@@ -51,13 +51,13 @@ DHCPPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 int
-DHCPPrint::initialize(ErrorHandler *)
+BRN2DHCPPrint::initialize(ErrorHandler *)
 {
   return 0;
 }
 
 char *
-DHCPPrint::print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data)
+BRN2DHCPPrint::print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data)
 {
   static char habuf [49];
   char *s;
@@ -80,9 +80,9 @@ DHCPPrint::print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data)
 
 /* displays the content of a brn packet */
 Packet *
-DHCPPrint::simple_action(Packet *p_in)
+BRN2DHCPPrint::simple_action(Packet *p_in)
 {
-  click_chatter("DHCPPrint::simple_action\n");
+  click_chatter("BRN2DHCPPrint::simple_action\n");
   click_chatter("****** DHCP packet ***********\n");
 
   dhcp_packet *dhcp = (dhcp_packet *)p_in->data();
@@ -218,11 +218,11 @@ read_handler(Element *, void *)
 }
 
 void
-DHCPPrint::add_handlers()
+BRN2DHCPPrint::add_handlers()
 {
   // needed for QuitWatcher
   add_read_handler("scheduled", read_handler, 0);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DHCPPrint)
+EXPORT_ELEMENT(BRN2DHCPPrint)

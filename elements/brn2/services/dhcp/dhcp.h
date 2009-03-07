@@ -509,6 +509,5 @@ static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request"
     /* 255 */ { "End",          opaque, NULL }
   };
 
-
 CLICK_ENDDECLS
 #endif

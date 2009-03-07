@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef DHCPPRINTELEMENT_HH
-#define DHCPPRINTELEMENT_HH
+#ifndef BRN2DHCPPRINTELEMENT_HH
+#define BRN2DHCPPRINTELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
@@ -28,21 +28,21 @@
 CLICK_DECLS
 /*
  * =c
- * DHCPPrint()
+ * BRN2DHCPPrint()
  * =s
  * displays dhcp packets
  * =d
  */
-class DHCPPrint : public Element {
+class BRN2DHCPPrint : public Element {
 
  public:
   //
   //methods
   //
-  DHCPPrint();
-  ~DHCPPrint();
+  BRN2DHCPPrint();
+  ~BRN2DHCPPrint();
 
-  const char *class_name() const	{ return "DHCPPrint"; }
+  const char *class_name() const	{ return "BRN2DHCPPrint"; }
   const char *processing() const	{ return AGNOSTIC; }
 
   const char *port_count() const  { return "1/1"; } 
@@ -58,7 +58,7 @@ class DHCPPrint : public Element {
   static void print(Packet *p_in);
 
  private:
-  char *print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data);
+   char *print_hw_addr (uint8_t, uint8_t hlen, unsigned char *data);
   //
   //member
   //
