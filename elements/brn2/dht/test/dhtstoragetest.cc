@@ -17,7 +17,11 @@ CLICK_DECLS
 DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
   _request_timer(static_request_timer_hook,this),
-  _debug(0)
+  _debug(0),
+  write_req(0),
+  write_rep(0),
+  read_req(0),
+  read_rep(0)
 {
 }
 
@@ -77,9 +81,13 @@ static void callback_func(void *e, DHTOperation *op)
 
   if ( op->is_reply() )
   {
-    if ( op->header.status == DHT_STATUS_OK )
+    if ( op->header.status == DHT_STATUS_OK ) {
+      if ( (op->header.operation & ( /*(uint8_t)!((uint8_t)OPERATION_INSERT)*/127 )) == OPERATION_INSERT )
+        s->write_rep++;
+      else
+        s->read_rep++;
       click_chatter("Result: %s = %d",string,my_key);
-    else
+    } else
       click_chatter("Result: %d not found",my_key);
   }
 
@@ -99,6 +107,7 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
 
   if ( s->_mode == MODE_INSERT )
   {
+    s->write_req++;
     my_value = new char[10];
     sprintf(my_value,">%d<",s->_key);
 
@@ -114,6 +123,7 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
   }
   else
   {
+    s->read_req++;
     click_chatter("Read Key: %d",s->_key);
     req->read((uint8_t*)&s->_key, sizeof(uint32_t));
     s->_key++;
@@ -122,6 +132,7 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
   }
 
   result = s->_dht_storage->dht_request(req, callback_func, (void*)s );
+
   if ( result == 0 )
   {
     click_chatter("Got direct-reply (local)");
@@ -130,8 +141,33 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
   t->schedule_after_msec( s->_interval );
 }
 
+enum {
+  H_STORAGE_STATS
+};
+
+static String
+    read_param(Element *e, void *thunk)
+{
+  StringAccum sa;
+  DHTStorageTest *dht_str = (DHTStorageTest *)e;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_STORAGE_STATS :
+    {
+      sa << "READ-request: " << dht_str->read_req << "\n";
+      sa << "READ-reply: " << dht_str->read_rep << "\n";
+      sa << "WRITE-request: " << dht_str->write_req << "\n";
+      sa << "WRITE-reply: " << dht_str->write_rep << "\n";
+      return sa.take_string();
+    }
+    default: return String();
+  }
+}
+
 void DHTStorageTest::add_handlers()
 {
+  add_read_handler("stats", read_param , (void *)H_STORAGE_STATS);
 }
 
 #include <click/vector.cc>

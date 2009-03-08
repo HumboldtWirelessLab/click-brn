@@ -53,6 +53,11 @@ class DHTStorageTest : public Element
     int _countkey;
 
     bool _write;
+  public:
+    int write_req;
+    int write_rep;
+    int read_req;
+    int read_rep;
 };
 
 CLICK_ENDDECLS
