@@ -69,10 +69,10 @@ class DHTStorageSimple : public DHTStorage
     uint32_t dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
 
     BRNDB _db;
-  private:
 
     DHTRouting *_dht_routing;
 
+  private:
     DHTForwardQueue _fwd_queue;
 
     int _debug;
