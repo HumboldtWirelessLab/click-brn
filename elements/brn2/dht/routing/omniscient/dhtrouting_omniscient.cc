@@ -177,8 +177,8 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
   DHTnodelist dhtlist;
   int count_nodes;
 
-//  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
-//                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
+   click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
+                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
@@ -309,7 +309,7 @@ DHTRoutingOmni::get_responsibly_node(md5_byte_t *key)
 {
   DHTnode *node;
 
-  if ( _dhtnodes.size() == 0 || key == NULL ) return NULL;
+  if ( key == NULL ) return NULL;
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
@@ -318,9 +318,11 @@ DHTRoutingOmni::get_responsibly_node(md5_byte_t *key)
       return node;
   }
 
-  node = _dhtnodes.get_dhtnode(0);
-
-  if ( node->_status == STATUS_OK ) return node;
+  for ( int i = 0; i < _dhtnodes.size(); i++ ) {
+    node = _dhtnodes.get_dhtnode(i);
+    if ( node->_status == STATUS_OK )
+      return node;
+  }
 
   return NULL;
 
