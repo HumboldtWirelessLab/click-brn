@@ -136,6 +136,8 @@ void DHTStorageSimple::push( int port, Packet *packet )
       _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
       if ( _op->is_reply() )
       {
+        click_chatter("got reply dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
+
         bool found_fwd = false;
         for( int i = 0; i < _fwd_queue.size(); i++ )
         {
@@ -160,20 +162,25 @@ void DHTStorageSimple::push( int port, Packet *packet )
         next = _dht_routing->get_responsibly_node(_op->header.key_digest);
         if ( _dht_routing->is_me(next) )
         {
+          click_chatter("reply dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
           handle_dht_operation(_op);
           _op->set_reply();
           p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, _op->length());
           _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
           EtherAddress src = EtherAddress(_op->header.etheraddress);
+          click_chatter("source is: %s",src.unparse().c_str());
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
           delete _op;
           output(0).push(p);
         }
         else
         {
+          click_chatter("Forward dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
+          p = packet->uniqueify();
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
           delete _op;
           output(0).push(p);
+          return;  //Reuse packet so return here to prevend packet->kill() //TODO: reorder all
         }
       }
     }
@@ -182,7 +189,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
     {
       //dht takeout (packet is not for me, but i will take a look)
     }
- 
+
   } else {
     click_chatter("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
   }
@@ -354,6 +361,7 @@ read_param(Element *e, void *thunk)
   {
     case H_DB_SIZE :
                 {
+                  sa << dhtstorage_simple->_dht_routing->_me->_ether_addr.unparse() << "\n";
                   sa << dhtstorage_simple->_db.size();
                   return ( sa.take_string() );
                 }
