@@ -32,7 +32,7 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   WritablePacket *new_packet = NULL;
   struct dht_packet_header *dht_header = NULL;
 
-  new_packet = WritablePacket::make( sizeof(struct dht_packet_header) + payload_len);
+  new_packet = WritablePacket::make( 128, NULL, sizeof(struct dht_packet_header) + payload_len, 32);  //TODO:check size of headroom (what is needed)
   dht_header = (struct dht_packet_header *)new_packet->data();
 
   dht_header->major_type = major_type;
@@ -99,6 +99,37 @@ DHTProtocol::get_dst(Packet *p)
   else
     return NULL;
 }
+
+int
+DHTProtocol::set_src(Packet *p, uint8_t *ea)
+{
+  struct dht_packet_header *dht_header = NULL;
+
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+  {
+    dht_header = (struct dht_packet_header*)p->data();
+    memcpy(dht_header->src,ea,6);
+    return 0;
+  }
+  else
+    return -1;
+}
+
+int
+DHTProtocol::set_dst(Packet *p, uint8_t *ea)
+{
+  struct dht_packet_header *dht_header = NULL;
+
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+  {
+    dht_header = (struct dht_packet_header*)p->data();
+    memcpy(dht_header->dst,ea,6);
+    return 0;
+  }
+  else
+    return -1;
+}
+
 
 WritablePacket *
 DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst, uint8_t major_type)

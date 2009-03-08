@@ -78,6 +78,9 @@ class DHTProtocol {
     static EtherAddress *get_src(Packet *p);
     static EtherAddress *get_dst(Packet *p);
 
+    static int set_src(Packet *p, uint8_t *ea);
+    static int set_dst(Packet *p, uint8_t *ea);
+
 };
 
 CLICK_ENDDECLS
