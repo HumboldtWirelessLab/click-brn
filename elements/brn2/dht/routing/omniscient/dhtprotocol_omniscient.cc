@@ -49,14 +49,14 @@ DHTProtocolOmni::new_hello_request_packet(EtherAddress *etheraddr)       //TODO:
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(hello_p);
   memcpy(msg->etheraddr,etheraddr->data(),6);
-  msg->age_sec = 0;                                                     //TODO: using NodeInfo
+  msg->age_sec = htonl(0);                                                     //TODO: using NodeInfo
   msg->status = STATUS_OK;
 
   return(hello_p);	
 }
 
 WritablePacket *
-DHTProtocolOmni::new_route_request_packet(EtherAddress *me, DHTnodelist *list)   //TODO: using DHTnode
+DHTProtocolOmni::new_route_request_packet(EtherAddress *me, DHTnodelist *list) //TODO: using DHTnode
 {
   struct dht_omni_node_entry *msg;
   uint8_t listsize = 0;
@@ -66,14 +66,14 @@ DHTProtocolOmni::new_route_request_packet(EtherAddress *me, DHTnodelist *list)  
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(route_p);
   memcpy(msg->etheraddr,me->data(),6);
-  msg->age_sec = 0;                                                     //TODO: using NodeInfo
+  msg->age_sec = htonl(0);                                                    //TODO: using NodeInfo
   msg->status = STATUS_OK;
 
   DHTnode *n;
   for( int i = 0;i < listsize ;i++ ) {
     n = list->get_dhtnode(i);
     memcpy(msg[i+1].etheraddr,n->_ether_addr.data(),6);
-    msg->age_sec = 0;                                                     //TODO: using NodeInfo
+    msg->age_sec = htonl(0);                                                  //TODO: using NodeInfo
     msg[i+1].status = n->_status;
   }
 
@@ -99,7 +99,7 @@ DHTProtocolOmni::new_route_reply_packet(EtherAddress *me, DHTnodelist *list)
   for( int i = 0;i < listsize ;i++ ) {
     n = list->get_dhtnode(i);
     memcpy(msg[i+1].etheraddr,n->_ether_addr.data(),6);
-    msg->age_sec = 0;                                                     //TODO: using NodeInfo
+    msg->age_sec = htonl(0);                                                     //TODO: using NodeInfo
     msg[i+1].status = n->_status;
   }
 
@@ -123,7 +123,7 @@ DHTProtocolOmni::get_dhtnodes(Packet *p,DHTnodelist *dhtlist)
     entry = (struct dht_omni_node_entry*)&payload[i];
     node = new DHTnode(EtherAddress(entry->etheraddr));
     node->_status = entry->status;
-    node->_age = Timestamp::now() - Timestamp(entry->age_sec);
+    node->_age = Timestamp::now() - Timestamp(ntohl(entry->age_sec));
     dhtlist->add_dhtnode(node);
   }
 
