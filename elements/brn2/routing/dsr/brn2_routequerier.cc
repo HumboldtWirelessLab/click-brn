@@ -29,6 +29,7 @@
 #include <click/confparse.hh>
 #include "brn2_routequerier.hh"
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 
@@ -438,11 +439,13 @@ BRN2RouteQuerier::issue_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress sr
 
   EtherAddress bcast((const unsigned char *)"\xff\xff\xff\xff\xff\xff"); //receiver
   //set ethernet annotation header
+  BRNPacketAnno::set_dst_ether_anno(brn_p, bcast);
+  BRNPacketAnno::set_ethertype_anno(brn_p, ETHERTYPE_BRN);
 //  brn_p->set_dst_ether_anno(bcast);
 
   // set ns2 anno
   //brn_p->set_user_anno_c(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
-  brn_p->set_anno_u8(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
+  //brn_p->set_anno_u8(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
 
   output(0).push(brn_p); //vorher:0
 }
