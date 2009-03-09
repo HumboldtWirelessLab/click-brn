@@ -27,7 +27,6 @@ BRN2SimpleFlow::~BRN2SimpleFlow()
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  EtherAddress _src;
   EtherAddress _dst;
   uint32_t     _rate;
   uint32_t     _mode;
@@ -79,6 +78,14 @@ BRN2SimpleFlow::run_timer(Timer *t)
     output(0).push(packet_out);
   }
 }
+
+void
+BRN2SimpleFlow::set_active()
+{
+  click_chatter("Flow active");
+  txFlow._active = true;
+}
+
 
 void
 BRN2SimpleFlow::push( int /*port*/, Packet *packet )
@@ -143,11 +150,13 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_TXFLOWS_SHOW: {
       StringAccum sa;
+      sa << "Me: " << sf->_src.unparse() << "\n";
       sa << "TxFlows:\n TxPackets: " << sf->get_txpackets();
       return sa.take_string();
     }
     case H_RXFLOWS_SHOW: {
       StringAccum sa;
+      sa << "Me: " << sf->_src.unparse() << "\n";
       sa << "RxFlows:\n";
       for (BRN2SimpleFlow::FMIter fm = sf->_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();

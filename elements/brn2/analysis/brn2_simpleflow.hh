@@ -115,9 +115,10 @@ class BRN2SimpleFlow : public Element
 
     void run_timer(Timer *t);
 
-    void set_active() { txFlow._active = true; }
+    void set_active();
     uint32_t get_txpackets(void) { return txFlow._txPackets; }
 
+    EtherAddress _src;
   private:
 
     WritablePacket*  nextPacketforFlow(Flow *f);
