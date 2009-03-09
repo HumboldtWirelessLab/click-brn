@@ -74,7 +74,11 @@ BRN2EtherEncap::smaction(Packet *p)
 
     } else {
 
-   //   click_chatter("The mac header anno isn't set. Use annos\n"); //TODO:
+      click_chatter("The mac header anno isn't set. Use annos: src: %s dst: %s type: %x\n",
+                    (BRNPacketAnno::src_ether_anno(p)).unparse().c_str(),
+                    (BRNPacketAnno::dst_ether_anno(p)).unparse().c_str(),
+                    htons((BRNPacketAnno::ethertype_anno(p)))
+                   ); //TODO:
       memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(p)).data(), 6);
       memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(p)).data(), 6);
       ether->ether_type = htons(BRNPacketAnno::ethertype_anno(p));
