@@ -204,6 +204,8 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
       node->_neighbor = false;                                  //TODO: take these info from node direct
       node->set_age_now();
     }
+
+    delete ea;
   }
 //  click_chatter("Nodes: %d",count_nodes);
   update_nodes(&dhtlist);
@@ -444,10 +446,10 @@ DHTRoutingKlibs::nodeDetection()
     }
 
     if ( node == NULL ) {
-      node = new DHTnode(neighbors[i]);
-
+      //Don't add the node. Just send him a packet with routing information. if it is a dht-node
+      //it will send a packet anyway
       get_nodelist(&_list, ALL_NODES);
-      p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(node->_ether_addr), KLIBS_HELLO, &_list);
+      p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(neighbors[i]), KLIBS_HELLO, &_list);
       big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
       _list.clear();
 
