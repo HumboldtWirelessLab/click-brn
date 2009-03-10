@@ -52,6 +52,12 @@ DHTnode::set_age(Timestamp *age)
 }
 
 void
+DHTnode::set_age_now()
+{
+  _age = Timestamp::now();
+}
+
+void
 DHTnode::set_last_ping_s(int s)
 {
   Timestamp now;
@@ -73,6 +79,12 @@ void
 DHTnode::set_last_ping(Timestamp *last_ping)
 {
   _age = *last_ping;
+}
+
+void
+DHTnode::set_last_ping_now()
+{
+  _last_ping = Timestamp::now();
 }
 
 CLICK_ENDDECLS

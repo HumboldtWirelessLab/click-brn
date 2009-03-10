@@ -59,12 +59,14 @@ DHTnode* DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
 
   return NULL;
 }
+
 DHTnode*
 DHTnodelist::get_dhtnode(int i)
 {
   if ( i < _nodelist.size() ) return _nodelist[i];
   else return NULL;
 }
+
 int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
   int i;
@@ -109,6 +111,46 @@ void DHTnodelist::del()
 
   clear();
 }
+
+DHTnode*
+DHTnodelist::get_dhtnode_oldest_age()
+{
+  DHTnode *oldestnode = NULL;
+  DHTnode *acnode = NULL;
+
+  if ( _nodelist.size() > 0 ) {
+    oldestnode = _nodelist[0];
+    for( int i = 1; i < _nodelist.size(); i++ )
+    {
+      acnode = _nodelist[i];
+      if ( acnode->_age < oldestnode->_age ) // < since we don't store the age, it more the birthday
+        oldestnode = acnode;
+    }
+  }
+
+  return oldestnode;
+}
+
+DHTnode*
+DHTnodelist::get_dhtnode_oldest_ping()
+{
+  DHTnode *oldestnode = NULL;
+  DHTnode *acnode = NULL;
+
+  if ( _nodelist.size() > 0 ) {
+    oldestnode = _nodelist[0];
+    for( int i = 1; i < _nodelist.size(); i++ )
+    {
+      acnode = _nodelist[i];
+      if ( acnode->_last_ping < oldestnode->_last_ping ) // < since we don't store the age, its the date
+        oldestnode = acnode;
+    }
+  }
+
+  return oldestnode;
+}
+
+
 #include <click/vector.cc>
 template class Vector<DHTnode*>;
 

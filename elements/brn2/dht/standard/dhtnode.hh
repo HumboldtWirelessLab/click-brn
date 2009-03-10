@@ -38,10 +38,12 @@ class DHTnode
 
     void set_age_s(int s);
     void set_age(Timestamp *);
+    void set_age_now();
     int  get_age_s();
 
     void set_last_ping_s(int s);
     void set_last_ping(Timestamp *);
+    void set_last_ping_now();
     int  get_last_ping_s();
 
 };

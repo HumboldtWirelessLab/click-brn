@@ -20,6 +20,9 @@ class DHTnodelist {
 
     DHTnode* get_dhtnode(int i);
 
+    DHTnode* get_dhtnode_oldest_age();
+    DHTnode* get_dhtnode_oldest_ping();
+
     int erase_dhtnode(EtherAddress *_etheradd);
     int size();
     void sort();
