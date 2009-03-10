@@ -183,6 +183,28 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
 
   uint8_t ptype;
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
+  EtherAddress *ea = DHTProtocol::get_src(p_in);
+  DHTnode *node;
+  if ( ea != NULL ) {
+    node = _foreign_dhtnodes.get_dhtnode(ea);
+    if ( node == NULL ) {
+      node = _own_dhtnodes.get_dhtnode(ea);
+    }
+    if ( node != NULL )                             //TODO: add soure if not in list
+      node->set_age_now();
+    else {
+      node = new DHTnode(*ea);
+      if ( is_own(node) ) {
+        _own_dhtnodes.add_dhtnode(node);
+      } else {
+        _foreign_dhtnodes.add_dhtnode(node);
+      }
+
+      node->_status = STATUS_OK;
+      node->_neighbor = false;                                  //TODO: take these info from node direct
+      node->set_age_now();
+    }
+  }
 //  click_chatter("Nodes: %d",count_nodes);
   update_nodes(&dhtlist);
 
@@ -198,12 +220,12 @@ DHTRoutingKlibs::sendHello()
 
   unsigned int group = click_random() % 10;
 
+  _me->set_last_ping_now();
+
   if ( ( group < 3 ) && ( _foreign_dhtnodes.size() != 0 )) {
-    unsigned int n = click_random() % _foreign_dhtnodes.size();
-    node = _foreign_dhtnodes.get_dhtnode(n);
+    node = _foreign_dhtnodes.get_dhtnode_oldest_ping();;
   } else {
-    unsigned int n = click_random() % _own_dhtnodes.size();
-    node = _own_dhtnodes.get_dhtnode(n);
+    node = _own_dhtnodes.get_dhtnode_oldest_ping();
  }
 
  if ( node->_ether_addr == _me->_ether_addr )
@@ -218,7 +240,10 @@ DHTRoutingKlibs::sendHello()
   dhtlist.clear();
 
   if ( big_p == NULL ) click_chatter("Push failed. No memory left ??");
-  else output(0).push(big_p);
+  else {
+    node->set_last_ping_now();
+    output(0).push(big_p);
+  }
 }
 
 
