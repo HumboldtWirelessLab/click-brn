@@ -224,18 +224,20 @@ DHTRoutingKlibs::sendHello()
 {
   WritablePacket *p,*big_p;
   DHTnodelist dhtlist;
-  DHTnode *node;
+  DHTnode *node = NULL;
 
   unsigned int group = click_random() % 10;
 
   _me->set_last_ping_now();                             //set my own pingtime to so i don't choose myself
 
   if ( ( group < 3 ) && ( _foreign_dhtnodes.size() != 0 )) {
-    node = _foreign_dhtnodes.get_dhtnode_oldest_ping();;
+    node = _foreign_dhtnodes.get_dhtnode_oldest_ping();
   } else {
     if ( _own_dhtnodes.size() > 1 )                     //Only if I'm not the only one
       node = _own_dhtnodes.get_dhtnode_oldest_ping();
   }
+
+  if ( node == NULL ) return;   //no node to ping
 
   get_nodelist(&dhtlist, ALL_NODES);
   p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(node->_ether_addr), KLIBS_HELLO, &dhtlist);
