@@ -82,7 +82,7 @@ static void callback_func(void *e, DHTOperation *op)
   if ( op->is_reply() )
   {
     if ( op->header.status == DHT_STATUS_OK ) {
-      if ( (op->header.operation & ( /*(uint8_t)!((uint8_t)OPERATION_INSERT)*/127 )) == OPERATION_INSERT )
+      if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT )  //TODO: it should make sure that it is only insert !!
         s->write_rep++;
       else
         s->read_rep++;

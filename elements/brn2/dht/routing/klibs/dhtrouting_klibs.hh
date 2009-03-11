@@ -64,6 +64,9 @@ class DHTRoutingKlibs : public DHTRouting
     uint32_t _p_own_dhtnodes;
     uint32_t _p_foreign_dhtnodes;
 
+    int _max_own_nodes_per_packet;
+    int _max_foreign_nodes_per_packet;
+
     Timer _lookup_timer;
     Timer _packet_buffer_timer;
     static void static_lookup_timer_hook(Timer *, void *);

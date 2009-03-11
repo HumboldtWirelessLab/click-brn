@@ -12,6 +12,7 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnconf.h"
 #include "dhtrouting_klibs.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 
@@ -81,6 +82,10 @@ DHTRoutingKlibs::initialize(ErrorHandler *)
   _lookup_timer.schedule_after_msec( ( click_random() % 10000 ) + _update_interval );
   _packet_buffer_timer.initialize(this);
   _packet_buffer_timer.schedule_after_msec( 10000 );
+
+  _max_own_nodes_per_packet = 30;
+  _max_foreign_nodes_per_packet = 5;
+
 
   return 0;
 }
@@ -174,10 +179,10 @@ DHTRoutingKlibs::push( int port, Packet *packet )
 void
 DHTRoutingKlibs::handle_hello(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
   int count_nodes;
 
+//  click_ether *ether_header = (click_ether*)p_in->ether_header();
 //  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
@@ -190,7 +195,7 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
     if ( node == NULL ) {
       node = _own_dhtnodes.get_dhtnode(ea);
     }
-    if ( node != NULL )                             //TODO: add soure if not in list
+    if ( node != NULL )
       node->set_age_now();
     else {
       node = new DHTnode(*ea);
@@ -201,12 +206,13 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
       }
 
       node->_status = STATUS_OK;
-      node->_neighbor = false;                                  //TODO: take these info from node direct
+      node->_neighbor = false;
       node->set_age_now();
     }
 
     delete ea;
   }
+
 //  click_chatter("Nodes: %d",count_nodes);
   update_nodes(&dhtlist);
 
@@ -222,19 +228,14 @@ DHTRoutingKlibs::sendHello()
 
   unsigned int group = click_random() % 10;
 
-  _me->set_last_ping_now();
+  _me->set_last_ping_now();                             //set my own pingtime to so i don't choose myself
 
   if ( ( group < 3 ) && ( _foreign_dhtnodes.size() != 0 )) {
     node = _foreign_dhtnodes.get_dhtnode_oldest_ping();;
   } else {
-    node = _own_dhtnodes.get_dhtnode_oldest_ping();
- }
-
- if ( node->_ether_addr == _me->_ether_addr )
- {
- //  click_chatter("don't send to myself");
-   return;
- }
+    if ( _own_dhtnodes.size() > 1 )                     //Only if I'm not the only one
+      node = _own_dhtnodes.get_dhtnode_oldest_ping();
+  }
 
   get_nodelist(&dhtlist, ALL_NODES);
   p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(node->_ether_addr), KLIBS_HELLO, &dhtlist);
@@ -408,7 +409,7 @@ DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
     }
     else
     {
-//      click_chatter("i know the nodes");
+//    click_chatter("i know the nodes");
       if ( node->get_age_s() >= new_node->get_age_s() )    //his info is newer
         node->set_age(&(new_node->_age));
     }
@@ -425,8 +426,10 @@ DHTRoutingKlibs::nodeDetection()
   WritablePacket *p,*big_p;
   DHTnode *node;
   DHTnodelist _list;
+  bool _list_filled = false;
 
   bool is_own;
+
 
   if ( _linkstat == NULL ) return;
 
@@ -447,11 +450,14 @@ DHTRoutingKlibs::nodeDetection()
 
     if ( node == NULL ) {
       //Don't add the node. Just send him a packet with routing information. if it is a dht-node
-      //it will send a packet anyway
-      get_nodelist(&_list, ALL_NODES);
+      //it will send a packet anyway TODO: think about this, you also can use broadcast if one or more neighbors are new
+      if ( ! _list_filled ) {
+        get_nodelist(&_list, ALL_NODES);
+        _list_filled = true;
+      }
+
       p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(neighbors[i]), KLIBS_HELLO, &_list);
       big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
-      _list.clear();
 
       if ( big_p == NULL ) click_chatter("Error in DHT");
       else output(0).push(big_p);
@@ -462,43 +468,56 @@ DHTRoutingKlibs::nodeDetection()
       node->_neighbor = true;
     }
   }
+
+  if ( _list_filled ) _list.clear();
+
 }
+
 /*******************************************************************************************/
 /******** C R E A T E   N O D E L I S T   F O R   O T H E R ********************************/
 /*******************************************************************************************/
-
+//TODO: send only the newest one
 int
 DHTRoutingKlibs::get_nodelist(DHTnodelist *list, uint32_t group)
 {
   int max_own_node;
   int max_for_node;
+#ifdef BRNDEBUG_DHT_ROUTING_KLIBS
   int added_nodes = 0;
+#endif
 
   if ( ( group == ALL_NODES ) || ( group = OWN_NODES ) )
   {
-    if ( _own_dhtnodes.size() > 15 ) max_own_node = 15;
+    if ( _own_dhtnodes.size() > _max_own_nodes_per_packet ) max_own_node = _max_own_nodes_per_packet;
     else max_own_node = _own_dhtnodes.size();
 
     for ( int i = 0; i < max_own_node; i++, _p_own_dhtnodes = ( _p_own_dhtnodes + 1 ) % _own_dhtnodes.size() )
     {
       list->add_dhtnode(_own_dhtnodes.get_dhtnode(i));
+#ifdef BRNDEBUG_DHT_ROUTING_KLIBS
       added_nodes++;
+#endif
     }
   }
 
   if ( ( group == ALL_NODES ) || ( group = FOREIGN_NODES ) )
   {
-    if ( _foreign_dhtnodes.size() > 5 ) max_for_node = 5;
+    if ( _foreign_dhtnodes.size() > _max_foreign_nodes_per_packet ) max_for_node = _max_foreign_nodes_per_packet;
     else max_for_node = _foreign_dhtnodes.size();
 
     for ( int i = 0; i < max_for_node; i++, _p_foreign_dhtnodes = ( _p_foreign_dhtnodes + 1 ) % _foreign_dhtnodes.size() )
     {
       list->add_dhtnode(_foreign_dhtnodes.get_dhtnode(i));
+#ifdef BRNDEBUG_DHT_ROUTING_KLIBS
       added_nodes++;
+#endif
     }
   }
 
-//  click_chatter("Add %d nodes to packet",added_nodes);
+#ifdef BRNDEBUG_DHT_ROUTING_KLIBS
+  click_chatter("Add %d nodes to packet",added_nodes);
+#endif
+
   return 0;
 }
 
