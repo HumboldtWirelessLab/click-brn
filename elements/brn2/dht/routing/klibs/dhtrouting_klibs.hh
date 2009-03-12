@@ -63,6 +63,7 @@ class DHTRoutingKlibs : public DHTRouting
 
     uint32_t _p_own_dhtnodes;
     uint32_t _p_foreign_dhtnodes;
+    int _max_foreign_nodes;
 
     int _max_own_nodes_per_packet;
     int _max_foreign_nodes_per_packet;
@@ -80,12 +81,13 @@ class DHTRoutingKlibs : public DHTRouting
     void handle_hello(Packet *p);
     void handle_request(Packet *p, uint32_t node_group);
     void update_nodes(DHTnodelist *dhtlist);
+
     bool is_foreign(md5_byte_t *key);
     bool is_own(md5_byte_t *key);
     bool is_foreign(DHTnode *node);
     bool is_own(DHTnode *node);
 
-    int get_nodelist(DHTnodelist *list, uint32_t group);
+    int get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group);
     void sendHello();
 };
 

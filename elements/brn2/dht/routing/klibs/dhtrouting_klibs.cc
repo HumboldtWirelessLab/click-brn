@@ -84,8 +84,8 @@ DHTRoutingKlibs::initialize(ErrorHandler *)
   _packet_buffer_timer.schedule_after_msec( 10000 );
 
   _max_own_nodes_per_packet = 30;
-  _max_foreign_nodes_per_packet = 5;
-
+  _max_foreign_nodes_per_packet = 3;
+  _max_foreign_nodes = 3;
 
   return 0;
 }
@@ -179,35 +179,47 @@ DHTRoutingKlibs::push( int port, Packet *packet )
 void
 DHTRoutingKlibs::handle_hello(Packet *p_in)
 {
-  DHTnodelist dhtlist;
-  int count_nodes;
-
 //  click_ether *ether_header = (click_ether*)p_in->ether_header();
 //  click_chatter("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
+  DHTnodelist dhtlist;
+  int count_nodes;
+  DHTnode *me_from_list;
   uint8_t ptype;
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
   EtherAddress *ea = DHTProtocol::get_src(p_in);
   DHTnode *node;
+
   if ( ea != NULL ) {
     node = _foreign_dhtnodes.get_dhtnode(ea);
     if ( node == NULL ) {
       node = _own_dhtnodes.get_dhtnode(ea);
     }
-    if ( node != NULL )
+    if ( node != NULL ) {
       node->set_age_now();
-    else {
+      node->_status = STATUS_OK;
+    } else {
       node = new DHTnode(*ea);
-      if ( is_own(node) ) {
-        _own_dhtnodes.add_dhtnode(node);
-      } else {
-        _foreign_dhtnodes.add_dhtnode(node);
-      }
-
       node->_status = STATUS_OK;
       node->_neighbor = false;
       node->set_age_now();
+
+      if ( is_own(node) ) {
+        _own_dhtnodes.add_dhtnode(node);
+        _own_dhtnodes.sort();
+      } else {
+        _foreign_dhtnodes.add_dhtnode(node);
+        _foreign_dhtnodes.sort();
+        if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
+          DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
+          _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
+        }
+      }
+    }
+
+    if ( ( me_from_list = dhtlist.get_dhtnode(_me) ) != NULL ) {
+      node->set_last_ping_s(me_from_list->get_age_s());
     }
 
     delete ea;
@@ -239,7 +251,7 @@ DHTRoutingKlibs::sendHello()
 
   if ( node == NULL ) return;   //no node to ping
 
-  get_nodelist(&dhtlist, ALL_NODES);
+  get_nodelist(&dhtlist, node, ALL_NODES);
   p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&(node->_ether_addr), KLIBS_HELLO, &dhtlist);
   big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
   dhtlist.clear();
@@ -260,7 +272,7 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
   DHTnodelist dhtlist;
   DHTnodelist send_dhtlist;
   int count_nodes;
-//  DHTnode *node;
+  DHTnode *node = NULL;
 
 //  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
@@ -268,11 +280,34 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
   update_nodes(&dhtlist);
 
-  get_nodelist(&send_dhtlist, node_group);
-
   if ( is_me(ether_header->ether_dhost) )
   {
     EtherAddress ea = EtherAddress(ether_header->ether_shost);
+
+    node = _own_dhtnodes.get_dhtnode(&ea);       //TODO: better check whether node is foreign or own
+    if ( node == NULL )
+      node = _foreign_dhtnodes.get_dhtnode(&ea);
+
+    if ( node != NULL ) {
+      node = new DHTnode(ea);
+      node->_status = STATUS_OK;
+      node->_neighbor = false;
+      node->set_age_now();
+
+      if ( is_own(node) ) {
+        _own_dhtnodes.add_dhtnode(node);
+        _own_dhtnodes.sort();
+      } else {
+        _foreign_dhtnodes.add_dhtnode(node);
+        _foreign_dhtnodes.sort();
+        if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
+          DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
+          _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
+        }
+      }
+    }
+
+    get_nodelist(&send_dhtlist, node, node_group);
     p = DHTProtocolKlibs::new_packet(&(_me->_ether_addr),&ea, KLIBS_HELLO, &send_dhtlist);
     big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &ea, BRN_PORT_DHTROUTING);
     send_dhtlist.clear();
@@ -418,7 +453,15 @@ DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
   }
 
   if ( add_own_nodes > 0 ) _own_dhtnodes.sort();
-  if ( add_for_nodes > 0 ) _foreign_dhtnodes.sort();
+  if ( add_for_nodes > 0 ) {
+    while ( _foreign_dhtnodes.size() > _max_foreign_nodes )
+    {
+      DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
+      _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
+    }
+
+    _foreign_dhtnodes.sort();
+  }
 }
 
 void
@@ -454,7 +497,7 @@ DHTRoutingKlibs::nodeDetection()
       //Don't add the node. Just send him a packet with routing information. if it is a dht-node
       //it will send a packet anyway TODO: think about this, you also can use broadcast if one or more neighbors are new
       if ( ! _list_filled ) {
-        get_nodelist(&_list, ALL_NODES);
+        get_nodelist(&_list, NULL, ALL_NODES);
         _list_filled = true;
       }
 
@@ -479,8 +522,20 @@ DHTRoutingKlibs::nodeDetection()
 /******** C R E A T E   N O D E L I S T   F O R   O T H E R ********************************/
 /*******************************************************************************************/
 //TODO: send only the newest one
+//TODO: performanceimproment by adding me to list. is it neassesarry ???
+/**
+ * _dst is the dst of the dht list. if this is null it is a broadcast-paket, then ignore it
+ * if not not null, insert information about the node.
+ * Performanceimprovment (doing that):
+ * if a neighbour of mine got a hello from the _dst, he update the age
+ * if my neighbour now send me this information, i now the actual age of _dst.
+ * if i now send _dst this information, which i got inderectly, he can update the _last_ping for me
+ * it like multicast_hello ( send it to one, and this one will distribute the info and so ping several nodes)
+ *
+ * Part of this function is implemted in handleHello
+*/
 int
-DHTRoutingKlibs::get_nodelist(DHTnodelist *list, uint32_t group)
+DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
 {
   int max_own_node;
   int max_for_node;
@@ -495,7 +550,7 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, uint32_t group)
 
     for ( int i = 0; i < max_own_node; i++, _p_own_dhtnodes = ( _p_own_dhtnodes + 1 ) % _own_dhtnodes.size() )
     {
-      list->add_dhtnode(_own_dhtnodes.get_dhtnode(i));
+      list->add_dhtnode(_own_dhtnodes.get_dhtnode(_p_own_dhtnodes));
 #ifdef BRNDEBUG_DHT_ROUTING_KLIBS
       added_nodes++;
 #endif
@@ -509,10 +564,16 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, uint32_t group)
 
     for ( int i = 0; i < max_for_node; i++, _p_foreign_dhtnodes = ( _p_foreign_dhtnodes + 1 ) % _foreign_dhtnodes.size() )
     {
-      list->add_dhtnode(_foreign_dhtnodes.get_dhtnode(i));
+      list->add_dhtnode(_foreign_dhtnodes.get_dhtnode(_p_foreign_dhtnodes));
 #ifdef BRNDEBUG_DHT_ROUTING_KLIBS
       added_nodes++;
 #endif
+    }
+  }
+
+  if ( _dst != NULL ) {                   //the dest of the packet should ( if it is not NULL) should be include in the packte
+    if ( ! list->includes(_dst) ) {       //so the desz knowns what i know about him
+      list->add_dhtnode(_dst);
     }
   }
 
