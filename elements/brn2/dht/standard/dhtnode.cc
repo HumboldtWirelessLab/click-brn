@@ -33,7 +33,7 @@ DHTnode::set_age_s(int s)
   Timestamp now;
   now = Timestamp::now();
 
-  _age = now + Timestamp(s);
+  _age = now - Timestamp(s);
 }
 
 int
@@ -42,7 +42,7 @@ DHTnode::get_age_s()
   Timestamp now;
   now = Timestamp::now();
 
-  return( (_age-now).sec());
+  return( (now - _age).sec());
 }
 
 void
@@ -63,7 +63,7 @@ DHTnode::set_last_ping_s(int s)
   Timestamp now;
   now = Timestamp::now();
 
-  _last_ping = now + Timestamp(s);
+  _last_ping = now - Timestamp(s);
 }
 
 int
@@ -72,7 +72,7 @@ DHTnode::get_last_ping_s()
   Timestamp now;
   now = Timestamp::now();
 
-  return( (_last_ping-now).sec());
+  return( (now - _last_ping).sec());
 }
 
 void

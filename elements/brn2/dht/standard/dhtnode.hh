@@ -8,6 +8,13 @@
 
 CLICK_DECLS
 
+/**
+ * age and last ping are timestamps of last seen or rather last send ping
+ * get_age_s and get_last_ping_s returns the second since the last ping pr last receive packet
+ * set_age_s and set_last_ping_s set the value. the value in second will be substract from the time now and result is stored
+ * this means that positive values are appears to the past, negative to the future
+*/
+
 #define STATUS_UNKNOWN 0
 #define STATUS_NEW     1
 #define STATUS_OK      2
