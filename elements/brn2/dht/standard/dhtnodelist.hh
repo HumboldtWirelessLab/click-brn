@@ -20,14 +20,23 @@ class DHTnodelist {
 
     DHTnode* get_dhtnode(int i);
 
+    void remove_dhtnode(int i);
+
     DHTnode* get_dhtnode_oldest_age();
     DHTnode* get_dhtnode_oldest_ping();
+
+    DHTnodelist *get_dhtnodes_oldest_age(int number);
+    DHTnodelist *get_dhtnodes_oldest_ping(int number);
 
     int erase_dhtnode(EtherAddress *_etheradd);
     int size();
     void sort();
+    void sort_last_ping();
+    void sort_age();
     void clear();
     void del();                             //delete elements of list and clear
+
+    bool includes(DHTnode *node);
 
 
   private:

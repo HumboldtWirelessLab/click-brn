@@ -18,6 +18,22 @@ extern "C" {
   }
 }
 
+extern "C" {
+  static int last_ping_sorter(const void *va, const void *vb) {
+    DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
+
+    return ( a->_last_ping > b->_last_ping );
+  }
+}
+
+extern "C" {
+  static int age_sorter(const void *va, const void *vb) {
+    DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
+
+    return ( a->_age > b->_age );
+  }
+}
+
 DHTnodelist::DHTnodelist()
 {
 }
@@ -67,7 +83,8 @@ DHTnodelist::get_dhtnode(int i)
   else return NULL;
 }
 
-int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
+int
+DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
   int i;
   DHTnode *node;
@@ -75,13 +92,20 @@ int DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
   for( i = 0; i < _nodelist.size(); i++)
     if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 )
     {
- //     node = get_dhtnode(_etheradd);
-//      delete node;                                       //TODO:del node
+      node = _nodelist[i];
+      delete node;
+
       _nodelist.erase(_nodelist.begin() + i);
       break;
     }
 
   return 0;
+}
+
+void
+DHTnodelist::remove_dhtnode(int i)
+{
+  if ( i < _nodelist.size() ) _nodelist.erase(_nodelist.begin() + i);
 }
 
 int DHTnodelist::size()
@@ -92,6 +116,16 @@ int DHTnodelist::size()
 void DHTnodelist::sort()
 {
   click_qsort(_nodelist.begin(), _nodelist.size(), sizeof(DHTnode*), bucket_sorter);
+}
+
+void DHTnodelist::sort_last_ping()
+{
+  click_qsort(_nodelist.begin(), _nodelist.size(), sizeof(DHTnode*), last_ping_sorter);
+}
+
+void DHTnodelist::sort_age()
+{
+  click_qsort(_nodelist.begin(), _nodelist.size(), sizeof(DHTnode*), age_sorter);
 }
 
 void DHTnodelist::clear()
@@ -142,14 +176,56 @@ DHTnodelist::get_dhtnode_oldest_ping()
     for( int i = 1; i < _nodelist.size(); i++ )
     {
       acnode = _nodelist[i];
-      if ( acnode->_last_ping < oldestnode->_last_ping ) // < since we don't store the age, its the date
+      if ( acnode->_last_ping < oldestnode->_last_ping ) { // < since we don't store the age, its the date
+        //click_chatter("%s < %s",acnode->_last_ping.unparse().c_str(),oldestnode->_last_ping.unparse().c_str());
         oldestnode = acnode;
+      }
     }
   }
 
   return oldestnode;
 }
 
+DHTnodelist *
+DHTnodelist::get_dhtnodes_oldest_age(int number)
+{
+  DHTnodelist *newlist = new DHTnodelist();
+
+  for( int i = 1; i < _nodelist.size(); i++ )    //copy to new list
+    newlist->add_dhtnode(_nodelist[i]);          //TODO: try to copy the vector (Performance)
+
+  newlist->sort_age();
+
+  for ( int i = newlist->size() - 1; i >= number; i-- )
+    newlist->remove_dhtnode(i);
+
+  return newlist;
+}
+
+DHTnodelist *
+DHTnodelist::get_dhtnodes_oldest_ping(int number)
+{
+  DHTnodelist *newlist = new DHTnodelist();
+
+  for( int i = 1; i < _nodelist.size(); i++ )    //copy to new list
+    newlist->add_dhtnode(_nodelist[i]);          //TODO: try to copy the vector (Performance)
+
+  newlist->sort_last_ping();
+
+  for ( int i = newlist->size() - 1; i >= number; i-- )
+    newlist->remove_dhtnode(i);
+
+  return newlist;
+}
+
+
+bool
+DHTnodelist::includes(DHTnode *node)
+{
+  if ( node == NULL ) return true;
+
+  return ( get_dhtnode(node) != NULL );
+}
 
 #include <click/vector.cc>
 template class Vector<DHTnode*>;
