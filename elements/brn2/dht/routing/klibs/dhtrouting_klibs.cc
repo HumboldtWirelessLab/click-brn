@@ -52,11 +52,22 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
   EtherAddress _my_ether_addr;
   _linkstat = NULL;                          //no linkstat
   _update_interval = 1000;                   //update interval -> 1 sec
+  _max_age = 10;                             //don't use nodes which are older than 10 sec
+  _start_time = 10000;
+  _max_own_nodes_per_packet = 30;
+  _max_foreign_nodes_per_packet = 3;
+  _max_foreign_nodes = 3;
 
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
     "LINKSTAT", cpkP, cpElement, &_linkstat,
+    "STARTTIME", cpkP, cpInteger, &_start_time,
     "UPDATEINT", cpkP, cpInteger, &_update_interval,
+    "MAXAGE", cpkP, cpInteger, &_max_age,
+    "MAXPINGTIME", cpkP, cpInteger, &_max_ping_time,
+    "MAXOWNNODESPERPACKET", cpkP, cpInteger, &_max_own_nodes_per_packet,
+    "MAXFOREIGNNODESPERPACKET", cpkP, cpInteger, &_max_foreign_nodes_per_packet,
+    "MAXFOREIGNNODESTORE", cpkP, cpInteger, &_max_foreign_nodes,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -79,13 +90,9 @@ int
 DHTRoutingKlibs::initialize(ErrorHandler *)
 {
   _lookup_timer.initialize(this);
-  _lookup_timer.schedule_after_msec( ( click_random() % 10000 ) + _update_interval );
+  _lookup_timer.schedule_after_msec( click_random() % _start_time );
   _packet_buffer_timer.initialize(this);
-  _packet_buffer_timer.schedule_after_msec( 10000 );
-
-  _max_own_nodes_per_packet = 30;
-  _max_foreign_nodes_per_packet = 3;
-  _max_foreign_nodes = 3;
+  _packet_buffer_timer.schedule_after_msec(DEFAULT_SENDPUFFER_TIMEOUT);
 
   return 0;
 }
@@ -334,14 +341,14 @@ DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key)
     for ( int i = 0; i < _own_dhtnodes.size(); i++ )
     {
       node = _own_dhtnodes.get_dhtnode(i);
-      if ( ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) && ( node->_status == STATUS_OK) )
+      if ( ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) && ( node->_status == STATUS_OK) && ( node->get_age_s() <= _max_age ) )
         return node;
     }
 
     for ( int i = 0; i < _own_dhtnodes.size(); i++ )
     {
       node = _own_dhtnodes.get_dhtnode(i);
-      if ( node->_status == STATUS_OK)
+      if ( ( node->_status == STATUS_OK ) && ( node->get_age_s() <= _max_age ) )
         return node;
     }
 
@@ -353,14 +360,14 @@ DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key)
       for ( int i = 0; i < _foreign_dhtnodes.size(); i++ )
       {
         node = _foreign_dhtnodes.get_dhtnode(i);
-        if ( ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) && ( node->_status == STATUS_OK) )
+        if ( ( MD5::hexcompare( node->_md5_digest, key ) >= 0 ) && ( node->_status == STATUS_OK ) && ( node->get_age_s() <= _max_age ) )
           return node;
       }
 
       for ( int i = 0; i < _foreign_dhtnodes.size(); i++ )
       {
         node = _foreign_dhtnodes.get_dhtnode(i);
-        if ( node->_status == STATUS_OK)
+        if ( ( node->_status == STATUS_OK ) && ( node->get_age_s() <= _max_age ) )
           return node;
       }
     }
@@ -651,11 +658,11 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingKlibs *dht_omni = (DHTRoutingKlibs *)e;
+  DHTRoutingKlibs *dht_klibs = (DHTRoutingKlibs *)e;
 
   switch ((uintptr_t) thunk)
   {
-    case H_ROUTING_INFO : return ( dht_omni->routing_info( ) );
+    case H_ROUTING_INFO : return ( dht_klibs->routing_info( ) );
     default: return String();
   }
 }

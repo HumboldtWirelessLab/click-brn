@@ -17,6 +17,12 @@ CLICK_DECLS
 #define OWN_NODES 1
 #define FOREIGN_NODES 2
 
+/**
+ * TODO: params for size of foreign_list, number of nodes <8foreign and own per packetsendbuffet, max age, max ping
+ * TODO: adjust foreignnodelistsize depending on ownnodeslistsize since md5 distribut equally
+ * TODO: don't send ping if last ping not so far
+*/
+
 
 class BRN2LinkStat;
 
@@ -68,6 +74,11 @@ class DHTRoutingKlibs : public DHTRouting
     int _max_own_nodes_per_packet;
     int _max_foreign_nodes_per_packet;
 
+    int _start_time;
+    int _update_interval;
+    int _max_age;
+    int _max_ping_time;
+
     Timer _lookup_timer;
     Timer _packet_buffer_timer;
     static void static_lookup_timer_hook(Timer *, void *);
@@ -75,8 +86,6 @@ class DHTRoutingKlibs : public DHTRouting
     void set_lookup_timer();
 
     void nodeDetection();
-
-    int _update_interval;
 
     void handle_hello(Packet *p);
     void handle_request(Packet *p, uint32_t node_group);
