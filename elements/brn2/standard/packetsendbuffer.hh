@@ -4,6 +4,7 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
+#define DEFAULT_SENDPUFFER_TIMEOUT 10000
 
 CLICK_DECLS
 
