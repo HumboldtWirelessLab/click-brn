@@ -60,16 +60,16 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-static void callback_func(void *e, int status)
+static void notify_callback_func(void *e, int status)
 {
   DHTStorageSimple *s = (DHTStorageSimple *)e;
 
- click_chatter("callback %s: Status %d",s->class_name(),status);
+  click_chatter("callback %s: Status %d",s->class_name(),status);
 }
 
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
-  _dht_routing->set_notify_callback(callback_func,(void*)this);
+  _dht_routing->set_notify_callback(notify_callback_func,(void*)this);
   return 0;
 }
 

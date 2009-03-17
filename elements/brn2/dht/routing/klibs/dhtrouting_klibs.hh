@@ -89,7 +89,7 @@ class DHTRoutingKlibs : public DHTRouting
 
     void handle_hello(Packet *p);
     void handle_request(Packet *p, uint32_t node_group);
-    void update_nodes(DHTnodelist *dhtlist);
+    bool update_nodes(DHTnodelist *dhtlist);
 
     bool is_foreign(md5_byte_t *key);
     bool is_own(md5_byte_t *key);

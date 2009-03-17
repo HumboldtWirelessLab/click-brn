@@ -197,6 +197,7 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
   EtherAddress *ea = DHTProtocol::get_src(p_in);
   DHTnode *node;
+  bool notify_storage = false;
 
   if ( ea != NULL ) {
     node = _foreign_dhtnodes.get_dhtnode(ea);
@@ -215,7 +216,9 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
       if ( is_own(node) ) {
         _own_dhtnodes.add_dhtnode(node);
         _own_dhtnodes.sort();
+        notify_storage = true;
       } else {
+        if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
         _foreign_dhtnodes.add_dhtnode(node);
         _foreign_dhtnodes.sort();
         if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
@@ -233,9 +236,11 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
   }
 
 //  click_chatter("Nodes: %d",count_nodes);
-  update_nodes(&dhtlist);
+  notify_storage |= update_nodes(&dhtlist);
 
   dhtlist.del();
+
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
 }
 
 void
@@ -280,12 +285,13 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
   DHTnodelist send_dhtlist;
   int count_nodes;
   DHTnode *node = NULL;
+  bool notify_storage = false;
 
 //  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
   uint8_t ptype;
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
-  update_nodes(&dhtlist);
+  notify_storage = update_nodes(&dhtlist);
 
   if ( is_me(ether_header->ether_dhost) )
   {
@@ -304,7 +310,9 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
       if ( is_own(node) ) {
         _own_dhtnodes.add_dhtnode(node);
         _own_dhtnodes.sort();
+        notify_storage = true;
       } else {
+        if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
         _foreign_dhtnodes.add_dhtnode(node);
         _foreign_dhtnodes.sort();
         if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
@@ -324,6 +332,8 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
   }
 
   dhtlist.del();
+
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
 }
 
 /****************************************************************************************
@@ -411,13 +421,14 @@ DHTRoutingKlibs::is_own(DHTnode *node)
 /****************************************************************************************
 ********************* N O D E T A B L E O P E R A T I O N *******************************
 ****************************************************************************************/
-void
+bool
 DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
 {
   DHTnode *node, *new_node;
   int add_own_nodes = 0;
   int add_for_nodes = 0;
   bool own_group;
+  bool notify_storage = false;
 
   Timestamp now,n_age;
 
@@ -441,7 +452,9 @@ DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
       if ( own_group ) {
         _own_dhtnodes.add_dhtnode(node);
         add_own_nodes++;
+        notify_storage = true;
       } else {
+        if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
         _foreign_dhtnodes.add_dhtnode(node);
         add_for_nodes++;
       }
@@ -469,6 +482,8 @@ DHTRoutingKlibs::update_nodes(DHTnodelist *dhtlist)
 
     _foreign_dhtnodes.sort();
   }
+
+  return notify_storage;
 }
 
 void
