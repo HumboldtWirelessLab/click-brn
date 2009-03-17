@@ -77,6 +77,13 @@ BRNDB::getRow(md5_byte_t *md5_key)
   return NULL;
 }
 
+BRNDB::DBrow *
+BRNDB::getRow(int index) {
+  if ( _table.size() > index ) return _table[index];
+
+  return NULL;
+}
+
 int
 BRNDB::size()
 {

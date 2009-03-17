@@ -27,6 +27,14 @@ class BRNDB
         int lock;
         char lock_node[6];
 
+        Timestamp lock_timestamp;
+        uint32_t  max_lock_duration;
+
+        Timestamp store_time;
+        uint32_t store_timeout;
+
+        bool moved;
+
         DBrow()
         {
         }
@@ -47,6 +55,7 @@ class BRNDB
 
     BRNDB::DBrow *getRow(char *key, uint16_t keylen);
     BRNDB::DBrow *getRow(md5_byte_t *md5_key);
+    BRNDB::DBrow *getRow(int index);                      //TODO: use iterator
 
     int size();
 
