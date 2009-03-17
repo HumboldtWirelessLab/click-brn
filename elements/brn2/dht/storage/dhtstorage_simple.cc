@@ -65,6 +65,20 @@ static void notify_callback_func(void *e, int status)
   DHTStorageSimple *s = (DHTStorageSimple *)e;
 
   click_chatter("callback %s: Status %d",s->class_name(),status);
+
+  switch ( status )
+  {
+    case ROUTING_STATUS_UPDATE:
+    {
+      click_chatter("New node");
+      s->handle_node_update();
+      break;
+    }
+    default:
+    {
+      click_chatter("Unknown Status from routing layer");
+    }
+  }
 }
 
 int DHTStorageSimple::initialize(ErrorHandler *)
@@ -346,6 +360,30 @@ DHTStorageSimple::get_next_dht_id()
   if ( (_dht_id++) == 0 ) _dht_id = 1;
   return _dht_id;
 }
+
+uint32_t
+DHTStorageSimple::handle_node_update()
+{
+  BRNDB::DBrow *_row;
+  DHTnode *next;
+
+//  if ( _db.size() == 0 ) click_chatter("No data to move");
+
+  for ( int i = 0; i < _db.size(); i++ ) {
+    _row = _db.getRow(i);
+
+    next = _dht_routing->get_responsibly_node(_row->md5_key);
+    if ( _dht_routing->is_me(next) ) {
+      click_chatter("move");
+    } else {
+      click_chatter("Don't move");
+    }
+  }
+}
+
+/**************************************************************************/
+/************************** H A N D L E R *********************************/
+/**************************************************************************/
 
 enum {
   H_DB_SIZE

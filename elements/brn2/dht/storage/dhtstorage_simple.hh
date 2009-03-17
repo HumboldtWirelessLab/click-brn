@@ -71,6 +71,7 @@ class DHTStorageSimple : public DHTStorage
     BRNDB _db;
 
     DHTRouting *_dht_routing;
+    uint32_t handle_node_update();
 
   private:
     DHTForwardQueue _fwd_queue;
