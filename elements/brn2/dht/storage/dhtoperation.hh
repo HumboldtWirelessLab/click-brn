@@ -20,7 +20,9 @@ CLICK_DECLS
 #define DHT_STATUS_UNKNOWN        0
 #define DHT_STATUS_OK             1
 #define DHT_STATUS_KEY_NOT_FOUND  2
-#define DHT_STATUS_TIMEOUT        3
+#define DHT_STATUS_KEY_IS_LOCKED  3
+#define DHT_STATUS_TIMEOUT        4
+
 
 struct DHTOperationHeader {
   uint32_t id;
