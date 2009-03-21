@@ -16,6 +16,8 @@
 
 CLICK_DECLS
 
+#define  DEFAULT_LOCKTIME 3600
+
 class DHTStorageSimple : public DHTStorage
 {
   public:

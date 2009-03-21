@@ -219,7 +219,17 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
 
   if ( ( op->header.operation & OPERATION_INSERT ) == OPERATION_INSERT )
   {
-    result = dht_insert(op);
+    if ( ( op->header.operation & OPERATION_WRITE ) == OPERATION_WRITE )
+    {
+      result = dht_read(op);
+      if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
+        result = dht_insert(op);
+      } else {
+        result = dht_write(op);
+      }
+    } else {
+      result = dht_insert(op);
+    }
   }
 
   if ( ( op->header.operation & OPERATION_LOCK ) == OPERATION_LOCK )
@@ -279,7 +289,7 @@ DHTStorageSimple::dht_insert(DHTOperation *op)
 {
   if ( _db.getRow(op->header.key_digest) == NULL )
   {
-    _db.insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen, 0, (char*)op->header.etheraddress);
+    _db.insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen);
     op->header.status = DHT_STATUS_OK;
   }
   else
@@ -337,20 +347,71 @@ DHTStorageSimple::dht_read(DHTOperation *op)
 }
 
 int
-DHTStorageSimple::dht_remove(DHTOperation */*op*/)
+DHTStorageSimple::dht_remove(DHTOperation *op)
 {
+  BRNDB::DBrow *_row;
+  EtherAddress ea = EtherAddress(op->header.etheraddress);
+
+  _row = _db.getRow(op->header.key_digest);
+  if ( _row != NULL ) {
+    if ( _row->unlock(&ea) ) {
+      _db.delRow(op->header.key_digest);  //TODO: Errorhandling
+      op->header.status = DHT_STATUS_OK;
+    } else {
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+    }
+  } else {
+    op->header.status = DHT_STATUS_OK;
+  }
+
+  op->set_reply();
+
   return 0;
 }
 
 int
-DHTStorageSimple::dht_lock(DHTOperation */*op*/)
+DHTStorageSimple::dht_lock(DHTOperation *op)
 {
+  BRNDB::DBrow *_row;
+  EtherAddress ea = EtherAddress(op->header.etheraddress);
+
+  _row = _db.getRow(op->header.key_digest);
+
+  if ( _row != NULL ) {
+    if ( _row->lock(&ea, DEFAULT_LOCKTIME) ) {   //lock 1 hour
+      op->header.status = DHT_STATUS_OK;
+    } else {
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+    }
+  } else {
+    op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  }
+
+  op->set_reply();
+
   return 0;
 }
 
 int
-DHTStorageSimple::dht_unlock(DHTOperation */*op*/)
+DHTStorageSimple::dht_unlock(DHTOperation *op)
 {
+  BRNDB::DBrow *_row;
+  EtherAddress ea = EtherAddress(op->header.etheraddress);
+
+  _row = _db.getRow(op->header.key_digest);
+
+  if ( _row != NULL ) {
+    if ( _row->unlock(&ea) ) {   //lock 1 hour
+      op->header.status = DHT_STATUS_OK;
+    } else {
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+    }
+  } else {
+    op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  }
+
+  op->set_reply();
+
   return 0;
 }
 
@@ -379,6 +440,8 @@ DHTStorageSimple::handle_node_update()
       click_chatter("Don't move");
     }
   }
+
+  return 0;
 }
 
 /**************************************************************************/
