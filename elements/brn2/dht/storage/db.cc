@@ -12,7 +12,7 @@ BRNDB::~BRNDB()
 }
 
 int
-BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, int lock, char *lock_node)
+BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen)
 {
   DBrow *_new_row;
 
@@ -28,9 +28,6 @@ BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value
   _new_row->value = new uint8_t[valuelen];
   memcpy(_new_row->value,value,valuelen);
   _new_row->valuelen = valuelen;
-
-  _new_row->lock = lock;
-  memcpy(_new_row->lock_node, lock_node, 6);
 
   _table.push_back(_new_row);
 
@@ -83,6 +80,29 @@ BRNDB::getRow(int index) {
 
   return NULL;
 }
+
+int
+BRNDB::delRow(md5_byte_t *md5_key) {
+  DBrow *_ac_row;
+
+  if ( md5_key != NULL && _table.size() > 0 )
+  {
+    for ( int i = 0; i < _table.size(); i++ )
+    {
+      _ac_row = _table[i];
+      if ( ! _ac_row->isLocked() ) {
+        _table.erase(_table.begin() + i);
+        delete _ac_row;
+        return 0;
+      } else {
+        return 1;
+      }
+    }
+  }
+
+  return 0;
+}
+
 
 int
 BRNDB::size()
