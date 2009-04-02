@@ -36,7 +36,7 @@ CLICK_DECLS
 #define ROUTING_KLIBS       3
 #define ROUTING_DART        4
 
-#define STORGAE_SIMPLE      128
+#define STORAGE_SIMPLE      128
 
 /***** M I N O R  - R O U T I N G **********/
 
@@ -49,7 +49,8 @@ CLICK_DECLS
 
 /***** M I N O R  - S T O R A G E **********/
 
-#define DHT_MESSAGE             1
+#define DHT_MESSAGE         1
+#define DHT_MOVEDDATA       2
 
 
 struct dht_packet_header {
