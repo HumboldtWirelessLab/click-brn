@@ -1032,5 +1032,5 @@ BRN2DHCPServer::server_info(void)
 template class Vector<BRN2DHCPServer::DHCPClientInfo *>;
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(brn_common dhcp_packet_util dhcp_packet_util)
+ELEMENT_REQUIRES(brn_common)
 EXPORT_ELEMENT(BRN2DHCPServer)

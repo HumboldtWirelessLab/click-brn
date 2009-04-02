@@ -501,5 +501,4 @@ BRN2DHCPClient::add_handlers()
 template class Vector<BRN2DHCPClient::DHCPClientInfo>;
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(dhcp_packet_util)
 EXPORT_ELEMENT(BRN2DHCPClient)

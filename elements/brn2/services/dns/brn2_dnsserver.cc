@@ -278,5 +278,5 @@ BRN2DNSServer::server_info(void)
 template class Vector<BRN2DNSServer::DNSClientInfo *>;
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(brn_common dhcp_packet_util dhcp_packet_util)
+ELEMENT_REQUIRES(brn_common)
 EXPORT_ELEMENT(BRN2DNSServer)
