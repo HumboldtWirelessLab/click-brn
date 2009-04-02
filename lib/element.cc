@@ -57,12 +57,6 @@ const char Element::COMPLETE_FLOW[] = "x/x";
 
 int Element::nelements_allocated = 0;
 
-#if CLICK_STATS >= 2
-# define ELEMENT_CTOR_STATS _calls(0), _self_cycles(0), _child_cycles(0),
-#else
-# define ELEMENT_CTOR_STATS
-#endif
-
 /** @mainpage Click
  *  @section  Introduction
  *
@@ -415,20 +409,24 @@ void BetterIPCounter3::push(int port, Packet *p) {
 
 /** @brief Construct an Element. */
 Element::Element()
-    : ELEMENT_CTOR_STATS _router(0), _eindex(-1)
+    : _router(0), _eindex(-1)
 {
     nelements_allocated++;
     _ports[0] = _ports[1] = &_inline_ports[0];
     _nports[0] = _nports[1] = 0;
+
+#if CLICK_STATS >= 2
+    reset_cycles();
+#endif
 }
 
 Element::~Element()
 {
     nelements_allocated--;
-    if (_ports[1] != _inline_ports && _ports[1] != _inline_ports + _nports[0])
-	delete[] _ports[1];
-    if (_ports[0] != _inline_ports)
+    if (_ports[0] < _inline_ports || _ports[0] >= _inline_ports + INLINE_PORTS)
 	delete[] _ports[0];
+    if (_ports[1] < _inline_ports || _ports[1] >= _inline_ports + INLINE_PORTS)
+	delete[] _ports[1];
 }
 
 // CHARACTERISTICS
@@ -527,13 +525,6 @@ Element::port_cast(bool isoutput, int port, const char *name)
     return cast(name);
 }
 
-/** @brief Return the element's master. */
-Master *
-Element::master() const
-{
-    return _router->master();
-}
-
 /** @brief Return the element's name.
  *
  * This is the name used to declare the element in the router configuration,
@@ -598,32 +589,33 @@ Element::set_nports(int new_ninputs, int new_noutputs)
 
     // decide if inputs & outputs were inlined
     bool old_in_inline =
-	(_ports[0] == _inline_ports);
+	(_ports[0] >= _inline_ports && _ports[0] < _inline_ports + INLINE_PORTS);
     bool old_out_inline =
-	(_ports[1] == _inline_ports || _ports[1] == _inline_ports + _nports[0]);
+	(_ports[1] >= _inline_ports && _ports[1] < _inline_ports + INLINE_PORTS);
+    bool prefer_pull = (processing() == PULL);
 
     // decide if inputs & outputs should be inlined
     bool new_in_inline =
 	(new_ninputs == 0
 	 || new_ninputs + new_noutputs <= INLINE_PORTS
 	 || (new_ninputs <= INLINE_PORTS && new_noutputs > INLINE_PORTS)
-	 || (new_ninputs <= INLINE_PORTS && new_ninputs > new_noutputs
-	     && processing() == PULL));
+	 || (new_ninputs <= INLINE_PORTS && prefer_pull));
     bool new_out_inline =
 	(new_noutputs == 0
 	 || new_ninputs + new_noutputs <= INLINE_PORTS
 	 || (new_noutputs <= INLINE_PORTS && !new_in_inline));
 
     // create new port arrays
-    Port *new_inputs =
-	(new_in_inline ? _inline_ports : new Port[new_ninputs]);
-    if (!new_inputs)		// out of memory -- return
+    Port *new_inputs;
+    if (new_in_inline)
+	new_inputs = _inline_ports + (!new_out_inline || prefer_pull ? 0 : new_noutputs);
+    else if (!(new_inputs = new Port[new_ninputs]))
 	return -ENOMEM;
 
-    Port *new_outputs =
-	(new_out_inline ? _inline_ports + (new_in_inline ? new_ninputs : 0)
-	 : new Port[new_noutputs]);
-    if (!new_outputs) {		// out of memory -- return
+    Port *new_outputs;
+    if (new_out_inline)
+	new_outputs = _inline_ports + (!new_in_inline || !prefer_pull ? 0 : new_ninputs);
+    else if (!(new_outputs = new Port[new_noutputs])) {
 	if (!new_in_inline)
 	    delete[] new_inputs;
 	return -ENOMEM;
@@ -774,13 +766,13 @@ Element::initialize_ports(const int *in_v, const int *out_v)
     for (int i = 0; i < ninputs(); i++) {
 	// allowed iff in_v[i] == VPULL
 	int port = (in_v[i] == VPULL ? 0 : -1);
-	_ports[0][i] = Port(this, 0, port);
+	_ports[0][i].assign(this, 0, port, false);
     }
 
     for (int o = 0; o < noutputs(); o++) {
 	// allowed iff out_v[o] != VPULL
 	int port = (out_v[o] == VPULL ? -1 : 0);
-	_ports[1][o] = Port(this, 0, port);
+	_ports[1][o].assign(this, 0, port, true);
     }
 }
 
@@ -788,7 +780,7 @@ int
 Element::connect_port(bool isoutput, int port, Element* e, int e_port)
 {
     if (port_active(isoutput, port)) {
-	_ports[isoutput][port] = Port(this, e, e_port);
+	_ports[isoutput][port].assign(this, e, e_port, isoutput);
 	return 0;
     } else
 	return -1;
@@ -965,13 +957,13 @@ next_flow_code(const char*& p, int port, Bitvector& code, ErrorHandler* errh, co
 	    else if (*p == '#')
 		code[port + 128] = true;
 	    else if (errh)
-		errh->error("'%{element}' flow code: invalid character '%c'", e, *p);
+		errh->error("%<%{element}%> flow code: invalid character %<%c%>", e, *p);
 	}
 	if (negated)
 	    code.negate();
 	if (!*p) {
 	    if (errh)
-		errh->error("'%{element}' flow code: missing ']'", e);
+		errh->error("%<%{element}%> flow code: missing %<]%>", e);
 	    p--;			// don't skip over final '\0'
 	}
     } else if ((*p >= 'A' && *p <= 'Z') || (*p >= 'a' && *p <= 'z'))
@@ -980,7 +972,7 @@ next_flow_code(const char*& p, int port, Bitvector& code, ErrorHandler* errh, co
 	code[port + 128] = true;
     else {
 	if (errh)
-	    errh->error("'%{element}' flow code: invalid character '%c'", e, *p);
+	    errh->error("%<%{element}%> flow code: invalid character %<%c%>", e, *p);
 	p++;
 	return -1;
     }
@@ -1010,6 +1002,9 @@ next_flow_code(const char*& p, int port, Bitvector& code, ErrorHandler* errh, co
  *  - port_flow(false, 1, travels) returns [false, false, true, false]
  *  - port_flow(true, 0, travels) returns [true, false]
  *
+ * Uses an element's overridden flow code when one is supplied;
+ * see Router::flow_code_override().
+ *
  * @sa flow_code
  */
 void
@@ -1036,7 +1031,7 @@ Element::port_flow(bool isoutput, int p, Bitvector* travels) const
     const char* f_out = strchr(f, '/');
     f_out = (f_out ? f_out + 1 : f_in);
     if (*f_out == '\0' || *f_out == '/') {
-	errh->error("'%{element}' flow code: missing or bad '/'", this);
+	errh->error("%<%{element}%> flow code: missing or bad %</%>", this);
 	return;
     }
 
@@ -1990,12 +1985,25 @@ read_ocounts_handler(Element *f, void *)
  * cycles spent in this element and elements it pulls or pushes.
  * cycles spent in the elements this one pulls and pushes.
  */
-static String
-read_cycles_handler(Element *f, void *)
+String
+Element::read_cycles_handler(Element *e, void *)
 {
-  return(String(f->_calls) + "\n" +
-         String(f->_self_cycles) + "\n" +
-         String(f->_child_cycles));
+    StringAccum sa;
+    if (e->_calls)
+	sa << e->_calls << ' ' << e->_self_cycles << ' '
+	   << e->_child_cycles << '\n';
+    if (e->_task_calls)
+	sa << "tasks " << e->_task_calls << ' ' << e->_task_cycles << "\n";
+    if (e->_timer_calls)
+	sa << "timers " << e->_timer_calls << ' ' << e->_timer_cycles << "\n";
+    return sa.take_string();
+}
+
+int
+Element::write_cycles_handler(const String &, Element *e, void *, ErrorHandler *)
+{
+    e->reset_cycles();
+    return 0;
 }
 #endif
 
@@ -2014,6 +2022,7 @@ Element::add_default_handlers(bool allow_write_config)
   add_read_handler("ocounts", read_ocounts_handler, 0);
 # if CLICK_STATS >= 2
   add_read_handler("cycles", read_cycles_handler, 0);
+  add_write_handler("cycles", write_cycles_handler, 0);
 # endif
 #endif
 }
@@ -2032,7 +2041,7 @@ write_task_tickets(const String &s, Element *e, void *thunk, ErrorHandler *errh)
   Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
   int tix;
   if (!cp_integer(s, &tix))
-    return errh->error("'tickets' takes an integer between 1 and %d", Task::MAX_TICKETS);
+    return errh->error("%<tickets%> takes an integer between 1 and %d", Task::MAX_TICKETS);
   if (tix < 1) {
     errh->warning("tickets pinned at 1");
     tix = 1;
