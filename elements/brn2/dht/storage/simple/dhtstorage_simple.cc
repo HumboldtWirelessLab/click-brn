@@ -11,7 +11,7 @@
 #include "dhtstorage_simple.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "db.hh"
+#include "elements/brn2/dht/storage/db/db.hh"
 
 CLICK_DECLS
 
@@ -118,7 +118,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 
         fwd_op = new DHTOperationForward(op,info_func,info_obj);
         _fwd_queue.push_back(fwd_op);
-        p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, op->length());
+        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, op->length());
         op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
         p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
         output(0).push(p);
@@ -179,7 +179,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
 //          click_chatter("reply dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
           handle_dht_operation(_op);
           _op->set_reply();
-          p = DHTProtocol::new_dht_packet(STORGAE_SIMPLE, DHT_MESSAGE, _op->length());
+          p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
           _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
           EtherAddress src = EtherAddress(_op->header.etheraddress);
 //          click_chatter("source is: %s",src.unparse().c_str());

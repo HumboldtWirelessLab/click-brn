@@ -12,7 +12,7 @@
 #include "elements/brn2/dht/routing/dhtrouting.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "db.hh"
+#include "elements/brn2/dht/storage/db/db.hh"
 
 CLICK_DECLS
 

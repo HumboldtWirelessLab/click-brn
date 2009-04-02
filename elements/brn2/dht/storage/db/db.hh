@@ -98,6 +98,12 @@ class BRNDB
           Timestamp now = Timestamp::now();
           return ( ( now - store_time ).sec() <= (int)store_timeout );
         }
+
+        uint16_t serializeSize() {
+          uint16_t size = 0;
+          size += 16 + sizeof(uint16_t) + sizeof(uint16_t) + 7 + sizeof(uint32_t) + sizeof(uint32_t) + valuelen + keylen;
+          return size;
+        }
     };
 
   public:
