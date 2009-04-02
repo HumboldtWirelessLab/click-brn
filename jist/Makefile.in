@@ -52,14 +52,14 @@ endif
 REMOVES_GENERIC_OBJS = ipaddresslist.o ewma64.o
 
 GENERIC_OBJS = string.o straccum.o nameinfo.o \
-	bitvector.o vectorv.o templatei.o bighashmap_arena.o \
+	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
 	error.o timestamp.o glue.o task.o timer.o atomic.o gaprate.o \
 	element.o \
 	confparse.o variableenv.o lexer.o elemfilter.o \
 	routerthread.o router.o master.o handlercall.o notifier.o \
-	integers.o crc32.o in_cksum.o iptable.o \
+	integers.o md5.o crc32.o in_cksum.o iptable.o \
 	archive.o userutils.o driver.o \
 	$(EXTRA_DRIVER_OBJS)
 
@@ -120,7 +120,7 @@ elemlist:
 	@rm -f elements.conf
 	@$(MAKE) elements.conf
 elements.conf: $(top_builddir)/config.status $(top_builddir)/click-buildtool
-	echo "ns userlevel @element_groups@" | $(top_builddir)/click-buildtool findelem -r ns -p $(top_srcdir) > elements.conf
+	echo "ns userlevel @element_groups@" | $(top_builddir)/click-buildtool findelem -r ns -p $(top_srcdir) -X $(srcdir)/elements.exclude > elements.conf
 $(ELEMENTSCONF).mk: $(ELEMENTSCONF).conf $(top_builddir)/click-buildtool
 	$(top_builddir)/click-buildtool elem2make -x "$(STD_ELEMENT_OBJS)" < $(ELEMENTSCONF).conf > $(ELEMENTSCONF).mk
 $(ELEMENTSCONF).cc: $(ELEMENTSCONF).conf $(top_builddir)/click-buildtool
