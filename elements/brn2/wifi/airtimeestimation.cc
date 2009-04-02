@@ -49,10 +49,10 @@ AirTimeEstimation::configure(Vector<String> &conf, ErrorHandler* errh)
   return ret;
 }
 
-Packet *
-AirTimeEstimation::simple_action(Packet *p)
+void
+AirTimeEstimation::push(int port, Packet *p)
 {
-  return p;
+  output(port).push(p);
 }
 
 CLICK_ENDDECLS

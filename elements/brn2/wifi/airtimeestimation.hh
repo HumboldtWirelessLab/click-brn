@@ -39,19 +39,33 @@ AirTimeEstimation()
 class AirTimeEstimation : public Element {
 
   public:
+    class SecondInfo {
+      uint32_t rec_bytes;
+      uint32_t rec_packets;
+      uint32_t send_bytes;
+      uint32_t send_packets;
+
+      uint32_t know_nonrec_bytes;
+      uint32_t know_nonrec_packets;
+    };
+
+  public:
 
     AirTimeEstimation();
     ~AirTimeEstimation();
 
     const char *class_name() const	{ return "AirTimeEstimation"; }
-    const char *port_count() const  { return "1/1"; }
+    const char *port_count() const  { return "2/2"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
 
-    Packet *simple_action(Packet *);
+    void push(int, Packet *p);
 
   private:
     bool _debug;
+
+    uint32_t packets;
+    uint32_t bytes;
 };
 
 CLICK_ENDDECLS
