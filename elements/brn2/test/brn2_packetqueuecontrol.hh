@@ -19,6 +19,28 @@ class BRN2PacketQueueControl : public Element {
 
  public:
 
+   class Flow {
+    public:
+     int _start;
+     int _end;
+     int _time_now;
+
+     int _packetsize;
+
+     bool _running;
+
+     int _send_packets;
+
+     Flow(int start, int end, int packetsize ) {
+       _start = start;
+       _end = end;
+       _time_now = start;
+       _packetsize = packetsize;
+       _running = false;
+       _send_packets = 0;
+     }
+   };
+
    int _debug;
   //
   //methods
@@ -36,19 +58,25 @@ class BRN2PacketQueueControl : public Element {
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
 
-  void run_timer(Timer *t);
+  static void static_flow_queue_timer_hook(Timer *, void *);
 
   int initialize(ErrorHandler *);
   void add_handlers();
 
- private:
-
-  Timer _timer;
-  HandlerCall*   _queue_size_handler;
+  void setFlow(Flow *f);
+  Flow *getAcFlow() { return acflow; }
+  void handle_flow_timer();
+  void handle_queue_timer();
 
   int _interval;
 
-  uint32_t _packet_size;
+ private:
+
+  Timer _flow_queue_timer;
+  HandlerCall* _queue_size_handler;
+  HandlerCall* _queue_reset_handler;
+
+  Flow *acflow;
 
   uint32_t _min_count_p;
   uint32_t _max_count_p;
