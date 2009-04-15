@@ -360,12 +360,12 @@ BRN2BeaconSource::push(int, Packet *p)
 
   if (ssid != "" && ssid != _winfo->_ssid) {
     if ( ( _winfolist == NULL ) || ( _winfolist->getWifiInfoForBSSID(ssid) == NULL) ) {
-      //if (_debug) {
+      if (_debug) {
         click_chatter("%{element} other ssid %s wanted %s\n",
                       this,
                       ssid.c_str(),
                       _winfo->_ssid.c_str());
-     // }
+      }
       p->kill();
       return;
     }
