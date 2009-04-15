@@ -14,7 +14,8 @@
 CLICK_DECLS
 
 BRN2PacketQueueControl::BRN2PacketQueueControl()
-  : _flow_queue_timer(static_flow_queue_timer_hook,this),
+  : _queue_timer(static_queue_timer_hook,this),
+    _flow_timer(static_flow_timer_hook,this),
     _queue_size_handler(0),
     _queue_reset_handler(0),
     acflow(0)
@@ -37,8 +38,6 @@ BRN2PacketQueueControl::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
         return -1;
 
-  _interval = 100;
-
   return 0;
 }
 
@@ -51,20 +50,24 @@ BRN2PacketQueueControl::initialize(ErrorHandler *errh)
   if( _queue_reset_handler->initialize_write(this, errh) < 0 )
     return errh->error("Could not initialize  handler");
 
-  _flow_queue_timer.initialize(this);
+  _queue_timer.initialize(this);
+  _flow_timer.initialize(this);
 
   return 0;
 }
 
 void
-BRN2PacketQueueControl::static_flow_queue_timer_hook(Timer *, void *v) {
+BRN2PacketQueueControl::static_queue_timer_hook(Timer *, void *v) {
   BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
   BRN2PacketQueueControl::Flow *acflow = fc->getAcFlow();
-  if ( acflow->_running && ( (acflow->_time_now+fc->_interval) < acflow->_end ) ) {
+  if ( acflow->_running )
     fc->handle_queue_timer();
-  } else {
-    fc->handle_flow_timer();
-  }
+}
+
+void
+BRN2PacketQueueControl::static_flow_timer_hook(Timer *, void *v) {
+  BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
+  fc->handle_flow_timer();
 }
 
 void
@@ -72,23 +75,20 @@ BRN2PacketQueueControl::handle_queue_timer()
 {
   Packet *packet_out;
 
-  if ( acflow == NULL ) return;
-
-  int queue_size;
+  uint32_t queue_size;
   String s_qsize = _queue_size_handler->call_read();
   cp_integer(s_qsize, &queue_size);
 
   click_chatter("Size:%d",queue_size);
   if ( queue_size < _min_count_p ) {
-    for ( int i = 0; i < (_max_count_p - queue_size); i++) {
+    for ( uint32_t i = 0; i < (_max_count_p - queue_size); i++) {
       acflow->_send_packets++;
       packet_out = createpacket( acflow->_packetsize );
       output(0).push(packet_out);
     }
   }
 
-  acflow->_time_now += _interval;
-  _flow_queue_timer.reschedule_after_msec(_interval);
+  _queue_timer.reschedule_after_msec(acflow->_interval);
 }
 
 Packet *
@@ -104,14 +104,15 @@ BRN2PacketQueueControl::handle_flow_timer() {
 
   if ( ! acflow->_running ) {
     acflow->_running = true;
-    for ( int i = 0; i < _max_count_p; i++) {
+    for ( uint32_t i = 0; i < _max_count_p; i++) {
       acflow->_send_packets++;
       Packet *packet_out = createpacket( acflow->_packetsize );
       output(0).push(packet_out);
     }
 
     click_chatter("set timer for flowend");
-    _flow_queue_timer.reschedule_after_msec(_interval);
+    _queue_timer.reschedule_after_msec(acflow->_interval);
+    _flow_timer.reschedule_after_msec(acflow->_end - acflow->_start);
     click_chatter("Schedule flowend in %d s",(acflow->_end - acflow->_start));
   } else {
     click_chatter("flowend");
@@ -131,9 +132,8 @@ BRN2PacketQueueControl::handle_flow_timer() {
 void
 BRN2PacketQueueControl::setFlow(Flow *f) {
   acflow = f;
-  _flow_queue_timer.reschedule_after_msec(f->_start);
+  _flow_timer.reschedule_after_msec(f->_start);
 }
-
 
 
 enum {
@@ -142,7 +142,7 @@ enum {
 };
 
 static int
-write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
 {
   BRN2PacketQueueControl *f = (BRN2PacketQueueControl *)e;
   String s = cp_uncomment(in_s);
@@ -152,13 +152,17 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
       Vector<String> args;
       cp_spacevec(s, args);
 
-      int start,end,packetsize;
+      int start,end,packetsize,bw;
 
       cp_integer(args[0], &start);
       cp_integer(args[1], &end);
       cp_integer(args[2], &packetsize);
+      cp_integer(args[3], &bw);
 
-      f->setFlow(new BRN2PacketQueueControl::Flow(start,end,packetsize));
+      int interval = ( ((f->_max_count_p-f->_min_count_p) * 1000) / (bw*1000*125 /* 1000/8 */ /packetsize));
+      click_chatter("Int: %d",interval);
+      f->setFlow(new BRN2PacketQueueControl::Flow(start,end,packetsize,interval));
+
       break;
     }
   }

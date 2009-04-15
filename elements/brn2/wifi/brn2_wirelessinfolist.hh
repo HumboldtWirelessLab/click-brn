@@ -28,6 +28,7 @@ class BRN2WirelessInfoList : public Element {
     EtherAddress _bssid;
     int _interval;
     bool _wep;
+    bool _protected;
 
     uint16_t _vlan;
 
@@ -42,6 +43,7 @@ class BRN2WirelessInfoList : public Element {
       _interval = interval;
       _wep = wep;
       _vlan = vlan;
+      _protected = false;
       updateTime();
     }
 
