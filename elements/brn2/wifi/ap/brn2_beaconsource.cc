@@ -115,17 +115,18 @@ BRN2BeaconSource::send_probe_beacon(EtherAddress dst, bool probe, String ssid) {
 
   if ( ssid != "" )
     send_beacon(dst, probe, ssid);
-  else {
-   /* if ( _winfo ) {
+  else {  //Just send the first available SSID, since client element is confused by multiple ssid having the same bssid
+    if ( _winfo ) {
       send_beacon(dst, probe, _winfo->_ssid);
-    }*/
-
-    /*if ( _winfolist ) {
+    } else if ( _winfolist ) {
       for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
         wi = _winfolist->getWifiInfo(i);
-        send_beacon(dst, probe, wi->_ssid);
+        if ( (wi->_ssid != NULL) && (wi->_ssid != "" ) ) {
+          send_beacon(dst, probe, wi->_ssid);
+          break;
+        }
       }
-    }*/
+    }
   }
 }
 
@@ -192,8 +193,9 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
 
   uint16_t cap_info = 0;
   cap_info |= WIFI_CAPINFO_ESS;
-  if (probe) {
-    //click_chatter("SSID %s is protected.", ssid.c_str());
+
+  if (probe && is_protected_ssid(ssid)) {
+    click_chatter("SSID %s is protected.", ssid.c_str());
     cap_info |= WIFI_CAPINFO_PRIVACY;
   }
 
@@ -400,6 +402,22 @@ BRN2BeaconSource::push(int, Packet *p)
   return;
 }
 
+bool
+BRN2BeaconSource::is_protected_ssid(String ssid)
+{
+  BRN2WirelessInfoList::WifiInfo *wi;
+
+  if ( ssid == "" ) return false;
+  if ( _winfo && ( _winfo->_ssid == ssid ) ) return false;
+  if ( _winfolist ) {
+    for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
+       wi = _winfolist->getWifiInfo(i);
+       if (wi->_ssid == ssid ) return wi->_protected;
+    }
+  }
+
+  return false;
+}
 enum {H_DEBUG, H_ACTIVE, H_CHANNEL};
 
 static String 
@@ -468,4 +486,4 @@ BRN2BeaconSource::add_handlers()
 #endif
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2BeaconSource)
-  
+

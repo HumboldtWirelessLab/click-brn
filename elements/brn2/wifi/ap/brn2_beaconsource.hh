@@ -76,6 +76,7 @@ class BRN2BeaconSource : public Element { public:
   class BRN2WirelessInfoList *_winfolist;
  private:
 
+  bool is_protected_ssid(String ssid);
   bool _switch_channel;
 };
 
