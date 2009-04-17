@@ -69,6 +69,8 @@ Ath2Decap::simple_action(Packet *p)
       output(1).push(p);
     else
       p->kill();
+
+    return null;
   }
 
   q = p->uniqueify();
