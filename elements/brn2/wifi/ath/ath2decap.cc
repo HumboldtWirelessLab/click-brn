@@ -70,7 +70,7 @@ Ath2Decap::simple_action(Packet *p)
     else
       p->kill();
 
-    return null;
+    return NULL;
   }
 
   q = p->uniqueify();
