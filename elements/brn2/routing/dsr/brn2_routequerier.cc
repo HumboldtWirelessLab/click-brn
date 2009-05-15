@@ -326,7 +326,7 @@ void
 BRN2RouteQuerier::flush_sendbuffer()
 {
 
-  BRN_DEBUG(" * flushing send buffer.");
+//  BRN_DEBUG(" * flushing send buffer.");
 
   for (SBMapIter i = _sendbuffer_map.begin(); i.live(); i++) {
     SBSourceMap &src_map = i.value();
