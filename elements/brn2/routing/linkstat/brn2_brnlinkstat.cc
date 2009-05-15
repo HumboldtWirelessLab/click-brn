@@ -369,7 +369,7 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  WritablePacket *p = Packet::make(size + 2); //alignment
+  WritablePacket *p = Packet::make(64 /*headroom*/,NULL /* *data*/, size+2, 32); //make(size + 2); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
