@@ -18,7 +18,8 @@ struct ath2_rx_status {
     u_int64_t	rs_mactime;
 
     int8_t	rs_noise;
-    int8_t	reserved[3];
+    int8_t	channel;
+    int8_t	reserved[2];
 
 } __attribute__ ((packed));
 
@@ -40,7 +41,8 @@ struct ath2_tx_status {
     u_int64_t	ts_mactime;
 
     int8_t	ts_noise;
-    int8_t	reserved[3];
+    int8_t	channel;
+    int8_t	reserved[2];
 
 } __attribute__ ((packed));
 
