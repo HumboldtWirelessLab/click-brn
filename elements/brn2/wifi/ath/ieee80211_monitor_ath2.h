@@ -91,14 +91,16 @@ struct ath2_header {
 
 #define MADWIFI_0940	0x03ac
 #define MADWIFI_3869	0x0f1d
-#define MADWIFI_3880  0x0f28
+#define MADWIFI_3880	0x0f28
 
 #define MADWIFI_TRUNK MADWIFI_3880
+
+#define ATH2_FLAGS_IS_OPERATION    1
 
 #define ATH2_OPERATION_NONE        0
 #define ATH2_OPERATION_SETVACLIENT 1
 #define ATH2_OPERATION_SETCHANNEL  2
-#define ATH2_OPERATION_SETMAC      3
+#define ATH2_OPERATION_SETMAC      4
 
 #ifndef ARPHRD_IEEE80211_ATHDESC2
 #define ARPHRD_IEEE80211_ATHDESC2  805 /* IEEE 802.11 + atheros (long) descriptor */

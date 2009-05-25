@@ -152,6 +152,12 @@ BRNPacketAnno::set_channel_anno(Packet *p, uint8_t channel, uint8_t operation)
   op[0] = operation;
 }
 
+void
+BRNPacketAnno::set_channel_anno(Packet *p, uint8_t channel)
+{
+  set_channel_anno(p, channel, OPERATION_SET_CHANNEL_NONE);
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRNPacketAnno)
 

@@ -41,6 +41,7 @@ CLICK_DECLS
 
 /* Operations */
 
+#define OPERATION_SET_CHANNEL_NONE           0
 #define OPERATION_SET_CHANNEL_BEFORE_PACKET  1
 #define OPERATION_SET_CHANNEL_AFTER_PACKET   2
 
@@ -81,6 +82,7 @@ class BRNPacketAnno : public Element { public:
   static uint8_t operation_anno(Packet *p);
 
   static void set_channel_anno(Packet *p, uint8_t channel, uint8_t operation);
+  static void set_channel_anno(Packet *p, uint8_t channel);
 
 };
 

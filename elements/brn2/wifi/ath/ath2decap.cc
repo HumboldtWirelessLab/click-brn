@@ -29,6 +29,7 @@
 #include <click/packet_anno.hh>
 #include <elements/wifi/athdesc.h>
 #include <elements/brn2/wifi/brnwifi.h>
+#include <elements/brn2/brnprotocol/brnpacketanno.hh>
 
 #include "ath2decap.hh"
 #include "ath2_desc.h"
@@ -123,6 +124,8 @@ Ath2Decap::simple_action(Packet *p)
     eh->virt_col = ath2_h->anno.tx.ts_virtcol;
     if ( eh->retries < ath2_h->anno.tx.ts_longretry )
       eh->retries = ath2_h->anno.tx.ts_longretry;
+
+    BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel); 
   }
   else                                                                      //RX
   {
@@ -144,7 +147,10 @@ Ath2Decap::simple_action(Packet *p)
     }
     eh->silence = ath2_h->anno.rx.rs_noise;
     eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
+
+    BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
   }
+
 
   q->pull(sizeof(struct ath2_header));
 
