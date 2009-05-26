@@ -63,6 +63,19 @@ Ath2Decap::simple_action(Packet *p)
   click_wifi_extra *eh;
   struct ath2_header *ath2_h = NULL;
 
+  /** Filter Operations */
+  if ( ( _athdecap && ( p->length() == ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
+         ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+  {
+    if ( noutputs() > 2 )
+      output(2).push(p);
+    else
+      p->kill();
+
+    return NULL;
+  }
+
+  /** Filter too small packets */
   if ( ( _athdecap && ( p->length() < ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
        ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
   {

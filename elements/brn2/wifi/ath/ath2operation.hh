@@ -13,7 +13,7 @@ class Ath2Operation : public Element { public:
 
   const char *class_name() const  { return "Ath2Operation"; }
   const char *processing() const  { return PUSH; }
-  const char *port_count() const  { return "1/1"; }
+  const char *port_count() const  { return "1/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return true; }

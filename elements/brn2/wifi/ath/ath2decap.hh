@@ -44,7 +44,7 @@ class Ath2Decap : public Element {
     ~Ath2Decap();
 
     const char *class_name() const	{ return "Ath2Decap"; }
-    const char *port_count() const  { return "1/1-2"; }
+    const char *port_count() const  { return "1/1-3"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
 
