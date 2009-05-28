@@ -37,11 +37,18 @@
 #include <elements/wifi/station/associationrequester.hh>
 #include <click/timestamp.hh>
 #include "elements/brn/nodeidentity.hh"
-#include "elements/brn/routing/linkstat/metric/brnettmetric.hh"
-#include "elements/brn/routing/linkstat/metric/brnetxmetric.hh"
 #include "brn2beaconscanner.hh"
+#include "elements/brn2/wifi/availablechannels.hh"
+#include "elements/brn2/wifi/ath/ath2operation.hh"
 
 CLICK_DECLS
+
+/**
+ * Status: Not Finished
+ * TODO: remove "nodeidentity.hh"-include
+ *       replace ath2operation using writehandler
+ * Resp: robert
+*/
 
 class BRN2InfrastructureClient : public Element {
 
@@ -88,6 +95,16 @@ public:
 
   bool _ad_hoc;
 
+  bool _active_scan_mode;
+
+  bool _scan_all_channels;
+  int _channel_index;
+  AvailableChannels *_channellist;
+  int _channel_is_set;
+  Ath2Operation *_athop;
+
+  int _minChannelScanTime;
+  int _maxChannelScanTime;
 };
 
 CLICK_ENDDECLS

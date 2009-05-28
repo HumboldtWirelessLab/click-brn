@@ -33,10 +33,8 @@
 
 CLICK_DECLS
 
-
 #define min(x,y)      ((x)<(y) ? (x) : (y))
 #define max(x,y)      ((x)>(y) ? (x) : (y))
-
 
 BRN2BeaconScanner::BRN2BeaconScanner()
   : _rtable(0),
@@ -54,10 +52,10 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "WIRELESS_INFO", 0, cpElement, &_winfo,
-		   "RT", 0, cpElement, &_rtable,
-		   cpEnd) < 0)
+       "DEBUG", 0, cpBool, &_debug,
+       "WIRELESS_INFO", 0, cpElement, &_winfo,
+       "RT", 0, cpElement, &_rtable,
+       cpEnd) < 0)
     return -1;
 
   if (_rtable && _rtable->cast("AvailableRates") == 0) 
@@ -69,12 +67,9 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 BRN2BeaconScanner::simple_action(Packet *p)
 {
-
-
   uint8_t dir;
   uint8_t type;
   uint8_t subtype;
-
 
   if (_winfo && _winfo->_channel < 0) {
     return p;
@@ -84,7 +79,6 @@ BRN2BeaconScanner::simple_action(Packet *p)
     return p;
   }
   struct click_wifi *w = (struct click_wifi *) p->data();
-
 
   dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
   type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
@@ -99,7 +93,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
   }
 
   uint8_t *ptr;
-  
+
   ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
 
   //uint8_t *ts = ptr;
@@ -110,7 +104,6 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
   uint16_t capability = le16_to_cpu(*(uint16_t *) ptr);
   ptr += 2;
-
 
   uint8_t *end  = (uint8_t *) p->data() + p->length();
 
@@ -148,20 +141,20 @@ BRN2BeaconScanner::simple_action(Packet *p)
       break;
     default:
       if (_debug) {
-	click_chatter("%{element}: ignored element id %u %u \n",
-		      this,
-		      *ptr,
-		      ptr[1]);
+        click_chatter("%{element}: ignored element id %u %u \n",
+            this,
+            *ptr,
+            ptr[1]);
       }
     }
     ptr += ptr[1] + 2;
 
   }
 
-
   if (_winfo && _winfo->_channel > 0 && ds_l && ds_l[2] != _winfo->_channel) {
     return p;
   }
+
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
     ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
@@ -169,51 +162,98 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
   EtherAddress bssid = EtherAddress(w->i_addr3);
 
-  wap *ap = _waps.findp(bssid);
+  vap *ap = _vaps.findp(bssid);
   if (!ap) {
-    _waps.insert(bssid, wap());
-    ap = _waps.findp(bssid);
+    click_chatter("ALL ap: %d\n",_vaps.size());
+    _vaps.insert(bssid, vap());
+    click_chatter("add");
+    ap = _vaps.findp(bssid);
     ap->_ssid = "";
+    ap->_ssid_empty = true;
+  }
+
+  pap *ac_pap = _paps.findp(bssid);
+  if (!ac_pap) {
+    _paps.insert(bssid, pap());
+    click_chatter("add pap");
+    ac_pap = _paps.findp(bssid);
+  }
+
+  String ac_ssid;
+  if ( ssid == "" ) ac_ssid = "none";
+  else ac_ssid = ssid;
+  vap *ac_vap = ac_pap->_vaps.findp(ac_ssid);
+  if (!ac_vap) {
+    ac_pap->_vaps.insert(ac_ssid, vap());
+    click_chatter("add vap");
+    ac_vap = ac_pap->_vaps.findp(ac_ssid);
+    ac_vap->_ssid = "none";
+    ac_vap->_ssid_empty = true;
   }
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  
+
+//###########################################################################
   ap->_eth = bssid;
   if (ssid != "") {
     /* don't overwrite blank ssids */
     ap->_ssid = ssid;
+    ap->_ssid_empty = false;
   }
   ap->_channel = (ds_l) ? ds_l[2] : -1;
   ap->_rssi = ceh->rssi;
 
   ap->_capability = capability;
   ap->_beacon_int = beacon_int;
+
+  ac_vap->_eth = bssid;
+  if (ssid != "") {
+    /* don't overwrite blank ssids */
+    ac_vap->_ssid = ssid;
+    ac_vap->_ssid_empty = false;
+  }
+  ac_vap->_channel = (ds_l) ? ds_l[2] : -1;
+  ac_vap->_rssi = ceh->rssi;
+
+  ac_vap->_capability = capability;
+  ac_vap->_beacon_int = beacon_int;
+
+
+//###########################################################################
   ap->_basic_rates.clear();
   ap->_rates.clear();
-  Vector<int> all_rates;
   ap->_last_rx.set_now();
+  ac_vap->_basic_rates.clear();
+  ac_vap->_rates.clear();
+  ac_vap->_last_rx.set_now();
+  Vector<int> all_rates;
+
   if (rates_l) {
     for (int x = 0; x < min((int)rates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = rates_l[x + 2];
-      
+
       if (rate & WIFI_RATE_BASIC) {
-	ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ac_vap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
       } else {
-	ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ac_vap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
       }
       all_rates.push_back((int)(rate & WIFI_RATE_VAL));
     }
   }
 
-  
+
   if (xrates_l) {
     for (int x = 0; x < min((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = xrates_l[x + 2];
-      
+
       if (rate & WIFI_RATE_BASIC) {
-	ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ac_vap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
       } else {
-	ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ac_vap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
       }
       all_rates.push_back((int)(rate & WIFI_RATE_VAL));
     }
@@ -222,7 +262,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
   if (_rtable) {
     _rtable->insert(bssid, all_rates);
   }
-  
+
   return p;
 }
 
@@ -232,8 +272,10 @@ BRN2BeaconScanner::scan_string()
 {
   StringAccum sa;
   Timestamp now = Timestamp::now();
-  for (APIter iter = _waps.begin(); iter.live(); iter++) {
-    wap ap = iter.value();
+  sa << "size " << _vaps.size() << "\n";
+  for (APIter iter = _vaps.begin(); iter.live(); iter++) {
+    click_chatter("next ap");
+    vap ap = iter.value();
     sa << ap._eth << " ";
     sa << "channel " << ap._channel << " ";
     sa << "rssi " << ap._rssi << " ";
@@ -244,6 +286,7 @@ BRN2BeaconScanner::scan_string()
     } else {
       sa << ap._ssid << " ";
     }
+
     sa << "beacon_interval " << ap._beacon_int << " ";
     sa << "last_rx " << now - ap._last_rx << " ";
 
@@ -279,14 +322,72 @@ BRN2BeaconScanner::scan_string()
   return sa.take_string();
 }
 
+String
+BRN2BeaconScanner::scan_string2()
+{
+  StringAccum sa;
+  Timestamp now = Timestamp::now();
+  sa << "size " << _vaps.size() << "\n";
+  for (PAPIter iter = _paps.begin(); iter.live(); iter++) {
+  pap acpap = iter.value();
+
+  for (VAPIter viter = acpap._vaps.begin(); viter.live(); viter++) {
+    click_chatter("next ap");
+    vap ap = viter.value();
+    sa << ap._eth << " ";
+    sa << "channel " << ap._channel << " ";
+    sa << "rssi " << ap._rssi << " ";
+    sa << "ssid ";
+
+    if(ap._ssid == "") {
+    sa << "(none) ";
+  } else {
+    sa << ap._ssid << " ";
+  }
+       sa << "beacon_interval " << ap._beacon_int << " ";
+         sa << "last_rx " << now - ap._last_rx << " ";
+
+         sa << "[ ";
+         if (ap._capability & WIFI_CAPINFO_ESS) {
+           sa << "ESS ";
+         }
+         if (ap._capability & WIFI_CAPINFO_IBSS) {
+           sa << "IBSS ";
+         }
+         if (ap._capability & WIFI_CAPINFO_CF_POLLABLE) {
+           sa << "CF_POLLABLE ";
+         }
+         if (ap._capability & WIFI_CAPINFO_CF_POLLREQ) {
+           sa << "CF_POLLREQ ";
+         }
+         if (ap._capability & WIFI_CAPINFO_PRIVACY) {
+           sa << "PRIVACY ";
+         }
+         sa << "] ";
+
+         sa << "( { ";
+         for (int x = 0; x < ap._basic_rates.size(); x++) {
+           sa << ap._basic_rates[x] << " ";
+         }
+         sa << "} ";
+         for (int x = 0; x < ap._rates.size(); x++) {
+           sa << ap._rates[x] << " ";
+         }
+
+         sa << ")\n";
+  }
+  }
+  return sa.take_string();
+}
+
 
 void 
 BRN2BeaconScanner::reset()
 {
-  _waps.clear();
+  _vaps.clear();
 }
 
-enum {H_DEBUG, H_SCAN, H_RESET};
+enum {H_DEBUG, H_SCAN,H_SCAN2, H_RESET};
 
 static String 
 BRN2BeaconScanner_read_param(Element *e, void *thunk)
@@ -297,13 +398,15 @@ BRN2BeaconScanner_read_param(Element *e, void *thunk)
 	return String(td->_debug) + "\n";
       case H_SCAN:
 	return td->scan_string();
-    default:
+      case H_SCAN2:
+        return td->scan_string2();
+      default:
       return String();
     }
 }
 static int 
 BRN2BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
+        ErrorHandler *errh)
 {
   BRN2BeaconScanner *f = (BRN2BeaconScanner *)e;
   String s = cp_uncomment(in_s);
@@ -321,12 +424,13 @@ BRN2BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
   }
   return 0;
 }
- 
+
 void
 BRN2BeaconScanner::add_handlers()
 {
   add_read_handler("debug", BRN2BeaconScanner_read_param, (void *) H_DEBUG);
   add_read_handler("scan", BRN2BeaconScanner_read_param, (void *) H_SCAN);
+  add_read_handler("scan2", BRN2BeaconScanner_read_param, (void *) H_SCAN2);
 
   add_write_handler("debug", BRN2BeaconScanner_write_param, (void *) H_DEBUG);
   add_write_handler("reset", BRN2BeaconScanner_write_param, (void *) H_RESET, Handler::BUTTON);

@@ -3,8 +3,10 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
+#include <click/hashmap.hh>
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
+
 CLICK_DECLS
 
 /*
@@ -44,20 +46,24 @@ If channel is less than 0, it will discard all beaconds
 
 EtherEncap */
 
+/** Beaconscanner with Virtual AP - Support ( multiSSID for one BSSID )
+  * TODO: clean up
+  * respo: robert
+*/
+
 class BRN2BeaconScanner : public Element { public:
-  
+
   BRN2BeaconScanner();
   ~BRN2BeaconScanner();
 
   const char *class_name() const	{ return "BRN2BeaconScanner"; }
   const char *port_count() const	{ return PORTS_1_1; }
   const char *processing() const	{ return AGNOSTIC; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return true; }
 
   Packet *simple_action(Packet *);
-
 
   void add_handlers();
   void reset();
@@ -65,15 +71,17 @@ class BRN2BeaconScanner : public Element { public:
   bool _debug;
 
   String scan_string();
+  String scan_string2();
 
  private:
  public:
 
-
-  class wap {
+  /**Virtual are identify by the ssid*/
+  class vap {
   public:
     EtherAddress _eth;
     String _ssid;
+    bool _ssid_empty;
     int _channel;
     uint16_t _capability;
     uint16_t _beacon_int;
@@ -81,12 +89,30 @@ class BRN2BeaconScanner : public Element { public:
     Vector<int> _basic_rates;
     int _rssi;
     Timestamp _last_rx;
+
+    int _recv_channel;
+    Vector<int> _rssi_list;  //last rssi-values for statistics
   };
 
-  typedef HashMap<EtherAddress, wap> APTable;
+  typedef HashMap<String, vap> VAPTable;
+  typedef VAPTable::const_iterator VAPIter;
+
+  /**physical APs are identify dy the bssid (MAC)*/
+  class pap {
+    public:
+      EtherAddress _eth;
+      VAPTable _vaps;
+  };
+
+  typedef HashMap<EtherAddress, pap> PAPTable;
+  typedef PAPTable::const_iterator PAPIter;
+
+  typedef HashMap<EtherAddress, vap> APTable;
   typedef APTable::const_iterator APIter;
 
-  APTable _waps;
+  APTable _vaps;
+  PAPTable _paps;
+
   AvailableRates *_rtable;
   WirelessInfo *_winfo;
 };

@@ -37,6 +37,9 @@
 #include "brn2beaconscanner.hh"
 #include "brn2_infrastructureclient.hh"
 #include <click/timestamp.hh>
+#include "elements/brn2/wifi/availablechannels.hh"
+#include "elements/brn2/wifi/ath/ath2operation.hh"
+
 
 CLICK_DECLS
 
@@ -54,6 +57,11 @@ int
 BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
+  int _c_min;
+  int _c_max;
+
+  _c_min = _c_max = 0;
+
   if (cp_va_kparse(conf, this, errh,
       "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"Wirelessinfo",*/ &_wireless_info,
       "RT", cpkP+cpkM, cpElement, /*"AvailabeRates",*/ &_rtable,
@@ -62,6 +70,11 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
       "AUTH_REQUESTER", cpkP+cpkM, cpElement, /*"AuthRequester",*/ &_authreq,
       "ASSOC_REQUESTER", cpkP+cpkM, cpElement, /*"AssocRequester",*/ &_assocreq,
       "WIFIENCAP", cpkP+cpkM, cpElement, /*"Wifiencap",*/ &_wifiencap,
+      "CHANNELLIST", cpkP+cpkM, cpElement, /*"Channellist",*/ &_channellist,
+      "ATHOPERATION", cpkP+cpkM, cpElement, /*"AthOperation",*/ &_athop,
+      "ACTIVESCAN", cpkP+cpkM, cpBool, /*"debug",*/ &_active_scan_mode,
+      "CMIN", cpkP+cpkM, cpInteger, &_c_min,
+      "CMAX", cpkP+cpkM, cpInteger, &_c_max,
       "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
 
@@ -88,6 +101,12 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_wifiencap || !_wifiencap->cast("WifiEncap")) 
     return errh->error("WifiEncap element is not provided or not a WifiEncap");
 
+  if ( _c_min > 0 ) _minChannelScanTime = _c_min;
+  else _minChannelScanTime = 1000;
+
+  if ( _c_max > 0 ) _maxChannelScanTime = _c_max;
+  else _maxChannelScanTime = 1500;
+
   return 0;
 
 }
@@ -97,11 +116,16 @@ int
 BRN2InfrastructureClient::initialize(ErrorHandler *)
 {
   request_timer.initialize(this);
-  request_timer.schedule_after_msec(1000);
- 
+  request_timer.schedule_after_msec(10);
+
   _auth = false;
   _ap_available = false;
   _ad_hoc = false;
+
+  _channel_index = 0;
+
+  _channel_is_set = false;
+  _scan_all_channels = false;
 
   return 0;
 }
@@ -110,13 +134,31 @@ void
 BRN2InfrastructureClient::run_timer(Timer* )
 {
   if ( _wireless_info->_channel == 0 ) {
-    BRN_ERROR("channel not specified, client disabled.");
-    return;
+    if ( ! _scan_all_channels ) {
+      click_chatter("set next chanel");
+      _athop->set_channel(_channellist->get(_channel_index));
+      _channel_index = ( _channel_index + 1 ) % _channellist->size();
+
+      if ( _channel_index == 0 ) _scan_all_channels = true;
+      request_timer.schedule_after_msec(_minChannelScanTime);
+
+      return;
+    }
+    click_chatter("all channel are scanned");
+  } else {
+    if ( ! _channel_is_set ) {
+      click_chatter("Set wanted channel");
+      _athop->set_channel(_wireless_info->_channel);
+      _channel_is_set = true;
+      request_timer.schedule_after_msec(_minChannelScanTime);
+      return;
+    }
+    click_chatter("Wanted channel is set");
   }
 
   if ( !_ap_available )
   {
-    send_probe_to_ap();
+    if ( _active_scan_mode ) send_probe_to_ap();
 
     find_best_ap();
   }
@@ -140,8 +182,8 @@ BRN2InfrastructureClient::run_timer(Timer* )
       }
     }
   }
- 
-  request_timer.schedule_after_msec(1000);
+
+  request_timer.schedule_after_msec(_minChannelScanTime);
 }
 
 
@@ -151,15 +193,15 @@ BRN2InfrastructureClient::find_best_ap()
 
   _ap_available = false;
   int rssi = 0;
-  
+
 //  click_chatter("try to find good ap");
-  
-  for (BRN2BeaconScanner::APIter iter = _beaconscanner->_waps.begin(); iter.live(); iter++) {
-    BRN2BeaconScanner::wap ap = iter.value();
-    
+
+  for (BRN2BeaconScanner::APIter iter = _beaconscanner->_vaps.begin(); iter.live(); iter++) {
+    BRN2BeaconScanner::vap ap = iter.value();
+
 /*    click_chatter("Next AP");
     StringAccum sa;
- 
+
     sa << "WirelessInfo:";
 
     sa << "AP-SSID: " << ap._ssid << " -> ";
@@ -195,7 +237,7 @@ BRN2InfrastructureClient::send_probe_to_ap()
   BRN_DEBUG("Send Probe");
 
   _probereq->send_probe_request();
-  
+
   return(0);
 }
 
