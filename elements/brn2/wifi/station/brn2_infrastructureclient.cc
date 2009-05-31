@@ -140,6 +140,9 @@ BRN2InfrastructureClient::run_timer(Timer* )
       _channel_index = ( _channel_index + 1 ) % _channellist->size();
 
       if ( _channel_index == 0 ) _scan_all_channels = true;
+
+      if ( _active_scan_mode ) send_probe_to_ap();
+
       request_timer.schedule_after_msec(_minChannelScanTime);
 
       return;
@@ -150,6 +153,9 @@ BRN2InfrastructureClient::run_timer(Timer* )
       click_chatter("Set wanted channel");
       _athop->set_channel(_wireless_info->_channel);
       _channel_is_set = true;
+
+      if ( _active_scan_mode ) send_probe_to_ap();
+
       request_timer.schedule_after_msec(_minChannelScanTime);
       return;
     }
