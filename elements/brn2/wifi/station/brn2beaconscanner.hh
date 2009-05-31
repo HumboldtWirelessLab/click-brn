@@ -47,7 +47,7 @@ If channel is less than 0, it will discard all beaconds
 EtherEncap */
 
 /** Beaconscanner with Virtual AP - Support ( multiSSID for one BSSID )
-  * TODO: clean up
+  * TODO: clean up ( remove old list for ap and just use pap/vap-struct
   * respo: robert
 */
 
@@ -90,7 +90,7 @@ class BRN2BeaconScanner : public Element { public:
     int _rssi;
     Timestamp _last_rx;
 
-    int _recv_channel;
+    Vector<int> _recv_channel;
     Vector<int> _rssi_list;  //last rssi-values for statistics
   };
 
@@ -102,6 +102,8 @@ class BRN2BeaconScanner : public Element { public:
     public:
       EtherAddress _eth;
       VAPTable _vaps;
+
+      Timestamp _last_rx;
   };
 
   typedef HashMap<EtherAddress, pap> PAPTable;

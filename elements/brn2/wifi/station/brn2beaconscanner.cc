@@ -29,6 +29,7 @@
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include "brn2beaconscanner.hh"
+#include <elements/brn2/brnprotocol/brnpacketanno.hh>
 
 
 CLICK_DECLS
@@ -157,7 +158,9 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
-    ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
+    //click_chatter("%d %d %d",(int)ssid_l[1],(int)ssid_l[2],(int)ssid_l[3]);
+    if ( (int)ssid_l[2] != 0 )
+      ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
   EtherAddress bssid = EtherAddress(w->i_addr3);
@@ -180,7 +183,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
   }
 
   String ac_ssid;
-  if ( ssid == "" ) ac_ssid = "none";
+  if ( ssid == "" ) ac_ssid = "(none)";
   else ac_ssid = ssid;
   vap *ac_vap = ac_pap->_vaps.findp(ac_ssid);
   if (!ac_vap) {
@@ -218,8 +221,20 @@ BRN2BeaconScanner::simple_action(Packet *p)
   ac_vap->_capability = capability;
   ac_vap->_beacon_int = beacon_int;
 
+  int recv_channel = BRNPacketAnno::channel_anno(p);
+
+  int i;
+  for ( i = 0; i < ac_vap->_recv_channel.size(); i++ )
+    if ( ac_vap->_recv_channel[i] == recv_channel ) break;
+
+  if ( i == ac_vap->_recv_channel.size() ) {
+    ac_vap->_recv_channel.push_back(recv_channel);
+    ap->_recv_channel.push_back(recv_channel);
+  }
 
 //###########################################################################
+  ac_pap->_last_rx.set_now();
+
   ap->_basic_rates.clear();
   ap->_rates.clear();
   ap->_last_rx.set_now();
@@ -339,10 +354,10 @@ BRN2BeaconScanner::scan_string2()
     sa << "rssi " << ap._rssi << " ";
     sa << "ssid ";
 
-    if(ap._ssid == "") {
+    if(ap._ssid_empty) {
     sa << "(none) ";
   } else {
-    sa << ap._ssid << " ";
+    sa << "\"" << ap._ssid << "\" ";
   }
        sa << "beacon_interval " << ap._beacon_int << " ";
          sa << "last_rx " << now - ap._last_rx << " ";
