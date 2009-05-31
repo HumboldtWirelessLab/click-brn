@@ -457,10 +457,24 @@ BRN2BeaconSource_write_param(const String &in_s, Element *e, void *vparam,
     break;
   case H_CHANNEL:
     unsigned new_channel;
-    if (!cp_unsigned(s, &new_channel))
-      return errh->error("active parameter must be unsigned integer");
-    f->_target_channel = new_channel;
-    f->_switch_channel_countdown = 2;
+    unsigned countdown;
+    Vector<String> args;
+
+    cp_spacevec(s, args);
+
+    if (!cp_unsigned(args[0], &new_channel))
+      return errh->error("channel parameter must be unsigned integer");
+    else
+      f->_target_channel = new_channel;
+
+    if (args.size() == 2 ) {
+      if (!cp_unsigned(args[1], &countdown))
+        return errh->error("countdown parameter must be unsigned integer");
+    } else
+      countdown = 2;
+
+    f->_switch_channel_countdown = countdown;
+
     break;
   }
   return 0;
