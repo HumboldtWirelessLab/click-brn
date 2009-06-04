@@ -344,54 +344,56 @@ BRN2BeaconScanner::scan_string2()
   Timestamp now = Timestamp::now();
   sa << "size " << _vaps.size() << "\n";
   for (PAPIter iter = _paps.begin(); iter.live(); iter++) {
-  pap acpap = iter.value();
+    pap acpap = iter.value();
 
-  for (VAPIter viter = acpap._vaps.begin(); viter.live(); viter++) {
-    click_chatter("next ap");
-    vap ap = viter.value();
-    sa << ap._eth << " ";
-    sa << "channel " << ap._channel << " ";
-    sa << "rssi " << ap._rssi << " ";
-    sa << "ssid ";
+    for (VAPIter viter = acpap._vaps.begin(); viter.live(); viter++) {
+      click_chatter("next ap");
+      vap ap = viter.value();
+      sa << ap._eth << " ";
+      sa << "channel " << ap._channel << " ";
+      sa << "rssi " << ap._rssi << " ";
+      sa << "ssid ";
 
-    if(ap._ssid_empty) {
-    sa << "(none) ";
-  } else {
-    sa << "\"" << ap._ssid << "\" ";
+      if(ap._ssid_empty) {
+        sa << "(none) ";
+      } else {
+        sa << "\"" << ap._ssid << "\" ";
+      }
+
+      sa << "beacon_interval " << ap._beacon_int << " ";
+      sa << "last_rx " << now - ap._last_rx << " ";
+
+      sa << "[ ";
+      if (ap._capability & WIFI_CAPINFO_ESS) {
+        sa << "ESS ";
+      }
+      if (ap._capability & WIFI_CAPINFO_IBSS) {
+        sa << "IBSS ";
+      }
+      if (ap._capability & WIFI_CAPINFO_CF_POLLABLE) {
+        sa << "CF_POLLABLE ";
+      }
+      if (ap._capability & WIFI_CAPINFO_CF_POLLREQ) {
+        sa << "CF_POLLREQ ";
+      }
+      if (ap._capability & WIFI_CAPINFO_PRIVACY) {
+        sa << "PRIVACY ";
+      }
+      sa << "] ";
+
+      sa << "( { ";
+      for (int x = 0; x < ap._basic_rates.size(); x++) {
+        sa << ap._basic_rates[x] << " ";
+      }
+      sa << "} ";
+      for (int x = 0; x < ap._rates.size(); x++) {
+        sa << ap._rates[x] << " ";
+      }
+
+      sa << ")\n";
+    }
   }
-       sa << "beacon_interval " << ap._beacon_int << " ";
-         sa << "last_rx " << now - ap._last_rx << " ";
 
-         sa << "[ ";
-         if (ap._capability & WIFI_CAPINFO_ESS) {
-           sa << "ESS ";
-         }
-         if (ap._capability & WIFI_CAPINFO_IBSS) {
-           sa << "IBSS ";
-         }
-         if (ap._capability & WIFI_CAPINFO_CF_POLLABLE) {
-           sa << "CF_POLLABLE ";
-         }
-         if (ap._capability & WIFI_CAPINFO_CF_POLLREQ) {
-           sa << "CF_POLLREQ ";
-         }
-         if (ap._capability & WIFI_CAPINFO_PRIVACY) {
-           sa << "PRIVACY ";
-         }
-         sa << "] ";
-
-         sa << "( { ";
-         for (int x = 0; x < ap._basic_rates.size(); x++) {
-           sa << ap._basic_rates[x] << " ";
-         }
-         sa << "} ";
-         for (int x = 0; x < ap._rates.size(); x++) {
-           sa << ap._rates[x] << " ";
-         }
-
-         sa << ")\n";
-  }
-  }
   return sa.take_string();
 }
 
