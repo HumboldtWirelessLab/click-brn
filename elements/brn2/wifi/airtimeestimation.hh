@@ -21,6 +21,8 @@
 #ifndef CLICK_AIRTIMEESTIMATION_HH
 #define CLICK_AIRTIMEESTIMATION_HH
 #include <click/element.hh>
+#include <click/vector.hh>
+
 CLICK_DECLS
 
 /*
@@ -39,15 +41,18 @@ AirTimeEstimation()
 class AirTimeEstimation : public Element {
 
   public:
-    class SecondInfo {
-      uint32_t rec_bytes;
-      uint32_t rec_packets;
-      uint32_t send_bytes;
-      uint32_t send_packets;
-
-      uint32_t know_nonrec_bytes;
-      uint32_t know_nonrec_packets;
+    class PacketInfo {
+     public:
+      Timestamp _rx_time;
+      unsigned int _duration;
+      uint16_t _rate;
+      uint16_t _length;
+      bool _foreign;
+      int _channel;
     };
+
+    typedef Vector<PacketInfo*> PacketList;
+    typedef PacketList::const_iterator PacketListIter;
 
   public:
 
@@ -55,17 +60,26 @@ class AirTimeEstimation : public Element {
     ~AirTimeEstimation();
 
     const char *class_name() const	{ return "AirTimeEstimation"; }
-    const char *port_count() const  { return "2/2"; }
+    const char *port_count() const  { return "1/1"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
 
+    void add_handlers();
+
     void push(int, Packet *p);
-
-  private:
+    void reset();
+    String stats();
     bool _debug;
+  private:
 
+    Timestamp oldest;
+    int32_t max_age;  //maximum age of pakets in the wueue in seconds
     uint32_t packets;
     uint32_t bytes;
+
+    PacketList _packet_list;
+
+    void clear_old();
 };
 
 CLICK_ENDDECLS
