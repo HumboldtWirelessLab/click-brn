@@ -24,8 +24,6 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
-#include <click/timer.hh>
-
 
 CLICK_DECLS
 /*
@@ -38,8 +36,11 @@ CLICK_DECLS
  * Output 1 : Packets to local
   * =d
  */
+#define MAX_QUEUE_SIZE  1500
 
-#define MAX_QUEUE_SIZE 1500
+struct click_bcast_routing_header {
+  uint16_t      bcast_id;
+};
 
 class BrnBroadcastRouting : public Element {
 
@@ -49,42 +50,19 @@ class BrnBroadcastRouting : public Element {
   {
     public:
       uint16_t      bcast_id;
-      uint8_t       dsr_dst[6];
-      uint8_t       dsr_src[6];
+      uint8_t       _dst[6];
+      uint8_t       _src[6];
 
-      BrnBroadcast( uint16_t _id, uint8_t *_src )
+      BrnBroadcast( uint16_t _id, uint8_t *src, uint8_t *dst )
       {
         bcast_id = _id;
-        memcpy(&dsr_src[0], _src, 6);
+        memcpy(&_src[0], src, 6);
+        memcpy(&_dst[0], dst, 6);
       }
 
       ~BrnBroadcast()
       {}
   };
-
-  class BufferedPacket
-  {
-    public:
-     Packet *_p;
-     struct timeval _send_time;
-
-     BufferedPacket(Packet *p, int time_diff)
-     {
-       assert(p);
-       _p=p;
-       _send_time = Timestamp::now().timeval();
-       _send_time.tv_sec += ( time_diff / 1000 );
-       _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
-       while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
-       {
-         _send_time.tv_usec -= 1000000;
-         _send_time.tv_sec++;
-       }
-     }
-     void check() const { assert(_p); }
-  };
-
-  typedef Vector<BufferedPacket> SendBuffer;
 
   //
   //methods
@@ -95,7 +73,7 @@ class BrnBroadcastRouting : public Element {
   const char *class_name() const  { return "BrnBroadcastRouting"; }
   const char *processing() const  { return AGNOSTIC; }
 
-  const char *port_count() const  { return "1/1"; }
+  const char *port_count() const  { return "2/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -105,23 +83,18 @@ class BrnBroadcastRouting : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void run_timer(Timer *timer);
-
  private:
   //
   //member
   //
-  int _min_jitter,_jitter,_min_dist;
-  long diff_in_ms(timeval t1, timeval t2);
-  Timer _sendbuffer_timer;
-  SendBuffer packet_queue;
-  void queue_timer_hook();
-  unsigned int get_min_jitter_in_queue();
+
   Vector<BrnBroadcast> bcast_queue;
   uint16_t bcast_id;
+  EtherAddress _my_ether_addr;
 
  public:
   int _debug;
+
 };
 
 CLICK_ENDDECLS
