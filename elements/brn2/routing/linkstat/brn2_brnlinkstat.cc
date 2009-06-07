@@ -31,6 +31,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
 
@@ -65,7 +66,7 @@ BRNLinkStat_read_param(Element *e, void *thunk)
     case H_PROBES: {
       StringAccum sa;
       for(int x = 0; x < td->_ads_rs.size(); x++) {
-	sa << td->_ads_rs[x]._rate << " " << td->_ads_rs[x]._size << " ";
+        sa << td->_ads_rs[x]._rate << " " << td->_ads_rs[x]._size << " ";
       }
       return sa.take_string() + "\n";
     }
@@ -75,8 +76,7 @@ BRNLinkStat_read_param(Element *e, void *thunk)
     }
 }
 static int 
-BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
+BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   BRNLinkStat *f = (BRNLinkStat *)e;
   String s = cp_uncomment(in_s);
@@ -196,7 +196,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   String probes;
   int res = cp_va_kparse(conf, this, errh,
               "ETHTYPE", cpkP+cpkM, cpUnsigned, /*"Ethernet encapsulation type",*/ &_et,
-              "DEVICE", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
+              "DEVICE", cpkP+cpkM, cpElement, /*"NodeDevice",*/ &_me,
               "PERIOD", cpkP+cpkM, cpUnsigned, /*"Probe broadcast period (msecs)",*/ &_period,
               "TAU", cpkP+cpkM, cpUnsigned, /*"Loss-rate averaging period (msecs)",*/ &_tau,
               "ETT", cpkP, cpElement,/* "ETT Metric element",*/ &_ett_metric,
@@ -232,7 +232,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (_log) {
     BRN_INFO(" * Logging activated.");
   }
-  
+
   return res;
 }
 
@@ -274,8 +274,6 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
     _next = q->_next;
   }
 
-  //_log_fp = q->_log_fp;
-  //q->_log_fp = 0;
 }
 
 void
@@ -298,14 +296,6 @@ brn2add_jitter2(unsigned int max_jitter, struct timeval *t) {
 void
   BRN2LinkStat::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<int> fwd, Vector<int> rev, uint32_t seq)
 {
-
-/*
-  if (_log) {
-    click_chatter("update link called:\n");
-    // print broadcast statistics
-    click_chatter("%s\n", read_bcast_stats(false).c_str());
-  }
-*/
   if (_ett_metric) {
     BRN_DEBUG(" * update ett_metric.");
     _ett_metric->update_link(from, to, rs, fwd, rev, seq);
@@ -369,7 +359,7 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  WritablePacket *p = Packet::make(64 /*headroom*/,NULL /* *data*/, size+2, 32); //make(size + 2); //alignment
+  WritablePacket *p = Packet::make(64 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
@@ -384,17 +374,9 @@ BRN2LinkStat::send_probe()
   now = Timestamp::now().timeval();
   p->set_timestamp_anno(now);
 
-  // fill brn header header
-  click_brn *brn = (click_brn *) p->data();
-  brn->dst_port = BRN_PORT_LINK_PROBE;
-  brn->src_port = BRN_PORT_LINK_PROBE;
-  brn->ttl = 1; // think about this; probe packets only available for one hop
-  brn->tos = BRN_TOS_BE;
-/*
-  memset(eh->ether_dhost, 0xff, 6); // broadcast
-  eh->ether_type = htons(_et);
-  memcpy(eh->ether_shost, _eth.data(), 6);
-*/
+  // fill brn header header // think about this; probe packets only available for one hop
+  WritablePacket *final_out_packet = BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
+
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
   lp->_version = _ett2_version;
   memcpy(lp->_ether, _me->getEtherAddress()->data(), 6); // only wireless links will be measured
@@ -416,6 +398,7 @@ BRN2LinkStat::send_probe()
     // my wireless device is capable to transmit packets at rates (e.g. 2 4 11 12 18 22 24 36 48 72 96 108)
     rates = _rtable->lookup(*(_me->getEtherAddress()));
   }
+
   if (rates.size() && 1 + ptr + rates.size() < end) { // put my available rates into the packet
     ptr[0] = rates.size(); // available rates count
     ptr++;
@@ -443,7 +426,7 @@ BRN2LinkStat::send_probe()
       // size = (probe type count) x ...
       int size = probe->_probe_types.size() * sizeof(link_info) + sizeof(link_entry);
       if (ptr + size > end) {
-	     break;
+      break;
       }
       num_entries++;
       link_entry *entry = (struct link_entry *)(ptr); // append link_entry
@@ -486,9 +469,9 @@ BRN2LinkStat::send_probe()
   lp->_cksum = 0;
   lp->_cksum = click_in_cksum((unsigned char *) lp, lp->_psz);
 
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *)p->anno(); // p->all_user_anno();
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
-  ceh->rate = rate; // this packet should be transmitted at the given rate
+  ceh->rate = rate;                                                    // this packet should be transmitted at the given rate
   checked_output_push(0, p);
 }
 
@@ -523,25 +506,6 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
 
   reset();
 
-  // Logging enabled
-/*
-  if (_log) {
-    assert(!_log_fp);
-    if (_log_filename != "-") {
-        _log_fp = fopen(_log_filename.c_str(), "wb");
-        if (!_log_fp)
-            return errh->error("%s: %s", _log_filename.c_str(), strerror(errno));
-    } else {
-        _log_fp = stdout;
-        _log_filename = "<stdout>";
-    }
-
-
-    click_chatter(" * Logging activated.\n");
-    _log_timeout_timer.initialize(this);
-    _log_timeout_timer.schedule_after_ms(_log_interval);
-  }
-*/
   return 0;
 }
 
@@ -608,7 +572,7 @@ BRN2LinkStat::simple_action(Packet *p)
   uint16_t rate = lp->_rate;
 
 #ifndef CLICK_NS
-  struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();//p->all_user_anno();
+  struct click_wifi_extra *ceh = (struct click_wifi_extra *)WIFI_EXTRA_ANNO(p);
 
   // check if extra header is present !!!
   if (WIFI_EXTRA_MAGIC == ceh->magic) 
@@ -920,13 +884,6 @@ BRN2LinkStat::run_log_timer()
 
   String res_s = res.take_string();
 
-//  click_chatter("to write: %s\n", res_s.c_str());
-/*
-  int wrote = fwrite(res_s.c_str(), res_s.length(), 1, _log_fp);
-
-  if (wrote == 0)
-    click_chatter("BRNLinkStat(%s): dump2 %s", _log_filename.c_str(), strerror(errno));
-*/
   // reschedule
   _log_timeout_timer.schedule_after_msec(_log_interval);
 }

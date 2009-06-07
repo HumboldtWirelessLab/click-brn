@@ -150,9 +150,6 @@ public:
   class BRN2ETXMetric *_etx_metric;
   uint16_t _et;     // This protocol's ethertype
 
-  class FalconDHT *_dht;
-  class BRNCandidateSelector *_cansel;
-
   struct timeval _start;
   // record probes received from other hosts
   struct probe_t {
@@ -160,7 +157,7 @@ public:
     uint32_t   _seq;
     uint8_t _rate;
     uint16_t _size;
-    probe_t(const struct timeval &t, 
+    probe_t(const struct timeval &t,
 	    uint32_t s,
 	    uint8_t r,
 	    uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
@@ -196,8 +193,8 @@ public:
       timersub(&now, &p, &earliest);
 
       if (_period == 0) {
-	     click_chatter("period is 0\n");
-	     return 0;
+        click_chatter("period is 0\n");
+        return 0;
       }
       int num = 0;
       for (int i = _probes.size() - 1; i >= 0; i--) {
@@ -222,7 +219,7 @@ public:
       	num_expected = _sent / _num_probes;
       }
       if (!num_expected) {
-	     num_expected = 1;
+        num_expected = 1;
       }
 
       return MIN(100, 100 * num / num_expected);
@@ -273,10 +270,6 @@ public:
   Timer _log_timeout_timer;
   int _log_interval; // in secs
 
-//  FILE *_log_fp;
-//  String _log_filename;
-//  unsigned long _log_id;
-
  public:
   String bad_nodes();
   String read_bcast_stats(bool with_pos);
@@ -288,12 +281,12 @@ public:
   void update_links(EtherAddress ip);
   BRN2LinkStat();
   ~BRN2LinkStat();
-  
-  const char *class_name() const		{ return "BRN2LinkStat"; }
-  const char *processing() const		{ return PUSH; }
-  const char *port_count() const		{ return "1/0-1"; }
-  const char *flow_code() const                 { return "x/y"; }
-  
+
+  const char *class_name() const    { return "BRN2LinkStat"; }
+  const char *processing() const    { return PUSH; }
+  const char *port_count() const    { return "1/0-1"; }
+  const char *flow_code() const     { return "x/y"; }
+
   void add_handlers();
 
   int configure(Vector<String> &, ErrorHandler *);
