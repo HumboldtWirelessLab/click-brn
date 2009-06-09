@@ -13,10 +13,10 @@ CLICK_DECLS
 #define DST_ETHER_ANNO_SIZE      6
 
 #define SRC_ETHER_ANNO_OFFSET   10
-#define SRC_ETHER_ANNO_SIZE      6 
+#define SRC_ETHER_ANNO_SIZE      6
 
 #define UDEVICE_ANNO_OFFSET     10
-#define UDEVICE_ANNO_SIZE        6 
+#define UDEVICE_ANNO_SIZE        6
 
 /* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
@@ -29,7 +29,7 @@ CLICK_DECLS
 #define DEVICENUMBER_ANNO_OFFSET 44
 #define DEVICENUMBER_ANNO_SIZE    1
 
-#define TOS_ANNO_OFFSET          45 
+#define TOS_ANNO_OFFSET          45
 #define TOS_ANNO_SIZE             1
 
 #define CHANNEL_ANNO_OFFSET      46
