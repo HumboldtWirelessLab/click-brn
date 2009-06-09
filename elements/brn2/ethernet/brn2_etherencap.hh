@@ -49,6 +49,8 @@ class BRN2EtherEncap : public Element {
   Packet *smaction(Packet *);
   void push(int, Packet *);
   Packet *pull(int);
+
+  bool _use_anno;
 };
 
 CLICK_ENDDECLS
