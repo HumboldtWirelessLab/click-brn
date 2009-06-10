@@ -11,6 +11,9 @@
 
 #define BRN2_LINKSTAT_MINOR_TYPE_BEACON   1
 
+#define BRN_PORT_BATMAN 10
+
+
 struct brn2_packet_header{
   uint8_t major_src_type;
   uint8_t minor_src_type;
