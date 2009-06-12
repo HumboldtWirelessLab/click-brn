@@ -115,7 +115,7 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   if ( size < MINIMUM_FLOW_PACKET_SIZE )  //TODO: warn that we extend the packet
     size = MINIMUM_FLOW_PACKET_SIZE;
 
-  p = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
+  p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, size, 32);
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
 
   memcpy(header->src, f->_src.data(),6);
