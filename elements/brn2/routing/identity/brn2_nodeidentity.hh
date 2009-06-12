@@ -60,11 +60,10 @@ class BRN2NodeIdentity : public Element {
   //returns true if the given ethernet address belongs to this node (e.g. wlan-dev)
   bool isIdentical(EtherAddress *);
 
-
   int getDeviceNumber(EtherAddress *);
   int countDevices() { return _node_devices.size(); }
   BRN2Device *getDeviceByNumber(uint8_t);
-
+  BRN2Device *getDeviceByIndex(uint8_t);
 
   Vector<BRN2Device*> _node_devices;   //TODO: should be private
 

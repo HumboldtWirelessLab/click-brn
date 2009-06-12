@@ -22,6 +22,8 @@ BRN2NodeIdentity::~BRN2NodeIdentity()
 int
 BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  int no_dev = 0;
+
   for (int slot = 0; slot < conf.size(); slot++) {
     Element *e = cp_element(conf[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -34,6 +36,8 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
                     brn_device->getEtherAddress()->unparse().c_str(),
                     brn_device->getDeviceType().c_str());
 */
+      brn_device->setDeviceNumber(no_dev);
+      no_dev++;
       _node_devices.push_back(brn_device);
     }
   }
@@ -69,6 +73,13 @@ BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
 BRN2Device *
 BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
   if ( num < _node_devices.size() ) return _node_devices[num];
+
+  return NULL;
+}
+
+BRN2Device *
+BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
+  if ( index < _node_devices.size() ) return _node_devices[index];
 
   return NULL;
 }
