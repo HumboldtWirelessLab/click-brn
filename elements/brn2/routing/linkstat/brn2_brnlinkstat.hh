@@ -65,6 +65,7 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 
 #include <click/bighashmap.hh>
 #include <click/dequeue.hh>
+#include <click/vector.hh>
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <click/etheraddress.hh>
@@ -80,6 +81,8 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 CLICK_DECLS
 
 class Timer;
+
+//static const uint8_t _ett2_version = 0x02;
 
 class BRN2LinkStat : public Element {
 

@@ -313,6 +313,11 @@ BRN2LinkStat::send_probe_hook()
 {
   BRN_DEBUG("send_probe_hook()");
 
+  if (!_ads_rs.size()) {
+    BRN_WARN(" no probes to send at.");
+    return;
+  }
+
   int p = _period / _ads_rs.size(); //period (msecs); _ads_rs.size(): probe count
   unsigned max_jitter = p / 10;
 
@@ -375,7 +380,7 @@ BRN2LinkStat::send_probe()
   p->set_timestamp_anno(now);
 
   // fill brn header header // think about this; probe packets only available for one hop
-  WritablePacket *final_out_packet = BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
+  BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
 
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
   lp->_version = _ett2_version;
