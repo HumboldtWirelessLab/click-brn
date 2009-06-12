@@ -4,41 +4,14 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include "batmanroutingtable.hh"
+#include "batmanprotocol.hh"
 
 CLICK_DECLS
-/*
- * =c
- * BatmanForwarder()
- * =s
- * Input 0  : Packets to route
- * Input 1  : BRNBroadcastRouting-Packets
- * Output 0 : BRNBroadcastRouting-Packets
- * Output 1 : Packets to local
-  * =d
- */
-#define MAX_QUEUE_SIZE  1500
 
 class BatmanForwarder : public Element {
 
  public:
-
-  class BrnBroadcast
-  {
-    public:
-      uint16_t      bcast_id;
-      uint8_t       _dst[6];
-      uint8_t       _src[6];
-
-      BrnBroadcast( uint16_t _id, uint8_t *src, uint8_t *dst )
-      {
-        bcast_id = _id;
-        memcpy(&_src[0], src, 6);
-        memcpy(&_dst[0], dst, 6);
-      }
-
-      ~BrnBroadcast()
-      {}
-  };
 
   //
   //methods
@@ -49,7 +22,7 @@ class BatmanForwarder : public Element {
   const char *class_name() const  { return "BatmanForwarder"; }
   const char *processing() const  { return AGNOSTIC; }
 
-  const char *port_count() const  { return "2/2"; }
+  const char *port_count() const  { return "1/3"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -64,9 +37,8 @@ class BatmanForwarder : public Element {
   //member
   //
 
-  Vector<BrnBroadcast> bcast_queue;
-  uint16_t bcast_id;
-  EtherAddress _my_ether_addr;
+  BatmanRoutingTable *_brt;
+  BRN2NodeIdentity *_nodeid;
 
  public:
   int _debug;

@@ -29,15 +29,19 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/routing/batman/batmanprotocol.hh"
+#include "elements/brn2/brn2.h"
 
 
 CLICK_DECLS
 
 BatmanOriginatorForwarder::BatmanOriginatorForwarder()
-  :_debug(BrnLogger::DEFAULT)
+  :_sendbuffer_timer(this),
+   _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -49,8 +53,8 @@ int
 BatmanOriginatorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_ether_addr,  //TODO: replace by nodeid and send paket to each (wireless) device
-      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
       cpEnd) < 0)
        return -1;
 
@@ -60,14 +64,31 @@ BatmanOriginatorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanOriginatorForwarder::initialize(ErrorHandler *)
 {
+  _sendbuffer_timer.initialize(this);
   return 0;
 }
 
 void
-BatmanOriginatorForwarder::push( int port, Packet *packet )
+BatmanOriginatorForwarder::run_timer(Timer *)
+{
+  if ( _packet_queue.size() > 0 ) {
+    output(0).push(_packet_queue[0]);
+    _packet_queue.erase(_packet_queue.begin());
+    if ( _packet_queue.size() > 0 )
+      _sendbuffer_timer.schedule_after_msec(click_random() % (QUEUE_DELAY));
+  }
+}
+
+void
+BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
 {
   EtherAddress last_hop;
   EtherAddress src;
+  bool newOriginator = false;
+
+  uint8_t broadcast[] = { 255,255,255,255,255,255 };
+
+  uint8_t devId;
 
   struct batman_header *bh;
   struct batman_originator *bo;
@@ -76,11 +97,40 @@ BatmanOriginatorForwarder::push( int port, Packet *packet )
   bo = BatmanProtocol::get_batman_originator(packet);
 
   last_hop = BRNPacketAnno::src_ether_anno(packet);
+  devId = BRNPacketAnno::devicenumber_anno(packet);
+  BRN2Device *dev = _nodeid->getDeviceByIndex(devId);
+
   src = EtherAddress(bo->src);
 
-  click_chatter("got bo from %s forwarded by %s , Hopcount: %d Id: %d",src.s().c_str(),last_hop.s().c_str(),
-                                                                       bh->hops, ntohl(bo->id));
-  _brt->handleNewOriginator(ntohl(bo->id), src, last_hop, bh->hops);
+  if ( src ==  EtherAddress(dev->getEtherAddress()->data())) {
+//    click_chatter("Got my OriginatorMsg. Kill it!");
+    packet->kill();
+    return;
+  }
+
+  newOriginator = _brt->isNewOriginator(ntohl(bo->id), src);
+  _brt->handleNewOriginator(ntohl(bo->id), src, last_hop, devId, bh->hops);
+
+  /** check, if src is a neighbour and add him if so */
+  if ( bh->hops == ORIGINATOR_SRC_HOPS ) {
+    _brt->addBatmanNeighbour(src);
+  }
+
+  if ( newOriginator ) {
+    //click_chatter("Originator is new. Forward !");
+    bh->hops++;
+    WritablePacket *p_fwd = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
+    BRNPacketAnno::set_ether_anno(p_fwd, EtherAddress(dev->getEtherAddress()->data()),
+                                  EtherAddress(broadcast), 0x8680);
+
+    /*Now using queue instead of output(0).push(p_fwd); to reduce collision in simulations*/
+    _packet_queue.push_back(p_fwd);
+    _sendbuffer_timer.schedule_after_msec(click_random() % ( QUEUE_DELAY ));
+
+  } else {
+    //click_chatter("Originator already forward.");
+    packet->kill();
+  }
 }
 
 //-----------------------------------------------------------------------------

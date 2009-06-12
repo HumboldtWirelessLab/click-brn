@@ -31,7 +31,9 @@
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-
+#include "batmanroutingtable.hh"
+#include "batmanprotocol.hh"
+#include "elements/brn2/brn2.h"
 
 CLICK_DECLS
 
@@ -48,9 +50,10 @@ int
 BatmanForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
       cpEnd) < 0)
-       return -1;
+    return -1;
 
   return 0;
 }
@@ -58,14 +61,40 @@ BatmanForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanForwarder::initialize(ErrorHandler *)
 {
-  bcast_id = 0;
-
   return 0;
 }
 
 void
-BatmanForwarder::push( int port, Packet *packet )
+BatmanForwarder::push( int /*port*/, Packet *packet )
 {
+  click_ether *et;
+  batman_header *bh;
+
+  bh = BatmanProtocol::get_batman_header(packet);
+  et = BatmanProtocol::get_ether_header(packet);
+  EtherAddress dst = EtherAddress(et->ether_dhost);
+
+  if ( _nodeid->isIdentical(&dst) ) {
+    BatmanProtocol::rm_batman_routing_header(packet);
+    output(0).push(packet);
+    return;
+  }
+
+  BatmanRoutingTable::BatmanForwarderEntry *bfe = _brt->getBestForwarder(dst);
+
+  if ( bfe == NULL ) {
+    output(2).push(packet);
+    return;
+  }
+
+  BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
+
+  bh->hops--;
+  WritablePacket *brnrp = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10/*TTL*/, DEFAULT_TOS);
+
+  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, 0x8680);
+
+  output(1).push(brnrp);
 
 }
 
@@ -98,9 +127,6 @@ BatmanForwarder::add_handlers()
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
-
-#include <click/vector.cc>
-template class Vector<BatmanForwarder::BrnBroadcast>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BatmanForwarder)

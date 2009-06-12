@@ -5,19 +5,12 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include "batmanroutingtable.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
-/*
- * =c
- * BatmanOriginatorForwarder()
- * =s
- * Input 0  : Packets to route
- * Input 1  : BRNBroadcastRouting-Packets
- * Output 0 : BRNBroadcastRouting-Packets
- * Output 1 : Packets to local
-  * =d
- */
-#define MAX_QUEUE_SIZE  1500
+
+#define QUEUE_DELAY 10
 
 class BatmanOriginatorForwarder : public Element {
 
@@ -42,13 +35,19 @@ class BatmanOriginatorForwarder : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  void run_timer(Timer *timer);
+
+  typedef Vector<Packet *> SendBuffer;
+
  private:
   //
   //member
   //
-
-  EtherAddress _ether_addr;
   BatmanRoutingTable *_brt;
+  BRN2NodeIdentity *_nodeid;
+
+  Timer _sendbuffer_timer;
+  SendBuffer _packet_queue;
 
  public:
 

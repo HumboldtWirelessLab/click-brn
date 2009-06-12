@@ -4,20 +4,9 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
-/*
- * =c
- * BatmanRoutingTable()
- * =s
- * Input 0  : Packets to route
- * Input 1  : BRNBroadcastRouting-Packets
- * Output 0 : BRNBroadcastRouting-Packets
- * Output 1 : Packets to local
-  * =d
- */
-#define MAX_QUEUE_SIZE  1500
-
 
 class BatmanRoutingTable : public Element {
 
@@ -25,7 +14,15 @@ class BatmanRoutingTable : public Element {
 
   class BatmanNeighbour
   {
+   public:
     EtherAddress _addr;
+    int recvDeviceId;
+    Timestamp _last_originator_time;
+
+    BatmanNeighbour(EtherAddress addr) {
+      _addr = addr;
+      _last_originator_time = Timestamp::now();
+    }
   };
 
   typedef Vector<BatmanNeighbour> BatmanNeighbourList;
@@ -51,16 +48,28 @@ class BatmanRoutingTable : public Element {
   {
    public:
     EtherAddress _addr;
+    int _recvDeviceId;
     BatmanOriginatorInfoList _oil;
 
-    BatmanForwarderEntry(EtherAddress addr)
+    BatmanForwarderEntry(EtherAddress addr, uint8_t devId)
     {
       _addr = addr;
+      _recvDeviceId = devId;
     }
 
     BatmanOriginatorInfoList *getOIL()
     {
       return &_oil;
+    }
+
+    int getAverageHopCount()
+    {
+      int hopsSum = 0;
+
+      for ( int i =  0; i < _oil.size(); i++ )
+        hopsSum += _oil[i]._hops;
+
+      return hopsSum/_oil.size();
     }
   };
 
@@ -90,42 +99,43 @@ class BatmanRoutingTable : public Element {
       _forwarder.clear();
     }
 
-    BatmanForwarderEntry *getBatmanForwarderEntry(EtherAddress addr)
+    BatmanForwarderEntry *getBatmanForwarderEntry(EtherAddress addr, uint8_t devId)
     {
       for ( int i = 0; i < _forwarder.size(); i++ )
       {
-        if ( _forwarder[i]._addr == addr ) return &_forwarder[i];
+        if ( ( _forwarder[i]._addr == addr ) && ( _forwarder[i]._recvDeviceId == devId ) )
+          return &_forwarder[i];
       }
 
       return NULL;
     }
 
-    int update_originator(uint32_t id)
+    void update_originator(uint32_t id)
     {
       if ( _last_originator_id > id ) {
         //TODO; clear lists ,....
-        click_chatter("Restart originator");
+        //click_chatter("Restart originator: %d > %d",_last_originator_id , id);
         _last_originator_id = id;
-        return 0;
+
+        return;
       }
 
       _last_originator_id = id;
       //_last_originator_id
     }
 
-    int add_originator( EtherAddress fwd, uint32_t id, int hops )
+    int add_originator( EtherAddress fwd, uint8_t devId, uint32_t id, int hops )
     {
       update_originator(id); //TODO: check to place it elsewhere
 
-      BatmanForwarderEntry *bfe = getBatmanForwarderEntry(fwd);
+      BatmanForwarderEntry *bfe = getBatmanForwarderEntry(fwd, devId);
       if ( bfe == NULL ) {
-        _forwarder.push_back(BatmanForwarderEntry(fwd));
-        bfe = getBatmanForwarderEntry(fwd);
+        _forwarder.push_back(BatmanForwarderEntry(fwd, devId));
+        bfe = getBatmanForwarderEntry(fwd, devId);
       }
 
       BatmanOriginatorInfoList *oil = bfe->getOIL();
 
-      int i;
       for ( int i = 0; i < oil->size(); i++ )
       {
         if ( oil->at(i)._originator_id == id ) {
@@ -135,6 +145,12 @@ class BatmanRoutingTable : public Element {
 
       oil->push_back(BatmanOriginatorInfo(id,hops));
       return 0;
+    }
+
+    //TODO: better check
+    bool gotOriginator(uint32_t id) {
+      if ( _last_originator_id == 0xffffffff ) return false;
+      return ( id == _last_originator_id );
     }
   };
 
@@ -165,8 +181,16 @@ class BatmanRoutingTable : public Element {
   BatmanNode *getBatmanNode(EtherAddress addr);
   int addBatmanNode(EtherAddress addr);
 
+  /*For Debug*/
+  BRN2NodeIdentity *_nodeid;
+
  public:
-   void handleNewOriginator(uint32_t id, EtherAddress src, EtherAddress fwd, int hops);
+   bool isNewOriginator(uint32_t id, EtherAddress src);
+   void handleNewOriginator(uint32_t id, EtherAddress src, EtherAddress fwd, uint8_t devId, int hops);
+   void addBatmanNeighbour(EtherAddress addr);
+
+   BatmanForwarderEntry *getBestForwarder(EtherAddress dst);
+
    String infoGetNodes();
    int _debug;
 

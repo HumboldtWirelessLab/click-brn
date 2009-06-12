@@ -31,6 +31,9 @@
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brn2.h"
+#include "batmanroutingtable.hh"
+#include "batmanprotocol.hh"
 
 
 CLICK_DECLS
@@ -48,7 +51,8 @@ int
 BatmanRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
       cpEnd) < 0)
        return -1;
 
@@ -58,14 +62,41 @@ BatmanRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanRouting::initialize(ErrorHandler *)
 {
-  bcast_id = 0;
-
+  _routeId = 0;
   return 0;
 }
 
 void
-BatmanRouting::push( int port, Packet *packet )
+BatmanRouting::push( int /*port*/, Packet *packet )
 {
+  click_ether *et;
+  et = (click_ether*)packet->data();
+  EtherAddress dst = EtherAddress(et->ether_dhost);
+
+  if ( _nodeid->isIdentical(&dst) ) {
+    output(0).push(packet);
+    return;
+  }
+
+  BatmanRoutingTable::BatmanForwarderEntry *bfe = _brt->getBestForwarder(dst);
+
+  if ( bfe == NULL ) {
+    output(2).push(packet);
+    return;
+  }
+
+  BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
+
+  /** TODO: use hops of ForwarderEntry to limit the number of hops**/
+
+  _routeId++;
+  WritablePacket *batroutep = BatmanProtocol::add_batman_routing(packet, 0, _routeId );
+  WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, 10/*HOPS*/ );
+  WritablePacket *brnrp = BRNProtocol::add_brn_header(batp, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10/*TTL*/, DEFAULT_TOS);
+
+  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, 0x8680);
+
+  output(1).push(brnrp);
 
 }
 
@@ -98,9 +129,6 @@ BatmanRouting::add_handlers()
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
-
-#include <click/vector.cc>
-template class Vector<BatmanRouting::BrnBroadcast>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BatmanRouting)

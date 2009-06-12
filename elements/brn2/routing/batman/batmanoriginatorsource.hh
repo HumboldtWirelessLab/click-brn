@@ -6,6 +6,8 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
@@ -55,16 +57,13 @@ class BatmanOriginatorSource : public Element {
   //
   //member
   //
-
-  EtherAddress _ether_addr;
+  BRN2NodeIdentity *_nodeid;
   uint16_t _id;
 
   int _interval;
 
   Timer _send_timer;
   static void static_send_timer_hook(Timer *, void *);
-
-  BRN2LinkStat *_linkstat;
 
  public:
   int _debug;

@@ -22,6 +22,7 @@ struct batman_originator {
 
 /** size of a single neighbour is etheraddress-size*/
 #define NEIGHBOURSIZE 6
+#define ORIGINATOR_SRC_HOPS 1
 
 struct batman_routing {
   uint16_t flag;
@@ -55,6 +56,7 @@ class BatmanProtocol : public Element { public:
 
   static WritablePacket *add_batman_header(Packet *p, uint8_t type, uint8_t hops);
   static struct batman_header *get_batman_header(Packet *p);
+  static void rm_batman_header(Packet *p);
 
   static WritablePacket *new_batman_originator( uint32_t id, uint8_t flag, EtherAddress *src, uint8_t neighbours = 0);
   static struct batman_originator *get_batman_originator(Packet *p);
@@ -62,8 +64,11 @@ class BatmanProtocol : public Element { public:
 
   static WritablePacket *add_batman_routing(Packet *p, uint16_t flag, uint16_t id);
   static struct batman_routing *get_batman_routing(Packet *p);
+  static void rm_batman_routing(Packet *p);
+  static void rm_batman_routing_header(Packet *p);
 
   static struct click_ether *get_ether_header(Packet *p);
+
 };
 
 CLICK_ENDDECLS

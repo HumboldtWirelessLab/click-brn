@@ -31,6 +31,12 @@ BatmanProtocol::add_batman_header(Packet *p, uint8_t type, uint8_t hops)
   return NULL;
 }
 
+void
+BatmanProtocol::rm_batman_header(Packet *p)
+{
+  p->pull(sizeof(struct batman_header));
+}
+
 struct batman_header *
 BatmanProtocol::get_batman_header(Packet *p)
 {
@@ -50,7 +56,7 @@ BatmanProtocol::new_batman_originator( uint32_t id, uint8_t flag, EtherAddress *
   struct batman_originator *bo = (struct batman_originator *)&(p->data()[sizeof(struct batman_header)]);
 
   bh->type = BATMAN_ORIGINATOR;
-  bh->hops = 1;
+  bh->hops = ORIGINATOR_SRC_HOPS;
 
   bo->id = htonl(id);
   bo->flag = flag;
@@ -81,7 +87,7 @@ BatmanProtocol::add_batman_routing(Packet *p, uint16_t flag, uint16_t id)
   if ( (q = p->push(sizeof(struct batman_routing))) != NULL ) {
     br = (struct batman_routing *)q->data();
     br->flag = flag;
-    br->id = id;
+    br->id = htons(id);
     return q;
   }
 
@@ -93,6 +99,19 @@ BatmanProtocol::get_batman_routing(Packet *p)
 {
   return ((struct batman_routing *)&(p->data()[sizeof(struct batman_header)]));
 }
+
+void
+BatmanProtocol::rm_batman_routing(Packet *p)
+{
+  p->pull(sizeof(struct batman_routing));
+}
+
+void
+BatmanProtocol::rm_batman_routing_header(Packet *p)
+{
+  p->pull(sizeof(struct batman_header) + sizeof(struct batman_routing));
+}
+
 
 struct click_ether *
 BatmanProtocol::get_ether_header(Packet *p)

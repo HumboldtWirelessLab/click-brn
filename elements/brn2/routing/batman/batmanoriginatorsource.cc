@@ -28,6 +28,8 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/routing/batman/batmanprotocol.hh"
@@ -54,9 +56,8 @@ int
 BatmanOriginatorSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_ether_addr,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,  //TODO: replace by nodeid and send paket to each (wireless) device
       "INTERVAL", cpkP+cpkM , cpInteger, &_interval,
-      "LINKSTAT", cpkP, cpElement, &_linkstat,
       cpEnd) < 0)
        return -1;
 
@@ -94,10 +95,11 @@ BatmanOriginatorSource::sendOriginator()
 
   _id++;
 
-  WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, &_ether_addr,0);
+  BRN2Device *dev = _nodeid->getDeviceByIndex(0);
+  WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, dev->getEtherAddress(),0);
   WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
 
-  BRNPacketAnno::set_ether_anno(p_brn, _ether_addr, EtherAddress(broadcast), 0x8680);
+  BRNPacketAnno::set_ether_anno(p_brn,EtherAddress(dev->getEtherAddress()->data()), EtherAddress(broadcast), 0x8680);
 
   output(0).push(p_brn);
 }

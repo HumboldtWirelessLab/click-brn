@@ -31,7 +31,7 @@
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-
+#include "elements/brn2/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
 
@@ -47,9 +47,12 @@ BatmanRoutingTable::~BatmanRoutingTable()
 int
 BatmanRoutingTable::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _nodeid = NULL;
+
   if (cp_va_kparse(conf, this, errh,
+      "NODEID", cpkP , cpElement, &_nodeid,
       cpEnd) < 0)
-       return -1;
+    return -1;
 
   return 0;
 }
@@ -60,14 +63,14 @@ BatmanRoutingTable::initialize(ErrorHandler *)
   return 0;
 }
 
-BatmanRoutingTable::BatmanNode *
+BatmanRoutingTable::BatmanNode*
 BatmanRoutingTable::getBatmanNode(EtherAddress addr)
 {
   BatmanNode *bn;
 
   for ( int i = 0; i < _nodelist.size(); i++ )
   {
-    bn = &_nodelist[i];
+    bn = &(_nodelist[i]);
     if ( bn->_addr == addr ) {
       return bn;
     }
@@ -80,23 +83,72 @@ int
 BatmanRoutingTable::addBatmanNode(EtherAddress addr)
 {
   _nodelist.push_back(BatmanNode(addr));
+
+  return 0;
 }
 
-
-void
-BatmanRoutingTable::handleNewOriginator(uint32_t id, EtherAddress src, EtherAddress fwd, int hops)
+bool
+BatmanRoutingTable::isNewOriginator(uint32_t id, EtherAddress src)
 {
   BatmanNode *bn;
 
   bn = getBatmanNode(src);
+  if ( bn == NULL ) return false;
+
+  return ( ! bn->gotOriginator(id) );
+}
+
+void
+BatmanRoutingTable::handleNewOriginator(uint32_t id, EtherAddress src, EtherAddress fwd, uint8_t devId, int hops)
+{
+  BatmanNode *bn;
+
+  bn = getBatmanNode(src);
+
   if ( bn == NULL ) {
     addBatmanNode(src);
     bn = getBatmanNode(src);
     if ( bn == NULL ) click_chatter("Not able to add new Node");
   }
 
-  bn->add_originator( fwd, id, hops );
+  bn->add_originator( fwd, devId, id, hops );
 }
+
+void
+BatmanRoutingTable::addBatmanNeighbour(EtherAddress addr)
+{
+  for ( int i = 0; i < _neighbours.size(); i++) {
+    if ( _neighbours[i]._addr == addr ) {
+      _neighbours[i]._last_originator_time = Timestamp::now();
+      return;
+    }
+  }
+  _neighbours.push_back(BatmanNeighbour(addr));
+  return;
+}
+
+BatmanRoutingTable::BatmanForwarderEntry *
+BatmanRoutingTable::getBestForwarder(EtherAddress dst)
+{
+  BatmanNode *bn;
+  BatmanRoutingTable::BatmanForwarderEntry *best;
+
+  bn = getBatmanNode(dst);
+
+  if ( bn == NULL ) return NULL;
+  if ( bn->_forwarder.size() == 0 ) return NULL;
+
+  //TODO: what happend if stats are running out of time
+  best = &bn->_forwarder[0];
+  for ( int i = 1; i < bn->_forwarder.size(); i++ )
+  {
+    if ( best->getAverageHopCount() > bn->_forwarder[i].getAverageHopCount() ) {
+      best = &bn->_forwarder[i];
+    }
+  }
+  return best;
+}
+
 
 String
 BatmanRoutingTable::infoGetNodes()
@@ -104,12 +156,22 @@ BatmanRoutingTable::infoGetNodes()
   StringAccum sa;
 
   sa << "Routing Info" << "\n";
+  if ( _nodeid != NULL ) {
+    BRN2Device *dev = _nodeid->getDeviceByIndex(0);
+    sa << "Address: " << dev->getEtherAddress()->s();
+  }
   for ( int i = 0; i < _nodelist.size(); i++ ) {
     sa << " " << _nodelist[i]._addr.s() << "\t" << _nodelist[i]._last_originator_id << "\n";
 
     for ( int j = 0; j < _nodelist[i]._forwarder.size(); j++ ) {
-      sa << "   Forwarder " << j << ": " << _nodelist[i]._forwarder[j]._addr.s() << "\t" << _nodelist[i]._forwarder[j]._oil.size() << "\n";
+      sa << "   Forwarder " << j << ": " << _nodelist[i]._forwarder[j]._addr.s();
+      sa << "\t#Originator: " << _nodelist[i]._forwarder[j]._oil.size() << " #AvgHops: " << _nodelist[i]._forwarder[j].getAverageHopCount() << "\n";
     }
+  }
+
+  sa << "\n Neighbourinfo" << "\n";
+  for ( int i = 0; i < _neighbours.size(); i++ ) {
+    sa << "  " << _neighbours[i]._addr.s() << "\n";
   }
 
   return sa.take_string();
