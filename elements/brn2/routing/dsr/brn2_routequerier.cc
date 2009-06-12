@@ -41,7 +41,7 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _me(NULL),
     _link_table(),
     _dsr_encap(),
-    _brn_encap(),
+//    _brn_encap(),
     _dsr_decap(),
     _rreq_expire_timer(static_rreq_expire_hook, this),
     _rreq_issue_timer(static_rreq_issue_hook, this),
@@ -80,7 +80,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
       "LINKTABLE", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_link_table,
       "DSRENCAP",  cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
-      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
+//      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
       "DEBUG", cpkP+cpkM, cpInteger, /*"DSRDecap",*/ &_debug,
       cpEnd) < 0)
@@ -92,8 +92,8 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_dsr_encap || !_dsr_encap->cast("BRN2DSREncap"))
     return errh->error("DSREncap not specified");
 
-  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
-    return errh->error("BRNEncap not specified");
+//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
+//    return errh->error("BRNEncap not specified");
 
   if (!_dsr_decap || !_dsr_decap->cast("BRN2DSRDecap"))
     return errh->error("DSRDecap not specified");
@@ -196,7 +196,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     // add DSR headers to packet..
     Packet *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
     // add BRN header
-    Packet *brn_p = _brn_encap->add_brn_header(dsr_p);
+    Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(dsr_p));
 
     // forward source routed packet to srcforwarder. this is required since
     // the address of the next hop could be mine (see nodeidentity)
@@ -426,7 +426,7 @@ BRN2RouteQuerier::issue_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress sr
   //increment route request identifier
   _rreq_id++;
 
-  Packet *brn_p = _brn_encap->add_brn_header(rreq_p, ttl);
+  Packet *brn_p = BRNProtocol::add_brn_header(rreq_p, BRN_PORT_DSR, BRN_PORT_DSR, ttl, BRNPacketAnno::tos_anno(rreq_p));
 
   if (_debug) {
     BRN2RouteQuerierRoute request_route;
@@ -653,7 +653,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
               //Packet *p_out = add_dsr_header(p, route);
               Packet *p_out = _dsr_encap->add_src_header(p, route); //todo brn_dsr packet --> encap
               // add BRN header
-              Packet *brn_p = _brn_encap->add_brn_header(p_out);
+              Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(p_out));
 
               output(1).push(brn_p);
             }

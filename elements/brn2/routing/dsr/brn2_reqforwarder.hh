@@ -28,6 +28,7 @@
 #include "brn2_dsrencap.hh"
 #include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include <click/element.hh>
 #include <click/bighashmap.hh>
@@ -112,7 +113,7 @@ public:
   Brn2LinkTable *_link_table;
   BRN2DSRDecap *_dsr_decap;
   BRN2DSREncap *_dsr_encap;
-  BRN2Encap *_brn_encap;
+//  BRN2Encap *_brn_encap;
   BRN2RouteQuerier *_route_querier;
 
 

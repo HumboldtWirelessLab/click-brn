@@ -40,7 +40,7 @@ BRN2RequestForwarder::BRN2RequestForwarder()
   _link_table(),
   _dsr_decap(),
   _dsr_encap(),
-  _brn_encap(),
+//  _brn_encap(),
   _route_querier(),
   _sendbuffer_timer(this)
 {
@@ -61,7 +61,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
-      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
+//      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
       "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
       "MINMETRIC", cpkP+cpkM, cpInteger, &_min_metric_rreq_fwd,
       "DEBUG", cpkP+cpkM, cpInteger, &_debug,
@@ -77,8 +77,8 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_dsr_encap || !_dsr_encap->cast("BRN2DSREncap"))
     return errh->error("DSREncap not specified");
 
-  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
-    return errh->error("BRNEncap not specified");
+//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
+//    return errh->error("BRNEncap not specified");
 
   if (!_route_querier || !_route_querier->cast("BRN2RouteQuerier")) 
     return errh->error("RouteQuerier not specified");
@@ -462,7 +462,7 @@ BRN2RequestForwarder::issue_rrep(EtherAddress src, IPAddress src_ip, EtherAddres
   Packet *rrep_p = _dsr_encap->create_rrep(dst, dst_ip, src, src_ip, reply_route, rreq_id);
   //prepend brn header
   assert(rrep_p);
-  brn_p = _brn_encap->add_brn_header(rrep_p);
+  brn_p = BRNProtocol::add_brn_header(rrep_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(rrep_p));
 
   //output route reply packet
   output(1).push(brn_p);

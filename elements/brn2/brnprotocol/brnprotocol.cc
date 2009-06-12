@@ -45,7 +45,7 @@ BRNProtocol::set_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint1
 }
 
 void
-BRNProtocol::set_brn_header_data(uint8_t *data, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
+BRNProtocol::set_brn_header(uint8_t *data, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
   struct click_brn *brn_h = (struct click_brn *)data;
   brn_h->dst_port = dst_port;
   brn_h->src_port = src_port;

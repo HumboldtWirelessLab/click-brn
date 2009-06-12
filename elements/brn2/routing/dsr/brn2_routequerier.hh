@@ -25,7 +25,7 @@
 #include <click/element.hh>
 #include "elements/brn/common.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-#include "brn2_brnencap.hh"
+//#include "brn2_brnencap.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_reqforwarder.hh"
@@ -252,7 +252,7 @@ public:
   BRN2NodeIdentity *_me;
   Brn2LinkTable *_link_table;
   BRN2DSREncap *_dsr_encap;
-  BRN2Encap *_brn_encap;
+//  BRN2Encap *_brn_encap;
   BRN2DSRDecap *_dsr_decap;
 
   SBMap _sendbuffer_map;

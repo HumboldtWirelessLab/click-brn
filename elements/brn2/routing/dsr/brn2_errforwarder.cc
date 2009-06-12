@@ -31,6 +31,7 @@
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
+
 CLICK_DECLS
 
 BRN2ErrorForwarder::BRN2ErrorForwarder()
@@ -39,8 +40,8 @@ BRN2ErrorForwarder::BRN2ErrorForwarder()
   _link_table(),
   _dsr_encap(),
   _dsr_decap(),
-  _route_querier(),
-  _brn_encap()
+  _route_querier()
+//  _brn_encap()
 {
   //add_input();  //process previously by the ds reported link level error
   //add_input();  //process incoming dsr rerr packet
@@ -60,7 +61,7 @@ BRN2ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
-      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
+//      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
       cpEnd) < 0)
     return -1;
 
@@ -79,8 +80,8 @@ BRN2ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_route_querier || !_route_querier->cast("BRN2RouteQuerier")) 
     return errh->error("RouteQuerier not specified");
 
-  if (!_brn_encap || !_brn_encap->cast("BRN2Encap"))
-    return errh->error("BRNEncap not specified");
+//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap"))
+//    return errh->error("BRNEncap not specified");
 
   return 0;
 }
@@ -330,7 +331,7 @@ BRN2ErrorForwarder::issue_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   Packet *rrer_p = _dsr_encap->create_rerr(bad_src, bad_dst, src, source_route);
   //prepend brn header
   assert(rrer_p);
-  brn_p = _brn_encap->add_brn_header(rrer_p);
+  brn_p = BRNProtocol::add_brn_header(rrer_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(rrer_p));
 
   //skip inMemory hops
   brn_p = skipInMemoryHops(brn_p);
