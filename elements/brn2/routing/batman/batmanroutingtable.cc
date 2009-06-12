@@ -156,7 +156,7 @@ BatmanRoutingTable::infoGetNodes()
   sa << "Routing Info" << "\n";
   if ( _nodeid != NULL ) {
     BRN2Device *dev = _nodeid->getDeviceByIndex(0);
-    sa << "Address: " << dev->getEtherAddress()->unparse();
+    sa << "Address: " << dev->getEtherAddress()->unparse() << "\n";
   }
   for ( int i = 0; i < _nodelist.size(); i++ ) {
     sa << " " << _nodelist[i]._addr.unparse() << "\t" << _nodelist[i]._last_originator_id << "\n";
