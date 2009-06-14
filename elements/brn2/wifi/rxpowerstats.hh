@@ -1,13 +1,15 @@
 #ifndef CLICK_RXPOWERSTATS_HH
 #define CLICK_RXPOWERSTATS_HH
 
+#include <click/element.hh>
+#include <click/string.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
+#include <click/packet.hh>
 
 CLICK_DECLS
 
-class RXPowerStats
-{
+class RXPowerStats : public Element {
 
   class RxInfo {
    public:
@@ -54,157 +56,23 @@ class RXPowerStats
   typedef RxSourceInfoList::const_iterator RxSourceInfoListIter;
 
   public:
-  class DstInfo
-  {
-
-   public:
-
-    class RateInfo
-    {
-     public:
-      uint8_t _rate;
-      uint8_t _power;
-
-      uint32_t _packets;
-      uint32_t _retries;
-      uint32_t _success;
-
-      Timestamp _last_choose;
-      Timestamp _last_success;
-
-      RateInfo(uint8_t rate, uint8_t power)
-      {
-        _rate = rate;
-        _power = power;
-        _packets = _retries = _success = 0;
-        _last_choose = _last_success = Timestamp::now();
-      }
-
-      ~RateInfo()
-      {
-      }
-
-      void send()
-      {
-        _packets++;
-        _last_choose = Timestamp::now();
-      }
-
-      void receive(bool succ, uint32_t retries)
-      {
-        if (succ) {
-          _retries += retries;  //TODO: think about this; retries for not successful tx-packet maybe make no sense ??
-          _success++;
-          _last_success = Timestamp::now();
-        }
-      }
-
-      void reset(int factor)
-      {
-        if ( factor != 0 ) {
-          _packets /= factor;
-          _success /= factor;
-          _retries /= factor;
-        }
-      }
-
-      int getProbability()
-      {
-        if ( _packets == 0 ) return 100;
-        return ( _success * 100 / _packets );
-      }
-
-      int getRetries()
-      {
-        if ( _success == 0 ) return 100;
-        return ( _retries * 100 / _success );
-      }
-    }; // End of class RateInfo
-
-
-    EtherAddress _dst;
-    Vector<RateInfo *> _ratelist;
-
-    DstInfo(unsigned char *ea)
-    {
-      _dst = EtherAddress(ea);
-    }
-
-    ~DstInfo()
-    {
-      _ratelist.clear();
-    }
-
-    RateInfo *getRateInfo(int rate, int power)
-    {
-      for(int i = 0; i < _ratelist.size(); i++)
-        if (( _ratelist[i]->_rate == rate ) && ( _ratelist[i]->_power == power ))
-          return _ratelist[i];
-      return NULL;
-    }
-
-    void txfeedback(bool succ, int rate, int power, int retries)
-    {
-      RateInfo *rateinfo = getRateInfo(rate,power);
-      if ( rateinfo != NULL ) rateinfo->receive(succ,retries);
-    }
-
-    void send(int rate,int power)
-    {
-      RateInfo *rateinfo = getRateInfo(rate,power);
-      if ( rateinfo == NULL ) {
-        rateinfo = new RateInfo(rate,power);
-        _ratelist.push_back(rateinfo);
-      }
-
-      rateinfo->send();
-    }
-
-    int getMaxRate()
-    {
-     int maxrate = 0;
-     //int power = 0; //TODO: include power in some way
-
-      for(int i = 0; i < _ratelist.size(); i++)
-      {
-        if (( _ratelist[i]->_rate > maxrate ))
-          maxrate = _ratelist[i]->_rate;
-      }
-
-      return maxrate;
-    }
-
-    int getProbability(int rate, int power)
-    {
-      RateInfo *rateinfo = getRateInfo(rate,power);
-      if ( rateinfo == NULL ) return 100;
-      return rateinfo->getProbability();
-    }
-
-    int getRetries(int rate, int power)
-    {
-      RateInfo *rateinfo = getRateInfo(rate,power);
-      if ( rateinfo == NULL ) return 0;
-      return rateinfo->getRetries();
-    }
-
-  }; // End of class DstInfo
-
-  Vector<DstInfo *> _dstlist;
-
-  public:
 
     RXPowerStats() {};
     ~RXPowerStats() {};
 
-    DstInfo *getDst(EtherAddress *ea);
-    DstInfo *getDst(EtherAddress ea);
-    DstInfo *getDst(unsigned char *ea);
+    const char *class_name() const { return "RXPowerStats"; }
+    const char *port_count() const  { return "1/1"; }
 
-    DstInfo *newDst(unsigned char *ea);
+    int configure(Vector<String> &conf, ErrorHandler* errh);
 
-    int maxpower;
+    void add_handlers();
 
+    void push(int, Packet *p);
+    void reset();
+    String stats();
+    bool _debug;
+
+    RxSourceInfoList _rxinfolist;
 };
 
 CLICK_ENDDECLS
