@@ -57,7 +57,7 @@ int BRN2EtherAddressHashcode(const EtherAddress &ea)
 static String 
 BRNLinkStat_read_param(Element *e, void *thunk)
 {
-  BRNLinkStat *td = (BRNLinkStat *)e;
+  BRN2LinkStat *td = (BRN2LinkStat *)e;
     switch ((uintptr_t) thunk) {
     case H_BCAST_STATS: return td->read_bcast_stats(false);
     case H_BAD_VERSION: return td->bad_nodes();
@@ -78,7 +78,7 @@ BRNLinkStat_read_param(Element *e, void *thunk)
 static int 
 BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  BRNLinkStat *f = (BRNLinkStat *)e;
+  BRN2LinkStat *f = (BRN2LinkStat *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
   case H_RESET: {    //reset
@@ -176,7 +176,6 @@ BRN2LinkStat::BRN2LinkStat()
     _stale_timer(this),
     _ads_rs_index(0),
     _rtable(0),
-    _packetCnt(0),
     _log(false),
     _log_timeout_timer(log_timeout_hook, this)
 {
@@ -752,14 +751,6 @@ BRN2LinkStat::read_bcast_stats(bool with_pos)
       sa << " pos_x='&x;' pos_y='&y;' pos_z='&z;' ";
     sa << ">\n";
 
-    int delta = -1;
-    uint32_t traffic_cnt = 0;
-
-    if (_packetCnt) {
-      traffic_cnt = _packetCnt->get_traffic_count(ether, delta);
-      //_packetCnt->reset();
-    }
-
     for (int x = 0; x < pl->_probe_types.size(); x++) {
       sa << "\t\t<link_info size='" << pl->_probe_types[x]._size << "'";
       sa << " rate='" << pl->_probe_types[x]._rate << "'";
@@ -767,8 +758,6 @@ BRN2LinkStat::read_bcast_stats(bool with_pos)
                                  pl->_probe_types[x]._size);
       sa << " fwd = '" << pl->_fwd_rates[x] << "'";
       sa << " rev = '" << rev_rate << "'";
-      sa << " traffic_period = '" << delta << "'";
-      sa << " traffic_cnt = '" << traffic_cnt << "' />\n";
     }
     sa << "\t</link>\n";
 /*
@@ -783,10 +772,6 @@ BRN2LinkStat::read_bcast_stats(bool with_pos)
 
   sa << "</entry>\n";
   //sa << "</entries>";
-
-  if (_packetCnt) {
-    _packetCnt->reset();
-  }
 
   return sa.take_string();
 }

@@ -35,15 +35,7 @@ CLICK_DECLS
 class BRN2Encap : public Element {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
-  //
-  //methods
-  //
-  BRN2Encap();
+   BRN2Encap();
   ~BRN2Encap();
 
   const char *class_name() const	{ return "BRN2Encap"; }
@@ -54,9 +46,26 @@ class BRN2Encap : public Element {
 
   int initialize(ErrorHandler *);
 
-  Packet *add_brn_header(Packet *);
-  Packet *add_brn_header(Packet *, unsigned int);
+  Packet *smaction(Packet *);
+  void push(int, Packet *);
+  Packet *pull(int);
+
+  //
+  //member
+  //
+  int _src_port;
+  int _dst_port;
+  int _ttl;
+  int _tos;
+
+  int _debug;
+
+  //
+  //methods
+  //
+
   void add_handlers();
+
 };
 
 CLICK_ENDDECLS

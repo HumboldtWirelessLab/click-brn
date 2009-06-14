@@ -124,6 +124,7 @@ public:
     uint8_t _fwd;
     uint8_t _rev;
   };
+
   struct link_entry {
     uint8_t _ether[6];
     uint8_t _num_rates;
@@ -161,9 +162,9 @@ public:
     uint8_t _rate;
     uint16_t _size;
     probe_t(const struct timeval &t,
-	    uint32_t s,
-	    uint8_t r,
-	    uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
+      uint32_t s,
+      uint8_t r,
+      uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
   };
 
 
@@ -201,13 +202,13 @@ public:
       }
       int num = 0;
       for (int i = _probes.size() - 1; i >= 0; i--) {
-      	if (timercmp(&earliest, &(_probes[i]._when), >)) {
-      	  break;
-      	} 
-      	if ( _probes[i]._size == size &&
-      	    _probes[i]._rate == rate) {
-      	  num++;
-      	}
+        if (timercmp(&earliest, &(_probes[i]._when), >)) {
+          break;
+        }
+        if ( _probes[i]._size == size &&
+            _probes[i]._rate == rate) {
+          num++;
+        }
       }
 
       struct timeval since_start;
@@ -260,8 +261,6 @@ public:
 
   class AvailableRates *_rtable;
 
-  BrnAvgCnt *_packetCnt;
-
   typedef HashMap<EtherAddress, uint8_t> BadTable;
   typedef BadTable::const_iterator BTIter;
 
@@ -276,7 +275,6 @@ public:
  public:
   String bad_nodes();
   String read_bcast_stats(bool with_pos);
-
 
   int get_etx(EtherAddress);
   int get_etx(int, int);

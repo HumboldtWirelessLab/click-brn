@@ -24,17 +24,17 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
-#include "brn2_brnencap.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "brn2_brnencap.hh"
+
+#include "brnprotocol.hh"
+
 CLICK_DECLS
 
 BRN2Encap::BRN2Encap()
-  : _debug(BrnLogger::DEFAULT)
+  : _debug(0)
 {
 }
 
@@ -43,8 +43,16 @@ BRN2Encap::~BRN2Encap()
 }
 
 int
-BRN2Encap::configure(Vector<String> &, ErrorHandler *)
+BRN2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  if (cp_va_kparse(conf, this, errh,
+      "SRCPORT", cpkP+cpkM , cpElement, &_src_port,
+      "DSTPORT", cpkP+cpkM , cpInteger, &_dst_port,
+      "TTL", cpkP+cpkM , cpInteger, &_ttl,
+      "TOS", cpkP+cpkM , cpInteger, &_tos,
+      cpEnd) < 0)
+    return -1;
+
   return 0;
 }
 
@@ -55,41 +63,38 @@ BRN2Encap::initialize(ErrorHandler *)
 }
 
 Packet *
-BRN2Encap::add_brn_header(Packet *p)
+BRN2Encap::smaction(Packet *p)
 {
-  // there's not really much mention of TTL in the IETF draft (other
-  // than in the case of RREQs), I suppose it's sort of implicitly the
-  // length of the source route.  so right now we're not checking OR
-  // decrementing the TTL when forwarding (again, except in the case
-  // of RREQs).
-  //
-  return add_brn_header(p, 255); // TODO use constants
-}
-
-Packet *
-BRN2Encap::add_brn_header(Packet *p_in, unsigned int ttl)
-{
-  int payload = sizeof(click_brn);
-
-  BRN_DEBUG(" * creating BRN packet with payload %d\n", payload);
-
-  // add the extra header size and get a new packet
-  WritablePacket *p = p_in->push(payload);
-  if (!p) {
-    BRN_FATAL("couldn't add space for new DSR header\n");
+  WritablePacket *brnp = BRNProtocol::add_brn_header(p, _src_port, _dst_port, _ttl, _tos);
+  if ( brnp == NULL ) {
+    click_chatter("Error in BRN2Encap");
     return p;
   }
 
-  // set brn header
-  click_brn *brn = (click_brn *)p_in->data();
-  brn->dst_port = BRN_PORT_DSR;
-  brn->src_port = BRN_PORT_DSR;
-
-  brn->ttl = ttl;
-  brn->tos = BRNPacketAnno::tos_anno(p_in);
-
-  return p;
+  return brnp;
 }
+
+void
+BRN2Encap::push(int, Packet *p)
+{
+  if (Packet *q = smaction(p)) {
+    output(0).push(q);
+  }
+}
+
+Packet *
+BRN2Encap::pull(int)
+{
+  if (Packet *p = input(0).pull()) {
+    return smaction(p);
+  } else {
+    return 0;
+  }
+}
+
+/*****************************************************************************/
+/******************************* H A N D L E R *******************************/
+/*****************************************************************************/
 
 static String
 read_debug_param(Element *e, void *)
@@ -99,8 +104,7 @@ read_debug_param(Element *e, void *)
 }
 
 static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
+write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   BRN2Encap *be = (BRN2Encap *)e;
   String s = cp_uncomment(in_s);
