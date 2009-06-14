@@ -65,9 +65,9 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   uint8_t *ptr;
   struct click_wifi *w = (struct click_wifi *) p->data();
   StringAccum sa;
-  
+
   ptr = (uint8_t *) (w+1);
-  
+
   //uint8_t *ts = ptr;
   ptr += 8;
 
