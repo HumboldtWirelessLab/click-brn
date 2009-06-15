@@ -9,6 +9,7 @@
 #include <click/etheraddress.hh>
 
 #include "rxpowerstats.hh"
+#include "elements/brn2/wifi/brnwifi.h"
 
 CLICK_DECLS
 
@@ -25,6 +26,40 @@ RXPowerStats::configure(Vector<String> &conf, ErrorHandler* errh)
   return ret;
 }
 
+RXPowerStats::RxRateInfoList *
+RXPowerStats::getRxRateInfoList(EtherAddress src)
+{
+  for ( int i = 0; i < _rxinfolist.size(); i++ ) {
+    if ( memcmp(src.data(), _rxinfolist[i]._src.data(),6 ) == 0 )
+      return &(_rxinfolist[i]._rxrateinfo);
+  }
+
+  _rxinfolist.push_back(RxSourceInfo(src));
+
+  for ( int i = (_rxinfolist.size() - 1); i >= 0; i-- ) {
+    if ( memcmp(src.data(), _rxinfolist[i]._src.data(),6 ) == 0 )
+      return &(_rxinfolist[i]._rxrateinfo);
+  }
+  return NULL;
+}
+
+RXPowerStats::RxRateInfo *
+RXPowerStats::getRxRateInfo(RXPowerStats::RxRateInfoList *rxinfo, uint8_t rate)
+{
+  for ( int i = 0; i < rxinfo->size(); i++ ) {
+    if ( (*rxinfo)[i]._rate == rate )
+      return &((*rxinfo)[i]);
+  }
+
+  rxinfo->push_back(RxRateInfo(rate));
+
+  for ( int i = (rxinfo->size() - 1); i >= 0; i-- ) {
+    if ( (*rxinfo)[i]._rate == rate )
+      return &((*rxinfo)[i]);
+  }
+  return NULL;
+}
+
 void
 RXPowerStats::push(int port, Packet *p)
 {
@@ -32,6 +67,26 @@ RXPowerStats::push(int port, Packet *p)
 
   if ( !(ceh->flags & WIFI_EXTRA_TX) ) {
     struct click_wifi *w = (struct click_wifi *) p->data();
+    struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+
+    EtherAddress src = EtherAddress(w->i_addr2);
+    RxRateInfoList *rxril = getRxRateInfoList(src);
+    RxRateInfo *rxri = getRxRateInfo(rxril, ceh->rate);
+
+    uint8_t state = STATE_UNKNOWN;
+    if ( ceh->magic == WIFI_EXTRA_MAGIC && ( (ceh->flags & WIFI_EXTRA_RX_ERR) == 0 ))
+      state = STATE_OK;
+    else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) &&
+             (ceh->flags & WIFI_EXTRA_RX_CRC_ERR) )
+      state = STATE_CRC;
+    else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) &&
+              (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) )
+      state = STATE_PHY;
+
+    if ( ceh->rssi > 60 ) 
+      rxri->_rxinfo.push_back(RxInfo(p->length(), 0, ((signed char)ceh->silence), state));
+    else
+      rxri->_rxinfo.push_back(RxInfo(p->length(), ceh->rssi, ((signed char)ceh->silence), state));
   }
 
   output(port).push(p);
@@ -41,7 +96,32 @@ String
 RXPowerStats::stats()
 {
   StringAccum sa;
+  RxRateInfoList *rxril;
+  RxInfoList *rxil;
+  RxRateInfo *rxri;
+  RxInfo *rxi;
 
+  for ( int s = 0; s < _rxinfolist.size(); s++ ) {
+    rxril = &(_rxinfolist[s]._rxrateinfo);
+
+    sa << "Source: " << _rxinfolist[s]._src << "\n";
+    for ( int r = 0; r < rxril->size(); r++ ) {
+      rxri = &((*rxril)[r]);
+      sa << "Rate: " << (int)rxri->_rate;
+
+      rxil = &(rxri->_rxinfo);
+
+      int sumpow = 0;
+
+      for ( int x = 0; x < rxil->size(); x++ ) {
+        rxi = &((*rxil)[x]);
+        sumpow += rxi->_power;
+      }
+
+      sumpow /= rxil->size();
+      sa << " Avg. Power: " << sumpow << "\n";
+    }
+  }
   return sa.take_string();
 }
 
