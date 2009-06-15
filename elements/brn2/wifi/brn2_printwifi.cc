@@ -140,29 +140,29 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   if (rates_l) {
     for (int x = 0; x < min((int)rates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = rates_l[x + 2];
-      
+
       if (rate & WIFI_RATE_BASIC) {
-	basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
       } else {
-	rates.push_back((int)(rate & WIFI_RATE_VAL));
+        rates.push_back((int)(rate & WIFI_RATE_VAL));
       }
     }
   }
 
-  
+
   if (xrates_l) {
     for (int x = 0; x < min((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = xrates_l[x + 2];
-      
+
       if (rate & WIFI_RATE_BASIC) {
-	basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
       } else {
-	rates.push_back((int)(rate & WIFI_RATE_VAL));
+        rates.push_back((int)(rate & WIFI_RATE_VAL));
       }
     }
   }
-  
- 
+
+
   sa << "[ ";
   if (capability & WIFI_CAPINFO_ESS) {
     sa << "ESS ";
@@ -180,7 +180,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
     sa << "PRIVACY ";
   }
   sa << "] ";
-  
+
   sa << "({";
   for (int x = 0; x < basic_rates.size(); x++) {
     sa << basic_rates[x];
@@ -195,9 +195,9 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
       sa << " ";
     }
   }
-  
+
   sa << ")";
-  
+
   return sa.take_string();
 }
 
@@ -349,7 +349,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     sa.adjust_length(len);
   }
   sa << "Mb ";
-  
+
   len = sprintf(sa.reserve(9), "+%2d/", ceh->rssi);
   sa.adjust_length(len);
 
@@ -393,7 +393,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_ASSOC_REQ: {
       uint16_t capability = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      
+
       uint16_t l_int = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
@@ -415,10 +415,10 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_ASSOC_RESP: {     
       uint16_t capability = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      
+
       uint16_t status = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      
+
       uint16_t associd = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
       sa << "assoc_resp "; 
@@ -441,11 +441,11 @@ BRN2PrintWifi::simple_action(Packet *p)
       break;
 
     }
-    case WIFI_FC0_SUBTYPE_PROBE_RESP:     
+    case WIFI_FC0_SUBTYPE_PROBE_RESP:
       sa << "probe_resp "; 
       sa << unparse_beacon(p);
       goto done;
-    case WIFI_FC0_SUBTYPE_BEACON:         
+    case WIFI_FC0_SUBTYPE_BEACON:
       sa << "beacon "; 
       sa << unparse_beacon(p);
       goto done;
@@ -459,10 +459,10 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << "auth "; 
       uint16_t algo = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      
+
       uint16_t seq = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      
+
       uint16_t status =le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
       sa << "alg " << (int)  algo;
@@ -509,7 +509,7 @@ BRN2PrintWifi::simple_action(Packet *p)
 
     click_chatter("%s\n", sa.c_str());
     return p;
-    
+
   }
 
 
@@ -557,7 +557,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   sa << " ] ";
 
   if (ceh->flags & WIFI_EXTRA_TX) {
-	  sa << " retries " << (int) ceh->retries;
+    sa << " retries " << (int) ceh->retries;
   }
 
  done:
