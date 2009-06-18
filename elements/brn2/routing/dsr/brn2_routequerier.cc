@@ -21,7 +21,7 @@
 /*
  * routequerier.{cc,hh} - searches for a valid route for a given packet
  *
- * Zubow A. 
+ * Zubow A.
  * thanks to Douglas S. J. De Couto
  */
 #include <click/config.h>
@@ -41,7 +41,6 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _me(NULL),
     _link_table(),
     _dsr_encap(),
-//    _brn_encap(),
     _dsr_decap(),
     _rreq_expire_timer(static_rreq_expire_hook, this),
     _rreq_issue_timer(static_rreq_issue_hook, this),
@@ -80,7 +79,6 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
       "LINKTABLE", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_link_table,
       "DSRENCAP",  cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
-//      "BRNENCAP", cpkP+cpkM, cpElement, /*"BRNEncap",*/ &_brn_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
       "DEBUG", cpkP+cpkM, cpInteger, /*"DSRDecap",*/ &_debug,
       cpEnd) < 0)
@@ -91,9 +89,6 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_dsr_encap || !_dsr_encap->cast("BRN2DSREncap"))
     return errh->error("DSREncap not specified");
-
-//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
-//    return errh->error("BRNEncap not specified");
 
   if (!_dsr_decap || !_dsr_decap->cast("BRN2DSRDecap"))
     return errh->error("DSRDecap not specified");
@@ -143,14 +138,15 @@ BRN2RouteQuerier::uninitialize()
 void
 BRN2RouteQuerier::push(int, Packet *p_in)
 {
-  click_ether *ether = (click_ether *)p_in->ether_header();
   EtherAddresses route;
 
-  if (!ether) {
-    BRN_DEBUG(" * ether anno not available; drop packet.");
+  if ( p_in->length() < sizeof(click_ether) ) {
+    BRN_DEBUG(" * packet too small to be etherframe; drop packet.");
     p_in->kill();
     return;
   }
+
+  click_ether *ether = (click_ether *)p_in->data();//better to use this, since ether_header is not always set.it also can be overwriten
 
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
@@ -164,14 +160,16 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
   int metric_of_route = -1;
   EtherAddresses* fixed_route = fixed_routes.findp(EtherPair(dst_addr, src_addr));
-  if ( fixed_route && (fixed_route->size() >= 2) 
-    && ((*fixed_route)[0] == dst_addr) 
+
+  if ( fixed_route && (fixed_route->size() >= 2)
+    && ((*fixed_route)[0] == dst_addr)
     && ((*fixed_route)[fixed_route->size() - 1] == src_addr) ) {
       BRN_DEBUG("* Using fixed route. %s, (%s), %s, (%s)", 
         (*fixed_route)[0].unparse().c_str(), dst_addr.unparse().c_str(),
         (*fixed_route)[fixed_route->size() - 1].unparse().c_str(), src_addr.unparse().c_str());
     route = *fixed_route;
-    metric_of_route = 1;
+    metric_of_route = 1;  //Don't care about the metric. Just set to 1 to mark it available
+
   } else {
     BRN_DEBUG(" query route");
     _link_table->query_route( src_addr, dst_addr, route );
@@ -195,7 +193,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
     // add DSR headers to packet..
     Packet *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
-    // add BRN header
+
+   // add BRN header
     Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(dsr_p));
 
     // forward source routed packet to srcforwarder. this is required since
@@ -220,7 +219,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     IPAddress src_ip_addr;
 
     if (!buffer_packet(p_in))
-    	return;
+      return;
 
     if (ether->ether_type == ETHERTYPE_IP) {
       const click_ip *iph = (const click_ip*)(p_in->data() + sizeof(click_ether));
@@ -355,13 +354,8 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   EtherAddress dst;
   EtherAddress src;
 
-  const click_ether *ether = (const click_ether *)p->ether_header();
-
-  if (!ether) {
-    BRN_DEBUG(" * ether anno not available; drop packet.");
-    p->kill();
-    return false;
-  }
+  const click_ether *ether = (const click_ether *)p->data();//better to use this, since ether_header is not always set.it also can be overwriten
+  //const click_ether *ether = (const click_ether *)p->ether_header();
 
   if (ether->ether_type == ETHERTYPE_BRN) {
     const click_brn_dsr *dsr = (const click_brn_dsr *)( p->data() + sizeof(click_brn) );
@@ -371,6 +365,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
     dst = EtherAddress(ether->ether_dhost);
     src = EtherAddress(ether->ether_shost);
   }
+
   BRN_DEBUG(" * buffering packet from %s to %s", src.unparse().c_str(), dst.unparse().c_str());
 
   // find the right sendbuffer for the given dst and src
@@ -382,6 +377,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
     _sendbuffer_map.insert(dst, SBSourceMap());
     src_map = _sendbuffer_map.findp(dst);
   }
+
   sb = src_map->findp(src);
   if (!sb) {
     src_map->insert(src, SendBuffer());
@@ -390,9 +386,9 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   }
 
   if (sb->size() >= BRN_DSR_SENDBUFFER_MAX_LENGTH) { // TODO think about this restriction
-    BRN_WARN("too many packets for host %s; killing", dst.unparse().c_str());
+    BRN_WARN("too many packets for host %s from host %s; killing", dst.unparse().c_str(), src.unparse().c_str() );
     p->kill();
-	return false;
+    return false;
   } else {
     sb->push_back(p);
 
@@ -400,7 +396,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
       SendBuffer *tmp_buff = _sendbuffer_map.findp(dst)->findp(src);
       if (tmp_buff) {
         BRN_DEBUG(" * size = %d", tmp_buff->size());
-        const click_ether *tmp = (const click_ether *)tmp_buff->begin()->_p->ether_header();
+        const click_ether *tmp = (const click_ether *)tmp_buff->begin()->_p->data();
         EtherAddress tmp_dst(tmp->ether_dhost);
         EtherAddress tmp_src(tmp->ether_shost);
         BRN_DEBUG("* buffering packet ... %s -> %s", tmp_src.unparse().c_str(), tmp_dst.unparse().c_str());
@@ -412,7 +408,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   }
   return true;
 }
-
+/**ROBERT-marker*/
 /*
  * build and send out a dsr route request.
  */
@@ -438,14 +434,12 @@ BRN2RouteQuerier::issue_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress sr
   }
 
   EtherAddress bcast((const unsigned char *)"\xff\xff\xff\xff\xff\xff"); //receiver
+
   //set ethernet annotation header
+  BRNPacketAnno::set_src_ether_anno(brn_p, EtherAddress()); //Set to everything, go through elements
+                                                            //which duplicates packet for each device
   BRNPacketAnno::set_dst_ether_anno(brn_p, bcast);
   BRNPacketAnno::set_ethertype_anno(brn_p, ETHERTYPE_BRN);
-//  brn_p->set_dst_ether_anno(bcast);
-
-  // set ns2 anno
-  //brn_p->set_user_anno_c(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
-  //brn_p->set_anno_u8(PACKET_TYPE_KEY_USER_ANNO, BRN_DSR_RREQ);
 
   output(0).push(brn_p); //vorher:0
 }
@@ -532,34 +526,35 @@ BRN2RouteQuerier::rreq_expire_hook()
         BRN_DEBUG("* unidirectionality test succeeded; forwarding route request.");
 //        forward_rreq(val.p);
         output(0).push(val.p); // forward packet to request forwarder, vorher:1
-	
-	// a) we cannot issue a unidirectionality test if there is an
-	// existing metric
-	//
-	// b) if, after we issue a test, this RREQ comes over a
-	// different link, with a valid metric, and we forward it,
-	// then we essentially cancel the unidirectionality test.
-	//
-	// so we know that if the test comes back positive we can just
-	// just calculate the route metric and call that best.
+
+// a) we cannot issue a unidirectionality test if there is an
+// existing metric
+//
+// b) if, after we issue a test, this RREQ comes over a
+// different link, with a valid metric, and we forward it,
+// then we essentially cancel the unidirectionality test.
+//
+// so we know that if the test comes back positive we can just
+// just calculate the route metric and call that best.
         // TODO think about DSRHop; why eth1 address?
 //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-//	req_route.push_back(BRN2RouteQuerierHop(*me_eth1, get_metric(last_eth)));
+// req_route.push_back(BRN2RouteQuerierHop(*me_eth1, get_metric(last_eth)));
 //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	val.best_metric = route_metric(req_route);
+
+        val.best_metric = route_metric(req_route);
 
         val.p = NULL;
       } else if ((status == BRN_DSR_BLACKLIST_UNI_PROBABLE) ||
-		 (diff_in_ms(curr_time, val._time_unidtest_issued) > BRN_DSR_BLACKLIST_UNITEST_TIMEOUT)) {
+                (diff_in_ms(curr_time, val._time_unidtest_issued) > BRN_DSR_BLACKLIST_UNITEST_TIMEOUT)) {
         BRN_DEBUG("* unidirectionality test failed; killing route request.");
-	val.p->kill();
-	val.p = NULL;
+        val.p->kill();
+        val.p = NULL;
       }
     }
 /*
-     click_chatter("i.key is %s %s %d %d\n", i.key()._src.unparse().c_str(), 
- 		  i.key()._target.unparse().c_str(), i.key()._id,
- 		  diff_in_ms(curr_time, i.value()._time_forwarded));
+      click_chatter("i.key is %s %s %d %d\n", i.key()._src.unparse().c_str(), 
+      i.key()._target.unparse().c_str(), i.key()._id,
+      diff_in_ms(curr_time, i.value()._time_forwarded));
 */
     if (diff_in_ms(curr_time, i.value()._time_forwarded) > BRN_DSR_RREQ_TIMEOUT) {
       EtherAddress src(i.key()._src);
@@ -622,17 +617,15 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
         int metric_of_route = -1;
         EtherAddresses route;
         EtherAddresses* fixed_route = fixed_routes.findp(EtherPair(dst, src));
-        if ( fixed_route && fixed_route->size() >= 2 && 
+        if ( fixed_route && fixed_route->size() >= 2 &&
           ((*fixed_route)[0] == dst) && ((*fixed_route)[fixed_route->size() - 1] == src) ) {
           BRN_DEBUG(" * Using fixed route.");
           route = *fixed_route;
           metric_of_route = 1;
         } else {
-	        _link_table->query_route( src, dst, route );
+         _link_table->query_route( src, dst, route );
           metric_of_route = _link_table->get_route_metric(route);
         }
-
-        
 
         if ( ( route.size() > 1 )  && ( metric_of_route != -1 ) ) { // route available
 
@@ -715,7 +708,7 @@ BRN2RouteQuerier::blacklist_timer_hook()
 
   for (BlacklistIter i = _blacklist.begin(); i.live(); i++) {
     if ((i.value()._status == BRN_DSR_BLACKLIST_UNI_PROBABLE) &&
-	(diff_in_ms(curr_time, i.value()._time_updated) > BRN_DSR_BLACKLIST_ENTRY_TIMEOUT)) {
+       (diff_in_ms(curr_time, i.value()._time_updated) > BRN_DSR_BLACKLIST_ENTRY_TIMEOUT)) {
 
       BlacklistEntry &e = i.value();
       BRN_DEBUG(" * downgrading blacklist entry for host %s", i.key().unparse().c_str());

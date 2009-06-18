@@ -25,7 +25,6 @@
 #include <click/element.hh>
 #include "elements/brn/common.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-//#include "brn2_brnencap.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_reqforwarder.hh"
@@ -109,9 +108,9 @@ public:
       case BRN_DSR_BLACKLIST_NOENTRY:
       case BRN_DSR_BLACKLIST_UNI_PROBABLE:
       case BRN_DSR_BLACKLIST_UNI_QUESTIONABLE:
-	break;
+        break;
       default: 
-	assert(0);
+        assert(0);
       }
     }
   };
@@ -252,7 +251,6 @@ public:
   BRN2NodeIdentity *_me;
   Brn2LinkTable *_link_table;
   BRN2DSREncap *_dsr_encap;
-//  BRN2Encap *_brn_encap;
   BRN2DSRDecap *_dsr_decap;
 
   SBMap _sendbuffer_map;
@@ -293,9 +291,9 @@ public:
 #ifndef FRHASHCODE
 inline unsigned int hashcode(const ForwardedReqKey &f) {
   return ((unsigned int)( // XXX is this reasonable?
-			 hashcode(f._src) ^
-			 hashcode(f._target) ^
-			 f._id));
+        hashcode(f._src) ^
+        hashcode(f._target) ^
+        f._id));
 }
 #endif
 
