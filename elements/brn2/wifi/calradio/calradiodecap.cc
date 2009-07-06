@@ -48,7 +48,7 @@ CalradioDecap::simple_action(Packet *p)
   eh->magic = WIFI_EXTRA_MAGIC;
 
   eh->rate = crh->rate;
-  eh->rssi = crh->rate;
+  eh->rssi = crh->rssi;
 
   q->pull(sizeof(struct calradio_header));
 
