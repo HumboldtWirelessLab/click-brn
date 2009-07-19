@@ -123,8 +123,30 @@ class Master { public:
     void lock_timers();
     bool attempt_lock_timers();
     void unlock_timers();
-    void timer_reheapify_from(int, Timer*, bool will_delete);
     inline void run_one_timer(Timer *);
+
+    void set_timer_expiry() {
+	if (_timer_heap.size())
+	    _timer_expiry = _timer_heap.at_u(0)->_expiry;
+	else
+	    _timer_expiry = Timestamp();
+    }
+    void check_timer_expiry(Timer *t);
+
+    struct timer_less {
+	bool operator()(Timer *a, Timer *b) {
+	    return a->expiry() < b->expiry();
+	}
+    };
+    struct timer_place {
+	Timer **_begin;
+	timer_place(Timer **begin)
+	    : _begin(begin) {
+	}
+	void operator()(Timer **t) {
+	    (*t)->_schedpos1 = (t - _begin) + 1;
+	}
+    };
 
 #if CLICK_USERLEVEL
     // SELECT
@@ -143,9 +165,13 @@ class Master { public:
     int _max_select_fd;
 # endif /* HAVE_POLL_H */
     Vector<struct pollfd> _pollfds;
-    Vector<Element*> _read_poll_elements;
-    Vector<Element*> _write_poll_elements;
+    Vector<Element *> _read_elements;
+    Vector<Element *> _write_elements;
+    Vector<int> _fd_to_pollfd;
     Spinlock _select_lock;
+# if HAVE_MULTITHREAD
+    click_processor_t _selecting_processor;
+# endif
     void remove_pollfd(int pi, int event);
 # if HAVE_SYS_EVENT_H && HAVE_KQUEUE
     void run_selects_kqueue(bool);

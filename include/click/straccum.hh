@@ -603,6 +603,11 @@ operator<<(StringAccum &sa, const StringAccum &sb)
     return sa;
 }
 
+inline void click_swap(StringAccum &a, StringAccum &b)
+{
+    a.swap(b);
+}
+
 #undef CLICK_SNPRINTF_ATTR
 CLICK_ENDDECLS
 #endif
