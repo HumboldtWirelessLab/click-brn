@@ -233,8 +233,10 @@ public:
       struct timeval since_start;
       timersub(&now, &start, &since_start);
 
-      uint32_t ms_since_start = MAX(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
-      uint32_t fake_tau = MIN(_tau, ms_since_start);
+//      uint32_t ms_since_start = MAX(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
+//      uint32_t fake_tau = MIN(_tau, ms_since_start);
+      uint32_t ms_since_start = max(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
+      uint32_t fake_tau = min(_tau, ms_since_start);
       assert(_probe_types.size());
       int num_expected = fake_tau / _period;
 
@@ -245,7 +247,8 @@ public:
 	     num_expected = 1;
       }
 
-      return MIN(100, 100 * num / num_expected);
+//      return MIN(100, 100 * num / num_expected);
+      return min(100, 100 * num / num_expected);
 
     }
   };
