@@ -234,6 +234,19 @@ public:
     }
   };
 
+  class HandlerInfo {
+   public:
+    void *_element;
+    int _protocol;
+    int (*_handler)(void *element, char *buffer, int size, bool direction);
+
+    HandlerInfo(void *element,int protocol, int (*handler)(void *element ,char *buffer, int size, bool direction)) {
+      _element = element;
+      _protocol = protocol;
+      _handler = handler;
+    }
+  };
+
 public:
   int _debug;
   // Per-sender map of received probes.
@@ -275,6 +288,8 @@ public:
   Timer _log_timeout_timer;
   int _log_interval; // in secs
 
+  Vector <HandlerInfo> _reg_handler;
+
  public:
   String bad_nodes();
   String read_bcast_stats(bool with_pos);
@@ -295,6 +310,9 @@ public:
 
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
+
+  int registerHandler(void *element, int protocolId, int (*handler)(void* element, char *buffer, int size, bool direction));
+  int deregisterHandler(int handler, int protocolId);
 
   void reset();
   void clear_stale();

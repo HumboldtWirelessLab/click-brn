@@ -415,6 +415,18 @@ BRN2LinkStat::send_probe()
     lp->_flags |= PROBE_AVAILABLE_RATES; // indicate that rates are available
   }
 
+  for ( int h = 0; h < _reg_handler.size(); h++ ) {
+    int res = _reg_handler[h]._handler(_reg_handler[h]._element, (char*)&(ptr[3]), (end-ptr), true);
+    if ( res >= 0 ) {
+      *ptr = _reg_handler[h]._protocol; ptr++;
+      uint16_t *s = (uint16_t *)ptr;
+      *s = htons(res);
+      ptr += 2 + res;
+    }
+  }
+
+  *ptr = 255; ptr++;
+
   int num_entries = 0;
   // iterate over my neighbor list and append link information to packet
   while (ptr < end && num_entries < _neighbors.size()) {
@@ -664,6 +676,22 @@ BRN2LinkStat::simple_action(Packet *p)
     }
   }
 
+  while ( *ptr != 255 ) {
+    uint8_t proto = *ptr; ptr++;
+    uint16_t *sp = (uint16_t*)ptr;
+    uint16_t s = ntohs(*sp);
+    ptr += 2;
+
+    for ( int h = 0; h < _reg_handler.size(); h++ ) {
+      if ( proto == _reg_handler[h]._protocol )
+        int res = _reg_handler[h]._handler(_reg_handler[h]._element, (char*)ptr, s, false);
+    }
+
+    ptr += s;
+  }
+
+  ptr++;
+
   int link_number = 0;
   // fetch link entries
   while (ptr < end 
@@ -877,6 +905,18 @@ BRN2LinkStat::run_log_timer()
   // reschedule
   _log_timeout_timer.schedule_after_msec(_log_interval);
 }
+
+int
+BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void *element, char *buffer, int size, bool direction)) {
+  _reg_handler.push_back(HandlerInfo(element, protocolId, handler));
+  return 0;
+}
+
+int
+BRN2LinkStat::deregisterHandler(int handler, int protocolId) {
+  return 0;
+}
+
 
 #include <click/bighashmap.cc>
 #include <click/vector.cc>
