@@ -6,7 +6,6 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 
 CLICK_DECLS
 
@@ -33,17 +32,27 @@ class LPRLinkProbeHandler : public Element {
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
 
+  String get_info();
+
  private:
+  void updateKnownHosts();
+  void updateLinksToMe();
   //
   //member
   //
 
-  Brn2LinkTable *_lt;
   BRN2LinkStat *_linkstat;
+  class BRN2ETXMetric *_etx_metric;
+
+  uint32_t _seq; //TODO: this just fakes a new seq-number for Linktable(ETX-etric). Try anotherway (check old seq,....) !!!
 
  public:
   int _debug;
 
+  Vector<EtherAddress> known_hosts;
+  unsigned char *known_links;
+  unsigned char *known_timestamps;
+  int max_hosts;
 };
 
 CLICK_ENDDECLS

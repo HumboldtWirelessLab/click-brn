@@ -29,7 +29,6 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "lprlinkprobehandler.hh"
 #include "lprprotocol.hh"
 
@@ -38,7 +37,8 @@
 CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
-  :  _debug(BrnLogger::DEFAULT)
+  : _etx_metric(0),
+    _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -50,8 +50,8 @@ int
 LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "LINKTABLE", cpkP+cpkM , cpElement, &_lt,
       "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+      "ETXMETRIC", cpkP , cpElement, &_etx_metric,
       cpEnd) < 0)
        return -1;
 
@@ -72,42 +72,59 @@ int
 LPRLinkProbeHandler::initialize(ErrorHandler *)
 {
   _linkstat->registerHandler(this,0,&handler);
+
+  max_hosts = 128;
+  known_links = new unsigned char[max_hosts * max_hosts];
+  memset(known_links, 0, max_hosts * max_hosts);
+  known_timestamps = new unsigned char[max_hosts];
+  memset(known_timestamps, 0, max_hosts);
+
+  known_hosts.push_back(EtherAddress(_linkstat->_me->getEtherAddress()->data()));
+
+  _seq = 0;
+
   return 0;
 }
 
 int
 LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
 {
-  Vector<EtherAddress> hosts;
   struct packed_link_header lprh;
   struct packed_link_info  lpri;
-  _linkstat->get_neighbors(&hosts);
 
-  unsigned char *addr = new unsigned char[(1 + hosts.size()) * 6];
-  unsigned char *links = new unsigned char[(1 + hosts.size()) * (1 + hosts.size())];
-  unsigned char *timestamp = new unsigned char[(1 + hosts.size())];
-  memset(links,0,hosts.size() * hosts.size());
+  updateKnownHosts();
+  updateLinksToMe();
 
-  click_chatter("Nodes: %d",hosts.size());
+  unsigned char *addr = new unsigned char[known_hosts.size() * 6];
+  unsigned char *links = new unsigned char[known_hosts.size() * known_hosts.size()];
+  unsigned char *timestamp = new unsigned char[known_hosts.size()];
+  memset(links, 0, known_hosts.size() * known_hosts.size());
+
+//  click_chatter("Nodes: %d",known_hosts.size());
 
   lprh._version = 0;
-  lprh._no_nodes = hosts.size() + 1;
+  lprh._no_nodes = known_hosts.size();
   lpri._header = &lprh;
   lpri._macs = (struct etheraddr *)addr;
   lpri._timestamp = timestamp;
   lpri._links = links;
 
-  memcpy((char*)(&addr[0]),_linkstat->_me->getEtherAddress()->data(),6);
+  for ( int h = 0; h < known_hosts.size(); h++ ) {
+    memcpy((char*)(&addr[h*6]), known_hosts[h].data(), 6);
+//    click_chatter("Add host: %s",known_hosts[h].s().c_str());
 
-  click_chatter("A: %s",_linkstat->_me->getEtherAddress()->s().c_str());
-  for ( int h = 0; h < hosts.size(); h++ ) {
-    memcpy((char*)(&addr[(h + 1)*6]),hosts[h].data(),6);
-    click_chatter("A: %s",hosts[h].s().c_str());
-    //get_host_metric_to_me(EtherAddress s)
-    //get_host_metric_from_me(EtherAddress s)
+    for ( int h2 = 0; h2 < known_hosts.size(); h2++ )
+      links[h*known_hosts.size() + h2] = known_links[h*max_hosts + h2];  //cop links to linksfield
+
+    timestamp[h] = known_timestamps[h];
   }
 
   int len = LPRProtocol::pack(&lpri, (unsigned char*)buffer, size);
+
+  if ( len == -1 ) {
+    len = 0;
+    click_chatter("To heavy");
+  }
 
   delete addr;
   delete links;
@@ -117,16 +134,160 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
   return len;
 }
 
+void
+LPRLinkProbeHandler::updateKnownHosts()
+{
+  Vector<EtherAddress> hosts;
+  int kh;
+
+  _linkstat->get_neighbors(&hosts);
+
+  for ( int nh = 0; nh < hosts.size(); nh++ ) {
+    for ( kh = 0; kh < known_hosts.size(); kh++ )
+      if ( known_hosts[kh] == hosts[nh] ) break;
+
+    if ( kh == known_hosts.size() ) known_hosts.push_back(EtherAddress(hosts[nh].data()));
+  }
+
+  hosts.clear();
+}
+
+void
+LPRLinkProbeHandler::updateLinksToMe()
+{
+  int kh;
+  bool linkChanges;
+
+  linkChanges = false;
+
+  for ( kh = 1; kh < known_hosts.size(); kh++ ) {
+    if ( known_links[kh] != ( _linkstat->get_rev_rate(&known_hosts[kh]) / 10 ) ) {
+      known_links[kh] = _linkstat->get_rev_rate(&known_hosts[kh]) / 10;
+
+      linkChanges = true;
+    }
+  }
+
+  if ( linkChanges ) known_timestamps[0]++;//no need for modulo; char will switch from 255 to 0
+
+}
+
 int
 LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 {
+  int kh;
+  EtherAddress ea;
+  struct packed_link_info  *lpri;
+  uint8_t *macs;
+
   click_chatter("Call receive %d",size);
+
+  lpri = LPRProtocol::unpack((unsigned char *)buffer, size);
+  macs = (uint8_t*)lpri->_macs;
+
+  /* Add the new hosts (got from received linkprobe) */
+  for ( int h = 0; h < lpri->_header->_no_nodes; h++ ) {
+    ea = EtherAddress(&(macs[h*6]));
+
+    for ( kh = 0; kh < known_hosts.size(); kh++ )
+      if ( known_hosts[kh] == ea ) break;
+
+    if ( kh == known_hosts.size() ) known_hosts.push_back(EtherAddress(&(macs[6*h])));
+  }
+
+  int kh1, kh2;
+
+  bool changes = false;
+  Vector<BrnRateSize> brs;
+  brs.push_back(BrnRateSize(2,1500)); //TODO: got real use value (linkstat)
+  Vector<int> fwd;
+  Vector<int> rev;
+
+  for ( int nh1 = 0; nh1 < lpri->_header->_no_nodes; nh1++ ) {
+
+    for ( kh1 = 0; kh1 < known_hosts.size(); kh1++ )
+      if ( memcmp(&(macs[6*nh1]), known_hosts[kh1].data(), 6) == 0 ) break;
+
+    if ( kh1 != known_hosts.size() ) {
+      if ( (lpri->_timestamp[nh1] > known_timestamps[kh1]) || (known_timestamps[kh1]-lpri->_timestamp[nh1] >100) ) {  //TODO: handle overrun ( now: diff > 100)
+
+        known_timestamps[kh1] = lpri->_timestamp[nh1];
+
+        for ( int nh2 = 0; nh2 < lpri->_header->_no_nodes; nh2++ ) {
+
+          for ( kh2 = 0; kh2 < known_hosts.size(); kh2++ )
+            if ( memcmp(&(macs[6*nh2]), known_hosts[kh2].data(), 6) == 0 ) break;
+
+          if ( kh2 != known_hosts.size() ) {
+
+            known_links[kh1 * max_hosts + kh2] = lpri->_links[nh1*lpri->_header->_no_nodes + nh2];
+
+            if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) &&
+                   ( memcmp(known_hosts[kh2].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) ) {
+
+              if ( _etx_metric && ( known_links[kh1 * max_hosts + kh2] != 0 ) && ( known_links[kh2 * max_hosts + kh1] != 0 ) ) {
+                fwd.push_back(10 * known_links[kh1 * max_hosts + kh2]);
+                rev.push_back(10 * known_links[kh2 * max_hosts + kh1]);
+
+                _etx_metric->update_link(known_hosts[kh1], known_hosts[kh2], brs, fwd, rev, _seq);
+
+                fwd.clear();
+                rev.clear();
+              }
+              changes = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if ( changes ) _seq++;
+  /* free the stuff */
+  delete lpri->_header;
+  delete lpri->_timestamp;
+  delete lpri->_macs;
+  delete lpri->_links;
+  delete lpri;
+
   return size;
 }
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
+
+String
+LPRLinkProbeHandler::get_info()
+{
+  StringAccum sa;
+  int kh;
+
+  sa << "Nodes: " << known_hosts.size() << "\n";
+
+  for( kh = 0; kh < known_hosts.size(); kh++ )
+    sa << known_hosts[kh].s() << "\t" << (int)known_timestamps[kh] << "\n";
+
+  sa << "Links: \n";
+
+  for ( kh = 0; kh < known_hosts.size(); kh++ ) {
+    for ( int kh2 = 0; kh2 < known_hosts.size(); kh2++ )
+      sa << (int)known_links[kh * max_hosts + kh2] << " ";
+
+    sa << "\n";
+  }
+
+  return sa.take_string();
+}
+
+static String
+read_table_param(Element *e, void *)
+{
+  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+
+  return fl->get_info();
+}
+
 
 static String
 read_debug_param(Element *e, void *)
@@ -151,6 +312,7 @@ void
 LPRLinkProbeHandler::add_handlers()
 {
   add_read_handler("debug", read_debug_param, 0);
+  add_read_handler("table", read_table_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
 

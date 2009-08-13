@@ -314,6 +314,8 @@ public:
   int registerHandler(void *element, int protocolId, int (*handler)(void* element, char *buffer, int size, bool direction));
   int deregisterHandler(int handler, int protocolId);
 
+  int get_rev_rate(EtherAddress *ea);
+
   void reset();
   void clear_stale();
   Packet *simple_action(Packet *);

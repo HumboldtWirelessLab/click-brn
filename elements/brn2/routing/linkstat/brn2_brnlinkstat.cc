@@ -914,9 +914,21 @@ BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void
 
 int
 BRN2LinkStat::deregisterHandler(int handler, int protocolId) {
+  //TODO
   return 0;
 }
 
+int
+BRN2LinkStat::get_rev_rate(EtherAddress *ea)
+{
+  probe_list_t *probe = _bcast_stats.findp(*ea);
+
+  if ( ! probe )  return 0;
+
+  BrnRateSize rs = probe->_probe_types[0];
+
+  return ( probe->rev_rate(_start, rs._rate, rs._size) ); // reverse delivery ratio
+}
 
 #include <click/bighashmap.cc>
 #include <click/vector.cc>

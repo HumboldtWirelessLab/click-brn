@@ -49,7 +49,7 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
   }
 
   len = (bitLen + 7) / 8;
-  if ( len > p_len ) return 0;
+  if ( len > p_len ) return -1;
 
   memset(packet,0,len);
   memcpy(packet, info->_header, sizeof(struct packed_link_header));
