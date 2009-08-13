@@ -38,6 +38,9 @@ class LPRProtocol : public Element { public:
   static int pack(struct packed_link_info *info, unsigned char *packet, int p_len);
   static struct packed_link_info *unpack(unsigned char *packet, int p_len);
 
+  static int pack2(struct packed_link_info *info, unsigned char *packet, int p_len);
+  static struct packed_link_info *unpack2(unsigned char *packet, int p_len);
+
 };
 
 CLICK_ENDDECLS

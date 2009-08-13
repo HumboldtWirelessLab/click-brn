@@ -119,7 +119,7 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
     timestamp[h] = known_timestamps[h];
   }
 
-  int len = LPRProtocol::pack(&lpri, (unsigned char*)buffer, size);
+  int len = LPRProtocol::pack2(&lpri, (unsigned char*)buffer, size);
 
   if ( len == -1 ) {
     len = 0;
@@ -130,7 +130,7 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
   delete links;
   delete timestamp;
 
-  click_chatter("Call send: %d",len);
+//  click_chatter("Call send: %d",len);
   return len;
 }
 
@@ -180,9 +180,9 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   struct packed_link_info  *lpri;
   uint8_t *macs;
 
-  click_chatter("Call receive %d",size);
+//click_chatter("Call receive %d",size);
 
-  lpri = LPRProtocol::unpack((unsigned char *)buffer, size);
+  lpri = LPRProtocol::unpack2((unsigned char *)buffer, size);
   macs = (uint8_t*)lpri->_macs;
 
   /* Add the new hosts (got from received linkprobe) */
