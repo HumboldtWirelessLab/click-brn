@@ -33,7 +33,7 @@
 #include <clicknet/ether.h>
 #include "elements/brn/analysis/brnavgcnt.hh"
 #include "elements/brn/dht/falcondht.hh"
-#include "elements/brn2/routing/correlation/brncansel.hh"
+#include "elements/brn2/routing/linkstat/rxcorrelation/brncansel.hh"
 
 CLICK_DECLS
 
