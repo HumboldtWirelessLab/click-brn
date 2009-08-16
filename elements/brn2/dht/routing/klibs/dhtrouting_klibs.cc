@@ -85,9 +85,22 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+static int
+handler(void *element, char *buffer, int size, bool direction)
+{
+  DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
+/*  if ( direction )
+    return lph->lpSendHandler(buffer, size);
+  else
+    return lph->lpReceiveHandler(buffer, size);*/
+}
+
 int
 DHTRoutingKlibs::initialize(ErrorHandler *)
 {
+  if ( _linkstat )
+    _linkstat->registerHandler(this,0,&handler);
+
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( click_random() % _start_time );
   _packet_buffer_timer.initialize(this);

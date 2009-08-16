@@ -73,9 +73,22 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+static int
+handler(void *element, char *buffer, int size, bool direction)
+{
+  DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
+/*  if ( direction )
+  return lph->lpSendHandler(buffer, size);
+  else
+  return lph->lpReceiveHandler(buffer, size);*/
+}
+
 int
 DHTRoutingOmni::initialize(ErrorHandler *)
 {
+  if ( _linkstat )
+    _linkstat->registerHandler(this,0,&handler);
+
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( 5000 + _update_interval );
   _packet_buffer_timer.initialize(this);
