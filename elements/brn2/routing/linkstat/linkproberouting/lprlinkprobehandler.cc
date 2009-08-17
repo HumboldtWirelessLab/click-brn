@@ -59,7 +59,7 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, char *buffer, int size, bool direction)
+handler(void *element, EtherAddress *ea, char *buffer, int size, bool direction)
 {
   LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
   if ( direction )

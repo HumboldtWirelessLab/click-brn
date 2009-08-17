@@ -238,9 +238,9 @@ public:
    public:
     void *_element;
     int _protocol;
-    int (*_handler)(void *element, char *buffer, int size, bool direction);
+    int (*_handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction);
 
-    HandlerInfo(void *element,int protocol, int (*handler)(void *element ,char *buffer, int size, bool direction)) {
+    HandlerInfo(void *element,int protocol, int (*handler)(void *element , EtherAddress *ea, char *buffer, int size, bool direction)) {
       _element = element;
       _protocol = protocol;
       _handler = handler;
@@ -311,7 +311,7 @@ public:
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
 
-  int registerHandler(void *element, int protocolId, int (*handler)(void* element, char *buffer, int size, bool direction));
+  int registerHandler(void *element, int protocolId, int (*handler)(void* element, EtherAddress *src, char *buffer, int size, bool direction));
   int deregisterHandler(int handler, int protocolId);
 
   int get_rev_rate(EtherAddress *ea);

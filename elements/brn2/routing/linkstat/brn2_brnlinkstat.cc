@@ -416,7 +416,7 @@ BRN2LinkStat::send_probe()
   }
 
   for ( int h = 0; h < _reg_handler.size(); h++ ) {
-    int res = _reg_handler[h]._handler(_reg_handler[h]._element, (char*)&(ptr[3]), (end-ptr), true);
+    int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (end-ptr), true);
     if ( res >= 0 ) {
       *ptr = _reg_handler[h]._protocol; ptr++;
       uint16_t *s = (uint16_t *)ptr;
@@ -538,6 +538,7 @@ BRN2LinkStat::simple_action(Packet *p)
   click_ether *eh = (click_ether *) p->ether_header();
   click_brn *brn = (click_brn *) p->data();
 
+  EtherAddress src_ea = EtherAddress(eh->ether_shost);
   unsigned min_sz = sizeof(click_brn) + sizeof(link_probe);
   if (p->length() < min_sz) {
     BRN_ERROR("packet is too small");
@@ -684,7 +685,7 @@ BRN2LinkStat::simple_action(Packet *p)
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
       if ( proto == _reg_handler[h]._protocol )
-        int res = _reg_handler[h]._handler(_reg_handler[h]._element, (char*)ptr, s, false);
+        int res = _reg_handler[h]._handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s, false);
     }
 
     ptr += s;
@@ -907,7 +908,7 @@ BRN2LinkStat::run_log_timer()
 }
 
 int
-BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void *element, char *buffer, int size, bool direction)) {
+BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction)) {
   _reg_handler.push_back(HandlerInfo(element, protocolId, handler));
   return 0;
 }
