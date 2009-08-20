@@ -1,163 +1,67 @@
-// Lempel-Ziv-Welch codec
-// ----------------------
-// This program is released under the GPL license.
-// -----------------------------------------------
-
 #ifndef LEMPEL_ZIV_WELCH_HH
 #define LEMPEL_ZIV_WELCH_HH
 
 #include <click/vector.hh>
-#include "elements/brn2/standard/bitfield/bitfieldstreamarray.hh"
 
 CLICK_DECLS
 
-class LZWCodec
+#define MAGIC_1     (0x1f)    /* from GNU/Linux version */
+#define MAGIC_2     (0x9D)    /* from GNU/Linux version */
+#define FIRST       (257)     /* from GNU/Linux version */
+#define BIT_MASK    (0x1f)    /* from GNU/Linux version */
+#define BLOCK_MODE  (0x80)    /* from GNU/Linux version */
+
+#define BITS 12                   /* Setting the number of bits to 12, 13*/
+#define HASHING_SHIFT (BITS-8)    /* or 14 affects several constants.    */
+#define MAX_VALUE (1 << BITS) - 1 /* Note that MS-DOS machines need to   */
+#define MAX_CODE MAX_VALUE - 1    /* compile their code in large model if*/
+             /* 14 bits are selected.               */
+#if BITS == 14
+#define TABLE_SIZE 18041        /* The string table size needs to be a */
+#endif                            /* prime number that is somewhat larger*/
+#if BITS == 13                    /* than 2**BITS.                       */
+#define TABLE_SIZE 9029
+#endif
+#if BITS <= 12
+#define TABLE_SIZE 5021
+#endif
+
+class LZW
 {
- public:
-
-  // The string element:
-  class CodeString
-  {
-   public:
-    unsigned prefixIndex;
-    // First CodeString using this CodeString as prefix:
-    unsigned first;
-    // Next CodeStrings using the same prefixIndex as this one:
-    unsigned nextLeft, nextRight;
-
-    unsigned char k;
-
-    CodeString(unsigned char newByte = 0, unsigned pI = ~0U):
-               prefixIndex(pI), first(~0U),
-               nextLeft(~0U), nextRight(~0U),
-               k(newByte) {}
-   };
-
-  class Dictionary
-  {
-    //Vector<CodeString> table;
-    CodeString *table;
-    unsigned codeStart, newCodeStringIndex;
-    Vector<unsigned char> decodedString;
-
-      // Returns ~0U if c didn't already exist, else the index to the
-      // existing CodeString:
-    unsigned add(CodeString& c)
-    {
-      if(c.prefixIndex == ~0U) return c.k;
-
-      unsigned index = table[c.prefixIndex].first;
-      if(index == ~0U)
-        table[c.prefixIndex].first = newCodeStringIndex;
-      else
-      {
-        while(true)
-        {
-          if(c.k == table[index].k) return index;
-          if(c.k < table[index].k)
-          {
-            const unsigned next = table[index].nextLeft;
-            if(next == ~0U)
-            {
-              table[index].nextLeft = newCodeStringIndex;
-              break;
-            }
-            index = next;
-          }
-          else
-          {
-            const unsigned next = table[index].nextRight;
-            if(next == ~0U)
-            {
-              table[index].nextRight = newCodeStringIndex;
-              break;
-            }
-            index = next;
-          }
-        }
-      }
-      table[newCodeStringIndex++] = c;
-
-      return ~0U;
-    }
-
-    void fillDecodedString(unsigned code)
-    {
-      decodedString.clear();
-      while(code != ~0U)
-      {
-        const CodeString& cs = table[code];
-        decodedString.push_back(cs.k);
-        code = cs.prefixIndex;
-      }
-    }
-
-
-   public:
-    Dictionary(unsigned maxBits, unsigned _codeStart):
-//      table(1<<maxBits),
-      codeStart(_codeStart), newCodeStringIndex(_codeStart)
-    {
-      table = new CodeString[1<<maxBits];
-      for(unsigned i = 0; i < codeStart; ++i)
-        table[i].k = i;
-    }
-
-    ~Dictionary() {
-      delete table;
-    }
-
-    bool searchCodeString(CodeString& c)
-    {
-      unsigned index = add(c);
-      if(index != ~0U)
-      {
-        c.prefixIndex = index;
-        return true;
-      }
-      return false;
-    }
-
-    void decode(unsigned oldCode, unsigned code, BitfieldStreamArray *outStream, const unsigned char* byteMap)
-    {
-      const bool exists = code < newCodeStringIndex;
-
-      if (exists) fillDecodedString(code);
-      else fillDecodedString(oldCode);
-
-      for(size_t i = decodedString.size(); i > 0;)
-        outStream->writeBits(byteMap[decodedString[--i]],8);
-
-      if (!exists) outStream->writeBits(byteMap[decodedString.back()],8);
-
-      table[newCodeStringIndex].prefixIndex = oldCode;
-      table[newCodeStringIndex++].k = decodedString.back();
-    }
-
-    unsigned size() const { return newCodeStringIndex; }
-
-    void reset()
-    {
-      newCodeStringIndex = codeStart;
-      for(unsigned i = 0; i < codeStart; ++i)
-        table[i] = CodeString(i);
-    }
-  };
-
  public:
 
    // The encoder will test all max bitsizes from maxBits1 to maxBits2
     // if maxBits1 < maxBits2. In order to specify only one max bitsize
     // leave maxBits2 to 0.
-    LZWCodec(unsigned maxBits1=16, unsigned maxBits2=0, bool verbose=false, bool printTime = false);
-    ~LZWCodec();
+  LZW();
+  ~LZW();
 
-    int encode(unsigned char *input, int inputlen, unsigned char *encoded, int max_encodedlen);
-    int decode(unsigned char *encoded, int encodedlen, unsigned char *decoded, int max_decodedlen);
+  int encode(unsigned char *input, int inputlen, unsigned char *encoded, int max_encodedlen);
+  int decode(unsigned char *encoded, int encodedlen, unsigned char *decoded, int max_decodedlen);
 
  private:
-    bool verbose, printTime;
-    unsigned maxBits1, maxBits2;
+
+  void reset_tables();
+  int find_match(unsigned int hash_prefix, unsigned int hash_character);
+  unsigned char *decode_string(unsigned char *buffer,unsigned int code);
+  unsigned int mask(const int n_bits);
+  unsigned int input_code_gnu(unsigned char *input, int *pos, int inputlen, const int n_bits);
+  void output_code_gnu(unsigned char *output, int *pos, unsigned int code, const int n_bits);
+  unsigned int input_code(unsigned char *input, int *pos, int inputlen);
+  void output_code(unsigned char *output, int *pos, unsigned int code);
+
+  int *code_value;                  /* This is the code value array        */
+  unsigned int *prefix_code;        /* This array holds the prefix codes   */
+  unsigned char *append_character;  /* This array holds the appended chars */
+  unsigned char decode_stack[4000]; /* This array holds the decoded string */
+
+  unsigned int b_mask;
+  int n_bits_prev;
+  int input_bit_count;
+  unsigned long input_bit_buffer;
+  int output_bit_count;
+  unsigned long output_bit_buffer;
+
 };
 
 CLICK_ENDDECLS
