@@ -32,6 +32,8 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
   int invalidNode;
   int bitLen,len,links, pindex,b;
 
+  Bitfield bitfield(packet,p_len);
+
   bitsPerNode = calcNoBits(info->_header->_no_nodes);
   invalidNode = (1 << bitsPerNode) - 1;
   bitsPerTS = 8;
@@ -60,20 +62,20 @@ LPRProtocol::pack(struct packed_link_info *info, unsigned char *packet, int p_le
   pindex *= 8; //switch to bitarray
 
   for ( b = 0; b < info->_header->_no_nodes ; b++) {
-    setValue(packet, pindex, pindex + bitsPerTS - 1, info->_timestamp[b]);
+    bitfield.setValue(pindex, pindex + bitsPerTS - 1, info->_timestamp[b]);
     pindex += bitsPerTS;
   }
 
   for ( int i = 0; i < info->_header->_no_nodes; i++ ) {
     for ( int j = 0; j < info->_header->_no_nodes; j++ ) {
       if ( info->_links[i * info->_header->_no_nodes + j] != 0 ) {
-        setValue(packet, pindex, pindex + bitsPerNode - 1, j);
+        bitfield.setValue(pindex, pindex + bitsPerNode - 1, j);
         pindex += bitsPerNode;
-        setValue(packet, pindex, pindex + bitsPerLink - 1, info->_links[i * info->_header->_no_nodes + j]);
+        bitfield.setValue(pindex, pindex + bitsPerLink - 1, info->_links[i * info->_header->_no_nodes + j]);
         pindex += bitsPerLink;
       }
     }
-    setValue(packet, pindex, pindex + bitsPerNode - 1, invalidNode );
+    bitfield.setValue(pindex, pindex + bitsPerNode - 1, invalidNode );
     pindex += bitsPerNode;
   }
 
@@ -89,6 +91,7 @@ LPRProtocol::unpack(unsigned char *packet, int p_len) {
   int b;
   int pindex = 0;
   int ac_node, pair_node, pair_metric;
+  Bitfield bitfield(packet,p_len);
 
   memcpy(plh, packet, sizeof(struct packed_link_header));
   pli->_header = plh;
@@ -109,7 +112,7 @@ LPRProtocol::unpack(unsigned char *packet, int p_len) {
   memset(pli->_timestamp,0,pli->_header->_no_nodes);
 
   for ( b = 0; b < pli->_header->_no_nodes ; b++) {
-    pli->_timestamp[b] = getValue(packet, pindex, pindex + bitsPerTS - 1);
+    pli->_timestamp[b] = bitfield.getValue(pindex, pindex + bitsPerTS - 1);
     pindex += bitsPerTS;
   }
 
@@ -117,10 +120,10 @@ LPRProtocol::unpack(unsigned char *packet, int p_len) {
   memset(pli->_links, 0, pli->_header->_no_nodes * pli->_header->_no_nodes);
 
   for ( ac_node = 0; ac_node < pli->_header->_no_nodes; ac_node++ ) {
-    while ( getValue(packet, pindex, pindex + bitsPerNode - 1) != invalidNode ) {
-      pair_node = getValue(packet, pindex, pindex + bitsPerNode - 1);
+    while ( bitfield.getValue(pindex, pindex + bitsPerNode - 1) != invalidNode ) {
+      pair_node = bitfield.getValue(pindex, pindex + bitsPerNode - 1);
       pindex+=bitsPerNode;
-      pair_metric = getValue(packet, pindex, pindex + bitsPerLink - 1);
+      pair_metric = bitfield.getValue(pindex, pindex + bitsPerLink - 1);
       pindex+=bitsPerLink;
       pli->_links[ac_node * pli->_header->_no_nodes + pair_node] = (unsigned char)pair_metric;
     }
@@ -137,6 +140,8 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   int invalidNode;
   int bitLen,len,links, doubleLinks, pindex,b;
   int overallLink;
+
+  Bitfield bitfield(packet,p_len);
 
   bitsPerNode = calcNoBits(info->_header->_no_nodes);
   invalidNode = (1 << bitsPerNode) - 1;
@@ -174,22 +179,22 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   pindex *= 8; //switch to bitarray
 
   for ( b = 0; b < info->_header->_no_nodes ; b++) {
-    setValue(packet, pindex, pindex + bitsPerTS - 1, info->_timestamp[b]);
+    bitfield.setValue(pindex, pindex + bitsPerTS - 1, info->_timestamp[b]);
     pindex += bitsPerTS;
   }
 
   for ( int i = 0; i < info->_header->_no_nodes; i++ ) {
     for ( int j = 0; j < info->_header->_no_nodes; j++ ) {
       if ( ( info->_links[i * info->_header->_no_nodes + j] != 0 ) && ( ( i < j ) || ( info->_links[j * info->_header->_no_nodes + i] == 0 ) ) ) {
-        setValue(packet, pindex, pindex + bitsPerNode - 1, j);
+        bitfield.setValue(pindex, pindex + bitsPerNode - 1, j);
         pindex += bitsPerNode;
         overallLink = info->_links[i * info->_header->_no_nodes + j];
         overallLink = ( 11 * overallLink ) + (int)(info->_links[j * info->_header->_no_nodes + i]);
-        setValue(packet, pindex, pindex + bitsPerDoubleLink - 1, overallLink);
+        bitfield.setValue(pindex, pindex + bitsPerDoubleLink - 1, overallLink);
         pindex += bitsPerDoubleLink;
       }
     }
-    setValue(packet, pindex, pindex + bitsPerNode - 1, invalidNode );
+    bitfield.setValue(pindex, pindex + bitsPerNode - 1, invalidNode );
     pindex += bitsPerNode;
   }
 
@@ -205,6 +210,8 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   int b;
   int pindex = 0;
   int ac_node, pair_node, pair_metric;
+
+  Bitfield bitfield(packet,p_len);
 
   memcpy(plh, packet, sizeof(struct packed_link_header));
   pli->_header = plh;
@@ -226,7 +233,7 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   memset(pli->_timestamp,0,pli->_header->_no_nodes);
 
   for ( b = 0; b < pli->_header->_no_nodes ; b++) {
-    pli->_timestamp[b] = getValue(packet, pindex, pindex + bitsPerTS - 1);
+    pli->_timestamp[b] = bitfield.getValue(pindex, pindex + bitsPerTS - 1);
     pindex += bitsPerTS;
   }
 
@@ -234,10 +241,10 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   memset(pli->_links, 0, pli->_header->_no_nodes * pli->_header->_no_nodes);
 
   for ( ac_node = 0; ac_node < pli->_header->_no_nodes; ac_node++ ) {
-    while ( getValue(packet, pindex, pindex + bitsPerNode - 1) != invalidNode ) {
-      pair_node = getValue(packet, pindex, pindex + bitsPerNode - 1);
+    while ( bitfield.getValue(pindex, pindex + bitsPerNode - 1) != invalidNode ) {
+      pair_node = bitfield.getValue(pindex, pindex + bitsPerNode - 1);
       pindex+=bitsPerNode;
-      pair_metric = getValue(packet, pindex, pindex + bitsPerDoubleLink - 1);
+      pair_metric = bitfield.getValue(pindex, pindex + bitsPerDoubleLink - 1);
       pindex+=bitsPerDoubleLink;
       pli->_links[ac_node * pli->_header->_no_nodes + pair_node] = (unsigned char)pair_metric / 11;
       pli->_links[pair_node * pli->_header->_no_nodes + ac_node] = (unsigned char)pair_metric % 11;
