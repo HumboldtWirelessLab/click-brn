@@ -29,10 +29,12 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "lprlinkprobehandler.hh"
-#include "lprprotocol.hh"
 #include "elements/brn2/standard/compression/lzw.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "lprlinkprobehandler.hh"
+#include "lprprotocol.hh"
+
 
 CLICK_DECLS
 
@@ -103,7 +105,7 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
 //  click_chatter("Nodes: %d",known_hosts.size());
 
-  lprh._version = 0;
+  lprh._version = VERSION_BASE_MAC_LZW;
   lprh._no_nodes = known_hosts.size();
   lpri._header = &lprh;
   lpri._macs = (struct etheraddr *)addr;
@@ -131,7 +133,7 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
   delete links;
   delete timestamp;
 
-//  click_chatter("Call send: %d",len);
+  click_chatter("Call send: %d space: %d",len,size);
   return len;
 }
 

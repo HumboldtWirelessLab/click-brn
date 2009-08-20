@@ -7,6 +7,9 @@
 
 CLICK_DECLS
 
+#define VERSION_BASE         0
+#define VERSION_BASE_MAC_LZW 1
+
 struct packed_link_header {
   unsigned char _version:4;
   unsigned char _reserved:4;

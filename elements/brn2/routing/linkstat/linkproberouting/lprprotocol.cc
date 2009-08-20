@@ -4,7 +4,7 @@
 #include <click/packet_anno.hh>
 #include "lprprotocol.hh"
 #include "elements/brn2/standard/bitfield/bitfield.hh"
-
+#include "elements/brn2/standard/compression/lzw.hh"
 
 CLICK_DECLS
 
@@ -141,6 +141,9 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   int bitLen,len,links, doubleLinks, pindex,b;
   int overallLink;
 
+  LZW lzw;
+  int lzwsize;
+
   Bitfield bitfield(packet,p_len);
 
   bitsPerNode = calcNoBits(info->_header->_no_nodes);
@@ -168,13 +171,30 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   bitLen += (doubleLinks / 2) * (bitsPerNode + bitsPerDoubleLink);  //Src + link
 
   len = (bitLen + 7) / 8;
-  if ( len > p_len ) return -1;
+  //if ( len > p_len ) return -1;
 
-  memset(packet,0,len);
+  //memset(packet,0,len);
+  memset(packet,0,p_len);
   memcpy(packet, info->_header, sizeof(struct packed_link_header));
   pindex = sizeof(struct packed_link_header);
-  memcpy(&(packet[pindex]), info->_macs, 6 * info->_header->_no_nodes );
-  pindex += 6 * info->_header->_no_nodes;
+
+  if ( info->_header->_version == VERSION_BASE_MAC_LZW )
+    lzwsize = lzw.encode( (unsigned char*)info->_macs, 6 * info->_header->_no_nodes, &(packet[pindex + 2]), (p_len-pindex)-2 );
+
+  //TODO: reorder for mor performance
+  if ( ( info->_header->_version == VERSION_BASE ) ||
+         ( ( lzwsize + 2 ) >= 6 * info->_header->_no_nodes ) ) {
+    memcpy(&(packet[pindex]), info->_macs, 6 * info->_header->_no_nodes );
+    pindex += 6 * info->_header->_no_nodes;
+    info->_header->_version = VERSION_BASE;
+    memcpy(packet, info->_header, sizeof(struct packed_link_header));
+  } else {
+    packet[pindex] = lzwsize / 256;
+    packet[pindex + 1] = lzwsize % 256;
+    pindex += lzwsize + 2;
+  }
+
+  click_chatter("PackSize: %d %d",lzwsize,6 * info->_header->_no_nodes);
 
   pindex *= 8; //switch to bitarray
 
@@ -212,6 +232,9 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   int ac_node, pair_node, pair_metric;
 
   Bitfield bitfield(packet,p_len);
+  LZW lzw;
+  int lzwsize;
+  int lzwsizecomp;
 
   memcpy(plh, packet, sizeof(struct packed_link_header));
   pli->_header = plh;
@@ -224,8 +247,19 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   bitsPerDoubleLink = 7;
 
   pli->_macs = new struct etheraddr[pli->_header->_no_nodes];
-  memcpy(pli->_macs, &(packet[pindex]), 6 * pli->_header->_no_nodes);
-  pindex += 6 * pli->_header->_no_nodes;
+
+  if ( pli->_header->_version == VERSION_BASE_MAC_LZW ) {
+    lzwsizecomp = packet[pindex] * 256;
+    lzwsizecomp += packet[pindex + 1];
+
+    lzwsize = lzw.decode(&(packet[pindex + 2]), lzwsizecomp, (unsigned char*)pli->_macs, 6*pli->_header->_no_nodes );
+    pindex += lzwsizecomp + 2;
+//    click_chatter("Size: %d %d",lzwsize,lzwsizecomp);
+    assert( lzwsize == (6 * pli->_header->_no_nodes));
+  } else {
+    memcpy(pli->_macs, &(packet[pindex]), 6 * pli->_header->_no_nodes);
+    pindex += 6 * pli->_header->_no_nodes;
+  }
 
   pindex *= 8; //switch to bitarray
 
