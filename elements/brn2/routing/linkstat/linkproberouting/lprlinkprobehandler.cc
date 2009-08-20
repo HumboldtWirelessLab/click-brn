@@ -32,9 +32,6 @@
 #include "lprlinkprobehandler.hh"
 #include "lprprotocol.hh"
 #include "elements/brn2/standard/compression/lzw.hh"
-#include "elements/brn2/standard/compression/lzw2.hh"
-
-
 
 CLICK_DECLS
 
@@ -95,33 +92,6 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
   struct packed_link_header lprh;
   struct packed_link_info  lpri;
 
-  unsigned char foo[600];
-  unsigned char bar[3000];
-  unsigned char zet[600];
-
-  int resultsize,resultsize2;
-  int inlen = (click_random() % 500) + 1;
-
-  inlen = 128;
-  memset(foo,0,600);
-  memset(bar,0,3000);
-  memset(zet,0,600);
-
-//  for( int h = 0; h < inlen; h++ ) {
-//    foo[h] = click_random() % 256;
-//  }
-
-  LZWCodec2 lzw;
-  LZWCodec2 lzw2;
-
-  resultsize = lzw.encode(foo,inlen,bar,3000);
-  resultsize2 = lzw2.decode(bar,resultsize,zet,600);
-
-  click_chatter("Res: %d Res2: %d",resultsize,resultsize2);
-
-  click_chatter("Memcmp: %d %d ( %d %d )",(inlen == resultsize2),  memcmp(foo,zet,inlen), inlen,resultsize2);
-
-  if ((inlen != resultsize2) || (memcmp(foo,zet,inlen) != 0 ) ) click_chatter("ERROR");
   updateKnownHosts();
   updateLinksToMe();
 
