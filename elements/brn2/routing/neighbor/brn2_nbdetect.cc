@@ -24,12 +24,13 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
 #include "brn2_nbdetect.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
 CLICK_DECLS
 
 NeighborDetect::NeighborDetect()

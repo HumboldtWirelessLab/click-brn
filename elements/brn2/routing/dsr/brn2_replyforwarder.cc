@@ -29,12 +29,15 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "brn2_dsrprotocol.hh"
 #include "brn2_replyforwarder.hh"
+
 
 CLICK_DECLS
 
 BRN2ReplyForwarder::BRN2ReplyForwarder()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
     _me(),
     _dsr_encap(),
     _dsr_decap(),
@@ -166,7 +169,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     // extract the reply route..  convert to node IDs and add to the
     // link cache
-    RouteQuerierRoute reply_route;
+    BRN2RouteQuerierRoute reply_route;
 
     _dsr_decap->extract_reply_route(p_in, reply_route);
 
@@ -234,7 +237,7 @@ BRN2ReplyForwarder::forward_rrep(Packet * p_in)
 }
 
 void
-BRN2ReplyForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
+BRN2ReplyForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
 {
   for (int i = 0; i < route.size() - 1; i++) {
     EtherAddress ether1 = route[i].ether();

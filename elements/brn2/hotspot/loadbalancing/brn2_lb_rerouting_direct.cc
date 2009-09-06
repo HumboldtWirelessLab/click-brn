@@ -21,7 +21,6 @@
 
 #include <click/config.h>
 #include <click/confparse.hh>
-#include "elements/brn/common.hh"
 
 #include "brn2_lb_rerouting_direct.hh"
 

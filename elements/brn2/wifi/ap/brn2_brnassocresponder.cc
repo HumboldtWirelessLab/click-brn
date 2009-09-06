@@ -30,8 +30,9 @@
 #include "brn2_brnassocresponder.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
-#include "../../../brn/vlan/vlantable.hh"
-#include "elements/brn/common.hh"
+#include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ class DelayedResponse { public:
 ////////////////////////////////////////////////////////////////////////////////
 
 BRN2AssocResponder::BRN2AssocResponder() :
-  _debug(BrnLogger::DEFAULT),
+  _debug(Brn2Logger::DEFAULT),
   _response_delay_ms(0),
   _response_timer(static_response_timer_hook, this),
   _assoc_list(NULL),

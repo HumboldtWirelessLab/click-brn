@@ -27,15 +27,13 @@
 #include <click/bighashmap.hh>
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
-#include "elements/brn/common.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn/routing/brnroutecache.hh"
+#include "elements/brn2/routing/routecache/brn2routecache.hh"
 
 CLICK_DECLS
-
 /*
  * =c
- * Brn2LinkTable(Ethernet Address, [STALE timeout])
+ * BrnLinkTable(Ethernet Address, [STALE timeout])
  * =s BRN
  * Keeps a Link state database and calculates Weighted Shortest Path 
  * for other elements
@@ -43,6 +41,46 @@ CLICK_DECLS
  * Runs dijkstra's algorithm occasionally.
  *
  */
+
+/*
+ * Represents a tupel pair in the link table.
+ */
+class EthernetPair {
+
+  public:
+    //
+  //member
+    //
+    EtherAddress _to;
+    EtherAddress _from;
+
+    //
+  //methods
+    //
+    EthernetPair() : _to(), _from() { }
+
+    EthernetPair(EtherAddress from, EtherAddress to) {
+      _to = to;
+      _from = from;
+    }
+
+    bool contains(EtherAddress foo) {
+      return ((foo == _to) || (foo == _from));
+    }
+    bool other(EtherAddress foo) { return ((_to == foo) ? _from : _to); }
+
+    inline bool
+        operator==(EthernetPair other)
+    {
+      return (other._to == _to && other._from == _from);
+    }
+};
+
+inline unsigned
+    hashcode(EthernetPair p)
+{
+  return hashcode(p._to) + hashcode(p._from);
+}
 
 /*
  * Represents a link table storing {@link BrnLink} links.
@@ -304,7 +342,7 @@ private:
   bool _sim_mode;
   int _const_metric;
 
-  BrnRouteCache *_brn_routecache;
+  Brn2RouteCache *_brn_routecache;
 };
 
 inline void 

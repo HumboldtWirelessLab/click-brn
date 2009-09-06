@@ -36,7 +36,7 @@
 #include <elements/wifi/station/openauthrequester.hh>
 #include <elements/wifi/station/associationrequester.hh>
 #include <click/timestamp.hh>
-#include "elements/brn/nodeidentity.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2beaconscanner.hh"
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"

@@ -37,14 +37,11 @@
 
 #include "batmanoriginatorsource.hh"
 
-#include "elements/brn/common.hh"
-
-
 CLICK_DECLS
 
 BatmanOriginatorSource::BatmanOriginatorSource()
   :  _send_timer(static_send_timer_hook,this),
-     _debug(BrnLogger::DEFAULT)
+     _debug(/*BrnLogger::DEFAULT*/0)
 {
 }
 

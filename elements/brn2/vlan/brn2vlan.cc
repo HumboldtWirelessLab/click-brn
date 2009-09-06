@@ -8,7 +8,7 @@
 #include "brn2vlan.hh"
 #include "../wifi/brn2_wirelessinfolist.hh"
 #include "../services/dhcp/dhcpsubnetlist.hh"
-#include "../../brn/vlan/vlantable.hh"
+#include "elements/brn2/vlan/brn2vlantable.hh"
 
 CLICK_DECLS
 

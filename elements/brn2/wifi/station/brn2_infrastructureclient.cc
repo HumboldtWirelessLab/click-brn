@@ -23,6 +23,7 @@
 #include <click/bighashmap.hh>
 #include <click/dequeue.hh>
 #include <click/element.hh>
+#include <click/error.hh>
 #include <click/glue.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
@@ -39,13 +40,13 @@
 #include <click/timestamp.hh>
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"
-
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 BRN2InfrastructureClient::BRN2InfrastructureClient()
 :request_timer(this),
-    _debug(BrnLogger::DEFAULT)
+    _debug(Brn2Logger::DEFAULT)
 {
 }
 

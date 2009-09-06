@@ -20,8 +20,6 @@
 
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include "brn2_lb_rerouting.hh"
 
 CLICK_DECLS

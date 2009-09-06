@@ -23,7 +23,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
 #include "brn2_arpclient.hh"
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
@@ -33,11 +32,12 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 BRN2ARPClient::BRN2ARPClient() :
-  _debug(BrnLogger::DEFAULT),
+  _debug(Brn2Logger::DEFAULT),
   _request_timer(this)
 {
 }

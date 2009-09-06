@@ -5,7 +5,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+//#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 

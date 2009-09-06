@@ -77,7 +77,7 @@ class BRN2ReplyForwarder : public Element {
   //methods
   //
   void forward_rrep(Packet *);
-  void add_route_to_link_table(const RouteQuerierRoute &route);
+  void add_route_to_link_table(const BRN2RouteQuerierRoute &route);
   Packet *skipInMemoryHops(Packet *p_in);
 };
 

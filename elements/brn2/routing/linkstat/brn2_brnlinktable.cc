@@ -25,20 +25,22 @@
  *
  */
 #include <click/config.h>
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
-#include <elements/wifi/path.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
+#include "elements/brn2/routing/dsr/brn2_dsrprotocol.hh"
 
 CLICK_DECLS
 
 Brn2LinkTable::Brn2LinkTable()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _node_identity(),
   _timer(this),
   _sim_mode(false),

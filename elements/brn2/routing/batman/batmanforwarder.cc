@@ -23,7 +23,7 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 
 #include "batmanforwarder.hh"
 #include <click/error.hh>
@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 BatmanForwarder::BatmanForwarder()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(0/*BrnLogger::DEFAULT*/)
 {
 }
 

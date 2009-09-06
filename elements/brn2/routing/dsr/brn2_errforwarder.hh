@@ -23,7 +23,7 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
@@ -81,9 +81,9 @@ class BRN2ErrorForwarder : public Element {
   //methods
   //
   void forward_rerr(Packet *p_in);
-  void issue_rerr(EtherAddress, EtherAddress, EtherAddress, const RouteQuerierRoute &);
-  void truncate_route(const RouteQuerierRoute &r, EtherAddress bad_src, RouteQuerierRoute &rv);
-  void reverse_route(const RouteQuerierRoute &in, RouteQuerierRoute &out); //TODO extract to common
+  void issue_rerr(EtherAddress, EtherAddress, EtherAddress, const BRN2RouteQuerierRoute &);
+  void truncate_route(const BRN2RouteQuerierRoute &r, EtherAddress bad_src, BRN2RouteQuerierRoute &rv);
+  void reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out); //TODO extract to common
   Packet *skipInMemoryHops(Packet *p_in);
 };
 

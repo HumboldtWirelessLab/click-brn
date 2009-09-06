@@ -23,20 +23,21 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 
-#include "brnbroadcastrouting.hh"
+#include <clicknet/ether.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
+#include "brnbroadcastrouting.hh"
 
 CLICK_DECLS
 
 BrnBroadcastRouting::BrnBroadcastRouting()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(/*BrnLogger::DEFAULT*/0)
 {
 }
 

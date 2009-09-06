@@ -28,12 +28,11 @@
 #include <click/timer.hh>
 #include <click/dequeue.hh>
 #include <elements/wifi/ap/associationresponder.hh>
-#include "elements/brn/common.hh"
 #include "brn2_assoclist.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
 #include "../../routing/identity/brn2_device.hh"
-#include "../../../brn/vlan/vlantable.hh"
+#include "elements/brn2/vlan/brn2vlantable.hh"
 
 CLICK_DECLS
 
@@ -109,7 +108,7 @@ class BRN2AssocResponder : public AssociationResponder {
   BRN2AssocList               *_assoc_list;
   BRN2Device                  *_dev;
   BRN2WirelessInfoList        *_winfolist;
-  VLANTable                   *_vlantable;
+  BRN2VLANTable               *_vlantable;
 };
 
 CLICK_ENDDECLS

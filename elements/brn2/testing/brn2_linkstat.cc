@@ -8,9 +8,9 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
+
 #include "../brn2.h"
 #include "brn2_linkstat.hh"
 

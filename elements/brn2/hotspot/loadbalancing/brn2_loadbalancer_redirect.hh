@@ -1,7 +1,7 @@
 #ifndef CLICK_LOADBALANCER_HH
 #define CLICK_LOADBALANCER_HH
 
-#include "elements/brn/routing/linkstat/brnlinkstat.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn2/hotspot/loadbalancing/brn2_lb_rerouting.hh"
 
 CLICK_DECLS
@@ -73,7 +73,7 @@ class LoadBalancerRedirect : public Element
 
     EtherAddress _me;
 
-    BRNLinkStat *_linkstat;
+    BRN2LinkStat *_linkstat;
 
     Vector<EtherAddress> _neighbors;
 

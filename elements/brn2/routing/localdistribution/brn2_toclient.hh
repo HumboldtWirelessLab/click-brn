@@ -23,7 +23,7 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "elements/brn/wifi/ap/assoclist.hh"
+#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 
 CLICK_DECLS
 /*
@@ -64,7 +64,7 @@ class BRN2ToStations : public Element {
   //
   //member
   //
-  class AssocList *_stations;
+  BRN2AssocList *_stations;
 };
 
 CLICK_ENDDECLS

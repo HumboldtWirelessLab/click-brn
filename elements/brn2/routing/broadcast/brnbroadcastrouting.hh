@@ -24,6 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
 /*
@@ -40,6 +41,7 @@ CLICK_DECLS
 
 struct click_bcast_routing_header {
   uint16_t      bcast_id;
+  hwaddr        dsr_dst;
 };
 
 class BrnBroadcastRouting : public Element {

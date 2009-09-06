@@ -3,7 +3,6 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 #include "dhcpprotocol.hh"
-#include "elements/brn/brn.h"
 
 CLICK_DECLS
 

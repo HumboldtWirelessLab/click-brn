@@ -23,7 +23,7 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 
 #include "batmanoriginatorforwarder.hh"
 #include <click/error.hh>
@@ -41,7 +41,7 @@ CLICK_DECLS
 
 BatmanOriginatorForwarder::BatmanOriginatorForwarder()
   :_sendbuffer_timer(this),
-   _debug(BrnLogger::DEFAULT)
+   _debug(0/*BrnLogger::DEFAULT*/)
 {
 }
 

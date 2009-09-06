@@ -24,7 +24,7 @@
 
 #include <click/config.h>
 #include "brn2_stripdsrheader.hh"
-#include "elements/brn/brn.h"
+#include "brn2_dsrprotocol.hh"
 CLICK_DECLS
 
 BRN2StripDSRHeader::BRN2StripDSRHeader()

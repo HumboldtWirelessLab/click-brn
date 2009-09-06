@@ -13,7 +13,7 @@
 
 #include "brn2_loadbalancer_redirect.hh"
 
-#include "elements/brn/routing/linkstat/brnlinkstat.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 #include "brn2_lb_rerouting.hh"
 
 

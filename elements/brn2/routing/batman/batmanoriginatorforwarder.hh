@@ -1,6 +1,7 @@
 #ifndef BATMANORIGINATORFORWARDERELEMENT_HH
 #define BATMANORIGINATORFORWARDERELEMENT_HH
 
+#include <click/timer.hh>
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>

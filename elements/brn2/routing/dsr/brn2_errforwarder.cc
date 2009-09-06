@@ -30,12 +30,13 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/routing/dsr/brn2_dsrprotocol.hh"
 
 CLICK_DECLS
 
 BRN2ErrorForwarder::BRN2ErrorForwarder()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _me(),
   _link_table(),
   _dsr_encap(),
@@ -160,7 +161,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
     BRN_DEBUG(" * current links: %s", _link_table->print_links().c_str());
 
     // need to send a route error
-    RouteQuerierRoute source_route, trunc_route, rev_route;
+    BRN2RouteQuerierRoute source_route, trunc_route, rev_route;
 
     // send RERR back along its original source route
     _dsr_decap->extract_source_route(p_in, source_route);
@@ -321,7 +322,7 @@ BRN2ErrorForwarder::skipInMemoryHops(Packet *p_in)
 /* method generates and sends a dsr route reply */
 void
 BRN2ErrorForwarder::issue_rerr(EtherAddress bad_src, EtherAddress bad_dst,
-                          EtherAddress src, const RouteQuerierRoute &source_route)
+                               EtherAddress src, const BRN2RouteQuerierRoute &source_route)
 {
   BRN_DEBUG("* issue_rrer: ...");
 
@@ -342,7 +343,7 @@ BRN2ErrorForwarder::issue_rerr(EtherAddress bad_src, EtherAddress bad_dst,
 
 
 void
-BRN2ErrorForwarder::truncate_route(const RouteQuerierRoute &r, EtherAddress bad_src, RouteQuerierRoute &t)
+BRN2ErrorForwarder::truncate_route(const BRN2RouteQuerierRoute &r, EtherAddress bad_src, BRN2RouteQuerierRoute &t)
 {
  for (int i=0; i < r.size(); i++) {
    t.push_back(r[i]);
@@ -354,7 +355,7 @@ BRN2ErrorForwarder::truncate_route(const RouteQuerierRoute &r, EtherAddress bad_
 }
 
 void
-BRN2ErrorForwarder::reverse_route(const RouteQuerierRoute &r, RouteQuerierRoute &rev)
+BRN2ErrorForwarder::reverse_route(const BRN2RouteQuerierRoute &r, BRN2RouteQuerierRoute &rev)
 {
   for(int i=r.size()-1; i>=0; i--) {
     rev.push_back(r[i]);

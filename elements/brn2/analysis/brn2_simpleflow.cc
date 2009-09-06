@@ -12,7 +12,7 @@
 
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn/brn.h"
+//#include "elements/brn/brn.h"
 
 CLICK_DECLS
 

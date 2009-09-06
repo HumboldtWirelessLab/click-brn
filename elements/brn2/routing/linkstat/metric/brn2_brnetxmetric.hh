@@ -64,7 +64,7 @@ inline unsigned brn2txcount2_metric(int ack_prob, int data_prob, int data_rate)
 class BRN2LinkStat;
 class BrnRateSize;
 
-class BRN2ETXMetric : public GenericMetric {
+class BRN2ETXMetric : public BRN2GenericMetric {
 
 public:
 

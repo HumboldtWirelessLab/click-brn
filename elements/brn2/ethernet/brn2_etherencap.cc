@@ -30,7 +30,7 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/brn.h"
+#include "elements/brn2/brn2.h"
 
 
 CLICK_DECLS

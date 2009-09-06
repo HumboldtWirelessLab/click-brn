@@ -25,7 +25,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "../../../brn/vlan/vlantable.hh"
+#include "elements/brn2/vlan/brn2vlantable.hh"
 #include "dhcp.h"
 #include "dhcpsubnetlist.hh"
 
@@ -174,7 +174,7 @@ private:
   int debug_count_dht_packets;
 
   BRN2DHCPSubnetList *_dhcpsubnetlist;
-  VLANTable *_vlantable;
+  BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
 };
 

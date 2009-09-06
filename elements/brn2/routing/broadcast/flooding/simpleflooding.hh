@@ -25,7 +25,9 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
-#include "elements/brn/common.hh"
+
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 /*
@@ -37,6 +39,12 @@ CLICK_DECLS
  */
 
 #define MAX_QUEUE_SIZE 1500
+
+struct click_brn_bcast {
+  uint16_t      bcast_id;
+  hwaddr        dsr_dst;
+  hwaddr        dsr_src;
+};
 
 struct click_flooding_header {
   uint16_t      bcast_id;

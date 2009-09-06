@@ -32,14 +32,15 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 #include "brn2_dhcpclient.hh"
 #include "dhcpprotocol.hh"
-#include "elements/brn/common.hh"
+
 
 CLICK_DECLS
 
 BRN2DHCPClient::BRN2DHCPClient()
-  : _debug(BrnLogger::DEFAULT), _timer(this)
+  : _debug(Brn2Logger::DEFAULT), _timer(this)
 {
 }
 

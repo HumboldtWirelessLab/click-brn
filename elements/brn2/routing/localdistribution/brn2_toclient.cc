@@ -24,17 +24,17 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 #include "brn2_toclient.hh"
 
 CLICK_DECLS
 
 BRN2ToStations::BRN2ToStations()
-  : _debug(BrnLogger::DEFAULT)
+  : _debug(Brn2Logger::DEFAULT)
 {
 }
 

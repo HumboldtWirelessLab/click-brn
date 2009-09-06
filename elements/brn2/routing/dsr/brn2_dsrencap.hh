@@ -25,13 +25,9 @@
 #include <click/element.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_routequerier.hh"
+#include "brn2_dsrprotocol.hh"
 
 CLICK_DECLS
-
-typedef Vector<RouteQuerierHop> RouteQuerierRoute;
-typedef Vector<EtherAddress> EtherAddresses;
-
-
 
 /*
  * =c
@@ -66,8 +62,8 @@ class BRN2DSREncap : public Element {
 
   Packet *add_src_header(Packet *, EtherAddresses);
   Packet *create_rreq(EtherAddress, IPAddress, EtherAddress, IPAddress, uint16_t);
-  Packet *create_rrep(EtherAddress, IPAddress, EtherAddress, IPAddress, const RouteQuerierRoute &, uint16_t rreq_id);
-  Packet *create_rerr(EtherAddress, EtherAddress, EtherAddress, const RouteQuerierRoute &);
+  Packet *create_rrep(EtherAddress, IPAddress, EtherAddress, IPAddress, const BRN2RouteQuerierRoute &, uint16_t rreq_id);
+  Packet *create_rerr(EtherAddress, EtherAddress, EtherAddress, const BRN2RouteQuerierRoute &);
   Packet *set_packet_to_next_hop(Packet * p_in);
   Packet *skipInMemoryHops(Packet *p_in);
  private:

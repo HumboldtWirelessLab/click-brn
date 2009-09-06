@@ -25,16 +25,21 @@
 
 #include <click/config.h>
 
-#include "brn2_dsrencap.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
+#include "brn2_dsrprotocol.hh"
+#include "brn2_dsrencap.hh"
+
+
 CLICK_DECLS
 
 BRN2DSREncap::BRN2DSREncap()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _link_table(),
   _me()
 {
@@ -205,7 +210,7 @@ BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
 /* creates a route reply packet. */
 Packet *
 BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, IPAddress src_ip,
-  const RouteQuerierRoute &reply_route, uint16_t rreq_id)
+  const BRN2RouteQuerierRoute &reply_route, uint16_t rreq_id)
 {
   int i;
   // however the reply route has to include the destination.
@@ -283,7 +288,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
  */
 Packet *
 BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
-                          EtherAddress src, const RouteQuerierRoute &source_route)
+                          EtherAddress src, const BRN2RouteQuerierRoute &source_route)
 {
   BRN_DEBUG(" * BRN2DSREncap::issue_rerr()");
 

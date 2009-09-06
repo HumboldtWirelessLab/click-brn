@@ -24,18 +24,18 @@
  */
 
 #include <click/config.h>
-
-#include "brn2_reqforwarder.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "brn2_dsrprotocol.hh"
+#include "brn2_reqforwarder.hh"
 
 CLICK_DECLS
 
 BRN2RequestForwarder::BRN2RequestForwarder()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _me(),
   _link_table(),
   _dsr_decap(),
@@ -186,17 +186,17 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         BRN_DEBUG(" * addr of current node added to route(2): %s.", my_wlan_addr->unparse().c_str());
 
           //put myself into request route; use the metric to reach the client
-        request_route.push_back(RouteQuerierHop(*device_addr, 100)); // link to associated clients is always 100
+        request_route.push_back(BRN2RouteQuerierHop(*device_addr, 100)); // link to associated clients is always 100
 
       } else if (_me->isIdentical(&dst_addr)) { //an internal node is the receiver
         BRN_DEBUG("* an internal node is the receiver; add myself to route.");
 
         // put my address into route
-        request_route.push_back(RouteQuerierHop(*device_addr, 0)); // metric field is not used
+        request_route.push_back(BRN2RouteQuerierHop(*device_addr, 0)); // metric field is not used
       }
       BRN_DEBUG("* addr of assoc client/this node added to route.");
       // put the address of the client into route
-      request_route.push_back(RouteQuerierHop(dst_addr, dst_ip_addr, 0)); // metric not used
+      request_route.push_back(BRN2RouteQuerierHop(dst_addr, dst_ip_addr, 0)); // metric not used
     }
 
     BRN_DEBUG("* learned from RREQ ...");
@@ -229,7 +229,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     } else if (_me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(src_addr) == 50 )) { // rreq reached destination
 
       // this RREQ is for me, so generate a reply.
-      RouteQuerierRoute reply_route;
+      BRN2RouteQuerierRoute reply_route;
 
       reverse_route(request_route, reply_route);
 
@@ -303,7 +303,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
       // ETX not yet used
       if (old_frv) {
-        if (_debug == BrnLogger::DEBUG) {
+        if (_debug == Brn2Logger::DEBUG) {
           BRN_DEBUG("* already forwarded this route request %d (%d, %d)",
              ntohs(dsr_rreq.dsr_id), this_metric, old_frv->best_metric);
           if (_route_querier->metric_preferable(this_metric, old_frv->best_metric)) {
@@ -453,7 +453,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 /* method generates and sends a dsr route reply */
 void
 BRN2RequestForwarder::issue_rrep(EtherAddress src, IPAddress src_ip, EtherAddress dst,
-			  IPAddress dst_ip, const RouteQuerierRoute &reply_route, uint16_t rreq_id)
+                                 IPAddress dst_ip, const BRN2RouteQuerierRoute &reply_route, uint16_t rreq_id)
 {
   BRN_DEBUG("* issue_rrep: ... #ID %d", rreq_id);
   Packet *brn_p;
@@ -561,7 +561,7 @@ BRN2RequestForwarder::get_min_jitter_in_queue()
 //-----------------------------------------------------------------------------
 
 void
-BRN2RequestForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
+BRN2RequestForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
 {
 
   for (int i=0; i < route.size() - 1; i++) {
@@ -594,7 +594,7 @@ BRN2RequestForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
 }
 
 void
-BRN2RequestForwarder::reverse_route(const RouteQuerierRoute &in, RouteQuerierRoute &out)
+BRN2RequestForwarder::reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out)
 {
   for(int i=in.size()-1; i>=0; i--) {
     out.push_back(in[i]);

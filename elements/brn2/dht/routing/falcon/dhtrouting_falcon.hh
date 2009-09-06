@@ -1,14 +1,15 @@
 #ifndef CLICK_DHTROUTING_FALCON_HH
 #define CLICK_DHTROUTING_FALCON_HH
 
-#include "elements/brn/dht/md5.h"
+#include "elements/brn2/dht/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/routing/dhtrouting.hh"
 
 CLICK_DECLS
 
-class BRNLinkStat;
+class BRN2LinkStat;
 
 class DHTRoutingFalcon : public DHTRouting
 {
@@ -57,7 +58,7 @@ class DHTRoutingFalcon : public DHTRouting
     int _max_fingertable_size;     //!! size^2 = max_number of nodes in network !!
   private:
 
-    BRNLinkStat *_linkstat;
+    BRN2LinkStat *_linkstat;
     DHTnodelist _fingertable;
 
     DHTnode *successor;

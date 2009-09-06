@@ -23,7 +23,7 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 
 #include "batmanrouting.hh"
 #include <click/error.hh>
@@ -39,7 +39,7 @@
 CLICK_DECLS
 
 BatmanRouting::BatmanRouting()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(/*BrnLogger::DEFAULT*/0)
 {
 }
 

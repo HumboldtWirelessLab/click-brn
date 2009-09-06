@@ -19,7 +19,6 @@
  */
 #include <click/config.h>
 #include <click/etheraddress.hh>
-#include "elements/brn/common.hh"
 
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"

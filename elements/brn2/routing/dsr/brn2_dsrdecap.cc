@@ -32,11 +32,12 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 BRN2DSRDecap::BRN2DSRDecap()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _link_table(),
   _me()
 {
@@ -106,12 +107,12 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
   /*
    * TODO: we have following problem: We need to obtain the metric between the first two ...
    */
-  route.push_back(RouteQuerierHop(src_addr, src_ip_addr, 100));
+  route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, 100));
 
   for (int i=0; i<num_addr; i++) {
     click_dsr_hop hop = dsr_rreq->addr[i];
     BRN_DEBUG(" * extract route %s with m=%d", EtherAddress(hop.hw.data).unparse().c_str(), ntohs(hop.metric));
-    route.push_back(RouteQuerierHop(hop.hw, ntohs(hop.metric)));
+    route.push_back(BRN2RouteQuerierHop(hop.hw, ntohs(hop.metric)));
   }
 
   // put the previous node into route list
@@ -130,7 +131,7 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
   BRN_DEBUG(_link_table->print_links().c_str());
   BRN_DEBUG(" * my (%s) metric for last hop (%s) is) %d", my_rec_addr->unparse().c_str(), last_node_addr.unparse().c_str(), metric);
 
-  route.push_back(RouteQuerierHop(last_node_addr, metric));
+  route.push_back(BRN2RouteQuerierHop(last_node_addr, metric));
 }
 
 /*
@@ -166,14 +167,14 @@ BRN2DSRDecap::extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route)
   BRN_DEBUG(" * extracting route from %d-hop route reply.", hop_count);
 
   // construct the route from the reply addresses.
-  route.push_back(RouteQuerierHop(src_ether, src_ip_addr, 0)); //metric value makes no sense here
+  route.push_back(BRN2RouteQuerierHop(src_ether, src_ip_addr, 0)); //metric value makes no sense here
 
   // we have to update all links between us and our neighbors used in route reply
   for(int i = 0; i < hop_count; i++) { // collect all hops
-    route.push_back(RouteQuerierHop(dsr->addr[i].hw, ntohs(dsr->addr[i].metric)));
+    route.push_back(BRN2RouteQuerierHop(dsr->addr[i].hw, ntohs(dsr->addr[i].metric)));
   }
 
-  route.push_back(RouteQuerierHop(dest_ether, dst_ip_addr, 0)); // metric is not used
+  route.push_back(BRN2RouteQuerierHop(dest_ether, dst_ip_addr, 0)); // metric is not used
 }
 
 /*
@@ -207,17 +208,17 @@ BRN2DSRDecap::extract_source_route(const Packet *p_in, BRN2RouteQuerierRoute &ro
         src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(), dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   // put the originator of this rreq into dsr route
-  route.push_back(RouteQuerierHop(src_addr, src_ip_addr, 0)); //TODO Metric not used
+  route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, 0)); //TODO Metric not used
 
   for (int i = 0; i < num_addr; i++) {
     click_dsr_hop hop = dsr->addr[i];
-    route.push_back(RouteQuerierHop(hop.hw, ntohs(hop.metric)));
+    route.push_back(BRN2RouteQuerierHop(hop.hw, ntohs(hop.metric)));
     EtherAddress eth_ = EtherAddress(hop.hw.data);
     BRN_DEBUG("Adress: %s Metric: %d", eth_.unparse().c_str(), ntohs(hop.metric));
   }
 
   // put the originator of this rreq into dsr route
-  route.push_back(RouteQuerierHop(dst_addr, dst_ip_addr, 0)); //TODO Metric not used
+  route.push_back(BRN2RouteQuerierHop(dst_addr, dst_ip_addr, 0)); //TODO Metric not used
 
   BRN_DEBUG(" * extract_source_route : size %d", route.size());
 }

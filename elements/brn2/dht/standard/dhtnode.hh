@@ -3,6 +3,7 @@
 
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
+#include <click/timer.hh>
 
 #include "md5.h"
 

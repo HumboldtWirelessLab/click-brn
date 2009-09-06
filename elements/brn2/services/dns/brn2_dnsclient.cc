@@ -23,25 +23,24 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
 #include <click/error.hh>
 #include <click/glue.hh>
-
-
-#include "brn2_dnsclient.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
 #include "dnsprotocol.hh"
+#include "brn2_dnsclient.hh"
+
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 BRN2DNSClient::BRN2DNSClient()
-  : _debug(BrnLogger::DEFAULT), _timer(this)
+  : _debug(Brn2Logger::DEFAULT), _timer(this)
 {
 }
 

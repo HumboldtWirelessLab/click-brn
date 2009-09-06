@@ -4,7 +4,6 @@
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
-#include "elements/brn/brn.h"
 
 CLICK_DECLS
 

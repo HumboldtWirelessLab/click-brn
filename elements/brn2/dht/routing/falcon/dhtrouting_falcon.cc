@@ -9,13 +9,9 @@
 
 #include "dhtrouting_falcon.hh"
 
-#include "elements/brn/routing/nblist.hh"
-#include "elements/brn/routing/linkstat/brnlinkstat.hh"
-
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn/dht/md5.h"
+#include "elements/brn2/dht/standard/md5.h"
 #include "dhtprotocol_falcon.hh"
-
 
 CLICK_DECLS
 

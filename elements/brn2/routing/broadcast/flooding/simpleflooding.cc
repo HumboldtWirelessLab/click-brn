@@ -23,17 +23,19 @@
  */
 
 #include <click/config.h>
-
-#include "simpleflooding.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "simpleflooding.hh"
 
 CLICK_DECLS
 
 SimpleFlooding::SimpleFlooding()
   :_sendbuffer_timer(this),
-  _debug(BrnLogger::DEFAULT)
+  _debug(Brn2Logger::DEFAULT)
 {
 }
 

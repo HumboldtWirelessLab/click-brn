@@ -7,8 +7,8 @@
 #include <clicknet/ether.h>
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
-#include "elements/brn/routing/linkstat/brnlinktable.hh"
-
+#include <click/etheraddress.hh>
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh" //TODO: use linktable
 CLICK_DECLS
 
 /*
@@ -200,7 +200,7 @@ public:
   int _max_lp_per_packet;
   EtherAddress _me;
 
-  BrnLinkTable *_brnlt;
+  Brn2LinkTable *_brnlt;
 
 };
 

@@ -72,17 +72,32 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <clicknet/wifi.h>
 #include <click/timer.hh>
 #include <click/string.hh>
-#include <elements/wifi/availablerates.hh>
-#include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn/routing/linkstat/metric/brnettmetric.hh"
-#include "elements/brn2/routing/linkstat/metric/brn2_brnetxmetric.hh"
 #include <click/timestamp.hh>
+#include <elements/wifi/availablerates.hh>
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/brn2.h"
+#include "metric/brn2_brnetxmetric.hh"
 
 CLICK_DECLS
 
 class Timer;
 
-//static const uint8_t _ett2_version = 0x02;
+static const uint8_t _ett2_version = 0x02;
+
+class BrnRateSize {
+ public:
+  int _rate;
+  int _size;
+  BrnRateSize(int r, int s): _rate(r), _size(s) { };
+
+  inline bool operator==(BrnRateSize other)
+  {
+    return (other._rate == _rate && other._size == _size);
+  }
+};
+
 
 class BRN2LinkStat : public Element {
 
@@ -150,7 +165,7 @@ public:
           ether_addrs->push_back(i.key());
   }
 
-  class BRNETTMetric *_ett_metric;
+//  class BRNETTMetric *_ett_metric;
   class BRN2ETXMetric *_etx_metric;
   uint16_t _et;     // This protocol's ethertype
 

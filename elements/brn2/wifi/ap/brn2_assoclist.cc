@@ -24,20 +24,19 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
-#include "brn2_assoclist.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn/routing/linkstat/brnlinktable.hh"
-#include "elements/brn/nodeidentity.hh" 
+
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "brn2_assoclist.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
 
 BRN2AssocList::BRN2AssocList()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
     _client_qsize_max(20),
     _link_table(NULL)
 {

@@ -30,15 +30,17 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
+#include "brn2_genericmetric.hh"
 #include "brn2_brnetxmetric.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS 
 
 BRN2ETXMetric::BRN2ETXMetric()
-  : GenericMetric(), 
+  : BRN2GenericMetric(), 
     _link_table(0),
-    _debug(BrnLogger::DEFAULT)
+    _debug(Brn2Logger::DEFAULT)
 {
 }
 
@@ -52,7 +54,7 @@ BRN2ETXMetric::cast(const char *n)
   if (strcmp(n, "BRN2ETXMetric") == 0)
     return (BRN2ETXMetric *) this;
   else if (strcmp(n, "LinkMetric") == 0)
-    return (GenericMetric *) this;
+    return (BRN2GenericMetric *) this;
   else
     return 0;
 }

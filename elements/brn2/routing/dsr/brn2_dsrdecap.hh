@@ -23,14 +23,10 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "elements/brn/common.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "brn2_dsrprotocol.hh"
 
 CLICK_DECLS
-
-class RouteQuerierHop;
-
-typedef Vector<RouteQuerierHop> BRN2RouteQuerierRoute;
 
 
 /*

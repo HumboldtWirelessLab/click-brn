@@ -20,8 +20,11 @@
 
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
+#include <click/element.hh>
+#include <clicknet/ether.h>
+//#include "elements/brn/common.hh"
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "dhtprotocol.hh"
 
 CLICK_DECLS

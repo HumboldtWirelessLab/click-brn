@@ -12,7 +12,6 @@
 
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn/brn.h"
 
 CLICK_DECLS
 
@@ -143,7 +142,7 @@ BRN2ModelFlow::nextPacket(int size)
   WritablePacket *p;
 
   p = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
-  struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
+//  struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
 
   return p;
 }
@@ -171,9 +170,9 @@ enum {
 };
 
 static String
-BRN2ModelFlow_read_param(Element *e, void *thunk)
+BRN2ModelFlow_read_param(Element */*e*/, void *thunk)
 {
-  BRN2ModelFlow *sf = (BRN2ModelFlow *)e;
+//  BRN2ModelFlow *sf = (BRN2ModelFlow *)e;
 
   switch ((uintptr_t) thunk) {
     case H_TXSTATS_SHOW: {

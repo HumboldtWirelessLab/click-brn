@@ -6,12 +6,12 @@
 #include <click/straccum.hh>
 
 #include <elements/brn2/standard/brnaddressinfo.hh>
-#include "elements/brn/common.hh"
+//#include "elements/brn/common.hh"
 
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _debug(BrnLogger::DEFAULT)
+  : _debug(/*BrnLogger::DEFAULT*/0)
 {
 }
 

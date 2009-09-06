@@ -23,8 +23,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
@@ -39,13 +37,14 @@
 
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 #include "dnsprotocol.hh"
 
 CLICK_DECLS
 
 BRN2DNSServer::BRN2DNSServer() :
-  _debug(BrnLogger::DEFAULT),
+  _debug(Brn2Logger::DEFAULT),
   _dhcpsubnetlist(NULL),
   _vlantable(NULL)
 {

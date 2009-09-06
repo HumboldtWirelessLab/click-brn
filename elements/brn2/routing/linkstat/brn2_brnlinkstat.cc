@@ -25,13 +25,15 @@
  */
 
 #include <click/config.h>
-
-#include "brn2_brnlinkstat.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "metric/brn2_brnetxmetric.hh"
+
+#include "brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 
@@ -158,7 +160,7 @@ BRN2LinkStat::add_handlers()
 static void
 log_timeout_hook(Timer *, void *thunk)
 {
-  BRNLinkStat *e = (BRNLinkStat*)thunk;
+  BRN2LinkStat *e = (BRN2LinkStat*)thunk;
   e->run_log_timer();
 }
 
@@ -168,9 +170,9 @@ BRN2LinkStat::BRN2LinkStat()
     _seq(0), 
     _sent(0),
     _me(),
-    _ett_metric(0),
+//    _ett_metric(0),
     _etx_metric(0),
-    _debug(BrnLogger::DEFAULT),
+    _debug(Brn2Logger::DEFAULT),
     _next_neighbor_to_ad(0),
     _timer(0),
     _stale_timer(this),
@@ -198,7 +200,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "DEVICE", cpkP+cpkM, cpElement, /*"NodeDevice",*/ &_me,
               "PERIOD", cpkP+cpkM, cpUnsigned, /*"Probe broadcast period (msecs)",*/ &_period,
               "TAU", cpkP+cpkM, cpUnsigned, /*"Loss-rate averaging period (msecs)",*/ &_tau,
-              "ETT", cpkP, cpElement,/* "ETT Metric element",*/ &_ett_metric,
+//              "ETT", cpkP, cpElement,/* "ETT Metric element",*/ &_ett_metric,
               "ETX", cpkP, cpElement, /*"ETX Metric element",*/ &_etx_metric,
               "PROBES", cpkM, cpString, /*"PROBES",*/ &probes,
               "RT", cpkM, cpElement, /*"AvailabeRates",*/ &_rtable,
@@ -219,8 +221,8 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_me || !_me->cast("BRN2Device")) 
     return errh->error("BRN2Device element is not provided or not a BRN2Device");
 
-  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
-    return errh->error("BRNETTMetric element is not a BRNETTMetric");
+/*  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
+    return errh->error("BRNETTMetric element is not a BRNETTMetric");*/
 
   if (_etx_metric && !_etx_metric->cast("BRN2ETXMetric"))
     return errh->error("BRNETXMetric element is not a BRNETXMetric");
@@ -295,11 +297,11 @@ brn2add_jitter2(unsigned int max_jitter, struct timeval *t) {
 void
   BRN2LinkStat::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<int> fwd, Vector<int> rev, uint32_t seq)
 {
-  if (_ett_metric) {
+/*  if (_ett_metric) {
     BRN_DEBUG(" * update ett_metric.");
     _ett_metric->update_link(from, to, rs, fwd, rev, seq);
   }
-
+*/
   if (_etx_metric) {
     BRN_DEBUG(" * update etx_metric.");
     _etx_metric->update_link(from, to, rs, fwd, rev, seq);

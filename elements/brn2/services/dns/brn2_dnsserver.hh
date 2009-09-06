@@ -24,8 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
-#include "../../../brn/vlan/vlantable.hh"
-#include "elements/brn/services/dhcp/dhcp.h"
+#include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn2/services/dhcp/dhcp.h"
 #include "dnsconfiglist.hh"
 
 #include "elements/brn2/dht/storage/dhtstorage.hh"
@@ -141,7 +141,7 @@ private:
   String _full_sname;
 
   BRN2DNSConfigList *_dhcpsubnetlist;
-  VLANTable *_vlantable;
+  BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
 };
 

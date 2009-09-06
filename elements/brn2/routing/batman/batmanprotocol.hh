@@ -4,7 +4,7 @@
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+//#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 

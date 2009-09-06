@@ -2,7 +2,7 @@
 #define DHT_DB_HH
 #include <click/element.hh>
 #include <click/vector.hh>
-#include "elements/brn/dht/md5.h"
+#include "elements/brn2/dht/standard/md5.h"
 #include <click/etheraddress.hh>
 
 #define DB_INT 0

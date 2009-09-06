@@ -23,7 +23,7 @@
 
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-#include "elements/brn/wifi/ap/assoclist.hh"
+#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 /*

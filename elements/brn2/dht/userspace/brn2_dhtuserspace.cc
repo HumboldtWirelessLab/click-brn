@@ -23,15 +23,11 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
 #include <click/error.hh>
 #include <click/glue.hh>
-
-#include "brn2_dhtuserspace.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
@@ -39,11 +35,14 @@
 
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
+#include "brn2_dhtuserspace.hh"
 
 CLICK_DECLS
 
 DHTUserspace::DHTUserspace() :
-  _debug(BrnLogger::DEFAULT)
+  _debug(Brn2Logger::DEFAULT)
 {
 }
 

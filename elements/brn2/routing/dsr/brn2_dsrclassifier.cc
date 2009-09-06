@@ -20,18 +20,20 @@
 
 // ALWAYS INCLUDE <click/config.h> FIRST
 #include <click/config.h>
-#include "elements/brn/common.hh"
 
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <clicknet/ip.h>
 #include <clicknet/udp.h>
 #include "brn2_dsrclassifier.hh"
+#include "brn2_dsrprotocol.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
 
 CLICK_DECLS
 
 BRN2DSRClassifier::BRN2DSRClassifier()
-  : _debug(BrnLogger::DEFAULT)
+  : _debug(/*BrnLogger::DEFAULT*/0)
 {
 }
 

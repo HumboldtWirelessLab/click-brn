@@ -23,8 +23,9 @@
  */
 
 #include <click/config.h>
+#include "brn2_dsrprotocol.hh"
 #include "brn2_pushdsrheader.hh"
-#include "elements/brn/brn.h"
+
 CLICK_DECLS
 
 BRN2PushDSRHeader::BRN2PushDSRHeader()

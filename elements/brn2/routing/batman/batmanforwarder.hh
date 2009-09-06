@@ -7,6 +7,9 @@
 #include "batmanroutingtable.hh"
 #include "batmanprotocol.hh"
 
+/** TODO: reactivate BRNLogger
+*/
+
 CLICK_DECLS
 
 class BatmanForwarder : public Element {

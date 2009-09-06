@@ -24,20 +24,22 @@
  */
 
 #include <click/config.h>
-
-#include "brn2_srcforwarder.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/brnprotocol/brn2_logger.hh"
+
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_routequerier.hh"
 
+#include "brn2_srcforwarder.hh"
+
 CLICK_DECLS
 
 BRN2SrcForwarder::BRN2SrcForwarder()
-  : _debug(BrnLogger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _me(),
   _dsr_encap(),
   _dsr_decap(),
@@ -154,10 +156,10 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
     EtherAddress dst_addr(brn_dsr->dsr_dst.data);
 
     // learn from this packet
-    RouteQuerierRoute source_route;
+    BRN2RouteQuerierRoute source_route;
     _dsr_decap->extract_source_route(p_in, source_route);
 
-    if (_debug == BrnLogger::DEBUG) {
+    if (_debug == Brn2Logger::DEBUG) {
       BRN_DEBUG(" * learned from SRCPacket ...");
       for (int j = 0; j < source_route.size(); j++)
         BRN_DEBUG(" SRC - %d   %s (%d)",
@@ -290,7 +292,7 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 }
 
 void
-BRN2SrcForwarder::add_route_to_link_table(const RouteQuerierRoute &route)
+BRN2SrcForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
 {
 
   for (int i = 0; i < route.size() - 1; i++) {
