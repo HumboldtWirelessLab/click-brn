@@ -117,6 +117,7 @@ class BRN2SimpleFlow : public Element
 
     void set_active();
     uint32_t get_txpackets(void) { return txFlow._txPackets; }
+    EtherAddress *get_txdest(void) { return &txFlow._dst; }
 
     EtherAddress _src;
   private:

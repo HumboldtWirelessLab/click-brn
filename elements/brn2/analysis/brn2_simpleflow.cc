@@ -151,7 +151,11 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
     case H_TXFLOWS_SHOW: {
       StringAccum sa;
       sa << "Me: " << sf->_src.unparse() << "\n";
-      sa << "TxFlows:\n TxPackets: " << sf->get_txpackets();
+      if ( sf->get_txpackets() != 0 ) {
+        sa << "TxFlows:\nDestination: " << sf->get_txdest()->unparse().c_str();
+        sa << " Packets: " << sf->get_txpackets();
+        sa << "\n";
+      }
       return sa.take_string();
     }
     case H_RXFLOWS_SHOW: {
