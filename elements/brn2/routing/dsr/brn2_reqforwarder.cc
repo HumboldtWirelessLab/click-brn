@@ -400,7 +400,9 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   // rreq received from this node ...
   EtherAddress prev_node(ether->ether_shost);
 
-  memcpy(dsr_rreq->addr[hop_count].hw.data, (uint8_t *)prev_node.data(), 6 * sizeof(uint8_t));
+  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_rreq);//RobAt:DSR
+
+  memcpy(dsr_hops[hop_count].hw.data, (uint8_t *)prev_node.data(), 6 * sizeof(uint8_t));
 
   //rreq is a broadcast; use the ether address associated with packet's device
   indev = _me->getDeviceByNumber(devicenumber);
@@ -410,7 +412,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
     // set the metric no my previous node
     int metric = _link_table->get_link_metric(prev_node, *me);
     BRN_DEBUG("* append prev node (%s) to rreq with metric %d.", prev_node.unparse().c_str(), metric);
-    dsr_rreq->addr[hop_count].metric = htons(metric);
+    dsr_hops[hop_count].metric = htons(metric);
   } else {
     BRN_DEBUG("* device unknown: %s", indev->getDeviceName().c_str());
   }

@@ -111,7 +111,9 @@ BRN2ReplyForwarder::skipInMemoryHops(Packet *p_in)
   assert(index >= 0 && index < BRN_DSR_MAX_HOP_COUNT);
   assert(index <= brn_dsr->dsr_hop_count);
 
-  EtherAddress dest(brn_dsr->addr[index].hw.data);
+  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
+
+  EtherAddress dest(dsr_hops[index].hw.data);
 
   BRN_DEBUG(" * test next hop: %s", dest.unparse().c_str());
   BRN_DEBUG(" * HC, Index, SL. %d %d %d", brn_dsr->dsr_hop_count, index, brn_dsr->dsr_segsleft);
@@ -121,7 +123,7 @@ BRN2ReplyForwarder::skipInMemoryHops(Packet *p_in)
     brn_dsr->dsr_segsleft--;
     index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
 
-    dest = EtherAddress(brn_dsr->addr[index].hw.data);
+    dest = EtherAddress(dsr_hops[index].hw.data);
     BRN_DEBUG(" * check next hop (maybe skip required): %s", dest.unparse().c_str());
   }
 
@@ -130,7 +132,7 @@ BRN2ReplyForwarder::skipInMemoryHops(Packet *p_in)
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
     BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   } else {
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->addr[index].hw.data));
+    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
     BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   }
 

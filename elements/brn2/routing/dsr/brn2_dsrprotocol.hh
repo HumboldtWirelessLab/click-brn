@@ -50,7 +50,7 @@ class ForwardedReqKey
     EtherAddress _src;
     EtherAddress _target;
     unsigned int _id;
-  
+
     ForwardedReqKey(EtherAddress src, EtherAddress target, unsigned int id) {
       _src = src; _target = target; _id = id;
       check();
@@ -93,12 +93,10 @@ class ForwardedReqVal {
 #define BRN_DSR_RREQ_TIMEOUT 600000 // how long before we timeout entries (ms)
 #define BRN_DSR_RREQ_EXPIRE_TIMER_INTERVAL 15000 // how often to check (ms)
 
-
 typedef HashMap<ForwardedReqKey, ForwardedReqVal> ForwardedReqMap;
 typedef ForwardedReqMap::iterator FWReqIter;
 
 /** End of common.hh */
-
 
 struct click_dsr_hop {
   hwaddr  hw;
@@ -158,7 +156,8 @@ struct click_brn_dsr_src {
 /* Common DSR Structure */
 struct click_brn_dsr {
   uint8_t       dsr_type;
-  uint8_t       reserved[3];
+  uint8_t       reserved;
+  uint16_t      dsr_id;
 
   hwaddr        dsr_dst;
   hwaddr        dsr_src;
@@ -169,10 +168,6 @@ struct click_brn_dsr {
 
 #define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
 #define BRN_INTERNAL_NODE_IP "254.1.1.1"
-
-  uint8_t       dsr_hop_count; /* total hop count */
-  uint8_t       dsr_segsleft; /* hops left */
-  click_dsr_hop addr[BRN_DSR_MAX_HOP_COUNT]; /* hops */
 
 #define BRN_DSR_RREQ 1
 #define BRN_DSR_RREP 2
@@ -185,15 +180,11 @@ struct click_brn_dsr {
     click_brn_dsr_rerr rerr;
     click_brn_dsr_src src; /* data */
   } body;
+
+  uint8_t       dsr_hop_count; /* total hop count */
+  uint8_t       dsr_segsleft; /* hops left */
+  click_dsr_hop addr[BRN_DSR_MAX_HOP_COUNT]; /* hops */
 };
-
-
-//struct click_dsr_hop {
-//  hwaddr  hw;
-//  uint16_t metric;
-//};
-
-//# define BRN_DSR_MAX_HOP_COUNT  16
 
 /* DSR Route Request */
 //struct click_brn_dsr_rreq {
@@ -208,8 +199,6 @@ struct click_brn_dsr {
 
 /* DSR Route Error */
 //struct click_brn_dsr_rerr {
-
-//#define BRN_DSR_RERR_TYPE_NODE_UNREACHABLE  1
 
   // broken link between dsr_unreachable_src and dsr_unreachable_dst
 //  hwaddr    dsr_unreachable_src;
@@ -234,41 +223,6 @@ struct click_brn_dsr {
 //  uint8_t       reserved;
 //}; /* data */
 
-/* Common DSR Structure */
-//struct click_brn_dsr {
-//#define BRN_DSR_RREQ 1
-//#define BRN_DSR_RREP 2
-//#define BRN_DSR_RERR 3
-//#define BRN_DSR_SRC  4
-//  uint8_t       dsr_type;
-//  uint8_t       reserved;
-//  uint16_t      dsr_id;
-
-//  hwaddr        dsr_dst;
-//  hwaddr        dsr_src;
-
-  /* in case of clients use their IPs */
-//  struct in_addr  dsr_ip_dst;
-//  struct in_addr  dsr_ip_src;
-
-//#define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
-//#define BRN_INTERNAL_NODE_IP "254.1.1.1"
-
-//  union {
-    //click_brn_dsr_rreq rreq;
-    //click_brn_dsr_rrep rrep;
-    //click_brn_dsr_rerr rerr;
-    //click_brn_dsr_src src; /* data */
-  //} body;
-
-  //uint8_t       dsr_hop_count; /* total hop count */
-  //uint8_t       dsr_segsleft; /* hops left */
-
-  //union {
-//    click_dsr_hop addr[BRN_DSR_MAX_HOP_COUNT]; /* hops */
-//  } hops;
-
-//};
 
 #define BRN_DSR_PAYLOADTYPE_KEY 0
 
@@ -294,6 +248,10 @@ class DSRProtocol : public Element { public:
   ~DSRProtocol();
 
   const char *class_name() const	{ return "DSRProtocol"; }
+
+  static int header_length(Packet *p);
+  static click_dsr_hop* get_hops(const Packet *p);
+  static click_dsr_hop* get_hops(click_brn_dsr *brn_dsr);
 
 };
 
