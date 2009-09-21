@@ -39,7 +39,7 @@ Packet *
 BRN2StripDSRHeader::simple_action(Packet *p)
 {
 
-  int dsr_size = sizeof(click_brn_dsr);
+  int dsr_size = DSRProtocol::header_length(p);
   p->pull(dsr_size);
   return p;
 }

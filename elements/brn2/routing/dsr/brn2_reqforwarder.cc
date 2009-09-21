@@ -178,7 +178,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       // the requested client is associated with this node
       if (_link_table->get_host_metric_to_me(dst_addr) == 50 ) {
 
-        click_chatter("ers oll zu mir gehoeren");
+        click_chatter("er soll zu mir gehoeren");
             BRN_DEBUG(" * Linktable at shutdown: %s", _link_table->print_links().c_str());
 
         EtherAddress *my_wlan_addr = _link_table->get_neighbor(dst_addr); //this should give back only one etheraddress if the client is associated
@@ -379,7 +379,11 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   BRN2Device *indev;
 
   // add my address to the end of the packet
-  WritablePacket *p=p_in->uniqueify();
+  WritablePacket *p_u=p_in->uniqueify();
+
+  WritablePacket *p = DSRProtocol::extend_hops(p_u,1);  //add space for one additional hop
+
+  click_chatter("-----------------------------Size: %d brn+dsr: %d",p->length(),sizeof(click_brn) + sizeof(click_brn_dsr));
 
   click_brn *brn = (click_brn *)p->data();
   click_brn_dsr *dsr_rreq = (click_brn_dsr *)(p->data() + sizeof(click_brn));
@@ -402,7 +406,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_rreq);//RobAt:DSR
 
-  memcpy(dsr_hops[hop_count].hw.data, (uint8_t *)prev_node.data(), 6 * sizeof(uint8_t));
+  memcpy(dsr_hops[hop_count].hw.data, (uint8_t *)prev_node.data(), 6 * sizeof(uint8_t));  //TODO: extend for new entry
 
   //rreq is a broadcast; use the ether address associated with packet's device
   indev = _me->getDeviceByNumber(devicenumber);

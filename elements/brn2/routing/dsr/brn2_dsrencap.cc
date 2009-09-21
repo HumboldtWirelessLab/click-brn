@@ -55,7 +55,7 @@ BRN2DSREncap::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
       "LINKTABLE", cpkP+cpkM, cpElement, /*"Link table",*/ &_link_table,
-		  cpEnd) < 0)
+      cpEnd) < 0)
     return -1;
 
   if (!_me || !_me->cast("BRN2NodeIdentity"))
@@ -85,6 +85,8 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   int hop_count = route_len - 2;
 
   BRN_DEBUG(" * creating DSR source-routed packet with payload %d", payload);
+
+  payload += hop_count * sizeof(click_dsr_hop);
 
   // add the extra header size and get a new packet
   WritablePacket *p = p_in->push(payload);
@@ -182,6 +184,8 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
 }
 
 /* creates a dsr route request packet with given src, dest and rreq_id */
+/** TODO:
+maybe reserve space for several hops */
 Packet *
 BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, IPAddress src_ip, uint16_t rreq_id)
 {
@@ -223,6 +227,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   // creating the payload
   int payload = sizeof(click_brn_dsr);
 
+  payload += reply_hop_count * sizeof(click_dsr_hop);
   // construct new packet
   WritablePacket *p = Packet::make(payload);
   memset(p->data(), '\0', p->length());
@@ -307,6 +312,7 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   // creating the payload
   int payload = sizeof(click_brn_dsr);
 
+  payload += src_hop_count * sizeof(click_dsr_hop);
   // make the packet
   WritablePacket *p = Packet::make(payload);
   memset(p->data(), '\0', p->length());

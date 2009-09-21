@@ -359,9 +359,10 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   //const click_ether *ether = (const click_ether *)p->ether_header();
 
   if (ether->ether_type == ETHERTYPE_BRN) {
-    const click_brn_dsr *dsr = (const click_brn_dsr *)( p->data() + sizeof(click_brn) );
+    const click_brn_dsr *dsr = (const click_brn_dsr *)( p->data() + sizeof(click_brn) );  //TODO: BRN-packet in queue is alway dsr ??
     dst = EtherAddress(dsr->dsr_dst.data);
     src = EtherAddress(dsr->dsr_src.data);
+    click_chatter("BRN in queue-----------------------------------------------------------------------------------");
   } else {
     dst = EtherAddress(ether->ether_dhost);
     src = EtherAddress(ether->ether_shost);
@@ -409,7 +410,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   }
   return true;
 }
-/**ROBERT-marker*/
+
 /*
  * build and send out a dsr route request.
  */
@@ -974,7 +975,7 @@ BRN2RouteQuerier::last_forwarder_eth(Packet *p)
   d[0] = p->anno_u16(9); //p->user_anno_us(9);
   d[1] = p->anno_u16(11);
   d[2] = p->anno_u16(13);
-  
+
   return (EtherAddress((unsigned char *)d));
 }
 

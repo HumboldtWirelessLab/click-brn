@@ -105,10 +105,10 @@ struct click_dsr_hop {
 
 #ifdef CLICK_NS
 // TODO adapt peek and all other things for max hop count != 16
-# define BRN_DSR_MAX_HOP_COUNT  16
+# define BRN_DSR_MAX_HOP_COUNT  100
 #else // CLICK_NS
 // be reverse-compatible, we have already deployed nodes with this value
-# define BRN_DSR_MAX_HOP_COUNT  16
+# define BRN_DSR_MAX_HOP_COUNT  100
 #endif // CLICK_NS
 
 /* DSR Route Request */
@@ -183,7 +183,7 @@ struct click_brn_dsr {
 
   uint8_t       dsr_hop_count; /* total hop count */
   uint8_t       dsr_segsleft; /* hops left */
-  click_dsr_hop addr[BRN_DSR_MAX_HOP_COUNT]; /* hops */
+ // click_dsr_hop addr[BRN_DSR_MAX_HOP_COUNT]; /* hops */
 };
 
 /* DSR Route Request */
@@ -250,8 +250,11 @@ class DSRProtocol : public Element { public:
   const char *class_name() const	{ return "DSRProtocol"; }
 
   static int header_length(Packet *p);
+  static int header_length(click_brn_dsr *brn_dsr);
+
   static click_dsr_hop* get_hops(const Packet *p);
   static click_dsr_hop* get_hops(click_brn_dsr *brn_dsr);
+  static WritablePacket *extend_hops(WritablePacket *p, int count);
 
 };
 

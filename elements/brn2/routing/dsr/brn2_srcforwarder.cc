@@ -97,8 +97,7 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
 {
   BRN_DEBUG(" * calling NodeIdentity::skipInMemoryHops().");
 
-  click_brn_dsr *brn_dsr =
-      (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
   int index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
 
@@ -149,8 +148,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
   } else if (port == 1) { // src packets received by this node
     BRN_DEBUG(" * source routed packet received from other node.");
 
-    click_brn_dsr *brn_dsr =
-          (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+    click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
     assert(brn_dsr->dsr_type == BRN_DSR_SRC);
 
@@ -244,7 +242,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
     // Yet, there is no obvious reason to have it around at all. We shouldn't touch p_in here.
     //p_in->set_ether_header(ether);
 
-    output(2).push(p);
+    output(2).push(p);  //Route-Error
     return;
   }
 
@@ -259,10 +257,10 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
 Packet *
 BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 {
-  //int old_len = p_in->length();
-  int brn_dsr_len = sizeof(click_brn) + sizeof(click_brn_dsr);
-
   click_brn_dsr *dsr_src = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+
+  //int old_len = p_in->length();
+  int brn_dsr_len = sizeof(click_brn) + DSRProtocol::header_length(dsr_src);
 
 //  uint8_t type = dsr_src->body.src.dsr_payload_type;
   EtherAddress src(dsr_src->dsr_src.data);
