@@ -43,7 +43,8 @@ BRN2SrcForwarder::BRN2SrcForwarder()
   _me(),
   _dsr_encap(),
   _dsr_decap(),
-  _link_table()
+  _link_table(),
+  _dsr_rid_cache(NULL)
 {
   //add_input(); // previously generated src packet needs to be forwarded
   //add_input(); // receiving src packet (dest reached or packet has to be forwarded)
@@ -65,6 +66,7 @@ BRN2SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
+      "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
       cpEnd) < 0)
     return -1;
 
@@ -174,6 +176,20 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
     if (_me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(dst_addr) == 50 )) { // for me
       BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
 
+      if ( _dsr_rid_cache ) {
+        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+
+        EtherAddress dst(brn_dsr->dsr_dst.data);
+        EtherAddress next(brn_dsr->dsr_dst.data);
+        EtherAddress src(brn_dsr->dsr_src.data);
+
+        click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
+        EtherAddress last(dsr_hops[brn_dsr->dsr_hop_count - 1].hw.data);
+
+        BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
+        if ( ( ! rid_e ) && (brn_dsr->dsr_id != 0) )
+          _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+      }
       // remove all brn header and return packet to kernel
       Packet *p = strip_all_headers(p_in);
       output(1).push(p);
@@ -210,7 +226,14 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   EtherAddress me(brn_dsr->dsr_src.data);
   EtherAddress next(brn_dsr->dsr_dst.data);
 
+  EtherAddress dst(brn_dsr->dsr_dst.data);
+  EtherAddress src(brn_dsr->dsr_src.data);
+  EtherAddress last(brn_dsr->dsr_src.data);
+
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
+
+  if ( segments + 1 < source_hops )
+    last = EtherAddress (dsr_hops[index - 2].hw.data);
 
   if (segments < source_hops) {
     // intermediate hop
@@ -219,11 +242,17 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
     // first hop
   }
 
-  if (segments > 0) {
-    // NOT the last hop
+  if (segments > 0)     // NOT the last hop (if it is the last hop, then next is dst)
     next = EtherAddress (dsr_hops[index].hw.data);
-  } else {
-    // last hop
+
+  if ( _dsr_rid_cache ) {
+    BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
+    if ( rid_e ) {
+      next = EtherAddress(rid_e->_next_hop.data());
+    } else {
+      if ( brn_dsr->dsr_id != 0 )
+        _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+    }
   }
 
   // Check if the next hop exists in link table    

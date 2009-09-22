@@ -23,13 +23,14 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-//#include "elements/brn/common.hh"
+#include <click/timer.hh>
+
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_reqforwarder.hh"
-#include <click/timer.hh>
-#include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "brn2_routeidcache.hh"
 
 CLICK_DECLS
 
@@ -248,6 +249,8 @@ public:
   Brn2LinkTable *_link_table;
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
+  BrnRouteIdCache *_dsr_rid_cache;
+  uint32_t _rid_ac;
 
   SBMap _sendbuffer_map;
   InitiatedReqMap _initiated_rreq_map;

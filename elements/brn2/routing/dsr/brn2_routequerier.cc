@@ -43,6 +43,8 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _link_table(),
     _dsr_encap(),
     _dsr_decap(),
+    _dsr_rid_cache(NULL),
+    _rid_ac(0),
     _rreq_expire_timer(static_rreq_expire_hook, this),
     _rreq_issue_timer(static_rreq_issue_hook, this),
     _blacklist_timer(static_blacklist_timer_hook, this),
@@ -77,11 +79,12 @@ int
 BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_me,
-      "LINKTABLE", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_link_table,
-      "DSRENCAP",  cpkP+cpkM, cpElement, /*"DSREncap",*/ &_dsr_encap,
-      "DSRDECAP", cpkP+cpkM, cpElement, /*"DSRDecap",*/ &_dsr_decap,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"DSRDecap",*/ &_debug,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "DSRENCAP",  cpkP+cpkM, cpElement, &_dsr_encap,
+      "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
+      "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -93,9 +96,6 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_dsr_decap || !_dsr_decap->cast("BRN2DSRDecap"))
     return errh->error("DSRDecap not specified");
-
-  //if ( _brn_iapp && !_brn_iapp->cast("BrnIappStationTracker"))
-  //  return errh->error("BrnIappStationTracker not specified");
 
   return 0;
 }
@@ -194,6 +194,21 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
     // add DSR headers to packet..
     Packet *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
+
+    uint16_t _path_id = 0;
+    if ( _dsr_rid_cache ) {
+      BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src_addr, &dst_addr);
+      if ( rid_e ) {
+        _path_id = rid_e->_id;
+      } else {
+        _rid_ac++;
+        _path_id = _rid_ac; 
+        _dsr_rid_cache->insert_entry(&src_addr, &dst_addr, &src_addr, &(route[route.size() - 2]) , _path_id);
+      }
+
+      click_brn_dsr *dsr_source = (click_brn_dsr *)(dsr_p->data());
+      dsr_source->dsr_id = _path_id;
+    }
 
    // add BRN header
     Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(dsr_p));

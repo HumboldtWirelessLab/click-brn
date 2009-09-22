@@ -28,6 +28,7 @@
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_routequerier.hh"
+#include "brn2_routeidcache.hh"
 
 CLICK_DECLS
 
@@ -73,6 +74,7 @@ class BRN2SrcForwarder : public Element {
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
   Brn2LinkTable *_link_table;
+  BrnRouteIdCache *_dsr_rid_cache;
 
   //
   //methods
