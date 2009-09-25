@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." default="build" name="click">
+
+  <!--
+  <property environment="env" />
+
+  <property name="debug" value="on" />
+  <property name="optimize" value="on" />
+  <property name="deprecation" value="off" />
+  -->
+
+  <!-- global directories -->
+  <!--
+  <property name="dir.root" location="."/>
+  <property name="dir.src" location="${dir.root}/src"/>
+  <property name="dir.build" location="${dir.root}/classes"/>
+  <property name="dir.dist" location="${dir.root}/dist"/>
+  <property name="dir.lib" location="${dir.root}/libs"/>
+  <property name="dir.doc" location="${dir.root}/doc"/>
+  <property name="dir.doc.javadoc" location="${dir.doc}/javadoc"/>
+  <property name="dir.res" location="${dir.root}/res"/>
+  -->
+
+  <target name="clean">
+    <exec executable="make" failonerror="yes">
+      <arg value="clean"/>
+    </exec>
+  </target>
+
+  <target name="configure">
+    <exec executable="sh">
+      <arg value="${basedir}/brn-conf.sh"/>
+    </exec>
+  </target>
+
+  <target name="rm">
+    <delete>
+      <fileset dir="." includes="jist/elements.*"/>
+    </delete>
+  </target>
+
+  <target name="build" depends="clean,rm,configure">
+    <echo message="${ant.project.name}: ${ant.file}" />
+    <exec executable="make" failonerror="yes">
+      <arg line="-j 4"/>
+    </exec>
+  </target>
+
+</project>
