@@ -33,6 +33,8 @@ class BrnRouteIdCache : public Element {
 
     EtherAddress _src;
     EtherAddress _dst;
+    EtherAddress _in_addr;
+    EtherAddress _out_addr;
     EtherAddress _last_hop;
     EtherAddress _next_hop;
 

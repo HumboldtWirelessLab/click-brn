@@ -99,7 +99,8 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   click_brn_dsr *dsr_source = (click_brn_dsr *)(p->data());
 
   dsr_source->dsr_type = BRN_DSR_SRC;
-  dsr_source->reserved = 0; dsr_source->dsr_id = 0;//RobAt:DSR
+  dsr_source->reserved = 0;
+  dsr_source->dsr_id = 0;//RobAt:DSR
   dsr_source->body.src.dsr_salvage = 7; // TODO change this !!
   dsr_source->dsr_segsleft = hop_count;
   dsr_source->dsr_hop_count = hop_count;
