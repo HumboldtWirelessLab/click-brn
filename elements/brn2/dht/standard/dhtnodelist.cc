@@ -11,7 +11,7 @@ CLICK_DECLS
 class DHTnode;
 
 extern "C" {
-  static int bucket_sorter(const void *va, const void *vb) {
+  static int bucket_sorter(const void *va, const void *vb, void */*thunk*/) {
       DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
 
       return MD5::hexcompare(a->_md5_digest, b->_md5_digest);
@@ -19,7 +19,7 @@ extern "C" {
 }
 
 extern "C" {
-  static int last_ping_sorter(const void *va, const void *vb) {
+  static int last_ping_sorter(const void *va, const void *vb, void */*thunk*/) {
     DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
 
     return ( a->_last_ping > b->_last_ping );
@@ -27,7 +27,7 @@ extern "C" {
 }
 
 extern "C" {
-  static int age_sorter(const void *va, const void *vb) {
+  static int age_sorter(const void *va, const void *vb, void */*thunk*/) {
     DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);
 
     return ( a->_age > b->_age );

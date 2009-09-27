@@ -218,7 +218,7 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
 void
 DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  //click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
   int count_nodes;
   DHTnode *srcnode;
@@ -239,7 +239,7 @@ DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 void
 DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
 {
-  click_ether *ether_header = (click_ether*)p_in->ether_header();
+  //click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
   int count_nodes;
 

@@ -54,7 +54,7 @@ DHTProtocolKlibs::new_packet(EtherAddress *src, EtherAddress *dst, uint8_t ptype
 }
 
 int
-DHTProtocolKlibs::get_dhtnodes(Packet *p,uint8_t *ptype, DHTnodelist *dhtlist)
+DHTProtocolKlibs::get_dhtnodes(Packet *p,uint8_t */*ptype*/, DHTnodelist *dhtlist)
 {
 //  uint16_t payload_len = DHTProtocol::get_payload_len(p);
   uint8_t *payload = DHTProtocol::get_payload(p);
