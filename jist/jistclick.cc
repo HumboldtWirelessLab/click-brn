@@ -716,7 +716,7 @@ void simclick_sim_get_node_name(simclick_node_t *simnode,char* buf,int len)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-int simclick_sim_if_ready(simclick_node_t *simnode, int ifid)
+int simclick_sim_if_ready(simclick_node_t */*simnode*/, int ifid)
 {
   //brn::click::ClickAdapter click_adapter((jobject) siminst);
   //return click_adapter.sim_if_ready((int)clickinst, ifid);
@@ -822,8 +822,8 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
     case SIMCLICK_IFID_FROM_NAME:    //2
     {
       const char *ifname = va_arg(val, const char *);
-      char *buf = va_arg(val, char *);
-      int len = va_arg(val, int);
+      //char *buf = va_arg(val, char *);  //not used
+      //int len = va_arg(val, int);  //not used
       brn::click::ClickAdapter click_adapter((jobject) simnode);
       r = click_adapter.sim_ifid_from_name(ifname);
       break;

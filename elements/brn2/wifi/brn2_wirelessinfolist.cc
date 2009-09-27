@@ -67,7 +67,7 @@ BRN2WirelessInfoList::getWifiInfoForBSSID(String bssid) {
 }
 
 bool
-BRN2WirelessInfoList::includesBSSID(String bssid) {
+BRN2WirelessInfoList::includesBSSID(String /*bssid*/) {
   return false;
 }
 

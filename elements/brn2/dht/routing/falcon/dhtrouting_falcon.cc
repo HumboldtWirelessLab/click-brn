@@ -56,7 +56,7 @@ void DHTRoutingFalcon::push( int port, Packet *packet )
 }
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t */*key*/)
 {
 //  click_chatter("Falcon gives node");
   return NULL;
@@ -155,6 +155,7 @@ read_param(Element *e, void *thunk)
 
 void DHTRoutingFalcon::add_handlers()
 {
+  add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 
 CLICK_ENDDECLS

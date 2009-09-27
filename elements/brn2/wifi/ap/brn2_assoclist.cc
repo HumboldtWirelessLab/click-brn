@@ -108,7 +108,7 @@ BRN2AssocList::configure(Vector<String> &conf, ErrorHandler* errh)
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BRN2AssocList::initialize(ErrorHandler *errh)
+BRN2AssocList::initialize(ErrorHandler */*errh*/)
 {
   return 0;
 }
@@ -535,11 +535,11 @@ read_stations(Element *e, void *thunk)
  * Format: insert $ETHERNET_ADDR $DEV_NAME
  */
 static int
-static_insert(const String &arg, Element *e, void *p, ErrorHandler *errh)
+static_insert(const String &arg, Element */*e*/, void *p, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(p);
 
-  BRN2AssocList *f = (BRN2AssocList *)e;
+ // BRN2AssocList *f = (BRN2AssocList *)e;
 
   Vector<String> args;
   EtherAddress eth;

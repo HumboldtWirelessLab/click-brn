@@ -34,11 +34,11 @@ Ath2Operation::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-Ath2Operation::push(int port,Packet *p)
+Ath2Operation::push(int /*port*/,Packet *p)
 {
-  WritablePacket *p_out;
-  struct ath2_header *ath2_h;
-  uint8_t channel;
+  //WritablePacket *p_out;
+ // struct ath2_header *ath2_h;
+  //uint8_t channel;
 
   p->kill();
 }

@@ -114,7 +114,7 @@ DHTUserspace::dht_request(UserspaceClientInfo *client_info, DHTOperation *op)
 void
 DHTUserspace::handle_dht_reply(UserspaceClientInfo *client_info, DHTOperation *op)
 {
-  int result;
+//  int result;
 
   BRN_DEBUG("DHTUserspace: Handle DHT-Answer");
   if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
@@ -132,7 +132,7 @@ DHTUserspace::handle_dht_reply(UserspaceClientInfo *client_info, DHTOperation *o
 void
 DHTUserspace::push( int port, Packet *p_in )
 {
-  int result = -1;
+//  int result = -1;
   char key[100];
   char *want_key;
 
@@ -211,9 +211,9 @@ write_param(const String &in_s, Element *e, void *vparam,
 }
 
 static String
-DHTUserspace_read_param(Element *e, void *thunk)
+DHTUserspace_read_param(Element */*e*/, void *thunk)
 {
-  DHTUserspace *dns = (DHTUserspace *)e;
+//  DHTUserspace *dus = (DHTUserspace *)e;
 
   switch ((uintptr_t) thunk)
   {
@@ -225,6 +225,7 @@ DHTUserspace_read_param(Element *e, void *thunk)
 void
 DHTUserspace::add_handlers()
 {
+  add_read_handler("info", DHTUserspace_read_param , (void *)H_SERVER_INFO);
   add_read_handler("debug", read_param, (void *) H_DEBUG);
   add_write_handler("debug", write_param, (void *) H_DEBUG);
 }

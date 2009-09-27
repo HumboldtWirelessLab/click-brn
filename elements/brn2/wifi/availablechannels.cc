@@ -29,7 +29,7 @@ AvailableChannels::cast(const char *n)
 }
 
 int
-AvailableChannels::configure(Vector<String> &conf, ErrorHandler *errh)
+AvailableChannels::configure(Vector<String> &conf, ErrorHandler */*errh*/)
 {
   int res = 0;
   int r;

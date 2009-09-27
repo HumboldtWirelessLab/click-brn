@@ -50,7 +50,7 @@ class DHTStorageTest : public Element
 
     int _starttime;
 
-    int _countkey;
+    uint32_t _countkey;
 
     bool _write;
   public:
