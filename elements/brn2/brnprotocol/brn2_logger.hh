@@ -302,7 +302,7 @@ private:
 };
 
 extern "C" {
-  static inline int etheraddr_sorter(const void *va, const void *vb) {
+  static inline int etheraddr_sorter(const void *va, const void *vb, void */*thunk*/) {
     EtherAddress *a = (EtherAddress *)va, *b = (EtherAddress *)vb;
 
     if (a == b) {

@@ -75,14 +75,14 @@ BRN2SetDeviceAnno::simple_action(Packet *p_in)
 //-----------------------------------------------------------------------------
 
 static String
-read_debug_param(Element *e, void *)
+read_debug_param(Element */*e*/, void *)
 {
 //  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
   return /*String(nl->_debug) + */"not supported\n";
 }
 
 static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+write_debug_param(const String &in_s, Element */*e*/, void *, ErrorHandler *errh)
 {
 //  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
   String s = cp_uncomment(in_s);
@@ -96,10 +96,10 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 BRN2SetDeviceAnno::add_handlers()
 {
-//  add_read_handler("debug", read_debug_param, 0);
+   add_read_handler("debug", read_debug_param, 0);
 
 //  add_write_handler("insert", static_insert, 0);
-//  add_write_handler("debug", write_debug_param, 0);
+  add_write_handler("debug", write_debug_param, 0);
 }
 
 CLICK_ENDDECLS

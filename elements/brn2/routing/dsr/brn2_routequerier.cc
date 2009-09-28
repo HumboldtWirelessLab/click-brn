@@ -102,7 +102,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 
 /* initializes error handler */
 int
-BRN2RouteQuerier::initialize(ErrorHandler *errh)
+BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
   // expire entries on list of rreq's we have seen
   _rreq_expire_timer.initialize(this);

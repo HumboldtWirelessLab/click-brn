@@ -158,20 +158,20 @@ BatmanRoutingTable::infoGetNodes()
   sa << "Routing Info" << "\n";
   if ( _nodeid != NULL ) {
     BRN2Device *dev = _nodeid->getDeviceByIndex(0);
-    sa << "Address: " << dev->getEtherAddress()->s();
+    sa << "Address: " << dev->getEtherAddress()->unparse();
   }
   for ( int i = 0; i < _nodelist.size(); i++ ) {
-    sa << " " << _nodelist[i]._addr.s() << "\t" << _nodelist[i]._last_originator_id << "\n";
+    sa << " " << _nodelist[i]._addr.unparse() << "\t" << _nodelist[i]._last_originator_id << "\n";
 
     for ( int j = 0; j < _nodelist[i]._forwarder.size(); j++ ) {
-      sa << "   Forwarder " << j << ": " << _nodelist[i]._forwarder[j]._addr.s();
+      sa << "   Forwarder " << j << ": " << _nodelist[i]._forwarder[j]._addr.unparse();
       sa << "\t#Originator: " << _nodelist[i]._forwarder[j]._oil.size() << " #AvgHops: " << _nodelist[i]._forwarder[j].getAverageHopCount() << "\n";
     }
   }
 
   sa << "\n Neighbourinfo" << "\n";
   for ( int i = 0; i < _neighbours.size(); i++ ) {
-    sa << "  " << _neighbours[i]._addr.s() << "\n";
+    sa << "  " << _neighbours[i]._addr.unparse() << "\n";
   }
 
   return sa.take_string();

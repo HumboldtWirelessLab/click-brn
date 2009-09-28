@@ -59,7 +59,7 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress *ea, char *buffer, int size, bool direction)
+handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
 {
   LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
 
@@ -267,7 +267,7 @@ LPRLinkProbeHandler::get_info()
   sa << "Nodes: " << known_hosts.size() << "\n";
 
   for( kh = 0; kh < known_hosts.size(); kh++ )
-    sa << known_hosts[kh].s() << "\t" << (int)known_timestamps[kh] << "\n";
+    sa << known_hosts[kh].unparse() << "\t" << (int)known_timestamps[kh] << "\n";
 
   sa << "Links: \n";
 

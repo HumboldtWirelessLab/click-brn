@@ -687,7 +687,7 @@ BRN2LinkStat::simple_action(Packet *p)
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
       if ( proto == _reg_handler[h]._protocol )
-        int res = _reg_handler[h]._handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s, false);
+        /*int res =*/ _reg_handler[h]._handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s, false);
     }
 
     ptr += s;
@@ -916,7 +916,7 @@ BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void
 }
 
 int
-BRN2LinkStat::deregisterHandler(int handler, int protocolId) {
+BRN2LinkStat::deregisterHandler(int /*handler*/, int /*protocolId*/) {
   //TODO
   return 0;
 }
