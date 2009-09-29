@@ -122,6 +122,7 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   WritablePacket *p;
   WritablePacket *p_brn;
   uint32_t size = f->_size;
+  uint16_t checksum;
 
   if ( size < MINIMUM_FLOW_PACKET_SIZE )  //TODO: warn that we extend the packet
     size = MINIMUM_FLOW_PACKET_SIZE;
@@ -140,6 +141,13 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->size = htonl(f->_size);
   header->mode = htonl(f->_type);
   header->reply = 0;
+
+#elif HAVE_FAST_CHECKSUM
+  checksum = ip_fast_csum((unsigned char *)p->data(), p->size() >> 2 );
+#else
+  checksum = click_in_cksum((unsigned char *)p->data(), p->size());
+#endif
+
 
   BRNPacketAnno::set_ether_anno(p, f->_src, f->_dst, ETHERTYPE_BRN );
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 255, 0);
