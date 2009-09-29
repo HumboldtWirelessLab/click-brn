@@ -208,7 +208,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	if (!insn_name)		// ignore as benign
 	    continue;
 	else if (!NameInfo::query_int(NameInfo::T_SCRIPT_INSN, this, insn_name, &insn)) {
-	    errh->error("syntax error at '%s'", insn_name.c_str());
+	    errh->error("syntax error at %<%s%>", insn_name.c_str());
 	    continue;
 	}
 
@@ -284,7 +284,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 
 	default:
 	syntax_error:
-	    errh->error("syntax error at '%s'", insn_name.c_str());
+	    errh->error("syntax error at %<%s%>", insn_name.c_str());
 	    break;
 
 	}
@@ -295,7 +295,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	if (_insns[i] == INSN_GOTO && _args3[i]) {
 	    String word = cp_shift_spacevec(_args3[i]);
 	    if ((_args[i] = find_label(word)) >= _insns.size())
-		errh->error("no such label '%s'", word.c_str());
+		errh->error("no such label %<%s%>", word.c_str());
 	}
 
     if (_insns.size() == 0 && _type == type_driver)
@@ -331,7 +331,7 @@ Script::initialize(ErrorHandler *errh)
 	if (cp_time(cp_expand(_args3[_insn_pos], expander), &ts))
 	    _timer.schedule_after(ts);
 	else
-	    errh->error("syntax error at 'wait'");
+	    errh->error("syntax error at %<wait%>");
     } else if (insn == INSN_INITIAL) {
 	// get rid of the initial runcount so we get called right away
 	if (_type == type_driver)
@@ -394,7 +394,7 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 		    _timer.schedule_after(ts);
 		    _insn_pos--;
 		} else
-		    errh->error("syntax error at 'wait'");
+		    errh->error("syntax error at %<wait%>");
 		goto done;
 	    }
 	    _step_count++;
@@ -500,7 +500,7 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 	    String cond_text = cp_expand(_args3[ipos], expander);
 	    bool cond;
 	    if (cond_text && !cp_bool(cond_text, &cond))
-		errh->error("bad condition '%s'", cond_text.c_str());
+		errh->error("bad condition %<%s%>", cond_text.c_str());
 	    else if (!cond_text || cond) {
 		if (_args[ipos] < 0)
 		    goto insn_finish;
@@ -572,7 +572,8 @@ Script::complete_step(String *retval)
 	int x;
 	*retval = String();
 	if (last_insn == INSN_RETURN || last_insn == insn_returnq) {
-	    if ((x = find_variable(String::make_stable("_", 1), false)) < _vars.size())
+	    x = find_variable(String::make_stable("_", 1), false);
+	    if (x < _vars.size())
 		*retval = _vars[x + 1];
 	} else if (last_insn == INSN_END && _type == type_push)
 	    *retval = String::make_stable("0", 1);
@@ -615,6 +616,35 @@ Script::push(int port, Packet *p)
     port = -1;
     (void) cp_integer(out, &port);
     checked_output_push(port, p);
+}
+
+Packet *
+Script::pull(int)
+{
+    Packet *p = input(0).pull();
+    if (!p)
+	return 0;
+
+    ErrorHandler *errh = ErrorHandler::default_handler();
+    ContextErrorHandler cerrh(errh, "While executing %<%{element}%>:", this);
+
+    // This is slow, but it probably doesn't need to be fast.
+    int i = find_variable(String::make_stable("input", 5), true);
+    _vars[i + 1] = String::make_stable("0", 1);
+
+    _insn_pos = 0;
+    step(0, STEP_JUMP, 0, &cerrh);
+    String out;
+    complete_step(&out);
+
+    int port = -1;
+    (void) cp_integer(out, &port);
+    if (port == 0)
+	return p;
+    else {
+	checked_output_push(port, p);
+	return 0;
+    }
 }
 
 bool
@@ -891,14 +921,18 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
     }
 
     case ar_and:
-    case ar_or: {
-	bool zero = (what == ar_and), current_value = zero;
+    case ar_nand:
+    case ar_or:
+    case ar_nor: {
+	bool zero = (what == ar_and || what == ar_nand), current_value = zero;
 	while (current_value == zero && str) {
 	    bool x;
 	    if (!cp_bool(cp_shift_spacevec(str), &x))
 		return errh->error("syntax error");
 	    current_value = (what == ar_and ? current_value && x : current_value || x);
 	}
+	if (what == ar_nand || what == ar_nor)
+	    current_value = !current_value;
 	str = cp_unparse_bool(current_value);
 	return 0;
     }
@@ -913,6 +947,15 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    (void) cp_shift_spacevec(str);
 	    str = cp_shift_spacevec(str);
 	}
+	return 0;
+    }
+
+    case ar_in: {
+	String word = cp_unquote(cp_shift_spacevec(str));
+	bool answer = false;
+	while (word && str && !answer)
+	    answer = (word == cp_unquote(cp_shift_spacevec(str)));
+	str = cp_unparse_bool(answer);
 	return 0;
     }
 
@@ -1095,6 +1138,8 @@ Script::add_handlers()
     set_handler("random", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_random, 0);
     set_handler("and", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_and, 0);
     set_handler("or", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_or, 0);
+    set_handler("nand", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_nand, 0);
+    set_handler("nor", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_nor, 0);
     set_handler("if", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_if, 0);
     set_handler("in", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_in, 0);
     set_handler("now", Handler::OP_READ, arithmetic_handler, ar_now, 0);

@@ -106,7 +106,7 @@ SimpleQueue::take_state(Element *e, ErrorHandler *errh)
 	return;
 
     if (_tail != _head || _head != 0) {
-	errh->error("already have packets enqueued, can't take state");
+	errh->error("already have packets enqueued, can%,t take state");
 	return;
     }
 
@@ -159,7 +159,7 @@ SimpleQueue::push(int, Packet *p)
 
     } else {
 	// if (!(_drops % 100))
-	if (_drops == 0)
+	if (_drops == 0 && _capacity > 0)
 	    click_chatter("%{element}: overflow", this);
 	_drops++;
 	checked_output_push(1, p);

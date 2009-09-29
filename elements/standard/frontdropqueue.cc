@@ -79,7 +79,7 @@ FrontDropQueue::take_state(Element *e, ErrorHandler *errh)
 	return;
 
     if (_tail != _head || _head != 0) {
-	errh->error("already have packets enqueued, can't take state");
+	errh->error("already have packets enqueued, can%,t take state");
 	return;
     }
 
@@ -114,7 +114,7 @@ FrontDropQueue::push(int, Packet *p)
 
     // should this stuff be in Queue::enq?
     if (next == _head) {
-	if (_drops == 0)
+	if (_drops == 0 && _capacity > 0)
 	    click_chatter("%{element}: overflow", this);
 	checked_output_push(1, _q[_head]);
 	_drops++;
