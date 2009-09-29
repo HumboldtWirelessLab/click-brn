@@ -84,17 +84,17 @@ NeighborDetect::simple_action(Packet *p_in)
 //-----------------------------------------------------------------------------
 
 static String
-read_debug_param(Element *e, void *)
+read_debug_param(Element */*e*/, void *)
 {
-  NeighborDetect *nl = (NeighborDetect *)e;
+  //NeighborDetect *nl = (NeighborDetect *)e;
   return /*String(nl->_debug) + */"not supported\n";
 }
 
 static int 
-write_debug_param(const String &in_s, Element *e, void *,
+write_debug_param(const String &in_s, Element */*e*/, void *,
 		      ErrorHandler *errh)
 {
-  NeighborDetect *nl = (NeighborDetect *)e;
+  //NeighborDetect *nl = (NeighborDetect *)e;
   String s = cp_uncomment(in_s);
   int debug;
   if (!cp_integer(s, &debug)) 
@@ -106,10 +106,10 @@ write_debug_param(const String &in_s, Element *e, void *,
 void
 NeighborDetect::add_handlers()
 {
-//  add_read_handler("debug", read_debug_param, 0);
+  add_read_handler("debug", read_debug_param, 0);
 
 //  add_write_handler("insert", static_insert, 0);
-//  add_write_handler("debug", write_debug_param, 0);
+  add_write_handler("debug", write_debug_param, 0);
 }
 
 #include <click/bighashmap.cc>

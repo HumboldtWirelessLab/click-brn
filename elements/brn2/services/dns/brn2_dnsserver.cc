@@ -120,7 +120,7 @@ BRN2DNSServer::dht_request(DNSClientInfo *client_info, DHTOperation *op)
 void
 BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
 {
-  int result;
+  //int result;
 
   BRN_DEBUG("BRN2DNSServer: Handle DHT-Answer");
   if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
@@ -148,7 +148,7 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
 void
 BRN2DNSServer::push( int port, Packet *p_in )
 {
-  int result = -1;
+//  int result = -1;
 
   BRN_DEBUG("BRN2DNSServer: PUSH an Port %d",port);
 

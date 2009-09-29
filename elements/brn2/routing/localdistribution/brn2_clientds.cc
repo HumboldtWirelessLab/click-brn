@@ -73,7 +73,7 @@ BRN2ClientDS::uninitialize()
 
 /* Processes an incoming (brn-)packet. */
 void
-BRN2ClientDS::push(int port, Packet *p_in)
+BRN2ClientDS::push(int /*port*/, Packet *p_in)
 {
   EtherAddress ea;
   int outputport = -1;

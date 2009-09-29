@@ -161,7 +161,7 @@ LZW::output_code_gnu(unsigned char *output, int *pos, unsigned int code, const i
 }
 
 unsigned int
-LZW::input_code(unsigned char *input, int *pos, int inputlen)
+LZW::input_code(unsigned char *input, int *pos, int /*inputlen*/)
 {
   unsigned long c;
   unsigned int return_value;
@@ -289,8 +289,8 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int /*max
   int character;
   int counter;
   unsigned char *string;
-  int n_bits;
-  int block_mode;
+  //int n_bits;
+  //int block_mode;
   int inputpos;
   int outputpos;
 

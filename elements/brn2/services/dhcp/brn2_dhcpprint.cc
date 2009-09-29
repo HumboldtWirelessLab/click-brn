@@ -30,6 +30,10 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#define NEED_DHCP_MESSAGE_TYPES
+#define NEED_DHCP_MESSAGE_OPTS
+#include "dhcp.h"
+
 CLICK_DECLS
 
 BRN2DHCPPrint::BRN2DHCPPrint()

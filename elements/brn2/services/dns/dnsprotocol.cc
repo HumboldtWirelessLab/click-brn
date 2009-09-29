@@ -66,8 +66,8 @@ DNSProtocol::new_dns_question(String qname, uint16_t qtype, uint16_t qclass)
 }
 
 WritablePacket *
-DNSProtocol::new_dns_answer( String qname, uint16_t qtype, uint16_t qclass,
-                                         uint32_t ttl, uint16_t rdlength, void *rdata)
+DNSProtocol::new_dns_answer( String /*qname*/, uint16_t /*qtype*/, uint16_t /*qclass*/,
+                                         uint32_t /*ttl*/, uint16_t /*rdlength*/, void */*rdata*/)
 {
   return NULL;
 }
@@ -126,7 +126,7 @@ DNSProtocol::get_name(Packet *p)
 }
 
 struct dns_header *
-DNSProtocol::get_dns_header(Packet *p)
+DNSProtocol::get_dns_header(Packet */*p*/)
 {
   return NULL;
 }

@@ -68,11 +68,11 @@ BRN2SetSrcForNeighbor::uninitialize()
 
 /* Processes an incoming (brn-)packet. */
 void
-BRN2SetSrcForNeighbor::push(int port, Packet *p_in)
+BRN2SetSrcForNeighbor::push(int /*port*/, Packet *p_in)
 {
   EtherAddress ea;
   EtherAddress *src;
-  int outputport = -1;
+  //int outputport = -1;
 
   click_ether *ether = (click_ether *) p_in->data();
 

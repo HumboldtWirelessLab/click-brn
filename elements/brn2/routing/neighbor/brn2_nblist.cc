@@ -104,7 +104,7 @@ BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
 ////////////////////////////////////////////////////////////////////////
 
 static String
-read_neighbor_param(Element *e, void *thunk)
+read_neighbor_param(Element *e, void */*thunk*/)
 {
   BRN2NBList *nbl = (BRN2NBList *)e;
   return nbl->printNeighbors()+"\n";
@@ -112,14 +112,14 @@ read_neighbor_param(Element *e, void *thunk)
 
 
 static String
-read_debug_param(Element *e, void *thunk)
+read_debug_param(Element *e, void */*thunk*/)
 {
   BRN2NBList *nbl = (BRN2NBList *)e;
   return String(nbl->_debug) + "\n";
 }
 
 static int
-write_debug_param(const String &in_s, Element *e, void *vparam,
+write_debug_param(const String &in_s, Element *e, void */*vparam*/,
                       ErrorHandler *errh)
 {
   BRN2NBList *nbl = (BRN2NBList *)e;

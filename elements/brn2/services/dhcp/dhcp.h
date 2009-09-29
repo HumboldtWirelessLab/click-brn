@@ -244,13 +244,19 @@ typedef struct true_false_string {
 
 static const true_false_string toggle_tfs = { "Enabled", "Disabled" };
 
-static const true_false_string yes_no_tfs = { "Yes", "No" };   
+static const true_false_string yes_no_tfs = { "Yes", "No" };
+
+#ifdef NEED_DHCP_MESSAGE_TYPES
 
 static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request", "Decline",
   "Ack", "Nak", "Release", "Inform" };
 #define COUNT_OPTIONS 8
 
-  static struct opt_info opt[] = {
+#endif
+
+#ifdef NEED_DHCP_MESSAGE_OPTS
+
+static struct opt_info opt[] = {
     /*   0 */ { "Padding",          none, NULL },
     /*   1 */ { "Subnet Mask",        ipv4, NULL },
     /*   2 */ { "Time Offset",        time_in_secs, NULL },
@@ -507,7 +513,9 @@ static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request"
     /* 253 */ { "Private",          opaque, NULL },
     /* 254 */ { "Private",          opaque, NULL },
     /* 255 */ { "End",          opaque, NULL }
-  };
+};
+
+#endif
 
 CLICK_ENDDECLS
 #endif

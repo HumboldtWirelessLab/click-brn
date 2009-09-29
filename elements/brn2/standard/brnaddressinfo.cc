@@ -86,7 +86,7 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
             String simip;
             String simeth;
             const char* simsuffix = ":eth";
-            Router* myrouter = router();
+            //Router* myrouter = router();
             //simclick_sim mysiminst = myrouter->master()->siminst();
 
             int colon = simif.find_right(':');

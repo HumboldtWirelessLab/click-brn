@@ -71,7 +71,7 @@ BRN2DS::uninitialize()
 
 /* Processes an incoming (brn-)packet. */
 void
-BRN2DS::push(int port, Packet *p_in)
+BRN2DS::push(int /*port*/, Packet *p_in)
 {
   EtherAddress ea;
   int outputport = -1;

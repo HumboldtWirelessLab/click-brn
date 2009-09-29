@@ -23,7 +23,6 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "dhcp.h"
 
 CLICK_DECLS
 /*

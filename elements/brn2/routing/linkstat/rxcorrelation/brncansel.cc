@@ -10,7 +10,7 @@ CLICK_DECLS
 #define LPPACKVERSION
 
 extern "C" {
-  static int send_per_sorter(const void *va, const void *vb) {
+  static int send_per_sorter(const void *va, const void *vb, void */*thunk*/) {
       BRNCandidateSelector::CandidateInfo **a = (BRNCandidateSelector::CandidateInfo **)va;
       BRNCandidateSelector::CandidateInfo **b = (BRNCandidateSelector::CandidateInfo **)vb;
 
