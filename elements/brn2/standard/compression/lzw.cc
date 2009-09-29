@@ -51,8 +51,8 @@ LZW::reset_tables()
 int
 LZW::find_match(unsigned int hash_prefix, unsigned int hash_character)
 {
-  int index;
-  int offset;
+  int index = 0;
+  int offset = 0;
 
   index = (hash_character << HASHING_SHIFT) ^ hash_prefix;
   if (index == 0)
@@ -212,7 +212,7 @@ LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int/* max
   unsigned int next_code;
   unsigned int character;
   unsigned int string_code;
-  unsigned int index;
+  unsigned int index = 0;
   int inputpos;
   int outputpos;
   int i;
@@ -244,7 +244,7 @@ LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int/* max
   {
 //  click_chatter("Inputpos: %d",inputpos);
     character = input[inputpos]; inputpos++;
-    index=find_match(string_code,character);/* See if the string is in */
+    index = find_match(string_code,character);/* See if the string is in */
     if (code_value[index] != -1)            /* the table.  If it is,   */
       string_code=code_value[index];        /* get the code value.  If */
     else                                    /* the string is not in the*/

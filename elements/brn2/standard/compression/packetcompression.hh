@@ -22,12 +22,12 @@ class PacketCompression : public Element {
   const char *class_name() const  { return "PacketCompression"; }
   const char *processing() const  { return AGNOSTIC; }
 
-  const char *port_count() const  { return "1/1"; }
+  const char *port_count() const  { return "2/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
 
-  Packet *simple_action(Packet *);
+  void push( int port, Packet *packet );
 
   int initialize(ErrorHandler *);
   void add_handlers();

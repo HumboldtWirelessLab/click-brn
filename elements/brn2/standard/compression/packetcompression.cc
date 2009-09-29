@@ -57,9 +57,26 @@ PacketCompression::initialize(ErrorHandler *)
   return 0;
 }
 
-Packet *
-PacketCompression::simple_action(Packet *) {
-  return NULL;
+void
+PacketCompression::push( int port, Packet *packet ) {
+
+  LZW lzw;
+  unsigned char comp[3000];
+  int resultsize;
+  WritablePacket *p = packet->uniqueify();
+
+  if ( port == 0 ) {
+    resultsize = lzw.encode(p->data(), p->length(), comp, 3000);
+    p->take(p->length() - resultsize);
+    memcpy(p->data(), comp, resultsize );
+    output(0).push(p);
+  } else {
+    resultsize = lzw.decode(p->data(), p->length(), comp, 3000);
+    p = p->put(resultsize - p->length());
+    memcpy(p->data(), comp, resultsize );
+    output(1).push(p);
+  }
+
 }
 
 void
