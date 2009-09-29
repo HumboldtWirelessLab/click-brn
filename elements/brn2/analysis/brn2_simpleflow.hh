@@ -15,6 +15,9 @@ class BRN2SimpleFlow : public Element
 {
   CLICK_SIZE_PACKED_STRUCTURE(
   struct flowPacketHeader {,
+    uint16_t crc;
+    uint16_t reserved;
+
     uint8_t src[6];
     uint8_t dst[6];
 
@@ -65,6 +68,8 @@ class BRN2SimpleFlow : public Element
       uint32_t _txPackets;
       uint32_t _rxPackets;
 
+      uint32_t _rxCrcErrors;
+
       Flow() {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, FlowDir dir, int rate, int size, int duration) {
@@ -79,6 +84,7 @@ class BRN2SimpleFlow : public Element
         _active = false;
         _txPackets = 0;
         _rxPackets = 0;
+        _rxCrcErrors = 0;
       }
 
       ~Flow() {}

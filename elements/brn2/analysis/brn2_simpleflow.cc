@@ -3,6 +3,7 @@
 
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
+#include <clicknet/ip.h>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
@@ -102,6 +103,7 @@ void
 BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 {
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
+  uint16_t checksum;
 
   EtherAddress src_ea = EtherAddress(header->src);
   Flow *f = _flowMap.findp(src_ea);
@@ -112,6 +114,15 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   }
 
   f->_rxPackets++;
+
+#if HAVE_FAST_CHECKSUM
+  checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
+#else
+  checksum = click_in_cksum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))));
+#endif
+  click_chatter("Insum: %d",checksum);
+
+  if ( checksum != header->crc ) f->_rxCrcErrors++;
 
   packet->kill();
 }
@@ -142,12 +153,15 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->mode = htonl(f->_type);
   header->reply = 0;
 
-#elif HAVE_FAST_CHECKSUM
-  checksum = ip_fast_csum((unsigned char *)p->data(), p->size() >> 2 );
+#if HAVE_FAST_CHECKSUM
+  checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))) >> 2 );
 #else
-  checksum = click_in_cksum((unsigned char *)p->data(), p->size());
+  checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))));
 #endif
-
+  click_chatter("Outsum: %d",checksum);
+  
+  header->crc = checksum;
+  header->reserved = 0;
 
   BRNPacketAnno::set_ether_anno(p, f->_src, f->_dst, ETHERTYPE_BRN );
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 255, 0);
@@ -185,7 +199,7 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
       for (BRN2SimpleFlow::FMIter fm = sf->_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();
         sa << "Source: " << fl._src.unparse().c_str();
-        sa << " Packets: " << fl._rxPackets;
+        sa << " Packets: " << fl._rxPackets << " CRC-Errors: " << fl._rxCrcErrors;
         sa << "\n";
       }
       return sa.take_string();
