@@ -51,6 +51,9 @@ class BRN2EtherEncap : public Element {
   Packet *pull(int);
 
   bool _use_anno;
+
+  /*static functions*/
+  static Packet *push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype);
 };
 
 CLICK_ENDDECLS

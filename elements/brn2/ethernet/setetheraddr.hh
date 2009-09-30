@@ -56,6 +56,8 @@ class SetEtherAddr : public Element {
   EtherAddress _src;
   EtherAddress _dst;
 
+  uint16_t _ethertype;
+
   int _debug;
  
 };

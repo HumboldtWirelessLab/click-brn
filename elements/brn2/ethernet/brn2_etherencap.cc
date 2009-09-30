@@ -121,5 +121,24 @@ BRN2EtherEncap::pull(int)
   }
 }
 
+Packet *
+push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype) {
+  WritablePacket *q;
+  q = p->push(14);
+  if (q) {
+    click_ether *ether = (click_ether *) q->data();
+    memcpy(ether->ether_shost, src, 6);
+    memcpy(ether->ether_dhost, dst, 6);
+    ether->ether_type = htons(ethertype);
+  } else {
+    //TODO: WARN that push wasn't successfull !
+    return NULL;
+  }
+
+  return q;
+
+}
+
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2EtherEncap)
