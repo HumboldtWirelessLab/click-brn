@@ -8,9 +8,40 @@
 #include "lzw.hh"
 
 
+/**
+  TODO: result of push and put (packet) in push-function is not considered. Change this !!!
+*/
+
 CLICK_DECLS
 
-class PacketCompression : public Element {
+class PacketCompression : public Element
+{
+
+#define MAX_COMPRESSION_BUFFER 3000
+#define COMP_ETHERTYPE 0xc0eb
+
+  CLICK_SIZE_PACKED_STRUCTURE(
+   struct compression_header {,
+    uint8_t marker;
+#define COMPRESSION_MARKER 0x9F
+
+    uint8_t compression_mode:3;
+#define COMPRESSION_MODE_FULL      0
+#define COMPRESSION_MODE_ETHERNET  1
+#define COMPRESSION_MODE_BRN       2
+
+    uint8_t compression_type:5;
+#define COMPRESSION_NONE 0
+#define COMPRESSION_LZW  1
+
+    uint16_t uncompressed_len;
+  });
+
+  CLICK_SIZE_PACKED_STRUCTURE(
+   struct compression_option {,
+    uint16_t offset;
+  });
+
 
  public:
   //
@@ -38,6 +69,10 @@ class PacketCompression : public Element {
   LZW _lzw;
 
   void compression_test();
+
+  uint8_t cmode;
+  unsigned char compbuf[MAX_COMPRESSION_BUFFER];
+  uint16_t ethertype;
 
 };
 
