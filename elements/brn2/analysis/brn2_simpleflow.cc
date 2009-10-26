@@ -86,6 +86,17 @@ BRN2SimpleFlow::set_active()
   txFlow._active = true;
 }
 
+void
+BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
+                          uint32_t rate, uint32_t size, uint32_t /*mode*/,
+                          uint32_t duration, uint32_t active )
+{
+  txFlow = Flow(src, dst, 1, TYPE_SMALL_ACK, DIR_ME_SENDER, rate, size, duration);
+  if ( active == 0 )
+    txFlow._active = false;
+  else
+    txFlow._active = true;
+}
 
 void
 BRN2SimpleFlow::push( int /*port*/, Packet *packet )
@@ -139,7 +150,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 enum {
   H_TXFLOWS_SHOW,
   H_RXFLOWS_SHOW,
-  H_FLOW_ACTIVE
+  H_FLOW_ACTIVE,
+  H_ADD_FLOW
 };
 
 static String
@@ -185,6 +197,33 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       sf->set_active();
       break;
     }
+    case H_ADD_FLOW: {
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      EtherAddress src;
+      EtherAddress dst;
+
+      uint32_t rate;
+      uint32_t size;
+      uint32_t mode;
+      uint32_t duration;
+      uint32_t active;
+
+      click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
+      cp_ethernet_address(args[0], &src);
+      cp_ethernet_address(args[1], &dst);
+      cp_integer(args[2], &rate);
+      cp_integer(args[3], &size);
+      cp_integer(args[4], &mode);
+      cp_integer(args[5], &duration);
+      cp_integer(args[6], &active);
+
+      /** TODO: some valid checks */
+      sf->add_flow( src, dst, rate, size, mode, duration, active);
+      break;
+    }
+
   }
 
   return 0;
@@ -195,6 +234,7 @@ void BRN2SimpleFlow::add_handlers()
   add_read_handler("txflows", BRN2SimpleFlow_read_param, (void *)H_TXFLOWS_SHOW);
   add_read_handler("rxflows", BRN2SimpleFlow_read_param, (void *)H_RXFLOWS_SHOW);
   add_write_handler("active", BRN2SimpleFlow_write_param, (void *)H_FLOW_ACTIVE);
+  add_write_handler("add_flow", BRN2SimpleFlow_write_param, (void *)H_ADD_FLOW);
 }
 
 EXPORT_ELEMENT(BRN2SimpleFlow)
