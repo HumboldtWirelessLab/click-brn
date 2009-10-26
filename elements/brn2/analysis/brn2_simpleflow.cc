@@ -201,6 +201,10 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       Vector<String> args;
       cp_spacevec(s, args);
 
+      if ( args.size() < 7 ) {
+        click_chatter("Use: Src Dst rate size mode duration active");
+        click_chatter("You send. %s",in_s.c_str());
+      }
       EtherAddress src;
       EtherAddress dst;
 
