@@ -182,7 +182,10 @@ read_handler(Element *e, void *thunk)
       rate /= ( ( acflow->_end - acflow->_start ) / 1000 );
       sa << "Packets: " << acflow->_send_packets;
       sa << "\nRate: " << rate;
-      sa << " Byte/s";
+      sa << " Byte/s\n";
+      sa << "Running : ";
+      if ( acflow->_running ) sa << "yes";
+      else sa << "no";
       return sa.take_string();
     }
     default:
