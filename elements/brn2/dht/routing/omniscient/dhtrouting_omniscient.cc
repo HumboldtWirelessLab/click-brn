@@ -74,7 +74,7 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 static int
-handler(void *element, char *buffer, int size, bool direction)
+handler(void *element, EtherAddress *, char *buffer, int size, bool direction)
 {
   DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
 /*  if ( direction )

@@ -86,7 +86,7 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 static int
-handler(void *element, char *buffer, int size, bool direction)
+handler(void *element,EtherAddress *, char *buffer, int size, bool direction)
 {
   DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
 /*  if ( direction )

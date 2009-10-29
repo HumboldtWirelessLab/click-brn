@@ -60,7 +60,6 @@ class DHTRoutingKlibs : public DHTRouting
     PacketSendBuffer packetBuffer;
 
   private:
-
     int _debug;
     BRN2LinkStat *_linkstat;
 
