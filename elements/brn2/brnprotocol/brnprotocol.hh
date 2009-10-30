@@ -6,18 +6,6 @@
 #include <click/packet_anno.hh>
 
 CLICK_DECLS
-/*
-CLICK_SIZE_PACKED_STRUCTURE(
-struct click_brn {,
-  uint8_t   dst_port;
-  uint8_t   src_port;
-  uint16_t  body_length;
-  uint8_t   ttl;
-  uint8_t   tos;
-});
-
-typedef struct click_brn brn_header;
-*/
 
 #define ETHERTYPE_BRN          0x8086 /* Berlin Roofnet Protocol */
 #define BRN_MAX_ETHER_LENGTH 1500
@@ -30,7 +18,9 @@ struct click_brn {,
   uint16_t  body_length;
   uint8_t   ttl;
   uint8_t   tos;          ///< type of service
-                            });
+});
+
+typedef struct click_brn brn_header;
 
 #define BRN_TOS_BE     0
 #define BRN_TOS_HP     1
@@ -48,15 +38,17 @@ union addr {
   struct netaddr _netaddr;
 };
 
-#define BRN_PORT_SDP              1
-#define BRN_PORT_TFTP             2
-#define BRN_PORT_DSR              3
-#define BRN_PORT_BCAST            4
-#define BRN_PORT_LINK_PROBE       6
-#define BRN_PORT_DHT              7
-#define BRN_PORT_IAPP             8
-#define BRN_PORT_GATEWAY          9
-#define BRN_PORT_FLOW            16
+#define BRN_PORT_SDP                  1
+#define BRN_PORT_TFTP                 2
+#define BRN_PORT_DSR                  3
+#define BRN_PORT_BCASTROUTING         4
+#define BRN_PORT_LINK_PROBE           6
+#define BRN_PORT_DHT                  7
+#define BRN_PORT_IAPP                 8
+#define BRN_PORT_GATEWAY              9
+#define BRN_PORT_FLOW                16
+#define BRN_PORT_SIMPLEFLODDING      17
+#define BRN_PORT_PROBABILITYFLODDING 18
 
 
 #define DEFAULT_TTL 128

@@ -35,7 +35,10 @@ CLICK_DECLS
  * Input 1  : BRNBroadcastRouting-Packets
  * Output 0 : BRNBroadcastRouting-Packets
  * Output 1 : Packets to local
-  * =d
+ * =d
+ * this is a broadcast-based routing. IT does not implement the broadcast-forwarding itself
+ * Unicast-packet from client or brn-node are encaped in broadcast-packets and send using
+ * broadcast-flooding, which is an extra element
  */
 #define MAX_QUEUE_SIZE  1500
 

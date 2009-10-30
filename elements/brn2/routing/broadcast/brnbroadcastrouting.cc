@@ -67,7 +67,7 @@ BrnBroadcastRouting::initialize(ErrorHandler *)
 void
 BrnBroadcastRouting::push( int port, Packet *packet )
 {
-  click_chatter("BrnBroadcastRouting: PUSH\n");
+  click_chatter("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
   struct click_bcast_routing_header *bc_header;  /*uint16_t  bcast_id*/
   click_ether *ether;
 
@@ -75,7 +75,7 @@ BrnBroadcastRouting::push( int port, Packet *packet )
 
   if ( port == 0 )  //from client
   {
-    click_chatter("BrnBroadcastRouting: PUSH vom Client\n");
+    click_chatter("BrnBroadcastRouting: PUSH vom Client :%s\n",_my_ether_addr.unparse().c_str());
     ether = (click_ether *)packet->data();
     bcast_id++;
     bcast_queue.push_back(BrnBroadcast( bcast_id,ether->ether_shost,ether->ether_dhost));
@@ -85,15 +85,14 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     bc_header = (struct click_bcast_routing_header *)out_packet->data();
     bc_header->bcast_id = htons(bcast_id);
 
-    WritablePacket *final_out_packet = BRNProtocol::add_brn_header(out_packet, BRN_PORT_BCAST, BRN_PORT_BCAST);
+    WritablePacket *final_out_packet = BRNProtocol::add_brn_header(out_packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
     BRNPacketAnno::set_ether_anno(final_out_packet, _my_ether_addr,EtherAddress(broadcast), 0x8680);
-
-    output( 1 ).push( final_out_packet );  //to brn
+    output( 1 ).push( final_out_packet );  //to brn -> flooding
   }
 
-  if ( port == 1 )  // from brn
+  if ( port == 1 )  // from brn (flooding)
   {
-    click_chatter("BrnBroadcastRouting: PUSH von BRN\n");
+    click_chatter("BrnBroadcastRouting: PUSH von BRN :%s\n",_my_ether_addr.unparse().c_str());
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     struct click_bcast_routing_header *bc_header = (struct click_bcast_routing_header*)packet_data;
@@ -116,13 +115,17 @@ BrnBroadcastRouting::push( int port, Packet *packet )
       Packet *p_client = packet->clone();
 
       p_client->pull(sizeof(struct click_bcast_routing_header));
+      p_client->set_ether_header((click_ether *) p_client->data());
       output( 0 ).push( p_client );  // to clients (arp,...)
 
-      BRNPacketAnno::set_ether_anno(packet, _my_ether_addr, EtherAddress(broadcast), 0x8680);
-      output( 1 ).push(packet);
-    }
-    else
+      WritablePacket *final_out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
+      BRNPacketAnno::set_ether_anno(final_out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8680);
+      output( 1 ).push(final_out_packet);  //TODO: remove this, since forwarding is done y external
+
+    } else {
+      click_chatter("Queue size:%d Hab ich schon gesehen", bcast_queue.size());
       packet->kill();
+    }
   }
 
 }

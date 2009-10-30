@@ -30,6 +30,7 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brn2_logger.hh"
 #include "simpleflooding.hh"
+#include "flooding.hh"
 
 CLICK_DECLS
 
@@ -91,7 +92,7 @@ SimpleFlooding::push( int port, Packet *packet )
     WritablePacket *out_packet = packet->push( sizeof(click_ether) + 6 + 14 ); 
     packet_data = (uint8_t *)out_packet->data();
 
-    packet_data[sizeof(click_ether) + 0] = BRN_PORT_BCAST;
+    packet_data[sizeof(click_ether) + 0] = BRN_PORT_BCASTROUTING;
     packet_data[sizeof(click_ether) + 1] = 4;
     memcpy(&packet_data[sizeof(click_ether) + 2], &body_lenght,2);
     packet_data[sizeof(click_ether) + 4] = 9;
@@ -118,7 +119,7 @@ SimpleFlooding::push( int port, Packet *packet )
 
     bcast_queue.push_back(BrnBroadcast( bcast_id, &src_hwa[0] ) );
 
-    if ( bcast_queue.size() > MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
+    if ( bcast_queue.size() > SF_MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
 
     /* Packete an den Client sofort raus , an andere Knoten in die Jitter-Queue */  
     Packet *p_client = packet->clone();
@@ -147,7 +148,7 @@ SimpleFlooding::push( int port, Packet *packet )
     {
       click_chatter("Queue size:%d Hab %s:%d noch nie gesehen",bcast_queue.size(),new_eth.unparse().c_str(),new_id);
       bcast_queue.push_back(BrnBroadcast( bcast_header->bcast_id, (uint8_t*)&bcast_header->dsr_src ) );
-      if ( bcast_queue.size() > MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
+      if ( bcast_queue.size() > SF_MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
 
       /* Packete an den Client sofort raus , an andere Knoten in die Jitter-Queue */  
       Packet *p_client = packet->clone();
