@@ -108,6 +108,8 @@ class SimpleFlooding : public Element {
   //
   //member
   //
+  EtherAddress _my_ether_addr;
+
   int _min_jitter,_jitter,_min_dist;
   long diff_in_ms(timeval t1, timeval t2);
   Timer _sendbuffer_timer;

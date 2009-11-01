@@ -47,7 +47,7 @@ union addr {
 #define BRN_PORT_IAPP                 8
 #define BRN_PORT_GATEWAY              9
 #define BRN_PORT_FLOW                16
-#define BRN_PORT_SIMPLEFLODDING      17
+#define BRN_PORT_SIMPLEFLOODING      17
 #define BRN_PORT_PROBABILITYFLODDING 18
 
 
