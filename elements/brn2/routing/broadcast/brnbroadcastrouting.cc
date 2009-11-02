@@ -49,7 +49,8 @@ int
 BrnBroadcastRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,  //TODO: Replace by node ID
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -59,8 +60,6 @@ BrnBroadcastRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BrnBroadcastRouting::initialize(ErrorHandler *)
 {
-  bcast_id = 0;
-
   return 0;
 }
 
@@ -68,26 +67,19 @@ void
 BrnBroadcastRouting::push( int port, Packet *packet )
 {
   click_chatter("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
-  struct click_bcast_routing_header *bc_header;  /*uint16_t  bcast_id*/
-  click_ether *ether;
 
+  click_ether *ether;
   uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   if ( port == 0 )  //from client
   {
     click_chatter("BrnBroadcastRouting: PUSH vom Client :%s\n",_my_ether_addr.unparse().c_str());
     ether = (click_ether *)packet->data();
-    bcast_id++;
-    bcast_queue.push_back(BrnBroadcast( bcast_id,ether->ether_shost,ether->ether_dhost));
-    if ( bcast_queue.size() > MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
+    EtherAddress src = EtherAddress(ether->ether_shost);
 
-    WritablePacket *out_packet = packet->push( sizeof(struct click_bcast_routing_header) );  //add id
-    bc_header = (struct click_bcast_routing_header *)out_packet->data();
-    bc_header->bcast_id = htons(bcast_id);
-
-    WritablePacket *final_out_packet = BRNProtocol::add_brn_header(out_packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
-    BRNPacketAnno::set_ether_anno(final_out_packet, _my_ether_addr,EtherAddress(broadcast), 0x8680);
-    output( 1 ).push( final_out_packet );  //to brn -> flooding
+    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
+    BRNPacketAnno::set_ether_anno(out_packet, src, EtherAddress(broadcast), 0x8086);
+    output(1).push(out_packet);  //to brn -> flooding
   }
 
   if ( port == 1 )  // from brn (flooding)
@@ -95,35 +87,16 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     click_chatter("BrnBroadcastRouting: PUSH von BRN :%s\n",_my_ether_addr.unparse().c_str());
 
     uint8_t *packet_data = (uint8_t *)packet->data();
-    struct click_bcast_routing_header *bc_header = (struct click_bcast_routing_header*)packet_data;
-    ether = (click_ether *)&packet_data[sizeof(struct click_bcast_routing_header)];
+    ether = (click_ether *)packet_data;
 
-    int i;
-    for( i = 0; i < bcast_queue.size(); i++ )
-     if ( ( bcast_queue[i].bcast_id == bc_header->bcast_id ) &&
-          ( memcmp( &bcast_queue[i]._src[0], &ether->ether_shost, 6 ) == 0 ) &&
-          ( memcmp( &bcast_queue[i]._dst[0], &ether->ether_dhost, 6 ) == 0 ) ) break;
-
-    if ( i == bcast_queue.size() ) // paket noch nie gesehen
-    {
-      click_chatter("Queue size:%d Hab noch nie gesehen", bcast_queue.size());
-
-      bcast_queue.push_back(BrnBroadcast(bc_header->bcast_id, ether->ether_shost, ether->ether_dhost));
-      if ( bcast_queue.size() > MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
-
-      /* Packete an den Client sofort raus , an andere Knoten in die Jitter-Queue */
-      Packet *p_client = packet->clone();
-
-      p_client->pull(sizeof(struct click_bcast_routing_header));
-      p_client->set_ether_header((click_ether *) p_client->data());
-      output( 0 ).push( p_client );  // to clients (arp,...)
-
-      WritablePacket *final_out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
-      BRNPacketAnno::set_ether_anno(final_out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8680);
-      output( 1 ).push(final_out_packet);  //TODO: remove this, since forwarding is done y external
-
+    if ( memcmp((void*)_my_ether_addr.data(),ether->ether_dhost,6) == 0 ) {
+      click_chatter("This is for me");
+      ether = (click_ether *)packet->data();
+      packet->set_ether_header(ether);
+      output(0).push(packet);
     } else {
-      click_chatter("Queue size:%d Hab ich schon gesehen", bcast_queue.size());
+      click_chatter("Not for me");
+      packet->set_ether_header((click_ether*)packet_data);
       packet->kill();
     }
   }
@@ -159,9 +132,6 @@ BrnBroadcastRouting::add_handlers()
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
-
-#include <click/vector.cc>
-template class Vector<BrnBroadcastRouting::BrnBroadcast>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnBroadcastRouting)

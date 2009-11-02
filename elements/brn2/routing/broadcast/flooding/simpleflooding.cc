@@ -85,7 +85,7 @@ SimpleFlooding::push( int port, Packet *packet )
 
   if ( port == 0 )                       // kommt von arp oder so (Client)
   {
-    Packet *p_client = packet->clone();
+    //Packet *p_client = packet->clone();
 
     click_chatter("SimpleFlooding: PUSH vom Client\n");
 
@@ -93,14 +93,14 @@ SimpleFlooding::push( int port, Packet *packet )
     memcpy(&src_hwa[0], &packet_data[6], 6 );
 
     packet->pull(6); //remove mac Broadcast-Address
-    packet->push(sizeof(struct click_brn_bcast)); //add BroadcastHeader
-    struct click_brn_bcast *bch = (struct click_brn_bcast*)packet->data();
+    WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast)); //add BroadcastHeader
+    struct click_brn_bcast *bch = (struct click_brn_bcast*)new_packet->data();
     bcast_id++;
     bch->bcast_id = bcast_id;
 
-    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
+    WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
     packet_data = (uint8_t *)out_packet->data();
-    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8680);
+    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8086);
 
     bcast_header = (struct click_brn_bcast *)&packet_data[sizeof(click_ether) + 6];
 
@@ -115,7 +115,7 @@ SimpleFlooding::push( int port, Packet *packet )
     unsigned int j = (unsigned int ) ( _min_jitter +( click_random() % ( _jitter ) ) );
     packet_queue.push_back( BufferedPacket(out_packet, j ));
 
-    output( 0 ).push( p_client );  // to clients (arp,...)
+ //   output( 0 ).push( p_client );  // to clients (arp,...)
   }
 
   if ( port == 1 )                                    // kommt von brn
@@ -146,14 +146,17 @@ SimpleFlooding::push( int port, Packet *packet )
       memcpy(p_client_out->data(), broadcast, 6);         //set dest to bcast
       output( 0 ).push( p_client_out );                   // to clients (arp,...)
 
+  //    packet->set_ether_header(NULL);                     //set_ether_header to null, since ether_annos is used
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
-      BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8680);
+      BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8086);
+
 
       unsigned int j = (unsigned int ) ( _min_jitter +( click_random() % ( _jitter ) ) );
       packet_queue.push_back( BufferedPacket( out_packet, j ) );
-    }
-    else
+    } else {
+      click_chatter("kenn ich schon: %s:%d",src_eth.unparse().c_str(), bcast_header->bcast_id);
       packet->kill();
+    }
   }
 
   unsigned int j = get_min_jitter_in_queue();
@@ -187,7 +190,7 @@ SimpleFlooding::queue_timer_hook()
 
   unsigned int j = get_min_jitter_in_queue();
   if ( j < (unsigned)_min_dist ) j = _min_dist;
-  click_chatter("BRNFlooding: Timer after %d ms", j );
+//  click_chatter("BRNFlooding: Timer after %d ms", j );
 
   _sendbuffer_timer.schedule_after_msec(j);
 }

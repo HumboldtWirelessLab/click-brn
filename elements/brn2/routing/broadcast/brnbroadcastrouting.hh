@@ -33,41 +33,17 @@ CLICK_DECLS
  * =s
  * Input 0  : Packets to route
  * Input 1  : BRNBroadcastRouting-Packets
- * Output 0 : BRNBroadcastRouting-Packets
- * Output 1 : Packets to local
+ * Output 0 : Packets to local
+ * Output 1 : BRNBroadcastRouting-Packets
  * =d
  * this is a broadcast-based routing. IT does not implement the broadcast-forwarding itself
  * Unicast-packet from client or brn-node are encaped in broadcast-packets and send using
  * broadcast-flooding, which is an extra element
  */
-#define MAX_QUEUE_SIZE  1500
-
-struct click_bcast_routing_header {
-  uint16_t      bcast_id;
-  hwaddr        dsr_dst;
-};
 
 class BrnBroadcastRouting : public Element {
 
  public:
-
-  class BrnBroadcast
-  {
-    public:
-      uint16_t      bcast_id;
-      uint8_t       _dst[6];
-      uint8_t       _src[6];
-
-      BrnBroadcast( uint16_t _id, uint8_t *src, uint8_t *dst )
-      {
-        bcast_id = _id;
-        memcpy(&_src[0], src, 6);
-        memcpy(&_dst[0], dst, 6);
-      }
-
-      ~BrnBroadcast()
-      {}
-  };
 
   //
   //methods
@@ -92,11 +68,7 @@ class BrnBroadcastRouting : public Element {
   //
   //member
   //
-
-  Vector<BrnBroadcast> bcast_queue;
-  uint16_t bcast_id;
   EtherAddress _my_ether_addr;
-
  public:
   int _debug;
 
