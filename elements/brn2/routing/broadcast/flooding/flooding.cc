@@ -36,8 +36,7 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  :_sendbuffer_timer(this),
-  _debug(Brn2Logger::DEFAULT),
+  : _debug(Brn2Logger::DEFAULT),
   _flooding_src(0),
   _flooding_fwd(0)
 {
@@ -50,18 +49,12 @@ Flooding::~Flooding()
 int
 Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  int max_jitter;
-
   if (cp_va_kparse(conf, this, errh,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
       "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
-      "MINJITTER", cpkP+cpkM, cpInteger, /*"minimal Jitter",*/ &_min_jitter,
-      "MAXJITTER", cpkP+cpkM, cpInteger, /*"maximal Jitter",*/ &max_jitter,
-      "DIFFJITTER", cpkP+cpkM, cpInteger, /*"min Jitter between 2 Packets",*/ &_min_dist,
       cpEnd) < 0)
        return -1;
 
-  _jitter = max_jitter - _min_jitter;
   return 0;
 }
 
@@ -69,11 +62,6 @@ int
 Flooding::initialize(ErrorHandler *)
 {
   bcast_id = 0;
-
-  unsigned int j = (unsigned int ) ( _min_jitter + ( click_random() % ( _jitter ) ) );
-  click_chatter("BRNFlooding: Timer after %d ms", j );
-  _sendbuffer_timer.initialize(this);
-  _sendbuffer_timer.schedule_after_msec( j );
   return 0;
 }
 
@@ -114,8 +102,7 @@ Flooding::push( int port, Packet *packet )
     bcast_queue.push_back(BrnBroadcast(bcast_id, src_hwa));
     if ( bcast_queue.size() > SF_MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
 
-    unsigned int j = (unsigned int ) ( _min_jitter +( click_random() % ( _jitter ) ) );
-    packet_queue.push_back( BufferedPacket(out_packet, j ));
+    output(1).push(out_packet);
   }
 
   if ( port == 1 )                                    // kommt von brn
@@ -156,98 +143,16 @@ Flooding::push( int port, Packet *packet )
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
       BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8086);
 
-      unsigned int j = (unsigned int ) ( _min_jitter +( click_random() % ( _jitter ) ) );
-      packet_queue.push_back( BufferedPacket( out_packet, j ) );
+      output(1).push(out_packet);
+
     } else {
       click_chatter("kenn ich schon: %s:%d",src_eth.unparse().c_str(), bcast_header->bcast_id);
       packet->kill();
     }
   }
 
-  unsigned int j = get_min_jitter_in_queue();
-  click_chatter("BRNFlooding: Timer after %d ms", j );
-
-  _sendbuffer_timer.schedule_after_msec(j);
 }
 
-void
-Flooding::run_timer(Timer *)
-{
-  queue_timer_hook();
-}
-
-void
-Flooding::queue_timer_hook()
-{
-  struct timeval curr_time;
-  curr_time = Timestamp::now().timeval();
-
-  for ( int i = 0; i < packet_queue.size(); i++)
-  {
-    if ( diff_in_ms( packet_queue[i]._send_time, curr_time ) <= 0 )
-    {
-      Packet *out_packet = packet_queue[i]._p;
-      packet_queue.erase(packet_queue.begin() + i);
-      output( 1 ).push( out_packet );
-      break;
-    }
-  }
-
-  unsigned int j = get_min_jitter_in_queue();
-  if ( j < (unsigned)_min_dist ) j = _min_dist;
-
-  _sendbuffer_timer.schedule_after_msec(j);
-}
-
-long
-Flooding::diff_in_ms(timeval t1, timeval t2)
-{
-  long s, us, ms;
-
-  while (t1.tv_usec < t2.tv_usec) {
-    t1.tv_usec += 1000000;
-    t1.tv_sec -= 1;
-  }
-
-  s = t1.tv_sec - t2.tv_sec;
-
-  us = t1.tv_usec - t2.tv_usec;
-  ms = s * 1000L + us / 1000L;
-
-  return ms;
-}
-
-unsigned int
-Flooding::get_min_jitter_in_queue()
-{
-  struct timeval _next_send;
-  struct timeval _time_now;
-  long next_jitter;
-
-  if ( packet_queue.size() == 0 ) return( 1000 );
-  else
-  {
-    _next_send.tv_sec = packet_queue[0]._send_time.tv_sec;
-    _next_send.tv_usec = packet_queue[0]._send_time.tv_usec;
-
-    for ( int i = 1; i < packet_queue.size(); i++ )
-    {
-      if ( ( _next_send.tv_sec > packet_queue[i]._send_time.tv_sec ) ||
-           ( ( _next_send.tv_sec == packet_queue[i]._send_time.tv_sec ) && (  _next_send.tv_usec > packet_queue[i]._send_time.tv_usec ) ) )
-      {
-        _next_send.tv_sec = packet_queue[i]._send_time.tv_sec;
-        _next_send.tv_usec = packet_queue[i]._send_time.tv_usec;
-      }
-    }
-
-    _time_now = Timestamp::now().timeval();
-
-    next_jitter = diff_in_ms(_next_send, _time_now);
-
-    if ( next_jitter <= 1 ) return( 1 );
-    else return( next_jitter );
-  }
-}
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -295,7 +200,6 @@ Flooding::add_handlers()
 
 #include <click/vector.cc>
 template class Vector<Flooding::BrnBroadcast>;
-template class Vector<Flooding::BufferedPacket>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Flooding)

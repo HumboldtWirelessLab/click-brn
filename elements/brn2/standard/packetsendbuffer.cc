@@ -76,7 +76,7 @@ PacketSendBuffer::getTimeToNext()
 }
 
 PacketSendBuffer::BufferedPacket*
-PacketSendBuffer::getNextPacket()
+PacketSendBuffer::getNextBufferedPacket()
 {
   BufferedPacket *next;
   int index;
@@ -100,6 +100,21 @@ PacketSendBuffer::getNextPacket()
 
   queue.erase(queue.begin() + index);
   return next;
+}
+
+Packet*
+PacketSendBuffer::getNextPacket()
+{
+  Packet *result = NULL;
+
+  PacketSendBuffer::BufferedPacket* bp = getNextBufferedPacket();
+
+  if ( bp == NULL ) return NULL;
+
+  result = bp->_p;
+  delete bp;
+
+  return result;
 }
 
 #include <click/vector.cc>

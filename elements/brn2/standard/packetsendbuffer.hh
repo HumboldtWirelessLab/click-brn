@@ -55,7 +55,8 @@ class PacketSendBuffer
     void addPacket_ms(Packet *p, int time_diff_ms, int port);
 
     int getTimeToNext();          //millisec to next Packet
-    BufferedPacket *getNextPacket();
+    Packet *getNextPacket();
+    BufferedPacket *getNextBufferedPacket();
 
   private:
     PacketQueue queue;

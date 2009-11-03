@@ -121,7 +121,7 @@ DHTRoutingOmni::static_packet_buffer_timer_hook(Timer *t, void *f)
   dht = (DHTRoutingOmni*)f;
 
   if ( t == NULL ) click_chatter("Timer is NULL");
-  bpacket = dht->packetBuffer.getNextPacket();
+  bpacket = dht->packetBuffer.getNextBufferedPacket();
 
   if ( bpacket != NULL )
   {

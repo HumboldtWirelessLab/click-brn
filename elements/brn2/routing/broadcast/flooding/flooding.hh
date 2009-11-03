@@ -24,7 +24,6 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
-#include <click/timer.hh>
 
 #include "floodingpolicy/floodingpolicy.hh"
 #include "elements/brn2/brnprotocol/brn2_logger.hh"
@@ -66,30 +65,6 @@ class Flooding : public Element {
       {}
   };
 
-  class BufferedPacket
-  {
-    public:
-     Packet *_p;
-     struct timeval _send_time;
-
-     BufferedPacket(Packet *p, int time_diff)
-     {
-       assert(p);
-       _p=p;
-       _send_time = Timestamp::now().timeval();
-       _send_time.tv_sec += ( time_diff / 1000 );
-       _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
-       while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
-       {
-         _send_time.tv_usec -= 1000000;
-         _send_time.tv_sec++;
-       }
-     }
-     void check() const { assert(_p); }
-  };
-
-  typedef Vector<BufferedPacket> SendBuffer;
-
   //
   //methods
   //
@@ -109,8 +84,6 @@ class Flooding : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void run_timer(Timer *timer);
-
  private:
   //
   //member
@@ -121,13 +94,6 @@ class Flooding : public Element {
 
   Vector<BrnBroadcast> bcast_queue;
   uint16_t bcast_id;
-
-  int _min_jitter,_jitter,_min_dist;
-  long diff_in_ms(timeval t1, timeval t2);
-  Timer _sendbuffer_timer;
-  SendBuffer packet_queue;
-  void queue_timer_hook();
-  unsigned int get_min_jitter_in_queue();
 
  public:
 
