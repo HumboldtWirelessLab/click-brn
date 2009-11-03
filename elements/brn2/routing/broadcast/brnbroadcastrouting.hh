@@ -25,6 +25,8 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+
 
 CLICK_DECLS
 /*
@@ -68,7 +70,9 @@ class BrnBroadcastRouting : public Element {
   //
   //member
   //
-  EtherAddress _my_ether_addr;
+ BRN2NodeIdentity *_node_id;
+ EtherAddress _my_ether_addr;
+
  public:
   int _debug;
 

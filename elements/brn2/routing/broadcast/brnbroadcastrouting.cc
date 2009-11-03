@@ -49,8 +49,9 @@ int
 BrnBroadcastRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,  //TODO: Replace by node ID
-      "DEBUG", cpkP , cpInteger, &_debug,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_id,         //Use this for srcaddr
+      "SOURCEADDRESS", cpkP, cpEtherAddress, &_my_ether_addr,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -88,8 +89,9 @@ BrnBroadcastRouting::push( int port, Packet *packet )
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     ether = (click_ether *)packet_data;
+    EtherAddress dst_addr = EtherAddress(ether->ether_dhost);
 
-    if ( memcmp((void*)_my_ether_addr.data(),ether->ether_dhost,6) == 0 ) {
+    if ( _node_id->isIdentical(&dst_addr) ) {
       click_chatter("This is for me");
       ether = (click_ether *)packet->data();
       packet->set_ether_header(ether);
