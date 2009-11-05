@@ -23,19 +23,21 @@
  */
 
 #include <click/config.h>
-#include "brn2_etherencap.hh"
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
+
+#include "brn2_etherencap.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brn2.h"
-
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2EtherEncap::BRN2EtherEncap()
+  :_debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -50,6 +52,7 @@ BRN2EtherEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
       "USEANNO", cpkP, cpBool, &_use_anno,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -72,20 +75,19 @@ BRN2EtherEncap::smaction(Packet *p)
 
       //debug  //TODO: Remove this
       if ( memcmp((BRNPacketAnno::dst_ether_anno(q)).data(),annotated_ether->ether_dhost,6) != 0 ) {
-        click_chatter("header is set, but DST Addresses differs");
-        click_chatter("Header: %s  Anno: %s",
-                       EtherAddress(annotated_ether->ether_dhost).unparse().c_str(),
-                       (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
+        BRN_INFO("Header is set, but DST Addresses differs ! Header: %s  Anno: %s",
+                      EtherAddress(annotated_ether->ether_dhost).unparse().c_str(),
+                      (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
+
         memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
       }
 
     } else {
       if ( ! _use_anno ) {
-        click_chatter("The mac header anno isn't set. Use annos: src: %s dst: %s type: %x\n",
-                      (BRNPacketAnno::src_ether_anno(q)).unparse().c_str(),
-                      (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str(),
-                      htons((BRNPacketAnno::ethertype_anno(q)))
-                     ); //TODO:
+        BRN_INFO("The mac header anno isn't set. Use annos: src: %s dst: %s type: %x\n",
+                                   (BRNPacketAnno::src_ether_anno(q)).unparse().c_str(),
+                                   (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str(),
+                                    htons((BRNPacketAnno::ethertype_anno(q)))); //TODO:
       }
 
       memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(q)).data(), 6);
@@ -131,14 +133,12 @@ push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype) {
     memcpy(ether->ether_dhost, dst, 6);
     ether->ether_type = htons(ethertype);
   } else {
-    //TODO: WARN that push wasn't successfull !
+    click_chatter("No space for etherheader");
     return NULL;
   }
 
   return q;
-
 }
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2EtherEncap)

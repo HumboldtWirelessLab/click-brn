@@ -23,7 +23,6 @@
  */
 
 #include <click/config.h>
-//#include "elements/brn/common.hh"
 
 #include <clicknet/ether.h>
 #include <click/error.hh>
@@ -31,13 +30,14 @@
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "brnbroadcastrouting.hh"
 
 CLICK_DECLS
 
 BrnBroadcastRouting::BrnBroadcastRouting()
-  :_debug(/*BrnLogger::DEFAULT*/0)
+  :_debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -67,14 +67,15 @@ BrnBroadcastRouting::initialize(ErrorHandler *)
 void
 BrnBroadcastRouting::push( int port, Packet *packet )
 {
-  click_chatter("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
+  BRN_DEBUG("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
 
   click_ether *ether;
   uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   if ( port == 0 )  //from client
   {
-    click_chatter("BrnBroadcastRouting: PUSH vom Client :%s\n",_my_ether_addr.unparse().c_str());
+    BRN_DEBUG("BrnBroadcastRouting: PUSH vom Client :%s\n",_my_ether_addr.unparse().c_str());
+
     ether = (click_ether *)packet->data();
     EtherAddress src = EtherAddress(ether->ether_shost);
 
@@ -83,21 +84,21 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     output(1).push(out_packet);  //to brn -> flooding
   }
 
-  if ( port == 1 )  // from brn (flooding)
+  if ( port == 1 )               // from brn (flooding)
   {
-    click_chatter("BrnBroadcastRouting: PUSH von BRN :%s\n",_my_ether_addr.unparse().c_str());
+    BRN_DEBUG("BrnBroadcastRouting: PUSH von BRN :%s\n",_my_ether_addr.unparse().c_str());
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     ether = (click_ether *)packet_data;
     EtherAddress dst_addr = EtherAddress(ether->ether_dhost);
 
     if ( _node_id->isIdentical(&dst_addr) ) {
-      click_chatter("This is for me");
+      BRN_DEBUG("This is for me");
       ether = (click_ether *)packet->data();
       packet->set_ether_header(ether);
       output(0).push(packet);
     } else {
-      click_chatter("Not for me");
+      BRN_DEBUG("Not for me");
       packet->set_ether_header((click_ether*)packet_data);
       packet->kill();
     }

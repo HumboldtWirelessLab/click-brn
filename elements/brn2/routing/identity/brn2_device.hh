@@ -15,7 +15,7 @@ CLICK_DECLS
  */
 
 #define WIRELESS "WIRELESS"
-#define WIRED "WIRED" 
+#define WIRED "WIRED"
 
 
 class BRN2Device : public Element {

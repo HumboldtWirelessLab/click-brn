@@ -84,6 +84,13 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
   return NULL;
 }
 
+
+EtherAddress *
+BRN2NodeIdentity::getMainAddress() {
+  BRN2Device *dev = getDeviceByNumber(0);
+  return dev->getEtherAddress();
+}
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------

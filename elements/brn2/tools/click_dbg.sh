@@ -1,15 +1,13 @@
 #!/bin/bash
 
-if [ "x$DEBUG" != "x" ]; then
-  DELDEBUG=$DEBUG
-#  DELDEBUG=$(( $DEBUG + 1))
-#  echo $DELDEBUG
-  if [ $DELDEBUG -le 5 ] && [ $DELDEBUG -gt 0 ]; then
-    cat $1 | sed -e "s#//[1-$DELDEBUG]/##g" -e "s#/\*[1-$DELDEBUG]/##g" -e "s#/[1-$DELDEBUG]\*/##g" > $2
-  else
-    cp $1 $2
-  fi
+if [ "x$DEBUG" = "x" ]; then
+  DEBUG=2
 else
-  cp $1 $2
-#  echo "huu"
+  if [ $DEBUG -gt 4 ] || [ $DEBUG -lt 0 ]; then
+    DEBUG=2
+  fi
 fi
+
+#DELDEBUG=$(( $DEBUG + 1))
+
+cat $1 | sed -e "s#//[0-$DEBUG]/##g" -e "s#/\*[0-$DEBUG]/##g" -e "s#/[0-$DEBUG]\*/##g" -e "s#DEBUGLEVEL#$DEBUG#g" > $2

@@ -52,6 +52,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
       "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -68,7 +69,8 @@ Flooding::initialize(ErrorHandler *)
 void
 Flooding::push( int port, Packet *packet )
 {
-  click_chatter("Flooding: PUSH\n");
+  BRN_DEBUG("Flooding: PUSH\n");
+
   struct click_brn_bcast *bcast_header;  /*{ uint16_t      bcast_id; hwaddr        dsr_dst; hwaddr        dsr_src; };*/
   uint8_t src_hwa[6];
 
@@ -76,7 +78,7 @@ Flooding::push( int port, Packet *packet )
 
   if ( port == 0 )                       // kommt von arp oder so (Client)
   {
-    click_chatter("Flooding: PUSH vom Client\n");
+    BRN_DEBUG("Flooding: PUSH vom Client\n");
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     memcpy(&src_hwa[0], &packet_data[6], 6 );
@@ -97,7 +99,7 @@ Flooding::push( int port, Packet *packet )
     bcast_header = (struct click_brn_bcast *)&packet_data[sizeof(click_ether) + 6];
 
     EtherAddress new_eth = EtherAddress(src_hwa);
-    click_chatter("Queue size:%d Hab %s:%d kommt vom Client",bcast_queue.size(),new_eth.unparse().c_str(),bcast_id);
+    BRN_DEBUG("Queue size:%d Hab %s:%d kommt vom Client",bcast_queue.size(),new_eth.unparse().c_str(),bcast_id);
 
     bcast_queue.push_back(BrnBroadcast(bcast_id, src_hwa));
     if ( bcast_queue.size() > SF_MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
@@ -107,7 +109,7 @@ Flooding::push( int port, Packet *packet )
 
   if ( port == 1 )                                    // kommt von brn
   {
-    click_chatter("Flooding: PUSH von BRN\n");
+    BRN_DEBUG("Flooding: PUSH von BRN\n");
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)packet_data;
@@ -137,7 +139,7 @@ Flooding::push( int port, Packet *packet )
     {
       _flooding_fwd++;
 
-      click_chatter("Queue size:%d Soll %s:%d forwarden",bcast_queue.size(), src_eth.unparse().c_str(),
+      BRN_DEBUG("Queue size:%d Soll %s:%d forwarden",bcast_queue.size(), src_eth.unparse().c_str(),
                                                          bcast_header->bcast_id);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
@@ -146,7 +148,7 @@ Flooding::push( int port, Packet *packet )
       output(1).push(out_packet);
 
     } else {
-      click_chatter("kenn ich schon: %s:%d",src_eth.unparse().c_str(), bcast_header->bcast_id);
+      BRN_DEBUG("kenn ich schon: %s:%d",src_eth.unparse().c_str(), bcast_header->bcast_id);
       packet->kill();
     }
   }
