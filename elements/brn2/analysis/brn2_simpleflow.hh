@@ -135,6 +135,8 @@ class BRN2SimpleFlow : public Element
     WritablePacket*  nextPacketforFlow(Flow *f);
     Flow txFlow;
 
+    int _debug;
+
 };
 
 CLICK_ENDDECLS

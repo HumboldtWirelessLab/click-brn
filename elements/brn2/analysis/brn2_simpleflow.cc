@@ -1,6 +1,4 @@
 #include <click/config.h>
-#include "brn2_simpleflow.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <clicknet/ip.h>
@@ -13,12 +11,15 @@
 
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
-//#include "elements/brn/brn.h"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "brn2_simpleflow.hh"
 
 CLICK_DECLS
 
 BRN2SimpleFlow::BRN2SimpleFlow()
-  : _timer(this)
+  : _timer(this),
+    _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -43,6 +44,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "MODE", cpkP+cpkM, cpInteger, &_mode,
       "DURATION", cpkP+cpkM, cpInteger, &_duration,
       "ACTIVE", cpkP+cpkM, cpInteger, &_active,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -120,7 +122,7 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 #else
   checksum = click_in_cksum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))));
 #endif
-  click_chatter("Insum: %d",checksum);
+  BRN_INFO("Insum: %d",checksum);
 
   if ( checksum != header->crc ) f->_rxCrcErrors++;
 
@@ -158,8 +160,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 #else
   checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))));
 #endif
-  click_chatter("Outsum: %d",checksum);
-  
+  BRN_INFO("Outsum: %d",checksum);
+
   header->crc = checksum;
   header->reserved = 0;
 
