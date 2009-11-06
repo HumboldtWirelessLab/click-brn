@@ -184,9 +184,9 @@ PacketCompression::push( int port, Packet *packet ) {
 
 void
 PacketCompression::compression_test() {
-  unsigned char foo[2000];
-  unsigned char bar[300000];
-  unsigned char zet[4000];
+  unsigned char foo[2000];               //input buffer
+  unsigned char bar[300000];             //compression buffer
+  unsigned char zet[4000];               //output buffer
 
   for ( int z = 0; z < 100000; z++ ) {
     int resultsize,resultsize2;
