@@ -73,14 +73,21 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+/**
+ * src is the Etheraddress of the source of the LP if lp is received (see direction)
+ */
+
 static int
-handler(void *element, EtherAddress *, char *buffer, int size, bool direction)
+handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*direction*/)
 {
   DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
 /*  if ( direction )
   return lph->lpSendHandler(buffer, size);
   else
   return lph->lpReceiveHandler(buffer, size);*/
+  if ( dhtro == NULL ) return 0;
+
+  return 0;
 }
 
 int
