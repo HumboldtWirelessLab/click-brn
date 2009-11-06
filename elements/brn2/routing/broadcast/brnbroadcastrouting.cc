@@ -92,7 +92,7 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     ether = (click_ether *)packet_data;
     EtherAddress dst_addr = EtherAddress(ether->ether_dhost);
 
-    if ( _node_id->isIdentical(&dst_addr) ) {
+    if ( _node_id->isIdentical(&dst_addr) || dst_addr.is_broadcast() ) {
       BRN_DEBUG("This is for me");
       ether = (click_ether *)packet->data();
       packet->set_ether_header(ether);
