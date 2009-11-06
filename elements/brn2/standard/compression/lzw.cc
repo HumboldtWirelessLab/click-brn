@@ -365,5 +365,4 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int /*max
 
 CLICK_ENDDECLS
 
-ELEMENT_REQUIRES(BitfieldStreamArray)
 ELEMENT_PROVIDES(LZW)
