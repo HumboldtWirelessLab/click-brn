@@ -50,6 +50,7 @@ union addr {
 #define BRN_PORT_FLOW                16
 #define BRN_PORT_SIMPLEFLOODING      17
 #define BRN_PORT_PROBABILITYFLODDING 18
+#define BRN_PORT_EVENTHANDLER        19
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0
