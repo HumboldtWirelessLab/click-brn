@@ -24,6 +24,9 @@
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/standard/md5.h"
+
 #include "brn2_device.hh"
 
 CLICK_DECLS
@@ -66,12 +69,22 @@ class BRN2NodeIdentity : public Element {
   BRN2Device *getDeviceByIndex(uint8_t);
   EtherAddress *getMainAddress();
 
+//  void setNodeName(String name);
+//  void setMasterDeviceName(String name);
+//  void setMasterDeviceID(int id);
+  md5_byte_t *getNodeID() { return _node_id; };
+
   Vector<BRN2Device*> _node_devices;   //TODO: should be private
 
  private:
   //
   //member
   //
+  String _nodename;      //name of node. if not set, then etheraddr of _master_device is the name
+  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set, then the first device is master
+  int _master_device_id; //id of master device
+
+  md5_byte_t _node_id[16];  //md5 sum of master addr (nodeid)
 
 };
 

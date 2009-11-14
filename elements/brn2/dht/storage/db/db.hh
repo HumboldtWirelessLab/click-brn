@@ -2,8 +2,9 @@
 #define DHT_DB_HH
 #include <click/element.hh>
 #include <click/vector.hh>
-#include "elements/brn2/dht/standard/md5.h"
 #include <click/etheraddress.hh>
+
+#include "elements/brn2/standard/md5.h"
 
 #define DB_INT 0
 #define DB_ARRAY 1

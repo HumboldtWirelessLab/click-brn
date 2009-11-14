@@ -14,9 +14,13 @@ CLICK_DECLS
  * =d
  */
 
-#define WIRELESS "WIRELESS"
 #define WIRED "WIRED"
+#define WIRELESS "WIRELESS"
+#define VIRTUAL "VIRTUAL"
 
+#define DEVICETYPE_WIRED    0
+#define DEVICETYPE_WIRELESS 1
+#define DEVICETYPE_VIRTUAL  2
 
 class BRN2Device : public Element {
   public:

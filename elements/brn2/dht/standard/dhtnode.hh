@@ -5,7 +5,7 @@
 #include <clicknet/ether.h>
 #include <click/timer.hh>
 
-#include "md5.h"
+#include "elements/brn2/standard/md5.h"
 
 CLICK_DECLS
 

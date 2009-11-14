@@ -1,7 +1,7 @@
 #ifndef CLICK_DHTROUTING_FALCON_HH
 #define CLICK_DHTROUTING_FALCON_HH
 
-#include "elements/brn2/dht/standard/md5.h"
+#include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 

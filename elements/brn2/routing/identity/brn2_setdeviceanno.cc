@@ -24,25 +24,22 @@
  */
 
 #include <click/config.h>
-//#include "elements/brn/common.hh"
-#include "brn2_setdeviceanno.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+
+#include "brn2_setdeviceanno.hh"
+
 CLICK_DECLS
 
 BRN2SetDeviceAnno::BRN2SetDeviceAnno()
 // : _debug(BrnLogger::DEFAULT)
 {
-//  _nb_list = new NBMap();
 }
 
 BRN2SetDeviceAnno::~BRN2SetDeviceAnno()
 {
-//  BRN_DEBUG(" * current nb list: %s", printNeighbors().c_str());
-
-//  delete _nb_list;
 }
 
 int

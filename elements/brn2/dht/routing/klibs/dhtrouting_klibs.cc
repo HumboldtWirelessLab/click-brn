@@ -13,14 +13,14 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnconf.h"
-#include "dhtrouting_klibs.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
+#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/dht/standard/md5.h"
+#include "dhtrouting_klibs.hh"
 #include "dhtprotocol_klibs.hh"
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 

@@ -7,10 +7,10 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "dhtrouting_falcon.hh"
 
+#include "elements/brn2/standard/md5.h"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/dht/standard/md5.h"
+#include "dhtrouting_falcon.hh"
 #include "dhtprotocol_falcon.hh"
 
 CLICK_DECLS

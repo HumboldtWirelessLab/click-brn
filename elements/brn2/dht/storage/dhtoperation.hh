@@ -1,7 +1,7 @@
 #ifndef DHT_OPERATION_HH
 #define DHT_OPERATION_HH
 #include <click/element.hh>
-#include "elements/brn2/dht/standard/md5.h"
+#include "elements/brn2/standard/md5.h"
 
 CLICK_DECLS
 

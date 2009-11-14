@@ -37,6 +37,15 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
                     brn_device->getDeviceType().c_str());
 */
       brn_device->setDeviceNumber(no_dev);
+
+      if ( no_dev == 0 ) {
+        _nodename = brn_device->getEtherAddress()->unparse();
+        _master_device = brn_device;
+        _master_device_id = 0;
+        MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
+                            strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
+      }
+
       no_dev++;
       _node_devices.push_back(brn_device);
     }

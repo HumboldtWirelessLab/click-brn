@@ -1,9 +1,11 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/etheraddress.hh>
+
+#include "elements/brn2/standard/md5.h"
+
 #include "dhtnode.hh"
 #include "dhtnodelist.hh"
-#include "elements/brn2/dht/standard/md5.h"
 
 
 CLICK_DECLS
