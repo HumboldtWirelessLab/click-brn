@@ -70,6 +70,7 @@ class BRN2NodeIdentity : public Element {
   EtherAddress *getMainAddress();
 
 //  void setNodeName(String name);
+  String getNodeName() { return getMainAddress()->unparse();}
 //  void setMasterDeviceName(String name);
 //  void setMasterDeviceID(int id);
   md5_byte_t *getNodeID() { return _node_id; };
