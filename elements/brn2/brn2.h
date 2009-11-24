@@ -24,4 +24,19 @@
 
 #define BRN_PORT_BATMAN 10
 
+/**TODO: Remove this or better move to other places */
+#ifndef UNREFERENCED_PARAMETER
+#define UNREFERENCED_PARAMETER(P) ((void)P)
+#endif
+
+/*
+ * Common structures, classes, etc.
+ */
+#define BRN_DSR_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
+#define BRN_DSR_WIRED_MEDIUM_METRIC        10     // static metric for wired links
+#define BRN_DSR_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
+
+#define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
+#define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
+
 #endif
