@@ -26,7 +26,7 @@
 #include <click/vector.hh>
 
 #include "floodingpolicy/floodingpolicy.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

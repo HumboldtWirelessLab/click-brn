@@ -27,7 +27,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "brn2_dsrprotocol.hh"
 #include "brn2_reqforwarder.hh"
@@ -35,7 +35,7 @@
 CLICK_DECLS
 
 BRN2RequestForwarder::BRN2RequestForwarder()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _me(),
   _link_table(),
   _dsr_decap(),
@@ -303,7 +303,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
       // ETX not yet used
       if (old_frv) {
-        if (_debug == Brn2Logger::DEBUG) {
+        if (_debug == BrnLogger::DEBUG) {
           BRN_DEBUG("* already forwarded this route request %d (%d, %d)",
              ntohs(dsr_rreq.dsr_id), this_metric, old_frv->best_metric);
           if (_route_querier->metric_preferable(this_metric, old_frv->best_metric)) {

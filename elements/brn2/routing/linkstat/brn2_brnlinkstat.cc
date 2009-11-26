@@ -30,7 +30,7 @@
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "metric/brn2_brnetxmetric.hh"
 
 #include "brn2_brnlinkstat.hh"
@@ -172,7 +172,7 @@ BRN2LinkStat::BRN2LinkStat()
     _me(),
 //    _ett_metric(0),
     _etx_metric(0),
-    _debug(Brn2Logger::DEFAULT),
+    _debug(BrnLogger::DEFAULT),
     _next_neighbor_to_ad(0),
     _timer(0),
     _stale_timer(this),

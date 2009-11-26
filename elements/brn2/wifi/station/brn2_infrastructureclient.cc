@@ -40,13 +40,13 @@
 #include <click/timestamp.hh>
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2InfrastructureClient::BRN2InfrastructureClient()
 :request_timer(this),
-    _debug(Brn2Logger::DEFAULT)
+    _debug(BrnLogger::DEFAULT)
 {
 }
 

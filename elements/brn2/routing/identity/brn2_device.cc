@@ -3,14 +3,14 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <elements/brn2/standard/brnaddressinfo.hh>
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_device.hh"
 
 CLICK_DECLS
 
 BRN2Device::BRN2Device()
-  : _debug(/*BrnLogger::DEFAULT*/0),
+  : _debug(BrnLogger::DEFAULT),
     device_number(0)
 {
 }

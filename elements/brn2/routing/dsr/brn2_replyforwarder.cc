@@ -29,7 +29,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "brn2_dsrprotocol.hh"
 #include "brn2_replyforwarder.hh"
 
@@ -37,7 +37,7 @@
 CLICK_DECLS
 
 BRN2ReplyForwarder::BRN2ReplyForwarder()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
     _me(),
     _dsr_encap(),
     _dsr_decap(),

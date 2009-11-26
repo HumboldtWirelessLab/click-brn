@@ -27,8 +27,7 @@
 #include <clicknet/udp.h>
 #include "brn2_dsrclassifier.hh"
 #include "brn2_dsrprotocol.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
-
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

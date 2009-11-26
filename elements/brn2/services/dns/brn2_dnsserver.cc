@@ -28,8 +28,6 @@
 #include <clicknet/udp.h>
 #include <click/error.hh>
 #include <click/glue.hh>
-
-#include "brn2_dnsserver.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
@@ -37,14 +35,15 @@
 
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "brn2_dnsserver.hh"
 #include "dnsprotocol.hh"
 
 CLICK_DECLS
 
 BRN2DNSServer::BRN2DNSServer() :
-  _debug(Brn2Logger::DEFAULT),
+  _debug(BrnLogger::DEFAULT),
   _dhcpsubnetlist(NULL),
   _vlantable(NULL)
 {

@@ -36,14 +36,14 @@
 #include "brn2_dhcpserver.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "dhcpprotocol.hh"
 
 CLICK_DECLS
 
 BRN2DHCPServer::BRN2DHCPServer() :
-  _debug(Brn2Logger::DEFAULT),
+  _debug(BrnLogger::DEFAULT),
   _dhcpsubnetlist(NULL),
   _vlantable(NULL)
 {

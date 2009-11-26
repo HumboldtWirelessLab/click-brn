@@ -29,14 +29,15 @@
 
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
 
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _flooding_src(0),
   _flooding_fwd(0)
 {

@@ -32,12 +32,12 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2DSRDecap::BRN2DSRDecap()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _link_table(),
   _me()
 {

@@ -26,7 +26,9 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brn2.h"
+
 #include "brn2routecache.hh"
 
 CLICK_DECLS
@@ -34,7 +36,7 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////
 
 Brn2RouteCache::Brn2RouteCache() :
-  _debug(Brn2Logger::DEFAULT),
+  _debug(BrnLogger::DEFAULT),
   m_bActive( false ),
   m_tRouteAging( on_routeaging_expired, this ),
   m_iInitialTTL( 20 ),

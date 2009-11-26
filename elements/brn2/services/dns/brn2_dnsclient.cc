@@ -32,15 +32,16 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "dnsprotocol.hh"
 #include "brn2_dnsclient.hh"
 
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 BRN2DNSClient::BRN2DNSClient()
-  : _debug(Brn2Logger::DEFAULT), _timer(this)
+  : _debug(BrnLogger::DEFAULT), _timer(this)
 {
 }
 

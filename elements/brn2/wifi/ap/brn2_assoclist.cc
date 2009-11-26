@@ -28,7 +28,9 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brn2.h"
+
 #include "brn2_assoclist.hh"
 
 CLICK_DECLS
@@ -36,7 +38,7 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////////////
 
 BRN2AssocList::BRN2AssocList()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
     _client_qsize_max(20),
     _link_table(NULL)
 {

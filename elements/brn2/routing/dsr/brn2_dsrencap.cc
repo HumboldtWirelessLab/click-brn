@@ -30,7 +30,7 @@
 #include <click/straccum.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_dsrprotocol.hh"
 #include "brn2_dsrencap.hh"
@@ -39,7 +39,7 @@
 CLICK_DECLS
 
 BRN2DSREncap::BRN2DSREncap()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _link_table(),
   _me()
 {

@@ -30,13 +30,13 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/routing/dsr/brn2_dsrprotocol.hh"
 
 CLICK_DECLS
 
 BRN2ErrorForwarder::BRN2ErrorForwarder()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _me(),
   _link_table(),
   _dsr_encap(),

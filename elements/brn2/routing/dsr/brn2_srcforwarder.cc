@@ -28,7 +28,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
@@ -39,7 +39,7 @@
 CLICK_DECLS
 
 BRN2SrcForwarder::BRN2SrcForwarder()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
   _me(),
   _dsr_encap(),
   _dsr_decap(),
@@ -169,7 +169,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
     BRN2RouteQuerierRoute source_route;
     _dsr_decap->extract_source_route(p_in, source_route);
 
-    if (_debug == Brn2Logger::DEBUG) {
+    if (_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" * learned from SRCPacket ...");
       for (int j = 0; j < source_route.size(); j++)
         BRN_DEBUG(" SRC - %d   %s (%d)",

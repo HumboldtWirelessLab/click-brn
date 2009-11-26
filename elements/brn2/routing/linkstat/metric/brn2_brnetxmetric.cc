@@ -33,14 +33,14 @@
 #include "brn2_genericmetric.hh"
 #include "brn2_brnetxmetric.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS 
 
 BRN2ETXMetric::BRN2ETXMetric()
   : BRN2GenericMetric(), 
     _link_table(0),
-    _debug(Brn2Logger::DEFAULT)
+    _debug(BrnLogger::DEFAULT)
 {
 }
 

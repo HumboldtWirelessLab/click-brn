@@ -28,15 +28,16 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "brn2_routequerier.hh"
 
 CLICK_DECLS
 
 /* constructor initalizes timer, ... */
 BRN2RouteQuerier::BRN2RouteQuerier()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
     _sendbuffer_check_routes(false),
     _sendbuffer_timer(static_sendbuffer_timer_hook, this),
     _me(NULL),
@@ -179,13 +180,13 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
   BRN_DEBUG(" Metric of found route = %d", metric_of_route); 
 
-  if(_debug == Brn2Logger::DEBUG) {
+  if(_debug == BrnLogger::DEBUG) {
     String route_str = _link_table->print_routes(true);
     BRN_DEBUG(" * routestr:\n%s", route_str.c_str());
   }
 
   if ( ( route.size() > 1 ) && ( metric_of_route != -1 ) ) { // route available
-    if(_debug == Brn2Logger::DEBUG) {
+    if(_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" * have cached route:");
       for (int j=0; j < route.size(); j++) {
         BRN_DEBUG(" - %d  %s", j, route[j].unparse().c_str());
@@ -220,7 +221,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
   } else {
 
-    if (_debug == Brn2Logger::DEBUG) {
+    if (_debug == BrnLogger::DEBUG) {
       if (metric_of_route == -1) {
         BRN_DEBUG(" * metric of route is too bad ! drop it !");
         BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
@@ -409,7 +410,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
   } else {
     sb->push_back(p);
 
-    if(_debug == Brn2Logger::DEBUG) {
+    if(_debug == BrnLogger::DEBUG) {
       SendBuffer *tmp_buff = _sendbuffer_map.findp(dst)->findp(src);
       if (tmp_buff) {
         BRN_DEBUG(" * size = %d", tmp_buff->size());
@@ -623,7 +624,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
         // someone else's route request/reply and add new entries to our
         // cache?  right now we only check if we receive a route reply
         // directed to us.
-        if(_debug == Brn2Logger::DEBUG)
+        if(_debug == BrnLogger::DEBUG)
           BRN_DEBUG(" * send buffer has %d packet%s with source %s and destination %s",
                         sb.size(),
                         sb.size() == 1 ? "" : "s",
@@ -646,7 +647,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
 
         if ( ( route.size() > 1 )  && ( metric_of_route != -1 ) ) { // route available
 
-          if(_debug == Brn2Logger::DEBUG) {
+          if(_debug == BrnLogger::DEBUG) {
             BRN_DEBUG(" * have a route:");
             for (int j=0; j<route.size(); j++) {
               BRN_DEBUG(" SRC - %d  %s",
@@ -760,7 +761,7 @@ BRN2RouteQuerier::rreq_issue_hook()
 
     int metric_of_route = _link_table->get_route_metric(route);
 
-    if(_debug == Brn2Logger::DEBUG) {
+    if(_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" BUGTRACK: * Metric for route is %d\n * Route is", metric_of_route);
 
       for (int j=0; j < route.size(); j++) {

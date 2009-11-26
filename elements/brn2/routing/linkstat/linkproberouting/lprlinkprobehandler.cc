@@ -32,13 +32,13 @@
 #include "lprlinkprobehandler.hh"
 #include "lprprotocol.hh"
 #include "elements/brn2/standard/compression/lzw.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
   : _etx_metric(0),
-    _debug(Brn2Logger::DEFAULT)
+    _debug(BrnLogger::DEFAULT)
 {
 }
 

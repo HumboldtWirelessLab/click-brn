@@ -32,12 +32,12 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2ARPClient::BRN2ARPClient() :
-  _debug(Brn2Logger::DEFAULT),
+  _debug(BrnLogger::DEFAULT),
   _request_timer(this)
 {
 }

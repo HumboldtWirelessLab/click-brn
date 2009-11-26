@@ -29,15 +29,15 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn2/standard/compression/lzw.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "dcluster.hh"
 #include "dclusterprotocol.hh"
-#include "elements/brn2/standard/compression/lzw.hh"
-#include "elements/brn2/brnprotocol/brn2_logger.hh"
 
 CLICK_DECLS
 
 DCluster::DCluster()
-  : _debug(Brn2Logger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
     _my_min_round(1),
     _my_max_round(1),
     _ac_min_round(0),
