@@ -13,9 +13,9 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
-
+#include "elements/brn2/standard/md5.h"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/dht/standard/md5.h"
+
 #include "dhtrouting_omniscient.hh"
 #include "dhtprotocol_omniscient.hh"
 
