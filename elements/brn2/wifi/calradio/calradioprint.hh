@@ -1,11 +1,11 @@
-#ifndef CLICK_CALRADIODECAP_HH
-#define CLICK_CALRADIODECAP_HH
+#ifndef CLICK_CALRADIOPRINT_HH
+#define CLICK_CALRADIOPRINT_HH
 #include <click/element.hh>
 CLICK_DECLS
 
 /*
 =c
-CalradioDecap()
+CalradioPrint()
 
 =d
 
@@ -13,14 +13,14 @@ CalradioDecap()
 
 */
 
-class CalradioDecap : public Element {
+class CalradioPrint : public Element {
 
   public:
 
-    CalradioDecap();
-    ~CalradioDecap();
+    CalradioPrint();
+    ~CalradioPrint();
 
-    const char *class_name() const	{ return "CalradioDecap"; }
+    const char *class_name() const	{ return "CalradioPrint"; }
     const char *port_count() const  { return "1/1"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);

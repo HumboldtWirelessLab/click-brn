@@ -7,22 +7,22 @@
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
-#include "calradiodecap.hh"
+#include "calradioprint.hh"
 #include "ieee80211_monitor_calradio.h"
 
 CLICK_DECLS
 
-CalradioDecap::CalradioDecap()
+CalradioPrint::CalradioPrint()
   :_debug(BrnLogger::DEFAULT)
 {
 }
 
-CalradioDecap::~CalradioDecap()
+CalradioPrint::~CalradioPrint()
 {
 }
 
 int
-CalradioDecap::configure(Vector<String> &conf, ErrorHandler* errh)
+CalradioPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
 
@@ -33,13 +33,15 @@ CalradioDecap::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 Packet *
-CalradioDecap::simple_action(Packet *p)
+CalradioPrint::simple_action(Packet *p)
 {
-  p->pull(sizeof(struct calradio_header));
+  struct calradio_header *crh = (struct calradio_header *)p->data();
+
+  click_chatter("RSSI/Power: %d Rate: %d", crh->rssi, crh->rate);
 
   return p;
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(CalradioDecap)
-ELEMENT_MT_SAFE(CalradioDecap)
+EXPORT_ELEMENT(CalradioPrint)
+ELEMENT_MT_SAFE(CalradioPrint)
