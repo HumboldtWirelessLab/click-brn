@@ -13,7 +13,10 @@
        e.g. Double link: man weiss bei double links, wenn nur der link A->B eingetragen wurde ob B->A
        nicht existiert (bzw. wieder kaput ist) oder der entsprechende knoten ihn nicht eingetragen hat.
        wenn der Timestamp auf 255 ist, so hat der Knoten noch nicht eingetregen, sondern ist in der Tabelle
-       lediglich weil ain anderen ihn für den link braucht */
+       lediglich weil ain anderen ihn für den link braucht
+
+       Use lprprotocol object to avoid several delete and malloc
+*/
 
 CLICK_DECLS
 

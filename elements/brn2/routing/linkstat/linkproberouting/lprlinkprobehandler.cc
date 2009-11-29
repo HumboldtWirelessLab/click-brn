@@ -129,9 +129,9 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
     click_chatter("To heavy");
   }
 
-  delete addr;
-  delete links;
-  delete timestamp;
+  delete[] addr;
+  delete[] links;
+  delete[] timestamp;
 
   click_chatter("Call send: %d space: %d",len,size);
   return len;
@@ -248,9 +248,9 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   if ( changes ) _seq++;
   /* free the stuff */
   delete lpri->_header;
-  delete lpri->_timestamp;
-  delete lpri->_macs;
-  delete lpri->_links;
+  delete[] lpri->_timestamp;
+  delete[] lpri->_macs;
+  delete[] lpri->_links;
   delete lpri;
 
   return size;

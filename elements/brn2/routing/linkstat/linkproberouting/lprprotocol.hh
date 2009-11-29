@@ -7,6 +7,8 @@
 
 CLICK_DECLS
 
+/** TODO: DOn't make everything statis. Use object do avoid creation and destruction of the object evry punk/unpack */
+
 #define VERSION_BASE         0
 #define VERSION_BASE_MAC_LZW 1
 
