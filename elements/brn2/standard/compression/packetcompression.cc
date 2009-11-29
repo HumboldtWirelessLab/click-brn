@@ -33,6 +33,7 @@
 
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "packetcompression.hh"
 #include "lzw.hh"
@@ -40,6 +41,7 @@
 CLICK_DECLS
 
 PacketCompression::PacketCompression()
+  :_debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -52,6 +54,7 @@ PacketCompression::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "CMODE", cpkP+cpkM, cpUnsigned, &cmode,
+      "DEBUG", cpkP, cpUnsigned, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -61,26 +64,31 @@ PacketCompression::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 PacketCompression::initialize(ErrorHandler *)
 {
-  ethertype = COMP_ETHERTYPE;
+  ethertype = COMPRESSION_ETHERTYPE;
   return 0;
 }
 
 void
-PacketCompression::push( int port, Packet *packet ) {
-
-  LZW lzw;
+PacketCompression::push( int port, Packet *packet )
+{
   int resultsize;
   int oldlen;
   unsigned char *data;
   struct compression_header *ch;
   WritablePacket *p = packet->uniqueify();
 
-  if ( port == 0 ) {
+  if ( port == COMP_INPORT ) {
     oldlen = p->length();
+    if ( oldlen > MAX_COMPRESSION_BUFFER ) {
+      output(COMP_ERROR_OUTPORT).push(packet);
+      return;
+    }
+
     switch (cmode) {
       case COMPRESSION_MODE_FULL: {
         resultsize = lzw.encode(p->data(), oldlen, compbuf, MAX_COMPRESSION_BUFFER);
-        if ( resultsize < oldlen ) {
+
+        if ( ( resultsize < oldlen ) && ( resultsize > 0 ) ) {
           p->take(p->length() - resultsize);
           memcpy(p->data(), compbuf, resultsize);
           p = p->push(sizeof(struct compression_header));
@@ -88,10 +96,10 @@ PacketCompression::push( int port, Packet *packet ) {
           ch->marker = COMPRESSION_MARKER;
           ch->compression_mode = COMPRESSION_MODE_FULL;
           ch->compression_type = COMPRESSION_LZW;
-          ch->uncompressed_len = oldlen;
+          ch->uncompressed_len = htons(oldlen);
+          output(COMP_OUTPORT).push(p);
         } else {
-          output(0).push(packet);
-          return;
+          output(COMP_ERROR_OUTPORT).push(packet);
         }
         break;
       }
@@ -100,10 +108,11 @@ PacketCompression::push( int port, Packet *packet ) {
       {
         oldlen -= 12;
         resultsize = lzw.encode(p->data() + 12, oldlen, compbuf, MAX_COMPRESSION_BUFFER);
-        if ( resultsize < oldlen ) {
+
+        if ((resultsize < oldlen) && ( resultsize > 0 )) {
           unsigned char macbuf[12];
-          memcpy(macbuf, p->data(), 12);            //save mac-addresses
-          p->take(p->length() - resultsize);        //reduce packetsize (Compression)
+          memcpy(macbuf, p->data(), 12);               //save mac-addresses
+          p->take(p->length() - resultsize);           //reduce packetsize (Compression)
           memcpy(p->data() + 12, compbuf, resultsize); //insert compressed data
 
           if ( cmode == COMPRESSION_MODE_ETHERNET ) {
@@ -115,7 +124,7 @@ PacketCompression::push( int port, Packet *packet ) {
             ch->marker = COMPRESSION_MARKER;
             ch->compression_mode = COMPRESSION_MODE_ETHERNET;
             ch->compression_type = COMPRESSION_LZW;
-            ch->uncompressed_len = oldlen;
+            ch->uncompressed_len = htons(oldlen);
           }
 
           if ( cmode == COMPRESSION_MODE_BRN ) {
@@ -125,7 +134,7 @@ PacketCompression::push( int port, Packet *packet ) {
             ch->marker = COMPRESSION_MARKER;
             ch->compression_mode = COMPRESSION_MODE_BRN;
             ch->compression_type = COMPRESSION_LZW;
-            ch->uncompressed_len = oldlen;
+            ch->uncompressed_len = htons(oldlen);
             p = BRNProtocol::add_brn_header(p, BRN_PORT_COMPRESSION, BRN_PORT_COMPRESSION, 255, 0);
             p = p->push(sizeof(click_ether));
             click_ether *ether = (click_ether *)p->data();
@@ -133,88 +142,92 @@ PacketCompression::push( int port, Packet *packet ) {
             memcpy(ether->ether_dhost, macbuf, 6);
             ether->ether_type = htons(ETHERTYPE_BRN);
           }
-
+          output(COMP_OUTPORT).push(p);
+        } else {
+          output(COMP_ERROR_OUTPORT).push(packet);
         }
         break;
       }
     }
-
-    output(0).push(p);
-
   } else {
     switch (cmode) {
       case COMPRESSION_MODE_FULL: {
-        p->pull(sizeof(struct compression_header));
-        resultsize = lzw.decode(p->data(), p->length(), compbuf, MAX_COMPRESSION_BUFFER);
-        p = p->put(resultsize - p->length());
-        memcpy(p->data(), compbuf, resultsize );
+        struct compression_header *ch = (struct compression_header *)p->data();
+        int uncompsize = ntohs(ch->uncompressed_len);
+
+        if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
+          resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+
+          if ( resultsize == uncompsize ) {
+            p->pull(sizeof(struct compression_header));
+            p = p->put(uncompsize - p->length());
+            memcpy(p->data(), compbuf, uncompsize );
+            BRN_INFO("Decode: Uncomplen %d Resultlen: %d.", uncompsize, resultsize);
+            output(DECOMP_OUTPORT).push(p);
+          } else {
+            BRN_INFO("Decode error. Decompsize should be: %d Resultlen: %d.", uncompsize, resultsize);
+            output(DECOMP_ERROR_OUTPORT).push(packet);
+          }
+        } else {
+          BRN_INFO("Decompsize too big: %d.", uncompsize);
+          output(DECOMP_ERROR_OUTPORT).push(packet);
+        }
         break;
       }
       case COMPRESSION_MODE_ETHERNET:
       {
-        unsigned char macbuf[12];
-        memcpy(macbuf, p->data(), 12);            //save mac-addresses
-        p->pull(sizeof(struct compression_header) + 14); //remove mac + compression header
+        unsigned char macbuf[sizeof(click_ether)];
+        memcpy(macbuf, p->data(), sizeof(click_ether));            //save mac-addresses
 
-        resultsize = lzw.decode(p->data(), p->length(), compbuf, MAX_COMPRESSION_BUFFER);
+        struct compression_header *ch = (struct compression_header *)&(p->data()[sizeof(click_ether)]);
+        int uncompsize = ntohs(ch->uncompressed_len);
 
-        p = p->put(resultsize - p->length());
-        memcpy(p->data(), compbuf, resultsize );
+        if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
+          resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header) + sizeof(struct click_ether)]),
+                                    p->length() - (sizeof(struct compression_header) + sizeof(struct click_ether)), compbuf, uncompsize );
 
-        p = p->push(12); //add mac  //TODO: short this ( don't pull than push again, use 1 pull )
-        memcpy(p->data(), macbuf, 12 );
+          if ( resultsize == uncompsize ) {
+            p->pull(sizeof(struct compression_header) + sizeof(struct click_ether)); //remove mac + compression header
+            p = p->put(resultsize - p->length());
+            memcpy(p->data(), compbuf, resultsize );
 
+            p = p->push(sizeof(click_ether) - sizeof(uint16_t));  //add mac  //TODO: short this ( don't pull than push again, use 1 pull )
+            memcpy(p->data(), macbuf, sizeof(click_ether) - sizeof(uint16_t));
+
+            output(DECOMP_OUTPORT).push(p);
+          } else {
+            output(DECOMP_ERROR_OUTPORT).push(packet);
+          }
+        } else {
+          output(DECOMP_ERROR_OUTPORT).push(packet);
+        }
         break;
       }
       case COMPRESSION_MODE_BRN: {
         uint16_t *et;
-        p->pull(sizeof(struct compression_header));
-        resultsize = lzw.decode(p->data(), p->length(), compbuf, MAX_COMPRESSION_BUFFER);
-        p = p->put(resultsize - p->length());
-        memcpy(p->data(), compbuf, resultsize );
-        et = (uint16_t*)p->data();
-        BRNPacketAnno::set_ethertype_anno(p,*et);
-        p->pull(sizeof(uint16_t));
+        struct compression_header *ch = (struct compression_header *)p->data();
+        int uncompsize = ntohs(ch->uncompressed_len);
+
+        if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
+          resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+
+          if ( resultsize == uncompsize ) {
+            p->pull(sizeof(struct compression_header));
+            p = p->put(uncompsize - p->length());
+            memcpy(p->data(), compbuf, uncompsize );
+
+            et = (uint16_t*)p->data();
+            BRNPacketAnno::set_ethertype_anno(p,*et);
+            p->pull(sizeof(uint16_t));
+
+            output(DECOMP_OUTPORT).push(p);
+          } else {
+            output(DECOMP_ERROR_OUTPORT).push(p);
+          }
+        } else {
+          output(DECOMP_ERROR_OUTPORT).push(p);
+        }
       }
-    }
-    output(1).push(p);
-  }
-
-}
-
-void
-PacketCompression::compression_test() {
-  unsigned char foo[2000];               //input buffer
-  unsigned char bar[300000];             //compression buffer
-  unsigned char zet[4000];               //output buffer
-
-  for ( int z = 0; z < 100000; z++ ) {
-    int resultsize,resultsize2;
-    int inlen = (click_random() % 2000) + 1;
-
-  //inlen = 64;
-    memset(foo,0,2000);
-    memset(bar,0,300000);
-    memset(zet,0,4000);
-
-    for( int h = 0; h < inlen; h++ ) {
-      foo[h] = click_random() % 256;
-    }
-
-    LZW lzw;
-    LZW lzw2;
-
-    resultsize = lzw.encode(foo,inlen,bar,300000);
-    resultsize2 = lzw2.decode(bar,resultsize,zet,4000);
-
-    click_chatter("Res: %d Res2: %d",resultsize,resultsize2);
-
-    click_chatter("Memcmp: %d %d ( %d %d )",(inlen == resultsize2),  memcmp(foo,zet,inlen), inlen,resultsize2);
-
-    if ((inlen != resultsize2) || (memcmp(foo,zet,inlen) != 0 ) ) {
-      assert(inlen == resultsize2);
-      assert(memcmp(foo,zet,inlen) != 0 );
-      click_chatter("ERROR");
     }
   }
 }

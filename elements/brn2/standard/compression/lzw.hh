@@ -26,6 +26,11 @@ CLICK_DECLS
 #define TABLE_SIZE 5021
 #endif
 
+#define LZW_DECODE_STACK_SIZE 8000
+#define LZW_DECODE_ERROR -1
+#define LZW_ENCODE_ERROR -1
+
+
 class LZW
 {
  public:
@@ -44,16 +49,20 @@ class LZW
   void reset_tables();
   int find_match(unsigned int hash_prefix, unsigned int hash_character);
   unsigned char *decode_string(unsigned char *buffer,unsigned int code);
+  unsigned int input_code(unsigned char *input, int *pos, int inputlen);
+  void output_code(unsigned char *output, int *pos, unsigned int code, int max_outputlen);
+
+  /******************************************************************************************/
+  /*****************************  Unused GNU Code *******************************************/
+  /******************************************************************************************/
   unsigned int mask(const int n_bits);
   unsigned int input_code_gnu(unsigned char *input, int *pos, int inputlen, const int n_bits);
   void output_code_gnu(unsigned char *output, int *pos, unsigned int code, const int n_bits);
-  unsigned int input_code(unsigned char *input, int *pos, int inputlen);
-  void output_code(unsigned char *output, int *pos, unsigned int code);
 
   int *code_value;                  /* This is the code value array        */
   unsigned int *prefix_code;        /* This array holds the prefix codes   */
   unsigned char *append_character;  /* This array holds the appended chars */
-  unsigned char decode_stack[4000]; /* This array holds the decoded string */
+  unsigned char *decode_stack;      /* This array holds the decoded string */
 
   unsigned int b_mask;
   int n_bits_prev;
@@ -62,6 +71,7 @@ class LZW
   int output_bit_count;
   unsigned long output_bit_buffer;
 
+  int _debug;
 };
 
 CLICK_ENDDECLS

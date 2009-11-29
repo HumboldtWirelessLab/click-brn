@@ -9,16 +9,29 @@
 
 
 /**
-  TODO: result of push and put (packet) in push-function is not considered. Change this !!!
+  TODO: - result of push and put (packet) in push-function is not considered. Change this !!!
+        - split into decpm and comp
+        - invalid packet cause errors while decode. Fix it.
 */
 
 CLICK_DECLS
+
+#define DECOMPRESSION_ERROR -1
+#define COMPRESSION_ERROR -1
+
+#define COMP_OUTPORT         0
+#define DECOMP_OUTPORT       1
+#define COMP_ERROR_OUTPORT   2
+#define DECOMP_ERROR_OUTPORT 3
+
+#define COMP_INPORT 0
+#define DECOMP_INPORT 0
 
 class PacketCompression : public Element
 {
 
 #define MAX_COMPRESSION_BUFFER 3000
-#define COMP_ETHERTYPE 0xc0eb
+#define COMPRESSION_ETHERTYPE 0xc0eb
 
   CLICK_SIZE_PACKED_STRUCTURE(
    struct compression_header {,
@@ -53,7 +66,7 @@ class PacketCompression : public Element
   const char *class_name() const  { return "PacketCompression"; }
   const char *processing() const  { return AGNOSTIC; }
 
-  const char *port_count() const  { return "2/2"; }
+  const char *port_count() const  { return "2/4"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -66,14 +79,13 @@ class PacketCompression : public Element
   int _debug;
 
  private:
-  LZW _lzw;
+  LZW lzw;
 
   void compression_test();
 
   uint8_t cmode;
   unsigned char compbuf[MAX_COMPRESSION_BUFFER];
   uint16_t ethertype;
-
 };
 
 CLICK_ENDDECLS
