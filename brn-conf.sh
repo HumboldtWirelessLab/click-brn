@@ -7,7 +7,11 @@ CONFOPTION="--enable-wifi --enable-brn2 --enable-dhcp --enable-analysis"
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host"
 else
-  CONFOPTION="$CONFOPTION --enable-tools=host"
+  if [ "x$TARGET" = "xarm" ]; then
+    CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
+  else
+    CONFOPTION="$CONFOPTION --enable-tools=host"
+  fi
 fi
 
 if [ "x$1" = "x" ]; then
