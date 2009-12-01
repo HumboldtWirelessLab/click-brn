@@ -171,12 +171,28 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	      && a.data32()[2] == 0
 	      && a.data32()[3] == htonl(0x00008000));
 	CHECK(a.mask_to_prefix_len() == -1);
+	a = IP6Address::make_inverted_prefix(17);
+	CHECK(a.data32()[0] == htonl(0x00007FFF)
+	      && a.data32()[1] == 0xFFFFFFFF
+	      && a.data32()[2] == 0xFFFFFFFF
+	      && a.data32()[3] == 0xFFFFFFFF);
+	a = IP6Address::make_inverted_prefix(128);
+	CHECK(a.data32()[0] == 0
+	      && a.data32()[1] == 0
+	      && a.data32()[2] == 0
+	      && a.data32()[3] == 0);
     }
 #endif
 
     Timestamp t = Timestamp(0, 0) - Timestamp::make_msec(1001);
     CHECK(t.sec() == -2 && t.usec() == 999000);
     CHECK(t.unparse() == "-1.001000");
+#if CLICK_HZ == 1000		/* true at userlevel */
+    CHECK(t == Timestamp::make_jiffies((click_jiffies_difference_t) -1001));
+    CHECK(t < Timestamp::make_jiffies((click_jiffies_t) -1001));
+    CHECK(-t == Timestamp::make_jiffies((click_jiffies_t) 1001));
+    CHECK(-t == Timestamp::make_jiffies((click_jiffies_difference_t) 1001));
+#endif
     Timestamp t2 = Timestamp(-10, 0);
     CHECK(t2.sec() == -10 && t2.subsec() == 0);
     CHECK(t2.unparse() == "-10.000000");

@@ -3,7 +3,11 @@
 #define CLICK_STRING_HH
 #include <click/algorithm.hh>
 #include <click/atomic.hh>
+#if HAVE_STRING_PROFILING
+# include <click/integers.hh>
+#endif
 CLICK_DECLS
+class StringAccum;
 
 class String { public:
 
@@ -35,7 +39,7 @@ class String { public:
 
     /** @brief Construct an empty String (with length 0). */
     inline String() {
-	assign_memo(null_memo.real_data, 0, &null_memo);
+	assign_memo(&null_data, 0, 0);
     }
 
     /** @brief Construct a copy of the String @a x. */
@@ -82,7 +86,7 @@ class String { public:
     /** @brief Construct a String equal to "true" or "false" depending on the
      * value of @a x. */
     explicit inline String(bool x) {
-	assign_memo(bool_data + (x ? 0 : 5), x ? 4 : 5, &permanent_memo);
+	assign_memo(bool_data + (x ? 0 : 5), x ? 4 : 5, 0);
     }
 
     /** @brief Construct a String containing the single character @a c. */
@@ -142,17 +146,24 @@ class String { public:
      *
      * This function is suitable for static constant strings whose data is
      * known to stay around forever, such as C string constants.  If @a len @<
-     * 0, treats @a s as a null-terminated C string. */
+     * 0, treats @a s as a null-terminated C string.
+     *
+     * @warning The String implementation may access @a s[@a len], which
+     * should remain constant even though it's not part of the String. */
     static String make_stable(const char *s, int len = -1);
 
     /** @brief Return a String that directly references the character data in
      * [@a begin, @a end).
      * @param begin pointer to the first character in the character data
      * @param end pointer one beyond the last character in the character data
+     *  (but see the warning)
      *
      * This function is suitable for static constant strings whose data is
      * known to stay around forever, such as C string constants.  Returns an
-     * empty string if @a begin @>= @a end. */
+     * empty string if @a begin @>= @a end.
+     *
+     * @warning The String implementation may access *@a end, which should
+     * remain constant even though it's not part of the String. */
     static inline String make_stable(const char *begin, const char *end) {
 	if (begin < end)
 	    return String::make_stable(begin, end - begin);
@@ -272,7 +283,21 @@ class String { public:
      * this->length() doesn't change.  Returns a corresponding C string
      * pointer.  The returned pointer is semi-temporary; it will persist until
      * the string is destroyed or appended to. */
-    const char *c_str() const;
+    inline const char *c_str() const {
+	// We may already have a '\0' in the right place.  If _memo has no
+	// capacity, then this is one of the special strings (null or
+	// stable). We are guaranteed, in these strings, that _data[_length]
+	// exists. Otherwise must check that _data[_length] exists.
+	const char *end_data = _r.data + _r.length;
+	if ((_r.memo && end_data >= _r.memo->real_data + _r.memo->dirty)
+	    || *end_data != '\0') {
+	    if (char *x = const_cast<String *>(this)->append_garbage(1)) {
+		*x = '\0';
+		--_r.length;
+	    }
+	}
+	return _r.data;
+    }
 
 
     /** @brief Return a 32-bit hash function of the characters in [begin, end).
@@ -559,7 +584,19 @@ class String { public:
 
     /** @brief Return true iff the String's data is shared or immutable. */
     inline bool data_shared() const {
-	return !_r.memo->capacity || _r.memo->refcount != 1;
+	return !_r.memo || _r.memo->refcount != 1;
+    }
+
+    /** @brief Return a compact version of this String.
+     *
+     * The compact version shares no more than 256 bytes of data with any
+     * other non-stable String. */
+    inline String compact() const {
+	if (!_r.memo || _r.memo->refcount == 1
+	    || (uint32_t) _r.length + 256 >= _r.memo->capacity)
+	    return *this;
+	else
+	    return String(_r.data, _r.data + _r.length);
     }
 
     /** @brief Ensure the string's data is unshared and return a mutable
@@ -574,7 +611,7 @@ class String { public:
 
     /** @brief Return true iff this is an out-of-memory string. */
     inline bool out_of_memory() const {
-	return _r.data == &oom_string_data;
+	return _r.data == &oom_data;
     }
 
     /** @brief Return a const reference to an out-of-memory String. */
@@ -587,8 +624,13 @@ class String { public:
      * The returned value may be dereferenced; it points to a null
      * character. */
     static inline const char *out_of_memory_data() {
-	return &oom_string_data;
+	return &oom_data;
     }
+
+
+#if HAVE_STRING_PROFILING
+    static void profile_report(StringAccum &sa, int examples = 0);
+#endif
 
   private:
 
@@ -597,7 +639,15 @@ class String { public:
 	volatile uint32_t refcount;
 	uint32_t capacity;
 	volatile uint32_t dirty;
-	char *real_data;
+#if HAVE_STRING_PROFILING > 1
+	memo_t **pprev;
+	memo_t *next;
+#endif
+	char real_data[1];	// but it is almost certainly more
+    };
+
+    enum {
+	MEMO_SPACE = offsetof(memo_t, real_data)
     };
 
     struct rep_t {
@@ -609,11 +659,54 @@ class String { public:
 
     mutable rep_t _r;		// mutable for c_str()
 
+#if HAVE_STRING_PROFILING
+    static uint64_t live_memo_count;
+    static uint64_t memo_sizes[55];
+    static uint64_t live_memo_sizes[55];
+    static uint64_t live_memo_bytes[55];
+# if HAVE_STRING_PROFILING > 1
+    static memo_t *live_memos[55];
+# endif
+
+    static inline int profile_memo_size_bucket(uint32_t dirty, uint32_t capacity) {
+	if (capacity <= 16)
+	    return dirty;
+	else if (capacity <= 32)
+	    return 17 + (capacity - 17) / 2;
+	else if (capacity <= 64)
+	    return 25 + (capacity - 33) / 8;
+	else
+	    return 29 + 26 - ffs_msb(capacity - 1);
+    }
+
+    static void profile_update_memo_dirty(memo_t *memo, uint32_t old_dirty, uint32_t new_dirty, uint32_t capacity) {
+	if (capacity <= 16 && new_dirty != old_dirty) {
+	    ++memo_sizes[new_dirty];
+	    ++live_memo_sizes[new_dirty];
+	    live_memo_bytes[new_dirty] += capacity;
+	    --live_memo_sizes[old_dirty];
+	    live_memo_bytes[old_dirty] -= capacity;
+# if HAVE_STRING_PROFILING > 1
+	    if ((*memo->pprev = memo->next))
+		memo->next->pprev = memo->pprev;
+	    memo->pprev = &live_memos[new_dirty];
+	    if ((memo->next = *memo->pprev))
+		memo->next->pprev = &memo->next;
+	    *memo->pprev = memo;
+# else
+	    (void) memo;
+# endif
+	}
+    }
+
+    static void one_profile_report(StringAccum &sa, int i, int examples);
+#endif
+
     inline void assign_memo(const char *data, int length, memo_t *memo) const {
 	_r.data = data;
 	_r.length = length;
-	_r.memo = memo;
-	atomic_uint32_t::inc(memo->refcount);
+	if ((_r.memo = memo))
+	    atomic_uint32_t::inc(memo->refcount);
     }
 
     inline String(const char *data, int length, memo_t *memo) {
@@ -625,22 +718,19 @@ class String { public:
     }
 
     inline void deref() const {
-	if (atomic_uint32_t::dec_and_test(_r.memo->refcount))
+	if (_r.memo && atomic_uint32_t::dec_and_test(_r.memo->refcount))
 	    delete_memo(_r.memo);
     }
 
     void assign(const char *cstr, int len, bool need_deref);
     void assign_out_of_memory();
-    static memo_t *create_memo(char *data, int dirty, int capacity);
+    static memo_t *create_memo(char *space, int dirty, int capacity);
     static void delete_memo(memo_t *memo);
 
-    static const char null_string_data;
-    static const char oom_string_data;
+    static const char null_data;
+    static const char oom_data;
     static const char bool_data[11];
     static const char int_data[20];
-    static memo_t null_memo;
-    static memo_t permanent_memo;
-    static memo_t oom_memo;
     static const rep_t null_string_rep;
     static const rep_t oom_string_rep;
 

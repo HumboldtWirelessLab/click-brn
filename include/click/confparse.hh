@@ -175,7 +175,9 @@ bool cp_ip_address_list(const String& str, Vector<IPAddress>* result  CP_OPT_CON
 
 #if HAVE_IP6
 class IP6Address;
+struct click_in6_addr;
 bool cp_ip6_address(const String& str, IP6Address* result  CP_OPT_CONTEXT);
+inline bool cp_ip6_address(const String& str, struct click_in6_addr* result  CP_OPT_CONTEXT);
 bool cp_ip6_address(const String& str, unsigned char* result  CP_OPT_CONTEXT);
 bool cp_ip6_prefix(const String& str, IP6Address* result_addr, int* result_prefix, bool allow_bare_address  CP_OPT_CONTEXT);
 bool cp_ip6_prefix(const String& str, unsigned char* result_addr, int* result_prefix, bool allow_bare_address  CP_OPT_CONTEXT);
@@ -390,10 +392,15 @@ struct cp_value {
     // set by parsefunc, used by storefunc:
     union {
 	bool b;
-	int32_t i;
-	uint32_t u;
+	int i;
+	unsigned u;
+	int16_t s16;
+	uint16_t u16;
+	int32_t s32;
+	uint32_t u32;
 #if HAVE_INT64_TYPES
-	int64_t i64;
+	int64_t s64;
+	int64_t i64 CLICK_DEPRECATED;
 	uint64_t u64;
 #endif
 	size_t size;
@@ -687,10 +694,17 @@ inline bool cp_integer(const String &str, uint64_t *result)
 
 #endif
 
-inline bool cp_ip_address(const String& str, struct in_addr* ina  CP_CONTEXT)
+inline bool cp_ip_address(const String& str, struct in_addr *ina  CP_CONTEXT)
 {
-    return cp_ip_address(str, reinterpret_cast<IPAddress*>(ina)  CP_PASS_CONTEXT);
+    return cp_ip_address(str, reinterpret_cast<IPAddress *>(ina)  CP_PASS_CONTEXT);
 }
+
+#if HAVE_IP6
+inline bool cp_ip6_address(const String& str, struct click_in6_addr *x  CP_CONTEXT)
+{
+    return cp_ip6_address(str, reinterpret_cast<IP6Address *>(x)  CP_PASS_CONTEXT);
+}
+#endif
 
 /// @cond never
 inline bool cp_seconds_as(int want_power, const String &str, uint32_t *result)

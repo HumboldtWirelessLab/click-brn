@@ -576,6 +576,7 @@ PACKAGE_VERSION='1.7.0rc1'
 PACKAGE_STRING='click 1.7.0rc1'
 PACKAGE_BUGREPORT=''
 
+ac_unique_file="click-buildtool.in"
 # Factoring default headers for most tests.
 ac_includes_default="\
 #include <stdio.h>
@@ -689,6 +690,7 @@ RANLIB
 STRIP
 AR_CREATEFLAGS
 PTHREAD_LIBS
+LINUXMODULE_FIXINCLUDES
 INCLUDE_KSYMS
 linux_builddir
 linux_srcdir
@@ -726,6 +728,7 @@ XML2CLICK
 EXPAT_INCLUDES
 EXPAT_LIBS
 linux_makeargs
+LINUX_FIXINCLUDES_PROGRAM
 INSTALL_PROGRAM
 INSTALL_SCRIPT
 INSTALL_DATA
@@ -1336,7 +1339,9 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-userlevel     disable user-level driver
     --enable-user-multithread support userlevel multithreading (EXPERIMENTAL)
+    --enable-select=[select|poll|kqueue] set select() mechanism
   --disable-linuxmodule   disable Linux kernel driver
+    --enable-fixincludes      automatically fix Linux includes
     --enable-multithread[=N]  support kernel multithreading, N threads max
     --enable-warp9            reduce PollDevice functionality for speed
     --enable-kassert          enable kernel assertions
@@ -1347,7 +1352,7 @@ Optional Features:
   --enable-nsclick        enable NS simulator driver (EXPERIMENTAL)
   --enable-jistclick        enable JiST/SWANS simulator driver (EXPERIMENTAL)
   --enable-all-elements   include all provided element groups
-  --enable-analysis       include elements for network analysis
+  --disable-analysis      do not include elements for network analysis
   --disable-app           do not include application-level elements
   --disable-aqm           do not include active queue management elements
   --disable-ethernet      do not include Ethernet elements
@@ -1362,7 +1367,7 @@ Optional Features:
   --enable-simple         include simple versions of other elements
   --disable-standard      do not include standard elements
   --disable-tcpudp        do not include TCP and UDP elements
-  --enable-test           include regression test elements
+  --disable-test          do not include regression test elements
   --disable-threads       do not include thread management elements
   --enable-wifi           include wifi elements and support
   --enable-brn            include brn support
@@ -1834,6 +1839,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 ac_config_headers="$ac_config_headers include/click/config.h:config.h.in include/click/pathvars.h:pathvars.h.in include/click/config-bsdmodule.h:config-bsdmodule.h.in include/click/config-linuxmodule.h:config-linuxmodule.h.in include/click/config-ns.h:config-ns.h.in include/click/config-userlevel.h:config-userlevel.h.in"
+
 
 
 CLICK_VERSION=$PACKAGE_VERSION
@@ -5041,7 +5047,7 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
     test -z "$ac_user_kernel_cxx" && \
 	KERNEL_CXX="$ac_base_cxx"
     test -z "$ac_user_kernel_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
-	KERNEL_CXX="$ac_base_cxx -w $CXX_WARNINGS -fno-exceptions -fno-rtti $VTABLE_THUNKS"
+	KERNEL_CXX="$ac_base_cxx -w $CXX_WARNINGS -fno-exceptions -fno-rtti $VTABLE_THUNKS -fpermissive"
 
 
 
@@ -5717,6 +5723,47 @@ Can't find -lpthread and/or <pthread.h>, so I can't compile with
     LIBS="$SAVE_LIBS"
 fi
 
+# Check whether --enable-select was given.
+if test "${enable_select+set}" = set; then
+  enableval=$enable_select; :
+else
+  enable_select=
+fi
+
+
+if test "$enable_select" = select; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_USE_SELECT 1
+_ACEOF
+
+elif test "$enable_select" = poll; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_USE_POLL 1
+_ACEOF
+
+elif test "$enable_select" = kqueue; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_USE_KQUEUE 1
+_ACEOF
+
+elif test -n "$enable_select"; then
+    { echo "$as_me:$LINENO: WARNING:
+=========================================
+
+Unexpected --enable-select type ignored.
+
+=========================================" >&5
+echo "$as_me: WARNING:
+=========================================
+
+Unexpected --enable-select type ignored.
+
+=========================================" >&2;}
+fi
+
 
 
 # Check whether --enable-linuxmodule was given.
@@ -5724,6 +5771,19 @@ if test "${enable_linuxmodule+set}" = set; then
   enableval=$enable_linuxmodule; :
 else
   enable_linuxmodule=yes; enable_linuxmodule_default=yes
+fi
+
+
+# Check whether --enable-fixincludes was given.
+if test "${enable_fixincludes+set}" = set; then
+  enableval=$enable_fixincludes; :
+else
+  enable_fixincludes=no
+fi
+
+LINUXMODULE_FIXINCLUDES=
+if test "$enable_fixincludes" = yes; then
+    LINUXMODULE_FIXINCLUDES=1
 fi
 
 
@@ -5960,7 +6020,7 @@ Are you sure $linuxpath contains Linux kernel source?
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
-    fi
+	    fi
 
     linux_config=`find_linuxpath .config`
     if test -r "$linux_config"; then
@@ -5981,7 +6041,7 @@ Are you sure $linuxpath contains a Linux kernel build?
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
-    fi
+	    fi
 fi
 
 
@@ -6008,7 +6068,7 @@ element_groups=""
 if test "${enable_analysis+set}" = set; then
   enableval=$enable_analysis;
 else
-  enable_analysis=NO
+  enable_analysis=yes
 fi
 test "x$enable_all_elements" = xyes -a "x$enable_analysis" = xNO && enable_analysis=yes
 if test "x$enable_analysis" = xyes; then
@@ -6179,7 +6239,7 @@ fi
 if test "${enable_test+set}" = set; then
   enableval=$enable_test;
 else
-  enable_test=NO
+  enable_test=yes
 fi
 test "x$enable_all_elements" = xyes -a "x$enable_test" = xNO && enable_test=yes
 if test "x$enable_test" = xyes; then
@@ -6319,7 +6379,7 @@ and $freebsd_includedir contain FreeBSD kernel source?
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
-fi
+  fi
 
 
 
@@ -7823,6 +7883,411 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+{ echo "$as_me:$LINENO: checking for void *" >&5
+echo $ECHO_N "checking for void *... $ECHO_C" >&6; }
+if test "${ac_cv_type_void_p+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+typedef void * ac__type_new_;
+int
+main ()
+{
+if ((ac__type_new_ *) 0)
+  return 0;
+if (sizeof (ac__type_new_))
+  return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_type_void_p=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_type_void_p=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_type_void_p" >&5
+echo "${ECHO_T}$ac_cv_type_void_p" >&6; }
+
+# The cast to long int works around a bug in the HP C Compiler
+# version HP92453-01 B.11.11.23709.GP, which incorrectly rejects
+# declarations like `int a3[[(sizeof (unsigned char)) >= 0]];'.
+# This bug is HP SR number 8606223364.
+{ echo "$as_me:$LINENO: checking size of void *" >&5
+echo $ECHO_N "checking size of void *... $ECHO_C" >&6; }
+if test "${ac_cv_sizeof_void_p+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$cross_compiling" = yes; then
+  # Depending upon the size, compute the lo and hi bounds.
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=0 ac_mid=0
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr $ac_mid + 1`
+			if test $ac_lo -le $ac_mid; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=-1 ac_mid=-1
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) >= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_hi=`expr '(' $ac_mid ')' - 1`
+			if test $ac_mid -le $ac_hi; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo= ac_hi=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+# Binary search between lo and hi bounds.
+while test "x$ac_lo" != "x$ac_hi"; do
+  ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+int
+main ()
+{
+static int test_array [1 - 2 * !(((long int) (sizeof (ac__type_sizeof_))) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr '(' $ac_mid ')' + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+case $ac_lo in
+?*) ac_cv_sizeof_void_p=$ac_lo;;
+'') if test "$ac_cv_type_void_p" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (void *)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (void *)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_void_p=0
+   fi ;;
+esac
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+   typedef void * ac__type_sizeof_;
+static long int longval () { return (long int) (sizeof (ac__type_sizeof_)); }
+static unsigned long int ulongval () { return (long int) (sizeof (ac__type_sizeof_)); }
+#include <stdio.h>
+#include <stdlib.h>
+int
+main ()
+{
+
+  FILE *f = fopen ("conftest.val", "w");
+  if (! f)
+    return 1;
+  if (((long int) (sizeof (ac__type_sizeof_))) < 0)
+    {
+      long int i = longval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%ld\n", i);
+    }
+  else
+    {
+      unsigned long int i = ulongval ();
+      if (i != ((long int) (sizeof (ac__type_sizeof_))))
+	return 1;
+      fprintf (f, "%lu\n", i);
+    }
+  return ferror (f) || fclose (f) != 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_sizeof_void_p=`cat conftest.val`
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+if test "$ac_cv_type_void_p" = yes; then
+     { { echo "$as_me:$LINENO: error: cannot compute sizeof (void *)
+See \`config.log' for more details." >&5
+echo "$as_me: error: cannot compute sizeof (void *)
+See \`config.log' for more details." >&2;}
+   { (exit 77); exit 77; }; }
+   else
+     ac_cv_sizeof_void_p=0
+   fi
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.val
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_sizeof_void_p" >&5
+echo "${ECHO_T}$ac_cv_sizeof_void_p" >&6; }
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define SIZEOF_VOID_P $ac_cv_sizeof_void_p
+_ACEOF
+
+
 
 
 for ac_header in inttypes.h
@@ -9048,7 +9513,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9051 "configure"
+#line 9516 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -14222,7 +14687,7 @@ Can't find Linux System.map file $linux_system_map.
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
-    fi
+	    fi
 fi
 
 fi
@@ -14235,11 +14700,12 @@ echo $ECHO_N "checking for Linux 2.6... $ECHO_C" >&6; }
 if test "${ac_cv_linux26+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  if grep '^PATCHLEVEL 	*= 	*6' `find_linuxpath Makefile` >/dev/null 2>&1; then ac_cv_linux26=1; else ac_cv_linux26=0; fi
+  if grep '^PATCHLEVEL 	*= 	*6' `find_linuxpath Makefile` >/dev/null 2>&1; then ac_cv_linux26=yes; else ac_cv_linux26=no; fi
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_linux26" >&5
 echo "${ECHO_T}$ac_cv_linux26" >&6; }
-LINUXMODULE_2_6=$ac_cv_linux26
+LINUXMODULE_2_6=0
+if test "$ac_cv_linux26" = yes; then LINUXMODULE_2_6=1; fi
 
 if test $LINUXMODULE_2_6 = 1; then
 
@@ -14254,7 +14720,7 @@ echo $ECHO_N "checking for Click Linux kernel extensions... $ECHO_C" >&6; }
 if test "${ac_cv_click_kernel+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  if grep register_net_in $linux_system_map >/dev/null 2>&1; then
+  if grep "register_net_in" $linux_system_map >/dev/null 2>&1; then
     ac_cv_click_kernel=yes
 else ac_cv_click_kernel=no; fi
 fi
@@ -14272,7 +14738,7 @@ echo $ECHO_N "checking for Click Linux kernel extensions for transmit notificati
 if test "${ac_cv_click_kernel_tx_notify+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  if grep register_net_tx $linux_system_map >/dev/null 2>&1; then
+  if grep "register_net_tx" $linux_system_map >/dev/null 2>&1; then
     ac_cv_click_kernel_tx_notify=yes
 else ac_cv_click_kernel_tx_notify=no; fi
 fi
@@ -14290,7 +14756,7 @@ echo $ECHO_N "checking for read_net_skbcount kernel extension... $ECHO_C" >&6; }
 if test "${ac_cv_linux_read_net_skbcount+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
-  if grep read_net_skbcount $linux_system_map >/dev/null 2>&1; then
+  if grep "read_net_skbcount" $linux_system_map >/dev/null 2>&1; then
   ac_cv_linux_read_net_skbcount=yes
 else ac_cv_linux_read_net_skbcount=no; fi
 fi
@@ -14339,6 +14805,78 @@ _ACEOF
 
 fi
 
+{ echo "$as_me:$LINENO: checking for files_lock kernel symbol" >&5
+echo $ECHO_N "checking for files_lock kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_files_lock+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_files_lock" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_files_lock=yes
+else ac_cv_linux_files_lock=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_files_lock" >&5
+echo "${ECHO_T}$ac_cv_linux_files_lock" >&6; }
+if test $ac_cv_linux_files_lock = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_FILES_LOCK 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for sb_lock kernel symbol" >&5
+echo $ECHO_N "checking for sb_lock kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_sb_lock+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_sb_lock" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_sb_lock=yes
+else ac_cv_linux_sb_lock=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_sb_lock" >&5
+echo "${ECHO_T}$ac_cv_linux_sb_lock" >&6; }
+if test $ac_cv_linux_sb_lock = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_SB_LOCK 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for dev_ioctl kernel symbol" >&5
+echo $ECHO_N "checking for dev_ioctl kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_dev_ioctl+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_dev_ioctl" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_dev_ioctl=yes
+else ac_cv_linux_dev_ioctl=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_dev_ioctl" >&5
+echo "${ECHO_T}$ac_cv_linux_dev_ioctl" >&6; }
+if test $ac_cv_linux_dev_ioctl = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_DEV_IOCTL 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for devinet_ioctl kernel symbol" >&5
+echo $ECHO_N "checking for devinet_ioctl kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_devinet_ioctl+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_devinet_ioctl" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_devinet_ioctl=yes
+else ac_cv_linux_devinet_ioctl=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_devinet_ioctl" >&5
+echo "${ECHO_T}$ac_cv_linux_devinet_ioctl" >&6; }
+if test $ac_cv_linux_devinet_ioctl = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_DEVINET_IOCTL 1
+_ACEOF
+
+fi
+
 { echo "$as_me:$LINENO: checking for <linux/ktime.h>" >&5
 echo $ECHO_N "checking for <linux/ktime.h>... $ECHO_C" >&6; }
 if test "${ac_cv_linux_ktime_h+set}" = set; then
@@ -14353,24 +14891,6 @@ echo "${ECHO_T}$ac_cv_linux_ktime_h" >&6; }
 if test $ac_cv_linux_ktime_h = yes; then
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUX_KTIME_H 1
-_ACEOF
-
-fi
-
-{ echo "$as_me:$LINENO: checking for device polling kernel extension" >&5
-echo $ECHO_N "checking for device polling kernel extension... $ECHO_C" >&6; }
-if test "${ac_cv_linux_poll_extension+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  if grep polling `find_linuxpath include/linux/netdevice.h` >/dev/null 2>&1; then
-  ac_cv_linux_poll_extension=yes
-else ac_cv_linux_poll_extension=no; fi
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_linux_poll_extension" >&5
-echo "${ECHO_T}$ac_cv_linux_poll_extension" >&6; }
-if test $ac_cv_linux_poll_extension = yes; then
-    cat >>confdefs.h <<\_ACEOF
-#define HAVE_LINUX_POLLING 1
 _ACEOF
 
 fi
@@ -14921,7 +15441,7 @@ Try again without '--enable-valgrind'.
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
-    fi
+	    fi
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_VALGRIND 1
 _ACEOF
@@ -15671,7 +16191,7 @@ echo "$as_me: WARNING:
 pcap.h and/or -lpcap not found; user-level driver can't steal packets.
 
 =========================================" >&2;}
-    fi
+	    fi
     DRIVERS="$DRIVERS userlevel"
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_USERLEVEL_DRIVER 1
@@ -15799,6 +16319,341 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 fi
+
+{ echo "$as_me:$LINENO: checking offset of ifr_addr in struct ifreq" >&5
+echo $ECHO_N "checking offset of ifr_addr in struct ifreq... $ECHO_C" >&6; }
+if test "${ac_cv_offsetof_ifr_addr_ifreq+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if test "$cross_compiling" = yes; then
+  # Depending upon the size, compute the lo and hi bounds.
+cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+int
+main ()
+{
+static int test_array [1 - 2 * !((offsetof(struct ifreq, ifr_addr)) >= 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=0 ac_mid=0
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+int
+main ()
+{
+static int test_array [1 - 2 * !((offsetof(struct ifreq, ifr_addr)) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr $ac_mid + 1`
+			if test $ac_lo -le $ac_mid; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+int
+main ()
+{
+static int test_array [1 - 2 * !((offsetof(struct ifreq, ifr_addr)) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=-1 ac_mid=-1
+  while :; do
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+int
+main ()
+{
+static int test_array [1 - 2 * !((offsetof(struct ifreq, ifr_addr)) >= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_lo=$ac_mid; break
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_hi=`expr '(' $ac_mid ')' - 1`
+			if test $ac_mid -le $ac_hi; then
+			  ac_lo= ac_hi=
+			  break
+			fi
+			ac_mid=`expr 2 '*' $ac_mid`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo= ac_hi=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+# Binary search between lo and hi bounds.
+while test "x$ac_lo" != "x$ac_hi"; do
+  ac_mid=`expr '(' $ac_hi - $ac_lo ')' / 2 + $ac_lo`
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+int
+main ()
+{
+static int test_array [1 - 2 * !((offsetof(struct ifreq, ifr_addr)) <= $ac_mid)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_hi=$ac_mid
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_lo=`expr '(' $ac_mid ')' + 1`
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+done
+case $ac_lo in
+?*) ac_cv_offsetof_ifr_addr_ifreq=$ac_lo;;
+'') ac_cv_offsetof_ifr_addr_ifreq=0 ;;
+esac
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <stddef.h>
+#include <net/if.h>
+
+static long int longval () { return offsetof(struct ifreq, ifr_addr); }
+static unsigned long int ulongval () { return offsetof(struct ifreq, ifr_addr); }
+#include <stdio.h>
+#include <stdlib.h>
+int
+main ()
+{
+
+  FILE *f = fopen ("conftest.val", "w");
+  if (! f)
+    return 1;
+  if ((offsetof(struct ifreq, ifr_addr)) < 0)
+    {
+      long int i = longval ();
+      if (i != (offsetof(struct ifreq, ifr_addr)))
+	return 1;
+      fprintf (f, "%ld\n", i);
+    }
+  else
+    {
+      unsigned long int i = ulongval ();
+      if (i != (offsetof(struct ifreq, ifr_addr)))
+	return 1;
+      fprintf (f, "%lu\n", i);
+    }
+  return ferror (f) || fclose (f) != 0;
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && { ac_try='./conftest$ac_exeext'
+  { (case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_try") 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  ac_cv_offsetof_ifr_addr_ifreq=`cat conftest.val`
+else
+  echo "$as_me: program exited with status $ac_status" >&5
+echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+( exit $ac_status )
+ac_cv_offsetof_ifr_addr_ifreq=0
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext conftest.$ac_objext conftest.$ac_ext
+fi
+rm -f conftest.val
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_offsetof_ifr_addr_ifreq" >&5
+echo "${ECHO_T}$ac_cv_offsetof_ifr_addr_ifreq" >&6; }
+
+cat >>confdefs.h <<_ACEOF
+#define OFFSETOF_IFR_ADDR_IFREQ $ac_cv_offsetof_ifr_addr_ifreq
+_ACEOF
+
 
 
 
@@ -16042,16 +16897,16 @@ _ACEOF
 	{ { echo "$as_me:$LINENO: error:
 =========================================
 
-You explicitly specified --with-proper, but I can't find the proper headers
-and/or libraries where you said they would be.  Run again supplying
+You explicitly specified --with-proper, but the proper headers and/or
+libraries are not where you said they would be.  Run again supplying
 --without-proper or --with-proper=PREFIX.
 
 =========================================" >&5
 echo "$as_me: error:
 =========================================
 
-You explicitly specified --with-proper, but I can't find the proper headers
-and/or libraries where you said they would be.  Run again supplying
+You explicitly specified --with-proper, but the proper headers and/or
+libraries are not where you said they would be.  Run again supplying
 --without-proper or --with-proper=PREFIX.
 
 =========================================" >&2;}
@@ -16299,17 +17154,17 @@ _ACEOF
 	{ { echo "$as_me:$LINENO: error:
 =========================================
 
-You explicitly specified --with-expat, but I can't find the expat headers
-and/or libraries where you said they would be.  Run again supplying
---without-expat or --with-expat=PREFIX.
+You explicitly specified --with-expat, but the expat headers and/or libraries
+are not where you said they would be.  Run again supplying --without-expat
+or --with-expat=PREFIX.
 
 =========================================" >&5
 echo "$as_me: error:
 =========================================
 
-You explicitly specified --with-expat, but I can't find the expat headers
-and/or libraries where you said they would be.  Run again supplying
---without-expat or --with-expat=PREFIX.
+You explicitly specified --with-expat, but the expat headers and/or libraries
+are not where you said they would be.  Run again supplying --without-expat
+or --with-expat=PREFIX.
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
@@ -16348,10 +17203,10 @@ if test $ac_have_linux_kernel = y; then
 	{ echo "$as_me:$LINENO: checking for Linux 2.6 compilation flags" >&5
 echo $ECHO_N "checking for Linux 2.6 compilation flags... $ECHO_C" >&6; }
 	make -C $linux_builddir M="`pwd`" $linux_makeargs --no-print-directory -p nonexistent.o >conftest.dat 2>&1
-	for v in KBUILD_CPPFLAGS KBUILD_CFLAGS CPPFLAGS CFLAGS; do
+	for v in KBUILD_CPPFLAGS KBUILD_CFLAGS CPPFLAGS CFLAGS LINUXINCLUDE; do
 	    eval l$v='"'"`grep ^$v' *:*=' conftest.dat | sed s/^$v' *:*= *//'`"'"'
 	done
-	if test -z "$lKBUILD_CPPFLAGS$lKBUILD_CFLAGS$lCPPFLAGS$lCFLAGS"; then
+	if test -z "$lKBUILD_CPPFLAGS$lKBUILD_CFLAGS$lCPPFLAGS$lCFLAGS$lLINUXINCLUDE"; then
 	    { echo "$as_me:$LINENO: result: not found" >&5
 echo "${ECHO_T}not found" >&6; }
 	    { { echo "$as_me:$LINENO: error:
@@ -16366,8 +17221,9 @@ echo "$as_me: error:
 Can't find Linux 2.6 compilation flags.
 
 ==============================================" >&2;}
-   { (exit 1); exit 1; }; }	fi
-	echo "$lCPPFLAGS $lCFLAGS $lKBUILD_CPPFLAGS $lKBUILD_CFLAGS" >conftest.dat
+   { (exit 1); exit 1; }; }
+	    	fi
+	echo "$lCPPFLAGS $lCFLAGS $lLINUXINCLUDE $lKBUILD_CPPFLAGS $lKBUILD_CFLAGS" >conftest.dat
 	LINUX_CFLAGS="`sed -e 's,-Iinclude ',-I$linux_builddir/include' ,g' \
 	    -e 's,-Iinclude2 ',-I$linux_builddir/include2' ,g' \
 	    -e 's, include/, '$linux_builddir/include/,g \
@@ -16382,6 +17238,35 @@ Can't find Linux 2.6 compilation flags.
 	{ echo "$as_me:$LINENO: result: $LINUX_CFLAGS" >&5
 echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
     fi
+
+    LINUX_FIXINCLUDES_PROGRAM=
+    if test "$LINUXMODULE_FIXINCLUDES" = 1; then
+	{ echo "$as_me:$LINENO: checking for C++-safe versions of Linux include files" >&5
+echo $ECHO_N "checking for C++-safe versions of Linux include files... $ECHO_C" >&6; }
+	$srcdir/linuxmodule/fixincludes.pl -o "`pwd`/include/click-linuxmodule" $LINUX_CFLAGS >conftest.dat
+	if test $? != 0; then
+	    { echo "$as_me:$LINENO: result: failed" >&5
+echo "${ECHO_T}failed" >&6; }
+	    { { echo "$as_me:$LINENO: error:
+==============================================
+
+fixincludes.pl execution failed.
+
+==============================================" >&5
+echo "$as_me: error:
+==============================================
+
+fixincludes.pl execution failed.
+
+==============================================" >&2;}
+   { (exit 1); exit 1; }; }
+	fi
+	LINUX_CFLAGS="`head -n 1 conftest.dat`"
+	LINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat`"
+	{ echo "$as_me:$LINENO: result: $LINUX_CFLAGS" >&5
+echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
+    fi
+
 
 
     CPPFLAGS="$save_cppflags $LINUX_CFLAGS"
@@ -16413,18 +17298,22 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/signal.h>
+#include <linux/skbuff.h>
 int
 main ()
 {
@@ -16465,167 +17354,6 @@ fi
 echo "${ECHO_T}$ac_cv_cxx_aware_system" >&6; }
 
 
-        if test $ac_cv_cxx_aware_system = yes; then
-
-	{ echo "$as_me:$LINENO: checking whether -fpermissive is required" >&5
-echo $ECHO_N "checking whether -fpermissive is required... $ECHO_C" >&6; }
-if test "${ac_cv_f_permissive+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_ext=cpp
-ac_cpp='$CXXCPP $CPPFLAGS'
-ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
-
-	    cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#if HAVE_LINUXMODULE_2_6
-# define KBUILD_STR(s)		#s
-# define KBUILD_BASENAME	KBUILD_STR(click)
-# define KBUILD_MODNAME		KBUILD_STR(click)
-#endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
-#include <linux/autoconf.h>
-#include <linux/skbuff.h>
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_cxx_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext &&
-       $as_test_x conftest$ac_exeext; then
-  ac_cv_f_permissive=no
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_f_permissive=yes
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_f_permissive" >&5
-echo "${ECHO_T}$ac_cv_f_permissive" >&6; }
-
-	if test $ac_cv_f_permissive = yes; then
-	    CXX="$KERNEL_CXX -fpermissive"
-	    { echo "$as_me:$LINENO: checking whether -fpermissive is allowed" >&5
-echo $ECHO_N "checking whether -fpermissive is allowed... $ECHO_C" >&6; }
-if test "${ac_cv_f_permissive_ok+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_ext=cpp
-ac_cpp='$CXXCPP $CPPFLAGS'
-ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'
-ac_link='$CXX -o conftest$ac_exeext $CXXFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
-ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
-
-		cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#if HAVE_LINUXMODULE_2_6
-# define KBUILD_STR(s)		#s
-# define KBUILD_BASENAME	KBUILD_STR(click)
-# define KBUILD_MODNAME		KBUILD_STR(click)
-#endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
-#include <linux/autoconf.h>
-#include <linux/skbuff.h>
-int
-main ()
-{
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_cxx_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext &&
-       $as_test_x conftest$ac_exeext; then
-  ac_cv_f_permissive_ok=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_f_permissive_ok=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_f_permissive_ok" >&5
-echo "${ECHO_T}$ac_cv_f_permissive_ok" >&6; }
-
-	    if test $ac_cv_f_permissive_ok = no; then
-		ac_cv_cxx_aware_system=no
-	    else
-		KERNEL_CXX="$KERNEL_CXX -fpermissive"
-	    fi
-	fi
-    fi
-
-
     { echo "$as_me:$LINENO: checking whether long and int64_t are the same type in the Linux kernel" >&5
 echo $ECHO_N "checking whether long and int64_t are the same type in the Linux kernel... $ECHO_C" >&6; }
 if test "${ac_cv_long_64_linuxmodule+set}" = set; then
@@ -16642,17 +17370,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/types.h>
 void f1(long) {
 }
@@ -16720,17 +17451,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/types.h>
 void f1(long long) {
 }
@@ -16798,17 +17532,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/types.h>
 
 int
@@ -16879,17 +17616,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -16958,17 +17698,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -17037,17 +17780,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -17116,17 +17862,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -17195,17 +17944,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -17274,17 +18026,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 int
 main ()
@@ -17331,6 +18086,342 @@ _ACEOF
 
     fi
 
+    { echo "$as_me:$LINENO: checking for device polling kernel extension" >&5
+echo $ECHO_N "checking for device polling kernel extension... $ECHO_C" >&6; }
+if test "${ac_cv_linuxmodule_net_device_polling+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#include <linux/autoconf.h>
+#include <asm/types.h>
+#include <linux/netdevice.h>
+int
+main ()
+{
+extern struct net_device *d; d->polling = 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_linuxmodule_net_device_polling=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_linuxmodule_net_device_polling=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linuxmodule_net_device_polling" >&5
+echo "${ECHO_T}$ac_cv_linuxmodule_net_device_polling" >&6; }
+    if test $ac_cv_linuxmodule_net_device_polling = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_POLLING 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether skb_dst_drop is declared" >&5
+echo $ECHO_N "checking whether skb_dst_drop is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_skb_dst_drop+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#include <linux/autoconf.h>
+#include <asm/types.h>
+#include <net/dst.h>
+
+int
+main ()
+{
+#ifndef skb_dst_drop
+  (void) skb_dst_drop;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_skb_dst_drop=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_skb_dst_drop=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_skb_dst_drop" >&5
+echo "${ECHO_T}$ac_cv_have_decl_skb_dst_drop" >&6; }
+if test $ac_cv_have_decl_skb_dst_drop = yes; then
+  ac_cv_skb_dst_drop=yes
+else
+  ac_cv_skb_dst_drop=no
+fi
+
+    if test $ac_cv_skb_dst_drop = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_SKB_DST_DROP 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether skb_recycle is declared" >&5
+echo $ECHO_N "checking whether skb_recycle is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_skb_recycle+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#include <linux/autoconf.h>
+#include <asm/types.h>
+#include <linux/skbuff.h>
+
+int
+main ()
+{
+#ifndef skb_recycle
+  (void) skb_recycle;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_skb_recycle=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_skb_recycle=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_skb_recycle" >&5
+echo "${ECHO_T}$ac_cv_have_decl_skb_recycle" >&6; }
+if test $ac_cv_have_decl_skb_recycle = yes; then
+  ac_cv_skb_recycle=yes
+else
+  ac_cv_skb_recycle=no
+fi
+
+    if test $ac_cv_skb_recycle = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_SKB_RECYCLE 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether netif_receive_skb has been extended" >&5
+echo $ECHO_N "checking whether netif_receive_skb has been extended... $ECHO_C" >&6; }
+if test "${ac_cv_linuxmodule_netif_receive_skb_extended+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#include <linux/autoconf.h>
+#include <asm/types.h>
+#include <linux/netdevice.h>
+int
+main ()
+{
+netif_receive_skb(0, 0, 0);
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_linuxmodule_netif_receive_skb_extended=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_linuxmodule_netif_receive_skb_extended=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linuxmodule_netif_receive_skb_extended" >&5
+echo "${ECHO_T}$ac_cv_linuxmodule_netif_receive_skb_extended" >&6; }
+    if test $ac_cv_linuxmodule_netif_receive_skb_extended = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NETIF_RECEIVE_SKB_EXTENDED 1
+_ACEOF
+
+    fi
+
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -17353,17 +18444,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 
@@ -17437,17 +18531,20 @@ cat >>conftest.$ac_ext <<_ACEOF
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
 #endif
-#define new xxx_new
-#define this xxx_this
-#define delete xxx_delete
-#define class xxx_class
-#define virtual xxx_virtual
-#define typename xxx_typename
-#define private xxx_private
-#define protected xxx_protected
-#define public xxx_public
-#define namespace xxx_namespace
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
 #include <linux/autoconf.h>
+#include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 
@@ -17505,6 +18602,93 @@ _ACEOF
 
     fi
 
+    { echo "$as_me:$LINENO: checking whether netdev_get_tx_queue is declared" >&5
+echo $ECHO_N "checking whether netdev_get_tx_queue is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_netdev_get_tx_queue+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#include <linux/autoconf.h>
+#include <asm/types.h>
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>
+
+int
+main ()
+{
+#ifndef netdev_get_tx_queue
+  (void) netdev_get_tx_queue;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_netdev_get_tx_queue=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_netdev_get_tx_queue=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_netdev_get_tx_queue" >&5
+echo "${ECHO_T}$ac_cv_have_decl_netdev_get_tx_queue" >&6; }
+if test $ac_cv_have_decl_netdev_get_tx_queue = yes; then
+  ac_cv_netdev_get_tx_queue=yes
+else
+  ac_cv_netdev_get_tx_queue=no
+fi
+
+    if test $ac_cv_netdev_get_tx_queue = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NETDEV_GET_TX_QUEUE 1
+_ACEOF
+
+    fi
+
 
     CC="$save_cc"
     CXX="$save_cxx"
@@ -17553,7 +18737,7 @@ There are two common reasons for this error:
    for more detailed information on the error.
 
 =========================================" >&2;}
-    else
+	    else
 	{ { echo "$as_me:$LINENO: error:
 =========================================
 
@@ -19032,6 +20216,7 @@ RANLIB!$RANLIB$ac_delim
 STRIP!$STRIP$ac_delim
 AR_CREATEFLAGS!$AR_CREATEFLAGS$ac_delim
 PTHREAD_LIBS!$PTHREAD_LIBS$ac_delim
+LINUXMODULE_FIXINCLUDES!$LINUXMODULE_FIXINCLUDES$ac_delim
 INCLUDE_KSYMS!$INCLUDE_KSYMS$ac_delim
 linux_builddir!$linux_builddir$ac_delim
 linux_srcdir!$linux_srcdir$ac_delim
@@ -19051,7 +20236,6 @@ SOSUFFIX!$SOSUFFIX$ac_delim
 BUILD_DL_LIBS!$BUILD_DL_LIBS$ac_delim
 SOCKET_LIBS!$SOCKET_LIBS$ac_delim
 EXTRA_DRIVER_OBJS!$EXTRA_DRIVER_OBJS$ac_delim
-EXTRA_TOOL_OBJS!$EXTRA_TOOL_OBJS$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -19093,6 +20277,7 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+EXTRA_TOOL_OBJS!$EXTRA_TOOL_OBJS$ac_delim
 LINUXMODULE_2_6!$LINUXMODULE_2_6$ac_delim
 POSSIBLE_DRIVERS!$POSSIBLE_DRIVERS$ac_delim
 DRIVERS!$DRIVERS$ac_delim
@@ -19110,6 +20295,7 @@ XML2CLICK!$XML2CLICK$ac_delim
 EXPAT_INCLUDES!$EXPAT_INCLUDES$ac_delim
 EXPAT_LIBS!$EXPAT_LIBS$ac_delim
 linux_makeargs!$linux_makeargs$ac_delim
+LINUX_FIXINCLUDES_PROGRAM!$LINUX_FIXINCLUDES_PROGRAM$ac_delim
 INSTALL_PROGRAM!$INSTALL_PROGRAM$ac_delim
 INSTALL_SCRIPT!$INSTALL_SCRIPT$ac_delim
 INSTALL_DATA!$INSTALL_DATA$ac_delim
@@ -19131,7 +20317,7 @@ provisions!$provisions$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 36; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 38; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
