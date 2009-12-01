@@ -20,7 +20,7 @@ LIB_CXX_OBJS = string.o straccum.o nameinfo.o \
 	packet.o \
 	error.o timestamp.o glue.o task.o timer.o atomic.o gaprate.o \
 	element.o \
-	confparse.o variableenv.o lexer.o elemfilter.o \
+	confparse.o variableenv.o lexer.o elemfilter.o routervisitor.o \
 	routerthread.o router.o master.o handlercall.o notifier.o \
 	integers.o iptable.o \
 	driver.o ino.o \
@@ -86,13 +86,15 @@ CLICK_ELEM2MAKE = $(top_builddir)/click-buildtool elem2make --linux26
 CLICKCC = @KERNEL_CC@
 CLICKCXX = @KERNEL_CXX@
 
-LINUXCFLAGS = $(shell echo "$(CPPFLAGS) $(CFLAGS)" \
+LINUXCFLAGS = $(shell echo "$(CPPFLAGS) $(CFLAGS) $(LINUXINCLUDE)" \
 	"$(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(CFLAGS_MODULE)" | sed \
 	-e s,-fno-unit-at-a-time,, -e s,-Wstrict-prototypes,, \
 	-e s,-Wdeclaration-after-statement,, \
 	-e s,-Wno-pointer-sign,, -e s,-fno-common,, \
 	-e s,-Werror-implicit-function-declaration,, \
-	-e s,-Iinclude/,-I$(linux_srcdir)include/,g)
+	-e "s,-Iinclude ,-I$(linux_builddir)/include ",g \
+	-e "s,-Iinclude2 ,-I$(linux_builddir)/include2 ",g \
+	-e s,-Iinclude/,-I$(linux_srcdir)include/,g @LINUX_FIXINCLUDES_PROGRAM@)
 CLICKCPPFLAGS = @CPPFLAGS@ -DCLICK_LINUXMODULE
 CLICKCFLAGS = @CFLAGS_NDEBUG@
 CLICKCXXFLAGS = @CXXFLAGS_NDEBUG@

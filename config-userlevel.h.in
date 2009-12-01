@@ -153,6 +153,15 @@
 /* Define if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define if kqueue() should be used to wait for file descriptor events. */
+#undef HAVE_USE_KQUEUE
+
+/* Define if poll() should be used to wait for file descriptor events. */
+#undef HAVE_USE_POLL
+
+/* Define if select() should be used to wait for file descriptor events. */
+#undef HAVE_USE_SELECT
+
 /* Define if a Click user-level driver might run multiple threads. */
 #undef HAVE_USER_MULTITHREAD
 
@@ -164,6 +173,12 @@
 
 /* Define if you have the vsnprintf function. */
 #undef HAVE_VSNPRINTF
+
+/* The offset of ifr_addr within `struct ifreq', as computed by offsetof. */
+#undef OFFSETOF_IFR_ADDR_IFREQ
+
+/* The size of a `click_jiffies_t', as computed by sizeof. */
+#define SIZEOF_CLICK_JIFFIES_T SIZEOF_INT
 
 /* The size of a `off_t', as computed by sizeof. */
 #undef SIZEOF_OFF_T
