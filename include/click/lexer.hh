@@ -23,8 +23,12 @@ enum Lexemes {
 
 class Lexeme { public:
 
-    Lexeme()				: _kind(lexEOF) { }
-    Lexeme(int k, const String &s)	: _kind(k), _s(s) { }
+    Lexeme()
+	: _kind(lexEOF) {
+    }
+    Lexeme(int k, const String &s, bool compact = false)
+	: _kind(k), _s(compact ? s.compact() : s) {
+    }
 
     int kind() const			{ return _kind; }
     bool is(int k) const		{ return _kind == k; }
@@ -104,6 +108,7 @@ class Lexer { public:
 
     // lexer
     String _big_string;
+    bool _compact_config;
 
     const char *_data;
     const char *_end;
@@ -164,7 +169,9 @@ class Lexer { public:
 
     String anon_element_name(const String &) const;
     String deanonymize_element_name(const String &, int);
-    int get_element(String, int, const String & = String(), const String & = String());
+    int get_element(String name, int etype,
+		    const String &configuration = String(),
+		    const String &filename = String(), unsigned lineno = 0);
     int lexical_scoping_in() const;
     void lexical_scoping_out(int);
     int remove_element_type(int, int *);

@@ -36,7 +36,7 @@
 #endif
 CLICK_DECLS
 
-#if CLICK_USERLEVEL && !HAVE_POLL_H
+#if CLICK_USERLEVEL && (!HAVE_POLL_H || HAVE_USE_SELECT)
 enum { POLLIN = Element::SELECT_READ, POLLOUT = Element::SELECT_WRITE };
 #endif
 
@@ -71,21 +71,21 @@ Master::Master(int nthreads)
 
 #if CLICK_USERLEVEL
     // select information
-# if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+# if HAVE_USE_KQUEUE
     _kqueue = kqueue();
     _selected_callno = 0;
 # endif
-# if !HAVE_POLL_H
+# if !HAVE_POLL_H || HAVE_USE_SELECT
     FD_ZERO(&_read_select_fd_set);
     FD_ZERO(&_write_select_fd_set);
     _max_select_fd = -1;
 # endif
-    assert(!_pollfds.size() && !_read_elements.size() && !_write_elements.size());
+    assert(!_pollfds.size() && !_element_selectors.size());
     // Add a null 'struct pollfd', then take it off. This ensures that
     // _pollfds.begin() is nonnull, preventing crashes on Mac OS X
     struct pollfd dummy;
     dummy.events = dummy.fd = 0;
-# if HAVE_POLL_H
+# if HAVE_POLL_H && !HAVE_USE_SELECT
     dummy.revents = 0;
 # endif
     _pollfds.push_back(dummy);
@@ -135,7 +135,7 @@ Master::~Master()
 
     for (int i = 0; i < _threads.size(); i++)
 	delete _threads[i];
-#if CLICK_USERLEVEL && HAVE_SYS_EVENT_H && HAVE_KQUEUE
+#if CLICK_USERLEVEL && HAVE_USE_KQUEUE
     if (_kqueue >= 0)
 	close(_kqueue);
 #endif
@@ -272,12 +272,13 @@ Master::kill_router(Router *router)
     for (int pi = 0; pi < _pollfds.size(); pi++) {
 	int fd = _pollfds[pi].fd;
 	// take components out of the arrays early
-	if (fd < _read_elements.size() && _read_elements[fd]
-	    && _read_elements[fd]->router() == router)
-	    remove_pollfd(pi, POLLIN);
-	if (fd < _write_elements.size() && _write_elements[fd]
-	    && _write_elements[fd]->router() == router)
-	    remove_pollfd(pi, POLLOUT);
+	if (fd < _element_selectors.size()) {
+	    ElementSelector &es = _element_selectors.at_u(fd);
+	    if (es.read && es.read->router() == router)
+		remove_pollfd(pi, POLLIN);
+	    if (es.write && es.write->router() == router)
+		remove_pollfd(pi, POLLOUT);
+	}
 	if (pi < _pollfds.size() && _pollfds[pi].fd != fd)
 	    pi--;
     }
@@ -540,18 +541,18 @@ Master::add_select(int fd, Element *element, int mask)
     // for more than one element to wait on the same fd for the same status
     bool add_read = false, add_write = false;
     if (mask & SELECT_READ) {
-	if (fd >= _read_elements.size() || !_read_elements[fd])
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].read)
 	    add_read = true;
-	else if (_read_elements[fd] != element) {
+	else if (_element_selectors[fd].read != element) {
 	unlock_and_return_error:
 	    _select_lock.release();
 	    return -1;
 	}
     }
     if (mask & SELECT_WRITE) {
-	if (fd >= _write_elements.size() || !_write_elements[fd])
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].write)
 	    add_write = true;
-	else if (_write_elements[fd] != element)
+	else if (_element_selectors[fd].write != element)
 	    goto unlock_and_return_error;
     }
     if (!add_read && !add_write) {
@@ -572,25 +573,23 @@ Master::add_select(int fd, Element *element, int mask)
 
     // add the elements
     if (add_read) {
-	if (fd >= _read_elements.size())
-	    _read_elements.resize(fd + 1, 0);
-	_read_elements[fd] = element;
+	if (fd >= _element_selectors.size())
+	    _element_selectors.resize(fd + 1);
+	_element_selectors[fd].read = element;
 	_pollfds[pi].events |= POLLIN;
     }
     if (add_write) {
-	if (fd >= _write_elements.size())
-	    _write_elements.resize(fd + 1, 0);
-	_write_elements[fd] = element;
+	if (fd >= _element_selectors.size())
+	    _element_selectors.resize(fd + 1);
+	_element_selectors[fd].write = element;
 	_pollfds[pi].events |= POLLOUT;
     }
 
-#if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+#if HAVE_USE_KQUEUE
     if (_kqueue >= 0) {
 	// Add events to the kqueue
 	struct kevent kev[2];
 	int nkev = 0;
-	if (fd >= _selected_callnos.size())
-	    _selected_callnos.resize(fd + 1, 0);
 	if (add_read) {
 	    EV_SET(&kev[nkev], fd, EVFILT_READ, EV_ADD, 0, 0, EV_SET_UDATA_CAST ((intptr_t) 0));
 	    nkev++;
@@ -609,7 +608,7 @@ Master::add_select(int fd, Element *element, int mask)
     }
 #endif
 
-#if !HAVE_POLL_H
+#if !HAVE_POLL_H || HAVE_USE_SELECT
     // Add 'mask' to the fd_sets
     if (fd < FD_SETSIZE) {
 	if (add_read)
@@ -620,11 +619,11 @@ Master::add_select(int fd, Element *element, int mask)
 	    _max_select_fd = fd;
     } else {
 	static int warned = 0;
-# if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+# if HAVE_USE_KQUEUE
 	if (_kqueue < 0)
 # endif
 	    if (!warned) {
-		click_chatter("Master::add_select(%d): fd > FD_SETSIZE", fd);
+		click_chatter("Master::add_select(%d): fd >= FD_SETSIZE", fd);
 		warned = 1;
 	    }
     }
@@ -650,11 +649,11 @@ Master::remove_pollfd(int pi, int event)
     int fd = _pollfds[pi].fd;
     _pollfds[pi].events &= ~event;
     if (event == POLLIN)
-	_read_elements[fd] = 0;
+	_element_selectors[fd].read = 0;
     else
-	_write_elements[fd] = 0;
+	_element_selectors[fd].write = 0;
 
-#if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+#if HAVE_USE_KQUEUE
     // remove event from kqueue
     if (_kqueue >= 0) {
 	struct kevent kev;
@@ -664,7 +663,7 @@ Master::remove_pollfd(int pi, int event)
 	    click_chatter("Master::remove_pollfd(fd %d): kevent: %s", _pollfds[pi].fd, strerror(errno));
     }
 #endif
-#if !HAVE_POLL_H
+#if !HAVE_POLL_H || HAVE_USE_SELECT
     // remove event from select list
     if (fd < FD_SETSIZE) {
 	fd_set *fd_ptr = (event == POLLIN ? &_read_select_fd_set : &_write_select_fd_set);
@@ -682,7 +681,7 @@ Master::remove_pollfd(int pi, int event)
     _fd_to_pollfd[fd] = -1;
     if (pi < _pollfds.size())
 	_fd_to_pollfd[_pollfds[pi].fd] = pi;
-#if !HAVE_POLL_H
+#if !HAVE_POLL_H || HAVE_USE_SELECT
     if (fd == _max_select_fd) {
 	_max_select_fd = -1;
 	for (int pix = 0; pix < _pollfds.size(); ++pix)
@@ -702,11 +701,11 @@ Master::remove_select(int fd, Element *element, int mask)
     _select_lock.acquire();
 
     bool remove_read = false, remove_write = false;
-    if ((mask & SELECT_READ) && fd < _read_elements.size()
-	&& _read_elements[fd] == element)
+    if ((mask & SELECT_READ) && fd < _element_selectors.size()
+	&& _element_selectors[fd].read == element)
 	remove_read = true;
-    if ((mask & SELECT_WRITE) && fd < _write_elements.size()
-	&& _write_elements[fd] == element)
+    if ((mask & SELECT_WRITE) && fd < _element_selectors.size()
+	&& _element_selectors[fd].write == element)
 	remove_write = true;
     if (!remove_read && !remove_write) {
 	_select_lock.release();
@@ -723,7 +722,7 @@ Master::remove_select(int fd, Element *element, int mask)
 }
 
 
-#if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+#if HAVE_USE_KQUEUE
 void
 Master::run_selects_kqueue(bool more_tasks)
 {
@@ -742,15 +741,18 @@ Master::run_selects_kqueue(bool more_tasks)
 	Timestamp t = next_timer_expiry_adjusted();
 	if (t.sec() == 0)
 	    wait_ptr = 0;
+	else if (unlikely(Timestamp::warp_jumping()))
+	    Timestamp::warp_jump(t);
 	else if ((t -= Timestamp::now(), t.sec() >= 0))
-	    wait = t.timespec();
+	    wait = t.warp_real_delay().timespec();
     }
 # endif
 
     // Bump selected_callno
     _selected_callno++;
     if (_selected_callno == 0) { // be anal about wraparound
-	memset(_selected_callnos.begin(), 0, _selected_callnos.size() * sizeof(_selected_callnos[0]));
+	for (ElementSelector *es = _element_selectors.begin(); es != _element_selectors.end(); ++es)
+	    es->callno = 0;
 	_selected_callno++;
     }
 
@@ -773,24 +775,22 @@ Master::run_selects_kqueue(bool more_tasks)
 	perror("kevent");
     else if (n > 0)
 	for (struct kevent *p = &kev[0]; p < &kev[n]; p++) {
-	    Element *e = 0;
 	    int fd = (int) p->ident;
-	    if (p->filter == EVFILT_READ && fd < _read_elements.size()
-		&& _read_elements[fd])
-		e = _read_elements[fd];
-	    else if (p->filter == EVFILT_WRITE && fd < _write_elements.size()
-		     && _write_elements[fd])
-		e = _write_elements[fd];
-	    if (e && (_selected_callnos[fd] != _selected_callno
-		      || _read_elements[fd] != _write_elements[fd])) {
-		e->selected(fd);
-		_selected_callnos[fd] = _selected_callno;
+	    if (fd < _element_selectors.size()
+		&& (p->filter == EVFILT_READ || p->filter == EVFILT_WRITE)) {
+		ElementSelector &es = _element_selectors[fd];
+		Element *e = (p->filter == EVFILT_READ ? es.read : es.write);
+		if (e && (es.read != es.write
+			  || es.callno != _selected_callno)) {
+		    es.callno = _selected_callno;
+		    e->selected(fd);
+		}
 	    }
 	}
 }
-#endif /* HAVE_SYS_EVENT_H && HAVE_KQUEUE */
+#endif /* HAVE_USE_KQUEUE */
 
-#if HAVE_POLL_H
+#if HAVE_POLL_H && !HAVE_USE_SELECT
 void
 Master::run_selects_poll(bool more_tasks)
 {
@@ -807,7 +807,10 @@ Master::run_selects_poll(bool more_tasks)
 	Timestamp t = next_timer_expiry_adjusted();
 	if (t.sec() == 0)
 	    timeout = -1;
+	else if (unlikely(Timestamp::warp_jumping()))
+	    Timestamp::warp_jump(t);
 	else if ((t -= Timestamp::now(), t.sec() >= 0)) {
+	    t = t.warp_real_delay();
 	    if (t.sec() >= INT_MAX / 1000)
 		timeout = INT_MAX - 1000;
 	    else
@@ -847,12 +850,13 @@ Master::run_selects_poll(bool more_tasks)
 		// vectors before calling out.
 
 		int fd = p->fd;
-		Element *read_elt = (p->revents & ~POLLOUT ? _read_elements[fd] : 0);
-		Element *write_elt = (p->revents & ~POLLIN ? _write_elements[fd] : 0);
-
-		if (read_elt)
+		Element *read_elt = 0, *write_elt;
+		if ((p->revents & ~POLLOUT)
+		    && (read_elt = _element_selectors[fd].read))
 		    read_elt->selected(fd);
-		if (write_elt && write_elt != read_elt)
+		if ((p->revents & ~POLLIN)
+		    && (write_elt = _element_selectors[fd].write)
+		    && read_elt != write_elt)
 		    write_elt->selected(fd);
 
 		// 31.Oct.2003 - Peter Swain: _pollfds may have grown or
@@ -863,7 +867,7 @@ Master::run_selects_poll(bool more_tasks)
 	    }
 }
 
-#else /* !HAVE_POLL_H */
+#else /* !HAVE_POLL_H || HAVE_USE_SELECT */
 void
 Master::run_selects_select(bool more_tasks)
 {
@@ -882,8 +886,10 @@ Master::run_selects_select(bool more_tasks)
 	Timestamp t = next_timer_expiry_adjusted();
 	if (t.sec() == 0)
 	    wait_ptr = 0;
+	else if (unlikely(Timestamp::warp_jumping()))
+	    Timestamp::warp_jump(t);
 	else if ((t -= Timestamp::now(), t.sec() >= 0))
-	    wait = t.timeval();
+	    wait = t.warp_real_delay().timeval();
     }
 # endif /* CLICK_NS */
 
@@ -908,7 +914,8 @@ Master::run_selects_select(bool more_tasks)
 	perror("select");
     else if (n > 0)
 	for (struct pollfd *p = _pollfds.begin(); p < _pollfds.end(); p++)
-	    if (p->fd > FD_SETSIZE || FD_ISSET(p->fd, &read_mask) || FD_ISSET(p->fd, &write_mask)) {
+	    if (p->fd >= FD_SETSIZE || FD_ISSET(p->fd, &read_mask)
+		|| FD_ISSET(p->fd, &write_mask)) {
 		int pi = p - _pollfds.begin();
 
 		// Beware: calling 'selected()' might call remove_select(),
@@ -916,12 +923,13 @@ Master::run_selects_select(bool more_tasks)
 		// vectors before calling out.
 
 		int fd = p->fd;
-		Element *read_elt = (fd > FD_SETSIZE || FD_ISSET(fd, &read_mask) ? _read_elements[fd] : 0);
-		Element *write_elt = (fd > FD_SETSIZE || FD_ISSET(fd, &write_mask) ? _write_elements[fd] : 0);
-
-		if (read_elt)
+		Element *read_elt = 0, *write_elt;
+		if ((fd >= FD_SETSIZE || FD_ISSET(fd, &read_mask))
+		    && (read_elt = _element_selectors[fd].read))
 		    read_elt->selected(fd);
-		if (write_elt && write_elt != read_elt)
+		if ((fd >= FD_SETSIZE || FD_ISSET(fd, &write_mask))
+		    && (write_elt = _element_selectors[fd].write)
+		    && read_elt != write_elt)
 		    write_elt->selected(fd);
 
 		// 31.Oct.2003 - Peter Swain: _pollfds may have grown or
@@ -931,7 +939,7 @@ Master::run_selects_select(bool more_tasks)
 		    p--;
 	    }
 }
-#endif /* HAVE_POLL_H */
+#endif /* HAVE_POLL_H && !HAVE_USE_SELECT */
 
 void
 Master::run_selects(bool more_tasks)
@@ -955,8 +963,10 @@ Master::run_selects(bool more_tasks)
 	    Timestamp t = next_timer_expiry_adjusted();
 	    if (t.sec() == 0)
 		wait_ptr = 0;
+	    else if (unlikely(Timestamp::warp_jumping()))
+		Timestamp::warp_jump(t);
 	    else if ((t -= Timestamp::now(), t.sec() >= 0))
-		wait = t.timeval();
+		wait = t.warp_real_delay().timeval();
 	    ignore_result(select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0,
 				 wait_ptr));
 	}
@@ -973,13 +983,13 @@ Master::run_selects(bool more_tasks)
 	goto unlock_select_exit;
 
     // Call the relevant selector implementation.
-#if HAVE_SYS_EVENT_H && HAVE_KQUEUE
+#if HAVE_USE_KQUEUE
     if (_kqueue >= 0) {
 	run_selects_kqueue(more_tasks);
 	goto unlock_select_exit;
     }
 #endif
-#if HAVE_POLL_H
+#if HAVE_POLL_H && !HAVE_USE_SELECT
     run_selects_poll(more_tasks);
 #else
     run_selects_select(more_tasks);

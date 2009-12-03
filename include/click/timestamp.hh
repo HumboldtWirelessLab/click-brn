@@ -146,6 +146,8 @@ class Timestamp { public:
     struct uninitialized_t {
     };
 
+    union rep_t;
+
 
     /** @brief Construct a zero-valued Timestamp. */
     inline Timestamp() {
@@ -161,29 +163,35 @@ class Timestamp { public:
      * the @a sec parameter must be between @link Timestamp::min_seconds
      * min_seconds @endlink and @link Timestamp::max_seconds max_seconds
      * @endlink.  Errors are not necessarily checked. */
-    inline Timestamp(long sec, uint32_t subsec = 0) {
+    explicit inline Timestamp(long sec, uint32_t subsec = 0) {
 	assign(sec, subsec);
     }
     /** @overload */
-    inline Timestamp(int sec, uint32_t subsec = 0) {
+    explicit inline Timestamp(int sec, uint32_t subsec = 0) {
 	assign(sec, subsec);
     }
     /** @overload */
-    inline Timestamp(unsigned long sec, uint32_t subsec = 0) {
+    explicit inline Timestamp(unsigned long sec, uint32_t subsec = 0) {
 	assign(sec, subsec);
     }
     /** @overload */
-    inline Timestamp(unsigned sec, uint32_t subsec = 0) {
+    explicit inline Timestamp(unsigned sec, uint32_t subsec = 0) {
 	assign(sec, subsec);
     }
 #if HAVE_FLOAT_TYPES
-    inline Timestamp(double);
+    explicit inline Timestamp(double);
 #endif
 
     inline Timestamp(const struct timeval &tv);
 #if HAVE_STRUCT_TIMESPEC
     inline Timestamp(const struct timespec &ts);
 #endif
+
+    /** @brief Construct a Timestamp from its internal representation. */
+    inline Timestamp(const rep_t &rep)
+	: _t(rep) {
+    }
+
     /** @brief Construct an uninitialized timestamp. */
     inline Timestamp(const uninitialized_t &unused) {
 	(void) unused;
@@ -252,8 +260,10 @@ class Timestamp { public:
     }
 
 #if !CLICK_TOOL
-    /** @brief Return a timestamp representing @a jiffies. */
+    /** @brief Return a timestamp representing an interval of @a jiffies. */
     static inline Timestamp make_jiffies(click_jiffies_t jiffies);
+    /** @overload */
+    static inline Timestamp make_jiffies(click_jiffies_difference_t jiffies);
     /** @brief Return the number of jiffies represented by this timestamp. */
     inline click_jiffies_t jiffies() const;
 #endif
@@ -314,6 +324,10 @@ class Timestamp { public:
 	return t;
     }
 
+    /** @brief Return a timestamp representing the current time.
+     *
+     * The current time is measured in seconds since January 1, 1970 GMT.
+     * @sa assign_now() */
     static inline Timestamp now();
     /** @brief Return the smallest nonzero timestamp, Timestamp(0, 1). */
     static inline Timestamp epsilon() {
@@ -350,7 +364,15 @@ class Timestamp { public:
      * @deprecated Use assign_nsec() instead. */
     inline void set_nsec(seconds_type sec, uint32_t nsec) CLICK_DEPRECATED;
 
-    inline void set_now();
+    /** @brief Set this timestamp to the current time.
+     *
+     * The current time is measured in seconds since January 1, 1970 GMT.
+     * Returns the most precise timestamp available.
+     * @sa now() */
+    inline void assign_now();
+    /** @brief Deprecated synonym for assign_now().
+     * @deprecated Use Timestamp::assign_now() instead. */
+    inline void set_now() CLICK_DEPRECATED;
 #if !CLICK_LINUXMODULE && !CLICK_BSDMODULE
     int set_timeval_ioctl(int fd, int ioctl_selector);
 #endif
@@ -388,9 +410,12 @@ class Timestamp { public:
 	return subsec * (nsec_per_sec / subsec_per_sec);
     }
 
-  private:
 
-    union {
+    /** @brief  Type of a Timestamp representation.
+     *
+     * This type is rarely useful for Timestamp users; we export it to avoid
+     * strict-aliasing warnings in unions. */
+    union rep_t {
 #if TIMESTAMP_REP_FLAT64 || TIMESTAMP_MATH_FLAT64
 	int64_t x;
 #endif
@@ -414,7 +439,98 @@ class Timestamp { public:
 	timeval tv;
 # endif
 #endif
-    } _t;
+    };
+
+#if !CLICK_LINUXMODULE && !CLICK_BSDMODULE
+    /** @name Timewarping */
+    //@{
+    enum warp_class_type {
+	warp_none = 0,		///< Run in real time (the default).
+	warp_linear = 1,	///< Run in speeded-up or slowed-down real time.
+	warp_nowait = 2,	///< Run in speeded-up or slowed-down real time,
+				//   but don't wait for timers.
+	warp_simulation = 3	///< Run in simulation time.
+    };
+
+
+    /** @brief Return the active timewarp class. */
+    static inline int warp_class() {
+	return _warp_class;
+    }
+
+    /** @brief Return the timewarp speed.
+     *
+     * Timewarp speeed measures how much faster Timestamp::now() appears to
+     * move compared with wall-clock time.  Only meaningful if warp_class() is
+     * #warp_linear or #warp_nowait. */
+    static inline double warp_speed() {
+	return _warp_speed;
+    }
+
+
+    /** @brief Set the timewarp class to @a w.
+     *
+     * The timewarp classes are as follows:
+     *
+     * <dl>
+     * <dt>#warp_none</dt>
+     * <dd>Click time corresponds to real time.  This is the default.
+     * warp_set_class(#warp_none) also resets the timewarp speed to 1.</dd>
+     *
+     * <dt>#warp_linear</dt>
+     * <dd>Click time is a speeded-up or slowed-down version of real time.
+     * The speedup factor is determined by warp_set_speed().</dd>
+     *
+     * <dt>#warp_nowait</dt>
+     * <dd>Like #warp_linear, but the Click driver never waits for a timer to
+     * expire.  Instead, time appears to "jump" ahead to the next expiration
+     * time.</dd>
+     *
+     * <dt>#warp_simulation</dt>
+     * <dd>Click time is completely divorced from real time.  Every call to
+     * Timestamp::now() appears to increase the current time by
+     * Timestamp::epsilon() and the Click driver never waits for a timer to
+     * expire.  This mode effectively turns Click into an event-driven
+     * simulator.</dd>
+     * </dl>
+     */
+    static void warp_set_class(warp_class_type w);
+
+    /** @brief Set the timewarp speed to @a s.
+     * @pre @a s \> 0
+     *
+     * If @a s \> 1, then time as measured by Timestamp::now() will appear to
+     * move a factor of @a s faster than real time: for instance, a Timer set
+     * using Timer::schedule_after_s(2) from now will fire after just 1 second
+     * of wall-clock time.
+     *
+     * May change warp_class() from #warp_none to #warp_linear. */
+    static void warp_set_speed(double s = 1.0);
+
+    /** @brief Shift time so that Timestamp::now() would return @a t.
+     *
+     * May change warp_class() from #warp_none to #warp_linear. */
+    static void warp_set_now(const Timestamp &t);
+
+
+    /** @brief Return the wall-clock time corresponding to a delay. */
+    inline Timestamp warp_real_delay() const;
+
+    /** @brief Return true iff time skips ahead around timer expirations. */
+    static inline bool warp_jumping() {
+	return _warp_class >= warp_nowait;
+    }
+
+    /** @brief Move Click time past a timer expiration.
+     *
+     * Does nothing if warp_jumping() is false or @a expiry is in the past. */
+    static void warp_jump(const Timestamp &expiry);
+    //@}
+#endif
+
+  private:
+
+    rep_t _t;
 
     inline void add_fix() {
 #if TIMESTAMP_REP_FLAT64
@@ -465,11 +581,11 @@ class Timestamp { public:
 #else
 	// This arithmetic is about twice as fast on my laptop as the
 	// alternative "div = a / b;
-	//		mod = a - (value_type) div * b;
-	//		if (mod < 0) div--, mod += b;",
+	//		rem = a - (value_type) div * b;
+	//		if (rem < 0) div--, rem += b;",
 	// and 3-4x faster than "div = a / b;
-	//			 mod = a % b;
-	//			 if (mod < 0) div--, mod += b;".
+	//			 rem = a % b;
+	//			 if (rem < 0) div--, rem += b;".
 	if (unlikely(a < 0))
 	    div = -((-a - 1) / b) - 1;
 	else
@@ -477,6 +593,24 @@ class Timestamp { public:
 	rem = a - (value_type) div * b;
 #endif
     }
+
+    inline void assign_now(bool raw);
+
+#if !CLICK_LINUXMODULE && !CLICK_BSDMODULE
+    static warp_class_type _warp_class;
+    static Timestamp _warp_flat_offset;
+    static double _warp_speed;
+    static double _warp_offset;
+
+    static inline void warp_adjust(const Timestamp &t_raw, const Timestamp &t_warped);
+    inline Timestamp warped() const {
+	Timestamp t = *this;
+	if (_warp_class)
+	    t.warp(false);
+	return t;
+    }
+    void warp(bool from_now);
+#endif
 
     friend inline bool operator==(const Timestamp &a, const Timestamp &b);
     friend inline bool operator<(const Timestamp &a, const Timestamp &b);
@@ -516,13 +650,8 @@ Timestamp::operator unspecified_bool_type() const
 #endif
 }
 
-/** @brief Set this timestamp to the current time.
-
- The current time is measured in seconds since January 1, 1970 GMT.
- Returns the most precise timestamp available.
- @sa now() */
 inline void
-Timestamp::set_now()
+Timestamp::assign_now(bool raw)
 {
 #if TIMESTAMP_NANOSEC && (CLICK_LINUXMODULE || CLICK_BSDMODULE || HAVE_USE_CLOCK_GETTIME)
     // nanosecond precision
@@ -566,17 +695,33 @@ Timestamp::set_now()
     assign(tv.tv_sec, usec_to_subsec(tv.tv_usec));
 # endif
 #endif
+
+    // timewarping
+#if CLICK_USERLEVEL
+    if (!raw && _warp_class)
+	warp(true);
+#else
+    (void) raw;
+#endif
 }
 
-/** @brief Return a timestamp representing the current time.
+inline void
+Timestamp::assign_now()
+{
+    assign_now(false);
+}
 
- The current time is measured in seconds since January 1, 1970 GMT.
- @sa set_now() */
+inline void
+Timestamp::set_now()
+{
+    assign_now(false);
+}
+
 inline Timestamp
 Timestamp::now()
 {
     Timestamp t = Timestamp::uninitialized_t();
-    t.set_now();
+    t.assign_now(false);
     return t;
 }
 
@@ -747,7 +892,6 @@ Timestamp::timespec() const
 #endif
 
 #if !CLICK_TOOL
-/** @brief Returns this timestamp, converted to a jiffies value. */
 inline click_jiffies_t
 Timestamp::jiffies() const
 {
@@ -768,23 +912,32 @@ Timestamp::jiffies() const
 inline Timestamp
 Timestamp::make_jiffies(click_jiffies_t jiffies)
 {
-# if TIMESTAMP_REP_FLAT64
     // Not very precise when CLICK_HZ doesn't evenly divide subsec_per_sec.
     Timestamp t = Timestamp::uninitialized_t();
+# if TIMESTAMP_REP_FLAT64
     t._t.x = (int64_t) jiffies * (subsec_per_sec / CLICK_HZ);
-    return t;
 # else
-#  if CLICK_HZ == 100 || CLICK_HZ == 1000 || CLICK_HZ == 10000 || CLICK_HZ == 100000 || CLICK_HZ == 1000000
-    uint32_t sec = jiffies / CLICK_HZ;
-    uint32_t subsec = (jiffies - sec * CLICK_HZ) * (subsec_per_sec / CLICK_HZ);
-    return Timestamp(sec, subsec);
-#  else
-    // Not very precise when CLICK_HZ doesn't evenly divide subsec_per_sec.
-    uint32_t sec = jiffies / CLICK_HZ;
-    uint32_t subsec = (jiffies - sec * CLICK_HZ) * (subsec_per_sec / CLICK_HZ);
-    return Timestamp(sec, subsec);
-#  endif
+    t._t.sec = jiffies / CLICK_HZ;
+    t._t.subsec = (jiffies - t._t.sec * CLICK_HZ) * (subsec_per_sec / CLICK_HZ);
 # endif
+    return t;
+}
+
+inline Timestamp
+Timestamp::make_jiffies(click_jiffies_difference_t jiffies)
+{
+    // Not very precise when CLICK_HZ doesn't evenly divide subsec_per_sec.
+    Timestamp t = Timestamp::uninitialized_t();
+# if TIMESTAMP_REP_FLAT64
+    t._t.x = (int64_t) jiffies * (subsec_per_sec / CLICK_HZ);
+# else
+    if (jiffies < 0)
+	t._t.sec = -((-jiffies - 1) / CLICK_HZ) - 1;
+    else
+	t._t.sec = jiffies / CLICK_HZ;
+    t._t.subsec = (jiffies - t._t.sec * CLICK_HZ) * (subsec_per_sec / CLICK_HZ);
+# endif
+    return t;
 }
 #endif
 
@@ -840,6 +993,13 @@ operator<(const Timestamp &a, const Timestamp &b)
 #endif
 }
 
+/** @overload */
+inline bool
+operator<(const Timestamp &a, int b)
+{
+    return a < Timestamp(b);
+}
+
 /** @relates Timestamp
     @brief Compare two timestamps.
 
@@ -849,6 +1009,13 @@ inline bool
 operator<=(const Timestamp &a, const Timestamp &b)
 {
     return !(b < a);
+}
+
+/** @overload */
+inline bool
+operator<=(const Timestamp &a, int b)
+{
+    return a <= Timestamp(b);
 }
 
 /** @relates Timestamp
@@ -862,6 +1029,13 @@ operator>=(const Timestamp &a, const Timestamp &b)
     return !(a < b);
 }
 
+/** @overload */
+inline bool
+operator>=(const Timestamp &a, int b)
+{
+    return a >= Timestamp(b);
+}
+
 /** @relates Timestamp
     @brief Compare two timestamps.
 
@@ -871,6 +1045,13 @@ inline bool
 operator>(const Timestamp &a, const Timestamp &b)
 {
     return b < a;
+}
+
+/** @overload */
+inline bool
+operator>(const Timestamp &a, int b)
+{
+    return a > Timestamp(b);
 }
 
 /** @brief Add @a b to @a a.
@@ -1028,6 +1209,17 @@ operator/(const Timestamp &a, const Timestamp &b)
 #endif /* HAVE_FLOAT_TYPES */
 
 StringAccum& operator<<(StringAccum&, const Timestamp&);
+
+#if !CLICK_LINUXMODULE && !CLICK_BSDMODULE
+inline Timestamp
+Timestamp::warp_real_delay() const
+{
+    if (likely(!_warp_class) || _warp_speed == 1.0)
+	return *this;
+    else
+	return *this / _warp_speed;
+}
+#endif
 
 CLICK_ENDDECLS
 #endif

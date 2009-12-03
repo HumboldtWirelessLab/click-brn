@@ -4,7 +4,8 @@ no locale;
 use bytes;
 require 5.006;
 
-($attempts, $internal_errors, $errors, $require_errors) = (0, 0, 0, 0);
+($test_attempts, $test_failures, $test_skips) = (0, 0, 0);
+($bad_files, $errors, $require_errors) = (0, 0, 0);
 ($preserve_temporaries, $expand_mode, $cr_text) = (0, 0, "");
 ($running_pid) = (0);
 %require_error_commands = ();
@@ -390,7 +391,7 @@ sub parse ($) {
 		$tt->_read_text_into('info');
 	    } elsif ($command eq 'desc') {
 		$tt->file_err("arguments to '\%desc' ignored") if $args ne '';
-		$tt->_read_text_into('desc');
+		$tt->_read_text_into('info');
 	    } elsif ($command eq 'cut') {
 		$tt->_read_text_into('cut');
 	    } elsif ($command eq 'stdin' || $command eq 'input') {
@@ -555,8 +556,8 @@ sub output_error ($$$$) {
     if (!open(ERR, "<", $fileref_subr->('stderr'))) {
 	print STDERR $::cr_text, $fp, $!, "\n";
 	$::cr_text = "";
-	$::internal_errors++;
-	return;
+	$::errors++;
+	return 1;
     }
 
     my($errortext, $t, $lineno, $failure) = ('');
@@ -886,18 +887,23 @@ sub execute_test ($$$$) {
 
     # count attempt
     $tt->{"errprefix"} = $fn . ": ";
-    $::attempts++;
+    $::test_attempts++;
 
     # print description in superverbose mode
     if ($verbose > 1) {
 	return 0 if $tt->empty;
 	print STDERR "\n" if $any_tests_done;
-	if ($tt->{'desc'}) {
-	    my($desc) = $tt->{'desc'};
+	if ($tt->{'info'}) {
+	    my($desc) = $tt->{'info'};
 	    $desc =~ s/^(.*?)\t/$1 . (' ' x (8 - (length($1) % 8)))/egm
 		while $desc =~ /\t/;
-	    $desc =~ s/^/  /;
-	    print STDERR $fn, " Description:\n", $desc;
+	    $desc =~ s/\r\n/\n/g;
+	    $desc =~ tr/\r/\n/;
+	    $desc =~ s/\A\n+//s;
+	    $desc =~ s/\n\n.*\z//s;
+	    $desc =~ s/^/  /mg;
+	    $desc .= "\n" if $desc !~ /\n\z/;
+	    print STDERR $fn, " Information:\n", $desc;
 	}
 	print STDERR $fn, " Results:\n";
 	$tt->{'errprefix'} = "  ";
@@ -940,7 +946,7 @@ sub execute_test ($$$$) {
     close SCR;
 
     # exit if expand mode
-    return 0 if ($expand_mode);
+    return if ($expand_mode);
 
     # run the script
     my($actual_stdin) = ($tt->have_file('stdin') ? script_fn_to_fn('stdin') : "/dev/null");
@@ -997,15 +1003,11 @@ sub execute_test ($$$$) {
 
     # check files
     my $old_errors = $::errors;
-    if ($exitval = $tt->check_expects(\&out_script_fn_to_fn)) {
-	return $exitval;
-    }
+    return if $tt->check_expects(\&out_script_fn_to_fn);
 
     if ($verbose > 0 && !$tt->empty && $old_errors == $::errors) {
 	print STDERR $tt->{'errprefix'}, "Success!\n";
     }
-
-    0;
 }
 
 sub run_test (;$$$) {
@@ -1017,29 +1019,37 @@ sub run_test (;$$$) {
 	if (!open(IN, "<&=STDIN")) {
 	    print STDERR $::cr_text, "<stdin>: $!\n";
 	    $::cr_text = "";
-	    return -1;
+	    $::bad_files++;
+	    return;
 	}
 	$display_fn = "<stdin>";
     } elsif (-d $fn) {
 	print STDERR $::cr_text, $fn, ": is a directory\n";
 	$::cr_text = "";
-	return -1;
+	$::bad_files++;
+	return;
     } else {
 	if (!open(IN, "<", $fn)) {
 	    print STDERR $::cr_text, $fn, ": $!\n";
 	    $::cr_text = "";
-	    return -1;
+	    $::bad_files++;
+	    return;
 	}
 	$display_fn = $fn;
 	$close_in = 1;
     }
 
-    my($result, $suffix) = (0, '');
+    my($suffix) = '';
     $tt = Testie::read(IN, $display_fn);
 
     while (1) {
-	my($this_result) = execute_test($tt, $display_fn . $suffix, $verbose, $multiprint);
-	$result = $this_result if $this_result;
+	my($old_errors, $old_require_errors) = ($::errors, $::require_errors);
+	execute_test($tt, $display_fn . $suffix, $verbose, $multiprint);
+	if ($::require_errors != $old_require_errors) {
+	    $::test_skips++;
+	} elsif ($::errors != $old_errors) {
+	    $::test_failures++;
+	}
 	last if !exists $tt->{'continue'};
 	if (!($suffix =~ s/^<(\d+)>$/"<" . ($1+1) . ">"/e)) {
 	    $suffix = "<2>";
@@ -1048,7 +1058,6 @@ sub run_test (;$$$) {
     }
 
     close IN if $close_in;
-    $result;
 }
 
 $SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = $SIG{'__DIE__'} = sub {
@@ -1069,7 +1078,7 @@ Usage: testie [OPTIONS] [FILE]...
 Options:
   VARIABLE=VALUE             Variable settings for test script.
   -V, --verbose              Print information for successful tests.
-  -VV, --superverbose        Print %desc information for all tests.
+  -VV, --superverbose        Print initial \%info for all tests.
   -s, --show TESTIEFILE      Show contents of TESTIEFILE on completion.
   -S, --show-raw TESTIEFILE  Like --show, but include ignored lines.
   --show-all                 Show contents of all TESTIEFILEs on completion.
@@ -1205,7 +1214,7 @@ foreach my $s (@show) {
 }
 
 push @tests, '-' if !@tests;
-my($testnumber) = 0;
+my($testnumber, $file_errors, $file_require_errors) = (0, 0, 0);
 
 foreach my $test (@tests) {
     if (!$expand_mode) {
@@ -1235,15 +1244,16 @@ if (@require_error_commands) {
 }
 
 print STDERR $::cr_text;
-if ($verbose == 0 && $attempts > 0 && $errors == 0 && @tests > 1
-    && $require_errors < $attempts) {
-    print STDERR "testie: All tests pass!\n";
-}
+my($test_successes) = $test_attempts - $test_failures - $test_skips;
+print STDERR "testie: ",
+    $test_successes, ($test_successes == 1 ? " success, " : " successes, "),
+    $test_failures, ($test_failures == 1 ? " failure, " : " failures, "),
+    $test_skips, " skipped\n";
 
-if ($internal_errors > 0) {
+if ($bad_files > 0) {
     exit(2);
-} elsif ($attempts == 0
-	 || ($errors == 0 && $require_errors < $attempts)) {
+} elsif ($test_attempts == 0
+	 || ($errors == 0 && $test_skips < $test_attempts)) {
     exit(0);
 } else {
     exit(1);
@@ -1295,7 +1305,7 @@ unsuccessful tests.
 =item -VV, --superverbose
 
 Like --verbose, but use a slightly different format, and additionally print
-every test's %desc section before the test results.
+every test's %info section before the test results.
 
 =item -q, --quiet
 
@@ -1375,14 +1385,10 @@ if a requirement fails.
 Testie runs the requirement script before creating any other test files.
 For example, contents of %file sections are not available.
 
-=item %desc
-
-A short description of the test.  In --superverbose mode, its contents are
-printed before the test results.
-
 =item %info
 
-This section is ignored. It is intended for information about the test.
+A short description of the test.  In --superverbose mode, the first
+paragraph of its contents is printed before the test results.
 
 =item %cut
 

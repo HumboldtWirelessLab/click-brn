@@ -27,6 +27,7 @@
 #include <click/error.hh>
 #include <click/straccum.hh>
 #include <click/elemfilter.hh>
+#include <click/routervisitor.hh>
 #include <click/confparse.hh>
 #include <click/timer.hh>
 #include <click/master.hh>
@@ -68,8 +69,8 @@ static int globalh_cap;
  *  object, but not initialized or activated. */
 Router::Router(const String &configuration, Master *master)
     : _master(0), _state(ROUTER_NEW),
-      _have_connections(false), _conn_sorted(true),
-      _running(RUNNING_INACTIVE),
+      _have_connections(false), _conn_sorted(true), _have_configuration(true),
+      _running(RUNNING_INACTIVE), _last_landmarkid(0),
       _handler_bufs(0), _nhandlers_bufs(0), _free_handler(-1),
       _root_element(0),
       _configuration(configuration),
@@ -314,13 +315,33 @@ Router::set_econfiguration(int eindex, const String &conf)
  *  typical landmark has the form "file:linenumber", as in
  *  <tt>"file.click:30"</tt>.  Returns the empty string if @a eindex is out of
  *  range. */
-const String &
+String
 Router::elandmark(int eindex) const
 {
     if (eindex < 0 || eindex >= nelements())
 	return String::make_empty();
+
+    // binary search over landmarks
+    uint32_t x = _element_landmarkids[eindex];
+    uint32_t l = 0, r = _element_landmarks.size();
+    while (l < r) {
+	uint32_t m = l + ((r - l) >> 1);
+	uint32_t y = _element_landmarks[m].first_landmarkid;
+	if (x < y)
+	    r = m;
+	else
+	    l = m + 1;
+    }
+
+    const String &filename = _element_landmarks[r - 1].filename;
+    unsigned lineno = x - _element_landmarks[r - 1].first_landmarkid;
+
+    if (!lineno)
+	return filename;
+    else if (filename && (filename.back() == ':' || isspace((unsigned char) filename.back())))
+	return filename + String(lineno);
     else
-	return _element_landmarks[eindex];
+	return filename + String(':') + String(lineno);
 }
 
 
@@ -347,19 +368,34 @@ Router::add_module_ref(struct module *module)
 #endif
 
 int
-Router::add_element(Element *e, const String &ename, const String &conf, const String &landmark)
+Router::add_element(Element *e, const String &ename, const String &conf,
+		    const String &filename, unsigned lineno)
 {
     if (_state != ROUTER_NEW || !e || e->router())
 	return -1;
 
     _elements.push_back(e);
     _element_names.push_back(ename);
-    _element_landmarks.push_back(landmark);
     _element_configurations.push_back(conf);
-    int i = _elements.size() - 1;
-    e->attach_router(this, i);
+
+    uint32_t lmid;
+    if (_element_landmarks.size()
+	&& _element_landmarks.back().filename == filename)
+	lmid = _element_landmarks.back().first_landmarkid + lineno;
+    else {
+	element_landmark_t lm;
+	lm.first_landmarkid = _last_landmarkid;
+	lm.filename = filename;
+	_element_landmarks.push_back(lm);
+	lmid = _last_landmarkid + lineno;
+    }
+    _element_landmarkids.push_back(lmid);
+    if (lmid >= _last_landmarkid)
+	_last_landmarkid = lmid + 1;
 
     // router now owns the element
+    int i = _elements.size() - 1;
+    e->attach_router(this, i);
     return i;
 }
 
@@ -396,6 +432,10 @@ Router::add_requirement(const String &r)
 {
     assert(cp_is_word(r));
     _requirements.push_back(r);
+    if (r.equals("compact_config", 14)) {
+	_have_configuration = false;
+	_configuration = String();
+    }
 }
 
 
@@ -547,7 +587,7 @@ conn_output_sorter_compar(const void *ap, const void *bp, void *user_data)
 }
 
 void
-Router::sort_connections()
+Router::sort_connections() const
 {
     if (!_conn_sorted) {
 	click_qsort(_conn.begin(), _conn.size());
@@ -594,15 +634,6 @@ inline int
 Router::gport(bool isoutput, const Port &h) const
 {
     return _element_gport_offset[isoutput][h.idx] + h.port;
-}
-
-void
-Router::port_list_elements(Vector<Port> &ports, Vector<Element*>& results) const
-{
-    click_qsort(ports.begin(), ports.size());
-    for (Port *pp = ports.begin(); pp != ports.end(); ++pp)
-	if (pp == ports.begin() || pp[-1].idx != pp->idx)
-	    results.push_back(_elements[pp->idx]);
 }
 
 // PROCESSING
@@ -714,7 +745,7 @@ Router::element_lerror(ErrorHandler *errh, Element *e,
 {
     va_list val;
     va_start(val, format);
-    String l = ErrorHandler::make_landmark_anno(e->landmark());
+    String l = ErrorHandler::make_landmark_anno(elandmark(e->eindex()));
     errh->xmessage(ErrorHandler::e_error + l, format, val);
     va_end(val);
     return -1;
@@ -807,15 +838,14 @@ Router::set_flow_code_override(int eindex, const String &flow_code)
 }
 
 int
-Router::global_port_flow(bool forward, Element* first_element, int first_port,
-			 ElementFilter* stop_filter, Vector<Port> &results)
+Router::visit_base(bool forward, Element *first_element, int first_port,
+		   RouterVisitor *visitor) const
 {
     if (!_have_connections || first_element->router() != this)
 	return -1;
 
     sort_connections();
 
-    results.clear();
     Bitvector result_bv(ngports(!forward), false), scratch;
 
     Vector<Port> sources;
@@ -825,8 +855,11 @@ Router::global_port_flow(bool forward, Element* first_element, int first_port,
     } else if (first_port < first_element->nports(forward))
 	sources.push_back(Port(first_element->eindex(), first_port));
 
-    while (true) {
-	int old_nresults = results.size();
+    Vector<Port> next_sources;
+    int distance = 1;
+
+    while (sources.size()) {
+	next_sources.clear();
 
 	for (Port *sp = sources.begin(); sp != sources.end(); ++sp)
 	    for (int cix = connindex_lower_bound(forward, *sp);
@@ -836,24 +869,47 @@ Router::global_port_flow(bool forward, Element* first_element, int first_port,
 		    break;
 		Port connpt = _conn[ci][!forward];
 		int conng = gport(!forward, connpt);
-		if (!result_bv[conng]) {
-		    results.push_back(connpt);
-		    result_bv[conng] = true;
-		}
-	    }
-
-	if (results.size() == old_nresults)
-	    return 0;
-
-	sources.clear();
-	for (Port *rp = results.begin() + old_nresults; rp != results.end(); ++rp)
-	    if (!stop_filter || !stop_filter->check_match(_elements[rp->idx], !forward, rp->port)) {
-		_elements[rp->idx]->port_flow(!forward, rp->port, &scratch);
+		if (result_bv[conng])
+		    continue;
+		result_bv[conng] = true;
+		if (!visitor->visit(_elements[connpt.idx], !forward, connpt.port,
+				    _elements[sp->idx], sp->port, distance))
+		    continue;
+		_elements[connpt.idx]->port_flow(!forward, connpt.port, &scratch);
 		for (int port = 0; port < scratch.size(); ++port)
 		    if (scratch[port])
-			sources.push_back(Port(rp->idx, port));
+			next_sources.push_back(Port(connpt.idx, port));
 	    }
+
+	sources.swap(next_sources);
+	++distance;
     }
+
+    return 0;
+}
+
+namespace {
+class ElementFilterRouterVisitor : public RouterVisitor { public:
+
+    ElementFilterRouterVisitor(ElementFilter *filter,
+			       Vector<Element *> &results)
+	: _filter(filter), _results(results) {
+	_results.clear();
+    }
+
+    bool visit(Element *e, bool isoutput, int port,
+	       Element *, int, int) {
+	if (find(_results.begin(), _results.end(), e) == _results.end())
+	    _results.push_back(e);
+	return _filter ? !_filter->check_match(e, isoutput, port) : true;
+    }
+
+  private:
+
+    ElementFilter *_filter;
+    Vector<Element *> &_results;
+
+};
 }
 
 /** @brief Search for elements downstream from @a e.
@@ -862,6 +918,8 @@ Router::global_port_flow(bool forward, Element* first_element, int first_port,
  * @param filter ElementFilter naming elements that stop the search
  * @param result stores results
  * @return 0 on success, -1 in early router configuration stages
+ *
+ * @deprecated This function is deprecated.  Use visit_downstream() instead.
  *
  * This function searches the router configuration graph, starting from @a e's
  * output port @a port and proceeding downstream along element connections,
@@ -879,11 +937,8 @@ Router::global_port_flow(bool forward, Element* first_element, int first_port,
 int
 Router::downstream_elements(Element *e, int port, ElementFilter *filter, Vector<Element *> &result)
 {
-    Vector<Port> result_ports;
-    if (global_port_flow(true, e, port, filter, result_ports) < 0)
-	return -1;
-    port_list_elements(result_ports, result);
-    return 0;
+    ElementFilterRouterVisitor visitor(filter, result);
+    return visit_base(true, e, port, &visitor);
 }
 
 /** @brief Search for elements upstream from @a e.
@@ -892,6 +947,8 @@ Router::downstream_elements(Element *e, int port, ElementFilter *filter, Vector<
  * @param filter ElementFilter naming elements that stop the search
  * @param result stores results
  * @return 0 on success, -1 in early router configuration stages
+ *
+ * @deprecated This function is deprecated.  Use visit_upstream() instead.
  *
  * This function searches the router configuration graph, starting from @a e's
  * input port @a port and proceeding upstream along element connections,
@@ -909,11 +966,8 @@ Router::downstream_elements(Element *e, int port, ElementFilter *filter, Vector<
 int
 Router::upstream_elements(Element *e, int port, ElementFilter *filter, Vector<Element *> &result)
 {
-    Vector<Port> result_ports;
-    if (global_port_flow(false, e, port, filter, result_ports) < 0)
-	return -1;
-    port_list_elements(result_ports, result);
-    return 0;
+    ElementFilterRouterVisitor visitor(filter, result);
+    return visit_base(false, e, port, &visitor);
 }
 
 
@@ -930,8 +984,8 @@ class Router::RouterContextErrh : public ContextErrorHandler { public:
 	    StringAccum sa;
 	    sa << _message << " %<%{element}%>:";
 	    String str = format(sa.c_str(), _element);
-	    if (_element->landmark())
-		str = combine_anno(str, make_landmark_anno(_element->landmark()));
+	    if (String s = _element->router()->elandmark(_element->eindex()))
+		str = combine_anno(str, make_landmark_anno(s));
 	    set_context(str);
 	}
 	return ContextErrorHandler::decorate(str);
@@ -1329,6 +1383,8 @@ Router::store_local_handler(int eindex, Handler &to_store, int type)
 	    else if (cmp > 0)
 		l = m + 1;
 	    else {
+		// discourage the storage of multiple copies of the same name
+		to_store._name = xhandler(*m)->_name;
 		l = m;
 		break;
 	    }
@@ -2029,8 +2085,23 @@ Router::element_ports_string(const Element *e) const
 
 // STATIC INITIALIZATION, DEFAULT GLOBAL HANDLERS
 
+/** @brief  Returns the router's initial configuration string.
+ *  @return The configuration string specified to the constructor. */
+String
+Router::configuration_string() const
+{
+    if (_have_configuration)
+	return _configuration;
+    else {
+	StringAccum sa;
+	unparse(sa);
+	return sa.take_string();
+    }
+}
+
 enum { GH_VERSION, GH_CONFIG, GH_FLATCONFIG, GH_LIST, GH_REQUIREMENTS,
-       GH_DRIVER, GH_ACTIVE_PORTS, GH_ACTIVE_PORT_STATS };
+       GH_DRIVER, GH_ACTIVE_PORTS, GH_ACTIVE_PORT_STATS, GH_STRING_PROFILE,
+       GH_STRING_PROFILE_LONG };
 
 String
 Router::router_read_handler(Element *e, void *thunk)
@@ -2107,6 +2178,16 @@ Router::router_read_handler(Element *e, void *thunk)
 	break;
 #endif
 
+#if HAVE_STRING_PROFILING
+    case GH_STRING_PROFILE:
+	String::profile_report(sa);
+	break;
+
+    case GH_STRING_PROFILE_LONG:
+	String::profile_report(sa, 2);
+	break;
+#endif
+
     }
     return sa.take_string();
 }
@@ -2139,6 +2220,12 @@ Router::static_initialize()
 #if CLICK_STATS >= 1
 	add_read_handler(0, "active_ports", router_read_handler, (void *)GH_ACTIVE_PORTS);
 	add_read_handler(0, "active_port_stats", router_read_handler, (void *)GH_ACTIVE_PORT_STATS);
+#endif
+#if HAVE_STRING_PROFILING
+	add_read_handler(0, "string_profile", router_read_handler, (void *) GH_STRING_PROFILE);
+# if HAVE_STRING_PROFILING > 1
+	add_read_handler(0, "string_profile_long", router_read_handler, (void *) GH_STRING_PROFILE_LONG);
+# endif
 #endif
     }
 }
