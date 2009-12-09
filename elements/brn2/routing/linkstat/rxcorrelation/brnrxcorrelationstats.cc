@@ -70,7 +70,7 @@ BrnRXCorrelationStats::calculatedPERPair(BrnRXCorrelation::NeighbourInfo *candA,
   for ( uint32_t i = min_lp; i <= last_poss_lp; i++ ) {
     ina = false;
     inb = false;
-//    click_chatter("Search for: %d",i);
+    BRN_DEBUG("Search for: %d",i);
 
     for ( uint32_t a = base_a; a != candA->_my_ids_next; a = ( a + 1 ) % id_size_a ) {
       if ( candA->_my_ids[a] == i ) {
@@ -93,7 +93,7 @@ BrnRXCorrelationStats::calculatedPERPair(BrnRXCorrelation::NeighbourInfo *candA,
     if ( ina || inb ) recvlp++;
   }
 
-//  click_chatter("Found: %d",recvlp);
+  BRN_DEBUG("Found: %d of %d",recvlp, _note_lp);
 
   return ((100 * recvlp) / _note_lp ) ;
 }
@@ -170,7 +170,7 @@ String BrnRXCorrelationStats::printPairPerInfo()
       _ni_2 = _rxcorr->getNeighbourInfo(j);
 
       sa << "Me (" << _rxcorr->_me.unparse() << ") -> Nodes (" << _ni_1->_addr.unparse() << ", " << _ni_2->_addr.unparse() << ") : ";
-      sa << "PERPAIR: " << calculatedPERPair(_ni_1,_ni_2) << "  PERIndepentend: " << calculatedPERIndepend(_ni_1,_ni_2);
+      sa << "PERPair: " << calculatedPERPair(_ni_1,_ni_2) << "  PERIndepentend: " << calculatedPERIndepend(_ni_1,_ni_2);
       sa << "  PERPos: " << calculatedPERDependPos(_ni_1,_ni_2) << "  PERNeg: " << calculatedPERDependNeg(_ni_1,_ni_2) << "\n";
     }
   }

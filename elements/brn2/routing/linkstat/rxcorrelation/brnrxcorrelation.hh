@@ -110,6 +110,20 @@ class BrnRXCorrelation : public Element {
       return;
     }
 
+    int get_last_recv_linkprobe()
+    {
+      return (_ids[(_ids_next + MAXIDS - 1) % MAXIDS]);
+    }
+
+    int get_index_of(uint16_t id_first)
+    {
+      int index = _ids_base;
+
+      while ( (_ids[index] < id_first) && (index != _ids_next) ) index = (index + 1 ) % MAXIDS;
+
+      return ((_ids_next + MAXIDS - 1) % MAXIDS);
+    }
+
     void add_mention_linkprobe(unsigned int lp_id)
     {
       if ( lp_id > _my_ids_highest ) {
@@ -170,7 +184,6 @@ class BrnRXCorrelation : public Element {
 
   NeighbourInfo *getNeighbourInfo(EtherAddress *ea);
   int add_recv_linkprobe(EtherAddress *_addr, unsigned int lp_id);
-  int add_mention_linkprobe(EtherAddress *node, unsigned int lp_id);
 
   Vector<NeighbourInfo*> _cand;
 

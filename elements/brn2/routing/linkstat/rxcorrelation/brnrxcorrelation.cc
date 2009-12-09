@@ -43,7 +43,6 @@ lphandler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool dire
   return 0;
 }
 
-
 int
 BrnRXCorrelation::initialize(ErrorHandler *)
 {
@@ -80,29 +79,6 @@ BrnRXCorrelation::add_recv_linkprobe(EtherAddress *_addr, unsigned int lp_id)
   return 0;
 }
 
-
-/**
- * add linkprobeid which was recived by other nodes and sent by me
- */
-
-int
-BrnRXCorrelation::add_mention_linkprobe(EtherAddress *node, unsigned int lp_id)
-{
-
-  NeighbourInfo *ni;
-
-  if ( lp_id > _linkprobe_id ) return 0; // bigger than last, have a restart since that linkprobe
-
-  ni = getNeighbourInfo(node);
-
-  if ( ni == NULL ) {
-    BRN_ERROR("error: why is the neighbour not present");
-  } else
-    ni->add_mention_linkprobe(lp_id);                                          // add linkprobe_id
-
-  return 0;
-}
-
 int
 BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
 {
@@ -119,7 +95,7 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
   add_recv_linkprobe(&source, lpid);
   ni = getNeighbourInfo(&source);
 
-  BRN_INFO("I (%s) got linkprobe %d from %s",_me.unparse().c_str(), lpid, source.unparse().c_str());
+  BRN_DEBUG("I (%s) got linkprobe %d from %s",_me.unparse().c_str(), lpid, source.unparse().c_str());
 
   int index = sizeof(struct rxc_header);
 
@@ -128,7 +104,7 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
 
     neighbour_addr = EtherAddress(rxni->mac);
 
-    BRN_INFO("LINKPROBEID: ME: %s SRC: %s Neighbour: %s", _me.unparse().c_str(),
+    BRN_DEBUG("LINKPROBEID: ME: %s SRC: %s Neighbour: %s", _me.unparse().c_str(),
                                                                source.unparse().c_str(),
                                                                neighbour_addr.unparse().c_str());
 
@@ -136,6 +112,8 @@ BrnRXCorrelation::lpReceiveHandler(uint8_t *ptr, int payload_size)
       ni->add_mention_linkprobe(ntohs(rxni->first_id));
 
       uint16_t fid = ntohs(rxni->following_ids);
+      BRN_DEBUG("ID: %d Follow: %d",ntohs(rxni->first_id),fid);
+
       for( int i = 0; i < MAXIDS; i++ ) {
         if ( (fid & ( 1 << i )) != 0 )
           ni->add_mention_linkprobe(ntohs(rxni->first_id) + i + 1);
@@ -155,6 +133,9 @@ BrnRXCorrelation::lpSendHandler(uint8_t *ptr, int payload_size)
   uint16_t n_index;
   uint16_t id_bitmap;
   uint16_t id_index;
+  uint16_t id_last;
+  uint16_t id_first;
+  uint16_t index_first;
   struct rxc_neighbour_info* ni;
 
   //increase id for next message
@@ -171,17 +152,25 @@ BrnRXCorrelation::lpSendHandler(uint8_t *ptr, int payload_size)
   n_index = 0;
 
   while ( (n_index < _cand.size()) && ((size + sizeof(rxc_neighbour_info)) < (uint16_t)payload_size ) ) {
-    ni =  (struct rxc_neighbour_info*)&(ptr[size]);                                                       //pointer to next neighbourinfo
+    ni = (struct rxc_neighbour_info*)&(ptr[size]);                                                       //pointer to next neighbourinfo
     size += sizeof(struct rxc_neighbour_info);                                                            //step pointer forward
 
     memcpy(ni->mac, _cand[n_index]->_addr.data(), 6);                                                     //copy address
-    ni->first_id = htons(_cand[n_index]->_ids[_cand[n_index]->_ids_base]);                                //set first known ID
-    id_bitmap = 0;                                                                                        //prepare bitmap
-    id_index = (_cand[n_index]->_ids_base + 1) % MAXIDS;                                                  //set to next known ID
+
+    id_last = _cand[n_index]->get_last_recv_linkprobe();                                    //get last receive ID
+    id_first = id_last - (sizeof(ni->following_ids) * 8);                                   //we want to push the last X id, so what the first id we want ?
+    index_first = _cand[n_index]->get_index_of(id_first);                                   //index of the id
+
+    ni->first_id = htons(_cand[n_index]->_ids[index_first]);                                //set first known ID
+
+    id_bitmap = 0;                                                                          //prepare bitmap
+    id_index = (index_first + 1) % MAXIDS;                                                  //set to next known ID
     while ( id_index != _cand[n_index]->_ids_next ) {
+      BRN_DEBUG("Add %d for %s",_cand[n_index]->_ids[id_index], _cand[n_index]->_addr.unparse().c_str());
+
       //* substract 1 since otherwise the first positon is not used, since this is stores in first_id
       //TODO: add 65536 if we have overrun in id ( 65535 -> 0 )
-      id_bitmap = id_bitmap | ( 1 << (((_cand[n_index]->_ids[id_index] - _cand[n_index]->_ids[_cand[n_index]->_ids_base] /*+ 65536*/ ) % MAXIDS ) - 1));
+      id_bitmap = id_bitmap | ( 1 << (((_cand[n_index]->_ids[id_index] - _cand[n_index]->_ids[index_first]/*+ 65536*/ ) % MAXIDS ) - 1));
 
       /* next id_index */
       id_index = (id_index + 1) % MAXIDS;
