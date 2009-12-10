@@ -47,7 +47,6 @@ int
 GPS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-   gi
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
