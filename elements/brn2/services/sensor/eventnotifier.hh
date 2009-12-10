@@ -78,7 +78,8 @@ class EventNotifier : public Element {
  public:
   Timer _timer;
   int _debug;
-
+  EtherAddress _me;
+  EtherAddress _eventhandleraddr;
   int _handler_events;
   int _push_packet_events;
   int _pull_packet_events;

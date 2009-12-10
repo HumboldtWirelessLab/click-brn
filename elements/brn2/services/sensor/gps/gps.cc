@@ -35,7 +35,8 @@
 CLICK_DECLS
 
 GPS::GPS()
-  :_debug(BrnLogger::DEFAULT)
+  :_gpsmode(GPSMODE_HANDLER),
+   _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -47,6 +48,7 @@ int
 GPS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "GPSMODE", cpkP, cpInteger, &_gpsmode,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -76,11 +78,33 @@ read_position_param(Element *e, void *)
   StringAccum sa;
   GPS *gps = (GPS *)e;
 
-  sa << "\n";
+  GPSPosition *pos = gps->getPosition();
+  sa << pos->_x << " " << pos->_y << " " << pos->_z;
 
   return sa.take_string();
 }
+static int 
+write_position_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+{
+  int x,y,z;
+  GPS *gps = (GPS *)e;
+  GPSPosition *pos = gps->getPosition();
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
 
+  cp_integer(args[0], &x);
+  cp_integer(args[1], &y);
+
+  if ( args.size() > 2 )
+    cp_integer(args[2], &z);
+  else
+    z = 0;
+
+  pos->setCC(x,y,z);
+
+  return 0;
+}
 static String
 read_debug_param(Element *e, void *)
 {
@@ -104,6 +128,7 @@ void
 GPS::add_handlers()
 {
   add_read_handler("position", read_position_param, 0);
+  add_write_handler("position", write_position_param, 0);
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }

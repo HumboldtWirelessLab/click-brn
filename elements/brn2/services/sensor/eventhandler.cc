@@ -32,12 +32,15 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "eventpacket.hh"
 #include "eventhandler.hh"
 
 CLICK_DECLS
 
 EventHandler::EventHandler()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(BrnLogger::DEFAULT),
+   _packet_events(0),
+   _dht_events(0)
 {
 }
 
@@ -65,7 +68,60 @@ EventHandler::initialize(ErrorHandler *)
 void
 EventHandler::push( int /*port*/, Packet *packet )
 {
+  if ( packet->length() >= sizeof(struct event_header) ) {
+    struct event_header *eh = (struct event_header *)packet->data();
+    EtherAddress ea = EtherAddress(eh->_src);
+    if ( ! contains_event(ea, ntohs(eh->_id)) ) {
+      BRN_INFO("Add new event: %s:%d",ea.unparse().c_str(), ntohs(eh->_id) );
+      _packet_events++;
+      add_event(ea, ntohs(eh->_id));
+    } else {
+      BRN_INFO("Already known event: %s:%d",ea.unparse().c_str(), ntohs(eh->_id));
+    }
+  }
+
   packet->kill();
+}
+
+void
+EventHandler::clear_eventlist()
+{
+  _evli.clear();
+}
+
+void
+EventHandler::add_event(EtherAddress src, int id)
+{
+  _evli.push_back(EventHandler::DetectedEvent(src,id));
+}
+
+bool
+EventHandler::contains_event(EtherAddress src, int id)
+{
+  EventHandler::DetectedEvent *ev;
+
+  for ( int i = 0; i < _evli.size(); i++ ) {
+    ev = &_evli[i];
+    if ( ( src == ev->_src) && ( id == ev->_id ) ) return true;
+  }
+
+  return false;
+}
+
+
+String
+EventHandler::get_events()
+{
+  StringAccum sa;
+  EventHandler::DetectedEvent *ev;
+
+  for ( int i = 0; i < _evli.size(); i++ ) {
+    ev = &_evli[i];
+    sa << "EtherAddress: " << ev->_src.unparse();
+    sa << " ID: " << ev->_id << "\n";
+  }
+
+  return sa.take_string();
 }
 
 //-----------------------------------------------------------------------------
@@ -81,7 +137,7 @@ read_stats_param(Element *e, void *)
   sa << "Events: " << (eh->_packet_events + eh->_dht_events);
   sa << "\nPacket events: " << eh->_packet_events;
   sa << "\nDHT events: " << eh->_dht_events;
-  sa << "\n";
+  sa << "\n" << eh->get_events();
 
   return sa.take_string();
 }
@@ -112,6 +168,9 @@ EventHandler::add_handlers()
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
+
+#include <click/vector.cc>
+template class Vector<EventHandler::DetectedEvent>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(EventHandler)

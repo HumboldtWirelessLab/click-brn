@@ -45,6 +45,21 @@ class EventHandler : public Element {
 
  public:
 
+  class DetectedEvent {
+   public:
+    EtherAddress _src;
+    int _id;
+
+    DetectedEvent(EtherAddress src, int id) {
+      _src = src;
+      _id = id;
+    }
+  };
+
+  typedef Vector<DetectedEvent> EventList;
+
+ public:
+
   //
   //methods
   //
@@ -64,10 +79,17 @@ class EventHandler : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  String get_events();
  private:
   //
   //member
   //
+
+  EventList _evli;
+
+  void clear_eventlist();
+  void add_event(EtherAddress src, int id);
+  bool contains_event(EtherAddress src, int id);
 
  public:
   int _debug;

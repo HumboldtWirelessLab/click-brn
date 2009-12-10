@@ -24,6 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/ipaddress.hh>
 
 CLICK_DECLS
 /*
@@ -36,19 +37,75 @@ CLICK_DECLS
  * gps
  */
 
-class GPS : public Element {
- public:
-  class GPSPosition {
-    int _longitude;
-    int _latitude;
-    int _h;
+#define GPSMODE_HANDLER 0
+#define GPSMODE_GPSD 0
+#define GPSMODE_SERIAL 0
 
-    GPSPosition(int lon, int lat, int h) {
-      _longitude = lon;
-      _latitude = lat;
-      _h = h;
-    }
-  };
+struct gps_position {
+  int x;
+  int y;
+  int z;
+} __attribute__ ((packed));
+
+
+class GPSPosition {
+ public:
+  int _longitude;
+  int _latitude;
+  int _h;
+
+  int _x,_y,_z;
+
+  GPSPosition() {
+    _longitude = 0;
+    _latitude = 0;
+    _h = 0;
+    _z=0; _x=0; _y=0;
+  }
+
+  GPSPosition(int lon, int lat, int h) {
+    _longitude = lon;
+    _latitude = lat;
+    _h = h;
+  }
+
+  void setCC(int x, int y, int z) {
+    _z=z; _x=x; _y=y;
+  }
+
+  int isrqt(int n) {
+    int x,x1;
+
+    x1 = n;
+
+    do {
+      x = x1;
+      x1 = (x + n/x) >> 1;
+    } while ( ( (x - x1)  > 1 ) || ( (x - x1)  < -1 ) );
+
+    return x1;
+  }
+
+  int getDistance(GPSPosition pos) {
+    return isrqt(((pos._x - _x) * (pos._x - _x)) + ((pos._y - _y) * (pos._y - _y)) + ((pos._z - _z) * (pos._z - _z)));
+  }
+
+  void getPosition(struct gps_position *pos)
+  {
+    pos->x = _x;
+    pos->y = _y;
+    pos->z = _z;
+  }
+
+  void setPosition(struct gps_position *pos)
+  {
+    _x = pos->x;
+    _y = pos->y;
+    _z = pos->z;
+  }
+};
+
+class GPS : public Element {
 
  public:
 
@@ -71,20 +128,23 @@ class GPS : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  GPSPosition *getPosition() { return &_position;}
+
  private:
   //
   //member
   //
+  GPSPosition _position;
 
  public:
+  int _gpsmode;
   int _debug;
 
   String _gpsdevice;
-  String _gpsd_ip;
-  String _gpsd_port;
+  IPAddress _gpsd_ip;
+  int _gpsd_port;
 
   int update_interval;
-
 };
 
 CLICK_ENDDECLS

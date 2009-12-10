@@ -54,7 +54,11 @@ EventNotifier::~EventNotifier()
 int
 EventNotifier::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _eventhandleraddr = EtherAddress::make_broadcast();
+
   if (cp_va_kparse(conf, this, errh,
+      "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_me,
+      "EVENTHANDLERADDR", cpkP, cpEthernetAddress, &_eventhandleraddr,
       "DEBUG", cpkP, cpInteger, &_debug,
       "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
       cpEnd) < 0)
@@ -103,11 +107,13 @@ EventNotifier::handle_event()
   if ( noutputs() > 1 ) {
     BRN_INFO("Handle Event by output(1)");
 
-    WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, sizeof(struct event_header) + 100, 32);
+    WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, sizeof(struct event_header), 32);
     struct event_header *eh = (struct event_header *)p->data();
     eh->_id = htons(1);
+    memcpy(eh->_src,_me.data(),6);
 
     WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_EVENTHANDLER, BRN_PORT_EVENTHANDLER, 255, 0);
+    BRNPacketAnno::set_ether_anno(p_out, _me, _eventhandleraddr, 0x8086);
     checked_output_push(1, p_out);
   };
 }
