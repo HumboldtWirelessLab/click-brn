@@ -630,6 +630,15 @@ Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors
   }
 }
 
+/** TODO:
+  Check every device for neighbors and not only the master-device
+*/
+void
+Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
+  EtherAddress *me = _node_identity->getMainAddress();
+  get_neighbors(*me,neighbors);
+}
+
 //TODO: Short this function
 EtherAddress * 
 Brn2LinkTable::get_neighbor(EtherAddress ether)

@@ -76,7 +76,6 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <elements/wifi/availablerates.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brn2.h"
 #include "metric/brn2_brnetxmetric.hh"
 

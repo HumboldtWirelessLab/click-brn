@@ -46,11 +46,13 @@ union addr {
 #define BRN_PORT_DHT                  7
 #define BRN_PORT_IAPP                 8
 #define BRN_PORT_GATEWAY              9
+#define BRN_PORT_BATMAN              10
 #define BRN_PORT_COMPRESSION         11
 #define BRN_PORT_FLOW                16
 #define BRN_PORT_SIMPLEFLOODING      17
 #define BRN_PORT_PROBABILITYFLODDING 18
 #define BRN_PORT_EVENTHANDLER        19
+#define BRN_PORT_GEOROUTING          20
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0

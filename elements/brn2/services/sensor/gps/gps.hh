@@ -56,11 +56,17 @@ class GPSPosition {
 
   int _x,_y,_z;
 
+  Timestamp gpstime;
+
   GPSPosition() {
     _longitude = 0;
     _latitude = 0;
     _h = 0;
     _z=0; _x=0; _y=0;
+  }
+
+  GPSPosition(struct gps_position *pos) {
+    _z=pos->z; _x=pos->x; _y=pos->y;
   }
 
   GPSPosition(int lon, int lat, int h) {
@@ -73,21 +79,23 @@ class GPSPosition {
     _z=z; _x=x; _y=y;
   }
 
-  int isrqt(int n) {
+  int isrqt(uint32_t n) {
     int x,x1;
+
+    if ( n == 0 ) return 0;
 
     x1 = n;
 
     do {
       x = x1;
       x1 = (x + n/x) >> 1;
-    } while ( ( (x - x1)  > 1 ) || ( (x - x1)  < -1 ) );
+    } while ((( (x - x1)  > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
 
     return x1;
   }
 
-  int getDistance(GPSPosition pos) {
-    return isrqt(((pos._x - _x) * (pos._x - _x)) + ((pos._y - _y) * (pos._y - _y)) + ((pos._z - _z) * (pos._z - _z)));
+  int getDistance(GPSPosition *pos) {
+    return isrqt(((pos->_x - _x) * (pos->_x - _x)) + ((pos->_y - _y) * (pos->_y - _y)) + ((pos->_z - _z) * (pos->_z - _z)));
   }
 
   void getPosition(struct gps_position *pos)

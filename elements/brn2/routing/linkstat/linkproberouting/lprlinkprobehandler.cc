@@ -74,7 +74,7 @@ handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direct
 int
 LPRLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,0,&handler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&handler);
 
   max_hosts = 128;
   known_links = new unsigned char[max_hosts * max_hosts];
