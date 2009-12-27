@@ -20,8 +20,8 @@ class DHTRouting : public Element
     DHTRouting();
     ~DHTRouting();
 
-    virtual const char *dhtrouting_name() const = 0;
-
+    virtual const char *dhtrouting_name() const = 0; //const : function doesn't change the object (members).
+                                                     //virtual: späte Bindung
     virtual bool replication_support() const = 0;
     virtual int max_replication() const = 0;
 

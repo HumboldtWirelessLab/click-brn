@@ -29,6 +29,8 @@ class DCluster : public Element {
 
     EtherAddress _ether_addr;
 
+    EtherAddress _info_src;
+
     ClusterNodeInfo(EtherAddress *ea, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(ea->data());
       _id = id;
@@ -85,7 +87,9 @@ class DCluster : public Element {
   int lpReceiveHandler(char *buffer, int size);
 
   String get_info();
-  DCluster::ClusterNodeInfo* getClusterHead();
+  DCluster::ClusterNodeInfo* selectClusterHead();
+  DCluster::ClusterNodeInfo* getClusterHead() { return _cluster_head;}
+  void informClusterHead(DCluster::ClusterNodeInfo*);
  private:
   //
   //member
@@ -107,6 +111,7 @@ class DCluster : public Element {
   int _ac_max_round;
 
   ClusterNodeInfo _my_info;
+  ClusterNodeInfo *_cluster_head;
 
   ClusterNodeInfo *_max_round;
   ClusterNodeInfo *_min_round;

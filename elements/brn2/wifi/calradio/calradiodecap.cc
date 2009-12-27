@@ -35,6 +35,15 @@ CalradioDecap::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 CalradioDecap::simple_action(Packet *p)
 {
+  struct calradio_header *crh;
+  click_wifi_extra *eh;
+
+  crh = (struct calradio_header*)p->data();
+
+  eh = WIFI_EXTRA_ANNO(q);
+  crh->rssi = eh->rssi;
+  crh->rate = eh->rate;
+
   p->pull(sizeof(struct calradio_header));
 
   return p;

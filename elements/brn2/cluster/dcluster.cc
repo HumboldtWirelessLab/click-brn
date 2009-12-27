@@ -69,6 +69,7 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
   id = id * 256 + ((uint8_t*)md5_id)[3];
 
   _my_info = ClusterNodeInfo(_node_identity->getMainAddress(), id, 0);
+  _cluster_head = &_my_info;
 
   _max_round = new ClusterNodeInfo[_max_distance];
   _min_round = new ClusterNodeInfo[_max_distance];
@@ -102,52 +103,51 @@ DCluster::lpSendHandler(char *buffer, int size)
 {
   struct dcluster_info info;
 
-  BRN_INFO("LP-Send: Min: %d Max: %d",_ac_min_round,_ac_max_round);
+  BRN_INFO("Linkprobe-Send: Min: %d Max: %d",_ac_min_round,_ac_max_round);
 
+  //store myself
   _my_info.storeStruct(&info.me);
   info.me.round=0;
 
-  if ( _ac_max_round == 0 ) {
+  //store actual max
+  if ( _ac_max_round == 0 ) {        //in the first round it's me
     _my_info.storeStruct(&info.max);
     info.max.round=0;
   } else {
-    _max_round[_ac_max_round - 1].storeStruct(&info.max);
-    info.max.round = _ac_max_round;
+    _max_round[_ac_max_round - 1].storeStruct(&info.max); //take max off last round
+    info.max.round = _ac_max_round;                       //for this round
   }
 
   BRN_INFO("AC maxround: %d Address: %s",_ac_max_round,EtherAddress(info.max.etheraddr).unparse().c_str());
 
   _ac_max_round = (_ac_max_round + 1) % _my_max_round;
 
-  BRN_INFO("MY MIN ROUND: %d",_ac_min_round);
-  if ( _delay > 12 ) {
+  if ( _delay > 12 ) {  //delay TODO: remove
     if ( _ac_min_round == 0 ) {                                                    //round 0
       if ( _max_round[_max_distance - 1]._distance == DCLUSTER_INVALID_ROUND ) {   //use invalid entry if max-round not finished
         _my_info.storeStruct(&info.min);
         info.min.round=DCLUSTER_INVALID_ROUND;
         info.min.hops=0;
       } else {                                                                     //use max max-round
-        BRN_INFO("Insert max max as lowest Min");
+        BRN_INFO("Insert max Max as lowest Min");
         _max_round[_max_distance - 1].storeStruct(&info.min);
         info.min.round=0;
       }
     } else {
       BRN_INFO("Insert min %d Address: %s",_ac_min_round-1,EtherAddress(info.min.etheraddr).unparse().c_str());
       _min_round[_ac_min_round - 1].storeStruct(&info.min);                        //use min
-      if (_min_round[_ac_min_round - 1]._distance == DCLUSTER_INVALID_ROUND )
-        info.min.round=DCLUSTER_INVALID_ROUND;
-      else
-        info.min.round = _ac_min_round;
-
+      info.min.round = _ac_min_round;
     }
 
     _ac_min_round = (_ac_min_round + 1) % _my_min_round;
+
   } else {
     _my_info.storeStruct(&info.min);
     info.min.round=DCLUSTER_INVALID_ROUND;
     info.min.hops=0;
     _delay++;
   }
+
   return DClusterProtocol::pack(&info, buffer, size);
 }
 
@@ -159,34 +159,36 @@ DCluster::lpReceiveHandler(char *buffer, int size)
 
   len = DClusterProtocol::unpack(&info, buffer, size);
 
-  if ( (int)info.max.hops < _max_distance) {
-    if ( _max_round[info.max.round]._distance != 0 ) {
-      if ( ntohl(info.max.id) > _max_round[info.max.round]._id ) {
-        _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
-      }
-    } else {
-      _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
-    }
+  if ( (info.max.hops < _max_distance) &&
+       ( (_max_round[info.max.round]._distance == DCLUSTER_INVALID_ROUND) ||    //is there already a valid entry ?
+        ((_max_round[info.max.round]._distance != DCLUSTER_INVALID_ROUND) &&
+           (( ntohl(info.max.id) > _max_round[info.max.round]._id ) ||         //new id bigger
+            ((ntohl(info.max.id) == _max_round[info.max.round]._id ) &&
+            ((uint32_t)(info.max.hops + 1) < _max_round[info.max.round]._distance )))))) {
+
+    _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
     if ( _my_max_round == (info.max.round + 1) ) _my_max_round++;
   }
 
-  if (((int)info.min.round < _max_distance) && ((int)info.min.round != DCLUSTER_INVALID_ROUND) ) {
+  if ((( info.min.round < _max_distance ) && ( info.min.round != DCLUSTER_INVALID_ROUND ) ) &&
+      (( _min_round[info.min.round]._distance == DCLUSTER_INVALID_ROUND ) ||
+       ( ntohl(info.min.id) < _min_round[info.min.round]._id ) ||
+        (( ntohl(info.min.id) == _min_round[info.min.round]._id ) &&
+         ((uint32_t)(info.min.hops + 1) < _min_round[info.min.round]._distance )))) {
     BRN_INFO("Got Min. Round: %d ID: %d",info.min.round, ntohl(info.min.id));
-    if ( _min_round[info.min.round]._distance != DCLUSTER_INVALID_ROUND ) {
-      if ( ntohl(info.min.id) < _min_round[info.min.round]._id ) {
-        _min_round[info.min.round].setInfo(info.min.etheraddr, ntohl(info.min.id), info.min.hops + 1);
-      }
-    } else {
-      _min_round[info.min.round].setInfo(info.min.etheraddr, ntohl(info.min.id), info.min.hops + 1);
+    _min_round[info.min.round].setInfo(info.min.etheraddr, ntohl(info.min.id), info.min.hops + 1);
+    if ( _my_min_round == (info.min.round + 1) ) {
+      _my_min_round++;
     }
-    if ( _my_min_round == (info.min.round + 1) ) _my_min_round++;
   }
+
+  if ( _my_min_round == _max_distance ) _cluster_head = selectClusterHead();
 
   return len;
 }
 
 DCluster::ClusterNodeInfo*
-DCluster::getClusterHead() {
+DCluster::selectClusterHead() {
   int i,j;
   //Rule 1.
   for ( i = 0; i < _max_distance; i++ )
@@ -206,6 +208,7 @@ DCluster::getClusterHead() {
 
   if ( minpair != NULL ) return minpair;
 
+  //Rule 3.
   ClusterNodeInfo* maxnode = &_max_round[0];
 
   for ( i = 1; i < _max_distance; i++ )
@@ -215,6 +218,14 @@ DCluster::getClusterHead() {
   return maxnode;
 
 }
+
+
+void
+DCluster::informClusterHead(DCluster::ClusterNodeInfo*) {
+
+
+}
+
 
 
 
@@ -231,7 +242,7 @@ DCluster::get_info()
   sa << "Node: " << _node_identity->getNodeName() << " ID: " << _my_info._id;
   sa << " Clusterhead: " << getClusterHead()->_ether_addr.unparse() << " CH-ID: " << getClusterHead()->_id << "\n";
 
-  sa << "Mode\tRound\tAddress\t\tDist\t\tHighest ID\n";
+  sa << "Mode\tRound\tAddress\t\t\tDist\tHighest ID\n";
 
   for( r = 0; r < _max_distance; r++ ) {
     sa << "MAX\t" << r << "\t" << _max_round[r]._ether_addr.unparse() << "\t" << _max_round[r]._distance << "\t" << _max_round[r]._id << "\n";

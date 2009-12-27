@@ -38,7 +38,6 @@ CalradioPrint::simple_action(Packet *p)
   struct calradio_header *crh = (struct calradio_header *)p->data();
 
   click_chatter("RSSI/Power: %d Rate: %d", crh->rssi, crh->rate);
-
   return p;
 }
 
