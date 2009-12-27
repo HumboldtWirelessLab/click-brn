@@ -131,7 +131,7 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
   if ( index > 0 )
     src = EtherAddress(dsr_hops[index - 1].hw.data);  //TODO: check: if this is the src node, use dsr->src instead
 
-  click_chatter("Use Source: %s",src.unparse().c_str());
+  BRN_DEBUG("Use Source: %s",src.unparse().c_str());
 
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);

@@ -40,7 +40,7 @@ CalradioDecap::simple_action(Packet *p)
 
   crh = (struct calradio_header*)p->data();
 
-  eh = WIFI_EXTRA_ANNO(q);
+  eh = WIFI_EXTRA_ANNO(p);
   crh->rssi = eh->rssi;
   crh->rate = eh->rate;
 
