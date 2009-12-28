@@ -383,7 +383,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 
   WritablePacket *p = DSRProtocol::extend_hops(p_u,1);  //add space for one additional hop
 
-  click_chatter("-----------------------------Size: %d brn+dsr: %d",p->length(),sizeof(click_brn) + sizeof(click_brn_dsr));
+  BRN_DEBUG("Headersize: %d brn+dsr: %d",p->length(),sizeof(click_brn) + sizeof(click_brn_dsr));
 
   click_brn *brn = (click_brn *)p->data();
   click_brn_dsr *dsr_rreq = (click_brn_dsr *)(p->data() + sizeof(click_brn));
@@ -428,7 +428,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   brn->ttl--;
 
   // set source and destination anno
-  click_chatter("New SRC-Ether is: %s",indev->getEtherAddress()->unparse().c_str());
+  BRN_DEBUG("New SRC-Ether is: %s",indev->getEtherAddress()->unparse().c_str());
 
 
   //TODO: ANNO or header ??
