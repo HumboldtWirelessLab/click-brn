@@ -8,16 +8,18 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "dhtstoragetest.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "dhtstoragetest.hh"
 
 CLICK_DECLS
 
 DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
+  _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this),
-  _debug(0),
   write_req(0),
   write_rep(0),
   read_req(0),
@@ -68,13 +70,20 @@ int DHTStorageTest::initialize(ErrorHandler *)
   return 0;
 }
 
-static void callback_func(void *e, DHTOperation *op)
+void
+DHTStorageTest::callback_func(void *e, DHTOperation *op)
 {
   DHTStorageTest *s = (DHTStorageTest *)e;
+  s->callback(op);
+}
+
+void
+DHTStorageTest::callback(DHTOperation *op) {
   char string[100];
   uint32_t my_key;
 
-//  click_chatter("callback %s: Status %d",s->class_name(),op->header.operation);
+  BRN_DEBUG("callback %s: Status %d",class_name(),op->header.operation);
+
   memcpy(string, op->value, op->header.valuelen);
   string[op->header.valuelen] = '\0';
   memcpy((char*)&my_key, op->key, sizeof(uint32_t));
@@ -83,12 +92,12 @@ static void callback_func(void *e, DHTOperation *op)
   {
     if ( op->header.status == DHT_STATUS_OK ) {
       if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT )  //TODO: it should make sure that it is only insert !!
-        s->write_rep++;
+        write_rep++;
       else
-        s->read_rep++;
-      click_chatter("Result: %s = %d",string,my_key);
+        read_rep++;
+      BRN_DEBUG("Result: %s = %d",string,my_key);
     } else
-      click_chatter("Result: %d not found",my_key);
+      BRN_DEBUG("Result: %d not found",my_key);
   }
 
   delete op;
@@ -97,56 +106,66 @@ static void callback_func(void *e, DHTOperation *op)
 void
 DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
 {
+  DHTStorageTest *s = (DHTStorageTest *)f;
+  s->request_timer_hook(t);
+}
+
+void
+DHTStorageTest::request_timer_hook(Timer *t)
+{
   DHTOperation *req;
   int result;
   char *my_value;
 
-  DHTStorageTest *s = (DHTStorageTest *)f;
-
   req = new DHTOperation();
 
-  if ( s->_mode == MODE_INSERT )
+  if ( _mode == MODE_INSERT )
   {
-    s->write_req++;
-    my_value = new char[10];
-    sprintf(my_value,">%d<",s->_key);
+    BRN_DEBUG("Insert Key: %d",_key);
 
-    click_chatter("Insert Key: %d",s->_key);
-    req->insert((uint8_t*)&s->_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    write_req++;
+    my_value = new char[10];
+    sprintf(my_value,">%d<",_key);
+
+    req->insert((uint8_t*)&_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
     delete[] my_value;
-    s->_key++;
-    if ( s->_key == s->_countkey )
+    _key++;
+
+    if ( _key == _countkey )
     {
-      s->_key = 0;
-      s->_mode = MODE_READ;
+      _key = 0;
+      _mode = MODE_READ;
     }
   }
   else
   {
-    s->read_req++;
-    click_chatter("Read Key: %d",s->_key);
-    req->read((uint8_t*)&s->_key, sizeof(uint32_t));
-    s->_key++;
-    if ( s->_key == s->_countkey )
-      s->_key = 0;
+    read_req++;
+    BRN_DEBUG("Read Key: %d",_key);
+    req->read((uint8_t*)&_key, sizeof(uint32_t));
+    _key = (_key + 1) % _countkey;
   }
 
-  result = s->_dht_storage->dht_request(req, callback_func, (void*)s );
+  result = _dht_storage->dht_request(req, callback_func, (void*)this );
 
   if ( result == 0 )
   {
-    click_chatter("Got direct-reply (local)");
-    callback_func(s,req);
+    BRN_DEBUG("Got direct-reply (local)");
+    callback_func((void*)this,req);
   }
-  t->schedule_after_msec( s->_interval );
+  t->schedule_after_msec( _interval );
 }
+
+
+//-----------------------------------------------------------------------------
+// Handler
+//-----------------------------------------------------------------------------
 
 enum {
   H_STORAGE_STATS
 };
 
 static String
-    read_param(Element *e, void *thunk)
+read_param(Element *e, void *thunk)
 {
   StringAccum sa;
   DHTStorageTest *dht_str = (DHTStorageTest *)e;
@@ -165,9 +184,30 @@ static String
   }
 }
 
+static String
+read_debug_param(Element *e, void *)
+{
+  DHTStorageTest *dt = (DHTStorageTest *)e;
+  return String(dt->_debug) + "\n";
+}
+
+static int 
+write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  DHTStorageTest *dt = (DHTStorageTest *)e;
+  String s = cp_uncomment(in_s);
+  int debug;
+  if (!cp_integer(s, &debug))
+    return errh->error("debug parameter must be an integer value between 0 and 4");
+  dt->_debug = debug;
+  return 0;
+}
+
 void DHTStorageTest::add_handlers()
 {
   add_read_handler("stats", read_param , (void *)H_STORAGE_STATS);
+  add_read_handler("debug", read_debug_param, 0);
+  add_write_handler("debug", write_debug_param, 0);
 }
 
 #include <click/vector.cc>

@@ -35,6 +35,10 @@ class DHTStorageTest : public Element
     void add_handlers();
 
     static void static_request_timer_hook(Timer *, void *);
+    void request_timer_hook(Timer *t);
+
+    static void callback_func(void *e, DHTOperation *op);
+    void callback(DHTOperation *op);
 
     DHTStorage *_dht_storage;
 
@@ -42,18 +46,19 @@ class DHTStorageTest : public Element
     int _interval;
     uint8_t _mode;
 
+    int _debug;
+
   private:
 
     Timer _request_timer;
-
-    int _debug;
 
     int _starttime;
 
     uint32_t _countkey;
 
     bool _write;
-  public:
+
+  public:             //public since it is needed in the handler
     int write_req;
     int write_rep;
     int read_req;
