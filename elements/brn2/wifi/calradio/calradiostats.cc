@@ -36,9 +36,9 @@ CalradioStats::simple_action(Packet *p)
 {
   struct calradio_header *crh = NULL;
 
-  crh = (struct calradio_header *)q->data();
+  crh = (struct calradio_header *)p->data();
 
-  return q;
+  return p;
 }
 
 CLICK_ENDDECLS
