@@ -4,6 +4,7 @@
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
@@ -12,7 +13,10 @@
 
 CLICK_DECLS
 
-class BRN2LinkStat;
+
+#define DHT_OMNI_DEFAULT_UPDATE_INTERVAL 1000
+#define DHT_OMNI_DEFAULT_START_DELAY     5000
+#define DHT_OMNI_MAX_PACKETSIZE_ROUTETABLE 1000
 
 class DHTRoutingOmni : public DHTRouting
 {
@@ -54,20 +58,28 @@ class DHTRoutingOmni : public DHTRouting
 
     DHTnodelist _dhtnodes;
 
+    Timer _ping_timer;
     Timer _lookup_timer;
     Timer _packet_buffer_timer;
+
+    static void static_ping_timer_hook(Timer *, void *);
     static void static_lookup_timer_hook(Timer *, void *);
     static void static_packet_buffer_timer_hook(Timer *, void *);
     void set_lookup_timer();
     void nodeDetection();
+    void ping_timer();
 
     int _update_interval;
+    int _start_delay;
 
     void handle_hello(Packet *p);
     void handle_hello_request(Packet *p);
     void handle_routetable_request(Packet *p);
     void handle_routetable_reply(Packet *p);
+
+    void send_routetable_request(EtherAddress *dst);
     void send_routetable_update(EtherAddress *dst, int status);
+
     void update_nodes(DHTnodelist *dhtlist);
 
 };

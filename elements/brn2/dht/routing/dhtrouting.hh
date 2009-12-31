@@ -46,8 +46,9 @@ class DHTRouting : public Element
     bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
     bool is_me(DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
 
-    void (*_info_func)(void*,int);
-    void *_info_obj;
+    /** TODO: use vector to handle several storages/apps on top */
+    void (*_info_func)(void*,int);              //function to call storage layer
+    void *_info_obj;                            //object which is hand over to storage layer
 
     DHTnode *_me;
 

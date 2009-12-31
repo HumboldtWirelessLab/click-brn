@@ -13,7 +13,10 @@ DHTnode::DHTnode(EtherAddress addr)
   _ether_addr = addr;
   _status = STATUS_UNKNOWN;
   _extra = NULL;
-  _age.set_now();
+  _age = Timestamp::now();
+  _rtt = 0;
+  _hop_distance = 0;
+
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(addr.data()).c_str(),
     strlen((const char*)MD5::convert_ether2hex(addr.data()).c_str()), _md5_digest );
 }
@@ -23,7 +26,7 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
   _ether_addr = addr;
   _status = STATUS_UNKNOWN;
   _extra = NULL;
-  _age.set_now();
+  _age = Timestamp::now();
   memcpy(_md5_digest, nodeid, 16);
 }
 
@@ -86,6 +89,20 @@ DHTnode::set_last_ping_now()
 {
   _last_ping = Timestamp::now();
 }
+
+String
+DHTnode::get_status_string()
+{
+  switch (_status)
+  {
+    case STATUS_NEW: return "New";
+    case STATUS_OK: return "OK";
+    case STATUS_MISSED: return "Missed";
+    case STATUS_AWAY: return "Away";
+  }
+  return "Unknown";
+}
+
 
 CLICK_ENDDECLS
 

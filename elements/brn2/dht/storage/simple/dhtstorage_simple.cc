@@ -8,16 +8,19 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "dhtstorage_simple.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 #include "elements/brn2/dht/storage/db/db.hh"
+
+#include "dhtstorage_simple.hh"
 
 CLICK_DECLS
 
 DHTStorageSimple::DHTStorageSimple():
   _dht_routing(NULL),
-  _debug(0),
+  _debug(BrnLogger::DEFAULT),
   _dht_id(0)
 {
 }
@@ -46,16 +49,12 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
     cpEnd) < 0)
       return -1;
 
-  if (!_dht_routing || !_dht_routing->cast("DHTRouting"))
-  {
+  if (!_dht_routing || !_dht_routing->cast("DHTRouting")) {
     _dht_routing = NULL;
-    click_chatter("kein Routing");
+    BRN_WARN("No Routing");
+  } else {
+    BRN_INFO("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
   }
-/*  else
-  {
-    click_chatter("Name: %s",_dht_routing->dhtrouting_name());
-  }
-*/
 
   return 0;
 }
@@ -63,20 +62,25 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 static void notify_callback_func(void *e, int status)
 {
   DHTStorageSimple *s = (DHTStorageSimple *)e;
+  s->handle_notify_callback(status);
+}
 
-  click_chatter("callback %s: Status %d",s->class_name(),status);
+void
+DHTStorageSimple::handle_notify_callback(int status)
+{
+  BRN_DEBUG("DHT-Routing-Callback %s: Status %d",class_name(),status);
 
   switch ( status )
   {
     case ROUTING_STATUS_UPDATE:
     {
-      click_chatter("New node");
-      s->handle_node_update();
+      BRN_INFO("Routing update (new node,...)");
+      handle_node_update();
       break;
     }
     default:
     {
-      click_chatter("Unknown Status from routing layer");
+      BRN_WARN("Unknown Status from routing layer");
     }
   }
 }
@@ -108,7 +112,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     else
     {
       if ( info_func == NULL ) {
-        click_chatter("Request for local, but responsible is foreign node !");
+        BRN_DEBUG("Request for local, but responsible is foreign node !");
         op->set_status(DHT_STATUS_KEY_NOT_FOUND);
         op->set_reply();
       } else {
@@ -127,7 +131,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   }
   else
   {
-    click_chatter("Found no node");
+    BRN_DEBUG("Found no node");
     op->set_status(DHT_STATUS_KEY_NOT_FOUND);
     op->set_reply();
   }
@@ -205,7 +209,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
     }
 
   } else {
-    click_chatter("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
+    BRN_WARN("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
   }
 
   packet->kill();
@@ -295,7 +299,7 @@ DHTStorageSimple::dht_insert(DHTOperation *op)
   else
   {
     //TODO: Handle this in a proper way (error code,...)
-    click_chatter("Key already exists");
+    BRN_WARN("Key already exists");
   }
 
   return 0;
@@ -428,16 +432,14 @@ DHTStorageSimple::handle_node_update()
   BRNDB::DBrow *_row;
   DHTnode *next;
 
-//  if ( _db.size() == 0 ) click_chatter("No data to move");
-
   for ( int i = 0; i < _db.size(); i++ ) {
     _row = _db.getRow(i);
 
     next = _dht_routing->get_responsibly_node(_row->md5_key);
     if ( _dht_routing->is_me(next) ) {
-      click_chatter("move");
+      BRN_DEBUG("Move data to new node.");
     } else {
-      click_chatter("Don't move");
+      BRN_DEBUG("Don't move data to new node.");
     }
   }
 

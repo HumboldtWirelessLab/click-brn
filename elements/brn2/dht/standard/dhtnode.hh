@@ -34,7 +34,10 @@ class DHTnode
     Timestamp _age;
     Timestamp _last_ping;
     int _failed_ping;
-    bool  _neighbor;
+    bool _neighbor;
+
+    int _hop_distance;
+    int _rtt;                     //round trip time in ms
 
     void *_extra;
 
@@ -53,6 +56,8 @@ class DHTnode
     void set_last_ping(Timestamp *);
     void set_last_ping_now();
     int  get_last_ping_s();
+
+    String get_status_string();
 
 };
 
