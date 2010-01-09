@@ -6,6 +6,10 @@
 #include <click/packet_anno.hh>
 
 CLICK_DECLS
+/**
+TODO: use brn-header ttl instead of hops
+*/
+
 
 #define ETHERTYPE_BRN          0x8086 /* Berlin Roofnet Protocol */
 #define BRN_MAX_ETHER_LENGTH 1500
@@ -48,6 +52,8 @@ union addr {
 #define BRN_PORT_GATEWAY              9
 #define BRN_PORT_BATMAN              10
 #define BRN_PORT_COMPRESSION         11
+#define BRN_PORT_DCLUSTER            12
+#define BRN_PORT_NHOPCLUSTER         13
 #define BRN_PORT_FLOW                16
 #define BRN_PORT_SIMPLEFLOODING      17
 #define BRN_PORT_PROBABILITYFLODDING 18

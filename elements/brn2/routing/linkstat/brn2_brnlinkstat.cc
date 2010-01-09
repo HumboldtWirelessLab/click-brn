@@ -419,7 +419,7 @@ BRN2LinkStat::send_probe()
 
   for ( int h = 0; h < _reg_handler.size(); h++ ) {
     int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (end-ptr), true);
-    if ( res >= 0 ) {
+    if ( res >= 0 ) {  //TODO: also pack if zero (no information) ???
       *ptr = _reg_handler[h]._protocol; ptr++;
       uint16_t *s = (uint16_t *)ptr;
       *s = htons(res);

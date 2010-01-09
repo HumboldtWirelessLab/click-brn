@@ -93,7 +93,7 @@ handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direct
 int
 DCluster::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,0,&handler);
+  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &handler);
 
   return 0;
 }

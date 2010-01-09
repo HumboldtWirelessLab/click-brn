@@ -130,6 +130,20 @@ BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos)
 }
 
 uint8_t
+BRNPacketAnno::ttl_anno(Packet *p)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TTL_ANNO_OFFSET);
+  return (dst[0]);
+}
+
+void
+BRNPacketAnno::set_ttl_anno(Packet *p, uint8_t ttl)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TTL_ANNO_OFFSET);
+  dst[0] = ttl;
+}
+
+uint8_t
 BRNPacketAnno::channel_anno(Packet *p)
 {
   uint8_t* channel = ((uint8_t*)(p->anno_u8()) + CHANNEL_ANNO_OFFSET);

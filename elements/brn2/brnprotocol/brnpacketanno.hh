@@ -18,6 +18,9 @@ CLICK_DECLS
 #define UDEVICE_ANNO_OFFSET     10
 #define UDEVICE_ANNO_SIZE        6
 
+#define TTL_ANNO_OFFSET         27
+#define TTL_ANNO_SIZE            1
+
 /* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
 #define ETHERTYPE_ANNO_OFFSET    40
@@ -77,6 +80,9 @@ class BRNPacketAnno : public Element { public:
 
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);
+
+  static uint8_t ttl_anno(Packet *p);
+  static void set_ttl_anno(Packet *p, uint8_t ttl);
 
   static uint8_t channel_anno(Packet *p);
   static uint8_t operation_anno(Packet *p);

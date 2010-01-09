@@ -51,7 +51,7 @@ class SetEtherAddr : public Element {
   Packet *smaction(Packet *);
   void push(int, Packet *);
   Packet *pull(int);
- 
+
  private:
   EtherAddress _src;
   EtherAddress _dst;
@@ -59,7 +59,7 @@ class SetEtherAddr : public Element {
   uint16_t _ethertype;
 
   int _debug;
- 
+
 };
 
 CLICK_ENDDECLS
