@@ -1,5 +1,6 @@
 #ifndef FALCON_ROUTINGTABLE_MAINTENANCE_HH
 #define FALCON_ROUTINGTABLE_MAINTENANCE_HH
+#include <click/element.hh>
 
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"

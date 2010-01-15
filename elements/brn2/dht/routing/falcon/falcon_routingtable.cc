@@ -18,7 +18,14 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 #include <click/config.h>
+#include <click/error.hh>
+#include <click/confparse.hh>
+#include <click/straccum.hh>
+#include <click/glue.hh>
+#include <click/timer.hh>
+
 #include <click/etheraddress.hh>
+#include <clicknet/ether.h>
 
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
@@ -49,6 +56,11 @@ FalconRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+int
+FalconRoutingTable::initialize(ErrorHandler *)
+{
+  return 0;
+}
 
 /*
 String

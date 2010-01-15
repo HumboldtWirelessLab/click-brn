@@ -36,6 +36,16 @@ class FalconRoutingTable : public Element {
   FalconRoutingTable();
   ~FalconRoutingTable();
 
+  const char *class_name() const  { return "FalconRoutingTable"; }
+  const char *processing() const  { return AGNOSTIC; }
+
+  const char *port_count() const  { return "0/0"; }
+
+  int configure(Vector<String> &, ErrorHandler *);
+  bool can_live_reconfigure() const { return false; }
+
+  int initialize(ErrorHandler *);
+
   /** getter/setter for status of node (e.g. ok, away,...) */
   int setStatus(DHTnode *node, int status);
   int setStatus(EtherAddress *ea, int status);
@@ -44,6 +54,8 @@ class FalconRoutingTable : public Element {
   int getStatus(EtherAddress *ea);
 
  private:
+  EtherAddress _me;
+
   DHTnodelist _fingertable;
 
   DHTnode *successor;
