@@ -20,8 +20,11 @@ CLICK_DECLS
 
 DHTStorageSimple::DHTStorageSimple():
   _dht_routing(NULL),
+  _check_req_queue_timer(req_queue_timer_hook,this),
   _debug(BrnLogger::DEFAULT),
-  _dht_id(0)
+  _dht_id(0),
+  _max_req_time(DEFAULT_REQUEST_TIMEOUT),
+  _max_req_retries(DEFAULT_MAX_RETRIES)
 {
 }
 
@@ -88,6 +91,7 @@ DHTStorageSimple::handle_notify_callback(int status)
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
   _dht_routing->set_notify_callback(notify_callback_func,(void*)this);
+  _check_req_queue_timer.initialize(this);
   return 0;
 }
 
@@ -111,7 +115,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     }
     else
     {
-      if ( info_func == NULL ) {
+      if ( info_func == NULL ) {                                                     //CALLBACK is NULL so operation has to be handle locally
         BRN_DEBUG("Request for local, but responsible is foreign node !");
         op->set_status(DHT_STATUS_KEY_NOT_FOUND);
         op->set_reply();
@@ -126,6 +130,10 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
         op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
         p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
         output(0).push(p);
+
+        int time2next = get_time_to_next();
+        if ( time2next < 10 ) time2next = 10;
+        _check_req_queue_timer.schedule_after_msec(time2next);
       }
     }
   }
@@ -162,6 +170,14 @@ void DHTStorageSimple::push( int port, Packet *packet )
           fwd = _fwd_queue[i];
           if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )  //TODO: better compare dht-id
           {
+            Timestamp now = Timestamp::now();
+            _op->max_retries = fwd->_operation->max_retries;
+            _op->retries = fwd->_operation->retries;
+
+            _op->request_time = fwd->_operation->request_time;
+            _op->max_request_duration = fwd->_operation->max_request_duration;
+            _op->request_duration = (now - _op->request_time).msec1();
+
             fwd->_info_func(fwd->_info_obj,_op);
             _fwd_queue.erase(_fwd_queue.begin() + i);
             delete fwd->_operation;
@@ -180,20 +196,26 @@ void DHTStorageSimple::push( int port, Packet *packet )
         next = _dht_routing->get_responsibly_node(_op->header.key_digest);
         if ( _dht_routing->is_me(next) )
         {
-//          click_chatter("reply dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
-          handle_dht_operation(_op);
-          _op->set_reply();
-          p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
-          _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
-          EtherAddress src = EtherAddress(_op->header.etheraddress);
+//        click_chatter("reply dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
+          int result = handle_dht_operation(_op);
+
+          if ( result == -1 ) {
+            delete _op;
+          } else {
+            _op->set_reply();
+            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
+            _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+
+            EtherAddress src = EtherAddress(_op->header.etheraddress);
 //          click_chatter("source is: %s",src.unparse().c_str());
-          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
-          delete _op;
-          output(0).push(p);
+            p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
+            delete _op;
+            output(0).push(p);
+          }
         }
         else
         {
-//          click_chatter("Forward dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
+//        click_chatter("Forward dhtop %s",_dht_routing->_me->_ether_addr.unparse().c_str());
           p = packet->uniqueify();
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
           delete _op;
@@ -216,22 +238,26 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
 }
 
-void
+int
 DHTStorageSimple::handle_dht_operation(DHTOperation *op)
 {
   int result;
 
+  //TODO: use switch-case and test for all possible combinations -> more readable ?? possible with lock ??
   if ( ( op->header.operation & OPERATION_INSERT ) == OPERATION_INSERT )
   {
     if ( ( op->header.operation & OPERATION_WRITE ) == OPERATION_WRITE )
     {
       result = dht_read(op);
       if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
+//        click_chatter("insert on overwrite");
         result = dht_insert(op);
       } else {
+//        click_chatter("overwrite existing");
         result = dht_write(op);
       }
     } else {
+//      click_chatter("insert");
       result = dht_insert(op);
     }
   }
@@ -247,11 +273,13 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
     {
       if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
+//        click_chatter("Read/write");
         result = dht_read(op);
         result = dht_write(op);
       }
       else
       {
+//        click_chatter("write");
         result = dht_write(op);
       }
     }
@@ -263,7 +291,7 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
         {
           result = dht_read(op);
           result = dht_remove(op);
-          return;
+          return result;
         }
         else
         {
@@ -275,7 +303,7 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
         if ( ( op->header.operation & OPERATION_REMOVE ) == OPERATION_REMOVE )
         {
           result = dht_remove(op);
-          return;
+          return result;
         }
       }
     }
@@ -286,6 +314,7 @@ DHTStorageSimple::handle_dht_operation(DHTOperation *op)
     result = dht_unlock(op);
   }
 
+  return result;
 }
 
 int
@@ -444,6 +473,106 @@ DHTStorageSimple::handle_node_update()
   }
 
   return 0;
+}
+
+/**************************************************************************/
+/********************** T I M E R - S T U F F *****************************/
+/**************************************************************************/
+/**
+  * To get the time for next, the timediff between time since last request and the max requesttime
+ */
+
+int
+DHTStorageSimple::get_time_to_next()
+{
+  DHTOperation *_op = NULL;
+  DHTOperationForward *fwd;
+  int min_time, ac_time;
+
+  Timestamp now = Timestamp::now();
+
+  if ( _fwd_queue.size() > 0 ) {
+    fwd = _fwd_queue[0];
+    min_time = _max_req_time - (now - fwd->_last_request_time).msec1();
+  } else
+    return -1;
+
+  for( int i = 1; i < _fwd_queue.size(); i++ )
+  {
+    fwd = _fwd_queue[i];
+    ac_time = _max_req_time - (now - fwd->_last_request_time).msec1();
+    if ( ac_time < min_time ) min_time = ac_time;
+  }
+
+  if ( min_time < 0 ) return 0;
+
+  return min_time;
+}
+
+bool
+DHTStorageSimple::isFinalTimeout(DHTOperationForward *fwdop)
+{
+//  click_chatter("RETRIES: %d   %d",fwdop->_operation->retries, fwdop->_operation->max_retries);
+  return ( fwdop->_operation->retries == fwdop->_operation->max_retries );
+}
+
+void
+DHTStorageSimple::check_queue()
+{
+  DHTnode *next;
+  DHTOperation *_op = NULL;
+  DHTOperationForward *fwd;
+  WritablePacket *p;
+  int timediff;
+
+  Timestamp now = Timestamp::now();
+
+//  click_chatter("Queue: %d",_fwd_queue.size());
+  for( int i = (_fwd_queue.size() - 1); i >= 0; i-- )
+  {
+    fwd = _fwd_queue[i];
+
+    timediff = (now - fwd->_last_request_time).msec1();
+
+//    click_chatter("Test: Timediff: %d MAX: %d",timediff,_max_req_time);
+    if ( timediff >= _max_req_time ) {
+
+      _op = fwd->_operation;
+
+      if ( isFinalTimeout(fwd) ) {
+       //Timeout
+//        click_chatter("Timeout");
+        _op->set_status(DHT_STATUS_TIMEOUT); //DHT_STATUS_MAXRETRY
+        _op->set_reply();
+        _op->request_duration = (now - _op->request_time).msec1();
+
+        fwd->_info_func(fwd->_info_obj,_op);
+        _fwd_queue.erase(_fwd_queue.begin() + i);
+        delete fwd;
+      } else {
+        // Retry
+        fwd->_last_request_time = Timestamp::now();
+        _op->retries++;
+
+        next = _dht_routing->get_responsibly_node(_op->header.key_digest);           //TODO: handle if next is null
+        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
+        _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+        p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+        output(0).push(p);
+      }
+    }
+  }
+
+  if ( _fwd_queue.size() > 0 )
+    _check_req_queue_timer.schedule_after_msec( get_time_to_next() );
+}
+
+void
+DHTStorageSimple::req_queue_timer_hook(Timer *, void *f)
+{
+//  click_chatter("Timer");
+  DHTStorageSimple *dhtss = (DHTStorageSimple *)f;
+  dhtss->check_queue();
 }
 
 /**************************************************************************/

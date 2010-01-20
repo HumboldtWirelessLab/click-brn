@@ -354,7 +354,7 @@ DHTRoutingOmni::send_routetable_request(EtherAddress *dst)
   DHTnode *node;
   DHTnodelist tmp_list;
 
-  click_chatter("%s: Send request to %s",_me->_ether_addr.unparse().c_str(), dst->unparse().c_str());
+  BRN_DEBUG("%s: Send request to %s",_me->_ether_addr.unparse().c_str(), dst->unparse().c_str());
 
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
@@ -369,7 +369,7 @@ DHTRoutingOmni::send_routetable_request(EtherAddress *dst)
         p = DHTProtocolOmni::new_route_request_packet(&(_me->_ether_addr), &tmp_list);
         big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
 
-        click_chatter("Out");
+        BRN_DEBUG("Out");
         output(0).push(big_p);
 
         tmp_list.clear();
@@ -382,7 +382,7 @@ DHTRoutingOmni::send_routetable_request(EtherAddress *dst)
     p = DHTProtocolOmni::new_route_request_packet(&(_me->_ether_addr), &tmp_list);
     big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), dst, BRN_PORT_DHTROUTING);
 
-    click_chatter("Out");
+    BRN_DEBUG("Out");
     output(0).push(big_p);
 
     tmp_list.clear();

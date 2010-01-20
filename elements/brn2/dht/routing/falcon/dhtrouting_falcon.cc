@@ -38,6 +38,8 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
 
+  _me = _frt->_me;
+
   return 0;
 }
 
@@ -46,15 +48,65 @@ int DHTRoutingFalcon::initialize(ErrorHandler *)
   return 0;
 }
 
-DHTnode *
-DHTRoutingFalcon::get_responsibly_node(md5_byte_t */*key*/)
+static bool
+isBigger(DHTnode *a, DHTnode *b)         //a > b ??
 {
-  return NULL;
+  return (MD5::hexcompare( a->_md5_digest, b->_md5_digest ) >= 0);
+}
+
+static bool
+isBigger(DHTnode *a, md5_byte_t *md5d)  //a > b ??
+{
+  return ( MD5::hexcompare( a->_md5_digest, md5d ) >= 0);
+}
+
+
+static bool
+isSmaller(DHTnode *a, md5_byte_t *md5d)  //a < b ??
+{
+  return (MD5::hexcompare( md5d, a->_md5_digest ) >= 0);
+}
+
+static bool
+isSmaller(DHTnode *a,DHTnode *b )  //a < b ??
+{
+  return (MD5::hexcompare( b->_md5_digest, a->_md5_digest ) >= 0);
+}
+
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+{
+  if ( _frt->successor == NULL ) return _frt->_me;
+
+  if ( isSmaller(_frt->_me, _frt->successor ) ) {
+    if ( isSmaller(_frt->_me, key) && isBigger(_frt->successor, key) ) return _frt->_me;
+  } else {
+    if ( isSmaller(_frt->_me, key) || isBigger(_frt->successor, key) ) return _frt->_me;
+  }
+
+  return _frt->successor;
+}
+
+enum {
+  H_ROUTING_INFO
+};
+
+static String
+read_param(Element *e, void *thunk)
+{
+  DHTRoutingFalcon *dhtf = (DHTRoutingFalcon *)e;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_ROUTING_INFO : return ( dhtf->_frt->routing_info( ) );
+    default: return String();
+  }
 }
 
 void DHTRoutingFalcon::add_handlers()
 {
-//  add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
+  add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 
 CLICK_ENDDECLS

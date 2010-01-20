@@ -26,7 +26,10 @@ class DHTRouting : public Element
     virtual int max_replication() const = 0;
 
     virtual DHTnode *get_responsibly_node(md5_byte_t *key) = 0;
-    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid);
+    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid) = 0;
+
+    //virtual DHTnode *get_responsibly_node(uint8_t *key, int keylen) = 0;
+    //virtual Vector<DHTnode *> get_all_responsibly_nodes(uint8_t *key, int keylen) = 0;
 
     int set_notify_callback(void (*info_func)(void*,int), void *info_obj) {
       if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;

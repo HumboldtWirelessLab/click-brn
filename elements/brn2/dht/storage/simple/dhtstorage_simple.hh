@@ -16,7 +16,12 @@
 
 CLICK_DECLS
 
-#define  DEFAULT_LOCKTIME 3600
+#define DEFAULT_LOCKTIME 3600
+
+#define DEFAULT_REQUEST_TIMEOUT 1000
+#define DEFAULT_MAX_RETRIES 10
+
+
 
 class DHTStorageSimple : public DHTStorage
 {
@@ -27,7 +32,8 @@ class DHTStorageSimple : public DHTStorage
       void (*_info_func)(void*,DHTOperation*);
       DHTOperation *_operation;
       void *_info_obj;
-      Timestamp _time;
+
+      Timestamp _last_request_time;
 
       DHTOperationForward()
       {
@@ -42,7 +48,8 @@ class DHTStorageSimple : public DHTStorage
         _operation = op;
         _info_func = info_func;
         _info_obj = info_obj;
-        _time = Timestamp::now();
+        op->request_time = Timestamp::now();
+        _last_request_time = Timestamp::now();
       }
   };
 
@@ -70,6 +77,9 @@ class DHTStorageSimple : public DHTStorage
 
     uint32_t dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj );
 
+    static void req_queue_timer_hook(Timer *, void *);
+    void check_queue();
+
     BRNDB _db;
     DHTRouting *_dht_routing;
 
@@ -78,7 +88,10 @@ class DHTStorageSimple : public DHTStorage
     uint32_t handle_node_update();
 
   private:
+
     DHTForwardQueue _fwd_queue;
+
+    Timer _check_req_queue_timer;                 //Timer used to check for timeouts
 
     int _debug;
 
@@ -90,12 +103,19 @@ class DHTStorageSimple : public DHTStorage
     int dht_lock(DHTOperation *op);
     int dht_unlock(DHTOperation *op);
 
-    void handle_dht_operation(DHTOperation *op);
+    int handle_dht_operation(DHTOperation *op);
     uint32_t get_next_dht_id();
 
     void add_handlers();
 
     uint32_t _dht_id;
+
+    uint32_t _max_req_time;
+    uint32_t _max_req_retries;
+
+    int get_time_to_next();
+    bool isFinalTimeout(DHTOperationForward *fwdop);
+
 };
 
 CLICK_ENDDECLS

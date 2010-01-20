@@ -27,6 +27,28 @@
 
 CLICK_DECLS
 
+int
+DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
+{
+  struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+  ne->age_sec = 0;
+  ne->status = me->_status;
+  memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
+
+  return sizeof(dht_falcon_node_entry);
+}
+
+int
+DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes)
+{
+  struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+
+  first->_age = Timestamp(ne->age_sec);
+  first->_status = ne->status;
+  first->set_update_addr(ne->etheraddr);
+  return 0;
+}
+
 WritablePacket *
 DHTProtocolFalcon::new_hello_packet(EtherAddress *etheraddr)       //TODO: Using DHTnode
 {

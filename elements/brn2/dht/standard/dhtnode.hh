@@ -14,6 +14,8 @@ CLICK_DECLS
  * get_age_s and get_last_ping_s returns the second since the last ping pr last receive packet
  * set_age_s and set_last_ping_s set the value. the value in second will be substract from the time now and result is stored
  * this means that positive values are appears to the past, negative to the future
+ *
+ * TODO: change second to milisecond
 */
 
 #define STATUS_UNKNOWN 0
@@ -41,16 +43,18 @@ class DHTnode
 
     void *_extra;
 
-    DHTnode() {};
+    DHTnode();
     ~DHTnode() {};
 
     DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
 
-    void set_age_s(int s);
+    void set_update_addr(uint8_t *ea);  //TODO: fins better name
+
+    void set_age_s(int s);           //TODO: Is that used ??
     void set_age(Timestamp *);
     void set_age_now();
-    int  get_age_s();
+    int  get_age_s();                //TODO: change to ms (msec1())
 
     void set_last_ping_s(int s);
     void set_last_ping(Timestamp *);
@@ -58,6 +62,9 @@ class DHTnode
     int  get_last_ping_s();
 
     String get_status_string();
+
+    DHTnode *clone(void);
+    bool equals(DHTnode *);
 
 };
 

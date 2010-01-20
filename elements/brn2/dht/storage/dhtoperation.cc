@@ -11,6 +11,13 @@ DHTOperation::DHTOperation()
   header.valuelen = 0;
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = OPERATION_UNKNOWN;
+
+  max_retries = DHT_RETRIES_UNLIMITED;
+  retries = 0;
+
+  request_time = Timestamp::now();
+  max_request_duration = DHT_DURATION_UNLIMITED;
+  request_duration = 0;
 }
 
 DHTOperation::~DHTOperation()
@@ -149,7 +156,7 @@ DHTOperation::serialize(uint8_t **buffer, uint16_t *len) //TODO: hton for lens
 
   if ( serialize_buffer(pbuffer,plen) == -1 )
   {
-//    click_chatter("Unable to seralize DHT");
+//  click_chatter("Unable to seralize DHT");
     delete[] pbuffer;
     *len = 0;
   }

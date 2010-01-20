@@ -20,10 +20,19 @@ DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
   _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this),
+  op_rep(0),
   write_req(0),
   write_rep(0),
   read_req(0),
-  read_rep(0)
+  read_rep(0),
+  not_found(0),
+  no_timeout(0),
+  op_time(0),
+  write_time(0),
+  read_time(0),
+  notfound_time(0),
+  timeout_time(0),
+  max_timeout_time(0)
 {
 }
 
@@ -90,14 +99,31 @@ DHTStorageTest::callback(DHTOperation *op) {
 
   if ( op->is_reply() )
   {
+    op_rep++;
+    op_time += op->request_duration;
+
     if ( op->header.status == DHT_STATUS_OK ) {
-      if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT )  //TODO: it should make sure that it is only insert !!
+      if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT ) { //TODO: it should make sure that it is only insert !!
         write_rep++;
-      else
+        write_time += op->request_duration;
+      } else {
         read_rep++;
+        read_time += op->request_duration;
+      }
       BRN_DEBUG("Result: %s = %d",string,my_key);
-    } else
-      BRN_DEBUG("Result: %d not found",my_key);
+    } else {
+      if ( op->header.status == DHT_STATUS_TIMEOUT ) {
+        no_timeout++;
+        timeout_time += op->request_duration;
+        if ( max_timeout_time < op->request_duration ) max_timeout_time = op->request_duration;
+
+        BRN_DEBUG("DHT-Test: Timeout");
+      } else {
+        not_found++;
+        notfound_time += op->request_duration;
+        BRN_DEBUG("Result: %d not found",my_key);
+      }
+    }
   }
 
   delete op;
@@ -128,6 +154,7 @@ DHTStorageTest::request_timer_hook(Timer *t)
     sprintf(my_value,">%d<",_key);
 
     req->insert((uint8_t*)&_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    req->max_retries = 1;
     delete[] my_value;
     _key++;
 
@@ -142,6 +169,7 @@ DHTStorageTest::request_timer_hook(Timer *t)
     read_req++;
     BRN_DEBUG("Read Key: %d",_key);
     req->read((uint8_t*)&_key, sizeof(uint32_t));
+    req->max_retries = 1;
     _key = (_key + 1) % _countkey;
   }
 
@@ -174,10 +202,24 @@ read_param(Element *e, void *thunk)
   {
     case H_STORAGE_STATS :
     {
+
+      int avg_op_time, avg_read_time, avg_write_time, avg_notf_time, avg_to_time;
+      avg_op_time = avg_read_time = avg_write_time = avg_notf_time = avg_to_time = 0;
+
+      if ( dht_str->op_rep != 0 ) avg_op_time = dht_str->op_time/dht_str->op_rep;
+      if ( dht_str->read_rep != 0 ) avg_read_time = dht_str->read_time/dht_str->read_rep;
+      if ( dht_str->write_rep != 0 ) avg_write_time = dht_str->write_time/dht_str->write_rep;
+      if ( dht_str->not_found != 0 ) avg_notf_time = dht_str->notfound_time/dht_str->not_found;
+      if ( dht_str->no_timeout != 0 ) avg_to_time = dht_str->timeout_time/dht_str->no_timeout;
+
+      sa << "Operation-Reply: " << dht_str->op_rep << " (Avg. time: " << avg_op_time << " ms )\n";
       sa << "READ-request: " << dht_str->read_req << "\n";
-      sa << "READ-reply: " << dht_str->read_rep << "\n";
+      sa << "READ-reply: " << dht_str->read_rep << " (Avg. time: " << avg_read_time << " ms )\n";
       sa << "WRITE-request: " << dht_str->write_req << "\n";
-      sa << "WRITE-reply: " << dht_str->write_rep << "\n";
+      sa << "WRITE-reply: " << dht_str->write_rep << " (Avg. time: " << avg_write_time << " ms )\n";
+      sa << "Not Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
+      sa << "Timeout: " << dht_str->no_timeout << " (Avg. time: " << avg_to_time << " ms  Max. time: ";
+      sa << dht_str->max_timeout_time << " ms )\n";
       return sa.take_string();
     }
     default: return String();

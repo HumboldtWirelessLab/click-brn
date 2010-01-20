@@ -22,6 +22,11 @@ CLICK_DECLS
 #define DHT_STATUS_KEY_NOT_FOUND  2
 #define DHT_STATUS_KEY_IS_LOCKED  3
 #define DHT_STATUS_TIMEOUT        4
+#define DHT_STATUS_MAXRETRY       5
+
+
+#define DHT_RETRIES_UNLIMITED -1
+#define DHT_DURATION_UNLIMITED 0
 
 
 struct DHTOperationHeader {
@@ -44,6 +49,13 @@ class DHTOperation {
     struct DHTOperationHeader header;
     uint8_t *key;
     uint8_t *value;
+
+    int max_retries;
+    int retries;
+
+    Timestamp request_time;
+    uint32_t max_request_duration;
+    uint32_t request_duration;
 
     DHTOperation();
     ~DHTOperation();

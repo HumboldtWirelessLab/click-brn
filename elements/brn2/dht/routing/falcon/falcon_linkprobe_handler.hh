@@ -25,14 +25,35 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "falcon_routingtable.hh"
+
 CLICK_DECLS
 
-class FalconLinkProbeHandler {
+class FalconLinkProbeHandler : public Element
+{
 
  public:
   FalconLinkProbeHandler();
   ~FalconLinkProbeHandler();
 
+  const char *class_name() const  { return "FalconLinkProbeHandler"; }
+
+  const char *processing() const  { return AGNOSTIC; }
+
+  const char *port_count() const  { return "0/0"; }
+
+  int configure(Vector<String> &, ErrorHandler *);
+  int initialize(ErrorHandler *);
+
+  bool can_live_reconfigure() const  { return false; }
+
+  int lpSendHandler(char *buffer, int size);
+  int lpReceiveHandler(char *buffer, int size);
+
+ private:
+  FalconRoutingTable *_frt;
+  BRN2LinkStat *_linkstat;
 };
 
 CLICK_ENDDECLS

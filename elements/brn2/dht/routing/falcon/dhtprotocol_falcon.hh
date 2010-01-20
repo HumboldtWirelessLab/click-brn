@@ -50,6 +50,9 @@ class DHTProtocolFalcon {
 
   public:
 
+    static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
+    static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
+
     static WritablePacket *new_hello_packet(EtherAddress *etheraddr);
     static WritablePacket *new_hello_request_packet(EtherAddress *etheraddr);
 

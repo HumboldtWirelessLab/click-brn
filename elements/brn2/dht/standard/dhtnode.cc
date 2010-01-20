@@ -7,6 +7,22 @@
 #include "elements/brn2/standard/md5.h"
 
 CLICK_DECLS
+DHTnode::DHTnode()
+{
+  _ether_addr = EtherAddress();
+  _status = STATUS_UNKNOWN;
+  _extra = NULL;
+  _age = Timestamp::now();
+  _last_ping = Timestamp::now();
+  _failed_ping = 0;
+  _rtt = 0;
+  _hop_distance = 0;
+  _neighbor = false;
+
+  memset(_md5_digest, 0, sizeof(_md5_digest));
+
+  _extra = NULL;
+}
 
 DHTnode::DHTnode(EtherAddress addr)
 {
@@ -28,6 +44,18 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
   _extra = NULL;
   _age = Timestamp::now();
   memcpy(_md5_digest, nodeid, 16);
+}
+
+void
+DHTnode::set_update_addr(uint8_t *ea)
+{
+  _ether_addr = EtherAddress(ea);
+  _status = STATUS_OK;
+  _extra = NULL;
+  _age = Timestamp::now();
+
+  MD5::calculate_md5((const char*)MD5::convert_ether2hex(_ether_addr.data()).c_str(),
+                      strlen((const char*)MD5::convert_ether2hex(_ether_addr.data()).c_str()), _md5_digest );
 }
 
 void
@@ -103,6 +131,32 @@ DHTnode::get_status_string()
   return "Unknown";
 }
 
+DHTnode *
+DHTnode::clone(void)
+{
+  DHTnode *cl = new DHTnode();
+
+  cl->_ether_addr = _ether_addr;
+  cl->_status = _status;
+  cl->_extra = _extra;                               //TODO: better copy for extra element of dhtnode
+  cl->_age = _age;
+  cl->_last_ping = _last_ping;
+  cl->_failed_ping = _failed_ping;
+  cl->_rtt = _rtt;
+  cl->_hop_distance = _hop_distance;
+  cl->_neighbor = _neighbor;
+
+  memcpy(cl->_md5_digest, _md5_digest, sizeof(_md5_digest));
+
+  return cl;
+}
+
+bool
+DHTnode::equals(DHTnode *n) {
+  if ( n == NULL) return false;
+
+  return ( memcmp(_md5_digest, n->_md5_digest, 16) == 0 );
+}
 
 CLICK_ENDDECLS
 

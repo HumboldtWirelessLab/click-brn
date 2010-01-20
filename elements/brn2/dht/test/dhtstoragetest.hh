@@ -59,10 +59,21 @@ class DHTStorageTest : public Element
     bool _write;
 
   public:             //public since it is needed in the handler
+    int op_rep;
     int write_req;
     int write_rep;
     int read_req;
     int read_rep;
+    int not_found;
+    int no_timeout;
+
+    uint32_t op_time;
+    uint32_t write_time;
+    uint32_t read_time;
+    uint32_t notfound_time;
+    uint32_t timeout_time;
+    uint32_t max_timeout_time;
+
 };
 
 CLICK_ENDDECLS

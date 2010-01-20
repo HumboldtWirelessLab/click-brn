@@ -30,21 +30,25 @@
 
 CLICK_DECLS
 
-class FalconRoutingTable : public Element {
+class FalconRoutingTable : public Element
+{
 
  public:
   FalconRoutingTable();
   ~FalconRoutingTable();
 
   const char *class_name() const  { return "FalconRoutingTable"; }
+
   const char *processing() const  { return AGNOSTIC; }
 
   const char *port_count() const  { return "0/0"; }
 
   int configure(Vector<String> &, ErrorHandler *);
-  bool can_live_reconfigure() const { return false; }
-
   int initialize(ErrorHandler *);
+  void add_handlers();
+
+  String routing_info(void);
+  void reset(void);
 
   /** getter/setter for status of node (e.g. ok, away,...) */
   int setStatus(DHTnode *node, int status);
@@ -53,15 +57,25 @@ class FalconRoutingTable : public Element {
   int getStatus(DHTnode *node);
   int getStatus(EtherAddress *ea);
 
- private:
-  EtherAddress _me;
+  bool isBetterSuccessor(DHTnode *node);
+  bool isBetterPredecessor(DHTnode *node);
 
-  DHTnodelist _fingertable;
+
+  void add_node(DHTnode *node);
+  void add_node(DHTnode *node, bool is_neighbour);
+  void add_neighbour(DHTnode *node);
+  void add_nodes(DHTnodelist *nodes);
+
+// private:
+  DHTnode *_me;
 
   DHTnode *successor;
   DHTnode *predecessor;
 
+  DHTnodelist _fingertable;
+
   DHTnodelist _foreignnodes;
+
 };
 
 CLICK_ENDDECLS
