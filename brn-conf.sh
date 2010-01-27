@@ -2,7 +2,7 @@
 #TODO: add support for mips
 
 #CONFOPTION="--enable-wifi --enable-brn --enable-brn2 --enable-dhcp --enable-analysis"
-CONFOPTION="--enable-wifi --enable-brn2 --enable-dhcp --enable-analysis"
+CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host"
