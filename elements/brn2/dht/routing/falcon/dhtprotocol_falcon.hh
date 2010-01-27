@@ -27,19 +27,35 @@
 
 CLICK_DECLS
 
-#define HAS_SUCCESSOR   128
-#define HAS_PREDECESSOR  64
-#define FINGERTABLESIZE  63
+#define FALCON_RT_POSITION_SUCCESSOR   0
+#define FALCON_RT_POSITION_PREDECESSOR 255
 
-struct dht_falcon_header {
-  uint8_t  status;
-};
+#define FALCON_OPERATION_REQUEST_SUCCESSOR   1
+#define FALCON_OPERATION_REQUEST_PREDECESSOR 2
+#define FALCON_OPERATION_REQUEST_POSITION    3
+#define FALCON_OPERATION_UPDATE_POSITION     4
+
+#define FALCON_STATUS_OK    0
+#define FALCON_STATUS_HINT  1
 
 struct dht_falcon_node_entry {
   uint8_t  etheraddr[6];
   uint8_t  age_sec;
   uint8_t  status;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct falcon_routing_packet {
+  uint8_t operation;             //TODO: this is already in generic DHT-Header. Isn't it.
+  uint8_t status;
+
+  uint8_t table_position;
+  uint8_t reserved;
+
+  uint8_t etheraddr[6];
+
+  uint8_t src_ea[6];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 
 /**
@@ -53,17 +69,16 @@ class DHTProtocolFalcon {
     static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
     static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
 
-    static WritablePacket *new_hello_packet(EtherAddress *etheraddr);
-    static WritablePacket *new_hello_request_packet(EtherAddress *etheraddr);
+    static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
+    static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position);
+    static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p);
+    //static WritablePacket *route_reply_packet(Packet *p, DHTnode *me, DHTnode *pred, DHTnode *succ, DHTnodelist *finger);
 
-    static WritablePacket *new_route_request_packet(DHTnode *me);
-    static WritablePacket *new_route_reply_packet(DHTnode *me, DHTnode *pred, DHTnode *succ, DHTnodelist *finger);
+    static int get_operation(Packet *p);
+    static DHTnode *get_src(Packet *p);
 
-    static DHTnode     *get_src(Packet *p);
-    static DHTnode     *get_successor(Packet *p);
-    static DHTnode     *get_predecessor(Packet *p);
-    static DHTnodelist *get_fingertable(Packet *p);
-    static DHTnodelist *get_all_nodes(Packet *p);
+    static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *operation, uint8_t *status, uint8_t *pos);
+
 };
 
 CLICK_ENDDECLS

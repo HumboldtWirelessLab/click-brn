@@ -4,7 +4,7 @@
 
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
-
+#include "falcon_routingtable.hh"
 CLICK_DECLS
 
 class FalconRoutingTableMaintenance : public Element
@@ -28,7 +28,23 @@ class FalconRoutingTableMaintenance : public Element
     void push( int port, Packet *packet );
 
   private:
+    FalconRoutingTable *_frt;
 
+    Timer _lookup_timer;
+    static void static_lookup_timer_hook(Timer *, void *);
+    void set_lookup_timer();
+
+    void table_maintenance();
+
+    void handle_request_succ(Packet *packet);
+    void handle_reply_succ(Packet *packet);
+
+    void handle_request_pos(Packet *packet);
+    void handle_reply_pos(Packet *packet);
+
+    int _update_interval;
+
+    int _debug;
 };
 
 CLICK_ENDDECLS

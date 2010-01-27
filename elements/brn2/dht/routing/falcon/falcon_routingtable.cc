@@ -26,6 +26,8 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -35,7 +37,11 @@ CLICK_DECLS
 
 FalconRoutingTable::FalconRoutingTable():
   successor(NULL),
-  predecessor(NULL)
+  predecessor(NULL),
+  backlog(NULL),
+  _lastUpdatedPosition(0),
+  fix_successor(false),
+  _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -50,6 +56,7 @@ FalconRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
       "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
+      "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -66,65 +73,16 @@ FalconRoutingTable::initialize(ErrorHandler *)
   return 0;
 }
 
-
-void
-FalconRoutingTable::add_node(DHTnode *node)
-{
-  DHTnode *n, *nc;
-
-  if ( node->equals(successor) ) {
-    //update node
-  } else {
-    if ( node->equals(predecessor) ) {
-      //update node
-    } else {
-      n = _fingertable.get_dhtnode(node);
-
-      if ( n == NULL ) {
-        n = _foreignnodes.get_dhtnode(node);
-
-        if ( n == NULL ) {                                //node is new so insert it, but check were it fits best (foreign, succ, pre,...)
-          nc = node->clone();
-
-          //check node , wheter it fits to succ, pre ....
-          if ( isBetterSuccessor(nc) ) {
-
-            if ( predecessor == NULL ) predecessor = nc;
-            else if ( ! successor->equals(predecessor) ) _foreignnodes.add_dhtnode(successor);           //add only if current successor IS NOT also current predecessor
-
-            successor = nc;
-
-          } else if ( isBetterPredecessor(nc) ) {
-
-            if ( successor == NULL ) successor = nc;
-            else if ( ! predecessor->equals(successor) ) _foreignnodes.add_dhtnode(predecessor);         //add only if current predecessor IS NOT also current successor
-
-            predecessor = nc;
-
-          } else {
-            //if not: add as foreign
-            _foreignnodes.add_dhtnode(nc);
-          }
-        } else {
-          //update node
-        }
-      } else {
-        //update node
-      }
-    }
-  }
-}
-
 bool
 FalconRoutingTable::isBetterSuccessor(DHTnode *node)
 {
   if ( successor == NULL ) return true;
 
-  if ( MD5::hexcompare( successor->_md5_digest, _me->_md5_digest ) >= 0 ) {
-    return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) >= 0 ) && ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) >= 0 ) );
+  if ( MD5::hexcompare( successor->_md5_digest, _me->_md5_digest ) > 0 ) {
+    return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) > 0 ) && ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) > 0 ) );
   }
 
-  return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) >= 0 ) || ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) >= 0 ) );
+  return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) > 0 ) || ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) > 0 ) );
 }
 
 bool
@@ -132,27 +90,108 @@ FalconRoutingTable::isBetterPredecessor(DHTnode *node)
 {
   if ( predecessor == NULL ) return true;
 
-  if ( MD5::hexcompare( _me->_md5_digest, predecessor->_md5_digest ) >= 0 ) {
-    return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) >= 0 ) && ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) >= 0 ) );
+  if ( MD5::hexcompare( _me->_md5_digest, predecessor->_md5_digest ) > 0 ) {
+    return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) > 0 ) && ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) > 0 ) );
   }
 
-  return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) >= 0 ) || ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) >= 0 ) );
+  return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) > 0 ) || ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) > 0 ) );
 }
 
-void
+bool
+FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, DHTnode *c)
+{
+  if ( successor == NULL ) return true;
+
+  if ( MD5::hexcompare( a->_md5_digest, b->_md5_digest ) >= 0 ) {
+    return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) >= 0 ) );
+  }
+
+  return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) >= 0 ) );
+}
+
+bool
+FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c)
+{
+  if ( successor == NULL ) return true;
+
+  if ( MD5::hexcompare( a->_md5_digest, b->_md5_digest ) >= 0 ) {
+    return ( ( MD5::hexcompare( a->_md5_digest, c ) >= 0 ) && ( MD5::hexcompare( c, b->_md5_digest ) > 0 ) );
+  }
+
+  return ( ( MD5::hexcompare( a->_md5_digest, c ) >= 0 ) || ( MD5::hexcompare( c, b->_md5_digest ) > 0 ) );
+}
+
+bool
+FalconRoutingTable::isSuccessor(DHTnode *node)
+{
+  if ( successor == NULL ) return false;
+  return ( node->equals(successor) );
+}
+
+bool
+FalconRoutingTable::isPredecessor(DHTnode *node)
+{
+  if ( predecessor == NULL ) return false;
+  return ( node->equals(predecessor) );
+}
+
+bool
+FalconRoutingTable::isBacklog(DHTnode *node)
+{
+  if ( backlog == NULL ) return false;
+  return ( node->equals(backlog) );
+}
+
+int
+FalconRoutingTable::add_node(DHTnode *node)
+{
+  DHTnode *n;
+
+  n = _allnodes.get_dhtnode(node);
+
+  if ( n == NULL ) {
+    n = node->clone();
+    _allnodes.add_dhtnode(n);
+  } else {
+    //TODO: update node
+  }
+
+  if ( isBetterSuccessor(n) ) {
+
+    if ( predecessor == NULL ) predecessor = n;
+
+    successor = n;
+    fixSuccessor(false);             //new succ. check him.
+
+    set_node_in_FT(successor, 0);
+  } else if ( isBetterPredecessor(n) ) {
+
+    if ( successor == NULL ) {
+      successor = n;
+      fixSuccessor(false);           //new succ. check him.
+      set_node_in_FT(successor, 0);
+    }
+
+    predecessor = n;
+  }
+
+  return 0;
+}
+
+int
 FalconRoutingTable::add_node(DHTnode *node, bool is_neighbour)
 {
   node->_neighbor = is_neighbour;
-  add_node(node);
+  return add_node(node);
 }
 
-void
+int
 FalconRoutingTable::add_neighbour(DHTnode *node)
 {
-  add_node(node, true);
+  return add_node(node, true);
 }
 
-void
+int
 FalconRoutingTable::add_nodes(DHTnodelist *nodes)
 {
   DHTnode *n;
@@ -161,16 +200,126 @@ FalconRoutingTable::add_nodes(DHTnodelist *nodes)
     n = nodes->get_dhtnode(i);
     add_node(n);
   }
+
+  return 0;
+}
+
+int
+FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
+{
+  int table;
+  DHTnode *fn;
+
+  if ( _fingertable.size() < position ) {
+    BRN_ERROR("ERROR: FT too small");
+  } else {
+    add_node(node);                                                   //add node to known nodes or rather update it
+    fn = find_node_in_tables(node, &table);
+
+    if ( table != RT_FINGERTABLE ) {
+      if ( _fingertable.size() == position ) {
+        _fingertable.add_dhtnode(node);
+      } else {
+        _fingertable.swap_dhtnode(node, position);     //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
+      }
+    } else {
+      BRN_DEBUG("CHeck node position in FT and update the node");
+    }
+  }
+
+  return 0;
+}
+
+int
+FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
+{
+  if ( _fingertable.size() < position ) {
+    BRN_ERROR("ERROR: FT too small");
+  } else {
+    if ( _fingertable.size() == position ) {
+      _fingertable.add_dhtnode(node);
+    } else {
+      _fingertable.swap_dhtnode(node, position);     //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
+    }
+  }
+
+  return 0;
+}
+
+
+DHTnode *
+FalconRoutingTable::find_node_in_tables(DHTnode *node, int *table)
+{
+  DHTnode *n;
+
+  n = _fingertable.get_dhtnode(node);
+  if ( n != NULL ) {
+    *table = RT_FINGERTABLE;
+    return n;
+  }
+
+  n = _allnodes.get_dhtnode(node);
+  if ( n != NULL ) {
+    *table = RT_ALL;
+    return n;
+  }
+
+  *table = RT_NONE;
+  return NULL;
+}
+
+DHTnode *
+FalconRoutingTable::find_node(DHTnode *node, int *table)
+{
+  DHTnode *n;
+
+  if ( node->equals(_me) ) {
+    *table = RT_ME;
+    return _me;
+  }
+
+  if ( node->equals(successor) ) {
+    *table = RT_SUCCESSOR;
+    return successor;
+  }
+
+  if ( node->equals(predecessor) ) {
+    *table = RT_PREDECESSOR;
+    return predecessor;
+  }
+
+  n = _fingertable.get_dhtnode(node);
+  if ( n != NULL ) {
+    *table = RT_FINGERTABLE;
+    return n;
+  }
+
+  n = _allnodes.get_dhtnode(node);
+  if ( n != NULL ) {
+    *table = RT_ALL;
+    return n;
+  }
+
+  *table = RT_NONE;
+  return NULL;
+}
+
+DHTnode *
+FalconRoutingTable::find_node(DHTnode *node)
+{
+  int table;
+  return find_node(node, &table);
 }
 
 void
 FalconRoutingTable::reset()
 {
-  _fingertable.del();
-  _foreignnodes.del();
+  _fingertable.clear();
+  _allnodes.del();
 
-  delete successor;
-  delete predecessor;
+  successor = NULL;
+  predecessor = NULL;
+  backlog = NULL;
 }
 
 String
@@ -182,7 +331,7 @@ FalconRoutingTable::routing_info(void)
   char digest[16*2 + 1];
 
   numberOfNodes = _fingertable.size();
-  numberOfNodes += _foreignnodes.size();
+  numberOfNodes += _allnodes.size();
   if ( successor != NULL ) numberOfNodes++;
   if ( predecessor != NULL ) numberOfNodes++;
 
@@ -192,7 +341,9 @@ FalconRoutingTable::routing_info(void)
 
   if ( successor != NULL ) {
     MD5::printDigest(successor->_md5_digest, digest);
-    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\n";
+    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\t" << isFixSuccessor() << "\n";
+  } else {
+    sa << "Successor: xx:xx:xx:xx:xx:xx\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(false)\n";
   }
 
   if ( predecessor != NULL ) {
@@ -200,7 +351,7 @@ FalconRoutingTable::routing_info(void)
     sa << "Predecessor: " << predecessor->_ether_addr.unparse() << "\t" << digest << "\n";
   }
 
-  sa << "Fingertable:\n";
+  sa << "Fingertable (" << _fingertable.size() << ") :\n";
   for( int i = 0; i < _fingertable.size(); i++ )
   {
     node = _fingertable.get_dhtnode(i);
@@ -221,10 +372,14 @@ FalconRoutingTable::routing_info(void)
     sa << "\n";
   }
 
+  if ( backlog != NULL ) {
+    MD5::printDigest(backlog->_md5_digest, digest);
+    sa << "Backlog: " << backlog->_ether_addr.unparse() << "\t" << digest << "\n";
+  }
   sa << "Foreigntable:\n";
-  for( int i = 0; i < _foreignnodes.size(); i++ )
+  for( int i = 0; i < _allnodes.size(); i++ )
   {
-    node = _foreignnodes.get_dhtnode(i);
+    node = _allnodes.get_dhtnode(i);
 
     sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);

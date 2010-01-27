@@ -30,6 +30,21 @@
 
 CLICK_DECLS
 
+#define RT_UPDATE_NONE        0
+#define RT_UPDATE_SUCCESSOR   1
+#define RT_UPDATE_PREDECESSOR 2
+#define RT_UPDATE_FINGERTABLE 3
+#define RT_UPDATE_NEIGHBOUR   4
+#define RT_UPDATE_ALL         5
+
+#define RT_NONE        0
+#define RT_ME          1
+#define RT_SUCCESSOR   2
+#define RT_PREDECESSOR 3
+#define RT_ALL         4
+#define RT_FINGERTABLE 5
+
+
 class FalconRoutingTable : public Element
 {
 
@@ -47,6 +62,26 @@ class FalconRoutingTable : public Element
   int initialize(ErrorHandler *);
   void add_handlers();
 
+ private:
+  void (*_info_func)(void*, int);
+  void *_info_obj;
+
+ public:
+
+  int set_update_callback(void (*info_func)(void*,int), void *info_obj) {
+    if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
+    else
+    {
+      _info_func = info_func;
+      _info_obj = info_obj;
+      return 0;
+    }
+  }
+
+  void update_callback(int status) {
+    (*_info_func)(_info_obj, status);
+  }
+
   String routing_info(void);
   void reset(void);
 
@@ -59,22 +94,49 @@ class FalconRoutingTable : public Element
 
   bool isBetterSuccessor(DHTnode *node);
   bool isBetterPredecessor(DHTnode *node);
+  bool isInBetween(DHTnode *a, DHTnode *b, DHTnode *c);
+  bool isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c);
 
+  bool isSuccessor(DHTnode *node);
+  bool isPredecessor(DHTnode *node);
+  bool isBacklog(DHTnode *node);
 
-  void add_node(DHTnode *node);
-  void add_node(DHTnode *node, bool is_neighbour);
-  void add_neighbour(DHTnode *node);
-  void add_nodes(DHTnodelist *nodes);
+  int add_node(DHTnode *node);
+  int add_node(DHTnode *node, bool is_neighbour);
+  int add_node(DHTnode *node, bool is_neighbour, bool want_callback);
+  int add_neighbour(DHTnode *node);
+  int add_nodes(DHTnodelist *nodes);
+
+  int add_node_in_FT(DHTnode *node, int position);  //add the node also in the list of all nodes
+  int set_node_in_FT(DHTnode *node, int position);  //just set the node in the FT (add the pointer)
+
+  DHTnode *find_node(DHTnode *node);
+  DHTnode *find_node(DHTnode *node, int *table);
+  DHTnode *find_node_in_tables(DHTnode *node, int *table);
 
 // private:
+  /**********************************************/
+  /*********      T A B L E S       *************/
+  /**********************************************/
+
   DHTnode *_me;
 
   DHTnode *successor;
   DHTnode *predecessor;
 
-  DHTnodelist _fingertable;
 
-  DHTnodelist _foreignnodes;
+  DHTnode *backlog;               //TODO: Overhang, while update Fingertable. This node is not in the FT since it is more than one round
+
+  DHTnodelist _fingertable;
+  int _lastUpdatedPosition;
+
+  DHTnodelist _allnodes;
+
+  bool fix_successor;
+  void fixSuccessor(bool fix) { fix_successor = fix; }
+  bool isFixSuccessor(void) { return fix_successor; }
+
+  int _debug;
 
 };
 

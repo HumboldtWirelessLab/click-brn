@@ -614,7 +614,7 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
   }
 
   if ( _dst != NULL ) {                   //the dest of the packet should ( if it is not NULL) should be include in the packte
-    if ( ! list->includes(_dst) ) {       //so the desz knowns what i know about him
+    if ( ! list->contains(_dst) ) {       //so the desz knowns what i know about him
       list->add_dhtnode(_dst);
     }
   }

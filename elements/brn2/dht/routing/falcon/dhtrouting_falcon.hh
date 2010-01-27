@@ -7,8 +7,6 @@
 
 CLICK_DECLS
 
-class BRN2LinkStat;
-
 class DHTRoutingFalcon : public DHTRouting
 {
   public:

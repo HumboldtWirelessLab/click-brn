@@ -49,7 +49,7 @@ class DHTnode
     DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
 
-    void set_update_addr(uint8_t *ea);  //TODO: fins better name
+    void set_update_addr(uint8_t *ea);  //TODO: finds better name
 
     void set_age_s(int s);           //TODO: Is that used ??
     void set_age(Timestamp *);
