@@ -21,6 +21,8 @@ CLICK_DECLS
 
 FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
   _lookup_timer(static_lookup_timer_hook,this),
+  _start(FALCON_DEFAULT_START_TIME),
+  _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
   _debug(BrnLogger::DEFAULT)
 {
 }
@@ -33,6 +35,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
 {
   if (cp_va_kparse(conf, this, errh,
       "FRT", cpkP+cpkM, cpElement, &_frt,
+      "STARTTIME", cpkP+cpkM, cpInteger, &_start,
       "UPDATEINT", cpkP, cpInteger, &_update_interval,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
@@ -44,7 +47,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
 int FalconRoutingTableMaintenance::initialize(ErrorHandler *)
 {
   _lookup_timer.initialize(this);
-  _lookup_timer.schedule_after_msec( click_random() % _update_interval );
+  _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
   return 0;
 }
 

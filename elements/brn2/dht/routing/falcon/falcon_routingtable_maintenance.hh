@@ -7,6 +7,10 @@
 #include "falcon_routingtable.hh"
 CLICK_DECLS
 
+#define FALCON_DEFAULT_UPDATE_INTERVAL  2000
+#define FALCON_DEFAULT_START_TIME      10000
+
+
 class FalconRoutingTableMaintenance : public Element
 {
   public:
@@ -42,6 +46,7 @@ class FalconRoutingTableMaintenance : public Element
     void handle_request_pos(Packet *packet);
     void handle_reply_pos(Packet *packet);
 
+    int _start;
     int _update_interval;
 
     int _debug;
