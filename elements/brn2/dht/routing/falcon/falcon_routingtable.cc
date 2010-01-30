@@ -109,6 +109,10 @@ FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, DHTnode *c)
   return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) >= 0 ) );
 }
 
+/**
+ * is md5 c between node a and b ??
+ */
+
 bool
 FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c)
 {
@@ -119,6 +123,30 @@ FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c)
   }
 
   return ( ( MD5::hexcompare( a->_md5_digest, c ) >= 0 ) || ( MD5::hexcompare( c, b->_md5_digest ) > 0 ) );
+}
+
+bool
+FalconRoutingTable::isInBetween(DHTnode *a, md5_byte_t *b, DHTnode *c)
+{
+  if ( successor == NULL ) return true;
+
+  if ( MD5::hexcompare( a->_md5_digest, b ) >= 0 ) {
+    return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b ) > 0 ) );
+  }
+
+  return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b ) > 0 ) );
+}
+
+bool
+FalconRoutingTable::isInBetween(md5_byte_t *a, DHTnode *b, DHTnode *c)
+{
+  if ( successor == NULL ) return true;
+
+  if ( MD5::hexcompare( a, b->_md5_digest ) >= 0 ) {
+    return ( ( MD5::hexcompare( a, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) > 0 ) );
+  }
+
+  return ( ( MD5::hexcompare( a, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) > 0 ) );
 }
 
 bool
@@ -168,7 +196,6 @@ FalconRoutingTable::add_node(DHTnode *node)
 
     if ( successor == NULL ) {
       successor = n;
-      fixSuccessor(false);           //new succ. check him.
       set_node_in_FT(successor, 0);
     }
 
@@ -210,24 +237,27 @@ FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
   int table;
   DHTnode *fn;
 
-  if ( _fingertable.size() < position ) {
-    BRN_ERROR("ERROR: FT too small");
-  } else {
-    add_node(node);                                                   //add node to known nodes or rather update it
-    fn = find_node_in_tables(node, &table);
+  add_node(node); //add node to known nodes or rather update it
 
-    if ( table != RT_FINGERTABLE ) {
-      if ( _fingertable.size() == position ) {
-        _fingertable.add_dhtnode(node);
-      } else {
-        _fingertable.swap_dhtnode(node, position);     //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
-      }
-    } else {
-      BRN_DEBUG("CHeck node position in FT and update the node");
-    }
+  if ( isSuccessor(node) && (position != 0) ) {
+    BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
+    return 0;
+  }
+
+  fn = find_node_in_tables(node, &table);
+
+  if ( table != RT_FINGERTABLE ) {
+    set_node_in_FT(node, position);
+  } else {
+    BRN_DEBUG("Check node position in FT and update the node");
   }
 
   return 0;
+}
+
+void
+FalconRoutingTable::setLastUpdatedPosition(int position) {
+  if ( ( position < _fingertable.size() ) && ( position < _lastUpdatedPosition ) )  _lastUpdatedPosition = position;
 }
 
 int
@@ -239,8 +269,11 @@ FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
     if ( _fingertable.size() == position ) {
       _fingertable.add_dhtnode(node);
     } else {
-      _fingertable.swap_dhtnode(node, position);     //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
+      _fingertable.swap_dhtnode(node, (int)position); //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
     }
+
+    setLastUpdatedPosition(position);                      //Fingertable is updated, so we should update also the rest, which depends on this change
+
   }
 
   return 0;

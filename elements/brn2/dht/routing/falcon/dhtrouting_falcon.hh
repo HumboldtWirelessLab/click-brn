@@ -36,6 +36,9 @@ class DHTRoutingFalcon : public DHTRouting
     int max_replication() const { return(1); }
     DHTnode *get_responsibly_node(md5_byte_t *key);
 
+    DHTnode *get_responsibly_node_backward(md5_byte_t *key);
+    DHTnode *get_responsibly_node_forward(md5_byte_t *key);
+
   //private:
     FalconRoutingTable *_frt;
 };

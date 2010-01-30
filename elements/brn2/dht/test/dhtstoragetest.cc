@@ -217,7 +217,7 @@ read_param(Element *e, void *thunk)
       sa << "READ-reply: " << dht_str->read_rep << " (Avg. time: " << avg_read_time << " ms )\n";
       sa << "WRITE-request: " << dht_str->write_req << "\n";
       sa << "WRITE-reply: " << dht_str->write_rep << " (Avg. time: " << avg_write_time << " ms )\n";
-      sa << "Not Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
+      sa << "Not-Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
       sa << "Timeout: " << dht_str->no_timeout << " (Avg. time: " << avg_to_time << " ms  Max. time: ";
       sa << dht_str->max_timeout_time << " ms )\n";
       return sa.take_string();

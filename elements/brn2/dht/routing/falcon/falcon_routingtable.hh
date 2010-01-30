@@ -44,7 +44,6 @@ CLICK_DECLS
 #define RT_ALL         4
 #define RT_FINGERTABLE 5
 
-
 class FalconRoutingTable : public Element
 {
 
@@ -96,6 +95,8 @@ class FalconRoutingTable : public Element
   bool isBetterPredecessor(DHTnode *node);
   bool isInBetween(DHTnode *a, DHTnode *b, DHTnode *c);
   bool isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c);
+  bool isInBetween(DHTnode *a, md5_byte_t *b, DHTnode *c);
+  bool isInBetween(md5_byte_t *a, DHTnode *b, DHTnode *c);
 
   bool isSuccessor(DHTnode *node);
   bool isPredecessor(DHTnode *node);
@@ -124,11 +125,12 @@ class FalconRoutingTable : public Element
   DHTnode *successor;
   DHTnode *predecessor;
 
-
   DHTnode *backlog;               //TODO: Overhang, while update Fingertable. This node is not in the FT since it is more than one round
 
   DHTnodelist _fingertable;
+
   int _lastUpdatedPosition;
+  void setLastUpdatedPosition(int position);
 
   DHTnodelist _allnodes;
 

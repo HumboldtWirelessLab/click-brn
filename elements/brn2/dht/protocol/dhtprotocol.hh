@@ -40,6 +40,8 @@ CLICK_DECLS
 
 /***** M I N O R  - R O U T I N G **********/
 
+//TODO: MINOR should be set by the specific routing
+
 #define HELLO               1
 #define HELLO_REQUEST       2
 #define ROUTETABLE_REQUEST  3

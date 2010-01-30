@@ -84,25 +84,76 @@ isSmaller(DHTnode *a,DHTnode *b )  //a < b ??
   return (MD5::hexcompare( b->_md5_digest, a->_md5_digest ) > 0);
 }
 
+/**
+ * This version is Chaord-like: a node is responsible for a key if the key is placed between the node and its predecessor
+ */
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
 {
+  DHTnode *best;
+
   if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
 
   if ( _frt->isInBetween(_frt->_me, _frt->predecessor, key) ) return _frt->_me;
   if ( _frt->isInBetween(_frt->successor, _frt->_me, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
 
+  best = _frt->successor;      //default
+
   for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
-    if ( ! _frt->isInBetween(_frt->_fingertable.get_dhtnode(i), _frt->_me, key) ) return _frt->_fingertable.get_dhtnode(i);
+    if ( ! _frt->isInBetween(_frt->_fingertable.get_dhtnode(i), _frt->_me, key) ) {
+      best = _frt->_fingertable.get_dhtnode(i);
+      break;
+    }
   }
 
-  //TODO: check backlog and all nodes. Check time
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+    if ( _frt->isInBetween( key, best, _frt->_allnodes.get_dhtnode(i) ) ) {
+      best = _frt->_allnodes.get_dhtnode(i);
+    }
+  }
 
-  click_chatter("Upps. no good node ????");
-
-  return _frt->_me;
+  return best;
 }
+
+/**
+ * a node is responsible for a key if the key is placed between the node and its successor
+ */
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
+{
+  DHTnode *best;
+
+  if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
+
+  if ( _frt->isInBetween(_frt->successor, _frt->_me, key) ) return _frt->_me;  //TODO: this should be handle by checking the FT
+  if ( _frt->isInBetween(_frt->_me, _frt->predecessor, key) ) return _frt->predecessor;
+
+  best = _frt->successor;      //default
+
+  for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
+    if ( ! _frt->isInBetween(_frt->_fingertable.get_dhtnode(i), _frt->_me, key) ) {
+      best = _frt->_fingertable.get_dhtnode(i);
+      break;
+    }
+  }
+
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+    if ( _frt->isInBetween( key, best, _frt->_allnodes.get_dhtnode(i) ) ) {
+      best = _frt->_allnodes.get_dhtnode(i);
+    }
+  }
+
+  return best;
+}
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+{
+  return get_responsibly_node_forward(key);
+}
+
 
 enum {
   H_ROUTING_INFO

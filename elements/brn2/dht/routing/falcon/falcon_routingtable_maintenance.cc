@@ -12,7 +12,6 @@
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 
-#include "dhtrouting_falcon.hh"
 #include "dhtprotocol_falcon.hh"
 #include "falcon_routingtable.hh"
 #include "falcon_routingtable_maintenance.hh"
@@ -68,18 +67,11 @@ FalconRoutingTableMaintenance::set_lookup_timer()
 void
 FalconRoutingTableMaintenance::table_maintenance()
 {
-  if ( _frt->successor != NULL ) {
-    if ( ! _frt->isFixSuccessor() ) {
-      BRN_DEBUG("%s: Check for successor", _frt->_me->_ether_addr.unparse().c_str());
+  if ( _frt->isFixSuccessor() ) {
+    DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
-      WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_OPERATION_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
-      output(0).push(p);
-    } else {
-      DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
-
-      WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_OPERATION_REQUEST_POSITION, _frt->_lastUpdatedPosition);
-      output(0).push(p);
-    }
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_OPERATION_REQUEST_POSITION, _frt->_lastUpdatedPosition);
+    output(0).push(p);
   }
 }
 
@@ -88,14 +80,6 @@ FalconRoutingTableMaintenance::push( int port, Packet *packet )
 {
   if ( ( port == 0 ) && ( packet != NULL ) ) {
     switch ( DHTProtocolFalcon::get_operation(packet) ) {
-      case FALCON_OPERATION_REQUEST_SUCCESSOR:
-        if ( DHTProtocol::get_type(packet) == ROUTETABLE_REQUEST )
-          handle_request_succ(packet);
-        else {
-          handle_reply_succ(packet);
-          packet->kill();
-        }
-        break;
       case FALCON_OPERATION_REQUEST_POSITION:
         if ( DHTProtocol::get_type(packet) == ROUTETABLE_REQUEST )
           handle_request_pos(packet);
@@ -113,60 +97,6 @@ FalconRoutingTableMaintenance::push( int port, Packet *packet )
 }
 
 void
-FalconRoutingTableMaintenance::handle_reply_succ(Packet *packet)
-{
-  uint8_t operation, status, position;
-
-  DHTnode succ;
-  DHTnode src;
-
-  BRN_DEBUG("handle_reply_succ");
-
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &operation, &status, &position);
-
-  _frt->add_node(&succ);
-  _frt->fixSuccessor(true);
-}
-
-void
-FalconRoutingTableMaintenance::handle_request_succ(Packet *packet)
-{
-  uint8_t operation, status, position;
-
-  DHTnode succ;
-  DHTnode src;
-
-  BRN_DEBUG("handle_request_succ");
-
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &operation, &status, &position);
-
-  _frt->add_node(&src);
-
-  if ( succ.equals(_frt->_me) ) {
-    //Wenn ich er mich f¸r seinen Nachfolger h‰lt, teste ob er mein Vorg‰nger ist oder mein Vorg‰nger f¸r ihn ein besserer Nachfolger ist.
-    if ( _frt->isInBetween(_frt->_me, _frt->predecessor, &src) ) {
-      if ( src.equals(_frt->predecessor) ) {
-        BRN_DEBUG("I'm his successor !");
-        WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_REQUEST_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
-        packet->kill();
-
-        output(0).push(p);
-      }
-    } else {
-      BRN_DEBUG("He is before my predecessor");
-      WritablePacket *p = DHTProtocolFalcon::fwd_route_request_packet(&src, _frt->predecessor, _frt->_me, packet);
-      output(0).push(p);
-    }
-
-
-  } else {
-    BRN_WARN("error??? Me: %s Succ: %s",_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
-  }
- // _frt->
-
-}
-
-void
 FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 {
   uint8_t operation, status, position;
@@ -179,9 +109,25 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &operation, &status, &position);
 
-  if ( ! node.equals(_frt->_me) ) BRN_WARN("Got packet, but he didn't ask me");
+  _frt->add_node(&src);  //add node if it's new
+
+  if ( ! node.equals(_frt->_me) ) {
+    BRN_WARN("Got packet, but he didn't ask me");
+    return;
+  }
+
+  if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
+    BRN_DEBUG("Node ask for my position 0 (for him i'm his successor) but is not my predecessor");
+    BRN_DEBUG("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
+
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_UPDATE_SUCCESSOR, _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
+    output(0).push(p);
+
+    return;
+  }
 
   posnode = _frt->_fingertable.get_dhtnode(position);
+
   if ( posnode != NULL ) {
     BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),position, posnode->_ether_addr.unparse().c_str());
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_REQUEST_POSITION, posnode, position);
@@ -217,9 +163,13 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
     _frt->add_node_in_FT(nc, position + 1);
 
-    _frt->_lastUpdatedPosition++; //TODO: add this in add_node_in_FT
+    if ( nc->equals(_frt->predecessor) ) { //in some cases the last node in the Fingertable is the predecessor. then we can update our successor next.
+      _frt->_lastUpdatedPosition = 0;
+      _frt->fixSuccessor(false);
+    } else
+      _frt->_lastUpdatedPosition++; //TODO: add this in add_node_in_FT
 
-  } else {                        //node is backlog
+  } else {                          //node is backlog
     nc = _frt->find_node(&node);
     if ( nc == NULL ) {
       _frt->add_node(&node);
@@ -228,6 +178,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
     _frt->backlog = nc;
     _frt->_lastUpdatedPosition = 0;
+    _frt->fixSuccessor(false);     //TODO: a hack. Test for successor again. maybe we can do this in a passive way, while asking him for his Nachfolger. Wenner dabei feststellt, das der fragende gar nicht sein vorg‰nger ist, weiﬂt er ihn darauf hin.
   }
 }
 

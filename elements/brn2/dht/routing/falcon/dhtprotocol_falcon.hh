@@ -25,6 +25,9 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn2/dht/standard/dhtnodelist.hh"
+
 CLICK_DECLS
 
 #define FALCON_RT_POSITION_SUCCESSOR   0
@@ -32,8 +35,11 @@ CLICK_DECLS
 
 #define FALCON_OPERATION_REQUEST_SUCCESSOR   1
 #define FALCON_OPERATION_REQUEST_PREDECESSOR 2
-#define FALCON_OPERATION_REQUEST_POSITION    3
-#define FALCON_OPERATION_UPDATE_POSITION     4
+#define FALCON_OPERATION_UPDATE_SUCCESSOR    3
+#define FALCON_OPERATION_UPDATE_PREDECESSOR  4
+
+#define FALCON_OPERATION_REQUEST_POSITION    5
+#define FALCON_OPERATION_UPDATE_POSITION     6
 
 #define FALCON_STATUS_OK    0
 #define FALCON_STATUS_HINT  1
