@@ -20,6 +20,8 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -28,7 +30,7 @@
 CLICK_DECLS
 
 int
-DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
+DHTProtocolFalcon::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHTnodelist */*nodes*/)
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
   ne->age_sec = 0;
@@ -39,7 +41,7 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnode
 }
 
 int
-DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes)
+DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, DHTnodelist */*nodes*/)
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 
@@ -50,22 +52,16 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DH
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position)
+DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t type, int request_position)
 {
-  struct falcon_routing_packet *request;
-  uint8_t *data;
+  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(rreq_p);
 
-  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, ROUTETABLE_REQUEST, sizeof(struct falcon_routing_packet));
-
-  data = (uint8_t*)DHTProtocol::get_payload(rreq_p);
-  request = (struct falcon_routing_packet*)data;
-
-  request->operation = operation;
   request->status = 0;
-  request->table_position = request_position;
+  request->table_position = htons(request_position);
 
-  memcpy(request->etheraddr, dst->_ether_addr.data(), 6);
-  memcpy(request->src_ea, src->_ether_addr.data(), 6);
+  DHTProtocol::set_src(rreq_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rreq_p, dst->_ether_addr.data());
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -73,22 +69,16 @@ DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t 
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position)
+DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position)
 {
-  struct falcon_routing_packet *reply;
-  uint8_t *data;
+  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  struct falcon_routing_packet *reply = (struct falcon_routing_packet*)DHTProtocol::get_payload(rrep_p);
 
-  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, ROUTETABLE_REPLY, sizeof(struct falcon_routing_packet));
-
-  data = (uint8_t*)DHTProtocol::get_payload(rrep_p);
-  reply = (struct falcon_routing_packet*)data;
-
-  reply->operation = operation;
   reply->status = 0;
-  reply->table_position = request_position;
+  reply->table_position = htons(request_position);
 
-  memcpy(reply->etheraddr, node->_ether_addr.data(), 6);
-  memcpy(reply->src_ea, src->_ether_addr.data(), 6);
+  DHTProtocol::set_src(rrep_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rrep_p, node->_ether_addr.data());
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rrep_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -98,97 +88,51 @@ DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t op
 WritablePacket *
 DHTProtocolFalcon::fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p)
 {
-  struct falcon_routing_packet *rreq;
-  uint8_t *data;
+  WritablePacket *rfwd_p = p->uniqueify();
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  rreq = (struct falcon_routing_packet*)data;
+  DHTProtocol::set_src(rfwd_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rfwd_p, new_dst->_ether_addr.data());
 
-  memcpy(rreq->etheraddr, new_dst->_ether_addr.data(), 6);
-  memcpy(rreq->src_ea, src->_ether_addr.data(), 6);
-
-  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(p->uniqueify(), &(fwd->_ether_addr), &(new_dst->_ether_addr), BRN_PORT_DHTROUTING);
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rfwd_p, &(fwd->_ether_addr), &(new_dst->_ether_addr), BRN_PORT_DHTROUTING);
 
   return(brn_p);
 }
 
 void
-DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *operation, uint8_t *status, uint8_t *pos)
+DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status, uint16_t *pos)
 {
-  struct falcon_routing_packet *request;
-  uint8_t *data;
+  struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(p);
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  request = (struct falcon_routing_packet*)data;
-
-  *operation = request->operation;
   *status = request->status;
-  *pos = request->table_position;
+  *pos = ntohs(request->table_position);
 
-  src->set_update_addr(request->src_ea);
-  node->set_update_addr(request->etheraddr);
-}
-
-int
-DHTProtocolFalcon::get_operation(Packet *p)
-{
-  struct falcon_routing_packet *request;
-  uint8_t *data;
-
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  request = (struct falcon_routing_packet*)data;
-  return request->operation;
-}
-
-DHTnode *
-DHTProtocolFalcon::get_src(Packet *p)
-{
-  struct falcon_routing_packet *request;
-  uint8_t *data;
-
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  request = (struct falcon_routing_packet*)data;
-
-  DHTnode *node = new DHTnode(EtherAddress(request->src_ea));
-  node->_status = STATUS_OK;
-  node->_age = Timestamp::now();
-
-  return node;
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  node->set_update_addr(DHTProtocol::get_dst_data(p));
 }
 
 WritablePacket *
 DHTProtocolFalcon::new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size)
 {
-  struct falcon_nws_packet *request;
-  uint8_t *data;
-
-  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, NWS_REQUEST, sizeof(struct falcon_nws_packet));
-
-  data = (uint8_t*)DHTProtocol::get_payload(rreq_p);
-  request = (struct falcon_nws_packet*)data;
+  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, FALCON_MINOR_NWS_REQUEST, sizeof(struct falcon_nws_packet));
+  struct falcon_nws_packet *request = (struct falcon_nws_packet*)DHTProtocol::get_payload(rreq_p);
 
   request->networksize = htonl(size);
 
-  memcpy(request->next_ea, dst->_ether_addr.data(), 6);
-  memcpy(request->src_ea, src->_ether_addr.data(), 6);
+  DHTProtocol::set_src(rreq_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rreq_p, dst->_ether_addr.data());
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
   return(brn_p);
 }
 
-
 WritablePacket *
 DHTProtocolFalcon::fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p)
 {
-  struct falcon_nws_packet *rreq;
-  uint8_t *data;
-
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  rreq = (struct falcon_nws_packet*)data;
+  struct falcon_nws_packet *rreq = (struct falcon_nws_packet*)DHTProtocol::get_payload(p);
 
   rreq->networksize = htonl(size);
-  memcpy(rreq->next_ea, next->_ether_addr.data(), 6);
+  DHTProtocol::set_dst(p, next->_ether_addr.data());
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(p->uniqueify(), &(src->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -198,19 +142,13 @@ DHTProtocolFalcon::fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Pa
 void
 DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, DHTnode *next, uint32_t *size)
 {
-  struct falcon_nws_packet *request;
-  uint8_t *data;
-
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  request = (struct falcon_nws_packet*)data;
+  struct falcon_nws_packet *request = (struct falcon_nws_packet*)DHTProtocol::get_payload(p);
 
   *size = ntohl(request->networksize);
 
-  src->set_update_addr(request->src_ea);
-  next->set_update_addr(request->next_ea);
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  next->set_update_addr(DHTProtocol::get_dst_data(p));
 }
-
-
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(DHTProtocol)

@@ -103,6 +103,24 @@ DHTProtocol::get_dst(Packet *p)
     return NULL;
 }
 
+uint8_t *
+DHTProtocol::get_src_data(Packet *p)
+{
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+    return ((struct dht_packet_header*)p->data())->src;
+  else
+    return NULL;
+}
+
+uint8_t *
+DHTProtocol::get_dst_data(Packet *p)
+{
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+    return ((struct dht_packet_header*)p->data())->dst;
+  else
+    return NULL;
+}
+
 int
 DHTProtocol::set_src(Packet *p, uint8_t *ea)
 {

@@ -54,6 +54,8 @@ union addr {
 #define BRN_PORT_COMPRESSION         11
 #define BRN_PORT_DCLUSTER            12
 #define BRN_PORT_NHOPCLUSTER         13
+#define BRN_PORT_DHTROUTING          14
+#define BRN_PORT_DHTSTORAGE          15
 #define BRN_PORT_FLOW                16
 #define BRN_PORT_SIMPLEFLOODING      17
 #define BRN_PORT_PROBABILITYFLODDING 18

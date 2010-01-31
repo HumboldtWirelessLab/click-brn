@@ -57,16 +57,8 @@ class DHTRoutingDart : public DHTRouting
     static void static_lookup_timer_hook(Timer *, void *);
     static void static_packet_buffer_timer_hook(Timer *, void *);
     void set_lookup_timer();
-    void nodeDetection();
 
     int _update_interval;
-
-    void handle_hello(Packet *p);
-    void handle_hello_request(Packet *p);
-    void handle_routetable_request(Packet *p);
-    void handle_routetable_reply(Packet *p);
-    void send_routetable_update(EtherAddress *dst, int status);
-    void update_nodes(DHTnodelist *dhtlist);
 
 };
 

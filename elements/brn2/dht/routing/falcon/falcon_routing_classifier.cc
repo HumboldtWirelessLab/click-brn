@@ -42,21 +42,21 @@ int FalconRoutingClassifier::initialize(ErrorHandler *)
 void
 FalconRoutingClassifier::push( int /*port*/, Packet *packet )
 {
-  if ( DHTProtocol::get_type(packet) == NWS_REQUEST ) {
-    output(FALCON_NETWORKSIZE_PORT).push(packet);
-    return;
-  }
-
-  switch ( DHTProtocolFalcon::get_operation(packet) ) {
-    case FALCON_OPERATION_REQUEST_SUCCESSOR:
-    case FALCON_OPERATION_UPDATE_SUCCESSOR:
+  switch ( DHTProtocol::get_type(packet) ) {
+    case FALCON_MINOR_REQUEST_SUCCESSOR:
+    case FALCON_MINOR_REPLY_SUCCESSOR:
+    case FALCON_MINOR_UPDATE_SUCCESSOR:
       output(FALCON_ROUTING_SUCC_PORT).push(packet);
       break;
-    case FALCON_OPERATION_REQUEST_POSITION:
+    case FALCON_MINOR_REQUEST_POSITION:
+    case FALCON_MINOR_REPLY_POSITION:
       output(FALCON_ROUTING_POSITION_PORT).push(packet);
       break;
+    case FALCON_MINOR_NWS_REQUEST:
+      output(FALCON_NETWORKSIZE_PORT).push(packet);
+      break;
     default:
-      BRN_WARN("Unknown Operation in falcon-classifier: %d", DHTProtocolFalcon::get_operation(packet));
+      BRN_WARN("Unknown Operation in falcon-classifier: %d", DHTProtocol::get_type(packet));
       if ( noutputs() > FALCON_ROUTING_UNKNOWN_PORT )
         output(FALCON_ROUTING_UNKNOWN_PORT).push(packet);
       else

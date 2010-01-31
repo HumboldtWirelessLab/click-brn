@@ -31,7 +31,7 @@ WritablePacket *
 DHTProtocolOmni::new_hello_packet(EtherAddress *etheraddr)
 {
   struct dht_omni_node_entry *msg;
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, HELLO,sizeof(struct dht_omni_node_entry));
+  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, OMNI_HELLO,sizeof(struct dht_omni_node_entry));
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(hello_p);
   memcpy(msg->etheraddr,etheraddr->data(),6);
@@ -44,7 +44,7 @@ WritablePacket *
 DHTProtocolOmni::new_hello_request_packet(EtherAddress *etheraddr)       //TODO: Using DHTnode
 {
   struct dht_omni_node_entry *msg; 
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, HELLO_REQUEST,sizeof(struct dht_omni_node_entry));
+  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, OMNI_HELLO_REQUEST,sizeof(struct dht_omni_node_entry));
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(hello_p);
   memcpy(msg->etheraddr,etheraddr->data(),6);
@@ -61,7 +61,7 @@ DHTProtocolOmni::new_route_request_packet(EtherAddress *me, DHTnodelist *list) /
   uint8_t listsize = 0;
 
   if ( list != NULL ) listsize = list->size();
-  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, ROUTETABLE_REQUEST,( 1 + listsize ) * sizeof(struct dht_omni_node_entry));
+  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, OMNI_ROUTETABLE_REQUEST,( 1 + listsize ) * sizeof(struct dht_omni_node_entry));
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(route_p);
   memcpy(msg->etheraddr,me->data(),6);
@@ -86,7 +86,7 @@ DHTProtocolOmni::new_route_reply_packet(EtherAddress *me, DHTnodelist *list)
   uint8_t listsize = 0;
 
   if ( list != NULL ) listsize = list->size();
-  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, ROUTETABLE_REPLY,( 1 + listsize ) * sizeof(struct dht_omni_node_entry));
+  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, OMNI_ROUTETABLE_REPLY,( 1 + listsize ) * sizeof(struct dht_omni_node_entry));
 
   msg = (struct dht_omni_node_entry*)DHTProtocol::get_payload(route_p);
   memcpy(msg->etheraddr,me->data(),6);

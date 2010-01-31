@@ -12,6 +12,7 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
@@ -174,22 +175,22 @@ DHTRoutingOmni::push( int port, Packet *packet )
 
     switch (DHTProtocol::get_type(packet))
     {
-      case HELLO:
+      case OMNI_HELLO:
               {
                 handle_hello(packet);
                 break;
               }
-      case HELLO_REQUEST:
+      case OMNI_HELLO_REQUEST:
               {
                 handle_hello_request(packet);
                 break;
               }
-      case ROUTETABLE_REQUEST:
+      case OMNI_ROUTETABLE_REQUEST:
               {
                 handle_routetable_request(packet);
                 break;
               }
-      case ROUTETABLE_REPLY:
+      case OMNI_ROUTETABLE_REPLY:
               {
                 handle_routetable_reply(packet);
                 break;

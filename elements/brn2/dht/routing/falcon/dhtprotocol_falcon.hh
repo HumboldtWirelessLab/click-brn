@@ -31,16 +31,20 @@
 CLICK_DECLS
 
 #define FALCON_RT_POSITION_SUCCESSOR   0
-#define FALCON_RT_POSITION_PREDECESSOR 255
+#define FALCON_RT_POSITION_PREDECESSOR 65535
 
-#define FALCON_OPERATION_REQUEST_SUCCESSOR   1
-#define FALCON_OPERATION_REQUEST_PREDECESSOR 2
-#define FALCON_OPERATION_UPDATE_SUCCESSOR    3
-#define FALCON_OPERATION_UPDATE_PREDECESSOR  4
+/***** M I N O R  - R O U T I N G **********/
+#define FALCON_MINOR_REQUEST_SUCCESSOR   1
+#define FALCON_MINOR_UPDATE_SUCCESSOR    2
+#define FALCON_MINOR_REPLY_SUCCESSOR     3
+#define FALCON_MINOR_REQUEST_PREDECESSOR 4
+#define FALCON_MINOR_REPLY_PREDECESSOR   5
+#define FALCON_MINOR_REQUEST_POSITION    6
+#define FALCON_MINOR_REPLY_POSITION      7
 
-#define FALCON_OPERATION_REQUEST_POSITION    5
-#define FALCON_OPERATION_UPDATE_POSITION     6
+#define FALCON_MINOR_NWS_REQUEST         8
 
+/************* S T A T U S *****************/
 #define FALCON_STATUS_OK    0
 #define FALCON_STATUS_HINT  1
 
@@ -51,24 +55,14 @@ struct dht_falcon_node_entry {
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct falcon_routing_packet {
-  uint8_t operation;             //TODO: this is already in generic DHT-Header. Isn't it.
   uint8_t status;
-
-  uint8_t table_position;
   uint8_t reserved;
 
-  uint8_t etheraddr[6];
-
-  uint8_t src_ea[6];
-
+  uint16_t table_position;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct falcon_nws_packet {
   uint32_t networksize;
-
-  uint8_t next_ea[6];
-  uint8_t src_ea[6];
-
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /**
@@ -85,12 +79,8 @@ class DHTProtocolFalcon {
     static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
     static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position);
     static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p);
-    //static WritablePacket *route_reply_packet(Packet *p, DHTnode *me, DHTnode *pred, DHTnode *succ, DHTnodelist *finger);
 
-    static int get_operation(Packet *p);
-    static DHTnode *get_src(Packet *p);
-
-    static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *operation, uint8_t *status, uint8_t *pos);
+    static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status, uint16_t *pos);
 
     static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);

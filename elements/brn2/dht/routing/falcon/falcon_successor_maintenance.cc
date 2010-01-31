@@ -70,7 +70,7 @@ FalconSuccessorMaintenance::successor_maintenance()
   if ( ! _frt->isFixSuccessor() ) {
     BRN_DEBUG("%s: Check for successor", _frt->_me->_ether_addr.unparse().c_str());
 
-    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_OPERATION_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
   }
 }
@@ -79,18 +79,17 @@ void
 FalconSuccessorMaintenance::push( int port, Packet *packet )
 {
   if ( ( port == 0 ) && ( packet != NULL ) ) {
-    switch ( DHTProtocolFalcon::get_operation(packet) ) {
-      case FALCON_OPERATION_REQUEST_SUCCESSOR:
-        if ( DHTProtocol::get_type(packet) == ROUTETABLE_REQUEST )
-          handle_request_succ(packet);
-        else {
-          handle_reply_succ(packet, false);
-          packet->kill();
-        }
+    switch ( DHTProtocol::get_type(packet) ) {
+      case FALCON_MINOR_REQUEST_SUCCESSOR:
+        handle_request_succ(packet);
         break;
-      case FALCON_OPERATION_UPDATE_SUCCESSOR:
-          handle_reply_succ(packet, true);
-          packet->kill();
+      case FALCON_MINOR_REPLY_SUCCESSOR:
+        handle_reply_succ(packet, false);
+        packet->kill();
+        break;
+      case FALCON_MINOR_UPDATE_SUCCESSOR:
+        handle_reply_succ(packet, true);
+        packet->kill();
         break;
       default:
         BRN_WARN("Unknown Operation in falcon-routing");
@@ -103,14 +102,15 @@ FalconSuccessorMaintenance::push( int port, Packet *packet )
 void
 FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 {
-  uint8_t operation, status, position;
+  uint8_t status;
+  uint16_t position;
 
   DHTnode succ;
   DHTnode src;
 
   BRN_DEBUG("handle_reply_succ");
 
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &operation, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
 
   _frt->add_node(&succ);
 
@@ -125,14 +125,15 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 void
 FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 {
-  uint8_t operation, status, position;
+  uint8_t status;
+  uint16_t position;
 
   DHTnode succ;
   DHTnode src;
 
   BRN_DEBUG("handle_request_succ");
 
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &operation, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
 
   _frt->add_node(&src);
 
@@ -140,7 +141,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
     //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger für ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {
       BRN_DEBUG("I'm his successor !");
-      WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_REQUEST_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
+      WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
       packet->kill();
 
       output(0).push(p);

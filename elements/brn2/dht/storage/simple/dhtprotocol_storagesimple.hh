@@ -25,6 +25,9 @@
 
 #include <click/element.hh>
 
+#define DHT_STORAGE_SIMPLE_MESSAGE         1
+#define DHT_STORAGE_SIMPLE_MOVEDDATA       2
+
 CLICK_DECLS
 
 struct dht_dart_node_entry {

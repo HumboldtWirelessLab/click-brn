@@ -78,7 +78,7 @@ FalconRoutingTableMaintenance::table_maintenance()
       assert(! _frt->_me->equals(nextToAsk));
     }
 
-    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_OPERATION_REQUEST_POSITION, _frt->_lastUpdatedPosition);
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION, _frt->_lastUpdatedPosition);
     output(0).push(p);
   }
 }
@@ -87,13 +87,13 @@ void
 FalconRoutingTableMaintenance::push( int port, Packet *packet )
 {
   if ( ( port == 0 ) && ( packet != NULL ) ) {
-    switch ( DHTProtocolFalcon::get_operation(packet) ) {
-      case FALCON_OPERATION_REQUEST_POSITION:
-        if ( DHTProtocol::get_type(packet) == ROUTETABLE_REQUEST )
-          handle_request_pos(packet);
-        else
-          handle_reply_pos(packet);
-
+    switch ( DHTProtocol::get_type(packet) ) {
+      case FALCON_MINOR_REQUEST_POSITION:
+        handle_request_pos(packet);
+        packet->kill();
+        break;
+      case FALCON_MINOR_REPLY_POSITION:
+        handle_reply_pos(packet);
         packet->kill();
         break;
       default:
@@ -107,7 +107,8 @@ FalconRoutingTableMaintenance::push( int port, Packet *packet )
 void
 FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 {
-  uint8_t operation, status, position;
+  uint8_t status;
+  uint16_t position;
 
   DHTnode src;
   DHTnode node;
@@ -115,12 +116,13 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   BRN_DEBUG("handle_request_pos");
 
-  DHTProtocolFalcon::get_info(packet, &src, &node, &operation, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
 
   _frt->add_node(&src);  //add node if it's new
 
   if ( ! node.equals(_frt->_me) ) {
-    BRN_WARN("Got packet, but he didn't ask me");
+    BRN_WARN("Got packet, but he didn't ask me. ME: %s, SRC: %s DST: %s",
+             _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), node._ether_addr.unparse().c_str());
     return;
   }
 
@@ -128,7 +130,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     BRN_DEBUG("Node ask for my position 0 (for him i'm his successor) but is not my predecessor");
     BRN_DEBUG("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_UPDATE_SUCCESSOR, _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR, _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
 
     return;
@@ -138,7 +140,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   if ( posnode != NULL ) {
     BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),position, posnode->_ether_addr.unparse().c_str());
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_OPERATION_REQUEST_POSITION, posnode, position);
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position);
 
     output(0).push(p);
   }
@@ -147,7 +149,8 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 void
 FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 {
-  uint8_t operation, status, position;
+  uint8_t status;
+  uint16_t position;
 
   DHTnode node;
   DHTnode src;
@@ -156,7 +159,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   BRN_DEBUG("handle_reply_pos");
 
-  DHTProtocolFalcon::get_info(packet, &src, &node, &operation, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
 
   BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(),position, node._ether_addr.unparse().c_str());
 

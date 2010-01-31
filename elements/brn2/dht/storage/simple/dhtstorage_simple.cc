@@ -10,10 +10,12 @@
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 #include "elements/brn2/dht/storage/db/db.hh"
 
+#include "dhtprotocol_storagesimple.hh"
 #include "dhtstorage_simple.hh"
 
 CLICK_DECLS
@@ -126,7 +128,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 
         fwd_op = new DHTOperationForward(op,info_func,info_obj);
         _fwd_queue.push_back(fwd_op);
-        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, op->length());
+        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length());
         op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
         p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
         output(0).push(p);
@@ -203,7 +205,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
             delete _op;
           } else {
             _op->set_reply();
-            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
+            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
             _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
 
             EtherAddress src = EtherAddress(_op->header.etheraddress);
@@ -555,7 +557,7 @@ DHTStorageSimple::check_queue()
         _op->retries++;
 
         next = _dht_routing->get_responsibly_node(_op->header.key_digest);           //TODO: handle if next is null
-        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_MESSAGE, _op->length());
+        p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
         _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
         p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
         output(0).push(p);

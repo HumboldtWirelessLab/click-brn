@@ -13,6 +13,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnconf.h"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
