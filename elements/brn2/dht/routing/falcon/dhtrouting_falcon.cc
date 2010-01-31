@@ -15,7 +15,8 @@
 CLICK_DECLS
 
 DHTRoutingFalcon::DHTRoutingFalcon():
-  _frt(NULL)
+  _frt(NULL),
+  _responsible(FALCON_RESPONSIBLE_FORWARD)
 {
 }
 
@@ -37,7 +38,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "FRT", cpkP+cpkM, cpElement, &_frt,
-      "RESPONSIBLE", cpkP, cpInteger, &_frt,
+      "RESPONSIBLE", cpkP, cpInteger, &_responsible,
       cpEnd) < 0)
     return -1;
 
@@ -46,8 +47,15 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+static void notify_callback_func(void *e, int status)
+{
+  DHTRoutingFalcon *f = (DHTRoutingFalcon *)e;
+  f->handle_routing_update_callback(status);
+}
+
 int DHTRoutingFalcon::initialize(ErrorHandler *)
 {
+  _frt->set_update_callback(notify_callback_func,(void*)this);
   return 0;
 }
 
@@ -125,7 +133,16 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
 DHTnode *
 DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
 {
+  if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);
   return get_responsibly_node_forward(key);
+}
+
+void
+DHTRoutingFalcon::handle_routing_update_callback(int status)
+{
+  if ( ( ( _responsible == FALCON_RESPONSIBLE_CHORD ) && ( status == RT_UPDATE_PREDECESSOR ) ) ||
+       ( ( _responsible == FALCON_RESPONSIBLE_FORWARD ) && ( status == RT_UPDATE_SUCCESSOR ) ) )
+    notify_callback(ROUTING_STATUS_UPDATE);
 }
 
 enum {

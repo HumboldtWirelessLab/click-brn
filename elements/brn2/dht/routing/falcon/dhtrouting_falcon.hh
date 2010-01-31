@@ -44,6 +44,9 @@ class DHTRoutingFalcon : public DHTRouting
 
   //private:
     FalconRoutingTable *_frt;
+    int _responsible;
+
+    void handle_routing_update_callback(int status);
 };
 
 CLICK_ENDDECLS

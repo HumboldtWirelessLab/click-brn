@@ -125,20 +125,27 @@ FalconRoutingTable::add_node(DHTnode *node)
 
   if ( isBetterSuccessor(n) ) {
 
-    if ( predecessor == NULL ) predecessor = n;
+    if ( predecessor == NULL ) {
+      predecessor = n;
+      update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+    }
 
     successor = n;
-    fixSuccessor(false);             //new succ. check him.
+    fixSuccessor(false);                       //new succ. check him.
 
     set_node_in_FT(successor, 0);
+    update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+
   } else if ( isBetterPredecessor(n) ) {
 
     if ( successor == NULL ) {
       successor = n;
       set_node_in_FT(successor, 0);
+      update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
     }
 
     predecessor = n;
+    update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
   }
 
   return 0;

@@ -45,8 +45,8 @@ CLICK_DECLS
 #define RT_ME          1
 #define RT_SUCCESSOR   2
 #define RT_PREDECESSOR 3
-#define RT_ALL         4
-#define RT_FINGERTABLE 5
+#define RT_FINGERTABLE 4
+#define RT_ALL         5
 
 class FalconRoutingTable : public Element
 {
