@@ -31,6 +31,7 @@
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "falcon_functions.hh"
 #include "falcon_routingtable.hh"
 
 CLICK_DECLS
@@ -74,82 +75,6 @@ FalconRoutingTable::initialize(ErrorHandler *)
 }
 
 bool
-FalconRoutingTable::isBetterSuccessor(DHTnode *node)
-{
-  if ( successor == NULL ) return true;
-
-  if ( MD5::hexcompare( successor->_md5_digest, _me->_md5_digest ) > 0 ) {
-    return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) > 0 ) && ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) > 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( successor->_md5_digest, node->_md5_digest ) > 0 ) || ( MD5::hexcompare( node->_md5_digest, _me->_md5_digest ) > 0 ) );
-}
-
-bool
-FalconRoutingTable::isBetterPredecessor(DHTnode *node)
-{
-  if ( predecessor == NULL ) return true;
-
-  if ( MD5::hexcompare( _me->_md5_digest, predecessor->_md5_digest ) > 0 ) {
-    return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) > 0 ) && ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) > 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( node->_md5_digest, predecessor->_md5_digest ) > 0 ) || ( MD5::hexcompare(_me->_md5_digest, node->_md5_digest ) > 0 ) );
-}
-
-bool
-FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, DHTnode *c)
-{
-  if ( successor == NULL ) return true;
-
-  if ( MD5::hexcompare( a->_md5_digest, b->_md5_digest ) >= 0 ) {
-    return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) >= 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) >= 0 ) );
-}
-
-/**
- * is md5 c between node a and b ??
- */
-
-bool
-FalconRoutingTable::isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c)
-{
-  if ( successor == NULL ) return true;
-
-  if ( MD5::hexcompare( a->_md5_digest, b->_md5_digest ) >= 0 ) {
-    return ( ( MD5::hexcompare( a->_md5_digest, c ) >= 0 ) && ( MD5::hexcompare( c, b->_md5_digest ) > 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( a->_md5_digest, c ) >= 0 ) || ( MD5::hexcompare( c, b->_md5_digest ) > 0 ) );
-}
-
-bool
-FalconRoutingTable::isInBetween(DHTnode *a, md5_byte_t *b, DHTnode *c)
-{
-  if ( successor == NULL ) return true;
-
-  if ( MD5::hexcompare( a->_md5_digest, b ) >= 0 ) {
-    return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b ) > 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( a->_md5_digest, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b ) > 0 ) );
-}
-
-bool
-FalconRoutingTable::isInBetween(md5_byte_t *a, DHTnode *b, DHTnode *c)
-{
-  if ( successor == NULL ) return true;
-
-  if ( MD5::hexcompare( a, b->_md5_digest ) >= 0 ) {
-    return ( ( MD5::hexcompare( a, c->_md5_digest ) >= 0 ) && ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) > 0 ) );
-  }
-
-  return ( ( MD5::hexcompare( a, c->_md5_digest ) >= 0 ) || ( MD5::hexcompare( c->_md5_digest, b->_md5_digest ) > 0 ) );
-}
-
-bool
 FalconRoutingTable::isSuccessor(DHTnode *node)
 {
   if ( successor == NULL ) return false;
@@ -168,6 +93,20 @@ FalconRoutingTable::isBacklog(DHTnode *node)
 {
   if ( backlog == NULL ) return false;
   return ( node->equals(backlog) );
+}
+
+bool
+FalconRoutingTable::isBetterSuccessor(DHTnode *node)
+{
+  if ( successor == NULL ) return true;
+  return FalconFunctions::is_in_between( _me, successor, node);
+}
+
+bool
+FalconRoutingTable::isBetterPredecessor(DHTnode *node)
+{
+  if ( predecessor == NULL ) return true;
+  return FalconFunctions::is_in_between( predecessor, _me, node);
 }
 
 int

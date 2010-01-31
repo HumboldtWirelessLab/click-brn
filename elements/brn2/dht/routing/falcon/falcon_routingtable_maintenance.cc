@@ -13,6 +13,7 @@
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 
 #include "dhtprotocol_falcon.hh"
+#include "falcon_functions.hh"
 #include "falcon_routingtable.hh"
 #include "falcon_routingtable_maintenance.hh"
 
@@ -69,6 +70,13 @@ FalconRoutingTableMaintenance::table_maintenance()
 {
   if ( _frt->isFixSuccessor() ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
+
+    //TODO: There was an error, while setup the Routing-Table. I fixed it, but if there is an error again please save this output (Routing Table)
+    if ( _frt->_me->equals(nextToAsk) ) {
+      BRN_ERROR("Src-Node should not be Dst-Node ! Error in Routing-Table !");
+      BRN_ERROR("Table: \n%s",_frt->routing_info().c_str());
+      assert(! _frt->_me->equals(nextToAsk));
+    }
 
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_OPERATION_REQUEST_POSITION, _frt->_lastUpdatedPosition);
     output(0).push(p);
@@ -154,7 +162,14 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   preposnode = _frt->_fingertable.get_dhtnode(position);
 
-  if ( ! _frt->isInBetween(preposnode, _frt->_me, &node) ) {
+  /**
+   * Die Abfrage stellt sicher, dass man nicht schon einmal im Kreis rum ist, und der Knoten den man grad befragt hat einen Knoten zuückliegt der schon wieder vor mir liegt
+   * Natuerlich darf es der Knoten selbst auch nicht sein
+   */
+
+   // make sure that the node n on position p+1 does not stand between this node and node on position p
+  //TODO: make sure that we have to cheack, that node on new posotion p+1 is not the node on position p
+  if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) || preposnode->equals(&node) ) ) {
     nc = _frt->find_node(&node);
     if ( nc == NULL ) {
       _frt->add_node(&node);

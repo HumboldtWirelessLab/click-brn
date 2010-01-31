@@ -7,8 +7,10 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "dhtrouting_falcon.hh"
+#include "falcon_functions.hh"
 #include "falcon_routingtable.hh"
+
+#include "dhtrouting_falcon.hh"
 
 CLICK_DECLS
 
@@ -35,6 +37,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "FRT", cpkP+cpkM, cpElement, &_frt,
+      "RESPONSIBLE", cpkP, cpInteger, &_frt,
       cpEnd) < 0)
     return -1;
 
@@ -48,42 +51,6 @@ int DHTRoutingFalcon::initialize(ErrorHandler *)
   return 0;
 }
 
-static bool
-isBigger(DHTnode *a, DHTnode *b)         //a > b ??
-{
-  return (MD5::hexcompare( a->_md5_digest, b->_md5_digest ) > 0);
-}
-
-static bool
-isBigger(DHTnode *a, md5_byte_t *md5d)  //a > b ??
-{
-  return ( MD5::hexcompare( a->_md5_digest, md5d ) > 0);
-}
-
-static bool
-isSmallerEqual(DHTnode *a, DHTnode *b)         //a <= b ??
-{
-  return (MD5::hexcompare( b->_md5_digest, a->_md5_digest ) >= 0);
-}
-
-static bool
-isSmallerEqual(DHTnode *a, md5_byte_t *md5d)  //a <= b ??
-{
-  return ( MD5::hexcompare( md5d, a->_md5_digest ) >= 0);
-}
-
-static bool
-isSmaller(DHTnode *a, md5_byte_t *md5d)  //a < b ??
-{
-  return (MD5::hexcompare( md5d, a->_md5_digest ) > 0);
-}
-
-static bool
-isSmaller(DHTnode *a,DHTnode *b )  //a < b ??
-{
-  return (MD5::hexcompare( b->_md5_digest, a->_md5_digest ) > 0);
-}
-
 /**
  * This version is Chaord-like: a node is responsible for a key if the key is placed between the node and its predecessor
  */
@@ -95,20 +62,23 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
 
   if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
 
-  if ( _frt->isInBetween(_frt->_me, _frt->predecessor, key) ) return _frt->_me;
-  if ( _frt->isInBetween(_frt->successor, _frt->_me, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
+  if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
+       FalconFunctions::is_equals(_frt->_me, key) ) return _frt->_me;
+  if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key) ||
+       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
 
   best = _frt->successor;      //default
 
   for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
-    if ( ! _frt->isInBetween(_frt->_fingertable.get_dhtnode(i), _frt->_me, key) ) {
+    if ( ! FalconFunctions::is_in_between( _frt->_me, _frt->_fingertable.get_dhtnode(i), key) ) {
       best = _frt->_fingertable.get_dhtnode(i);
       break;
     }
   }
 
   for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
-    if ( _frt->isInBetween( key, best, _frt->_allnodes.get_dhtnode(i) ) ) {
+    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);
     }
   }
@@ -127,20 +97,24 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
 
   if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
 
-  if ( _frt->isInBetween(_frt->successor, _frt->_me, key) ) return _frt->_me;  //TODO: this should be handle by checking the FT
-  if ( _frt->isInBetween(_frt->_me, _frt->predecessor, key) ) return _frt->predecessor;
+  if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key ) ||
+       FalconFunctions::is_equals( _frt->_me, key ) ) return _frt->_me;  //TODO: this should be handle by checking the FT
+
+  if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
+       FalconFunctions::is_equals( _frt->predecessor, key ) ) return _frt->predecessor;
 
   best = _frt->successor;      //default
 
   for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
-    if ( ! _frt->isInBetween(_frt->_fingertable.get_dhtnode(i), _frt->_me, key) ) {
+    if ( ! FalconFunctions::is_in_between( _frt->_me, _frt->_fingertable.get_dhtnode(i), key) )  {
       best = _frt->_fingertable.get_dhtnode(i);
       break;
     }
   }
 
   for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
-    if ( _frt->isInBetween( key, best, _frt->_allnodes.get_dhtnode(i) ) ) {
+    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);
     }
   }
@@ -153,7 +127,6 @@ DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
 {
   return get_responsibly_node_forward(key);
 }
-
 
 enum {
   H_ROUTING_INFO

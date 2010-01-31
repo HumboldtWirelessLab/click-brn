@@ -88,7 +88,7 @@ DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t op
   reply->table_position = request_position;
 
   memcpy(reply->etheraddr, node->_ether_addr.data(), 6);
-  memcpy(reply->src_ea, dst->_ether_addr.data(), 6);
+  memcpy(reply->src_ea, src->_ether_addr.data(), 6);
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rrep_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -155,6 +155,62 @@ DHTProtocolFalcon::get_src(Packet *p)
 
   return node;
 }
+
+WritablePacket *
+DHTProtocolFalcon::new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size)
+{
+  struct falcon_nws_packet *request;
+  uint8_t *data;
+
+  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, NWS_REQUEST, sizeof(struct falcon_nws_packet));
+
+  data = (uint8_t*)DHTProtocol::get_payload(rreq_p);
+  request = (struct falcon_nws_packet*)data;
+
+  request->networksize = htonl(size);
+
+  memcpy(request->next_ea, dst->_ether_addr.data(), 6);
+  memcpy(request->src_ea, src->_ether_addr.data(), 6);
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
+}
+
+
+WritablePacket *
+DHTProtocolFalcon::fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p)
+{
+  struct falcon_nws_packet *rreq;
+  uint8_t *data;
+
+  data = (uint8_t*)DHTProtocol::get_payload(p);
+  rreq = (struct falcon_nws_packet*)data;
+
+  rreq->networksize = htonl(size);
+  memcpy(rreq->next_ea, next->_ether_addr.data(), 6);
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(p->uniqueify(), &(src->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
+}
+
+void
+DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, DHTnode *next, uint32_t *size)
+{
+  struct falcon_nws_packet *request;
+  uint8_t *data;
+
+  data = (uint8_t*)DHTProtocol::get_payload(p);
+  request = (struct falcon_nws_packet*)data;
+
+  *size = ntohl(request->networksize);
+
+  src->set_update_addr(request->src_ea);
+  next->set_update_addr(request->next_ea);
+}
+
+
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(DHTProtocol)

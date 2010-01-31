@@ -49,6 +49,8 @@ CLICK_DECLS
 #define ROUTE_REQUEST       5
 #define ROUTE_REPLAY        6
 
+#define NWS_REQUEST         7
+
 /***** M I N O R  - S T O R A G E **********/
 
 #define DHT_MESSAGE         1

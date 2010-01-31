@@ -63,6 +63,13 @@ struct falcon_routing_packet {
 
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
+struct falcon_nws_packet {
+  uint32_t networksize;
+
+  uint8_t next_ea[6];
+  uint8_t src_ea[6];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /**
  * Packet: me, pred, succ, fingertable
@@ -84,6 +91,10 @@ class DHTProtocolFalcon {
     static DHTnode *get_src(Packet *p);
 
     static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *operation, uint8_t *status, uint8_t *pos);
+
+    static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
+    static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
+    static void get_nws_info(Packet *p, DHTnode *src, DHTnode *next, uint32_t *size);
 
 };
 

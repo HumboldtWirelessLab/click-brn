@@ -396,7 +396,7 @@ class MD5 {
   }
 
  public:
-  static int hexcompare(const md5_byte_t *sa, const md5_byte_t *sb)
+  inline static int hexcompare(const md5_byte_t *sa, const md5_byte_t *sb)
   {
    // int len = sizeof(sa) > sizeof(sb) ? sizeof(sb): sizeof(sa);
    int len = 16;
@@ -412,6 +412,31 @@ class MD5 {
         return -1;
     }
     return 0;
+  }
+
+  inline static bool is_equals(const md5_byte_t *sa, const md5_byte_t *sb)
+  {
+    return (MD5::hexcompare(sa, sb) == 0);
+  }
+
+  inline static bool is_smaller(const md5_byte_t *sa, const md5_byte_t *sb)
+  {
+    return (MD5::hexcompare(sa, sb) == -1);
+  }
+
+  inline static bool is_bigger(const md5_byte_t *sa, const md5_byte_t *sb)
+  {
+    return (MD5::hexcompare(sa, sb) == 1);
+  }
+
+  inline static bool is_smaller_or_equals(const md5_byte_t *sa, const md5_byte_t *sb)
+  {
+    return (MD5::hexcompare(sa, sb) <= 0);
+  }
+
+  inline static bool is_bigger_or_equals(const md5_byte_t *sa, const md5_byte_t *sb)
+  {
+    return (MD5::hexcompare(sa, sb) >= 0);
   }
 
   static void calculate_md5(const char *msg, uint32_t msg_len, md5_byte_t *digest)

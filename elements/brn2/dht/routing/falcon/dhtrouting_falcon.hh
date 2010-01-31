@@ -7,6 +7,9 @@
 
 CLICK_DECLS
 
+#define FALCON_RESPONSIBLE_CHORD   0
+#define FALCON_RESPONSIBLE_FORWARD 1
+
 class DHTRoutingFalcon : public DHTRouting
 {
   public:

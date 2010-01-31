@@ -37,6 +37,10 @@ CLICK_DECLS
 #define RT_UPDATE_NEIGHBOUR   4
 #define RT_UPDATE_ALL         5
 
+/**
+ * Used in funtion which determinate the table in which a given node is placed (e.g. find_node)
+ */
+
 #define RT_NONE        0
 #define RT_ME          1
 #define RT_SUCCESSOR   2
@@ -91,16 +95,12 @@ class FalconRoutingTable : public Element
   int getStatus(DHTnode *node);
   int getStatus(EtherAddress *ea);
 
-  bool isBetterSuccessor(DHTnode *node);
-  bool isBetterPredecessor(DHTnode *node);
-  bool isInBetween(DHTnode *a, DHTnode *b, DHTnode *c);
-  bool isInBetween(DHTnode *a, DHTnode *b, md5_byte_t *c);
-  bool isInBetween(DHTnode *a, md5_byte_t *b, DHTnode *c);
-  bool isInBetween(md5_byte_t *a, DHTnode *b, DHTnode *c);
-
   bool isSuccessor(DHTnode *node);
   bool isPredecessor(DHTnode *node);
   bool isBacklog(DHTnode *node);
+
+  bool isBetterSuccessor(DHTnode *node);
+  bool isBetterPredecessor(DHTnode *node);
 
   int add_node(DHTnode *node);
   int add_node(DHTnode *node, bool is_neighbour);
@@ -129,11 +129,20 @@ class FalconRoutingTable : public Element
 
   DHTnodelist _fingertable;
 
+  DHTnodelist _allnodes;
+
+  /**
+   * index of the next node which has to be updated in the Fingertable. This index is reset to 0
+   * by successor_maintainence on successor
+   */
   int _lastUpdatedPosition;
   void setLastUpdatedPosition(int position);
 
-  DHTnodelist _allnodes;
 
+  /**
+   * fix_successor represent the status of the knowledge about the successor. If it is true, we
+   * are sure to know the right successor.
+   */
   bool fix_successor;
   void fixSuccessor(bool fix) { fix_successor = fix; }
   bool isFixSuccessor(void) { return fix_successor; }
