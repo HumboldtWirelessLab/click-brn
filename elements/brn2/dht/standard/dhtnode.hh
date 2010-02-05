@@ -24,12 +24,22 @@ CLICK_DECLS
 #define STATUS_MISSED  3
 #define STATUS_AWAY    4
 #define STATUS_ALL     128
+
+
+#define DEFAULT_DIGEST_LENGTH  128 /* 16*8 */
+#define MAX_DIGEST_LENGTH      128 /* 16*8 */
+
+#define MAX_NODEID_LENTGH 16
+
+
 class DHTnode
 {
 
   public:
 
-    md5_byte_t _md5_digest[16];
+    md5_byte_t _md5_digest[MAX_NODEID_LENTGH];
+    int _digest_length;             //number of used BITS of _md5_digest
+
     EtherAddress _ether_addr;
 
     uint8_t _status;
@@ -48,8 +58,12 @@ class DHTnode
 
     DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
+    DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length);
 
     void set_update_addr(uint8_t *ea);  //TODO: finds better name
+    void set_etheraddress(uint8_t *ea);
+    void set_nodeid(md5_byte_t *nodeid);
+    void set_nodeid(md5_byte_t *nodeid, int digest_length);
 
     void set_age_s(int s);           //TODO: Is that used ??
     void set_age(Timestamp *);
@@ -65,6 +79,8 @@ class DHTnode
 
     DHTnode *clone(void);
     bool equals(DHTnode *);
+    bool equalsID(DHTnode *);
+    bool equalsEtherAddress(DHTnode *n);
 
 };
 

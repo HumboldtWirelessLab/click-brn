@@ -20,6 +20,7 @@ DHTnode::DHTnode()
   _neighbor = false;
 
   memset(_md5_digest, 0, sizeof(_md5_digest));
+  _digest_length = DEFAULT_DIGEST_LENGTH;
 
   _extra = NULL;
 }
@@ -35,6 +36,8 @@ DHTnode::DHTnode(EtherAddress addr)
 
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(addr.data()).c_str(),
     strlen((const char*)MD5::convert_ether2hex(addr.data()).c_str()), _md5_digest );
+
+  _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
 DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
@@ -44,6 +47,25 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
   _extra = NULL;
   _age = Timestamp::now();
   memcpy(_md5_digest, nodeid, 16);
+  _digest_length = DEFAULT_DIGEST_LENGTH;
+}
+
+DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length)
+{
+  _ether_addr = addr;
+  _status = STATUS_UNKNOWN;
+  _extra = NULL;
+  _age = Timestamp::now();
+  memset(_md5_digest, 0, sizeof(_md5_digest));
+
+  if ( (nodeid != NULL) && (digest_length > 0) ) {
+    if ( ( _digest_length & 7 ) == 0 )
+      memcpy(_md5_digest, nodeid, (_digest_length >> 3));     // _digest_length mod 8
+    else
+      memcpy(_md5_digest, nodeid, (_digest_length >> 3) + 1); // (_digest_length mod 8) + 1
+  }
+
+  _digest_length = digest_length;
 }
 
 void
@@ -56,6 +78,35 @@ DHTnode::set_update_addr(uint8_t *ea)
 
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(_ether_addr.data()).c_str(),
                       strlen((const char*)MD5::convert_ether2hex(_ether_addr.data()).c_str()), _md5_digest );
+
+  _digest_length = DEFAULT_DIGEST_LENGTH;
+}
+
+void
+DHTnode::set_etheraddress(uint8_t *ea)
+{
+  _ether_addr = EtherAddress(ea);
+}
+
+void
+DHTnode::set_nodeid(md5_byte_t *nodeid)
+{
+  memcpy(_md5_digest, nodeid, 16);
+  _digest_length = DEFAULT_DIGEST_LENGTH;
+}
+
+void
+DHTnode::set_nodeid(md5_byte_t *nodeid, int digest_length)
+{
+  memset(_md5_digest, 0, sizeof(_md5_digest));
+  _digest_length = digest_length;
+
+  if ( digest_length > 0 ) {
+    if ( ( _digest_length & 7 ) == 0 )
+      memcpy(_md5_digest, nodeid, (_digest_length >> 3));     // _digest_length mod 8
+    else
+      memcpy(_md5_digest, nodeid, (_digest_length >> 3) + 1); // (_digest_length mod 8) + 1
+  }
 }
 
 void
@@ -147,6 +198,7 @@ DHTnode::clone(void)
   cl->_neighbor = _neighbor;
 
   memcpy(cl->_md5_digest, _md5_digest, sizeof(_md5_digest));
+  cl->_digest_length = _digest_length;
 
   return cl;
 }
@@ -155,7 +207,21 @@ bool
 DHTnode::equals(DHTnode *n) {
   if ( n == NULL) return false;
 
-  return ( memcmp(_md5_digest, n->_md5_digest, 16) == 0 );
+  return ( (_digest_length == n->_digest_length) && (memcmp(_md5_digest, n->_md5_digest, 16) == 0) );
+}
+
+bool
+DHTnode::equalsID(DHTnode *n) {
+  if ( n == NULL) return false;
+
+  return ( (_digest_length == n->_digest_length) && (memcmp(_md5_digest, n->_md5_digest, 16) == 0) );
+}
+
+bool
+DHTnode::equalsEtherAddress(DHTnode *n) {
+  if ( n == NULL) return false;
+
+  return ( memcmp(_ether_addr.data(), n->_ether_addr.data(), 6) == 0 );
 }
 
 CLICK_ENDDECLS

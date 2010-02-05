@@ -24,6 +24,7 @@
 #define FALCON_ROUTINGTABLE_HH
 
 #include <click/element.hh>
+#include <click/vector.hh>
 
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
@@ -50,6 +51,21 @@ CLICK_DECLS
 
 class FalconRoutingTable : public Element
 {
+ public:
+
+  class CallbackFunction {
+
+   public:
+    void (*_info_func)(void*, int);
+    void *_info_obj;
+
+    CallbackFunction( void (*info_func)(void*,int), void *info_obj ) {
+      _info_func = info_func;
+      _info_obj = info_obj;
+    }
+
+    ~CallbackFunction(){}
+  };
 
  public:
   FalconRoutingTable();
@@ -66,24 +82,12 @@ class FalconRoutingTable : public Element
   void add_handlers();
 
  private:
-  void (*_info_func)(void*, int);
-  void *_info_obj;
+   Vector<CallbackFunction*> _callbacklist;
+   void update_callback(int status);
 
  public:
 
-  int set_update_callback(void (*info_func)(void*,int), void *info_obj) {
-    if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
-    else
-    {
-      _info_func = info_func;
-      _info_obj = info_obj;
-      return 0;
-    }
-  }
-
-  void update_callback(int status) {
-    (*_info_func)(_info_obj, status);
-  }
+  int add_update_callback(void (*info_func)(void*,int), void *info_obj);
 
   String routing_info(void);
   void reset(void);
@@ -104,7 +108,7 @@ class FalconRoutingTable : public Element
 
   int add_node(DHTnode *node);
   int add_node(DHTnode *node, bool is_neighbour);
-  int add_node(DHTnode *node, bool is_neighbour, bool want_callback);
+  int add_node(DHTnode *node, bool is_neighbour, bool want_callback);//TODO: Check whether this is used, if not remove
   int add_neighbour(DHTnode *node);
   int add_nodes(DHTnodelist *nodes);
 

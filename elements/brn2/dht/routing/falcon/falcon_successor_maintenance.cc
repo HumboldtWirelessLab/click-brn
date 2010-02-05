@@ -43,8 +43,15 @@ int FalconSuccessorMaintenance::configure(Vector<String> &conf, ErrorHandler *er
   return 0;
 }
 
+static void notify_callback_func(void *e, int status)
+{
+  FalconSuccessorMaintenance *f = (FalconSuccessorMaintenance *)e;
+  f->handle_routing_update_callback(status);
+}
+
 int FalconSuccessorMaintenance::initialize(ErrorHandler *)
 {
+  _frt->add_update_callback(notify_callback_func,(void*)this);
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
   return 0;
@@ -153,8 +160,19 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   } else {
     BRN_WARN("error??? Me: %s Succ: %s",_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
   }
-
 }
+
+/*************************************************************************************************/
+/******************************** C A L L B A C K ************************************************/
+/*************************************************************************************************/
+
+void
+FalconSuccessorMaintenance::handle_routing_update_callback(int status)
+{
+  if ( status == RT_UPDATE_PREDECESSOR )
+    click_chatter("Update Successor");
+}
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(FalconSuccessorMaintenance)

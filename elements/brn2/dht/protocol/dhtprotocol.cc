@@ -59,6 +59,13 @@ DHTProtocol::get_type(Packet *p)
   return ( dht_header->minor_type );
 }
 
+void
+DHTProtocol::set_type(Packet *p, uint8_t minor_type)
+{
+  struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
+  dht_header->minor_type = minor_type;
+}
+
 uint16_t
 DHTProtocol::get_payload_len(Packet *p)
 {

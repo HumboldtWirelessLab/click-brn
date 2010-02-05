@@ -55,7 +55,7 @@ static void notify_callback_func(void *e, int status)
 
 int DHTRoutingFalcon::initialize(ErrorHandler *)
 {
-  _frt->set_update_callback(notify_callback_func,(void*)this);
+  _frt->add_update_callback(notify_callback_func,(void*)this);
   return 0;
 }
 
@@ -137,6 +137,10 @@ DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
   return get_responsibly_node_forward(key);
 }
 
+/*************************************************************************************************/
+/******************************** C A L L B A C K ************************************************/
+/*************************************************************************************************/
+
 void
 DHTRoutingFalcon::handle_routing_update_callback(int status)
 {
@@ -144,6 +148,10 @@ DHTRoutingFalcon::handle_routing_update_callback(int status)
        ( ( _responsible == FALCON_RESPONSIBLE_FORWARD ) && ( status == RT_UPDATE_SUCCESSOR ) ) )
     notify_callback(ROUTING_STATUS_UPDATE);
 }
+
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
 
 enum {
   H_ROUTING_INFO

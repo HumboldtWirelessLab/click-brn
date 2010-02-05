@@ -21,13 +21,13 @@
 #include "dhtrouting_dart.hh"
 #include "dhtprotocol_dart.hh"
 
-//#include "elements/brn/routing/nblist.hh"
+#include "dart_routingtable.hh"
+
+#include "dart_functions.hh"
 
 CLICK_DECLS
 
-DHTRoutingDart::DHTRoutingDart():
-  _lookup_timer(static_lookup_timer_hook,this),
-  _packet_buffer_timer(static_packet_buffer_timer_hook,this)
+DHTRoutingDart::DHTRoutingDart()
 {
 }
 
@@ -49,28 +49,14 @@ DHTRoutingDart::cast(const char *name)
 int
 DHTRoutingDart::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  EtherAddress _my_ether_addr;
-  _linkstat = NULL;                          //no linkstat
-  _update_interval = 1000;                   //update interval -> 1 sec
 
   if (cp_va_kparse(conf, this, errh,
-    "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
-    "LINKSTAT", cpkP, cpElement, &_linkstat,
-    "UPDATEINT", cpkP, cpInteger, &_update_interval,
+    "DRT", cpkP+cpkM , cpElement, &_drt,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 
-  if (!_linkstat || !_linkstat->cast("BRN2LinkStat"))
-  {
-    _linkstat = NULL;
-    click_chatter("kein Linkstat");
-  }
-
-  _me = new DHTnode(_my_ether_addr);
-  _me->_status = STATUS_OK;
-  _me->_neighbor = true;
-  _dhtnodes.add_dhtnode(_me);
+  _me = _drt->_me;
 
   return 0;
 }
@@ -78,71 +64,49 @@ DHTRoutingDart::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 DHTRoutingDart::initialize(ErrorHandler *)
 {
-  _lookup_timer.initialize(this);
-  _lookup_timer.schedule_after_msec( 5000 + _update_interval );
-  _packet_buffer_timer.initialize(this);
-  _packet_buffer_timer.schedule_after_msec( 10000 );
-
   return 0;
 }
-
-void
-DHTRoutingDart::set_lookup_timer()
-{
-  _lookup_timer.schedule_after_msec( _update_interval );
-}
-
-void
-DHTRoutingDart::static_lookup_timer_hook(Timer *t, void *f)
-{
-  if ( t == NULL ) click_chatter("Time is NULL");
-  ((DHTRoutingDart*)f)->set_lookup_timer();
-}
-
-void
-DHTRoutingDart::static_packet_buffer_timer_hook(Timer *t, void *f)
-{
-  DHTRoutingDart *dht;
-  PacketSendBuffer::BufferedPacket *bpacket;
-  int next_p;
-
-  dht = (DHTRoutingDart*)f;
-
-  if ( t == NULL ) click_chatter("Timer is NULL");
-  bpacket = dht->packetBuffer.getNextBufferedPacket();
-
-  if ( bpacket != NULL )
-  {
-    dht->output(bpacket->_port).push(bpacket->_p);
-    next_p = dht->packetBuffer.getTimeToNext();
-    if ( next_p >= 0 )
-      dht->_packet_buffer_timer.schedule_after_msec( next_p );
-    else
-      dht->_packet_buffer_timer.schedule_after_msec( 10000 );
-
-    delete bpacket;
-  }
-  else
-  {
-    dht->_packet_buffer_timer.schedule_after_msec( 10000 );
-  }
-}
-
-void
-DHTRoutingDart::push( int /*port*/, Packet *packet )
-{
-  packet->kill();
-}
-
-
 
 /****************************************************************************************
 ****************************** N O D E   F O R   K E Y *+********************************
 ****************************************************************************************/
 DHTnode *
-DHTRoutingDart::get_responsibly_node(md5_byte_t */*key*/)
+DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
 {
-  return NULL;
+  int diffbit;
+  DHTnode *best_node = NULL;
+  int position_best_node;
+  DHTnode *acnode;
+  int position_ac_node;
+
+  if ( DartFunctions::equals(_drt->_me, key) ) return _drt->_me;
+
+  diffbit = DartFunctions::diff_bit(_drt->_me, key);
+
+  for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
+    acnode = _drt->_neighbours.get_dhtnode(n);
+    if ( DartFunctions::equals(acnode, key) ) return acnode;
+
+    position_ac_node = DartFunctions::position_last_1(acnode);
+    if ( DartFunctions::equals(acnode, key, position_ac_node ) && ((best_node == NULL) || (position_best_node < position_ac_node) ) ) {
+      position_best_node = position_ac_node,
+      best_node = acnode;
+    }
+  }
+
+  if ( best_node == NULL ) {
+    //click_chatter("Search for shortest");
+    for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
+      acnode = _drt->_neighbours.get_dhtnode(n);
+      position_ac_node = DartFunctions::position_last_1(acnode);
+      if ( (best_node == NULL) || (position_best_node > position_ac_node) ) {
+        position_best_node = position_ac_node,
+        best_node = acnode;
+      }
+    }
+  }
+
+  return best_node;
 }
 
 /****************************************************************************************
@@ -153,16 +117,6 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t */*key*/)
 /************************************* H A N D L E R ***************************************/
 /*******************************************************************************************/
 
-String 
-DHTRoutingDart::routing_info(void)
-{
-  StringAccum sa;
-
-  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << " )\n";
-
-  return sa.take_string();
-}
-
 enum {
   H_ROUTING_INFO
 };
@@ -170,11 +124,11 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingDart *dht_omni = (DHTRoutingDart *)e;
+  DHTRoutingDart *dht_dart = (DHTRoutingDart *)e;
 
   switch ((uintptr_t) thunk)
   {
-    case H_ROUTING_INFO : return ( dht_omni->routing_info( ) );
+    case H_ROUTING_INFO : return ( dht_dart->_drt->routing_info( ) );
     default: return String();
   }
 }

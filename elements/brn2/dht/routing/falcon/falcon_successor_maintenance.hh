@@ -31,6 +31,8 @@ class FalconSuccessorMaintenance : public Element
 
     void push( int port, Packet *packet );
 
+    void handle_routing_update_callback(int status);
+
   private:
     FalconRoutingTable *_frt;
 

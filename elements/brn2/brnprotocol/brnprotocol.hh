@@ -47,7 +47,7 @@ union addr {
 #define BRN_PORT_DSR                  3
 #define BRN_PORT_BCASTROUTING         4
 #define BRN_PORT_LINK_PROBE           6
-#define BRN_PORT_DHT                  7
+#define BRN_PORT_DHT                  7 /*TODO: Is this really used*/
 #define BRN_PORT_IAPP                 8
 #define BRN_PORT_GATEWAY              9
 #define BRN_PORT_BATMAN              10
@@ -61,6 +61,8 @@ union addr {
 #define BRN_PORT_PROBABILITYFLODDING 18
 #define BRN_PORT_EVENTHANDLER        19
 #define BRN_PORT_GEOROUTING          20
+#define BRN_PORT_DART                21
+
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0

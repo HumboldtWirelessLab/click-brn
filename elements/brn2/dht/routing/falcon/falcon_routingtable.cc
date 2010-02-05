@@ -301,6 +301,31 @@ FalconRoutingTable::reset()
   backlog = NULL;
 }
 
+/*************************************************************************************************/
+/******************************** C A L L B A C K ************************************************/
+/*************************************************************************************************/
+int
+FalconRoutingTable::add_update_callback(void (*info_func)(void*,int), void *info_obj)
+{
+  _callbacklist.push_back(new CallbackFunction(info_func, info_obj));
+  return 0;
+}
+
+void
+FalconRoutingTable::update_callback(int status)
+{
+  CallbackFunction *cbf;
+  for ( int i = 0; i < _callbacklist.size(); i++ ) {
+    cbf = _callbacklist[i];
+
+    (*cbf->_info_func)(cbf->_info_obj, status);
+  }
+}
+
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
+
 String
 FalconRoutingTable::routing_info(void)
 {

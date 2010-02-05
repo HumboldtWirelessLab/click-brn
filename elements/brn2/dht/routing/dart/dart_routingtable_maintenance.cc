@@ -1,0 +1,256 @@
+#include <click/config.h>
+#include <click/etheraddress.hh>
+#include <clicknet/ether.h>
+#include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/glue.hh>
+#include <click/straccum.hh>
+#include <click/timer.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/standard/md5.h"
+
+#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn2/dht/standard/dhtnodelist.hh"
+
+#include "dhtprotocol_dart.hh"
+
+#include "dart_functions.hh"
+#include "dart_routingtable.hh"
+#include "dart_routingtable_maintenance.hh"
+
+
+
+CLICK_DECLS
+
+DartRoutingTableMaintenance::DartRoutingTableMaintenance():
+  _lookup_timer(static_lookup_timer_hook,this),
+  _starttime(FALCON_DEFAULT_START_TIME),
+  _activestart(false),
+  _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
+  _debug(BrnLogger::DEFAULT)
+{
+}
+
+DartRoutingTableMaintenance::~DartRoutingTableMaintenance()
+{
+}
+
+int DartRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+  if (cp_va_kparse(conf, this, errh,
+      "DRT", cpkP+cpkM, cpElement, &_drt,
+      "ACTIVESTART", cpkP+cpkM, cpBool, &_activestart,
+      "STARTTIME", cpkP+cpkM, cpInteger, &_starttime,
+      "UPDATEINT", cpkP, cpInteger, &_update_interval,
+      "DEBUG", cpkN, cpInteger, &_debug,
+      cpEnd) < 0)
+    return -1;
+
+  return 0;
+}
+
+int DartRoutingTableMaintenance::initialize(ErrorHandler *)
+{
+  _lookup_timer.initialize(this);
+  _lookup_timer.schedule_after_msec( _starttime + click_random() % _update_interval );
+  return 0;
+}
+
+void
+DartRoutingTableMaintenance::static_lookup_timer_hook(Timer *t, void *f)
+{
+  if ( t == NULL ) click_chatter("Time is NULL");
+  ((DartRoutingTableMaintenance*)f)->table_maintenance();
+  ((DartRoutingTableMaintenance*)f)->set_lookup_timer();
+}
+
+void
+DartRoutingTableMaintenance::set_lookup_timer()
+{
+  _lookup_timer.schedule_after_msec( _update_interval );
+}
+
+/**
+  * return the neighbour with the shortest ID
+  * TODO: also considerer linkquality
+  */
+
+DHTnode*
+DartRoutingTableMaintenance::getBestNeighbour()
+{
+  DHTnode *best = NULL;
+  DHTnode *next = NULL;
+
+  if ( _drt->_neighbours.size() == 0 ) return NULL;
+
+  best = _drt->_neighbours.get_dhtnode(0);
+
+  for ( int n = 1; n < _drt->_neighbours.size(); n++ ) {
+    next = _drt->_neighbours.get_dhtnode(n);
+    if ( next->_digest_length < best->_digest_length ) {
+      //TODO: better metric (linkquality, age,.....
+      best = next;
+    }
+  }
+
+  return best;
+}
+
+void
+DartRoutingTableMaintenance::table_maintenance()
+{
+
+  if ( ( _activestart ) && ( ! _drt->_validID ) && ( _drt->_neighbours.size() == 0 ) )  {
+    //I'm active, have no valid ID and no neighbour to ask for an ID
+    _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
+    _drt->_validID = true;
+  } else if ( _drt->_neighbours.size() > 0 ) {  //I've neighbours, so check
+    if ( ! _drt->_validID ) {                   //i've no ID, so ask best neighbour for ID(-Sharing)
+      DHTnode *bestneighbour = getBestNeighbour();
+
+      BRN_DEBUG("Best Neighbour of %d : %s",_drt->_neighbours.size(),bestneighbour->_ether_addr.unparse().c_str());
+
+      WritablePacket *p = DHTProtocolDart::new_nodeid_request_packet( _drt->_me, bestneighbour );
+      output(0).push(p);
+    } else {
+      //TODO: check for pdate, Balancing,....
+    }
+  }
+}
+
+void
+DartRoutingTableMaintenance::push( int port, Packet *packet )
+{
+  if ( ( port == 0 ) && ( packet != NULL ) ) {
+    switch ( DHTProtocol::get_type(packet) ) {
+      case DART_MINOR_REQUEST_ID:
+        handle_request(packet);
+        break;
+      case DART_MINOR_ASSIGN_ID:
+        handle_assign(packet);
+        break;
+      case DART_MINOR_REVOKE_ID:
+      case DART_MINOR_UPDATE_ID:
+      case DART_MINOR_RELEASE_ID:
+      default:
+        BRN_WARN("Unknown Operation in falcon-routing");
+        packet->kill();
+        break;
+    }
+  }
+}
+
+void
+DartRoutingTableMaintenance::assign_id(DHTnode *newnode)
+{
+  DartFunctions::copy_id(newnode, _drt->_me);
+  DartFunctions::append_id_bit(newnode, 1);
+  DartFunctions::append_id_bit(_drt->_me, 0);
+}
+
+void
+DartRoutingTableMaintenance::handle_request(Packet *packet)
+{
+  WritablePacket *rep;
+  DHTnode src;
+  DHTnode dst;
+
+  uint8_t status;
+
+  BRN_DEBUG("GOT ID REQUEST");
+
+  DHTProtocolDart::get_info(packet, &src, &dst, &status);
+
+  //TODO: check whether dst is me but use ea for that
+
+  if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
+    assign_id(&src);
+    rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
+
+    output(0).push(rep);
+
+    _drt->update_callback(DART_UPDATE_ID);           //TODO: move this and the change of the own ID to routingtable
+
+  } else {
+  }
+}
+
+void
+DartRoutingTableMaintenance::handle_assign(Packet *packet)
+{
+
+  DHTnode src;
+  DHTnode dst;
+
+  uint8_t status;
+
+  BRN_DEBUG("GOT ID REPLY");
+
+  DHTProtocolDart::get_info(packet, &src, &dst, &status);
+  DartFunctions::copy_id(_drt->_me, &dst);
+  _drt->_validID = true;
+
+  packet->kill();
+
+}
+
+/*******************************************************************************************/
+/************************************* H A N D L E R ***************************************/
+/*******************************************************************************************/
+
+enum {
+  H_ACTIVESTART
+};
+
+static int
+write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
+{
+  DartRoutingTableMaintenance *drt = (DartRoutingTableMaintenance *)e;
+  String s = cp_uncomment(in_s);
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_ACTIVESTART :
+    {
+      bool activestart;
+      if (!cp_bool(s, &activestart))
+        return errh->error("activestart parameter must be a bool value (false/true)");
+      drt->_activestart = activestart;
+      break;
+    }
+  }
+
+  return 0;
+}
+
+static String
+read_debug_param(Element *e, void *)
+{
+  DartRoutingTableMaintenance *drtm = (DartRoutingTableMaintenance *)e;
+  return String(drtm->_debug) + "\n";
+}
+
+static int 
+write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  DartRoutingTableMaintenance *drtm = (DartRoutingTableMaintenance *)e;
+  String s = cp_uncomment(in_s);
+  int debug;
+  if (!cp_integer(s, &debug))
+    return errh->error("debug parameter must be an integer value between 0 and 4");
+  drtm->_debug = debug;
+  return 0;
+}
+
+
+void DartRoutingTableMaintenance::add_handlers()
+{
+  add_write_handler("activestart", write_param , (void *)H_ACTIVESTART);
+  add_read_handler("debug", read_debug_param, 0);
+  add_write_handler("debug", write_debug_param, 0);
+}
+
+CLICK_ENDDECLS
+EXPORT_ELEMENT(DartRoutingTableMaintenance)

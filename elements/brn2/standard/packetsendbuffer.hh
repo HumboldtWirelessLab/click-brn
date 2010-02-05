@@ -61,6 +61,11 @@ class PacketSendBuffer
   private:
     PacketQueue queue;
 
+  public:
+    int size() { return queue.size(); }
+    PacketSendBuffer::BufferedPacket *get(int i) { return queue[i]; }
+    void del(int i) { queue.erase(queue.begin() + i); }
+
 };
 
 CLICK_ENDDECLS

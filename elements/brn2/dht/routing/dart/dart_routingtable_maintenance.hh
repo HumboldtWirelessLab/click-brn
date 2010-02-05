@@ -1,24 +1,24 @@
-#ifndef FALCON_ROUTINGTABLE_MAINTENANCE_HH
-#define FALCON_ROUTINGTABLE_MAINTENANCE_HH
+#ifndef DART_ROUTINGTABLE_MAINTENANCE_HH
+#define DART_ROUTINGTABLE_MAINTENANCE_HH
 #include <click/element.hh>
 
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
-#include "falcon_routingtable.hh"
+#include "dart_routingtable.hh"
 CLICK_DECLS
 
 #define FALCON_DEFAULT_UPDATE_INTERVAL  2000
 #define FALCON_DEFAULT_START_TIME      10000
 
 
-class FalconRoutingTableMaintenance : public Element
+class DartRoutingTableMaintenance : public Element
 {
   public:
-    FalconRoutingTableMaintenance();
-    ~FalconRoutingTableMaintenance();
+    DartRoutingTableMaintenance();
+    ~DartRoutingTableMaintenance();
 
 /*ELEMENT*/
-    const char *class_name() const  { return "FalconRoutingTableMaintenance"; }
+    const char *class_name() const  { return "DartRoutingTableMaintenance"; }
 
     const char *processing() const  { return PUSH; }
 
@@ -31,8 +31,10 @@ class FalconRoutingTableMaintenance : public Element
 
     void push( int port, Packet *packet );
 
+    void add_handlers();
+
   private:
-    FalconRoutingTable *_frt;
+    DartRoutingTable *_drt;
 
     Timer _lookup_timer;
     static void static_lookup_timer_hook(Timer *, void *);
@@ -40,12 +42,20 @@ class FalconRoutingTableMaintenance : public Element
 
     void table_maintenance();
 
-    void handle_request_pos(Packet *packet);
-    void handle_reply_pos(Packet *packet);
+    void handle_request(Packet *packet);
+    void handle_assign(Packet *packet);
 
-    int _start;
+  public:
+    int _starttime;
+    int _activestart;
+
+  private:
+    DHTnode* getBestNeighbour();
+    void assign_id(DHTnode *newnode);
+
     int _update_interval;
 
+  public:
     int _debug;
 };
 

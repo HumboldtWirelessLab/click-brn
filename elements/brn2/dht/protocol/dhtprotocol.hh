@@ -63,6 +63,7 @@ class DHTProtocol {
 
     static uint8_t get_routing(Packet *p);
     static uint8_t get_type(Packet *p);
+    static void set_type(Packet *p, uint8_t minor_type);
     static uint16_t get_payload_len(Packet *p);
     static uint8_t *get_payload(Packet *p);
 
