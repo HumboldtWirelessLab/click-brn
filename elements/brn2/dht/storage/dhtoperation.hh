@@ -64,6 +64,7 @@ class DHTOperation {
     void remove(uint8_t *key, uint16_t keylen);
     void read(uint8_t *key, uint16_t keylen);
     void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen);
+    void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, bool insert);
     void lock(uint8_t *key, uint16_t keylen);
     void unlock(uint8_t *key, uint16_t keylen);
 
