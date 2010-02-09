@@ -52,8 +52,9 @@ class DHTRoutingKlibs : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingKlibs"; }
     bool replication_support() const { return false; }
-    int max_replication() const { return(1); }
+    int max_replication() const { return 0; }
     DHTnode *get_responsibly_node(md5_byte_t *key);
+    DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number);
 
     String routing_info(void);
     PacketSendBuffer packetBuffer;

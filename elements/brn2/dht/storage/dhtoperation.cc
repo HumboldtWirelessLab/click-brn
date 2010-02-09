@@ -5,6 +5,9 @@ CLICK_DECLS
 
 DHTOperation::DHTOperation()
 {
+  header.id = 0;
+  header.replica = 0;               //DEFAULT: ask one node, so no replica
+  header.reserved = 0;
   key = NULL;
   header.keylen = 0;
   value = NULL;
@@ -237,16 +240,29 @@ DHTOperation::is_reply()
 }
 
 void
-DHTOperation::set_id(uint32_t _id)
+DHTOperation::set_id(uint16_t _id)
 {
   header.id = _id;
 }
 
-uint32_t
+uint16_t
 DHTOperation::get_id()
 {
   return header.id;
 }
+
+void
+DHTOperation::set_replica(uint8_t _replica)
+{
+  header.replica = _replica;
+}
+
+uint8_t
+DHTOperation::get_replica()
+{
+  return header.replica;
+}
+
 
 int
 DHTOperation::length()

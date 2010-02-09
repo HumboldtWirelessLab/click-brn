@@ -20,6 +20,7 @@ DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
   _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this),
+  _startkey(0),
   op_rep(0),
   write_req(0),
   write_rep(0),
@@ -32,7 +33,10 @@ DHTStorageTest::DHTStorageTest():
   read_time(0),
   notfound_time(0),
   timeout_time(0),
-  max_timeout_time(0)
+  max_timeout_time(0),
+  _retries(0),
+  _replica(0)
+
 {
 }
 
@@ -51,7 +55,10 @@ int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
     "STARTTIME",cpkN, cpInteger, &_starttime,
     "INTERVAL",cpkN, cpInteger, &_interval,
     "COUNTKEYS", cpkN, cpInteger, &_countkey,
+    "STARTKEY", cpkN, cpInteger, &_startkey,
     "WRITE",cpkN, cpBool, &_write,
+    "RETRIES", cpkN, cpInteger, &_retries,
+    "REPLICA", cpkN, cpInteger, &_replica,
     "DEBUG", cpkN, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -70,7 +77,7 @@ int DHTStorageTest::initialize(ErrorHandler *)
   _request_timer.initialize(this);
   _request_timer.schedule_after_msec( _starttime + ( click_random() % _interval ) );
 
-  _key = 0;
+  _key = _startkey;
   if ( _write )
     _mode = MODE_INSERT;
   else
@@ -117,7 +124,7 @@ DHTStorageTest::callback(DHTOperation *op) {
         timeout_time += op->request_duration;
         if ( max_timeout_time < op->request_duration ) max_timeout_time = op->request_duration;
 
-        BRN_DEBUG("DHT-Test: Timeout");
+        BRN_DEBUG("DHT-Test: Timeout: %s", string);
       } else {
         not_found++;
         notfound_time += op->request_duration;
@@ -154,13 +161,14 @@ DHTStorageTest::request_timer_hook(Timer *t)
     sprintf(my_value,">%d<",_key);
 
     req->insert((uint8_t*)&_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
-    req->max_retries = 1;
+    req->max_retries = _retries;
+    req->set_replica(_replica);
     delete[] my_value;
     _key++;
 
-    if ( _key == _countkey )
+    if ( _key == (_startkey + _countkey) )
     {
-      _key = 0;
+      _key = _startkey;
       _mode = MODE_READ;
     }
   }
@@ -169,8 +177,9 @@ DHTStorageTest::request_timer_hook(Timer *t)
     read_req++;
     BRN_DEBUG("Read Key: %d",_key);
     req->read((uint8_t*)&_key, sizeof(uint32_t));
-    req->max_retries = 1;
-    _key = (_key + 1) % _countkey;
+    req->max_retries = _retries;
+    req->set_replica(_replica);
+    _key = _startkey + ( (_key - _startkey + 1) % _countkey );
   }
 
   result = _dht_storage->dht_request(req, callback_func, (void*)this );
