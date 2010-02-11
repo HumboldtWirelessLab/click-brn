@@ -24,6 +24,7 @@ CLICK_DECLS
 
 MarkIPCE::MarkIPCE()
 {
+    _drops = 0;
 }
 
 MarkIPCE::~MarkIPCE()
@@ -31,60 +32,35 @@ MarkIPCE::~MarkIPCE()
 }
 
 int
-MarkIPCE::initialize(ErrorHandler *)
+MarkIPCE::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  _drops = 0;
-  return 0;
-}
-
-inline Packet *
-MarkIPCE::smaction(Packet *p)
-{
-  const click_ip *iph = p->ip_header();
-
-  if (!p->has_network_header() || (iph->ip_tos & IP_ECNMASK) == IP_ECN_NOT_ECT) {
-    p->kill();
-    return 0;
-  } else if ((iph->ip_tos & IP_ECNMASK) == IP_ECN_CE)
-    return p;
-  else {
-    WritablePacket *q = p->uniqueify();
-    click_ip *q_iph = q->ip_header();
-
-    // incrementally update IP checksum
-    // new_sum = ~(~old_sum + ~old_halfword + new_halfword)
-    //         = ~(~old_sum + ~old_halfword + (old_halfword + 0x0001))
-    //         = ~(~old_sum + ~old_halfword + old_halfword + 0x0001)
-    //         = ~(~old_sum + ~0 + 0x0001)
-    //         = ~(~old_sum + 0x0001)
-    if ((q_iph->ip_tos & IP_ECNMASK) == IP_ECN_ECT2) {
-      unsigned sum = (~ntohs(q_iph->ip_sum) & 0xFFFF) + 0x0001;
-      q_iph->ip_sum = ~htons(sum + (sum >> 16));
-    } else {
-      unsigned sum = (~ntohs(q_iph->ip_sum) & 0xFFFF) + 0x0002;
-      q_iph->ip_sum = ~htons(sum + (sum >> 16));
-    }
-
-    q_iph->ip_tos |= IP_ECN_CE;
-
-    return q;
-  }
-}
-
-void
-MarkIPCE::push(int, Packet *p)
-{
-  if ((p = smaction(p)) != 0)
-    output(0).push(p);
+    _force = false;
+    return cp_va_kparse(conf, this, errh,
+			"FORCE", cpkP, cpBool, &_force,
+			cpEnd);
 }
 
 Packet *
-MarkIPCE::pull(int)
+MarkIPCE::simple_action(Packet *p)
 {
-  Packet *p = input(0).pull();
-  if (p)
-    p = smaction(p);
-  return p;
+    assert(p->has_network_header());
+    const click_ip *iph = p->ip_header();
+    if ((iph->ip_tos & IP_ECNMASK) == IP_ECN_NOT_ECT && !_force) {
+	p->kill();
+	return 0;
+    } else if ((iph->ip_tos & IP_ECNMASK) == IP_ECN_CE)
+	return p;
+
+    WritablePacket *q = p->uniqueify();
+    if (!(q = p->uniqueify()))
+	return 0;
+
+    click_ip *q_iph = q->ip_header();
+    uint16_t old_hw = *(uint16_t *) q_iph;
+    q_iph->ip_tos |= IP_ECN_CE;
+    click_update_in_cksum(&q_iph->ip_sum, old_hw, *(uint16_t *) q_iph);
+
+    return q;
 }
 
 void

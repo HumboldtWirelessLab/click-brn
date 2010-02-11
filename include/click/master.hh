@@ -47,12 +47,12 @@ class Master { public:
     void set_max_timer_stride(unsigned timer_stride);
 
 #if CLICK_USERLEVEL
-    int add_select(int fd, Element*, int mask);
-    int remove_select(int fd, Element*, int mask);
+    int add_select(int fd, Element *element, int mask);
+    int remove_select(int fd, Element *element, int mask);
     void run_selects(bool more_tasks);
 
-    int add_signal_handler(int signo, Router*, const String &handler);
-    int remove_signal_handler(int signo, Router*, const String &handler);
+    int add_signal_handler(int signo, Router *router, String handler);
+    int remove_signal_handler(int signo, Router *router, String handler);
     inline void run_signals();
 #endif
 
@@ -189,6 +189,7 @@ class Master { public:
 # if HAVE_MULTITHREAD
     click_processor_t _selecting_processor;
 # endif
+    void register_select(int fd, bool add_read, bool add_write);
     void remove_pollfd(int pi, int event);
 # if HAVE_USE_KQUEUE
     void run_selects_kqueue(bool);

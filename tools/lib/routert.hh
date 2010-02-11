@@ -46,7 +46,7 @@ class RouterT : public ElementClassT { public:
     ElementT *get_element(const String &name, ElementClassT *eclass, const String &configuration, const LandmarkT &landmark);
     ElementT *add_anon_element(ElementClassT *eclass, const String &configuration = String(), const LandmarkT &landmark = LandmarkT::empty_landmark());
     void change_ename(int, const String &);
-    void deanonymize_elements();
+    void assign_element_names();
     void free_element(ElementT *);
     void free_dead_elements();
 
@@ -154,8 +154,8 @@ class RouterT : public ElementClassT { public:
     inline bool insert_after(ElementT *, const PortT &);
 
     // REQUIREMENTS
-    void add_requirement(const String &);
-    void remove_requirement(const String &);
+    void add_requirement(const String &type, const String &value);
+    void remove_requirement(const String &type, const String &value);
     const Vector<String> &requirements() const	{ return _requirements; }
 
     // ARCHIVE

@@ -7,7 +7,7 @@ CLICK_DECLS
 /*
 =c
 
-MarkIPCE()
+MarkIPCE([FORCE])
 
 =s ip
 
@@ -15,32 +15,28 @@ sets IP packets' ECN field to Congestion Experienced
 
 =d
 
-Expects IP packets as input. Sets each incoming packet's ECN field to
+Expects IP packets as input.  Sets each incoming packet's ECN field to
 Congestion Experienced (value 3), incrementally recalculates the IP checksum,
-and passes the packet to output 0. Non-IP packets, and IP packets whose ECN
-field is zero (not ECN-capable), are dropped. */
+and passes the packet to output 0.  Packets whose ECN field is zero (not
+ECN-capable) are dropped unless the optional FORCE argument is true. */
 
 class MarkIPCE : public Element { public:
 
-  MarkIPCE();
-  ~MarkIPCE();
+    MarkIPCE();
+    ~MarkIPCE();
 
-  const char *class_name() const		{ return "MarkIPCE"; }
-  const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
+    const char *class_name() const		{ return "MarkIPCE"; }
+    const char *port_count() const		{ return PORTS_1_1; }
 
-  int initialize(ErrorHandler *);
-  void add_handlers();
+    int configure(Vector<String> &conf, ErrorHandler *errh);
+    void add_handlers();
 
-  inline Packet *smaction(Packet *);
-  void push(int, Packet *p);
-  Packet *pull(int);
+    Packet *simple_action(Packet *);
 
- private:
+  private:
 
-  atomic_uint32_t _drops;
-
-  static String read_handler(Element *, void *);
+    bool _force;
+    atomic_uint32_t _drops;
 
 };
 
