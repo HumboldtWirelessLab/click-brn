@@ -6206,7 +6206,7 @@ fi
 if test "${enable_simple+set}" = set; then
   enableval=$enable_simple;
 else
-  enable_simple=NO
+  enable_simple=yes
 fi
 test "x$enable_all_elements" = xyes -a "x$enable_simple" = xNO && enable_simple=yes
 if test "x$enable_simple" = xyes; then
@@ -11017,19 +11017,6 @@ fi
 echo "${ECHO_T}$ac_cv_sizeof_struct_timeval" >&6; }
 
 
-<<<<<<< HEAD:configure
-=======
-fi
-# Check whether --enable-simple was given.
-if test "${enable_simple+set}" = set; then :
-  enableval=$enable_simple;
-else
-  enable_simple=yes
-fi
-test "x$enable_all_elements" = xyes -a "x$enable_simple" = xNO && enable_simple=yes
-if test "x$enable_simple" = xyes; then
-    :
->>>>>>> 0fd669e59ec05c3e49167a161fc955098f5f692e:configure
 
 cat >>confdefs.h <<_ACEOF
 #define SIZEOF_STRUCT_TIMEVAL $ac_cv_sizeof_struct_timeval
@@ -18702,7 +18689,18 @@ _ACEOF
 
     fi
 
-    ac_fn_c_check_decl "$LINENO" "netif_tx_queue_frozen" "ac_cv_have_decl_netif_tx_queue_frozen" "#if HAVE_LINUXMODULE_2_6
+    { echo "$as_me:$LINENO: checking whether netif_tx_queue_frozen is declared" >&5
+echo $ECHO_N "checking whether netif_tx_queue_frozen is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_netif_tx_queue_frozen+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
 # define KBUILD_STR(s)		#s
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
@@ -18723,8 +18721,48 @@ _ACEOF
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
-"
-if test "x$ac_cv_have_decl_netif_tx_queue_frozen" = x""yes; then :
+
+int
+main ()
+{
+#ifndef netif_tx_queue_frozen
+  (void) netif_tx_queue_frozen;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_netif_tx_queue_frozen=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_netif_tx_queue_frozen=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_netif_tx_queue_frozen" >&5
+echo "${ECHO_T}$ac_cv_have_decl_netif_tx_queue_frozen" >&6; }
+if test $ac_cv_have_decl_netif_tx_queue_frozen = yes; then
   ac_cv_netif_tx_queue_frozen=yes
 else
   ac_cv_netif_tx_queue_frozen=no
@@ -18732,11 +18770,24 @@ fi
 
     if test $ac_cv_netif_tx_queue_frozen = yes; then
 
-$as_echo "#define HAVE_NETIF_TX_QUEUE_FROZEN 1" >>confdefs.h
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NETIF_TX_QUEUE_FROZEN 1
+_ACEOF
 
     fi
 
-    ac_fn_c_check_decl "$LINENO" "netdev_uses_dsa_tags" "ac_cv_have_decl_netdev_uses_dsa_tags" "#if HAVE_LINUXMODULE_2_6
+    { echo "$as_me:$LINENO: checking whether netdev_uses_dsa_tags is declared" >&5
+echo $ECHO_N "checking whether netdev_uses_dsa_tags is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_netdev_uses_dsa_tags+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
 # define KBUILD_STR(s)		#s
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
@@ -18757,8 +18808,48 @@ $as_echo "#define HAVE_NETIF_TX_QUEUE_FROZEN 1" >>confdefs.h
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
-"
-if test "x$ac_cv_have_decl_netdev_uses_dsa_tags" = x""yes; then :
+
+int
+main ()
+{
+#ifndef netdev_uses_dsa_tags
+  (void) netdev_uses_dsa_tags;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_netdev_uses_dsa_tags=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_netdev_uses_dsa_tags=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_netdev_uses_dsa_tags" >&5
+echo "${ECHO_T}$ac_cv_have_decl_netdev_uses_dsa_tags" >&6; }
+if test $ac_cv_have_decl_netdev_uses_dsa_tags = yes; then
   ac_cv_netdev_uses_dsa_tags=yes
 else
   ac_cv_netdev_uses_dsa_tags=no
@@ -18766,11 +18857,24 @@ fi
 
     if test $ac_cv_netdev_uses_dsa_tags = yes; then
 
-$as_echo "#define HAVE_NETDEV_USES_DSA_TAGS 1" >>confdefs.h
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NETDEV_USES_DSA_TAGS 1
+_ACEOF
 
     fi
 
-    ac_fn_c_check_decl "$LINENO" "netdev_uses_trailer_tags" "ac_cv_have_decl_netdev_uses_trailer_tags" "#if HAVE_LINUXMODULE_2_6
+    { echo "$as_me:$LINENO: checking whether netdev_uses_trailer_tags is declared" >&5
+echo $ECHO_N "checking whether netdev_uses_trailer_tags is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_netdev_uses_trailer_tags+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
 # define KBUILD_STR(s)		#s
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)
@@ -18791,8 +18895,48 @@ $as_echo "#define HAVE_NETDEV_USES_DSA_TAGS 1" >>confdefs.h
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
-"
-if test "x$ac_cv_have_decl_netdev_uses_trailer_tags" = x""yes; then :
+
+int
+main ()
+{
+#ifndef netdev_uses_trailer_tags
+  (void) netdev_uses_trailer_tags;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_netdev_uses_trailer_tags=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_netdev_uses_trailer_tags=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_netdev_uses_trailer_tags" >&5
+echo "${ECHO_T}$ac_cv_have_decl_netdev_uses_trailer_tags" >&6; }
+if test $ac_cv_have_decl_netdev_uses_trailer_tags = yes; then
   ac_cv_netdev_uses_trailer_tags=yes
 else
   ac_cv_netdev_uses_trailer_tags=no
@@ -18800,7 +18944,9 @@ fi
 
     if test $ac_cv_netdev_uses_trailer_tags = yes; then
 
-$as_echo "#define HAVE_NETDEV_USES_TRAILER_TAGS 1" >>confdefs.h
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NETDEV_USES_TRAILER_TAGS 1
+_ACEOF
 
     fi
 
