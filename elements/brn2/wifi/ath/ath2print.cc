@@ -34,7 +34,10 @@
 
 CLICK_DECLS
 
-Ath2Print::Ath2Print()
+Ath2Print::Ath2Print() :
+  _txprint(true),
+  _rxprint(true)
+
 {
 }
 
@@ -53,6 +56,8 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
                      "LABEL", cpkN, cpString, &_label,
                      "INCLUDEATH", cpkN, cpBool, &_includeath,
                      "TIMESTAMP", cpkN, cpBool, &_timestamp,
+                     "PRINTTX", cpkN, cpBool, &_txprint,
+                     "PRINTRX", cpkN, cpBool, &_rxprint,
                      cpEnd);
   return ret;
 }
@@ -132,6 +137,8 @@ Ath2Print::simple_action(Packet *p)
       output(1).push(p);
     else
       p->kill();
+
+    return NULL;
   }
 
   if ( _includeath )
@@ -142,15 +149,19 @@ Ath2Print::simple_action(Packet *p)
       if (_timestamp)
         sa_ath1 << p->timestamp_anno() << ": ";
 
-      sa_ath1 << "ATHDESC: ";
       struct ar5212_desc *desc = (struct ar5212_desc *) (q->data() + 8);
 
       if (desc->frame_len == 0)
       {
         tx = false;
+        if ( ! _rxprint ) {
+          p->kill();
+          return NULL;
+        }
 
         struct ar5212_rx_status *rx_desc = (struct ar5212_rx_status *) (q->data() + 16);
 
+        sa_ath1 << "ATHDESC: ";
         if (!rx_desc->rx_ok)  sa_ath1 << "(RX) Status: (Err) ";
         else                  sa_ath1 << "(RX) Status: (OK) ";
 
@@ -168,6 +179,12 @@ Ath2Print::simple_action(Packet *p)
       {
         tx = true;
 
+        if ( ! _txprint ) {
+          p->kill();
+          return NULL;
+        }
+
+        sa_ath1 << "ATHDESC: ";
         sa_ath1 << "(TX) ";
         sa_ath1 << "Power: " << desc->xmit_power;
         sa_ath1 << " ACKRSSI: " << desc->ack_sig_strength;
