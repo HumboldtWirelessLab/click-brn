@@ -90,7 +90,7 @@ int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
 
-  unsigned int j = (unsigned int ) ( ( random() % ( JITTER ) ) );
+  unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
 //    BRN_DEBUG("BRN2RequestForwarder: Timer after %d ms", j );
   _sendbuffer_timer.initialize(this);
   _sendbuffer_timer.schedule_after_msec( j );
@@ -447,7 +447,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   BRN_DEBUG(" * current dev_anno %s.", indev->getDeviceName().c_str());
 
   // Buffering + Jitter
-  unsigned int j = (unsigned int ) ( ( random() % ( JITTER ) ) );
+  unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
   _packet_queue.push_back( BufferedPacket( p , j ));
 
   j = get_min_jitter_in_queue();

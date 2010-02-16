@@ -49,7 +49,7 @@ OLSRCompactAssociationInfoBase::add(IPAddress network_addr, IPAddress netmask)
 	// make sure that the network_addr ends with zeros
 	OLSRIPPair ippair(network_addr & netmask, netmask);
 
-	printf("inserting %s\n", ippair._from.unparse_with_mask(ippair._to).c_str());	
+	click_chatter("inserting %s\n", ippair._from.unparse_with_mask(ippair._to).c_str());	
 	
 	// find where we can insert our new entry. 
 	CompactSet::iterator iter = _compactSet->begin();
@@ -112,7 +112,7 @@ OLSRCompactAssociationInfoBase::remove(IPAddress network_addr, IPAddress netmask
 	IPAddress new_mask;
 	uint32_t bit;
 	
-  	printf("erasing %s %s\n", iter->_from.unparse_with_mask(iter->_to).c_str(), network_addr.unparse_with_mask(netmask).c_str());
+  	click_chatter("erasing %s %s\n", iter->_from.unparse_with_mask(iter->_to).c_str(), network_addr.unparse_with_mask(netmask).c_str());
   	if (*iter == ippair) _compactSet->erase(iter);
 	else {
 		while (true) {
@@ -123,7 +123,7 @@ OLSRCompactAssociationInfoBase::remove(IPAddress network_addr, IPAddress netmask
 			right._from = IPAddress(ntohl(htonl(iter->_from.addr()) | bit));
 			right._to = new_mask;
 
-  			printf("splitting into %s %s\n", left._from.unparse_with_mask(left._to).c_str(), right._from.unparse_with_mask(right._to).c_str());									
+  			click_chatter("splitting into %s %s\n", left._from.unparse_with_mask(left._to).c_str(), right._from.unparse_with_mask(right._to).c_str());									
 			if (right == ippair) {
 				iter = _compactSet->insert(iter, left);
 				_compactSet->erase(iter+1);
@@ -140,13 +140,14 @@ OLSRCompactAssociationInfoBase::remove(IPAddress network_addr, IPAddress netmask
 			
 			if (ippair._from.matches_prefix(right._from, right._to)) {
 				iter = iter-1;
-				printf("chose %s\n", iter->_from.unparse_with_mask(iter->_to).c_str());	
+				click_chatter("chose %s\n", iter->_from.unparse_with_mask(iter->_to).c_str());	
 			} else if (ippair._from.matches_prefix(left._from, left._to)) {
 				iter = iter-2;
-				printf("chose %s\n", iter->_from.unparse_with_mask(iter->_to).c_str());	
+				click_chatter("chose %s\n", iter->_from.unparse_with_mask(iter->_to).c_str());	
 			} else {
-				printf("error int olsr_compact_association_info_base.cc\n");
-				exit(0);
+				click_chatter("error int olsr_compact_association_info_base.cc\n");
+				return;
+				//exit(0);
 			}
 			
 		}

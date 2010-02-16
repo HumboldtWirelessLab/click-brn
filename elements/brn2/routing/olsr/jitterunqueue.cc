@@ -73,7 +73,7 @@ JitterUnqueue::run_task()
 			worked = true;
 
 		}
-		uint32_t delay_usec = (_minmaxdiff_usec) ? (random() % _minmaxdiff_usec) : 0;
+		uint32_t delay_usec = (_minmaxdiff_usec) ? (click_random() % _minmaxdiff_usec) : 0;
 		_expire = now + _mindelay + mk_tval(0,delay_usec);
 
 		if ((!worked) && (!_signal)) // no Packet available

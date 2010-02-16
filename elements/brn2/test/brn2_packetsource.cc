@@ -44,7 +44,7 @@ BRN2PacketSource::initialize(ErrorHandler *)
 {
   if ( _interval > 0 ) {
     _timer.initialize(this);
-    _timer.schedule_after_msec(_interval + ( random() % _interval ) );
+    _timer.schedule_after_msec(_interval + ( click_random() % _interval ) );
 
     _seq_num = 1;
   }

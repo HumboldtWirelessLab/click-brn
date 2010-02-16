@@ -247,7 +247,7 @@ EtherAddress* LoadBalancerRedirect::getBestNodeForFlow(EtherAddress *srcEtherAdd
 
     if ( neighbors.size() > 0 )
     {
-      int num = random() % neighbors.size();
+      int num = click_random() % neighbors.size();
       //num =  neighbors.size();
       if ( num == neighbors.size() )
         bestNode = &_me;
