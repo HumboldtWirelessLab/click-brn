@@ -63,7 +63,7 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
   if ( txFlow._rate > 0 ) {
     _timer.initialize(this);
-    _timer.schedule_after_msec(txFlow._rate + ( random() % txFlow._rate ) );
+    _timer.schedule_after_msec(txFlow._rate + ( click_random() % txFlow._rate ) );
   }
 
   return 0;

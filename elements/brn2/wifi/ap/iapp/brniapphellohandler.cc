@@ -119,7 +119,7 @@ BrnIappHelloHandler::initialize(ErrorHandler *errh)
   unsigned int _min_jitter  = _hello_trigger_interval_ms/2 /* ms */;
   unsigned int _jitter      = _hello_trigger_interval_ms;
   
-  unsigned int j = (unsigned int) ( _min_jitter +( random() % ( _jitter ) ) );
+  unsigned int j = (unsigned int) ( _min_jitter +( click_random() % ( _jitter ) ) );
   _timer.schedule_after_msec(j);
 
   return 0;
@@ -222,7 +222,7 @@ BrnIappHelloHandler::schedule_hello(
   // TODO make configurable
   unsigned int min_jitter = 5;
   unsigned int jitter     = 100;
-  unsigned int j = (unsigned int ) ( min_jitter +( random() % ( jitter ) ) );
+  unsigned int j = (unsigned int ) ( min_jitter +( click_random() % ( jitter ) ) );
 
   _timer_hello.schedule_after_msec(j);  
   BRN_DEBUG("scheduled hello in %s ms", _timer.expiry().unparse().c_str());

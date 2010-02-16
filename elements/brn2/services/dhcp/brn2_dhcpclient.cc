@@ -109,7 +109,7 @@ BRN2DHCPClient::init_state() {
   for( int i = 0; i < _ip_range; i++)
   { 
      client_mac[5] = ( client_mac[5] + 1 ) % 255;
-     uint32_t xid = random();
+     uint32_t xid = click_random();
      request_queue.push_back(DHCPClientInfo( xid, client_mac , htonl(requested_ip + i) ));
   }
 }

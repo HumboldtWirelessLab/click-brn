@@ -93,7 +93,7 @@ OLSRProcessHNA::push(int, Packet *packet){
   int msg_bytes_left = msg_info.msg_size - sizeof(olsr_msg_hdr);
   int msg_offset = sizeof(olsr_msg_hdr);
 
-  click_chatter("%f | %s | received a HNA message from %s", Timestamp(now).doubleval(), _my_ip.unparse().c_str(), originator_address.unparse().c_str());
+  //robat click_chatter("%f | %s | received a HNA message from %s", Timestamp(now).doubleval(), _my_ip.unparse().c_str(), originator_address.unparse().c_str());
 
 
   if (msg_bytes_left > 0){ //there are advertised networks in the hna-message
@@ -103,7 +103,7 @@ OLSRProcessHNA::push(int, Packet *packet){
       addr = (in_addr*)(packet->data() + msg_offset) + 1;
       netmask = IPAddress(*addr);
 
-      click_chatter("%f | %s | network_address %s | netmask %s", Timestamp(now).doubleval(), _my_ip.unparse().c_str(), network_address.unparse().c_str(), netmask.unparse().c_str());
+      //robat click_chatter("%f | %s | network_address %s | netmask %s", Timestamp(now).doubleval(), _my_ip.unparse().c_str(), network_address.unparse().c_str(), netmask.unparse().c_str());
 
       association_tuple = _associationInfo->find_tuple(originator_address, network_address, netmask);
       if (association_tuple != 0) {
@@ -125,7 +125,7 @@ OLSRProcessHNA::push(int, Packet *packet){
     //click_chatter("Recomputing Routing Table\n");
     _routingTable->compute_routing_table();
     //click_chatter("Routing table recomputed");
-    click_chatter("%f | %s | Routing Table:\n",Timestamp(now).doubleval(), _my_ip.unparse().c_str());
+    //robat click_chatter("%f | %s | Routing Table:\n",Timestamp(now).doubleval(), _my_ip.unparse().c_str());
     _routingTable->print_routing_table();
   }
   output(0).push(packet);
