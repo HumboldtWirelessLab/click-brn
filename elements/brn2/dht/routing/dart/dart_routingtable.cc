@@ -62,8 +62,6 @@ DartRoutingTable::add_node(DHTnode *node)
     _allnodes.add_dhtnode(n);
     if ( n->_neighbor ) _neighbours.add_dhtnode(n);
   } else {
-    if ( node->_digest_length < n->_digest_length )
-      click_chatter("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOHHHHAAAAAAAAAAAAAAAAAAA");
     DartFunctions::copy_id(n,node);
     //TODO: update rest of node
   }

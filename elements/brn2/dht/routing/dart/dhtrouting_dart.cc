@@ -14,9 +14,9 @@
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "dhtrouting_dart.hh"
 #include "dhtprotocol_dart.hh"
@@ -79,10 +79,10 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
   DHTnode *acnode;
   int position_ac_node;
 
-  click_chatter("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+  BRN_DEBUG("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
 
   if ( DartFunctions::equals(_drt->_me, key) ) {
-    click_chatter("It's me");
+    BRN_DEBUG("It's me");
     return _drt->_me;
   }
 
@@ -91,7 +91,7 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours.get_dhtnode(n);
     if ( DartFunctions::equals(acnode, key) ) {
-      click_chatter("have full node");
+      BRN_DEBUG("have full node");
       return acnode;
     }
 
@@ -117,7 +117,7 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
 
   //TODO: this should never happen so check it dispensable
   if ( best_node == NULL ) {
-    click_chatter("no node found use default");
+    BRN_WARN("No node for id found. So use default.");
     best_node = _drt->_me;
   }
 

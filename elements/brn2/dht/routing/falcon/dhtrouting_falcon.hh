@@ -45,6 +45,8 @@ class DHTRoutingFalcon : public DHTRouting
     DHTnode *get_responsibly_node_backward(md5_byte_t *key);
     DHTnode *get_responsibly_node_forward(md5_byte_t *key);
 
+    int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) { return 0;}
+
   //private:
     FalconRoutingTable *_frt;
     int _responsible;

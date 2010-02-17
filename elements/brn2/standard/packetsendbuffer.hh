@@ -42,6 +42,14 @@ class PacketSendBuffer
       }
 
       void check() const { assert(_p); }
+
+      bool timeout()
+      {
+        struct timeval time_now;
+        time_now = Timestamp::now().timeval();
+
+        return ((_send_time.tv_sec < time_now.tv_sec) || (( _send_time.tv_sec == time_now.tv_sec) && ( _send_time.tv_usec < time_now.tv_usec)));
+      }
   };
 
   typedef Vector<BufferedPacket*> PacketQueue;

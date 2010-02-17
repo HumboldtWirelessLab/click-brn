@@ -21,6 +21,7 @@
 #include <click/config.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
+#include <click/timer.hh>
 
 #include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
@@ -35,17 +36,16 @@
 CLICK_DECLS
 
 /* constructor initalizes timer, ... */
-DartRouteQuerier::DartRouteQuerier()
-  : _me(NULL),
+DartRouteQuerier::DartRouteQuerier() :
+    _sendbuffer_timer(static_sendbuffer_timer_hook,(void*)this),
+    _me(NULL),
     _debug(BrnLogger::DEFAULT)
-//    _sendbuffer_timer(static_sendbuffer_timer_hook, this)
 {
 }
 
 /* destructor processes some cleanup */
 DartRouteQuerier::~DartRouteQuerier()
 {
-//  flush_sendbuffer();
   uninitialize();
 }
 
@@ -73,8 +73,7 @@ int
 DartRouteQuerier::initialize(ErrorHandler */*errh*/)
 {
   // expire packets in the sendbuffer
-//  _sendbuffer_timer.initialize(this);
-//  _sendbuffer_timer.schedule_after_msec(BRN_DSR_SENDBUFFER_TIMER_INTERVAL);
+  _sendbuffer_timer.initialize(this);
 
   return 0;
 }
@@ -83,7 +82,7 @@ DartRouteQuerier::initialize(ErrorHandler */*errh*/)
 void
 DartRouteQuerier::uninitialize()
 {
-//  _sendbuffer_timer.unschedule();
+  _sendbuffer_timer.unschedule();
 }
 
 
@@ -117,7 +116,6 @@ DartRouteQuerier::callback(DHTOperation *op)
     } else {
       if ( op->header.status == DHT_STATUS_TIMEOUT ) {
         BRN_DEBUG("READ ID: Timeout. Try again !");
-//        _starttimer.schedule_after_msec( click_random() % DART_DEFAULT_IDSTORE_STARTTIMEJITTER );
       } else {
         BRN_DEBUG("READ ID: NOT FOUND.");
       }
@@ -159,7 +157,7 @@ DartRouteQuerier::push(int, Packet *p_in)
 
   if ( entry == NULL ) {
     if ( n != NULL ) {
-      click_chatter("Got node from routingtable !");
+      BRN_DEBUG("Got node from routingtable !");
       entry = _idcache->addEntry(&dst_addr, n->_md5_digest, n->_digest_length);
     }
   } else {
@@ -167,15 +165,17 @@ DartRouteQuerier::push(int, Packet *p_in)
       entry->update(n);
     }
   }
-  BRN_DEBUG("Dst: %s (%s)", dst_addr.unparse().c_str(),
-            DartFunctions::print_id(entry->_nodeid, entry->_id_length).c_str());
 
-  BRN_DEBUG("Routing-Table:\n %s",_drt->routing_info().c_str());
+  BRN_DEBUG("Dst: %s", dst_addr.unparse().c_str());
+  //BRN_DEBUG("Routing-Table:\n %s",_drt->routing_info().c_str());
+
   if ( entry == NULL ) {
-    _packet_buffer.addPacket_ms(p_in, 2000, 0);   //push in packet queue
+    _packet_buffer.addPacket_ms(p_in, BRN_DART_SENDBUFFER_TIMER_INTERVAL - 1000, 0);   //push in packet queue
     start_issuing_request(&dst_addr);            //start request for ID
   } else {
-    click_chatter("Route querier: Has ID in Cache");
+    BRN_DEBUG("Route querier: Has ID in Cache");
+    BRN_DEBUG("Dst: %s (%s)", dst_addr.unparse().c_str(),
+              DartFunctions::print_id(entry->_nodeid, entry->_id_length).c_str());
     WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, p_in);
     output(0).push(dart_p);
   }
@@ -201,11 +201,46 @@ DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *ent
       output(0).push(dart_p);
     }
   }
+
+  del_requests_for_ea(dst);
 }
 
 //-----------------------------------------------------------------------------
 // Timer-driven events
 //-----------------------------------------------------------------------------
+
+DartRouteQuerier::RequestAddress *
+DartRouteQuerier::requests_for_ea(EtherAddress *ea )
+{
+  DartRouteQuerier::RequestAddress *rea;
+
+  for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
+    rea = _request_list[i];
+    if ( memcmp(rea->_ea.data(), ea->data(),6) == 0 ) return rea;
+  }
+
+  return NULL;
+}
+
+void
+DartRouteQuerier::del_requests_for_ea(EtherAddress *ea)
+{
+  del_requests_for_ea(ea->data());
+}
+
+void
+DartRouteQuerier::del_requests_for_ea(uint8_t *ea)
+{
+  DartRouteQuerier::RequestAddress *rea;
+
+  for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
+    rea = _request_list[i];
+    if ( memcmp(rea->_ea.data(), ea, 6) == 0 ) {
+      _request_list.erase(_request_list.begin() + i);
+      return;
+    }
+  }
+}
 
 /*
  * start issuing requests for a host.
@@ -213,6 +248,11 @@ DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *ent
 void
 DartRouteQuerier::start_issuing_request(EtherAddress *dst)
 {
+  DartRouteQuerier::RequestAddress *rea = requests_for_ea(dst);
+
+  if ( rea == NULL ) _request_list.push_back(new RequestAddress(dst));
+  else return;
+
   DHTOperation *dhtop;
   int result;
 
@@ -229,6 +269,8 @@ DartRouteQuerier::start_issuing_request(EtherAddress *dst)
   {
     BRN_DEBUG("Got direct-reply (local)");
     callback_func((void*)this, dhtop);
+  } else {
+    _sendbuffer_timer.schedule_after_msec(BRN_DART_SENDBUFFER_TIMER_INTERVAL);
   }
 }
 
@@ -243,6 +285,22 @@ DartRouteQuerier::static_sendbuffer_timer_hook(Timer *, void *v)
 void
 DartRouteQuerier::sendbuffer_timer_hook()
 {
+  BRN_DEBUG("Packet Timeout. Check for packets.");
+
+  PacketSendBuffer::BufferedPacket *buffp;
+  for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
+    buffp = _packet_buffer.get(i);
+    if ( buffp->timeout() ) {
+      BRN_DEBUG("Kill packet");
+
+      click_ether *ether = (click_ether *)buffp->_p->data();
+      del_requests_for_ea(ether->ether_dhost);
+
+      buffp->_p->kill();
+      _packet_buffer.del(i);
+      delete buffp;
+    }
+  }
 }
 
 
@@ -291,6 +349,9 @@ DartRouteQuerier::add_handlers()
   add_write_handler("debug", write_handler, (void*) H_DEBUG);
 }
 
+CLICK_ENDDECLS
+
+ELEMENT_REQUIRES(PacketSendBuffer)
 EXPORT_ELEMENT(DartRouteQuerier)
 
-CLICK_ENDDECLS
+

@@ -58,13 +58,13 @@ class DHTStorageSimple : public DHTStorage
 
       void set_value(uint8_t *val, uint16_t val_len)
       {
-        value = (uint8_t*)malloc(sizeof(uint8_t) *val_len);
+        value = new uint8_t[val_len];
         memcpy(value, val, val_len);
         value_len = val_len;
       }
 
       ~ReplicaInfo() {
-        if ( value != NULL ) delete value;
+        if ( value != NULL ) delete[] value;
       }
   };
 

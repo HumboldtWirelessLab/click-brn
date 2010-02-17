@@ -171,6 +171,9 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   if ( fwd_op->have_all_replicas() ) {
     op->header.replica = fwd_op->replica_count;
     op->set_reply();
+
+    delete fwd_op;
+
     return DHT_OPERATION_ID_LOCAL_REPLY;
   } else {
     _fwd_queue.push_back(fwd_op);

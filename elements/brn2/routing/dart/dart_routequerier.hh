@@ -23,7 +23,6 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include <click/timer.hh>
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
@@ -33,11 +32,26 @@
 
 #include "dart_idcache.hh"
 
+#define BRN_DART_SENDBUFFER_TIMER_INTERVAL 3000
+
 CLICK_DECLS
 
 class DartRouteQuerier : public Element
 {
  public:
+
+   class RequestAddress {
+     public:
+       EtherAddress _ea;
+       int _no;
+
+       RequestAddress(EtherAddress *ea) {
+         _ea = EtherAddress(ea->data());
+         _no = 1;
+       }
+
+       void inc() { _no++; }
+   };
 
   //---------------------------------------------------------------------------
   // public methods
@@ -58,18 +72,25 @@ class DartRouteQuerier : public Element
 
   void push(int, Packet *);
 
-  static void static_sendbuffer_timer_hook(Timer *, void *);
-  void sendbuffer_timer_hook();
-
   static void callback_func(void *e, DHTOperation *op);
   void callback(DHTOperation *op);
 
+  Vector<RequestAddress*> _request_list;
+
  private:
+   RequestAddress *requests_for_ea(EtherAddress *ea );
+   void del_requests_for_ea(EtherAddress *ea);
+   void del_requests_for_ea(uint8_t *ea);
+
    void start_issuing_request(EtherAddress *dst);
    void send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *entry );
   //---------------------------------------------------------------------------
   // private fields
   //---------------------------------------------------------------------------
+  Timer _sendbuffer_timer;
+  static void static_sendbuffer_timer_hook(Timer *, void *);
+  void sendbuffer_timer_hook();
+
   BRN2NodeIdentity *_me;
   DHTStorage *_dht_storage;
   DartIDCache *_idcache;

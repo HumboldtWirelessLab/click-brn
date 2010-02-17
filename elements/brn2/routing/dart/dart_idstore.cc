@@ -136,7 +136,8 @@ void
 DartIDStore::routingtable_callback_func(void *e, int status)
 {
   DartIDStore *s = (DartIDStore *)e;
-  click_chatter("Update NodeID");
+  //click_chatter("Update NodeID");
+  //TODO: store new node id
 }
 
 /*************************************************************************************************/

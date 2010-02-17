@@ -170,10 +170,10 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
       assign_id(&src);
       rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
 
-      src._neighbor = true; //Request only comes from neighbouring nodes //TODO: check
+      src._neighbor = true;                            //Request only comes from neighbouring nodes //TODO: check
       _drt->update_node(&src);
 
-      BRN_WARN("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
+//      BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
       output(0).push(rep);
 
