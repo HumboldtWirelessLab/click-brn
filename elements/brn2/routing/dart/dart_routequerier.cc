@@ -152,13 +152,30 @@ DartRouteQuerier::push(int, Packet *p_in)
     return;
   }
 
+  BRN_DEBUG("Request for %s", dst_addr.unparse().c_str());
+
+  DHTnode *n = _drt->get_node(&dst_addr);
   entry = _idcache->getEntry(&dst_addr);
 
+  if ( entry == NULL ) {
+    if ( n != NULL ) {
+      click_chatter("Got node from routingtable !");
+      entry = _idcache->addEntry(&dst_addr, n->_md5_digest, n->_digest_length);
+    }
+  } else {
+    if ( n != NULL ) {
+      entry->update(n);
+    }
+  }
+  BRN_DEBUG("Dst: %s (%s)", dst_addr.unparse().c_str(),
+            DartFunctions::print_id(entry->_nodeid, entry->_id_length).c_str());
+
+  BRN_DEBUG("Routing-Table:\n %s",_drt->routing_info().c_str());
   if ( entry == NULL ) {
     _packet_buffer.addPacket_ms(p_in, 2000, 0);   //push in packet queue
     start_issuing_request(&dst_addr);            //start request for ID
   } else {
-    click_chatter("Has ID in Cache");
+    click_chatter("Route querier: Has ID in Cache");
     WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, p_in);
     output(0).push(dart_p);
   }

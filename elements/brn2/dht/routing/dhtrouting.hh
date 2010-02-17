@@ -33,6 +33,8 @@ class DHTRouting : public Element
     //virtual DHTnode *get_responsibly_replica_node_(md5_byte_t *key, int keylen, int replica_number) = 0;
     //virtual Vector<DHTnode *> get_all_responsibly_nodes(uint8_t *key, int keylen) = 0;
 
+    virtual int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) = 0;
+
     int set_notify_callback(void (*info_func)(void*,int), void *info_obj) {
       if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
       else

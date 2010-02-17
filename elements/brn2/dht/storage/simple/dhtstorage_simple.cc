@@ -26,7 +26,8 @@ DHTStorageSimple::DHTStorageSimple():
   _debug(BrnLogger::DEFAULT),
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
-  _max_req_retries(DEFAULT_MAX_RETRIES)
+  _max_req_retries(DEFAULT_MAX_RETRIES),
+  _add_node_id(false)
 {
 }
 
@@ -51,6 +52,7 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "DHTDB",cpkM+cpkP, cpElement, &_dht_db,
     "DHTROUTING", cpkN, cpElement, &_dht_routing,
+    "ADDNODEID", cpkN, cpBool, &_add_node_id,
     "DEBUG", cpkN, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -149,8 +151,16 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
           fwd_op->replicaList[r].status = DHT_STATUS_KEY_NOT_FOUND;
           fwd_op->set_replica_reply(r);
         } else {
-          p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length());
-          op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
+          if ( _add_node_id ) {
+            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length() + sizeof(struct dht_simple_storage_node_info));
+            op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),op->length());
+            struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
+            _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
+            ni->reserved = 0;
+          } else {
+            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length());
+            op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
+          }
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
           output(0).push(p);
         }
@@ -185,15 +195,29 @@ void DHTStorageSimple::push( int port, Packet *packet )
     if ( port == 0 )
     {
       _op = new DHTOperation();
-      _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+
+      if ( _add_node_id ) {
+        _op->unserialize(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
+
+        EtherAddress src = EtherAddress(_op->header.etheraddress);
+        struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(packet);
+        _dht_routing->update_node(&src, ni->src_id, ni->src_id_size);
+      } else {
+        _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+      }
+
       if ( _op->is_reply() )
       {
+        BRN_DEBUG("Operation is reply.");
+
         bool found_fwd = false;
         for( int i = 0; i < _fwd_queue.size(); i++ )
         {
           fwd = _fwd_queue[i];
           if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )  //TODO: better compare dht-id
           {
+            BRN_DEBUG("Found entry for Operation.");
+
             fwd->replicaList[_op->header.replica].status = _op->header.status;
             fwd->replicaList[_op->header.replica].set_value(_op->value, _op->header.valuelen);
 
@@ -231,6 +255,8 @@ void DHTStorageSimple::push( int port, Packet *packet )
         next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, _op->header.replica);
         if ( _dht_routing->is_me(next) )
         {
+          BRN_DEBUG("I'm responsible for Operation.");
+
           int result = _dht_db->handle_dht_operation(_op);
 
           if ( result == -1 ) {
@@ -239,9 +265,21 @@ void DHTStorageSimple::push( int port, Packet *packet )
           } else {
             _op->set_reply();
 
-            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
-            _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
-            EtherAddress src = EtherAddress(_op->header.etheraddress);
+            EtherAddress src = EtherAddress(_op->header.etheraddress);                                                             //safe old soure for reply
+
+            if ( _add_node_id ) {
+              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
+              memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
+              _op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),_op->length());
+              struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
+              _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
+              ni->reserved = 0;
+            } else {
+              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
+              memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
+              _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+            }
+
             p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
             delete _op;
             output(0).push(p);
@@ -249,6 +287,10 @@ void DHTStorageSimple::push( int port, Packet *packet )
         }
         else
         {
+          BRN_DEBUG("Forward operation.");
+          BRN_DEBUG("Me: %s Dst: %s",_dht_routing->_me->_ether_addr.unparse().c_str(),
+                                     next->_ether_addr.unparse().c_str());
+
           p = packet->uniqueify();
 
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
@@ -380,9 +422,18 @@ DHTStorageSimple::check_queue()
           if ( ! fwd->have_replica(r) ) {
             next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, r);//TODO:handle if next is null
 
-            p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
             _op->header.replica = r;
-            _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+
+            if ( _add_node_id ) {
+              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
+              _op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),_op->length());
+              struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
+              _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
+              ni->reserved = 0;
+            } else {
+              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
+              _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+            }
 
             p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
             output(0).push(p);

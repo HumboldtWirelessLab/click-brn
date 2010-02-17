@@ -29,7 +29,10 @@ CLICK_DECLS
 #define DEFAULT_DIGEST_LENGTH  128 /* 16*8 */
 #define MAX_DIGEST_LENGTH      128 /* 16*8 */
 
+#define INVALID_NODE_ID        MAX_DIGEST_LENGTH + 1
+
 #define MAX_NODEID_LENTGH 16
+
 
 
 class DHTnode
@@ -60,10 +63,14 @@ class DHTnode
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length);
 
+    void init();
+
     void set_update_addr(uint8_t *ea);  //TODO: finds better name
     void set_etheraddress(uint8_t *ea);
     void set_nodeid(md5_byte_t *nodeid);
     void set_nodeid(md5_byte_t *nodeid, int digest_length);
+
+    void get_nodeid(md5_byte_t *nodeid, uint8_t *digest_length);
 
     void set_age_s(int s);           //TODO: Is that used ??
     void set_age(Timestamp *);

@@ -159,21 +159,32 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
 
   uint8_t status;
 
-  BRN_DEBUG("GOT ID REQUEST");
+  BRN_DEBUG("Got ID request");
 
   DHTProtocolDart::get_info(packet, &src, &dst, &status);
 
   //TODO: check whether dst is me but use ea for that
 
-  if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
-    assign_id(&src);
-    rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
+  if ( dst.equalsEtherAddress(_drt->_me) ) {
+    if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
+      assign_id(&src);
+      rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
 
-    output(0).push(rep);
+      src._neighbor = true; //Request only comes from neighbouring nodes //TODO: check
+      _drt->update_node(&src);
 
-    _drt->update_callback(DART_UPDATE_ID);           //TODO: move this and the change of the own ID to routingtable
+      BRN_WARN("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
+      output(0).push(rep);
+
+      _drt->update_callback(DART_UPDATE_ID);           //TODO: move this and the change of the own ID to routingtable
+
+    } else {
+      BRN_WARN("ID-space is full. No id left");
+    }
   } else {
+    BRN_WARN("Got packet for foreign node. Discard.");
+    packet->kill();
   }
 }
 

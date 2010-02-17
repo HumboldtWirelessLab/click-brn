@@ -53,6 +53,11 @@ class DartRoutingTable : public Element
     int add_neighbour(DHTnode *node);
     int add_nodes(DHTnodelist *nodes);
 
+    int update_node(DHTnode *node);
+
+    DHTnode *get_node(EtherAddress *ea);
+    DHTnode *get_neighbour(EtherAddress *ea);
+
     int add_update_callback(void (*info_func)(void*,int), void *info_obj);
     void update_callback(int status);                                       //TODO: _me is updated externaly by dart_routingtable-maintenace. change it
 

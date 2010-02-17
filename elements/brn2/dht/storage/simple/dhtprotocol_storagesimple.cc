@@ -28,9 +28,9 @@
 CLICK_DECLS
 
 WritablePacket *
-DHTProtocolStorageSimple::new_data_packet(int32_t /*moveID*/, int /*countRows*/, uint8_t */*data*/, uint16_t /*data_size*/)
+DHTProtocolStorageSimple::new_data_packet(int32_t /*moveID*/, int /*countRows*/, uint8_t */*data*/, uint16_t data_size)
 {
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MOVEDDATA, sizeof(struct dht_dart_node_entry));
+  WritablePacket *hello_p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MOVEDDATA, data_size );
 
   return(hello_p);
 }

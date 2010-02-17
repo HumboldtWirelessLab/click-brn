@@ -62,6 +62,8 @@ DartRoutingTable::add_node(DHTnode *node)
     _allnodes.add_dhtnode(n);
     if ( n->_neighbor ) _neighbours.add_dhtnode(n);
   } else {
+    if ( node->_digest_length < n->_digest_length )
+      click_chatter("OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOHHHHAAAAAAAAAAAAAAAAAAA");
     DartFunctions::copy_id(n,node);
     //TODO: update rest of node
   }
@@ -94,6 +96,25 @@ DartRoutingTable::add_nodes(DHTnodelist *nodes)
 
   return 0;
 }
+
+DHTnode *
+DartRoutingTable::get_node(EtherAddress *ea)
+{
+  return _allnodes.get_dhtnode(ea);
+}
+
+DHTnode *
+DartRoutingTable::get_neighbour(EtherAddress *ea)
+{
+  return _neighbours.get_dhtnode(ea);
+}
+
+int
+DartRoutingTable::update_node(DHTnode *node)
+{
+  return add_node(node);
+}
+
 
 /*************************************************************************************************/
 /******************************** C A L L B A C K ************************************************/
@@ -131,6 +152,9 @@ DartRoutingTable::routing_info(void)
   for ( int n = 0; n < _neighbours.size(); n++ )
     sa << " " << n << ": " << _neighbours.get_dhtnode(n)->_ether_addr.unparse() << " ID: " << DartFunctions::print_id(_neighbours.get_dhtnode(n)) << "\n";
 
+  sa << "All Nodes (" << _allnodes.size() << "):\n";
+  for ( int n = 0; n < _allnodes.size(); n++ )
+    sa << " " << n << ": " << _allnodes.get_dhtnode(n)->_ether_addr.unparse() << " ID: " << DartFunctions::print_id(_allnodes.get_dhtnode(n)) << "\n";
 
   return sa.take_string();
 }

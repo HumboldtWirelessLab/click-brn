@@ -72,6 +72,7 @@ class DartForwarder : public Element {
   BRN2NodeIdentity *_me;
   DHTRoutingDart *_dartrouting;
   DartIDCache *_idcache;
+  DartRoutingTable *_drt;
 
 };
 

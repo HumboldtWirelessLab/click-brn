@@ -79,13 +79,21 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
   DHTnode *acnode;
   int position_ac_node;
 
-  if ( DartFunctions::equals(_drt->_me, key) ) return _drt->_me;
+  click_chatter("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+
+  if ( DartFunctions::equals(_drt->_me, key) ) {
+    click_chatter("It's me");
+    return _drt->_me;
+  }
 
   diffbit = DartFunctions::diff_bit(_drt->_me, key);
 
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours.get_dhtnode(n);
-    if ( DartFunctions::equals(acnode, key) ) return acnode;
+    if ( DartFunctions::equals(acnode, key) ) {
+      click_chatter("have full node");
+      return acnode;
+    }
 
     position_ac_node = DartFunctions::position_last_1(acnode);
     if ( DartFunctions::equals(acnode, key, position_ac_node ) && ((best_node == NULL) || (position_best_node < position_ac_node) ) ) {
@@ -93,6 +101,7 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
       best_node = acnode;
     }
   }
+
 
   if ( best_node == NULL ) {
     //click_chatter("Search for shortest");
@@ -104,6 +113,12 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
         best_node = acnode;
       }
     }
+  }
+
+  //TODO: this should never happen so check it dispensable
+  if ( best_node == NULL ) {
+    click_chatter("no node found use default");
+    best_node = _drt->_me;
   }
 
   return best_node;
@@ -128,6 +143,15 @@ DHTRoutingDart::get_responsibly_replica_node(md5_byte_t *key, int replica_number
 /****************************************************************************************
 ********************* N O D E T A B L E O P E R A T I O N *******************************
 ****************************************************************************************/
+
+int
+DHTRoutingDart::update_node(EtherAddress *ea, md5_byte_t *key, int keylen)
+{
+  DHTnode node(*ea, key, keylen);
+  _drt->add_node(&node);
+
+  return 0;
+}
 
 /*******************************************************************************************/
 /************************************* H A N D L E R ***************************************/

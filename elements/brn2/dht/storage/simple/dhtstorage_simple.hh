@@ -184,6 +184,8 @@ class DHTStorageSimple : public DHTStorage
     int get_time_to_next();
     bool isFinalTimeout(DHTOperationForward *fwdop);
 
+    bool _add_node_id; //NB: whether the Node id of the src of a request is add to the request. SHould this be default ? ID to DHTHeader ??
+
 };
 
 CLICK_ENDDECLS

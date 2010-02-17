@@ -32,8 +32,11 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "elements/brn2/dht/routing/dart/dart_functions.hh"
+
 #include "dart_protocol.hh"
 #include "dart_forwarder.hh"
+
 
 CLICK_DECLS
 
@@ -55,6 +58,8 @@ DartForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "DARTIDCACHE", cpkP+cpkM, cpElement, &_idcache,
       "DARTROUTING", cpkP+cpkM, cpElement, &_dartrouting,
+      "DRT", cpkP+cpkM, cpElement, &_drt,
+      "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -87,23 +92,39 @@ DartForwarder::push(int /*port*/, Packet *p_in)
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
 
+  BRN_DEBUG("Src: %s (%s) Dst: %s (%s)", src_addr.unparse().c_str(),
+                                 DartFunctions::print_id(header->_src_nodeid, ntohl(header->_src_nodeid_length)).c_str(),
+                                         dst_addr.unparse().c_str(),
+                                 DartFunctions::print_id(header->_dst_nodeid, ntohl(header->_dst_nodeid_length)).c_str());
+
   if ( _idcache->getEntry(&dst_addr) == NULL ) _idcache->addEntry(&dst_addr, header->_dst_nodeid, ntohl(header->_dst_nodeid_length));
   if ( _idcache->getEntry(&src_addr) == NULL ) _idcache->addEntry(&src_addr, header->_src_nodeid, ntohl(header->_src_nodeid_length));
 
-  DHTnode * n = _dartrouting->get_responsibly_node(header->_dst_nodeid);
-
-  if ( n->equals(_dartrouting->_me) ) {
+  if ( memcmp(dst_addr.data(),_dartrouting->_me->_ether_addr.data(),6) == 0 ) {
+    BRN_DEBUG("Is for me");
     DartProtocol::strip_route_header(p_in);
     output(1).push(p_in);
   } else {
-    Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_DART, BRN_PORT_DART, 255, BRNPacketAnno::tos_anno(p_in));
 
-    BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
-    BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
-    BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
-    output(0).push(brn_p);
+    DHTnode *n = _drt->get_neighbour(&dst_addr);  //check whether destination is a neighbouring node
+
+    if ( n == NULL )
+      n = _dartrouting->get_responsibly_node(header->_dst_nodeid);
+
+    BRN_DEBUG("Responsible is %s",n->_ether_addr.unparse().c_str());
+
+    if ( n->equalsEtherAddress(_dartrouting->_me) ) {         //for clients, which have the same id but different ethereaddress
+      DartProtocol::strip_route_header(p_in);                 //TODO: use other output port for client
+      output(1).push(p_in);
+    } else {
+      Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_DART, BRN_PORT_DART, 255, BRNPacketAnno::tos_anno(p_in));
+
+      BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
+      BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
+      BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
+      output(0).push(brn_p);
+    }
   }
-
 }
 
 //-----------------------------------------------------------------------------

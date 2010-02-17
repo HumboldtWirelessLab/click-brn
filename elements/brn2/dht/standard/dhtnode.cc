@@ -9,15 +9,9 @@
 CLICK_DECLS
 DHTnode::DHTnode()
 {
+  init();
+
   _ether_addr = EtherAddress();
-  _status = STATUS_UNKNOWN;
-  _extra = NULL;
-  _age = Timestamp::now();
-  _last_ping = Timestamp::now();
-  _failed_ping = 0;
-  _rtt = 0;
-  _hop_distance = 0;
-  _neighbor = false;
 
   memset(_md5_digest, 0, sizeof(_md5_digest));
   _digest_length = DEFAULT_DIGEST_LENGTH;
@@ -27,12 +21,9 @@ DHTnode::DHTnode()
 
 DHTnode::DHTnode(EtherAddress addr)
 {
+  init();
+
   _ether_addr = addr;
-  _status = STATUS_UNKNOWN;
-  _extra = NULL;
-  _age = Timestamp::now();
-  _rtt = 0;
-  _hop_distance = 0;
 
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(addr.data()).c_str(),
     strlen((const char*)MD5::convert_ether2hex(addr.data()).c_str()), _md5_digest );
@@ -42,30 +33,42 @@ DHTnode::DHTnode(EtherAddress addr)
 
 DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
 {
+  init();
+
   _ether_addr = addr;
-  _status = STATUS_UNKNOWN;
-  _extra = NULL;
-  _age = Timestamp::now();
+
   memcpy(_md5_digest, nodeid, 16);
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
 DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length)
 {
-  _ether_addr = addr;
-  _status = STATUS_UNKNOWN;
-  _extra = NULL;
-  _age = Timestamp::now();
-  memset(_md5_digest, 0, sizeof(_md5_digest));
+  init();
 
-  if ( (nodeid != NULL) && (digest_length > 0) ) {
+  _ether_addr = addr;
+
+  memset(_md5_digest, 0, sizeof(_md5_digest));
+  _digest_length = digest_length;
+
+  if ( (nodeid != NULL) && (_digest_length > 0) ) {
     if ( ( _digest_length & 7 ) == 0 )
       memcpy(_md5_digest, nodeid, (_digest_length >> 3));     // _digest_length mod 8
     else
       memcpy(_md5_digest, nodeid, (_digest_length >> 3) + 1); // (_digest_length mod 8) + 1
   }
+}
 
-  _digest_length = digest_length;
+void
+DHTnode::init()
+{
+  _status = STATUS_UNKNOWN;
+  _extra = NULL;
+  _age = Timestamp::now();
+  _last_ping = Timestamp::now();
+  _failed_ping = 0;
+  _rtt = 0;
+  _hop_distance = 0;
+  _neighbor = false;
 }
 
 void
@@ -91,7 +94,7 @@ DHTnode::set_etheraddress(uint8_t *ea)
 void
 DHTnode::set_nodeid(md5_byte_t *nodeid)
 {
-  memcpy(_md5_digest, nodeid, 16);
+  memcpy(_md5_digest, nodeid, MAX_NODEID_LENTGH);
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
@@ -107,6 +110,13 @@ DHTnode::set_nodeid(md5_byte_t *nodeid, int digest_length)
     else
       memcpy(_md5_digest, nodeid, (_digest_length >> 3) + 1); // (_digest_length mod 8) + 1
   }
+}
+
+void
+DHTnode::get_nodeid(md5_byte_t *nodeid, uint8_t *digest_length)
+{
+  memcpy(nodeid, _md5_digest, sizeof(_md5_digest));
+  *digest_length = _digest_length;
 }
 
 void
