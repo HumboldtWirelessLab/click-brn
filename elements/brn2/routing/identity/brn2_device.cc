@@ -27,7 +27,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
-      "DEVICETYPE", cpkP+cpkM, cpString, &device_type,
+      "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
       cpEnd) < 0)
     return -1;
 
