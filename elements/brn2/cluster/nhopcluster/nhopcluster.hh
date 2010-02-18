@@ -40,7 +40,7 @@ class NHopCluster : public Element {
     ClusterHead() {
     }
 
-    ClusterHead(EtherAddress *ea, uint32_t distance) {
+    ClusterHead(const EtherAddress *ea, uint32_t distance) {
       _ether_addr = EtherAddress(ea->data());
       _distance = distance;
     }

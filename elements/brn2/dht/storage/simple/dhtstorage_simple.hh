@@ -78,7 +78,7 @@ class DHTStorageSimple : public DHTStorage
 
       Timestamp _last_request_time;
 
-      int replica_count;
+      uint32_t replica_count;
       ReplicaInfo *replicaList;
       uint32_t received_replica_bitmap;
 
@@ -113,7 +113,7 @@ class DHTStorageSimple : public DHTStorage
       }
 
       bool have_all_replicas() {
-        return ( (( 1 << (replica_count + 1)) - 1) == received_replica_bitmap );
+        return ( (uint32_t)(( 1 << (replica_count + 1)) - 1) == received_replica_bitmap );
       }
 
       bool have_replica(int replica) {

@@ -635,7 +635,7 @@ Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors
 */
 void
 Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
-  EtherAddress *me = _node_identity->getMainAddress();
+  const EtherAddress *me = _node_identity->getMainAddress();
   get_neighbors(*me,neighbors);
 }
 

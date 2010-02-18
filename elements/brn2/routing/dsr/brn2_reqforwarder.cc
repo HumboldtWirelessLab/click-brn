@@ -169,7 +169,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     if ( _me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(dst_addr) == 50 ) ) {
 
       BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
-      EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+      const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
       // estimate link metric to prev node
       int metric = _link_table->get_link_metric(prev_node, *device_addr);
@@ -220,7 +220,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 */
     if (_me->isIdentical(&src_addr) || (_link_table->get_host_metric_to_me(src_addr) == 50 )) {
       BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
-      EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+      const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
       BRN_DEBUG("* I (=%s) sourced this RREQ; ignore., #ID %d",
                    device_addr->unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
@@ -353,7 +353,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         }
 
         indev = _me->getDeviceByNumber(devicenumber);
-        device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+        const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
         BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), (BRNPacketAnno::udevice_anno(p_in)).c_str());
 
@@ -410,7 +410,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 
   //rreq is a broadcast; use the ether address associated with packet's device
   indev = _me->getDeviceByNumber(devicenumber);
-  EtherAddress *me = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+  const EtherAddress *me = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
   if (me) {
     // set the metric no my previous node

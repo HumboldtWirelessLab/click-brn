@@ -71,7 +71,7 @@ void
 BRN2SetSrcForNeighbor::push(int /*port*/, Packet *p_in)
 {
   EtherAddress ea;
-  EtherAddress *src;
+  const EtherAddress *src;
   //int outputport = -1;
 
   click_ether *ether = (click_ether *) p_in->data();

@@ -31,7 +31,7 @@ class DCluster : public Element {
 
     EtherAddress _info_src;
 
-    ClusterNodeInfo(EtherAddress *ea, uint32_t id, uint32_t distance) {
+    ClusterNodeInfo(const EtherAddress *ea, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(ea->data());
       _id = id;
       _distance = distance;

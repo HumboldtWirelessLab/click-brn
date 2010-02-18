@@ -56,7 +56,7 @@ class DHTRoutingKlibs : public DHTRouting
     DHTnode *get_responsibly_node(md5_byte_t *key);
     DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number);
 
-    int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) { return 0;}
+    int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 
     String routing_info(void);
     PacketSendBuffer packetBuffer;

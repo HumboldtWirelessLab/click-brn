@@ -40,7 +40,7 @@ BRN2NBList::getEntry(EtherAddress *v)
   return _nb_list.findp(*v);
 }
 
-EtherAddress *
+const EtherAddress *
 BRN2NBList::getDeviceAddressForNeighbor(EtherAddress *v) {
   BRN2Device *dev;
   NeighborInfo *nb_info = _nb_list.findp(*v);
