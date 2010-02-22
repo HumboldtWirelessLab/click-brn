@@ -377,4 +377,3 @@ template class Vector<BRN2Arp::ARPrequest>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2Arp)
-ELEMENT_REQUIRES(brn_common dhcp_packet_util)
