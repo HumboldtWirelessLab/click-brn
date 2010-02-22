@@ -166,7 +166,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     // Check whether we have reached the final destination (the meshnode itself or an associated client station).
     // Continue the construction of the route up to the final destination
     // SRC, HOP1, ..., LAST HOP, THIS1, THIS2, DST
-    if ( _me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(dst_addr) == 50 ) ) {
+    if ( _me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr)) ) {
 
       BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
       const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
@@ -176,7 +176,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       BRN_DEBUG("* RREQ: metric to prev node (%s) is %d.", prev_node.unparse().c_str(), metric);
 
       // the requested client is associated with this node
-      if (_link_table->get_host_metric_to_me(dst_addr) == 50 ) {
+      if (_link_table->is_associated(dst_addr)) {
 
         click_chatter("er soll zu mir gehoeren");
             BRN_DEBUG(" * Linktable at shutdown: %s", _link_table->print_links().c_str());
@@ -218,7 +218,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
     }
 */
-    if (_me->isIdentical(&src_addr) || (_link_table->get_host_metric_to_me(src_addr) == 50 )) {
+    if (_me->isIdentical(&src_addr) || (_link_table->is_associated(src_addr))) {
       BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
       const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
@@ -226,7 +226,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
                    device_addr->unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
       p_in->kill();
       return;
-    } else if (_me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(src_addr) == 50 )) { // rreq reached destination
+    } else if (_me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr))) { // rreq reached destination
 
       // this RREQ is for me, so generate a reply.
       BRN2RouteQuerierRoute reply_route;

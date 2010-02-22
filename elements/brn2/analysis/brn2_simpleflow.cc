@@ -87,7 +87,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
 void
 BRN2SimpleFlow::set_active()
 {
-  click_chatter("Flow active");
+  BRN_DEBUG("Flow active");
   txFlow._active = true;
 }
 

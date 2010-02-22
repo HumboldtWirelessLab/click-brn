@@ -67,6 +67,7 @@ BRN2SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -181,9 +182,9 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
-    if (_me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(dst_addr) == 50 )) { // for me
+    if (_me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr))) { // for me
       BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
-
+      BRN_DEBUG("Final Dest: %s",dst_addr.unparse().c_str());
       if ( _dsr_rid_cache ) {
         click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
@@ -320,12 +321,17 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
     ether_anno = const_cast<click_ether*>(p->ether_header());
     //TODO: ether type cannot be set here.
     p->pull(sizeof(click_ether));
+    BRN_DEBUG("PUSH Etherheader");
   }
+
+  ether_anno = (click_ether*)p->data();
+  p->set_ether_header(ether_anno);
 
   memcpy( ether_anno->ether_shost, src.data(), 6 );
   memcpy( ether_anno->ether_dhost, dst.data(), 6 );
 
   BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
+  BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
 
   return p;
 }
