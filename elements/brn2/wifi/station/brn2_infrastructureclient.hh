@@ -29,17 +29,21 @@
 #include <clicknet/wifi.h>
 #include <click/timer.hh>
 #include <click/string.hh>
+#include <click/timestamp.hh>
+
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include <elements/wifi/wifiencap.hh>
 #include <elements/wifi/station/proberequester.hh>
 #include <elements/wifi/station/openauthrequester.hh>
-#include <elements/wifi/station/associationrequester.hh>
-#include <click/timestamp.hh>
+
+
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "brn2beaconscanner.hh"
+#include <elements/brn2/wifi/station/brn2assocrequester.hh>
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"
+
+#include "brn2beaconscanner.hh"
 
 CLICK_DECLS
 
@@ -81,7 +85,7 @@ public:
 
   ProbeRequester *_probereq;
   OpenAuthRequester *_authreq;
-  AssociationRequester *_assocreq;
+  BRN2AssocRequester *_assocreq;
   WifiEncap *_wifiencap;
 
   Timer request_timer;
@@ -90,8 +94,6 @@ public:
 
   bool _auth;
   bool _ap_available;
-
-  int _debug;
 
   bool _ad_hoc;
 
@@ -105,6 +107,8 @@ public:
 
   int _minChannelScanTime;
   int _maxChannelScanTime;
+
+  int _debug;
 };
 
 CLICK_ENDDECLS
