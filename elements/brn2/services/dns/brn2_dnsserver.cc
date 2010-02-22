@@ -153,7 +153,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
 
   if ( port == 0 )
   {
-    BRN_DEBUG("BRN2DNSServer: Responder::dhcpresponse");
+    BRN_DEBUG("BRN2DNSServer: Responder::dnsresponse");
     char *cname = DNSProtocol::get_name(p_in);
     String name = String(cname);
     delete[] cname;
@@ -176,7 +176,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
       dht_request(ci,op);
 
     } else {
-      click_chatter("fragt nach anderen");
+      click_chatter("fragt nach anderen ( %s <-> %s )",name.c_str(), _domain_name.c_str());
       output(1).push(p_in); //TODO: fragt nach anderen -> weiterleiten (NAT ??)
     }
   }
@@ -276,5 +276,4 @@ BRN2DNSServer::server_info(void)
 template class Vector<BRN2DNSServer::DNSClientInfo *>;
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(brn_common)
 EXPORT_ELEMENT(BRN2DNSServer)

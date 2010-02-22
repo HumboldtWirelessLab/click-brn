@@ -125,6 +125,19 @@ DNSProtocol::get_name(Packet *p)
   return name;
 }
 
+const unsigned char *
+DNSProtocol::get_rddata(Packet *p, uint16_t *rdlength)
+{
+  char *name = get_name(p);
+
+  uint8_t *data = (uint8_t*)&(p->data()[DNS_HEADER_SIZE + strlen(name) + 1 + 2 * sizeof(uint16_t)]);
+  uint16_t *data_16t = (uint16_t*)&(data[sizeof(uint16_t)]);
+
+  *rdlength = ntohs(data_16t[4]);
+
+  return (unsigned char*)&(data_16t[5]);
+}
+
 struct dns_header *
 DNSProtocol::get_dns_header(Packet */*p*/)
 {

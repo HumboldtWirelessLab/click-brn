@@ -106,8 +106,13 @@ BRN2DNSClient::run_timer(Timer* )
 void
 BRN2DNSClient::push( int, Packet *packet )
 {
+  uint16_t s;
+
   BRN_DEBUG("BRN2DNSClient: Push");
 
+  IPAddress ip = IPAddress(DNSProtocol::get_rddata(packet,&s));
+
+  BRN_INFO("IP is %s",ip.unparse().c_str());
   packet->kill();
 
 }
