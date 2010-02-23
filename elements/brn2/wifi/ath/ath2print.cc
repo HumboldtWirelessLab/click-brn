@@ -188,7 +188,10 @@ Ath2Print::simple_action(Packet *p)
         sa_ath1 << "(TX) ";
         sa_ath1 << "Power: " << desc->xmit_power;
         sa_ath1 << " ACKRSSI: " << desc->ack_sig_strength;
-        sa_ath1 << " Rate: " << ratecode_to_dot11(desc->xmit_rate0);
+        sa_ath1 << " Rate: " << ratecode_to_dot11(desc->xmit_rate0) << "(" << desc->xmit_tries0 << ")";
+        sa_ath1 << " Rate1: " << ratecode_to_dot11(desc->xmit_rate1) << "(" << desc->xmit_tries1 << ")";
+        sa_ath1 << " Rate2: " << ratecode_to_dot11(desc->xmit_rate2) << "(" << desc->xmit_tries2 << ")";
+        sa_ath1 << " Rate3: " << ratecode_to_dot11(desc->xmit_rate3) << "(" << desc->xmit_tries3 << ")";
         sa_ath1 << " FAILCOUNT: " << desc->data_fail_count;
         sa_ath1 << " EXRetries: " << desc->excessive_retries;
       }
