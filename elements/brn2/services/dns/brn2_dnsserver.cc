@@ -97,7 +97,7 @@ static void callback_func(void *e, DHTOperation *op)
   if ( client_info != NULL ) {
     s->handle_dht_reply(client_info,op);
   } else {
-    click_chatter("No Client info for DHT-ID");
+    click_chatter("DNS-Server: No Client info for DHT-ID");
     delete op;
   }
 }
@@ -109,7 +109,7 @@ BRN2DNSServer::dht_request(DNSClientInfo *client_info, DHTOperation *op)
 
   if ( result == 0 )
   {
-    click_chatter("Got direct-reply (local)");
+    BRN_INFO("Got direct-reply (local)");
     handle_dht_reply(client_info,op);
   } else {
     client_info->_id = result;
@@ -128,7 +128,7 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
     memcpy(name,op->key, op->header.keylen);
     name[op->header.keylen] = '\0';
 
-    click_chatter("No client with name %s !",name);
+    BRN_INFO("No client with name %s !",name);
     delete[] name;
 
   } else {
@@ -159,7 +159,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
     delete[] cname;
 
     if ( name == _sname || name == _full_sname ) {
-      click_chatter("fragt nach mir");
+      BRN_INFO("Ask for me");
 
       uint16_t nameoffset = 0x0cc0;
       WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
@@ -167,7 +167,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
       output(0).push(ans);
 
     } else if ( DNSProtocol::isInDomain( name, _domain_name ) ) {
-      click_chatter("fragt nach rechner der domain");
+      BRN_INFO("Ask for other in domain");
 
       DNSClientInfo *ci = new DNSClientInfo(p_in,IPAddress(0),name);
       client_info_list.push_back(ci);
@@ -176,7 +176,7 @@ BRN2DNSServer::push( int port, Packet *p_in )
       dht_request(ci,op);
 
     } else {
-      click_chatter("fragt nach anderen ( %s <-> %s )",name.c_str(), _domain_name.c_str());
+      BRN_INFO("Ask for other ( %s <-> %s )",name.c_str(), _domain_name.c_str());
       output(1).push(p_in); //TODO: fragt nach anderen -> weiterleiten (NAT ??)
     }
   }

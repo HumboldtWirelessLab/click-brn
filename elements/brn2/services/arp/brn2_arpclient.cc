@@ -38,7 +38,7 @@ CLICK_DECLS
 
 BRN2ARPClient::BRN2ARPClient() :
   _debug(BrnLogger::DEFAULT),
-  _request_timer(this)
+  _request_timer(static_request_timer_hook,this)
 {
 }
 
@@ -108,7 +108,14 @@ BRN2ARPClient::cleanup(CleanupStage stage)
 }
 
 void
-BRN2ARPClient::run_timer()
+BRN2ARPClient::static_request_timer_hook(Timer *t, void *f)
+{
+  if ( t == NULL ) click_chatter("Time is NULL");
+  ((BRN2ARPClient*)f)->request_timer_func();
+}
+
+void
+BRN2ARPClient::request_timer_func()
 {
   long time_diff;
   //BRN_DEBUG("BRN2ARPClient: Timer");
@@ -123,38 +130,38 @@ BRN2ARPClient::run_timer()
     if ( time_diff > _timeout )
     {
        _count_timeout++;
-       BRN_INFO("BRN2ARPClient:_timeout for IP: %s",_request_queue[i].ip_add.unparse().c_str());
-       BRN_INFO("BRN2ARPClient: TIME: %d", time_diff);
+       BRN_INFO("BRN2ARPClient: Timeout for IP: %s",_request_queue[i].ip_add.unparse().c_str());
+       BRN_DEBUG("BRN2ARPClient: TIME: %d", time_diff);
        _request_queue.erase( _request_queue.begin() + i );
     }
   }
-  
+
   if ( ! ( ( _count > 0 ) || ( _count == -1 ) ) )  //wenn ich nicht mehr nach IPs fargen muss dann raus
   {
-    BRN_DEBUG("BRN2ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
+    BRN_DEBUG("BRN2ARPClient: Skript %s %d %d %d %d",_client_ip.unparse().c_str(),
       _count_request,_count_reply,_count_timeout,_request_queue.size());
     _request_timer.schedule_after_msec(_client_interval);
     return;
   }
-  
+
 
   if ( _request_queue.size() < _requests_at_once )  //kann ich noch anfragen machen
   {
     //_range_index = ( _range_index + 1 ) % _range; // sonst einfach ein s hoch aber jetzt
-    BRN_DEBUG("BRN2ARPClient:Alles zufall");
+    BRN_DEBUG("BRN2ARPClient: Alles zufall");
     _range_index = click_random() % _range ;
-    
+
     int requested_ip = ntohl(_start_range.addr()) + _range_index;
-    
+
     // do not ask for own ip, simply use the next one
     if (requested_ip == (int)ntohl(_client_ip.addr()))
       requested_ip++;
-    
+
     requested_ip = htonl(requested_ip);
 
     IPAddress ip_add(requested_ip);
 
-  
+
     for ( i = 0; i < _request_queue.size(); i++ )
     {
       if ( _request_queue[i].ip_add == ip_add )
@@ -175,10 +182,10 @@ BRN2ARPClient::run_timer()
     }
   }
 
-  BRN_DEBUG("BRN2ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
+  BRN_DEBUG("BRN2ARPClient: Skript %s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());
   _request_timer.schedule_after_msec(_client_interval);
- 
+
 }
 
 void
@@ -191,7 +198,7 @@ BRN2ARPClient::push( int port, Packet *packet )
   if ( port == 0 )
     result = arp_reply(packet);
 
-  BRN_DEBUG("BRN2ARPClient:Skript%s %d %d %d %d",_client_ip.unparse().c_str(),
+  BRN_DEBUG("BRN2ARPClient: Skript %s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());
 }
 
@@ -222,7 +229,7 @@ BRN2ARPClient::arp_reply(Packet *p)
       if ( _request_queue[i].ip_add == ip_add )
       {
         time_diff = diff_in_ms(_time_now, _request_queue[i]._time_start );
-        BRN_INFO("BRN2ARPClient: TIME: %d",time_diff);
+        BRN_DEBUG("BRN2ARPClient: TIME: %d",time_diff);
         _count_reply++;
         _request_queue.erase( _request_queue.begin() + i );
         break;
@@ -230,7 +237,7 @@ BRN2ARPClient::arp_reply(Packet *p)
     }
 
     BRN_INFO("BRN2ARPClient: IP: %s  MAC: %s\n",ip_add.unparse().c_str(),eth_add.unparse().c_str());
-  }  
+  }
   else
   {
     BRN_ERROR("BRN2ARPClient: Error\n");
@@ -247,39 +254,39 @@ BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
 {
   click_ether *e;
   click_ether_arp *ea;
-		
-  WritablePacket *p = Packet::make(sizeof(click_ether)+sizeof(click_ether_arp));      //neues Paket
+
+  WritablePacket *p = Packet::make(128, NULL,sizeof(click_ether)+sizeof(click_ether_arp), 32);      //neues Paket
 
   p->set_mac_header(p->data(), 14);
   memset(p->data(), '\0', p->length());
 
   e = (click_ether *) p->data();	                                 //pointer auf Ether-header holen
   ea = (click_ether_arp *) (e + 1);                                //Pointer auf BRN2ARPClient-Header holen
-	
+
   uint8_t bcast_add[] = { 255,255,255,255,255,255 };
 
   memcpy(e->ether_dhost, bcast_add, 6);                             //alte Quelle ist neues Ziel des Etherframes
   memcpy(e->ether_shost, _client_ethernet.data(), 6);
-		
+
   e->ether_type = htons(ETHERTYPE_ARP);                          //type im Ether-Header auf ARP setzten
-		
+
   //Felder von ARP fllen
   ea->ea_hdr.ar_hrd = htons(ARPHRD_ETHER);                       //Type der Hardware Adresse setzen
   ea->ea_hdr.ar_pro = htons(ETHERTYPE_IP);                       //Type der Protokoll Adresse setzten
   ea->ea_hdr.ar_hln = 6;                                         //L�ge setzten
   ea->ea_hdr.ar_pln = 4;                                         //L�ge
   ea->ea_hdr.ar_op = htons(ARPOP_REQUEST);                         //arp_opcode auf Request setzen
-		
+
   //neues Packet basteln, erstmal quell und target zeug vertauschen
   memcpy(ea->arp_tpa, d_ip_add, 4);                         //neues Target ist altes Source
   memcpy(ea->arp_sha, _client_ethernet.data(), 6);                         //neues Source der Tabelle entnehmen
   memcpy(ea->arp_spa, _client_ip.data(), 4);                         //neues Source der Tabelle entnehmen
-		
+
   BRN_DEBUG("BRN2ARPClient: send ARP-Request");
 
   _count_request++;
   output( 0 ).push( p );
- 
+
   return(0);
 
 }
@@ -303,8 +310,8 @@ BRN2ARPClient::diff_in_ms(timeval t1, timeval t2)
 }
 
 enum {
-  H_DEBUG, 
-  H_CLIENT_IP, 
+  H_DEBUG,
+  H_CLIENT_IP,
   H_CLIENT_ETHERNET,
   H_START_RANGE,
   H_RANGE,
@@ -355,7 +362,7 @@ write_param(const String &in_s, Element *e, void *vparam,
   BRN2ARPClient *f = (BRN2ARPClient *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
-  case H_DEBUG: 
+  case H_DEBUG:
     {    //debug
       int debug;
       if (!cp_integer(s, &debug)) 
@@ -364,7 +371,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_CLIENT_IP:
-    {    
+    {
       IPAddress client_ip;
       if (!cp_ip_address(s, &client_ip)) 
         return errh->error("client_ip parameter must be ip address");
@@ -372,7 +379,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_CLIENT_ETHERNET:
-    {    
+    {
       EtherAddress client_ethernet;
       if (!cp_ethernet_address(s, &client_ethernet)) 
         return errh->error("client_ethernet parameter must be ether address");
@@ -380,7 +387,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_START_RANGE:
-    {    
+    {
       IPAddress start_range;
       if (!cp_ip_address(s, &start_range)) 
         return errh->error("start_range parameter must be ip address");
@@ -388,7 +395,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_RANGE:
-    {    
+    {
       int range;
       if (!cp_integer(s, &range)) 
         return errh->error("range parameter must be int");
@@ -396,7 +403,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_CLIENT_START:
-    {    
+    {
       int client_start;
       if (!cp_integer(s, &client_start)) 
         return errh->error("client_start parameter must be int");
@@ -404,7 +411,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_CLIENT_INTERVAL:
-    {    
+    {
       int client_interval;
       if (!cp_integer(s, &client_interval)) 
         return errh->error("client_interval parameter must be int");
@@ -420,7 +427,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_REQUESTS_AT_ONCE:
-    { 
+    {
       int requests_at_once;
       if (!cp_integer(s, &requests_at_once)) 
         return errh->error("requests_at_once parameter must be int");
@@ -428,7 +435,7 @@ write_param(const String &in_s, Element *e, void *vparam,
       break;
     }
   case H_TIMEOUT:
-    {  
+    {
       int timeout;
       if (!cp_integer(s, &timeout)) 
         return errh->error("timeout parameter must be int");
@@ -456,31 +463,31 @@ BRN2ARPClient::add_handlers()
 {
   add_read_handler("debug", read_param, (void *) H_DEBUG);
   add_write_handler("debug", write_param, (void *) H_DEBUG);
-  
+
   add_read_handler("client_ip", read_param, (void *) H_CLIENT_IP);
   add_write_handler("client_ip", write_param, (void *) H_CLIENT_IP);
-  
+
   add_read_handler("client_ethernet", read_param, (void *) H_CLIENT_ETHERNET);
   add_write_handler("client_ethernet", write_param, (void *) H_CLIENT_ETHERNET);
-  
+
   add_read_handler("start_range", read_param, (void *) H_START_RANGE);
   add_write_handler("start_range", write_param, (void *) H_START_RANGE);
-  
+
   add_read_handler("range", read_param, (void *) H_RANGE);
   add_write_handler("range", write_param, (void *) H_RANGE);
 
   add_read_handler("client_start", read_param, (void *) H_CLIENT_START);
   add_write_handler("client_start", write_param, (void *) H_CLIENT_START);
-  
+
   add_read_handler("client_interval", read_param, (void *) H_CLIENT_INTERVAL);
   add_write_handler("client_interval", write_param, (void *) H_CLIENT_INTERVAL);
-  
+
   add_read_handler("count", read_param, (void *) H_COUNT);
   add_write_handler("count", write_param, (void *) H_COUNT);
-  
+
   add_read_handler("requests_at_once", read_param, (void *) H_REQUESTS_AT_ONCE);
   add_write_handler("requests_at_once", write_param, (void *) H_REQUESTS_AT_ONCE);
-  
+
   add_read_handler("timeout", read_param, (void *) H_TIMEOUT);
   add_write_handler("timeout", write_param, (void *) H_TIMEOUT);
 

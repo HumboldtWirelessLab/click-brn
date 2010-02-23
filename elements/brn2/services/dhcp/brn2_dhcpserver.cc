@@ -621,7 +621,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
   {
     req_ip = IPAddress(requested_ip);
 
-    click_chatter("IPAddresse is: %s",req_ip.unparse().c_str());
+    BRN_DEBUG("IPAddresse is: %s",req_ip.unparse().c_str());
 
     BRN_DEBUG("BRN2DHCPServer: Clientstatus: SELECTING or INIT-REBOOT");
 
@@ -857,10 +857,12 @@ BRN2DHCPServer::dhcp_add_standard_options(WritablePacket *p)
 void
 BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
 {
-  click_chatter("Find ip for Client is Vlan %d", (int)vlanid);
   StringAccum sa;
   uint32_t new_ip;
-  click_chatter("id is %d EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
+
+  BRN_DEBUG("Find ip for Client is Vlan %d", (int)vlanid);
+  BRN_DEBUG("id is %d EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
+
   if ( memcmp(&(client_info->_ciaddr),"\0\0\0\0",4) == 0 )
   {
 //just take the last byte of mac address --> TODO: ZeroConf

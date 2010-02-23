@@ -30,7 +30,7 @@
 #include <elements/wifi/wirelessinfo.hh>
 #include "brn2beaconscanner.hh"
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
-
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
@@ -38,7 +38,8 @@ CLICK_DECLS
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 
 BRN2BeaconScanner::BRN2BeaconScanner()
-  : _rtable(0),
+  : _debug(BrnLogger::DEFAULT),
+    _rtable(0),
     _winfo(0)
 {
 }
@@ -53,9 +54,9 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
-       "DEBUG", 0, cpBool, &_debug,
-       "WIRELESS_INFO", 0, cpElement, &_winfo,
-       "RT", 0, cpElement, &_rtable,
+       "WIRELESS_INFO", cpkP, cpElement, &_winfo,
+       "RT", cpkP, cpElement, &_rtable,
+       "DEBUG", cpkP, cpInteger, &_debug,
        cpEnd) < 0)
     return -1;
 
@@ -141,12 +142,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
     case 150: /* ??? */
       break;
     default:
-      if (_debug) {
-        click_chatter("%{element}: ignored element id %u %u \n",
-            this,
-            *ptr,
-            ptr[1]);
-      }
+      BRN_DEBUG("%{element}: ignored element id %u %u \n", this, *ptr, ptr[1]);
     }
     ptr += ptr[1] + 2;
 
@@ -165,12 +161,15 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
   EtherAddress bssid = EtherAddress(w->i_addr3);
 
-  vap *ap = _vaps.findp(bssid);
+  vap *ap = _aps.findp(bssid);
   if (!ap) {
-    click_chatter("ALL ap: %d\n",_vaps.size());
-    _vaps.insert(bssid, vap());
-    click_chatter("add");
-    ap = _vaps.findp(bssid);
+    BRN_DEBUG("ALL ap: %d\n",_aps.size());
+
+    _aps.insert(bssid, vap());
+
+    BRN_DEBUG("add");
+
+    ap = _aps.findp(bssid);
     ap->_ssid = "";
     ap->_ssid_empty = true;
   }
@@ -178,7 +177,9 @@ BRN2BeaconScanner::simple_action(Packet *p)
   pap *ac_pap = _paps.findp(bssid);
   if (!ac_pap) {
     _paps.insert(bssid, pap());
-    click_chatter("add pap");
+
+    BRN_DEBUG("add pap");
+
     ac_pap = _paps.findp(bssid);
   }
 
@@ -188,7 +189,9 @@ BRN2BeaconScanner::simple_action(Packet *p)
   vap *ac_vap = ac_pap->_vaps.findp(ac_ssid);
   if (!ac_vap) {
     ac_pap->_vaps.insert(ac_ssid, vap());
-    click_chatter("add vap");
+
+    BRN_DEBUG("add vap");
+
     ac_vap = ac_pap->_vaps.findp(ac_ssid);
     ac_vap->_ssid = "none";
     ac_vap->_ssid_empty = true;
@@ -233,14 +236,15 @@ BRN2BeaconScanner::simple_action(Packet *p)
   }
 
 //###########################################################################
-  ac_pap->_last_rx.set_now();
+  ac_pap->_last_rx = Timestamp::now();
 
   ap->_basic_rates.clear();
   ap->_rates.clear();
-  ap->_last_rx.set_now();
+  ap->_last_rx = Timestamp::now();
   ac_vap->_basic_rates.clear();
   ac_vap->_rates.clear();
-  ac_vap->_last_rx.set_now();
+  ac_vap->_last_rx = Timestamp::now();
+
   Vector<int> all_rates;
 
   if (rates_l) {
@@ -287,8 +291,8 @@ BRN2BeaconScanner::scan_string()
 {
   StringAccum sa;
   Timestamp now = Timestamp::now();
-  sa << "size " << _vaps.size() << "\n";
-  for (APIter iter = _vaps.begin(); iter.live(); iter++) {
+  sa << "size " << _aps.size() << "\n";
+  for (APIter iter = _aps.begin(); iter.live(); iter++) {
     click_chatter("next ap");
     vap ap = iter.value();
     sa << ap._eth << " ";
@@ -342,7 +346,7 @@ BRN2BeaconScanner::scan_string2()
 {
   StringAccum sa;
   Timestamp now = Timestamp::now();
-  sa << "size " << _vaps.size() << "\n";
+  sa << "size " << _aps.size() << "\n";
   for (PAPIter iter = _paps.begin(); iter.live(); iter++) {
     pap acpap = iter.value();
 
@@ -401,7 +405,7 @@ BRN2BeaconScanner::scan_string2()
 void 
 BRN2BeaconScanner::reset()
 {
-  _vaps.clear();
+  _aps.clear();
 }
 
 enum {H_DEBUG, H_SCAN,H_SCAN2, H_RESET};
@@ -412,9 +416,9 @@ BRN2BeaconScanner_read_param(Element *e, void *thunk)
   BRN2BeaconScanner *td = (BRN2BeaconScanner *)e;
     switch ((uintptr_t) thunk) {
       case H_DEBUG:
-	return String(td->_debug) + "\n";
+        return String(td->_debug) + "\n";
       case H_SCAN:
-	return td->scan_string();
+        return td->scan_string();
       case H_SCAN2:
         return td->scan_string2();
       default:

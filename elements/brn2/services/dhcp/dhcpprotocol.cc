@@ -17,7 +17,7 @@ WritablePacket *
 DHCPProtocol::new_dhcp_packet(void)
 {
   int p_len = DHCP_FIXED_NON_UDP + DHCP_OPTIONS_COOKIE_LEN + 312;
-  WritablePacket *new_packet = WritablePacket::make(p_len);
+  WritablePacket *new_packet = WritablePacket::make( 128, NULL, p_len, 32);
   struct dhcp_packet *dhcp_p = (struct dhcp_packet*)new_packet->data(); ;
 
   memset(new_packet->data(), 0, p_len);

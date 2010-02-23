@@ -239,7 +239,7 @@ BRN2Arp::send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add
   click_ether_arp *ea;
 
   //neues Paket
-  WritablePacket *p = Packet::make(sizeof(click_ether)+sizeof(click_ether_arp));
+  WritablePacket *p = Packet::make(128, NULL,sizeof(click_ether)+sizeof(click_ether_arp), 32);
 
   p->set_mac_header(p->data(), 14);
   memset(p->data(), '\0', p->length());

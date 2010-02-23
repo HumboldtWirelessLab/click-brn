@@ -36,7 +36,7 @@ DNSProtocol::new_dns_question(String qname, uint16_t qtype, uint16_t qclass)
   uint8_t missing_dot_ext = 0;
   if ( '.' != (char)(qname.data()[0])) missing_dot_ext = 1;
 
-  WritablePacket *p = Packet::make(DNS_HEADER_SIZE + qname.length() + 1 + missing_dot_ext + 2 * sizeof(uint16_t));    //new packets
+  WritablePacket *p = Packet::make(128, NULL, DNS_HEADER_SIZE + qname.length() + 1 + missing_dot_ext + 2 * sizeof(uint16_t), 32);    //new packets
 
   uint8_t *data = &(((uint8_t*)(p->data()))[DNS_HEADER_SIZE]);
   uint16_t *fields;

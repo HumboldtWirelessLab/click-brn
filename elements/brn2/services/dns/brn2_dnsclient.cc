@@ -112,7 +112,7 @@ BRN2DNSClient::push( int, Packet *packet )
 
   IPAddress ip = IPAddress(DNSProtocol::get_rddata(packet,&s));
 
-  BRN_INFO("IP is %s",ip.unparse().c_str());
+  BRN_INFO("DNS-Reply: Name: %s IP: %s",DNSProtocol::get_name(packet),ip.unparse().c_str());
   packet->kill();
 
 }
