@@ -135,6 +135,7 @@ DNSProtocol::get_rddata(Packet *p, uint16_t *rdlength)
 
   *rdlength = ntohs(data_16t[4]);
 
+  delete[] name;
   return (unsigned char*)&(data_16t[5]);
 }
 

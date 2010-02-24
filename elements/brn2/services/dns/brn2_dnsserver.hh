@@ -26,7 +26,7 @@
 #include <click/vector.hh>
 #include "elements/brn2/vlan/brn2vlantable.hh"
 #include "elements/brn2/services/dhcp/dhcp.h"
-#include "dnsconfiglist.hh"
+#include "elements/brn2/services/dhcp/dhcpsubnetlist.hh"
 
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
@@ -140,7 +140,7 @@ private:
   String _sname;           //servername
   String _full_sname;
 
-  BRN2DNSConfigList *_dhcpsubnetlist;
+  BRN2DHCPSubnetList *_dhcpsubnetlist;
   BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
 };

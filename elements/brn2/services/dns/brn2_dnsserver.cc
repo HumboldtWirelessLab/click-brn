@@ -144,6 +144,7 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
   remove_client(client_info);
 }
 
+//TODO: check dhcpsubnetlist for other domains were this dns-server is responsible for
 void
 BRN2DNSServer::push( int port, Packet *p_in )
 {
