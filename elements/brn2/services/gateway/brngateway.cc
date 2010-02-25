@@ -33,6 +33,8 @@
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"
 
@@ -245,8 +247,8 @@ BRNGateway::write_handler(const String &data, Element *e, void *thunk, ErrorHand
 
 void
 BRNGateway::add_handlers() {
-	BRNElement::add_handlers();
-  
+//  BRNElement::add_handlers();
+
   // handler to get all known gateways
   add_read_handler("known_gateways", read_handler, (void *) HANDLER_KNOWN_GATEWAYS);
 
@@ -367,7 +369,7 @@ Packet*
 BRNGateway::update_gateway_in_dht(BRNGatewayEntry gwe) {
 
 	BRN_INFO("Sending dht update packet");
-  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
+/*  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
     
     
       
@@ -384,7 +386,8 @@ BRNGateway::update_gateway_in_dht(BRNGatewayEntry gwe) {
   dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_MAC, 6, (uint8_t *) _my_eth_addr.data() );
   dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 1, TYPE_UNKNOWN, sizeof(gwe), (uint8_t *) &gwe );
     
-  return dht_p_out;
+  return dht_p_out;*/
+  return NULL;
 }
 
 /* returns a packet to remove this gateway from the DHT (REMOVE) */
@@ -399,7 +402,7 @@ BRNGateway::update_gateway_in_dht(BRNGatewayEntry gwe) {
  */
 Packet* 
 BRNGateway::remove_gateway_from_dht() {
-
+/*
   WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
       
   unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 4 ) % 255;
@@ -412,7 +415,8 @@ BRNGateway::remove_gateway_from_dht() {
   dht_p_out = DHTPacketUtil::add_sub_list(dht_p_out, 1);
   dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_MAC, 6, (uint8_t *) _my_eth_addr.data() );
     
-  return dht_p_out;
+  return dht_p_out;*/
+  return NULL;
 }
 
 /* handle dht reponse */
@@ -429,7 +433,7 @@ BRNGateway::get_getways_from_dht() {
 
 	BRN_INFO("Sending dht get packet");
 
-  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
+/*  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
       
   unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 5 ) % 255;
     
@@ -439,7 +443,8 @@ BRNGateway::get_getways_from_dht() {
   DHTPacketUtil::set_header(dht_p_out, GATEWAY, DHT, 0, READ, unique_id );
   dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_STRING, strlen(DHT_KEY_GATEWAY), (uint8_t *) DHT_KEY_GATEWAY);
 
-  return dht_p_out;
+  return dht_p_out;*/
+  return NULL;
 }
 
 /**
@@ -450,7 +455,7 @@ BRNGateway::get_getways_from_dht() {
  */
 void 
 BRNGateway::handle_dht_response(Packet* p) {
-
+/*
   struct dht_packet_header *dht_header = (struct dht_packet_header*)p->data();
 
   switch ( dht_header->id % 3 ) {
@@ -490,7 +495,7 @@ BRNGateway::handle_dht_response(Packet* p) {
   	default: {
   		BRN_ERROR("Strange DHT ID %d. Fix me.", dht_header->id);
   	}
-  }
+  }*/
 }
 
 // extracts the list of gateways from the dht response */
@@ -506,7 +511,7 @@ BRNGateway::handle_dht_response(Packet* p) {
 bool 
 BRNGateway::update_gateways_from_dht_response(Packet* p) {
 
-  BRN_INFO("Extracting gateways from DHT response");
+/*  BRN_INFO("Extracting gateways from DHT response");
 
   //BRNGatewayEntry new_gw;
  
@@ -560,7 +565,7 @@ BRNGateway::update_gateways_from_dht_response(Packet* p) {
       	index += DHT_PAYLOAD_OVERHEAD + dht_data[ index + 2 ]; // jump
     	}
   	}
-  }
+  }*/
   return true;
 }
 

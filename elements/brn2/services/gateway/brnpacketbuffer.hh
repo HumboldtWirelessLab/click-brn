@@ -21,7 +21,6 @@
 #ifndef BRNPACKETBUFFER_HH
 #define BRNPACKETBUFFER_HH
 
-#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
 #include <click/dequeue.hh>
 #include <click/vector.hh>
@@ -32,7 +31,7 @@ class Timer;
 class Timestamp;
 class BRNSetGatewayOnFlow;
 
-class BRNPacketBuffer : public BRNElement {
+class BRNPacketBuffer : public Element {
 public:
 
     BRNPacketBuffer();
@@ -56,6 +55,7 @@ public:
      */
     void flush_bucket(uint32_t bucket);
 
+    int _debug;
 private:
 
     class BufferedPacket

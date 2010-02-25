@@ -188,7 +188,7 @@ typedef HashMap<EtherAddress, BRNGatewayEntry> BRNGatewayList;
 
 /* ===================================================================================== */
 
-class BRNGateway : public BRNElement {
+class BRNGateway : public Element {
 public:
 
     /**
@@ -417,11 +417,12 @@ public:
      */
     const BRNGatewayList* get_gateways();
 
+    int _debug;
 private:
     friend class BRNSetGateway;
     friend class BRNSetGatewayOnFlow;
     friend class BRNGatewaySupervisor;
-    
+
     EtherAddress _my_eth_addr; /// my ethernet address
     BRNGatewayList _known_gateways; /// list of available (known) gateways
 

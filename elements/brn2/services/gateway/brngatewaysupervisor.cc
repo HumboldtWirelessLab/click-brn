@@ -28,7 +28,9 @@
 #include <clicknet/ether.h>
 
 // used BRN elements
-#include <elements/brn2/routing/linkstat/brn2_linktable.hh>
+#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "brngateway.hh"
 #include "brngatewaysupervisor.hh"
@@ -52,7 +54,7 @@ BRNGatewaySupervisor::configure (Vector<String> &conf, ErrorHandler *errh) {
     return errh->error("No element of type BRNGateway specified.");
   }
 
-  if (_link_table->cast("BrnLinkTable") == 0) {
+  if (_link_table->cast("Brn2LinkTable") == 0) {
     return errh->error("No element of type BrnLinkTable specified.");
   }
 

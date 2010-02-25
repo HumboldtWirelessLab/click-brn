@@ -21,7 +21,7 @@
 #ifndef BRNGATEWAYENCAP_H_
 #define BRNGATEWAYENCAP_H_
 
-#include <elements/brn/brnelement.hh>
+//#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
 
 CLICK_DECLS
@@ -29,7 +29,7 @@ CLICK_DECLS
 class BRNGateway;
 
 
-class BRNGatewayEncap : public BRNElement {
+class BRNGatewayEncap : public Element {
 public:
 
     BRNGatewayEncap();
@@ -50,7 +50,7 @@ public:
 
     void push(int, Packet *);
     
-
+    int _debug;
 private:
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
 

@@ -21,13 +21,12 @@
 #ifndef BRNSETGATEWAY_HH
 #define BRNSETGATEWAY_HH
 
-#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
 
 CLICK_DECLS
 
 class BRNGateway;
-class BrnLinkTable;
+class Brn2LinkTable;
 
 /*
  * =c
@@ -38,7 +37,7 @@ class BrnLinkTable;
  *
  */
 
-class BRNSetGateway : public BRNElement {
+class BRNSetGateway : public Element {
 public:
 
     BRNSetGateway();
@@ -59,6 +58,7 @@ public:
 
     void push(int, Packet *);
 
+    int _debug;
 private:
     void handle_feedback(Packet *p);
     void set_gateway(Packet *p);
@@ -67,7 +67,7 @@ private:
     void set_gateway_on_packet(Packet *, const EtherAddress);
 
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
-    BrnLinkTable *_link_table; // link table to determine metric to available gateways
+    Brn2LinkTable *_link_table; // link table to determine metric to available gateways
 };
 
 CLICK_ENDDECLS

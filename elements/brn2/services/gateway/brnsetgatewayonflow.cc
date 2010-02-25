@@ -33,18 +33,22 @@
 // protocol structures
 #include <clicknet/ether.h>
 #include <clicknet/ip.h>
-#include <elements/brn/brn.h>
 
 // elements
 #include <elements/analysis/aggregateipflows.hh>
 #include <elements/ethernet/arptable.hh>
 
 // used BRN elements
-#include <elements/brn/routing/linkstat/brnlinktable.hh>
+#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brn2.h"
 
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"
 #include "brnpacketbuffer.hh"
+
+
 
 CLICK_DECLS
 
@@ -75,7 +79,7 @@ BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
       return errh->error("No element of type AggregateIPFlows specified.");
   }
 
-  if (_link_table->cast("BrnLinkTable") == 0) {
+  if (_link_table->cast("Brn2LinkTable") == 0) {
       return errh->error("No element of type BrnLinkTable specified.");
   }
 
@@ -294,7 +298,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
   else if (port == 1) {  
     BRN_INFO("Getting handover packets");
     
-    click_brn_iapp*     pIapp  = (click_brn_iapp*)p->data();
+    /*click_brn_iapp*     pIapp  = (click_brn_iapp*)p->data();
     
     BRN_CHECK_EXPR_RETURN(CLICK_BRN_IAPP_PAYLOAD_GATEWAY != pIapp->payload_type,
           ("got invalid iapp payload type %d", pIapp->payload_type), if (p) p->kill(); return;);
@@ -359,12 +363,12 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
         return;
       }
     }
-  }
+  */}
   else if (port == 2) {
     // add gateway information 
     BRN_DEBUG("Receiving handover reply from port 2");
   
-    click_ether*        pEther = (click_ether*)p->data();
+    /*click_ether*        pEther = (click_ether*)p->data();
     click_brn*          pBrn   = (click_brn*)(pEther+1);
     click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
     click_brn_iapp_ho*  pHo    = &pIapp->payload.ho;
@@ -421,7 +425,7 @@ BRNSetGatewayOnFlow::push(int port, Packet *p) {
     else {
       BRN_DEBUG("Wasn't a handover reply. Passing unmodified.");
       output(2).push(p);
-    }
+    }*/
   } 
 }
 
@@ -651,7 +655,7 @@ BRNSetGatewayOnFlow::write_handler(const String &data, Element *e, void *thunk, 
 
 void
 BRNSetGatewayOnFlow::add_handlers() {
-  BRNElement::add_handlers();
+//  BRNElement::add_handlers();
   
   add_read_handler("flows", read_handler, (void *) HANDLER_FLOWS);
   add_read_handler("flows_handed_over", read_handler, (void *) HANDLER_FLOWS_HAND_OVER);

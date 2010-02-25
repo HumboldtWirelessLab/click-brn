@@ -29,10 +29,12 @@
  */
 
 #include <click/config.h>
-#include "brnicmppingsourcegatewaytester.hh"
+#include <click/etheraddress.hh>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/vector.hh>
+
+#include "brnicmppingsourcegatewaytester.hh"
 
 CLICK_DECLS
 

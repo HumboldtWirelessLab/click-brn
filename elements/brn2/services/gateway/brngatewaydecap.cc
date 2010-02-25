@@ -29,7 +29,10 @@
 #include "gateway.h"
 
 // used BRN elements
-#include <elements/brn2/routing/linkstat/brnlinktable.hh>
+#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brn2.h"
 
 #include "brngateway.hh"
 #include "brngatewaydecap.hh"

@@ -26,8 +26,12 @@
 
 // protocol structures
 #include <clicknet/ether.h>
-#include "gateway.h"
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brn2.h"
+
+#include "gateway.h"
 #include "brngateway.hh"
 #include "brngatewayencap.hh"
 

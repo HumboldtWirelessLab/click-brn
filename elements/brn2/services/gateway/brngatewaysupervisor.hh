@@ -21,8 +21,9 @@
 #ifndef BRNGATEWAYSUPERVISOR_H_
 #define BRNGATEWAYSUPERVISOR_H_
 
-#include <elements/brn/brnelement.hh>
+//#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
+#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
 
 CLICK_DECLS
 
@@ -39,7 +40,7 @@ class BrnLinkTable;
  * I think no.
  */
 
-class BRNGatewaySupervisor : public BRNElement {
+class BRNGatewaySupervisor : public Element {
 public:
 
     BRNGatewaySupervisor();
@@ -60,9 +61,10 @@ public:
 
     void push(int, Packet *);
 
+    int _debug;
 private:
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
-    BrnLinkTable *_link_table;
+    Brn2LinkTable *_link_table;
 };
 
 
