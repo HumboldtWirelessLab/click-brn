@@ -59,6 +59,7 @@ class DHTStorageTest : public Element
     uint32_t _countkey;
 
     bool _write;
+    bool _read;
 
   public:             //public since it is needed in the handler
     int op_rep;

@@ -21,6 +21,8 @@ DHTStorageTest::DHTStorageTest():
   _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this),
   _startkey(0),
+  _write(false),
+  _read(true),
   op_rep(0),
   write_req(0),
   write_rep(0),
@@ -47,7 +49,6 @@ DHTStorageTest::~DHTStorageTest()
 int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _interval = 1000;
-  _write = false;
   _countkey = 100;
 
   if (cp_va_kparse(conf, this, errh,
@@ -57,6 +58,7 @@ int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
     "COUNTKEYS", cpkN, cpInteger, &_countkey,
     "STARTKEY", cpkN, cpInteger, &_startkey,
     "WRITE",cpkN, cpBool, &_write,
+    "READ",cpkN, cpBool, &_read,
     "RETRIES", cpkN, cpInteger, &_retries,
     "REPLICA", cpkN, cpInteger, &_replica,
     "DEBUG", cpkN, cpInteger, &_debug,
@@ -174,6 +176,7 @@ DHTStorageTest::request_timer_hook(Timer *t)
   }
   else
   {
+    if ( ! _read ) return;
     read_req++;
     BRN_DEBUG("Read Key: %d",_key);
     req->read((uint8_t*)&_key, sizeof(uint32_t));
