@@ -19,12 +19,14 @@ CLICK_DECLS
 
 #define DHT_OPERATION_ID_LOCAL_REPLY 0
 
-#define DHT_STATUS_UNKNOWN        0
-#define DHT_STATUS_OK             1
-#define DHT_STATUS_KEY_NOT_FOUND  2
-#define DHT_STATUS_KEY_IS_LOCKED  3
-#define DHT_STATUS_TIMEOUT        4
-#define DHT_STATUS_MAXRETRY       5
+#define DHT_STATUS_UNKNOWN            0
+#define DHT_STATUS_OK                 1
+#define DHT_STATUS_KEY_NOT_FOUND      2
+#define DHT_STATUS_KEY_IS_LOCKED      3
+#define DHT_STATUS_KEY_ALREADY_EXISTS 4
+#define DHT_STATUS_TIMEOUT            5
+#define DHT_STATUS_MAXRETRY           6
+
 
 
 #define DHT_RETRIES_UNLIMITED -1
