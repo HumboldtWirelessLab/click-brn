@@ -48,8 +48,13 @@ class FalconLinkProbeHandler : public Element
 
   bool can_live_reconfigure() const  { return false; }
 
+  void add_handlers();
+
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
+
+  int register_linkprobehandler();
+  bool _register_handler;
 
  private:
   FalconRoutingTable *_frt;

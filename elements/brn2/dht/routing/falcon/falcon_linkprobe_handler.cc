@@ -38,6 +38,7 @@
 CLICK_DECLS
 
 FalconLinkProbeHandler::FalconLinkProbeHandler():
+    _register_handler(true),
     _frt(NULL),
     _linkstat(NULL)
 {
@@ -52,7 +53,8 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "FRT", cpkP+cpkM, cpElement, &_frt,
-      "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+      "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
+      "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
       cpEnd) < 0)
     return -1;
 
@@ -79,9 +81,17 @@ handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool direc
 }
 
 int
+FalconLinkProbeHandler::register_linkprobehandler()
+{
+  if ( _register_handler ) _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON,&handler);
+  return 0;
+}
+
+int
 FalconLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON,&handler);
+  register_linkprobehandler();
+
   return 0;
 }
 
@@ -112,6 +122,30 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   nodes.del();
 
   return 0;
+}
+
+static int
+write_reg_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  FalconLinkProbeHandler *lph = (FalconLinkProbeHandler *)e;
+
+  String s = cp_uncomment(in_s);
+  bool reg_handler;
+  if (!cp_bool(s, &reg_handler))
+    return errh->error("register_handler parameter must be a bool");
+
+  if ( reg_handler != lph->_register_handler ) {
+    lph->_register_handler = reg_handler;
+    lph->register_linkprobehandler();
+  }
+
+  return 0;
+}
+
+void
+FalconLinkProbeHandler::add_handlers()
+{
+  add_write_handler("register_handler", write_reg_param , (void *)0);
 }
 
 CLICK_ENDDECLS
