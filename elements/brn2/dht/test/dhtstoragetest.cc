@@ -152,11 +152,11 @@ DHTStorageTest::request_timer_hook(Timer *t)
   int result;
   char *my_value;
 
-  req = new DHTOperation();
-
   if ( _mode == MODE_INSERT )
   {
     BRN_DEBUG("Insert Key: %d",_key);
+
+    req = new DHTOperation();
 
     write_req++;
     my_value = new char[10];
@@ -177,6 +177,9 @@ DHTStorageTest::request_timer_hook(Timer *t)
   else
   {
     if ( ! _read ) return;
+
+    req = new DHTOperation();
+
     read_req++;
     BRN_DEBUG("Read Key: %d",_key);
     req->read((uint8_t*)&_key, sizeof(uint32_t));
