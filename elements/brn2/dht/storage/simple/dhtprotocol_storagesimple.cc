@@ -15,7 +15,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
  *
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * or contact brn@informatik.hu-berlin.de.
  */
 #include <click/config.h>
 #include <click/etheraddress.hh>
@@ -28,11 +28,48 @@
 CLICK_DECLS
 
 WritablePacket *
-DHTProtocolStorageSimple::new_data_packet(int32_t /*moveID*/, int /*countRows*/, uint8_t */*data*/, uint16_t data_size)
+DHTProtocolStorageSimple::new_data_packet(EtherAddress *src, int32_t moveID, uint8_t countRows, uint16_t data_size)
 {
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MOVEDDATA, data_size );
+  WritablePacket *data_p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MOVEDDATA,
+                                                        data_size + sizeof(struct dht_simple_storage_data));
 
-  return(hello_p);
+  struct dht_simple_storage_data *dssd = (struct dht_simple_storage_data *)DHTProtocol::get_payload(data_p);
+  dssd->count_rows = countRows;
+  dssd->reserved = 0;
+  dssd->move_id = htonl(moveID);
+  memcpy(dssd->etheraddr, src->data(),6);
+
+  return(data_p);
+}
+
+uint8_t *
+DHTProtocolStorageSimple::get_data_packet_payload(Packet *p)
+{
+  return &(DHTProtocol::get_payload(p)[sizeof(struct dht_simple_storage_data)]);
+}
+
+struct dht_simple_storage_data *
+DHTProtocolStorageSimple::get_data_packet_header(Packet *p)
+{
+  return (struct dht_simple_storage_data *)DHTProtocol::get_payload(p);
+}
+
+WritablePacket *
+DHTProtocolStorageSimple::new_ack_data_packet(int32_t moveID)
+{
+  WritablePacket *data_p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_ACKDATA, sizeof(moveID));
+
+  uint32_t *idp = (uint32_t*)DHTProtocol::get_payload(data_p);
+  *idp = htonl(moveID);
+
+  return(data_p);
+}
+
+uint32_t
+DHTProtocolStorageSimple::get_ack_movid(Packet *p)
+{
+  uint32_t *idp = (uint32_t *)DHTProtocol::get_payload(p);
+  return (ntohl(*idp));
 }
 
 CLICK_ENDDECLS

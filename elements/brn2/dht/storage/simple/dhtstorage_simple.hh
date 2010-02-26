@@ -123,6 +123,22 @@ class DHTStorageSimple : public DHTStorage
 
   typedef Vector<DHTOperationForward*> DHTForwardQueue;
 
+  class DHTMovedDataInfo
+  {
+   public:
+    uint32_t _movedID;
+    EtherAddress _target;
+    Timestamp _move_time;
+
+    DHTMovedDataInfo(EtherAddress *target, uint32_t moveID) {
+      _movedID = moveID;
+      _target = EtherAddress(target->data());
+      _move_time = Timestamp::now();
+    }
+  };
+
+  typedef Vector<DHTMovedDataInfo*> DHTMovedDataQueue;
+
   public:
     DHTStorageSimple();
     ~DHTStorageSimple();
@@ -186,6 +202,11 @@ class DHTStorageSimple : public DHTStorage
 
     bool _add_node_id; //NB: whether the Node id of the src of a request is add to the request. SHould this be default ? ID to DHTHeader ??
 
+    uint32_t _moved_id;
+    DHTMovedDataQueue _md_queue;
+    DHTMovedDataInfo* get_move_info(EtherAddress *ea);
+    void handle_moved_data(Packet *p);
+    void handle_ack_for_moved_data(Packet *p);
 };
 
 CLICK_ENDDECLS

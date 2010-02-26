@@ -27,7 +27,8 @@ DHTStorageSimple::DHTStorageSimple():
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
   _max_req_retries(DEFAULT_MAX_RETRIES),
-  _add_node_id(false)
+  _add_node_id(false),
+  _moved_id(0)
 {
 }
 
@@ -123,7 +124,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   op->set_id(dht_id);
   memcpy(op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);   //Set my etheradress as sender
 
-  for ( int r = 0; r <= replica_count; r++ ) {
+  for ( uint32_t r = 0; r <= replica_count; r++ ) {
     next = _dht_routing->get_responsibly_replica_node(op->header.key_digest, r);
     op->header.replica = r;
 
@@ -186,6 +187,10 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   return dht_id;
 }
 
+/**
+ * TODO: restructure the method  (too big,....)
+ */
+
 void DHTStorageSimple::push( int port, Packet *packet )
 {
   DHTnode *next;
@@ -195,114 +200,162 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
   if ( _dht_routing != NULL )   //use dht-routing, ask routing for next node
   {
+    BRN_DEBUG("STORAGE PUSH");
+
     if ( port == 0 )
     {
-      _op = new DHTOperation();
-
-      if ( _add_node_id ) {
-        _op->unserialize(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
-
-        EtherAddress src = EtherAddress(_op->header.etheraddress);
-        struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(packet);
-        _dht_routing->update_node(&src, ni->src_id, ni->src_id_size);
-      } else {
-        _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
-      }
-
-      if ( _op->is_reply() )
-      {
-        BRN_DEBUG("Operation is reply.");
-
-        bool found_fwd = false;
-        for( int i = 0; i < _fwd_queue.size(); i++ )
-        {
-          fwd = _fwd_queue[i];
-          if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )  //TODO: better compare dht-id
-          {
-            BRN_DEBUG("Found entry for Operation.");
-
-            fwd->replicaList[_op->header.replica].status = _op->header.status;
-            fwd->replicaList[_op->header.replica].set_value(_op->value, _op->header.valuelen);
-
-            fwd->set_replica_reply(_op->header.replica);
-
-            if ( fwd->have_all_replicas() ) {
-              Timestamp now = Timestamp::now();
-              _op->max_retries = fwd->_operation->max_retries;
-              _op->retries = fwd->_operation->retries;
-
-              _op->request_time = fwd->_operation->request_time;
-              _op->max_request_duration = fwd->_operation->max_request_duration;
-              _op->request_duration = (now - _op->request_time).msec1();
-
-              _op->header.replica = fwd->replica_count;
-
-              _op->set_reply();                            //TODO: currently last reply is forwarded to application
-
-              //TODO: sum up the results of all replicas
-              fwd->_info_func(fwd->_info_obj,_op);
-              _fwd_queue.erase(_fwd_queue.begin() + i);
-              delete fwd->_operation;                      //TODO: DOn't delete. Use this instead of last _op ***
-              delete fwd;
-
-              found_fwd = true;                            //TODO: use fwd-op instead of last _op ***
-            }
-            break;
-          }
+      switch ( DHTProtocol::get_type(packet) ) {
+        case DHT_STORAGE_SIMPLE_MOVEDDATA : {
+          /**
+           * Handle moved data
+          **/
+          BRN_DEBUG("Received moved Data");
+          handle_moved_data(packet);
+          return;
         }
+        case DHT_STORAGE_SIMPLE_ACKDATA : {
+          /**
+          * Handle ack for moved data
+          **/
+          BRN_DEBUG("Received ack for moved Data");
+          handle_ack_for_moved_data(packet);
+          break;
+        }
+        case DHT_STORAGE_SIMPLE_MESSAGE : {
+          /**
+           * Handle Operation
+           **/
+          BRN_DEBUG("Operation");
+          /* Take genaral information from the packet */
 
-        if ( ! found_fwd ) delete _op; 
-      }
-      else
-      {
-        next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, _op->header.replica);
-        if ( _dht_routing->is_me(next) )
-        {
-          BRN_DEBUG("I'm responsible for Operation.");
+          _op = new DHTOperation();
 
-          int result = _dht_db->handle_dht_operation(_op);
+          if ( _add_node_id ) {
+            _op->unserialize(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
 
-          if ( result == -1 ) {
-            BRN_DEBUG("Operation error");
-            delete _op;
+            EtherAddress src = EtherAddress(_op->header.etheraddress);
+            struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(packet);
+            _dht_routing->update_node(&src, ni->src_id, ni->src_id_size);
           } else {
-            _op->set_reply();
+            _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+          }
 
-            EtherAddress src = EtherAddress(_op->header.etheraddress);                                                             //safe old soure for reply
+          /* Handle core information from the packet */
 
-            if ( _add_node_id ) {
-              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
-              memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
-              _op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),_op->length());
-              struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
-              _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
-              ni->reserved = 0;
-            } else {
-              p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
-              memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
-              _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+          /**
+          * Handle Reply
+          **/
+
+          if ( _op->is_reply() )
+          {
+            BRN_DEBUG("Operation is reply.");
+
+            bool found_fwd = false;
+            for( int i = 0; i < _fwd_queue.size(); i++ )
+            {
+              fwd = _fwd_queue[i];
+              if ( MD5::hexcompare(fwd->_operation->header.key_digest, _op->header.key_digest) == 0 )  //TODO: better compare dht-id
+              {
+                BRN_DEBUG("Found entry for Operation.");
+
+                fwd->replicaList[_op->header.replica].status = _op->header.status;
+                fwd->replicaList[_op->header.replica].set_value(_op->value, _op->header.valuelen);
+
+                fwd->set_replica_reply(_op->header.replica);
+
+                if ( fwd->have_all_replicas() ) {
+                  Timestamp now = Timestamp::now();
+                  _op->max_retries = fwd->_operation->max_retries;
+                  _op->retries = fwd->_operation->retries;
+
+                  _op->request_time = fwd->_operation->request_time;
+                  _op->max_request_duration = fwd->_operation->max_request_duration;
+                  _op->request_duration = (now - _op->request_time).msec1();
+
+                  _op->header.replica = fwd->replica_count;
+
+                  _op->set_reply();                            //TODO: currently last reply is forwarded to application
+
+                  //TODO: sum up the results of all replicas
+                  fwd->_info_func(fwd->_info_obj,_op);
+                  _fwd_queue.erase(_fwd_queue.begin() + i);
+                  delete fwd->_operation;                      //TODO: DOn't delete. Use this instead of last _op ***
+                  delete fwd;
+
+                  found_fwd = true;                            //TODO: use fwd-op instead of last _op ***
+                }
+                break;
+              }
             }
 
-            p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
-            delete _op;
-            output(0).push(p);
+            if ( ! found_fwd ) delete _op;
           }
-        }
-        else
-        {
-          BRN_DEBUG("Forward operation.");
-          BRN_DEBUG("Me: %s Dst: %s",_dht_routing->_me->_ether_addr.unparse().c_str(),
-                                     next->_ether_addr.unparse().c_str());
+          else
+          {
+            /**
+            * Handle Request
+            **/
 
-          p = packet->uniqueify();
+            next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, _op->header.replica);
 
-          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
-          delete _op;
-          output(0).push(p);
-          return;  //Reuse packet so return here to prevend packet->kill() //TODO: reorder all
-        }
-      }
-    }
+            if ( _dht_routing->is_me(next) )
+            {
+              /**
+              * I'm responsible
+              **/
+
+              BRN_DEBUG("I'm responsible for Operation (%s).",_dht_routing->_me->_ether_addr.unparse().c_str());
+
+              int result = _dht_db->handle_dht_operation(_op);
+
+              if ( result == -1 ) {
+                BRN_DEBUG("Operation error");
+                delete _op;
+              } else {
+                _op->set_reply();
+
+                EtherAddress src = EtherAddress(_op->header.etheraddress);                                                             //safe old soure for reply
+
+                if ( _add_node_id ) {
+                  p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
+                  memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
+                  _op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),_op->length());
+                  struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
+                  _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
+                  ni->reserved = 0;
+                } else {
+                  p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
+                  memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
+                  _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
+                }
+
+                p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
+                delete _op;
+                output(0).push(p);
+              }
+            }
+            else
+            {
+              /**
+              * Forward the request
+              **/
+
+              BRN_DEBUG("Forward operation.");
+              BRN_DEBUG("Me: %s Dst: %s",_dht_routing->_me->_ether_addr.unparse().c_str(),
+                                        next->_ether_addr.unparse().c_str());
+
+              p = packet->uniqueify();
+
+              p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+              delete _op;
+              output(0).push(p);
+              return;  //Reuse packet so return here to prevend packet->kill() //TODO: reorder all
+            }
+          }
+          break;
+        } // end of handle operation
+      } //switch (packet_type)
+    }  //end (if port == 0)
   } else {
     BRN_WARN("Error: DHTStorageSimple: Got Packet, but have no routing. Discard Packet");
   }
@@ -318,24 +371,138 @@ DHTStorageSimple::get_next_dht_id()
   return _dht_id;
 }
 
+/**************************************************************************/
+/********************* D A T A - M O V E - S T U F F **********************/
+/**************************************************************************/
+
 uint32_t
 DHTStorageSimple::handle_node_update()
 {
   BRNDB::DBrow *_row;
   DHTnode *next;
+  DHTMovedDataInfo *mdi;
+  WritablePacket *data_p, *p;
 
   for ( int i = 0; i < _dht_db->_db.size(); i++ ) {
     _row = _dht_db->_db.getRow(i);
 
-    next = _dht_routing->get_responsibly_node(_row->md5_key);
-    if ( _dht_routing->is_me(next) ) {
-      BRN_DEBUG("Move data to new node.");
-    } else {
-      BRN_DEBUG("Don't move data to new node.");
+    BRN_DEBUG("Row replica: %d",_row->replica);
+
+    next = _dht_routing->get_responsibly_replica_node(_row->md5_key, _row->replica);
+    if ( ! _dht_routing->is_me(next) ) {
+      if ((_row->status == DATA_OK) && (_row->move_id == 0)) {
+
+        if ( ++_moved_id == 0 ) _moved_id++;
+
+        /* TODO: use next to handle Timeouts while tranfering data to new nodes
+         mdi = new DHTMovedDataInfo(&next->_ether_addr, _moved_id);
+        _md_queue.push_back(mdi);*/
+
+        _row->status = DATA_INIT_MOVE;
+        _row->move_id = _moved_id;
+
+        data_p = DHTProtocolStorageSimple::new_data_packet(&_dht_routing->_me->_ether_addr, _row->move_id, 1,
+                                                           _row->serializeSize());
+        uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(data_p);
+        _row->serialize(data, _row->serializeSize());
+
+        BRN_DEBUG("Move data from %s to %s",_dht_routing->_me->_ether_addr.unparse().c_str(),next->_ether_addr.unparse().c_str());
+
+        p = DHTProtocol::push_brn_ether_header(data_p, &(_dht_routing->_me->_ether_addr), &next->_ether_addr, BRN_PORT_DHTSTORAGE);
+        output(0).push(p);
+      } else {
+        BRN_WARN("Row is not ok ! Already moved ???");
+      }
     }
   }
 
   return 0;
+}
+
+DHTStorageSimple::DHTMovedDataInfo*
+DHTStorageSimple::get_move_info(EtherAddress *ea)
+{
+  DHTMovedDataInfo *mdi;
+
+  for( int i = 1; i < _md_queue.size(); i++ )
+  {
+    mdi = _md_queue[i];
+    if ( memcmp(ea->data(),mdi->_target.data(),6) == 0 ) return mdi;
+  }
+
+  return NULL;
+}
+
+void
+DHTStorageSimple::handle_moved_data(Packet *p)
+{
+  DHTnode *next;
+  md5_byte_t md5_key[16];
+
+  struct dht_simple_storage_data *dssd = DHTProtocolStorageSimple::get_data_packet_header(p); //points to header (moveid)
+  uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(p);                       //points to first row
+  struct db_row_header *rh = (struct db_row_header *)data;
+
+  MD5::calculate_md5((char*)&(data[sizeof(struct db_row_header)]), ntohs(rh->keylen), md5_key);
+
+  next = _dht_routing->get_responsibly_replica_node(md5_key, rh->replica);
+
+  if ( _dht_routing->is_me(next) )
+  {
+    BRN_DEBUG("Insert moved data");
+
+    uint32_t moveid = ntohl(dssd->move_id);
+    EtherAddress src = EtherAddress(dssd->etheraddr);
+
+    if ( memcmp(_dht_routing->_me->_ether_addr.data(), src.data(), 6 ) == 0 ) {
+      BRN_WARN("The source of the moved data (dht) is me. Some node (maybe me) has a brocken routingtable. Reset rows and try again");
+
+      for ( int i = _dht_db->_db.size() - 1 ; i >= 0; i-- ) {
+        BRNDB::DBrow *_row = _dht_db->_db.getRow(i);
+        if ( _row->move_id == moveid ) {
+          _row->status = DATA_OK;
+          _row->move_id = 0;
+        }
+      }
+
+      handle_node_update();
+
+    } else {
+      BRNDB::DBrow *new_row = new BRNDB::DBrow();
+      new_row->unserialize(data, sizeof(struct db_row_header) + ntohs(rh->keylen) + ntohs(rh->valuelen));
+      _dht_db->_db.insert(new_row);
+
+      BRN_DEBUG("Send ack for data to source");
+      WritablePacket *ack_p = DHTProtocolStorageSimple::new_ack_data_packet(moveid);
+      WritablePacket *wp = DHTProtocol::push_brn_ether_header(ack_p, &(_dht_routing->_me->_ether_addr), &src , BRN_PORT_DHTSTORAGE);
+      output(0).push(wp);
+    }
+
+    p->kill();
+
+  } else {
+    BRN_DEBUG("Found better node, so forward data.");
+    WritablePacket *wp = p->uniqueify();
+    wp = DHTProtocol::push_brn_ether_header(wp, &(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+    output(0).push(wp);
+  }
+}
+
+void
+DHTStorageSimple::handle_ack_for_moved_data(Packet *p)
+{
+  BRNDB::DBrow *_row;
+  uint32_t moveid = DHTProtocolStorageSimple::get_ack_movid(p); //points to header (moveid)
+
+  BRN_DEBUG("Search in table for move_id: %d.",moveid);
+
+  for ( int i = _dht_db->_db.size() - 1 ; i >= 0; i-- ) {
+    _row = _dht_db->_db.getRow(i);
+
+    if ( _row->move_id == moveid ) {
+      _dht_db->_db.delRow(i);
+    }
+  }
 }
 
 /**************************************************************************/
@@ -491,6 +658,7 @@ DHTStorageSimple::add_handlers()
 }
 #include <click/vector.cc>
 template class Vector<DHTStorageSimple::DHTOperationForward*>;
+template class Vector<DHTStorageSimple::DHTMovedDataInfo*>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DHTStorageSimple)

@@ -27,6 +27,7 @@
 
 #define DHT_STORAGE_SIMPLE_MESSAGE         1
 #define DHT_STORAGE_SIMPLE_MOVEDDATA       2
+#define DHT_STORAGE_SIMPLE_ACKDATA         3
 
 CLICK_DECLS
 
@@ -38,14 +39,22 @@ struct dht_simple_storage_node_info {
 };
 
 struct dht_simple_storage_data {
+  uint32_t move_id;
   uint8_t  etheraddr[6];
+  uint8_t  count_rows;
+  uint8_t  reserved;
 };
 
 class DHTProtocolStorageSimple {
 
   public:
 
-    static WritablePacket *new_data_packet(int32_t moveID, int countRows, uint8_t *data, uint16_t data_size);
+    static WritablePacket *new_data_packet(EtherAddress *src, int32_t moveID, uint8_t countRows, uint16_t data_size);
+    static uint8_t *get_data_packet_payload(Packet *p);
+    static struct dht_simple_storage_data *get_data_packet_header(Packet *p);
+
+    static WritablePacket *new_ack_data_packet(int32_t moveID);
+    static uint32_t get_ack_movid(Packet *p);
 
 };
 
