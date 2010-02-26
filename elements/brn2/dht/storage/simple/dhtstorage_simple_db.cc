@@ -127,8 +127,8 @@ DHTStorageSimpleDB::dht_insert(DHTOperation *op)
   }
   else
   {
-    //TODO: Handle this in a proper way (error code,...)
     BRN_WARN("Key already exists");
+    op->header.status = DHT_STATUS_KEY_ALREADY_EXISTS;
   }
 
   return 0;
