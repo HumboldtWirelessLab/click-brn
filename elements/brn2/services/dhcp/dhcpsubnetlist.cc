@@ -8,6 +8,8 @@
 #include "dhcpsubnetlist.hh"
 #include <elements/wifi/wirelessinfo.hh>
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 CLICK_DECLS
 
 BRN2DHCPSubnetList::BRN2DHCPSubnetList()
@@ -24,7 +26,7 @@ BRN2DHCPSubnetList::configure(Vector<String> &conf, ErrorHandler *errh)
   _debug = false;
 
   if (cp_va_kparse(conf, this, errh,
-      "DEBUG", cpkP, cpBool, &_debug,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -43,8 +45,13 @@ BRN2DHCPSubnetList::DHCPSubnet *
 BRN2DHCPSubnetList::getSubnetByVlanID(int id) {
   BRN2DHCPSubnetList::DHCPSubnet *sn;
 
+  BRN_DEBUG("Size of SubnetList: %d",_subnet_list.size());
+
   for ( int i = 0; i < _subnet_list.size(); i++ ) {
     sn = &(_subnet_list[i]);
+
+    BRN_DEBUG("ID: %d",sn->_vlan);
+
     if ( sn->_vlan == id ) return sn;
   }
 

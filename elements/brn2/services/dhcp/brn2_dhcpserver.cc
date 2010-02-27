@@ -107,7 +107,7 @@ static void callback_func(void *e, DHTOperation *op)
   if ( client_info != NULL ) {
     s->handle_dht_reply(client_info,op);
   } else {
-    click_chatter("No Client info for DHT-ID");
+    click_chatter("DHCPServer: No Client info for DHT-ID. ID=%d",op->get_id());
     delete op;
   }
 }
@@ -451,6 +451,9 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
   {
     memcpy(&(client_info->_ciaddr),"\0\0\0\0",4);
     uint16_t vlanid = getVlanID(EtherAddress(client_info->_chaddr));
+
+    BRN_DEBUG("Client %s has VLANID %d",EtherAddress(client_info->_chaddr).unparse().c_str(),vlanid);
+
     if ( vlanid != 0xFFFF ) {
       find_client_ip(client_info, vlanid);
     } else {
@@ -861,7 +864,7 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
   uint32_t new_ip;
 
   BRN_DEBUG("Find ip for Client is Vlan %d", (int)vlanid);
-  BRN_DEBUG("id is %d EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
+  BRN_DEBUG("id is %d <-> EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
 
   if ( memcmp(&(client_info->_ciaddr),"\0\0\0\0",4) == 0 )
   {
@@ -877,12 +880,14 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
       BRN2DHCPSubnetList::DHCPSubnet *sn = _dhcpsubnetlist->getSubnetByVlanID(vlanid);
       if ( sn != NULL ) {
         vlan_net_address = sn->_net_address;
-      } else
+      } else {
+        BRN_WARN("No Subnet for vlanid. Using default (for vlan 0). Should this be handled in another way.");
         vlan_net_address = _net_address;
+      }
     }
 
     new_ip = ntohl(vlan_net_address.addr());
-    new_ip = new_ip + (int) client_info->_chaddr[5] + 5;
+    new_ip = new_ip + (int) client_info->_chaddr[5] + 5;  //take hw addr plus 5. Shit! find better solution
     new_ip = htonl(new_ip);
 
     IPAddress _tmp_ip(new_ip);
@@ -899,7 +904,11 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
     new_ip += 1;
 
     new_ip = htonl(new_ip);
-    memcpy(&(client_info->_ciaddr),&new_ip,4);
+
+    IPAddress _tmp_ip(new_ip);
+    BRN_DEBUG("BRN2DHCPServer: IP: %s",_tmp_ip.unparse().c_str());
+
+    memcpy(&(client_info->_ciaddr),&new_ip,4); 
   }
 
   return;

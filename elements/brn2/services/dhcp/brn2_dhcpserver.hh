@@ -51,8 +51,9 @@ CLICK_DECLS
  * =d
  */
 
-//#define NO_DHT
-
+/**
+ * TODO: What to do if no subnetInfo for Clients vlan
+ */
 class BRN2DHCPServer : public Element {
 
  public:
