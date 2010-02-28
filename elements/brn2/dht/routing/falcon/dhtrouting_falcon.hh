@@ -10,6 +10,8 @@ CLICK_DECLS
 #define FALCON_RESPONSIBLE_CHORD   0
 #define FALCON_RESPONSIBLE_FORWARD 1
 
+#define FALCON_MAX_REPLICA 7
+
 class DHTRoutingFalcon : public DHTRouting
 {
   public:
@@ -35,12 +37,15 @@ class DHTRoutingFalcon : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingFalcon"; }
 
-    bool replication_support() const { return false; }
-    int max_replication() const { return(1); }
+    bool replication_support() const { return true; }
+    int max_replication() const { return FALCON_MAX_REPLICA; }
     DHTnode *get_responsibly_node(md5_byte_t *key);
+    DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number);
 
     DHTnode *get_responsibly_node_backward(md5_byte_t *key);
     DHTnode *get_responsibly_node_forward(md5_byte_t *key);
+
+    int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 
   //private:
     FalconRoutingTable *_frt;

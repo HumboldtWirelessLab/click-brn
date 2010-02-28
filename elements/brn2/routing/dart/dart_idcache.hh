@@ -30,6 +30,12 @@ class DartIDCache : public Element {
       }
 
       ~IDCacheEntry() {};
+
+      void update(DHTnode *n) {
+        _id_length = n->_digest_length;
+        memcpy(_nodeid,n->_md5_digest, MAX_NODEID_LENTGH);
+        _time = Timestamp::now();
+      }
   };
 
   DartIDCache();

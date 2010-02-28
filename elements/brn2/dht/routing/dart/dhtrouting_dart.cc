@@ -14,9 +14,9 @@
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "dhtrouting_dart.hh"
 #include "dhtprotocol_dart.hh"
@@ -79,13 +79,21 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
   DHTnode *acnode;
   int position_ac_node;
 
-  if ( DartFunctions::equals(_drt->_me, key) ) return _drt->_me;
+  BRN_DEBUG("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+
+  if ( DartFunctions::equals(_drt->_me, key) ) {
+    BRN_DEBUG("It's me");
+    return _drt->_me;
+  }
 
   diffbit = DartFunctions::diff_bit(_drt->_me, key);
 
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours.get_dhtnode(n);
-    if ( DartFunctions::equals(acnode, key) ) return acnode;
+    if ( DartFunctions::equals(acnode, key) ) {
+      BRN_DEBUG("have full node");
+      return acnode;
+    }
 
     position_ac_node = DartFunctions::position_last_1(acnode);
     if ( DartFunctions::equals(acnode, key, position_ac_node ) && ((best_node == NULL) || (position_best_node < position_ac_node) ) ) {
@@ -93,6 +101,7 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
       best_node = acnode;
     }
   }
+
 
   if ( best_node == NULL ) {
     //click_chatter("Search for shortest");
@@ -106,12 +115,43 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key)
     }
   }
 
+  //TODO: this should never happen so check it dispensable
+  if ( best_node == NULL ) {
+    BRN_WARN("No node for id found. So use default.");
+    best_node = _drt->_me;
+  }
+
   return best_node;
+}
+
+DHTnode *
+DHTRoutingDart::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
+{
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i < 8; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node(replica_key);
 }
 
 /****************************************************************************************
 ********************* N O D E T A B L E O P E R A T I O N *******************************
 ****************************************************************************************/
+
+int
+DHTRoutingDart::update_node(EtherAddress *ea, md5_byte_t *key, int keylen)
+{
+  DHTnode node(*ea, key, keylen);
+  _drt->add_node(&node);
+
+  return 0;
+}
 
 /*******************************************************************************************/
 /************************************* H A N D L E R ***************************************/

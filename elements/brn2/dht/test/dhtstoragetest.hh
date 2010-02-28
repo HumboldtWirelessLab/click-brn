@@ -14,6 +14,7 @@
 #define MODE_INSERT 0
 #define MODE_READ   1
 
+
 CLICK_DECLS
 
 class DHTStorageTest : public Element
@@ -54,6 +55,7 @@ class DHTStorageTest : public Element
 
     int _starttime;
 
+    uint32_t _startkey;
     uint32_t _countkey;
 
     bool _write;
@@ -73,6 +75,9 @@ class DHTStorageTest : public Element
     uint32_t notfound_time;
     uint32_t timeout_time;
     uint32_t max_timeout_time;
+
+    int _retries;
+    int _replica;
 
 };
 

@@ -116,7 +116,7 @@ DartIDStore::starttimer_hook()
 
   BRN_DEBUG("Insert EtherAddress: %s",_me->getMainAddress()->unparse().c_str());
 
-  dhtop->insert(_me->getMainAddress()->data(), 6/*Size of EtherAddress*/, (uint8_t*)&id_entry, sizeof(struct dht_nodeid_entry));
+  dhtop->write((uint8_t*)_me->getMainAddress()->data(), 6/*Size of EtherAddress*/, (uint8_t*)&id_entry, sizeof(struct dht_nodeid_entry), true); //if exist: OVERWRITE !!
   dhtop->max_retries = 1;
 
   result = _dht_storage->dht_request(dhtop, callback_func, (void*)this );
@@ -136,7 +136,8 @@ void
 DartIDStore::routingtable_callback_func(void *e, int status)
 {
   DartIDStore *s = (DartIDStore *)e;
-  click_chatter("Update NodeID");
+  //click_chatter("Update NodeID");
+  //TODO: store new node id
 }
 
 /*************************************************************************************************/

@@ -55,6 +55,7 @@ DartLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "DRT", cpkP+cpkM, cpElement, &_drt,
       "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -105,7 +106,7 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   DHTnode first;
   DHTnodelist nodes;
 
-  BRN_DEBUG("Unpack Linkprobe data.");
+  BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
   len = DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
 
   _drt->add_neighbour(&first);

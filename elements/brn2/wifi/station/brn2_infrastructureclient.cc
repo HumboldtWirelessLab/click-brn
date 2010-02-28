@@ -45,7 +45,9 @@
 CLICK_DECLS
 
 BRN2InfrastructureClient::BRN2InfrastructureClient()
-:request_timer(this),
+:   request_timer(this),
+    _active_scan_mode(false),
+    _athop(NULL),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -71,11 +73,11 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
       "AUTH_REQUESTER", cpkP+cpkM, cpElement, /*"AuthRequester",*/ &_authreq,
       "ASSOC_REQUESTER", cpkP+cpkM, cpElement, /*"AssocRequester",*/ &_assocreq,
       "WIFIENCAP", cpkP+cpkM, cpElement, /*"Wifiencap",*/ &_wifiencap,
-      "CHANNELLIST", cpkP+cpkM, cpElement, /*"Channellist",*/ &_channellist,
-      "ATHOPERATION", cpkP+cpkM, cpElement, /*"AthOperation",*/ &_athop,
-      "ACTIVESCAN", cpkP+cpkM, cpBool, /*"debug",*/ &_active_scan_mode,
-      "CMIN", cpkP+cpkM, cpInteger, &_c_min,
-      "CMAX", cpkP+cpkM, cpInteger, &_c_max,
+      "ACTIVESCAN", cpkP, cpBool, /*"debug",*/ &_active_scan_mode,
+      "CHANNELLIST", cpkP, cpElement, /*"Channellist",*/ &_channellist,
+      "ATHOPERATION", cpkP, cpElement, /*"AthOperation",*/ &_athop,
+      "CMIN", cpkP, cpInteger, &_c_min,
+      "CMAX", cpkP, cpInteger, &_c_max,
       "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
       cpEnd) < 0)
 
@@ -93,11 +95,11 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_probereq || !_probereq->cast("ProbeRequester")) 
     return errh->error("ProbeRequester element is not provided or not a ProbeRequester");
 
-//  if (!_authreq || !_authreq->cast("OpenAuthRequester")) 
-//    return errh->error("OpenAuthRequester element is not provided or not a OpenAuthRequester");
+  if (!_authreq || !_authreq->cast("OpenAuthRequester"))
+    return errh->error("OpenAuthRequester element is not provided or not a OpenAuthRequester");
 
-  if (!_assocreq || !_assocreq->cast("BRNAssocRequester")) 
-    return errh->error("BRNAssocRequester element is not provided or not a BRNAssocRequester");
+  if (!_assocreq || !_assocreq->cast("BRN2AssocRequester")) 
+    return errh->error("BRN2AssocRequester element is not provided or not a BRNAssocRequester");
 
   if (!_wifiencap || !_wifiencap->cast("WifiEncap")) 
     return errh->error("WifiEncap element is not provided or not a WifiEncap");
@@ -136,11 +138,15 @@ BRN2InfrastructureClient::run_timer(Timer* )
 {
   if ( _wireless_info->_channel == 0 ) {
     if ( ! _scan_all_channels ) {
-      click_chatter("set next chanel");
-      _athop->set_channel(_channellist->get(_channel_index));
-      _channel_index = ( _channel_index + 1 ) % _channellist->size();
+      BRN_DEBUG("set next chanel");
+      if ( _athop != NULL && _channellist != NULL ) {
+        _athop->set_channel(_channellist->get(_channel_index));
 
-      if ( _channel_index == 0 ) _scan_all_channels = true;
+        _channel_index = ( _channel_index + 1 ) % _channellist->size();
+
+        if ( _channel_index == 0 ) _scan_all_channels = true;
+      } else
+        _scan_all_channels = true;
 
       if ( _active_scan_mode ) send_probe_to_ap();
 
@@ -148,11 +154,13 @@ BRN2InfrastructureClient::run_timer(Timer* )
 
       return;
     }
-    click_chatter("all channel are scanned");
+    BRN_DEBUG("all channel are scanned");
   } else {
     if ( ! _channel_is_set ) {
-      click_chatter("Set wanted channel");
-      _athop->set_channel(_wireless_info->_channel);
+      BRN_DEBUG("Set wanted channel");
+      if ( _athop != NULL )
+        _athop->set_channel(_wireless_info->_channel);
+
       _channel_is_set = true;
 
       if ( _active_scan_mode ) send_probe_to_ap();
@@ -160,12 +168,14 @@ BRN2InfrastructureClient::run_timer(Timer* )
       request_timer.schedule_after_msec(_minChannelScanTime);
       return;
     }
-    click_chatter("Wanted channel is set");
+    BRN_DEBUG("Wanted channel is set");
   }
 
   if ( !_ap_available )
   {
     if ( _active_scan_mode ) send_probe_to_ap();
+
+    BRN_DEBUG("Search for best AP");
 
     find_best_ap();
   }
@@ -202,34 +212,38 @@ BRN2InfrastructureClient::find_best_ap()
   int rssi = 0;
 
 //  click_chatter("try to find good ap");
+  for (BRN2BeaconScanner::PAPIter piter = _beaconscanner->_paps.begin(); piter.live(); piter++) {
+    BRN2BeaconScanner::pap pap = piter.value();
 
-  for (BRN2BeaconScanner::APIter iter = _beaconscanner->_vaps.begin(); iter.live(); iter++) {
-    BRN2BeaconScanner::vap ap = iter.value();
+    for (BRN2BeaconScanner::VAPIter iter = pap._vaps.begin(); iter.live(); iter++) {
+      BRN2BeaconScanner::vap ap = iter.value();
 
-/*    click_chatter("Next AP");
-    StringAccum sa;
+      if ( _debug == BrnLogger::INFO ) {
+        click_chatter("Next AP");
+        StringAccum sa;
 
-    sa << "WirelessInfo:";
+        sa << "WirelessInfo:";
 
-    sa << "AP-SSID: " << ap._ssid << " -> ";
-    sa << "MY-SSID: " << _wireless_info->_ssid;
-    sa << "AP-CHANNEL: " << ap._channel << " -> ";
-    sa << "MY-CHANNEL: " << _wireless_info->_channel;
-    sa << "AP-RSSI: " << ap._rssi << " -> ";
-    sa << "BEST-RSSI: " << rssi;
+        sa << "AP-SSID: " << ap._ssid << " -> ";
+        sa << "MY-SSID: " << _wireless_info->_ssid;
+        sa << "AP-CHANNEL: " << ap._channel << " -> ";
+        sa << "MY-CHANNEL: " << _wireless_info->_channel;
+        sa << "AP-RSSI: " << ap._rssi << " -> ";
+        sa << "BEST-RSSI: " << rssi;
 
-    click_chatter("%s",sa.c_str());
-*/
-    // as long as we do not change the channel, we MUST check it!
-    if ( ap._ssid == _wireless_info->_ssid 
-      && _wireless_info->_channel == ap._channel
-      && rssi <= ap._rssi )
-    {
-      _wireless_info->_bssid = ap._eth; // NOTE: _eth is the bssid
-      _wireless_info->_wep = false;
-      _ap_available = true;
-      rssi = ap._rssi;
-      _ad_hoc = (ap._capability & WIFI_CAPINFO_IBSS) ? true : false;
+        click_chatter("%s",sa.c_str());
+      }
+      // as long as we do not change the channel, we MUST check it!
+      if ( ap._ssid == _wireless_info->_ssid
+        && _wireless_info->_channel == ap._channel
+        && rssi <= ap._rssi )
+      {
+        _wireless_info->_bssid = ap._eth; // NOTE: _eth is the bssid
+        _wireless_info->_wep = false;
+        _ap_available = true;
+        rssi = ap._rssi;
+        _ad_hoc = (ap._capability & WIFI_CAPINFO_IBSS) ? true : false;
+      }
     }
   }
 
@@ -290,7 +304,7 @@ BRN2InfrastructureClient::wireless_info()
   sa << "bssid: " << _wireless_info->_bssid << ", ";
   sa << "channel: " << _wireless_info->_channel << ", ";
   sa << "wep: " << _wireless_info->_wep << ", ";
-  sa << "ad-hoc: " << _ad_hoc << "]";
+  sa << "ad-hoc: " << _ad_hoc << "]\n";
 
 
   return sa.take_string();
@@ -300,8 +314,9 @@ String
 BRN2InfrastructureClient::print_assoc()
 {
   StringAccum sa;
- 
-  sa << "AssocInfo: is Assoc: " << _assocreq->_associated << " ";
+
+  sa << "AuthInfo: is Auth: " << _auth << "\n";
+  sa << "AssocInfo: is Assoc: " << _assocreq->_associated << "\n";
 
   return sa.take_string();
 }
@@ -314,7 +329,7 @@ static String
 BRN2InfrastructureClient_read_param(Element *e, void *thunk)
 {
   BRN2InfrastructureClient *infstr_client = (BRN2InfrastructureClient *)e;
-  
+
   switch ((uintptr_t) thunk)
   {
     case H_WIRELESS_INFO : return ( infstr_client->wireless_info( ) );

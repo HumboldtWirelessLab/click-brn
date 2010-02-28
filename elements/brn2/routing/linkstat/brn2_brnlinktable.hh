@@ -287,6 +287,8 @@ private:
     bool _marked_from_me;
     bool _marked_to_me;
 
+    bool _is_associated;
+
     BrnHostInfo(EtherAddress p, IPAddress ip) { 
       _ether = p;
       _ip = ip;
@@ -295,7 +297,8 @@ private:
       _prev_from_me = EtherAddress(); 
       _prev_to_me = EtherAddress(); 
       _marked_from_me = false; 
-      _marked_to_me = false; 
+      _marked_to_me = false;
+      _is_associated = false;
     }
 
     BrnHostInfo() : _ether(), _ip() { 
@@ -315,13 +318,15 @@ private:
 
     void clear(bool from_me) { 
       if (from_me ) {
-	_prev_from_me = EtherAddress(); 
-	_metric_from_me = 0; 
-	_marked_from_me = false;
+        _prev_from_me = EtherAddress();
+        _metric_from_me = 0;
+        _marked_from_me = false;
+        _is_associated = false;
       } else {
-	_prev_to_me = EtherAddress(); 
-	_metric_to_me = 0; 
-	_marked_to_me = false;
+        _prev_to_me = EtherAddress();
+        _metric_to_me = 0;
+        _marked_to_me = false;
+        _is_associated = false;
       }
     }
 
@@ -344,6 +349,11 @@ private:
   int _const_metric;
 
   Brn2RouteCache *_brn_routecache;
+
+ public:
+  //Function is used for associated clients
+  bool associated_host(EtherAddress ea);  //TODO: check for better solution
+  bool is_associated(EtherAddress ea);
 };
 
 inline void 

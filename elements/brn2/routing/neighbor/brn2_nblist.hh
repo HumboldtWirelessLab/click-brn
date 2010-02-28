@@ -58,7 +58,7 @@ class BRN2NBList : public Element
     NeighborInfo *getEntry(EtherAddress *v);
     int insert(EtherAddress eth, BRN2Device *dev);
     String printNeighbors();
-    EtherAddress *getDeviceAddressForNeighbor(EtherAddress *v);
+    const EtherAddress *getDeviceAddressForNeighbor(EtherAddress *v);
 
     typedef HashMap<EtherAddress, NeighborInfo> NBMap;
 

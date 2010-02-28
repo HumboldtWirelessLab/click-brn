@@ -115,6 +115,7 @@ Brn2LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
         "SIMULATE", cpkP+cpkM, cpBool, &_sim_mode,
         "CONSTMETRIC", cpkP+cpkM, cpInteger, &_const_metric,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
+        "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 
   _stale_timeout.tv_sec = stale_period;
@@ -234,6 +235,25 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   return true;
 }
 
+bool
+Brn2LinkTable::associated_host(EtherAddress ea)
+{
+  BrnHostInfo *n = _hosts.findp(ea);
+  if (n)
+    n->_is_associated = true;
+
+  return true;
+}
+
+bool
+Brn2LinkTable::is_associated(EtherAddress ea)
+{
+  BrnHostInfo *n = _hosts.findp(ea);
+  if (n) return  n->_is_associated;
+
+  return false;
+}
+
 Brn2LinkTable::BrnLink
 Brn2LinkTable::random_link()
 {
@@ -286,13 +306,16 @@ Brn2LinkTable::get_hosts(Vector<EtherAddress> &v)
 uint32_t 
 Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
 {
+  BRN_DEBUG("Search host %s in Hosttable",s.unparse().c_str());
   if (!s) {
     return 0;
   }
   BrnHostInfo *nfo = _hosts.findp(s);
   if (!nfo) {
+    BRN_DEBUG("Couldn't find host %s in Hosttable",s.unparse().c_str());
     return 0;
   }
+  BRN_DEBUG("Find host %s in Hosttable",s.unparse().c_str());
   return nfo->_metric_to_me;
 }
 
@@ -566,7 +589,8 @@ Brn2LinkTable::print_hosts()
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
 
   for (int x = 0; x < ether_addrs.size(); x++) {
-    sa << ether_addrs[x] << "\n";
+    BrnHostInfo *nfo = _hosts.findp(ether_addrs[x]);
+    sa << ether_addrs[x] << " from_me: " << nfo->_metric_from_me << " to_me: " << nfo->_metric_to_me << "\n";
   }
 
   return sa.take_string();
@@ -635,7 +659,7 @@ Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors
 */
 void
 Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
-  EtherAddress *me = _node_identity->getMainAddress();
+  const EtherAddress *me = _node_identity->getMainAddress();
   get_neighbors(*me,neighbors);
 }
 

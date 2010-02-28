@@ -8,6 +8,7 @@
 #include <click/vector.hh>
 #include "../wifi/brn2_wirelessinfolist.hh"
 #include "../services/dhcp/dhcpsubnetlist.hh"
+#include "elements/brn2/vlan/brn2vlantable.hh"
 
 CLICK_DECLS
 
@@ -43,7 +44,7 @@ class BRN2VLAN : public Element {
 
   BRN2WirelessInfoList *_wifiinfolist;
   BRN2DHCPSubnetList *_dhcpsubnetlist;
-  //DNSInfoList *_dnsinfolist;
+  BRN2VLANTable *_vlantable;
   int _debug;
 };
 

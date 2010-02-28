@@ -17,6 +17,8 @@ CLICK_DECLS
 #define OPERATION_REPLY   128
 #define OPERATION_REPLY_REQUEST   128
 
+#define DHT_OPERATION_ID_LOCAL_REPLY 0
+
 #define DHT_STATUS_UNKNOWN        0
 #define DHT_STATUS_OK             1
 #define DHT_STATUS_KEY_NOT_FOUND  2
@@ -28,15 +30,17 @@ CLICK_DECLS
 #define DHT_RETRIES_UNLIMITED -1
 #define DHT_DURATION_UNLIMITED 0
 
-
 struct DHTOperationHeader {
-  uint32_t id;
+  uint16_t id;
+  uint8_t replica;
+  uint8_t reserved;
   uint8_t operation;
   uint8_t status;
   uint8_t etheraddress[6];
   md5_byte_t key_digest[16];
   uint16_t keylen;
   uint16_t valuelen;
+
 } __attribute__ ((packed));
 
 #define SERIALIZE_STATIC_SIZE sizeof(struct DHTOperationHeader)
@@ -64,6 +68,7 @@ class DHTOperation {
     void remove(uint8_t *key, uint16_t keylen);
     void read(uint8_t *key, uint16_t keylen);
     void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen);
+    void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, bool insert);
     void lock(uint8_t *key, uint16_t keylen);
     void unlock(uint8_t *key, uint16_t keylen);
 
@@ -72,8 +77,10 @@ class DHTOperation {
     void set_reply();
     bool is_request();
     bool is_reply();
-    void set_id(uint32_t _id);
-    uint32_t get_id();
+    void set_id(uint16_t _id);
+    uint16_t get_id();
+    void set_replica(uint8_t _replica);
+    uint8_t get_replica();
     void set_status(uint8_t status);
 
     int length();

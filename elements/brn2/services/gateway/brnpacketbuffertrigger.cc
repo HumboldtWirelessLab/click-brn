@@ -18,31 +18,10 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef __BRN2ROTATECHANNEL_HH__
-#define __BRN2ROTATECHANNEL_HH__
-
-#include <click/element.hh>
-
+#include <click/config.h>
+#include "brnpacketbuffertrigger.hh"
 CLICK_DECLS
 
-class BRN2RotateChannel : public Element {
-public:
-  BRN2RotateChannel();
-
-  const char *class_name() const	{ return "BRN2RotateChannel"; }
-  const char *port_count() const  { return "1/1"; }
-  const char *processing() const  { return AGNOSTIC; }
-  bool can_live_reconfigure() const     { return false; }
-
-  int configure(Vector<String> &, ErrorHandler *);
-
-  Packet *simple_action(Packet *);
-
-private:
-  bool    _rotate;
-  int     _channel;
-};
-
-
+ELEMENT_PROVIDES(BRNPacketBufferTrigger)
 CLICK_ENDDECLS
-#endif //__BRN2ROTATECHANNEL_HH__
+

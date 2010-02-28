@@ -131,6 +131,24 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
 }
 
 DHTnode *
+DHTRoutingFalcon::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
+{
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i <= 7; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node(replica_key);
+}
+
+
+
+DHTnode *
 DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
 {
   if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);

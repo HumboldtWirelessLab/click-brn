@@ -30,10 +30,15 @@
 
 CLICK_DECLS
 
-struct dht_dart_node_entry {
+//TODO: This should maybe push to DHTprotocol (dht_packet_header)
+struct dht_simple_storage_node_info {
+  uint8_t  src_id_size;
+  uint8_t  reserved;
+  uint8_t  src_id[16];
+};
+
+struct dht_simple_storage_data {
   uint8_t  etheraddr[6];
-  uint8_t  age_sec;
-  uint8_t  status;
 };
 
 class DHTProtocolStorageSimple {

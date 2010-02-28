@@ -76,9 +76,10 @@ class BRN2ARPClient : public Element {
   int initialize(ErrorHandler *);
   virtual void cleanup(CleanupStage stage);
 
-  void run_timer();
-
   void push( int port, Packet *packet );
+
+  static void static_request_timer_hook(Timer *t, void *f);
+  void request_timer_func();
 
  private:
   int arp_reply(Packet *p);

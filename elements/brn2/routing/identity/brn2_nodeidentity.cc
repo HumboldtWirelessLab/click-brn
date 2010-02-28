@@ -94,7 +94,7 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
 }
 
 
-EtherAddress *
+const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
   BRN2Device *dev = getDeviceByNumber(0);
   return dev->getEtherAddress();
@@ -114,7 +114,7 @@ read_devinfo_param(Element *e, void *)
     dev = id->_node_devices[i];
     sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
     sa << " EtherAddress: " << dev->getEtherAddress()->unparse().c_str();// << "\n";
-    sa << " Type: " << dev->getDeviceType().c_str()  << "\n"; //<< "\n"; 
+    sa << " Type: " << dev->getDeviceTypeString().c_str()  << "\n"; //<< "\n"; 
   }
 
   return sa.take_string();

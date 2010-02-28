@@ -169,8 +169,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 void
 FalconSuccessorMaintenance::handle_routing_update_callback(int status)
 {
-  if ( status == RT_UPDATE_PREDECESSOR )
-    click_chatter("Update Successor");
+/*  if ( status == RT_UPDATE_PREDECESSOR )
+    click_chatter("Update Successor");*/
 }
 
 

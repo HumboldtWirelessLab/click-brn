@@ -449,13 +449,13 @@ class MD5 {
 
   }
 
-  static void printDigest(md5_byte_t *md5, char *hex_output)
+  static void printDigest(const md5_byte_t *md5, char *hex_output)
   {
     for (int di = 0; di < 16; ++di)
       sprintf(hex_output + di * 2, "%02x", md5[di]);
   }
 
-  static String convert_ether2hex(unsigned char *p)
+  static String convert_ether2hex(const unsigned char *p)
   {
     char buf[24];
     sprintf(buf, "%02x%02x%02x%02x%02x%02x",

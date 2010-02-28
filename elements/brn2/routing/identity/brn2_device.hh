@@ -1,8 +1,12 @@
 #ifndef BRN2DEVICEELEMENT_HH
 #define BRN2DEVICEELEMENT_HH
 
-#include <click/etheraddress.hh>
 #include <click/element.hh>
+#include <click/etheraddress.hh>
+#include <click/ipaddress.hh>
+#ifdef HAVE_IP6
+# include <click/ip6address.hh>
+#endif
 
 CLICK_DECLS
 
@@ -14,13 +18,15 @@ CLICK_DECLS
  * =d
  */
 
-#define WIRED "WIRED"
-#define WIRELESS "WIRELESS"
-#define VIRTUAL "VIRTUAL"
+#define STRING_UNKNOWN  "UNKNOWN"
+#define STRING_WIRED    "WIRED"
+#define STRING_WIRELESS "WIRELESS"
+#define STRING_VIRTUAL  "VIRTUAL"
 
-#define DEVICETYPE_WIRED    0
-#define DEVICETYPE_WIRELESS 1
-#define DEVICETYPE_VIRTUAL  2
+#define DEVICETYPE_UNKNOWN  0
+#define DEVICETYPE_WIRED    1
+#define DEVICETYPE_WIRELESS 2
+#define DEVICETYPE_VIRTUAL  3
 
 class BRN2Device : public Element {
   public:
@@ -41,10 +47,27 @@ class BRN2Device : public Element {
 
     const String& getDeviceName();
     void setDeviceName(String dev_name);
-    EtherAddress *getEtherAddress();
-    const String& getDeviceType();
+
+    const EtherAddress *getEtherAddress();
+    void setEtherAddress(EtherAddress *ea);
+
+    const IPAddress *getIPAddress();
+    void setIPAddress(IPAddress *ip);
+
+#ifdef HAVE_IP6
+    const IP6Address *getIP6Address();
+    void setIP6Address(IP6Address *ip);
+#endif
+
+    const uint32_t getDeviceType();
+    void setDeviceType( uint32_t type);
+
+    const String& getDeviceTypeString();
+    void setDeviceTypeString(String type);
+
+    const uint8_t getDeviceNumber();
     void setDeviceNumber(uint8_t);
-    uint8_t getDeviceNumber();
+
 
     //
     //member
@@ -58,10 +81,19 @@ class BRN2Device : public Element {
     //
 
     String device_name;
-    EtherAddress *device_etheraddress;
-    String device_type;
-    uint8_t device_number;
 
+    EtherAddress device_etheraddress;
+
+    IPAddress ipv4;
+#ifdef HAVE_IP6
+    IP6Address ipv6;
+#endif
+
+    String device_type_string;
+    uint32_t device_type;
+    uint8_t device_number;
+    uint32_t getTypeIntByString(String type);
+    String getTypeStringByInt(uint32_t type);
 };
 
 CLICK_ENDDECLS
