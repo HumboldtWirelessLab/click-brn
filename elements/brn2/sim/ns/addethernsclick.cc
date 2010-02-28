@@ -45,7 +45,7 @@ AddEtherNsclick::~AddEtherNsclick()
 int
 AddEtherNsclick::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
+  click_chatter("Deprecated. Use wifiExtra for NS2 !");
   _debug = false;
   _strict = false;
   if (cp_va_kparse(conf, this, errh,
