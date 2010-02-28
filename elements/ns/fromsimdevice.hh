@@ -53,6 +53,9 @@ class FromSimDevice : public Element {
   unsigned char *_packetbuf;
   bool _promisc;
 
+  unsigned _headroom;
+  unsigned _tailroom;
+
   static void set_annotations(Packet *,int ptype);
   // set appropriate annotations, i.e. MAC packet type.
   // modifies the packet.

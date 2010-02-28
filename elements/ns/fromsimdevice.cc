@@ -62,14 +62,23 @@ FromSimDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _packetbuf_size = 2048;
   _promisc = false;
+  _headroom = Packet::default_headroom;
+  _tailroom = 0;
   if (Args(conf, this, errh)
       .read_mp("DEVNAME", _ifname)
       .read_p("PROMISC", _promisc)
       .read_p("SNAPLEN", _packetbuf_size)
+      .read_p("HEADROOM", _headroom)
+      .read_p("TAILROOM", _tailroom)
       .complete() < 0)
     return -1;
   if (_packetbuf_size > 8192 || _packetbuf_size < 128)
     return errh->error("maximum packet length out of range");
+  _headroom += (4 - (_headroom + 2) % 4) % 4; // 4/2 alignment
+  if (_headroom > 8190)
+    return errh->error("HEADROOM out of range");
+  if (_tailroom > 8190)
+    return errh->error("TAILROOM out of range");
   return 0;
 }
 
@@ -141,7 +150,7 @@ FromSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,
   int result = 0;
   (void) ifid;
 
-  Packet *p = Packet::make(data, len);
+  Packet *p = Packet::make(_headroom, data, len, _tailroom);
   set_annotations(p,ptype);
   p->set_sim_packetinfo(pinfo);
   output(0).push(p);
