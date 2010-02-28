@@ -58,6 +58,9 @@ class Ath2Print : public Element {
     String _label;
     bool _includeath;
 
+    bool _txprint;
+    bool _rxprint;
+
 };
 
 CLICK_ENDDECLS

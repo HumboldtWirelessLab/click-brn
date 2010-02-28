@@ -42,6 +42,9 @@ class DNSProtocol : public Element {
   static struct dns_header* get_dns_header(Packet *p);
   static bool isInDomain(String name, String domain );
 
+  static const unsigned char *get_rddata(Packet *p, uint16_t *rdlength);
+
+
 };
 
 CLICK_ENDDECLS

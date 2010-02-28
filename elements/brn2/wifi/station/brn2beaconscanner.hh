@@ -68,7 +68,7 @@ class BRN2BeaconScanner : public Element { public:
   void add_handlers();
   void reset();
 
-  bool _debug;
+  int _debug;
 
   String scan_string();
   String scan_string2();
@@ -112,11 +112,12 @@ class BRN2BeaconScanner : public Element { public:
   typedef HashMap<EtherAddress, vap> APTable;
   typedef APTable::const_iterator APIter;
 
-  APTable _vaps;
+  APTable _aps;
   PAPTable _paps;
 
   AvailableRates *_rtable;
   WirelessInfo *_winfo;
+
 };
 
 CLICK_ENDDECLS

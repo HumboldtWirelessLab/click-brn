@@ -94,11 +94,20 @@
 /* Define if you have the netdev_get_tx_queue function. */
 #undef HAVE_NETDEV_GET_TX_QUEUE
 
+/* Define if you have the netdev_uses_dsa_tags function. */
+#undef HAVE_NETDEV_USES_DSA_TAGS
+
+/* Define if you have the netdev_uses_trailer_tags function. */
+#undef HAVE_NETDEV_USES_TRAILER_TAGS
+
 /* Define if netif_receive_skb takes 3 arguments. */
 #undef HAVE_NETIF_RECEIVE_SKB_EXTENDED
 
 /* Define if you have the netif_tx_lock function. */
 #undef HAVE_NETIF_TX_LOCK
+
+/* Define if you have the netif_tx_queue_frozen function. */
+#undef HAVE_NETIF_TX_QUEUE_FROZEN
 
 /* Define if you have the skb_dst_drop function. */
 #undef HAVE_SKB_DST_DROP

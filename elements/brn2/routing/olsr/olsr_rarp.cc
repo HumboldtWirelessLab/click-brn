@@ -55,7 +55,7 @@ OLSRRARP::push(int, Packet *packet)
 		return;
 	}
 
-	click_chatter("%f | %s | %s | reverse lookup succeeded: the original next hop was %s", Timestamp(now).doubleval(), _myMainIP.unparse().c_str(), __FUNCTION__, next_hop_IP.s().c_str());
+	//robat click_chatter("%f | %s | %s | reverse lookup succeeded: the original next hop was %s", Timestamp(now).doubleval(), _myMainIP.unparse().c_str(), __FUNCTION__, next_hop_IP.s().c_str());
 	// set the gw as dst
 	packet->set_dst_ip_anno(next_hop_IP);
 

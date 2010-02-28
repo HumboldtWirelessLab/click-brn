@@ -7,16 +7,16 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "falcon_functions.hh"
+#include "falcon_routingtable.hh"
 
-#include "elements/brn2/standard/md5.h"
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
 #include "dhtrouting_falcon.hh"
-#include "dhtprotocol_falcon.hh"
 
 CLICK_DECLS
 
 DHTRoutingFalcon::DHTRoutingFalcon():
-  _linkstat(NULL)
+  _frt(NULL),
+  _responsible(FALCON_RESPONSIBLE_FORWARD)
 {
 }
 
@@ -37,105 +37,139 @@ void *DHTRoutingFalcon::cast(const char *name)
 int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_me,
-      "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
+      "FRT", cpkP+cpkM, cpElement, &_frt,
+      "RESPONSIBLE", cpkP, cpInteger, &_responsible,
       cpEnd) < 0)
     return -1;
 
+  _me = _frt->_me;
+
   return 0;
+}
+
+static void notify_callback_func(void *e, int status)
+{
+  DHTRoutingFalcon *f = (DHTRoutingFalcon *)e;
+  f->handle_routing_update_callback(status);
 }
 
 int DHTRoutingFalcon::initialize(ErrorHandler *)
 {
+  _frt->add_update_callback(notify_callback_func,(void*)this);
   return 0;
 }
 
-void DHTRoutingFalcon::push( int port, Packet *packet )
+/**
+ * This version is Chaord-like: a node is responsible for a key if the key is placed between the node and its predecessor
+ */
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
 {
-  if ( ( port == 0 ) && ( packet != NULL ) ) output(0).push(packet);
+  DHTnode *best;
+
+  if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
+
+  if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
+       FalconFunctions::is_equals(_frt->_me, key) ) return _frt->_me;
+  if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key) ||
+       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
+
+  best = _frt->successor;      //default
+
+  for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
+    if ( ! FalconFunctions::is_in_between( _frt->_me, _frt->_fingertable.get_dhtnode(i), key) ) {
+      best = _frt->_fingertable.get_dhtnode(i);
+      break;
+    }
+  }
+
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
+      best = _frt->_allnodes.get_dhtnode(i);
+    }
+  }
+
+  return best;
+}
+
+/**
+ * a node is responsible for a key if the key is placed between the node and its successor
+ */
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
+{
+  DHTnode *best;
+
+  if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
+
+  if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key ) ||
+       FalconFunctions::is_equals( _frt->_me, key ) ) return _frt->_me;  //TODO: this should be handle by checking the FT
+
+  if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
+       FalconFunctions::is_equals( _frt->predecessor, key ) ) return _frt->predecessor;
+
+  best = _frt->successor;      //default
+
+  for ( int i = ( _frt->_fingertable.size() - 1 ); i >= 0; i-- ) {
+    if ( ! FalconFunctions::is_in_between( _frt->_me, _frt->_fingertable.get_dhtnode(i), key) )  {
+      best = _frt->_fingertable.get_dhtnode(i);
+      break;
+    }
+  }
+
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
+      best = _frt->_allnodes.get_dhtnode(i);
+    }
+  }
+
+  return best;
 }
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node(md5_byte_t */*key*/)
+DHTRoutingFalcon::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
 {
-//  click_chatter("Falcon gives node");
-  return NULL;
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i <= 7; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node(replica_key);
 }
+
+
+
+DHTnode *
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+{
+  if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);
+  return get_responsibly_node_forward(key);
+}
+
+/*************************************************************************************************/
+/******************************** C A L L B A C K ************************************************/
+/*************************************************************************************************/
 
 void
-DHTRoutingFalcon::nodeDetection()
+DHTRoutingFalcon::handle_routing_update_callback(int status)
 {
-  Vector<EtherAddress> neighbors;                       // actual neighbors from linkstat/neighborlist
-  WritablePacket *p,*big_p;
-
-  if ( (_linkstat == NULL) && (_fingertable.size() == 0) ) {  //active braodcast probing if no linkstat
-
-    return;
-  }
-
-  _linkstat->get_neighbors(&neighbors);
-
-  //Check for new neighbors
-  for( int i = 0; i < neighbors.size(); i++ ) {
-    click_chatter("New neighbors");
-
-    p = DHTProtocolFalcon::new_route_request_packet(_me);
-    big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(neighbors[i]), BRN_PORT_DHTROUTING);
-
-    if ( big_p == NULL ) click_chatter("Error in DHT");
-    else output(0).push(big_p);
-  }
+  if ( ( ( _responsible == FALCON_RESPONSIBLE_CHORD ) && ( status == RT_UPDATE_PREDECESSOR ) ) ||
+       ( ( _responsible == FALCON_RESPONSIBLE_FORWARD ) && ( status == RT_UPDATE_SUCCESSOR ) ) )
+    notify_callback(ROUTING_STATUS_UPDATE);
 }
 
-String 
-DHTRoutingFalcon::routing_info(void)
-{
-  StringAccum sa;
-  DHTnode *node;
-  uint32_t numberOfNodes = 0;
-  char digest[16*2 + 1];
-
-  numberOfNodes = _fingertable.size();
-  if ( successor != NULL ) numberOfNodes++;
-  if ( predecessor != NULL ) numberOfNodes++;
-
-  MD5::printDigest(_me->_md5_digest, digest);
-  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << "\t" << digest << " )\n";
-  sa << "DHT-Nodes (" << (int)numberOfNodes  << ") :\n";
-
-  if ( successor != NULL ) {
-    MD5::printDigest(successor->_md5_digest, digest);
-    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\n";
-  }
-
-  if ( predecessor != NULL ) {
-    MD5::printDigest(predecessor->_md5_digest, digest);
-    sa << "Predecessor: " << predecessor->_ether_addr.unparse() << "\t" << digest << "\n";
-  }
-
-  for( int i = 0; i < _fingertable.size(); i++ )
-  {
-    node = _fingertable.get_dhtnode(i);
-
-    sa << node->_ether_addr.unparse();
-    MD5::printDigest(node->_md5_digest, digest);
-
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t" << (int)node->_status;
-    sa << "\t" << node->_age;
-    sa << "\t" << node->_last_ping;
-
-    sa << "\n";
-  }
-
-  return sa.take_string();
-}
-
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
 
 enum {
   H_ROUTING_INFO
@@ -144,11 +178,11 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  DHTRoutingFalcon *dht_falcon = (DHTRoutingFalcon *)e;
+  DHTRoutingFalcon *dhtf = (DHTRoutingFalcon *)e;
 
   switch ((uintptr_t) thunk)
   {
-    case H_ROUTING_INFO : return ( dht_falcon->routing_info( ) );
+    case H_ROUTING_INFO : return ( dhtf->_frt->routing_info( ) );
     default: return String();
   }
 }

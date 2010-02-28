@@ -53,13 +53,12 @@ class SetEtherAddr : public Element {
   Packet *pull(int);
 
  private:
+  int _debug;
+
   EtherAddress _src;
   EtherAddress _dst;
 
   uint16_t _ethertype;
-
-  int _debug;
-
 };
 
 CLICK_ENDDECLS

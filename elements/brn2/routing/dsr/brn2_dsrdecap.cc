@@ -124,7 +124,7 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
 
   uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(p_in);
   BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
-  EtherAddress *my_rec_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+  const EtherAddress *my_rec_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
   int metric = _link_table->get_link_metric(last_node_addr, *my_rec_addr);
   *ref_metric = metric;

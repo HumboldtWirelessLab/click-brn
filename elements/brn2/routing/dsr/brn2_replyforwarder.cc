@@ -200,7 +200,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     _route_querier->set_blacklist(last_forwarder, BRN_DSR_BLACKLIST_NOENTRY);
 
-    if (_me->isIdentical(&dst_addr) || (_link_table->get_host_metric_to_me(dst_addr) == 50 )) {
+    if (_me->isIdentical(&dst_addr) || (_link_table->is_associated(dst_addr))) {
       // the first address listed in the route reply's route must be
       // the destination which we queried; this is not necessarily
       // the same as the destination in the IP header because we

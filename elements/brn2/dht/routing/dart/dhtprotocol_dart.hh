@@ -25,24 +25,55 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn2/dht/standard/dhtnodelist.hh"
+
 CLICK_DECLS
 
-struct dht_dart_node_entry {
-  uint8_t  etheraddr[6];
-  uint8_t  age_sec;
+#define DART_MINOR_REQUEST_ID 1  /*new node to existing node*/
+#define DART_MINOR_ASSIGN_ID  2  /*existing node to new node*/
+#define DART_MINOR_REVOKE_ID  3  /*"Parent node" to "child node"*/
+#define DART_MINOR_UPDATE_ID  4  /*to neighbouring node*/
+#define DART_MINOR_RELEASE_ID 5  /*to neighbouring node*/
+
+/** Reasons for revoke or update ID */
+//#define DART_REVOKE_REASON
+
+#define DART_ASSIGN_OK                 0
+#define DART_ASSIGN_REJECT_REASON_FULL 1
+
+struct dht_dart_lp_node_entry {
   uint8_t  status;
-};
+  uint8_t  id_size;
+
+  uint8_t  etheraddr[6];
+  uint8_t  id[16];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct dht_dart_routing {
+  uint8_t  status;
+  uint8_t  reserved;
+  uint8_t  src_id_size;
+  uint8_t  dst_id_size;
+
+  uint8_t  src_id[16];
+  uint8_t  dst_id[16];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
 
 class DHTProtocolDart {
 
-  public:
+ public:
 
-    static WritablePacket *new_hello_packet(EtherAddress *etheraddr);
-    static WritablePacket *new_hello_request_packet(EtherAddress *etheraddr);
-    static WritablePacket *new_route_request_packet(EtherAddress *me, DHTnodelist *list);
-    static WritablePacket *new_route_reply_packet(EtherAddress *me, DHTnodelist *list);
-    static int get_dhtnodes(Packet *p,DHTnodelist *dhtlist);
+  static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
+  static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
 
+  static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status);
+  static WritablePacket *new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p);
+  static WritablePacket *new_nodeid_request_packet( DHTnode *src, DHTnode *dst);
+  static WritablePacket *new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p);
 };
 
 CLICK_ENDDECLS

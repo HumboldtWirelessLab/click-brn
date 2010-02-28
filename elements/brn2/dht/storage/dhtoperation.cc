@@ -5,12 +5,22 @@ CLICK_DECLS
 
 DHTOperation::DHTOperation()
 {
+  header.id = 0;
+  header.replica = 0;               //DEFAULT: ask one node, so no replica
+  header.reserved = 0;
   key = NULL;
   header.keylen = 0;
   value = NULL;
   header.valuelen = 0;
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = OPERATION_UNKNOWN;
+
+  max_retries = DHT_RETRIES_UNLIMITED;
+  retries = 0;
+
+  request_time = Timestamp::now();
+  max_request_duration = DHT_DURATION_UNLIMITED;
+  request_duration = 0;
 }
 
 DHTOperation::~DHTOperation()
@@ -73,8 +83,9 @@ DHTOperation::read(uint8_t *_key, uint16_t _keylen)
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_READ;
 }
 
+
 void
-DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
+DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen, bool insert)
 {
   key = new uint8_t[_keylen];
   memcpy(key, _key, _keylen);
@@ -85,7 +96,16 @@ DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _
   header.valuelen = _valuelen;
 
   header.status = DHT_STATUS_UNKNOWN;
-  header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_WRITE;
+  if ( insert )
+    header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_WRITE | (uint8_t)OPERATION_INSERT;
+  else
+    header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_WRITE;
+}
+
+void
+DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
+{
+  write(_key, _keylen, _value, _valuelen, false);
 }
 
 void
@@ -149,7 +169,7 @@ DHTOperation::serialize(uint8_t **buffer, uint16_t *len) //TODO: hton for lens
 
   if ( serialize_buffer(pbuffer,plen) == -1 )
   {
-//    click_chatter("Unable to seralize DHT");
+//  click_chatter("Unable to seralize DHT");
     delete[] pbuffer;
     *len = 0;
   }
@@ -220,16 +240,29 @@ DHTOperation::is_reply()
 }
 
 void
-DHTOperation::set_id(uint32_t _id)
+DHTOperation::set_id(uint16_t _id)
 {
   header.id = _id;
 }
 
-uint32_t
+uint16_t
 DHTOperation::get_id()
 {
   return header.id;
 }
+
+void
+DHTOperation::set_replica(uint8_t _replica)
+{
+  header.replica = _replica;
+}
+
+uint8_t
+DHTOperation::get_replica()
+{
+  return header.replica;
+}
+
 
 int
 DHTOperation::length()

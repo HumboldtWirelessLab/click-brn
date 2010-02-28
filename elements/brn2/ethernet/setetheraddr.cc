@@ -31,6 +31,7 @@
 CLICK_DECLS
 
 SetEtherAddr::SetEtherAddr() :
+  _debug(BrnLogger::DEFAULT),
   _src(EtherAddress()),
   _dst(EtherAddress()),
   _ethertype(0)
@@ -49,6 +50,7 @@ SetEtherAddr::configure(Vector<String> &conf, ErrorHandler *errh)
       "SRC", cpkP, cpEthernetAddress, &_src,
       "DST", cpkP, cpEthernetAddress, &_dst,
       "ETHERTYPE", cpkP, cpInteger, &et,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 

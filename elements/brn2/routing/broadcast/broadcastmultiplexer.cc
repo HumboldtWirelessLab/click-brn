@@ -75,7 +75,7 @@ BroadcastMultiplexer::uninitialize()
 void
 BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 {
-  EtherAddress *ea;
+  const EtherAddress *ea;
 
   for ( int i = 1; i < _me->countDevices(); i++) {
     ea = _me->getDeviceByIndex(i)->getEtherAddress();

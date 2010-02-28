@@ -26,7 +26,14 @@ class DHTRouting : public Element
     virtual int max_replication() const = 0;
 
     virtual DHTnode *get_responsibly_node(md5_byte_t *key) = 0;
-    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid);
+    virtual DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number) = 0;
+    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid) = 0;
+
+    //virtual DHTnode *get_responsibly_node(uint8_t *key, int keylen) = 0;
+    //virtual DHTnode *get_responsibly_replica_node_(md5_byte_t *key, int keylen, int replica_number) = 0;
+    //virtual Vector<DHTnode *> get_all_responsibly_nodes(uint8_t *key, int keylen) = 0;
+
+    virtual int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) = 0;
 
     int set_notify_callback(void (*info_func)(void*,int), void *info_obj) {
       if ( ( info_func == NULL ) || ( info_obj == NULL ) ) return -1;
@@ -46,8 +53,9 @@ class DHTRouting : public Element
     bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
     bool is_me(DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
 
-    void (*_info_func)(void*,int);
-    void *_info_obj;
+    /** TODO: use vector to handle several storages/apps on top */
+    void (*_info_func)(void*,int);              //function to call storage layer
+    void *_info_obj;                            //object which is hand over to storage layer
 
     DHTnode *_me;
 

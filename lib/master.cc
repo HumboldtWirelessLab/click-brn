@@ -5,6 +5,7 @@
  *
  * Copyright (c) 2003-7 The Regents of the University of California
  * Copyright (c) 2008 Meraki, Inc.
+ * Copyright (c) 2010 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,6 +25,7 @@
 #include <click/error.hh>
 #include <click/handlercall.hh>
 #if CLICK_USERLEVEL
+# include <fcntl.h>
 # include <click/userutils.hh>
 #endif
 #if CLICK_USERLEVEL && HAVE_SYS_EVENT_H && HAVE_KQUEUE
@@ -43,6 +45,7 @@ enum { POLLIN = Element::SELECT_READ, POLLOUT = Element::SELECT_WRITE };
 #if CLICK_USERLEVEL
 volatile sig_atomic_t Master::signals_pending;
 static volatile sig_atomic_t signal_pending[NSIG];
+static int sig_pipe[2] = { -1, -1 };
 #endif
 
 Master::Master(int nthreads)
@@ -527,39 +530,9 @@ namespace {
 enum { SELECT_READ = Element::SELECT_READ, SELECT_WRITE = Element::SELECT_WRITE };
 }
 
-int
-Master::add_select(int fd, Element *element, int mask)
+void
+Master::register_select(int fd, bool add_read, bool add_write)
 {
-    if (fd < 0)
-	return -1;
-    if (mask == 0)
-	return 0;
-    assert(element && (mask & ~(SELECT_READ | SELECT_WRITE)) == 0);
-    _select_lock.acquire();
-
-    // check whether to add readability, writability, or both; it is an error
-    // for more than one element to wait on the same fd for the same status
-    bool add_read = false, add_write = false;
-    if (mask & SELECT_READ) {
-	if (fd >= _element_selectors.size() || !_element_selectors[fd].read)
-	    add_read = true;
-	else if (_element_selectors[fd].read != element) {
-	unlock_and_return_error:
-	    _select_lock.release();
-	    return -1;
-	}
-    }
-    if (mask & SELECT_WRITE) {
-	if (fd >= _element_selectors.size() || !_element_selectors[fd].write)
-	    add_write = true;
-	else if (_element_selectors[fd].write != element)
-	    goto unlock_and_return_error;
-    }
-    if (!add_read && !add_write) {
-	_select_lock.release();
-	return 0;
-    }
-
     // add the pollfd
     if (fd >= _fd_to_pollfd.size())
 	_fd_to_pollfd.resize(fd + 1, -1);
@@ -572,18 +545,10 @@ Master::add_select(int fd, Element *element, int mask)
     int pi = _fd_to_pollfd[fd];
 
     // add the elements
-    if (add_read) {
-	if (fd >= _element_selectors.size())
-	    _element_selectors.resize(fd + 1);
-	_element_selectors[fd].read = element;
+    if (add_read)
 	_pollfds[pi].events |= POLLIN;
-    }
-    if (add_write) {
-	if (fd >= _element_selectors.size())
-	    _element_selectors.resize(fd + 1);
-	_element_selectors[fd].write = element;
+    if (add_write)
 	_pollfds[pi].events |= POLLOUT;
-    }
 
 #if HAVE_USE_KQUEUE
     if (_kqueue >= 0) {
@@ -629,6 +594,52 @@ Master::add_select(int fd, Element *element, int mask)
     }
 #endif
 
+    // ensure the element selector exists
+    if (fd >= _element_selectors.size())
+	_element_selectors.resize(fd + 1);
+}
+
+int
+Master::add_select(int fd, Element *element, int mask)
+{
+    if (fd < 0)
+	return -1;
+    if (mask == 0)
+	return 0;
+    assert(element && (mask & ~(SELECT_READ | SELECT_WRITE)) == 0);
+    _select_lock.acquire();
+
+    // check whether to add readability, writability, or both; it is an error
+    // for more than one element to wait on the same fd for the same status
+    bool add_read = false, add_write = false;
+    if (mask & SELECT_READ) {
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].read)
+	    add_read = true;
+	else if (_element_selectors[fd].read != element) {
+	unlock_and_return_error:
+	    _select_lock.release();
+	    return -1;
+	}
+    }
+    if (mask & SELECT_WRITE) {
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].write)
+	    add_write = true;
+	else if (_element_selectors[fd].write != element)
+	    goto unlock_and_return_error;
+    }
+    if (!add_read && !add_write) {
+	_select_lock.release();
+	return 0;
+    }
+
+    // add the pollfd
+    register_select(fd, add_read, add_write);
+
+    // add the elements
+    if (add_read)
+	_element_selectors[fd].read = element;
+    if (add_write)
+	_element_selectors[fd].write = element;
 
 #if HAVE_MULTITHREAD
     // need to wake up selecting thread since there's more to select
@@ -1018,14 +1029,23 @@ sighandler(int signo)
     signal(signo, SIG_DFL);
 #endif
     Master::signals_pending = signal_pending[signo] = 1;
+    if (sig_pipe[1] >= 0)
+	ignore_result(write(sig_pipe[1], "", 1));
 }
 }
 
 int
-Master::add_signal_handler(int signo, Router *router, const String &handler)
+Master::add_signal_handler(int signo, Router *router, String handler)
 {
     if (signo < 0 || signo >= 32 || router->master() != this)
 	return -1;
+
+    if (sig_pipe[0] < 0 && pipe(sig_pipe) >= 0) {
+	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+	register_select(sig_pipe[0], true, false);
+    }
 
     SignalInfo *si = new SignalInfo;
     if (!si)
@@ -1049,7 +1069,7 @@ Master::add_signal_handler(int signo, Router *router, const String &handler)
 }
 
 int
-Master::remove_signal_handler(int signo, Router *router, const String &handler)
+Master::remove_signal_handler(int signo, Router *router, String handler)
 {
     _signal_lock.acquire();
     int nhandlers = 0, status = -1;
@@ -1076,45 +1096,57 @@ void
 Master::process_signals()
 {
     signals_pending = 0;
-    char handled[NSIG];
     _signal_lock.acquire();
 
+    // kill crap data written to pipe
+    if (sig_pipe[0] >= 0) {
+	char crap[64];
+	while (read(sig_pipe[0], crap, 64) > 0)
+	    /* do nothing */;
+    }
+
+    // collect activated signal handler info
     SignalInfo *happened = 0;
-    SignalInfo **pprev = &_siginfo;
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    for (SignalInfo *si = *pprev; si; si = *pprev)
+    for (SignalInfo **pprev = &_siginfo, *si = *pprev; si; si = *pprev)
 	if (signal_pending[si->signo] && si->router->running()) {
 	    *pprev = si->next;
 	    si->next = happened;
 	    happened = si;
-	    handled[si->signo] = 0;
-	    signal_pending[happened->signo] = 0;
-	    sigaddset(&sigset, si->signo);
 	} else
 	    pprev = &si->next;
 
-    SignalInfo *unhandled;
-    SignalInfo **unhandled_pprev = &unhandled;
+    // clear signal_pending, set handled
+    char handled[NSIG];
+    sigset_t sigset;
+    sigemptyset(&sigset);
+    for (SignalInfo *si = happened; si; si = si->next) {
+	handled[si->signo] = 0;
+	signal_pending[si->signo] = 0;
+	sigaddset(&sigset, si->signo);
+    }
+
+    // call the signal handlers
+    SignalInfo *unhandled = 0;
     while (happened) {
 	SignalInfo *next = happened->next;
 	if (HandlerCall::call_write(happened->handler, happened->router->root_element()) >= 0) {
 	    handled[happened->signo] = 1;
 	    delete happened;
 	} else {
-	    *unhandled_pprev = happened;
-	    unhandled_pprev = &happened->next;
+	    happened->next = unhandled;
+	    unhandled = happened;
 	}
 	happened = next;
     }
-    *unhandled_pprev = 0;
 
     sigprocmask(SIG_UNBLOCK, &sigset, 0);
 
     while (unhandled) {
 	SignalInfo *next = unhandled->next;
-	if (!handled[unhandled->signo])
+	if (!handled[unhandled->signo]) {
 	    kill(getpid(), unhandled->signo);
+	    handled[unhandled->signo] = 1;
+	}
 	delete unhandled;
 	unhandled = next;
     }

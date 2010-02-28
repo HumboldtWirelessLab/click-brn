@@ -59,6 +59,13 @@ DHTProtocol::get_type(Packet *p)
   return ( dht_header->minor_type );
 }
 
+void
+DHTProtocol::set_type(Packet *p, uint8_t minor_type)
+{
+  struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
+  dht_header->minor_type = minor_type;
+}
+
 uint16_t
 DHTProtocol::get_payload_len(Packet *p)
 {
@@ -99,6 +106,24 @@ DHTProtocol::get_dst(Packet *p)
     dht_header = (struct dht_packet_header*)p->data();
     return (new EtherAddress(dht_header->dst));
   }
+  else
+    return NULL;
+}
+
+uint8_t *
+DHTProtocol::get_src_data(Packet *p)
+{
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+    return ((struct dht_packet_header*)p->data())->src;
+  else
+    return NULL;
+}
+
+uint8_t *
+DHTProtocol::get_dst_data(Packet *p)
+{
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+    return ((struct dht_packet_header*)p->data())->dst;
   else
     return NULL;
 }

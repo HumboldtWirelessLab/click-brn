@@ -25,6 +25,11 @@
 
 #include <click/element.hh>
 
+#define OMNI_HELLO              1
+#define OMNI_HELLO_REQUEST      2
+#define OMNI_ROUTETABLE_REQUEST 3
+#define OMNI_ROUTETABLE_REPLY   4
+
 CLICK_DECLS
 
 struct dht_omni_node_entry {

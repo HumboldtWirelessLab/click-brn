@@ -58,7 +58,7 @@ class BatmanProtocol : public Element { public:
   static struct batman_header *get_batman_header(Packet *p);
   static void rm_batman_header(Packet *p);
 
-  static WritablePacket *new_batman_originator( uint32_t id, uint8_t flag, EtherAddress *src, uint8_t neighbours = 0);
+  static WritablePacket *new_batman_originator( uint32_t id, uint8_t flag, const EtherAddress *src, uint8_t neighbours = 0);
   static struct batman_originator *get_batman_originator(Packet *p);
   static uint8_t *get_batman_originator_payload(Packet *p);
 

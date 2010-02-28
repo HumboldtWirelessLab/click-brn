@@ -60,11 +60,11 @@ ElementMap::~ElementMap()
 
 
 void
-ElementMap::push_default(ElementMap *em)
+ElementMap::push_default(ElementMap *emap)
 {
-    em->use();
+    emap->use();
     element_map_stack.push_back(the_element_map);
-    the_element_map = em;
+    the_element_map = emap;
 }
 
 void
@@ -77,6 +77,13 @@ ElementMap::pop_default()
     } else
 	the_element_map = &main_element_map;
     old->unuse();
+}
+
+void
+ElementMap::pop_default(ElementMap *emap)
+{
+    if (the_element_map == emap)
+	pop_default();
 }
 
 
@@ -637,8 +644,11 @@ ElementMap::parse_requirement_files(RouterT *r, const String &default_path, Erro
 
     // parse elementmaps for requirements in required order
     const Vector<String> &requirements = r->requirements();
-    for (int i = 0; i < requirements.size(); i++) {
-	String req = requirements[i];
+    for (int i = 0; i < requirements.size(); i += 2) {
+	if (!requirements[i].equals("package", 7))
+	    continue;
+
+	String req = requirements[i+1];
 	String mapname = "elementmap-" + req + ".xml";
 	String mapname2 = "elementmap." + req;
 

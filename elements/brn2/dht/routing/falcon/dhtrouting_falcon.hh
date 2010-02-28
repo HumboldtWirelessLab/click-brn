@@ -2,14 +2,15 @@
 #define CLICK_DHTROUTING_FALCON_HH
 
 #include "elements/brn2/standard/md5.h"
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-
 #include "elements/brn2/dht/routing/dhtrouting.hh"
+#include "falcon_routingtable.hh"
 
 CLICK_DECLS
 
-class BRN2LinkStat;
+#define FALCON_RESPONSIBLE_CHORD   0
+#define FALCON_RESPONSIBLE_FORWARD 1
+
+#define FALCON_MAX_REPLICA 7
 
 class DHTRoutingFalcon : public DHTRouting
 {
@@ -22,49 +23,35 @@ class DHTRoutingFalcon : public DHTRouting
 
     void *cast(const char *name);
 
-    const char *processing() const  { return PUSH; }
+    const char *processing() const  { return AGNOSTIC; }
 
-    const char *port_count() const  { return "1/2"; }
+    const char *port_count() const  { return "0/0"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
 
     int initialize(ErrorHandler *);
 
-    void push( int port, Packet *packet );
-
     void add_handlers();
 
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingFalcon"; }
 
-    bool replication_support() const { return false; }
-    int max_replication() const { return(1); }
+    bool replication_support() const { return true; }
+    int max_replication() const { return FALCON_MAX_REPLICA; }
     DHTnode *get_responsibly_node(md5_byte_t *key);
+    DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number);
 
-    PacketSendBuffer packetBuffer;
-    Timer _lookup_timer;
-    Timer _packet_buffer_timer;
+    DHTnode *get_responsibly_node_backward(md5_byte_t *key);
+    DHTnode *get_responsibly_node_forward(md5_byte_t *key);
 
-    static void static_lookup_timer_hook(Timer *, void *);
-    static void static_packet_buffer_timer_hook(Timer *, void *);
-    void set_lookup_timer();
+    int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 
-    void nodeDetection();
+  //private:
+    FalconRoutingTable *_frt;
+    int _responsible;
 
-    int _update_interval;
-    String routing_info(void);
-
-    int _max_fingertable_size;     //!! size^2 = max_number of nodes in network !!
-  private:
-
-    BRN2LinkStat *_linkstat;
-    DHTnodelist _fingertable;
-
-    DHTnode *successor;
-    DHTnode *predecessor;
-
-
+    void handle_routing_update_callback(int status);
 };
 
 CLICK_ENDDECLS

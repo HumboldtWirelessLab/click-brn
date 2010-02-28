@@ -13,6 +13,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnconf.h"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
@@ -413,6 +414,23 @@ DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key)
   return NULL;
 }
 
+DHTnode *
+DHTRoutingKlibs::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
+{
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i < 8; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node(replica_key);
+}
+
+
 bool
 DHTRoutingKlibs::is_foreign(md5_byte_t *key)
 {
@@ -614,7 +632,7 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
   }
 
   if ( _dst != NULL ) {                   //the dest of the packet should ( if it is not NULL) should be include in the packte
-    if ( ! list->includes(_dst) ) {       //so the desz knowns what i know about him
+    if ( ! list->contains(_dst) ) {       //so the desz knowns what i know about him
       list->add_dhtnode(_dst);
     }
   }

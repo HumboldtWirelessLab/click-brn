@@ -67,7 +67,7 @@ class BRN2NodeIdentity : public Element {
   int countDevices() { return _node_devices.size(); }
   BRN2Device *getDeviceByNumber(uint8_t);
   BRN2Device *getDeviceByIndex(uint8_t);
-  EtherAddress *getMainAddress();
+  const EtherAddress *getMainAddress();
 
 //  void setNodeName(String name);
   String getNodeName() { return getMainAddress()->unparse();}

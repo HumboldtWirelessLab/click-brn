@@ -54,7 +54,7 @@ BRN2RouteQuerier::BRN2RouteQuerier()
 {
   timeval tv;
   tv = Timestamp::now().timeval();
-  _rreq_id = random() % 0xffff;
+  _rreq_id = click_random() % 0xffff;
 
   //add_input();  // incoming packets
 

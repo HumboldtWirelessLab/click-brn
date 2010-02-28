@@ -249,13 +249,13 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
   else {
     if ( ( _winfo != NULL ) && ( _winfo->_ssid == ssid ) ) {
       my_ssid = _winfo->_ssid;
-      click_chatter("Use WifiInfo");
+      BRN_DEBUG("Use WifiInfo");
     } else {
       if ( _winfolist ) {
         for ( int i = 0; i < _winfolist->countWifiInfo(); i++ ) {
           wi = _winfolist->getWifiInfo(i);
           if ( ssid == wi->_ssid ) {
-            click_chatter("Use wifiinfolist");
+            BRN_DEBUG("Use wifiinfolist");
             my_ssid = wi->_ssid;
             vlanid = wi->_vlan;
           }

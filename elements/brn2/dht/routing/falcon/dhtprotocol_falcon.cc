@@ -20,6 +20,8 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -27,270 +29,125 @@
 
 CLICK_DECLS
 
-WritablePacket *
-DHTProtocolFalcon::new_hello_packet(EtherAddress *etheraddr)       //TODO: Using DHTnode
+int
+DHTProtocolFalcon::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHTnodelist */*nodes*/)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
+  struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+  ne->age_sec = 0;
+  ne->status = me->_status;
+  memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
 
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, HELLO,
-                                                        sizeof(dht_falcon_header) + sizeof(struct dht_falcon_node_entry));
+  return sizeof(dht_falcon_node_entry);
+}
 
-  data = (uint8_t*)DHTProtocol::get_payload(hello_p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+int
+DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, DHTnodelist */*nodes*/)
+{
+  struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 
-  header->status = 0;
-  memcpy(entry->etheraddr, etheraddr, 6);
-  entry->age_sec = 0;
-  entry->status = STATUS_OK;
-
-  return(hello_p);
+  first->_age = Timestamp(ne->age_sec);
+  first->_status = ne->status;
+  first->set_update_addr(ne->etheraddr);
+  return 0;
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_hello_request_packet(EtherAddress *etheraddr)       //TODO: Using DHTnode
+DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t type, int request_position)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
+  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(rreq_p);
 
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, HELLO_REQUEST,sizeof(struct dht_falcon_node_entry));
+  request->status = 0;
+  request->table_position = htons(request_position);
 
-  data = (uint8_t*)DHTProtocol::get_payload(hello_p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  DHTProtocol::set_src(rreq_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rreq_p, dst->_ether_addr.data());
 
-  header->status = 0;
-  memcpy(entry->etheraddr, etheraddr, 6);
-  entry->age_sec = 0;
-  entry->status = STATUS_OK;
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
-  return(hello_p);
+  return(brn_p);
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_request_packet(DHTnode *src)
+DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
+  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  struct falcon_routing_packet *reply = (struct falcon_routing_packet*)DHTProtocol::get_payload(rrep_p);
 
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, ROUTETABLE_REQUEST, sizeof(struct dht_falcon_node_entry));
+  reply->status = 0;
+  reply->table_position = htons(request_position);
 
-  data = (uint8_t*)DHTProtocol::get_payload(hello_p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  DHTProtocol::set_src(rrep_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rrep_p, node->_ether_addr.data());
 
-  header->status = 0;
-  memcpy(entry->etheraddr, src->_ether_addr.data(), 6);
-  entry->age_sec = 0;
-  entry->status = STATUS_OK;
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rrep_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
-  return(hello_p);
+  return(brn_p);
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_reply_packet(DHTnode *me, DHTnode *pred, DHTnode *succ, DHTnodelist *finger)
+DHTProtocolFalcon::fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  DHTnode *node;
-  uint8_t *data;
+  WritablePacket *rfwd_p = p->uniqueify();
 
-  uint8_t listsize = 0;
-  uint8_t status = 0;
+  DHTProtocol::set_src(rfwd_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rfwd_p, new_dst->_ether_addr.data());
 
-  if ( finger != NULL ) {
-    listsize = finger->size();
-    status = finger->size();
-  }
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rfwd_p, &(fwd->_ether_addr), &(new_dst->_ether_addr), BRN_PORT_DHTROUTING);
 
-  if ( pred != NULL ) {
-    listsize++;
-    status |= HAS_PREDECESSOR;
-  }
-
-  if ( succ != NULL ) {
-    listsize++;
-    status |= HAS_SUCCESSOR;
-  }
-
-  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, ROUTETABLE_REPLY, listsize * sizeof(struct dht_falcon_node_entry));
-
-  data = (uint8_t*)DHTProtocol::get_payload(route_p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
-
-  header->status = status;
-
-  int index = 0;
-  memcpy(entry[index].etheraddr, me->_ether_addr.data(), 6);
-  entry[index].age_sec = me->get_age_s();
-  entry[index].status = me->_status;
-  index++;
-
-  if ( pred != NULL ) {
-    memcpy(entry[index].etheraddr, pred->_ether_addr.data(), 6);
-    entry[index].age_sec = pred->get_age_s();
-    entry[index].status = pred->_status;
-    index++;
-  }
-
-  if ( succ != NULL ) {
-    memcpy(entry[index].etheraddr, succ->_ether_addr.data(), 6);
-    entry[index].age_sec = succ->get_age_s();
-    entry[index].status = succ->_status;
-    index++;
-  }
-
-  for( int i = 0; i < finger->size() ;i++,index++ ) {
-    node = finger->get_dhtnode(i);
-    memcpy(entry[index].etheraddr, node->_ether_addr.data(), 6);
-    entry[index].age_sec = node->get_age_s();
-    entry[index].status = node->_status;
-  }
-
-  return(route_p);
+  return(brn_p);
 }
 
-DHTnode *
-DHTProtocolFalcon::get_src(Packet *p)
+void
+DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status, uint16_t *pos)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
+  struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(p);
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  *status = request->status;
+  *pos = ntohs(request->table_position);
 
-  DHTnode *node = new DHTnode(EtherAddress(entry[0].etheraddr));
-  node->_status = entry[0].status;
-  node->_age = Timestamp::now() - Timestamp(entry[0].age_sec);
-
-  return node;
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  node->set_update_addr(DHTProtocol::get_dst_data(p));
 }
 
-DHTnode *
-DHTProtocolFalcon::get_predecessor(Packet *p)
+WritablePacket *
+DHTProtocolFalcon::new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
-  DHTnode *node = NULL;
+  WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, FALCON_MINOR_NWS_REQUEST, sizeof(struct falcon_nws_packet));
+  struct falcon_nws_packet *request = (struct falcon_nws_packet*)DHTProtocol::get_payload(rreq_p);
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  request->networksize = htonl(size);
 
-  if ( ( header->status & HAS_PREDECESSOR ) == HAS_PREDECESSOR ) {
-    node = new DHTnode(EtherAddress(entry[1].etheraddr));
-    node->_status = entry[1].status;
-    node->_age = Timestamp::now() - Timestamp(entry[1].age_sec);
-  }
+  DHTProtocol::set_src(rreq_p, src->_ether_addr.data());
+  DHTProtocol::set_dst(rreq_p, dst->_ether_addr.data());
 
-  return node;
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
 }
 
-DHTnode *
-DHTProtocolFalcon::get_successor(Packet *p)
+WritablePacket *
+DHTProtocolFalcon::fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p)
 {
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
-  DHTnode *node = NULL;
+  struct falcon_nws_packet *rreq = (struct falcon_nws_packet*)DHTProtocol::get_payload(p);
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  rreq->networksize = htonl(size);
+  DHTProtocol::set_dst(p, next->_ether_addr.data());
 
-  int index = 1;
-  if ( ( header->status & HAS_PREDECESSOR ) == HAS_PREDECESSOR )
-    index++;
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(p->uniqueify(), &(src->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTROUTING);
 
-  if ( ( header->status & HAS_SUCCESSOR ) == HAS_SUCCESSOR ) {
-    node = new DHTnode(EtherAddress(entry[index].etheraddr));
-    node->_status = entry[index].status;
-    node->_age = Timestamp::now() - Timestamp(entry[index].age_sec);
-  }
-
-  return node;
+  return(brn_p);
 }
 
-DHTnodelist *
-DHTProtocolFalcon::get_fingertable(Packet *p)
+void
+DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, DHTnode *next, uint32_t *size)
 {
-  DHTnodelist *list = new DHTnodelist();
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
-  DHTnode *node = NULL;
+  struct falcon_nws_packet *request = (struct falcon_nws_packet*)DHTProtocol::get_payload(p);
 
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
+  *size = ntohl(request->networksize);
 
-  int index = 1;
-  if ( ( header->status & HAS_PREDECESSOR ) == HAS_PREDECESSOR ) index++;
-
-  if ( ( header->status & HAS_SUCCESSOR ) == HAS_SUCCESSOR ) index++;
-
-  for ( int i = 0; i < ( header->status & FINGERTABLESIZE ); i++, index++ ) {
-    node = new DHTnode(EtherAddress(entry[index].etheraddr));
-    node->_status = entry[index].status;
-    node->_age = Timestamp::now() - Timestamp(entry[index].age_sec);
-    list->add_dhtnode(node);
-  }
-
-  return list;
-}
-
-DHTnodelist *
-DHTProtocolFalcon::get_all_nodes(Packet *p)
-{
-  DHTnodelist *list = new DHTnodelist();
-  struct dht_falcon_header *header;
-  struct dht_falcon_node_entry *entry;
-  uint8_t *data;
-  DHTnode *node = NULL;
-
-  data = (uint8_t*)DHTProtocol::get_payload(p);
-  header = (struct dht_falcon_header*)data;
-  entry = (struct dht_falcon_node_entry*)&(data[sizeof(struct dht_falcon_header)]);
-
-  int index = 0;
-  if ( ( header->status & HAS_PREDECESSOR ) == HAS_PREDECESSOR ) {
-    node = new DHTnode(EtherAddress(entry[index].etheraddr));
-    node->_status = entry[index].status;
-    node->_age = Timestamp::now() - Timestamp(entry[index].age_sec);
-    list->add_dhtnode(node);
-    index++;
-  }
-
-  /* Source after Predecessor so list is sorted */
-  node = new DHTnode(EtherAddress(entry[0].etheraddr));
-  node->_status = entry[0].status;
-  node->_age = Timestamp::now() - Timestamp(entry[0].age_sec);
-  list->add_dhtnode(node);
-
-  if ( ( header->status & HAS_SUCCESSOR ) == HAS_SUCCESSOR ) {
-    node = new DHTnode(EtherAddress(entry[index].etheraddr));
-    node->_status = entry[index].status;
-    node->_age = Timestamp::now() - Timestamp(entry[index].age_sec);
-    list->add_dhtnode(node);
-    index++;
-  }
-
-  for ( int i = 0; i < ( header->status & FINGERTABLESIZE ); i++, index++ ) {
-    node = new DHTnode(EtherAddress(entry[index].etheraddr));
-    node->_status = entry[index].status;
-    node->_age = Timestamp::now() - Timestamp(entry[index].age_sec);
-    list->add_dhtnode(node);
-  }
-
-  return list;
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  next->set_update_addr(DHTProtocol::get_dst_data(p));
 }
 
 CLICK_ENDDECLS

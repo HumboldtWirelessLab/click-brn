@@ -60,6 +60,16 @@ int DHTnodelist::add_dhtnode(DHTnode *_new_node)
   return 0;
 }
 
+DHTnode*
+DHTnodelist::swap_dhtnode(DHTnode *_node, int i)
+{
+  DHTnode *old;
+  old = _nodelist[i];
+  _nodelist[i] = _node;
+
+  return old;
+}
+
 DHTnode* DHTnodelist::get_dhtnode(DHTnode *_search_node)
 {
   return get_dhtnode(&(_search_node->_ether_addr));
@@ -222,7 +232,7 @@ DHTnodelist::get_dhtnodes_oldest_ping(int number)
 
 
 bool
-DHTnodelist::includes(DHTnode *node)
+DHTnodelist::contains(DHTnode *node)
 {
   if ( node == NULL ) return true;
 

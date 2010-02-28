@@ -193,7 +193,7 @@ BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   BRN_DEBUG(" * creating rreq: ... ");
 
   int payload = sizeof(click_brn_dsr); // rreq
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   click_brn_dsr *dsr_rreq = (click_brn_dsr*)p->data();
@@ -230,7 +230,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
 
   payload += reply_hop_count * sizeof(click_dsr_hop);
   // construct new packet
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   if (!p) {
@@ -315,7 +315,7 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
 
   payload += src_hop_count * sizeof(click_dsr_hop);
   // make the packet
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   if (!p) {

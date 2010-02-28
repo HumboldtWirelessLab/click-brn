@@ -18,31 +18,43 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef __BRN2ROTATECHANNEL_HH__
-#define __BRN2ROTATECHANNEL_HH__
+#ifndef DART_LP_HANDLER_HH
+#define DART_LP_HANDLER_HH
 
 #include <click/element.hh>
 
+#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "dart_routingtable.hh"
+
 CLICK_DECLS
 
-class BRN2RotateChannel : public Element {
-public:
-  BRN2RotateChannel();
+class DartLinkProbeHandler : public Element
+{
 
-  const char *class_name() const	{ return "BRN2RotateChannel"; }
-  const char *port_count() const  { return "1/1"; }
+ public:
+  DartLinkProbeHandler();
+  ~DartLinkProbeHandler();
+
+  const char *class_name() const  { return "DartLinkProbeHandler"; }
+
   const char *processing() const  { return AGNOSTIC; }
-  bool can_live_reconfigure() const     { return false; }
+
+  const char *port_count() const  { return "0/0"; }
 
   int configure(Vector<String> &, ErrorHandler *);
+  int initialize(ErrorHandler *);
 
-  Packet *simple_action(Packet *);
+  bool can_live_reconfigure() const  { return false; }
 
-private:
-  bool    _rotate;
-  int     _channel;
+  int lpSendHandler(char *buffer, int size);
+  int lpReceiveHandler(char *buffer, int size);
+
+ private:
+  DartRoutingTable *_drt;
+  BRN2LinkStat *_linkstat;
+
+  int _debug;
 };
 
-
 CLICK_ENDDECLS
-#endif //__BRN2ROTATECHANNEL_HH__
+#endif
