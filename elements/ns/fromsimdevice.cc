@@ -141,7 +141,7 @@ FromSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,
   int result = 0;
   (void) ifid;
 
-  Packet *p = Packet::make(32, data, len, 32);
+  Packet *p = Packet::make(data, len);
   set_annotations(p,ptype);
   p->set_sim_packetinfo(pinfo);
   output(0).push(p);
