@@ -281,16 +281,16 @@ public:
 
     /**
      * Copy the list of gateways to the new configuration.
-	   *
+     *
      * TODO are there other things to copy. Add some checking.
-     * 
+     *
      * @param *old_element is determined by hotswap_element() and != NULL
      * @param *errh used to report errors
-     * 
+     *
      */
     void take_state(Element *old_element, ErrorHandler *errh) {
         (void) errh;
-        
+
         BRNGateway* old_gw = (BRNGateway *) old_element;
 
         // TODO
@@ -313,7 +313,7 @@ public:
      * @param cs describes, during what phase the router was, when aborted
      */
     void cleanup(CleanupStage cs);
-    
+
     /**
      * Returns the number of in- an output port for a BRNGatway. 
      *
@@ -326,25 +326,25 @@ public:
 
     /**
      * Returns the kind of ports of a BRNGateway.
-     * 
+     *
      * @see element.hh for further description
      * @return PUSH, which says the ports are push
      */
     const char *processing() const {
         return PUSH;
     }
-	
-	/**
+
+    /**
      * Return "x/y" to indicate that no packet ever travels from an
      * input port to an output port.
-     * 
+     *
      * @return "x/y"
      */
     const char *flow_code () const { return "x/y"; }
-   
+
     /**
      * Called when a packet is pushed into BRNGateway.
-     * 
+     *
      * @param port is the port the packet was received
      * @param *p is the packet pushed in
      * 

@@ -53,9 +53,9 @@ BRNGateway::BRNGateway() :
 BRNGateway::~BRNGateway() {}
 
 /*******************
- * 
+ *
  * methods for click
- * 
+ *
  *//////////////////
 int
 BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
@@ -84,7 +84,7 @@ BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 int
 BRNGateway::initialize(ErrorHandler *errh) {
   (void) (errh);
-    
+
   _timer_update_dht.initialize(this);
   _timer_update_dht.schedule_now();
 
@@ -100,7 +100,7 @@ void BRNGateway::cleanup(CleanupStage stage) {
   // probably not
 
   if (stage == CLEANUP_ROUTER_INITIALIZED) {
-  	// generate packet to remove from dht
+    // generate packet to remove from dht
     // this maybe to late, since dht may have gone away already
     // and thus unable to handle this packet anymore
     BRN_INFO("Remove this node as gateway from DHT, if it was in the DHT");
@@ -108,34 +108,34 @@ void BRNGateway::cleanup(CleanupStage stage) {
 }
 
 /*****************
- * 
+ *
  * Packet handling
- * 
+ *
  *////////////////
 void
 BRNGateway::push(int, Packet *p) {
   // TODO
   // check if this a brn gateway packet
   // what the preferred way?
-    
+
   handle_dht_response(p);
   p->kill();
   return;
 }
 
 /********
- * 
+ *
  * Timers
- * 
- * 
+ *
+ *
  *///////
 void
 BRNGateway::timer_refresh_known_gateways_hook(Timer *t) {
   //BRN_INFO(" \n*  Timer executed to get update list of gateways  \n* ");
   //click_chatter(" \n*  Timer executed to get update list of gateways  \n* ");
-	
-	// output packet
-	output(0).push(get_getways_from_dht());
+
+  // output packet
+  output(0).push(get_getways_from_dht());
 
   // ... and reschdule timer
   t->reschedule_after_sec(_update_gateways_interval);
@@ -146,12 +146,12 @@ BRNGateway::timer_update_dht_hook(Timer *t) {
   //BRN_INFO(" \n*  Timer executed to get update this gateway  \n* ");
   //click_chatter(" \n*  Timer executed to get update this gateway  \n* ");
 
-	// is this node a gateway
-	const BRNGatewayEntry *gwe = get_gateway();
-	
-	// output packet, if this node is a gateway
-	if (gwe != NULL)
-		output(0).push(update_gateway_in_dht(*gwe));
+  // is this node a gateway
+  const BRNGatewayEntry *gwe = get_gateway();
+
+  // output packet, if this node is a gateway
+  if (gwe != NULL)
+    output(0).push(update_gateway_in_dht(*gwe));
 
   // ... and reschdule timer
   t->reschedule_after_sec(_update_dht_interval);
@@ -180,7 +180,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
   BRNGateway *gw = static_cast<BRNGateway *> (e);
   switch ((uintptr_t) thunk) {
   case HANDLER_GET_GATEWAY: {
-  	// return this nodes gateway metric, if listed in _known_gateways, else 0
+    // return this nodes gateway metric, if listed in _known_gateways, else 0
     const BRNGatewayEntry* gwe = gw->get_gateway();
     if (gwe != NULL)
     	return gwe->s() + "\n";
@@ -188,7 +188,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
       return "No gateway\n";
   }
   case HANDLER_KNOWN_GATEWAYS: {
-  	// returns all known gateways (including this node)
+    // returns all known gateways (including this node)
 
     /**
      * 
@@ -202,7 +202,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
        << "BRNGateway\t\tMetric\tIP address\tBehind NAT?\n";
     // iterate over all known gateways
     for (BRNGatewayList::const_iterator i = gw->_known_gateways.begin(); i.live(); i++) {
-    	BRNGatewayEntry gwe = i.value();
+      BRNGatewayEntry gwe = i.value();
       sa << i.key().unparse().c_str() << "\t"
          << (uint32_t) gwe.get_metric() << "\t"
          << gwe.get_ip_address() << "\t"
@@ -313,10 +313,10 @@ BRNGateway::add_gateway(BRNGatewayEntry gwe) {
 
 int
 BRNGateway::remove_gateway() {
-    
+
   if (remove_gateway(_my_eth_addr)) {	
     BRN_INFO("Removed gateway %s from list", _my_eth_addr.unparse().c_str());
-    	
+
     // delete gateway from dht
     output(0).push(remove_gateway_from_dht());
   }
@@ -332,8 +332,8 @@ BRNGateway::remove_gateway(EtherAddress eth) {
   // remove all pending flows
   _flows->remove_flows_with_gw(eth);
 
-	// this gateway should not be updated via this method
-	return _known_gateways.remove(eth);
+  // this gateway should not be updated via this method
+  return _known_gateways.remove(eth);
 }
 
 
