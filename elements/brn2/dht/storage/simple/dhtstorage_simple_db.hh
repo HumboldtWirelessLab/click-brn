@@ -10,6 +10,10 @@ CLICK_DECLS
 
 #define DEFAULT_LOCKTIME 3600
 
+/**
+ * TODO: move "data move on node update"-stuff to seperate element
+*/
+
 class DHTStorageSimpleDB : public Element
 {
   public:

@@ -129,11 +129,13 @@ class DHTStorageSimple : public DHTStorage
     uint32_t _movedID;
     EtherAddress _target;
     Timestamp _move_time;
+    uint32_t _tries;
 
     DHTMovedDataInfo(EtherAddress *target, uint32_t moveID) {
       _movedID = moveID;
       _target = EtherAddress(target->data());
       _move_time = Timestamp::now();
+      _tries = 0;
     }
   };
 
@@ -171,6 +173,10 @@ class DHTStorageSimple : public DHTStorage
 
     uint32_t handle_node_update();
 
+    static void data_move_timer_hook(Timer *, void *f);
+    void check_moved_data();
+    void set_move_timer();
+
   private:
 
     DHTForwardQueue _fwd_queue;
@@ -207,6 +213,7 @@ class DHTStorageSimple : public DHTStorage
     DHTMovedDataInfo* get_move_info(EtherAddress *ea);
     void handle_moved_data(Packet *p);
     void handle_ack_for_moved_data(Packet *p);
+    Timer _move_data_timer;
 };
 
 CLICK_ENDDECLS
