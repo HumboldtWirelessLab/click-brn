@@ -201,6 +201,7 @@ class FromDevice : public Element { public:
     int _was_promisc : 2;
     int _snaplen;
     unsigned _headroom;
+    unsigned _tailroom;
     enum { CAPTURE_PCAP, CAPTURE_LINUX };
     int _capture;
 #if FROMDEVICE_PCAP

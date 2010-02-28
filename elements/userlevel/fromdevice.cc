@@ -75,7 +75,7 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
     bool promisc = false, outbound = false, sniffer = true;
     _snaplen = 2046;
     _headroom = Packet::default_headroom;
-    _headroom += (4 - (_headroom + 2) % 4) % 4; // default 4/2 alignment
+    _tailroom = 0;
     _force_ip = false;
     String bpf_filter, capture, encap_type;
     bool has_encap;
@@ -89,13 +89,17 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 	.read("BPF_FILTER", bpf_filter)
 	.read("OUTBOUND", outbound)
 	.read("HEADROOM", _headroom)
-	.read("ENCAP", WordArg(), encap_type).read_status(has_encap)
+    .read("TAILROOM", _tailroom)
+    .read("ENCAP", WordArg(), encap_type).read_status(has_encap)
 	.complete() < 0)
 	return -1;
     if (_snaplen > 8190 || _snaplen < 14)
 	return errh->error("SNAPLEN out of range");
+    _headroom += (4 - (_headroom + 2) % 4) % 4; // default 4/2 alignment
     if (_headroom > 8190)
 	return errh->error("HEADROOM out of range");
+    if (_tailroom > 8190)
+      return errh->error("TAILROOM out of range");
 
 #if FROMDEVICE_PCAP
     _bpf_filter = bpf_filter;
@@ -369,7 +373,7 @@ FromDevice_get_packet(u_char* clientdata,
 
     FromDevice *fd = (FromDevice *) clientdata;
     int length = pkthdr->caplen;
-    Packet *p = Packet::make(fd->_headroom, data, length, 0);
+    Packet *p = Packet::make(fd->_headroom, data, length, fd->_tailroom);
 
     // set packet type annotation
     if (p->data()[0] & 1) {
@@ -410,7 +414,7 @@ FromDevice::selected(int, int)
     if (_capture == CAPTURE_LINUX) {
 	struct sockaddr_ll sa;
 	socklen_t fromlen = sizeof(sa);
-	WritablePacket *p = Packet::make(_headroom, 0, _snaplen, 0);
+	WritablePacket *p = Packet::make(_headroom, 0, _snaplen, _tailroom);
 	int len = recvfrom(_linux_fd, p->data(), p->length(), MSG_TRUNC, (sockaddr *)&sa, &fromlen);
 	if (len > 0 && (sa.sll_pkttype != PACKET_OUTGOING || _outbound)) {
 	    if (len > _snaplen) {
