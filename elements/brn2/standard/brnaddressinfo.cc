@@ -438,7 +438,9 @@ BRNAddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
     if (dev && (dev->type == ARPHRD_ETHER ||
                 dev->type == ARPHRD_80211 ||
                 dev->type == ARPHRD_80211_PRISM ||
-                dev->type == ARPHRD_80211_ATHDESC)) {
+                dev->type == ARPHRD_80211_RADIOTAP ||
+                dev->type == ARPHRD_80211_ATHDESC ||
+                dev->type == ARPHRD_80211_ATHDESCEXT )) {
 	memcpy(store, dev->dev_addr, 6);
 	dev_put(dev);
 	return true;
