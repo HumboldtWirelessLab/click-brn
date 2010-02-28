@@ -591,16 +591,16 @@ DHTStorageSimple::set_move_timer()
   } else
     min_time = -1;
 
-    for( int i = 1; i < _md_queue.size(); i++ )
-    {
-      mdi = _md_queue[i];
-      ac_time = 2000 - (now - mdi->_move_time).msec1();
-      if ( ac_time < min_time ) min_time = ac_time;
-    }
+  for( int i = 1; i < _md_queue.size(); i++ )
+  {
+    mdi = _md_queue[i];
+    ac_time = 2000 - (now - mdi->_move_time).msec1();
+    if ( ac_time < min_time ) min_time = ac_time;
+  }
 
-    if ( min_time < 0 ) return;
+  if ( min_time < 0 ) return;
 
-    _move_data_timer.schedule_after_msec( min_time );
+  _move_data_timer.schedule_after_msec( min_time );
 
 }
 
