@@ -9,6 +9,10 @@ CLICK_DECLS
 #define FALCON_NETWORKSIZE_PORT      2
 #define FALCON_ROUTING_UNKNOWN_PORT  3
 
+/**
+ * TODO: Can be replaced by simple classifier
+*/
+
 class FalconRoutingClassifier : public Element
 {
   public:

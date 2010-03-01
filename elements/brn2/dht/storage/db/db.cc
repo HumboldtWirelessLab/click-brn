@@ -1,14 +1,40 @@
 #include <click/config.h>
+#include <click/etheraddress.hh>
+#include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/glue.hh>
+#include <click/straccum.hh>
+#include <click/timer.hh>
+#include <click/vector.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "db.hh"
 
 CLICK_DECLS
 
-BRNDB::BRNDB()
+BRNDB::BRNDB():
+  _debug(BrnLogger::DEFAULT)
 {
 }
 
 BRNDB::~BRNDB()
 {
+}
+
+int BRNDB::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+  if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
+    return -1;
+
+  return 0;
+}
+
+int BRNDB::initialize(ErrorHandler *)
+{
+  return 0;
 }
 
 int
@@ -126,8 +152,37 @@ BRNDB::size()
   return _table.size();
 }
 
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
+
+static String
+read_debug_param(Element *e, void *)
+{
+  BRNDB *db = (BRNDB *)e;
+  return String(db->_debug) + "\n";
+}
+
+static int
+write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  BRNDB *db = (BRNDB *)e;
+  String s = cp_uncomment(in_s);
+  int debug;
+  if (!cp_integer(s, &debug))
+    return errh->error("debug parameter must be an integer value between 0 and 4");
+  db->_debug = debug;
+  return 0;
+}
+
+void BRNDB::add_handlers()
+{
+  add_read_handler("debug", read_debug_param, 0);
+  add_write_handler("debug", write_debug_param, 0);
+}
+
 #include <click/vector.cc>
 template class Vector<BRNDB::DBrow*>;
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(BRNDB)
+EXPORT_ELEMENT(BRNDB)

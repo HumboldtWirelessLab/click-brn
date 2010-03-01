@@ -27,9 +27,7 @@ DHTStorageSimple::DHTStorageSimple():
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
   _max_req_retries(DEFAULT_MAX_RETRIES),
-  _add_node_id(false),
-  _moved_id(0),
-  _move_data_timer(data_move_timer_hook,this)
+  _add_node_id(false)
 {
 }
 
@@ -52,7 +50,7 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   if (cp_va_kparse(conf, this, errh,
-    "DHTDB",cpkM+cpkP, cpElement, &_dht_db,
+    "DB",cpkM+cpkP, cpElement, &_db,
     "DHTROUTING", cpkN, cpElement, &_dht_routing,
     "ADDNODEID", cpkN, cpBool, &_add_node_id,
     "DEBUG", cpkN, cpInteger, &_debug,
@@ -66,40 +64,14 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
     BRN_INFO("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
   }
 
+  _dht_op_handler = new DHTOperationHandler(_db,_debug);
+
   return 0;
-}
-
-static void notify_callback_func(void *e, int status)
-{
-  DHTStorageSimple *s = (DHTStorageSimple *)e;
-  s->handle_notify_callback(status);
-}
-
-void
-DHTStorageSimple::handle_notify_callback(int status)
-{
-  BRN_DEBUG("DHT-Routing-Callback %s: Status %d",class_name(),status);
-
-  switch ( status )
-  {
-    case ROUTING_STATUS_UPDATE:
-    {
-      BRN_INFO("Routing update (new node,...)");
-      handle_node_update();
-      break;
-    }
-    default:
-    {
-      BRN_WARN("Unknown Status from routing layer");
-    }
-  }
 }
 
 int DHTStorageSimple::initialize(ErrorHandler *)
 {
-  _dht_routing->set_notify_callback(notify_callback_func,(void*)this);
   _check_req_queue_timer.initialize(this);
-  _move_data_timer.initialize(this);
   return 0;
 }
 
@@ -138,7 +110,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     } else {
       if ( _dht_routing->is_me(next) )
       {
-        status = _dht_db->handle_dht_operation(op);
+        status = _dht_op_handler->handle_dht_operation(op);
 
         fwd_op->replicaList[r].status = status;
         fwd_op->replicaList[r].set_value(op->value,op->header.valuelen);
@@ -207,22 +179,6 @@ void DHTStorageSimple::push( int port, Packet *packet )
     if ( port == 0 )
     {
       switch ( DHTProtocol::get_type(packet) ) {
-        case DHT_STORAGE_SIMPLE_MOVEDDATA : {
-          /**
-           * Handle moved data
-          **/
-          BRN_DEBUG("Received moved Data");
-          handle_moved_data(packet);
-          return;
-        }
-        case DHT_STORAGE_SIMPLE_ACKDATA : {
-          /**
-          * Handle ack for moved data
-          **/
-          BRN_DEBUG("Received ack for moved Data");
-          handle_ack_for_moved_data(packet);
-          break;
-        }
         case DHT_STORAGE_SIMPLE_MESSAGE : {
           /**
            * Handle Operation
@@ -308,7 +264,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
               BRN_DEBUG("I'm responsible for Operation (%s).",_dht_routing->_me->_ether_addr.unparse().c_str());
 
-              int result = _dht_db->handle_dht_operation(_op);
+              int result = _dht_op_handler->handle_dht_operation(_op);
 
               if ( result == -1 ) {
                 BRN_DEBUG("Operation error");
@@ -369,239 +325,8 @@ void DHTStorageSimple::push( int port, Packet *packet )
 uint16_t
 DHTStorageSimple::get_next_dht_id()
 {
-  if ( (_dht_id++) == 0 ) _dht_id = 1;
+  if ( ++_dht_id == 0 ) _dht_id++;
   return _dht_id;
-}
-
-/**************************************************************************/
-/********************* D A T A - M O V E - S T U F F **********************/
-/**************************************************************************/
-
-uint32_t
-DHTStorageSimple::handle_node_update()
-{
-  BRNDB::DBrow *_row;
-  DHTnode *next;
-  DHTMovedDataInfo *mdi;
-  WritablePacket *data_p, *p;
-
-  for ( int i = 0; i < _dht_db->_db.size(); i++ ) {
-    _row = _dht_db->_db.getRow(i);
-
-    BRN_DEBUG("Row replica: %d",_row->replica);
-
-    next = _dht_routing->get_responsibly_replica_node(_row->md5_key, _row->replica);
-    if ( ! _dht_routing->is_me(next) ) {
-      if ((_row->status == DATA_OK) && (_row->move_id == 0)) {
-
-        if ( ++_moved_id == 0 ) _moved_id++;
-
-         //TODO: use next to handle Timeouts while tranfering data to new nodes
-         mdi = new DHTMovedDataInfo(&next->_ether_addr, _moved_id);
-        _md_queue.push_back(mdi);
-
-        _row->status = DATA_INIT_MOVE;
-        _row->move_id = _moved_id;
-
-        data_p = DHTProtocolStorageSimple::new_data_packet(&_dht_routing->_me->_ether_addr, _row->move_id, 1,
-                                                           _row->serializeSize());
-        uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(data_p);
-        _row->serialize(data, _row->serializeSize());
-
-        BRN_DEBUG("Move data from %s to %s",_dht_routing->_me->_ether_addr.unparse().c_str(),next->_ether_addr.unparse().c_str());
-
-        p = DHTProtocol::push_brn_ether_header(data_p, &(_dht_routing->_me->_ether_addr), &next->_ether_addr, BRN_PORT_DHTSTORAGE);
-        output(0).push(p);
-      } else {
-        BRN_WARN("Row is not ok ! Already moved ???");
-      }
-    }
-  }
-
-  set_move_timer();
-
-  return 0;
-}
-
-DHTStorageSimple::DHTMovedDataInfo*
-DHTStorageSimple::get_move_info(EtherAddress *ea)
-{
-  DHTMovedDataInfo *mdi;
-
-  for( int i = 0; i < _md_queue.size(); i++ )
-  {
-    mdi = _md_queue[i];
-    if ( memcmp(ea->data(),mdi->_target.data(),6) == 0 ) return mdi;
-  }
-
-  return NULL;
-}
-
-void
-DHTStorageSimple::handle_moved_data(Packet *p)
-{
-  DHTnode *next;
-  md5_byte_t md5_key[16];
-
-  struct dht_simple_storage_data *dssd = DHTProtocolStorageSimple::get_data_packet_header(p); //points to header (moveid)
-  uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(p);                       //points to first row
-  struct db_row_header *rh = (struct db_row_header *)data;
-
-  MD5::calculate_md5((char*)&(data[sizeof(struct db_row_header)]), ntohs(rh->keylen), md5_key);
-
-  next = _dht_routing->get_responsibly_replica_node(md5_key, rh->replica);
-
-  if ( _dht_routing->is_me(next) )
-  {
-    BRN_DEBUG("Insert moved data");
-
-    uint32_t moveid = ntohl(dssd->move_id);
-    EtherAddress src = EtherAddress(dssd->etheraddr);
-
-    if ( memcmp(_dht_routing->_me->_ether_addr.data(), src.data(), 6 ) == 0 ) {
-      BRN_WARN("The source of the moved data (dht) is me. Some node (maybe me) has a brocken routingtable. Reset rows and try again");
-
-      for ( int i = _dht_db->_db.size() - 1 ; i >= 0; i-- ) {
-        BRNDB::DBrow *_row = _dht_db->_db.getRow(i);
-        if ( _row->move_id == moveid ) {
-          _row->status = DATA_OK;
-          _row->move_id = 0;
-        }
-      }
-
-      handle_node_update();
-
-    } else {
-      BRNDB::DBrow *new_row = new BRNDB::DBrow();
-      new_row->unserialize(data, sizeof(struct db_row_header) + ntohs(rh->keylen) + ntohs(rh->valuelen));
-      _dht_db->_db.insert(new_row);
-
-      BRN_DEBUG("Send ack for data to source");
-      WritablePacket *ack_p = DHTProtocolStorageSimple::new_ack_data_packet(moveid);
-      WritablePacket *wp = DHTProtocol::push_brn_ether_header(ack_p, &(_dht_routing->_me->_ether_addr), &src , BRN_PORT_DHTSTORAGE);
-      output(0).push(wp);
-    }
-
-    p->kill();
-
-  } else {
-    BRN_DEBUG("Found better node, so forward data.");
-    WritablePacket *wp = p->uniqueify();
-    wp = DHTProtocol::push_brn_ether_header(wp, &(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
-    output(0).push(wp);
-  }
-}
-
-void
-DHTStorageSimple::handle_ack_for_moved_data(Packet *p)
-{
-  BRNDB::DBrow *_row;
-  uint32_t moveid = DHTProtocolStorageSimple::get_ack_movid(p); //points to header (moveid)
-
-  BRN_DEBUG("Search in table for move_id: %d.",moveid);
-
-  for ( int i = _dht_db->_db.size() - 1 ; i >= 0; i-- ) {
-    _row = _dht_db->_db.getRow(i);
-
-    if ( _row->move_id == moveid ) {
-      _dht_db->_db.delRow(i);
-    }
-  }
-
-  DHTMovedDataInfo *mdi;
-
-  for( int i = _md_queue.size() - 1; i >= 0; i-- )
-  {
-    mdi = _md_queue[i];
-    if ( moveid == mdi->_movedID ) {
-      delete _md_queue[i];
-      _md_queue.erase(_md_queue.begin() + i);
-    }
-  }
-}
-
-/*********** D A T A - M O V E   T I M E R **************/
-
-void
-DHTStorageSimple::data_move_timer_hook(Timer *, void *f)
-{
-  DHTStorageSimple *dhtss = (DHTStorageSimple *)f;
-  dhtss->check_moved_data();
-}
-
-void
-DHTStorageSimple::check_moved_data()
-{
-  DHTMovedDataInfo *mdi;
-  Timestamp now = Timestamp::now();
-  BRNDB::DBrow *_row;
-  int timediff;
-
-  for( int i = (_md_queue.size() - 1); i >= 0; i-- )
-  {
-    mdi = _md_queue[i];
-
-    timediff = (now - mdi->_move_time).msec1();
-
-    if ( timediff >= 2000 ) {
-      BRN_DEBUG("TIMEOUT for moveid %d",mdi->_movedID);
-      if ( mdi->_tries > 3 ) {
-        BRN_DEBUG("Finale timeout for moveid %d",mdi->_movedID);
-        //TODO: remove entry and start again to move data
-        mdi->_tries = 0;
-        mdi->_move_time = now;
-      } else {
-        mdi->_tries++;
-        mdi->_move_time = now;
-
-        for ( int i = _dht_db->_db.size() - 1 ; i >= 0; i-- ) {
-          _row = _dht_db->_db.getRow(i);
-
-          if ( _row->move_id == mdi->_movedID ) break;
-        }
-
-        //TODO search for better and move to this (maybe there was an update since last move
-        WritablePacket *data_p = DHTProtocolStorageSimple::new_data_packet(&_dht_routing->_me->_ether_addr, _row->move_id, 1,
-            _row->serializeSize());
-        uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(data_p);
-        _row->serialize(data, _row->serializeSize());
-
-        BRN_DEBUG("Try again: Move data from %s to %s",_dht_routing->_me->_ether_addr.unparse().c_str(),mdi->_target.unparse().c_str());
-
-        WritablePacket *p = DHTProtocol::push_brn_ether_header(data_p, &(_dht_routing->_me->_ether_addr), &mdi->_target, BRN_PORT_DHTSTORAGE);
-        output(0).push(p);
-      }
-    }
-  }
-
-  set_move_timer();
-}
-
-void
-DHTStorageSimple::set_move_timer()
-{
-  DHTMovedDataInfo *mdi;
-  int min_time, ac_time;
-
-  Timestamp now = Timestamp::now();
-
-  if ( _md_queue.size() > 0 ) {
-    mdi = _md_queue[0];
-    min_time = 2000 - (now - mdi->_move_time).msec1();
-  } else
-    min_time = -1;
-
-  for( int i = 1; i < _md_queue.size(); i++ )
-  {
-    mdi = _md_queue[i];
-    ac_time = 2000 - (now - mdi->_move_time).msec1();
-    if ( ac_time < min_time ) min_time = ac_time;
-  }
-
-  if ( min_time < 0 ) return;
-
-  _move_data_timer.schedule_after_msec( min_time );
-
 }
 
 /**************************************************************************/
@@ -743,11 +468,11 @@ read_param(Element *e, void *thunk)
     case H_DB_SIZE :
                 {
                   sa << "DB-Node: " << dhtstorage_simple->_dht_routing->_me->_ether_addr.unparse() << "\n";
-                  sa << "DB-Size (No. rows): " << dhtstorage_simple->_dht_db->_db.size() << "\n";
+                  sa << "DB-Size (No. rows): " << dhtstorage_simple->_dht_op_handler->_db->size() << "\n";
 
                   int moved = 0;
-                  for ( int i = dhtstorage_simple->_dht_db->_db.size() - 1 ; i >= 0; i-- ) {
-                    BRNDB::DBrow *_row = dhtstorage_simple->_dht_db->_db.getRow(i);
+                  for ( int i = dhtstorage_simple->_dht_op_handler->_db->size() - 1 ; i >= 0; i-- ) {
+                    BRNDB::DBrow *_row = dhtstorage_simple->_dht_op_handler->_db->getRow(i);
 
                     if ( _row->move_id != 0 ) moved++;
                   }
@@ -765,7 +490,6 @@ DHTStorageSimple::add_handlers()
 }
 #include <click/vector.cc>
 template class Vector<DHTStorageSimple::DHTOperationForward*>;
-template class Vector<DHTStorageSimple::DHTMovedDataInfo*>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(DHTStorageSimple)

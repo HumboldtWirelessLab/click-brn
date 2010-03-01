@@ -30,8 +30,7 @@ struct db_row_header {
   uint8_t reserved;
 };
 
-class BRNDB
-{
+class BRNDB : public Element {
 
   public:
     class DBrow {
@@ -184,6 +183,21 @@ class BRNDB
     BRNDB();
     ~BRNDB();
 
+    /*ELEMENT*/
+    const char *class_name() const  { return "BRNDB"; }
+
+    const char *processing() const  { return AGNOSTIC; }
+
+    const char *port_count() const  { return "0/0"; }
+
+    int configure(Vector<String> &, ErrorHandler *);
+    bool can_live_reconfigure() const  { return false; }
+
+    int initialize(ErrorHandler *);
+
+    void add_handlers();
+
+
     int insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, uint8_t replica=0);
     int insert(BRNDB::DBrow *row);
 
@@ -196,11 +210,11 @@ class BRNDB
 
     int size();
 
+    int _debug;
+
   private:
 
     Vector<DBrow*> _table;
-
-    int _debug;
 };
 
 CLICK_ENDDECLS

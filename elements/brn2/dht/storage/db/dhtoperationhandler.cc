@@ -1,45 +1,34 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
-#include <click/confparse.hh>
 #include <click/error.hh>
-#include <click/glue.hh>
 #include <click/straccum.hh>
-#include <click/timer.hh>
+
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
-#include "dhtstorage_simple_db.hh"
+#include "dhtoperationhandler.hh"
 
 CLICK_DECLS
 
-DHTStorageSimpleDB::DHTStorageSimpleDB():
+DHTOperationHandler::DHTOperationHandler(BRNDB *db):
   _debug(BrnLogger::DEFAULT)
 {
+  _db = db;
 }
 
-DHTStorageSimpleDB::~DHTStorageSimpleDB()
+DHTOperationHandler::DHTOperationHandler(BRNDB *db, int debug)
+{
+  _db = db;
+  _debug = debug;
+}
+
+DHTOperationHandler::~DHTOperationHandler()
 {
 }
-
-int DHTStorageSimpleDB::configure(Vector<String> &conf, ErrorHandler *errh)
-{
-  if (cp_va_kparse(conf, this, errh,
-      "DEBUG", cpkP, cpInteger, &_debug,
-      cpEnd) < 0)
-    return -1;
-
-  return 0;
-}
-
-int DHTStorageSimpleDB::initialize(ErrorHandler *)
-{
-  return 0;
-}
-
 
 int
-DHTStorageSimpleDB::handle_dht_operation(DHTOperation *op)
+DHTOperationHandler::handle_dht_operation(DHTOperation *op)
 {
   int result;
 
@@ -118,16 +107,16 @@ DHTStorageSimpleDB::handle_dht_operation(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_insert(DHTOperation *op)
+DHTOperationHandler::dht_insert(DHTOperation *op)
 {
-  if ( _db.getRow(op->header.key_digest) == NULL )
+  if ( _db->getRow(op->header.key_digest) == NULL )
   {
-    _db.insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen);
+    _db->insert(op->header.key_digest, op->key, op->header.keylen, op->value, op->header.valuelen);
     op->header.status = DHT_STATUS_OK;
   }
   else
   {
-    BRN_WARN("Key already exists");
+    if ( _debug == BrnLogger::WARN ) click_chatter("Key already exists");
     op->header.status = DHT_STATUS_KEY_ALREADY_EXISTS;
   }
 
@@ -135,11 +124,11 @@ DHTStorageSimpleDB::dht_insert(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_write(DHTOperation *op)
+DHTOperationHandler::dht_write(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
 
-  _row = _db.getRow(op->header.key_digest);
+  _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL )
   {
     if ( _row->value != NULL ) delete[] _row->value;
@@ -157,11 +146,11 @@ DHTStorageSimpleDB::dht_write(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_read(DHTOperation *op)
+DHTOperationHandler::dht_read(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
 
-  _row = _db.getRow(op->header.key_digest);
+  _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL )
   {
     op->set_value(_row->value, _row->valuelen);
@@ -176,15 +165,15 @@ DHTStorageSimpleDB::dht_read(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_remove(DHTOperation *op)
+DHTOperationHandler::dht_remove(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
   EtherAddress ea = EtherAddress(op->header.etheraddress);
 
-  _row = _db.getRow(op->header.key_digest);
+  _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL ) {
     if ( _row->unlock(&ea) ) {            //unlock returns true if row is not locked or if ea is the source of the lock
-      _db.delRow(op->header.key_digest);  //TODO: Errorhandling
+      _db->delRow(op->header.key_digest);  //TODO: Errorhandling
       op->header.status = DHT_STATUS_OK;
     } else {
       op->header.status = DHT_STATUS_KEY_IS_LOCKED;
@@ -197,12 +186,12 @@ DHTStorageSimpleDB::dht_remove(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_lock(DHTOperation *op)
+DHTOperationHandler::dht_lock(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
   EtherAddress ea = EtherAddress(op->header.etheraddress);
 
-  _row = _db.getRow(op->header.key_digest);
+  _row = _db->getRow(op->header.key_digest);
 
   if ( _row != NULL ) {
     if ( _row->lock(&ea, DEFAULT_LOCKTIME) ) {   //lock 1 hour
@@ -218,12 +207,12 @@ DHTStorageSimpleDB::dht_lock(DHTOperation *op)
 }
 
 int
-DHTStorageSimpleDB::dht_unlock(DHTOperation *op)
+DHTOperationHandler::dht_unlock(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
   EtherAddress ea = EtherAddress(op->header.etheraddress);
 
-  _row = _db.getRow(op->header.key_digest);
+  _row = _db->getRow(op->header.key_digest);
 
   if ( _row != NULL ) {
     if ( _row->unlock(&ea) ) {   //lock 1 hour
@@ -238,34 +227,6 @@ DHTStorageSimpleDB::dht_unlock(DHTOperation *op)
   return 0;
 }
 
-/*************************************************************************************************/
-/***************************************** H A N D L E R *****************************************/
-/*************************************************************************************************/
-
-static String
-read_debug_param(Element *e, void *)
-{
-  DHTStorageSimpleDB *db = (DHTStorageSimpleDB *)e;
-  return String(db->_debug) + "\n";
-}
-
-static int
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  DHTStorageSimpleDB *db = (DHTStorageSimpleDB *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  db->_debug = debug;
-  return 0;
-}
-
-void DHTStorageSimpleDB::add_handlers()
-{
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
-}
-
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DHTStorageSimpleDB)
+ELEMENT_PROVIDES(DHTOperationHandler)
+ELEMENT_REQUIRES(BRNDB)
