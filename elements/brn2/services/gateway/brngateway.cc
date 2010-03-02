@@ -336,7 +336,6 @@ BRNGateway::remove_gateway(EtherAddress eth) {
   return _known_gateways.remove(eth);
 }
 
-
 const BRNGatewayEntry*
 BRNGateway::get_gateway() {
   return _known_gateways.findp(_my_eth_addr);
@@ -353,6 +352,49 @@ BRNGateway::get_gateways() {
  * methods for dht communication
  * 
  *//////////////////////////////
+
+static void dht_callback_func(void *e, DHTOperation *op)
+{
+  BRNGateway *s = (BRNGateway *)e;
+  BRNGateway::RequestInfo *request_info = s->get_request_by_dht_id(op->get_id());
+
+  if ( client_info != NULL ) {
+    s->handle_dht_reply(request_info,op);
+  } else {
+    click_chatter("BRN-Gateway: No request info for DHT-ID");
+    delete op;
+  }
+}
+
+void
+BRNGateway::dht_request(RequestInfo *request_info, DHTOperation *op)
+{
+  uint32_t result = _dht_storage->dht_request(op, callback_func, (void*)this );
+
+  if ( result == 0 )
+  {
+    BRN_INFO("Got direct-reply (local)");
+    handle_dht_reply(client_info,op);
+  } else {
+    request_info->_id = result;
+  }
+}
+
+void
+BRNGateway::handle_dht_reply(DNSClientInfo *request_info, DHTOperation *op)
+{
+  //int result;
+
+  BRN_DEBUG("BRN2DNSServer: Handle DHT-Answer");
+  if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
+  {
+  } else {
+  }
+
+  delete op;
+  remove_request(client_info);
+}
+
 
 /* returns a packet for the dht to update this gateway in DHT (INSERT|WRITE) */
 

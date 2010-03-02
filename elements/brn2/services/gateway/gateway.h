@@ -22,12 +22,19 @@
 #define GATEWAY_H
 
 CLICK_SIZE_PACKED_STRUCTURE(
-struct brn_gateway {,
-    //uint8_t	failed;		/* >= 1, if packet failed */
-    uint8_t metric;		/* metric for gateway, which sent this feedback */
+struct brn_gateway_dht_entry {,
+  uint8_t  etheraddress[6];
+  uint16_t load;
+  uint32_t bandwidth;
 });
 
-// 
+CLICK_SIZE_PACKED_STRUCTURE(
+struct brn_gateway {,
+  //uint8_t failed;  /* >= 1, if packet failed */
+    uint8_t metric;  /* metric for gateway, which sent this feedback */
+});
+
+//
 CLICK_SIZE_PACKED_STRUCTURE(
 struct flow_gw {,
   uint32_t    src;

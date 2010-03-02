@@ -29,6 +29,14 @@
 
 CLICK_DECLS
 
+//GRM -> GATEWAY_REQUEST_MODE
+
+#define GRM_READ                1
+#define GRM_READ_BEFORE_UPDATE  2 /*UPDATE INCLUDES ADD*/
+#define GRM_UPDATE              3 /*UPDATE INCLUDES ADD*/
+#define GRM_READ_BEFORE_REMOVE  4
+#define GRM_REMOVE              5
+
 class String;
 class Timer;
 class EtherAddress;
@@ -189,7 +197,27 @@ typedef HashMap<EtherAddress, BRNGatewayEntry> BRNGatewayList;
 /* ===================================================================================== */
 
 class BRNGateway : public Element {
-public:
+  public:
+
+    class RequestInfo {
+     public:
+      uint32_t _id;
+      uint32_t _mode;
+
+      Timestamp _request_time;
+
+      RequestInfo(uint32_t id, uint32_t mode)
+      {
+        _id = id;
+        _mode = mode;
+      }
+
+      ~RequestInfo() {}
+
+    };
+
+    Vector<RequestInfo *> request_list;
+
 
     /**
      * Default Constructor.
