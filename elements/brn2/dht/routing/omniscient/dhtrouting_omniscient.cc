@@ -511,7 +511,7 @@ DHTRoutingOmni::update_nodes(DHTnodelist *dhtlist)
     EtherAddress broadcast = EtherAddress::make_broadcast();
     send_routetable_update(&broadcast, STATUS_NEW);
 
-    notify_callback(ROUTING_STATUS_UPDATE);
+    notify_callback(ROUTING_STATUS_NEW_NODE);
   }
 }
 

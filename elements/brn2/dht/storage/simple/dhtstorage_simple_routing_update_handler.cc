@@ -62,24 +62,17 @@ DHTStorageSimpleRoutingUpdateHandler::handle_notify_callback(int status)
 {
   BRN_DEBUG("DHT-Routing-Callback %s: Status %d",class_name(),status);
 
-  switch ( status )
-  {
-    case ROUTING_STATUS_UPDATE:
-    {
-      BRN_INFO("Routing update (new node,...)");
-      handle_node_update();
-      break;
-    }
-    default:
-    {
-      BRN_WARN("Unknown Status from routing layer");
-    }
+  if ( ( status & ROUTING_STATUS_NEW_NODE ) == ROUTING_STATUS_NEW_NODE ) {
+    BRN_INFO("Routing update (new node,...)");
+    handle_node_update();
+  } else {
+    BRN_WARN("Unknown Status from routing layer");
   }
 }
 
 int DHTStorageSimpleRoutingUpdateHandler::initialize(ErrorHandler *)
 {
-  _dht_routing->set_notify_callback(notify_callback_func,(void*)this);
+  _dht_routing->add_notify_callback(notify_callback_func,(void*)this);
   _move_data_timer.initialize(this);
   return 0;
 }

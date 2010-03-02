@@ -46,6 +46,8 @@ class DHTRoutingDart : public DHTRouting
 
     DartRoutingTable *_drt;
 
+    static void routingtable_callback_func(void *e, int status);
+
   private:
     int _debug;
 

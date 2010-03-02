@@ -164,7 +164,7 @@ DHTRoutingFalcon::handle_routing_update_callback(int status)
 {
   if ( ( ( _responsible == FALCON_RESPONSIBLE_CHORD ) && ( status == RT_UPDATE_PREDECESSOR ) ) ||
        ( ( _responsible == FALCON_RESPONSIBLE_FORWARD ) && ( status == RT_UPDATE_SUCCESSOR ) ) )
-    notify_callback(ROUTING_STATUS_UPDATE);
+    notify_callback(ROUTING_STATUS_NEW_NODE | ROUTING_STATUS_NEW_CLOSE_NODE);
 }
 
 /*************************************************************************************************/

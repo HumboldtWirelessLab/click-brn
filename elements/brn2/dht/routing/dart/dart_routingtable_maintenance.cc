@@ -106,6 +106,9 @@ DartRoutingTableMaintenance::table_maintenance()
     //I'm active, have no valid ID and no neighbour to ask for an ID
     _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
     _drt->_validID = true;
+
+    _drt->update_callback(DART_UPDATE_ID);      //TEST: update my own id
+
   } else if ( _drt->_neighbours.size() > 0 ) {  //I've neighbours, so check
     if ( ! _drt->_validID ) {                   //i've no ID, so ask best neighbour for ID(-Sharing)
       DHTnode *bestneighbour = getBestNeighbour();
@@ -170,14 +173,15 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
       assign_id(&src);
       rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
 
-      src._neighbor = true;                            //Request only comes from neighbouring nodes //TODO: check
-      _drt->update_node(&src);
+      src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
+      _drt->update_node(&src);      //update the new node (add if not exists)
 
-//      BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
+//    BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
       output(0).push(rep);
 
-      _drt->update_callback(DART_UPDATE_ID);           //TODO: move this and the change of the own ID to routingtable
+      /* i change my own id. also a new/updated node is there. Inform evry element (storage,routing,...)*/
+      _drt->update_callback(DART_UPDATE_ID);    //TODO: move this and the change of the own ID to routingtable
 
     } else {
       BRN_WARN("ID-space is full. No id left");
@@ -202,6 +206,8 @@ DartRoutingTableMaintenance::handle_assign(Packet *packet)
   DHTProtocolDart::get_info(packet, &src, &dst, &status);
   DartFunctions::copy_id(_drt->_me, &dst);
   _drt->_validID = true;
+
+  _drt->update_callback(DART_UPDATE_ID);  //Test: update my own address
 
   packet->kill();
 

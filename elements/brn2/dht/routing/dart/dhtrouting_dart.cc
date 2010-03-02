@@ -64,7 +64,17 @@ DHTRoutingDart::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 DHTRoutingDart::initialize(ErrorHandler *)
 {
+  _drt->add_update_callback(routingtable_callback_func, this);
   return 0;
+}
+
+void
+DHTRoutingDart::routingtable_callback_func(void *e, int status)
+{
+  DHTRoutingDart *s = (DHTRoutingDart *)e;
+
+  if ( status == DART_UPDATE_ID)
+    s->notify_callback(ROUTING_STATUS_NEW_NODE);
 }
 
 /****************************************************************************************

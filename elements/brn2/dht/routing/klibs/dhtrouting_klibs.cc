@@ -261,7 +261,7 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
 
   dhtlist.del();
 
-  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_NEW_NODE);
 }
 
 void
@@ -354,7 +354,7 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
 
   dhtlist.del();
 
-  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_NEW_NODE);
 }
 
 /****************************************************************************************
