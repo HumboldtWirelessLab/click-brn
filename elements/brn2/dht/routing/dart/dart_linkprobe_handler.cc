@@ -111,6 +111,7 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
   _drt->add_neighbour(&first);
   _drt->add_nodes(&nodes);
+  /* Just add. No other element need to be informed. So don't cal drt->update here.*/
 
   nodes.del();
 

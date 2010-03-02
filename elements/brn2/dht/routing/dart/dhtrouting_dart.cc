@@ -160,6 +160,8 @@ DHTRoutingDart::update_node(EtherAddress *ea, md5_byte_t *key, int keylen)
   DHTnode node(*ea, key, keylen);
   _drt->add_node(&node);
 
+  //TODO: call update in drt to inform other elements ???
+
   return 0;
 }
 
