@@ -6,16 +6,16 @@
 CLICK_DECLS
 
 #define OPERATION_UNKNOWN 0
-#define OPERATION_INSERT  1
-#define OPERATION_REMOVE  2
-#define OPERATION_READ    4
-#define OPERATION_WRITE   8
-#define OPERATION_LOCK    16
-#define OPERATION_UNLOCK  32
+#define OPERATION_INSERT  1   /*BIT 0*/
+#define OPERATION_REMOVE  2   /*BIT 1*/
+#define OPERATION_READ    4   /*BIT 2*/
+#define OPERATION_WRITE   8   /*BIT 3*/
+#define OPERATION_LOCK    16  /*BIT 4*/
+#define OPERATION_UNLOCK  32  /*BIT 5*/
 
-#define OPERATION_REQUEST 0
-#define OPERATION_REPLY   128
-#define OPERATION_REPLY_REQUEST   128
+#define OPERATION_REQUEST           0 /*BIT 7*/
+#define OPERATION_REPLY           128 /*BIT 7*/
+#define OPERATION_REPLY_REQUEST   128 /*mask to test whether it is a request or reply*/
 
 #define DHT_OPERATION_ID_LOCAL_REPLY 0
 
@@ -26,8 +26,6 @@ CLICK_DECLS
 #define DHT_STATUS_KEY_ALREADY_EXISTS 4
 #define DHT_STATUS_TIMEOUT            5
 #define DHT_STATUS_MAXRETRY           6
-
-
 
 #define DHT_RETRIES_UNLIMITED -1
 #define DHT_DURATION_UNLIMITED 0
