@@ -42,8 +42,6 @@ DartIDStore::DartIDStore()
   : _me(NULL),
     _dht_storage(NULL),
     _drt(NULL),
-    _starttimer(static_starttimer_hook,this),
-    _starttime(DART_DEFAULT_IDSTORE_STARTTIME),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -61,7 +59,6 @@ DartIDStore::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
       "DRT", cpkP+cpkM, cpElement, &_drt,
-      "STARTTIME", cpkP, cpInteger, &_starttime,  //TODO: store node id in the DHT right after starting DHT and so on causes problems, so delay this. Find better way. Just test.
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -72,37 +69,31 @@ DartIDStore::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-/* initializes error handler */
 int
 DartIDStore::initialize(ErrorHandler */*errh*/)
 {
-  _starttimer.initialize(this);
-  _starttimer.schedule_after_msec( _starttime + ( click_random() % DART_DEFAULT_IDSTORE_STARTTIMEJITTER ) );
-
   _drt->add_update_callback(routingtable_callback_func, this);
   return 0;
 }
 
-/* uninitializes error handler */
 void
 DartIDStore::uninitialize()
 {
-  _starttimer.unschedule();
 }
 
 /*************************************************************************************************/
-/******************************* T I M E R - C A L L B A C K *************************************/
+/*************************** R O U T I N G - C A L L B A C K *************************************/
 /*************************************************************************************************/
 
 void
-DartIDStore::static_starttimer_hook(Timer *, void *f)
+DartIDStore::routingtable_callback_func(void *e, int /*status*/)
 {
-  DartIDStore *s = (DartIDStore *)f;
-  //s->starttimer_hook();
+  DartIDStore *s = (DartIDStore *)e;
+  s->store_nodeid();
 }
 
 void
-DartIDStore::starttimer_hook()
+DartIDStore::store_nodeid()
 {
   DHTOperation *dhtop;
   int result;
@@ -129,20 +120,6 @@ DartIDStore::starttimer_hook()
 }
 
 /*************************************************************************************************/
-/*************************** R O U T I N G - C A L L B A C K *************************************/
-/*************************************************************************************************/
-
-void
-DartIDStore::routingtable_callback_func(void *e, int status)
-{
-  DartIDStore *s = (DartIDStore *)e;
-
-  s->starttimer_hook(); //TEST: RUN starttimer on nodeupdate
-  //click_chatter("Update NodeID");
-  //TODO: store new node id
-}
-
-/*************************************************************************************************/
 /******************************* D H T - C A L L B A C K *****************************************/
 /*************************************************************************************************/
 
@@ -165,7 +142,7 @@ DartIDStore::callback(DHTOperation *op)
     } else {
       if ( op->header.status == DHT_STATUS_TIMEOUT ) {
         BRN_DEBUG("Insert ID: Timeout. Try again !");
-        _starttimer.schedule_after_msec( click_random() % DART_DEFAULT_IDSTORE_STARTTIMEJITTER );
+        store_nodeid();
       } else {
         BRN_DEBUG("Insert ID: Unknown error.");
       }

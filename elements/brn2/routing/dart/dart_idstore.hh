@@ -32,9 +32,6 @@
 
 CLICK_DECLS
 
-#define DART_DEFAULT_IDSTORE_STARTTIME       40000
-#define DART_DEFAULT_IDSTORE_STARTTIMEJITTER  2000
-
 class DartIDStore : public Element
 {
  public:
@@ -56,10 +53,9 @@ class DartIDStore : public Element
   void uninitialize();
   void add_handlers();
 
-  static void static_starttimer_hook(Timer *, void *);
-  void starttimer_hook();
-
   static void routingtable_callback_func(void *e, int status);
+  void store_nodeid();
+
   static void callback_func(void *e, DHTOperation *op);
   void callback(DHTOperation *op);
 
@@ -72,9 +68,6 @@ class DartIDStore : public Element
 
   DHTStorage *_dht_storage;
   DartRoutingTable *_drt;
-
-  Timer _starttimer;
-  int _starttime;
 
  public:
   int _debug;
