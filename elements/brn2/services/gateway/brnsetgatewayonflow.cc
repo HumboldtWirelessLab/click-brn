@@ -463,21 +463,18 @@ BRNSetGatewayOnFlow::remove_flows_with_gw(EtherAddress eth) {
  */
 FlowsHandover
 BRNSetGatewayOnFlow::get_flows_from_client(EtherAddress eth) {
-  // get client's IP address
-  IPAddress client = _arp->reverse_lookup(eth);
-  
+  IPAddress client = _arp->reverse_lookup(eth);    // get client's IP address
+
   FlowsHandover client_flows;
   IPFlowID flow;
-  
+
   for (Flows::const_iterator i = _flows.begin(); i.live(); i++) {
-    
     flow = i.value();
-    
     if (flow.saddr() == client) {
       client_flows.insert(flow, _flow2gw.find(i.key()));
     }
   }
-  
+
   return client_flows;
 }
 
@@ -500,9 +497,8 @@ BRNSetGatewayOnFlow::add_handover_flow_from_client(IPFlowID flow, EtherAddress g
  */
 void
 BRNSetGatewayOnFlow::remove_handover_flows_from_client(EtherAddress eth) {
-  // get client's IP address
-  IPAddress client = _arp->reverse_lookup(eth);
-  
+  IPAddress client = _arp->reverse_lookup(eth);  // get client's IP address
+
   for (FlowsHandover::const_iterator i = _flows_handover.begin(); i.live(); i++) {
     if (i.key().saddr() == client) {
       _flows_handover.remove(i.key());
@@ -518,7 +514,7 @@ BRNSetGatewayOnFlow::remove_handover_flows_from_client(EtherAddress eth) {
 uint32_t
 BRNSetGatewayOnFlow::get_bucket(const Packet *p) {
   // for each flow on bucket
-  return get_aggregate(p); 
+  return get_aggregate(p);
 }
 
 /**
@@ -529,7 +525,7 @@ BRNSetGatewayOnFlow::get_bucket(const Packet *p) {
 bool
 BRNSetGatewayOnFlow::buffer_packet(const Packet *p) {
   IPFlowID flow = IPFlowID(p);
-	bool buffer = true;
+  bool buffer = true;
 
 	// TODO
 	// need to check, if station is associated longer than <max time
@@ -556,24 +552,24 @@ BRNSetGatewayOnFlow::buffer_packet(const Packet *p) {
 void
 BRNSetGatewayOnFlow::aggregate_notify(uint32_t agg, AggregateEvent event, const Packet *p)
 {
-	switch (event) {
-		case NEW_AGG: {
-			IPFlowID flow = IPFlowID(p);
-			
+  switch (event) {
+    case NEW_AGG: {
+      IPFlowID flow = IPFlowID(p);
+
       // quick fix
       // I may get the the reverse flow packet first
       if (!flow.saddr().matches_prefix(_src_ip, _src_ip_mask)) {
         BRN_INFO("Rewriting flow %s.", flow.unparse().c_str());
         flow = IPFlowID(flow.daddr(), flow.dport(), flow.saddr(), flow.sport());
       }
-      
+
       _flows.insert(agg, flow);
       _flow2agg.insert(flow, agg);
-      
+
       BRN_INFO("Adding flow: %s with agg = %u", flow.unparse().c_str(), agg);
-			break;	
-		}
-		case DELETE_AGG: {
+      break;
+    }
+    case DELETE_AGG: {
       IPFlowID flow = _flows.find(agg);
 			BRN_INFO("Removing flow: %s with agg = %u and its gw %s", flow.unparse().c_str(), agg, _flow2gw.find(agg).unparse().c_str());
 			_flows.remove(agg);
@@ -656,7 +652,7 @@ BRNSetGatewayOnFlow::write_handler(const String &data, Element *e, void *thunk, 
 void
 BRNSetGatewayOnFlow::add_handlers() {
 //  BRNElement::add_handlers();
-  
+
   add_read_handler("flows", read_handler, (void *) HANDLER_FLOWS);
   add_read_handler("flows_handed_over", read_handler, (void *) HANDLER_FLOWS_HAND_OVER);
   add_write_handler("remove_flows", write_handler, (void *) HANDLER_REMOVE_FLOWS);
