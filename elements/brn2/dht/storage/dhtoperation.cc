@@ -8,10 +8,15 @@ DHTOperation::DHTOperation()
   header.id = 0;
   header.replica = 0;               //DEFAULT: ask one node, so no replica
   header.reserved = 0;
+
   key = NULL;
   header.keylen = 0;
   value = NULL;
   header.valuelen = 0;
+
+  memset(header.etheraddress,0,sizeof(header.etheraddress));
+  memset(header.key_digest,0,sizeof(header.key_digest));
+
   header.status = DHT_STATUS_UNKNOWN;
   header.operation = OPERATION_UNKNOWN;
 
@@ -139,6 +144,15 @@ DHTOperation::unlock(uint8_t *_key, uint16_t _keylen)
 }
 
 void
+DHTOperation::set_lock(bool lock)
+{
+  if ( lock ) header.operation = ((uint8_t)header.operation & ~(uint8_t)OPERATION_UNLOCK ) | (uint8_t)OPERATION_LOCK;
+  else header.operation = ((uint8_t)header.operation & ~(uint8_t)OPERATION_LOCK ) | (uint8_t)OPERATION_UNLOCK;
+}
+
+
+
+void
 DHTOperation::set_value(uint8_t *new_value, uint16_t new_valuelen)
 {
   if ( value != NULL )
@@ -212,7 +226,7 @@ DHTOperation::unserialize(uint8_t *buffer, uint16_t len)  //TODO: hton for lens
 void
 DHTOperation::set_request()
 {
-  header.operation &= (! (uint8_t)OPERATION_REPLY);
+  header.operation &= (~(uint8_t)OPERATION_REPLY);
 }
 
 void

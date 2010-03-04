@@ -19,6 +19,7 @@ class DHTOperationHandler
     BRNDB *_db;
 
     /*DHT-Functions*/
+    int dht_test(DHTOperation *op);
     int dht_read(DHTOperation *op);
     int dht_write(DHTOperation *op);
     int dht_insert(DHTOperation *op);

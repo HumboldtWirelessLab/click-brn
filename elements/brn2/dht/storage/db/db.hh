@@ -18,6 +18,7 @@ enum DBRowStatus{
   DATA_TIMEOUT
 };
 
+
 struct db_row_header {
   uint16_t valuelen;
   uint16_t keylen;
@@ -26,6 +27,7 @@ struct db_row_header {
   uint16_t store_time;
   uint16_t store_duration;
   uint8_t lock_etheraddress[6];
+  //md5_byte_t md5_key[16];
   uint8_t replica;
   uint8_t reserved;
 };
@@ -95,10 +97,14 @@ class BRNDB : public Element {
 
           return false;
         }
- 
+
         bool isLocked() {
           Timestamp now = Timestamp::now();
           return ( ( locked ) && ( ( now - lock_timestamp ).sec() <= (int)max_lock_duration ) );
+        }
+
+        bool isLocked(EtherAddress *ea) {
+          return ( isLocked() && ( memcmp(lock_node,ea->data(),6) != 0 ) );
         }
 
         EtherAddress getLockNode() {

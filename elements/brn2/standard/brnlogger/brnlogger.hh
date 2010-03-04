@@ -33,6 +33,13 @@
 
 CLICK_DECLS
 
+#define CLASS_BRN_LOG   if (_debug >= BrnLogger::LOG) click_chatter
+#define CLASS_BRN_FATAL if (_debug >= BrnLogger::FATAL) click_chatter
+#define CLASS_BRN_ERROR if (_debug >= BrnLogger::ERROR) click_chatter
+#define CLASS_BRN_WARN  if (_debug >= BrnLogger::WARN) click_chatter
+#define CLASS_BRN_INFO  if (_debug >= BrnLogger::INFO) click_chatter
+#define CLASS_BRN_DEBUG if (_debug >= BrnLogger::DEBUG) click_chatter
+
 #ifdef CLICK_LINUXMODULE
 
 #warning "Click_LinuxModule: BRN_LOG etc. is defined as click_chatter"

@@ -13,6 +13,8 @@ CLICK_DECLS
 #define OPERATION_LOCK    16  /*BIT 4*/
 #define OPERATION_UNLOCK  32  /*BIT 5*/
 
+/*Lock and unlock: this can be 1 bit. but then the locker must set the lock bit for each operation until he wants to unlock*/
+
 #define OPERATION_REQUEST           0 /*BIT 7*/
 #define OPERATION_REPLY           128 /*BIT 7*/
 #define OPERATION_REPLY_REQUEST   128 /*mask to test whether it is a request or reply*/
@@ -29,6 +31,10 @@ CLICK_DECLS
 
 #define DHT_RETRIES_UNLIMITED -1
 #define DHT_DURATION_UNLIMITED 0
+
+/**
+ * TODO: use replica as bitfield (max 8 replicas should be enough. replicas with the next equals hops can be pu together (split later)
+ */
 
 struct DHTOperationHeader {
   uint16_t id;
@@ -71,6 +77,8 @@ class DHTOperation {
     void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, bool insert);
     void lock(uint8_t *key, uint16_t keylen);
     void unlock(uint8_t *key, uint16_t keylen);
+
+    void set_lock(bool lock);
 
     void set_value(uint8_t *value, uint16_t valuelen);
     void set_request();

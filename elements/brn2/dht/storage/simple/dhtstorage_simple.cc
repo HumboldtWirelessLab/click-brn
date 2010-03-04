@@ -84,7 +84,8 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   uint32_t dht_id, replica_count;
   int status;
 
-  MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);
+  MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);  //TODO: Move this upward. (e.g. during create new dhtoperation.
+                                                                                 //This enables to set a own key for value -> e.g. for range queries
 
   //Check whether routing support replica and whether the requested number of replica is support. Correct if something cannot be performed by routing
   if ( _dht_routing->max_replication() < op->header.replica )
@@ -274,6 +275,8 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
                 EtherAddress src = EtherAddress(_op->header.etheraddress);                                                             //safe old soure for reply
 
+                //create packet for dht-reply
+                //TODO: use etheraddr in main DHT-packet-header to set source and keep addr in operation header for lock-node or remove it
                 if ( _add_node_id ) {
                   p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
                   memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet

@@ -26,6 +26,10 @@
 #include <click/bighashmap.hh>
 #include <click/router.hh>
 
+#include "elements/brn2/dht/storage/dhtoperation.hh"
+#include "elements/brn2/dht/storage/dhtstorage.hh"
+
+#include "gateway.h"
 
 CLICK_DECLS
 
@@ -151,7 +155,7 @@ public:
     }
 
 
-private:
+//private:
     uint32_t _ip_addr; /** stores the ip address of the gateway */
     uint8_t _metric; /** stores the metric of the gateway */
     bool _nated; /** stores if the gateway is behind a NAT */
@@ -204,11 +208,13 @@ class BRNGateway : public Element {
       uint32_t _id;
       uint32_t _mode;
 
+      BRNGatewayEntry _gw_entry;
+
       Timestamp _request_time;
 
-      RequestInfo(uint32_t id, uint32_t mode)
+      RequestInfo(uint32_t mode)
       {
-        _id = id;
+        _id = 0;
         _mode = mode;
       }
 
@@ -349,7 +355,7 @@ class BRNGateway : public Element {
      * @return '1/1', which says 1 input and 1 output port
      */
     const char *port_count() const {
-        return "1/1";
+        return "0/0";
     }
 
     /**
@@ -371,22 +377,12 @@ class BRNGateway : public Element {
     const char *flow_code () const { return "x/y"; }
 
     /**
-     * Called when a packet is pushed into BRNGateway.
-     *
-     * @param port is the port the packet was received
-     * @param *p is the packet pushed in
-     * 
-     */
-    void push(int port, Packet *p);
-
-    /**
      * Called when handlers are to add
-     * 
-     * 
+     *
+     *
      */
     void add_handlers();
-    
-    
+
     void run_timer(Timer *);
 
 	/**
@@ -414,7 +410,7 @@ class BRNGateway : public Element {
      * 
      */
     int remove_gateway();
-    
+
     /**
      * Removes the BRNGatewayEntry for the specified ether address.
      * 
@@ -422,8 +418,8 @@ class BRNGateway : public Element {
      * 
      */
     int remove_gateway(EtherAddress eth);
-    
-    
+
+
     /**
      * Returns the BRNGatewayEntry for this node.
      * 
@@ -432,11 +428,11 @@ class BRNGateway : public Element {
      * @return BRNGatewayEntry for this node, if existent, else NULL
      */ 
     const BRNGatewayEntry* get_gateway();
-    
+
 
     /* method to get the up to date list of known gateways */
     /* returns a pointer, which is no problem, since click is single-threaded */
-    
+
     /**
      * Returns a pointer to the BRNGatewayList, which can be used to iterate
      * over the list of BRNGatewayEntries
@@ -446,6 +442,14 @@ class BRNGateway : public Element {
     const BRNGatewayList* get_gateways();
 
     int _debug;
+    DHTStorage *_dht_storage;
+    static void dht_callback_func(void *e, DHTOperation *op);
+    void dht_request(RequestInfo *request_info, DHTOperation *op);
+    void handle_dht_reply(RequestInfo *request_info, DHTOperation *op);
+    BRNGateway::RequestInfo *get_request_by_dht_id(uint32_t id);
+    struct brn_gateway_dht_entry *get_gwe_from_value(uint8_t *value, int valuelen, BRNGatewayEntry *gwe);
+    int remove_request(RequestInfo *request_info);
+
 private:
     friend class BRNSetGateway;
     friend class BRNSetGatewayOnFlow;
@@ -462,59 +466,41 @@ private:
     void timer_refresh_known_gateways_hook(Timer *); /// method called by the timer
     int _update_gateways_interval; /// stores the interval to refresh the list of gateways
     #define DEFAULT_UPDATE_GATEWAYS_INTERVAL 60 /// default interval in seconds 
-    											   
+
     Timer _timer_update_dht; /// this timer is used to send update requests for this  mesh node (via sending a dht request)
     void timer_update_dht_hook(Timer *); /// method called by the timer
     int _update_dht_interval; /// interval to update this node in the DHT
-    						  // can be high, because if another thinks this node is a gateway, but
-    						  // it isn't, a feedback will be run	
+    // can be high, because if another thinks this node is a gateway, but
+    // it isn't, a feedback will be run
     #define DEFAULT_UPDATE_DHT_INTERVAL	60 // default interval in seconds
-    
+
     /* for the handlers */
     static String read_handler(Element* , void*);
     static int write_handler(const String &, Element*, void*, ErrorHandler*);
 
 
     /* for dht communication */
-    uint8_t unique_id; // used for each dht packet
 
-    /* returns a packet for the dht to update this gateway in DHT (INSERT|WRITE) */
+    /**
+     *
+     *
+     */
+    void update_gateway_in_dht(RequestInfo *request_info, DHTOperation *req, BRNGatewayEntry gwe);
+
+    /**
+     *
+     *
+     */
+    void remove_gateway_from_dht(RequestInfo *request_info, DHTOperation *req);
+    bool pending_remove;
     /**
      * 
      * 
      */
-    Packet* update_gateway_in_dht(BRNGatewayEntry gwe);
-
-    /* returns a packet to remove this gateway from the DHT (REMOVE) */
-    /**
-     * 
-     * 
-     */
-    Packet* remove_gateway_from_dht();
-
-    /* handle dht reponse */
-
-    /**
-     * 
-     * 
-     * 
-     */
-    void handle_dht_response(Packet* p);
-
-    // returns a packet to get the list of available gateways from DHT (READ)
-    /**
-     * 
-     * 
-     */
-    Packet* get_getways_from_dht();
+    void get_getways_from_dht(RequestInfo *request_info, DHTOperation *req);
 
     // extracts the list of gateways from the dht response */
-    bool update_gateways_from_dht_response(Packet* p);
-
-    // old methods => will be removed
-    WritablePacket* create_dht_request(uint8_t operation); // creates a dht request to get a list of mesh gateways
-    WritablePacket* update_dht_request(uint8_t operation, BRNGatewayEntry gwe); // creates a dht request to update the mesh node's metric
-    void examine_dht_response(Packet*); // examine dht response and so appropriate
+    bool update_gateways_from_dht_response(uint8_t *value, uint32_t valuelen);
 
 };
 /* ===================================================================================== */

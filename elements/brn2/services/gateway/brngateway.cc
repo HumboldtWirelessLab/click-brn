@@ -47,8 +47,9 @@ BRNGateway::BRNGateway() :
   _timer_refresh_known_gateways(this),
   _update_gateways_interval(DEFAULT_UPDATE_GATEWAYS_INTERVAL),
   _timer_update_dht(this),
-  _update_dht_interval(DEFAULT_UPDATE_DHT_INTERVAL),
-  unique_id(0) {}
+  _update_dht_interval(DEFAULT_UPDATE_DHT_INTERVAL)
+{
+}
 
 BRNGateway::~BRNGateway() {}
 
@@ -62,9 +63,11 @@ BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 
   if (cp_va_kparse(conf, this, errh,
                   "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_my_eth_addr,
-                  "SETGATEWAYONFLOW", cpkP+cpkM, cpElement, &_flows,
                   "UPDATE_GATEWAYS_INTERVAL", cpkP+cpkM, cpSeconds, &_update_gateways_interval,
                   "UPDATE_DHT_INTERVAL", cpkP+cpkM, cpSeconds, &_update_dht_interval,
+                  "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
+                  "SETGATEWAYONFLOW", cpkP, cpElement, &_flows,
+                  "DEBUG", cpkP, cpInteger, &_debug,
                   cpEnd) < 0)
     return -1;
 
@@ -74,9 +77,9 @@ BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
   if (_update_dht_interval == 0)
     errh->error("UPDATE_GATEWAYS_INTERVAL is zero");
 
-  if (_flows->cast("BRNSetGatewayOnFlow") == 0) {
+/*  if (_flows->cast("BRNSetGatewayOnFlow") == 0) {
     return errh->error("No element of type BRNSetGatewayOnFlow specified.");
-  }
+  }*/
 
   return 0;
 }
@@ -86,11 +89,12 @@ BRNGateway::initialize(ErrorHandler *errh) {
   (void) (errh);
 
   _timer_update_dht.initialize(this);
-  _timer_update_dht.schedule_now();
+  _timer_update_dht.reschedule_after_sec(_update_dht_interval);
 
   _timer_refresh_known_gateways.initialize(this);
-  _timer_refresh_known_gateways.schedule_now();
+  _timer_refresh_known_gateways.reschedule_after_sec(_update_gateways_interval);
 
+  pending_remove = false;
   return 0;
 }
 
@@ -107,22 +111,6 @@ void BRNGateway::cleanup(CleanupStage stage) {
   }
 }
 
-/*****************
- *
- * Packet handling
- *
- *////////////////
-void
-BRNGateway::push(int, Packet *p) {
-  // TODO
-  // check if this a brn gateway packet
-  // what the preferred way?
-
-  handle_dht_response(p);
-  p->kill();
-  return;
-}
-
 /********
  *
  * Timers
@@ -131,30 +119,24 @@ BRNGateway::push(int, Packet *p) {
  *///////
 void
 BRNGateway::timer_refresh_known_gateways_hook(Timer *t) {
-  //BRN_INFO(" \n*  Timer executed to get update list of gateways  \n* ");
-  //click_chatter(" \n*  Timer executed to get update list of gateways  \n* ");
-
-  // output packet
-  output(0).push(get_getways_from_dht());
-
-  // ... and reschdule timer
-  t->reschedule_after_sec(_update_gateways_interval);
+  BRN_INFO("Timer executed to get update list of gateways");
+  get_getways_from_dht(NULL,NULL);                     // request ...
+  t->reschedule_after_sec(_update_gateways_interval);  // ... and reschdule timer
 }
 
 void
 BRNGateway::timer_update_dht_hook(Timer *t) {
-  //BRN_INFO(" \n*  Timer executed to get update this gateway  \n* ");
-  //click_chatter(" \n*  Timer executed to get update this gateway  \n* ");
-
+  BRN_INFO("Timer executed to get update this gateway");
   // is this node a gateway
   const BRNGatewayEntry *gwe = get_gateway();
 
-  // output packet, if this node is a gateway
-  if (gwe != NULL)
-    output(0).push(update_gateway_in_dht(*gwe));
+  if ( pending_remove )
+    remove_gateway_from_dht(NULL,NULL);
+  else
+    if (gwe != NULL) update_gateway_in_dht(NULL,NULL,*gwe); // output packet, if this node is a gateway
 
   // ... and reschdule timer
-  t->reschedule_after_sec(_update_dht_interval);
+//  t->reschedule_after_sec(_update_dht_interval);
 }
 
 void
@@ -183,7 +165,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
     // return this nodes gateway metric, if listed in _known_gateways, else 0
     const BRNGatewayEntry* gwe = gw->get_gateway();
     if (gwe != NULL)
-    	return gwe->s() + "\n";
+      return gwe->s() + "\n";
     else
       return "No gateway\n";
   }
@@ -198,7 +180,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
      */
 
     StringAccum sa;
-    sa << "Gateway list (next update in " << gw->_timer_refresh_known_gateways.expiry() - Timestamp::now() << "s)\n"
+    sa << "Gateway list (" << gw->_known_gateways.size() <<") (next update in " << gw->_timer_refresh_known_gateways.expiry() - Timestamp::now() << "s)\n"
        << "BRNGateway\t\tMetric\tIP address\tBehind NAT?\n";
     // iterate over all known gateways
     for (BRNGatewayList::const_iterator i = gw->_known_gateways.begin(); i.live(); i++) {
@@ -212,7 +194,7 @@ BRNGateway::read_handler(Element *e, void *thunk) {
     return sa.take_string();
   }
   default:
-  	return "<error>\n";
+    return "<error>\n";
   }
 }
 
@@ -223,7 +205,7 @@ BRNGateway::write_handler(const String &data, Element *e, void *thunk, ErrorHand
   switch ((intptr_t)thunk) {
   case HANDLER_ADD_GATEWAY: {
 
-  	IPAddress ip_addr;
+    IPAddress ip_addr;
     int metric;
     bool nated;
 
@@ -232,16 +214,16 @@ BRNGateway::write_handler(const String &data, Element *e, void *thunk, ErrorHand
                           cpIPAddress, "Gateway's IP address", &ip_addr,
                           cpBool, "Gateway behind NAT?", &nated,
                           cpEnd) < 0)
-    	return errh->error("wrong arguments to handler 'add_gateway'");
+      return errh->error("wrong arguments to handler 'add_gateway'");
 
     BRNGatewayEntry gwe = BRNGatewayEntry(ip_addr, metric, nated);
     return gw->add_gateway(gwe);
   }
   case HANDLER_REMOVE_GATEWAY: {
-  	return gw->remove_gateway();
+    return gw->remove_gateway();
   }
   default:
-  	return errh->error("internal error");
+    return errh->error("internal error");
   }
 }
 
@@ -259,78 +241,78 @@ BRNGateway::add_handlers() {
 }
 
 /***********************************************
- * 
+ *
  * methods to access the gateways data structure
- * 
+ *
  *//////////////////////////////////////////////
 
 int
 BRNGateway::add_gateway(BRNGatewayEntry gwe) {
-	// TODO
-	// find the gateway and update its values
-	// if not found insert it
-	
-	BRNGatewayEntry *old_gw;
-	
-	if ((old_gw = _known_gateways.findp(_my_eth_addr)) != NULL)	{
-		// update values since entry is known	
-		
-		// a metric of 0 indicates no connection
+  // TODO
+  // find the gateway and update its values
+  // if not found insert it
+
+  BRNGatewayEntry *old_gw;
+
+  if ((old_gw = _known_gateways.findp(_my_eth_addr)) != NULL)	{
+    // update values since entry is known
+
+    // a metric of 0 indicates no connection
     // insert only, if metric bigger than 0
-		if (gwe.get_metric() > 0) {
-    	// TODO
-     	// check if metric change is significant
-     	// or if other data has changed
-    	// generate only in this case the dht packet, else just save it locally
-     	// use code from ping source
-    	// add exponential averaging here
+    if (gwe.get_metric() > 0) {
+      // TODO
+      // check if metric change is significant
+      // or if other data has changed
+      // generate only in this case the dht packet, else just save it locally
+      // use code from ping source
+      // add exponential averaging here
 
 
-			// update values			
-			*old_gw = gwe;	
-	   	
-  		// update dht
-    	_timer_update_dht.schedule_now();
-  	}
-	   	
-		return 0;
-	}
-	else {
-		// and insert new entry
+      // update values
+      *old_gw = gwe;
+
+      // update dht
+      _timer_update_dht.schedule_now();
+    }
+
+    return 0;
+  } else {
+    // and insert new entry
     if (!_known_gateways.insert(_my_eth_addr, gwe)) {
-    	BRN_WARN("Could not insert gateway %s with values %s.", _my_eth_addr.unparse().c_str(), gwe.s().c_str());
+      BRN_WARN("Could not insert gateway %s with values %s.", _my_eth_addr.unparse().c_str(), gwe.s().c_str());
       return -1;
     }
-		
-		// update dht
+
+    // update dht
     _timer_update_dht.schedule_now();
-	
+
     return 0;
-	}
-	
-	return -1;
+  }
+
+  return -1;
 }
 
 int
 BRNGateway::remove_gateway() {
 
-  if (remove_gateway(_my_eth_addr)) {	
+  if (remove_gateway(_my_eth_addr)) {
     BRN_INFO("Removed gateway %s from list", _my_eth_addr.unparse().c_str());
 
     // delete gateway from dht
-    output(0).push(remove_gateway_from_dht());
-  }
-  else {
+    remove_gateway_from_dht(NULL,NULL);
+  } else {
     BRN_WARN("Gateway %s was already removed. Did not find it.", _my_eth_addr.unparse().c_str());
   }
-    
+
   return 0;
 }
 
 int
 BRNGateway::remove_gateway(EtherAddress eth) {
-  // remove all pending flows
-  _flows->remove_flows_with_gw(eth);
+  if ( _flows != NULL ) {
+    // remove all pending flows
+    _flows->remove_flows_with_gw(eth);
+  }
 
   // this gateway should not be updated via this method
   return _known_gateways.remove(eth);
@@ -353,12 +335,13 @@ BRNGateway::get_gateways() {
  * 
  *//////////////////////////////
 
-static void dht_callback_func(void *e, DHTOperation *op)
+void
+BRNGateway::dht_callback_func(void *e, DHTOperation *op)
 {
   BRNGateway *s = (BRNGateway *)e;
   BRNGateway::RequestInfo *request_info = s->get_request_by_dht_id(op->get_id());
 
-  if ( client_info != NULL ) {
+  if ( request_info != NULL ) {
     s->handle_dht_reply(request_info,op);
   } else {
     click_chatter("BRN-Gateway: No request info for DHT-ID");
@@ -369,33 +352,86 @@ static void dht_callback_func(void *e, DHTOperation *op)
 void
 BRNGateway::dht_request(RequestInfo *request_info, DHTOperation *op)
 {
-  uint32_t result = _dht_storage->dht_request(op, callback_func, (void*)this );
+  BRN_DEBUG("New request: %d",request_list.size());
+  BRN_DEBUG("NEW VALUELEN: %d",op->header.valuelen);
+  uint32_t result = _dht_storage->dht_request(op, dht_callback_func, (void*)this );
+
+  request_info->_id = result;
+  request_list.push_back(request_info);
 
   if ( result == 0 )
   {
     BRN_INFO("Got direct-reply (local)");
-    handle_dht_reply(client_info,op);
-  } else {
-    request_info->_id = result;
+    handle_dht_reply(request_info, op);
   }
 }
 
 void
-BRNGateway::handle_dht_reply(DNSClientInfo *request_info, DHTOperation *op)
+BRNGateway::handle_dht_reply(RequestInfo *request_info, DHTOperation *op)
 {
   //int result;
+  remove_request(request_info);
+  
+  BRN_DEBUG("BRNGateway: Handle DHT-Answer: %d",request_info->_mode);
 
-  BRN_DEBUG("BRN2DNSServer: Handle DHT-Answer");
-  if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
-  {
-  } else {
+  switch ( request_info->_mode ) {
+    case GRM_READ:
+      get_getways_from_dht(request_info, op);
+      break;
+    case GRM_READ_BEFORE_UPDATE:
+    case GRM_UPDATE:
+      BRN_DEBUG("Handle Update");
+      update_gateway_in_dht(request_info, op, request_info->_gw_entry);
+      break;
+    case GRM_READ_BEFORE_REMOVE:
+    case GRM_REMOVE:
+      remove_gateway_from_dht(request_info, op);
+      break;
+    default:
+      BRN_WARN("UNKNOWN mode");
+      break;
   }
 
   delete op;
-  remove_request(client_info);
+  delete request_info;
+}
+
+BRNGateway::RequestInfo *
+BRNGateway::get_request_by_dht_id(uint32_t id)
+{
+  BRN_DEBUG("RequestList Size: %d",request_list.size());
+  for ( int i = 0; i < request_list.size(); i++ )
+    if ( request_list[i]->_id == id ) return( request_list[i] );
+
+  return( NULL );
+
+}
+
+int
+BRNGateway::remove_request(RequestInfo *request_info)
+{
+  for ( int i = request_list.size()-1; i >=0 ; i-- )
+    if ( request_list[i]->_id == request_info->_id ) {
+      request_list.erase(request_list.begin() + i);
+      BRN_DEBUG("Remove request: %d",request_list.size());
+    }
+
+  return(0);
 }
 
 
+struct brn_gateway_dht_entry*
+BRNGateway::get_gwe_from_value(uint8_t *value, int valuelen, BRNGatewayEntry *gwe)
+{
+  struct brn_gateway_dht_entry* gwentries = (struct brn_gateway_dht_entry*)value;
+  int count_entries = valuelen / sizeof(struct brn_gateway_dht_entry);
+
+  for(int i = 0; i < count_entries; i++ ) {
+    if ( memcmp(gwentries[i].etheraddress, _my_eth_addr.data(),6) == 0 ) return (struct brn_gateway_dht_entry*)&(gwentries[i]);
+  }
+
+  return NULL;
+}
 /* returns a packet for the dht to update this gateway in DHT (INSERT|WRITE) */
 
 /**
@@ -407,29 +443,90 @@ BRNGateway::handle_dht_reply(DNSClientInfo *request_info, DHTOperation *op)
  * @return
  *
  */
-Packet* 
-BRNGateway::update_gateway_in_dht(BRNGatewayEntry gwe) {
+void
+BRNGateway::update_gateway_in_dht(RequestInfo *request_info, DHTOperation *req, BRNGatewayEntry gwe) {
 
-	BRN_INFO("Sending dht update packet");
-/*  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
-    
-    
-      
-  //unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 3 ) % 255;
-	unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 3 ) % 255;
-	
-	BRN_CHECK_EXPR_RETURN(unique_id % 3 != 0,
-    	("Unique ID %u mod 3 != 0; But sould be euqal 0", unique_id), return NULL;);
-	
-	   
-  DHTPacketUtil::set_header(dht_p_out, GATEWAY, DHT, 0, WRITE, unique_id );
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_STRING, strlen(DHT_KEY_GATEWAY), (uint8_t *) DHT_KEY_GATEWAY);
-  dht_p_out = DHTPacketUtil::add_sub_list(dht_p_out, 1);
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_MAC, 6, (uint8_t *) _my_eth_addr.data() );
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 1, TYPE_UNKNOWN, sizeof(gwe), (uint8_t *) &gwe );
-    
-  return dht_p_out;*/
-  return NULL;
+
+  if ( request_info == NULL ) {
+    BRN_INFO("Sending read packet");
+    DHTOperation *new_req = new DHTOperation();
+    RequestInfo *new_request_info = new RequestInfo(GRM_READ_BEFORE_UPDATE);
+
+    new_req->read((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY));
+    new_req->max_retries = 2;
+    new_req->set_replica(0);
+    new_req->set_lock(true);
+
+    new_request_info->_gw_entry = gwe;
+
+    dht_request(new_request_info, new_req);
+  } else {
+    if ( request_info->_mode == GRM_READ_BEFORE_UPDATE ) {
+      if ( req->header.status == DHT_STATUS_OK ) {
+        BRN_DEBUG("UPDATE GATEWAY");
+        struct brn_gateway_dht_entry* gwentries = get_gwe_from_value(req->value, req->header.valuelen, &gwe);
+
+        DHTOperation *new_req = new DHTOperation();
+        RequestInfo *new_request_info = new RequestInfo(GRM_UPDATE);
+
+        if ( gwentries == NULL ) {
+          BRN_DEBUG("My Gateway (%s) is new",gwe.s().c_str());
+          uint8_t new_value[req->header.valuelen + sizeof(struct brn_gateway_dht_entry)];
+          memcpy(new_value, req->value, req->header.valuelen);
+          gwentries = (struct brn_gateway_dht_entry*)&(new_value[req->header.valuelen]);
+          memcpy(gwentries->etheraddress,_my_eth_addr.data(),6);
+          gwentries->ipv4 = htonl(gwe._ip_addr);
+          gwentries->bandwidth = 0;
+          gwentries->metric = gwe._metric;
+          if ( gwe._nated ) gwentries->flags = GATEWAY_FLAG_NATED;
+          else gwentries->flags = 0;
+          BRN_DEBUG("NEW VALUE: %d",(req->header.valuelen + sizeof(struct brn_gateway_dht_entry)));
+          new_req->write((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY),
+                          new_value, (req->header.valuelen + sizeof(struct brn_gateway_dht_entry)), false);
+
+          BRN_DEBUG("NEW VALUE2: %d",new_req->header.valuelen);
+        } else {
+          BRN_DEBUG("Update Gateway");
+          gwentries->metric = gwe._metric;
+          if ( gwe._nated ) gwentries->flags = GATEWAY_FLAG_NATED;
+          else gwentries->flags = 0;
+          new_req->write((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY), req->value, req->header.valuelen, false);
+
+        }
+
+        new_req->max_retries = 2;
+        new_req->set_replica(0);
+        new_req->set_lock(false);
+        dht_request(new_request_info, new_req);
+
+      } else if ( req->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
+        BRN_DEBUG("First Gateway");
+
+        DHTOperation *new_req = new DHTOperation();
+        RequestInfo *new_request_info = new RequestInfo(GRM_UPDATE);
+
+        struct brn_gateway_dht_entry gwentries;
+        memcpy(gwentries.etheraddress,_my_eth_addr.data(),6);
+        gwentries.ipv4 = htonl(gwe._ip_addr);
+        gwentries.bandwidth = 0;
+        gwentries.metric = gwe._metric;
+        if ( gwe._nated ) gwentries.flags = GATEWAY_FLAG_NATED;
+        else gwentries.flags = 0;
+        new_req->write((uint8_t*)DHT_KEY_GATEWAY, (uint16_t)strlen(DHT_KEY_GATEWAY), (uint8_t*)&gwentries, (uint16_t)sizeof(gwentries), true);
+
+        new_req->max_retries = 2;
+        new_req->set_replica(0);
+        new_req->set_lock(false);
+        dht_request(new_request_info, new_req);
+
+      } else { //TODO: restart request ???
+        BRN_DEBUG("Gateway: send request again");
+        _timer_update_dht.reschedule_after_sec(click_random() % _update_dht_interval);
+      }
+    } else {
+      BRN_INFO("Gateway update finished. Status: %d",req->header.status);
+    }
+  }
 }
 
 /* returns a packet to remove this gateway from the DHT (REMOVE) */
@@ -442,23 +539,56 @@ BRNGateway::update_gateway_in_dht(BRNGatewayEntry gwe) {
  * @return
  *
  */
-Packet* 
-BRNGateway::remove_gateway_from_dht() {
-/*
-  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
-      
-  unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 4 ) % 255;
-    
-  BRN_CHECK_EXPR_RETURN(unique_id % 3 != 1,
-    	("Unique ID %u mod 3 != 1; But sould be euqal 1", unique_id), return NULL;);
-	      
-  DHTPacketUtil::set_header(dht_p_out, GATEWAY, DHT, 0, REMOVE, unique_id );
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_STRING, strlen(DHT_KEY_GATEWAY), (uint8_t *) DHT_KEY_GATEWAY);
-  dht_p_out = DHTPacketUtil::add_sub_list(dht_p_out, 1);
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_MAC, 6, (uint8_t *) _my_eth_addr.data() );
-    
-  return dht_p_out;*/
-  return NULL;
+void
+BRNGateway::remove_gateway_from_dht(RequestInfo *request_info, DHTOperation *req ) {
+
+  if ( request_info == NULL ) {
+    DHTOperation *new_req = new DHTOperation();
+    RequestInfo *new_request_info = new RequestInfo(GRM_READ_BEFORE_REMOVE);
+
+    new_req->read((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY));
+    new_req->max_retries = 2;
+    new_req->set_replica(0);
+    new_req->set_lock(true);
+    dht_request(new_request_info,new_req);
+    pending_remove = false;
+  } else {
+    if ( request_info->_mode == GRM_REMOVE ) {
+      pending_remove = false;
+      return;
+    }
+
+    switch (req->header.status) {
+      case DHT_STATUS_KEY_IS_LOCKED:
+        pending_remove = true;
+        _timer_update_dht.reschedule_after_sec(click_random() % _update_dht_interval);
+        break;
+      case DHT_STATUS_OK:
+        struct brn_gateway_dht_entry* gwentries = (struct brn_gateway_dht_entry*)req->value;
+        int count_entries = req->header.valuelen / sizeof(struct brn_gateway_dht_entry);
+
+        for(int i = 0; i < count_entries; i++ ) {
+          if ( memcmp(gwentries[i].etheraddress, _my_eth_addr.data(),6) == 0 ) {
+            if ( i < ( count_entries - 1 ) )
+              memcpy(&(req->value[i*sizeof(struct brn_gateway_dht_entry)]),
+                     &(req->value[(i+1)*sizeof(struct brn_gateway_dht_entry)]),
+                       sizeof(struct brn_gateway_dht_entry)*(count_entries-1-i));
+
+            req->header.valuelen -= sizeof(struct brn_gateway_dht_entry);
+            break;
+          }
+        }
+
+        DHTOperation *new_req = new DHTOperation();
+        RequestInfo *new_request_info = new RequestInfo(GRM_REMOVE);
+        new_req->write((uint8_t*)DHT_KEY_GATEWAY, (uint16_t)strlen(DHT_KEY_GATEWAY), req->value, req->header.valuelen, false);
+        new_req->max_retries = 2;
+        new_req->set_replica(0);
+        new_req->set_lock(false);
+        dht_request(new_request_info, new_req);
+        break;
+    }
+  }
 }
 
 /* handle dht reponse */
@@ -470,74 +600,36 @@ BRNGateway::remove_gateway_from_dht() {
  * @return 
  *
  */
-Packet* 
-BRNGateway::get_getways_from_dht() {
+void
+BRNGateway::get_getways_from_dht(RequestInfo *request_info, DHTOperation *req)
+{
 
-	BRN_INFO("Sending dht get packet");
+  BRN_INFO("Sending dht get packet");
+  if ( request_info == NULL ) {
+    DHTOperation *req = new DHTOperation();
+    RequestInfo *request_info = new RequestInfo(GRM_READ);
 
-/*  WritablePacket *dht_p_out = DHTPacketUtil::new_dht_packet();
-      
-  unique_id = ( ( unique_id - ( unique_id % 3 ) ) + 5 ) % 255;
-    
-  BRN_CHECK_EXPR_RETURN(unique_id % 3 != 2,
-    ("Unique ID %u mod 3 != 2; But should be equal 2", unique_id), return NULL;);
-    
-  DHTPacketUtil::set_header(dht_p_out, GATEWAY, DHT, 0, READ, unique_id );
-  dht_p_out = DHTPacketUtil::add_payload(dht_p_out, 0, TYPE_STRING, strlen(DHT_KEY_GATEWAY), (uint8_t *) DHT_KEY_GATEWAY);
-
-  return dht_p_out;*/
-  return NULL;
-}
-
-/**
- * Get a response from DHT and decides whether this packet
- * is an response to an update or remove or the list of gateway,
- * which is handled by the method update_gateways_from_dht_response
- *get_gateway()
- */
-void 
-BRNGateway::handle_dht_response(Packet* p) {
-/*
-  struct dht_packet_header *dht_header = (struct dht_packet_header*)p->data();
-
-  switch ( dht_header->id % 3 ) {
-	  case 0: { //update
-	    if ( dht_header->flags == 0 ) {
-	     		BRN_INFO("DHT-Update OK");
-	    }
-	    else {
-	     	BRN_WARN("DHT-Update FAILED");
-	    }
-	     
-	    break;
-	  }
-    case 1: { //remove
-	    if ( dht_header->flags == 0 ) {
-	     		BRN_INFO("Gateway: DHT-Remove OK");
-	    }
-	    else {
-	      BRN_ERROR("DHT-Remove FAILED");
-	    }
-	     
-	    break;
-	  }
-    case 2: { //get
-	    if ( dht_header->flags == 0 ) {
-	      BRN_INFO("DHT-GET OK");
-	      bool result = update_gateways_from_dht_response(p);
-	      if (!result) {
-	        BRN_ERROR("Could not update gateways from dht response");
-	      }
-	    }
-	    else {
-	    	BRN_WARN("DHT-GET FAILED; no gateway key known in DHT.");
-	    }
-	    break;
-	  }
-  	default: {
-  		BRN_ERROR("Strange DHT ID %d. Fix me.", dht_header->id);
-  	}
-  }*/
+    req->read((uint8_t*)DHT_KEY_GATEWAY, strlen(DHT_KEY_GATEWAY));
+    req->max_retries = 2;
+    req->set_replica(0);
+    dht_request(request_info,req);
+  } else {
+    BRN_INFO("GOT all bateways");
+    switch ( req->header.status ) {
+      case DHT_STATUS_OK:
+        update_gateways_from_dht_response(req->value, req->header.valuelen);
+        break;
+      case DHT_STATUS_KEY_NOT_FOUND:
+        BRN_DEBUG("GATEWAYKEY not found");
+        break;
+      case DHT_STATUS_TIMEOUT: 
+        BRN_DEBUG("Timeout not found");
+        break;
+      default:
+        BRN_DEBUG("Get gateway: other errors");
+        break;
+    }
+  }
 }
 
 // extracts the list of gateways from the dht response */
@@ -550,64 +642,42 @@ BRNGateway::handle_dht_response(Packet* p) {
  * @return true, if successful, else false
  *
  */
-bool 
-BRNGateway::update_gateways_from_dht_response(Packet* p) {
+bool
+BRNGateway::update_gateways_from_dht_response(uint8_t *value, uint32_t valuelen) {
 
-/*  BRN_INFO("Extracting gateways from DHT response");
-
-  //BRNGatewayEntry new_gw;
- 
-  struct dht_packet_header *dht_header = (struct dht_packet_header*) p->data();
-
-  struct dht_packet_payload *_dht_payload = DHTPacketUtil::get_payload_by_number( p, 1 ); //Sublist holen, hat nummer 1
-
-  uint8_t *dht_data = (uint8_t*)_dht_payload;
-  int sublist_len = (int)dht_data[2];
-  int index = 0;
-  
-  EtherAddress eth_addr;
-  BRNGatewayEntry gwe;
-
-  if ( dht_header->flags != 0 ) {
-    BRN_WARN("Update Gateways: DHT read failed");
-    
-    return false;
-  }
-  
+  BRN_INFO("Extracting gateways from DHT response: %d", valuelen);
   // TODO
   // clearing and inserting is expensive
   // should be done better
+  bool lgw = false;
+  BRNGatewayEntry copy_lgw;
+  const BRNGatewayEntry* myself = get_gateway();
+  if ( myself != NULL ) {
+    copy_lgw = *myself;
+    lgw = true;
+  }
+
   _known_gateways.clear();
 
-  for ( index = DHT_PAYLOAD_OVERHEAD; index < sublist_len; ) {
-    if ( ( dht_data[index] == 0 ) && ( dht_data[index + 1] == TYPE_MAC ) ) { //found subkey
-      eth_addr = EtherAddress(&dht_data[index + DHT_PAYLOAD_OVERHEAD]);
-      
-      index += DHT_PAYLOAD_OVERHEAD + dht_data[index + 2]; 
-      
-	    if (dht_data[index] == 1) {
-		  	// BRNGatewayEntry
-		  	// TODO handle endianess inside class BRNGatewayEntry with htons and so on
-		  	
-		  	// TODO can this be done in C++ style
-		  	memcpy(&gwe, &dht_data[index + DHT_PAYLOAD_OVERHEAD], sizeof(gwe));
-		  	
-		  	//gwe = (BRNGatewayEntry) dht_data[index + DHT_PAYLOAD_OVERHEAD];
-		  	BRN_INFO("Found gateway %s in dht response with values %s", eth_addr.unparse().c_str(), gwe.s().c_str());
-	  	}
-	  	else {
-		  	BRN_ERROR("BRNGateway: Not supported");
-		  	return false;
-	  	}
+  struct brn_gateway_dht_entry* gwentries = (struct brn_gateway_dht_entry*)value;
 
-    	// inefficient but right sematics; see TODO at beginning of method
-    	if (!_known_gateways.insert(eth_addr, gwe))
-    		return false;	
-    	else {
-      	index += DHT_PAYLOAD_OVERHEAD + dht_data[ index + 2 ]; // jump
-    	}
-  	}
-  }*/
+  int count_entries = valuelen / sizeof(struct brn_gateway_dht_entry);
+
+  for( int i = 0; i < count_entries; i++ ) {
+    BRNGatewayEntry gwe = BRNGatewayEntry(IPAddress(ntohl(gwentries[i].ipv4)), gwentries[i].metric, ((gwentries[i].flags & GATEWAY_FLAG_NATED) == GATEWAY_FLAG_NATED ));
+    BRN_DEBUG("NATEDFLAGS: %d",gwentries[i].flags);
+    EtherAddress eth_addr = EtherAddress(gwentries[i].etheraddress);
+    if ( memcmp(eth_addr.data(), _my_eth_addr.data(),6 ) != 0 ) {
+      BRN_INFO("Found gateway %s in dht response with values %s", eth_addr.unparse().c_str(), gwe.s().c_str());
+      _known_gateways.insert(eth_addr, gwe);
+    }
+  }
+
+  if ( lgw ) {
+    BRN_INFO("Found gateway %s in dht response with values %s", _my_eth_addr.unparse().c_str(), copy_lgw.s().c_str());
+    _known_gateways.insert(_my_eth_addr, copy_lgw);
+  }
+
   return true;
 }
 

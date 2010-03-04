@@ -32,28 +32,32 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
 {
   int result;
 
+  CLASS_BRN_DEBUG("Handle DHT-Operation: %d",op->header.operation);
   //TODO: use switch-case and test for all possible combinations -> more readable ?? possible with lock ??
   if ( ( op->header.operation & OPERATION_INSERT ) == OPERATION_INSERT )
   {
     if ( ( op->header.operation & OPERATION_WRITE ) == OPERATION_WRITE )
     {
-      result = dht_read(op);
+      result = dht_test(op);
       if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
-//        click_chatter("insert on overwrite");
+        CLASS_BRN_DEBUG("insert on overwrite");
         result = dht_insert(op);
       } else {
-//        click_chatter("overwrite existing");
+        CLASS_BRN_DEBUG("overwrite existing");
         result = dht_write(op);
       }
     } else {
-//      click_chatter("insert");
+      CLASS_BRN_DEBUG("insert");
       result = dht_insert(op);
     }
   }
 
+  //Lock after insert
   if ( ( op->header.operation & OPERATION_LOCK ) == OPERATION_LOCK )
   {
+    CLASS_BRN_DEBUG("lock");
     result = dht_lock(op);
+    if ( result == -1 ) return 0;
   }
 
   if ( ( op->header.operation & OPERATION_INSERT ) != OPERATION_INSERT )
@@ -62,13 +66,14 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
     {
       if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
-//        click_chatter("Read/write");
+        CLASS_BRN_DEBUG("Read/write");
+        CLASS_BRN_DEBUG("DHTOperationHandler: this doesn't wort: read and write:chaeck");
         result = dht_read(op);
         result = dht_write(op);
       }
       else
       {
-//        click_chatter("write");
+        CLASS_BRN_DEBUG("write");
         result = dht_write(op);
       }
     }
@@ -107,6 +112,17 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
 }
 
 int
+DHTOperationHandler::dht_test(DHTOperation *op)
+{
+  BRNDB::DBrow *_row;
+
+  _row = _db->getRow(op->header.key_digest);
+  if ( _row != NULL ) op->header.status = DHT_STATUS_OK;
+  else op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  return 0;
+}
+
+int
 DHTOperationHandler::dht_insert(DHTOperation *op)
 {
   if ( _db->getRow(op->header.key_digest) == NULL )
@@ -116,7 +132,7 @@ DHTOperationHandler::dht_insert(DHTOperation *op)
   }
   else
   {
-    if ( _debug == BrnLogger::WARN ) click_chatter("Key already exists");
+    CLASS_BRN_DEBUG("Key already exists");
     op->header.status = DHT_STATUS_KEY_ALREADY_EXISTS;
   }
 
@@ -127,15 +143,20 @@ int
 DHTOperationHandler::dht_write(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
+  EtherAddress ea = EtherAddress(op->header.etheraddress);
 
   _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL )
   {
-    if ( _row->value != NULL ) delete[] _row->value;
-    _row->value = new uint8_t[op->header.valuelen];
-    memcpy(_row->value,op->value,op->header.valuelen);
-    _row->valuelen = op->header.valuelen;
-    op->header.status = DHT_STATUS_OK;
+    if ( ! _row->isLocked(&ea) ) {
+      if ( _row->value != NULL ) delete[] _row->value;
+      _row->value = new uint8_t[op->header.valuelen];
+      memcpy(_row->value,op->value,op->header.valuelen);
+      _row->valuelen = op->header.valuelen;
+      op->header.status = DHT_STATUS_OK;
+    } else {
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+    }
   }
   else
   {
@@ -172,7 +193,7 @@ DHTOperationHandler::dht_remove(DHTOperation *op)
 
   _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL ) {
-    if ( _row->unlock(&ea) ) {            //unlock returns true if row is not locked or if ea is the source of the lock
+    if ( ! _row->isLocked(&ea) ) {         //isLocked returns true if row is not locked or if ea is the source of the lock
       _db->delRow(op->header.key_digest);  //TODO: Errorhandling
       op->header.status = DHT_STATUS_OK;
     } else {
@@ -198,9 +219,11 @@ DHTOperationHandler::dht_lock(DHTOperation *op)
       op->header.status = DHT_STATUS_OK;
     } else {
       op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+      return -1;
     }
   } else {
     op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+    return -1;
   }
 
   return 0;
@@ -218,7 +241,7 @@ DHTOperationHandler::dht_unlock(DHTOperation *op)
     if ( _row->unlock(&ea) ) {   //lock 1 hour
       op->header.status = DHT_STATUS_OK;
     } else {
-      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;  //is locked by other node
     }
   } else {
     op->header.status = DHT_STATUS_KEY_NOT_FOUND;

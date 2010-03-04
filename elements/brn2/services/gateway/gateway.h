@@ -24,8 +24,11 @@
 CLICK_SIZE_PACKED_STRUCTURE(
 struct brn_gateway_dht_entry {,
   uint8_t  etheraddress[6];
-  uint16_t load;
+  uint32_t ipv4;
   uint32_t bandwidth;
+  uint8_t  metric;
+  uint8_t  flags;
+#define GATEWAY_FLAG_NATED 1
 });
 
 CLICK_SIZE_PACKED_STRUCTURE(

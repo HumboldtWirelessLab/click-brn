@@ -46,8 +46,8 @@ CLICK_DECLS
 struct dht_packet_header {
   uint8_t  major_type;
   uint8_t  minor_type;
-  uint8_t  src[6];
-  uint8_t  dst[6];
+  uint8_t  src[6];           //since the packet takes several hops in the overlay, this is used to take a direct path to src of the request
+  uint8_t  dst[6];           //TODO: is this realy need
   uint16_t payload_len;
 };
 

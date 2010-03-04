@@ -29,6 +29,10 @@
 
 CLICK_DECLS
 
+/**
+ * TODO: set src etheraddr
+*/
+
 WritablePacket *
 DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payload_len)
 {
