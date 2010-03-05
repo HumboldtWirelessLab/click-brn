@@ -76,7 +76,6 @@ DHTProtocolDart::new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, P
   memcpy(request->dst_id, dst->_md5_digest, MAX_NODEID_LENTGH); ;
 
   DHTProtocol::set_src(nid_p, src->_ether_addr.data());
-  DHTProtocol::set_dst(nid_p, dst->_ether_addr.data());
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(nid_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -106,8 +105,18 @@ DHTProtocolDart::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *statu
   src->set_update_addr(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_id,request->src_id_size);
 
-  node->set_update_addr(DHTProtocol::get_dst_data(p));
   node->set_nodeid(request->dst_id,request->dst_id_size);
+}
+
+void
+DHTProtocolDart::get_info(Packet *p, DHTnode *src, uint8_t *status)
+{
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(p);
+
+  *status = request->status;
+
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  src->set_nodeid(request->src_id,request->src_id_size);
 }
 
 CLICK_ENDDECLS

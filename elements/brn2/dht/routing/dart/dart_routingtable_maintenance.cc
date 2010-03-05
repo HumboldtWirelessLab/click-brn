@@ -158,44 +158,35 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
 {
   WritablePacket *rep;
   DHTnode src;
-  DHTnode dst;
 
   uint8_t status;
 
   BRN_DEBUG("Got ID request");
 
-  DHTProtocolDart::get_info(packet, &src, &dst, &status);
+  DHTProtocolDart::get_info(packet, &src, &status);
 
-  //TODO: check whether dst is me but use ea for that
+  if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
+    assign_id(&src);
+    rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet); //reply, so change src and dst
 
-  if ( dst.equalsEtherAddress(_drt->_me) ) {
-    if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
-      assign_id(&src);
-      rep  = DHTProtocolDart::new_nodeid_assign_packet( &dst, &src, packet); //reply, so change src and dst
+    src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
+    _drt->update_node(&src);      //update the new node (add if not exists)
 
-      src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
-      _drt->update_node(&src);      //update the new node (add if not exists)
+//  BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
-//    BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
-
-      output(0).push(rep);
+    output(0).push(rep);
 
       /* i change my own id. also a new/updated node is there. Inform evry element (storage,routing,...)*/
-      _drt->update_callback(DART_UPDATE_ID);    //TODO: move this and the change of the own ID to routingtable
+    _drt->update_callback(DART_UPDATE_ID);    //TODO: move this and the change of the own ID to routingtable
 
-    } else {
-      BRN_WARN("ID-space is full. No id left");
-    }
   } else {
-    BRN_WARN("Got packet for foreign node. Discard.");
-    packet->kill();
+    BRN_WARN("ID-space is full. No id left");
   }
 }
 
 void
 DartRoutingTableMaintenance::handle_assign(Packet *packet)
 {
-
   DHTnode src;
   DHTnode dst;
 
@@ -207,6 +198,7 @@ DartRoutingTableMaintenance::handle_assign(Packet *packet)
   DartFunctions::copy_id(_drt->_me, &dst);
   _drt->_validID = true;
 
+  _drt->update_node(&src);
   _drt->update_callback(DART_UPDATE_ID);  //Test: update my own address
 
   packet->kill();

@@ -59,7 +59,6 @@ struct dht_dart_routing {
 
   uint8_t  src_id[MD5_DIGEST_LENGTH];
   uint8_t  dst_id[MD5_DIGEST_LENGTH];
-
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 
@@ -71,6 +70,7 @@ class DHTProtocolDart {
   static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
 
   static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status);
+  static void get_info(Packet *p, DHTnode *src, uint8_t *status);
   static WritablePacket *new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p);
   static WritablePacket *new_nodeid_request_packet( DHTnode *src, DHTnode *dst);
   static WritablePacket *new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p);

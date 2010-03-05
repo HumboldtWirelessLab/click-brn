@@ -100,34 +100,11 @@ DHTProtocol::get_src(Packet *p)
     return NULL;
 }
 
-EtherAddress *
-DHTProtocol::get_dst(Packet *p)
-{
-  struct dht_packet_header *dht_header = NULL;
-
-  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
-  {
-    dht_header = (struct dht_packet_header*)p->data();
-    return (new EtherAddress(dht_header->dst));
-  }
-  else
-    return NULL;
-}
-
 uint8_t *
 DHTProtocol::get_src_data(Packet *p)
 {
   if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
     return ((struct dht_packet_header*)p->data())->src;
-  else
-    return NULL;
-}
-
-uint8_t *
-DHTProtocol::get_dst_data(Packet *p)
-{
-  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
-    return ((struct dht_packet_header*)p->data())->dst;
   else
     return NULL;
 }
@@ -147,6 +124,34 @@ DHTProtocol::set_src(Packet *p, uint8_t *ea)
     return -1;
 }
 
+/**
+ * Dst-Address is no longer used
+ * TODO: does it work in that way
+ */
+/*
+EtherAddress *
+DHTProtocol::get_dst(Packet *p)
+{
+  struct dht_packet_header *dht_header = NULL;
+
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+  {
+    dht_header = (struct dht_packet_header*)p->data();
+    return (new EtherAddress(dht_header->dst));
+  }
+  else
+    return NULL;
+}
+
+uint8_t *
+DHTProtocol::get_dst_data(Packet *p)
+{
+  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
+    return ((struct dht_packet_header*)p->data())->dst;
+  else
+    return NULL;
+}
+
 int
 DHTProtocol::set_dst(Packet *p, uint8_t *ea)
 {
@@ -161,7 +166,7 @@ DHTProtocol::set_dst(Packet *p, uint8_t *ea)
   else
     return -1;
 }
-
+*/
 
 WritablePacket *
 DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst, uint8_t major_type)
