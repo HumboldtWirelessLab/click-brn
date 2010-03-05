@@ -43,7 +43,7 @@ struct DHTOperationHeader {
   uint8_t operation;
   uint8_t status;
   uint8_t etheraddress[6];
-  md5_byte_t key_digest[16];
+  md5_byte_t key_digest[MD5_DIGEST_LENGTH];
   uint16_t keylen;
   uint16_t valuelen;
 
@@ -67,6 +67,8 @@ class DHTOperation {
     uint32_t max_request_duration;
     uint32_t request_duration;
 
+    bool digest_is_set;
+
     DHTOperation();
     ~DHTOperation();
 
@@ -81,14 +83,22 @@ class DHTOperation {
     void set_lock(bool lock);
 
     void set_value(uint8_t *value, uint16_t valuelen);
+
+    void set_key_digest(md5_byte_t *key_digest);
+    void unset_key_digest();
+    bool is_set_key_digest();
+
     void set_request();
-    void set_reply();
     bool is_request();
+
+    void set_reply();
     bool is_reply();
+
     void set_id(uint16_t _id);
     uint16_t get_id();
     void set_replica(uint8_t _replica);
     uint8_t get_replica();
+
     void set_status(uint8_t status);
 
     int length();

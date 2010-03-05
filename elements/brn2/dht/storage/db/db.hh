@@ -27,7 +27,7 @@ struct db_row_header {
   uint16_t store_time;
   uint16_t store_duration;
   uint8_t lock_etheraddress[6];
-  //md5_byte_t md5_key[16];
+  md5_byte_t md5_key[MD5_DIGEST_LENGTH];
   uint8_t replica;
   uint8_t reserved;
 };
@@ -38,7 +38,7 @@ class BRNDB : public Element {
     class DBrow {
 
       public:
-        md5_byte_t md5_key[16];
+        md5_byte_t md5_key[MD5_DIGEST_LENGTH];
 
         uint8_t *value;
         uint16_t valuelen;
@@ -145,6 +145,8 @@ class BRNDB : public Element {
           if (locked) memcpy(rh->lock_etheraddress,lock_node,6);
           else memset(rh->lock_etheraddress,0,6);
 
+          memcpy(rh->md5_key, md5_key, MD5_DIGEST_LENGTH);
+
           data = &(buffer[sizeof(struct db_row_header)]);
           memcpy(data,key,keylen);
           memcpy(&(data[keylen]),value,valuelen);
@@ -177,7 +179,7 @@ class BRNDB : public Element {
           memcpy(key,data,keylen);
           memcpy(value,&(data[keylen]),valuelen);
 
-          MD5::calculate_md5((const char*)key, keylen, md5_key);
+          memcpy(md5_key, rh->md5_key, MD5_DIGEST_LENGTH);
 
           return serializeSize();
         }

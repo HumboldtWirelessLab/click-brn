@@ -84,8 +84,9 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   uint32_t dht_id, replica_count;
   int status;
 
-  MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);  //TODO: Move this upward. (e.g. during create new dhtoperation.
-                                                                                 //This enables to set a own key for value -> e.g. for range queries
+  if ( ! op->digest_is_set )
+    MD5::calculate_md5((char*)op->key, op->header.keylen, op->header.key_digest);  //TODO: Move this upward. (e.g. during create new dhtoperation.
+    //This enables to set a own key for value -> e.g. for range queries. If digest is not set use default(md5)
 
   //Check whether routing support replica and whether the requested number of replica is support. Correct if something cannot be performed by routing
   if ( _dht_routing->max_replication() < op->header.replica )

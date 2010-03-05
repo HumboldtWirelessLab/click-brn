@@ -26,6 +26,8 @@ DHTOperation::DHTOperation()
   request_time = Timestamp::now();
   max_request_duration = DHT_DURATION_UNLIMITED;
   request_duration = 0;
+
+  digest_is_set = false;
 }
 
 DHTOperation::~DHTOperation()
@@ -88,7 +90,6 @@ DHTOperation::read(uint8_t *_key, uint16_t _keylen)
   header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_READ;
 }
 
-
 void
 DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen, bool insert)
 {
@@ -150,7 +151,24 @@ DHTOperation::set_lock(bool lock)
   else header.operation = ((uint8_t)header.operation & ~(uint8_t)OPERATION_LOCK ) | (uint8_t)OPERATION_UNLOCK;
 }
 
+void
+DHTOperation::set_key_digest(md5_byte_t *new_key_digest)
+{
+  digest_is_set = true;
+  memcpy(header.key_digest, new_key_digest, MD5_DIGEST_LENGTH);
+}
 
+void
+DHTOperation::unset_key_digest()
+{
+  digest_is_set = false;
+}
+
+bool
+DHTOperation::is_set_key_digest()
+{
+  return digest_is_set;
+}
 
 void
 DHTOperation::set_value(uint8_t *new_value, uint16_t new_valuelen)

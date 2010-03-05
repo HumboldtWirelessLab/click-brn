@@ -183,15 +183,12 @@ void
 DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
 {
   DHTnode *next;
-  md5_byte_t md5_key[16];
 
   struct dht_simple_storage_data *dssd = DHTProtocolStorageSimple::get_data_packet_header(p); //points to header (moveid)
   uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(p);                       //points to first row
   struct db_row_header *rh = (struct db_row_header *)data;
 
-  MD5::calculate_md5((char*)&(data[sizeof(struct db_row_header)]), ntohs(rh->keylen), md5_key);
-
-  next = _dht_routing->get_responsibly_replica_node(md5_key, rh->replica);
+  next = _dht_routing->get_responsibly_replica_node(rh->md5_key, rh->replica);
 
   if ( _dht_routing->is_me(next) )
   {
