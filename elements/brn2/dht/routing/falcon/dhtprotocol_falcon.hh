@@ -48,6 +48,9 @@ CLICK_DECLS
 #define FALCON_STATUS_OK    0
 #define FALCON_STATUS_HINT  1
 
+/**
+ * structure is used for linkprobes
+ */
 struct dht_falcon_node_entry {
   uint8_t  etheraddr[6];
   uint8_t  age_sec;
@@ -59,6 +62,8 @@ struct falcon_routing_packet {
   uint8_t reserved;
 
   uint16_t table_position;
+  uint8_t  etheraddr[6];        //Etheraddress of the node on position "table_position" in the table
+
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct falcon_nws_packet {
@@ -84,7 +89,7 @@ class DHTProtocolFalcon {
 
     static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
-    static void get_nws_info(Packet *p, DHTnode *src, DHTnode *next, uint32_t *size);
+    static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);
 
 };
 

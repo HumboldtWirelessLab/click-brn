@@ -120,12 +120,6 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   _frt->add_node(&src);  //add node if it's new
 
-  if ( ! node.equals(_frt->_me) ) {
-    BRN_WARN("Got packet, but he didn't ask me. ME: %s, SRC: %s DST: %s",
-             _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), node._ether_addr.unparse().c_str());
-    return;
-  }
-
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
     BRN_WARN("Node ask for my position 0 (for him i'm his successor) but is not my predecessor");
     BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());

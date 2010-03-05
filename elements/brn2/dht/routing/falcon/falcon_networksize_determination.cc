@@ -111,9 +111,9 @@ FalconNetworkSizeDetermination::handle_nws(Packet *packet)
 
   BRN_DEBUG("handle_nws");
 
-  DHTProtocolFalcon::get_nws_info(packet, &src, &next, &size);
+  DHTProtocolFalcon::get_nws_info(packet, &src, &size);
 
-  if ( src.equals(&next) ) {
+  if ( src.equals(_frt->_me) ) {
     BRN_DEBUG("Final destination");
     _networksize = size;
     packet->kill();
