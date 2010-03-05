@@ -1,6 +1,8 @@
 #ifndef DHT_OPERATION_HH
 #define DHT_OPERATION_HH
 #include <click/element.hh>
+#include <click/etheraddress.hh>
+
 #include "elements/brn2/standard/md5.h"
 
 CLICK_DECLS
@@ -34,6 +36,8 @@ CLICK_DECLS
 
 /**
  * TODO: use replica as bitfield (max 8 replicas should be enough. replicas with the next equals hops can be pu together (split later)
+ * Etheraddress is remove from operation-header. Now the src-etheraddr in DHT-header is used instead.
+ * for locking, the src-etheraddr is used. Maybe its better to use some id (this should add to the header (lockid))
  */
 
 struct DHTOperationHeader {
@@ -42,7 +46,6 @@ struct DHTOperationHeader {
   uint8_t reserved;
   uint8_t operation;
   uint8_t status;
-  uint8_t etheraddress[6];
   md5_byte_t key_digest[MD5_DIGEST_LENGTH];
   uint16_t keylen;
   uint16_t valuelen;
@@ -68,6 +71,8 @@ class DHTOperation {
     uint32_t request_duration;
 
     bool digest_is_set;
+
+    EtherAddress src_of_operation;  //this is set by storage layer, taken from src of dht-operation (see dhtprotocol-header)
 
     DHTOperation();
     ~DHTOperation();
@@ -100,6 +105,8 @@ class DHTOperation {
     uint8_t get_replica();
 
     void set_status(uint8_t status);
+
+    void set_src_address_of_operation(uint8_t *ea);
 
     int length();
     int serialize(uint8_t **buffer, uint16_t *len);

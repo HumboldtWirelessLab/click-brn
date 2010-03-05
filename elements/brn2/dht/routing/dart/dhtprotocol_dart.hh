@@ -47,7 +47,7 @@ struct dht_dart_lp_node_entry {
   uint8_t  id_size;
 
   uint8_t  etheraddr[6];
-  uint8_t  id[16];
+  uint8_t  id[MD5_DIGEST_LENGTH];
 
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
@@ -57,8 +57,8 @@ struct dht_dart_routing {
   uint8_t  src_id_size;
   uint8_t  dst_id_size;
 
-  uint8_t  src_id[16];
-  uint8_t  dst_id[16];
+  uint8_t  src_id[MD5_DIGEST_LENGTH];
+  uint8_t  dst_id[MD5_DIGEST_LENGTH];
 
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 

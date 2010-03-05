@@ -35,12 +35,11 @@ CLICK_DECLS
 struct dht_simple_storage_node_info {
   uint8_t  src_id_size;
   uint8_t  reserved;
-  uint8_t  src_id[16];
+  uint8_t  src_id[MD5_DIGEST_LENGTH];
 };
 
 struct dht_simple_storage_data {
   uint32_t move_id;
-  uint8_t  etheraddr[6];
   uint8_t  count_rows;
   uint8_t  reserved;
 };

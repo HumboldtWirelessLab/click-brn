@@ -98,7 +98,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 
   dht_id = get_next_dht_id();
   op->set_id(dht_id);
-  memcpy(op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);   //Set my etheradress as sender
+  op->set_src_address_of_operation(_dht_routing->_me->_ether_addr.data());   //Set my etheradress as sender
 
   for ( uint32_t r = 0; r <= replica_count; r++ ) {
     next = _dht_routing->get_responsibly_replica_node(op->header.key_digest, r);
@@ -138,6 +138,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
             p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length());
             op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
           }
+          DHTProtocol::set_src(p, op->src_of_operation.data());
           p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
           output(0).push(p);
         }
@@ -193,11 +194,14 @@ void DHTStorageSimple::push( int port, Packet *packet )
           if ( _add_node_id ) {
             _op->unserialize(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
 
-            EtherAddress src = EtherAddress(_op->header.etheraddress);
+            EtherAddress src = EtherAddress(DHTProtocol::get_src_data(packet));
             struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(packet);
             _dht_routing->update_node(&src, ni->src_id, ni->src_id_size);
+
+            _op->set_src_address_of_operation(DHTProtocol::get_src_data(packet));
           } else {
             _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+            _op->set_src_address_of_operation(DHTProtocol::get_src_data(packet));
           }
 
           /* Handle core information from the packet */
@@ -274,24 +278,22 @@ void DHTStorageSimple::push( int port, Packet *packet )
               } else {
                 _op->set_reply();
 
-                EtherAddress src = EtherAddress(_op->header.etheraddress);                                                             //safe old soure for reply
-
                 //create packet for dht-reply
                 //TODO: use etheraddr in main DHT-packet-header to set source and keep addr in operation header for lock-node or remove it
                 if ( _add_node_id ) {
                   p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length() + sizeof(struct dht_simple_storage_node_info));
-                  memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
                   _op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),_op->length());
+
                   struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
                   _dht_routing->_me->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
-                  ni->reserved = 0;
+                  ni->reserved = 0;  //not used so set to zero
                 } else {
                   p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, _op->length());
-                  memcpy(_op->header.etheraddress, _dht_routing->_me->_ether_addr.data(), 6);                                          //now i'am the soure of the packet
                   _op->serialize_buffer(DHTProtocol::get_payload(p),_op->length());
                 }
 
-                p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &src, BRN_PORT_DHTSTORAGE);
+                DHTProtocol::set_src(p, _dht_routing->_me->_ether_addr.data());
+                p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &_op->src_of_operation, BRN_PORT_DHTSTORAGE);
                 delete _op;
                 output(0).push(p);
               }

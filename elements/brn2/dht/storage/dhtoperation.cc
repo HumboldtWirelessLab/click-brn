@@ -14,7 +14,6 @@ DHTOperation::DHTOperation()
   value = NULL;
   header.valuelen = 0;
 
-  memset(header.etheraddress,0,sizeof(header.etheraddress));
   memset(header.key_digest,0,sizeof(header.key_digest));
 
   header.status = DHT_STATUS_UNKNOWN;
@@ -187,6 +186,12 @@ DHTOperation::set_value(uint8_t *new_value, uint16_t new_valuelen)
     value = NULL;
     header.valuelen = 0;
   }
+}
+
+void
+DHTOperation::set_src_address_of_operation(uint8_t *ea)
+{
+  src_of_operation = EtherAddress(ea);
 }
 
 int

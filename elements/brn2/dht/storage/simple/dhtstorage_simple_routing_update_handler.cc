@@ -195,7 +195,8 @@ DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
     BRN_DEBUG("Insert moved data");
 
     uint32_t moveid = ntohl(dssd->move_id);
-    EtherAddress src = EtherAddress(dssd->etheraddr);
+
+    EtherAddress src = EtherAddress(DHTProtocol::get_src_data(p));
 
     if ( memcmp(_dht_routing->_me->_ether_addr.data(), src.data(), 6 ) == 0 ) {
       BRN_WARN("The source of the moved data (dht) is me. Some node (maybe me) has a brocken routingtable. Reset rows and try again");

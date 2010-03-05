@@ -37,7 +37,8 @@ DHTProtocolStorageSimple::new_data_packet(EtherAddress *src, int32_t moveID, uin
   dssd->count_rows = countRows;
   dssd->reserved = 0;
   dssd->move_id = htonl(moveID);
-  memcpy(dssd->etheraddr, src->data(),6);
+
+  DHTProtocol::set_src(data_p, src->data());
 
   return(data_p);
 }

@@ -143,12 +143,11 @@ int
 DHTOperationHandler::dht_write(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
-  EtherAddress ea = EtherAddress(op->header.etheraddress);
 
   _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL )
   {
-    if ( ! _row->isLocked(&ea) ) {
+    if ( ! _row->isLocked(&(op->src_of_operation)) ) {
       if ( _row->value != NULL ) delete[] _row->value;
       _row->value = new uint8_t[op->header.valuelen];
       memcpy(_row->value,op->value,op->header.valuelen);
@@ -189,11 +188,10 @@ int
 DHTOperationHandler::dht_remove(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
-  EtherAddress ea = EtherAddress(op->header.etheraddress);
 
   _row = _db->getRow(op->header.key_digest);
   if ( _row != NULL ) {
-    if ( ! _row->isLocked(&ea) ) {         //isLocked returns true if row is not locked or if ea is the source of the lock
+    if ( ! _row->isLocked(&(op->src_of_operation)) ) {         //isLocked returns true if row is not locked or if ea is the source of the lock
       _db->delRow(op->header.key_digest);  //TODO: Errorhandling
       op->header.status = DHT_STATUS_OK;
     } else {
@@ -210,12 +208,11 @@ int
 DHTOperationHandler::dht_lock(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
-  EtherAddress ea = EtherAddress(op->header.etheraddress);
 
   _row = _db->getRow(op->header.key_digest);
 
   if ( _row != NULL ) {
-    if ( _row->lock(&ea, DEFAULT_LOCKTIME) ) {   //lock 1 hour
+    if ( _row->lock(&(op->src_of_operation), DEFAULT_LOCKTIME) ) {   //lock 1 hour
       op->header.status = DHT_STATUS_OK;
     } else {
       op->header.status = DHT_STATUS_KEY_IS_LOCKED;
@@ -233,12 +230,11 @@ int
 DHTOperationHandler::dht_unlock(DHTOperation *op)
 {
   BRNDB::DBrow *_row;
-  EtherAddress ea = EtherAddress(op->header.etheraddress);
 
   _row = _db->getRow(op->header.key_digest);
 
   if ( _row != NULL ) {
-    if ( _row->unlock(&ea) ) {   //lock 1 hour
+    if ( _row->unlock(&(op->src_of_operation)) ) {   //lock 1 hour
       op->header.status = DHT_STATUS_OK;
     } else {
       op->header.status = DHT_STATUS_KEY_IS_LOCKED;  //is locked by other node
