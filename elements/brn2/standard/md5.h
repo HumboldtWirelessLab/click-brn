@@ -139,6 +139,7 @@ typedef struct md5_state_s {
     md5_byte_t buf[64];		/* accumulate block */
 } md5_state_t;
 
+#define MD5_DIGEST_LENGTH 16
 
 class MD5 {
 
