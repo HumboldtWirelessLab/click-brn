@@ -394,7 +394,7 @@ DHTRoutingOmni::send_routetable_request(EtherAddress *dst)
 ****************************** N O D E   F O R   K E Y *+********************************
 ****************************************************************************************/
 DHTnode *
-DHTRoutingOmni::get_responsibly_node(md5_byte_t *key)
+DHTRoutingOmni::get_responsibly_node_for_key(md5_byte_t *key)
 {
   DHTnode *node;
 
@@ -418,8 +418,10 @@ DHTRoutingOmni::get_responsibly_node(md5_byte_t *key)
 }
 
 DHTnode *
-DHTRoutingOmni::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
+DHTRoutingOmni::get_responsibly_node(md5_byte_t *key, int replica_number)
 {
+  if ( replica_number == 0 ) get_responsibly_node_for_key(key);
+
   uint8_t r,r_swap;
   md5_byte_t replica_key[MAX_NODEID_LENTGH];
 
@@ -430,7 +432,7 @@ DHTRoutingOmni::get_responsibly_replica_node(md5_byte_t *key, int replica_number
   for( int i = 0; i < 8; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
   replica_key[0] ^= r_swap;
 
-  return get_responsibly_node(replica_key);
+  return get_responsibly_node_for_key(replica_key);
 }
 
 /****************************************************************************************

@@ -7,7 +7,7 @@ DHTOperation::DHTOperation()
 {
   header.id = 0;
   header.replica = 0;               //DEFAULT: ask one node, so no replica
-  header.reserved = 0;
+  header.hops = 0;
 
   key = NULL;
   header.keylen = 0;

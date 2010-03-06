@@ -21,7 +21,6 @@
 CLICK_DECLS
 
 DHTStorageSimple::DHTStorageSimple():
-  _dht_routing(NULL),
   _dht_key_cache(NULL),
   _check_req_queue_timer(req_queue_timer_hook,this),
   _debug(BrnLogger::DEFAULT),
@@ -36,6 +35,7 @@ DHTStorageSimple::DHTStorageSimple():
   _stats_cache_hits(0)
 #endif
 {
+  _dht_routing == NULL;
 }
 
 DHTStorageSimple::~DHTStorageSimple()
@@ -114,7 +114,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     next_ea = NULL;
     if ( _dht_key_cache != NULL ) next_ea = _dht_key_cache->getEntry(op->header.key_digest, r);
     if ( next_ea == NULL ) {
-        next = _dht_routing->get_responsibly_replica_node(op->header.key_digest, r);
+        next = _dht_routing->get_responsibly_node(op->header.key_digest, r);
         if ( next != NULL ) next_ea = &(next->_ether_addr);
     } else {
       click_chatter("------------------------ CacheHit-----------------------");
@@ -284,7 +284,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
             * Handle Request
             **/
 
-            next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, _op->header.replica);
+            next = _dht_routing->get_responsibly_node(_op->header.key_digest, _op->header.replica);
 
             if ( _dht_routing->is_me(next) )
             {
@@ -444,7 +444,7 @@ DHTStorageSimple::check_queue()
 
         for ( int r = 0; r <= fwd->replica_count; r++ ) {
           if ( ! fwd->have_replica(r) ) {
-            next = _dht_routing->get_responsibly_replica_node(_op->header.key_digest, r);//TODO:handle if next is null
+            next = _dht_routing->get_responsibly_node(_op->header.key_digest, r);//TODO:handle if next is null
 
             _op->header.replica = r;
 

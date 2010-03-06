@@ -60,7 +60,7 @@ int DHTRoutingFalcon::initialize(ErrorHandler *)
 }
 
 /**
- * This version is Chaord-like: a node is responsible for a key if the key is placed between the node and its predecessor
+ * This version is Chord-like: a node is responsible for a key if the key is placed between the node and its predecessor
  */
 
 DHTnode *
@@ -131,8 +131,10 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
 }
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_replica_node(md5_byte_t *key, int replica_number)
+DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key, int replica_number)
 {
+  if ( replica_number == 0 ) return get_responsibly_node_for_key(key);
+
   uint8_t r,r_swap;
   md5_byte_t replica_key[MAX_NODEID_LENTGH];
 
@@ -143,13 +145,13 @@ DHTRoutingFalcon::get_responsibly_replica_node(md5_byte_t *key, int replica_numb
   for( int i = 0; i <= 7; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
   replica_key[0] ^= r_swap;
 
-  return get_responsibly_node(replica_key);
+  return get_responsibly_node_for_key(replica_key);
 }
 
 
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node_for_key(md5_byte_t *key)
 {
   if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);
   return get_responsibly_node_forward(key);

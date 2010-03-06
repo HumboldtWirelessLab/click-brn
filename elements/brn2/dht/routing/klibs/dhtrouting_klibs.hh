@@ -53,8 +53,13 @@ class DHTRoutingKlibs : public DHTRouting
     const char *dhtrouting_name() const { return "DHTRoutingKlibs"; }
     bool replication_support() const { return false; }
     int max_replication() const { return 0; }
-    DHTnode *get_responsibly_node(md5_byte_t *key);
-    DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number);
+  private:
+    DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
+  public:
+    DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
+
+    bool range_query_support() { return false; }
+    void range_query_min_max_id(uint8_t */*min*/, uint8_t */*max*/) {}
 
     int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 

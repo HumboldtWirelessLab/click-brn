@@ -48,9 +48,11 @@ class DHTRouting : public Element
     virtual bool replication_support() const = 0;
     virtual int max_replication() const = 0;
 
-    virtual DHTnode *get_responsibly_node(md5_byte_t *key) = 0;
-    virtual DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number) = 0;
+    virtual DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0) = 0;
     //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid ) = 0;
+
+    virtual bool range_query_support() = 0;
+    virtual void range_query_min_max_id(uint8_t *min, uint8_t *max) = 0;
 
     virtual int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) = 0;
 

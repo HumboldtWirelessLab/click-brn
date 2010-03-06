@@ -158,7 +158,6 @@ class DHTStorageSimple : public DHTStorage
     BRNDB *_db;
     DHTOperationHandler *_dht_op_handler;
 
-    DHTRouting *_dht_routing;
     DHTStorageKeyCache *_dht_key_cache;
 
   private:
@@ -186,6 +185,7 @@ class DHTStorageSimple : public DHTStorage
     int _stats_replies;
     int _stats_timeouts;
     int _stats_cache_hits;
+
   public:
     String stats();
 

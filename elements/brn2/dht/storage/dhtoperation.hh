@@ -42,8 +42,8 @@ CLICK_DECLS
 
 struct DHTOperationHeader {
   uint16_t id;
-  uint8_t replica;
-  uint8_t reserved;
+  uint8_t replica;                          //bitmap of replica
+  uint8_t hops;                             //for stats: hops in overlay-network
   uint8_t operation;
   uint8_t status;
   md5_byte_t key_digest[MD5_DIGEST_LENGTH];

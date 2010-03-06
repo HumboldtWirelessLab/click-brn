@@ -132,7 +132,7 @@ DHTStorageSimpleRoutingUpdateHandler::handle_node_update()
 
     BRN_DEBUG("Row replica: %d",_row->replica);
 
-    next = _dht_routing->get_responsibly_replica_node(_row->md5_key, _row->replica);
+    next = _dht_routing->get_responsibly_node(_row->md5_key, _row->replica);
     if ( ! _dht_routing->is_me(next) ) {
       if ((_row->status == DATA_OK) && (_row->move_id == 0)) {
 
@@ -188,7 +188,7 @@ DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
   uint8_t *data = DHTProtocolStorageSimple::get_data_packet_payload(p);                       //points to first row
   struct db_row_header *rh = (struct db_row_header *)data;
 
-  next = _dht_routing->get_responsibly_replica_node(rh->md5_key, rh->replica);
+  next = _dht_routing->get_responsibly_node(rh->md5_key, rh->replica);
 
   if ( _dht_routing->is_me(next) )
   {
