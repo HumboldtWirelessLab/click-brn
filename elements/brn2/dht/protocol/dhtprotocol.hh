@@ -47,7 +47,6 @@ struct dht_packet_header {
   uint8_t  major_type;
   uint8_t  minor_type;
   uint8_t  src[6];           //since the packet takes several hops in the overlay, this is used to take a direct path to src of the request
-//uint8_t  dst[6];           //TODO: is this really needed
   uint16_t payload_len;
 };
 
@@ -70,11 +69,6 @@ class DHTProtocol {
     static EtherAddress *get_src(Packet *p);
     static uint8_t *get_src_data(Packet *p);
     static int set_src(Packet *p, uint8_t *ea);
-
-    //static EtherAddress *get_dst(Packet *p);
-    //static uint8_t *get_dst_data(Packet *p);
-    //static int set_dst(Packet *p, uint8_t *ea);
-
 };
 
 CLICK_ENDDECLS
