@@ -16,7 +16,11 @@
 #include "elements/brn2/dht/storage/db/db.hh"
 #include "elements/brn2/dht/storage/db/dhtoperationhandler.hh"
 
+#include "dhtstorage_key_cache.hh"
+
 CLICK_DECLS
+
+#define DHT_STORAGE_STATS
 
 #define DEFAULT_LOCKTIME 3600
 
@@ -155,6 +159,7 @@ class DHTStorageSimple : public DHTStorage
     DHTOperationHandler *_dht_op_handler;
 
     DHTRouting *_dht_routing;
+    DHTStorageKeyCache *_dht_key_cache;
 
   private:
 
@@ -174,6 +179,17 @@ class DHTStorageSimple : public DHTStorage
     bool isFinalTimeout(DHTOperationForward *fwdop);
 
     bool _add_node_id; //NB: whether the Node id of the src of a request is add to the request. SHould this be default ? ID to DHTHeader ??
+
+    /* Stats */
+#ifdef DHT_STORAGE_STATS
+    int _stats_requests;
+    int _stats_replies;
+    int _stats_timeouts;
+    int _stats_cache_hits;
+  public:
+    String stats();
+
+#endif
 };
 
 CLICK_ENDDECLS

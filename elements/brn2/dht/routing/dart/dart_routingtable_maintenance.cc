@@ -107,7 +107,7 @@ DartRoutingTableMaintenance::table_maintenance()
     _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
     _drt->_validID = true;
 
-    _drt->update_callback(DART_UPDATE_ID);      //TEST: update my own id
+    _drt->update_callback(DART_UPDATE_ID);      //update my own id
 
   } else if ( _drt->_neighbours.size() > 0 ) {  //I've neighbours, so check
     if ( ! _drt->_validID ) {                   //i've no ID, so ask best neighbour for ID(-Sharing)
@@ -198,7 +198,7 @@ DartRoutingTableMaintenance::handle_assign(Packet *packet)
   DartFunctions::copy_id(_drt->_me, &dst);
   _drt->_validID = true;
 
-  _drt->update_node(&src);
+  _drt->update_node(&src);                //update src, which has a new id
   _drt->update_callback(DART_UPDATE_ID);  //Test: update my own address
 
   packet->kill();

@@ -22,12 +22,19 @@ CLICK_DECLS
 
 DHTStorageSimple::DHTStorageSimple():
   _dht_routing(NULL),
+  _dht_key_cache(NULL),
   _check_req_queue_timer(req_queue_timer_hook,this),
   _debug(BrnLogger::DEFAULT),
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
   _max_req_retries(DEFAULT_MAX_RETRIES),
   _add_node_id(false)
+#ifdef DHT_STORAGE_STATS
+ ,_stats_requests(0),
+  _stats_replies(0),
+  _stats_timeouts(0),
+  _stats_cache_hits(0)
+#endif
 {
 }
 
@@ -52,6 +59,7 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "DB",cpkM+cpkP, cpElement, &_db,
     "DHTROUTING", cpkN, cpElement, &_dht_routing,
+    "DHTKEYCACHE", cpkN, cpElement, &_dht_key_cache,
     "ADDNODEID", cpkN, cpBool, &_add_node_id,
     "DEBUG", cpkN, cpInteger, &_debug,
     cpEnd) < 0)
@@ -79,6 +87,7 @@ uint32_t
 DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOperation*), void *info_obj )
 {
   DHTnode *next;
+  EtherAddress *next_ea;
   DHTOperationForward *fwd_op;
   WritablePacket *p;
   uint32_t dht_id, replica_count;
@@ -101,16 +110,25 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
   op->set_src_address_of_operation(_dht_routing->_me->_ether_addr.data());   //Set my etheradress as sender
 
   for ( uint32_t r = 0; r <= replica_count; r++ ) {
-    next = _dht_routing->get_responsibly_replica_node(op->header.key_digest, r);
+
+    next_ea = NULL;
+    if ( _dht_key_cache != NULL ) next_ea = _dht_key_cache->getEntry(op->header.key_digest, r);
+    if ( next_ea == NULL ) {
+        next = _dht_routing->get_responsibly_replica_node(op->header.key_digest, r);
+        if ( next != NULL ) next_ea = &(next->_ether_addr);
+    } else {
+      click_chatter("------------------------ CacheHit-----------------------");
+    }
+
     op->header.replica = r;
 
-    if ( next == NULL )
+    if ( next_ea == NULL )
     {
       BRN_DEBUG("No next node!");
       fwd_op->replicaList[r].status = DHT_STATUS_KEY_NOT_FOUND;
       fwd_op->set_replica_reply(r);
     } else {
-      if ( _dht_routing->is_me(next) )
+      if ( _dht_routing->is_me(next_ea) )
       {
         status = _dht_op_handler->handle_dht_operation(op);
 
@@ -139,7 +157,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
             op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
           }
           DHTProtocol::set_src(p, op->src_of_operation.data());
-          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
+          p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), next_ea, BRN_PORT_DHTSTORAGE);
           output(0).push(p);
         }
       }
@@ -222,10 +240,16 @@ void DHTStorageSimple::push( int port, Packet *packet )
               {
                 BRN_DEBUG("Found entry for Operation.");
 
+                if ( _dht_key_cache != NULL ) {
+                  _dht_key_cache->addEntry(_op->header.key_digest, _op->header.replica, DHTProtocol::get_src_data(packet));
+                  //click_chatter("Add EtherAddress: %s",EtherAddress(DHTProtocol::get_src_data(packet)).unparse().c_str());
+                }
+
                 fwd->replicaList[_op->header.replica].status = _op->header.status;
                 fwd->replicaList[_op->header.replica].set_value(_op->value, _op->header.valuelen);
 
                 fwd->set_replica_reply(_op->header.replica);
+
 
                 if ( fwd->have_all_replicas() ) {
                   Timestamp now = Timestamp::now();
@@ -459,8 +483,24 @@ DHTStorageSimple::req_queue_timer_hook(Timer *, void *f)
 /************************** H A N D L E R *********************************/
 /**************************************************************************/
 
+#ifdef DHT_STORAGE_STATS
+String
+DHTStorageSimple::stats()
+{
+  StringAccum sa;
+
+  sa << "No. Request: " << _stats_requests;
+  sa << "\nNo. Replies: " << _stats_replies;
+  sa << "\nNo. Timeouts: " << _stats_timeouts;
+  sa << "\nNo. CacheHits: " << _stats_cache_hits;
+
+  return sa.take_string();
+}
+#endif
+
 enum {
-  H_DB_SIZE
+  H_DB_SIZE,
+  H_DHT_STORAGE_STATS
 };
 
 static String
@@ -485,6 +525,13 @@ read_param(Element *e, void *thunk)
                   sa << "Moved rows: " << moved;
                   return ( sa.take_string() );
                 }
+#ifdef DHT_STORAGE_STATS
+    case H_DHT_STORAGE_STATS:
+                {
+//                  return dhtstorage_simple->read_stats();
+                  break;
+                }
+#endif
     default: return String();
   }
 }
@@ -493,6 +540,9 @@ void
 DHTStorageSimple::add_handlers()
 {
   add_read_handler("db_size", read_param , (void *)H_DB_SIZE);
+#ifdef DHT_STORAGE_STATS
+  add_read_handler("stats", read_param , (void *)H_DHT_STORAGE_STATS);
+#endif
 }
 #include <click/vector.cc>
 template class Vector<DHTStorageSimple::DHTOperationForward*>;

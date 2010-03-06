@@ -50,11 +50,7 @@ class DHTRouting : public Element
 
     virtual DHTnode *get_responsibly_node(md5_byte_t *key) = 0;
     virtual DHTnode *get_responsibly_replica_node(md5_byte_t *key, int replica_number) = 0;
-    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid) = 0;
-
-    //virtual DHTnode *get_responsibly_node(uint8_t *key, int keylen) = 0;
-    //virtual DHTnode *get_responsibly_replica_node_(md5_byte_t *key, int keylen, int replica_number) = 0;
-    //virtual Vector<DHTnode *> get_all_responsibly_nodes(uint8_t *key, int keylen) = 0;
+    //virtual Vector<DHTnode *> get_all_responsibly_nodes( md5_keyid ) = 0;
 
     virtual int update_node(EtherAddress *ea, md5_byte_t *key, int keylen) = 0;
 
@@ -74,7 +70,7 @@ class DHTRouting : public Element
       }
     }
 
-    bool is_me(EtherAddress *addr) { return ( *addr != _me->_ether_addr ); }
+    bool is_me(EtherAddress *addr) { return ( *addr == _me->_ether_addr ); }
     bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
     bool is_me(DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
 
