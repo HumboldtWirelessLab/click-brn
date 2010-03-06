@@ -9,6 +9,8 @@
 
 CLICK_DECLS
 
+#define DARTMAXKEXCACHETIME 1000
+
 class DartIDCache : public Element {
 
  public:

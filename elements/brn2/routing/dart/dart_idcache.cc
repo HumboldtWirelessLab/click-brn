@@ -18,6 +18,15 @@ DartIDCache::~DartIDCache()
 DartIDCache::IDCacheEntry *
 DartIDCache::addEntry(EtherAddress *ea, uint8_t *id, int id_len)
 {
+  for(int i = 0; i < _idcache.size(); i++) {                         //search
+    if ( memcmp( ea->data(), _idcache[i]->_ea.data(), 6 ) == 0 ) {   //if found
+      memcpy(_idcache[i]->_nodeid, id, id_len);                           //update id
+      _idcache[i]->_id_length = id_len;
+      _idcache[i]->_time = Timestamp::now();
+      return _idcache[i];
+    }
+  }
+
   DartIDCache::IDCacheEntry *n = new IDCacheEntry(ea,id,id_len);
   _idcache.push_back(n);
 
@@ -27,8 +36,19 @@ DartIDCache::addEntry(EtherAddress *ea, uint8_t *id, int id_len)
 DartIDCache::IDCacheEntry *
 DartIDCache::getEntry(EtherAddress *ea)
 {
-  for(int i = 0; i < _idcache.size(); i++)
-    if ( memcmp(_idcache[i]->_ea.data(), ea->data(), 6) == 0 ) return _idcache[i];
+  Timestamp now = Timestamp::now();
+
+  for(int i = 0; i < _idcache.size(); i++) {                           //search
+    if ( memcmp(_idcache[i]->_ea.data(), ea->data(), 6) == 0 ) {       //if found
+      if ( (now - _idcache[i]->_time).msec1() < DARTMAXKEXCACHETIME ) { //check age, if not too old
+        return _idcache[i];                                       //give back
+      } else {                                                    //too old ?
+        delete _idcache[i];
+        _idcache.erase(_idcache.begin() + i);                     //delete !!
+        return NULL;                                              //return NULL
+      }
+    }
+  }
 
   return NULL;
 }
