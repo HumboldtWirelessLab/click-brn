@@ -208,7 +208,6 @@ void
 NHopCluster::send_request()
 {
   WritablePacket *p_brn, *p;
-  click_ether *ether;
   uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   p = NHopClusterProtocol::new_request(1, 0, 0);
@@ -223,7 +222,6 @@ void
 NHopCluster::send_notify()
 {
   WritablePacket *p_brn, *p;
-  click_ether *ether;
   uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   p = NHopClusterProtocol::new_notify(&_cluster_head._ether_addr, 1, 0, 0);
@@ -304,7 +302,6 @@ NHopCluster::forward(Packet *p)
 {
   WritablePacket *p_brn;
   struct nhopcluster_managment *mgt;
-  click_ether *ether;
   uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   mgt = NHopClusterProtocol::get_mgt(p, 0);

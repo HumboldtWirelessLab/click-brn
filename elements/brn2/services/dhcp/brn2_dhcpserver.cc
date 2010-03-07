@@ -36,6 +36,8 @@
 #include "brn2_dhcpserver.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn2/dht/storage/rangequery/ip_rangequery.hh"
+
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "dhcpprotocol.hh"
@@ -873,40 +875,42 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
     BRN_DEBUG("BRN2DHCPServer: neue IP");
 
     IPAddress vlan_net_address;
+    IPAddress vlan_net_mask;
 
     if ( vlanid == 0 ) {
       vlan_net_address = _net_address;
+      vlan_net_mask = _subnet_mask;
     } else {
       BRN2DHCPSubnetList::DHCPSubnet *sn = _dhcpsubnetlist->getSubnetByVlanID(vlanid);
       if ( sn != NULL ) {
         vlan_net_address = sn->_net_address;
+        vlan_net_mask = sn->_subnet_mask;
       } else {
         BRN_WARN("No Subnet for vlanid. Using default (for vlan 0). Should this be handled in another way.");
         vlan_net_address = _net_address;
+        vlan_net_mask = _subnet_mask;
       }
     }
 
+    /*IPRangeQuery ipqr = IPRangeQuery(vlan_net_address, vlan_net_mask);
+
+    uint8_t min_id[16], max_id[16];
+    if ( _dht_storage->range_query_support() )
+    */
     new_ip = ntohl(vlan_net_address.addr());
     new_ip = new_ip + (int) client_info->_chaddr[5] + 5;  //take hw addr plus 5. Shit! find better solution
     new_ip = htonl(new_ip);
 
-    IPAddress _tmp_ip(new_ip);
-
-    BRN_DEBUG("BRN2DHCPServer: IP: %s",_tmp_ip.unparse().c_str());
+    BRN_DEBUG("BRN2DHCPServer: IP: %s",IPAddress(new_ip).unparse().c_str());
 
     memcpy(&(client_info->_ciaddr),&new_ip,4);
   }
   else
   {
     memcpy(&new_ip,&(client_info->_ciaddr),4);
-    new_ip = ntohl(new_ip);
+    new_ip = htonl(ntohl(new_ip) + 1);
 
-    new_ip += 1;
-
-    new_ip = htonl(new_ip);
-
-    IPAddress _tmp_ip(new_ip);
-    BRN_DEBUG("BRN2DHCPServer: IP: %s",_tmp_ip.unparse().c_str());
+    BRN_DEBUG("BRN2DHCPServer: IP: %s",IPAddress(new_ip).unparse().c_str());
 
     memcpy(&(client_info->_ciaddr),&new_ip,4); 
   }

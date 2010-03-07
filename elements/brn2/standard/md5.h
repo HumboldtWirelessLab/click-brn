@@ -464,6 +464,13 @@ class MD5 {
     return String(buf, 17);
   }
 
+/*  static void inc()
+  {
+    int overflow = 0;
+    for ( int i = MD5_DIGEST_LENGTH; i >= 0; i-- ) {
+     
+  }
+*/
 };
 
 CLICK_ENDDECLS

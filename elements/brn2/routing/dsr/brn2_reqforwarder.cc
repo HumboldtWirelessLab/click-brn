@@ -122,7 +122,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 {
     BRN2Device *indev;
     uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(p_in);
-    EtherAddress *device_addr;
+    //EtherAddress *device_addr;
 
     BRN_DEBUG("* receiving dsr_rreq packet (packet_anno %s)", _me->getDeviceByNumber(devicenumber)->getDeviceName().c_str());
 
@@ -353,7 +353,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         }
 
         indev = _me->getDeviceByNumber(devicenumber);
-        const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+        //const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
         BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), (BRNPacketAnno::udevice_anno(p_in)).c_str());
 

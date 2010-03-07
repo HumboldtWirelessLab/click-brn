@@ -155,7 +155,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
         if ( info_func == NULL ) {                                                     //CALLBACK is NULL so operation has to be handle locally
           BRN_DEBUG("Request for local, but responsible is foreign node !");
 #ifdef DHT_STORAGE_STATS
-              _stats_replies++;
+          _stats_replies++;
 #endif
           fwd_op->replicaList[r].status = DHT_STATUS_KEY_NOT_FOUND;
           fwd_op->set_replica_reply(r);
@@ -178,7 +178,7 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     _fwd_queue.push_back(fwd_op);
 
     int time2next = get_time_to_next();
-    if ( time2next < 10 ) time2next = 10;
+    if ( time2next < 10 ) time2next = 10;  //TODO:
     _check_req_queue_timer.schedule_after_msec(time2next);
   }
 
