@@ -112,6 +112,7 @@ class DHTOperation {
     int serialize(uint8_t **buffer, uint16_t *len);
     int serialize_buffer(uint8_t *buffer, uint16_t maxlen);
     int unserialize(uint8_t *buffer, uint16_t len);
+    static void inc_hops_in_header(uint8_t *buffer, uint16_t len);
 
   private:
 

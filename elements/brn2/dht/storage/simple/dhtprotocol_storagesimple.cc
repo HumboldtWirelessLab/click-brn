@@ -27,6 +27,66 @@
 
 CLICK_DECLS
 
+/**
+ * Funtions for DHTOperation packets (creation, forward,...)
+ */
+
+WritablePacket *
+DHTProtocolStorageSimple::new_dht_operation_packet(DHTOperation *op, DHTnode *src, EtherAddress *dst, bool _add_node_id)
+{
+  WritablePacket *p;
+
+  if ( _add_node_id ) {
+    p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length() + sizeof(struct dht_simple_storage_node_info));
+    op->serialize_buffer(&((DHTProtocol::get_payload(p))[sizeof(struct dht_simple_storage_node_info)]),op->length());
+    struct dht_simple_storage_node_info *ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(p);
+    src->get_nodeid((md5_byte_t *)ni->src_id, &(ni->src_id_size));
+    ni->reserved = 0;
+  } else {
+    p = DHTProtocol::new_dht_packet(STORAGE_SIMPLE, DHT_STORAGE_SIMPLE_MESSAGE, op->length());
+    op->serialize_buffer(DHTProtocol::get_payload(p),op->length());
+  }
+
+  DHTProtocol::set_src(p, op->src_of_operation.data());
+  p = DHTProtocol::push_brn_ether_header(p,&(src->_ether_addr), dst, BRN_PORT_DHTSTORAGE);
+
+  return p;
+}
+
+struct dht_simple_storage_node_info *
+DHTProtocolStorageSimple::unpack_dht_operation_packet(Packet *packet, DHTOperation *_op, EtherAddress *src, bool _add_node_id)
+{
+  struct dht_simple_storage_node_info *ni = NULL;
+  if ( _add_node_id ) {
+    _op->unserialize(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
+
+    *src = EtherAddress(DHTProtocol::get_src_data(packet));
+    ni = (struct dht_simple_storage_node_info *)DHTProtocol::get_payload(packet);
+
+    _op->set_src_address_of_operation(DHTProtocol::get_src_data(packet));
+  } else {
+    _op->unserialize(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+    _op->set_src_address_of_operation(DHTProtocol::get_src_data(packet));
+  }
+
+  return ni;
+}
+
+void
+DHTProtocolStorageSimple::inc_hops_of_dht_operation_packet(Packet *packet, bool _add_node_id)
+{
+  if ( _add_node_id )
+    DHTOperation::inc_hops_in_header(&((DHTProtocol::get_payload(packet))[sizeof(struct dht_simple_storage_node_info)]),
+                                        DHTProtocol::get_payload_len(packet) - sizeof(struct dht_simple_storage_node_info));
+  else
+    DHTOperation::inc_hops_in_header(DHTProtocol::get_payload(packet),DHTProtocol::get_payload_len(packet));
+}
+
+
+/**
+ * Functions for handling packets during data transfer coused by routing-table update
+ */
+
 WritablePacket *
 DHTProtocolStorageSimple::new_data_packet(EtherAddress *src, int32_t moveID, uint8_t countRows, uint16_t data_size)
 {

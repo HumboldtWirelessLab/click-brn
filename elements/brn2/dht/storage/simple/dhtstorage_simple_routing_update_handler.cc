@@ -79,9 +79,6 @@ int DHTStorageSimpleRoutingUpdateHandler::initialize(ErrorHandler *)
 
 void DHTStorageSimpleRoutingUpdateHandler::push( int port, Packet *packet )
 {
-  DHTnode *next;
-  WritablePacket *p;
-
   if ( _dht_routing != NULL )   //use dht-routing, ask routing for next node
   {
     BRN_DEBUG("STORAGE PUSH");

@@ -25,6 +25,11 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn2/dht/storage/dhtoperation.hh"
+#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+
 #define DHT_STORAGE_SIMPLE_MESSAGE         1
 #define DHT_STORAGE_SIMPLE_MOVEDDATA       2
 #define DHT_STORAGE_SIMPLE_ACKDATA         3
@@ -48,6 +53,16 @@ class DHTProtocolStorageSimple {
 
   public:
 
+    /**
+     * Funtions for DHTOperation packets (creation, forward,...)
+    */
+    static WritablePacket *new_dht_operation_packet(DHTOperation *op, DHTnode *src, EtherAddress *dst, bool _add_node_id);
+    static struct dht_simple_storage_node_info *unpack_dht_operation_packet(Packet *packet, DHTOperation *op, EtherAddress *src, bool _add_node_id);
+    static void inc_hops_of_dht_operation_packet(Packet *packet, bool _add_node_id);
+
+    /**
+     * Functions for handling packets during data transfer coused by routing-table update
+    */
     static WritablePacket *new_data_packet(EtherAddress *src, int32_t moveID, uint8_t countRows, uint16_t data_size);
     static uint8_t *get_data_packet_payload(Packet *p);
     static struct dht_simple_storage_data *get_data_packet_header(Packet *p);

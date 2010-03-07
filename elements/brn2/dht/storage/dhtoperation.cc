@@ -247,6 +247,15 @@ DHTOperation::unserialize(uint8_t *buffer, uint16_t len)  //TODO: hton for lens
 }
 
 void
+DHTOperation::inc_hops_in_header(uint8_t *buffer, uint16_t len)
+{
+  if ( buffer == NULL || SERIALIZE_STATIC_SIZE > len ) return;
+
+  struct DHTOperationHeader *h = (struct DHTOperationHeader*)buffer;
+  h->hops++;
+}
+
+void
 DHTOperation::set_request()
 {
   header.operation &= (~(uint8_t)OPERATION_REPLY);

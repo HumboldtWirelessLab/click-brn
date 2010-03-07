@@ -183,11 +183,13 @@ class DHTStorageSimple : public DHTStorage
 #ifdef DHT_STORAGE_STATS
     int _stats_requests;
     int _stats_replies;
+    int _stats_retries;
     int _stats_timeouts;
     int _stats_cache_hits;
+    int _stats_hops_sum;
 
   public:
-    String stats();
+    String read_stats();
 
 #endif
 };
