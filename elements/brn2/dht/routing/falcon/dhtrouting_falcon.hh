@@ -41,15 +41,15 @@ class DHTRoutingFalcon : public DHTRouting
     int max_replication() const { return FALCON_MAX_REPLICA; }
 
   private:
+    DHTnode *get_responsibly_node_backward(md5_byte_t *key);
+    DHTnode *get_responsibly_node_forward(md5_byte_t *key);
     DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
+
   public:
     DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
 
-    DHTnode *get_responsibly_node_backward(md5_byte_t *key);
-    DHTnode *get_responsibly_node_forward(md5_byte_t *key);
-
-    bool range_query_support() { return false; }
-    void range_query_min_max_id(uint8_t */*min*/, uint8_t */*max*/) {}
+    bool range_query_support() { return true; }
+    void range_query_min_max_id(uint8_t *min, uint8_t *max);
 
     int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 

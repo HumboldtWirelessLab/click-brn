@@ -39,7 +39,6 @@
 #define MODE_READ_NAME   4
 #define MODE_REMOVE_NAME 5
 
-
 CLICK_DECLS
 
 
@@ -70,6 +69,9 @@ class BRN2DHCPServer : public Element {
 
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
+
+    IPAddress _subnet_ip;
+    IPAddress _subnet_mask;
 
     String name;
 
@@ -142,6 +144,7 @@ class BRN2DHCPServer : public Element {
   void find_client_ip(DHCPClientInfo *client_info, uint16_t vlan_id);
   uint32_t find_lease(void);
   uint16_t getVlanID(EtherAddress ea);
+  void setSubnet(DHCPClientInfo *client_info, uint16_t vlanid);
 
   //
   //member

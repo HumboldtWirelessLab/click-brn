@@ -148,14 +148,25 @@ DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key, int replica_number)
   return get_responsibly_node_for_key(replica_key);
 }
 
-
-
 DHTnode *
 DHTRoutingFalcon::get_responsibly_node_for_key(md5_byte_t *key)
 {
   if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);
   return get_responsibly_node_forward(key);
 }
+
+void
+DHTRoutingFalcon::range_query_min_max_id(uint8_t *min, uint8_t *max)
+{
+  if ( _responsible == FALCON_RESPONSIBLE_CHORD ) {
+    memcpy( min, _frt->predecessor, 16 );
+    memcpy( max, _frt->_me, 16 );
+  } else {
+    memcpy( min, _frt->_me, 16 );
+    memcpy( max, _frt->successor, 16 );
+  }
+}
+
 
 /*************************************************************************************************/
 /******************************** C A L L B A C K ************************************************/
