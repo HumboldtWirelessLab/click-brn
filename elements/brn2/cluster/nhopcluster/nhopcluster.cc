@@ -69,7 +69,7 @@ NHopCluster::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
        return -1;
 
-  _cluster_head = ClusterHead(_node_identity->getMainAddress(), 0);
+  _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
 
   return 0;
 }
@@ -151,7 +151,7 @@ NHopCluster::timer_hook()
       _nhop_timer.schedule_after_msec(5000);
       break;
     case NHOP_MODE_REQUEST:
-      _cluster_head = ClusterHead(_node_identity->getMainAddress(), 0);
+      _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
       _mode = NHOP_MODE_NOTIFY;
       _cluster_head_selected = true;
       send_notify();
@@ -212,7 +212,7 @@ NHopCluster::send_request()
 
   p = NHopClusterProtocol::new_request(1, 0, 0);
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMainAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
   output(1).push(p_brn);
 
   _send_req++;
@@ -226,7 +226,7 @@ NHopCluster::send_notify()
 
   p = NHopClusterProtocol::new_notify(&_cluster_head._ether_addr, 1, 0, 0);
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMainAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
   output(1).push(p_brn);
 
   _send_notification++;
@@ -308,7 +308,7 @@ NHopCluster::forward(Packet *p)
   mgt->hops++;
 
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance - mgt->hops, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMainAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
   output(1).push(p_brn);
 }
 

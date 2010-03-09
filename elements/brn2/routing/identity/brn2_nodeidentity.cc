@@ -6,12 +6,14 @@
 #include <click/straccum.hh>
 
 #include <elements/brn2/standard/brnaddressinfo.hh>
-//#include "elements/brn/common.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _debug(/*BrnLogger::DEFAULT*/0)
+  : _debug(BrnLogger::DEFAULT),
+    _master_device_id(-1),
+    _service_device_id(-1)
 {
 }
 
@@ -31,24 +33,36 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     }
     else {
-/*    click_chatter("Device: %s EtherAddress: %s Type: %s",
-                    brn_device->getDeviceName().c_str(),
-                    brn_device->getEtherAddress()->unparse().c_str(),
-                    brn_device->getDeviceType().c_str());
-*/
       brn_device->setDeviceNumber(no_dev);
 
-      if ( no_dev == 0 ) {
-        _nodename = brn_device->getEtherAddress()->unparse();
+      if ( brn_device->is_master_device() ) {
         _master_device = brn_device;
-        _master_device_id = 0;
+        _master_device_id = no_dev;
+        _nodename = brn_device->getEtherAddress()->unparse();
         MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
                             strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
+      }
+
+      if ( brn_device->is_service_device() ) {
+        _service_device = brn_device;
+        _service_device_id = no_dev;
       }
 
       no_dev++;
       _node_devices.push_back(brn_device);
     }
+  }
+
+  if ( _master_device_id == -1 ) {
+    BRN_WARN("No master device: use 0 for master");
+    _master_device = _node_devices[0];
+    _master_device_id = 0;
+  }
+
+  if ( _service_device_id == -1 ) {
+    BRN_WARN("No service device: use 0 for service");
+    _service_device = _node_devices[0];
+    _service_device_id = 0;
   }
 
   return 0;
@@ -93,11 +107,19 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
   return NULL;
 }
 
-
 const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
-  BRN2Device *dev = getDeviceByNumber(0);
-  return dev->getEtherAddress();
+  return _master_device->getEtherAddress();
+}
+
+const EtherAddress *
+BRN2NodeIdentity::getMasterAddress() {
+  return _master_device->getEtherAddress();
+}
+
+const EtherAddress *
+BRN2NodeIdentity::getServiceAddress() {
+  return _service_device->getEtherAddress();
 }
 
 //-----------------------------------------------------------------------------

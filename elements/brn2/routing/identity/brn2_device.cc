@@ -11,7 +11,9 @@ CLICK_DECLS
 
 BRN2Device::BRN2Device()
   : _debug(BrnLogger::DEFAULT),
-    device_number(0)
+    device_number(0),
+    is_service_dev(false),
+    is_master_dev(false)
 {
 }
 
@@ -28,6 +30,8 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
       "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
+      "SERVICEDEVICE", cpkP, cpBool, &is_service_dev,
+      "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
       cpEnd) < 0)
     return -1;
 

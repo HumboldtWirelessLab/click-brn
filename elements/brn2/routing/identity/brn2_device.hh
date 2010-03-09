@@ -92,8 +92,16 @@ class BRN2Device : public Element {
     String device_type_string;
     uint32_t device_type;
     uint8_t device_number;
+
+    bool is_service_dev;
+    bool is_master_dev;
+
     uint32_t getTypeIntByString(String type);
     String getTypeStringByInt(uint32_t type);
+
+  public:
+    bool is_service_device() { return is_service_dev;}
+    bool is_master_device() { return is_master_dev;}
 };
 
 CLICK_ENDDECLS

@@ -67,10 +67,13 @@ class BRN2NodeIdentity : public Element {
   int countDevices() { return _node_devices.size(); }
   BRN2Device *getDeviceByNumber(uint8_t);
   BRN2Device *getDeviceByIndex(uint8_t);
-  const EtherAddress *getMainAddress();
+
+  const EtherAddress *getMainAddress() CLICK_DEPRECATED;
+  const EtherAddress *getMasterAddress();
+  const EtherAddress *getServiceAddress();
 
 //  void setNodeName(String name);
-  String getNodeName() { return getMainAddress()->unparse();}
+  String getNodeName() { return getMasterAddress()->unparse();}
 //  void setMasterDeviceName(String name);
 //  void setMasterDeviceID(int id);
   md5_byte_t *getNodeID() { return _node_id; };
@@ -81,11 +84,14 @@ class BRN2NodeIdentity : public Element {
   //
   //member
   //
-  String _nodename;      //name of node. if not set, then etheraddr of _master_device is the name
-  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set, then the first device is master
-  int _master_device_id; //id of master device
-
+  String _nodename;           //name of node. if not set, then etheraddr of _master_device is the name
   md5_byte_t _node_id[16];  //md5 sum of master addr (nodeid)
+
+  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set, then the first device is master
+  int _master_device_id;      //id of master device
+
+  BRN2Device* _service_device;
+  int _service_device_id;
 
 };
 

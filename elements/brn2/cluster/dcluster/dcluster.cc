@@ -68,7 +68,7 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
   id = id * 256 + ((uint8_t*)md5_id)[2];
   id = id * 256 + ((uint8_t*)md5_id)[3];
 
-  _my_info = ClusterNodeInfo(_node_identity->getMainAddress(), id, 0);
+  _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), id, 0);
   _cluster_head = &_my_info;
 
   _max_round = new ClusterNodeInfo[_max_distance];
