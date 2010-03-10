@@ -66,7 +66,7 @@ BRNSetGateway::configure (Vector<String> &conf, ErrorHandler *errh) {
     return errh->error("No element of type BRNGateway specified.");
   }
 
-  if (_link_table->cast("BrnLinkTable") == 0) {
+  if (_link_table->cast("Brn2LinkTable") == 0) {
     return errh->error("No element of type BrnLinkTable specified.");
   }
 
