@@ -54,15 +54,17 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   }
 
   if ( _master_device_id == -1 ) {
-    BRN_WARN("No master device: use 0 for master");
     _master_device = _node_devices[0];
     _master_device_id = 0;
+    //!! First set the device, than print debug !!//
+    BRN_WARN("No master device: use 0 for master");
   }
 
   if ( _service_device_id == -1 ) {
-    BRN_WARN("No service device: use 0 for service");
     _service_device = _node_devices[0];
     _service_device_id = 0;
+    //!! First set the device, than print debug !!//
+    BRN_WARN("No service device: use 0 for service");
   }
 
   return 0;
