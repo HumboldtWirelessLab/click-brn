@@ -289,6 +289,10 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));  //TODO: is a copy
   ether->ether_type = htons(ETHERTYPE_BRN);                //TODO: CHECK: this is important ??
   // ouput packet
+  BRNPacketAnno::set_src_ether_anno(p_out,me);                        //TODO: CHECK
+  BRNPacketAnno::set_dst_ether_anno(p_out,next);
+  BRNPacketAnno::set_ethertype_anno(p_out,ETHERTYPE_BRN);
+
   output(0).push(p_out);
 }
 

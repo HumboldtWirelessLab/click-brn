@@ -87,10 +87,10 @@ BRNGatewayEncap::push(int port, Packet *p) {
    	ether_new->ether_type = htons(ETHERTYPE_BRN);
 
    	// copy ethernet addess
-   	//memcpy(ether_new->ether_shost, ether->ether_shost, 6);
-    //memcpy(ether_new->ether_dhost, ether->ether_dhost, 6);
-   	memcpy(ether_new->ether_dhost, &ether, sizeof(ether.ether_dhost) +
-                                          sizeof(ether.ether_shost));
+   memcpy(ether_new->ether_shost, ether.ether_dhost, 6);
+   memcpy(ether_new->ether_dhost, ether.ether_shost, 6);
+   //	memcpy(ether_new->ether_dhost, &ether, sizeof(ether.ether_dhost) +
+    //                                      sizeof(ether.ether_shost));
 
 		// set annotation
     q->set_ether_header(ether_new);

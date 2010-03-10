@@ -173,7 +173,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     metric_of_route = 1;  //Don't care about the metric. Just set to 1 to mark it available
 
   } else {
-    BRN_DEBUG(" query route");
+    BRN_DEBUG(" query route: %s (src) to %s (dst)",src_addr.unparse().c_str(),dst_addr.unparse().c_str());
     _link_table->query_route( src_addr, dst_addr, route );
     metric_of_route = _link_table->get_route_metric(route);
   }

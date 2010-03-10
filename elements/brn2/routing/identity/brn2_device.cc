@@ -30,8 +30,8 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
       "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
-      "SERVICEDEVICE", cpkP, cpBool, &is_service_dev,
-      "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
+      "SERVICEDEVICE", 0, cpBool, &is_service_dev,
+      "MASTERDEVICE", 0, cpBool, &is_master_dev,
       cpEnd) < 0)
     return -1;
 

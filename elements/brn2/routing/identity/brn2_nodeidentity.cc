@@ -33,23 +33,33 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     }
     else {
-      brn_device->setDeviceNumber(no_dev);
-
-      if ( brn_device->is_master_device() ) {
-        _master_device = brn_device;
-        _master_device_id = no_dev;
-        _nodename = brn_device->getEtherAddress()->unparse();
-        MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
-                            strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
-      }
-
-      if ( brn_device->is_service_device() ) {
-        _service_device = brn_device;
-        _service_device_id = no_dev;
-      }
-
-      no_dev++;
+      brn_device->setDeviceNumber(no_dev++);
       _node_devices.push_back(brn_device);
+    }
+  }
+
+  return 0;
+}
+
+int
+BRN2NodeIdentity::initialize(ErrorHandler *)
+{
+  BRN2Device *brn_device;
+
+  for ( int i = 0; i < _node_devices.size(); i++ ) {
+    brn_device = _node_devices[i];
+
+    if ( brn_device->is_master_device() ) {
+      _master_device = brn_device;
+      _master_device_id = brn_device->getDeviceNumber();
+      _nodename = brn_device->getEtherAddress()->unparse();
+      MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
+                          strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
+    }
+
+    if ( brn_device->is_service_device() ) {
+      _service_device = brn_device;
+      _service_device_id = brn_device->getDeviceNumber();
     }
   }
 
@@ -70,12 +80,6 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-int
-BRN2NodeIdentity::initialize(ErrorHandler *)
-{
-  return 0;
-}
-
 /* returns true if the given ethernet address belongs to this node (e.g. wlan-dev)*/
 bool
 BRN2NodeIdentity::isIdentical(EtherAddress *e)
@@ -85,19 +89,16 @@ BRN2NodeIdentity::isIdentical(EtherAddress *e)
 
 int
 BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
-  BRN2Device *dev;
-
-  for ( int i = 0; i < _node_devices.size(); i++ ) {
-    dev = _node_devices[i];
-    if ( *e == *(dev->getEtherAddress()) ) return i;
-  }
+  for ( int i = 0; i < _node_devices.size(); i++ )
+    if ( *e == *(_node_devices[i]->getEtherAddress()) ) return _node_devices[i]->getDeviceNumber();
 
   return -1;
 }
 
 BRN2Device *
 BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
-  if ( num < _node_devices.size() ) return _node_devices[num];
+  for ( int i = 0; i < _node_devices.size(); i++ )
+    if ( num == _node_devices[i]->getDeviceNumber() ) return _node_devices[i];
 
   return NULL;
 }
