@@ -279,7 +279,9 @@ class Timer { public:
 
   private:
 
+  public:
     int _schedpos1;
+  private:
     Timestamp _expiry;
     union {
 	TimerCallback callback;
