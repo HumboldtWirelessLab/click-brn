@@ -35,7 +35,7 @@ git clone ssh://$GITHOST/home/sombrutz/repository/click-brn-scripts.git
 rm -rf $DIR/brn-ns2-click
 
 echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$DIR/click-brn/ns/:$DIR/ns2/lib" > $DIR/brn-tools.bashrc
-echo "export PATH=$DIR/ns2/bin/:$PATH" >> $DIR/brn-tools.bashrc
+echo "export PATH=$DIR/ns2/bin/:\$PATH" >> $DIR/brn-tools.bashrc
 
 cat $FULLFILENAME | grep "^#INFO" | sed -e "s/#INFO[[:space:]]*//g" -e "s#TARGETDIR#$DIR#g"
 
