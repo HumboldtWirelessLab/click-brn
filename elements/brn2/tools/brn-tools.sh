@@ -29,7 +29,7 @@ git clone ssh://$GITHOST/home/sombrutz/repository/brn-ns2-click.git
 git clone ssh://$GITHOST/home/sombrutz/repository/click-brn-scripts.git
 
 (cd click-brn;touch ./configure; /bin/sh brn-conf.sh ns2_userlevel; make)
-(cd brn-ns2-click; VERSION=4 PREFIX=$DIR/ns2 CLICKPATH=$DIR/click-brn ./install_ns2.sh)
+(cd brn-ns2-click; VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$DIR/click-brn ./install_ns2.sh)
 (cd click-brn-scripts; ./build.sh)
 
 rm -rf $DIR/brn-ns2-click
