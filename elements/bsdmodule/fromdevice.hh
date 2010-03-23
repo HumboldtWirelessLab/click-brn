@@ -68,7 +68,9 @@ which can be used for better performance and stability).
 #include <click/element.hh>
 #include "elements/bsdmodule/anydevice.hh"
 #include <click/standard/storage.hh>
+CLICK_DECLS
 
+#define	CLICK_IFP2FD(ifp)	(IFP2AC(ifp)->ac_netgraph)
 
 class FromDevice : public AnyDevice, public Storage { public:
 
@@ -91,7 +93,7 @@ class FromDevice : public AnyDevice, public Storage { public:
 
     bool run_task(Task *);
 
-    poll_handler_t *_poll_handler;
+    //poll_handler_t *_poll_handler;
 
     int _npackets;
 #if CLICK_DEVICE_STATS
@@ -116,4 +118,5 @@ class FromDevice : public AnyDevice, public Storage { public:
 
 };
 
+CLICK_ENDDECLS
 #endif

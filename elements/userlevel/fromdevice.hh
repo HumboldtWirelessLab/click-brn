@@ -92,6 +92,11 @@ String.  A BPF filter expression used to select the interesting packets.
 Default is the empty string, which means all packets.  If CAPTURE is not PCAP,
 then any filter expression is ignored with a warning.
 
+=item ENCAP
+
+Word.  The encapsulation type the interface should use; see FromDump for
+choices.  Ignored if CAPTURE is not PCAP.
+
 =item OUTBOUND
 
 Boolean. If true, then emit packets that the kernel sends to the given
@@ -153,7 +158,7 @@ class FromDevice : public Element { public:
     String ifname() const		{ return _ifname; }
     inline int fd() const;
 
-    void selected(int fd);
+    void selected(int fd, int mask);
 #if FROMDEVICE_PCAP
     bool run_task(Task *);
 #endif

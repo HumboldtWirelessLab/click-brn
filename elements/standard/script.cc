@@ -461,9 +461,9 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 
 	case INSN_READ:
 	case INSN_READQ: {
-	    String arg = (insn == INSN_READ ? _args3[ipos] : cp_unquote(_args3[ipos]));
-	    HandlerCall hc(cp_expand(arg, expander));
-	    if (hc.initialize_read(this, errh) >= 0) {
+	    HandlerCall hc(cp_expand(_args3[ipos], expander));
+	    int flags = HandlerCall::OP_READ + (insn == INSN_READQ ? HandlerCall::UNQUOTE_PARAM : 0);
+	    if (hc.initialize(flags, this, errh) >= 0) {
 		ContextErrorHandler c_errh(errh, "While calling %<%s%>:", hc.unparse().c_str());
 		String result = hc.call_read(&c_errh);
 		ErrorHandler *d_errh = ErrorHandler::default_handler();
@@ -474,9 +474,9 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 
 	case INSN_WRITE:
 	case INSN_WRITEQ: {
-	    String arg = (insn == INSN_WRITE ? _args3[ipos] : cp_unquote(_args3[ipos]));
-	    HandlerCall hc(cp_expand(arg, expander));
-	    if (hc.initialize_write(this, errh) >= 0) {
+	    HandlerCall hc(cp_expand(_args3[ipos], expander));
+	    int flags = HandlerCall::OP_WRITE + (insn == INSN_WRITEQ ? HandlerCall::UNQUOTE_PARAM : 0);
+	    if (hc.initialize(flags, this, errh) >= 0) {
 		ContextErrorHandler c_errh(errh, "While calling %<%s%>:", hc.unparse().c_str());
 		_write_status = hc.call_write(&c_errh);
 	    }
@@ -1108,6 +1108,14 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	return 0;
     }
 
+    case ar_length:
+	str = String(str.length());
+	return 0;
+
+    case ar_unquote:
+	str = cp_unquote(str);
+	return 0;
+
     expected_two_numbers:
 	return errh->error("expected two numbers");
 
@@ -1156,6 +1164,8 @@ Script::add_handlers()
     set_handler("now", Handler::OP_READ, arithmetic_handler, ar_now, 0);
     set_handler("readable", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_readable, 0);
     set_handler("writable", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_writable, 0);
+    set_handler("length", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_length, 0);
+    set_handler("unquote", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_unquote, 0);
 #if CLICK_USERLEVEL
     set_handler("cat", Handler::OP_READ | Handler::READ_PARAM | Handler::READ_PRIVATE, arithmetic_handler, ar_cat, 0);
 #endif

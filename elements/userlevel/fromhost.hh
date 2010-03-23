@@ -6,7 +6,9 @@
 #include <click/etheraddress.hh>
 #include <click/task.hh>
 #include <click/notifier.hh>
-
+#if HAVE_IP6
+# include <click/ip6address.hh>
+#endif
 CLICK_DECLS
 
 /*
@@ -14,13 +16,16 @@ CLICK_DECLS
  *
  * =c
  *
- * FromHost(DEVNAME [, DST, GATEWAY, HEADROOM] [, I<KEYWORDS>])
+ * FromHost(DEVNAME [, DST] [, I<keywords> GATEWAY, HEADROOM, ...])
  *
  * =s comm
  *
  * interface to /dev/net/tun or ethertap (user-level)
  *
  * =d
+ *
+ * B<Note>: The KernelTun and KernelTap elements are preferable for most
+ * purposes.
  *
  * Reads packets from and writes packets through the universal TUN/TAP
  * module in Linux (the /dev/net/tun device).  This allows a
@@ -51,6 +56,12 @@ CLICK_DECLS
  * Ethernet address. Specifies the fake device's Ethernet address. Default is
  * not specified, in which case the fake device's address is whatever the
  * kernel chooses.
+ *
+ * =item DST6
+ *
+ * IPv6 prefix.  If specified, FromHost runs ifconfig(8) to set the
+ * interface's local (i.e., kernel) IPv6 address and netmask.  Both DST and
+ * DST6 may be specified.
  *
  * =back
  *
@@ -105,7 +116,7 @@ class FromHost : public Element { public:
     int fd() const			{ return _fd; }
     String dev_name() const		{ return _dev_name; }
 
-    void selected(int fd);
+    void selected(int fd, int mask);
     bool run_task(Task *);
 
   private:
@@ -115,19 +126,26 @@ class FromHost : public Element { public:
     int _mtu_in;
     int _mtu_out;
     String _dev_name;
-    IPAddress _near;
-    IPAddress _mask;
-    unsigned _headroom;
 
     EtherAddress _macaddr;
 
+    IPAddress _near;
+    IPAddress _mask;
+    IPAddress _gw;
+
+#if HAVE_IP6
+    IP6Address _near6;
+    int _prefix6;
+#endif
+
+    unsigned _headroom;
     Task _task;
     NotifierSignal _nonfull_signal;
 
     int try_linux_universal(ErrorHandler *);
     int try_tun(const String &, ErrorHandler *);
     int alloc_tun(ErrorHandler *);
-    int setup_tun(struct in_addr near, struct in_addr mask, ErrorHandler *);
+    int setup_tun(ErrorHandler *);
     void dealloc_tun();
 
     static String read_param(Element *, void *);

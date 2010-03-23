@@ -80,6 +80,16 @@ class ClassifierAligner : public Aligner {
 		   Vector<Alignment>::const_iterator out, int nout);
 };
 
+class ARPQuerierAligner : public Aligner { public:
+    ARPQuerierAligner() { }
+    void have_flow(Vector<Alignment>::const_iterator in, int nin,
+		   Vector<Alignment>::iterator out, int nout,
+		   const String &flow_code);
+    void want_flow(Vector<Alignment>::iterator in, int nin,
+		   Vector<Alignment>::const_iterator out, int nout,
+		   const String &flow_code);
+};
+
 
 class AlignClass : public ElementClassT {
   Aligner *_aligner;
@@ -92,21 +102,31 @@ class AlignClass : public ElementClassT {
 
 class StripAlignClass : public AlignClass {
     bool _is_strip;
- public:
+  public:
     StripAlignClass(const String &name, bool is_strip);
     Aligner *create_aligner(ElementT *, RouterT *, ErrorHandler *);
 };
 
-class CheckIPHeaderAlignClass : public AlignClass {
- public:
-  CheckIPHeaderAlignClass(const String &);
-  Aligner *create_aligner(ElementT *, RouterT *, ErrorHandler *);
+class CheckIPHeaderAlignClass : public AlignClass { public:
+    CheckIPHeaderAlignClass(const String &);
+    Aligner *create_aligner(ElementT *, RouterT *, ErrorHandler *);
 };
 
-class AlignAlignClass : public AlignClass {
- public:
-  AlignAlignClass();
-  Aligner *create_aligner(ElementT *, RouterT *, ErrorHandler *);
+class AlignAlignClass : public AlignClass { public:
+    AlignAlignClass();
+    Aligner *create_aligner(ElementT *, RouterT *, ErrorHandler *);
+};
+
+class DeviceAlignClass : public AlignClass { public:
+    DeviceAlignClass(const String &name, bool generator);
+    Aligner *create_aligner(ElementT *e, RouterT *r, ErrorHandler *errh);
+  private:
+    bool _generator;
+};
+
+class ICMPErrorAlignClass : public AlignClass { public:
+    ICMPErrorAlignClass(const String &name);
+    Aligner *create_aligner(ElementT *e, RouterT *r, ErrorHandler *errh);
 };
 
 

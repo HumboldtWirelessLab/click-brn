@@ -1,6 +1,10 @@
+%info
+
+Simple IPAddrPairRewriter test.
+
 %script
 
-click -e "
+$VALGRIND click -e "
 FromIPSummaryDump(IN1, STOP true) ->
   rw :: IPAddrPairRewriter(pattern 3.0.0.1-3.0.0.255# - 0 0)
   -> ToIPSummaryDump(OUT1, DATA src dst)

@@ -37,12 +37,14 @@
 #ifdef HAVE_PROPER
 #include <proper/prop.h>
 #endif
-
 CLICK_DECLS
 
 FromHost::FromHost()
-    : _fd(-1), _near(0), _mask(0), _macaddr(), _task(this)
+    : _fd(-1), _task(this)
 {
+#if HAVE_IP6
+    _prefix6 = 0;
+#endif
 }
 
 FromHost::~FromHost()
@@ -59,12 +61,18 @@ FromHost::configure(Vector<String> &conf, ErrorHandler *errh)
     if (cp_va_kparse(conf, this, errh,
 		     "DEVNAME", cpkP+cpkM, cpString, &_dev_name,
 		     "DST", cpkP, cpIPPrefix, &_near, &_mask,
+		     "GATEWAY", 0, cpIPAddress, &_gw,
+#if HAVE_IP6
+		     "DST6", 0, cpIP6PrefixLen, &_near6, &_prefix6,
+#endif
 		     "ETHER", 0, cpEthernetAddress, &_macaddr,
 		     "HEADROOM", 0, cpUnsigned, &_headroom,
 		     "MTU", 0, cpInteger, &_mtu_out,
 		     cpEnd) < 0)
 	return -1;
 
+    if (_near && _gw && !_gw.matches_prefix(_near, _mask))
+	return errh->error("bad GATEWAY");
     if (!_dev_name)
 	return errh->error("must specify device name");
     if (_headroom > 8192)
@@ -122,30 +130,51 @@ FromHost::try_linux_universal(ErrorHandler *errh)
 }
 
 int
-FromHost::setup_tun(struct in_addr near, struct in_addr mask, ErrorHandler *errh)
+FromHost::setup_tun(ErrorHandler *errh)
 {
-    char tmp[512], tmp0[64], tmp1[64];
+    StringAccum sa;
+    const char *up = " up";
 
     if (_macaddr) {
-	sprintf(tmp, "/sbin/ifconfig %s hw ether %s", _dev_name.c_str(),
-		_macaddr.unparse_colon().c_str());
-	if (system(tmp) != 0) {
-	    errh->error("%s: %s", tmp, strerror(errno));
-	}
+	sa.clear();
+	sa << "/sbin/ifconfig " << _dev_name << " hw ether " << _macaddr.unparse_colon();
+	if (system(sa.c_str()) != 0)
+	    errh->error("%s: %s", sa.c_str(), strerror(errno));
 
-	sprintf(tmp, "/sbin/ifconfig %s arp", _dev_name.c_str());
-	if (system(tmp) != 0)
-	    return errh->error("%s: couldn't set arp flags: %s", tmp, strerror(errno));
+	sa.clear();
+	sa << "/sbin/ifconfig " << _dev_name << " arp";
+	if (system(sa.c_str()) != 0)
+	    return errh->error("%s: couldn't set arp flags: %s", sa.c_str(), strerror(errno));
     }
 
-    if (near.s_addr) {
-	strcpy(tmp0, inet_ntoa(near));
-	strcpy(tmp1, inet_ntoa(mask));
-	sprintf(tmp, "/sbin/ifconfig %s %s netmask %s up 2>/dev/null", _dev_name.c_str(), tmp0, tmp1);
-	if (system(tmp) != 0) {
-	    return errh->error("%s: `%s' failed\n(Perhaps Ethertap is in a kernel module that you haven't loaded yet?)", _dev_name.c_str(), tmp);
-	}
+    if (_near) {
+	sa.clear();
+	sa << "/sbin/ifconfig " << _dev_name << " " << _near << " netmask " << _mask << up << " 2>/dev/null";
+	if (system(sa.c_str()) != 0)
+	    return errh->error("%s: %<%s%> failed\n(Perhaps Ethertap is in a kernel module that you haven't loaded yet?)", _dev_name.c_str(), sa.c_str());
+	up = "";
     }
+
+    if (_gw) {
+	sa.clear();
+	sa << "/sbin/route -n add default ";
+#if defined(__linux__)
+	sa << "gw ";
+#endif
+	sa << _gw;
+	if (system(sa.c_str()) != 0)
+	    return errh->error("%s: %<%s%> failed", _dev_name.c_str(), sa.c_str());
+    }
+
+#if HAVE_IP6
+    if (_near6) {
+	sa.clear();
+	sa << "/sbin/ifconfig " << _dev_name << " inet6 add " << _near6 << "/" << _prefix6 << up << " 2>/dev/null";
+	if (system(sa.c_str()) != 0)
+	    return errh->error("%s: %<%s%> failed", _dev_name.c_str(), sa.c_str());
+	up = "";
+    }
+#endif
 
     // calculate maximum packet size needed to receive data from
     // tun/tap.
@@ -168,7 +197,7 @@ FromHost::initialize(ErrorHandler *errh)
 {
     if (try_linux_universal(errh) < 0)
 	return -1;
-    if (setup_tun(_near, _mask, errh) < 0)
+    if (setup_tun(errh) < 0)
 	return -1;
 
     ScheduleInfo::join_scheduler(this, &_task, errh);
@@ -188,7 +217,7 @@ FromHost::cleanup(CleanupStage)
 }
 
 void
-FromHost::selected(int fd)
+FromHost::selected(int fd, int)
 {
     if (fd != _fd)
 	return;

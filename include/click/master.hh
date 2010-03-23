@@ -19,7 +19,6 @@
 # include <click/simclick.h>
 #endif
 CLICK_DECLS
-class Element;
 
 #define CLICK_DEBUG_MASTER 0
 
@@ -137,6 +136,9 @@ class Master { public:
 	    _timer_expiry = Timestamp();
     }
     void check_timer_expiry(Timer *t);
+    static inline void place_timer(Timer **t, Timer **tbegin) {
+	(*t)->_schedpos1 = (t - tbegin) + 1;
+    }
 
     struct timer_less {
 	bool operator()(Timer *a, Timer *b) {
@@ -149,7 +151,7 @@ class Master { public:
 	    : _begin(begin) {
 	}
 	void operator()(Timer **t) {
-	    (*t)->_schedpos1 = (t - _begin) + 1;
+	    Master::place_timer(t, _begin);
 	}
     };
 
@@ -158,20 +160,13 @@ class Master { public:
     struct ElementSelector {
 	Element *read;
 	Element *write;
-# if HAVE_USE_KQUEUE
-	unsigned callno;
-# endif
 	ElementSelector()
 	    : read(0), write(0)
-# if HAVE_USE_KQUEUE
-	    , callno(0)
-# endif
 	{
 	}
     };
 # if HAVE_USE_KQUEUE
     int _kqueue;
-    unsigned _selected_callno;
 # endif
 # if !HAVE_POLL_H || HAVE_USE_SELECT
     struct pollfd {
@@ -191,6 +186,7 @@ class Master { public:
 # endif
     void register_select(int fd, bool add_read, bool add_write);
     void remove_pollfd(int pi, int event);
+    inline void call_selected(int fd, int mask) const;
 # if HAVE_USE_KQUEUE
     void run_selects_kqueue(bool);
 # endif

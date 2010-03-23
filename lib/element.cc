@@ -6,6 +6,7 @@
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
  * Copyright (c) 2004-2008 Regents of the University of California
+ * Copyright (c) 2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software")
@@ -35,6 +36,13 @@
 CLICK_CXX_PROTECT
 # include <asm/types.h>
 # include <asm/uaccess.h>
+CLICK_CXX_UNPROTECT
+# include <click/cxxunprotect.h>
+#elif CLICK_BSDMODULE
+# include <click/cxxprotect.h>
+CLICK_CXX_PROTECT
+# include <sys/types.h>
+# include <sys/limits.h>
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
@@ -1647,6 +1655,7 @@ Element::configuration() const
 /** @brief Handle a file descriptor event.
  *
  * @param fd the file descriptor
+ * @param mask relevant events: bitwise-or of one or more of SELECT_READ, SELECT_WRITE
  *
  * Click's call to select() indicates that the file descriptor @a fd is
  * readable, writable, or both.  The overriding method should read or write
@@ -1655,6 +1664,25 @@ Element::configuration() const
  *
  * The element must have previously registered interest in @a fd with
  * add_select().
+ *
+ * @note Only available at user level.
+ *
+ * @sa add_select, remove_select
+ */
+void
+Element::selected(int fd, int mask)
+{
+    (void) mask;
+    selected(fd);
+}
+
+/** @brief Handle a file descriptor event.
+ *
+ * @param fd the file descriptor
+ *
+ * @deprecated Elements should define selected(@a fd, mask) in preference to
+ * selected(@a fd).  The default implementation of selected(@a fd, mask) calls
+ * selected(@a fd) for backwards compatibility.
  *
  * @note Only available at user level.
  *
@@ -1674,7 +1702,7 @@ Element::selected(int fd)
  *
  * Click will register interest in readability and/or writability on file
  * descriptor @a fd.  When @a fd is ready, Click will call this element's
- * selected(@a fd) method.
+ * selected(@a fd, @a mask) method.
  *
  * add_select(@a fd, @a mask) overrides any previous add_select() for the same
  * @a fd and events in @a mask.  However, different elements may register
@@ -1685,8 +1713,8 @@ Element::selected(int fd)
  * @note Selecting for writability with SELECT_WRITE normally requires more
  * care than selecting for readability with SELECT_READ.  You should
  * add_select(@a fd, SELECT_WRITE) only when there is data to write to @a fd.
- * Otherwise, Click will constantly poll your element's selected(@a fd)
- * method.
+ * Otherwise, Click will constantly poll your element's selected(@a fd, @a
+ * mask) method.
  *
  * @sa remove_select, selected
  */
@@ -1763,7 +1791,8 @@ Element::add_read_handler(const String &name, ReadHandlerCallback read_callback,
 void
 Element::add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags)
 {
-    Router::add_read_handler(this, name, read_callback, (void *) (uintptr_t) user_data, flags);
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_read_handler(this, name, read_callback, (void *) u, flags);
 }
 
 /** @brief Register a write handler named @a name.
@@ -1807,7 +1836,8 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
 void
 Element::add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags)
 {
-    Router::add_write_handler(this, name, write_callback, (void *) (uintptr_t) user_data, flags);
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_write_handler(this, name, write_callback, (void *) u, flags);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1860,7 +1890,8 @@ Element::set_handler(const String& name, int flags, HandlerCallback callback, co
 void
 Element::set_handler(const String &name, int flags, HandlerCallback callback, int user_data1, int user_data2)
 {
-    Router::set_handler(this, name, flags, callback, (void *) (uintptr_t) user_data1, (void *) (uintptr_t) user_data2);
+    uintptr_t u1 = (uintptr_t) user_data1, u2 = (uintptr_t) user_data2;
+    Router::set_handler(this, name, flags, callback, (void *) u1, (void *) u2);
 }
 
 /** @brief Set flags for the handler named @a name.

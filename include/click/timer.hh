@@ -247,6 +247,10 @@ class Timer { public:
      * Timer::adjustment() is an appropriate value for this time
      * difference. */
     static inline Timestamp adjustment() {
+#if CLICK_USERLEVEL
+	if (Timestamp::warp_jumping())
+	    return Timestamp();
+#endif
 	return Timestamp::make_usec(500);
     }
 
@@ -279,9 +283,7 @@ class Timer { public:
 
   private:
 
-  public:
     int _schedpos1;
-  private:
     Timestamp _expiry;
     union {
 	TimerCallback callback;

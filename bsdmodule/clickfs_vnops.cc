@@ -25,7 +25,6 @@
 #include <click/cxxprotect.h>
 CLICK_CXX_PROTECT
 #include <sys/namei.h>
-#include <sys/dir.h>
 #include <sys/dirent.h>
 #include <sys/stat.h>
 #include <sys/uio.h>
@@ -39,7 +38,55 @@ CLICK_USING_DECLS
 
 #define UIO_MX			32
 
-extern struct vop_vector clickfs_vnodeops;	/* forward declaration */
+int clickfs_lookup(struct vop_lookup_args *ap);
+int clickfs_open(struct vop_open_args *ap);
+int clickfs_close(struct vop_close_args *ap);
+int clickfs_access(struct vop_access_args *ap);
+int clickfs_getattr(struct vop_getattr_args *ap);
+int clickfs_setattr(struct vop_setattr_args *ap);
+int clickfs_read(struct vop_read_args *ap);
+int clickfs_write(struct vop_write_args *ap);
+int clickfs_fsync(struct vop_fsync_args *ap);
+int clickfs_readdir(struct vop_readdir_args *ap);
+int clickfs_readlink(struct vop_readlink_args *ap);
+int clickfs_inactive(struct vop_inactive_args *ap);
+int clickfs_reclaim(struct vop_reclaim_args *ap);
+
+/* XXX: Blatant kludge as c++ does not like c99 initializers. */
+static struct vop_vector clickfs_vnodeops = {
+	&default_vnodeops,
+	NULL,
+	NULL,
+	clickfs_lookup,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	clickfs_open,
+	clickfs_close,
+	clickfs_access,
+	clickfs_getattr,
+	clickfs_setattr,
+	clickfs_read,
+	clickfs_write,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	clickfs_fsync,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	clickfs_readdir,
+	clickfs_readlink,
+	NULL,
+	NULL,
+	NULL,	/* .. 5 at current revision */
+};
 
 static enum vtype clickfs_vtype[] = {
     VDIR,		/* CLICKFS_DIRENT_DIR */
@@ -65,6 +112,7 @@ clickfs_rootvnode(struct mount *mp, struct vnode **vpp)
     vp->v_data = de;
     vp->v_type = clickfs_vtype[de->type];
     vp->v_vflag = VV_ROOT;
+    vp->v_mount = mp;
     return 0;
 }
 
@@ -86,7 +134,6 @@ clickfs_lookup(struct vop_lookup_args *ap)
 	return ENOTDIR;
     if (cnp->cn_nameiop == DELETE || cnp->cn_nameiop == RENAME)
 	return EROFS;
-    VOP_UNLOCK(dvp, 0, td);
 
     if (plen == 1 && *pname == '.') {
 	*vpp = dvp;
@@ -113,13 +160,13 @@ clickfs_lookup(struct vop_lookup_args *ap)
 
     (*vpp)->v_data = cde;
     (*vpp)->v_type = clickfs_vtype[cde->type];
+    (*vpp)->v_mount = dvp->v_mount;
     if (cde == clickfs_tree_root)
 	(*vpp)->v_vflag = VV_ROOT;
     vn_lock(*vpp, LK_SHARED | LK_RETRY, td);
     return 0;
 
 done:
-    vn_lock(dvp, LK_SHARED | LK_RETRY, td);
     return error;
 }
 
@@ -166,27 +213,6 @@ clickfs_setattr(struct vop_setattr_args *ap)
 }
 
 int
-clickfs_reclaim(struct vop_reclaim_args *ap)
-{
-    return 0;
-}
-
-int
-clickfs_inactive(struct vop_inactive_args *ap)
-{
-    struct vnode *vp = ap->a_vp;
-    struct clickfs_dirent *cde = VTOCDE(vp);
-
-    if (cde->type == CLICKFS_DIRENT_HANDLE)
-	cde->data.handle.r_offset = cde->data.handle.w_offset = 0;
-    vp->v_data = NULL;
-    vp->v_type = VNON;
-    VOP_UNLOCK(vp, 0, ap->a_td);
-
-    return 0;
-}
-
-int
 clickfs_access(struct vop_access_args *ap)
 {
     struct vnode *vp = ap->a_vp;
@@ -196,8 +222,8 @@ clickfs_access(struct vop_access_args *ap)
     int perm = cde->perm;
 
     /* XXX fixme: also allow others, not just root */
-    if (cred->cr_uid != 0)
-	return EPERM;
+    //if (cred->cr_uid != 0)
+    //	return EPERM;
     if ( (mode & VWRITE) && !(perm & S_IWUSR) )
 	return EPERM;
     if ( (mode & VREAD)  && !(perm & S_IRUSR) )
@@ -206,7 +232,7 @@ clickfs_access(struct vop_access_args *ap)
 }
 
 static int
-clickfs_int_send_dirent(char *name, int *skip, int fileno, struct uio *uio)
+clickfs_int_send_dirent(const char *name, int *skip, int fileno, struct uio *uio)
 {
     struct dirent d;
 
@@ -406,7 +432,7 @@ clickfs_fsync_body(struct clickfs_dirent *cde)
 		fmt = "In write handler %<%s%>:";
 	    ContextErrorHandler cerrh(click_logged_errh, fmt, h->name().c_str(), e);
 
-	    retval = h->call_write(*cde->data.handle.wbuf, e, true, &cerrh);
+	    retval = h->call_write(*cde->data.handle.wbuf, e, &cerrh);
 	    retval = (retval >= 0 ? 0 : -retval);
 	}
 	/*
@@ -465,38 +491,3 @@ clickfs_fsync(struct vop_fsync_args *ap)
     return(clickfs_fsync_body(cde));
 }
 
-/* XXX: Blatant kludge as c++ does not like c99 initializers. */
-static struct vop_vector clickfs_vnodeops = {
-	&default_vnodeops,
-	NULL,
-	NULL,
-	clickfs_lookup,
-	NULL,
-	NULL,
-	NULL,
-	clickfs_open,
-	clickfs_close,
-	clickfs_access,
-	clickfs_getattr,
-	clickfs_setattr,
-	clickfs_read,
-	clickfs_write,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	clickfs_fsync,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	NULL,
-	clickfs_readdir,
-	clickfs_readlink,
-	clickfs_inactive,
-	clickfs_reclaim,
-	NULL,	/* .. 5 at current revision */
-};

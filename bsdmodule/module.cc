@@ -35,7 +35,7 @@ static int click_accessible = 1;
 
 extern "C" int click_cleanup_packages();
 
-KernelErrorHandler *click_logged_errh = 0;
+KernelErrorHandler *Click::click_logged_errh = 0;
 static KernelErrorHandler *syslog_errh = 0;
 Router *click_router = 0;
 Master *click_master = 0;
@@ -124,6 +124,8 @@ write_assert_stop(const String &s, Element *, void *, ErrorHandler *errh)
 
 /****************************** Error handlers *******************************/
 
+CLICK_DECLS
+
 void
 KernelErrorHandler::log_line(const char *begin, const char *end)
 {
@@ -182,6 +184,8 @@ KernelErrorHandler::stable_string() const
     return String::make_stable(&_logbuf[0], &_logbuf[_pos]);
 }
 
+CLICK_ENDDECLS
+
 static String
 read_errors(Element *, void *thunk)
 {
@@ -208,8 +212,8 @@ click_clear_error_log()
 
 /******************** Module initialization and cleanup **********************/
 
-extern "C" void click_ether_input(struct ifnet *, struct mbuf **, struct ether_header *);
-extern "C" void (*ng_ether_input_p)(struct ifnet *, struct mbuf **, struct ether_header *);
+extern "C" void click_ether_input(struct ifnet *, struct mbuf **);
+extern "C" void (*ng_ether_input_p)(struct ifnet *, struct mbuf **);
 
 extern "C" void click_ether_output(struct ifnet *, struct mbuf **);
 extern "C" void (*ng_ether_output_p)(struct ifnet *, struct mbuf **);

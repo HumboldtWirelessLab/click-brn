@@ -21,8 +21,8 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/standard/alignmentinfo.hh>
-
-#include <machine/limits.h>
+#include <sys/limits.h>
+CLICK_DECLS
 
 FastUDPSource::FastUDPSource()
   : _m(0)
@@ -59,7 +59,7 @@ FastUDPSource::configure(Vector<String> &conf, ErrorHandler *errh)
 		     "ACTIVE", cpkP, cpBool, &_active,
 		     cpEnd) < 0)
 	return -1;
-    if (sp >= 0x10000 || dp >= 0x10000)
+    if (_sport >= 0x10000 || _dport >= 0x10000)
 	return errh->error("source or destination port too large");
     if (_len < 60) {
 	click_chatter("warning: packet length < 60, defaulting to 60");
@@ -288,6 +288,6 @@ FastUDPSource::add_handlers()
     add_write_handler("limit", FastUDPSource_limit_write_handler, 0);
 }
 
+CLICK_ENDDECLS
 ELEMENT_REQUIRES(bsdmodule)
 EXPORT_ELEMENT(FastUDPSource)
-
