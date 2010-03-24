@@ -13,7 +13,8 @@ BRN2Device::BRN2Device()
   : _debug(BrnLogger::DEFAULT),
     device_number(0),
     is_service_dev(false),
-    is_master_dev(false)
+    is_master_dev(false),
+    _routable(true)
 {
 }
 
@@ -32,6 +33,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
       "SERVICEDEVICE", 0, cpBool, &is_service_dev,
       "MASTERDEVICE", 0, cpBool, &is_master_dev,
+      "ROUTABLE", 0, cpBool, &_routable,
       cpEnd) < 0)
     return -1;
 
@@ -146,6 +148,31 @@ const uint8_t
 BRN2Device::getDeviceNumber()
 {
   return device_number;
+}
+
+
+bool
+BRN2Device::is_service_device()
+{
+  return is_service_dev;
+}
+
+bool
+BRN2Device::is_master_device()
+{
+  return is_master_dev;
+}
+
+bool
+BRN2Device::is_routable()
+{
+  return _routable;
+}
+
+void
+BRN2Device::set_routable(bool routable)
+{
+  _routable = routable;
 }
 
 uint32_t

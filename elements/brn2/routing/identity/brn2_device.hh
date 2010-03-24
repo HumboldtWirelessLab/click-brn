@@ -68,6 +68,11 @@ class BRN2Device : public Element {
     const uint8_t getDeviceNumber();
     void setDeviceNumber(uint8_t);
 
+    bool is_service_device();
+    bool is_master_device();
+
+    bool is_routable();
+    void set_routable(bool routable);
 
     //
     //member
@@ -76,6 +81,7 @@ class BRN2Device : public Element {
 
 
   private:
+
     //
     //member
     //
@@ -99,9 +105,8 @@ class BRN2Device : public Element {
     uint32_t getTypeIntByString(String type);
     String getTypeStringByInt(uint32_t type);
 
-  public:
-    bool is_service_device() { return is_service_dev;}
-    bool is_master_device() { return is_master_dev;}
+    bool _routable;
+
 };
 
 CLICK_ENDDECLS

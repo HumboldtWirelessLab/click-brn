@@ -182,6 +182,8 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
+    BRN_DEBUG("Forward ?? DEST: %s ME: %s", dst_addr.unparse().c_str(), _me->getMasterAddress()->unparse().c_str());
+
     if (_me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr))) { // for me
       BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
       BRN_DEBUG("Final Dest: %s",dst_addr.unparse().c_str());
