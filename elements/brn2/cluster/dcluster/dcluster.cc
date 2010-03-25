@@ -61,19 +61,6 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
        return -1;
 
-
-  md5_byte_t *md5_id = _node_identity->getNodeID();
-  uint32_t id = ((uint8_t*)md5_id)[0];
-  id = id * 256 + ((uint8_t*)md5_id)[1];
-  id = id * 256 + ((uint8_t*)md5_id)[2];
-  id = id * 256 + ((uint8_t*)md5_id)[3];
-
-  _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), id, 0);
-  _cluster_head = &_my_info;
-
-  _max_round = new ClusterNodeInfo[_max_distance];
-  _min_round = new ClusterNodeInfo[_max_distance];
-
 //  click_chatter("Start: %s",get_info().c_str());
 
   return 0;
@@ -93,6 +80,18 @@ handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direct
 int
 DCluster::initialize(ErrorHandler *)
 {
+  md5_byte_t *md5_id = _node_identity->getNodeID();
+  uint32_t id = ((uint8_t*)md5_id)[0];
+  id = id * 256 + ((uint8_t*)md5_id)[1];
+  id = id * 256 + ((uint8_t*)md5_id)[2];
+  id = id * 256 + ((uint8_t*)md5_id)[3];
+
+  _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), id, 0);
+  _cluster_head = &_my_info;
+
+  _max_round = new ClusterNodeInfo[_max_distance];
+  _min_round = new ClusterNodeInfo[_max_distance];
+
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &handler);
 
   return 0;

@@ -69,8 +69,6 @@ NHopCluster::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
        return -1;
 
-  _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
-
   return 0;
 }
 
@@ -88,6 +86,8 @@ handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direct
 int
 NHopCluster::initialize(ErrorHandler *)
 {
+  _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
+
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &handler);
 
   _nhop_timer.initialize(this);
