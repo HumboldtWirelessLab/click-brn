@@ -197,9 +197,9 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
         click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
         EtherAddress last(dsr_hops[brn_dsr->dsr_hop_count - 1].hw.data);
 
-        BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
-        if ( ( ! rid_e ) && (brn_dsr->dsr_id != 0) )
-          _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+        BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
+        if ( ( ! rid_e ) && (ntohs(brn_dsr->dsr_id) != 0) )
+          rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
       }
       // remove all brn header and return packet to kernel
       Packet *p = strip_all_headers(p_in);
@@ -256,13 +256,15 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   if (segments > 0)     // NOT the last hop (if it is the last hop, then next is dst)
     next = EtherAddress (dsr_hops[index].hw.data);
 
+  BrnRouteIdCache::RouteIdEntry* rid_e;
   if ( _dsr_rid_cache ) {
-    BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
+    rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
     if ( rid_e ) {
       next = EtherAddress(rid_e->_next_hop.data());
+      rid_e->update();
     } else {
-      if ( brn_dsr->dsr_id != 0 )
-        _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+      if ( ntohs(brn_dsr->dsr_id) != 0 )
+        rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
     }
   }
 
