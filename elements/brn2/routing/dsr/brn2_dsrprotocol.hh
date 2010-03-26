@@ -109,7 +109,7 @@ struct click_dsr_hop {
 
 /* DSR Route Request */
 struct click_brn_dsr_rreq {
-  uint16_t  dsr_id;
+  //currently not used
 };
 
 /* DSR Route Reply */
@@ -134,7 +134,11 @@ struct click_brn_dsr_rerr {
 /* DSR Source Routed Packet */
 struct click_brn_dsr_src {
   uint8_t       dsr_salvage;
-  uint8_t       reserved;
+  uint8_t       dsr_route_type;
+
+#define BRN_DSR_ROUTE_TYPE_SRCROUTE         1
+#define BRN_DSR_ROUTE_TYPE_IDROUTE          2
+#define BRN_DSR_ROUTE_TYPE_SRCROUTE_SETID   3
 
 #define BRN_MAX_ETHER_LENGTH 1500
 }; /* data */
@@ -145,9 +149,11 @@ struct click_brn_dsr {
   uint8_t       reserved;
   uint16_t      dsr_id;
 
-#define BRN_DSR_ROUTE_TYPE_SRCROUTE         1
-#define BRN_DSR_ROUTE_TYPE_IDROUTE          2
-#define BRN_DSR_ROUTE_TYPE_SRCROUTE_SETID   3
+/* DSR types*/
+#define BRN_DSR_RREQ 1
+#define BRN_DSR_RREP 2
+#define BRN_DSR_RERR 3
+#define BRN_DSR_SRC  4
 
   hwaddr        dsr_dst;
   hwaddr        dsr_src;
@@ -158,11 +164,6 @@ struct click_brn_dsr {
 
 #define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
 #define BRN_INTERNAL_NODE_IP "254.1.1.1"
-
-#define BRN_DSR_RREQ 1
-#define BRN_DSR_RREP 2
-#define BRN_DSR_RERR 3
-#define BRN_DSR_SRC  4
 
   union {
     click_brn_dsr_rreq rreq;

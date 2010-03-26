@@ -130,7 +130,6 @@ BRN2RequestForwarder::push(int, Packet *p_in)
           (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
     assert(brn_dsr->dsr_type == BRN_DSR_RREQ);
-    const click_brn_dsr_rreq dsr_rreq = brn_dsr->body.rreq;
 
     EtherAddress src_addr(brn_dsr->dsr_src.data); // src of the rreq
     EtherAddress dst_addr(brn_dsr->dsr_dst.data); // final dst of the rreq
@@ -144,7 +143,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     EtherAddress prev_node(ether->ether_shost);
 
     BRN_DEBUG(" got route request for destination %s from %s with #ID %d",
-        dst_addr.unparse().c_str(), prev_node.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+        dst_addr.unparse().c_str(), prev_node.unparse().c_str(), ntohs(brn_dsr->dsr_id));
 
     int last_hop_metric;
     // get the so far estimated route from rreq
@@ -153,12 +152,12 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     // SRC, HOP1, ..., LAST HOP
     _dsr_decap->extract_request_route(p_in, &last_hop_metric, request_route);
 
-    BRN_DEBUG(" * Last_hop_metric %d, #ID %d", last_hop_metric, ntohs(brn_dsr->body.rreq.dsr_id));
+    BRN_DEBUG(" * Last_hop_metric %d, #ID %d", last_hop_metric, ntohs(brn_dsr->dsr_id));
 
     if ( last_hop_metric >= _min_metric_rreq_fwd ) { //BRN_DSR_MIN_METRIC_RREQ_FWD
       BRN_DEBUG(" Last_hop_metric %d is inferior as min_metric_rreq_fwd %d, #ID %d",
-        last_hop_metric, _min_metric_rreq_fwd, ntohs(brn_dsr->body.rreq.dsr_id));
-      BRN_DEBUG(" Kill Routerequest from junk link, #ID %d", ntohs(brn_dsr->body.rreq.dsr_id));
+        last_hop_metric, _min_metric_rreq_fwd, ntohs(brn_dsr->dsr_id));
+      BRN_DEBUG(" Kill Routerequest from junk link, #ID %d", ntohs(brn_dsr->dsr_id));
       p_in->kill();
       return;
     }
@@ -223,7 +222,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
       BRN_DEBUG("* I (=%s) sourced this RREQ; ignore., #ID %d",
-                   device_addr->unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+                   device_addr->unparse().c_str(), ntohs(brn_dsr->dsr_id));
       p_in->kill();
       return;
     } else if (_me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr))) { // rreq reached destination
@@ -246,9 +245,9 @@ BRN2RequestForwarder::push(int, Packet *p_in)
        route_met += reply_route[j]._metric;
      }
       // bitwise XOR
-      int rreq_id = hashcode(src_addr) | dsr_rreq.dsr_id;
+     int rreq_id = hashcode(src_addr) | brn_dsr->dsr_id;
 
-      if ( !_track_route.find(rreq_id))
+     if ( !_track_route.find(rreq_id))
      {
        _track_route.insert(rreq_id,route_met);
      }
@@ -258,7 +257,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
        if ( last_route_met <= route_met ) 
        {
          BRN_DEBUG(" Seen Routerequest with better metric before; Drop packet! %d <= %d, #ID %d", last_route_met,
-              route_met, ntohs(brn_dsr->body.rreq.dsr_id));
+              route_met, ntohs(brn_dsr->dsr_id));
          p_in->kill(); // kill the original RREQ
          return;
        }
@@ -270,7 +269,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
      }
 
       // reply route is simply the inverted request route
-      issue_rrep(dst_addr, dst_ip_addr, src_addr, src_ip_addr, reply_route, ntohs(brn_dsr->body.rreq.dsr_id));
+      issue_rrep(dst_addr, dst_ip_addr, src_addr, src_ip_addr, reply_route, ntohs(brn_dsr->dsr_id));
       p_in->kill(); // kill the original RREQ
 
       return;
@@ -288,14 +287,14 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       if (findOwnIdentity(request_route) != -1) { // I am already listed
         // I'm in the route somewhere other than at the end
         BRN_DEBUG("* I'm already listed; killing packet, #ID %d",
-            ntohs(brn_dsr->body.rreq.dsr_id));
+            ntohs(brn_dsr->dsr_id));
         p_in->kill();
         return;
       }
 
       // check to see if we've seen this request lately, or if this
       // one is better
-      ForwardedReqKey frk(src_addr, dst_addr, ntohs(dsr_rreq.dsr_id));
+      ForwardedReqKey frk(src_addr, dst_addr, ntohs(brn_dsr->dsr_id));
       ForwardedReqVal *old_frv = _route_querier->_forwarded_rreq_map.findp(frk);
 // 
       // ETX:
@@ -305,7 +304,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       if (old_frv) {
         if (_debug == BrnLogger::DEBUG) {
           BRN_DEBUG("* already forwarded this route request %d (%d, %d)",
-             ntohs(dsr_rreq.dsr_id), this_metric, old_frv->best_metric);
+            ntohs(brn_dsr->dsr_id), this_metric, old_frv->best_metric);
           if (_route_querier->metric_preferable(this_metric, old_frv->best_metric)) {
             BRN_DEBUG(" * but this one is better");
           } else {
@@ -315,7 +314,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       }
 
       if (old_frv && ! _route_querier->metric_preferable(this_metric, old_frv->best_metric)) { 
-        BRN_DEBUG("* already forwarded this route request. #ID %d", ntohs(brn_dsr->body.rreq.dsr_id));
+        BRN_DEBUG("* already forwarded this route request. #ID %d", ntohs(brn_dsr->dsr_id));
         p_in->kill();
         return;
       } else { // not yet seen
@@ -390,7 +389,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 
   int hop_count = dsr_rreq->dsr_hop_count;
 
-  BRN_DEBUG("* BRN2RequestForwarder::forward_rreq with #ID %d", ntohs(dsr_rreq->body.rreq.dsr_id));
+  BRN_DEBUG("* BRN2RequestForwarder::forward_rreq with #ID %d", ntohs(dsr_rreq->dsr_id));
 
   if (hop_count >= BRN_DSR_MAX_HOP_COUNT) {
     BRN_DEBUG("* Maximum hop count reached in rreq; drop packet.");

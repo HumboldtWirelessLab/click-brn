@@ -100,7 +100,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
 
   dsr_source->dsr_type = BRN_DSR_SRC;
   dsr_source->reserved = 0;
-  dsr_source->dsr_id = 0;//RobAt:DSR
+  dsr_source->dsr_id = 0;
   dsr_source->body.src.dsr_salvage = 7; // TODO change this !!
   dsr_source->dsr_segsleft = hop_count;
   dsr_source->dsr_hop_count = hop_count;
@@ -196,7 +196,7 @@ BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   click_brn_dsr *dsr_rreq = (click_brn_dsr*)p->data();
 
   dsr_rreq->dsr_type = BRN_DSR_RREQ;
-  dsr_rreq->body.rreq.dsr_id = htons(rreq_id); 
+  dsr_rreq->dsr_id = htons(rreq_id);
   dsr_rreq->dsr_hop_count = 0;
   dsr_rreq->dsr_segsleft = 0;
 
@@ -241,7 +241,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   // dsr header - fill the route reply header
   dsr->dsr_type = BRN_DSR_RREP;
   dsr->body.rrep.dsr_flags = 0;
-  dsr->body.rreq.dsr_id = htons(rreq_id);
+  dsr->dsr_id = htons(rreq_id);
   //  dsr_rrep->dsr_id = htons(id); // TODO think about this !!!
 
   // source of rrep
