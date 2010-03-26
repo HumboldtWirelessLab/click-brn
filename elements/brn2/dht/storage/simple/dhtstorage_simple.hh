@@ -185,6 +185,7 @@ class DHTStorageSimple : public DHTStorage
     int _stats_replies;
     int _stats_retries;
     int _stats_timeouts;
+    int _stats_excessive_timeouts;
     int _stats_cache_hits;
     int _stats_hops_sum;
 

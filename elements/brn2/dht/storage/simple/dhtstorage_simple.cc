@@ -33,6 +33,7 @@ DHTStorageSimple::DHTStorageSimple():
   _stats_replies(0),
   _stats_retries(0),
   _stats_timeouts(0),
+  _stats_excessive_timeouts(0),
   _stats_cache_hits(0),
   _stats_hops_sum(0)
 #endif
@@ -415,8 +416,9 @@ DHTStorageSimple::check_queue()
       _op = fwd->_operation;
 
       if ( isFinalTimeout(fwd) ) {
-       //Timeout
-//      click_chatter("Timeout");
+#ifdef DHT_STORAGE_STATS
+        _stats_excessive_timeouts++;
+#endif
         _op->set_status(DHT_STATUS_TIMEOUT); //DHT_STATUS_MAXRETRY
         _op->set_reply();
         _op->request_duration = (now - _op->request_time).msec1();
@@ -473,6 +475,7 @@ DHTStorageSimple::read_stats()
   sa << "\nNo. Replies: " << _stats_replies;
   sa << "\nNo. Retries: " << _stats_retries;
   sa << "\nNo. Timeouts: " << _stats_timeouts;
+  sa << "\nNo. excessive Timeouts: " << _stats_excessive_timeouts;
   sa << "\nNo. CacheHits: " << _stats_cache_hits;
   if ( _stats_replies > 0 ) sa << "\nAvg. no. hops: " << (_stats_hops_sum / _stats_replies);
   else sa << "\nAvg. no. hops: 0";
