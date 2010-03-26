@@ -110,7 +110,6 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   memcpy(dsr_source->dsr_src.data,
       (uint8_t *)src_route[route_len - 1].data(), 6 * sizeof(uint8_t));
 
-//
   // fetch IPs; TODO: dirty hack
   const click_ether *ether = (const click_ether *)p_in->data();
   if (ether->ether_type == ETHERTYPE_IP) { //TODO: XXXXXXXXXXXXXXXXXXXXX
@@ -130,7 +129,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
         src_route[0].unparse().c_str(), dst_ip_addr.unparse().c_str());
     }
   }
-//
+
   assert(hop_count < BRN_DSR_MAX_HOP_COUNT);
 
   BRN_DEBUG(_link_table->print_links().c_str());
@@ -138,8 +137,6 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_source);
 
   for (i = 0; i < hop_count; i++) {
-//    memcpy(dsr_source->addr[i].hw.data, (uint8_t *)src_route[hop_count - i].data(), 6 * sizeof(uint8_t)); //RobAt:DSR
-//    dsr_source->addr[i].metric = htons(0); // to be filled in along the way
     memcpy(dsr_hops[i].hw.data, (uint8_t *)src_route[hop_count - i].data(), 6 * sizeof(uint8_t));
     dsr_hops[i].metric = htons(0); // to be filled in along the way
 
@@ -273,8 +270,6 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
 
   for (i = 0; i < reply_hop_count; i++) {
     // skip first address, which goes in the dest field of the dsr_dst header.
-//    memcpy(dsr->addr[i].hw.data, (uint8_t *)reply_route[i + 1].ether().data(),  6 * sizeof(uint8_t));
-//    dsr->addr[i].metric = htons(reply_route[i + 1]._metric); //TODO
     memcpy(dsr_hops[i].hw.data, (uint8_t *)reply_route[i + 1].ether().data(),  6 * sizeof(uint8_t));
     dsr_hops[i].metric = htons(reply_route[i + 1]._metric); //TODO
   }
