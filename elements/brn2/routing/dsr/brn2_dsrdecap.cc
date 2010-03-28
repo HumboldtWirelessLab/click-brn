@@ -81,7 +81,8 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
 {
   BRN_DEBUG(" * extract_request_route from dsr packet.");
 
-  String device(BRNPacketAnno::udevice_anno((Packet *)p_in));
+  BRN2Device *dev = _me->getDeviceByNumber(BRNPacketAnno::devicenumber_anno((Packet *)p_in));
+  String device = dev->getDeviceName();
   // address of the node originating the rreq
   /*const*/ click_brn_dsr *dsr_rreq =
       (click_brn_dsr *)(p_in->data() + sizeof(click_brn));

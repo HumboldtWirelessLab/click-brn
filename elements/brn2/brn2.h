@@ -19,14 +19,6 @@ CLICK_DECLS
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 #endif
 
-
-/** TODO: move next to brnprotocol */
-/* MAJOR_Types */
-#define BRN2_MAJOR_TYPE_STANDARD   0
-#define BRN2_MAJOR_TYPE_LINKSTAT   1
-#define BRN2_MAJOR_TYPE_ROUTING    2
-#define BRN2_MAJOR_TYPE_DHT        3
-
 #define BRN2_LINKSTAT_MINOR_TYPE_BEACON       1
 #define BRN2_LINKSTAT_MINOR_TYPE_LPR          2
 #define BRN2_LINKSTAT_MINOR_TYPE_RXC          3
@@ -97,7 +89,7 @@ class StringTokenizer {
 };
 
 extern "C" {
-  static inline int etheraddr_sorter(const void *va, const void *vb) {
+  static inline int etheraddr_sorter(const void *va, const void *vb, void */*thunk*/) {
     EtherAddress *a = (EtherAddress *)va, *b = (EtherAddress *)vb;
 
     if (a == b) {

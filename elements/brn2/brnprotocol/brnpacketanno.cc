@@ -49,42 +49,53 @@ BRNPacketAnno::set_ether_anno(Packet *p, const EtherAddress &src, const EtherAdd
   memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), src.data(), SRC_ETHER_ANNO_SIZE);
   memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), dst.data(), DST_ETHER_ANNO_SIZE);
   uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
-  t[0] = htons(type);
+  t[0] = type;
 }
 
 uint16_t
 BRNPacketAnno::ethertype_anno(Packet *p) {
   uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
-  return ntohs(t[0]); 
+  return t[0];
 }
 
 void
 BRNPacketAnno::set_ethertype_anno(Packet *p, uint16_t type) {
   uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
-  t[0] = htons(type);
+  t[0] = type;
 }
 
-String
-BRNPacketAnno::udevice_anno(Packet *p)
+uint16_t
+BRNPacketAnno::pulled_bytes_anno(Packet *p)
 {
-  char device[UDEVICE_ANNO_SIZE + 1];
-  memset(device, 0, UDEVICE_ANNO_SIZE + 1);
-  memcpy(device, ((uint8_t*)p->anno_u8()) + UDEVICE_ANNO_OFFSET, UDEVICE_ANNO_SIZE);
-  return String(device);
+  uint16_t p_bytes;
+  memcpy(&p_bytes, ((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, PULLED_BYTES_ANNO_SIZE);
+  return p_bytes;
 }
 
 void
-BRNPacketAnno::set_udevice_anno(Packet *p, const char *device)
+BRNPacketAnno::set_pulled_bytes_anno(Packet *p, const uint16_t p_bytes)
 {
-  if (strlen(device) <= UDEVICE_ANNO_SIZE)
-  {
-    void* dst = (uint8_t*)(p->anno_u8()) + UDEVICE_ANNO_OFFSET;
-    memset(dst, 0, UDEVICE_ANNO_SIZE);
-    memcpy(dst, device, strlen(device));
-  }
-  else
-    click_chatter("ERROR: Device annotation couldn't be set - was too long. Got '%s'.",
-                  device);
+  memcpy(((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, &p_bytes, PULLED_BYTES_ANNO_SIZE);
+}
+
+void
+BRNPacketAnno::inc_pulled_bytes_anno(Packet *p, const uint16_t inc_bytes)
+{
+  uint16_t *p_bytes;
+
+  memcpy(&p_bytes, ((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, PULLED_BYTES_ANNO_SIZE);
+  p_bytes += inc_bytes;
+  memcpy(((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, &p_bytes, PULLED_BYTES_ANNO_SIZE);
+}
+
+void
+BRNPacketAnno::dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes)
+{
+  uint16_t *p_bytes;
+
+  memcpy(&p_bytes, ((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, PULLED_BYTES_ANNO_SIZE);
+  p_bytes -= dec_bytes;
+  memcpy(((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, &p_bytes, PULLED_BYTES_ANNO_SIZE);
 }
 
 uint8_t

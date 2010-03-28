@@ -23,8 +23,12 @@
  */
 
 #include <click/config.h>
+
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+
 #include "brn2_stripdsrheader.hh"
 #include "brn2_dsrprotocol.hh"
+
 CLICK_DECLS
 
 BRN2StripDSRHeader::BRN2StripDSRHeader()
@@ -41,6 +45,8 @@ BRN2StripDSRHeader::simple_action(Packet *p)
 
   int dsr_size = DSRProtocol::header_length(p);
   p->pull(dsr_size);
+  BRNPacketAnno::inc_pulled_bytes_anno(p, dsr_size);
+
   return p;
 }
 

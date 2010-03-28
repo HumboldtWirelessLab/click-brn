@@ -83,7 +83,7 @@ public:
     EtherAddress  sta, 
     EtherAddress  ap_new, 
     EtherAddress  ap_old,
-    const String& device,
+    BRN2Device *device,
     const String& ssid);
 
   /**
@@ -151,13 +151,13 @@ public:
   timeval                 _stale_timeout;
 
   // Elements
-  BRN2NodeIdentity*           _id;
-  BRN2AssocList*              _assoc_list;
-  Brn2LinkTable*           _link_table; 
+  BRN2NodeIdentity*       _id;
+  BRN2AssocList*          _assoc_list;
+  Brn2LinkTable*          _link_table;
   BrnIappNotifyHandler*   _notify_handler;
   BrnIappDataHandler*     _data_handler;
-  BRN2AssocResponder*      _assoc_responder;
-  //Signal*                 _sig_assoc;
+  BRN2AssocResponder*     _assoc_responder;
+  //Signal*                _sig_assoc;
 };
 
 CLICK_ENDDECLS

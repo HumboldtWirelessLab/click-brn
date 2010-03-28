@@ -105,9 +105,9 @@ DartIDStore::store_nodeid()
 
   dhtop = new DHTOperation();
 
-  BRN_DEBUG("Insert EtherAddress: %s",_me->getMainAddress()->unparse().c_str());
+  BRN_DEBUG("Insert EtherAddress: %s",_me->getMasterAddress()->unparse().c_str());
 
-  dhtop->write((uint8_t*)_me->getMainAddress()->data(), 6/*Size of EtherAddress*/, (uint8_t*)&id_entry, sizeof(struct dht_nodeid_entry), true); //if exist: OVERWRITE !!
+  dhtop->write((uint8_t*)_me->getMasterAddress()->data(), 6/*Size of EtherAddress*/, (uint8_t*)&id_entry, sizeof(struct dht_nodeid_entry), true); //if exist: OVERWRITE !!
   dhtop->max_retries = 3;
 
   result = _dht_storage->dht_request(dhtop, callback_func, (void*)this );

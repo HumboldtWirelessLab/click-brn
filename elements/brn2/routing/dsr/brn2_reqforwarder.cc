@@ -354,7 +354,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         indev = _me->getDeviceByNumber(devicenumber);
         //const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
-        BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), (BRNPacketAnno::udevice_anno(p_in)).c_str());
+        BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), indev->getDeviceName().c_str());
 
         new_frv.p = NULL;
         new_frv.best_metric = this_metric;

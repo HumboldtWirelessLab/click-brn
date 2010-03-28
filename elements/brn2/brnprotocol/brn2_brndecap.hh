@@ -18,32 +18,37 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-/*
- * stripbrnheader.{cc,hh} -- element removes (leading) BRN header at offset position 0.
- */
-
-#include <click/config.h>
-#include "elements/brn/brn.h"
-#include "stripbrnheader.hh"
+#ifndef BRN2DECAPELEMENT_HH
+#define BRN2DECAPELEMENT_HH
+#include <click/element.hh>
 CLICK_DECLS
 
-StripBRNHeader::StripBRNHeader()
-{
-}
+/*
+=c
+BRN2Decap()
 
-StripBRNHeader::~StripBRNHeader()
-{
-}
+Strips outermost BRN header
 
-Packet *
-StripBRNHeader::simple_action(Packet *p)
-{
+=d
 
-  int brn_size = sizeof(click_brn);
-  p->pull(brn_size);
-  return p;
-}
+Removes the outermost BRN header from this packet.
+
+=a CheckBRNHeader
+
+*/
+
+class BRN2Decap : public Element {
+
+ public:
+
+  BRN2Decap();
+  ~BRN2Decap();
+
+  const char *class_name() const  { return "BRN2Decap"; }
+  const char *port_count() const  { return PORTS_1_1; }
+
+  Packet *simple_action(Packet *);
+};
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(StripBRNHeader)
-ELEMENT_MT_SAFE(StripBRNHeader)
+#endif

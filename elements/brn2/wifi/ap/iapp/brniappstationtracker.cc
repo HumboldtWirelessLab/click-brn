@@ -22,12 +22,13 @@
  * brniappstationtracker.{cc,hh} -- keeps track of associated stations
  * M. Kurth
  */
- 
+
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include <elements/wifi/wirelessinfo.hh>
 
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
@@ -78,15 +79,15 @@ BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int stale_period = 120;
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-     // cpKeywords,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout",*/ &stale_period,
-      "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
+      "DEBUG", cpkP+cpkM, cpInteger, &_debug, /*"Debug"*/
+      "STALE", cpkP+cpkM, cpUnsigned, &stale_period, /*"Stale info timeout"*/
+      "OPTIMIZE", cpkP+cpkM, cpBool, &_optimize, /*"Optimize"*/
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "NOTIFYHDL", cpkP+cpkM, cpElement, /*"NotifyHandler element",*/ &_notify_handler,
       "DATAHDL", cpkP+cpkM, cpElement,/* "DataHandler element",*/ &_data_handler,
       "ASSOC_RESP", cpkP+cpkM, cpElement, /*"AssocResponder element",*/ &_assoc_responder,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       //"SIG_ASSOC", cpElement, "SignalAssoc element", &_sig_assoc,
       cpEnd) < 0)
     return -1;
@@ -120,14 +121,12 @@ BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BrnIappStationTracker::initialize(ErrorHandler *errh)
 {
-/*Robat  _id = _assoc_list->get_id();
   if (!_id || !_id->cast("NodeIdentity")) 
     return errh->error("NodeIdentity not specified");
-*/
-/*RobAt  _link_table = _id->get_link_table();
-  if (!_link_table || !_link_table->cast("BrnLinkTable")) 
-    return errh->error("BRNLinkTable not specified");
-*/
+
+  if (!_link_table || !_link_table->cast("Brn2LinkTable")) 
+    return errh->error("BRN2LinkTable not specified");
+
   timeval lt_timeout;
   _link_table->get_stale_timeout(lt_timeout);
   if (_stale_timeout >= lt_timeout)
@@ -163,12 +162,12 @@ BrnIappStationTracker::clear_stale()
     if ((unsigned) _stale_timeout.tv_sec < i.value().age())
     {
       // Update link table
-      update_linktable(e, EtherAddress(), *_id->getMainAddress());
-      
+      update_linktable(e, EtherAddress(), *_id->getMasterAddress());
+
       // remove from assoclist and linktable
       BRN_INFO("client %s timed out, removed.", e.unparse().c_str());
       _assoc_list->remove(e);
-      
+
       // send disassoc with reason expired
       _assoc_responder->send_disassociation(e, WIFI_REASON_ASSOC_EXPIRE);
     }
@@ -178,7 +177,7 @@ BrnIappStationTracker::clear_stale()
   /*
   if (_assoc_list->begin().live())
     _sig_assoc->send_signal_action();
-    */
+  */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,33 +204,33 @@ BrnIappStationTracker::push(int, Packet* p)
     uint8_t authoritive = pHe->authoritive;
 
     p->kill();
-  
+
     if (!authoritive)
       return;
 
     BRN_INFO("peeking hello curr %s cand %s (client %s)", 
       ap_curr.unparse().c_str(), ap_cand.unparse().c_str(), sta.unparse().c_str());
-  
+
     // Update link table
     update_linktable(sta, ap_curr);
 
     // learn from authoritive hello message, if we do not know it better ...
-/*RobAt    AssocList::client_state state = _assoc_list->get_state(sta);
-    if (AssocList::SEEN_OTHER == state 
-      || AssocList::SEEN_BRN == state) 
+    BRN2AssocList::client_state state = _assoc_list->get_state(sta);
+    if (BRN2AssocList::SEEN_OTHER == state
+        || BRN2AssocList::SEEN_BRN == state)
     {
-      _assoc_list->set_state(sta, AssocList::SEEN_BRN);
+      _assoc_list->set_state(sta, BRN2AssocList::SEEN_BRN);
       _assoc_list->set_ap(sta, ap_curr);
-    }*/
+    }
   }
   else
   {
     click_brn_iapp_ho*  pHo     = &pIapp->payload.ho;
-  
+
     EtherAddress client(pHo->addr_sta);
     EtherAddress apOld(pHo->addr_mold);
     EtherAddress apNew(pHo->addr_mnew);
-  
+
     if (!_optimize)
     {
       if (!_id->isIdentical(&apOld) 
@@ -245,68 +244,65 @@ BrnIappStationTracker::push(int, Packet* p)
 
     BRN_INFO("peeking packet type %d (new %s, old %s, sta %s)", 
       pIapp->type, apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
-  
+
     p->kill();
-  
-  
+
     // Update link table
     update_linktable(client, apNew, apOld);
 
     // Check if the link update really proceeded
-/*RobAt    if (_debug >= BrnLogger::INFO) {
-      Brn2LinkTable* _link_table = _assoc_list->get_id()->get_link_table();
-      
+    if (_debug >= BrnLogger::INFO) {
       BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(apNew, client) 
         || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(client, apNew),
         ("corrupted link table, missing link from sta %s to new ap %s",
           client.unparse().c_str(), apNew.unparse().c_str()));
-  
+
       BRN_CHECK_EXPR(BRN_DSR_ROAMED_STATION_METRIC > _link_table->get_link_metric(apOld, client) 
         || BRN_DSR_INVALID_ROUTE_METRIC > _link_table->get_link_metric(client, apOld),
         ("corrupted link table, link from sta %s to old ap %s still exists",
           client.unparse().c_str(), apOld.unparse().c_str()));
-    }*/
-  }  
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 void 
 BrnIappStationTracker::sta_associated(
-  EtherAddress  sta, 
-  EtherAddress  ap_new, 
+  EtherAddress  sta,
+  EtherAddress  ap_new,
   EtherAddress  ap_old,
-  const String& device,
+  BRN2Device *device,
   const String& ssid)
 {
   BRN_CHECK_EXPR_RETURN(!sta || !ap_new,
     ("invalid arguments"), return;);
-  
+
   // Get the current state
-/*RobAt  AssocList::client_state state = _assoc_list->get_state(sta);
+  BRN2AssocList::client_state state = _assoc_list->get_state(sta);
 
   // Sanity check  
-  BRN_CHECK_EXPR(_debug && ap_old && AssocList::NON_EXIST == state,
+  BRN_CHECK_EXPR(_debug && ap_old && BRN2AssocList::NON_EXIST == state,
     ("sta %s reassoc'd but not known in advance. Promisc forgotten?", 
       sta.unparse().c_str()));
 
   // Check the old ap, if not set (like in the assoc case), lookup in own data...
   EtherAddress stored_ap_old = _assoc_list->get_ap(sta);
   if (!ap_old && 
-    (AssocList::SEEN_BRN == state 
-      || AssocList::ROAMED == state
-      || AssocList::ASSOCIATED == state))
+    (BRN2AssocList::SEEN_BRN == state
+       || BRN2AssocList::ROAMED == state
+       || BRN2AssocList::ASSOCIATED == state))
   {
     // nugget: handling of hard handoff in the assoc case
     // note: improvement but no 100% solution
     ap_old = stored_ap_old;
   }
-*/
+
   // Insert into and update, if it is for us
   if (_id->isIdentical(&ap_new)) 
   {
     BRN_INFO("sta %s associated with %s on dev %s (old %s)", 
-      sta.unparse().c_str(), ap_new.unparse().c_str(), device.c_str(), ap_old.unparse().c_str());
+             sta.unparse().c_str(), ap_new.unparse().c_str(), device->getDeviceName().c_str(), ap_old.unparse().c_str());
 
     // cleanse linktable, remove all links to/from the associating station
     _link_table->remove_node(sta);
@@ -316,30 +312,29 @@ BrnIappStationTracker::sta_associated(
 
     // insert the new information, invalidates all old data
     String my_ssid = (ssid == "" ? _assoc_list->get_ssid(sta) : ssid);
-//RobAt    _assoc_list->insert(sta, device, my_ssid, ap_old, _seq_no);
+    _assoc_list->insert(sta, device, my_ssid, ap_old, _seq_no);
     _seq_no = (_seq_no + 1) % MAX_SEQ_NO;
-    
-/*RobAt    AssocList::ClientInfo* pClient = _assoc_list->get_entry(sta);
+
+    BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(sta);
     BRN_CHECK_EXPR_RETURN(NULL == pClient,
       ("unable to gather assoc list entry"), return;);
 
     // If not associated or previously associated or the previous ap not known, ignore...
-    if (AssocList::ASSOCIATED != pClient->get_state()
-      || AssocList::ASSOCIATED == state 
+    if (BRN2AssocList::ASSOCIATED != pClient->get_state()
+      || BRN2AssocList::ASSOCIATED == state
       || !pClient->get_old_ap()
       || pClient->get_ap() == pClient->get_old_ap())
       return;
-    
+
     // Send the notify
     _notify_handler->send_handover_notify(sta, ap_new, ap_old, pClient->get_seq_no());
-    
+
     // Send another notify if announced ap and stored ap are not the same
     // (could happen if the client announces the wrong one) 
     if (stored_ap_old 
       && stored_ap_old != ap_old)
       _notify_handler->send_handover_notify(sta, ap_new, stored_ap_old, 
         pClient->get_seq_no());
-    */
   }
   // The station associated with another mesh node
   else if (_id->isIdentical(&ap_old) 
@@ -352,7 +347,7 @@ BrnIappStationTracker::sta_associated(
     // Update link table
     update_linktable(sta, ap_new, ap_old); 
 
-//RobAt    _assoc_list->client_seen(sta, ap_new, device);
+    _assoc_list->client_seen(sta, ap_new, device);
   }
 }
 
@@ -365,7 +360,7 @@ BrnIappStationTracker::sta_disassociated(
   BRN_INFO("station %s disassociated", sta.unparse().c_str());
 
   // Update link table
-  update_linktable(sta, EtherAddress(), *_id->getMainAddress());
+  update_linktable(sta, EtherAddress(), *_id->getMasterAddress());
 
   // we don't care about whether the remove is sucessfull or not because
   // some client stations send multiple disassocs
@@ -385,24 +380,24 @@ BrnIappStationTracker::sta_roamed(
 
   // Update link table
   update_linktable(client, apNew, apOld); 
-  
+
   // If the final destination is reached, clean the internals and send reply
   if (_id->isIdentical(&apOld))
   {
     // Note: the bufferd packet list is cleared in the following roamed()!
-/*RobAt    AssocList::PacketList pl = _assoc_list->get_buffered_packets(client);
-    
+    BRN2AssocList::PacketList pl = _assoc_list->get_buffered_packets(client);
+
     // Mark as roamed in assoc list
     // TODO put in correct sequence number
     _assoc_list->roamed(client, apNew, apOld, SEQ_NO_INF);
-    
+
     BRN_INFO("salvaged %d packets for sta %s during handover", 
       pl.size(), client.unparse().c_str());
-  
+
     // Send buffered packets to the new mesh node
     for (;0 < pl.size(); pl.pop_front()) {
       _data_handler->handle_handover_data(client, apNew, apOld, SEQ_NO_INF, pl.front());
-    }*/
+    }
   }
 }
 
@@ -414,7 +409,7 @@ BrnIappStationTracker::update(EtherAddress sta)
   // An error is generated if not associated
   if (!_assoc_list->update(sta))
     return (false);
-  
+
   // TODO improve performance
   EtherAddress ap(_assoc_list->get_ap(sta));
   return (ap && update_linktable(sta, ap));
@@ -438,15 +433,15 @@ BrnIappStationTracker::filter_buffered_packet(
 
   EtherAddress src_addr(ether->ether_shost);
   BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(src_addr);
-  
+
   // If the packet does not come from an associated station or 
   // we do not know the former ap, exit
-/*RobAt  if (NULL == pClient 
-    || AssocList::ASSOCIATED != pClient->get_state()
+  if (NULL == pClient
+    || BRN2AssocList::ASSOCIATED != pClient->get_state()
     || !pClient->get_old_ap()
     || pClient->get_old_ap() == pClient->get_ap())
     return (p);
-  */
+
   EtherAddress sta_ap(pClient->get_ap());
   BRN_CHECK_EXPR(!_id->isIdentical(&sta_ap),
     ("sta %s has ap %s, which is different from me", 
@@ -454,11 +449,11 @@ BrnIappStationTracker::filter_buffered_packet(
 
   BRN_INFO("filtering buffered packet for STA %s and send it to old ap %s", 
     pClient->get_eth().unparse().c_str(), pClient->get_old_ap().unparse().c_str());
-  
+
   // Otherwise send the packet to the former ap instead of delaying it
-  _data_handler->handle_handover_data(pClient->get_eth(), 
-                                      pClient->get_ap(), 
-                                      pClient->get_old_ap(), 
+  _data_handler->handle_handover_data(pClient->get_eth(),
+                                      pClient->get_ap(),
+                                      pClient->get_old_ap(),
                                       pClient->get_seq_no(),
                                       p); 
   return (NULL);
@@ -490,26 +485,26 @@ BrnIappStationTracker::update_linktable(
   // TODO every time we update here the internal time stamp of each route entry
   // is updated. could this turned off in this case?
   bool ret = true;
-  
+
   if (ap_new) {
     // TODO prevent loops and relaying of stations (inspect ap_old?)
     ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
-  
+
     ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_STATION_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_STATION_METRIC);
   }
-  
+
   if (ap_old) {
     ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
-  
+
     // if not optimizing or the sta has no new ap, discart from route table
     int linkmetric_old_to_sta = BRN_DSR_ROAMED_STATION_METRIC;
     if (!_optimize || !ap_new)
@@ -517,13 +512,13 @@ BrnIappStationTracker::update_linktable(
       BRN_DEBUG("optimization turned off, invalidating link old ap -> sta.");
       linkmetric_old_to_sta = BRN_DSR_INVALID_ROUTE_METRIC;
     }
-  
+
     ret &= _link_table->update_link(ap_old, sta, 0, 0, linkmetric_old_to_sta);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         ap_old.unparse().c_str(), sta.unparse().c_str(), linkmetric_old_to_sta);
   }
-  
+
   return (ret);
 
 //  bool ret = _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_ROAMED_STATION_METRIC);
@@ -555,18 +550,18 @@ BrnIappStationTracker::disassoc_all(int reason)
   for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live(); i++)
   {
     EtherAddress e = i.key();
-/*RobAt    if (AssocList::ASSOCIATED == i.value().get_state())
+    if (BRN2AssocList::ASSOCIATED == i.value().get_state())
     {
       // Update link table
-      update_linktable(e, EtherAddress(), *_id->getMainAddress());
+      update_linktable(e, EtherAddress(), *_id->getMasterAddress());
 
       // remove from assoclist and linktable
       BRN_INFO("client %s disassociated", e.unparse().c_str());
       _assoc_list->remove(e);
-      
+
       // send disassoc with reason expired
       _assoc_responder->send_disassociation(e, reason);
-    }*/
+    }
   }
 }
 
@@ -629,10 +624,10 @@ BrnIappStationTracker::add_handlers()
 {
   add_read_handler("debug", read_param, (void *) H_DEBUG);
   add_write_handler("debug", write_param, (void *) H_DEBUG);
-  
+
   add_read_handler("optimize", read_param, (void *) H_OPTIMIZE);
   add_write_handler("optimize", write_param, (void *) H_OPTIMIZE);
-  
+
   add_write_handler("disassoc", write_param, (void *) H_DISASSOC);
 }
 
@@ -640,6 +635,5 @@ BrnIappStationTracker::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnIappStationTracker)
-ELEMENT_REQUIRES(brn_common)
 
 ////////////////////////////////////////////////////////////////////////////////

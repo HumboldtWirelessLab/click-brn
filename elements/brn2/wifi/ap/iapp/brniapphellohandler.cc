@@ -69,15 +69,15 @@ int
 BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _hello_trigger_interval_ms = 0;
-  
+
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-     // cpKeywords,
       "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
       "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
       "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout (ms)",*/ &_hello_trigger_interval_ms,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement,/* "BrnIapp encap element",*/ &_encap,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       cpEnd) < 0)
     return -1;
 
@@ -86,39 +86,37 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_encap || !_encap->cast("BrnIappEncap")) 
     return errh->error("BrnIappEncap not specified");
-  
+
+  if (!_id || !_id->cast("NodeIdentity"))
+    return errh->error("NodeIdentity not specified");
+
+  if (!_link_table || !_link_table->cast("BrnLinkTable"))
+    return errh->error("BRNLinkTable not specified");
+
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BrnIappHelloHandler::initialize(ErrorHandler *errh)
+BrnIappHelloHandler::initialize(ErrorHandler */*errh*/)
 {
-  _id = 0; //RobAt: _assoc_list->get_id();
-  if (!_id || !_id->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
-
-  _link_table = NULL; //RobAt: _id->get_link_table();
-  if (!_link_table || !_link_table->cast("BrnLinkTable")) 
-    return errh->error("BRNLinkTable not specified");
-
   // if not specified, use half of the link table stale timeout
   if (0 >= _hello_trigger_interval_ms) {
     timeval t;
     _link_table->get_stale_timeout(t);
-    
+
     _hello_trigger_interval_ms = t.tv_sec  * 1000 + t.tv_usec / 1000;
-    _hello_trigger_interval_ms /= 2;                               
+    _hello_trigger_interval_ms /= 2;
   }
-  
+
   _timer.initialize(this);
   _timer_hello.initialize(this);
 
   // Jitter the start for the simulator
   unsigned int _min_jitter  = _hello_trigger_interval_ms/2 /* ms */;
   unsigned int _jitter      = _hello_trigger_interval_ms;
-  
+
   unsigned int j = (unsigned int) ( _min_jitter +( click_random() % ( _jitter ) ) );
   _timer.schedule_after_msec(j);
 
@@ -137,7 +135,7 @@ BrnIappHelloHandler::push(int, Packet *p)
       p->kill();
     return;
   }
-  
+
   BRN_CHECK_EXPR_RETURN(p == NULL || p->length() < sizeof(struct click_brn_iapp),
     ("invalid argument"), if (p) p->kill(); return;);
 
@@ -153,7 +151,7 @@ BrnIappHelloHandler::push(int, Packet *p)
   //uint8_t authoritive = pHe->authoritive;
 
   p->kill();
-  
+
   BRN_DEBUG("received hello curr %s cand %s (client %s)", 
     ap_curr.unparse().c_str(), ap_cand.unparse().c_str(), sta.unparse().c_str());
 
@@ -166,7 +164,7 @@ BrnIappHelloHandler::push(int, Packet *p)
     if (BRN2AssocList::NON_EXIST == state
       || BRN2AssocList::SEEN_OTHER == state)
       return;
-      
+
     send_iapp_hello(sta, ap_cand, _assoc_list->get_ap(sta), false);
   }
 }
@@ -191,7 +189,7 @@ BrnIappHelloHandler::send_iapp_hello(
 
   BRN_DEBUG("send hello from %s to %s (client %s)", 
     src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str());
-    
+
   // push out
   Packet* p = _encap->create_iapp_hello(sta, ap_cand, ap_curr, to_curr);
   output(0).push(p);
@@ -238,21 +236,20 @@ BrnIappHelloHandler::send_hello()
   {
     EtherAddress sta = _sta_hello_queue.front();
     _sta_hello_queue.pop_front();
-    
+
     BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(sta);
 
     // Could be null in the case the client moved away in the meantime
     if (pClient == NULL) {
-        BRN_INFO("canceling hello for client %s, since it is unknown now.", 
+        BRN_INFO("canceling hello for client %s, since it is unknown now.",
           sta.unparse().c_str());
         continue;
     }
-       
+
     // Send the hello after timeout
     send_iapp_hello(  pClient->get_eth(),
-                      *_id->getMainAddress(),
-                     //RobAt *_id->getMyWirelessAddress(), 
-                      pClient->get_ap(), 
+                      *(_id->getMasterAddress()),
+                      pClient->get_ap(),
                       true);
   }
 }
@@ -265,16 +262,16 @@ BrnIappHelloHandler::hello_trigger()
   // Go through all clients 
   for (BRN2AssocList::iterator i = _assoc_list->begin(); i.live(); i++)
   {
-/*RobAt    AssocList::ClientInfo& nfo = i.value();
-    if (AssocList::SEEN_BRN != nfo.get_state()
-      && AssocList::ROAMED != nfo.get_state())
+    BRN2AssocList::ClientInfo& nfo = i.value();
+    if (BRN2AssocList::SEEN_BRN != nfo.get_state()
+      && BRN2AssocList::ROAMED != nfo.get_state())
       continue;
-    
+
     // Send the hello after timeout
-    send_iapp_hello(  nfo.get_eth(), 
-                      *_id->getMyWirelessAddress(), 
-                      nfo.get_ap(), 
-                      true);*/
+    send_iapp_hello(  nfo.get_eth(),
+                      *_id->getMasterAddress(),
+                      nfo.get_ap(),
+                      true);
   }
 }
 
@@ -358,6 +355,5 @@ BrnIappHelloHandler::add_handlers()
 #include <click/dequeue.cc>
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnIappHelloHandler)
-ELEMENT_REQUIRES(brn_common)
 
 ////////////////////////////////////////////////////////////////////////////////

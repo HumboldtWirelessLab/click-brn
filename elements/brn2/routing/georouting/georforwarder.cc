@@ -80,7 +80,7 @@ GeorForwarder::push( int port, Packet *packet )
     _rt->updateEntry(&sea,&(georh->src_pos));
     _rt->updateEntry(&dea,&(georh->dst_pos));  //TODO: check for positionrouting only
 
-    BRN_INFO("Forwarder (%s): %s to %s",_nodeid->getMainAddress()->unparse().c_str(),
+    BRN_INFO("Forwarder (%s): %s to %s",_nodeid->getMasterAddress()->unparse().c_str(),
              sea.unparse().c_str(),dea.unparse().c_str());
 
     if ( ! _nodeid->isIdentical(&dea) ) {

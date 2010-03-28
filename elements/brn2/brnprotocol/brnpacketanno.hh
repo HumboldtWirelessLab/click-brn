@@ -15,11 +15,13 @@ CLICK_DECLS
 #define SRC_ETHER_ANNO_OFFSET   10
 #define SRC_ETHER_ANNO_SIZE      6
 
-#define UDEVICE_ANNO_OFFSET     10
-#define UDEVICE_ANNO_SIZE        6
-
 #define TTL_ANNO_OFFSET         27
 #define TTL_ANNO_SIZE            1
+
+/* next annos ( byte 36-37 ) overwrites SEQUENCE_NUMBER_ANNO and IPSEC_SA_DATA_REFERENCE_ANNO  */
+
+#define PULLED_BYTES_ANNO_OFFSET 36
+#define PULLED_BYTES_ANNO_SIZE    2
 
 /* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
@@ -69,8 +71,10 @@ class BRNPacketAnno : public Element { public:
   static uint16_t ethertype_anno(Packet *p);
   static void set_ethertype_anno(Packet *p, uint16_t);
 
-  static String udevice_anno(Packet *p);
-  static void set_udevice_anno(Packet *p, const char *device);
+  static uint16_t pulled_bytes_anno(Packet *p);
+  static void set_pulled_bytes_anno(Packet *p, const uint16_t p_bytes);
+  static void inc_pulled_bytes_anno(Packet *p, const uint16_t inc_bytes);
+  static void dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes);
 
   static uint8_t devicenumber_anno(const Packet *p);
   static void set_devicenumber_anno(Packet *, uint8_t);

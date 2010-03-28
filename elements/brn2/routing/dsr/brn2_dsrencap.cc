@@ -157,7 +157,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   BRN_DEBUG(" * add_dsr_header: new packet size is %d, old was %d", p->length(), old_len);
 
   // copy packet destination annotation from incoming packet
-  BRNPacketAnno::set_udevice_anno(p,(BRNPacketAnno::udevice_anno(p_in)).c_str());
+  BRNPacketAnno::set_devicenumber_anno(p,(BRNPacketAnno::devicenumber_anno(p_in)));
 
   // set destination anno
   if (hop_count > 0) { // next hop on tour
