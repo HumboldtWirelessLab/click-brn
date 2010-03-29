@@ -25,6 +25,7 @@
 #include <click/config.h>
 
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "brnprotocol.hh"
 
 #include "brn2_brndecap.hh"
