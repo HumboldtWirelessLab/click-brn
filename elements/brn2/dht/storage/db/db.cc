@@ -13,9 +13,9 @@
 
 CLICK_DECLS
 
-BRNDB::BRNDB():
-  _debug(BrnLogger::DEFAULT)
+BRNDB::BRNDB()
 {
+  BRNElement::init();
 }
 
 BRNDB::~BRNDB()
@@ -156,29 +156,9 @@ BRNDB::size()
 /***************************************** H A N D L E R *****************************************/
 /*************************************************************************************************/
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRNDB *db = (BRNDB *)e;
-  return String(db->_debug) + "\n";
-}
-
-static int
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BRNDB *db = (BRNDB *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  db->_debug = debug;
-  return 0;
-}
-
 void BRNDB::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 #include <click/vector.cc>

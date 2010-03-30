@@ -23,7 +23,6 @@ CLICK_DECLS
 DHTStorageSimple::DHTStorageSimple():
   _dht_key_cache(NULL),
   _check_req_queue_timer(req_queue_timer_hook,this),
-  _debug(BrnLogger::DEFAULT),
   _dht_id(0),
   _max_req_time(DEFAULT_REQUEST_TIMEOUT),
   _max_req_retries(DEFAULT_MAX_RETRIES),
@@ -38,6 +37,7 @@ DHTStorageSimple::DHTStorageSimple():
   _stats_hops_sum(0)
 #endif
 {
+  DHTStorage::init();
   _dht_routing = NULL;
 }
 
@@ -526,6 +526,8 @@ read_param(Element *e, void *thunk)
 void
 DHTStorageSimple::add_handlers()
 {
+  DHTStorage::add_handlers();
+
   add_read_handler("db_size", read_param , (void *)H_DB_SIZE);
 #ifdef DHT_STORAGE_STATS
   add_read_handler("stats", read_param , (void *)H_DHT_STORAGE_STATS);

@@ -29,6 +29,7 @@ CLICK_DECLS
 
 DHTRoutingDart::DHTRoutingDart()
 {
+  DHTRouting::init();
 }
 
 DHTRoutingDart::~DHTRoutingDart()
@@ -189,6 +190,8 @@ read_param(Element *e, void *thunk)
 
 void DHTRoutingDart::add_handlers()
 {
+  DHTRouting::add_handlers();
+
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 

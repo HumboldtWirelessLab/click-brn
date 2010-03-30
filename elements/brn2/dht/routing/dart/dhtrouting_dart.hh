@@ -40,9 +40,10 @@ class DHTRoutingDart : public DHTRouting
     bool replication_support() const { return false; }
     int max_replication() const { return 0; }
 
-   private:
+  private:
     DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
-   public:
+
+  public:
     DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
 
     bool range_query_support() { return false; }
@@ -53,9 +54,6 @@ class DHTRoutingDart : public DHTRouting
     DartRoutingTable *_drt;
 
     static void routingtable_callback_func(void *e, int status);
-
-  private:
-    int _debug;
 
 };
 

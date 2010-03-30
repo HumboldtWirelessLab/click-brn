@@ -1,6 +1,6 @@
 #ifndef DHT_STORAGE_HH
 #define DHT_STORAGE_HH
-#include <click/element.hh>
+/*#include <click/element.hh>
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
 #include <clicknet/ether.h>
@@ -8,13 +8,15 @@
 #include <click/timestamp.hh>
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
+*/
+#include "elements/brn2/brnelement.hh"
 
 #include "elements/brn2/dht/routing/dhtrouting.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 
 CLICK_DECLS
 
-class DHTStorage : public Element
+class DHTStorage : public BRNElement
 {
   public:
     DHTStorage();

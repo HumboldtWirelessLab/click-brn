@@ -18,6 +18,7 @@ DHTRoutingFalcon::DHTRoutingFalcon():
   _frt(NULL),
   _responsible(FALCON_RESPONSIBLE_FORWARD)
 {
+  DHTRouting::init();
 }
 
 DHTRoutingFalcon::~DHTRoutingFalcon()
@@ -202,6 +203,8 @@ read_param(Element *e, void *thunk)
 
 void DHTRoutingFalcon::add_handlers()
 {
+  DHTRouting::add_handlers();
+
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 

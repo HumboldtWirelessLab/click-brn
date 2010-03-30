@@ -2,6 +2,9 @@
 #define DHT_ROUTING_HH
 #include <click/element.hh>
 #include <click/etheraddress.hh>
+
+#include "elements/brn2/brnelement.hh"
+
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/standard/md5.h"
@@ -20,7 +23,7 @@ CLICK_DECLS
  Notify_callbacks and objects should be lists, so that several objects can connect
 */
 
-class DHTRouting : public Element
+class DHTRouting : public BRNElement
 {
   public:
 

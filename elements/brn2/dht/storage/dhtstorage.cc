@@ -11,6 +11,7 @@ DHTStorage::~DHTStorage()
 {
 }
 
+ELEMENT_REQUIRES(BRNElement)
 ELEMENT_PROVIDES(DHTStorage)
 CLICK_ENDDECLS
 

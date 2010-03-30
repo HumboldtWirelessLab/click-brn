@@ -4,6 +4,7 @@
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/md5.h"
 
 #define DB_INT 0
@@ -32,7 +33,7 @@ struct db_row_header {
   uint8_t reserved;
 };
 
-class BRNDB : public Element {
+class BRNDB : public BRNElement {
 
   public:
     class DBrow {
@@ -217,8 +218,6 @@ class BRNDB : public Element {
     int delRow(int index);
 
     int size();
-
-    int _debug;
 
   private:
 

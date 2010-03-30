@@ -166,8 +166,6 @@ class DHTStorageSimple : public DHTStorage
 
     Timer _check_req_queue_timer;                 //Timer used to check for timeouts
 
-    int _debug;
-
     uint16_t get_next_dht_id();
     uint16_t _dht_id;
 

@@ -29,6 +29,7 @@ DHTRoutingKlibs::DHTRoutingKlibs():
   _lookup_timer(static_lookup_timer_hook,this),
   _packet_buffer_timer(static_packet_buffer_timer_hook,this)
 {
+  DHTRouting::init();
 }
 
 DHTRoutingKlibs::~DHTRoutingKlibs()
@@ -724,6 +725,8 @@ read_param(Element *e, void *thunk)
 
 void DHTRoutingKlibs::add_handlers()
 {
+  DHTRouting::add_handlers();
+
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 
