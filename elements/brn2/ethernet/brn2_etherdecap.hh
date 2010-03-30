@@ -22,6 +22,9 @@
 #define BRN2ETHERDECAP_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -30,7 +33,7 @@ CLICK_DECLS
  *=s encapsulation, Ethernet
  *encapsulates packets in Ethernet header (information used from Packet::ether_header())
 */
-class BRN2EtherDecap : public Element {
+class BRN2EtherDecap : public BRNElement {
 
  public:
   //
