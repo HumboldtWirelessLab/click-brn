@@ -26,7 +26,6 @@
 #include <click/element.hh>
 #include <click/bighashmap.hh>
 
-//#include "elements/brn/common.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_dsrencap.hh"

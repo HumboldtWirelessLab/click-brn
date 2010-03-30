@@ -23,8 +23,6 @@
  */
 
 #include <click/config.h>
-//#include "elements/brn/common.hh"
-
 #include "batmanrouting.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>

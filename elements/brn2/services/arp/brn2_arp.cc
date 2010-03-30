@@ -23,8 +23,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <click/confparse.hh>

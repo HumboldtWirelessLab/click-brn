@@ -25,8 +25,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
@@ -38,8 +36,10 @@
 #include <click/hashmap.hh>
 #include <click/packet_anno.hh>
 #include <click/error.hh>
-#include "filterbssid.hh"
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "filterbssid.hh"
 
 CLICK_DECLS
 
