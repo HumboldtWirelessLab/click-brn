@@ -33,6 +33,8 @@ class BRNElement : public Element {
   virtual ~BRNElement();
   virtual void add_handlers();
 
+  void init(void);
+
   int _debug;
 };
 

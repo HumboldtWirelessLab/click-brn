@@ -35,6 +35,12 @@ BRNElement::~BRNElement()
 {
 }
 
+void
+BRNElement::init(void)
+{
+  _debug = BrnLogger::DEFAULT;
+}
+
 enum {H_DEBUG};
 
 static String
