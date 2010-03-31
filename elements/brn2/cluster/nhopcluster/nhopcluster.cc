@@ -208,11 +208,10 @@ void
 NHopCluster::send_request()
 {
   WritablePacket *p_brn, *p;
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   p = NHopClusterProtocol::new_request(1, 0, 0);
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, _node_identity->getMasterAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN );
   output(1).push(p_brn);
 
   _send_req++;
@@ -222,11 +221,10 @@ void
 NHopCluster::send_notify()
 {
   WritablePacket *p_brn, *p;
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   p = NHopClusterProtocol::new_notify(&_cluster_head._ether_addr, 1, 0, 0);
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, _node_identity->getMasterAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN );
   output(1).push(p_brn);
 
   _send_notification++;
@@ -302,13 +300,12 @@ NHopCluster::forward(Packet *p)
 {
   WritablePacket *p_brn;
   struct nhopcluster_managment *mgt;
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   mgt = NHopClusterProtocol::get_mgt(p, 0);
   mgt->hops++;
 
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance - mgt->hops, 0);
-  BRNPacketAnno::set_ether_anno(p_brn, *(_node_identity->getMasterAddress()), EtherAddress(broadcast), ETHERTYPE_BRN );
+  BRNPacketAnno::set_ether_anno(p_brn, _node_identity->getMasterAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN );
   output(1).push(p_brn);
 }
 

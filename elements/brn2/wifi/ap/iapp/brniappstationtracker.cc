@@ -129,7 +129,7 @@ BrnIappStationTracker::initialize(ErrorHandler *errh)
 
   timeval lt_timeout;
   _link_table->get_stale_timeout(lt_timeout);
-  if (_stale_timeout >= lt_timeout)
+  if ( Timestamp(_stale_timeout) >= Timestamp(lt_timeout))
     BRN_WARN("Link table timeout less than station timeout, "
       "routes to clients will become inconsistent");
 

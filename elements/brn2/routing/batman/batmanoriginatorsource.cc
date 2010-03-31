@@ -88,15 +88,13 @@ BatmanOriginatorSource::static_send_timer_hook(Timer *t, void *bos)
 void
 BatmanOriginatorSource::sendOriginator()
 {
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
-
   _id++;
 
   BRN2Device *dev = _nodeid->getDeviceByIndex(0);
   WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, dev->getEtherAddress(),0);
   WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
 
-  BRNPacketAnno::set_ether_anno(p_brn,EtherAddress(dev->getEtherAddress()->data()), EtherAddress(broadcast), 0x8680);
+  BRNPacketAnno::set_ether_anno(p_brn, dev->getEtherAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
   output(0).push(p_brn);
 }

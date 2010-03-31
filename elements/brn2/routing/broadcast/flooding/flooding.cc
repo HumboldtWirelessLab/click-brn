@@ -94,7 +94,7 @@ Flooding::push( int port, Packet *packet )
 
     WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING);
     packet_data = (uint8_t *)out_packet->data();
-    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, 0x8086);
+    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
     bcast_header = (struct click_brn_bcast *)&packet_data[sizeof(click_ether) + 6];
 

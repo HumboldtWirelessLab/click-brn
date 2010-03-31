@@ -278,7 +278,7 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
   {
     mdi = _md_queue[i];
 
-    timediff = (now - mdi->_move_time).msec1();
+    timediff = (now - mdi->_move_time).msecval();
 
     if ( timediff >= 2000 ) {
       BRN_DEBUG("TIMEOUT for moveid %d",mdi->_movedID);
@@ -324,14 +324,14 @@ DHTStorageSimpleRoutingUpdateHandler::set_move_timer()
 
   if ( _md_queue.size() > 0 ) {
     mdi = _md_queue[0];
-    min_time = 2000 - (now - mdi->_move_time).msec1();
+    min_time = 2000 - (now - mdi->_move_time).msecval();
   } else
     min_time = -1;
 
   for( int i = 1; i < _md_queue.size(); i++ )
   {
     mdi = _md_queue[i];
-    ac_time = 2000 - (now - mdi->_move_time).msec1();
+    ac_time = 2000 - (now - mdi->_move_time).msecval();
     if ( ac_time < min_time ) min_time = ac_time;
   }
 

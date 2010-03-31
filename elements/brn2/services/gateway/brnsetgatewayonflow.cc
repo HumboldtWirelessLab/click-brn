@@ -636,8 +636,8 @@ BRNSetGatewayOnFlow::write_handler(const String &data, Element *e, void *thunk, 
 
     EtherAddress gw;
 
-    if (cp_va_space_parse(data, gsw, errh,
-                          cpEtherAddress, "specify the gateway's MAC address to delete flows", &gw,
+    if (cp_va_kparse(data, gsw, errh,
+                          "GATEWAYSMAC", cpkP, cpEtherAddress, &gw,
                           cpEnd) < 0)
         return errh->error("wrong arguments to handler 'remove_flows'");
 

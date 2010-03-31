@@ -254,7 +254,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
                   _op->request_time = fwd->_operation->request_time;
                   _op->max_request_duration = fwd->_operation->max_request_duration;
-                  _op->request_duration = (now - _op->request_time).msec1();
+                  _op->request_duration = (now - _op->request_time).msecval();
 
                   _op->header.replica = fwd->replica_count;
 
@@ -361,14 +361,14 @@ DHTStorageSimple::get_time_to_next()
 
   if ( _fwd_queue.size() > 0 ) {
     fwd = _fwd_queue[0];
-    min_time = _max_req_time - (now - fwd->_last_request_time).msec1();
+    min_time = _max_req_time - (now - fwd->_last_request_time).msecval();
   } else
     return -1;
 
   for( int i = 1; i < _fwd_queue.size(); i++ )
   {
     fwd = _fwd_queue[i];
-    ac_time = _max_req_time - (now - fwd->_last_request_time).msec1();
+    ac_time = _max_req_time - (now - fwd->_last_request_time).msecval();
     if ( ac_time < min_time ) min_time = ac_time;
   }
 
@@ -404,7 +404,7 @@ DHTStorageSimple::check_queue()
   {
     fwd = _fwd_queue[i];
 
-    timediff = (now - fwd->_last_request_time).msec1();
+    timediff = (now - fwd->_last_request_time).msecval();
 
 //  click_chatter("Test: Timediff: %d MAX: %d",timediff,_max_req_time);
     if ( timediff >= (int)_max_req_time ) {
@@ -421,7 +421,7 @@ DHTStorageSimple::check_queue()
 #endif
         _op->set_status(DHT_STATUS_TIMEOUT); //DHT_STATUS_MAXRETRY
         _op->set_reply();
-        _op->request_duration = (now - _op->request_time).msec1();
+        _op->request_duration = (now - _op->request_time).msecval();
 
         fwd->_info_func(fwd->_info_obj,_op);
         _fwd_queue.erase(_fwd_queue.begin() + i);

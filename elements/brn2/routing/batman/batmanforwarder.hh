@@ -4,6 +4,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "batmanroutingtable.hh"
 #include "batmanprotocol.hh"
 
@@ -12,7 +14,7 @@
 
 CLICK_DECLS
 
-class BatmanForwarder : public Element {
+class BatmanForwarder : public BRNElement {
 
  public:
 
@@ -42,9 +44,6 @@ class BatmanForwarder : public Element {
 
   BatmanRoutingTable *_brt;
   BRN2NodeIdentity *_nodeid;
-
- public:
-  int _debug;
 
 };
 

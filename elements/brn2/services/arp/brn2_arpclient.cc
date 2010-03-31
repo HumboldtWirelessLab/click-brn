@@ -23,16 +23,18 @@
  */
 
 #include <click/config.h>
-#include "brn2_arpclient.hh"
 #include <click/etheraddress.hh>
-#include <clicknet/ether.h>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
+#include <clicknet/ether.h>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "brn2_arpclient.hh"
 
 CLICK_DECLS
 
@@ -260,12 +262,10 @@ BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
   p->set_mac_header(p->data(), 14);
   memset(p->data(), '\0', p->length());
 
-  e = (click_ether *) p->data();	                                 //pointer auf Ether-header holen
-  ea = (click_ether_arp *) (e + 1);                                //Pointer auf BRN2ARPClient-Header holen
+  e = (click_ether *) p->data();	                               //pointer auf Ether-header holen
+  ea = (click_ether_arp *) (e + 1);                              //Pointer auf BRN2ARPClient-Header holen
 
-  uint8_t bcast_add[] = { 255,255,255,255,255,255 };
-
-  memcpy(e->ether_dhost, bcast_add, 6);                             //alte Quelle ist neues Ziel des Etherframes
+  memcpy(e->ether_dhost, brn_ethernet_broadcast, 6);             //alte Quelle ist neues Ziel des Etherframes
   memcpy(e->ether_shost, _client_ethernet.data(), 6);
 
   e->ether_type = htons(ETHERTYPE_ARP);                          //type im Ether-Header auf ARP setzten
@@ -275,12 +275,12 @@ BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
   ea->ea_hdr.ar_pro = htons(ETHERTYPE_IP);                       //Type der Protokoll Adresse setzten
   ea->ea_hdr.ar_hln = 6;                                         //L�ge setzten
   ea->ea_hdr.ar_pln = 4;                                         //L�ge
-  ea->ea_hdr.ar_op = htons(ARPOP_REQUEST);                         //arp_opcode auf Request setzen
+  ea->ea_hdr.ar_op = htons(ARPOP_REQUEST);                       //arp_opcode auf Request setzen
 
   //neues Packet basteln, erstmal quell und target zeug vertauschen
-  memcpy(ea->arp_tpa, d_ip_add, 4);                         //neues Target ist altes Source
-  memcpy(ea->arp_sha, _client_ethernet.data(), 6);                         //neues Source der Tabelle entnehmen
-  memcpy(ea->arp_spa, _client_ip.data(), 4);                         //neues Source der Tabelle entnehmen
+  memcpy(ea->arp_tpa, d_ip_add, 4);                              //neues Target ist altes Source
+  memcpy(ea->arp_sha, _client_ethernet.data(), 6);               //neues Source der Tabelle entnehmen
+  memcpy(ea->arp_spa, _client_ip.data(), 4);                     //neues Source der Tabelle entnehmen
 
   BRN_DEBUG("BRN2ARPClient: send ARP-Request");
 

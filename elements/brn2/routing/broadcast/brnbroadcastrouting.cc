@@ -28,6 +28,8 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -70,7 +72,6 @@ BrnBroadcastRouting::push( int port, Packet *packet )
   BRN_DEBUG("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
 
   click_ether *ether;
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
 
   if ( port == 0 )  //from client
   {
@@ -80,7 +81,7 @@ BrnBroadcastRouting::push( int port, Packet *packet )
     EtherAddress src = EtherAddress(ether->ether_shost);
 
     WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
-    BRNPacketAnno::set_ether_anno(out_packet, src, EtherAddress(broadcast), 0x8086);
+    BRNPacketAnno::set_ether_anno(out_packet, src.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
     output(1).push(out_packet);  //to brn -> flooding
   }
 

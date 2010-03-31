@@ -70,7 +70,7 @@ AirTimeEstimation::push(int port, Packet *p)
       t3 = t2 + ceh->max_tries3;
 
       PacketInfo *new_pi = new PacketInfo();
-      new_pi->_rx_time.set_now(); //p->timestamp_anno()
+      new_pi->_rx_time = Timestamp::now(); //p->timestamp_anno()
       new_pi->_length = p->length();
       new_pi->_foreign = false;
       new_pi->_channel = BRNPacketAnno::channel_anno(p);
@@ -87,7 +87,7 @@ AirTimeEstimation::push(int port, Packet *p)
   } else {
     PacketInfo *new_pi = new PacketInfo();
 
-    new_pi->_rx_time.set_now(); //p->timestamp_anno()
+    new_pi->_rx_time = Timestamp::now(); //p->timestamp_anno()
     new_pi->_rate = ceh->rate;
     new_pi->_length = p->length();
     new_pi->_foreign = true;

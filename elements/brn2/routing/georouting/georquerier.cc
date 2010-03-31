@@ -89,7 +89,7 @@ GeorQuerier::push( int port, Packet *packet )
       nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING);
-      BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, 0x8086);
+      BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, ETHERTYPE_BRN);
 
       output(0).push(out_packet);
     } else {

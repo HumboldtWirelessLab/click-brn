@@ -84,8 +84,6 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
   EtherAddress src;
   bool newOriginator = false;
 
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
-
   uint8_t devId;
 
   struct batman_header *bh;
@@ -118,8 +116,7 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
     //click_chatter("Originator is new. Forward !");
     bh->hops++;
     WritablePacket *p_fwd = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
-    BRNPacketAnno::set_ether_anno(p_fwd, EtherAddress(dev->getEtherAddress()->data()),
-                                  EtherAddress(broadcast), 0x8680);
+    BRNPacketAnno::set_ether_anno(p_fwd, dev->getEtherAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
     /*Now using queue instead of output(0).push(p_fwd); to reduce collision in simulations*/
     _packet_queue.push_back(p_fwd);

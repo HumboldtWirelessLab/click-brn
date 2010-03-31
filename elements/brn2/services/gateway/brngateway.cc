@@ -125,7 +125,7 @@ BRNGateway::timer_refresh_known_gateways_hook(Timer *t) {
 }
 
 void
-BRNGateway::timer_update_dht_hook(Timer *t) {
+BRNGateway::timer_update_dht_hook(Timer */*t*/) {
   BRN_INFO("Timer executed to get update this gateway");
   // is this node a gateway
   const BRNGatewayEntry *gwe = get_gateway();
@@ -209,11 +209,12 @@ BRNGateway::write_handler(const String &data, Element *e, void *thunk, ErrorHand
     int metric;
     bool nated;
 
-    if (cp_va_space_parse(data, gw, errh,
-                          cpInteger, "Gateway's metric", &metric,
-                          cpIPAddress, "Gateway's IP address", &ip_addr,
-                          cpBool, "Gateway behind NAT?", &nated,
-                          cpEnd) < 0)
+
+    if (cp_va_kparse(data, gw, errh,
+        "GATEWAYMETRIC", cpkP, cpInteger, &metric,
+        "GATEWAYIPADDRESS", cpkP, cpIPAddress, &ip_addr,
+        "GATEWAYBEHINDNAT", cpkP, cpBool, &nated,
+        cpEnd) < 0)
       return errh->error("wrong arguments to handler 'add_gateway'");
 
     BRNGatewayEntry gwe = BRNGatewayEntry(ip_addr, metric, nated);
@@ -421,7 +422,7 @@ BRNGateway::remove_request(RequestInfo *request_info)
 
 
 struct brn_gateway_dht_entry*
-BRNGateway::get_gwe_from_value(uint8_t *value, int valuelen, BRNGatewayEntry *gwe)
+BRNGateway::get_gwe_from_value(uint8_t *value, int valuelen, BRNGatewayEntry */*gwe*/)
 {
   struct brn_gateway_dht_entry* gwentries = (struct brn_gateway_dht_entry*)value;
   int count_entries = valuelen / sizeof(struct brn_gateway_dht_entry);
