@@ -27,6 +27,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -37,10 +38,10 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _debug(BrnLogger::DEFAULT),
-  _flooding_src(0),
-  _flooding_fwd(0)
+  : _flooding_src(0),
+    _flooding_fwd(0)
 {
+  BRNElement::init();
 }
 
 Flooding::~Flooding()
@@ -75,8 +76,6 @@ Flooding::push( int port, Packet *packet )
   struct click_brn_bcast *bcast_header;  /*{ uint16_t      bcast_id; hwaddr        dsr_dst; hwaddr        dsr_src; };*/
   uint8_t src_hwa[6];
 
-  uint8_t broadcast[] = { 255,255,255,255,255,255 };
-
   if ( port == 0 )                       // kommt von arp oder so (Client)
   {
     BRN_DEBUG("Flooding: PUSH vom Client\n");
@@ -93,9 +92,9 @@ Flooding::push( int port, Packet *packet )
     _flooding_policy->add_broadcast(&_my_ether_addr,(int)bcast_id);
     _flooding_src++;
 
-    WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
+    WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING);
     packet_data = (uint8_t *)out_packet->data();
-    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8086);
+    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, 0x8086);
 
     bcast_header = (struct click_brn_bcast *)&packet_data[sizeof(click_ether) + 6];
 
@@ -129,11 +128,11 @@ Flooding::push( int port, Packet *packet )
       if ( bcast_queue.size() > SF_MAX_QUEUE_SIZE ) bcast_queue.erase( bcast_queue.begin() );
 
       /* Packete an den Client sofort raus , an andere Knoten in die Jitter-Queue */
-      Packet *p_client = packet->clone();                 //packet for client
-      p_client->pull(sizeof(struct click_brn_bcast));     //remove bcast_header
-      WritablePacket *p_client_out = p_client->push(6);   //add space for bcast_addr
-      memcpy(p_client_out->data(), broadcast, 6);         //set dest to bcast
-      output( 0 ).push( p_client_out );                   // to clients (arp,...)
+      Packet *p_client = packet->clone();                     //packet for client
+      p_client->pull(sizeof(struct click_brn_bcast));         //remove bcast_header
+      WritablePacket *p_client_out = p_client->push(6);       //add space for bcast_addr
+      memcpy(p_client_out->data(), brn_ethernet_broadcast, 6);//set dest to bcast
+      output( 0 ).push( p_client_out );                       // to clients (arp,...)
     }
 
     if ( _flooding_policy->do_forward(&src_eth, bcast_header->bcast_id, is_known) )
@@ -143,8 +142,8 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Queue size:%d Soll %s:%d forwarden",bcast_queue.size(), src_eth.unparse().c_str(),
                                                          bcast_header->bcast_id);
 
-      WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_SIMPLEFLOODING, BRN_PORT_SIMPLEFLOODING);
-      BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr, EtherAddress(broadcast), 0x8086);
+      WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING);
+      BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
       output(1).push(out_packet);
 
@@ -162,14 +161,6 @@ Flooding::push( int port, Packet *packet )
 //-----------------------------------------------------------------------------
 
 static String
-read_debug_param(Element *e, void *)
-{
-  Flooding *fl = (Flooding *)e;
-
-  return String(fl->_debug) + "\n";
-}
-
-static String
 read_stat_param(Element *e, void *)
 {
   Flooding *fl = (Flooding *)e;
@@ -181,23 +172,10 @@ read_stat_param(Element *e, void *)
   return sa.take_string();
 }
 
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  Flooding *fl = (Flooding *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 Flooding::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
   add_read_handler("stat", read_stat_param, 0);
 }
 

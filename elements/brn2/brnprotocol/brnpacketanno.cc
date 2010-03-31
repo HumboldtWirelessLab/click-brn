@@ -52,6 +52,15 @@ BRNPacketAnno::set_ether_anno(Packet *p, const EtherAddress &src, const EtherAdd
   t[0] = type;
 }
 
+void
+BRNPacketAnno::set_ether_anno(Packet *p, const uint8_t *src, const uint8_t *dst, uint16_t type)
+{
+  memcpy(((p->anno_u8()) + SRC_ETHER_ANNO_OFFSET), src, SRC_ETHER_ANNO_SIZE);
+  memcpy(((p->anno_u8()) + DST_ETHER_ANNO_OFFSET), dst, DST_ETHER_ANNO_SIZE);
+  uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);
+  t[0] = type;
+}
+
 uint16_t
 BRNPacketAnno::ethertype_anno(Packet *p) {
   uint16_t* t = (uint16_t*) ((p->anno_u8()) + ETHERTYPE_ANNO_OFFSET);

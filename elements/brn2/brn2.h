@@ -109,6 +109,8 @@ extern "C" {
   }
 }
 
+const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
+
 class BRNTools {
 
   static int getBitposition(uint32_t x) {

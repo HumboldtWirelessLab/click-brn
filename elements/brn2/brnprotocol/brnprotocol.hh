@@ -11,7 +11,7 @@ TODO: use brn-header ttl instead of hops
 */
 
 
-#define ETHERTYPE_BRN          0x8086 /* Berlin Roofnet Protocol */
+#define ETHERTYPE_BRN        0x8086 /* Berlin Roofnet Protocol */
 #define BRN_MAX_ETHER_LENGTH 1500
 
 /* define structure of Berlin Roofnet packet (BRN) */
@@ -42,26 +42,33 @@ union addr {
   struct netaddr _netaddr;
 };
 
-#define BRN_PORT_SDP                  1
-#define BRN_PORT_TFTP                 2
-#define BRN_PORT_DSR                  3
-#define BRN_PORT_BCASTROUTING         4
-#define BRN_PORT_LINK_PROBE           6
-#define BRN_PORT_DHT                  7 /*TODO: Is this really used*/
-#define BRN_PORT_IAPP                 8
-#define BRN_PORT_GATEWAY              9
-#define BRN_PORT_BATMAN              10
-#define BRN_PORT_COMPRESSION         11
-#define BRN_PORT_DCLUSTER            12
-#define BRN_PORT_NHOPCLUSTER         13
-#define BRN_PORT_DHTROUTING          14
-#define BRN_PORT_DHTSTORAGE          15
-#define BRN_PORT_FLOW                16
-#define BRN_PORT_SIMPLEFLOODING      17
-#define BRN_PORT_PROBABILITYFLODDING 18
-#define BRN_PORT_EVENTHANDLER        19
-#define BRN_PORT_GEOROUTING          20
-#define BRN_PORT_DART                21
+/*Basics and Services*/
+#define BRN_PORT_LINK_PROBE           1 /*0x01*/
+#define BRN_PORT_IAPP                 2 /*0x02*/
+#define BRN_PORT_GATEWAY              3 /*0x03*/
+#define BRN_PORT_EVENTHANDLER         4 /*0x04*/
+/*Routing*/
+#define BRN_PORT_DSR                 10 /*0x0a*/
+#define BRN_PORT_BCASTROUTING        11 /*0x0b*/
+#define BRN_PORT_FLOODING            12 /*0x0c*/
+#define BRN_PORT_BATMAN              13 /*0x0d*/
+#define BRN_PORT_GEOROUTING          14 /*0x0e*/
+#define BRN_PORT_DART                15 /*0x0f*/
+#define BRN_PORT_FALCON              16 /*0x10*/
+#define BRN_PORT_OLSR                17 /*0x11*/
+#define BRN_PORT_AODV                18 /*0x12*/
+/*Clustering*/
+#define BRN_PORT_DCLUSTER            30 /*0x1e*/
+#define BRN_PORT_NHOPCLUSTER         31 /*0x1f*/
+#define BRN_PORT_TOPOLOGY_DETECTION  35 /*0x23*/
+/*P2P*/
+#define BRN_PORT_DHTROUTING          40 /*0x28*/
+#define BRN_PORT_DHTSTORAGE          41 /*0x29*/
+/*Data transfer*/
+#define BRN_PORT_SDP                 50 /*0x32*/
+#define BRN_PORT_TFTP                51 /*0x33*/
+#define BRN_PORT_FLOW                52 /*0x34*/
+#define BRN_PORT_COMPRESSION         53 /*0x35*/
 
 
 #define DEFAULT_TTL 128

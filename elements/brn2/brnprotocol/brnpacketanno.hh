@@ -67,6 +67,7 @@ class BRNPacketAnno : public Element { public:
   static void set_src_and_dst_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &);
 
   static void set_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &, uint16_t);
+  static void set_ether_anno(Packet *p, const uint8_t *src, const uint8_t *dst, uint16_t);
 
   static uint16_t ethertype_anno(Packet *p);
   static void set_ethertype_anno(Packet *p, uint16_t);

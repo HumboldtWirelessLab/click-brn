@@ -25,8 +25,9 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "floodingpolicy/floodingpolicy.hh"
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "floodingpolicy/floodingpolicy.hh"
 
 CLICK_DECLS
 
@@ -45,7 +46,7 @@ struct click_brn_bcast {
 
 #define SF_MAX_QUEUE_SIZE 1500
 
-class Flooding : public Element {
+class Flooding : public BRNElement {
 
  public:
 
@@ -97,7 +98,6 @@ class Flooding : public Element {
 
  public:
 
-  int _debug;
   int _flooding_src;
   int _flooding_fwd;
 };
