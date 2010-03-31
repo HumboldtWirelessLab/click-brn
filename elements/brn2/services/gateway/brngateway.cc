@@ -209,14 +209,19 @@ BRNGateway::write_handler(const String &data, Element *e, void *thunk, ErrorHand
     int metric;
     bool nated;
 
+    Vector<String> args;
+    cp_spacevec(s, args);
+    cp_integer(args[0], &metric);
+    cp_ip_address(args[1],&ip_addr);
+    cp_bool(args[2],&nated);
 
-    if (cp_va_kparse(data, gw, errh,
+    /*if (cp_va_kparse(data, gw, errh,
         "GATEWAYMETRIC", cpkP, cpInteger, &metric,
         "GATEWAYIPADDRESS", cpkP, cpIPAddress, &ip_addr,
         "GATEWAYBEHINDNAT", cpkP, cpBool, &nated,
         cpEnd) < 0)
       return errh->error("wrong arguments to handler 'add_gateway'");
-
+    */
     BRNGatewayEntry gwe = BRNGatewayEntry(ip_addr, metric, nated);
     return gw->add_gateway(gwe);
   }
