@@ -213,7 +213,13 @@ void
 TopologyDetection::handle_detection_timeout(void)
 {
   BRN_DEBUG("Detection Timeout. No descendant.");
-  send_response();
+  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
+
+  if ( tdi->_src == *(_node_identity->getMasterAddress()) ) {
+    BRN_DEBUG("Source of request. Response timeout");
+  } else {
+    send_response();
+  }
 }
 
 void
