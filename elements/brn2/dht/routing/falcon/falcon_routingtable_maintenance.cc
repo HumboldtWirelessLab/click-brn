@@ -78,6 +78,7 @@ FalconRoutingTableMaintenance::table_maintenance()
       assert(! _frt->_me->equals(nextToAsk));
     }
 
+    nextToAsk->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION, _frt->_lastUpdatedPosition);
     output(0).push(p);
   }
@@ -164,7 +165,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
    * Natuerlich darf es der Knoten selbst auch nicht sein
    */
 
-   // make sure that the node n on position p+1 does not stand between this node and node on position p
+  // make sure that the node n on position p+1 does not stand between this node and node on position p
   //TODO: make sure that we have to cheack, that node on new posotion p+1 is not the node on position p
   if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) || preposnode->equals(&node) ) ) {
     nc = _frt->find_node(&node);

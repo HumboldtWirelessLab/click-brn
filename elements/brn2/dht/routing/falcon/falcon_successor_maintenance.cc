@@ -77,6 +77,7 @@ FalconSuccessorMaintenance::successor_maintenance()
   if ( ! _frt->isFixSuccessor() ) {
     BRN_DEBUG("%s: Check for successor", _frt->_me->_ether_addr.unparse().c_str());
 
+    _frt->successor->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
   }

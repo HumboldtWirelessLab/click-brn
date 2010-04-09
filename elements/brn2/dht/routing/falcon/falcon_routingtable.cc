@@ -120,7 +120,7 @@ FalconRoutingTable::add_node(DHTnode *node)
     n = node->clone();
     _allnodes.add_dhtnode(n);
   } else {
-    //TODO: update node
+    n->set_age(&(node->_age));
   }
 
   if ( isBetterSuccessor(n) ) {
@@ -218,13 +218,17 @@ FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
       _fingertable.swap_dhtnode(node, (int)position); //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
     }
 
-    setLastUpdatedPosition(position);                      //Fingertable is updated, so we should update also the rest, which depends on this change
+    setLastUpdatedPosition(position);                //Fingertable is updated, so we should update also the rest, which depends on this change
 
   }
 
   return 0;
 }
 
+
+/*************************************************************************************************/
+/******************************* F I N D   N O D E ***********************************************/
+/*************************************************************************************************/
 
 DHTnode *
 FalconRoutingTable::find_node_in_tables(DHTnode *node, int *table)
@@ -370,8 +374,8 @@ FalconRoutingTable::routing_info(void)
       sa << "\tfalse";
 
     sa << "\t" << (int)node->_status;
-    sa << "\t" << node->_age;
-    sa << "\t" << node->_last_ping;
+    sa << "\t" << node->get_age();
+    sa << "\t" << node->get_last_ping();
 
     sa << "\n";
   }
@@ -395,10 +399,10 @@ FalconRoutingTable::routing_info(void)
       sa << "\tfalse";
 
     sa << "\t" << (int)node->_status;
-    sa << "\t" << node->_age;
-    sa << "\t" << node->_last_ping;
-//    sa << "\t" << isBetterSuccessor(node);
-//    sa << "\t" << isBetterPredecessor(node);
+    sa << "\t" << node->get_age();
+    sa << "\t" << node->get_last_ping();
+//  sa << "\t" << isBetterSuccessor(node);
+//  sa << "\t" << isBetterPredecessor(node);
     sa << "\n";
   }
 

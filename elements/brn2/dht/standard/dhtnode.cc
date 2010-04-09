@@ -64,7 +64,7 @@ DHTnode::init()
   _status = STATUS_UNKNOWN;
   _extra = NULL;
   _age = Timestamp::now();
-  _last_ping = Timestamp::now();
+  _last_ping = Timestamp(0);
   _failed_ping = 0;
   _rtt = 0;
   _hop_distance = 0;
@@ -119,29 +119,9 @@ DHTnode::get_nodeid(md5_byte_t *nodeid, uint8_t *digest_length)
   *digest_length = _digest_length;
 }
 
-void
-DHTnode::set_age_s(int s)
-{
-  Timestamp now;
-  now = Timestamp::now();
-
-  _age = now - Timestamp(s);
-}
-
-int
-DHTnode::get_age_s()
-{
-  Timestamp now;
-  now = Timestamp::now();
-
-  return( (now - _age).sec());
-}
-
-void
-DHTnode::set_age(Timestamp *age)
-{
-  _age = *age;
-}
+/*************************/
+/******** A G E **********/
+/*************************/
 
 void
 DHTnode::set_age_now()
@@ -150,21 +130,43 @@ DHTnode::set_age_now()
 }
 
 void
-DHTnode::set_last_ping_s(int s)
+DHTnode::set_age_s(int s)
 {
-  Timestamp now;
-  now = Timestamp::now();
+  _age = Timestamp::now() - Timestamp(s);
+}
 
-  _last_ping = now - Timestamp(s);
+void
+DHTnode::set_age(Timestamp *age)
+{
+  _age = *age;
 }
 
 int
-DHTnode::get_last_ping_s()
+DHTnode::get_age_s()
 {
-  Timestamp now;
-  now = Timestamp::now();
+  return( (Timestamp::now() - _age).sec());
+}
 
-  return( (now - _last_ping).sec());
+Timestamp
+DHTnode::get_age()
+{
+  return( (Timestamp::now() - _age));
+}
+
+/*************************/
+/****** P I N G **********/
+/*************************/
+
+void
+DHTnode::set_last_ping_now()
+{
+  _last_ping = Timestamp::now();
+}
+
+void
+DHTnode::set_last_ping_s(int s)
+{
+  _last_ping = Timestamp::now() - Timestamp(s);
 }
 
 void
@@ -173,11 +175,21 @@ DHTnode::set_last_ping(Timestamp *last_ping)
   _age = *last_ping;
 }
 
-void
-DHTnode::set_last_ping_now()
+int
+DHTnode::get_last_ping_s()
 {
-  _last_ping = Timestamp::now();
+  return( (Timestamp::now() - _last_ping).sec());
 }
+
+Timestamp
+DHTnode::get_last_ping()
+{
+  return (Timestamp::now() - _last_ping);
+}
+
+/*************************/
+/**** S T A T U S ********/
+/*************************/
 
 String
 DHTnode::get_status_string()

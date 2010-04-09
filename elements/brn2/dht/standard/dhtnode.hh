@@ -76,11 +76,13 @@ class DHTnode
     void set_age(Timestamp *);
     void set_age_now();
     int  get_age_s();                //TODO: change to ms (msec1())
+    Timestamp get_age();
 
     void set_last_ping_s(int s);
     void set_last_ping(Timestamp *);
     void set_last_ping_now();
     int  get_last_ping_s();
+    Timestamp get_last_ping();
 
     String get_status_string();
 
