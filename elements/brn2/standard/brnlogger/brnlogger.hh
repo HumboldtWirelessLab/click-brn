@@ -56,12 +56,12 @@ CLICK_DECLS
 // TODO check if log level of this element is appropriate!
 #define BRN_LOG     BrnLogger(__FILE__,__LINE__,this).log
 
-/** 
+/**
  * Error occured which leads to an abort or an undefined state. 
  */
 #define BRN_FATAL   if (_debug >= BrnLogger::FATAL) BrnLogger(__FILE__,__LINE__,this).fatal
 
-/** 
+/**
  * An error occured, but we are able to recover from it. 
  */
 #define BRN_ERROR   if (_debug >= BrnLogger::ERROR) BrnLogger(__FILE__,__LINE__,this).error

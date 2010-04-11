@@ -127,7 +127,7 @@ TopologyDetection::handle_detection_forward(Packet *packet)
   if ( new_td ) {
     WritablePacket *fwd_p = TopologyDetectionProtocol::fwd_packet(packet, _node_identity->getMasterAddress(), &last_hop);
 
-    _detection_timer.schedule_after_msec( click_random() % 100 );  //wait for forward of an descendant
+    _detection_timer.schedule_after_msec( /*click_random() %*/ 100 );  //wait for forward of an descendant
 
     output(0).push(fwd_p);
 
@@ -140,7 +140,7 @@ TopologyDetection::handle_detection_forward(Packet *packet)
       tdi->_num_descendant++;
       _detection_timer.unschedule();
       _response_timer.unschedule();
-      _response_timer.schedule_after_msec( click_random() % (tdi->_ttl * tdi->_ttl) );
+      _response_timer.schedule_after_msec( /*click_random() %*/ (tdi->_ttl * tdi->_ttl) );
     }
 
     packet->kill();
@@ -173,12 +173,14 @@ TopologyDetection::handle_detection_backward(Packet *packet)
   {
     BRN_DEBUG("Got infos off all descendant");
     _response_timer.unschedule();
-    send_response();
+    _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
   }
 
   if ( tdi->_get_backward > tdi->_num_descendant )
   {
     BRN_ERROR("Got more back than wanted");
+    _response_timer.unschedule();
+    _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
   }
 }
 
@@ -189,7 +191,7 @@ TopologyDetection::start_detection()
   WritablePacket *p = TopologyDetectionProtocol::new_detection_packet(_node_identity->getMasterAddress(), detection_id, 128);
 
   tdfi_list.push_back(new TopologyDetectionForwardInfo(_node_identity->getMasterAddress(), detection_id, 128));
-  _detection_timer.schedule_after_msec( click_random() % 100 );  //wait for descendant
+  _detection_timer.schedule_after_msec( /*click_random() % */100 );  //wait for descendant
 
   output(0).push(p);
 
@@ -215,22 +217,27 @@ TopologyDetection::handle_detection_timeout(void)
   BRN_DEBUG("Detection Timeout. No descendant.");
   TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
 
-  if ( tdi->_src == *(_node_identity->getMasterAddress()) ) {
-    BRN_DEBUG("Source of request. Response timeout");
-  } else {
+  if ( tdi->_src != *(_node_identity->getMasterAddress()) )
     send_response();
-  }
+  else
+    BRN_DEBUG("Source of request. Detection timeout");
 }
 
 void
 TopologyDetection::handle_response_timeout(void)
 {
-  BRN_DEBUG("Missing response from descendant.");
   TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-  if ( tdi->_src == *(_node_identity->getMasterAddress()) )
-    BRN_DEBUG("Source of request. Response timeout");
+
+  if ( tdi->_get_backward < tdi->_num_descendant )
+    BRN_DEBUG("Missing response from descendant ( %d of %d ).",tdi->_get_backward, tdi->_num_descendant);
+
+  BRN_DEBUG("Test of src is me");
+//  TODO: the next test failed (looks like that)
+  if ( tdi->_src != *(_node_identity->getMasterAddress()) ) //i'm the source of the request. Time to check the result
+    send_response();                                        //send response
   else
-    send_response();
+    BRN_DEBUG("Source of request. Response timeout");
+
 }
 
 void
