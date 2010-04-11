@@ -19,10 +19,10 @@
  */
 
 #include <click/config.h>
-#include "brnelement.hh"
-
 #include <click/confparse.hh>
 #include <click/error.hh>
+
+#include "brnelement.hh"
 
 CLICK_DECLS
 
@@ -76,7 +76,7 @@ write_debug(const String &in_s, Element *e, void *vparam,
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void 
+void
 BRNElement::add_handlers()
 {
   add_read_handler("debug", read_debug, (void *) H_DEBUG);

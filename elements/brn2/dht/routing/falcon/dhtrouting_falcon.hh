@@ -37,6 +37,8 @@ class DHTRoutingFalcon : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingFalcon"; }
 
+    int change_node_id(md5_byte_t *key, int keylen);
+
     bool replication_support() const { return true; }
     int max_replication() const { return FALCON_MAX_REPLICA; }
 

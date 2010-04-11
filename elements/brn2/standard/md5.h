@@ -468,9 +468,20 @@ class MD5 {
   {
     int overflow = 0;
     for ( int i = MD5_DIGEST_LENGTH; i >= 0; i-- ) {
-     
   }
 */
+  static void digestFromString(md5_byte_t *md5, const char *hex_input)
+  {
+    char ac_dig[3];
+    ac_dig[2] = '\0';
+    int ac_int_dig;
+
+    for (int di = 0; di < 16; di++) {
+      memcpy(ac_dig,&(hex_input[di << 1]),2);
+      sscanf(ac_dig,"%02x",&ac_int_dig);
+      md5[di] = ac_int_dig;
+    }
+  }
 };
 
 CLICK_ENDDECLS

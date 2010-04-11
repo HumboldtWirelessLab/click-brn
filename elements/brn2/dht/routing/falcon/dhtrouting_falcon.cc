@@ -168,6 +168,11 @@ DHTRoutingFalcon::range_query_min_max_id(uint8_t *min, uint8_t *max)
   }
 }
 
+int
+DHTRoutingFalcon::change_node_id(md5_byte_t */*key*/, int /*keylen*/)
+{
+  return CHANGE_NODE_ID_STATUS_OK;
+}
 
 /*************************************************************************************************/
 /******************************** C A L L B A C K ************************************************/

@@ -18,6 +18,9 @@ CLICK_DECLS
 #define ROUTING_STATUS_LOST_NEIGHBOUR  16
 #define ROUTING_STATUS_LOST_CLOSE_NODE 32
 
+#define CHANGE_NODE_ID_STATUS_OK             0
+#define CHANGE_NODE_ID_STATUS_NOT_POSSIBLE   1
+#define CHANGE_NODE_ID_STATUS_ONGOING_CHANGE 2
 
 /*TODO:
  Notify_callbacks and objects should be lists, so that several objects can connect
@@ -48,6 +51,9 @@ class DHTRouting : public BRNElement
 
     virtual const char *dhtrouting_name() const = 0; //const : function doesn't change the object (members).
                                                      //virtual: späte Bindung
+
+    virtual int change_node_id(md5_byte_t *key, int keylen);
+
     virtual bool replication_support() const = 0;
     virtual int max_replication() const = 0;
 
@@ -75,12 +81,13 @@ class DHTRouting : public BRNElement
       }
     }
 
+    virtual void add_handlers();
+
     bool is_me(EtherAddress *addr) { return ( *addr == _me->_ether_addr ); }
     bool is_me(uint8_t *ether_addr) { return ( memcmp(_me->_ether_addr.data(),ether_addr,6) == 0 ); }
     bool is_me(DHTnode *node) { return ( memcmp(_me->_ether_addr.data(),node->_ether_addr.data(),6) == 0 ); }
 
     DHTnode *_me;
-
 };
 
 CLICK_ENDDECLS
