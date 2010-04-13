@@ -45,8 +45,9 @@ CLICK_DECLS
 #define FALCON_MINOR_NWS_REQUEST         8
 
 /************* S T A T U S *****************/
-#define FALCON_STATUS_OK    0
-#define FALCON_STATUS_HINT  1
+#define FALCON_STATUS_OK        0
+#define FALCON_STATUS_HINT      1
+#define FALCON_STATUS_CHANGE_ID 2
 
 /**
  * structure is used for linkprobes
@@ -55,19 +56,30 @@ struct dht_falcon_node_entry {
   uint8_t  etheraddr[6];
   uint8_t  age_sec;
   uint8_t  status;
+  md5_byte_t node_id[MAX_NODEID_LENTGH];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
+/**
+ * structure is used for routerequests
+ */
 struct falcon_routing_packet {
   uint8_t status;
   uint8_t reserved;
 
   uint16_t table_position;
-  uint8_t  etheraddr[6];        //Etheraddress of the node on position "table_position" in the table
+  uint8_t  etheraddr[6];                      //Etheraddress of the node on position "table_position" in the table
+  md5_byte_t node_id[MAX_NODEID_LENTGH];      //Node-id of the node on position "table_position" in the table
 
+  md5_byte_t src_node_id[MAX_NODEID_LENTGH];  //node-id of the src of the request/reply. TODO: move this to general DHT header ??
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
+/**
+ * structure is used to determinate the networksize
+ */
 struct falcon_nws_packet {
   uint32_t networksize;
+
+  md5_byte_t src_node_id[MAX_NODEID_LENTGH];  //node-id of the src of the request/reply. TODO: move this to general DHT header ??
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /**

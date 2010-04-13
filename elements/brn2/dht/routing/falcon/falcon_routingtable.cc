@@ -54,14 +54,25 @@ int
 FalconRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   EtherAddress _my_ether_addr;
+  bool use_md5 = true;
 
   if (cp_va_kparse(conf, this, errh,
       "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
+      "USEMD5", cpkN, cpBool, &use_md5,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
-  _me = new DHTnode(_my_ether_addr);
+   if ( use_md5 )
+    _me = new DHTnode(_my_ether_addr);
+   else {
+     click_chatter("Don't use md5");
+     md5_byte_t md5_digest[MAX_NODEID_LENTGH];
+     memset(md5_digest,0,MAX_NODEID_LENTGH);
+     md5_digest[0] = _my_ether_addr.data()[4];
+     _me = new DHTnode(_my_ether_addr,md5_digest);
+   }
+
   _me->_status = STATUS_OK;
   _me->_neighbor = true;
 
@@ -116,11 +127,16 @@ FalconRoutingTable::add_node(DHTnode *node)
 
   n = _allnodes.get_dhtnode(node);
 
-  if ( n == NULL ) {
-    n = node->clone();
-    _allnodes.add_dhtnode(n);
+  if (n == NULL) {                     //add node if node is not in list
+    if ( node->_digest_length != 0 ) { //and new node has a valid node_id
+      n = node->clone();
+      _allnodes.add_dhtnode(n);
+    } else {                           //if no valid node_id: finish here 
+      return 0;
+    }
   } else {
-    n->set_age(&(node->_age));
+    n->set_age(&(node->_age));  //update node
+    return 0;                     //get back since there is no new node (succ and pred will not changed)
   }
 
   if ( isBetterSuccessor(n) ) {

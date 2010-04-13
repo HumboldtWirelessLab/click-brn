@@ -119,7 +119,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
 
-  _frt->add_node(&src);  //add node if it's new
+  _frt->add_node(&src);
 
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
     BRN_WARN("Node ask for my position 0 (for him i'm his successor) but is not my predecessor");
@@ -156,9 +156,13 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
 
+  _frt->add_node(&src);
+
   BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(),position, node._ether_addr.unparse().c_str());
 
   preposnode = _frt->_fingertable.get_dhtnode(position);
+
+  //TODO: update src, but only etheraddress is valid
 
   /**
    * Die Abfrage stellt sicher, dass man nicht schon einmal im Kreis rum ist, und der Knoten den man grad befragt hat einen Knoten zuückliegt der schon wieder vor mir liegt

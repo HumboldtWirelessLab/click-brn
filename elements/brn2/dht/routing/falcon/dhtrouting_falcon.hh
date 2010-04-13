@@ -53,7 +53,7 @@ class DHTRoutingFalcon : public DHTRouting
     bool range_query_support() { return true; }
     void range_query_min_max_id(uint8_t *min, uint8_t *max);
 
-    int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
+    int update_node(EtherAddress *ea, md5_byte_t *key, int keylen);
 
   //private:
     FalconRoutingTable *_frt;

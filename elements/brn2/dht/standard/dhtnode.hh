@@ -26,12 +26,12 @@ CLICK_DECLS
 #define STATUS_ALL     128
 
 
-#define DEFAULT_DIGEST_LENGTH  128 /* 16*8 */
-#define MAX_DIGEST_LENGTH      128 /* 16*8 */
+#define DEFAULT_DIGEST_LENGTH  128 /* 16*8 Bits*/
+#define MAX_DIGEST_LENGTH      128 /* 16*8 Bits*/
 
 #define INVALID_NODE_ID        MAX_DIGEST_LENGTH + 1
 
-#define MAX_NODEID_LENTGH 16
+#define MAX_NODEID_LENTGH 16   /*Bytes*/
 
 
 
@@ -65,9 +65,9 @@ class DHTnode
 
     void init();
 
-    void set_update_addr(uint8_t *ea);  //TODO: finds better name
-    void set_etheraddress(uint8_t *ea);
-    void set_nodeid(md5_byte_t *nodeid);
+    void set_update_addr(uint8_t *ea);  //Takes and sets etheraddr and calculates node_id (md5) TODO: finds better name
+    void set_etheraddress(uint8_t *ea); //only sets node_id
+    void set_nodeid(md5_byte_t *nodeid);//only sets node_id; len = max_len
     void set_nodeid(md5_byte_t *nodeid, int digest_length);
 
     void get_nodeid(md5_byte_t *nodeid, uint8_t *digest_length);

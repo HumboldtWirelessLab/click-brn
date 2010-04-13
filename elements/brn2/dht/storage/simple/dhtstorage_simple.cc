@@ -216,6 +216,7 @@ void DHTStorageSimple::push( int port, Packet *packet )
           EtherAddress src;
           struct dht_simple_storage_node_info *ni = DHTProtocolStorageSimple::unpack_dht_operation_packet(packet, _op, &src, _add_node_id);
           if ( ni != NULL ) _dht_routing->update_node(&src, ni->src_id, ni->src_id_size);
+          else _dht_routing->update_node(&src, NULL, 0);
 
           /* Handle core information from the packet */
 

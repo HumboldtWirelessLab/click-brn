@@ -75,7 +75,7 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   if ( ! _frt->isFixSuccessor() ) {
-    BRN_DEBUG("%s: Check for successor", _frt->_me->_ether_addr.unparse().c_str());
+    BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(), _frt->successor->_ether_addr.unparse().c_str() );
 
     _frt->successor->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
@@ -120,6 +120,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 
   DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
 
+  _frt->add_node(&src);
   _frt->add_node(&succ);
 
   if ( isUpdate ) _frt->fixSuccessor(false);  //TODO: for now an update is only a hint which has to be proofed
@@ -128,7 +129,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   _frt->_lastUpdatedPosition=0;
 }
 
-//TODO: think about forward and backward-seach for successor. Node shoul switch from back- to forward if it looks faster
+//TODO: think about forward and backward-seach for successor. Node should switch from back- to forward if it looks faster
 
 void
 FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
@@ -149,12 +150,13 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
     //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger für ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {
       BRN_DEBUG("I'm his successor !");
+      BRN_DEBUG("Src: %s Dst: %s Node: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str(),_frt->_me->_ether_addr.unparse().c_str());
       WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
       packet->kill();
 
       output(0).push(p);
     } else {
-      BRN_DEBUG("He is before my predecessor");
+      BRN_DEBUG("He (%s) is before my predecessor: %s",src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
       WritablePacket *p = DHTProtocolFalcon::fwd_route_request_packet(&src, _frt->predecessor, _frt->_me, packet);
       output(0).push(p);
     }
