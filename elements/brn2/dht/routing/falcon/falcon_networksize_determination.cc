@@ -124,6 +124,12 @@ FalconNetworkSizeDetermination::handle_nws(Packet *packet)
   } else {
     route_next = get_responsibly_node_FT( src._md5_digest, &position);
 
+    if ( route_next == NULL ) {
+      BRN_ERROR("Didn't find responsible Node");
+      packet->kill();
+      return;
+    }
+
     size = size + (1 << position);
 
     WritablePacket *p = DHTProtocolFalcon::fwd_nws_packet(_frt->_me, route_next, size, packet);
