@@ -63,19 +63,24 @@ int DHTnodelist::add_dhtnode(DHTnode *_new_node)
 DHTnode*
 DHTnodelist::swap_dhtnode(DHTnode *_node, int i)
 {
-  DHTnode *old;
-  old = _nodelist[i];
-  _nodelist[i] = _node;
+  DHTnode *old = NULL;
+
+  if ( ( _node != NULL ) && ( i >= 0 ) && ( i < _nodelist.size() ) ) {
+    old = _nodelist[i];
+    _nodelist[i] = _node;
+  }
 
   return old;
 }
 
-DHTnode* DHTnodelist::get_dhtnode(DHTnode *_search_node)
+DHTnode*
+DHTnodelist::get_dhtnode(DHTnode *_search_node)
 {
   return get_dhtnode(&(_search_node->_ether_addr));
 }
 
-DHTnode* DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
+DHTnode*
+DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
 {
   int i;
 
@@ -93,6 +98,15 @@ DHTnodelist::get_dhtnode(int i)
 {
   if ( i < _nodelist.size() ) return _nodelist[i];
   else return NULL;
+}
+
+int
+DHTnodelist::get_index_dhtnode(DHTnode *_search_node)
+{
+  for( int i = 0; i < _nodelist.size(); i++)
+    if ( memcmp(_nodelist[i]->_ether_addr.data(), _search_node->_ether_addr.data(), 6) == 0 ) return i;
+
+  return -1;
 }
 
 int

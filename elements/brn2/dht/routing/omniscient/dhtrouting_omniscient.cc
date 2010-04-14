@@ -282,7 +282,7 @@ DHTRoutingOmni::handle_routetable_request(Packet *p_in)
   update_nodes(&dhtlist);
   dhtlist.clear();
 
-  send_routetable_update(&ea, STATUS_ALL );
+  send_routetable_update(&ea, STATUS_UNKNOWN );
 
 }
 
@@ -313,7 +313,7 @@ DHTRoutingOmni::send_routetable_update(EtherAddress *dst, int status)
   for ( int i = 0; i < _dhtnodes.size(); i++ )
   {
     node = _dhtnodes.get_dhtnode(i);
-    if ( ( node->_status == status ) || ( status == STATUS_ALL ) )
+    if ( ( node->_status == status ) || ( status == STATUS_UNKNOWN ) )
     {
       if ( node->_status == STATUS_NEW ) node->_status = STATUS_OK;
 

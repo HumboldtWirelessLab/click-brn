@@ -50,7 +50,7 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 
-  first->_age = Timestamp(ne->age_sec);
+  first->set_age_now();
   first->_status = ne->status;
   first->set_etheraddress(ne->etheraddr);
   first->set_nodeid(ne->node_id);
@@ -129,6 +129,7 @@ DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *sta
 
   src->set_etheraddress(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_node_id);
+  src->set_age_now();
 
   node->set_etheraddress(request->etheraddr);
   node->set_nodeid(request->node_id);
@@ -175,6 +176,7 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
 
   src->set_etheraddress(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_node_id);
+  src->set_age_now();
 }
 
 CLICK_ENDDECLS

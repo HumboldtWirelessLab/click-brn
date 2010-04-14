@@ -52,6 +52,10 @@ FalconRoutingClassifier::push( int /*port*/, Packet *packet )
     case FALCON_MINOR_REPLY_POSITION:
       output(FALCON_ROUTING_POSITION_PORT).push(packet);
       break;
+    case FALCON_MINOR_LEAVE_NETWORK_NOTIFICATION:
+    case FALCON_MINOR_LEAVE_NETWORK_REPLY:
+      output(FALCON_ROUTING_LEAVE_PORT).push(packet);
+      break;
     case FALCON_MINOR_NWS_REQUEST:
       output(FALCON_NETWORKSIZE_PORT).push(packet);
       break;

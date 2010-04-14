@@ -16,6 +16,7 @@ CLICK_DECLS
 
 DHTRoutingFalcon::DHTRoutingFalcon():
   _frt(NULL),
+  _leave_organizer(NULL),
   _responsible(FALCON_RESPONSIBLE_FORWARD)
 {
   DHTRouting::init();
@@ -39,6 +40,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "FRT", cpkP+cpkM, cpElement, &_frt,
+      "LEAVEORGANIZER", cpkP, cpElement, &_leave_organizer,
       "RESPONSIBLE", cpkP, cpInteger, &_responsible,
       cpEnd) < 0)
     return -1;
@@ -169,13 +171,18 @@ DHTRoutingFalcon::range_query_min_max_id(uint8_t *min, uint8_t *max)
 }
 
 int
-DHTRoutingFalcon::change_node_id(md5_byte_t */*key*/, int /*keylen*/)
+DHTRoutingFalcon::change_node_id(md5_byte_t *id, int id_len)
 {
+  if ( ! _leave_organizer ) return DHTRouting::change_node_id(id, id_len);
+
   return CHANGE_NODE_ID_STATUS_OK;
 }
 
+/**
+ * This Function can be called by upper layers (e.g. Storage) to update the node (age)
+ */
 int
-DHTRoutingFalcon::update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/)
+DHTRoutingFalcon::update_node(EtherAddress */*ea*/, md5_byte_t */*id*/, int /*id_len*/)
 {
   return 0;
 }

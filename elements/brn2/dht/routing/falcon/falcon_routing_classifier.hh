@@ -6,8 +6,9 @@ CLICK_DECLS
 
 #define FALCON_ROUTING_SUCC_PORT     0
 #define FALCON_ROUTING_POSITION_PORT 1
-#define FALCON_NETWORKSIZE_PORT      2
-#define FALCON_ROUTING_UNKNOWN_PORT  3
+#define FALCON_ROUTING_LEAVE_PORT    2
+#define FALCON_NETWORKSIZE_PORT      3
+#define FALCON_ROUTING_UNKNOWN_PORT  4
 
 /**
  * TODO: Can be replaced by simple classifier
@@ -24,7 +25,7 @@ class FalconRoutingClassifier : public Element
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "1/3-4"; }
+    const char *port_count() const  { return "1/4-5"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }

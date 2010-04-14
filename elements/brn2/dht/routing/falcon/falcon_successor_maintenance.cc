@@ -140,11 +140,17 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   DHTnode succ;
   DHTnode src;
 
+  DHTnode *find_node;
+
   BRN_DEBUG("handle_request_succ");
 
   DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
 
   _frt->add_node(&src);
+
+  find_node = _frt->find_node(&src);
+  if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
+  else BRN_ERROR("Couldn't find inserted node");
 
   if ( succ.equals(_frt->_me) ) {
     //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger für ihn ein besserer Nachfolger ist.
@@ -170,7 +176,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 /*************************************************************************************************/
 
 void
-FalconSuccessorMaintenance::handle_routing_update_callback(int status)
+FalconSuccessorMaintenance::handle_routing_update_callback(int /*status*/)
 {
 /*  if ( status == RT_UPDATE_PREDECESSOR )
     click_chatter("Update Successor");*/

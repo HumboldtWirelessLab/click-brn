@@ -40,6 +40,7 @@ CLICK_DECLS
 
 /**
  * Used in funtion which determinate the table in which a given node is placed (e.g. find_node)
+ * E.g. use RT_ME if the node is me or RT_FINGERTABLE if th enode in the fingertable
  */
 
 #define RT_NONE        0
@@ -48,6 +49,13 @@ CLICK_DECLS
 #define RT_PREDECESSOR 3
 #define RT_FINGERTABLE 4
 #define RT_ALL         5
+
+/**
+ TODO: check correct handle of the main-tables:
+       - All nodes are inserted into all_nodes
+       - node are only delete from all_nodes
+       - in other tables only delete the referenz (NOT the Object (DHTnode))
+*/
 
 class FalconRoutingTable : public Element
 {
@@ -108,12 +116,13 @@ class FalconRoutingTable : public Element
 
   int add_node(DHTnode *node);
   int add_node(DHTnode *node, bool is_neighbour);
-  int add_node(DHTnode *node, bool is_neighbour, bool want_callback);//TODO: Check whether this is used, if not remove
   int add_neighbour(DHTnode *node);
   int add_nodes(DHTnodelist *nodes);
 
   int add_node_in_FT(DHTnode *node, int position);  //add the node also in the list of all nodes
   int set_node_in_FT(DHTnode *node, int position);  //just set the node in the FT (add the pointer)
+
+  int set_node_in_reverse_FT(DHTnode *node, int position);  //just set the node in the reverse FT (add the pointer)
 
   DHTnode *find_node(DHTnode *node);
   DHTnode *find_node(DHTnode *node, int *table);
@@ -133,6 +142,8 @@ class FalconRoutingTable : public Element
 
   DHTnodelist _fingertable;
 
+  DHTnodelist _reverse_fingertable;  //nodes, which have this node in the fingertable
+                                     //Node at index X has node in the fingertable at position X
   DHTnodelist _allnodes;
 
   /**
@@ -149,7 +160,7 @@ class FalconRoutingTable : public Element
    */
   bool fix_successor;
   void fixSuccessor(bool fix) { fix_successor = fix; }
-  bool isFixSuccessor(void) { return fix_successor; }
+  bool isFixSuccessor(void) { return fix_successor; }  //TODO: rename to "hasFixSuccessor()"
 
   int _debug;
 

@@ -131,11 +131,11 @@ FalconRoutingTable::add_node(DHTnode *node)
     if ( node->_digest_length != 0 ) { //and new node has a valid node_id
       n = node->clone();
       _allnodes.add_dhtnode(n);
-    } else {                           //if no valid node_id: finish here 
+    } else {                           //if no valid node_id: finish here
       return 0;
     }
   } else {
-    n->set_age(&(node->_age));  //update node
+    n->set_age(&(node->_age));    //update node
     return 0;                     //get back since there is no new node (succ and pred will not changed)
   }
 
@@ -226,21 +226,44 @@ int
 FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
 {
   if ( _fingertable.size() < position ) {
-    BRN_ERROR("ERROR: FT too small");
+    BRN_ERROR("FT too small. Discard Entry.");
   } else {
     if ( _fingertable.size() == position ) {
       _fingertable.add_dhtnode(node);
     } else {
-      _fingertable.swap_dhtnode(node, (int)position); //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
+      _fingertable.swap_dhtnode(node, position);      //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
     }
 
-    setLastUpdatedPosition(position);                //Fingertable is updated, so we should update also the rest, which depends on this change
+    setLastUpdatedPosition(position);                 //Fingertable is updated, so we should update also the rest, which depends on this change
+                                                      //TODO: move this to function which calls this. Successor_maint causes that higher table entries aren't updated
 
   }
 
   return 0;
 }
 
+int
+FalconRoutingTable::set_node_in_reverse_FT(DHTnode *node, int position)
+{
+  int ind = _reverse_fingertable.get_index_dhtnode(node);
+  if ( ( ind != -1 ) && ( ind != position ) ) {
+    if ( position < ind ) {
+      DHTnode *old_pos = _reverse_fingertable.swap_dhtnode(node, position);
+      _reverse_fingertable.swap_dhtnode(old_pos, ind);
+    }
+  } else {
+    if ( _reverse_fingertable.size() < position ) {
+      BRN_DEBUG("Reverse FT too small. Discard Entry.");
+    } else {
+      if ( _reverse_fingertable.size() == position ) {
+        _reverse_fingertable.add_dhtnode(node);
+      } else {
+        _reverse_fingertable.swap_dhtnode(node, position); //replace node in reverse FT, but don't delete the old one, since it is in the all_nodes_table
+      }
+    }
+  } 
+  return 0;
+}
 
 /*************************************************************************************************/
 /******************************* F I N D   N O D E ***********************************************/
@@ -354,10 +377,7 @@ FalconRoutingTable::routing_info(void)
   uint32_t numberOfNodes = 0;
   char digest[16*2 + 1];
 
-  numberOfNodes = _fingertable.size();
-  numberOfNodes += _allnodes.size();
-  if ( successor != NULL ) numberOfNodes++;
-  if ( predecessor != NULL ) numberOfNodes++;
+  numberOfNodes = _allnodes.size();
 
   MD5::printDigest(_me->_md5_digest, digest);
   sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << "\t" << digest << " )\n";
@@ -375,7 +395,13 @@ FalconRoutingTable::routing_info(void)
     sa << "Predecessor: " << predecessor->_ether_addr.unparse() << "\t" << digest << "\n";
   }
 
-  sa << "Fingertable (" << _fingertable.size() << ") :\n";
+  if ( backlog != NULL ) {
+    MD5::printDigest(backlog->_md5_digest, digest);
+    sa << "Backlog: " << backlog->_ether_addr.unparse() << "\t" << digest << "\n";
+  }
+
+  sa << "\nFingertable (" << _fingertable.size() << ") :\n";
+  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
   for( int i = 0; i < _fingertable.size(); i++ )
   {
     node = _fingertable.get_dhtnode(i);
@@ -389,18 +415,37 @@ FalconRoutingTable::routing_info(void)
     else
       sa << "\tfalse";
 
-    sa << "\t" << (int)node->_status;
+    sa << "\t\t" << (int)node->_status;
     sa << "\t" << node->get_age();
     sa << "\t" << node->get_last_ping();
 
     sa << "\n";
   }
 
-  if ( backlog != NULL ) {
-    MD5::printDigest(backlog->_md5_digest, digest);
-    sa << "Backlog: " << backlog->_ether_addr.unparse() << "\t" << digest << "\n";
+  sa << "\nReverse Fingertable (" << _reverse_fingertable.size() << ") :\n";
+  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  for( int i = 0; i < _reverse_fingertable.size(); i++ )
+  {
+    node = _reverse_fingertable.get_dhtnode(i);
+
+    sa << node->_ether_addr.unparse();
+    MD5::printDigest(node->_md5_digest, digest);
+
+    sa << "\t" << digest;
+    if ( node->_neighbor )
+      sa << "\ttrue";
+    else
+      sa << "\tfalse";
+
+    sa << "\t\t" << (int)node->_status;
+    sa << "\t" << node->get_age();
+    sa << "\t" << node->get_last_ping();
+
+    sa << "\n";
   }
-  sa << "Foreigntable:\n";
+
+  sa << "\nAll nodes (" << _allnodes.size() << ") :\n";
+  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
   for( int i = 0; i < _allnodes.size(); i++ )
   {
     node = _allnodes.get_dhtnode(i);
@@ -414,11 +459,9 @@ FalconRoutingTable::routing_info(void)
     else
       sa << "\tfalse";
 
-    sa << "\t" << (int)node->_status;
+    sa << "\t\t" << (int)node->_status;
     sa << "\t" << node->get_age();
     sa << "\t" << node->get_last_ping();
-//  sa << "\t" << isBetterSuccessor(node);
-//  sa << "\t" << isBetterPredecessor(node);
     sa << "\n";
   }
 

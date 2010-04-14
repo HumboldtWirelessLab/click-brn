@@ -114,6 +114,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   DHTnode src;
   DHTnode node;
   DHTnode *posnode;
+  DHTnode *find_node;
 
   BRN_DEBUG("handle_request_pos");
 
@@ -121,8 +122,12 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   _frt->add_node(&src);
 
+  find_node = _frt->find_node(&src);
+  if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
+  else BRN_ERROR("Couldn't find inserted node");
+
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
-    BRN_WARN("Node ask for my position 0 (for him i'm his successor) but is not my predecessor");
+    BRN_WARN("Node (%s) ask for my position 0 (for him i'm his successor) but is not my predecessor",src._ether_addr.unparse().c_str());
     BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR, _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);

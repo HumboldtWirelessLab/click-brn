@@ -3,6 +3,7 @@
 
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/dht/routing/dhtrouting.hh"
+#include "falcon_leave_organizer.hh"
 #include "falcon_routingtable.hh"
 
 CLICK_DECLS
@@ -37,7 +38,7 @@ class DHTRoutingFalcon : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingFalcon"; }
 
-    int change_node_id(md5_byte_t *key, int keylen);
+    int change_node_id(md5_byte_t *id, int id_len);
 
     bool replication_support() const { return true; }
     int max_replication() const { return FALCON_MAX_REPLICA; }
@@ -53,10 +54,11 @@ class DHTRoutingFalcon : public DHTRouting
     bool range_query_support() { return true; }
     void range_query_min_max_id(uint8_t *min, uint8_t *max);
 
-    int update_node(EtherAddress *ea, md5_byte_t *key, int keylen);
+    int update_node(EtherAddress *ea, md5_byte_t *id, int id_len);
 
   //private:
     FalconRoutingTable *_frt;
+    FalconLeaveOrganizer *_leave_organizer;
     int _responsible;
 
     void handle_routing_update_callback(int status);
