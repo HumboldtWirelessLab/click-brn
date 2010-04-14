@@ -71,6 +71,12 @@ FalconRoutingTableMaintenance::table_maintenance()
   if ( _frt->isFixSuccessor() ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
+    if ( nextToAsk == NULL ) {
+      BRN_ERROR("No node left to ask. Reset update Position. Position: %d FT-size: %d",_frt->_lastUpdatedPosition, _frt->_fingertable.size());
+      _frt->_lastUpdatedPosition = 0;
+      return;
+    }
+
     //TODO: There was an error, while setup the Routing-Table. I fixed it, but if there is an error again please save this output (Routing Table)
     if ( _frt->_me->equals(nextToAsk) ) {
       BRN_ERROR("Src-Node should not be Dst-Node ! Error in Routing-Table !");
