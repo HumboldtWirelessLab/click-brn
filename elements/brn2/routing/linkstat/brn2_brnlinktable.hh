@@ -288,7 +288,8 @@ private:
       _prev_from_me(p._prev_from_me),
       _prev_to_me(p._prev_to_me),
       _marked_from_me(p._marked_from_me),
-      _marked_to_me(p._marked_to_me)
+      _marked_to_me(p._marked_to_me),
+      _is_associated(p._is_associated)
     { }
 
     void clear(bool from_me) {
