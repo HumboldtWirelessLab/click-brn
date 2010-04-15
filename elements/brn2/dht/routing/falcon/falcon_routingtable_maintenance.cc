@@ -71,6 +71,7 @@ FalconRoutingTableMaintenance::table_maintenance()
   if ( _frt->isFixSuccessor() ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
+    //TODO: this is a workaround for an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
     if ( nextToAsk == NULL ) {
       BRN_ERROR("No node left to ask. Reset update Position. Position: %d FT-size: %d",_frt->_lastUpdatedPosition, _frt->_fingertable.size());
       _frt->_lastUpdatedPosition = 0;
