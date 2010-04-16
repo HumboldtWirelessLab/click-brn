@@ -143,25 +143,29 @@ FalconRoutingTable::add_node(DHTnode *node)
 
     if ( predecessor == NULL ) {
       predecessor = n;
-      update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+      update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
+                                              //       called by complex function, so it can result in problems
     }
 
     successor = n;
     fixSuccessor(false);                       //new succ. check him.
 
     set_node_in_FT(successor, 0);
-    update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+    update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is
+                                               //      called by complex function, so it can result in problems
 
   } else if ( isBetterPredecessor(n) ) {
 
     if ( successor == NULL ) {
       successor = n;
       set_node_in_FT(successor, 0);
-      update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+      update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is
+                                                 //      called by complex function, so it can result in problems
     }
 
     predecessor = n;
-    update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is called by complex function, so it can result in problems
+    update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
+                                             //      called by complex function, so it can result in problems
   }
 
   return 0;
@@ -222,6 +226,12 @@ FalconRoutingTable::setLastUpdatedPosition(int position) {
   if ( ( position < _fingertable.size() ) && ( position < _lastUpdatedPosition ) )  _lastUpdatedPosition = position;
 }
 
+void
+FalconRoutingTable::incLastUpdatedPosition(void)
+{
+  _lastUpdatedPosition = (_lastUpdatedPosition + 1) % _fingertable.size();
+}
+
 int
 FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
 {
@@ -231,14 +241,14 @@ FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
     if ( _fingertable.size() == position ) {
       _fingertable.add_dhtnode(node);
     } else {
-      _fingertable.swap_dhtnode(node, position);      //replace node in FT, but don't delete the old one, since it is in the all_nodes_table
+      _fingertable.swap_dhtnode(node, position);      //replace node in FT, but don't delete the old one, since it
+                                                      //is in the all_nodes_table
     }
 
-    setLastUpdatedPosition(position);                 //Fingertable is updated, so we should update also the rest, which depends on this change
-                                                      //TODO: move this to function which calls this. Successor_maint causes that higher table entries aren't updated
-
-  }
-
+    setLastUpdatedPosition(position);                 //Fingertable is updated, so we should update also the rest,
+                                                      // which depends on this change
+                                                      //TODO: move this to function which calls this. Successor_maint
+  }                                                   //      causes that higher table entries aren't updated
   return 0;
 }
 
@@ -258,7 +268,8 @@ FalconRoutingTable::set_node_in_reverse_FT(DHTnode *node, int position)
       if ( _reverse_fingertable.size() == position ) {
         _reverse_fingertable.add_dhtnode(node);
       } else {
-        _reverse_fingertable.swap_dhtnode(node, position); //replace node in reverse FT, but don't delete the old one, since it is in the all_nodes_table
+        _reverse_fingertable.swap_dhtnode(node, position); //replace node in reverse FT, but don't delete the old one,
+                                                           //since it is in the all_nodes_table
       }
     }
   } 

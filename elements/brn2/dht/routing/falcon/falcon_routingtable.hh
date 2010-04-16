@@ -138,7 +138,7 @@ class FalconRoutingTable : public Element
   DHTnode *successor;
   DHTnode *predecessor;
 
-  DHTnode *backlog;               //TODO: Overhang, while update Fingertable. This node is not in the FT since it is more than one round
+  DHTnode *backlog; //TODO: Backlog, while update Fingertable. This node is not in the FT since it is more than one round
 
   DHTnodelist _fingertable;
 
@@ -152,7 +152,7 @@ class FalconRoutingTable : public Element
    */
   int _lastUpdatedPosition;
   void setLastUpdatedPosition(int position);
-
+  void incLastUpdatedPosition();
 
   /**
    * fix_successor represent the status of the knowledge about the successor. If it is true, we

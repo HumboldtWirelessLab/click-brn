@@ -74,6 +74,7 @@ FalconSuccessorMaintenance::set_lookup_timer()
 void
 FalconSuccessorMaintenance::successor_maintenance()
 {
+  //TODO: check age of succ and set him fix if the information is not too old
   if ( ! _frt->isFixSuccessor() ) {
     BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(), _frt->successor->_ether_addr.unparse().c_str() );
 
@@ -123,13 +124,13 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   _frt->add_node(&src);
   _frt->add_node(&succ);
 
-  if ( isUpdate ) _frt->fixSuccessor(false);  //TODO: for now an update is only a hint which has to be proofed
-  else _frt->fixSuccessor(true);
+  if ( isUpdate ) _frt->fixSuccessor(false);  // an update is only a hint which has to be proofed
+  else _frt->fixSuccessor(true);              // i check the successor so now its fix (for now)
 
   _frt->_lastUpdatedPosition=0;
 }
 
-//TODO: think about forward and backward-seach for successor. Node should switch from back- to forward if it looks faster
+//TODO: think about forward and backward-search for successor. Node should switch from back- to forward if it looks faster
 
 void
 FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
@@ -167,7 +168,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       output(0).push(p);
     }
   } else {
-    BRN_WARN("error??? Me: %s Succ: %s",_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
+    BRN_WARN("Error??? Me: %s Succ: %s",_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
+    packet->kill();
   }
 }
 

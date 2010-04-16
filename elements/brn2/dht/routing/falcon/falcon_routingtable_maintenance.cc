@@ -74,7 +74,8 @@ FalconRoutingTableMaintenance::table_maintenance()
     //TODO: this is a workaround for an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
     if ( nextToAsk == NULL ) {
       BRN_ERROR("No node left to ask. Reset update Position. Position: %d FT-size: %d",_frt->_lastUpdatedPosition, _frt->_fingertable.size());
-      _frt->_lastUpdatedPosition = 0;
+      BRN_ERROR("Table: \n%s",_frt->routing_info().c_str());
+      assert(nextToAsk != NULL );
       return;
     }
 
@@ -133,23 +134,32 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
   else BRN_ERROR("Couldn't find inserted node");
 
+  /** Check for and handle error in Routingtable of the source of the request. If he think that i'm his succ
+      but he is not my Pred. then send him a notice, that he is wrong and what his succ in my opinion */
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
-    BRN_WARN("Node (%s) ask for my position 0 (for him i'm his successor) but is not my predecessor",src._ether_addr.unparse().c_str());
-    BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
+    BRN_WARN("Node (%s) ask for my position 0 (for him i'm his successor) but is not my predecessor",
+                                                                   src._ether_addr.unparse().c_str());
+    BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),
+                                     _frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR, _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
+                                                                  _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
-
     return;
   }
 
+  /** search for the entry he wants to know */
   posnode = _frt->_fingertable.get_dhtnode(position);
 
   if ( posnode != NULL ) {
-    BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),position, posnode->_ether_addr.unparse().c_str());
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position);
+    BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(),
+                               _frt->_me->_ether_addr.unparse().c_str(), position, posnode->_ether_addr.unparse().c_str());
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION,
+                                                                                             posnode, position);
 
     output(0).push(p);
+  } else {
+    BRN_WARN("HE wants to know a node that i didn't know. Add Handler for his. (negative reply).");
   }
 }
 
@@ -159,55 +169,45 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
   uint8_t status;
   uint16_t position;
 
-  DHTnode node;
-  DHTnode src;
-  DHTnode *nc;
-  DHTnode *preposnode;
+  DHTnode node, src;
+  DHTnode *nc, *preposnode;
 
   BRN_DEBUG("handle_reply_pos");
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
 
   _frt->add_node(&src);
+  //TODO: update node
 
-  BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(),position, node._ether_addr.unparse().c_str());
+  BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(),
+                                           src._ether_addr.unparse().c_str(), position, node._ether_addr.unparse().c_str());
 
   preposnode = _frt->_fingertable.get_dhtnode(position);
 
-  //TODO: update src, but only etheraddress is valid
+  nc = _frt->find_node(&node);            //Find node
+  if ( nc == NULL ) {                     //if not included (it's new) TODO: use _frt->add_node(node) in the beginning
+    _frt->add_node(&node);                //then add
+    nc = _frt->find_node(&node);          //and get
+  }
 
   /**
-   * Die Abfrage stellt sicher, dass man nicht schon einmal im Kreis rum ist, und der Knoten den man grad befragt hat einen Knoten zuückliegt der schon wieder vor mir liegt
-   * Natuerlich darf es der Knoten selbst auch nicht sein
-   */
-
+   * Die Abfrage stellt sicher, dass man nicht schon einmal im Kreis rum ist, und der Knoten den man grad befragt hat einen
+   * Knoten zuückliegt der schon wieder vor mir liegt. Natuerlich darf es der Knoten selbst auch nicht sein
+  */
   // make sure that the node n on position p+1 does not stand between this node and node on position p
-  //TODO: make sure that we have to cheack, that node on new posotion p+1 is not the node on position p
-  if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) || preposnode->equals(&node) ) ) {
-    nc = _frt->find_node(&node);
-    if ( nc == NULL ) {
-      _frt->add_node(&node);
-      nc = _frt->find_node(&node);
-    }
+  //TODO: make sure that we have to check, that node on new posotion p+1 is not the node on position p
+  if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) ||
+                                                                           preposnode->equals(&node) ) ) {
+    _frt->add_node_in_FT(nc, position + 1); //add node to Fingertable. THis also handles, that the node is already in
+                                            //the Fingertable, but on another position
+    if ( nc->equals(_frt->predecessor) )    //in some cases the last node in the Fingertable is the predecessor.
+      _frt->setLastUpdatedPosition(0);      //then we can update our successor (position 0) next.
+    else
+      _frt->incLastUpdatedPosition();       //TODO: add this in add_node_in_FT (??). is that better ??
 
-    _frt->add_node_in_FT(nc, position + 1);
-
-    if ( nc->equals(_frt->predecessor) ) { //in some cases the last node in the Fingertable is the predecessor. then we can update our successor next.
-      _frt->_lastUpdatedPosition = 0;
-      _frt->fixSuccessor(false);
-    } else
-      _frt->_lastUpdatedPosition++; //TODO: add this in add_node_in_FT
-
-  } else {                          //node is backlog
-    nc = _frt->find_node(&node);
-    if ( nc == NULL ) {
-      _frt->add_node(&node);
-      nc = _frt->find_node(&node);
-    }
-
+  } else {                             //---> Node is backlog
     _frt->backlog = nc;
-    _frt->_lastUpdatedPosition = 0;
-    _frt->fixSuccessor(false);     //TODO: a hack. Test for successor again. maybe we can do this in a passive way, while asking him for his Nachfolger. Wenner dabei feststellt, das der fragende gar nicht sein vorgänger ist, weißt er ihn darauf hin.
+    _frt->setLastUpdatedPosition(0);
   }
 }
 
