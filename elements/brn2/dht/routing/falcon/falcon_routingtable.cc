@@ -135,7 +135,9 @@ FalconRoutingTable::add_node(DHTnode *node)
       return 0;
     }
   } else {
+    n->_status = node->_status;
     n->set_age(&(node->_age));    //update node
+    n->set_nodeid(node->_md5_digest);
     return 0;                     //get back since there is no new node (succ and pred will not changed)
   }
 
@@ -253,6 +255,19 @@ FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
 }
 
 int
+FalconRoutingTable::index_in_FT(DHTnode *node)
+{
+  return _fingertable.get_index_dhtnode(node);
+}
+
+void
+FalconRoutingTable::clear_FT(int start_index)
+{
+  _fingertable.clear(start_index, _fingertable.size() - 1);
+}
+
+
+int
 FalconRoutingTable::set_node_in_reverse_FT(DHTnode *node, int position)
 {
   int ind = _reverse_fingertable.get_index_dhtnode(node);
@@ -272,8 +287,14 @@ FalconRoutingTable::set_node_in_reverse_FT(DHTnode *node, int position)
                                                            //since it is in the all_nodes_table
       }
     }
-  } 
+  }
   return 0;
+}
+
+int
+FalconRoutingTable::index_in_reverse_FT(DHTnode *node)
+{
+  return _reverse_fingertable.get_index_dhtnode(node);
 }
 
 /*************************************************************************************************/
@@ -348,11 +369,14 @@ void
 FalconRoutingTable::reset()
 {
   _fingertable.clear();
+  _reverse_fingertable.clear();
   _allnodes.del();
 
   successor = NULL;
   predecessor = NULL;
   backlog = NULL;
+
+  fix_successor = false;
 }
 
 /*************************************************************************************************/

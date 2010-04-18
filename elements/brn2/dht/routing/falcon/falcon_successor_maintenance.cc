@@ -75,7 +75,7 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   //TODO: check age of succ and set him fix if the information is not too old
-  if ( ! _frt->isFixSuccessor() ) {
+  if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE  ) ) {
     BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(), _frt->successor->_ether_addr.unparse().c_str() );
 
     _frt->successor->set_last_ping_now();
@@ -108,10 +108,11 @@ FalconSuccessorMaintenance::push( int port, Packet *packet )
   }
 }
 
+
+//TODO: Check whether successor change while add_node(succ). Use this as indicator for fixSuccessor
 void
 FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 {
-  uint8_t status;
   uint16_t position;
 
   DHTnode succ;
@@ -119,7 +120,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 
   BRN_DEBUG("handle_reply_succ");
 
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
   _frt->add_node(&src);
   _frt->add_node(&succ);
@@ -135,23 +136,16 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 void
 FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 {
-  uint8_t status;
   uint16_t position;
 
   DHTnode succ;
   DHTnode src;
 
-  DHTnode *find_node;
-
   BRN_DEBUG("handle_request_succ");
 
-  DHTProtocolFalcon::get_info(packet, &src, &succ, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
   _frt->add_node(&src);
-
-  find_node = _frt->find_node(&src);
-  if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
-  else BRN_ERROR("Couldn't find inserted node");
 
   if ( succ.equals(_frt->_me) ) {
     //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger für ihn ein besserer Nachfolger ist.

@@ -68,14 +68,15 @@ DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t 
   WritablePacket *rreq_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
   struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(rreq_p);
 
-  request->status = 0;
   request->table_position = htons(request_position);
 
   DHTProtocol::set_src(rreq_p, src->_ether_addr.data());
   memcpy(request->src_node_id, src->_md5_digest, sizeof(request->src_node_id));
+  request->src_status = src->_status;
 
   memcpy(request->etheraddr,dst->_ether_addr.data(),6);
   memcpy(request->node_id, dst->_md5_digest, sizeof(request->node_id));
+  request->node_status = dst->_status;
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rreq_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -88,14 +89,15 @@ DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t ty
   WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
   struct falcon_routing_packet *reply = (struct falcon_routing_packet*)DHTProtocol::get_payload(rrep_p);
 
-  reply->status = 0;
   reply->table_position = htons(request_position);
 
   DHTProtocol::set_src(rrep_p, src->_ether_addr.data());
   memcpy(reply->src_node_id, src->_md5_digest, sizeof(reply->src_node_id));
+  reply->src_status = src->_status;
 
   memcpy(reply->etheraddr, node->_ether_addr.data(),6);
   memcpy(reply->node_id, node->_md5_digest, sizeof(reply->node_id));
+  reply->node_status = node->_status;
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rrep_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -110,9 +112,11 @@ DHTProtocolFalcon::fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTn
 
   DHTProtocol::set_src(rfwd_p, src->_ether_addr.data());
   memcpy(request->src_node_id, src->_md5_digest, sizeof(request->src_node_id));
+  request->src_status = src->_status;
 
   memcpy(request->etheraddr, new_dst->_ether_addr.data(),6);
   memcpy(request->node_id, new_dst->_md5_digest, sizeof(request->node_id));
+  request->node_status = new_dst->_status;
 
   WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(rfwd_p, &(fwd->_ether_addr), &(new_dst->_ether_addr), BRN_PORT_DHTROUTING);
 
@@ -120,19 +124,53 @@ DHTProtocolFalcon::fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTn
 }
 
 void
-DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status, uint16_t *pos)
+DHTProtocolFalcon::get_info(Packet *p, DHTnode *src, DHTnode *node, uint16_t *pos)
 {
   struct falcon_routing_packet *request = (struct falcon_routing_packet*)DHTProtocol::get_payload(p);
 
-  *status = request->status;
   *pos = ntohs(request->table_position);
 
   src->set_etheraddress(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_node_id);
   src->set_age_now();
+  src->_status = request->src_status;
 
   node->set_etheraddress(request->etheraddr);
   node->set_nodeid(request->node_id);
+  node->_status = request->node_status;
+}
+
+/*********************************************************************************/
+/*********************** R O U T I N G   L E A V E *******************************/
+/*********************************************************************************/
+
+/**
+ * DHTnode *src
+ * DHTnode *dst
+ * uint8_t operation
+ * DHTnode *node:        successor of node
+ * int request_position
+*/
+
+WritablePacket *
+DHTProtocolFalcon::new_route_leave_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position)
+{
+  WritablePacket *leave_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, operation, sizeof(struct falcon_routing_packet));
+  struct falcon_routing_packet *leave = (struct falcon_routing_packet*)DHTProtocol::get_payload(leave_p);
+
+  leave->table_position = htons(request_position);
+
+  DHTProtocol::set_src(leave_p, src->_ether_addr.data());
+  memcpy(leave->src_node_id, src->_md5_digest, sizeof(leave->src_node_id));
+  leave->src_status = src->_status;
+
+  memcpy(leave->etheraddr, node->_ether_addr.data(),6);
+  memcpy(leave->node_id, node->_md5_digest, sizeof(leave->node_id));
+  leave->node_status = node->_status;
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(leave_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
 }
 
 /*********************************************************************************/
@@ -174,6 +212,7 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
 
   *size = ntohl(request->networksize);
 
+  src->_status = STATUS_OK;
   src->set_etheraddress(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_node_id);
   src->set_age_now();

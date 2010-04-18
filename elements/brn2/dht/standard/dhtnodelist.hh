@@ -31,6 +31,7 @@ class DHTnodelist {
     int get_index_dhtnode(DHTnode *_search_node);
 
     void remove_dhtnode(int i);
+    void remove_dhtnode(DHTnode *node);
     int erase_dhtnode(EtherAddress *_etheradd);
 
     DHTnode* get_dhtnode_oldest_age();
@@ -44,6 +45,7 @@ class DHTnodelist {
     void sort_last_ping();
     void sort_age();
     void clear();
+    void clear(int start_index, int end_index);
     void del();                             //delete elements of list and clear
 
     bool contains(DHTnode *node);

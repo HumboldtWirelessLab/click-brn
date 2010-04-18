@@ -131,7 +131,13 @@ DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 void
 DHTnodelist::remove_dhtnode(int i)
 {
-  if ( i < _nodelist.size() ) _nodelist.erase(_nodelist.begin() + i);
+  if ( ( i < _nodelist.size() ) && ( i >= 0 ) ) _nodelist.erase(_nodelist.begin() + i);
+}
+
+void
+DHTnodelist::remove_dhtnode(DHTnode *node)
+{
+  remove_dhtnode(get_index_dhtnode(node));
 }
 
 int DHTnodelist::size()
@@ -157,6 +163,15 @@ void DHTnodelist::sort_age()
 void DHTnodelist::clear()
 {
   _nodelist.clear();
+}
+
+void DHTnodelist::clear(int start_index, int end_index)
+{
+  if ( end_index > _nodelist.size() ) end_index = _nodelist.size();
+
+  for( int i = end_index - 1; i >= start_index; i--) {
+    _nodelist.erase(_nodelist.begin() + i);
+  }
 }
 
 void DHTnodelist::del()
@@ -243,7 +258,6 @@ DHTnodelist::get_dhtnodes_oldest_ping(int number)
 
   return newlist;
 }
-
 
 bool
 DHTnodelist::contains(DHTnode *node)

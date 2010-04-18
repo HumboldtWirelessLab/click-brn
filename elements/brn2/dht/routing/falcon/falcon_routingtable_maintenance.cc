@@ -68,7 +68,7 @@ FalconRoutingTableMaintenance::set_lookup_timer()
 void
 FalconRoutingTableMaintenance::table_maintenance()
 {
-  if ( _frt->isFixSuccessor() ) {
+  if ( _frt->isFixSuccessor() && ( _frt->_me->_status != STATUS_LEAVE  ) ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
     //TODO: this is a workaround for an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
@@ -116,7 +116,6 @@ FalconRoutingTableMaintenance::push( int port, Packet *packet )
 void
 FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 {
-  uint8_t status;
   uint16_t position;
 
   DHTnode src;
@@ -126,7 +125,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   BRN_DEBUG("handle_request_pos");
 
-  DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &node, &position);
 
   _frt->add_node(&src);
 
@@ -166,7 +165,6 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 void
 FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 {
-  uint8_t status;
   uint16_t position;
 
   DHTnode node, src;
@@ -174,7 +172,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   BRN_DEBUG("handle_reply_pos");
 
-  DHTProtocolFalcon::get_info(packet, &src, &node, &status, &position);
+  DHTProtocolFalcon::get_info(packet, &src, &node, &position);
 
   _frt->add_node(&src);
   //TODO: update node

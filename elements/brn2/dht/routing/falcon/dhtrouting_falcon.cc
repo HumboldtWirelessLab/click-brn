@@ -175,7 +175,9 @@ DHTRoutingFalcon::change_node_id(md5_byte_t *id, int id_len)
 {
   if ( ! _leave_organizer ) return DHTRouting::change_node_id(id, id_len);
 
-  return CHANGE_NODE_ID_STATUS_OK;
+  if ( _leave_organizer->start_leave(id, id_len) ) return CHANGE_NODE_ID_STATUS_OK;
+
+  return CHANGE_NODE_ID_STATUS_ONGOING_CHANGE;
 }
 
 /**

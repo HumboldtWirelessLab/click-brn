@@ -28,6 +28,7 @@ CLICK_DECLS
 #define DEFAULT_DIGEST_LENGTH  128 /* 16*8 Bits*/
 #define MAX_DIGEST_LENGTH      128 /* 16*8 Bits*/
 
+//TODO: use 0 for invalid
 #define INVALID_NODE_ID        MAX_DIGEST_LENGTH + 1
 
 #define MAX_NODEID_LENTGH 16   /*Bytes*/

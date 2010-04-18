@@ -121,8 +121,11 @@ class FalconRoutingTable : public Element
 
   int add_node_in_FT(DHTnode *node, int position);  //add the node also in the list of all nodes
   int set_node_in_FT(DHTnode *node, int position);  //just set the node in the FT (add the pointer)
+  int index_in_FT(DHTnode *node);
+  void clear_FT(int start_index);
 
   int set_node_in_reverse_FT(DHTnode *node, int position);  //just set the node in the reverse FT (add the pointer)
+  int index_in_reverse_FT(DHTnode *node);
 
   DHTnode *find_node(DHTnode *node);
   DHTnode *find_node(DHTnode *node, int *table);
