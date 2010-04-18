@@ -1,0 +1,10 @@
+Elements to remove:
+  * sim/ns/addethernclick: use extrawifiencap instead
+  * simple/brn2_null.cc: not used
+  * hotspot/loadbalancing: use and upgrade gateway selection instead
+  * standard/pushpacketheader.hh: i want to use this for peek, but use routing_peek instead
+
+TODO:
+ DHT: * replica als bitmap. replilicas mit gleichem next-hops zusammen schicken. erst wenn noetig trennen.
+      * Stats: 
+      * dhtoperation-plugin um value weiter zu strukturieren
