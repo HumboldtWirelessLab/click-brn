@@ -42,10 +42,10 @@ CLICK_DECLS
 NHopCluster::NHopCluster()
   : _nhop_timer(static_nhop_timer_hook,this),
     _mode(NHOP_MODE_START),
-    _debug(BrnLogger::DEFAULT),
     _cluster_head_selected(false),
     _delay(0)
 {
+  Clustering::init();
   _send_notification = _fwd_notification = _send_req = _fwd_req = 0;
 }
 
@@ -367,6 +367,8 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 NHopCluster::add_handlers()
 {
+  Clustering::add_handlers();
+
   add_read_handler("info", read_info_param, 0);
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);

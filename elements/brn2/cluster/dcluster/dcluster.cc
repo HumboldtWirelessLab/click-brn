@@ -37,13 +37,13 @@
 CLICK_DECLS
 
 DCluster::DCluster()
-  : _debug(BrnLogger::DEFAULT),
-    _my_min_round(1),
+  : _my_min_round(1),
     _my_max_round(1),
     _ac_min_round(0),
     _ac_max_round(0),
     _delay(0)
 {
+  Clustering::init();
 }
 
 DCluster::~DCluster()
@@ -284,6 +284,8 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 DCluster::add_handlers()
 {
+  Clustering::add_handlers();
+
   add_read_handler("debug", read_debug_param, 0);
   add_read_handler("stats", read_stats_param, 0);
   add_write_handler("debug", write_debug_param, 0);

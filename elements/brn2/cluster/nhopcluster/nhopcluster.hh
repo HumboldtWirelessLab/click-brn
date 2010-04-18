@@ -8,6 +8,7 @@
 
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
+#include "elements/brn2/cluster/clustering.hh"
 #include "nhopclusterprotocol.hh"
 
 /**
@@ -27,7 +28,7 @@ CLICK_DECLS
 #define NHOP_DEFAULTSTART      5000
 #define NHOP_DEFAULTSTARTDELAY 5000
 
-class NHopCluster : public Element {
+class NHopCluster : public Clustering {
 
  public:
 
@@ -80,6 +81,7 @@ class NHopCluster : public Element {
   ~NHopCluster();
 
   const char *class_name() const  { return "NHopCluster"; }
+  const char *clustering_name() const { return "NHopCluster"; }
   const char *processing() const  { return AGNOSTIC; }
 
   /**
@@ -94,6 +96,8 @@ class NHopCluster : public Element {
 
   int initialize(ErrorHandler *);
   void add_handlers();
+
+  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _clusterhead; }
 
   void push(int, Packet *);
 
@@ -127,8 +131,6 @@ class NHopCluster : public Element {
   void forward(Packet *p);
 
  public:
-
-  int _debug;
 
   int _max_distance;
 

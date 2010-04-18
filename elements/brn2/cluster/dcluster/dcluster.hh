@@ -8,6 +8,7 @@
 
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
+#include "elements/brn2/cluster/clustering.hh"
 #include "dclusterprotocol.hh"
 
 /**
@@ -18,7 +19,7 @@
 
 CLICK_DECLS
 
-class DCluster : public Element {
+class DCluster : public Clustering {
 
  public:
 
@@ -73,6 +74,7 @@ class DCluster : public Element {
   ~DCluster();
 
   const char *class_name() const  { return "DCluster"; }
+  const char *clustering_name() const { return "DCluster"; }
   const char *processing() const  { return AGNOSTIC; }
 
   const char *port_count() const  { return "1/1"; }
@@ -85,6 +87,8 @@ class DCluster : public Element {
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
+
+  bool clusterhead_is_me() { return _my_info._ether_addr == _clusterhead; }
 
   String get_info();
   DCluster::ClusterNodeInfo* selectClusterHead();
@@ -99,8 +103,6 @@ class DCluster : public Element {
   BRN2NodeIdentity *_node_identity;
 
  public:
-
-  int _debug;
 
   int _max_distance;
 
