@@ -75,7 +75,7 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   //TODO: check age of succ and set him fix if the information is not too old
-  if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE  ) ) {
+  if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE ) && ( _frt->successor ) ) {
     BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(), _frt->successor->_ether_addr.unparse().c_str() );
 
     _frt->successor->set_last_ping_now();

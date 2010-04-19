@@ -42,7 +42,8 @@ FalconRoutingTable::FalconRoutingTable():
   backlog(NULL),
   _lastUpdatedPosition(0),
   fix_successor(false),
-  _debug(BrnLogger::DEFAULT)
+  _debug(BrnLogger::DEFAULT),
+  _dbg_routing_info(0)
 {
 }
 
@@ -503,8 +504,31 @@ FalconRoutingTable::routing_info(void)
   return sa.take_string();
 }
 
+String
+FalconRoutingTable::debug_routing_info(void)
+{
+  StringAccum sa;
+
+  if ( predecessor != NULL )
+    sa << _dbg_routing_info << " -1 " << _me->_ether_addr.unparse() << " " << predecessor->_ether_addr.unparse() << "\n";
+
+  if ( successor != NULL )
+    sa << _dbg_routing_info << " 0 " << _me->_ether_addr.unparse() << " " << successor->_ether_addr.unparse() << "\n";
+
+  for( int i = 1; i < _fingertable.size(); i++ )
+  {
+    DHTnode *node = _fingertable.get_dhtnode(i);
+    sa << _dbg_routing_info << " " << i << " " << _me->_ether_addr.unparse() << " " << node->_ether_addr.unparse() << "\n";
+  }
+
+  _dbg_routing_info++;
+  return sa.take_string();
+}
+
+
 enum {
-  H_ROUTING_INFO
+  H_ROUTING_INFO,
+  H_DEBUG_ROUTING_INFO,
 };
 
 static String
@@ -515,6 +539,7 @@ read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk)
   {
     case H_ROUTING_INFO : return ( dht_falcon->routing_info( ) );
+    case H_DEBUG_ROUTING_INFO : return ( dht_falcon->debug_routing_info( ) );
     default: return String();
   }
 }
@@ -523,6 +548,7 @@ void
 FalconRoutingTable::add_handlers()
 {
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
+  add_read_handler("debug_routing_info", read_param , (void *)H_DEBUG_ROUTING_INFO);
 }
 
 CLICK_ENDDECLS

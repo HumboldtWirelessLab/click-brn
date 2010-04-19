@@ -98,6 +98,7 @@ class FalconRoutingTable : public Element
   int add_update_callback(void (*info_func)(void*,int), void *info_obj);
 
   String routing_info(void);
+  String debug_routing_info(void);
   void reset(void);
 
   /** getter/setter for status of node (e.g. ok, away,...) */
@@ -166,6 +167,8 @@ class FalconRoutingTable : public Element
   bool isFixSuccessor(void) { return fix_successor; }  //TODO: rename to "hasFixSuccessor()"
 
   int _debug;
+
+  int _dbg_routing_info;
 
 };
 
