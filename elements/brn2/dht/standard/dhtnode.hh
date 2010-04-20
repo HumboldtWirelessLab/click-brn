@@ -18,12 +18,13 @@ CLICK_DECLS
  * TODO: change second to milisecond
 */
 
-#define STATUS_UNKNOWN 0   /*Status is unknown*/
-#define STATUS_NEW     1   /*status is new. I known the node, 'cause other nodes told me*/ 
-#define STATUS_OK      2
-#define STATUS_MISSED  3   /*Node doesn't reply*/
-#define STATUS_AWAY    4   /*Node doesn't replay for long time. Neighboring node told me that there is no beacon*/
-#define STATUS_LEAVE   5   /*node has/will leave the network*/
+#define STATUS_UNKNOWN     0  /*Status is unknown*/
+#define STATUS_NEW         1  /*status is new. I known the node, 'cause other nodes told me*/
+#define STATUS_OK          2
+#define STATUS_MISSED      3  /*Node doesn't reply*/
+#define STATUS_AWAY        4  /*Node doesn't replay for long time. Neighboring node told me that there is no beacon*/
+#define STATUS_LEAVE       5  /*node has/will leave the network*/
+#define STATUS_NONEXISTENT 6  /*node doesn't exist. Use to handle request for node that doesn't exist*/
 
 #define DEFAULT_DIGEST_LENGTH  128 /* 16*8 Bits*/
 #define MAX_DIGEST_LENGTH      128 /* 16*8 Bits*/

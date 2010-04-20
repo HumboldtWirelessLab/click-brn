@@ -14,6 +14,12 @@ RoutingPeek::~RoutingPeek()
 {
 }
 
+void
+RoutingPeek::init()
+{
+  BRNElement::init();
+}
+
 static String
 read_peek_info(Element *e, void */*thunk*/)
 {
@@ -29,5 +35,6 @@ RoutingPeek::add_handlers()
   add_read_handler("peek_info", read_peek_info, (void *) 0);
 }
 
-ELEMENT_PROVIDES(RoutingPeek)
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(BRNElement)
+ELEMENT_PROVIDES(RoutingPeek)

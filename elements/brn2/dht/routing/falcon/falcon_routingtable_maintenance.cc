@@ -154,11 +154,15 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(),
                                _frt->_me->_ether_addr.unparse().c_str(), position, posnode->_ether_addr.unparse().c_str());
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION,
-                                                                                             posnode, position);
-
+                                                                              posnode, position);
     output(0).push(p);
   } else {
-    BRN_WARN("HE wants to know a node that i didn't know. Add Handler for his. (negative reply).");
+    BRN_WARN("HE wants to know a node that i didn't know. Send negative reply.");
+    node._status = STATUS_NONEXISTENT; //i don't have such node
+    node.set_nodeid(NULL, 0);          //its and invalid node
+    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION,
+                                                                             &node, position);
+    output(0).push(p);
   }
 }
 
@@ -175,6 +179,13 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
   DHTProtocolFalcon::get_info(packet, &src, &node, &position);
 
   _frt->add_node(&src);
+
+  if ( node._status == STATUS_NONEXISTENT ) {
+    BRN_WARN("Node %s has no node in table on position %d.",src._ether_addr.unparse().c_str(),position);
+    _frt->setLastUpdatedPosition(0);
+    return;
+  }
+
   //TODO: update node
 
   BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(),

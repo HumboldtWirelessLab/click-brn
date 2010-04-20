@@ -32,6 +32,8 @@ class RoutingPeek : public BRNElement
     RoutingPeek();
     ~RoutingPeek();
 
+    void init();
+
     virtual const char *routing_name() const = 0; //const : function doesn't change the object (members).
                                                   //virtual: späte Bindung
 
