@@ -40,15 +40,86 @@ int FalconRoutingPeek::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-static bool routing_peek_func(void */*e*/, Packet */*p*/, int /*brn_port*/)
+static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
 {
-  return true;
+  return ((FalconRoutingPeek *)e)->handle_routing_peek(p, src, dst, brn_port);
 }
 
 int FalconRoutingPeek::initialize(ErrorHandler *)
 {
-  _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FALCON);
+  _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_DHTROUTING );
   return 0;
+}
+
+bool
+FalconRoutingPeek::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
+{
+  if ( ( p != NULL ) && ( brn_port == BRN_PORT_DHTROUTING ) && ( *src != _frt->_me->_ether_addr ) ) {
+    BRN_DEBUG("Handle Routing Peek. Src: %s Dst: %s",src->unparse().c_str(), dst->unparse().c_str());
+
+    BRNProtocol::pull_brn_header(p);
+
+    switch ( DHTProtocol::get_type(p) ) {
+      case FALCON_MINOR_REQUEST_SUCCESSOR:
+      case FALCON_MINOR_REQUEST_POSITION:
+        handle_request(p);
+        break;
+      case FALCON_MINOR_REPLY_SUCCESSOR:
+      case FALCON_MINOR_UPDATE_SUCCESSOR:
+      case FALCON_MINOR_REPLY_POSITION:
+        handle_reply(p);
+        break;
+      case FALCON_MINOR_LEAVE_NETWORK_NOTIFICATION:
+      case FALCON_MINOR_LEAVE_NETWORK_REPLY:
+        handle_leave(p);
+        break;
+      case FALCON_MINOR_NWS_REQUEST:
+        handle_nws(p);
+        break;
+      default:
+        break;
+    }
+
+    BRNProtocol::push_brn_header(p);
+  }
+  return true;
+}
+
+void
+FalconRoutingPeek::handle_request(Packet *p)
+{
+  uint16_t position;
+  DHTnode dst, src;
+
+  BRN_DEBUG("handle request");
+
+  DHTProtocolFalcon::get_info(p, &src, &dst, &position);
+  _frt->add_node(&src);
+}
+
+void
+FalconRoutingPeek::handle_reply(Packet *p)
+{
+  uint16_t position;
+  DHTnode dst, src;
+
+  BRN_DEBUG("handle reply");
+
+  DHTProtocolFalcon::get_info(p, &src, &dst, &position);
+  _frt->add_node(&src);
+  _frt->add_node(&dst);
+}
+
+void
+FalconRoutingPeek::handle_leave(Packet */*p*/)
+{
+
+}
+
+void
+FalconRoutingPeek::handle_nws(Packet */*p*/)
+{
+
 }
 
 void
