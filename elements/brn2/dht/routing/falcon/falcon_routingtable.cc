@@ -86,6 +86,10 @@ FalconRoutingTable::initialize(ErrorHandler *)
   return 0;
 }
 
+/*************************************************************************************************/
+/************************** H E L P E R   F U N C T I O N S***************************************/
+/*************************************************************************************************/
+
 bool
 FalconRoutingTable::isSuccessor(DHTnode *node)
 {
@@ -121,10 +125,37 @@ FalconRoutingTable::isBetterPredecessor(DHTnode *node)
   return FalconFunctions::is_in_between( predecessor, _me, node);
 }
 
+/*************************************************************************************************/
+/****************************** F I N D   F U N C T I O N S **************************************/
+/*************************************************************************************************/
+
+DHTnode*
+FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
+{
+  DHTnode *best = _me;
+  DHTnode *n;
+
+  if ( node->equals(_me) ) best = successor;
+  for ( int i = 0; i < _allnodes.size(); i++ ) {
+    n = _allnodes.get_dhtnode(i);
+    BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
+    if ( ( n->get_age_s() <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) )
+      best = n;
+  }
+
+  return best;
+}
+
+/*************************************************************************************************/
+/************************** A D D   N O D E   F U N C T I O N S **********************************/
+/*************************************************************************************************/
+
 int
 FalconRoutingTable::add_node(DHTnode *node)
 {
   DHTnode *n;
+
+  if ( node->_status == STATUS_NONEXISTENT ) return 0;  //TODO: change this or move to other function or build more general function
 
   n = _allnodes.get_dhtnode(node);
 
@@ -136,9 +167,9 @@ FalconRoutingTable::add_node(DHTnode *node)
       return 0;
     }
   } else {
-    n->_status = node->_status;
-    n->set_age(&(node->_age));    //update node
-    n->set_nodeid(node->_md5_digest);
+    n->_status = node->_status;    //update node
+    n->set_age(&(node->_age));
+    if ( node->_digest_length != 0 ) n->set_nodeid(node->_md5_digest);
     return 0;                     //get back since there is no new node (succ and pred will not changed)
   }
 
@@ -158,13 +189,6 @@ FalconRoutingTable::add_node(DHTnode *node)
                                                //      called by complex function, so it can result in problems
 
   } else if ( isBetterPredecessor(n) ) {
-
-    if ( successor == NULL ) {
-      successor = n;
-      set_node_in_FT(successor, 0);
-      update_callback(RT_UPDATE_SUCCESSOR);      //TODO: place this anywhere else. the add_node-function is
-                                                 //      called by complex function, so it can result in problems
-    }
 
     predecessor = n;
     update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
@@ -421,7 +445,8 @@ FalconRoutingTable::routing_info(void)
 
   if ( successor != NULL ) {
     MD5::printDigest(successor->_md5_digest, digest);
-    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\t" << isFixSuccessor() << "\n";
+    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\t";
+    sa << isFixSuccessor() << " (" << get_successor_counter() << ")\n";
   } else {
     sa << "Successor: xx:xx:xx:xx:xx:xx\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(false)\n";
   }

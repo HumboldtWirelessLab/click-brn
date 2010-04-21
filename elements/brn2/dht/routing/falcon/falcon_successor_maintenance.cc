@@ -22,6 +22,7 @@ FalconSuccessorMaintenance::FalconSuccessorMaintenance():
   _lookup_timer(static_lookup_timer_hook,this),
   _start(FALCON_DEFAULT_SUCCESSOR_START_TIME),
   _update_interval(FALCON_DEFAULT_SUCCESSOR_UPDATE_INTERVAL),
+  _min_successor_ping(FALCON_DEFAULT_SUCCESSOR_MIN_PING),
   _debug(BrnLogger::DEFAULT)
 {
 }
@@ -36,6 +37,7 @@ int FalconSuccessorMaintenance::configure(Vector<String> &conf, ErrorHandler *er
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "STARTTIME", cpkP+cpkM, cpInteger, &_start,
       "UPDATEINT", cpkP, cpInteger, &_update_interval,
+      "MINSUCCESSORPING",  cpkP, cpInteger, &_min_successor_ping,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -52,6 +54,7 @@ static void notify_callback_func(void *e, int status)
 int FalconSuccessorMaintenance::initialize(ErrorHandler *)
 {
   _frt->add_update_callback(notify_callback_func,(void*)this);
+  click_srandom(_frt->_me->_ether_addr.hashcode());
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
   return 0;
@@ -126,9 +129,13 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   _frt->add_node(&succ);
 
   if ( isUpdate ) _frt->fixSuccessor(false);  // an update is only a hint which has to be proofed
-  else _frt->fixSuccessor(true);              // i check the successor so now its fix (for now)
-
-  _frt->_lastUpdatedPosition=0;
+  else {
+    _frt->inc_successor_counter();
+    if ( _min_successor_ping == _frt->get_successor_counter() ) {
+      _frt->fixSuccessor(true);              // i check the successor so now its fix (for now)
+      _frt->_lastUpdatedPosition=0;
+    }
+  }
 }
 
 //TODO: think about forward and backward-search for successor. Node should switch from back- to forward if it looks faster
@@ -158,7 +165,17 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       output(0).push(p);
     } else {
       BRN_DEBUG("He (%s) is before my predecessor: %s",src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
-      WritablePacket *p = DHTProtocolFalcon::fwd_route_request_packet(&src, _frt->predecessor, _frt->_me, packet);
+
+      DHTnode *best_succ = _frt->findBestSuccessor(&src,20/* max age 20 s*/);
+
+      if ( best_succ->equals(_frt->predecessor) ) {
+        BRN_DEBUG("------1-------: My pre is his succ");
+      } else {
+        BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s  Succ: %s  Pre: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+        BRN_DEBUG("%s",_frt->routing_info().c_str());
+      }
+
+      WritablePacket *p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, packet);
       output(0).push(p);
     }
   } else {

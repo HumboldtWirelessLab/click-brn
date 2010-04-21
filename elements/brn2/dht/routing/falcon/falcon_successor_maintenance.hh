@@ -8,6 +8,7 @@
 CLICK_DECLS
 
 #define FALCON_DEFAULT_SUCCESSOR_UPDATE_INTERVAL  2000
+#define FALCON_DEFAULT_SUCCESSOR_MIN_PING            3
 #define FALCON_DEFAULT_SUCCESSOR_START_TIME      10000
 
 
@@ -50,6 +51,7 @@ class FalconSuccessorMaintenance : public Element
     int _start;
     int _update_interval;
 
+    int _min_successor_ping;
     int _debug;
 };
 

@@ -46,6 +46,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
 
 int FalconRoutingTableMaintenance::initialize(ErrorHandler *)
 {
+  click_srandom(_frt->_me->_ether_addr.hashcode());
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
   return 0;
@@ -141,8 +142,17 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),
                                      _frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
+    DHTnode *best_succ = _frt->findBestSuccessor(&src,20/* max age 20 s*/);
+
+    if ( best_succ->equals(_frt->predecessor) ) {
+      BRN_DEBUG("RoutingTable :------1-------: My pre is his succ");
+    } else {
+      BRN_DEBUG("RoutingTable :------2-------: I've better succ than my pre. ME: %s  Src: %s  Succ: %s Pre: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+      BRN_DEBUG("%s",_frt->routing_info().c_str());
+    }
+
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
-                                                                  _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR);
+                                                                  best_succ, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
     return;
   }

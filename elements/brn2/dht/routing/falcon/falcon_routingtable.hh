@@ -115,6 +115,8 @@ class FalconRoutingTable : public Element
   bool isBetterSuccessor(DHTnode *node);
   bool isBetterPredecessor(DHTnode *node);
 
+  DHTnode* findBestSuccessor(DHTnode *node, int max_age);
+
   int add_node(DHTnode *node);
   int add_node(DHTnode *node, bool is_neighbour);
   int add_neighbour(DHTnode *node);
@@ -162,9 +164,20 @@ class FalconRoutingTable : public Element
    * fix_successor represent the status of the knowledge about the successor. If it is true, we
    * are sure to know the right successor.
    */
+ private:
   bool fix_successor;
-  void fixSuccessor(bool fix) { fix_successor = fix; }
+  int ping_successor_counter;
+
+ public:
+  void fixSuccessor(bool fix) {
+    fix_successor = fix;
+    if ( fix_successor == false ) ping_successor_counter = 0;
+  }
+
   bool isFixSuccessor(void) { return fix_successor; }  //TODO: rename to "hasFixSuccessor()"
+
+  void inc_successor_counter(void) { ping_successor_counter++; }
+  int get_successor_counter(void) { return ping_successor_counter; }
 
   int _debug;
 
