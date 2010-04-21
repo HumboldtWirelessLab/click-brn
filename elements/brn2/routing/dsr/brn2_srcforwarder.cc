@@ -27,6 +27,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -188,7 +189,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
       BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
       BRN_DEBUG("Final Dest: %s",dst_addr.unparse().c_str());
       if ( _dsr_rid_cache ) {
-        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));  //TODO: this is done up (line 162). Remove this.
 
         EtherAddress dst(brn_dsr->dsr_dst.data);
         EtherAddress next(brn_dsr->dsr_dst.data);
