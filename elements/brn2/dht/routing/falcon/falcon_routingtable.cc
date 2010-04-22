@@ -227,14 +227,14 @@ FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
   int table;
   DHTnode *fn;
 
-  add_node(node); //add node to known nodes or rather update it  //TODO: do this seperatly
-
   if ( isSuccessor(node) && (position != 0) ) {
     BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
     return 0;
   }
 
   fn = find_node_in_tables(node, &table);
+
+  assert( fn != NULL );
 
   if ( table != RT_FINGERTABLE ) {
     set_node_in_FT(node, position);
