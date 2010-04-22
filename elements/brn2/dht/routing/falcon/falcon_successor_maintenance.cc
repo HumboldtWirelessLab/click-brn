@@ -171,7 +171,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       if ( best_succ->equals(_frt->predecessor) ) {
         BRN_DEBUG("------1-------: My pre is his succ");
       } else {
-        BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s  Succ: %s  Pre: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+        BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
+        BRN_DEBUG("------2-------: I've better succ than my pre.  Succ: %s  Pre: %s", best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
         BRN_DEBUG("%s",_frt->routing_info().c_str());
       }
 

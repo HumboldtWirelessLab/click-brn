@@ -111,8 +111,9 @@ BrnLogger::log(int level, const char* format, va_list ptr) const
   if (buffer_needed >= _buffer_len)
   {
     delete[] _buffer;
-    while (buffer_needed >= _buffer_len)
-      _buffer_len *= 2;
+//  while (buffer_needed >= _buffer_len)
+//    _buffer_len *= 2;
+    _buffer_len = buffer_needed * 2;
     _buffer = new char[_buffer_len];
 
     buffer_needed = vsnprintf(_buffer, _buffer_len-1, format, ptr);
