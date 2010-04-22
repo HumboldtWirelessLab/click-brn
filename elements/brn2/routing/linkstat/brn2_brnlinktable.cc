@@ -377,7 +377,9 @@ Brn2LinkTable::get_route_metric(const Vector<EtherAddress> &route)
 
   unsigned metric = 0;
   for (int i = 0; i < route.size() - 1; i++) {
-    unsigned m = get_link_metric(route[i], route[i+1]);
+    EtherAddress src = route[i];
+    EtherAddress dst = route[i+1];
+    unsigned m = get_link_metric(src, dst);
 
     metric += m;
 
