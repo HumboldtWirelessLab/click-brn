@@ -41,6 +41,7 @@ class FalconFunctions {
     static bool is_smaller_or_equals(DHTnode *a, DHTnode *b);
     static bool is_smaller_or_equals(DHTnode *a, md5_byte_t *md5d);
 
+    static bool is_in_between(md5_byte_t *a, md5_byte_t *b, md5_byte_t *c);
     static bool is_in_between(DHTnode *a, DHTnode *b, DHTnode *c);
     static bool is_in_between(DHTnode *a, DHTnode *b, md5_byte_t *c);
     static bool is_in_between(DHTnode *a, md5_byte_t *b, DHTnode *c);

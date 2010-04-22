@@ -91,41 +91,40 @@ FalconFunctions::is_smaller_or_equals(DHTnode *a, md5_byte_t *md5d)  //a <= b ??
  * is md5 c between node a and b ??
  */
 
+
+bool
+FalconFunctions::is_in_between(md5_byte_t *a, md5_byte_t *b, md5_byte_t *c)
+{
+  if ( MD5::is_smaller( a, b ) )
+    return ( MD5::is_smaller( a, c ) && MD5::is_bigger( b, c ) );
+
+  return ( MD5::is_smaller( a, c ) || MD5::is_bigger( b, c ) );
+}
+
 bool
 FalconFunctions::is_in_between(DHTnode *a, DHTnode *b, DHTnode *c)
 {
-  if ( MD5::is_smaller( a->_md5_digest, b->_md5_digest ) )
-    return ( MD5::is_smaller( a->_md5_digest, c->_md5_digest ) && MD5::is_bigger( b->_md5_digest, c->_md5_digest ) );
-
-  return ( MD5::is_smaller( a->_md5_digest, c->_md5_digest ) || MD5::is_bigger( b->_md5_digest, c->_md5_digest ) );
-}
-
-bool
-FalconFunctions::is_in_between(DHTnode *a, DHTnode *b, md5_byte_t *c)
-{
-  if ( MD5::is_smaller( a->_md5_digest, b->_md5_digest ) )
-    return ( MD5::is_smaller( a->_md5_digest, c ) && MD5::is_bigger( b->_md5_digest, c ) );
-
-  return ( MD5::is_smaller( a->_md5_digest, c ) || MD5::is_bigger( b->_md5_digest, c ) );
-}
-
-bool
-FalconFunctions::is_in_between(DHTnode *a, md5_byte_t *b, DHTnode *c)
-{
-  if ( MD5::is_smaller( a->_md5_digest, b ) )
-    return ( MD5::is_smaller( a->_md5_digest, c->_md5_digest ) && MD5::is_bigger( b, c->_md5_digest ) );
-
-  return ( MD5::is_smaller( a->_md5_digest, c->_md5_digest ) || MD5::is_bigger( b, c->_md5_digest ) );
+  return is_in_between(a->_md5_digest, b->_md5_digest, c->_md5_digest);
 }
 
 bool
 FalconFunctions::is_in_between(md5_byte_t *a, DHTnode *b, DHTnode *c)
 {
-  if ( MD5::is_smaller( a, b->_md5_digest ) )
-    return ( MD5::is_smaller( a, c->_md5_digest ) && MD5::is_bigger( b->_md5_digest, c->_md5_digest ) );
-
-  return ( MD5::is_smaller( a, c->_md5_digest ) || MD5::is_bigger( b->_md5_digest, c->_md5_digest ) );
+  return is_in_between(a, b->_md5_digest, c->_md5_digest);
 }
+
+bool
+FalconFunctions::is_in_between(DHTnode *a, md5_byte_t *b, DHTnode *c)
+{
+  return is_in_between(a->_md5_digest, b, c->_md5_digest);
+}
+
+bool
+FalconFunctions::is_in_between(DHTnode *a, DHTnode *b, md5_byte_t *c)
+{
+  return is_in_between(a->_md5_digest, b->_md5_digest, c);
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(FalconFunctions)

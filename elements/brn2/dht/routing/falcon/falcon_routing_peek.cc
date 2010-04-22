@@ -95,6 +95,14 @@ FalconRoutingPeek::handle_request(Packet *p)
 
   DHTProtocolFalcon::get_info(p, &src, &dst, &position);
   _frt->add_node(&src);
+  _frt->add_node(&dst);
+
+  if ( DHTProtocol::get_type(p) == FALCON_MINOR_REQUEST_SUCCESSOR ) {
+    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
+    if ( ! best_succ->equals(&dst) ) {
+      BRN_WARN("---------------------------------------------------- Found better Successor in PEEK");
+    }
+  }
 }
 
 void

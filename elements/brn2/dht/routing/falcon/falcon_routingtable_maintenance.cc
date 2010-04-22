@@ -72,20 +72,9 @@ FalconRoutingTableMaintenance::table_maintenance()
   if ( _frt->isFixSuccessor() && ( _frt->_me->_status != STATUS_LEAVE  ) ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
-    //TODO: this is a workaround for an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
-    if ( nextToAsk == NULL ) {
-      BRN_ERROR("No node left to ask. Reset update Position. Position: %d FT-size: %d",_frt->_lastUpdatedPosition, _frt->_fingertable.size());
-      BRN_ERROR("Table: \n%s",_frt->routing_info().c_str());
-      assert(nextToAsk != NULL );
-      return;
-    }
-
-    //TODO: There was an error, while setup the Routing-Table. I fixed it, but if there is an error again please save this output (Routing Table)
-    if ( _frt->_me->equals(nextToAsk) ) {
-      BRN_ERROR("Src-Node should not be Dst-Node ! Error in Routing-Table !");
-      BRN_ERROR("Table: \n%s",_frt->routing_info().c_str());
-      assert(! _frt->_me->equals(nextToAsk));
-    }
+    assert(nextToAsk != NULL ); //TODO: there was an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
+    assert(! _frt->_me->equals(nextToAsk));  //TODO: There was an error, while setup the Routing-Table. I fixed it,
+                                               //      but if there is an error again please save this output (Routing Table)
 
     nextToAsk->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION, _frt->_lastUpdatedPosition);
@@ -196,7 +185,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
     return;
   }
 
-  //TODO: update node
+  _frt->add_node(&node); //TODO: update node. Check that
 
   BRN_DEBUG("I (%s) ask Node (%s) for pos: %d . Ans: %s",_frt->_me->_ether_addr.unparse().c_str(),
                                            src._ether_addr.unparse().c_str(), position, node._ether_addr.unparse().c_str());

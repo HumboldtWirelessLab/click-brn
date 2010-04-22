@@ -159,18 +159,15 @@ FalconRoutingTable::add_node(DHTnode *node)
 
   n = _allnodes.get_dhtnode(node);
 
-  if (n == NULL) {                     //add node if node is not in list
-    if ( node->_digest_length != 0 ) { //and new node has a valid node_id
-      n = node->clone();
-      _allnodes.add_dhtnode(n);
-    } else {                           //if no valid node_id: finish here
-      return 0;
-    }
+  if (n == NULL) {                             //add node if node is not in list
+    if ( node->_digest_length == 0 ) return 0; //but only if new node has a valid node_id
+    n = node->clone();
+    _allnodes.add_dhtnode(n);
   } else {
-    n->_status = node->_status;    //update node
+    n->_status = node->_status;                //update node
     n->set_age(&(node->_age));
     if ( node->_digest_length != 0 ) n->set_nodeid(node->_md5_digest);
-    return 0;                     //get back since there is no new node (succ and pred will not changed)
+    return 0;                                 //get back since there is no new node (succ and pred will not changed)
   }
 
   if ( isBetterSuccessor(n) ) {
@@ -230,7 +227,7 @@ FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
   int table;
   DHTnode *fn;
 
-  add_node(node); //add node to known nodes or rather update it
+  add_node(node); //add node to known nodes or rather update it  //TODO: do this seperatly
 
   if ( isSuccessor(node) && (position != 0) ) {
     BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
