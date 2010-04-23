@@ -168,6 +168,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
       DHTnode *best_succ = _frt->findBestSuccessor(&src,20/* max age 20 s*/);
 
+      if ( best_succ->equals(_frt->_me) ) best_succ = _frt->predecessor; //if predecessor is to old, then it's possible that findBestSuccessor returns me
+                                                                         //and that wrong at this point. so set best to pred manually. TODO: do it better
       if ( best_succ->equals(_frt->predecessor) ) {
         BRN_DEBUG("------1-------: My pre is his succ");
       } else {

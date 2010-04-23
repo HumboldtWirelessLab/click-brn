@@ -62,7 +62,7 @@ FalconRoutingPeek::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddres
     switch ( DHTProtocol::get_type(p) ) {
       case FALCON_MINOR_REQUEST_SUCCESSOR:
       case FALCON_MINOR_REQUEST_POSITION:
-        handle_request(p);
+        return handle_request(p);
         break;
       case FALCON_MINOR_REPLY_SUCCESSOR:
       case FALCON_MINOR_UPDATE_SUCCESSOR:
@@ -85,7 +85,7 @@ FalconRoutingPeek::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddres
   return true;
 }
 
-void
+bool
 FalconRoutingPeek::handle_request(Packet *p)
 {
   uint16_t position;
@@ -95,14 +95,19 @@ FalconRoutingPeek::handle_request(Packet *p)
 
   DHTProtocolFalcon::get_info(p, &src, &dst, &position);
   _frt->add_node(&src);
-  _frt->add_node(&dst);
+//_frt->add_node(&dst);
 
   if ( DHTProtocol::get_type(p) == FALCON_MINOR_REQUEST_SUCCESSOR ) {
-    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
-    if ( ! best_succ->equals(&dst) ) {
-      BRN_WARN("---------------------------------------------------- Found better Successor in PEEK");
-    }
+  //  DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
+   // if ( ! best_succ->equals(&dst) ) {
+    //  BRN_WARN("---------------------------------------------------- Found better Successor in PEEK");
+//      WritablePacket *fwd_p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, p);
+//      output(0).push(fwd_p);
+//      return false;
+   //}
   }
+
+  return true;
 }
 
 void

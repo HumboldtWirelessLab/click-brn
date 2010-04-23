@@ -34,7 +34,7 @@ class FalconRoutingPeek : public BRNElement
     FalconRoutingTable *_frt;
     RoutingPeek *_routing_peek;
 
-    void handle_request(Packet *p);
+    bool handle_request(Packet *p);
     void handle_reply(Packet *p);
     void handle_leave(Packet *p);
     void handle_nws(Packet *p);

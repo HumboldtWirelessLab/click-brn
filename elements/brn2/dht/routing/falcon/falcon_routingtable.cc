@@ -139,8 +139,12 @@ FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
   for ( int i = 0; i < _allnodes.size(); i++ ) {
     n = _allnodes.get_dhtnode(i);
     BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
-    if ( ( n->get_age_s() <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) )
+    BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(),node->_ether_addr.unparse().c_str(),best->_ether_addr.unparse().c_str());
+    if ( ( n->get_age_s() <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
+      BRN_DEBUG("YES");
       best = n;
+    } else
+      BRN_DEBUG("NO");
   }
 
   return best;
