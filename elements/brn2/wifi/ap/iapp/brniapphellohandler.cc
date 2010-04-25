@@ -101,6 +101,7 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BrnIappHelloHandler::initialize(ErrorHandler */*errh*/)
 {
+  click_srandom(_id->getMasterAddress()->hashcode());
   // if not specified, use half of the link table stale timeout
   if (0 >= _hello_trigger_interval_ms) {
     timeval t;

@@ -497,6 +497,8 @@ BRN2LinkStat::send_probe()
 int
 BRN2LinkStat::initialize(ErrorHandler *errh)
 {
+  click_srandom(_me->getEtherAddress()->hashcode());
+
   if (noutputs() > 0) {
     if (!_me)
       return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");

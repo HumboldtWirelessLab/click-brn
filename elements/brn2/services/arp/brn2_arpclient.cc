@@ -75,6 +75,8 @@ BRN2ARPClient::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2ARPClient::initialize(ErrorHandler *)
 {
+  click_srandom((int)this);
+
   _range_index = 0;
 
   _count_request = 0;

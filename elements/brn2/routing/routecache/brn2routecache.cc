@@ -56,6 +56,8 @@ Brn2RouteCache::~Brn2RouteCache()
 int 
 Brn2RouteCache::initialize(ErrorHandler *)
 {
+  click_srandom((int)this);
+
   m_tRouteAging.initialize(this);
 
   // Reschedule the timer

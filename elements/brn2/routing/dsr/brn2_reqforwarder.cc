@@ -89,7 +89,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
-
+  click_srandom(_me->getMasterAddress()->hashcode());
   unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
 //    BRN_DEBUG("BRN2RequestForwarder: Timer after %d ms", j );
   _sendbuffer_timer.initialize(this);

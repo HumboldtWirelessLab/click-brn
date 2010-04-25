@@ -54,7 +54,6 @@ BRN2RouteQuerier::BRN2RouteQuerier()
 {
   timeval tv;
   tv = Timestamp::now().timeval();
-  _rreq_id = click_random() % 0xffff;
 
   //add_input();  // incoming packets
 
@@ -105,6 +104,10 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
+  click_srandom(_me->getMasterAddress()->hashcode());
+
+  _rreq_id = click_random() % 0xffff;
+
   // expire entries on list of rreq's we have seen
   _rreq_expire_timer.initialize(this);
   _rreq_expire_timer.schedule_after_msec(BRN_DSR_RREQ_EXPIRE_TIMER_INTERVAL);

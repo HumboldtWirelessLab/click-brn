@@ -64,6 +64,8 @@ BatmanOriginatorSource::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanOriginatorSource::initialize(ErrorHandler *)
 {
+  click_srandom(_nodeid->getMasterAddress()->hashcode());
+
   _id = 0;
   _send_timer.initialize(this);
   _send_timer.schedule_after_msec(click_random() % (_interval ) );

@@ -92,6 +92,8 @@ BRN2BeaconSource::initialize (ErrorHandler *)
   unsigned int _min_jitter  = 0 /* ms */;
   unsigned int _jitter      = _winfo->_interval;
 
+  click_srandom(_winfo->_bssid.hashcode());
+
   unsigned int j = (unsigned int) ( _min_jitter +( click_random() % ( _jitter ) ) );
 
   _timer.initialize(this);

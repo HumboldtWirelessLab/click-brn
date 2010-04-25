@@ -86,6 +86,8 @@ handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direct
 int
 NHopCluster::initialize(ErrorHandler *)
 {
+  click_srandom(_node_identity->getMasterAddress()->hashcode());
+
   _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
 
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &handler);

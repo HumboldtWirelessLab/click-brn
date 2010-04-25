@@ -108,6 +108,8 @@ handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bo
 int
 DHTRoutingKlibs::initialize(ErrorHandler *)
 {
+  click_srandom(_me->_ether_addr.hashcode());
+
   if ( _linkstat )
     _linkstat->registerHandler(this,0,&handler);
 

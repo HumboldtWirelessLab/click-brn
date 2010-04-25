@@ -52,6 +52,7 @@ int LoadBalancerRedirect::configure(Vector<String> &conf, ErrorHandler *errh)
 
 int LoadBalancerRedirect::initialize(ErrorHandler *)
 {
+  click_srandom(_me.hashcode());
   redirectFlows.clear();
   return 0;
 }

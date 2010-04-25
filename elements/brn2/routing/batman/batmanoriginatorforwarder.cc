@@ -62,6 +62,7 @@ BatmanOriginatorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanOriginatorForwarder::initialize(ErrorHandler *)
 {
+  click_srandom(_nodeid->getMasterAddress()->hashcode());
   _sendbuffer_timer.initialize(this);
   return 0;
 }

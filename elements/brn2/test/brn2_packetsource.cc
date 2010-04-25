@@ -42,6 +42,8 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2PacketSource::initialize(ErrorHandler *)
 {
+  click_srandom((int)this);
+
   if ( _interval > 0 ) {
     _timer.initialize(this);
     _timer.schedule_after_msec(_interval + ( click_random() % _interval ) );

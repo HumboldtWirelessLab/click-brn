@@ -47,6 +47,7 @@ RandomDelayQueue::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 RandomDelayQueue::initialize(ErrorHandler *)
 {
+  click_srandom((int)this);
   _sendbuffer_timer.initialize(this);
   return 0;
 }

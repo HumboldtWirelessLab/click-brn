@@ -53,6 +53,8 @@ int DartRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler *e
 
 int DartRoutingTableMaintenance::initialize(ErrorHandler *)
 {
+  click_srandom(_drt->_me->_ether_addr.hashcode());
+
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _starttime + click_random() % _update_interval );
   return 0;
