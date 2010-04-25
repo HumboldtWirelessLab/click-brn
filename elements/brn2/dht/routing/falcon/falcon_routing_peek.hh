@@ -39,6 +39,9 @@ class FalconRoutingPeek : public BRNElement
     void handle_leave(Packet *p);
     void handle_nws(Packet *p);
 
+    bool _reroute_req;
+    bool _active;
+
 };
 
 CLICK_ENDDECLS
