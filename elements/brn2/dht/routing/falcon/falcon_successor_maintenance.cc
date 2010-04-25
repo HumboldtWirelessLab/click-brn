@@ -125,17 +125,20 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
-  _frt->add_node(&src);
-  _frt->add_node(&succ);
+  BRN_DEBUG("ME: %s Src: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str());
+  BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
 
-  if ( isUpdate ) _frt->fixSuccessor(false);  // an update is only a hint which has to be proofed
-  else {
+  if ( ! isUpdate ) {  //if it's not an update, it's a normal reply so inc the counter and check if we have enough, so that succ can be set to be fix
     _frt->inc_successor_counter();
     if ( _min_successor_ping == _frt->get_successor_counter() ) {
       _frt->fixSuccessor(true);              // i check the successor so now its fix (for now)
       _frt->_lastUpdatedPosition=0;
     }
   }
+
+  _frt->add_node(&src);
+  _frt->add_node(&succ);
+
 }
 
 //TODO: think about forward and backward-search for successor. Node should switch from back- to forward if it looks faster
@@ -158,7 +161,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
     //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger für ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {
       BRN_DEBUG("I'm his successor !");
-      BRN_DEBUG("Src: %s Dst: %s Node: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str(),_frt->_me->_ether_addr.unparse().c_str());
+      BRN_DEBUG("Src: %s Dst: %s Node: %s",src._ether_addr.unparse().c_str(),_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
       WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
       packet->kill();
 
@@ -166,7 +169,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
     } else {
       BRN_DEBUG("He (%s) is before my predecessor: %s",src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
 
-      DHTnode *best_succ = _frt->findBestSuccessor(&src,20/* max age 20 s*/);
+      DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/);
 
       if ( best_succ->equals(_frt->_me) ) best_succ = _frt->predecessor; //if predecessor is to old, then it's possible that findBestSuccessor returns me
                                                                          //and that wrong at this point. so set best to pred manually. TODO: do it better
@@ -192,10 +195,11 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 /*************************************************************************************************/
 
 void
-FalconSuccessorMaintenance::handle_routing_update_callback(int /*status*/)
+FalconSuccessorMaintenance::handle_routing_update_callback(int status)
 {
-/*  if ( status == RT_UPDATE_PREDECESSOR )
-    click_chatter("Update Successor");*/
+  if ( status == RT_UPDATE_SUCCESSOR ) {
+    click_chatter("Update Successor");
+  }
 }
 
 
