@@ -171,7 +171,7 @@ class FalconRoutingTable : public Element
  public:
   void fixSuccessor(bool fix) {
     fix_successor = fix;
-    if ( fix_successor == false ) ping_successor_counter = 0;
+    if ( ! fix ) ping_successor_counter = 0;
   }
 
   bool isFixSuccessor(void) { return fix_successor; }  //TODO: rename to "hasFixSuccessor()"
