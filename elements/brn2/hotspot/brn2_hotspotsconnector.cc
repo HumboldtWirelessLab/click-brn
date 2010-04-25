@@ -42,7 +42,7 @@ BRN2HotSpotsConnector::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2HotSpotsConnector::initialize(ErrorHandler *)
 {
-  click_srandom((int)this);
+  click_random_srandom();
 
   _timer.initialize(this);
   _timer.schedule_after_msec( (_start_offset * 1000 ) + ( click_random() % 5000 ) );

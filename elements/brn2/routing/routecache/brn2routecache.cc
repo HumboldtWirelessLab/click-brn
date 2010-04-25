@@ -56,7 +56,7 @@ Brn2RouteCache::~Brn2RouteCache()
 int 
 Brn2RouteCache::initialize(ErrorHandler *)
 {
-  click_srandom((int)this);
+  click_random_srandom();
 
   m_tRouteAging.initialize(this);
 

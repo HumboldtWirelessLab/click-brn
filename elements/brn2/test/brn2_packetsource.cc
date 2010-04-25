@@ -42,7 +42,7 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2PacketSource::initialize(ErrorHandler *)
 {
-  click_srandom((int)this);
+  click_random_srandom();
 
   if ( _interval > 0 ) {
     _timer.initialize(this);
