@@ -25,12 +25,14 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+
 #include "falcon_routingtable.hh"
 
 CLICK_DECLS
 
-class FalconLinkProbeHandler : public Element
+class FalconLinkProbeHandler : public BRNElement
 {
 
  public:
@@ -59,6 +61,8 @@ class FalconLinkProbeHandler : public Element
  private:
   FalconRoutingTable *_frt;
   BRN2LinkStat *_linkstat;
+
+  int _all_nodes_index;
 };
 
 CLICK_ENDDECLS

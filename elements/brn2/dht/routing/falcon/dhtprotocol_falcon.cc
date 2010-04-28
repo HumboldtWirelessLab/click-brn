@@ -34,7 +34,7 @@ CLICK_DECLS
 /*********************************************************************************/
 
 int
-DHTProtocolFalcon::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHTnodelist */*nodes*/)
+DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
   ne->age_sec = 0;
@@ -42,11 +42,26 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHT
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
   memcpy(ne->node_id, me->_md5_digest, sizeof(ne->node_id));
 
-  return sizeof(dht_falcon_node_entry);
+  int buffer_left = buffer_len - sizeof(struct dht_falcon_node_entry);
+  int node_index = 0;
+
+  if ( nodes != NULL ) {
+    while ( (buffer_left >= sizeof(struct dht_falcon_node_entry)) && ( node_index < nodes->size()) ) {
+      DHTnode *ac_node = nodes->get_dhtnode(node_index);
+      node_index++;
+      ne[node_index].age_sec = ac_node->get_age_s();
+      ne[node_index].status = ac_node->_status;
+      memcpy(ne[node_index].etheraddr, ac_node->_ether_addr.data(), 6);
+      memcpy(ne[node_index].node_id, ac_node->_md5_digest, sizeof(ne->node_id));
+      buffer_left -= sizeof(struct dht_falcon_node_entry);
+    }
+  }
+
+  return sizeof(dht_falcon_node_entry) * (node_index + 1);
 }
 
 int
-DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, DHTnodelist */*nodes*/)
+DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes)
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 
@@ -54,6 +69,20 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first
   first->_status = ne->status;
   first->set_etheraddress(ne->etheraddr);
   first->set_nodeid(ne->node_id);
+
+  int buffer_left = sizeof(struct dht_falcon_node_entry);
+  int node_index = 0;
+
+  if ( nodes != NULL ) {
+    while ( buffer_left < buffer_len ) {
+      node_index++;
+      DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].node_id);
+      ac_node->set_age_s(ne[node_index].age_sec);
+      ac_node->_status = ne[node_index].status;
+      nodes->add_dhtnode(ac_node);
+      buffer_left += sizeof(struct dht_falcon_node_entry);
+    }
+  }
 
   return 0;
 }

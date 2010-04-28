@@ -26,6 +26,7 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
@@ -40,8 +41,10 @@ CLICK_DECLS
 FalconLinkProbeHandler::FalconLinkProbeHandler():
     _register_handler(true),
     _frt(NULL),
-    _linkstat(NULL)
+    _linkstat(NULL),
+    _all_nodes_index(0)
 {
+  BRNElement::init();
 }
 
 FalconLinkProbeHandler::~FalconLinkProbeHandler()
@@ -55,6 +58,7 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
+      "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -98,9 +102,23 @@ FalconLinkProbeHandler::initialize(ErrorHandler *)
 int
 FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 {
-  int len;
-  //click_chatter("Send");
-  len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, NULL);
+  int len, send_nodes;
+
+  BRN_DEBUG("Send");
+
+  DHTnodelist nodes;
+
+  send_nodes = min(5, _frt->_allnodes.size());
+
+  for (int i = 0; i < send_nodes; i++ ) {
+    _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
+    nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
+  }
+
+  len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
+
+  nodes.clear();
+
   return len;
 }
 
@@ -111,11 +129,12 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   DHTnode first;
   DHTnodelist nodes;
 
-  //click_chatter("receive");
+  BRN_DEBUG("receive");
 
   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
 
-  //click_chatter("Address: %s",first._ether_addr.s().c_str());
+  BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
+  BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );
   _frt->add_neighbour(&first);
   _frt->add_nodes(&nodes);
 
@@ -145,6 +164,8 @@ write_reg_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 FalconLinkProbeHandler::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_write_handler("register_handler", write_reg_param , (void *)0);
 }
 
