@@ -39,7 +39,7 @@ void AODVDestinationClassifier::push (int port, Packet * packet){
 	assert(packet);
 	const aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
 	//click_chatter("rrep for %s from %s received in %s", IPAddress(rrep->originator).s().c_str(), IPAddress(rrep->destination).s().c_str(), myIP->s().c_str());
-	if (rrep->originator == *myIP){
+/*RobAt	if (rrep->originator == *myIP){
 		output(0).push(packet); // new information for waitingfordiscovery
 	}
 	else {
@@ -56,7 +56,7 @@ void AODVDestinationClassifier::push (int port, Packet * packet){
 			writable->set_dst_ip_anno(rrep->originator); // set annotation for waitinfordiscovery
 			output(2).push(writable);
 		}
-	}
+	}*/
 }
 
 CLICK_ENDDECLS

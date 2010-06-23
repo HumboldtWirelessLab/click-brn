@@ -41,7 +41,8 @@ void AODVGenerateRREP::push (int port, Packet * rreq){
 	assert(port == 0);
 
 	aodv_rreq_header * rreq_header = (aodv_rreq_header*) (rreq->data() + aodv_headeroffset);
-	bool imdestination = (rreq_header->destination == *myIP);
+//	bool imdestination = (rreq_header->destination == *myIP);
+	bool imdestination = false;
 	if (imdestination) neighbour_table->updateMySequenceNumber(ntohl(rreq_header->destinationseqnr)); //RFC 6.1
 	
 	// no tailroom needed, fixed size
@@ -60,7 +61,7 @@ void AODVGenerateRREP::push (int port, Packet * rreq){
 	header->reservedprefixsz = AODV_HELLO_RESERVEDPREFIXSZ;
 	
 	
-	header->destination = rreq_header->destination;
+/*RObat	header->destination = rreq_header->destination;
 	
 	if (imdestination){
 		header->destinationseqnr = htonl(neighbour_table->getMySequenceNumber());
@@ -118,7 +119,7 @@ void AODVGenerateRREP::push (int port, Packet * rreq){
 		
 		output(0).push(grrep);
 	}
-	
+	*/
 	rreq->kill(); // release old data
 }
 CLICK_ENDDECLS

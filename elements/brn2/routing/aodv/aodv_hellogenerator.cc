@@ -57,7 +57,7 @@ void AODVHelloGenerator::run_timer(){
 	}
 	memset(packet->data(), 0, packet->length());
 	aodv_rrep_header * header = (aodv_rrep_header *) packet->data();
-	header->type = AODV_HELLO_MESSAGE;
+/*Robat	header->type = AODV_HELLO_MESSAGE;
 	header->rareserved = AODV_HELLO_RARESERVED;
 	header->reservedprefixsz = AODV_HELLO_RESERVEDPREFIXSZ;
 	header->hopcount = AODV_HELLO_HOPCOUNT;
@@ -68,7 +68,7 @@ void AODVHelloGenerator::run_timer(){
 	
 	output(0).push(AODVBroadcastHeader::setBroadcastHeader(packet,*myIP,1));
 	timer.schedule_after_msec(AODV_HELLO_INTERVAL);
-}
+*/}
 
 // RFC 6.9: "Every ... ms, the node checks whether is has sent a broadcast (...) within the last ..."
 // RREQs are pushed trough here, so every time a packet arrives reset timer

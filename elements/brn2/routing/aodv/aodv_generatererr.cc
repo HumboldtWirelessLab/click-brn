@@ -54,14 +54,14 @@ void AODVGenerateRERR::push (int port, Packet * packet){
 		
 		for(uint8_t i = 0; i < rerr->destcount; ++i){
 			aodv_rerr_linkdata* data = (aodv_rerr_linkdata*) (packet->data() + aodv_headeroffset + sizeof(aodv_rerr_header) + i * sizeof(aodv_rerr_linkdata));
-			Vector<IPAddress> haveNexthop = neighbour_table->getEntriesWithNexthop(data->destination);
-			for(Vector<IPAddress>::iterator iter = haveNexthop.begin(); iter != haveNexthop.end(); ++iter){
+//Robat			Vector<IPAddress> haveNexthop = neighbour_table->getEntriesWithNexthop(data->destination);
+/*		robAt	for(Vector<IPAddress>::iterator iter = haveNexthop.begin(); iter != haveNexthop.end(); ++iter){
 				ips.push_back(*iter);
 				uint32_t * seqNr = neighbour_table->getSequenceNumber(*iter);
 				seqNrs.push_back(*seqNr);
 				delete(seqNr);
-			}
-			neighbour_table->processRERR(data->destination); // process incoming RERRs here
+			}*/
+//robat			neighbour_table->processRERR(data->destination); // process incoming RERRs here
 		}
 		generateRERR(false, ips, seqNrs);
 	}

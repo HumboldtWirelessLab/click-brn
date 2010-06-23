@@ -4,6 +4,7 @@
 
 // ALWAYS INCLUDE <click/config.h> FIRST
 #include <click/config.h>
+#include <clicknet/udp.h>
 #include "aodv_broadcastheader.hh"
 #include "click_aodv.hh"
 
@@ -21,7 +22,7 @@ Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddre
 	ip->ip_len = htons(writable->length());
 	ip->ip_id = htons(1); // we may use a static ID as fragmentation of this packets gives problems anyway
 	ip->ip_p = IP_PROTO_UDP;
-	ip->ip_src = myIP.in_addr();
+	//RobAtip->ip_src = myIP.in_addr();
 	ip->ip_dst = destination.in_addr();
 	ip->ip_tos = 0;
 	ip->ip_off = 0;
@@ -42,8 +43,8 @@ Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddre
 	writable->set_ip_header(ip, sizeof(click_ip));
 
 	// set up UDP header
-	udp->uh_sport = htons(AODV_PORT);
-	udp->uh_dport = htons(AODV_PORT);
+	/*RobAtudp->uh_sport = htons(AODV_PORT);
+	udp->uh_dport = htons(AODV_PORT);*/
 	uint16_t len = writable->length() - sizeof(click_ip);
 	udp->uh_ulen = htons(len);
 	udp->uh_sum = 0;

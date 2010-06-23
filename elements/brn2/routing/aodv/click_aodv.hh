@@ -3,6 +3,7 @@
 
 #include <click/string.hh>
 #include <clicknet/ether.h>
+#include <clicknet/ip.h>
 
 // AODV specific constants 
 // as suggested by RFC3561
@@ -71,9 +72,9 @@ struct aodv_rreq_header{
 	uint8_t reserved;
 	uint8_t hopcount;
 	uint32_t rreqid;
-	char[6] destination;
+	uint8_t destination[6];
 	uint32_t destinationseqnr;
-  char[6] originator;
+	uint8_t originator[6];
 	uint32_t originatorseqnr;
 };
 
@@ -83,9 +84,9 @@ struct aodv_rrep_header{
 	uint8_t rareserved;
 	uint8_t reservedprefixsz;
 	uint8_t hopcount;
-  char[6] destination;
+	uint8_t destination[6];
 	uint32_t destinationseqnr;
-  char[6] originator;
+	uint8_t originator[6];
 	uint32_t lifetime;
 };
 
@@ -99,7 +100,7 @@ struct aodv_rerr_header{
 
 //RERR link data for one link
 struct aodv_rerr_linkdata{
-  char[6] destination;
+  char destination[6];
 	uint32_t destinationseqnr;
 };
 
@@ -112,7 +113,7 @@ struct aodv_rrep_ack_header{
 // define UDP header offset ones to avoid dependency's on ip versions!
 #ifndef INC_AODV_HEADEROFFSET
 #define INC_AODV_HEADEROFFSET
-static const int aodv_headeroffset = sizeof(click_ether) + sizeof(click_ip) + sizeof(click_udp);
+static const int aodv_headeroffset = sizeof(click_ether) + sizeof(click_ip) /*RobAt+ sizeof(click_udp)*/;
 #endif
 
 CLICK_ENDDECLS

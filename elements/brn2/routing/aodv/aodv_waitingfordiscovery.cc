@@ -94,7 +94,7 @@ void AODVWaitingForDiscovery::newKnownDestination(const IPAddress & destination,
 		
 		for(Vector<Packet*>::iterator iter = pair->value->packets.begin(); iter != pair->value->packets.end(); ){
 			// RFC 6.2
-			if (PAINT_ANNO(*iter) == 2){ // forwarding of RREP
+		/*Robat	if (PAINT_ANNO(*iter) == 2){ // forwarding of RREP
 				const click_ip * ipheader = (*iter)->ip_header();
 				assert(ipheader);
 				aodv_rrep_header * rrep = (aodv_rrep_header*) ((*iter)->data() + aodv_headeroffset);
@@ -109,7 +109,7 @@ void AODVWaitingForDiscovery::newKnownDestination(const IPAddress & destination,
 				// nexthop towards destination contains next hop towards source
 				neighbour_table->addPrecursor(nexthop,ipheader->ip_src); 
 			}
-			
+			*/
 			(*iter)->set_dst_ip_anno(nexthop);
 			
 			if(PAINT_ANNO(*iter) == 1 || PAINT_ANNO(*iter) == 3){ // forwarded packet
@@ -183,7 +183,7 @@ void AODVWaitingForDiscovery::push (int port, Packet * packet){
 		const click_ip * ipheader = packet->ip_header();
 		assert(ipheader);
 		
-		newKnownDestination(rrep->destination, ipheader->ip_src);
+//robat		newKnownDestination(rrep->destination, ipheader->ip_src);
 		
 		packet->kill();
 	}

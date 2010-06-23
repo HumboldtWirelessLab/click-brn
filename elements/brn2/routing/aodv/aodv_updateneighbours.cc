@@ -57,10 +57,10 @@ void AODVUpdateNeighbours::push (int port, Packet * packet){
 				neighbour_table->updateRoutetableEntry(IPAddress(rrep->destination),ntohl(rrep->destinationseqnr),rrep->hopcount, IPAddress(ipheader->ip_src),AODV_ALLOWED_HELLO_LOSS * AODV_HELLO_INTERVAL);
 			} else { // RREP
 				// the information is only useful if I am not the destination (I might hear this packets due to routing changes)
-				if (rrep->destination != neighbour_table->getMyIP()){ 
+/*robat				if (rrep->destination != neighbour_table->getMyIP()){ 
 					neighbour_table->updateRoutetableEntry(IPAddress(rrep->destination), ntohl(rrep->destinationseqnr), rrep->hopcount, IPAddress(ipheader->ip_src), ntohl(rrep->lifetime));
 				}
-			}
+	*/		}
 			output(0).push(writable);
 			break;
 			}
