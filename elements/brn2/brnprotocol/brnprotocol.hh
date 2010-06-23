@@ -70,7 +70,6 @@ union addr {
 #define BRN_PORT_FLOW                52 /*0x34*/
 #define BRN_PORT_COMPRESSION         53 /*0x35*/
 
-
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0
 
