@@ -43,7 +43,8 @@ FalconRoutingTable::FalconRoutingTable():
   _lastUpdatedPosition(0),
   fix_successor(false),
   _debug(BrnLogger::DEFAULT),
-  _dbg_routing_info(0)
+  _dbg_routing_info(0),
+  max_node_age(RT_MAX_NODE_AGE)
 {
 }
 
@@ -59,6 +60,7 @@ FalconRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
       "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
+      "MAXNODEAGE", cpkN, cpInteger, &max_node_age,
       "USEMD5", cpkN, cpBool, &use_md5,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)

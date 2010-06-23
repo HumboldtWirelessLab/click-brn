@@ -50,6 +50,9 @@ CLICK_DECLS
 #define RT_FINGERTABLE 4
 #define RT_ALL         5
 
+
+#define RT_MAX_NODE_AGE 20 /*seconds*/
+
 /**
  TODO: check correct handle of the main-tables:
        - All nodes are inserted into all_nodes
@@ -182,6 +185,12 @@ class FalconRoutingTable : public Element
   int _debug;
 
   int _dbg_routing_info;
+
+ private:
+  int max_node_age;
+
+ public:
+  int get_max_node_age() { return max_node_age; }
 
 };
 

@@ -153,6 +153,13 @@ FalconRoutingPeek::handle_reply(Packet *p)
   DHTProtocolFalcon::get_info(p, &src, &dst, &position);
   _frt->add_node(&src);
   _frt->add_node(&dst);
+
+  if ( position == FALCON_RT_POSITION_SUCCESSOR ) {
+    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
+    if ( ! best_succ->equals(&dst) ) {
+      BRN_WARN("I found a better successor. Change reply.");
+    }
+  }
 }
 
 void
