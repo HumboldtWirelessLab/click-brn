@@ -28,8 +28,8 @@ CLICK_DECLS
 #define ETHERTYPE_ANNO_OFFSET    40
 #define ETHERTYPE_ANNO_SIZE       2
 
-#define VLAN_ANNO_OFFSET         42
-#define VLAN_ANNO_SIZE            2
+#define BRN_VLAN_ANNO_OFFSET     42
+#define BRN_VLAN_ANNO_SIZE        2
 
 #define DEVICENUMBER_ANNO_OFFSET 44
 #define DEVICENUMBER_ANNO_SIZE    1

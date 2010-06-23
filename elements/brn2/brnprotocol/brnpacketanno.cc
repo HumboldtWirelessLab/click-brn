@@ -124,14 +124,14 @@ BRNPacketAnno::set_devicenumber_anno(Packet *p, uint8_t devnum)
 uint16_t
 BRNPacketAnno::vlan_anno(const Packet *p)
 {
-  uint16_t* dst = ((uint16_t*)(p->anno_u8()) + VLAN_ANNO_OFFSET);
+  uint16_t* dst = ((uint16_t*)(p->anno_u8()) + BRN_VLAN_ANNO_OFFSET);
   return (dst[0]);
 }
 
 void
 BRNPacketAnno::set_vlan_anno(Packet *p, uint16_t vlan)
 {
-  uint16_t* dst = (uint16_t*) ((p->anno_u8()) + VLAN_ANNO_OFFSET);
+  uint16_t* dst = (uint16_t*) ((p->anno_u8()) + BRN_VLAN_ANNO_OFFSET);
   dst[0] = vlan;
 }
 
