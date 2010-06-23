@@ -157,8 +157,8 @@ class Element { public:
     void add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags = 0);
     void add_write_handler(const String &name, WriteHandlerCallback write_callback, const void *user_data = 0, uint32_t flags = 0);
     void add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags = 0);
-    void set_handler(const String &name, int flags, HandlerCallback callback, const void *user_data1 = 0, const void *user_data2 = 0);
-    void set_handler(const String &name, int flags, HandlerCallback callback, int user_data1, int user_data2 = 0);
+    void set_handler(const String &name, int flags, HandlerCallback callback, const void *read_user_data = 0, const void *write_user_data = 0);
+    void set_handler(const String &name, int flags, HandlerCallback callback, int read_user_data, int write_user_data = 0);
     int set_handler_flags(const String &name, int set_flags, int clear_flags = 0);
     void add_task_handlers(Task *task, const String& prefix = String());
 
@@ -174,6 +174,8 @@ class Element { public:
     void add_data_handlers(const String &name, int flags, long long *data);
     void add_data_handlers(const String &name, int flags, unsigned long long *data);
 #endif
+    void add_net_order_data_handlers(const String &name, int flags, uint16_t *data);
+    void add_net_order_data_handlers(const String &name, int flags, uint32_t *data);
 #if HAVE_FLOAT_TYPES
     void add_data_handlers(const String &name, int flags, double *data);
 #endif
@@ -276,7 +278,7 @@ class Element { public:
 
     static String read_handlers_handler(Element *e, void *user_data);
     void add_default_handlers(bool writable_config);
-    void add_data_handlers(const String &name, int flags, ReadHandlerCallback read_hook, WriteHandlerCallback write_hook, void *data);
+    inline void add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data);
 
     friend class Router;
 #if CLICK_STATS >= 2

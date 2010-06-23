@@ -18,6 +18,7 @@ enum Lexemes {
     lex3Dot,
     lexElementclass,
     lexRequire,
+    lexProvide,
     lexDefine
 };
 
@@ -64,12 +65,19 @@ class Lexer { public:
     String remaining_text() const;
     void set_remaining_text(const String &);
 
-    const Lexeme &lex();
-    void unlex(const Lexeme &);
-    String lex_config();
-    String landmark() const;
+    Lexeme lex() {
+	return _unlex_pos ? _unlex[--_unlex_pos] : next_lexeme();
+    }
+    void unlex(const Lexeme &t) {
+	assert(_unlex_pos < UNLEX_SIZE);
+	_unlex[_unlex_pos++] = t;
+    }
+    String lex_config() {
+	assert(!_unlex_pos);
+	return _file.lex_config(this);
+    }
 
-    bool expect(int, bool report_error = true);
+    bool expect(int, bool no_error = false);
 
     typedef Element *(*ElementFactory)(uintptr_t);
 #ifdef CLICK_LINUXMODULE
@@ -106,32 +114,39 @@ class Lexer { public:
 
   private:
 
+    struct FileState {
+	String _big_string;
+	const char *_end;
+	const char *_pos;
+	String _filename;
+	String _original_filename;
+	unsigned _lineno;
+
+	FileState(const String &data, const String &filename);
+	const char *skip_line(const char *s);
+	const char *skip_slash_star(const char *s);
+	const char *skip_backslash_angle(const char *s);
+	const char *skip_quote(const char *s, char end_c);
+	const char *process_line_directive(const char *s, Lexer *lexer);
+	Lexeme next_lexeme(Lexer *lexer);
+	String lex_config(Lexer *lexer);
+	String landmark() const;
+    };
+
     // lexer
-    String _big_string;
+    FileState _file;
     bool _compact_config;
-
-    const char *_data;
-    const char *_end;
-    const char *_pos;
-
-    String _filename;
-    String _original_filename;
-    unsigned _lineno;
     LexerExtra *_lextra;
 
-    const char *skip_line(const char *);
-    const char *skip_slash_star(const char *);
-    const char *skip_backslash_angle(const char *);
-    const char *skip_quote(const char *, char);
-    const char *process_line_directive(const char *);
-    Lexeme next_lexeme();
+    Lexeme next_lexeme() {
+	return _file.next_lexeme(this);
+    }
     static String lexeme_string(int);
 
     // parser
-    enum { TCIRCLE_SIZE = 8 };
-    Lexeme _tcircle[TCIRCLE_SIZE];
-    int _tpos;
-    int _tfull;
+    enum { UNLEX_SIZE = 2 };
+    Lexeme _unlex[2];
+    int _unlex_pos;
 
     // element types
     struct ElementType {
@@ -161,6 +176,7 @@ class Lexer { public:
 
     // requirements
     Vector<String> _requirements;
+    Vector<String> _libraries;
 
     // errors
     ErrorHandler *_errh;
@@ -178,12 +194,14 @@ class Lexer { public:
     int make_compound_element(int);
     void expand_compound_element(int, VariableEnvironment &);
     void add_router_connections(int, const Vector<int> &);
+    void yrequire_library(const String &value);
 
     TunnelEnd *find_tunnel(const Port &p, bool isoutput, bool insert);
     void expand_connection(const Port &p, bool isoutput, Vector<Port> &);
 
     friend class Compound;
     friend class TunnelEnd;
+    friend class FileState;
 
 };
 

@@ -1,14 +1,16 @@
 #! /usr/bin/perl -w
 use Symbol 'qualify_to_ref';
+use IO::Handle;
+use Errno;
+use POSIX ":sys_wait_h";
 no locale;
 use bytes;
 require 5.006;
 
-($test_attempts, $test_failures, $test_skips) = (0, 0, 0);
-($bad_files, $errors, $require_errors) = (0, 0, 0);
-($preserve_temporaries, $expand_mode, $cr_text) = (0, 0, "");
-($running_pid) = (0);
+($preserve_temporaries, $expand_mode, $verbose) = (0, 0, 0);
+$running_pid = 0;
 %require_error_commands = ();
+$quiet_ebadf = 0;
 
 ## utilities
 
@@ -33,9 +35,169 @@ sub min (@) {
 }
 
 
-## read file
+## testie ipc
+
+sub tipc_write ($$;$$) {
+    my($fh, $command, $arg, $noflush) = @_;
+    die "!" if $command !~ /\A[A-Z]\z/;
+    $arg = "" if !defined($arg);
+    # print STDERR "$$ write $command $arg\n";
+    print $fh $command, length($arg), " ", $arg, "\n";
+    $fh->flush if !$noflush;
+}
+
+sub tipc_error () {
+    if ($! == 0 || $!{EINTR} || $!{EAGAIN} || $!{EWOULDBLOCK}) {
+	return;
+    } elsif ($!{EBADF} && $::quiet_ebadf) {
+	exit(0);
+    } else {
+	die "testie: ipc error: $!";
+    }
+}
+
+sub tipc_read ($$) {
+    my($fh, $bufref) = @_;
+    my($n, $x);
+    while (1) {
+	# does the buffer contain a valid command?
+	if ($$bufref =~ /\A(\s*([A-Z])(\d+) )/
+	    && length($$bufref) >= length($1) + $3) {
+	    my($v) = substr($$bufref, length($1), $3);
+	    $$bufref = substr($$bufref, length($1) + $3);
+	    return ($2, $v);
+	}
+
+	# if not try to read more data
+	$x = "";
+	$n = sysread($fh, $x, 4096);
+	tipc_error if !defined($n);
+	return () if !$n;
+	$$bufref .= $x;
+    }
+}
+
+
+## testie error handler object
+
+package TestieErrorHandler;
+
+sub new (;$) {
+    my($print_context) = @_;
+    bless ["", $print_context], TestieErrorHandler;
+}
+
+sub message ($@) {
+    my($teh) = shift @_;
+    print STDERR $teh->[0], @_;
+    $teh->[0] = "";
+}
+
+sub showmessage ($@) {
+    my($teh) = shift @_;
+    print @_;
+}
+
+sub context ($@) {
+    my($teh) = shift @_;
+    if ($teh->[1]) {		# print_context
+	my($t) = join("", @_);
+	print STDERR $teh->[0], $t;
+	$teh->[0] = "\r" . (" " x length($t)) . "\r";
+    }
+}
+
+sub clear ($) {
+}
+
+sub complete ($$) {
+}
+
+
+## testie error handler object
+
+package TestieChildErrorHandler;
+
+sub new ($) {
+    my($fh) = @_;
+    bless ["", "", $fh], TestieChildErrorHandler;
+}
+
+sub message ($@) {
+    my($eh) = shift @_;
+    $eh->clear if $eh->[0] ne "E" && $eh->[1] ne "";
+    $eh->[0] = "E";
+    $eh->[1] .= join("", @_);
+}
+
+sub showmessage ($@) {
+    my($eh) = shift @_;
+    $eh->clear if $eh->[0] ne "S" && $eh->[1] ne "";
+    $eh->[0] = "S";
+    $eh->[1] .= join("", @_);
+}
+
+sub context ($@) {
+    my($eh) = shift @_;
+    $eh->clear if $eh->[1] ne "";
+    my($fh, $t) = ($eh->[2], join("", @_));
+    ::tipc_write($fh, "C", $t);
+}
+
+sub clear ($) {
+    my($eh) = shift @_;
+    ::tipc_write($eh->[2], $eh->[0], $eh->[1], 1) if $eh->[1] ne "";
+    $eh->[0] = "";
+    $eh->[1] = "";
+}
+
+sub complete ($$) {
+    my($eh, $tctr) = @_;
+    $eh->clear;
+    my(@t, $k, $v);
+    while (($k, $v) = each %$tctr) {
+	my($t) = "\"" . quotemeta($k) . "\" => ";
+	if (ref($v)) {
+	    $t .= "[" . join(", ", map { "\"".quotemeta($_)."\"" } @$v) . "]";
+	} else {
+	    $t .= $v;
+	}
+	push @t, $t;
+    }
+    ::tipc_write($eh->[2], "T", "{" . join(", ", @t) . "}");
+}
+
+
+## testie error counter object
+
+package TestieCounter;
+
+my @counters = ("errors", "require_errors", "test_attempts", "test_skips",
+		"test_failures", "bad_files");
+
+sub new () {
+    my($tctr) = bless { "require_error_commands" => [] }, TestieCounter;
+    foreach my $x (@counters) {
+	$tctr->{$x} = 0;
+    }
+    $tctr;
+}
+
+sub add ($$) {
+    my($tctr, $tctr1) = @_;
+    foreach my $x (@counters) {
+	$tctr->{$x} += $tctr1->{$x};
+    }
+    push @{$tctr->{"require_error_commands"}}, @{$tctr1->{"require_error_commands"}};
+    $tctr;
+}
+
+
+## main testie test object
 
 package Testie;
+
+## read testie file
 
 my %_special_filerefs = ('stdin' => 1, 'stdout' => 2, 'stderr' => 2);
 %_variables = ();
@@ -83,12 +245,16 @@ sub command_at ($$;$) {
 }
 
 # report an error
+sub eh ($) {
+    my($tt) = @_;
+    $tt->{"_eh"};
+}
+
 sub file_err ($$;$) {
     my($tt, $text, $lineno) = @_;
     $text .= "\n" if $text !~ /\n$/s;
     $lineno = $tt->{"_line"} if !defined($lineno);
-    print STDERR $::cr_text, $tt->{"_file"}, ":", $lineno, ': ', $text;
-    $::cr_text = "";
+    $tt->eh->message($tt->{"_file"}, ":", $lineno, ': ', $text);
     $tt->{'err'}++;
 }
 
@@ -372,7 +538,7 @@ sub parse ($) {
     # delete garbage
     my(@deletes, $k, $v);
     while (($k, $v) = each %$tt) {
-	push @deletes, $k if $k ne "_data" && $k ne "err";
+	push @deletes, $k if $k ne "_data" && $k ne "err" && $k ne "_eh";
     }
     foreach $k (@deletes) {
 	delete $tt->{$k};
@@ -454,12 +620,12 @@ sub parse ($) {
     $tt;
 }
 
-sub read (*;$) {
-    my($fh, $fn) = @_;
+sub read (*$;$) {
+    my($fh, $teh, $fn) = @_;
     $fh = ::qualify_to_ref($fh, caller);
     my($t, $tt);
 
-    $tt = bless { "err" => 0, "_data" => [[$fn, 0]] }, Testie;
+    $tt = bless { "err" => 0, "_data" => [[$fn, 0]], "_eh" => $teh }, Testie;
     push @{$tt->{"_data"}}, $t while defined($t = <$fh>);
 
     $tt->parse();
@@ -550,14 +716,13 @@ EOD;
 }
 
 sub output_error ($$$$) {
-    my($tt, $fileref_subr, $script_type, $verbose) = @_;
+    my($tt, $fileref_subr, $script_type, $tctr) = @_;
     my($fp) = $tt->{'errprefix'};
 
     if (!open(ERR, "<", $fileref_subr->('stderr'))) {
-	print STDERR $::cr_text, $fp, $!, "\n";
-	$::cr_text = "";
-	$::errors++;
-	return 1;
+	$tt->eh->message($fp, $!, "\n");
+	++$tctr->{"errors"};
+	return $tctr;
     }
 
     my($errortext, $t, $lineno, $failure) = ('');
@@ -585,9 +750,9 @@ sub output_error ($$$$) {
     }
     if (defined($script_type) && $script_type eq 'require') {
 	$failure_text = "requirement $failure_text";
-	$::require_errors++;
+	++$tctr->{"require_errors"};
     } else {
-	$::errors++;
+	++$tctr->{"errors"};
     }
 
     $errortext =~ s/\s*\z//;
@@ -595,20 +760,18 @@ sub output_error ($$$$) {
     my($cmd) = $tt->command_at($lineno, $script_type);
 
     # exit early if quiet
-    return 1 if $tt->{$script_type . '_quietline'}->{$lineno} && $verbose <= 0;
+    return $tctr if $tt->{$script_type . '_quietline'}->{$lineno} && $::verbose <= 0;
 
     if ($errortext =~ /^testie_error:/) {
 	while ($errortext =~ /^testie_error:([^\n]*)/g) {
-	    print STDERR $::cr_text, $lineno, ": ", $1, "\n";
-	    $::cr_text = "";
+	    $tt->eh->message($lineno, ": ", $1, "\n");
 	}
 	$errortext =~ s/^testie_error:([^\n]*)//g;
 	$errortext =~ s/\s*//;
-	print STDERR $lineno, ": (There were other errors as well.)\n"
+	$tt->eh->message($lineno, ": (There were other errors as well.)\n")
 	    if $errortext ne '';
     } elsif (!defined($cmd)) {
-	print STDERR $::cr_text, $lineno, ": $failure_text at undefined point in script\n";
-	$::cr_text = "";
+	$tt->eh->message($lineno, ": $failure_text at undefined point in script\n");
     } else {
 	$cmd =~ s/^\s*|\s*$//g;
 	$cmd =~ s/([\000-\037])/'^' . chr(ord($1) + ord('@'))/eg;
@@ -617,22 +780,21 @@ sub output_error ($$$$) {
 	    $cmd = substr($cmd, 0, 40) . "...";
 	}
 	# if nonverbose requirement, remember command, don't print error
-	if (defined($script_type) && $script_type eq 'require' && $verbose <= 0) {
-	    $::require_error_commands{$cmd} = 1;
+	if (defined($script_type) && $script_type eq 'require' && $::verbose <= 0) {
+	    push @{$tctr->{"require_error_commands"}}, $cmd;
 	} else {
-	    print STDERR $::cr_text, $lineno, ": $failure_text at '$cmd'\n";
+	    $tt->eh->message($lineno, ": $failure_text at '$cmd'\n");
 	    while ($errortext =~ /([^\n]*)/g) {
-		print STDERR $lineno, ":   $1\n" if $1 ne '';
+		$tt->eh->message($lineno, ":   $1\n") if $1 ne '';
 	    }
-	    $::cr_text = "";
 	}
     }
 
-    1;
+    $tctr;
 }
 
-sub _output_expectation_error ($$$) {
-    my($fp, $efn, $etrack) = @_;
+sub _output_expectation_error ($$$$$) {
+    my($fp, $efn, $etrack, $teh, $tctr) = @_;
 
     # fix subtest description
     if (defined($etrack->{"subtest"})) {
@@ -645,13 +807,12 @@ sub _output_expectation_error ($$$) {
 
     # output message
     if ($efn eq 'stdout') {
-	print STDERR $::cr_text, $fp, "standard output has unexpected value starting at line " . $etrack->{"textline"} . "\n";
+	$teh->message($fp, "standard output has unexpected value starting at line " . $etrack->{"textline"} . "\n");
     } elsif ($efn eq 'stderr') {
-	print STDERR $::cr_text, $fp, "standard error has unexpected value starting at line " . $etrack->{"textline"} . "\n";
+	$teh->message($fp, "standard error has unexpected value starting at line " . $etrack->{"textline"} . "\n");
     } else {
-	print STDERR $::cr_text, $fp, "file $efn has unexpected value starting at line " . $etrack->{"textline"} . "\n";
+	$teh->message($fp, "file $efn has unexpected value starting at line " . $etrack->{"textline"} . "\n");
     }
-    $::cr_text = "";
 
     # output expected and text data if possible
     $etrack->{"expected"} = "<end of file>" if $etrack->{"expected"} eq "\376";
@@ -661,15 +822,16 @@ sub _output_expectation_error ($$$) {
     if ($etrack->{"expected"} =~ /\A[\t\040-\176]*\z/
 	&& $etrack->{"text"} =~ /\A[\t\040-\176]*\z/) {
 	$etrack->{"expected"} =~ s/\s*\{\{\?.*?\}\}\s*//g if $etrack->{"mode"} != 0;
-	print STDERR $fp, $efn, ":", $etrack->{"textline"}, ": expected '", $etrack->{"expected"}, "'\n",
-		$fp, $efn, ":", $etrack->{"textline"}, ": but got  '", $etrack->{"text"}, "'\n";
+	$teh->message($fp, $efn, ":", $etrack->{"textline"}, ": expected '", $etrack->{"expected"}, "'\n",
+		$fp, $efn, ":", $etrack->{"textline"}, ": but got  '", $etrack->{"text"}, "'\n");
     }
     if (defined($etrack->{"message"})) {
-	print STDERR $fp, $efn, ":", $etrack->{"textline"}, ": ", $etrack->{"message"}, "\n";
+	$teh->message($fp, $efn, ":", $etrack->{"textline"}, ": ", $etrack->{"message"}, "\n");
     }
 
     # maintain error count
-    $::errors++;
+    ++$tctr->{"errors"};
+    return $tctr;
 }
 
 sub _check_one_typed_expect ($$$$$) {
@@ -789,16 +951,15 @@ sub _create_ignores ($$) {
     return eval($body);
 }
 
-sub _check_one_expect ($$$) {
-    my($tt, $fileref_subr, $efn) = @_;
+sub _check_one_expect ($$$$) {
+    my($tt, $fileref_subr, $efn, $tctr) = @_;
     my($fp) = $tt->{'errprefix'};
     my($etrack) = {};
 
     # read file text
     if (!open(IN, "<", $fileref_subr->($efn))) {
-	print STDERR $::cr_text, $fp, $efn, ": ", $!, "\n";
-	$::errors++;
-	$::cr_text = "";
+	$tt->eh->message($fp, $efn, ": ", $!, "\n");
+	++$tctr->{"errors"};
 	return 0;
     }
     my($raw_text) = <IN>;
@@ -814,12 +975,12 @@ sub _check_one_expect ($$$) {
     }
 
     # if we get here, none of the attempts matched
-    _output_expectation_error($fp, $efn, $etrack);
+    _output_expectation_error($fp, $efn, $etrack, $tt->eh, $tctr);
 }
 
 
-sub check_expects ($$) {
-    my($tt, $fileref_subr) = @_;
+sub check_expects ($$$) {
+    my($tt, $fileref_subr, $tctr) = @_;
     my($fp) = $tt->{'errprefix'};
     local($/) = undef;
     my($expectx) = 0;
@@ -829,7 +990,7 @@ sub check_expects ($$) {
     my(%done);
     foreach my $efn (@{$tt->{'expect'}}, @{$tt->{'expectx'}}, @{$tt->{'expectv'}}) {
 	next if $done{$efn};
-	_check_one_expect($tt, $fileref_subr, $efn);
+	_check_one_expect($tt, $fileref_subr, $efn, $tctr);
 	$done{$efn} = 1;
     }
 
@@ -839,7 +1000,7 @@ sub check_expects ($$) {
 
 package main;
 
-my($dir, @show, $show_stdout, $show_stderr, $any_tests_done, $can_setpgrp);
+my($dir, @show, $show_stdout, $show_stderr, %child_pids);
 my($SHELL) = "/bin/sh";
 
 sub script_fn_to_fn ($) {
@@ -881,18 +1042,18 @@ sub _shell ($$$$$) {
     }
 }
 
-sub execute_test ($$$$) {
-    my($tt, $fn, $verbose, $multiprint) = @_;
+sub execute_test ($$) {
+    my($tt, $fn) = @_;
+    my($tctr, $teh) = (TestieCounter::new, $tt->eh);
+    ++$tctr->{"test_attempts"};
     my($f);
 
     # count attempt
     $tt->{"errprefix"} = $fn . ": ";
-    $::test_attempts++;
 
     # print description in superverbose mode
-    if ($verbose > 1) {
-	return 0 if $tt->empty;
-	print STDERR "\n" if $any_tests_done;
+    if ($::verbose > 1) {
+	return $tctr if $tt->empty;
 	if ($tt->{'info'}) {
 	    my($desc) = $tt->{'info'};
 	    $desc =~ s/^(.*?)\t/$1 . (' ' x (8 - (length($1) % 8)))/egm
@@ -903,22 +1064,20 @@ sub execute_test ($$$$) {
 	    $desc =~ s/\n\n.*\z//s;
 	    $desc =~ s/^/  /mg;
 	    $desc .= "\n" if $desc !~ /\n\z/;
-	    print STDERR $fn, " Information:\n", $desc;
+	    $teh->message($fn, " Information:\n", $desc);
 	}
-	print STDERR $fn, " Results:\n";
+	$teh->message($fn, " Results:\n");
 	$tt->{'errprefix'} = "  ";
     }
 
     # maybe note that we're running the test
-    if ($verbose == 1) {
-	print STDERR $tt->{'errprefix'}, "Running...\n";
-    } elsif ($verbose == 0 && $multiprint && -t STDERR) {
+    if ($::verbose == 1) {
+	$teh->message($tt->{'errprefix'}, "Running...\n");
+    } elsif ($::verbose == 0) {
 	my($cr_out) = "[" . $tt->{"errprefix"};
 	$cr_out =~ s/:\s+\z//;
 	$cr_out = "[..." . substr($cr_out, -73) if length($cr_out) > 76;
-	$cr_out .= "] ";
-	print STDERR $::cr_text, $cr_out;
-	$::cr_text = "\r" . (" " x length($cr_out)) . "\r";
+	$teh->context($cr_out, "] ");
     }
 
     # check requirements
@@ -932,7 +1091,7 @@ sub execute_test ($$$$) {
 
 	    # if it exited with a bad value, quit
 	    if ($exitval) {
-		return $tt->output_error(\&out_script_fn_to_fn, 'require', $verbose);
+		return $tt->output_error(\&out_script_fn_to_fn, 'require', $tctr);
 	    }
 	}
     }
@@ -946,14 +1105,13 @@ sub execute_test ($$$$) {
     close SCR;
 
     # exit if expand mode
-    return if ($expand_mode);
+    return $tctr if $expand_mode;
 
     # run the script
     my($actual_stdin) = ($tt->have_file('stdin') ? script_fn_to_fn('stdin') : "/dev/null");
     my($actual_stdout) = ($show_stdout || $tt->have_file('stdout') ? script_fn_to_fn('stdout') : "/dev/null");
     my($actual_stderr) = script_fn_to_fn('stderr');
     my($exitval) = _shell($dir, '+script+', $actual_stdin, $actual_stdout, $actual_stderr);
-    $any_tests_done = 1;
 
     # expand "--show-alls"
     my(@xshow);
@@ -977,7 +1135,7 @@ sub execute_test ($$$$) {
     foreach $f (@xshow) {
 	$efn = $f->[0];
 	if (-r out_script_fn_to_fn($efn)) {
-	    print "$fn: ", $efn, "\n", "=" x 79, "\n";
+	    $teh->showmessage("$fn: ", $efn, "\n", "=" x 79, "\n");
 	    local($/) = undef;
 	    open(X, "<", out_script_fn_to_fn($efn));
 	    my($text) = <X>;
@@ -989,67 +1147,76 @@ sub execute_test ($$$$) {
 		    $text =~ s/^\377\n//mg;
 		}
 	    }
-	    print $text if defined $text;
-	    print "=" x 79, "\n";
+	    $teh->showmessage($text) if defined $text;
+	    $teh->showmessage("=" x 79, "\n");
 	} elsif ($efn ne "*") {
-	    print "$fn: $efn does not exist\n";
+	    $teh->showmessage("$fn: $efn does not exist\n");
 	}
     }
 
-    # if it exited with a bad value, quit
     if ($exitval) {
-	return $tt->output_error(\&out_script_fn_to_fn, 'script', $verbose);
+	# if it exited with a bad value, quit
+	$tt->output_error(\&out_script_fn_to_fn, 'script', $tctr);
+    } elsif ($tt->check_expects(\&out_script_fn_to_fn, $tctr)) {
+	# expectsnothing to do
+    } else {
+	# success, print message if verbose
+	if ($::verbose > 0 && !$tt->empty && $tctr->{"errors"} == 0) {
+	    $teh->message($tt->{'errprefix'}, "Success!\n");
+	}
     }
 
-    # check files
-    my $old_errors = $::errors;
-    return if $tt->check_expects(\&out_script_fn_to_fn);
-
-    if ($verbose > 0 && !$tt->empty && $old_errors == $::errors) {
-	print STDERR $tt->{'errprefix'}, "Success!\n";
-    }
+    $teh->message("\n") if $::verbose > 1;
+    return $tctr;
 }
 
-sub run_test (;$$$) {
-    my($fn, $verbose, $multiprint) = @_;
+sub run_test_read_file ($$) {
+    my($fn, $teh) = @_;
 
     # read the testie
     my($tt, $display_fn, $close_in);
     if (!defined($fn) || $fn eq '-') {
 	if (!open(IN, "<&=STDIN")) {
-	    print STDERR $::cr_text, "<stdin>: $!\n";
-	    $::cr_text = "";
-	    $::bad_files++;
-	    return;
+	    $teh->message("<stdin>: $!\n");
+	    return ();
 	}
 	$display_fn = "<stdin>";
     } elsif (-d $fn) {
-	print STDERR $::cr_text, $fn, ": is a directory\n";
-	$::cr_text = "";
-	$::bad_files++;
-	return;
+	$teh->message($fn, ": is a directory\n");
+	return ();
     } else {
 	if (!open(IN, "<", $fn)) {
-	    print STDERR $::cr_text, $fn, ": $!\n";
-	    $::cr_text = "";
-	    $::bad_files++;
-	    return;
+	    $teh->message($fn, ": $!\n");
+	    return ();
 	}
 	$display_fn = $fn;
 	$close_in = 1;
     }
 
+    $tt = Testie::read(IN, $teh, $display_fn);
+    return ($tt, $display_fn, $close_in);
+}
+
+sub run_test_body ($$) {
+    my($fn, $teh) = @_;
+    my($tctr) = TestieCounter::new;
+
+    my($tt, $display_fn, $close_in) = run_test_read_file($fn, $teh);
+    if (!defined($tt)) {
+	++$tctr->{"bad_files"};
+	return $tctr;
+    }
+
     my($suffix) = '';
-    $tt = Testie::read(IN, $display_fn);
 
     while (1) {
-	my($old_errors, $old_require_errors) = ($::errors, $::require_errors);
-	execute_test($tt, $display_fn . $suffix, $verbose, $multiprint);
-	if ($::require_errors != $old_require_errors) {
-	    $::test_skips++;
-	} elsif ($::errors != $old_errors) {
-	    $::test_failures++;
+	my($tctr1) = execute_test($tt, $display_fn . $suffix);
+	if ($tctr1->{"require_errors"}) {
+	    ++$tctr->{"test_skips"};
+	} elsif ($tctr1->{"errors"}) {
+	    ++$tctr->{"test_failures"};
 	}
+	$tctr->add($tctr1);
 	last if !exists $tt->{'continue'};
 	if (!($suffix =~ s/^<(\d+)>$/"<" . ($1+1) . ">"/e)) {
 	    $suffix = "<2>";
@@ -1058,16 +1225,165 @@ sub run_test (;$$$) {
     }
 
     close IN if $close_in;
+    return $tctr;
 }
 
-$SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = $SIG{'__DIE__'} = sub {
-    kill('HUP', -$running_pid) if $running_pid; # kill any processes left behind
+sub run_test ($$$) {
+    my($fn, $teh, $testnumber) = @_;
+
+    if (!$::expand_mode) {
+	$dir = "testie$$" . ($testnumber ? "-$testnumber" : "");
+	if (-d $dir) {
+	    $teh->message("warning: $dir directory exists; removing it\n");
+	    system("/bin/rm -rf $dir");
+	    -d $dir && die "cannot remove $dir directory: $!\n";
+	}
+	mkdir $dir || die "cannot create $dir directory: $!\n";
+    }
+
+    my($tctr) = run_test_body($fn, $teh);
+    $teh->complete($tctr);
+
+    system("/bin/rm -rf $dir") if !$preserve_temporaries;
+    undef $dir;
+    return $tctr;
+}
+
+sub cleanup () {
+    kill("HUP", -$running_pid) if $running_pid; # kill any processes left behind
+
+    my(@children) = keys %child_pids;
+    foreach my $kid (@children) {
+	kill("HUP", $kid) if $child_pids{$kid};
+    }
+
     system("/bin/rm -rf $dir 2>/dev/null")
 	if defined($dir) && !$preserve_temporaries;
+}
+
+$SIG{'INT'} = $SIG{'QUIT'} = $SIG{'TERM'} = sub {
+    cleanup;
     exit(1);
 };
+$SIG{'__DIE__'} = \&cleanup;
 
 
+# child processing
+
+sub testie_child () {
+    my($p2cr, $p2cw, $c2pr, $c2pw);
+    pipe($p2cr, $p2cw);
+    pipe($c2pr, $c2pw);
+    $p2cw->autoflush(1);
+    defined($c2pr->blocking(0)) || die "cannot set nonblocking: $!";
+    defined($p2cr->blocking(0)) || die "cannot set nonblocking: $!";
+    binmode $p2cr;
+    binmode $p2cw;
+    binmode $c2pr;
+    binmode $c2pw;
+
+    my($child_pid) = fork();
+    if (!defined($child_pid)) {
+	die "cannot fork: $!\n";
+    } elsif ($child_pid) {
+	$p2cr->close;
+	$c2pw->close;
+	$child_pids{$child_pid} = 1;
+	return [$c2pr, $p2cw, "", $child_pid];
+    }
+
+    $SIG{"CHLD"} = "DEFAULT";	# reset SIG{CHLD} handler from parent
+    eval { setpgrp() };
+    $::quiet_ebadf = 1;
+    $p2cw->close;
+    $c2pr->close;
+    my($p2crbuf, $testnumber) = ("", 0);
+    my($teh) = TestieChildErrorHandler::new($c2pw);
+    my($command, $arg, $rin, $rout, $win, $wout);
+    $rin = $win = "";
+    vec($rin, $p2cr->fileno, 1) = 1;
+    vec($win, $c2pw->fileno, 1) = 1;
+
+    while (1) {
+	if ((($command, $arg) = tipc_read($p2cr, \$p2crbuf))) {
+	    if ($command eq "T") {
+		run_test($arg, $teh, $testnumber);
+		++$testnumber;
+	    } elsif ($command eq "X") {
+		exit(0);
+	    } else {
+		print STDERR "ipc error: bad command $command\n";
+		exit(1);
+	    }
+	}
+
+	tipc_error if select($rout = $rin, undef, $wout = $win, undef) < 0;
+
+	# EPIPE/SIGPIPE to catch dead parent
+	tipc_error if !defined(syswrite($c2pw, " "));
+    }
+}
+
+sub testie_child_reaper {
+    my $kid;
+    while (($kid = waitpid(-1, WNOHANG)) > 0) {
+	delete $child_pids{$kid};
+    }
+}
+
+sub testie_parent_loop (\@$$$) {
+    my($tests, $tctr, $teh, $jobs) = @_;
+    my($testpos, $testdone, $rin, $rout) = (0, 0, "", "");
+    my(@children, @child_out, $command, $arg);
+    $SIG{"CHLD"} = \&testie_child_reaper;
+
+    for (my $i = 0; $i < $jobs; ++$i) {
+	last if $testpos == @$tests;
+	push @children, testie_child;
+	my($c2pr, $p2cw) = ($children[$i]->[0], $children[$i]->[1]);
+	tipc_write($p2cw, "T", $tests->[$testpos]);
+	++$testpos;
+	vec($rin, $c2pr->fileno, 1) = 1;
+	push @child_out, [];
+    }
+
+    while ($testdone < @$tests) {
+	tipc_error if select($rout = $rin, undef, undef, undef) < 0;
+
+	for (my $i = 0; $i < @children; ++$i) {
+	    my($c2pr, $p2cw, $c2prbufref) = ($children[$i]->[0], $children[$i]->[1], \($children[$i]->[2]));
+	    while ((($command, $arg) = tipc_read($c2pr, $c2prbufref))) {
+		if ($command eq "C") {
+		    $teh->context($arg);
+		} elsif ($command eq "S" || $command eq "E") {
+		    push @{$child_out[$i]}, [$command, $arg];
+		} elsif ($command eq "T") {
+		    my($tctr1) = eval($arg);
+		    bless $tctr1, TestieCounter;
+		    $tctr->add($tctr1);
+		    foreach my $x (@{$child_out[$i]}) {
+			if ($x->[0] eq "S") {
+			    $teh->showmessage($x->[1]);
+			} else {
+			    $teh->message($x->[1]);
+			}
+		    }
+		    $child_out[$i] = [];
+		    ++$testdone;
+		    if ($testpos < @$tests) {
+			tipc_write($p2cw, "T", $tests->[$testpos]);
+			++$testpos;
+		    }
+		} else {
+		    die "ipc error: bad command $command";
+		}
+	    }
+	}
+    }
+}
+
+
+# help/usage
 
 sub help () {
     print <<'EOD;';
@@ -1103,10 +1419,10 @@ EOD;
 
 sub print_version () {
     print <<'EOD;';
-Testie 1.2
+Testie 1.3
 Copyright (c) 2002-2003 International Computer Science Institute
 Copyright (c) 2004-2007 Regents of the University of California
-Copyright (c) 2008 Meraki, Inc.
+Copyright (c) 2008-2010 Meraki, Inc.
 This is free software; see the source for copying conditions.
 There is NO warranty, not even for merchantability or fitness for a
 particular purpose.
@@ -1152,8 +1468,7 @@ sub search_dir ($$) {
 
 $dir = undef;
 
-my(@tests, $verbose, $arg);
-$verbose = 0;
+my(@tests, $arg, $jobs);
 
 while (@ARGV) {
     $_ = shift @ARGV;
@@ -1170,11 +1485,11 @@ while (@ARGV) {
     } elsif (/^-v$/ || argcmp($_, '--version', 4)) {
 	print_version;
     } elsif (/^-q$/ || argcmp($_, '--quiet', 1)) {
-	$verbose = -1;
+	$::verbose = -1;
     } elsif (/^-V$/ || argcmp($_, '--verbose', 4)) {
-	$verbose = 1;
+	$::verbose = 1;
     } elsif (/^-VV$/ || argcmp($_, '--superverbose', 2)) {
-	$verbose = 2;
+	$::verbose = 2;
     } elsif (/^-e$/ || argcmp($_, '--expand', 1)) {
 	$expand_mode = 1;
 	$preserve_temporaries = 1;
@@ -1202,6 +1517,13 @@ while (@ARGV) {
 	push @show, ["*", 1];
     } elsif (argcmp($_, '--show-all-raw', 9)) {
 	push @show, ["*", 0];
+    } elsif (/^-j$/ || argcmp($_, "--jobs", 1)) {
+	usage if @ARGV == 0 || $ARGV[0] !~ /\A\d+\z/;
+	$jobs = shift @ARGV;
+    } elsif (/^-j(\d+)$/) {
+	$jobs = $1;
+    } elsif (argcmp($_, "--jobs", 1, $arg) && $arg =~ /\A\d+\z/) {
+	$jobs = $arg;
     } else {
 	usage;
     }
@@ -1214,46 +1536,47 @@ foreach my $s (@show) {
 }
 
 push @tests, '-' if !@tests;
-my($testnumber, $file_errors, $file_require_errors) = (0, 0, 0);
+my($tctr) = TestieCounter::new;
+my($teh) = TestieErrorHandler::new(@tests > 1 && -t STDERR);
 
-foreach my $test (@tests) {
-    if (!$expand_mode) {
-	$dir = "testie$$" . ($testnumber ? "-$testnumber" : "");
-	if (-d $dir) {
-	    print STDERR $::cr_text, "warning: $dir directory exists; removing it\n";
-	    $::cr_text = "";
-	    system("/bin/rm -rf $dir");
-	    -d $dir && die "cannot remove $dir directory: $!\n";
-	}
-	mkdir $dir || die "cannot create $dir directory: $!\n";
+if ($jobs && $jobs > 1) {
+    testie_parent_loop(@tests, $tctr, $teh, $jobs);
+} else {
+    my($testnumber) = 0;
+    foreach my $test (@tests) {
+	my($tctr1) = run_test($test, $teh, $testnumber);
+	$tctr->add($tctr1);
+	++$testnumber;
     }
-
-    run_test($test, $verbose, @tests > 1);
-
-    system("/bin/rm -rf $dir") if !$preserve_temporaries;
-    undef $dir;
-    ++$testnumber;
 }
 
 # Print messages about failed requirements
-@require_error_commands = sort { $a cmp $b } keys %require_error_commands;
+@require_error_commands = sort { $a cmp $b } @{$tctr->{"require_error_commands"}};
 if (@require_error_commands) {
-    print STDERR $::cr_text, "testie: requirement failures blocked ", $require_errors, ($require_errors > 1 ? " tests" : " test"), ", use '-V' for details\n";
-    print STDERR "testie: (", (@require_error_commands > 1 ? "commands" : "command"), " '", join("', '", @require_error_commands), "')\n";
-    $::cr_text = "";
+    # make list unique
+    for (my $i = 1; $i < @require_error_commands; ) {
+	if ($require_error_commands[$i] eq $require_error_commands[$i - 1]) {
+	    splice(@require_error_commands, $i, 1);
+	} else {
+	    ++$i;
+	}
+    }
+    $teh->message("testie: requirement failures blocked ", $tctr->{"require_errors"}, ($tctr->{"require_errors"} > 1 ? " tests" : " test"), ", use '-V' for details\n");
+    $teh->message("testie: (", (@require_error_commands > 1 ? "commands" : "command"), " '", join("', '", @require_error_commands), "')\n");
 }
 
-print STDERR $::cr_text;
-my($test_successes) = $test_attempts - $test_failures - $test_skips;
-print STDERR "testie: ",
-    $test_successes, ($test_successes == 1 ? " success, " : " successes, "),
-    $test_failures, ($test_failures == 1 ? " failure, " : " failures, "),
-    $test_skips, " skipped\n";
+my($attempts, $failures, $skips, $successes) =
+    ($tctr->{"test_attempts"}, $tctr->{"test_failures"}, $tctr->{"test_skips"},
+     $tctr->{"test_attempts"} - $tctr->{"test_failures"} - $tctr->{"test_skips"});
+$teh->message("testie: ",
+    $successes, ($successes == 1 ? " success, " : " successes, "),
+    $failures, ($failures == 1 ? " failure, " : " failures, "),
+    $skips, " skipped\n");
 
-if ($bad_files > 0) {
+if ($tctr->{"bad_files"} > 0) {
     exit(2);
-} elsif ($test_attempts == 0
-	 || ($errors == 0 && $test_skips < $test_attempts)) {
+} elsif ($attempts == 0
+	 || ($tctr->{"errors"} == 0 && $skips < $attempts)) {
     exit(0);
 } else {
     exit(1);
@@ -1347,6 +1670,10 @@ plus 'stdout' and 'stderr'.  Includes any ignored lines.
 
 Don't run the given test; instead, expand its files into the current
 directory.  The script is stored in a file called '+script+'.
+
+=item -jI<N>, --jobs=I<N>
+
+Run up to I<N> tests simultaneously.  Like Make's '-j' option.
 
 =back
 

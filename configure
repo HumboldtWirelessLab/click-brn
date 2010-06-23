@@ -12306,6 +12306,7 @@ sed 's/^/| /' conftest.$ac_ext >&5
 	eval "$as_ac_var=no"
 fi
 
+<<<<<<< HEAD:configure
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
 fi
@@ -12313,6 +12314,15 @@ ac_res=`eval echo '${'$as_ac_var'}'`
 	       { echo "$as_me:$LINENO: result: $ac_res" >&5
 echo "${ECHO_T}$ac_res" >&6; }
 if test `eval echo '${'$as_ac_var'}'` = yes; then
+=======
+
+for ac_func in random snprintf strnlen strtoul tcgetpgrp vsnprintf
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+eval as_val=\$$as_ac_var
+   if test "x$as_val" = x""yes; then :
+>>>>>>> 00ae90de456e6fc7fc87c38daf9fc87517a3e26f:configure
   cat >>confdefs.h <<_ACEOF
 #define `echo "HAVE_$ac_func" | $as_tr_cpp` 1
 _ACEOF
@@ -13895,8 +13905,78 @@ echo "${ECHO_T}$ac_cv_sizeof_off_t" >&6; }
 
 
 
+<<<<<<< HEAD:configure
 cat >>confdefs.h <<_ACEOF
 #define SIZEOF_OFF_T $ac_cv_sizeof_off_t
+=======
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __sync_synchronize" >&5
+$as_echo_n "checking for __sync_synchronize... " >&6; }
+if test "${ac_cv_have___sync_synchronize+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+long x = 11;
+int
+main ()
+{
+long *y = &x; __sync_synchronize();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_cv_have___sync_synchronize=yes
+else
+  ac_cv_have___sync_synchronize=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_synchronize" >&5
+$as_echo "$ac_cv_have___sync_synchronize" >&6; }
+    if test $ac_cv_have___sync_synchronize = yes; then
+
+$as_echo "#define HAVE___SYNC_SYNCHRONIZE 1" >>confdefs.h
+
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether __sync_synchronize supports arguments" >&5
+$as_echo_n "checking whether __sync_synchronize supports arguments... " >&6; }
+if test "${ac_cv_have___sync_synchronize_args+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+long x = 11;
+int
+main ()
+{
+long *y = &x; __sync_synchronize(*y);
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_compile "$LINENO"; then :
+  ac_cv_have___sync_synchronize_args=yes
+else
+  ac_cv_have___sync_synchronize_args=no
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_have___sync_synchronize_args" >&5
+$as_echo "$ac_cv_have___sync_synchronize_args" >&6; }
+    if test $ac_cv_have___sync_synchronize_args = yes; then
+
+$as_echo "#define HAVE___SYNC_SYNCHRONIZE_ARGUMENTS 1" >>confdefs.h
+
+    fi
+
+    for ac_header in strings.h
+do :
+  ac_fn_cxx_check_header_mongrel "$LINENO" "strings.h" "ac_cv_header_strings_h" "$ac_includes_default"
+if test "x$ac_cv_header_strings_h" = x""yes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_STRINGS_H 1
+>>>>>>> 00ae90de456e6fc7fc87c38daf9fc87517a3e26f:configure
 _ACEOF
 
 
@@ -14634,9 +14714,22 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+<<<<<<< HEAD:configure
 else
+=======
+for ac_func in pselect sigaction
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_cxx_check_func "$LINENO" "$ac_func" "$as_ac_var"
+eval as_val=\$$as_ac_var
+   if test "x$as_val" = x""yes; then :
+>>>>>>> 00ae90de456e6fc7fc87c38daf9fc87517a3e26f:configure
   cat >>confdefs.h <<_ACEOF
+<<<<<<< HEAD:configure
 #define HAVE_DECL_MADVISE 0
+=======
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+>>>>>>> 00ae90de456e6fc7fc87c38daf9fc87517a3e26f:configure
 _ACEOF
 
 
