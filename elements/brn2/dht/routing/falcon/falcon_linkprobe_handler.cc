@@ -42,7 +42,9 @@ FalconLinkProbeHandler::FalconLinkProbeHandler():
     _register_handler(true),
     _frt(NULL),
     _linkstat(NULL),
-    _all_nodes_index(0)
+    _all_nodes_index(0),
+    _no_nodes_per_lp(FALCON_DEFAULT_NO_NODES_PER_LINKPROBE),
+    _rfrt(NULL)
 {
   BRNElement::init();
 }
@@ -58,6 +60,7 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
+      "NODESPERLP", cpkN, cpInteger, &_no_nodes_per_lp,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -108,7 +111,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   DHTnodelist nodes;
 
-  send_nodes = min(5, _frt->_allnodes.size());
+  send_nodes = min(_no_nodes_per_lp, _frt->_allnodes.size());
 
   for (int i = 0; i < send_nodes; i++ ) {
     _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
@@ -139,6 +142,9 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   _frt->add_nodes(&nodes);
 
   nodes.del();
+
+  if ( _rfrt != NULL )
+    _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
 
   return 0;
 }

@@ -54,7 +54,7 @@ union addr {
 #define BRN_PORT_BATMAN              13 /*0x0d*/
 #define BRN_PORT_GEOROUTING          14 /*0x0e*/
 #define BRN_PORT_DART                15 /*0x0f*/
-#define BRN_PORT_FALCON              16 /*0x10*/
+#define BRN_PORT_HAWK                16 /*0x10*/
 #define BRN_PORT_OLSR                17 /*0x11*/
 #define BRN_PORT_AODV                18 /*0x12*/
 /*Clustering*/

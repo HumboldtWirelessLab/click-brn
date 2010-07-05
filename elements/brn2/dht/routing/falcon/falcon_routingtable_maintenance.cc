@@ -23,7 +23,8 @@ FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
   _lookup_timer(static_lookup_timer_hook,this),
   _start(FALCON_DEFAULT_START_TIME),
   _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
-  _debug(BrnLogger::DEFAULT)
+  _debug(BrnLogger::DEFAULT),
+  _rfrt(NULL)
 {
 }
 
@@ -200,7 +201,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   /**
    * Die Abfrage stellt sicher, dass man nicht schon einmal im Kreis rum ist, und der Knoten den man grad befragt hat einen
-   * Knoten zuückliegt der schon wieder vor mir liegt. Natuerlich darf es der Knoten selbst auch nicht sein
+   * Knoten zuï¿½ckliegt der schon wieder vor mir liegt. Natuerlich darf es der Knoten selbst auch nicht sein
   */
   // make sure that the node n on position p+1 does not stand between this node and node on position p
   //TODO: make sure that we have to check, that node on new posotion p+1 is not the node on position p

@@ -28,9 +28,13 @@
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
+#include "elements/brn2/routing/hawk/hawk_routingtable.hh"
+
 #include "falcon_routingtable.hh"
 
 CLICK_DECLS
+
+#define FALCON_DEFAULT_NO_NODES_PER_LINKPROBE 5
 
 class FalconLinkProbeHandler : public BRNElement
 {
@@ -63,6 +67,13 @@ class FalconLinkProbeHandler : public BRNElement
   BRN2LinkStat *_linkstat;
 
   int _all_nodes_index;
+
+  int _no_nodes_per_lp;
+
+  HawkRoutingtable *_rfrt;
+
+ public:
+  void setHawkRoutingTable(HawkRoutingtable *t) { _rfrt = t; }
 };
 
 CLICK_ENDDECLS

@@ -5,12 +5,16 @@
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "falcon_routingtable.hh"
+
+#include "elements/brn2/routing/hawk/hawk_routingtable.hh"
+
 CLICK_DECLS
 
 #define FALCON_DEFAULT_SUCCESSOR_UPDATE_INTERVAL  2000
 #define FALCON_DEFAULT_SUCCESSOR_MIN_PING            3
 #define FALCON_DEFAULT_SUCCESSOR_START_TIME      10000
 
+#define FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC 1
 
 class FalconSuccessorMaintenance : public Element
 {
@@ -53,6 +57,13 @@ class FalconSuccessorMaintenance : public Element
 
     int _min_successor_ping;
     int _debug;
+
+    HawkRoutingtable *_rfrt;
+
+    int _opti;
+
+ public:
+    void setHawkRoutingTable(HawkRoutingtable *t) { _rfrt = t; }
 };
 
 CLICK_ENDDECLS
