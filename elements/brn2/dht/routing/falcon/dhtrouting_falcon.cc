@@ -173,6 +173,14 @@ DHTRoutingFalcon::range_query_min_max_id(uint8_t *min, uint8_t *max)
 int
 DHTRoutingFalcon::change_node_id(md5_byte_t *id, int id_len)
 {
+  if ( _frt->successor == NULL ) {
+    BRN_WARN("Change nodeid without send any information. BE careful.");
+    _frt->_me->set_nodeid(id);
+    _frt->_me->_status = STATUS_OK;
+
+    return CHANGE_NODE_ID_STATUS_OK;
+  }
+
   if ( ! _leave_organizer ) return DHTRouting::change_node_id(id, id_len);
 
   if ( _leave_organizer->start_leave(id, id_len) ) return CHANGE_NODE_ID_STATUS_OK;
