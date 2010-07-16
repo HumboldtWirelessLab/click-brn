@@ -70,9 +70,9 @@ int DHTStorageSimple::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_dht_routing || !_dht_routing->cast("DHTRouting")) {
     _dht_routing = NULL;
-    BRN_WARN("No Routing");
+    if (_debug >= BrnLogger::WARN) click_chatter("No Routing");
   } else {
-    BRN_INFO("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
+    if (_debug >= BrnLogger::INFO) click_chatter("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
   }
 
   _dht_op_handler = new DHTOperationHandler(_db,_debug);
@@ -144,9 +144,9 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
         fwd_op->replicaList[r].status = status;
         fwd_op->replicaList[r].set_value(op->value,op->header.valuelen);
         fwd_op->set_replica_reply(r);
-        //TODO: check whether all needed replica-reply are received. Wenn nicht alle replicas nötig
-        //      sind ( z.b. nur eine von 3 Antworten, dann könnte das soweit sein und man könnte sich den rest sparen.
-        // vielleict sollten die replicas in einem solchen fall sortiert werden. Der locale könnte reichen und wenn dieser zuerst kommt,.so keine Pakete
+        //TODO: check whether all needed replica-reply are received. Wenn nicht alle replicas nï¿½tig
+        //      sind ( z.b. nur eine von 3 Antworten, dann kï¿½nnte das soweit sein und man kï¿½nnte sich den rest sparen.
+        // vielleict sollten die replicas in einem solchen fall sortiert werden. Der locale kï¿½nnte reichen und wenn dieser zuerst kommt,.so keine Pakete
 #ifdef DHT_STORAGE_STATS
         _stats_replies++;
 #endif

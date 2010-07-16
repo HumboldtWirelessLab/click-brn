@@ -9,6 +9,20 @@
 
 CLICK_DECLS
 
+/**
+ * Stores the ethernet address of the node with is responsible for a given key
+ * If we request this key again, we know the final node. this is independent from the dhtrouting
+ *
+ * @see DHTStorageKeyCache
+ *
+ * <hr>
+ * @author R.Sombrutzki <sombrutz@informatik.hu-berlin.de>
+ * @date
+ * @version 0.5
+ * @since 0.5
+ *
+ */
+
 #define MAXKEXCACHETIME 20000
 
 class DHTStorageKeyCache : public Element {

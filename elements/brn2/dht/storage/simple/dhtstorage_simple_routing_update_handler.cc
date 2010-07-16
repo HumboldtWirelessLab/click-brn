@@ -43,9 +43,9 @@ int DHTStorageSimpleRoutingUpdateHandler::configure(Vector<String> &conf, ErrorH
 
   if (!_dht_routing || !_dht_routing->cast("DHTRouting")) {
     _dht_routing = NULL;
-    BRN_WARN("No Routing");
+    if (_debug >= BrnLogger::WARN) click_chatter("No Routing");
   } else {
-    BRN_INFO("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
+    if (_debug >= BrnLogger::INFO) click_chatter("Use DHT-Routing: %s",_dht_routing->dhtrouting_name());
   }
 
   return 0;
