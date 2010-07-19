@@ -188,7 +188,7 @@ FalconRoutingTable::add_node(DHTnode *node)
     if ( predecessor == NULL ) {
       predecessor = n;
       update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
-                                              //       called by complex function, so it can result in problems
+                                               //      called by complex function, so it can result in problems
     }
 
     successor = n;

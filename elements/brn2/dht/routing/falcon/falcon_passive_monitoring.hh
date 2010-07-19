@@ -57,6 +57,7 @@ class FalconPassiveMonitoring : public BRNElement
     void handle_node_update(Packet *packet);
 
     bool passive_monitoring_mode;
+
 };
 
 CLICK_ENDDECLS
