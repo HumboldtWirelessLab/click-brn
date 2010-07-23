@@ -59,13 +59,13 @@ class BRN2Device : public Element {
     void setIP6Address(IP6Address *ip);
 #endif
 
-    const uint32_t getDeviceType();
+    uint32_t getDeviceType();
     void setDeviceType( uint32_t type);
 
     const String& getDeviceTypeString();
     void setDeviceTypeString(String type);
 
-    const uint8_t getDeviceNumber();
+    uint8_t getDeviceNumber();
     void setDeviceNumber(uint8_t);
 
     bool is_service_device();

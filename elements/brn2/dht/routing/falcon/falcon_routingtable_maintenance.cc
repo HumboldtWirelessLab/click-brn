@@ -124,6 +124,26 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
   else BRN_ERROR("Couldn't find inserted node");
 
+  /** Hawk-Routing stuff. TODO: this should move to extra funtion */
+  if ( _rfrt != NULL ) {
+    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+    if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
+      BRN_INFO("Is neighbourhop. Not added to table.");
+    } else {
+      BRN_INFO("Add foreign hop");
+     _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
+                    &(srcEther));
+    }
+
+    if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
+      _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
+                      &(srcEther));
+
+  }
+  /** End Hawk stuff */
+
+
   /** Check for and handle error in Routingtable of the source of the request. If he think that i'm his succ
       but he is not my Pred. then send him a notice, that he is wrong and what his succ in my opinion */
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
@@ -206,7 +226,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
   // make sure that the node n on position p+1 does not stand between this node and node on position p
   //TODO: make sure that we have to check, that node on new posotion p+1 is not the node on position p
   if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) ||
-                                                                           preposnode->equals(&node) ) ) {
+         preposnode->equals(&node) ) ) {
     _frt->add_node_in_FT(nc, position + 1); //add node to Fingertable. THis also handles, that the node is already in
                                             //the Fingertable, but on another position
     if ( nc->equals(_frt->predecessor) )    //in some cases the last node in the Fingertable is the predecessor.
@@ -218,6 +238,21 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
     _frt->backlog = nc;
     _frt->setLastUpdatedPosition(0);
   }
+
+    /** Hawk-Routing stuff. TODO: this should move to extra funtion */
+  if ( _rfrt != NULL ) {
+    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+
+    BRN_INFO("Add foreign hop");
+
+    //don't add route to myself
+    if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
+      _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
+                      NULL, &(src._ether_addr));
+  }
+  /** End Hawk stuff */
+
 }
 
 CLICK_ENDDECLS

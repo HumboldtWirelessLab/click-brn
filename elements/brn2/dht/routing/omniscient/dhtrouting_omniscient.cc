@@ -577,8 +577,9 @@ DHTRoutingOmni::nodeDetection()
         p = DHTProtocolOmni::new_hello_request_packet(&(_me->_ether_addr));
         big_p = DHTProtocol::push_brn_ether_header(p, &(_me->_ether_addr), &(node->_ether_addr), BRN_PORT_DHTROUTING);
 
-        if ( big_p == NULL ) BRN_WARN("Error in DHT");
-        else output(0).push(big_p);
+        if ( big_p == NULL ) {
+          BRN_WARN("Error in DHT");
+        } else output(0).push(big_p);
       }
     }
   }

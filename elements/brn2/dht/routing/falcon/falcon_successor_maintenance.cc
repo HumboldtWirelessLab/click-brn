@@ -150,8 +150,11 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
       BRN_INFO("Add foreign hop");
     }
 
+    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+
     _rfrt->addEntry(&(succ._ether_addr), succ._md5_digest, succ._digest_length,
-                    &(src._ether_addr));
+                    &srcEther, &(src._ether_addr));
   }
 }
 
@@ -170,6 +173,23 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
   _frt->add_node(&src);
+
+
+  /** Hawk-Routing stuff. TODO: this should move to extra funtion */
+/*  if ( _rfrt != NULL ) {
+    click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
+      BRN_INFO("Add neighbourhop.");
+    } else {
+      BRN_INFO("Add foreign hop");
+    }
+
+    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+    _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
+                    &(srcEther));
+  }*/
+  /** End Hawk stuff */
+
 
   if ( succ.equals(_frt->_me) ) {                  //request really for me ??
     //Wenn ich er mich f�r seinen Nachfolger h�lt, teste ob er mein Vorg�nger ist oder mein Vorg�nger f�r ihn ein besserer Nachfolger ist.

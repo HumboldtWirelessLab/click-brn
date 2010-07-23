@@ -12,7 +12,7 @@
 
 CLICK_DECLS
 
-#define HAWKMAXKEXCACHETIME 1000
+#define HAWKMAXKEXCACHETIME 10000000
 
 class HawkRoutingtable : public BRNElement {
 
@@ -24,15 +24,19 @@ class HawkRoutingtable : public BRNElement {
       uint8_t _dst_id[MAX_NODEID_LENTGH];
       EtherAddress _dst;
 
+      EtherAddress _next_phy_hop;
       EtherAddress _next_hop;
+
 
       Timestamp _time;
 
-      RTEntry( EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next) {
+      RTEntry( EtherAddress *ea, uint8_t *id, int id_len,
+               EtherAddress *next_phy, EtherAddress *next) {
         _dst_id_length = id_len;
         memcpy(_dst_id, id, MAX_NODEID_LENTGH);
         _dst = EtherAddress(ea->data());
         _next_hop = EtherAddress(next->data());
+        _next_phy_hop = EtherAddress(next_phy->data());
         _time = Timestamp::now();
       }
 
@@ -46,6 +50,9 @@ class HawkRoutingtable : public BRNElement {
 
       void updateNextHop(EtherAddress *next) {
         _next_hop = EtherAddress(next->data());
+      }
+      void updateNextPhyHop(EtherAddress *next_phy) {
+        _next_phy_hop = EtherAddress(next_phy->data());
       }
   };
 
@@ -63,13 +70,28 @@ class HawkRoutingtable : public BRNElement {
 
   Vector<RTEntry*> _rt;
 
-  HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next);
+  HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
+                                      EtherAddress *next_phy);
+
+  HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
+                                      EtherAddress *next_phy, EtherAddress *next);
+
+//  HawkRoutingtable::RTEntry *addLink(EtherAddress *dst, uint8_t *dst_id, int dst_len,
+//                                     EtherAddress *src);
+
   RTEntry *getEntry(EtherAddress *ea);
   RTEntry *getEntry(uint8_t *id, int id_len);
+
   void delEntry(EtherAddress *ea);
+
+  Vector<RTEntry*> *getRoute(EtherAddress *ea);
 
   bool isNeighbour(EtherAddress *ea);
   EtherAddress *getNextHop(EtherAddress *dst);
+  bool hasNextPhyHop(EtherAddress *dst);
+
+
+  RTEntry *getEntryForNextHop(EtherAddress *ea);
 
   /* Falcon element to register hawk_routingtable. Pointers are void to avoid including of specific
    * header-files which causes error. TODO: fix this. use specific pointers

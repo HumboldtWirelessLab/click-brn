@@ -49,31 +49,105 @@ HawkRoutingtable::initialize(ErrorHandler *)
 }
 
 HawkRoutingtable::RTEntry *
-HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next)
+HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next_phy)
 {
+  BRN_INFO("Add direct known link. Next Phy is also next Overlay Hop.");
+/*
+  EtherAddress *next = getNextHop(_next);  //_next is just the closest known next
+                                           //hop. we search for clostest neighbour
+
+  if ( next == NULL ) {
+    if (memcmp(ea->data(),_next->data(),6) != 0)
+      BRN_ERROR("Shit no next hop for %s",_next->unparse().c_str());
+    next = _next;
+  }
+
+  BRN_INFO("NEW ROUTE: DST: %s HOP: %s NEXT: %s", ea->unparse().c_str(),
+                                                  _next->unparse().c_str(),
+                                                  next->unparse().c_str());
+
+  if ( ! isNeighbour(next) && (memcmp(ea->data(),_next->data(),6) != 0) )  {
+    BRN_ERROR("Next node %s is not a neighbour of me", next->unparse().c_str());
+    BRN_ERROR("TABLE: %s",routingtable().c_str());
+  }
+*/
   BRN_DEBUG("Add Entry.");
+  BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
+                                             next_phy->unparse().c_str());
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
       memcpy(_rt[i]->_dst_id, id, MAX_NODEID_LENTGH);           //update id
       _rt[i]->_dst_id_length = id_len;
       _rt[i]->_time = Timestamp::now();
 
-      if ( (memcmp(ea->data(),next->data(), 6) == 0) &&
-           (memcmp(_rt[i]->_dst.data(),_rt[i]->_next_hop.data(), 6) != 0) ) {
-           BRN_DEBUG("Entry update: Dst: %s Next: %s", ea->unparse().c_str(), next->unparse().c_str());
-         //_rt[i]->updateNextHop(next);
+      _rt[i]->updateNextHop(next_phy);
+      _rt[i]->updateNextPhyHop(next_phy);
+
+      return _rt[i];
+    }
+  }
+
+  BRN_DEBUG("Entry is new: Dst: %s Next: %s", ea->unparse().c_str(),
+                                              next_phy->unparse().c_str());
+  HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next_phy, next_phy);
+  _rt.push_back(n);
+
+  return n;
+}
+
+HawkRoutingtable::RTEntry *
+HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
+                           EtherAddress *_next_phy, EtherAddress *next)
+{
+  EtherAddress *next_phy;
+
+  if ( _next_phy == NULL ) {
+   next_phy = getNextHop(next);
+   if ( next_phy == NULL ) {
+     BRN_INFO("Unable to add overlay link. Next Phy can differ from next.");
+     BRN_INFO("DISCARD ROUTE: DST: %s NEXTPHY: %s NEXT: %s", ea->unparse().c_str(),
+                                                    _next_phy->unparse().c_str(),
+                                                    next->unparse().c_str());
+     return NULL;
+   }
+  } else {
+   next_phy = _next_phy;
+  }
+
+  /** The packet will be send to dst over next. to
+    * reach next we will use next overlay");
+    */
+  BRN_INFO("Add overlay link. Next Phy can differ from next.");
+  BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s NEXT: %s", ea->unparse().c_str(),
+                                                    next_phy->unparse().c_str(),
+                                                    next->unparse().c_str());
+
+  for(int i = 0; i < _rt.size(); i++) {                         //search
+    if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
+      memcpy(_rt[i]->_dst_id, id, MAX_NODEID_LENTGH);           //update id
+      _rt[i]->_dst_id_length = id_len;
+      _rt[i]->_time = Timestamp::now();
+
+      /* update only if we don't know whether next_phy_hop knows the route
+       * (incl. next hop)
+       */
+      if ( memcmp(_rt[i]->_next_phy_hop.data(), _rt[i]->_next_hop.data(), 6) != 0 ) {
+        _rt[i]->updateNextHop(next);
+        _rt[i]->updateNextPhyHop(next_phy);
       }
 
       return _rt[i];
     }
   }
 
-  BRN_DEBUG("Entry is new: Dst: %s Next: %s", ea->unparse().c_str(), next->unparse().c_str());
-  HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next);
+  BRN_DEBUG("Entry is new: Dst: %s NextPhy: %s Next: %s", ea->unparse().c_str(),
+                            next_phy->unparse().c_str(),next->unparse().c_str());
+  HawkRoutingtable::RTEntry *n = new RTEntry(ea, id, id_len, next_phy, next);
   _rt.push_back(n);
 
   return n;
 }
+
 
 HawkRoutingtable::RTEntry *
 HawkRoutingtable::getEntry(EtherAddress *ea)
@@ -85,6 +159,7 @@ HawkRoutingtable::getEntry(EtherAddress *ea)
       if ( (now - _rt[i]->_time).msec1() < HAWKMAXKEXCACHETIME ) { //check age, if not too old
         return _rt[i];                                             //give back
       } else {                                                    //too old ?
+        BRN_INFO("Remove old link in Hawk RoutingTable.");
         delete _rt[i];
         _rt.erase(_rt.begin() + i);                               //delete !!
         return NULL;                                              //return NULL
@@ -154,6 +229,15 @@ HawkRoutingtable::getNextHop(EtherAddress *dst)
   return NULL;
 }
 
+bool
+HawkRoutingtable::hasNextPhyHop(EtherAddress *dst)
+{
+  RTEntry *entry = getEntry(dst);
+  return ( memcmp(entry->_next_hop.data(), entry->_next_phy_hop.data(), 6 ) == 0 );
+}
+
+
+
 /**************************************************************************/
 /************************** H A N D L E R *********************************/
 /**************************************************************************/
@@ -164,12 +248,13 @@ HawkRoutingtable::routingtable()
   StringAccum sa;
 
   sa << "RoutingTable (" << _rt.size() << "):\n";
-  sa << "  Destination\t\tNext Hop\t\tAge\n";
+  sa << "  Destination\t\tNext PhyHop\t\tNext OverlayHop\t\tAge\n";
   RTEntry *entry;
 
   for(int i = 0; i < _rt.size(); i++) {
     entry = _rt[i];
-    sa << "  " << entry->_dst.unparse() << "\t" << entry->_next_hop.unparse() << "\tUnknown\n";
+    sa << "  " << entry->_dst.unparse() << "\t" << entry->_next_phy_hop.unparse();
+    sa << "\t" << entry->_next_hop.unparse() << "\tUnknown\n";
   }
 
   return sa.take_string();

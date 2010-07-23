@@ -12,17 +12,15 @@
 
 CLICK_DECLS
 
-
 struct hawk_routing_header {
-  uint8_t _next_etheraddress[6];              //TODO: needed ??
-  uint8_t _next_nodeid[MAX_NODEID_LENTGH];    //TODO: needed ??
-  int _next_nodeid_length;                    //TODO: needed ??
+  uint8_t _next_etheraddress[6];
+
+  uint8_t _next_nodeid[MAX_NODEID_LENTGH];
 
   uint8_t _dst_nodeid[MAX_NODEID_LENTGH];
-  int _dst_nodeid_length;                     //TODO: needed ??
 
   uint8_t _src_nodeid[MAX_NODEID_LENTGH];
-  int _src_nodeid_length;                     //TODO: needed ??
+
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 class HawkProtocol {
@@ -32,12 +30,19 @@ class HawkProtocol {
   HawkProtocol();
   ~HawkProtocol();
 
-  static WritablePacket *add_route_header(uint8_t *dst_nodeid, int dst_nodeid_length,
-                                          uint8_t *src_nodeid, int src_nodeid_length,
+  static WritablePacket *add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid,
                                           Packet *p);
+
+  static WritablePacket *add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid,
+                                          uint8_t *next_nodeid, EtherAddress *_next,
+                                          Packet *p);
+
   static struct hawk_routing_header *get_route_header(Packet *p);
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);
+  static void set_next_hop(Packet *p, EtherAddress *next);
+  static bool has_next_hop(Packet *p);
+  static void clear_next_hop(Packet *p);
 };
 
 CLICK_ENDDECLS

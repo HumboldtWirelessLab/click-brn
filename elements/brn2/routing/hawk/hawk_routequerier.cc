@@ -138,7 +138,7 @@ void
 HawkRouteQuerier::push(int, Packet *p_in)
 {
   BRN_DEBUG("push(): %d",p_in->length());
-  HawkRoutingtable::RTEntry *entry;
+  //HawkRoutingtable::RTEntry *entry;
 
   if ( p_in->length() < sizeof(click_ether) ) {
     BRN_DEBUG(" * packet too small to be etherframe; drop packet.");
@@ -160,23 +160,22 @@ HawkRouteQuerier::push(int, Packet *p_in)
   BRN_INFO("currently we using MD5 to get the id of a node (MAC). Change in future");
 
   DHTnode *n = new DHTnode(dst_addr);
-  WritablePacket *pr = HawkProtocol::add_route_header(n->_md5_digest, n->_digest_length,
-                                                         _dht_routing->_me->_md5_digest,
-                                                         _dht_routing->_me->_digest_length,
-                                                         p_in);
+  WritablePacket *pr = HawkProtocol::add_route_header(n->_md5_digest,
+                                                      _dht_routing->_me->_md5_digest,
+                                                      p_in);
   output(0).push(pr);  //push out packet with header (include the id of the final destination
 
   return;
 }
 
 void
-HawkRouteQuerier::send_packets(EtherAddress *dst, HawkRoutingtable::RTEntry *entry )
+HawkRouteQuerier::send_packets(EtherAddress *dst, HawkRoutingtable::RTEntry */*entry*/ )
 {
   PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
     buffp = _packet_buffer.get(i);
 
-    click_ether *ether = (click_ether *)buffp->_p->data();
+    //click_ether *ether = (click_ether *)buffp->_p->data();
 
    /* if ( memcmp(ether->ether_dhost, dst->data(),6) == 0 ) {
       WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, buffp->_p);

@@ -112,7 +112,7 @@ BRN2Device::setIP6Address(IP6Address *ip)
 }
 #endif
 
-const uint32_t
+uint32_t
 BRN2Device::getDeviceType()
 {
   return device_type;
@@ -144,7 +144,7 @@ BRN2Device::setDeviceNumber(uint8_t number)
   device_number = number;
 }
 
-const uint8_t
+uint8_t
 BRN2Device::getDeviceNumber()
 {
   return device_number;
