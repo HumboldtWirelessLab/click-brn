@@ -32,7 +32,8 @@
 
 CLICK_DECLS
 
-TopologyInfo::TopologyInfo()
+TopologyInfo::TopologyInfo():
+  number_of_detections(0)
 {
   BRNElement::init();
 }
@@ -58,6 +59,39 @@ TopologyInfo::initialize(ErrorHandler *)
   return 0;
 }
 
+void
+TopologyInfo::addBridge(EtherAddress *a, EtherAddress b*)
+{
+  Bridge *br = getBridge(a,b);
+  if ( br == NULL ) _bridges.push_back(new Bridge(a,b));
+}
+
+void
+TopologyInfo::addArticulationPoint(EtherAddress *a)
+{
+  ArticulationPoint *ap = getArticulationPoint(a);
+  if ( ap == NULL ) _artpoints.push_back(new ArticulationPoint(a));
+}
+
+Bridge*
+TopologyInfo::getBridge(EtherAddress *a, EtherAddress b*)
+{
+  for( int i = 0; i < _bridges.size(); i++ )
+    if ( _bridges[i]->equals(a,b) ) return _bridges[i];
+
+  return NULL;
+}
+
+ArticulationPoint *
+TopologyInfo::getArticulationPoint(EtherAddress *a)
+{
+  for( int i = 0; i < _artpoints.size(); i++ )
+    if ( _artpoints[i]->equals(a) ) return _artpoints[i];
+
+  return NULL;
+}
+
+
 /*************************************************************************************************/
 /***************************************** H A N D L E R *****************************************/
 /*************************************************************************************************/
@@ -77,7 +111,7 @@ TopologyInfo::topology_info(void)
     sa << i <<  "\t" << br->node_a << " <-> " << br->node_b << "\n";
   }
 
-  sa << "\nArticulationPoint:\n";
+  sa << "\nArticulationPoint (" << _artpoints.size() << ") :\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     fp = _artpoints[i];
