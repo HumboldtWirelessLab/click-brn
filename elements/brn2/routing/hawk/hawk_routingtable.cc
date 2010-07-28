@@ -192,8 +192,14 @@ HawkRoutingtable::delEntry(EtherAddress *ea)
 bool
 HawkRoutingtable::isNeighbour(EtherAddress *ea)
 {
+  if ( ea == NULL ) {
+    BRN_WARN("Ask for being neighbour given NULL. I'll answer with no.");
+    return false;
+  }
+
   //Vector<EtherAddress> neighbors;
   //_lt->get_neighbors(, neighbors);
+
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
       return (memcmp(_rt[i]->_next_hop.data(), _rt[i]->_dst.data(), 6 ) == 0 );
@@ -220,7 +226,17 @@ HawkRoutingtable::hasNextPhyHop(EtherAddress *dst)
   return ( memcmp(entry->_next_hop.data(), entry->_next_phy_hop.data(), 6 ) == 0 );
 }
 
+EtherAddress*
+HawkRoutingtable::getNextPhyHop(EtherAddress *dst)
+{
+  RTEntry *entry = getEntry(dst);
 
+  while ( ( entry != NULL ) && (! isNeighbour(entry->next_phy_hop)) ) {
+    next_phy_hop = _rt->getNextHop(next_phy_hop);
+  }
+
+  return ( memcmp(entry->_next_hop.data(), entry->_next_phy_hop.data(), 6 ) == 0 );
+}
 
 /**************************************************************************/
 /************************** H A N D L E R *********************************/
