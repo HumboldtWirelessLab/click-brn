@@ -47,7 +47,7 @@ class TopologyDetection : public BRNElement {
      EtherAddress _addr;
      uint32_t _ttl;
      bool _over_me;
-     bool _descendant;
+     bool _descendant;  //he is a "Nachkomme"
 
      TopologyDetectionReceivedInfo(EtherAddress *addr, uint32_t ttl, bool over_me) {
        _addr = EtherAddress(addr->data());
