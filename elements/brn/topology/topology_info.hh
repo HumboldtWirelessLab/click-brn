@@ -67,7 +67,8 @@ class TopologyInfo : public BRNElement
       }
 
       bool equals(EtherAddress *a) {
-        return memcmp(node->data(), a->data(),6);
+        return memcmp(node.data(), a->data(),6);
+      }
     };
 
  public:
@@ -91,11 +92,11 @@ class TopologyInfo : public BRNElement
 
  public:
 
-  void incNoDetection() { number_of_detections++ };
-  void addBridge(EtherAddress *a, EtherAddress b*);
+  void incNoDetection() { number_of_detections++; }
+  void addBridge(EtherAddress *a, EtherAddress *b);
   void addArticulationPoint(EtherAddress *a);
 
-  Bridge* getBridge(EtherAddress *a, EtherAddress b*);
+  Bridge* getBridge(EtherAddress *a, EtherAddress *b);
   ArticulationPoint *getArticulationPoint(EtherAddress *a);
 
   String topology_info(void);
