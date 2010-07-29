@@ -60,21 +60,19 @@ TopologyInfo::initialize(ErrorHandler *)
 }
 
 void
-TopologyInfo::addBridge(EtherAddress *a, EtherAddress b*)
+TopologyInfo::addBridge(EtherAddress *a, EtherAddress *b)
 {
-  Bridge *br = getBridge(a,b);
-  if ( br == NULL ) _bridges.push_back(new Bridge(a,b));
+  if ( getBridge(a,b) == NULL ) _bridges.push_back(new Bridge(a,b));
 }
 
 void
 TopologyInfo::addArticulationPoint(EtherAddress *a)
 {
-  ArticulationPoint *ap = getArticulationPoint(a);
-  if ( ap == NULL ) _artpoints.push_back(new ArticulationPoint(a));
+  if ( getArticulationPoint(a) == NULL ) _artpoints.push_back(new ArticulationPoint(a));
 }
 
-Bridge*
-TopologyInfo::getBridge(EtherAddress *a, EtherAddress b*)
+TopologyInfo::Bridge*
+TopologyInfo::getBridge(EtherAddress *a, EtherAddress *b)
 {
   for( int i = 0; i < _bridges.size(); i++ )
     if ( _bridges[i]->equals(a,b) ) return _bridges[i];
@@ -82,7 +80,7 @@ TopologyInfo::getBridge(EtherAddress *a, EtherAddress b*)
   return NULL;
 }
 
-ArticulationPoint *
+TopologyInfo::ArticulationPoint *
 TopologyInfo::getArticulationPoint(EtherAddress *a)
 {
   for( int i = 0; i < _artpoints.size(); i++ )
@@ -108,14 +106,14 @@ TopologyInfo::topology_info(void)
   for( int i = 0; i < _bridges.size(); i++ )
   {
     br = _bridges[i];
-    sa << i <<  "\t" << br->node_a << " <-> " << br->node_b << "\n";
+    sa << (i+1) <<  "\t" << br->node_a << " <-> " << br->node_b << "\n";
   }
 
-  sa << "\nArticulationPoint (" << _artpoints.size() << ") :\n";
+  sa << "\nArticulationPoints (" << _artpoints.size() << ") :\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     fp = _artpoints[i];
-    sa << i <<  "\t" << fp->node << " <-> " << fp->node << "\n";
+    sa << (i+1) <<  "\t" << fp->node << "\n";
   }
   sa << "\n";
 
@@ -123,7 +121,9 @@ TopologyInfo::topology_info(void)
 }
 
 enum {
-  H_TOPOLOGY_INFO
+  H_TOPOLOGY_INFO,
+  H_ARTICULATION_POINT,
+  H_BRIDGE
 };
 
 static String
@@ -138,12 +138,50 @@ read_param(Element *e, void *thunk)
   }
 }
 
+static int
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
+{
+  TopologyInfo *f = (TopologyInfo *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  //int result = -1;
+
+  switch((intptr_t)vparam) {
+    case H_ARTICULATION_POINT: {
+      EtherAddress ap;
+      cp_ethernet_address(args[0], &ap);
+
+      f->addArticulationPoint(&ap);
+      break;
+    }
+    case H_BRIDGE: {
+      EtherAddress a,b;
+
+      cp_ethernet_address(args[0], &a);
+      cp_ethernet_address(args[1], &b);
+
+      f->addBridge(&a, &b);
+      break;
+    }
+  }
+
+//  click_chatter("Result: %d",result);
+
+  return 0;
+}
+
 void
 TopologyInfo::add_handlers()
 {
   BRNElement::add_handlers();
 
   add_read_handler("topology_info", read_param , (void *)H_TOPOLOGY_INFO);
+
+  add_write_handler("articulation_point", write_param, (void *) H_ARTICULATION_POINT);
+  add_write_handler("bridge", write_param, (void *) H_BRIDGE);
+
 }
 
 CLICK_ENDDECLS
