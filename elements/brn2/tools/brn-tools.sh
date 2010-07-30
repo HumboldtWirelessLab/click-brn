@@ -64,7 +64,7 @@ fi
 
 (cd brn-ns2-click; DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$CLICKPATH ./install_ns2.sh)
 
-if [ "x$BUILDCLICKSCRIPTS" = "xyes" }; then
+if [ "x$BUILDCLICKSCRIPTS" = "xyes" ]; then
   (cd click-brn-scripts; ./build.sh)
 fi
 
