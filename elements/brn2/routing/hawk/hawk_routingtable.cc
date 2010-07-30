@@ -52,25 +52,7 @@ HawkRoutingtable::RTEntry *
 HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next_phy)
 {
   BRN_INFO("Add direct known link. Next Phy is also next Overlay Hop.");
-/*
-  EtherAddress *next = getNextHop(_next);  //_next is just the closest known next
-                                           //hop. we search for clostest neighbour
 
-  if ( next == NULL ) {
-    if (memcmp(ea->data(),_next->data(),6) != 0)
-      BRN_ERROR("Shit no next hop for %s",_next->unparse().c_str());
-    next = _next;
-  }
-
-  BRN_INFO("NEW ROUTE: DST: %s HOP: %s NEXT: %s", ea->unparse().c_str(),
-                                                  _next->unparse().c_str(),
-                                                  next->unparse().c_str());
-
-  if ( ! isNeighbour(next) && (memcmp(ea->data(),_next->data(),6) != 0) )  {
-    BRN_ERROR("Next node %s is not a neighbour of me", next->unparse().c_str());
-    BRN_ERROR("TABLE: %s",routingtable().c_str());
-  }
-*/
   BRN_DEBUG("Add Entry.");
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
@@ -80,8 +62,10 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
       _rt[i]->_dst_id_length = id_len;
       _rt[i]->_time = Timestamp::now();
 
-      _rt[i]->updateNextHop(next_phy);
-      _rt[i]->updateNextPhyHop(next_phy);
+      if ( ! _rt[i]->nextHopIsNeighbour() ) {
+        _rt[i]->updateNextHop(next_phy);
+        _rt[i]->updateNextPhyHop(next_phy);
+      }
 
       return _rt[i];
     }
@@ -131,7 +115,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
       /* update only if we don't know whether next_phy_hop knows the route
        * (incl. next hop)
        */
-      if ( memcmp(_rt[i]->_next_phy_hop.data(), _rt[i]->_next_hop.data(), 6) != 0 ) {
+      if ( ! _rt[i]->nextHopIsNeighbour() ) {
         _rt[i]->updateNextHop(next);
         _rt[i]->updateNextPhyHop(next_phy);
       }

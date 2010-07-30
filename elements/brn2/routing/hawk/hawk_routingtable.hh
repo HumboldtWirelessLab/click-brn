@@ -51,8 +51,13 @@ class HawkRoutingtable : public BRNElement {
       void updateNextHop(EtherAddress *next) {
         _next_hop = EtherAddress(next->data());
       }
+
       void updateNextPhyHop(EtherAddress *next_phy) {
         _next_phy_hop = EtherAddress(next_phy->data());
+      }
+
+      bool nextHopIsNeighbour() {
+        return memcmp(_next_phy_hop.data(), _next_hop.data(), 6) == 0;
       }
   };
 
