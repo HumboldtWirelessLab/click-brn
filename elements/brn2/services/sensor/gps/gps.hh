@@ -22,9 +22,10 @@
 #define GPSSENSORELEMENT_HH
 
 #include <click/etheraddress.hh>
-#include <click/element.hh>
 #include <click/vector.hh>
 #include <click/ipaddress.hh>
+
+#include <elements/brn2/brnelement.hh>
 
 CLICK_DECLS
 /*
@@ -50,8 +51,8 @@ struct gps_position {
 
 class GPSPosition {
  public:
-  int _longitude;
   int _latitude;
+  int _longitude;
   int _h;
 
   int _x,_y,_z;
@@ -59,8 +60,8 @@ class GPSPosition {
   Timestamp gpstime;
 
   GPSPosition() {
-    _longitude = 0;
     _latitude = 0;
+    _longitude = 0;
     _h = 0;
     _z=0; _x=0; _y=0;
   }
@@ -69,9 +70,9 @@ class GPSPosition {
     _z=pos->z; _x=pos->x; _y=pos->y;
   }
 
-  GPSPosition(int lon, int lat, int h) {
-    _longitude = lon;
+  GPSPosition(int lat, int lon, int h) {
     _latitude = lat;
+    _longitude = lon;
     _h = h;
   }
 
@@ -79,6 +80,11 @@ class GPSPosition {
     _z=z; _x=x; _y=y;
   }
 
+  void setGPSC(int lat, int lon, int h) {
+    _latitude=lat; _longitude=lon; _h=h;
+  }
+
+  /*sqrt for integer*/
   int isrqt(uint32_t n) {
     int x,x1;
 
@@ -113,7 +119,7 @@ class GPSPosition {
   }
 };
 
-class GPS : public Element {
+class GPS : public BRNElement {
 
  public:
 
@@ -146,7 +152,6 @@ class GPS : public Element {
 
  public:
   int _gpsmode;
-  int _debug;
 
   String _gpsdevice;
   IPAddress _gpsd_ip;

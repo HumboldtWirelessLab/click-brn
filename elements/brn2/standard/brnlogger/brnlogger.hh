@@ -144,6 +144,9 @@ public:
   inline void info(const char* format, ...) const;
   inline void debug(const char* format, ...) const;
 
+  static void chatter(const char *fmt, ...);
+
+
 protected:
   void log(int level, const char* format, va_list ptr) const;
 

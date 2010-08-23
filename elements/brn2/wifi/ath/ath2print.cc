@@ -36,7 +36,8 @@ CLICK_DECLS
 
 Ath2Print::Ath2Print() :
   _txprint(true),
-  _rxprint(true)
+  _rxprint(true),
+  _nowrap(false)
 
 {
 }
@@ -58,6 +59,7 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
                      "TIMESTAMP", cpkN, cpBool, &_timestamp,
                      "PRINTTX", cpkN, cpBool, &_txprint,
                      "PRINTRX", cpkN, cpBool, &_rxprint,
+                     "NOWRAP", cpkN, cpBool, &_nowrap,
                      cpEnd);
   return ret;
 }
@@ -197,10 +199,14 @@ Ath2Print::simple_action(Packet *p)
       }
     }
 
-    if ( _label[0] != 0 )
-      click_chatter("%s: %s\n", _label.c_str(),sa_ath1.c_str());
-    else
-      click_chatter("%s\n", sa_ath1.c_str());
+    if ( ! _nowrap ) {
+      if ( _label[0] != 0 )
+        click_chatter("%s: %s\n", _label.c_str(),sa_ath1.c_str());
+      else
+        click_chatter("%s\n", sa_ath1.c_str());
+    } else {
+      BrnLogger("%s",sa_ath1.c_str());
+    }
   }
   else
   {

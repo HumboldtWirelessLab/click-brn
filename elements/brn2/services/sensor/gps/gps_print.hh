@@ -18,50 +18,47 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef CLICK_ATH2PRINT_HH
-#define CLICK_ATH2PRINT_HH
+#ifndef GPSPRINTELEMENT_HH
+#define GPSPRINTELEMENT_HH
 #include <click/element.hh>
-#include <click/confparse.hh>
+#include "elements/brn2/brnelement.hh"
+
+#include "gps_info.hh"
 
 CLICK_DECLS
 
 /*
 =c
-Ath2Print()
+GPSPrint()
 
-
+Strips outermost BRN header
 
 =d
 
+Removes the outermost BRN header from this packet.
 
-=a 
+=a CheckBRNHeader
 
 */
 
-class Ath2Print : public Element {
+class GPSPrint : public BRNElement {
 
-  public:
+ public:
 
-    Ath2Print();
-    ~Ath2Print();
+  GPSPrint();
+  ~GPSPrint();
 
-    const char *class_name() const	{ return "Ath2Print"; }
-    const char *port_count() const  { return "1/1-2"; }
+  const char *class_name() const  { return "GPSPrint"; }
+  const char *port_count() const  { return PORTS_1_1; }
 
-    int configure(Vector<String> &conf, ErrorHandler* errh);
+  int configure(Vector<String> &conf, ErrorHandler* errh);
 
-    Packet *simple_action(Packet *);
+  Packet *smaction(Packet *);
 
-    bool _timestamp;
+  void push(int, Packet *p);
+  Packet *pull(int);
 
-  private:
-    String _label;
-    bool _includeath;
-
-    bool _txprint;
-    bool _rxprint;
-
-    bool _nowrap;
+  bool _nowrap;
 };
 
 CLICK_ENDDECLS

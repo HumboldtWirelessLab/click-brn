@@ -69,6 +69,8 @@ union addr {
 #define BRN_PORT_TFTP                51 /*0x33*/
 #define BRN_PORT_FLOW                52 /*0x34*/
 #define BRN_PORT_COMPRESSION         53 /*0x35*/
+/*Info*/
+#define BRN_PORT_NODEINFO            60 /*0x3c*/
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0

@@ -18,51 +18,13 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef CLICK_ATH2PRINT_HH
-#define CLICK_ATH2PRINT_HH
-#include <click/element.hh>
-#include <click/confparse.hh>
+#ifndef GPSINFO_HH
+#define GPSINFO_HH
 
-CLICK_DECLS
-
-/*
-=c
-Ath2Print()
-
-
-
-=d
-
-
-=a 
-
-*/
-
-class Ath2Print : public Element {
-
-  public:
-
-    Ath2Print();
-    ~Ath2Print();
-
-    const char *class_name() const	{ return "Ath2Print"; }
-    const char *port_count() const  { return "1/1-2"; }
-
-    int configure(Vector<String> &conf, ErrorHandler* errh);
-
-    Packet *simple_action(Packet *);
-
-    bool _timestamp;
-
-  private:
-    String _label;
-    bool _includeath;
-
-    bool _txprint;
-    bool _rxprint;
-
-    bool _nowrap;
+struct gpsinfo_header {
+  uint32_t _lat;
+  uint32_t _long;
+  uint32_t _height;
 };
 
-CLICK_ENDDECLS
 #endif

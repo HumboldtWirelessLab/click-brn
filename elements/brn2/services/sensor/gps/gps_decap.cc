@@ -18,51 +18,52 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef CLICK_ATH2PRINT_HH
-#define CLICK_ATH2PRINT_HH
-#include <click/element.hh>
-#include <click/confparse.hh>
+/*
+ * stripbrnheader.{cc,hh} -- element removes (leading) BRN header at offset position 0.
+ */
+
+#include <click/config.h>
+
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "gps_info.hh"
+#include "gps_decap.hh"
 
 CLICK_DECLS
 
-/*
-=c
-Ath2Print()
+GPSDecap::GPSDecap()
+{
+}
 
+GPSDecap::~GPSDecap()
+{
+}
 
+Packet *
+GPSDecap::smaction(Packet *p)
+{
+  p->pull(sizeof(struct gpsinfo_header));
 
-=d
+  return p;
+}
 
+void
+GPSDecap::push(int, Packet *p)
+{
+  if (Packet *q = smaction(p))
+    output(0).push(q);
+}
 
-=a 
-
-*/
-
-class Ath2Print : public Element {
-
-  public:
-
-    Ath2Print();
-    ~Ath2Print();
-
-    const char *class_name() const	{ return "Ath2Print"; }
-    const char *port_count() const  { return "1/1-2"; }
-
-    int configure(Vector<String> &conf, ErrorHandler* errh);
-
-    Packet *simple_action(Packet *);
-
-    bool _timestamp;
-
-  private:
-    String _label;
-    bool _includeath;
-
-    bool _txprint;
-    bool _rxprint;
-
-    bool _nowrap;
-};
+Packet *
+GPSDecap::pull(int)
+{
+  if (Packet *p = input(0).pull())
+    return smaction(p);
+  else
+    return 0;
+}
 
 CLICK_ENDDECLS
-#endif
+EXPORT_ELEMENT(GPSDecap)
+ELEMENT_MT_SAFE(GPSDecap)
