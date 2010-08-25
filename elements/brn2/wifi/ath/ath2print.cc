@@ -37,6 +37,8 @@
 CLICK_DECLS
 
 Ath2Print::Ath2Print() :
+  _includeath(true),
+  _timestamp(false),
   _txprint(true),
   _rxprint(true),
   _parser(false),
@@ -166,7 +168,7 @@ Ath2Print::simple_action(Packet *p)
 
       /*framelen of 0 indicates RX-Frame. If len is != 0 then it's a TXFeedback*/
 
-      sa_ath1 << "ATH1: ";
+      sa_ath1 << "ATH: ";
 
       if (desc->frame_len == 0)
       {
@@ -276,9 +278,9 @@ Ath2Print::simple_action(Packet *p)
       click_chatter("%s %s %s", sa_time_stamp.c_str(), sa_ath1.c_str(), sa_ath2.c_str());
   } else {
     if ( _label[0] != 0 )
-      BrnLogger::chatter("%s: %s %s %s", _label.c_str(), sa_time_stamp.c_str(), sa_ath1.c_str(), sa_ath2.c_str());
+      BrnLogger::chatter("%s: %s %s %s ", _label.c_str(), sa_time_stamp.c_str(), sa_ath1.c_str(), sa_ath2.c_str());
     else
-      click_chatter("%s %s %s", sa_time_stamp.c_str(), sa_ath1.c_str(), sa_ath2.c_str());
+      BrnLogger::chatter("%s %s %s ", sa_time_stamp.c_str(), sa_ath1.c_str(), sa_ath2.c_str());
   }
 
   return p;
