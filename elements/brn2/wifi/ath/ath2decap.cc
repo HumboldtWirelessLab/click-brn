@@ -30,6 +30,7 @@
 #include <elements/wifi/athdesc.h>
 #include <elements/brn2/wifi/brnwifi.h>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "ath2decap.hh"
 #include "ath2_desc.h"
@@ -38,6 +39,7 @@ CLICK_DECLS
 
 Ath2Decap::Ath2Decap()
 {
+  BRNElement::init();
 }
 
 Ath2Decap::~Ath2Decap()
@@ -96,10 +98,18 @@ Ath2Decap::simple_action(Packet *p)
     eh = WIFI_EXTRA_ANNO(q);
     memset(eh, 0, sizeof(click_wifi_extra));
     eh->magic = WIFI_EXTRA_MAGIC;
+
     if (desc->frame_len == 0) {
       struct ar5212_rx_status *rx_desc = (struct ar5212_rx_status *) (q->data() + 16);
       /* rx */
       eh->rate = ratecode_to_dot11(rx_desc->rx_rate);
+
+      if ( eh->rate == 0 ) {
+        BRN_INFO("Unknown ratecode: %d",rx_desc->rx_rate);
+        eh->flags |= WIFI_EXTRA_RX_ERR;
+        eh->flags |= WIFI_EXTRA_RX_ZERORATE_ERR;
+      }
+
       eh->rssi = rx_desc->rx_rssi;
       if (!rx_desc->rx_ok) {
         eh->flags |= WIFI_EXTRA_RX_ERR;
@@ -193,6 +203,12 @@ Ath2Decap::simple_action(Packet *p)
   q->pull(sizeof(struct ath2_header));
 
   return q;
+}
+
+void
+Ath2Decap::add_handlers()
+{
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

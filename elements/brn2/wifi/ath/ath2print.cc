@@ -164,7 +164,7 @@ Ath2Print::simple_action(Packet *p)
     {
       struct ar5212_desc *desc = (struct ar5212_desc *) (q->data() + 8);
 
-      /*framelen of 0 indicates TXFeedback*/
+      /*framelen of 0 indicates RX-Frame. If len is != 0 then it's a TXFeedback*/
 
       sa_ath1 << "ATH1: ";
 

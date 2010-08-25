@@ -16,6 +16,7 @@ WifiErrorClassifier::WifiErrorClassifier()
     _p_fifo(0),
     _p_decrypt(0),
     _p_mic(0),
+    _p_zerorate(0),
     _p_unknown(0)
 {
 }
@@ -31,7 +32,19 @@ WifiErrorClassifier::simple_action(Packet *p)
 
   if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_ERR) )
   {
-    if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_CRC_ERR) )
+
+    if ( ceha->flags & WIFI_EXTRA_RX_ZERORATE_ERR )
+    {
+      _p_zerorate++;
+      if ( noutputs() > 6 )
+        output(6).push(p);
+      else
+        p->kill();
+
+      return 0;
+    }
+
+    if ( ceha->flags & WIFI_EXTRA_RX_CRC_ERR )
     {
       _p_crc++;
       if ( noutputs() > 1 )
@@ -42,7 +55,7 @@ WifiErrorClassifier::simple_action(Packet *p)
       return 0;
     }
 
-    if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_PHY_ERR) )
+    if ( ceha->flags & WIFI_EXTRA_RX_PHY_ERR )
     {
       _p_phy++;
       if ( noutputs() > 2 )
@@ -53,7 +66,7 @@ WifiErrorClassifier::simple_action(Packet *p)
       return 0;
     }
 
-    if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_FIFO_ERR) )
+    if ( ceha->flags & WIFI_EXTRA_RX_FIFO_ERR )
     {
       _p_fifo++;
       if ( noutputs() > 3 )
@@ -64,7 +77,7 @@ WifiErrorClassifier::simple_action(Packet *p)
       return 0;
     }
 
-    if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_DECRYPT_ERR) )
+    if ( ceha->flags & WIFI_EXTRA_RX_DECRYPT_ERR )
     {
       _p_decrypt++;
       if ( noutputs() > 4 )
@@ -75,7 +88,7 @@ WifiErrorClassifier::simple_action(Packet *p)
       return 0;
     }
 
-    if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_MIC_ERR) )
+    if ( ceha->flags & WIFI_EXTRA_RX_MIC_ERR )
     {
       _p_mic++;
       if ( noutputs() > 5 )
@@ -87,8 +100,8 @@ WifiErrorClassifier::simple_action(Packet *p)
     }
 
     _p_unknown++;
-    if ( noutputs() > 6 )
-      output(6).push(p);
+    if ( noutputs() > 7 )
+      output(7).push(p);
     else {
       click_chatter("Discard unknown error");
       p->kill();

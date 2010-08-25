@@ -21,6 +21,7 @@
 #ifndef CLICK_ATH2DECAP_HH
 #define CLICK_ATH2DECAP_HH
 #include <click/element.hh>
+#include "elements/brn2/brnelement.hh"
 CLICK_DECLS
 
 /*
@@ -36,7 +37,7 @@ Ath2Decap()
 
 */
 
-class Ath2Decap : public Element {
+class Ath2Decap : public BRNElement {
 
   public:
 
@@ -45,6 +46,8 @@ class Ath2Decap : public Element {
 
     const char *class_name() const	{ return "Ath2Decap"; }
     const char *port_count() const  { return "1/1-3"; }
+
+    void add_handlers();
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
 
