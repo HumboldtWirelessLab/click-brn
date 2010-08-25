@@ -142,8 +142,13 @@ Ath2Decap::simple_action(Packet *p)
   }
   else                                                                      //RX
   {
+    bool rx_error = true;
     switch (ath2_h->anno.rx.rs_status) {
-      //case 0:   //OK
+      case 0:   //OK
+          {
+            rx_error = false;
+            break; //nothing to do
+          }
       case 1:   //CRC
           {
             eh->flags |= WIFI_EXTRA_RX_CRC_ERR;
@@ -154,10 +159,30 @@ Ath2Decap::simple_action(Packet *p)
             eh->flags |= WIFI_EXTRA_RX_PHY_ERR;
             break;
           }
-      //case 4:  //FIFO
-      //case 8:  //DECRYPT
-      //case 16: //MIC
+      case 4:  //FIFO
+          {
+            eh->flags |= WIFI_EXTRA_RX_FIFO_ERR;
+            break;
+          }
+      case 8:  //DECRYPT
+          {
+            eh->flags |= WIFI_EXTRA_RX_DECRYPT_ERR;
+            break;
+          }
+      case 16: //MIC
+          {
+            eh->flags |= WIFI_EXTRA_RX_MIC_ERR;
+            break;
+          }
+      default:
+          rx_error = false;
     }
+
+    if ( ! rx_error && ( eh->flags & WIFI_EXTRA_RX_PHY_ERR ) ) {
+      click_chatter("ERROR mismatch");
+      exit(0);
+    }
+
     eh->silence = ath2_h->anno.rx.rs_noise;
     eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
 

@@ -62,7 +62,7 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
                      "TIMESTAMP", cpkN, cpBool, &_timestamp,
                      "PRINTTX", cpkN, cpBool, &_txprint,
                      "PRINTRX", cpkN, cpBool, &_rxprint,
-                     "PARSER", 
+//                     "PARSER", 
                      "NOWRAP", cpkN, cpBool, &_nowrap,
                      cpEnd);
   return ret;

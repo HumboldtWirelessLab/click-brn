@@ -46,8 +46,6 @@ class BRN2PrintWifi : public Element {
   bool _print_anno;
   bool _print_checksum;
   bool _timestamp;
-
-  EtherAddress _etheraddr;
 };
 
 CLICK_ENDDECLS

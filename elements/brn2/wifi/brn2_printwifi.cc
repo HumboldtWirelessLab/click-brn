@@ -28,12 +28,10 @@
 #include <click/packet_anno.hh>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
+#include "elements/brn2/wifi/brnwifi.h"
 #include "brn2_printwifi.hh"
+
 CLICK_DECLS
-
-
-#define min(x,y)      ((x)<(y) ? (x) : (y))
-#define max(x,y)      ((x)>(y) ? (x) : (y))
 
 BRN2PrintWifi::BRN2PrintWifi()
   : _print_anno(false),
@@ -49,21 +47,26 @@ BRN2PrintWifi::~BRN2PrintWifi()
 int
 BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  _etheraddr = EtherAddress();
   int ret;
   _timestamp = false;
   ret = cp_va_kparse(conf, this, errh,
       "LABEL", cpkP, cpString, &_label,
-      "ETHERADDRESS", cpkP, cpEtherAddress, &_etheraddr,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
       cpEnd);
   return ret;
+}
+
+bool
+valid_ssid(String *ssid)
+{
+  return ssid->data()[0] > 31;
 }
 
 String
 BRN2PrintWifi::unparse_beacon(Packet *p) {
   uint8_t *ptr;
   struct click_wifi *w = (struct click_wifi *) p->data();
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   StringAccum sa;
 
   ptr = (uint8_t *) (w+1);
@@ -122,13 +125,20 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
 
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
-    ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
+    ssid = String((char *) ssid_l + 2, WIFI_MIN((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
   if (ssid == "") {
     sa << "(none)";
   } else {
-    sa << ssid;
+    if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
+      sa << "empty";
+    else {
+      if ( valid_ssid(&ssid) )
+        sa << ssid;
+      else
+        sa << "invalid_ssid";
+    }
   }
 
   int chan = (ds_l) ? ds_l[2] : 0;
@@ -138,7 +148,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   Vector<int> basic_rates;
   Vector<int> rates;
   if (rates_l) {
-    for (int x = 0; x < min((int)rates_l[1], WIFI_RATE_SIZE); x++) {
+    for (int x = 0; x < WIFI_MIN((int)rates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = rates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {
@@ -151,7 +161,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
 
 
   if (xrates_l) {
-    for (int x = 0; x < min((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
+    for (int x = 0; x < WIFI_MIN((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = xrates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {
@@ -276,13 +286,13 @@ BRN2PrintWifi::get_ssid(u_int8_t *ptr) {
   if (ptr[0] != WIFI_ELEMID_SSID) {
     return "(invalid ssid)";
   }
-  return String((char *) ptr + 2, min((int)ptr[1], WIFI_NWID_MAXSIZE));  
+  return String((char *) ptr + 2, WIFI_MIN((int)ptr[1], WIFI_NWID_MAXSIZE));
 }
 
 Vector<int>
 BRN2PrintWifi::get_rates(u_int8_t *ptr) {
   Vector<int> rates;
-  for (int x = 0; x < min((int)ptr[1], WIFI_RATES_MAXSIZE); x++) {
+  for (int x = 0; x < WIFI_MIN((int)ptr[1], WIFI_RATES_MAXSIZE); x++) {
     uint8_t rate = ptr[x + 2];
     rates.push_back(rate);
   }
@@ -350,14 +360,13 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
   sa << "Mb ";
 
-  len = sprintf(sa.reserve(9), "+%2d/", ceh->rssi);
+  len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
   sa.adjust_length(len);
 
   len = sprintf(sa.reserve(9), "%2d | ", ((signed char)ceh->silence));
   sa.adjust_length(len);
 
-  len = sprintf(sa.reserve(6), "Type ");
-  sa.adjust_length(len);
+
 
   switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
   case WIFI_FC1_DIR_NODS:
@@ -406,7 +415,17 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << "assoc_req ";
       sa << "listen_int " << l_int << " ";
       sa << capability_string(capability);
-      sa << " ssid " << ssid;
+
+      if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
+        sa << " ssid empty";
+      else
+      {
+        if ( valid_ssid(&ssid) )
+          sa << " ssid " << ssid;
+        else
+          sa << " ssid invalid_ssid";
+      }
+
       sa << " rates " << rates_s;
       sa << " ";
       break;
@@ -432,11 +451,20 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_PROBE_REQ:      {
       sa << "probe_req "; 
       String ssid = get_ssid(ptr);
+
       ptr += ptr[1] + 2;
 
       Vector<int> rates = get_rates(ptr);
       String rates_s = rates_string(rates);
-      sa << "ssid " << ssid;
+      if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
+        sa << "ssid empty";
+      else {
+        if ( valid_ssid(&ssid) )
+          sa << "ssid " << ssid;
+        else
+          sa << "ssid invalid_ssid";
+      }
+
       sa << " " << rates_s << " ";
       break;
 
@@ -503,13 +531,10 @@ BRN2PrintWifi::simple_action(Packet *p)
     sa << "unknown-type-" << (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) << " ";
   }
 
-
-
   if (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP) {
 
     click_chatter("%s\n", sa.c_str());
     return p;
-
   }
 
 
@@ -561,23 +586,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
  done:
-  StringAccum sb; // label:
-  sb.reserve(100);
-  char *buf = sb.data();
-  int pos = 0;
-
-  for (unsigned i = sizeof(struct click_wifi) + 6; i < ((sizeof(struct click_wifi) + 6) + 16) && i < p->length(); i++) {
-    sprintf(buf + pos, "%02x", p->data()[i] & 0xff);
-    pos += 2;
-    if (((i+2) % 4) == 3) buf[pos++] = ' ';
-  }
-  sb.adjust_length(pos);
-
-  if ( _etheraddr != EtherAddress() )
-    click_chatter("%s %s EXTRA: %s\n", _etheraddr.unparse().c_str(), sa.c_str(), sb.c_str());
-  else
-   click_chatter("%s EXTRA: %s\n", sa.c_str(), sb.c_str());
-
+  click_chatter("%s\n", sa.c_str());
   return p;
 }
 
