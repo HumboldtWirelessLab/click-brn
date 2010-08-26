@@ -14,7 +14,8 @@
 CLICK_DECLS
 
 BRN2PacketSource::BRN2PacketSource()
-  : _timer(this)
+  : _active(true),
+    _timer(this)
 {
 }
 
@@ -27,12 +28,13 @@ int
 BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "SIZE", cpkP+cpkM, cpInteger, /*"size",*/ &_size,
-      "INTERVAL", cpkP+cpkM, cpInteger, /*"interval",*/ &_interval,
-      "MAXSEQ", cpkP+cpkM, cpInteger, /*"_max-seq_num",*/ &_max_seq_num,
-      "CHANNEL", cpkP+cpkM, cpInteger, /*"_channel",*/ &_channel,
-      "BITRATE", cpkP+cpkM, cpInteger, /*"_bitrate",*/ &_bitrate,
-      "POWER", cpkP+cpkM, cpInteger, /*"_power",*/ &_power,
+      "SIZE", cpkP+cpkM, cpInteger, &_size,
+      "INTERVAL", cpkP+cpkM, cpInteger, &_interval,
+      "MAXSEQ", cpkP+cpkM, cpInteger, &_max_seq_num,
+      "CHANNEL", cpkP+cpkM, cpInteger, &_channel,
+      "BITRATE", cpkP+cpkM, cpInteger, &_bitrate,
+      "POWER", cpkP+cpkM, cpInteger, &_power,
+      "ACTIVE", cpkP, cpBool, &_active,
       cpEnd) < 0)
         return -1;
  
@@ -62,14 +64,16 @@ BRN2PacketSource::run_timer(Timer *t)
 
   _timer.reschedule_after_msec(_interval);
 
-  packet_out = createpacket(_size);
+  if ( _active ) {
+    packet_out = createpacket(_size);
 
-  if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
-   _seq_num = 1;
-  else
-   _seq_num++;
+    if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
+    _seq_num = 1;
+    else
+    _seq_num++;
 
-  output(0).push(packet_out);
+    output(0).push(packet_out);
+  }
 }
 
 void BRN2PacketSource::push( int port, Packet *packet )
@@ -111,17 +115,52 @@ BRN2PacketSource::createpacket(int size)
   return(new_packet);
 }
 
+enum {
+  H_ACTIVE,
+};
+
 static String
-read_handler(Element *, void *)
+read_param(Element *e, void *thunk)
 {
-  return "false\n";
+  BRN2PacketSource *ps = (BRN2PacketSource *)e;
+
+  switch ((uintptr_t) thunk) {
+    case H_ACTIVE: {
+      StringAccum sa;
+      sa << ps->_active << "\n";
+      return sa.take_string();
+    }
+    default:
+      return String();
+  }
 }
+
+static int 
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
+{
+  BRN2PacketSource *ps = (BRN2PacketSource *)e;
+  String s = cp_uncomment(in_s);
+  switch((long)vparam) {
+    case H_ACTIVE: {
+      Vector<String> args;
+      cp_spacevec(in_s, args);
+
+      bool a;
+      cp_bool(args[0] ,&a);
+      ps->_active = a;
+      break;
+    }
+  }
+
+  return 0;
+}
+
 
 void
 BRN2PacketSource::add_handlers()
 {
-  // needed for QuitWatcher
-  add_read_handler("scheduled", read_handler, 0);
+  add_read_handler("active", read_param, H_ACTIVE);
+  add_write_handler("active", write_param, H_ACTIVE);
 }
 
 CLICK_ENDDECLS

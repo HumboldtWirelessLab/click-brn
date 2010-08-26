@@ -41,6 +41,8 @@ class BRN2PacketSource : public Element {
   void add_handlers();
   void push( int port, Packet *packet );
 
+  bool _active;
+
  private:
   int _interval;
 
