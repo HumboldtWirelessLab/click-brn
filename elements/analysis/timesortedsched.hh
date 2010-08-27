@@ -8,7 +8,7 @@ CLICK_DECLS
 /*
 =c
 
-TimeSortedSched(I<KEYWORDS>)
+TimeSortedSched(I<keywords> STOP, BUFFER)
 
 =s timestamps
 
@@ -23,6 +23,11 @@ one output, zero or more inputs
 TimeSortedSched responds to pull requests by returning the chronologically
 next packet pulled from its inputs, determined by packet timestamps.
 
+TimeSortedSched expects its input packet streams to arrive sorted by
+timestamp.  If the C<well_ordered> handler returns "false", then one or more
+packet streams did not arrive correctly sorted by timestamp, so
+TimeSortedSched emitted some packets out of order.  (But see BUFFER, below.)
+
 TimeSortedSched listens for notification from its inputs to avoid useless
 pulls, and provides notification for its output.
 
@@ -35,6 +40,12 @@ Keyword arguments are:
 Boolean. If true, stop the driver when there are no packets available (and the
 upstream notifiers indicate that no packets will become available soon).
 Default is false.
+
+=item BUFFER
+
+Integer. Up to BUFFER packets per input are buffered within
+TimeSortedSched. Default BUFFER is 1. Higher BUFFER values let TimeSortedSched
+cope with minor reordering in its input streams.
 
 =back
 
@@ -55,6 +66,12 @@ stream, and stops the driver when all the files are exhausted.
   // ...
   tss -> ...;
 
+=h well_ordered r
+
+Returns a Boolean string. If "false", then TimeSortedSched's output was not
+properly sorted by increasing timestamp, because one or more of its input
+streams was not so sorted.
+
 =a
 
 FromDump
@@ -71,18 +88,39 @@ class TimeSortedSched : public Element { public:
     const char *flags() const		{ return "S0"; }
     void *cast(const char *);
 
-    int configure(Vector<String> &, ErrorHandler *);
-    int initialize(ErrorHandler *);
-    void cleanup(CleanupStage);
+    int configure(Vector<String> &conf, ErrorHandler *errh);
+    int initialize(ErrorHandler *errh);
+    void cleanup(CleanupStage stage);
+    void add_handlers();
 
     Packet *pull(int);
 
   private:
 
-    Packet **_vec;
-    NotifierSignal *_signals;
+    struct packet_s {
+	Packet *p;
+	int input;		// for space, consider using annotation?
+	static bool compare(packet_s &a, packet_s &b) {
+	    return a.p->timestamp_anno() < b.p->timestamp_anno();
+	}
+    };
+    struct input_s {
+	NotifierSignal signal;
+	int space;
+	int ready;
+    };
+
+    packet_s *_pkt;
+    int _npkt;
+
+    input_s *_input;
+    int _nready;
+
     Notifier _notifier;
+    int _buffer;
+    Timestamp _last_emission;
     bool _stop;
+    bool _well_ordered;
 
 };
 
