@@ -15,7 +15,11 @@ CLICK_DECLS
 
 BRN2PacketSource::BRN2PacketSource()
   : _active(true),
-    _timer(this)
+    _timer(this),
+    _burst(1),
+    _channel(0),
+    _bitrate(0),
+    _power(0)
 {
 }
 
@@ -31,9 +35,10 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "SIZE", cpkP+cpkM, cpInteger, &_size,
       "INTERVAL", cpkP+cpkM, cpInteger, &_interval,
       "MAXSEQ", cpkP+cpkM, cpInteger, &_max_seq_num,
-      "CHANNEL", cpkP+cpkM, cpInteger, &_channel,
-      "BITRATE", cpkP+cpkM, cpInteger, &_bitrate,
-      "POWER", cpkP+cpkM, cpInteger, &_power,
+      "BURST", cpkP+cpkM, cpInteger, &_burst,
+      "CHANNEL", cpkP, cpInteger, &_channel,
+      "BITRATE", cpkP, cpInteger, &_bitrate,
+      "POWER", cpkP, cpInteger, &_power,
       "ACTIVE", cpkP, cpBool, &_active,
       cpEnd) < 0)
         return -1;
@@ -44,6 +49,15 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2PacketSource::initialize(ErrorHandler *)
 {
+  uint16_t pshort;
+
+  pinfo.seq_num = 0;
+  pshort=_interval;
+  pinfo.interval = htons(pshort);
+  pinfo.channel = (uint8_t)_channel;
+  pinfo.bitrate = (uint8_t)_bitrate;
+  pinfo.power = (uint8_t)_power;
+
   click_random_srandom();
 
   if ( _interval > 0 ) {
@@ -65,14 +79,16 @@ BRN2PacketSource::run_timer(Timer *t)
   _timer.reschedule_after_msec(_interval);
 
   if ( _active ) {
-    packet_out = createpacket(_size);
+    for ( uint32_t i = 0; i < _burst; i++) {
+      packet_out = createpacket(_size);
 
-    if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
-    _seq_num = 1;
-    else
-    _seq_num++;
+      if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
+      _seq_num = 1;
+      else
+      _seq_num++;
 
-    output(0).push(packet_out);
+      output(0).push(packet_out);
+    }
   }
 }
 
@@ -82,35 +98,19 @@ void BRN2PacketSource::push( int port, Packet *packet )
     output(0).push(packet);
   else
     packet->kill();
-
 }
 
 Packet *
 BRN2PacketSource::createpacket(int size)
 {
-  //WritablePacket *new_packet = WritablePacket::make(size);
-  WritablePacket *new_packet = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
+  WritablePacket *new_packet = WritablePacket::make(64 /*headroom*/,NULL /* *data */, size, 32);
   uint8_t *new_packet_data = (uint8_t*)new_packet->data();
-
-  uint16_t pshort;
-  struct packetinfo newpi;
 
   memset(new_packet_data,0,size);
 
-  newpi.seq_num = htonl(_seq_num);
-  pshort=_interval;
-  newpi.interval = /*htons(*/pshort/*)*/;
-  newpi.channel = (uint8_t)_channel;
-  newpi.bitrate = (uint8_t)_bitrate;
-  newpi.power = (uint8_t)_power;
+  pinfo.seq_num = htonl(_seq_num);
 
-  //memcpy(&(new_packet_data[2]), &newpi, sizeof(struct packetinfo));
-
-  memcpy(&(new_packet_data[2]), &newpi.seq_num, sizeof(uint32_t));
-  memcpy(&(new_packet_data[2 + sizeof(uint32_t)]), &newpi.interval, sizeof(uint16_t));
-  memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) ]), &newpi.channel, sizeof(uint8_t));
-  memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) ]), &newpi.bitrate, sizeof(uint8_t));
-  memcpy(&(new_packet_data[2 + sizeof(uint32_t) + sizeof(uint16_t) + sizeof(uint8_t) + sizeof(uint8_t) ]), &newpi.power, sizeof(uint8_t));
+  memcpy(&(new_packet_data[2]), &pinfo, sizeof(struct packetinfo));
 
   return(new_packet);
 }

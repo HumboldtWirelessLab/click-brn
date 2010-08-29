@@ -52,9 +52,9 @@ class BRN2PacketSource : public Element {
 
   uint32_t _max_seq_num;
 
-  uint32_t _channel,_bitrate,_power;
-
   Timer _timer;
+
+  uint32_t _burst,_channel,_bitrate,_power;
 
   Packet *createpacket(int size);
 
@@ -64,7 +64,10 @@ class BRN2PacketSource : public Element {
     uint8_t channel;
     uint8_t bitrate;
     uint8_t power;
-  };
+    uint8_t reserved[3];
+  } __attribute__ ((packed));
+
+  struct packetinfo pinfo;
 
 };
 
