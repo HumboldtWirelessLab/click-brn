@@ -54,7 +54,7 @@ for op in $@; do
   
     case "$op" in
 	"kernel")
-	    CONFOPTION="--enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --enable-fixincludes --disable-userlevel"
+	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --enable-fixincludes --disable-userlevel"
 	    ;;
 	"jist")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\"-g $CXXFLAGS\""

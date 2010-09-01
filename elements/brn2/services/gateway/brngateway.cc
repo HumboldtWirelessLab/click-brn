@@ -27,7 +27,7 @@
 #include <click/etheraddress.hh>
 #include <click/router.hh>
 // memcpy
-#include <string.h>
+#include <click/string.hh>
 
 // to generate dht packets
 #include "elements/brn2/dht/storage/dhtoperation.hh"
