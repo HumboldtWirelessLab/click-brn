@@ -58,7 +58,7 @@ fi
 #******************************** B U I L D ****************************
 #***********************************************************************
 
-if [ "x$BUILDCLICK" = "xyes" }; then
+if [ "x$BUILDCLICK" = "xyes" ]; then
   (cd click-brn;touch ./configure; /bin/sh brn-conf.sh ns2_userlevel; make)
 fi
 
