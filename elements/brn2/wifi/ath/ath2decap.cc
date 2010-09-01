@@ -190,7 +190,9 @@ Ath2Decap::simple_action(Packet *p)
 
     if ( ! rx_error && ( eh->flags & WIFI_EXTRA_RX_PHY_ERR ) ) {
       click_chatter("ERROR mismatch");
+#ifndef CLICK_LINUXMODULE
       exit(0);
+#endif
     }
 
     eh->silence = ath2_h->anno.rx.rs_noise;
