@@ -19,6 +19,15 @@ case "$SIGN" in
 esac
 
 
+echo "Make sure that you have the following packages:"
+echo " * g++"
+echo " * autoconf"
+echo " * libx11-dev"
+echo " * libxt-dev"
+echo " * libxmu-dev"
+echo " * flex"
+echo " * bison"
+
 FULLFILENAME=`basename $0`
 FULLFILENAME=$DIR/$FULLFILENAME
 
