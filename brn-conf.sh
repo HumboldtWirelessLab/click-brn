@@ -42,7 +42,11 @@ else
   if [ "x$TARGET" = "xarm" ]; then
     CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
   else
-    CONFOPTION="$CONFOPTION --enable-tools=host"
+    if [ "x$TARGET" = "xi386" ]; then
+      CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host"
+    else
+      CONFOPTION="$CONFOPTION --enable-tools=host"
+    fi
   fi
 fi
 
