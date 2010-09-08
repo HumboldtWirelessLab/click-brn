@@ -73,7 +73,8 @@ OLSRTCGenerator::run_timer(Timer *)
 	if (_node_is_mpr)
 	{
 		output(0).push(generate_tc());
-		int period=(int)(_period*.95+(click_random() % (_period/10)));
+//		int period=(int)(_period*.95+(click_random() % (_period/10))); //Robert: ohh float
+		int period=(int)((_period*95+( 100 * (click_random() % (_period/10))))/100);
 		//click_chatter ("emitting other tc after %d ms\n",period);
 		_timer.reschedule_after_msec(period);
 	}

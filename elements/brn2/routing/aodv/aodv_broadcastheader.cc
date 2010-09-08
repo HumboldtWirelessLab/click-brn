@@ -11,7 +11,7 @@
 CLICK_DECLS
 
 Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddress & myEA, int ttl){
-	static const IPAddress destination("255.255.255.255"); // broadcast
+	IPAddress destination("255.255.255.255"); // broadcast
 	
 	WritablePacket * writable = packet->push(sizeof(click_udp) + sizeof(click_ip));
 	click_ip *ip = reinterpret_cast<click_ip *>(writable->data());
@@ -29,9 +29,9 @@ Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddre
 	ip->ip_ttl = ttl;
 	ip->ip_sum = 0;
 	#if HAVE_FAST_CHECKSUM && FAST_CHECKSUM_ALIGNED
-	if (_aligned)
-		ip->ip_sum = ip_fast_csum((unsigned char *)ip, sizeof(click_ip) >> 2);
-	else
+//	if (_aligned) //TODO: Robert _aligned is not declard in this scope. Where does it come from ???
+//		ip->ip_sum = ip_fast_csum((unsigned char *)ip, sizeof(click_ip) >> 2);
+//	else
 		ip->ip_sum = click_in_cksum((unsigned char *)ip, sizeof(click_ip));
 	#elif HAVE_FAST_CHECKSUM
 	ip->ip_sum = ip_fast_csum((unsigned char *)ip, sizeof(click_ip) >> 2);

@@ -81,7 +81,11 @@ done
 
 echo "./configure $CONFOPTION"
 
-eval ./configure $CONFOPTION 
+if [ "x$TARGET" = "xmips" ] || [ "x$TARGET" = "xarm" ]; then
+  eval ARCH=$TARGET ./configure $CONFOPTION 
+else
+  eval ./configure $CONFOPTION 
+fi
 
 exit 0
 

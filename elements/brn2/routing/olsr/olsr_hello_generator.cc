@@ -67,7 +67,8 @@ void
 OLSRHelloGenerator::run_timer(Timer *)
 {
 	output( 0 ).push( generate_hello() );
-	int period = ( int ) ( _period * .95 + ( click_random() % ( _period / 10 ) ) );
+//	int period = ( int ) ( _period * .95 + ( click_random() % ( _period / 10 ) ) ); //Robert: old
+	int period = ( int ) (( _period * 95 + ( 100 * (click_random() % ( _period / 10 ) ) ) ) / 100 ); //Robert: old
 	//click_chatter ("emitting other hello after %d ms\n",period);
 	_timer.reschedule_after_msec( period );
 }
