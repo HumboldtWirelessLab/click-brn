@@ -363,7 +363,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
   sa.adjust_length(len);
 
-  len = sprintf(sa.reserve(9), "%2d | ", ((signed char)ceh->silence));
+  len = sprintf(sa.reserve(9), "%02d | ", ((signed char)ceh->silence));
   sa.adjust_length(len);
 
 
