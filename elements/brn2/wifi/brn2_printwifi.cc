@@ -531,7 +531,8 @@ BRN2PrintWifi::simple_action(Packet *p)
     sa << "unknown-type-" << (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) << " ";
   }
 
-  if (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP) {
+  if ((type == WIFI_FC0_TYPE_MGT) &&
+      (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP)) {
 
     click_chatter("%s\n", sa.c_str());
     return p;
