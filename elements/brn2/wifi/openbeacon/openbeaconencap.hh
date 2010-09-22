@@ -29,7 +29,7 @@ class OpenBeaconEncap : public Element {
 
   private:
     int _debug;
-
+    ErrorHandler* _errh;
 };
 
 CLICK_ENDDECLS

@@ -8,7 +8,7 @@
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "openbeaconprint.hh"
-#include "ieee80211_monitor_openbeacon.h"
+#include "openbeacon_comunication.h"
 
 CLICK_DECLS
 
@@ -25,8 +25,9 @@ int
 OpenBeaconPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
-
+	
   ret = cp_va_kparse(conf, this, errh,
+		     "LABEL", cpkP, cpString, &_label,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
   return ret;
@@ -35,11 +36,21 @@ OpenBeaconPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 OpenBeaconPrint::simple_action(Packet *p)
 {
-  struct openbeacon_header *crh = (struct openbeacon_header *)p->data();
-
-  click_chatter("RSSI/Power: %d Rate: %d", crh->rssi, crh->rate);
-
-  return p;
+	Click2OBD_header *crh = (Click2OBD_header *)p->data();
+	StringAccum dmac_sa( sizeof(crh->openbeacon_dmac)*4 ), smac_sa( sizeof(crh->openbeacon_smac)*4);
+	unsigned int i, dlen=0, slen=0;
+	
+	for(i=0; i<sizeof(crh->openbeacon_dmac); i++)  {
+		dlen = sprintf(dmac_sa.reserve( 4 ), "%d:", crh->openbeacon_dmac[i]);
+		slen = sprintf(smac_sa.reserve( 4 ), "%d:", crh->openbeacon_smac[i]);
+			
+		if(i<sizeof(crh->openbeacon_dmac)-1) dmac_sa.adjust_length( dlen );	else dmac_sa.adjust_length( dlen-1 );
+		if(i<sizeof(crh->openbeacon_dmac)-1) smac_sa.adjust_length( slen ); 	else smac_sa.adjust_length( slen-1 );
+	}
+	
+	
+	click_chatter("%s# Power: %d, Rate: %d, Channel: %d, DEST: %s, SRC: %s",_label.c_str(), crh->power, crh->rate, crh->channel, dmac_sa.c_str(), smac_sa.c_str());
+	return p;
 }
 
 CLICK_ENDDECLS
