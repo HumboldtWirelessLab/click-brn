@@ -35,7 +35,8 @@ CLICK_DECLS
 
 BRN2PrintWifi::BRN2PrintWifi()
   : _print_anno(false),
-    _print_checksum(false)
+    _print_checksum(false),
+    _fixhighrssi(false)
 {
   _label = "";
 }
@@ -52,6 +53,7 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
   ret = cp_va_kparse(conf, this, errh,
       "LABEL", cpkP, cpString, &_label,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
+      "FIXHIGHRSSI", cpkP, cpBool, &_fixhighrssi,
       cpEnd);
   return ret;
 }
@@ -360,7 +362,10 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
   sa << "Mb ";
 
-  len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
+  if ( ( ceh->rssi > 200 ) && _fixhighrssi )
+    len = sprintf(sa.reserve(9), "+00/");
+  else
+    len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
   sa.adjust_length(len);
 
   len = sprintf(sa.reserve(9), "%02d | ", ((signed char)ceh->silence));
