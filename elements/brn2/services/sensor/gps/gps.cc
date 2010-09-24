@@ -74,7 +74,8 @@ GPS::push( int /*port*/, Packet *packet )
 
 enum {
   H_CART_COORD,
-  H_GPS_COORD
+  H_GPS_COORD,
+  H_SPEED
 };
 
 static String
@@ -94,6 +95,10 @@ read_position_param(Element *e, void *thunk)
       sa << pos->_latitude / 1000000 << "." << pos->_latitude % 1000000 << " ";
       sa << pos->_longitude / 1000000 << "." << pos->_longitude % 1000000 << " ";
       sa << pos->_h / 1000000 << "." << pos->_h % 1000000;
+      break;
+    }
+    case H_SPEED: {
+      sa << pos->_speed / 1000000 << "." << pos->_speed % 1000000 << " ";
       break;
     }
   }
@@ -172,6 +177,24 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
 
       break;
     }
+    case H_SPEED: {
+      String s = cp_uncomment(in_s);
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      int pointpos = args[0]. find_left('.',0);
+      String prespeed = args[0].substring(0, pointpos);
+      String postspeed = args[0].substring(pointpos+1,args[0].length());
+
+      int prei, posti;
+      cp_integer(prespeed, &prei);
+      cp_integer(postspeed, &posti);
+
+      int speed = prei * 1000000 + sizeup(posti);
+
+      pos->setSpeed(speed);
+      break;
+    }
   }
 
   return 0;
@@ -186,6 +209,8 @@ GPS::add_handlers()
   add_write_handler("cart_coord", write_position_param, H_CART_COORD);
   add_read_handler("gps_coord", read_position_param, H_GPS_COORD);
   add_write_handler("gps_coord", write_position_param, H_GPS_COORD);
+  add_read_handler("speed", read_position_param, H_SPEED);
+  add_write_handler("speed", write_position_param, H_SPEED);
 }
 
 CLICK_ENDDECLS

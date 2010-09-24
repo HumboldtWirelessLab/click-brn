@@ -25,6 +25,7 @@ struct gpsinfo_header {
   uint32_t _lat;
   uint32_t _long;
   uint32_t _height;
-};
+  uint32_t _speed;
+} __attribute__ ((packed));
 
 #endif

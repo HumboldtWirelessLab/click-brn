@@ -63,6 +63,7 @@ GPSEncap::smaction(Packet *p)
   gpsi->_lat = pos->_latitude;
   gpsi->_long = pos->_longitude;
   gpsi->_height = pos->_h;
+  gpsi->_speed = pos->_speed;
 
   return q;
 }

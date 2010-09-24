@@ -64,7 +64,8 @@ GPSPrint::smaction(Packet *p)
   StringAccum sa;
   sa << pos._latitude / 1000000 << "." << pos._latitude % 1000000 << " ";
   sa << pos._longitude / 1000000 << "." << pos._longitude % 1000000 << " ";
-  sa << pos._h / 1000000 << "." << pos._h % 1000000;
+  sa << pos._h / 1000000 << "." << pos._h % 1000000 << " ";
+  sa << pos._speed / 1000000 << "." << pos._speed % 1000000;
 
   if ( ! _nowrap ) {
     click_chatter("%s",sa.take_string().c_str());

@@ -46,6 +46,7 @@ struct gps_position {
   int x;
   int y;
   int z;
+  int speed;
 } __attribute__ ((packed));
 
 
@@ -54,6 +55,8 @@ class GPSPosition {
   int _latitude;
   int _longitude;
   int _h;
+
+  int _speed;
 
   int _x,_y,_z;
 
@@ -64,6 +67,7 @@ class GPSPosition {
     _longitude = 0;
     _h = 0;
     _z=0; _x=0; _y=0;
+    _speed = 0;
   }
 
   GPSPosition(struct gps_position *pos) {
@@ -109,6 +113,7 @@ class GPSPosition {
     pos->x = _x;
     pos->y = _y;
     pos->z = _z;
+    pos->speed = _speed;
   }
 
   void setPosition(struct gps_position *pos)
@@ -116,6 +121,12 @@ class GPSPosition {
     _x = pos->x;
     _y = pos->y;
     _z = pos->z;
+    _speed = pos->speed;
+  }
+
+  void setSpeed(int speed)
+  {
+    _speed = speed;
   }
 };
 
