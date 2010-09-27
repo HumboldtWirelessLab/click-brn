@@ -60,10 +60,10 @@ GPSEncap::smaction(Packet *p)
 
   WritablePacket *q = p->push(sizeof(struct gpsinfo_header));
   struct gpsinfo_header *gpsi = (struct gpsinfo_header *)q->data();
-  gpsi->_lat = pos->_latitude;
-  gpsi->_long = pos->_longitude;
-  gpsi->_height = pos->_h;
-  gpsi->_speed = pos->_speed;
+  gpsi->_lat = htonl(pos->_latitude.getPacketInt());
+  gpsi->_long = htonl(pos->_longitude.getPacketInt());
+  gpsi->_height = htonl(pos->_altitude.getPacketInt());
+  gpsi->_speed = htonl(pos->_speed.getPacketInt());
 
   return q;
 }

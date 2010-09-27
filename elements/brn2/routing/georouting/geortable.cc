@@ -187,8 +187,8 @@ GeorTable::get_routing_table()
 // Handler
 //-----------------------------------------------------------------------------
 static int
-write_addentry_param(const String &in_s, Element *e, void *vparam,
-                        ErrorHandler *errh)
+write_addentry_param(const String &in_s, Element *e, void */*vparam*/,
+                        ErrorHandler */*errh*/)
 {
   GeorTable *gt = (GeorTable *)e;
   EtherAddress ea;

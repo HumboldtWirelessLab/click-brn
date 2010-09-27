@@ -60,18 +60,24 @@ GPSPrint::smaction(Packet *p)
 {
   struct gpsinfo_header *gpsi = (struct gpsinfo_header *)p->data();
 
-  GPSPosition pos = GPSPosition(gpsi->_lat, gpsi->_long, gpsi->_height);
+  GPSPosition pos = GPSPosition(FixPointNumber(ntohl(gpsi->_lat)),
+                                FixPointNumber(ntohl(gpsi->_long)),
+                                FixPointNumber(ntohl(gpsi->_height)));
+
+  pos.setSpeed(ntohl(gpsi->_speed));
+
   StringAccum sa;
-  sa << pos._latitude / 1000000 << "." << pos._latitude % 1000000 << " ";
-  sa << pos._longitude / 1000000 << "." << pos._longitude % 1000000 << " ";
-  sa << pos._h / 1000000 << "." << pos._h % 1000000 << " ";
-  sa << pos._speed / 1000000 << "." << pos._speed % 1000000;
+  sa << pos._latitude.unparse() << " ";
+  sa << pos._longitude.unparse() << " ";
+  sa << pos._altitude.unparse() << " ";
+  sa << pos._speed.unparse();
 
   if ( ! _nowrap ) {
     click_chatter("%s",sa.take_string().c_str());
   } else {
     BrnLogger::chatter("%s ",sa.take_string().c_str());
   }
+
   return p;
 }
 

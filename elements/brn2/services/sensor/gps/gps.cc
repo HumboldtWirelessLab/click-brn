@@ -92,23 +92,17 @@ read_position_param(Element *e, void *thunk)
       break;
     }
     case H_GPS_COORD: {
-      sa << pos->_latitude / 1000000 << "." << pos->_latitude % 1000000 << " ";
-      sa << pos->_longitude / 1000000 << "." << pos->_longitude % 1000000 << " ";
-      sa << pos->_h / 1000000 << "." << pos->_h % 1000000;
+      sa << pos->_latitude.unparse() << " ";
+      sa << pos->_longitude.unparse() << " ";
+      sa << pos->_altitude.unparse();
       break;
     }
     case H_SPEED: {
-      sa << pos->_speed / 1000000 << "." << pos->_speed % 1000000 << " ";
-      break;
+      sa << pos->_speed.unparse();
+     break;
     }
   }
   return sa.take_string();
-}
-
-static int sizeup(int i) {
-  if ( i <= 0 ) return i;
-  while ( i < 100000 ) i *= 10;
-  return i;
 }
 
 static int
@@ -140,40 +134,11 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
       Vector<String> args;
       cp_spacevec(s, args);
 
-      int pointpos = args[0]. find_left('.',0);
-      String prep = args[0].substring(0, pointpos);
-      String postp = args[0].substring(pointpos+1,args[0].length());
-
-      int prei, posti;
-      cp_integer(prep, &prei);
-      cp_integer(postp, &posti);
-
-      x = prei * 1000000 + sizeup(posti);
-      //click_chatter("LAT: %s.%s  %d",prep.c_str(),postp.c_str(), x);
-
-      pointpos = args[1]. find_left('.',0);
-      prep = args[1].substring(0, pointpos);
-      postp = args[1].substring(pointpos+1,args[1].length());
-
-      cp_integer(prep, &prei);
-      cp_integer(postp, &posti);
-
-      y = prei * 1000000 + sizeup(posti);
-      //click_chatter("LONG: %s.%s %d",prep.c_str(),postp.c_str(), y);
-
       if ( args.size() > 2 ) {
-        pointpos = args[2]. find_left('.',0);
-        prep = args[2].substring(0, pointpos);
-        postp = args[2].substring(pointpos+1,args[2].length());
-        cp_integer(prep, &prei);
-        cp_integer(postp, &posti);
-
-        z = prei * 1000000 + sizeup(posti);
-      //  click_chatter("HEIGHT: %s.%s %d",prep.c_str(),postp.c_str(), z);
-      } else
-        z = 0;
-
-      pos->setGPSC(x,y,z);
+        pos->setGPSC(args[0], args[1], args[2]);
+      } else {
+        pos->setGPSC(args[0],args[1], "0.0");
+      }
 
       break;
     }
@@ -182,17 +147,7 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
       Vector<String> args;
       cp_spacevec(s, args);
 
-      int pointpos = args[0]. find_left('.',0);
-      String prespeed = args[0].substring(0, pointpos);
-      String postspeed = args[0].substring(pointpos+1,args[0].length());
-
-      int prei, posti;
-      cp_integer(prespeed, &prei);
-      cp_integer(postspeed, &posti);
-
-      int speed = prei * 1000000 + sizeup(posti);
-
-      pos->setSpeed(speed);
+      pos->setSpeed(args[0]);
       break;
     }
   }

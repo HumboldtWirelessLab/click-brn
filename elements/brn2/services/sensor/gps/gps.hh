@@ -25,7 +25,10 @@
 #include <click/vector.hh>
 #include <click/ipaddress.hh>
 
+#include <elements/brn2/standard/fixpointnumber.hh>
+
 #include <elements/brn2/brnelement.hh>
+
 
 CLICK_DECLS
 /*
@@ -52,40 +55,42 @@ struct gps_position {
 
 class GPSPosition {
  public:
-  int _latitude;
-  int _longitude;
-  int _h;
+   FixPointNumber _latitude;
+   FixPointNumber _longitude;
+   FixPointNumber _altitude;
 
-  int _speed;
+   FixPointNumber _speed;
 
   int _x,_y,_z;
 
   Timestamp gpstime;
 
   GPSPosition() {
-    _latitude = 0;
-    _longitude = 0;
-    _h = 0;
+    _latitude = FixPointNumber();
+    _longitude = FixPointNumber();
+    _altitude = FixPointNumber();
+
+    _speed = FixPointNumber();
+
     _z=0; _x=0; _y=0;
-    _speed = 0;
   }
 
   GPSPosition(struct gps_position *pos) {
     _z=pos->z; _x=pos->x; _y=pos->y;
   }
 
-  GPSPosition(int lat, int lon, int h) {
+  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber h) {
     _latitude = lat;
     _longitude = lon;
-    _h = h;
+    _altitude = h;
   }
 
   void setCC(int x, int y, int z) {
     _z=z; _x=x; _y=y;
   }
 
-  void setGPSC(int lat, int lon, int h) {
-    _latitude=lat; _longitude=lon; _h=h;
+  void setGPSC(String lat, String lon, String alt) {
+    _latitude.fromString(lat); _longitude.fromString(lon); _altitude.fromString(alt);
   }
 
   /*sqrt for integer*/
@@ -113,7 +118,7 @@ class GPSPosition {
     pos->x = _x;
     pos->y = _y;
     pos->z = _z;
-    pos->speed = _speed;
+    pos->speed = _speed.getPacketInt();
   }
 
   void setPosition(struct gps_position *pos)
@@ -121,12 +126,17 @@ class GPSPosition {
     _x = pos->x;
     _y = pos->y;
     _z = pos->z;
-    _speed = pos->speed;
+    _speed.setPacketInt(pos->speed);
   }
 
   void setSpeed(int speed)
   {
-    _speed = speed;
+    _speed.setPacketInt(speed);
+  }
+
+  void setSpeed(String speed)
+  {
+    _speed.fromString(speed);
   }
 };
 
