@@ -247,6 +247,7 @@ Ath2Print::simple_action(Packet *p)
       sa_ath2 << " Noise: ";sa_ath2 << (int)ath2_h->anno.tx.ts_noise;
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_mactime;
+      sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_channel;
     }
     else
     {
@@ -268,6 +269,7 @@ Ath2Print::simple_action(Packet *p)
       sa_ath2 << " Noise: ";sa_ath2 << (int)ath2_h->anno.rx.rs_noise;
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_mactime;
+      sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_channel;
     }
   }
 
