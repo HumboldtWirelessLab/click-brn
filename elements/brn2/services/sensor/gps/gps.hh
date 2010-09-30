@@ -90,7 +90,9 @@ class GPSPosition {
   }
 
   void setGPSC(String lat, String lon, String alt) {
-    _latitude.fromString(lat); _longitude.fromString(lon); _altitude.fromString(alt);
+    _latitude.fromString(lat);
+    _longitude.fromString(lon);
+    _altitude.fromString(alt);
   }
 
   /*sqrt for integer*/
