@@ -67,10 +67,10 @@ GPSPrint::smaction(Packet *p)
   pos.setSpeed(ntohl(gpsi->_speed));
 
   StringAccum sa;
-  sa << pos._latitude.unparse() << " ";
-  sa << pos._longitude.unparse() << " ";
-  sa << pos._altitude.unparse() << " ";
-  sa << pos._speed.unparse();
+  sa << "LAT: " << pos._latitude.unparse() << " ";
+  sa << "LONG: " << pos._longitude.unparse() << " ";
+  sa << "ALT: " << pos._altitude.unparse() << " ";
+  sa << "SPEED: " << pos._speed.unparse();
 
   if ( ! _nowrap ) {
     click_chatter("%s",sa.take_string().c_str());
