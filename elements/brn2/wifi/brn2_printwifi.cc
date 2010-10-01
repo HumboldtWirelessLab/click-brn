@@ -418,6 +418,16 @@ BRN2PrintWifi::simple_action(Packet *p)
       String rates_s = rates_string(rates);
 
       sa << "assoc_req ";
+
+      sa << EtherAddress(wh->i_addr1);
+      if (p->length() >= 16) {
+        sa << " " << EtherAddress(wh->i_addr2);
+      }
+      if (p->length() > 22) {
+        sa << " " << EtherAddress(wh->i_addr3);
+      }
+      sa << " ";
+
       sa << "listen_int " << l_int << " ";
       sa << capability_string(capability);
 
@@ -436,7 +446,7 @@ BRN2PrintWifi::simple_action(Packet *p)
       break;
 
     }
-    case WIFI_FC0_SUBTYPE_ASSOC_RESP: {     
+    case WIFI_FC0_SUBTYPE_ASSOC_RESP: {
       uint16_t capability = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
@@ -445,7 +455,17 @@ BRN2PrintWifi::simple_action(Packet *p)
 
       uint16_t associd = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      sa << "assoc_resp "; 
+      sa << "assoc_resp ";
+
+      sa << EtherAddress(wh->i_addr1);
+      if (p->length() >= 16) {
+        sa << " " << EtherAddress(wh->i_addr2);
+      }
+      if (p->length() > 22) {
+        sa << " " << EtherAddress(wh->i_addr3);
+      }
+      sa << " ";
+
       sa << capability_string(capability);
       sa << " status " << (int) status << " " << status_string(status);
       sa << " associd " << associd << " ";
@@ -455,6 +475,16 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_REASSOC_RESP:   sa << "reassoc_resp "; break;
     case WIFI_FC0_SUBTYPE_PROBE_REQ:      {
       sa << "probe_req "; 
+
+      sa << EtherAddress(wh->i_addr1);
+      if (p->length() >= 16) {
+        sa << " " << EtherAddress(wh->i_addr2);
+      }
+      if (p->length() > 22) {
+        sa << " " << EtherAddress(wh->i_addr3);
+      }
+      sa << " ";
+
       String ssid = get_ssid(ptr);
 
       ptr += ptr[1] + 2;
@@ -475,21 +505,42 @@ BRN2PrintWifi::simple_action(Packet *p)
 
     }
     case WIFI_FC0_SUBTYPE_PROBE_RESP:
-      sa << "probe_resp "; 
+      sa << "probe_resp 00-00-00-00-00-00 00-00-00-00-00-00 00-00-00-00-00-00 "; 
       sa << unparse_beacon(p);
       goto done;
     case WIFI_FC0_SUBTYPE_BEACON:
-      sa << "beacon "; 
+      sa << "beacon 00-00-00-00-00-00 00-00-00-00-00-00 00-00-00-00-00-00 "; 
       sa << unparse_beacon(p);
       goto done;
     case WIFI_FC0_SUBTYPE_ATIM:           sa << "atim "; break;
     case WIFI_FC0_SUBTYPE_DISASSOC:       {
       uint16_t reason = le16_to_cpu(*(uint16_t *) ptr);
-      sa << "disassoc " << reason_string(reason) << " ";
+      sa << "disassoc " ;
+
+      sa << EtherAddress(wh->i_addr1);
+      if (p->length() >= 16) {
+        sa << " " << EtherAddress(wh->i_addr2);
+      }
+      if (p->length() > 22) {
+        sa << " " << EtherAddress(wh->i_addr3);
+      }
+      sa << " ";
+
+      sa << reason_string(reason) << " ";
       break;
     }
     case WIFI_FC0_SUBTYPE_AUTH: {
-      sa << "auth "; 
+      sa << "auth ";
+
+      sa << EtherAddress(wh->i_addr1);
+      if (p->length() >= 16) {
+        sa << " " << EtherAddress(wh->i_addr2);
+      }
+      if (p->length() > 22) {
+        sa << " " << EtherAddress(wh->i_addr3);
+      }
+      sa << " ";
+
       uint16_t algo = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
@@ -544,14 +595,21 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
 
-  sa << EtherAddress(wh->i_addr1);
-  if (p->length() >= 16) {
-    sa << " " << EtherAddress(wh->i_addr2);
+  if ( !((type == WIFI_FC0_TYPE_MGT) &&
+             ((subtype == WIFI_FC0_SUBTYPE_PROBE_REQ) ||
+              (subtype == WIFI_FC0_SUBTYPE_ASSOC_RESP) ||
+              (subtype == WIFI_FC0_SUBTYPE_ASSOC_REQ) ||
+              (subtype == WIFI_FC0_SUBTYPE_AUTH) ||
+              (subtype == WIFI_FC0_SUBTYPE_DISASSOC)))) {
+    sa << EtherAddress(wh->i_addr1);
+    if (p->length() >= 16) {
+      sa << " " << EtherAddress(wh->i_addr2);
+    }
+    if (p->length() > 22) {
+      sa << " " << EtherAddress(wh->i_addr3);
+    }
+    sa << " ";
   }
-  if (p->length() > 22) {
-    sa << " " << EtherAddress(wh->i_addr3);
-  }
-  sa << " ";
 
   if (p->length() >= sizeof(click_wifi)) {
     uint16_t seq = le16_to_cpu(*(u_int16_t *)wh->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
