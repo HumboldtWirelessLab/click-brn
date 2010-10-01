@@ -460,9 +460,13 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << EtherAddress(wh->i_addr1);
       if (p->length() >= 16) {
         sa << " " << EtherAddress(wh->i_addr2);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       if (p->length() > 22) {
         sa << " " << EtherAddress(wh->i_addr3);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       sa << " ";
 
@@ -479,9 +483,13 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << EtherAddress(wh->i_addr1);
       if (p->length() >= 16) {
         sa << " " << EtherAddress(wh->i_addr2);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       if (p->length() > 22) {
         sa << " " << EtherAddress(wh->i_addr3);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       sa << " ";
 
@@ -520,9 +528,13 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << EtherAddress(wh->i_addr1);
       if (p->length() >= 16) {
         sa << " " << EtherAddress(wh->i_addr2);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       if (p->length() > 22) {
         sa << " " << EtherAddress(wh->i_addr3);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       sa << " ";
 
@@ -535,10 +547,15 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << EtherAddress(wh->i_addr1);
       if (p->length() >= 16) {
         sa << " " << EtherAddress(wh->i_addr2);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
       if (p->length() > 22) {
         sa << " " << EtherAddress(wh->i_addr3);
+      } else {
+        sa << " 00-00-00-00-00-00";
       }
+
       sa << " ";
 
       uint16_t algo = le16_to_cpu(*(uint16_t *) ptr);
@@ -604,9 +621,13 @@ BRN2PrintWifi::simple_action(Packet *p)
     sa << EtherAddress(wh->i_addr1);
     if (p->length() >= 16) {
       sa << " " << EtherAddress(wh->i_addr2);
+    } else {
+      sa << " 00-00-00-00-00-00";
     }
     if (p->length() > 22) {
       sa << " " << EtherAddress(wh->i_addr3);
+    } else {
+      sa << " 00-00-00-00-00-00";
     }
     sa << " ";
   }
