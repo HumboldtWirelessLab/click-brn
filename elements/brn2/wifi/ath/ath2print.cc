@@ -64,7 +64,6 @@ Ath2Print::configure(Vector<String> &conf, ErrorHandler* errh)
                      "TIMESTAMP", cpkN, cpBool, &_timestamp,
                      "PRINTTX", cpkN, cpBool, &_txprint,
                      "PRINTRX", cpkN, cpBool, &_rxprint,
-//                     "PARSER", 
                      "NOWRAP", cpkN, cpBool, &_nowrap,
                      cpEnd);
   return ret;
@@ -192,6 +191,7 @@ Ath2Print::simple_action(Packet *p)
         sa_ath1 << " Done: " << rx_desc->done;
         sa_ath1 << " CRCErr: " << rx_desc->crcerr;
         sa_ath1 << " DecryptCRC: " << rx_desc->decryptcrc;
+        /* 4 + 2 * 9 = 22 cols */
       }
       else
       {
@@ -202,15 +202,16 @@ Ath2Print::simple_action(Packet *p)
           return NULL;
         }
 
-        sa_ath1 << "(TX) ";
+        sa_ath1 << "(TX) : ";
         sa_ath1 << "Power: " << desc->xmit_power;
-        sa_ath1 << " ACKRSSI: " << desc->ack_sig_strength;
-        sa_ath1 << " Rate: " << ratecode_to_dot11(desc->xmit_rate0) << "(" << desc->xmit_tries0 << ")";
-        sa_ath1 << " Rate1: " << ratecode_to_dot11(desc->xmit_rate1) << "(" << desc->xmit_tries1 << ")";
-        sa_ath1 << " Rate2: " << ratecode_to_dot11(desc->xmit_rate2) << "(" << desc->xmit_tries2 << ")";
-        sa_ath1 << " Rate3: " << ratecode_to_dot11(desc->xmit_rate3) << "(" << desc->xmit_tries3 << ")";
+        sa_ath1 << " AckRSSI: " << desc->ack_sig_strength;
+        sa_ath1 << " Rate: " << ratecode_to_dot11(desc->xmit_rate0) << " (" << desc->xmit_tries0 << ")";
+        sa_ath1 << " Rate1: " << ratecode_to_dot11(desc->xmit_rate1) << " (" << desc->xmit_tries1 << ")";
+        sa_ath1 << " Rate2: " << ratecode_to_dot11(desc->xmit_rate2) << " (" << desc->xmit_tries2 << ")";
+        sa_ath1 << " Rate3: " << ratecode_to_dot11(desc->xmit_rate3) << " (" << desc->xmit_tries3 << ")";
         sa_ath1 << " Failcount: " << desc->data_fail_count;
         sa_ath1 << " EXRetries: " << desc->excessive_retries;
+        /* 2 * 5 + 4 * 3 = 22 cols */
       }
     }
 
@@ -239,37 +240,42 @@ Ath2Print::simple_action(Packet *p)
       sa_ath2 << (int)ath2_h->anno.tx.ts_status;sa_ath2 << " (" << tx_errcode_to_string(ath2_h->anno.tx.ts_status) << ")";
       sa_ath2 << " Rate: ";sa_ath2 << (int)ratecode_to_dot11(ath2_h->anno.tx.ts_rate);
       sa_ath2 << " RSSI: ";sa_ath2 << (int)ath2_h->anno.tx.ts_rssi;
-      sa_ath2 << " SRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_shortretry;
-      sa_ath2 << " LRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_longretry;
-      sa_ath2 << " VCC: ";sa_ath2 << (int)ath2_h->anno.tx.ts_virtcol;
-      sa_ath2 << " ant: ";sa_ath2 << (int)ath2_h->anno.tx.ts_antenna;
-      sa_ath2 << " FinTSI: ";sa_ath2 << (int)ath2_h->anno.tx.ts_finaltsi;
+      sa_ath2 << " Ant: ";sa_ath2 << (int)ath2_h->anno.tx.ts_antenna;
       sa_ath2 << " Noise: ";sa_ath2 << (int)ath2_h->anno.tx.ts_noise;
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_mactime;
       sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_channel;
+
+      sa_ath2 << " SRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_shortretry;
+      sa_ath2 << " LRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_longretry;
+      sa_ath2 << " VCC: ";sa_ath2 << (int)ath2_h->anno.tx.ts_virtcol;
+      sa_ath2 << " FinTSI: ";sa_ath2 << (int)ath2_h->anno.tx.ts_finaltsi;
+      /* 2 + 1 + 2 + 1 + 2 + 2 * 11 = 30 cols */
     }
     else
     {
       sa_ath2 << "(RX) Len: ";
       sa_ath2 << (int)/*ntohs*/(ath2_h->anno.rx.rs_datalen);
+      sa_ath2 << " TS: ";sa_ath2 << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_tstamp);
       sa_ath2 << " Status: ";
       sa_ath2 << (int)ath2_h->anno.rx.rs_status; sa_ath2 << " (" << rx_errcode_to_string(ath2_h->anno.rx.rs_status) << ")";
-      sa_ath2 << " Phyerr: ";sa_ath2 << (int)ath2_h->anno.rx.rs_phyerr;
-      if ( ath2_h->anno.rx.rs_status == 2 )
-        sa_ath2 << " (" << phy_errcode_to_string(ath2_h->anno.rx.rs_phyerr) << ")";
-      else
-        sa_ath2 << " (none)";
-      sa_ath2 << " RSSI: ";sa_ath2 << (int)ath2_h->anno.rx.rs_rssi;
       sa_ath2 << " Rate: ";sa_ath2 << (int)ratecode_to_dot11(ath2_h->anno.rx.rs_rate);
-      sa_ath2 << " More: ";sa_ath2 << (int)ath2_h->anno.rx.rs_more;
-      sa_ath2 << " Keyix: ";sa_ath2 << (int)ath2_h->anno.rx.rs_keyix;
-      sa_ath2 << " TS: ";sa_ath2 << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_tstamp);
+      sa_ath2 << " RSSI: ";sa_ath2 << (int)ath2_h->anno.rx.rs_rssi;
       sa_ath2 << " Ant: ";sa_ath2 << (unsigned int)/*ntohl*/(ath2_h->anno.rx.rs_antenna);
       sa_ath2 << " Noise: ";sa_ath2 << (int)ath2_h->anno.rx.rs_noise;
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_mactime;
       sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_channel;
+
+      sa_ath2 << " Phyerr: ";sa_ath2 << (int)ath2_h->anno.rx.rs_phyerr;
+      sa_ath2 << " PhyerrStr: ";
+      if ( ath2_h->anno.rx.rs_status == 2 )
+        sa_ath2 << " (" << phy_errcode_to_string(ath2_h->anno.rx.rs_phyerr) << ")";
+      else
+        sa_ath2 << " (none)";
+      sa_ath2 << " More: ";sa_ath2 << (int)ath2_h->anno.rx.rs_more;
+      sa_ath2 << " Keyix: ";sa_ath2 << (int)ath2_h->anno.rx.rs_keyix;
+      /* 2 + 1 + 2 + 2 + 2 + 1 + 10 * 2 = 30 cols */
     }
   }
 
