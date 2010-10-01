@@ -533,7 +533,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     }
     break;
   default:
-    sa << "unknown-type-" << (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) << " unknown-subtype-" << (int) (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK);
+    sa << "unknown-type-" << (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) << " unknown-subtype-" << (int) (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) << " ";
   }
 
   if ((type == WIFI_FC0_TYPE_MGT) &&
