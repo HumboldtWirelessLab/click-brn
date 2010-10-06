@@ -14337,10 +14337,16 @@ cat >>conftest.$ac_ext <<_ACEOF
     Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
     <limits.h> exists even on freestanding compilers.  */
 
+<<<<<<< HEAD
 #ifdef __STDC__
 # include <limits.h>
 #else
 # include <assert.h>
+=======
+    have_clock_gettime=yes; POSIX_CLOCK_LIBS=
+    ac_fn_cxx_check_decl "$LINENO" "clock_gettime" "ac_cv_have_decl_clock_gettime" "#ifdef HAVE_TIME_H
+# include <time.h>
+>>>>>>> 04f9a6ea146793881caa6b1721872a92d8c2ddcf
 #endif
 
 #undef $ac_func
@@ -14387,6 +14393,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
        $as_test_x conftest$ac_exeext; then
   eval "$as_ac_var=yes"
 else
+<<<<<<< HEAD
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
@@ -14395,6 +14402,45 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
+=======
+  ac_cv_search_clock_gettime=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_clock_gettime" >&5
+$as_echo "$ac_cv_search_clock_gettime" >&6; }
+ac_res=$ac_cv_search_clock_gettime
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+  :
+else
+  have_clock_gettime=no
+fi
+
+    if test "x$have_clock_gettime" = xyes; then
+	POSIX_CLOCK_LIBS="$LIBS"
+    fi
+
+    ac_fn_cxx_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"
+if test "x$ac_cv_func_clock_gettime" = x""yes; then :
+  :
+else
+  have_clock_gettime=no
+fi
+
+    LIBS="$SAVELIBS"
+    if test "x$have_clock_gettime" = xyes; then
+
+$as_echo "#define HAVE_CLOCK_GETTIME 1" >>confdefs.h
+
+    fi
+
+
+# Check whether --enable-nanotimestamp was given.
+if test "${enable_nanotimestamp+set}" = set; then :
+  enableval=$enable_nanotimestamp;
+>>>>>>> 04f9a6ea146793881caa6b1721872a92d8c2ddcf
 fi
 ac_res=`eval echo '${'$as_ac_var'}'`
 	       { echo "$as_me:$LINENO: result: $ac_res" >&5
