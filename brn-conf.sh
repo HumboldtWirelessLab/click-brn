@@ -60,6 +60,9 @@ for op in $@; do
 	"kernel")
 	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --enable-fixincludes --disable-userlevel"
 	    ;;
+	"patched_kernel")
+	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --disable-userlevel"
+	    ;;
 	"jist")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\"-g $CXXFLAGS\""
 	    ;;
