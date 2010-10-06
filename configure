@@ -11615,7 +11615,7 @@ _ACEOF
 
 fi
 
-    have_clock_gettime=no
+    have_clock_gettime=yes; POSIX_CLOCK_LIBS=
     { echo "$as_me:$LINENO: checking whether clock_gettime is declared" >&5
 echo $ECHO_N "checking whether clock_gettime is declared... $ECHO_C" >&6; }
 if test "${ac_cv_have_decl_clock_gettime+set}" = set; then
@@ -11768,17 +11768,110 @@ echo "${ECHO_T}$ac_cv_search_clock_gettime" >&6; }
 ac_res=$ac_cv_search_clock_gettime
 if test "$ac_res" != no; then
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+  :
+else
+  have_clock_gettime=no
+fi
+
+    if test "x$have_clock_gettime" = xyes; then
+	POSIX_CLOCK_LIBS="$LIBS"
+    fi
+
+    { echo "$as_me:$LINENO: checking for clock_gettime" >&5
+echo $ECHO_N "checking for clock_gettime... $ECHO_C" >&6; }
+if test "${ac_cv_func_clock_gettime+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define clock_gettime to an innocuous variant, in case <limits.h> declares clock_gettime.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define clock_gettime innocuous_clock_gettime
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char clock_gettime (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef clock_gettime
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char clock_gettime ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_clock_gettime || defined __stub___clock_gettime
+choke me
+#endif
+
+int
+main ()
+{
+return clock_gettime ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_func_clock_gettime=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_func_clock_gettime=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_func_clock_gettime" >&5
+echo "${ECHO_T}$ac_cv_func_clock_gettime" >&6; }
+if test $ac_cv_func_clock_gettime = yes; then
+  :
+else
+  have_clock_gettime=no
+fi
+
+    LIBS="$SAVELIBS"
+    if test "x$have_clock_gettime" = xyes; then
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_CLOCK_GETTIME 1
 _ACEOF
 
-	have_clock_gettime=yes
-fi
-
-    POSIX_CLOCK_LIBS="$LIBS"
-
-    LIBS="$SAVELIBS"
+    fi
 
 
 # Check whether --enable-nanotimestamp was given.
@@ -14337,16 +14430,10 @@ cat >>conftest.$ac_ext <<_ACEOF
     Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
     <limits.h> exists even on freestanding compilers.  */
 
-<<<<<<< HEAD
 #ifdef __STDC__
 # include <limits.h>
 #else
 # include <assert.h>
-=======
-    have_clock_gettime=yes; POSIX_CLOCK_LIBS=
-    ac_fn_cxx_check_decl "$LINENO" "clock_gettime" "ac_cv_have_decl_clock_gettime" "#ifdef HAVE_TIME_H
-# include <time.h>
->>>>>>> 04f9a6ea146793881caa6b1721872a92d8c2ddcf
 #endif
 
 #undef $ac_func
@@ -14393,7 +14480,6 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
        $as_test_x conftest$ac_exeext; then
   eval "$as_ac_var=yes"
 else
-<<<<<<< HEAD
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
@@ -14402,45 +14488,6 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
-=======
-  ac_cv_search_clock_gettime=no
-fi
-rm conftest.$ac_ext
-LIBS=$ac_func_search_save_LIBS
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_clock_gettime" >&5
-$as_echo "$ac_cv_search_clock_gettime" >&6; }
-ac_res=$ac_cv_search_clock_gettime
-if test "$ac_res" != no; then :
-  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
-  :
-else
-  have_clock_gettime=no
-fi
-
-    if test "x$have_clock_gettime" = xyes; then
-	POSIX_CLOCK_LIBS="$LIBS"
-    fi
-
-    ac_fn_cxx_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"
-if test "x$ac_cv_func_clock_gettime" = x""yes; then :
-  :
-else
-  have_clock_gettime=no
-fi
-
-    LIBS="$SAVELIBS"
-    if test "x$have_clock_gettime" = xyes; then
-
-$as_echo "#define HAVE_CLOCK_GETTIME 1" >>confdefs.h
-
-    fi
-
-
-# Check whether --enable-nanotimestamp was given.
-if test "${enable_nanotimestamp+set}" = set; then :
-  enableval=$enable_nanotimestamp;
->>>>>>> 04f9a6ea146793881caa6b1721872a92d8c2ddcf
 fi
 ac_res=`eval echo '${'$as_ac_var'}'`
 	       { echo "$as_me:$LINENO: result: $ac_res" >&5
