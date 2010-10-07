@@ -123,7 +123,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   }
 
   EtherAddress bssid = EtherAddress(w->i_addr3);
-  sa << bssid << " ";
+  sa << bssid << " 00-00-00-00-00-00 00-00-00-00-00-00 ";
 
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
@@ -513,11 +513,11 @@ BRN2PrintWifi::simple_action(Packet *p)
 
     }
     case WIFI_FC0_SUBTYPE_PROBE_RESP:
-      sa << "probe_resp 00-00-00-00-00-00 00-00-00-00-00-00 00-00-00-00-00-00 "; 
+      sa << "probe_resp ";
       sa << unparse_beacon(p);
       goto done;
     case WIFI_FC0_SUBTYPE_BEACON:
-      sa << "beacon 00-00-00-00-00-00 00-00-00-00-00-00 00-00-00-00-00-00 "; 
+      sa << "beacon ";
       sa << unparse_beacon(p);
       goto done;
     case WIFI_FC0_SUBTYPE_ATIM:           sa << "atim "; break;
