@@ -59,6 +59,8 @@ class GPSPrint : public BRNElement {
   Packet *pull(int);
 
   bool _nowrap;
+
+  bool _oldgps;
 };
 
 CLICK_ENDDECLS

@@ -35,7 +35,8 @@
 CLICK_DECLS
 
 GPSPrint::GPSPrint():
-  _nowrap(false)
+  _nowrap(false),
+  _oldgps(false)
 {
 }
 
@@ -49,6 +50,7 @@ GPSPrint::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NOWRAP", cpkP, cpBool, &_nowrap,
       "DEBUG", cpkP, cpInteger, &_debug,
+      "OLDGPS", cpkP, cpBool, _oldgps,
       cpEnd) < 0)
     return -1;
 
@@ -60,11 +62,21 @@ GPSPrint::smaction(Packet *p)
 {
   struct gpsinfo_header *gpsi = (struct gpsinfo_header *)p->data();
 
-  GPSPosition pos = GPSPosition(FixPointNumber(ntohl(gpsi->_lat)),
-                                FixPointNumber(ntohl(gpsi->_long)),
-                                FixPointNumber(ntohl(gpsi->_height)));
+  GPSPosition pos
 
-  pos.setSpeed(ntohl(gpsi->_speed));
+  if ( _oldgps ) {
+    pos = GPSPosition(FixPointNumber(gpsi->_lat),
+                      FixPointNumber(gpsi->_long),
+                      FixPointNumber(gpsi->_height));
+
+    pos.setSpeed(0);
+  } else {
+    pos = GPSPosition(FixPointNumber(ntohl(gpsi->_lat)),
+                      FixPointNumber(ntohl(gpsi->_long)),
+                      FixPointNumber(ntohl(gpsi->_height)));
+
+    pos.setSpeed(ntohl(gpsi->_speed));
+  }
 
   StringAccum sa;
   sa << "LAT: " << pos._latitude.unparse() << " ";
