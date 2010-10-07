@@ -50,7 +50,7 @@ GPSPrint::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NOWRAP", cpkP, cpBool, &_nowrap,
       "DEBUG", cpkP, cpInteger, &_debug,
-      "OLDGPS", cpkP, cpBool, _oldgps,
+      "OLDGPS", cpkP, cpBool, &_oldgps,
       cpEnd) < 0)
     return -1;
 
