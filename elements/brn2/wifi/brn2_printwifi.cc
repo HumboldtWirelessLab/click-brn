@@ -131,21 +131,21 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   }
 
   if (ssid == "") {
-    sa << "(none)";
+    sa << "ssid: (none)";
   } else {
     if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
-      sa << "empty";
+      sa << "ssid: (empty)";
     else {
       if ( valid_ssid(&ssid) )
         sa << ssid;
       else
-        sa << "invalid_ssid";
+        sa << "ssid: (invalid_ssid)";
     }
   }
 
   int chan = (ds_l) ? ds_l[2] : 0;
-  sa << " chan " << chan;
-  sa << " b_int " << beacon_int << " ";
+  sa << " channel: " << chan;
+  sa << " b_int: " << beacon_int << " ";
 
   Vector<int> basic_rates;
   Vector<int> rates;
@@ -286,7 +286,7 @@ BRN2PrintWifi::capability_string(int capability) {
 String
 BRN2PrintWifi::get_ssid(u_int8_t *ptr) {
   if (ptr[0] != WIFI_ELEMID_SSID) {
-    return "(invalid ssid)";
+    return "(invalid_ssid)";
   }
   return String((char *) ptr + 2, WIFI_MIN((int)ptr[1], WIFI_NWID_MAXSIZE));
 }
@@ -423,23 +423,24 @@ BRN2PrintWifi::simple_action(Packet *p)
       if (p->length() >= 16) {
         sa << " " << EtherAddress(wh->i_addr2);
       }
+
       if (p->length() > 22) {
         sa << " " << EtherAddress(wh->i_addr3);
       }
       sa << " ";
 
-      sa << "listen_int " << l_int << " ";
-      sa << capability_string(capability);
-
       if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
-        sa << " ssid empty";
+        sa << " ssid: (empty)";
       else
       {
         if ( valid_ssid(&ssid) )
-          sa << " ssid " << ssid;
+          sa << " ssid: " << ssid;
         else
-          sa << " ssid invalid_ssid";
+          sa << " ssid: (invalid_ssid)";
       }
+
+      sa << "listen_int " << l_int << " ";
+      sa << capability_string(capability);
 
       sa << " rates " << rates_s;
       sa << " ";
@@ -500,12 +501,12 @@ BRN2PrintWifi::simple_action(Packet *p)
       Vector<int> rates = get_rates(ptr);
       String rates_s = rates_string(rates);
       if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
-        sa << "ssid empty";
+        sa << "ssid: (empty)";
       else {
         if ( valid_ssid(&ssid) )
-          sa << "ssid " << ssid;
+          sa << "ssid: " << ssid;
         else
-          sa << "ssid invalid_ssid";
+          sa << "ssid: (invalid_ssid)";
       }
 
       sa << " " << rates_s << " ";
@@ -567,7 +568,7 @@ BRN2PrintWifi::simple_action(Packet *p)
       uint16_t status =le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
       sa << "alg " << (int)  algo;
-      sa << " auth_seq " << (int) seq;
+      sa << " auth_seq: " << (int) seq;
       sa << " status " << status_string(status) << " ";
       break;
 
@@ -635,9 +636,9 @@ BRN2PrintWifi::simple_action(Packet *p)
   if (p->length() >= sizeof(click_wifi)) {
     uint16_t seq = le16_to_cpu(*(u_int16_t *)wh->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
     uint8_t frag = le16_to_cpu(*(u_int16_t *)wh->i_seq) & WIFI_SEQ_FRAG_MASK;
-    sa << "seq " << (int) seq;
+    sa << "seq: " << (int) seq;
     if (frag || wh->i_fc[1] & WIFI_FC1_MORE_FRAG) {
-      sa << " frag " << (int) frag;
+      sa << " frag: " << (int) frag;
     }
     sa << " ";
   }
