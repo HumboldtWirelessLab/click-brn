@@ -62,7 +62,7 @@ GPSPrint::smaction(Packet *p)
 {
   struct gpsinfo_header *gpsi = (struct gpsinfo_header *)p->data();
 
-  GPSPosition pos
+  GPSPosition pos;
 
   if ( _oldgps ) {
     pos = GPSPosition(FixPointNumber(gpsi->_lat),
