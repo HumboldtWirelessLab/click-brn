@@ -137,7 +137,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
       sa << "ssid: (empty)";
     else {
       if ( valid_ssid(&ssid) )
-        sa << ssid;
+        sa << "ssid: " << ssid;
       else
         sa << "ssid: (invalid_ssid)";
     }
