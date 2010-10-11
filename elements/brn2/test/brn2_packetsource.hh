@@ -59,8 +59,10 @@ class BRN2PacketSource : public Element {
   Packet *createpacket(int size);
 
   struct packetinfo {
-    uint32_t seq_num;
     uint16_t interval;
+
+    uint32_t seq_num;
+
     uint8_t channel;
     uint8_t bitrate;
     uint8_t power;
