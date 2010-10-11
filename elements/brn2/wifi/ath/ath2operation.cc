@@ -57,7 +57,7 @@ Ath2Operation::set_channel(int channel)
   ath2_h->ath2_version = ATHDESC2_VERSION;
   ath2_h->madwifi_version = MADWIFI_TRUNK;
 
-  ath2_h->flags |= ATH2_FLAGS_IS_OPERATION;
+  ath2_h->flags |= MADWIFI_FLAGS_IS_OPERATION;
 
   ath2_h->anno.tx_anno.operation |= ATH2_OPERATION_SETCHANNEL;
   ath2_h->anno.tx_anno.channel = channel;
