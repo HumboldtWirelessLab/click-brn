@@ -24,7 +24,7 @@ struct ath2_rx_status {
     int8_t	rs_noise;
     int8_t	rs_channel;
     int8_t	rs_flags;   /* preample len,... */
-    int8_t	reserved[1];
+    int8_t	rs_channel_utility;
 
 } __attribute__ ((packed));
 
@@ -48,10 +48,10 @@ struct ath2_tx_status {
     int8_t	ts_noise;
     int8_t	ts_channel;
     int8_t	ts_flags;     /*short preamble,....*/
-    int8_t	reserved[1];
+    int8_t	ts_channel_utility;
 
 } __attribute__ ((packed));
-	     
+
 
 struct ath2_tx_anno {
 
