@@ -175,23 +175,51 @@ AirTimeEstimation::stats()
   return sa.take_string();
 }
 
+int
+AirTimeEstimation::stats_busy()
+{
+  Timestamp now = Timestamp::now();
+  Timestamp diff;
+
+  uint32_t airtime;
+  airtime = 0;
+  int i;
+
+  for ( i = 0; i < _packet_list.size(); i++) {
+    PacketInfo *pi = _packet_list[i];
+    diff = now - pi->_rx_time;
+    if ( diff.msecval() <= max_age )  break; //TODO: exact calc
+  }
+
+  for (; i < _packet_list.size(); i++) {
+    PacketInfo *pi = _packet_list[i];
+    airtime += pi->_duration;
+  }
+
+  return (airtime/(max_age * 10));
+}
+
 void 
 AirTimeEstimation::reset()
 {
   _packet_list.clear();
 }
 
-enum {H_DEBUG, H_STATS, H_RESET};
+enum {H_DEBUG, H_STATS, H_RESET, H_STATS_BUSY};
 
 static String 
 AirTimeEstimation_read_param(Element *e, void *thunk)
 {
+  StringAccum sa;
   AirTimeEstimation *td = (AirTimeEstimation *)e;
   switch ((uintptr_t) thunk) {
     case H_DEBUG:
       return String(td->_debug) + "\n";
     case H_STATS:
       return td->stats();
+    case H_STATS_BUSY:
+      sa << td->stats_busy();
+      return sa.take_string();
     default:
       return String();
   }
@@ -223,6 +251,7 @@ AirTimeEstimation::add_handlers()
 {
   add_read_handler("debug", AirTimeEstimation_read_param, (void *) H_DEBUG);
   add_read_handler("stats", AirTimeEstimation_read_param, (void *) H_STATS);
+  add_read_handler("busy", AirTimeEstimation_read_param, (void *) H_STATS_BUSY);
 
   add_write_handler("debug", AirTimeEstimation_write_param, (void *) H_DEBUG);
   add_write_handler("reset", AirTimeEstimation_write_param, (void *) H_RESET, Handler::BUTTON);

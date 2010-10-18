@@ -63,6 +63,13 @@ struct ath2_tx_anno {
 
     u_int8_t va_position;   //position in VA
 
+#define CC_PKT_THRESHOLD_MASK 63
+#define CC_MODE_SHIFT          6
+    u_int8_t cc_config;
+    u_int8_t cc_rx_busy;
+    u_int8_t cc_rx_frames;
+    u_int8_t cc_tx_frames;
+
 } __attribute__ ((packed));
 
 struct ath2_rx_anno {

@@ -70,6 +70,8 @@ class AirTimeEstimation : public Element {
     void push(int, Packet *p);
     void reset();
     String stats();
+    int stats_busy();
+
     bool _debug;
   private:
 
