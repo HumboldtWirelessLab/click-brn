@@ -128,10 +128,12 @@ AirTimeEstimation::clear_old()
 
   if ( _packet_list.size() == 0 ) return;
 
+//  click_chatter("call clear");
   PacketInfo *pi = _packet_list[0];
   diff = now - pi->_rx_time;
 
-  if ( diff.sec() > max_age ) {
+  if ( diff.msecval() > max_age ) {
+//    click_chatter("have old packets");
     int i;
     for ( i = 0; i < _packet_list.size(); i++) {
       PacketInfo *pi = _packet_list[i];
@@ -139,6 +141,7 @@ AirTimeEstimation::clear_old()
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
     }
 
+//    click_chatter("Found %d old packets",i);
     if ( i > 0 ) {
       _packet_list.erase(_packet_list.begin() + (i-1));
     }
