@@ -84,10 +84,15 @@ class AirTimeEstimation : public Element {
     void calc_stats(struct airtime_stats *stats);
 
     bool _debug;
+    int32_t max_age;  //maximum age of pakets in the wueue in seconds
+
+    uint32_t hw_busy;
+    uint32_t hw_rx;
+    uint32_t hw_tx;
+
   private:
 
     Timestamp oldest;
-    int32_t max_age;  //maximum age of pakets in the wueue in seconds
     uint32_t packets;
     uint32_t bytes;
 

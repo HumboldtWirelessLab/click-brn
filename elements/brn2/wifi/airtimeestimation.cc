@@ -33,7 +33,10 @@
 
 CLICK_DECLS
 
-AirTimeEstimation::AirTimeEstimation()
+AirTimeEstimation::AirTimeEstimation():
+    hw_busy(0),
+    hw_rx(0),
+    hw_tx(0)
 {
 }
 
@@ -153,7 +156,7 @@ AirTimeEstimation::clear_old()
   }
 }
 
-enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX};
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX};
 
 String
 AirTimeEstimation::stats_handler(int mode)
@@ -170,6 +173,9 @@ AirTimeEstimation::stats_handler(int mode)
       sa << "Busy: " << stats.busy << "\n";
       sa << "RX: " << stats.rx << "\n";
       sa << "TX: " << stats.tx << "\n";
+      sa << "HW Busy: " << stats.hw_busy << "\n";
+      sa << "HW RX: " << stats.hw_rx << "\n";
+      sa << "HW TX: " << stats.hw_tx << "\n";
       break;
     case H_STATS_BUSY:
       sa << stats.busy;
@@ -179,6 +185,15 @@ AirTimeEstimation::stats_handler(int mode)
       break;
     case H_STATS_TX:
       sa << stats.tx;
+      break;
+    case H_STATS_HW_BUSY:
+      sa << stats.hw_busy;
+      break;
+    case H_STATS_HW_RX:
+      sa << stats.hw_rx;
+      break;
+    case H_STATS_HW_TX:
+      sa << stats.hw_tx;
       break;
   }
   return sa.take_string();
@@ -217,6 +232,10 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
   stats->busy /= diff_time;
   stats->rx /= diff_time;
   stats->tx /= diff_time;
+
+  stats->hw_busy = hw_busy;
+  stats->hw_rx = hw_rx;
+  stats->hw_tx = hw_tx;
 }
 
 void
@@ -237,7 +256,12 @@ AirTimeEstimation_read_param(Element *e, void *thunk)
     case H_STATS_BUSY:
     case H_STATS_RX:
     case H_STATS_TX:
+    case H_STATS_HW_BUSY:
+    case H_STATS_HW_RX:
+    case H_STATS_HW_TX:
       return td->stats_handler((uintptr_t) thunk);
+    case H_MAX_TIME:
+      return String(td->max_age) + "\n";
     default:
       return String();
   }
@@ -257,6 +281,13 @@ AirTimeEstimation_write_param(const String &in_s, Element *e, void *vparam,
       f->_debug = debug;
       break;
     }
+    case H_MAX_TIME: {
+      int mt;
+      if (!cp_integer(s, &mt))
+        return errh->error("max time parameter must be integer");
+      f->max_age = mt;
+      break;
+    }
     case H_RESET: {    //reset
       f->reset();
     }
@@ -268,15 +299,18 @@ void
 AirTimeEstimation::add_handlers()
 {
   add_read_handler("debug", AirTimeEstimation_read_param, (void *) H_DEBUG);
-//  add_read_handler("max_time", AirTimeEstimation_read_param, (void *) H_MAX_TIME);
+  add_read_handler("max_time", AirTimeEstimation_read_param, (void *) H_MAX_TIME);
   add_read_handler("stats", AirTimeEstimation_read_param, (void *) H_STATS);
   add_read_handler("busy", AirTimeEstimation_read_param, (void *) H_STATS_BUSY);
   add_read_handler("rx", AirTimeEstimation_read_param, (void *) H_STATS_RX);
   add_read_handler("tx", AirTimeEstimation_read_param, (void *) H_STATS_TX);
+  add_read_handler("hw_busy", AirTimeEstimation_read_param, (void *) H_STATS_HW_BUSY);
+  add_read_handler("hw_rx", AirTimeEstimation_read_param, (void *) H_STATS_HW_RX);
+  add_read_handler("hw_tx", AirTimeEstimation_read_param, (void *) H_STATS_HW_TX);
 
   add_write_handler("debug", AirTimeEstimation_write_param, (void *) H_DEBUG);
   add_write_handler("reset", AirTimeEstimation_write_param, (void *) H_RESET, Handler::BUTTON);
-//  add_write_handler("max_time", AirTimeEstimation_write_param, (void *) H_MAX_TIME);
+  add_write_handler("max_time", AirTimeEstimation_write_param, (void *) H_MAX_TIME);
 }
 
 CLICK_ENDDECLS

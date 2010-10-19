@@ -37,7 +37,8 @@
 
 CLICK_DECLS
 
-Ath2Decap::Ath2Decap()
+Ath2Decap::Ath2Decap():
+    _ate(NULL)
 {
   BRNElement::init();
 }
@@ -54,6 +55,7 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 
   ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
+                     "AIRTIME", cpkP, cpElement, &_ate,
                      cpEnd);
   return ret;
 }
@@ -148,6 +150,8 @@ Ath2Decap::simple_action(Packet *p)
     if ( eh->retries < ath2_h->anno.tx.ts_longretry )
       eh->retries = ath2_h->anno.tx.ts_longretry;
 
+    if ( _ate != NULL ) _ate->hw_busy = (uint32_t)ath2_h->anno.tx.ts_channel_utility;
+
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel); 
   }
   else                                                                      //RX
@@ -199,6 +203,8 @@ Ath2Decap::simple_action(Packet *p)
     eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
+
+    if ( _ate != NULL ) _ate->hw_busy = (uint32_t)ath2_h->anno.rx.rs_channel_utility;
   }
 
 
