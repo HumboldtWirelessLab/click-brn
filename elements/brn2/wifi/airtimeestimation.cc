@@ -88,12 +88,10 @@ AirTimeEstimation::push(int port, Packet *p)
 //        click_chatter("OK: Retry: %d Rate: %d All Retries: %d", i, new_pi->_rate, ceh->retries);
         new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
         _packet_list.push_back(new_pi);
-        clear_old();
       } else {
         click_chatter("ZeroRate: Retry: %d All Retries: %d",i, ceh->retries);
         delete new_pi;
       }
-
     }
   } else {
     PacketInfo *new_pi = new PacketInfo();
@@ -113,13 +111,12 @@ AirTimeEstimation::push(int port, Packet *p)
       click_chatter("P: %s",sa.take_string().c_str());
     */
       _packet_list.push_back(new_pi);
-
-      clear_old();
     } else {
       delete new_pi;
     }
   }
 
+  clear_old();
   output(port).push(p);
 }
 
