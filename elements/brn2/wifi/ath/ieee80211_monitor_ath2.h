@@ -1,6 +1,10 @@
 #ifndef _NET80211_IEEE80211_MONITOR_ATH2_H_
 #define _NET80211_IEEE80211_MONITOR_ATH2_H_
 
+
+#define MADWIFI_RXTX_FLAGS_SHORT_PREAMBLE   1 << 0
+
+
 struct ath2_rx_status {
     u_int16_t	rs_datalen; /* rx frame length */
     u_int8_t	rs_status;  /* rx status, 0 => recv ok */
@@ -19,7 +23,8 @@ struct ath2_rx_status {
 
     int8_t	rs_noise;
     int8_t	rs_channel;
-    int8_t	reserved[2];
+    int8_t	rs_flags;   /* preample len,... */
+    int8_t	rs_channel_utility;
 
 } __attribute__ ((packed));
 
@@ -42,9 +47,11 @@ struct ath2_tx_status {
 
     int8_t	ts_noise;
     int8_t	ts_channel;
-    int8_t	reserved[2];
+    int8_t	ts_flags;     /*short preamble,....*/
+    int8_t	ts_channel_utility;
 
 } __attribute__ ((packed));
+
 
 struct ath2_tx_anno {
 
@@ -55,6 +62,13 @@ struct ath2_tx_anno {
     u_int8_t mac[6];        //mac address use for sending or set as client for VA
 
     u_int8_t va_position;   //position in VA
+
+#define CC_PKT_THRESHOLD_MASK 63
+#define CC_MODE_SHIFT          6
+    u_int8_t cc_config;
+    u_int8_t cc_rx_busy;
+    u_int8_t cc_rx_frames;
+    u_int8_t cc_tx_frames;
 
 } __attribute__ ((packed));
 
@@ -72,11 +86,25 @@ struct ath2_rx_anno {
 
 } __attribute__ ((packed));
 
+
+/*************************************************/
+/***************** DRIVER FLAGS ******************/
+/*************************************************/
+
+
+#define MADWIFI_FLAGS_CCA_ENABLED           1 << 0
+#define MADWIFI_FLAGS_SMALLBACKOFF_ENABLED  1 << 1
+#define MADWIFI_FLAGS_BURST_ENABLED         1 << 2
+#define MADWIFI_FLAGS_CHANNELSWITCH_ENABLED 1 << 3
+#define MADWIFI_FLAGS_MACCLONE_ENABLED      1 << 4
+
+#define MADWIFI_FLAGS_IS_OPERATION          1 << 31
+
 struct ath2_header {
     u_int16_t ath2_version;
     u_int16_t madwifi_version;
 
-    u_int32_t flags;
+    u_int32_t flags;                        //driver flags
 
     union {
       struct ath2_rx_status rx;             //info of received packets
@@ -91,16 +119,15 @@ struct ath2_header {
 
 #define MADWIFI_0940	0x03ac
 #define MADWIFI_3869	0x0f1d
-#define MADWIFI_3880	0x0f28
+#define MADWIFI_3880    0x0f28
+#define MADWIFI_4133    0x1025
 
-#define MADWIFI_TRUNK MADWIFI_3880
-
-#define ATH2_FLAGS_IS_OPERATION    1
+#define MADWIFI_TRUNK MADWIFI_4133
 
 #define ATH2_OPERATION_NONE        0
 #define ATH2_OPERATION_SETVACLIENT 1
 #define ATH2_OPERATION_SETCHANNEL  2
-#define ATH2_OPERATION_SETMAC      4
+#define ATH2_OPERATION_SETFLAGS    3
 
 #ifndef ARPHRD_IEEE80211_ATHDESC2
 #define ARPHRD_IEEE80211_ATHDESC2  805 /* IEEE 802.11 + atheros (long) descriptor */

@@ -40,6 +40,16 @@ AirTimeEstimation()
 
 class AirTimeEstimation : public Element {
 
+  struct airtime_stats {
+    int packets;
+    int busy;
+    int rx;
+    int tx;
+    int hw_busy;
+    int hw_rx;
+    int hw_tx;
+  };
+
   public:
     class PacketInfo {
      public:
@@ -49,6 +59,7 @@ class AirTimeEstimation : public Element {
       uint16_t _length;
       bool _foreign;
       int _channel;
+      bool _rx;
     };
 
     typedef Vector<PacketInfo*> PacketList;
@@ -60,6 +71,7 @@ class AirTimeEstimation : public Element {
     ~AirTimeEstimation();
 
     const char *class_name() const	{ return "AirTimeEstimation"; }
+    const char *processing() const  { return PUSH; }
     const char *port_count() const  { return "1/1"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
@@ -68,7 +80,9 @@ class AirTimeEstimation : public Element {
 
     void push(int, Packet *p);
     void reset();
-    String stats();
+    String stats_handler(int mode);
+    void calc_stats(struct airtime_stats *stats);
+
     bool _debug;
   private:
 

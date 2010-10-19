@@ -110,7 +110,7 @@ BRN2PacketSource::createpacket(int size)
 
   pinfo.seq_num = htonl(_seq_num);
 
-  memcpy(&(new_packet_data[2]), &pinfo, sizeof(struct packetinfo));
+  memcpy(new_packet_data, &pinfo, sizeof(struct packetinfo));
 
   return(new_packet);
 }

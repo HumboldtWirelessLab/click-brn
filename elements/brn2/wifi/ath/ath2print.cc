@@ -229,7 +229,7 @@ Ath2Print::simple_action(Packet *p)
 
   }
 
-  if ( ath2_h->ath2_version == ATHDESC2_VERSION )
+  if ( ntohs(ath2_h->ath2_version) == ATHDESC2_VERSION )
   {
     if (tx)
     {
@@ -245,8 +245,10 @@ Ath2Print::simple_action(Packet *p)
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_mactime;
       sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.tx.ts_channel;
+      sa_ath2 << " ChannelUtility: "; sa_ath2 << (uint32_t)ath2_h->anno.tx.ts_channel_utility;
 
-      sa_ath2 << " Flags: "; sa_ath2 << (uint32_t)ath2_h->flags;
+      sa_ath2 << " DriverFlags: "; sa_ath2 << ntohl((uint32_t)ath2_h->flags);
+      sa_ath2 << " Flags: "; sa_ath2 << (uint32_t)ath2_h->anno.tx.ts_flags;
 
       sa_ath2 << " SRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_shortretry;
       sa_ath2 << " LRetry: ";sa_ath2 << (int)ath2_h->anno.tx.ts_longretry;
@@ -268,8 +270,10 @@ Ath2Print::simple_action(Packet *p)
       sa_ath2 << " Hosttime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_hosttime;
       sa_ath2 << " Mactime: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_mactime;
       sa_ath2 << " Channel: ";sa_ath2 << (u_int64_t)ath2_h->anno.rx.rs_channel;
+      sa_ath2 << " ChannelUtility: "; sa_ath2 << (uint32_t)ath2_h->anno.rx.rs_channel_utility;
 
-      sa_ath2 << " Flags: "; sa_ath2 << (uint32_t)ath2_h->flags;
+      sa_ath2 << " DriverFlags: "; sa_ath2 << ntohl((uint32_t)ath2_h->flags);
+      sa_ath2 << " Flags: "; sa_ath2 << (uint32_t)ath2_h->anno.rx.rs_flags;
 
       sa_ath2 << " Phyerr: ";sa_ath2 << (int)ath2_h->anno.rx.rs_phyerr;
       sa_ath2 << " PhyerrStr: ";
