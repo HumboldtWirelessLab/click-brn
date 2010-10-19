@@ -143,7 +143,7 @@ AirTimeEstimation::clear_old()
 
 //    click_chatter("Found %d old packets",i);
     if ( i > 0 ) {
-      _packet_list.erase(_packet_list.begin() + (i-1));
+      _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
     }
 
     if ( _packet_list.size() > 0 )
