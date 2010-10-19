@@ -165,6 +165,7 @@ AirTimeEstimation::stats_handler(int mode)
 
   switch (mode) {
     case H_STATS:
+      sa << "All packets: " << _packet_list.size() << "\n";
       sa << "Packets: " << stats.packets << "\n";
       sa << "Busy: " << stats.busy << "\n";
       sa << "RX: " << stats.rx << "\n";
