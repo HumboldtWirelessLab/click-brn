@@ -40,6 +40,16 @@ AirTimeEstimation()
 
 class AirTimeEstimation : public Element {
 
+  struct airtime_stats {
+    int packets;
+    int busy;
+    int rx;
+    int tx;
+    int hw_busy;
+    int hw_rx;
+    int hw_tx;
+  };
+
   public:
     class PacketInfo {
      public:
@@ -49,6 +59,7 @@ class AirTimeEstimation : public Element {
       uint16_t _length;
       bool _foreign;
       int _channel;
+      bool _rx;
     };
 
     typedef Vector<PacketInfo*> PacketList;
@@ -69,8 +80,8 @@ class AirTimeEstimation : public Element {
 
     void push(int, Packet *p);
     void reset();
-    String stats();
-    int stats_busy();
+    String stats_handler(int mode);
+    void calc_stats(struct airtime_stats *stats);
 
     bool _debug;
   private:

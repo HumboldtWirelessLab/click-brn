@@ -46,12 +46,13 @@ AirTimeEstimation::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _debug = false;
+  max_age = 5000;
 
   ret = cp_va_kparse(conf, this, errh,
+                     "MAX_AGE", cpkP, cpInteger, &max_age,
                      "DEBUG", cpkP, cpBool, &_debug,
                      cpEnd);
 
-  max_age = 5000;
   oldest = Timestamp::now();
 
   return ret;
@@ -76,6 +77,7 @@ AirTimeEstimation::push(int port, Packet *p)
       new_pi->_length = p->length();
       new_pi->_foreign = false;
       new_pi->_channel = BRNPacketAnno::channel_anno(p);
+      new_pi->_rx = false;
 
       if ( i < t0 ) new_pi->_rate = ceh->rate;
       else if ( i < t1 ) new_pi->_rate = ceh->rate1;
@@ -86,6 +88,7 @@ AirTimeEstimation::push(int port, Packet *p)
 //        click_chatter("OK: Retry: %d Rate: %d All Retries: %d", i, new_pi->_rate, ceh->retries);
         new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
         _packet_list.push_back(new_pi);
+        clear_old();
       } else {
         click_chatter("ZeroRate: Retry: %d All Retries: %d",i, ceh->retries);
         delete new_pi;
@@ -100,6 +103,7 @@ AirTimeEstimation::push(int port, Packet *p)
     new_pi->_length = p->length() + 4;   //CRC
     new_pi->_foreign = true;
     new_pi->_channel = BRNPacketAnno::channel_anno(p);
+    new_pi->_rx = true;
 
     if ( new_pi->_rate != 0 ) {
       new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
@@ -109,6 +113,8 @@ AirTimeEstimation::push(int port, Packet *p)
       click_chatter("P: %s",sa.take_string().c_str());
     */
       _packet_list.push_back(new_pi);
+
+      clear_old();
     } else {
       delete new_pi;
     }
@@ -122,6 +128,11 @@ AirTimeEstimation::clear_old()
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
+
+  if ( _packet_list.size() == 0 ) return;
+
+  PacketInfo *pi = _packet_list[0];
+  diff = now - pi->_rx_time;
 
   if ( diff.sec() > max_age ) {
     int i;
@@ -142,70 +153,76 @@ AirTimeEstimation::clear_old()
   }
 }
 
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX};
+
 String
-AirTimeEstimation::stats()
+AirTimeEstimation::stats_handler(int mode)
 {
   StringAccum sa;
-  Timestamp now = Timestamp::now();
-  Timestamp diff;
+  struct airtime_stats stats;
 
-  uint32_t airtime;
-  airtime = 0;
-  int i;
-  int size = 0;
+  calc_stats(&stats);
 
-  for ( i = 0; i < _packet_list.size(); i++) {
-    PacketInfo *pi = _packet_list[i];
-    diff = now - pi->_rx_time;
-//    click_chatter("DIff: %d",diff.sec());
-    if ( diff.msecval() <= max_age )  break; //TODO: exact calc
+  switch (mode) {
+    case H_STATS:
+      sa << "Packets: " << stats.packets << "\n";
+      sa << "Busy: " << stats.busy << "\n";
+      sa << "RX: " << stats.rx << "\n";
+      sa << "TX: " << stats.tx << "\n";
+      break;
+    case H_STATS_BUSY:
+      sa << stats.busy;
+      break;
+    case H_STATS_RX:
+      sa << stats.rx;
+      break;
+    case H_STATS_TX:
+      sa << stats.tx;
+      break;
   }
-
-  size = _packet_list.size() - i;
-  for (; i < _packet_list.size(); i++) {
-    PacketInfo *pi = _packet_list[i];
-    airtime += pi->_duration; 
-  }
-
-  sa << "AllPackets: " << _packet_list.size() << "\n";
-  sa << "Size: " << size << "\n";
-  sa << "airtime in 5: " << airtime << "\n";
-  sa << "airtime/s: " << (airtime/5) << " (" << (airtime/50000) << "%)\n";
-
   return sa.take_string();
 }
 
-int
-AirTimeEstimation::stats_busy()
+void
+AirTimeEstimation::calc_stats(struct airtime_stats *stats)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
-
-  uint32_t airtime;
-  airtime = 0;
   int i;
 
+  memset(stats, 0, sizeof(struct airtime_stats));
+
+  if ( _packet_list.size() == 0 ) return;
+
+  PacketInfo *pi = _packet_list[0];
+  diff = now - pi->_rx_time;
+
   for ( i = 0; i < _packet_list.size(); i++) {
-    PacketInfo *pi = _packet_list[i];
+    pi = _packet_list[i];
     diff = now - pi->_rx_time;
     if ( diff.msecval() <= max_age )  break; //TODO: exact calc
   }
 
+  stats->packets = _packet_list.size() - i;
+
   for (; i < _packet_list.size(); i++) {
-    PacketInfo *pi = _packet_list[i];
-    airtime += pi->_duration;
+    pi = _packet_list[i];
+    if ( pi->_rx) stats->rx += pi->_duration;
+    else stats->tx += pi->_duration;
   }
 
-  return (airtime/(max_age * 10));
+  int diff_time = 10 * max_age;
+  stats->busy = stats->rx + stats->tx;
+  stats->busy /= diff_time;
+  stats->rx /= diff_time;
+  stats->tx /= diff_time;
 }
 
-void 
+void
 AirTimeEstimation::reset()
 {
   _packet_list.clear();
 }
-
-enum {H_DEBUG, H_STATS, H_RESET, H_STATS_BUSY};
 
 static String 
 AirTimeEstimation_read_param(Element *e, void *thunk)
@@ -216,10 +233,10 @@ AirTimeEstimation_read_param(Element *e, void *thunk)
     case H_DEBUG:
       return String(td->_debug) + "\n";
     case H_STATS:
-      return td->stats();
     case H_STATS_BUSY:
-      sa << td->stats_busy();
-      return sa.take_string();
+    case H_STATS_RX:
+    case H_STATS_TX:
+      return td->stats_handler((uintptr_t) thunk);
     default:
       return String();
   }
@@ -250,11 +267,15 @@ void
 AirTimeEstimation::add_handlers()
 {
   add_read_handler("debug", AirTimeEstimation_read_param, (void *) H_DEBUG);
+//  add_read_handler("max_time", AirTimeEstimation_read_param, (void *) H_MAX_TIME);
   add_read_handler("stats", AirTimeEstimation_read_param, (void *) H_STATS);
   add_read_handler("busy", AirTimeEstimation_read_param, (void *) H_STATS_BUSY);
+  add_read_handler("rx", AirTimeEstimation_read_param, (void *) H_STATS_RX);
+  add_read_handler("tx", AirTimeEstimation_read_param, (void *) H_STATS_TX);
 
   add_write_handler("debug", AirTimeEstimation_write_param, (void *) H_DEBUG);
   add_write_handler("reset", AirTimeEstimation_write_param, (void *) H_RESET, Handler::BUTTON);
+//  add_write_handler("max_time", AirTimeEstimation_write_param, (void *) H_MAX_TIME);
 }
 
 CLICK_ENDDECLS
