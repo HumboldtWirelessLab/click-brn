@@ -160,14 +160,14 @@ AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t 
   hw_tx = tx;
 
   if ( _packet_list_hw.size() == 0 ) {
-    new_pi->_busy=1;
-    new_pi->_rx=1;
-    new_pi->_tx=1;
+    new_pi->_busy = 1;
+    new_pi->_rx = 1;
+    new_pi->_tx = 1;
   } else {
     uint32_t diff = (new_pi->_time - _packet_list_hw[_packet_list_hw.size()-1]->_time).msecval();
-    new_pi->_busy = (diff * 100) / busy;
-    new_pi->_rx = (diff * 100) / rx;
-    new_pi->_tx = (diff * 100) / tx;
+    new_pi->_busy = (diff * busy) / 100;
+    new_pi->_rx = (diff * rx) / 100;
+    new_pi->_tx = (diff * tx) / 100;
   }
 
   _packet_list_hw.push_back(new_pi);
@@ -301,7 +301,6 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
   stats->hw_busy /= diff_time;
   stats->hw_rx /= diff_time;
   stats->hw_tx /= diff_time;
-
 }
 
 void
