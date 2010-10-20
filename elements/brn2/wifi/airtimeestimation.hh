@@ -62,8 +62,19 @@ class AirTimeEstimation : public Element {
       bool _rx;
     };
 
+    class PacketInfoHW {
+      public:
+        Timestamp _time;
+        uint32_t _busy;
+        uint32_t _rx;
+        uint32_t _tx;
+    };
+
     typedef Vector<PacketInfo*> PacketList;
     typedef PacketList::const_iterator PacketListIter;
+
+    typedef Vector<PacketInfoHW*> PacketListHW;
+    typedef PacketListHW::const_iterator PacketListHWIter;
 
   public:
 
@@ -80,23 +91,23 @@ class AirTimeEstimation : public Element {
 
     void push(int, Packet *p);
     void reset();
+
     String stats_handler(int mode);
     void calc_stats(struct airtime_stats *stats);
+
+    void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
+    void clear_old_hw();
 
     bool _debug;
     int32_t max_age;  //maximum age of pakets in the wueue in seconds
 
-    uint32_t hw_busy;
-    uint32_t hw_rx;
-    uint32_t hw_tx;
-
   private:
-
-    Timestamp oldest;
-    uint32_t packets;
-    uint32_t bytes;
-
     PacketList _packet_list;
+    PacketListHW _packet_list_hw;
+
+    uint8_t hw_busy;
+    uint8_t hw_rx;
+    uint8_t hw_tx;
 
     void clear_old();
 };

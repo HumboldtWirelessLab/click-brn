@@ -56,11 +56,12 @@ AirTimeEstimation::configure(Vector<String> &conf, ErrorHandler* errh)
                      "DEBUG", cpkP, cpBool, &_debug,
                      cpEnd);
 
-  oldest = Timestamp::now();
-
   return ret;
 }
 
+/*********************************************/
+/************* RX BASED STATS ****************/
+/*********************************************/
 void
 AirTimeEstimation::push(int port, Packet *p)
 {
@@ -88,7 +89,6 @@ AirTimeEstimation::push(int port, Packet *p)
       else if ( i < t3 ) new_pi->_rate = ceh->rate3;
 
       if ( new_pi->_rate != 0 ) {
-//        click_chatter("OK: Retry: %d Rate: %d All Retries: %d", i, new_pi->_rate, ceh->retries);
         new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
         _packet_list.push_back(new_pi);
       } else {
@@ -131,12 +131,10 @@ AirTimeEstimation::clear_old()
 
   if ( _packet_list.size() == 0 ) return;
 
-//  click_chatter("call clear");
   PacketInfo *pi = _packet_list[0];
   diff = now - pi->_rx_time;
 
   if ( diff.msecval() > max_age ) {
-//    click_chatter("have old packets");
     int i;
     for ( i = 0; i < _packet_list.size(); i++) {
       PacketInfo *pi = _packet_list[i];
@@ -144,17 +142,64 @@ AirTimeEstimation::clear_old()
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
     }
 
-//    click_chatter("Found %d old packets",i);
-    if ( i > 0 ) {
-      _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
-    }
-
-    if ( _packet_list.size() > 0 )
-      oldest = _packet_list[0]->_rx_time;
-    else
-      oldest = Timestamp::now();
+    if ( i > 0 )  _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
   }
 }
+
+
+/*********************************************/
+/************* HW BASED STATS ****************/
+/*********************************************/
+void
+AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
+  PacketInfoHW *new_pi = new PacketInfoHW();
+  new_pi->_time = *time; //p->timestamp_anno()
+
+  hw_busy = busy;
+  hw_rx = rx;
+  hw_tx = tx;
+
+  if ( _packet_list_hw.size() == 0 ) {
+    new_pi->_busy=1;
+    new_pi->_rx=1;
+    new_pi->_tx=1;
+  } else {
+    uint32_t diff = (new_pi->_time - _packet_list_hw[_packet_list_hw.size()-1]->_time).msecval();
+    new_pi->_busy = (diff * 100) / busy;
+    new_pi->_rx = (diff * 100) / rx;
+    new_pi->_tx = (diff * 100) / tx;
+  }
+
+  _packet_list_hw.push_back(new_pi);
+  clear_old_hw();
+}
+
+void
+AirTimeEstimation::clear_old_hw()
+{
+  Timestamp now = Timestamp::now();
+  Timestamp diff;
+
+  if ( _packet_list_hw.size() == 0 ) return;
+
+  PacketInfoHW *pi = _packet_list_hw[0];
+  diff = now - pi->_time;
+
+  if ( diff.msecval() > max_age ) {
+    int i;
+    for ( i = 0; i < _packet_list_hw.size(); i++) {
+      PacketInfoHW *pi = _packet_list_hw[i];
+      diff = now - pi->_time;
+      if ( diff.msecval() <= max_age ) break; //TODO: exact calc
+    }
+
+    if ( i > 0 ) _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + (i-1));
+  }
+}
+
+/*********************************************/
+/************ CALCULATE STATS ****************/
+/*********************************************/
 
 enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX};
 
@@ -233,9 +278,30 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
   stats->rx /= diff_time;
   stats->tx /= diff_time;
 
-  stats->hw_busy = hw_busy;
-  stats->hw_rx = hw_rx;
-  stats->hw_tx = hw_tx;
+/******** HW ***********/
+
+  if ( _packet_list_hw.size() == 0 ) return;
+
+  PacketInfoHW *pi_hw = _packet_list_hw[0];
+  diff = now - pi_hw->_time;
+
+  for ( i = 0; i < _packet_list_hw.size(); i++) {
+    pi_hw = _packet_list_hw[i];
+    diff = now - pi_hw->_time;
+    if ( diff.msecval() <= max_age )  break; //TODO: exact calc
+  }
+
+  for (; i < _packet_list_hw.size(); i++) {
+    pi_hw = _packet_list_hw[i];
+    stats->hw_busy += pi_hw->_busy;
+    stats->hw_rx += pi_hw->_rx;
+    stats->hw_tx += pi_hw->_tx;
+  }
+
+  stats->hw_busy /= diff_time;
+  stats->hw_rx /= diff_time;
+  stats->hw_tx /= diff_time;
+
 }
 
 void
