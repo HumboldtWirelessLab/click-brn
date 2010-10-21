@@ -122,8 +122,10 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
 
   }
 
+  EtherAddress dst = EtherAddress(w->i_addr1);
+  EtherAddress src = EtherAddress(w->i_addr2);
   EtherAddress bssid = EtherAddress(w->i_addr3);
-  sa << "00-00-00-00-00-00 00-00-00-00-00-00 " << bssid << " ";
+  sa << dst << " " << src << " " << bssid << " ";
 
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
