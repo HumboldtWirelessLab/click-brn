@@ -155,6 +155,8 @@ AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t 
   PacketInfoHW *new_pi = new PacketInfoHW();
   new_pi->_time = *time; //p->timestamp_anno()
 
+  click_chatter("STAT: %d %d %d",busy,rx,tx);
+
   hw_busy = busy;
   hw_rx = rx;
   hw_tx = tx;
@@ -164,7 +166,8 @@ AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t 
     new_pi->_rx = 1;
     new_pi->_tx = 1;
   } else {
-    uint32_t diff = (new_pi->_time - _packet_list_hw[_packet_list_hw.size()-1]->_time).msecval();
+    uint32_t diff = (new_pi->_time - _packet_list_hw[_packet_list_hw.size()-1]->_time).usecval();
+    click_chatter("DIFF: %d",diff);
     new_pi->_busy = (diff * busy) / 100;
     new_pi->_rx = (diff * rx) / 100;
     new_pi->_tx = (diff * tx) / 100;
@@ -221,6 +224,9 @@ AirTimeEstimation::stats_handler(int mode)
       sa << "HW Busy: " << stats.hw_busy << "\n";
       sa << "HW RX: " << stats.hw_rx << "\n";
       sa << "HW TX: " << stats.hw_tx << "\n";
+      sa << "Last HW Busy: " << hw_busy << "\n";
+      sa << "Last HW RX: " << hw_rx << "\n";
+      sa << "Last HW TX: " << hw_tx << "\n";
       break;
     case H_STATS_BUSY:
       sa << stats.busy;
@@ -280,7 +286,10 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
 
 /******** HW ***********/
 
-  if ( _packet_list_hw.size() == 0 ) return;
+  if ( _packet_list_hw.size() == 0 ) {
+    click_chatter("List null");
+    return;
+  }
 
   PacketInfoHW *pi_hw = _packet_list_hw[0];
   diff = now - pi_hw->_time;
@@ -298,9 +307,9 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
     stats->hw_tx += pi_hw->_tx;
   }
 
-  stats->hw_busy /= diff_time;
-  stats->hw_rx /= diff_time;
-  stats->hw_tx /= diff_time;
+  stats->hw_busy /= (100 * max_age);
+  stats->hw_rx /= max_age;
+  stats->hw_tx /= max_age;
 }
 
 void

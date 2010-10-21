@@ -105,9 +105,9 @@ class AirTimeEstimation : public Element {
     PacketList _packet_list;
     PacketListHW _packet_list_hw;
 
-    uint8_t hw_busy;
-    uint8_t hw_rx;
-    uint8_t hw_tx;
+    uint32_t hw_busy;
+    uint32_t hw_rx;
+    uint32_t hw_tx;
 
     void clear_old();
 };
