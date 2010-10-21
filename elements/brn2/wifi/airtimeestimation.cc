@@ -140,9 +140,10 @@ AirTimeEstimation::clear_old()
       PacketInfo *pi = _packet_list[i];
       diff = now - pi->_rx_time;
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
+      else delete pi;
     }
 
-    if ( i > 0 )  _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
+    if ( i > 0 ) _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
   }
 }
 
@@ -194,6 +195,7 @@ AirTimeEstimation::clear_old_hw()
       PacketInfoHW *pi = _packet_list_hw[i];
       diff = now - pi->_time;
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
+      else delete pi;
     }
 
     if ( i > 0 ) _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + (i-1));
