@@ -29,27 +29,27 @@
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
 #include <click/error.hh>
 
-#include "airtimeestimation.hh"
+#include "channelstats.hh"
 
 CLICK_DECLS
 
-AirTimeEstimation::AirTimeEstimation():
+ChannelStats::ChannelStats():
     hw_busy(0),
     hw_rx(0),
-    hw_tx(0)
+    hw_tx(0),
+    max_age(1000)
 {
 }
 
-AirTimeEstimation::~AirTimeEstimation()
+ChannelStats::~ChannelStats()
 {
 }
 
 int
-AirTimeEstimation::configure(Vector<String> &conf, ErrorHandler* errh)
+ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
   _debug = false;
-  max_age = 5000;
 
   ret = cp_va_kparse(conf, this, errh,
                      "MAX_AGE", cpkP, cpInteger, &max_age,
@@ -63,7 +63,7 @@ AirTimeEstimation::configure(Vector<String> &conf, ErrorHandler* errh)
 /************* RX BASED STATS ****************/
 /*********************************************/
 void
-AirTimeEstimation::push(int port, Packet *p)
+ChannelStats::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
@@ -140,7 +140,7 @@ AirTimeEstimation::push(int port, Packet *p)
 }
 
 void
-AirTimeEstimation::clear_old()
+ChannelStats::clear_old()
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -172,7 +172,7 @@ AirTimeEstimation::clear_old()
 /************* HW BASED STATS ****************/
 /*********************************************/
 void
-AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
+ChannelStats::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
   PacketInfoHW *new_pi = new PacketInfoHW();
   new_pi->_time = *time; //p->timestamp_anno()
 
@@ -199,7 +199,7 @@ AirTimeEstimation::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t 
 }
 
 void
-AirTimeEstimation::clear_old_hw()
+ChannelStats::clear_old_hw()
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -229,7 +229,7 @@ AirTimeEstimation::clear_old_hw()
 enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI};
 
 String
-AirTimeEstimation::stats_handler(int mode)
+ChannelStats::stats_handler(int mode)
 {
   StringAccum sa;
   struct airtime_stats stats;
@@ -281,7 +281,7 @@ AirTimeEstimation::stats_handler(int mode)
 }
 
 void
-AirTimeEstimation::calc_stats(struct airtime_stats *stats)
+ChannelStats::calc_stats(struct airtime_stats *stats)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -353,16 +353,16 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
 }
 
 void
-AirTimeEstimation::reset()
+ChannelStats::reset()
 {
   _packet_list.clear();
 }
 
 static String 
-AirTimeEstimation_read_param(Element *e, void *thunk)
+ChannelStats_read_param(Element *e, void *thunk)
 {
   StringAccum sa;
-  AirTimeEstimation *td = (AirTimeEstimation *)e;
+  ChannelStats *td = (ChannelStats *)e;
   switch ((uintptr_t) thunk) {
     case H_DEBUG:
       return String(td->_debug) + "\n";
@@ -384,10 +384,10 @@ AirTimeEstimation_read_param(Element *e, void *thunk)
 }
 
 static int 
-AirTimeEstimation_write_param(const String &in_s, Element *e, void *vparam,
+ChannelStats_write_param(const String &in_s, Element *e, void *vparam,
                                   ErrorHandler *errh)
 {
-  AirTimeEstimation *f = (AirTimeEstimation *)e;
+  ChannelStats *f = (ChannelStats *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_DEBUG: {    //debug
@@ -412,25 +412,25 @@ AirTimeEstimation_write_param(const String &in_s, Element *e, void *vparam,
 }
 
 void
-AirTimeEstimation::add_handlers()
+ChannelStats::add_handlers()
 {
-  add_read_handler("debug", AirTimeEstimation_read_param, (void *) H_DEBUG);
-  add_read_handler("max_time", AirTimeEstimation_read_param, (void *) H_MAX_TIME);
-  add_read_handler("stats", AirTimeEstimation_read_param, (void *) H_STATS);
-  add_read_handler("busy", AirTimeEstimation_read_param, (void *) H_STATS_BUSY);
-  add_read_handler("rx", AirTimeEstimation_read_param, (void *) H_STATS_RX);
-  add_read_handler("tx", AirTimeEstimation_read_param, (void *) H_STATS_TX);
-  add_read_handler("hw_busy", AirTimeEstimation_read_param, (void *) H_STATS_HW_BUSY);
-  add_read_handler("hw_rx", AirTimeEstimation_read_param, (void *) H_STATS_HW_RX);
-  add_read_handler("hw_tx", AirTimeEstimation_read_param, (void *) H_STATS_HW_TX);
-  add_read_handler("avg_noise", AirTimeEstimation_read_param, (void *) H_STATS_AVG_NOISE);
-  add_read_handler("avg_rssi", AirTimeEstimation_read_param, (void *) H_STATS_AVG_RSSI);
+  add_read_handler("debug", ChannelStats_read_param, (void *) H_DEBUG);
+  add_read_handler("max_time", ChannelStats_read_param, (void *) H_MAX_TIME);
+  add_read_handler("stats", ChannelStats_read_param, (void *) H_STATS);
+  add_read_handler("busy", ChannelStats_read_param, (void *) H_STATS_BUSY);
+  add_read_handler("rx", ChannelStats_read_param, (void *) H_STATS_RX);
+  add_read_handler("tx", ChannelStats_read_param, (void *) H_STATS_TX);
+  add_read_handler("hw_busy", ChannelStats_read_param, (void *) H_STATS_HW_BUSY);
+  add_read_handler("hw_rx", ChannelStats_read_param, (void *) H_STATS_HW_RX);
+  add_read_handler("hw_tx", ChannelStats_read_param, (void *) H_STATS_HW_TX);
+  add_read_handler("avg_noise", ChannelStats_read_param, (void *) H_STATS_AVG_NOISE);
+  add_read_handler("avg_rssi", ChannelStats_read_param, (void *) H_STATS_AVG_RSSI);
 
-  add_write_handler("debug", AirTimeEstimation_write_param, (void *) H_DEBUG);
-  add_write_handler("reset", AirTimeEstimation_write_param, (void *) H_RESET, Handler::BUTTON);
-  add_write_handler("max_time", AirTimeEstimation_write_param, (void *) H_MAX_TIME);
+  add_write_handler("debug", ChannelStats_write_param, (void *) H_DEBUG);
+  add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("max_time", ChannelStats_write_param, (void *) H_MAX_TIME);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(AirTimeEstimation)
-ELEMENT_MT_SAFE(AirTimeEstimation)
+EXPORT_ELEMENT(ChannelStats)
+ELEMENT_MT_SAFE(ChannelStats)

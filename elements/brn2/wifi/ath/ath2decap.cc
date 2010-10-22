@@ -38,7 +38,7 @@
 CLICK_DECLS
 
 Ath2Decap::Ath2Decap():
-    _ate(NULL)
+    _cst(NULL)
 {
   BRNElement::init();
 }
@@ -55,7 +55,7 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 
   ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
-                     "AIRTIME", cpkP, cpElement, &_ate,
+                     "CHANNELSTATS", cpkP, cpElement, &_cst,
                      cpEnd);
   return ret;
 }
@@ -150,7 +150,7 @@ Ath2Decap::simple_action(Packet *p)
     if ( eh->retries < ath2_h->anno.tx.ts_longretry )
       eh->retries = ath2_h->anno.tx.ts_longretry;
 
-    if ( _ate != NULL ) _ate->addHWStat(&(p->timestamp_anno()), ath2_h->anno.tx.ts_channel_utility, 0, 0);
+    if ( _cst != NULL ) _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.tx.ts_channel_utility, 0, 0);
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel); 
   }
@@ -204,7 +204,7 @@ Ath2Decap::simple_action(Packet *p)
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
 
-    if ( _ate != NULL ) _ate->addHWStat(&(p->timestamp_anno()), ath2_h->anno.rx.rs_channel_utility, 0, 0);
+    if ( _cst != NULL ) _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.rx.rs_channel_utility, 0, 0);
   }
 
 

@@ -22,7 +22,7 @@
 #define CLICK_ATH2DECAP_HH
 #include <click/element.hh>
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/airtimeestimation.hh"
+#include "elements/brn2/wifi/channelstats.hh"
 CLICK_DECLS
 
 /*
@@ -53,7 +53,7 @@ class Ath2Decap : public BRNElement {
     int configure(Vector<String> &conf, ErrorHandler* errh);
 
     Packet *simple_action(Packet *);
-    AirTimeEstimation *_ate;
+    ChannelStats *_cst;
 
   private:
     bool _athdecap;

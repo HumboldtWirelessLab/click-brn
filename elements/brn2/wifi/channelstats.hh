@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef CLICK_AIRTIMEESTIMATION_HH
-#define CLICK_AIRTIMEESTIMATION_HH
+#ifndef CLICK_CHANNELSTATS_HH
+#define CLICK_CHANNELSTATS_HH
 #include <click/element.hh>
 #include <click/vector.hh>
 
@@ -32,7 +32,7 @@ CLICK_DECLS
 
 /*
 =c
-AirTimeEstimation()
+ChannelStats()
 
 
 
@@ -43,7 +43,7 @@ AirTimeEstimation()
 
 */
 
-class AirTimeEstimation : public Element {
+class ChannelStats : public Element {
 
   struct airtime_stats {
     int packets;
@@ -89,10 +89,10 @@ class AirTimeEstimation : public Element {
 
   public:
 
-    AirTimeEstimation();
-    ~AirTimeEstimation();
+    ChannelStats();
+    ~ChannelStats();
 
-    const char *class_name() const	{ return "AirTimeEstimation"; }
+    const char *class_name() const	{ return "ChannelStats"; }
     const char *processing() const  { return PUSH; }
     const char *port_count() const  { return "1/1"; }
 

@@ -4,7 +4,7 @@
 #include <clicknet/ether.h>
 #include <elements/wifi/availablerates.hh>
 
-#include "powerratestats.hh"
+#include "elements/brn2/wifi/channelstats.hh"
 
 CLICK_DECLS
 
@@ -31,7 +31,7 @@ class SetTXPowerRate : public Element { public:
 
   AvailableRates *_rtable;
   int _maxpower;
-  PowerRateStats _stats;
+  ChannelStats *_stats;
 };
 
 CLICK_ENDDECLS
