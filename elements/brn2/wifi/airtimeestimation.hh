@@ -67,8 +67,8 @@ class AirTimeEstimation : public Element {
       bool _foreign;
       int _channel;
       bool _rx;
-      uint8_t _noise;
-      uint8_t _rssi;
+      int _noise;
+      int _rssi;
       EtherAddress _src;
       uint8_t _state;
     };

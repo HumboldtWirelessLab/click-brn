@@ -123,7 +123,7 @@ AirTimeEstimation::push(int port, Packet *p)
         new_pi->_state = STATE_PHY;
 
       new_pi->_noise = ceh->silence;
-      new_pi->_rssi = ceh->rssi;
+      new_pi->_rssi = (signed char)ceh->rssi;
 
       /*StringAccum sa;
         sa << "Rate: " << (int)ceh->rate << " Len: " << p->length() << " Duration: " << new_pi->_duration;
