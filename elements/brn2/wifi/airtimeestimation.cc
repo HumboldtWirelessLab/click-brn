@@ -134,16 +134,20 @@ AirTimeEstimation::clear_old()
   PacketInfo *pi = _packet_list[0];
   diff = now - pi->_rx_time;
 
+  int deletes = 0;
   if ( diff.msecval() > max_age ) {
     int i;
     for ( i = 0; i < _packet_list.size(); i++) {
-      PacketInfo *pi = _packet_list[i];
+      pi = _packet_list[i];
       diff = now - pi->_rx_time;
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
-      else delete pi;
+      else {
+        delete pi;
+        deletes++;
+      }
     }
 
-    if ( i > 0 ) _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
+    if ( i > 0 ) _packet_list.erase(_packet_list.begin(), _packet_list.begin() + i);
   }
 }
 
@@ -192,13 +196,13 @@ AirTimeEstimation::clear_old_hw()
   if ( diff.msecval() > max_age ) {
     int i;
     for ( i = 0; i < _packet_list_hw.size(); i++) {
-      PacketInfoHW *pi = _packet_list_hw[i];
+      pi = _packet_list_hw[i];
       diff = now - pi->_time;
       if ( diff.msecval() <= max_age ) break; //TODO: exact calc
       else delete pi;
     }
 
-    if ( i > 0 ) _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + (i-1));
+    if ( i > 0 ) _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + i);
   }
 }
 
