@@ -67,6 +67,7 @@ AirTimeEstimation::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
+click_chatter("push");
   if ( ceh->flags & WIFI_EXTRA_TX ) {
 
     for ( int i = 0; i < (int) ceh->retries; i++ ) {
@@ -119,6 +120,7 @@ AirTimeEstimation::push(int port, Packet *p)
     }
   }
 
+click_chatter("push end");
   clear_old();
   output(port).push(p);
 }
@@ -129,10 +131,12 @@ AirTimeEstimation::clear_old()
   Timestamp now = Timestamp::now();
   Timestamp diff;
 
+  click_chatter("check size");
   if ( _packet_list.size() == 0 ) return;
 
   PacketInfo *pi = _packet_list[0];
   diff = now - pi->_rx_time;
+  click_chatter("check size");
 
   if ( diff.msecval() > max_age ) {
     int i;
@@ -143,7 +147,12 @@ AirTimeEstimation::clear_old()
       else delete pi;
     }
 
-    if ( i > 0 ) _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
+    if ( i > 1 ) {
+      click_chatter("Delete list");
+      _packet_list.erase(_packet_list.begin(), _packet_list.begin() + (i-1));
+      click_chatter("Delete list 2");
+    
+    }
   }
 }
 
@@ -184,10 +193,13 @@ AirTimeEstimation::clear_old_hw()
   Timestamp now = Timestamp::now();
   Timestamp diff;
 
+  click_chatter("check size hw ");
   if ( _packet_list_hw.size() == 0 ) return;
 
   PacketInfoHW *pi = _packet_list_hw[0];
   diff = now - pi->_time;
+
+  click_chatter("check time hw");
 
   if ( diff.msecval() > max_age ) {
     int i;
@@ -198,7 +210,11 @@ AirTimeEstimation::clear_old_hw()
       else delete pi;
     }
 
-    if ( i > 0 ) _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + (i-1));
+    if ( i > 1 ) {
+      click_chatter("Delete hw list");
+     _packet_list_hw.erase(_packet_list_hw.begin(), _packet_list_hw.begin() + (i-1));
+      click_chatter("Delete hw list 2");
+   }
   }
 }
 
