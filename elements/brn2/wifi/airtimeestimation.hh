@@ -23,6 +23,11 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
+#define STATE_UNKNOWN  0
+#define STATE_OK       1
+#define STATE_CRC      2
+#define STATE_PHY      3
+
 CLICK_DECLS
 
 /*
@@ -48,6 +53,8 @@ class AirTimeEstimation : public Element {
     int hw_busy;
     int hw_rx;
     int hw_tx;
+    int avg_noise;
+    int avg_rssi;
   };
 
   public:
@@ -60,6 +67,10 @@ class AirTimeEstimation : public Element {
       bool _foreign;
       int _channel;
       bool _rx;
+      uint8_t _noise;
+      uint8_t _rssi;
+      EtherAddress _src;
+      uint8_t _state;
     };
 
     class PacketInfoHW {

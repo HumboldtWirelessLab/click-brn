@@ -109,10 +109,26 @@ AirTimeEstimation::push(int port, Packet *p)
     if ( new_pi->_rate != 0 ) {
       new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
 
-    /*StringAccum sa;
-      sa << "Rate: " << (int)ceh->rate << " Len: " << p->length() << " Duration: " << new_pi->_duration;
-      click_chatter("P: %s",sa.take_string().c_str());
-    */
+     struct click_wifi *w = (struct click_wifi *) p->data();
+
+      new_pi->_src = EtherAddress(w->i_addr2);
+
+      if ( ceh->magic == WIFI_EXTRA_MAGIC && ( (ceh->flags & WIFI_EXTRA_RX_ERR) == 0 ))
+        new_pi->_state = STATE_OK;
+      else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) &&
+               (ceh->flags & WIFI_EXTRA_RX_CRC_ERR) )
+        new_pi->_state = STATE_CRC;
+      else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) &&
+               (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) )
+        new_pi->_state = STATE_PHY;
+
+      new_pi->_noise = ceh->silence;
+      new_pi->_rssi = ceh->rssi;
+
+      /*StringAccum sa;
+        sa << "Rate: " << (int)ceh->rate << " Len: " << p->length() << " Duration: " << new_pi->_duration;
+        click_chatter("P: %s",sa.take_string().c_str());
+      */
       _packet_list.push_back(new_pi);
     } else {
       delete new_pi;
@@ -210,7 +226,7 @@ AirTimeEstimation::clear_old_hw()
 /************ CALCULATE STATS ****************/
 /*********************************************/
 
-enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX};
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI};
 
 String
 AirTimeEstimation::stats_handler(int mode)
@@ -233,6 +249,8 @@ AirTimeEstimation::stats_handler(int mode)
       sa << "Last HW Busy: " << hw_busy << "\n";
       sa << "Last HW RX: " << hw_rx << "\n";
       sa << "Last HW TX: " << hw_tx << "\n";
+      sa << "Avg. Noise: " << stats.avg_noise << "\n";
+      sa << "Avg. Rssi: " << stats.avg_rssi << "\n";
       break;
     case H_STATS_BUSY:
       sa << stats.busy;
@@ -252,6 +270,12 @@ AirTimeEstimation::stats_handler(int mode)
     case H_STATS_HW_TX:
       sa << stats.hw_tx;
       break;
+    case H_STATS_AVG_NOISE:
+      sa << stats.avg_noise;
+      break;
+    case H_STATS_AVG_RSSI:
+      sa << stats.avg_rssi;
+      break;
   }
   return sa.take_string();
 }
@@ -261,7 +285,7 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
-  int i;
+  int i, rx_packets = 0;
 
   memset(stats, 0, sizeof(struct airtime_stats));
 
@@ -280,8 +304,13 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
 
   for (; i < _packet_list.size(); i++) {
     pi = _packet_list[i];
-    if ( pi->_rx) stats->rx += pi->_duration;
-    else stats->tx += pi->_duration;
+
+    if ( pi->_rx) {
+      stats->rx += pi->_duration;
+      stats->avg_noise += pi->_noise;
+      stats->avg_rssi += pi->_rssi;
+      rx_packets++;
+    } else stats->tx += pi->_duration;
   }
 
   int diff_time = 10 * max_age;
@@ -289,6 +318,11 @@ AirTimeEstimation::calc_stats(struct airtime_stats *stats)
   stats->busy /= diff_time;
   stats->rx /= diff_time;
   stats->tx /= diff_time;
+
+  if ( rx_packets > 0 ) {
+    stats->avg_noise /= rx_packets;
+    stats->avg_rssi /= rx_packets;
+  }
 
 /******** HW ***********/
 
@@ -339,6 +373,8 @@ AirTimeEstimation_read_param(Element *e, void *thunk)
     case H_STATS_HW_BUSY:
     case H_STATS_HW_RX:
     case H_STATS_HW_TX:
+    case H_STATS_AVG_NOISE:
+    case H_STATS_AVG_RSSI:
       return td->stats_handler((uintptr_t) thunk);
     case H_MAX_TIME:
       return String(td->max_age) + "\n";
@@ -387,6 +423,8 @@ AirTimeEstimation::add_handlers()
   add_read_handler("hw_busy", AirTimeEstimation_read_param, (void *) H_STATS_HW_BUSY);
   add_read_handler("hw_rx", AirTimeEstimation_read_param, (void *) H_STATS_HW_RX);
   add_read_handler("hw_tx", AirTimeEstimation_read_param, (void *) H_STATS_HW_TX);
+  add_read_handler("avg_noise", AirTimeEstimation_read_param, (void *) H_STATS_AVG_NOISE);
+  add_read_handler("avg_rssi", AirTimeEstimation_read_param, (void *) H_STATS_AVG_RSSI);
 
   add_write_handler("debug", AirTimeEstimation_write_param, (void *) H_DEBUG);
   add_write_handler("reset", AirTimeEstimation_write_param, (void *) H_RESET, Handler::BUTTON);
