@@ -1,29 +1,29 @@
-#ifndef BRN2CRCERRORELEMENT_HH
-#define BRN2CRCERRORELEMENT_HH
+#ifndef PRINTCRCERRORELEMENT_HH
+#define PRINTCRCERRORELEMENT_HH
 
 #include <click/element.hh>
 
 CLICK_DECLS
 /*
  * =c
- * BRN2CRCerror()
+ * PrintCRCError()
  * =s
  * does nothing
  * =d
  */
-class BRN2CRCerror : public Element {
+class PrintCRCError : public Element {
 
  public:
   //
   //methods
   //
-  BRN2CRCerror();
-  ~BRN2CRCerror();
+  PrintCRCError();
+  ~PrintCRCError();
 
-  const char *class_name() const	{ return "BRN2CRCerror"; }
+  const char *class_name() const	{ return "PrintCRCError"; }
   const char *processing() const	{ return AGNOSTIC; }
 
-  const char *port_count() const  { return "1/1"; } 
+  const char *port_count() const  { return "2/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
@@ -39,6 +39,7 @@ class BRN2CRCerror : public Element {
   //
   String _label;
   uint32_t _rate;
+  uint32_t _offset;
 };
 
 CLICK_ENDDECLS
