@@ -50,6 +50,7 @@ class ChannelStats : public Element {
     int busy;
     int rx;
     int tx;
+    bool hw_available;
     int hw_busy;
     int hw_rx;
     int hw_tx;

@@ -34,10 +34,10 @@
 CLICK_DECLS
 
 ChannelStats::ChannelStats():
+    max_age(1000),
     hw_busy(0),
     hw_rx(0),
-    hw_tx(0),
-    max_age(1000)
+    hw_tx(0)
 {
 }
 
@@ -122,7 +122,7 @@ ChannelStats::push(int port, Packet *p)
                (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) )
         new_pi->_state = STATE_PHY;
 
-      new_pi->_noise = ceh->silence;
+      new_pi->_noise = (signed char)ceh->silence;
       new_pi->_rssi = (signed char)ceh->rssi;
 
       /*StringAccum sa;
@@ -238,11 +238,13 @@ ChannelStats::stats_handler(int mode)
 
   switch (mode) {
     case H_STATS:
+      sa << "Time: " << max_age << "\n";
       sa << "All packets: " << _packet_list.size() << "\n";
       sa << "Packets: " << stats.packets << "\n";
       sa << "Busy: " << stats.busy << "\n";
       sa << "RX: " << stats.rx << "\n";
       sa << "TX: " << stats.tx << "\n";
+      sa << "HW available: " << stats.hw_available << "\n";
       sa << "HW Busy: " << stats.hw_busy << "\n";
       sa << "HW RX: " << stats.hw_rx << "\n";
       sa << "HW TX: " << stats.hw_tx << "\n";
@@ -326,6 +328,7 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
 
 /******** HW ***********/
 
+  stats->hw_available = (_packet_list_hw.size() != 0);
   if ( _packet_list_hw.size() == 0 ) {
     click_chatter("List null");
     return;
