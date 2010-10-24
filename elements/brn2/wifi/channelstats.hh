@@ -46,6 +46,8 @@ ChannelStats()
 class ChannelStats : public Element {
 
   struct airtime_stats {
+    Timestamp last;
+    Timestamp last_hw;
     int packets;
     int busy;
     int rx;
