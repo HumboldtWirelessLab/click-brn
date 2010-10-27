@@ -402,6 +402,8 @@ ChannelStats_read_param(Element *e, void *thunk)
     case H_STATS_HW_TX:
     case H_STATS_AVG_NOISE:
     case H_STATS_AVG_RSSI:
+    case H_STATS_SHORT:
+    case H_STATS_NO_SOURCES:
       return td->stats_handler((uintptr_t) thunk);
     case H_MAX_TIME:
       return String(td->max_age) + "\n";
