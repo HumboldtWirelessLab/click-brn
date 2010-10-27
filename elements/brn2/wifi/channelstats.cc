@@ -322,6 +322,9 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
   if ( rx_packets > 0 ) {
     stats->avg_noise /= rx_packets;
     stats->avg_rssi /= rx_packets;
+  } else {
+    stats->avg_noise = -100; // default value
+    stats->avg_rssi = 0;
   }
 
 /******** HW ***********/
