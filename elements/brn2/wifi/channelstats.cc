@@ -24,6 +24,7 @@
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
 #include <click/vector.hh>
+#include <click/bighashmap.hh>
 #include <elements/wifi/bitrate.hh>
 #include <elements/brn2/wifi/brnwifi.h>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
@@ -34,11 +35,12 @@
 CLICK_DECLS
 
 ChannelStats::ChannelStats():
+    max_age(1000),
     hw_busy(0),
     hw_rx(0),
-    hw_tx(0),
-    max_age(1000)
+    hw_tx(0)
 {
+  stats.last_update = Timestamp::now();
 }
 
 ChannelStats::~ChannelStats()
@@ -122,7 +124,7 @@ ChannelStats::push(int port, Packet *p)
                (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) )
         new_pi->_state = STATE_PHY;
 
-      new_pi->_noise = ceh->silence;
+      new_pi->_noise = (signed char)ceh->silence;
       new_pi->_rssi = (signed char)ceh->rssi;
 
       /*StringAccum sa;
@@ -226,23 +228,24 @@ ChannelStats::clear_old_hw()
 /************ CALCULATE STATS ****************/
 /*********************************************/
 
-enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI};
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_SHORT, H_STATS_NO_SOURCES};
 
 String
 ChannelStats::stats_handler(int mode)
 {
   StringAccum sa;
-  struct airtime_stats stats;
 
   calc_stats(&stats);
 
   switch (mode) {
     case H_STATS:
+      sa << "Time: " << max_age << "\n";
       sa << "All packets: " << _packet_list.size() << "\n";
       sa << "Packets: " << stats.packets << "\n";
       sa << "Busy: " << stats.busy << "\n";
       sa << "RX: " << stats.rx << "\n";
       sa << "TX: " << stats.tx << "\n";
+      sa << "HW available: " << stats.hw_available << "\n";
       sa << "HW Busy: " << stats.hw_busy << "\n";
       sa << "HW RX: " << stats.hw_rx << "\n";
       sa << "HW TX: " << stats.hw_tx << "\n";
@@ -251,6 +254,7 @@ ChannelStats::stats_handler(int mode)
       sa << "Last HW TX: " << hw_tx << "\n";
       sa << "Avg. Noise: " << stats.avg_noise << "\n";
       sa << "Avg. Rssi: " << stats.avg_rssi << "\n";
+      sa << "No. Src: " << stats.no_sources << "\n";
       break;
     case H_STATS_BUSY:
       sa << stats.busy;
@@ -275,7 +279,13 @@ ChannelStats::stats_handler(int mode)
       break;
     case H_STATS_AVG_RSSI:
       sa << stats.avg_rssi;
-      break;
+    case H_STATS_NO_SOURCES:
+      sa << stats.no_sources;
+    case H_STATS_SHORT:
+      sa << stats.last.nsecval() << ";" << stats.last_hw.nsecval() << ";";
+      sa << stats.packets << ";" << stats.busy << ";" << stats.rx << ";" << stats.tx << ";";
+      sa << stats.hw_busy << ";" << stats.hw_rx << ";" << stats.hw_tx << ";";
+      sa << stats.avg_noise << ";" << stats.avg_rssi << ";" << stats.no_sources;
   }
   return sa.take_string();
 }
@@ -286,6 +296,12 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
   Timestamp now = Timestamp::now();
   Timestamp diff;
   int i, rx_packets = 0;
+
+  HashMap<EtherAddress, EtherAddress> sources;
+
+  if ((Timestamp::now() - stats->last_update).msecval() < MIN_UPDATE_DIFF) return;
+
+  stats->last_update = Timestamp::now();
 
   memset(stats, 0, sizeof(struct airtime_stats));
 
@@ -310,6 +326,9 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
       stats->avg_noise += pi->_noise;
       stats->avg_rssi += pi->_rssi;
       rx_packets++;
+
+      if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
+
     } else stats->tx += pi->_duration;
   }
 
@@ -327,8 +346,13 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
     stats->avg_rssi = 0;
   }
 
-/******** HW ***********/
+  stats->last = _packet_list[_packet_list.size()-1]->_rx_time;
 
+  stats->no_sources = sources.size();
+
+  /******** HW ***********/
+
+  stats->hw_available = (_packet_list_hw.size() != 0);
   if ( _packet_list_hw.size() == 0 ) {
     click_chatter("List null");
     return;
@@ -353,6 +377,8 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
   stats->hw_busy /= diff_time;
   stats->hw_rx /= diff_time;
   stats->hw_tx /= diff_time;
+
+  stats->last_hw = _packet_list_hw[_packet_list_hw.size()-1]->_time;
 }
 
 void
@@ -370,6 +396,7 @@ ChannelStats_read_param(Element *e, void *thunk)
     case H_DEBUG:
       return String(td->_debug) + "\n";
     case H_STATS:
+    case H_STATS_SHORT:
     case H_STATS_BUSY:
     case H_STATS_RX:
     case H_STATS_TX:
@@ -420,6 +447,7 @@ ChannelStats::add_handlers()
   add_read_handler("debug", ChannelStats_read_param, (void *) H_DEBUG);
   add_read_handler("max_time", ChannelStats_read_param, (void *) H_MAX_TIME);
   add_read_handler("stats", ChannelStats_read_param, (void *) H_STATS);
+  add_read_handler("stats_short", ChannelStats_read_param, (void *) H_STATS_SHORT);
   add_read_handler("busy", ChannelStats_read_param, (void *) H_STATS_BUSY);
   add_read_handler("rx", ChannelStats_read_param, (void *) H_STATS_RX);
   add_read_handler("tx", ChannelStats_read_param, (void *) H_STATS_TX);
@@ -428,6 +456,7 @@ ChannelStats::add_handlers()
   add_read_handler("hw_tx", ChannelStats_read_param, (void *) H_STATS_HW_TX);
   add_read_handler("avg_noise", ChannelStats_read_param, (void *) H_STATS_AVG_NOISE);
   add_read_handler("avg_rssi", ChannelStats_read_param, (void *) H_STATS_AVG_RSSI);
+  add_read_handler("no_src", ChannelStats_read_param, (void *) H_STATS_NO_SOURCES);
 
   add_write_handler("debug", ChannelStats_write_param, (void *) H_DEBUG);
   add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);

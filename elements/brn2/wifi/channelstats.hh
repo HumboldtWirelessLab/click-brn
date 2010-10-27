@@ -28,6 +28,8 @@
 #define STATE_CRC      2
 #define STATE_PHY      3
 
+#define MIN_UPDATE_DIFF 10
+
 CLICK_DECLS
 
 /*
@@ -46,15 +48,21 @@ ChannelStats()
 class ChannelStats : public Element {
 
   struct airtime_stats {
+    Timestamp last_update;
+
+    Timestamp last;
+    Timestamp last_hw;
     int packets;
     int busy;
     int rx;
     int tx;
+    bool hw_available;
     int hw_busy;
     int hw_rx;
     int hw_tx;
     int avg_noise;
     int avg_rssi;
+    int no_sources;
   };
 
   public:
@@ -121,6 +129,8 @@ class ChannelStats : public Element {
     uint32_t hw_tx;
 
     void clear_old();
+
+    struct airtime_stats stats;
 };
 
 CLICK_ENDDECLS

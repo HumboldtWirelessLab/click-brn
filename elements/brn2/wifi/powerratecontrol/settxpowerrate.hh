@@ -14,7 +14,7 @@ class SetTXPowerRate : public Element { public:
   ~SetTXPowerRate();
 
   const char *class_name() const  { return "SetTXPowerRate"; }
-  const char *port_count() const  { return "3/3"; }
+  const char *port_count() const  { return "2/2"; }
 
   const char *processing() const  { return AGNOSTIC; }
 
@@ -30,8 +30,10 @@ class SetTXPowerRate : public Element { public:
  private:
 
   AvailableRates *_rtable;
+
   int _maxpower;
-  ChannelStats *_stats;
+  ChannelStats *_cst;
+
 };
 
 CLICK_ENDDECLS

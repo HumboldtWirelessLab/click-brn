@@ -4,20 +4,21 @@
 #include <click/straccum.hh>
 #include <click/packet_anno.hh>
 #include <clicknet/wifi.h>
-#include "brn2_crcerror.hh"
+#include "printcrcerror.hh"
 
 CLICK_DECLS
 
-BRN2CRCerror::BRN2CRCerror()
+PrintCRCError::PrintCRCError():
+  _rate(0)
 {
 }
 
-BRN2CRCerror::~BRN2CRCerror()
+PrintCRCError::~PrintCRCError()
 {
 }
 
 int
-BRN2CRCerror::configure(Vector<String> &conf, ErrorHandler* errh)
+PrintCRCError::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "LABEL", cpkP+cpkM, cpString, /*"label",*/ &_label,
@@ -28,13 +29,13 @@ BRN2CRCerror::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 int
-BRN2CRCerror::initialize(ErrorHandler *)
+PrintCRCError::initialize(ErrorHandler *)
 {
   return 0;
 }
 
 Packet *
-BRN2CRCerror::simple_action(Packet *p_in)
+PrintCRCError::simple_action(Packet *p_in)
 {
   uint8_t *packet_data = (uint8_t*)p_in->data();
   uint32_t i;
@@ -46,14 +47,14 @@ BRN2CRCerror::simple_action(Packet *p_in)
   struct click_wifi_extra *ceh = (struct click_wifi_extra *) p_in->anno();
 
   if ( ( _rate == 0 ) || ( ( _rate != 0 ) && ( _rate == ceh->rate ) ) )
-  { 
+  {
     memcpy(&seq_num, &(packet_data[2]), sizeof(seq_num));
 
     seq_num=ntohl(seq_num);
 
     crc_count = 0;
     bit_pos = 0;
-    
+
     for ( i = 4; i < p_in->length(); i++)
     {
       next_byte = packet_data[i];
@@ -61,11 +62,8 @@ BRN2CRCerror::simple_action(Packet *p_in)
 
       for(uint8_t bit = 128; bit > 0; bit = bit >> 1)
       {
-//        if ( _rate == 0 )
-//        {
-          sa << /*((double)(*/ceh->rate/*))/2*/;
-          sa << " ";
-//        }
+        sa << ceh->rate;
+        sa << " ";
 
         sa << seq_num << " " << bit_pos;
         if ( ( next_byte & bit ) == 1 ) sa << " 1\n";
@@ -87,10 +85,10 @@ read_handler(Element *, void *)
 }
 
 void
-BRN2CRCerror::add_handlers()
+PrintCRCError::add_handlers()
 {
   add_read_handler("scheduled", read_handler, 0);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRN2CRCerror)
+EXPORT_ELEMENT(PrintCRCError)
