@@ -279,8 +279,10 @@ ChannelStats::stats_handler(int mode)
       break;
     case H_STATS_AVG_RSSI:
       sa << stats.avg_rssi;
+      break;
     case H_STATS_NO_SOURCES:
       sa << stats.no_sources;
+      break;
     case H_STATS_SHORT:
       sa << stats.last.nsecval() << ";" << stats.last_hw.nsecval() << ";";
       sa << stats.packets << ";" << stats.busy << ";" << stats.rx << ";" << stats.tx << ";";
