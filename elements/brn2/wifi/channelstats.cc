@@ -41,6 +41,7 @@ ChannelStats::ChannelStats():
     hw_tx(0)
 {
   stats.last_update = Timestamp::now();
+  _last_update = Timestamp::now();
 }
 
 ChannelStats::~ChannelStats()
@@ -293,19 +294,36 @@ ChannelStats::stats_handler(int mode)
 }
 
 void
-ChannelStats::calc_stats(struct airtime_stats *stats)
+ChannelStats::calc_stats(struct airtime_stats *cstats)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
   int i, rx_packets = 0;
+//StringAccum sa,sa2;
+  uint32_t cs_min = CS_MIN_UPDATE_DIFFTIME;
 
   HashMap<EtherAddress, EtherAddress> sources;
 
-  if ((Timestamp::now() - stats->last_update).msecval() < MIN_UPDATE_DIFF) return;
+  diff = now - _last_update;
 
-  stats->last_update = Timestamp::now();
+//  click_chatter("DIFF: %ld",(long)diff.usecval());
+//  sa << now << " " << cstats->last_update << " " << _last_update << " " << diff;
+//  click_chatter("%s -> %ld %d  %ld %d", sa.take_string().c_str(), diff.usecval(),diff.usecval(),diff.msecval(),diff.msecval());
 
-  memset(stats, 0, sizeof(struct airtime_stats));
+  if ( diff.usecval() <= cs_min * 1000 ) {
+//    click_chatter("In Time");
+    return;
+  }/* else {
+    click_chatter("New calc");
+  }  */
+
+  memset(cstats, 0, sizeof(struct airtime_stats));
+
+  cstats->last_update = now;
+  _last_update = now;
+
+//  sa2 << now << " " << cstats->last_update;
+//  click_chatter("%s", sa2.take_string().c_str());
 
   if ( _packet_list.size() == 0 ) return;
 
@@ -318,43 +336,43 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
     if ( diff.msecval() <= max_age )  break; //TODO: exact calc
   }
 
-  stats->packets = _packet_list.size() - i;
+  cstats->packets = _packet_list.size() - i;
 
   for (; i < _packet_list.size(); i++) {
     pi = _packet_list[i];
 
     if ( pi->_rx) {
-      stats->rx += pi->_duration;
-      stats->avg_noise += pi->_noise;
-      stats->avg_rssi += pi->_rssi;
+      cstats->rx += pi->_duration;
+      cstats->avg_noise += pi->_noise;
+      cstats->avg_rssi += pi->_rssi;
       rx_packets++;
 
       if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
-    } else stats->tx += pi->_duration;
+    } else cstats->tx += pi->_duration;
   }
 
   int diff_time = 10 * max_age;
-  stats->busy = stats->rx + stats->tx;
-  stats->busy /= diff_time;
-  stats->rx /= diff_time;
-  stats->tx /= diff_time;
+  cstats->busy = cstats->rx + cstats->tx;
+  cstats->busy /= diff_time;
+  cstats->rx /= diff_time;
+  cstats->tx /= diff_time;
 
   if ( rx_packets > 0 ) {
-    stats->avg_noise /= rx_packets;
-    stats->avg_rssi /= rx_packets;
+    cstats->avg_noise /= rx_packets;
+    cstats->avg_rssi /= rx_packets;
   } else {
-    stats->avg_noise = -100; // default value
-    stats->avg_rssi = 0;
+    cstats->avg_noise = -100; // default value
+    cstats->avg_rssi = 0;
   }
 
-  stats->last = _packet_list[_packet_list.size()-1]->_rx_time;
+  cstats->last = _packet_list[_packet_list.size()-1]->_rx_time;
 
-  stats->no_sources = sources.size();
+  cstats->no_sources = sources.size();
 
   /******** HW ***********/
 
-  stats->hw_available = (_packet_list_hw.size() != 0);
+  cstats->hw_available = (_packet_list_hw.size() != 0);
   if ( _packet_list_hw.size() == 0 ) {
     click_chatter("List null");
     return;
@@ -371,16 +389,16 @@ ChannelStats::calc_stats(struct airtime_stats *stats)
 
   for (; i < _packet_list_hw.size(); i++) {
     pi_hw = _packet_list_hw[i];
-    stats->hw_busy += pi_hw->_busy;
-    stats->hw_rx += pi_hw->_rx;
-    stats->hw_tx += pi_hw->_tx;
+    cstats->hw_busy += pi_hw->_busy;
+    cstats->hw_rx += pi_hw->_rx;
+    cstats->hw_tx += pi_hw->_tx;
   }
 
-  stats->hw_busy /= diff_time;
-  stats->hw_rx /= diff_time;
-  stats->hw_tx /= diff_time;
+  cstats->hw_busy /= diff_time;
+  cstats->hw_rx /= diff_time;
+  cstats->hw_tx /= diff_time;
 
-  stats->last_hw = _packet_list_hw[_packet_list_hw.size()-1]->_time;
+  cstats->last_hw = _packet_list_hw[_packet_list_hw.size()-1]->_time;
 }
 
 void

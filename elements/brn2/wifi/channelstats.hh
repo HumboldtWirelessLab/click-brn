@@ -28,7 +28,7 @@
 #define STATE_CRC      2
 #define STATE_PHY      3
 
-#define MIN_UPDATE_DIFF 10
+#define CS_MIN_UPDATE_DIFFTIME 20
 
 CLICK_DECLS
 
@@ -131,6 +131,8 @@ class ChannelStats : public Element {
     void clear_old();
 
     struct airtime_stats stats;
+    Timestamp _last_update;
+
 };
 
 CLICK_ENDDECLS
