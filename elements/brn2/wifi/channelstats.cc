@@ -358,6 +358,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats)
   cstats->rx /= diff_time;
   cstats->tx /= diff_time;
 
+  if ( cstats->busy > 100 ) cstats->busy = 100;
+  if ( cstats->rx > 100 ) cstats->rx = 100;
+  if ( cstats->tx > 100 ) cstats->tx = 100;
+
   if ( rx_packets > 0 ) {
     cstats->avg_noise /= rx_packets;
     cstats->avg_rssi /= rx_packets;
@@ -397,6 +401,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats)
   cstats->hw_busy /= diff_time;
   cstats->hw_rx /= diff_time;
   cstats->hw_tx /= diff_time;
+
+  if ( cstats->hw_busy > 100 ) cstats->hw_busy = 100;
+  if ( cstats->hw_rx > 100 ) cstats->hw_rx = 100;
+  if ( cstats->hw_tx > 100 ) cstats->hw_tx = 100;
 
   cstats->last_hw = _packet_list_hw[_packet_list_hw.size()-1]->_time;
 }
