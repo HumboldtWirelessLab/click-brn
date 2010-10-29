@@ -36,11 +36,18 @@ class RandomDelayQueue : public Element
     PacketSendBuffer packetBuffer;
     int _debug;
 
-    int _min_jitter, _jitter, _min_dist;
+    int _min_delay, _delay, _min_diff_delay;
 
     Timer _sendbuffer_timer;
     void queue_timer_hook();
 
+    bool _usetsanno;
+
+  public:
+    int size() { return packetBuffer.size(); }
+
+    Packet *get_packet(int index);
+    void remove_packet(int index);
 };
 
 CLICK_ENDDECLS

@@ -19,7 +19,8 @@
 CLICK_DECLS
 
 RandomDelayQueue::RandomDelayQueue():
-  _sendbuffer_timer(static_lookup_timer_hook,(void*)this)
+  _sendbuffer_timer(static_lookup_timer_hook,(void*)this),
+  _usetsanno(false)
 {
 }
 
@@ -30,17 +31,18 @@ RandomDelayQueue::~RandomDelayQueue()
 int
 RandomDelayQueue::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int max_jitter;
+  int max_delay;
 
   if (cp_va_kparse(conf, this, errh,
-    "MINJITTER", cpkP+cpkM, cpInteger, &_min_jitter, /*"minimal Jitter"*/
-    "MAXJITTER", cpkP+cpkM, cpInteger, &max_jitter, /*"maximal Jitter"*/
-    "DIFFJITTER", cpkP+cpkM, cpInteger, &_min_dist, /*"min Jitter between 2 Packets"*/
+    "MINDELAY", cpkP+cpkM, cpInteger, &_min_delay, /*"minimal delay"*/
+    "MAXDELAY", cpkP+cpkM, cpInteger, &max_delay, /*"maximal delay"*/
+    "DIFFDELAY", cpkP+cpkM, cpInteger, &_min_diff_delay, /*"min delay between 2 Packets"*/
+    "TIMESTAMPANNOS", cpkP, cpBool, &_usetsanno, /*use anna*/
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 
-  _jitter = max_jitter - _min_jitter;
+  _delay = max_delay - _min_delay;
   return 0;
 }
 
@@ -83,12 +85,32 @@ RandomDelayQueue::queue_timer_hook()
 void
 RandomDelayQueue::push( int /*port*/, Packet *packet )
 {
-  int jitter = (unsigned int )_min_jitter + ( click_random() % _jitter );
+  int delay;
+  Timestamp now = Timestamp::now();
 
-  packetBuffer.addPacket_ms(packet, jitter, 0);
+  if ( _usetsanno ) {
+    delay = (packet->timestamp_anno() - now).msecval();
+    if ( delay < 0 ) delay = _min_diff_delay;
+  } else {
+    delay = (unsigned int )_min_diff_delay + ( click_random() % _delay );
+  }
+
+  packetBuffer.addPacket_ms(packet, delay, 0);
   int next_p = packetBuffer.getTimeToNext();
 
   _sendbuffer_timer.schedule_after_msec( next_p );
+}
+
+Packet*
+RandomDelayQueue::get_packet(int index)
+{
+  if (index < packetBuffer.size()) return packetBuffer.get(index)->_p;
+}
+
+void
+RandomDelayQueue::remove_packet(int index)
+{
+  if (index < packetBuffer.size()) packetBuffer.del(index);
 }
 
 /*******************************************************************************************/
