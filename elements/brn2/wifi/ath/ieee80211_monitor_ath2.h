@@ -4,7 +4,7 @@
 
 #define MADWIFI_RXTX_FLAGS_SHORT_PREAMBLE   1 << 0
 
-
+/* This information is part of all received packets */
 struct ath2_rx_status {
     u_int16_t	rs_datalen; /* rx frame length */
     u_int8_t	rs_status;  /* rx status, 0 => recv ok */
@@ -28,6 +28,7 @@ struct ath2_rx_status {
 
 } __attribute__ ((packed));
 
+/* This information is part of all TXFeedback packets, which are not an pure operation */
 struct ath2_tx_status {
     u_int16_t	ts_seqnum;    /* h/w assigned sequence number */
     u_int16_t	ts_tstamp;    /* h/w assigned timestamp */
@@ -55,37 +56,35 @@ struct ath2_tx_status {
 
 struct ath2_tx_anno {
 
-    int8_t operation;       //we use packets to configure the mac
+    u_int8_t operation;     //we use packets to configure the mac
 
-    int8_t channel;         //channel to set
+    u_int8_t channel;       //channel to set
 
     u_int8_t mac[6];        //mac address use for sending or set as client for VA
 
     u_int8_t va_position;   //position in VA
 
-#define CC_PKT_THRESHOLD_MASK 63
-#define CC_MODE_SHIFT          6
-    u_int8_t cc_config;
-    u_int8_t cc_rx_busy;
-    u_int8_t cc_rx_frames;
-    u_int8_t cc_tx_frames;
+    u_int8_t queue;
 
 } __attribute__ ((packed));
 
 struct ath2_rx_anno {
 
-  int8_t operation;       //we use packets to configure the mac
+  u_int8_t operation;     //we use packets to configure the mac
 
-  int8_t channel;         //channel to set
+  u_int8_t channel;       //channel to set
 
   u_int8_t mac[6];        //mac address use for sending or set as client for VA
 
   u_int8_t va_position;   //position in VA
 
-  u_int8_t status;
+  u_int8_t status;        //status of operation
+  
+  u_int8_t cu_hw_busy;    //channel utility: busy time
+  u_int8_t cu_hw_rx;      //channel utility: rx time
+  u_int8_t cu_hw_tx;      //channel utility: tx time
 
 } __attribute__ ((packed));
-
 
 /*************************************************/
 /***************** DRIVER FLAGS ******************/
@@ -98,6 +97,8 @@ struct ath2_rx_anno {
 #define MADWIFI_FLAGS_CHANNELSWITCH_ENABLED 1 << 3
 #define MADWIFI_FLAGS_MACCLONE_ENABLED      1 << 4
 
+#define MADWIFI_FLAGS_SET_CONFIG            1 << 29
+#define MADWIFI_FLAGS_TX_PACKET             1 << 30
 #define MADWIFI_FLAGS_IS_OPERATION          1 << 31
 
 struct ath2_header {
@@ -108,7 +109,7 @@ struct ath2_header {
 
     union {
       struct ath2_rx_status rx;             //info of received packets
-      struct ath2_tx_status tx;             //inof of txfeedbackpackets
+      struct ath2_tx_status tx;             //info of txfeedback packets
       struct ath2_tx_anno tx_anno;          //annos of send packets
       struct ath2_rx_anno rx_anno;          //annos of operation packets (result)
     } anno;
@@ -127,7 +128,7 @@ struct ath2_header {
 #define ATH2_OPERATION_NONE        0
 #define ATH2_OPERATION_SETVACLIENT 1
 #define ATH2_OPERATION_SETCHANNEL  2
-#define ATH2_OPERATION_SETFLAGS    3
+#define ATH2_OPERATION_SETMAC      4
 
 #ifndef ARPHRD_IEEE80211_ATHDESC2
 #define ARPHRD_IEEE80211_ATHDESC2  805 /* IEEE 802.11 + atheros (long) descriptor */

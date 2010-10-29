@@ -46,7 +46,7 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnode
   int node_index = 0;
 
   if ( nodes != NULL ) {
-    while ( (buffer_left >= sizeof(struct dht_falcon_node_entry)) && ( node_index < nodes->size()) ) {
+    while ( (buffer_left >= (int)sizeof(struct dht_falcon_node_entry)) && ( node_index < nodes->size()) ) {
       DHTnode *ac_node = nodes->get_dhtnode(node_index);
       node_index++;
       ne[node_index].age_sec = ac_node->get_age_s();
