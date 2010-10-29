@@ -41,7 +41,7 @@ Ath2Encap::simple_action(Packet *p)
 {
   WritablePacket *p_out;
   struct ath2_header *ath2_h;
-  uint8_t channel;
+  uint8_t channel, tos;
 
   if ( _athencap )
     p_out = p->push(ATHDESC2_HEADER_SIZE);       //ATH-HEADER and ATH_BRN-HEADER
@@ -77,8 +77,10 @@ Ath2Encap::simple_action(Packet *p)
   channel = BRNPacketAnno::channel_anno(p);
   ath2_h->anno.tx_anno.channel = channel;
 
-  return p_out;
+  tos = BRNPacketAnno::tos_anno(p);
+  ath2_h->anno.tx_anno.queue = tos;
 
+  return p_out;
 }
 
 

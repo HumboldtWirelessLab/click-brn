@@ -53,7 +53,7 @@ struct ath2_tx_status {
 
 } __attribute__ ((packed));
 
-
+/* This information is part of all send packets, both types: operation as well as normal packets */
 struct ath2_tx_anno {
 
     u_int8_t operation;     //we use packets to configure the mac
@@ -68,6 +68,7 @@ struct ath2_tx_anno {
 
 } __attribute__ ((packed));
 
+/* This information is part of all operation feedback packets */
 struct ath2_rx_anno {
 
   u_int8_t operation;     //we use packets to configure the mac
@@ -79,7 +80,7 @@ struct ath2_rx_anno {
   u_int8_t va_position;   //position in VA
 
   u_int8_t status;        //status of operation
-  
+
   u_int8_t cu_hw_busy;    //channel utility: busy time
   u_int8_t cu_hw_rx;      //channel utility: rx time
   u_int8_t cu_hw_tx;      //channel utility: tx time
@@ -89,7 +90,6 @@ struct ath2_rx_anno {
 /*************************************************/
 /***************** DRIVER FLAGS ******************/
 /*************************************************/
-
 
 #define MADWIFI_FLAGS_CCA_ENABLED           1 << 0
 #define MADWIFI_FLAGS_SMALLBACKOFF_ENABLED  1 << 1
