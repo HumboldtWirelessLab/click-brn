@@ -63,6 +63,10 @@ Ath2Encap::simple_action(Packet *p)
     desc->xmit_rate2 = dot11_to_ratecode(ceh->rate2);
     desc->xmit_rate3 = dot11_to_ratecode(ceh->rate3);
 
+    if ( ( ceh->flags & WIFI_EXTRA_DO_RTS_CTS ) != 0 ) desc->rts_cts_enable = 1;
+    if ( ( ceh->flags & WIFI_EXTRA_DO_CTS ) != 0 ) desc->cts_enable = 1;
+    if ( ( ceh->flags & WIFI_EXTRA_RX_MORE ) != 0 ) desc->more = 1;
+
     if (ceh->max_tries > 0) desc->xmit_tries0 = ceh->max_tries;
     if (ceh->max_tries1 > 0) desc->xmit_tries1 = ceh->max_tries1;
     if (ceh->max_tries2 > 0) desc->xmit_tries2 = ceh->max_tries2;
