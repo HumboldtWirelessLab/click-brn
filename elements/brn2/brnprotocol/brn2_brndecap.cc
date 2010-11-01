@@ -43,9 +43,12 @@ BRN2Decap::~BRN2Decap()
 Packet *
 BRN2Decap::simple_action(Packet *p)
 {
-  uint16_t brn_size = sizeof(click_brn);
-  p->pull(brn_size);
-  BRNPacketAnno::inc_pulled_bytes_anno(p, brn_size);
+  click_brn *brnh = (click_brn*)p->data();
+
+  BRNPacketAnno::set_ttl_anno(p, brnh->ttl);
+
+  p->pull(sizeof(click_brn));
+  BRNPacketAnno::inc_pulled_bytes_anno(p, sizeof(click_brn));
 
   return p;
 }
