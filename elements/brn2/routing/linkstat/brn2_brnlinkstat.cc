@@ -791,6 +791,7 @@ BRN2LinkStat::read_bcast_stats(bool with_pos)
                                  pl->_probe_types[x]._size);
       sa << " fwd = '" << pl->_fwd_rates[x] << "'";
       sa << " rev = '" << rev_rate << "'";
+      sa << "/>\n";
     }
     sa << "\t</link>\n";
 /*
