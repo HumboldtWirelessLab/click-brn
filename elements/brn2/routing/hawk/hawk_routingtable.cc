@@ -140,7 +140,7 @@ HawkRoutingtable::getEntry(EtherAddress *ea)
 
   for(int i = 0; i < _rt.size(); i++) {                           //search
     if ( memcmp(_rt[i]->_dst.data(), ea->data(), 6) == 0 ) {       //if found
-      if ( (now - _rt[i]->_time).msec1() < HAWKMAXKEXCACHETIME ) { //check age, if not too old
+      if ( (now - _rt[i]->_time).msecval() < HAWKMAXKEXCACHETIME ) { //check age, if not too old
         return _rt[i];                                             //give back
       } else {                                                    //too old ?
         BRN_INFO("Remove old link in Hawk RoutingTable.");
@@ -161,7 +161,7 @@ HawkRoutingtable::getEntry(uint8_t *id, int id_len)
 
   for(int i = 0; i < _rt.size(); i++) {                           //search
     if ( memcmp(_rt[i]->_dst_id, id, id_len) == 0 ) {                 //if found
-      if ( (now - _rt[i]->_time).msec1() < HAWKMAXKEXCACHETIME ) { //check age, if not too old
+      if ( (now - _rt[i]->_time).msecval() < HAWKMAXKEXCACHETIME ) { //check age, if not too old
         return _rt[i];                                            //give back
       } else {                                                    //too old ?
         delete _rt[i];
@@ -259,7 +259,7 @@ read_handler(Element *e, void * vparam)
   return String("n/a\n");
 }
 
-static int 
+/*static int 
 write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   HawkRoutingtable *rq = (HawkRoutingtable *)e;
@@ -276,7 +276,7 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
   }
   return 0;
 }
-
+*/
 void
 HawkRoutingtable::add_handlers()
 {

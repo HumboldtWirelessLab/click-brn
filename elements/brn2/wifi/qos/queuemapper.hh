@@ -18,41 +18,46 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-/*
- * stripbrnheader.{cc,hh} -- element removes (leading) BRN header at offset position 0.
- */
-
-#include <click/config.h>
-
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "brnprotocol.hh"
-
-#include "brn2_brndecap.hh"
+#ifndef QUEUEMAPPERELEMENT_HH
+#define QUEUEMAPPERELEMENT_HH
+#include <click/element.hh>
+#include <elements/brn2/brnelement.hh>
+#include <elements/brn2/wifi/channelstats.hh>
 
 CLICK_DECLS
 
-BRN2Decap::BRN2Decap()
-{
-}
+/*
+=c
+()
 
-BRN2Decap::~BRN2Decap()
-{
-}
+=d
 
-Packet *
-BRN2Decap::simple_action(Packet *p)
-{
-  click_brn *brnh = (click_brn*)p->data();
+*/
 
-  BRNPacketAnno::set_ttl_anno(p, brnh->ttl);
+class QueueMapper : public BRNElement {
 
-  p->pull(sizeof(click_brn));
-  BRNPacketAnno::inc_pulled_bytes_anno(p, sizeof(click_brn));
+ public:
 
-  return p;
-}
+  QueueMapper();
+  ~QueueMapper();
+
+  const char *class_name() const  { return "QueueMapper"; }
+  const char *port_count() const  { return "1/1"; }
+
+  int configure(Vector<String> &, ErrorHandler *);
+
+  Packet *simple_action(Packet *);
+
+  int get_cwmin(int busy, int nodes);
+  int find_queue(int cwmin);
+
+  ChannelStats *_cst;
+
+  uint8_t no_queues;
+  uint16_t *_cwmin;
+  uint16_t *_cwmax;
+  uint16_t *_aifs;
+};
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRN2Decap)
-ELEMENT_MT_SAFE(BRN2Decap)
+#endif

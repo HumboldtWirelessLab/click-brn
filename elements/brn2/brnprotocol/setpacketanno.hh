@@ -18,41 +18,53 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-/*
- * stripbrnheader.{cc,hh} -- element removes (leading) BRN header at offset position 0.
- */
+#ifndef SETPACKETANNO_HH
+#define SETPACKETANNO_HH
 
-#include <click/config.h>
-
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "brnprotocol.hh"
-
-#include "brn2_brndecap.hh"
-
+#include <click/etheraddress.hh>
+#include <click/element.hh>
 CLICK_DECLS
 
-BRN2Decap::BRN2Decap()
-{
-}
+/*
+ * =c
+ * SetPacketAnno()
+ * =s prepends a brn header to a given packet
+ * ...
+ * =d
+ */
+class SetPacketAnno : public Element {
 
-BRN2Decap::~BRN2Decap()
-{
-}
+ public:
+   SetPacketAnno();
+  ~SetPacketAnno();
 
-Packet *
-BRN2Decap::simple_action(Packet *p)
-{
-  click_brn *brnh = (click_brn*)p->data();
+  const char *class_name() const	{ return "SetPacketAnno"; }
+  const char *processing() const	{ return AGNOSTIC; }
 
-  BRNPacketAnno::set_ttl_anno(p, brnh->ttl);
+  int configure(Vector<String> &, ErrorHandler *);
+  bool can_live_reconfigure() const	{ return false; }
 
-  p->pull(sizeof(click_brn));
-  BRNPacketAnno::inc_pulled_bytes_anno(p, sizeof(click_brn));
+  int initialize(ErrorHandler *);
 
-  return p;
-}
+  Packet *smaction(Packet *);
+  void push(int, Packet *);
+  Packet *pull(int);
+
+  //
+  //member
+  //
+  int _ttl;
+  int _tos;
+
+  int _debug;
+
+  //
+  //methods
+  //
+
+  void add_handlers();
+
+};
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRN2Decap)
-ELEMENT_MT_SAFE(BRN2Decap)
+#endif

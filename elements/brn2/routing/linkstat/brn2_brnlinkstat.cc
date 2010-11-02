@@ -30,6 +30,7 @@
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "metric/brn2_brnetxmetric.hh"
 
@@ -365,7 +366,7 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  WritablePacket *p = Packet::make(64 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
+  WritablePacket *p = Packet::make(96 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
@@ -382,6 +383,7 @@ BRN2LinkStat::send_probe()
 
   // fill brn header header // think about this; probe packets only available for one hop
   BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
+  BRNPacketAnno::set_tos_anno(p, BRN_TOS_BE);
 
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
   lp->_version = _ett2_version;

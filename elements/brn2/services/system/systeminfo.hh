@@ -18,41 +18,48 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-/*
- * stripbrnheader.{cc,hh} -- element removes (leading) BRN header at offset position 0.
- */
+#ifndef SYSTEMINFOELEMENT_HH
+#define SYSTEMINFOELEMENT_HH
 
-#include <click/config.h>
+#include <click/etheraddress.hh>
+#include <click/element.hh>
+#include <click/userutils.hh>
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "brnprotocol.hh"
-
-#include "brn2_brndecap.hh"
 
 CLICK_DECLS
+/*
+ * =c
+ * SystemInfo()
+ * =s debugging
+ * shows information about the system
+ * =d
+ */
+class SystemInfo : public BRNElement {
 
-BRN2Decap::BRN2Decap()
-{
-}
+ public:
+  //
+  //methods
+  //
+  SystemInfo();
+  ~SystemInfo();
 
-BRN2Decap::~BRN2Decap()
-{
-}
+  const char *class_name() const	{ return "SystemInfo"; }
+  const char *processing() const	{ return AGNOSTIC; }
 
-Packet *
-BRN2Decap::simple_action(Packet *p)
-{
-  click_brn *brnh = (click_brn*)p->data();
+  int configure(Vector<String> &, ErrorHandler *);
+  bool can_live_reconfigure() const	{ return false; }
 
-  BRNPacketAnno::set_ttl_anno(p, brnh->ttl);
+  int initialize(ErrorHandler *);
+  void add_handlers();
 
-  p->pull(sizeof(click_brn));
-  BRNPacketAnno::inc_pulled_bytes_anno(p, sizeof(click_brn));
-
-  return p;
-}
+ public:
+  //
+  //member
+  //
+  BRN2NodeIdentity *_me;
+};
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRN2Decap)
-ELEMENT_MT_SAFE(BRN2Decap)
+#endif

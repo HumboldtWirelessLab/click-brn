@@ -27,7 +27,15 @@ struct click_brn {,
 typedef struct click_brn brn_header;
 
 #define BRN_TOS_BE     0
-#define BRN_TOS_HP     1
+#define BRN_TOS_LP     1
+#define BRN_TOS_MP     2
+#define BRN_TOS_HP     3
+#define BRN_TOS_BOP_0  4
+#define BRN_TOS_BOP_1  5
+#define BRN_TOS_BOP_2  6
+#define BRN_TOS_BOP_3  7
+
+
 
 struct hwaddr {
   uint8_t data[6];  /* hardware address */
@@ -47,6 +55,7 @@ union addr {
 #define BRN_PORT_IAPP                 2 /*0x02*/
 #define BRN_PORT_GATEWAY              3 /*0x03*/
 #define BRN_PORT_EVENTHANDLER         4 /*0x04*/
+#define BRN_PORT_ALARMINGPROTOCOL     5 /*0x05*/
 /*Routing*/
 #define BRN_PORT_DSR                 10 /*0x0a*/
 #define BRN_PORT_BCASTROUTING        11 /*0x0b*/

@@ -45,25 +45,31 @@ ChannelStats()
 
 */
 
+struct airtime_stats {
+  Timestamp last_update;
+
+  Timestamp last;
+  Timestamp last_hw;
+  int packets;
+  int busy;
+  int rx;
+  int tx;
+  bool hw_available;
+  int hw_busy;
+  int hw_rx;
+  int hw_tx;
+  int avg_noise;
+  int avg_rssi;
+  int no_sources;
+
+  int crc_rx;
+  int crc_count;
+  int phy_rx;
+  int phy_count;
+};
+
+
 class ChannelStats : public Element {
-
-  struct airtime_stats {
-    Timestamp last_update;
-
-    Timestamp last;
-    Timestamp last_hw;
-    int packets;
-    int busy;
-    int rx;
-    int tx;
-    bool hw_available;
-    int hw_busy;
-    int hw_rx;
-    int hw_tx;
-    int avg_noise;
-    int avg_rssi;
-    int no_sources;
-  };
 
   public:
     class PacketInfo {
@@ -112,13 +118,15 @@ class ChannelStats : public Element {
     void reset();
 
     String stats_handler(int mode);
+
     void calc_stats(struct airtime_stats *stats);
+    struct airtime_stats *get_stats(int time);
 
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
-    void clear_old_hw();
 
     bool _debug;
-    int32_t max_age;  //maximum age of pakets in the wueue in seconds
+    int32_t max_age;  //maximum age of pakets in the queue in seconds
+    int32_t calc_age; //maximum age of pakets, which are considered in the calculation (default)
 
   private:
     PacketList _packet_list;
@@ -129,6 +137,7 @@ class ChannelStats : public Element {
     uint32_t hw_tx;
 
     void clear_old();
+    void clear_old_hw();
 
     struct airtime_stats stats;
     Timestamp _last_update;
