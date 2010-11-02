@@ -20,15 +20,16 @@
 
 #include <click/config.h>
 #include <click/straccum.hh>
-#include <clicknet/wifi.h>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
 #include <click/vector.hh>
 #include <click/bighashmap.hh>
+#include <click/error.hh>
+#include <clicknet/wifi.h>
+
 #include <elements/wifi/bitrate.hh>
 #include <elements/brn2/wifi/brnwifi.h>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
-#include <click/error.hh>
 
 #include "channelstats.hh"
 
@@ -228,6 +229,12 @@ ChannelStats::clear_old_hw()
 /*********************************************/
 /************ CALCULATE STATS ****************/
 /*********************************************/
+
+struct airtime_stats *
+ChannelStats::get_stats(int time) {
+  calc_stats(&stats);
+  return &stats;
+}
 
 enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_SHORT, H_STATS_NO_SOURCES};
 
