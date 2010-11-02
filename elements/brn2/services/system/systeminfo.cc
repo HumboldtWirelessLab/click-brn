@@ -69,7 +69,7 @@ read_handler(Element *e, void *)
 
   StringAccum sa;
 
-  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "'>\n";
+  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'>\n";
 
   // meminfo
   String raw_info = file_string("/proc/meminfo");
