@@ -80,9 +80,11 @@ read_handler(Element *e, void *)
   //click_chatter(" * %s, %s, %s\n", second_col[1].c_str(), third_col[1].c_str(), fourth_col[1].c_str());
 
   sa << "\t<mem ";
-  sa << "total='" << second_col[1] << "' ";
-  sa << "used='" << third_col[1] << "' ";
-  sa << "free='" << fourth_col[1] << "' ";
+  sa << "total='" << second_col[0] << "' ";
+  sa << "used='" << second_col[1] << "' ";
+  sa << "cached='" << second_col[3] << "' ";
+  sa << "buffers='" << second_col[2] << "' ";
+  sa << "NFS_Unstable='" << second_col[17] << "' ";
   sa << "/>\n";
 
   // recycle vectors
