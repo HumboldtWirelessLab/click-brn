@@ -544,9 +544,12 @@ Brn2LinkTable::print_routes(bool from_me)
 	if (i != r.size()-1) {
 	  EthernetPair pair = EthernetPair(r[i], r[i+1]);
 	  BrnLinkInfo *l = _links.findp(pair);
-	  assert(l);
-	  sa << l->_metric;
-	  sa << " (" << l->_seq << "," << l->age() << ")";
+         if (l) {
+	  	sa << l->_metric;
+	  	sa << " (" << l->_seq << "," << l->age() << ")";
+         } else {
+              sa << "(warning, lnkinfo not found!!!)";
+         }
 	}
       }
       sa << "\n";

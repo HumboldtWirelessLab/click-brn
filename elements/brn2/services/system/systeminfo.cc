@@ -112,7 +112,7 @@ read_handler(Element *e, void *)
   third_col.clear();
   fourth_col.clear();
 
-  // load average
+  // uptime
   raw_info = String(file_string("/proc/uptime"));
   parse_tabbed_lines(raw_info, &first_col, &second_col, NULL);
 
@@ -123,7 +123,12 @@ read_handler(Element *e, void *)
   sa << "idle='" << second_col[0] << "' ";
   sa << "/>\n";
 
+  // linux version
+  raw_info = String(file_string("/proc/version"));
 
+  sa << "\t<linux ";
+  sa << "version='" << raw_info << "'";
+  sa << "/>\n";
 
   sa << "</system>\n";
 
