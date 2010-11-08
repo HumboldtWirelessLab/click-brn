@@ -14,6 +14,7 @@
 #define MODE_INSERT 0
 #define MODE_READ   1
 
+
 CLICK_DECLS
 
 class DHTStorageTest : public Element
@@ -35,6 +36,10 @@ class DHTStorageTest : public Element
     void add_handlers();
 
     static void static_request_timer_hook(Timer *, void *);
+    void request_timer_hook(Timer *t);
+
+    static void callback_func(void *e, DHTOperation *op);
+    void callback(DHTOperation *op);
 
     DHTStorage *_dht_storage;
 
@@ -42,22 +47,39 @@ class DHTStorageTest : public Element
     int _interval;
     uint8_t _mode;
 
+    int _debug;
+
   private:
 
     Timer _request_timer;
 
-    int _debug;
-
     int _starttime;
 
+    uint32_t _startkey;
     uint32_t _countkey;
 
     bool _write;
-  public:
+    bool _read;
+
+  public:             //public since it is needed in the handler
+    int op_rep;
     int write_req;
     int write_rep;
     int read_req;
     int read_rep;
+    int not_found;
+    int no_timeout;
+
+    uint32_t op_time;
+    uint32_t write_time;
+    uint32_t read_time;
+    uint32_t notfound_time;
+    uint32_t timeout_time;
+    uint32_t max_timeout_time;
+
+    int _retries;
+    int _replica;
+
 };
 
 CLICK_ENDDECLS

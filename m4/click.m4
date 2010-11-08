@@ -656,7 +656,7 @@ AC_DEFUN([CLICK_CHECK_SIGNED_SHIFT], [
 
 dnl
 dnl CLICK_CHECK_INTEGER_BUILTINS
-dnl Checks whether '__builtin_clz' and '__builtin_clzll' exist.
+dnl Checks for '__builtin_clz', '__builtin_clzll', and other builtins.
 dnl
 
 AC_DEFUN([CLICK_CHECK_INTEGER_BUILTINS], [
@@ -690,6 +690,17 @@ AC_DEFUN([CLICK_CHECK_INTEGER_BUILTINS], [
 	 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[volatile long long x = 11;]], [[int y = __builtin_ffsll(x);]])], [ac_cv_have___builtin_ffsll=yes], [ac_cv_have___builtin_ffsll=no])])
     if test $ac_cv_have___builtin_ffsll = yes; then
 	AC_DEFINE([HAVE___BUILTIN_FFSLL], [1], [Define if you have the __builtin_ffsll function.])
+    fi
+
+    AC_CACHE_CHECK([for __sync_synchronize], [ac_cv_have___sync_synchronize],
+	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[long x = 11;]], [[long *y = &x; __sync_synchronize();]])], [ac_cv_have___sync_synchronize=yes], [ac_cv_have___sync_synchronize=no])])
+    if test $ac_cv_have___sync_synchronize = yes; then
+	AC_DEFINE([HAVE___SYNC_SYNCHRONIZE], [1], [Define if you have the __sync_synchronize function.])
+    fi
+    AC_CACHE_CHECK([whether __sync_synchronize supports arguments], [ac_cv_have___sync_synchronize_args],
+	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[long x = 11;]], [[long *y = &x; __sync_synchronize(*y);]])], [ac_cv_have___sync_synchronize_args=yes], [ac_cv_have___sync_synchronize_args=no])])
+    if test $ac_cv_have___sync_synchronize_args = yes; then
+	AC_DEFINE([HAVE___SYNC_SYNCHRONIZE_ARGUMENTS], [1], [Define if the __sync_synchronize function supports arguments.])
     fi
 
     AC_CHECK_HEADERS(strings.h)
@@ -786,13 +797,19 @@ dnl POSIX_CLOCK_LIBS.
 dnl
 
 AC_DEFUN([CLICK_CHECK_POSIX_CLOCKS], [
+    have_clock_gettime=yes; POSIX_CLOCK_LIBS=
     AC_CHECK_DECLS([clock_gettime], [], [], [#ifdef HAVE_TIME_H
 # include <time.h>
 #endif])
     SAVELIBS="$LIBS"
-    AC_SEARCH_LIBS([clock_gettime], [rt],
-	[AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Define if you have the clock_gettime function.])])
-    POSIX_CLOCK_LIBS="$LIBS"
+    AC_SEARCH_LIBS([clock_gettime], [rt], [:], [have_clock_gettime=no])
+    if test "x$have_clock_gettime" = xyes; then
+	POSIX_CLOCK_LIBS="$LIBS"
+    fi
     AC_SUBST(POSIX_CLOCK_LIBS)
+    AC_CHECK_FUNC([clock_gettime], [:], [have_clock_gettime=no])
     LIBS="$SAVELIBS"
+    if test "x$have_clock_gettime" = xyes; then
+	AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [Define if you have the clock_gettime function.])
+    fi
 ])

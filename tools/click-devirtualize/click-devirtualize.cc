@@ -166,10 +166,11 @@ reverse_transformation(RouterT *r, ErrorHandler *)
 
   // remove requirements
   {
-    Vector<String> requirements = r->requirements();
-    for (int i = 0; i < requirements.size(); i++)
-      if (requirements[i].substring(0, 12) == "devirtualize")
-	r->remove_requirement(requirements[i]);
+      Vector<String> requirements = r->requirements();
+      for (int i = 0; i < requirements.size(); i += 2)
+	  if (requirements[i].equals("package", 7)
+	      && requirements[i+1].substring(0, 12) == "devirtualize")
+	      r->remove_requirement(requirements[i], requirements[i+1]);
   }
 
   // remove archive elements
@@ -441,7 +442,7 @@ particular purpose.\n");
       md5_free(&pms);
       package_name = "clickdv_" + String(buf, buflen);
   }
-  router->add_requirement(package_name);
+  router->add_requirement("package", package_name);
 
   // output
   StringAccum header, source;
@@ -481,14 +482,14 @@ particular purpose.\n");
     bool tmpdir_populated = false;
 
     if (compile_kernel > 0)
-	if (String fn = click_compile_archive_file(router->archive(), &router->archive()[source_ae], package_name, "linuxmodule", "", tmpdir_populated, &berrh)) {
+	if (String fn = click_compile_archive_file(router->archive(), &router->archive()[source_ae], package_name, "linuxmodule", false, tmpdir_populated, &berrh)) {
 	    ArchiveElement ae = init_archive_element(package_name + ".ko", 0600);
 	    ae.data = file_string(fn, errh);
 	    router->add_archive(ae);
 	}
 
     if (compile_user > 0)
-	if (String fn = click_compile_archive_file(router->archive(), &router->archive()[source_ae], package_name, "userlevel", "", tmpdir_populated, &berrh)) {
+	if (String fn = click_compile_archive_file(router->archive(), &router->archive()[source_ae], package_name, "userlevel", false, tmpdir_populated, &berrh)) {
 	    ArchiveElement ae = init_archive_element(package_name + ".uo", 0600);
 	    ae.data = file_string(fn, errh);
 	    router->add_archive(ae);

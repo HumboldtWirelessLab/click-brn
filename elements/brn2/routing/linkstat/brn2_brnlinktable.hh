@@ -49,13 +49,13 @@ class EthernetPair {
 
   public:
     //
-  //member
+    //member
     //
     EtherAddress _to;
     EtherAddress _from;
 
     //
-  //methods
+    //methods
     //
     EthernetPair() : _to(), _from() { }
 
@@ -91,20 +91,16 @@ class Brn2LinkTable: public Element {
   //member
   //
   int _debug;
-  //class NodeIdentity *_node_identity;
+
   Vector<EtherAddress> last_route;
- 
+
   //
   //methods
   //
   /* generic click-mandated stuff*/
   Brn2LinkTable();
   ~Brn2LinkTable();
- /* 
-  void registerListOfAssociatedClients(Vector<EtherAddress> *assoc_list) {
-    _assoc_list = assoc_list;
-  }
-  */
+
   void add_handlers();
   const char* class_name() const { return "Brn2LinkTable"; }
   int initialize(ErrorHandler *);
@@ -119,8 +115,7 @@ class Brn2LinkTable: public Element {
   void get_inodes(Vector<EtherAddress> &ether_addrs);
 
 
-  static int static_update_link(const String &arg, Element *e,
-				void *, ErrorHandler *errh);
+  static int static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh);
   void clear();
 
   String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
@@ -134,9 +129,8 @@ class Brn2LinkTable: public Element {
   bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to, 
                    IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
 
-  bool update_both_links(EtherAddress a, EtherAddress b, 
-	uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
-   return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
+  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+    return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
   }
 
   bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, 
@@ -146,7 +140,7 @@ class Brn2LinkTable: public Element {
     }
     return false;
   }
-  
+
   /**
    * Removes all links containing the specified node
    * @param node @a [in] The node which links should be removed.
@@ -160,6 +154,7 @@ class Brn2LinkTable: public Element {
   //String ether_routes_to_string(const Vector<Path> &routes);
   signed get_route_metric(const Vector<EtherAddress> &route);
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
+  void get_local_neighbors(Vector<EtherAddress> &neighbors);
   EtherAddress *get_neighbor(EtherAddress ether);
   void clear_stale();
 
@@ -181,23 +176,6 @@ class Brn2LinkTable: public Element {
   uint32_t get_host_metric_from_me(EtherAddress s);
   void get_hosts(Vector<EtherAddress> &rv);
 
-  class BrnLink {
-  public:
-    EtherAddress _from;
-    EtherAddress _to;
-    uint32_t _seq;
-    uint32_t _metric;
-    BrnLink() : _from(), _to(), _seq(0), _metric(0) { }
-    BrnLink(EtherAddress from, EtherAddress to, uint32_t seq, uint32_t metric) {
-      _from = from;
-      _to = to;
-      _seq = seq;
-      _metric = metric;
-    }
-  };
-
-  BrnLink random_link();
-
   typedef HashMap<EtherAddress, EtherAddress> EtherTable;
   typedef EtherTable::const_iterator EtherIter;
 
@@ -205,7 +183,6 @@ class Brn2LinkTable: public Element {
   //member
   //
   EtherTable _blacklist;
-  //Vector<EtherAddress> *_assoc_list;
 
   struct timeval dijkstra_time;
   void dijkstra(EtherAddress src, bool);
@@ -238,7 +215,7 @@ private:
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to, 
-      uint32_t seq, uint32_t age, unsigned metric, bool permanent=false) { 
+      uint32_t seq, uint32_t age, unsigned metric, bool permanent=false) {
       _from = from;
       _to = to;
       _metric = metric;
@@ -248,12 +225,12 @@ private:
       _last_updated = Timestamp::now().timeval();
     }
 
-    BrnLinkInfo(const BrnLinkInfo &p) : 
-      _from(p._from), _to(p._to), 
-      _metric(p._metric), _seq(p._seq), 
+    BrnLinkInfo(const BrnLinkInfo &p) :
+      _from(p._from), _to(p._to),
+      _metric(p._metric), _seq(p._seq),
       _age(p._age),
       _permanent(p._permanent),
-      _last_updated(p._last_updated) 
+      _last_updated(p._last_updated)
     { }
 
     uint32_t age() {
@@ -263,9 +240,9 @@ private:
     }
     void update(uint32_t seq, uint32_t age, unsigned metric) {
       if (seq <= _seq) {
-	return;
+        return;
       }
-      _metric = metric; 
+      _metric = metric;
       _seq = seq;
       _age = age;
       _last_updated = Timestamp::now().timeval();
@@ -286,41 +263,44 @@ private:
     bool _marked_from_me;
     bool _marked_to_me;
 
-    BrnHostInfo(EtherAddress p, IPAddress ip) { 
+    bool _is_associated;
+
+    BrnHostInfo(EtherAddress p, IPAddress ip) {
       _ether = p;
       _ip = ip;
-      _metric_from_me = 0; 
-      _metric_to_me = 0; 
-      _prev_from_me = EtherAddress(); 
-      _prev_to_me = EtherAddress(); 
-      _marked_from_me = false; 
-      _marked_to_me = false; 
+      _metric_from_me = 0;
+      _metric_to_me = 0;
+      _prev_from_me = EtherAddress();
+      _prev_to_me = EtherAddress();
+      _marked_from_me = false;
+      _marked_to_me = false;
+      _is_associated = false;
     }
 
-    BrnHostInfo() : _ether(), _ip() { 
-      //BrnHostInfo(EtherAddress(), IPAddress());
+    BrnHostInfo() : _ether(), _ip() {
     }
 
-    BrnHostInfo(const BrnHostInfo &p) : 
-      _ether(p._ether), 
+    BrnHostInfo(const BrnHostInfo &p) :
+      _ether(p._ether),
       _ip(p._ip),
-      _metric_from_me(p._metric_from_me), 
-      _metric_to_me(p._metric_to_me), 
-      _prev_from_me(p._prev_from_me), 
-      _prev_to_me(p._prev_to_me), 
-      _marked_from_me(p._marked_from_me), 
-      _marked_to_me(p._marked_to_me)
+      _metric_from_me(p._metric_from_me),
+      _metric_to_me(p._metric_to_me),
+      _prev_from_me(p._prev_from_me),
+      _prev_to_me(p._prev_to_me),
+      _marked_from_me(p._marked_from_me),
+      _marked_to_me(p._marked_to_me),
+      _is_associated(p._is_associated)
     { }
 
-    void clear(bool from_me) { 
+    void clear(bool from_me) {
       if (from_me ) {
-	_prev_from_me = EtherAddress(); 
-	_metric_from_me = 0; 
-	_marked_from_me = false;
+        _prev_from_me = EtherAddress();
+        _metric_from_me = 0;
+        _marked_from_me = false;
       } else {
-	_prev_to_me = EtherAddress(); 
-	_metric_to_me = 0; 
-	_marked_to_me = false;
+        _prev_to_me = EtherAddress();
+        _metric_to_me = 0;
+        _marked_to_me = false;
       }
     }
 
@@ -335,7 +315,6 @@ private:
   HTable _hosts;
   LTable _links;
 
-
   BRN2NodeIdentity *_node_identity;
   struct timeval _stale_timeout;
   Timer _timer;
@@ -343,6 +322,12 @@ private:
   int _const_metric;
 
   Brn2RouteCache *_brn_routecache;
+
+ public:
+  //Function is used for associated clients
+  /* associated client are insert into the linktable and marked as associated*/
+  bool associated_host(EtherAddress ea);  //TODO: check for better solution
+  bool is_associated(EtherAddress ea);
 };
 
 inline void 
@@ -361,9 +346,9 @@ Brn2LinkTable::query_route(
     // current node is not final destination of the packet,
     // so lookup route from dsr table and generate a dsr packet
     dijkstra(addrSrc, true);
-  
+
     route = best_route(addrDst, true);
-    
+
     // Cache the found route ...
     if( false == route.empty() )
     {

@@ -11,7 +11,7 @@ dnl The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
 dnl notice is a summary of the Click LICENSE file; the license in that file is
 dnl legally binding.
 
-AC_INIT([click], [1.7.0rc1])
+AC_INIT([click], [1.8.0])
 AC_PREREQ(2.60)
 AC_CONFIG_HEADER(include/click/config.h:config.h.in include/click/pathvars.h:pathvars.h.in include/click/config-bsdmodule.h:config-bsdmodule.h.in include/click/config-linuxmodule.h:config-linuxmodule.h.in include/click/config-ns.h:config-ns.h.in include/click/config-userlevel.h:config-userlevel.h.in)
 AC_CONFIG_SRCDIR(click-buildtool.in)
@@ -313,7 +313,7 @@ ELEMENTS_ARG_ENABLE(ip6, [include IPv6 elements (EXPERIMENTAL)], NO, AC_DEFINE(H
 ELEMENTS_ARG_ENABLE(ipsec, [include IP security elements], NO, AC_DEFINE(HAVE_IPSEC))
 ELEMENTS_ARG_ENABLE(local, [include local elements], NO)
 ELEMENTS_ARG_ENABLE(radio, [include radio elements (EXPERIMENTAL)], NO)
-ELEMENTS_ARG_ENABLE(simple, [include simple versions of other elements], NO)
+ELEMENTS_ARG_ENABLE(simple, [include simple versions of other elements], yes)
 dnl ELEMENTS_ARG_ENABLE(snmp, [include SNMP elements], NO)
 ELEMENTS_ARG_ENABLE(standard, [include standard elements], yes)
 ELEMENTS_ARG_ENABLE(tcpudp, [include TCP and UDP elements], yes)
@@ -323,13 +323,19 @@ ELEMENTS_ARG_ENABLE(wifi, [include wifi elements and support], NO)
 ELEMENTS_ARG_ENABLE(brn, [include brn support], NO)
 ELEMENTS_ARG_ENABLE(brn2, [include brn2 support], NO)
 AC_ARG_ENABLE(experimental, [  --enable-experimental   enable experimental elements in normal groups], :, enable_experimental=no)
+AC_ARG_ENABLE(skip-elements, [  --enable-skip-elements=ELTS disable comma-separated elements], :, enable_skip_elements=no)
 
-for i in `(cd $srcdir/elements; ls | sed '/^CVS$/d;/^bsdmodule$/d;/^exopc$/d;/^linuxmodule$/d;/^ns$/d;/^jist$/d;/^userlevel$/d')`; do
+for i in `(cd $srcdir/elements; ls | sed '/^CVS$/d;/^bsdmodule$/d;/^linuxmodule$/d;/^ns$/d;/^jist$/d;/^userlevel$/d')`; do
     enableval=`eval 'echo $'"enable_$i"`
     test "x$enable_all_elements" = xyes -a "x$enableval" '!=' 'no' && enableval=yes
     test -d "$srcdir/elements/$i" -a "$enableval" = "yes" && element_groups="$element_groups $i"
 done
 
+FINDELEMFLAGS=
+if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+    FINDELEMFLAGS="-x '$enable_skip_elements'"
+fi
+AC_SUBST([FINDELEMFLAGS])
 
 
 dnl
@@ -405,7 +411,7 @@ dnl
 
 AC_LANG_C
 AC_REPLACE_FUNCS(strerror)
-AC_CHECK_FUNCS(random snprintf strtoul tcgetpgrp vsnprintf)
+AC_CHECK_FUNCS(random snprintf strnlen strtoul tcgetpgrp vsnprintf)
 AC_LANG_CPLUSPLUS
 
 
@@ -435,11 +441,6 @@ dnl
 dnl timestamps
 dnl
 
-AC_ARG_ENABLE(nanotimestamp, [  --enable-nanotimestamp  enable nanosecond timestamps])
-if test "x$enable_nanotimestamp" = xyes; then
-    AC_DEFINE(HAVE_NANOTIMESTAMP_ENABLED)
-fi
-
 AC_CHECK_HEADERS(time.h)
 AC_CHECK_SIZEOF([struct timeval])
 AC_CHECK_TYPES([struct timespec], have_timespec=yes, have_timespec=no)
@@ -447,6 +448,15 @@ if test "x$have_timespec" = xyes; then
     AC_CHECK_SIZEOF([struct timespec])
 fi
 CLICK_CHECK_POSIX_CLOCKS
+
+AC_ARG_ENABLE(nanotimestamp, [  --enable-nanotimestamp  enable nanosecond timestamps])
+# Default to nanosecond-precision timestamps if clock_gettime is available.
+if test "x$enable_nanotimestamp" = x -a "x$have_clock_gettime" = xyes; then
+    enable_nanotimestamp=yes
+fi
+if test "x$enable_nanotimestamp" = xyes; then
+    AC_DEFINE([HAVE_NANOTIMESTAMP_ENABLED], [1], [Define if nanosecond-granularity timestamps are enabled.])
+fi
 
 
 dnl
@@ -486,7 +496,7 @@ dnl
 
 AC_CHECK_HEADERS(termio.h netdb.h sys/event.h pwd.h grp.h)
 CLICK_CHECK_POLL_H
-AC_CHECK_FUNCS(sigaction)
+AC_CHECK_FUNCS(pselect sigaction)
 
 AC_CHECK_FUNCS(kqueue, have_kqueue=yes)
 if test "x$have_kqueue" = xyes; then
@@ -882,7 +892,7 @@ dnl possible drivers
 dnl
 
 POSSIBLE_DRIVERS=
-for i in bsdmodule exopc linuxmodule ns jist userlevel; do
+for i in bsdmodule linuxmodule ns jist userlevel; do
     test -f $srcdir/$i/Makefile.in && POSSIBLE_DRIVERS="$POSSIBLE_DRIVERS $i"
 done
 AC_SUBST(POSSIBLE_DRIVERS)
@@ -1301,6 +1311,27 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 	AC_DEFINE([HAVE_NETDEV_GET_TX_QUEUE], [1], [Define if you have the netdev_get_tx_queue function.])
     fi
 
+    AC_CHECK_DECL(netif_tx_queue_frozen, [ac_cv_netif_tx_queue_frozen=yes], [ac_cv_netif_tx_queue_frozen=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>]])
+    if test $ac_cv_netif_tx_queue_frozen = yes; then
+	AC_DEFINE([HAVE_NETIF_TX_QUEUE_FROZEN], [1], [Define if you have the netif_tx_queue_frozen function.])
+    fi
+
+    AC_CHECK_DECL(netdev_uses_dsa_tags, [ac_cv_netdev_uses_dsa_tags=yes], [ac_cv_netdev_uses_dsa_tags=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>]])
+    if test $ac_cv_netdev_uses_dsa_tags = yes; then
+	AC_DEFINE([HAVE_NETDEV_USES_DSA_TAGS], [1], [Define if you have the netdev_uses_dsa_tags function.])
+    fi
+
+    AC_CHECK_DECL(netdev_uses_trailer_tags, [ac_cv_netdev_uses_trailer_tags=yes], [ac_cv_netdev_uses_trailer_tags=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>
+#include <linux/netdevice.h>]])
+    if test $ac_cv_netdev_uses_trailer_tags = yes; then
+	AC_DEFINE([HAVE_NETDEV_USES_TRAILER_TAGS], [1], [Define if you have the netdev_uses_trailer_tags function.])
+    fi
+
 
     CC="$save_cc"
     CXX="$save_cxx"
@@ -1404,6 +1435,25 @@ GNU make's pathname.
 
 ==============================================])
 fi
+
+
+dnl
+dnl install and clean versions of targets
+dnl
+
+AC_SUBST([INSTALL_TARGETS], [])
+AC_SUBST([CLEAN_TARGETS], [])
+for t in $DRIVERS $OTHER_TARGETS; do
+    INSTALL_TARGETS="$INSTALL_TARGETS install-$t"
+    CLEAN_TARGETS="$CLEAN_TARGETS clean-$t"
+done
+
+AC_SUBST([TOOL_INSTALL_TARGETS], [])
+AC_SUBST([TOOL_CLEAN_TARGETS], [])
+for t in $TOOL_TARGETS; do
+    TOOL_INSTALL_TARGETS="$TOOL_INSTALL_TARGETS install-$t"
+    TOOL_CLEAN_TARGETS="$TOOL_CLEAN_TARGETS clean-$t"
+done
 
 
 dnl

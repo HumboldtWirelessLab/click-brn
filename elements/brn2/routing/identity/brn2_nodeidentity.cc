@@ -6,12 +6,14 @@
 #include <click/straccum.hh>
 
 #include <elements/brn2/standard/brnaddressinfo.hh>
-//#include "elements/brn/common.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _debug(/*BrnLogger::DEFAULT*/0)
+  : _debug(BrnLogger::DEFAULT),
+    _master_device_id(-1),
+    _service_device_id(-1)
 {
 }
 
@@ -24,6 +26,11 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int no_dev = 0;
 
+/*  if (cp_va_kparse(conf, this, errh,
+      "NODENAME", cpkP+cpkM, cpString, &_name,
+      cpEnd) < 0)
+    return -1;*/
+
   for (int slot = 0; slot < conf.size(); slot++) {
     Element *e = cp_element(conf[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -31,22 +38,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     }
     else {
-/*    click_chatter("Device: %s EtherAddress: %s Type: %s",
-                    brn_device->getDeviceName().c_str(),
-                    brn_device->getEtherAddress()->unparse().c_str(),
-                    brn_device->getDeviceType().c_str());
-*/
-      brn_device->setDeviceNumber(no_dev);
-
-      if ( no_dev == 0 ) {
-        _nodename = brn_device->getEtherAddress()->unparse();
-        _master_device = brn_device;
-        _master_device_id = 0;
-        MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
-                            strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
-      }
-
-      no_dev++;
+      brn_device->setDeviceNumber(no_dev++);
       _node_devices.push_back(brn_device);
     }
   }
@@ -57,6 +49,39 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2NodeIdentity::initialize(ErrorHandler *)
 {
+  BRN2Device *brn_device;
+
+  for ( int i = 0; i < _node_devices.size(); i++ ) {
+    brn_device = _node_devices[i];
+
+    if ( brn_device->is_master_device() ) {
+      _master_device = brn_device;
+      _master_device_id = brn_device->getDeviceNumber();
+      _nodename = brn_device->getEtherAddress()->unparse();
+      MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
+                          strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
+    }
+
+    if ( brn_device->is_service_device() ) {
+      _service_device = brn_device;
+      _service_device_id = brn_device->getDeviceNumber();
+    }
+  }
+
+  if ( _master_device_id == -1 ) {
+    _master_device = _node_devices[0];
+    _master_device_id = 0;
+    //!! First set the device, than print debug !!//
+    BRN_WARN("No master device: use 0 for master");
+  }
+
+  if ( _service_device_id == -1 ) {
+    _service_device = _node_devices[0];
+    _service_device_id = 0;
+    //!! First set the device, than print debug !!//
+    BRN_WARN("No service device: use 0 for service");
+  }
+
   return 0;
 }
 
@@ -69,19 +94,16 @@ BRN2NodeIdentity::isIdentical(EtherAddress *e)
 
 int
 BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
-  BRN2Device *dev;
-
-  for ( int i = 0; i < _node_devices.size(); i++ ) {
-    dev = _node_devices[i];
-    if ( *e == *(dev->getEtherAddress()) ) return i;
-  }
+  for ( int i = 0; i < _node_devices.size(); i++ )
+    if ( *e == *(_node_devices[i]->getEtherAddress()) ) return _node_devices[i]->getDeviceNumber();
 
   return -1;
 }
 
 BRN2Device *
 BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
-  if ( num < _node_devices.size() ) return _node_devices[num];
+  for ( int i = 0; i < _node_devices.size(); i++ )
+    if ( num == _node_devices[i]->getDeviceNumber() ) return _node_devices[i];
 
   return NULL;
 }
@@ -93,11 +115,19 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
   return NULL;
 }
 
-
-EtherAddress *
+const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
-  BRN2Device *dev = getDeviceByNumber(0);
-  return dev->getEtherAddress();
+  return _master_device->getEtherAddress();
+}
+
+const EtherAddress *
+BRN2NodeIdentity::getMasterAddress() {
+  return _master_device->getEtherAddress();
+}
+
+const EtherAddress *
+BRN2NodeIdentity::getServiceAddress() {
+  return _service_device->getEtherAddress();
 }
 
 //-----------------------------------------------------------------------------
@@ -114,11 +144,25 @@ read_devinfo_param(Element *e, void *)
     dev = id->_node_devices[i];
     sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
     sa << " EtherAddress: " << dev->getEtherAddress()->unparse().c_str();// << "\n";
-    sa << " Type: " << dev->getDeviceType().c_str()  << "\n"; //<< "\n"; 
+    sa << " Type: " << dev->getDeviceTypeString().c_str()  << "\n"; //<< "\n"; 
   }
 
   return sa.take_string();
 }
+
+static int 
+write_nodename_param(const String &in_s, Element *e, void *,
+                      ErrorHandler *errh)
+{
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  String s = cp_uncomment(in_s);
+  String nodename;
+  if (!cp_string(s, &nodename))
+    return errh->error("nodename parameter string");
+  id->_nodename = nodename;
+  return 0;
+}
+
 
 static String
 read_debug_param(Element *e, void *)
@@ -146,6 +190,7 @@ BRN2NodeIdentity::add_handlers()
   add_read_handler("debug", read_debug_param, 0);
   add_write_handler("debug", write_debug_param, 0);
   add_read_handler("devinfo", read_devinfo_param, 0);
+  add_write_handler("nodename", write_nodename_param, 0);
 }
 
 #include <click/vector.cc>

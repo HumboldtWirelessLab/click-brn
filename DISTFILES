@@ -233,6 +233,8 @@ e1000-4.x
 e1000-5.x
 e1000-7.x
 e1000-7.3.20-polling.patch
+e1000-7.6.15.5-polling.patch
+e1000e-0.4.1.7-2010-02-25.polling.patch
 
 ./drivers/e1000-4.x:
 LICENSE
@@ -319,6 +321,7 @@ kcompat_ethtool.c
 
 ./etc:
 README
+click.vim
 debian-2.4.26-patch
 diagrams
 elementmap.xsl
@@ -334,6 +337,7 @@ linux-2.6.24.7-patch
 linux-2.6.16.13-patch
 linux-2.6.19.2-patch
 ns-2.30-patch
+ns-2.34-patch
 pkg-Makefile
 pkg-config.mk.in
 pkg-linuxmodule-26.mk

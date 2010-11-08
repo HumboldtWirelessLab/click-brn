@@ -15,16 +15,21 @@ CLICK_DECLS
 #define SRC_ETHER_ANNO_OFFSET   10
 #define SRC_ETHER_ANNO_SIZE      6
 
-#define UDEVICE_ANNO_OFFSET     10
-#define UDEVICE_ANNO_SIZE        6
+#define TTL_ANNO_OFFSET         27
+#define TTL_ANNO_SIZE            1
+
+/* next annos ( byte 36-37 ) overwrites SEQUENCE_NUMBER_ANNO and IPSEC_SA_DATA_REFERENCE_ANNO  */
+
+#define PULLED_BYTES_ANNO_OFFSET 36
+#define PULLED_BYTES_ANNO_SIZE    2
 
 /* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
 #define ETHERTYPE_ANNO_OFFSET    40
 #define ETHERTYPE_ANNO_SIZE       2
 
-#define VLAN_ANNO_OFFSET         42
-#define VLAN_ANNO_SIZE            2
+#define BRN_VLAN_ANNO_OFFSET     42
+#define BRN_VLAN_ANNO_SIZE        2
 
 #define DEVICENUMBER_ANNO_OFFSET 44
 #define DEVICENUMBER_ANNO_SIZE    1
@@ -62,12 +67,15 @@ class BRNPacketAnno : public Element { public:
   static void set_src_and_dst_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &);
 
   static void set_ether_anno(Packet *p, const EtherAddress &, const EtherAddress &, uint16_t);
+  static void set_ether_anno(Packet *p, const uint8_t *src, const uint8_t *dst, uint16_t);
 
   static uint16_t ethertype_anno(Packet *p);
   static void set_ethertype_anno(Packet *p, uint16_t);
 
-  static String udevice_anno(Packet *p);
-  static void set_udevice_anno(Packet *p, const char *device);
+  static uint16_t pulled_bytes_anno(Packet *p);
+  static void set_pulled_bytes_anno(Packet *p, const uint16_t p_bytes);
+  static void inc_pulled_bytes_anno(Packet *p, const uint16_t inc_bytes);
+  static void dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes);
 
   static uint8_t devicenumber_anno(const Packet *p);
   static void set_devicenumber_anno(Packet *, uint8_t);
@@ -77,6 +85,9 @@ class BRNPacketAnno : public Element { public:
 
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);
+
+  static uint8_t ttl_anno(Packet *p);
+  static void set_ttl_anno(Packet *p, uint8_t ttl);
 
   static uint8_t channel_anno(Packet *p);
   static uint8_t operation_anno(Packet *p);

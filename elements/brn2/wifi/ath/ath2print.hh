@@ -52,12 +52,17 @@ class Ath2Print : public Element {
 
     Packet *simple_action(Packet *);
 
-    bool _timestamp;
-
   private:
     String _label;
     bool _includeath;
 
+    bool _timestamp;
+
+    bool _txprint;
+    bool _rxprint;
+
+    bool _parser;
+    bool _nowrap;
 };
 
 CLICK_ENDDECLS

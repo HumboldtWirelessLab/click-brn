@@ -27,9 +27,10 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "brn2_brnencap.hh"
 
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "brnprotocol.hh"
+#include "brn2_brnencap.hh"
 
 CLICK_DECLS
 
@@ -70,6 +71,8 @@ BRN2Encap::smaction(Packet *p)
     click_chatter("Error in BRN2Encap");
     return p;
   }
+
+  BRNPacketAnno::dec_pulled_bytes_anno(p, sizeof(click_brn));
 
   return brnp;
 }

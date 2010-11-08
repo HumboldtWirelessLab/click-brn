@@ -60,7 +60,7 @@ void AODVKnownClassifier::push (int port, Packet * p){
 	const click_ip * ipheader = packet->ip_header();
 	
 	uint32_t newlifetime = (2 * AODV_NET_TRAVERSAL_TIME) - (2 * rreq->hopcount * AODV_NODE_TRAVERSAL_TIME);
-	
+/*Robat	
 	neighbour_table->updateRoutetableEntry(rreq->originator, ntohl(rreq->originatorseqnr),rreq->hopcount, ipheader->ip_src, newlifetime);
 	
 	// RFC 6.5: "Whenever a RREQ message is received, ..." be certain, do update again
@@ -93,7 +93,7 @@ void AODVKnownClassifier::push (int port, Packet * p){
 	}
 	delete next; // free memory
 	delete storedSeqNr;
-}
+*/}
 
 void AODVKnownClassifier::handleExpiry(Timer*, void * data){
 	TimerData * timerdata = (TimerData*) data;

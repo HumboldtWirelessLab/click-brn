@@ -1,0 +1,6 @@
+Idee:
+-doch dhtoperationhandler zum element, db einfache class.
+-move_data-element gegen operationhandler hauhen.
+
+operationhandler um ein plugin erweitern:datahandler: dies legt fest wie die daten innerhalb des values
+strukturoiert ist. -> es ist so wieder möglich subvalues einzufügen. Auch das ändern, mitführen etc. von uhrzeiten , könnte dieses element handeln.

@@ -8,6 +8,7 @@
  * Copyright (c) 2001-2003 International Computer Science Institute
  * Copyright (c) 2004-2007 Regents of the University of California
  * Copyright (c) 2008 Meraki, Inc.
+ * Copyright (c) 2010 Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -26,16 +27,40 @@
 #include "lexertinfo.hh"
 #include "routert.hh"
 #include <click/confparse.hh>
+#include <click/userutils.hh>
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 static LexerTInfo *stub_lexinfo = 0;
 
+LexerT::FileState::FileState(const String &data, const String &filename)
+  : _big_string(data), _end(data.end()), _pos(data.begin()),
+    _filename(filename), _original_filename(filename), _lineno(1),
+    _lset(new LandmarkSetT)
+{
+    _lset->new_line(0, _filename, _lineno);
+}
+
+LexerT::FileState &
+LexerT::FileState::operator=(const FileState &x)
+{
+    x._lset->ref();
+    _lset->unref();
+    _big_string = x._big_string;
+    _end = x._end;
+    _pos = x._pos;
+    _filename = x._filename;
+    _original_filename = x._original_filename;
+    _lineno = x._lineno;
+    _lset = x._lset;
+    return *this;
+}
+
 LexerT::LexerT(ErrorHandler *errh, bool ignore_line_directives)
-  : _data(0), _end(0), _pos(0), _lineno(1), _lset(0),
+  : _file(String(), String()),
     _ignore_line_directives(ignore_line_directives),
-    _tpos(0), _tfull(0), _router(0), _base_type_map(0), _errh(errh)
+    _unlex_pos(0), _router(0), _base_type_map(0), _errh(errh)
 {
     if (!_errh)
 	_errh = ErrorHandler::default_handler();
@@ -49,7 +74,6 @@ LexerT::~LexerT()
 {
     clear();
     _router->unuse();
-    _lset->unref();
 }
 
 void
@@ -57,13 +81,7 @@ LexerT::reset(const String &data, const Vector<ArchiveElement> &archive, const S
 {
     clear();
 
-    _big_string = data;
-    _data = _pos = _big_string.begin();
-    _end = _big_string.end();
-
-    _original_filename = _filename = filename;
-    _lineno = 1;
-    _lset->new_line(0, _filename, _lineno);
+    _file = FileState(data, filename);
 
     // provide archive elements
     for (int i = 0; i < archive.size(); i++)
@@ -76,25 +94,16 @@ LexerT::clear()
 {
     if (_router)
 	_router->unuse();
-    if (_lset)
-	_lset->unref();
     _router = new RouterT();
     _router->use();		// hold a reference to the router
-    _lset = new LandmarkSetT();
 
-    _big_string = "";
-    // _data was freed by _big_string
-    _data = 0;
-    _end = 0;
-    _pos = 0;
-    _filename = "";
-    _lineno = 0;
-    _tpos = 0;
-    _tfull = 0;
+    _file = FileState(String(), String());
+    _unlex_pos = 0;
 
     _base_type_map.clear();
     _anonymous_offset = 0;
     _anonymous_class_count = 0;
+    _libraries.clear();
 }
 
 void
@@ -109,19 +118,19 @@ LexerT::set_lexinfo(LexerTInfo *li)
 String
 LexerT::remaining_text() const
 {
-    return _big_string.substring(_pos, _end);
+    return _file._big_string.substring(_file._pos, _file._end);
 }
 
 void
 LexerT::set_remaining_text(const String &s)
 {
-    _big_string = s;
-    _data = _pos = s.begin();
-    _end = s.end();
+    _file._big_string = s;
+    _file._pos = s.begin();
+    _file._end = s.end();
 }
 
 const char *
-LexerT::skip_line(const char *s)
+LexerT::FileState::skip_line(const char *s)
 {
   _lineno++;
   for (; s < _end; s++)
@@ -138,7 +147,7 @@ LexerT::skip_line(const char *s)
 }
 
 const char *
-LexerT::skip_slash_star(const char *s)
+LexerT::FileState::skip_slash_star(const char *s)
 {
   for (; s < _end; s++)
     if (*s == '\n')
@@ -153,7 +162,7 @@ LexerT::skip_slash_star(const char *s)
 }
 
 const char *
-LexerT::skip_backslash_angle(const char *s)
+LexerT::FileState::skip_backslash_angle(const char *s)
 {
   for (; s < _end; s++)
     if (*s == '\n')
@@ -173,7 +182,7 @@ LexerT::skip_backslash_angle(const char *s)
 }
 
 const char *
-LexerT::skip_quote(const char *s, char endc)
+LexerT::FileState::skip_quote(const char *s, char endc)
 {
   for (; s < _end; s++)
     if (*s == '\n')
@@ -193,7 +202,7 @@ LexerT::skip_quote(const char *s, char endc)
 }
 
 const char *
-LexerT::process_line_directive(const char *s)
+LexerT::FileState::process_line_directive(const char *s, LexerT *lexer)
 {
   const char *first_pos = s;
 
@@ -207,9 +216,9 @@ LexerT::process_line_directive(const char *s)
   }
   if (s >= _end || !isdigit((unsigned char) *s)) {
     // complain about bad directive
-    lerror(first_pos, s, "unknown preprocessor directive");
+    lexer->lerror(first_pos, s, "unknown preprocessor directive");
     return skip_line(s);
-  } else if (_ignore_line_directives)
+  } else if (lexer->_ignore_line_directives)
     return skip_line(s);
 
   // parse line number
@@ -227,7 +236,7 @@ LexerT::process_line_directive(const char *s)
 	s++;
     _filename = cp_unquote(_big_string.substring(first_in_filename, s) + "\"");
     // an empty filename means return to the input file's name
-    if (_filename == "")
+    if (!_filename)
       _filename = _original_filename;
   }
 
@@ -240,19 +249,19 @@ LexerT::process_line_directive(const char *s)
 }
 
 Lexeme
-LexerT::next_lexeme()
+LexerT::FileState::next_lexeme(LexerT *lexer)
 {
   const char *s = _pos;
   while (true) {
     while (s < _end && isspace((unsigned char) *s)) {
       if (*s == '\n') {
 	_lineno++;
-	_lset->new_line(s + 1 - _big_string.begin(), _filename, _lineno);
+	_lset->new_line(offset(s + 1), _filename, _lineno);
       } else if (*s == '\r') {
 	if (s + 1 < _end && s[1] == '\n')
 	  s++;
 	_lineno++;
-	_lset->new_line(s + 1 - _big_string.begin(), _filename, _lineno);
+	_lset->new_line(offset(s + 1), _filename, _lineno);
       }
       s++;
     }
@@ -267,10 +276,10 @@ LexerT::next_lexeme()
 	s = skip_slash_star(s + 2);
       else
 	break;
-      _lexinfo->notify_comment(opos, s);
-    } else if (*s == '#' && (s == _data || s[-1] == '\n' || s[-1] == '\r')) {
-      s = process_line_directive(s);
-      _lexinfo->notify_line_directive(opos, s);
+      lexer->_lexinfo->notify_comment(opos, s);
+    } else if (*s == '#' && (s == _big_string.begin() || s[-1] == '\n' || s[-1] == '\r')) {
+      s = process_line_directive(s, lexer);
+      lexer->_lexinfo->notify_line_directive(opos, s);
     } else
       break;
   }
@@ -288,13 +297,16 @@ LexerT::next_lexeme()
     _pos = s;
     String word = _big_string.substring(word_pos, s);
     if (word.equals("elementclass", 12)) {
-      _lexinfo->notify_keyword(word, word_pos, s);
+      lexer->_lexinfo->notify_keyword(word, word_pos, s);
       return Lexeme(lexElementclass, word, word_pos);
     } else if (word.equals("require", 7)) {
-      _lexinfo->notify_keyword(word, word_pos, s);
+      lexer->_lexinfo->notify_keyword(word, word_pos, s);
       return Lexeme(lexRequire, word, word_pos);
+    } else if (word.equals("provide", 7)) {
+      lexer->_lexinfo->notify_keyword(word, word_pos, s);
+      return Lexeme(lexProvide, word, word_pos);
     } else if (word.equals("define", 6)) {
-      _lexinfo->notify_keyword(word, word_pos, s);
+      lexer->_lexinfo->notify_keyword(word, word_pos, s);
       return Lexeme(lexDefine, word, word_pos);
     } else
       return Lexeme(lexIdent, word, word_pos);
@@ -334,7 +346,7 @@ LexerT::next_lexeme()
 }
 
 Lexeme
-LexerT::lex_config()
+LexerT::FileState::lex_config(LexerT *lexer)
 {
   const char *config_pos = _pos;
   const char *s = _pos;
@@ -349,12 +361,12 @@ LexerT::lex_config()
 	break;
     } else if (*s == '\n') {
       _lineno++;
-      _lset->new_line(s + 1 - _big_string.begin(), _filename, _lineno);
+      _lset->new_line(offset(s + 1), _filename, _lineno);
     } else if (*s == '\r') {
       if (s + 1 < _end && s[1] == '\n')
 	s++;
       _lineno++;
-      _lset->new_line(s + 1 - _big_string.begin(), _filename, _lineno);
+      _lset->new_line(offset(s + 1), _filename, _lineno);
     } else if (*s == '/' && s + 1 < _end) {
       if (s[1] == '/')
 	s = skip_line(s + 2) - 1;
@@ -366,7 +378,7 @@ LexerT::lex_config()
       s = skip_backslash_angle(s + 2) - 1;
 
   _pos = s;
-  _lexinfo->notify_config_string(config_pos, s);
+  lexer->_lexinfo->notify_config_string(config_pos, s);
   return Lexeme(lexConfig, _big_string.substring(config_pos, s),
 		config_pos);
 }
@@ -391,6 +403,8 @@ LexerT::lexeme_string(int kind)
 	return String::make_stable("'elementclass'", 14);
     else if (kind == lexRequire)
 	return String::make_stable("'require'", 9);
+    else if (kind == lexProvide)
+	return String::make_stable("'provide'", 9);
     else if (kind == lexDefine)
 	return String::make_stable("'define'", 8);
     else if (kind >= 32 && kind < 127) {
@@ -405,67 +419,37 @@ LexerT::lexeme_string(int kind)
 
 // LEXING: MIDDLE LEVEL (WITH PUSHBACK)
 
-const Lexeme &
-LexerT::lex()
-{
-  int p = _tpos;
-  if (_tpos == _tfull) {
-    _tcircle[p] = next_lexeme();
-    _tfull = (_tfull + 1) % TCIRCLE_SIZE;
-  }
-  _tpos = (_tpos + 1) % TCIRCLE_SIZE;
-  return _tcircle[p];
-}
-
-void
-LexerT::unlex(const Lexeme &t)
-{
-  _tpos = (_tpos + TCIRCLE_SIZE - 1) % TCIRCLE_SIZE;
-  _tcircle[_tpos] = t;
-  assert(_tfull != _tpos);
-}
-
 bool
-LexerT::expect(int kind, bool report_error)
+LexerT::expect(int kind, bool no_error)
 {
-    // Never adds anything to '_tcircle'. This requires a nonobvious
-    // implementation.
-    if (_tpos != _tfull) {
-	if (_tcircle[_tpos].is(kind)) {
-	    _tpos = (_tpos + 1) % TCIRCLE_SIZE;
-	    return true;
-	}
-	if (report_error)
-	    lerror(_tcircle[_tpos], "expected %s", lexeme_string(kind).c_str());
-    } else {
-	String old_filename = _filename;
-	unsigned old_lineno = _lineno;
-	const char *old_pos = _pos;
-	if (next_lexeme().is(kind))
-	    return true;
-	_filename = old_filename;
-	_lineno = old_lineno;
-	if (report_error)
-	    lerror(old_pos, _pos, "expected %s", lexeme_string(kind).c_str());
-	_pos = old_pos;
+  if (_unlex_pos) {
+    if (_unlex[_unlex_pos - 1].is(kind)) {
+      --_unlex_pos;
+      return true;
     }
-    return false;
-}
-
-const char *
-LexerT::next_pos() const
-{
-    if (_tpos != _tfull)
-	return _tcircle[_tpos].pos1();
-    else
-	return _pos;
+    if (!no_error)
+      lerror(_unlex[_unlex_pos - 1], "expected %s", lexeme_string(kind).c_str());
+  } else {
+    // Never adds to _unlex, which requires a nonobvious implementation.
+    String old_filename = _file._filename;
+    unsigned old_lineno = _file._lineno;
+    const char *old_pos = _file._pos;
+    if (lex().is(kind))
+      return true;
+    _file._filename = old_filename;
+    _file._lineno = old_lineno;
+    if (!no_error)
+      lerror(old_pos, _file._pos, "expected %s", lexeme_string(kind).c_str());
+    _file._pos = old_pos;
+  }
+  return false;
 }
 
 
 // ERRORS
 
 String
-LexerT::landmark() const
+LexerT::FileState::landmark() const
 {
     if (_filename && _filename.back() != ':' && !isspace((unsigned char) _filename.back()))
 	return _filename + ":" + String(_lineno);
@@ -486,7 +470,7 @@ LexerT::lerror(const char *pos1, const char *pos2, const char *format, ...)
 {
     va_list val;
     va_start(val, format);
-    vlerror(pos1, pos2, landmark(), format, val);
+    vlerror(pos1, pos2, _file.landmark(), format, val);
     va_end(val);
     return -1;
 }
@@ -496,7 +480,7 @@ LexerT::lerror(const Lexeme &t, const char *format, ...)
 {
     va_list val;
     va_start(val, format);
-    vlerror(t.pos1(), t.pos2(), landmark(), format, val);
+    vlerror(t.pos1(), t.pos2(), _file.landmark(), format, val);
     va_end(val);
     return -1;
 }
@@ -591,7 +575,7 @@ LexerT::connect(int element1, int port1, int port2, int element2, const char *po
 bool
 LexerT::yport(int &port, const char *&pos1, const char *&pos2)
 {
-    const Lexeme &tlbrack = lex();
+    Lexeme tlbrack = lex();
     pos1 = tlbrack.pos1();
     if (!tlbrack.is('[')) {
 	unlex(tlbrack);
@@ -599,7 +583,7 @@ LexerT::yport(int &port, const char *&pos1, const char *&pos2)
 	return false;
     }
 
-    const Lexeme &tword = lex();
+    Lexeme tword = lex();
     if (tword.is(lexIdent)) {
 	String p = tword.string();
 	const char *ps = p.c_str();
@@ -646,20 +630,18 @@ LexerT::yelement(int &element, bool comma_ok)
     }
 
     Lexeme configuration;
-    const Lexeme &tparen = lex();
-    if (tparen.is('(')) {
+    if (expect('(', true)) {
 	if (!etype)
 	    etype = force_element_type(tname);
 	configuration = lex_config();
 	expect(')');
 	decl_pos2 = next_pos();
-    } else
-	unlex(tparen);
+    }
 
     if (etype)
 	element = make_anon_element(tname, decl_pos2, etype, configuration.string());
     else {
-	const Lexeme &t2colon = lex();
+	Lexeme t2colon = lex();
 	unlex(t2colon);
 	if (t2colon.is(lex2Colon) || (t2colon.is(',') && comma_ok)) {
 	    ydeclaration(tname);
@@ -697,7 +679,7 @@ LexerT::ydeclaration(const Lexeme &first_element)
 	    decls.push_back(t);
 
       midpoint:
-	const Lexeme &tsep = lex();
+	Lexeme tsep = lex();
 	if (tsep.is(','))
 	    /* do nothing */;
 	else if (tsep.is(lex2Colon))
@@ -721,19 +703,17 @@ LexerT::ydeclaration(const Lexeme &first_element)
     }
 
     Lexeme configuration;
-    t = lex();
-    if (t.is('(')) {
+    if (expect('(', true)) {
 	configuration = lex_config();
 	expect(')');
-    } else
-	unlex(t);
+    }
 
     const char *decl_pos2 = (decls.size() == 1 ? next_pos() : 0);
 
     for (int i = 0; i < decls.size(); i++) {
 	String name = decls[i].string();
 	if (ElementT *old_e = _router->element(name))
-	    ElementT::redeclaration_error(_errh, "element", name, landmark(), old_e->landmark());
+	    ElementT::redeclaration_error(_errh, "element", name, _file.landmark(), old_e->landmark());
 	else if (_router->declared_type(name) || _base_type_map.get(name))
 	    lerror(decls[i], "class %<%s%> used as element name", name.c_str());
 	else
@@ -776,7 +756,7 @@ LexerT::yconnection()
 
 	  case ',':
 	  case lex2Colon:
-	    if (router()->element(element2)->anonymous())
+	    if (router()->element(element2)->name_unassigned())
 		// type used as name
 		lerror(t, "class %<%s%> used as element name", router()->etype_name(element2).c_str());
 	    else
@@ -797,6 +777,7 @@ LexerT::yconnection()
 	  case lex2Bar:
 	  case lexElementclass:
 	  case lexRequire:
+	  case lexProvide:
 	  case lexDefine:
 	    unlex(t);
 	    // FALLTHRU
@@ -908,7 +889,7 @@ LexerT::ycompound_arguments(RouterT *comptype)
 
     ydefine(comptype, varname, vartype, t1, scope_order_error);
 
-    const Lexeme &tsep = lex();
+    Lexeme tsep = lex();
     if (tsep.is('|'))
       break;
     else if (!tsep.is(',')) {
@@ -976,7 +957,7 @@ LexerT::ycompound(String name, const char *decl_pos1, const char *name_pos1)
 	last = compound_class;
 
 	// check for '||' or '}'
-	const Lexeme &t = lex();
+	Lexeme t = lex();
 	compound_class->set_landmarkt(landmarkt(class_pos1, t.pos2()));
 	class_pos1 = t.pos1();
 	if (!t.is(lex2Bar)) {
@@ -996,29 +977,91 @@ LexerT::ycompound(String name, const char *decl_pos1, const char *name_pos1)
 }
 
 void
+LexerT::yrequire_library(const Lexeme &lexeme, const String &value)
+{
+    if (_router->scope().depth()) {
+	lerror(lexeme, "%<require library%> must be used at file scope");
+	return;
+    }
+
+    String dir = _file._filename;
+    int pos = dir.find_right('/');
+    if (pos > 0)
+	dir = dir.substring(0, pos);
+    else
+	dir = ".";
+    String fn = clickpath_find_file(value, "conf", dir, 0);
+    if (!fn) {
+	lerror(lexeme, "library %<%#s%> not found in CLICKPATH/conf", fn.c_str());
+	return;
+    }
+
+    for (String *it = _libraries.begin(); it != _libraries.end(); ++it)
+	if (*it == fn)
+	    return;
+    _libraries.push_back(fn);
+
+    LandmarkErrorHandler lerrh(_errh, _file.landmark());
+    int before = lerrh.nerrors();
+    String data = file_string(fn, &lerrh);
+    if (lerrh.nerrors() != before)
+	return;
+
+    FileState old_file(_file);
+    _file = FileState(data, fn);
+    while (ystatement(false))
+	/* do nothing */;
+    _file = old_file;
+}
+
+void
 LexerT::yrequire()
 {
-    if (expect('(')) {
-	Lexeme requirement = lex_config();
-	expect(')');
-	// pre-read ';' to make it easier to write parsing extensions
-	expect(';', false);
+    if (!expect('('))
+	return;
 
-	Vector<String> args;
-	String word;
-	cp_argvec(requirement.string(), args);
-	for (int i = 0; i < args.size(); i++) {
-	    Vector<String> words;
-	    cp_spacevec(args[i], words);
-	    if (words.size() == 0)
-		/* do nothing */;
-	    else if (!cp_word(words[0], &word))
-		lerror(requirement, "bad requirement: not a word");
-	    else if (words.size() > 1)
-		lerror(requirement, "bad requirement: too many words");
-	    else
-		_router->add_requirement(word);
+    Lexeme requirement = lex_config();
+    expect(')');
+    // pre-read ';' to make it easier to write parsing extensions
+    expect(';', true);
+
+    Vector<String> args;
+    cp_argvec(requirement.string(), args);
+
+    String compact_config_str = String::make_stable("compact_config", 14);
+    String package_str = String::make_stable("package", 7);
+    String library_str = String::make_stable("library", 7);
+
+    for (int i = 0; i < args.size(); i++) {
+	Vector<String> words;
+	cp_spacevec(args[i], words);
+	if (words.size() == 0)
+	    continue;		// do nothing
+
+	String type, value;
+	(void) cp_word(words[0], &type);
+	// "require(UNKNOWN)" means "require(package UNKNOWN)"
+	if (type && type != compact_config_str && type != package_str
+	    && words.size() == 1) {
+	    words.push_back(type);
+	    type = package_str;
 	}
+
+	if (type == compact_config_str && words.size() == 1)
+	    /* OK */;
+	else if (type == package_str && words.size() == 2
+		 && cp_string(words[1], &value))
+	    /* OK */;
+	else if (type == library_str && words.size() == 2
+		 && cp_string(words[1], &value)) {
+	    yrequire_library(requirement, value);
+	    continue;
+	} else {
+	    lerror(requirement, "syntax error at requirement");
+	    continue;
+	}
+
+	_router->add_requirement(type, value);
     }
 }
 
@@ -1040,7 +1083,7 @@ LexerT::yvar()
 		    for (s++; s != var.end() && (isalnum((unsigned char) *s) || *s == '_'); s++)
 			/* nada */;
 		if (var.length() < 2 || s != var.end())
-		    lerror(vars, "bad %<var%> declaration: not a variable");
+		    lerror(vars, "bad %<define%> declaration: not a variable");
 		else {
 		    var = var.substring(1);
 		    if (!_router->define(var, args[i]))
@@ -1053,7 +1096,7 @@ LexerT::yvar()
 bool
 LexerT::ystatement(bool nested)
 {
-  const Lexeme &t = lex();
+  Lexeme t = lex();
   switch (t.kind()) {
 
    case lexIdent:
@@ -1108,7 +1151,7 @@ LexerT::finish(const VariableEnvironment &global_scope)
     _router = 0;
     r->redefine(global_scope);
     // resolve anonymous element names
-    r->deanonymize_elements();
+    r->assign_element_names();
     // returned router has one reference count
     return r;
 }

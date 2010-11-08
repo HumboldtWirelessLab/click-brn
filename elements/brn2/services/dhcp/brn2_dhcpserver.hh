@@ -39,7 +39,6 @@
 #define MODE_READ_NAME   4
 #define MODE_REMOVE_NAME 5
 
-
 CLICK_DECLS
 
 
@@ -51,8 +50,9 @@ CLICK_DECLS
  * =d
  */
 
-//#define NO_DHT
-
+/**
+ * TODO: What to do if no subnetInfo for Clients vlan
+ */
 class BRN2DHCPServer : public Element {
 
  public:
@@ -69,6 +69,9 @@ class BRN2DHCPServer : public Element {
 
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
+
+    IPAddress _subnet_ip;
+    IPAddress _subnet_mask;
 
     String name;
 
@@ -97,10 +100,10 @@ class BRN2DHCPServer : public Element {
   BRN2DHCPServer();
   ~BRN2DHCPServer();
 
-  const char *class_name() const	{ return "BRN2DHCPServer"; }
-  const char *processing() const	{ return PUSH; }
+  const char *class_name() const  { return "BRN2DHCPServer"; }
+  const char *processing() const  { return PUSH; }
 
-  const char *port_count() const        { return "1/1"; }
+  const char *port_count() const  { return "1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
@@ -141,6 +144,7 @@ class BRN2DHCPServer : public Element {
   void find_client_ip(DHCPClientInfo *client_info, uint16_t vlan_id);
   uint32_t find_lease(void);
   uint16_t getVlanID(EtherAddress ea);
+  void setSubnet(DHCPClientInfo *client_info, uint16_t vlanid);
 
   //
   //member

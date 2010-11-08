@@ -33,6 +33,7 @@ elem2=""
 default_provisions="@provisions@"
 driver_provisions="@DRIVERS@"
 
+export LC_COLLATE=C
 trap "exit 1" HUP
 
 # find good versions of awk and grep
@@ -78,6 +79,10 @@ END {
 }'
 }
 
+expand_provisions () {
+    tr -s ', \n\r\f\t\v' '\n'
+}
+
 findelem () {
     pfx=
     all=
@@ -106,23 +111,23 @@ findelem () {
 	all=1; shift 1;;
     -r|--pro|--prov|--provi|--provid|--provide)
 	if test $# -lt 2; then findelem_usage; fi
-	shift 1; provisions="$1
-$provisions"; shift 1;;
+	provisions="`echo "$2" | expand_provisions`
+$provisions"; shift 2;;
     -r*)
-	provisions="`echo "$1" | sed 's/^-r//'`
+	provisions="`echo "$1" | sed 's/^-r//' | expand_provisions`
 $provisions"; shift 1;;
     --pro=*|--prov=*|--provi=*|--provid=*|--provide=*)
-	provisions="`echo "$1" | sed 's/^[^=]*=//'`
+	provisions="`echo "$1" | sed 's/^[^=]*=//' | expand_provisions`
 $provisions"; shift 1;;
     -x|--u|--un|--unp|--unpr|--unpro|--unprov|--unprovi|--unprovid|--unprovide)
 	if test $# -lt 2; then findelem_usage; fi
-	shift 1; unprovisions="$1
-$unprovisions"; shift 1;;
+	unprovisions="`echo "$2" | expand_provisions`
+$unprovisions"; shift 2;;
     -x*)
-	unprovisions="`echo "$1" | sed 's/^-x//'`
+	unprovisions="`echo "$1" | sed 's/^-x//' | expand_provisions`
 $unprovisions"; shift 1;;
     --u=*|--un=*|--unp=*|--unpr=*|--unpro=*|--unprov=*|--unprovi=*|--unprovid=*|--unprovide=*)
-	unprovisions="`echo "$1" | sed 's/^[^=]*=//'`
+	unprovisions="`echo "$1" | sed 's/^[^=]*=//' | expand_provisions`
 $unprovisions"; shift 1;;
     -X|--unprovide-|--unprovide-f|--unprovide-fi|--unprovide-fil|--unprovide-file)
 	if test $# -lt 2; then findelem_usage; fi
@@ -504,6 +509,7 @@ elem2make () {
     makevar=""
     date=`date`
     linux26=x
+    bsdmake=0
     while [ x"$1" != x ]; do
     case $1 in
     -t|--d|--dr|--dri|--driv|--drive|--driver)
@@ -540,6 +546,8 @@ elem2make () {
 	shift 1;;
     --l|--li|--lin|--linu|--linux|--linux2|--linux26)
 	linux26=1; shift 1;;
+    --b|--bs|--bsd)
+	bsdmake=1; shift 1;;
     --no-l|--no-li|--no-lin|--no-linu|--no-linux|--no-linux2|--no-linux26)
 	linux26=0; shift 1;;
     -V|--verb|--verbo|--verbos|--verbose)
@@ -557,6 +565,7 @@ Options:
                            'linuxmodule', 'bsdmodule', 'ns', or 'tool').
   -v, --make-variable N    Use make variable N.
       --linux26            Generate Linux 2.6-style makefile fragment.
+      --bsd                Generate BSD make compatible Makefile.
   -x, --exclude FILE       Do not include FILE.
   -V, --verbose            Print more information.
   -h, --help               Print this message and exit.
@@ -587,6 +596,10 @@ EOF
 	    echo "Unknown driver $driver" 1>&2
 	    exit 1
 	fi
+    fi
+    if test "$linux26" = 1 -a "$bsdmake" = 1; then
+	echo "--linux26 and --bsd are mutually exclusive" 1>&2
+	exit 1
     fi
     osuffix=".${L}o"
     if test -z "$makevar"; then
@@ -1165,7 +1178,7 @@ makepackage () {
     --di=*|--dir=*|--dire=*|--direc=*|--direct=*|--directo=*|--director=*|--directory=*)
 	dir="`echo "$1" | sed 's/^[^=]*=//'`"/; shift 1;;
     -q|--q|--qu|--qui|--quie|--quiet)
-	quiet="-s"; shift 1;;
+	quiet="-s V=1"; shift 1;;
     -V|--v|--ve|--ver|--verb|--verbo|--verbos|--verbose)
 	quiet="V=1"; shift 1;;
     -h|--h|--he|--hel|--help)

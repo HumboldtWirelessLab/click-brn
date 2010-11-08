@@ -10,7 +10,7 @@ CLICK_CXX_PROTECT
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/netisr.h>
-#include <machine/limits.h>
+#include <sys/limits.h>
 CLICK_CXX_UNPROTECT
 #include <click/cxxunprotect.h>
 #define CLICK_CYCLE_COMPENSATION 0
@@ -22,10 +22,9 @@ CLICK_CXX_UNPROTECT
 #endif
 #define GET_STATS_RESET(a,b,c,d,e,f)	/* nothing */
 #define SET_STATS(a,b,c)		/* nothing */
-
-extern int *polling;            // 1 = BSD poller; 2 = Click poller
-
 CLICK_DECLS
+
+//extern int *polling;            // 1 = BSD poller; 2 = Click poller
 
 class AnyDeviceMap;
 
@@ -93,7 +92,7 @@ AnyDevice::intr_reschedule(void)
 #ifdef BSD_NETISRSCHED
     if (!_task.scheduled())
 	_task.reschedule();
-    if (!polling || (polling && *polling != 2))
+    //if (!polling || (polling && *polling != 2))
 	schednetisr(NETISR_CLICK);
 #else
     _task.reschedule();
@@ -106,7 +105,7 @@ AnyDevice::adjust_tickets(int work)
 {
 #if CLICK_DEVICE_ADJUST_TICKETS
     int tix = _task.tickets();
-    int old_tix = tix;
+    // int old_tix = tix;
 
     // simple additive increase damped multiplicative decrease scheme
     if (work > 2) {

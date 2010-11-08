@@ -73,7 +73,8 @@ OLSRTCGenerator::run_timer(Timer *)
 	if (_node_is_mpr)
 	{
 		output(0).push(generate_tc());
-		int period=(int)(_period*.95+(random() % (_period/10)));
+//		int period=(int)(_period*.95+(click_random() % (_period/10))); //Robert: ohh float
+		int period=(int)((_period*95+( 100 * (click_random() % (_period/10))))/100);
 		//click_chatter ("emitting other tc after %d ms\n",period);
 		_timer.reschedule_after_msec(period);
 	}
@@ -93,7 +94,7 @@ OLSRTCGenerator::set_node_is_mpr(bool value)
 	if (_node_is_mpr)
 	{
 		_end_of_validity_time = make_timeval(0,0);
-		int delay=(int) (random() % (_period/20));
+		int delay=(int) (click_random() % (_period/20));
 		_timer.schedule_after_msec(delay);
 		click_chatter ("node %s has become MPR, emitting tc after %d ms\n",_myIP.unparse().c_str(),delay);
 	}
@@ -104,7 +105,7 @@ OLSRTCGenerator::set_node_is_mpr(bool value)
 		_end_of_validity_time.tv_sec=_period/1000; //period in msec
 		_end_of_validity_time.tv_usec=_period*1000;
 		_end_of_validity_time += now;
-		int delay=(int) (random() % (_period/20));
+		int delay=(int) (click_random() % (_period/20));
 		_timer.schedule_after_msec(delay);
 		click_chatter ("is not mpr emitting tc_not_mpr after %d ms\n",_myIP.unparse().c_str(),delay);
 	}

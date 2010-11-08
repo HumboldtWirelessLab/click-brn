@@ -19,7 +19,7 @@
  */
 
 /*
- * nblist.{cc,hh} -- a list of information about neighbor nodes (brn-nodes)
+ * brn2_setdeviceanno.{cc,hh}
  * A. Zubow
  */
 

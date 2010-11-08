@@ -27,16 +27,16 @@
 
 CLICK_DECLS
 
-#define KLIBS_HELLO           101
-#define KLIBS_REQUEST         102
-#define KLIBS_REQUEST_OWN     103
-#define KLIBS_REQUEST_FOREIGN 104
+#define KLIBS_HELLO           1
+#define KLIBS_REQUEST         2
+#define KLIBS_REQUEST_OWN     3
+#define KLIBS_REQUEST_FOREIGN 4
 
 #define KLIBS_VERSION 0x01
 
 struct klibs_protocolheader {
   uint8_t  version;
-  uint8_t  entries;
+  uint8_t  entries;            //number of entries in the packet
 };
 
 struct klibs_rt_entry {

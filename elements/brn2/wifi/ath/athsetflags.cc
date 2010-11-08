@@ -11,30 +11,29 @@
 
 CLICK_DECLS
 
-
 AthSetFlags::AthSetFlags():
-   frame_len(0),
-   reserved_12_15(0),
-   rts_cts_enable(0),
-   veol(0),
-   clear_dest_mask(0),
-   ant_mode_xmit(0),
-   inter_req(0),
-   encrypt_key_valid(0),
-   cts_enable(0),
-   buf_len(0),
-   more(0),
-   encrypt_key_index(0),
-   frame_type(0),
-   no_ack(0),
-   comp_proc(0),
-   comp_iv_len(0),
-   comp_icv_len(0),
-   reserved_31(0),
-   rts_duration(0),
-   duration_update_enable(0),
-   rts_cts_rate(0),
-   reserved_25_31(0)
+   frame_len(INVALID_VALUE),
+   reserved_12_15(INVALID_VALUE),
+   rts_cts_enable(INVALID_VALUE),
+   veol(INVALID_VALUE),
+   clear_dest_mask(INVALID_VALUE),
+   ant_mode_xmit(INVALID_VALUE),
+   inter_req(INVALID_VALUE),
+   encrypt_key_valid(INVALID_VALUE),
+   cts_enable(INVALID_VALUE),
+   buf_len(INVALID_VALUE),
+   more(INVALID_VALUE),
+   encrypt_key_index(INVALID_VALUE),
+   frame_type(INVALID_VALUE),
+   no_ack(INVALID_VALUE),
+   comp_proc(INVALID_VALUE),
+   comp_iv_len(INVALID_VALUE),
+   comp_icv_len(INVALID_VALUE),
+   reserved_31(INVALID_VALUE),
+   rts_duration(INVALID_VALUE),
+   duration_update_enable(INVALID_VALUE),
+   rts_cts_rate(INVALID_VALUE),
+   reserved_25_31(INVALID_VALUE)
 {
 }
 
@@ -81,35 +80,34 @@ AthSetFlags::simple_action(Packet *p)
 {
   struct ar5212_desc *desc  = (struct ar5212_desc *) (p->data() + 8);
 
-  desc->frame_len = frame_len;
-  desc->reserved_12_15 = reserved_12_15;
-  desc->rts_cts_enable = rts_cts_enable;
-  desc->veol = veol;
-  desc->clear_dest_mask = clear_dest_mask;
-  desc->ant_mode_xmit = ant_mode_xmit;
-  desc->inter_req = inter_req;
-  desc->encrypt_key_valid = encrypt_key_valid;
-  desc->cts_enable = cts_enable;
+  if ( frame_len != INVALID_VALUE ) desc->frame_len = frame_len;
+  if ( reserved_12_15 != INVALID_VALUE ) desc->reserved_12_15 = reserved_12_15;
+  if ( rts_cts_enable != INVALID_VALUE ) desc->rts_cts_enable = rts_cts_enable;
+  if ( veol != INVALID_VALUE ) desc->veol = veol;
+  if ( clear_dest_mask != INVALID_VALUE ) desc->clear_dest_mask = clear_dest_mask;
+  if ( ant_mode_xmit != INVALID_VALUE ) desc->ant_mode_xmit = ant_mode_xmit;
+  if ( inter_req != INVALID_VALUE ) desc->inter_req = inter_req;
+  if ( encrypt_key_valid != INVALID_VALUE ) desc->encrypt_key_valid = encrypt_key_valid;
+  if ( cts_enable != INVALID_VALUE ) desc->cts_enable = cts_enable;
 
-  desc->buf_len = buf_len;
-  desc->more = more;
-  desc->encrypt_key_index = encrypt_key_index;
-  desc->frame_type = frame_type;
-  desc->no_ack = no_ack;
-  desc->comp_proc = comp_proc;
-  desc->comp_iv_len = comp_iv_len;
-  desc->comp_icv_len = comp_icv_len;
-  desc->reserved_31 = reserved_31;
+  if ( buf_len != INVALID_VALUE ) desc->buf_len = buf_len;
+  if ( more != INVALID_VALUE ) desc->more = more;
+  if ( encrypt_key_index != INVALID_VALUE ) desc->encrypt_key_index = encrypt_key_index;
+  if ( frame_type != INVALID_VALUE ) desc->frame_type = frame_type;
+  if ( no_ack != INVALID_VALUE ) desc->no_ack = no_ack;
+  if ( comp_proc != INVALID_VALUE ) desc->comp_proc = comp_proc;
+  if ( comp_iv_len != INVALID_VALUE ) desc->comp_iv_len = comp_iv_len;
+  if ( comp_icv_len != INVALID_VALUE ) desc->comp_icv_len = comp_icv_len;
+  if ( reserved_31 != INVALID_VALUE ) desc->reserved_31 = reserved_31;
 
-  desc->rts_duration = rts_duration;
-  desc->duration_update_enable = duration_update_enable;
+  if ( rts_duration != INVALID_VALUE ) desc->rts_duration = rts_duration;
+  if ( duration_update_enable != INVALID_VALUE ) desc->duration_update_enable = duration_update_enable;
 
-  desc->rts_cts_rate = rts_cts_rate;
-  desc->reserved_25_31 = reserved_25_31;
+  if ( rts_cts_rate != INVALID_VALUE ) desc->rts_cts_rate = rts_cts_rate;
+  if ( reserved_25_31 != INVALID_VALUE ) desc->reserved_25_31 = reserved_25_31;
 
   return p;
 }
-
 
 enum {H_DEBUG};
 

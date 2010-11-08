@@ -4,17 +4,19 @@
 #include <clicknet/ether.h>
 CLICK_DECLS
 
+#define INVALID_VALUE (0xffffffff)
+
 class AthSetFlags : public Element { public:
 
   AthSetFlags();
   ~AthSetFlags();
 
-  const char *class_name() const	{ return "AthSetFlags"; }
-  const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
+  const char *class_name() const { return "AthSetFlags"; }
+  const char *port_count() const { return PORTS_1_1; }
+  const char *processing() const { return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
-  bool can_live_reconfigure() const	{ return true; }
+  bool can_live_reconfigure() const { return true; }
 
   Packet *simple_action(Packet *);
 

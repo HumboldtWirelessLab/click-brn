@@ -304,14 +304,14 @@ IPFlowRawSockets_get_packet(u_char* clientdata,
     assert(p);
 
     // set annotations
-    p->timestamp_anno().assign(pkthdr->ts.tv_sec, pkthdr->ts.tv_usec);
+    p->timestamp_anno().assign_usec(pkthdr->ts.tv_sec, pkthdr->ts.tv_usec);
     SET_EXTRA_LENGTH_ANNO(p, pkthdr->len - length);
 }
 }
 CLICK_DECLS
 
 void
-IPFlowRawSockets::selected(int fd)
+IPFlowRawSockets::selected(int fd, int)
 {
     ErrorHandler *errh = ErrorHandler::default_handler();
     WritablePacket *p;

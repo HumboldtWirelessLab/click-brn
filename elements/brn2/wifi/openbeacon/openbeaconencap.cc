@@ -60,9 +60,10 @@ OpenBeaconEncap::simple_action(Packet *p)
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
 
-  crh->channel	=  BRNPacketAnno::channel_anno(q);
-  crh->power	=  ceh->power;
-  crh->rate	=  ceh->rate;
+  crh->status    = 0;
+  crh->channel	= BRNPacketAnno::channel_anno(q);
+  crh->power	= ceh->power;
+  crh->rate 	= ceh->rate;
   
   for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
 	  crh->openbeacon_dmac[i-1] = e_dhost[ i + 6 - sizeof( crh->openbeacon_dmac ) - 1 ];
@@ -73,6 +74,9 @@ OpenBeaconEncap::simple_action(Packet *p)
   HW_rxtx_Test *  hwt = (HW_rxtx_Test*) (q->data()+ sizeof(Click2OBD_header) - sizeof( crh->openbeacon_smac ) );
   
   if(hwt->prot_type[0]==0x06 && hwt->prot_type[1]==0x06) {  // is a test packet
+	if(hwt->type==3) { // send only one packet from click over hw_link to click
+		crh->status =  crh->status | STATUS_full_test;
+	}  	  
 	if(hwt->type==2) { // send only over usb-link
 		crh->status =  crh->status | STATUS_NO_TX;
 	}  

@@ -27,9 +27,6 @@
 
 CLICK_DECLS
 
-#define BRN_PORT_DHTROUTING 10
-#define BRN_PORT_DHTSTORAGE 11
-
 /************* M A J O R *******************/
 #define ROUTING_OMNI        1
 #define ROUTING_FALCON      2
@@ -40,24 +37,16 @@ CLICK_DECLS
 
 /***** M I N O R  - R O U T I N G **********/
 
-#define HELLO               1
-#define HELLO_REQUEST       2
-#define ROUTETABLE_REQUEST  3
-#define ROUTETABLE_REPLY    4
-#define ROUTE_REQUEST       5
-#define ROUTE_REPLAY        6
+//MINOR is be set by the specific routing
 
 /***** M I N O R  - S T O R A G E **********/
 
-#define DHT_MESSAGE         1
-#define DHT_MOVEDDATA       2
-
+//MINOR is be set by the specific storage
 
 struct dht_packet_header {
   uint8_t  major_type;
   uint8_t  minor_type;
-  uint8_t  src[6];
-  uint8_t  dst[6];
+  uint8_t  src[6];           //since the packet takes several hops in the overlay, this is used to take a direct path to src of the request
   uint16_t payload_len;
 };
 
@@ -73,15 +62,13 @@ class DHTProtocol {
 
     static uint8_t get_routing(Packet *p);
     static uint8_t get_type(Packet *p);
+    static void set_type(Packet *p, uint8_t minor_type);
     static uint16_t get_payload_len(Packet *p);
     static uint8_t *get_payload(Packet *p);
 
     static EtherAddress *get_src(Packet *p);
-    static EtherAddress *get_dst(Packet *p);
-
+    static uint8_t *get_src_data(Packet *p);
     static int set_src(Packet *p, uint8_t *ea);
-    static int set_dst(Packet *p, uint8_t *ea);
-
 };
 
 CLICK_ENDDECLS

@@ -1,18 +1,16 @@
 #ifndef CLICK_AODV_HH
 #define CLICK_AODV_HH
 
-#include <click/ipaddress.hh>
 #include <click/string.hh>
-#include <clicknet/ip.h>
 #include <clicknet/ether.h>
-#include <clicknet/udp.h>
+#include <clicknet/ip.h>
 
 // AODV specific constants 
 // as suggested by RFC3561
 
 CLICK_DECLS
 
-#define AODV_PORT 654
+//#define AODV_PORT 654
 
 //Intervals in ms
 #define AODV_HELLO_INTERVAL 1000
@@ -65,7 +63,7 @@ CLICK_DECLS
 #define AODV_DATA_STRING "raw"
 
 //AODV port: RFC 6
-#define AODV_PORT 654
+//#define AODV_PORT 654
 
 //RREQ message format: RFC 5.1
 struct aodv_rreq_header{
@@ -74,9 +72,9 @@ struct aodv_rreq_header{
 	uint8_t reserved;
 	uint8_t hopcount;
 	uint32_t rreqid;
-	in_addr destination;
+	uint8_t destination[6];
 	uint32_t destinationseqnr;
-	in_addr originator;
+	uint8_t originator[6];
 	uint32_t originatorseqnr;
 };
 
@@ -86,9 +84,9 @@ struct aodv_rrep_header{
 	uint8_t rareserved;
 	uint8_t reservedprefixsz;
 	uint8_t hopcount;
-	in_addr destination;
+	uint8_t destination[6];
 	uint32_t destinationseqnr;
-	in_addr originator;
+	uint8_t originator[6];
 	uint32_t lifetime;
 };
 
@@ -102,7 +100,7 @@ struct aodv_rerr_header{
 
 //RERR link data for one link
 struct aodv_rerr_linkdata{
-	in_addr destination;
+  char destination[6];
 	uint32_t destinationseqnr;
 };
 
@@ -115,7 +113,7 @@ struct aodv_rrep_ack_header{
 // define UDP header offset ones to avoid dependency's on ip versions!
 #ifndef INC_AODV_HEADEROFFSET
 #define INC_AODV_HEADEROFFSET
-static const int aodv_headeroffset = sizeof(click_ether) + sizeof(click_ip) + sizeof(click_udp);
+static const int aodv_headeroffset = sizeof(click_ether) + sizeof(click_ip) /*RobAt+ sizeof(click_udp)*/;
 #endif
 
 CLICK_ENDDECLS

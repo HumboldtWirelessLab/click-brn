@@ -23,7 +23,6 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-//#include "elements/brn/common.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"

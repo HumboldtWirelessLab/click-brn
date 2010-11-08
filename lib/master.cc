@@ -4,7 +4,8 @@
  * Eddie Kohler
  *
  * Copyright (c) 2003-7 The Regents of the University of California
- * Copyright (c) 2008 Meraki, Inc.
+ * Copyright (c) 2010 Intel Corporation
+ * Copyright (c) 2008-2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -24,6 +25,7 @@
 #include <click/error.hh>
 #include <click/handlercall.hh>
 #if CLICK_USERLEVEL
+# include <fcntl.h>
 # include <click/userutils.hh>
 #endif
 #if CLICK_USERLEVEL && HAVE_SYS_EVENT_H && HAVE_KQUEUE
@@ -43,6 +45,17 @@ enum { POLLIN = Element::SELECT_READ, POLLOUT = Element::SELECT_WRITE };
 #if CLICK_USERLEVEL
 volatile sig_atomic_t Master::signals_pending;
 static volatile sig_atomic_t signal_pending[NSIG];
+# if HAVE_MULTITHREAD
+static RouterThread * volatile selecting_thread;
+#  if HAVE___SYNC_SYNCHRONIZE
+#   define click_master_mb()	__sync_synchronize()
+#  else
+#   define click_master_mb()	__asm__ volatile("" : : : "memory")
+#  endif
+# else
+static int sig_pipe[2] = { -1, -1 };
+# endif
+extern "C" { static void sighandler(int signo); }
 #endif
 
 Master::Master(int nthreads)
@@ -73,7 +86,6 @@ Master::Master(int nthreads)
     // select information
 # if HAVE_USE_KQUEUE
     _kqueue = kqueue();
-    _selected_callno = 0;
 # endif
 # if !HAVE_POLL_H || HAVE_USE_SELECT
     FD_ZERO(&_read_select_fd_set);
@@ -91,13 +103,13 @@ Master::Master(int nthreads)
     _pollfds.push_back(dummy);
     _pollfds.clear();
 # if HAVE_MULTITHREAD
-    _selecting_processor = click_invalid_processor();
+    selecting_thread = 0;
 # endif
 
     // signal information
     signals_pending = 0;
     _siginfo = 0;
-    _signal_adding = false;
+    sigemptyset(&_sig_dispatching);
 #endif
 
 #if CLICK_LINUXMODULE
@@ -527,39 +539,9 @@ namespace {
 enum { SELECT_READ = Element::SELECT_READ, SELECT_WRITE = Element::SELECT_WRITE };
 }
 
-int
-Master::add_select(int fd, Element *element, int mask)
+void
+Master::register_select(int fd, bool add_read, bool add_write)
 {
-    if (fd < 0)
-	return -1;
-    if (mask == 0)
-	return 0;
-    assert(element && (mask & ~(SELECT_READ | SELECT_WRITE)) == 0);
-    _select_lock.acquire();
-
-    // check whether to add readability, writability, or both; it is an error
-    // for more than one element to wait on the same fd for the same status
-    bool add_read = false, add_write = false;
-    if (mask & SELECT_READ) {
-	if (fd >= _element_selectors.size() || !_element_selectors[fd].read)
-	    add_read = true;
-	else if (_element_selectors[fd].read != element) {
-	unlock_and_return_error:
-	    _select_lock.release();
-	    return -1;
-	}
-    }
-    if (mask & SELECT_WRITE) {
-	if (fd >= _element_selectors.size() || !_element_selectors[fd].write)
-	    add_write = true;
-	else if (_element_selectors[fd].write != element)
-	    goto unlock_and_return_error;
-    }
-    if (!add_read && !add_write) {
-	_select_lock.release();
-	return 0;
-    }
-
     // add the pollfd
     if (fd >= _fd_to_pollfd.size())
 	_fd_to_pollfd.resize(fd + 1, -1);
@@ -572,18 +554,10 @@ Master::add_select(int fd, Element *element, int mask)
     int pi = _fd_to_pollfd[fd];
 
     // add the elements
-    if (add_read) {
-	if (fd >= _element_selectors.size())
-	    _element_selectors.resize(fd + 1);
-	_element_selectors[fd].read = element;
+    if (add_read)
 	_pollfds[pi].events |= POLLIN;
-    }
-    if (add_write) {
-	if (fd >= _element_selectors.size())
-	    _element_selectors.resize(fd + 1);
-	_element_selectors[fd].write = element;
+    if (add_write)
 	_pollfds[pi].events |= POLLOUT;
-    }
 
 #if HAVE_USE_KQUEUE
     if (_kqueue >= 0) {
@@ -629,11 +603,57 @@ Master::add_select(int fd, Element *element, int mask)
     }
 #endif
 
+    // ensure the element selector exists
+    if (fd >= _element_selectors.size())
+	_element_selectors.resize(fd + 1);
+}
+
+int
+Master::add_select(int fd, Element *element, int mask)
+{
+    if (fd < 0)
+	return -1;
+    if (mask == 0)
+	return 0;
+    assert(element && (mask & ~(SELECT_READ | SELECT_WRITE)) == 0);
+    _select_lock.acquire();
+
+    // check whether to add readability, writability, or both; it is an error
+    // for more than one element to wait on the same fd for the same status
+    bool add_read = false, add_write = false;
+    if (mask & SELECT_READ) {
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].read)
+	    add_read = true;
+	else if (_element_selectors[fd].read != element) {
+	unlock_and_return_error:
+	    _select_lock.release();
+	    return -1;
+	}
+    }
+    if (mask & SELECT_WRITE) {
+	if (fd >= _element_selectors.size() || !_element_selectors[fd].write)
+	    add_write = true;
+	else if (_element_selectors[fd].write != element)
+	    goto unlock_and_return_error;
+    }
+    if (!add_read && !add_write) {
+	_select_lock.release();
+	return 0;
+    }
+
+    // add the pollfd
+    register_select(fd, add_read, add_write);
+
+    // add the elements
+    if (add_read)
+	_element_selectors[fd].read = element;
+    if (add_write)
+	_element_selectors[fd].write = element;
 
 #if HAVE_MULTITHREAD
     // need to wake up selecting thread since there's more to select
-    if (_selecting_processor != click_invalid_processor())
-	pthread_kill(_selecting_processor, SIGIO);
+    if (RouterThread *r = selecting_thread)
+	r->wake();
 #endif
 
     _select_lock.release();
@@ -722,120 +742,149 @@ Master::remove_select(int fd, Element *element, int mask)
 }
 
 
-#if HAVE_USE_KQUEUE
-void
-Master::run_selects_kqueue(bool more_tasks)
+inline void
+Master::call_selected(int fd, int mask) const
 {
-    // Decide how long to wait.
-# if CLICK_NS
-    // Never block if we're running in the simulator.
-    struct timespec wait, *wait_ptr = &wait;
-    wait.tv_sec = wait.tv_nsec = 0;
-    (void) more_tasks;
-# else /* !CLICK_NS */
-    // Never wait if anything is scheduled; otherwise, if no timers, block
-    // indefinitely.
-    struct timespec wait, *wait_ptr = &wait;
-    wait.tv_sec = wait.tv_nsec = 0;
-    if (!more_tasks) {
-	Timestamp t = next_timer_expiry_adjusted();
-	if (t.sec() == 0)
-	    wait_ptr = 0;
-	else if (unlikely(Timestamp::warp_jumping()))
-	    Timestamp::warp_jump(t);
-	else if ((t -= Timestamp::now(), t.sec() >= 0))
-	    wait = t.warp_real_delay().timespec();
+    if ((unsigned) fd < (unsigned) _element_selectors.size()) {
+	const ElementSelector &es = _element_selectors[fd];
+	Element *read = (mask & Element::SELECT_READ ? es.read : 0);
+	Element *write = (mask & Element::SELECT_WRITE ? es.write : 0);
+	if (read)
+	    read->selected(fd, write == read ? mask : Element::SELECT_READ);
+	if (write && write != read)
+	    write->selected(fd, Element::SELECT_WRITE);
     }
-# endif
+}
 
-    // Bump selected_callno
-    _selected_callno++;
-    if (_selected_callno == 0) { // be anal about wraparound
-	for (ElementSelector *es = _element_selectors.begin(); es != _element_selectors.end(); ++es)
-	    es->callno = 0;
-	_selected_callno++;
-    }
+inline int
+Master::next_timer_delay(bool more_tasks, Timestamp &t) const
+{
+#if CLICK_NS
+    // The simulator should never block.
+    return 0;
+#else
+    if (more_tasks || signals_pending)
+	return 0;
+    t = next_timer_expiry_adjusted();
+    if (t.sec() == 0)
+	return -1;		// block forever
+    else if (unlikely(Timestamp::warp_jumping())) {
+	Timestamp::warp_jump(t);
+	return 0;
+    } else if ((t -= Timestamp::now(), t.sec() >= 0)) {
+	t = t.warp_real_delay();
+	return 1;
+    } else
+	return 0;
+#endif
+}
 
+#if HAVE_USE_KQUEUE
+static int
+kevent_compare(const void *ap, const void *bp, void *)
+{
+    const struct kevent *a = static_cast<const struct kevent *>(ap);
+    const struct kevent *b = static_cast<const struct kevent *>(bp);
+    int afd = (int) a->ident, bfd = (int) b->ident;
+    return afd - bfd;
+}
+
+void
+Master::run_selects_kqueue(RouterThread *thread, bool more_tasks)
+{
 # if HAVE_MULTITHREAD
-    _selecting_processor = click_current_processor();
+    selecting_thread = thread;
+    click_master_mb();
     _select_lock.release();
+
+    struct kevent wp_kev;
+    EV_SET(&wp_kev, thread->_wake_pipe[0], EVFILT_READ, EV_ADD, 0, 0, EV_SET_UDATA_CAST ((intptr_t) 0));
+    (void) kevent(_kqueue, &wp_kev, 1, 0, 0, 0);
 # endif
 
-    struct kevent kev[64];
-    int n = kevent(_kqueue, 0, 0, &kev[0], 64, wait_ptr);
+    // Decide how long to wait.
+    struct timespec wait, *wait_ptr = &wait;
+    Timestamp t;
+    int delay_type = next_timer_delay(more_tasks, t);
+    if (delay_type == 0)
+	wait.tv_sec = wait.tv_nsec = 0;
+    else if (delay_type > 0)
+	wait = t.timespec();
+    else
+	wait_ptr = 0;
+
+    struct kevent kev[256];
+    int n = kevent(_kqueue, 0, 0, &kev[0], 256, wait_ptr);
     int was_errno = errno;
-    run_signals();
+    run_signals(thread);
 
 # if HAVE_MULTITHREAD
     _select_lock.acquire();
-    _selecting_processor = click_invalid_processor();
+    click_master_mb();
+    selecting_thread = 0;
+    thread->_select_blocked = false;
+
+    wp_kev.flags = EV_DELETE;
+    (void) kevent(_kqueue, &wp_kev, 1, 0, 0, 0);
 # endif
 
     if (n < 0 && was_errno != EINTR)
 	perror("kevent");
-    else if (n > 0)
-	for (struct kevent *p = &kev[0]; p < &kev[n]; p++) {
-	    int fd = (int) p->ident;
-	    if (fd < _element_selectors.size()
-		&& (p->filter == EVFILT_READ || p->filter == EVFILT_WRITE)) {
-		ElementSelector &es = _element_selectors[fd];
-		Element *e = (p->filter == EVFILT_READ ? es.read : es.write);
-		if (e && (es.read != es.write
-			  || es.callno != _selected_callno)) {
-		    es.callno = _selected_callno;
-		    e->selected(fd);
-		}
-	    }
+    else if (n > 0) {
+	click_qsort(&kev[0], n, sizeof(struct kevent), kevent_compare, 0);
+	for (struct kevent *p = &kev[0]; p < &kev[n]; ) {
+	    int fd = (int) p->ident, mask = 0;
+	    for (; (int) p->ident == fd; ++p)
+		if (p->filter == EVFILT_READ)
+		    mask |= Element::SELECT_READ;
+		else if (p->filter == EVFILT_WRITE)
+		    mask |= Element::SELECT_WRITE;
+	    call_selected(fd, mask);
 	}
+    }
 }
 #endif /* HAVE_USE_KQUEUE */
 
 #if HAVE_POLL_H && !HAVE_USE_SELECT
 void
-Master::run_selects_poll(bool more_tasks)
+Master::run_selects_poll(RouterThread *thread, bool more_tasks)
 {
-    // Decide how long to wait.
-# if CLICK_NS
-    // Never block if we're running in the simulator.
-    int timeout = -1;
-    (void) more_tasks;
-# else
-    // Never wait if anything is scheduled; otherwise, if no timers, block
-    // indefinitely.
-    int timeout = 0;
-    if (!more_tasks) {
-	Timestamp t = next_timer_expiry_adjusted();
-	if (t.sec() == 0)
-	    timeout = -1;
-	else if (unlikely(Timestamp::warp_jumping()))
-	    Timestamp::warp_jump(t);
-	else if ((t -= Timestamp::now(), t.sec() >= 0)) {
-	    t = t.warp_real_delay();
-	    if (t.sec() >= INT_MAX / 1000)
-		timeout = INT_MAX - 1000;
-	    else
-		timeout = t.msecval();
-	}
-    }
-# endif /* CLICK_NS */
-
 # if HAVE_MULTITHREAD
     // Need a private copy of _pollfds, since other threads may run while we
     // block
     Vector<struct pollfd> my_pollfds(_pollfds);
-    _selecting_processor = click_current_processor();
+    selecting_thread = thread;
+    click_master_mb();
     _select_lock.release();
+
+    pollfd wake_pollfd;
+    wake_pollfd.fd = thread->_wake_pipe[0];
+    wake_pollfd.events = POLLIN;
+    my_pollfds.push_back(wake_pollfd);
 # else
     Vector<struct pollfd> &my_pollfds(_pollfds);
 # endif
 
+    // Decide how long to wait.
+    int timeout;
+    Timestamp t;
+    int delay_type = next_timer_delay(more_tasks, t);
+    if (delay_type == 0)
+	timeout = 0;
+    else if (delay_type > 0)
+	timeout = (t.sec() >= INT_MAX / 1000 ? INT_MAX - 1000 : t.msecval());
+    else
+	timeout = -1;
+
     int n = poll(my_pollfds.begin(), my_pollfds.size(), timeout);
     int was_errno = errno;
-    run_signals();
+    run_signals(thread);
 
 # if HAVE_MULTITHREAD
     _select_lock.acquire();
-    _selecting_processor = click_invalid_processor();
+    click_master_mb();
+    selecting_thread = 0;
+    thread->_select_blocked = false;
 # endif
 
     if (n < 0 && was_errno != EINTR)
@@ -850,14 +899,9 @@ Master::run_selects_poll(bool more_tasks)
 		// vectors before calling out.
 
 		int fd = p->fd;
-		Element *read_elt = 0, *write_elt;
-		if ((p->revents & ~POLLOUT)
-		    && (read_elt = _element_selectors[fd].read))
-		    read_elt->selected(fd);
-		if ((p->revents & ~POLLIN)
-		    && (write_elt = _element_selectors[fd].write)
-		    && read_elt != write_elt)
-		    write_elt->selected(fd);
+		int mask = (p->revents & ~POLLOUT ? Element::SELECT_READ : 0)
+		    + (p->revents & ~POLLIN ? Element::SELECT_WRITE : 0);
+		call_selected(fd, mask);
 
 		// 31.Oct.2003 - Peter Swain: _pollfds may have grown or
 		// shrunk!
@@ -869,45 +913,42 @@ Master::run_selects_poll(bool more_tasks)
 
 #else /* !HAVE_POLL_H || HAVE_USE_SELECT */
 void
-Master::run_selects_select(bool more_tasks)
+Master::run_selects_select(RouterThread *thread, bool more_tasks)
 {
-    // Decide how long to wait.
-# if CLICK_NS
-    // Never block if we're running in the simulator.
-    struct timeval wait, *wait_ptr = &wait;
-    timerclear(&wait);
-    (void) more_tasks;
-# else /* !CLICK_NS */
-    // Never wait if anything is scheduled; otherwise, if no timers, block
-    // indefinitely.
-    struct timeval wait, *wait_ptr = &wait;
-    timerclear(&wait);
-    if (!more_tasks) {
-	Timestamp t = next_timer_expiry_adjusted();
-	if (t.sec() == 0)
-	    wait_ptr = 0;
-	else if (unlikely(Timestamp::warp_jumping()))
-	    Timestamp::warp_jump(t);
-	else if ((t -= Timestamp::now(), t.sec() >= 0))
-	    wait = t.warp_real_delay().timeval();
-    }
-# endif /* CLICK_NS */
-
     fd_set read_mask = _read_select_fd_set;
     fd_set write_mask = _write_select_fd_set;
+    int n_select_fd = _max_select_fd + 1;
 
 # if HAVE_MULTITHREAD
-    _selecting_processor = click_current_processor();
+    selecting_thread = thread;
+    click_master_mb();
     _select_lock.release();
+
+    FD_SET(&read_mask, thread->_wake_pipe[0]);
+    if (thread->_wake_pipe[0] >= n_select_fd)
+	n_select_fd = thread->_wake_pipe[0] + 1;
 # endif
 
-    int n = select(_max_select_fd + 1, &read_mask, &write_mask, (fd_set*) 0, wait_ptr);
+    // Decide how long to wait.
+    struct timeval wait, *wait_ptr = &wait;
+    Timestamp t;
+    int delay_type = next_timer_delay(more_tasks, t);
+    if (delay_type == 0)
+	timerclear(&wait);
+    else if (delay_type > 0)
+	wait = t.timeval();
+    else
+	wait_ptr = 0;
+
+    int n = select(n_select_fd, &read_mask, &write_mask, (fd_set*) 0, wait_ptr);
     int was_errno = errno;
-    run_signals();
+    run_signals(thread);
 
 # if HAVE_MULTITHREAD
-    _selecting_processor = click_invalid_processor();
     _select_lock.acquire();
+    click_master_mb();
+    selecting_thread = 0;
+    thread->_select_blocked = false;
 # endif
 
     if (n < 0 && was_errno != EINTR)
@@ -923,14 +964,9 @@ Master::run_selects_select(bool more_tasks)
 		// vectors before calling out.
 
 		int fd = p->fd;
-		Element *read_elt = 0, *write_elt;
-		if ((fd >= FD_SETSIZE || FD_ISSET(fd, &read_mask))
-		    && (read_elt = _element_selectors[fd].read))
-		    read_elt->selected(fd);
-		if ((fd >= FD_SETSIZE || FD_ISSET(fd, &write_mask))
-		    && (write_elt = _element_selectors[fd].write)
-		    && read_elt != write_elt)
-		    write_elt->selected(fd);
+		int mask = (fd >= FD_SETSIZE || FD_ISSET(fd, &read_mask) ? Element::SELECT_READ : 0)
+		    + (fd >= FD_SETSIZE || FD_ISSET(fd, &write_mask) ? Element::SELECT_WRITE : 0);
+		call_selected(fd, mask);
 
 		// 31.Oct.2003 - Peter Swain: _pollfds may have grown or
 		// shrunk!
@@ -942,7 +978,7 @@ Master::run_selects_select(bool more_tasks)
 #endif /* HAVE_POLL_H && !HAVE_USE_SELECT */
 
 void
-Master::run_selects(bool more_tasks)
+Master::run_selects(RouterThread *thread)
 {
     // Wait in select() for input or timer, and call relevant elements'
     // selected() methods.
@@ -951,7 +987,17 @@ Master::run_selects(bool more_tasks)
 	return;
 
 #if HAVE_MULTITHREAD
-    if (_selecting_processor != click_invalid_processor()) {
+    // set _select_blocked to true first: then, if someone else is
+    // concurrently waking us up, we will either detect that the thread is now
+    // active(), or wake up on the write to the thread's _wake_pipe
+    thread->_select_blocked = true;
+    click_master_mb();
+#endif
+
+    bool more_tasks = thread->active();
+
+#if HAVE_MULTITHREAD
+    if (selecting_thread) {
 	// Another thread is blocked in select().  No point in this thread's
 	// also checking file descriptors, so block if there are no more tasks
 	// to run.  It *is* useful to wait until the next timer expiry,
@@ -959,43 +1005,65 @@ Master::run_selects(bool more_tasks)
 	// thread was blocking.
 	_select_lock.release();
 	if (!more_tasks) {
+	    // watch _wake_pipe so the thread can be awoken
+	    fd_set fdr;
+	    FD_ZERO(&fdr);
+	    FD_SET(thread->_wake_pipe[0], &fdr);
+
+	    // how long to wait?
 	    struct timeval wait, *wait_ptr = &wait;
-	    Timestamp t = next_timer_expiry_adjusted();
-	    if (t.sec() == 0)
+	    Timestamp t;
+	    int delay_type = next_timer_delay(false, t);
+	    if (delay_type == 0)
+		timerclear(&wait);
+	    else if (delay_type > 0)
+		wait = t.timeval();
+	    else
 		wait_ptr = 0;
-	    else if (unlikely(Timestamp::warp_jumping()))
-		Timestamp::warp_jump(t);
-	    else if ((t -= Timestamp::now(), t.sec() >= 0))
-		wait = t.warp_real_delay().timeval();
-	    ignore_result(select(0, (fd_set *) 0, (fd_set *) 0, (fd_set *) 0,
-				 wait_ptr));
+
+	    // actually wait
+	    int r = select(thread->_wake_pipe[0] + 1, &fdr,
+			   (fd_set *) 0, (fd_set *) 0, wait_ptr);
+	    (void) r;
 	}
+	run_signals(thread);
+	thread->_select_blocked = false;
 	return;
     }
 #endif
 
     // Return early if paused.
-    if (_master_paused > 0)
-	goto unlock_select_exit;
+    if (_master_paused > 0) {
+#if HAVE_MULTITHREAD
+	thread->_select_blocked = false;
+#endif
+	goto unlock_exit;
+    }
 
-    // Return early if there are no selectors and there are tasks to run.
-    if (_pollfds.size() == 0 && more_tasks)
-	goto unlock_select_exit;
+    // Return early (just run signals) if there are no selectors and there are
+    // tasks to run.
+    if (_pollfds.size() == 0 && more_tasks) {
+	run_signals(thread);
+#if HAVE_MULTITHREAD
+	thread->_select_blocked = false;
+#endif
+	goto unlock_exit;
+    }
 
     // Call the relevant selector implementation.
 #if HAVE_USE_KQUEUE
     if (_kqueue >= 0) {
-	run_selects_kqueue(more_tasks);
-	goto unlock_select_exit;
+	run_selects_kqueue(thread, more_tasks);
+	goto unlock_exit;
     }
 #endif
 #if HAVE_POLL_H && !HAVE_USE_SELECT
-    run_selects_poll(more_tasks);
+    run_selects_poll(thread, more_tasks);
 #else
-    run_selects_select(more_tasks);
+    run_selects_select(thread, more_tasks);
 #endif
 
- unlock_select_exit:
+ unlock_exit:
     _select_lock.release();
 }
 
@@ -1010,115 +1078,159 @@ extern "C" {
 static void
 sighandler(int signo)
 {
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    sigaddset(&sigset, signo);
-    sigprocmask(SIG_BLOCK, &sigset, 0);
-#if !HAVE_SIGACTION
-    signal(signo, SIG_DFL);
-#endif
     Master::signals_pending = signal_pending[signo] = 1;
+# if HAVE_MULTITHREAD
+    click_master_mb();
+    if (selecting_thread)
+	selecting_thread->wake();
+# else
+    if (sig_pipe[1] >= 0)
+	ignore_result(write(sig_pipe[1], "", 1));
+# endif
 }
 }
 
 int
-Master::add_signal_handler(int signo, Router *router, const String &handler)
+Master::add_signal_handler(int signo, Router *router, String handler)
 {
-    if (signo < 0 || signo >= 32 || router->master() != this)
+    if (signo < 0 || signo >= NSIG || router->master() != this)
 	return -1;
 
-    SignalInfo *si = new SignalInfo;
-    if (!si)
-	return -1;
-    si->signo = signo;
-    si->router = router;
-    si->handler = handler;
+# if !HAVE_MULTITHREAD
+    if (sig_pipe[0] < 0 && pipe(sig_pipe) >= 0) {
+	fcntl(sig_pipe[0], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[1], F_SETFL, O_NONBLOCK);
+	fcntl(sig_pipe[0], F_SETFD, FD_CLOEXEC);
+	fcntl(sig_pipe[1], F_SETFD, FD_CLOEXEC);
+	register_select(sig_pipe[0], true, false);
+    }
+# endif
 
     _signal_lock.acquire();
-    _signal_adding = true;
-    (void) remove_signal_handler(signo, router, handler);
-    _signal_adding = false;
+    int status = 0, nhandlers = 0;
+    SignalInfo **pprev = &_siginfo;
+    for (SignalInfo *si = *pprev; si; si = *pprev)
+	if (si->equals(signo, router, handler))
+	    goto unlock_exit;
+	else {
+	    nhandlers += (si->signo == signo);
+	    pprev = &si->next;
+	}
 
-    si->next = _siginfo;
-    _siginfo = si;
+    if ((*pprev = new SignalInfo(signo, router, handler))) {
+	if (nhandlers == 0 && sigismember(&_sig_dispatching, signo) == 0)
+	    click_signal(signo, sighandler, false);
+    } else
+	status = -1;
 
-    click_signal(signo, sighandler, true);
-
+  unlock_exit:
     _signal_lock.release();
-    return 0;
+    return status;
 }
 
 int
-Master::remove_signal_handler(int signo, Router *router, const String &handler)
+Master::remove_signal_handler(int signo, Router *router, String handler)
 {
     _signal_lock.acquire();
     int nhandlers = 0, status = -1;
     SignalInfo **pprev = &_siginfo;
     for (SignalInfo *si = *pprev; si; si = *pprev)
-	if (si->signo == signo && si->router == router
-	    && si->handler == handler) {
+	if (si->equals(signo, router, handler)) {
 	    *pprev = si->next;
 	    delete si;
 	    status = 0;
 	} else {
-	    if (si->signo == signo)
-		nhandlers = 1;
+	    nhandlers += (si->signo == signo);
 	    pprev = &si->next;
 	}
 
-    if (!_signal_adding && status >= 0 && nhandlers == 0)
+    if (status >= 0 && nhandlers == 0
+	&& sigismember(&_sig_dispatching, signo) == 0)
 	click_signal(signo, SIG_DFL, false);
+
     _signal_lock.release();
     return status;
 }
 
 void
-Master::process_signals()
+Master::process_signals(RouterThread *thread)
 {
+    (void) thread;
+
+    // kill crap data written to pipe
+#if HAVE_MULTITHREAD
+    int fd = thread->_wake_pipe[0];
+#else
+    int fd = sig_pipe[0];
+#endif
+    if (fd >= 0) {
+	char crap[64];
+	while (read(fd, crap, 64) > 0)
+	    /* do nothing */;
+    }
+
+    // exit early if still no signals
+    if (!signals_pending)
+	return;
+
+    // otherwise, grab the signal lock
     signals_pending = 0;
-    char handled[NSIG];
     _signal_lock.acquire();
 
-    SignalInfo *happened = 0;
-    SignalInfo **pprev = &_siginfo;
-    sigset_t sigset;
-    sigemptyset(&sigset);
-    for (SignalInfo *si = *pprev; si; si = *pprev)
-	if (signal_pending[si->signo] && si->router->running()) {
+    // collect activated signal handler info
+    SignalInfo *happened, **hpprev = &happened;
+    for (SignalInfo **pprev = &_siginfo, *si = *pprev; si; si = *pprev)
+	if ((signal_pending[si->signo]
+	     || sigismember(&_sig_dispatching, si->signo) > 0)
+	    && si->router->running()) {
+	    sigaddset(&_sig_dispatching, si->signo);
+	    signal_pending[si->signo] = 0;
 	    *pprev = si->next;
-	    si->next = happened;
-	    happened = si;
-	    handled[si->signo] = 0;
-	    signal_pending[happened->signo] = 0;
-	    sigaddset(&sigset, si->signo);
+	    *hpprev = si;
+	    hpprev = &si->next;
 	} else
 	    pprev = &si->next;
+    *hpprev = 0;
 
-    SignalInfo *unhandled;
-    SignalInfo **unhandled_pprev = &unhandled;
+    // call relevant signal handlers
+    sigset_t sigset_handled;
+    sigemptyset(&sigset_handled);
     while (happened) {
 	SignalInfo *next = happened->next;
-	if (HandlerCall::call_write(happened->handler, happened->router->root_element()) >= 0) {
-	    handled[happened->signo] = 1;
-	    delete happened;
-	} else {
-	    *unhandled_pprev = happened;
-	    unhandled_pprev = &happened->next;
-	}
+	if (HandlerCall::call_write(happened->handler, happened->router->root_element()) >= 0)
+	    sigaddset(&sigset_handled, happened->signo);
+	delete happened;
 	happened = next;
     }
-    *unhandled_pprev = 0;
 
-    sigprocmask(SIG_UNBLOCK, &sigset, 0);
+    // collect currently active signal handlers (handler calls may have
+    // changed this set)
+    sigset_t sigset_active;
+    sigemptyset(&sigset_active);
+    for (SignalInfo *si = _siginfo; si; si = si->next)
+	sigaddset(&sigset_active, si->signo);
 
-    while (unhandled) {
-	SignalInfo *next = unhandled->next;
-	if (!handled[unhandled->signo])
-	    kill(getpid(), unhandled->signo);
-	delete unhandled;
-	unhandled = next;
-    }
+    // reset & possibly redeliver unhandled signals and signals that we gave
+    // up on that happened again since we started running this function
+    for (int signo = 0; signo < NSIG; ++signo)
+	if (sigismember(&_sig_dispatching, signo) > 0) {
+	    if (sigismember(&sigset_active, signo) == 0) {
+		click_signal(signo, SIG_DFL, false);
+#if HAVE_MULTITHREAD
+		click_master_mb();
+#endif
+		if (signal_pending[signo] != 0) {
+		    signal_pending[signo] = 0;
+		    goto suicide;
+		}
+	    }
+	    if (sigismember(&sigset_handled, signo) == 0) {
+	    suicide:
+		kill(getpid(), signo);
+	    }
+	}
 
+    sigemptyset(&_sig_dispatching);
     _signal_lock.release();
 }
 

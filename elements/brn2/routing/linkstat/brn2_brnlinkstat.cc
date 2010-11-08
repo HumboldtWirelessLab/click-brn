@@ -30,6 +30,7 @@
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "metric/brn2_brnetxmetric.hh"
 
@@ -365,7 +366,7 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  WritablePacket *p = Packet::make(64 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
+  WritablePacket *p = Packet::make(96 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
@@ -382,6 +383,7 @@ BRN2LinkStat::send_probe()
 
   // fill brn header header // think about this; probe packets only available for one hop
   BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
+  BRNPacketAnno::set_tos_anno(p, BRN_TOS_BE);
 
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
   lp->_version = _ett2_version;
@@ -419,7 +421,7 @@ BRN2LinkStat::send_probe()
 
   for ( int h = 0; h < _reg_handler.size(); h++ ) {
     int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (end-ptr), true);
-    if ( res >= 0 ) {
+    if ( res >= 0 ) {  //TODO: also pack if zero (no information) ???
       *ptr = _reg_handler[h]._protocol; ptr++;
       uint16_t *s = (uint16_t *)ptr;
       *s = htons(res);
@@ -497,6 +499,8 @@ BRN2LinkStat::send_probe()
 int
 BRN2LinkStat::initialize(ErrorHandler *errh)
 {
+  click_srandom(_me->getEtherAddress()->hashcode());
+
   if (noutputs() > 0) {
     if (!_me)
       return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
@@ -789,6 +793,7 @@ BRN2LinkStat::read_bcast_stats(bool with_pos)
                                  pl->_probe_types[x]._size);
       sa << " fwd = '" << pl->_fwd_rates[x] << "'";
       sa << " rev = '" << rev_rate << "'";
+      sa << "/>\n";
     }
     sa << "\t</link>\n";
 /*

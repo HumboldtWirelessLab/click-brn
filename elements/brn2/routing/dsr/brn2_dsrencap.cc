@@ -100,7 +100,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
 
   dsr_source->dsr_type = BRN_DSR_SRC;
   dsr_source->reserved = 0;
-  dsr_source->dsr_id = 0;//RobAt:DSR
+  dsr_source->dsr_id = 0;
   dsr_source->body.src.dsr_salvage = 7; // TODO change this !!
   dsr_source->dsr_segsleft = hop_count;
   dsr_source->dsr_hop_count = hop_count;
@@ -110,7 +110,6 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   memcpy(dsr_source->dsr_src.data,
       (uint8_t *)src_route[route_len - 1].data(), 6 * sizeof(uint8_t));
 
-//
   // fetch IPs; TODO: dirty hack
   const click_ether *ether = (const click_ether *)p_in->data();
   if (ether->ether_type == ETHERTYPE_IP) { //TODO: XXXXXXXXXXXXXXXXXXXXX
@@ -130,7 +129,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
         src_route[0].unparse().c_str(), dst_ip_addr.unparse().c_str());
     }
   }
-//
+
   assert(hop_count < BRN_DSR_MAX_HOP_COUNT);
 
   BRN_DEBUG(_link_table->print_links().c_str());
@@ -138,8 +137,6 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_source);
 
   for (i = 0; i < hop_count; i++) {
-//    memcpy(dsr_source->addr[i].hw.data, (uint8_t *)src_route[hop_count - i].data(), 6 * sizeof(uint8_t)); //RobAt:DSR
-//    dsr_source->addr[i].metric = htons(0); // to be filled in along the way
     memcpy(dsr_hops[i].hw.data, (uint8_t *)src_route[hop_count - i].data(), 6 * sizeof(uint8_t));
     dsr_hops[i].metric = htons(0); // to be filled in along the way
 
@@ -160,7 +157,7 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   BRN_DEBUG(" * add_dsr_header: new packet size is %d, old was %d", p->length(), old_len);
 
   // copy packet destination annotation from incoming packet
-  BRNPacketAnno::set_udevice_anno(p,(BRNPacketAnno::udevice_anno(p_in)).c_str());
+  BRNPacketAnno::set_devicenumber_anno(p,(BRNPacketAnno::devicenumber_anno(p_in)));
 
   // set destination anno
   if (hop_count > 0) { // next hop on tour
@@ -193,13 +190,13 @@ BRN2DSREncap::create_rreq(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   BRN_DEBUG(" * creating rreq: ... ");
 
   int payload = sizeof(click_brn_dsr); // rreq
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   click_brn_dsr *dsr_rreq = (click_brn_dsr*)p->data();
 
   dsr_rreq->dsr_type = BRN_DSR_RREQ;
-  dsr_rreq->body.rreq.dsr_id = htons(rreq_id); 
+  dsr_rreq->dsr_id = htons(rreq_id);
   dsr_rreq->dsr_hop_count = 0;
   dsr_rreq->dsr_segsleft = 0;
 
@@ -230,7 +227,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
 
   payload += reply_hop_count * sizeof(click_dsr_hop);
   // construct new packet
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   if (!p) {
@@ -244,7 +241,7 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
   // dsr header - fill the route reply header
   dsr->dsr_type = BRN_DSR_RREP;
   dsr->body.rrep.dsr_flags = 0;
-  dsr->body.rreq.dsr_id = htons(rreq_id);
+  dsr->dsr_id = htons(rreq_id);
   //  dsr_rrep->dsr_id = htons(id); // TODO think about this !!!
 
   // source of rrep
@@ -273,8 +270,6 @@ BRN2DSREncap::create_rrep(EtherAddress dst, IPAddress dst_ip, EtherAddress src, 
 
   for (i = 0; i < reply_hop_count; i++) {
     // skip first address, which goes in the dest field of the dsr_dst header.
-//    memcpy(dsr->addr[i].hw.data, (uint8_t *)reply_route[i + 1].ether().data(),  6 * sizeof(uint8_t));
-//    dsr->addr[i].metric = htons(reply_route[i + 1]._metric); //TODO
     memcpy(dsr_hops[i].hw.data, (uint8_t *)reply_route[i + 1].ether().data(),  6 * sizeof(uint8_t));
     dsr_hops[i].metric = htons(reply_route[i + 1]._metric); //TODO
   }
@@ -315,7 +310,7 @@ BRN2DSREncap::create_rerr(EtherAddress bad_src, EtherAddress bad_dst,
 
   payload += src_hop_count * sizeof(click_dsr_hop);
   // make the packet
-  WritablePacket *p = Packet::make(payload);
+  WritablePacket *p = WritablePacket::make(128, NULL, payload, 32); //Packet::make(payload);
   memset(p->data(), '\0', p->length());
 
   if (!p) {

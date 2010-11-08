@@ -28,12 +28,15 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "elements/brn2/routing/dsr/brn2_routeidcache.hh"
 
 CLICK_DECLS
 
 BrnRouteIdCache::BrnRouteIdCache()
-  : _debug(0)
+  : _debug(BrnLogger::DEFAULT)
 {
 }
 
@@ -45,6 +48,7 @@ int
 BrnRouteIdCache::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -54,11 +58,14 @@ BrnRouteIdCache::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BrnRouteIdCache::initialize(ErrorHandler *)
 {
+  routeIds.clear();
   return 0;
 }
 
 BrnRouteIdCache::RouteIdEntry*
-BrnRouteIdCache::get_entry(EtherAddress *src, uint32_t id) {
+BrnRouteIdCache::get_entry(EtherAddress *src, uint32_t id)
+{
+  BRN_DEBUG("Search ID-Entry: Src: %s ID: %d",src->unparse().c_str(), id);
   for ( int i = 0; i < routeIds.size(); i++ ) {
     if ( ( memcmp(routeIds[i]._src.data(), src->data(), 6 ) == 0 ) &&
          ( routeIds[i]._id == id ) )
@@ -68,7 +75,10 @@ BrnRouteIdCache::get_entry(EtherAddress *src, uint32_t id) {
 }
 
 BrnRouteIdCache::RouteIdEntry*
-BrnRouteIdCache::get_entry(EtherAddress *src, EtherAddress *dst) {
+BrnRouteIdCache::get_entry(EtherAddress *src, EtherAddress *dst)
+{
+  BRN_DEBUG("Search ID-Entry: Src: %s Dst: %s",src->unparse().c_str(), dst->unparse().c_str());
+
   for ( int i = 0; i < routeIds.size(); i++ ) {
     if ( ( memcmp(routeIds[i]._src.data(), src->data(), 6 ) == 0 ) &&
          ( memcmp(routeIds[i]._dst.data(), dst->data(), 6 ) == 0 ) )
@@ -77,16 +87,20 @@ BrnRouteIdCache::get_entry(EtherAddress *src, EtherAddress *dst) {
   return NULL;
 }
 
-void
+BrnRouteIdCache::RouteIdEntry*
 BrnRouteIdCache::insert_entry(EtherAddress *src, EtherAddress *dst, EtherAddress *last_hop, EtherAddress *next_hop, uint32_t id)
 {
   BrnRouteIdCache::RouteIdEntry *e = get_entry(src, id);
 
+  BRN_DEBUG("Add ID-Entry");
+
   if ( e != NULL ) e->update_data(src, dst, last_hop, next_hop, id);
   else {
     routeIds.push_back(RouteIdEntry(EtherAddress(src->data()), EtherAddress(dst->data()), EtherAddress(last_hop->data()), EtherAddress(next_hop->data()), id));
+    e = &routeIds[routeIds.size()-1];
   }
 
+  return e;
 }
 
 
@@ -106,7 +120,9 @@ BrnRouteIdCache::print_cache(void)
     sa << "\t" << routeIds[i]._src.unparse();
     sa << "\t" << routeIds[i]._dst.unparse();
     sa << "\t" << routeIds[i]._last_hop.unparse();
-    sa << "\t" << routeIds[i]._next_hop.unparse() << "\n";
+    sa << "\t" << routeIds[i]._next_hop.unparse();
+    sa << "\t" << routeIds[i]._used;
+    sa << "\t" << routeIds[i]._insert_time.unparse() << "\n";
   }
 
   return sa.take_string();

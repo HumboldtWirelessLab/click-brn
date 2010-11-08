@@ -225,6 +225,7 @@ BRN2AssocList::insert(  EtherAddress    eth,
   client_info->set_ssid(ssid);
 
   _link_table->update_both_links(eth, EtherAddress(dev->getEtherAddress()->data()), 0, 0, 50, true);
+  _link_table->associated_host(eth);
 
   return 0;
 }

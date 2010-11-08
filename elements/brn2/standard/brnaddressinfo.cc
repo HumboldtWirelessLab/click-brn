@@ -315,7 +315,11 @@ BRNAddressInfo::query_ip(String s, unsigned char *store, const Element *e)
     // if it's a device name, return a primary IP address
 #if CLICK_LINUXMODULE
 # if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
-    net_device *dev = dev_get_by_name(s.c_str());
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) 
+    net_device *dev = dev_get_by_name(&init_net, s.c_str()); 
+# else 
+    net_device *dev = dev_get_by_name(s.c_str()); 
+# endif
     if (dev) {
 	bool found = false;
 	in_device *in_dev = in_dev_get(dev);
@@ -426,11 +430,17 @@ BRNAddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
 # if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
 #  define dev_put(dev) /* nada */
 # endif
-    net_device *dev = dev_get_by_name(s.c_str());
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) 
+    net_device *dev = dev_get_by_name(&init_net, s.c_str()); 
+# else 
+    net_device *dev = dev_get_by_name(s.c_str()); 
+# endif
     if (dev && (dev->type == ARPHRD_ETHER ||
                 dev->type == ARPHRD_80211 ||
                 dev->type == ARPHRD_80211_PRISM ||
-                dev->type == ARPHRD_80211_ATHDESC)) {
+                dev->type == ARPHRD_80211_RADIOTAP ||
+                dev->type == ARPHRD_80211_ATHDESC ||
+                dev->type == ARPHRD_80211_ATHDESCEXT )) {
 	memcpy(store, dev->dev_addr, 6);
 	dev_put(dev);
 	return true;

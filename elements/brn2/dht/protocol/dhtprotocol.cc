@@ -22,7 +22,6 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <clicknet/ether.h>
-//#include "elements/brn/common.hh"
 
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "dhtprotocol.hh"
@@ -42,6 +41,8 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   dht_header->minor_type = minor_type;
   dht_header->payload_len = htons(payload_len);
 
+  memset(dht_header->src,0,6);
+
   return(new_packet);	
 }
 
@@ -57,6 +58,13 @@ DHTProtocol::get_type(Packet *p)
 {
   struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
   return ( dht_header->minor_type );
+}
+
+void
+DHTProtocol::set_type(Packet *p, uint8_t minor_type)
+{
+  struct dht_packet_header *dht_header = (struct dht_packet_header *)p->data();
+  dht_header->minor_type = minor_type;
 }
 
 uint16_t
@@ -89,16 +97,11 @@ DHTProtocol::get_src(Packet *p)
     return NULL;
 }
 
-EtherAddress *
-DHTProtocol::get_dst(Packet *p)
+uint8_t *
+DHTProtocol::get_src_data(Packet *p)
 {
-  struct dht_packet_header *dht_header = NULL;
-
   if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
-  {
-    dht_header = (struct dht_packet_header*)p->data();
-    return (new EtherAddress(dht_header->dst));
-  }
+    return ((struct dht_packet_header*)p->data())->src;
   else
     return NULL;
 }
@@ -117,22 +120,6 @@ DHTProtocol::set_src(Packet *p, uint8_t *ea)
   else
     return -1;
 }
-
-int
-DHTProtocol::set_dst(Packet *p, uint8_t *ea)
-{
-  struct dht_packet_header *dht_header = NULL;
-
-  if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
-  {
-    dht_header = (struct dht_packet_header*)p->data();
-    memcpy(dht_header->dst,ea,6);
-    return 0;
-  }
-  else
-    return -1;
-}
-
 
 WritablePacket *
 DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAddress *dst, uint8_t major_type)

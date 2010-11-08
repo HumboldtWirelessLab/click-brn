@@ -76,22 +76,27 @@ PollDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     _burst = 8;
     _headroom = 64;
+    _length = 0;
+    _user_length = false;
     if (AnyDevice::configure_keywords(conf, errh, true) < 0
 	|| cp_va_kparse(conf, this, errh,
 			"DEVNAME", cpkP+cpkM, cpString, &_devname,
 			"BURST", cpkP, cpUnsigned, &_burst,
 			"HEADROOM", 0, cpUnsigned, &_headroom,
+			"LENGTH", cpkC, &_user_length, cpUnsigned, &_length,
 			cpEnd) < 0)
 	return -1;
 
+    int before = errh->nerrors();
 #if HAVE_LINUX_POLLING
-    if (find_device(&poll_device_map, errh) < 0)
-	return -1;
-    if (_dev && (!_dev->poll_on || _dev->polling < 0))
-	return errh->error("device '%s' not pollable, use FromDevice instead", _devname.c_str());
+    net_device *dev = lookup_device(errh);
+    if (dev && (!dev->poll_on || dev->polling < 0)) {
+	dev_put(dev);
+	return errh->error("device %<%s%> not pollable, use FromDevice instead", _devname.c_str());
+    }
+    set_device(dev, &poll_device_map, 0);
 #endif
-
-    return 0;
+    return errh->nerrors() == before ? 0 : -1;
 }
 
 
@@ -113,7 +118,7 @@ PollDevice::initialize(ErrorHandler *errh)
 	    return errh->error("duplicate reader for device '%s'", _devname.c_str());
 	used = this;
 
-	if (!router()->attachment("device_writer_" + String(ifindex())))
+	if (!router()->attachment("device_writer_" + String(ifindex()) + "_0"))
 	    errh->warning("no ToDevice(%s) in configuration\n(\
 Generally, you will get bad performance from PollDevice unless\n\
 you include a ToDevice for the same device. Try adding\n\
@@ -122,10 +127,14 @@ you include a ToDevice for the same device. Try adding\n\
 
     if (_dev && !_dev->polling) {
 	/* turn off interrupt if interrupts weren't already off */
-	_dev->poll_on(_dev);
+	int rx_buffer_length = _dev->poll_on(_dev);
 	if (_dev->polling != 2)
 	    return errh->error("PollDevice detected wrong version of polling patch");
+	if (!_user_length)
+	    _length = (rx_buffer_length < 1536 ? 1536 : rx_buffer_length);
     }
+    if (_dev && _headroom < LL_RESERVED_SPACE(_dev))
+	errh->warning("device %s requests at least %d bytes of HEADROOM", _devname.c_str(), (int) LL_RESERVED_SPACE(_dev));
 
     ScheduleInfo::initialize_task(this, &_task, _dev != 0, errh);
 #if HAVE_STRIDE_SCHED
@@ -177,7 +186,7 @@ PollDevice::cleanup(CleanupStage)
 
     // call clear_device first so we can check poll_device_map for
     // other users
-    clear_device(&poll_device_map);
+    clear_device(&poll_device_map, 0);
 
     unsigned long lock_flags;
     poll_device_map.lock(false, lock_flags);
@@ -227,7 +236,7 @@ PollDevice::run_task(Task *)
      * Skbmgr adds 64 bytes of headroom and tailroom, so back request off to
      * 1536.
      */
-    struct sk_buff *new_skbs = skbmgr_allocate_skbs(_headroom, 1536, &nskbs);
+    struct sk_buff *new_skbs = skbmgr_allocate_skbs(_headroom, _length, &nskbs);
 
 # if CLICK_DEVICE_STATS
     if (_activations > 0)
@@ -324,11 +333,14 @@ PollDevice::change_device(net_device *dev)
 	    _dev->poll_off(_dev);
     }
 
-    set_device(dev, &poll_device_map, true);
+    set_device(dev, &poll_device_map, anydev_change);
 
     if (dev_change) {
-	if (_dev && !_dev->polling)
-	    _dev->poll_on(_dev);
+	if (_dev && !_dev->polling) {
+	    int rx_buffer_length = _dev->poll_on(_dev);
+	    if (!_user_length)
+		_length = (rx_buffer_length < 1536 ? 1536 : rx_buffer_length);
+	}
 
 	if (_dev)
 	    _task.strong_reschedule();
@@ -388,30 +400,6 @@ PollDevice_read_calls(Element *f, void *)
 #endif
 }
 
-static String
-PollDevice_read_stats(Element *e, void *thunk)
-{
-  PollDevice *pd = (PollDevice *)e;
-  switch (reinterpret_cast<intptr_t>(thunk)) {
-   case 0:
-    return String(pd->_npackets);
-#if CLICK_DEVICE_THESIS_STATS || CLICK_DEVICE_STATS
-   case 1:
-    return String(pd->_push_cycles);
-#endif
-#if CLICK_DEVICE_STATS
-   case 2:
-    return String(pd->_time_poll);
-   case 3:
-    return String(pd->_time_refill);
-#endif
-   case 4:
-    return String(pd->_buffers_reused);
-   default:
-    return String();
-  }
-}
-
 static int
 PollDevice_write_stats(const String &, Element *e, void *, ErrorHandler *)
 {
@@ -423,20 +411,20 @@ PollDevice_write_stats(const String &, Element *e, void *, ErrorHandler *)
 void
 PollDevice::add_handlers()
 {
-  add_read_handler("calls", PollDevice_read_calls, 0);
-  add_read_handler("count", PollDevice_read_stats, 0);
-  // XXX deprecated
-  add_read_handler("packets", PollDevice_read_stats, 0);
+    add_read_handler("calls", PollDevice_read_calls, 0);
+    add_data_handlers("count", Handler::OP_READ, &_npackets);
+    // XXX deprecated
+    add_data_handlers("packets", Handler::OP_READ | Handler::DEPRECATED, &_npackets);
 #if CLICK_DEVICE_THESIS_STATS || CLICK_DEVICE_STATS
-  add_read_handler("push_cycles", PollDevice_read_stats, (void *)1);
+    add_data_handlers("push_cycles", Handler::OP_READ, &_push_cycles);
 #endif
 #if CLICK_DEVICE_STATS
-  add_read_handler("poll_cycles", PollDevice_read_stats, (void *)2);
-  add_read_handler("refill_dma_cycles", PollDevice_read_stats, (void *)3);
+    add_data_handlers("poll_cycles", Handler::OP_READ, &_time_poll);
+    add_data_handlers("refill_dma_cycles", Handler::OP_READ, &_time_refill);
 #endif
-  add_write_handler("reset_counts", PollDevice_write_stats, 0, Handler::BUTTON);
-  add_read_handler("buffers_reused", PollDevice_read_stats, (void *)4);
-  add_task_handlers(&_task);
+    add_write_handler("reset_counts", PollDevice_write_stats, 0, Handler::BUTTON);
+    add_data_handlers("buffers_reused", Handler::OP_READ, &_buffers_reused);
+    add_task_handlers(&_task);
 }
 
 ELEMENT_REQUIRES(AnyDevice linuxmodule)

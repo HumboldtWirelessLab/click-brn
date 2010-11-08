@@ -51,6 +51,8 @@ ProbabilityFlooding::initialize(ErrorHandler *)
 bool
 ProbabilityFlooding::do_forward(EtherAddress */*src*/, int /*id*/, bool is_known)
 {
+  click_random_srandom();
+
   if ( _linkstat->_neighbors.size() < 3 ) return ! is_known;
   if ( ( click_random() % (_linkstat->_neighbors.size() - 2) ) == 1 ) return false;
 

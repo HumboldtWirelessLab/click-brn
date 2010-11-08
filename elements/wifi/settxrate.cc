@@ -46,7 +46,8 @@ SetTXRate::configure(Vector<String> &conf, ErrorHandler *errh)
 		   "TRIES", 0, cpUnsigned, &_tries,
 		   "ETHTYPE", 0, cpUnsignedShort, &_et,
 		   "OFFSET", 0, cpUnsigned, &_offset,
-		   cpEnd) < 0) {
+		   cpEnd) < 0) {		   
+			   
     return -1;
   }
 
@@ -57,8 +58,7 @@ SetTXRate::configure(Vector<String> &conf, ErrorHandler *errh)
   if (_tries < 1) {
 	  return errh->error("TRIES must be >= 0");
   }
-
-
+  
   return 0;
 }
 

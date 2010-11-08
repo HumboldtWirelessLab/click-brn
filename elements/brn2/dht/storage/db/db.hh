@@ -4,6 +4,7 @@
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/md5.h"
 
 #define DB_INT 0
@@ -11,23 +12,34 @@
 
 CLICK_DECLS
 
+enum DBRowStatus{
+  DATA_OK,
+  DATA_INIT_MOVE,
+  DATA_MOVED,
+  DATA_TIMEOUT
+};
 
-class BRNDB
-{
 
-  enum {
-    DATA_OK,
-    DATA_INIT_MOVED,
-    DATA_MODED,
-    DATA_NEW,
-    DATA_TIMEOUT
-  };
+struct db_row_header {
+  uint16_t valuelen;
+  uint16_t keylen;
+  uint16_t lock_time;
+  uint16_t lock_duration;
+  uint16_t store_time;
+  uint16_t store_duration;
+  uint8_t lock_etheraddress[6];
+  md5_byte_t md5_key[MD5_DIGEST_LENGTH];
+  uint8_t replica;
+  uint8_t reserved;
+};
 
+class BRNDB : public BRNElement {
 
   public:
     class DBrow {
+
       public:
-        md5_byte_t *md5_key;
+        md5_byte_t md5_key[MD5_DIGEST_LENGTH];
 
         uint8_t *value;
         uint16_t valuelen;
@@ -44,16 +56,25 @@ class BRNDB
         Timestamp store_time;
         uint32_t store_timeout;
 
-        int status;                    //status of the data (ok, moved, timeout)
-        int move_id;                   //id use to move the data. Target ack the receive of the data, soure ack the deletiona of the data
+        DBRowStatus status;                    //status of the data (ok, moved, timeout)
+        uint32_t move_id;              //id use to move the data. Target ack the receive of the data, soure ack the deletiona of the data
 
-        DBrow()
+        uint8_t replica;
+
+        DBrow():
+          value(NULL),
+          key(NULL),
+          locked(false),
+          status(DATA_OK),
+          move_id(0),
+          replica(0)
         {
-          locked = false;
         }
 
         ~DBrow()
         {
+          if ( value != NULL ) delete[] value;
+          if ( key != NULL ) delete[] key;
         }
 
         bool lock(EtherAddress *ea, int lock_duration) {
@@ -77,10 +98,14 @@ class BRNDB
 
           return false;
         }
- 
+
         bool isLocked() {
           Timestamp now = Timestamp::now();
           return ( ( locked ) && ( ( now - lock_timestamp ).sec() <= (int)max_lock_duration ) );
+        }
+
+        bool isLocked(EtherAddress *ea) {
+          return ( isLocked() && ( memcmp(lock_node,ea->data(),6) != 0 ) );
         }
 
         EtherAddress getLockNode() {
@@ -101,9 +126,63 @@ class BRNDB
         }
 
         uint16_t serializeSize() {
-          uint16_t size = 0;
-          size += 16 + sizeof(uint16_t) + sizeof(uint16_t) + 7 + sizeof(uint32_t) + sizeof(uint32_t) + valuelen + keylen;
-          return size;
+          return sizeof(struct db_row_header) + valuelen + keylen;
+        }
+
+        int serialize(uint8_t *buffer, int max) {
+          if ( serializeSize() > max ) return 0;
+          struct db_row_header *rh;
+          uint8_t *data;
+
+          rh = (struct db_row_header *)buffer;
+
+          rh->valuelen = htons(valuelen);
+          rh->keylen = htons(keylen);
+          rh->lock_time = 0;
+          rh->lock_duration = 0;
+          rh->store_time = 0;
+          rh->store_duration = 0;
+          rh->replica = replica;
+          if (locked) memcpy(rh->lock_etheraddress,lock_node,6);
+          else memset(rh->lock_etheraddress,0,6);
+
+          memcpy(rh->md5_key, md5_key, MD5_DIGEST_LENGTH);
+
+          data = &(buffer[sizeof(struct db_row_header)]);
+          memcpy(data,key,keylen);
+          memcpy(&(data[keylen]),value,valuelen);
+
+          return serializeSize();
+        }
+
+        int unserialize(uint8_t *buffer, int size) {
+
+          struct db_row_header *rh;
+          uint8_t *data;
+
+          if ( (uint32_t)size < sizeof(struct db_row_header)) return 0;
+
+          rh = (struct db_row_header *)buffer;
+
+          valuelen = ntohs(rh->valuelen);
+          keylen = ntohs(rh->keylen);
+          //rh->lock_time = 0;
+          //rh->lock_duration = 0;
+          //rh->store_time = 0;
+          //rh->store_duration = 0;
+          replica = rh->replica;
+          //if (locked) memcpy(rh->lock_etheraddress,lock_node,6);
+          //else memset(rh->lock_etheraddress,0,6);
+
+          data = &(buffer[sizeof(struct db_row_header)]);
+          key = new uint8_t[keylen];
+          value = new uint8_t[valuelen];
+          memcpy(key,data,keylen);
+          memcpy(value,&(data[keylen]),valuelen);
+
+          memcpy(md5_key, rh->md5_key, MD5_DIGEST_LENGTH);
+
+          return serializeSize();
         }
     };
 
@@ -113,21 +192,36 @@ class BRNDB
     BRNDB();
     ~BRNDB();
 
-    int insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen);
+    /*ELEMENT*/
+    const char *class_name() const  { return "BRNDB"; }
+
+    const char *processing() const  { return AGNOSTIC; }
+
+    const char *port_count() const  { return "0/0"; }
+
+    int configure(Vector<String> &, ErrorHandler *);
+    bool can_live_reconfigure() const  { return false; }
+
+    int initialize(ErrorHandler *);
+
+    void add_handlers();
+
+
+    int insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, uint8_t replica=0);
+    int insert(BRNDB::DBrow *row);
 
     BRNDB::DBrow *getRow(char *key, uint16_t keylen);
     BRNDB::DBrow *getRow(md5_byte_t *md5_key);
     BRNDB::DBrow *getRow(int index);                      //TODO: use iterator
 
     int delRow(md5_byte_t *md5_key);
+    int delRow(int index);
 
     int size();
 
   private:
 
     Vector<DBrow*> _table;
-
-    int _debug;
 };
 
 CLICK_ENDDECLS

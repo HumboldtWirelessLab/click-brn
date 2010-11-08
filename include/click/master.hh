@@ -19,7 +19,6 @@
 # include <click/simclick.h>
 #endif
 CLICK_DECLS
-class Element;
 
 #define CLICK_DEBUG_MASTER 0
 
@@ -47,13 +46,12 @@ class Master { public:
     void set_max_timer_stride(unsigned timer_stride);
 
 #if CLICK_USERLEVEL
-    int add_select(int fd, Element*, int mask);
-    int remove_select(int fd, Element*, int mask);
-    void run_selects(bool more_tasks);
+    int add_select(int fd, Element *element, int mask);
+    int remove_select(int fd, Element *element, int mask);
+    void run_selects(RouterThread *thread);
 
-    int add_signal_handler(int signo, Router*, const String &handler);
-    int remove_signal_handler(int signo, Router*, const String &handler);
-    inline void run_signals();
+    int add_signal_handler(int signo, Router *router, String handler);
+    int remove_signal_handler(int signo, Router *router, String handler);
 #endif
 
     void kill_router(Router*);
@@ -125,6 +123,9 @@ class Master { public:
     Timestamp _timer_check;
     uint32_t _timer_check_reports;
     inline Timestamp next_timer_expiry_adjusted() const;
+#if CLICK_USERLEVEL
+    inline int next_timer_delay(bool more_tasks, Timestamp &t) const;
+#endif
     void lock_timers();
     bool attempt_lock_timers();
     void unlock_timers();
@@ -137,6 +138,9 @@ class Master { public:
 	    _timer_expiry = Timestamp();
     }
     void check_timer_expiry(Timer *t);
+    static inline void place_timer(Timer **t, Timer **tbegin) {
+	(*t)->_schedpos1 = (t - tbegin) + 1;
+    }
 
     struct timer_less {
 	bool operator()(Timer *a, Timer *b) {
@@ -149,7 +153,7 @@ class Master { public:
 	    : _begin(begin) {
 	}
 	void operator()(Timer **t) {
-	    (*t)->_schedpos1 = (t - _begin) + 1;
+	    Master::place_timer(t, _begin);
 	}
     };
 
@@ -158,20 +162,13 @@ class Master { public:
     struct ElementSelector {
 	Element *read;
 	Element *write;
-# if HAVE_USE_KQUEUE
-	unsigned callno;
-# endif
 	ElementSelector()
 	    : read(0), write(0)
-# if HAVE_USE_KQUEUE
-	    , callno(0)
-# endif
 	{
 	}
     };
 # if HAVE_USE_KQUEUE
     int _kqueue;
-    unsigned _selected_callno;
 # endif
 # if !HAVE_POLL_H || HAVE_USE_SELECT
     struct pollfd {
@@ -186,17 +183,16 @@ class Master { public:
     Vector<ElementSelector> _element_selectors;
     Vector<int> _fd_to_pollfd;
     Spinlock _select_lock;
-# if HAVE_MULTITHREAD
-    click_processor_t _selecting_processor;
-# endif
+    void register_select(int fd, bool add_read, bool add_write);
     void remove_pollfd(int pi, int event);
+    inline void call_selected(int fd, int mask) const;
 # if HAVE_USE_KQUEUE
-    void run_selects_kqueue(bool);
+    void run_selects_kqueue(RouterThread *thread, bool more_tasks);
 # endif
 # if HAVE_POLL_H && !HAVE_USE_SELECT
-    void run_selects_poll(bool);
+    void run_selects_poll(RouterThread *thread, bool more_tasks);
 # else
-    void run_selects_select(bool);
+    void run_selects_select(RouterThread *thread, bool more_tasks);
 # endif
 
     // SIGNALS
@@ -205,11 +201,18 @@ class Master { public:
 	Router *router;
 	String handler;
 	SignalInfo *next;
+	SignalInfo(int signo_, Router *router_, const String &handler_)
+	    : signo(signo_), router(router_), handler(handler_), next() {
+	}
+	bool equals(int signo_, Router *router_, const String &handler_) const {
+	    return signo == signo_ && router == router_ && handler == handler_;
+	}
     };
     SignalInfo *_siginfo;
-    bool _signal_adding;
+    sigset_t _sig_dispatching;
     Spinlock _signal_lock;
-    void process_signals();
+    void process_signals(RouterThread *thread);
+    inline void run_signals(RouterThread *thread);
 #endif
 
 #if CLICK_NS
@@ -245,10 +248,15 @@ Master::thread(int id) const
 
 #if CLICK_USERLEVEL
 inline void
-Master::run_signals()
+Master::run_signals(RouterThread *thread)
 {
+# if HAVE_MULTITHREAD
+    // Always process signals, since this clears out the _wake_pipe.
+    process_signals(thread);
+# else
     if (signals_pending)
-	process_signals();
+	process_signals(thread);
+# endif
 }
 #endif
 

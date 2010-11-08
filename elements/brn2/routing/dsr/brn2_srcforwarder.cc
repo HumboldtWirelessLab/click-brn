@@ -27,6 +27,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -67,6 +68,7 @@ BRN2SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -131,7 +133,7 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
   if ( index > 0 )
     src = EtherAddress(dsr_hops[index - 1].hw.data);  //TODO: check: if this is the src node, use dsr->src instead
 
-  click_chatter("Use Source: %s",src.unparse().c_str());
+  BRN_DEBUG("Use Source: %s",src.unparse().c_str());
 
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
@@ -181,11 +183,13 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
-    if (_me->isIdentical(&dst_addr) || ( _link_table->get_host_metric_to_me(dst_addr) == 50 )) { // for me
-      BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
+    BRN_DEBUG("Forward ?? DEST: %s ME: %s", dst_addr.unparse().c_str(), _me->getMasterAddress()->unparse().c_str());
 
+    if (_me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr))) { // for me
+      BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
+      BRN_DEBUG("Final Dest: %s",dst_addr.unparse().c_str());
       if ( _dsr_rid_cache ) {
-        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));  //TODO: this is done up (line 162). Remove this.
 
         EtherAddress dst(brn_dsr->dsr_dst.data);
         EtherAddress next(brn_dsr->dsr_dst.data);
@@ -194,9 +198,9 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
         click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);
         EtherAddress last(dsr_hops[brn_dsr->dsr_hop_count - 1].hw.data);
 
-        BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
-        if ( ( ! rid_e ) && (brn_dsr->dsr_id != 0) )
-          _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+        BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
+        if ( ( ! rid_e ) && (ntohs(brn_dsr->dsr_id) != 0) )
+          rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
       }
       // remove all brn header and return packet to kernel
       Packet *p = strip_all_headers(p_in);
@@ -253,13 +257,15 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   if (segments > 0)     // NOT the last hop (if it is the last hop, then next is dst)
     next = EtherAddress (dsr_hops[index].hw.data);
 
+  BrnRouteIdCache::RouteIdEntry* rid_e;
   if ( _dsr_rid_cache ) {
-    BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, brn_dsr->dsr_id);
+    rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
     if ( rid_e ) {
       next = EtherAddress(rid_e->_next_hop.data());
+      rid_e->update();
     } else {
-      if ( brn_dsr->dsr_id != 0 )
-        _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, brn_dsr->dsr_id);
+      if ( ntohs(brn_dsr->dsr_id) != 0 )
+        rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
     }
   }
 
@@ -288,6 +294,10 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));  //TODO: is a copy
   ether->ether_type = htons(ETHERTYPE_BRN);                //TODO: CHECK: this is important ??
   // ouput packet
+  BRNPacketAnno::set_src_ether_anno(p_out,me);                        //TODO: CHECK
+  BRNPacketAnno::set_dst_ether_anno(p_out,next);
+  BRNPacketAnno::set_ethertype_anno(p_out,ETHERTYPE_BRN);
+
   output(0).push(p_out);
 }
 
@@ -320,12 +330,17 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
     ether_anno = const_cast<click_ether*>(p->ether_header());
     //TODO: ether type cannot be set here.
     p->pull(sizeof(click_ether));
+    BRN_DEBUG("PUSH Etherheader");
   }
+
+  ether_anno = (click_ether*)p->data();
+  p->set_ether_header(ether_anno);
 
   memcpy( ether_anno->ether_shost, src.data(), 6 );
   memcpy( ether_anno->ether_dhost, dst.data(), 6 );
 
   BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
+  BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
 
   return p;
 }

@@ -13,6 +13,7 @@
 #include "scopechain.hh"
 #include <list>
 #include <math.h>
+#include <locale.h>
 #include "crouter.hh"
 #include "whandler.hh"
 #include "transform.hh"
@@ -522,7 +523,8 @@ void delt::create_bbox_contents(double bbox[4], double mbbox[4], bool include_co
 	if (e->display() == dedisp_expanded)
 	    e->create_bbox_contents(bbox, mbbox, false);
 	else if (e->visible()
-		 || (!root() && include_compound_ports && n < 2)) {
+		 || (!root() && include_compound_ports && n < 2
+		     && e->_e->nports(!n) != 0)) {
 	    const double *m = e->_dess->margin;
 	    bbox[0] = std::min(bbox[0], e->_y);
 	    bbox[1] = std::max(bbox[1], e->_x + e->_width);
@@ -556,6 +558,7 @@ void delt::position_contents_dot(crouter *cr, ErrorHandler *errh)
     double gysep = std::max(gdess->margin[0], gdess->margin[2]);
 
     StringAccum sa;
+    char *old_locale = setlocale(LC_ALL, "C");
     sa << "digraph {\n"
        << "nodesep=" << (gxsep / 100) << ";\n"
        << "ranksep=" << (gysep / 100) << ";\n"
@@ -616,6 +619,7 @@ void delt::position_contents_dot(crouter *cr, ErrorHandler *errh)
 	   << (ein->vertical() ? 'n' : 'w') << ";\n";
     }
     sa << "}\n";
+    setlocale(LC_ALL, old_locale);
 
     //fprintf(stderr, "%s\n", sa.c_str());
     String result;

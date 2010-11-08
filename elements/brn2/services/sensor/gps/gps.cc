@@ -35,9 +35,9 @@
 CLICK_DECLS
 
 GPS::GPS()
-  :_gpsmode(GPSMODE_HANDLER),
-   _debug(BrnLogger::DEFAULT)
+  :_gpsmode(GPSMODE_HANDLER)
 {
+  BRNElement::init();
 }
 
 GPS::~GPS()
@@ -72,65 +72,100 @@ GPS::push( int /*port*/, Packet *packet )
 // Handler
 //-----------------------------------------------------------------------------
 
+enum {
+  H_CART_COORD,
+  H_GPS_COORD,
+  H_SPEED
+};
+
 static String
-read_position_param(Element *e, void *)
+read_position_param(Element *e, void *thunk)
 {
   StringAccum sa;
   GPS *gps = (GPS *)e;
 
   GPSPosition *pos = gps->getPosition();
-  sa << pos->_x << " " << pos->_y << " " << pos->_z;
-
+  switch ((uintptr_t) thunk)
+  {
+    case H_CART_COORD: {
+      sa << pos->_x << " " << pos->_y << " " << pos->_z;
+      break;
+    }
+    case H_GPS_COORD: {
+      sa << pos->_latitude.unparse() << " ";
+      sa << pos->_longitude.unparse() << " ";
+      sa << pos->_altitude.unparse();
+      break;
+    }
+    case H_SPEED: {
+      sa << pos->_speed.unparse();
+     break;
+    }
+  }
   return sa.take_string();
 }
-static int 
-write_position_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+
+static int
+write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler */*errh*/)
 {
   int x,y,z;
   GPS *gps = (GPS *)e;
   GPSPosition *pos = gps->getPosition();
-  String s = cp_uncomment(in_s);
-  Vector<String> args;
-  cp_spacevec(s, args);
+  switch ((uintptr_t) thunk)
+  {
+    case H_CART_COORD: {
+      String s = cp_uncomment(in_s);
+      Vector<String> args;
+      cp_spacevec(s, args);
 
-  cp_integer(args[0], &x);
-  cp_integer(args[1], &y);
+      cp_integer(args[0], &x);
+      cp_integer(args[1], &y);
 
-  if ( args.size() > 2 )
-    cp_integer(args[2], &z);
-  else
-    z = 0;
+      if ( args.size() > 2 )
+        cp_integer(args[2], &z);
+      else
+        z = 0;
 
-  pos->setCC(x,y,z);
+      pos->setCC(x,y,z);
+      break;
+    }
+    case H_GPS_COORD: {
+      String s = cp_uncomment(in_s);
+      Vector<String> args;
+      cp_spacevec(s, args);
 
-  return 0;
-}
-static String
-read_debug_param(Element *e, void *)
-{
-  GPS *gps = (GPS *)e;
-  return String(gps->_debug) + "\n";
-}
+      if ( args.size() > 2 ) {
+        pos->setGPSC(args[0], args[1], args[2]);
+      } else {
+        pos->setGPSC(args[0],args[1], "0.0");
+      }
 
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  GPS *gps = (GPS *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  gps->_debug = debug;
+      break;
+    }
+    case H_SPEED: {
+      String s = cp_uncomment(in_s);
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      pos->setSpeed(args[0]);
+      break;
+    }
+  }
+
   return 0;
 }
 
 void
 GPS::add_handlers()
 {
-  add_read_handler("position", read_position_param, 0);
-  add_write_handler("position", write_position_param, 0);
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
+  add_read_handler("cart_coord", read_position_param, H_CART_COORD);
+  add_write_handler("cart_coord", write_position_param, H_CART_COORD);
+  add_read_handler("gps_coord", read_position_param, H_GPS_COORD);
+  add_write_handler("gps_coord", write_position_param, H_GPS_COORD);
+  add_read_handler("speed", read_position_param, H_SPEED);
+  add_write_handler("speed", write_position_param, H_SPEED);
 }
 
 CLICK_ENDDECLS

@@ -67,6 +67,7 @@ DHTUserspace::configure(Vector<String> &conf, ErrorHandler* errh)
   int port;
 
   if (cp_va_kparse(conf, this, errh,
+      "DHTSTORAGE", cpkN, cpElement, &_dht_storage,
       "SERVERIP", cpkP+cpkM, cpIPAddress, &_dht_ip,
       "SERVERPORT", cpkP+cpkM, cpInteger, &port,
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -120,6 +121,7 @@ DHTUserspace::handle_dht_reply(UserspaceClientInfo *client_info, DHTOperation *o
   if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
   {
     WritablePacket *ans = WritablePacket::make( 128, NULL, 100   , 32);
+
 
     client_info->_client_packet = NULL;                  //packet is send (and away) so remove reference)
     output(0).push(ans);

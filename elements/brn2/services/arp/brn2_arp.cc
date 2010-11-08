@@ -23,8 +23,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 #include <click/confparse.hh>
@@ -36,6 +34,7 @@
 
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn2/dht/storage/rangequery/ip_rangequery.hh"
 
 CLICK_DECLS
 
@@ -135,6 +134,8 @@ BRN2Arp::handle_arp_request(Packet *p)
     if ( memcmp ( _router_ip.data(),arpp->arp_tpa, 4 ) == 0                                   //ask for router_ip
         || _src_ip_mask && !IPAddress(arpp->arp_tpa).matches_prefix(_src_ip, _src_ip_mask) )  //TODO: use dhcpsubnetlist
     {
+      if ( memcmp ( _router_ip.data(),arpp->arp_tpa, 4 ) != 0 )
+        BRN_WARN("ARP-Request: Src is other subnet, so etheraddress is router-ea. Please use SUBNETLIST");
       send_arp_reply( _router_ethernet.data(), arpp->arp_tpa, arpp->arp_sha, arpp->arp_spa );
     }
     else
@@ -171,6 +172,14 @@ BRN2Arp::handle_arp_request(Packet *p)
       {
         DHTOperation *op = new DHTOperation();
         op->read((uint8_t*)arpp->arp_tpa, 4);
+
+        if ( _dht_storage->range_query_support() ) {
+          uint8_t key_id[16];
+          IPRangeQuery iprq = IPRangeQuery(_router_ip & _src_ip_mask, _src_ip_mask);
+          iprq.get_id_for_value(IPAddress(arpp->arp_tpa), key_id);
+          op->set_key_digest(key_id);
+        }
+
         dht_request(op);
       }
     }
@@ -239,7 +248,7 @@ BRN2Arp::send_arp_reply( uint8_t *s_hw_add, uint8_t *s_ip_add, uint8_t *d_hw_add
   click_ether_arp *ea;
 
   //neues Paket
-  WritablePacket *p = Packet::make(sizeof(click_ether)+sizeof(click_ether_arp));
+  WritablePacket *p = Packet::make(128, NULL,sizeof(click_ether)+sizeof(click_ether_arp), 32);
 
   p->set_mac_header(p->data(), 14);
   memset(p->data(), '\0', p->length());
@@ -377,4 +386,3 @@ template class Vector<BRN2Arp::ARPrequest>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2Arp)
-ELEMENT_REQUIRES(brn_common dhcp_packet_util)

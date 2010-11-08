@@ -22,6 +22,9 @@
 #define BRN2ETHERENCAP_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -30,7 +33,7 @@ CLICK_DECLS
  *=s encapsulation, Ethernet
  *encapsulates packets in Ethernet header (information used from Packet::ether_header())
 */
-class BRN2EtherEncap : public Element {
+class BRN2EtherEncap : public BRNElement {
 
  public:
   //
@@ -39,19 +42,20 @@ class BRN2EtherEncap : public Element {
   BRN2EtherEncap();
   ~BRN2EtherEncap();
 
-  const char *class_name() const	{ return "BRN2EtherEncap"; }
-  const char *port_count() const        { return "1/1"; }
-  const char *processing() const	{ return AGNOSTIC; }
+  const char *class_name() const  { return "BRN2EtherEncap"; }
+  const char *port_count() const  { return "1/1"; }
+  const char *processing() const  { return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
-  bool can_live_reconfigure() const	{ return false; }
+  bool can_live_reconfigure() const { return false; }
+
+  void add_handlers();
 
   Packet *smaction(Packet *);
   void push(int, Packet *);
   Packet *pull(int);
 
   bool _use_anno;
-  int _debug;
 
   /*static functions*/
   static Packet *push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype);

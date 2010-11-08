@@ -39,6 +39,11 @@ Prepends an 802.3 header onto given 802.11 packets (workaround for Nsclick)
 =e
 
  */
+
+/**
+ * TODO: Remove since it not needed. Use WifiExtra for ns2
+ */
+
 class AddEtherNsclick : public Element { public:
 
   AddEtherNsclick();

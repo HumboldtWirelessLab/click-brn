@@ -41,6 +41,8 @@ class BRN2PacketSource : public Element {
   void add_handlers();
   void push( int port, Packet *packet );
 
+  bool _active;
+
  private:
   int _interval;
 
@@ -50,19 +52,24 @@ class BRN2PacketSource : public Element {
 
   uint32_t _max_seq_num;
 
-  uint32_t _channel,_bitrate,_power;
-
   Timer _timer;
+
+  uint32_t _burst,_channel,_bitrate,_power;
 
   Packet *createpacket(int size);
 
   struct packetinfo {
-    uint32_t seq_num;
     uint16_t interval;
+
+    uint32_t seq_num;
+
     uint8_t channel;
     uint8_t bitrate;
     uint8_t power;
-  };
+    uint8_t reserved[3];
+  } __attribute__ ((packed));
+
+  struct packetinfo pinfo;
 
 };
 

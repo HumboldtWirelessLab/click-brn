@@ -20,6 +20,8 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -27,106 +29,94 @@
 
 CLICK_DECLS
 
-WritablePacket *
-DHTProtocolDart::new_hello_packet(EtherAddress *etheraddr)
+int
+DHTProtocolDart::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHTnodelist */*nodes*/)
 {
-  struct dht_dart_node_entry *msg;
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, HELLO,sizeof(struct dht_dart_node_entry));
+  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
+  ne->status = me->_status;
+  ne->id_size = me->_digest_length;
+  memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
+  memcpy(ne->id, me->_md5_digest, MAX_NODEID_LENTGH);
 
-  msg = (struct dht_dart_node_entry*)DHTProtocol::get_payload(hello_p);
-  memcpy(msg->etheraddr,etheraddr->data(),6);
-  msg->status = STATUS_OK;
-
-  return(hello_p);
-}
-
-WritablePacket *
-DHTProtocolDart::new_hello_request_packet(EtherAddress *etheraddr)       //TODO: Using DHTnode
-{
-  struct dht_dart_node_entry *msg;
-  WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, HELLO_REQUEST,sizeof(struct dht_dart_node_entry));
-
-  msg = (struct dht_dart_node_entry*)DHTProtocol::get_payload(hello_p);
-  memcpy(msg->etheraddr,etheraddr->data(),6);
-  msg->age_sec = 0;                                                     //TODO: using NodeInfo
-  msg->status = STATUS_OK;
-
-  return(hello_p);	
-}
-
-WritablePacket *
-DHTProtocolDart::new_route_request_packet(EtherAddress *me, DHTnodelist *list)   //TODO: using DHTnode
-{
-  struct dht_dart_node_entry *msg;
-  uint8_t listsize = 0;
-
-  if ( list != NULL ) listsize = list->size();
-  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, ROUTETABLE_REQUEST,( 1 + listsize ) * sizeof(struct dht_dart_node_entry));
-
-  msg = (struct dht_dart_node_entry*)DHTProtocol::get_payload(route_p);
-  memcpy(msg->etheraddr,me->data(),6);
-  msg->age_sec = 0;                                                     //TODO: using NodeInfo
-  msg->status = STATUS_OK;
-
-  DHTnode *n;
-  for( int i = 0;i < listsize ;i++ ) {
-    n = list->get_dhtnode(i);
-    memcpy(msg[i+1].etheraddr,n->_ether_addr.data(),6);
-    msg->age_sec = 0;                                                     //TODO: using NodeInfo
-    msg[i+1].status = n->_status;
-  }
-
-  return(route_p);
-}
-
-WritablePacket *
-DHTProtocolDart::new_route_reply_packet(EtherAddress *me, DHTnodelist *list)
-{
-  struct dht_dart_node_entry *msg;
-  uint8_t listsize = 0;
-
-  if ( list != NULL ) listsize = list->size();
-  WritablePacket *route_p = DHTProtocol::new_dht_packet(ROUTING_OMNI, ROUTETABLE_REPLY,( 1 + listsize ) * sizeof(struct dht_dart_node_entry));
-
-  msg = (struct dht_dart_node_entry*)DHTProtocol::get_payload(route_p);
-  memcpy(msg->etheraddr,me->data(),6);
-  msg->status = STATUS_OK;
-
-  DHTnode *n;
-  Timestamp now = Timestamp::now();
-
-  for( int i = 0;i < listsize ;i++ ) {
-    n = list->get_dhtnode(i);
-    memcpy(msg[i+1].etheraddr,n->_ether_addr.data(),6);
-    msg->age_sec = 0;                                                     //TODO: using NodeInfo
-    msg[i+1].status = n->_status;
-  }
-
-  return(route_p);
+  return sizeof(dht_dart_lp_node_entry);
 }
 
 int
-DHTProtocolDart::get_dhtnodes(Packet *p,DHTnodelist *dhtlist)
+DHTProtocolDart::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, DHTnodelist */*nodes*/)
 {
-  uint8_t *payload;
-  uint16_t payload_len;
-  struct dht_dart_node_entry *entry;
-  int count = 0;
-  DHTnode *node;
+  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
 
-  payload_len = DHTProtocol::get_payload_len(p);
-  payload = DHTProtocol::get_payload(p);
+  first->_age = Timestamp::now();
+  first->_status = ne->status;
+  first->set_update_addr(ne->etheraddr);
+  first->set_nodeid(ne->id, ne->id_size);
 
-  for ( int i = 0; i < payload_len; i += sizeof(struct dht_dart_node_entry), count++ )
-  {
-    entry = (struct dht_dart_node_entry*)&payload[i];
-    node = new DHTnode(EtherAddress(entry->etheraddr));
-    node->_status = entry->status;
-    node->_age = Timestamp::now() - Timestamp(entry->age_sec);
-    dhtlist->add_dhtnode(node);
-  }
+  return 0;
+}
 
-  return count;
+WritablePacket *
+DHTProtocolDart::new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p)
+{
+  WritablePacket *nid_p;
+
+  if ( p != NULL ) {
+    nid_p = p->uniqueify();
+    DHTProtocol::set_type(nid_p,type);
+  } else
+    nid_p = DHTProtocol::new_dht_packet(ROUTING_DART, type, sizeof(struct dht_dart_routing));
+
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(nid_p);
+
+  request->status = 0;
+
+  request->src_id_size = src->_digest_length;
+  memcpy(request->src_id, src->_md5_digest, MAX_NODEID_LENTGH);
+
+  request->dst_id_size = dst->_digest_length;
+  memcpy(request->dst_id, dst->_md5_digest, MAX_NODEID_LENTGH); ;
+
+  DHTProtocol::set_src(nid_p, src->_ether_addr.data());
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(nid_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
+}
+
+
+WritablePacket *
+DHTProtocolDart::new_nodeid_request_packet( DHTnode *src, DHTnode *dst)
+{
+  return new_dart_nodeid_packet( src, dst, DART_MINOR_REQUEST_ID, NULL);
+}
+
+WritablePacket *
+DHTProtocolDart::new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p)
+{
+  return new_dart_nodeid_packet( src, dst, DART_MINOR_ASSIGN_ID, p);
+}
+
+void
+DHTProtocolDart::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status)
+{
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(p);
+
+  *status = request->status;
+
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  src->set_nodeid(request->src_id,request->src_id_size);
+
+  node->set_nodeid(request->dst_id,request->dst_id_size);
+}
+
+void
+DHTProtocolDart::get_info(Packet *p, DHTnode *src, uint8_t *status)
+{
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(p);
+
+  *status = request->status;
+
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  src->set_nodeid(request->src_id,request->src_id_size);
 }
 
 CLICK_ENDDECLS

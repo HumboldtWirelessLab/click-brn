@@ -46,7 +46,7 @@ BatmanProtocol::get_batman_header(Packet *p)
 /** include batman_header and batman_originator*/
 
 WritablePacket *
-BatmanProtocol::new_batman_originator( uint32_t id, uint8_t flag, EtherAddress *src, uint8_t neighbours )
+BatmanProtocol::new_batman_originator( uint32_t id, uint8_t flag, const EtherAddress *src, uint8_t neighbours )
 {
   WritablePacket *p = WritablePacket::make( 96, NULL,
                                       sizeof(struct batman_header) + sizeof(struct batman_originator) + ( NEIGHBOURSIZE * neighbours ),

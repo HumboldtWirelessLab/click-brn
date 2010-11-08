@@ -37,13 +37,13 @@ static Lexer *lexer = 0;
 extern "C" int
 click_add_element_type(const char *name, Element *(*factory)(uintptr_t), uintptr_t thunk)
 {
-    lexer->add_element_type(name, factory, thunk);
+    return lexer->add_element_type(name, factory, thunk);
 }
 
 extern "C" int
 click_add_element_type_stable(const char *name, Element *(*factory)(uintptr_t), uintptr_t thunk)
 {
-    lexer->add_element_type(String::make_stable(name), factory, thunk);
+    return lexer->add_element_type(String::make_stable(name), factory, thunk);
 }
 
 extern "C" void
@@ -66,14 +66,14 @@ read_classes(Element *, void *)
 
 class BSDModuleLexerExtra : public LexerExtra { public:
     BSDModuleLexerExtra() { }
-    void require(String, ErrorHandler *);
+    void require(String type, String value, ErrorHandler *errh);
 };
 
 void
-BSDModuleLexerExtra::require(String r, ErrorHandler *errh)
+BSDModuleLexerExtra::require(String type, String value, ErrorHandler *errh)
 {
-    if (!click_has_provision(r.c_str()))
-	errh->error("unsatisfied requirement `%s'", r.c_str());
+    if (type.equals("package", 7) && !click_has_provision(value.c_str()))
+	errh->error("unsatisfied requirement %<%s%>", value.c_str());
 }
 
 static Router *

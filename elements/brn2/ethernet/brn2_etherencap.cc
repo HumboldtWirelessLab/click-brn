@@ -37,8 +37,8 @@
 CLICK_DECLS
 
 BRN2EtherEncap::BRN2EtherEncap()
-  :_debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 BRN2EtherEncap::~BRN2EtherEncap()
@@ -140,5 +140,12 @@ push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype) {
   return q;
 }
 
+void
+BRN2EtherEncap::add_handlers()
+{
+  BRNElement::add_handlers();
+}
+
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(BRNElement)
 EXPORT_ELEMENT(BRN2EtherEncap)

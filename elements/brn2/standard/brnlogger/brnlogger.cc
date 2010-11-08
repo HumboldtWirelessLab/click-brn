@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <click/config.h>
+#include <click/error.hh>
 #include <click/router.hh>
 
 #include "brnlogger.hh"
@@ -75,7 +76,7 @@ BrnLogger::get_id(const Element* elem)
     return get_na();
 
   BRN2NodeIdentity* id = (BRN2NodeIdentity*)elem2;
-  _id_map->insert(router, id->getMainAddress()->unparse());
+  _id_map->insert(router, id->getMasterAddress()->unparse());
 
   return (*_id_map->findp(router));
 }
@@ -111,8 +112,9 @@ BrnLogger::log(int level, const char* format, va_list ptr) const
   if (buffer_needed >= _buffer_len)
   {
     delete[] _buffer;
-    while (buffer_needed >= _buffer_len)
-      _buffer_len *= 2;
+//  while (buffer_needed >= _buffer_len)
+//    _buffer_len *= 2;
+    _buffer_len = buffer_needed * 2;
     _buffer = new char[_buffer_len];
 
     buffer_needed = vsnprintf(_buffer, _buffer_len-1, format, ptr);
@@ -127,6 +129,35 @@ BrnLogger::log(int level, const char* format, va_list ptr) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+void
+BrnLogger::chatter(const char *fmt, ...)
+{
+  va_list val;
+  va_start(val, fmt);
+
+#if CLICK_LINUXMODULE
+# if __MTCLICK__
+    static char buf[NR_CPUS][512];      // XXX
+    click_processor_t cpu = click_get_processor();
+    int i = vsnprintf(buf[cpu], 512, fmt, val);
+    printk("<1>%s", buf[cpu]);
+    click_put_processor();
+# else
+    static char buf[512];               // XXX
+    int i = vsnprintf(buf, 512, fmt, val);
+    printk("<1>%s", buf);
+# endif
+#elif CLICK_BSDMODULE
+    vprintf(fmt, val);
+#else /* User-space */
+    vfprintf(stderr, fmt, val);
+    //fprintf(stderr, "\n");
+#endif
+
+  va_end(val);
+}
+
 
 #include <click/bighashmap.cc>
 CLICK_ENDDECLS

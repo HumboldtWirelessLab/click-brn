@@ -36,6 +36,7 @@ CLICK_CXX_PROTECT
 #include <linux/inetdevice.h>
 #include <linux/if_arp.h>
 #include <net/route.h>
+#include <net/dst.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
 # include <net/net_namespace.h>
 #endif
@@ -303,7 +304,7 @@ FromHost::cleanup(CleanupStage)
 {
     fromlinux_map.remove(this, false);
 
-    Packet **q = (_capacity <= smq_size ? _q.smq : _q.lgq);
+    Packet * volatile *q = queue();
     while (_head != _tail) {
 	Packet *p = q[_head];
 	p->kill();
@@ -402,15 +403,28 @@ FromHost::fl_tx(struct sk_buff *skb, net_device *dev)
 	int r = NETDEV_TX_OK;
 	int next = fl->next_i(fl->_tail);
 	if (likely(next != fl->_head)) {
-	    Packet **q = (fl->_capacity <= smq_size ? fl->_q.smq : fl->_q.lgq);
+	    Packet * volatile *q = fl->queue();
+
+	    // skb->dst may be set since the packet came from Linux.  Since
+	    // Click doesn't use dst, clear it now.
+#if HAVE_SKB_DST_DROP
+	    skb_dst_drop(skb);
+#else
+	    if (skb->dst) {
+		dst_release(skb->dst);
+		skb->dst = 0;
+	    }
+#endif
+
 	    Packet *p = Packet::make(skb);
-	    p->set_timestamp_anno(Timestamp::now());
+	    p->timestamp_anno().assign_now();
 	    if (fl->_clear_anno)
 		p->clear_annotations(false);
 	    fl->_stats.tx_packets++;
 	    fl->_stats.tx_bytes += p->length();
 	    fl->_task.reschedule();
 	    q[fl->_tail] = p;
+	    packet_memory_barrier(q[fl->_tail], fl->_tail);
 	    fl->_tail = next;
 	} else {
 	    r = NETDEV_TX_BUSY;	// Linux will free the packet.
@@ -430,8 +444,9 @@ FromHost::run_task(Task *)
 	return false;
 
     if (likely(!empty())) {
-	Packet **q = (_capacity <= smq_size ? _q.smq : _q.lgq);
+	Packet * volatile *q = queue();
 	Packet *p = q[_head];
+	packet_memory_barrier(q[_head], _head);
 	_head = next_i(_head);
 
 	// Convenience for TYPE IP: set the IP header and destination address.
@@ -484,5 +499,5 @@ FromHost::add_handlers()
     add_data_handlers("drops", Handler::OP_READ, &_drops);
 }
 
-ELEMENT_REQUIRES(AnyDevice linuxmodule)
+ELEMENT_REQUIRES(AnyDevice linuxmodule false)
 EXPORT_ELEMENT(FromHost)

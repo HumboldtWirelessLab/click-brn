@@ -46,7 +46,7 @@ lphandler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool dire
 int
 BrnRXCorrelation::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,0,&lphandler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_RXC,&lphandler);
 
   return 0;
 }

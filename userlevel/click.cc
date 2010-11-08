@@ -153,18 +153,6 @@ stop_signal_handler(int sig)
     else
 	router->set_runcount(Router::STOP_RUNCOUNT);
 }
-
-#if HAVE_MULTITHREAD
-static void
-ignore_signal_handler(int sig)
-{
-# if !HAVE_SIGACTION
-    signal(sig, ignore_signal_handler);
-# else
-    (void) sig;
-# endif
-}
-#endif
 }
 
 
@@ -313,10 +301,6 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
       click_signal(SIGTERM, stop_signal_handler, true);
       // ignore SIGPIPE
       click_signal(SIGPIPE, SIG_IGN, false);
-#if HAVE_MULTITHREAD
-      // use SIGIO as a request to wake up a thread
-      click_signal(SIGIO, ignore_signal_handler, false);
-#endif
   }
 
   // register hotswap router on new router
@@ -590,9 +574,9 @@ particular purpose.\n");
   }
 
   struct rusage before, after;
-  struct timeval before_time, after_time;
   getrusage(RUSAGE_SELF, &before);
-  gettimeofday(&before_time, 0);
+  Timestamp before_time = Timestamp::now_real_time();
+  Timestamp after_time = Timestamp::uninitialized_t();
 
   // run driver
   // 10.Apr.2004 - Don't run the router if it has no elements.
@@ -615,7 +599,7 @@ particular purpose.\n");
   } else if (!quit_immediately && warnings)
     errh->warning("%s: configuration has no elements, exiting", filename_landmark(router_file, file_is_expr));
 
-  gettimeofday(&after_time, 0);
+  after_time.assign_now_real_time();
   getrusage(RUSAGE_SELF, &after);
   // report time
   if (report_time) {
@@ -626,7 +610,7 @@ particular purpose.\n");
     timersub(&after.ru_stime, &before.ru_stime, &diff);
     round_timeval(&diff, 1000);
     printf(" %ld.%03lds", (long)diff.tv_sec, (long)diff.tv_usec);
-    timersub(&after_time, &before_time, &diff);
+    diff = (after_time - before_time).timeval();
     round_timeval(&diff, 10000);
     printf(" %ld:%02ld.%02ld", (long)(diff.tv_sec/60), (long)(diff.tv_sec%60), (long)diff.tv_usec);
     printf("\n");

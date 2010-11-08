@@ -27,6 +27,7 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "RT", cpkM, cpElement, &_rtable,
       "MAXPOWER", cpkM, cpElement, &_maxpower,
+      "CHANNELSTATS", cpkP, cpElement, &_cst,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
@@ -36,15 +37,14 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 void
 SetTXPowerRate::push( int port, Packet *p )
 {
-  PowerRateStats::DstInfo *nodestat;
-  struct click_wifi *wh;
-  click_wifi_extra *ceh;
+  ChannelStats::PacketInfo *nodestat;
+  struct click_wifi *wh = (struct click_wifi *) p->data();
+  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
-  switch ( port) {
+
+ /* switch ( port) {
     case 0:                                       //Got packet from upper layer
         {
-          wh = (struct click_wifi *) p->data();
-          ceh = WIFI_EXTRA_ANNO(p);
           nodestat = _stats.getDst(wh->i_addr1);
 
           if ( nodestat == NULL ) nodestat = _stats.newDst(wh->i_addr1);
@@ -63,11 +63,7 @@ SetTXPowerRate::push( int port, Packet *p )
         }
         break;
       }
-    case 2:                                       //Got control frame
-      {
-        break;
-      }
-  }
+  }*/
 }
 
 enum {H_DEBUG};

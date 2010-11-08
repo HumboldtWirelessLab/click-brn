@@ -75,12 +75,12 @@ void AODVGenerateRREQ::generateRREQ(const IPAddress & destination, bool destinat
 	header->hopcount = AODV_RREQ_HOPCOUNT;
 	header->rreqid = htonl(++rreqid);
 	known_classifier->addKnownRREQ(rreqid,*myIP);
-	header->destination = destination.in_addr();
+/*Robat	header->destination = destination.in_addr();
 	header->originator = myIP->in_addr();
 	header->originatorseqnr = htonl(neighbour_table->getAndIncrementMySequenceNumber());
 	
 	output(0).push(AODVBroadcastHeader::setBroadcastHeader(packet,*myIP,ttl)); // have ethernet and UDP headers applied
-}
+*/}
 
 // macro magic to use bighashmap
 #include <click/bighashmap.cc>

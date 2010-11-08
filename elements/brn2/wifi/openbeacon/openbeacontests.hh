@@ -29,9 +29,9 @@ class OpenBeaconTests : public Element {
     void push(int port, Packet *);   
     
   private:
-    int _debug;
-    int _mode;
-    int _count;
+    unsigned char _debug;
+    unsigned char _mode;
+    unsigned char _count;
     String _label;
 };
 

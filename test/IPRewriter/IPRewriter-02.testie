@@ -1,5 +1,10 @@
+%info
+
+IPRewriter pattern parsing and unparsing.
+
 %script
-click -e "
+
+$VALGRIND click -e "
 i :: Idle
 rw :: IPRewriter(pattern 1.0.0.1 1 - - 0 1,
   pattern 1.0.0.1 1-65535 - - 0 1,
@@ -8,7 +13,7 @@ i -> [0]rw i[1] -> [1]rw i[2] -> [2]rw
 rw[0] -> i rw[1] -> i
 " -h rw.patterns -q
 
-click -e "
+$VALGRIND click -e "
 i :: Idle
 rw :: IPAddrRewriter(pattern 1.0.0.1 1x - - 0 1,
   pattern 1.0.0.0 0-255 - - 0 1,
@@ -19,16 +24,16 @@ rw[0] -> i rw[1] -> i
 " 2>X || true
 
 %expect stdout
-1.0.0.1 1 - - [0]
-1.0.0.1 1-65535 - - [0]
-1.0.0.1 - - - [0]
+1.0.0.1 1 - -
+1.0.0.1 1-65535 - -
+1.0.0.1 - - -
 
 %expect X
   input spec 0: bad source port
-  input spec 1: bad source port
   input spec 2: bad source port
   input spec 3: bad source port
 Router could not be initialized!
 
 %ignorex X
+^==.*
 config.*

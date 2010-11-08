@@ -54,7 +54,6 @@ BRN2RouteQuerier::BRN2RouteQuerier()
 {
   timeval tv;
   tv = Timestamp::now().timeval();
-  _rreq_id = random() % 0xffff;
 
   //add_input();  // incoming packets
 
@@ -105,6 +104,10 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
+  click_srandom(_me->getMasterAddress()->hashcode());
+
+  _rreq_id = click_random() % 0xffff;
+
   // expire entries on list of rreq's we have seen
   _rreq_expire_timer.initialize(this);
   _rreq_expire_timer.schedule_after_msec(BRN_DSR_RREQ_EXPIRE_TIMER_INTERVAL);
@@ -173,7 +176,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     metric_of_route = 1;  //Don't care about the metric. Just set to 1 to mark it available
 
   } else {
-    BRN_DEBUG(" query route");
+    BRN_DEBUG(" query route: %s (src) to %s (dst)",src_addr.unparse().c_str(),dst_addr.unparse().c_str());
     _link_table->query_route( src_addr, dst_addr, route );
     metric_of_route = _link_table->get_route_metric(route);
   }
@@ -197,18 +200,20 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     Packet *dsr_p = _dsr_encap->add_src_header(p_in, route); //todo brn_dsr packet --> encap
 
     uint16_t _path_id = 0;
+    BrnRouteIdCache::RouteIdEntry* rid_e;
     if ( _dsr_rid_cache ) {
-      BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src_addr, &dst_addr);
+      rid_e = _dsr_rid_cache->get_entry(&src_addr, &dst_addr);
       if ( rid_e ) {
         _path_id = rid_e->_id;
+        rid_e->update();
       } else {
         _rid_ac++;
         _path_id = _rid_ac; 
-        _dsr_rid_cache->insert_entry(&src_addr, &dst_addr, &src_addr, &(route[route.size() - 2]) , _path_id);
+        rid_e = _dsr_rid_cache->insert_entry(&src_addr, &dst_addr, &src_addr, &(route[route.size() - 2]) , _path_id);
       }
 
       click_brn_dsr *dsr_source = (click_brn_dsr *)(dsr_p->data());
-      dsr_source->dsr_id = _path_id;
+      dsr_source->dsr_id = htons(_path_id);
     }
 
    // add BRN header
@@ -655,14 +660,36 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
             }
           }
 
+          /* For ID Routing*/
+          uint16_t _path_id = 0;
+          BrnRouteIdCache::RouteIdEntry* rid_e;
+
+          if ( _dsr_rid_cache ) {
+            rid_e = _dsr_rid_cache->get_entry(&src, &dst);
+            if ( rid_e ) {
+              _path_id = rid_e->_id;
+            } else {
+              _rid_ac++;
+              _path_id = _rid_ac;
+              rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &src, &(route[route.size() - 2]) , _path_id);
+            }
+          }
+          /*End Id Routing*/
+
           if (total < BRN_DSR_SENDBUFFER_MAX_BURST) {
 
             int k;
             for (k = 0; k < sb.size() && total < BRN_DSR_SENDBUFFER_MAX_BURST; k++, total++) {
               // send out each of the buffered packets
               Packet *p = sb[k]._p;
-              //Packet *p_out = add_dsr_header(p, route);
               Packet *p_out = _dsr_encap->add_src_header(p, route); //todo brn_dsr packet --> encap
+
+              if ( _dsr_rid_cache ) {
+                click_brn_dsr *dsr_source = (click_brn_dsr *)(p_out->data());
+                dsr_source->dsr_id = htons(_path_id);
+                rid_e->update();
+              }
+
               // add BRN header
               Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(p_out));
 

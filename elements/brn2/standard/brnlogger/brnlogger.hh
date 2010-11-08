@@ -33,6 +33,13 @@
 
 CLICK_DECLS
 
+#define CLASS_BRN_LOG   if (_debug >= BrnLogger::LOG) click_chatter
+#define CLASS_BRN_FATAL if (_debug >= BrnLogger::FATAL) click_chatter
+#define CLASS_BRN_ERROR if (_debug >= BrnLogger::ERROR) click_chatter
+#define CLASS_BRN_WARN  if (_debug >= BrnLogger::WARN) click_chatter
+#define CLASS_BRN_INFO  if (_debug >= BrnLogger::INFO) click_chatter
+#define CLASS_BRN_DEBUG if (_debug >= BrnLogger::DEBUG) click_chatter
+
 #ifdef CLICK_LINUXMODULE
 
 #warning "Click_LinuxModule: BRN_LOG etc. is defined as click_chatter"
@@ -49,12 +56,12 @@ CLICK_DECLS
 // TODO check if log level of this element is appropriate!
 #define BRN_LOG     BrnLogger(__FILE__,__LINE__,this).log
 
-/** 
+/**
  * Error occured which leads to an abort or an undefined state. 
  */
 #define BRN_FATAL   if (_debug >= BrnLogger::FATAL) BrnLogger(__FILE__,__LINE__,this).fatal
 
-/** 
+/**
  * An error occured, but we are able to recover from it. 
  */
 #define BRN_ERROR   if (_debug >= BrnLogger::ERROR) BrnLogger(__FILE__,__LINE__,this).error
@@ -136,6 +143,9 @@ public:
   inline void warn(const char* format, ...) const;
   inline void info(const char* format, ...) const;
   inline void debug(const char* format, ...) const;
+
+  static void chatter(const char *fmt, ...);
+
 
 protected:
   void log(int level, const char* format, va_list ptr) const;

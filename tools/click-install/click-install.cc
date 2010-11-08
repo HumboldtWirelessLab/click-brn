@@ -158,12 +158,15 @@ static void
 compile_archive_packages(RouterT *r, HashTable<String, int> &packages,
 			 ErrorHandler *errh)
 {
-  Vector<String> requirements = r->requirements();
   bool tmpdir_populated = false;
 
   // go over requirements
-  for (int i = 0; i < requirements.size(); i++) {
-    const String &req = requirements[i];
+  Vector<String> requirements = r->requirements();
+  for (int i = 0; i < requirements.size(); i += 2) {
+    if (!requirements[i].equals("package", 7))
+      continue;
+
+    const String &req = requirements[i+1];
 
     // skip if already have object file
     if (r->archive_index(req + OBJSUFFIX) >= 0
@@ -179,7 +182,7 @@ compile_archive_packages(RouterT *r, HashTable<String, int> &packages,
 
     // found source file, so compile it
     errh->message("Compiling package %s from config archive", req.c_str());
-    String result_filename = click_compile_archive_file(r->archive(), &r->archive()[source_ae], req, COMPILETARGET, "", tmpdir_populated, errh);
+    String result_filename = click_compile_archive_file(r->archive(), &r->archive()[source_ae], req, COMPILETARGET, false, tmpdir_populated, errh);
 
     // grab object file and add to archive
     if (result_filename) {
@@ -221,11 +224,13 @@ install_required_packages(RouterT *r, HashTable<String, int> &packages,
   // check for uncompiled archive packages and try to compile them
   compile_archive_packages(r, packages, errh);
 
-  Vector<String> requirements = r->requirements();
-
   // go over requirements
-  for (int i = 0; i < requirements.size(); i++) {
-    String req = requirements[i];
+  Vector<String> requirements = r->requirements();
+  for (int i = 0; i < requirements.size(); i += 2) {
+    if (!requirements[i].equals("package", 7))
+	continue;
+
+    String req = requirements[i+1];
 
     // look for object in archive
     int obj_aei = r->archive_index(req + OBJSUFFIX);

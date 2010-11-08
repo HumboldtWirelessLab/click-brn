@@ -19,17 +19,17 @@ CLICK_DECLS
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 #endif
 
-
-/** TODO: move next to brnprotocol */
-/* MAJOR_Types */
-#define BRN2_MAJOR_TYPE_STANDARD   0
-#define BRN2_MAJOR_TYPE_LINKSTAT   1
-#define BRN2_MAJOR_TYPE_ROUTING    2
-#define BRN2_MAJOR_TYPE_DHT        3
-
-#define BRN2_LINKSTAT_MINOR_TYPE_BEACON   1
-
-#define BRN_PORT_BATMAN 10
+#define BRN2_LINKSTAT_MINOR_TYPE_BEACON       1
+#define BRN2_LINKSTAT_MINOR_TYPE_LPR          2
+#define BRN2_LINKSTAT_MINOR_TYPE_RXC          3
+#define BRN2_LINKSTAT_MINOR_TYPE_GEOR         4
+#define BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER     5
+#define BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER   6
+#define BRN2_LINKSTAT_MINOR_TYPE_DHT_DART    10
+#define BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON  11
+#define BRN2_LINKSTAT_MINOR_TYPE_DHT_KLIBS   12
+#define BRN2_LINKSTAT_MINOR_TYPE_DHT_NOFUDIS 13
+#define BRN2_LINKSTAT_MINOR_TYPE_DHT_OMNI    14
 
 /**TODO: Remove this or better move to other places */
 #ifndef UNREFERENCED_PARAMETER
@@ -89,7 +89,7 @@ class StringTokenizer {
 };
 
 extern "C" {
-  static inline int etheraddr_sorter(const void *va, const void *vb) {
+  static inline int etheraddr_sorter(const void *va, const void *vb, void */*thunk*/) {
     EtherAddress *a = (EtherAddress *)va, *b = (EtherAddress *)vb;
 
     if (a == b) {
@@ -108,6 +108,20 @@ extern "C" {
     return 0;
   }
 }
+
+const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
+const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
+
+class BRNTools {
+
+  static int getBitposition(uint32_t x) {
+    int pos = 0;
+    while(x >>= 1) ++pos;
+    return pos;
+  }
+};
+
+#define BITPOSITION(x) BRNTools::getBitposition(x)
 
 CLICK_ENDDECLS
 

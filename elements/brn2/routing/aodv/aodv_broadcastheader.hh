@@ -24,7 +24,7 @@ CLICK_DECLS
 
 class AODVBroadcastHeader{
 	public:
-		static Packet * setBroadcastHeader(Packet*, const IPAddress &, int);
+		static Packet * setBroadcastHeader(Packet*, const EtherAddress &, int);
 	private:
 };
 

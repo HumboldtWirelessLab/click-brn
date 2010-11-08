@@ -200,7 +200,7 @@ String
 click_compile_archive_file(const Vector<ArchiveElement> &archive,
 			   const ArchiveElement *ae,
 			   String package,
-			   const String &target, const String &extra_flags,
+			   const String &target, bool quiet,
 			   bool &tmpdir_populated, ErrorHandler *errh)
 {
     // create and populate temporary directory
@@ -242,8 +242,9 @@ click_compile_archive_file(const Vector<ArchiveElement> &archive,
 
     // prepare click-buildtool makepackage
     StringAccum compile_command;
-    compile_command << *click_buildtool_prog << " makepackage " << extra_flags
-		    << " -C " << *tmpdir << " -t " << target;
+    compile_command << *click_buildtool_prog << " makepackage "
+		    << (quiet ? "-q " : "") << "-C " << *tmpdir
+		    << " -t " << target;
 
     // check for compile flags
     const char *ss = ae->data.begin();
@@ -276,7 +277,8 @@ click_compile_archive_file(const Vector<ArchiveElement> &archive,
 
     // finish compile_command
     compile_command << ' ' << package << ' ' << filename << " 1>&2";
-    errh->message("%s", compile_command.c_str());
+    if (!quiet)
+	errh->message("%s", compile_command.c_str());
     int compile_retval = system(compile_command.c_str());
     if (compile_retval == 127)
 	cerrh.error("could not run %<%s%>", compile_command.c_str());
@@ -323,9 +325,9 @@ clickdl_load_requirement(String name, const Vector<ArchiveElement> *archive, Err
 	    fclose(f);
 	}
     } else if (archive && (ae = ArchiveElement::find(*archive, name + cxx_suffix)))
-	package = click_compile_archive_file(*archive, ae, name, target, "-q", tmpdir_populated, &cerrh);
+	package = click_compile_archive_file(*archive, ae, name, target, true, tmpdir_populated, &cerrh);
     else if (archive && (ae = ArchiveElement::find(*archive, name + ".cc")))
-	package = click_compile_archive_file(*archive, ae, name, target, "-q", tmpdir_populated, &cerrh);
+	package = click_compile_archive_file(*archive, ae, name, target, true, tmpdir_populated, &cerrh);
     else {
 	// search path
 	package = clickpath_find_file(name + suffix, "lib", CLICK_LIBDIR);
@@ -354,20 +356,20 @@ namespace {
 
 class RequireLexerExtra : public LexerExtra { public:
     RequireLexerExtra(const Vector<ArchiveElement> *a) : _archive(a) { }
-    void require(String, ErrorHandler *);
+    void require(String type, String value, ErrorHandler *errh);
   private:
     const Vector<ArchiveElement> *_archive;
 };
 
 void
-RequireLexerExtra::require(String name, ErrorHandler *errh)
+RequireLexerExtra::require(String type, String value, ErrorHandler *errh)
 {
 # ifdef HAVE_DYNAMIC_LINKING
-    if (!click_has_provision(name.c_str()))
-	clickdl_load_requirement(name, _archive, errh);
+    if (type.equals("package", 7) && !click_has_provision(value.c_str()))
+	clickdl_load_requirement(value, _archive, errh);
 # endif
-    if (!click_has_provision(name.c_str()))
-	errh->error("requirement %<%s%> not available", name.c_str());
+    if (type.equals("package", 7) && !click_has_provision(value.c_str()))
+	errh->error("requirement %<%s%> not available", value.c_str());
 }
 
 }

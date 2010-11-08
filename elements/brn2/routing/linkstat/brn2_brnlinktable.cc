@@ -72,10 +72,13 @@ Brn2LinkTable::initialize (ErrorHandler *)
   _timer.initialize(this);
   _timer.schedule_now();
 
+  for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
+    dev = _node_identity->getDeviceByIndex(d);
 
-  dev = _node_identity->_node_devices[0];
+    if ( dev->is_routable() )
+      _hosts.insert(EtherAddress(dev->getEtherAddress()->data()), BrnHostInfo(EtherAddress(dev->getEtherAddress()->data()), IPAddress(0)));
+  }
 
-  _hosts.insert(EtherAddress(dev->getEtherAddress()->data()), BrnHostInfo(EtherAddress(dev->getEtherAddress()->data()), IPAddress(0)));
   return 0;
 }
 
@@ -84,15 +87,7 @@ Brn2LinkTable::run_timer(Timer*)
 {
   clear_stale();
   //fprintf(stderr, " * Brn2LinkTable::run_timer()\n");
-  // run dijkstra for all associated clients  
-  /*
-  if (_assoc_list) {
-    for (int i = 0; i < _assoc_list->size(); i++) {
-      dijkstra((*_assoc_list)[i], true);
-      dijkstra((*_assoc_list)[i], false);
-    }
-  }
-  */
+
   _timer.schedule_after_msec(5000);
 }
 void *
@@ -109,12 +104,13 @@ Brn2LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
   int ret;
   int stale_period = 120;
   ret = cp_va_kparse(conf, this, errh,
-        "NODEIDENTITIY", cpkP+cpkM, cpElement, &_node_identity,
+        "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "ROUTECACHE", cpkP+cpkM, cpElement, &_brn_routecache,
         "STALE", cpkP+cpkM, cpUnsigned, &stale_period,
         "SIMULATE", cpkP+cpkM, cpBool, &_sim_mode,
         "CONSTMETRIC", cpkP+cpkM, cpInteger, &_const_metric,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
+        "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 
   _stale_timeout.tv_sec = stale_period;
@@ -234,22 +230,25 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   return true;
 }
 
-Brn2LinkTable::BrnLink
-Brn2LinkTable::random_link()
+bool
+Brn2LinkTable::associated_host(EtherAddress ea)
 {
-  int ndx = click_random() % _links.size();
-  int current_ndx = 0;
-  for (LTIter iter = _links.begin(); iter.live(); iter++, current_ndx++) {
-    if (current_ndx == ndx) {
-      BrnLinkInfo n = iter.value();
-      return BrnLink(n._from, n._to, n._seq, n._metric);
-    }
-  }
-  return BrnLink();
+  BrnHostInfo *n = _hosts.findp(ea);
+  if (n) n->_is_associated = true;
 
+  return true;
 }
 
-void 
+bool
+Brn2LinkTable::is_associated(EtherAddress ea)
+{
+  BrnHostInfo *n = _hosts.findp(ea);
+  if (n) return  n->_is_associated;
+
+  return false;
+}
+
+void
 Brn2LinkTable::remove_node(const EtherAddress& node)
 {
   if (!node)
@@ -261,7 +260,7 @@ Brn2LinkTable::remove_node(const EtherAddress& node)
     BrnLinkInfo& nfo = iter.value();
 
     if (node == nfo._from || node == nfo._to) {
-      BRN_DEBUG(" * link %s -> %s cleansed.", 
+      BRN_DEBUG(" * link %s -> %s cleansed.",
         nfo._from.unparse().c_str(), nfo._to.unparse().c_str() );
 
       LTable::iterator tmp = iter;
@@ -286,13 +285,16 @@ Brn2LinkTable::get_hosts(Vector<EtherAddress> &v)
 uint32_t 
 Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
 {
+  BRN_DEBUG("Search host %s in Hosttable",s.unparse().c_str());
   if (!s) {
     return 0;
   }
   BrnHostInfo *nfo = _hosts.findp(s);
   if (!nfo) {
+    BRN_DEBUG("Couldn't find host %s in Hosttable",s.unparse().c_str());
     return 0;
   }
+  BRN_DEBUG("Find host %s in Hosttable",s.unparse().c_str());
   return nfo->_metric_to_me;
 }
 
@@ -322,7 +324,7 @@ Brn2LinkTable::get_link_metric(EtherAddress from, EtherAddress to)
   BrnLinkInfo *nfo = _links.findp(p);
   if (!nfo) {
     if (_sim_mode) {
-      return _const_metric; // TODO what is that? 
+      return _const_metric; // TODO what is that?
     } else {
       return BRN_DSR_INVALID_ROUTE_METRIC;
     }
@@ -366,7 +368,7 @@ Brn2LinkTable::get_link_age(EtherAddress from, EtherAddress to)
   return nfo->age();
 }
 
-signed 
+signed
 Brn2LinkTable::get_route_metric(const Vector<EtherAddress> &route)
 {
 
@@ -375,13 +377,13 @@ Brn2LinkTable::get_route_metric(const Vector<EtherAddress> &route)
 
   unsigned metric = 0;
   for (int i = 0; i < route.size() - 1; i++) {
-    unsigned m = get_link_metric(route[i], route[i+1]);
-/*    if (m == 0) {
-      return 0;
-*/
+    EtherAddress src = route[i];
+    EtherAddress dst = route[i+1];
+    unsigned m = get_link_metric(src, dst);
+
     metric += m;
 
-    if ( m >= _brn_dsr_min_link_metric_within_route ) {  //BRN_DSR_MIN_LINK_METRIC_WITHIN_ROUTE
+    if ( m >= _brn_dsr_min_link_metric_within_route ) {
       BRN_DEBUG(" * metric %d is inferior as min_metric %d", m, _brn_dsr_min_link_metric_within_route);
       return -1;
     }
@@ -397,11 +399,11 @@ Brn2LinkTable::ether_routes_to_string(const Vector< Vector<EtherAddress> > &rout
     Vector <EtherAddress> r = routes[x];
     for (int i = 0; i < r.size(); i++) {
       if (i != 0) {
-	sa << " ";
+        sa << " ";
       }
       sa << r[i] << " ";
       if (i != r.size()-1) {
-	sa << get_link_metric(r[i], r[i+1]);
+        sa << get_link_metric(r[i], r[i+1]);
       }
     }
     if (r.size() > 0) {
@@ -427,7 +429,7 @@ Brn2LinkTable::valid_route(const Vector<EtherAddress> &route)
   for (int x = 0; x < route.size(); x++) {
     for (int y = x + 1; y < route.size(); y++) {
       if (route[x] == route[y]) {
-	return false;
+        return false;
       }
     }
   }
@@ -542,9 +544,12 @@ Brn2LinkTable::print_routes(bool from_me)
 	if (i != r.size()-1) {
 	  EthernetPair pair = EthernetPair(r[i], r[i+1]);
 	  BrnLinkInfo *l = _links.findp(pair);
-	  assert(l);
-	  sa << l->_metric;
-	  sa << " (" << l->_seq << "," << l->age() << ")";
+         if (l) {
+	  	sa << l->_metric;
+	  	sa << " (" << l->_seq << "," << l->age() << ")";
+         } else {
+              sa << "(warning, lnkinfo not found!!!)";
+         }
 	}
       }
       sa << "\n";
@@ -566,7 +571,8 @@ Brn2LinkTable::print_hosts()
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
 
   for (int x = 0; x < ether_addrs.size(); x++) {
-    sa << ether_addrs[x] << "\n";
+    BrnHostInfo *nfo = _hosts.findp(ether_addrs[x]);
+    sa << ether_addrs[x] << " from_me: " << nfo->_metric_from_me << " to_me: " << nfo->_metric_to_me << " assosiated: " << nfo->_is_associated << "\n";
   }
 
   return sa.take_string();
@@ -628,6 +634,15 @@ Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors
       }
     }
   }
+}
+
+/** TODO:
+  Check every device for neighbors and not only the master-device
+*/
+void
+Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
+  const EtherAddress *me = _node_identity->getMasterAddress();
+  get_neighbors(*me,neighbors);
 }
 
 //TODO: Short this function
@@ -798,7 +813,7 @@ LinkTable_read_param(Element *e, void *thunk)
       typedef EtherTable::const_iterator EtherIter;
 
       for (EtherIter iter = td->_blacklist.begin(); iter.live(); iter++) {
-	sa << iter.value() << " ";
+        sa << iter.value() << " ";
       }
       return sa.take_string() + "\n";
     }
@@ -817,8 +832,7 @@ LinkTable_read_param(Element *e, void *thunk)
 }
 
 static int 
-LinkTable_write_param(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
+LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   Brn2LinkTable *f = (Brn2LinkTable *)e;
   String s = cp_uncomment(in_s);
@@ -847,15 +861,8 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam,
     EtherAddress m;
     if (!cp_ethernet_address(s, &m)) 
       return errh->error("dijkstra parameter must be etheraddress");
-/*
-    if (f->_assoc_list) {
-      for (int i = 0; i < f->_assoc_list->size(); i++) {
-        f->dijkstra((*(f->_assoc_list))[i], true);
-        f->dijkstra((*(f->_assoc_list))[i], false);
-      }
-    } else*/ {
-      f->dijkstra(m, true);
-    }
+
+    f->dijkstra(m, true);
     break;
   }
   case H_BEST_ROUTE: {

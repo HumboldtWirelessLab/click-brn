@@ -71,7 +71,7 @@ OLSRRoutingTable::print_routing_table()
 {
 	struct timeval now;
 	click_gettimeofday( &now );
-	click_chatter( "%f | %s | %s\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), _linearIPlookup->dump_routes().c_str() );
+//robat	click_chatter( "%f | %s | %s\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), _linearIPlookup->dump_routes().c_str() );
 }
 
 
@@ -284,7 +284,7 @@ OLSRRoutingTable::compute_routing_table()
 				_visitorInfo->add_tuple( iter->gw, iter->addr, iter->mask, make_timeval( 0, 0 ) );
 				timeval now;
 				click_gettimeofday( &now );
-				click_chatter ( "%f | %s | node %s is visiting my network\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), iter->addr.unparse().c_str() );
+//robat				click_chatter ( "%f | %s | node %s is visiting my network\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), iter->addr.unparse().c_str() );
 			}
 		}
 	}

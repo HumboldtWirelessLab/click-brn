@@ -52,14 +52,21 @@ class DHTRoutingKlibs : public DHTRouting
 /*DHTROUTING*/
     const char *dhtrouting_name() const { return "DHTRoutingKlibs"; }
     bool replication_support() const { return false; }
-    int max_replication() const { return(1); }
-    DHTnode *get_responsibly_node(md5_byte_t *key);
+    int max_replication() const { return 0; }
+  private:
+    DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
+  public:
+    DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
+
+    bool range_query_support() { return false; }
+    void range_query_min_max_id(uint8_t */*min*/, uint8_t */*max*/) {}
+
+    int update_node(EtherAddress */*ea*/, md5_byte_t */*key*/, int /*keylen*/) { return 0;}
 
     String routing_info(void);
     PacketSendBuffer packetBuffer;
 
   private:
-    int _debug;
     BRN2LinkStat *_linkstat;
 
     DHTnodelist _own_dhtnodes;

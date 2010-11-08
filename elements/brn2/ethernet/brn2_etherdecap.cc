@@ -30,12 +30,14 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 
 CLICK_DECLS
 
 BRN2EtherDecap::BRN2EtherDecap()
 {
+  BRNElement::init();
 }
 
 BRN2EtherDecap::~BRN2EtherDecap()

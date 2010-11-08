@@ -86,6 +86,8 @@ BRN2DHCPClient::initialize(ErrorHandler *)
   BRN_DEBUG("BRN2DHCPClient: Initialize");
   BRN_DEBUG("BRN2DHCPClient: Interval: %d", _interval);
 
+  click_random_srandom();
+
   init_state();
   _timer.initialize(this);
   if (_active)
@@ -107,10 +109,10 @@ BRN2DHCPClient::init_state() {
 
   //client_mac[5] = 0;
   for( int i = 0; i < _ip_range; i++)
-  { 
-     client_mac[5] = ( client_mac[5] + 1 ) % 255;
-     uint32_t xid = random();
+  {
+     uint32_t xid = click_random();
      request_queue.push_back(DHCPClientInfo( xid, client_mac , htonl(requested_ip + i) ));
+     client_mac[5] = ( client_mac[5] + 1 ) % 255;
   }
 }
 
@@ -177,10 +179,11 @@ BRN2DHCPClient::push( int, Packet *packet )
 
   struct dhcp_packet *dhcp_p = (struct dhcp_packet *)packet->data();
   int index = search_dhcpclient_by_xid(dhcp_p->xid);
-  
+
   if ( index == -1 
     || 0 != memcmp(request_queue[index].eth_add.data(), dhcp_p->chaddr, 6))
   {
+    BRN_DEBUG("No request in queue");
     packet->kill();
     return;
   }
@@ -199,12 +202,13 @@ BRN2DHCPClient::push( int, Packet *packet )
 
   packet->kill();
 
+  BRN_DEBUG("Packettype: %d", packet_type);
   switch (packet_type) {
     case DHCPDISCOVER:	// bad
       break;
     case DHCPOFFER:
       packet_out = dhcprequest(&request_queue[index]);
-      if ( packet_out != NULL ) output(1).push(packet_out);			
+      if ( packet_out != NULL ) output(1).push(packet_out);
       break;
     case DHCPREQUEST:   //bad
       break;
@@ -233,6 +237,7 @@ BRN2DHCPClient::dhcpdiscover(DHCPClientInfo *client_info)
 
   struct dhcp_packet *new_packet = (struct dhcp_packet *)dhcp_packet_out->data();
 
+  BRN_DEBUG("DHCP-discover");
   DHCPProtocol::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
 
   new_packet->xid = client_info->xid;
@@ -262,6 +267,8 @@ BRN2DHCPClient::dhcprequest(DHCPClientInfo *client_info)
 
   WritablePacket *dhcp_packet_out = DHCPProtocol::new_dhcp_packet();
   new_packet = (struct dhcp_packet *)dhcp_packet_out->data();
+
+  BRN_DEBUG("DHCP-request");
 
   DHCPProtocol::set_dhcp_header(dhcp_packet_out, BOOTREQUEST );
 

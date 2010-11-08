@@ -26,6 +26,7 @@
 
 #include <net/if_var.h>
 #include <net/ethernet.h>
+CLICK_DECLS
 
 static AnyDeviceMap fromhost_map;
 
@@ -88,7 +89,7 @@ FromHost::cleanup(CleanupStage)
     int s = splimp();
     struct ifqueue *q = _inq ;
     _inq = NULL;
-    device()->if_spare3 = NULL;
+    // device()->if_spare3 = NULL;
     splx(s);
 
     int i, max = q->ifq_maxlen ;
@@ -126,5 +127,6 @@ FromHost::run_task(Task *)
     return true;
 }
 
+CLICK_ENDDECLS
 ELEMENT_REQUIRES(AnyDevice bsdmodule)
 EXPORT_ELEMENT(FromHost)

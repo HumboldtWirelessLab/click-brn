@@ -42,6 +42,14 @@ class PacketSendBuffer
       }
 
       void check() const { assert(_p); }
+
+      bool timeout()
+      {
+        struct timeval time_now;
+        time_now = Timestamp::now().timeval();
+
+        return ((_send_time.tv_sec < time_now.tv_sec) || (( _send_time.tv_sec == time_now.tv_sec) && ( _send_time.tv_usec < time_now.tv_usec)));
+      }
   };
 
   typedef Vector<BufferedPacket*> PacketQueue;
@@ -60,6 +68,11 @@ class PacketSendBuffer
 
   private:
     PacketQueue queue;
+
+  public:
+    int size() { return queue.size(); }
+    PacketSendBuffer::BufferedPacket *get(int i) { return queue[i]; }
+    void del(int i) { queue.erase(queue.begin() + i); }
 
 };
 

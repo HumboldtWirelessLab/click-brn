@@ -89,7 +89,7 @@ void AODVTrackNeighbours::push (int port, Packet * packet){
 			const aodv_rrep_header * rrep = (const aodv_rrep_header*) (packet->data() + aodv_headeroffset);
 		
 			// don't use RERR information, must be AODV type 2, ttl 1 and non-existing entry
-			if (rrep->type == 2 && ipheader->ip_ttl == 1 && !neighbour_timers.find_pair(rrep->originator)) {
+/*robat			if (rrep->type == 2 && ipheader->ip_ttl == 1 && !neighbour_timers.find_pair(rrep->originator)) {
 				TimerData* timerdata = new TimerData();
 				timerdata->ip = new IPAddress(rrep->originator);
 				timerdata->me = this;
@@ -98,7 +98,7 @@ void AODVTrackNeighbours::push (int port, Packet * packet){
 				timer->schedule_after_msec(AODV_ALLOWED_HELLO_LOSS * AODV_HELLO_INTERVAL);
 				neighbour_timers.insert(rrep->originator,timer);
 			}
-		}
+		*/}
 		TimerMap::Pair* pair = neighbour_timers.find_pair(ipheader->ip_src);
 		if (pair) pair->value->schedule_after_msec(AODV_ALLOWED_HELLO_LOSS * AODV_HELLO_INTERVAL);
 	}

@@ -21,20 +21,20 @@ CLICK_DECLS
  */
 
 class BRN2PrintWifi : public Element {
-  
+
   String _label;
-  
+
  public:
-  
+
   BRN2PrintWifi();
   ~BRN2PrintWifi();
-  
+
   const char *class_name() const		{ return "BRN2PrintWifi"; }
   const char *port_count() const		{ return PORTS_1_1; }
   const char *processing() const		{ return AGNOSTIC; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
-  
+
   Packet *simple_action(Packet *);
   String unparse_beacon(Packet *p);
   String reason_string(int reason);
@@ -46,8 +46,7 @@ class BRN2PrintWifi : public Element {
   bool _print_anno;
   bool _print_checksum;
   bool _timestamp;
-
-  EtherAddress _etheraddr;
+  bool _fixhighrssi;
 };
 
 CLICK_ENDDECLS

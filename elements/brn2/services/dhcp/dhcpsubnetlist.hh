@@ -15,6 +15,7 @@ CLICK_DECLS
   - handle to remove WifiInfos
   - check whether there is another WifiInfo  using the vlan-id
   - what can be private
+  - rename to SubnetInfo or SubnetList
 */
 
 class BRN2DHCPSubnetList : public Element {

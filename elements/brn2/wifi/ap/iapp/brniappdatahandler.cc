@@ -69,6 +69,7 @@ BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement, /*"BrnIapp encap element",*/ &_encap,
       "ROUTEHDL", cpkP+cpkM, cpElement, /*"RouteUpdateHandler element",*/ &_route_handler,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
       cpEnd) < 0)
     return -1;
 
@@ -80,7 +81,10 @@ BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_route_handler || !_route_handler->cast("BrnIappRouteUpdateHandler")) 
     return errh->error("RouteUpdateHandler not specified");
-  
+
+  if (!_id || !_id->cast("BRN2NodeIdentity"))
+    return errh->error("NodeIdentity not specified");
+
   return 0;
 }
 
@@ -89,10 +93,6 @@ BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BrnIappDataHandler::initialize(ErrorHandler *errh)
 {
- /*RobAt _id = _assoc_list->get_id();
-  if (!_id || !_id->cast("BRN2NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
-*/
   return 0;
 }
 
@@ -164,10 +164,10 @@ BrnIappDataHandler::recv_handover_data(
 
   // if not case 1, check if roamed: if neighter roamed nor assoc'd, discard
   BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(client);
-/*RobAt  BRN_CHECK_EXPR_RETURN(NULL == pClient || BRN2AssocList::ROAMED != pClient->get_state(),
+  BRN_CHECK_EXPR_RETURN(NULL == pClient || BRN2AssocList::ROAMED != pClient->get_state(),
     ("station %s unknown or in unexpected state %d", dst.unparse().c_str(),
       pClient ? pClient->get_state() : -1), p->kill(); return;);
-*/
+
   // Sta roamed, check in which direction the packet should flow...
   if (client == dst) // cn -> sta
   {
@@ -180,17 +180,17 @@ BrnIappDataHandler::recv_handover_data(
     EtherAddress cn(ether->ether_dhost);
     BRN_DEBUG("forwarding packet from sta %s to cn %s.", 
       pClient->get_eth().unparse().c_str(), cn.unparse().c_str());
-    
+
     // send the data to the cn
-/*RobAt    send_handover_data( cn,
-                        *_id->getMyWirelessAddress(),
-                        pClient->get_eth(), 
-                        pClient->get_ap(), 
-                        pClient->get_old_ap(), 
-                        p);*/
+    send_handover_data( cn,
+                        *_id->getMasterAddress(),
+                        pClient->get_eth(),
+                        pClient->get_ap(),
+                        pClient->get_old_ap(),
+                        p);
     return;
   }
-  
+
   // unknown direction, discard
   BRN_ERROR("unable to handle received iapp data.");
   p->kill();
@@ -209,9 +209,8 @@ BrnIappDataHandler::recv_ether(Packet* p)
   // Get ether header
   const click_ether* ether = (const click_ether*) p->data();
   p->set_ether_header(ether);
-  BRN_CHECK_EXPR_RETURN(NULL == ether,
-    ("missing ether header"), p->kill();return;);
-  
+  BRN_CHECK_EXPR_RETURN(NULL == ether, ("missing ether header"), p->kill();return;);
+
   // Check the dst address
   EtherAddress ether_dst(ether->ether_dhost);
   BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(ether_dst);
@@ -222,27 +221,27 @@ BrnIappDataHandler::recv_ether(Packet* p)
     p->kill();
     return;
   }
-  
+
   // Check if it is our client and we should buffer the packet
-/*RobAt  AssocList::client_state state = pClient->get_state();
-  if (AssocList::ASSOCIATED == state) {
+  BRN2AssocList::client_state state = pClient->get_state();
+  if (BRN2AssocList::ASSOCIATED == state) {
     if (!_optimize)
     {
       BRN_DEBUG("optimization turned off, killing packet.");
       p->kill();
       return;
     }
-    
+
     BRN_DEBUG("buffering not delivered packet for STA %s (roamed?).", 
       ether_dst.unparse().c_str());
-    
+
     _assoc_list->buffer_packet(ether_dst, p); 
     p = NULL;
     return;
   }
-*/
+
   // If not in state roamed, kill the packet  
-/*RobAt  if(AssocList::ROAMED != state)
+  if(BRN2AssocList::ROAMED != state)
   {
     // this could happen if we have seen the client and we are in the source 
     // route: if the packet does not make the hop to the next node, we get
@@ -252,7 +251,7 @@ BrnIappDataHandler::recv_ether(Packet* p)
     p->kill();
     return;
   }
-  */
+
   if (!_optimize)
   {
     BRN_DEBUG("optimization turned off, not forwarding packet to new ap.");
@@ -264,14 +263,14 @@ BrnIappDataHandler::recv_ether(Packet* p)
   BRN_CHECK_EXPR_RETURN(!ap_new,
     ("could not determine new ap for STA %s.", ether_dst.unparse().c_str()),
     p->kill();return;);
-  
-  BRN_DEBUG("forwarding packet for STA %s to %s.", 
+
+  BRN_DEBUG("forwarding packet for STA %s to %s.",
     pClient->get_eth().unparse().c_str(), pClient->get_ap().unparse().c_str());
-  
-  handle_handover_data( pClient->get_eth(), 
-                        pClient->get_ap(), 
-                        pClient->get_old_ap(), 
-                        pClient->get_seq_no(), 
+
+  handle_handover_data( pClient->get_eth(),
+                        pClient->get_ap(),
+                        pClient->get_old_ap(),
+                        pClient->get_seq_no(),
                         p);
 }
 
@@ -287,24 +286,24 @@ BrnIappDataHandler::handle_handover_data(
 {
   BRN_CHECK_EXPR_RETURN(!p || !sta || !ap_new || !ap_old,
     ("invalid arguments"), if (p) p->kill();return;);
-  
+
   // Get the ether header
   const click_ether *ether = (const click_ether *)p->ether_header();
   BRN_CHECK_EXPR_RETURN(NULL == ether,
     ("missing ether header"), p->kill();return;);
-  
+
   EtherAddress dst(ap_old); // assume sending packet to old ap
-//RobAt  EtherAddress src(*_id->getMyWirelessAddress());
-  EtherAddress src(ap_old);//RobAt
+  EtherAddress src(*_id->getMasterAddress());
+
   // Check for destination cn -> sta (send packet to new ap)
   if (EtherAddress(ether->ether_dhost) == sta) 
   {
     // Send the data packet to the new ap
     dst = ap_new; 
-    
+
     // Source is corresponding node
     EtherAddress cn(ether->ether_shost);  
-    
+
     BRN2AssocList::ClientInfo* pClient = _assoc_list->get_entry(sta);
     BRN_CHECK_EXPR(NULL == pClient,
       ("client %s not found", sta.unparse().c_str()));
@@ -427,6 +426,5 @@ BrnIappDataHandler::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnIappDataHandler)
-ELEMENT_REQUIRES(brn_common)
 
 ////////////////////////////////////////////////////////////////////////////////

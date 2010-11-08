@@ -23,8 +23,6 @@
  */
 
 #include <click/config.h>
-//#include "elements/brn/common.hh"
-
 #include "batmanrouting.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
@@ -94,7 +92,7 @@ BatmanRouting::push( int /*port*/, Packet *packet )
   WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, 10/*HOPS*/ );
   WritablePacket *brnrp = BRNProtocol::add_brn_header(batp, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10/*TTL*/, DEFAULT_TOS);
 
-  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, 0x8680);
+  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, ETHERTYPE_BRN);
 
   output(1).push(brnrp);
 

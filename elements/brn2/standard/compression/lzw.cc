@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <click/config.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <string.h>
 #include "lzw.hh"
 
 CLICK_DECLS
@@ -9,10 +9,10 @@ CLICK_DECLS
 LZW::LZW()
 {
   //TODO: Handle malloc-error
-  code_value=(int*)malloc(TABLE_SIZE*sizeof(int));
-  prefix_code=(unsigned int *)malloc(TABLE_SIZE*sizeof(unsigned int));
-  append_character=(unsigned char *)malloc(TABLE_SIZE*sizeof(unsigned char));
-  decode_stack=(unsigned char *)malloc(LZW_DECODE_STACK_SIZE*sizeof(unsigned char));
+  code_value= new int[TABLE_SIZE];
+  prefix_code=new unsigned int[TABLE_SIZE];
+  append_character=new unsigned char[TABLE_SIZE];
+  decode_stack=new unsigned char[LZW_DECODE_STACK_SIZE];
 
 
   if (code_value==NULL || prefix_code==NULL || append_character==NULL || decode_stack==NULL)
@@ -23,10 +23,10 @@ LZW::LZW()
 
 LZW::~LZW()
 {
-  free(code_value);
-  free(prefix_code);
-  free(append_character);
-  free(decode_stack);
+  delete[] code_value;
+  delete[] prefix_code;
+  delete[] append_character;
+  delete[] decode_stack;
 }
 
 void

@@ -28,6 +28,7 @@ BRN2VLAN::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "WIRELESSINFOLIST", cpkP+cpkM, cpElement, &_wifiinfolist,
       "DHCPSUBNETLIST", cpkP+cpkM, cpElement, &_dhcpsubnetlist,
+      "VLANTABLE", cpkP+cpkM, cpElement, &_vlantable,            //remove node of VLAN in the table, if vlan is removed
       "DEBUG", cpkP, cpBool, &_debug,
       cpEnd) < 0)
     return -1;

@@ -122,7 +122,7 @@ SimpleQueue::enq(Packet *p)
     int h = _head, t = _tail, nt = next_i(t);
     if (nt != h) {
 	_q[t] = p;
-	// memory barrier here
+	packet_memory_barrier(_q[t], _tail);
 	_tail = nt;
 	int s = size(h, nt);
 	if (s > _highwater_length)
@@ -148,6 +148,7 @@ SimpleQueue::lifo_enq(Packet *p)
 	_tail = t;
     }
     _q[ph] = p;
+    packet_memory_barrier(_q[ph], _head);
     _head = ph;
 }
 
@@ -157,7 +158,7 @@ SimpleQueue::deq()
     int h = _head, t = _tail;
     if (h != t) {
 	Packet *p = _q[h];
-	// memory barrier here
+	packet_memory_barrier(_q[h], _head);
 	_head = next_i(h);
 	assert(p);
 	return p;

@@ -6,6 +6,7 @@
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
  * Copyright (c) 2004-2008 Regents of the University of California
+ * Copyright (c) 2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software")
@@ -35,6 +36,13 @@
 CLICK_CXX_PROTECT
 # include <asm/types.h>
 # include <asm/uaccess.h>
+CLICK_CXX_UNPROTECT
+# include <click/cxxunprotect.h>
+#elif CLICK_BSDMODULE
+# include <click/cxxprotect.h>
+CLICK_CXX_PROTECT
+# include <sys/types.h>
+# include <sys/limits.h>
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
@@ -1647,6 +1655,7 @@ Element::configuration() const
 /** @brief Handle a file descriptor event.
  *
  * @param fd the file descriptor
+ * @param mask relevant events: bitwise-or of one or more of SELECT_READ, SELECT_WRITE
  *
  * Click's call to select() indicates that the file descriptor @a fd is
  * readable, writable, or both.  The overriding method should read or write
@@ -1655,6 +1664,25 @@ Element::configuration() const
  *
  * The element must have previously registered interest in @a fd with
  * add_select().
+ *
+ * @note Only available at user level.
+ *
+ * @sa add_select, remove_select
+ */
+void
+Element::selected(int fd, int mask)
+{
+    (void) mask;
+    selected(fd);
+}
+
+/** @brief Handle a file descriptor event.
+ *
+ * @param fd the file descriptor
+ *
+ * @deprecated Elements should define selected(@a fd, mask) in preference to
+ * selected(@a fd).  The default implementation of selected(@a fd, mask) calls
+ * selected(@a fd) for backwards compatibility.
  *
  * @note Only available at user level.
  *
@@ -1674,7 +1702,7 @@ Element::selected(int fd)
  *
  * Click will register interest in readability and/or writability on file
  * descriptor @a fd.  When @a fd is ready, Click will call this element's
- * selected(@a fd) method.
+ * selected(@a fd, @a mask) method.
  *
  * add_select(@a fd, @a mask) overrides any previous add_select() for the same
  * @a fd and events in @a mask.  However, different elements may register
@@ -1685,8 +1713,8 @@ Element::selected(int fd)
  * @note Selecting for writability with SELECT_WRITE normally requires more
  * care than selecting for readability with SELECT_READ.  You should
  * add_select(@a fd, SELECT_WRITE) only when there is data to write to @a fd.
- * Otherwise, Click will constantly poll your element's selected(@a fd)
- * method.
+ * Otherwise, Click will constantly poll your element's selected(@a fd, @a
+ * mask) method.
  *
  * @sa remove_select, selected
  */
@@ -1763,7 +1791,8 @@ Element::add_read_handler(const String &name, ReadHandlerCallback read_callback,
 void
 Element::add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags)
 {
-    Router::add_read_handler(this, name, read_callback, (void *) (uintptr_t) user_data, flags);
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_read_handler(this, name, read_callback, (void *) u, flags);
 }
 
 /** @brief Register a write handler named @a name.
@@ -1807,7 +1836,8 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
 void
 Element::add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags)
 {
-    Router::add_write_handler(this, name, write_callback, (void *) (uintptr_t) user_data, flags);
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_write_handler(this, name, write_callback, (void *) u, flags);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1815,23 +1845,23 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
  * @param name handler name
  * @param flags handler flags
  * @param callback function called when handler is written
- * @param user_data1 user data parameter stored in the handler
- * @param user_data2 user data parameter stored in the handler
+ * @param read_user_data read user data parameter stored in the handler
+ * @param write_user_data write user data parameter stored in the handler
  *
  * Registers a comprehensive handler named @a name for this element.  The
  * handler handles the operations specified by @a flags, which can include
- * Handler::OP_READ, Handler::OP_WRITE, Handler::READ_PARAM, and others.
+ * Handler::h_read, Handler::h_write, Handler::h_read_param, and others.
  * Reading the handler calls the @a callback function like this:
  *
  * @code
  * String data;
- * int r = callback(Handler::OP_READ, data, e, h, errh);
+ * int r = callback(Handler::h_read, data, e, h, errh);
  * @endcode
  *
  * Writing the handler calls it like this:
  *
  * @code
- * int r = callback(Handler::OP_WRITE, data, e, h, errh);
+ * int r = callback(Handler::h_write, data, e, h, errh);
  * @endcode
  *
  * @a e is this element pointer, and @a h points to the Handler object for
@@ -1846,9 +1876,9 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
  * name).
  */
 void
-Element::set_handler(const String& name, int flags, HandlerCallback callback, const void *user_data1, const void *user_data2)
+Element::set_handler(const String& name, int flags, HandlerCallback callback, const void *read_user_data, const void *write_user_data)
 {
-    Router::set_handler(this, name, flags, callback, (void *) user_data1, (void *) user_data2);
+    Router::set_handler(this, name, flags, callback, (void *) read_user_data, (void *) write_user_data);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1858,9 +1888,10 @@ Element::set_handler(const String& name, int flags, HandlerCallback callback, co
  * values.
  */
 void
-Element::set_handler(const String &name, int flags, HandlerCallback callback, int user_data1, int user_data2)
+Element::set_handler(const String &name, int flags, HandlerCallback callback, int read_user_data, int write_user_data)
 {
-    Router::set_handler(this, name, flags, callback, (void *) (uintptr_t) user_data1, (void *) (uintptr_t) user_data2);
+    uintptr_t u1 = (uintptr_t) read_user_data, u2 = (uintptr_t) write_user_data;
+    Router::set_handler(this, name, flags, callback, (void *) u1, (void *) u2);
 }
 
 /** @brief Set flags for the handler named @a name.
@@ -1929,19 +1960,19 @@ Element::read_handlers_handler(Element *e, void *)
 		sa << 'w';
 	    if (h->read_param())
 		sa << '+';
-	    if (h->flags() & Handler::RAW)
+	    if (h->flags() & Handler::h_raw)
 		sa << '%';
-	    if (h->flags() & Handler::CALM)
+	    if (h->flags() & Handler::h_calm)
 		sa << '.';
-	    if (h->flags() & Handler::EXPENSIVE)
+	    if (h->flags() & Handler::h_expensive)
 		sa << '$';
-	    if (h->flags() & Handler::UNCOMMON)
+	    if (h->flags() & Handler::h_uncommon)
 		sa << 'U';
-	    if (h->flags() & Handler::DEPRECATED)
+	    if (h->flags() & Handler::h_deprecated)
 		sa << 'D';
-	    if (h->flags() & Handler::BUTTON)
+	    if (h->flags() & Handler::h_button)
 		sa << 'b';
-	    if (h->flags() & Handler::CHECKBOX)
+	    if (h->flags() & Handler::h_checkbox)
 		sa << 'c';
 	    sa << '\n';
 	}
@@ -2010,13 +2041,13 @@ Element::write_cycles_handler(const String &, Element *e, void *, ErrorHandler *
 void
 Element::add_default_handlers(bool allow_write_config)
 {
-  add_read_handler("name", read_name_handler, 0, Handler::CALM);
-  add_read_handler("class", read_class_handler, 0, Handler::CALM);
-  add_read_handler("config", read_config_handler, 0, Handler::CALM);
+  add_read_handler("name", read_name_handler, 0, Handler::h_calm);
+  add_read_handler("class", read_class_handler, 0, Handler::h_calm);
+  add_read_handler("config", read_config_handler, 0, Handler::h_calm);
   if (allow_write_config && can_live_reconfigure())
     add_write_handler("config", write_config_handler, 0);
-  add_read_handler("ports", read_ports_handler, 0, Handler::CALM);
-  add_read_handler("handlers", read_handlers_handler, 0, Handler::CALM);
+  add_read_handler("ports", read_ports_handler, 0, Handler::h_calm);
+  add_read_handler("handlers", read_handlers_handler, 0, Handler::h_calm);
 #if CLICK_STATS >= 1
   add_read_handler("icounts", read_icounts_handler, 0);
   add_read_handler("ocounts", read_ocounts_handler, 0);
@@ -2119,72 +2150,101 @@ Element::add_task_handlers(Task *task, const String &prefix)
 #endif
 }
 
-static String
-uint8_t_read_data_handler(Element *element, void *user_data)
-{
-    uint8_t *ptr = reinterpret_cast<uint8_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return String((int) *ptr);
-}
-
 static int
-uint8_t_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+uint8_t_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    uint8_t *ptr = reinterpret_cast<uint8_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    uint8_t *ptr = reinterpret_cast<uint8_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
     int x;
-    if (cp_integer(str, &x) && x >= 0 && x < 256) {
+    if (op == Handler::h_read) {
+	str = String((int) *ptr);
+	return 0;
+    } else if (cp_integer(str, &x) && x >= 0 && x < 256) {
 	*ptr = x;
 	return 0;
     } else
 	return errh->error("expected uint8_t");
 }
 
-static String
-bool_read_data_handler(Element *element, void *user_data)
-{
-    bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return cp_unparse_bool(*ptr);
-}
-
 static int
-bool_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+bool_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_bool(str, ptr))
+    bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = cp_unparse_bool(*ptr);
+	return 0;
+    } else if (cp_bool(str, ptr))
 	return 0;
     else
 	return errh->error("expected boolean");
 }
 
-template <typename T> static String
-integer_read_data_handler(Element *element, void *user_data)
+static int
+uint16_t_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    T *ptr = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return String(*ptr);
+    uint16_t *ptr = reinterpret_cast<uint16_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    int x;
+    if (op == Handler::h_read) {
+	str = String((int) *ptr);
+	return 0;
+    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+	*ptr = x;
+	return 0;
+    } else
+	return errh->error("expected uint16_t");
+}
+
+static int
+uint16_t_net_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
+{
+    uint16_t *ptr = reinterpret_cast<uint16_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    int x;
+    if (op == Handler::h_read) {
+	str = String((int) ntohs(*ptr));
+	return 0;
+    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+	*ptr = htons(x);
+	return 0;
+    } else
+	return errh->error("expected uint16_t");
+}
+
+static int
+uint32_t_net_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
+{
+    uint32_t *ptr = reinterpret_cast<uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    uint32_t x;
+    if (op == Handler::h_read) {
+	str = String(ntohl(*ptr));
+	return 0;
+    } else if (cp_integer(str, &x)) {
+	*ptr = htonl(x);
+	return 0;
+    } else
+	return errh->error("expected integer");
 }
 
 template <typename T> static int
-integer_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+integer_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    T *ptr = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_integer(str, ptr))
+    T *ptr = reinterpret_cast<T *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = String(*ptr);
+	return 0;
+    } else if (cp_integer(str, ptr))
 	return 0;
     else
 	return errh->error("expected integer");
 }
 
-static String
-atomic_uint32_t_read_data_handler(Element *element, void *user_data)
-{
-    atomic_uint32_t *ptr = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return String(ptr->value());
-}
-
 static int
-atomic_uint32_t_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+atomic_uint32_t_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    atomic_uint32_t *ptr = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
+    atomic_uint32_t *ptr = reinterpret_cast<atomic_uint32_t *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
     uint32_t value;
-    if (cp_integer(str, &value)) {
+    if (op == Handler::h_read) {
+	str = String(ptr->value());
+	return 0;
+    } else if (cp_integer(str, &value)) {
 	*ptr = value;
 	return 0;
     } else
@@ -2192,110 +2252,87 @@ atomic_uint32_t_write_data_handler(const String &str, Element *element, void *us
 }
 
 #if HAVE_FLOAT_TYPES
-static String
-double_read_data_handler(Element *element, void *user_data)
-{
-    double *ptr = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return String(*ptr);
-}
-
 static int
-double_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+double_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    double *ptr = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_double(str, ptr))
+    double *ptr = reinterpret_cast<double *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = String(*ptr);
+	return 0;
+    } else if (cp_double(str, ptr))
 	return 0;
     else
 	return errh->error("expected real number");
 }
 #endif
 
-static String
-string_read_data_handler(Element *element, void *user_data)
-{
-    String *ptr = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return *ptr;
-}
-
 static int
-string_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *)
+string_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *)
 {
-    String *ptr = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    *ptr = str;
+    String *ptr = reinterpret_cast<String *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read)
+	str = *ptr;
+    else
+	*ptr = str;
     return 0;
 }
 
-static String
-ip_address_read_data_handler(Element *element, void *user_data)
-{
-    IPAddress *ptr = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return ptr->unparse();
-}
-
 static int
-ip_address_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+ip_address_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    IPAddress *ptr = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_ip_address(str, ptr, element))
+    IPAddress *ptr = reinterpret_cast<IPAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = ptr->unparse();
+	return 0;
+    } if (cp_ip_address(str, ptr, element))
 	return 0;
     else
 	return errh->error("expected IP address");
 }
 
-static String
-ether_address_read_data_handler(Element *element, void *user_data)
-{
-    EtherAddress *ptr = reinterpret_cast<EtherAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return ptr->unparse();
-}
-
 static int
-ether_address_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+ether_address_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    EtherAddress *ptr = reinterpret_cast<EtherAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_ethernet_address(str, ptr, element))
+    EtherAddress *ptr = reinterpret_cast<EtherAddress *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = ptr->unparse();
+	return 0;
+    } else if (cp_ethernet_address(str, ptr, element))
 	return 0;
     else
 	return errh->error("expected Ethernet address");
 }
 
-static String
-timestamp_read_data_handler(Element *element, void *user_data)
-{
-    Timestamp *ptr = reinterpret_cast<Timestamp *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    return ptr->unparse();
-}
-
 static int
-timestamp_write_data_handler(const String &str, Element *element, void *user_data, ErrorHandler *errh)
+timestamp_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
 {
-    Timestamp *ptr = reinterpret_cast<Timestamp *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(user_data));
-    if (cp_time(str, ptr))
+    Timestamp *ptr = reinterpret_cast<Timestamp *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = ptr->unparse();
+	return 0;
+    } else if (cp_time(str, ptr))
 	return 0;
     else
 	return errh->error("expected timestamp");
 }
 
-void
-Element::add_data_handlers(const String &name, int flags, ReadHandlerCallback read_callback, WriteHandlerCallback write_callback, void *data)
+inline void
+Element::add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data)
 {
     uintptr_t x = reinterpret_cast<uintptr_t>(data) - reinterpret_cast<uintptr_t>(this);
-    if ((flags & Handler::OP_READ) && read_callback)
-	add_read_handler(name, read_callback, reinterpret_cast<void *>(x), flags);
-    if ((flags & Handler::OP_WRITE) && write_callback)
-	add_write_handler(name, write_callback, reinterpret_cast<void *>(x), flags);
+    set_handler(name, flags, callback, x, x);
 }
 
 /** @brief Register read and/or write handlers accessing @a data.
  *
  * @param name handler name
- * @param flags handler flags, containing at least one of Handler::OP_READ
- * and Handler::OP_WRITE
+ * @param flags handler flags, containing at least one of Handler::h_read
+ * and Handler::h_write
  * @param data pointer to data
  *
  * Registers read and/or write handlers named @a name for this element.  If
- * (@a flags & Handler::OP_READ), registers a read handler; if (@a flags &
- * Handler::OP_WRITE), registers a write handler.  These handlers read or set
+ * (@a flags & Handler::h_read), registers a read handler; if (@a flags &
+ * Handler::h_write), registers a write handler.  These handlers read or set
  * the data stored at @a *data, which might, for example, be an element
  * instance variable.  This data is unparsed and/or parsed using the expected
  * functions; for example, the <tt>bool</tt> version uses cp_unparse_bool()
@@ -2307,49 +2344,56 @@ Element::add_data_handlers(const String &name, int flags, ReadHandlerCallback re
 void
 Element::add_data_handlers(const String &name, int flags, uint8_t *data)
 {
-    add_data_handlers(name, flags, uint8_t_read_data_handler, uint8_t_write_data_handler, data);
+    add_data_handlers(name, flags, uint8_t_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, bool *data)
 {
-    add_data_handlers(name, flags, bool_read_data_handler, bool_write_data_handler, data);
+    add_data_handlers(name, flags, bool_data_handler, data);
+}
+
+/** @overload */
+void
+Element::add_data_handlers(const String &name, int flags, uint16_t *data)
+{
+    add_data_handlers(name, flags, uint16_t_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, int *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<int>, integer_write_data_handler<int>, data);
+    add_data_handlers(name, flags, integer_data_handler<int>, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, unsigned *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<unsigned>, integer_write_data_handler<unsigned>, data);
+    add_data_handlers(name, flags, integer_data_handler<unsigned>, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, atomic_uint32_t *data)
 {
-    add_data_handlers(name, flags, atomic_uint32_t_read_data_handler, atomic_uint32_t_write_data_handler, data);
+    add_data_handlers(name, flags, atomic_uint32_t_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, long *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<long>, integer_write_data_handler<long>, data);
+    add_data_handlers(name, flags, integer_data_handler<long>, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, unsigned long *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<unsigned long>, integer_write_data_handler<unsigned long>, data);
+    add_data_handlers(name, flags, integer_data_handler<unsigned long>, data);
 }
 
 #if HAVE_LONG_LONG
@@ -2357,14 +2401,14 @@ Element::add_data_handlers(const String &name, int flags, unsigned long *data)
 void
 Element::add_data_handlers(const String &name, int flags, long long *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<long long>, integer_write_data_handler<long long>, data);
+    add_data_handlers(name, flags, integer_data_handler<long long>, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, unsigned long long *data)
 {
-    add_data_handlers(name, flags, integer_read_data_handler<unsigned long long>, integer_write_data_handler<unsigned long long>, data);
+    add_data_handlers(name, flags, integer_data_handler<unsigned long long>, data);
 }
 #endif
 
@@ -2373,7 +2417,7 @@ Element::add_data_handlers(const String &name, int flags, unsigned long long *da
 void
 Element::add_data_handlers(const String &name, int flags, double *data)
 {
-    add_data_handlers(name, flags, double_read_data_handler, double_write_data_handler, data);
+    add_data_handlers(name, flags, double_data_handler, data);
 }
 #endif
 
@@ -2386,28 +2430,55 @@ Element::add_data_handlers(const String &name, int flags, double *data)
 void
 Element::add_data_handlers(const String &name, int flags, String *data)
 {
-    add_data_handlers(name, flags, string_read_data_handler, string_write_data_handler, data);
+    add_data_handlers(name, flags, string_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, IPAddress *data)
 {
-    add_data_handlers(name, flags, ip_address_read_data_handler, ip_address_write_data_handler, data);
+    add_data_handlers(name, flags, ip_address_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
 {
-    add_data_handlers(name, flags, ether_address_read_data_handler, ether_address_write_data_handler, data);
+    add_data_handlers(name, flags, ether_address_data_handler, data);
 }
 
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, Timestamp *data)
 {
-    add_data_handlers(name, flags, timestamp_read_data_handler, timestamp_write_data_handler, data);
+    add_data_handlers(name, flags, timestamp_data_handler, data);
+}
+
+/** @brief Register read and/or write handlers accessing @a data in network
+ * byte order.
+ *
+ * @param name handler name
+ * @param flags handler flags, containing at least one of Handler::h_read
+ * and Handler::h_write
+ * @param data pointer to data
+ *
+ * Registers read and/or write handlers named @a name for this element.  If
+ * (@a flags & Handler::h_read), registers a read handler; if (@a flags &
+ * Handler::h_write), registers a write handler.  These handlers read or set
+ * the data stored at @a *data, which might, for example, be an element
+ * instance variable.
+ */
+void
+Element::add_net_order_data_handlers(const String &name, int flags, uint16_t *data)
+{
+    add_data_handlers(name, flags, uint16_t_net_data_handler, data);
+}
+
+/** @overload */
+void
+Element::add_net_order_data_handlers(const String &name, int flags, uint32_t *data)
+{
+    add_data_handlers(name, flags, uint32_t_net_data_handler, data);
 }
 
 
@@ -2431,7 +2502,7 @@ configuration_handler(int operation, String &str, Element *e,
 	&& (!keyword || !cp_keyword(conf[argno], &value, &rest) || !rest))
 	gotit = 2;
 
-    if (operation == Handler::OP_READ) {
+    if (operation == Handler::h_read) {
 	if (gotit == 1)
 	    str = value;
 	else if (gotit == 2)
@@ -2448,8 +2519,9 @@ configuration_handler(int operation, String &str, Element *e,
 	// it mucks with the 'conf' array
 	String new_config = cp_unargvec(conf);
 
-	if (e->live_reconfigure(conf, errh) < 0)
-	    return -EINVAL;
+	int r = e->live_reconfigure(conf, errh);
+	if (r < 0)
+	    return r;
 	e->router()->set_econfiguration(e->eindex(), new_config);
     } else
 	return errh->error("missing mandatory arguments");
@@ -2483,7 +2555,7 @@ String
 Element::read_positional_handler(Element *element, void *user_data)
 {
     String str;
-    (void) configuration_handler(Handler::OP_READ, str, element, (uintptr_t) user_data, 0, ErrorHandler::silent_handler());
+    (void) configuration_handler(Handler::h_read, str, element, (uintptr_t) user_data, 0, ErrorHandler::silent_handler());
     return str;
 }
 
@@ -2518,7 +2590,7 @@ String
 Element::read_keyword_handler(Element *element, void *user_data)
 {
     String str;
-    (void) configuration_handler(Handler::OP_READ, str, element, -1, (const char *) user_data, ErrorHandler::silent_handler());
+    (void) configuration_handler(Handler::h_read, str, element, -1, (const char *) user_data, ErrorHandler::silent_handler());
     return str;
 }
 
@@ -2555,7 +2627,7 @@ Element::reconfigure_positional_handler(const String &arg, Element *e,
 					void *user_data, ErrorHandler *errh)
 {
     String str = arg;
-    return configuration_handler(Handler::OP_WRITE, str, e, (uintptr_t) user_data, 0, errh);
+    return configuration_handler(Handler::h_write, str, e, (uintptr_t) user_data, 0, errh);
 }
 
 /** @brief Standard write handler for reconfiguring an element by changing one
@@ -2595,7 +2667,7 @@ Element::reconfigure_keyword_handler(const String &arg, Element *e,
 				     void *user_data, ErrorHandler *errh)
 {
     String str = arg;
-    return configuration_handler(Handler::OP_WRITE, str, e, -1, (const char *) user_data, errh);
+    return configuration_handler(Handler::h_write, str, e, -1, (const char *) user_data, errh);
 }
 
 /** @brief Handle a low-level remote procedure call.

@@ -4,6 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
+ * Copyright (c) 2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -58,7 +59,7 @@ AlignmentInfo::configure(Vector<String> &conf, ErrorHandler *errh)
       int old_offset = _elem_offset[number];
       int old_icount = _elem_icount[number];
       if (parts.size() % 2 != 1)
-	errh->error("expected 'ELEMENTNAME CHUNK OFFSET [CHUNK OFFSET...]'");
+	errh->error("expected %<ELEMENTNAME CHUNK OFFSET [CHUNK OFFSET...]%>");
       _elem_offset[number] = _chunks.size();
       _elem_icount[number] = (parts.size() - 1) / 2;
       for (int j = 1; j < parts.size() - 1; j += 2) {
@@ -77,7 +78,7 @@ AlignmentInfo::configure(Vector<String> &conf, ErrorHandler *errh)
 			old_icount * sizeof(int)) != 0
 	      || memcmp(&_offsets[old_offset], &_offsets[_elem_offset[number]],
 			old_icount * sizeof(int)) != 0))
-	errh->error("conflicting AlignmentInfo for '%s'", parts[0].c_str());
+	errh->error("conflicting AlignmentInfo for %<%s%>", parts[0].c_str());
 
     }
   }
@@ -86,7 +87,7 @@ AlignmentInfo::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 bool
-AlignmentInfo::query1(Element *e, int port, int &chunk, int &offset) const
+AlignmentInfo::query1(const Element *e, int port, int &chunk, int &offset) const
 {
   int idx = e->eindex();
   if (idx < 0 || idx >= _elem_offset.size() || _elem_offset[idx] < 0
@@ -100,7 +101,7 @@ AlignmentInfo::query1(Element *e, int port, int &chunk, int &offset) const
 }
 
 bool
-AlignmentInfo::query(Element *e, int port, int &chunk, int &offset)
+AlignmentInfo::query(const Element *e, int port, int &chunk, int &offset)
 {
   if (void *a = e->router()->attachment("AlignmentInfo"))
     return ((AlignmentInfo *)a)->query1(e, port, chunk, offset);

@@ -15,6 +15,7 @@ CLICK_DECLS
  * Then it incrementally recalculates the IP checksum
  * and passes the packet to output 0.
  * The DSCP is the upper 6 bits of the IP TOS field.
+ * =sa SetIPECN
  */
 
 class SetIPDSCP : public Element { public:
@@ -24,7 +25,6 @@ class SetIPDSCP : public Element { public:
 
   const char *class_name() const		{ return "SetIPDSCP"; }
   const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const		{ return true; }

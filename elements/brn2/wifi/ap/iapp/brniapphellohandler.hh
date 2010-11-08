@@ -26,12 +26,13 @@
 #include <click/timer.hh>
 #include <click/dequeue.hh>
 
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+
 CLICK_DECLS
 
 class BRN2AssocList;
 class BrnIappEncap;
-class BRN2NodeIdentity;
-class Brn2LinkTable; 
 
 /*
  * =c

@@ -178,7 +178,8 @@ read_handler(Element *e, void *thunk)
     case H_STATS: {
       StringAccum sa;
       BRN2PacketQueueControl::Flow *acflow = f->getAcFlow();
-      double rate = acflow->_send_packets * acflow->_packetsize;
+      //TODO: using double doesn'z work in kernelmode !! other ideas ??
+      int rate = acflow->_send_packets * acflow->_packetsize;
       rate /= ( ( acflow->_end - acflow->_start ) / 1000 );
       sa << "Packets: " << acflow->_send_packets;
       sa << "\nRate: " << rate;

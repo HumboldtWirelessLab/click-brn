@@ -157,6 +157,7 @@ sub one_includeroot ($$) {
 	    s{\bextern\s+asmlinkage\b}{asmlinkage}g;
 	    s{\bextern\s+void\s+asmlinkage\b}{asmlinkage void}g;
 	    s&^notrace\s*((?:static)?\s*inline[^;]*)\{&$1 notrace;\n$1\{&mg;
+	    s&^((?:static)?\s*inline\s*)notrace\s*([^;]*)\{&$1 $2 notrace;\n$1 $2\{&mg;
 
 	    # advanced C initializers
 	    s{([\{,]\s*)\.\s*([a-zA-Z_]\w*)\s*=}{$1$2: }g;
@@ -198,6 +199,15 @@ sub one_includeroot ($$) {
 	    if ($d eq "mpspec.h") {
 		s<^\#define\s+(\w+)\s+\{\s*\{\s*\[\s*0\s*\.\.\.\s*(\w+)\s*-\s*1\s*\]\s*=\s*(.*?)\s*\}\s*\}><expand_array_initializer($1, $2, $3)>emg;
 	    }
+	    if ($d eq "kernel.h") {
+		# BUILD_BUG_ON_* cannot define a struct inside sizeof().
+		# Rather than negative-bitfield size, produce a negative
+		# array dimension.
+		s&sizeof\s*\(\s*struct\s*\{\s*\w+\s*:\s*-\s*\!\s*\!\s*\(e\)\s*;\s*\}\s*\)&(sizeof(int[-!!(e)])*(size_t)0)&g;
+	    }
+	    if ($d eq "sched.h") {
+		s<^(extern char ___assert_task_state)((?:.*?\n)*?.*?\;.*)$><\#ifndef __cplusplus\n$1$2\n\#endif>mg;
+	    }
 
 	    # unquote.
 	    $_ = sunprotect($_);
@@ -228,7 +238,8 @@ foreach my $i (@ARGV) {
 	    push @new_argv, $i;
 	} elsif (!$done{$1}) {
 	    $dir = "$outputroot/include$numdirs";
-	    -d $dir || mkdir $dir || die "fixincludes.pl: mkdir $dir: $!";
+	    -d $dir && system("rm -rf \"$dir\"");
+	    mkdir $dir || die "fixincludes.pl: mkdir $dir: $!";
 	    $done{$1} = $dir;
 	    ++$numdirs;
 	    one_includeroot($1, $dir);

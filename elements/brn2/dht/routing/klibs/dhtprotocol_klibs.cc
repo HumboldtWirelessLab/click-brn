@@ -28,14 +28,13 @@
 CLICK_DECLS
 
 WritablePacket *
-DHTProtocolKlibs::new_packet(EtherAddress *src, EtherAddress *dst, uint8_t ptype, DHTnodelist *dhtlist)
+DHTProtocolKlibs::new_packet(EtherAddress *src, EtherAddress */*dst*/, uint8_t ptype, DHTnodelist *dhtlist)
 {
   WritablePacket *hello_p = DHTProtocol::new_dht_packet(ROUTING_KLIBS, ptype, sizeof(struct klibs_protocolheader) +
                                                         ( dhtlist->size() * sizeof(struct klibs_rt_entry) ) );
   uint8_t *payload = DHTProtocol::get_payload(hello_p);
 
-  int result = DHTProtocol::set_src(hello_p,src->data());
-  result = DHTProtocol::set_dst(hello_p,dst->data());
+  /*int result = */DHTProtocol::set_src(hello_p,src->data());
 
   struct klibs_protocolheader *header = (struct klibs_protocolheader *)payload;
   struct klibs_rt_entry *rt_entries = (struct klibs_rt_entry *)&(payload[sizeof(struct klibs_protocolheader)]);

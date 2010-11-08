@@ -13,6 +13,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnconf.h"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
@@ -28,6 +29,7 @@ DHTRoutingKlibs::DHTRoutingKlibs():
   _lookup_timer(static_lookup_timer_hook,this),
   _packet_buffer_timer(static_packet_buffer_timer_hook,this)
 {
+  DHTRouting::init();
 }
 
 DHTRoutingKlibs::~DHTRoutingKlibs()
@@ -106,6 +108,8 @@ handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bo
 int
 DHTRoutingKlibs::initialize(ErrorHandler *)
 {
+  click_srandom(_me->_ether_addr.hashcode());
+
   if ( _linkstat )
     _linkstat->registerHandler(this,0,&handler);
 
@@ -260,7 +264,7 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
 
   dhtlist.del();
 
-  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_NEW_NODE);
 }
 
 void
@@ -353,14 +357,14 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
 
   dhtlist.del();
 
-  if ( notify_storage ) notify_callback(ROUTING_STATUS_UPDATE);
+  if ( notify_storage ) notify_callback(ROUTING_STATUS_NEW_NODE);
 }
 
 /****************************************************************************************
 ****************************** N O D E   F O R   K E Y *+********************************
 ****************************************************************************************/
 DHTnode *
-DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key)
+DHTRoutingKlibs::get_responsibly_node_for_key(md5_byte_t *key)
 {
   DHTnode *node;
 
@@ -406,12 +410,31 @@ DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key)
     memcpy(new_key,key,16);
     new_key[0] ^= 128;
 
-    return get_responsibly_node(new_key);
+    return get_responsibly_node_for_key(new_key);
   }
 
   click_chatter("no node");
   return NULL;
 }
+
+DHTnode *
+DHTRoutingKlibs::get_responsibly_node(md5_byte_t *key, int replica_number)
+{
+  if ( replica_number == 0 ) return get_responsibly_node_for_key(key);
+
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i < 8; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node_for_key(replica_key);
+}
+
 
 bool
 DHTRoutingKlibs::is_foreign(md5_byte_t *key)
@@ -614,7 +637,7 @@ DHTRoutingKlibs::get_nodelist(DHTnodelist *list, DHTnode *_dst, uint32_t group)
   }
 
   if ( _dst != NULL ) {                   //the dest of the packet should ( if it is not NULL) should be include in the packte
-    if ( ! list->includes(_dst) ) {       //so the desz knowns what i know about him
+    if ( ! list->contains(_dst) ) {       //so the desz knowns what i know about him
       list->add_dhtnode(_dst);
     }
   }
@@ -704,6 +727,8 @@ read_param(Element *e, void *thunk)
 
 void DHTRoutingKlibs::add_handlers()
 {
+  DHTRouting::add_handlers();
+
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
 }
 

@@ -40,6 +40,8 @@ class BrnRouteIdCache : public Element {
 
     uint32_t _id;
 
+    uint32_t _used;
+
     Timestamp _insert_time;
 
     RouteIdEntry(EtherAddress src, EtherAddress dst, EtherAddress last_hop, EtherAddress next_hop, uint32_t id) {
@@ -49,6 +51,8 @@ class BrnRouteIdCache : public Element {
       _next_hop = next_hop;
 
       _id = id;
+
+      _used = 0;
 
       _insert_time = Timestamp::now();
     }
@@ -67,6 +71,7 @@ class BrnRouteIdCache : public Element {
 
     void update() {
       _insert_time = Timestamp::now();
+      _used++;
     }
 
   };
@@ -92,7 +97,7 @@ class BrnRouteIdCache : public Element {
 
   BrnRouteIdCache::RouteIdEntry* get_entry(EtherAddress *src, uint32_t id);
   BrnRouteIdCache::RouteIdEntry* get_entry(EtherAddress *src, EtherAddress *dst);
-  void insert_entry(EtherAddress *src, EtherAddress *dst, EtherAddress *last_hop, EtherAddress *next_hop, uint32_t id);
+  BrnRouteIdCache::RouteIdEntry* insert_entry(EtherAddress *src, EtherAddress *dst, EtherAddress *last_hop, EtherAddress *next_hop, uint32_t id);
 
  public:
   //

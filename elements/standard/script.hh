@@ -139,7 +139,8 @@ Also, 'C<goto exit [CONDITION]>' and 'C<goto end [CONDITION]>' end execution
 of the script, like 'C<exit>' and 'C<end>' respectively.  'C<goto begin
 [CONDITION]>' transfers control to the first instruction, like 'C<loop>'.
 'C<goto error [CONDITION]>' ends execution of the script with an error, like
-'C<error>'.
+'C<error>'.  'C<goto stop [CONDITION]>' ends execution of the script and asks
+the driver to stop, like 'C<stop>'.
 
 =item 'C<loop>'
 
@@ -157,6 +158,12 @@ off the end of a script.
 End execution of this script.  In signal scripts, 'C<exit>' will I<not>
 reinstall the script as a signal handler.  In packet scripts, 'C<exit>' will
 drop the packet.
+
+=item 'C<stop>'
+
+End execution of this script as by 'C<end>', and additionally ask the driver
+to stop.  (A TYPE DRIVER Script, or DriverManager element, can intercept
+this request.)
 
 =item 'C<return> [VALUE]', 'C<returnq> [VALUE]'
 
@@ -212,8 +219,8 @@ return value is used as the output port number.
 =item C<PROXY>
 
 The script runs in response to I<any> handler (except Script's predefined
-handlers).  Within the script, the C<$0> variable equals the handler's name.
-Also, the C<$write> variable is "true" if the handler was called as a write
+handlers).  Within the script, the C<$0> variable equals the handler's name,
+and the C<$write> variable is "true" if the handler was called as a write
 handler.  For example, consider:
 
    s :: Script(TYPE PROXY,
@@ -359,6 +366,15 @@ Given zero arguments, returns a random integer between 0 and RAND_MAX.  Given
 one argument N, returns a random integer between 0 and N-1.  Given two
 arguments N1 and N2, returns a random integer between N1 and N2.
 
+=h length "read with parameters"
+
+Returns the length of its parameter string as a decimal number.  For
+example, 'C<read abcdef>' returns "C<5>".
+
+=h unquote "read with parameters"
+
+Returns its parameter string with one layer of quotes removed.
+
 =h readable, writable "read with parameters"
 
 Parses its parameters as a space-separated list of handler names.  Returns
@@ -371,8 +387,14 @@ Returns the current timestamp.
 =h cat "read with parameters"
 
 User-level only.  Argument is a filename; reads and returns the file's
-contents.  This handler is "private," meaning that it is not accessible via
-ControlSocket.
+contents.  This handler is not accessible via ControlSocket.
+
+=h kill "read with parameters"
+
+User-level only.  Argument is a signal ID followed by one or more process
+IDs.  Those processes are killed by that signal.  This handler is not
+accessible via ControlSocket.  The "$$" variable may be useful when calling
+C<kill>; it expands to the driver's process ID.
 
 =a DriverManager
 
@@ -398,13 +420,15 @@ class Script : public Element { public:
     void run_timer(Timer *);
 
     enum Insn {
-	INSN_INITIAL, INSN_WAIT_STEP, INSN_WAIT_TIME, // order required
+	INSN_INITIAL, INSN_WAIT_STEP, INSN_WAIT_TIME,
 	INSN_PRINT, INSN_PRINTN, INSN_READ, INSN_READQ, INSN_WRITE, INSN_WRITEQ,
 	INSN_SET, insn_setq, insn_init, insn_initq, insn_export, insn_exportq,
 	INSN_SAVE, INSN_APPEND,
-	INSN_STOP, INSN_END, INSN_EXIT, INSN_LABEL, INSN_GOTO, INSN_RETURN,
-	insn_returnq, insn_error, insn_errorq,
-	INSN_WAIT_PSEUDO, INSN_LOOP_PSEUDO
+	INSN_LABEL, INSN_GOTO, INSN_RETURN, insn_returnq,
+	INSN_WAIT_PSEUDO, INSN_LOOP_PSEUDO,
+	// negative instructions are also valid label constants
+	insn_exit = -1, insn_end = -2, insn_stop = -3, insn_error = -4,
+	insn_errorq = -5
     };
 
   private:
@@ -415,8 +439,7 @@ class Script : public Element { public:
     };
 
     enum {
-	max_jumps = 1000, STEP_NORMAL = 0, STEP_ROUTER, STEP_TIMER, STEP_JUMP,
-	LABEL_EXIT = -1, LABEL_END = -2, label_error = -3, LABEL_BEGIN = 0
+	max_jumps = 1000, STEP_NORMAL = 0, STEP_ROUTER, STEP_TIMER, STEP_JUMP
     };
 
     Vector<int> _insns;
@@ -452,7 +475,7 @@ class Script : public Element { public:
 	AR_LT, AR_EQ, AR_GT, AR_GE, AR_NE, AR_LE, // order is important
 	AR_FIRST, AR_NOT, AR_SPRINTF, ar_random, ar_cat,
 	ar_and, ar_or, ar_nand, ar_nor, ar_now, ar_if, ar_in,
-	ar_readable, ar_writable, ar_readexport
+	ar_readable, ar_writable, ar_length, ar_unquote, ar_kill
     };
 
     void add_insn(int, int, int = 0, const String & = String());
@@ -463,6 +486,7 @@ class Script : public Element { public:
 
     static int step_handler(int, String&, Element*, const Handler*, ErrorHandler*);
     static int arithmetic_handler(int, String&, Element*, const Handler*, ErrorHandler*);
+    static String read_export_handler(Element*, void*);
     static int star_write_handler(const String&, Element*, void*, ErrorHandler*);
 
     friend class DriverManager;

@@ -35,15 +35,17 @@ BRN2HotSpotsConnector::configure(Vector<String> &conf, ErrorHandler* errh)
       "PACKETPORT", cpkP+cpkM, cpInteger, /*"port of packet",*/ &_packet_port,
       cpEnd) < 0)
         return -1;
- 
+
   return 0;
 }
 
 int
 BRN2HotSpotsConnector::initialize(ErrorHandler *)
 {
+  click_random_srandom();
+
   _timer.initialize(this);
-  _timer.schedule_after_msec( (_start_offset * 1000 ) + ( random() % 5000 ) );
+  _timer.schedule_after_msec( (_start_offset * 1000 ) + ( click_random() % 5000 ) );
 
   _state = 0;
 

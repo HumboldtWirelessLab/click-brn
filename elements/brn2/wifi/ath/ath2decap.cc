@@ -30,14 +30,17 @@
 #include <elements/wifi/athdesc.h>
 #include <elements/brn2/wifi/brnwifi.h>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "ath2decap.hh"
 #include "ath2_desc.h"
 
 CLICK_DECLS
 
-Ath2Decap::Ath2Decap()
+Ath2Decap::Ath2Decap():
+    _cst(NULL)
 {
+  BRNElement::init();
 }
 
 Ath2Decap::~Ath2Decap()
@@ -52,6 +55,7 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
 
   ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
+                     "CHANNELSTATS", cpkP, cpElement, &_cst,
                      cpEnd);
   return ret;
 }
@@ -96,10 +100,18 @@ Ath2Decap::simple_action(Packet *p)
     eh = WIFI_EXTRA_ANNO(q);
     memset(eh, 0, sizeof(click_wifi_extra));
     eh->magic = WIFI_EXTRA_MAGIC;
+
     if (desc->frame_len == 0) {
       struct ar5212_rx_status *rx_desc = (struct ar5212_rx_status *) (q->data() + 16);
       /* rx */
       eh->rate = ratecode_to_dot11(rx_desc->rx_rate);
+
+      if ( eh->rate == 0 ) {
+        BRN_INFO("Unknown ratecode: %d",rx_desc->rx_rate);
+        eh->flags |= WIFI_EXTRA_RX_ERR;
+        eh->flags |= WIFI_EXTRA_RX_ZERORATE_ERR;
+      }
+
       eh->rssi = rx_desc->rx_rssi;
       if (!rx_desc->rx_ok) {
         eh->flags |= WIFI_EXTRA_RX_ERR;
@@ -138,12 +150,19 @@ Ath2Decap::simple_action(Packet *p)
     if ( eh->retries < ath2_h->anno.tx.ts_longretry )
       eh->retries = ath2_h->anno.tx.ts_longretry;
 
+    if ( _cst != NULL ) _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.tx.ts_channel_utility, 0, 0);
+
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel); 
   }
   else                                                                      //RX
   {
+    bool rx_error = true;
     switch (ath2_h->anno.rx.rs_status) {
-      //case 0:   //OK
+      case 0:   //OK
+          {
+            rx_error = false;
+            break; //nothing to do
+          }
       case 1:   //CRC
           {
             eh->flags |= WIFI_EXTRA_RX_CRC_ERR;
@@ -154,20 +173,50 @@ Ath2Decap::simple_action(Packet *p)
             eh->flags |= WIFI_EXTRA_RX_PHY_ERR;
             break;
           }
-      //case 4:  //FIFO
-      //case 8:  //DECRYPT
-      //case 16: //MIC
+      case 4:  //FIFO
+          {
+            eh->flags |= WIFI_EXTRA_RX_FIFO_ERR;
+            break;
+          }
+      case 8:  //DECRYPT
+          {
+            eh->flags |= WIFI_EXTRA_RX_DECRYPT_ERR;
+            break;
+          }
+      case 16: //MIC
+          {
+            eh->flags |= WIFI_EXTRA_RX_MIC_ERR;
+            break;
+          }
+      default:
+          rx_error = false;
     }
+
+    if ( ! rx_error && ( eh->flags & WIFI_EXTRA_RX_PHY_ERR ) ) {
+      click_chatter("ERROR mismatch");
+#ifndef CLICK_LINUXMODULE
+      exit(0);
+#endif
+    }
+
     eh->silence = ath2_h->anno.rx.rs_noise;
     eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
+
+    if ( _cst != NULL ) _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.rx.rs_channel_utility, 0, 0);
   }
 
 
   q->pull(sizeof(struct ath2_header));
 
   return q;
+}
+
+void
+Ath2Decap::add_handlers()
+{
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

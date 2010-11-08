@@ -162,7 +162,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
     const click_brn_dsr *brn_dsr =
           (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
-    BRN_DEBUG(" * receiving dsr_rrep packet; port 1; #ID %d", ntohs(brn_dsr->body.rreq.dsr_id));
+    BRN_DEBUG(" * receiving dsr_rrep packet; port 1; #ID %d", ntohs(brn_dsr->dsr_id));
 
     assert(brn_dsr->dsr_type == BRN_DSR_RREP);
 
@@ -200,20 +200,20 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     _route_querier->set_blacklist(last_forwarder, BRN_DSR_BLACKLIST_NOENTRY);
 
-    if (_me->isIdentical(&dst_addr) || (_link_table->get_host_metric_to_me(dst_addr) == 50 )) {
+    if (_me->isIdentical(&dst_addr) || (_link_table->is_associated(dst_addr))) {
       // the first address listed in the route reply's route must be
       // the destination which we queried; this is not necessarily
       // the same as the destination in the IP header because we
       // might be doing reply-from-cache  
       EtherAddress reply_dst = EtherAddress(brn_dsr->dsr_src.data);
       BRN_DEBUG(" * killed (route to %s reached final destination, %s, #ID %d)",
-          reply_dst.unparse().c_str(), dst_addr.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+          reply_dst.unparse().c_str(), dst_addr.unparse().c_str(), ntohs(brn_dsr->dsr_id));
       _route_querier->stop_issuing_request(reply_dst);
       p_in->kill();
       return;
     } else {
       BRN_DEBUG(" * forwarding RREP towards destination %s, #ID %d",
-        dst_addr.unparse().c_str(), ntohs(brn_dsr->body.rreq.dsr_id));
+        dst_addr.unparse().c_str(), ntohs(brn_dsr->dsr_id));
       forward_rrep(p_in); // determines next hop, sets dest ip anno, and then pushes out to arp table.
       return;
     }

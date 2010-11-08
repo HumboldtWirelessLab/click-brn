@@ -1,24 +1,49 @@
 #include <click/config.h>
+#include <click/etheraddress.hh>
+#include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/glue.hh>
+#include <click/straccum.hh>
+#include <click/timer.hh>
+#include <click/vector.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
 #include "db.hh"
 
 CLICK_DECLS
 
 BRNDB::BRNDB()
 {
+  BRNElement::init();
 }
 
 BRNDB::~BRNDB()
 {
 }
 
+int BRNDB::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+  if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
+    return -1;
+
+  return 0;
+}
+
+int BRNDB::initialize(ErrorHandler *)
+{
+  return 0;
+}
+
 int
-BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen)
+BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, uint8_t replica)
 {
   DBrow *_new_row;
 
   _new_row = new DBrow();
 
-  _new_row->md5_key = new md5_byte_t[16];
   memcpy(_new_row->md5_key,md5_key, 16);
 
   _new_row->key = new uint8_t[keylen];
@@ -29,10 +54,21 @@ BRNDB::insert(md5_byte_t *md5_key, uint8_t *key, uint16_t keylen, uint8_t *value
   memcpy(_new_row->value,value,valuelen);
   _new_row->valuelen = valuelen;
 
+  _new_row->replica = replica;
+
   _table.push_back(_new_row);
 
   return 0;
 }
+
+int
+BRNDB::insert(BRNDB::DBrow *row)
+{
+  _table.push_back(row);
+  return 0;
+}
+
+
 
 BRNDB::DBrow *
 BRNDB::getRow(char *key, uint16_t keylen)
@@ -103,6 +139,12 @@ BRNDB::delRow(md5_byte_t *md5_key) {
   return 0;
 }
 
+int
+BRNDB::delRow(int index) {
+  delete _table[index];
+  _table.erase(_table.begin() + index);
+  return 0;
+}
 
 int
 BRNDB::size()
@@ -110,8 +152,17 @@ BRNDB::size()
   return _table.size();
 }
 
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
+
+void BRNDB::add_handlers()
+{
+  BRNElement::add_handlers();
+}
+
 #include <click/vector.cc>
 template class Vector<BRNDB::DBrow*>;
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(BRNDB)
+EXPORT_ELEMENT(BRNDB)
