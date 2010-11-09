@@ -8,7 +8,7 @@
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "openbeacondecap.hh"
-#include "ieee80211_monitor_openbeacon.h"
+#include "openbeacon_comunication.h"
 
 CLICK_DECLS
 
@@ -35,9 +35,35 @@ OpenBeaconDecap::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 OpenBeaconDecap::simple_action(Packet *p)
 {
-  p->pull(sizeof(struct openbeacon_header));
-
-  return p;
+	Click2OBD_header *crh = (Click2OBD_header *)p->data(); 
+	uint8_t e_dhost[6], e_shost[6];
+	unsigned int i=0;
+	
+	WritablePacket *wp;
+	click_wifi_extra *ceh = NULL;
+	
+        for(i=0; i<6; i++) e_dhost[i] = 0;
+	for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
+		e_dhost[ i + 6 - sizeof( crh->openbeacon_dmac ) - 1 ] = crh->openbeacon_dmac[i-1];
+		e_shost[ i + 6 - sizeof( crh->openbeacon_smac ) - 1 ] = crh->openbeacon_smac[i-1];
+	}
+	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel;
+	
+	p->pull( sizeof(Click2OBD_header)-12 );
+	wp = (WritablePacket *)p;
+		
+	p->set_mac_header( p->data(), 14);
+        for(i=0; i<6; i++) {
+		wp->data()[i]     = e_dhost[i];
+		wp->data()[i+6] = e_shost[i];
+	}
+	
+	ceh = WIFI_EXTRA_ANNO(p);
+	ceh->rate		= rate;         	
+	ceh->power 	= power;
+	BRNPacketAnno::set_channel_anno(p, channel,  OPERATION_SET_CHANNEL_BEFORE_PACKET);
+	
+	return p;
 }
 
 CLICK_ENDDECLS

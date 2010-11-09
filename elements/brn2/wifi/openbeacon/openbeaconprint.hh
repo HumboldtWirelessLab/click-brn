@@ -29,7 +29,7 @@ class OpenBeaconPrint : public Element {
 
   private:
     int _debug;
-
+    String _label;
 };
 
 CLICK_ENDDECLS
