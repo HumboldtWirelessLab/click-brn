@@ -51,6 +51,7 @@ FixPointNumber::unparse() {
   int showprep = number % PREFACTOR;
   if ((showprep != 0) && (showprep < (PREFACTOR/10)))
     for (int s = showprep; s < (PREFACTOR/10); s *= 10) sa << "0";
+  if ( showprep < 0 ) showprep *= -1;
   sa << showprep;
 
   return sa.take_string();
