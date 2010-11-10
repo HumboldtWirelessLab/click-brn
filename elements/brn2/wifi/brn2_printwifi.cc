@@ -195,7 +195,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
   }
   sa << "] ";
 
-  sa << "({";
+  sa << "rates: ({";
   for (int x = 0; x < basic_rates.size(); x++) {
     sa << basic_rates[x];
     if (x != basic_rates.size()-1) {
@@ -315,7 +315,7 @@ BRN2PrintWifi::rates_string(Vector<int> rates) {
       other_rates.push_back(rates[x]);
     }
   }
-  sa << "({";
+  sa << "rates: ({";
   for (int x = 0; x < basic_rates.size(); x++) {
     sa << (basic_rates[x] & WIFI_RATE_VAL);
     if (x != basic_rates.size()-1) {
@@ -441,10 +441,10 @@ BRN2PrintWifi::simple_action(Packet *p)
           sa << " ssid: (invalid_ssid)";
       }
 
-      sa << "listen_int " << l_int << " ";
+      sa << "listen_int: " << l_int << " ";
       sa << capability_string(capability);
 
-      sa << " rates " << rates_s;
+      sa << rates_s;
       sa << " ";
       break;
 
