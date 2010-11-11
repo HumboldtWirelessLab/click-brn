@@ -40,8 +40,7 @@
 CLICK_DECLS
 
 AlarmingForwarder::AlarmingForwarder():
-  alarm_id(0),
-  _ttl_limit(DEFAULT_HOP_LIMT)
+  alarm_id(0)
 {
   BRNElement::init();
 }
@@ -80,10 +79,10 @@ AlarmingForwarder::push( int port, Packet *p)
 
   if ( port == 0 ) { //from local
     result = _as->update_alarm(ah->type, _nodeid->getMasterAddress(), alarm_id, 0, _nodeid->getMasterAddress());
-    WritablePacket *p_n = AlarmingProtocol::add_node(p, _nodeid->getMasterAddress(), MAX_TTL, alarm_id);
+    WritablePacket *p_n = AlarmingProtocol::add_node(p, _nodeid->getMasterAddress(), START_TTL, alarm_id);
     alarm_id++;
 
-    WritablePacket *p_out = BRNProtocol::add_brn_header(p_n, BRN_PORT_ALARMINGPROTOCOL, BRN_PORT_ALARMINGPROTOCOL, MAX_TTL, 0);
+    WritablePacket *p_out = BRNProtocol::add_brn_header(p_n, BRN_PORT_ALARMINGPROTOCOL, BRN_PORT_ALARMINGPROTOCOL, START_TTL, 0);
     BRNPacketAnno::set_ether_anno(p_out, *_nodeid->getMasterAddress(), brn_etheraddress_broadcast, ETHERTYPE_BRN);
 
     if ( _rssi_delay ) {
@@ -105,20 +104,20 @@ AlarmingForwarder::push( int port, Packet *p)
 
       EtherAddress ea = EtherAddress(an->node_ea);
 
-      int result = _as->update_alarm(ah->type, &ea, an->id, (an->ttl - BRNPacketAnno::ttl_anno(p)), &fwd_ea);
+      int result = _as->update_alarm(ah->type, &ea, an->id, (an->ttl - BRNPacketAnno::ttl_anno(p)) + 1, &fwd_ea);
 
       /* if node is to far or already known, mark to delete it */
-      if (((an->ttl - BRNPacketAnno::ttl_anno(p)) > DEFAULT_HOP_LIMT ) ||
-          ((result & UPDATE_ALARM_NEED_FORWARD) == 0 )) {
-        an->ttl = DEFAULT_HOP_INVALID;
-//        BRN_ERROR("DELETE INFO");
+      if (((an->ttl - BRNPacketAnno::ttl_anno(p)) >= _as->_hop_limit ) ||
+          ((result & _as->_forward_flags) == 0 )) {
+          an->ttl = DEFAULT_HOP_INVALID;
+          BRN_ERROR("DELETE INFO");
       }
     }
 
     /*
      * Remove node, which are to far and already forwarded
      */
-    no_nodes = AlarmingProtocol::remove_node_with_high_ttl(p, BRNPacketAnno::ttl_anno(p) + _ttl_limit);
+    no_nodes = AlarmingProtocol::remove_node_with_high_ttl(p, BRNPacketAnno::ttl_anno(p) + _as->_hop_limit - 1);
 
     /*
      *

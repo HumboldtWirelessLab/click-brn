@@ -104,7 +104,6 @@ AlarmingRetransmit::retransmit_alarm()
   WritablePacket *p = NULL;
 
   int send_packets = 0;
-  int base_ttl = 150;
 
   _as->update_neighbours();
 
@@ -112,13 +111,13 @@ AlarmingRetransmit::retransmit_alarm()
   Vector<AlarmingState::AlarmNode*> nodes;
 
 //  click_chatter("get inclomplete types");
-  _as->get_incomlete_forward_types(90, &alarm_types);
+  _as->get_incomlete_forward_types(_as->_min_neighbour_fraction, &alarm_types);
 
   for ( int at_i = (alarm_types.size()-1); at_i >= 0; at_i-- ) {
     int alarm = alarm_types[at_i];
 
 //    click_chatter("get node for type %d",alarm);
-    _as->get_incomlete_forward_nodes(90, 5, alarm, &nodes);
+    _as->get_incomlete_forward_nodes(_as->_min_neighbour_fraction, _as->_retry_limit,  _as->_hop_limit, alarm, &nodes);
 
     for ( int an_i = (nodes.size()-1); an_i >= 0; an_i-- ) {
       AlarmingState::AlarmNode *an = nodes[an_i];
@@ -128,7 +127,7 @@ AlarmingRetransmit::retransmit_alarm()
 
         if ( p == NULL ) p = AlarmingProtocol::new_alarming_packet(alarm);
 
-        p = AlarmingProtocol::add_node(p, &(an->_ea), base_ttl + ai->_hops, ai->_id);
+        p = AlarmingProtocol::add_node(p, &(an->_ea), START_TTL + ai->_hops, ai->_id);
         ai->_retries++;
       }
     }
@@ -138,7 +137,7 @@ AlarmingRetransmit::retransmit_alarm()
     if ( p != NULL ) {
  //     click_chatter("Retransmit");
 
-      WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_ALARMINGPROTOCOL, BRN_PORT_ALARMINGPROTOCOL, base_ttl, 0);
+      WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_ALARMINGPROTOCOL, BRN_PORT_ALARMINGPROTOCOL, START_TTL, 0);
       BRNPacketAnno::set_ether_anno(p_out, *_nodeid->getMasterAddress(), brn_etheraddress_broadcast, ETHERTYPE_BRN);
       p_out->timestamp_anno() = Timestamp::now() + Timestamp(0, click_random() % 5);
 

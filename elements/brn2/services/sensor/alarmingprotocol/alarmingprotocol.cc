@@ -50,7 +50,7 @@ AlarmingProtocol::get_node_struct(Packet *p, uint8_t node_index)
 struct alarming_node*
 AlarmingProtocol::get_node_struct(Packet *p, EtherAddress *ea, uint8_t id)
 {
-  int index = sizeof(struct alarming_header);
+  uint32_t index = sizeof(struct alarming_header);
 
   while ( index < p->length() ) {
     struct alarming_node *an = (struct alarming_node *)&(p->data()[index]);

@@ -14,7 +14,7 @@
 #define UPDATE_ALARM_UPDATE_HOPS    4
 #define UPDATE_ALARM_NEW_FORWARDER  8
 
-#define UPDATE_ALARM_NEED_FORWARD ( UPDATE_ALARM_NEW_NODE | UPDATE_ALARM_NEW_ID )
+#define UPDATE_ALARM_NEED_FORWARD ( UPDATE_ALARM_NEW_NODE | UPDATE_ALARM_NEW_ID | UPDATE_ALARM_UPDATE_HOPS )
 
 CLICK_DECLS
 
@@ -112,9 +112,17 @@ class AlarmingState : public BRNElement {
   void update_neighbours();
 
   void get_incomlete_forward_types(int max_fraction, Vector<int> *types);
-  void get_incomlete_forward_nodes(int max_fraction, int max_retries, int type, Vector<AlarmNode*> *nodes);
+  void get_incomlete_forward_nodes(int max_fraction, int max_retries, int max_hops, int type, Vector<AlarmNode*> *nodes);
+
+  int _hop_limit;
+  int _retry_limit;
+
+  int _min_neighbour_fraction;
+
+  uint32_t _forward_flags;
 
  private:
+
   Brn2LinkTable *_lt;
 };
 

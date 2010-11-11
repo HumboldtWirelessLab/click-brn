@@ -11,10 +11,6 @@
 #include "alarmingstate.hh"
 #include "alarmingprotocol.hh"
 
-#define DEFAULT_HOP_INVALID 255
-#define DEFAULT_HOP_LIMT 10
-#define MAX_TTL 100
-
 CLICK_DECLS
 
 class AlarmingForwarder : public BRNElement {

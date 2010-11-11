@@ -7,6 +7,15 @@
 
 CLICK_DECLS
 
+#define DEFAULT_HOP_INVALID 255
+#define DEFAULT_HOP_LIMT 5
+
+#define START_TTL 150
+
+#define DEFAULT_RETRY_LIMIT 3
+
+#define DEFAULT_MIN_NEIGHBOUT_FRACTION 95
+
 struct alarming_header {
   uint8_t type;
 } __attribute__ ((packed));
