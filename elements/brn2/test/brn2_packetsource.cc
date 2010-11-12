@@ -62,7 +62,10 @@ BRN2PacketSource::initialize(ErrorHandler *)
 
   _timer.initialize(this);
 
-  set_active(_active);
+  if ( _active && ( _interval > 0 )) {
+    _seq_num = 1;
+    _timer.reschedule_after_msec(_interval);
+  }
 
   return 0;
 }
