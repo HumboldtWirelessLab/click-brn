@@ -14,7 +14,7 @@
 CLICK_DECLS
 
 BRN2PacketSource::BRN2PacketSource()
-  : _active(true),
+  : _active(false),
     _timer(this),
     _burst(1),
     _channel(0),
