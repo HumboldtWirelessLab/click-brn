@@ -16,7 +16,11 @@ SetTXRates::SetTXRates():
     _rate1(0),
     _rate2(0),
     _rate3(0),
-    _tries0(0),
+#ifdef CLICK_NS
+    _tries0(2),
+#else
+    _tries0(1),
+#endif
     _tries1(0),
     _tries2(0),
     _tries3(0)
@@ -51,14 +55,19 @@ Packet *
 SetTXRates::simple_action(Packet *p)
 {
   click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  ceh->magic = WIFI_EXTRA_MAGIC;
 
-  ceh->rate = _rate0;
+  ceh->rate = _rate0 ? _rate0 : 2;
   ceh->rate1 = _rate1;
   ceh->rate2 = _rate2;
   ceh->rate3 = _rate3;
 
-/* NS1 add one try for first bitrate, so sub one here */
+#ifdef CLICK_NS
+/* NS2 add one try for first bitrate, so sub one here */
   ceh->max_tries = _tries0 - 1;
+#else
+  ceh->max_tries = _tries0;
+#endif
   ceh->max_tries1 = _tries1;
   ceh->max_tries2 = _tries2;
   ceh->max_tries3 = _tries3;
