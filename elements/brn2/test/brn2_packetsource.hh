@@ -43,6 +43,8 @@ class BRN2PacketSource : public Element {
 
   bool _active;
 
+  void set_active(bool set_active);
+
  private:
   int _interval;
 

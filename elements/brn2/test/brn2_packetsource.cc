@@ -60,12 +60,10 @@ BRN2PacketSource::initialize(ErrorHandler *)
 
   click_random_srandom();
 
-  if ( _interval > 0 ) {
-    _timer.initialize(this);
-    _timer.schedule_after_msec(_interval + ( click_random() % _interval ) );
+  _timer.initialize(this);
 
-    _seq_num = 1;
-  }
+  set_active(_active);
+
   return 0;
 }
 
@@ -76,9 +74,10 @@ BRN2PacketSource::run_timer(Timer *t)
 
   if ( t == NULL ) click_chatter("Timer is NULL");
 
-  _timer.reschedule_after_msec(_interval);
-
   if ( _active ) {
+
+    _timer.reschedule_after_msec(_interval);
+
     for ( uint32_t i = 0; i < _burst; i++) {
       packet_out = createpacket(_size);
 
@@ -92,7 +91,26 @@ BRN2PacketSource::run_timer(Timer *t)
   }
 }
 
-void BRN2PacketSource::push( int port, Packet *packet )
+void
+BRN2PacketSource::set_active(bool set_active)
+{
+  if ( _active == set_active ) return;
+
+  if ( set_active ) {
+    if ( _interval <= 0 ) return;
+
+    _seq_num = 1;
+    _timer.reschedule_after_msec(_interval);
+  } else {
+    _timer.clear();
+  }
+
+  _active = set_active;
+
+}
+
+void
+BRN2PacketSource::push( int port, Packet *packet )
 {
   if ( port == 0 )
     output(0).push(packet);
@@ -147,7 +165,7 @@ write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/
 
       bool a;
       cp_bool(args[0] ,&a);
-      ps->_active = a;
+      ps->set_active(a);
       break;
     }
   }
