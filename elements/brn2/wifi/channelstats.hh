@@ -22,6 +22,7 @@
 #define CLICK_CHANNELSTATS_HH
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/timer.hh>
 
 #define STATE_UNKNOWN  0
 #define STATE_OK       1
@@ -113,6 +114,8 @@ class ChannelStats : public Element {
     const char *port_count() const  { return "1/1"; }
 
     int configure(Vector<String> &conf, ErrorHandler* errh);
+    int initialize(ErrorHandler *);
+    void run_timer(Timer *);
 
     void add_handlers();
 
@@ -131,6 +134,9 @@ class ChannelStats : public Element {
     int32_t calc_age; //maximum age of pakets, which are considered in the calculation (default)
 
   private:
+
+    void readProcHandler();
+
     PacketList _packet_list;
     PacketListHW _packet_list_hw;
 
@@ -143,6 +149,10 @@ class ChannelStats : public Element {
 
     struct airtime_stats stats;
     Timestamp _last_update;
+
+    String _proc_file;
+    int _proc_interval;
+    Timer _proc_timer;
 
 };
 

@@ -25,6 +25,8 @@
 #include <click/vector.hh>
 #include <click/bighashmap.hh>
 #include <click/error.hh>
+#include <click/userutils.hh>
+#include <click/timer.hh>
 #include <clicknet/wifi.h>
 
 #include <elements/wifi/bitrate.hh>
@@ -39,7 +41,10 @@ ChannelStats::ChannelStats():
     max_age(1000),
     hw_busy(0),
     hw_rx(0),
-    hw_tx(0)
+    hw_tx(0),
+    _proc_file(),
+    _proc_interval(0),
+    _proc_timer(this)
 {
   stats.last_update = Timestamp::now();
   _last_update = Timestamp::now();
@@ -57,11 +62,34 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 
   ret = cp_va_kparse(conf, this, errh,
                      "MAX_AGE", cpkP, cpInteger, &max_age,
+                     "PROCFILE", cpkP, cpString, &_proc_file,
+                     "PROCINTERVAL", cpkP, cpInteger, &_proc_interval,
                      "DEBUG", cpkP, cpBool, &_debug,
                      cpEnd);
 
   return ret;
 }
+
+int
+ChannelStats::initialize(ErrorHandler *)
+{
+  _proc_timer.initialize(this);
+
+  if ( _proc_interval > 0 )
+    _proc_timer.schedule_after_msec(_proc_interval);
+  return 0;
+}
+
+void
+ChannelStats::run_timer(Timer */*t*/)
+{
+  readProcHandler();
+
+  if ( _proc_interval > 0 )
+    _proc_timer.schedule_after_msec(_proc_interval);
+}
+
+
 
 /*********************************************/
 /************* RX BASED STATS ****************/
@@ -81,7 +109,7 @@ ChannelStats::push(int port, Packet *p)
       t3 = t2 + ceh->max_tries3;
 
       PacketInfo *new_pi = new PacketInfo();
-      new_pi->_rx_time = Timestamp::now(); //p->timestamp_anno()
+      new_pi->_rx_time = p->timestamp_anno();
       new_pi->_length = p->length();
       new_pi->_foreign = false;
       new_pi->_channel = BRNPacketAnno::channel_anno(p);
@@ -103,7 +131,7 @@ ChannelStats::push(int port, Packet *p)
   } else {
     PacketInfo *new_pi = new PacketInfo();
 
-    new_pi->_rx_time = Timestamp::now(); //p->timestamp_anno()
+    new_pi->_rx_time = p->timestamp_anno();
     new_pi->_rate = ceh->rate;
     new_pi->_length = p->length() + 4;   //CRC
     new_pi->_foreign = true;
@@ -226,12 +254,34 @@ ChannelStats::clear_old_hw()
   }
 }
 
+/*************** PROC HANDLER ****************/
+
+void
+ChannelStats::readProcHandler()
+{
+  String raw_info = file_string(_proc_file);
+  Vector<String> args;
+  Timestamp now = Timestamp::now();
+
+  int busy, rx, tx;
+
+  cp_spacevec(raw_info, args);
+
+  if ( args.size() > 6 ) {
+    cp_integer(args[1],&busy);
+    cp_integer(args[3],&rx);
+    cp_integer(args[5],&tx);
+
+    addHWStat(&now, busy, rx, tx);
+  }
+}
+
 /*********************************************/
 /************ CALCULATE STATS ****************/
 /*********************************************/
 
 struct airtime_stats *
-ChannelStats::get_stats(int time) {
+ChannelStats::get_stats(int /*time*/) {
   calc_stats(&stats);
   return &stats;
 }
