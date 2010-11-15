@@ -19,8 +19,6 @@ CLICK_CXX_UNPROTECT
 # include <unistd.h>
 #endif
 
-#define CLICK_DEBUG_SCHEDULING 0
-
 // NB: user must #include <click/task.hh> before <click/routerthread.hh>.
 // We cannot #include <click/task.hh> ourselves because of circular #include
 // dependency.
@@ -73,15 +71,24 @@ class RouterThread
 
     inline void wake();
 
+    enum { S_PAUSED, S_BLOCKED, S_TIMERWAIT,
+	   S_LOCKSELECT, S_LOCKTASKS,
+	   S_RUNTASK, S_RUNTIMER, S_RUNSIGNAL, S_RUNPENDING, S_RUNSELECT,
+	   NSTATES };
+    inline void set_thread_state(int state);
+    inline void set_thread_state_for_blocking(int delay_type);
 #if CLICK_DEBUG_SCHEDULING
-    enum { S_RUNNING, S_PAUSED, S_TIMER, S_BLOCKED };
     int thread_state() const		{ return _thread_state; }
-    static String thread_state_name(int);
+    static String thread_state_name(int state);
     uint32_t driver_epoch() const	{ return _driver_epoch; }
     uint32_t driver_task_epoch() const	{ return _driver_task_epoch; }
     Timestamp task_epoch_time(uint32_t epoch) const;
 # if CLICK_LINUXMODULE
     struct task_struct *sleeper() const	{ return _linux_task; }
+# endif
+# if CLICK_DEBUG_SCHEDULING > 1
+    inline Timestamp thread_state_time(int state) const;
+    inline uint64_t thread_state_count(int state) const;
 # endif
 #endif
 
@@ -105,6 +112,7 @@ class RouterThread
     click_processor_t _running_processor;
     volatile bool _select_blocked;
     int _wake_pipe[2];
+    volatile bool _wake_pipe_pending;
 #endif
     Spinlock _task_lock;
     atomic_uint32_t _task_blocker;
@@ -146,6 +154,11 @@ class RouterThread
     enum { TASK_EPOCH_BUFSIZ = 32 };
     uint32_t _task_epoch_first;
     Timestamp _task_epoch_time[TASK_EPOCH_BUFSIZ];
+# if CLICK_DEBUG_SCHEDULING > 1
+    Timestamp _thread_state_time[NSTATES];
+    uint64_t _thread_state_count[NSTATES];
+    Timestamp _thread_state_timestamp;
+# endif
 #endif
 
     // called by Master
@@ -375,8 +388,13 @@ RouterThread::wake()
 	wake_up_process(task);
 #elif CLICK_USERLEVEL && HAVE_MULTITHREAD
     // see also Master::add_select()
-    if (_select_blocked)
+# if HAVE___SYNC_SYNCHRONIZE
+    __sync_synchronize();
+# endif
+    if (_select_blocked) {
+	_wake_pipe_pending = true;
 	ignore_result(write(_wake_pipe[1], "", 1));
+    }
 #elif CLICK_BSDMODULE && !BSD_NETISRSCHED
     if (_sleep_ident)
 	wakeup_one(&_sleep_ident);
@@ -389,6 +407,48 @@ RouterThread::add_pending()
     _any_pending = 1;
     wake();
 }
+
+inline void
+RouterThread::set_thread_state(int state)
+{
+    assert(state >= 0 && state < NSTATES);
+#if CLICK_DEBUG_SCHEDULING
+# if CLICK_DEBUG_SCHEDULING > 1
+    Timestamp now = Timestamp::now();
+    if (_thread_state_timestamp)
+	_thread_state_time[_thread_state] += now - _thread_state_timestamp;
+    if (_thread_state != state)
+	++_thread_state_count[_thread_state];
+    _thread_state_timestamp = now;
+# endif
+    _thread_state = state;
+#endif
+}
+
+inline void
+RouterThread::set_thread_state_for_blocking(int delay_type)
+{
+    if (delay_type < 0)
+	set_thread_state(S_BLOCKED);
+    else
+	set_thread_state(delay_type ? S_TIMERWAIT : S_PAUSED);
+}
+
+#if CLICK_DEBUG_SCHEDULING > 1
+inline Timestamp
+RouterThread::thread_state_time(int state) const
+{
+    assert(state >= 0 && state < NSTATES);
+    return _thread_state_time[state];
+}
+
+inline uint64_t
+RouterThread::thread_state_count(int state) const
+{
+    assert(state >= 0 && state < NSTATES);
+    return _thread_state_count[state];
+}
+#endif
 
 CLICK_ENDDECLS
 #endif

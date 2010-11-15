@@ -54,12 +54,6 @@ CLICK_DECLS
 # define DRIVER_RESTRIDE_INTERVAL 80	/* microseconds between restrides */
 #endif
 
-#if CLICK_DEBUG_SCHEDULING
-# define SET_STATE(s)		_thread_state = (s)
-#else
-# define SET_STATE(s)		/* nada */
-#endif
-
 #if CLICK_LINUXMODULE
 static unsigned long greedy_schedule_jiffies;
 #endif
@@ -91,6 +85,7 @@ RouterThread::RouterThread(Master *m, int id)
     _running_processor = click_invalid_processor();
     _select_blocked = false;
     _wake_pipe[0] = _wake_pipe[1] = -1;
+    _wake_pipe_pending = false;
 #endif
     _task_blocker = 0;
     _task_blocker_waiting = 0;
@@ -129,6 +124,10 @@ RouterThread::RouterThread(Master *m, int id)
     _driver_epoch = 0;
     _driver_task_epoch = 0;
     _task_epoch_first = 0;
+# if CLICK_DEBUG_SCHEDULING > 1
+    for (int s = 0; s < NSTATES; ++s)
+	_thread_state_count[s] = 0;
+# endif
 #endif
 
     static_assert(THREAD_QUIESCENT == (int) ThreadSched::THREAD_QUIESCENT
@@ -151,6 +150,8 @@ RouterThread::~RouterThread()
 inline void
 RouterThread::driver_lock_tasks()
 {
+    set_thread_state(S_LOCKTASKS);
+
     // If other people are waiting for the task lock, give them a chance to
     // catch it before we claim it.
 #if CLICK_LINUXMODULE
@@ -343,6 +344,7 @@ RouterThread::task_reheapify_from(int pos, Task* t)
 inline void
 RouterThread::run_tasks(int ntasks)
 {
+    set_thread_state(S_RUNTASK);
 #if CLICK_DEBUG_SCHEDULING
     _driver_task_epoch++;
     _task_epoch_time[_driver_task_epoch % TASK_EPOCH_BUFSIZ].assign_now();
@@ -437,31 +439,32 @@ RouterThread::run_os()
 	}
     } else if (active()) {
       short_pause:
-	SET_STATE(S_PAUSED);
+	set_thread_state(S_PAUSED);
 	set_current_state(TASK_RUNNING);
 	schedule();
     } else if (_id != 0) {
       block:
-	SET_STATE(S_BLOCKED);
+	set_thread_state(S_BLOCKED);
 	schedule();
     } else if (Timestamp wait = _master->next_timer_expiry_adjusted()) {
 	wait -= Timestamp::now();
 	if (!(wait > Timestamp(0, Timestamp::subsec_per_sec / CLICK_HZ)))
 	    goto short_pause;
-	SET_STATE(S_TIMER);
+	set_thread_state(S_TIMERWAIT);
 	if (wait.sec() >= LONG_MAX / CLICK_HZ - 1)
 	    (void) schedule_timeout(LONG_MAX - CLICK_HZ - 1);
 	else
 	    (void) schedule_timeout(wait.jiffies() - 1);
     } else
 	goto block;
-    SET_STATE(S_RUNNING);
 #elif defined(CLICK_BSDMODULE)
     if (_greedy)
 	/* do nothing */;
     else if (active()) {	// just schedule others for a moment
+	set_thread_state(S_PAUSED);
 	yield(curthread, NULL);
     } else {
+	set_thread_state(S_BLOCKED);
 	_sleep_ident = &_sleep_ident;	// arbitrary address, != NULL
 	tsleep(&_sleep_ident, PPAUSE, "pause", 1);
 	_sleep_ident = NULL;
@@ -505,8 +508,6 @@ RouterThread::driver()
     restride_t_before.assign_now();
 #endif
 
-    SET_STATE(S_RUNNING);
-
 #if !CLICK_NS && !BSD_NETISRSCHED
   driver_loop:
 #endif
@@ -528,17 +529,15 @@ RouterThread::driver()
 	    run_os();
 #endif
 
-#if BSD_NETISRSCHED
-	bool run_timers = (iter % _master->timer_stride()) == 0
-	    || _oticks != ticks;
-#else
 	bool run_timers = (iter % _master->timer_stride()) == 0;
+#if BSD_NETISRSCHED
+	run_timers = run_timers || _oticks != ticks;
 #endif
 	if (run_timers) {
 #if BSD_NETISRSCHED
 	    _oticks = ticks;
 #endif
-	    _master->run_timers();
+	    _master->run_timers(this);
 #if CLICK_NS
 	    // If there's another timer, tell the simulator to make us
 	    // run when it's due to go off.
@@ -685,11 +684,17 @@ String
 RouterThread::thread_state_name(int ts)
 {
     switch (ts) {
-      case S_RUNNING:		return "running";
-      case S_PAUSED:		return "paused";
-      case S_TIMER:		return "timer";
-      case S_BLOCKED:		return "blocked";
-      default:			return String(ts);
+    case S_PAUSED:		return String::make_stable("paused");
+    case S_BLOCKED:		return String::make_stable("blocked");
+    case S_TIMERWAIT:		return String::make_stable("timerwait");
+    case S_LOCKSELECT:		return String::make_stable("lockselect");
+    case S_LOCKTASKS:		return String::make_stable("locktasks");
+    case S_RUNTASK:		return String::make_stable("runtask");
+    case S_RUNTIMER:		return String::make_stable("runtimer");
+    case S_RUNSIGNAL:		return String::make_stable("runsignal");
+    case S_RUNPENDING:		return String::make_stable("runpending");
+    case S_RUNSELECT:		return String::make_stable("runselect");
+    default:			return String(ts);
     }
 }
 #endif

@@ -40,7 +40,7 @@ class Master { public:
 
     Timestamp next_timer_expiry() const		{ return _timer_expiry; }
     const Timestamp &timer_check() const	{ return _timer_check; }
-    void run_timers();
+    void run_timers(RouterThread *thread);
     unsigned max_timer_stride() const		{ return _max_timer_stride; }
     unsigned timer_stride() const		{ return _timer_stride; }
     void set_max_timer_stride(unsigned timer_stride);
@@ -61,7 +61,7 @@ class Master { public:
     simclick_node_t *simnode() const		{ return _simnode; }
 #endif
 
-#if CLICK_DEBUG_MASTER
+#if CLICK_DEBUG_MASTER || CLICK_DEBUG_SCHEDULING
     String info() const;
 #endif
 
@@ -251,8 +251,8 @@ inline void
 Master::run_signals(RouterThread *thread)
 {
 # if HAVE_MULTITHREAD
-    // Always process signals, since this clears out the _wake_pipe.
-    process_signals(thread);
+    if (thread->_wake_pipe_pending || signals_pending)
+	process_signals(thread);
 # else
     if (signals_pending)
 	process_signals(thread);

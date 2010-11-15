@@ -52,16 +52,21 @@ InfiniteSource::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     ActiveNotifier::initialize(Notifier::EMPTY_NOTIFIER, router());
   String data = "Random bullshit in a packet, at least 64 bytes long. Well, now it is.";
-  int limit = -1;
+  counter_t limit = -1;
   int burstsize = 1;
   int datasize = -1;
-  bool active = true, stop = false;
+  bool active = true, stop = false, timestamp = true;
 
   if (cp_va_kparse(conf, this, errh,
 		   "DATA", cpkP, cpString, &data,
+#if HAVE_INT64_TYPES
+		   "LIMIT", cpkP, cpInteger64, &limit,
+#else
 		   "LIMIT", cpkP, cpInteger, &limit,
+#endif
 		   "BURST", cpkP, cpInteger, &burstsize,
 		   "ACTIVE", cpkP, cpBool, &active,
+		   "TIMESTAMP", 0, cpBool, &timestamp,
 		   "LENGTH", 0, cpInteger, &datasize,
 		   "DATASIZE", 0, cpInteger, &datasize, // deprecated
 		   "STOP", 0, cpBool, &stop,
@@ -77,6 +82,7 @@ InfiniteSource::configure(Vector<String> &conf, ErrorHandler *errh)
   _count = 0;
   _active = active;
   _stop = stop;
+  _timestamp = timestamp;
 
   setup_packet();
 
@@ -106,17 +112,18 @@ InfiniteSource::run_task(Task *)
     if (!_active || !_nonfull_signal)
 	return false;
     int n = _burstsize;
-    if (_limit >= 0 && _count + n >= _limit)
-	n = (_count > _limit ? 0 : _limit - _count);
+    if (_limit >= 0 && _count + n >= (ucounter_t) _limit)
+	n = (_count > (ucounter_t) _limit ? 0 : _limit - _count);
     for (int i = 0; i < n; i++) {
 	Packet *p = _packet->clone();
-	p->timestamp_anno().assign_now();
+	if (_timestamp)
+	    p->timestamp_anno().assign_now();
 	output(0).push(p);
     }
     _count += n;
     if (n > 0)
 	_task.fast_reschedule();
-    else if (_stop && _limit >= 0 && _count >= _limit)
+    else if (_stop && _limit >= 0 && _count >= (ucounter_t) _limit)
 	router()->please_stop_driver();
     return n > 0;
 }
@@ -130,14 +137,15 @@ InfiniteSource::pull(int)
 	    sleep();
 	return 0;
     }
-    if (_limit >= 0 && _count >= _limit) {
+    if (_limit >= 0 && _count >= (ucounter_t) _limit) {
 	if (_stop)
 	    router()->please_stop_driver();
 	goto done;
     }
     _count++;
     Packet *p = _packet->clone();
-    p->timestamp_anno().assign_now();
+    if (_timestamp)
+	p->timestamp_anno().assign_now();
     return p;
 }
 
@@ -211,7 +219,8 @@ InfiniteSource::change_param(const String &s, Element *e, void *vparam,
     }
     }
 
-    if (is->_active && (is->_limit < 0 || is->_count < is->_limit)) {
+    if (is->_active
+	&& (is->_limit < 0 || is->_count < (ucounter_t) is->_limit)) {
 	if (is->output_is_push(0) && !is->_task.scheduled())
 	    is->_task.reschedule();
 	if (is->output_is_pull(0) && !is->Notifier::active())
@@ -242,7 +251,7 @@ InfiniteSource::add_handlers()
     add_write_handler("datasize", change_param, h_length);
     //add_read_handler("notifier", read_param, h_notifier);
     if (output_is_push(0))
-	add_task_handlers(&_task);
+	add_task_handlers(&_task, &_nonfull_signal);
 }
 
 CLICK_ENDDECLS
