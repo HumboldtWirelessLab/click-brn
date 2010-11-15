@@ -754,61 +754,6 @@ clickdatadir
 provisions
 LTLIBOBJS'
 ac_subst_files=''
-<<<<<<< HEAD
-=======
-ac_user_opts='
-enable_option_checking
-enable_userlevel
-enable_user_multithread
-enable_select
-enable_linuxmodule
-enable_fixincludes
-enable_multithread
-enable_warp9
-enable_kassert
-enable_adaptive
-enable_linux_symbols
-enable_bsdmodule
-enable_nsclick
-with_linux
-with_linux_map
-enable_all_elements
-enable_analysis
-enable_app
-enable_aqm
-enable_ethernet
-enable_etherswitch
-enable_grid
-enable_icmp
-enable_ip
-enable_ip6
-enable_ipsec
-enable_local
-enable_radio
-enable_simple
-enable_standard
-enable_tcpudp
-enable_test
-enable_threads
-enable_wifi
-enable_experimental
-enable_skip_elements
-with_freebsd
-enable_int64
-enable_nanotimestamp
-enable_tools
-enable_dynamic_linking
-enable_stats
-enable_stride
-enable_task_heap
-enable_dmalloc
-enable_valgrind
-enable_schedule_debugging
-enable_intel_cpu
-with_proper
-with_expat
-'
->>>>>>> 123c9b9b3fe55d5c563a8175ae0b9108c0e78b99
       ac_precious_vars='build_alias
 host_alias
 target_alias
@@ -9589,7 +9534,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9535 "configure"
+#line 9537 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -13496,38 +13441,6 @@ ac_res=$ac_cv_search_gethostbyname
 if test "$ac_res" != no; then
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
 
-<<<<<<< HEAD
-=======
-	    	    ac_cv_endian=0
-	    cat > conftest.$ac_ext <<EOF
-#line 6979 "configure"
-#include "confdefs.h"
-#include <$endian_hdr>
-#ifdef __BYTE_ORDER
-__BYTE_ORDER
-#elif defined(BYTE_ORDER)
-BYTE_ORDER
-#else
-0
-#endif
-EOF
-	    ac_try="$ac_cpp conftest.$ac_ext >conftest.result 2>conftest.out"
-	    { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
-  (eval $ac_try) 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }
-	    ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
-	    if test -z "$ac_err"; then
-		ac_cv_endian=`grep '^[1234]' conftest.result`
-		test -z "$ac_cv_endian" && ac_cv_endian=0
-	    else
-		echo "$ac_err" >&5
-		echo "configure: failed program was:" >&5
-		cat conftest.$ac_ext >&5
-	    fi
-	    rm -f conftest*
->>>>>>> 123c9b9b3fe55d5c563a8175ae0b9108c0e78b99
 fi
 
     { echo "$as_me:$LINENO: checking for library containing connect" >&5
@@ -15772,6 +15685,29 @@ fi
 
 
 
+# Check whether --enable-schedule-debugging was given.
+if test "${enable_schedule_debugging+set}" = set; then
+  enableval=$enable_schedule_debugging; :
+else
+  enable_schedule_debugging=no
+fi
+
+value=0
+if test "$enable_schedule_debugging" = yes; then
+    value=1
+elif test "$enable_schedule_debugging" = extra; then
+    value=2
+fi
+if test "$value" != 0; then
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_DEBUG_SCHEDULING $value
+_ACEOF
+
+fi
+
+
+
 # Check whether --enable-intel-cpu was given.
 if test "${enable_intel_cpu+set}" = set; then
   enableval=$enable_intel_cpu; :
@@ -16435,7 +16371,6 @@ cat >>conftest.$ac_ext <<_ACEOF
 
 #undef $ac_func
 
-<<<<<<< HEAD
 /* Override any GCC internal prototype to avoid an error.
    Use char because int might match the return type of a GCC
    builtin and then its argument prototype would still apply.  */
@@ -16449,37 +16384,6 @@ char $ac_func ();
 #if defined __stub_$ac_func || defined __stub___$ac_func
 choke me
 #endif
-=======
-# Check whether --enable-schedule-debugging was given.
-if test "${enable_schedule_debugging+set}" = set; then :
-  enableval=$enable_schedule_debugging; :
-else
-  enable_schedule_debugging=no
-fi
-
-value=0
-if test "$enable_schedule_debugging" = yes; then
-    value=1
-elif test "$enable_schedule_debugging" = extra; then
-    value=2
-fi
-if test "$value" != 0; then
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_DEBUG_SCHEDULING $value
-_ACEOF
-
-fi
-
-
-
-# Check whether --enable-intel-cpu was given.
-if test "${enable_intel_cpu+set}" = set; then :
-  enableval=$enable_intel_cpu; :
-else
-  enable_intel_cpu=no
-fi
->>>>>>> 123c9b9b3fe55d5c563a8175ae0b9108c0e78b99
 
 int
 main ()
