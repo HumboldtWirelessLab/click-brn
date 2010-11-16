@@ -77,8 +77,13 @@ class BRNPacketAnno : public Element { public:
   static void inc_pulled_bytes_anno(Packet *p, const uint16_t inc_bytes);
   static void dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes);
 
-  static uint8_t devicenumber_anno(const Packet *p);
-  static void set_devicenumber_anno(Packet *, uint8_t);
+  static inline uint8_t devicenumber_anno(const Packet *p) {
+    return ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET)[0];
+  }
+
+  static inline void set_devicenumber_anno(Packet *p, uint8_t devnum) {
+    ((uint8_t*)((p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET))[0] = devnum;
+  }
 
   static uint16_t vlan_anno(const Packet *p);
   static void set_vlan_anno(Packet *, uint16_t);

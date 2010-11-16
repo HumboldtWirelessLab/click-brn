@@ -22,8 +22,11 @@
 #define BRN2SETDEVICEANNOELEMENT_HH
 
 #include <click/etheraddress.hh>
-#include "brn2_device.hh"
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
+
+#include "brn2_device.hh"
 
 CLICK_DECLS
 /*
@@ -36,7 +39,7 @@ CLICK_DECLS
  * TODO currently not entries will removed from the the list, implement a way
  * to remove them.
  */
-class BRN2SetDeviceAnno : public Element {
+class BRN2SetDeviceAnno : public BRNElement {
 
  public:
 
@@ -57,7 +60,7 @@ class BRN2SetDeviceAnno : public Element {
   void add_handlers();
 
   BRN2Device *_device;
-
+  int _device_number;
 };
 
 CLICK_ENDDECLS

@@ -34,8 +34,8 @@
 CLICK_DECLS
 
 BRN2SetDeviceAnno::BRN2SetDeviceAnno()
-// : _debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 BRN2SetDeviceAnno::~BRN2SetDeviceAnno()
@@ -47,6 +47,7 @@ BRN2SetDeviceAnno::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "DEVICE", cpkP+cpkM, cpElement, &_device,
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -56,6 +57,8 @@ BRN2SetDeviceAnno::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2SetDeviceAnno::initialize(ErrorHandler *)
 {
+  _device_number = _device->getDeviceNumber();
+
   return 0;
 }
 
@@ -63,7 +66,7 @@ BRN2SetDeviceAnno::initialize(ErrorHandler *)
 Packet *
 BRN2SetDeviceAnno::simple_action(Packet *p_in)
 {
-  BRNPacketAnno::set_devicenumber_anno(p_in, _device->getDeviceNumber());
+  BRNPacketAnno::set_devicenumber_anno(p_in, _device_number);
   return p_in;
 }
 
@@ -71,32 +74,10 @@ BRN2SetDeviceAnno::simple_action(Packet *p_in)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element */*e*/, void *)
-{
-//  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
-  return /*String(nl->_debug) + */"not supported\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element */*e*/, void *, ErrorHandler *errh)
-{
-//  BRN2SetDeviceAnno *da = (BRN2SetDeviceAnno *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  //da->_debug = debug;
-  return 0;
-}
-
 void
 BRN2SetDeviceAnno::add_handlers()
 {
-   add_read_handler("debug", read_debug_param, 0);
-
-//  add_write_handler("insert", static_insert, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS
