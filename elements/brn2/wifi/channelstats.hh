@@ -99,10 +99,10 @@ class ChannelStats : public Element {
     };
 
     class SrcInfo {
+     public:
       uint32_t _rssi;
       uint32_t _pkt_count;
 
-     public:
       SrcInfo() {
          _rssi = 0;
          _pkt_count = 0;

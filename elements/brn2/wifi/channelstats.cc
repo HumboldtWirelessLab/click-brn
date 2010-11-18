@@ -346,12 +346,12 @@ ChannelStats::stats_handler(int mode)
       sa << stats.no_sources;
       break;
     case H_STATS_NODES_RSSI:
-       sa << "Etheraddress\tAvg. RSSI\n";
+       sa << "Etheraddress\tAvg. RSSI\tSum RSSI\tPkt. count\n";
       for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
         EtherAddress ea = iter.key();
 
-        sa << ea.unparse() << "\t" << src.avg_rssi() << "\n";
+        sa << ea.unparse() << "\t" << src.avg_rssi() << "\t" << src._rssi << "\t" << src._pkt_count << "\n";
       }
       break;
     case H_STATS_SHORT:
