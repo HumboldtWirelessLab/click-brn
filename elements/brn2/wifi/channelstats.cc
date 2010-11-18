@@ -23,6 +23,7 @@
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
 #include <click/vector.hh>
+#include <click/hashmap.hh>
 #include <click/bighashmap.hh>
 #include <click/error.hh>
 #include <click/userutils.hh>
@@ -42,6 +43,7 @@ ChannelStats::ChannelStats():
     hw_busy(0),
     hw_rx(0),
     hw_tx(0),
+    _rssi_per_neighbour(false),
     _proc_file(),
     _proc_interval(0),
     _proc_timer(this)
@@ -64,6 +66,7 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
                      "MAX_AGE", cpkP, cpInteger, &max_age,
                      "PROCFILE", cpkP, cpString, &_proc_file,
                      "PROCINTERVAL", cpkP, cpInteger, &_proc_interval,
+                     "RSSI_PER_NEIGHBOUR", cpkP, cpBool, &_rssi_per_neighbour,
                      "DEBUG", cpkP, cpBool, &_debug,
                      cpEnd);
 
@@ -88,8 +91,6 @@ ChannelStats::run_timer(Timer */*t*/)
   if ( _proc_interval > 0 )
     _proc_timer.schedule_after_msec(_proc_interval);
 }
-
-
 
 /*********************************************/
 /************* RX BASED STATS ****************/
@@ -282,18 +283,21 @@ ChannelStats::readProcHandler()
 
 struct airtime_stats *
 ChannelStats::get_stats(int /*time*/) {
-  calc_stats(&stats);
+  calc_stats(&stats, NULL);
   return &stats;
 }
 
-enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_SHORT, H_STATS_NO_SOURCES};
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_SHORT, H_STATS_NO_SOURCES, H_STATS_NODES_RSSI};
 
 String
 ChannelStats::stats_handler(int mode)
 {
   StringAccum sa;
 
-  calc_stats(&stats);
+  if (_rssi_per_neighbour)
+    calc_stats(&stats, &rssi_tab);
+  else
+    calc_stats(&stats, NULL);
 
   switch (mode) {
     case H_STATS:
@@ -341,6 +345,15 @@ ChannelStats::stats_handler(int mode)
     case H_STATS_NO_SOURCES:
       sa << stats.no_sources;
       break;
+    case H_STATS_NODES_RSSI:
+       sa << "Etheraddress\tAvg. RSSI\n";
+      for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
+        SrcInfo src = iter.value();
+        EtherAddress ea = iter.key();
+
+        sa << ea.unparse() << "\t" << src.avg_rssi() << "\n";
+      }
+      break;
     case H_STATS_SHORT:
       sa << stats.last.nsecval() << ";" << stats.last_hw.nsecval() << ";";
       sa << stats.packets << ";" << stats.busy << ";" << stats.rx << ";" << stats.tx << ";";
@@ -351,7 +364,7 @@ ChannelStats::stats_handler(int mode)
 }
 
 void
-ChannelStats::calc_stats(struct airtime_stats *cstats)
+ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -373,6 +386,8 @@ ChannelStats::calc_stats(struct airtime_stats *cstats)
   }/* else {
     click_chatter("New calc");
   }  */
+
+  if ( rssi_tab ) rssi_tab->clear();
 
   memset(cstats, 0, sizeof(struct airtime_stats));
 
@@ -406,6 +421,16 @@ ChannelStats::calc_stats(struct airtime_stats *cstats)
 
       if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
+      if ( rssi_tab != NULL ) {
+        SrcInfo *src_i;
+        if ( (src_i = rssi_tab->findp(pi->_src)) == NULL ) {
+          rssi_tab->insert(pi->_src, SrcInfo(pi->_rssi,1));
+          //click_chatter("NEW %p %p",&pi->_rssi, rssi_tab->findp(pi->_src));
+        } else {
+          src_i->add_rssi(pi->_rssi);
+        }
+      }
+
     } else cstats->tx += pi->_duration;
   }
 
@@ -435,7 +460,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats)
 
   cstats->hw_available = (_packet_list_hw.size() != 0);
   if ( _packet_list_hw.size() == 0 ) {
-    click_chatter("List null");
+    //click_chatter("List null");
     return;
   }
 
@@ -491,6 +516,7 @@ ChannelStats_read_param(Element *e, void *thunk)
     case H_STATS_AVG_NOISE:
     case H_STATS_AVG_RSSI:
     case H_STATS_NO_SOURCES:
+    case H_STATS_NODES_RSSI:
       return td->stats_handler((uintptr_t) thunk);
     case H_MAX_TIME:
       return String(td->max_age) + "\n";
@@ -543,6 +569,7 @@ ChannelStats::add_handlers()
   add_read_handler("avg_noise", ChannelStats_read_param, (void *) H_STATS_AVG_NOISE);
   add_read_handler("avg_rssi", ChannelStats_read_param, (void *) H_STATS_AVG_RSSI);
   add_read_handler("no_src", ChannelStats_read_param, (void *) H_STATS_NO_SOURCES);
+  add_read_handler("src_rssi", ChannelStats_read_param, (void *) H_STATS_NODES_RSSI);
 
   add_write_handler("debug", ChannelStats_write_param, (void *) H_DEBUG);
   add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);

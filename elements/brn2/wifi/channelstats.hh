@@ -98,11 +98,39 @@ class ChannelStats : public Element {
         uint32_t _tx;
     };
 
+    class SrcInfo {
+      uint32_t _rssi;
+      uint32_t _pkt_count;
+
+     public:
+      SrcInfo() {
+         _rssi = 0;
+         _pkt_count = 0;
+      }
+
+      SrcInfo(uint32_t rssi, uint32_t pkt_count) {
+        _rssi = rssi;
+        _pkt_count = pkt_count;
+      }
+
+     void add_rssi(uint32_t rssi) {
+       _rssi += rssi;
+       _pkt_count++;
+     }
+
+     uint32_t avg_rssi() {
+       return (_rssi/_pkt_count);
+     }
+    };
+
     typedef Vector<PacketInfo*> PacketList;
     typedef PacketList::const_iterator PacketListIter;
 
     typedef Vector<PacketInfoHW*> PacketListHW;
     typedef PacketListHW::const_iterator PacketListHWIter;
+
+    typedef HashMap<EtherAddress, SrcInfo> RSSITable;
+    typedef RSSITable::const_iterator RSSITableIter;
 
   public:
 
@@ -124,7 +152,7 @@ class ChannelStats : public Element {
 
     String stats_handler(int mode);
 
-    void calc_stats(struct airtime_stats *stats);
+    void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
     struct airtime_stats *get_stats(int time);
 
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
@@ -148,7 +176,10 @@ class ChannelStats : public Element {
     void clear_old_hw();
 
     struct airtime_stats stats;
+    RSSITable rssi_tab;
     Timestamp _last_update;
+
+    bool _rssi_per_neighbour;
 
     String _proc_file;
     int _proc_interval;
