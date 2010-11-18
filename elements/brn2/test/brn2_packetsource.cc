@@ -19,7 +19,8 @@ BRN2PacketSource::BRN2PacketSource()
     _burst(1),
     _channel(0),
     _bitrate(0),
-    _power(0)
+    _power(0),
+    _headroom(128)
 {
 }
 
@@ -40,6 +41,7 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "BITRATE", cpkP, cpInteger, &_bitrate,
       "POWER", cpkP, cpInteger, &_power,
       "ACTIVE", cpkP, cpBool, &_active,
+      "HEADROOM", cpkP, cpInteger, &_headroom,
       cpEnd) < 0)
         return -1;
  
@@ -124,7 +126,7 @@ BRN2PacketSource::push( int port, Packet *packet )
 Packet *
 BRN2PacketSource::createpacket(int size)
 {
-  WritablePacket *new_packet = WritablePacket::make(128 /*headroom*/,NULL /* *data */, size, 32);
+  WritablePacket *new_packet = WritablePacket::make(_headroom ,NULL /* *data */, size, 32);
   uint8_t *new_packet_data = (uint8_t*)new_packet->data();
 
   memset(new_packet_data,0,size);

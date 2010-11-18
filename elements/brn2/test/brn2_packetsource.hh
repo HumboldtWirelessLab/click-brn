@@ -58,6 +58,8 @@ class BRN2PacketSource : public Element {
 
   uint32_t _burst,_channel,_bitrate,_power;
 
+  uint32_t _headroom;
+
   Packet *createpacket(int size);
 
   struct packetinfo {
