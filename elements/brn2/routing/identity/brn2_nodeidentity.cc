@@ -43,6 +43,10 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     }
   }
 
+  if ( _node_devices.size() > 0 ) {
+    _master_device = _node_devices[0];
+  }
+
   return 0;
 }
 
