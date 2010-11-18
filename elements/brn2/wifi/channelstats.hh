@@ -33,6 +33,8 @@
 
 #define CHANNEL_UTILITY_INVALID 255
 
+#define RSSI_LIMIT 100
+
 CLICK_DECLS
 
 /*
@@ -109,12 +111,13 @@ class ChannelStats : public Element {
       }
 
       SrcInfo(uint32_t rssi, uint32_t pkt_count) {
-        _rssi = rssi;
+        if ( rssi > RSSI_LIMIT ) _rssi = 0; 
+        else _rssi = rssi;
         _pkt_count = pkt_count;
       }
 
      void add_rssi(uint32_t rssi) {
-       _rssi += rssi;
+       if ( rssi <= RSSI_LIMIT ) _rssi += rssi;
        _pkt_count++;
      }
 
