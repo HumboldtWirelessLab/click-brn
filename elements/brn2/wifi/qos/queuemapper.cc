@@ -97,8 +97,10 @@ QueueMapper::simple_action(Packet *p)
 {
   uint8_t tos = BRNPacketAnno::tos_anno(p);
 
-  struct airtime_stats *as = _cst->get_stats(0);
-  int opt_cwmin = get_cwmin(as->busy, as->no_sources);
+  struct airtime_stats as;
+  _cst->get_stats(&as,0);
+
+  int opt_cwmin = get_cwmin(as.busy, as.no_sources);
   int opt_queue = find_queue(opt_cwmin);
 
   int diff_q = (no_queues / 2) - tos - 1;
@@ -113,7 +115,7 @@ QueueMapper::simple_action(Packet *p)
 }
 
 int
-QueueMapper::get_cwmin(int busy, int nodes) {
+QueueMapper::get_cwmin(int /*busy*/, int /*nodes*/) {
   return 10;
 }
 

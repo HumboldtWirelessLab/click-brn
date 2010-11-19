@@ -29,10 +29,16 @@
 #define STATE_CRC      2
 #define STATE_PHY      3
 
-#define CS_MIN_UPDATE_DIFFTIME 20
+#define CS_DEFAULT_STATS_DURATION       100
+#define CS_DEFAULT_SAVE_DURATION          0
+#define CS_DEFAULT_PROCINTERVAL           0
+#define CS_DEFAULT_PROCREAD           false
+#define CS_DEFAULT_MIN_UPDATE_TIME       20
+#define CS_DEFAULT_RSSI_PER_NEIGHBOUR  true
+#define CS_DEFAULT_STATS_TIMER        false
+
 
 #define CHANNEL_UTILITY_INVALID 255
-
 #define RSSI_LIMIT 100
 
 CLICK_DECLS
@@ -156,13 +162,14 @@ class ChannelStats : public Element {
     String stats_handler(int mode);
 
     void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
-    struct airtime_stats *get_stats(int time);
+    void get_stats(struct airtime_stats *cstats, int /*time*/);
+
 
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
 
     bool _debug;
-    int32_t max_age;  //maximum age of pakets in the queue in seconds
-    int32_t calc_age; //maximum age of pakets, which are considered in the calculation (default)
+    int32_t _save_duration;  //maximum age of pakets in the queue in seconds
+    int32_t _stats_duration; //maximum age of pakets, which are considered in the calculation (default)
 
   private:
 
@@ -180,13 +187,19 @@ class ChannelStats : public Element {
 
     struct airtime_stats stats;
     RSSITable rssi_tab;
-    Timestamp _last_update;
 
     bool _rssi_per_neighbour;
 
     String _proc_file;
-    int _proc_interval;
-    Timer _proc_timer;
+    bool _proc_read;
+
+    uint32_t _min_update_time;
+
+    bool _stats_timer_enable;
+    int _stats_interval;
+    Timer _stats_timer;
+
+    uint32_t _stats_id;
 
 };
 
