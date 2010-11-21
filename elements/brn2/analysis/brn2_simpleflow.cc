@@ -20,6 +20,7 @@ CLICK_DECLS
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
     _clearp(false),
+    _headroom(128),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -46,6 +47,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "DURATION", cpkP+cpkM, cpInteger, &_duration,
       "ACTIVE", cpkP+cpkM, cpInteger, &_active,
       "CLEARPACKET", cpkP, cpBool, &_clearp,
+      "HEADROOM", cpkP, cpInteger, &_headroom,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -144,7 +146,7 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   if ( size < MINIMUM_FLOW_PACKET_SIZE )  //TODO: warn that we extend the packet
     size = MINIMUM_FLOW_PACKET_SIZE;
 
-  p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, size, 32);
+  p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
   if ( _clearp ) memset(p->data(),0,size);
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
 

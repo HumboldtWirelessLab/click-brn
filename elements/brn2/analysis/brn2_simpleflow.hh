@@ -136,6 +136,9 @@ class BRN2SimpleFlow : public Element
     Flow txFlow;
 
     bool _clearp;
+
+    int _headroom;
+
     int _debug;
 
 };
