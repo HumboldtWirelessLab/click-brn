@@ -25,24 +25,6 @@ PacketSendBuffer::addPacket_ms(Packet *p, int time_diff_ms, int port)
   queue.push_back( new BufferedPacket(p,time_diff_ms, port) );
 }
 
-static long
-diff_in_ms(timeval t1, timeval t2)
-{
-  long s, us, ms;
-
-  while (t1.tv_usec < t2.tv_usec) {
-    t1.tv_usec += 1000000;
-    t1.tv_sec -= 1;
-  }
-
-  s = t1.tv_sec - t2.tv_sec;
-
-  us = t1.tv_usec - t2.tv_usec;
-  ms = s * 1000L + us / 1000L;
-
-  return ms;
-}
-
 int
 PacketSendBuffer::getTimeToNext()
 {
@@ -50,7 +32,7 @@ PacketSendBuffer::getTimeToNext()
   struct timeval _time_now;
   long next_jitter;
 
-  if ( queue.size() == 0 ) return( -1 );
+  if ( queue.size() == 0 ) return(-1);
   else
   {
     _next_send.tv_sec = queue[0]->_send_time.tv_sec;
@@ -70,7 +52,7 @@ PacketSendBuffer::getTimeToNext()
 
     next_jitter = diff_in_ms(_next_send, _time_now);
 
-    if ( next_jitter <= 1 ) return( 1 );
+    if ( next_jitter <= 1 ) return(1);
     else return( next_jitter );
   }
 }

@@ -105,6 +105,7 @@ Packet*
 RandomDelayQueue::get_packet(int index)
 {
   if (index < packetBuffer.size()) return packetBuffer.get(index)->_p;
+  return NULL;
 }
 
 void
