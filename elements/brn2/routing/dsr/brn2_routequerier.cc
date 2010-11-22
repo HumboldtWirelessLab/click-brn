@@ -1059,8 +1059,7 @@ read_handler(Element *e, void * vparam)
 }
 
 static int 
-write_handler(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
+write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   BRN2RouteQuerier *rq = (BRN2RouteQuerier *)e;
   String s = cp_uncomment(in_s);
@@ -1076,10 +1075,10 @@ write_handler(const String &in_s, Element *e, void *vparam,
     case H_FIXED_ROUTE: {
       click_chatter("fixed_route called\n");
       EtherAddresses routeForward, routeReverse;
-      
+
       StringTokenizer tokenizer(s);
       String token;
-      
+
       while( tokenizer.hasMoreTokens() ) {
         token = tokenizer.getNextToken();
         cp_eat_space(token);

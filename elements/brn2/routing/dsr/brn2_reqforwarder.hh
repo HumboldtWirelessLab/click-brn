@@ -26,6 +26,7 @@
 #include <click/element.hh>
 #include <click/bighashmap.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_dsrencap.hh"
@@ -51,7 +52,7 @@ class BRN2DSREncap;
  * output 1: route request
  * =d
  */
-class BRN2RequestForwarder : public Element {
+class BRN2RequestForwarder : public BRNElement {
 
  public:
 
@@ -138,6 +139,9 @@ private:
   void reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out);
   void issue_rrep(EtherAddress, IPAddress, EtherAddress, IPAddress, const BRN2RouteQuerierRoute &, uint16_t rreq_id);
   int findOwnIdentity(const BRN2RouteQuerierRoute &r);
+
+  bool _enable_last_hop_optimization;
+  bool _enable_full_route_optimization;
 };
 
 CLICK_ENDDECLS

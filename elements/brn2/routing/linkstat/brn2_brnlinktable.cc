@@ -733,19 +733,19 @@ Brn2LinkTable::dijkstra(EtherAddress src, bool from_me)
 
       EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
       if (from_me) {
-      	pair = EthernetPair(current_min_ether, neighbor->_ether);
+        pair = EthernetPair(current_min_ether, neighbor->_ether);
       }
       BrnLinkInfo *lnfo = _links.findp(pair);
       if (NULL == lnfo || 0 == lnfo->_metric 
         || BRN_DSR_INVALID_ROUTE_METRIC <= lnfo->_metric) {
-	     continue;
+        continue;
       }
       uint32_t neighbor_metric = neighbor->_metric_to_me;
       uint32_t current_metric = current_min->_metric_to_me;
 
       if (from_me) {
-      	neighbor_metric = neighbor->_metric_from_me;
-      	current_metric = current_min->_metric_from_me;
+        neighbor_metric = neighbor->_metric_from_me;
+        current_metric = current_min->_metric_from_me;
       }
 
       uint32_t adjusted_metric = current_metric + lnfo->_metric;

@@ -35,18 +35,16 @@
 CLICK_DECLS
 
 BRN2RequestForwarder::BRN2RequestForwarder()
-  : _debug(BrnLogger::DEFAULT),
-  _me(),
+  :_me(),
   _link_table(),
   _dsr_decap(),
   _dsr_encap(),
-//  _brn_encap(),
   _route_querier(),
-  _sendbuffer_timer(this)
+  _sendbuffer_timer(this),
+  _enable_last_hop_optimization(false),
+  _enable_full_route_optimization(false)
 {
-  //add_input(); //received rreq from another internal node
-  //add_output(); //rreq has to be forwarded
-  //add_output(); //reply to this respond (send to reply-forwarder)
+  BRNElement::init();
 }
 
 BRN2RequestForwarder::~BRN2RequestForwarder()
@@ -61,10 +59,11 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
-//      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
       "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
       "MINMETRIC", cpkP+cpkM, cpInteger, &_min_metric_rreq_fwd,
-      "DEBUG", cpkP+cpkM, cpInteger, &_debug,
+      "LAST_HOP_OPT", cpkP, cpBool, &_enable_last_hop_optimization,
+      "FULL_ROUTE_OPT", cpkP, cpBool, &_enable_full_route_optimization,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -77,10 +76,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_dsr_encap || !_dsr_encap->cast("BRN2DSREncap"))
     return errh->error("DSREncap not specified");
 
-//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap")) 
-//    return errh->error("BRNEncap not specified");
-
-  if (!_route_querier || !_route_querier->cast("BRN2RouteQuerier")) 
+  if (!_route_querier || !_route_querier->cast("BRN2RouteQuerier"))
     return errh->error("RouteQuerier not specified");
 
   return 0;
@@ -91,7 +87,6 @@ BRN2RequestForwarder::initialize(ErrorHandler *)
 {
   click_srandom(_me->getMasterAddress()->hashcode());
   unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
-//    BRN_DEBUG("BRN2RequestForwarder: Timer after %d ms", j );
   _sendbuffer_timer.initialize(this);
   _sendbuffer_timer.schedule_after_msec( j );
 
@@ -120,9 +115,9 @@ BRN2RequestForwarder::findOwnIdentity(const BRN2RouteQuerierRoute &r)
 void
 BRN2RequestForwarder::push(int, Packet *p_in)
 {
-    BRN2Device *indev;
     uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(p_in);
-    //EtherAddress *device_addr;
+    BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
+    const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
     BRN_DEBUG("* receiving dsr_rreq packet (packet_anno %s)", _me->getDeviceByNumber(devicenumber)->getDeviceName().c_str());
 
@@ -145,16 +140,19 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     BRN_DEBUG(" got route request for destination %s from %s with #ID %d",
         dst_addr.unparse().c_str(), prev_node.unparse().c_str(), ntohs(brn_dsr->dsr_id));
 
+    // Last hop metric: metric from last node (sender of this packet) to me
     int last_hop_metric;
+
     // get the so far estimated route from rreq
     BRN2RouteQuerierRoute request_route;
     // at this point the route is constructed from the src node to the last hop
     // SRC, HOP1, ..., LAST HOP
+    // DSRDecap has linktable to get last_hop_metric
     _dsr_decap->extract_request_route(p_in, &last_hop_metric, request_route);
 
     BRN_DEBUG(" * Last_hop_metric %d, #ID %d", last_hop_metric, ntohs(brn_dsr->dsr_id));
 
-    if ( last_hop_metric >= _min_metric_rreq_fwd ) { //BRN_DSR_MIN_METRIC_RREQ_FWD
+    if ( last_hop_metric >= _min_metric_rreq_fwd ) {
       BRN_DEBUG(" Last_hop_metric %d is inferior as min_metric_rreq_fwd %d, #ID %d",
         last_hop_metric, _min_metric_rreq_fwd, ntohs(brn_dsr->dsr_id));
       BRN_DEBUG(" Kill Routerequest from junk link, #ID %d", ntohs(brn_dsr->dsr_id));
@@ -167,18 +165,15 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     // SRC, HOP1, ..., LAST HOP, THIS1, THIS2, DST
     if ( _me->isIdentical(&dst_addr) || ( _link_table->is_associated(dst_addr)) ) {
 
-      BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
-      const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
-
-      // estimate link metric to prev node
-      int metric = _link_table->get_link_metric(prev_node, *device_addr);
+      // estimate link metric to prev node TODO: use last_hop_metric
+      int metric = _link_table->get_link_metric(prev_node, *device_addr);  //TODO: check: is this last hop metric ??
       BRN_DEBUG("* RREQ: metric to prev node (%s) is %d.", prev_node.unparse().c_str(), metric);
 
       // the requested client is associated with this node
       if (_link_table->is_associated(dst_addr)) {
 
-        click_chatter("er soll zu mir gehoeren");
-            BRN_DEBUG(" * Linktable at shutdown: %s", _link_table->print_links().c_str());
+        BRN_DEBUG("er soll zu mir gehoeren");
+        BRN_DEBUG(" * Linktable: %s", _link_table->print_links().c_str());
 
         EtherAddress *my_wlan_addr = _link_table->get_neighbor(dst_addr); //this should give back only one etheraddress if the client is associated
 
@@ -198,6 +193,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       request_route.push_back(BRN2RouteQuerierHop(dst_addr, dst_ip_addr, 0)); // metric not used
     }
 
+    /* TODO:  move up the stuff */
     BRN_DEBUG("* learned from RREQ ...");
     for (int j = 0; j < request_route.size(); j++)
       BRN_DEBUG(" RREQ - %d   %s (%d)",
@@ -205,6 +201,8 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
     // refresh own link table
     add_route_to_link_table(request_route);
+    /* TODO: end move up the stuff */
+
 
     // sanity check - does a client reassociate?
     // TODO the information here is shit, leads to false roaming decisions
@@ -283,7 +281,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         p_in->kill();
         return;
       } // ttl is decremented in forward_rreq
-*/	
+*/
       if (findOwnIdentity(request_route) != -1) { // I am already listed
         // I'm in the route somewhere other than at the end
         BRN_DEBUG("* I'm already listed; killing packet, #ID %d",
@@ -296,9 +294,23 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       // one is better
       ForwardedReqKey frk(src_addr, dst_addr, ntohs(brn_dsr->dsr_id));
       ForwardedReqVal *old_frv = _route_querier->_forwarded_rreq_map.findp(frk);
-// 
+
+      /* Route Optimization */
+      if ( _enable_last_hop_optimization ) {
+        /* Last hop optimization */
+        BRN_DEBUG("* RREQ: Try to optimize route from last hop to me.");
+      } else if ( _enable_full_route_optimization ) {
+        /* Full route optimazation */
+        BRN_DEBUG("* RREQ: Try to optimize route from src to me.");
+      }
+
+      /* add myself to route to get metric from src to me */
+      request_route.push_back(BRN2RouteQuerierHop(*device_addr, dst_ip_addr, last_hop_metric)); // metric not used
+
       // ETX:
       unsigned short this_metric = _route_querier->route_metric(request_route);
+
+      BRN_DEBUG("* RREQ: this_metric is %d last_hop_metric is %d",this_metric,last_hop_metric);
 
       // ETX not yet used
       if (old_frv) {
@@ -350,9 +362,6 @@ BRN2RequestForwarder::push(int, Packet *p_in)
           old_frv->p->kill();
           old_frv->p = NULL;
         }
-
-        indev = _me->getDeviceByNumber(devicenumber);
-        //const EtherAddress *device_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
         BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), indev->getDeviceName().c_str());
 
@@ -440,7 +449,6 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   memcpy(ether->ether_dhost, EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff").data(), 6);
   ether->ether_type = htons(ETHERTYPE_BRN);
 
-
   // copy device anno
   BRNPacketAnno::set_devicenumber_anno(p,devicenumber);
   BRN_DEBUG(" * current dev_anno %s.", indev->getDeviceName().c_str());
@@ -503,9 +511,6 @@ BRN2RequestForwarder::queue_timer_hook()
   unsigned int j = get_min_jitter_in_queue();
   if ( j < MIN_JITTER ) j = MIN_JITTER;
 
-//  if (_debug)
-//     click_chatter("BRN2RequestForwarder: Timer after %d ms", j );
- 
   _sendbuffer_timer.schedule_after_msec(j);
 }
 
@@ -610,31 +615,10 @@ BRN2RequestForwarder::reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQu
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2RequestForwarder *rf = (BRN2RequestForwarder *)e;
-  return String(rf->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2RequestForwarder *rf = (BRN2RequestForwarder *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  rf->_debug = debug;
-  return 0;
-}
-
 void
 BRN2RequestForwarder::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 #include <click/bighashmap.cc>

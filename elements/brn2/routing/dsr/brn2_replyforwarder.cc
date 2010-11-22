@@ -96,7 +96,7 @@ BRN2ReplyForwarder::uninitialize()
 Packet *
 BRN2ReplyForwarder::skipInMemoryHops(Packet *p_in)
 {
-  BRN_DEBUG(" * calling NodeIdentity::skipInMemoryHops().");
+  BRN_DEBUG(" * calling BRN2ReplyForwarder::skipInMemoryHops().");
 
   click_brn_dsr *brn_dsr =
       (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
@@ -153,7 +153,9 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
     BRN_DEBUG(" * receiving dsr_rrep packet; port 0");
 
     Packet *p_out = skipInMemoryHops(p_in);
-    
+
+    BRN_DEBUG(" * forward_rrep: Next Hop is %s",EtherAddress(BRNPacketAnno::dst_ether_anno(p_out)).unparse().c_str());
+
     // packet has to be forwarded
     output(0).push(p_out);
 
@@ -232,8 +234,11 @@ BRN2ReplyForwarder::forward_rrep(Packet * p_in)
 {
   BRN_DEBUG(" * forward_rrep: ...");
 
+  //next hop (ether anno) is set by set_packet_to_next_hop
   Packet *p_out = _dsr_encap->set_packet_to_next_hop(p_in);
-  //p_out = _req_forwarder->_dsr_encap->set_packet_to_next_hop(p_in);
+
+  BRN_DEBUG(" * forward_rrep: Next Hop is %s",EtherAddress(BRNPacketAnno::dst_ether_anno(p_in)).unparse().c_str());
+
   // ouput packet
   output(0).push(p_out);
 }
