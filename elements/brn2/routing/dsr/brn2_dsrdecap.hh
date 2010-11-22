@@ -23,7 +23,10 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+
 #include "brn2_dsrprotocol.hh"
 
 CLICK_DECLS
@@ -36,15 +39,9 @@ CLICK_DECLS
  * ...
  * =d
  */
-class BRN2DSRDecap : public Element {
+class BRN2DSRDecap : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-  Brn2LinkTable *_link_table;
-
   //
   //methods
   //
@@ -68,7 +65,10 @@ class BRN2DSRDecap : public Element {
   //
   //member
   //
-  class BRN2NodeIdentity *_me;
+  BRN2NodeIdentity *_me;
+
+  Brn2LinkTable *_link_table;
+
 };
 
 CLICK_ENDDECLS

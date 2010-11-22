@@ -39,10 +39,10 @@
 CLICK_DECLS
 
 BRN2DSREncap::BRN2DSREncap()
-  : _debug(BrnLogger::DEFAULT),
-  _link_table(),
-  _me()
+  : _link_table(),
+    _me()
 {
+  BRNElement::init();
 }
 
 BRN2DSREncap::~BRN2DSREncap()
@@ -485,31 +485,10 @@ BRN2DSREncap::set_packet_to_next_hop(Packet * p_in)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2DSREncap *de = (BRN2DSREncap *)e;
-  return String(de->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2DSREncap *de = (BRN2DSREncap *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  de->_debug = debug;
-  return 0;
-}
-
 void
 BRN2DSREncap::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

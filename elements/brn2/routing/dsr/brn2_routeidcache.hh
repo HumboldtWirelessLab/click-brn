@@ -24,9 +24,12 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
-class BrnRouteIdCache : public Element {
+class BrnRouteIdCache : public BRNElement {
+
  public:
   class RouteIdEntry {
    public:
@@ -100,10 +103,6 @@ class BrnRouteIdCache : public Element {
   BrnRouteIdCache::RouteIdEntry* insert_entry(EtherAddress *src, EtherAddress *dst, EtherAddress *last_hop, EtherAddress *next_hop, uint32_t id);
 
  public:
-  //
-  //member
-  //
-  int _debug;
 
 };
 

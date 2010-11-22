@@ -20,7 +20,7 @@
 
 /*
  * .{cc,hh} --
- * A. Zubow
+ * R. Sombrutzki
  */
 
 #include <click/config.h>
@@ -36,8 +36,8 @@
 CLICK_DECLS
 
 BrnRouteIdCache::BrnRouteIdCache()
-  : _debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 BrnRouteIdCache::~BrnRouteIdCache()
@@ -129,37 +129,17 @@ BrnRouteIdCache::print_cache(void)
 }
 
 static String
-read_debug_param(Element *e, void *)
-{
-  BrnRouteIdCache *dd = (BrnRouteIdCache *)e;
-  return String(dd->_debug) + "\n";
-}
-
-static String
 read_cache_param(Element *e, void *)
 {
   BrnRouteIdCache *ridc = (BrnRouteIdCache *)e;
   return ridc->print_cache();
 }
 
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BrnRouteIdCache *dd = (BrnRouteIdCache *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  dd->_debug = debug;
-  return 0;
-}
-
 void
 BrnRouteIdCache::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
   add_read_handler("cache", read_cache_param, 0);
 }
 

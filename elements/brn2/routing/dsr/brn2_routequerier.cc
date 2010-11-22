@@ -52,13 +52,9 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _metric(0),
     _use_blacklist(true)
 {
-  timeval tv;
-  tv = Timestamp::now().timeval();
+  BRNElement::init();
 
-  //add_input();  // incoming packets
-
-  //add_output(); // output 0: route to destination is not available (rreq packet)
-  //add_output(); // output 1: route to destination is available (move packet to srcforwarder)
+  timeval tv = Timestamp::now().timeval();
 }
 
 /* destructor processes some cleanup */
@@ -1026,7 +1022,7 @@ BRN2RouteQuerier::last_forwarder_eth(Packet *p)
 // Handler
 //-----------------------------------------------------------------------------
 
-enum {H_DEBUG, H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB};
+enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB};
 
 static String
 read_handler(Element *e, void * vparam)
@@ -1034,16 +1030,13 @@ read_handler(Element *e, void * vparam)
   BRN2RouteQuerier *rq = (BRN2RouteQuerier *)e;
 
   switch ((intptr_t)vparam) {
-    case H_DEBUG: {
-      return String(rq->_debug) + "\n";
-    }
     case H_FIXED_ROUTE: {
       String ret;
       for (BRN2RouteQuerier::RouteMap::const_iterator iter = rq->fixed_routes.begin();
           iter.live(); ++iter) {
         const BRN2RouteQuerier::EtherPair& pair = iter.key();
         ret += pair.first.unparse() + " -> " + pair.second.unparse() + ":\n";
-        
+
         const EtherAddresses& route = iter.value();
         for (int i = 0; i < route.size(); i++) {
           const EtherAddress& addr = route.at(i);
@@ -1054,7 +1047,7 @@ read_handler(Element *e, void * vparam)
       return ret;
     }
   }
-  
+
   return String("n/a\n");
 }
 
@@ -1065,13 +1058,6 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
   String s = cp_uncomment(in_s);
 
   switch ((intptr_t)vparam) {
-    case H_DEBUG: {
-      int debug;
-      if (!cp_integer(s, &debug)) 
-        return errh->error("debug parameter must be an integer value between 0 and 4");
-      rq->_debug = debug;
-      break;
-    }
     case H_FIXED_ROUTE: {
       click_chatter("fixed_route called\n");
       EtherAddresses routeForward, routeReverse;
@@ -1091,11 +1077,11 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
         routeForward.push_back(m);
         routeReverse.insert(routeReverse.begin(), m);
       }
-      
+
       int size = routeForward.size();
       if (size < 2)
         return errh->error("fixed_route must contain at least 2 entries.");
-      
+
       BRN2RouteQuerier::EtherPair keyForward(routeForward[0], routeForward[size-1]);
       rq->fixed_routes.insert(keyForward, routeForward);
 
@@ -1123,10 +1109,10 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 void
 BRN2RouteQuerier::add_handlers()
 {
-  add_read_handler("debug", read_handler, (void*) H_DEBUG);
+  BRNElement::add_handlers();
+
   add_read_handler("fixed_route", read_handler, (void*) H_FIXED_ROUTE);
 
-  add_write_handler("debug", write_handler, (void*) H_DEBUG);
   add_write_handler("fixed_route", write_handler, (void*) H_FIXED_ROUTE);
   add_write_handler("fixed_route_clear", write_handler, (void*) H_FIXED_ROUTE_CLEAR);
   add_write_handler("flush_sb", write_handler, (void*) H_FLUSH_SB);

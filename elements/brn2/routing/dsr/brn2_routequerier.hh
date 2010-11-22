@@ -46,7 +46,7 @@ class BRN2DSREncap;
  * output 1: route to destination is not available
  * =d
  */
-class BRN2RouteQuerier : public Element
+class BRN2RouteQuerier : public BRNElement
 {
 public:
   typedef Pair<EtherAddress,EtherAddress> EtherPair;

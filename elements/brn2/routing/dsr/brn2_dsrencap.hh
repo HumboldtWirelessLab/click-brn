@@ -23,6 +23,8 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_routequerier.hh"
 #include "brn2_dsrprotocol.hh"
@@ -36,15 +38,9 @@ CLICK_DECLS
  * ...
  * =d
  */
-class BRN2DSREncap : public Element {
+class BRN2DSREncap : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-  Brn2LinkTable *_link_table;
-
   //
   //methods
   //
@@ -66,6 +62,12 @@ class BRN2DSREncap : public Element {
   Packet *create_rerr(EtherAddress, EtherAddress, EtherAddress, const BRN2RouteQuerierRoute &);
   Packet *set_packet_to_next_hop(Packet * p_in);
   Packet *skipInMemoryHops(Packet *p_in);
+
+  //
+  //member
+  //
+  Brn2LinkTable *_link_table;
+
  private:
   //
   //member

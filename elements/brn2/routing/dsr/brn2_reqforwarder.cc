@@ -27,6 +27,7 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "brn2_dsrprotocol.hh"
@@ -42,7 +43,9 @@ BRN2RequestForwarder::BRN2RequestForwarder()
   _route_querier(),
   _sendbuffer_timer(this),
   _enable_last_hop_optimization(false),
-  _enable_full_route_optimization(false)
+  _enable_full_route_optimization(false),
+  _enable_delay_queue(true),
+  _stats_receive_better_route(0)
 {
   BRNElement::init();
 }
@@ -63,6 +66,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "MINMETRIC", cpkP+cpkM, cpInteger, &_min_metric_rreq_fwd,
       "LAST_HOP_OPT", cpkP, cpBool, &_enable_last_hop_optimization,
       "FULL_ROUTE_OPT", cpkP, cpBool, &_enable_full_route_optimization,
+      "ENABLE_DELAY_QUEUE", cpkP, cpBool, &_enable_delay_queue,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -86,9 +90,8 @@ int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
   click_srandom(_me->getMasterAddress()->hashcode());
-  unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
+
   _sendbuffer_timer.initialize(this);
-  _sendbuffer_timer.schedule_after_msec( j );
 
   return 0;
 }
@@ -310,13 +313,14 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       // ETX:
       unsigned short this_metric = _route_querier->route_metric(request_route);
 
-      BRN_DEBUG("* RREQ: this_metric is %d last_hop_metric is %d",this_metric,last_hop_metric);
+      BRN_DEBUG("* RREQ: this_metric is %d last_hop_metric is %d",this_metric, last_hop_metric);
 
       // ETX not yet used
       if (old_frv) {
         if (_debug == BrnLogger::DEBUG) {
           BRN_DEBUG("* already forwarded this route request %d (%d, %d)",
             ntohs(brn_dsr->dsr_id), this_metric, old_frv->best_metric);
+
           if (_route_querier->metric_preferable(this_metric, old_frv->best_metric)) {
             BRN_DEBUG(" * but this one is better");
           } else {
@@ -346,21 +350,29 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
         BRN_DEBUG("* last_forwarder is %s", last_forwarder.unparse().c_str());
 
-        if (old_frv && old_frv->p) {
-          // if we're here, then we've already forwarded this
-          // request, but this one is better and we want to
-          // forward it.  however, we've got a pending
-          // unidirectionality test for this RREQ.
+        if (old_frv ) {
+          _stats_receive_better_route++;
 
-          // what we should do is maintain a list of packet *'s
-          // that we've issued tests for.
+          if (old_frv->p) {
+            // if we're here, then we've already forwarded this
+            // request, but this one is better and we want to
+            // forward it.  however, we've got a pending
+            // unidirectionality test for this RREQ.
 
-          // XXX instead, we just give up on the potentially
-          // asymmetric link.  whether or not the test comes back,
-          // things should be ok.  nonetheless this is incorrect
-          // behavior.
-          old_frv->p->kill();
-          old_frv->p = NULL;
+            // what we should do is maintain a list of packet *'s
+            // that we've issued tests for.
+
+            // XXX instead, we just give up on the potentially
+            // asymmetric link.  whether or not the test comes back,
+            // things should be ok.  nonetheless this is incorrect
+            // behavior.
+
+            /* RobAt: optimization: add Buffered_packet to ForwardedReqVal
+              - if better route is received, change the packet in bufferd packet
+                and kill the old one */
+            old_frv->p->kill();
+            old_frv->p = NULL;
+          }
         }
 
         BRN_DEBUG("* forwarding this RREQ %s %s", indev->getDeviceName().c_str(), indev->getDeviceName().c_str());
@@ -453,13 +465,17 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   BRNPacketAnno::set_devicenumber_anno(p,devicenumber);
   BRN_DEBUG(" * current dev_anno %s.", indev->getDeviceName().c_str());
 
-  // Buffering + Jitter
-  unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
-  _packet_queue.push_back( BufferedPacket( p , j ));
+  if ( _enable_delay_queue ) {
+    // Buffering + Jitter
+    unsigned int j = (unsigned int ) ( ( click_random() % ( JITTER ) ) );
+    _packet_queue.addPacket(p, j);
 
-  j = get_min_jitter_in_queue();
+    j = _packet_queue.getTimeToNext();
 
-  _sendbuffer_timer.schedule_after_msec(j);
+    _sendbuffer_timer.schedule_after_msec(j);
+  } else {
+    output(0).push(p);
+  }
 }
 
 
@@ -488,83 +504,33 @@ BRN2RequestForwarder::issue_rrep(EtherAddress src, IPAddress src_ip, EtherAddres
 void
 BRN2RequestForwarder::run_timer(Timer *)
 {
+  BRN_DEBUG("* RREQ: Run timer.");
   queue_timer_hook();
 }
 
 void
 BRN2RequestForwarder::queue_timer_hook()
 {
-  struct timeval curr_time;
-  curr_time = Timestamp::now().timeval();
+  struct timeval curr_time = Timestamp::now().timeval();
 
-  for ( int i = 0; i < _packet_queue.size(); i++)
-  {
-    if ( diff_in_ms( _packet_queue[i]._send_time, curr_time ) <= 0 )
+  for ( int i = (_packet_queue.size()-1); i >= 0; i--) {
+    if ( _packet_queue.get(i)->diff_time(curr_time) <= 0 )
     {
-      Packet *out_packet = _packet_queue[i]._p;
-      _packet_queue.erase(_packet_queue.begin() + i);
+      Packet *out_packet = _packet_queue.get(i)->_p;
+      _packet_queue.del(i);
       output(0).push( out_packet );
       break;
     }
   }
 
-  unsigned int j = get_min_jitter_in_queue();
-  if ( j < MIN_JITTER ) j = MIN_JITTER;
+  int j = _packet_queue.getTimeToNext();
 
-  _sendbuffer_timer.schedule_after_msec(j);
-}
+  if ( j >= 0 ) {
+    if ( j < MIN_JITTER ) j = MIN_JITTER;
 
-long
-BRN2RequestForwarder::diff_in_ms(timeval t1, timeval t2)
-{
-  long s, us, ms;
-
-  while (t1.tv_usec < t2.tv_usec) {
-    t1.tv_usec += 1000000;
-    t1.tv_sec -= 1;
+    _sendbuffer_timer.schedule_after_msec(j);
   }
-
-  s = t1.tv_sec - t2.tv_sec;
-
-  us = t1.tv_usec - t2.tv_usec;
-  ms = s * 1000L + us / 1000L;
-
-  return ms;
 }
-
-unsigned int
-BRN2RequestForwarder::get_min_jitter_in_queue()
-{
-  struct timeval _next_send;
-  struct timeval _time_now;
-  long next_jitter;
-
-  if ( _packet_queue.size() == 0 ) return( 1000 );
-  else
-  {
-    _next_send.tv_sec = _packet_queue[0]._send_time.tv_sec;
-    _next_send.tv_usec = _packet_queue[0]._send_time.tv_usec;
-
-    for ( int i = 1; i < _packet_queue.size(); i++ )
-    {
-      if ( ( _next_send.tv_sec > _packet_queue[i]._send_time.tv_sec ) ||
-           ( ( _next_send.tv_sec == _packet_queue[i]._send_time.tv_sec ) && (  _next_send.tv_usec > _packet_queue[i]._send_time.tv_usec ) ) )
-      {
-        _next_send.tv_sec = _packet_queue[i]._send_time.tv_sec;
-        _next_send.tv_usec = _packet_queue[i]._send_time.tv_usec;
-      }
-    }
-
-    _time_now = Timestamp::now().timeval();
-
-    next_jitter = diff_in_ms(_next_send, _time_now);
-
-    if ( next_jitter <= 1 ) return( 1 );
-    else return( next_jitter );   
- }
-}
-
-
 
 //-----------------------------------------------------------------------------
 // Helper methods
@@ -606,24 +572,42 @@ BRN2RequestForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route
 void
 BRN2RequestForwarder::reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out)
 {
-  for(int i=in.size()-1; i>=0; i--) {
+  for(int i=in.size()-1; i>=0; i--)
     out.push_back(in[i]);
-  }
 }
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
+enum {
+  H_DSR_STATS
+};
+
+static String
+read_param(Element *e, void *thunk)
+{
+  BRN2RequestForwarder *rreq = (BRN2RequestForwarder *)e;
+  StringAccum sa;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_DSR_STATS :
+    {
+      sa << "<stats better_route=\"" << rreq->_stats_receive_better_route << "\"/>\n";
+      return ( sa.take_string() );
+    }
+  }
+
+  return String();
+}
+
 void
 BRN2RequestForwarder::add_handlers()
 {
   BRNElement::add_handlers();
+  add_read_handler("stats", read_param , (void *)H_DSR_STATS);
 }
-
-#include <click/bighashmap.cc>
-#include <click/vector.cc>
-template class Vector<BRN2RequestForwarder::BufferedPacket>;
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2RequestForwarder)

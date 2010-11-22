@@ -28,19 +28,23 @@
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+
+#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn2/standard/packetsendbuffer.hh"
+
+#include "brn2_routequerier.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_dsrencap.hh"
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
-class BRN2NodeIdentity;
-class BRN2RouteQuerier;
-class BRN2DSREncap;
-
 #define JITTER 17
 #define MIN_JITTER 5
+
+class BRN2DSREncap;
+class BRN2RouteQuerier;
 
 
 /*
@@ -55,31 +59,6 @@ class BRN2DSREncap;
 class BRN2RequestForwarder : public BRNElement {
 
  public:
-
-  class BufferedPacket
-  {
-    public:
-     Packet *_p;
-     struct timeval _send_time;
-
-     BufferedPacket(Packet *p, int time_diff)
-     {
-       assert(p);
-       _p=p;
-       _send_time = Timestamp::now().timeval();
-       _send_time.tv_sec += ( time_diff / 1000 );
-       _send_time.tv_usec += ( ( time_diff % 1000 ) * 1000 );
-       while( _send_time.tv_usec >= 1000000 )  //handle timeoverflow
-       {
-         _send_time.tv_usec -= 1000000;
-         _send_time.tv_sec++;
-       }
-     }
-     void check() const { assert(_p); }
-  };
-
-  typedef Vector<BufferedPacket> SendBuffer;
-
   //
   //methods
   //
@@ -108,14 +87,12 @@ public:
   //
   //member
   //
-  int _debug;
+
   BRN2NodeIdentity *_me;
   Brn2LinkTable *_link_table;
   BRN2DSRDecap *_dsr_decap;
   BRN2DSREncap *_dsr_encap;
-//  BRN2Encap *_brn_encap;
   BRN2RouteQuerier *_route_querier;
-
 
 private:
   int _min_metric_rreq_fwd;
@@ -126,12 +103,9 @@ private:
 
   //
   //Timer methods
-  SendBuffer _packet_queue;
+  PacketSendBuffer _packet_queue;
   Timer _sendbuffer_timer;
-
-  long diff_in_ms(timeval t1, timeval t2);
   void queue_timer_hook();
-  unsigned int get_min_jitter_in_queue();
 
   //
   //methods
@@ -142,6 +116,13 @@ private:
 
   bool _enable_last_hop_optimization;
   bool _enable_full_route_optimization;
+
+  bool _enable_delay_queue;
+
+ public:
+  int _stats_receive_better_route;
+  int _stats_avoid_bad_route_forward;
+
 };
 
 CLICK_ENDDECLS

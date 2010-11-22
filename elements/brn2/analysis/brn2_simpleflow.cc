@@ -245,7 +245,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       uint32_t duration;
       uint32_t active;
 
-      click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
+      //click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
       cp_ethernet_address(args[0], &src);
       cp_ethernet_address(args[1], &dst);
       cp_integer(args[2], &rate);

@@ -36,17 +36,13 @@
 CLICK_DECLS
 
 BRN2ErrorForwarder::BRN2ErrorForwarder()
-  : _debug(BrnLogger::DEFAULT),
-  _me(),
+  : _me(),
   _link_table(),
   _dsr_encap(),
   _dsr_decap(),
   _route_querier()
-//  _brn_encap()
 {
-  //add_input();  //process previously by the ds reported link level error
-  //add_input();  //process incoming dsr rerr packet
-  //add_output(); //forward dsr rerr packet to final destination
+  BRNElement::init();
 }
 
 BRN2ErrorForwarder::~BRN2ErrorForwarder()
@@ -369,33 +365,11 @@ BRN2ErrorForwarder::reverse_route(const BRN2RouteQuerierRoute &r, BRN2RouteQueri
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2ErrorForwarder *ef = (BRN2ErrorForwarder *)e;
-  return String(ef->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2ErrorForwarder *ef = (BRN2ErrorForwarder *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  ef->_debug = debug;
-  return 0;
-}
-
 void
 BRN2ErrorForwarder::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2ErrorForwarder)
