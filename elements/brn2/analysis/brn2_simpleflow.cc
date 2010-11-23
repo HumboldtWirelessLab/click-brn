@@ -100,7 +100,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
 {
   _tx_flowMap.insert(dst, Flow(src, dst, 1, TYPE_NO_ACK, DIR_ME_RECEIVER, rate, size, duration));
 
-  txFlow = (BRN2SimpleFlow::Flow*)&(_tx_flowMap.find(dst));
+  txFlow = _tx_flowMap.findp(dst);
   txFlow->_active = active;
 
   if ( txFlow->_active ) _timer.schedule_after_msec(txFlow->_rate + ( click_random() % txFlow->_rate ) );
