@@ -54,19 +54,17 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   add_flow( _src, _dst, _rate, _size, _mode, _duration, false);
-  txFlow->_active = _active;
+  set_active(&_dst,_active);
 
   return 0;
 }
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
-  click_srandom(txFlow->_src.hashcode());
+  click_srandom(dst_of_flow.hashcode());
   _timer.initialize(this);
 
-  if ( txFlow->_active && txFlow->_rate > 0 ) {
-    _timer.schedule_after_msec(txFlow->_rate + ( click_random() % txFlow->_rate ) );
-  }
+  schedule_next(&dst_of_flow);
 
   return 0;
 }
@@ -78,20 +76,45 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
   if ( t == NULL ) click_chatter("Timer is NULL");
 
-  if ( txFlow->_active ) {
-    _timer.reschedule_after_msec(txFlow->_rate);
+  if ( is_active(&dst_of_flow) ) {
+    schedule_next(&dst_of_flow);
 
-    packet_out = nextPacketforFlow(txFlow);
+    Flow *txFlow = _tx_flowMap.findp(dst_of_flow);
+    if ( txFlow) {
+      packet_out = nextPacketforFlow(txFlow);
 
-    output(0).push(packet_out);
+      output(0).push(packet_out);
+    }
   }
 }
 
 void
-BRN2SimpleFlow::set_active()
+BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 {
   BRN_DEBUG("Flow active");
-  txFlow->_active = true;
+  Flow *txFlow = _tx_flowMap.findp(*dst);
+  txFlow->_active = active;
+}
+
+bool
+BRN2SimpleFlow::is_active(EtherAddress *dst)
+{
+  Flow *txFlow = _tx_flowMap.findp(*dst);
+  if ( txFlow ) return txFlow->_active;
+
+  return false;
+}
+
+void
+BRN2SimpleFlow::schedule_next(EtherAddress *dst)
+{
+  Flow *txFlow = _tx_flowMap.findp(*dst);
+
+  if ( txFlow ) {
+    if ( txFlow->_active && txFlow->_rate > 0 ) {
+      _timer.reschedule_after_msec(txFlow->_rate);
+    }
+  }
 }
 
 void
@@ -99,12 +122,18 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
                           uint32_t rate, uint32_t size, uint32_t /*mode*/,
                           uint32_t duration, bool active )
 {
-  _tx_flowMap.insert(dst, Flow(src, dst, 1, TYPE_NO_ACK, DIR_ME_RECEIVER, rate, size, duration));
+  Flow *txFlow = _tx_flowMap.findp(dst);
 
-  txFlow = _tx_flowMap.findp(dst);
-  txFlow->_active = active;
+  if ( txFlow != NULL ) {
+    if ( active ) txFlow->reset();
+  } else {
+    _tx_flowMap.insert(dst, Flow(src, dst, 1, TYPE_NO_ACK, DIR_ME_RECEIVER, rate, size, duration));
+  }
 
-  if ( txFlow->_active ) _timer.schedule_after_msec(txFlow->_rate + ( click_random() % txFlow->_rate ) );
+  dst_of_flow = dst;
+  set_active(&dst_of_flow, active);
+
+  if ( is_active(&dst_of_flow) ) schedule_next(&dst_of_flow);
 }
 
 void
@@ -199,7 +228,6 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_TXFLOWS_SHOW: {
       StringAccum sa;
-      sa << "Me: " << sf->txFlow->_src.unparse() << "\n";
       sa << "TxFlows:\n";
       for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();
@@ -211,7 +239,6 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
     }
     case H_RXFLOWS_SHOW: {
       StringAccum sa;
-      sa << "Me: " << sf->txFlow->_src.unparse() << "\n";
       sa << "RxFlows:\n";
       for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();
@@ -253,7 +280,13 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
     case H_FLOW_ACTIVE: {
-      sf->set_active();
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      bool active;
+      cp_bool(args[0], &active);
+
+      sf->set_active(&(sf->dst_of_flow), active);
       break;
     }
     case H_ADD_FLOW: {
@@ -286,9 +319,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       sf->add_flow( src, dst, rate, size, mode, duration, active);
       break;
     }
-
   }
-
   return 0;
 }
 

@@ -93,22 +93,21 @@ class BRN2SimpleFlow : public BRNElement
 
       void reset() {
         _active = false;
-        _txPackets = 0;
+        _txPackets = 1;
         _rxPackets = 0;
         _rxCrcErrors = 0;
       }
 
   };
 
-  public:
-
     Timer _timer;
 
     typedef HashMap<EtherAddress, Flow> FlowMap;
     typedef FlowMap::const_iterator FMIter;
 
-    FlowMap _rx_flowMap;
-    FlowMap _tx_flowMap;
+    /*****************/
+    /** M E M B E R **/
+    /*****************/
 
     BRN2SimpleFlow();
     ~BRN2SimpleFlow();
@@ -125,28 +124,30 @@ class BRN2SimpleFlow : public BRNElement
 
     int initialize(ErrorHandler *);
 
-    void push( int port, Packet *packet );
+    void push(int port, Packet *packet);
 
     void add_handlers();
 
     void run_timer(Timer *t);
 
-    void set_active();
-    uint32_t get_txpackets(void) { return txFlow->_txPackets; }
-
-    EtherAddress *get_txdest(void) { return &(txFlow->_dst); }
+    void set_active(EtherAddress *dst, bool active);
+    bool is_active(EtherAddress *dst);
+    void schedule_next(EtherAddress *dst);
 
     void add_flow( EtherAddress src, EtherAddress dst,
                    uint32_t rate, uint32_t size, uint32_t mode,
                    uint32_t duration, bool active );
 
-    Flow *txFlow;
+    FlowMap _rx_flowMap;
+    FlowMap _tx_flowMap;
+
+    EtherAddress dst_of_flow;
+
   private:
 
     WritablePacket*  nextPacketforFlow(Flow *f);
 
     bool _clear_packet;
-
     int _headroom;
 
 };
