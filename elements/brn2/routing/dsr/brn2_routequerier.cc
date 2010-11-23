@@ -37,8 +37,7 @@ CLICK_DECLS
 
 /* constructor initalizes timer, ... */
 BRN2RouteQuerier::BRN2RouteQuerier()
-  : _debug(BrnLogger::DEFAULT),
-    _sendbuffer_check_routes(false),
+  : _sendbuffer_check_routes(false),
     _sendbuffer_timer(static_sendbuffer_timer_hook, this),
     _me(NULL),
     _link_table(),

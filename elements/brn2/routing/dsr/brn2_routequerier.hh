@@ -25,6 +25,7 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
 #include "brn2_dsrencap.hh"
@@ -189,8 +190,6 @@ public:
   //---------------------------------------------------------------------------
   // fields
   //---------------------------------------------------------------------------
-  int _debug;
-
   ForwardedReqMap _forwarded_rreq_map;
   // unique route request id
   uint16_t _rreq_id;

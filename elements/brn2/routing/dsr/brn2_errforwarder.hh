@@ -71,7 +71,6 @@ class BRN2ErrorForwarder : public BRNElement {
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
   BRN2RouteQuerier *_route_querier;
-//  BRN2Encap *_brn_encap;
 
   //
   //methods
