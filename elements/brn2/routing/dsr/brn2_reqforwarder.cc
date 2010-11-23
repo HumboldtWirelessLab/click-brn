@@ -295,10 +295,55 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       ForwardedReqKey frk(src_addr, dst_addr, ntohs(brn_dsr->dsr_id));
       ForwardedReqVal *old_frv = _route_querier->_forwarded_rreq_map.findp(frk);
 
+      EtherAddress *detour_nb = NULL;
+      int detour_metric_last_nb;
       /* Route Optimization */
-      if ( _enable_last_hop_optimization ) {
+      if (_enable_last_hop_optimization ) {
         /* Last hop optimization */
         BRN_DEBUG("* RREQ: Try to optimize route from last hop to me.");
+
+	 // metric between last hop and me: last_hop_metric
+
+	 // search in my 1-hop neighborhood for a node which is well-connected with prev_node
+	 Vector<EtherAddress> neighbors;
+	
+        if (_link_table) {
+	    _link_table->get_local_neighbors(neighbors);
+	
+	    if ( neighbors.size() > 0 ) {
+		int best_metric_last_nb = 9999;
+		int best_detour_metric = 9999;
+		EtherAddress best_nb;
+
+	       for( int n_i = 0; n_i < neighbors.size(); n_i++) {
+		  // calc metric between this neighbor and last hop (= prev_node)
+		  int metric_last_nb = _link_table->get_link_metric(prev_node, neighbors[n_i]);
+
+		  // calc metric between this neighbor and myself
+		  //const EtherAddress *me = _node_identity->getMasterAddress();
+  		  const EtherAddress *me = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+		  int metric_nb_me = _link_table->get_link_metric(neighbors[n_i], *me);
+
+		  int detour_metric = metric_last_nb + metric_nb_me;
+		  if ( (detour_metric < last_hop_metric) && (detour_metric < best_detour_metric) ) {
+			// save this nb
+			best_detour_metric = detour_metric;
+			best_metric_last_nb = metric_last_nb;
+			best_nb = neighbors[n_i];
+		  }
+              }
+
+		if (best_detour_metric < last_hop_metric) {
+		      BRN_DEBUG("* RREQ: Insert detour over %s. with metric %d instead of %d", best_nb.unparse().c_str(), best_detour_metric, last_hop_metric);
+			// lets make a detour over best_nb
+		      request_route.push_back(BRN2RouteQuerierHop(best_nb, best_metric_last_nb));
+		      detour_nb = &best_nb;
+                    detour_metric_last_nb = best_metric_last_nb;
+		}
+	     }
+	  }
+        /* Last hop optimization */
+        BRN_DEBUG("* RREQ: Finishing optimization.");
       } else if ( _enable_full_route_optimization ) {
         /* Full route optimazation */
         BRN_DEBUG("* RREQ: Try to optimize route from src to me.");
@@ -368,7 +413,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         new_frv.p = NULL;
         new_frv.best_metric = this_metric;
         _route_querier->_forwarded_rreq_map.insert(frk, new_frv);
-        forward_rreq(p_in);
+        forward_rreq(p_in, detour_nb, detour_metric_last_nb);
 
         return; 
       }
@@ -381,7 +426,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
  *
  */
 void
-BRN2RequestForwarder::forward_rreq(Packet *p_in)
+BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int detour_metric_last_nb)
 {
   uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(p_in);
   BRN2Device *indev;
@@ -389,7 +434,13 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
   // add my address to the end of the packet
   WritablePacket *p_u=p_in->uniqueify();
 
-  WritablePacket *p = DSRProtocol::extend_hops(p_u,1);  //add space for one additional hop
+  int addHops = 1;
+  if (detour_nb) {
+       BRN_DEBUG("* Adding detour node %s.", detour_nb->unparse().c_str());
+	addHops++;
+  }
+
+  WritablePacket *p = DSRProtocol::extend_hops(p_u,addHops);  //add space for one additional hop
 
   BRN_DEBUG("Headersize: %d brn+dsr: %d",p->length(),sizeof(click_brn) + sizeof(click_brn_dsr));
 
@@ -416,24 +467,38 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in)
 
   memcpy(dsr_hops[hop_count].hw.data, (uint8_t *)prev_node.data(), 6 * sizeof(uint8_t));  //TODO: extend for new entry
 
+  if (detour_nb) {
+	memcpy(dsr_hops[hop_count+1].hw.data, (uint8_t *)detour_nb->data(), 6 * sizeof(uint8_t));  //add detour node
+  }
+
   //rreq is a broadcast; use the ether address associated with packet's device
   indev = _me->getDeviceByNumber(devicenumber);
   const EtherAddress *me = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
 
   if (me) {
-    // set the metric no my previous node
-    int metric = _link_table->get_link_metric(prev_node, *me);
-    BRN_DEBUG("* append prev node (%s) to rreq with metric %d.", prev_node.unparse().c_str(), metric);
-    dsr_hops[hop_count].metric = htons(metric);
+    if (detour_nb) {
+        dsr_hops[hop_count].metric = htons(detour_metric_last_nb);
+        int metric = _link_table->get_link_metric(*detour_nb, *me);
+        dsr_hops[hop_count+1].metric = htons(metric);
+    } else { // default behavior
+        // set the metric no my previous node
+        int metric = _link_table->get_link_metric(prev_node, *me);
+        BRN_DEBUG("* append prev node (%s) to rreq with metric %d.", prev_node.unparse().c_str(), metric);
+        dsr_hops[hop_count].metric = htons(metric);
+    }
   } else {
     BRN_DEBUG("* device unknown: %s", indev->getDeviceName().c_str());
   }
 
   // update hop count
   dsr_rreq->dsr_hop_count++;
-
   // reduce ttl
   brn->ttl--;
+
+  if (detour_nb) {
+    dsr_rreq->dsr_hop_count++;
+    brn->ttl--;
+  }
 
   // set source and destination anno
   BRN_DEBUG("New SRC-Ether is: %s",indev->getEtherAddress()->unparse().c_str());

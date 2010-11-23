@@ -99,7 +99,7 @@ class BRN2RequestForwarder : public BRNElement {
   void uninitialize();
   void add_handlers();
 
-  void forward_rreq(Packet *p_in);
+  void forward_rreq(Packet *p_in, EtherAddress *detour_nb, int detour_metric_last_nb);
   void add_route_to_link_table(const BRN2RouteQuerierRoute &);
 
   void run_timer(Timer *timer);
@@ -108,7 +108,6 @@ public:
   //
   //member
   //
-  int _debug;
   BRN2NodeIdentity *_me;
   Brn2LinkTable *_link_table;
   BRN2DSRDecap *_dsr_decap;
