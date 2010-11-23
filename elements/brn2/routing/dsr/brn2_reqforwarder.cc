@@ -315,6 +315,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 	
 	    if ( neighbors.size() > 0 ) {
 		int best_metric_last_nb = 9999;
+		int best_metric_nb_me = 9999;
 		int best_detour_metric = 9999;
 		EtherAddress best_nb;
 
@@ -332,6 +333,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 			// save this nb
 			best_detour_metric = detour_metric;
 			best_metric_last_nb = metric_last_nb;
+			best_metric_nb_me = metric_nb_me;
 			best_nb = neighbors[n_i];
 		  }
               }
@@ -342,6 +344,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 		      request_route.push_back(BRN2RouteQuerierHop(best_nb, best_metric_last_nb));
 		      detour_nb = &best_nb;
                     detour_metric_last_nb = best_metric_last_nb;
+                    last_hop_metric = best_metric_nb_me;
 		}
 	     }
 	  }
@@ -369,7 +372,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
           if (_route_querier->metric_preferable(this_metric, old_frv->best_metric)) {
             BRN_DEBUG(" * but this one is better");
           } else {
-            BRN_DEBUG("* and this one's not as good");
+            BRN_DEBUG("* and this one's not as good ( %d vs. %d )", this_metric, old_frv->best_metric);
           }
         }
       }

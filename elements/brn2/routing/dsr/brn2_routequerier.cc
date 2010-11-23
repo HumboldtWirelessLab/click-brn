@@ -79,6 +79,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "DSRENCAP",  cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
+      "METRIC", cpkP, cpElement, &_metric,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -956,7 +957,7 @@ BRN2RouteQuerier::metric_preferable(unsigned short a, unsigned short b)
     return _metric->metric_val_lt(_metric->unscale_from_char(a),
 				  _metric->unscale_from_char(b));
 */
-  return true;
+  return (a < b);
 }
 
 unsigned short
