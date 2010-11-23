@@ -270,7 +270,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       uint32_t size;
       uint32_t mode;
       uint32_t duration;
-      uint32_t active;
+      bool active;
 
       //click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
       cp_ethernet_address(args[0], &src);
@@ -279,7 +279,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       cp_integer(args[3], &size);
       cp_integer(args[4], &mode);
       cp_integer(args[5], &duration);
-      cp_integer(args[6], &active);
+      cp_bool(args[6], &active);
 
       /** TODO: some valid checks */
       sf->add_flow( src, dst, rate, size, mode, duration, active);
