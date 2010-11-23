@@ -40,19 +40,13 @@
 CLICK_DECLS
 
 BRN2SrcForwarder::BRN2SrcForwarder()
-  : _debug(BrnLogger::DEFAULT),
-  _me(),
-  _dsr_encap(),
-  _dsr_decap(),
-  _link_table(),
-  _dsr_rid_cache(NULL)
+  : _me(),
+    _dsr_encap(),
+    _dsr_decap(),
+    _link_table(),
+    _dsr_rid_cache(NULL)
 {
-  //add_input(); // previously generated src packet needs to be forwarded
-  //add_input(); // receiving src packet (dest reached or packet has to be forwarded)
-
-  //add_output(); // source routed packet has to be forwarded
-  //add_output(); // src packet reached final destination (internal node or client)
-  //add_output(); // src packet reached final destination (external node - client)
+  BRNElement::init();
 }
 
 BRN2SrcForwarder::~BRN2SrcForwarder()
@@ -189,7 +183,6 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
       BRN_DEBUG(" * source routed packet reached final destination (me or my assoc clients)");
       BRN_DEBUG("Final Dest: %s",dst_addr.unparse().c_str());
       if ( _dsr_rid_cache ) {
-        click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));  //TODO: this is done up (line 162). Remove this.
 
         EtherAddress dst(brn_dsr->dsr_dst.data);
         EtherAddress next(brn_dsr->dsr_dst.data);
@@ -223,8 +216,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   Packet *p_out = _dsr_encap->set_packet_to_next_hop(p_in);
 
   // check the link metric from me to the dst
-  /*const*/ click_brn_dsr *brn_dsr = //RobAt:DSR
-        (/*const*/  click_brn_dsr *)(p_out->data() + sizeof(click_brn));
+  click_brn_dsr *brn_dsr = (click_brn_dsr *)(p_out->data() + sizeof(click_brn));
 
   int source_hops  = brn_dsr->dsr_hop_count;
   int segments     = brn_dsr->dsr_segsleft;
@@ -279,7 +271,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
 
     memcpy(ether->ether_shost, me.data(), sizeof(ether->ether_shost));
     memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));
-    ether->ether_type = htons(ETHERTYPE_BRN);                                         //TODO: CHECK: this is important ??
+    ether->ether_type = htons(ETHERTYPE_BRN);                             //TODO: CHECK: this is important ??
 
     // the following line would effectively destroy p_in as it creates a shared ether header between p and p_in
     // Yet, there is no obvious reason to have it around at all. We shouldn't touch p_in here.
@@ -306,28 +298,22 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 {
   click_brn_dsr *dsr_src = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
 
-  //int old_len = p_in->length();
   int brn_dsr_len = sizeof(click_brn) + DSRProtocol::header_length(dsr_src);
 
-//  uint8_t type = dsr_src->body.src.dsr_payload_type;
   EtherAddress src(dsr_src->dsr_src.data);
   EtherAddress dst(dsr_src->dsr_dst.data);
 
   WritablePacket *p = p_in->uniqueify();
-  //click_ether *ether = (click_ether *)(p->data() + brn_dsr_len);
 
   // remove the headers  
   p->pull(brn_dsr_len);
-  //memcpy(p->data(), ether, (old_len - brn_dsr_len));
-
-  // set dsr payload type
-  //p->set_user_anno_c(BRN_DSR_PAYLOADTYPE_KEY, type);
 
   // ether anno
   click_ether* ether_anno = const_cast<click_ether*>(p->ether_header());
   if( NULL == ether_anno ) {
     p = p->push_mac_header(sizeof(click_ether));
     ether_anno = const_cast<click_ether*>(p->ether_header());
+
     //TODO: ether type cannot be set here.
     p->pull(sizeof(click_ether));
     BRN_DEBUG("PUSH Etherheader");
@@ -387,33 +373,11 @@ BRN2SrcForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2SrcForwarder *sf = (BRN2SrcForwarder *)e;
-  return String(sf->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2SrcForwarder *sf = (BRN2SrcForwarder *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  sf->_debug = debug;
-  return 0;
-}
-
 void
 BRN2SrcForwarder::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2SrcForwarder)

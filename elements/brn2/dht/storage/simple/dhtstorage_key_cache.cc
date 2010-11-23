@@ -44,7 +44,7 @@ DHTStorageKeyCache::getEntry(uint8_t *id, uint8_t replica)
   for(int i = 0; i < _idcache.size(); i++) {                      //search
     if ( ( memcmp( id, _idcache[i]._id, MD5_DIGEST_LENGTH) == 0 ) &&
          ( _idcache[i]._replica == replica ) ) {                   //if found
-      if ( (now - _idcache[i]._time).msec1() < MAXKEXCACHETIME ) {//check age, if not too old
+      if ( (now - _idcache[i]._time).msecval() < MAXKEXCACHETIME ) {//check age, if not too old
         return &(_idcache[i]._ea);                               //give back
       } else {                                                    //too old ?
         _idcache.erase(_idcache.begin() + i);                     //delete !!

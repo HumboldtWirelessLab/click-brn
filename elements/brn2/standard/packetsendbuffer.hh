@@ -12,6 +12,23 @@ class PacketSendBuffer
 {
   public:
 
+  static long diff_in_ms(timeval t1, timeval t2)
+  {
+    long s, us, ms;
+
+    while (t1.tv_usec < t2.tv_usec) {
+      t1.tv_usec += 1000000;
+      t1.tv_sec -= 1;
+    }
+
+    s = t1.tv_sec - t2.tv_sec;
+
+    us = t1.tv_usec - t2.tv_usec;
+    ms = s * 1000L + us / 1000L;
+
+    return ms;
+  }
+
   class BufferedPacket
   {
     public:
@@ -50,6 +67,10 @@ class PacketSendBuffer
 
         return ((_send_time.tv_sec < time_now.tv_sec) || (( _send_time.tv_sec == time_now.tv_sec) && ( _send_time.tv_usec < time_now.tv_usec)));
       }
+
+      int diff_time(struct timeval curr_time) {
+        return diff_in_ms( _send_time, curr_time );
+      }
   };
 
   typedef Vector<BufferedPacket*> PacketQueue;
@@ -61,6 +82,7 @@ class PacketSendBuffer
 
     void addPacket_s(Packet *p, int time_diff_s, int port);
     void addPacket_ms(Packet *p, int time_diff_ms, int port);
+    void addPacket(Packet *p, int time_diff_ms) { addPacket_ms(p, time_diff_ms, 0); }
 
     int getTimeToNext();          //millisec to next Packet
     Packet *getNextPacket();

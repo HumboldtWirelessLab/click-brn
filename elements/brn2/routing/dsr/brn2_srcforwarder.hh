@@ -23,6 +23,8 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 #include "brn2_dsrencap.hh"
@@ -39,14 +41,9 @@ CLICK_DECLS
  * forwards dsr source routed packets
  * =d
  */
-class BRN2SrcForwarder : public Element {
+class BRN2SrcForwarder : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //

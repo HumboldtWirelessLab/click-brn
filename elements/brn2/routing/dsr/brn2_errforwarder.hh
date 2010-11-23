@@ -23,6 +23,8 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
@@ -36,16 +38,11 @@ CLICK_DECLS
  * forwards dsr route error packets
  * =d
  */
-class BRN2ErrorForwarder : public Element {
+class BRN2ErrorForwarder : public BRNElement {
 
  #define BRN_DSR_ROUTE_ERR_NEIGHBORS_PUNISHMENT_FAC 4
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //
@@ -74,7 +71,6 @@ class BRN2ErrorForwarder : public Element {
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
   BRN2RouteQuerier *_route_querier;
-//  BRN2Encap *_brn_encap;
 
   //
   //methods
