@@ -78,10 +78,11 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
   if ( t == NULL ) click_chatter("Timer is NULL");
 
-  _timer.reschedule_after_msec(txFlow->_rate);
-
   if ( txFlow->_active ) {
+    _timer.reschedule_after_msec(txFlow->_rate);
+
     packet_out = nextPacketforFlow(txFlow);
+
     output(0).push(packet_out);
   }
 }
