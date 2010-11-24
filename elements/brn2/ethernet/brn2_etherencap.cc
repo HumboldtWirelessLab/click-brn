@@ -69,9 +69,11 @@ BRN2EtherEncap::smaction(Packet *p)
 
     if ( annotated_ether && (! _use_anno ) ) {  // are the mac annotations available?
 
-      memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
-      memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
-      ether->ether_type = annotated_ether->ether_type;
+      if ( (void*)annotated_ether != (void*)ether ) {
+        memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
+        memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
+        ether->ether_type = annotated_ether->ether_type;
+      }
 
       //debug  //TODO: Remove this
       if ( memcmp((BRNPacketAnno::dst_ether_anno(q)).data(),annotated_ether->ether_dhost,6) != 0 ) {
