@@ -58,7 +58,6 @@ BRN2ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
-//      "BRNENCAP", cpkP+cpkM, cpElement, &_brn_encap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -77,9 +76,6 @@ BRN2ErrorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (!_route_querier || !_route_querier->cast("BRN2RouteQuerier")) 
     return errh->error("RouteQuerier not specified");
-
-//  if (!_brn_encap || !_brn_encap->cast("BRN2Encap"))
-//    return errh->error("BRNEncap not specified");
 
   return 0;
 }
@@ -271,53 +267,6 @@ BRN2ErrorForwarder::forward_rerr(Packet *p_in)
   output(0).push(p_out);
 }
 
-Packet *
-BRN2ErrorForwarder::skipInMemoryHops(Packet *p_in)
-{
-  BRN_DEBUG(" * calling NodeIdentity::skipInMemoryHops().");
-
-  click_brn_dsr *brn_dsr =
-      (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
-
-  int index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
-
-  BRN_DEBUG(" * index = %d brn_dsr->dsr_hop_count = %d", index, brn_dsr->dsr_hop_count);
-
-  if ( (brn_dsr->dsr_hop_count == 0) || (brn_dsr->dsr_segsleft == 0) )
-    return p_in;
-
-  assert(index >= 0 && index < BRN_DSR_MAX_HOP_COUNT);
-  assert(index <= brn_dsr->dsr_hop_count);
-
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
-
-  EtherAddress dest(dsr_hops[index].hw.data);
-
-  BRN_DEBUG(" * test next hop: %s", dest.unparse().c_str());
-  BRN_DEBUG(" * HC, Index, SL. %d %d %d", brn_dsr->dsr_hop_count, index, brn_dsr->dsr_segsleft);
-
-  while (_me->isIdentical(&dest) && (brn_dsr->dsr_segsleft > 0)) {
-    BRN_DEBUG(" * skip next hop: %s", dest.unparse().c_str());
-    brn_dsr->dsr_segsleft--;
-    index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
-
-    dest = EtherAddress(dsr_hops[index].hw.data);
-    BRN_DEBUG(" * check next hop (maybe skip required): %s", dest.unparse().c_str());
-  }
-
-  if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
-    BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
-  } else {
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
-  }
-
-  return p_in;
-}
-
-
 /* method generates and sends a dsr route reply */
 void
 BRN2ErrorForwarder::issue_rerr(EtherAddress bad_src, EtherAddress bad_dst,
@@ -334,7 +283,7 @@ BRN2ErrorForwarder::issue_rerr(EtherAddress bad_src, EtherAddress bad_dst,
   brn_p = BRNProtocol::add_brn_header(rrer_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(rrer_p));
 
   //skip inMemory hops
-  brn_p = skipInMemoryHops(brn_p);
+  brn_p = _dsr_encap->skipInMemoryHops(brn_p);
 
   //output route error packet
   output(0).push(brn_p);

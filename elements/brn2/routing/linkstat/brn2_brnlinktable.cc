@@ -438,11 +438,13 @@ Brn2LinkTable::valid_route(const Vector<EtherAddress> &route)
 }
 
 Vector<EtherAddress> 
-Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
+Brn2LinkTable::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
 {
   Vector<EtherAddress> reverse_route;
   Vector<EtherAddress> route;
+
   if (!dst) {
+    metric = 0;
     return route;
   }
   BrnHostInfo *nfo = _hosts.findp(dst);
@@ -450,6 +452,7 @@ Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
   if (from_me) {
     while (nfo && nfo->_metric_from_me != 0) {
       reverse_route.push_back(nfo->_ether);
+      *metric = nfo->_metric_from_me;
       nfo = _hosts.findp(nfo->_prev_from_me);
     }
     if (nfo && nfo->_metric_from_me == 0) {
@@ -457,6 +460,7 @@ Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
     }
   } else {
     while (nfo && nfo->_metric_to_me != 0) {
+      *metric = nfo->_metric_to_me;
       reverse_route.push_back(nfo->_ether);
       nfo = _hosts.findp(nfo->_prev_to_me);
     }
@@ -536,7 +540,8 @@ Brn2LinkTable::print_routes(bool from_me)
 
   for (int x = 0; x < ether_addrs.size(); x++) {
     EtherAddress ether = ether_addrs[x];
-    Vector <EtherAddress> r = best_route(ether, from_me);
+    uint32_t metric_trash;
+    Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
     if (valid_route(r)) {
       sa << ether.unparse().c_str() << " ";
       for (int i = 0; i < r.size(); i++) {
@@ -870,7 +875,8 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
     if (!cp_ethernet_address(s, &m)) 
       return errh->error("dijkstra parameter must be etheraddress");
 
-    Vector<EtherAddress> route = f->best_route(m, true);
+    uint32_t metric_trash;
+    Vector<EtherAddress> route = f->best_route(m, true, &metric_trash);
 
     for (int j=0; j<route.size(); j++) {
       click_chatter(" - %d  %s", j, route[j].unparse().c_str());
@@ -890,7 +896,8 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
       return errh->error("dijkstra parameter must be etheraddress x etheraddress");
 
     f->dijkstra(src, true);
-    Vector<EtherAddress> route = f->best_route(dst, true);
+    uint32_t metric_trash;
+    Vector<EtherAddress> route = f->best_route(dst, true, &metric_trash);
 
     for (int j=0; j<route.size(); j++) {
       click_chatter(" - %d  %s", j, route[j].unparse().c_str());

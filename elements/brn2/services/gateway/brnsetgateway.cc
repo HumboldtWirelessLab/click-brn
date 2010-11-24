@@ -106,9 +106,10 @@ BRNSetGateway::choose_gateway() {
    const EtherAddress gw = i.key();
    const BRNGatewayEntry gwe = i.value();
    unsigned new_metric;
+   uint32_t metric;
 
    // find a route
-   Vector<EtherAddress> route = _link_table->best_route(gw, true);
+   Vector<EtherAddress> route = _link_table->best_route(gw, true, &metric);
 
    if (!_link_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 
@@ -116,7 +117,7 @@ BRNSetGateway::choose_gateway() {
           
      // run Dijstra to look for new route
      _link_table->dijkstra(gw, true);
-     if (_link_table->valid_route(_link_table->best_route(gw, true))) {
+     if (_link_table->valid_route(_link_table->best_route(gw, true, &metric))) {
        // have a route now
        break; 
      }

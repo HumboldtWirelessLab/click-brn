@@ -231,13 +231,19 @@ public:
   static void static_blacklist_timer_hook(Timer *, void *);
   void blacklist_timer_hook();
 
-  unsigned short route_metric(BRN2RouteQuerierRoute);
+  uint32_t route_metric(BRN2RouteQuerierRoute);
   int check_blacklist(EtherAddress);
 
   void set_blacklist(EtherAddress ether, int s);
   void stop_issuing_request(EtherAddress host);
 
-  bool metric_preferable(unsigned short a, unsigned short b);
+  bool metric_preferable(uint32_t a, uint32_t b);
+
+  void add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element);
+#define DSR_ELEMENT_REQ_FORWARDER 1
+#define DSR_ELEMENT_REP_FORWARDER 2
+#define DSR_ELEMENT_SRC_FORWARDER 3
+
 
  private:
 
@@ -276,7 +282,7 @@ public:
 
   static unsigned long diff_in_ms(timeval, timeval);
 
-  unsigned char get_metric(EtherAddress);
+  uint32_t get_metric(EtherAddress);
 
   EtherAddress last_forwarder_eth(Packet *);
 

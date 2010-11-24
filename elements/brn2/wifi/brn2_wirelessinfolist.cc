@@ -44,10 +44,10 @@ BRN2WirelessInfoList::getNextBeaconTime() {
 
   if ( _wifiInfoList.size() > 0 ) {
     BRN2WirelessInfoList::WifiInfo wi = _wifiInfoList[0];
-    next = wi._send_last + Timestamp( ( wi._interval / 1000 ), ( wi._interval % 1000 ));
+    next = wi._send_last + Timestamp::make_msec(wi._interval);
     for ( int i = 1; i < _wifiInfoList.size(); i++ ) {
       wi = _wifiInfoList[i];
-      ac = wi._send_last + Timestamp( ( wi._interval / 1000 ), ( wi._interval % 1000 ));
+      ac = wi._send_last + Timestamp::make_msec(wi._interval);
       if ( ac < next )
         next = ac;
     }
@@ -130,12 +130,13 @@ BRN2WirelessInfoList_write_param(const String &in_s, Element *e, void *vparam,
 
       String ssid = args[0];
       EtherAddress bssid;
-      cp_ethernet_address(args[1], &bssid);
       int interval;
-      cp_integer(args[2], &interval);
       bool wep;
-      cp_bool(args[3], &wep);
       uint32_t vlan;
+
+      cp_ethernet_address(args[1], &bssid);
+      cp_integer(args[2], &interval);
+      cp_bool(args[3], &wep);
       cp_integer(args[4], &vlan);
 
       f->_wifiInfoList.push_back(BRN2WirelessInfoList::WifiInfo(ssid, bssid, interval, wep, vlan ));

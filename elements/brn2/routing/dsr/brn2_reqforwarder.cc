@@ -203,7 +203,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
                     j, request_route[j].ether().unparse().c_str(), request_route[j]._metric);
 
     // refresh own link table
-    add_route_to_link_table(request_route);
+    _route_querier->add_route_to_link_table(request_route, DSR_ELEMENT_REQ_FORWARDER);
     /* TODO: end move up the stuff */
 
 
@@ -603,39 +603,6 @@ BRN2RequestForwarder::queue_timer_hook()
 //-----------------------------------------------------------------------------
 // Helper methods
 //-----------------------------------------------------------------------------
-
-void
-BRN2RequestForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
-{
-
-  for (int i=0; i < route.size() - 1; i++) {
-    EtherAddress ether1 = route[i].ether();
-    EtherAddress ether2 = route[i+1].ether();
-
-    if (ether1 == ether2)
-      continue;
-
-    uint16_t metric = route[i]._metric; //metric starts with no offset
-
-    IPAddress ip1 = route[i].ip();
-    IPAddress ip2 = route[i+1].ip();
-
-/*
-    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
-      metric = 9999;
-    }
-    if (metric == 0) {
-      metric = 1; // TODO remove this hack
-    }
-*/
-    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
-
-    if (ret)
-      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
-  }
-}
 
 void
 BRN2RequestForwarder::reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out)

@@ -79,7 +79,7 @@ class ForwardedReqVal {
   public:
     timeval _time_forwarded;
 
-    unsigned short best_metric; // best metric we've forwarded so far
+    uint32_t best_metric; // best metric we've forwarded so far
 
   // the following two variables are set if we're waiting for a
   // unidirectionality test (RREQ with TTL 1) to come back
@@ -105,7 +105,7 @@ struct click_dsr_hop {
   uint16_t metric;
 };
 
-# define BRN_DSR_MAX_HOP_COUNT  100
+#define BRN_DSR_MAX_HOP_COUNT  100
 
 /* DSR Route Request */
 struct click_brn_dsr_rreq {

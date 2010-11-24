@@ -23,6 +23,8 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_reqforwarder.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
@@ -36,14 +38,9 @@ CLICK_DECLS
  * forwards dsr route reply packets
  * =d
  */
-class BRN2ReplyForwarder : public Element {
+class BRN2ReplyForwarder : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //
@@ -77,8 +74,7 @@ class BRN2ReplyForwarder : public Element {
   //methods
   //
   void forward_rrep(Packet *);
-  void add_route_to_link_table(const BRN2RouteQuerierRoute &route);
-  Packet *skipInMemoryHops(Packet *p_in);
+
 };
 
 CLICK_ENDDECLS

@@ -27,6 +27,7 @@
 #include <click/config.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
+
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
 #include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
@@ -892,7 +893,7 @@ BRN2RouteQuerier::diff_in_ms(timeval t1, timeval t2)
 
 // Ask LinkStat for the metric for the link from other to us.
 // ripped off from srcr.cc
-unsigned char
+uint32_t
 BRN2RouteQuerier::get_metric(EtherAddress)
 {
 
@@ -945,10 +946,10 @@ BRN2RouteQuerier::get_metric(EtherAddress)
 }
 
 bool
-BRN2RouteQuerier::metric_preferable(unsigned short a, unsigned short b)
+BRN2RouteQuerier::metric_preferable(uint32_t a, uint32_t b)
 {
   if (!_metric)
-    return (a < b); // fallback to minimum hop-count
+    return (a <= b); // fallback to minimum hop-count
 //TODO: AZU use real metric here
 /*
   else if (a == BRN_DSR_INVALID_ROUTE_METRIC || b == BRN_DSR_INVALID_ROUTE_METRIC)
@@ -957,28 +958,30 @@ BRN2RouteQuerier::metric_preferable(unsigned short a, unsigned short b)
     return _metric->metric_val_lt(_metric->unscale_from_char(a),
 				  _metric->unscale_from_char(b));
 */
-  return (a < b);
+  return (a <= b);
 }
 
-unsigned short
+uint32_t
 BRN2RouteQuerier::route_metric(BRN2RouteQuerierRoute r)
 {
-#if 0
-  unsigned short ret = 0;
-  // the metric in r[i+1] represents the link between r[i] and r[i+1],
-  // so we start at 1
-  for (int i = 1; i < r.size(); i++) {
-    if (r[i]._metric == DSR_INVALID_HOP_METRIC) 
-      return DSR_INVALID_ROUTE_METRIC;
-    ret += r[i]._metric;
-  }
-  return ret;
-#endif
-
   if (r.size() < 2) {
     BRN_WARN(" route_metric: route is too short, less than two nodes????");
     return BRN_DSR_INVALID_ROUTE_METRIC;
   }
+
+  uint32_t sum_metric = 0;
+
+  // the metric in r[i+1] represents the link between r[i] and r[i+1],
+  // so we start at 1
+
+  for (int i = 1; i < r.size(); i++) {
+    if (r[i]._metric == BRN_DSR_INVALID_HOP_METRIC) return BRN_DSR_INVALID_ROUTE_METRIC;
+    sum_metric += r[i]._metric;
+  }
+
+  return sum_metric;
+
+#if 0
   if (!_metric) {
     BRN_DEBUG(" * fallback to hop-count: %d", r.size());
     return r.size(); // fallback to hop-count
@@ -1002,6 +1005,7 @@ BRN2RouteQuerier::route_metric(BRN2RouteQuerierRoute r)
     return BRN_DSR_INVALID_ROUTE_METRIC;
 */
   return BRN_DSR_INVALID_ROUTE_METRIC;
+#endif
 }
 
 
@@ -1017,6 +1021,80 @@ BRN2RouteQuerier::last_forwarder_eth(Packet *p)
 
   return (EtherAddress((unsigned char *)d));
 }
+
+
+void
+BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element)
+{
+  Vector<EtherAddress> ea_route;
+  for (int i=0; i < route.size() - 1; i++) {
+    EtherAddress ether1 = route[i].ether();
+    EtherAddress ether2 = route[i+1].ether();
+
+    if (ether1 == ether2) {
+      if ( i == route.size() - 2 ) ea_route.push_back(ether1);
+      continue;
+    }
+
+    ea_route.push_back(ether1);
+
+    uint16_t metric;
+
+    switch ( dsr_element ) {
+      case DSR_ELEMENT_REQ_FORWARDER: {
+        metric = route[i]._metric;     //metric starts with no offset
+        break;
+      }
+      case DSR_ELEMENT_REP_FORWARDER: {
+        if (_me->isIdentical(&ether1)) // learn only from route prefix; suffix is not yet set
+          break;
+
+        metric = route[i+1]._metric;   //metric starts with offset 1
+        //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! remove this shit
+        if (metric == 0) metric = 1;
+        break;
+      }
+      case DSR_ELEMENT_SRC_FORWARDER: {
+        if (_me->isIdentical(&ether2)) // learn only from route prefix; suffix will be set along the way
+          return;
+
+        metric = route[i+1]._metric;   //metric starts with offset 1
+        break;
+      }
+    }
+
+    IPAddress ip1 = route[i].ip();
+    IPAddress ip2 = route[i+1].ip();
+
+/*
+    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
+    metric = 9999;
+  }
+    if (metric == 0) {
+    metric = 1; // TODO remove this hack
+  }
+*/
+    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
+
+    if (ret) {
+      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
+        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
+    }
+  }
+
+  if ( dsr_element == DSR_ELEMENT_REP_FORWARDER ) {
+    uint32_t rmetric = route_metric(route);
+    EtherAddress dst = route[0].ether();
+    EtherAddress src = route[route.size()-1].ether();
+    _link_table->update_route(src, dst, ea_route, rmetric);
+    ea_route.clear();
+  }
+
+  BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
+
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler

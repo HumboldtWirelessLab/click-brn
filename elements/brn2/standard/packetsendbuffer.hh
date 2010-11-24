@@ -33,6 +33,7 @@ class PacketSendBuffer
   {
     public:
       Packet *_p;
+      Timestamp _send_time_b;
       struct timeval _send_time;
       int _port;
 

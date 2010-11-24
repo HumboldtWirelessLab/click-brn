@@ -44,6 +44,7 @@ BRN2SrcForwarder::BRN2SrcForwarder()
     _dsr_encap(),
     _dsr_decap(),
     _link_table(),
+    _route_querier(),
     _dsr_rid_cache(NULL)
 {
   BRNElement::init();
@@ -61,6 +62,7 @@ BRN2SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
+      "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -173,7 +175,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
     }
 
     // update link table
-    add_route_to_link_table(source_route);
+    _route_querier->add_route_to_link_table(source_route, DSR_ELEMENT_SRC_FORWARDER);
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
@@ -330,44 +332,6 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 
   return p;
 }
-
-void
-BRN2SrcForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
-{
-
-  for (int i = 0; i < route.size() - 1; i++) {
-    EtherAddress ether1 = route[i].ether();
-    EtherAddress ether2 = route[i+1].ether();
-
-    if (ether1 == ether2)
-      continue;
-
-    if (_me->isIdentical(&ether2)) // learn only from route prefix; suffix will be set along the way
-      return;
-
-    uint16_t metric = route[i+1]._metric; //metric starts with offset 1
-
-    IPAddress ip1 = route[i].ip();
-    IPAddress ip2 = route[i+1].ip();
-
-/*
-    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
-      metric = 9999;
-    }
-    if (metric == 0) {
-      metric = 1; // TODO remove this hack
-    }
-*/
-    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
-
-    if (ret) {
-      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
-    }
-  }
-}
-
 
 //-----------------------------------------------------------------------------
 // Handler

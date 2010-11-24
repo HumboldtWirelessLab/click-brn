@@ -71,6 +71,7 @@ class BRN2SrcForwarder : public BRNElement {
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
   Brn2LinkTable *_link_table;
+  BRN2RouteQuerier *_route_querier;
   BrnRouteIdCache *_dsr_rid_cache;
 
   //
@@ -78,7 +79,6 @@ class BRN2SrcForwarder : public BRNElement {
   //
   void forward_data(Packet *p_in);
   Packet *strip_all_headers(Packet *p_in);
-  void add_route_to_link_table(const BRN2RouteQuerierRoute &route);
   Packet *skipInMemoryHops(Packet *p_in);
 };
 

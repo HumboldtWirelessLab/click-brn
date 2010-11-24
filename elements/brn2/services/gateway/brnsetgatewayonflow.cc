@@ -109,6 +109,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
   EtherAddress best_gw = EtherAddress();
   uint8_t best_gw_metric = 0xFF;
   uint32_t best_metric_to_reach_gw = 0xFFFFFFFF;
+  uint32_t metric;
 
   const BRNGatewayList *list_of_gws = _gw->get_gateways();
 
@@ -132,16 +133,16 @@ BRNSetGatewayOnFlow::choose_gateway() {
     unsigned new_metric;
 
     BRN_DEBUG("Running over gateway %s", gw.unparse().c_str());
-      
+
     // find a route
-    Vector<EtherAddress> route = _link_table->best_route(gw, true);
+    Vector<EtherAddress> route = _link_table->best_route(gw, true, &metric);
 
     if (!_link_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 		  BRN_DEBUG("Don't know metric to gateway %s.", gw.unparse().c_str());
          
       // run Dijstra to look for new route
       _link_table->dijkstra(gw, true);
-      if (_link_table->valid_route(_link_table->best_route(gw, true))) {
+      if (_link_table->valid_route(_link_table->best_route(gw, true, &metric))) {
         // have a route now
         break; 
       }

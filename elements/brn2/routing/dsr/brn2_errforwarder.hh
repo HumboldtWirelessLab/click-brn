@@ -79,7 +79,6 @@ class BRN2ErrorForwarder : public BRNElement {
   void issue_rerr(EtherAddress, EtherAddress, EtherAddress, const BRN2RouteQuerierRoute &);
   void truncate_route(const BRN2RouteQuerierRoute &r, EtherAddress bad_src, BRN2RouteQuerierRoute &rv);
   void reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out); //TODO extract to common
-  Packet *skipInMemoryHops(Packet *p_in);
 };
 
 CLICK_ENDDECLS
