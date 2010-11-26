@@ -141,7 +141,7 @@ ChannelStats::push(int port, Packet *p)
       new_pi->_rx_time = p->timestamp_anno();
       new_pi->_length = p->length();
       new_pi->_foreign = false;
-      new_pi->_channel = BRNPacketAnno::channel_anno(p);
+      new_pi->_channel = _channel = BRNPacketAnno::channel_anno(p);
       new_pi->_rx = false;
 
       if ( i < t0 ) new_pi->_rate = ceh->rate;
@@ -164,7 +164,7 @@ ChannelStats::push(int port, Packet *p)
     new_pi->_rate = ceh->rate;
     new_pi->_length = p->length() + 4;   //CRC
     new_pi->_foreign = true;
-    new_pi->_channel = BRNPacketAnno::channel_anno(p);
+    new_pi->_channel = _channel = BRNPacketAnno::channel_anno(p);
     new_pi->_rx = true;
 
     if ( new_pi->_rate != 0 ) {
