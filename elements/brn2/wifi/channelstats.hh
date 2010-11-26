@@ -201,6 +201,10 @@ class ChannelStats : public Element {
 
     uint32_t _stats_id;
 
+    uint32_t _channel;
+
+    Timestamp _last_hw_stat_time;
+    Timestamp _last_packet_time;
 };
 
 CLICK_ENDDECLS

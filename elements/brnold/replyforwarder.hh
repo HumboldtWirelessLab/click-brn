@@ -78,7 +78,7 @@ class ReplyForwarder : public Element {
   //methods
   //
   void forward_rrep(Packet *);
-  void add_route_to_link_table(const RouteQuerierRoute &route);
+  void add_route_to_link_table(const RouteQuerierRoute &route, uint32_t _end_index); //learn route up to end_index (route_prefix)
 };
 
 CLICK_ENDDECLS

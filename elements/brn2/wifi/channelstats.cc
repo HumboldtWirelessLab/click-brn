@@ -50,9 +50,10 @@ ChannelStats::ChannelStats():
     _min_update_time(CS_DEFAULT_MIN_UPDATE_TIME),
     _stats_timer_enable(CS_DEFAULT_STATS_TIMER),
     _stats_timer(this),
-    _stats_id(0)
+    _stats_id(0),
+    _channel(0)
 {
-  stats.last_update = Timestamp::now();
+  stats.last_update = _last_hw_stat_time = _last_packet_time = Timestamp::now();
 }
 
 ChannelStats::~ChannelStats()
@@ -124,6 +125,8 @@ void
 ChannelStats::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+
+  _last_packet_time = p->timestamp_anno();
 
   if ( ceh->flags & WIFI_EXTRA_TX ) {
 
@@ -233,6 +236,7 @@ ChannelStats::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
   hw_busy = busy;
   hw_rx = rx;
   hw_tx = tx;
+  _last_hw_stat_time = *time;
 
   if ( _packet_list_hw.size() == 0 ) {
     new_pi->_busy = 1;
@@ -499,8 +503,11 @@ ChannelStats::stats_handler(int mode)
     case H_STATS_XML:
       sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" >\n";
       sa << "\t<channelload busy=\"" << stats.busy << "\" rx=\"" << stats.rx << "\" tx=\"" << stats.tx << "\" ";
+      sa << "last_packet_time=\"" << _last_packet_time.unparse() << "\" ";
       sa << "hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
-      sa << "avg_noise=\"" << stats.avg_noise << "\" avg_rssi=\"" << stats.avg_rssi << "\" no_src=\"" << stats.no_sources << "\" />";
+      sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";
+      sa << "avg_noise=\"" << stats.avg_noise << "\" avg_rssi=\"" << stats.avg_rssi << "\" ";
+      sa << "no_src=\"" << stats.no_sources << "\" channel=\"" << _channel << "\" />";
       sa << "\n\t<rssi>\n";
       for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
