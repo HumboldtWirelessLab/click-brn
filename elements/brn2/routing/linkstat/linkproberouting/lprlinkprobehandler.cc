@@ -40,7 +40,8 @@ CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
   : _etx_metric(0),
-    _debug(BrnLogger::DEFAULT)
+    _debug(BrnLogger::DEFAULT),
+    _active(false)
 {
 }
 
@@ -54,6 +55,8 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
       "ETXMETRIC", cpkP , cpElement, &_etx_metric,
+      "ACTIVE", cpkP , cpBool, &_active,
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -95,6 +98,8 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
   struct packed_link_header lprh;
   struct packed_link_info  lpri;
 
+  if ( ! _active ) return 0;
+
   updateKnownHosts();
   updateLinksToMe();
 
@@ -126,14 +131,14 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   if ( len == -1 ) {
     len = 0;
-    click_chatter("To heavy");
+    BRN_WARN("To heavy");
   }
 
   delete[] addr;
   delete[] links;
   delete[] timestamp;
 
-  click_chatter("Call send: %d space: %d",len,size);
+  BRN_DEBUG("Call send: %d space: %d",len,size);
   return len;
 }
 
@@ -183,7 +188,9 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   struct packed_link_info  *lpri;
   uint8_t *macs;
 
-//click_chatter("Call receive %d",size);
+  if ( ! _active ) return size;
+
+  BRN_DEBUG("Call receive %d",size);
 
   lpri = LPRProtocol::unpack2((unsigned char *)buffer, size);
   macs = (uint8_t*)lpri->_macs;
@@ -291,6 +298,24 @@ read_table_param(Element *e, void *)
   return fl->get_info();
 }
 
+static String
+read_active_param(Element *e, void *)
+{
+  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  return String(fl->_active) + "\n";
+}
+
+static int 
+write_active_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  String s = cp_uncomment(in_s);
+  bool active;
+  if (!cp_bool(s, &active))
+    return errh->error("active parameter must be an bool value (true/false)");
+  fl->_active = active;
+  return 0;
+}
 
 static String
 read_debug_param(Element *e, void *)
@@ -314,8 +339,11 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 LPRLinkProbeHandler::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
   add_read_handler("table", read_table_param, 0);
+  add_read_handler("active", read_active_param, 0);
+  add_read_handler("debug", read_debug_param, 0);
+
+  add_write_handler("active", write_active_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
 
