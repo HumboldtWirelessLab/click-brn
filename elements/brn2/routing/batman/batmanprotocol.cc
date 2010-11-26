@@ -7,13 +7,9 @@
 
 CLICK_DECLS
 
-BatmanProtocol::BatmanProtocol()
-{
-}
-
-BatmanProtocol::~BatmanProtocol()
-{
-}
+/*********************************************************************************************/
+/************************************ G E N E R A L ******************************************/
+/*********************************************************************************************/
 
 WritablePacket *
 BatmanProtocol::add_batman_header(Packet *p, uint8_t type, uint8_t hops)
@@ -23,8 +19,9 @@ BatmanProtocol::add_batman_header(Packet *p, uint8_t type, uint8_t hops)
 
   if ( (q = p->push(sizeof(struct batman_header))) != NULL ) {
     bh = (struct batman_header *)q->data();
-    bh->type = type;
-    bh->hops = hops;
+    bh->flags = 0;
+    bh->type  = type;
+    bh->hops  = hops;
     return q;
   }
 
@@ -32,7 +29,7 @@ BatmanProtocol::add_batman_header(Packet *p, uint8_t type, uint8_t hops)
 }
 
 void
-BatmanProtocol::rm_batman_header(Packet *p)
+BatmanProtocol::pull_batman_header(Packet *p)
 {
   p->pull(sizeof(struct batman_header));
 }
@@ -43,25 +40,27 @@ BatmanProtocol::get_batman_header(Packet *p)
   return ((struct batman_header *)p->data());
 }
 
+/*********************************************************************************************/
+/******************************* O R I G I N A T O R *****************************************/
+/*********************************************************************************************/
+
 /** include batman_header and batman_originator*/
 
 WritablePacket *
-BatmanProtocol::new_batman_originator( uint32_t id, uint8_t flag, const EtherAddress *src, uint8_t neighbours )
+BatmanProtocol::new_batman_originator( uint32_t id, uint8_t flags, uint8_t neighbours )
 {
   WritablePacket *p = WritablePacket::make( 96, NULL,
-                                      sizeof(struct batman_header) + sizeof(struct batman_originator) + ( NEIGHBOURSIZE * neighbours ),
-                                            32);
+                                              sizeof(struct batman_header) +
+                                              sizeof(struct batman_originator) + ( NEIGHBOURSIZE * neighbours ), 32);
 
   struct batman_header *bh = (struct batman_header *)p->data();
   struct batman_originator *bo = (struct batman_originator *)&(p->data()[sizeof(struct batman_header)]);
 
   bh->type = BATMAN_ORIGINATOR;
-  bh->hops = ORIGINATOR_SRC_HOPS;
+  bh->hops = 0;
+  bh->flags = flags;
 
   bo->id = htonl(id);
-  bo->flag = flag;
-  bo->neighbours = neighbours;
-  memcpy(bo->src, src, 6);
 
   return p;
 }
@@ -72,14 +71,46 @@ BatmanProtocol::get_batman_originator(Packet *p)
   return ( (struct batman_originator *)&(p->data()[sizeof(struct batman_header)]));
 }
 
+uint32_t
+BatmanProtocol::get_batman_originator_id(Packet *p)
+{
+  return ntohl(((struct batman_originator *)&(p->data()[sizeof(struct batman_header)]))->id);
+}
+
 uint8_t *
 BatmanProtocol::get_batman_originator_payload(Packet *p)
 {
   return ( (uint8_t *)&(p->data()[sizeof(struct batman_header) + sizeof(struct batman_originator)]));
 }
 
+void
+BatmanProtocol::add_batman_node(Packet *p, struct batman_node *new_bn, uint32_t index)
+{
+  struct batman_node *bn = get_batman_node(p, index);
+  memcpy(bn, new_bn, sizeof(struct batman_node));
+}
+
+uint32_t
+BatmanProtocol::count_batman_nodes(Packet *p)
+{
+  assert(p->length() >= (sizeof(struct batman_header)+sizeof(struct batman_originator)));
+  return ((p->length()-(sizeof(struct batman_header)+sizeof(struct batman_originator)))/sizeof(struct batman_node));
+}
+
+struct batman_node *
+BatmanProtocol::get_batman_node(Packet *p, uint32_t index)
+{
+  assert(count_batman_nodes(p) > index);
+
+  return &(((struct batman_node*)&(p->data()[sizeof(struct batman_header)+sizeof(struct batman_originator)]))[index]);
+}
+
+/*********************************************************************************************/
+/************************************ R O U T I N G ******************************************/
+/*********************************************************************************************/
+
 WritablePacket *
-BatmanProtocol::add_batman_routing(Packet *p, uint16_t flag, uint16_t id)
+    BatmanProtocol::add_batman_routing(Packet *p, uint16_t flag, uint16_t id)
 {
   WritablePacket *q;
   struct batman_routing *br;
@@ -101,13 +132,13 @@ BatmanProtocol::get_batman_routing(Packet *p)
 }
 
 void
-BatmanProtocol::rm_batman_routing(Packet *p)
+BatmanProtocol::pull_batman_routing(Packet *p)
 {
   p->pull(sizeof(struct batman_routing));
 }
 
 void
-BatmanProtocol::rm_batman_routing_header(Packet *p)
+BatmanProtocol::pull_batman_routing_header(Packet *p)
 {
   p->pull(sizeof(struct batman_header) + sizeof(struct batman_routing));
 }

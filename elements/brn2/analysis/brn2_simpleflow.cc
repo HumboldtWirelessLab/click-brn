@@ -126,7 +126,7 @@ BRN2SimpleFlow::schedule_next(EtherAddress *dst)
 
 void
 BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
-                          uint32_t rate, uint32_t size, uint32_t /*mode*/,
+                          uint32_t rate, uint32_t size, uint32_t mode,
                           uint32_t duration, bool active )
 {
   Flow *txFlow = _tx_flowMap.findp(dst);
@@ -134,7 +134,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   if ( txFlow != NULL ) {
     if ( active ) txFlow->reset();
   } else {
-    _tx_flowMap.insert(dst, Flow(src, dst, 1, TYPE_NO_ACK, DIR_ME_RECEIVER, rate, size, duration));
+    _tx_flowMap.insert(dst, Flow(src, dst, 1, (FlowType)mode, rate, size, duration));
   }
 
   dst_of_flow = dst;
@@ -143,21 +143,44 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   if ( is_active(&dst_of_flow) ) schedule_next(&dst_of_flow);
 }
 
+/**
+ * 
+ * @param  
+ * @param packet 
+ */
 void
 BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 {
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
   uint16_t checksum;
 
+  /*Handle Reply*/
+  if ( header->reply == 1 ) {
+    EtherAddress dst_ea = EtherAddress(header->dst);
+    Flow *f_tx = _tx_flowMap.findp(dst_ea);
+    if ( f_tx ) {
+      BRN_DEBUG("Got reply");
+      f_tx->_rxPackets++;
+      packet->kill();
+      return;
+    }
+  }
+
+  /*Handle Packet*/
   EtherAddress src_ea = EtherAddress(header->src);
   Flow *f = _rx_flowMap.findp(src_ea);
 
   if ( f == NULL ) {  //TODO: shorten this
-    _rx_flowMap.insert(src_ea, Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID), TYPE_NO_ACK, DIR_ME_RECEIVER, ntohl(header->rate), ntohl(header->size), 0) );
+    _rx_flowMap.insert(src_ea, Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
+                       (flowType)header->mode, ntohl(header->rate), ntohl(header->size), 0) );
     f = _rx_flowMap.findp(src_ea);
   }
 
   f->_rxPackets++;
+  int maxttl = SIMPLEFLOW_MAXHOPCOUNT;
+  int cttl= BRNPacketAnno::ttl_anno(packet);
+  //click_chatter("MAXcount: %d TTL: %d", maxttl, cttl);
+  f->_cum_sum_hops += (SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet));
 
 #if HAVE_FAST_CHECKSUM
   checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -168,9 +191,69 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 
   if ( checksum != header->crc ) f->_rxCrcErrors++;
 
+  if ( f->_type == TYPE_FULL_ACK ) {
+    header->reply = 1;
+#if HAVE_FAST_CHECKSUM
+    checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
+                             (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
+#else
+    checksum = click_in_cksum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
+                               (packet->length() - (2 * sizeof(uint16_t))));
+#endif
+    BRN_INFO("Reply outsum: %d",checksum);
+
+    header->crc = checksum;
+
+    BRNPacketAnno::set_ether_anno(packet, f->_dst, f->_src, ETHERTYPE_BRN );
+    WritablePacket *packet_out = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT,
+                                                             DEFAULT_TOS);
+
+    output(0).push(packet_out);
+
+    return;
+  }
+
+  if ( f->_type == TYPE_SMALL_ACK ) {
+    packet->take(packet->length() - sizeof(struct flowPacketHeader));
+    header->reply = 1;
+#if HAVE_FAST_CHECKSUM
+    checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
+                             (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
+#else
+    checksum = click_in_cksum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
+                               (packet->length() - (2 * sizeof(uint16_t))));
+#endif
+    BRN_INFO("Reply outsum: %d",checksum);
+
+    header->crc = checksum;
+
+    BRNPacketAnno::set_ether_anno(packet, f->_dst, f->_src, ETHERTYPE_BRN );
+    WritablePacket *packet_out = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT,
+        DEFAULT_TOS);
+
+    output(0).push(packet_out);
+
+    return;
+  }
+
   packet->kill();
 }
 
+/*WritablePacket*
+BRN2SimpleFlow::sendFullAck(Packet *p, Flow *f)
+{
+}
+
+WritablePacket*
+BRN2SimpleFlow::sendSmallAck(Packet *p, Flow *f)
+{
+}
+
+WritablePacket*
+BRN2SimpleFlow::sendAck(Packet *p, Flow *f)
+{
+}
+*/
 WritablePacket*
 BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 {
@@ -194,9 +277,11 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   f->_txPackets++;
 
   header->rate = htonl(f->_rate);
-  header->size = htonl(f->_size);
-  header->mode = htonl(f->_type);
+  header->size = htons(f->_size);
+  header->mode = f->_type;
   header->reply = 0;
+
+  BRN_DEBUG("Mode: %d",(int)f->_type);
 
 #if HAVE_FAST_CHECKSUM
   checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -209,7 +294,7 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->reserved = 0;
 
   BRNPacketAnno::set_ether_anno(p, f->_src, f->_dst, ETHERTYPE_BRN );
-  p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 255, 0);
+  p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT, DEFAULT_TOS);
 
   return p_brn;
 }
@@ -263,14 +348,17 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
         sa << "\t<txflow";
         sa << " src=\"" << fl._src.unparse().c_str() << "\"";
         sa << " dst=\"" << fl._dst.unparse().c_str() << "\"";
-        sa << " packet_count=\"" << fl._txPackets << "\" />\n";
+        sa << " packet_count=\"" << fl._txPackets << "\"";
+        sa << " replies=\"" << fl._rxPackets << "\" />\n";
       }
       for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();
         sa << "\t<rxflow";
         sa << " src=\"" << fl._src.unparse().c_str() << "\"";
         sa << " dst=\"" << fl._dst.unparse().c_str() << "\"";
-        sa << " packet_count=\"" << fl._rxPackets << "\" crc_err=\"" << fl._rxCrcErrors << "\" />\n";
+        sa << " packet_count=\"" << fl._rxPackets << "\" crc_err=\"" << fl._rxCrcErrors << "\"";
+        if ( fl._rxPackets == 0 ) sa << " avg. hops=\"-1\" />\n";
+        else sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
       }
       sa << "</flowstats>\n";
       return sa.take_string();

@@ -102,6 +102,9 @@ class BRNProtocol : public Element { public:
   static Packet *pull_brn_header(Packet *p);
   static WritablePacket *push_brn_header(Packet *p);
 
+  static bool is_brn_etherframe(Packet *p);
+  static struct click_brn* get_brnheader_in_etherframe(Packet *p);
+
 };
 
 CLICK_ENDDECLS

@@ -70,12 +70,21 @@ BatmanForwarder::push( int /*port*/, Packet *packet )
   click_ether *et;
   batman_header *bh;
 
+  uint8_t ttl = BRNPacketAnno::ttl_anno(packet) - 1;
+  BRNPacketAnno::set_ttl_anno(packet, ttl);
+
   bh = BatmanProtocol::get_batman_header(packet);
   et = BatmanProtocol::get_ether_header(packet);
   EtherAddress dst = EtherAddress(et->ether_dhost);
 
   if ( _nodeid->isIdentical(&dst) ) {
-    BatmanProtocol::rm_batman_routing_header(packet);
+    BatmanProtocol::pull_batman_routing_header(packet);
+    if ( BRNProtocol::is_brn_etherframe(packet) ) { //set ttl if payload is brn_packet
+      struct click_brn *brnh = BRNProtocol::get_brnheader_in_etherframe(packet);
+      brnh->ttl = ttl;
+    }
+    BRN_DEBUG("Reach final destination.");
+
     output(0).push(packet);
     return;
   }
@@ -83,16 +92,28 @@ BatmanForwarder::push( int /*port*/, Packet *packet )
   BatmanRoutingTable::BatmanForwarderEntry *bfe = _brt->getBestForwarder(dst);
 
   if ( bfe == NULL ) {
+    BRN_ERROR("No best forwarder.");
     output(2).push(packet);
     return;
   }
 
-  BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
+  //BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
 
   bh->hops--;
-  WritablePacket *brnrp = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10/*TTL*/, DEFAULT_TOS);
 
-  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, ETHERTYPE_BRN);
+  if ( bh->hops == 0 || ttl == 0 ) {
+    BRN_ERROR("To many hops (TTL: %d Hops: %d. Route Error.",(int)ttl,(int)bh->hops);
+    output(2).push(packet);
+    return;
+  }
+
+  int int_ttl = ttl;
+  //click_chatter("set ttl: %d",int_ttl);
+  BRN_DEBUG("Next hop: %s", bfe->_forwarder.unparse().c_str());
+
+  WritablePacket *brnrp = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, ttl, DEFAULT_TOS);
+
+  BRNPacketAnno::set_ether_anno(brnrp, *_nodeid->getMasterAddress(), bfe->_forwarder, ETHERTYPE_BRN);
 
   output(1).push(brnrp);
 

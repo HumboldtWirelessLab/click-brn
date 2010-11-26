@@ -37,8 +37,8 @@
 CLICK_DECLS
 
 BatmanRouting::BatmanRouting()
-  :_debug(/*BrnLogger::DEFAULT*/0)
 {
+  BRNElement::init();
 }
 
 BatmanRouting::~BatmanRouting()
@@ -67,11 +67,11 @@ BatmanRouting::initialize(ErrorHandler *)
 void
 BatmanRouting::push( int /*port*/, Packet *packet )
 {
-  click_ether *et;
-  et = (click_ether*)packet->data();
+  click_ether *et = (click_ether*)packet->data();
   EtherAddress dst = EtherAddress(et->ether_dhost);
 
   if ( _nodeid->isIdentical(&dst) ) {
+    BRN_DEBUG("Final destination");
     output(0).push(packet);
     return;
   }
@@ -79,20 +79,26 @@ BatmanRouting::push( int /*port*/, Packet *packet )
   BatmanRoutingTable::BatmanForwarderEntry *bfe = _brt->getBestForwarder(dst);
 
   if ( bfe == NULL ) {
+    BRN_ERROR("No Forwarder");
     output(2).push(packet);
     return;
   }
 
-  BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
+  //BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
 
-  /** TODO: use hops of ForwarderEntry to limit the number of hops**/
+  uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+  int int_ttl = ttl;
+  if ( ttl == 0 ) ttl = bfe->_hops + 3 /*HOP-MARGIN*/;  //TODO: Discard if ttl higher than expected hops ??
 
+  BRN_DEBUG("Start forward. Next hop: %s",bfe->_forwarder.unparse().c_str());
+  //click_chatter("Wanted ttl: %d",int_ttl);
   _routeId++;
   WritablePacket *batroutep = BatmanProtocol::add_batman_routing(packet, 0, _routeId );
-  WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, 10/*HOPS*/ );
-  WritablePacket *brnrp = BRNProtocol::add_brn_header(batp, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10/*TTL*/, DEFAULT_TOS);
+  WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, bfe->_hops + 10/*HOP-MARGIN*/);
 
-  BRNPacketAnno::set_ether_anno(brnrp, EtherAddress(dev->getEtherAddress()->data()), bfe->_addr, ETHERTYPE_BRN);
+  WritablePacket *brnrp = BRNProtocol::add_brn_header(batp, BRN_PORT_BATMAN, BRN_PORT_BATMAN, ttl, DEFAULT_TOS);
+
+  BRNPacketAnno::set_ether_anno(brnrp, *_nodeid->getMasterAddress(), bfe->_forwarder, ETHERTYPE_BRN);
 
   output(1).push(brnrp);
 
@@ -102,30 +108,10 @@ BatmanRouting::push( int /*port*/, Packet *packet )
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BatmanRouting *fl = (BatmanRouting *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BatmanRouting *fl = (BatmanRouting *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 BatmanRouting::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS
