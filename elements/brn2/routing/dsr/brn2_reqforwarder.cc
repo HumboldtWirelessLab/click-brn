@@ -203,7 +203,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
                     j, request_route[j].ether().unparse().c_str(), request_route[j]._metric);
 
     // refresh own link table
-    _route_querier->add_route_to_link_table(request_route, DSR_ELEMENT_REQ_FORWARDER);
+    _route_querier->add_route_to_link_table(request_route, DSR_ELEMENT_REQ_FORWARDER, -1);
     /* TODO: end move up the stuff */
 
 

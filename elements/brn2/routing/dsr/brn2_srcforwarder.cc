@@ -174,8 +174,12 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
           j, source_route[j].ether().unparse().c_str(), source_route[j]._metric);
     }
 
+    int source_hops  = brn_dsr->dsr_hop_count;
+    int segments     = brn_dsr->dsr_segsleft;
+    int index = source_hops - segments - 2;
+
     // update link table
-    _route_querier->add_route_to_link_table(source_route, DSR_ELEMENT_SRC_FORWARDER);
+    _route_querier->add_route_to_link_table(source_route, DSR_ELEMENT_SRC_FORWARDER, index);
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
@@ -244,6 +248,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   if (segments < source_hops) {
     // intermediate hop
     me = EtherAddress (dsr_hops[index - 1].hw.data);
+    dsr_hops[index - 1].metric = htons(_link_table->get_link_metric(last, me));//update metric in route from last to me 26.11.2010
   } else {
     // first hop
   }

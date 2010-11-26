@@ -239,7 +239,7 @@ public:
 
   bool metric_preferable(uint32_t a, uint32_t b);
 
-  void add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element);
+  void add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element, int end_index);
 #define DSR_ELEMENT_REQ_FORWARDER 1
 #define DSR_ELEMENT_REP_FORWARDER 2
 #define DSR_ELEMENT_SRC_FORWARDER 3

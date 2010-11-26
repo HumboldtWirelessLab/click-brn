@@ -50,7 +50,7 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _rreq_issue_timer(static_rreq_issue_hook, this),
     _blacklist_timer(static_blacklist_timer_hook, this),
     _metric(0),
-    _use_blacklist(true)
+    _use_blacklist(false)
 {
   BRNElement::init();
 
@@ -81,6 +81,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
       "METRIC", cpkP, cpElement, &_metric,
+      "USE_BLACKLIST", cpkP, cpBool, &_use_blacklist,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -178,7 +179,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     metric_of_route = _link_table->get_route_metric(route);
   }
 
-  BRN_DEBUG(" Metric of found route = %d", metric_of_route); 
+  BRN_DEBUG(" Metric of found route = %d route_length = %d", metric_of_route, route.size());
 
   if(_debug == BrnLogger::DEBUG) {
     String route_str = _link_table->print_routes(true);
@@ -1024,10 +1025,14 @@ BRN2RouteQuerier::last_forwarder_eth(Packet *p)
 
 
 void
-BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element)
+BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element, int end_index)
 {
   Vector<EtherAddress> ea_route;
-  for (int i=0; i < route.size() - 1; i++) {
+
+  int route_size = route.size() - 1;
+  if ( end_index != -1 ) route_size = end_index;
+
+  for (int i=0; i < route_size; i++) {
     EtherAddress ether1 = route[i].ether();
     EtherAddress ether2 = route[i+1].ether();
 

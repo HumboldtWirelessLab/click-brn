@@ -141,7 +141,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     // XXX really, is this necessary?  or are we only potentially
     // making the link data more stale, while marking it as current?
-    _route_querier->add_route_to_link_table(reply_route, DSR_ELEMENT_REP_FORWARDER);
+    _route_querier->add_route_to_link_table(reply_route, DSR_ELEMENT_REP_FORWARDER, -1);
 
     // now check for packets in the sendbuffer whose destination has
     // been found using the information from the route reply
