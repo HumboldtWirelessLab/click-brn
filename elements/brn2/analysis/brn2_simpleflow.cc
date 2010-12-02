@@ -72,6 +72,8 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
 void
 BRN2SimpleFlow::run_timer(Timer *t)
 {
+  BRN_DEBUG("Run timer.");
+
   Packet *packet_out;
 
   if ( t == NULL ) click_chatter("Timer is NULL");
@@ -112,8 +114,13 @@ BRN2SimpleFlow::schedule_next(EtherAddress *dst)
 
   if ( txFlow ) {
     if ( txFlow->_active && txFlow->_rate > 0 ) {
-      _timer.reschedule_after_msec(txFlow->_rate);
+      BRN_DEBUG("run timer in %d ms", txFlow->_rate);
+      _timer.schedule_after_msec(txFlow->_rate);
+    } else {
+      BRN_DEBUG("Flow not active.");
     }
+  } else {
+    BRN_DEBUG("No flow.");
   }
 }
 

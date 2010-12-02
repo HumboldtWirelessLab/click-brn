@@ -14,12 +14,13 @@
 CLICK_DECLS
 
 BRN2PacketQueueControl::BRN2PacketQueueControl()
-  : _queue_timer(static_queue_timer_hook,this),
-    _flow_timer(static_flow_timer_hook,this),
+  : _queue_timer(static_queue_timer_hook, (void*)this),
+    _flow_timer(static_flow_timer_hook, (void*)this),
     _queue_size_handler(0),
     _queue_reset_handler(0),
-    acflow(0)
+    ac_flow(0)
 {
+  BRNElement::init();
 }
 
 BRN2PacketQueueControl::~BRN2PacketQueueControl()
@@ -35,6 +36,7 @@ BRN2PacketQueueControl::configure(Vector<String> &conf, ErrorHandler* errh)
       "QUEUERESETHANDLER", cpkP+cpkM, cpHandlerCallPtrWrite, &_queue_reset_handler,
       "MINP", cpkP+cpkM, cpInteger, &_min_count_p,
       "MAXP", cpkP+cpkM, cpInteger, &_max_count_p,  //TODO: read maxp using queue handler
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
         return -1;
 
@@ -59,15 +61,17 @@ BRN2PacketQueueControl::initialize(ErrorHandler *errh)
 void
 BRN2PacketQueueControl::static_queue_timer_hook(Timer *, void *v) {
   BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
-  BRN2PacketQueueControl::Flow *acflow = fc->getAcFlow();
-  if ( acflow->_running )
+  BRN2PacketQueueControl::Flow *acflow = fc->get_flow();
+  if ( acflow && acflow->_running ) {
     fc->handle_queue_timer();
+  }
 }
 
 void
 BRN2PacketQueueControl::static_flow_timer_hook(Timer *, void *v) {
   BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
-  fc->handle_flow_timer();
+  click_chatter("Flow timer");
+  if ( fc->get_flow() ) fc->handle_flow_timer();
 }
 
 void
@@ -79,49 +83,53 @@ BRN2PacketQueueControl::handle_queue_timer()
   String s_qsize = _queue_size_handler->call_read();
   cp_integer(s_qsize, &queue_size);
 
-  click_chatter("Size:%d",queue_size);
+  BRN_DEBUG("Queue size:%d",queue_size);
   if ( queue_size < _min_count_p ) {
+    if ( queue_size == 0 ) ac_flow->_queue_empty++;
     for ( uint32_t i = 0; i < (_max_count_p - queue_size); i++) {
-      acflow->_send_packets++;
-      packet_out = createpacket( acflow->_packetsize );
+      ac_flow->_send_packets++;
+      packet_out = create_packet( ac_flow->_packetsize );
       output(0).push(packet_out);
     }
   }
 
-  _queue_timer.reschedule_after_msec(acflow->_interval);
+  _queue_timer.schedule_after_msec(ac_flow->_interval);
 }
 
 Packet *
-BRN2PacketQueueControl::createpacket(int size)
+BRN2PacketQueueControl::create_packet(int size)
 {
-  WritablePacket *new_packet = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
+  WritablePacket *new_packet = WritablePacket::make(128 ,NULL , size, 32);
   return(new_packet);
 }
 
 void
 BRN2PacketQueueControl::handle_flow_timer() {
-  if ( acflow == NULL ) return;
+  BRN_DEBUG("Flow timer handler");
+  if ( ac_flow == NULL ) return;
 
-  if ( ! acflow->_running ) {
-    acflow->_running = true;
+  BRN_DEBUG("Found flow");
+
+  if ( ! ac_flow->_running ) {
+    ac_flow->_running = true;
     for ( uint32_t i = 0; i < _max_count_p; i++) {
-      acflow->_send_packets++;
-      Packet *packet_out = createpacket( acflow->_packetsize );
+      ac_flow->_send_packets++;
+      Packet *packet_out = create_packet(ac_flow->_packetsize);
       output(0).push(packet_out);
     }
 
-    click_chatter("set timer for flowend");
-    _queue_timer.reschedule_after_msec(acflow->_interval);
-    _flow_timer.reschedule_after_msec(acflow->_end - acflow->_start);
-    click_chatter("Schedule flowend in %d s",(acflow->_end - acflow->_start));
+    BRN_DEBUG("Set timer for end of flow.");
+    _queue_timer.schedule_after_msec(ac_flow->_interval);
+    _flow_timer.schedule_after_msec(ac_flow->_end - ac_flow->_start);
+    BRN_DEBUG("Schedule end of flow in %d ms",(ac_flow->_end - ac_flow->_start));
   } else {
-    click_chatter("flowend");
-    acflow->_running = false;
+    BRN_DEBUG("End of flow.");
+    ac_flow->_running = false;
     int queue_size;
     String s_qsize = _queue_size_handler->call_read();
     cp_integer(s_qsize, &queue_size);
 
-    acflow->_send_packets -= queue_size;
+    ac_flow->_send_packets -= queue_size;
 
     _queue_reset_handler->call_write(ErrorHandler::default_handler());
   }
@@ -131,8 +139,9 @@ BRN2PacketQueueControl::handle_flow_timer() {
 
 void
 BRN2PacketQueueControl::setFlow(Flow *f) {
-  acflow = f;
-  _flow_timer.reschedule_after_msec(f->_start);
+  ac_flow = f;
+  BRN_DEBUG("Start flow timer in %d ms",ac_flow->_start);
+  _flow_timer.schedule_after_msec(ac_flow->_start);
 }
 
 
@@ -158,9 +167,10 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
       cp_integer(args[1], &end);
       cp_integer(args[2], &packetsize);
       cp_integer(args[3], &bw);
-
-      int interval = ( ((f->_max_count_p-f->_min_count_p) * 1000) / (bw*1000*125 /* 1000/8 */ /packetsize));
-      click_chatter("Int: %d",interval);
+                        /*bytes in queue */                           /*(bw in MBit/s ) bytes pro ms*/
+      int interval = ( ( (f->_max_count_p-f->_min_count_p) * packetsize) / ( bw * 125 /* 1000000 / (8 * 1000 (ms))*/));
+      click_chatter("%s Int: %d Start: %d End: %d packetsize: %d bw: %d",
+                       Timestamp::now().unparse().c_str(), interval,start,end,packetsize, bw);
       f->setFlow(new BRN2PacketQueueControl::Flow(start,end,packetsize,interval));
 
       break;
@@ -177,7 +187,7 @@ read_handler(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_STATS: {
       StringAccum sa;
-      BRN2PacketQueueControl::Flow *acflow = f->getAcFlow();
+      BRN2PacketQueueControl::Flow *acflow = f->get_flow();
       //TODO: using double doesn'z work in kernelmode !! other ideas ??
       int rate = acflow->_send_packets * acflow->_packetsize;
       rate /= ( ( acflow->_end - acflow->_start ) / 1000 );
@@ -187,6 +197,7 @@ read_handler(Element *e, void *thunk)
       sa << "Running : ";
       if ( acflow->_running ) sa << "yes";
       else sa << "no";
+      sa << "\nEmpty Queue: " << acflow->_queue_empty;
       return sa.take_string();
     }
     default:
@@ -197,6 +208,8 @@ read_handler(Element *e, void *thunk)
 void
 BRN2PacketQueueControl::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("flow_stats", read_handler, H_STATS);
   add_write_handler("flow_insert", write_handler, H_INSERT);
 }
