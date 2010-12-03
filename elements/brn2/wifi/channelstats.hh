@@ -211,10 +211,10 @@ class ChannelStats : public Element {
     uint32_t _sw_sum_rx_duration;
     uint32_t _sw_sum_tx_duration;
 
-    uint32_t _sw_sum_rx_packets;
-    uint32_t _sw_sum_tx_packets;
+    int _sw_sum_rx_packets;
+    int _sw_sum_tx_packets;
 
-    int32_t _sw_sum_rx_noise;
+    int _sw_sum_rx_noise;
     uint32_t _sw_sum_rx_rssi;
 };
 

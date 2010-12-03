@@ -176,9 +176,11 @@ ChannelStats::push(int port, Packet *p)
 	       else if ( i < t1 ) rate = ceh->rate1;
 	       else if ( i < t2 ) rate = ceh->rate2;
 	       else if ( i < t3 ) rate = ceh->rate3;
-		// update duration counter
-		_sw_sum_tx_duration += calc_transmit_time(rate, p->length());
-		_sw_sum_tx_packets++;
+		if (rate != 0) {
+			// update duration counter
+			_sw_sum_tx_duration += calc_transmit_time(rate, p->length());
+			_sw_sum_tx_packets++;
+		}
 	}
     }
   } else { // RX
@@ -215,12 +217,16 @@ ChannelStats::push(int port, Packet *p)
 	      delete new_pi;
 	    }
 	} else { // fast mode
-		_channel = BRNPacketAnno::channel_anno(p);
-		// update duration counter
-		_sw_sum_rx_duration += calc_transmit_time(ceh->rate, p->length() + 4);
-		_sw_sum_rx_packets++;
-		_sw_sum_rx_noise += (signed char)ceh->silence;
-		_sw_sum_rx_rssi += (signed char)ceh->rssi;
+		if ( ceh->rate != 0 ) {
+			_channel = BRNPacketAnno::channel_anno(p);
+			// update duration counter
+			_sw_sum_rx_duration += calc_transmit_time(ceh->rate, p->length() + 4);
+			_sw_sum_rx_packets++;
+			int foo = (signed char)ceh->silence;
+			_sw_sum_rx_noise += foo;
+//click_chatter("-> %d %d\n", foo, _sw_sum_rx_noise);
+			_sw_sum_rx_rssi += (signed char)ceh->rssi;
+		 }
 	}
   }
 
@@ -443,17 +449,18 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 	    cstats->avg_rssi = 0;
 	  }
 
+
 	  cstats->last = _last_packet_time;
 	  cstats->no_sources = -1; // Tbd. sources.size();
 
-	//click_chatter("Resetting at %d \n", curr_sec);
-	// start new bucket; reset all counters
-       _sw_sum_rx_duration = 0;
-       _sw_sum_tx_duration = 0;
-	_sw_sum_rx_packets = 0;
-	_sw_sum_tx_packets = 0;
-	_sw_sum_rx_noise = -100;
-	_sw_sum_rx_rssi = 0;
+	  //click_chatter("Resetting at %d \n", curr_sec);
+	  // start new bucket; reset all counters
+         _sw_sum_rx_duration = 0;
+         _sw_sum_tx_duration = 0;
+	  _sw_sum_rx_packets = 0;
+	  _sw_sum_tx_packets = 0;
+	  _sw_sum_rx_noise = -100;
+	  _sw_sum_rx_rssi = 0;
   }
   /******** HW ***********/
 
