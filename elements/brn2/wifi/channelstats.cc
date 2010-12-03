@@ -98,7 +98,7 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
   _sw_sum_rx_packets = 0;
   _sw_sum_tx_packets = 0;
 
-  _sw_sum_rx_noise = -100;
+  _sw_sum_rx_noise = 0;
   _sw_sum_rx_rssi = 0;
 
   return ret;
@@ -459,7 +459,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
          _sw_sum_tx_duration = 0;
 	  _sw_sum_rx_packets = 0;
 	  _sw_sum_tx_packets = 0;
-	  _sw_sum_rx_noise = -100;
+	  _sw_sum_rx_noise = 0;
 	  _sw_sum_rx_rssi = 0;
   }
   /******** HW ***********/
