@@ -205,6 +205,17 @@ class ChannelStats : public Element {
 
     Timestamp _last_hw_stat_time;
     Timestamp _last_packet_time;
+
+    bool _fast_mode;
+
+    uint32_t _sw_sum_rx_duration;
+    uint32_t _sw_sum_tx_duration;
+
+    int _sw_sum_rx_packets;
+    int _sw_sum_tx_packets;
+
+    int _sw_sum_rx_noise;
+    uint32_t _sw_sum_rx_rssi;
 };
 
 CLICK_ENDDECLS
