@@ -417,7 +417,13 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 
 	  if ( rx_packets > 0 ) {
 	    cstats->avg_noise /= rx_packets;
-	    cstats->avg_rssi /= rx_packets;
+      if ( cstats->avg_noise > 120 ) cstats->avg_noise = 100;
+      else if ( cstats->avg_noise < -120 ) cstats->avg_noise = -120;
+
+      cstats->avg_rssi /= rx_packets;
+      if ( cstats->avg_rssi > 120 ) cstats->avg_rssi = 100;
+      else if ( cstats->avg_rssi < -120 ) cstats->avg_rssi = -120;
+
 	  } else {
 	    cstats->avg_noise = -100; // default value
 	    cstats->avg_rssi = 0;
@@ -428,7 +434,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 	  cstats->no_sources = sources.size();
   } else { // fast mode
 
-    	  cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
+    cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
 	  cstats->busy /= 1e4;
 	  cstats->rx = _sw_sum_rx_duration;
 	  cstats->rx /= 1e4;
@@ -440,23 +446,28 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 	  if ( cstats->tx > 100 ) cstats->tx = 100;
 
 	  if ( _sw_sum_rx_packets > 0 ) {
-	    cstats->avg_noise = _sw_sum_rx_noise;
-	    cstats->avg_rssi = _sw_sum_rx_rssi;
-	    cstats->avg_noise /= _sw_sum_rx_packets;
-	    cstats->avg_rssi /= _sw_sum_rx_packets;
+      cstats->avg_noise = _sw_sum_rx_noise;
+      cstats->avg_noise /= _sw_sum_rx_packets;
+      if ( cstats->avg_noise > 120 ) cstats->avg_noise = 120;
+      else if ( cstats->avg_noise < -120 ) cstats->avg_noise = -120;
+
+      cstats->avg_rssi = _sw_sum_rx_rssi;
+      cstats->avg_rssi /= _sw_sum_rx_packets;
+      if ( cstats->avg_rssi > 120 ) cstats->avg_rssi = 120;
+      else if ( cstats->avg_rssi < -120 ) cstats->avg_rssi = -120;
+
 	 } else {
 	    cstats->avg_noise = -100; // default value
 	    cstats->avg_rssi = 0;
 	  }
-
 
 	  cstats->last = _last_packet_time;
 	  cstats->no_sources = -1; // Tbd. sources.size();
 
 	  //click_chatter("Resetting at %d \n", curr_sec);
 	  // start new bucket; reset all counters
-         _sw_sum_rx_duration = 0;
-         _sw_sum_tx_duration = 0;
+    _sw_sum_rx_duration = 0;
+    _sw_sum_tx_duration = 0;
 	  _sw_sum_rx_packets = 0;
 	  _sw_sum_tx_packets = 0;
 	  _sw_sum_rx_noise = 0;
