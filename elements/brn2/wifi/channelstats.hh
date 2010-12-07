@@ -24,6 +24,8 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 #define STATE_UNKNOWN  0
 #define STATE_OK       1
 #define STATE_CRC      2
@@ -47,12 +49,9 @@ CLICK_DECLS
 =c
 ChannelStats()
 
-
-
 =d
 
-
-=a 
+=a
 
 */
 
@@ -80,7 +79,7 @@ struct airtime_stats {
 };
 
 
-class ChannelStats : public Element {
+class ChannelStats : public BRNElement {
 
   public:
     class PacketInfo {
@@ -206,7 +205,7 @@ class ChannelStats : public Element {
     Timestamp _last_hw_stat_time;
     Timestamp _last_packet_time;
 
-    bool _fast_mode;
+    bool _small_stats;
 
     uint32_t _sw_sum_rx_duration;
     uint32_t _sw_sum_tx_duration;

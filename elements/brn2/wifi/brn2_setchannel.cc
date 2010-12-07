@@ -12,7 +12,7 @@
 CLICK_DECLS
 
 BRN2SetChannel::BRN2SetChannel() :
-    _channel( 0 )
+    _channel(0)
 {
   BRNElement::init();
 }

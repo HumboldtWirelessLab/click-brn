@@ -31,7 +31,7 @@ class BRN2SetChannel : public BRNElement {
  public:
   BRN2SetChannel();
 
-  const char *class_name() const	{ return "BRN2SetChannel"; }
+  const char *class_name() const  { return "BRN2SetChannel"; }
   const char *port_count() const  { return "1/1"; }
   const char *processing() const  { return AGNOSTIC; }
   bool can_live_reconfigure() const     { return false; }
