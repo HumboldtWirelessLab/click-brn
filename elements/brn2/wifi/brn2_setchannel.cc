@@ -108,7 +108,7 @@ setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHa
 
   String dev = args[0];
   int channel;
-  if (!cp_integer(s, &channel))
+  if (!cp_integer(args[1], &channel))
     return errh->error("channel parameter must be integer");
   sc->set_channel(channel);
 
