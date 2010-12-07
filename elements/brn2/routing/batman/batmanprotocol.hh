@@ -62,8 +62,8 @@ struct batman_routing {
 
 class BatmanProtocol : public Element { public:
 
-  BatmanProtocol();
-  ~BatmanProtocol();
+  BatmanProtocol() {};
+  ~BatmanProtocol() {};
 
   const char *class_name() const	{ return "BatmanProtocol"; }
 
