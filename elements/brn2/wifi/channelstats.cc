@@ -518,7 +518,7 @@ ChannelStats::reset()
 /********************************************** H A N D L E R *************************************************/
 /**************************************************************************************************************/
 
-enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_XML, H_STATS_NO_SOURCES, H_STATS_NODES_RSSI};
+enum {H_DEBUG, H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_XML, H_STATS_NO_SOURCES, H_STATS_NODES_RSSI, H_STATS_CHANNEL};
 
 String
 ChannelStats::stats_handler(int mode)
@@ -629,6 +629,9 @@ ChannelStats_read_param(Element *e, void *thunk)
     case H_STATS_NO_SOURCES:
     case H_STATS_NODES_RSSI:
       return td->stats_handler((uintptr_t) thunk);
+    case H_STATS_CHANNEL:
+      return String( td->get_channel());
+      break;
     case H_MAX_TIME:
       return String(td->_stats_duration) + "\n";
     default:
@@ -657,6 +660,13 @@ ChannelStats_write_param(const String &in_s, Element *e, void *vparam,
       f->_stats_duration = mt;
       break;
     }
+    case H_STATS_CHANNEL: {
+      int channel;
+      if (!cp_integer(s, &channel))
+        return errh->error("channel1 parameter must be integer");
+      f->set_channel(channel);
+      break;
+    } 
     case H_RESET: {    //reset
       f->reset();
     }
@@ -681,10 +691,12 @@ ChannelStats::add_handlers()
   add_read_handler("avg_rssi", ChannelStats_read_param, (void *) H_STATS_AVG_RSSI);
   add_read_handler("no_src", ChannelStats_read_param, (void *) H_STATS_NO_SOURCES);
   add_read_handler("src_rssi", ChannelStats_read_param, (void *) H_STATS_NODES_RSSI);
+  add_read_handler("channel", ChannelStats_read_param, (void *) H_STATS_CHANNEL);
 
   add_write_handler("debug", ChannelStats_write_param, (void *) H_DEBUG);
   add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);
   add_write_handler("max_time", ChannelStats_write_param, (void *) H_MAX_TIME);
+  add_write_handler("channel", ChannelStats_write_param, (void *) H_STATS_CHANNEL);
 }
 
 CLICK_ENDDECLS

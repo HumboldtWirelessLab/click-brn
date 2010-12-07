@@ -216,6 +216,11 @@ class ChannelStats : public Element {
 
     int _sw_sum_rx_noise;
     uint32_t _sw_sum_rx_rssi;
+
+  public:
+    void set_channel(uint32_t channel) { _channel = channel; } //TODO: remove this
+    uint32_t get_channel() { return _channel; }                //TODO: remove this
+
 };
 
 CLICK_ENDDECLS

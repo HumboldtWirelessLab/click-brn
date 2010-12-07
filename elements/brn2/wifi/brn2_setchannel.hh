@@ -23,10 +23,12 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
-class BRN2SetChannel : public Element {
-public:
+class BRN2SetChannel : public BRNElement {
+ public:
   BRN2SetChannel();
 
   const char *class_name() const	{ return "BRN2SetChannel"; }
@@ -38,9 +40,17 @@ public:
 
   Packet *simple_action(Packet *);
 
-private:
-  bool    _rotate;
-  int     _channel;
+  void add_handlers();
+
+ private:
+  int _channel;
+
+ public:
+   int set_channel_iwconfig(const String &devname, int channel, ErrorHandler *errh);
+
+  int get_channel() { return _channel; }
+  void set_channel(int channel) { _channel = channel; }
+
 };
 
 
