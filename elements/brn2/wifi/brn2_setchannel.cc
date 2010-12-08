@@ -59,6 +59,7 @@ BRN2SetChannel::simple_action(Packet *p_in)
 int
 BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHandler *errh)
 {
+#if CLICK_USERLEVEL
   StringAccum cmda;
   if (access("/sbin/iwconfig", X_OK) == 0)
     cmda << "/sbin/iwconfig";
@@ -73,6 +74,8 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   String out = shell_command_output_string(cmd, "", errh);
   if (out)
     BRN_ERROR("%s: %s", cmd.c_str(), out.c_str());
+#endif
+
   return 0;
 }
 

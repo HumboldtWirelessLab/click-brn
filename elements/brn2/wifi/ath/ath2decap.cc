@@ -69,7 +69,7 @@ Ath2Decap::simple_action(Packet *p)
 
   /** Filter Operations */
   if ( ( _athdecap && ( p->length() == ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
-         ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+         ( ( ! _athdecap ) && ( p->length() == ( sizeof(struct ath2_header) ) ) ) )
   {
     if ( noutputs() > 2 )
       output(2).push(p);
@@ -81,7 +81,7 @@ Ath2Decap::simple_action(Packet *p)
 
   /** Filter too small packets */
   if ( ( _athdecap && ( p->length() < ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
-       ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+       ( ( ! _athdecap ) && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
   {
     if ( noutputs() > 1 )
       output(1).push(p);
