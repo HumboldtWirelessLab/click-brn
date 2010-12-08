@@ -14,8 +14,21 @@ CLICK_DECLS
 
 
 Ath2Operation::Ath2Operation()
+   : _timer(this)
 {
   BRNElement::init();
+  channel = 0;
+  cu_pkt_threshold = 0;
+  cu_update_mode = 0;
+  cu_anno_mode = 0;
+
+  memset(cw_min, 0,4);
+  memset(cw_max, 0,4);
+  memset(aifs, 0,4);
+
+  cca_threshold = 0;
+
+  driver_flags = 0;
 }
 
 Ath2Operation::~Ath2Operation()
@@ -33,16 +46,33 @@ Ath2Operation::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
+int
+Ath2Operation::initialize(ErrorHandler *)
+{
+  _timer.initialize(this);
+  _timer.schedule_after_msec(100);
+
+  return 0;
+}
+
+void
+Ath2Operation::run_timer(Timer *t)
+{
+  read_config();
+}
+
 void
 Ath2Operation::push(int /*port*/,Packet *p)
 {
   BRN_DEBUG("Receive result of operation");
 
+  BRN_DEBUG("Size is %d", p->length());
   struct ath2_header *ath2_h = (struct ath2_header*)(p->data() + ATHDESC_HEADER_SIZE);
 
   if ( (ntohs(ath2_h->ath2_version) == ATHDESC2_VERSION) && (ntohs(ath2_h->madwifi_version) == MADWIFI_TRUNK) ) {
+    BRN_DEBUG("ATH version is correct");
 
-    if ( ath2_h->flags & MADWIFI_FLAGS_GET_CONFIG != 0 ) {
+    if ( (ath2_h->flags & MADWIFI_FLAGS_GET_CONFIG) != 0 ) {
       BRN_DEBUG("Get read config result");
 
       channel = ath2_h->anno.rx_anno.channel;                   //channel to set
@@ -119,7 +149,7 @@ Ath2Operation::madwifi_config()
     sa << "Queue " << i << ": " << (int)cw_min[i] << " " << (int)cw_max[i] << " " << (int)aifs[i] << "\n";
   }
 
-  sa << "CCA: " << cca_threshold << "\n";
+  sa << "CCA: " << (int)cca_threshold << "\n";
   sa << "Flags: " << driver_flags << "\n";
 
   return sa.take_string();
@@ -134,7 +164,7 @@ Ath2Operation_read_param(Element *e, void *thunk)
 
   switch ((uintptr_t) thunk) {
     case H_CONFIG: {
-      td->madwifi_config();
+      return td->madwifi_config();
       break;
     }
     default:
