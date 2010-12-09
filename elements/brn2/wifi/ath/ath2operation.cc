@@ -14,7 +14,8 @@ CLICK_DECLS
 
 
 Ath2Operation::Ath2Operation()
-   : _timer(this)
+   : _timer(this),
+     _read_config(true)
 {
   BRNElement::init();
   channel = 0;
@@ -39,6 +40,7 @@ int
 Ath2Operation::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "READCONFIG", cpkP, cpInteger, &_read_config,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -50,7 +52,9 @@ int
 Ath2Operation::initialize(ErrorHandler *)
 {
   _timer.initialize(this);
-  _timer.schedule_after_msec(100);
+  if ( _read_config ) {
+    _timer.schedule_after_msec(100);
+  }
 
   return 0;
 }

@@ -48,6 +48,8 @@ class Ath2Operation : public BRNElement {
   uint8_t cca_threshold;
 
   uint32_t driver_flags;
+
+  bool _read_config;
 };
 
 CLICK_ENDDECLS
