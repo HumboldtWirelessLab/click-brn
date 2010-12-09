@@ -40,7 +40,7 @@ int
 Ath2Operation::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "READCONFIG", cpkP, cpInteger, &_read_config,
+      "READCONFIG", cpkP, cpBool, &_read_config,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
