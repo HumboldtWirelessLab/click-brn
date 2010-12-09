@@ -161,6 +161,14 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     if ( f_tx ) {
       BRN_DEBUG("Got reply");
       f_tx->_rxPackets++;
+
+      Timestamp send_time;
+      struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
+      send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
+
+      f_tx->_cum_sum_rt_time += (Timestamp::now() - send_time).msecval();
+      f_tx->_cum_sum_hops += (SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet));
+
       packet->kill();
       return;
     }
@@ -177,9 +185,11 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   }
 
   f->_rxPackets++;
-  int maxttl = SIMPLEFLOW_MAXHOPCOUNT;
+
+  /*int maxttl = SIMPLEFLOW_MAXHOPCOUNT;
   int cttl= BRNPacketAnno::ttl_anno(packet);
-  //click_chatter("MAXcount: %d TTL: %d", maxttl, cttl);
+  click_chatter("MAXcount: %d TTL: %d", maxttl, cttl);*/
+
   f->_cum_sum_hops += (SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet));
 
 #if HAVE_FAST_CHECKSUM
@@ -203,6 +213,8 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     BRN_INFO("Reply outsum: %d",checksum);
 
     header->crc = checksum;
+
+    BRN_DEBUG("Reply: %s to %s",f->_dst.unparse().c_str(), f->_src.unparse().c_str());
 
     BRNPacketAnno::set_ether_anno(packet, f->_dst, f->_src, ETHERTYPE_BRN );
     WritablePacket *packet_out = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT,
@@ -228,8 +240,8 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     header->crc = checksum;
 
     BRNPacketAnno::set_ether_anno(packet, f->_dst, f->_src, ETHERTYPE_BRN );
-    WritablePacket *packet_out = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT,
-        DEFAULT_TOS);
+    WritablePacket *packet_out = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOW, BRN_PORT_FLOW,
+                                                             SIMPLEFLOW_MAXHOPCOUNT, DEFAULT_TOS);
 
     output(0).push(packet_out);
 
@@ -280,6 +292,10 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   header->size = htons(f->_size);
   header->mode = f->_type;
   header->reply = 0;
+
+  Timestamp ts = Timestamp::now();
+  header->tv_sec = htonl(ts.sec());
+  header->tv_usec = htonl(ts.nsec());
 
   BRN_DEBUG("Mode: %d",(int)f->_type);
 
@@ -349,7 +365,13 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
         sa << " src=\"" << fl._src.unparse().c_str() << "\"";
         sa << " dst=\"" << fl._dst.unparse().c_str() << "\"";
         sa << " packet_count=\"" << fl._txPackets << "\"";
-        sa << " replies=\"" << fl._rxPackets << "\" />\n";
+        sa << " replies=\"" << fl._rxPackets << "\"";
+        if ( fl._rxPackets > 0 ) {
+          sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
+          sa << " time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
+        } else {
+          sa << " avg. hops=\"0\" time=\"0\" />\n";
+        }
       }
       for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
         BRN2SimpleFlow::Flow fl = fm.value();

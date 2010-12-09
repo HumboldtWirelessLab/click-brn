@@ -126,13 +126,30 @@ BRN2EtherEncap::pull(int)
 }
 
 Packet *
-push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype) {
-  WritablePacket *q;
-  q = p->push(14);
+BRN2EtherEncap::push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype)
+{
+  WritablePacket *q = p->push(14);
   if (q) {
     click_ether *ether = (click_ether *) q->data();
     memcpy(ether->ether_shost, src, 6);
     memcpy(ether->ether_dhost, dst, 6);
+    ether->ether_type = htons(ethertype);
+  } else {
+    click_chatter("No space for etherheader");
+    return NULL;
+  }
+
+  return q;
+}
+
+Packet *
+BRN2EtherEncap::push_ether_header(Packet *p, EtherAddress *src, EtherAddress *dst, uint16_t ethertype)
+{
+  WritablePacket *q = p->push(14);
+  if (q) {
+    click_ether *ether = (click_ether *) q->data();
+    memcpy(ether->ether_shost, src->data(), 6);
+    memcpy(ether->ether_dhost, dst->data(), 6);
     ether->ether_type = htons(ethertype);
   } else {
     click_chatter("No space for etherheader");

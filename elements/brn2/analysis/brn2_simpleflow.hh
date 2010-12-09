@@ -31,6 +31,9 @@ class BRN2SimpleFlow : public BRNElement
     uint16_t size;
     uint8_t  mode;
     uint8_t  reply;
+
+    uint32_t tv_sec;   /* seconds since 1.1.1970 */ //previous: unsigned long
+    uint32_t tv_usec;  /* und microseconds */       //previous: long
   });
 
 #define SIMPLEFLOW_MAXHOPCOUNT   100
@@ -67,6 +70,8 @@ class BRN2SimpleFlow : public BRNElement
 
       uint32_t _cum_sum_hops;
 
+      uint32_t _cum_sum_rt_time;
+
       Flow() {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
@@ -82,6 +87,7 @@ class BRN2SimpleFlow : public BRNElement
         _rxPackets = 0;
         _rxCrcErrors = 0;
         _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
       }
 
       ~Flow() {}
@@ -92,6 +98,7 @@ class BRN2SimpleFlow : public BRNElement
         _rxPackets = 0;
         _rxCrcErrors = 0;
         _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
       }
   };
 

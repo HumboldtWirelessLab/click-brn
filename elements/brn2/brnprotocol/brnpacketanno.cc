@@ -107,21 +107,6 @@ BRNPacketAnno::dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes)
   memcpy(((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, &p_bytes, PULLED_BYTES_ANNO_SIZE);
 }
 
-/*uint8_t
-BRNPacketAnno::devicenumber_anno(const Packet *p)
-{
-  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
-  return (dst[0]);
-}
-
-void
-BRNPacketAnno::set_devicenumber_anno(Packet *p, uint8_t devnum)
-{
-  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
-  dst[0] = devnum;
-}
-*/
-
 uint16_t
 BRNPacketAnno::vlan_anno(const Packet *p)
 {
