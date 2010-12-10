@@ -14,7 +14,8 @@ CLICK_DECLS
 
 
 Ath2Operation::Ath2Operation()
-   : _timer(this),
+   : _device(NULL),
+     _timer(this),
      _read_config(true)
 {
   BRNElement::init();
@@ -40,6 +41,7 @@ int
 Ath2Operation::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "DEVICE", cpkP, cpElement, &_device,
       "READCONFIG", cpkP, cpBool, &_read_config,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
@@ -60,7 +62,7 @@ Ath2Operation::initialize(ErrorHandler *)
 }
 
 void
-Ath2Operation::run_timer(Timer *t)
+Ath2Operation::run_timer(Timer */*t*/)
 {
   read_config();
 }
@@ -80,6 +82,7 @@ Ath2Operation::push(int /*port*/,Packet *p)
       BRN_DEBUG("Get read config result");
 
       channel = ath2_h->anno.rx_anno.channel;                   //channel to set
+      if ( _device ) _device->setChannel(channel);
       cu_pkt_threshold = ath2_h->anno.rx_anno.cu_pkt_threshold; //channel utility: rx time
       cu_update_mode = ath2_h->anno.rx_anno.cu_update_mode;     //channel utility: tx time
       cu_anno_mode = ath2_h->anno.rx_anno.cu_anno_mode;         //channel utility: rx time
@@ -115,6 +118,9 @@ Ath2Operation::set_channel(int channel)
 
   ath2_h->anno.tx_anno.operation |= ATH2_OPERATION_SET_CHANNEL;
   ath2_h->anno.tx_anno.channel = channel;
+
+  if ( _device ) _device->setChannel(channel);  //TODO: move to push. set channel only if operation was
+                                                 //      successful
 
   output(0).push(new_packet);
 }

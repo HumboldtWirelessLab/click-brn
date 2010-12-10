@@ -5,6 +5,8 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+
 #include "ath2_desc.h"
 
 CLICK_DECLS
@@ -28,6 +30,8 @@ class Ath2Operation : public BRNElement {
   void add_handlers();
 
   void run_timer(Timer *t);
+
+  BRN2Device *_device;
 
   void set_channel(int channel);
 

@@ -12,6 +12,7 @@
 CLICK_DECLS
 
 BRN2SetChannel::BRN2SetChannel() :
+    _device(NULL),
     _channel(0)
 {
   BRNElement::init();
@@ -21,7 +22,9 @@ int
 BRN2SetChannel::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "DEVICE", cpkP, cpElement, &_device,
       "CHANNEL", cpkN, cpInteger, &_channel,
+      "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -75,6 +78,8 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   if (out)
     BRN_ERROR("%s: %s", cmd.c_str(), out.c_str());
 #endif
+
+  if (_device) _device->setChannel(channel);
 
   return 0;
 }
