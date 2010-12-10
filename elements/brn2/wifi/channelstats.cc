@@ -41,6 +41,7 @@ CLICK_DECLS
 ChannelStats::ChannelStats():
     _save_duration(CS_DEFAULT_SAVE_DURATION),
     _stats_duration(CS_DEFAULT_STATS_DURATION),
+    _device(NULL),
     hw_busy(0),
     hw_rx(0),
     hw_tx(0),
@@ -67,6 +68,7 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
   int proc_interval = CS_DEFAULT_PROCINTERVAL;
 
   int ret = cp_va_kparse(conf, this, errh,
+                     "DEVICE", cpkP, cpElement, &_device,
                      "STATS_DURATION", cpkP, cpInteger, &_stats_duration,  //default time, over which the stats are calculated
                      "SAVE_DURATION", cpkP, cpInteger, &_save_duration,    //max time, which a packetinfo is stored
                      "PROCFILE", cpkP, cpString, &_proc_file,              //procfile you want to read from
@@ -125,9 +127,13 @@ ChannelStats::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
+  /* General stuff */
   _last_packet_time = p->timestamp_anno();
+  _channel = BRNPacketAnno::channel_anno(p);
+  if ( _device != NULL ) _device->setChannel(_channel);
 
-  if ( ceh->flags & WIFI_EXTRA_TX ) { // tx feedback packets
+  /* Handle TXFeedback */
+  if ( ceh->flags & WIFI_EXTRA_TX ) {
 
     for ( int i = 0; i < (int) ceh->retries; i++ ) {
       int t0,t1,t2,t3;
@@ -136,12 +142,12 @@ ChannelStats::push(int port, Packet *p)
       t2 = t1 + ceh->max_tries2;
       t3 = t2 + ceh->max_tries3;
 
-      _channel = BRNPacketAnno::channel_anno(p);
       uint16_t rate = 0;
       if ( i < t0 ) rate = ceh->rate;
       else if ( i < t1 ) rate = ceh->rate1;
       else if ( i < t2 ) rate = ceh->rate2;
       else if ( i < t3 ) rate = ceh->rate3;
+
       if (rate != 0) {
         uint32_t duration = calc_transmit_time(rate, p->length());
         if (!_small_stats) { // default mode: save everything in vector
@@ -155,14 +161,35 @@ ChannelStats::push(int port, Packet *p)
           new_pi->_duration = duration;
           _packet_list.push_back(new_pi);
         } else { // small: incremental update
-            // update duration counter
-            _sw_sum_tx_duration += duration;
-            _sw_sum_tx_packets++;
-          }
+          // update duration counter
+          _sw_sum_tx_duration += duration;
+          _sw_sum_tx_packets++;
+        }
+      } else {
+        _zero_rate_error++;
       }
     }
-  } else { // RX
+  } else {
+    /* Handle Rx Packets */
     if ( ceh->rate != 0 ) {
+
+      uint32_t duration = calc_transmit_time(ceh->rate, p->length() + 4);
+      uint8_t state = STATE_UNKNOWN;
+
+      struct click_wifi *w = (struct click_wifi *) p->data();
+      EtherAddress src = EtherAddress(w->i_addr2);
+
+      bool retry = (w->i_fc[1] & WIFI_FC1_RETRY);
+
+      if ( ceh->magic == WIFI_EXTRA_MAGIC ) {
+        if ((ceh->flags & WIFI_EXTRA_RX_ERR) == 0 ) state = STATE_OK;
+        else {
+          if  (ceh->flags & WIFI_EXTRA_RX_CRC_ERR) state = STATE_CRC;
+          else if (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) state = STATE_PHY;
+          else state = STATE_ERROR;
+        }
+      }
+
       if (!_small_stats) {
         PacketInfo *new_pi = new PacketInfo();
 
@@ -170,36 +197,54 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_rate = ceh->rate;
         new_pi->_length = p->length() + 4;   //CRC
         new_pi->_foreign = true;
-        new_pi->_channel = _channel = BRNPacketAnno::channel_anno(p);
+        new_pi->_channel = _channel;
         new_pi->_rx = true;
 
-        new_pi->_duration = calc_transmit_time(new_pi->_rate, new_pi->_length);
+        new_pi->_duration = duration;
 
-        struct click_wifi *w = (struct click_wifi *) p->data();
-
-        new_pi->_src = EtherAddress(w->i_addr2);
-
-        if ( ceh->magic == WIFI_EXTRA_MAGIC && ( (ceh->flags & WIFI_EXTRA_RX_ERR) == 0 ))
-          new_pi->_state = STATE_OK;
-        else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) && (ceh->flags & WIFI_EXTRA_RX_CRC_ERR) )
-          new_pi->_state = STATE_CRC;
-        else if ( ceh->magic == WIFI_EXTRA_MAGIC && (ceh->flags & WIFI_EXTRA_RX_ERR) && (ceh->flags & WIFI_EXTRA_RX_PHY_ERR) )
-          new_pi->_state = STATE_PHY;
+        new_pi->_src = src;
+        new_pi->_state = state;
 
         new_pi->_noise = (signed char)ceh->silence;
         new_pi->_rssi = (signed char)ceh->rssi;
 
+        new_pi->_retry = retry;
+        new_pi->_unicast = !src.is_broadcast();
+
         _packet_list.push_back(new_pi);
       } else { // fast mode
-        _channel = BRNPacketAnno::channel_anno(p);
         // update duration counter
-        _sw_sum_rx_duration += calc_transmit_time(ceh->rate, p->length() + 4);
         _sw_sum_rx_packets++;
+        _sw_sum_rx_duration += duration;
+
         int silence = (signed char)ceh->silence;
         _sw_sum_rx_noise += silence;
-        //click_chatter("-> %d %d\n", foo, _sw_sum_rx_noise);
         _sw_sum_rx_rssi += (signed char)ceh->rssi;
+
+        switch (state) {
+          case STATE_OK:
+                _sw_sum_rx_noerr_duration += duration;
+                _sw_sum_rx_noerr_packets++;
+                break;
+          case STATE_CRC:
+                _sw_sum_rx_crc_duration += duration;
+                _sw_sum_rx_crc_packets++;
+                break;
+          case STATE_PHY:
+                _sw_sum_rx_phy_duration += duration;
+                _sw_sum_rx_phy_packets++;
+                break;
+        }
+
+        if (src.is_broadcast()) _sw_sum_rx_bcast_packets++;
+        else {
+          _sw_sum_rx_ucast_packets++;
+          if (retry) _sw_sum_rx_retry_packets++;
+          if ( _sw_sources.findp(src) == NULL ) _sw_sources.insert(src,src);
+        }
       }
+    } else {
+      _zero_rate_error++;
     }
   }
 
@@ -311,7 +356,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
-  int i, rx_packets = 0;
+  int i = 0;
 
   HashMap<EtherAddress, EtherAddress> sources;
 
@@ -339,8 +384,6 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
       if ( diff.msecval() <= _stats_duration )  break; //TODO: exact calc
     }
 
-    cstats->packets = _packet_list.size() - i;
-
     for (; i < _packet_list.size(); i++) {
       pi = _packet_list[i];
 
@@ -348,7 +391,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
         cstats->rx += pi->_duration;
         cstats->avg_noise += pi->_noise;
         cstats->avg_rssi += pi->_rssi;
-        rx_packets++;
+        cstats->rxpackets++;
 
         if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
@@ -361,7 +404,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
           }
         }
 
-      } else cstats->tx += pi->_duration;
+      } else {
+        cstats->tx += pi->_duration;
+        cstats->txpackets++;
+      }
     }
 
     cstats->busy = cstats->rx + cstats->tx;
@@ -373,12 +419,12 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     if ( cstats->rx > 100 ) cstats->rx = 100;
     if ( cstats->tx > 100 ) cstats->tx = 100;
 
-    if ( rx_packets > 0 ) {
-      cstats->avg_noise /= rx_packets;
+    if ( cstats->rxpackets > 0 ) {
+      cstats->avg_noise /= cstats->rxpackets;
       if ( cstats->avg_noise > 120 ) cstats->avg_noise = 100;
       else if ( cstats->avg_noise < -120 ) cstats->avg_noise = -120;
 
-      cstats->avg_rssi /= rx_packets;
+      cstats->avg_rssi /= cstats->rxpackets;
       if ( cstats->avg_rssi > 120 ) cstats->avg_rssi = 100;
       else if ( cstats->avg_rssi < -120 ) cstats->avg_rssi = -120;
 
@@ -392,12 +438,25 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     cstats->no_sources = sources.size();
   } else { // fast mode
 
+    cstats->rxpackets = _sw_sum_rx_packets;
+    cstats->noerr_packets = _sw_sum_rx_noerr_packets;
+    cstats->crc_packets = _sw_sum_rx_crc_packets;
+    cstats->phy_packets = _sw_sum_rx_phy_packets;
+    cstats->txpackets = _sw_sum_tx_packets;
+
     cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
-    cstats->busy /= 1e4;
+    cstats->busy /= diff_time;
     cstats->rx = _sw_sum_rx_duration;
-    cstats->rx /= 1e4;
+    cstats->rx /= diff_time;
     cstats->tx = _sw_sum_tx_duration;
-    cstats->tx /= 1e4;
+    cstats->tx /= diff_time;
+
+    cstats->noerr_rx = _sw_sum_rx_noerr_duration;
+    cstats->noerr_rx /= diff_time;
+    cstats->crc_rx = _sw_sum_rx_crc_duration;
+    cstats->crc_rx /= diff_time;
+    cstats->phy_rx = _sw_sum_rx_phy_duration;
+    cstats->phy_rx /= diff_time;
 
     if ( cstats->busy > 100 ) cstats->busy = 100;
     if ( cstats->rx > 100 ) cstats->rx = 100;
@@ -420,16 +479,9 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     }
 
     cstats->last = _last_packet_time;
-    cstats->no_sources = -1; // Tbd. sources.size();
+    cstats->no_sources = _sw_sources.size();
 
-    //click_chatter("Resetting at %d \n", curr_sec);
-    // start new bucket; reset all counters
-    _sw_sum_rx_duration = 0;
-    _sw_sum_tx_duration = 0;
-    _sw_sum_rx_packets = 0;
-    _sw_sum_tx_packets = 0;
-    _sw_sum_rx_noise = 0;
-    _sw_sum_rx_rssi = 0;
+    reset_small_stats();
   }
   /******** HW ***********/
 
@@ -471,15 +523,37 @@ ChannelStats::reset()
 {
   _packet_list.clear();
 
+  reset_small_stats();
+}
+
+void
+ChannelStats::reset_small_stats()
+{
+  _sw_sources.clear();
+
   // init small stats
   _sw_sum_rx_duration = 0;
   _sw_sum_tx_duration = 0;
 
+  _sw_sum_rx_noerr_duration = 0;
+  _sw_sum_rx_crc_duration = 0;
+  _sw_sum_rx_phy_duration = 0;
+
   _sw_sum_rx_packets = 0;
   _sw_sum_tx_packets = 0;
 
+  _sw_sum_rx_ucast_packets = 0;
+  _sw_sum_rx_bcast_packets = 0;
+  _sw_sum_rx_retry_packets = 0;
+
+  _sw_sum_rx_noerr_packets = 0;
+  _sw_sum_rx_crc_packets = 0;
+  _sw_sum_rx_phy_packets = 0;
+
   _sw_sum_rx_noise = 0;
   _sw_sum_rx_rssi = 0;
+
+  _zero_rate_error = 0;
 }
 
 /**************************************************************************************************************/
@@ -505,7 +579,7 @@ ChannelStats::stats_handler(int mode)
      if ( _stats_timer_enable ) sa << "ID: " << _stats_id << "\n";
       sa << "Time: " << _stats_duration << "\n";
       sa << "All packets: " << _packet_list.size() << "\n";
-      sa << "Packets: " << stats.packets << "\n";
+      sa << "RXPackets: " << stats.rxpackets << "\n";
       sa << "Busy: " << stats.busy << "\n";
       sa << "RX: " << stats.rx << "\n";
       sa << "TX: " << stats.tx << "\n";
@@ -557,13 +631,26 @@ ChannelStats::stats_handler(int mode)
       }
       break;
     case H_STATS_XML:
+
+
       sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" >\n";
-      sa << "\t<channelload busy=\"" << stats.busy << "\" rx=\"" << stats.rx << "\" tx=\"" << stats.tx << "\" ";
+
+      sa << "\t<mac packets=\"" << (stats.rxpackets+stats.txpackets) << "\" rx_pkt=\"" << stats.rxpackets << "\" ";
+      sa << "noerr_pkt=\"" << stats.noerr_packets << "\" crc_pkt=\"" << stats.crc_packets << "\" ";
+      sa << "phy_pkt=\"" << stats.phy_packets << "\" tx_pkt=\"" << stats.txpackets << "\" ";
+      sa << "busy=\"" << stats.busy << "\" rx=\"" << stats.rx << "\" tx=\"" << stats.tx << "\" ";
+      sa << "noerr_rx=\"" << stats.noerr_rx << "\" crc_rx=\"" << stats.crc_rx << "\" phy_rx=\"" << stats.phy_rx << "\" ";
       sa << "last_packet_time=\"" << _last_packet_time.unparse() << "\" ";
-      sa << "hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
+      sa << "no_src=\"" << stats.no_sources << "\" />";
+
+      sa << "\t<phy hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
       sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";
       sa << "avg_noise=\"" << stats.avg_noise << "\" avg_rssi=\"" << stats.avg_rssi << "\" ";
-      sa << "no_src=\"" << stats.no_sources << "\" channel=\"" << _channel << "\" />";
+      sa << "\" channel=\"";
+      if ( _device ) sa << (int)(_device->getChannel());
+      else           sa << _channel;
+      sa << "\" />";
+
       sa << "\n\t<rssi>\n";
       for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
@@ -619,13 +706,6 @@ ChannelStats_write_param(const String &in_s, Element *e, void *vparam,
       f->_stats_duration = mt;
       break;
     }
-    case H_CHANNEL: {
-      int channel;
-      if (!cp_integer(s, &channel))
-        return errh->error("channel1 parameter must be integer");
-      f->set_channel(channel);
-      break;
-    }
     case H_RESET: {    //reset
       f->reset();
     }
@@ -655,7 +735,6 @@ ChannelStats::add_handlers()
 
   add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);
   add_write_handler("max_time", ChannelStats_write_param, (void *) H_MAX_TIME);
-  add_write_handler("channel", ChannelStats_write_param, (void *) H_CHANNEL);
 }
 
 CLICK_ENDDECLS

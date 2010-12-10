@@ -25,11 +25,14 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
 
 #define STATE_UNKNOWN  0
 #define STATE_OK       1
 #define STATE_CRC      2
 #define STATE_PHY      3
+#define STATE_ERROR    4
+
 
 #define CS_DEFAULT_STATS_DURATION       100
 #define CS_DEFAULT_SAVE_DURATION          0
@@ -60,22 +63,31 @@ struct airtime_stats {
 
   Timestamp last;
   Timestamp last_hw;
-  int packets;
+
+  int rxpackets;
+  int noerr_packets;
+  int crc_packets;
+  int phy_packets;
+
+  int txpackets;
+
   int busy;
   int rx;
   int tx;
+
+  int noerr_rx;
+  int crc_rx;
+  int phy_rx;
+
   bool hw_available;
   int hw_busy;
   int hw_rx;
   int hw_tx;
+
   int avg_noise;
   int avg_rssi;
   int no_sources;
 
-  int crc_rx;
-  int crc_count;
-  int phy_rx;
-  int phy_count;
 };
 
 
@@ -95,6 +107,8 @@ class ChannelStats : public BRNElement {
       int _rssi;
       EtherAddress _src;
       uint8_t _state;
+      bool _retry;
+      bool _unicast;
     };
 
     class PacketInfoHW {
@@ -156,6 +170,7 @@ class ChannelStats : public BRNElement {
     void add_handlers();
 
     void push(int, Packet *p);
+    void reset_small_stats();
     void reset();
 
     String stats_handler(int mode);
@@ -163,20 +178,20 @@ class ChannelStats : public BRNElement {
     void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);
 
-
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
 
-    bool _debug;
     int32_t _save_duration;  //maximum age of pakets in the queue in seconds
     int32_t _stats_duration; //maximum age of pakets, which are considered in the calculation (default)
 
   private:
+    BRN2Device *_device;
 
     void readProcHandler();
 
     PacketList _packet_list;
     PacketListHW _packet_list_hw;
 
+    //Last read values
     uint32_t hw_busy;
     uint32_t hw_rx;
     uint32_t hw_tx;
@@ -210,15 +225,32 @@ class ChannelStats : public BRNElement {
     uint32_t _sw_sum_rx_duration;
     uint32_t _sw_sum_tx_duration;
 
+    uint32_t _sw_sum_rx_noerr_duration;
+    uint32_t _sw_sum_rx_crc_duration;
+    uint32_t _sw_sum_rx_phy_duration;
+
     int _sw_sum_rx_packets;
     int _sw_sum_tx_packets;
+
+    int _sw_sum_rx_ucast_packets;
+    int _sw_sum_rx_bcast_packets;
+    int _sw_sum_rx_retry_packets;
+
+    int _sw_sum_rx_noerr_packets;
+    int _sw_sum_rx_crc_packets;
+    int _sw_sum_rx_phy_packets;
 
     int _sw_sum_rx_noise;
     uint32_t _sw_sum_rx_rssi;
 
+    uint32_t _zero_rate_error;
+
+    HashMap<EtherAddress, EtherAddress> _sw_sources;
+
   public:
-    void set_channel(uint32_t channel) { _channel = channel; } //TODO: remove this
-    uint32_t get_channel() { return _channel; }                //TODO: remove this
+
+    void set_channel(uint32_t channel) { _channel = channel; }                     //TODO: remove this
+    uint32_t get_channel() { return _device ? _device->getChannel() : _channel; } //TODO: remove this
 
 };
 
