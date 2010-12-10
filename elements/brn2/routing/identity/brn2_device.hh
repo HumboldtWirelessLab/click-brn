@@ -8,6 +8,8 @@
 # include <click/ip6address.hh>
 #endif
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -28,7 +30,7 @@ CLICK_DECLS
 #define DEVICETYPE_WIRELESS 2
 #define DEVICETYPE_VIRTUAL  3
 
-class BRN2Device : public Element {
+class BRN2Device : public BRNElement {
   public:
     //
     //methods
@@ -74,11 +76,8 @@ class BRN2Device : public Element {
     bool is_routable();
     void set_routable(bool routable);
 
-    //
-    //member
-    //
-    int _debug;
-
+    inline uint8_t getChannel() { return channel; }
+    inline void setChannel(uint8_t c) { channel = c; }
 
   private:
 
@@ -107,6 +106,7 @@ class BRN2Device : public Element {
 
     bool _routable;
 
+    uint8_t channel;
 };
 
 CLICK_ENDDECLS

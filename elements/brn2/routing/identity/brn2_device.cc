@@ -10,12 +10,12 @@
 CLICK_DECLS
 
 BRN2Device::BRN2Device()
-  : _debug(BrnLogger::DEFAULT),
-    device_number(0),
+  : device_number(0),
     is_service_dev(false),
     is_master_dev(false),
     _routable(true)
 {
+  BRNElement:init();
 }
 
 BRN2Device::~BRN2Device()
@@ -202,25 +202,6 @@ BRN2Device::getTypeStringByInt(uint32_t type)
 //-----------------------------------------------------------------------------
 
 static String
-read_debug_param(Element *e, void *)
-{
-  BRN2Device *id = (BRN2Device *)e;
-  return String(id->_debug) + "\n";
-}
-
-static int
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BRN2Device *id = (BRN2Device *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  id->_debug = debug;
-  return 0;
-}
-
-static String
 read_device_info(Element *e, void *)
 {
   BRN2Device *dev = (BRN2Device *)e;
@@ -229,12 +210,11 @@ read_device_info(Element *e, void *)
          "\nType: " + dev->getDeviceType() + "\n";
 }
 
-
 void
 BRN2Device::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
   add_read_handler("deviceinfo", read_device_info, 0);
 }
 
