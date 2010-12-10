@@ -445,19 +445,21 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     cstats->txpackets = _sw_sum_tx_packets;
     cstats->zero_rate_packets = _zero_rate_error;
 
-    cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
+    cstats->duration_busy = cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
     cstats->busy /= diff_time;
-    cstats->rx = _sw_sum_rx_duration;
+    cstats->duration_rx = cstats->rx = _sw_sum_rx_duration;
     cstats->rx /= diff_time;
-    cstats->tx = _sw_sum_tx_duration;
+    cstats->duration_tx = cstats->tx = _sw_sum_tx_duration;
     cstats->tx /= diff_time;
 
-    cstats->noerr_rx = _sw_sum_rx_noerr_duration;
+    cstats->duration_noerr_rx = cstats->noerr_rx = _sw_sum_rx_noerr_duration;
     cstats->noerr_rx /= diff_time;
-    cstats->crc_rx = _sw_sum_rx_crc_duration;
+    cstats->duration_crc_rx = cstats->crc_rx = _sw_sum_rx_crc_duration;
     cstats->crc_rx /= diff_time;
-    cstats->phy_rx = _sw_sum_rx_phy_duration;
+    cstats->duration_phy_rx = cstats->phy_rx = _sw_sum_rx_phy_duration;
     cstats->phy_rx /= diff_time;
+
+    cstats->duration = _stats_duration;
 
     if ( cstats->busy > 100 ) cstats->busy = 100;
     if ( cstats->rx > 100 ) cstats->rx = 100;
@@ -644,6 +646,10 @@ ChannelStats::stats_handler(int mode)
       sa << "noerr_rx=\"" << stats.noerr_rx << "\" crc_rx=\"" << stats.crc_rx << "\" phy_rx=\"" << stats.phy_rx << "\" ";
       sa << "last_packet_time=\"" << _last_packet_time.unparse() << "\" ";
       sa << "no_src=\"" << stats.no_sources << "\" />\n";
+
+      sa << "\t<mac_duration busy=\"" << stats.duration_busy << "\" rx=\"" << stats.duration_rx << "\" ";
+      sa << "tx=\"" << stats.duration_tx << "\" noerr_rx=\"" << stats.duration_noerr_rx << "\" ";
+      sa << "crc_rx=\"" << stats.duration_crc_rx << "\" phy_rx=\"" << stats.duration_phy_rx << "\" />\n";
 
       sa << "\t<phy hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
       sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";

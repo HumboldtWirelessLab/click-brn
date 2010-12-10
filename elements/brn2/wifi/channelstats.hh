@@ -59,32 +59,41 @@ ChannelStats()
 */
 
 struct airtime_stats {
+  uint32_t duration;
+
   Timestamp last_update;
 
   Timestamp last;
   Timestamp last_hw;
 
-  int rxpackets;
-  int noerr_packets;
-  int crc_packets;
-  int phy_packets;
+  uint32_t rxpackets;
+  uint32_t noerr_packets;
+  uint32_t crc_packets;
+  uint32_t phy_packets;
 
-  int zero_rate_packets;
+  uint32_t zero_rate_packets;
 
-  int txpackets;
+  uint32_t txpackets;
 
-  int busy;
-  int rx;
-  int tx;
+  uint32_t busy;
+  uint32_t rx;
+  uint32_t tx;
 
-  int noerr_rx;
-  int crc_rx;
-  int phy_rx;
+  uint32_t noerr_rx;
+  uint32_t crc_rx;
+  uint32_t phy_rx;
+
+  uint32_t duration_busy;
+  uint32_t duration_rx;
+  uint32_t duration_tx;
+  uint32_t duration_noerr_rx;
+  uint32_t duration_crc_rx;
+  uint32_t duration_phy_rx;
 
   bool hw_available;
-  int hw_busy;
-  int hw_rx;
-  int hw_tx;
+  uint32_t hw_busy;
+  uint32_t hw_rx;
+  uint32_t hw_tx;
 
   int avg_noise;
   int avg_rssi;
