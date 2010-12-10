@@ -636,7 +636,7 @@ ChannelStats::stats_handler(int mode)
     case H_STATS_XML:
 
 
-      sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" >\n";
+      sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" unit=\"ms\" >\n";
 
       sa << "\t<mac packets=\"" << (stats.rxpackets+stats.txpackets) << "\" rx_pkt=\"" << stats.rxpackets << "\" ";
       sa << "no_err_pkt=\"" << stats.noerr_packets << "\" crc_err_pkt=\"" << stats.crc_packets << "\" ";
@@ -649,12 +649,12 @@ ChannelStats::stats_handler(int mode)
 
       sa << "\t<mac_duration busy=\"" << stats.duration_busy << "\" rx=\"" << stats.duration_rx << "\" ";
       sa << "tx=\"" << stats.duration_tx << "\" noerr_rx=\"" << stats.duration_noerr_rx << "\" ";
-      sa << "crc_rx=\"" << stats.duration_crc_rx << "\" phy_rx=\"" << stats.duration_phy_rx << "\" />\n";
+      sa << "crc_rx=\"" << stats.duration_crc_rx << "\" phy_rx=\"" << stats.duration_phy_rx << "\" unit=\"us\" />\n";
 
       sa << "\t<phy hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
       sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";
       sa << "avg_noise=\"" << stats.avg_noise << "\" avg_rssi=\"" << stats.avg_rssi << "\" ";
-      sa << "\" channel=\"";
+      sa << "channel=\"";
       if ( _device ) sa << (int)(_device->getChannel());
       else           sa << _channel;
       sa << "\" />";
