@@ -150,7 +150,8 @@ Ath2Operation::madwifi_config()
   StringAccum sa;
 
   sa << "Madwifi config:\n";
-  sa << "Channel: " << (int)channel << "\n";
+  if ( _device ) sa << "Channel: " << (int)_device->getChannel() << "\n";
+  else           sa << "Channel: " << (int)channel << "\n";
   sa << "cu treshold: " << (int)cu_pkt_threshold << "\n";
   sa << "cu update: " << (int)cu_update_mode << "\n";
   sa << "cu anno mode: " << (int)cu_anno_mode << "\n";
