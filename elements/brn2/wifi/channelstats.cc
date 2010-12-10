@@ -443,6 +443,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     cstats->crc_packets = _sw_sum_rx_crc_packets;
     cstats->phy_packets = _sw_sum_rx_phy_packets;
     cstats->txpackets = _sw_sum_tx_packets;
+    cstats->zero_rate_packets = _zero_rate_error;
 
     cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
     cstats->busy /= diff_time;
@@ -636,12 +637,13 @@ ChannelStats::stats_handler(int mode)
       sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" >\n";
 
       sa << "\t<mac packets=\"" << (stats.rxpackets+stats.txpackets) << "\" rx_pkt=\"" << stats.rxpackets << "\" ";
-      sa << "noerr_pkt=\"" << stats.noerr_packets << "\" crc_pkt=\"" << stats.crc_packets << "\" ";
-      sa << "phy_pkt=\"" << stats.phy_packets << "\" tx_pkt=\"" << stats.txpackets << "\" ";
+      sa << "no_err_pkt=\"" << stats.noerr_packets << "\" crc_err_pkt=\"" << stats.crc_packets << "\" ";
+      sa << "phy_err_pkt=\"" << stats.phy_packets << "\" tx_pkt=\"" << stats.txpackets << "\" ";
+      sa << "zero_err_pkt=\"" << stats.zero_rate_packets << "\" ";
       sa << "busy=\"" << stats.busy << "\" rx=\"" << stats.rx << "\" tx=\"" << stats.tx << "\" ";
       sa << "noerr_rx=\"" << stats.noerr_rx << "\" crc_rx=\"" << stats.crc_rx << "\" phy_rx=\"" << stats.phy_rx << "\" ";
       sa << "last_packet_time=\"" << _last_packet_time.unparse() << "\" ";
-      sa << "no_src=\"" << stats.no_sources << "\" />";
+      sa << "no_src=\"" << stats.no_sources << "\" />\n";
 
       sa << "\t<phy hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
       sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";

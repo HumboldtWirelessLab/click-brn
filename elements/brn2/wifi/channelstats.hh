@@ -69,6 +69,8 @@ struct airtime_stats {
   int crc_packets;
   int phy_packets;
 
+  int zero_rate_packets;
+
   int txpackets;
 
   int busy;
