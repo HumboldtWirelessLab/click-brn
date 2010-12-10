@@ -87,10 +87,10 @@ BatmanRouting::push( int /*port*/, Packet *packet )
   //BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
-  int int_ttl = ttl;
-  if ( ttl == 0 ) ttl = bfe->_hops + 3 /*HOP-MARGIN*/;  //TODO: Discard if ttl higher than expected hops ??
+ if ( ttl == 0 ) ttl = bfe->_hops + 3 /*HOP-MARGIN*/;  //TODO: Discard if ttl higher than expected hops ??
 
   BRN_DEBUG("Start forward. Next hop: %s",bfe->_forwarder.unparse().c_str());
+  //int int_ttl = ttl;
   //click_chatter("Wanted ttl: %d",int_ttl);
   _routeId++;
   WritablePacket *batroutep = BatmanProtocol::add_batman_routing(packet, 0, _routeId );
