@@ -174,6 +174,9 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
           j, source_route[j].ether().unparse().c_str(), source_route[j]._metric);
     }
 
+    struct click_brn *brnh = (struct click_brn *)p_in->data();
+    brnh->ttl--;
+    BRNPacketAnno::set_ttl_anno(p_in, brnh->ttl);
     int source_hops  = brn_dsr->dsr_hop_count;
     int segments     = brn_dsr->dsr_segsleft;
     int index = source_hops - segments - 2;
@@ -280,10 +283,6 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
     memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));
     ether->ether_type = htons(ETHERTYPE_BRN);                             //TODO: CHECK: this is important ??
 
-    // the following line would effectively destroy p_in as it creates a shared ether header between p and p_in
-    // Yet, there is no obvious reason to have it around at all. We shouldn't touch p_in here.
-    //p_in->set_ether_header(ether);
-
     output(2).push(p);  //Route-Error
     return;
   }
@@ -334,6 +333,11 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 
   BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
   BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
+
+  if ( BRNProtocol::is_brn_etherframe(p) ) { //set ttl if payload is brn_packet
+    struct click_brn *brnh = BRNProtocol::get_brnheader_in_etherframe(p);
+    brnh->ttl = BRNPacketAnno::ttl_anno(p);
+  }
 
   return p;
 }
