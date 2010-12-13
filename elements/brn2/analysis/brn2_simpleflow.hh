@@ -152,6 +152,7 @@ class BRN2SimpleFlow : public BRNElement
     bool _clear_packet;
     int _headroom;
 
+    bool _start_active;
 };
 
 CLICK_ENDDECLS

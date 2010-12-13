@@ -20,7 +20,8 @@ CLICK_DECLS
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
     _clear_packet(false),
-    _headroom(128)
+    _headroom(128),
+    _start_active(false)
 {
   BRNElement::init();
 }
@@ -31,36 +32,37 @@ BRN2SimpleFlow::~BRN2SimpleFlow()
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  EtherAddress _dst;
   EtherAddress _src;
   uint32_t     _rate;
   uint32_t     _mode;
   uint32_t     _size;
-  bool         _active;
   uint32_t     _duration;
 
   if (cp_va_kparse(conf, this, errh,
       "SRCADDRESS", cpkP+cpkM , cpEtherAddress, &_src,
-      "DSTADDRESS", cpkP+cpkM, cpEtherAddress, &_dst,
+      "DSTADDRESS", cpkP+cpkM, cpEtherAddress, &dst_of_flow,
       "RATE", cpkP+cpkM, cpInteger, &_rate,
       "SIZE", cpkP+cpkM, cpInteger, &_size,
       "MODE", cpkP+cpkM, cpInteger, &_mode,
       "DURATION", cpkP+cpkM, cpInteger, &_duration,
-      "ACTIVE", cpkP+cpkM, cpBool, &_active,
+      "ACTIVE", cpkP+cpkM, cpBool, &_start_active,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
       "HEADROOM", cpkP, cpInteger, &_headroom,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
-  add_flow( _src, _dst, _rate, _size, _mode, _duration, false);
-  set_active(&_dst,_active);
+  add_flow( _src, dst_of_flow, _rate, _size, _mode, _duration, false);
 
   return 0;
 }
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
+  set_active(&dst_of_flow,_start_active); //don't move this to configure, since BRNNodeIdenty is not configured
+                                          //completely while configure this element, so set_active can cause
+                                          //seg, fault, while calling BRN_DEBUG in set_active
+
   click_srandom(dst_of_flow.hashcode());
   _timer.initialize(this);
 
