@@ -85,6 +85,9 @@ class EventNotifier : public Element {
   int _pull_packet_events;
 
   DHTStorage *_dht_storage;
+
+  int _id;
+
 };
 
 CLICK_ENDDECLS

@@ -11,10 +11,10 @@
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _debug(BrnLogger::DEFAULT),
-    _master_device_id(-1),
+  : _master_device_id(-1),
     _service_device_id(-1)
 {
+  BRNElement::init();
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -25,14 +25,20 @@ int
 BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int no_dev = 0;
+  String dev_string;
+  Vector<String> devices;
 
-/*  if (cp_va_kparse(conf, this, errh,
-      "NODENAME", cpkP+cpkM, cpString, &_name,
+  if (cp_va_kparse(conf, this, errh,
+      "NAME", cpkP+cpkM, cpString, &_nodename,
+      "DEVICES", cpkP+cpkM, cpString, &dev_string,
       cpEnd) < 0)
-    return -1;*/
+    return -1;
 
-  for (int slot = 0; slot < conf.size(); slot++) {
-    Element *e = cp_element(conf[slot], this, errh);
+  String dev_string_uncomment = cp_uncomment(dev_string);
+  cp_spacevec(dev_string_uncomment, devices);
+
+  for (int slot = 0; slot < devices.size(); slot++) {
+    Element *e = cp_element(devices[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
     if (!brn_device) {
       return errh->error("element is not an BRN2Device");
@@ -144,6 +150,8 @@ read_devinfo_param(Element *e, void *)
   StringAccum sa;
   BRN2Device *dev;
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+
+  sa << "Name: " << id->_nodename << "\n";
   for ( int i = 0; i < id->_node_devices.size(); i++ ) {
     dev = id->_node_devices[i];
     sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
@@ -154,7 +162,7 @@ read_devinfo_param(Element *e, void *)
   return sa.take_string();
 }
 
-static int 
+static int
 write_nodename_param(const String &in_s, Element *e, void *,
                       ErrorHandler *errh)
 {
@@ -167,32 +175,11 @@ write_nodename_param(const String &in_s, Element *e, void *,
   return 0;
 }
 
-
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
-  return String(id->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  id->_debug = debug;
-  return 0;
-}
-
 void
 BRN2NodeIdentity::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
   add_read_handler("devinfo", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
 }

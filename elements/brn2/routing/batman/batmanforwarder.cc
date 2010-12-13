@@ -107,7 +107,7 @@ BatmanForwarder::push( int /*port*/, Packet *packet )
     return;
   }
 
-  int int_ttl = ttl;
+  //int int_ttl = ttl;
   //click_chatter("set ttl: %d",int_ttl);
   BRN_DEBUG("Next hop: %s", bfe->_forwarder.unparse().c_str());
 

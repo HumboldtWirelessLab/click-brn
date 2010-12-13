@@ -43,7 +43,8 @@ EventNotifier::EventNotifier()
    _handler_events(0),
    _push_packet_events(0),
    _pull_packet_events(0),
-   _dht_storage(NULL)
+   _dht_storage(NULL),
+   _id(0)
 {
 }
 
@@ -109,7 +110,7 @@ EventNotifier::handle_event()
 
     WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, sizeof(struct event_header), 32);
     struct event_header *eh = (struct event_header *)p->data();
-    eh->_id = htons(1);
+    eh->_id = htons(_id++);
     memcpy(eh->_src,_me.data(),6);
 
     WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_EVENTHANDLER, BRN_PORT_EVENTHANDLER, 255, 0);

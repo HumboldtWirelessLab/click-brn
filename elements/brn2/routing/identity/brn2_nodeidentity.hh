@@ -25,6 +25,7 @@
 #include <click/vector.hh>
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/md5.h"
 
 #include "brn2_device.hh"
@@ -38,14 +39,9 @@ CLICK_DECLS
  * stores the ethernet address of associated node (clients, brn nodes) ...
  * =d
  */
-class BRN2NodeIdentity : public Element {
+class BRN2NodeIdentity : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //
