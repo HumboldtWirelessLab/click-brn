@@ -95,7 +95,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
 void
 BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 {
-  BRN_DEBUG("Flow active");
+  //BRN_DEBUG("Flow active");
   Flow *txFlow = _tx_flowMap.findp(*dst);
   txFlow->_active = active;
 }

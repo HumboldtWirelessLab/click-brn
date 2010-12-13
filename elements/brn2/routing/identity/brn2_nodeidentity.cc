@@ -42,8 +42,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
     if (!brn_device) {
       return errh->error("element is not an BRN2Device");
-    }
-    else {
+    } else {
       brn_device->setDeviceNumber(no_dev++);
       _node_devices.push_back(brn_device);
     }
