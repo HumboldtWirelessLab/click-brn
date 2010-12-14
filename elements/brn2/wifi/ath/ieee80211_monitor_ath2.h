@@ -27,7 +27,7 @@ struct ath2_rx_status {
     int8_t    rs_channel_utility;
 
 } __attribute__ ((packed));
-/* size: 36 * 8 = 288 Byte */
+/* size: 36 Byte */
 
 
 /* This information is part of all TXFeedback packets, which are not an pure operation */
@@ -54,67 +54,67 @@ struct ath2_tx_status {
     int8_t    ts_channel_utility;
 
 } __attribute__ ((packed));
-/* size: 32 * 8 = 256 Byte (288 Byte max) */
+/* size: 32 Byte max) */
 
 /* This information is part of all send packets, both types: operation as well as normal packets */
 struct ath2_tx_anno {
-
+    /*4*/
     u_int32_t operation;     //we use packets to configure the mac
 
+    /*8*/
     u_int8_t channel;       //channel to set
-
     u_int8_t mac[6];        //mac address use for sending or set as client for VA
-
     u_int8_t va_position;   //position in VA
 
+    /*4*/
     u_int8_t queue;         //queue we use to send
-
     u_int8_t cu_hw_busy;    //channel utility: busy time
     u_int8_t cu_hw_rx;      //channel utility: rx time
     u_int8_t cu_hw_tx;      //channel utility: tx time
 
+    /*4*/
     u_int8_t cu_pkt_threshold; //channel utility: rx time
     u_int8_t cu_update_mode;   //channel utility: tx time
     u_int8_t cu_anno_mode;     //channel utility: rx time
+    u_int8_t cca_threshold;
 
+    /*12*/
     u_int8_t cw_min[4];
     u_int8_t cw_max[4];
     u_int8_t aifs[4];
 
-    u_int8_t cca_threshold;
-
 } __attribute__ ((packed));
-/* size: 10 Byte (288 Byte max) */
+/* size: 32 Byte (36 Byte max)*/
 
 /* This information is part of all operation feedback packets */
 struct ath2_rx_anno {
-
+  /*4*/
   u_int32_t operation;    //we use packets to configure the mac
 
+  /*12*/
   u_int8_t channel;       //channel to set
-
   u_int8_t mac[6];        //mac address use for sending or set as client for VA
-
   u_int8_t va_position;   //position in VA
 
+  /*4*/
   u_int8_t status;        //status of operation
-
   u_int8_t cu_hw_busy;    //channel utility: busy time
   u_int8_t cu_hw_rx;      //channel utility: rx time
   u_int8_t cu_hw_tx;      //channel utility: tx time
 
+  /*4*/
   u_int8_t cu_pkt_threshold; //channel utility: rx time
   u_int8_t cu_update_mode;   //channel utility: tx time
   u_int8_t cu_anno_mode;     //channel utility: rx time
+  u_int8_t cca_threshold;
 
+  /*12*/
   u_int8_t cw_min[4];
   u_int8_t cw_max[4];
   u_int8_t aifs[4];
 
-  u_int8_t cca_threshold;
-
 } __attribute__ ((packed));
-/* size: 13 Byte (288 Byte max) */
+/* size: 32 Byte (36 Byte max) */
 
 /*************************************************/
 /*************** ATH OPERATIONS ******************/
