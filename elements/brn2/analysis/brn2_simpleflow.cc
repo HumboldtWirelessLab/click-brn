@@ -21,7 +21,8 @@ BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
     _clear_packet(false),
     _headroom(128),
-    _start_active(false)
+    _start_active(false),
+    _flow_id(0)
 {
   BRNElement::init();
 }
@@ -32,36 +33,41 @@ BRN2SimpleFlow::~BRN2SimpleFlow()
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  EtherAddress _src;
+  EtherAddress _src = EtherAddress::make_broadcast();
+  dst_of_flow = EtherAddress::make_broadcast();
   uint32_t     _rate;
   uint32_t     _mode;
   uint32_t     _size;
   uint32_t     _duration;
 
   if (cp_va_kparse(conf, this, errh,
-      "SRCADDRESS", cpkP+cpkM , cpEtherAddress, &_src,
-      "DSTADDRESS", cpkP+cpkM, cpEtherAddress, &dst_of_flow,
-      "RATE", cpkP+cpkM, cpInteger, &_rate,
-      "SIZE", cpkP+cpkM, cpInteger, &_size,
-      "MODE", cpkP+cpkM, cpInteger, &_mode,
-      "DURATION", cpkP+cpkM, cpInteger, &_duration,
-      "ACTIVE", cpkP+cpkM, cpBool, &_start_active,
+      "SRCADDRESS", cpkP , cpEtherAddress, &_src,
+      "DSTADDRESS", cpkP, cpEtherAddress, &dst_of_flow,
+      "RATE", cpkP, cpInteger, &_rate,
+      "SIZE", cpkP, cpInteger, &_size,
+      "MODE", cpkP, cpInteger, &_mode,
+      "DURATION", cpkP, cpInteger, &_duration,
+      "ACTIVE", cpkP, cpBool, &_start_active,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
       "HEADROOM", cpkP, cpInteger, &_headroom,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
-  add_flow( _src, dst_of_flow, _rate, _size, _mode, _duration, false);
+  if ( ! _src.is_broadcast() )
+    add_flow( _src, dst_of_flow, _rate, _size, _mode, _duration, false);
+  else
+    _start_active = false;
 
   return 0;
 }
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
-  set_active(&dst_of_flow,_start_active); //don't move this to configure, since BRNNodeIdenty is not configured
-                                          //completely while configure this element, so set_active can cause
-                                          //seg, fault, while calling BRN_DEBUG in set_active
+  //don't move this to configure, since BRNNodeIdenty is not configured
+  //completely while configure this element, so set_active can cause
+  //seg, fault, while calling BRN_DEBUG in set_active
+  if (_start_active) set_active(&dst_of_flow,_start_active);
 
   click_srandom(dst_of_flow.hashcode());
   _timer.initialize(this);
@@ -136,7 +142,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   if ( txFlow != NULL ) {
     if ( active ) txFlow->reset();
   } else {
-    _tx_flowMap.insert(dst, Flow(src, dst, 1, (FlowType)mode, rate, size, duration));
+    _tx_flowMap.insert(dst, Flow(src, dst, _flow_id++, (FlowType)mode, rate, size, duration));
   }
 
   dst_of_flow = dst;
@@ -182,7 +188,7 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 
   if ( f == NULL ) {  //TODO: shorten this
     _rx_flowMap.insert(src_ea, Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
-                       (flowType)header->mode, ntohl(header->rate), ntohl(header->size), 0) );
+                       (flowType)header->mode, ntohl(header->rate), ntohs(header->size), 0) );
     f = _rx_flowMap.findp(src_ea);
   }
 
@@ -321,6 +327,42 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 /********************** H A N D L E R   *************************************/
 /****************************************************************************/
 
+
+String
+BRN2SimpleFlow::xml_stats()
+{
+  StringAccum sa;
+
+  sa << "<flowstats node=\"" << BRN_NODE_NAME << "\">\n";
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); fm++) {
+    BRN2SimpleFlow::Flow fl = fm.value();
+    sa << "\t<txflow";
+    sa << " src=\"" << fl._src.unparse().c_str() << "\"";
+    sa << " dst=\"" << fl._dst.unparse().c_str() << "\" flowid=\"" << fl._id << "\"";
+    sa << " packet_count=\"" << fl._txPackets << "\"";
+    sa << " packet_size=\"" << fl._size << "\"";
+    sa << " replies=\"" << fl._rxPackets << "\"";
+    if ( fl._rxPackets > 0 ) {
+      sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
+      sa << " time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
+    } else {
+      sa << " avg. hops=\"0\" time=\"0\" />\n";
+    }
+  }
+  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
+    BRN2SimpleFlow::Flow fl = fm.value();
+    sa << "\t<rxflow";
+    sa << " src=\"" << fl._src.unparse().c_str() << "\"";
+    sa << " dst=\"" << fl._dst.unparse().c_str() << "\" flowid=\"" << fl._id << "\"";
+    sa << " packet_count=\"" << fl._rxPackets << "\" packet_size=\"" << fl._size << "\"";
+    sa << " crc_err=\"" << fl._rxCrcErrors << "\"";
+    if ( fl._rxPackets == 0 ) sa << " avg. hops=\"-1\" />\n";
+    else sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
+  }
+  sa << "</flowstats>\n";
+  return sa.take_string();
+}
+
 enum {
   H_TXFLOWS_SHOW,
   H_RXFLOWS_SHOW,
@@ -359,33 +401,7 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
       return sa.take_string();
     }
     case H_FLOW_STATS: {
-      StringAccum sa;
-      sa << "<flowstats node=\"" << "UNKNOWN" << "\">\n";
-      for (BRN2SimpleFlow::FMIter fm = sf->_tx_flowMap.begin(); fm.live(); fm++) {
-        BRN2SimpleFlow::Flow fl = fm.value();
-        sa << "\t<txflow";
-        sa << " src=\"" << fl._src.unparse().c_str() << "\"";
-        sa << " dst=\"" << fl._dst.unparse().c_str() << "\"";
-        sa << " packet_count=\"" << fl._txPackets << "\"";
-        sa << " replies=\"" << fl._rxPackets << "\"";
-        if ( fl._rxPackets > 0 ) {
-          sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
-          sa << " time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
-        } else {
-          sa << " avg. hops=\"0\" time=\"0\" />\n";
-        }
-      }
-      for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
-        BRN2SimpleFlow::Flow fl = fm.value();
-        sa << "\t<rxflow";
-        sa << " src=\"" << fl._src.unparse().c_str() << "\"";
-        sa << " dst=\"" << fl._dst.unparse().c_str() << "\"";
-        sa << " packet_count=\"" << fl._rxPackets << "\" crc_err=\"" << fl._rxCrcErrors << "\"";
-        if ( fl._rxPackets == 0 ) sa << " avg. hops=\"-1\" />\n";
-        else sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
-      }
-      sa << "</flowstats>\n";
-      return sa.take_string();
+      return sf->xml_stats();
     }
     default:
       return String();

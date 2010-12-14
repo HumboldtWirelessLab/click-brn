@@ -145,6 +145,8 @@ class BRN2SimpleFlow : public BRNElement
 
     EtherAddress dst_of_flow;
 
+    String xml_stats();
+
   private:
 
     WritablePacket*  nextPacketforFlow(Flow *f);
@@ -153,6 +155,8 @@ class BRN2SimpleFlow : public BRNElement
     int _headroom;
 
     bool _start_active;
+
+    uint32_t _flow_id;
 };
 
 CLICK_ENDDECLS
