@@ -38,10 +38,10 @@
 CLICK_DECLS
 
 EventHandler::EventHandler()
-  :_debug(BrnLogger::DEFAULT),
-   _packet_events(0),
+  :_packet_events(0),
    _dht_events(0)
 {
+  BRNElement::init();
 }
 
 EventHandler::~EventHandler()
@@ -115,14 +115,26 @@ EventHandler::get_events()
   StringAccum sa;
   EventHandler::DetectedEvent *ev;
 
+  sa << "<event node=\"" << BRN_NODE_NAME << "\" count=\"" << (_packet_events + _dht_events) << "\" >\n";
+  sa << "\t<packet_event count=\"" << _packet_events << "\" >\n" ;
   for ( int i = 0; i < _evli.size(); i++ ) {
     ev = &_evli[i];
-    sa << "EtherAddress: " << ev->_src.unparse();
-    sa << " ID: " << ev->_id << "\n";
+    sa << "\t\t<src addr=\"" << ev->_src.unparse() << "\" id=\"" << ev->_id << "\" />\n";
   }
+  sa << "\t</packet_event>\n";
+  sa << "\t<dht_event count=\"" << _dht_events << "\" ></dht_event>\n";
+  sa << "</event>\n";
 
   return sa.take_string();
 }
+
+void
+EventHandler::reset()
+{
+  _packet_events = _dht_events = 0;
+  _evli.clear();
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -131,42 +143,28 @@ EventHandler::get_events()
 static String
 read_stats_param(Element *e, void *)
 {
-  StringAccum sa;
   EventHandler *eh = (EventHandler *)e;
 
-  sa << "Events: " << (eh->_packet_events + eh->_dht_events);
-  sa << "\nPacket events: " << eh->_packet_events;
-  sa << "\nDHT events: " << eh->_dht_events;
-  sa << "\n" << eh->get_events();
-
-  return sa.take_string();
+  return eh->get_events();
 }
 
-static String
-read_debug_param(Element *e, void *)
+static int
+write_reset_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
-  EventHandler *fl = (EventHandler *)e;
-  return String(fl->_debug) + "\n";
-}
+  EventHandler *eh = (EventHandler *)e;
+  eh->reset();
 
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  EventHandler *fl = (EventHandler *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
   return 0;
 }
 
 void
 EventHandler::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("stats", read_stats_param, 0);
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+
+  add_write_handler("reset", write_reset_param, 0);
 }
 
 #include <click/vector.cc>

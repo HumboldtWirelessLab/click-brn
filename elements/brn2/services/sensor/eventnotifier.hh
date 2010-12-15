@@ -25,6 +25,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
 CLICK_DECLS
@@ -42,7 +43,7 @@ CLICK_DECLS
  * broadcast-flooding, which is an extra element
  */
 
-class EventNotifier : public Element {
+class EventNotifier : public BRNElement {
 
  public:
 
@@ -70,14 +71,19 @@ class EventNotifier : public Element {
 
   void trigger_event(int time);
   void handle_event();
+
  private:
   //
   //member
   //
+  int _payload_size;
 
  public:
+
+  void set_payload_size(int payload_size) { _payload_size = payload_size; }
+
   Timer _timer;
-  int _debug;
+
   EtherAddress _me;
   EtherAddress _eventhandleraddr;
   int _handler_events;

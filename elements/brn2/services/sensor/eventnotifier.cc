@@ -38,14 +38,15 @@
 CLICK_DECLS
 
 EventNotifier::EventNotifier()
-  :_timer(this),
-   _debug(BrnLogger::DEFAULT),
+  :_payload_size(0),
+   _timer(this),
    _handler_events(0),
    _push_packet_events(0),
    _pull_packet_events(0),
    _dht_storage(NULL),
    _id(0)
 {
+  BRNElement::init();
 }
 
 EventNotifier::~EventNotifier()
@@ -86,8 +87,8 @@ void
 EventNotifier::push( int /*port*/, Packet *packet )
 {
   _push_packet_events++;
-  packet->kill();
   trigger_event(0);
+  checked_output_push(0, packet);
 }
 
 Packet *
@@ -108,10 +109,10 @@ EventNotifier::handle_event()
   if ( noutputs() > 1 ) {
     BRN_INFO("Handle Event by output(1)");
 
-    WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, sizeof(struct event_header), 32);
+    WritablePacket *p = WritablePacket::make(128 /*headroom*/,NULL /* *data*/, sizeof(struct event_header) + _payload_size, 32);
     struct event_header *eh = (struct event_header *)p->data();
     eh->_id = htons(_id++);
-    memcpy(eh->_src,_me.data(),6);
+    memcpy(eh->_src, _me.data(),6);
 
     WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_EVENTHANDLER, BRN_PORT_EVENTHANDLER, 255, 0);
     BRNPacketAnno::set_ether_anno(p_out, _me, _eventhandleraddr, ETHERTYPE_BRN);
@@ -139,6 +140,22 @@ EventNotifier::trigger_event(int time)
 //-----------------------------------------------------------------------------
 
 static int
+write_payload_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+{
+  EventNotifier *en = (EventNotifier *)e;
+  String s = cp_uncomment(in_s);
+
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  int payload_size;
+  cp_integer(args[0], &payload_size);
+  en->set_payload_size(payload_size);
+
+  return 0;
+}
+
+static int
 write_event_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
   EventNotifier *en = (EventNotifier *)e;
@@ -160,7 +177,6 @@ write_event_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/
   return 0;
 }
 
-
 static String
 read_stats_param(Element *e, void *)
 {
@@ -175,34 +191,15 @@ read_stats_param(Element *e, void *)
   return sa.take_string();
 }
 
-static String
-read_debug_param(Element *e, void *)
-{
-  EventNotifier *fl = (EventNotifier *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  EventNotifier *fl = (EventNotifier *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 EventNotifier::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_write_handler("event", write_event_param, 0);
+  add_write_handler("payload_size", write_payload_param, 0);
+
   add_read_handler("stats", read_stats_param, 0);
-
-
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
 }
 
 CLICK_ENDDECLS

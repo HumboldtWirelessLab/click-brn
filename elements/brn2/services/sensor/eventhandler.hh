@@ -24,6 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
@@ -41,7 +43,7 @@ CLICK_DECLS
  * broadcast-flooding, which is an extra element
  */
 
-class EventHandler : public Element {
+class EventHandler : public BRNElement {
 
  public:
 
@@ -80,6 +82,7 @@ class EventHandler : public Element {
   void add_handlers();
 
   String get_events();
+  void reset();
  private:
   //
   //member
@@ -92,7 +95,6 @@ class EventHandler : public Element {
   bool contains_event(EtherAddress src, int id);
 
  public:
-  int _debug;
 
   int _packet_events;
   int _dht_events;
