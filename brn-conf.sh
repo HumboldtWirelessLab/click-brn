@@ -33,21 +33,17 @@ if [ "x$SYSTEMMAP" = "x" ]; then
   fi
 fi
 
-#CONFOPTION="--enable-wifi --enable-brn --enable-brn2 --enable-dhcp --enable-analysis"
-<<<<<<< HEAD
 #CONFOPTION="--enable-wifi --enable-brn2 --enable-dhcp --enable-analysis"
-=======
->>>>>>> e78ffec94d2671d1a3003a83d075169caaa3015b
 CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then
-  CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host"
+  CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host --enable-ialign"
 else
   if [ "x$TARGET" = "xarm" ]; then
     CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
   else
     if [ "x$TARGET" = "xi386" ]; then
-      CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host"
+      CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host --enable-ialign"
     else
       CONFOPTION="$CONFOPTION --enable-tools=host"
     fi
