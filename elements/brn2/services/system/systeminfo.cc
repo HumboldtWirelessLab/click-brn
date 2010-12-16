@@ -72,7 +72,11 @@ read_handler(Element *e, void *)
   sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'>\n";
 
   // meminfo
+#if CLICK_USERLEVEL
   String raw_info = file_string("/proc/meminfo");
+#else
+  String raw_info = file_string("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+#endif
   Vector<String> first_col, second_col, third_col, fourth_col;
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL);
@@ -94,7 +98,9 @@ read_handler(Element *e, void *)
   fourth_col.clear();
 
   // load average
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/loadavg"));
+#endif
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL, NULL);
 
@@ -113,7 +119,10 @@ read_handler(Element *e, void *)
   fourth_col.clear();
 
   // uptime
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/uptime"));
+#endif
+
   parse_tabbed_lines(raw_info, &first_col, &second_col, NULL);
 
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
@@ -124,10 +133,12 @@ read_handler(Element *e, void *)
   sa << "/>\n";
 
   // linux version
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/version"));
+#endif
 
   sa << "\t<linux ";
-  sa << "version='" << raw_info << "'";
+  sa << "version='" << raw_info.trim_space() << "'";
   sa << "/>\n";
 
   sa << "</system>\n";
@@ -144,5 +155,4 @@ SystemInfo::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel)
 EXPORT_ELEMENT(SystemInfo)
