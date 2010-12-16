@@ -71,6 +71,7 @@ class EventNotifier : public BRNElement {
 
   void trigger_event(int time);
   void handle_event();
+  void reset();
 
  private:
   //

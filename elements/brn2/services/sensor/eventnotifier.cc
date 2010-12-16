@@ -104,7 +104,7 @@ EventNotifier::handle_event()
 {
   if ( _dht_storage != NULL ) {
     BRN_INFO("Handle Event by DHT");
-  };
+  }
 
   if ( noutputs() > 1 ) {
     BRN_INFO("Handle Event by output(1)");
@@ -133,12 +133,24 @@ EventNotifier::trigger_event(int time)
   }
 }
 
-
+void
+EventNotifier::reset()
+{
+  _push_packet_events = _pull_packet_events = _id = 0;
+}
 
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
+
+static int
+write_reset_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
+{
+  ((EventNotifier *)e)->reset();
+
+  return 0;
+}
 
 static int
 write_payload_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
@@ -199,6 +211,7 @@ EventNotifier::add_handlers()
 
   add_write_handler("event", write_event_param, 0);
   add_write_handler("payload_size", write_payload_param, 0);
+  add_write_handler("reset", write_reset_param, 0);
 
   add_read_handler("stats", read_stats_param, 0);
 }
