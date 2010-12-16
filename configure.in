@@ -426,7 +426,15 @@ AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(size_t)
 AC_CHECK_SIZEOF([void *])
 CLICK_CHECK_INTEGER_TYPES
-CLICK_CHECK_ALIGNMENT
+AC_ARG_ENABLE(ialign, [  --enable-ialign         whether target-maschine is indifferent to alignment], :, enable_ialign=no)
+if test "x$enable_ialign" = xno; then
+    CLICK_CHECK_ALIGNMENT
+else
+    AC_CACHE_CHECK(whether machine is indifferent to alignment,ac_cv_alignment_indifferent,[ac_cv_alignment_indifferent=yes])
+    if test "x$ac_cv_alignment_indifferent" = xyes; then
+	AC_DEFINE([HAVE_INDIFFERENT_ALIGNMENT], [1], [Define if the machine is indifferent to alignment.])
+    fi
+fi
 if test "x$enable_int64" = xyes; then
     AC_CHECK_SIZEOF(long long)
     CLICK_CHECK_INT64_TYPES
