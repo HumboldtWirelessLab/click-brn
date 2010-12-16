@@ -1,9 +1,13 @@
 #! /bin/sh
 
+if [ -e ./configure ]; then
+  touch ./configure
+fi
+
 if [ "x$KERNELPATH" = "x" ]; then
   KERNELUNAME=`uname -r`
   KERNEL_MODLIB="/lib/modules/$KERNELUNAME"
-  
+
   if [ "x$SYSSRC" != "x" ]; then
     KERNEL_SOURCES=$SYSSRC
     KERNEL_HEADERS="$KERNEL_SOURCES/include"
@@ -95,7 +99,6 @@ else
 fi
 
 exit 0
-
 
 #########################################
 # NOTICE for git: git reset --hard HEAD #
