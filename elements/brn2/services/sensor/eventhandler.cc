@@ -71,10 +71,14 @@ EventHandler::push( int /*port*/, Packet *packet )
   if ( packet->length() >= sizeof(struct event_header) ) {
     struct event_header *eh = (struct event_header *)packet->data();
     EtherAddress ea = EtherAddress(eh->_src);
+
+    int distance = DEFAULT_EVENT_MAX_HOP_COUNT - BRNPacketAnno::ttl_anno(packet);
+    if ( (distance > DEFAULT_EVENT_MAX_HOP_COUNT) || (distance < 0) ) distance = -1;
+
     if ( ! contains_event(ea, ntohs(eh->_id)) ) {
       BRN_INFO("Add new event: %s:%d",ea.unparse().c_str(), ntohs(eh->_id) );
       _packet_events++;
-      add_event(ea, ntohs(eh->_id));
+      add_event(ea, ntohs(eh->_id), distance);
     } else {
       BRN_INFO("Already known event: %s:%d",ea.unparse().c_str(), ntohs(eh->_id));
     }
@@ -90,9 +94,9 @@ EventHandler::clear_eventlist()
 }
 
 void
-EventHandler::add_event(EtherAddress src, int id)
+EventHandler::add_event(EtherAddress src, int id, int distance)
 {
-  _evli.push_back(EventHandler::DetectedEvent(src,id));
+  _evli.push_back(EventHandler::DetectedEvent(src,id,distance));
 }
 
 bool
@@ -119,7 +123,7 @@ EventHandler::get_events()
   sa << "\t<packet_event count=\"" << _packet_events << "\" >\n" ;
   for ( int i = 0; i < _evli.size(); i++ ) {
     ev = &_evli[i];
-    sa << "\t\t<src addr=\"" << ev->_src.unparse() << "\" id=\"" << ev->_id << "\" />\n";
+    sa << "\t\t<src addr=\"" << ev->_src.unparse() << "\" id=\"" << ev->_id << "\" distance=\"" << ev->_distance << "\" />\n";
   }
   sa << "\t</packet_event>\n";
   sa << "\t<dht_event count=\"" << _dht_events << "\" ></dht_event>\n";

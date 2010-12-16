@@ -114,7 +114,8 @@ EventNotifier::handle_event()
     eh->_id = htons(_id++);
     memcpy(eh->_src, _me.data(),6);
 
-    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_EVENTHANDLER, BRN_PORT_EVENTHANDLER, 255, 0);
+    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_EVENTHANDLER, BRN_PORT_EVENTHANDLER,
+                                                           DEFAULT_EVENT_MAX_HOP_COUNT, DEFAULT_TOS);
     BRNPacketAnno::set_ether_anno(p_out, _me, _eventhandleraddr, ETHERTYPE_BRN);
     checked_output_push(1, p_out);
   };
