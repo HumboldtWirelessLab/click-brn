@@ -24,6 +24,10 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/timestamp.hh>
+#include <click/bighashmap.hh>
+#include <click/hashmap.hh>
+#include <click/timestamp.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -40,31 +44,79 @@ struct click_brn_bcast {
  * =c
  * Flooding()
  * =s
- * displays dhcp packets
+ *
  * =d
  */
-
-#define SF_MAX_QUEUE_SIZE 1500
 
 class Flooding : public BRNElement {
 
  public:
 
-  class BrnBroadcast
-  {
-    public:
-      uint16_t      bcast_id;
-      uint8_t       dsr_src[6];
+   class BroadcastNode
+   {
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE 10
+#define DEFAULT_MAX_BCAST_ID_TIMEOUT    1000
 
-      BrnBroadcast( uint16_t _id, uint8_t *_src )
+     public:
+      EtherAddress  _src;
+      int32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      uint32_t _next_index;
+      Timestamp _last_id_time;
+
+      BroadcastNode()
       {
-        bcast_id = _id;
-        memcpy(&dsr_src[0], _src, 6);
+        _src = EtherAddress::make_broadcast();
+        init();
       }
 
-      ~BrnBroadcast()
+      BroadcastNode( EtherAddress *src )
+      {
+        _src = *src;
+        init();
+      }
+
+      BroadcastNode( EtherAddress *src, int32_t id )
+      {
+        _src = *src;
+        init();
+        add_id(id, Timestamp::now());
+      }
+
+      ~BroadcastNode()
       {}
-  };
+
+      void init() {
+        _last_id_time = Timestamp::now();
+        reset_queue();
+      }
+
+      void reset_queue() {
+        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) _bcast_id_list[i] = -1;
+        _next_index = 0;
+      }
+
+      bool have_id(int32_t id) {
+        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ )
+          if ( _bcast_id_list[i] == id ) return true;
+        return false;
+      }
+
+      bool have_id(int32_t id, Timestamp now) {
+        if ( (now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT ) {
+          reset_queue();
+          return false;
+        }
+
+        return have_id(id);
+      }
+
+      void add_id(int32_t id, Timestamp now) {
+        _bcast_id_list[_next_index] = id;
+        _next_index = (_next_index + 1) % DEFAULT_MAX_BCAST_ID_QUEUE_SIZE;
+        _last_id_time = now;
+      }
+
+    };
 
   //
   //methods
@@ -85,6 +137,12 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  void add_id(EtherAddress *src, int32_t id, Timestamp *now);
+  bool have_id(EtherAddress *src, int32_t id, Timestamp *now);
+
+  String stats();
+  void reset();
+
  private:
   //
   //member
@@ -92,9 +150,12 @@ class Flooding : public BRNElement {
   FloodingPolicy *_flooding_policy;
 
   EtherAddress _my_ether_addr;
-
-  Vector<BrnBroadcast> bcast_queue;
   uint16_t bcast_id;
+
+  typedef HashMap<EtherAddress, BroadcastNode> BcastNodeMap;
+  typedef BcastNodeMap::const_iterator BcastNodeMapIter;
+
+  BcastNodeMap bcast_map;
 
  public:
 
