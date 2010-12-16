@@ -635,8 +635,14 @@ ChannelStats::stats_handler(int mode)
       break;
     case H_STATS_XML:
 
+      sa << "<channelstats";
 
-      sa << "<stats id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" unit=\"ms\" >\n";
+      if ( _device )
+        sa << " node=\"" << _device->getEtherAddress()->unparse() << "\"";
+      else
+        sa << " node=\"" << BRN_NODE_NAME << "\"";
+
+      sa <<" id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" unit=\"ms\" >\n";
 
       sa << "\t<mac packets=\"" << (stats.rxpackets+stats.txpackets) << "\" rx_pkt=\"" << stats.rxpackets << "\" ";
       sa << "no_err_pkt=\"" << stats.noerr_packets << "\" crc_err_pkt=\"" << stats.crc_packets << "\" ";
@@ -665,7 +671,7 @@ ChannelStats::stats_handler(int mode)
         EtherAddress ea = iter.key();
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src.avg_rssi() << "\" sum_rssi=\"" << src._rssi << "\" pkt_cnt=\"" << src._pkt_count << "\" />\n";
       }
-      sa << "\t</rssi>\n</stats>\n";
+      sa << "\t</rssi>\n</channelstats>\n";
 
   }
   return sa.take_string();
