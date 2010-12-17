@@ -13,7 +13,9 @@ BRN2Device::BRN2Device()
   : device_number(0),
     is_service_dev(false),
     is_master_dev(false),
-    _routable(true)
+    _routable(true),
+    _allow_broadcast(true),
+    _channel(0)
 {
   BRNElement:init();
 }
@@ -31,9 +33,10 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
       "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
-      "SERVICEDEVICE", 0, cpBool, &is_service_dev,
-      "MASTERDEVICE", 0, cpBool, &is_master_dev,
-      "ROUTABLE", 0, cpBool, &_routable,
+      "SERVICEDEVICE", cpkP, cpBool, &is_service_dev,
+      "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
+      "ROUTABLE", cpkP, cpBool, &_routable,
+      "ALLOW_BROADCAST", cpkP, cpBool, &_allow_broadcast,
       cpEnd) < 0)
     return -1;
 

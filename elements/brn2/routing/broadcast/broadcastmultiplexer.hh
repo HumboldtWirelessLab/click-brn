@@ -21,22 +21,19 @@
 #ifndef BROADCASTMULTIPLEXERELEMENT_HH
 #define BROADCASTMULTIPLEXERELEMENT_HH
 
+#include <click/element.hh>
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include <click/element.hh>
 
 CLICK_DECLS
 
 
-class BroadcastMultiplexer : public Element {
+class BroadcastMultiplexer : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //

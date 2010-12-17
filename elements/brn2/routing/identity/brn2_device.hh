@@ -76,8 +76,11 @@ class BRN2Device : public BRNElement {
     bool is_routable();
     void set_routable(bool routable);
 
-    inline uint8_t getChannel() { return channel; }
-    inline void setChannel(uint8_t c) { channel = c; }
+    inline bool allow_broadcast() { return _allow_broadcast; }
+    inline void set_allow_broadcast(bool allow_bcast) { _allow_broadcast = allow_bcast; }
+
+    inline uint8_t getChannel() { return _channel; }
+    inline void setChannel(uint8_t c) { _channel = c; }
 
   private:
 
@@ -106,7 +109,10 @@ class BRN2Device : public BRNElement {
 
     bool _routable;
 
-    uint8_t channel;
+    bool _allow_broadcast;
+
+    /* wireless device */
+    uint8_t _channel;
 };
 
 CLICK_ENDDECLS
