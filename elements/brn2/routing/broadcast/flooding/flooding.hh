@@ -54,13 +54,15 @@ class Flooding : public BRNElement {
 
    class BroadcastNode
    {
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE 10
-#define DEFAULT_MAX_BCAST_ID_TIMEOUT    1000
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE 50
+#define DEFAULT_MAX_BCAST_ID_TIMEOUT    10000
 
      public:
       EtherAddress  _src;
-      int32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+
+      int32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //TODO: use comination of hashmap and vector
       uint32_t _next_index;
+
       Timestamp _last_id_time;
 
       BroadcastNode()
@@ -96,13 +98,16 @@ class Flooding : public BRNElement {
       }
 
       bool have_id(int32_t id) {
-        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ )
+        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
           if ( _bcast_id_list[i] == id ) return true;
+          if ( _bcast_id_list[i] == -1 ) return false;
+        }
+
         return false;
       }
 
-      bool have_id(int32_t id, Timestamp now) {
-        if ( (now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT ) {
+      inline bool have_id(int32_t id, Timestamp now) {
+        if ( is_outdated(now) ) {
           reset_queue();
           return false;
         }
@@ -110,12 +115,15 @@ class Flooding : public BRNElement {
         return have_id(id);
       }
 
-      void add_id(int32_t id, Timestamp now) {
+      inline void add_id(int32_t id, Timestamp now) {
         _bcast_id_list[_next_index] = id;
         _next_index = (_next_index + 1) % DEFAULT_MAX_BCAST_ID_QUEUE_SIZE;
         _last_id_time = now;
       }
 
+      inline bool is_outdated(Timestamp now) {
+        return ((now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT);
+      }
     };
 
   //

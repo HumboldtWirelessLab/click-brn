@@ -96,10 +96,12 @@ Flooding::push( int port, Packet *packet )
     bch->bcast_id = htons(++bcast_id);
 
     add_id(&src,(int32_t)bcast_id, &now);
+
     _flooding_policy->add_broadcast(&src,(int)bcast_id);
     _flooding_src++;                                                           //i was src of a flooding
 
     if ( ttl == 0 ) ttl = DEFAULT_TTL;
+
     WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING,
                                                                          ttl, DEFAULT_TOS);
     BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
@@ -107,10 +109,9 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),bcast_id);
 
     output(1).push(out_packet);
-  }
 
-  if ( port == 1 )                                    // kommt von brn
-  {
+  } else if ( port == 1 ) {                                   // kommt von brn
+
     BRN_DEBUG("Flooding: PUSH von BRN\n");
 
     Timestamp now = packet->timestamp_anno();
@@ -157,6 +158,7 @@ Flooding::push( int port, Packet *packet )
 
     } else {
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
+      if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
   }
 
