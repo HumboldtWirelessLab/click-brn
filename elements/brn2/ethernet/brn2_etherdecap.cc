@@ -23,15 +23,16 @@
  */
 
 #include <click/config.h>
-#include "brn2_etherdecap.hh"
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
+
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "brn2_etherdecap.hh"
 
 CLICK_DECLS
 
@@ -61,6 +62,12 @@ BRN2EtherDecap::simple_action(Packet *p)
   BRNPacketAnno::set_ether_anno(p, EtherAddress(ether->ether_shost), EtherAddress(ether->ether_dhost), ether->ether_type);
 
   return p;
+}
+
+void
+BRN2EtherDecap::add_handlers()
+{
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

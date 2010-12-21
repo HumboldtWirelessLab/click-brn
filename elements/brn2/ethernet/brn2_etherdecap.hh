@@ -49,6 +49,8 @@ class BRN2EtherDecap : public BRNElement {
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
 
+  void add_handlers();
+
   Packet *simple_action(Packet *);
 };
 
