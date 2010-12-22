@@ -140,6 +140,8 @@ class BRN2SimpleFlow : public BRNElement
                    uint32_t rate, uint32_t size, uint32_t mode,
                    uint32_t duration, bool active );
 
+    void reset();
+
     FlowMap _rx_flowMap;
     FlowMap _tx_flowMap;
 

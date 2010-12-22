@@ -323,10 +323,16 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   return p_brn;
 }
 
+void
+BRN2SimpleFlow::reset()
+{
+  _rx_flowMap.clear();
+  _tx_flowMap.clear();
+}
+
 /****************************************************************************/
 /********************** H A N D L E R   *************************************/
 /****************************************************************************/
-
 
 String
 BRN2SimpleFlow::xml_stats()
@@ -369,7 +375,8 @@ enum {
   H_FLOW_STATS,
   H_FLOW_ACTIVE,
   H_ADD_FLOW,
-  H_DEL_FLOW
+  H_DEL_FLOW,
+  H_RESET
 };
 
 static String
@@ -414,6 +421,10 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
   BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
+    case H_RESET: {
+      sf->reset();
+      break;
+    }
     case H_FLOW_ACTIVE: {
       Vector<String> args;
       cp_spacevec(s, args);
@@ -466,6 +477,7 @@ void BRN2SimpleFlow::add_handlers()
   add_read_handler("rxflows", BRN2SimpleFlow_read_param, (void *)H_RXFLOWS_SHOW);
   add_read_handler("stats", BRN2SimpleFlow_read_param, (void *)H_FLOW_STATS);
 
+  add_write_handler("reset", BRN2SimpleFlow_write_param, (void *)H_RESET);
   add_write_handler("active", BRN2SimpleFlow_write_param, (void *)H_FLOW_ACTIVE);
   add_write_handler("add_flow", BRN2SimpleFlow_write_param, (void *)H_ADD_FLOW);
   add_write_handler("del_flow", BRN2SimpleFlow_write_param, (void *)H_DEL_FLOW);
