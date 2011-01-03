@@ -125,14 +125,43 @@ uint8_t
 BRNPacketAnno::tos_anno(Packet *p)
 {
   uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
-  return (dst[0]);
+  return (dst[0] & 0x0F);
 }
 
 void
 BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos)
 {
   uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
-  dst[0] = tos;
+  dst[0] = (dst[0] & 0xF0) | tos;
+}
+
+uint8_t
+BRNPacketAnno::queue_anno(Packet *p)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
+  return ((dst[0] & 0xF0) >> 4);
+}
+
+void
+BRNPacketAnno::set_queue_anno(Packet *p, uint8_t queue)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
+  dst[0] = (dst[0] & 0x0F) | (queue << 4);
+}
+
+void
+BRNPacketAnno::tos_anno(Packet *p, uint8_t *tos, uint8_t *queue)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
+  *tos = (uint8_t)(dst[0] & 0x0F);
+  *queue = (uint8_t)((dst[0] & 0xF0) >> 4);
+}
+
+void
+BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos, uint8_t queue)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
+  dst[0] = tos | (queue << 4);
 }
 
 uint8_t

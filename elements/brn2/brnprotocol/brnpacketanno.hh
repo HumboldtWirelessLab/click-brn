@@ -91,6 +91,12 @@ class BRNPacketAnno : public Element { public:
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);
 
+  static uint8_t queue_anno(Packet *p);
+  static void set_queue_anno(Packet *p, uint8_t tos);
+
+  static void tos_anno(Packet *p, uint8_t *tos, uint8_t *queue);
+  static void set_tos_anno(Packet *p, uint8_t tos, uint8_t queue);
+
   static uint8_t ttl_anno(Packet *p);
   static void set_ttl_anno(Packet *p, uint8_t ttl);
 
