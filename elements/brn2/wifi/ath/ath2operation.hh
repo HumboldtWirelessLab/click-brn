@@ -1,8 +1,10 @@
 #ifndef CLICK_ATH2OPERATION_HH
 #define CLICK_ATH2OPERATION_HH
 #include <click/element.hh>
-#include <clicknet/ether.h>
 #include <click/timer.hh>
+#include <click/timer.hh>
+#include <click/etheraddress.hh>
+#include <clicknet/ether.h>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
@@ -34,9 +36,13 @@ class Ath2Operation : public BRNElement {
   BRN2Device *_device;
 
   void set_channel(int channel);
+  void set_mac(EtherAddress *mac);
 
   void read_config();
   String madwifi_config();
+
+  String read_packet_count();
+  void reset_packet_count();
 
   Timer _timer;
 
@@ -54,6 +60,8 @@ class Ath2Operation : public BRNElement {
   uint32_t driver_flags;
 
   bool _read_config;
+
+  bool _valid_driver_flags;
 };
 
 CLICK_ENDDECLS
