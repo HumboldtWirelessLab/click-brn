@@ -24,11 +24,12 @@
  */
 
 #include <click/config.h>
-
-#include "systeminfo.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "systeminfo.hh"
+
 CLICK_DECLS
 
 SystemInfo::SystemInfo()
@@ -75,7 +76,7 @@ read_handler(Element *e, void *)
 #if CLICK_USERLEVEL
   String raw_info = file_string("/proc/meminfo");
 #else
-  String raw_info = file_string("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
 #endif
   Vector<String> first_col, second_col, third_col, fourth_col;
 
