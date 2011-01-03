@@ -327,7 +327,7 @@ Ath2Operation_write_param(const String &in_s, Element *e, void *vparam, ErrorHan
     case H_CLEAR_HW_QUEUES: {
         String devicename;
         if (!cp_string(s, &devicename))
-
+          return errh->error("devname parameter must be string");
         athop->clear_hw_queues(devicename, errh);
         break;
       }
