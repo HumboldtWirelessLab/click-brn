@@ -262,7 +262,7 @@ Ath2Operation::clear_hw_queues(String devname, ErrorHandler *errh)
   else
     return;
 
-  cmda << " -w dev." << devname << ".cleartxqueue=0";
+  cmda << " -w dev." << devname << ".cleartxqueue=0 > /dev/null";
   String cmd = cmda.take_string();
 
   BRN_DEBUG("Clear hw queue: %s",cmd.c_str());
