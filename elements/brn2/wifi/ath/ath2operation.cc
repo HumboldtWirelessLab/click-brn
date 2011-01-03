@@ -7,6 +7,7 @@
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 #include <click/userutils.hh>
+#include <unistd.h>
 
 #include "elements/wifi/athdesc.h"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
@@ -249,7 +250,32 @@ Ath2Operation::reset_packet_count()
   return;
 }
 
-enum {H_CHANNEL, H_MAC, H_CONFIG, H_CCA_THRESHOLD, H_PKT_COUNT};
+void
+Ath2Operation::clear_hw_queues(String devname, ErrorHandler *errh)
+{
+#if CLICK_USERLEVEL
+  StringAccum cmda;
+  if (access("/sbin/sysctl", X_OK) == 0)
+    cmda << "/sbin/sysctl";
+  else if (access("/usr/sbin/sysctl", X_OK) == 0)
+    cmda << "/usr/sbin/sysctl";
+  else
+    return;
+
+  cmda << " -w dev." << devname << ".cleartxqueue=0";
+  String cmd = cmda.take_string();
+
+  BRN_DEBUG("Clear hw queue: %s",cmd.c_str());
+
+  String out = shell_command_output_string(cmd, "", errh);
+  if (out)
+    BRN_ERROR("%s: %s", cmd.c_str(), out.c_str());
+#endif
+
+  return;
+}
+
+enum {H_CHANNEL, H_MAC, H_CONFIG, H_CCA_THRESHOLD, H_PKT_COUNT, H_CLEAR_HW_QUEUES};
 
 static String 
 Ath2Operation_read_param(Element *e, void *thunk)
@@ -298,6 +324,13 @@ Ath2Operation_write_param(const String &in_s, Element *e, void *vparam, ErrorHan
         athop->reset_packet_count();
         break;
       }
+    case H_CLEAR_HW_QUEUES: {
+        String devicename;
+        if (!cp_string(s, &devicename))
+
+        athop->clear_hw_queues(devicename, errh);
+        break;
+      }
   }
   return 0;
 }
@@ -312,6 +345,7 @@ Ath2Operation::add_handlers()
   add_write_handler("cca_threshold", Ath2Operation_write_param, (void *) H_CCA_THRESHOLD);
   add_write_handler("config", Ath2Operation_write_param, (void *) H_CONFIG);
   add_write_handler("reset_pkt_count", Ath2Operation_write_param, (void *) H_PKT_COUNT);
+  add_write_handler("clear_hw_queues", Ath2Operation_write_param, (void *) H_CLEAR_HW_QUEUES);
 
   add_read_handler("config", Ath2Operation_read_param, (void *) H_CONFIG);
   add_read_handler("pkt_count", Ath2Operation_read_param, (void *) H_PKT_COUNT);

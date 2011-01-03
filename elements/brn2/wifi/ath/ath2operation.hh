@@ -44,6 +44,8 @@ class Ath2Operation : public BRNElement {
   String read_packet_count();
   void reset_packet_count();
 
+  void clear_hw_queues(String devname, ErrorHandler *errh);
+
   Timer _timer;
 
   uint8_t channel;       //channel to set
