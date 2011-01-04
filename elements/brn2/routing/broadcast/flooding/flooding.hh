@@ -157,7 +157,6 @@ class Flooding : public BRNElement {
   //
   FloodingPolicy *_flooding_policy;
 
-  EtherAddress _my_ether_addr;
   uint16_t bcast_id;
 
   typedef HashMap<EtherAddress, BroadcastNode> BcastNodeMap;

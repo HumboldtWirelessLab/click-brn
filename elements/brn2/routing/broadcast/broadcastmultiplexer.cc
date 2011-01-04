@@ -34,7 +34,8 @@
 CLICK_DECLS
 
 BroadcastMultiplexer::BroadcastMultiplexer()
-  :_me(NULL)
+  :_me(NULL),
+   _use_anno(false)
 {
   BRNElement::init();
 }

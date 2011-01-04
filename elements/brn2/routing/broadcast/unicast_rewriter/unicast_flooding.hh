@@ -53,8 +53,8 @@ class UnicastFlooding : public BRNElement {
   ~UnicastFlooding();
 
   const char *class_name() const  { return "UnicastFlooding"; }
-  const char *port_count() const  { return "2/1"; }
-  const char *processing() const  { return AGNOSTIC; /*PUSH;*/ }
+  const char *port_count() const  { return "1/1"; }
+  const char *processing() const  { return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const { return false; }

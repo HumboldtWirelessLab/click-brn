@@ -54,11 +54,8 @@ Flooding::~Flooding()
 int
 Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  _my_ether_addr = brn_etheraddress_broadcast;
-
   if (cp_va_kparse(conf, this, errh,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
-      "ETHERADDRESS", cpkP , cpEtherAddress, &_my_ether_addr,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -83,7 +80,7 @@ Flooding::push( int port, Packet *packet )
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
 
-  if ( port == 0 )                       // kommt von arp oder so (Client)
+  if ( port == 0 )                       // kommt von Client (arp oder so)
   {
     Timestamp now = Timestamp::now();
     BRN_DEBUG("Flooding: PUSH vom Client\n");
@@ -106,7 +103,7 @@ Flooding::push( int port, Packet *packet )
 
     WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING,
                                                                          ttl, DEFAULT_TOS);
-    BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
+    BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
 
     BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),bcast_id);
 
@@ -154,7 +151,7 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
-      BRNPacketAnno::set_ether_anno(out_packet, _my_ether_addr.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
+      BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
 
       output(1).push(out_packet);
 

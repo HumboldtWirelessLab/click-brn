@@ -30,14 +30,15 @@
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
-//#include "brn2_dsrprotocol.hh"
+
 #include "unicast_flooding.hh"
 
 CLICK_DECLS
 
 UnicastFlooding::UnicastFlooding()
   :_me(),
-  _link_table()
+   _link_table(),
+   _cand_selection_strategy(0)
 {
   BRNElement::init();
 }
@@ -53,7 +54,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
-      "CANDSELECTIONSTRATEGY", cpkP, cpBool, &_cand_selection_strategy,
+      "CANDSELECTIONSTRATEGY", cpkP, cpInteger, &_cand_selection_strategy,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -89,45 +90,38 @@ UnicastFlooding::uninitialize()
 void
 UnicastFlooding::push(int port, Packet *p_in)
 {
-    click_ether *ether = (click_ether *)p_in->ether_header();
+  click_ether *ether = (click_ether *)p_in->ether_header();
 
-    if ( port == 0 ) { // received from other brn node; rewrite from unicast to broadcast
-	// rewrite address
-	memcpy(ether->ether_dhost, EtherAddress::make_broadcast().data() , 6);
-	BRN_DEBUG("* UnicastFlooding: Destination address rewrote to bcast");
-	output(0).push(p_in);
-    }
-
-    if ( port == 1 ) { // transmit to other brn nodes; rewrite from broadcast to unicast
+  if ( port == 0 ) { // transmit to other brn nodes; rewrite from broadcast to unicast
     // next hop must be a broadcast
     EtherAddress next_hop(ether->ether_dhost);
     assert(next_hop.is_broadcast());
-    
+
     switch (_cand_selection_strategy) {
-	case 0: { // no rewriting; keep as broadcast
-		output(0).push(p_in);
-		return;
-	}
-	case 1: { // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
+      case 0: { // no rewriting; keep as broadcast
+        output(0).push(p_in);
+        return;
+      }
+      case 1: { // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
 
-	 	// search in my 1-hop neighborhood
-	 	Vector<EtherAddress> neighbors;
-	
-	       if (_link_table) {
-			const EtherAddress *me = _me->getMasterAddress();
-	    		//_link_table->get_local_neighbors(neighbors);
-			get_filtered_neighbors(*me, neighbors);
+        // search in my 1-hop neighborhood
+        Vector<EtherAddress> neighbors;
 
-			if (neighbors.size() == 0) {
-				BRN_DEBUG("* UnicastFlooding: We have only weak or no neighbors; keep broadcast!");
-				output(0).push(p_in);
-				return;
-			}	
+        if (_link_table) {
+          const EtherAddress *me = _me->getMasterAddress();
+          //_link_table->get_local_neighbors(neighbors);
+          get_filtered_neighbors(*me, neighbors);
 
-			// search for the best nb
-			int best_new_nb_cnt = -1;
-			EtherAddress best_nb;	
-       		for( int n_i = 0; n_i < neighbors.size(); n_i++) {
+          if (neighbors.size() == 0) {
+            BRN_DEBUG("* UnicastFlooding: We have only weak or no neighbors; keep broadcast!");
+            output(0).push(p_in);
+            return;
+          }
+
+          // search for the best nb
+          int best_new_nb_cnt = -1;
+          EtherAddress best_nb;
+          for( int n_i = 0; n_i < neighbors.size(); n_i++) {
 				// estimate neighborhood of this neighbor
 				Vector<EtherAddress> nb_neighbors;
 				get_filtered_neighbors(neighbors[n_i], nb_neighbors);
@@ -221,9 +215,19 @@ UnicastFlooding::push(int port, Packet *p_in)
 	default:
 		BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
 		output(0).push(p_in);
-    }
-    }
-    return;
+  }
+ }
+
+  /*
+  if ( port == 1 ) { // received from other brn node; rewrite from unicast to broadcast
+    // rewrite address
+    memcpy(ether->ether_dhost, EtherAddress::make_broadcast().data() , 6);
+    BRN_DEBUG("* UnicastFlooding: Destination address rewrote to bcast");
+    output(1).push(p_in);
+  }
+  */
+
+  return;
 }
 
 
@@ -299,16 +303,16 @@ enum {
 };
 
 static String
-read_param(Element *e, void *thunk)
+read_param(Element */*e*/, void *thunk)
 {
-  UnicastFlooding *rewriter = (UnicastFlooding *)e;
+//  UnicastFlooding *rewriter = (UnicastFlooding *)e;
   StringAccum sa;
 
   switch ((uintptr_t) thunk)
   {
     case H_REWRITE_STATS :
     {
-	// todo: show some rewrite statistics
+      // todo: show some rewrite statistics
       //sa << "<stats better_route=\"" << rreq->_stats_receive_better_route << "\"/>\n";
       //return ( sa.take_string() );
     }
@@ -325,4 +329,4 @@ UnicastFlooding::add_handlers()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRN2RequestForwarder)
+EXPORT_ELEMENT(UnicastFlooding)
