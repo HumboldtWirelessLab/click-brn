@@ -54,9 +54,11 @@ Flooding::~Flooding()
 int
 Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _my_ether_addr = brn_etheraddress_broadcast;
+
   if (cp_va_kparse(conf, this, errh,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
-      "ETHERADDRESS", cpkP+cpkM , cpEtherAddress, &_my_ether_addr,
+      "ETHERADDRESS", cpkP , cpEtherAddress, &_my_ether_addr,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
