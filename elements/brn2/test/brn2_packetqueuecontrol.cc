@@ -18,7 +18,9 @@ BRN2PacketQueueControl::BRN2PacketQueueControl()
     _flow_timer(static_flow_timer_hook, (void*)this),
     _queue_size_handler(0),
     _queue_reset_handler(0),
-    ac_flow(0)
+    ac_flow(0),
+    _flow_id(0),
+    _packetheadersize(DEFAULT_PACKETHEADERSIZE)
 {
   BRNElement::init();
 }
@@ -62,15 +64,14 @@ void
 BRN2PacketQueueControl::static_queue_timer_hook(Timer *, void *v) {
   BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
   BRN2PacketQueueControl::Flow *acflow = fc->get_flow();
-  if ( acflow && acflow->_running ) {
-    fc->handle_queue_timer();
-  }
+
+  if ( acflow && acflow->_running ) fc->handle_queue_timer();
 }
 
 void
 BRN2PacketQueueControl::static_flow_timer_hook(Timer *, void *v) {
   BRN2PacketQueueControl *fc = (BRN2PacketQueueControl *)v;
-  click_chatter("Flow timer");
+  //click_chatter("Flow timer");
   if ( fc->get_flow() ) fc->handle_flow_timer();
 }
 
@@ -111,25 +112,32 @@ BRN2PacketQueueControl::handle_flow_timer() {
   BRN_DEBUG("Found flow");
 
   if ( ! ac_flow->_running ) {
+
     ac_flow->_running = true;
+    ac_flow->_id = ++_flow_id;
+    ac_flow->_start_ts = Timestamp::now();
+
     for ( uint32_t i = 0; i < _max_count_p; i++) {
       ac_flow->_send_packets++;
       Packet *packet_out = create_packet(ac_flow->_packetsize);
       output(0).push(packet_out);
     }
 
-    BRN_DEBUG("Set timer for end of flow.");
+    BRN_DEBUG("Schedule end of flow in %d ms",(ac_flow->_end - ac_flow->_start));
     _queue_timer.schedule_after_msec(ac_flow->_interval);
     _flow_timer.schedule_after_msec(ac_flow->_end - ac_flow->_start);
-    BRN_DEBUG("Schedule end of flow in %d ms",(ac_flow->_end - ac_flow->_start));
+
   } else {
     BRN_DEBUG("End of flow.");
+
     ac_flow->_running = false;
+
     int queue_size;
     String s_qsize = _queue_size_handler->call_read();
     cp_integer(s_qsize, &queue_size);
 
     ac_flow->_send_packets -= queue_size;
+    ac_flow->_end_ts = Timestamp::now();
 
     _queue_reset_handler->call_write(ErrorHandler::default_handler());
   }
@@ -144,6 +152,26 @@ BRN2PacketQueueControl::setFlow(Flow *f) {
   _flow_timer.schedule_after_msec(ac_flow->_start);
 }
 
+String
+BRN2PacketQueueControl::flow_stats()
+{
+  StringAccum sa;
+  //TODO: using double doesn't work in kernelmode !! other ideas ??
+  int rate = 8 * ac_flow->_send_packets * ( ac_flow->_packetsize + _packetheadersize );
+  rate /= ( ( ac_flow->_end - ac_flow->_start ) / 1000 );
+
+  sa << "<interferencegraphflow ";
+  sa << "node=\"" << BRN_NODE_NAME << "\" ";
+  sa << "starttime=\"" << ac_flow->_start_ts << "\" endtime=\"" << ac_flow->_end_ts << "\" ";
+  sa << "duration=\"" << (ac_flow->_end-ac_flow->_start) <<  "\" send_packets=\"" << ac_flow->_send_packets << "\" ";
+  sa << "packetsize=\"" << ac_flow->_packetsize + _packetheadersize << "\" ";
+  sa << "rate=\"" << rate << "\" ";
+  sa << "unit=\"bits per sec\" ";
+  sa << "running=\"" << ac_flow->_running << "\" ";
+  sa << "queue_empty_cnt=\"" << ac_flow->_queue_empty << "\" />";
+
+  return sa.take_string();
+}
 
 enum {
   H_INSERT,
@@ -169,8 +197,8 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
       cp_integer(args[3], &bw);
                         /*bytes in queue */                           /*(bw in MBit/s ) bytes pro ms*/
       int interval = ( ( (f->_max_count_p-f->_min_count_p) * packetsize) / ( bw * 125 /* 1000000 / (8 * 1000 (ms))*/));
-      click_chatter("%s Int: %d Start: %d End: %d packetsize: %d bw: %d",
-                       Timestamp::now().unparse().c_str(), interval,start,end,packetsize, bw);
+      //click_chatter("%s Int: %d Start: %d End: %d packetsize: %d bw: %d",
+      //                 Timestamp::now().unparse().c_str(), interval,start,end,packetsize, bw);
       f->setFlow(new BRN2PacketQueueControl::Flow(start,end,packetsize,interval));
 
       break;
@@ -183,22 +211,10 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
 static String
 read_handler(Element *e, void *thunk)
 {
-  BRN2PacketQueueControl *f = (BRN2PacketQueueControl *)e;
+  BRN2PacketQueueControl *qc = (BRN2PacketQueueControl *)e;
   switch ((uintptr_t) thunk) {
     case H_STATS: {
-      StringAccum sa;
-      BRN2PacketQueueControl::Flow *acflow = f->get_flow();
-      //TODO: using double doesn'z work in kernelmode !! other ideas ??
-      int rate = acflow->_send_packets * acflow->_packetsize;
-      rate /= ( ( acflow->_end - acflow->_start ) / 1000 );
-      sa << "Packets: " << acflow->_send_packets;
-      sa << "\nRate: " << rate;
-      sa << " Byte/s\n";
-      sa << "Running : ";
-      if ( acflow->_running ) sa << "yes";
-      else sa << "no";
-      sa << "\nEmpty Queue: " << acflow->_queue_empty;
-      return sa.take_string();
+      return qc->flow_stats();
     }
     default:
       return String();

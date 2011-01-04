@@ -17,6 +17,8 @@ CLICK_DECLS
  * =d
  */
 
+#define DEFAULT_PACKETHEADERSIZE 32
+
 class BRN2PacketQueueControl : public BRNElement {
 
  public:
@@ -36,6 +38,11 @@ class BRN2PacketQueueControl : public BRNElement {
      int _interval;
 
      int _queue_empty;
+
+     uint32_t _id;
+
+     Timestamp _start_ts;
+     Timestamp _end_ts;
 
      Flow(int start, int end, int packetsize, int interval ) {
        _start = start;
@@ -73,6 +80,8 @@ class BRN2PacketQueueControl : public BRNElement {
   void handle_flow_timer();
   void handle_queue_timer();
 
+  String flow_stats();
+
   uint32_t _min_count_p;
   uint32_t _max_count_p;
 
@@ -88,6 +97,10 @@ class BRN2PacketQueueControl : public BRNElement {
 
   Packet *create_packet(int size);
 
+  uint32_t _flow_id;
+
+ public:
+  int _packetheadersize;
 };
 
 CLICK_ENDDECLS
