@@ -81,14 +81,14 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     _master_device = _node_devices[0];
     _master_device_id = 0;
     //!! First set the device, than print debug !!//
-    BRN_WARN("No master device: use 0 for master");
+    BRN_DEBUG("No master device: use 0 for master");
   }
 
   if ( _service_device_id == -1 ) {
     _service_device = _node_devices[0];
     _service_device_id = 0;
     //!! First set the device, than print debug !!//
-    BRN_WARN("No service device: use 0 for service");
+    BRN_DEBUG("No service device: use 0 for service");
   }
 
   return 0;
@@ -150,13 +150,14 @@ read_devinfo_param(Element *e, void *)
   BRN2Device *dev;
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
 
-  sa << "Name: " << id->_nodename << "\n";
+  sa << "<nodeidentity name=\"" << id->_nodename << "\">\n";
   for ( int i = 0; i < id->_node_devices.size(); i++ ) {
     dev = id->_node_devices[i];
-    sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
-    sa << " EtherAddress: " << dev->getEtherAddress()->unparse().c_str();// << "\n";
-    sa << " Type: " << dev->getDeviceTypeString().c_str()  << "\n"; //<< "\n"; 
+    sa << "\t<device index=\"" << i << "\" name=\"" << dev->getDeviceName().c_str();
+    sa << "\" address=\"" << dev->getEtherAddress()->unparse().c_str();
+    sa << "\" type=\"" << dev->getDeviceTypeString().c_str()  << "\" />\n";
   }
+  sa << "</nodeidentity>";
 
   return sa.take_string();
 }

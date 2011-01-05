@@ -53,6 +53,8 @@ class BRN2Device : public BRNElement {
     const EtherAddress *getEtherAddress();
     void setEtherAddress(EtherAddress *ea);
 
+    EtherAddress *getEtherAddressFix();
+
     const IPAddress *getIPAddress();
     void setIPAddress(IPAddress *ip);
 
@@ -82,6 +84,7 @@ class BRN2Device : public BRNElement {
     inline uint8_t getChannel() { return _channel; }
     inline void setChannel(uint8_t c) { _channel = c; }
 
+    String device_info();
   private:
 
     //
@@ -91,6 +94,8 @@ class BRN2Device : public BRNElement {
     String device_name;
 
     EtherAddress device_etheraddress;
+    EtherAddress device_etheraddress_fix;  //first device address. This is used to reset the mac address
+                                           //to default, e.g. after mac-cloning
 
     IPAddress ipv4;
 #ifdef HAVE_IP6

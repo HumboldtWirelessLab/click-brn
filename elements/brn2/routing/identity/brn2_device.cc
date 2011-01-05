@@ -43,7 +43,9 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
   unsigned char en[6];
   bool val;
 
-  if ( ( device_type_string != STRING_WIRELESS ) && ( device_type_string != STRING_WIRED ) && ( device_type_string != STRING_VIRTUAL ) )
+  if ( ( device_type_string != STRING_WIRELESS ) &&
+        ( device_type_string != STRING_WIRED ) &&
+        ( device_type_string != STRING_VIRTUAL ) )
     return errh->error("Unsupported devicetype");
 
   if( EtherAddress() != me ) {
@@ -55,6 +57,8 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       BRN_DEBUG(" * ether address of device : %s", device_etheraddress.unparse().c_str());
     }
   }
+
+  device_etheraddress_fix = device_etheraddress;
 
   return 0;
 }
@@ -87,6 +91,12 @@ void
 BRN2Device::setEtherAddress(EtherAddress *ea)
 {
   device_etheraddress = *ea;
+}
+
+EtherAddress *
+BRN2Device::getEtherAddressFix()
+{
+  return &device_etheraddress_fix;
 }
 
 const IPAddress *
@@ -200,6 +210,15 @@ BRN2Device::getTypeStringByInt(uint32_t type)
   return String(STRING_UNKNOWN, strlen(STRING_UNKNOWN));
 }
 
+String
+BRN2Device::device_info()
+{
+  return "<device node=\"" + BRN_NODE_NAME + "\" name=\"" + getDeviceName() +
+      "\" address=\"" + getEtherAddress()->unparse() +
+      "\" fix_address=\"" + getEtherAddressFix()->unparse() +
+      "\" type=\"" + getDeviceTypeString() + "\" />";
+}
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
@@ -208,9 +227,37 @@ static String
 read_device_info(Element *e, void *)
 {
   BRN2Device *dev = (BRN2Device *)e;
-  return "Device: " + dev->getDeviceName() +
-         "\nEtherAddress: " + dev->getEtherAddress()->unparse() +
-         "\nType: " + dev->getDeviceType() + "\n";
+  return dev->device_info();
+}
+
+static String
+read_device_address(Element *e, void *)
+{
+  BRN2Device *dev = (BRN2Device *)e;
+  return dev->getEtherAddress()->unparse();
+}
+
+static int
+write_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  BRN2Device *dev = (BRN2Device *)e;
+
+  String s = cp_uncomment(in_s);
+  EtherAddress new_ea;
+  if (!cp_ethernet_address(s, &new_ea))
+    return errh->error("address parameter must be EtherAddress");
+
+  dev->setEtherAddress(&new_ea);
+
+  return 0;
+}
+
+static int
+write_reset_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  BRN2Device *dev = (BRN2Device *)e;
+  dev->setEtherAddress(dev->getEtherAddressFix());
+  return 0;
 }
 
 void
@@ -219,6 +266,10 @@ BRN2Device::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("deviceinfo", read_device_info, 0);
+  add_read_handler("address", read_device_address, 0);
+
+  add_write_handler("reset_address", write_reset_address, 0);
+  add_write_handler("address", write_address, 0);
 }
 
 CLICK_ENDDECLS
