@@ -46,6 +46,8 @@ class Ath2Operation : public BRNElement {
 
   void clear_hw_queues(String devname, ErrorHandler *errh);
 
+  void set_macclone(bool macclone);
+
   Timer _timer;
 
   uint8_t channel;       //channel to set

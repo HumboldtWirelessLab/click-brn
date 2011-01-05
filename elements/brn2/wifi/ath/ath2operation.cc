@@ -97,13 +97,13 @@ Ath2Operation::push(int /*port*/,Packet *p)
 
       cca_threshold = ath2_h->anno.rx_anno.cca_threshold;
 
-      driver_flags = ath2_h->flags;
+      driver_flags = (ath2_h->flags & 0x0FFFFFFF);
 
       _valid_driver_flags = true;
     }
 
     if ( (ath2_h->flags & MADWIFI_FLAGS_SET_CONFIG) != 0 ) {
-      driver_flags = ath2_h->flags;
+      driver_flags = (ath2_h->flags & 0x0FFFFFFF);
       _valid_driver_flags = true;
     }
 
@@ -151,7 +151,7 @@ Ath2Operation::set_channel(int channel)
   ath2_h->anno.tx_anno.channel = channel;
 
   if ( _device ) _device->setChannel(channel);  //TODO: move to push. set channel only if operation was
-                                                 //      successful
+                                                //      successful
 
   output(0).push(new_packet);
 }
@@ -175,8 +175,8 @@ Ath2Operation::set_mac(EtherAddress *mac)
   ath2_h->anno.tx_anno.operation |= ATH2_OPERATION_SET_MAC;
   memcpy(ath2_h->anno.tx_anno.mac, mac->data(), 6);
 
-  //if ( _device ) _device->setEtherAddress(mac);  //TODO: move to push. set mac only if operation was
-                                                   //      successful
+  if ( _device ) _device->setEtherAddress(mac);  //TODO: move to push. set mac only if operation was
+                                                 //      successful
 
   output(0).push(new_packet);
 }
@@ -200,6 +200,32 @@ Ath2Operation::read_config()
   output(0).push(new_packet);
 }
 
+void
+Ath2Operation::set_macclone(bool macclone)
+{
+  struct ath2_header *ath2_h;
+
+  if ( ! _valid_driver_flags ) {
+    BRN_WARN("Read config before change it !");
+    return;
+  }
+
+  WritablePacket *new_packet = WritablePacket::make(ATHDESC2_HEADER_SIZE);
+  memset((void *)new_packet->data(), 0, ATHDESC2_HEADER_SIZE);  //set all to zero ( ath and ath_brn )
+
+  ath2_h = (struct ath2_header*)(new_packet->data() + ATHDESC_HEADER_SIZE);
+
+  ath2_h->ath2_version = htons(ATHDESC2_VERSION);
+  ath2_h->madwifi_version = htons(MADWIFI_TRUNK);
+
+  ath2_h->flags = driver_flags | MADWIFI_FLAGS_SET_CONFIG;
+
+  if ( macclone ) ath2_h->flags |= MADWIFI_FLAGS_MACCLONE_ENABLED;
+  else ath2_h->flags &= ~MADWIFI_FLAGS_MACCLONE_ENABLED;
+
+  output(0).push(new_packet);
+}
+
 /**************************************************************/
 /********************** H A N D L E R *************************/
 /**************************************************************/
@@ -209,8 +235,8 @@ Ath2Operation::madwifi_config()
 {
   StringAccum sa;
 
-  sa << "Wifidevice_config";
-  if ( _device ) sa << "Channel  " << (int)_device->getChannel() << "\n";
+  sa << "Wifidevice_config:\n";
+  if ( _device ) sa << "Channel: " << (int)_device->getChannel() << "\n";
   else           sa << "Channel: " << (int)channel << "\n";
   sa << "cu treshold: " << (int)cu_pkt_threshold << "\n";
   sa << "cu update: " << (int)cu_update_mode << "\n";
@@ -227,7 +253,6 @@ Ath2Operation::madwifi_config()
   sa << " Small Backoff: " << (driver_flags & MADWIFI_FLAGS_SMALLBACKOFF_ENABLED ? "1" : "0") << "\n";
   sa << " Burst: " << (driver_flags & MADWIFI_FLAGS_BURST_ENABLED ? "1" : "0") << "\n";
   sa << " Channel Switch: " << (driver_flags & MADWIFI_FLAGS_CHANNELSWITCH_ENABLED ? "1" : "0") << "\n";
-  sa << " Small Backoff: " << (driver_flags & MADWIFI_FLAGS_SMALLBACKOFF_ENABLED ? "1" : "0") << "\n";
   sa << " Macclone: " << (driver_flags & MADWIFI_FLAGS_MACCLONE_ENABLED ? "1" : "0") << "\n";
 
   return sa.take_string();
@@ -275,7 +300,7 @@ Ath2Operation::clear_hw_queues(String devname, ErrorHandler *errh)
   return;
 }
 
-enum {H_CHANNEL, H_MAC, H_CONFIG, H_CCA_THRESHOLD, H_PKT_COUNT, H_CLEAR_HW_QUEUES};
+enum {H_CHANNEL, H_RESET_MAC, H_MAC, H_CONFIG, H_CCA_THRESHOLD, H_PKT_COUNT, H_CLEAR_HW_QUEUES, H_SET_MACCLONE};
 
 static String 
 Ath2Operation_read_param(Element *e, void *thunk)
@@ -309,11 +334,18 @@ Ath2Operation_write_param(const String &in_s, Element *e, void *vparam, ErrorHan
         athop->set_mac(&mac);
         break;
       }
-    case H_CCA_THRESHOLD: { //cca threshold
+   case H_RESET_MAC: {     //reset mac
+        if (athop->_device) {
+          athop->_device->setEtherAddress(athop->_device->getEtherAddressFix());
+          athop->set_mac(athop->_device->getEtherAddressFix());
+        }
+        break;
+      }
+   case H_CCA_THRESHOLD: { //cca threshold
         int cca_threshold;
         if (!cp_integer(s, &cca_threshold))
           return errh->error("cca_threshold parameter must be integer");
-        //athop->set_ccs_threshold(&cca_threshold);
+        //athop->set_cca_threshold(&cca_threshold);
         break;
       }
     case H_CONFIG: {
@@ -331,6 +363,13 @@ Ath2Operation_write_param(const String &in_s, Element *e, void *vparam, ErrorHan
         athop->clear_hw_queues(devicename, errh);
         break;
       }
+    case H_SET_MACCLONE: {       //mac_clone
+        bool macclone;
+        if (!cp_bool(s, &macclone))
+          return errh->error("macclone parameter must be bool");
+        athop->set_macclone(macclone);
+        break;
+      }
   }
   return 0;
 }
@@ -342,10 +381,12 @@ Ath2Operation::add_handlers()
 
   add_write_handler("channel", Ath2Operation_write_param, (void *) H_CHANNEL);
   add_write_handler("mac", Ath2Operation_write_param, (void *) H_MAC);
+  add_write_handler("reset_mac", Ath2Operation_write_param, (void *) H_RESET_MAC);
   add_write_handler("cca_threshold", Ath2Operation_write_param, (void *) H_CCA_THRESHOLD);
-  add_write_handler("config", Ath2Operation_write_param, (void *) H_CONFIG);
+  add_write_handler("read_config", Ath2Operation_write_param, (void *) H_CONFIG);
   add_write_handler("reset_pkt_count", Ath2Operation_write_param, (void *) H_PKT_COUNT);
   add_write_handler("clear_hw_queues", Ath2Operation_write_param, (void *) H_CLEAR_HW_QUEUES);
+  add_write_handler("set_macclone", Ath2Operation_write_param, (void *) H_SET_MACCLONE);
 
   add_read_handler("config", Ath2Operation_read_param, (void *) H_CONFIG);
   add_read_handler("pkt_count", Ath2Operation_read_param, (void *) H_PKT_COUNT);
