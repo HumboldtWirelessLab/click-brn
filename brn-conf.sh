@@ -49,7 +49,11 @@ else
     if [ "x$TARGET" = "xi386" ]; then
       CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host --enable-ialign"
     else
-      CONFOPTION="$CONFOPTION --enable-tools=host"
+      if [ "x$TARGET" = "xmips2" ];then
+        CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
+      else
+        CONFOPTION="$CONFOPTION --enable-tools=host"
+      fi
     fi
   fi
 fi
