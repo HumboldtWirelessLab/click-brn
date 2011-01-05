@@ -33,7 +33,6 @@
 
 CLICK_DECLS
 
-
 /*
  * =c
  * UnicastFlooding()
@@ -43,6 +42,7 @@ CLICK_DECLS
  *
  * Restrictions: works only together with ETX metric
  */
+
 class UnicastFlooding : public BRNElement {
 
  public:
@@ -75,11 +75,20 @@ public:
 private:
   int _max_metric_to_neighbor; // max. metric towards a neighbor
   int _cand_selection_strategy; // the way we choose the candidate for unicast forwarding
+  EtherAddress static_dst_mac;
 
   // helper
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
   int subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2);
   void addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &inout);
+
+ public:
+
+  void set_strategy(int s) { _cand_selection_strategy = s; }
+  int get_strategy() { return _cand_selection_strategy; }
+
+  void set_static_mac(EtherAddress *mac) { static_dst_mac = *mac; }
+  EtherAddress *get_static_mac() { return &static_dst_mac; }
 };
 
 CLICK_ENDDECLS

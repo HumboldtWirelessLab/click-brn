@@ -212,6 +212,11 @@ UnicastFlooding::push(int port, Packet *p_in)
 		return;
 
 	}
+  case 3: { // static rewriting
+    memcpy(ether->ether_dhost, static_dst_mac.data() , 6);
+    output(0).push(p_in);
+    return;
+  }
 	default:
 		BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
 		output(0).push(p_in);
@@ -298,14 +303,12 @@ UnicastFlooding::addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &
 // Handler
 //-----------------------------------------------------------------------------
 
-enum {
-  H_REWRITE_STATS
-};
+enum { H_REWRITE_STATS, H_REWRITE_STRATEGY, H_REWRITE_STATIC_MAC };
 
 static String
-read_param(Element */*e*/, void *thunk)
+read_param(Element *e, void *thunk)
 {
-//  UnicastFlooding *rewriter = (UnicastFlooding *)e;
+  UnicastFlooding *rewriter = (UnicastFlooding *)e;
   StringAccum sa;
 
   switch ((uintptr_t) thunk)
@@ -315,17 +318,69 @@ read_param(Element */*e*/, void *thunk)
       // todo: show some rewrite statistics
       //sa << "<stats better_route=\"" << rreq->_stats_receive_better_route << "\"/>\n";
       //return ( sa.take_string() );
+      break;
+    }
+    case H_REWRITE_STRATEGY :
+    {
+      sa << rewriter->get_strategy();
+      break;
+    }
+    case H_REWRITE_STATIC_MAC :
+    {
+      sa << rewriter->get_static_mac()->unparse();
+      break;
+    }
+    default: {
+      return String();
     }
   }
 
-  return String();
+  return sa.take_string();
+}
+
+static int 
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
+{
+  UnicastFlooding *rewriter = (UnicastFlooding *)e;
+  String s = cp_uncomment(in_s);
+
+  switch((intptr_t)vparam) {
+    case H_REWRITE_STRATEGY: {
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      int strategy;
+      cp_integer(args[0], &strategy);
+
+      rewriter->set_strategy(strategy);
+      break;
+    }
+    case H_REWRITE_STATIC_MAC: {
+      Vector<String> args;
+      cp_spacevec(s, args);
+
+      EtherAddress mac;
+      cp_ethernet_address(args[0], &mac);
+
+      rewriter->set_static_mac(&mac);
+      break;
+    }
+  }
+
+  return 0;
 }
 
 void
 UnicastFlooding::add_handlers()
 {
   BRNElement::add_handlers();
+
+  add_read_handler("strategy", read_param , (void *)H_REWRITE_STRATEGY);
   add_read_handler("stats", read_param , (void *)H_REWRITE_STATS);
+  add_read_handler("mac", read_param , (void *)H_REWRITE_STATIC_MAC);
+
+  add_write_handler("strategy", write_param, (void *)H_REWRITE_STRATEGY);
+  add_write_handler("mac", write_param, (void *)H_REWRITE_STATIC_MAC);
 }
 
 CLICK_ENDDECLS
