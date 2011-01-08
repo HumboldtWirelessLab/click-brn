@@ -18,6 +18,7 @@ BRN2PacketQueueControl::BRN2PacketQueueControl()
     _flow_timer(static_flow_timer_hook, (void*)this),
     _queue_size_handler(0),
     _queue_reset_handler(0),
+    _suppressor_active_handler(0),
     ac_flow(0),
     _flow_id(0),
     _packetheadersize(DEFAULT_PACKETHEADERSIZE)
@@ -36,6 +37,7 @@ BRN2PacketQueueControl::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "QUEUESIZEHANDLER", cpkP+cpkM, cpHandlerCallPtrRead, &_queue_size_handler,
       "QUEUERESETHANDLER", cpkP+cpkM, cpHandlerCallPtrWrite, &_queue_reset_handler,
+      "SUPPRESSORHANDLER", cpkP+cpkM, cpHandlerCallPtrWrite, &_suppressor_active_handler,
       "MINP", cpkP+cpkM, cpInteger, &_min_count_p,
       "MAXP", cpkP+cpkM, cpInteger, &_max_count_p,  //TODO: read maxp using queue handler
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -114,13 +116,16 @@ BRN2PacketQueueControl::handle_flow_timer() {
   if ( ! ac_flow->_running ) {
 
     ac_flow->_running = true;
-    ac_flow->_id = ++_flow_id;
     ac_flow->_start_ts = Timestamp::now();
 
-    for ( uint32_t i = 0; i < _max_count_p; i++) {
-      ac_flow->_send_packets++;
-      Packet *packet_out = create_packet(ac_flow->_packetsize);
-      output(0).push(packet_out);
+    if ( _suppressor_active_handler != NULL ) {
+      _suppressor_active_handler->call_write(String("true"),ErrorHandler::default_handler());
+    } else {
+      for ( uint32_t i = 0; i < _max_count_p; i++) {
+        ac_flow->_send_packets++;
+        Packet *packet_out = create_packet(ac_flow->_packetsize);
+        output(0).push(packet_out);
+      }
     }
 
     BRN_DEBUG("Schedule end of flow in %d ms",(ac_flow->_end - ac_flow->_start));
@@ -129,6 +134,10 @@ BRN2PacketQueueControl::handle_flow_timer() {
 
   } else {
     BRN_DEBUG("End of flow.");
+
+    if ( _suppressor_active_handler != NULL ) {
+      _suppressor_active_handler->call_write(String("false"),ErrorHandler::default_handler());
+    }
 
     ac_flow->_running = false;
 
@@ -148,8 +157,21 @@ BRN2PacketQueueControl::handle_flow_timer() {
 void
 BRN2PacketQueueControl::setFlow(Flow *f) {
   ac_flow = f;
+
   BRN_DEBUG("Start flow timer in %d ms",ac_flow->_start);
   _flow_timer.schedule_after_msec(ac_flow->_start);
+
+  ac_flow->_id = ++_flow_id;
+
+  if ( _suppressor_active_handler != NULL ) {
+    _suppressor_active_handler->call_write(String("false"),ErrorHandler::default_handler());
+
+    for ( uint32_t i = 0; i < _max_count_p; i++) {
+      ac_flow->_send_packets++;
+      Packet *packet_out = create_packet(ac_flow->_packetsize);
+      output(0).push(packet_out);
+    }
+  }
 }
 
 String

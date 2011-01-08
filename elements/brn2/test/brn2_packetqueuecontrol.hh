@@ -92,6 +92,7 @@ class BRN2PacketQueueControl : public BRNElement {
 
   HandlerCall* _queue_size_handler;
   HandlerCall* _queue_reset_handler;
+  HandlerCall* _suppressor_active_handler;
 
   Flow *ac_flow;
 
