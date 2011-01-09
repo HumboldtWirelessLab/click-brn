@@ -56,6 +56,9 @@ BRN2PacketQueueControl::initialize(ErrorHandler *errh)
   if( _queue_reset_handler->initialize_write(this, errh) < 0 )
     return errh->error("Could not initialize  handler");
 
+  if( _suppressor_active_handler->initialize_write(this, errh) < 0 )
+    return errh->error("Could not initialize  handler");
+
   _queue_timer.initialize(this);
   _flow_timer.initialize(this);
 
@@ -119,7 +122,7 @@ BRN2PacketQueueControl::handle_flow_timer() {
     ac_flow->_start_ts = Timestamp::now();
 
     if ( _suppressor_active_handler != NULL ) {
-      _suppressor_active_handler->call_write(String("true"),ErrorHandler::default_handler());
+      _suppressor_active_handler->call_write(String("true"), ErrorHandler::default_handler());
     } else {
       for ( uint32_t i = 0; i < _max_count_p; i++) {
         ac_flow->_send_packets++;
@@ -136,7 +139,7 @@ BRN2PacketQueueControl::handle_flow_timer() {
     BRN_DEBUG("End of flow.");
 
     if ( _suppressor_active_handler != NULL ) {
-      _suppressor_active_handler->call_write(String("false"),ErrorHandler::default_handler());
+      _suppressor_active_handler->call_write(String("false"), ErrorHandler::default_handler());
     }
 
     ac_flow->_running = false;
@@ -164,7 +167,7 @@ BRN2PacketQueueControl::setFlow(Flow *f) {
   ac_flow->_id = ++_flow_id;
 
   if ( _suppressor_active_handler != NULL ) {
-    _suppressor_active_handler->call_write(String("false"),ErrorHandler::default_handler());
+    _suppressor_active_handler->call_write(String("false"), ErrorHandler::default_handler());
 
     for ( uint32_t i = 0; i < _max_count_p; i++) {
       ac_flow->_send_packets++;
