@@ -149,6 +149,7 @@ class Flooding : public BRNElement {
   bool have_id(EtherAddress *src, int32_t id, Timestamp *now);
 
   String stats();
+  String table();
   void reset();
 
  private:

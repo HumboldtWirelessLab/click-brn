@@ -186,6 +186,7 @@ void
 Flooding::reset()
 {
   _flooding_src = _flooding_fwd = 0;
+  bcast_map.clear();
 }
 
 
@@ -199,6 +200,31 @@ Flooding::stats()
 
   return sa.take_string();
 }
+
+String
+Flooding::table()
+{
+  StringAccum sa;
+
+  sa << "<flooding_table node=\"" << BRN_NODE_NAME << "\" >\n";
+  BcastNodeMapIter iter = bcast_map.begin();
+  while (iter != bcast_map.end())
+  {
+    BroadcastNode bcn = iter.value();
+    sa << "\t<src node=\"" << bcn._src.unparse() << "\" ids=\"";
+    for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
+      if ( bcn._bcast_id_list[i] == -1 ) break;
+      if ( i != 0 ) sa << ",";
+      sa << bcn._bcast_id_list[i];
+    }
+    sa << "\" />\n";
+    iter++;
+  }
+  sa << "</flooding>\n";
+
+  return sa.take_string();
+}
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
@@ -207,6 +233,12 @@ static String
 read_stats_param(Element *e, void *)
 {
   return ((Flooding *)e)->stats();
+}
+
+static String
+read_table_param(Element *e, void *)
+{
+  return ((Flooding *)e)->table();
 }
 
 static int 
@@ -225,6 +257,7 @@ Flooding::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("stats", read_stats_param, 0);
+  add_read_handler("forward_table", read_table_param, 0);
 
   add_write_handler("reset", write_reset_param, 0);
 }
