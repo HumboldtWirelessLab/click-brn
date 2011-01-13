@@ -86,6 +86,9 @@ BRN2PacketQueueControl::handle_queue_timer()
   Packet *packet_out;
 
   uint32_t queue_size;
+
+  if ( ! ac_flow->_running ) return; // just to make sure that the flow doesn't cont. if we stopped it
+
   String s_qsize = _queue_size_handler->call_read();
   cp_integer(s_qsize, &queue_size);
 
@@ -144,6 +147,8 @@ BRN2PacketQueueControl::handle_flow_timer() {
 
     ac_flow->_running = false;
 
+    _queue_timer.unschedule();
+
     int queue_size;
     String s_qsize = _queue_size_handler->call_read();
     cp_integer(s_qsize, &queue_size);
@@ -193,6 +198,7 @@ BRN2PacketQueueControl::flow_stats()
   sa << "rate=\"" << rate << "\" ";
   sa << "unit=\"bits per sec\" ";
   sa << "running=\"" << ac_flow->_running << "\" ";
+  sa << "interval=\"" << ac_flow->_interval << "\" ";
   sa << "queue_empty_cnt=\"" << ac_flow->_queue_empty << "\" />";
 
   return sa.take_string();
@@ -204,7 +210,7 @@ enum {
 };
 
 static int
-write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
+write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   BRN2PacketQueueControl *f = (BRN2PacketQueueControl *)e;
   String s = cp_uncomment(in_s);
@@ -213,6 +219,9 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *)
     case H_INSERT: {
       Vector<String> args;
       cp_spacevec(s, args);
+
+      if ( args.size() > 4 )
+        return errh->error("PacketQueueControl: need 4 args (start, end, size, bandwidth).");
 
       int start,end,packetsize,bw;
 
