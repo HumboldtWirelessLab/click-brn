@@ -220,7 +220,7 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
       Vector<String> args;
       cp_spacevec(s, args);
 
-      if ( args.size() > 4 )
+      if ( args.size() < 4 )
         return errh->error("PacketQueueControl: need 4 args (start, end, size, bandwidth).");
 
       int start,end,packetsize,bw;
