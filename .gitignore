@@ -27,3 +27,4 @@ config.status.lineno
 jist/elements.cc
 jist/elements.conf
 jist/elements.mk
+local/*

@@ -74,6 +74,8 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   cmda << " " << devname << " channel " << channel;
   String cmd = cmda.take_string();
 
+  BRN_DEBUG("SetChannel command: %s",cmd.c_str());
+
   String out = shell_command_output_string(cmd, "", errh);
   if (out)
     BRN_ERROR("%s: %s", cmd.c_str(), out.c_str());
