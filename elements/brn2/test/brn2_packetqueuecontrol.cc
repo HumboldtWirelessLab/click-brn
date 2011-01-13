@@ -153,6 +153,7 @@ BRN2PacketQueueControl::handle_flow_timer() {
     ac_flow->_running = false;
 
     _queue_timer.unschedule();
+    _flow_timer.unschedule();
 
     int queue_size;
     String s_qsize = _queue_size_handler->call_read();
@@ -161,8 +162,13 @@ BRN2PacketQueueControl::handle_flow_timer() {
     ac_flow->_send_packets -= queue_size;
     ac_flow->_end_ts = Timestamp::now();
 
-    if ( (_suppressor_active_handler != NULL) && !_disable_queue_reset )
+//    if ( (_suppressor_active_handler != NULL) && !_disable_queue_reset )
+    if ( !_disable_queue_reset ) {
       _queue_reset_handler->call_write(ErrorHandler::default_handler());
+      if (_suppressor_active_handler != NULL) {
+        _suppressor_active_handler->call_write(String("true"), ErrorHandler::default_handler());
+      }
+    }
   }
 
 }
@@ -209,7 +215,7 @@ BRN2PacketQueueControl::flow_stats()
   sa << "unit=\"bits per sec\" ";
   sa << "running=\"" << ac_flow->_running << "\" ";
   sa << "interval=\"" << ac_flow->_interval << "\" ";
-  sa << "queue_empty_cnt=\"" << ac_flow->_queue_empty << "\" />";
+  sa << "queue_empty_cnt=\"" << ac_flow->_queue_empty << "\" />\n";
 
   return sa.take_string();
 }
