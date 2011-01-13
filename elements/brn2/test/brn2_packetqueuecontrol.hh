@@ -100,6 +100,8 @@ class BRN2PacketQueueControl : public BRNElement {
 
   uint32_t _flow_id;
 
+  bool _disable_queue_reset;
+
  public:
   int _packetheadersize;
 };
