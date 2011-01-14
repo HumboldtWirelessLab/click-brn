@@ -213,6 +213,7 @@ UnicastFlooding::push(int port, Packet *p_in)
 
 	}
   case 3: { // static rewriting
+    click_chatter("Rewrite to static mac");
     memcpy(ether->ether_dhost, static_dst_mac.data() , 6);
     output(0).push(p_in);
     return;
