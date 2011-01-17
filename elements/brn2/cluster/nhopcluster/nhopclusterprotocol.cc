@@ -92,7 +92,7 @@ NHopClusterProtocol::new_notify(EtherAddress *ch, int max_hops, int code, int id
 }
 
 int
-NHopClusterProtocol::pack_lp(struct nhopcluster_lp_info *lpi,uint8_t *data,  int max_size)
+NHopClusterProtocol::pack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data,  int max_size)
 {
   struct nhopcluster_packet_header *h;
 

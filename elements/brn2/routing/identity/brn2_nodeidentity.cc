@@ -12,7 +12,8 @@
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _master_device_id(-1),
+  : _node_id_32(0),
+    _master_device_id(-1),
     _service_device_id(-1)
 {
   BRNElement::init();
@@ -28,6 +29,8 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   int no_dev = 0;
   String dev_string;
   Vector<String> devices;
+
+  _nodename="";
 
   if (cp_va_kparse(conf, this, errh,
       "NAME", cpkP+cpkM, cpString, &_nodename,
@@ -67,10 +70,7 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     if ( brn_device->is_master_device() ) {
       _master_device = brn_device;
       _master_device_id = brn_device->getDeviceNumber();
-      _nodename = brn_device->getEtherAddress()->unparse();
-      MD5::calculate_md5((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str(),
-                          strlen((const char*)MD5::convert_ether2hex(brn_device->getEtherAddress()->data()).c_str()), _node_id );
-    }
+   }
 
     if ( brn_device->is_service_device() ) {
       _service_device = brn_device;
@@ -91,6 +91,19 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     //!! First set the device, than print debug !!//
     BRN_DEBUG("No service device: use 0 for service");
   }
+
+  if ( _nodename == "" )
+    _nodename = brn_device->getEtherAddress()->unparse();
+
+  BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
+
+  MD5::calculate_md5((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str(),
+                    strlen((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str()), _node_id );
+
+  _node_id_32 = ((uint8_t*)_node_id)[0];
+  _node_id_32 = _node_id_32 * 256 + ((uint8_t*)_node_id)[1];
+  _node_id_32 = _node_id_32 * 256 + ((uint8_t*)_node_id)[2];
+  _node_id_32 = _node_id_32 * 256 + ((uint8_t*)_node_id)[3];
 
   return 0;
 }

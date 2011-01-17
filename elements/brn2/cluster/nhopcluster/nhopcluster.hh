@@ -36,42 +36,52 @@ class NHopCluster : public Clustering {
    public:
     uint32_t _distance;
 
+    uint32_t _id;
     EtherAddress _ether_addr;
+
+    EtherAddress _best_next_hop; //TODO: List of next hops
 
     ClusterHead() {
     }
 
-    ClusterHead(const EtherAddress *ea, uint32_t distance) {
+    ClusterHead(const EtherAddress *ea, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(ea->data());
+      _id = id;
       _distance = distance;
     }
 
-    void setInfo(uint8_t *addr, uint32_t distance) {
+    void setInfo(uint8_t *addr, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(addr);
+      _id = id;
       _distance = distance;
     }
 
-    void setInfo(EtherAddress *ea, uint32_t distance) {
-      setInfo(ea->data(), distance);
+    void setInfo(EtherAddress *ea, uint32_t id, uint32_t distance) {
+      setInfo(ea->data(), id, distance);
     }
 
     void setInfo(struct nhopcluster_lp_info *lpi) {
       _distance = lpi->hops;
+      _id = ntohl(lpi->id);
       _ether_addr = EtherAddress(lpi->clusterhead);
     }
 
     void setInfo(struct nhopcluster_managment *nhcm) {
       _distance = nhcm->hops;
+      _id = ntohl(nhcm->id);
       _ether_addr = EtherAddress(nhcm->clusterhead);
     }
 
     void getInfo(struct nhopcluster_lp_info *lpi) {
       lpi->hops = _distance;
+      lpi->id = htonl(_id);
       memcpy(lpi->clusterhead, _ether_addr.data(), 6);
     }
 
+    void setBestNextHop(EtherAddress *nh) {
+      _best_next_hop = EtherAddress(nh->data());
+    }
   };
-
 
  public:
   //
@@ -102,7 +112,7 @@ class NHopCluster : public Clustering {
   void push(int, Packet *);
 
   int lpSendHandler(char *buffer, int size);
-  int lpReceiveHandler(char *buffer, int size);
+  int lpReceiveHandler(EtherAddress *src, char *buffer, int size);
 
   static void static_nhop_timer_hook(Timer *t, void *f);
   void timer_hook();
@@ -139,7 +149,7 @@ class NHopCluster : public Clustering {
 
   int _delay;
 
-  int _start,_startdelay;
+  int _start, _startdelay;
 
   int _send_notification, _fwd_notification, _send_req, _fwd_req;
 };
