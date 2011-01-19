@@ -122,7 +122,7 @@ Flooding::push( int port, Packet *packet )
     bool is_known = have_id(&src, p_bcast_id, &now);
     ttl--;
 
-    bool forward = _flooding_policy->do_forward(&src, p_bcast_id, is_known);
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, p_bcast_id, is_known);
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
