@@ -112,6 +112,8 @@ extern "C" {
 const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
 const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
 
+#define ETHERADDRESS_BROADCAST brn_etheraddress_broadcast
+
 class BRNTools {
 
   static int getBitposition(uint32_t x) {
