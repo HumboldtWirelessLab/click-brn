@@ -42,15 +42,19 @@ CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host --enable-ialign"
+  XCFLAGS="$XCFLAGS -static"
 else
   if [ "x$TARGET" = "xarm" ]; then
     CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
+    XCFLAGS="$XCFLAGS -static"
   else
     if [ "x$TARGET" = "xi386" ]; then
       CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host --enable-ialign"
+      XCFLAGS="$XCFLAGS -static"
     else
       if [ "x$TARGET" = "xmips2" ];then
         CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
+        XCFLAGS="$XCFLAGS -static"
       else
         CONFOPTION="$CONFOPTION --enable-tools=host"
       fi
