@@ -60,10 +60,12 @@ class BRN2PacketQueueControl : public BRNElement {
 
   const char *class_name() const  { return "BRN2PacketQueueControl"; }
   const char *processing() const  { return AGNOSTIC; }
-  const char *port_count() const  { return "0/1"; }
+  const char *port_count() const  { return "0-1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
+
+  void push(int port, Packet *p);
 
   static void static_queue_timer_hook(Timer *, void *);
   static void static_flow_timer_hook(Timer *, void *);
@@ -101,9 +103,17 @@ class BRN2PacketQueueControl : public BRNElement {
   uint32_t _flow_id;
 
   bool _disable_queue_reset;
+  bool _txfeedback_reuse;
+  bool _queue_timer_enabled;
+
+  /*
+   * Unicast-support: to decrease cpu-load and allow higher rates, unicast to a non-existing mac can be used
+   */
+  uint32_t _unicast_retries;
 
  public:
   int _packetheadersize;
+
 };
 
 CLICK_ENDDECLS

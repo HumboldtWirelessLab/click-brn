@@ -22,6 +22,8 @@ BRN2PacketQueueControl::BRN2PacketQueueControl()
     ac_flow(0),
     _flow_id(0),
     _disable_queue_reset(false),
+    _txfeedback_reuse(false),
+    _unicast_retries(0),
     _packetheadersize(DEFAULT_PACKETHEADERSIZE)
 {
   BRNElement::init();
@@ -38,10 +40,12 @@ BRN2PacketQueueControl::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "QUEUESIZEHANDLER", cpkP+cpkM, cpHandlerCallPtrRead, &_queue_size_handler,
       "QUEUERESETHANDLER", cpkP+cpkM, cpHandlerCallPtrWrite, &_queue_reset_handler,
-      "SUPPRESSORHANDLER", cpkP+cpkM, cpHandlerCallPtrWrite, &_suppressor_active_handler,
       "MINP", cpkP+cpkM, cpInteger, &_min_count_p,
       "MAXP", cpkP+cpkM, cpInteger, &_max_count_p,  //TODO: read maxp using queue handler
+      "SUPPRESSORHANDLER", cpkP, cpHandlerCallPtrWrite, &_suppressor_active_handler,
       "DISABLE_QUEUE_RESET", cpkP, cpBool, &_disable_queue_reset,
+      "TXFEEDBACK_REUSE", cpkP, cpBool, &_txfeedback_reuse,
+      "UNICAST_RETRIES", cpkP, cpInteger, &_unicast_retries,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
         return -1;
@@ -63,6 +67,8 @@ BRN2PacketQueueControl::initialize(ErrorHandler *errh)
 
   _queue_timer.initialize(this);
   _flow_timer.initialize(this);
+
+  if ( ninputs() < 1 ) _txfeedback_reuse = false;
 
   return 0;
 }
@@ -141,8 +147,14 @@ BRN2PacketQueueControl::handle_flow_timer() {
     }
 
     BRN_DEBUG("Schedule end of flow in %d ms",(ac_flow->_end - ac_flow->_start));
-    _queue_timer.schedule_after_msec(ac_flow->_interval);
     _flow_timer.schedule_after_msec(ac_flow->_end - ac_flow->_start);
+    /*
+     * the queue timer will fill up the queue if needed. if txfeedback reuse is enabled this timer will be
+     * set anyway to check whether txfeedback works (some simulator doesn't support it. if txfeedback works,
+     * the push function will stop the queue-timer, so that it is not used in that case
+     */
+    _queue_timer.schedule_after_msec(ac_flow->_interval);
+    if ( _txfeedback_reuse ) _queue_timer_enabled = true;
 
   } else {
     BRN_DEBUG("End of flow.");
@@ -159,10 +171,12 @@ BRN2PacketQueueControl::handle_flow_timer() {
     String s_qsize = _queue_size_handler->call_read();
     cp_integer(s_qsize, &queue_size);
 
+    if ( queue_size == 0 ) ac_flow->_queue_empty++;
+
     ac_flow->_send_packets -= queue_size;
     ac_flow->_end_ts = Timestamp::now();
 
-//    if ( (_suppressor_active_handler != NULL) && !_disable_queue_reset )
+//  if ( (_suppressor_active_handler != NULL) && !_disable_queue_reset )
     if ( !_disable_queue_reset ) {
       _queue_reset_handler->call_write(ErrorHandler::default_handler());
       if (_suppressor_active_handler != NULL) {
@@ -173,6 +187,39 @@ BRN2PacketQueueControl::handle_flow_timer() {
 
 }
 
+void
+BRN2PacketQueueControl::push(int /*port*/, Packet *p)
+{
+  if ( (!_txfeedback_reuse) || (! ac_flow->_running) || (p->length() < (uint32_t)ac_flow->_packetsize) ) {
+    p->kill();
+  } else {
+    /*
+     * disable the queue_timer if it is enabled, since txfeedback seems to be working
+     */
+    if ( _queue_timer_enabled ) {
+      _queue_timer.unschedule();
+      _queue_timer_enabled = false;
+    }
+
+    /*
+     * check whether there is enough space in the queue to avoid packet drops which causes wrong rates_string
+     */
+    uint32_t queue_size;
+    String s_qsize = _queue_size_handler->call_read();
+    cp_integer(s_qsize, &queue_size);
+
+    if ( queue_size < _max_count_p ) {                      //enough space
+      if ( p->length() > (uint32_t)ac_flow->_packetsize ) {
+        p->pull( p->length() - ac_flow->_packetsize );
+      }
+
+      ac_flow->_send_packets++;
+      output(0).push(p);
+    } else {                                               //no space left in the queue
+      p->kill();
+    }
+  }
+}
 
 void
 BRN2PacketQueueControl::setFlow(Flow *f) {
