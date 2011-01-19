@@ -190,6 +190,10 @@ BRN2PacketQueueControl::handle_flow_timer() {
 void
 BRN2PacketQueueControl::push(int /*port*/, Packet *p)
 {
+  if ( ! ac_flow ) {
+    p->kill();
+    return;
+  }
   if ( (!_txfeedback_reuse) || (! ac_flow->_running) || (p->length() < (uint32_t)ac_flow->_packetsize) ) {
     p->kill();
   } else {
