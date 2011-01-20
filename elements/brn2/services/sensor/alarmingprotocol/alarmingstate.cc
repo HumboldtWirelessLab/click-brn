@@ -37,10 +37,11 @@ CLICK_DECLS
 
 AlarmingState::AlarmingState():
   _hop_limit(DEFAULT_HOP_LIMT),
-  _lt(NULL),
   _forward_flags(UPDATE_ALARM_NEW_NODE|UPDATE_ALARM_NEW_ID),
+  _lt(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
-  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUT_FRACTION)
+  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUT_FRACTION),
+  _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION)
 {
   BRNElement::init();
 }
@@ -56,10 +57,12 @@ AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (cp_va_kparse(conf, this, errh,
       "LINKTABLE", cpkP, cpElement, &_lt,
+      "NHOPNEIGHBOURINFO", cpkP, cpElement, &_nhopn_info,
       "HOPLIMIT", cpkP, cpInteger, &_hop_limit,
       "LOWHOPFWD", cpkP, cpBool, &_low_hop_forward,
       "RETRIES", cpkP, cpInteger, &_retry_limit,
       "MINNEIGHBOURFRACT", cpkP, cpInteger, &_min_neighbour_fraction,
+      "MINFRACT", cpkP, cpInteger, &_min_alarm_fraction,
       "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -100,6 +103,13 @@ AlarmingState::update_alarm(int type, const EtherAddress *ea, int id, int hops, 
     result |= UPDATE_ALARM_NEW_ID;
     an->add_alarm_info(id, hops);
     ai = an->get_info_by_id(id);
+
+    /**
+     * A new Alarm ID was add, so now check whether there are enough node to trigger an alarm
+     * TODO: element, which we can ask whether it is useful to generate an alarm
+    */
+    trigger_alarm();
+
   } else {
     if ( hops < ai->_hops ) {
       ai->_hops = hops;  //TODO: delete Forarders ??
@@ -181,16 +191,12 @@ AlarmingState::get_incomlete_forward_types(int max_fraction, Vector<int> *types)
     type = _alarm_nodes[an_i]._type;
     for( t_i = types->size()-1 ; t_i >= 0; t_i--) {
       int ftype = (*types)[t_i];
-//      click_chatter("Want type: %d Found type: %d",type, ftype);
       if ( (*types)[t_i] == type ) break;
     }
 
     if ( t_i < 0 ) types->push_back(type);
   }
 
-/*for( int i = 0; i < types->size();i++) {
-    click_chatter("Type: %d",(*types)[i]);
-  }*/
 }
 
 void
@@ -208,13 +214,22 @@ AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, in
       }
     }
   }
-/*click_chatter("Node for type %d:",type);
-  for (int i = 0; i < nodes->size(); i++ ) {
-    AlarmNode *an = (*nodes)[i];
-    click_chatter("Node %s",an->_ea.unparse().c_str());
-  }*/
 }
 
+/*
+ * check, whether a alarm should be triggerd an trigger it
+ */
+void
+AlarmingState::trigger_alarm()
+{
+  if ( _alarm_nodes.size() >= ((_min_alarm_fraction * _nhopn_info->count_neighbours())/100) ) {
+    click_chatter("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
+  }
+}
+
+/*****************************************************************************/
+/***************************** H A N D L E R *********************************/
+/*****************************************************************************/
 
 static String
 read_state_param(Element *e, void *)
