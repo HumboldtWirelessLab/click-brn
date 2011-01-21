@@ -5,7 +5,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/wifi/brn2_wirelessinfolist.hh"
-#include "elements/brn2/wifi/brn2_setchannel.hh"
+#include "elements/brn2/wifi/txparams/brn2_setchannel.hh"
 
 CLICK_DECLS
 

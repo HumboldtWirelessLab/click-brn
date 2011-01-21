@@ -55,6 +55,7 @@ ChannelStats::ChannelStats():
     _channel(0),
     _small_stats(false)
 {
+  BRNElement::init();
   stats.last_update = _last_hw_stat_time = _last_packet_time = Timestamp::now();
 }
 

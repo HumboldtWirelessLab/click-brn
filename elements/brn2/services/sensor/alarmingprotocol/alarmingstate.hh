@@ -127,6 +127,7 @@ class AlarmingState : public BRNElement {
   Brn2LinkTable *_lt;
   NHopNeighbouringInfo *_nhopn_info;
 
+ public:
   int _retry_limit;
 
   int _min_neighbour_fraction;

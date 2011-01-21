@@ -11,8 +11,4 @@ enum {
   WIFI_EXTRA_SHORT_PREAMBLE  = (1<<25)
 };
 
-/*
- * BRN-Radiotap extention
- */
-
 #endif /* !_BRNWIFI_H_ */
