@@ -39,9 +39,9 @@ CLICK_DECLS
 
 BRN2ETXMetric::BRN2ETXMetric()
   : BRN2GenericMetric(), 
-    _link_table(0),
-    _debug(BrnLogger::DEFAULT)
+    _link_table(0)
 {
+  BRNElement::init();
 }
 
 BRN2ETXMetric::~BRN2ETXMetric()
@@ -104,31 +104,10 @@ BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to,
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2ETXMetric *etx = (BRN2ETXMetric *)e;
-  return String(etx->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2ETXMetric *etx = (BRN2ETXMetric *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  etx->_debug = debug;
-  return 0;
-}
-
 void
 BRN2ETXMetric::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 EXPORT_ELEMENT(BRN2ETXMetric)
