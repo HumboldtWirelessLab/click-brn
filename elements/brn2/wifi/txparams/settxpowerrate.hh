@@ -10,6 +10,7 @@ CLICK_DECLS
 
 class SetTXPowerRate : public Element { public:
 
+  
   SetTXPowerRate();
   ~SetTXPowerRate();
 
