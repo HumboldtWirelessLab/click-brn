@@ -51,18 +51,20 @@ CLICK_DECLS
 struct click_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
 	u_int8_t	wt_rate;
-  u_int8_t  wt_channel;
-  u_int8_t	wt_txpower;
-	u_int8_t  wt_rts_retries;
-	u_int8_t  wt_data_retries;
-  u_int8_t  wt_rate1;
-  u_int8_t  wt_rate2;
-  u_int8_t  wt_rate3;
-  u_int8_t  wt_data_retries1;
-  u_int8_t  wt_data_retries2;
-  u_int8_t  wt_data_retries3;
-  u_int8_t  wt_queue;
-};
+	u_int8_t	wt_align_for_channel;
+	u_int16_t	wt_channel_frequence;
+	u_int16_t	wt_channel_flags;
+	u_int8_t	wt_txpower;
+	u_int8_t	wt_rts_retries;
+	u_int8_t	wt_data_retries;
+	u_int8_t	wt_rate1;
+	u_int8_t	wt_rate2;
+	u_int8_t	wt_rate3;
+	u_int8_t	wt_data_retries1;
+	u_int8_t	wt_data_retries2;
+	u_int8_t	wt_data_retries3;
+	u_int8_t	wt_queue;
+} __attribute__((__packed__));
 
 
 
@@ -120,7 +122,9 @@ BrnRadiotapEncap::simple_action(Packet *p)
 		  crh->wt_data_retries = WIFI_MAX_RETRIES + 1;
 	  }
 
-    crh->wt_channel = BRNPacketAnno::channel_anno(p);
+//    crh->wt_channel = BRNPacketAnno::channel_anno(p);
+    crh->wt_channel_frequence = 0;
+    crh->wt_channel_flags = 0;
     crh->wt_rate1 = ceh->rate1;
     crh->wt_rate2 = ceh->rate2;
     crh->wt_rate3 = ceh->rate3;
