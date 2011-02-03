@@ -115,19 +115,19 @@ public:
   struct link_probe {
     uint8_t _version;
     uint8_t __pad; // bring size from 47 to 48 bytes, do not remove: otherwise click_in_cksum will not work on win32 (or fix alignment)
-    unsigned short _cksum;     // internet checksum
-    unsigned short _psz;       // total packet size, excluding brn header
+    uint16_t _cksum;     // internet checksum
+    uint16_t _psz;       // total packet size, excluding brn header
 
     uint16_t _rate;
     uint16_t _size;
     uint8_t _ether[6];
     uint32_t _flags;
-    unsigned int _seq;
-    unsigned int _period;      // period of this node's probe broadcasts, in msecs
+    uint32_t _seq;
+    uint32_t _period;      // period of this node's probe broadcasts, in msecs
     uint32_t _tau;             // this node's loss-rate averaging period, in msecs
-    unsigned int _sent;        // how many probes this node has sent
-    unsigned int _num_probes;  // number of probes monitored by this node
-    unsigned int _num_links;   // number of wifi_link_entry entries following
+    uint32_t _sent;        // how many probes this node has sent
+    uint32_t _num_probes;  // number of probes monitored by this node
+    uint32_t _num_links;   // number of wifi_link_entry entries following
 
     link_probe() { memset(this, 0x0, sizeof(this)); }
   };

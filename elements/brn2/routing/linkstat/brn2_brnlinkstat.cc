@@ -388,14 +388,14 @@ BRN2LinkStat::send_probe()
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
   lp->_version = _ett2_version;
   memcpy(lp->_ether, _me->getEtherAddress()->data(), 6); // only wireless links will be measured
-  lp->_seq = now.tv_sec;
-  lp->_period = _period;
-  lp->_tau = _tau;
-  lp->_sent = _sent;
-  lp->_flags = 0;
-  lp->_rate = rate;
-  lp->_size = size;
-  lp->_num_probes = _ads_rs.size(); // number of probes monitored by this node (e.g. 2 in case of (2 60, 22 1400))
+  lp->_seq = htonl(_seq++); //now.tv_sec; TODO: Tolja check
+  lp->_period = htonl(_period);
+  lp->_tau = htonl(_tau);
+  lp->_sent = htonl(_sent);
+  lp->_flags = 0; //to net in the end (see down)
+  lp->_rate = htons(rate);
+  lp->_size = htons(size);
+  lp->_num_probes = htonl(_ads_rs.size()); // number of probes monitored by this node (e.g. 2 in case of (2 60, 22 1400))
 
   uint8_t *ptr =  (uint8_t *) (lp + 1); // points to the start of the payload area (array of wifi_link_entry entries)
   uint8_t *end  = (uint8_t *) p->data() + p->length(); // indicates the end of the payload area; neccessary to preserve max packet size
@@ -451,7 +451,7 @@ BRN2LinkStat::send_probe()
       num_entries++;
       link_entry *entry = (struct link_entry *)(ptr); // append link_entry
       memcpy(entry->_ether, probe->_ether.data(), 6);
-      entry->_seq = probe->_seq;
+      entry->_seq = htonl(probe->_seq);
 
       if ((uint32_t) BRN2EtherAddressHashcode(probe->_ether) > (uint32_t) BRN2EtherAddressHashcode(*(_me->getEtherAddress()))) {
         entry->_seq = lp->_seq;
@@ -467,7 +467,7 @@ BRN2LinkStat::send_probe()
       for (int x = 0; x < probe->_probe_types.size(); x++) { // append link info
         BrnRateSize rs = probe->_probe_types[x];
         link_info *lnfo = (struct link_info *) (ptr + x * sizeof(link_info));
-        lnfo->_size = rs._size; // probe packet size
+        lnfo->_size = htons(rs._size); // probe packet size
         lnfo->_rate = rs._rate; // probe packet transmission rate
         lnfo->_fwd = probe->_fwd_rates[x]; // forward delivery ratio d_f
         lnfo->_rev = probe->rev_rate(_start, rs._rate, rs._size); // reverse delivery ratio
@@ -484,12 +484,12 @@ BRN2LinkStat::send_probe()
     }
   }
 
-  lp->_num_links = num_entries; // number of transmitted link_entry elements
-  lp->_psz = sizeof(link_probe) + lp->_num_links * sizeof(link_entry);
+  lp->_flags = htonl(lp->_flags);
+  lp->_num_links = htonl(num_entries); // number of transmitted link_entry elements
+  lp->_psz = sizeof(link_probe) + num_entries * sizeof(link_entry);
   lp->_psz = htons(lp->_psz);
   lp->_cksum = 0;
-  lp->_cksum = click_in_cksum((unsigned char *) lp, lp->_psz);
-  lp->_cksum = htons(lp->_cksum);
+  lp->_cksum = cpu_to_le16(click_in_cksum((unsigned char *) lp, sizeof(link_probe) + num_entries * sizeof(link_entry)));
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
@@ -574,8 +574,6 @@ BRN2LinkStat::simple_action(Packet *p)
     return 0;
   }
 
-  lp->_cksum = ntohs(lp->_cksum);
-
   if (click_in_cksum((unsigned char *) lp, ntohs(lp->_psz)) != 0) {
     BRN_WARN("failed checksum");
     p->kill();
@@ -596,16 +594,15 @@ BRN2LinkStat::simple_action(Packet *p)
   }
 
   // Default to the rate given in the packet.
-  uint16_t rate = lp->_rate;
+  uint16_t rate = ntohs(lp->_rate);
 
-#ifndef CLICK_NS
   struct click_wifi_extra *ceh = (struct click_wifi_extra *)WIFI_EXTRA_ANNO(p);
 
   // check if extra header is present !!!
   if (WIFI_EXTRA_MAGIC == ceh->magic) 
   {
-    if (ceh->rate != lp->_rate) {
-      BRN_WARN("packet says rate %d is %d; drop it.", lp->_rate,  ceh->rate);
+    if (ceh->rate != rate) {
+      BRN_WARN("packet says rate %d is %d; drop it.", rate,  ceh->rate);
       p->kill();
       return 0;
     }
@@ -614,14 +611,13 @@ BRN2LinkStat::simple_action(Packet *p)
   {
     BRN_FATAL("extra header not set (Forgotten {Extra|RadioTap|AthDesc|Prism2}Decap?).");
   }
-#endif
 
-  probe_t probe(now, lp->_seq, lp->_rate, lp->_size);
-  int new_period = lp->_period;
+  probe_t probe(now, ntohl(lp->_seq), rate, ntohs(lp->_size));
+  int new_period = ntohl(lp->_period);
   probe_list_t *l = _bcast_stats.findp(ether); // fetch sender's probe list
   int x = 0;
   if (!l) { // new neighbor
-    _bcast_stats.insert(ether, probe_list_t(ether, new_period, lp->_tau));
+    _bcast_stats.insert(ether, probe_list_t(ether, new_period, ntohl(lp->_tau)));
     l = _bcast_stats.findp(ether);
     l->_sent = 0;
     // add into the neighbors vector
@@ -630,23 +626,23 @@ BRN2LinkStat::simple_action(Packet *p)
     BRN_INFO("%s has changed its link probe period from %u to %u; clearing probe info",
       ether.unparse().c_str(), l->_period, new_period);
     l->_probes.clear();
-  } else if (l->_tau != lp->_tau) {
+  } else if (l->_tau != ntohl(lp->_tau)) {
     BRN_INFO("%s has changed its link tau from %u to %u; clearing probe info",
-      ether.unparse().c_str(), l->_tau, lp->_tau);
+      ether.unparse().c_str(), l->_tau, ntohl(lp->_tau));
     l->_probes.clear();
   }
 
-  if (lp->_sent < (unsigned)l->_sent) {
+  if (ntohl(lp->_sent) < (unsigned)l->_sent) {
     BRN_INFO("%s has reset; clearing probe info", ether.unparse().c_str());
     l->_probes.clear();
   }
 
-  BrnRateSize rs = BrnRateSize(rate, lp->_size);
+  BrnRateSize rs = BrnRateSize(rate, ntohs(lp->_size));
   l->_period = new_period;
-  l->_tau = lp->_tau;
-  l->_sent = lp->_sent;
+  l->_tau = ntohl(lp->_tau);
+  l->_sent = ntohl(lp->_sent);
   l->_last_rx = now;
-  l->_num_probes = lp->_num_probes;
+  l->_num_probes = ntohl(lp->_num_probes);
   l->_probes.push_back(probe);
   l->_seq = probe._seq;
 
@@ -670,7 +666,7 @@ BRN2LinkStat::simple_action(Packet *p)
   uint8_t *ptr =  (uint8_t *) (lp + 1);
   uint8_t *end  = (uint8_t *) p->data() + p->length();
 
-
+  lp->_flags=ntohl(lp->_flags);
   if (lp->_flags &= PROBE_AVAILABLE_RATES) { // available rates where transmitted
     int num_rates = ptr[0];
     Vector<int> rates;
@@ -705,15 +701,14 @@ BRN2LinkStat::simple_action(Packet *p)
 
   int link_number = 0;
   // fetch link entries
-  while (ptr < end 
-    && (unsigned) link_number < lp->_num_links) {
+  while (ptr < end && (unsigned) link_number < ntohl(lp->_num_links)) {
     link_number++;
     link_entry *entry = (struct link_entry *)(ptr); 
     EtherAddress neighbor = EtherAddress(entry->_ether);
     int num_rates = entry->_num_rates;
 
     BRN_DEBUG("on link number %d / %d: neighbor %s, num_rates %d",
-      link_number, lp->_num_links, neighbor.unparse().c_str(), num_rates);
+      link_number, ntohl(lp->_num_links), neighbor.unparse().c_str(), num_rates);
 
     ptr += sizeof(struct link_entry);
     Vector<BrnRateSize> rates;
@@ -723,9 +718,9 @@ BRN2LinkStat::simple_action(Packet *p)
       struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
 
       BRN_DEBUG(" %s neighbor %s: size %d rate %d fwd %d rev %d",
-        ether.unparse().c_str(), neighbor.unparse().c_str(), nfo->_size, nfo->_rate, nfo->_fwd, nfo->_rev);
+        ether.unparse().c_str(), neighbor.unparse().c_str(), ntohs(nfo->_size), nfo->_rate, nfo->_fwd, nfo->_rev);
 
-      BrnRateSize rs = BrnRateSize(nfo->_rate, nfo->_size);
+      BrnRateSize rs = BrnRateSize(nfo->_rate, ntohs(nfo->_size));
       // update other link stuff
       rates.push_back(rs);
       fwd.push_back(nfo->_fwd); // forward delivery ratio
@@ -745,11 +740,12 @@ BRN2LinkStat::simple_action(Packet *p)
         }
       }
     }
-    int seq = entry->_seq;
-    if (neighbor == ether && 
+    int seq = ntohl(entry->_seq);
+/* TODO: Tolja check
+    if (neighbor == ether &&
         ((uint32_t) BRN2EtherAddressHashcode(neighbor) > (uint32_t) BRN2EtherAddressHashcode(*(_me->getEtherAddress())))) {
         seq = now.tv_sec;
-    }
+    }*/
     update_link(ether, neighbor, rates, fwd, rev, seq);
     ptr += num_rates * sizeof(struct link_info);
   }
