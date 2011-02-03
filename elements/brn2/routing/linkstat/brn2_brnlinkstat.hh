@@ -142,6 +142,7 @@ public:
   struct link_entry {
     uint8_t _ether[6];
     uint8_t _num_rates;
+    uint8_t __pad;
     uint32_t _seq;
     uint32_t _age;
     link_entry() { }
