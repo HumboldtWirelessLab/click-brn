@@ -489,7 +489,7 @@ BRN2LinkStat::send_probe()
   lp->_psz = sizeof(link_probe) + num_entries * sizeof(link_entry);
   lp->_psz = htons(lp->_psz);
   lp->_cksum = 0;
-  lp->_cksum = htons((click_in_cksum((unsigned char *) lp, sizeof(link_probe) /*+ num_entries * sizeof(link_entry)*/));
+  lp->_cksum = htons(click_in_cksum((unsigned char *) lp, sizeof(link_probe) /*+ num_entries * sizeof(link_entry)*/));
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
