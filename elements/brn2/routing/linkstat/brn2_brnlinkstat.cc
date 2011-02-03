@@ -197,7 +197,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   String probes;
   int res = cp_va_kparse(conf, this, errh,
-              "ETHTYPE", cpkP+cpkM, cpUnsigned, /*"Ethernet encapsulation type",*/ &_et,
+              "ETHTYPE", cpkP+cpkM, cpUnsignedShort, /*"Ethernet encapsulation type",*/ &_et,
               "DEVICE", cpkP+cpkM, cpElement, /*"NodeDevice",*/ &_me,
               "PERIOD", cpkP+cpkM, cpUnsigned, /*"Probe broadcast period (msecs)",*/ &_period,
               "TAU", cpkP+cpkM, cpUnsigned, /*"Loss-rate averaging period (msecs)",*/ &_tau,
@@ -486,8 +486,10 @@ BRN2LinkStat::send_probe()
 
   lp->_num_links = num_entries; // number of transmitted link_entry elements
   lp->_psz = sizeof(link_probe) + lp->_num_links * sizeof(link_entry);
+  lp->_psz = htons(lp->_psz);
   lp->_cksum = 0;
   lp->_cksum = click_in_cksum((unsigned char *) lp, lp->_psz);
+  lp->_cksum = htons(lp->_cksum);
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
@@ -572,14 +574,16 @@ BRN2LinkStat::simple_action(Packet *p)
     return 0;
   }
 
-  if (click_in_cksum((unsigned char *) lp, lp->_psz) != 0) {
+  lp->_cksum = ntohs(lp->_cksum);
+
+  if (click_in_cksum((unsigned char *) lp, ntohs(lp->_psz)) != 0) {
     BRN_WARN("failed checksum");
     p->kill();
     return 0;
   }
 
-  if (p->length() < lp->_psz + sizeof(click_brn)) {
-    BRN_WARN("packet is smaller (%d) than it claims (%u)", p->length(), lp->_psz);
+  if (p->length() < ntohs(lp->_psz) + sizeof(click_brn)) {
+    BRN_WARN("packet is smaller (%d) than it claims (%u)", p->length(), ntohs(lp->_psz));
   }
 
   // sender address (neighbor node)
