@@ -102,20 +102,22 @@ TopologyInfo::topology_info(void)
   Bridge *br;
   ArticulationPoint *fp;
 
-  sa << "Bridges (" << _bridges.size() << ") :\n";
+  sa << "<topology_info node=\"" << BRN_NODE_NAME << "\" >\n";
+  sa << "\t<bridges count=\"" << _bridges.size() << ">\n";
   for( int i = 0; i < _bridges.size(); i++ )
   {
     br = _bridges[i];
-    sa << (i+1) <<  "\t" << br->node_a << " <-> " << br->node_b << "\n";
+    sa << "\t\t<bridge id=\"" << (i+1) << "\" node_a=\"" << br->node_a << "\" node_b=\"" << br->node_b << "\" />\n";
   }
+  sa << "\t</bridges>\n";
 
-  sa << "\nArticulationPoints (" << _artpoints.size() << ") :\n";
+  sa << "\t<articulationpoints count=\"" << _artpoints.size() << "\" >\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     fp = _artpoints[i];
-    sa << (i+1) <<  "\t" << fp->node << "\n";
+    sa << "\t\t<articulationpoint id=\"" << (i+1) <<  "\" node=\"" << fp->node << "\" />\n";
   }
-  sa << "\n";
+  sa << "\t</articulationpoints>\n</topology_info>\n";
 
   return sa.take_string();
 }
