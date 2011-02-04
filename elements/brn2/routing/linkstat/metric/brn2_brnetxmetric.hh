@@ -84,7 +84,7 @@ public:
   static String read_stats(Element *xf, void *);
 
   void update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
-    Vector<int> fwd, Vector<int> rev, uint32_t seq);
+                   Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
 
 private:
   class Brn2LinkTable *_link_table;

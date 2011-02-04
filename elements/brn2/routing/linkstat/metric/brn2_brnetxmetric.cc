@@ -77,10 +77,8 @@ BRN2ETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to,
-		       Vector<BrnRateSize>, 
-		       Vector<int> fwd, Vector<int> rev, 
-		       uint32_t seq)
+BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize>,
+                           Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
 {
   int metric = 9999;
   if (fwd.size() && rev.size() &&

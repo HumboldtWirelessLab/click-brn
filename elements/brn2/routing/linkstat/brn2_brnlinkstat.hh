@@ -78,18 +78,19 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brn2.h"
 #include "metric/brn2_brnetxmetric.hh"
+#include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
 
-class Timer;
-
 static const uint8_t _ett2_version = 0x02;
+
+#define LINKSTAT_DEFAULT_STALE 10000
 
 class BrnRateSize {
  public:
-  int _rate;
-  int _size;
-  BrnRateSize(int r, int s): _rate(r), _size(s) { };
+  uint16_t _rate;
+  uint16_t _size;
+  BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
 
   inline bool operator==(BrnRateSize other)
   {
@@ -98,7 +99,7 @@ class BrnRateSize {
 };
 
 
-class BRN2LinkStat : public Element {
+class BRN2LinkStat : public BRNElement {
 
 public:
 
@@ -110,144 +111,133 @@ public:
 
   enum {
     PROBE_AVAILABLE_RATES = (1<<0),
+    PROBE_REV_FWD_INFO = (1<<1),
+    PROBE_HANDLER_PAYLOAD = (1<<2),
   };
 
   struct link_probe {
     uint8_t _version;
-    uint8_t __pad; // bring size from 47 to 48 bytes, do not remove: otherwise click_in_cksum will not work on win32 (or fix alignment)
-    uint16_t _cksum;     // internet checksum
-    uint16_t _psz;       // total packet size, excluding brn header
+    uint8_t _flags;
 
-    uint16_t _rate;
-    uint16_t _size;
-    uint8_t _ether[6];
-    uint32_t _flags;
-    uint32_t _seq;
-    uint32_t _period;      // period of this node's probe broadcasts, in msecs
-    uint32_t _tau;             // this node's loss-rate averaging period, in msecs
-    uint32_t _sent;        // how many probes this node has sent
-    uint32_t _num_probes;  // number of probes monitored by this node
-    uint32_t _num_links;   // number of wifi_link_entry entries following
+    uint16_t _cksum;       // internet checksum
+
+    uint16_t _rate;        // rate
+    uint16_t _size;        // size
+    uint32_t _seq;         // sequence number
+    uint32_t _tau;         // this node's loss-rate averaging period, in msecs
+    uint16_t _period;      // period of this node's probe broadcasts, in msecs
+    uint8_t _num_probes;   // number of probes monitored by this node
+    uint8_t _num_links;    // number of wifi_link_entry entries following
 
     link_probe() { memset(this, 0x0, sizeof(this)); }
-  };
-
-  struct link_info {
-    uint16_t _size;
-    uint8_t _rate;
-    uint8_t _fwd;
-    uint8_t _rev;
   };
 
   struct link_entry {
     uint8_t _ether[6];
     uint8_t _num_rates;
-    uint8_t __pad;
+    uint8_t _flags;
     uint32_t _seq;
-    uint32_t _age;
+    uint16_t _age;         //age in 100 ms -> 65535 * 10ms = 655350ms = 6553s
+
     link_entry() { }
+
     link_entry(EtherAddress ether) {
       memcpy(_ether, ether.data(), 6);
     }
   };
 
-public:
-  uint32_t _tau;    // msecs
-  unsigned int _period; // msecs
+  struct link_info {
+    uint16_t _size;   //linkprobe size
+    uint16_t _rate;   //linkprobe rate
+    uint8_t _fwd;     //fwd ratio
+    uint8_t _rev;     //rev ratio
+  };
 
-  unsigned int _seq;
-  uint32_t _sent;
-  BRN2Device *_me;
+  /**************** PROBELIST ********************/
+  /* Stores information about the probes of neighbouring nodes */
 
-  void take_state(Element *, ErrorHandler *);
-  void get_neighbors(Vector<EtherAddress> *ether_addrs) {
-      for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++)
-          ether_addrs->push_back(i.key());
-  }
-
-//  class BRNETTMetric *_ett_metric;
-  class BRN2ETXMetric *_etx_metric;
-  uint16_t _et;     // This protocol's ethertype
-
-  struct timeval _start;
-  // record probes received from other hosts
   struct probe_t {
-    struct timeval _when;  
-    uint32_t   _seq;
-    uint8_t _rate;
+    struct timeval _when;
+    uint32_t _seq;
+    uint16_t _rate;
     uint16_t _size;
+
     probe_t(const struct timeval &t,
-      uint32_t s,
-      uint8_t r,
-      uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
+            uint32_t s,
+            uint8_t r,
+            uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
   };
 
 
   struct probe_list_t {
     EtherAddress _ether;
-    int _period;   // period of this node's probes, as reported by the node
-    uint32_t _tau;      // this node's stats averaging period, as reported by the node
-    int _sent;
-    int _num_probes;
-    uint32_t _seq;
+    uint32_t _period;     // period of this node's probes, as reported by the node
+    uint32_t _tau;        // this node's stats averaging period, as reported by the node
+    uint8_t  _num_probes; // number of probes_types sent by the node
+    uint32_t _seq;        //highest sequence numbers
+
+    /*
+     * Information about probes
+     */
     Vector<BrnRateSize> _probe_types;
 
-    Vector<int> _fwd_rates;
+    Vector<uint8_t> _fwd_rates;
 
     struct timeval _last_rx;
-    DEQueue<probe_t> _probes;   // most recently received probes
-    probe_list_t(const EtherAddress &et, unsigned int per, unsigned int t) : 
-      _ether(et),
-      _period(per),
-      _tau(t),
-      _sent(0)
-    { }
-    probe_list_t() : _period(0), _tau(0) { }
+    DEQueue<probe_t> _probes;          // most recently received probes
 
-    int rev_rate(struct timeval start, int rate, int size) {
-      struct timeval now;
+    probe_list_t(const EtherAddress &et, unsigned int per, unsigned int t) :
+        _ether(et),
+        _period(per),
+        _tau(t),
+        _seq(0)
+    { }
+
+    probe_list_t() : _period(0), _tau(0), _seq(0) { }
+
+    uint8_t rev_rate(struct timeval start, int rate, int size) {
+      struct timeval now = Timestamp::now().timeval();
       struct timeval p = { _tau / 1000, 1000 * (_tau % 1000) };
       struct timeval earliest;
-      now = Timestamp::now().timeval();
+
       timersub(&now, &p, &earliest);
 
       if (_period == 0) {
         click_chatter("period is 0\n");
         return 0;
       }
-      int num = 0;
+
+      uint32_t num = 0;
       for (int i = _probes.size() - 1; i >= 0; i--) {
-        if (timercmp(&earliest, &(_probes[i]._when), >)) {
-          break;
-        }
-        if ( _probes[i]._size == size &&
-            _probes[i]._rate == rate) {
-          num++;
-        }
+        if (timercmp(&earliest, &(_probes[i]._when), >)) break;
+        if ( _probes[i]._size == size && _probes[i]._rate == rate) num++;
       }
 
       struct timeval since_start;
       timersub(&now, &start, &since_start);
 
-//      uint32_t ms_since_start = MAX(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
-//      uint32_t fake_tau = MIN(_tau, ms_since_start);
       uint32_t ms_since_start = max(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
       uint32_t fake_tau = min(_tau, ms_since_start);
       assert(_probe_types.size());
-      int num_expected = fake_tau / _period;
+      uint32_t num_expected = max(1,min((fake_tau / _period),(_seq / _num_probes)));
 
-      if (_sent / _num_probes < num_expected) {
-      	num_expected = _sent / _num_probes;
-      }
-      if (!num_expected) {
-        num_expected = 1;
-      }
+      return (uint8_t)(min(100, 100 * num / num_expected));
+    }
 
-//      return MIN(100, 100 * num / num_expected);
-      return min(100, 100 * num / num_expected);
-
+    void clear() {
+      _probes.clear();
+      _seq = 0;
     }
   };
+
+  // Per-sender map of received probes._sent
+  typedef HashMap<EtherAddress, probe_list_t> ProbeMap;
+
+  /************** HANDERINFO ***********************/
+  /* Other element can register handlers which are called for each send
+   * and received linkprobe. The elements can store information in the unused
+   * space of the linkprobe
+   */
 
   class HandlerInfo {
    public:
@@ -255,64 +245,19 @@ public:
     int _protocol;
     int (*_handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction);
 
-    HandlerInfo(void *element,int protocol, int (*handler)(void *element , EtherAddress *ea, char *buffer, int size, bool direction)) {
+    HandlerInfo(void *element,int protocol, int (*handler)(void *element , EtherAddress *ea,
+                char *buffer, int size, bool direction)) {
       _element = element;
       _protocol = protocol;
       _handler = handler;
     }
   };
 
-public:
-  int _debug;
-  // Per-sender map of received probes.
-  typedef HashMap<EtherAddress, probe_list_t> ProbeMap;
-  // map contains information about the link quality to all my neighbors
-  ProbeMap _bcast_stats;
-
-  Vector <EtherAddress> _neighbors;
-  // sometimes it is not possible to put the complete information of all my neighbors into the probe packets;
-  // so we point to the next neighbor
-  int _next_neighbor_to_ad;
-
-  void add_bcast_stat(EtherAddress, const link_probe &);
-
-  void update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<int> fwd, Vector<int> rev, uint32_t seq);
-  void send_probe_hook();
-  void send_probe();
-  static void static_send_hook(Timer *, void *e) { ((BRN2LinkStat *) e)->send_probe_hook(); }
-
-  Timer *_timer;
-  Timer _stale_timer;
-
-  void run_timer(Timer*);
-  struct timeval _next;
-
-  Vector <BrnRateSize> _ads_rs;
-  int _ads_rs_index;
-
-  class AvailableRates *_rtable;
-
   typedef HashMap<EtherAddress, uint8_t> BadTable;
   typedef BadTable::const_iterator BTIter;
 
-  /* keeps track of neighbors nodes with wrong protocol */
-  BadTable _bad_table;
-
-  /* Logging */
-  bool _log;
-  Timer _log_timeout_timer;
-  int _log_interval; // in secs
-
-  Vector <HandlerInfo> _reg_handler;
-
  public:
-  String bad_nodes();
-  String read_bcast_stats(bool with_pos);
 
-  int get_etx(EtherAddress);
-  int get_etx(int, int);
-
-  void update_links(EtherAddress ip);
   BRN2LinkStat();
   ~BRN2LinkStat();
 
@@ -321,21 +266,76 @@ public:
   const char *port_count() const    { return "1/0-1"; }
   const char *flow_code() const     { return "x/y"; }
 
-  void add_handlers();
-
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
+  void take_state(Element *, ErrorHandler *);
 
+  Packet *simple_action(Packet *);
+
+  void run_timer(Timer*);
+  void brn2add_jitter2(unsigned int max_jitter, struct timeval *t);
+
+  void add_handlers();
+
+  String read_bcast_stats();
+  String bad_nodes();
+  int update_probes(String probes, ErrorHandler *errh);
+
+  BRN2Device *_dev;
+
+  uint32_t _tau;       // msecs
+  uint32_t _period;    // msecs (time between 2 linkprobes
+  uint32_t _seq;       // sequence number
+
+//class BRNETTMetric *_ett_metric;
+  class BRN2ETXMetric *_etx_metric;
+
+  // record probes received from other hosts
+  Vector <EtherAddress> _neighbors;
+  // sometimes it is not possible to put the complete information of all my neighbors into the probe packets;
+  // so we point to the next neighbor
+  int _next_neighbor_to_add;
+
+  void get_neighbors(Vector<EtherAddress> *ether_addrs) {
+    for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++)
+      ether_addrs->push_back(i.key());
+  }
+
+  // map contains information about the link quality to all my neighbors
+  ProbeMap _bcast_stats;
+  void add_bcast_stat(EtherAddress, const link_probe &);
+
+  void update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
+                         Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
+
+  void send_probe_hook();
+  void send_probe();
+  static void static_send_hook(Timer *, void *e) { ((BRN2LinkStat *) e)->send_probe_hook(); }
+
+  Timer *_timer;
+  Timer _stale_timer;
+
+  struct timeval _next;
+  struct timeval _start;
+
+  Vector <BrnRateSize> _ads_rs;
+  int _ads_rs_index;
+
+  class AvailableRates *_rtable;
+
+  /* keeps track of neighbors nodes with wrong protocol */
+  BadTable _bad_table;
+
+  Vector <HandlerInfo> _reg_handler;
   int registerHandler(void *element, int protocolId, int (*handler)(void* element, EtherAddress *src, char *buffer, int size, bool direction));
   int deregisterHandler(int handler, int protocolId);
 
   int get_rev_rate(EtherAddress *ea);
 
+  uint32_t _stale;
   void reset();
   void clear_stale();
-  Packet *simple_action(Packet *);
 
-  void run_log_timer();
 };
 
 CLICK_ENDDECLS

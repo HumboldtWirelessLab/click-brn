@@ -85,7 +85,7 @@ LPRLinkProbeHandler::initialize(ErrorHandler *)
   known_timestamps = new unsigned char[max_hosts];
   memset(known_timestamps, 0, max_hosts);
 
-  known_hosts.push_back(EtherAddress(_linkstat->_me->getEtherAddress()->data()));
+  known_hosts.push_back(EtherAddress(_linkstat->_dev->getEtherAddress()->data()));
 
   _seq = 0;
 
@@ -210,8 +210,8 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   bool changes = false;
   Vector<BrnRateSize> brs;
   brs.push_back(BrnRateSize(2,1500)); //TODO: got real use value (linkstat)
-  Vector<int> fwd;
-  Vector<int> rev;
+  Vector<uint8_t> fwd;
+  Vector<uint8_t> rev;
 
   for ( int nh1 = 0; nh1 < lpri->_header->_no_nodes; nh1++ ) {
 
@@ -232,8 +232,8 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
             known_links[kh1 * max_hosts + kh2] = lpri->_links[nh1*lpri->_header->_no_nodes + nh2];
 
-            if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) &&
-                   ( memcmp(known_hosts[kh2].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) ) {
+            if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) &&
+                   ( memcmp(known_hosts[kh2].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) ) {
 
               if ( _etx_metric && ( known_links[kh1 * max_hosts + kh2] != 0 ) && ( known_links[kh2 * max_hosts + kh1] != 0 ) ) {
                 fwd.push_back(10 * known_links[kh1 * max_hosts + kh2]);
