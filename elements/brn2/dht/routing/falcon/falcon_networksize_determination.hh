@@ -2,13 +2,15 @@
 #define FALCON_NETWORK_DETERMINATION_HH
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 #include "elements/brn2/standard/md5.h"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "falcon_routingtable.hh"
 
 CLICK_DECLS
 
-class FalconNetworkSizeDetermination : public Element
+class FalconNetworkSizeDetermination : public BRNElement
 {
   public:
     FalconNetworkSizeDetermination();
@@ -40,8 +42,6 @@ class FalconNetworkSizeDetermination : public Element
     void handle_nws(Packet *packet);
 
     int _networksize;
-
-    int _debug;
 };
 
 CLICK_ENDDECLS

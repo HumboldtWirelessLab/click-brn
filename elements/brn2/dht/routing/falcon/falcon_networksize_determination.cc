@@ -20,9 +20,9 @@
 CLICK_DECLS
 
 FalconNetworkSizeDetermination::FalconNetworkSizeDetermination():
-  _networksize(1),
-  _debug(BrnLogger::DEFAULT)
+  _networksize(1)
 {
+  BRNElement::init();
 }
 
 FalconNetworkSizeDetermination::~FalconNetworkSizeDetermination()
@@ -169,12 +169,7 @@ write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   FalconNetworkSizeDetermination *nws = (FalconNetworkSizeDetermination *)e;
 
-  String s = cp_uncomment(in_s);
-  int start;
-  if (!cp_integer(s, &start))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-
-  if ( start == 1 ) nws->request_nws();
+  nws->request_nws();
 
   return 0;
 }
@@ -182,6 +177,8 @@ write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 FalconNetworkSizeDetermination::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_write_handler("start_request", write_param , (void *)H_START_REQUEST);
   add_read_handler("networksize", read_param , (void *)H_NETWORK_SIZE);
 }
