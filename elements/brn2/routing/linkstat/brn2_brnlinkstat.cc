@@ -454,8 +454,8 @@ BRN2LinkStat::simple_action(Packet *p)
   }
 
   if (click_in_cksum((unsigned char *) lp, p->length() - sizeof(click_brn)) != 0) {
-    BRN_WARN("failed checksum");
-    p->kill();
+    BRN_WARN("failed checksum. Src: %s",src_ea.unparse().c_str());
+    checked_output_push(1, p);
     return 0;
   }
 

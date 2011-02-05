@@ -263,7 +263,7 @@ public:
 
   const char *class_name() const    { return "BRN2LinkStat"; }
   const char *processing() const    { return PUSH; }
-  const char *port_count() const    { return "1/0-1"; }
+  const char *port_count() const    { return "1/0-2"; }
   const char *flow_code() const     { return "x/y"; }
 
   int configure(Vector<String> &, ErrorHandler *);
