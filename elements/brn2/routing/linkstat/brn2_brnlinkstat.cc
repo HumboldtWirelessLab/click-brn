@@ -72,10 +72,10 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "DEVICE", cpkP+cpkM, cpElement, &_dev,
               "PERIOD", cpkP+cpkM, cpUnsigned, &_period,
               "TAU", cpkP+cpkM, cpUnsigned, &_tau,
-              "ETT", cpkP, cpElement, &_ett_metric,
-              "ETX", cpkP, cpElement, &_etx_metric,
               "PROBES", cpkP+cpkM, cpString, &probes,
               "RT", cpkP+cpkM, cpElement, &_rtable,
+              "ETT", cpkP, cpElement, &_ett_metric,
+              "ETX", cpkP, cpElement, &_etx_metric,
               "STALE", cpkP, cpInteger, &_stale,
               "DEBUG", cpkP, cpInteger, &_debug,
             cpEnd);
