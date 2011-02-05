@@ -34,9 +34,18 @@ CLICK_DECLS
 /*********************************************************************************/
 
 int
+DHTProtocolFalcon::max_no_nodes_in_lp(int buffer_len)
+{
+  return (buffer_len/sizeof(struct dht_falcon_node_entry))-1;
+}
+
+int
 DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
+  if ( buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
+
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+
   ne->age_sec = 0;
   ne->status = me->_status;
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);

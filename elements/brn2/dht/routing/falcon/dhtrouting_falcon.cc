@@ -42,6 +42,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LEAVEORGANIZER", cpkP, cpElement, &_leave_organizer,
       "RESPONSIBLE", cpkP, cpInteger, &_responsible,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 

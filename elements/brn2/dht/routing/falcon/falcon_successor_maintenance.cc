@@ -228,7 +228,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
         packet->kill();
       }
       output(0).push(p);
-    } 
+    }
   } else {
     BRN_WARN("Error??? Me: %s Succ: %s", _frt->_me->_ether_addr.unparse().c_str(), succ._ether_addr.unparse().c_str());
     packet->kill();
@@ -243,7 +243,7 @@ void
 FalconSuccessorMaintenance::handle_routing_update_callback(int status)
 {
   if ( status == RT_UPDATE_SUCCESSOR ) {
-    click_chatter("Update Successor");
+    BRN_DEBUG("Update Successor");
   }
 }
 

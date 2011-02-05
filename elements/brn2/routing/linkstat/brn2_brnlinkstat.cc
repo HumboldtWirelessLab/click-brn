@@ -294,6 +294,8 @@ BRN2LinkStat::send_probe()
   uint8_t *ptr =  (uint8_t *)(lp + 1); // points to the start of the payload area (array of wifi_link_entry entries)
   uint8_t *end = (uint8_t *)p->data() + p->length(); // indicates end of payload area; neccessary to preserve max packet size
 
+  BRN_DEBUG("Pack: Start: %x End: %x",ptr,end);
+
   /*
    * Add Available rates
    */
@@ -367,22 +369,33 @@ BRN2LinkStat::send_probe()
   if ( num_entries > 0 ) lp->_flags |= PROBE_REV_FWD_INFO; // indicate that info are available
   lp->_num_links = num_entries; // number of transmitted link_entry elements
 
-  if ( _reg_handler.size() > 0 ) {
+  uint16_t space_left = (end-ptr);
+  BRN_DEBUG("Handler pre Ptr: %x End: %x space left: %d",ptr,end,space_left);
+
+  if ( _reg_handler.size() > 0 && ((space_left-4) > 0) ) {
 
     lp->_flags |= PROBE_HANDLER_PAYLOAD; // indicate that handler_info are available
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
-      int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (end-ptr), true);
-      if ( res >= 0 ) {  //TODO: also pack if zero (no information) ???
-        *ptr = _reg_handler[h]._protocol; ptr++;
+      int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (space_left-4), true);
+      if ( res > (space_left-4) ) {
+        BRN_WARN("Handler %d want %d but %d was left",_reg_handler[h]._protocol,res,space_left-4);
+        res = 0;
+      }
+      if ( res > 0 ) {
+        *ptr = _reg_handler[h]._protocol;
+        ptr++;
         uint16_t *s = (uint16_t *)ptr;
         *s = htons(res);
         ptr += 2 + res;
+        space_left -= 3 + res;
       }
     }
 
     *ptr = 255; // indicate handler end
   }
+
+  BRN_DEBUG("Handler post Ptr: %x End: %x Value: %d",ptr,end,*ptr);
 
   lp->_cksum = click_in_cksum((unsigned char *)lp, p->length() - sizeof(click_brn));
 
@@ -524,6 +537,8 @@ BRN2LinkStat::simple_action(Packet *p)
   uint8_t *ptr =  (uint8_t *) (lp + 1);
   uint8_t *end  = (uint8_t *) p->data() + p->length();
 
+  BRN_DEBUG("Start: %x End: %x",ptr,end);
+
   if (lp->_flags & PROBE_AVAILABLE_RATES) { // available rates where transmitted
     int num_rates = ptr[0];
     Vector<int> rates;
@@ -589,6 +604,7 @@ BRN2LinkStat::simple_action(Packet *p)
     }
   }
 
+  BRN_DEBUG("Ptr: %x",ptr);
 
   if (lp->_flags & PROBE_HANDLER_PAYLOAD) { // handler info where transmitted
     while ( *ptr != 255 ) {

@@ -89,6 +89,7 @@ class DHTProtocolFalcon {
 
   public:
 
+    static int max_no_nodes_in_lp(int buffer_len);
     static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
     static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
 
