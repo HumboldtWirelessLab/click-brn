@@ -32,7 +32,6 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "metric/brn2_brnetxmetric.hh"
 
 #include "brn2_brnlinkstat.hh"
 
@@ -46,7 +45,7 @@ BRN2LinkStat::BRN2LinkStat()
     _tau(10000),
     _period(1000),
     _seq(0),
-//  _ett_metric(0),
+    _ett_metric(0),
     _etx_metric(0),
     _next_neighbor_to_add(0),
     _timer(0),
@@ -73,8 +72,8 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "DEVICE", cpkP+cpkM, cpElement, &_dev,
               "PERIOD", cpkP+cpkM, cpUnsigned, &_period,
               "TAU", cpkP+cpkM, cpUnsigned, &_tau,
-//            "ETT", cpkP, cpElement, &_ett_metric,
-              "ETX", cpkP+cpkM, cpElement, &_etx_metric,
+              "ETT", cpkP, cpElement, &_ett_metric,
+              "ETX", cpkP, cpElement, &_etx_metric,
               "PROBES", cpkP+cpkM, cpString, &probes,
               "RT", cpkP+cpkM, cpElement, &_rtable,
               "STALE", cpkP, cpInteger, &_stale,
@@ -90,8 +89,8 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_dev || !_dev->cast("BRN2Device"))
     return errh->error("BRN2Device element is not provided or not a BRN2Device");
 
-/*  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
-    return errh->error("BRNETTMetric element is not a BRNETTMetric");*/
+  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
+    return errh->error("BRNETTMetric element is not a BRNETTMetric");
 
   if (_etx_metric && !_etx_metric->cast("BRN2ETXMetric"))
     return errh->error("BRNETXMetric element is not a BRNETXMetric");
@@ -192,11 +191,11 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
 void
 BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
 {
-/*  if (_ett_metric) {
+  if (_ett_metric) {
     BRN_DEBUG(" * update ett_metric.");
     _ett_metric->update_link(from, to, rs, fwd, rev, seq);
   }
-*/
+
   if (_etx_metric) {
     BRN_DEBUG(" * update etx_metric.");
     _etx_metric->update_link(from, to, rs, fwd, rev, seq);

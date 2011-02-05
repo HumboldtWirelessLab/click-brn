@@ -78,6 +78,8 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brn2.h"
 #include "metric/brn2_brnetxmetric.hh"
+#include "metric/brnettmetric.hh"
+
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
@@ -287,7 +289,7 @@ public:
   uint32_t _period;    // msecs (time between 2 linkprobes
   uint32_t _seq;       // sequence number
 
-//class BRNETTMetric *_ett_metric;
+  class BRNETTMetric *_ett_metric;
   class BRN2ETXMetric *_etx_metric;
 
   // record probes received from other hosts

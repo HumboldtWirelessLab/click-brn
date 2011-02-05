@@ -126,7 +126,7 @@ class Brn2LinkTable: public Element {
     return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, permanent);
   }
 
-  bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to, 
+  bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                    IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
 
   bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
