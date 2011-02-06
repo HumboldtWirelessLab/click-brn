@@ -287,6 +287,7 @@ read_param(Element *e, void *thunk)
       sa << "Not-Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
       sa << "Timeout: " << dht_str->no_timeout << " (Avg. time: " << avg_to_time << " ms  Max. time: ";
       sa << dht_str->max_timeout_time << " ms )\n";
+      break;
     }
     case H_USER_TEST:
     {
@@ -298,6 +299,7 @@ read_param(Element *e, void *thunk)
       if ( dht_str->last_not_found ) sa << "found: yes ";
       else sa << "found: no ";
       sa << "\n";
+      break;
     }
     default: return String();
   }
