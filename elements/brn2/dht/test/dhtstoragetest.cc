@@ -306,7 +306,7 @@ read_param(Element *e, void *thunk)
 }
 
 static int
-write_param(const String &in_s, Element *e, void *thunk, ErrorHandler */*errh*/)
+write_param(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*errh*/)
 {
   DHTStorageTest *dht_str = (DHTStorageTest *)e;
 

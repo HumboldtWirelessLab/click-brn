@@ -42,7 +42,7 @@ DHTProtocolFalcon::max_no_nodes_in_lp(int buffer_len)
 int
 DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
-  if ( buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
+  if ( (unsigned)buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
 
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 

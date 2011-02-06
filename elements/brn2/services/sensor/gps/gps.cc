@@ -162,8 +162,10 @@ GPS::add_handlers()
 
   add_read_handler("cart_coord", read_position_param, H_CART_COORD);
   add_write_handler("cart_coord", write_position_param, H_CART_COORD);
+
   add_read_handler("gps_coord", read_position_param, H_GPS_COORD);
   add_write_handler("gps_coord", write_position_param, H_GPS_COORD);
+
   add_read_handler("speed", read_position_param, H_SPEED);
   add_write_handler("speed", write_position_param, H_SPEED);
 }

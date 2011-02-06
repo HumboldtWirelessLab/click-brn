@@ -53,6 +53,10 @@ class DHTnodelist {
 
   private:
     Vector<DHTnode*> _nodelist;
+
+    //Hashmap<EtherAddress,DHTnode*) _node_ea_map;
+
+    //Hashmap<NodeID,DHTnode*) _node_id_map;
 };
 
 CLICK_ENDDECLS
