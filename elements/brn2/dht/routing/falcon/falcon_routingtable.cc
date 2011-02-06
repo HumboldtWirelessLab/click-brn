@@ -171,10 +171,12 @@ FalconRoutingTable::add_node(DHTnode *node)
     n = node->clone();
     _allnodes.add_dhtnode(n);
   } else {
-    n->_status = node->_status;                //update node
-    n->set_age(&(node->_age));
-    if ( node->_digest_length != 0 ) n->set_nodeid(node->_md5_digest);
-    return 0;                                 //get back since there is no new node (succ and pred will not changed)
+    if ( node->_age > n->_age ) {
+      n->_status = node->_status;              //update node
+      n->set_age(&(node->_age));
+      if ( node->_digest_length != 0 ) n->set_nodeid(node->_md5_digest);
+    }
+    return 0;              //get back since there is no new node (succ and pred will not changed)
   }
 
   if ( isBetterSuccessor(n) ) {
