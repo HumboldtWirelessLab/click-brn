@@ -88,6 +88,7 @@ Seismo::push(int, Packet *p)
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
+    //click_chatter("%d",(ntohl(data32[0]) & 0x0007ffff) - 0x00040000);
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
   }
