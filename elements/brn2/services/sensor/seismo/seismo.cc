@@ -72,8 +72,8 @@ Seismo::push(int, Packet *p)
 
   int src_node_id = 42; // TODO: we need an identifier!!!
   if (_print) {
-    click_chatter("GPS: Long: %d Lat: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
-                  ntohl(seismo_header->gps_long), ntohl(seismo_header->gps_lat),
+    click_chatter("GPS: Lat: %d Long: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
+                  ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
                   ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop),
                   ntohl(seismo_header->sampling_rate), ntohl(seismo_header->samples), ntohl(seismo_header->channels));
   }
@@ -99,6 +99,7 @@ Seismo::push(int, Packet *p)
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
+
     // update stats counter
     if (_calc_stats) {
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, ntohl(data32[j]));

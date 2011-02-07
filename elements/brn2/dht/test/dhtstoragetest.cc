@@ -292,8 +292,8 @@ read_param(Element *e, void *thunk)
     case H_USER_TEST:
     {
       sa << "last key: " << dht_str->last_key << " value: " << String(dht_str->last_value);
-      if ( dht_str->last_read ) sa << "mode: read ";
-      else sa << "mode: write ";
+      if ( dht_str->last_read ) sa << " mode: read ";
+      else sa << " mode: write ";
       if ( dht_str->last_timeout ) sa << "timeout: yes ";
       else sa << "timeout: no ";
       if ( dht_str->last_not_found ) sa << "found: yes ";
