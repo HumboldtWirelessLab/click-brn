@@ -49,6 +49,7 @@ Seismo::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "GPS", cpkM+cpkP, cpElement, &_gps,
       "PRINT", cpkP, cpBool, &_print,
+      "CALCSTATS", cpkP, cpBool, &_calc_stats,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -69,6 +70,7 @@ Seismo::push(int, Packet *p)
 
   _gps->set_gps(fp_lat,fp_long,fp_alt);
 
+  int src_node_id = 42; // TODO: we need an identifier!!!
   if (_print) {
     click_chatter("GPS: Long: %d Lat: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
                   ntohl(seismo_header->gps_long), ntohl(seismo_header->gps_lat),
@@ -76,6 +78,15 @@ Seismo::push(int, Packet *p)
                   ntohl(seismo_header->sampling_rate), ntohl(seismo_header->samples), ntohl(seismo_header->channels));
   }
 
+  // store in internal structure
+  SrcInfo *src_i;
+  if (_calc_stats) {
+      src_i = _node_stats_tab.findp(src_node_id);
+      if (!src_i) {
+        _node_stats_tab.insert(src_node_id, SrcInfo(ntohl(seismo_header->gps_lat),ntohl(seismo_header->gps_long),ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop), ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
+      }
+      src_i = _node_stats_tab.findp(src_node_id);
+  }
   data = (uint8_t*)&seismo_header[1];
 
   for ( uint32_t i = 0; i < ntohl(seismo_header->samples); i++) {
@@ -88,17 +99,60 @@ Seismo::push(int, Packet *p)
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
+    // update stats counter
+    if (_calc_stats) {
+      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, ntohl(data32[j]));
+    }
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
   }
-
   p->kill();
+}
+
+static String
+read_handler(Element *e, void *thunk)
+{
+  Seismo *si = (Seismo*)e;
+
+  if (si->_node_stats_tab.size() == 0) {
+     // return old value
+     return si->_last_channelstatinfo;
+  } else {
+
+  StringAccum sa;
+
+  for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
+
+    SrcInfo src = iter.value();
+    int id = iter.key();
+
+    sa << "<node id='" << id << "'>\n";
+    sa << "<gps long='" << src._gps_long << "' lat='" << src._gps_lat << "' alt='" << src._gps_alt << "' HDOP='" << src._gps_hdop << "' />\n";
+
+    sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channel='" << src._channels << "'>\n";
+
+    for (uint32_t j = 0; j < 4; j++) {
+	    sa << "<chaninfo id='" << j << "' avg_value='" << src.avg_channel_info(j) << "' />\n";
+    }
+
+    sa << "</seismo>\n";
+    sa << "</node>\n";
+
+  }
+
+  // clear node stat before returning
+  si->_node_stats_tab.clear();
+
+  si->_last_channelstatinfo = sa.take_string();
+  return si->_last_channelstatinfo;
+  }
 }
 
 void
 Seismo::add_handlers()
 {
   BRNElement::add_handlers();
+  add_read_handler("channelstatinfo", read_handler, 0);
 }
 
 CLICK_ENDDECLS
