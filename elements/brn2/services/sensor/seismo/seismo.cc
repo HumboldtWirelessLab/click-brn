@@ -63,7 +63,6 @@ Seismo::push(int port, Packet *p)
   struct click_seismo_data_header *seismo_header = (struct click_seismo_data_header *)p->data();
   uint8_t *data = (uint8_t*)&seismo_header[1];
   EtherAddress src_node_id;
-  
 
   if (_print) {
     click_chatter("GPS: Lat: %d Long: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
@@ -86,6 +85,7 @@ Seismo::push(int port, Packet *p)
     click_ether *annotated_ether = (click_ether *)p->ether_header();
     src_node_id = EtherAddress(annotated_ether->ether_shost);
   }
+
   // store in internal structure
   SrcInfo *src_i;
   if (_calc_stats) {
@@ -99,18 +99,22 @@ Seismo::push(int port, Packet *p)
 
   for ( uint32_t i = 0; i < ntohl(seismo_header->samples); i++) {
     struct click_seismo_data *seismo_data = (struct click_seismo_data *)data;
-    uint32_t *data32 = (uint32_t*)&seismo_data[1];
+    int32_t *data32 = (int32_t*)&seismo_data[1];
 
     if (_print) {
       StringAccum sa;
       sa << "ID: " << src_node_id.unparse() << " Time: " << seismo_data->time << " Time_qual: " << seismo_data->timing_quality << " Data:";
-      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << ntohl(data32[j]);
+      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << (int)ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
 
     // update stats counter
-    if (_calc_stats)
-      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, ntohl(data32[j]));
+    if (_calc_stats) {
+      src_i->_last_update_time = seismo_data->time;
+      src_i->inc_sample_count();
+
+      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, (int)ntohl(data32[j]));
+    }
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
   }
@@ -137,11 +141,10 @@ read_handler(Element *e, void */*thunk*/)
 
     sa << "<node id='" << id.unparse() << "'>\n";
     sa << "<gps long='" << src._gps_long << "' lat='" << src._gps_lat << "' alt='" << src._gps_alt << "' HDOP='" << src._gps_hdop << "' />\n";
+    sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channels='" << src._channels << "' last_update='" << src._last_update_time << "'>\n";
 
-    sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channel='" << src._channels << "'>\n";
-
-    for (uint32_t j = 0; j < 4; j++) {
-	    sa << "<chaninfo id='" << j << "' avg_value='" << src.avg_channel_info(j) << "' />\n";
+    for (int32_t j = 0; j < src._channels; j++) {
+      sa << "<chaninfo id='" << j << "' avg_value='" << (int)src.avg_channel_info(j) << "' std_value='" << (int)src.std_channel_info(j) << "' min_value='" << (int)src.min_channel_info(j) << "' max_value='" << (int)src.max_channel_info(j) << "'/>\n";
     }
 
     sa << "</seismo>\n";
