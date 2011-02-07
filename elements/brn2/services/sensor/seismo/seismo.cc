@@ -58,19 +58,13 @@ Seismo::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 void
-Seismo::push(int, Packet *p)
+Seismo::push(int port, Packet *p)
 {
-  uint8_t *data = (uint8_t*)p->data();
-  struct click_seismo_data_header *seismo_header = (struct click_seismo_data_header *)data;
+  struct click_seismo_data_header *seismo_header = (struct click_seismo_data_header *)p->data();
+  uint8_t *data = (uint8_t*)&seismo_header[1];
+  EtherAddress src_node_id;
+  
 
-  FixPointNumber fp_lat,fp_long,fp_alt;
-  fp_lat.convertFromPrefactor(ntohl(seismo_header->gps_lat), 100000);
-  fp_long.convertFromPrefactor(ntohl(seismo_header->gps_long), 100000);
-  fp_alt.convertFromPrefactor(ntohl(seismo_header->gps_alt), 100000);
-
-  _gps->set_gps(fp_lat,fp_long,fp_alt);
-
-  int src_node_id = 42; // TODO: we need an identifier!!!
   if (_print) {
     click_chatter("GPS: Lat: %d Long: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
                   ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
@@ -78,16 +72,30 @@ Seismo::push(int, Packet *p)
                   ntohl(seismo_header->sampling_rate), ntohl(seismo_header->samples), ntohl(seismo_header->channels));
   }
 
+  if ( port == 0 ) {  //local data
+    FixPointNumber fp_lat,fp_long,fp_alt;
+    fp_lat.convertFromPrefactor(ntohl(seismo_header->gps_lat), 100000);
+    fp_long.convertFromPrefactor(ntohl(seismo_header->gps_long), 100000);
+    fp_alt.convertFromPrefactor(ntohl(seismo_header->gps_alt), 100000);
+
+    _gps->set_gps(fp_lat,fp_long,fp_alt);
+
+    src_node_id = EtherAddress();
+
+  } else {           //remote port
+    click_ether *annotated_ether = (click_ether *)p->ether_header();
+    src_node_id = EtherAddress(annotated_ether->ether_shost);
+  }
   // store in internal structure
   SrcInfo *src_i;
   if (_calc_stats) {
       src_i = _node_stats_tab.findp(src_node_id);
       if (!src_i) {
-        _node_stats_tab.insert(src_node_id, SrcInfo(ntohl(seismo_header->gps_lat),ntohl(seismo_header->gps_long),ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop), ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
+        _node_stats_tab.insert(src_node_id, SrcInfo(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long), ntohl(seismo_header->gps_alt),
+                                                    ntohl(seismo_header->gps_hdop), ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
+        src_i = _node_stats_tab.findp(src_node_id);
       }
-      src_i = _node_stats_tab.findp(src_node_id);
   }
-  data = (uint8_t*)&seismo_header[1];
 
   for ( uint32_t i = 0; i < ntohl(seismo_header->samples); i++) {
     struct click_seismo_data *seismo_data = (struct click_seismo_data *)data;
@@ -95,23 +103,23 @@ Seismo::push(int, Packet *p)
 
     if (_print) {
       StringAccum sa;
-      sa << "Time: " << seismo_data->time << " Time_qual: " << seismo_data->timing_quality << " Data:";
+      sa << "ID: " << src_node_id.unparse() << " Time: " << seismo_data->time << " Time_qual: " << seismo_data->timing_quality << " Data:";
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
 
     // update stats counter
-    if (_calc_stats) {
+    if (_calc_stats)
       for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, ntohl(data32[j]));
-    }
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
   }
+
   p->kill();
 }
 
 static String
-read_handler(Element *e, void *thunk)
+read_handler(Element *e, void */*thunk*/)
 {
   Seismo *si = (Seismo*)e;
 
@@ -125,9 +133,9 @@ read_handler(Element *e, void *thunk)
   for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
 
     SrcInfo src = iter.value();
-    int id = iter.key();
+    EtherAddress id = iter.key();
 
-    sa << "<node id='" << id << "'>\n";
+    sa << "<node id='" << id.unparse() << "'>\n";
     sa << "<gps long='" << src._gps_long << "' lat='" << src._gps_lat << "' alt='" << src._gps_alt << "' HDOP='" << src._gps_hdop << "' />\n";
 
     sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channel='" << src._channels << "'>\n";
