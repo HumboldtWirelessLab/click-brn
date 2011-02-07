@@ -70,8 +70,8 @@ Seismo::push(int, Packet *p)
   _gps->set_gps(fp_lat,fp_long,fp_alt);
 
   if (_print) {
-    click_chatter("GPS: Long: %d Lat: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
-                  ntohl(seismo_header->gps_long), ntohl(seismo_header->gps_lat),
+    click_chatter("GPS: Lat: %d Long: %d Alt: %d HDOP: %d SamplingRate: %d Samples: %d Channel: %d",
+                  ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
                   ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop),
                   ntohl(seismo_header->sampling_rate), ntohl(seismo_header->samples), ntohl(seismo_header->channels));
   }
