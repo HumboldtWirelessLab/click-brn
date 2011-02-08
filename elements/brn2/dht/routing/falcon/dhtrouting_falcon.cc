@@ -77,7 +77,8 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
   if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
        FalconFunctions::is_equals(_frt->_me, key) ) return _frt->_me;
   if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key) ||
-       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
+       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor; //TODO: this should be handle
+                                                                                  //by checking the FT
 
   best = _frt->successor;      //default
 
@@ -88,7 +89,8 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
     }
   }
 
-  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+  //check this first and not the fingertable, since all nodes includes also the FT-node
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) { 
     if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);

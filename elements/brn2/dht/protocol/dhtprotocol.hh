@@ -55,6 +55,7 @@ struct dht_packet_header {
 class DHTProtocol {
   public:
     static WritablePacket *new_dht_packet(uint8_t major_type, uint8_t minor_type, uint16_t payload_len);
+    static WritablePacket *new_dht_packet(uint8_t major_type, uint8_t minor_type, uint16_t payload_len, Packet *p_recycle);
     static struct dht_packet_header *get_header(Packet *p);
 
     static WritablePacket *push_brn_ether_header(WritablePacket *p, EtherAddress *src, EtherAddress *dst, uint8_t major_type);

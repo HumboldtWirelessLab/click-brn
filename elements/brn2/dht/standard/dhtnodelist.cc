@@ -43,6 +43,7 @@ DHTnodelist::DHTnodelist()
 DHTnodelist::~DHTnodelist()
 {
   _nodelist.clear();
+  _nodemap_ea.clear();
 }
 
 int DHTnodelist::add_dhtnode(DHTnode *_new_node)
@@ -55,6 +56,7 @@ int DHTnodelist::add_dhtnode(DHTnode *_new_node)
     if ( node != NULL ) erase_dhtnode(&(node->_ether_addr));
 
     _nodelist.push_back(_new_node);
+    _nodemap_ea.insert(_new_node->_ether_addr,_new_node);
   }
 
   return 0;
@@ -73,33 +75,6 @@ DHTnodelist::swap_dhtnode(DHTnode *_node, int i)
   return old;
 }
 
-DHTnode*
-DHTnodelist::get_dhtnode(DHTnode *_search_node)
-{
-  return get_dhtnode(&(_search_node->_ether_addr));
-}
-
-DHTnode*
-DHTnodelist::get_dhtnode(EtherAddress *_etheradd)
-{
-  int i;
-
-  for( i = 0; i < _nodelist.size(); i++)
-    if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 ) break;
-
-  if ( i < _nodelist.size() )
-    return _nodelist[i];
-
-  return NULL;
-}
-
-DHTnode*
-DHTnodelist::get_dhtnode(int i)
-{
-  if ( i < _nodelist.size() ) return _nodelist[i];
-  else return NULL;
-}
-
 int
 DHTnodelist::get_index_dhtnode(DHTnode *_search_node)
 {
@@ -112,18 +87,21 @@ DHTnodelist::get_index_dhtnode(DHTnode *_search_node)
 int
 DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 {
-  int i;
-  DHTnode *node;
+  DHTnode *node = _nodemap_ea.find(*_etheradd);
 
-  for( i = 0; i < _nodelist.size(); i++)
-    if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 )
-    {
-      node = _nodelist[i];
-      delete node;
+  if ( node ) {
+    _nodemap_ea.erase(*_etheradd);
 
-      _nodelist.erase(_nodelist.begin() + i);
-      break;
-    }
+    for( int i = 0; i < _nodelist.size(); i++)
+      if ( memcmp(_nodelist[i]->_ether_addr.data(), _etheradd->data(), 6) == 0 )
+      {
+        node = _nodelist[i];
+        delete node;
+
+        _nodelist.erase(_nodelist.begin() + i);
+        break;
+      }
+  }
 
   return 0;
 }
@@ -131,18 +109,16 @@ DHTnodelist::erase_dhtnode(EtherAddress *_etheradd)
 void
 DHTnodelist::remove_dhtnode(int i)
 {
-  if ( ( i < _nodelist.size() ) && ( i >= 0 ) ) _nodelist.erase(_nodelist.begin() + i);
+  if ( ( i < _nodelist.size() ) && ( i >= 0 ) ) {
+    _nodemap_ea.erase(_nodelist[i]->_ether_addr);
+    _nodelist.erase(_nodelist.begin() + i);
+  }
 }
 
 void
 DHTnodelist::remove_dhtnode(DHTnode *node)
 {
   remove_dhtnode(get_index_dhtnode(node));
-}
-
-int DHTnodelist::size()
-{
-  return _nodelist.size();
 }
 
 void DHTnodelist::sort()
@@ -163,6 +139,7 @@ void DHTnodelist::sort_age()
 void DHTnodelist::clear()
 {
   _nodelist.clear();
+  _nodemap_ea.clear();
 }
 
 void DHTnodelist::clear(int start_index, int end_index)
@@ -170,6 +147,7 @@ void DHTnodelist::clear(int start_index, int end_index)
   if ( end_index > _nodelist.size() ) end_index = _nodelist.size();
 
   for( int i = end_index - 1; i >= start_index; i--) {
+    _nodemap_ea.erase(_nodelist[i]->_ether_addr);
     _nodelist.erase(_nodelist.begin() + i);
   }
 }

@@ -3,6 +3,8 @@
 
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/hashmap.hh>
+#include <click/bighashmap.hh>
 #include <click/etheraddress.hh>
 #include "dhtnode.hh"
 
@@ -24,9 +26,9 @@ class DHTnodelist {
     int add_dhtnode(DHTnode *_new_node);
     DHTnode *swap_dhtnode(DHTnode *_node, int i);
 
-    DHTnode* get_dhtnode(DHTnode *_search_node);
-    DHTnode* get_dhtnode(EtherAddress *_etheradd);
-    DHTnode* get_dhtnode(int i);
+    inline DHTnode* get_dhtnode(DHTnode *_search_node)   { return _nodemap_ea.find(_search_node->_ether_addr); }
+    inline DHTnode* get_dhtnode(EtherAddress *_etheradd) { return _nodemap_ea.find(*_etheradd); }
+    inline DHTnode* get_dhtnode(int i) { if ( i < _nodelist.size() ) return _nodelist[i]; else return NULL; }
 
     int get_index_dhtnode(DHTnode *_search_node);
 
@@ -40,7 +42,7 @@ class DHTnodelist {
     DHTnodelist *get_dhtnodes_oldest_age(int number);
     DHTnodelist *get_dhtnodes_oldest_ping(int number);
 
-    int size();
+    inline int size() { return _nodelist.size(); }
     void sort();
     void sort_last_ping();
     void sort_age();
@@ -53,8 +55,7 @@ class DHTnodelist {
 
   private:
     Vector<DHTnode*> _nodelist;
-
-    //Hashmap<EtherAddress,DHTnode*) _node_ea_map;
+    HashMap<EtherAddress,DHTnode*> _nodemap_ea;
 
     //Hashmap<NodeID,DHTnode*) _node_id_map;
 };

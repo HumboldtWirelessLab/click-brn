@@ -27,66 +27,6 @@
 
 CLICK_DECLS
 
-bool
-FalconFunctions::is_equals(DHTnode *a, DHTnode *b)         //a = b ??
-{
-  return MD5::is_equals( a->_md5_digest, b->_md5_digest );
-}
-
-bool
-FalconFunctions::is_equals(DHTnode *a, md5_byte_t *md5d)  //a = b ??
-{
-  return MD5::is_equals( a->_md5_digest, md5d );
-}
-
-bool
-FalconFunctions::is_bigger(DHTnode *a, DHTnode *b)         //a > b ??
-{
-  return MD5::is_bigger( a->_md5_digest, b->_md5_digest );
-}
-
-bool
-FalconFunctions::is_bigger(DHTnode *a, md5_byte_t *md5d)  //a > b ??
-{
-  return MD5::is_bigger( a->_md5_digest, md5d );
-}
-
-bool
-FalconFunctions::is_bigger_or_equals(DHTnode *a, DHTnode *b)         //a >= b ??
-{
-  return MD5::is_bigger_or_equals( a->_md5_digest, b->_md5_digest );
-}
-
-bool
-FalconFunctions::is_bigger_or_equals(DHTnode *a, md5_byte_t *md5d)  //a >= b ??
-{
-  return MD5::is_bigger_or_equals( a->_md5_digest, md5d );
-}
-
-bool
-FalconFunctions::is_smaller(DHTnode *a, md5_byte_t *md5d)  //a < b ??
-{
-  return MD5::is_smaller( a->_md5_digest, md5d );
-}
-
-bool
-FalconFunctions::is_smaller(DHTnode *a, DHTnode *b )  //a < b ??
-{
-  return MD5::is_smaller( a->_md5_digest,  b->_md5_digest );
-}
-
-bool
-FalconFunctions::is_smaller_or_equals(DHTnode *a, DHTnode *b)         //a <= b ??
-{
-  return MD5::is_smaller_or_equals( a->_md5_digest, b->_md5_digest );
-}
-
-bool
-FalconFunctions::is_smaller_or_equals(DHTnode *a, md5_byte_t *md5d)  //a <= b ??
-{
-  return MD5::is_smaller_or_equals( a->_md5_digest, md5d );
-}
-
 /**
  * is md5 c between node a and b ??
  */

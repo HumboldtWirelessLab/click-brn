@@ -30,16 +30,22 @@ CLICK_DECLS
 
 class FalconFunctions {
   public:
-    static bool is_equals(DHTnode *a, DHTnode *b);
-    static bool is_equals(DHTnode *a, md5_byte_t *md5d);
-    static bool is_bigger(DHTnode *a, DHTnode *b);
-    static bool is_bigger(DHTnode *a, md5_byte_t *md5d);
-    static bool is_bigger_or_equals(DHTnode *a, DHTnode *b);
-    static bool is_bigger_or_equals(DHTnode *a, md5_byte_t *md5d);
-    static bool is_smaller(DHTnode *a, md5_byte_t *md5d);
-    static bool is_smaller(DHTnode *a, DHTnode *b );
-    static bool is_smaller_or_equals(DHTnode *a, DHTnode *b);
-    static bool is_smaller_or_equals(DHTnode *a, md5_byte_t *md5d);
+
+    static inline bool is_equals(DHTnode *a, DHTnode *b) { return MD5::is_equals( a->_md5_digest, b->_md5_digest ); } //a = b ??
+    static inline bool is_equals(DHTnode *a, md5_byte_t *md5d)  { return MD5::is_equals( a->_md5_digest, md5d ); }    //a = b ??
+    static inline bool is_bigger(DHTnode *a, DHTnode *b) { return MD5::is_bigger( a->_md5_digest, b->_md5_digest ); } //a > b ??
+    static inline bool is_bigger(DHTnode *a, md5_byte_t *md5d)  { return MD5::is_bigger( a->_md5_digest, md5d );}     //a > b ??
+    static inline bool is_bigger_or_equals(DHTnode *a, DHTnode *b)
+      { return MD5::is_bigger_or_equals( a->_md5_digest, b->_md5_digest );} //a >= b ??
+    //a >= b ??
+    static inline bool is_bigger_or_equals(DHTnode *a, md5_byte_t *md5d) { return MD5::is_bigger_or_equals( a->_md5_digest, md5d );}
+    static inline bool is_smaller(DHTnode *a, md5_byte_t *md5d) { return MD5::is_smaller( a->_md5_digest, md5d ); } //a < b ??
+    static inline bool is_smaller(DHTnode *a, DHTnode *b ) { return MD5::is_smaller( a->_md5_digest,  b->_md5_digest ); } //a < b ??
+    static inline bool is_smaller_or_equals(DHTnode *a, DHTnode *b)
+      { return MD5::is_smaller_or_equals( a->_md5_digest, b->_md5_digest ); } //a <= b ??
+
+    //a <= b ??
+    static inline bool is_smaller_or_equals(DHTnode *a, md5_byte_t *md5d) {return MD5::is_smaller_or_equals( a->_md5_digest, md5d); }
 
     static bool is_in_between(md5_byte_t *a, md5_byte_t *b, md5_byte_t *c);
     static bool is_in_between(DHTnode *a, DHTnode *b, DHTnode *c);

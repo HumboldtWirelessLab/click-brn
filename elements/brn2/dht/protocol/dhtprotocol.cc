@@ -46,6 +46,27 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   return(new_packet);	
 }
 
+WritablePacket *
+DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payload_len, Packet *p_recycle)
+{
+  WritablePacket *new_packet;
+
+  if ( ! p_recycle ) return new_dht_packet(major_type, minor_type, payload_len);
+
+  if ( p_recycle->length() < sizeof(struct dht_packet_header) + payload_len ) new_packet = p_recycle->put((sizeof(struct dht_packet_header) + payload_len) - p_recycle->length());
+  else new_packet = p_recycle->uniqueify();
+
+  struct dht_packet_header *dht_header = (struct dht_packet_header *)new_packet->data();
+
+  dht_header->major_type = major_type;
+  dht_header->minor_type = minor_type;
+  dht_header->payload_len = htons(payload_len);
+
+  memset(dht_header->src,0,6);
+
+  return(new_packet);
+}
+
 uint8_t
 DHTProtocol::get_routing(Packet *p)
 {
