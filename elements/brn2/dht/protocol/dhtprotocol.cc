@@ -34,7 +34,7 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   WritablePacket *new_packet = NULL;
   struct dht_packet_header *dht_header = NULL;
 
-  new_packet = WritablePacket::make( 192, NULL, sizeof(struct dht_packet_header) + payload_len, 32);  //TODO:check size of headroom (what is needed)
+  new_packet = WritablePacket::make( 256, NULL, sizeof(struct dht_packet_header) + payload_len, 32);  //TODO:check size of headroom (what is needed)
   dht_header = (struct dht_packet_header *)new_packet->data();
 
   dht_header->major_type = major_type;
