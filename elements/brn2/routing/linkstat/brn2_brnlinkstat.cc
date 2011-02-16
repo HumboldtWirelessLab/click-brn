@@ -629,6 +629,19 @@ BRN2LinkStat::simple_action(Packet *p)
 
 /* Returns some information about the nodes world model */
 String
+BRN2LinkStat::read_schema()
+{
+  Timestamp now = Timestamp::now();
+
+  StringAccum sa;
+
+  sa << "<schema />\n";
+
+  return sa.take_string();
+}
+
+/* Returns some information about the nodes world model */
+String
 BRN2LinkStat::read_bcast_stats()
 {
 
@@ -644,7 +657,6 @@ BRN2LinkStat::read_bcast_stats()
 
   StringAccum sa;
 
-  //sa << "<entries>\n";
   sa << "<entry from='" << *(_dev->getEtherAddress()) << "'";
   sa << " time='" << now.unparse() << "' seq='" << _seq << "' period='" << _period << "' tau='" << _tau << "' >\n";
 
@@ -681,12 +693,19 @@ BRN2LinkStat::read_bcast_stats()
 String 
 BRN2LinkStat::bad_nodes() {
 
+  Timestamp now = Timestamp::now();
   StringAccum sa;
+
+  sa << "<badnodes id='" << *(_dev->getEtherAddress()) << "'";
+  sa << " time='" << now.unparse() << "'>\n";
+
   for (BadTable::const_iterator i = _bad_table.begin(); i.live(); i++) {
     uint8_t version = i.value();
     EtherAddress dst = i.key();
-    sa << this << " eth " << dst.unparse().c_str() << " version " << (int) version << "\n";
+    sa << "<badnode id='" << dst.unparse().c_str() << "' version='" << (int) version << "' />\n";
   }
+
+  sa << "</badnodes>\n";
 
   return sa.take_string();
 }
@@ -763,25 +782,40 @@ enum {
   H_BAD_VERSION,
   H_TAU,
   H_PERIOD,
-  H_PROBES
+  H_PROBES,
+  H_SCHEMA
 };
 
 static String
 BRNLinkStat_read_param(Element *e, void *thunk)
 {
   BRN2LinkStat *td = (BRN2LinkStat *)e;
+  Timestamp now = Timestamp::now();
   switch ((uintptr_t) thunk) {
-    case H_BCAST_STATS: return td->read_bcast_stats();
-    case H_BAD_VERSION: return td->bad_nodes();
-    case H_TAU: return String(td->_tau) + "\n";
-    case H_PERIOD: return String(td->_period) + "\n";
-    case H_PROBES: {
+    case H_BCAST_STATS: return td->read_bcast_stats(); //xml
+    case H_BAD_VERSION: return td->bad_nodes(); //xml
+    case H_TAU: { //xml
+	StringAccum sa;
+	sa << "<tau value='" << String(td->_tau) << "' />\n";
+	return sa.take_string();
+    }
+    case H_PERIOD: { //xml
+	StringAccum sa;
+	sa << "<period value='" << String(td->_period) << "' />\n";
+	return sa.take_string();
+    }
+    case H_PROBES: { //xml
       StringAccum sa;
+      sa << "<probes id='" << *(td->_dev->getEtherAddress()) << "'";
+      sa << " time='" << now.unparse() << "'>\n";
+
       for(int x = 0; x < td->_ads_rs.size(); x++) {
-        sa << td->_ads_rs[x]._rate << " " << td->_ads_rs[x]._size << " ";
+        sa << "<probe rate='" << td->_ads_rs[x]._rate << "' size='" << td->_ads_rs[x]._size << "' />\n";
       }
+      sa << "</probes>\n";
       return sa.take_string() + "\n";
     }
+    case H_SCHEMA: return td->read_schema(); //xml schema
     default:
       return String() + "\n";
   }
@@ -859,6 +893,7 @@ BRN2LinkStat::add_handlers()
   add_read_handler("tau",    BRNLinkStat_read_param, (void *) H_TAU);
   add_read_handler("period", BRNLinkStat_read_param, (void *) H_PERIOD);
   add_read_handler("probes", BRNLinkStat_read_param, (void *) H_PROBES);
+  add_read_handler("schema", BRNLinkStat_read_param, (void *) H_SCHEMA);
 
   add_write_handler("reset",  BRNLinkStat_write_param, (void *) H_RESET);
   add_write_handler("tau",    BRNLinkStat_write_param, (void *) H_TAU);

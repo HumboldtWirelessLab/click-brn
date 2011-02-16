@@ -279,6 +279,7 @@ public:
 
   void add_handlers();
 
+  String read_schema();
   String read_bcast_stats();
   String bad_nodes();
   int update_probes(String probes, ErrorHandler *errh);
