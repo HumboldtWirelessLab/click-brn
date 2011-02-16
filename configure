@@ -1346,7 +1346,7 @@ Optional Features:
     --enable-user-multithread support userlevel multithreading (EXPERIMENTAL)
     --enable-select=[select|poll|kqueue] set select() mechanism
   --disable-linuxmodule   disable Linux kernel driver
-    --enable-fixincludes      automatically fix Linux includes
+    --disable-fixincludes     do not patch Linux kernel headers for C++
     --enable-multithread[=N]  support kernel multithreading, N threads max
     --enable-warp9            reduce PollDevice functionality for speed
     --enable-kassert          enable kernel assertions
@@ -5788,7 +5788,7 @@ fi
 if test "${enable_fixincludes+set}" = set; then
   enableval=$enable_fixincludes; :
 else
-  enable_fixincludes=no
+  enable_fixincludes=yes
 fi
 
 LINUXMODULE_FIXINCLUDES=
@@ -17566,8 +17566,8 @@ echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
 
     LINUX_FIXINCLUDES_PROGRAM=
     if test "$LINUXMODULE_FIXINCLUDES" = 1; then
-	{ echo "$as_me:$LINENO: creating C++-safe versions of Linux include files (may take a while)" >&5
-echo "$as_me: creating C++-safe versions of Linux include files (may take a while)" >&6;}
+	{ echo "$as_me:$LINENO: creating C++-safe versions of Linux kernel headers (may take a while)" >&5
+echo "$as_me: creating C++-safe versions of Linux kernel headers (may take a while)" >&6;}
 	$srcdir/linuxmodule/fixincludes.pl -o "`pwd`/include/click-linuxmodule" $LINUX_CFLAGS >conftest.dat
 	if test $? != 0; then
 	    { { echo "$as_me:$LINENO: error:
