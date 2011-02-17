@@ -63,12 +63,24 @@ SystemInfo::initialize(ErrorHandler */*errh*/)
   return 0;
 }
 
+/*************************************************************************/
+/************************ H A N D L E R **********************************/
+/*************************************************************************/
+
+enum {
+  H_SYSINFO,
+  H_SCHEMA
+};
+
 static String
-read_handler(Element *e, void *)
+read_handler(Element *e, void *thunk)
 {
   SystemInfo *si = (SystemInfo *)e;
 
   StringAccum sa;
+
+  switch ((uintptr_t) thunk) {
+     case H_SYSINFO: {
 
   sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'>\n";
 
@@ -143,6 +155,14 @@ read_handler(Element *e, void *)
   sa << "/>\n";
 
   sa << "</system>\n";
+  }
+  case H_SCHEMA: {
+	sa << "Tbd." << "\n";
+  }
+  default:
+      return String() + "\n";
+  }
+
 
   return sa.take_string();
 }
@@ -152,7 +172,8 @@ SystemInfo::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("systeminfo", read_handler, 0);
+  add_read_handler("systeminfo", read_handler, (void *) H_SYSINFO);
+  add_read_handler("schema", read_handler, (void *) H_SCHEMA);
 }
 
 CLICK_ENDDECLS
