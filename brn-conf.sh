@@ -100,6 +100,7 @@ for op in $@; do
 	    ;;
 	    *)
 	    echo "Unknown target: $op"
+	    exit 0
 	    ;;
     esac
 
