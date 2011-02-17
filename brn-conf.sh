@@ -43,18 +43,22 @@ CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host --enable-ialign"
   XCFLAGS="$XCFLAGS -static"
+  GCCPREFIX="mipsel-linux-"
 else
   if [ "x$TARGET" = "xarm" ]; then
     CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
     XCFLAGS="$XCFLAGS -static"
+    GCCPREFIX="arm-linux-uclibcgnueabi-"
   else
     if [ "x$TARGET" = "xi386" ]; then
       CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host --enable-ialign"
       XCFLAGS="$XCFLAGS -static"
+      GCCPREFIX="i386-linux-"
     else
       if [ "x$TARGET" = "xmips2" ];then
         CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
         XCFLAGS="$XCFLAGS -static"
+	GCCPREFIX="mips-linux-"
       else
         CONFOPTION="$CONFOPTION --enable-tools=host"
       fi
@@ -90,7 +94,10 @@ for op in $@; do
 	"sim_userlevel")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" -g\""
 	    ;;
-	    
+	"tools")
+	    ( cd elements/brn2/tools/tinyxml; CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make; make install )
+	    exit 0
+	    ;;
 	    *)
 	    echo "Unknown target: $op"
 	    ;;
