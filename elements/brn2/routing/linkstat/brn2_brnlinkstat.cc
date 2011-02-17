@@ -33,6 +33,8 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include <tinyxml/tinyxml.h>
+
 #include "brn2_brnlinkstat.hh"
 
 CLICK_DECLS
@@ -777,6 +779,10 @@ BRNLinkStat_read_param(Element *e, void *thunk)
     case H_PERIOD: return String(td->_period) + "\n";
     case H_PROBES: {
       StringAccum sa;
+      TiXmlDocument doc("demotest.xml");
+      TiXmlElement meeting1( "Meeting" );
+      meeting1.SetAttribute( "where", "School" );
+
       for(int x = 0; x < td->_ads_rs.size(); x++) {
         sa << td->_ads_rs[x]._rate << " " << td->_ads_rs[x]._size << " ";
       }
@@ -872,3 +878,4 @@ BRN2LinkStat::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2LinkStat)
+ELEMENT_LIBS(-L./ -ltinyxml)
