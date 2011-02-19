@@ -82,8 +82,9 @@ CXXFLAGS := ${CXXFLAGS} ${DEFS}
 #****************************************************************************
 
 OUTPUT := libtinyxml.a
+OUTPUT2 := libtinyxml.so
 
-all: ${OUTPUT}
+all: ${OUTPUT} ${OUTPUT2}
 
 
 #****************************************************************************
@@ -103,7 +104,9 @@ OBJS := $(addsuffix .o,$(basename ${SRCS}))
 
 ${OUTPUT}: ${OBJS}
 	$(AR) $@ $?
-#	${LD} -o $@ ${LDFLAGS} ${OBJS} ${LIBS} ${EXTRA_LIBS}
+
+${OUTPUT2}: ${OBJS}
+	$(CC) $(CFLAGS) -shared -o $@ -Wl,-soname,$@ $?
 
 #****************************************************************************
 # common rules
@@ -127,13 +130,17 @@ depend:
 
 install: uninstall
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../lib/libtinyxml.a
+	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../lib/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../userlevel/libtinyxml.a
+	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../userlevel/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../ns/libtinyxml.a
+	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../ns/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../jist/libtinyxml.a
+	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../jist/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml ../../../../include/tinyxml
 
 uninstall:
-	rm -f ../../../../lib/libtinyxml.a ../../../../userlevel/libtinyxml.a ../../../../ns/libtinyxml.a ../../../../jist/libtinyxml.a ../../../../include/tinyxml
+	rm -f ../../../../lib/libtinyxml.* ../../../../userlevel/libtinyxml.* ../../../../ns/libtinyxml.* ../../../../jist/libtinyxml.* ../../../../include/tinyxml
 
 tinyxml.o: tinyxml.h tinystr.h
 tinyxmlparser.o: tinyxml.h tinystr.h

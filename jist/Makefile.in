@@ -107,9 +107,9 @@ ifneq ($(MAKECMDGOALS),clean)
 endif
 
 libjistclick.so: Makefile $(LIBOBJS) $(OBJS)
-	$(CXX) -shared -o libjistclick.so $(LIBOBJS) $(OBJS) $(LDFLAGS) $(CXXFLAGS)
+	$(CXX) -shared -o libjistclick.so $(LIBOBJS) $(OBJS) $(LDFLAGS) $(CXXFLAGS) $(LIBS)
 libjistclick.a: Makefile $(LIBOBJS) $(OBJS)
-	$(AR_CREATE) libjistclick.a $(LIBOBJS) $(OBJS)
+	$(AR_CREATE) libjistclick.a $(LIBOBJS) $(OBJS) $(LIBS)
 	$(RANLIB) libjistclick.a
 
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
