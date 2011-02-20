@@ -28,3 +28,5 @@ jist/elements.cc
 jist/elements.conf
 jist/elements.mk
 local/*
+click_install/
+click_install/*
