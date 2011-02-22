@@ -104,7 +104,7 @@ DHTProtocol::get_payload(Packet *p)
     return NULL;
 }
 
-EtherAddress *
+/*EtherAddress *
 DHTProtocol::get_src(Packet *p)
 {
   struct dht_packet_header *dht_header = NULL;
@@ -117,7 +117,7 @@ DHTProtocol::get_src(Packet *p)
   else
     return NULL;
 }
-
+*/
 uint8_t *
 DHTProtocol::get_src_data(Packet *p)
 {
@@ -130,12 +130,9 @@ DHTProtocol::get_src_data(Packet *p)
 int
 DHTProtocol::set_src(Packet *p, uint8_t *ea)
 {
-  struct dht_packet_header *dht_header = NULL;
-
   if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
   {
-    dht_header = (struct dht_packet_header*)p->data();
-    memcpy(dht_header->src,ea,6);
+    memcpy(((struct dht_packet_header*)p->data())->src, ea, 6);
     return 0;
   }
   else
