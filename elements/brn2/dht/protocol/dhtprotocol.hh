@@ -67,7 +67,7 @@ class DHTProtocol {
     static uint16_t get_payload_len(Packet *p);
     static uint8_t *get_payload(Packet *p);
 
-    static EtherAddress *get_src(Packet *p);
+    //static EtherAddress *get_src(Packet *p); //TODO:remove this
     static uint8_t *get_src_data(Packet *p);
     static int set_src(Packet *p, uint8_t *ea);
 };

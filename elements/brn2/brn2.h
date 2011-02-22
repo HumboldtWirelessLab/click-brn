@@ -19,6 +19,8 @@ CLICK_DECLS
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 #endif
 
+#define BRN_VERSION "0.0.1"
+
 #define BRN2_LINKSTAT_MINOR_TYPE_BEACON       1
 #define BRN2_LINKSTAT_MINOR_TYPE_LPR          2
 #define BRN2_LINKSTAT_MINOR_TYPE_RXC          3

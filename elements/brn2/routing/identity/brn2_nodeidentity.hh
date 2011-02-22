@@ -84,11 +84,16 @@ class BRN2NodeIdentity : public BRNElement {
   //
   md5_byte_t _node_id[16];  //md5 sum of master addr (nodeid)
 
-  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set, then the first device is master
+  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set,
+                              //then the first device is master
   int _master_device_id;      //id of master device
 
   BRN2Device* _service_device;
   int _service_device_id;
+
+ public:
+  md5_byte_t _click_binary_id[16];  //md5 sum of click_binary
+  md5_byte_t _click_script_id[16];  //md5 sum of click_script
 
 };
 

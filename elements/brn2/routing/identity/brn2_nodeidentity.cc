@@ -5,6 +5,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include <elements/brn2/brn2.h>
 #include <elements/brn2/standard/brnaddressinfo.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -162,9 +163,42 @@ read_devinfo_param(Element *e, void *)
   return sa.take_string();
 }
 
+static String
+read_version_param(Element *e, void *)
+{
+  StringAccum sa;
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+
+  char click_binary_digest[16*2 + 1];
+  char click_script_digest[16*2 + 1];
+
+  MD5::printDigest(id->_click_binary_id, click_binary_digest);
+  MD5::printDigest(id->_click_script_id, click_script_digest);
+
+  sa << "<version name=\"" << id->_nodename << "\">\n";
+  sa << "\t<click_binary version=\"" << CLICK_VERSION << "\" brn_version=\"" << BRN_VERSION << "\"";
+#if CLICK_USERLEVEL == 1
+#if CLICK_NS == 1
+  sa << " mode=\"sim\"";
+#else
+  sa << " mode=\"userlevel\"";
+#endif
+#else
+#ifdef CLICK_LINUXMODULE
+  sa << " mode=\"kernel\"";
+#else
+  sa << " mode=\"unknown\"";
+#endif
+#endif
+  sa << " md5_id=\"" << click_binary_digest << "\" />\n";
+  sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
+  sa << "</version>";
+
+  return sa.take_string();
+}
+
 static int
-write_nodename_param(const String &in_s, Element *e, void *,
-                      ErrorHandler *errh)
+write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
   String s = cp_uncomment(in_s);
@@ -175,6 +209,23 @@ write_nodename_param(const String &in_s, Element *e, void *,
   return 0;
 }
 
+static int
+write_version_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+{
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  if ( args.size() == 2) {
+    MD5::digestFromString(id->_click_binary_id, args[0].c_str());
+    MD5::digestFromString(id->_click_script_id, args[1].c_str());
+  }
+
+  return 0;
+}
+
+
 void
 BRN2NodeIdentity::add_handlers()
 {
@@ -182,6 +233,9 @@ BRN2NodeIdentity::add_handlers()
 
   add_read_handler("devinfo", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
+
+  add_read_handler("version", read_version_param, 0);
+  add_write_handler("version", write_version_param, 0);
 }
 
 #include <click/vector.cc>

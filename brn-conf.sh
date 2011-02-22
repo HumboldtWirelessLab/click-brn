@@ -43,18 +43,22 @@ CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host --enable-ialign"
   XCFLAGS="$XCFLAGS -static"
+  GCCPREFIX="mipsel-linux-"
 else
   if [ "x$TARGET" = "xarm" ]; then
     CONFOPTION="$CONFOPTION --host=arm-linux-uclibcgnueabi --enable-tools=host"
     XCFLAGS="$XCFLAGS -static"
+    GCCPREFIX="arm-linux-uclibcgnueabi-"
   else
     if [ "x$TARGET" = "xi386" ]; then
       CONFOPTION="$CONFOPTION --host=i386-linux --enable-tools=host --enable-ialign"
       XCFLAGS="$XCFLAGS -static"
+      GCCPREFIX="i386-linux-"
     else
       if [ "x$TARGET" = "xmips2" ];then
         CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
         XCFLAGS="$XCFLAGS -static"
+	GCCPREFIX="mips-linux-"
       else
         CONFOPTION="$CONFOPTION --enable-tools=host"
       fi
@@ -76,23 +80,27 @@ for op in $@; do
 	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --disable-userlevel"
 	    ;;
 	"jist")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\"-g $CXXFLAGS\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\"-g $CXXFLAGS\""
 	    ;;
 	"ns2")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-userlevel --enable-nsclick --disable-threads --prefix=`pwd`/../../local CFLAGS=\"-g -O0\" CXXFLAGS=\"-g -O0\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-userlevel --enable-nsclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g -O0\" CXXFLAGS=\"-g -O0\""
 	    ;;
 	"userlevel")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-userlevel --disable-threads --prefix=`pwd`/../../local CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" -g $XCFLAGS\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-userlevel --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" -g $XCFLAGS\""
 	    ;;
 	"ns2_userlevel")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" -g\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g\""
 	    ;;
 	"sim_userlevel")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" -g\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g\""
 	    ;;
-	    
+	"tools")
+	    ( cd elements/brn2/tools/tinyxml; CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make; make install )
+	    exit 0
+	    ;;
 	    *)
 	    echo "Unknown target: $op"
+	    exit 0
 	    ;;
     esac
 

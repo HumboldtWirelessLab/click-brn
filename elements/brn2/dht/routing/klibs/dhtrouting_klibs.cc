@@ -219,44 +219,40 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
   DHTnode *me_from_list;
   uint8_t ptype;
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
-  EtherAddress *ea = DHTProtocol::get_src(p_in);
+  EtherAddress ea = EtherAddress(DHTProtocol::get_src_data(p_in));
   DHTnode *node;
   bool notify_storage = false;
 
-  if ( ea != NULL ) {
-    node = _foreign_dhtnodes.get_dhtnode(ea);
-    if ( node == NULL ) {
-      node = _own_dhtnodes.get_dhtnode(ea);
-    }
-    if ( node != NULL ) {
-      node->set_age_now();
-      node->_status = STATUS_OK;
-    } else {
-      node = new DHTnode(*ea);
-      node->_status = STATUS_OK;
-      node->_neighbor = false;
-      node->set_age_now();
+  node = _foreign_dhtnodes.get_dhtnode(&ea);
+  if ( node == NULL ) {
+    node = _own_dhtnodes.get_dhtnode(&ea);
+  }
+  if ( node != NULL ) {
+    node->set_age_now();
+    node->_status = STATUS_OK;
+  } else {
+    node = new DHTnode(ea);
+    node->_status = STATUS_OK;
+    node->_neighbor = false;
+    node->set_age_now();
 
-      if ( is_own(node) ) {
-        _own_dhtnodes.add_dhtnode(node);
-        _own_dhtnodes.sort();
-        notify_storage = true;
-      } else {
-        if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
-        _foreign_dhtnodes.add_dhtnode(node);
-        _foreign_dhtnodes.sort();
-        if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
-          DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
-          _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
-        }
+    if ( is_own(node) ) {
+      _own_dhtnodes.add_dhtnode(node);
+      _own_dhtnodes.sort();
+      notify_storage = true;
+    } else {
+      if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
+      _foreign_dhtnodes.add_dhtnode(node);
+      _foreign_dhtnodes.sort();
+      if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
+        DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
+        _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
       }
     }
+  }
 
-    if ( ( me_from_list = dhtlist.get_dhtnode(_me) ) != NULL ) {
-      node->set_last_ping_s(me_from_list->get_age_s());
-    }
-
-    delete ea;
+  if ( ( me_from_list = dhtlist.get_dhtnode(_me) ) != NULL ) {
+    node->set_last_ping_s(me_from_list->get_age_s());
   }
 
 //  click_chatter("Nodes: %d",count_nodes);
