@@ -155,9 +155,11 @@ read_handler(Element *e, void *thunk)
   sa << "/>\n";
 
   sa << "</system>\n";
+  break;
   }
   case H_SCHEMA: {
 	sa << "Tbd." << "\n";
+  break;
   }
   default:
       return String() + "\n";
