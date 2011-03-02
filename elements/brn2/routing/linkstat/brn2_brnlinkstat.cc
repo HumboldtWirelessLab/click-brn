@@ -679,7 +679,7 @@ sa << "<xs:element ref='link_info' maxOccurs='unbounded'/>";
 sa << "</xs:sequence>";
 sa << "<xs:attribute name='to' type='xs:string' use='required'/>";
 sa << "<xs:attribute name='tau' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='seq' type='xs:short' use='required'/>";
+sa << "<xs:attribute name='seq' type='xs:int' use='required'/>";
 sa << "<xs:attribute name='period' type='xs:short' use='required'/>";
 sa << "<xs:attribute name='last_rx' type='xs:decimal' use='required'/>";
 sa << "</xs:complexType>";
