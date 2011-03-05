@@ -35,11 +35,11 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-SetTXPowerRate::push( int port, Packet *p )
+SetTXPowerRate::push( int /*port*/, Packet */*p*/ )
 {
-  ChannelStats::PacketInfo *nodestat;
-  struct click_wifi *wh = (struct click_wifi *) p->data();
-  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+//  ChannelStats::PacketInfo *nodestat;
+//  struct click_wifi *wh = (struct click_wifi *) p->data();
+ // click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
 
  /* switch ( port) {

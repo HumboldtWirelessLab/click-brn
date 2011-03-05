@@ -39,24 +39,22 @@
 CLICK_DECLS
 
 ChannelStats::ChannelStats():
-    _save_duration(CS_DEFAULT_SAVE_DURATION),
-    _stats_duration(CS_DEFAULT_STATS_DURATION),
     _device(NULL),
-    hw_busy(0),
-    hw_rx(0),
-    hw_tx(0),
+    _stats_duration(CS_DEFAULT_STATS_DURATION),
+    _proc_file("none"),
+    _proc_read(false),
+    _stats_interval(CS_DEFAULT_STATS_DURATION),
     _rssi_per_neighbour(CS_DEFAULT_RSSI_PER_NEIGHBOUR),
-    _proc_file(),
-    _proc_read(CS_DEFAULT_PROCREAD),
+    _enable_full_stats(false),
+    _save_duration(CS_DEFAULT_SAVE_DURATION),
     _min_update_time(CS_DEFAULT_MIN_UPDATE_TIME),
-    _stats_timer_enable(CS_DEFAULT_STATS_TIMER),
-    _stats_timer(this),
     _stats_id(0),
     _channel(0),
-    _small_stats(false)
+    _current_small_stats(0),
+    _stats_timer(this)
 {
   BRNElement::init();
-  stats.last_update = _last_hw_stat_time = _last_packet_time = Timestamp::now();
+  _full_stats.last_update = Timestamp::now();
 }
 
 ChannelStats::~ChannelStats()
@@ -66,30 +64,19 @@ ChannelStats::~ChannelStats()
 int
 ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  int proc_interval = CS_DEFAULT_PROCINTERVAL;
-
   int ret = cp_va_kparse(conf, this, errh,
                      "DEVICE", cpkP, cpElement, &_device,
                      "STATS_DURATION", cpkP, cpInteger, &_stats_duration,  //default time, over which the stats are calculated
-                     "SAVE_DURATION", cpkP, cpInteger, &_save_duration,    //max time, which a packetinfo is stored
                      "PROCFILE", cpkP, cpString, &_proc_file,              //procfile you want to read from
-                     "PROCINTERVAL", cpkP, cpInteger, &proc_interval,      //procread interval (default == statsduration)
+                     "STATS_INTERVAL", cpkP, cpInteger, &_stats_interval,  //how often the proc file is read and small stats
                      "RSSI_PER_NEIGHBOUR", cpkP, cpBool, &_rssi_per_neighbour, //store/calc rssi per neighbour
-                     "STATS_TIMER", cpkP, cpBool, &_stats_timer_enable,
+                     "FULL_STATS", cpkP, cpBool, &_enable_full_stats,          //calculat full stats, store every thing for that
+                     "SAVE_DURATION", cpkP, cpInteger, &_save_duration, //max time, which a packetinfo is stored
                      "MIN_UPDATE_TIME", cpkP, cpInteger, &_min_update_time,
-                     "SMALL_STATS", cpkP, cpBool, &_small_stats,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
-  _proc_read = proc_interval != CS_DEFAULT_PROCINTERVAL;
-
-  if ( _stats_timer_enable && _proc_read )  /*we use stats timer for proc so if stats timer then proc time = stats_time*/
-    proc_interval = _stats_duration;
-
-  if ( _proc_read )
-    _stats_interval = proc_interval;
-  else if ( _stats_timer_enable ) _stats_interval = _stats_duration;
-
+  _proc_read = (_proc_file != "none");
   if ( _save_duration < _stats_duration ) _save_duration = _stats_duration;
 
   return ret;
@@ -104,17 +91,31 @@ ChannelStats::initialize(ErrorHandler *)
 
   if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
 
+  if ( ! _enable_full_stats ) memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+
   return 0;
 }
 
 void
 ChannelStats::run_timer(Timer *)
 {
-  if ( _proc_read ) readProcHandler();
-  if ( _stats_timer_enable ) {
-    _stats_id++;
-    if (_rssi_per_neighbour) calc_stats(&stats, &rssi_tab);
-    else                     calc_stats(&stats, NULL);
+  if ( _proc_read ) {
+    BRN_DEBUG("Read proc");
+    readProcHandler();
+  } else {
+    BRN_DEBUG("Don't read proc");
+  }
+
+  if ( ! _enable_full_stats ) {
+
+    calc_stats_final(&(_small_stats[_current_small_stats]), &(_small_stats_rssi_tab[_current_small_stats]), _stats_interval);
+
+    _small_stats[_current_small_stats].stats_id = _stats_id++;
+
+    _current_small_stats = (_current_small_stats + 1) % SMALL_STATS_SIZE;
+
+    memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+    _small_stats_rssi_tab[_current_small_stats].clear();
   }
 
   if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
@@ -127,12 +128,13 @@ void
 ChannelStats::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  struct airtime_stats *small_stats = &(_small_stats[_current_small_stats]);
 
   /* General stuff */
-  _last_packet_time = p->timestamp_anno();
   _channel = BRNPacketAnno::channel_anno(p);
   if ( _device != NULL ) _device->setChannel(_channel);
 
+  if ( !_enable_full_stats ) small_stats->last = p->timestamp_anno();
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
 
@@ -151,7 +153,7 @@ ChannelStats::push(int port, Packet *p)
 
       if (rate != 0) {
         uint32_t duration = calc_transmit_time(rate, p->length());
-        if (!_small_stats) { // default mode: save everything in vector
+        if (_enable_full_stats) { // default mode: save everything in vector
           PacketInfo *new_pi = new PacketInfo();
           new_pi->_rx_time = p->timestamp_anno();
           new_pi->_length = p->length();
@@ -163,18 +165,30 @@ ChannelStats::push(int port, Packet *p)
           _packet_list.push_back(new_pi);
         } else { // small: incremental update
           // update duration counter
-          _sw_sum_tx_duration += duration;
-          _sw_sum_tx_packets++;
+          small_stats->duration_tx += duration;
+          small_stats->txpackets++;
         }
       } else {
-        _zero_rate_error++;
+        if (_enable_full_stats) {
+          PacketInfo *new_pi = new PacketInfo();
+          new_pi->_rx_time = p->timestamp_anno();
+          new_pi->_length = p->length();
+          new_pi->_foreign = false;
+          new_pi->_channel = _channel;
+          new_pi->_rx = false;
+          new_pi->_rate = 0;
+          new_pi->_duration = 0;
+          _packet_list.push_back(new_pi);
+        } else {
+          small_stats->zero_rate_packets++;
+        }
       }
     }
   } else {
     /* Handle Rx Packets */
     if ( ceh->rate != 0 ) {
 
-      uint32_t duration = calc_transmit_time(ceh->rate, p->length() + 4);
+      uint32_t duration = calc_transmit_time(ceh->rate, p->length() + 4 /*crc*/);
       uint8_t state = STATE_UNKNOWN;
 
       struct click_wifi *w = (struct click_wifi *) p->data();
@@ -191,7 +205,7 @@ ChannelStats::push(int port, Packet *p)
         }
       }
 
-      if (!_small_stats) {
+      if (_enable_full_stats) {
         PacketInfo *new_pi = new PacketInfo();
 
         new_pi->_rx_time = p->timestamp_anno();
@@ -215,41 +229,66 @@ ChannelStats::push(int port, Packet *p)
         _packet_list.push_back(new_pi);
       } else { // fast mode
         // update duration counter
-        _sw_sum_rx_packets++;
-        _sw_sum_rx_duration += duration;
+        small_stats->duration_rx += duration;
+        small_stats->rxpackets++;
 
         int silence = (signed char)ceh->silence;
-        _sw_sum_rx_noise += silence;
-        _sw_sum_rx_rssi += (signed char)ceh->rssi;
+        small_stats->avg_noise += silence;
+        small_stats->std_noise += (silence * silence);
+        int rssi = (signed char)ceh->rssi;
+        if ( rssi > 60 ) rssi = 0;                        //TODO: MADWIFI hack. move to madwifi decap
+        small_stats->avg_rssi += rssi;
+        small_stats->std_rssi += (rssi * rssi);
 
         switch (state) {
           case STATE_OK:
-                _sw_sum_rx_noerr_duration += duration;
-                _sw_sum_rx_noerr_packets++;
+                small_stats->duration_noerr_rx += duration;
+                small_stats->noerr_packets++;
                 break;
           case STATE_CRC:
-                _sw_sum_rx_crc_duration += duration;
-                _sw_sum_rx_crc_packets++;
+                small_stats->duration_crc_rx += duration;
+                small_stats->crc_packets++;
                 break;
           case STATE_PHY:
-                _sw_sum_rx_phy_duration += duration;
-                _sw_sum_rx_phy_packets++;
+                small_stats->duration_phy_rx += duration;
+                small_stats->phy_packets++;
                 break;
         }
 
-        if (src.is_broadcast()) _sw_sum_rx_bcast_packets++;
+        if (src.is_broadcast()) small_stats->bcast_packets++;
         else {
-          _sw_sum_rx_ucast_packets++;
-          if (retry) _sw_sum_rx_retry_packets++;
-          if ( _sw_sources.findp(src) == NULL ) _sw_sources.insert(src,src);
+          small_stats->ucast_packets++;
+          if (retry) small_stats->retry_packets++;
+
+          /*RSSI Stuff*/
+        }
+
+        if ( _rssi_per_neighbour ) {
+          SrcInfo *src_info;
+          if ( (src_info = _small_stats_rssi_tab[_current_small_stats].findp(src)) == NULL )
+            _small_stats_rssi_tab[_current_small_stats].insert(src, SrcInfo(rssi));
+          else
+            src_info->add_rssi(rssi);
         }
       }
-    } else {
-      _zero_rate_error++;
+    } else { //RX with rate = 0
+      if (_enable_full_stats) {
+        PacketInfo *new_pi = new PacketInfo();
+        new_pi->_rx_time = p->timestamp_anno();
+        new_pi->_length = p->length();
+        new_pi->_foreign = false;
+        new_pi->_channel = _channel;
+        new_pi->_rx = false;
+        new_pi->_rate = 0;
+        new_pi->_duration = 0;
+        _packet_list.push_back(new_pi);
+      } else {
+        small_stats->zero_rate_packets++;
+      }
     }
   }
 
-  if (!_small_stats) clear_old();
+  if (_enable_full_stats) clear_old();
 
   output(port).push(p);
 }
@@ -281,11 +320,6 @@ void
 ChannelStats::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
   PacketInfoHW *new_pi = new PacketInfoHW();
   new_pi->_time = *time;
-
-  hw_busy = busy;
-  hw_rx = rx;
-  hw_tx = tx;
-  _last_hw_stat_time = *time;
 
   if ( _packet_list_hw.size() == 0 ) {
     new_pi->_busy = 1;
@@ -328,18 +362,24 @@ ChannelStats::readProcHandler()
 {
   String raw_info = file_string(_proc_file);
   Vector<String> args;
-  Timestamp now = Timestamp::now();
-
-  int busy, rx, tx;
 
   cp_spacevec(raw_info, args);
 
   if ( args.size() > 6 ) {
-    cp_integer(args[1],&busy);
-    cp_integer(args[3],&rx);
-    cp_integer(args[5],&tx);
+    Timestamp now = Timestamp::now();
 
-    addHWStat(&now, busy, rx, tx);
+    if ( _enable_full_stats ) {
+      int busy, rx, tx;
+      cp_integer(args[1],&busy);
+      cp_integer(args[3],&rx);
+      cp_integer(args[5],&tx);
+      addHWStat(&now, busy, rx, tx);
+    } else {
+      _small_stats[_current_small_stats].last_hw = now;
+      cp_integer(args[1],&(_small_stats[_current_small_stats].hw_busy));
+      cp_integer(args[3],&(_small_stats[_current_small_stats].hw_rx));
+      cp_integer(args[5],&(_small_stats[_current_small_stats].hw_tx));
+    }
   }
 }
 
@@ -369,124 +409,81 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 
   memset(cstats, 0, sizeof(struct airtime_stats));
 
+  cstats->stats_id = _stats_id++;
+  cstats->duration = _stats_duration;
   cstats->last_update = now;
+
   int diff_time = 10 * _stats_duration;
 
-  /******** SW ***********/
-  if (!_small_stats) {
-    if ( _packet_list.size() == 0 ) return;
+  if ( _packet_list.size() == 0 ) return;
 
-    PacketInfo *pi = _packet_list[0];
+  PacketInfo *pi = _packet_list[0];
+  diff = now - pi->_rx_time;
+
+  for ( i = 0; i < _packet_list.size(); i++) {
+    pi = _packet_list[i];
     diff = now - pi->_rx_time;
+    if ( diff.msecval() <= _stats_duration )  break; //TODO: exact calc
+  }
 
-    for ( i = 0; i < _packet_list.size(); i++) {
-      pi = _packet_list[i];
-      diff = now - pi->_rx_time;
-      if ( diff.msecval() <= _stats_duration )  break; //TODO: exact calc
-    }
+  for (; i < _packet_list.size(); i++) {
+    pi = _packet_list[i];
 
-    for (; i < _packet_list.size(); i++) {
-      pi = _packet_list[i];
-
-      if ( pi->_rx) {
-        cstats->rx += pi->_duration;
+    if ( pi->_rx) {
+      if ( pi->_rate > 0 ) {
+        cstats->duration_rx += pi->_duration;
         cstats->avg_noise += pi->_noise;
+        cstats->std_noise += (pi->_noise*pi->_noise);
         cstats->avg_rssi += pi->_rssi;
+        cstats->std_rssi += (pi->_rssi*pi->_rssi);
         cstats->rxpackets++;
+
+        switch (pi->_state) {
+          case STATE_OK:
+            cstats->duration_noerr_rx += pi->_duration;
+            cstats->noerr_packets++;
+            break;
+          case STATE_CRC:
+            cstats->duration_crc_rx += pi->_duration;
+            cstats->crc_packets++;
+            break;
+          case STATE_PHY:
+            cstats->duration_phy_rx += pi->_duration;
+            cstats->phy_packets++;
+            break;
+        }
+
+        if (! pi->_unicast) cstats->bcast_packets++;
+        else {
+          cstats->ucast_packets++;
+          if (pi->_retry) cstats->retry_packets++;
+        }
 
         if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
         if ( rssi_tab != NULL ) {
           SrcInfo *src_i;
           if ( (src_i = rssi_tab->findp(pi->_src)) == NULL ) {
-            rssi_tab->insert(pi->_src, SrcInfo(pi->_rssi,1));
+            rssi_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
           } else {
-            src_i->add_rssi(pi->_rssi);
+            src_i->add_rssi((uint32_t)pi->_rssi);
           }
         }
-
       } else {
-        cstats->tx += pi->_duration;
-        cstats->txpackets++;
+        cstats->zero_rate_packets++;
       }
-    }
-
-    cstats->busy = cstats->rx + cstats->tx;
-    cstats->busy /= diff_time;
-    cstats->rx /= diff_time;
-    cstats->tx /= diff_time;
-
-    if ( cstats->busy > 100 ) cstats->busy = 100;
-    if ( cstats->rx > 100 ) cstats->rx = 100;
-    if ( cstats->tx > 100 ) cstats->tx = 100;
-
-    if ( cstats->rxpackets > 0 ) {
-      cstats->avg_noise /= cstats->rxpackets;
-      if ( cstats->avg_noise > 120 ) cstats->avg_noise = 100;
-      else if ( cstats->avg_noise < -120 ) cstats->avg_noise = -120;
-
-      cstats->avg_rssi /= cstats->rxpackets;
-      if ( cstats->avg_rssi > 120 ) cstats->avg_rssi = 100;
-      else if ( cstats->avg_rssi < -120 ) cstats->avg_rssi = -120;
-
     } else {
-      cstats->avg_noise = -100; // default value
-      cstats->avg_rssi = 0;
+      cstats->duration_tx += pi->_duration;
+      cstats->txpackets++;
     }
-
-    cstats->last = _packet_list[_packet_list.size()-1]->_rx_time;
-
-    cstats->no_sources = sources.size();
-  } else { // fast mode
-
-    cstats->rxpackets = _sw_sum_rx_packets;
-    cstats->noerr_packets = _sw_sum_rx_noerr_packets;
-    cstats->crc_packets = _sw_sum_rx_crc_packets;
-    cstats->phy_packets = _sw_sum_rx_phy_packets;
-    cstats->txpackets = _sw_sum_tx_packets;
-    cstats->zero_rate_packets = _zero_rate_error;
-
-    cstats->duration_busy = cstats->busy = _sw_sum_rx_duration + _sw_sum_tx_duration;
-    cstats->busy /= diff_time;
-    cstats->duration_rx = cstats->rx = _sw_sum_rx_duration;
-    cstats->rx /= diff_time;
-    cstats->duration_tx = cstats->tx = _sw_sum_tx_duration;
-    cstats->tx /= diff_time;
-
-    cstats->duration_noerr_rx = cstats->noerr_rx = _sw_sum_rx_noerr_duration;
-    cstats->noerr_rx /= diff_time;
-    cstats->duration_crc_rx = cstats->crc_rx = _sw_sum_rx_crc_duration;
-    cstats->crc_rx /= diff_time;
-    cstats->duration_phy_rx = cstats->phy_rx = _sw_sum_rx_phy_duration;
-    cstats->phy_rx /= diff_time;
-
-    cstats->duration = _stats_duration;
-
-    if ( cstats->busy > 100 ) cstats->busy = 100;
-    if ( cstats->rx > 100 ) cstats->rx = 100;
-    if ( cstats->tx > 100 ) cstats->tx = 100;
-
-    if ( _sw_sum_rx_packets > 0 ) {
-      cstats->avg_noise = _sw_sum_rx_noise;
-      cstats->avg_noise /= _sw_sum_rx_packets;
-      if ( cstats->avg_noise > 120 ) cstats->avg_noise = 120;
-      else if ( cstats->avg_noise < -120 ) cstats->avg_noise = -120;
-
-      cstats->avg_rssi = _sw_sum_rx_rssi;
-      cstats->avg_rssi /= _sw_sum_rx_packets;
-      if ( cstats->avg_rssi > 120 ) cstats->avg_rssi = 120;
-      else if ( cstats->avg_rssi < -120 ) cstats->avg_rssi = -120;
-
-    } else {
-      cstats->avg_noise = -100; // default value
-      cstats->avg_rssi = 0;
-    }
-
-    cstats->last = _last_packet_time;
-    cstats->no_sources = _sw_sources.size();
-
-    reset_small_stats();
   }
+
+  calc_stats_final(cstats, rssi_tab, _stats_duration);
+
+  cstats->last = _packet_list[_packet_list.size()-1]->_rx_time;
+
+  cstats->no_sources = sources.size();
+
   /******** HW ***********/
 
   cstats->hw_available = (_packet_list_hw.size() != 0);
@@ -526,114 +523,115 @@ void
 ChannelStats::reset()
 {
   _packet_list.clear();
+  _packet_list_hw.clear();
+}
 
-  reset_small_stats();
+/**************************************************************************************************************/
+/****************************** CALC STATS FINAL (use for small and full stats) *******************************/
+/**************************************************************************************************************/
+
+int32_t isqrt32(int32_t n) {
+  int32_t x,x1;
+
+  if ( n == 0 ) return 0;
+
+  x1 = n;
+  do {
+    x = x1;
+    x1 = (x + n/x) >> 1;
+  } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
+
+  return x1;
 }
 
 void
-ChannelStats::reset_small_stats()
+ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rssi_tab, int duration)
 {
-  _sw_sources.clear();
+  int diff_time = duration * 10;
 
-  // init small stats
-  _sw_sum_rx_duration = 0;
-  _sw_sum_tx_duration = 0;
+  small_stats->duration_busy = small_stats->frac_mac_busy = small_stats->duration_rx + small_stats->duration_tx;
+  small_stats->frac_mac_busy /= diff_time;
+  small_stats->frac_mac_rx = small_stats->duration_rx / diff_time;
+  small_stats->frac_mac_tx = small_stats->duration_tx / diff_time;
+  small_stats->frac_mac_noerr_rx = small_stats->duration_noerr_rx / diff_time;
+  small_stats->frac_mac_crc_rx = small_stats->duration_crc_rx / diff_time;
+  small_stats->frac_mac_phy_rx = small_stats->duration_phy_rx / diff_time;
 
-  _sw_sum_rx_noerr_duration = 0;
-  _sw_sum_rx_crc_duration = 0;
-  _sw_sum_rx_phy_duration = 0;
+  small_stats->duration = duration;
 
-  _sw_sum_rx_packets = 0;
-  _sw_sum_tx_packets = 0;
+  if ( small_stats->frac_mac_busy > 100 ) {
+    BRN_ERROR("Overflow");
+    small_stats->frac_mac_busy = 100;
 
-  _sw_sum_rx_ucast_packets = 0;
-  _sw_sum_rx_bcast_packets = 0;
-  _sw_sum_rx_retry_packets = 0;
+    if ( small_stats->frac_mac_rx > 100 ) {
+      small_stats->frac_mac_rx = 100;
+      if ( small_stats->frac_mac_noerr_rx > 100 ) small_stats->frac_mac_noerr_rx = 100;
+      if ( small_stats->frac_mac_crc_rx > 100 ) small_stats->frac_mac_crc_rx = 100;
+      if ( small_stats->frac_mac_phy_rx > 100 ) small_stats->frac_mac_phy_rx = 100;
+    }
+    if ( small_stats->frac_mac_tx > 100 ) small_stats->frac_mac_tx = 100;
+  }
 
-  _sw_sum_rx_noerr_packets = 0;
-  _sw_sum_rx_crc_packets = 0;
-  _sw_sum_rx_phy_packets = 0;
+  if ( small_stats->rxpackets > 0 ) {
+    small_stats->avg_noise /= (int32_t)small_stats->rxpackets;
+    if ( small_stats->avg_noise > 120 ) small_stats->avg_noise = 120;
+    else if ( small_stats->avg_noise < -120 ) small_stats->avg_noise = -120;
 
-  _sw_sum_rx_noise = 0;
-  _sw_sum_rx_rssi = 0;
+    small_stats->std_noise = isqrt32((small_stats->std_noise/(int32_t)small_stats->rxpackets) - (small_stats->avg_noise*small_stats->avg_noise));
 
-  _zero_rate_error = 0;
+    small_stats->avg_rssi /= (int32_t)small_stats->rxpackets;
+    if ( small_stats->avg_rssi > 120 ) small_stats->avg_rssi = 120;
+    else if ( small_stats->avg_rssi < -120 ) small_stats->avg_rssi = -120;
+
+    small_stats->std_rssi = isqrt32((small_stats->std_rssi/(int32_t)small_stats->rxpackets) - (small_stats->avg_rssi*small_stats->avg_rssi));
+
+  } else {
+    small_stats->avg_noise = -100; // default value
+    small_stats->std_noise = 0;
+    small_stats->avg_rssi = 0;
+    small_stats->std_rssi = 0;
+  }
+
+  if ( rssi_tab ) {
+    small_stats->no_sources = rssi_tab->size();
+
+    for (RSSITableIter iter = rssi_tab->begin(); iter.live(); iter++) {
+      EtherAddress ea = iter.key();
+      SrcInfo *src = rssi_tab->findp(ea);
+      src->calc_values();
+    }
+  }
 }
 
 /**************************************************************************************************************/
 /********************************************** H A N D L E R *************************************************/
 /**************************************************************************************************************/
 
-enum {H_RESET, H_MAX_TIME, H_STATS, H_STATS_BUSY, H_STATS_RX, H_STATS_TX, H_STATS_HW_BUSY, H_STATS_HW_RX, H_STATS_HW_TX, H_STATS_AVG_NOISE, H_STATS_AVG_RSSI, H_STATS_XML, H_STATS_NO_SOURCES, H_STATS_NODES_RSSI, H_CHANNEL};
+enum {H_RESET, H_MAX_TIME, H_STATS, H_STATS_XML };
 
 String
 ChannelStats::stats_handler(int mode)
 {
   StringAccum sa;
 
-  if ( ! _stats_timer_enable ) {
+  struct airtime_stats *stats;
+  RSSITable            *rssi_tab;
+
+  if ( _enable_full_stats ) {
     if (_rssi_per_neighbour)
-      calc_stats(&stats, &rssi_tab);
+      calc_stats(&_full_stats, &_full_stats_rssi_tab);
     else
-      calc_stats(&stats, NULL);
+      calc_stats(&_full_stats, NULL);
+
+    stats = &_full_stats;
+    rssi_tab = &_full_stats_rssi_tab;
+  } else {
+    stats = &(_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
+    rssi_tab = &(_small_stats_rssi_tab[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
   }
 
   switch (mode) {
     case H_STATS:
-     if ( _stats_timer_enable ) sa << "ID: " << _stats_id << "\n";
-      sa << "Time: " << _stats_duration << "\n";
-      sa << "All packets: " << _packet_list.size() << "\n";
-      sa << "RXPackets: " << stats.rxpackets << "\n";
-      sa << "Busy: " << stats.busy << "\n";
-      sa << "RX: " << stats.rx << "\n";
-      sa << "TX: " << stats.tx << "\n";
-      sa << "HW available: " << stats.hw_available << "\n";
-      sa << "HW Busy: " << stats.hw_busy << "\n";
-      sa << "HW RX: " << stats.hw_rx << "\n";
-      sa << "HW TX: " << stats.hw_tx << "\n";
-      sa << "Last HW Busy: " << hw_busy << "\n";
-      sa << "Last HW RX: " << hw_rx << "\n";
-      sa << "Last HW TX: " << hw_tx << "\n";
-      sa << "Avg. Noise: " << stats.avg_noise << "\n";
-      sa << "Avg. Rssi: " << stats.avg_rssi << "\n";
-      sa << "No. Src: " << stats.no_sources << "\n";
-      break;
-    case H_STATS_BUSY:
-      sa << stats.busy;
-      break;
-    case H_STATS_RX:
-      sa << stats.rx;
-      break;
-    case H_STATS_TX:
-      sa << stats.tx;
-      break;
-    case H_STATS_HW_BUSY:
-      sa << stats.hw_busy;
-      break;
-    case H_STATS_HW_RX:
-      sa << stats.hw_rx;
-      break;
-    case H_STATS_HW_TX:
-      sa << stats.hw_tx;
-      break;
-    case H_STATS_AVG_NOISE:
-      sa << stats.avg_noise;
-      break;
-    case H_STATS_AVG_RSSI:
-      sa << stats.avg_rssi;
-      break;
-    case H_STATS_NO_SOURCES:
-      sa << stats.no_sources;
-      break;
-    case H_STATS_NODES_RSSI:
-       sa << "etheraddress\tavg_rssi\tsum_rssi\tpkt_count\n";
-      for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
-        SrcInfo src = iter.value();
-        EtherAddress ea = iter.key();
-
-        sa << ea.unparse() << "\t" << src.avg_rssi() << "\t" << src._rssi << "\t" << src._pkt_count << "\n";
-      }
-      break;
     case H_STATS_XML:
 
       sa << "<channelstats";
@@ -643,34 +641,39 @@ ChannelStats::stats_handler(int mode)
       else
         sa << " node=\"" << BRN_NODE_NAME << "\"";
 
-      sa <<" id=\"" << _stats_id << "\" length=\"" << _stats_interval << "\" unit=\"ms\" >\n";
+      sa <<" id=\"" << stats->stats_id << "\" length=\"" << stats->duration << "\" unit=\"ms\" >\n";
 
-      sa << "\t<mac packets=\"" << (stats.rxpackets+stats.txpackets) << "\" rx_pkt=\"" << stats.rxpackets << "\" ";
-      sa << "no_err_pkt=\"" << stats.noerr_packets << "\" crc_err_pkt=\"" << stats.crc_packets << "\" ";
-      sa << "phy_err_pkt=\"" << stats.phy_packets << "\" tx_pkt=\"" << stats.txpackets << "\" ";
-      sa << "zero_err_pkt=\"" << stats.zero_rate_packets << "\" ";
-      sa << "busy=\"" << stats.busy << "\" rx=\"" << stats.rx << "\" tx=\"" << stats.tx << "\" ";
-      sa << "noerr_rx=\"" << stats.noerr_rx << "\" crc_rx=\"" << stats.crc_rx << "\" phy_rx=\"" << stats.phy_rx << "\" ";
-      sa << "last_packet_time=\"" << _last_packet_time.unparse() << "\" ";
-      sa << "no_src=\"" << stats.no_sources << "\" />\n";
+      sa << "\t<mac packets=\"" << (stats->rxpackets+stats->txpackets) << "\" rx_pkt=\"" << stats->rxpackets << "\" ";
+      sa << "no_err_pkt=\"" << stats->noerr_packets << "\" crc_err_pkt=\"" << stats->crc_packets << "\" ";
+      sa << "phy_err_pkt=\"" << stats->phy_packets << "\" tx_pkt=\"" << stats->txpackets << "\" ";
+      sa << "rx_pkt_unicast=\"" << stats->ucast_packets << "\" rx_pkt_bcast=\"" << stats->bcast_packets << "\" ";
+      sa << "rx_pkt_retry=\"" << stats->retry_packets << "\" ";
+      sa << "zero_err_pkt=\"" << stats->zero_rate_packets << "\" ";
+      sa << "busy=\"" << stats->frac_mac_busy << "\" rx=\"" << stats->frac_mac_rx << "\" tx=\"" << stats->frac_mac_tx << "\" ";
+      sa << "noerr_rx=\"" << stats->frac_mac_noerr_rx << "\" crc_rx=\"" << stats->frac_mac_crc_rx << "\" phy_rx=\"" << stats->frac_mac_phy_rx << "\" ";
+      sa << "last_packet_time=\"" << stats->last.unparse() << "\" ";
+      sa << "no_src=\"" << stats->no_sources << "\" />\n";
 
-      sa << "\t<mac_duration busy=\"" << stats.duration_busy << "\" rx=\"" << stats.duration_rx << "\" ";
-      sa << "tx=\"" << stats.duration_tx << "\" noerr_rx=\"" << stats.duration_noerr_rx << "\" ";
-      sa << "crc_rx=\"" << stats.duration_crc_rx << "\" phy_rx=\"" << stats.duration_phy_rx << "\" unit=\"us\" />\n";
+      sa << "\t<mac_duration busy=\"" << stats->duration_busy << "\" rx=\"" << stats->duration_rx << "\" ";
+      sa << "tx=\"" << stats->duration_tx << "\" noerr_rx=\"" << stats->duration_noerr_rx << "\" ";
+      sa << "crc_rx=\"" << stats->duration_crc_rx << "\" phy_rx=\"" << stats->duration_phy_rx << "\" unit=\"us\" />\n";
 
-      sa << "\t<phy hwbusy=\"" << stats.hw_busy << "\" hwrx=\"" << stats.hw_rx << "\" hwtx=\"" << stats.hw_tx << "\" ";
-      sa << "last_hw_stat_time=\"" << _last_hw_stat_time.unparse() << "\" ";
-      sa << "avg_noise=\"" << stats.avg_noise << "\" avg_rssi=\"" << stats.avg_rssi << "\" ";
-      sa << "channel=\"";
+      sa << "\t<phy hwbusy=\"" << stats->hw_busy << "\" hwrx=\"" << stats->hw_rx << "\" hwtx=\"" << stats->hw_tx << "\" ";
+      sa << "last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" ";
+      sa << "avg_noise=\"" << stats->avg_noise << "\" std_noise=\"" << stats->std_noise;
+      sa << "\" avg_rssi=\"" << stats->avg_rssi << "\" std_rssi=\"" << stats->std_rssi;
+      sa << "\" channel=\"";
       if ( _device ) sa << (int)(_device->getChannel());
       else           sa << _channel;
       sa << "\" />";
 
       sa << "\n\t<rssi>\n";
-      for (RSSITableIter iter = rssi_tab.begin(); iter.live(); iter++) {
+      for (RSSITableIter iter = rssi_tab->begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
         EtherAddress ea = iter.key();
-        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src.avg_rssi() << "\" sum_rssi=\"" << src._rssi << "\" pkt_cnt=\"" << src._pkt_count << "\" />\n";
+        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"" << src._std_rssi;
+        sa << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
+        sa << "\" pkt_cnt=\"" << src._pkt_count << "\" />\n";
       }
       sa << "\t</rssi>\n</channelstats>\n";
 
@@ -686,19 +689,7 @@ ChannelStats_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_STATS:
     case H_STATS_XML:
-    case H_STATS_BUSY:
-    case H_STATS_RX:
-    case H_STATS_TX:
-    case H_STATS_HW_BUSY:
-    case H_STATS_HW_RX:
-    case H_STATS_HW_TX:
-    case H_STATS_AVG_NOISE:
-    case H_STATS_AVG_RSSI:
-    case H_STATS_NO_SOURCES:
-    case H_STATS_NODES_RSSI:
       return td->stats_handler((uintptr_t) thunk);
-    case H_CHANNEL:
-      return String( td->get_channel());
       break;
     case H_MAX_TIME:
       return String(td->_stats_duration) + "\n";
@@ -708,8 +699,7 @@ ChannelStats_read_param(Element *e, void *thunk)
 }
 
 static int 
-ChannelStats_write_param(const String &in_s, Element *e, void *vparam,
-                                  ErrorHandler *errh)
+ChannelStats_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   ChannelStats *f = (ChannelStats *)e;
   String s = cp_uncomment(in_s);
@@ -736,17 +726,6 @@ ChannelStats::add_handlers()
   add_read_handler("max_time", ChannelStats_read_param, (void *) H_MAX_TIME);
   add_read_handler("stats", ChannelStats_read_param, (void *) H_STATS);
   add_read_handler("stats_xml", ChannelStats_read_param, (void *) H_STATS_XML);
-  add_read_handler("busy", ChannelStats_read_param, (void *) H_STATS_BUSY);
-  add_read_handler("rx", ChannelStats_read_param, (void *) H_STATS_RX);
-  add_read_handler("tx", ChannelStats_read_param, (void *) H_STATS_TX);
-  add_read_handler("hw_busy", ChannelStats_read_param, (void *) H_STATS_HW_BUSY);
-  add_read_handler("hw_rx", ChannelStats_read_param, (void *) H_STATS_HW_RX);
-  add_read_handler("hw_tx", ChannelStats_read_param, (void *) H_STATS_HW_TX);
-  add_read_handler("avg_noise", ChannelStats_read_param, (void *) H_STATS_AVG_NOISE);
-  add_read_handler("avg_rssi", ChannelStats_read_param, (void *) H_STATS_AVG_RSSI);
-  add_read_handler("no_src", ChannelStats_read_param, (void *) H_STATS_NO_SOURCES);
-  add_read_handler("src_rssi", ChannelStats_read_param, (void *) H_STATS_NODES_RSSI);
-  add_read_handler("channel", ChannelStats_read_param, (void *) H_CHANNEL);
 
   add_write_handler("reset", ChannelStats_write_param, (void *) H_RESET, Handler::BUTTON);
   add_write_handler("max_time", ChannelStats_write_param, (void *) H_MAX_TIME);

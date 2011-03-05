@@ -100,7 +100,7 @@ QueueMapper::simple_action(Packet *p)
   struct airtime_stats as;
   _cst->get_stats(&as,0);
 
-  int opt_cwmin = get_cwmin(as.busy, as.no_sources);
+  int opt_cwmin = get_cwmin(as.frac_mac_busy, as.no_sources);
   int opt_queue = find_queue(opt_cwmin);
 
   int diff_q = (no_queues / 2) - tos - 1;
