@@ -57,6 +57,7 @@ CLICK_DECLS
 
 ToDevice::ToDevice()
   : _task(this), _timer(&_task), _fd(-1), _my_fd(false),
+    _ignore_fromdev(false),
     _q(0),
     _pulls(0)
 {
@@ -72,6 +73,7 @@ ToDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
 		   "DEVNAME", cpkP+cpkM, cpString, &_ifname,
+       "IGNOREFROMDEV", cpkP, cpBool, &_ignore_fromdev,
 		   "DEBUG", 0, cpBool, &_debug,
 		   cpEnd) < 0)
     return -1;
@@ -116,7 +118,7 @@ ToDevice::initialize(ErrorHandler *errh)
     Element *e = router()->element(ei);
     FromDevice *fdev = (FromDevice *)e->cast("FromDevice");
     if (fdev && fdev->ifname() == _ifname && fdev->fd() >= 0) {
-      _fd = fdev->fd();
+      if (!_ignore_fromdev) _fd = fdev->fd();
       _my_fd = false;
     }
   }

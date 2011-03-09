@@ -102,6 +102,7 @@ private:
   bool _my_fd;
   NotifierSignal _signal;
 
+  bool _ignore_fromdev;
 
   Packet *_q;
 public:
