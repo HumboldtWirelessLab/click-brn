@@ -136,6 +136,7 @@ static String
 read_handler(Element *e, void */*thunk*/)
 {
   Seismo *si = (Seismo*)e;
+  Timestamp now = Timestamp::now();
 
   if (si->_node_stats_tab.size() == 0) {
      // return old value
@@ -149,7 +150,7 @@ read_handler(Element *e, void */*thunk*/)
     SrcInfo src = iter.value();
     EtherAddress id = iter.key();
 
-    sa << "<node id='" << id.unparse() << "'>\n";
+    sa << "<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n";
     sa << "<gps long='" << src._gps_long << "' lat='" << src._gps_lat << "' alt='" << src._gps_alt << "' HDOP='";
     sa << src._gps_hdop << "' />\n";
     sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channels='";
