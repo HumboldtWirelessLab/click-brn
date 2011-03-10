@@ -76,13 +76,14 @@ static String
 read_handler(Element *e, void *thunk)
 {
   SystemInfo *si = (SystemInfo *)e;
+  Timestamp now = Timestamp::now();
 
   StringAccum sa;
 
   switch ((uintptr_t) thunk) {
      case H_SYSINFO: {
 
-  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'>\n";
+  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'" << " time='" << now.unparse() << "'>\n";
 
   // meminfo
 #if CLICK_USERLEVEL
