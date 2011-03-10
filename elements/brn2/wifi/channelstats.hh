@@ -34,9 +34,9 @@
 #define STATE_ERROR    4
 
 
-#define CS_DEFAULT_STATS_DURATION       100
+#define CS_DEFAULT_STATS_DURATION      1000
 #define CS_DEFAULT_SAVE_DURATION          0
-#define CS_DEFAULT_MIN_UPDATE_TIME       20
+#define CS_DEFAULT_MIN_UPDATE_TIME      200
 #define CS_DEFAULT_RSSI_PER_NEIGHBOUR  true
 
 #define SMALL_STATS_SIZE 2
@@ -101,6 +101,7 @@ struct airtime_stats {
   uint32_t hw_busy;
   uint32_t hw_rx;
   uint32_t hw_tx;
+  uint32_t hw_count;
 
   int32_t avg_noise;
   int32_t std_noise;
@@ -255,14 +256,13 @@ class ChannelStats : public BRNElement {
     BRN2Device *_device;
 
   public:
-    int32_t _stats_duration; //maximum age of pakets, which are considered in the calculation (default)
+    int32_t _stats_interval; //maximum age of pakets, which are considered in the calculation (default)
 
   private:
 
     String _proc_file;
     bool _proc_read;
-
-    int _stats_interval;
+    int _proc_interval;
 
     bool _rssi_per_neighbour;
 
@@ -287,11 +287,15 @@ class ChannelStats : public BRNElement {
     uint8_t _current_small_stats;
 
     Timer _stats_timer;
+    Timer _proc_timer;
 
     void readProcHandler();
 
     void clear_old();     //packet_stats
     void clear_old_hw();  //hw_stats
+
+    static void static_proc_timer_hook(Timer *, void *);
+    void proc_read();
 
   public:
 

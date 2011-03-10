@@ -40,10 +40,10 @@ CLICK_DECLS
 
 ChannelStats::ChannelStats():
     _device(NULL),
-    _stats_duration(CS_DEFAULT_STATS_DURATION),
+    _stats_interval(CS_DEFAULT_STATS_DURATION),
     _proc_file("none"),
     _proc_read(false),
-    _stats_interval(CS_DEFAULT_STATS_DURATION),
+    _proc_interval(CS_DEFAULT_STATS_DURATION),
     _rssi_per_neighbour(CS_DEFAULT_RSSI_PER_NEIGHBOUR),
     _enable_full_stats(false),
     _save_duration(CS_DEFAULT_SAVE_DURATION),
@@ -51,7 +51,8 @@ ChannelStats::ChannelStats():
     _stats_id(0),
     _channel(0),
     _current_small_stats(0),
-    _stats_timer(this)
+    _stats_timer(this),
+    _proc_timer(static_proc_timer_hook,this)
 {
   BRNElement::init();
   _full_stats.last_update = Timestamp::now();
@@ -66,18 +67,19 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret = cp_va_kparse(conf, this, errh,
                      "DEVICE", cpkP, cpElement, &_device,
-                     "STATS_DURATION", cpkP, cpInteger, &_stats_duration,  //default time, over which the stats are calculated
+                     "STATS_DURATION", cpkP, cpInteger, &_stats_interval,  //default time, over which the stats are calculated
                      "PROCFILE", cpkP, cpString, &_proc_file,              //procfile you want to read from
-                     "STATS_INTERVAL", cpkP, cpInteger, &_stats_interval,  //how often the proc file is read and small stats
+                     "PROCINTERVAL", cpkP, cpInteger, &_proc_interval,     //how often the proc file is read and small stats
                      "RSSI_PER_NEIGHBOUR", cpkP, cpBool, &_rssi_per_neighbour, //store/calc rssi per neighbour
                      "FULL_STATS", cpkP, cpBool, &_enable_full_stats,          //calculat full stats, store every thing for that
-                     "SAVE_DURATION", cpkP, cpInteger, &_save_duration, //max time, which a packetinfo is stored
+                     "SAVE_DURATION", cpkP, cpInteger, &_save_duration,    //max time, which a packetinfo is stored
                      "MIN_UPDATE_TIME", cpkP, cpInteger, &_min_update_time,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
   _proc_read = (_proc_file != "none");
-  if ( _save_duration < _stats_duration ) _save_duration = _stats_duration;
+  if ( _save_duration < _stats_interval ) _save_duration = _stats_interval;
+  if ( _proc_interval > _stats_interval ) _proc_interval = _stats_interval;
 
   return ret;
 }
@@ -88,8 +90,10 @@ ChannelStats::initialize(ErrorHandler *)
   reset();
 
   _stats_timer.initialize(this);
+  _proc_timer.initialize(this);
 
-  if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
+  if ( (!_enable_full_stats) || (_proc_read && (_stats_interval == _proc_interval)) ) _stats_timer.schedule_after_msec(_stats_interval);
+  if ( _proc_read && (_stats_interval != _proc_interval) ) _proc_timer.schedule_after_msec(_proc_interval);
 
   if ( ! _enable_full_stats ) memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
 
@@ -99,9 +103,9 @@ ChannelStats::initialize(ErrorHandler *)
 void
 ChannelStats::run_timer(Timer *)
 {
-  if ( _proc_read ) {
+  if ( _proc_read && (_stats_interval == _proc_interval) ) {
     BRN_DEBUG("Read proc");
-    readProcHandler();
+    proc_read();
   } else {
     BRN_DEBUG("Don't read proc");
   }
@@ -119,6 +123,22 @@ ChannelStats::run_timer(Timer *)
   }
 
   if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
+}
+
+void
+ChannelStats::static_proc_timer_hook(Timer *t, void *f)
+{
+  if ( t == NULL ) click_chatter("Time is NULL");
+  ((ChannelStats*)f)->proc_read();
+}
+
+void
+ChannelStats::proc_read()
+{
+  if ( _proc_read ) {
+    readProcHandler();
+    if ( _stats_interval != _proc_interval ) _proc_timer.schedule_after_msec(_proc_interval);
+  }
 }
 
 /*********************************************/
@@ -368,17 +388,19 @@ ChannelStats::readProcHandler()
   if ( args.size() > 6 ) {
     Timestamp now = Timestamp::now();
 
+    int busy, rx, tx;
+    cp_integer(args[1],&busy);
+    cp_integer(args[3],&rx);
+    cp_integer(args[5],&tx);
+
     if ( _enable_full_stats ) {
-      int busy, rx, tx;
-      cp_integer(args[1],&busy);
-      cp_integer(args[3],&rx);
-      cp_integer(args[5],&tx);
       addHWStat(&now, busy, rx, tx);
     } else {
       _small_stats[_current_small_stats].last_hw = now;
-      cp_integer(args[1],&(_small_stats[_current_small_stats].hw_busy));
-      cp_integer(args[3],&(_small_stats[_current_small_stats].hw_rx));
-      cp_integer(args[5],&(_small_stats[_current_small_stats].hw_tx));
+      _small_stats[_current_small_stats].hw_busy += busy;
+      _small_stats[_current_small_stats].hw_rx += rx;
+      _small_stats[_current_small_stats].hw_tx += tx;
+      _small_stats[_current_small_stats].hw_count++;
     }
   }
 }
@@ -410,10 +432,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
   memset(cstats, 0, sizeof(struct airtime_stats));
 
   cstats->stats_id = _stats_id++;
-  cstats->duration = _stats_duration;
+  cstats->duration = _stats_interval;
   cstats->last_update = now;
 
-  int diff_time = 10 * _stats_duration;
+  int diff_time = 10 * _stats_interval;
 
   if ( _packet_list.size() == 0 ) return;
 
@@ -423,7 +445,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
   for ( i = 0; i < _packet_list.size(); i++) {
     pi = _packet_list[i];
     diff = now - pi->_rx_time;
-    if ( diff.msecval() <= _stats_duration )  break; //TODO: exact calc
+    if ( diff.msecval() <= _stats_interval )  break; //TODO: exact calc
   }
 
   for (; i < _packet_list.size(); i++) {
@@ -478,7 +500,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     }
   }
 
-  calc_stats_final(cstats, rssi_tab, _stats_duration);
+  calc_stats_final(cstats, rssi_tab, _stats_interval);
 
   cstats->last = _packet_list[_packet_list.size()-1]->_rx_time;
 
@@ -498,7 +520,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
   for ( i = 0; i < _packet_list_hw.size(); i++) {
     pi_hw = _packet_list_hw[i];
     diff = now - pi_hw->_time;
-    if ( diff.msecval() <= _stats_duration )  break; //TODO: exact calc
+    if ( diff.msecval() <= _stats_interval )  break; //TODO: exact calc
   }
 
   for (; i < _packet_list_hw.size(); i++) {
@@ -592,6 +614,12 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rss
     small_stats->std_rssi = 0;
   }
 
+  if ( small_stats->hw_count > 0 ) {
+    small_stats->hw_busy /= small_stats->hw_count;
+    small_stats->hw_rx /= small_stats->hw_count;
+    small_stats->hw_tx /= small_stats->hw_count;
+  }
+
   if ( rssi_tab ) {
     small_stats->no_sources = rssi_tab->size();
 
@@ -641,7 +669,12 @@ ChannelStats::stats_handler(int mode)
       else
         sa << " node=\"" << BRN_NODE_NAME << "\"";
 
-      sa <<" id=\"" << stats->stats_id << "\" length=\"" << stats->duration << "\" unit=\"ms\" >\n";
+      sa <<" id=\"" << stats->stats_id << "\" length=\"" << stats->duration;
+
+      if ( _proc_read ) sa << "\" hw_duration=\"" << _proc_interval;
+      else              sa << "\" hw_duration=\"0";
+
+      sa << "\" unit=\"ms\" >\n";
 
       sa << "\t<mac packets=\"" << (stats->rxpackets+stats->txpackets) << "\" rx_pkt=\"" << stats->rxpackets << "\" ";
       sa << "no_err_pkt=\"" << stats->noerr_packets << "\" crc_err_pkt=\"" << stats->crc_packets << "\" ";
@@ -659,7 +692,7 @@ ChannelStats::stats_handler(int mode)
       sa << "crc_rx=\"" << stats->duration_crc_rx << "\" phy_rx=\"" << stats->duration_phy_rx << "\" unit=\"us\" />\n";
 
       sa << "\t<phy hwbusy=\"" << stats->hw_busy << "\" hwrx=\"" << stats->hw_rx << "\" hwtx=\"" << stats->hw_tx << "\" ";
-      sa << "last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" ";
+      sa << "last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" hw_stats_count=\"" << stats->hw_count << "\" ";
       sa << "avg_noise=\"" << stats->avg_noise << "\" std_noise=\"" << stats->std_noise;
       sa << "\" avg_rssi=\"" << stats->avg_rssi << "\" std_rssi=\"" << stats->std_rssi;
       sa << "\" channel=\"";
@@ -692,7 +725,7 @@ ChannelStats_read_param(Element *e, void *thunk)
       return td->stats_handler((uintptr_t) thunk);
       break;
     case H_MAX_TIME:
-      return String(td->_stats_duration) + "\n";
+      return String(td->_stats_interval) + "\n";
   }
 
   return String();
@@ -708,7 +741,7 @@ ChannelStats_write_param(const String &in_s, Element *e, void *vparam, ErrorHand
       int mt;
       if (!cp_integer(s, &mt))
         return errh->error("max time parameter must be integer");
-      f->_stats_duration = mt;
+      f->_stats_interval = mt;
       break;
     }
     case H_RESET: {    //reset
