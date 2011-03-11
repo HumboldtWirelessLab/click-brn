@@ -127,6 +127,7 @@ class ChannelStats : public BRNElement {
       int32_t _noise;
       int32_t _rssi;
       EtherAddress _src;
+      EtherAddress _dst;
       uint8_t _state;
       bool _retry;
       bool _unicast;

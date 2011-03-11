@@ -149,6 +149,9 @@ ChannelStats::push(int port, Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   struct airtime_stats *small_stats = &(_small_stats[_current_small_stats]);
+  struct click_wifi *w = (struct click_wifi *) p->data();
+  EtherAddress src = EtherAddress(w->i_addr2);
+  EtherAddress dst = EtherAddress(w->i_addr1);
 
   /* General stuff */
   _channel = BRNPacketAnno::channel_anno(p);
@@ -175,6 +178,8 @@ ChannelStats::push(int port, Packet *p)
         uint32_t duration = calc_transmit_time(rate, p->length());
         if (_enable_full_stats) { // default mode: save everything in vector
           PacketInfo *new_pi = new PacketInfo();
+          new_pi->_src = src;
+          new_pi->_dst = dst;
           new_pi->_rx_time = p->timestamp_anno();
           new_pi->_length = p->length();
           new_pi->_foreign = false;
@@ -182,15 +187,21 @@ ChannelStats::push(int port, Packet *p)
           new_pi->_rx = false;
           new_pi->_rate = rate;
           new_pi->_duration = duration;
+          new_pi->_unicast = !dst.is_broadcast();
           _packet_list.push_back(new_pi);
         } else { // small: incremental update
           // update duration counter
+          if (dst.is_broadcast()) small_stats->bcast_packets++;
+          else small_stats->ucast_packets++;
+
           small_stats->duration_tx += duration;
           small_stats->txpackets++;
         }
       } else {
         if (_enable_full_stats) {
           PacketInfo *new_pi = new PacketInfo();
+          new_pi->_src = src;
+          new_pi->_dst = dst;
           new_pi->_rx_time = p->timestamp_anno();
           new_pi->_length = p->length();
           new_pi->_foreign = false;
@@ -210,9 +221,6 @@ ChannelStats::push(int port, Packet *p)
 
       uint32_t duration = calc_transmit_time(ceh->rate, p->length() + 4 /*crc*/);
       uint8_t state = STATE_UNKNOWN;
-
-      struct click_wifi *w = (struct click_wifi *) p->data();
-      EtherAddress src = EtherAddress(w->i_addr2);
 
       bool retry = (w->i_fc[1] & WIFI_FC1_RETRY);
 
@@ -238,13 +246,14 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_duration = duration;
 
         new_pi->_src = src;
+        new_pi->_dst = dst;
         new_pi->_state = state;
 
         new_pi->_noise = (signed char)ceh->silence;
         new_pi->_rssi = (signed char)ceh->rssi;
 
         new_pi->_retry = retry;
-        new_pi->_unicast = !src.is_broadcast();
+        new_pi->_unicast = !dst.is_broadcast();
 
         _packet_list.push_back(new_pi);
       } else { // fast mode
@@ -275,7 +284,7 @@ ChannelStats::push(int port, Packet *p)
                 break;
         }
 
-        if (src.is_broadcast()) small_stats->bcast_packets++;
+        if (dst.is_broadcast()) small_stats->bcast_packets++;
         else {
           small_stats->ucast_packets++;
           if (retry) small_stats->retry_packets++;
