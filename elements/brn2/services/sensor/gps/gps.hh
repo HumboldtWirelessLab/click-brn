@@ -172,6 +172,7 @@ class GPS : public BRNElement {
   void add_handlers();
 
   GPSPosition *getPosition() { return &_position;}
+  inline String read_gps();
 
  private:
   //

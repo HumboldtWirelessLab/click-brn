@@ -151,7 +151,7 @@ read_handler(Element *e, void */*thunk*/)
     EtherAddress id = iter.key();
 
     sa << "<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n";
-    sa << "<gps long='" << src._gps_long << "' lat='" << src._gps_lat << "' alt='" << src._gps_alt << "' HDOP='";
+    sa << "<gps lat='" << src._gps_lat << "' long='" << src._gps_long << "' alt='" << src._gps_alt << "' HDOP='";
     sa << src._gps_hdop << "' />\n";
     sa << "<seismo samplingrate='" << src._sampling_rate << "' sample_count='" << src._sample_count << "' channels='";
     sa << src._channels << "' last_update='" << src._last_update_time << "'>\n";
