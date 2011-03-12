@@ -73,11 +73,15 @@ struct airtime_stats {
 
   uint32_t zero_rate_packets;
 
-  uint32_t ucast_packets;
-  uint32_t bcast_packets;
-  uint32_t retry_packets;
+  uint32_t rx_ucast_packets;
+  uint32_t rx_bcast_packets;
+  uint32_t rx_retry_packets;
 
   uint32_t txpackets;
+
+  uint32_t tx_ucast_packets;
+  uint32_t tx_bcast_packets;
+  uint32_t tx_retry_packets;
 
   /* fraction of time */
   uint32_t frac_mac_busy;
