@@ -583,6 +583,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rss
   int diff_time = duration * 10;
 
   small_stats->duration_busy = small_stats->frac_mac_busy = small_stats->duration_rx + small_stats->duration_tx;
+  small_stats->last_update = Timestamp::now();
   small_stats->frac_mac_busy /= diff_time;
   small_stats->frac_mac_rx = small_stats->duration_rx / diff_time;
   small_stats->frac_mac_tx = small_stats->duration_tx / diff_time;
@@ -678,9 +679,9 @@ ChannelStats::stats_handler(int mode)
       if ( _device )
         sa << " node=\"" << _device->getEtherAddress()->unparse() << "\"";
       else
-        sa << " node=\"" << BRN_NODE_NAME << "\"";
+        sa << " node=\"" << BRN_NODE_NAME << "\" time=\"" << stats->last_update.unparse();
 
-      sa <<" id=\"" << stats->stats_id << "\" length=\"" << stats->duration;
+      sa <<"\" id=\"" << stats->stats_id << "\" length=\"" << stats->duration;
 
       if ( _proc_read ) sa << "\" hw_duration=\"" << _proc_interval;
       else              sa << "\" hw_duration=\"0";
