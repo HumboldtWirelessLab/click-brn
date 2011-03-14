@@ -677,11 +677,11 @@ ChannelStats::stats_handler(int mode)
       sa << "<channelstats";
 
       if ( _device )
-        sa << " node=\"" << _device->getEtherAddress()->unparse() << "\"";
+        sa << " node=\"" << _device->getEtherAddress()->unparse() << "\" time=\"" << stats->last_update.unparse();
       else
         sa << " node=\"" << BRN_NODE_NAME << "\" time=\"" << stats->last_update.unparse();
 
-      sa <<"\" id=\"" << stats->stats_id << "\" length=\"" << stats->duration;
+        sa << "\" id=\"" << stats->stats_id << "\" length=\"" << stats->duration;
 
       if ( _proc_read ) sa << "\" hw_duration=\"" << _proc_interval;
       else              sa << "\" hw_duration=\"0";
