@@ -27,11 +27,24 @@ echo " * libxt-dev"
 echo " * libxmu-dev"
 echo " * flex"
 echo " * bison"
+echo ""
+echo "Add following lines to .ssh/config"
+echo "Host gruenau"
+echo "   User username"
+echo "   HostName gruenau.informatik.hu-berlin.de"
+echo "	 LocalForward 23452 sar.informatik.hu-berlin.de:2222"
+echo ""
+echo "Host gitsar"
+echo "   User username"
+echo "   HostName localhost"
+echo "   Port 23452"
+
 
 FULLFILENAME=`basename $0`
 FULLFILENAME=$DIR/$FULLFILENAME
 
 GITHOST=gitsar
+GITHOST=nfs-student
 
 if [ "x$DEVELOP" = "x" ]; then
   DEVELOP=1
@@ -42,7 +55,7 @@ fi
 #***********************************************************************
 
 if [ "x$CLICKPATH" = "x" ]; then
-  git clone ssh://$GITHOST/home/sombrutz/repository/students/click-brn/.git
+  git clone ssh://$GITHOST/home/sombrutz/repository/click-brn/.git
   CLICKPATH=$DIR/click-brn
   BUILDCLICK=yes
 else
@@ -73,9 +86,9 @@ fi
 
 (cd brn-ns2-click; DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$CLICKPATH ./install_ns2.sh)
 
-if [ "x$BUILDCLICKSCRIPTS" = "xyes" ]; then
-  (cd click-brn-scripts; ./build.sh)
-fi
+#if [ "x$BUILDCLICKSCRIPTS" = "xyes" ]; then
+#  (cd click-brn-scripts; ./build.sh)
+#fi
 
 rm -rf $DIR/brn-ns2-click
 
