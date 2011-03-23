@@ -158,7 +158,7 @@ ChannelStats::push(int port, Packet *p)
 
   /* General stuff */
   _channel = BRNPacketAnno::channel_anno(p);
-  if ( _device != NULL ) _device->setChannel(_channel);
+  if ( _device != NULL && _channel != 0 ) _device->setChannel(_channel);
 
   if ( !_enable_full_stats ) {
     small_stats->last = p->timestamp_anno();
