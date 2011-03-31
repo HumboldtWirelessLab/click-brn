@@ -44,7 +44,7 @@ FULLFILENAME=`basename $0`
 FULLFILENAME=$DIR/$FULLFILENAME
 
 GITHOST=gitsar
-GITHOST=nfs-student
+#GITHOST=nfs-student
 
 if [ "x$DEVELOP" = "x" ]; then
   DEVELOP=1
@@ -71,6 +71,10 @@ else
   BUILDCLICKSCRIPTS=no
 fi
 
+if [ "x$HELPER" = "x" ]; then
+  git clone ssh://$GITHOST/home/sombrutz/repository/helper.git
+fi
+
 if [ "x$DEVELOP" = "x1" ]; then
   mkdir -p $DIR/ns2/src
   (cd $DIR/ns2/src; git clone ssh://$GITHOST/home/sombrutz/repository/ns-2.34.git)
@@ -81,7 +85,7 @@ fi
 #***********************************************************************
 
 if [ "x$BUILDCLICK" = "xyes" ]; then
-  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh ns2_userlevel; make)
+  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh tools; /bin/sh brn-conf.sh ns2_userlevel; make)
 fi
 
 (cd brn-ns2-click; DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$CLICKPATH ./install_ns2.sh)
@@ -93,7 +97,7 @@ fi
 rm -rf $DIR/brn-ns2-click
 
 echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$DIR/click-brn/ns/:$DIR/ns2/lib" > $DIR/brn-tools.bashrc
-echo "export PATH=$DIR/ns2/bin/:\$PATH" >> $DIR/brn-tools.bashrc
+echo "export PATH=$DIR/ns2/bin/:$DIR/helper/simulation/bin/:\$PATH" >> $DIR/brn-tools.bashrc
 
 cat $FULLFILENAME | grep "^#INFO" | sed -e "s/#INFO[[:space:]]*//g" -e "s#TARGETDIR#$DIR#g"
 
