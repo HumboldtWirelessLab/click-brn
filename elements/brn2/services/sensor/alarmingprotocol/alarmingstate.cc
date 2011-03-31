@@ -41,7 +41,8 @@ AlarmingState::AlarmingState():
   _lt(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
   _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUT_FRACTION),
-  _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION)
+  _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
+  _triggered_alarm(false)
 {
   BRNElement::init();
 }
@@ -222,10 +223,44 @@ AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, in
 void
 AlarmingState::trigger_alarm()
 {
-  if ( _alarm_nodes.size() >= ((_min_alarm_fraction * _nhopn_info->count_neighbours())/100) ) {
+  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && !_triggered_alarm ) {
     click_chatter("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
+    _triggered_alarm = true;
+    _triggered_alarm_time = Timestamp::now();
   }
 }
+
+String
+AlarmingState::get_state()
+{
+  StringAccum sa;
+
+  update_neighbours();
+
+  sa << "<alarmingstate id='"<< BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' size='" << _alarm_nodes.size() << "' ";
+  sa << "triggered_alarm='" << _triggered_alarm << "' triggered_alarm_time='";
+  if ( _triggered_alarm )
+    sa << _triggered_alarm_time.unparse() << "' >\n";
+  else
+    sa << "0.0' >\n";
+
+  for( int i = 0; i < _alarm_nodes.size(); i++ ) {
+    sa << "\t<alarmingnode node='" << _alarm_nodes[i]._ea.unparse().c_str() << "' ";
+    sa << "hops='" << (int)_alarm_nodes[i]._info[0]._hops << "' ";
+    sa << "no_alarm='" << _alarm_nodes[i]._info.size() << "' >\n";
+
+    for( int j = 0; j < _alarm_nodes[i]._info.size(); j++ ) {
+      sa << "\t\t<alarm fract_fwd='" << _alarm_nodes[i]._info[j]._fract_fwd << "' ";
+      sa << "missing_fwd='" << _alarm_nodes[i]._info[j]._fwd_missing << "' />\n";
+    }
+    sa << "\t</alarmingnode>\n";
+  }
+
+  sa << "</alarmingstate>";
+
+  return sa.take_string();
+}
+
 
 /*****************************************************************************/
 /***************************** H A N D L E R *********************************/
@@ -234,21 +269,7 @@ AlarmingState::trigger_alarm()
 static String
 read_state_param(Element *e, void *)
 {
-  AlarmingState *as = (AlarmingState *)e;
-  StringAccum sa;
-
-  as->update_neighbours();
-
-  sa << "Size: " << as->_alarm_nodes.size();
-  sa << "\nNodes:\n";
-  for( int i = 0; i < as->_alarm_nodes.size(); i++ ) {
-    sa << " " << as->_alarm_nodes[i]._ea.unparse().c_str();
-    sa << " Hops: " << (int)as->_alarm_nodes[i]._info[0]._hops;
-    sa << " No. Alarm: " << as->_alarm_nodes[i]._info.size();
-    sa << " Fract. Fwd: " << as->_alarm_nodes[i]._info[0]._fract_fwd;
-    sa << " Missing Fwd: " << as->_alarm_nodes[i]._info[0]._fwd_missing << "\n";
-  }
-  return sa.take_string();
+  return ((AlarmingState *)e)->get_state();
 }
 
 void

@@ -118,6 +118,7 @@ class AlarmingState : public BRNElement {
   void get_incomlete_forward_nodes(int max_fraction, int max_retries, int max_hops, int type, Vector<AlarmNode*> *nodes);
 
   void trigger_alarm();
+  String get_state();
 
   int _hop_limit;
   uint32_t _forward_flags;
@@ -133,6 +134,8 @@ class AlarmingState : public BRNElement {
   int _min_neighbour_fraction;
   uint32_t _min_alarm_fraction;
 
+  bool _triggered_alarm;
+  Timestamp _triggered_alarm_time;
 
 };
 
