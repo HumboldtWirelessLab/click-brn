@@ -133,9 +133,9 @@ install: uninstall
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../lib/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../userlevel/libtinyxml.a
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../userlevel/libtinyxml.so
-	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../ns/libtinyxml.a
+#	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../ns/libtinyxml.a
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../ns/libtinyxml.so
-	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../jist/libtinyxml.a
+#	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.a ../../../../jist/libtinyxml.a
 	ln -s ../elements/brn2/tools/tinyxml/libtinyxml.so ../../../../jist/libtinyxml.so
 	ln -s ../elements/brn2/tools/tinyxml ../../../../include/tinyxml
 
