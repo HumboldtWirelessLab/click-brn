@@ -52,6 +52,8 @@ ifeq (YES, ${PROFILE})
    LDFLAGS  := ${LDFLAGS} -pg
 endif
 
+CXXFLAGS := ${CXXFLAGS} ${EXTRA_CXXFLAGS}
+
 #****************************************************************************
 # Preprocessor directives
 #****************************************************************************
@@ -123,7 +125,7 @@ dist:
 	bash makedistlinux
 
 clean:
-	-rm -f core ${OBJS} ${OUTPUT}
+	-rm -f core ${OBJS} ${OUTPUT} ${OUTPUT2}
 
 depend:
 	#makedepend ${INCS} ${SRCS}
