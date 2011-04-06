@@ -84,6 +84,9 @@ Ath2Encap::simple_action(Packet *p)
   tos = BRNPacketAnno::tos_anno(p);
   ath2_h->anno.tx_anno.queue = tos;
 
+  ath2_h->ath2_version = htons(ATHDESC2_VERSION);
+  ath2_h->madwifi_version = htons(MADWIFI_TRUNK);
+
   return p_out;
 }
 

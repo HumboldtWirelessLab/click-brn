@@ -406,6 +406,10 @@ BRN2LinkStat::send_probe()
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
   ceh->rate = rate;                                     // this packet should be transmitted at the given rate
+  ceh->max_tries = 1;
+  ceh->max_tries1 = 0;
+  ceh->max_tries2 = 0;
+  ceh->max_tries3 = 0;
 
   /*
    * Prepare evereything for the next round
