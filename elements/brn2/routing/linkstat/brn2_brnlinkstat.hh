@@ -84,6 +84,8 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 
 CLICK_DECLS
 
+#define LINKSTAT_EXTRA_DEBUG
+
 static const uint8_t _ett2_version = 0x02;
 
 #define LINKSTAT_DEFAULT_STALE 10000

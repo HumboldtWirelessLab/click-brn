@@ -604,6 +604,16 @@ BRN2LinkStat::simple_action(Packet *p)
       }
       int seq = ntohl(entry->_seq);
 
+#ifdef LINKSTAT_EXTRA_DEBUG
+#warning "Enable Extra Linstat debug"
+      uint8_t zero_mac[] = { 0,0,0,0,0,0 }; 
+         if ( (memcmp(src_ea.data(), zero_mac, 6) == 0) || (memcmp(neighbor.data(), zero_mac, 6) == 0) ) {
+        BRN_WARN("Found zero mac");
+        checked_output_push(1, p);
+        return 0;
+      }
+#endif
+
       update_link(src_ea, neighbor, rates, fwd, rev, seq);
       ptr += num_rates * sizeof(struct link_info);
     }
