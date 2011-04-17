@@ -613,7 +613,152 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
+<<<<<<< HEAD
 ac_subst_vars='SHELL
+=======
+ac_subst_vars='LTLIBOBJS
+provisions
+POD2MAN
+TEXI2DVI
+MAKEINFO
+INSTALL_INFO
+TOOL_CLEAN_TARGETS
+TOOL_INSTALL_TARGETS
+CLEAN_TARGETS
+INSTALL_TARGETS
+AWK
+PERL
+localperl5
+perl5
+AUTOCONF
+GMAKE
+SUBMAKE
+CLICK_BUILD_INSTALL_IF_CHANGED
+CLICK_BUILD_INSTALL
+CLICKINSTALL
+INSTALL_IF_CHANGED
+INSTALL_DATA
+INSTALL_SCRIPT
+INSTALL_PROGRAM
+CLICKLINUX_FIXINCLUDES_PROGRAM
+LINUX_FIXINCLUDES_PROGRAM
+linux_makeargs
+EXPAT_LIBS
+EXPAT_INCLUDES
+XML2CLICK
+PROPER_LIBS
+PROPER_INCLUDES
+PCAP_LIBS
+PCAP_INCLUDES
+TOOL_TARGETS
+TOOLDIRS
+OTHER_TARGETS
+HAVE_BSDMODULE_DRIVER
+HAVE_LINUXMODULE_DRIVER
+HAVE_USERLEVEL_DRIVER
+DRIVERS
+POSSIBLE_DRIVERS
+clickdatadir
+LINUXMODULE_2_6
+EXTRA_TOOL_OBJS
+EXTRA_DRIVER_OBJS
+SOCKET_LIBS
+BUILD_DL_LIBS
+SOSUFFIX
+LDMODULEFLAGS
+DL_LIBS
+HOST_TOOLS
+BUILD_RANLIB
+BUILD_AR
+BUILD_CXX
+BUILD_CC
+POSIX_CLOCK_LIBS
+LIBOBJS
+freebsd_includedir
+freebsd_srcdir
+FINDELEMFLAGS
+element_groups
+linux_srcdir
+linux_builddir
+INCLUDE_KSYMS
+LINUXMODULE_FIXINCLUDES
+PTHREAD_LIBS
+AR_CREATEFLAGS
+STRIP
+RANLIB
+LD
+AR
+KERNEL_CXX
+KERNEL_CC
+CXXCPP
+CXXFLAGS_NDEBUG
+ac_ct_CXX
+CXXFLAGS
+EGREP
+GREP
+CPP
+CFLAGS_NDEBUG
+DEPCFLAGS
+OBJEXT
+EXEEXT
+ac_ct_CC
+CPPFLAGS
+LDFLAGS
+CFLAGS
+CXX
+CC
+target_os
+target_vendor
+target_cpu
+target
+host_os
+host_vendor
+host_cpu
+host
+build_os
+build_vendor
+build_cpu
+build
+conf_auxdir
+CLICK_VERSION
+ac_configure_args
+target_alias
+host_alias
+build_alias
+LIBS
+ECHO_T
+ECHO_N
+ECHO_C
+DEFS
+mandir
+localedir
+libdir
+psdir
+pdfdir
+dvidir
+htmldir
+infodir
+docdir
+oldincludedir
+includedir
+localstatedir
+sharedstatedir
+sysconfdir
+datadir
+datarootdir
+libexecdir
+sbindir
+bindir
+program_transform_name
+prefix
+exec_prefix
+PACKAGE_URL
+PACKAGE_BUGREPORT
+PACKAGE_STRING
+PACKAGE_VERSION
+PACKAGE_TARNAME
+PACKAGE_NAME
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
 PATH_SEPARATOR
 PACKAGE_NAME
 PACKAGE_TARNAME
@@ -754,6 +899,62 @@ clickdatadir
 provisions
 LTLIBOBJS'
 ac_subst_files=''
+<<<<<<< HEAD
+=======
+ac_user_opts='
+enable_option_checking
+enable_userlevel
+enable_user_multithread
+enable_select
+enable_linuxmodule
+enable_fixincludes
+enable_multithread
+enable_warp9
+enable_kassert
+enable_adaptive
+enable_linux_symbols
+enable_bsdmodule
+enable_nsclick
+with_linux
+with_linux_map
+enable_all_elements
+enable_analysis
+enable_app
+enable_aqm
+enable_ethernet
+enable_etherswitch
+enable_grid
+enable_icmp
+enable_ip
+enable_ip6
+enable_ipsec
+enable_local
+enable_radio
+enable_simple
+enable_standard
+enable_tcpudp
+enable_test
+enable_threads
+enable_wifi
+enable_experimental
+enable_skip_elements
+with_freebsd
+enable_int64
+enable_nanotimestamp
+enable_bound_port_transfer
+enable_tools
+enable_dynamic_linking
+enable_stats
+enable_stride
+enable_task_heap
+enable_dmalloc
+enable_valgrind
+enable_schedule_debugging
+enable_intel_cpu
+with_proper
+with_expat
+'
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
       ac_precious_vars='build_alias
 host_alias
 target_alias
@@ -1380,9 +1581,13 @@ Optional Features:
   --enable-experimental   enable experimental elements in normal groups
   --enable-skip-elements=ELTS disable comma-separated elements
   --disable-int64         disable 64-bit integer support
+<<<<<<< HEAD
   --enable-ialign         whether target-maschine is indifferent to alignment
   --enable-bound-port-transfer  enable port transfer function ptr optimization
+=======
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
   --enable-nanotimestamp  enable nanosecond timestamps
+  --enable-bound-port-transfer  enable port transfer function ptr optimization
   --enable-tools=WHERE    enable tools (host/build/mixed/no) [mixed]
   --disable-dynamic-linking disable dynamic linking
   --enable-stats[=LEVEL]  enable statistics collection
@@ -12295,11 +12500,43 @@ fi
 done
 
 
+<<<<<<< HEAD
     if test "${ac_cv_header_poll_h+set}" = set; then
   { echo "$as_me:$LINENO: checking for poll.h" >&5
 echo $ECHO_N "checking for poll.h... $ECHO_C" >&6; }
 if test "${ac_cv_header_poll_h+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
+=======
+	    	    ac_cv_endian=0
+	    cat > conftest.$ac_ext <<EOF
+#line 6984 "configure"
+#include "confdefs.h"
+#include <$endian_hdr>
+#ifdef __BYTE_ORDER
+__BYTE_ORDER
+#elif defined(BYTE_ORDER)
+BYTE_ORDER
+#else
+0
+#endif
+EOF
+	    ac_try="$ac_cpp conftest.$ac_ext >conftest.result 2>conftest.out"
+	    { { eval echo "\"\$as_me\":${as_lineno-$LINENO}: \"$ac_try\""; } >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }
+	    ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
+	    if test -z "$ac_err"; then
+		ac_cv_endian=`grep '^[1234]' conftest.result`
+		test -z "$ac_cv_endian" && ac_cv_endian=0
+	    else
+		echo "$ac_err" >&5
+		echo "configure: failed program was:" >&5
+		cat conftest.$ac_ext >&5
+	    fi
+	    rm -f conftest*
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_header_poll_h" >&5
 echo "${ECHO_T}$ac_cv_header_poll_h" >&6; }
@@ -13488,6 +13725,7 @@ echo "${ECHO_T}$ac_cv_search_gethostbyname" >&6; }
 ac_res=$ac_cv_search_gethostbyname
 if test "$ac_res" != no; then
   test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+<<<<<<< HEAD
 
 fi
 
@@ -13495,6 +13733,69 @@ fi
 echo $ECHO_N "checking for library containing connect... $ECHO_C" >&6; }
 if test "${ac_cv_search_connect+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
+=======
+  :
+else
+  have_clock_gettime=no
+fi
+
+    if test "x$have_clock_gettime" = xyes; then
+	POSIX_CLOCK_LIBS="$LIBS"
+    fi
+
+    ac_fn_cxx_check_func "$LINENO" "clock_gettime" "ac_cv_func_clock_gettime"
+if test "x$ac_cv_func_clock_gettime" = x""yes; then :
+  :
+else
+  have_clock_gettime=no
+fi
+
+    LIBS="$SAVELIBS"
+    if test "x$have_clock_gettime" = xyes; then
+
+$as_echo "#define HAVE_CLOCK_GETTIME 1" >>confdefs.h
+
+    fi
+
+
+# Check whether --enable-nanotimestamp was given.
+if test "${enable_nanotimestamp+set}" = set; then :
+  enableval=$enable_nanotimestamp;
+fi
+
+# Default to nanosecond-precision timestamps if clock_gettime is available.
+if test "x$enable_nanotimestamp" = x -a "x$have_clock_gettime" = xyes; then
+    enable_nanotimestamp=yes
+fi
+if test "x$enable_nanotimestamp" = xyes; then
+
+$as_echo "#define HAVE_NANOTIMESTAMP_ENABLED 1" >>confdefs.h
+
+fi
+
+
+
+# Check whether --enable-bound-port-transfer was given.
+if test "${enable_bound_port_transfer+set}" = set; then :
+  enableval=$enable_bound_port_transfer; :
+else
+  enable_bound_port_transfer=no
+fi
+
+
+if test "$enable_bound_port_transfer" = yes; then
+
+$as_echo "#define HAVE_BOUND_PORT_TRANSFER 1" >>confdefs.h
+
+  CXXFLAGS="$CXXFLAGS -Wno-pmf-conversions"
+fi
+
+
+
+# Check whether --enable-tools was given.
+if test "${enable_tools+set}" = set; then :
+  enableval=$enable_tools; :
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
 else
   ac_func_search_save_LIBS=$LIBS
 cat >conftest.$ac_ext <<_ACEOF
@@ -15178,10 +15479,33 @@ _ACEOF
 
 fi
 
+<<<<<<< HEAD
 { echo "$as_me:$LINENO: checking for <linux/ktime.h>" >&5
 echo $ECHO_N "checking for <linux/ktime.h>... $ECHO_C" >&6; }
 if test "${ac_cv_linux_ktime_h+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
+=======
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for inet_ctl_sock_create kernel symbol" >&5
+$as_echo_n "checking for inet_ctl_sock_create kernel symbol... " >&6; }
+if test "${ac_cv_linux_inet_ctl_sock_create+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  if grep "__ksymtab_inet_ctl_sock_create" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_inet_ctl_sock_create=yes
+else ac_cv_linux_inet_ctl_sock_create=no; fi
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_linux_inet_ctl_sock_create" >&5
+$as_echo "$ac_cv_linux_inet_ctl_sock_create" >&6; }
+if test $ac_cv_linux_inet_ctl_sock_create = yes; then
+    $as_echo "#define HAVE_LINUX_INET_CTL_SOCK_CREATE 1" >>confdefs.h
+
+fi
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for <linux/ktime.h>" >&5
+$as_echo_n "checking for <linux/ktime.h>... " >&6; }
+if test "${ac_cv_linux_ktime_h+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
 else
   if grep ktime_t `find_linuxpath include/linux/ktime.h` >/dev/null 2>&1; then
   ac_cv_linux_ktime_h=yes
@@ -15932,6 +16256,44 @@ _ACEOF
 fi
 
 done
+
+
+
+
+shell_expand () {
+    val=`eval echo '$'"$1"`
+    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
+    eval "$1='$val'"
+}
+
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+
+if test x$infodir = 'x${prefix}/info'; then
+    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
+fi
+
+shell_expand bindir
+shell_expand sbindir
+shell_expand libdir
+shell_expand datarootdir
+shell_expand datadir
+shell_expand includedir
+
+clickdatadir="$datadir/click"
+
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_BINDIR "$bindir"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_LIBDIR "$libdir"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_DATADIR "$clickdatadir"
+_ACEOF
 
 
 
@@ -17565,10 +17927,18 @@ echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
     fi
 
     LINUX_FIXINCLUDES_PROGRAM=
+    CLICKLINUX_FIXINCLUDES_PROGRAM=
     if test "$LINUXMODULE_FIXINCLUDES" = 1; then
+<<<<<<< HEAD
 	{ echo "$as_me:$LINENO: creating C++-safe versions of Linux kernel headers (may take a while)" >&5
 echo "$as_me: creating C++-safe versions of Linux kernel headers (may take a while)" >&6;}
 	$srcdir/linuxmodule/fixincludes.pl -o "`pwd`/include/click-linuxmodule" $LINUX_CFLAGS >conftest.dat
+=======
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: making C++-safe versions of Linux kernel headers (may take a while)" >&5
+$as_echo "$as_me: making C++-safe versions of Linux kernel headers (may take a while)" >&6;}
+	mydir="`pwd`/include/click-linuxmodule"
+	$srcdir/linuxmodule/fixincludes.pl -o "$mydir" $LINUX_CFLAGS >conftest.dat
+>>>>>>> 4365e75841a29efed218ca429e2de7943f44b2bc
 	if test $? != 0; then
 	    { { echo "$as_me:$LINENO: error:
 ==============================================
@@ -17586,7 +17956,9 @@ fixincludes.pl execution failed.
 	fi
 	LINUX_CFLAGS="`head -n 1 conftest.dat`"
 	LINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat`"
+	CLICKLINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat | sed -e "s	$mydir	$includedir/click-linuxmodule	g"`"
     fi
+
 
 
 
@@ -19633,6 +20005,10 @@ echo "${ECHO_T}no" >&6; }
 
     CLICKINSTALL=`echo "$INSTALL" | sed 's|^\$(.*)/|\$(clickdatadir)/|'`
 
+    CLICK_BUILD_INSTALL="$INSTALL"
+
+    CLICK_BUILD_INSTALL_IF_CHANGED="`echo "$INSTALL_IF_CHANGED" | sed 's|(INSTALL)|(CLICK_BUILD_INSTALL)|'`"
+
 
 
     if test "${GMAKE-NO}" = NO; then
@@ -20139,44 +20515,6 @@ fi
 
 
 
-
-
-
-
-shell_expand () {
-    val=`eval echo '$'"$1"`
-    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
-    eval "$1='$val'"
-}
-
-test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
-
-if test x$infodir = 'x${prefix}/info'; then
-    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
-fi
-
-shell_expand bindir
-shell_expand sbindir
-shell_expand libdir
-shell_expand datarootdir
-shell_expand datadir
-shell_expand includedir
-
-clickdatadir="$datadir/click"
-
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_BINDIR "$bindir"
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_LIBDIR "$libdir"
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_DATADIR "$clickdatadir"
-_ACEOF
 
 
 

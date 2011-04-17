@@ -41,6 +41,7 @@ include/click/error.hh
 include/click/etheraddress.hh
 include/click/ewma.hh
 include/click/fixconfig.h
+include/click/fromfile.hh
 include/click/gaprate.hh
 include/click/glue.hh
 include/click/handler.hh
@@ -51,6 +52,7 @@ include/click/hashcontainer.hh
 include/click/hashmap.cc
 include/click/hashmap.hh
 include/click/hashtable.hh
+include/click/heap.hh
 include/click/integers.hh
 include/click/ipaddress.hh
 include/click/ip6address.hh
@@ -123,6 +125,7 @@ lib/elemfilter.cc:libsrc/elemfilter.cc
 lib/error.cc:libsrc/error.cc
 lib/etheraddress.cc:libsrc/etheraddress.cc
 lib/exportstub.cc:libsrc/exportstub.cc
+lib/fromfile.cc:libsrc/fromfile.cc
 lib/gaprate.cc:libsrc/gaprate.cc
 lib/glue.cc:libsrc/glue.cc
 lib/handlercall.cc:libsrc/handlercall.cc
