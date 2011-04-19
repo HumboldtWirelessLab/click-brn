@@ -1,0 +1,63 @@
+#!/bin/sh
+
+dir=$(dirname "$0")
+pwd=$(pwd)
+
+SIGN=`echo $dir | cut -b 1`
+
+case "$SIGN" in
+    "/")
+	DIR=$dir
+	;;
+    ".")
+	DIR=$pwd/$dir
+	;;
+    *)
+	echo "Error while getting directory"
+	exit -1
+	;;
+esac
+
+if [ "x$GITHOST" = "x" ]; then
+  GITHOST=nfs-student
+fi
+
+
+if [ "x$GITUSER" = "x" ]; then
+  GITUSER=gituser
+fi
+
+case "$1" in
+    "clone")
+        git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat/.git
+	git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2.6/.git
+	git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-linux-next/.git
+        ;;
+    "build")
+        export GIT_COMPAT_TREE=$DIR/brn-compat
+        export GIT_TREE=$DIR/brn-linux-next
+        (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; ./scripts/admin-refresh.sh)
+        (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; ./scripts/driver-select ath)
+	if [ "x$NOCROSS" = "x1" ]; then
+          (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; make)
+	else 
+          (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; sh ./make_mips.sh)
+	fi
+        ;;
+    "pull")
+        (cd brn-compat-wireless-2.6/; git pull)
+        (cd brn-compat/; git pull)
+	(cd brn-linux-next/; git pull)
+        ;;
+    "clean")
+        export GIT_COMPAT_TREE=$DIR/brn-compat
+        export GIT_TREE=$DIR/brn-linux-next
+        (cd brn-compat-wireless-2.6/; ./scripts/admin-clean.sh)
+        ;;
+     "*")
+        echo "Use $0 build!"
+        ;;
+esac
+
+
+exit 0
