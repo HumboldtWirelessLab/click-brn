@@ -109,11 +109,12 @@ static u_int8_t *rt_el_offset(struct ieee80211_radiotap_header *th, u_int32_t el
 }
 
 static uint8_t
-freq2channel(int freq)
+freq2channel(int freq, bool debug)
 {
   int channel = 0;
 
-  click_chatter("Freq: %d",freq);
+  if ( debug ) click_chatter("Freq: %d",freq);
+
   switch(freq)
   {
     case 2412:
@@ -214,8 +215,8 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
 
     if (rt_el_present(th, IEEE80211_RADIOTAP_CHANNEL)) {
-      uint16_t freq = le16_to_cpu(*((u_int16_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RATE)));
-      uint8_t channel = freq2channel(freq);
+      uint16_t freq = le16_to_cpu(*((u_int16_t *) rt_el_offset(th, IEEE80211_RADIOTAP_CHANNEL)));
+      uint8_t channel = freq2channel(freq, _debug);
       BRNPacketAnno::set_channel_anno(p, channel);
     }
 
