@@ -38,7 +38,10 @@
 CLICK_DECLS
 
 Ath2Decap::Ath2Decap():
-    _cst(NULL)
+    _cst(NULL),
+    _max_rssi(ATH2DECAP_DEFAULT_MAX_SNR),
+    _rssi_reset(ATH2DECAP_DEFAULT_SNR_RESET_VALUE),
+    _fix_rssi(0)
 {
   BRNElement::init();
 }
@@ -56,6 +59,8 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
   ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
                      "CHANNELSTATS", cpkP, cpElement, &_cst,
+                     "RSSILIMIT", cpkP, cpInteger, &_max_rssi,
+                     "RSSIRESET", cpkP, cpInteger, &_rssi_reset,
                      cpEnd);
   return ret;
 }
@@ -121,6 +126,11 @@ Ath2Decap::simple_action(Packet *p)
       /* tx */
       eh->power = desc->xmit_power;
       eh->rssi = desc->ack_sig_strength;
+      if ( (_max_rssi != 0) && (eh->rssi > _max_rssi) ) {
+        _fix_rssi++;
+        eh->rssi = _rssi_reset;
+      }
+
       eh->retries = desc->data_fail_count;
 
       if (desc->excessive_retries)
@@ -201,7 +211,6 @@ Ath2Decap::simple_action(Packet *p)
     }
 
     eh->silence = ath2_h->anno.rx.rs_noise;
-    eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
 

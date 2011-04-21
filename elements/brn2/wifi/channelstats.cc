@@ -268,7 +268,7 @@ ChannelStats::push(int port, Packet *p)
         small_stats->avg_noise += silence;
         small_stats->std_noise += (silence * silence);
         int rssi = (signed char)ceh->rssi;
-        if ( rssi > 60 ) rssi = 0;                        //TODO: MADWIFI hack. move to madwifi decap
+
         small_stats->avg_rssi += rssi;
         small_stats->std_rssi += (rssi * rssi);
 

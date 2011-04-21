@@ -213,7 +213,6 @@ BrnRadiotapDecap::simple_action(Packet *p)
 			ceh->rate = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RATE));
 		}
 
-
     if (rt_el_present(th, IEEE80211_RADIOTAP_CHANNEL)) {
       uint16_t freq = le16_to_cpu(*((u_int16_t *) rt_el_offset(th, IEEE80211_RADIOTAP_CHANNEL)));
       uint8_t channel = freq2channel(freq, _debug);
@@ -252,7 +251,10 @@ BrnRadiotapDecap::simple_action(Packet *p)
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	}
 
-  if ( ceh->silence == 0 ) ceh->silence = -95;
+  if ( ceh->silence == 0 ) {
+    ceh->silence = -95;
+    if( _debug ) click_chatter("Silence is 0. Set to 95");
+  }
   ceh->rssi = ceh->rssi - ceh->silence;
 
   return p;

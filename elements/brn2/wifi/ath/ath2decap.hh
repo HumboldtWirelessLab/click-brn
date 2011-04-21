@@ -38,6 +38,9 @@ Ath2Decap()
 
 */
 
+#define ATH2DECAP_DEFAULT_MAX_SNR         80
+#define ATH2DECAP_DEFAULT_SNR_RESET_VALUE  0
+
 class Ath2Decap : public BRNElement {
 
   public:
@@ -55,8 +58,14 @@ class Ath2Decap : public BRNElement {
     Packet *simple_action(Packet *);
     ChannelStats *_cst;
 
+    int _max_rssi;
+    int _rssi_reset;
+
   private:
     bool _athdecap;
+
+    uint32_t _fix_rssi;
+
 };
 
 CLICK_ENDDECLS

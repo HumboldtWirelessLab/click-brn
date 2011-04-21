@@ -41,7 +41,6 @@
 
 #define SMALL_STATS_SIZE 2
 #define CHANNEL_UTILITY_INVALID 255
-#define RSSI_LIMIT 100
 
 CLICK_DECLS
 
@@ -159,33 +158,26 @@ class ChannelStats : public BRNElement {
 
       bool _calc_finished;
 
-      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false) {  //TODO: better start value for min_rssi (replace 1000)
+      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(255), _max_rssi(0), _calc_finished(false) {  //TODO: better start value for min_rssi (replace 1000)
       }
 
       SrcInfo(uint32_t rssi) {
         _calc_finished = false;
 
-        if ( rssi > RSSI_LIMIT ) {
-          _rssi = 0;
-          _sum_sq_rssi = 0;
-          _min_rssi = _max_rssi = 0;
-        } else {
-          _rssi = rssi;
-          _sum_sq_rssi = rssi * rssi;
-          _min_rssi = _max_rssi = rssi;
-        }
+        _rssi = rssi;
+        _sum_sq_rssi = rssi * rssi;
+        _min_rssi = _max_rssi = rssi;
+
         _pkt_count = 1;
       }
 
      void add_rssi(uint32_t rssi) {
-       if ( rssi <= RSSI_LIMIT ) {
-         _rssi += rssi;
-         _sum_sq_rssi += rssi * rssi;
-         if ( rssi > _max_rssi ) _max_rssi = rssi;
-         else if ( rssi < _min_rssi ) _min_rssi = rssi;
-       } else {
-         _min_rssi = 0;
-       }
+       _rssi += rssi;
+       _sum_sq_rssi += rssi * rssi;
+
+       if ( rssi > _max_rssi ) _max_rssi = rssi;
+       if ( rssi < _min_rssi ) _min_rssi = rssi;
+
        _pkt_count++;
      }
 
