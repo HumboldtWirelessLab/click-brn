@@ -28,7 +28,7 @@
 #include <clicknet/llc.h>
 CLICK_DECLS
 
-#define NUM_RADIOTAP_ELEMENTS 18
+#define NUM_RADIOTAP_ELEMENTS 27
 
 static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
 	{8, /* IEEE80211_RADIOTAP_TSFT */
@@ -49,7 +49,16 @@ static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
 	 2, /* IEEE80211_RADIOTAP_TX_FLAGS */
 	 1, /* IEEE80211_RADIOTAP_RTS_RETRIES */
 	 1, /* IEEE80211_RADIOTAP_DATA_RETRIES */
-	};
+   0, /* IEEE80211_RADIOTAP_UNUSED */
+   3, /* IEEE80211_RADIOTAP_MCS */
+   1, /* IEEE80211_RADIOTAP_RATE_1 */
+   1, /* IEEE80211_RADIOTAP_RATE_2 */
+   1, /* IEEE80211_RADIOTAP_RATE_3 */
+   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_1 */
+   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_2 */
+   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_3 */
+   1, /* IEEE80211_RADIOTAP_QUEUE */
+  };
 
 static int rt_el_present(struct ieee80211_radiotap_header *th, u_int32_t element)
 {

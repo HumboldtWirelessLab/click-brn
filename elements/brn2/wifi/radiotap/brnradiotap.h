@@ -195,6 +195,9 @@ enum ieee80211_radiotap_type {
 	IEEE80211_RADIOTAP_TX_FLAGS = 15,
 	IEEE80211_RADIOTAP_RTS_RETRIES = 16,
 	IEEE80211_RADIOTAP_DATA_RETRIES = 17,
+
+  IEEE80211_RADIOTAP_MCS = 19,
+
 /**
  * BRN_EXTENTION
 **/
@@ -209,6 +212,9 @@ enum ieee80211_radiotap_type {
 /* Hardware queue ( QoS support ) */
   IEEE80211_RADIOTAP_QUEUE = 26, // uint8_t
 
+  /* valid in every it_present bitmap, even vendor namespaces */
+  IEEE80211_RADIOTAP_RADIOTAP_NAMESPACE = 29,
+  IEEE80211_RADIOTAP_VENDOR_NAMESPACE = 30,
   IEEE80211_RADIOTAP_EXT = 31
 };
 
@@ -259,5 +265,20 @@ enum ieee80211_radiotap_type {
 #define	IEEE80211_RADIOTAP_F_TX_RTS	0x0004	/* used rts/cts handshake */
 
 
+/* For IEEE80211_RADIOTAP_MCS */
+#define IEEE80211_RADIOTAP_MCS_HAVE_BW          0x01
+#define IEEE80211_RADIOTAP_MCS_HAVE_MCS         0x02
+#define IEEE80211_RADIOTAP_MCS_HAVE_GI          0x04
+#define IEEE80211_RADIOTAP_MCS_HAVE_FMT         0x08
+#define IEEE80211_RADIOTAP_MCS_HAVE_FEC         0x10
+
+#define IEEE80211_RADIOTAP_MCS_BW_MASK          0x03
+#define         IEEE80211_RADIOTAP_MCS_BW_20    0
+#define         IEEE80211_RADIOTAP_MCS_BW_40    1
+#define         IEEE80211_RADIOTAP_MCS_BW_20L   2
+#define         IEEE80211_RADIOTAP_MCS_BW_20U   3
+#define IEEE80211_RADIOTAP_MCS_SGI              0x04
+#define IEEE80211_RADIOTAP_MCS_FMT_GF           0x08
+#define IEEE80211_RADIOTAP_MCS_FEC_LDPC         0x10
 
 #endif /* _NET_IF_IEEE80211RADIOTAP_H_ */
