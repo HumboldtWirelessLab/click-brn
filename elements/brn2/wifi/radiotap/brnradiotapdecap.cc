@@ -23,9 +23,11 @@
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
 //#include <clicknet/radiotap.h>
-#include "brnradiotap.h"
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
+
+#include "brnradiotap.h"
+#include <elements/brn2/brnprotocol/brnpacketanno.hh>
 CLICK_DECLS
 
 #define NUM_RADIOTAP_ELEMENTS 27
@@ -106,6 +108,64 @@ static u_int8_t *rt_el_offset(struct ieee80211_radiotap_header *th, u_int32_t el
 	return offset;
 }
 
+static uint8_t
+freq2channel(int freq)
+{
+  int channel = 0;
+
+  click_chatter("Freq: %d",freq);
+  switch(freq)
+  {
+    case 2412:
+      channel = 1;
+      break;
+    case 2417:
+      channel = 2;
+      break;
+    case 2422:
+      channel = 3;
+      break;
+    case 2427:
+      channel = 4;
+      break;
+    case 2432:
+      channel = 5;
+      break;
+    case 2437:
+      channel = 6;
+      break;
+    case 2442:
+      channel = 7;
+      break;
+    case 2447:
+      channel = 8;
+      break;
+    case 2452:
+      channel = 9;
+      break;
+    case 2457:
+      channel = 10;
+      break;
+    case 2462:
+      channel = 11;
+      break;
+    case 2467:
+      channel = 12;
+      break;
+    case 2472:
+      channel = 13;
+      break;
+    case 2484:
+      channel = 14;
+      break;
+    default:
+      channel = 0;
+      break;
+  }
+
+  return( channel );
+}
+
 BrnRadiotapDecap::BrnRadiotapDecap()
 {
 }
@@ -151,6 +211,13 @@ BrnRadiotapDecap::simple_action(Packet *p)
 		if (rt_el_present(th, IEEE80211_RADIOTAP_RATE)) {
 			ceh->rate = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RATE));
 		}
+
+
+    if (rt_el_present(th, IEEE80211_RADIOTAP_CHANNEL)) {
+      uint16_t freq = le16_to_cpu(*((u_int16_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RATE)));
+      uint8_t channel = freq2channel(freq);
+      BRNPacketAnno::set_channel_anno(p, channel);
+    }
 
 		if (rt_el_present(th, IEEE80211_RADIOTAP_DBM_ANTSIGNAL))
 			ceh->rssi = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_DBM_ANTSIGNAL));
