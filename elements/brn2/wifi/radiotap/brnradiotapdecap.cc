@@ -184,6 +184,9 @@ BrnRadiotapDecap::simple_action(Packet *p)
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	}
 
+  if ( ceh->silence == 0 ) ceh->silence = -95;
+  ceh->rssi = ceh->rssi - ceh->silence;
+
   return p;
 }
 
