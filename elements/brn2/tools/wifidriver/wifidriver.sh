@@ -40,7 +40,7 @@ case "$1" in
 	fi
         if [ ! -e brn-compat-wireless-2011-03-31 ]; then
 	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2011-03-31.git
-	  (cd compat-wireless-2011-03-31/; ./scripts/driver-select ath)
+	  (cd brn-compat-wireless-2011-03-31/; ./scripts/driver-select ath)
 	fi
         ;;
     "build-git")
@@ -67,8 +67,11 @@ case "$1" in
 	(cd brn-linux-next/; git pull)
 	(cd brn-compat-wireless-2011-03-31/; git pull)
         ;;
-    "copy")
+    "copy-git")
 	(cd brn-compat-wireless-2.6/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
+	;;
+    "copy")
+	(cd brn-compat-wireless-2011-03-31/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
 	;;
     "clean")
         export GIT_COMPAT_TREE=$DIR/brn-compat
