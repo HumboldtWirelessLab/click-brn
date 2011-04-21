@@ -29,11 +29,19 @@ fi
 
 case "$1" in
     "clone")
-        git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat/.git
-	git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2.6/.git
-	git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-linux-next/.git
-	git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2011-03-31.git
-	(cd compat-wireless-2011-03-31/; ./scripts/driver-select ath)
+        if [ ! -e brn-compat ]; then
+          git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat/.git
+	fi
+        if [ ! -e brn-compat-wireless-2.6 ]; then
+	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2.6/.git
+	fi
+        if [ ! -e brn-linux-next ]; then
+	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-linux-next/.git
+	fi
+        if [ ! -e brn-compat-wireless-2011-03-31 ]; then
+	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2011-03-31.git
+	  (cd compat-wireless-2011-03-31/; ./scripts/driver-select ath)
+	fi
         ;;
     "build-git")
         export GIT_COMPAT_TREE=$DIR/brn-compat
