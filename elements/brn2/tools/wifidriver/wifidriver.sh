@@ -49,6 +49,9 @@ case "$1" in
         (cd brn-compat/; git pull)
 	(cd brn-linux-next/; git pull)
         ;;
+    "copy")
+	(cd brn-compat-wireless-2.6/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
+	;;
     "clean")
         export GIT_COMPAT_TREE=$DIR/brn-compat
         export GIT_TREE=$DIR/brn-linux-next
