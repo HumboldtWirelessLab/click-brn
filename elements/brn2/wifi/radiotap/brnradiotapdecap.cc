@@ -26,8 +26,11 @@
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 
-#include "brnradiotap.h"
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include <elements/brn2/wifi/brnwifi.h>
+
+#include "brnradiotap.h"
+
 CLICK_DECLS
 
 #define NUM_RADIOTAP_ELEMENTS 27
@@ -204,8 +207,10 @@ BrnRadiotapDecap::simple_action(Packet *p)
 			if (flags & IEEE80211_RADIOTAP_F_FCS) {
 				p->take(4);
 			}
+#warning TODO Check kind of Error. Now all errors are CRC
       if (flags & IEEE80211_RADIOTAP_F_BADFCS) {
         ceh->flags |= WIFI_EXTRA_RX_ERR;
+        ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
       }
 		}
 
@@ -233,8 +238,12 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
 		if (rt_el_present(th, IEEE80211_RADIOTAP_RX_FLAGS)) {
 			u_int16_t flags = le16_to_cpu(*((u_int16_t *) rt_el_offset(th, IEEE80211_RADIOTAP_RX_FLAGS)));
-      if ((flags & IEEE80211_RADIOTAP_F_RX_BADFCS) || (flags & IEEE80211_RADIOTAP_F_RX_BADPLCP) )
+
+      if ((flags & IEEE80211_RADIOTAP_F_RX_BADFCS) || (flags & IEEE80211_RADIOTAP_F_RX_BADPLCP) ) {
 				ceh->flags |= WIFI_EXTRA_RX_ERR;
+#warning TODO Check kind of Error. Now all errors are CRC
+        ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
+      }
 		}
 
 		if (rt_el_present(th, IEEE80211_RADIOTAP_TX_FLAGS)) {
