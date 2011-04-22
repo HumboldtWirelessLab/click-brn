@@ -38,12 +38,12 @@ case "$1" in
         if [ ! -e brn-linux-next ]; then
 	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-linux-next/.git
 	fi
-        if [ ! -e brn-compat-wireless-2011-03-31 ]; then
-	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2011-03-31.git
-	  (cd brn-compat-wireless-2011-03-31/; ./scripts/driver-select ath)
-	fi
+#        if [ ! -e brn-compat-wireless-2011-03-31 ]; then
+#	  git clone ssh://$GITUSER@$GITHOST/home/sombrutz/repository/brn-compat-wireless-2011-03-31.git
+#	  (cd brn-compat-wireless-2011-03-31/; ./scripts/driver-select ath)
+#	fi
         ;;
-    "build-git")
+    "build")
         export GIT_COMPAT_TREE=$DIR/brn-compat
         export GIT_TREE=$DIR/brn-linux-next
         (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; ./scripts/admin-refresh.sh)
@@ -54,30 +54,30 @@ case "$1" in
           (export GIT_COMPAT_TREE=$DIR/brn-compat; export GIT_TREE=$DIR/brn-linux-next; cd brn-compat-wireless-2.6/; sh ./make_mips.sh)
 	fi
         ;;
-    "build")
-	if [ "x$NOCROSS" = "x1" ]; then
-	  (cd brn-compat-wireless-2011-03-31/; make)
-	else 
-	  (cd brn-compat-wireless-2011-03-31/; sh ./make_mips.sh)
-	fi
-	;;
     "pull")
         (cd brn-compat-wireless-2.6/; git pull)
         (cd brn-compat/; git pull)
 	(cd brn-linux-next/; git pull)
 	(cd brn-compat-wireless-2011-03-31/; git pull)
         ;;
-    "copy-git")
-	(cd brn-compat-wireless-2.6/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
-	;;
     "copy")
-	(cd brn-compat-wireless-2011-03-31/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
+	(cd brn-compat-wireless-2.6/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
 	;;
     "clean")
         export GIT_COMPAT_TREE=$DIR/brn-compat
         export GIT_TREE=$DIR/brn-linux-next
         (cd brn-compat-wireless-2.6/; ./scripts/admin-clean.sh)
         ;;
+#    "build")
+#	if [ "x$NOCROSS" = "x1" ]; then
+#	  (cd brn-compat-wireless-2011-03-31/; make)
+#	else 
+#	  (cd brn-compat-wireless-2011-03-31/; sh ./make_mips.sh)
+#	fi
+#	;;
+#    "copy")
+#	(cd brn-compat-wireless-2011-03-31/;find . -name "*.ko" -print0 | xargs -0 cp --target=/testbedhome/testbed/helper/nodes/lib/modules/mips-wndr3700/2.6.32.27/)
+#	;;
      "*")
         echo "Use $0 build!"
         ;;
