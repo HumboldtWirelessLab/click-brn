@@ -285,6 +285,10 @@ ChannelStats::push(int port, Packet *p)
                 small_stats->duration_phy_rx += duration;
                 small_stats->phy_packets++;
                 break;
+          case STATE_ERROR:
+                small_stats->duration_unknown_err_rx += duration;
+                small_stats->unknown_err_packets++;
+                break;
         }
 
         if (dst.is_broadcast()) small_stats->rx_bcast_packets++;
@@ -477,6 +481,11 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
             cstats->duration_phy_rx += pi->_duration;
             cstats->phy_packets++;
             break;
+          case STATE_ERROR:
+            cstats->duration_unknown_err_rx += pi->_duration;
+            cstats->unknown_err_packets++;
+            break;
+
         }
 
         if (! pi->_unicast) cstats->rx_bcast_packets++;
@@ -590,6 +599,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rss
   small_stats->frac_mac_noerr_rx = small_stats->duration_noerr_rx / diff_time;
   small_stats->frac_mac_crc_rx = small_stats->duration_crc_rx / diff_time;
   small_stats->frac_mac_phy_rx = small_stats->duration_phy_rx / diff_time;
+  small_stats->frac_mac_unknown_err_rx = small_stats->duration_unknown_err_rx / diff_time;
 
   small_stats->duration = duration;
 
@@ -602,6 +612,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rss
       if ( small_stats->frac_mac_noerr_rx > 100 ) small_stats->frac_mac_noerr_rx = 100;
       if ( small_stats->frac_mac_crc_rx > 100 ) small_stats->frac_mac_crc_rx = 100;
       if ( small_stats->frac_mac_phy_rx > 100 ) small_stats->frac_mac_phy_rx = 100;
+      if ( small_stats->frac_mac_unknown_err_rx > 100 ) small_stats->frac_mac_unknown_err_rx = 100;
     }
     if ( small_stats->frac_mac_tx > 100 ) small_stats->frac_mac_tx = 100;
   }
@@ -690,7 +701,8 @@ ChannelStats::stats_handler(int mode)
 
       sa << "\t<mac packets=\"" << (stats->rxpackets+stats->txpackets) << "\" rx_pkt=\"" << stats->rxpackets;
       sa << "\" no_err_pkt=\"" << stats->noerr_packets << "\" crc_err_pkt=\"" << stats->crc_packets;
-      sa << "\" phy_err_pkt=\"" << stats->phy_packets << "\" tx_pkt=\"" << stats->txpackets;
+      sa << "\" phy_err_pkt=\"" << stats->phy_packets << "\" unknown_err_pkt=\"" << stats->unknown_err_packets;
+      sa << "\" tx_pkt=\"" << stats->txpackets;
       sa << "\" rx_unicast_pkt=\"" << stats->rx_ucast_packets << "\" rx_retry_pkt=\"" << stats->rx_retry_packets;
       sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets;
       sa << "\" tx_unicast_pkt=\"" << stats->tx_ucast_packets << "\" tx_retry_pkt=\"" << stats->tx_retry_packets;
@@ -701,11 +713,13 @@ ChannelStats::stats_handler(int mode)
 
       sa << "\t<mac_percentage busy=\"" << stats->frac_mac_busy << "\" rx=\"" << stats->frac_mac_rx;
       sa << "\" tx=\"" << stats->frac_mac_tx << "\" noerr_rx=\"" << stats->frac_mac_noerr_rx;
-      sa << "\" crc_rx=\"" << stats->frac_mac_crc_rx << "\" phy_rx=\"" << stats->frac_mac_phy_rx << "\" unit=\"percent\" />\n";
+      sa << "\" crc_rx=\"" << stats->frac_mac_crc_rx << "\" phy_rx=\"" << stats->frac_mac_phy_rx;
+      sa << "\" unknown_err_rx=\"" << stats->frac_mac_unknown_err_rx << "\" unit=\"percent\" />\n";
 
-      sa << "\t<mac_duration busy=\"" << stats->duration_busy << "\" rx=\"" << stats->duration_rx << "\" ";
-      sa << "tx=\"" << stats->duration_tx << "\" noerr_rx=\"" << stats->duration_noerr_rx << "\" ";
-      sa << "crc_rx=\"" << stats->duration_crc_rx << "\" phy_rx=\"" << stats->duration_phy_rx << "\" unit=\"us\" />\n";
+      sa << "\t<mac_duration busy=\"" << stats->duration_busy << "\" rx=\"" << stats->duration_rx;
+      sa << "\" tx=\"" << stats->duration_tx << "\" noerr_rx=\"" << stats->duration_noerr_rx;
+      sa << "\" crc_rx=\"" << stats->duration_crc_rx << "\" phy_rx=\"" << stats->duration_phy_rx;
+      sa << "\" unknown_err_rx=\"" << stats->duration_unknown_err_rx << "\" unit=\"us\" />\n";
 
       sa << "\t<phy hwbusy=\"" << stats->hw_busy << "\" hwrx=\"" << stats->hw_rx << "\" hwtx=\"" << stats->hw_tx << "\" ";
       sa << "last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" hw_stats_count=\"" << stats->hw_count << "\" ";

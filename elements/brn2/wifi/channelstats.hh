@@ -69,6 +69,7 @@ struct airtime_stats {
   uint32_t noerr_packets;
   uint32_t crc_packets;
   uint32_t phy_packets;
+  uint32_t unknown_err_packets;
 
   uint32_t zero_rate_packets;
 
@@ -90,6 +91,7 @@ struct airtime_stats {
   uint32_t frac_mac_noerr_rx;
   uint32_t frac_mac_crc_rx;
   uint32_t frac_mac_phy_rx;
+  uint32_t frac_mac_unknown_err_rx;
 
   /* duration of packet-rec in ms */
   uint32_t duration_busy;
@@ -98,6 +100,7 @@ struct airtime_stats {
   uint32_t duration_noerr_rx;
   uint32_t duration_crc_rx;
   uint32_t duration_phy_rx;
+  uint32_t duration_unknown_err_rx;
 
   /*Hardware stats available? fraction of time (hw) */
   bool     hw_available;
