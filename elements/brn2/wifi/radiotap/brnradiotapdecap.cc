@@ -251,10 +251,13 @@ BrnRadiotapDecap::simple_action(Packet *p)
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	}
 
-  if ( ceh->silence == 0 ) {
+  if ( _debug ) click_chatter("Noise: %d",ceh->silence);
+
+  if ( (ceh->silence == 0) && ((ceh->flags & WIFI_EXTRA_TX) == 0) ) {
     ceh->silence = -95;
-    if( _debug ) click_chatter("Silence is 0. Set to 95");
+    click_chatter("Silence is 0. Set to -95");
   }
+
   ceh->rssi = ceh->rssi - ceh->silence;
 
   return p;
