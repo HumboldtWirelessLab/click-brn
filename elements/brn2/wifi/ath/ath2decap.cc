@@ -117,7 +117,17 @@ Ath2Decap::simple_action(Packet *p)
         eh->flags |= WIFI_EXTRA_RX_ZERORATE_ERR;
       }
 
-      eh->rssi = rx_desc->rx_rssi;
+      if ( _max_rssi ) {
+        if ( rx_desc->rx_rssi <= _max_rssi ) {
+          eh->rssi = rx_desc->rx_rssi;
+        } else {
+          _fix_rssi++;
+          eh->rssi = _rssi_reset;
+        }
+      } else {
+        eh->rssi = rx_desc->rx_rssi;
+      }
+
       if (!rx_desc->rx_ok) {
         eh->flags |= WIFI_EXTRA_RX_ERR;
       }
@@ -125,10 +135,16 @@ Ath2Decap::simple_action(Packet *p)
       eh->flags |= WIFI_EXTRA_TX;
       /* tx */
       eh->power = desc->xmit_power;
-      eh->rssi = desc->ack_sig_strength;
-      if ( (_max_rssi != 0) && (eh->rssi > _max_rssi) ) {
-        _fix_rssi++;
-        eh->rssi = _rssi_reset;
+
+      if ( _max_rssi ) {
+        if ( desc->ack_sig_strength <= _max_rssi ) {
+          eh->rssi = desc->ack_sig_strength;
+        } else {
+          _fix_rssi++;
+          eh->rssi = _rssi_reset;
+        }
+      } else {
+        eh->rssi = desc->ack_sig_strength;
       }
 
       eh->retries = desc->data_fail_count;

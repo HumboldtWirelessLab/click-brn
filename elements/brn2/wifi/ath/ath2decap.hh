@@ -58,8 +58,8 @@ class Ath2Decap : public BRNElement {
     Packet *simple_action(Packet *);
     ChannelStats *_cst;
 
-    int _max_rssi;
-    int _rssi_reset;
+    uint32_t _max_rssi;
+    uint32_t _rssi_reset;
 
   private:
     bool _athdecap;
