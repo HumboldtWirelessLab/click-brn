@@ -17,6 +17,8 @@ CLICK_DECLS
  * =d
  */
 
+#define DEFAULT_PACKETHEADERSIZE 32
+
 class BRN2PacketQueueControl : public BRNElement {
 
  public:
@@ -37,6 +39,11 @@ class BRN2PacketQueueControl : public BRNElement {
 
      int _queue_empty;
 
+     uint32_t _id;
+
+     Timestamp _start_ts;
+     Timestamp _end_ts;
+
      Flow(int start, int end, int packetsize, int interval ) {
        _start = start;
        _end = end;
@@ -53,10 +60,12 @@ class BRN2PacketQueueControl : public BRNElement {
 
   const char *class_name() const  { return "BRN2PacketQueueControl"; }
   const char *processing() const  { return AGNOSTIC; }
-  const char *port_count() const  { return "0/1"; }
+  const char *port_count() const  { return "0-1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
+
+  void push(int port, Packet *p);
 
   static void static_queue_timer_hook(Timer *, void *);
   static void static_flow_timer_hook(Timer *, void *);
@@ -73,6 +82,8 @@ class BRN2PacketQueueControl : public BRNElement {
   void handle_flow_timer();
   void handle_queue_timer();
 
+  String flow_stats();
+
   uint32_t _min_count_p;
   uint32_t _max_count_p;
 
@@ -83,10 +94,25 @@ class BRN2PacketQueueControl : public BRNElement {
 
   HandlerCall* _queue_size_handler;
   HandlerCall* _queue_reset_handler;
+  HandlerCall* _suppressor_active_handler;
 
   Flow *ac_flow;
 
   Packet *create_packet(int size);
+
+  uint32_t _flow_id;
+
+  bool _disable_queue_reset;
+  bool _txfeedback_reuse;
+  bool _queue_timer_enabled;
+
+  /*
+   * Unicast-support: to decrease cpu-load and allow higher rates, unicast to a non-existing mac can be used
+   */
+  uint32_t _unicast_retries;
+
+ public:
+  int _packetheadersize;
 
 };
 

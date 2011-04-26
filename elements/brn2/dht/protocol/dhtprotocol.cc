@@ -34,7 +34,7 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   WritablePacket *new_packet = NULL;
   struct dht_packet_header *dht_header = NULL;
 
-  new_packet = WritablePacket::make( 128, NULL, sizeof(struct dht_packet_header) + payload_len, 32);  //TODO:check size of headroom (what is needed)
+  new_packet = WritablePacket::make( 256, NULL, sizeof(struct dht_packet_header) + payload_len, 32);  //TODO:check size of headroom (what is needed)
   dht_header = (struct dht_packet_header *)new_packet->data();
 
   dht_header->major_type = major_type;
@@ -44,6 +44,27 @@ DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payl
   memset(dht_header->src,0,6);
 
   return(new_packet);	
+}
+
+WritablePacket *
+DHTProtocol::new_dht_packet(uint8_t major_type, uint8_t minor_type,uint16_t payload_len, Packet *p_recycle)
+{
+  WritablePacket *new_packet;
+
+  if ( ! p_recycle ) return new_dht_packet(major_type, minor_type, payload_len);
+
+  if ( p_recycle->length() < sizeof(struct dht_packet_header) + payload_len ) new_packet = p_recycle->put((sizeof(struct dht_packet_header) + payload_len) - p_recycle->length());
+  else new_packet = p_recycle->uniqueify();
+
+  struct dht_packet_header *dht_header = (struct dht_packet_header *)new_packet->data();
+
+  dht_header->major_type = major_type;
+  dht_header->minor_type = minor_type;
+  dht_header->payload_len = htons(payload_len);
+
+  memset(dht_header->src,0,6);
+
+  return(new_packet);
 }
 
 uint8_t
@@ -83,7 +104,7 @@ DHTProtocol::get_payload(Packet *p)
     return NULL;
 }
 
-EtherAddress *
+/*EtherAddress *
 DHTProtocol::get_src(Packet *p)
 {
   struct dht_packet_header *dht_header = NULL;
@@ -96,7 +117,7 @@ DHTProtocol::get_src(Packet *p)
   else
     return NULL;
 }
-
+*/
 uint8_t *
 DHTProtocol::get_src_data(Packet *p)
 {
@@ -109,12 +130,9 @@ DHTProtocol::get_src_data(Packet *p)
 int
 DHTProtocol::set_src(Packet *p, uint8_t *ea)
 {
-  struct dht_packet_header *dht_header = NULL;
-
   if ( p != NULL  && p->length() >= sizeof(struct dht_packet_header) )
   {
-    dht_header = (struct dht_packet_header*)p->data();
-    memcpy(dht_header->src,ea,6);
+    memcpy(((struct dht_packet_header*)p->data())->src, ea, 6);
     return 0;
   }
   else

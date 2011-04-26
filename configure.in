@@ -114,8 +114,8 @@ dnl linuxmodule driver and features
 AC_ARG_ENABLE(linuxmodule, [  --disable-linuxmodule   disable Linux kernel driver], :, [enable_linuxmodule=yes; enable_linuxmodule_default=yes])
 
 AC_ARG_ENABLE(fixincludes,
-  [[    --enable-fixincludes      automatically fix Linux includes]],
-  :, enable_fixincludes=no)
+  [[    --disable-fixincludes     do not patch Linux kernel headers for C++]],
+  :, enable_fixincludes=yes)
 LINUXMODULE_FIXINCLUDES=
 if test "$enable_fixincludes" = yes; then
     LINUXMODULE_FIXINCLUDES=1
@@ -295,7 +295,7 @@ AC_SUBST(element_groups)
 AC_DEFUN([ELEMENTS_ARG_ENABLE],
 [AC_ARG_ENABLE($1, [  --]builtin(substr, builtin(ifelse, [$3], yes, dis, en)[able-$1              ], 0, 21)[ ]builtin(ifelse, [$3], yes, [do not ], [])[$2], ,
 [enable_]patsubst([$1], -, _)=$3)dnl
-test "x$enable_all_elements" = xyes -a ["x$enable_]patsubst([$1], -, _)["] = xNO && [enable_]patsubst([$1], -, _)[=yes]
+test "x$enable_all_elements" = xyes -a \( ["x$enable_]patsubst([$1], -, _)["] = xNO -o ["x$enable_]patsubst([$1], -, _)["] = x \) && [enable_]patsubst([$1], -, _)[=yes]
 if test ["x$enable_]patsubst([$1], -, _)["] = xyes; then
     :
     $4
@@ -327,7 +327,7 @@ AC_ARG_ENABLE(skip-elements, [  --enable-skip-elements=ELTS disable comma-separa
 
 for i in `(cd $srcdir/elements; ls | sed '/^CVS$/d;/^bsdmodule$/d;/^linuxmodule$/d;/^ns$/d;/^jist$/d;/^userlevel$/d')`; do
     enableval=`eval 'echo $'"enable_$i"`
-    test "x$enable_all_elements" = xyes -a "x$enableval" '!=' 'no' && enableval=yes
+    test "x$enable_all_elements" = xyes -a "x$enableval" '!=' xno && enableval=yes
     test -d "$srcdir/elements/$i" -a "$enableval" = "yes" && element_groups="$element_groups $i"
 done
 
@@ -367,7 +367,7 @@ freebsd_includedir=`echo "$freebsddir,/usr/include," | sed -e 's/^[[^,]]*,\([[^,
 if test "x$freebsddir" = xNONE -o "x$freebsddir" = xno -o "x$enable_bsdmodule" != xyes; then
   ac_have_bsd_kernel=n
   freebsddir=NONE
-elif expr '(' "_$freebsd_includedir" : '_[[^/\\]]' ')' '|' '(' "_$freebsd_srcdir" : '_[[^/\\]]' ')'; then 
+elif expr '(' "_$freebsd_includedir" : '_[[^/\\]]' ')' '|' '(' "_$freebsd_srcdir" : '_[[^/\\]]' ')'; then
   AC_MSG_ERROR([
 =========================================
 
@@ -426,7 +426,15 @@ AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(size_t)
 AC_CHECK_SIZEOF([void *])
 CLICK_CHECK_INTEGER_TYPES
-CLICK_CHECK_ALIGNMENT
+AC_ARG_ENABLE(ialign, [  --enable-ialign         whether target-maschine is indifferent to alignment], :, enable_ialign=no)
+if test "x$enable_ialign" = xno; then
+    CLICK_CHECK_ALIGNMENT
+else
+    AC_CACHE_CHECK(whether machine is indifferent to alignment,ac_cv_alignment_indifferent,[ac_cv_alignment_indifferent=yes])
+    if test "x$ac_cv_alignment_indifferent" = xyes; then
+	AC_DEFINE([HAVE_INDIFFERENT_ALIGNMENT], [1], [Define if the machine is indifferent to alignment.])
+    fi
+fi
 if test "x$enable_int64" = xyes; then
     AC_CHECK_SIZEOF(long long)
     CLICK_CHECK_INT64_TYPES
@@ -456,6 +464,20 @@ if test "x$enable_nanotimestamp" = x -a "x$have_clock_gettime" = xyes; then
 fi
 if test "x$enable_nanotimestamp" = xyes; then
     AC_DEFINE([HAVE_NANOTIMESTAMP_ENABLED], [1], [Define if nanosecond-granularity timestamps are enabled.])
+fi
+
+
+dnl
+dnl check forms of port transfer
+dnl
+
+AC_ARG_ENABLE(bound-port-transfer,
+  [[  --enable-bound-port-transfer  enable port transfer function ptr optimization]],
+  :, enable_bound_port_transfer=no)
+
+if test "$enable_bound_port_transfer" = yes; then
+  AC_DEFINE([HAVE_BOUND_PORT_TRANSFER], [1], [Define if Port::push/Port::pull should use bound function pointers.])
+  CXXFLAGS="$CXXFLAGS -Wno-pmf-conversions"
 fi
 
 
@@ -494,7 +516,7 @@ dnl
 dnl headers, event detection, dynamic linking
 dnl
 
-AC_CHECK_HEADERS(termio.h netdb.h sys/event.h pwd.h grp.h)
+AC_CHECK_HEADERS(termio.h netdb.h sys/event.h pwd.h grp.h execinfo.h)
 CLICK_CHECK_POLL_H
 AC_CHECK_FUNCS(pselect sigaction)
 
@@ -708,6 +730,22 @@ if test $ac_cv_linux_devinet_ioctl = yes; then
     AC_DEFINE(HAVE_LINUX_DEVINET_IOCTL)
 fi
 
+AC_CACHE_CHECK(for inet_ioctl kernel symbol, ac_cv_linux_inet_ioctl,
+[if grep "__ksymtab_inet_ioctl" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_inet_ioctl=yes
+else ac_cv_linux_inet_ioctl=no; fi])
+if test $ac_cv_linux_inet_ioctl = yes; then
+    AC_DEFINE(HAVE_LINUX_INET_IOCTL)
+fi
+
+AC_CACHE_CHECK(for inet_ctl_sock_create kernel symbol, ac_cv_linux_inet_ctl_sock_create,
+[if grep "__ksymtab_inet_ctl_sock_create" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_inet_ctl_sock_create=yes
+else ac_cv_linux_inet_ctl_sock_create=no; fi])
+if test $ac_cv_linux_inet_ctl_sock_create = yes; then
+    AC_DEFINE(HAVE_LINUX_INET_CTL_SOCK_CREATE)
+fi
+
 AC_CACHE_CHECK(for <linux/ktime.h>, ac_cv_linux_ktime_h,
 [if grep ktime_t `find_linuxpath include/linux/ktime.h` >/dev/null 2>&1; then
   ac_cv_linux_ktime_h=yes
@@ -903,6 +941,40 @@ AC_CHECK_HEADERS(linux/if_tun.h net/if_tun.h net/if_tap.h net/bpf.h)
 
 
 dnl
+dnl set path variables
+dnl
+
+shell_expand () {
+    val=`eval echo '$'"$1"`
+    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
+    eval "$1='$val'"
+}
+
+dnl Preset $prefix and $exec_prefix.
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+
+dnl Expand 'infodir' to check for Red Hat
+if test x$infodir = 'x${prefix}/info'; then
+    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
+fi
+
+shell_expand bindir
+shell_expand sbindir
+shell_expand libdir
+shell_expand datarootdir
+shell_expand datadir
+shell_expand includedir
+
+clickdatadir="$datadir/click"
+AC_SUBST(clickdatadir)
+
+AC_DEFINE_UNQUOTED(CLICK_BINDIR, "$bindir")
+AC_DEFINE_UNQUOTED(CLICK_LIBDIR, "$libdir")
+AC_DEFINE_UNQUOTED(CLICK_DATADIR, "$clickdatadir")
+
+
+dnl
 dnl possible drivers
 dnl
 
@@ -1001,7 +1073,7 @@ if test "$properprefix" != no; then
     saveflags="$CPPFLAGS"; test -n "$properprefix" && CPPFLAGS="$CPPFLAGS -I$properprefix/include"
     AC_CHECK_HEADER(prop.h, have_prop_h=yes, have_prop_h=no)
     CPPFLAGS="$saveflags"
-    
+
     AC_LANG_C
     saveflags="$LDFLAGS"; test -n "$properprefix" && LDFLAGS="$LDFLAGS -L$properprefix/lib"
     AC_CHECK_LIB(proper, prop_open, have_libproper=yes, have_libproper=no)
@@ -1040,7 +1112,7 @@ if test "$expatprefix" != no; then
     saveflags="$CPPFLAGS"; test -n "$expatprefix" && CPPFLAGS="$CPPFLAGS -I$expatprefix/include"
     AC_CHECK_HEADER(expat.h, have_expat_h=yes, have_expat_h=no)
     CPPFLAGS="$saveflags"
-    
+
     AC_LANG_C
     saveflags="$LDFLAGS"; test -n "$expatprefix" && LDFLAGS="$LDFLAGS -L$expatprefix/lib"
     AC_CHECK_LIB(expat, XML_ParserCreateNS, have_libexpat=yes, have_libexpat=no)
@@ -1079,7 +1151,7 @@ if test $ac_have_linux_kernel = y; then
     unset -v CFLAGS CPPFLAGS
     CC="$KERNEL_CC"
     CXX="$KERNEL_CXX"
-    
+
     dnl check for arguments to pass to Linux make
     linux_makeargs=
     if test -n "$ARCH"; then
@@ -1114,6 +1186,7 @@ Can't find Linux 2.6 compilation flags.
 	echo "$lCPPFLAGS $lCFLAGS $lLINUXINCLUDE $lKBUILD_CPPFLAGS $lKBUILD_CFLAGS" >conftest.dat
 	LINUX_CFLAGS="`sed -e 's,-Iinclude ',-I$linux_builddir/include' ,g' \
 	    -e 's,-Iinclude2 ',-I$linux_builddir/include2' ,g' \
+	    -e 's,-Iarch/um/include/shared',-I$linux_builddir/arch/um/include/shared',g' \
 	    -e 's, include/, '$linux_builddir/include/,g \
 	    -e s,-Iinclude/,-I${linux_srcdir}include/,g \
 	    -e s,-Wno-pointer-sign,,g \
@@ -1127,11 +1200,12 @@ Can't find Linux 2.6 compilation flags.
     fi
 
     LINUX_FIXINCLUDES_PROGRAM=
+    CLICKLINUX_FIXINCLUDES_PROGRAM=
     if test "$LINUXMODULE_FIXINCLUDES" = 1; then
-	AC_MSG_CHECKING([for C++-safe versions of Linux include files])
-	$srcdir/linuxmodule/fixincludes.pl -o "`pwd`/include/click-linuxmodule" $LINUX_CFLAGS >conftest.dat
+	AC_MSG_NOTICE([making C++-safe versions of Linux kernel headers (may take a while)])
+	mydir="`pwd`/include/click-linuxmodule"
+	$srcdir/linuxmodule/fixincludes.pl -o "$mydir" $LINUX_CFLAGS >conftest.dat
 	if test $? != 0; then
-	    AC_MSG_RESULT(failed)
 	    AC_MSG_ERROR([
 ==============================================
 
@@ -1141,9 +1215,10 @@ fixincludes.pl execution failed.
 	fi
 	LINUX_CFLAGS="`head -n 1 conftest.dat`"
 	LINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat`"
-	AC_MSG_RESULT($LINUX_CFLAGS)
+	CLICKLINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat | sed -e "s	$mydir	$includedir/click-linuxmodule	g"`"
     fi
     AC_SUBST(LINUX_FIXINCLUDES_PROGRAM)
+    AC_SUBST(CLICKLINUX_FIXINCLUDES_PROGRAM)
 
 
     CPPFLAGS="$save_cppflags $LINUX_CFLAGS"
@@ -1167,7 +1242,10 @@ fixincludes.pl execution failed.
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+#ifndef AUTOCONF_INCLUDED
+# include <linux/autoconf.h>
+#endif
 #include <asm/types.h>]])
 
 
@@ -1216,7 +1294,7 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 	[AC_LANG_C
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
 #include <linux/skbuff.h>]],
-[[extern struct sk_buff *s; s->security = 0;]])], 
+[[extern struct sk_buff *s; s->security = 0;]])],
 	[ac_cv_linuxmodule_skbuff_security=yes], [ac_cv_linuxmodule_skbuff_security=no])])
     if test $ac_cv_linuxmodule_skbuff_security = yes; then
 	AC_DEFINE([HAVE_LINUX_SKBUFF_SECURITY], [1], [Define if 'struct sk_buff' has a 'security' member.])
@@ -1226,7 +1304,7 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 	[AC_LANG_C
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
 #include <linux/skbuff.h>]],
-[[extern struct sk_buff *s; s->fclone = 0;]])], 
+[[extern struct sk_buff *s; s->fclone = 0;]])],
 	[ac_cv_linuxmodule_skbuff_fclone=yes], [ac_cv_linuxmodule_skbuff_fclone=no])])
     if test $ac_cv_linuxmodule_skbuff_fclone = yes; then
 	AC_DEFINE([HAVE_LINUX_SKBUFF_FCLONE], [1], [Define if 'struct sk_buff' has an 'fclone' member.])
@@ -1292,6 +1370,12 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 #include <linux/skbuff.h>]])
     if test $ac_cv_skb_recycle = yes; then
 	AC_DEFINE([HAVE_SKB_RECYCLE], [1], [Define if you have the skb_recycle function.])
+    fi
+
+    AC_CHECK_DECL(skb_linearize, [ac_cv_skb_linearize=yes], [ac_cv_skb_linearize=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>]])
+    if test $ac_cv_skb_linearize = yes; then
+	AC_DEFINE([HAVE_SKB_LINEARIZE], [1], [Define if you have the skb_linearize function.])
     fi
 
     AC_CACHE_CHECK([whether netif_receive_skb has been extended], [ac_cv_linuxmodule_netif_receive_skb_extended],
@@ -1531,40 +1615,6 @@ AC_SUBST(MAKEINFO)
 AC_SUBST(TEXI2DVI)
 AC_SUBST(INSTALL_INFO)
 AC_SUBST(POD2MAN)
-
-
-dnl
-dnl set path variables
-dnl
-
-shell_expand () {
-    val=`eval echo '$'"$1"`
-    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
-    eval "$1='$val'"
-}
-
-dnl Preset $prefix and $exec_prefix.
-test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
-
-dnl Expand 'infodir' to check for Red Hat
-if test x$infodir = 'x${prefix}/info'; then
-    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
-fi
-
-shell_expand bindir
-shell_expand sbindir
-shell_expand libdir
-shell_expand datarootdir
-shell_expand datadir
-shell_expand includedir
-
-clickdatadir="$datadir/click"
-AC_SUBST(clickdatadir)
-
-AC_DEFINE_UNQUOTED(CLICK_BINDIR, "$bindir")
-AC_DEFINE_UNQUOTED(CLICK_LIBDIR, "$libdir")
-AC_DEFINE_UNQUOTED(CLICK_DATADIR, "$clickdatadir")
 
 
 dnl

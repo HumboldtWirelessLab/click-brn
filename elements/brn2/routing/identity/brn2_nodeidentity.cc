@@ -5,16 +5,17 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include <elements/brn2/brn2.h>
 #include <elements/brn2/standard/brnaddressinfo.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _debug(BrnLogger::DEFAULT),
-    _master_device_id(-1),
+  : _master_device_id(-1),
     _service_device_id(-1)
 {
+  BRNElement::init();
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -25,19 +26,24 @@ int
 BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int no_dev = 0;
+  String dev_string;
+  Vector<String> devices;
 
-/*  if (cp_va_kparse(conf, this, errh,
-      "NODENAME", cpkP+cpkM, cpString, &_name,
+  if (cp_va_kparse(conf, this, errh,
+      "NAME", cpkP+cpkM, cpString, &_nodename,
+      "DEVICES", cpkP+cpkM, cpString, &dev_string,
       cpEnd) < 0)
-    return -1;*/
+    return -1;
 
-  for (int slot = 0; slot < conf.size(); slot++) {
-    Element *e = cp_element(conf[slot], this, errh);
+  String dev_string_uncomment = cp_uncomment(dev_string);
+  cp_spacevec(dev_string_uncomment, devices);
+
+  for (int slot = 0; slot < devices.size(); slot++) {
+    Element *e = cp_element(devices[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
     if (!brn_device) {
       return errh->error("element is not an BRN2Device");
-    }
-    else {
+    } else {
       brn_device->setDeviceNumber(no_dev++);
       _node_devices.push_back(brn_device);
     }
@@ -76,14 +82,14 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     _master_device = _node_devices[0];
     _master_device_id = 0;
     //!! First set the device, than print debug !!//
-    BRN_WARN("No master device: use 0 for master");
+    BRN_DEBUG("No master device: use 0 for master");
   }
 
   if ( _service_device_id == -1 ) {
     _service_device = _node_devices[0];
     _service_device_id = 0;
     //!! First set the device, than print debug !!//
-    BRN_WARN("No service device: use 0 for service");
+    BRN_DEBUG("No service device: use 0 for service");
   }
 
   return 0;
@@ -144,19 +150,55 @@ read_devinfo_param(Element *e, void *)
   StringAccum sa;
   BRN2Device *dev;
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+
+  sa << "<nodeidentity name=\"" << id->_nodename << "\">\n";
   for ( int i = 0; i < id->_node_devices.size(); i++ ) {
     dev = id->_node_devices[i];
-    sa << "Device " << i << ": " << dev->getDeviceName().c_str();// << "\n";
-    sa << " EtherAddress: " << dev->getEtherAddress()->unparse().c_str();// << "\n";
-    sa << " Type: " << dev->getDeviceTypeString().c_str()  << "\n"; //<< "\n"; 
+    sa << "\t<device index=\"" << i << "\" name=\"" << dev->getDeviceName().c_str();
+    sa << "\" address=\"" << dev->getEtherAddress()->unparse().c_str();
+    sa << "\" type=\"" << dev->getDeviceTypeString().c_str()  << "\" />\n";
   }
+  sa << "</nodeidentity>";
 
   return sa.take_string();
 }
 
-static int 
-write_nodename_param(const String &in_s, Element *e, void *,
-                      ErrorHandler *errh)
+static String
+read_version_param(Element *e, void *)
+{
+  StringAccum sa;
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+
+  char click_binary_digest[16*2 + 1];
+  char click_script_digest[16*2 + 1];
+
+  MD5::printDigest(id->_click_binary_id, click_binary_digest);
+  MD5::printDigest(id->_click_script_id, click_script_digest);
+
+  sa << "<version name=\"" << id->_nodename << "\">\n";
+  sa << "\t<click_binary version=\"" << CLICK_VERSION << "\" brn_version=\"" << BRN_VERSION << "\"";
+#if CLICK_USERLEVEL == 1
+#if CLICK_NS == 1
+  sa << " mode=\"sim\"";
+#else
+  sa << " mode=\"userlevel\"";
+#endif
+#else
+#ifdef CLICK_LINUXMODULE
+  sa << " mode=\"kernel\"";
+#else
+  sa << " mode=\"unknown\"";
+#endif
+#endif
+  sa << " md5_id=\"" << click_binary_digest << "\" />\n";
+  sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
+  sa << "</version>";
+
+  return sa.take_string();
+}
+
+static int
+write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
   String s = cp_uncomment(in_s);
@@ -167,34 +209,33 @@ write_nodename_param(const String &in_s, Element *e, void *,
   return 0;
 }
 
-
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
-  return String(id->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
+static int
+write_version_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
   String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  id->_debug = debug;
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  if ( args.size() == 2) {
+    MD5::digestFromString(id->_click_binary_id, args[0].c_str());
+    MD5::digestFromString(id->_click_script_id, args[1].c_str());
+  }
+
   return 0;
 }
+
 
 void
 BRN2NodeIdentity::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
   add_read_handler("devinfo", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
+
+  add_read_handler("version", read_version_param, 0);
+  add_write_handler("version", write_version_param, 0);
 }
 
 #include <click/vector.cc>

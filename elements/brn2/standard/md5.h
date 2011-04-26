@@ -399,13 +399,10 @@ class MD5 {
  public:
   inline static int hexcompare(const md5_byte_t *sa, const md5_byte_t *sb)
   {
-   // int len = sizeof(sa) > sizeof(sb) ? sizeof(sb): sizeof(sa);
-   int len = 16;
-
   /* Sort numbers in the usual way, where -0 == +0.  Put NaNs after
     conversion errors but before numbers; sort them by internal
     bit-pattern, for lack of a more portable alternative.  */
-    for (int i = 0; i < len; i++)
+    for (int i = 0; i < MD5_DIGEST_LENGTH; i++)
     {
       if (sa[i] > sb[i])
         return +1;
@@ -417,7 +414,10 @@ class MD5 {
 
   inline static bool is_equals(const md5_byte_t *sa, const md5_byte_t *sb)
   {
-    return (MD5::hexcompare(sa, sb) == 0);
+    uint32_t *sa32 = (uint32_t*)sa;
+    uint32_t *sb32 = (uint32_t*)sb;
+    return ( (sa32[0]==sb32[0]) && (sa32[1]==sb32[1]) && (sa32[2]==sb32[2]) && (sa32[3]==sb32[3]));
+    //return (MD5::hexcompare(sa, sb) == 0);
   }
 
   inline static bool is_smaller(const md5_byte_t *sa, const md5_byte_t *sb)

@@ -25,9 +25,6 @@
 #include <click/error.hh>
 #include <click/bitvector.hh>
 #include <click/straccum.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 const char *CheckTCPHeader::reason_texts[NREASONS] = {
@@ -58,8 +55,11 @@ CheckTCPHeader::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   _verbose = verbose;
-  if (details)
+  if (details) {
     _reason_drops = new atomic_uint32_t[NREASONS];
+    for (int i = 0; i < NREASONS; ++i)
+      _reason_drops[i] = 0;
+  }
 
   return 0;
 }

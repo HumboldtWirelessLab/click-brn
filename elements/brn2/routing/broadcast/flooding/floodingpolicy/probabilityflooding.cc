@@ -12,6 +12,7 @@ CLICK_DECLS
 
 ProbabilityFlooding::ProbabilityFlooding()
 {
+  BRNElement::init();
 }
 
 ProbabilityFlooding::~ProbabilityFlooding()
@@ -34,7 +35,9 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   if (cp_va_kparse(conf, this, errh,
-    "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
+    "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+    "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+    "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -53,8 +56,12 @@ ProbabilityFlooding::do_forward(EtherAddress */*src*/, int /*id*/, bool is_known
 {
   click_random_srandom();
 
-  if ( _linkstat->_neighbors.size() < 3 ) return ! is_known;
-  if ( ( click_random() % (_linkstat->_neighbors.size() - 2) ) == 1 ) return false;
+  const EtherAddress *me = _me->getMasterAddress();
+  Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
+  get_filtered_neighbors(*me, nb_neighbors);
+
+  if ( nb_neighbors.size() < 3 ) return ! is_known;
+  if ( ( click_random() % (nb_neighbors.size() - 2) ) == 1 ) return false;
 
   return ! is_known;
 }
@@ -63,6 +70,28 @@ int
 ProbabilityFlooding::policy_id()
 {
   return POLICY_ID_PROBABILITY;
+}
+
+
+void
+ProbabilityFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
+{
+  if (_link_table) {
+    Vector<EtherAddress> neighbors_tmp;
+
+    _link_table->get_neighbors(node, neighbors_tmp);
+
+    for( int n_i = 0; n_i < neighbors_tmp.size(); n_i++) {
+        // calc metric between this neighbor and node to make sure that we are well-connected
+      int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
+
+      // skip to bad neighbors
+      if (metric_nb_node > _max_metric_to_neighbor) {
+        continue;
+      }
+      out.push_back(neighbors_tmp[n_i]);
+    }
+  }
 }
 
 /*******************************************************************************************/
@@ -95,6 +124,8 @@ read_param(Element *e, void *thunk)
 
 void ProbabilityFlooding::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("flooding_info", read_param , (void *)H_FLOODING_INFO);
 }
 

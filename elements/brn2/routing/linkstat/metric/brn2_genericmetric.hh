@@ -22,13 +22,15 @@
 #define BRN2GENERICMETRIC_HH
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 //
 // Common interface of all route metric elements.
 //
 
-class BRN2GenericMetric : public Element {};
+class BRN2GenericMetric : public BRNElement {};
 
 CLICK_ENDDECLS
 #endif

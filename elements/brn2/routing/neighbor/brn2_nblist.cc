@@ -8,6 +8,7 @@ CLICK_DECLS
 
 BRN2NBList::BRN2NBList()
 {
+  BRNElement::init();
 }
 
 BRN2NBList::~BRN2NBList()
@@ -15,8 +16,16 @@ BRN2NBList::~BRN2NBList()
 }
 
 int
-BRN2NBList::configure(Vector<String> &, ErrorHandler* )
+BRN2NBList::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  if (cp_va_kparse(conf, this, errh,
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      cpEnd) < 0)
+          return -1;
+
+  if (!_nodeid || !_nodeid->cast("BRN2NodeIdentity"))
+    return errh->error("BRN2NodeIdentity not specified");
+
   return 0;
 }
 
@@ -71,6 +80,11 @@ BRN2NBList::printNeighbors()
   }
   return sa.take_string();
 }
+int
+BRN2NBList::insert(EtherAddress eth, uint8_t dev_number)
+{
+  return insert(eth, _nodeid->getDeviceByNumber(dev_number));
+}
 
 int
 BRN2NBList::insert(EtherAddress eth, BRN2Device *dev)
@@ -111,35 +125,13 @@ read_neighbor_param(Element *e, void */*thunk*/)
 }
 
 
-static String
-read_debug_param(Element *e, void */*thunk*/)
-{
-  BRN2NBList *nbl = (BRN2NBList *)e;
-  return String(nbl->_debug) + "\n";
-}
-
-static int
-write_debug_param(const String &in_s, Element *e, void */*vparam*/,
-                      ErrorHandler *errh)
-{
-  BRN2NBList *nbl = (BRN2NBList *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  nbl->_debug = debug;
-  return 0;
-}
-
 void
 BRN2NBList::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
+  BRNElement::add_handlers();
+
   add_read_handler("neighbor", read_neighbor_param, 0);
-
-
-//  add_write_handler("insert", static_insert, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  //add_write_handler("insert", static_insert, 0);
 }
 
 #include <click/vector.cc>

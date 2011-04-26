@@ -78,6 +78,16 @@ enum {
   H_SPEED
 };
 
+String
+GPS::read_gps()
+{
+  StringAccum sa;
+  sa << "<gps id='" << BRN_NODE_NAME << "' time='" << Timestamp::now().unparse();
+  sa << "' lat='" << _position._latitude.unparse() << "' long='" << _position._longitude.unparse();
+  sa << "' alt='" << _position._altitude.unparse() << "' speed='" << _position._speed.unparse() << "' />\n";
+  return sa.take_string();
+}
+
 static String
 read_position_param(Element *e, void *thunk)
 {
@@ -92,14 +102,7 @@ read_position_param(Element *e, void *thunk)
       break;
     }
     case H_GPS_COORD: {
-      sa << pos->_latitude.unparse() << " ";
-      sa << pos->_longitude.unparse() << " ";
-      sa << pos->_altitude.unparse();
-      break;
-    }
-    case H_SPEED: {
-      sa << pos->_speed.unparse();
-     break;
+      return gps->read_gps();
     }
   }
   return sa.take_string();
@@ -162,9 +165,10 @@ GPS::add_handlers()
 
   add_read_handler("cart_coord", read_position_param, H_CART_COORD);
   add_write_handler("cart_coord", write_position_param, H_CART_COORD);
+
   add_read_handler("gps_coord", read_position_param, H_GPS_COORD);
   add_write_handler("gps_coord", write_position_param, H_GPS_COORD);
-  add_read_handler("speed", read_position_param, H_SPEED);
+
   add_write_handler("speed", write_position_param, H_SPEED);
 }
 

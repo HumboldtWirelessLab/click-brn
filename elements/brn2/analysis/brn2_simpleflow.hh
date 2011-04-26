@@ -32,8 +32,11 @@ class BRN2SimpleFlow : public BRNElement
     uint8_t  mode;
     uint8_t  reply;
 
+    uint32_t tv_sec;   /* seconds since 1.1.1970 */ //previous: unsigned long
+    uint32_t tv_usec;  /* und microseconds */       //previous: long
   });
 
+#define SIMPLEFLOW_MAXHOPCOUNT   100
 #define MINIMUM_FLOW_PACKET_SIZE sizeof(struct flowPacketHeader)
 
   typedef enum flowType
@@ -42,12 +45,6 @@ class BRN2SimpleFlow : public BRNElement
     TYPE_SMALL_ACK = 1,
     TYPE_FULL_ACK  = 2
   } FlowType;
-
-  typedef enum flowDir
-  {
-    DIR_ME_SENDER   = 0,
-    DIR_ME_RECEIVER = 1
-  } FlowDir;
 
  public:
   class Flow
@@ -58,7 +55,6 @@ class BRN2SimpleFlow : public BRNElement
 
       uint32_t _id;
 
-      FlowDir _dir;
       FlowType _type;
 
       uint32_t _rate;
@@ -72,14 +68,17 @@ class BRN2SimpleFlow : public BRNElement
 
       uint32_t _rxCrcErrors;
 
+      uint32_t _cum_sum_hops;
+
+      uint32_t _cum_sum_rt_time;
+
       Flow() {}
 
-      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, FlowDir dir, int rate, int size, int duration) {
+      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
         _src = src;
         _dst = dst;
         _id = id;
         _type = type;
-        _dir = dir;
         _rate = rate;
         _size = size;
         _duration = duration;
@@ -87,6 +86,8 @@ class BRN2SimpleFlow : public BRNElement
         _txPackets = 0;
         _rxPackets = 0;
         _rxCrcErrors = 0;
+        _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
       }
 
       ~Flow() {}
@@ -96,8 +97,9 @@ class BRN2SimpleFlow : public BRNElement
         _txPackets = 1;
         _rxPackets = 0;
         _rxCrcErrors = 0;
+        _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
       }
-
   };
 
     Timer _timer;
@@ -138,10 +140,14 @@ class BRN2SimpleFlow : public BRNElement
                    uint32_t rate, uint32_t size, uint32_t mode,
                    uint32_t duration, bool active );
 
+    void reset();
+
     FlowMap _rx_flowMap;
     FlowMap _tx_flowMap;
 
     EtherAddress dst_of_flow;
+
+    String xml_stats();
 
   private:
 
@@ -150,6 +156,9 @@ class BRN2SimpleFlow : public BRNElement
     bool _clear_packet;
     int _headroom;
 
+    bool _start_active;
+
+    uint32_t _flow_id;
 };
 
 CLICK_ENDDECLS

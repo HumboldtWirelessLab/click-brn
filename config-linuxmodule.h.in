@@ -46,6 +46,12 @@
 /* Define if your Linux kernel has devinet_ioctl. */
 #undef HAVE_LINUX_DEVINET_IOCTL
 
+/* Define if your Linux kernel has inet_ctl_sock_create. */
+#undef HAVE_LINUX_INET_CTL_SOCK_CREATE
+
+/* Define if your Linux kernel has inet_ioctl. */
+#undef HAVE_LINUX_INET_IOCTL
+
 /* Define if you have the <linux/ktime.h> header file. */
 #undef HAVE_LINUX_KTIME_H
 
@@ -111,6 +117,9 @@
 
 /* Define if you have the skb_dst_drop function. */
 #undef HAVE_SKB_DST_DROP
+
+/* Define if you have the skb_linearize function. */
+#undef HAVE_SKB_LINEARIZE
 
 /* Define if you have the skb_recycle function. */
 #undef HAVE_SKB_RECYCLE

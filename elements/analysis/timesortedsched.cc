@@ -4,7 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 2001-2003 International Computer Science Institute
- * Copyright (c) 2010 Regents of the University of California
+ * Copyright (c) 2010-2011 Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -23,6 +23,7 @@
 #include <click/standard/scheduleinfo.hh>
 #include <click/confparse.hh>
 #include <click/router.hh>
+#include <click/heap.hh>
 CLICK_DECLS
 
 TimeSortedSched::TimeSortedSched()
@@ -98,7 +99,7 @@ TimeSortedSched::pull(int)
 	    while ((_pkt[_npkt].p = input(i).pull())) {
 		_pkt[_npkt].input = i;
 		++_npkt;
-		push_heap(_pkt, _pkt + _npkt, packet_s::compare);
+		push_heap(_pkt, _pkt + _npkt, heap_less());
 		--is.space;
 		if (!is.space) {
 		    _input[rpos].ready = _input[_nready - 1].ready;
@@ -113,16 +114,18 @@ TimeSortedSched::pull(int)
     _notifier.set_active(_npkt > 0 || signals_on);
     if (_npkt > 0) {
 	Packet *p = _pkt[0].p;
-	if (_last_emission && p->timestamp_anno() < _last_emission)
-	    _well_ordered = false;
-	_last_emission = p->timestamp_anno();
+	if (p->timestamp_anno()) {
+	    if (_last_emission && p->timestamp_anno() < _last_emission)
+		_well_ordered = false;
+	    _last_emission = p->timestamp_anno();
+	}
 	input_s &is = _input[_pkt[0].input];
 	++is.space;
 	if (is.space == 1) {
 	    _input[_nready].ready = _pkt[0].input;
 	    ++_nready;
 	}
-	pop_heap(_pkt, _pkt + _npkt, packet_s::compare);
+	pop_heap(_pkt, _pkt + _npkt, heap_less());
 	--_npkt;
 	return p;
     } else {

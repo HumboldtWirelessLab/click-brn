@@ -42,8 +42,8 @@ CLICK_DECLS
  */
 
 #define GPSMODE_HANDLER 0
-#define GPSMODE_GPSD 0
-#define GPSMODE_SERIAL 0
+#define GPSMODE_GPSD    1
+#define GPSMODE_SERIAL  2
 
 struct gps_position {
   int x;
@@ -79,10 +79,16 @@ class GPSPosition {
     _z=pos->z; _x=pos->x; _y=pos->y;
   }
 
-  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber h) {
+  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {
     _latitude = lat;
     _longitude = lon;
-    _altitude = h;
+    _altitude = alt;
+  }
+
+  void setGPS(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {
+    _latitude = lat;
+    _longitude = lon;
+    _altitude = alt;
   }
 
   void setCC(int x, int y, int z) {
@@ -166,6 +172,7 @@ class GPS : public BRNElement {
   void add_handlers();
 
   GPSPosition *getPosition() { return &_position;}
+  inline String read_gps();
 
  private:
   //
@@ -176,7 +183,12 @@ class GPS : public BRNElement {
  public:
   int _gpsmode;
 
+  void set_gps(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {
+    _position.setGPS(lat,lon,alt);
+  }
+
   String _gpsdevice;
+
   IPAddress _gpsd_ip;
   int _gpsd_port;
 

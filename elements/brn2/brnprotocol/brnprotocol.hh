@@ -69,7 +69,9 @@ union addr {
 /*Clustering*/
 #define BRN_PORT_DCLUSTER            30 /*0x1e*/
 #define BRN_PORT_NHOPCLUSTER         31 /*0x1f*/
+/*Topology*/
 #define BRN_PORT_TOPOLOGY_DETECTION  35 /*0x23*/
+#define BRN_PORT_NHOPNEIGHBOURING    36 /*0x24*/
 /*P2P*/
 #define BRN_PORT_DHTROUTING          40 /*0x28*/
 #define BRN_PORT_DHTSTORAGE          41 /*0x29*/
@@ -101,6 +103,9 @@ class BRNProtocol : public Element { public:
   static struct click_brn* get_brnheader(Packet *p);
   static Packet *pull_brn_header(Packet *p);
   static WritablePacket *push_brn_header(Packet *p);
+
+  static bool is_brn_etherframe(Packet *p);
+  static struct click_brn* get_brnheader_in_etherframe(Packet *p);
 
 };
 

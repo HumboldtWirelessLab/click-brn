@@ -111,7 +111,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   DHTnodelist nodes;
 
-  send_nodes = min(_no_nodes_per_lp, _frt->_allnodes.size());
+  send_nodes = min(min(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
   for (int i = 0; i < send_nodes; i++ ) {
     _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
@@ -119,6 +119,9 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
   }
 
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
+
+  BRN_DEBUG("Send nodes: %d Size: %d Len: %d nodes_per_lp: %d Max_nodes_per_lp: %d",send_nodes,size,len,_no_nodes_per_lp,
+                                                                              DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
   nodes.clear();
 

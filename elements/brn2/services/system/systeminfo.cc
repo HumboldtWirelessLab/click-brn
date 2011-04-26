@@ -24,11 +24,12 @@
  */
 
 #include <click/config.h>
-
-#include "systeminfo.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "systeminfo.hh"
+
 CLICK_DECLS
 
 SystemInfo::SystemInfo()
@@ -62,17 +63,34 @@ SystemInfo::initialize(ErrorHandler */*errh*/)
   return 0;
 }
 
+/*************************************************************************/
+/************************ H A N D L E R **********************************/
+/*************************************************************************/
+
+enum {
+  H_SYSINFO,
+  H_SCHEMA
+};
+
 static String
-read_handler(Element *e, void *)
+read_handler(Element *e, void *thunk)
 {
   SystemInfo *si = (SystemInfo *)e;
+  Timestamp now = Timestamp::now();
 
   StringAccum sa;
 
-  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'>\n";
+  switch ((uintptr_t) thunk) {
+     case H_SYSINFO: {
+
+  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'" << " time='" << now.unparse() << "'>\n";
 
   // meminfo
+#if CLICK_USERLEVEL
   String raw_info = file_string("/proc/meminfo");
+#else
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+#endif
   Vector<String> first_col, second_col, third_col, fourth_col;
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL);
@@ -94,7 +112,9 @@ read_handler(Element *e, void *)
   fourth_col.clear();
 
   // load average
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/loadavg"));
+#endif
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL, NULL);
 
@@ -113,7 +133,10 @@ read_handler(Element *e, void *)
   fourth_col.clear();
 
   // uptime
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/uptime"));
+#endif
+
   parse_tabbed_lines(raw_info, &first_col, &second_col, NULL);
 
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
@@ -124,13 +147,25 @@ read_handler(Element *e, void *)
   sa << "/>\n";
 
   // linux version
+#if CLICK_USERLEVEL
   raw_info = String(file_string("/proc/version"));
+#endif
 
   sa << "\t<linux ";
-  sa << "version='" << raw_info << "'";
+  sa << "version='" << raw_info.trim_space() << "'";
   sa << "/>\n";
 
   sa << "</system>\n";
+  break;
+  }
+  case H_SCHEMA: {
+	sa << "Tbd." << "\n";
+  break;
+  }
+  default:
+      return String() + "\n";
+  }
+
 
   return sa.take_string();
 }
@@ -140,9 +175,9 @@ SystemInfo::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("systeminfo", read_handler, 0);
+  add_read_handler("systeminfo", read_handler, (void *) H_SYSINFO);
+  add_read_handler("schema", read_handler, (void *) H_SCHEMA);
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel)
 EXPORT_ELEMENT(SystemInfo)

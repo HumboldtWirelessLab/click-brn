@@ -1776,6 +1776,7 @@ bool cp_seconds(const String &str, double *result)
 /** @brief Parse a timestamp from @a str.
  * @param  str  string
  * @param[out]  result  stores parsed result
+ * @param  allow_negative  allow negative timestamps if true
  * @return  True if @a str parsed correctly, false otherwise.
  *
  * Parses a timestamp from @a str.  Timestamps are expressed as fractional
@@ -1793,12 +1794,21 @@ bool cp_seconds(const String &str, double *result)
  * An overloaded version of this function is available for struct timeval @a
  * result values.
  */
-bool cp_time(const String &str, Timestamp* result)
+bool cp_time(const String &str, Timestamp *result, bool allow_negative)
 {
     int power = 0, factor = 1;
-    const char *after_unit = read_unit(str.begin(), str.end(), seconds_units, sizeof(seconds_units), seconds_prefixes, &power, &factor);
+    const char *begin = str.begin(), *end = str.end();
+    const char *after_unit = read_unit(begin, end, seconds_units, sizeof(seconds_units), seconds_prefixes, &power, &factor);
+
+    bool negative = false;
+    if (allow_negative && after_unit - begin > 1
+	&& begin[0] == '-' && begin[1] != '+') {
+	negative = true;
+	++begin;
+    }
+
     uint32_t sec, nsec;
-    if (!cp_real10(str.substring(str.begin(), after_unit), 9, power, &sec, &nsec))
+    if (!cp_real10(str.substring(begin, after_unit), 9, power, &sec, &nsec))
 	return false;
     if (factor != 1) {
 	nsec *= factor;
@@ -1806,7 +1816,10 @@ bool cp_time(const String &str, Timestamp* result)
 	nsec -= delta * 1000000000;
 	sec = (sec * factor) + delta;
     }
-    *result = Timestamp::make_nsec(sec, nsec);
+    if (!negative)
+	*result = Timestamp::make_nsec(sec, nsec);
+    else
+	*result = Timestamp::make_nsec(-(Timestamp::seconds_type) sec, nsec);
     return true;
 }
 
@@ -2465,10 +2478,11 @@ cp_tcpudp_port(const String &str, int proto, uint16_t *result
 
 #if !CLICK_TOOL
 /** @brief Parse an element reference from @a str.
- * @param  str  string
- * @param  context  element context
- * @param  errh  optional error handler
- * @return  Element pointer, or null if no such element is found.
+ * @param str string
+ * @param context element context
+ * @param errh optional error handler
+ * @param argname optional argument name (used for error messages)
+ * @return Element pointer, or null if no such element is found.
  *
  * Parses an element reference from @a str.  The input must be a single
  * (possibly quoted) string acceptable to cp_string().  The unquoted value
@@ -2505,10 +2519,11 @@ cp_element(const String &str, const Element *context, ErrorHandler *errh,
 }
 
 /** @brief Parse an element reference from @a str.
- * @param  str  string
- * @param  router  router
- * @param  errh  optional error handler
- * @return  Element pointer, or null if no such element is found.
+ * @param str string
+ * @param router router
+ * @param errh optional error handler
+ * @param argname optional argument name (used for error messages)
+ * @return Element pointer, or null if no such element is found.
  *
  * Parses an element reference from @a str.  The input must be a single
  * (possibly quoted) string acceptable to cp_string().  The unquoted value
@@ -2806,6 +2821,7 @@ const CpVaParseCmd
   cpSecondsAsMilli	= "msec",
   cpSecondsAsMicro	= "usec",
   cpTimestamp		= "timestamp",
+  cpTimestampSigned	= "timestamp_signed",
   cpTimeval		= "timeval",
   cpBandwidth		= "bandwidth_Bps",
   cpIPAddress		= "ip_addr",
@@ -2869,6 +2885,7 @@ enum {
   cpiSecondsAsMilli,
   cpiSecondsAsMicro,
   cpiTimestamp,
+  cpiTimestampSigned,
   cpiTimeval,
   cpiBandwidth,
   cpiIPAddress,
@@ -3122,9 +3139,10 @@ default_parsefunc(cp_value *v, const String &arg,
     }
     break;
 
-   case cpiTimestamp: {
+  case cpiTimestamp:
+  case cpiTimestampSigned: {
      Timestamp t;
-     if (!cp_time(arg, &t)) {
+     if (!cp_time(arg, &t, argtype->internal == cpiTimestampSigned)) {
        if (cp_errno == CPE_NEGATIVE)
 	 errh->error("%s must be >= 0", argname);
        else
@@ -3409,7 +3427,8 @@ default_storefunc(cp_value *v  CP_CONTEXT)
    }
 #endif
 
-   case cpiTimestamp: {
+  case cpiTimestamp:
+  case cpiTimestampSigned: {
      Timestamp *tstore = (Timestamp *)v->store;
      *tstore = Timestamp(v->v.s32, v->v2.s32);
      break;
@@ -4828,6 +4847,7 @@ cp_va_static_initialize()
     cp_register_argtype(cpSecondsAsMilli, "time in sec (msec precision)", 0, default_parsefunc, default_storefunc, cpiSecondsAsMilli);
     cp_register_argtype(cpSecondsAsMicro, "time in sec (usec precision)", 0, default_parsefunc, default_storefunc, cpiSecondsAsMicro);
     cp_register_argtype(cpTimestamp, "seconds since the epoch", 0, default_parsefunc, default_storefunc, cpiTimestamp);
+    cp_register_argtype(cpTimestampSigned, "seconds since the epoch", 0, default_parsefunc, default_storefunc, cpiTimestampSigned);
     cp_register_argtype(cpTimeval, "seconds since the epoch", 0, default_parsefunc, default_storefunc, cpiTimeval);
     cp_register_argtype(cpBandwidth, "bandwidth", 0, default_parsefunc, default_storefunc, cpiBandwidth);
     cp_register_argtype(cpIPAddress, "IP address", 0, default_parsefunc, default_storefunc, cpiIPAddress);

@@ -36,9 +36,9 @@ CLICK_DECLS
 
 SetPacketAnno::SetPacketAnno()
   : _ttl(-1),
-    _tos(-1),
-    _debug(BrnLogger::DEFAULT)
+    _tos(-1)
 {
+  BRNElement::init();
 }
 
 SetPacketAnno::~SetPacketAnno()
@@ -51,6 +51,8 @@ SetPacketAnno::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "TTL", cpkP, cpInteger, &_ttl,
       "TOS", cpkP, cpInteger, &_tos,
+      "QUEUE", cpkP, cpInteger, &_queue,
+      "TOS2QUEUE", cpkP, cpBool, &_queue_like_tos,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -96,30 +98,10 @@ SetPacketAnno::pull(int)
 /******************************* H A N D L E R *******************************/
 /*****************************************************************************/
 
-static String
-read_debug_param(Element *e, void *)
-{
-  SetPacketAnno *be = (SetPacketAnno *)e;
-  return String(be->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  SetPacketAnno *be = (SetPacketAnno *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  be->_debug = debug;
-  return 0;
-}
-
 void
 SetPacketAnno::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

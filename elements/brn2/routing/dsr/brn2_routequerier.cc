@@ -150,6 +150,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   }
 
   click_ether *ether = (click_ether *)p_in->data();//better to use this, since ether_header is not always set.it also can be overwriten
+  uint8_t p_in_ttl = BRNPacketAnno::ttl_anno(p_in);
+  if ( p_in_ttl == 0) p_in_ttl = 255; //TODO: ttl = route len
 
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
@@ -215,7 +217,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     }
 
    // add BRN header
-    Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(dsr_p));
+    Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, p_in_ttl,
+                                                BRNPacketAnno::tos_anno(dsr_p));
 
     // forward source routed packet to srcforwarder. this is required since
     // the address of the next hop could be mine (see nodeidentity)
@@ -689,7 +692,10 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
               }
 
               // add BRN header
-              Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(p_out));
+              uint8_t p_in_ttl = BRNPacketAnno::ttl_anno(p_out);
+              if ( p_in_ttl == 0) p_in_ttl = 255; //TODO: ttl = route len
+              Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, p_in_ttl,
+                                                          BRNPacketAnno::tos_anno(p_out));
 
               output(1).push(brn_p);
             }

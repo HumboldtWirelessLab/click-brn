@@ -34,9 +34,18 @@ CLICK_DECLS
 /*********************************************************************************/
 
 int
+DHTProtocolFalcon::max_no_nodes_in_lp(int buffer_len)
+{
+  return (buffer_len/sizeof(struct dht_falcon_node_entry))-1;
+}
+
+int
 DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
+  if ( (unsigned)buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
+
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+
   ne->age_sec = 0;
   ne->status = me->_status;
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
@@ -113,9 +122,9 @@ DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t 
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position)
+DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position, Packet *p_recycle)
 {
-  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet),p_recycle);
   struct falcon_routing_packet *reply = (struct falcon_routing_packet*)DHTProtocol::get_payload(rrep_p);
 
   reply->table_position = htons(request_position);

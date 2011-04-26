@@ -6,6 +6,8 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include "batmanroutingtable.hh"
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
@@ -13,7 +15,7 @@ CLICK_DECLS
 
 #define QUEUE_DELAY 10
 
-class BatmanOriginatorForwarder : public Element {
+class BatmanOriginatorForwarder : public BRNElement {
 
  public:
 
@@ -49,10 +51,6 @@ class BatmanOriginatorForwarder : public Element {
 
   Timer _sendbuffer_timer;
   SendBuffer _packet_queue;
-
- public:
-
-  int _debug;
 
 };
 

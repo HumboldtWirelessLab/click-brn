@@ -24,9 +24,6 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 const char *CheckUDPHeader::reason_texts[NREASONS] = {
@@ -57,8 +54,11 @@ CheckUDPHeader::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   _verbose = verbose;
-  if (details)
+  if (details) {
     _reason_drops = new atomic_uint32_t[NREASONS];
+    for (int i = 0; i < NREASONS; ++i)
+      _reason_drops[i] = 0;
+  }
 
   return 0;
 }

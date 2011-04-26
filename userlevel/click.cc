@@ -33,6 +33,9 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <fcntl.h>
+#if HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
 
 #include <click/lexer.hh>
 #include <click/routerthread.hh>
@@ -149,6 +152,29 @@ stop_signal_handler(int sig)
     else
 	router->set_runcount(Router::STOP_RUNCOUNT);
 }
+
+#if HAVE_EXECINFO_H
+static void
+catch_dump_signal(int sig)
+{
+    (void) sig;
+
+    /* reset these signals so if we do something bad we just exit */
+    click_signal(SIGSEGV, SIG_DFL, false);
+    click_signal(SIGBUS, SIG_DFL, false);
+    click_signal(SIGILL, SIG_DFL, false);
+    click_signal(SIGABRT, SIG_DFL, false);
+    click_signal(SIGFPE, SIG_DFL, false);
+
+    /* dump the results to standard error */
+    void *return_addrs[50];
+    int naddrs = backtrace(return_addrs, sizeof(return_addrs) / sizeof(void *));
+    backtrace_symbols_fd(return_addrs, naddrs, STDERR_FILENO);
+
+    /* dump core and quit */
+    abort();
+}
+#endif
 }
 
 
@@ -297,6 +323,19 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
       click_signal(SIGTERM, stop_signal_handler, true);
       // ignore SIGPIPE
       click_signal(SIGPIPE, SIG_IGN, false);
+
+#if HAVE_EXECINFO_H
+    const char *click_backtrace = getenv("CLICK_BACKTRACE");
+    bool do_click_backtrace;
+    if (click_backtrace && (!cp_bool(click_backtrace, &do_click_backtrace)
+			    || do_click_backtrace)) {
+	click_signal(SIGSEGV, catch_dump_signal, false);
+	click_signal(SIGBUS, catch_dump_signal, false);
+	click_signal(SIGILL, catch_dump_signal, false);
+	click_signal(SIGABRT, catch_dump_signal, false);
+	click_signal(SIGFPE, catch_dump_signal, false);
+    }
+#endif
   }
 
   // register hotswap router on new router
@@ -552,6 +591,7 @@ particular purpose.\n");
   router->use();
 
   int exit_value = 0;
+  Vector<pthread_t> other_threads;
 
   // output flat configuration
   if (output_file) {
@@ -593,6 +633,7 @@ particular purpose.\n");
     for (int t = 1; t < nthreads; ++t) {
 	pthread_t p;
 	pthread_create(&p, 0, thread_driver, router->master()->thread(t));
+	other_threads.push_back(p);
     }
 #endif
     router->master()->thread(0)->driver();
@@ -640,6 +681,10 @@ particular purpose.\n");
 
   Master *master = router->master();
   router->unuse();
+#if HAVE_MULTITHREAD
+  for (int i = 0; i < other_threads.size(); ++i)
+      (void) pthread_cancel(other_threads[i]);
+#endif
   delete master;
   click_static_cleanup();
   Clp_DeleteParser(clp);

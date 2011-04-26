@@ -38,9 +38,9 @@
 CLICK_DECLS
 
 BatmanOriginatorForwarder::BatmanOriginatorForwarder()
-  :_sendbuffer_timer(this),
-   _debug(0/*BrnLogger::DEFAULT*/)
+  :_sendbuffer_timer(this)
 {
+  BRNElement::init();
 }
 
 BatmanOriginatorForwarder::~BatmanOriginatorForwarder()
@@ -81,9 +81,9 @@ BatmanOriginatorForwarder::run_timer(Timer *)
 void
 BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
 {
+  BRN_DEBUG("Push");
   EtherAddress last_hop;
   EtherAddress src;
-  bool newOriginator = false;
 
   uint8_t devId;
 
@@ -97,23 +97,37 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
   devId = BRNPacketAnno::devicenumber_anno(packet);
   BRN2Device *dev = _nodeid->getDeviceByIndex(devId);
 
-  src = EtherAddress(bo->src);
+  src = last_hop;
 
-  if ( src ==  EtherAddress(dev->getEtherAddress()->data())) {
-//    click_chatter("Got my OriginatorMsg. Kill it!");
+  BRN_DEBUG("Got originator from %s",src.unparse().c_str());
+
+  if ( src == EtherAddress(dev->getEtherAddress()->data())) {
+    BRN_DEBUG("It's me. Killing.");
     packet->kill();
     return;
   }
 
-  newOriginator = _brt->isNewOriginator(ntohl(bo->id), src);
-  _brt->handleNewOriginator(ntohl(bo->id), src, last_hop, devId, bh->hops);
+  uint32_t metric_src_to_me = _brt->get_link_metric(src,*(dev->getEtherAddress()));
+  BRN_DEBUG("Metric: originatorsrc <-> me : %d", metric_src_to_me);
+  _brt->update_originator(src, src, ntohl(bo->id), 1, 0, metric_src_to_me);
 
-  /** check, if src is a neighbour and add him if so */
-  if ( bh->hops == ORIGINATOR_SRC_HOPS ) {
-    _brt->addBatmanNeighbour(src);
+
+  uint32_t cnt_bn = BatmanProtocol::count_batman_nodes(packet);
+
+  BRN_DEBUG("Found %d nodes in Originator-Message",cnt_bn);
+  for( uint32_t bn_i = 0; bn_i < cnt_bn; bn_i++ ) {
+    EtherAddress src_ea;
+    struct batman_node *bn = BatmanProtocol::get_batman_node(packet, bn_i);
+    BRN_DEBUG("Node: %s ID: %d Hops: %d Metric: %d",
+              EtherAddress(bn->src).unparse().c_str(), ntohl(bn->id), bn->hops + 1, ntohs(bn->metric));
+    src_ea = EtherAddress(bn->src);
+
+    if ( ! _nodeid->isIdentical(&src_ea) ) {
+      _brt->update_originator(src_ea, src, ntohl(bn->id), bn->hops + 1, ntohs(bn->metric), metric_src_to_me);
+    }
   }
 
-  if ( newOriginator ) {
+  if ( false /*newOriginator*/ ) {
     //click_chatter("Originator is new. Forward !");
     bh->hops++;
     WritablePacket *p_fwd = BRNProtocol::add_brn_header(packet, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
@@ -133,30 +147,10 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BatmanOriginatorForwarder *fl = (BatmanOriginatorForwarder *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BatmanOriginatorForwarder *fl = (BatmanOriginatorForwarder *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 BatmanOriginatorForwarder::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

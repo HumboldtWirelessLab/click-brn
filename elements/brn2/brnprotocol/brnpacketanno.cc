@@ -107,21 +107,6 @@ BRNPacketAnno::dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes)
   memcpy(((uint8_t*)p->anno_u8()) + PULLED_BYTES_ANNO_OFFSET, &p_bytes, PULLED_BYTES_ANNO_SIZE);
 }
 
-/*uint8_t
-BRNPacketAnno::devicenumber_anno(const Packet *p)
-{
-  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
-  return (dst[0]);
-}
-
-void
-BRNPacketAnno::set_devicenumber_anno(Packet *p, uint8_t devnum)
-{
-  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET);
-  dst[0] = devnum;
-}
-*/
-
 uint16_t
 BRNPacketAnno::vlan_anno(const Packet *p)
 {
@@ -140,14 +125,43 @@ uint8_t
 BRNPacketAnno::tos_anno(Packet *p)
 {
   uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
-  return (dst[0]);
+  return (dst[0] & 0x0F);
 }
 
 void
 BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos)
 {
   uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
-  dst[0] = tos;
+  dst[0] = (dst[0] & 0xF0) | tos;
+}
+
+uint8_t
+BRNPacketAnno::queue_anno(Packet *p)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
+  return ((dst[0] & 0xF0) >> 4);
+}
+
+void
+BRNPacketAnno::set_queue_anno(Packet *p, uint8_t queue)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
+  dst[0] = (dst[0] & 0x0F) | (queue << 4);
+}
+
+void
+BRNPacketAnno::tos_anno(Packet *p, uint8_t *tos, uint8_t *queue)
+{
+  uint8_t* dst = ((uint8_t*)(p->anno_u8()) + TOS_ANNO_OFFSET);
+  *tos = (uint8_t)(dst[0] & 0x0F);
+  *queue = (uint8_t)((dst[0] & 0xF0) >> 4);
+}
+
+void
+BRNPacketAnno::set_tos_anno(Packet *p, uint8_t tos, uint8_t queue)
+{
+  uint8_t* dst = (uint8_t*) ((p->anno_u8()) + TOS_ANNO_OFFSET);
+  dst[0] = tos | (queue << 4);
 }
 
 uint8_t

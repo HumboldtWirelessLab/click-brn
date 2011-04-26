@@ -24,22 +24,23 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+
 #define STATE_UNKNOWN  0
 #define STATE_OK       1
 #define STATE_CRC      2
 #define STATE_PHY      3
+#define STATE_ERROR    4
 
-#define CS_DEFAULT_STATS_DURATION       100
+
+#define CS_DEFAULT_STATS_DURATION      1000
 #define CS_DEFAULT_SAVE_DURATION          0
-#define CS_DEFAULT_PROCINTERVAL           0
-#define CS_DEFAULT_PROCREAD           false
-#define CS_DEFAULT_MIN_UPDATE_TIME       20
+#define CS_DEFAULT_MIN_UPDATE_TIME      200
 #define CS_DEFAULT_RSSI_PER_NEIGHBOUR  true
-#define CS_DEFAULT_STATS_TIMER        false
 
-
+#define SMALL_STATS_SIZE 2
 #define CHANNEL_UTILITY_INVALID 255
-#define RSSI_LIMIT 100
 
 CLICK_DECLS
 
@@ -47,55 +48,95 @@ CLICK_DECLS
 =c
 ChannelStats()
 
-
-
 =d
 
-
-=a 
+=a
 
 */
 
 struct airtime_stats {
+  uint32_t stats_id;
+
+  uint32_t duration;
+
   Timestamp last_update;
 
   Timestamp last;
   Timestamp last_hw;
-  int packets;
-  int busy;
-  int rx;
-  int tx;
-  bool hw_available;
-  int hw_busy;
-  int hw_rx;
-  int hw_tx;
-  int avg_noise;
-  int avg_rssi;
-  int no_sources;
 
-  int crc_rx;
-  int crc_count;
-  int phy_rx;
-  int phy_count;
+  uint32_t rxpackets;
+
+  uint32_t noerr_packets;
+  uint32_t crc_packets;
+  uint32_t phy_packets;
+  uint32_t unknown_err_packets;
+
+  uint32_t zero_rate_packets;
+
+  uint32_t rx_ucast_packets;
+  uint32_t rx_bcast_packets;
+  uint32_t rx_retry_packets;
+
+  uint32_t txpackets;
+
+  uint32_t tx_ucast_packets;
+  uint32_t tx_bcast_packets;
+  uint32_t tx_retry_packets;
+
+  /* fraction of time */
+  uint32_t frac_mac_busy;
+  uint32_t frac_mac_rx;
+  uint32_t frac_mac_tx;
+
+  uint32_t frac_mac_noerr_rx;
+  uint32_t frac_mac_crc_rx;
+  uint32_t frac_mac_phy_rx;
+  uint32_t frac_mac_unknown_err_rx;
+
+  /* duration of packet-rec in ms */
+  uint32_t duration_busy;
+  uint32_t duration_rx;
+  uint32_t duration_tx;
+  uint32_t duration_noerr_rx;
+  uint32_t duration_crc_rx;
+  uint32_t duration_phy_rx;
+  uint32_t duration_unknown_err_rx;
+
+  /*Hardware stats available? fraction of time (hw) */
+  bool     hw_available;
+  uint32_t hw_busy;
+  uint32_t hw_rx;
+  uint32_t hw_tx;
+  uint32_t hw_count;
+
+  int32_t avg_noise;
+  int32_t std_noise;
+  int32_t avg_rssi;
+  int32_t std_rssi;
+  int32_t no_sources;
+
 };
 
 
-class ChannelStats : public Element {
+class ChannelStats : public BRNElement {
 
   public:
     class PacketInfo {
      public:
       Timestamp _rx_time;
-      unsigned int _duration;
+      uint32_t _duration;
       uint16_t _rate;
       uint16_t _length;
       bool _foreign;
-      int _channel;
+      int32_t _channel;
       bool _rx;
-      int _noise;
-      int _rssi;
+      int32_t _noise;
+      int32_t _rssi;
       EtherAddress _src;
+      EtherAddress _dst;
       uint8_t _state;
+      bool _retry;
+      bool _unicast;
     };
 
     class PacketInfoHW {
@@ -109,26 +150,71 @@ class ChannelStats : public Element {
     class SrcInfo {
      public:
       uint32_t _rssi;
+      uint32_t _sum_sq_rssi;
       uint32_t _pkt_count;
 
-      SrcInfo() {
-         _rssi = 0;
-         _pkt_count = 0;
+      uint32_t _avg_rssi;
+      uint32_t _std_rssi;
+
+      uint32_t _min_rssi;
+      uint32_t _max_rssi;
+
+      bool _calc_finished;
+
+      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false) {  //TODO: better start value for min_rssi (replace 1000)
       }
 
-      SrcInfo(uint32_t rssi, uint32_t pkt_count) {
-        if ( rssi > RSSI_LIMIT ) _rssi = 0; 
-        else _rssi = rssi;
-        _pkt_count = pkt_count;
+      SrcInfo(uint32_t rssi): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false)  {
+        if ( rssi != 0 ) {
+          _rssi = rssi;
+          _sum_sq_rssi = rssi * rssi;
+        }
+
+        _min_rssi = _max_rssi = rssi;
+        _pkt_count = 1;
       }
 
      void add_rssi(uint32_t rssi) {
-       if ( rssi <= RSSI_LIMIT ) _rssi += rssi;
+       if ( rssi > 0 ) {
+         _rssi += rssi;
+         _sum_sq_rssi += rssi * rssi;
+         if ( rssi > _max_rssi ) _max_rssi = rssi;
+         else if ( rssi < _min_rssi ) _min_rssi = rssi;
+       } else {
+         _min_rssi = 0;
+       }
+
        _pkt_count++;
      }
 
      uint32_t avg_rssi() {
        return (_rssi/_pkt_count);
+     }
+
+     int32_t isqrt32(int32_t n) {
+       int32_t x,x1;
+
+       if ( n == 0 ) return 0;
+
+       x1 = n;
+       do {
+         x = x1;
+         x1 = (x + n/x) >> 1;
+       } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
+
+       return x1;
+     }
+
+     uint32_t std_rssi() {
+       int32_t q = _rssi/_pkt_count;
+       return isqrt32((_sum_sq_rssi/_pkt_count)-(q*q));
+     }
+
+     void calc_values() {
+       if ( _calc_finished ) return;
+       _avg_rssi = avg_rssi();
+       _std_rssi = std_rssi();
+       _calc_finished = true;
      }
     };
 
@@ -157,65 +243,68 @@ class ChannelStats : public Element {
     void add_handlers();
 
     void push(int, Packet *p);
+    void reset_small_stats();
     void reset();
 
     String stats_handler(int mode);
 
-    void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
-    void get_stats(struct airtime_stats *cstats, int /*time*/);
-
-
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
 
-    bool _debug;
-    int32_t _save_duration;  //maximum age of pakets in the queue in seconds
-    int32_t _stats_duration; //maximum age of pakets, which are considered in the calculation (default)
+    void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
+    void get_stats(struct airtime_stats *cstats, int /*time*/);
+    void calc_stats_final(struct airtime_stats *small_stats, RSSITable *rssi_tab, int duration);
 
   private:
 
-    void readProcHandler();
+    BRN2Device *_device;
 
-    PacketList _packet_list;
-    PacketListHW _packet_list_hw;
+  public:
+    int32_t _stats_interval; //maximum age of pakets, which are considered in the calculation (default)
 
-    uint32_t hw_busy;
-    uint32_t hw_rx;
-    uint32_t hw_tx;
-
-    void clear_old();
-    void clear_old_hw();
-
-    struct airtime_stats stats;
-    RSSITable rssi_tab;
-
-    bool _rssi_per_neighbour;
+  private:
 
     String _proc_file;
     bool _proc_read;
+    int _proc_interval;
+
+    bool _rssi_per_neighbour;
+
+    bool _enable_full_stats;
+
+    int32_t _save_duration;  //maximum age of pakets in the queue in seconds
 
     uint32_t _min_update_time;
-
-    bool _stats_timer_enable;
-    int _stats_interval;
-    Timer _stats_timer;
 
     uint32_t _stats_id;
 
     uint32_t _channel;
 
-    Timestamp _last_hw_stat_time;
-    Timestamp _last_packet_time;
+    PacketList _packet_list;
+    PacketListHW _packet_list_hw;
 
-    bool _fast_mode;
+    struct airtime_stats _full_stats;
+    RSSITable            _full_stats_rssi_tab;
 
-    uint32_t _sw_sum_rx_duration;
-    uint32_t _sw_sum_tx_duration;
+    struct airtime_stats _small_stats[SMALL_STATS_SIZE];
+    RSSITable _small_stats_rssi_tab[SMALL_STATS_SIZE];
+    uint8_t _current_small_stats;
 
-    int _sw_sum_rx_packets;
-    int _sw_sum_tx_packets;
+    Timer _stats_timer;
+    Timer _proc_timer;
 
-    int _sw_sum_rx_noise;
-    uint32_t _sw_sum_rx_rssi;
+    void readProcHandler();
+
+    void clear_old();     //packet_stats
+    void clear_old_hw();  //hw_stats
+
+    static void static_proc_timer_hook(Timer *, void *);
+    void proc_read();
+
+  public:
+
+    void set_channel(uint32_t channel) { _channel = channel; }                     //TODO: remove this
+    uint32_t get_channel() { return _device ? _device->getChannel() : _channel; }  //TODO: remove this
+
 };
 
 CLICK_ENDDECLS

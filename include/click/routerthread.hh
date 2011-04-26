@@ -30,8 +30,7 @@ class RouterThread
 #endif
 { public:
 
-    enum { THREAD_QUIESCENT = -1, THREAD_STRONG_UNSCHEDULE = -2,
-	   THREAD_UNKNOWN = -1000 };
+    enum { THREAD_QUIESCENT = -1, THREAD_UNKNOWN = -1000 };
 
     inline int thread_id() const;
 
@@ -98,10 +97,23 @@ class RouterThread
   private:
 
 #if HAVE_TASK_HEAP
-    Vector<Task*> _task_heap;
+    struct task_heap_element {
+	unsigned pass;
+	Task *t;
+	task_heap_element() {
+	}
+	task_heap_element(Task *t_)
+	    : pass(t_->_pass), t(t_) {
+	}
+    };
+    Vector<task_heap_element> _task_heap;
     int _task_heap_hole;
     unsigned _pass;
 #endif
+
+    uintptr_t _pending_head;
+    volatile uintptr_t *_pending_tail;
+    SpinlockIRQ _pending_lock;
 
     Master *_master;
     int _id;
@@ -117,8 +129,6 @@ class RouterThread
     Spinlock _task_lock;
     atomic_uint32_t _task_blocker;
     atomic_uint32_t _task_blocker_waiting;
-
-    uint32_t _any_pending;
 
 #if CLICK_LINUXMODULE
     bool _greedy;
@@ -172,6 +182,7 @@ class RouterThread
     inline void driver_lock_tasks();
     inline void driver_unlock_tasks();
     inline void run_tasks(int ntasks);
+    inline void process_pending();
     inline void run_os();
 #if HAVE_ADAPTIVE_SCHEDULER
     void client_set_tickets(int client, int tickets);
@@ -218,9 +229,9 @@ inline bool
 RouterThread::active() const
 {
 #if HAVE_TASK_HEAP
-    return _task_heap.size() != 0 || _any_pending;
+    return _task_heap.size() != 0 || _pending_head;
 #else
-    return ((const Task *)_next != this) || _any_pending;
+    return ((const Task *)_next != this) || _pending_head;
 #endif
 }
 
@@ -252,7 +263,7 @@ RouterThread::task_begin() const
 {
 #if HAVE_TASK_HEAP
     int p = _task_heap_hole;
-    return (p < _task_heap.size() ? _task_heap[p] : 0);
+    return (p < _task_heap.size() ? _task_heap.at_u(p).t : 0);
 #else
     return _next;
 #endif
@@ -272,7 +283,7 @@ RouterThread::task_next(Task *task) const
 {
 #if HAVE_TASK_HEAP
     int p = task->_schedpos + 1;
-    return (p < _task_heap.size() ? _task_heap[p] : 0);
+    return (p < _task_heap.size() ? _task_heap.at_u(p).t : 0);
 #else
     return task->_next;
 #endif
@@ -320,9 +331,9 @@ RouterThread::block_tasks(bool scheduled)
     if (!scheduled)
 	++_task_blocker_waiting;
     while (1) {
-	int32_t blocker = _task_blocker.value();
-	if (blocker >= 0
-	    && _task_blocker.compare_and_swap(blocker, blocker + 1))
+	uint32_t blocker = _task_blocker.value();
+	if ((int32_t) blocker >= 0
+	    && _task_blocker.compare_swap(blocker, blocker + 1) == blocker)
 	    break;
 #if CLICK_LINUXMODULE
 	// 3.Nov.2008: Must allow other threads a chance to run.  Otherwise,
@@ -360,9 +371,9 @@ RouterThread::attempt_lock_tasks()
 {
     if (likely(current_thread_is_running()))
 	return true;
-    int32_t blocker = _task_blocker.value();
-    if (blocker < 0
-	|| !_task_blocker.compare_and_swap(blocker, blocker + 1))
+    uint32_t blocker = _task_blocker.value();
+    if ((int32_t) blocker < 0
+	|| _task_blocker.compare_swap(blocker, blocker + 1) != blocker)
 	return false;
     if (_task_lock.attempt())
 	return true;
@@ -404,7 +415,6 @@ RouterThread::wake()
 inline void
 RouterThread::add_pending()
 {
-    _any_pending = 1;
     wake();
 }
 

@@ -161,9 +161,17 @@ class Element { public:
     void set_handler(const String &name, int flags, HandlerCallback callback, const void *read_user_data = 0, const void *write_user_data = 0);
     void set_handler(const String &name, int flags, HandlerCallback callback, int read_user_data, int write_user_data = 0);
     int set_handler_flags(const String &name, int set_flags, int clear_flags = 0);
-    void add_task_handlers(Task *task, NotifierSignal *signal, const String &prefix = String());
+    enum { TASKHANDLER_WRITE_SCHEDULED = 1,
+	   TASKHANDLER_WRITE_TICKETS = 2,
+	   TASKHANDLER_WRITE_HOME_THREAD = 4,
+	   TASKHANDLER_WRITE_ALL = 7,
+	   TASKHANDLER_DEFAULT = 6 };
+    void add_task_handlers(Task *task, NotifierSignal *signal, int flags, const String &prefix = String());
+    inline void add_task_handlers(Task *task, NotifierSignal *signal, const String &prefix = String()) {
+	add_task_handlers(task, signal, TASKHANDLER_DEFAULT, prefix);
+    }
     inline void add_task_handlers(Task *task, const String &prefix = String()) {
-	add_task_handlers(task, 0, prefix);
+	add_task_handlers(task, 0, TASKHANDLER_DEFAULT, prefix);
     }
 
     void add_data_handlers(const String &name, int flags, uint8_t *data);
@@ -186,7 +194,7 @@ class Element { public:
     void add_data_handlers(const String &name, int flags, String *data);
     void add_data_handlers(const String &name, int flags, IPAddress *data);
     void add_data_handlers(const String &name, int flags, EtherAddress *data);
-    void add_data_handlers(const String &name, int flags, Timestamp *data);
+    void add_data_handlers(const String &name, int flags, Timestamp *data, bool is_interval = false);
 
     static String read_positional_handler(Element*, void*);
     static String read_keyword_handler(Element*, void*);
@@ -213,6 +221,12 @@ class Element { public:
 
 	Element* _e;
 	int _port;
+#if HAVE_BOUND_PORT_TRANSFER
+	union {
+	    void (*push)(Element *e, int port, Packet *p);
+	    Packet *(*pull)(Element *e, int port);
+	} _bound;
+#endif
 
 #if CLICK_STATS >= 1
 	mutable unsigned _packets;	// How many packets have we moved?
@@ -509,6 +523,17 @@ Element::Port::assign(Element *owner, Element *e, int port, bool isoutput)
     _e = e;
     _port = port;
     (void) isoutput;
+#if HAVE_BOUND_PORT_TRANSFER
+    if (e) {
+	if (isoutput) {
+	    void (Element::*pusher)(int, Packet *) = &Element::push;
+	    _bound.push = (void (*)(Element *, int, Packet *)) (e->*pusher);
+	} else {
+	    Packet *(Element::*puller)(int) = &Element::pull;
+	    _bound.pull = (Packet *(*)(Element *, int)) (e->*puller);
+	}
+    }
+#endif
 }
 
 /** @brief Returns whether this port is active (a push output or a pull input).
@@ -570,13 +595,21 @@ Element::Port::push(Packet* p) const
 #if CLICK_STATS >= 2
     ++_e->input(_port)._packets;
     click_cycles_t c0 = click_get_cycles();
+# if HAVE_BOUND_PORT_TRANSFER
+    _bound.push(_e, _port, p);
+# else
     _e->push(_port, p);
+# endif
     click_cycles_t x = click_get_cycles() - c0;
     ++_e->_calls;
     _e->_self_cycles += x;
     _owner->_child_cycles += x;
 #else
+# if HAVE_BOUND_PORT_TRANSFER
+    _bound.push(_e, _port, p);
+# else
     _e->push(_port, p);
+# endif
 #endif
 }
 
@@ -602,7 +635,11 @@ Element::Port::pull() const
     assert(_e);
 #if CLICK_STATS >= 2
     click_cycles_t c0 = click_get_cycles();
+# if HAVE_BOUND_PORT_TRANSFER
+    Packet *p = _bound.pull(_e, _port);
+# else
     Packet *p = _e->pull(_port);
+# endif
     click_cycles_t x = click_get_cycles() - c0;
     ++_e->_calls;
     _e->_self_cycles += x;
@@ -610,7 +647,11 @@ Element::Port::pull() const
     if (p)
 	++_e->output(_port)._packets;
 #else
+# if HAVE_BOUND_PORT_TRANSFER
+    Packet *p = _bound.pull(_e, _port);
+# else
     Packet *p = _e->pull(_port);
+# endif
 #endif
 #if CLICK_STATS >= 1
     if (p)

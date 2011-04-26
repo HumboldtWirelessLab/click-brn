@@ -59,6 +59,7 @@ class BRN2EtherEncap : public BRNElement {
 
   /*static functions*/
   static Packet *push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype);
+  static Packet *push_ether_header(Packet *p, EtherAddress *src, EtherAddress *dst, uint16_t ethertype);
 };
 
 CLICK_ENDDECLS

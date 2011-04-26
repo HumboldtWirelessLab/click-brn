@@ -38,7 +38,10 @@
 CLICK_DECLS
 
 Ath2Decap::Ath2Decap():
-    _cst(NULL)
+    _cst(NULL),
+    _max_rssi(ATH2DECAP_DEFAULT_MAX_SNR),
+    _rssi_reset(ATH2DECAP_DEFAULT_SNR_RESET_VALUE),
+    _fix_rssi(0)
 {
   BRNElement::init();
 }
@@ -56,6 +59,8 @@ Ath2Decap::configure(Vector<String> &conf, ErrorHandler* errh)
   ret = cp_va_kparse(conf, this, errh,
                      "ATHDECAP", cpkP, cpBool, &_athdecap,
                      "CHANNELSTATS", cpkP, cpElement, &_cst,
+                     "RSSILIMIT", cpkP, cpInteger, &_max_rssi,
+                     "RSSIRESET", cpkP, cpInteger, &_rssi_reset,
                      cpEnd);
   return ret;
 }
@@ -69,7 +74,7 @@ Ath2Decap::simple_action(Packet *p)
 
   /** Filter Operations */
   if ( ( _athdecap && ( p->length() == ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
-         ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+         ( ( ! _athdecap ) && ( p->length() == ( sizeof(struct ath2_header) ) ) ) )
   {
     if ( noutputs() > 2 )
       output(2).push(p);
@@ -81,7 +86,7 @@ Ath2Decap::simple_action(Packet *p)
 
   /** Filter too small packets */
   if ( ( _athdecap && ( p->length() < ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||
-       ( ( ! _athdecap )  && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
+       ( ( ! _athdecap ) && ( p->length() < ( sizeof(struct ath2_header) ) ) ) )
   {
     if ( noutputs() > 1 )
       output(1).push(p);
@@ -112,7 +117,17 @@ Ath2Decap::simple_action(Packet *p)
         eh->flags |= WIFI_EXTRA_RX_ZERORATE_ERR;
       }
 
-      eh->rssi = rx_desc->rx_rssi;
+      if ( _max_rssi ) {
+        if ( rx_desc->rx_rssi <= _max_rssi ) {
+          eh->rssi = rx_desc->rx_rssi;
+        } else {
+          _fix_rssi++;
+          eh->rssi = _rssi_reset;
+        }
+      } else {
+        eh->rssi = rx_desc->rx_rssi;
+      }
+
       if (!rx_desc->rx_ok) {
         eh->flags |= WIFI_EXTRA_RX_ERR;
       }
@@ -120,7 +135,18 @@ Ath2Decap::simple_action(Packet *p)
       eh->flags |= WIFI_EXTRA_TX;
       /* tx */
       eh->power = desc->xmit_power;
-      eh->rssi = desc->ack_sig_strength;
+
+      if ( _max_rssi ) {
+        if ( desc->ack_sig_strength <= _max_rssi ) {
+          eh->rssi = desc->ack_sig_strength;
+        } else {
+          _fix_rssi++;
+          eh->rssi = _rssi_reset;
+        }
+      } else {
+        eh->rssi = desc->ack_sig_strength;
+      }
+
       eh->retries = desc->data_fail_count;
 
       if (desc->excessive_retries)
@@ -201,7 +227,6 @@ Ath2Decap::simple_action(Packet *p)
     }
 
     eh->silence = ath2_h->anno.rx.rs_noise;
-    eh->power = (uint8_t)((int)ath2_h->anno.rx.rs_noise + (int)eh->rssi);
 
     BRNPacketAnno::set_channel_anno(q, ath2_h->anno.rx.rs_channel);
 

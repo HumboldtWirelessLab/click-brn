@@ -5,13 +5,15 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
-//#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
+#include "batmanroutingtable.hh"
+
 CLICK_DECLS
 
-class BatmanOriginatorSource : public Element {
+class BatmanOriginatorSource : public BRNElement {
 
  public:
 
@@ -57,6 +59,7 @@ class BatmanOriginatorSource : public Element {
   //
   //member
   //
+  BatmanRoutingTable *_brt;
   BRN2NodeIdentity *_nodeid;
   uint16_t _id;
 
@@ -64,9 +67,6 @@ class BatmanOriginatorSource : public Element {
 
   Timer _send_timer;
   static void static_send_timer_hook(Timer *, void *);
-
- public:
-  int _debug;
 
 };
 
