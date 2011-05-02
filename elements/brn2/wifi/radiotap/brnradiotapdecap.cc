@@ -256,6 +256,18 @@ BrnRadiotapDecap::simple_action(Packet *p)
 		if (rt_el_present(th, IEEE80211_RADIOTAP_DATA_RETRIES))
 			ceh->retries = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_DATA_RETRIES));
 
+    if (rt_el_present(th, IEEE80211_RADIOTAP_MCS)) {
+      uint8_t known, flags, index;
+
+      known = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_MCS));
+      flags = *((u_int8_t *) (rt_el_offset(th, IEEE80211_RADIOTAP_MCS) + 1));
+      index = *((u_int8_t *) (rt_el_offset(th, IEEE80211_RADIOTAP_MCS) + 2));
+
+      fromMCS( (flags & 3), (flags >> 2) & 1, (flags >> 4) & 1, index, &(ceh->rate));
+
+      ceh->flags |= WIFI_EXTRA_MCS_RATE;
+    }
+
 		p->pull(le16_to_cpu(th->it_len));
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	}

@@ -354,12 +354,25 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
   sa.adjust_length(len);
 
-  if (ceh->rate == 11) {
-    sa << " 5.5";
+  if ( ceh->flags |= WIFI_EXTRA_MCS_RATE ) {
+    uint8_t bandwidth, guard_interval, fec_type, mcs_index;
+    toMCS(&bandwidth, &guard_interval, &fec_type, &mcs_index, ceh->rate);
+    int mcs_rate = getMCSRate(bandwidth, guard_interval, mcs_index);
+
+    int mcs_rate_b = mcs_rate/10;
+    int mcs_rate_l = mcs_rate%10;
+
+    sa << " " << mcs_rate_b << "." << mcs_rate_l;
+
   } else {
-    len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
-    sa.adjust_length(len);
+    if (ceh->rate == 11) {
+      sa << " 5.5";
+    } else {
+      len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
+      sa.adjust_length(len);
+    }
   }
+
   sa << "Mb ";
 
   len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
