@@ -9,7 +9,11 @@ enum {
   WIFI_EXTRA_RX_MIC_ERR      = (1<<27), /* failed mic check */
   WIFI_EXTRA_RX_ZERORATE_ERR = (1<<26), /* has zero rate */
   WIFI_EXTRA_SHORT_PREAMBLE  = (1<<25),
-  WIFI_EXTRA_MCS_RATE        = (1<<24)
+  WIFI_EXTRA_MCS_RATE        = (1<<24),
+  WIFI_EXTRA_MCS_FEC0_LDPC   = (1<<23),
+  WIFI_EXTRA_MCS_FEC1_LDPC   = (1<<22),
+  WIFI_EXTRA_MCS_FEC2_LDPC   = (1<<21),
+  WIFI_EXTRA_MCS_FEC3_LDPC   = (1<<20)
 };
 
 
