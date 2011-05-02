@@ -37,7 +37,7 @@ class BrnRadiotapEncap : public Element { public:
 
   void add_handlers();
 
-
+  int _mcs_known;
   bool _debug;
 
 };

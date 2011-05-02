@@ -39,6 +39,7 @@ CLICK_DECLS
 	(1 << IEEE80211_RADIOTAP_DBM_TX_POWER)	| \
 	(1 << IEEE80211_RADIOTAP_RTS_RETRIES)	| \
 	(1 << IEEE80211_RADIOTAP_DATA_RETRIES)	| \
+  (1 << IEEE80211_RADIOTAP_MCS)  | \
   (1 << IEEE80211_RADIOTAP_RATE_1)  | \
   (1 << IEEE80211_RADIOTAP_RATE_2)  | \
   (1 << IEEE80211_RADIOTAP_RATE_3)  | \
@@ -57,6 +58,13 @@ struct click_radiotap_header {
 	u_int8_t	wt_txpower;
 	u_int8_t	wt_rts_retries;
 	u_int8_t	wt_data_retries;
+
+  /* MCS: see http://www.radiotap.org/defined-fields/MCS */
+  u_int8_t  wt_known;            // field indicates which information is known
+  u_int8_t  wt_flags;            // HT,FEC,...
+  u_int8_t  wt_mcs;              // field indicates the MCS rate index as in IEEE_802.11n-2009
+
+  /* BRN Extention */
 	u_int8_t	wt_rate1;
 	u_int8_t	wt_rate2;
 	u_int8_t	wt_rate3;
@@ -64,6 +72,7 @@ struct click_radiotap_header {
 	u_int8_t	wt_data_retries2;
 	u_int8_t	wt_data_retries3;
 	u_int8_t	wt_queue;
+
 } __attribute__((__packed__));
 
 
@@ -71,7 +80,8 @@ struct click_radiotap_header {
 
 
 
-BrnRadiotapEncap::BrnRadiotapEncap()
+BrnRadiotapEncap::BrnRadiotapEncap():
+  _mcs_known( IEEE80211_RADIOTAP_MCS_HAVE_BW | IEEE80211_RADIOTAP_MCS_HAVE_MCS | IEEE80211_RADIOTAP_MCS_HAVE_GI | IEEE80211_RADIOTAP_MCS_HAVE_FMT | IEEE80211_RADIOTAP_MCS_HAVE_FEC )
 {
 }
 
@@ -85,7 +95,8 @@ BrnRadiotapEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
+       "MCS_KNOWN", 0, cpBool, &_mcs_known,
+       "DEBUG", 0, cpBool, &_debug,
 		   cpEnd) < 0)
     return -1;
   return 0;
@@ -113,21 +124,46 @@ BrnRadiotapEncap::simple_action(Packet *p)
 	  crh->wt_ihdr.it_len = cpu_to_le16(sizeof(struct click_radiotap_header));
 	  crh->wt_ihdr.it_present = cpu_to_le32(CLICK_RADIOTAP_PRESENT);
 
-	  crh->wt_rate = ceh->rate;
-	  crh->wt_txpower = ceh->power;
-	  crh->wt_rts_retries = 0;
-	  if (ceh->max_tries > 0) {
-		  crh->wt_data_retries = ceh->max_tries - 1;
-	  } else {
-		  crh->wt_data_retries = WIFI_MAX_RETRIES + 1;
-	  }
+    if ( ceh->flags |= WIFI_EXTRA_MCS_RATE ) {
+      crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;
 
-//    crh->wt_channel = BRNPacketAnno::channel_anno(p);
-    crh->wt_channel_frequence = 0;
+      uint8_t mcs_bandwidth, mcs_guard_interval, mcs_fec_type, mcs_index;
+      toMCS(&mcs_bandwidth, &mcs_guard_interval, &mcs_fec_type, &mcs_index, ceh->rate);
+
+      crh->wt_known = (uint8_t)_mcs_known;
+      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | IEEE80211_RADIOTAP_MCS_FMT_GF | (mcs_fec_type << 4); //set always greenfield TODO: check
+      crh->wt_mcs = mcs_index;
+
+    } else {
+      crh->wt_rate = ceh->rate;
+
+      crh->wt_known = RADIOTAP_RATE_MCS_INVALID;
+      crh->wt_flags = RADIOTAP_RATE_MCS_INVALID;
+      crh->wt_mcs = RADIOTAP_RATE_MCS_INVALID;
+    }
+
+    crh->wt_txpower = ceh->power;
+    crh->wt_rts_retries = 0;
+
+    if (ceh->max_tries > 0) {
+      crh->wt_data_retries = ceh->max_tries - 1;
+    } else {
+      crh->wt_data_retries = WIFI_MAX_RETRIES + 1;
+    }
+
+    crh->wt_channel_frequence = 0; //channel2frequ(BRNPacketAnno::channel_anno(p));
     crh->wt_channel_flags = 0;
-    crh->wt_rate1 = ceh->rate1;
-    crh->wt_rate2 = ceh->rate2;
-    crh->wt_rate3 = ceh->rate3;
+
+    if ( ceh->flags |= WIFI_EXTRA_MCS_RATE ) {
+      crh->wt_rate1 = RADIOTAP_RATE_MCS_INVALID;
+      crh->wt_rate2 = RADIOTAP_RATE_MCS_INVALID;
+      crh->wt_rate3 = RADIOTAP_RATE_MCS_INVALID;
+    } else {
+      crh->wt_rate1 = ceh->rate1;
+      crh->wt_rate2 = ceh->rate2;
+      crh->wt_rate3 = ceh->rate3;
+    }
+
     crh->wt_data_retries1 = ceh->max_tries1;
     crh->wt_data_retries2 = ceh->max_tries2;
     crh->wt_data_retries3 = ceh->max_tries3;

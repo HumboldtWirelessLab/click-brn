@@ -221,6 +221,8 @@ enum ieee80211_radiotap_type {
 #define RATE_ENCAP_MULTI_ENTRY 0
 #define RATE_ENCAP_SINGLE_ENTRY 1
 
+#define RADIOTAP_RATE_MCS_INVALID 255
+
 #if !defined(__KERNEL__) && !defined(_KERNEL)
 /* Channel flags. */
 #define IEEE80211_CHAN_TURBO    0x0010  /* Turbo channel */

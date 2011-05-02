@@ -6,24 +6,25 @@
 #include <clicknet/wifi.h>
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
+
+#include "elements/brn2/wifi/brnwifi.h"
+
 #include "settxrates.hh"
+
 
 CLICK_DECLS
 
 
 SetTXRates::SetTXRates():
-    _rate0(0),
+    _rate0(2),
     _rate1(0),
     _rate2(0),
     _rate3(0),
-#ifdef CLICK_NS
-    _tries0(2),
-#else
     _tries0(1),
-#endif
     _tries1(0),
     _tries2(0),
-    _tries3(0)
+    _tries3(0),
+    _mcs(false)
 {
 }
 
@@ -45,9 +46,12 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       "TRIES1", cpkN, cpInteger, &_tries1,
       "TRIES2", cpkN, cpInteger, &_tries2,
       "TRIES3", cpkN, cpInteger, &_tries3,
+      "MCS", cpkN, cpBool, &_mcs,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
+
+  //TODO: handle mcs for each rate separately
   return 0;
 }
 
@@ -62,10 +66,12 @@ SetTXRates::simple_action(Packet *p)
   ceh->rate2 = _rate2;
   ceh->rate3 = _rate3;
 
-  ceh->max_tries = _tries0;
+  ceh->max_tries = _tries0 ? _tries0 : 1;
   ceh->max_tries1 = _tries1;
   ceh->max_tries2 = _tries2;
   ceh->max_tries3 = _tries3;
+
+  if (_mcs) ceh->flags |= WIFI_EXTRA_MCS_RATE;
 
   return p;
 }
@@ -107,5 +113,6 @@ SetTXRates::add_handlers()
   add_read_handler("debug", SetTXRates_read_param, (void *) H_DEBUG);
   add_write_handler("debug", SetTXRates_write_param, (void *) H_DEBUG);
 }
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(SetTXRates)
