@@ -26,4 +26,20 @@ toMCS(uint8_t *bandwidth, uint8_t *guard_interval, uint8_t *fec_type, uint8_t *m
   *bandwidth = ( rate & 192 ) >> 6;
 }
 
+
+inline int getMCSRate(uint8_t idx, uint8_t bw, uint8_t gi) {
+	int rates[] = {	65, 72, 135, 150, 
+			130, 144, 270, 300, 
+			195, 217, 405, 450,
+			260, 289, 540, 600,
+			390, 433, 810, 900,
+			520, 578, 1080, 1200,
+			585, 650, 1215, 1350,
+			650, 722, 1350, 1500 };
+	
+	return ((idx>>3)+1)*rates[(idx&7)*4+bw*2+gi];
+
+}
+
+
 #endif /* !_BRNWIFI_H_ */
