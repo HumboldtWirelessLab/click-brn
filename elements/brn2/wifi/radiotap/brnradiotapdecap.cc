@@ -259,9 +259,11 @@ BrnRadiotapDecap::simple_action(Packet *p)
     if (rt_el_present(th, IEEE80211_RADIOTAP_MCS)) {
       uint8_t known, flags, index;
 
-      known = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_MCS));
-      flags = *((u_int8_t *) (rt_el_offset(th, IEEE80211_RADIOTAP_MCS) + 1));
-      index = *((u_int8_t *) (rt_el_offset(th, IEEE80211_RADIOTAP_MCS) + 2));
+      known = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[0]));
+      flags = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[1]));
+      index = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[2]));
+
+      click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",(int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
 
       fromMCS( (flags & 3), (flags >> 2) & 1, (flags >> 4) & 1, index, &(ceh->rate));
 
