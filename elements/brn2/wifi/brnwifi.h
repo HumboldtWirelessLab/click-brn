@@ -47,6 +47,8 @@ inline int getMCSRate(uint8_t idx, uint8_t bw, uint8_t gi) {
 			520, 	578, 	1080, 	1200,
 			585, 	650, 	1215, 	1350,
 			650, 	722, 	1350, 	1500 };
+			
+	//click_chatter("%d %d %d",idx,bw,gi);
 	
 	return ((idx>>3)+1)*rates[(idx&7)*4+bw*2+gi];
 
