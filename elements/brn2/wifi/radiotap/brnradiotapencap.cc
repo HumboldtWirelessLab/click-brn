@@ -16,7 +16,6 @@
  */
 
 #include <click/config.h>
-#include "brnradiotapencap.hh"
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
 #include <click/error.hh>
@@ -24,10 +23,12 @@
 #include <clicknet/wifi.h>
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
-//#include <clicknet/radiotap.h>
-#include "brnradiotap.h"
-#include "elements/brn2/wifi/brnwifi.h"
+
+#include "brnradiotapencap.hh"
+#include "elements/brn2/wifi/brnwifi.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+
+#include "brnradiotap.h"
 
 CLICK_DECLS
 
@@ -40,12 +41,8 @@ CLICK_DECLS
 	(1 << IEEE80211_RADIOTAP_RTS_RETRIES)	| \
 	(1 << IEEE80211_RADIOTAP_DATA_RETRIES)	| \
   (1 << IEEE80211_RADIOTAP_MCS)  | \
-  (1 << IEEE80211_RADIOTAP_RATE_1)  | \
-  (1 << IEEE80211_RADIOTAP_RATE_2)  | \
-  (1 << IEEE80211_RADIOTAP_RATE_3)  | \
-  (1 << IEEE80211_RADIOTAP_DATA_RETRIES_1)  | \
-  (1 << IEEE80211_RADIOTAP_DATA_RETRIES_2)  | \
-  (1 << IEEE80211_RADIOTAP_DATA_RETRIES_3)  | \
+  (1 << IEEE80211_RADIOTAP_MULTIRATE)  | \
+  (1 << IEEE80211_RADIOTAP_DATA_MULTIRETRIES)  | \
   (1 << IEEE80211_RADIOTAP_QUEUE)  | \
   0)
 
@@ -65,19 +62,18 @@ struct click_radiotap_header {
   u_int8_t  wt_mcs;              // field indicates the MCS rate index as in IEEE_802.11n-2009
 
   /* BRN Extention */
-	u_int8_t	wt_rate1;
-	u_int8_t	wt_rate2;
-	u_int8_t	wt_rate3;
-	u_int8_t	wt_data_retries1;
+  u_int8_t wt_rates[4];
+
+  uint16_t  wt_multi_mcs;
+
+  u_int8_t  wt_data_retries0;
+  u_int8_t	wt_data_retries1;
 	u_int8_t	wt_data_retries2;
 	u_int8_t	wt_data_retries3;
+
 	u_int8_t	wt_queue;
 
 } __attribute__((__packed__));
-
-
-
-
 
 
 BrnRadiotapEncap::BrnRadiotapEncap():
@@ -124,14 +120,18 @@ BrnRadiotapEncap::simple_action(Packet *p)
 	  crh->wt_ihdr.it_len = cpu_to_le16(sizeof(struct click_radiotap_header));
 	  crh->wt_ihdr.it_present = cpu_to_le32(CLICK_RADIOTAP_PRESENT);
 
-    if ( ceh->flags |= WIFI_EXTRA_MCS_RATE ) {
+    if ( BrnWifi::getMCS(ceh, 0) == 1 ) {
       crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;
 
-      uint8_t mcs_bandwidth, mcs_guard_interval, mcs_fec_type, mcs_index;
-      toMCS(&mcs_bandwidth, &mcs_guard_interval, &mcs_fec_type, &mcs_index, ceh->rate);
+      uint8_t mcs_index, mcs_bandwidth, mcs_guard_interval, mcs_fec_type;
+
+      BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate);
+      mcs_fec_type = BrnWifi::getFEC(ceh,0);
 
       crh->wt_known = (uint8_t)_mcs_known;
-      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | IEEE80211_RADIOTAP_MCS_FMT_GF | (mcs_fec_type << 4); //set always greenfield TODO: check
+      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | IEEE80211_RADIOTAP_MCS_FMT_GF | (mcs_fec_type << 4);
+      //set always greenfield TODO: check
+
       crh->wt_mcs = mcs_index;
 
     } else {
@@ -154,19 +154,30 @@ BrnRadiotapEncap::simple_action(Packet *p)
     crh->wt_channel_frequence = 0; //channel2frequ(BRNPacketAnno::channel_anno(p));
     crh->wt_channel_flags = 0;
 
-    if ( ceh->flags |= WIFI_EXTRA_MCS_RATE ) {
-      crh->wt_rate1 = RADIOTAP_RATE_MCS_INVALID;
-      crh->wt_rate2 = RADIOTAP_RATE_MCS_INVALID;
-      crh->wt_rate3 = RADIOTAP_RATE_MCS_INVALID;
-    } else {
-      crh->wt_rate1 = ceh->rate1;
-      crh->wt_rate2 = ceh->rate2;
-      crh->wt_rate3 = ceh->rate3;
+    crh->wt_multi_mcs = 0;
+
+    for ( int i = 0; i < 4; i++ ) {
+      if ( BrnWifi::getMCS(ceh, i) == 1 ) {
+        if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
+        else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
+        else if ( i == 2 ) crh->wt_rates[i] = ceh->rate2;
+        else if ( i == 3 ) crh->wt_rates[i] = ceh->rate3;
+
+        crh->wt_multi_mcs |= (RADIOTAP_RATE_IS_MCS | (BrnWifi::getFEC(ceh, i) << 1) |
+                              (IEEE80211_RADIOTAP_MCS_FMT_GF << 2)) << (i << 2);
+      } else {
+        if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
+        else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
+        else if ( i == 2 ) crh->wt_rates[i] = ceh->rate2;
+        else if ( i == 3 ) crh->wt_rates[i] = ceh->rate3;
+      }
     }
 
+    crh->wt_data_retries0 = ceh->max_tries;
     crh->wt_data_retries1 = ceh->max_tries1;
     crh->wt_data_retries2 = ceh->max_tries2;
     crh->wt_data_retries3 = ceh->max_tries3;
+
     crh->wt_queue = BRNPacketAnno::tos_anno(p);
   }
 

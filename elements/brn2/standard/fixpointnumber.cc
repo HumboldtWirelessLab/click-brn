@@ -69,4 +69,4 @@ FixPointNumber::sizeup(int i, int digest) {
 
 CLICK_ENDDECLS
 
-ELEMENT_PROVIDES(PacketSendBuffer)
+ELEMENT_PROVIDES(FixPointNumber)

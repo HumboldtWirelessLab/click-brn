@@ -4,7 +4,7 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/packet_anno.hh>
-#include <elements/brn2/wifi/brnwifi.h>
+#include <elements/brn2/wifi/brnwifi.hh>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 

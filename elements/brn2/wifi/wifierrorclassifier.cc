@@ -5,7 +5,7 @@
 #include <click/straccum.hh>
 #include <clicknet/wifi.h>
 #include "wifierrorclassifier.hh"
-#include "elements/brn2/wifi/brnwifi.h"
+#include "elements/brn2/wifi/brnwifi.hh"
 
 CLICK_DECLS
 

@@ -51,38 +51,39 @@ union addr {
 };
 
 /*Basics and Services*/
-#define BRN_PORT_LINK_PROBE           1 /*0x01*/
-#define BRN_PORT_IAPP                 2 /*0x02*/
-#define BRN_PORT_GATEWAY              3 /*0x03*/
-#define BRN_PORT_EVENTHANDLER         4 /*0x04*/
-#define BRN_PORT_ALARMINGPROTOCOL     5 /*0x05*/
+#define BRN_PORT_LINK_PROBE                1 /*0x01*/
+#define BRN_PORT_IAPP                      2 /*0x02*/
+#define BRN_PORT_GATEWAY                   3 /*0x03*/
+#define BRN_PORT_EVENTHANDLER              4 /*0x04*/
+#define BRN_PORT_ALARMINGPROTOCOL          5 /*0x05*/
+#define BRN_PORT_COMP_ALARMINGPROTOCOL     6 /*0x06*/
 /*Routing*/
-#define BRN_PORT_DSR                 10 /*0x0a*/
-#define BRN_PORT_BCASTROUTING        11 /*0x0b*/
-#define BRN_PORT_FLOODING            12 /*0x0c*/
-#define BRN_PORT_BATMAN              13 /*0x0d*/
-#define BRN_PORT_GEOROUTING          14 /*0x0e*/
-#define BRN_PORT_DART                15 /*0x0f*/
-#define BRN_PORT_HAWK                16 /*0x10*/
-#define BRN_PORT_OLSR                17 /*0x11*/
-#define BRN_PORT_AODV                18 /*0x12*/
+#define BRN_PORT_DSR                      10 /*0x0a*/
+#define BRN_PORT_BCASTROUTING             11 /*0x0b*/
+#define BRN_PORT_FLOODING                 12 /*0x0c*/
+#define BRN_PORT_BATMAN                   13 /*0x0d*/
+#define BRN_PORT_GEOROUTING               14 /*0x0e*/
+#define BRN_PORT_DART                     15 /*0x0f*/
+#define BRN_PORT_HAWK                     16 /*0x10*/
+#define BRN_PORT_OLSR                     17 /*0x11*/
+#define BRN_PORT_AODV                     18 /*0x12*/
 /*Clustering*/
-#define BRN_PORT_DCLUSTER            30 /*0x1e*/
-#define BRN_PORT_NHOPCLUSTER         31 /*0x1f*/
+#define BRN_PORT_DCLUSTER                 30 /*0x1e*/
+#define BRN_PORT_NHOPCLUSTER              31 /*0x1f*/
 /*Topology*/
-#define BRN_PORT_TOPOLOGY_DETECTION  35 /*0x23*/
-#define BRN_PORT_NHOPNEIGHBOURING    36 /*0x24*/
+#define BRN_PORT_TOPOLOGY_DETECTION       35 /*0x23*/
+#define BRN_PORT_NHOPNEIGHBOURING         36 /*0x24*/
+#define BRN_PORT_COMP_NHOPNEIGHBOURING    37 /*0x25*/
 /*P2P*/
-#define BRN_PORT_DHTROUTING          40 /*0x28*/
-#define BRN_PORT_DHTSTORAGE          41 /*0x29*/
+#define BRN_PORT_DHTROUTING               40 /*0x28*/
+#define BRN_PORT_DHTSTORAGE               41 /*0x29*/
 /*Data transfer*/
-#define BRN_PORT_SDP                 50 /*0x32*/
-#define BRN_PORT_TFTP                51 /*0x33*/
-#define BRN_PORT_FLOW                52 /*0x34*/
-#define BRN_PORT_COMPRESSION         53 /*0x35*/
-#define BRN_PORT_ALARMING            54 /*0x36*/
+#define BRN_PORT_SDP                      50 /*0x32*/
+#define BRN_PORT_TFTP                     51 /*0x33*/
+#define BRN_PORT_FLOW                     52 /*0x34*/
+#define BRN_PORT_COMPRESSION              53 /*0x35*/
 /*Info*/
-#define BRN_PORT_NODEINFO            60 /*0x3c*/
+#define BRN_PORT_NODEINFO                 60 /*0x3c*/
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0

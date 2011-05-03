@@ -16,20 +16,20 @@
  */
 
 #include <click/config.h>
-#include "brnradiotapdecap.hh"
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
-//#include <clicknet/radiotap.h>
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
-#include <elements/brn2/wifi/brnwifi.h>
+#include <elements/brn2/wifi/brnwifi.hh>
 
 #include "brnradiotap.h"
+
+#include "brnradiotapdecap.hh"
 
 CLICK_DECLS
 
@@ -56,12 +56,8 @@ static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
 	 1, /* IEEE80211_RADIOTAP_DATA_RETRIES */
    0, /* IEEE80211_RADIOTAP_UNUSED */
    3, /* IEEE80211_RADIOTAP_MCS */
-   1, /* IEEE80211_RADIOTAP_RATE_1 */
-   1, /* IEEE80211_RADIOTAP_RATE_2 */
-   1, /* IEEE80211_RADIOTAP_RATE_3 */
-   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_1 */
-   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_2 */
-   1, /* IEEE80211_RADIOTAP_DATA_RETRIES_3 */
+   6, /* IEEE80211_RADIOTAP_MULTIRATE */
+   4, /* IEEE80211_RADIOTAP_DATA_MULTIRETRIES */
    1, /* IEEE80211_RADIOTAP_QUEUE */
   };
 
@@ -263,11 +259,13 @@ BrnRadiotapDecap::simple_action(Packet *p)
       flags = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[1]));
       index = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[2]));
 
-      click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",(int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
+      click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",
+                    (int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
 
-      fromMCS( (flags & 3), (flags >> 2) & 1, (flags >> 4) & 1, index, &(ceh->rate));
+      BrnWifi::fromMCS( index, (flags & 3), (flags >> 2) & 1, &(ceh->rate));
+      BrnWifi::setFEC(ceh, 0, (flags >> 4) & 1);
 
-      ceh->flags |= WIFI_EXTRA_MCS_RATE;
+      ceh->flags |= WIFI_EXTRA_MCS_RATE0;
     }
 
 		p->pull(le16_to_cpu(th->it_len));

@@ -26,7 +26,8 @@ class SetTXRates : public Element { public:
 
    int _rate0,_rate1,_rate2,_rate3;
    int _tries0,_tries1,_tries2,_tries3;
-   bool _mcs; //TODO: handle mcs for each rate separately
+   bool _mcs0,_mcs1,_mcs2,_mcs3;
+   int _fec0,_fec1,_fec2,_fec3;
 
 };
 

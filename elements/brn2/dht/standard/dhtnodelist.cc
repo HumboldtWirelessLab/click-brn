@@ -10,8 +10,6 @@
 
 CLICK_DECLS
 
-class DHTnode;
-
 extern "C" {
   static int bucket_sorter(const void *va, const void *vb, void */*thunk*/) {
       DHTnode *a = *((DHTnode **)va), *b = *((DHTnode **)vb);

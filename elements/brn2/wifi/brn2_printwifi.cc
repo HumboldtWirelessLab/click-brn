@@ -28,7 +28,7 @@
 #include <click/packet_anno.hh>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include "elements/brn2/wifi/brnwifi.h"
+#include "elements/brn2/wifi/brnwifi.hh"
 #include "brn2_printwifi.hh"
 
 CLICK_DECLS
@@ -354,10 +354,10 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
   sa.adjust_length(len);
 
-  if ( ceh->flags & WIFI_EXTRA_MCS_RATE ) {
-    uint8_t bandwidth, guard_interval, fec_type, mcs_index;
-    toMCS(&bandwidth, &guard_interval, &fec_type, &mcs_index, ceh->rate);
-    int mcs_rate = getMCSRate(mcs_index, bandwidth, guard_interval);
+  if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
+    uint8_t mcs_index, bandwidth, guard_interval;
+    BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
+    int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
 
     int mcs_rate_b = mcs_rate/10;
     int mcs_rate_l = mcs_rate%10;

@@ -31,7 +31,7 @@
 #include <clicknet/wifi.h>
 
 #include <elements/wifi/bitrate.hh>
-#include <elements/brn2/wifi/brnwifi.h>
+#include <elements/brn2/wifi/brnwifi.hh>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
 
 #include "channelstats.hh"

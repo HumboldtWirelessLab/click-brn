@@ -7,7 +7,7 @@
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 
-#include "elements/brn2/wifi/brnwifi.h"
+#include "elements/brn2/wifi/brnwifi.hh"
 
 #include "settxrates.hh"
 
@@ -24,7 +24,14 @@ SetTXRates::SetTXRates():
     _tries1(0),
     _tries2(0),
     _tries3(0),
-    _mcs(false)
+    _mcs0(false),
+    _mcs1(false),
+    _mcs2(false),
+    _mcs3(false),
+    _fec0(0),
+    _fec1(0),
+    _fec2(0),
+    _fec3(0)
 {
 }
 
@@ -46,7 +53,14 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       "TRIES1", cpkN, cpInteger, &_tries1,
       "TRIES2", cpkN, cpInteger, &_tries2,
       "TRIES3", cpkN, cpInteger, &_tries3,
-      "MCS", cpkN, cpBool, &_mcs,
+      "MCS0", cpkN, cpBool, &_mcs0,
+      "MCS1", cpkN, cpBool, &_mcs1,
+      "MCS2", cpkN, cpBool, &_mcs2,
+      "MCS3", cpkN, cpBool, &_mcs3,
+      "FEC0", cpkN, cpInteger, &_fec0,
+      "FEC1", cpkN, cpInteger, &_fec1,
+      "FEC2", cpkN, cpInteger, &_fec2,
+      "FEC3", cpkN, cpInteger, &_fec3,
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
@@ -71,7 +85,15 @@ SetTXRates::simple_action(Packet *p)
   ceh->max_tries2 = _tries2;
   ceh->max_tries3 = _tries3;
 
-  if (_mcs) ceh->flags |= WIFI_EXTRA_MCS_RATE;
+  if (_mcs0) BrnWifi::setMCS(ceh,0,1);
+  if (_mcs1) BrnWifi::setMCS(ceh,1,1);
+  if (_mcs2) BrnWifi::setMCS(ceh,2,1);
+  if (_mcs3) BrnWifi::setMCS(ceh,3,1);
+
+  BrnWifi::setFEC(ceh,0,_fec0);
+  BrnWifi::setFEC(ceh,1,_fec1);
+  BrnWifi::setFEC(ceh,2,_fec2);
+  BrnWifi::setFEC(ceh,3,_fec3);
 
   return p;
 }
