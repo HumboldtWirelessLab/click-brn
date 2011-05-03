@@ -137,6 +137,10 @@ class ChannelStats : public BRNElement {
       uint8_t _state;
       bool _retry;
       bool _unicast;
+
+      uint8_t _mode;
+      uint8_t _mcs_index;
+      uint8_t _mcs_flags;
     };
 
     class PacketInfoHW {
@@ -160,6 +164,10 @@ class ChannelStats : public BRNElement {
       uint32_t _max_rssi;
 
       bool _calc_finished;
+
+      uint8_t _mode;
+      uint8_t _mcs_index;
+      uint8_t _mcs_flags;
 
       SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false) {  //TODO: better start value for min_rssi (replace 1000)
       }
@@ -218,14 +226,19 @@ class ChannelStats : public BRNElement {
      }
     };
 
+    class LinkInfo {
+      public:
+
+    };
+
     typedef Vector<PacketInfo*> PacketList;
     typedef PacketList::const_iterator PacketListIter;
 
     typedef Vector<PacketInfoHW*> PacketListHW;
     typedef PacketListHW::const_iterator PacketListHWIter;
 
-    typedef HashMap<EtherAddress, SrcInfo> RSSITable;
-    typedef RSSITable::const_iterator RSSITableIter;
+    typedef HashMap<EtherAddress, SrcInfo> SrcInfoTable;
+    typedef SrcInfoTable::const_iterator SrcInfoTableIter;
 
   public:
 
@@ -250,9 +263,9 @@ class ChannelStats : public BRNElement {
 
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
 
-    void calc_stats(struct airtime_stats *stats, RSSITable *rssi_tab);
+    void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);
-    void calc_stats_final(struct airtime_stats *small_stats, RSSITable *rssi_tab, int duration);
+    void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
 
   private:
 
@@ -267,7 +280,7 @@ class ChannelStats : public BRNElement {
     bool _proc_read;
     int _proc_interval;
 
-    bool _rssi_per_neighbour;
+    bool _neighbour_stats;
 
     bool _enable_full_stats;
 
@@ -283,10 +296,10 @@ class ChannelStats : public BRNElement {
     PacketListHW _packet_list_hw;
 
     struct airtime_stats _full_stats;
-    RSSITable            _full_stats_rssi_tab;
+    SrcInfoTable         _full_stats_srcinfo_tab;
 
     struct airtime_stats _small_stats[SMALL_STATS_SIZE];
-    RSSITable _small_stats_rssi_tab[SMALL_STATS_SIZE];
+    SrcInfoTable _small_stats_src_tab[SMALL_STATS_SIZE];
     uint8_t _current_small_stats;
 
     Timer _stats_timer;

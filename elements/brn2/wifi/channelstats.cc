@@ -44,7 +44,7 @@ ChannelStats::ChannelStats():
     _proc_file("none"),
     _proc_read(false),
     _proc_interval(CS_DEFAULT_STATS_DURATION),
-    _rssi_per_neighbour(CS_DEFAULT_RSSI_PER_NEIGHBOUR),
+    _neighbour_stats(CS_DEFAULT_RSSI_PER_NEIGHBOUR),
     _enable_full_stats(false),
     _save_duration(CS_DEFAULT_SAVE_DURATION),
     _min_update_time(CS_DEFAULT_MIN_UPDATE_TIME),
@@ -70,7 +70,7 @@ ChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
                      "STATS_DURATION", cpkP, cpInteger, &_stats_interval,  //default time, over which the stats are calculated
                      "PROCFILE", cpkP, cpString, &_proc_file,              //procfile you want to read from
                      "PROCINTERVAL", cpkP, cpInteger, &_proc_interval,     //how often the proc file is read and small stats
-                     "RSSI_PER_NEIGHBOUR", cpkP, cpBool, &_rssi_per_neighbour, //store/calc rssi per neighbour
+                     "NEIGHBOUR_STATS", cpkP, cpBool, &_neighbour_stats, //store/calc rssi per neighbour
                      "FULL_STATS", cpkP, cpBool, &_enable_full_stats,          //calculat full stats, store every thing for that
                      "SAVE_DURATION", cpkP, cpInteger, &_save_duration,    //max time, which a packetinfo is stored
                      "MIN_UPDATE_TIME", cpkP, cpInteger, &_min_update_time,
@@ -114,14 +114,14 @@ ChannelStats::run_timer(Timer *)
 
   if ( ! _enable_full_stats ) {                               //if full_stats are not requested, the calc stats now
 
-    calc_stats_final(&(_small_stats[_current_small_stats]), &(_small_stats_rssi_tab[_current_small_stats]), _stats_interval);
+    calc_stats_final(&(_small_stats[_current_small_stats]), &(_small_stats_src_tab[_current_small_stats]), _stats_interval);
 
     _small_stats[_current_small_stats].stats_id = _stats_id++;
 
     _current_small_stats = (_current_small_stats + 1) % SMALL_STATS_SIZE;
 
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
-    _small_stats_rssi_tab[_current_small_stats].clear();
+    _small_stats_src_tab[_current_small_stats].clear();
   }
 
   if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
@@ -297,10 +297,10 @@ ChannelStats::push(int port, Packet *p)
           if (retry) small_stats->rx_retry_packets++;
         }
 
-        if ( _rssi_per_neighbour ) {
+        if ( _neighbour_stats ) {
           SrcInfo *src_info;
-          if ( (src_info = _small_stats_rssi_tab[_current_small_stats].findp(src)) == NULL )
-            _small_stats_rssi_tab[_current_small_stats].insert(src, SrcInfo(rssi));
+          if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL )
+            _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi));
           else
             src_info->add_rssi(rssi);
         }
@@ -423,7 +423,7 @@ ChannelStats::get_stats(struct airtime_stats *cstats, int /*time*/) {
 }
 
 void
-ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
+ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -435,7 +435,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 
   if ( diff.usecval() <= _min_update_time * 1000 ) return;
 
-  if ( rssi_tab ) rssi_tab->clear();
+  if ( src_tab ) src_tab->clear();
 
   memset(cstats, 0, sizeof(struct airtime_stats));
 
@@ -496,10 +496,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
 
         if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
-        if ( rssi_tab != NULL ) {
+        if ( src_tab != NULL ) {
           SrcInfo *src_i;
-          if ( (src_i = rssi_tab->findp(pi->_src)) == NULL ) {
-            rssi_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
+          if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
+            src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
           } else {
             src_i->add_rssi((uint32_t)pi->_rssi);
           }
@@ -523,7 +523,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, RSSITable *rssi_tab)
     }
   }
 
-  calc_stats_final(cstats, rssi_tab, _stats_interval);
+  calc_stats_final(cstats, src_tab, _stats_interval);
 
   cstats->last = _packet_list[_packet_list.size()-1]->_rx_time;
 
@@ -587,7 +587,7 @@ int32_t isqrt32(int32_t n) {
 }
 
 void
-ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rssi_tab, int duration)
+ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration)
 {
   int diff_time = duration * 10;
 
@@ -643,12 +643,12 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, RSSITable *rss
     small_stats->hw_tx /= small_stats->hw_count;
   }
 
-  if ( rssi_tab ) {
-    small_stats->no_sources = rssi_tab->size();
+  if ( src_tab ) {
+    small_stats->no_sources = src_tab->size();
 
-    for (RSSITableIter iter = rssi_tab->begin(); iter.live(); iter++) {
+    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
       EtherAddress ea = iter.key();
-      SrcInfo *src = rssi_tab->findp(ea);
+      SrcInfo *src = src_tab->findp(ea);
       src->calc_values();
     }
   }
@@ -666,19 +666,19 @@ ChannelStats::stats_handler(int mode)
   StringAccum sa;
 
   struct airtime_stats *stats;
-  RSSITable            *rssi_tab;
+  SrcInfoTable         *src_tab;
 
   if ( _enable_full_stats ) {
-    if (_rssi_per_neighbour)
-      calc_stats(&_full_stats, &_full_stats_rssi_tab);
+    if (_neighbour_stats)
+      calc_stats(&_full_stats, &_full_stats_srcinfo_tab);
     else
       calc_stats(&_full_stats, NULL);
 
     stats = &_full_stats;
-    rssi_tab = &_full_stats_rssi_tab;
+    src_tab = &_full_stats_srcinfo_tab;
   } else {
     stats = &(_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
-    rssi_tab = &(_small_stats_rssi_tab[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
+    src_tab = &(_small_stats_src_tab[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
   }
 
   switch (mode) {
@@ -730,15 +730,15 @@ ChannelStats::stats_handler(int mode)
       else           sa << _channel;
       sa << "\" />";
 
-      sa << "\n\t<rssi>\n";
-      for (RSSITableIter iter = rssi_tab->begin(); iter.live(); iter++) {
+      sa << "\n\t<neighbourstats>\n";
+      for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
         EtherAddress ea = iter.key();
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"" << src._std_rssi;
         sa << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
         sa << "\" pkt_cnt=\"" << src._pkt_count << "\" />\n";
       }
-      sa << "\t</rssi>\n</channelstats>\n";
+      sa << "\t</neighbourstats>\n</channelstats>\n";
 
   }
   return sa.take_string();
