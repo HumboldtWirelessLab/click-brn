@@ -24,10 +24,15 @@ class SetTXRates : public Element { public:
   bool _debug;
  private:
 
-   int _rate0,_rate1,_rate2,_rate3;
-   int _tries0,_tries1,_tries2,_tries3;
+   uint8_t _rate0,_rate1,_rate2,_rate3;
+   uint8_t _tries0,_tries1,_tries2,_tries3;
    bool _mcs0,_mcs1,_mcs2,_mcs3;
+   int _bw0,_bw1,_bw2,_bw3;
+   bool _sgi0,_sgi1,_sgi2,_sgi3;
+   bool _gf0,_gf1,_gf2,_gf3;
    int _fec0,_fec1,_fec2,_fec3;
+
+   uint32_t _wifi_extra_flags; 
 
 };
 

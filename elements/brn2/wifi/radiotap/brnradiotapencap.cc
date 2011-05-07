@@ -123,14 +123,12 @@ BrnRadiotapEncap::simple_action(Packet *p)
     if ( BrnWifi::getMCS(ceh, 0) == 1 ) {
       crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;
 
-      uint8_t mcs_index, mcs_bandwidth, mcs_guard_interval, mcs_fec_type;
+      uint8_t mcs_index, mcs_bandwidth, mcs_guard_interval;
 
       BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate);
-      mcs_fec_type = BrnWifi::getFEC(ceh,0);
 
       crh->wt_known = (uint8_t)_mcs_known;
-      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | IEEE80211_RADIOTAP_MCS_FMT_GF | (mcs_fec_type << 4);
-      //set always greenfield TODO: check
+      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | (BrnWifi::getGF(ceh, 0) << 3) | (BrnWifi::getFEC(ceh,0) << 4);
 
       crh->wt_mcs = mcs_index;
 
@@ -157,19 +155,16 @@ BrnRadiotapEncap::simple_action(Packet *p)
     crh->wt_multi_mcs = 0;
 
     for ( int i = 0; i < 4; i++ ) {
-      if ( BrnWifi::getMCS(ceh, i) == 1 ) {
-        if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
-        else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
-        else if ( i == 2 ) crh->wt_rates[i] = ceh->rate2;
-        else if ( i == 3 ) crh->wt_rates[i] = ceh->rate3;
+      if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
+      else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
+      else if ( i == 2 ) crh->wt_rates[i] = ceh->rate2;
+      else if ( i == 3 ) crh->wt_rates[i] = ceh->rate3;
 
-        crh->wt_multi_mcs |= (RADIOTAP_RATE_IS_MCS | (BrnWifi::getFEC(ceh, i) << 1) |
-                              (IEEE80211_RADIOTAP_MCS_FMT_GF << 2)) << (i << 2);
-      } else {
-        if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
-        else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
-        else if ( i == 2 ) crh->wt_rates[i] = ceh->rate2;
-        else if ( i == 3 ) crh->wt_rates[i] = ceh->rate3;
+      if ( BrnWifi::getMCS(ceh, i) == 1 ) {
+        crh->wt_known = (uint8_t)_mcs_known;
+        //set mcs,fec and gf for index
+        crh->wt_multi_mcs |= (/*BrnWifi::getMCS(ceh, i) = */ RADIOTAP_RATE_IS_MCS | (BrnWifi::getFEC(ceh, i) << 1) |
+                              (BrnWifi::getGF(ceh, i) << 2)) << (i << 2);
       }
     }
 

@@ -21,11 +21,27 @@ enum {
   WIFI_EXTRA_MCS_FEC3_LDPC   = (1<<20),
   WIFI_EXTRA_MCS_FEC2_LDPC   = (1<<19),
   WIFI_EXTRA_MCS_FEC1_LDPC   = (1<<18),
-  WIFI_EXTRA_MCS_FEC0_LDPC   = (1<<17)
+  WIFI_EXTRA_MCS_FEC0_LDPC   = (1<<17),
+  WIFI_EXTRA_MCS_GF3         = (1<<16),
+  WIFI_EXTRA_MCS_GF2         = (1<<15),
+  WIFI_EXTRA_MCS_GF1         = (1<<14),
+  WIFI_EXTRA_MCS_GF0         = (1<<13)
 };
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21
 #define WIFI_EXTRA_FLAG_MCS_FEC_START  17
+#define WIFI_EXTRA_FLAG_MCS_GF_START   13
+
+#define IEEE80211_MCS_BW_20               0
+#define IEEE80211_MCS_BW_40               1
+#define IEEE80211_MCS_BW_20L              2
+#define IEEE80211_MCS_BW_20U              3
+
+#define IEEE80211_FEC_BCC  0
+#define IEEE80211_FEC_LDPC 1
+
+#define IEEE80211_LONG_GUARD_INTERVAL  0
+#define IEEE80211_SHORT_GUARD_INTERVAL 1
 
 
 /*
@@ -74,6 +90,14 @@ class BrnWifi
 
   static inline void setMCS(struct click_wifi_extra *ceh, int index, uint8_t mcs) {
     ceh->flags |= mcs << (WIFI_EXTRA_FLAG_MCS_RATE_START+index);
+  }
+
+  static inline uint8_t getGF(struct click_wifi_extra *ceh, int index) {
+    return (ceh->flags >> (WIFI_EXTRA_FLAG_MCS_GF_START+index) & 1);
+  }
+
+  static inline void setGF(struct click_wifi_extra *ceh, int index, uint8_t gf) {
+    ceh->flags |= gf << (WIFI_EXTRA_FLAG_MCS_GF_START+index);
   }
 
   static inline int getMCSRate(uint8_t mcs_index, uint8_t bandwidth, uint8_t guard_interval) {
