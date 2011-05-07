@@ -23,6 +23,7 @@ SetTXRates::SetTXRates():
     _sgi0(false), _sgi1(false), _sgi2(false), _sgi3(false),
     _gf0(false), _gf1(false), _gf2(false), _gf3(false),
     _fec0(IEEE80211_FEC_BCC), _fec1(IEEE80211_FEC_BCC), _fec2(IEEE80211_FEC_BCC), _fec3(IEEE80211_FEC_BCC),
+    _sp0(false), _sp1(false), _sp2(false), _sp3(false),
     _wifi_extra_flags(0)
 {
 }
@@ -73,6 +74,11 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       "FEC2", cpkN, cpInteger, &_fec2,
       "FEC3", cpkN, cpInteger, &_fec3,
 
+      "SP0", cpkN, cpBool, &_sp0,
+      "SP1", cpkN, cpBool, &_sp1,
+      "SP2", cpkN, cpBool, &_sp2,
+      "SP3", cpkN, cpBool, &_sp3,
+
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
@@ -88,6 +94,7 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if ( _gf0 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF0;
     if ( _fec0 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC0_LDPC;
+    if ( _sp0 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE0;
   }
 
   if ( _mcs1 ) {
@@ -98,6 +105,7 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if ( _gf1 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF1;
     if ( _fec1 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC1_LDPC;
+    if ( _sp1 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE1;
   }
 
   if ( _mcs2 ) {
@@ -108,6 +116,7 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if ( _gf2 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF2;
     if ( _fec2 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC2_LDPC;
+    if ( _sp2 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE2;
   }
 
   if ( _mcs3 ) {
@@ -118,6 +127,7 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if ( _gf3 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF3;
     if ( _fec3 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC3_LDPC;
+    if ( _sp3 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE3;
   }
 
   return 0;

@@ -164,7 +164,7 @@ BrnRadiotapEncap::simple_action(Packet *p)
         crh->wt_known = (uint8_t)_mcs_known;
         //set mcs,fec and gf for index
         crh->wt_multi_mcs |= (/*BrnWifi::getMCS(ceh, i) = */ RADIOTAP_RATE_IS_MCS | (BrnWifi::getFEC(ceh, i) << 1) |
-                              (BrnWifi::getGF(ceh, i) << 2)) << (i << 2);
+                             (BrnWifi::getGF(ceh, i) << 2) | (BrnWifi::getShortPreamble(ceh, i) << 3)) << (i << 2);
       }
     }
 

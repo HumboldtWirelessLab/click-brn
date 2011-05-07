@@ -31,6 +31,7 @@ class SetTXRates : public Element { public:
    bool _sgi0,_sgi1,_sgi2,_sgi3;
    bool _gf0,_gf1,_gf2,_gf3;
    int _fec0,_fec1,_fec2,_fec3;
+   bool _sp0,_sp1,_sp2,_sp3;
 
    uint32_t _wifi_extra_flags; 
 

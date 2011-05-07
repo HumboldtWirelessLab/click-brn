@@ -7,7 +7,7 @@
 CLICK_DECLS
 
 enum {
-  WIFI_EXTRA_RX_CRC_ERR	     = (1<<31), /* failed crc check */
+  WIFI_EXTRA_RX_CRC_ERR      = (1<<31), /* failed crc check */
   WIFI_EXTRA_RX_PHY_ERR      = (1<<30), /* failed phy check */
   WIFI_EXTRA_RX_FIFO_ERR     = (1<<29), /* failed fifo check */
   WIFI_EXTRA_RX_DECRYPT_ERR  = (1<<28), /* failed decrypt check */
@@ -25,12 +25,17 @@ enum {
   WIFI_EXTRA_MCS_GF3         = (1<<16),
   WIFI_EXTRA_MCS_GF2         = (1<<15),
   WIFI_EXTRA_MCS_GF1         = (1<<14),
-  WIFI_EXTRA_MCS_GF0         = (1<<13)
+  WIFI_EXTRA_MCS_GF0         = (1<<13),
+  WIFI_EXTRA_SHORT_PREAMBLE3 = (1<<12),
+  WIFI_EXTRA_SHORT_PREAMBLE2 = (1<<11),
+  WIFI_EXTRA_SHORT_PREAMBLE1 = (1<<10),
+  WIFI_EXTRA_SHORT_PREAMBLE0 = (1<<9)
 };
 
-#define WIFI_EXTRA_FLAG_MCS_RATE_START 21
-#define WIFI_EXTRA_FLAG_MCS_FEC_START  17
-#define WIFI_EXTRA_FLAG_MCS_GF_START   13
+#define WIFI_EXTRA_FLAG_MCS_RATE_START         21
+#define WIFI_EXTRA_FLAG_MCS_FEC_START          17
+#define WIFI_EXTRA_FLAG_MCS_GF_START           13
+#define WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START   9
 
 #define IEEE80211_MCS_BW_20               0
 #define IEEE80211_MCS_BW_40               1
@@ -98,6 +103,14 @@ class BrnWifi
 
   static inline void setGF(struct click_wifi_extra *ceh, int index, uint8_t gf) {
     ceh->flags |= gf << (WIFI_EXTRA_FLAG_MCS_GF_START+index);
+  }
+
+  static inline uint8_t getShortPreamble(struct click_wifi_extra *ceh, int index) {
+    return (ceh->flags >> (WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START+index) & 1);
+  }
+
+  static inline void setShortPreamble(struct click_wifi_extra *ceh, int index, uint8_t sp) {
+    ceh->flags |= sp << (WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START+index);
   }
 
   static inline int getMCSRate(uint8_t mcs_index, uint8_t bandwidth, uint8_t guard_interval) {
