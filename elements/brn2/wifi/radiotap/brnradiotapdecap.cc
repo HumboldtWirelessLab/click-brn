@@ -56,7 +56,7 @@ static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
 	 1, /* IEEE80211_RADIOTAP_DATA_RETRIES */
    0, /* IEEE80211_RADIOTAP_UNUSED */
    3, /* IEEE80211_RADIOTAP_MCS */
-   6, /* IEEE80211_RADIOTAP_MULTIRATE */
+   8, /* IEEE80211_RADIOTAP_MULTIRATE */
    4, /* IEEE80211_RADIOTAP_DATA_MULTIRETRIES */
    1, /* IEEE80211_RADIOTAP_QUEUE */
   };
@@ -191,6 +191,8 @@ BrnRadiotapDecap::simple_action(Packet *p)
 {
 	struct ieee80211_radiotap_header *th = (struct ieee80211_radiotap_header *) p->data();
 	struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
+
 	if (rt_check_header(th, p->length())) {
 		memset((void*)ceh, 0, sizeof(struct click_wifi_extra));
 		ceh->magic = WIFI_EXTRA_MAGIC;
@@ -262,8 +264,8 @@ BrnRadiotapDecap::simple_action(Packet *p)
 //      click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",
 //                    (int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
 
-      BrnWifi::fromMCS( index, (flags & 3), (flags >> 2) & 1, &(ceh->rate));
-      BrnWifi::setFEC(ceh, 0, (flags >> 4) & 1);
+      BrnWifi::fromMCS(index, (flags & 3), (flags >> 2) & 1, &(ceh->rate));
+      BrnWifi::setFEC(wee, 0, (flags >> 4) & 1);
 
       ceh->flags |= WIFI_EXTRA_MCS_RATE0;
     }

@@ -2,6 +2,8 @@
 #define CLICK_SETTXRATES_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+#include "elements/brn2/wifi/brnwifi.hh"
+
 CLICK_DECLS
 
 class SetTXRates : public Element { public:
@@ -32,8 +34,10 @@ class SetTXRates : public Element { public:
    bool _gf0,_gf1,_gf2,_gf3;
    int _fec0,_fec1,_fec2,_fec3;
    bool _sp0,_sp1,_sp2,_sp3;
+   bool _stbc0,_stbc1,_stbc2,_stbc3;
 
-   uint32_t _wifi_extra_flags; 
+   uint32_t _wifi_extra_flags;
+   struct brn_click_wifi_extra_extention _mcs_flags;
 
 };
 

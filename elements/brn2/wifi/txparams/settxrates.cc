@@ -24,6 +24,7 @@ SetTXRates::SetTXRates():
     _gf0(false), _gf1(false), _gf2(false), _gf3(false),
     _fec0(IEEE80211_FEC_BCC), _fec1(IEEE80211_FEC_BCC), _fec2(IEEE80211_FEC_BCC), _fec3(IEEE80211_FEC_BCC),
     _sp0(false), _sp1(false), _sp2(false), _sp3(false),
+    _stbc0(false), _stbc1(false), _stbc2(false), _stbc3(false),
     _wifi_extra_flags(0)
 {
 }
@@ -79,6 +80,11 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       "SP2", cpkN, cpBool, &_sp2,
       "SP3", cpkN, cpBool, &_sp3,
 
+      "STBC0", cpkN, cpBool, &_stbc0,
+      "STBC1", cpkN, cpBool, &_stbc1,
+      "STBC2", cpkN, cpBool, &_stbc2,
+      "STBC3", cpkN, cpBool, &_stbc3,
+
       "DEBUG", 0, cpBool, &_debug,
       cpEnd) < 0)
     return -1;
@@ -86,48 +92,54 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_mcs0 && (_rate0 != 0) ) _rate0 = 2; //TODO: check, whether 0 isn't valid. maybe 0 can be used to detect base rate
   if ( _tries0 == 0 ) _tries0 = 1;
 
+  BrnWifi::clear_click_wifi_extra_extention(&_mcs_flags);
+
   if ( _mcs0 ) {
     _wifi_extra_flags |= WIFI_EXTRA_MCS_RATE0;
 
-    if ( _sgi0 ) BrnWifi::fromMCS( _rate0, _bw0, IEEE80211_SHORT_GUARD_INTERVAL, &_rate0);
-    else         BrnWifi::fromMCS( _rate0, _bw0, IEEE80211_LONG_GUARD_INTERVAL, &_rate0);
+    if ( _sgi0 ) BrnWifi::fromMCS( _rate0, _bw0, IEEE80211_GUARD_INTERVAL_SHORT, &_rate0);
+    else         BrnWifi::fromMCS( _rate0, _bw0, IEEE80211_GUARD_INTERVAL_LONG, &_rate0);
 
-    if ( _gf0 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF0;
-    if ( _fec0 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC0_LDPC;
-    if ( _sp0 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE0;
+    BrnWifi::setFEC(&_mcs_flags, 0, _fec0);
+    if ( _gf0 ) BrnWifi::setHTMode(&_mcs_flags, 0, IEEE80211_HT_MODE_GREENFIELD);
+    if ( _sp0 ) BrnWifi::setPreambleLength(&_mcs_flags, 0, IEEE80211_PREAMBLE_LENGTH_SHORT);
+    if ( _stbc0 ) BrnWifi::setSTBC(&_mcs_flags, 0, IEEE80211_STBC_ENABLE);
   }
 
   if ( _mcs1 ) {
     _wifi_extra_flags |= WIFI_EXTRA_MCS_RATE1;
 
-    if ( _sgi1 ) BrnWifi::fromMCS( _rate1, _bw1, IEEE80211_SHORT_GUARD_INTERVAL, &_rate1);
-    else         BrnWifi::fromMCS( _rate1, _bw1, IEEE80211_LONG_GUARD_INTERVAL, &_rate1);
+    if ( _sgi1 ) BrnWifi::fromMCS( _rate1, _bw1, IEEE80211_GUARD_INTERVAL_SHORT, &_rate1);
+    else         BrnWifi::fromMCS( _rate1, _bw1, IEEE80211_GUARD_INTERVAL_LONG, &_rate1);
 
-    if ( _gf1 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF1;
-    if ( _fec1 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC1_LDPC;
-    if ( _sp1 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE1;
+    BrnWifi::setFEC(&_mcs_flags, 1, _fec1);
+    if ( _gf1 ) BrnWifi::setHTMode(&_mcs_flags, 1, IEEE80211_HT_MODE_GREENFIELD);
+    if ( _sp1 ) BrnWifi::setPreambleLength(&_mcs_flags, 1, IEEE80211_PREAMBLE_LENGTH_SHORT);
+    if ( _stbc1 ) BrnWifi::setSTBC(&_mcs_flags, 1, IEEE80211_STBC_ENABLE);
   }
 
   if ( _mcs2 ) {
     _wifi_extra_flags |= WIFI_EXTRA_MCS_RATE2;
 
-    if ( _sgi2 ) BrnWifi::fromMCS( _rate2, _bw2, IEEE80211_SHORT_GUARD_INTERVAL, &_rate2);
-    else         BrnWifi::fromMCS( _rate2, _bw2, IEEE80211_LONG_GUARD_INTERVAL, &_rate2);
+    if ( _sgi2 ) BrnWifi::fromMCS( _rate2, _bw2, IEEE80211_GUARD_INTERVAL_SHORT, &_rate2);
+    else         BrnWifi::fromMCS( _rate2, _bw2, IEEE80211_GUARD_INTERVAL_LONG, &_rate2);
 
-    if ( _gf2 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF2;
-    if ( _fec2 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC2_LDPC;
-    if ( _sp2 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE2;
+    BrnWifi::setFEC(&_mcs_flags, 2, _fec2);
+    if ( _gf2 ) BrnWifi::setHTMode(&_mcs_flags, 2, IEEE80211_HT_MODE_GREENFIELD);
+    if ( _sp2 ) BrnWifi::setPreambleLength(&_mcs_flags, 2, IEEE80211_PREAMBLE_LENGTH_SHORT);
+    if ( _stbc2 ) BrnWifi::setSTBC(&_mcs_flags, 2, IEEE80211_STBC_ENABLE);
   }
 
   if ( _mcs3 ) {
     _wifi_extra_flags |= WIFI_EXTRA_MCS_RATE3;
 
-    if ( _sgi3 ) BrnWifi::fromMCS( _rate3, _bw3, IEEE80211_SHORT_GUARD_INTERVAL, &_rate3);
-    else         BrnWifi::fromMCS( _rate3, _bw3, IEEE80211_LONG_GUARD_INTERVAL, &_rate3);
+    if ( _sgi3 ) BrnWifi::fromMCS( _rate3, _bw3, IEEE80211_GUARD_INTERVAL_SHORT, &_rate3);
+    else         BrnWifi::fromMCS( _rate3, _bw3, IEEE80211_GUARD_INTERVAL_LONG, &_rate3);
 
-    if ( _gf3 ) _wifi_extra_flags |= WIFI_EXTRA_MCS_GF3;
-    if ( _fec3 == IEEE80211_FEC_LDPC ) _wifi_extra_flags |= WIFI_EXTRA_MCS_FEC3_LDPC;
-    if ( _sp3 ) _wifi_extra_flags |= WIFI_EXTRA_SHORT_PREAMBLE3;
+    BrnWifi::setFEC(&_mcs_flags, 3, _fec3);
+    if ( _gf3 ) BrnWifi::setHTMode(&_mcs_flags, 3, IEEE80211_HT_MODE_GREENFIELD);
+    if ( _sp3 ) BrnWifi::setPreambleLength(&_mcs_flags, 3, IEEE80211_PREAMBLE_LENGTH_SHORT);
+    if ( _stbc3 ) BrnWifi::setSTBC(&_mcs_flags, 3, IEEE80211_STBC_ENABLE);
   }
 
   return 0;
@@ -138,6 +150,8 @@ SetTXRates::simple_action(Packet *p)
 {
   click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
+
+  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
 
   ceh->rate = _rate0;
   ceh->rate1 = _rate1;
@@ -150,6 +164,7 @@ SetTXRates::simple_action(Packet *p)
   ceh->max_tries3 = _tries3;
 
   ceh->flags |= _wifi_extra_flags;
+  memcpy(wee, &_mcs_flags, sizeof(struct brn_click_wifi_extra_extention));
 
   return p;
 }
@@ -157,7 +172,7 @@ SetTXRates::simple_action(Packet *p)
 
 enum {H_DEBUG};
 
-static String 
+static String
 SetTXRates_read_param(Element *e, void *thunk)
 {
   SetTXRates *td = (SetTXRates *)e;
@@ -168,7 +183,8 @@ SetTXRates_read_param(Element *e, void *thunk)
         return String();
     }
 }
-static int 
+
+static int
 SetTXRates_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   SetTXRates *f = (SetTXRates *)e;

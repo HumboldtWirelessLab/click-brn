@@ -4,6 +4,8 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+
 CLICK_DECLS
 
 enum {
@@ -17,37 +19,66 @@ enum {
   WIFI_EXTRA_MCS_RATE3       = (1<<24),
   WIFI_EXTRA_MCS_RATE2       = (1<<23),
   WIFI_EXTRA_MCS_RATE1       = (1<<22),
-  WIFI_EXTRA_MCS_RATE0       = (1<<21),
-  WIFI_EXTRA_MCS_FEC3_LDPC   = (1<<20),
-  WIFI_EXTRA_MCS_FEC2_LDPC   = (1<<19),
-  WIFI_EXTRA_MCS_FEC1_LDPC   = (1<<18),
-  WIFI_EXTRA_MCS_FEC0_LDPC   = (1<<17),
-  WIFI_EXTRA_MCS_GF3         = (1<<16),
-  WIFI_EXTRA_MCS_GF2         = (1<<15),
-  WIFI_EXTRA_MCS_GF1         = (1<<14),
-  WIFI_EXTRA_MCS_GF0         = (1<<13),
-  WIFI_EXTRA_SHORT_PREAMBLE3 = (1<<12),
-  WIFI_EXTRA_SHORT_PREAMBLE2 = (1<<11),
-  WIFI_EXTRA_SHORT_PREAMBLE1 = (1<<10),
-  WIFI_EXTRA_SHORT_PREAMBLE0 = (1<<9)
+  WIFI_EXTRA_MCS_RATE0       = (1<<21)
 };
 
-#define WIFI_EXTRA_FLAG_MCS_RATE_START         21
-#define WIFI_EXTRA_FLAG_MCS_FEC_START          17
-#define WIFI_EXTRA_FLAG_MCS_GF_START           13
-#define WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START   9
+
+#define WIFI_EXTRA_FLAG_MCS_RATE_START 21
+
+/****************************/
+/* BRN wifi extra extention */
+/****************************/
+
+/* For eac rate one entry
+ *
+ * Description:
+ *
+ * Bit         function
+ *  0           FEC ( 0 - BCC   1 - LDPC )
+ *  1           HT-mode  ( 0 - mixed   1 - greenfield )
+ *  2           Short Premable ( 0 - long   1 - short )
+ *  3           STBC ( 0 - "normal"  1 - use space-time-block-code )
+ *  4
+ *  5
+ *  6
+ *  7
+ *
+*/
+
+struct brn_click_wifi_extra_extention {
+  uint8_t mcs_flags[4];
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+#define IEEE80211_FEC_INDEX 0
+#define IEEE80211_FEC       (1<<IEEE80211_FEC_INDEX)
+#define IEEE80211_FEC_BCC   0
+#define IEEE80211_FEC_LDPC  1
+
+#define IEEE80211_HT_MODE_INDEX      1
+#define IEEE80211_HT_MODE            (1<<IEEE80211_HT_MODE_INDEX)
+#define IEEE80211_HT_MODE_MIXED      0
+#define IEEE80211_HT_MODE_GREENFIELD 1
+
+#define IEEE80211_PREAMBLE_LENGTH_INDEX 2
+#define IEEE80211_PREAMBLE_LENGTH       (1<<IEEE80211_PREAMBLE_LENGTH_INDEX)
+#define IEEE80211_PREAMBLE_LENGTH_LONG  0
+#define IEEE80211_PREAMBLE_LENGTH_SHORT 1
+
+#define IEEE80211_STBC_INDEX   3
+#define IEEE80211_STBC         (1<<IEEE80211_STBC_INDEX)
+#define IEEE80211_STBC_DISABLE 0
+#define IEEE80211_STBC_ENABLE  1
+
+
+/* Bandwidth stuff */
 
 #define IEEE80211_MCS_BW_20               0
 #define IEEE80211_MCS_BW_40               1
 #define IEEE80211_MCS_BW_20L              2
 #define IEEE80211_MCS_BW_20U              3
 
-#define IEEE80211_FEC_BCC  0
-#define IEEE80211_FEC_LDPC 1
-
-#define IEEE80211_LONG_GUARD_INTERVAL  0
-#define IEEE80211_SHORT_GUARD_INTERVAL 1
-
+#define IEEE80211_GUARD_INTERVAL_LONG     0
+#define IEEE80211_GUARD_INTERVAL_SHORT    1
 
 /*
 -------------------------------------------------------------------
@@ -56,14 +87,6 @@ enum {
 -------------------------------------------------------------------
 */
 
-/*
-    * max int > 2 000 000 000
-    * split to 000.000000
-    * max.  ~  999.999999
-*/
-
-#define PREFACTOR 1000000 /*6 digests*/
-
 class BrnWifi
 {
  public:
@@ -71,6 +94,16 @@ class BrnWifi
   BrnWifi();
   ~BrnWifi();
 
+  /* Single bit signals, whether rate is mcs-rate or "normal" rate */
+  static inline uint8_t getMCS(struct click_wifi_extra *ceh, int index) {
+    return (ceh->flags >> (WIFI_EXTRA_FLAG_MCS_RATE_START+index) & 1);
+  }
+
+  static inline void setMCS(struct click_wifi_extra *ceh, int index, uint8_t mcs) {
+    ceh->flags |= (mcs & 1) << (WIFI_EXTRA_FLAG_MCS_RATE_START+index);
+  }
+
+  /* Convert rate to/from mcs-rate (rate-index, bw, guard_interval) */
   static inline void fromMCS(uint8_t mcs_index, uint8_t bandwidth, uint8_t guard_interval, uint8_t *rate) {
     *rate = (mcs_index & 31) | ((bandwidth & 3) << 5) | ((guard_interval & 1) << 7);
   }
@@ -81,38 +114,50 @@ class BrnWifi
     *guard_interval = (rate & 128) >> 7;
   }
 
-  static inline uint8_t getFEC(struct click_wifi_extra *ceh, int index) {
-    return (ceh->flags >> (WIFI_EXTRA_FLAG_MCS_FEC_START+index) & 1);
+  /***************************************************/
+  /* MCS flags, which have no impact on the datarate */
+  /***************************************************/
+  static inline void clear_click_wifi_extra_extention(struct brn_click_wifi_extra_extention *ceh) {
+    memset((void*)ceh,0,sizeof(struct brn_click_wifi_extra_extention));
   }
 
-  static inline void setFEC(struct click_wifi_extra *ceh, int index, uint8_t fec_type) {
-    ceh->flags |= fec_type << (WIFI_EXTRA_FLAG_MCS_FEC_START+index);
+  static inline struct brn_click_wifi_extra_extention *get_brn_click_wifi_extra_extention(Packet *p) {
+    return (struct brn_click_wifi_extra_extention *)BRNPacketAnno::get_brn_wifi_extra_extention_anno(p);
   }
 
-  static inline uint8_t getMCS(struct click_wifi_extra *ceh, int index) {
-    return (ceh->flags >> (WIFI_EXTRA_FLAG_MCS_RATE_START+index) & 1);
+  static inline uint8_t getFEC(struct brn_click_wifi_extra_extention *ceh, int index) {
+    return ((ceh->mcs_flags[index] /*>> IEEE80211_FEC_INDEX*/) & 1);
   }
 
-  static inline void setMCS(struct click_wifi_extra *ceh, int index, uint8_t mcs) {
-    ceh->flags |= mcs << (WIFI_EXTRA_FLAG_MCS_RATE_START+index);
+  static inline void setFEC(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t fec_type) {
+    ceh->mcs_flags[index] |= (fec_type & 1) /*<< IEEE80211_FEC_INDEX*/;
   }
 
-  static inline uint8_t getGF(struct click_wifi_extra *ceh, int index) {
-    return (ceh->flags >> (WIFI_EXTRA_FLAG_MCS_GF_START+index) & 1);
+  static inline uint8_t getHTMode(struct brn_click_wifi_extra_extention *ceh, int index) {
+    return ((ceh->mcs_flags[index] >> IEEE80211_HT_MODE_INDEX) & 1);
   }
 
-  static inline void setGF(struct click_wifi_extra *ceh, int index, uint8_t gf) {
-    ceh->flags |= gf << (WIFI_EXTRA_FLAG_MCS_GF_START+index);
+  static inline void setHTMode(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t htmode) {
+    ceh->mcs_flags[index] |= (htmode & 1) << IEEE80211_HT_MODE_INDEX;
   }
 
-  static inline uint8_t getShortPreamble(struct click_wifi_extra *ceh, int index) {
-    return (ceh->flags >> (WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START+index) & 1);
+  static inline uint8_t getPreambleLength(struct brn_click_wifi_extra_extention *ceh, int index) {
+    return ((ceh->mcs_flags[index] >> IEEE80211_PREAMBLE_LENGTH_INDEX) & 1);
   }
 
-  static inline void setShortPreamble(struct click_wifi_extra *ceh, int index, uint8_t sp) {
-    ceh->flags |= sp << (WIFI_EXTRA_FLAG_SHORT_PREAMBLE_START+index);
+  static inline void setPreambleLength(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t pl) {
+    ceh->mcs_flags[index] |= (pl & 1) << IEEE80211_PREAMBLE_LENGTH_INDEX;
   }
 
+  static inline uint8_t getSTBC(struct brn_click_wifi_extra_extention *ceh, int index) {
+    return ((ceh->mcs_flags[index] >> IEEE80211_STBC_INDEX) & 1);
+  }
+
+  static inline void setSTBC(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t stbc) {
+    ceh->mcs_flags[index] |= (stbc & 1) << IEEE80211_STBC_INDEX;
+  }
+
+  /* Functions for rate calculation */
   static inline int getMCSRate(uint8_t mcs_index, uint8_t bandwidth, uint8_t guard_interval) {
 	  /*
 	  * This is the table of data-rates with MCS-Mode,

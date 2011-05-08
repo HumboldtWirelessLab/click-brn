@@ -63,8 +63,7 @@ struct click_radiotap_header {
 
   /* BRN Extention */
   u_int8_t wt_rates[4];
-
-  uint16_t  wt_multi_mcs;
+  u_int8_t wt_multi_mcs[4];
 
   u_int8_t  wt_data_retries0;
   u_int8_t	wt_data_retries1;
@@ -112,7 +111,9 @@ BrnRadiotapEncap::simple_action(Packet *p)
 
   if (p_out) {
 	  struct click_radiotap_header *crh  = (struct click_radiotap_header *) p_out->data();
-	  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+    click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
+
+    struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p_out);
 
 	  memset(crh, 0, sizeof(struct click_radiotap_header));
 
@@ -128,7 +129,8 @@ BrnRadiotapEncap::simple_action(Packet *p)
       BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate);
 
       crh->wt_known = (uint8_t)_mcs_known;
-      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | (BrnWifi::getGF(ceh, 0) << 3) | (BrnWifi::getFEC(ceh,0) << 4);
+      crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | (BrnWifi::getHTMode(wee, 0) << 3) |
+                                                                  (BrnWifi::getFEC(wee,0) << 4);
 
       crh->wt_mcs = mcs_index;
 
@@ -152,8 +154,6 @@ BrnRadiotapEncap::simple_action(Packet *p)
     crh->wt_channel_frequence = 0; //channel2frequ(BRNPacketAnno::channel_anno(p));
     crh->wt_channel_flags = 0;
 
-    crh->wt_multi_mcs = 0;
-
     for ( int i = 0; i < 4; i++ ) {
       if ( i == 0 ) crh->wt_rates[i] = ceh->rate;
       else if ( i == 1 ) crh->wt_rates[i] = ceh->rate1;
@@ -163,8 +163,7 @@ BrnRadiotapEncap::simple_action(Packet *p)
       if ( BrnWifi::getMCS(ceh, i) == 1 ) {
         crh->wt_known = (uint8_t)_mcs_known;
         //set mcs,fec and gf for index
-        crh->wt_multi_mcs |= (/*BrnWifi::getMCS(ceh, i) = */ RADIOTAP_RATE_IS_MCS | (BrnWifi::getFEC(ceh, i) << 1) |
-                             (BrnWifi::getGF(ceh, i) << 2) | (BrnWifi::getShortPreamble(ceh, i) << 3)) << (i << 2);
+        crh->wt_multi_mcs[i] |= RADIOTAP_RATE_IS_MCS | (wee->mcs_flags[i] << 1);
       }
     }
 
