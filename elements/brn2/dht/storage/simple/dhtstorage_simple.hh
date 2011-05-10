@@ -137,7 +137,7 @@ class DHTStorageSimple : public DHTStorage
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "1/1"; }
+    const char *port_count() const  { return "0-1/0-1"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
@@ -189,6 +189,7 @@ class DHTStorageSimple : public DHTStorage
 
   public:
     String read_stats();
+    String read_db_size();
 
 #endif
 };
