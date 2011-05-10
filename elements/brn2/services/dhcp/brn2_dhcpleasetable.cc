@@ -99,11 +99,13 @@ BRN2DHCPLeaseTable::read_handler(Element *e, void *thunk)
 	switch ((uintptr_t) thunk) {
 	case H_LEASES: {
 		StringAccum sa;
-    sa << "<dhcpleases clients=\"" << lt->_leases.size() << "\" >\n";
+    sa << "<dhcpleases count=\"" << lt->_leases.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
 		for (LeaseIter iter = lt->_leases.begin(); iter.live(); iter++) {
 			Lease l = iter.value();
       sa << "\t<client ip=\"" << l._ip << "\" mac=\"" << l._eth;
-			sa << "  starts=\"" << l._start.sec() << "\" ends=\"" << l._end.sec() << "\" />\n";
+			sa << "\" start=\"" << l._start.sec() << "\" end=\"" << l._end.sec();
+      sa << "\" duration=\"" << l._duration.sec();
+      sa << "\" time_left=\"" << (l._end - Timestamp::now()).sec() << "\" />\n";
 		}
     sa << "<dhcpleases />\n";
     return sa.take_string();

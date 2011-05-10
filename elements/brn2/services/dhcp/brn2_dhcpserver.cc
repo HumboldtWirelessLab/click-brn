@@ -33,14 +33,15 @@
 #include <click/straccum.hh>
 #include <click/string.hh>
 
-#include "brn2_dhcpserver.hh"
 #include "elements/brn2/dht/storage/dhtoperation.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 #include "elements/brn2/dht/storage/rangequery/ip_rangequery.hh"
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 
 #include "dhcpprotocol.hh"
+#include "brn2_dhcpserver.hh"
 
 CLICK_DECLS
 
@@ -591,7 +592,9 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
 
   result = remove_client(client_info);
 
-  output( 0 ).push( p_out ); //erster part
+  BRNPacketAnno::set_ether_anno(p_out, _me.data(), client_info->_chaddr, 0x0800);
+  output(0).push(p_out); //erster part
+
   debug_count_dhcp_packet--;
 
   return( result );
@@ -806,7 +809,8 @@ BRN2DHCPServer::send_dhcp_ack(DHCPClientInfo *client_info, uint8_t messagetype)
 
   BRN_DEBUG("BRN2DHCPServer: Send DHCP-Reply");
 
-  output( 0 ).push( p_out );
+  BRNPacketAnno::set_ether_anno(p_out, _me.data(), client_info->_chaddr, 0x0800);
+  output(0).push(p_out);
   debug_count_dhcp_packet--;
 
   return( result );
@@ -872,14 +876,16 @@ BRN2DHCPServer::handle_dhcp_decline(Packet *p_in)
 int
 BRN2DHCPServer::handle_dhcp_inform(Packet *p_in)
 {
-  WritablePacket *p = p_in->put(0);
+  struct dhcp_packet *dhcp_packet = (struct dhcp_packet *)p_in->data();
+  WritablePacket *p = p_in->uniqueify();
 
   DHCPProtocol::insertMagicCookie(p);
   DHCPProtocol::del_all_options(p);
 
   dhcp_add_standard_options(p);
 
-  output( 0 ).push( p );
+  BRNPacketAnno::set_ether_anno(p, _me.data(), dhcp_packet->chaddr, 0x0800);
+  output(0).push(p);
 
   return(0);
 }
