@@ -25,11 +25,13 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn2/dht/storage/dhtstorage.hh"
+
 #include "dhcp.h"
 #include "dhcpsubnetlist.hh"
-
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "brn2_dhcpleasetable.hh"
 
 #define MODE_WRITE_IP  0
 #define MODE_READ_IP   1
@@ -53,7 +55,7 @@ CLICK_DECLS
 /**
  * TODO: What to do if no subnetInfo for Clients vlan
  */
-class BRN2DHCPServer : public Element {
+class BRN2DHCPServer : public BRNElement {
 
  public:
   //
@@ -149,10 +151,8 @@ class BRN2DHCPServer : public Element {
   //
   //member
   //
-public:
-  int _debug;
 
-private:
+ private:
   EtherAddress _me;
   IPAddress start_ip_range;
 
@@ -180,6 +180,7 @@ private:
   BRN2DHCPSubnetList *_dhcpsubnetlist;
   BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
+  BRN2DHCPLeaseTable *_lease_table;
 };
 
 CLICK_ENDDECLS
