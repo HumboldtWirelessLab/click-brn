@@ -243,16 +243,21 @@ BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
         case MODE_READ_NAME:
         {
           BRN_DEBUG("BRN2DHCPServer: Write NAME to DHT (read)");
-          if ( ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) )
-          //|| ( ( op->header.status == DHT_STATUS_OK ) && ( op->header.valuelen ==  ) && ( memcmp(op->value, client_info->_chaddr, 6 ) == 0 ) ) )
+          if ( (op->header.status == DHT_STATUS_KEY_NOT_FOUND)
+               || (op->header.status == DHT_STATUS_OK) )  //TODO: if ok, check if name the right one (and ip (and mac??))
+//            || ( ( op->header.status == DHT_STATUS_OK ) && ( op->header.valuelen ==  ) && ( memcmp(op->value, client_info->_chaddr, 6 ) == 0 ) ) )
           {
             client_info->_dht_op = MODE_WRITE_NAME;
 
             DHTOperation *op_new = new DHTOperation();
             char hostname[255];
             sprintf(hostname,".%s%s",IPAddress(client_info->_ciaddr).unparse().c_str(),_domain_name.c_str());
-            op_new->write((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr, 4, true);
-            //op_new->insert((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr,4 );
+
+            if (op->header.status == DHT_STATUS_KEY_NOT_FOUND) {
+              op_new->insert((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr, 4 );
+            } else {
+              op_new->write((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr, 4, true);
+            }
 
             dht_request(client_info,op_new);
           }
