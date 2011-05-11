@@ -34,12 +34,15 @@
 #include "brn2_dhcpleasetable.hh"
 
 #define MODE_WRITE_IP  0
-#define MODE_READ_IP   1
-#define MODE_REMOVE_IP 2
+#define MODE_UPDATE_IP 1
+#define MODE_READ_IP   2
+#define MODE_REMOVE_IP 3
 
-#define MODE_WRITE_NAME  3
-#define MODE_READ_NAME   4
-#define MODE_REMOVE_NAME 5
+#define MODE_WRITE_NAME  4
+#define MODE_READ_NAME   5
+#define MODE_REMOVE_NAME 6
+
+
 
 CLICK_DECLS
 

@@ -196,7 +196,14 @@ BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
           {
             BRN_DEBUG("BRN2DHCPServer: IP is not used or used by this client. Write new MAC to DHT!");
 
-            client_info->_dht_op = MODE_WRITE_IP;
+            if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
+              BRN_DEBUG("BRN2DHCPServer: IP not used, so insert (write)");
+              client_info->_dht_op = MODE_WRITE_IP;
+            } else {
+              BRN_DEBUG("BRN2DHCPServer: IP used by the client, so update");
+              client_info->_dht_op = MODE_UPDATE_IP;
+            }
+
             delete op;
 
             result = send_dht_request(client_info);
@@ -211,6 +218,7 @@ BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
           break;
         }
         case MODE_WRITE_IP:
+        case MODE_UPDATE_IP:
         {
           BRN_DEBUG("BRN2DHCPServer: Read NAME from DHT");
           if ( op->header.status == DHT_STATUS_OK ) //all O.K.
@@ -243,7 +251,8 @@ BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
             DHTOperation *op_new = new DHTOperation();
             char hostname[255];
             sprintf(hostname,".%s%s",IPAddress(client_info->_ciaddr).unparse().c_str(),_domain_name.c_str());
-            op_new->insert((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr,4 );
+            op_new->write((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr, 4, true);
+            //op_new->insert((uint8_t*) hostname, strlen(hostname), (uint8_t*)&client_info->_ciaddr,4 );
 
             dht_request(client_info,op_new);
           }
@@ -386,12 +395,19 @@ BRN2DHCPServer::send_dht_request(DHCPClientInfo *client_info)
         op = new DHTOperation();
         op->read((uint8_t*) &client_info->_ciaddr, 4);
       }
-      else if ( client_info->_dht_op == MODE_WRITE_IP )
+      else if ( (client_info->_dht_op == MODE_WRITE_IP) || (client_info->_dht_op == MODE_UPDATE_IP) )
       {
         BRN_DEBUG("BRN2DHCPServer: Clientstatus: DHCPSELECTING WRITE");
 
         op = new DHTOperation();
-        op->insert((uint8_t*) &client_info->_ciaddr, 4, (uint8_t*) &client_info->_chaddr, 6);
+
+        if (client_info->_dht_op == MODE_WRITE_IP) {
+          BRN_DEBUG("BRN2DHCPServer: Insert");
+          op->insert((uint8_t*) &client_info->_ciaddr, 4, (uint8_t*) &client_info->_chaddr, 6);
+        } else {
+          BRN_DEBUG("BRN2DHCPServer: Update");
+          op->write((uint8_t*) &client_info->_ciaddr, 4, (uint8_t*) &client_info->_chaddr, 6);
+        }
       }
       else
       {
