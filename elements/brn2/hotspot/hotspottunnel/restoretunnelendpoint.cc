@@ -33,7 +33,8 @@
 CLICK_DECLS
 
 RestoreTunnelEndpoint::RestoreTunnelEndpoint()
-  : _reverse_arp_table()
+  : _reverse_arp_table(),
+    _use_annos(false)
 {
   BRNElement::init();
 }
@@ -47,6 +48,7 @@ RestoreTunnelEndpoint::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "REVERSEARPTABLE", cpkP+cpkM, cpElement, &_reverse_arp_table,
+      "SETANNO", cpkN, cpBool, &_use_annos,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -71,7 +73,12 @@ RestoreTunnelEndpoint::simple_action(Packet *p_in)
   EtherAddress dst_ether_addr(ether->ether_dhost);
 
   IPAddress dst_ip_addr(_reverse_arp_table->lookup(dst_ether_addr));
-  memcpy(&(ip->ip_dst), dst_ip_addr.data(), 4);
+
+  if ( _use_annos ) {
+    p_in->set_dst_ip_anno(dst_ip_addr);
+  } else {
+    memcpy(&(ip->ip_dst), dst_ip_addr.data(), 4);
+  }
 
   BRN_DEBUG("* got mapping: %s -> %s", dst_ether_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 

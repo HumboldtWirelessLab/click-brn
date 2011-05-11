@@ -54,6 +54,7 @@ class RestoreTunnelEndpoint : public BRNElement {
 
  private:
   ReverseARPTable *_reverse_arp_table;
+  bool _use_annos;
 };
 
 CLICK_ENDDECLS
