@@ -22,6 +22,9 @@
 #define CLICK_FILTERBSSID_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -37,13 +40,13 @@ Filter out packets, which do not belong to the specified bssid using the Wireles
 
 */
 
-class FilterBSSID : public Element { public:
+class FilterBSSID : public BRNElement { public:
 
   FilterBSSID();
   ~FilterBSSID();
 
   const char *class_name() const	{ return "FilterBSSID"; }
-  const char *port_count() const	{ return "1/1-2"; }
+  const char *port_count() const	{ return "1/1-3"; }
   const char *processing() const	{ return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
@@ -52,7 +55,6 @@ class FilterBSSID : public Element { public:
 
   void push(int port, Packet *p);
 
-  int _debug;
   bool _active;
   class WirelessInfo *_winfo;
 };
