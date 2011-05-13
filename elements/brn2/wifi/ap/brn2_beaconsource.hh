@@ -80,6 +80,7 @@ class BRN2BeaconSource : public Element { public:
 
   bool is_protected_ssid(String ssid);
   bool _switch_channel;
+  int _headroom;
 };
 
 CLICK_ENDDECLS

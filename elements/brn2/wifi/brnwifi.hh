@@ -180,7 +180,7 @@ class BrnWifi
 
 	  //click_chatter("%d %d %d",idx,bw,gi);
 
-    return ( (mcs_index >> 3) + 1) * rates[ ((mcs_index & 7) << 2) + bandwidth << 1 + guard_interval ];
+    return ( (mcs_index >> 3) + 1) * rates[ ((mcs_index & 7) << 2) + (bandwidth << 1) + guard_interval ];
 
   }
 
