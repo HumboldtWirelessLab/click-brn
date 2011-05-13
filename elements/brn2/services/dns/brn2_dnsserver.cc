@@ -141,6 +141,7 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
                                                                sizeof(nameoffset), 1, 1, 300,
                                                                op->header.valuelen, op->value);
     client_info->_client_packet = NULL;                  //packet is send (and away) so remove reference)
+    ans->set_dst_ip_anno(client_info->_ip);
     output(0).push(ans);
   }
 
@@ -159,6 +160,9 @@ BRN2DNSServer::push( int port, Packet *p_in )
   if ( port == 0 )
   {
     BRN_DEBUG("BRN2DNSServer: Responder::dnsresponse");
+
+    const click_ip *iph = p_in->ip_header();
+
     char *cname = DNSProtocol::get_name(p_in);
     String name = String(cname);
     delete[] cname;
@@ -169,12 +173,13 @@ BRN2DNSServer::push( int port, Packet *p_in )
       uint16_t nameoffset = 0x0cc0;
       WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
                                                                 1, 1, 300, 4, _server_ident.data());
+      ans->set_dst_ip_anno(IPAddress(iph->ip_src.s_addr));
       output(0).push(ans);
 
     } else if ( (DNSProtocol::isInDomain( name, _domain_name )) && (_dht_storage != NULL) ) {
       BRN_INFO("Ask for other in domain");
 
-      DNSClientInfo *ci = new DNSClientInfo(p_in,IPAddress(0),name);
+      DNSClientInfo *ci = new DNSClientInfo(p_in, IPAddress(iph->ip_src.s_addr), name);
       client_info_list.push_back(ci);
       DHTOperation *op = new DHTOperation();
       op->read((uint8_t*)name.data(), name.length());
@@ -184,7 +189,8 @@ BRN2DNSServer::push( int port, Packet *p_in )
       if ( _server_redirect ) {
         uint16_t nameoffset = 0x0cc0;
         WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
-                                                                     1, 1, 300, 4, _server_ident.data());
+                                                                  1, 1, 300, 4, _server_ident.data());
+        ans->set_dst_ip_anno(IPAddress(iph->ip_src.s_addr));
         output(0).push(ans);
       } else {
         BRN_INFO("Ask for other ( %s <-> %s )",name.c_str(), _domain_name.c_str());
