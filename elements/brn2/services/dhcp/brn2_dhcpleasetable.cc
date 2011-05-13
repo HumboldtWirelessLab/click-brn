@@ -107,7 +107,7 @@ BRN2DHCPLeaseTable::read_handler(Element *e, void *thunk)
       sa << "\" duration=\"" << l._duration.sec();
       sa << "\" time_left=\"" << (l._end - Timestamp::now()).sec() << "\" />\n";
 		}
-    sa << "<dhcpleases />\n";
+    sa << "</dhcpleases>\n";
     return sa.take_string();
 	}
 	default:
