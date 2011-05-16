@@ -741,7 +741,7 @@ ChannelStats::stats_handler(int mode)
         sa << "\" pkt_cnt=\"" << src._pkt_count << "\">\n";
         sa << "\t\t\t<rssi_hist size=\"" << src._rssi_hist_index << "\" max_size=\"" << src._rssi_hist_size;
         sa << "\" overflow=\"" << src._rssi_hist_overflow << "\" values=\"";
-        for ( int rssi_i = 0; rssi_i < src._rssi_hist_index; rssi_i++) {
+        for ( uint32_t rssi_i = 0; rssi_i < src._rssi_hist_index; rssi_i++) {
           if ( rssi_i > 0 ) sa << ",";
           sa << (uint32_t)(src._rssi_hist[rssi_i]);
         }
