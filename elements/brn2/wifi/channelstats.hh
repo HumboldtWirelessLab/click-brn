@@ -192,6 +192,7 @@ class ChannelStats : public BRNElement {
         }
 
         _min_rssi = _max_rssi = rssi;
+        _rssi_hist[_rssi_hist_index++] = rssi;
         _pkt_count = 1;
       }
 
