@@ -541,6 +541,9 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
       } else {
         return 1; //ERROR. TODO: better Error-Handling
       }
+    } else {
+      req_subnet_mask = _subnet_mask;
+      req_net_address = _net_address;
     }
 
     if ( ( _dhcpsubnetlist != NULL ) && ( ! wanted_ip_ok ) ) {
@@ -598,6 +601,8 @@ BRN2DHCPServer::send_dhcp_offer(DHCPClientInfo *client_info )
   dhcp_packet_out->flags = htons(BOOTP_BROADCAST);  // set Broadcast-Flag
   memcpy((void*)&dhcp_packet_out->yiaddr,&client_info->_ciaddr,4);
   memcpy((void*)&dhcp_packet_out->chaddr[0],&client_info->_chaddr[0],6);  //set hw-addr
+
+  BRN_DEBUG("Send offer: %s %s",IPAddress(client_info->_ciaddr).unparse().c_str(), EtherAddress(client_info->_chaddr).unparse().c_str());
 
   DHCPProtocol::insertMagicCookie(p_out);
   DHCPProtocol::del_all_options(p_out); //del option of old packet
@@ -936,10 +941,10 @@ void
 BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
 {
   StringAccum sa;
-  uint32_t new_ip;
+  uint32_t new_ip = 0;
 
   BRN_DEBUG("Find ip for Client is Vlan %d", (int)vlanid);
-  BRN_DEBUG("id is %d <-> EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
+  BRN_DEBUG("vlan id is %d <-> EA is %s",vlanid, EtherAddress(client_info->_chaddr).unparse().c_str());
 
   if ( _lease_table ) {  //Try to get client ip from local table
     //TODO: handle change of vlan
@@ -953,32 +958,34 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
 
   //TODO: check clientIP. Does it fit to subnet of client (vlan)
 
-  if ( memcmp(&(client_info->_ciaddr),"\0\0\0\0",4) == 0 )
-  {
-    //just take the last byte of mac address --> TODO: ZeroConf
+  if ( new_ip == 0 ) {
+    if ( memcmp(&(client_info->_ciaddr),"\0\0\0\0",4) == 0 )
+    {
+      //just take the last byte of mac address --> TODO: ZeroConf
 
-    BRN_DEBUG("BRN2DHCPServer: neue IP");
+      BRN_DEBUG("BRN2DHCPServer: neue IP");
 
-    setSubnet(client_info, vlanid);
+      setSubnet(client_info, vlanid);
 
-    if ( _dht_storage->range_query_support() ) {
-      uint8_t minr[16], maxr[16];  //Try request in local range
-      IPRangeQuery iprq = IPRangeQuery(client_info->_subnet_ip, client_info->_subnet_mask);
-      _dht_storage->range_query_min_max_id(minr, maxr);
-      IPAddress nip = iprq.get_value_for_id(minr);
-      new_ip = htonl(ntohl(nip) + (int) client_info->_chaddr[5] + 5);
-    } else {
-      new_ip = htonl(ntohl(client_info->_subnet_ip.addr()) + (int) client_info->_chaddr[5] + 5);
+      if ( _dht_storage->range_query_support() ) {
+        uint8_t minr[16], maxr[16];  //Try request in local range
+        IPRangeQuery iprq = IPRangeQuery(client_info->_subnet_ip, client_info->_subnet_mask);
+        _dht_storage->range_query_min_max_id(minr, maxr);
+        IPAddress nip = iprq.get_value_for_id(minr);
+        new_ip = htonl(ntohl(nip) + (int) client_info->_chaddr[5] + 5);
+      } else {
+        new_ip = htonl(ntohl(client_info->_subnet_ip.addr()) + (int) client_info->_chaddr[5] + 5);
+      }
     }
-  }
-  else
-  {
-    memcpy(&new_ip,&(client_info->_ciaddr),4);
-    new_ip = htonl(ntohl(new_ip) + 1);
+    else
+    {
+      memcpy(&new_ip,&(client_info->_ciaddr),4);
+      new_ip = htonl(ntohl(new_ip) + 1);
+    }
   }
 
   BRN_DEBUG("BRN2DHCPServer: IP: %s",IPAddress(new_ip).unparse().c_str());
-  memcpy(&(client_info->_ciaddr),&new_ip,4);
+  memcpy(&(client_info->_ciaddr),IPAddress(new_ip).data(),4);
 
   return;
 }
