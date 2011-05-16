@@ -566,7 +566,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     }
     else
     {
-      BRN_DEBUG("BRN2DHCPServer: IP ist ok");
+      BRN_DEBUG("BRN2DHCPServer: IP ist ok: %s",req_ip.unparse().c_str());
       memcpy(&(client_info->_ciaddr),req_ip.data(),4);
     }
   }
