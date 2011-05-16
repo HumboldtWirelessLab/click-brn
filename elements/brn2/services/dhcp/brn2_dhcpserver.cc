@@ -512,12 +512,15 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     else
       req_ip = IPAddress(new_dhcp_packet->ciaddr);
 
-    bool wanted_ip_ok = (req_ip.addr() & _subnet_mask.addr()) != (_net_address.addr() & _subnet_mask.addr());
+    bool wanted_ip_ok = (req_ip.addr() & _subnet_mask.addr()) == (_net_address.addr() & _subnet_mask.addr());
+
+    BRN_DEBUG("Req: %s Subnet: %s Net: %s OK: %d", req_ip.unparse().c_str(), _subnet_mask.unparse().c_str(), _net_address.unparse().c_str(), wanted_ip_ok ? 1 : 0);
 
     if ( _lease_table ) {
       Lease *lease = _lease_table->lookup(req_ip);
       if ( lease != NULL ) {
         if ( memcmp(client_info->_chaddr, lease->_eth.data(), 6) != 0 ) {  //ip used by other eth
+          BRN_DEBUG("BRN2DHCPServer: local Lease table has other IP for Client!");
           wanted_ip_ok = false;
         }
       }
@@ -545,7 +548,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
       for ( int i = 0; i < _dhcpsubnetlist->countSubnets(); i++ ) {
         sn = _dhcpsubnetlist->getSubnet(i);
         wanted_ip_ok = wanted_ip_ok ||
-            ( ( (req_ip.addr() & sn->_subnet_mask.addr()) != ( sn->_net_address.addr() & sn->_subnet_mask.addr()) ) &&
+            ( ( (req_ip.addr() & sn->_subnet_mask.addr()) == ( sn->_net_address.addr() & sn->_subnet_mask.addr()) ) &&
             ( sn->_vlan == vlanid ) );
         if ( wanted_ip_ok ) {
           req_subnet_mask = sn->_subnet_mask;
