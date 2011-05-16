@@ -745,7 +745,7 @@ ChannelStats::stats_handler(int mode)
           if ( rssi_i > 0 ) sa << ",";
           sa << (uint32_t)(src._rssi_hist[rssi_i]);
         }
-        sa << "\" />\t\t</nb>\n";
+        sa << "\" />\n\t\t</nb>\n";
       }
       sa << "\t</neighbourstats>\n</channelstats>\n";
 
