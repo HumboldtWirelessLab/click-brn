@@ -265,7 +265,10 @@ BrnRadiotapDecap::simple_action(Packet *p)
 //                    (int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
 
       BrnWifi::fromMCS(index, (flags & 3), (flags >> 2) & 1, &(ceh->rate));
+      BrnWifi::setHTMode(wee, 0, (flags >> 3) & 1);
       BrnWifi::setFEC(wee, 0, (flags >> 4) & 1);
+      BrnWifi::setPreambleLength(wee, 0, (flags >> 5) & 1);
+      BrnWifi::setSTBC(wee, 0, (flags >> 6) & 1);
 
       ceh->flags |= WIFI_EXTRA_MCS_RATE0;
     }

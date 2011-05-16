@@ -89,6 +89,8 @@ ChannelStats::initialize(ErrorHandler *)
 {
   reset();
 
+  click_random_srandom();
+
   _stats_timer.initialize(this);
   _proc_timer.initialize(this);
 
@@ -734,9 +736,16 @@ ChannelStats::stats_handler(int mode)
       for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
         EtherAddress ea = iter.key();
-        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"" << src._std_rssi;
-        sa << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
-        sa << "\" pkt_cnt=\"" << src._pkt_count << "\" />\n";
+        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"";
+        sa  << src._std_rssi << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
+        sa << "\" pkt_cnt=\"" << src._pkt_count << "\">\n";
+        sa << "\t\t\t<rssi_hist size=\"" << src._rssi_hist_index << "\" max_size=\"" << src._rssi_hist_size;
+        sa << "\" overflow=\"" << src._rssi_hist_overflow << "\" values=\"";
+        for ( int rssi_i = 0; rssi_i < src._rssi_hist_index; rssi_i++) {
+          if ( rssi_i > 0 ) sa << ",";
+          sa << (uint32_t)(src._rssi_hist[rssi_i]);
+        }
+        sa << "\" />\t\t</nb>\n";
       }
       sa << "\t</neighbourstats>\n</channelstats>\n";
 

@@ -266,6 +266,9 @@ enum ieee80211_radiotap_type {
 #define IEEE80211_RADIOTAP_MCS_HAVE_GI          0x04
 #define IEEE80211_RADIOTAP_MCS_HAVE_FMT         0x08
 #define IEEE80211_RADIOTAP_MCS_HAVE_FEC         0x10
+/*BRN Extention */
+#define IEEE80211_RADIOTAP_MCS_HAVE_SP          0x20
+#define IEEE80211_RADIOTAP_MCS_HAVE_STBC        0x40
 
 #define IEEE80211_RADIOTAP_MCS_BW_MASK          0x03
 #define IEEE80211_RADIOTAP_MCS_BW_20               0
@@ -275,5 +278,8 @@ enum ieee80211_radiotap_type {
 #define IEEE80211_RADIOTAP_MCS_SGI              0x04
 #define IEEE80211_RADIOTAP_MCS_FMT_GF           0x08
 #define IEEE80211_RADIOTAP_MCS_FEC_LDPC         0x10
+/*BRN Extention */
+#define IEEE80211_RADIOTAP_MCS_SP               0x20
+#define IEEE80211_RADIOTAP_MCS_STBC             0x40
 
 #endif /* _NET_IF_IEEE80211RADIOTAP_H_ */

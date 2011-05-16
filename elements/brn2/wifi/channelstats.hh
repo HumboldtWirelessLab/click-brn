@@ -39,6 +39,8 @@
 #define CS_DEFAULT_MIN_UPDATE_TIME      200
 #define CS_DEFAULT_RSSI_PER_NEIGHBOUR  true
 
+#define CS_DEFAULT_RSSI_HIST_SIZE        50
+
 #define SMALL_STATS_SIZE 2
 #define CHANNEL_UTILITY_INVALID 255
 
@@ -169,10 +171,21 @@ class ChannelStats : public BRNElement {
       uint8_t _mcs_index;
       uint8_t _mcs_flags;
 
-      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false) {  //TODO: better start value for min_rssi (replace 1000)
+      uint8_t _rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE];
+      uint8_t _rssi_hist_index;
+      uint8_t _rssi_hist_size;
+      bool _rssi_hist_overflow;
+
+      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0),
+                 _min_rssi(1000), _max_rssi(0), _calc_finished(false),
+                 _rssi_hist_index(-1), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
+      {  //TODO: better start value for min_rssi (replace 1000)
       }
 
-      SrcInfo(uint32_t rssi): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false)  {
+      SrcInfo(uint32_t rssi): _rssi(0), _sum_sq_rssi(0), _pkt_count(0),
+                              _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
+                              _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
+      {
         if ( rssi != 0 ) {
           _rssi = rssi;
           _sum_sq_rssi = rssi * rssi;
@@ -192,7 +205,15 @@ class ChannelStats : public BRNElement {
          _min_rssi = 0;
        }
 
+       if ( _rssi_hist_index < _rssi_hist_size ) {
+         _rssi_hist[_rssi_hist_index++] = rssi;
+       } else {
+         _rssi_hist_overflow = true;
+         _rssi_hist[click_random() % _rssi_hist_size] = rssi;
+       }
+
        _pkt_count++;
+
      }
 
      uint32_t avg_rssi() {
