@@ -272,13 +272,13 @@ ReverseARPTable::read_handler(Element *e, void *user_data)
     click_jiffies_t now = click_jiffies();
     switch (reinterpret_cast<uintptr_t>(user_data)) {
     case h_table:
-      sa << "<reversearptable count=\"" << arpt->length() << "\" >";
+      sa << "<reversearptable count=\"" << arpt->length() << "\" >\n";
       for (ReverseARPEntry *ae = arpt->_age.front(); ae; ae = ae->_age_link.next()) {
         int ok = ae->known(now, arpt->_timeout_j);
         sa << "\t<entry mac=\"" << ae->_eth << "\" ip=\"" << ae->_ip << "\" ok=\"" << ok;
-        sa << "\" age=\"" << Timestamp::make_jiffies(now - ae->_live_at_j) << "\" />";
+        sa << "\" age=\"" << Timestamp::make_jiffies(now - ae->_live_at_j) << "\" />\n";
       }
-      sa << "</reversearptable>";
+      sa << "</reversearptable>\n";
       break;
     }
     return sa.take_string();
