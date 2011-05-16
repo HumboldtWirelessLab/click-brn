@@ -82,9 +82,9 @@ String
 GPS::read_gps()
 {
   StringAccum sa;
-  sa << "<gps id='" << BRN_NODE_NAME << "' time='" << Timestamp::now().unparse();
-  sa << "' lat='" << _position._latitude.unparse() << "' long='" << _position._longitude.unparse();
-  sa << "' alt='" << _position._altitude.unparse() << "' speed='" << _position._speed.unparse() << "' />\n";
+  sa << "<gps id=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse();
+  sa << "\" lat=\"" << _position._latitude.unparse() << "\" long=\"" << _position._longitude.unparse();
+  sa << "\" alt=\"" << _position._altitude.unparse() << "\" speed=\"" << _position._speed.unparse() << "\" />\n";
   return sa.take_string();
 }
 
