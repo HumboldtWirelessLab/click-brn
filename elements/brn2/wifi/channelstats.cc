@@ -300,11 +300,13 @@ ChannelStats::push(int port, Packet *p)
         }
 
         if ( _neighbour_stats ) {
-          SrcInfo *src_info;
-          if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL )
-            _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi));
-          else
-            src_info->add_rssi(rssi);
+          if ( state == STATE_OK ) {
+            SrcInfo *src_info;
+            if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL )
+              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi));
+            else
+              src_info->add_rssi(rssi);
+          }
         }
       }
     } else { //RX with rate = 0
@@ -496,14 +498,16 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
           if (pi->_retry) cstats->rx_retry_packets++;
         }
 
-        if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
+        if ( pi->_state == STATE_OK ) {
+          if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
-        if ( src_tab != NULL ) {
-          SrcInfo *src_i;
-          if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
-            src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
-          } else {
-            src_i->add_rssi((uint32_t)pi->_rssi);
+          if ( src_tab != NULL ) {
+            SrcInfo *src_i;
+            if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
+              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
+            } else {
+              src_i->add_rssi((uint32_t)pi->_rssi);
+            }
           }
         }
       } else {
