@@ -17,7 +17,7 @@ BRN2Device::BRN2Device()
     _allow_broadcast(true),
     _channel(0)
 {
-  BRNElement:init();
+  BRNElement::init();
 }
 
 BRN2Device::~BRN2Device()
@@ -33,6 +33,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
       "DEVICETYPE", cpkP+cpkM, cpString, &device_type_string,
+      "IPADDRESS", cpkP, cpIPAddress, &ipv4,
       "SERVICEDEVICE", cpkP, cpBool, &is_service_dev,
       "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
       "ROUTABLE", cpkP, cpBool, &_routable,
@@ -253,7 +254,7 @@ write_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
 }
 
 static int
-write_reset_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
+write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
   BRN2Device *dev = (BRN2Device *)e;
   dev->setEtherAddress(dev->getEtherAddressFix());

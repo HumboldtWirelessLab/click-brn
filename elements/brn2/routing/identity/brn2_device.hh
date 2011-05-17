@@ -96,7 +96,6 @@ class BRN2Device : public BRNElement {
     EtherAddress device_etheraddress;
     EtherAddress device_etheraddress_fix;  //first device address. This is used to reset the mac address
                                            //to default, e.g. after mac-cloning
-
     IPAddress ipv4;
 #ifdef HAVE_IP6
     IP6Address ipv6;

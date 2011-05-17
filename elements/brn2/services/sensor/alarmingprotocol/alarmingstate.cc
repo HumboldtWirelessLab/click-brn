@@ -185,13 +185,13 @@ AlarmingState::update_neighbours()
 
 
 void
-AlarmingState::get_incomlete_forward_types(int max_fraction, Vector<int> *types)
+AlarmingState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *types)
 {
   int type, t_i;
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
     type = _alarm_nodes[an_i]._type;
     for( t_i = types->size()-1 ; t_i >= 0; t_i--) {
-      int ftype = (*types)[t_i];
+      //int ftype = (*types)[t_i];
       if ( (*types)[t_i] == type ) break;
     }
 
@@ -201,7 +201,7 @@ AlarmingState::get_incomlete_forward_types(int max_fraction, Vector<int> *types)
 }
 
 void
-AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int max_hops, int type, Vector<AlarmNode*> *nodes)
+AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int /*max_hops*/, int type, Vector<AlarmNode*> *nodes)
 {
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
     AlarmNode *an = &(_alarm_nodes[an_i]);

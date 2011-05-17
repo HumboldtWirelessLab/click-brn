@@ -982,7 +982,7 @@ BRN2DHCPServer::find_client_ip(DHCPClientInfo *client_info, uint16_t vlanid)
       IPAddress test_addr = IPAddress(htonl(start_ip));
 
       BRN_DEBUG("BRN2DHCPServer: Check Addr: %s using lease tab",test_addr.unparse().c_str());
-      while ( (_lease_table->lookup(test_addr) == NULL ) &&
+      while ( (_lease_table->lookup(test_addr) != NULL ) &&
                ((test_addr.addr() & client_info->_subnet_mask.addr()) == (client_info->_subnet_ip.addr())) ) {
         BRN_DEBUG("BRN2DHCPServer: IP %s already used. Check next.",test_addr.unparse().c_str());
         start_ip++;

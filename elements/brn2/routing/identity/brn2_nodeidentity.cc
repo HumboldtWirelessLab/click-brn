@@ -155,7 +155,8 @@ read_devinfo_param(Element *e, void *)
   for ( int i = 0; i < id->_node_devices.size(); i++ ) {
     dev = id->_node_devices[i];
     sa << "\t<device index=\"" << i << "\" name=\"" << dev->getDeviceName().c_str();
-    sa << "\" address=\"" << dev->getEtherAddress()->unparse().c_str();
+    sa << "\" ethernet_address=\"" << dev->getEtherAddress()->unparse().c_str();
+    sa << "\" ip_address=\"" << dev->getIPAddress()->unparse().c_str();
     sa << "\" type=\"" << dev->getDeviceTypeString().c_str()  << "\" />\n";
   }
   sa << "</nodeidentity>";
