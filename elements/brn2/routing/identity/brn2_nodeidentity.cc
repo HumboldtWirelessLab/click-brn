@@ -159,7 +159,7 @@ read_devinfo_param(Element *e, void *)
     sa << "\" ip_address=\"" << dev->getIPAddress()->unparse().c_str();
     sa << "\" type=\"" << dev->getDeviceTypeString().c_str()  << "\" />\n";
   }
-  sa << "</nodeidentity>";
+  sa << "</nodeidentity>\n";
 
   return sa.take_string();
 }
@@ -193,7 +193,7 @@ read_version_param(Element *e, void *)
 #endif
   sa << " md5_id=\"" << click_binary_digest << "\" />\n";
   sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
-  sa << "</version>";
+  sa << "</version>\n";
 
   return sa.take_string();
 }
@@ -232,7 +232,7 @@ BRN2NodeIdentity::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("devinfo", read_devinfo_param, 0);
+  add_read_handler("info", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
 
   add_read_handler("version", read_version_param, 0);
