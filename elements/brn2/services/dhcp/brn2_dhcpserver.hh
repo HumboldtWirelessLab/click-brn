@@ -25,6 +25,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
+#include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/vlan/brn2vlantable.hh"
 #include "elements/brn2/dht/storage/dhtstorage.hh"
@@ -75,6 +76,9 @@ class BRN2DHCPServer : public BRNElement {
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
 
+    EtherAddress _ea; //currently not used
+    IPAddress _ip;    //currently not used
+
     IPAddress _subnet_ip;
     IPAddress _subnet_mask;
 
@@ -88,7 +92,11 @@ class BRN2DHCPServer : public BRNElement {
 
     Packet *_client_packet;
 
-    DHCPClientInfo()
+    uint16_t _rerequest_counter;
+
+    BRN2Device *_dev;  //currently not used
+
+    DHCPClientInfo() : _rerequest_counter(0)
     {
       memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
       memcpy(&(_ciaddr),"\0\0\0\0",4);
@@ -143,7 +151,7 @@ class BRN2DHCPServer : public BRNElement {
 
  public:
   BRN2DHCPServer::DHCPClientInfo *get_client_by_mac(uint8_t *mac);
-  BRN2DHCPServer::DHCPClientInfo *get_client_by_dht_id(uint32_t id);                              //TODO: remove
+  BRN2DHCPServer::DHCPClientInfo *get_client_by_dht_id(uint32_t id);
   int remove_client(DHCPClientInfo *client_info);
 
   void find_client_ip(DHCPClientInfo *client_info, uint16_t vlan_id);
