@@ -931,6 +931,8 @@ BRN2DHCPServer::handle_dhcp_inform(Packet *p_in)
   struct dhcp_packet *dhcp_packet = (struct dhcp_packet *)p_in->data();
   WritablePacket *p = p_in->uniqueify();
 
+  BRN_DEBUG("BRN2DHCPServer: dhcp_inform. Send extra information");
+
   DHCPProtocol::insertMagicCookie(p);
   DHCPProtocol::del_all_options(p);
 
