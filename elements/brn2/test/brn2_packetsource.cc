@@ -20,7 +20,9 @@ BRN2PacketSource::BRN2PacketSource()
     _channel(0),
     _bitrate(0),
     _power(0),
-    _headroom(128)
+    _headroom(128),
+    _max_packets(0),
+    _send_packets(0)
 {
 }
 
@@ -37,6 +39,7 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "INTERVAL", cpkP+cpkM, cpInteger, &_interval,
       "MAXSEQ", cpkP+cpkM, cpInteger, &_max_seq_num,
       "BURST", cpkP+cpkM, cpInteger, &_burst,
+      "PACKETCOUNT", cpkP, cpInteger, &_max_packets,
       "CHANNEL", cpkP, cpInteger, &_channel,
       "BITRATE", cpkP, cpInteger, &_bitrate,
       "POWER", cpkP, cpInteger, &_power,
@@ -81,9 +84,11 @@ BRN2PacketSource::run_timer(Timer *t)
 
   if ( _active ) {
 
-    _timer.reschedule_after_msec(_interval);
+    if ( ( _max_packets == 0 ) || ( _max_packets > ( _send_packets + _burst ) ) ) {
+      _timer.reschedule_after_msec(_interval);
+    }
 
-    for ( uint32_t i = 0; i < _burst; i++) {
+    for ( uint32_t i = 0; (i < _burst) && ((_max_packets == 0)||(_max_packets>_send_packets)); i++,_send_packets++ ) {
       packet_out = createpacket(_size);
 
       if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
@@ -105,6 +110,7 @@ BRN2PacketSource::set_active(bool set_active)
     if ( _interval <= 0 ) return;
 
     _seq_num = 1;
+    _send_packets = 0;
     _timer.reschedule_after_msec(_interval);
   } else {
     _timer.clear();

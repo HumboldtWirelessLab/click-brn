@@ -60,6 +60,9 @@ class BRN2PacketSource : public Element {
 
   uint32_t _headroom;
 
+  uint32_t _max_packets;
+  uint32_t _send_packets;
+
   Packet *createpacket(int size);
 
   struct packetinfo {
