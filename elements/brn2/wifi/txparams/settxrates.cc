@@ -89,7 +89,7 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
 
-  if (!_mcs0 && (_rate0 != 0) ) _rate0 = 2; //TODO: check, whether 0 isn't valid. maybe 0 can be used to detect base rate
+  if (!_mcs0 && (_rate0 == 0) ) _rate0 = 2; //TODO: check, whether 0 isn't valid. maybe 0 can be used to detect base rate
   if ( _tries0 == 0 ) _tries0 = 1;
 
   BrnWifi::clear_click_wifi_extra_extention(&_mcs_flags);
