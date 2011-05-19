@@ -32,8 +32,15 @@
 
 CLICK_DECLS
 
-SystemInfo::SystemInfo()
-  : _me()
+SystemInfo::SystemInfo() :
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+   _cpu_timer(this),
+   _cpu_timer_interval(DEFAULT_CPU_TIMER_INTERVAL),
+   _cpu_stats_index(0),
+#endif
+#endif
+   _me()
 {
   BRNElement::init();
 }
@@ -45,8 +52,11 @@ SystemInfo::~SystemInfo()
 int
 SystemInfo::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  uint32_t cpu_interval = 0;
+
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+      "CPUTIMERINTERVAL", cpkP, cpInteger, &cpu_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -54,14 +64,42 @@ SystemInfo::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_me || !_me->cast("BRN2NodeIdentity")) 
     return errh->error("BRN2NodeIdentity not specified");
 
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+  _cpu_timer_interval = cpu_interval;
+  click_pid = getpid();
+#endif
+#endif
+
   return 0;
 }
 
 int
 SystemInfo::initialize(ErrorHandler */*errh*/)
 {
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+  _cpu_timer.initialize(this);
+  if ( _cpu_timer_interval > 0 ) {
+    _cpu_timer.reschedule_after_msec(_cpu_timer_interval);
+  }
+#endif
+#endif
   return 0;
 }
+
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+void
+SystemInfo::run_timer(Timer *)
+{
+  _cpu_stats_index = (_cpu_stats_index + 1) % 2;
+  CPUStats::get_usage(click_pid, &_cpu_stats[_cpu_stats_index]);
+
+  _cpu_timer.reschedule_after_msec(_cpu_timer_interval);
+}
+#endif
+#endif
 
 /*************************************************************************/
 /************************ H A N D L E R **********************************/
@@ -83,11 +121,15 @@ read_handler(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
      case H_SYSINFO: {
 
-  sa << "<system id='" << si->_me->getMasterAddress()->unparse() << "' name='" << si->_me->_nodename << "'" << " time='" << now.unparse() << "'>\n";
+  sa << "<system id=\"" << si->_me->getMasterAddress()->unparse() << "\" name=\"" << si->_me->_nodename << "\" time=\"" << now.unparse() << "\">\n";
 
   // meminfo
 #if CLICK_USERLEVEL
+#ifndef CLICK_NS
   String raw_info = file_string("/proc/meminfo");
+#else
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"); 
+#endif
 #else
   String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
 #endif
@@ -98,11 +140,11 @@ read_handler(Element *e, void *thunk)
   //click_chatter(" * %s, %s, %s\n", second_col[1].c_str(), third_col[1].c_str(), fourth_col[1].c_str());
 
   sa << "\t<mem ";
-  sa << "total='" << second_col[0] << "' ";
-  sa << "used='" << second_col[1] << "' ";
-  sa << "cached='" << second_col[3] << "' ";
-  sa << "buffers='" << second_col[2] << "' ";
-  sa << "NFS_Unstable='" << second_col[17] << "' ";
+  sa << "total=\"" << second_col[0] << "\" ";
+  sa << "used=\"" << second_col[1] << "\" ";
+  sa << "cached=\"" << second_col[3] << "\" ";
+  sa << "buffers=\"" << second_col[2] << "\"";
+  sa << "NFS_Unstable=\"" << second_col[17] << "\" ";
   sa << "/>\n";
 
   // recycle vectors
@@ -113,7 +155,9 @@ read_handler(Element *e, void *thunk)
 
   // load average
 #if CLICK_USERLEVEL
+#ifndef CLICK_NS
   raw_info = String(file_string("/proc/loadavg"));
+#endif
 #endif
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL, NULL);
@@ -121,9 +165,9 @@ read_handler(Element *e, void *thunk)
   //click_chatter(" * %s, %s, %s\n", first_col[0].c_str(), second_col[0].c_str(), third_col[0].c_str());
 
   sa << "\t<loadavg ";
-  sa << "onemin='" << first_col[0] << "' ";
-  sa << "fivemin='" << second_col[0] << "' ";
-  sa << "fifteen='" << third_col[0] << "' ";
+  sa << "onemin=\"" << first_col[0] << "\" ";
+  sa << "fivemin=\"" << second_col[0] << "\" ";
+  sa << "fifteen=\"" << third_col[0] << "\" ";
   sa << "/>\n";
 
   // recycle vectors
@@ -134,7 +178,9 @@ read_handler(Element *e, void *thunk)
 
   // uptime
 #if CLICK_USERLEVEL
+#ifndef CLICK_NS
   raw_info = String(file_string("/proc/uptime"));
+#endif
 #endif
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, NULL);
@@ -142,24 +188,37 @@ read_handler(Element *e, void *thunk)
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
 
   sa << "\t<uptime ";
-  sa << "total='" << first_col[0] << "' ";
-  sa << "idle='" << second_col[0] << "' ";
+  sa << "total=\"" << first_col[0] << "\" ";
+  sa << "idle=\"" << second_col[0] << "\" ";
   sa << "/>\n";
+
+  uint32_t ucpu = 0, scpu = 0;
+
+  // uptime
+#if CLICK_USERLEVEL
+#ifndef CLICK_NS
+  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu);
+#endif
+#endif
+
+  //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
+
+  sa << "\t<cpu_usage ";
+  sa << "user=\"" << ucpu << "\" system=\"" << scpu << "\" />\n";
 
   // linux version
 #if CLICK_USERLEVEL
+#ifndef CLICK_NS
   raw_info = String(file_string("/proc/version"));
 #endif
+#endif
 
-  sa << "\t<linux ";
-  sa << "version='" << raw_info.trim_space() << "'";
-  sa << "/>\n";
+  sa << "\t<linux version=\"" << raw_info.trim_space() << "\" />\n</system>\n";
 
-  sa << "</system>\n";
   break;
   }
   case H_SCHEMA: {
-	sa << "Tbd." << "\n";
+    sa << "Tbd." << "\n";
   break;
   }
   default:

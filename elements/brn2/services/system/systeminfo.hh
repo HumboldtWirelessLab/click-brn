@@ -24,12 +24,26 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/userutils.hh>
+#include <click/timer.hh>
+
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+#include "cpustats.hh"
+#include <unistd.h>
+#endif
+#endif
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
-
 CLICK_DECLS
+
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+#define DEFAULT_CPU_TIMER_INTERVAL 0
+#endif
+#endif
+
 /*
  * =c
  * SystemInfo()
@@ -55,10 +69,27 @@ class SystemInfo : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+  void run_timer(Timer *t);
+#endif
+#endif
+
  public:
   //
   //member
   //
+#ifdef CLICK_USERLEVEL
+#ifndef CLICK_NS
+  Timer _cpu_timer;
+  uint32_t _cpu_timer_interval;
+
+  struct pstat _cpu_stats[2];
+  uint8_t _cpu_stats_index;
+  pid_t click_pid;
+#endif
+#endif
+
   BRN2NodeIdentity *_me;
 };
 
