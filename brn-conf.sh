@@ -96,6 +96,7 @@ for op in $@; do
 	    ;;
 	"tools")
 	    ( cd elements/brn2/tools/tinyxml; make clean; rm -f *.o; CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
+	    ( cd elements/brn2/tools/libstats; make clean; rm -f *.o; CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libstats.a ; rm -f *.o;CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libstats.so; make install )
 	    exit 0
 	    ;;
 	    *)
