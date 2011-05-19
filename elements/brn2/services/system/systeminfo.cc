@@ -192,19 +192,18 @@ read_handler(Element *e, void *thunk)
   sa << "idle=\"" << second_col[0] << "\" ";
   sa << "/>\n";
 
-  uint32_t ucpu = 0, scpu = 0;
+  uint32_t ucpu = 0, scpu = 0, cpu = 0;
 
   // uptime
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
-  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu);
+  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu, &cpu);
 #endif
 #endif
 
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
 
-  sa << "\t<cpu_usage ";
-  sa << "user=\"" << ucpu << "\" system=\"" << scpu << "\" />\n";
+  sa << "\t<cpu_usage real=\"" << cpu << "\" user=\"" << ucpu << "\" sys=\"" << scpu << "\" unit=\"percent\" />\n";
 
   // linux version
 #if CLICK_USERLEVEL

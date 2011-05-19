@@ -28,8 +28,10 @@ class CPUStats
 
   //return 0 on success, -1 on error
   static int get_usage(const pid_t pid, struct pstat* result);
-  static void calc_cpu_usage(struct pstat* cur_usage, struct pstat* last_usage, float* ucpu_usage, float* scpu_usage);
-  static void calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage, uint32_t* ucpu_usage, uint32_t* scpu_usage);
+#if CLICK_USERLEVEL
+  static void calc_cpu_usage(struct pstat* cur_usage, struct pstat* last_usage, float* ucpu_usage, float* scpu_usage, float* cpu_usage);
+#endif
+  static void calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage, uint32_t* ucpu_usage, uint32_t* scpu_usage, uint32_t* cpu_usage );
 };
 
 CLICK_ENDDECLS

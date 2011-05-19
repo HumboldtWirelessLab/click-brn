@@ -67,16 +67,23 @@ CPUStats::get_usage(const pid_t pid, struct pstat* result){
 * cur_usage, last_usage: both last measured get_usage() results
 * ucpu_usage, scpu_usage: result parameters: user and sys cpu usage in %
 */
+#if CLICK_USERLEVEL
 void
-CPUStats::calc_cpu_usage(struct pstat* cur_usage, struct pstat* last_usage, float* ucpu_usage, float* scpu_usage){
+CPUStats::calc_cpu_usage(struct pstat* cur_usage, struct pstat* last_usage, float* ucpu_usage, float* scpu_usage, float* cpu_usage){
   *ucpu_usage = 100 * (((cur_usage->utime_ticks + cur_usage->cutime_ticks) - (last_usage->utime_ticks + last_usage->cutime_ticks)) / (float)(cur_usage->cpu_total_time - last_usage->cpu_total_time));
   *scpu_usage = 100 * (((cur_usage->stime_ticks + cur_usage->cstime_ticks) - (last_usage->stime_ticks + last_usage->cstime_ticks)) / (float)(cur_usage->cpu_total_time - last_usage->cpu_total_time));
+  *cpu_usage = *ucpu_usage + *scpu_usage;
 }
+#endif
 
 void
-CPUStats::calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage, uint32_t* ucpu_usage, uint32_t* scpu_usage) {
-  *ucpu_usage = (10000 * ((cur_usage->utime_ticks + cur_usage->cutime_ticks) - (last_usage->utime_ticks + last_usage->cutime_ticks))) / (uint32_t)(cur_usage->cpu_total_time - last_usage->cpu_total_time);
-  *scpu_usage = (10000 * ((cur_usage->stime_ticks + cur_usage->cstime_ticks) - (last_usage->stime_ticks + last_usage->cstime_ticks))) / (uint32_t)(cur_usage->cpu_total_time - last_usage->cpu_total_time);
+CPUStats::calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage, uint32_t* ucpu_usage, uint32_t* scpu_usage, uint32_t* cpu_usage ) {
+  uint32_t time_diff = (uint32_t)(cur_usage->cpu_total_time - last_usage->cpu_total_time);
+  *ucpu_usage = (100 * ((cur_usage->utime_ticks + cur_usage->cutime_ticks) - (last_usage->utime_ticks + last_usage->cutime_ticks)));
+  *scpu_usage = (100 * ((cur_usage->stime_ticks + cur_usage->cstime_ticks) - (last_usage->stime_ticks + last_usage->cstime_ticks)));
+  *cpu_usage  = (*ucpu_usage + *scpu_usage) / time_diff;
+  *ucpu_usage /= time_diff;
+  *scpu_usage /= time_diff;
 }
 
 CLICK_ENDDECLS
