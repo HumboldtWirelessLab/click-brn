@@ -139,13 +139,12 @@ read_handler(Element *e, void *thunk)
 
   //click_chatter(" * %s, %s, %s\n", second_col[1].c_str(), third_col[1].c_str(), fourth_col[1].c_str());
 
-  sa << "\t<mem ";
-  sa << "total=\"" << second_col[0] << "\" ";
-  sa << "used=\"" << second_col[1] << "\" ";
-  sa << "cached=\"" << second_col[3] << "\" ";
-  sa << "buffers=\"" << second_col[2] << "\"";
-  sa << "NFS_Unstable=\"" << second_col[17] << "\" ";
-  sa << "/>\n";
+  sa << "\t<mem total=\"" << second_col[0];
+  sa << "\" used=\"" << second_col[1];
+  sa << "\" cached=\"" << second_col[3];
+  sa << "\" buffers=\"" << second_col[2];
+  sa << "\" NFS_Unstable=\"" << second_col[17];
+  sa << "\" />\n";
 
   // recycle vectors
   first_col.clear();
@@ -176,7 +175,20 @@ read_handler(Element *e, void *thunk)
   third_col.clear();
   fourth_col.clear();
 
+  uint32_t ucpu = 0, scpu = 0, cpu = 0;
+
   // uptime
+#if CLICK_USERLEVEL
+#ifndef CLICK_NS
+  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu, &cpu);
+#endif
+#endif
+
+  //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
+
+  sa << "\t<cpu_usage real=\"" << cpu << "\" user=\"" << ucpu << "\" sys=\"" << scpu << "\" unit=\"percent\" />\n";
+
+    // uptime
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
   raw_info = String(file_string("/proc/uptime"));
@@ -192,20 +204,7 @@ read_handler(Element *e, void *thunk)
   sa << "idle=\"" << second_col[0] << "\" ";
   sa << "/>\n";
 
-  uint32_t ucpu = 0, scpu = 0, cpu = 0;
-
-  // uptime
-#if CLICK_USERLEVEL
-#ifndef CLICK_NS
-  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu, &cpu);
-#endif
-#endif
-
-  //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
-
-  sa << "\t<cpu_usage real=\"" << cpu << "\" user=\"" << ucpu << "\" sys=\"" << scpu << "\" unit=\"percent\" />\n";
-
-  // linux version
+    // linux version
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
   raw_info = String(file_string("/proc/version"));
