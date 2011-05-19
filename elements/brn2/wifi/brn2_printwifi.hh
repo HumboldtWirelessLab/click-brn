@@ -46,6 +46,7 @@ class BRN2PrintWifi : public Element {
   bool _print_anno;
   bool _print_checksum;
   bool _timestamp;
+  bool _print_ht;
 };
 
 CLICK_ENDDECLS

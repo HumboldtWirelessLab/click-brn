@@ -35,7 +35,8 @@ CLICK_DECLS
 
 BRN2PrintWifi::BRN2PrintWifi()
   : _print_anno(false),
-    _print_checksum(false)
+    _print_checksum(false),
+    _print_ht(false)
 {
   _label = "";
 }
@@ -52,6 +53,7 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
   ret = cp_va_kparse(conf, this, errh,
       "LABEL", cpkP, cpString, &_label,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
+      "PRINTHT", cpkP, cpBool, &_print_ht,
       cpEnd);
   return ret;
 }
@@ -354,8 +356,9 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
   sa.adjust_length(len);
 
+  uint8_t mcs_index, bandwidth, guard_interval;
+
   if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
-    uint8_t mcs_index, bandwidth, guard_interval;
     BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
     int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
 
@@ -374,6 +377,14 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
   sa << "Mb ";
+
+  if ( _print_ht ) {
+    if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
+      sa << " 1 " << (uint32_t)mcs_index << " " << (uint32_t)bandwidth << " " << (uint32_t)guard_interval << " ";
+    } else {
+      sa << " 0 0 0 0 ";
+    }
+  }
 
   len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
   sa.adjust_length(len);
