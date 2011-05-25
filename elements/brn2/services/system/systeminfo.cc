@@ -177,16 +177,22 @@ read_handler(Element *e, void *thunk)
 
   uint32_t ucpu = 0, scpu = 0, cpu = 0;
 
+#define ACCURACY_FACTOR 100
   // uptime
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
-  CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]), &ucpu, &scpu, &cpu);
+  if ( si->_cpu_timer_interval > 0 ) {
+    CPUStats::calc_cpu_usage_int(&(si->_cpu_stats[si->_cpu_stats_index]), &(si->_cpu_stats[(si->_cpu_stats_index+1)%2]),
+                                 &ucpu, &scpu, &cpu, ACCURACY_FACTOR);
+  }
 #endif
 #endif
 
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
 
-  sa << "\t<cpu_usage real=\"" << cpu << "\" user=\"" << ucpu << "\" sys=\"" << scpu << "\" unit=\"percent\" />\n";
+  sa << "\t<cpu_usage real=\"" << cpu / ACCURACY_FACTOR << "." << cpu % ACCURACY_FACTOR;
+  sa << "\" user=\"" << ucpu / ACCURACY_FACTOR << "." << ucpu % ACCURACY_FACTOR;
+  sa << "\" sys=\"" << scpu / ACCURACY_FACTOR << "." << scpu % ACCURACY_FACTOR << "\" unit=\"percent\" />\n";
 
     // uptime
 #if CLICK_USERLEVEL
