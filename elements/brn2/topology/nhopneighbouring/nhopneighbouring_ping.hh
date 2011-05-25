@@ -86,6 +86,8 @@ class NHopNeighbouringPing : public BRNElement {
   uint32_t _interval;
   bool _active;
 
+  uint16_t _packet_id;
+
 };
 
 CLICK_ENDDECLS

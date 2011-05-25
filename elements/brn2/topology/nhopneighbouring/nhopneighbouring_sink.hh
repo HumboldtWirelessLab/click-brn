@@ -27,6 +27,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "nhopneighbouring_info.hh"
 
 CLICK_DECLS
@@ -69,6 +70,7 @@ class NHopNeighbouringSink : public BRNElement {
   //member
   //
   NHopNeighbouringInfo *nhop_info;
+  Brn2LinkTable *_link_table;
 
  public:
 

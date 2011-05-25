@@ -40,7 +40,8 @@ CLICK_DECLS
 NHopNeighbouringPing::NHopNeighbouringPing()
   :_timer(this),
    _interval(DEFAULT_NHOPNEIGHBOURING_PING_INTERVAL),
-   _active(true)
+   _active(true),
+   _packet_id(0)
 {
   BRNElement::init();
 }
@@ -68,6 +69,9 @@ NHopNeighbouringPing::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 NHopNeighbouringPing::initialize(ErrorHandler *)
 {
+  EtherAddress ea = EtherAddress(_node_identity->getMasterAddress()->data());
+  nhop_info->update_neighbour(&ea, 0, 0, 0);
+
   _timer.initialize(this);
 
   click_srandom(_node_identity->getMasterAddress()->hashcode());

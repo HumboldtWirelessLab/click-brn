@@ -298,6 +298,7 @@ Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
   return nfo->_metric_to_me;
 }
 
+/*
 uint32_t 
 Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
 {
@@ -306,10 +307,28 @@ Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
   }
   BrnHostInfo *nfo = _hosts.findp(s);
   if (!nfo) {
-    return 0;
+    click_chatter("Neighbour not found");
+    return BRN_DSR_INVALID_ROUTE_METRIC; //TODO: return value was 0 before. Check what is correct
   }
   return nfo->_metric_from_me;
 }
+*/
+uint32_t 
+Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
+{
+  int best_metric = BRN_DSR_INVALID_ROUTE_METRIC;
+
+  for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
+    int c_metric = get_link_metric(s, *(_node_identity->getDeviceByIndex(d)->getEtherAddress()));
+    /* TODO: use "is_better"-funtion of metric */
+    if ( c_metric < best_metric ) {
+      best_metric = c_metric;
+    }
+  }
+
+  return best_metric;
+}
+
 
 uint32_t 
 Brn2LinkTable::get_link_metric(EtherAddress from, EtherAddress to)

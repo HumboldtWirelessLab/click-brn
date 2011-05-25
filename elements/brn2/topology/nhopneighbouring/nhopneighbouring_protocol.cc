@@ -29,13 +29,13 @@
 CLICK_DECLS
 
 WritablePacket *
-NHopNeighbouringProtocol::new_ping(const EtherAddress *src, uint32_t no_neighbours, uint8_t hop_limit)
+NHopNeighbouringProtocol::new_ping(const EtherAddress *src, uint16_t no_neighbours, uint8_t hop_limit)
 {
   WritablePacket *nhop_ping_packet = WritablePacket::make(128, NULL, sizeof(struct nhopn_header), 32);
 
   struct nhopn_header *nhopn_h = (struct nhopn_header *)nhop_ping_packet->data();
 
-  nhopn_h->no_neighbours = htonl(no_neighbours);
+  nhopn_h->no_neighbours = htons(no_neighbours);
   nhopn_h->hop_limit = hop_limit;
 
   WritablePacket *brn_p = BRNProtocol::add_brn_header(nhop_ping_packet, BRN_PORT_NHOPNEIGHBOURING,
@@ -47,12 +47,12 @@ NHopNeighbouringProtocol::new_ping(const EtherAddress *src, uint32_t no_neighbou
 }
 
 void
-NHopNeighbouringProtocol::unpack_ping(Packet *p, EtherAddress *src, uint32_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops)
+NHopNeighbouringProtocol::unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops)
 {
   struct nhopn_header *nhopn_h = (struct nhopn_header *)p->data();
   click_ether *ether = (click_ether *)p->ether_header();
 
-  *no_neighbours = ntohl(nhopn_h->no_neighbours);
+  *no_neighbours = ntohs(nhopn_h->no_neighbours);
   *hop_limit = nhopn_h->hop_limit;
   *src = EtherAddress(ether->ether_shost);
   *hops = *hop_limit - BRNPacketAnno::ttl_anno(p);

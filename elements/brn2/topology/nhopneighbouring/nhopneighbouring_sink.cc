@@ -51,6 +51,7 @@ NHopNeighbouringSink::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NHOPN_INFO", cpkP, cpElement, &nhop_info,
+      "LINKTABLE", cpkP, cpElement, &_link_table,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -74,13 +75,22 @@ NHopNeighbouringSink::push( int /*port*/, Packet *packet )
 {
   uint8_t hops;
   uint8_t hop_limit;
-  uint32_t no_neighbours;
+  uint16_t no_neighbours;
   EtherAddress src;
 
   BRN_DEBUG("Received Paket");
   NHopNeighbouringProtocol::unpack_ping(packet, &src, &no_neighbours, &hop_limit, &hops);
 
-  nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours);
+  //TODO: use Linkstat to check whether this is a valid neighbour,
+  //Only if so update his values
+  if ( (! _link_table) || (hops > 1) ) {
+    nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours);
+  } else {
+    if (_link_table->get_host_metric_from_me(src) < 200) {
+      click_chatter("Link-metric is %d",_link_table->get_host_metric_from_me(src));
+      nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours);
+    }
+  }
 }
 
 

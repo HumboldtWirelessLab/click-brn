@@ -29,7 +29,8 @@ CLICK_DECLS
 
 CLICK_SIZE_PACKED_STRUCTURE(
 struct nhopn_header {,
-  uint32_t no_neighbours;
+  uint16_t no_neighbours;
+  uint16_t packet_id;       //for mor stats
   uint8_t hop_limit;
 });
 
@@ -37,8 +38,9 @@ class NHopNeighbouringProtocol {
 
  public:
 
-  static WritablePacket *new_ping(const EtherAddress *src, uint32_t no_neighbours, uint8_t hop_limit);
-  static void unpack_ping(Packet *p, EtherAddress *src, uint32_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops);
+  static WritablePacket *new_ping(const EtherAddress *src, uint16_t no_neighbours, uint8_t hop_limit);
+
+  static void unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops);
 };
 
 CLICK_ENDDECLS
