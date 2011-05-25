@@ -101,9 +101,20 @@ BRN2SimpleFlow::run_timer(Timer *t)
 void
 BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 {
-  //BRN_DEBUG("Flow active");
+  BRN_DEBUG("set_active");
   Flow *txFlow = _tx_flowMap.findp(*dst);
-  txFlow->_active = active;
+  if ( active ) {
+    if ( ! is_active(dst)  ) {
+      BRN_DEBUG("flow actived");
+      schedule_next(dst);
+      txFlow->_active = active;
+    }
+  } else {
+    if ( is_active(dst)  ) {
+      BRN_DEBUG("flow deactived");
+      txFlow->_active = active;
+    }
+  }
 }
 
 bool
@@ -125,7 +136,7 @@ BRN2SimpleFlow::schedule_next(EtherAddress *dst)
       BRN_DEBUG("run timer in %d ms", txFlow->_rate);
       _timer.schedule_after_msec(txFlow->_rate);
     } else {
-      BRN_DEBUG("Flow not active.");
+      BRN_DEBUG("Flow not active. (Rate : %d)", txFlow->_rate);
     }
   } else {
     BRN_DEBUG("No flow.");
