@@ -78,7 +78,7 @@ CPUStats::calc_cpu_usage(struct pstat* cur_usage, struct pstat* last_usage, floa
 
 void
 CPUStats::calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage,
-                             uint32_t* ucpu_usage, uint32_t* scpu_usage, uint32_t* cpu_usage, uint32_t accuracy_factor = 1 ) {
+                             uint32_t* ucpu_usage, uint32_t* scpu_usage, uint32_t* cpu_usage, uint32_t accuracy_factor ) {
   uint32_t time_diff = (uint32_t)(cur_usage->cpu_total_time - last_usage->cpu_total_time);
   *ucpu_usage = (accuracy_factor * 100 * ((cur_usage->utime_ticks + cur_usage->cutime_ticks) -
                                          (last_usage->utime_ticks + last_usage->cutime_ticks)));
