@@ -254,7 +254,8 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  WritablePacket *p = Packet::make(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
+  //WritablePacket *p = Packet::make(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
+  WritablePacket *p = BRNElement::packet_new(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
@@ -434,13 +435,15 @@ BRN2LinkStat::simple_action(Packet *p)
   EtherAddress src_ea = EtherAddress(eh->ether_shost);
   if (p->length() < (sizeof(click_brn) + sizeof(link_probe))) {
     BRN_ERROR("packet is too small");
-    p->kill(); 
+    BRNElement::packet_kill(p);
+    //p->kill();
     return 0;
   }
 
   if (brn->dst_port != BRN_PORT_LINK_PROBE) { // wrong packet type
     BRN_ERROR("got non-BRNLinkStat packet type");
-    p->kill();
+    BRNElement::packet_kill(p);
+    //p->kill();
     return 0;
   }
 
@@ -454,7 +457,8 @@ BRN2LinkStat::simple_action(Packet *p)
         lp->_version, EtherAddress(eh->ether_shost).unparse().c_str());
     }
 
-    p->kill();
+    BRNElement::packet_kill(p);
+    //p->kill();
     return 0;
   }
 
@@ -470,7 +474,8 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (src_ea == *(_dev->getEtherAddress())) {
     BRN_WARN("got own packet; drop it. %s", src_ea.unparse().c_str());
-    p->kill();
+    BRNElement::packet_kill(p);
+    //p->kill();
     return 0;
   }
 
@@ -482,7 +487,8 @@ BRN2LinkStat::simple_action(Packet *p)
   {
     if (ceh->rate != rate) {
       BRN_WARN("packet says rate %d is %d; drop it.", rate,  ceh->rate);
-      p->kill();
+      BRNElement::packet_kill(p);
+      //p->kill();
       return 0;
     }
   }
@@ -638,7 +644,8 @@ BRN2LinkStat::simple_action(Packet *p)
     }
   }
 
-  p->kill();
+  //p->kill();
+  BRNElement::packet_kill(p);
 
   return 0;
 }
