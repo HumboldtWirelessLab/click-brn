@@ -81,7 +81,7 @@ SystemInfo::initialize(ErrorHandler */*errh*/)
 #ifndef CLICK_NS
   _cpu_timer.initialize(this);
   if ( _cpu_timer_interval > 0 ) {
-    _cpu_timer.reschedule_after_msec(_cpu_timer_interval);
+    _cpu_timer.schedule_after_msec(_cpu_timer_interval);
   }
 #endif
 #endif
