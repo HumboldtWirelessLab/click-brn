@@ -23,6 +23,7 @@ include
 include/click
 include/click/algorithm.hh
 include/click/archive.hh
+include/click/args.hh
 include/click/atomic.hh
 include/click/bitvector.hh
 include/click/bighashmap.cc
@@ -82,6 +83,7 @@ include/click/sync.hh
 include/click/task.hh
 include/click/timer.hh
 include/click/timestamp.hh
+include/click/type_traits.hh
 include/click/userutils.hh
 include/click/variableenv.hh
 include/click/vector.cc
@@ -113,6 +115,7 @@ include/clicknet/wifi.h
 lib:libsrc
 etc/libclick/lc-libsrc-Makefile.in:libsrc/Makefile.in
 lib/archive.cc:libsrc/archive.cc
+lib/args.cc:libsrc/args.cc
 lib/atomic.cc:libsrc/atomic.cc
 lib/bighashmap_arena.cc:libsrc/bighashmap_arena.cc
 lib/bitvector.cc:libsrc/bitvector.cc

@@ -49,7 +49,7 @@
 #include <click/config.h>
 #include "wepencap.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -73,13 +73,13 @@ WepEncap::configure(Vector<String> &conf, ErrorHandler *errh)
   _strict = false;
   _active = false;
   _keyid = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "KEY", cpkP, cpString, &_key,
-		   "KEYID", 0, cpUnsigned, &_keyid,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "STRICT", 0, cpBool, &_strict,
-		   "ACTIVE", 0, cpBool, &_active,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read_p("KEY", _key)
+      .read("KEYID", _keyid)
+      .read("DEBUG", _debug)
+      .read("STRICT", _strict)
+      .read("ACTIVE", _active)
+      .complete() < 0)
     return -1;
   memset(&_rc4, 0,sizeof(_rc4));
   return 0;
@@ -139,8 +139,10 @@ WepEncap::simple_action(Packet *p_in)
 		 p->length() - (sizeof(click_wifi) + WIFI_WEP_HEADERSIZE),
 		 0);
   /* tack on ICV */
-  *(u_int32_t *)crcbuf = cpu_to_le32(~crc);
-  p = p->put(WIFI_WEP_CRCLEN);
+  crc = cpu_to_le32(~crc);
+  memcpy(crcbuf, &crc, 4);
+  if (!(p = p->put(WIFI_WEP_CRCLEN)))
+      return 0;
   icv = p->end_data() - WIFI_WEP_CRCLEN;
   rc4_crypt_skip(&_rc4, crcbuf, icv, WIFI_WEP_CRCLEN, 0);
 
@@ -173,21 +175,21 @@ write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
   }
   case H_ACTIVE: {    //debug
     bool active;
-    if (!cp_bool(s, &active))
+    if (!BoolArg().parse(s, active))
       return errh->error("active parameter must be boolean");
     f->_active = active;
     break;
   }
   case H_KEYID: {
     unsigned m;
-    if (!cp_unsigned(s, &m))
+    if (!IntArg().parse(s, m))
       return errh->error("keyid parameter must be unsigned");
     f->_keyid = m;
     break;

@@ -19,7 +19,7 @@
  */
 #include <click/config.h>
 #include <click/fromfile.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/element.hh>
 #include <click/straccum.hh>
@@ -50,9 +50,9 @@ FromFile::configure_keywords(Vector<String> &conf, Element *e, ErrorHandler *err
 #else
     bool mmap = _mmap;
 #endif
-    if (cp_va_kparse_remove_keywords(conf, e, errh,
-		    "MMAP", 0, cpBool, &mmap,
-		    cpEnd) < 0)
+    if (Args(e, errh).bind(conf)
+	.read("MMAP", mmap)
+	.consume() < 0)
 	return -1;
 #ifdef ALLOW_MMAP
     _mmap = mmap;
@@ -181,6 +181,9 @@ FromFile::read_buffer(ErrorHandler *errh)
     _pos -= _len;		// adjust _pos by _len: it might validly point
 				// beyond _len
     _len = 0;
+
+    if (_fd < 0)
+	return -EBADF;
 
 #ifdef ALLOW_MMAP
     if (_mmap) {
@@ -348,15 +351,21 @@ FromFile::seek(off_t want, ErrorHandler* errh)
 }
 
 int
-FromFile::initialize(ErrorHandler *errh)
+FromFile::initialize(ErrorHandler *errh, bool allow_nonexistent)
 {
+    // must set for allow_nonexistent case
+    _pos = _len = 0;
     // open file
     if (!_filename || _filename == "-")
 	_fd = STDIN_FILENO;
     else
 	_fd = open(_filename.c_str(), O_RDONLY);
-    if (_fd < 0)
-	return errh->error("%s: %s", print_filename().c_str(), strerror(errno));
+    if (_fd < 0) {
+	int e = -errno;
+	if (e != -ENOENT || !allow_nonexistent)
+	    errh->error("%s: %s", print_filename().c_str(), strerror(-e));
+	return e;
+    }
 
   retry_file:
 #ifdef ALLOW_MMAP
@@ -367,8 +376,11 @@ FromFile::initialize(ErrorHandler *errh)
     int result = read_buffer(errh);
     if (result < 0)
 	return -1;
-    else if (result == 0)
-	return error(errh, "empty file");
+    else if (result == 0) {
+	if (!allow_nonexistent)
+	    error(errh, "empty file");
+	return -ENOENT;
+    }
 
     // check for a gziped or bzip2d dump
     if (_fd == STDIN_FILENO || _pipe)

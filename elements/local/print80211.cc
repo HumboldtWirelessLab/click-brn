@@ -19,7 +19,7 @@
 #include <click/config.h>
 #include "print80211.hh"
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
 #include <click/etheraddress.hh>
@@ -48,11 +48,11 @@ Print80211::configure(Vector<String> &conf, ErrorHandler* errh)
   String label;
   bool timestamp = false;
   bool verbose = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "LABEL", cpkP, cpString, &label,
-		   "TIMESTAMP", 0, cpBool, &timestamp,
-		   "VERBOSE", 0, cpBool, &verbose,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read_p("LABEL", label)
+      .read("TIMESTAMP", timestamp)
+      .read("VERBOSE", verbose)
+      .complete() < 0)
     return -1;
 
   _label = label;
@@ -231,11 +231,10 @@ Print80211::simple_action(Packet *p)
   unsigned fc0 = frame->i_fc[0];
   if (_verbose) {
     unsigned fc1 = frame->i_fc[1];
-    unsigned dur0 = frame->i_dur[0];
-    unsigned dur1 = frame->i_dur[1];
+    unsigned dur0 = ntohs(frame->i_dur);
     snprintf(sbuf, sizeof(sbuf), "Frame Control: %02x %02x  ", fc0, fc1);
     sa << sbuf;
-    snprintf(sbuf, sizeof(sbuf), "Duration: %02x %02x  ", dur0, dur1);
+    snprintf(sbuf, sizeof(sbuf), "Duration: %04x  ", dur);
     sa << sbuf;
   }
 

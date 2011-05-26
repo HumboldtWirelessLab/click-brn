@@ -21,8 +21,7 @@ extern "C" {
 static void on_new_window_activate(GtkMenuItem *, gpointer user_data)
 {
     wmain *old_wm = reinterpret_cast<wmain *>(user_data);
-    wmain *rw = new wmain(old_wm->show_toolbar(), old_wm->show_list());
-    rw->set_ccss_text(old_wm->ccss_text());
+    wmain *rw = new wmain(old_wm->show_toolbar(), old_wm->show_list(), old_wm->ccss());
     rw->show();
 }
 
@@ -92,13 +91,37 @@ static void on_view_element_toggled(GtkCheckMenuItem *check, gpointer user_data)
 static void on_view_configuration_toggled(GtkCheckMenuItem *check, gpointer user_data)
 {
     wmain *rw = reinterpret_cast<wmain *>(user_data);
-    rw->set_diagram_mode(!check->active);
+    rw->set_diagram_mode(check->active, -1);
 }
 
-static void on_toolbar_diagram_toggled(GtkToggleToolButton *button, gpointer user_data)
+static void on_view_diagram_toggled(GtkCheckMenuItem *check, gpointer user_data)
 {
     wmain *rw = reinterpret_cast<wmain *>(user_data);
-    rw->set_diagram_mode(gtk_toggle_tool_button_get_active(button));
+    rw->set_diagram_mode(-1, check->active);
+}
+
+static void on_toolbar_run_activate(GtkToolButton *, gpointer user_data)
+{
+    wmain *rw = reinterpret_cast<wmain *>(user_data);
+    rw->run(ErrorHandler::default_handler());
+}
+
+static void on_toolbar_stop_activate(GtkToolButton *, gpointer user_data)
+{
+    wmain *rw = reinterpret_cast<wmain *>(user_data);
+    rw->kill_driver();
+}
+
+static void on_toolbar_diagram_activate(GtkToolButton *, gpointer user_data)
+{
+    wmain *rw = reinterpret_cast<wmain *>(user_data);
+    rw->set_diagram_mode(false, true);
+}
+
+static void on_toolbar_configuration_activate(GtkToolButton *, gpointer user_data)
+{
+    wmain *rw = reinterpret_cast<wmain *>(user_data);
+    rw->set_diagram_mode(true, false);
 }
 
 static void on_zoom_in_activate(GtkMenuItem *, gpointer user_data)
@@ -162,8 +185,6 @@ void wmain::dialogs_connect()
 		     G_CALLBACK(on_save_as_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_export_diagram"), "activate",
 		     G_CALLBACK(on_export_diagram_activate), this);
-    g_signal_connect(lookup_widget(_window, "toolbar_check"), "clicked",
-		     G_CALLBACK(on_check_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_check"), "activate",
 		     G_CALLBACK(on_check_activate), this);
     g_signal_connect(lookup_widget(_window, "toolbar_install"), "clicked",
@@ -171,8 +192,6 @@ void wmain::dialogs_connect()
     g_signal_connect(lookup_widget(_window, "menu_install"), "activate",
 		     G_CALLBACK(on_install_activate), this);
     gtk_widget_set_sensitive(lookup_widget(_window, "menu_install"), FALSE);
-    g_signal_connect(lookup_widget(_window, "toolbar_save"), "clicked",
-		     G_CALLBACK(on_save_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_quit"), "activate",
 		     G_CALLBACK(on_quit_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_view_toolbar"), "toggled",
@@ -183,8 +202,16 @@ void wmain::dialogs_connect()
 		     G_CALLBACK(on_view_element_toggled), this);
     g_signal_connect(lookup_widget(_window, "menu_view_configuration"), "toggled",
 		     G_CALLBACK(on_view_configuration_toggled), this);
-    g_signal_connect(lookup_widget(_window, "toolbar_diagram"), "toggled",
-		     G_CALLBACK(on_toolbar_diagram_toggled), this);
+    g_signal_connect(lookup_widget(_window, "menu_view_diagram"), "toggled",
+		     G_CALLBACK(on_view_diagram_toggled), this);
+    g_signal_connect(lookup_widget(_window, "toolbar_run"), "clicked",
+		     G_CALLBACK(on_toolbar_run_activate), this);
+    g_signal_connect(lookup_widget(_window, "toolbar_stop"), "clicked",
+		     G_CALLBACK(on_toolbar_stop_activate), this);
+    g_signal_connect(lookup_widget(_window, "toolbar_configuration"), "clicked",
+		     G_CALLBACK(on_toolbar_configuration_activate), this);
+    g_signal_connect(lookup_widget(_window, "toolbar_diagram"), "clicked",
+		     G_CALLBACK(on_toolbar_diagram_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_zoom_in"), "activate",
 		     G_CALLBACK(on_zoom_in_activate), this);
     g_signal_connect(lookup_widget(_window, "menu_zoom_out"), "activate",
@@ -236,7 +263,7 @@ void wmain::on_open_file()
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
 	char *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-	GatherErrorHandler gerrh;
+	GatherErrorHandler gerrh(true);
 	String s = file_string(filename, &gerrh);
 	if (gerrh.nerrors()) {
 	    gerrh.translate_prefix(filename, "Error opening '" + String(filename) + "'");
@@ -247,11 +274,10 @@ void wmain::on_open_file()
 		rw = this;
 		rw->clear(true);
 	    } else
-		rw = new wmain(_show_toolbar, _show_list);
+		rw = new wmain(_show_toolbar, _show_list, ccss());
 	    rw->set_landmark(filename);
 	    rw->set_config(s, true);
 	    rw->set_save_file(filename, true);
-	    rw->set_ccss_text(ccss_text());
 	    rw->show();
 	}
 	g_free(filename);
@@ -323,7 +349,7 @@ void wmain::on_open_socket()
     gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(_window));
 
     while (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
-	GatherErrorHandler gerrh;
+	GatherErrorHandler gerrh(true);
 	String hosts(gtk_entry_get_text(GTK_ENTRY(lookup_widget(dialog, "host"))));
 	String ports(gtk_entry_get_text(GTK_ENTRY(lookup_widget(dialog, "port"))));
 	IPAddress addr;
@@ -365,10 +391,9 @@ void wmain::on_open_socket()
 	    rw = this;
 	    rw->clear(true);
 	} else
-	    rw = new wmain(_show_toolbar, _show_list);
+	    rw = new wmain(_show_toolbar, _show_list, ccss());
 	rw->set_landmark(String(hosts) + ":" + String(ports));
 	(void) new csocket_cdriver(rw, socket, helper.ready);
-	rw->set_ccss_text(ccss_text());
 	rw->show();
 	break;
     }
@@ -391,10 +416,9 @@ void wmain::on_open_kernel()
 	    rw = this;
 	    rw->clear(true);
 	} else
-	    rw = new wmain(_show_toolbar, _show_list);
+	    rw = new wmain(_show_toolbar, _show_list, ccss());
 	rw->set_landmark(prefix);
 	(void) new clickfs_cdriver(rw, prefix);
-	rw->set_ccss_text(ccss_text());
 	rw->show();
     }
 }
@@ -438,7 +462,7 @@ void wmain::on_save_file(bool save_as)
 
     GError *err = NULL;
     if (!g_file_set_contents(_savefile.c_str(), data, -1, &err)) {
-	GatherErrorHandler gerrh;
+	GatherErrorHandler gerrh(true);
 	gerrh.error("Save error: %s", err->message);
 	gerrh.run_dialog(GTK_WINDOW(_window));
 	g_error_free(err);

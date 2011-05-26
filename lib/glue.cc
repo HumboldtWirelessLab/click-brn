@@ -57,44 +57,73 @@ CLICK_CXX_UNPROTECT
 #include <clicknet/udp.h>
 #include <clicknet/rfc1483.h>
 
+// Allocate space for static constants from integer_traits.
+CLICK_DECLS
+#define DO(t) \
+    constexpr bool integer_traits<t>::is_numeric; \
+    constexpr bool integer_traits<t>::is_integer; \
+    constexpr t integer_traits<t>::const_min; \
+    constexpr t integer_traits<t>::const_max; \
+    constexpr bool integer_traits<t>::is_signed;
+DO(unsigned char)
+DO(signed char)
+constexpr char integer_traits<char>::const_min;
+constexpr char integer_traits<char>::const_max;
+DO(unsigned short)
+DO(short)
+DO(unsigned int)
+DO(int)
+DO(unsigned long)
+DO(long)
+#if HAVE_LONG_LONG
+DO(unsigned long long)
+DO(long long)
+#endif
+#if HAVE_INT64_TYPES && !HAVE_INT64_IS_LONG && !HAVE_INT64_IS_LONG_LONG
+DO(uint64_t)
+DO(int64_t)
+#endif
+#undef DO
+CLICK_ENDDECLS
+
 void
 click_check_header_sizes()
 {
     // <clicknet/ether.h>
-    static_assert(sizeof(click_ether) == 14);
-    static_assert(sizeof(click_arp) == 8);
-    static_assert(sizeof(click_ether_arp) == 28);
-    static_assert(sizeof(click_nd_sol) == 32);
-    static_assert(sizeof(click_nd_adv) == 32);
-    static_assert(sizeof(click_nd_adv2) == 24);
+    static_assert(sizeof(click_ether) == 14, "click_ether has the wrong size.");
+    static_assert(sizeof(click_arp) == 8, "click_arp has the wrong size.");
+    static_assert(sizeof(click_ether_arp) == 28, "click_ether_arp has the wrong size.");
+    static_assert(sizeof(click_nd_sol) == 32, "click_nd_sol has the wrong size.");
+    static_assert(sizeof(click_nd_adv) == 32, "click_nd_adv has the wrong size.");
+    static_assert(sizeof(click_nd_adv2) == 24, "click_nd_adv2 has the wrong size.");
 
     // <clicknet/ip.h>
-    static_assert(sizeof(click_ip) == 20);
+    static_assert(sizeof(click_ip) == 20, "click_ip has the wrong size.");
 
     // <clicknet/icmp.h>
-    static_assert(sizeof(click_icmp) == 8);
-    static_assert(sizeof(click_icmp_paramprob) == 8);
-    static_assert(sizeof(click_icmp_redirect) == 8);
-    static_assert(sizeof(click_icmp_sequenced) == 8);
-    static_assert(sizeof(click_icmp_tstamp) == 20);
+    static_assert(sizeof(click_icmp) == 8, "click_icmp has the wrong size.");
+    static_assert(sizeof(click_icmp_paramprob) == 8, "click_icmp_paramprob has the wrong size.");
+    static_assert(sizeof(click_icmp_redirect) == 8, "click_icmp_redirect has the wrong size.");
+    static_assert(sizeof(click_icmp_sequenced) == 8, "click_icmp_sequenced has the wrong size.");
+    static_assert(sizeof(click_icmp_tstamp) == 20, "click_icmp_tstamp has the wrong size.");
 
     // <clicknet/tcp.h>
-    static_assert(sizeof(click_tcp) == 20);
+    static_assert(sizeof(click_tcp) == 20, "click_tcp has the wrong size.");
 
     // <clicknet/udp.h>
-    static_assert(sizeof(click_udp) == 8);
+    static_assert(sizeof(click_udp) == 8, "click_udp has the wrong size.");
 
     // <clicknet/ip6.h>
-    static_assert(sizeof(click_ip6) == 40);
+    static_assert(sizeof(click_ip6) == 40, "click_ip6 has the wrong size.");
 
     // <clicknet/fddi.h>
-    static_assert(sizeof(click_fddi) == 13);
-    static_assert(sizeof(click_fddi_8022_1) == 16);
-    static_assert(sizeof(click_fddi_8022_2) == 17);
-    static_assert(sizeof(click_fddi_snap) == 21);
+    static_assert(sizeof(click_fddi) == 13, "click_fddi has the wrong size.");
+    static_assert(sizeof(click_fddi_8022_1) == 16, "click_fddi_8022_1 has the wrong size.");
+    static_assert(sizeof(click_fddi_8022_2) == 17, "click_fddi_8022_2 has the wrong size.");
+    static_assert(sizeof(click_fddi_snap) == 21, "click_fddi_snap has the wrong size.");
 
     // <clicknet/rfc1483.h>
-    static_assert(sizeof(click_rfc1483) == 8);
+    static_assert(sizeof(click_rfc1483) == 8, "click_rfc1483 has the wrong size.");
 }
 
 

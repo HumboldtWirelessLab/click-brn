@@ -67,17 +67,14 @@ static unsigned long greedy_schedule_jiffies;
  */
 
 RouterThread::RouterThread(Master *m, int id)
-#if HAVE_TASK_HEAP
-    : _task_heap_hole(0),
-#else
-    : Task(Task::error_hook, 0),
+    :
+#if !HAVE_TASK_HEAP
+      Task(Task::error_hook, 0),
 #endif
       _pending_head(0), _pending_tail(&_pending_head),
       _master(m), _id(id)
 {
-#if HAVE_TASK_HEAP
-    _pass = 0;
-#else
+#if !HAVE_TASK_HEAP
     _prev = _next = _thread = this;
 #endif
 #if CLICK_LINUXMODULE
@@ -129,7 +126,8 @@ RouterThread::RouterThread(Master *m, int id)
 #endif
 
     static_assert(THREAD_QUIESCENT == (int) ThreadSched::THREAD_QUIESCENT
-		  && THREAD_UNKNOWN == (int) ThreadSched::THREAD_UNKNOWN);
+		  && THREAD_UNKNOWN == (int) ThreadSched::THREAD_UNKNOWN,
+		  "Thread constants screwup.");
 }
 
 RouterThread::~RouterThread()
@@ -310,8 +308,7 @@ RouterThread::task_reheapify_from(int pos, Task* t)
     task_heap_element *tend = _task_heap.end();
     int npos;
 
-    int endpos = _task_heap_hole << 1;
-    while (pos > endpos
+    while (pos > 0
 	   && (npos = (pos-1) >> 1, PASS_GT(tbegin[npos].pass, t->_pass))) {
 	tbegin[pos] = tbegin[npos];
 	tbegin[npos].t->_schedpos = pos;
@@ -368,6 +365,8 @@ RouterThread::run_tasks(int ntasks)
 #if HAVE_MULTITHREAD
     int runs;
 #endif
+    bool work_done;
+
     for (; ntasks >= 0; --ntasks) {
 #if HAVE_TASK_HEAP
 	if (_task_heap.size() == 0)
@@ -379,12 +378,11 @@ RouterThread::run_tasks(int ntasks)
 	    break;
 #endif
 
-	t->fast_remove_from_scheduled_list();
-
 	if (unlikely(t->_status.status != want_status.status)) {
+	    t->remove_from_scheduled_list();
 	    if (t->_status.home_thread_id != thread_id())
 		t->move_thread_second_half();
-	    goto post_fire;
+	    continue;
 	}
 
 #if HAVE_MULTITHREAD
@@ -393,15 +391,8 @@ RouterThread::run_tasks(int ntasks)
 	    cycles = click_get_cycles();
 #endif
 
-#if HAVE_STRIDE_SCHED
-	// 21.May.2007: Always set the current thread's pass to the current
-	// task's pass, to avoid problems when fast_reschedule() interacts
-	// with fast_schedule() (passes got out of sync).
-	_pass = t->_pass;
-#endif
-
 	t->_status.is_scheduled = false;
-	t->fire();
+	work_done = t->fire();
 
 #if HAVE_MULTITHREAD
 	if (runs > PROFILE_ELEMENT) {
@@ -410,21 +401,58 @@ RouterThread::run_tasks(int ntasks)
 	}
 #endif
 
-    post_fire:
-#if HAVE_TASK_HEAP
-	if (_task_heap_hole) {
-	    Task *back = _task_heap.back().t;
-	    _task_heap.pop_back();
-	    _task_heap_hole = 0;
-	    if (_task_heap.size() > 0)
-		task_reheapify_from(0, back);
-	    // No need to reset t->_schedpos: 'back == t' only if
-	    // '_task_heap.size() == 0' now, in which case we didn't call
-	    // task_reheapify_from().
-	}
-#else
-	/* do nothing */;
+	// fix task list
+	if (t->scheduled()) {
+	    // adjust position in scheduled list
+#if HAVE_STRIDE_SCHED
+	    t->_pass += t->_stride;
 #endif
+
+	    // If the task didn't do any work, don't run it next.  This might
+	    // require delaying its pass, or exiting the scheduling loop
+	    // entirely.
+	    if (!work_done) {
+#if HAVE_STRIDE_SCHED && HAVE_TASK_HEAP
+		if (_task_heap.size() < 2)
+		    break;
+#else
+		if (t->_next == this)
+		    break;
+#endif
+#if HAVE_STRIDE_SCHED
+# if HAVE_TASK_HEAP
+		unsigned p1 = _task_heap.at_u(1).pass;
+		if (_task_heap.size() > 2 && PASS_GT(p1, _task_heap.at_u(2).pass))
+		    p1 = _task_heap.at_u(2).pass;
+# else
+		unsigned p1 = t->_next->_pass;
+# endif
+		if (PASS_GT(p1, t->_pass))
+		    t->_pass = p1;
+#endif
+	    }
+
+#if HAVE_STRIDE_SCHED && HAVE_TASK_HEAP
+	    task_reheapify_from(0, t);
+#else
+# if HAVE_STRIDE_SCHED
+	    Task *n = t->_next;
+	    while (n != this && !PASS_GT(n->_pass, t->_pass))
+		n = n->_next;
+# else
+	    n = this;
+# endif
+	    if (t->_next != n) {
+		t->_next->_prev = t->_prev;
+		t->_prev->_next = t->_next;
+		t->_next = n;
+		t->_prev = n->_prev;
+		n->_prev->_next = t;
+		n->_prev = t;
+	    }
+#endif
+	} else
+	    t->remove_from_scheduled_list();
     }
 }
 

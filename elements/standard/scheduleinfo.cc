@@ -29,7 +29,7 @@ CLICK_DECLS
 ScheduleInfo::ScheduleInfo()
 {
 #if HAVE_STRIDE_SCHED
-    static_assert((1 << FRAC_BITS) == Task::DEFAULT_TICKETS);
+    static_assert((1 << FRAC_BITS) == Task::DEFAULT_TICKETS, "Stride scheduler constant issue.");
 #endif
 }
 
@@ -45,11 +45,11 @@ ScheduleInfo::configure(Vector<String> &conf, ErrorHandler *errh)
     // compile scheduling info
     for (int i = 0; i < conf.size(); i++) {
 	Vector<String> parts;
-	int32_t mt;
+	uint32_t mt;
 	cp_spacevec(conf[i], parts);
 	if (parts.size() == 0)
 	    /* empty argument OK */;
-	else if (parts.size() != 2 || !cp_real2(parts[1], FRAC_BITS, &mt))
+	else if (parts.size() != 2 || !FixedPointArg(FRAC_BITS).parse(parts[1], mt))
 	    errh->error("expected %<ELEMENTNAME PARAM%>");
 	else
 	    db->define(parts[0], &mt, 4);

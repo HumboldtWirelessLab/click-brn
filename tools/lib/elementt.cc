@@ -85,15 +85,16 @@ ElementT::set_type(ElementClassT *t)
 }
 
 void
-ElementT::full_kill()
+ElementT::kill()
 {
     if (_type) {
 	if (_owner) {
-	    RouterT::conn_iterator ci;
-	    while ((ci = _owner->begin_connections_from(this)) != _owner->end_connections())
-		_owner->kill_connection(ci);
-	    while ((ci = _owner->begin_connections_to(this)) != _owner->end_connections())
-		_owner->kill_connection(ci);
+	    RouterT::conn_iterator ci = _owner->find_connections_from(this);
+	    while (ci)
+		ci = _owner->erase(ci);
+	    ci = _owner->find_connections_to(this);
+	    while (ci)
+		ci = _owner->erase(ci);
 	}
 	_type->unuse();
 	_type = 0;
@@ -250,14 +251,19 @@ PortT::sort(Vector<PortT> &v)
 }
 
 String
-PortT::unparse(bool isoutput) const
+PortT::unparse(bool isoutput, bool with_class) const
 {
     if (!element)
 	return String::make_stable("<>");
-    else if (isoutput)
-	return element->name() + "[" + String(port) + "]";
-    else
-	return "[" + String(port) + "]" + element->name();
+    StringAccum sa;
+    if (!isoutput)
+	sa << '[' << port << ']';
+    sa << element->name();
+    if (with_class)
+	sa << " :: " << element->printable_type_name();
+    if (isoutput)
+	sa << '[' << port << ']';
+    return sa.take_string();
 }
 
 
@@ -266,20 +272,10 @@ ConnectionT::ConnectionT(const PortT &from, const PortT &to, const LandmarkT &lm
 {
     _end[end_to] = to;
     _end[end_from] = from;
-    _next[0] = _next[1] = -1;
-}
-
-ConnectionT::ConnectionT(const PortT &from, const PortT &to, const LandmarkT &lm, int next_from, int next_to)
-    : _landmark(lm)
-{
-    _end[end_to] = to;
-    _end[end_from] = from;
-    _next[end_to] = next_to;
-    _next[end_from] = next_from;
 }
 
 String
-ConnectionT::unparse() const
+ConnectionT::unparse(bool with_class) const
 {
-    return from().unparse_output() + " -> " + to().unparse_input();
+    return from().unparse_output(with_class) + " -> " + to().unparse_input(with_class);
 }

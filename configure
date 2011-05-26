@@ -4809,6 +4809,123 @@ _ACEOF
     test -n "$GXX" && test "$GXX_MAJOR" -lt 3 && VTABLE_THUNKS=-fvtable-thunks
 
 
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands constexpr" >&5
+echo $ECHO_N "checking whether the C++ compiler understands constexpr... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_constexpr+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+constexpr int f(int x) { return x + 1; }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_constexpr=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_constexpr=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_constexpr" >&5
+echo "${ECHO_T}$ac_cv_cxx_constexpr" >&6; }
+    if test "$ac_cv_cxx_constexpr" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_CONSTEXPR 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands static_assert" >&5
+echo $ECHO_N "checking whether the C++ compiler understands static_assert... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_static_assert+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+const int f = 2;
+int
+main ()
+{
+static_assert(f == 2, "f should be 2");
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_static_assert=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_static_assert=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_static_assert" >&5
+echo "${ECHO_T}$ac_cv_cxx_static_assert" >&6; }
+    if test "$ac_cv_cxx_static_assert" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_STATIC_ASSERT 1
+_ACEOF
+
+    fi
+
+
     CXX_WARNINGS=
     test -z "$ac_user_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
 	CXX_WARNINGS='-W -Wall'
@@ -6584,7 +6701,9 @@ done
 
 
 
-for ac_func in random snprintf strnlen strtoul tcgetpgrp vsnprintf
+
+
+for ac_func in random snprintf strnlen strtof strtold strtoul tcgetpgrp vsnprintf
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -8316,6 +8435,65 @@ _ACEOF
 
 
 
+{ echo "$as_me:$LINENO: checking whether char is unsigned" >&5
+echo $ECHO_N "checking whether char is unsigned... $ECHO_C" >&6; }
+if test "${ac_cv_c_char_unsigned+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((char) -1) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_c_char_unsigned=no
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_c_char_unsigned=yes
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_c_char_unsigned" >&5
+echo "${ECHO_T}$ac_cv_c_char_unsigned" >&6; }
+if test $ac_cv_c_char_unsigned = yes && test "$GCC" != yes; then
+  cat >>confdefs.h <<\_ACEOF
+#define __CHAR_UNSIGNED__ 1
+_ACEOF
+
+fi
+
+
 for ac_header in inttypes.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -9565,7 +9743,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9568 "configure"
+#line 9746 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -9591,7 +9769,7 @@ EOF
 		echo "configure: failed program was:" >&5
 		cat conftest.$ac_ext >&5
 	    fi
-	    rm -f conftest*
+	    rm -f conftest.$ac_ext conftest.result conftest.out
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_endian" >&5
 echo "${ECHO_T}$ac_cv_endian" >&6; }
@@ -13383,13 +13561,17 @@ fi
 	{ { echo "$as_me:$LINENO: error:
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================" >&5
 echo "$as_me: error:
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }

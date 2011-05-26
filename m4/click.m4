@@ -126,6 +126,22 @@ by setting the 'CXX' environment variable and rerunning me.
     VTABLE_THUNKS=
     test -n "$GXX" && test "$GXX_MAJOR" -lt 3 && VTABLE_THUNKS=-fvtable-thunks
 
+    dnl check for C++0x constexpr and static_assert
+
+    AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
+	    [ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
+    if test "$ac_cv_cxx_constexpr" = yes; then
+	AC_DEFINE([HAVE_CXX_CONSTEXPR], [1], [Define if the C++ compiler understands constexpr.])
+    fi
+
+    AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[const int f = 2;]], [[static_assert(f == 2, "f should be 2");]])],
+	    [ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
+    if test "$ac_cv_cxx_static_assert" = yes; then
+	AC_DEFINE([HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
+    fi
+
     dnl define correct warning options
 
     CXX_WARNINGS=
@@ -186,7 +202,7 @@ AC_DEFUN([CLICK_PROG_KERNEL_CXX], [
 
 dnl
 dnl CLICK_CHECK_DYNAMIC_LINKING
-dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist 
+dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist
 dnl and work.  Also defines LDMODULEFLAGS, the flags to pass to the linker
 dnl when building a loadable module.
 dnl
@@ -219,7 +235,7 @@ AC_DEFUN([CLICK_CHECK_DYNAMIC_LINKING], [
 
 dnl
 dnl CLICK_CHECK_BUILD_DYNAMIC_LINKING
-dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist 
+dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist
 dnl and work, on the build system. Must have done CLICK_CHECK_DYNAMIC_LINKING
 dnl already.
 dnl
@@ -239,7 +255,9 @@ AC_DEFUN([CLICK_CHECK_BUILD_DYNAMIC_LINKING], [
 	AC_MSG_ERROR([
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================])
     fi
@@ -417,7 +435,7 @@ AC_DEFUN([CLICK_PROG_PERL5], [
     else
 	perl5="$PERL"
     fi
-    
+
     test "$perl5" != missing && $perl5 -e "$ac_foo" && perl5=missing
 
     if test "$perl5" = "missing"; then
@@ -496,10 +514,12 @@ dnl
 dnl CLICK_CHECK_INTEGER_TYPES
 dnl Finds definitions for 'int8_t' ... 'int32_t' and 'uint8_t' ... 'uint32_t'.
 dnl Also defines shell variable 'have_inttypes_h' to 'yes' iff the header
-dnl file <inttypes.h> exists.  If 'uintXX_t' doesn't exist, try 'u_intXX_t'.
+dnl file <inttypes.h> exists.  If 'uintXX_t' does not exist, try 'u_intXX_t'.
+dnl Also defines __CHAR_UNSIGNED__ if 'char' is unsigned.
 dnl
 
 AC_DEFUN([CLICK_CHECK_INTEGER_TYPES], [
+    AC_C_CHAR_UNSIGNED
     AC_CHECK_HEADERS(inttypes.h, have_inttypes_h=yes, have_inttypes_h=no)
 
     if test $have_inttypes_h = no; then
@@ -588,7 +608,7 @@ dnl Checks endianness of machine.
 dnl
 
 AC_DEFUN([CLICK_CHECK_ENDIAN], [
-    AC_CHECK_HEADERS(endian.h machine/endian.h, 
+    AC_CHECK_HEADERS(endian.h machine/endian.h,
 dnl autoconf 2.53 versus autoconf 2.13
 		    if test "x$ac_header" != x; then
 		        endian_hdr=$ac_header
@@ -598,7 +618,7 @@ dnl autoconf 2.53 versus autoconf 2.13
 		    break, endian_hdr=no)
     if test "x$endian_hdr" != xno; then
 	AC_CACHE_CHECK(endianness, ac_cv_endian, [
-	    dnl can't use AC_PREPROC_IFELSE because it throws out the results
+	    dnl cannot use AC_PREPROC_IFELSE because it throws out the results
 	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
 [#]line __oline__ "configure"
@@ -623,7 +643,7 @@ EOF
 		echo "configure: failed program was:" >&5
 		cat conftest.$ac_ext >&5
 	    fi
-	    rm -f conftest*])
+	    rm -f conftest.$ac_ext conftest.result conftest.out])
     elif test "x$cross_compiling" != xyes ; then
 	AC_CACHE_CHECK(endianness, ac_cv_endian,
 	    [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdlib.h>
@@ -746,7 +766,7 @@ dnl
 
 AC_DEFUN([CLICK_CHECK_LARGE_FILE_SUPPORT], [
     AC_LANG_C
-    AC_CACHE_CHECK([for large file support in C library], 
+    AC_CACHE_CHECK([for large file support in C library],
 	ac_cv_large_file_support,
 	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _LARGEFILE_SOURCE 1
 #define _FILE_OFFSET_BITS 64

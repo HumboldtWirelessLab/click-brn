@@ -25,6 +25,7 @@
 #define CLICK_COMPILING_CONFPARSE_CC 1
 #include <click/glue.hh>
 #include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
 #include <click/ipaddress.hh>
@@ -263,19 +264,6 @@ cp_is_click_id(const String &str)
     else if (s[i] != '/' || i == 0 || i == len - 1 || s[i+1] == '/')
       return false;
   return len > 0;
-}
-
-static int
-xvalue(int x)
-{
-    if (x >= '0' && x <= '9')
-	return x - '0';
-    else if (x >= 'A' && x <= 'F')
-	return x - 'A' + 10;
-    else if (x >= 'a' && x <= 'f')
-	return x - 'a' + 10;
-    else
-	return -1;
 }
 
 static const char *
@@ -1030,25 +1018,7 @@ cp_keyword(const String &str, String *result, String *rest)
 bool
 cp_bool(const String &str, bool *result)
 {
-  const char *s = str.data();
-  int len = str.length();
-
-  if (len == 1 && (s[0] == '0' || s[0] == 'n' || s[0] == 'f'))
-    *result = false;
-  else if (len == 1 && (s[0] == '1' || s[0] == 'y' || s[0] == 't'))
-    *result = true;
-  else if (len == 5 && memcmp(s, "false", 5) == 0)
-    *result = false;
-  else if (len == 4 && memcmp(s, "true", 4) == 0)
-    *result = true;
-  else if (len == 2 && memcmp(s, "no", 2) == 0)
-    *result = false;
-  else if (len == 3 && memcmp(s, "yes", 3) == 0)
-    *result = true;
-  else
-    return false;
-
-  return true;
+    return BoolArg::parse(str, *result);
 }
 
 
@@ -1064,117 +1034,42 @@ const char *
 cp_basic_integer(const char *begin, const char *end, int flags, int size,
 		 void *result)
 {
-    const char *s = begin;
-    bool negative = false;
-    if (s < end && size < 0 && *s == '-') {
-	negative = true;
-	++s;
-    } else if (s < end && *s == '+')
-	++s;
-
-    int base = flags & 63;
-    if ((base == 0 || base == 16) && s + 1 < end && *s == '0'
-	&& (s[1] == 'x' || s[1] == 'X')) {
-	s += 2;
-	base = 16;
-    } else if (base == 0 && s < end && *s == '0')
-	base = 8;
-    else if (base == 0)
-	base = 10;
-    else if (base < 2 || base > 36) {
-	cp_errno = CPE_INVALID;
-	return begin;
-    }
-
-    cp_errno = CPE_FORMAT;
-
-    if (s >= end || *s == '_')	// no digits or initial underscore
-	return begin;
-
-    String::uint_large_t val = 0;
-
-    do {
-	// find digit
-	int digit;
-	if (*s >= '0' && *s <= '9')
-	    digit = *s - '0';
-	else if (base > 10 && *s >= 'A' && *s <= 'Z')
-	    digit = *s - 'A' + 10;
-	else if (base > 10 && *s >= 'a' && *s <= 'z')
-	    digit = *s - 'a' + 10;
-	else if (*s == '_' && s + 1 < end && s[1] != '_')
-	    // skip underscores between digits
-	    goto next_digit;
-	else
-	    digit = 36;
-	if (digit >= base)
-	    break;
-	else if (val == 0 && cp_errno == CPE_FORMAT)
-	    cp_errno = CPE_OK;
-	// check for overflow without divide
-	if (val <= LARGETHRESH)
-	    val = val * base + digit;
-	else {
-	    String::uint_large_t msv = (val >> LARGETHRESHSHIFT) * base;
-	    String::uint_large_t lsv = (val & (LARGETHRESH - 1)) * base + digit;
-	    if (lsv >= LARGETHRESH) {
-		msv += lsv >> LARGETHRESHSHIFT;
-		lsv &= LARGETHRESH - 1;
-	    }
-	    if (msv >= (1 << LARGEMSVBITS))
-		cp_errno = CPE_OVERFLOW;
-	    else
-		val = (msv << LARGETHRESHSHIFT) + lsv;
-	}
-      next_digit:
-	s++;
-    } while (s < end);
-
-    if (cp_errno == CPE_FORMAT)
-	return begin;
-    else if ((flags & cp_basic_integer_whole) && s != end) {
+    IntArg ia(flags & 63);
+    IntArg::limb_type limbs[4];
+    int usize = size < 0 ? -size : size;
+    const char *x = ia.parse(begin, end,
+			     size < 0, usize,
+			     limbs, usize / sizeof(IntArg::limb_type));
+    if ((ia.status && ia.status != IntArg::status_range)
+	|| ((flags & cp_basic_integer_whole) && x != end)) {
 	cp_errno = CPE_FORMAT;
 	return begin;
-    }
-
-    // check maximum value
-    if (size < (int) sizeof(String::uint_large_t)) {
-	String::uint_large_t maxval;
-	if (size < 0) {
-	    size = -size;
-	    maxval = ((String::uint_large_t) 1) << (size * 8 - 1);
-	    if (!negative)
-		--maxval;
-	} else
-	    maxval = (((String::uint_large_t) 1) << (size * 8)) - 1;
-	if (cp_errno || val > maxval) {
-	    val = maxval;
-	    cp_errno = CPE_OVERFLOW;
-	} else if (negative)
-	    val = -val;
-    } else if (cp_errno)
-	val = -(String::uint_large_t) 1;
+    } else if (ia.status == IntArg::status_ok)
+	cp_errno = CPE_OK;
+    else
+	cp_errno = CPE_OVERFLOW;
 
     // assign
-    if (size == 1)
-	*static_cast<unsigned char *>(result) = val;
-    else if (size == sizeof(short))
-	*static_cast<unsigned short *>(result) = val;
-    else if (size == sizeof(int))
-	*static_cast<unsigned int *>(result) = val;
-    else if (size == sizeof(long))
-	*static_cast<unsigned long *>(result) = val;
+    if (usize == 1)
+	extract_integer(limbs, *static_cast<unsigned char *>(result));
+    else if (usize == sizeof(short))
+	extract_integer(limbs, *static_cast<unsigned short *>(result));
+    else if (usize == sizeof(int))
+	extract_integer(limbs, *static_cast<unsigned *>(result));
+    else if (usize == sizeof(long))
+	extract_integer(limbs, *static_cast<unsigned long *>(result));
 #if HAVE_LONG_LONG
-    else if (size == sizeof(long long))
-	*static_cast<unsigned long long *>(result) = val;
-#elif HAVE_INT64_TYPES && !HAVE_INT64_IS_LONG
-    else if (size == sizeof(int64_t))
-	*static_cast<uint64_t *>(result) = val;
+    else if (usize == sizeof(long long))
+	extract_integer(limbs, *static_cast<unsigned long long *>(result));
+#endif
+#if HAVE_INT64_TYPES && (!HAVE_LONG_LONG || (!HAVE_INT64_IS_LONG && !HAVE_INT64_IS_LONG_LONG))
+    else if (usize == sizeof(int64_t))
+	extract_integer(limbs, *static_cast<uint64_t *>(result));
 #endif
     else
 	assert(0);
 
-    return (s > begin && s[-1] == '_' ? s - 1 : s);
+    return x;
 }
 
 
@@ -1190,18 +1085,16 @@ cp_basic_integer(const char *begin, const char *end, int flags, int size,
 bool
 cp_file_offset(const String &str, off_t *result)
 {
-# if SIZEOF_OFF_T == 4
-  return cp_integer(str, reinterpret_cast<uint32_t *>(result));
-# elif SIZEOF_OFF_T == 8 && HAVE_INT64_TYPES
-  return cp_integer(str, reinterpret_cast<uint64_t *>(result));
+# if SIZEOF_OFF_T == 4 || (SIZEOF_OFF_T == 8 && HAVE_INT64_TYPES)
+    return IntArg().parse(str, *result);
 # elif SIZEOF_OFF_T == 8
 #  warning "--disable-int64 means I can handle files up to only 4GB"
-  uint32_t x;
-  if (cp_integer(str, &x)) {
-      *result = x;
-      return true;
-  } else
-      return false;
+    uint32_t x;
+    if (IntArg().parse(str, x)) {
+	*result = x;
+	return true;
+    } else
+	return false;
 # else
 #  error "unexpected sizeof(off_t)"
 # endif
@@ -1219,147 +1112,15 @@ bool
 cp_real10(const String &str, int frac_digits, int exponent_delta,
 	  uint32_t *return_int_part, uint32_t *return_frac_part)
 {
-  const char *s = str.data();
-  const char *last = s + str.length();
-
-  cp_errno = CPE_FORMAT;
-  if (s == last)
-    return false;
-  if (frac_digits < 0 || frac_digits > 9) {
-    cp_errno = CPE_INVALID;
-    return false;
-  }
-
-  if (*s == '+')
-    s++;
-
-  // find integer part of string
-  const char *int_s = s;
-  for (int_s = s; s < last; s++)
-    if (!(isdigit((unsigned char) *s) || (*s == '_' && s > int_s && s < last - 1 && s[1] != '_')))
-      break;
-  int int_chars = s - int_s;
-
-  // find fractional part of string
-  const char *frac_s;
-  int frac_chars;
-  if (s < last && *s == '.') {
-    for (frac_s = ++s; s < last; s++)
-      if (!(isdigit((unsigned char) *s) || (*s == '_' && s > frac_s && s < last - 1 && s[1] != '_')))
-	break;
-    frac_chars = s - frac_s;
-  } else
-    frac_s = s, frac_chars = 0;
-
-  // no integer or fraction? illegal real
-  if (int_chars == 0 && frac_chars == 0)
-    return false;
-
-  // find exponent, if any
-  int exponent = 0;
-  if (s < last && (*s == 'E' || *s == 'e')) {
-    if (++s == last)
-      return false;
-
-    bool negexp = (*s == '-');
-    if (*s == '-' || *s == '+')
-      s++;
-    if (s >= last || !isdigit((unsigned char) *s))
-      return false;
-
-    // XXX overflow?
-    for (; s < last; s++)
-      if (isdigit((unsigned char) *s))
-	exponent = 10*exponent + *s - '0';
-      else if (*s != '_' || s == last - 1 || s[1] == '_')
-	break;
-
-    if (negexp)
-      exponent = -exponent;
-  }
-
-  if (s != last)
-    return false;
-
-  // OK! now create the result
-  // determine integer part; careful about overflow
-  uint32_t int_part = 0;
-  cp_errno = CPE_OK;
-  exponent += exponent_delta;
-  int digit;
-
-  for (int i = 0; i < int_chars + exponent; i++) {
-    if (i < int_chars)
-      digit = int_s[i] - '0';
-    else if (i - int_chars < frac_chars)
-      digit = frac_s[i - int_chars] - '0';
-    else
-      digit = 0;
-    if (digit == ('_' - '0'))
-      continue;
-    if (int_part > 0x19999999U || (int_part == 0x19999999U && digit > 5))
-      cp_errno = CPE_OVERFLOW;
-    int_part = int_part * 10 + digit;
-  }
-
-  // determine fraction part
-  uint32_t frac_part = 0;
-  digit = 0;
-
-  for (int i = 0; i <= frac_digits; i++) {
-    if (i + exponent + int_chars < 0)
-      digit = 0;
-    else if (i + exponent < 0)
-      digit = int_s[i + exponent + int_chars] - '0';
-    else if (i + exponent < frac_chars)
-      digit = frac_s[i + exponent] - '0';
-    else
-      digit = 0;
-    if (digit == ('_' - '0'))
-      continue;
-    // skip out on the last digit
-    if (i == frac_digits)
-      break;
-    // no overflow possible b/c frac_digits was limited
-    frac_part = frac_part * 10 + digit;
-  }
-
-  // round fraction part if required
-  if (digit >= 5) {
-    if (frac_part == exp10val[frac_digits] - 1) {
-      frac_part = 0;
-      if (int_part == 0xFFFFFFFFU)
+    DecimalFixedPointArg dfpa(frac_digits, exponent_delta);
+    if (!dfpa.parse_saturating(str, *return_int_part, *return_frac_part)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    } else if (dfpa.status == NumArg::status_range)
 	cp_errno = CPE_OVERFLOW;
-      int_part++;
-    } else
-      frac_part++;
-  }
-
-  // done!
-  if (cp_errno) {		// overflow
-    int_part = 0xFFFFFFFFU;
-    frac_part = exp10val[frac_digits] - 1;
-  }
-
-  //click_chatter("%d: %u %u", frac_digits, int_part, frac_part);
-  *return_int_part = int_part;
-  *return_frac_part = frac_part;
-  return true;
-}
-
-static bool
-unsigned_real10_2to1(uint32_t int_part, uint32_t frac_part, int frac_digits,
-		     uint32_t *result)
-{
-  uint32_t one = exp10val[frac_digits];
-  uint32_t int_max = 0xFFFFFFFFU / one;
-  uint32_t frac_max = 0xFFFFFFFFU - int_max * one;
-  if (int_part > int_max || (int_part == int_max && frac_part > frac_max)) {
-    cp_errno = CPE_OVERFLOW;
-    *result = 0xFFFFFFFFU;
-  } else
-    *result = int_part * one + frac_part;
-  return true;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 /** @brief Parse a real number from @a str, representing the result as an
@@ -1387,101 +1148,51 @@ bool
 cp_real10(const String &str, int frac_digits,
 	  uint32_t *result_int_part, uint32_t *result_frac_part)
 {
-  return cp_real10(str, frac_digits, 0, result_int_part, result_frac_part);
+    return cp_real10(str, frac_digits, 0, result_int_part, result_frac_part);
 }
 
 bool
 cp_real10(const String &str, int frac_digits, int exponent_delta,
 	  uint32_t *result)
 {
-  uint32_t int_part, frac_part;
-  if (!cp_real10(str, frac_digits, exponent_delta, &int_part, &frac_part))
-    return false;
-  else
-    return unsigned_real10_2to1(int_part, frac_part, frac_digits, result);
+    DecimalFixedPointArg dfpa(frac_digits, exponent_delta);
+    if (!dfpa.parse_saturating(str, *result)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    } else if (dfpa.status == dfpa.status_range)
+	cp_errno = CPE_OVERFLOW;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 bool
 cp_real10(const String &str, int frac_digits, uint32_t *result)
 {
-  uint32_t int_part, frac_part;
-  if (!cp_real10(str, frac_digits, 0, &int_part, &frac_part))
-    return false;
-  else
-    return unsigned_real10_2to1(int_part, frac_part, frac_digits, result);
+    return cp_real10(str, frac_digits, 0, result);
 }
-
-static uint32_t ureal2_digit_fractions[] = {
-  0x00000000, 0x19999999, 0x33333333, 0x4CCCCCCC, 0x66666666,
-  0x80000000, 0x99999999, 0xB3333333, 0xCCCCCCCC, 0xE6666666
-};
 
 bool
 cp_real2(const String &str, int frac_bits, uint32_t *result)
 {
-  if (frac_bits < 0 || frac_bits > CP_REAL2_MAX_FRAC_BITS) {
-    cp_errno = CPE_INVALID;
-    return false;
-  }
+    if (frac_bits < 0 || frac_bits > 32) {
+	cp_errno = CPE_INVALID;
+	return false;
+    }
 
-  uint32_t int_part, frac_part;
-  if (!cp_real10(str, 9, 0, &int_part, &frac_part)) {
-    cp_errno = CPE_FORMAT;
-    return false;
-  }
-
-  // method from Knuth's TeX, round_decimals. Works well with
-  // cp_unparse_real2 below
-  uint32_t fraction = 0;
-  for (int i = 0; i < 9; i++) {
-    uint32_t digit = frac_part % 10;
-    fraction = (fraction / 10) + ureal2_digit_fractions[digit];
-    frac_part /= 10;
-  }
-  fraction = ((fraction >> (31 - frac_bits)) + 1) / 2;
-
-  // This can happen! (for example, 16 bits of fraction, .999999) Why?
-  if (fraction == (1U << frac_bits) && int_part < 0xFFFFFFFFU)
-    int_part++, fraction = 0;
-
-  // check for overflow
-  if (cp_errno || int_part > (1U << (32 - frac_bits)) - 1) {
-    cp_errno = CPE_OVERFLOW;
-    *result = 0xFFFFFFFFU;
-  } else
-    *result = (int_part << frac_bits) + fraction;
-
-  return true;
+    FixedPointArg fpa(frac_bits);
+    if (!fpa.parse_saturating(str, *result)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    } else if (fpa.status == NumArg::status_range)
+	cp_errno = CPE_OVERFLOW;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 
 // Parsing signed reals
-
-static bool
-cp_real_base(const String &in_str, int frac_digits, int32_t *result,
-	     bool (*func)(const String &, int, uint32_t *))
-{
-  String str = in_str;
-  bool negative = false;
-  if (str.length() > 1 && str[0] == '-' && str[1] != '+') {
-    negative = true;
-    str = str.substring(1);
-  }
-
-  uint32_t value;
-  if (!func(str, frac_digits, &value))
-    return false;
-
-  // check for overflow
-  uint32_t umax = (negative ? 0x80000000 : 0x7FFFFFFF);
-  if (value > umax) {
-    cp_errno = CPE_OVERFLOW;
-    value = umax;
-  }
-
-  *result = (negative ? -value : value);
-  return true;
-}
 
 /** @brief Parse a real number from @a str, representing the result as an
  * integer with @a frac_digits decimal digits of fraction.
@@ -1505,7 +1216,15 @@ cp_real_base(const String &in_str, int frac_digits, int32_t *result,
 bool
 cp_real10(const String &str, int frac_digits, int32_t *result)
 {
-  return cp_real_base(str, frac_digits, result, cp_real10);
+    DecimalFixedPointArg dfpa(frac_digits);
+    if (!dfpa.parse_saturating(str, *result)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    } else if (dfpa.status == dfpa.status_range)
+	cp_errno = CPE_OVERFLOW;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 /** @brief  Parse a fixed-point number from @a str.
@@ -1569,7 +1288,15 @@ cp_real10(const String &str, int frac_digits, int32_t *result)
 bool
 cp_real2(const String &str, int frac_bits, int32_t *result)
 {
-  return cp_real_base(str, frac_bits, result, cp_real2);
+    FixedPointArg fpa(frac_bits);
+    if (!fpa.parse_saturating(str, *result)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    } else if (fpa.status == NumArg::status_range)
+	cp_errno = CPE_OVERFLOW;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 #ifdef HAVE_FLOAT_TYPES
@@ -1593,20 +1320,17 @@ cp_real2(const String &str, int frac_bits, int32_t *result)
 bool
 cp_double(const String &str, double *result)
 {
-  cp_errno = CPE_FORMAT;
-  if (str.length() == 0 || isspace((unsigned char) str[0]))
-    // check for space because strtod() accepts leading whitespace
-    return false;
-
-  errno = 0;
-  char *endptr;
-  double val = strtod(str.c_str(), &endptr);
-  if (*endptr)			// bad format; garbage after number
-    return false;
-
-  cp_errno = (errno == ERANGE ? CPE_OVERFLOW : 0);
-  *result = val;
-  return true;
+    DoubleArg da;
+    double d;
+    (void) da.parse(str, d);
+    if (da.status == DoubleArg::status_ok || da.status == DoubleArg::status_range) {
+	*result = d;
+	cp_errno = (da.status == DoubleArg::status_ok ? 0 : CPE_OVERFLOW);
+	return true;
+    } else {
+	cp_errno = CPE_FORMAT;
+	return false;
+    }
 }
 #endif
 
@@ -1707,16 +1431,14 @@ static const char seconds_prefixes[] = "m\075u\072n\067";
  */
 bool cp_seconds_as(const String &str, int frac_digits, uint32_t *result)
 {
-  int power = 0, factor = 1;
-  const char *after_unit = read_unit(str.begin(), str.end(), seconds_units, sizeof(seconds_units), seconds_prefixes, &power, &factor);
-  if (!cp_real10(str.substring(str.begin(), after_unit), frac_digits, power, result))
-    return false;
-  if (*result > 0xFFFFFFFFU / factor) {
-    cp_errno = CPE_OVERFLOW;
-    *result = 0xFFFFFFFFU;
-  } else
-    *result *= factor;
-  return true;
+    SecondsArg sa(frac_digits);
+    if (!sa.parse_saturating(str, *result))
+	return false;
+    else if (sa.status == sa.status_range)
+	cp_errno = CPE_OVERFLOW;
+    else
+	cp_errno = CPE_OK;
+    return true;
 }
 
 /** @brief Parse an amount of time in milliseconds from @a str.
@@ -1761,15 +1483,7 @@ bool cp_seconds_as_micro(const String &str, uint32_t *result)
  */
 bool cp_seconds(const String &str, double *result)
 {
-  int power = 0, factor = 1;
-  const char *after_unit = read_unit(str.begin(), str.end(), seconds_units, sizeof(seconds_units), seconds_prefixes, &power, &factor);
-  if (!cp_double(str.substring(str.begin(), after_unit), result))
-    return false;
-  if (power < 0)
-      *result = (*result * factor) / exp10val[-power];
-  else
-      *result = (*result * factor) * exp10val[power];
-  return true;
+    return SecondsArg().parse(str, *result);
 }
 #endif
 
@@ -1838,15 +1552,6 @@ bool cp_time(const String &str, timeval *result)
 }
 
 
-static const char byte_bandwidth_units[] = "\
-\3\175\1baud\
-\3\175\1bps\
-\3\175\1b/s\
-\0\1\0Bps\
-\0\1\0B/s\
-";
-static const char byte_bandwidth_prefixes[] = "k\103K\103M\106G\111";
-
 /** @brief Parse a bandwidth value from @a str.
  * @param  str  string
  * @param[out]  result  stores parsed result
@@ -1868,86 +1573,38 @@ static const char byte_bandwidth_prefixes[] = "k\103K\103M\106G\111";
  * stored in @a result and the cp_errno variable is set to CPE_OVERFLOW;
  * otherwise, cp_errno is set to CPE_FORMAT (unparsable) or CPE_OK (if all was
  * well).
- *
- * An overloaded version of this function is available for struct timeval @a
- * result values.
  */
 bool cp_bandwidth(const String &str, uint32_t *result)
 {
-  int power = 0, factor = 1;
-  const char *after_unit = read_unit(str.begin(), str.end(), byte_bandwidth_units, sizeof(byte_bandwidth_units), byte_bandwidth_prefixes, &power, &factor);
-  if (!cp_real10(str.substring(str.begin(), after_unit), 0, power, result))
-    return false;
-  if (*result > 0xFFFFFFFFU / factor) {
-    cp_errno = CPE_OVERFLOW;
-    *result = 0xFFFFFFFFU;
-  } else {
-    if (after_unit == str.end() && *result)
-      cp_errno = CPE_NOUNITS;
-    *result *= factor;
-  }
-  return true;
+    BandwidthArg ba;
+    uint32_t x;
+    if (!ba.parse(str, x)) {
+	cp_errno = CPE_FORMAT;
+	return false;
+    }
+    if (ba.status == NumArg::status_range)
+	cp_errno = CPE_OVERFLOW;
+    else if (ba.status == NumArg::status_unitless)
+	cp_errno = CPE_NOUNITS;
+    else
+	cp_errno = CPE_OK;
+    *result = x;
+    return true;
 }
 
 
 
 // PARSING IPv4 ADDRESSES
 
-static const char *
-ip_address_portion(const char *s, const char *end,
-		   unsigned char *value, int &bytes)
-{
-    memset(value, 0, 4);
-    int d = 0;
-    while (d < 4 && s != end && (d == 0 || *s == '.')) {
-	const char *t = s + !!d;
-	if (t == end || !isdigit(*t))
-	    break;
-	int part = 0;
-	do {
-	    part = part * 10 + *t++ - '0';
-	} while (t != end && isdigit(*t) && part <= 255);
-	if (part > 255)
-	    break;
-	s = t;
-	value[d++] = part;
-	if (d == 4)
-	    break;
-    }
-    bytes = d;
-    return s;
-}
-
 bool
 cp_ip_address(const String &str, unsigned char *result
 	      CP_CONTEXT)
 {
-    unsigned char value[4];
-    int bytes;
-    if (ip_address_portion(str.begin(), str.end(), value, bytes) == str.end()
-	&& bytes == 4) {
-	memcpy(result, value, 4);
-	return true;
-    }
-#ifndef CLICK_TOOL
-    return AddressInfo::query_ip(str, result, context);
+#if CLICK_TOOL
+    return IPAddressArg::parse(str, reinterpret_cast<IPAddress &>(*result));
 #else
-    return false;
+    return IPAddressArg::parse(str, reinterpret_cast<IPAddress &>(*result), Args(context));
 #endif
-}
-
-
-static bool
-prefix_mask_part(const String &str, IPAddress *result
-		 CP_CONTEXT)
-{
-    int p;
-    if (cp_integer(str.begin(), str.end(), 10, &p) == str.end()
-	&& p >= 0 && p <= 32) {
-	*result = IPAddress::make_prefix(p);
-	return true;
-    } else
-	return cp_ip_address(str, result  CP_PASS_CONTEXT);
 }
 
 bool
@@ -1955,40 +1612,11 @@ cp_ip_prefix(const String &str,
 	     unsigned char *result_addr, unsigned char *result_mask,
 	     bool allow_bare_address  CP_CONTEXT)
 {
-    unsigned char value[4];
-    IPAddress mask(0xFFFFFFFFU);
-
-    int bytes;
-    const char *rest = ip_address_portion(str.begin(), str.end(), value, bytes);
-    if (bytes > 0 && rest == str.end()) {
-	if (!allow_bare_address)
-	    return false;
-    } else if (bytes > 0 && *rest == '/') {
-	if (!prefix_mask_part(str.substring(rest + 1, str.end()), &mask  CP_PASS_CONTEXT))
-	    return false;
-	// check whether mask specifies more bits than user bothered to define
-	// in the IP address, which is considered an error
-	IPAddress bytes_mask = IPAddress::make_prefix(bytes * 8);
-	if ((mask & bytes_mask) != mask)
-	    return false;
-    } else {
-#ifndef CLICK_TOOL
-	rest = find(str, '/');
-	if (rest != str.end() && prefix_mask_part(str.substring(rest + 1, str.end()), &mask, context)) {
-	    if (!AddressInfo::query_ip(str.substring(str.begin(), rest), value, context))
-		return false;
-	} else if (allow_bare_address && AddressInfo::query_ip(str, value, context))
-	    /* OK */;
-	else
-	    return AddressInfo::query_ip_prefix(str, result_addr, result_mask, context);
+#if CLICK_TOOL
+    return IPPrefixArg(allow_bare_address).parse(str, reinterpret_cast<IPAddress &>(*result_addr), reinterpret_cast<IPAddress &>(*result_mask));
 #else
-	return false;
+    return IPPrefixArg(allow_bare_address).parse(str, reinterpret_cast<IPAddress &>(*result_addr), reinterpret_cast<IPAddress &>(*result_mask), Args(context));
 #endif
-    }
-
-    memcpy(result_addr, value, 4);
-    memcpy(result_mask, mask.data(), 4);
-    return true;
 }
 
 /** @brief Parse an IP address from @a str.
@@ -2120,79 +1748,15 @@ cp_ip_address_list(const String &str, Vector<IPAddress> *result  CP_CONTEXT)
 
 #ifdef HAVE_IP6
 
-static bool
-bad_ip6_address(const String &str, unsigned char *result
-		CP_CONTEXT)
-{
-#ifndef CLICK_TOOL
-  return AddressInfo::query_ip6(str, result, context);
-#else
-  (void)str, (void)result;
-  return false;
-#endif
-}
-
 bool
 cp_ip6_address(const String &str, unsigned char *result
 	       CP_CONTEXT)
 {
-  unsigned short parts[8];
-  int coloncolon = -1;
-  const char *s = str.data();
-  int len = str.length();
-  int pos = 0;
-
-  int d;
-  int last_part_pos = 0;
-  for (d = 0; d < 8; d++) {
-    if (coloncolon < 0 && pos < len - 1 && s[pos] == ':' && s[pos+1] == ':') {
-      coloncolon = d;
-      pos += 2;
-    } else if (d && pos < len - 1 && s[pos] == ':' && isxdigit((unsigned char) s[pos+1]))
-      pos++;
-    if (pos >= len || !isxdigit((unsigned char) s[pos]))
-      break;
-    unsigned part = 0;
-    last_part_pos = pos;
-    for (; pos < len && isxdigit((unsigned char) s[pos]) && part <= 0xFFFF; pos++)
-      part = (part<<4) + xvalue((unsigned char) s[pos]);
-    if (part > 0xFFFF)
-      return bad_ip6_address(str, result  CP_PASS_CONTEXT);
-    parts[d] = part;
-  }
-
-  // check if address ends in IPv4 address
-  if (pos < len && d <= 7 && s[pos] == '.') {
-    unsigned char ip4a[4];
-    if (cp_ip_address(str.substring(last_part_pos), ip4a  CP_PASS_CONTEXT)) {
-      parts[d-1] = (ip4a[0]<<8) + ip4a[1];
-      parts[d] = (ip4a[2]<<8) + ip4a[3];
-      d++;
-      pos = len;
-    }
-  }
-
-  // handle zero blocks surrounding ::
-  if ((d < 8 && coloncolon < 0) || (d == 8 && coloncolon >= 0))
-    return bad_ip6_address(str, result  CP_PASS_CONTEXT);
-  else if (d < 8) {
-    int num_zeros = 8 - d;
-    for (int x = d - 1; x >= coloncolon; x--)
-      parts[x + num_zeros] = parts[x];
-    for (int x = coloncolon; x < coloncolon + num_zeros; x++)
-      parts[x] = 0;
-  }
-
-  // return
-  if (pos < len)
-    return bad_ip6_address(str, result  CP_PASS_CONTEXT);
-  else {
-    for (d = 0; d < 8; d++) {
-      result[d<<1] = (parts[d]>>8) & 0xFF;
-      result[(d<<1) + 1] = parts[d] & 0xFF;
-    }
-    return true;
-  }
+#if CLICK_TOOL
+    return IP6AddressArg::parse(str, reinterpret_cast<IP6Address &>(*result));
+#else
+    return IP6AddressArg::parse(str, reinterpret_cast<IP6Address &>(*result), Args(context));
+#endif
 }
 
 /** @brief Parse an IPv6 address from @a str.
@@ -2224,77 +1788,20 @@ bool
 cp_ip6_address(const String &str, IP6Address *result
 	       CP_CONTEXT)
 {
-  return cp_ip6_address(str, result->data()  CP_PASS_CONTEXT);
+    return cp_ip6_address(str, result->data()  CP_PASS_CONTEXT);
 }
 
-
-static bool
-bad_ip6_prefix(const String &str,
-	       unsigned char *result, int *return_bits,
-	       bool allow_bare_address
-	       CP_CONTEXT)
-{
-#ifndef CLICK_TOOL
-  if (AddressInfo::query_ip6_prefix(str, result, return_bits, context))
-    return true;
-  else if (allow_bare_address
-	   && AddressInfo::query_ip6(str, result, context)) {
-    *return_bits = 128;
-    return true;
-  }
-#else
-  // shut up, compiler!
-  (void)str, (void)result, (void)return_bits, (void)allow_bare_address;
-#endif
-  return false;
-}
 
 bool
 cp_ip6_prefix(const String &str,
 	      unsigned char *result, int *return_bits,
 	      bool allow_bare_address  CP_CONTEXT)
 {
-  unsigned char value[16], mask[16];
-
-  int slash = str.find_right('/');
-  String ip_part, mask_part;
-  if (slash >= 0) {
-    ip_part = str.substring(0, slash);
-    mask_part = str.substring(slash + 1);
-  } else if (!allow_bare_address)
-    return bad_ip6_prefix(str, result, return_bits, allow_bare_address CP_PASS_CONTEXT);
-  else
-    ip_part = str;
-
-  if (!cp_ip6_address(ip_part, value  CP_PASS_CONTEXT))
-    return bad_ip6_prefix(str, result, return_bits, allow_bare_address CP_PASS_CONTEXT);
-
-  // move past /
-  if (allow_bare_address && !mask_part.length()) {
-    memcpy(result, value, 16);
-    *return_bits = 64;
-    return true;
-  }
-
-  // check for complete IP address
-  int relevant_bits = 0;
-  if (cp_ip6_address(mask_part, mask  CP_PASS_CONTEXT)) {
-    // check that it really is a prefix. if not, return false right away
-    // (don't check with AddressInfo)
-    relevant_bits = IP6Address(mask).mask_to_prefix_len();
-    if (relevant_bits < 0)
-      return false;
-
-  } else if (cp_integer(mask_part, &relevant_bits)
-	     && relevant_bits >= 0 && relevant_bits <= 128)
-    /* OK */;
-
-  else
-    return bad_ip6_prefix(str, result, return_bits, allow_bare_address CP_PASS_CONTEXT);
-
-  memcpy(result, value, 16);
-  *return_bits = relevant_bits;
-  return true;
+#if CLICK_TOOL
+    return IP6PrefixArg(allow_bare_address).parse(str, reinterpret_cast<IP6Address &>(*result), *return_bits);
+#else
+    return IP6PrefixArg(allow_bare_address).parse(str, reinterpret_cast<IP6Address &>(*result), *return_bits, Args(context));
+#endif
 }
 
 bool
@@ -2364,36 +1871,10 @@ bool
 cp_ethernet_address(const String &str, unsigned char *result
 		    CP_CONTEXT)
 {
-  int i = 0;
-  const unsigned char* s = reinterpret_cast<const unsigned char*>(str.data());
-  int len = str.length();
-
-  unsigned char value[6];
-  for (int d = 0; d < 6; d++) {
-    if (i < len - 1 && isxdigit(s[i]) && isxdigit(s[i+1])) {
-      value[d] = xvalue(s[i])*16 + xvalue(s[i+1]);
-      i += 2;
-    } else if (i < len && isxdigit(s[i])) {
-      value[d] = xvalue(s[i]);
-      i += 1;
-    } else
-      goto bad;
-    if (d == 5) break;
-    if (i >= len - 1 || (s[i] != ':' && s[i] != '-'))
-      goto bad;
-    i++;
-  }
-
-  if (i == len) {
-    memcpy(result, value, 6);
-    return true;
-  }
-
- bad:
-#ifndef CLICK_TOOL
-  return AddressInfo::query_ethernet(str, result, context);
+#if !CLICK_TOOL
+    return EtherAddressArg::parse(str, *reinterpret_cast<EtherAddress *>(result), Args(context));
 #else
-  return false;
+    return EtherAddressArg::parse(str, *reinterpret_cast<EtherAddress *>(result));
 #endif
 }
 
@@ -2443,36 +1924,11 @@ bool
 cp_tcpudp_port(const String &str, int proto, uint16_t *result
 	       CP_CONTEXT)
 {
-    uint32_t value;
-    assert(proto > 0 && proto < 256);
-#ifndef CLICK_TOOL
-    if (!NameInfo::query_int(NameInfo::T_IP_PORT + proto, context, str, &value))
-	return false;
+#if !CLICK_TOOL
+    return IPPortArg(proto).parse(str, *result, Args(context));
 #else
-    if (!cp_integer(str, &value)) {
-# if HAVE_NETDB_H
-	const char *proto_name;
-	if (proto == IP_PROTO_TCP)
-	    proto_name = "tcp";
-	else if (proto == IP_PROTO_UDP)
-	    proto_name = "udp";
-	else
-	    return false;
-	if (struct servent *s = getservbyname(str.c_str(), proto_name)) {
-	    *result = ntohs(s->s_port);
-	    return true;
-	}
-# endif
-	return false;
-    }
+    return IPPortArg(proto).parse(str, *result, 0);
 #endif
-    if (value <= 0xFFFF) {
-	*result = value;
-	return true;
-    } else {
-	cp_errno = CPE_OVERFLOW;
-	return false;
-    }
 }
 
 
@@ -2637,35 +2093,6 @@ cp_handler(const String &str, int flags,
 }
 #endif
 
-#ifdef HAVE_IPSEC
-bool
-cp_des_cblock(const String &str, unsigned char *result)
-{
-  int i = 0;
-  const unsigned char *s = reinterpret_cast<const unsigned char*>(str.data());
-  int len = str.length();
-
-  if (len != 16)
-    return false;
-
-  unsigned char value[8];
-  for (int d = 0; d < 8; d++) {
-    if (i < len - 1 && isxdigit(s[i]) && isxdigit(s[i+1])) {
-      value[d] = xvalue(s[i])*16 + xvalue(s[i+1]);
-      i += 2;
-    } else
-      return false;
-  }
-
-  if (len != i)
-    return false;
-  else {
-    memcpy(result, value, 8);
-    return true;
-  }
-}
-#endif
-
 #if CLICK_USERLEVEL || CLICK_TOOL
 
 /** @brief Parse a filename string from @a str.
@@ -2690,39 +2117,7 @@ cp_des_cblock(const String &str, unsigned char *result)
 bool
 cp_filename(const String &str, String *result)
 {
-  String fn;
-  if (!cp_string(str, &fn) || !fn)
-    return false;
-
-  // expand home directory substitutions
-  if (fn[0] == '~') {
-    if (fn.length() == 1 || fn[1] == '/') {
-      const char *home = getenv("HOME");
-      if (home)
-	fn = String(home) + fn.substring(1);
-    } else {
-      int off = 1;
-      while (off < fn.length() && fn[off] != '/')
-	off++;
-      String username = fn.substring(1, off - 1);
-      struct passwd *pwd = getpwnam(username.c_str());
-      if (pwd && pwd->pw_dir)
-	fn = String(pwd->pw_dir) + fn.substring(off);
-    }
-  }
-
-  // replace double slashes with single slashes
-  int len = fn.length();
-  for (int i = 0; i < len - 1; i++)
-    if (fn[i] == '/' && fn[i+1] == '/') {
-      fn = fn.substring(0, i) + fn.substring(i + 1);
-      i--;
-      len--;
-    }
-
-  // return
-  *result = fn;
-  return true;
+    return FilenameArg::parse(str, *result);
 }
 #endif
 
@@ -2758,24 +2153,7 @@ cp_filename(const String &str, String *result)
 bool
 cp_anno(const String &str, int size, int *result  CP_CONTEXT)
 {
-    int32_t annoval;
-    if (!NameInfo::query_int(NameInfo::T_ANNOTATION, context, str, &annoval))
-	return false;
-    if (size > 0) {
-	if (ANNOTATIONINFO_SIZE(annoval) && ANNOTATIONINFO_SIZE(annoval) != size)
-	    return false;
-# if !HAVE_INDIFFERENT_ALIGNMENT
-	if ((size == 2 || size == 4 || size == 8)
-	    && (ANNOTATIONINFO_OFFSET(annoval) % size) != 0)
-	    return false;
-# endif
-	if (ANNOTATIONINFO_OFFSET(annoval) + size > Packet::anno_size)
-	    return false;
-	annoval = ANNOTATIONINFO_OFFSET(annoval);
-    } else if (ANNOTATIONINFO_OFFSET(annoval) >= Packet::anno_size)
-	return false;
-    *result = annoval;
-    return true;
+    return AnnoArg(size).parse(str, *result, Args(context));
 }
 #endif
 
@@ -2844,7 +2222,6 @@ const CpVaParseCmd
   cpIP6Prefix		= "ip6_prefix",
   cpIP6PrefixLen	= "ip6_prefix_len",
   cpIP6AddressOrPrefix	= "ip6_addr_or_prefix",
-  cpDesCblock		= "des_cblock",
   cpFilename		= "filename",
   cpAnno		= "anno",
   cpInterval		= cpTimeval,
@@ -2906,7 +2283,6 @@ enum {
   cpiIP6Prefix,
   cpiIP6PrefixLen,
   cpiIP6AddressOrPrefix,
-  cpiDesCblock,
   cpiFilename,
   cpiAnno
 };
@@ -3010,7 +2386,7 @@ default_parsefunc(cp_value *v, const String &arg,
     break;
 
    case cpiBool:
-    if (!cp_bool(arg, &v->v.b))
+    if (!BoolArg::parse(arg, v->v.b))
       goto type_mismatch;
     break;
 
@@ -3044,100 +2420,114 @@ default_parsefunc(cp_value *v, const String &arg,
 #endif
       goto handle_int32_t;
 
-   handle_signed:
-    if (!cp_integer(arg, &v->v.s32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s too large, max %d", argname, v->v.s32);
-    else if (v->v.s32 < underflower)
-      errh->error("%s must be >= %d", argname, underflower);
-    else if (v->v.s32 > (int)overflower)
-      errh->error("%s must be <= %u", argname, overflower);
-    break;
+  handle_signed: {
+	  IntArg ia;
+	  if (!ia.parse_saturating(arg, v->v.s32))
+	      goto type_mismatch;
+	  else if (ia.status == IntArg::status_range
+		   || v->v.s32 > int32_t(overflower)
+		   || v->v.s32 < underflower)
+	      errh->error("%s out of range, bound %ld", argname, (long) v->v.s32);
+	  break;
+      }
 
-   handle_unsigned:
-    if (!cp_integer(arg, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s too large, max %u", argname, v->v.u32);
-    else if (v->v.u32 > overflower)
-      errh->error("%s must be <= %u", argname, overflower);
-    break;
+  handle_unsigned: {
+	  IntArg ia;
+	  if (!ia.parse_saturating(arg, v->v.u32))
+	      goto type_mismatch;
+	  else if (ia.status == IntArg::status_range || v->v.u32 > overflower)
+	      errh->error("%s out of range, bound %lu", argname, (unsigned long) v->v.u32);
+	  break;
+      }
 
 #ifdef HAVE_INT64_TYPES
-   case cpiInteger64:
-    if (!cp_integer(arg, &v->v.s64))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s too large, max %^64d", argname, v->v.s64);
-    break;
+  case cpiInteger64: {
+      IntArg ia;
+      if (!ia.parse_saturating(arg, v->v.s64))
+	  goto type_mismatch;
+      else if (ia.status == IntArg::status_range)
+	  errh->error("%s out of range, bound %^64d", argname, v->v.s64);
+      break;
+  }
 
-   case cpiUnsigned64:
-    if (!cp_integer(arg, &v->v.u64))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s too large, max %^64u", argname, v->v.u64);
-    break;
+  case cpiUnsigned64: {
+      IntArg ia;
+      if (!ia.parse_saturating(arg, v->v.u64))
+	  goto type_mismatch;
+      else if (ia.status == IntArg::status_range)
+	  errh->error("%s out of range, bound %^64u", argname, v->v.u64);
+      break;
+  }
 #endif
 
-  case cpiSize:
-      if (!cp_integer(arg, &v->v.size))
+  case cpiSize: {
+      IntArg ia;
+      if (!ia.parse_saturating(arg, v->v.size))
 	  goto type_mismatch;
-      else if (cp_errno == CPE_OVERFLOW)
-	  errh->error("%s too large, max %zu", argname, v->v.size);
+      else if (ia.status == IntArg::status_range)
+	  errh->error("%s out of range, bound %zu", argname, v->v.size);
       break;
+  }
 
-   case cpiReal10:
-    if (!cp_real10(arg, v->extra.i, &v->v.s32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_real10(v->v.s32, v->extra.i);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiReal10: {
+      DecimalFixedPointArg dfpa(v->extra.i);
+      if (!dfpa.parse_saturating(arg, v->v.s32))
+	  goto type_mismatch;
+      else if (dfpa.status == dfpa.status_range)
+	  errh->error("%s out of range", argname);
+      break;
+  }
 
-   case cpiUnsignedReal10:
-    if (!cp_real10(arg, v->extra.i, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_real10(v->v.u32, v->extra.i);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiUnsignedReal10: {
+      DecimalFixedPointArg dfpa(v->extra.i);
+      if (!dfpa.parse_saturating(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (dfpa.status == dfpa.status_range)
+	  errh->error("%s out of range", argname);
+      break;
+  }
 
 #ifdef HAVE_FLOAT_TYPES
-   case cpiDouble:
-    if (!cp_double(arg, &v->v.d))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s out of range; limit %g", argname, v->v.d);
-    break;
+  case cpiDouble: {
+      DoubleArg da;
+      if (!da.parse(arg, v->v.d))
+	  goto type_mismatch;
+      else if (da.status == DoubleArg::status_range)
+	  errh->error("%s out of range, bound %g", argname, v->v.d);
+      break;
+  }
 #endif
 
-   case cpiSeconds:
-    if (!cp_seconds_as(arg, 0, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW)
-      errh->error("%s too large, max %u", argname, v->v.u32);
-    break;
+  case cpiSeconds: {
+      SecondsArg sa;
+      if (!sa.parse_saturating(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (sa.status == sa.status_range)
+	  errh->error("%s out of range, bound %u", argname, v->v.u32);
+      break;
+  }
 
-   case cpiSecondsAsMilli:
-    if (!cp_seconds_as(arg, 3, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_milliseconds(v->v.u32);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiSecondsAsMilli: {
+      SecondsArg sa(3);
+      if (!sa.parse_saturating(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (sa.status == sa.status_range) {
+	  String m = cp_unparse_milliseconds(v->v.u32);
+	  errh->error("%s out of range, bound %s", argname, m.c_str());
+      }
+      break;
+  }
 
-   case cpiSecondsAsMicro:
-    if (!cp_seconds_as(arg, 6, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_microseconds(v->v.u32);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiSecondsAsMicro: {
+      SecondsArg sa(6);
+      if (!sa.parse_saturating(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (sa.status == sa.status_range) {
+	  String m = cp_unparse_microseconds(v->v.u32);
+	  errh->error("%s out of range, bound %s", argname, m.c_str());
+      }
+      break;
+  }
 
   case cpiTimestamp:
   case cpiTimestampSigned: {
@@ -3148,7 +2538,7 @@ default_parsefunc(cp_value *v, const String &arg,
        else
 	 goto type_mismatch;
      } else if (cp_errno == CPE_OVERFLOW)
-       errh->error("%s too large", argname);
+       errh->error("%s out of range", argname);
      else {
        v->v.s32 = t.sec();
        v->v2.s32 = t.subsec();
@@ -3164,7 +2554,7 @@ default_parsefunc(cp_value *v, const String &arg,
        else
 	 goto type_mismatch;
      } else if (cp_errno == CPE_OVERFLOW)
-       errh->error("%s too large", argname);
+       errh->error("%s out of range", argname);
      else {
        v->v.s32 = tv.tv_sec;
        v->v2.s32 = tv.tv_usec;
@@ -3172,35 +2562,39 @@ default_parsefunc(cp_value *v, const String &arg,
      break;
    }
 
-   case cpiBandwidth:
-    if (!cp_bandwidth(arg, &v->v.u32))
-      goto type_mismatch;
-    else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_bandwidth(v->v.u32);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    } else if (cp_errno == CPE_NOUNITS)
-      errh->warning("no units on bandwidth %s, assuming Bps", argname);
-    break;
+  case cpiBandwidth: {
+      BandwidthArg ba;
+      if (!ba.parse(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (ba.status == NumArg::status_range) {
+	  String m = cp_unparse_bandwidth(v->v.u32);
+	  errh->error("%s out of range, bound %s", argname, m.c_str());
+      } else if (ba.status == NumArg::status_unitless)
+	  errh->warning("no units on bandwidth %s, assuming Bps", argname);
+      break;
+  }
 
-   case cpiReal2:
-    if (!cp_real2(arg, v->extra.i, &v->v.s32)) {
-      // CPE_INVALID would indicate a bad 'v->extra.i'
-      goto type_mismatch;
-    } else if (cp_errno == CPE_OVERFLOW) {
-      String m = cp_unparse_real2(v->v.s32, v->extra.i);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiReal2: {
+      FixedPointArg fpa(v->extra.i);
+      if (!fpa.parse_saturating(arg, v->v.s32))
+	  goto type_mismatch;
+      else if (fpa.status == NumArg::status_range) {
+	  String m = cp_unparse_real2(v->v.s32, v->extra.i);
+	  errh->error("%s out of range, bound %s", argname, m.c_str());
+      }
+      break;
+  }
 
-   case cpiUnsignedReal2:
-    if (!cp_real2(arg, v->extra.i, &v->v.u32)) {
-      // CPE_INVALID would indicate a bad 'v->extra.i'
-      goto type_mismatch;
-    } else if (cp_errno == CPE_OVERFLOW) {
-      String m  = cp_unparse_real2(v->v.u32, v->extra.i);
-      errh->error("%s too large, max %s", argname, m.c_str());
-    }
-    break;
+  case cpiUnsignedReal2: {
+      FixedPointArg fpa(v->extra.i);
+      if (!fpa.parse_saturating(arg, v->v.u32))
+	  goto type_mismatch;
+      else if (fpa.status == NumArg::status_range) {
+	  String m = cp_unparse_real2(v->v.u32, v->extra.i);
+	  errh->error("%s out of range, bound %s", argname, m.c_str());
+      }
+      break;
+  }
 
    case cpiIPAddress:
     if (!cp_ip_address(arg, v->v.address CP_PASS_CONTEXT))
@@ -3257,13 +2651,6 @@ default_parsefunc(cp_value *v, const String &arg,
       goto type_mismatch;
     break;
 
-#ifdef HAVE_IPSEC
-   case cpiDesCblock:
-    if (!cp_des_cblock(arg, v->v.address))
-      goto type_mismatch;
-    break;
-#endif
-
 #ifndef CLICK_TOOL
   case cpiElement:
       v->v.element = cp_element(arg, context, errh, argname);
@@ -3302,10 +2689,10 @@ default_parsefunc(cp_value *v, const String &arg,
 #endif
 
 #if CLICK_USERLEVEL || CLICK_TOOL
-   case cpiFilename:
-    if (!cp_filename(arg, &v->v_string))
-      goto type_mismatch;
-    break;
+  case cpiFilename:
+      if (!FilenameArg::parse(arg, v->v_string))
+	  goto type_mismatch;
+      break;
 
    case cpiFileOffset:
     if (!cp_file_offset(arg, (off_t *) &v->v))
@@ -3407,7 +2794,7 @@ default_storefunc(cp_value *v  CP_CONTEXT)
 
   case cpiSize: {
       size_t *sizestore = (size_t *) v->store;
-      *sizestore = *((size_t *) v->v.size);
+      *sizestore = v->v.size;
       break;
   }
 
@@ -3477,12 +2864,6 @@ default_storefunc(cp_value *v  CP_CONTEXT)
    case cpiEthernetAddress:
     helper = 6;
     goto address;
-
-#if HAVE_IPSEC
-   case cpiDesCblock:
-    helper = 8;
-    goto address;
-#endif
 
    address: {
      unsigned char *addrstore = (unsigned char *)v->store;
@@ -3604,7 +2985,7 @@ stringlist_parsefunc(cp_value *v, const String &arg,
 	if (!cp_integer(arg, &v->v.s32))
 	    errh->error("%s has type %s", argname, argtype->description);
 	else if (cp_errno == CPE_OVERFLOW)
-	    errh->error("%s too large, max %d", argname, v->v.s32);
+	    errh->error("%s out of range, bound %d", argname, v->v.s32);
     } else
 	errh->error("%s has type %s", argname, argtype->description);
 }
@@ -4624,10 +4005,7 @@ cp_assign_arguments(const Vector<String> &argv, const String *param_begin, const
 String
 cp_unparse_bool(bool b)
 {
-    if (b)
-	return String::make_stable("true", 4);
-    else
-	return String::make_stable("false", 5);
+    return BoolArg::unparse(b);
 }
 
 String
@@ -4667,28 +4045,6 @@ cp_unparse_real2(uint32_t real, int frac_bits)
 
   return sa.take_string();
 }
-
-#undef TEST_REAL2
-#ifdef TEST_REAL2
-void
-test_unparse_real2()
-{
-#define TEST(s, frac_bits, result) { String q = (#s); uint32_t r; if (!cp_real2(q, (frac_bits), &r)) fprintf(stderr, "FAIL: %s unparsable\n", q.c_str()); else { String qq = cp_unparse_real2(r, (frac_bits)); fprintf(stderr, "%s: %s %d/%d %s\n", (qq == (result) ? "PASS" : "FAIL"), q.c_str(), r, (frac_bits), qq.c_str()); }}
-  TEST(0.418, 8, "0.418");
-  TEST(0.417, 8, "0.418");
-  TEST(0.416, 8, "0.414");
-  TEST(0.42, 8, "0.42");
-  TEST(0.3, 16, "0.3");
-  TEST(0.49, 16, "0.49");
-  TEST(0.499, 16, "0.499");
-  TEST(0.4999, 16, "0.4999");
-  TEST(0.49999, 16, "0.49998");
-  TEST(0.499999, 16, "0.5");
-  TEST(0.49998, 16, "0.49998");
-  TEST(0.999999, 16, "1");
-#undef TEST
-}
-#endif
 
 String
 cp_unparse_real2(int32_t real, int frac_bits)
@@ -4786,14 +4142,7 @@ cp_unparse_interval(const timeval& tv)
 String
 cp_unparse_bandwidth(uint32_t bw)
 {
-    if (bw >= 0x20000000U)
-	return cp_unparse_real10(bw, 6) + "MBps";
-    else if (bw >= 125000000)
-	return cp_unparse_real10(bw * 8, 9) + "Gbps";
-    else if (bw >= 125000)
-	return cp_unparse_real10(bw * 8, 6) + "Mbps";
-    else
-	return cp_unparse_real10(bw * 8, 3) + "kbps";
+    return BandwidthArg::unparse(bw);
 }
 
 
@@ -4871,9 +4220,6 @@ cp_va_static_initialize()
     cp_register_argtype(cpIP6Prefix, "IPv6 address prefix", cpArgStore2, default_parsefunc, default_storefunc, cpiIP6Prefix);
     cp_register_argtype(cpIP6PrefixLen, "IPv6 address prefix", cpArgStore2, default_parsefunc, default_storefunc, cpiIP6PrefixLen);
     cp_register_argtype(cpIP6AddressOrPrefix, "IPv6 address or prefix", cpArgStore2, default_parsefunc, default_storefunc, cpiIP6AddressOrPrefix);
-#endif
-#if HAVE_IPSEC
-    cp_register_argtype(cpDesCblock, "DES cipher block", 0, default_parsefunc, default_storefunc, cpiDesCblock);
 #endif
 #if CLICK_USERLEVEL || CLICK_TOOL
     cp_register_argtype(cpFileOffset, "file offset", 0, default_parsefunc, default_storefunc, cpiFileOffset);

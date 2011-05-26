@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/llc.h>
@@ -48,19 +48,15 @@ ProbeResponder::configure(Vector<String> &conf, ErrorHandler *errh)
   _channel = 0;
   _ssid = String();
   _interval_ms = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "CHANNEL", 0, cpInteger, &_channel,
-		   "SSID", 0, cpString, &_ssid,
-		   "BSSID", 0, cpEthernetAddress, &_bssid,
-		   "INTERVAL", 0, cpInteger, &_interval_ms,
-		   "RT", 0, cpElement, &_rtable,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("CHANNEL", _channel)
+      .read("SSID", _ssid)
+      .read("BSSID", _bssid)
+      .read("INTERVAL", _interval_ms)
+      .read_m("RT", ElementCastArg("AvailableRates"), _rtable)
+      .complete() < 0)
     return -1;
-
-
-  if (!_rtable || _rtable->cast("AvailableRates") == 0)
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
 
   if (_interval_ms <= 0) {
     return errh->error("INTERVAL must be >0\n");
@@ -214,8 +210,8 @@ ProbeResponder::send_probe_response(EtherAddress dst)
   memcpy(w->i_addr3, _bssid.data(), 6);
 
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr;
 
@@ -305,7 +301,7 @@ ProbeResponder_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -323,14 +319,14 @@ ProbeResponder_write_param(const String &in_s, Element *e, void *vparam,
   }
   case H_CHANNEL: {    //channel
     int channel;
-    if (!cp_integer(s, &channel))
+    if (!IntArg().parse(s, channel))
       return errh->error("channel parameter must be int");
     f->_channel = channel;
     break;
   }
   case H_INTERVAL: {    //mode
     int m;
-    if (!cp_integer(s, &m))
+    if (!IntArg().parse(s, m))
       return errh->error("interval parameter must be int");
     f->_interval_ms = m;
     break;

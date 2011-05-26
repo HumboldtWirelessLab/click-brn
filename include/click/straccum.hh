@@ -234,6 +234,16 @@ class StringAccum { public:
 	_len = len;
     }
 
+    /** @brief Set the StringAccum's length to @a len.
+     * @pre @a len >= 0 */
+    inline int resize(int len) {
+	assert(len >= 0);
+	if (unlikely(len > _cap && !grow(len)))
+	    return -ENOMEM;
+	_len = len;
+	return 0;
+    }
+
     /** @brief Adjust the StringAccum's length.
      * @param delta  length adjustment
      * @pre If @a delta > 0, then length() + @a delta <= capacity().
@@ -619,6 +629,11 @@ operator<<(StringAccum &sa, const StringAccum &sb)
 }
 
 inline void click_swap(StringAccum &a, StringAccum &b)
+{
+    a.swap(b);
+}
+
+inline void assign_consume(StringAccum &a, StringAccum &b)
 {
     a.swap(b);
 }
