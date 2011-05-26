@@ -70,7 +70,7 @@ PacketPool::insert(Packet *p)
 }
 
 WritablePacket*
-PacketPool::get(uint32_t size, uint32_t headroom, uint32_t tailroom)
+PacketPool::get(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom)
 {
   uint32_t total_size = size + headroom + tailroom;
 
@@ -107,6 +107,10 @@ PacketPool::get(uint32_t size, uint32_t headroom, uint32_t tailroom)
           p = p->put(size - p->length());
         }
 
+        if ( data ) {
+          memcpy(p->data(), data, size);
+        }
+
         _hits++;
         //click_chatter("Success");
         return p;
@@ -115,7 +119,7 @@ PacketPool::get(uint32_t size, uint32_t headroom, uint32_t tailroom)
   }
   _makes++;
 
-  return Packet::make(headroom, NULL, size, tailroom);
+  return Packet::make(headroom, data, size, tailroom);
 }
 
 String

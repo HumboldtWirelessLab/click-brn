@@ -10,7 +10,7 @@ class PacketPool {
   ~PacketPool();
 
   void insert(Packet *p);
-  WritablePacket* get(uint32_t size, uint32_t headroom, uint32_t tailroom);
+  WritablePacket* get(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom);
 
   String stats();
 

@@ -61,10 +61,10 @@ BRNElement::packet_kill(Packet *p)
 }
 
 WritablePacket *
-BRNElement::packet_new(uint32_t headroom, char *data, uint32_t size, uint32_t tailroom)
+BRNElement::packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom)
 {
   if ( BRNElement::_packet_pool ) {
-    return BRNElement::_packet_pool->get(size, headroom, tailroom);
+    return BRNElement::_packet_pool->get(headroom, data, size, tailroom);
   } else {
     return WritablePacket::make(headroom, data, size, tailroom);
   }
