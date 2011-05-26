@@ -4,6 +4,8 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -14,7 +16,7 @@ CLICK_DECLS
  * =d
  */
 
-class BRN2PacketSource : public Element {
+class BRN2PacketSource : public BRNElement {
 
  public:
 
