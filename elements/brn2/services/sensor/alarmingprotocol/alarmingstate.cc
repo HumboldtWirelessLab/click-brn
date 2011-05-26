@@ -40,7 +40,7 @@ AlarmingState::AlarmingState():
   _forward_flags(UPDATE_ALARM_NEW_NODE|UPDATE_ALARM_NEW_ID),
   _lt(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
-  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUT_FRACTION),
+  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
   _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
   _triggered_alarm(false)
 {
