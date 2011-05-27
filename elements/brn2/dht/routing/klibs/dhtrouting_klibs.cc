@@ -15,7 +15,7 @@
 #include "elements/brn2/brnconf.h"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"

@@ -3,9 +3,9 @@
 #include <click/element.hh>
 
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/md5.h"
 
 #include "falcon_routingtable.hh"
+
 CLICK_DECLS
 
 #define FALCON_LEAVE_MODE_IDLE  0

@@ -4,7 +4,7 @@
 
 #include "elements/brn2/brnelement.hh"
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 #include "falcon_routingtable.hh"
 

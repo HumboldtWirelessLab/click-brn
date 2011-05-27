@@ -192,11 +192,8 @@ BRN2AssocRequester::send_reassoc_req()
   w->i_fc[0] = WIFI_FC0_VERSION_0 | WIFI_FC0_TYPE_MGT | WIFI_FC0_SUBTYPE_REASSOC_REQ;
   w->i_fc[1] = WIFI_FC1_DIR_NODS;
 
-  w->i_dur[0] = 0;
-  w->i_dur[1] = 0;
-
-  w->i_seq[0] = 0;
-  w->i_seq[1] = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   // Use mac address and bssid of the new ap like madwifi does
   // see madwifi:ieee80211_output.c ieee80211_mgmt_output()

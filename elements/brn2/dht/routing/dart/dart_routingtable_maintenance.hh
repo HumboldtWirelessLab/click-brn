@@ -3,7 +3,6 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/md5.h"
 #include "dart_routingtable.hh"
 CLICK_DECLS
 

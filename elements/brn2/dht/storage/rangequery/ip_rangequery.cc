@@ -5,7 +5,7 @@
 #include <click/straccum.hh>
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 
 #include "ip_rangequery.hh"
 

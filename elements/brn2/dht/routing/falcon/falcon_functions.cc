@@ -20,7 +20,7 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 #include "falcon_functions.hh"

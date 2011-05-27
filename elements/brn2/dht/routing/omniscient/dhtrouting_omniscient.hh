@@ -1,9 +1,9 @@
 #ifndef CLICK_DHTROUTING_OMNISCIENT_HH
 #define CLICK_DHTROUTING_OMNISCIENT_HH
+#include <click/element.hh>
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/md5.h"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/standard/dhtnode.hh"
@@ -18,8 +18,7 @@ CLICK_DECLS
 #define DHT_OMNI_DEFAULT_START_DELAY     5000
 #define DHT_OMNI_MAX_PACKETSIZE_ROUTETABLE 1000
 
-class DHTRoutingOmni : public DHTRouting
-{
+class DHTRoutingOmni : public DHTRouting {
   public:
     DHTRoutingOmni();
     ~DHTRoutingOmni();

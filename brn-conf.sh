@@ -39,6 +39,7 @@ fi
 
 #CONFOPTION="--enable-wifi --enable-brn2 --enable-dhcp --enable-analysis"
 CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
+#CONFOPTION="--enable-wifi --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then
   CONFOPTION="$CONFOPTION --host=mipsel-linux --enable-tools=host --enable-ialign"

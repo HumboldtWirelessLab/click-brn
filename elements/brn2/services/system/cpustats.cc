@@ -1,11 +1,11 @@
 //Last modified: 04/04/11 12:34:52(CEST) by Fabian Holler
 #include <click/config.h>
-#include<stdlib.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include<stdio.h>
-#include<strings.h>
-#include<string.h>
+#include <stdio.h>
+#include <strings.h>
+#include <string.h>
 
 #include "cpustats.hh"
 

@@ -1,11 +1,10 @@
 #ifndef DHT_DB_HH
 #define DHT_DB_HH
-#include <click/element.hh>
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
 
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 
 #define DB_INT 0
 #define DB_ARRAY 1
