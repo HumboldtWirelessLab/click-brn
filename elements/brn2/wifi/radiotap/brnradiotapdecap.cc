@@ -59,6 +59,7 @@ static const int radiotap_elem_to_bytes[NUM_RADIOTAP_ELEMENTS] =
    8, /* IEEE80211_RADIOTAP_MULTIRATE */
    4, /* IEEE80211_RADIOTAP_DATA_MULTIRETRIES */
    1, /* IEEE80211_RADIOTAP_QUEUE */
+   12, /* IEEE80211_RADIOTAP_MULTI_RSSI */
   };
 
 static int rt_el_present(struct ieee80211_radiotap_header *th, u_int32_t element)
@@ -99,12 +100,26 @@ static int rt_check_header(struct ieee80211_radiotap_header *th, int len)
 static u_int8_t *rt_el_offset(struct ieee80211_radiotap_header *th, u_int32_t element) {
 	unsigned int x = 0;
 	u_int8_t *offset = ((u_int8_t *) th) + sizeof(ieee80211_radiotap_header);
+  uint8_t pos = 0;
 	for (x = 0; x < NUM_RADIOTAP_ELEMENTS && x < element; x++) {
-		if (rt_el_present(th, x))
+    /*final alignment fix*/
+    if (( pos & 1) && (( x == IEEE80211_RADIOTAP_CHANNEL ) || ( x == IEEE80211_RADIOTAP_RX_FLAGS ) || ( x == IEEE80211_RADIOTAP_MULTI_RSSI ))) {
+      offset++;
+      pos++;
+    }
+
+    if (rt_el_present(th, x)) {
 			offset += radiotap_elem_to_bytes[x];
+      pos += radiotap_elem_to_bytes[x];
+    }
 	}
 
-	return offset;
+  /*final alignment fix*/
+  if ( (pos & 1) && (( x == IEEE80211_RADIOTAP_CHANNEL ) || ( x == IEEE80211_RADIOTAP_RX_FLAGS ) || ( x == IEEE80211_RADIOTAP_MULTI_RSSI ))) {
+      offset++;
+  }
+
+  return offset;
 }
 
 static uint8_t
@@ -193,7 +208,9 @@ BrnRadiotapDecap::simple_action(Packet *p)
 	struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
 
-	if (rt_check_header(th, p->length())) {
+  //click_chatter("Present: %u start: %u",le32_to_cpu(th->it_present),(void*)&(th[1]));
+
+  if (rt_check_header(th, p->length())) {
 		memset((void*)ceh, 0, sizeof(struct click_wifi_extra));
 		ceh->magic = WIFI_EXTRA_MAGIC;
 
@@ -261,8 +278,8 @@ BrnRadiotapDecap::simple_action(Packet *p)
       flags = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[1]));
       index = *((uint8_t *)&(((uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS))[2]));
 
-//      click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",
-//                    (int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
+      //click_chatter("known: %d flags: %d index: %d bw: %d gi: %d fec: %d",
+      //(int)known,(int)flags,(int)index, (int)(flags & 3), (int)((flags >> 2) & 1), (int)((flags >> 4) & 1));
 
       BrnWifi::fromMCS(index, (flags & 3), (flags >> 2) & 1, &(ceh->rate));
       BrnWifi::setHTMode(wee, 0, (flags >> 3) & 1);
@@ -273,7 +290,22 @@ BrnRadiotapDecap::simple_action(Packet *p)
       ceh->flags |= WIFI_EXTRA_MCS_RATE0;
     }
 
-		p->pull(le16_to_cpu(th->it_len));
+    if (rt_el_present(th, IEEE80211_RADIOTAP_MULTI_RSSI)) {
+      //click_chatter("Offset: %u (%u)",(void*)rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI),
+      //              ((uint32_t)rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI)-(uint32_t)&(th[1])));
+      struct radiotap_extended_rx_status ext_status;
+
+      memcpy((void*)&ext_status, rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI ), sizeof(struct radiotap_extended_rx_status));
+
+      //click_chatter("RSSI: %d %d %d %d %d %d %d %d %d %d %d",
+      //    ext_status.rssi_ctl[0],ext_status.rssi_ctl[1],ext_status.rssi_ctl[2],
+      //    ext_status.rssi_ext[0],ext_status.rssi_ext[1],ext_status.rssi_ext[2],
+      //    ext_status.evm[0],ext_status.evm[1],ext_status.evm[2],ext_status.evm[3],ext_status.evm[4]);
+    }
+
+    //click_chatter("Len; %d",th->it_len);
+
+    p->pull(le16_to_cpu(th->it_len));
 		p->set_mac_header(p->data());  // reset mac-header pointer
 	}
 
@@ -281,7 +313,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
   if ( (ceh->silence == 0) && ((ceh->flags & WIFI_EXTRA_TX) == 0) ) {
     ceh->silence = -95;
-    click_chatter("Silence is 0. Set to -95");
+    //click_chatter("Silence is 0. Set to -95");
   }
 
   ceh->rssi = ceh->rssi - ceh->silence;
