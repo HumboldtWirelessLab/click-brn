@@ -36,7 +36,8 @@ CLICK_DECLS
 BRN2PrintWifi::BRN2PrintWifi()
   : _print_anno(false),
     _print_checksum(false),
-    _print_ht(false)
+    _print_ht(false),
+    _print_rx(false)
 {
   _label = "";
 }
@@ -54,6 +55,7 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
       "LABEL", cpkP, cpString, &_label,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
       "PRINTHT", cpkP, cpBool, &_print_ht,
+      "PRINTRXSTATUS", cpkP, cpBool, &_print_rx,
       cpEnd);
   return ret;
 }
@@ -383,6 +385,17 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << " 1 " << (uint32_t)mcs_index << " " << (uint32_t)bandwidth << " " << (uint32_t)guard_interval << " ";
     } else {
       sa << " 0 0 0 0 ";
+    }
+  }
+
+  if ( _print_rx ) {
+    if ( ceh->flags & WIFI_EXTRA_EXT_RX_STATUS ) {
+      struct brn_click_wifi_extra_rx_status *ext_status =
+          (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+      sa << ext_status->rssi_ctl[0] << " " << ext_status->rssi_ctl[1] << " " << ext_status->rssi_ctl[2] << " ";
+      sa << ext_status->rssi_ext[0] << " " << ext_status->rssi_ext[1] << " " << ext_status->rssi_ext[2] << " ";
+    } else {
+      sa << " 0 0 0 0 0 0 ";
     }
   }
 

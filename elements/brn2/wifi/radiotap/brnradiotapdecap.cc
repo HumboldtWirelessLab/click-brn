@@ -293,14 +293,18 @@ BrnRadiotapDecap::simple_action(Packet *p)
     if (rt_el_present(th, IEEE80211_RADIOTAP_MULTI_RSSI)) {
       //click_chatter("Offset: %u (%u)",(void*)rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI),
       //              ((uint32_t)rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI)-(uint32_t)&(th[1])));
-      struct radiotap_extended_rx_status ext_status;
 
-      memcpy((void*)&ext_status, rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI ), sizeof(struct radiotap_extended_rx_status));
+      struct brn_click_wifi_extra_rx_status *ext_status =
+          (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+
+      memcpy((void*)ext_status, rt_el_offset(th, IEEE80211_RADIOTAP_MULTI_RSSI ), sizeof(struct brn_click_wifi_extra_rx_status));
+
+      BrnWifi::setExtRxStatus(ceh,1);
 
       //click_chatter("RSSI: %d %d %d %d %d %d %d %d %d %d %d",
-      //    ext_status.rssi_ctl[0],ext_status.rssi_ctl[1],ext_status.rssi_ctl[2],
-      //    ext_status.rssi_ext[0],ext_status.rssi_ext[1],ext_status.rssi_ext[2],
-      //    ext_status.evm[0],ext_status.evm[1],ext_status.evm[2],ext_status.evm[3],ext_status.evm[4]);
+      //    ext_status->rssi_ctl[0],ext_status->rssi_ctl[1],ext_status->rssi_ctl[2],
+      //    ext_status->rssi_ext[0],ext_status->rssi_ext[1],ext_status->rssi_ext[2],
+      //    ext_status->evm[0],ext_status->evm[1],ext_status->evm[2],ext_status->evm[3],ext_status->evm[4]);
     }
 
     //click_chatter("Len; %d",th->it_len);

@@ -126,7 +126,7 @@ ChannelStats::run_timer(Timer *)
     _small_stats_src_tab[_current_small_stats].clear();
   }
 
-  if ( _stats_interval > 0 ) _stats_timer.schedule_after_msec(_stats_interval);
+  if ( _stats_interval > 0 ) _stats_timer.reschedule_after_msec(_stats_interval);
 }
 
 void
@@ -171,16 +171,46 @@ ChannelStats::push(int port, Packet *p)
 
     for ( int i = 0; i < (int) ceh->retries; i++ ) {
       int t0,t1,t2,t3;
+      uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
       t0 = ceh->max_tries + 1;
       t1 = t0 + ceh->max_tries1;
       t2 = t1 + ceh->max_tries2;
       t3 = t2 + ceh->max_tries3;
 
       uint16_t rate = 0;
-      if ( i < t0 ) rate = ceh->rate;
-      else if ( i < t1 ) rate = ceh->rate1;
-      else if ( i < t2 ) rate = ceh->rate2;
-      else if ( i < t3 ) rate = ceh->rate3;
+      if ( i < t0 ) {
+        if ( BrnWifi::getMCS(ceh,0) == 1) {
+          BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate);
+          rate_is_ht = 1;
+        } else {
+          rate = ceh->rate;
+          rate_is_ht = 0;
+        }
+      } else if ( i < t1 ) {
+        if ( BrnWifi::getMCS(ceh,1) == 1 ) {
+          BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate1);
+          rate_is_ht = 1;
+        } else {
+          rate = ceh->rate1;
+          rate_is_ht = 0;
+        }
+      } else if ( i < t2 ) {
+        if ( BrnWifi::getMCS(ceh,2) == 1 ) {
+          BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate2);
+          rate_is_ht = 1;
+        } else {
+          rate = ceh->rate2;
+          rate_is_ht = 0;
+        }
+      } else if ( i < t3 ) {
+        if ( BrnWifi::getMCS(ceh,3) == 1 ) {
+          BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate3);
+          rate_is_ht = 1;
+        } else {
+          rate = ceh->rate3;
+          rate_is_ht = 0;
+        }
+      }
 
       if (_enable_full_stats) {
 
@@ -195,7 +225,11 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_rate = rate;
 
         if (rate != 0) {
-          new_pi->_duration = calc_transmit_time(rate, p->length());
+          if ( rate_is_ht )
+            new_pi->_duration = BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+          else
+            new_pi->_duration = calc_transmit_time(rate, p->length() + 4 /*crc*/); //TODO: check CRC ??
+
           new_pi->_retry = (i > 0);
           new_pi->_unicast = !dst.is_broadcast();
         } else {
@@ -212,8 +246,13 @@ ChannelStats::push(int port, Packet *p)
             small_stats->tx_ucast_packets++;
             if ( i > 0 ) small_stats->tx_retry_packets++;
           }
-          small_stats->duration_tx += calc_transmit_time(rate, p->length()); // update duration counter
+          if ( rate_is_ht )
+            small_stats->duration_tx += BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+          else
+            small_stats->duration_tx += calc_transmit_time(rate, p->length() + 4 /*crc*/); // update duration counter TODO: check CRC ??
+
           small_stats->txpackets++;
+          small_stats->tx_bytes += p->length() + 4;
         } else {
           small_stats->zero_rate_packets++;
         }
@@ -235,7 +274,15 @@ ChannelStats::push(int port, Packet *p)
 
     if ( ceh->rate != 0 ) {
 
-      uint32_t duration = calc_transmit_time(ceh->rate, p->length() + 4 /*crc*/);
+      uint32_t duration;
+
+      if ( BrnWifi::getMCS(ceh,0) == 1) {
+        uint8_t  rate_index, rate_bw, rate_sgi;
+        BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate);
+        duration = BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+      } else
+        duration = calc_transmit_time(ceh->rate, p->length() + 4 /*crc*/); //calc duration TODO: check CRC ??
+
       uint8_t state = STATE_UNKNOWN;
 
       bool retry = (w->i_fc[1] & WIFI_FC1_RETRY);
@@ -265,6 +312,7 @@ ChannelStats::push(int port, Packet *p)
         // update duration counter
         small_stats->duration_rx += duration;
         small_stats->rxpackets++;
+        small_stats->rx_bytes += p->length() + 4;
 
         int silence = (signed char)ceh->silence;
         small_stats->avg_noise += silence;
@@ -273,6 +321,17 @@ ChannelStats::push(int port, Packet *p)
 
         small_stats->avg_rssi += rssi;
         small_stats->std_rssi += (rssi * rssi);
+
+        if ( BrnWifi::hasExtRxStatus(ceh) ) {
+          struct brn_click_wifi_extra_rx_status *rx_status = (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+          small_stats->avg_ctl_rssi[0] += rx_status->rssi_ctl[0];
+          small_stats->avg_ctl_rssi[1] += rx_status->rssi_ctl[1];
+          small_stats->avg_ctl_rssi[2] += rx_status->rssi_ctl[2];
+
+          small_stats->avg_ext_rssi[0] += rx_status->rssi_ext[0];
+          small_stats->avg_ext_rssi[1] += rx_status->rssi_ext[1];
+          small_stats->avg_ext_rssi[2] += rx_status->rssi_ext[2];
+        }
 
         switch (state) {
           case STATE_OK:
@@ -302,10 +361,15 @@ ChannelStats::push(int port, Packet *p)
         if ( _neighbour_stats ) {
           if ( state == STATE_OK ) {
             SrcInfo *src_info;
-            if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL )
+            if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {
               _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi));
-            else
+              src_info = _small_stats_src_tab[_current_small_stats].findp(src);
+            } else {
               src_info->add_rssi(rssi);
+            }
+
+            if (BrnWifi::hasExtRxStatus(ceh))
+              src_info->add_ctl_ext_rssi((struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p));
           }
         }
       }
@@ -636,6 +700,13 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
 
     small_stats->std_rssi = isqrt32((small_stats->std_rssi/(int32_t)small_stats->rxpackets) - (small_stats->avg_rssi*small_stats->avg_rssi));
 
+    small_stats->avg_ctl_rssi[0] /= small_stats->rxpackets;
+    small_stats->avg_ctl_rssi[1] /= small_stats->rxpackets;
+    small_stats->avg_ctl_rssi[2] /= small_stats->rxpackets;
+    small_stats->avg_ext_rssi[0] /= small_stats->rxpackets;
+    small_stats->avg_ext_rssi[1] /= small_stats->rxpackets;
+    small_stats->avg_ext_rssi[2] /= small_stats->rxpackets;
+
   } else {
     small_stats->avg_noise = -100; // default value
     small_stats->std_noise = 0;
@@ -710,9 +781,9 @@ ChannelStats::stats_handler(int mode)
       sa << "\" phy_err_pkt=\"" << stats->phy_packets << "\" unknown_err_pkt=\"" << stats->unknown_err_packets;
       sa << "\" tx_pkt=\"" << stats->txpackets;
       sa << "\" rx_unicast_pkt=\"" << stats->rx_ucast_packets << "\" rx_retry_pkt=\"" << stats->rx_retry_packets;
-      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets;
+      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets << " \" rx_bytes=\"" << stats->rx_bytes;
       sa << "\" tx_unicast_pkt=\"" << stats->tx_ucast_packets << "\" tx_retry_pkt=\"" << stats->tx_retry_packets;
-      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets;
+      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets << " \" tx_bytes=\"" << stats->tx_bytes;
       sa << "\" zero_err_pkt=\"" << stats->zero_rate_packets;
       sa << "\" last_packet_time=\"" << stats->last.unparse();
       sa << "\" no_src=\"" << stats->no_sources << "\" />\n";

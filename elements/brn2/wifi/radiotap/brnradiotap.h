@@ -284,11 +284,4 @@ enum ieee80211_radiotap_type {
 #define IEEE80211_RADIOTAP_MCS_SP               0x20
 #define IEEE80211_RADIOTAP_MCS_STBC             0x40
 
-struct radiotap_extended_rx_status {
-  int8_t rssi_ctl[3];
-  int8_t rssi_ext[3];
-  int8_t evm[5];
-  int8_t flags;
-} __attribute__((__packed__));
-
 #endif /* _NET_IF_IEEE80211RADIOTAP_H_ */

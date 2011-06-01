@@ -19,9 +19,9 @@ enum {
   WIFI_EXTRA_MCS_RATE3       = (1<<24),
   WIFI_EXTRA_MCS_RATE2       = (1<<23),
   WIFI_EXTRA_MCS_RATE1       = (1<<22),
-  WIFI_EXTRA_MCS_RATE0       = (1<<21)
+  WIFI_EXTRA_MCS_RATE0       = (1<<21),
+  WIFI_EXTRA_EXT_RX_STATUS   = (1<<20)
 };
-
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21
 
@@ -48,6 +48,13 @@ enum {
 struct brn_click_wifi_extra_extention {
   uint8_t mcs_flags[4];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct brn_click_wifi_extra_rx_status {
+  int8_t rssi_ctl[3];
+  int8_t rssi_ext[3];
+  int8_t evm[5];
+  int8_t flags;
+} __attribute__((__packed__));
 
 #define IEEE80211_FEC_INDEX 0
 #define IEEE80211_FEC       (1<<IEEE80211_FEC_INDEX)
@@ -89,10 +96,23 @@ struct brn_click_wifi_extra_extention {
 
 class BrnWifi
 {
+
  public:
 
   BrnWifi();
   ~BrnWifi();
+
+
+  static inline bool hasExtRxStatus(struct click_wifi_extra *ceh ) {
+    return ((ceh->flags & WIFI_EXTRA_EXT_RX_STATUS) != 0 );
+  }
+
+  static inline void setExtRxStatus(struct click_wifi_extra *ceh, uint8_t ext_rx_status) {
+    if ( ext_rx_status )
+      ceh->flags |= WIFI_EXTRA_EXT_RX_STATUS;
+    else
+      ceh->flags &= ~WIFI_EXTRA_EXT_RX_STATUS;
+  }
 
   /* Single bit signals, whether rate is mcs-rate or "normal" rate */
   static inline uint8_t getMCS(struct click_wifi_extra *ceh, int index) {
@@ -209,6 +229,8 @@ class BrnWifi
 
     return 0;
   }
+
+  static uint32_t pkt_duration(uint32_t pktlen, uint8_t rix, uint8_t width, uint8_t half_gi);
 
 };
 
