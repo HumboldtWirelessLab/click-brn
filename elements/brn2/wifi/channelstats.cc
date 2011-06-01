@@ -798,10 +798,12 @@ ChannelStats::stats_handler(int mode)
       sa << "\" crc_rx=\"" << stats->duration_crc_rx << "\" phy_rx=\"" << stats->duration_phy_rx;
       sa << "\" unknown_err_rx=\"" << stats->duration_unknown_err_rx << "\" unit=\"us\" />\n";
 
-      sa << "\t<phy hwbusy=\"" << stats->hw_busy << "\" hwrx=\"" << stats->hw_rx << "\" hwtx=\"" << stats->hw_tx << "\" ";
-      sa << "last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" hw_stats_count=\"" << stats->hw_count << "\" ";
-      sa << "avg_noise=\"" << stats->avg_noise << "\" std_noise=\"" << stats->std_noise;
+      sa << "\t<phy hwbusy=\"" << stats->hw_busy << "\" hwrx=\"" << stats->hw_rx << "\" hwtx=\"" << stats->hw_tx;
+      sa << "\" last_hw_stat_time=\"" << stats->last_hw.unparse() << "\" hw_stats_count=\"" << stats->hw_count;
+      sa << "\" avg_noise=\"" << stats->avg_noise << "\" std_noise=\"" << stats->std_noise;
       sa << "\" avg_rssi=\"" << stats->avg_rssi << "\" std_rssi=\"" << stats->std_rssi;
+      sa << "\" ctl_rssi0=\"" << stats->avg_ctl_rssi[0] << "\" ctl_rssi1=\"" << stats->avg_ctl_rssi[1] << "\" ctl_rssi2=\"" << stats->avg_ctl_rssi[2];
+      sa << "\" ext_rssi0=\"" << stats->avg_ext_rssi[0] << "\" ext_rssi1=\"" << stats->avg_ext_rssi[1] << "\" ext_rssi2=\"" << stats->avg_ext_rssi[2];
       sa << "\" channel=\"";
       if ( _device ) sa << (int)(_device->getChannel());
       else           sa << _channel;
@@ -814,7 +816,10 @@ ChannelStats::stats_handler(int mode)
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"";
         sa  << src._std_rssi << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
         sa << "\" pkt_cnt=\"" << src._pkt_count << "\">\n";
-        sa << "\t\t\t<rssi_hist size=\"" << src._rssi_hist_index << "\" max_size=\"" << src._rssi_hist_size;
+        sa << "\t\t\t<rssi_extended>\n\t\t\t\t<ctl rssi0=\"" << src._avg_ctl_rssi[0];
+        sa << "\" rssi1=\"" << src._avg_ctl_rssi[1] << "\" rssi2=\"" << src._avg_ctl_rssi[2] << "\" />\n\t\t\t\t<ext rssi0=\"";
+        sa << src._avg_ext_rssi[0] << "\" rssi1=\"" << src._avg_ext_rssi[1] << "\" rssi2=\"" << src._avg_ext_rssi[2] << "\" />\n";
+        sa << "\t\t\t</rssi_extended>\n\t\t\t<rssi_hist size=\"" << src._rssi_hist_index << "\" max_size=\"" << src._rssi_hist_size;
         sa << "\" overflow=\"" << src._rssi_hist_overflow << "\" values=\"";
         for ( uint32_t rssi_i = 0; rssi_i < src._rssi_hist_index; rssi_i++) {
           if ( rssi_i > 0 ) sa << ",";
