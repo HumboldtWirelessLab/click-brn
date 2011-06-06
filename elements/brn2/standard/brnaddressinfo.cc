@@ -25,6 +25,7 @@
 #include <click/router.hh>
 #include <click/error.hh>
 #include <clicknet/ether.h>
+#include <click/etheraddress.hh>
 #if CLICK_NS
 # include <click/master.hh>
 #endif
@@ -51,6 +52,9 @@ CLICK_CXX_PROTECT
 # include <linux/rtnetlink.h>
 # include <linux/if_arp.h>
 # include <linux/inetdevice.h>
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+#  include <net/net_namespace.h>
+# endif
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 #endif
@@ -67,80 +71,102 @@ BRNAddressInfo::~BRNAddressInfo()
 int
 BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    int before = errh->nerrors();
-  
-    for (int i = 0; i < conf.size(); i++) {
-	Vector<String> parts;
-	cp_spacevec(conf[i], parts);
-	if (parts.size() == 0)
-	    // allow empty arguments
-	    continue;
-	if (parts.size() < 2)
-	    errh->error("expected 'NAME [ADDRS]', got '%s'", conf[i].c_str());
-        else
-        {
+  enum { t_eth = 1, t_ip4 = 2, t_ip4net = 4, t_ip6 = 8, t_ip6net = 16 };
+  int before = errh->nerrors();
+
+  for (int i = 0; i < conf.size(); i++) {
+    Vector<String> parts;
+    cp_spacevec(conf[i], parts);
+    if (parts.size() == 0)
+      // allow empty arguments
+      continue;
+    if (parts.size() < 2) {
 #ifdef CLICK_NS
-            // Maybe get info from the simulator...
-	  int r;
-            String simif = parts[1];
-            String simip;
-            String simeth;
-            const char* simsuffix = ":eth";
-            //Router* myrouter = router();
-            //simclick_sim mysiminst = myrouter->master()->siminst();
+      // Maybe get info from the simulator...
+      int r;
+      String simif = parts[1];
+      String simip;
+      String simeth;
+      const char* simsuffix = ":eth";
+      //Router* myrouter = router();
+      //simclick_sim mysiminst = myrouter->master()->siminst();
 
-            int colon = simif.find_right(':');
-            if ((colon >= 0) && (simif.substring(colon).lower() == simsuffix)) {
-                parts.pop_back();
-                char tmp[255];
+      int colon = simif.find_right(':');
+      if ((colon >= 0) && (simif.substring(colon).lower() == simsuffix)) {
+        parts.pop_back();
+        char tmp[255];
 
-                simif = simif.substring(0,colon);
-	      r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, simif.c_str(), tmp, 255);
-               // simclick_sim_ipaddr_from_name(mysiminst, simif.cc(), tmp, 255);
-                simip = tmp;
-	      r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, simif.c_str(), tmp, 255);
-                //simclick_sim_macaddr_from_name(mysiminst, simif.cc(), tmp, 255);
-                simeth = tmp;
+        simif = simif.substring(0,colon);
+        r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, simif.c_str(), tmp, 255);
+        simip = tmp;
+        r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, simif.c_str(), tmp, 255);
+        simeth = tmp;
 
-                if (simip.length()) {
-                    parts.push_back(simip);
-                }
-
-                if (simeth.length()) {
-                    parts.push_back(simeth);
-                }
-            }
-#endif
+        if (simip.length()) {
+          parts.push_back(simip);
         }
-	
-	for (int j = 1; j < parts.size(); j++) {
-	    uint8_t d[24];
-	    if (cp_ip_address(parts[j], &d[0]))
-		NameInfo::define(NameInfo::T_IP_ADDR, this, parts[0], &d[0], 4);
-	    else if (cp_ip_prefix(parts[j], &d[0], &d[4], false)) {
-		NameInfo::define(NameInfo::T_IP_PREFIX, this, parts[0], &d[0], 8);
-		if (*(uint32_t*)(&d[0]) & ~*((uint32_t*)(&d[4])))
-		    NameInfo::define(NameInfo::T_IP_ADDR, this, parts[0], &d[0], 4);
-	    } else if (cp_ethernet_address(parts[j], &d[0]))
-		NameInfo::define(NameInfo::T_ETHERNET_ADDR, this, parts[0], &d[0], 6);
-              else if (query_ethernet(parts[j],&d[0], this)) 
-		NameInfo::define(NameInfo::T_ETHERNET_ADDR, this, parts[0], &d[0], 6);
-		    
-#ifdef HAVE_IP6
-	    else if (cp_ip6_address(parts[j], &d[0]))
-		NameInfo::define(NameInfo::T_IP6_ADDR, this, parts[0], &d[0], 16);
-	    else if (cp_ip6_prefix(parts[j], &d[0], (int *) &d[16], false)) {
-		NameInfo::define(NameInfo::T_IP6_PREFIX, this, parts[0], &d[0], 16 + sizeof(int));
-		if (*((IP6Address*) &d[0]) & ~IP6Address::make_prefix(*(int*) &d[16]))
-		    NameInfo::define(NameInfo::T_IP6_ADDR, this, parts[0], &d[0], 16);
-	    }
+
+        if (simeth.length()) {
+          parts.push_back(simeth);
+        }
+      }
+#else
+      errh->error("expected %<NAME [ADDRS]%>");
 #endif
-	    else
-		errh->error("\"%s\" '%s' is not a recognizable address", parts[0].c_str(), parts[j].c_str());
-	}
     }
-    
-    return (errh->nerrors() == before ? 0 : -1);
+    int types = 0;
+
+    for (int j = 1; j < parts.size(); j++) {
+      struct in_addr ip4[2];
+      unsigned char ether[6];
+# if HAVE_IP6
+      struct {
+        unsigned char c[sizeof(click_in6_addr)];
+        int p;
+      } ip6;
+# endif
+
+      int my_types = 0;
+      if (EtherAddressArg().parse(parts[j], ether, this))
+        my_types |= t_eth;
+      if (IPAddressArg().parse(parts[j], ip4[0], this))
+        my_types |= t_ip4;
+      else if (IPPrefixArg().parse(parts[j], ip4[0], ip4[1])) {
+        my_types |= t_ip4net;
+        if (ip4[0].s_addr & ~ip4[1].s_addr)
+          my_types |= t_ip4;
+      }
+#if HAVE_IP6
+      if (cp_ip6_address(parts[j], ip6.c))
+        my_types |= t_ip6;
+      else if (cp_ip6_prefix(parts[j], ip6.c, &ip6.p, false)) {
+        my_types |= t_ip6net;
+        if (IP6Address(ip6.c) & IP6Address::make_inverted_prefix(ip6.p))
+          my_types |= t_ip6;
+      }
+#endif
+
+      bool one_type = (my_types & (my_types - 1)) == 0;
+      if ((my_types & t_eth) && (one_type || !(types & t_eth)))
+        NameInfo::define(NameInfo::T_ETHERNET_ADDR, this, parts[0], ether, 6);
+      if ((my_types & t_ip4) && (one_type || !(types & t_ip4)))
+        NameInfo::define(NameInfo::T_IP_ADDR, this, parts[0], &ip4[0], 4);
+      if ((my_types & t_ip4net) && (one_type || !(types & t_ip4net)))
+        NameInfo::define(NameInfo::T_IP_PREFIX, this, parts[0], &ip4[0], 8);
+#if HAVE_IP6
+      if ((my_types & t_ip6) && (one_type || !(types & t_ip6)))
+        NameInfo::define(NameInfo::T_IP6_ADDR, this, parts[0], ip6.c, 16);
+      if ((my_types & t_ip6net) && (one_type || !(types & t_ip6net)))
+        NameInfo::define(NameInfo::T_IP6_PREFIX, this, parts[0], &ip6, 16 + sizeof(int));
+#endif
+
+      types |= my_types;
+      if (!my_types)
+        errh->error("\"%s\" %<%s%> is not a recognizable address", parts[0].c_str(), parts[j].c_str());
+    }
+  }
+
+  return (errh->nerrors() == before ? 0 : -1);
 }
 
 
@@ -151,147 +177,147 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
 #if CLICK_QUERY_NETDEVICE
 
 static bool
-query_netdevice(const String &s, unsigned char *store, int type, int len)
+    query_netdevice(const String &s, unsigned char *store, int type, int len)
     // type: should be 'e' (Ethernet) or 'i' (ipv4)
 {
     // 5 Mar 2004 - Don't call ioctl for every attempt to look up an Ethernet
     // device name, because this causes the kernel to try to load weird kernel
     // modules.
-    static time_t read_time = 0;
-    static Vector<String> device_names;
-    static Vector<String> device_addrs;
+  static time_t read_time = 0;
+  static Vector<String> device_names;
+  static Vector<String> device_addrs;
 
     // XXX magic time constant
-    if (!read_time || read_time + 30 < time(0)) {
-	device_names.clear();
-	device_addrs.clear();
-	
+  if (!read_time || read_time + 30 < time(0)) {
+    device_names.clear();
+    device_addrs.clear();
+
 # ifdef __linux__
-	int query_fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (query_fd < 0)
-	    return false;
-	struct ifreq ifr;
-	
-	String f = file_string("/proc/net/dev");
-	const char *begin = f.begin(), *end = f.end();
-	while (begin < end) {
-	    const char *colon = find(begin, end, ':');
-	    const char *nl = find(begin, end, '\n');
-	    if (colon > begin && colon < nl) {
-		const char *word = colon;
-		while (word > begin && !isspace((unsigned char) word[-1]))
-		    word--;
-		if ((size_t) (colon - word) < sizeof(ifr.ifr_name)) {
-		    // based on patch from Jose Vasconcellos
-		    // <jvasco@bellatlantic.net>
-		    String dev_name = f.substring(word, colon);
-		    strcpy(ifr.ifr_name, dev_name.c_str());
-		    if (ioctl(query_fd, SIOCGIFHWADDR, &ifr) >= 0
-			&& (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER ||
-                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211 ||
-                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM ||
-                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP ||
-                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC ||
-                            ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT)) {
-			device_names.push_back(dev_name);
-			device_addrs.push_back(String('e') + String(ifr.ifr_hwaddr.sa_data, 6));
-		    }
-		    if (ioctl(query_fd, SIOCGIFADDR, &ifr) >= 0) {
-			device_names.push_back(dev_name);
-			device_addrs.push_back(String('i') + String((const char *)&((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr, 4));
-		    }
-		}
-	    }
-	    begin = nl + 1;
-	}
+    int query_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (query_fd < 0)
+      return false;
+    struct ifreq ifr;
 
-	close(query_fd);
-# elif defined(__APPLE__) || defined(__FreeBSD__)
-	// get list of interfaces (this code borrowed, with changes, from
-	// FreeBSD ifconfig(8))
-	int mib[8];
-	mib[0] = CTL_NET;
-	mib[1] = PF_ROUTE;
-	mib[2] = 0;
-	mib[3] = 0;		// address family
-	mib[4] = NET_RT_IFLIST;
-	mib[5] = 0;		// ifindex
-
-	size_t if_needed;
-	char* buf = 0;
-	while (!buf) {
-	    if (sysctl(mib, 6, 0, &if_needed, 0, 0) < 0)
-		return false;
-	    if ((buf = new char[if_needed]) == 0)
-		return false;
-	    if (sysctl(mib, 6, buf, &if_needed, 0, 0) < 0) {
-		if (errno == ENOMEM) {
-		    delete[] buf;
-		    buf = 0;
-		} else
-		    return false;
-	    }
-	}
-	
-	for (char* pos = buf; pos < buf + if_needed; ) {
-	    // grab next if_msghdr
-	    struct if_msghdr* ifm = reinterpret_cast<struct if_msghdr*>(pos);
-	    if (ifm->ifm_type != RTM_IFINFO)
-		break;
-	    int datalen = sizeof(struct if_data);
-#  if HAVE_IF_DATA_IFI_DATALEN
-	    if (ifm->ifm_data.ifi_datalen)
-		datalen = ifm->ifm_data.ifi_datalen;
-#  endif
-	    
-	    // extract interface name from 'ifm'
-	    struct sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(pos + sizeof(struct if_msghdr) - sizeof(struct if_data) + datalen);
-	    String name(sdl->sdl_data, sdl->sdl_nlen);
-
-	    // Ethernet address is stored in 'sdl'
-	    if (sdl->sdl_type == IFT_ETHER && sdl->sdl_alen == 6) {
-		device_names.push_back(name);
-		device_addrs.push_back(String('e') + String((const char*)(LLADDR(sdl)), 6));
-	    }
-	    
-	    // parse all addresses, looking for IP
-	    pos += ifm->ifm_msglen;
-	    while (pos < buf + if_needed) {
-		struct if_msghdr* nextifm = reinterpret_cast<struct if_msghdr*>(pos);
-		if (nextifm->ifm_type != RTM_NEWADDR)
-		    break;
-		
-		struct ifa_msghdr* ifam = reinterpret_cast<struct ifa_msghdr*>(nextifm);
-		char* sa_buf = reinterpret_cast<char*>(ifam + 1);
-		pos += nextifm->ifm_msglen;
-		for (int i = 0; i < RTAX_MAX && sa_buf < pos; i++) {
-		    if (!(ifam->ifam_addrs & (1 << i)))
-			continue;
-		    struct sockaddr* sa = reinterpret_cast<struct sockaddr*>(sa_buf);
-		    if (sa->sa_len)
-			sa_buf += 1 + ((sa->sa_len - 1) | (sizeof(long) - 1));
-		    else
-			sa_buf += sizeof(long);
-		    if (i != RTAX_IFA)
-			continue;
-		    if (sa->sa_family == AF_INET) {
-			device_names.push_back(name);
-			device_addrs.push_back(String('i') + String((const char *)&((struct sockaddr_in*)sa)->sin_addr, 4));
-		    }
-		}
-	    }
-	}
-
-	delete[] buf;
-# endif /* defined(__APPLE__) || defined(__FreeBSD__) */
-	read_time = time(0);
+    String f = file_string("/proc/net/dev");
+    const char *begin = f.begin(), *end = f.end();
+    while (begin < end) {
+      const char *colon = find(begin, end, ':');
+      const char *nl = find(begin, end, '\n');
+      if (colon > begin && colon < nl) {
+        const char *word = colon;
+        while (word > begin && !isspace((unsigned char) word[-1]))
+          word--;
+        if ((size_t) (colon - word) < sizeof(ifr.ifr_name)) {
+        // based on patch from Jose Vasconcellos
+        // <jvasco@bellatlantic.net>
+          String dev_name = f.substring(word, colon);
+          strcpy(ifr.ifr_name, dev_name.c_str());
+          if (ioctl(query_fd, SIOCGIFHWADDR, &ifr) >= 0
+              && (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER ||
+                  ifr.ifr_hwaddr.sa_family == ARPHRD_80211 ||
+                  ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM ||
+                  ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP ||
+                  ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC ||
+                  ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT)) {
+            device_names.push_back(dev_name);
+            device_addrs.push_back(String('e') + String(ifr.ifr_hwaddr.sa_data, 6));
+              }
+              if (ioctl(query_fd, SIOCGIFADDR, &ifr) >= 0) {
+                device_names.push_back(dev_name);
+                device_addrs.push_back(String('i') + String((const char *)&((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr, 4));
+              }
+        }
+      }
+      begin = nl + 1;
     }
 
-    for (int i = 0; i < device_names.size(); i++)
-	if (device_names[i] == s && device_addrs[i][0] == type) {
-	    memcpy(store, device_addrs[i].data() + 1, len);
-	    return true;
-	}
+    close(query_fd);
+# elif defined(__APPLE__) || defined(__FreeBSD__)
+  // get list of interfaces (this code borrowed, with changes, from
+  // FreeBSD ifconfig(8))
+    int mib[8];
+    mib[0] = CTL_NET;
+    mib[1] = PF_ROUTE;
+    mib[2] = 0;
+    mib[3] = 0;   // address family
+    mib[4] = NET_RT_IFLIST;
+    mib[5] = 0;   // ifindex
+
+    size_t if_needed;
+    char* buf = 0;
+    while (!buf) {
+      if (sysctl(mib, 6, 0, &if_needed, 0, 0) < 0)
+        return false;
+      if ((buf = new char[if_needed]) == 0)
+        return false;
+      if (sysctl(mib, 6, buf, &if_needed, 0, 0) < 0) {
+        if (errno == ENOMEM) {
+          delete[] buf;
+          buf = 0;
+        } else
+          return false;
+      }
+    }
+
+    for (char* pos = buf; pos < buf + if_needed; ) {
+      // grab next if_msghdr
+      struct if_msghdr* ifm = reinterpret_cast<struct if_msghdr*>(pos);
+      if (ifm->ifm_type != RTM_IFINFO)
+        break;
+      int datalen = sizeof(struct if_data);
+#  if HAVE_IF_DATA_IFI_DATALEN
+      if (ifm->ifm_data.ifi_datalen)
+        datalen = ifm->ifm_data.ifi_datalen;
+#  endif
+
+      // extract interface name from 'ifm'
+      struct sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(pos + sizeof(struct if_msghdr) - sizeof(struct if_data) + datalen);
+      String name(sdl->sdl_data, sdl->sdl_nlen);
+
+      // Ethernet address is stored in 'sdl'
+      if (sdl->sdl_type == IFT_ETHER && sdl->sdl_alen == 6) {
+        device_names.push_back(name);
+        device_addrs.push_back(String('e') + String((const char*)(LLADDR(sdl)), 6));
+      }
+
+      // parse all addresses, looking for IP
+      pos += ifm->ifm_msglen;
+      while (pos < buf + if_needed) {
+        struct if_msghdr* nextifm = reinterpret_cast<struct if_msghdr*>(pos);
+        if (nextifm->ifm_type != RTM_NEWADDR)
+          break;
+
+        struct ifa_msghdr* ifam = reinterpret_cast<struct ifa_msghdr*>(nextifm);
+        char* sa_buf = reinterpret_cast<char*>(ifam + 1);
+        pos += nextifm->ifm_msglen;
+        for (int i = 0; i < RTAX_MAX && sa_buf < pos; i++) {
+          if (!(ifam->ifam_addrs & (1 << i)))
+            continue;
+          struct sockaddr* sa = reinterpret_cast<struct sockaddr*>(sa_buf);
+          if (sa->sa_len)
+            sa_buf += 1 + ((sa->sa_len - 1) | (sizeof(long) - 1));
+          else
+            sa_buf += sizeof(long);
+          if (i != RTAX_IFA)
+            continue;
+          if (sa->sa_family == AF_INET) {
+            device_names.push_back(name);
+            device_addrs.push_back(String('i') + String((const char *)&((struct sockaddr_in*)sa)->sin_addr, 4));
+          }
+        }
+      }
+    }
+
+    delete[] buf;
+# endif /* defined(__APPLE__) || defined(__FreeBSD__) */
+    read_time = time(0);
+  }
+
+  for (int i = 0; i < device_names.size(); i++)
+    if (device_names[i] == s && device_addrs[i][0] == type) {
+    memcpy(store, device_addrs[i].data() + 1, len);
+    return true;
+    }
 
     return false;
 }
@@ -300,167 +326,178 @@ query_netdevice(const String &s, unsigned char *store, int type, int len)
 
 
 bool
-BRNAddressInfo::query_ip(String s, unsigned char *store, const Element *e)
+    BRNAddressInfo::query_ip(String s, unsigned char *store, const Element *e)
 {
-    int colon = s.find_right(':');
-    if (colon >= 0 && s.substring(colon).lower() != ":ip"
-	&& s.substring(colon).lower() != ":ip4")
-	return false;
-    else if (colon >= 0)
-	s = s.substring(0, colon);
-  
-    if (NameInfo::query(NameInfo::T_IP_ADDR, e, s, store, 4))
-	return true;
+  int colon = s.find_right(':');
+  if (colon >= 0) {
+    String typestr = s.substring(colon).lower();
+    s = s.substring(0, colon);
+    if (typestr.equals(":ip", 3) || typestr.equals(":ip4", 4))
+      /* do nothing */;
+    else if (typestr.equals(":bcast", 6)) {
+      // ":bcast" type only supported for NameDB at the moment
+      uint32_t addr[2];
+      if (NameInfo::query(NameInfo::T_IP_PREFIX, e, s, &addr[0], 8)) {
+        addr[0] |= ~addr[1];
+        memcpy(store, addr, 4);
+        return true;
+      } else
+        return false;
+    } else
+      return false;
+  }
+
+  if (NameInfo::query(NameInfo::T_IP_ADDR, e, s, store, 4))
+    return true;
 
     // if it's a device name, return a primary IP address
 #if CLICK_LINUXMODULE
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 4, 0)
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) 
-    net_device *dev = dev_get_by_name(&init_net, s.c_str()); 
-# else 
-    net_device *dev = dev_get_by_name(s.c_str()); 
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+  net_device *dev = dev_get_by_name(&init_net, s.c_str());
+# else
+  net_device *dev = dev_get_by_name(s.c_str());
 # endif
-    if (dev) {
-	bool found = false;
-	in_device *in_dev = in_dev_get(dev);
-	if (in_dev) {
-	    for_primary_ifa(in_dev) {
-		memcpy(store, &ifa->ifa_local, 4);
-		found = true;
-		break;
-	    }
-	    endfor_ifa(in_dev);
-	    in_dev_put(in_dev);
-	}
-	dev_put(dev);
-	if (found)
-	    return true;
+  if (dev) {
+    bool found = false;
+    in_device *in_dev = in_dev_get(dev);
+    if (in_dev) {
+      for_primary_ifa(in_dev) {
+        memcpy(store, &ifa->ifa_local, 4);
+        found = true;
+        break;
+      }
+      endfor_ifa(in_dev);
+      in_dev_put(in_dev);
     }
-# endif
+    dev_put(dev);
+    if (found)
+      return true;
+  }
 #elif CLICK_NS
-    if (e) {
-	char tmp[255];
-	int r = simclick_sim_command(e->router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, s.c_str(), tmp, 255);
-	if (r >= 0 && tmp[0] && cp_ip_address(tmp, store))
-	    return true;
-    }
+  if (e) {
+    char tmp[255];
+    int r = simclick_sim_command(e->router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, s.c_str(), tmp, 255);
+    if (r >= 0 && tmp[0] && IPAddressArg().parse(tmp, *reinterpret_cast<IPAddress *>(store)))
+      return true;
+  }
 #elif CLICK_QUERY_NETDEVICE
-    if (query_netdevice(s, store, 'i', 4))
-	return true;
+  if (query_netdevice(s, store, 'i', 4))
+    return true;
 #endif
 
-    return false;
+  return false;
 }
 
 bool
-BRNAddressInfo::query_ip_prefix(String s, unsigned char *store,
-			     unsigned char *mask_store, const Element *e)
+    BRNAddressInfo::query_ip_prefix(String s, unsigned char *store,
+                                 unsigned char *mask_store, const Element *e)
 {
-    int colon = s.find_right(':');
-    if (colon >= 0 && s.substring(colon).lower() != ":ipnet"
-	&& s.substring(colon).lower() != ":ip4net")
-	return false;
-    else if (colon >= 0)
-	s = s.substring(0, colon);
+  int colon = s.find_right(':');
+  if (colon >= 0) {
+    String typestr = s.substring(colon).lower();
+    s = s.substring(0, colon);
+    if (!(typestr.equals(":net", 4) || typestr.equals(":ipnet", 6)
+          || typestr.equals(":ip4net", 7)))
+      return false;
+  }
 
-    uint8_t data[8];
-    if (NameInfo::query(NameInfo::T_IP_PREFIX, e, s, &data[0], 8)) {
-	memcpy(store, &data[0], 4);
-	memcpy(mask_store, &data[4], 4);
-	return true;
-    }
+  uint8_t data[8];
+  if (NameInfo::query(NameInfo::T_IP_PREFIX, e, s, &data[0], 8)) {
+    memcpy(store, &data[0], 4);
+    memcpy(mask_store, &data[4], 4);
+    return true;
+  }
 
-    return false;
+  return false;
 }
 
 
 #ifdef HAVE_IP6
 
 bool
-BRNAddressInfo::query_ip6(String s, unsigned char *store, const Element *e)
+    BRNAddressInfo::query_ip6(String s, unsigned char *store, const Element *e)
 {
-    int colon = s.find_right(':');
-    if (colon >= 0 && s.substring(colon).lower() != ":ip6")
-	return false;
-    else if (colon >= 0)
-	s = s.substring(0, colon);
+  int colon = s.find_right(':');
+  if (colon >= 0 && s.substring(colon).lower() != ":ip6")
+    return false;
+  else if (colon >= 0)
+    s = s.substring(0, colon);
 
-    return NameInfo::query(NameInfo::T_IP6_ADDR, e, s, store, 16);
+  return NameInfo::query(NameInfo::T_IP6_ADDR, e, s, store, 16);
 }
 
 bool
-BRNAddressInfo::query_ip6_prefix(String s, unsigned char *store,
-			      int *bits_store, const Element *e)
+    BRNAddressInfo::query_ip6_prefix(String s, unsigned char *store,
+                                  int *bits_store, const Element *e)
 {
-    int colon = s.find_right(':');
-    if (colon >= 0 && s.substring(colon).lower() != ":ip6net")
-	return false;
-    else if (colon >= 0)
-	s = s.substring(0, colon);
-
-    uint8_t data[16 + sizeof(int)];
-    if (NameInfo::query(NameInfo::T_IP6_PREFIX, e, s, data, 16 + sizeof(int))) {
-	memcpy(store, &data[0], 16);
-	*bits_store = *(int *) &data[16];
-	return true;
-    }
-
+  int colon = s.find_right(':');
+  if (colon >= 0 && s.substring(colon).lower() != ":ip6net")
     return false;
+  else if (colon >= 0)
+    s = s.substring(0, colon);
+
+  struct {
+    unsigned char c[16];
+    int p;
+  } data;
+  if (NameInfo::query(NameInfo::T_IP6_PREFIX, e, s, &data, sizeof(data))) {
+    memcpy(store, data.c, 16);
+    *bits_store = data.p;
+    return true;
+  }
+
+  return false;
 }
 
 #endif /* HAVE_IP6 */
 
 
 bool
-BRNAddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
+    BRNAddressInfo::query_ethernet(String s, unsigned char *store, const Element *e)
 {
-    int colon = s.find_right(':');
-    if (colon >= 0 && s.substring(colon).lower() != ":eth"
-	&& s.substring(colon).lower() != ":ethernet")
-	return false;
-    else if (colon >= 0)
-	s = s.substring(0, colon);
+  int colon = s.find_right(':');
+  if (colon >= 0 && s.substring(colon).lower() != ":eth"
+      && s.substring(colon).lower() != ":ethernet")
+    return false;
+  else if (colon >= 0)
+    s = s.substring(0, colon);
 
-    if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, e, s, store, 6))
-	return true;
+  if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, e, s, store, 6))
+    return true;
 
     // if it's a device name, return its Ethernet address
 #if CLICK_LINUXMODULE
     // in the Linux kernel, just look at the device list
-# if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 0)
-#  define dev_put(dev) /* nada */
+# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
+  net_device *dev = dev_get_by_name(&init_net, s.c_str());
+# else
+  net_device *dev = dev_get_by_name(s.c_str());
 # endif
-# if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24) 
-    net_device *dev = dev_get_by_name(&init_net, s.c_str()); 
-# else 
-    net_device *dev = dev_get_by_name(s.c_str()); 
-# endif
-    if (dev && (dev->type == ARPHRD_ETHER ||
-                dev->type == ARPHRD_80211 ||
-                dev->type == ARPHRD_80211_PRISM ||
-                dev->type == ARPHRD_80211_RADIOTAP ||
-                dev->type == ARPHRD_80211_ATHDESC ||
-                dev->type == ARPHRD_80211_ATHDESCEXT )) {
-	memcpy(store, dev->dev_addr, 6);
-	dev_put(dev);
-	return true;
-    } else if (dev)
-	dev_put(dev);
+  if (dev && (ifr.ifr_hwaddr.sa_family == ARPHRD_ETHER ||
+              ifr.ifr_hwaddr.sa_family == ARPHRD_80211 ||
+              ifr.ifr_hwaddr.sa_family == ARPHRD_80211_PRISM ||
+              ifr.ifr_hwaddr.sa_family == ARPHRD_80211_RADIOTAP ||
+              ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESC ||
+              ifr.ifr_hwaddr.sa_family == ARPHRD_80211_ATHDESCEXT)) {
+    memcpy(store, dev->dev_addr, 6);
+    dev_put(dev);
+    return true;
+  } else if (dev)
+    dev_put(dev);
 #elif CLICK_NS
     if (e) {
-	char tmp[255];
-	int r = simclick_sim_command(e->router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, s.c_str(), tmp, 255);
-	if (r >= 0 && tmp[0] && cp_ethernet_address(tmp, store))
-	    return true;
+      char tmp[255];
+      int r = simclick_sim_command(e->router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, s.c_str(), tmp, 255);
+      if (r >= 0 && tmp[0] && EtherAddressArg().parse(tmp, store))
+        return true;
     }
 #elif CLICK_QUERY_NETDEVICE
     if (query_netdevice(s, store, 'e', 6))
-	return true;
+      return true;
 #endif
-    
+
     return false;
 }
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRNAddressInfo)
-
