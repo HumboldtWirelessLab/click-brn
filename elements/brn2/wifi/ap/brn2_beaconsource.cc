@@ -176,8 +176,8 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
   memcpy(w->i_addr2, bssid.data(), 6);
   memcpy(w->i_addr3, bssid.data(), 6);
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr;
 

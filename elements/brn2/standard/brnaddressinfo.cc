@@ -129,6 +129,8 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
       int my_types = 0;
       if (EtherAddressArg().parse(parts[j], ether, this))
         my_types |= t_eth;
+      else if (query_ethernet(parts[j], ether, this))
+        my_types |= t_eth;
       if (IPAddressArg().parse(parts[j], ip4[0], this))
         my_types |= t_ip4;
       else if (IPPrefixArg().parse(parts[j], ip4[0], ip4[1])) {

@@ -66,7 +66,7 @@ BRN2PrintPacketStat::simple_action(Packet *p)
   struct click_wifi_extra *ceh = (struct click_wifi_extra *) p->anno();
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
 //  int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
-//  int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
+//  int duration = cpu_to_le16(wh->i_dur);
   EtherAddress src;
   EtherAddress dst;
   EtherAddress bssid;
