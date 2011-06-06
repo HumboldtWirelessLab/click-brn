@@ -700,12 +700,12 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
 
     small_stats->std_rssi = isqrt32((small_stats->std_rssi/(int32_t)small_stats->rxpackets) - (small_stats->avg_rssi*small_stats->avg_rssi));
 
-    small_stats->avg_ctl_rssi[0] /= small_stats->rxpackets;
-    small_stats->avg_ctl_rssi[1] /= small_stats->rxpackets;
-    small_stats->avg_ctl_rssi[2] /= small_stats->rxpackets;
-    small_stats->avg_ext_rssi[0] /= small_stats->rxpackets;
-    small_stats->avg_ext_rssi[1] /= small_stats->rxpackets;
-    small_stats->avg_ext_rssi[2] /= small_stats->rxpackets;
+    small_stats->avg_ctl_rssi[0] /= (int32_t)small_stats->rxpackets;
+    small_stats->avg_ctl_rssi[1] /= (int32_t)small_stats->rxpackets;
+    small_stats->avg_ctl_rssi[2] /= (int32_t)small_stats->rxpackets;
+    small_stats->avg_ext_rssi[0] /= (int32_t)small_stats->rxpackets;
+    small_stats->avg_ext_rssi[1] /= (int32_t)small_stats->rxpackets;
+    small_stats->avg_ext_rssi[2] /= (int32_t)small_stats->rxpackets;
 
   } else {
     small_stats->avg_noise = -100; // default value

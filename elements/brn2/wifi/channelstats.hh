@@ -123,8 +123,8 @@ struct airtime_stats {
   int32_t std_rssi;
   int32_t no_sources;
 
-  uint32_t avg_ctl_rssi[3];
-  uint32_t avg_ext_rssi[3];
+  int32_t avg_ctl_rssi[3];
+  int32_t avg_ext_rssi[3];
 
 };
 
@@ -273,12 +273,12 @@ class ChannelStats : public BRNElement {
         if ( _pkt_count != 0 ) {
           _avg_rssi = avg_rssi();
           _std_rssi = std_rssi();
-          _avg_ctl_rssi[0] /= _pkt_count;
-          _avg_ctl_rssi[1] /= _pkt_count;
-          _avg_ctl_rssi[2] /= _pkt_count;
-          _avg_ext_rssi[0] /= _pkt_count;
-          _avg_ext_rssi[1] /= _pkt_count;
-          _avg_ext_rssi[2] /= _pkt_count;
+          _avg_ctl_rssi[0] /= (int32_t)_pkt_count;
+          _avg_ctl_rssi[1] /= (int32_t)_pkt_count;
+          _avg_ctl_rssi[2] /= (int32_t)_pkt_count;
+          _avg_ext_rssi[0] /= (int32_t)_pkt_count;
+          _avg_ext_rssi[1] /= (int32_t)_pkt_count;
+          _avg_ext_rssi[2] /= (int32_t)_pkt_count;
         }
 
         _calc_finished = true;
