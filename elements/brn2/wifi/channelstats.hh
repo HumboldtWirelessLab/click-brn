@@ -117,6 +117,11 @@ struct airtime_stats {
   uint32_t hw_tx;
   uint32_t hw_count;
 
+  uint32_t hw_cycles;
+  uint32_t hw_busy_cycles;
+  uint32_t hw_rx_cycles;
+  uint32_t hw_tx_cycles;
+
   int32_t avg_noise;
   int32_t std_noise;
   int32_t avg_rssi;
@@ -160,6 +165,11 @@ class ChannelStats : public BRNElement {
         uint32_t _busy;
         uint32_t _rx;
         uint32_t _tx;
+
+        uint32_t _cycles;
+        uint32_t _busy_cycles;
+        uint32_t _rx_cycles;
+        uint32_t _tx_cycles;
     };
 
     class SrcInfo {
@@ -321,7 +331,8 @@ class ChannelStats : public BRNElement {
 
     String stats_handler(int mode);
 
-    void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx);
+    void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx,
+                   uint32_t _cycles = 0, uint32_t _busy_cycles = 0, uint32_t _rx_cycles = 0, uint32_t _tx_cycles = 0);
 
     void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);

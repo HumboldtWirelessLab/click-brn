@@ -413,19 +413,22 @@ ChannelStats::clear_old()
 /************* HW BASED STATS ****************/
 /*********************************************/
 void
-ChannelStats::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx) {
+ChannelStats::addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx, uint32_t cycles, uint32_t busy_cycles, uint32_t rx_cycles, uint32_t tx_cycles) {
   PacketInfoHW *new_pi = new PacketInfoHW();
   new_pi->_time = *time;
 
-  if ( _packet_list_hw.size() == 0 ) {
-    new_pi->_busy = 1;
-    new_pi->_rx = 1;
-    new_pi->_tx = 1;
+  if ( _packet_list_hw.size() == 0 ) { //we don't care about the first hw info, since there is no time ref point
+    new_pi->_busy = new_pi->_rx = new_pi->_tx = 0;
+    new_pi->_cycles = new_pi->_busy_cycles = new_pi->_rx_cycles = new_pi->_tx_cycles = 0;
   } else {
     uint32_t diff = (new_pi->_time - _packet_list_hw[_packet_list_hw.size()-1]->_time).usecval();
     new_pi->_busy = (diff * busy) / 100;
     new_pi->_rx = (diff * rx) / 100;
     new_pi->_tx = (diff * tx) / 100;
+    new_pi->_cycles = cycles;
+    new_pi->_busy_cycles = busy_cycles;
+    new_pi->_rx_cycles = rx_cycles;
+    new_pi->_tx_cycles = tx_cycles;
   }
 
   _packet_list_hw.push_back(new_pi);
@@ -465,18 +468,27 @@ ChannelStats::readProcHandler()
     Timestamp now = Timestamp::now();
 
     int busy, rx, tx;
+    uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
     cp_integer(args[1],&busy);
     cp_integer(args[3],&rx);
     cp_integer(args[5],&tx);
+    cp_integer(args[7],&hw_cycles);
+    cp_integer(args[9],&busy_cycles);
+    cp_integer(args[11],&rx_cycles);
+    cp_integer(args[13],&tx_cycles);
 
     if ( _enable_full_stats ) {
-      addHWStat(&now, busy, rx, tx);
+      addHWStat(&now, busy, rx, tx, hw_cycles, busy_cycles, rx_cycles, tx_cycles);
     } else {
       _small_stats[_current_small_stats].last_hw = now;
       _small_stats[_current_small_stats].hw_busy += busy;
       _small_stats[_current_small_stats].hw_rx += rx;
       _small_stats[_current_small_stats].hw_tx += tx;
       _small_stats[_current_small_stats].hw_count++;
+      _small_stats[_current_small_stats].hw_cycles += hw_cycles;
+      _small_stats[_current_small_stats].hw_busy_cycles += busy_cycles;
+      _small_stats[_current_small_stats].hw_rx_cycles += rx_cycles;
+      _small_stats[_current_small_stats].hw_tx_cycles += tx_cycles;
     }
   }
 }
@@ -618,6 +630,10 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
     cstats->hw_busy += pi_hw->_busy;
     cstats->hw_rx += pi_hw->_rx;
     cstats->hw_tx += pi_hw->_tx;
+    cstats->hw_cycles += pi_hw->_cycles;
+    cstats->hw_busy_cycles += pi_hw->_busy_cycles;
+    cstats->hw_rx_cycles += pi_hw->_rx_cycles;
+    cstats->hw_tx_cycles += pi_hw->_tx_cycles;
   }
 
   cstats->hw_busy /= diff_time;
@@ -807,9 +823,11 @@ ChannelStats::stats_handler(int mode)
       sa << "\" channel=\"";
       if ( _device ) sa << (int)(_device->getChannel());
       else           sa << _channel;
-      sa << "\" />";
 
-      sa << "\n\t<neighbourstats>\n";
+      sa << "\" />\n\t<perf_counter cycles=\"" << stats->hw_cycles << "\" busy_cycles=\"" << stats->hw_busy_cycles;
+      sa << "\" rx_cycles=\"" << stats->hw_rx_cycles << "\" tx_cycles=\"" << stats->hw_tx_cycles;
+
+      sa << "\" />\n\t<neighbourstats>\n";
       for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
         SrcInfo src = iter.value();
         EtherAddress ea = iter.key();
