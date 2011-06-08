@@ -42,7 +42,7 @@ AlarmingState::AlarmingState():
   _retry_limit(DEFAULT_RETRY_LIMIT),
   _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
   _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
-  _triggered_alarm(false)
+  _triggered_alarm(STATE_NO_TRIGGER_NO_ALARM)
 {
   BRNElement::init();
 }
@@ -57,6 +57,7 @@ AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
   bool _low_hop_forward = false;
 
   if (cp_va_kparse(conf, this, errh,
+	  "GPS", cpkP+cpkM, cpElement, &_gps,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "NHOPNEIGHBOURINFO", cpkP, cpElement, &_nhopn_info,
       "HOPLIMIT", cpkP, cpInteger, &_hop_limit,
@@ -69,6 +70,8 @@ AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
        return -1;
 
   if (_low_hop_forward) _forward_flags |= UPDATE_ALARM_UPDATE_HOPS;
+  _position = GPSPosition(0, 0, 0);
+
 
   return 0;
 }
@@ -223,12 +226,14 @@ AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, in
 void
 AlarmingState::trigger_alarm()
 {
-  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && !_triggered_alarm ) {
+  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && _triggered_alarm == STATE_NO_TRIGGER_NO_ALARM ) {
     click_chatter("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
-    _triggered_alarm = true;
+    _triggered_alarm = STATE_YES_TRIGGER_OWN_ALARM;
     _triggered_alarm_time = Timestamp::now();
   }
 }
+
+
 
 String
 AlarmingState::get_state()
@@ -238,8 +243,8 @@ AlarmingState::get_state()
   update_neighbours();
 
   sa << "<alarmingstate id='"<< BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' size='" << _alarm_nodes.size() << "' ";
-  sa << "triggered_alarm='" << _triggered_alarm << "' triggered_alarm_time='";
-  if ( _triggered_alarm )
+  sa << "triggered_alarm='" << (int)_triggered_alarm << "' triggered_alarm_time='";
+  if ( _triggered_alarm >= STATE_YES_TRIGGER_OWN_ALARM )
     sa << _triggered_alarm_time.unparse() << "' >\n";
   else
     sa << "0.0' >\n";
@@ -278,7 +283,41 @@ AlarmingState::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("state", read_state_param, 0);
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(AlarmingState)
