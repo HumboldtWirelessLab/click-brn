@@ -7,7 +7,7 @@
 
 #include "elements/brn2/brnelement.hh"
 
-#include "gps.hh"
+#include "gps_position.hh"
 
 CLICK_DECLS
 
