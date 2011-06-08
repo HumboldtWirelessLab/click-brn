@@ -92,6 +92,7 @@ class GPSPosition {
   }
 
   void setCC(int x, int y, int z) {
+	 click_chatter("set loc to coordinates: %d, %d, %d", x, y, z);
     _z=z; _x=x; _y=y;
   }
 
@@ -146,6 +147,22 @@ class GPSPosition {
   {
     _speed.fromString(speed);
   }
+
+  String unparse() {
+	  StringAccum sa;
+	  sa << "LAT: " << _latitude.unparse() << " ";
+	  sa << "LONG: " << _longitude.unparse() << " ";
+	  sa << "ALT: " << _altitude.unparse() << " ";
+	  sa << "SPEED: " << _speed.unparse();
+	  return sa.take_string().c_str();
+  }
+
+  String unparse_coord() {
+	  StringAccum sa;
+      sa << _x << " " << _y << " " << _z;
+	  return sa.take_string().c_str();
+  }
+
 };
 
 class GPS : public BRNElement {
