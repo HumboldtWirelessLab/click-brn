@@ -88,7 +88,7 @@ NHopNeighbouringInfoEews::is_neighbour(EtherAddress *ea)
 }
 
 void
-NHopNeighbouringInfoEews::add_neighbour(EtherAddress *ea, uint8_t hops, uint8_t hop_limit, uint32_t no_neighbours, GPSPosition *gpspos, uint8_t state)
+NHopNeighbouringInfoEews::add_neighbour(EtherAddress *ea, uint8_t hops, uint8_t /*hop_limit*/, uint32_t /*no_neighbours*/, GPSPosition *gpspos, uint8_t state)
 {
   NeighbourInfoEews *info = _ntable.findp(*ea);
   if ( info == NULL ) {
