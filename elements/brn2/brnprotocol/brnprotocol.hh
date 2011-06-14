@@ -57,6 +57,7 @@ union addr {
 #define BRN_PORT_EVENTHANDLER              4 /*0x04*/
 #define BRN_PORT_ALARMINGPROTOCOL          5 /*0x05*/
 #define BRN_PORT_COMP_ALARMINGPROTOCOL     6 /*0x06*/
+#define BRN_PORT_EEWSPROTOCOL              7 /*0x07*/
 /*Routing*/
 #define BRN_PORT_DSR                      10 /*0x0a*/
 #define BRN_PORT_BCASTROUTING             11 /*0x0b*/

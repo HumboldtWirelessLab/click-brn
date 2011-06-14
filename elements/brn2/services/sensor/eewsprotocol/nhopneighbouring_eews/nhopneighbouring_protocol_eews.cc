@@ -39,9 +39,9 @@ NHopNeighbouringProtocolEews::new_ping(const EtherAddress *src, uint32_t no_neig
   nhopn_h->hop_limit = hop_limit;
 
 
-  nhopn_h->latitude = htonl(gpspos->_latitude.getPacketInt());
-  nhopn_h->longitude = htonl(gpspos->_longitude.getPacketInt());;
-  nhopn_h->altitude = htonl(gpspos->_altitude.getPacketInt());;
+  nhopn_h->x = htonl(gpspos->_x);
+  nhopn_h->y = htonl(gpspos->_y);
+  nhopn_h->z = htonl(gpspos->_z);
   nhopn_h->state = state;
 
   WritablePacket *brn_p = BRNProtocol::add_brn_header(nhop_ping_packet, BRN_PORT_NHOPNEIGHBOURING,
@@ -63,7 +63,8 @@ NHopNeighbouringProtocolEews::unpack_ping(Packet *p, EtherAddress *src, uint32_t
   *src = EtherAddress(ether->ether_shost);
   *hops = *hop_limit - BRNPacketAnno::ttl_anno(p);
 
-  *gpspos = GPSPosition(ntohl(nhopn_h->latitude), ntohl(nhopn_h->longitude), ntohl(nhopn_h->altitude));
+  *gpspos = GPSPosition();
+  gpspos->setCC((int) ntohl(nhopn_h->x),(int) ntohl(nhopn_h->y), (int) ntohl(nhopn_h->z));
   *state = nhopn_h->state;
 
 

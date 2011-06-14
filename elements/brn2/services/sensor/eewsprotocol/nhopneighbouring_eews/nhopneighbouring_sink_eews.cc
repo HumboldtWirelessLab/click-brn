@@ -32,33 +32,31 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "elements/brn2/services/sensor/gps/gps.hh"
+
+#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
+
 #include "nhopneighbouring_protocol_eews.hh"
-#include "nhopneighbouring_ping_eews.hh"
+#include "nhopneighbouring_sink_eews.hh"
+
+
 
 CLICK_DECLS
 
-NHopNeighbouringPingEews::NHopNeighbouringPingEews()
-  :_timer(this),
-   _interval(DEFAULT_NHOPNEIGHBOURING_PING_EEWS_INTERVAL),
-   _active(true)
+NHopNeighbouringSinkEews::NHopNeighbouringSinkEews()
 {
   BRNElement::init();
 }
 
-NHopNeighbouringPingEews::~NHopNeighbouringPingEews()
+NHopNeighbouringSinkEews::~NHopNeighbouringSinkEews()
 {
 }
 
 int
-NHopNeighbouringPingEews::configure(Vector<String> &conf, ErrorHandler* errh)
+NHopNeighbouringSinkEews::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
-	  "ALARMINGSTATE", cpkP+cpkM , cpElement, &_as,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
-      "NHOPN_INFO", cpkP+cpkM, cpElement, &nhop_info,
-      "INTERVAL", cpkP, cpInteger, &_interval,
-      "ACTIVE", cpkP, cpBool, &_active,
+      "NHOPN_INFO", cpkP, cpElement, &nhop_info,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -67,49 +65,46 @@ NHopNeighbouringPingEews::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 int
-NHopNeighbouringPingEews::initialize(ErrorHandler *)
+NHopNeighbouringSinkEews::initialize(ErrorHandler *)
 {
-  _timer.initialize(this);
-
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
-
-  _timer.schedule_after_msec( _interval + ( click_random() % _interval ));
-
   return 0;
 }
 
+/**
+ * 
+ * @param  
+ * @param packet 
+ */
 void
-NHopNeighbouringPingEews::run_timer(Timer */*t*/)
+NHopNeighbouringSinkEews::push( int /*port*/, Packet *packet )
 {
-  send_ping();
-  _timer.schedule_after_msec(_interval);
+  uint8_t hops;
+  uint8_t hop_limit;
+  uint32_t no_neighbours;
+  EtherAddress src;
+  GPSPosition gpspos;
+  uint8_t state;
+
+  BRN_DEBUG("Received Packet");
+  NHopNeighbouringProtocolEews::unpack_ping(packet, &src, &no_neighbours, &hop_limit, &hops, &gpspos, &state);
+  BRN_DEBUG("Received ping Packet by eth:%s loc:%s state:%d num-neighbors: %d hop-limit: %d hops: %d", src.unparse().c_str(), gpspos.unparse_coord().c_str(), state, no_neighbours, hop_limit, hops);
+  //click_chatter("Received Packet by eth:%s loc:%s state:%d", src.unparse().c_str(), gpspos.unparse().c_str(), state );
+
+
+
+  nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours, &gpspos, state);
 }
 
-void
-NHopNeighbouringPingEews::send_ping()
-{
-	const EtherAddress *src = _node_identity->getMasterAddress();
-	GPSPosition *gpspos =  _as->getPosition();
-	uint8_t state =  _as->getState();
-
-	WritablePacket *p = NHopNeighbouringProtocolEews::new_ping(src, nhop_info->count_neighbours(),
-                                                         nhop_info->get_hop_limit(), gpspos, state);
-  BRN_DEBUG("Create ping Packet by eth:%s loc:%s state:%d", src->unparse().c_str(), gpspos->unparse_coord().c_str(), state );
-
-  if (p) {
-    output(0).push(p);
-  }
-}
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
 void
-NHopNeighbouringPingEews::add_handlers()
+NHopNeighbouringSinkEews::add_handlers()
 {
   BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(NHopNeighbouringPingEews)
+EXPORT_ELEMENT(NHopNeighbouringSinkEews)

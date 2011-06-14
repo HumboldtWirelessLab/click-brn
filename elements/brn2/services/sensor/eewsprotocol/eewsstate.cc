@@ -19,7 +19,7 @@
  */
 
 /*
- * AlarmingState.{cc,hh}
+ * EewsState.{cc,hh}
  */
 
 #include <click/config.h>
@@ -30,33 +30,34 @@
 #include <click/timer.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
-#include "alarmingstate.hh"
-#include "alarmingprotocol.hh"
+#include "eewsstate.hh"
+#include "eewsprotocol.hh"
 
 CLICK_DECLS
 
-AlarmingState::AlarmingState():
+EewsState::EewsState():
   _hop_limit(DEFAULT_HOP_LIMT),
   _forward_flags(UPDATE_ALARM_NEW_NODE|UPDATE_ALARM_NEW_ID),
   _lt(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
   _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
   _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
-  _triggered_alarm(false)
+  _triggered_alarm(STATE_DEFAULT)
 {
   BRNElement::init();
 }
 
-AlarmingState::~AlarmingState()
+EewsState::~EewsState()
 {
 }
 
 int
-AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
+EewsState::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   bool _low_hop_forward = false;
 
   if (cp_va_kparse(conf, this, errh,
+	  "GPS", cpkP+cpkM, cpElement, &_gps,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "NHOPNEIGHBOURINFO", cpkP, cpElement, &_nhopn_info,
       "HOPLIMIT", cpkP, cpInteger, &_hop_limit,
@@ -69,18 +70,20 @@ AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
        return -1;
 
   if (_low_hop_forward) _forward_flags |= UPDATE_ALARM_UPDATE_HOPS;
+  _position = GPSPosition(0, 0, 0);
+
 
   return 0;
 }
 
 int
-AlarmingState::initialize(ErrorHandler *)
+EewsState::initialize(ErrorHandler *)
 {
   return 0;
 }
 
-AlarmingState::AlarmNode *
-AlarmingState::get_node_by_address(uint8_t type, const EtherAddress *ea)
+EewsState::AlarmNode *
+EewsState::get_node_by_address(uint8_t type, const EtherAddress *ea)
 {
   for( int i = 0; i < _alarm_nodes.size(); i++ )
     if ( (_alarm_nodes[i]._ea == *ea) && ( _alarm_nodes[i]._type == type ) ) return &_alarm_nodes[i];
@@ -89,7 +92,7 @@ AlarmingState::get_node_by_address(uint8_t type, const EtherAddress *ea)
 }
 
 uint32_t
-AlarmingState::update_alarm(int type, const EtherAddress *ea, int id, int hops, const EtherAddress *fwd)
+EewsState::update_alarm(int type, const EtherAddress *ea, int id, int hops, const EtherAddress *fwd)
 {
   uint32_t result = 0;
   AlarmNode *an = get_node_by_address(type, ea);
@@ -147,7 +150,7 @@ AlarmingState::update_alarm(int type, const EtherAddress *ea, int id, int hops, 
 }
 
 void
-AlarmingState::update_neighbours()
+EewsState::update_neighbours()
 {
   Vector<EtherAddress> neighbors;
   int fwd_i;
@@ -185,7 +188,7 @@ AlarmingState::update_neighbours()
 
 
 void
-AlarmingState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *types)
+EewsState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *types)
 {
   int type, t_i;
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
@@ -201,7 +204,7 @@ AlarmingState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *ty
 }
 
 void
-AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int /*max_hops*/, int type, Vector<AlarmNode*> *nodes)
+EewsState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int /*max_hops*/, int type, Vector<AlarmNode*> *nodes)
 {
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
     AlarmNode *an = &(_alarm_nodes[an_i]);
@@ -221,33 +224,50 @@ AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, in
  * check, whether a alarm should be triggerd an trigger it
  */
 void
-AlarmingState::trigger_alarm()
+EewsState::trigger_alarm()
 {
-  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && !_triggered_alarm ) {
-    click_chatter("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
-    _triggered_alarm = true;
+  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && not(_triggered_alarm & STATE_HAVE_ALARM) ) {
+    BRN_DEBUG("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
+    _triggered_alarm |= STATE_HAVE_ALARM;
     _triggered_alarm_time = Timestamp::now();
   }
 }
 
+void
+EewsState::check_neighbor_alarm(uint8_t state, const EtherAddress *ea)
+{
+  //BRN_DEBUG("check if alarm from neighbor (%s) with state %d,  update from %d to something else?", ea->unparse().c_str(), state, _triggered_alarm);
+  if (state & STATE_HAVE_ALARM) {
+    if (not(_triggered_alarm & STATE_HAVE_NEIGBOR_ALARM)) {
+      BRN_DEBUG("ALARM from neighbor (%s) with state %d,  update from %d to NEIGHBOR_ALARM", ea->unparse().c_str(), state, _triggered_alarm);
+      _triggered_alarm |= STATE_HAVE_NEIGBOR_ALARM;
+    }
+  }
+}
 
+void
+EewsState::update_me(uint8_t state)
+{
+  return;
+  //if (_triggered_alarm == STATE_)
+}
 
 String
-AlarmingState::get_state()
+EewsState::get_state()
 {
   StringAccum sa;
 
   update_neighbours();
 
-  sa << "<alarmingstate id='"<< BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' size='" << _alarm_nodes.size() << "' ";
-  sa << "triggered_alarm='" << _triggered_alarm << "' triggered_alarm_time='";
-  if ( _triggered_alarm )
+  sa << "<eewsstate id='"<< BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' size='" << _alarm_nodes.size() << "' ";
+  sa << "triggered_alarm='" << (int)_triggered_alarm << "' triggered_alarm_time='";
+  if ( _triggered_alarm >= STATE_HAVE_ALARM )
     sa << _triggered_alarm_time.unparse() << "' >\n";
   else
     sa << "0.0' >\n";
 
   for( int i = 0; i < _alarm_nodes.size(); i++ ) {
-    sa << "\t<alarmingnode node='" << _alarm_nodes[i]._ea.unparse().c_str() << "' ";
+    sa << "\t<eewsnode node='" << _alarm_nodes[i]._ea.unparse().c_str() << "' ";
     sa << "hops='" << (int)_alarm_nodes[i]._info[0]._hops << "' ";
     sa << "no_alarm='" << _alarm_nodes[i]._info.size() << "' >\n";
 
@@ -255,10 +275,10 @@ AlarmingState::get_state()
       sa << "\t\t<alarm fract_fwd='" << _alarm_nodes[i]._info[j]._fract_fwd << "' ";
       sa << "missing_fwd='" << _alarm_nodes[i]._info[j]._fwd_missing << "' />\n";
     }
-    sa << "\t</alarmingnode>\n";
+    sa << "\t</eewsnode>\n";
   }
 
-  sa << "</alarmingstate>";
+  sa << "</eewsstate>";
 
   return sa.take_string();
 }
@@ -271,11 +291,11 @@ AlarmingState::get_state()
 static String
 read_state_param(Element *e, void *)
 {
-  return ((AlarmingState *)e)->get_state();
+  return ((EewsState *)e)->get_state();
 }
 
 void
-AlarmingState::add_handlers()
+EewsState::add_handlers()
 {
   BRNElement::add_handlers();
 
@@ -293,5 +313,28 @@ AlarmingState::add_handlers()
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CLICK_ENDDECLS
-EXPORT_ELEMENT(AlarmingState)
+EXPORT_ELEMENT(EewsState)

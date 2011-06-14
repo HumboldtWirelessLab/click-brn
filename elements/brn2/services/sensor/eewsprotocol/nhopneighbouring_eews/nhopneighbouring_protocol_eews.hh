@@ -25,7 +25,7 @@
 
 #include "elements/brn2/services/sensor/gps/gps.hh"
 
-#include "elements/brn2/services/sensor/alarmingprotocol/alarmingstate.hh"
+#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
 
 #include <click/element.hh>
 
@@ -35,9 +35,9 @@ CLICK_SIZE_PACKED_STRUCTURE(
 struct nhopn_header {,
   uint32_t no_neighbours;
   uint8_t hop_limit;
-  uint32_t latitude;
-  uint32_t longitude;
-  uint32_t altitude;
+  uint32_t x;
+  uint32_t y;
+  uint32_t z;
   uint8_t state;
 });
 

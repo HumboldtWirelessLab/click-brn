@@ -12,7 +12,7 @@
 
 #include "elements/brn2/services/sensor/gps/gps.hh"
 
-#include "elements/brn2/services/sensor/alarmingprotocol/alarmingstate.hh"
+#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
 
 #define DEFAULT_HOP_LIMIT       5
 
@@ -43,7 +43,7 @@ class NHopNeighbouringInfoEews : public BRNElement {
       _hops = 0;
       _last_seen = Timestamp::now();
       _gpspos = GPSPosition(0, 0, 0);
-      _state = STATE_NO_TRIGGER_NO_ALARM;
+      _state = STATE_DEFAULT;
     }
 
 //    NeighbourInfoEews(const EtherAddress *ea, uint32_t hops) {
@@ -102,7 +102,7 @@ class NHopNeighbouringInfoEews : public BRNElement {
 
   uint32_t _hop_limit;
 
-  AlarmingState *_as;
+  EewsState *_as;
 
 
 

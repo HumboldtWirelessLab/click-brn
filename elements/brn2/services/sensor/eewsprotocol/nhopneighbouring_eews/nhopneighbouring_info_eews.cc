@@ -48,7 +48,7 @@ int
 NHopNeighbouringInfoEews::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-	      "ALARMINGSTATE", cpkP+cpkM , cpElement, &_as,
+	      "EEWSSTATE", cpkP+cpkM , cpElement, &_as,
 	      "HOPLIMIT", cpkP, cpInteger, &_hop_limit,
 	      "DEBUG", cpkP , cpInteger, &_debug,
 	      cpEnd) < 0)
@@ -88,7 +88,7 @@ NHopNeighbouringInfoEews::is_neighbour(EtherAddress *ea)
 }
 
 void
-NHopNeighbouringInfoEews::add_neighbour(EtherAddress *ea, uint8_t hops, uint8_t /*hop_limit*/, uint32_t /*no_neighbours*/, GPSPosition *gpspos, uint8_t state)
+NHopNeighbouringInfoEews::add_neighbour(EtherAddress *ea, uint8_t hops, uint8_t hop_limit, uint32_t no_neighbours, GPSPosition *gpspos, uint8_t state)
 {
   NeighbourInfoEews *info = _ntable.findp(*ea);
   if ( info == NULL ) {
@@ -99,6 +99,7 @@ NHopNeighbouringInfoEews::add_neighbour(EtherAddress *ea, uint8_t hops, uint8_t 
 void
 NHopNeighbouringInfoEews::update_neighbour(EtherAddress *ea, uint8_t hops, uint8_t hop_limit, uint32_t no_neighbours, GPSPosition *gpspos, uint8_t state)
 {
+  // update_neighbor_table
   NeighbourInfoEews *info = _ntable.findp(*ea);
   if ( info == NULL ) {
     add_neighbour(ea,hops,hop_limit, no_neighbours, gpspos, state);
@@ -106,7 +107,15 @@ NHopNeighbouringInfoEews::update_neighbour(EtherAddress *ea, uint8_t hops, uint8
 // FIXME: why only for less hops
   if ( info->_hops > hops ) {
       info->update(hops, Timestamp::now(), gpspos, state);
-}
+  }
+
+  //update_trigger_table
+  // TODO
+
+  // 2 hop fallback
+  _as->check_neighbor_alarm(state, ea);
+
+
   }
 }
 

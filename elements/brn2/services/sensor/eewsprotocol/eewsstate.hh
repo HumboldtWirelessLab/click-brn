@@ -1,5 +1,5 @@
-#ifndef ALARMINGSTATEELEMENT_HH
-#define ALARMINGSTATEELEMENT_HH
+#ifndef EEWSSTATEELEMENT_HH
+#define EEWSSTATEELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
@@ -10,6 +10,8 @@
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/topology/nhopneighbouring/nhopneighbouring_info.hh"
 
+#include "elements/brn2/services/sensor/gps/gps.hh"
+
 #define UPDATE_ALARM_NEW_NODE       1
 #define UPDATE_ALARM_NEW_ID         2
 #define UPDATE_ALARM_UPDATE_HOPS    4
@@ -19,10 +21,32 @@
 
 #define DEFAULT_MIN_NEIGHBOUR_FRACTION 100
 
+#define STATE_NO_TRIGGER_NO_ALARM			0	/* idle */
+#define STATE_YES_TRIGGER_NO_ALARM			1	/* false alarm or waiting for other nodes */
+#define STATE_YES_TRIGGER_OWN_ALARM			2	/* P-Wave arrived, and also other triggers known */
+#define STATE_NO_TRIGGER_OWN_ALARM			3	/* best because fastest, alarm even before P-Wave arrived */
+#define STATE_YES_TRIGGER_NEIGHBOR_ALARM	4	/* P-Wave arrived, but no own alarm but informed by neighbor */
+#define STATE_NO_TRIGGER_NEIGHBOR_ALARM		5	/* no own trigger (yet) and no alarm, hence alarm only by neighbor */
+
+#define STATE_DEFAULT 0 /* nothing, idle */
+#define STATE_HAVE_TRIGGER    1
+#define STATE_HAVE_ALARM      2
+#define STATE_HAVE_NEIGBOR_ALARM 4
+
+
+
+//#define STATE_NO_TRIGGER_NO_ALARM       0 /* idle */
+//#define STATE_YES_TRIGGER_NO_ALARM      1 /* false alarm or waiting for other nodes */
+//#define STATE_YES_TRIGGER_OWN_ALARM     2 /* P-Wave arrived, and also other triggers known */
+//#define STATE_NO_TRIGGER_OWN_ALARM      3 /* best because fastest, alarm even before P-Wave arrived */
+//#define STATE_YES_TRIGGER_NEIGHBOR_ALARM  4 /* P-Wave arrived, but no own alarm but informed by neighbor */
+//#define STATE_NO_TRIGGER_NEIGHBOR_ALARM   5 /* no own trigger (yet) and no alarm, hence alarm only by neighbor */
+
+
 
 CLICK_DECLS
 
-class AlarmingState : public BRNElement {
+class EewsState : public BRNElement {
 
  public:
 
@@ -94,10 +118,10 @@ class AlarmingState : public BRNElement {
   //
   //methods
   //
-  AlarmingState();
-  ~AlarmingState();
+  EewsState();
+  ~EewsState();
 
-  const char *class_name() const  { return "AlarmingState"; }
+  const char *class_name() const  { return "EewsState"; }
   const char *processing() const  { return AGNOSTIC; }
 
   const char *port_count() const  { return "0/0"; }
@@ -123,6 +147,13 @@ class AlarmingState : public BRNElement {
   void trigger_alarm();
   String get_state();
 
+  uint8_t getState() { return _triggered_alarm; }
+
+  GPSPosition *getPosition() { return _gps->getPosition();}
+
+  void check_neighbor_alarm(uint8_t state, const EtherAddress *ea);
+  void update_me(uint8_t state);
+
 
   int _hop_limit;
   uint32_t _forward_flags;
@@ -131,6 +162,7 @@ class AlarmingState : public BRNElement {
 
   Brn2LinkTable *_lt;
   NHopNeighbouringInfo *_nhopn_info;
+  GPS *_gps;
 
  public:
   int _retry_limit;
@@ -138,8 +170,9 @@ class AlarmingState : public BRNElement {
   int _min_neighbour_fraction;
   uint32_t _min_alarm_fraction;
 
-  bool _triggered_alarm;
+  uint8_t _triggered_alarm;
   Timestamp _triggered_alarm_time;
+  GPSPosition _position;
 
 };
 

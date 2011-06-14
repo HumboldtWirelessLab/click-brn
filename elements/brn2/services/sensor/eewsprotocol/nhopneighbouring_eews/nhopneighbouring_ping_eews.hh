@@ -76,7 +76,7 @@ class NHopNeighbouringPingEews : public BRNElement {
   //
   BRN2NodeIdentity *_node_identity;
   NHopNeighbouringInfoEews *nhop_info;
-  AlarmingState *_as;
+  EewsState *_as;
 
 
   void send_ping();

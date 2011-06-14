@@ -19,80 +19,58 @@
  */
 
 /*
- * eventnotifier.{cc,hh}
+ * EewsSource.{cc,hh}
  */
 
 #include <click/config.h>
-
-#include <clicknet/ether.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/brn2.h"
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
-
-#include "elements/brn2/services/sensor/alarmingprotocol/alarmingstate.hh"
-
-#include "nhopneighbouring_protocol_eews.hh"
-#include "nhopneighbouring_sink_eews.hh"
-
-
+#include "eewssource.hh"
+#include "eewsstate.hh"
+#include "eewsprotocol.hh"
 
 CLICK_DECLS
 
-NHopNeighbouringSinkEews::NHopNeighbouringSinkEews()
+EewsSource::EewsSource()
 {
   BRNElement::init();
 }
 
-NHopNeighbouringSinkEews::~NHopNeighbouringSinkEews()
+EewsSource::~EewsSource()
 {
 }
 
 int
-NHopNeighbouringSinkEews::configure(Vector<String> &conf, ErrorHandler* errh)
+EewsSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NHOPN_INFO", cpkP, cpElement, &nhop_info,
-      "DEBUG", cpkP, cpInteger, &_debug,
+      "EEWSSTATE", cpkP+cpkM , cpElement, &_as,
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
-       return -1;
+    return -1;
 
   return 0;
 }
 
 int
-NHopNeighbouringSinkEews::initialize(ErrorHandler *)
+EewsSource::initialize(ErrorHandler *)
 {
   return 0;
 }
 
-/**
- * 
- * @param  
- * @param packet 
- */
 void
-NHopNeighbouringSinkEews::push( int /*port*/, Packet *packet )
+EewsSource::send_alarm(uint8_t alarm_type)
 {
-  uint8_t hops;
-  uint8_t hop_limit;
-  uint32_t no_neighbours;
-  EtherAddress src;
-  GPSPosition gpspos;
-  uint8_t state;
+  // TODO: update_trigger_table
+  //_as->
+  WritablePacket *p = EewsProtocol::new_eews_packet(alarm_type);
 
-  BRN_DEBUG("Received Packet");
-  NHopNeighbouringProtocolEews::unpack_ping(packet, &src, &no_neighbours, &hop_limit, &hops, &gpspos, &state);
-  BRN_DEBUG("Received ping Packet by eth:%s loc:%s state:%d", src.unparse().c_str(), gpspos.unparse_coord().c_str(), state );
-  //click_chatter("Received Packet by eth:%s loc:%s state:%d", src.unparse().c_str(), gpspos.unparse().c_str(), state );
-
-
-
-  nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours, &gpspos, state);
+  output(0).push(p);
 }
 
 
@@ -100,11 +78,34 @@ NHopNeighbouringSinkEews::push( int /*port*/, Packet *packet )
 // Handler
 //-----------------------------------------------------------------------------
 
+enum {H_ALARM};
+
+static int
+EewsSource_write_param(const String &in_s, Element *e, void *vparam,
+                             ErrorHandler *errh)
+{
+  EewsSource *as = (EewsSource *)e;
+  String s = cp_uncomment(in_s);
+  switch((intptr_t)vparam) {
+    case H_ALARM: {    //debug
+      int alarm;
+      if (!cp_integer(s, &alarm))
+        return errh->error("debug parameter must be integer");
+      as->send_alarm(alarm);
+      break;
+    }
+  }
+
+  return 0;
+}
+
 void
-NHopNeighbouringSinkEews::add_handlers()
+EewsSource::add_handlers()
 {
   BRNElement::add_handlers();
+
+  add_write_handler("state", EewsSource_write_param,(void *) H_ALARM);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(NHopNeighbouringSinkEews)
+EXPORT_ELEMENT(EewsSource)
