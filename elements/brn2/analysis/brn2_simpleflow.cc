@@ -67,12 +67,9 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   //don't move this to configure, since BRNNodeIdenty is not configured
   //completely while configure this element, so set_active can cause
   //seg, fault, while calling BRN_DEBUG in set_active
-  if (_start_active) set_active(&dst_of_flow,_start_active);
-
-  click_srandom(dst_of_flow.hashcode());
   _timer.initialize(this);
 
-  schedule_next(&dst_of_flow);
+  if (_start_active) set_active(&dst_of_flow,_start_active, false);
 
   return 0;
 }
@@ -87,31 +84,37 @@ BRN2SimpleFlow::run_timer(Timer *t)
   if ( t == NULL ) click_chatter("Timer is NULL");
 
   if ( is_active(&dst_of_flow) ) {
-    schedule_next(&dst_of_flow);
+
+    BRN_DEBUG("Is active");
 
     Flow *txFlow = _tx_flowMap.findp(dst_of_flow);
     if ( txFlow) {
+      BRN_DEBUG("Send Next");
+
       packet_out = nextPacketforFlow(txFlow);
 
       output(0).push(packet_out);
     }
+
+    schedule_next(&dst_of_flow, true);
   }
 }
 
 void
-BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
+BRN2SimpleFlow::set_active(EtherAddress *dst, bool active, bool reschedule)
 {
   BRN_DEBUG("set_active");
   Flow *txFlow = _tx_flowMap.findp(*dst);
   if ( active ) {
     if ( ! is_active(dst)  ) {
       BRN_DEBUG("flow actived");
-      schedule_next(dst);
       txFlow->_active = active;
+      schedule_next(dst, reschedule);
     }
   } else {
     if ( is_active(dst)  ) {
       BRN_DEBUG("flow deactived");
+      _timer.clear();
       txFlow->_active = active;
     }
   }
@@ -127,19 +130,28 @@ BRN2SimpleFlow::is_active(EtherAddress *dst)
 }
 
 void
-BRN2SimpleFlow::schedule_next(EtherAddress *dst)
+BRN2SimpleFlow::schedule_next(EtherAddress *dst, bool reschedule)
 {
   Flow *txFlow = _tx_flowMap.findp(*dst);
 
   if ( txFlow ) {
     if ( txFlow->_active && txFlow->_rate > 0 ) {
+      BRN_DEBUG("Rate: %d Timestamp: %s",txFlow->_rate,
+                Timestamp::make_msec(txFlow->_rate).unparse().c_str());
       BRN_DEBUG("run timer in %d ms", txFlow->_rate);
+
       _timer.schedule_after_msec(txFlow->_rate);
     } else {
       BRN_DEBUG("Flow not active. (Rate : %d)", txFlow->_rate);
     }
   } else {
     BRN_DEBUG("No flow.");
+  }
+
+  if (_timer.scheduled()) {
+    BRN_DEBUG("Timer is scheduled at %s",_timer.expiry().unparse().c_str());
+  } else {
+    BRN_WARN("Timer is not scheduled");
   }
 }
 
@@ -157,9 +169,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   }
 
   dst_of_flow = dst;
-  set_active(&dst_of_flow, active);
-
-  if ( is_active(&dst_of_flow) ) schedule_next(&dst_of_flow);
+  set_active(&dst_of_flow, active, true);
 }
 
 /**
@@ -381,8 +391,6 @@ BRN2SimpleFlow::xml_stats()
 }
 
 enum {
-  H_TXFLOWS_SHOW,
-  H_RXFLOWS_SHOW,
   H_FLOW_STATS,
   H_FLOW_ACTIVE,
   H_ADD_FLOW,
@@ -396,28 +404,6 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
   BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
 
   switch ((uintptr_t) thunk) {
-    case H_TXFLOWS_SHOW: {
-      StringAccum sa;
-      sa << "TxFlows:\n";
-      for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
-        BRN2SimpleFlow::Flow fl = fm.value();
-        sa << " Destination: " << fl._dst.unparse().c_str();
-        sa << " Packets: " << fl._txPackets;
-        sa << "\n";
-      }
-      return sa.take_string();
-    }
-    case H_RXFLOWS_SHOW: {
-      StringAccum sa;
-      sa << "RxFlows:\n";
-      for (BRN2SimpleFlow::FMIter fm = sf->_rx_flowMap.begin(); fm.live(); fm++) {
-        BRN2SimpleFlow::Flow fl = fm.value();
-        sa << "Source: " << fl._src.unparse().c_str();
-        sa << " Packets: " << fl._rxPackets << " CRC-Errors: " << fl._rxCrcErrors;
-        sa << "\n";
-      }
-      return sa.take_string();
-    }
     case H_FLOW_STATS: {
       return sf->xml_stats();
     }
@@ -443,7 +429,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       bool active;
       cp_bool(args[0], &active);
 
-      sf->set_active(&(sf->dst_of_flow), active);
+      sf->set_active(&(sf->dst_of_flow), active, true);
       break;
     }
     case H_ADD_FLOW: {
@@ -484,8 +470,6 @@ void BRN2SimpleFlow::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("txflows", BRN2SimpleFlow_read_param, (void *)H_TXFLOWS_SHOW);
-  add_read_handler("rxflows", BRN2SimpleFlow_read_param, (void *)H_RXFLOWS_SHOW);
   add_read_handler("stats", BRN2SimpleFlow_read_param, (void *)H_FLOW_STATS);
 
   add_write_handler("reset", BRN2SimpleFlow_write_param, (void *)H_RESET);

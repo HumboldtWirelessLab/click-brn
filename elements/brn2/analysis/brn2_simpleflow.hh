@@ -132,9 +132,9 @@ class BRN2SimpleFlow : public BRNElement
 
     void run_timer(Timer *t);
 
-    void set_active(EtherAddress *dst, bool active);
+    void set_active(EtherAddress *dst, bool active, bool reschedule);
     bool is_active(EtherAddress *dst);
-    void schedule_next(EtherAddress *dst);
+    void schedule_next(EtherAddress *dst, bool reschedule);
 
     void add_flow( EtherAddress src, EtherAddress dst,
                    uint32_t rate, uint32_t size, uint32_t mode,
