@@ -23,6 +23,7 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "dhtprotocol.hh"
 
@@ -165,6 +166,9 @@ DHTProtocol::push_brn_ether_header(WritablePacket *p,EtherAddress *src, EtherAdd
     brn_header.body_length = payload_len;
     brn_header.ttl = 100;
     brn_header.tos = 0;
+
+    BRNPacketAnno::set_ttl_anno(big_p, 100);
+    BRNPacketAnno::set_tos_anno(big_p, 0, 0);
 
     memcpy((void*)&(big_p->data()[14]),(void*)&brn_header, sizeof(brn_header));
   }

@@ -102,11 +102,18 @@ DartForwarder::push(int /*port*/, Packet *p_in)
 
   if ( memcmp(dst_addr.data(),_dartrouting->_me->_ether_addr.data(),6) == 0 ) {
     BRN_DEBUG("Is for me");
+    uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+
     DartProtocol::strip_route_header(p_in);
+
+    if ( BRNProtocol::is_brn_etherframe(p_in) )
+      BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl-1;
+
     output(1).push(p_in);
   } else {
 
     DHTnode *n = _drt->get_neighbour(&dst_addr);  //check whether destination is a neighbouring node
+    uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
 
     if ( n == NULL )
       n = _dartrouting->get_responsibly_node(header->_dst_nodeid);
@@ -115,15 +122,27 @@ DartForwarder::push(int /*port*/, Packet *p_in)
 
     if ( n->equalsEtherAddress(_dartrouting->_me) ) {         //for clients, which have the same id but different ethereaddress
       DartProtocol::strip_route_header(p_in);                 //TODO: use other output port for client
+
+      if ( BRNProtocol::is_brn_etherframe(p_in) )
+        BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl-1;
+
       output(1).push(p_in);
     } else {
-      Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_DART, BRN_PORT_DART, 255, BRNPacketAnno::tos_anno(p_in));
+      uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+      if ( ttl == 0 ) {
+        BRN_WARN("TTL is 0. Kill the packet.");
+        p_in->kill();
+      } else {
+        ttl--;
 
-      BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
-      BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
-      BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
+        Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_DART, BRN_PORT_DART, ttl, BRNPacketAnno::tos_anno(p_in));
 
-      output(0).push(brn_p);
+        BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
+        BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
+        BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
+
+        output(0).push(brn_p);
+      }
     }
   }
 }

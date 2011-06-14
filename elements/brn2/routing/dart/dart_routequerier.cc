@@ -132,6 +132,8 @@ DartRouteQuerier::callback(DHTOperation *op)
 void
 DartRouteQuerier::push(int, Packet *p_in)
 {
+  BRN_DEBUG("New packet with TTL: %d",(uint32_t)BRNPacketAnno::ttl_anno(p_in));
+
   DartIDCache::IDCacheEntry *entry;
 
   if ( p_in->length() < sizeof(click_ether) ) {
@@ -196,7 +198,8 @@ DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *ent
       WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, buffp->_p);
 
       _packet_buffer.del(i);
-      delete buffp;
+
+      BRN_DEBUG("Send packet with TTL: %d",(uint32_t)BRNPacketAnno::ttl_anno(dart_p));
 
       output(0).push(dart_p);
     }
@@ -236,6 +239,7 @@ DartRouteQuerier::del_requests_for_ea(uint8_t *ea)
   for ( int i = _request_list.size() - 1; i >= 0; i-- ) {
     rea = _request_list[i];
     if ( memcmp(rea->_ea.data(), ea, 6) == 0 ) {
+      delete rea;
       _request_list.erase(_request_list.begin() + i);
       return;
     }
@@ -270,7 +274,7 @@ DartRouteQuerier::start_issuing_request(EtherAddress *dst)
     BRN_DEBUG("Got direct-reply (local)");
     callback_func((void*)this, dhtop);
   } else {
-    _sendbuffer_timer.schedule_after_msec(BRN_DART_SENDBUFFER_TIMER_INTERVAL);
+    _sendbuffer_timer.reschedule_after_msec(BRN_DART_SENDBUFFER_TIMER_INTERVAL);
   }
 }
 

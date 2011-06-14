@@ -92,6 +92,8 @@ BRN2EtherEncap::smaction(Packet *p)
                                     htons((BRNPacketAnno::ethertype_anno(q)))); //TODO:
       }
 
+      BRN_INFO("%s %s",(BRNPacketAnno::src_ether_anno(q)).unparse().c_str(), (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
+
       memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(q)).data(), 6);
       memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
       ether->ether_type = htons(BRNPacketAnno::ethertype_anno(q));

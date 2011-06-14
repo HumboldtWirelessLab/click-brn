@@ -20,11 +20,6 @@ class BRN2PacketSource : public BRNElement {
 
  public:
 
-   int _debug;
-  //
-  //methods
-  //
-
 /* brn2_packetsource.cc**/
 
   BRN2PacketSource();
