@@ -69,7 +69,7 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   //seg, fault, while calling BRN_DEBUG in set_active
   _timer.initialize(this);
 
-  if (_start_active) set_active(&dst_of_flow,_start_active, false);
+  if (_start_active) set_active(&dst_of_flow,_start_active);
 
   return 0;
 }
@@ -96,12 +96,12 @@ BRN2SimpleFlow::run_timer(Timer *t)
       output(0).push(packet_out);
     }
 
-    schedule_next(&dst_of_flow, true);
+    schedule_next(&dst_of_flow);
   }
 }
 
 void
-BRN2SimpleFlow::set_active(EtherAddress *dst, bool active, bool reschedule)
+BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 {
   BRN_DEBUG("set_active");
   Flow *txFlow = _tx_flowMap.findp(*dst);
@@ -109,7 +109,7 @@ BRN2SimpleFlow::set_active(EtherAddress *dst, bool active, bool reschedule)
     if ( ! is_active(dst)  ) {
       BRN_DEBUG("flow actived");
       txFlow->_active = active;
-      schedule_next(dst, reschedule);
+      schedule_next(dst);
     }
   } else {
     if ( is_active(dst)  ) {
@@ -130,7 +130,7 @@ BRN2SimpleFlow::is_active(EtherAddress *dst)
 }
 
 void
-BRN2SimpleFlow::schedule_next(EtherAddress *dst, bool reschedule)
+BRN2SimpleFlow::schedule_next(EtherAddress *dst)
 {
   Flow *txFlow = _tx_flowMap.findp(*dst);
 
@@ -169,7 +169,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   }
 
   dst_of_flow = dst;
-  set_active(&dst_of_flow, active, true);
+  set_active(&dst_of_flow, active);
 }
 
 /**
@@ -429,7 +429,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       bool active;
       cp_bool(args[0], &active);
 
-      sf->set_active(&(sf->dst_of_flow), active, true);
+      sf->set_active(&(sf->dst_of_flow), active);
       break;
     }
     case H_ADD_FLOW: {
