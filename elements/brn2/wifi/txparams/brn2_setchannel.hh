@@ -52,6 +52,7 @@ class BRN2SetChannel : public BRNElement {
    int set_channel_iwconfig(const String &devname, int channel, ErrorHandler *errh);
 
   int get_channel() { return _channel; }
+
   void set_channel(int channel) { _channel = channel; }
 
 };

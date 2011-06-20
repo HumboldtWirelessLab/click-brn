@@ -93,8 +93,11 @@ BrnSetTXPower_read_param(Element *e, void *thunk)
 {
   BrnSetTXPower *td = (BrnSetTXPower *)e;
   switch ((uintptr_t) thunk) {
-  case H_POWER:
-    return String(td->_power) + "\n";
+  case H_POWER: {
+    StringAccum sa;
+    sa << "<setpower power=\"" << td->_power << "\" />\n";
+    return sa.take_string();
+  }
   default:
     return String();
   }
@@ -135,7 +138,8 @@ BrnSetTXPower::add_handlers()
   add_read_handler("power", BrnSetTXPower_read_param, (void *) H_POWER);
   add_write_handler("power", BrnSetTXPower_write_param, (void *) H_POWER);
 
-  add_write_handler("set_power", BrnSetTXPower_write_param, (void *) H_SETPOWER);
+  add_read_handler("systempower", BrnSetTXPower_read_param, (void *) H_POWER);
+  add_write_handler("systempower", BrnSetTXPower_write_param, (void *) H_SETPOWER);
 }
 
 CLICK_ENDDECLS

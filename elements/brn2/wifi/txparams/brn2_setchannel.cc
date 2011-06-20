@@ -90,9 +90,10 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
 static String 
 channel_read_param(Element *e, void */*thunk*/)
 {
-  StringAccum sa;
   BRN2SetChannel *sc = (BRN2SetChannel *)e;
-  return String(sc->get_channel()) + "\n";
+  StringAccum sa;
+  sa << "<setchannel channel=\"" << sc->get_channel() << "\" />\n";
+  return sa.take_string();
 }
 
 static int 
@@ -134,7 +135,9 @@ BRN2SetChannel::add_handlers()
 
   add_read_handler("channel", channel_read_param, (void *)0);
   add_write_handler("channel", channel_write_param, (void *)0);
-  add_write_handler("set_channel", setchannel_write_param, (void *)0);
+
+  add_read_handler("systemchannel", channel_read_param, (void *)0);
+  add_write_handler("systemchannel", setchannel_write_param, (void *)0);
 }
 
 CLICK_ENDDECLS
