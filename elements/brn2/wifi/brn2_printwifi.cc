@@ -38,7 +38,8 @@ BRN2PrintWifi::BRN2PrintWifi()
     _print_checksum(false),
     _print_ht(false),
     _print_ext_rx(false),
-    _print_evm(false)
+    _print_evm(false),
+    _nowrap(false)
 {
   _label = "";
 }
@@ -58,6 +59,7 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
       "PRINTHT", cpkP, cpBool, &_print_ht,
       "PRINTRXSTATUS", cpkP, cpBool, &_print_ext_rx,
       "PRINTEVM", cpkP, cpBool, &_print_evm,
+      "NOWRAP", cpkP, cpBool, &_nowrap,
       cpEnd);
   return ret;
 }
@@ -655,7 +657,11 @@ BRN2PrintWifi::simple_action(Packet *p)
   if ((type == WIFI_FC0_TYPE_MGT) &&
       (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP)) {
 
-    click_chatter("%s\n", sa.c_str());
+    if ( _nowrap )
+      click_chatter("%s", sa.c_str());
+    else
+      click_chatter("%s\n", sa.c_str());
+
     return p;
   }
 
@@ -719,7 +725,11 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
  done:
-  click_chatter("%s\n", sa.c_str());
+  if ( _nowrap )
+    click_chatter("%s", sa.c_str());
+  else
+    click_chatter("%s\n", sa.c_str());
+
   return p;
 }
 

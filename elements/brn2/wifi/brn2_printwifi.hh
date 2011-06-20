@@ -49,6 +49,7 @@ class BRN2PrintWifi : public Element {
   bool _print_ht;
   bool _print_ext_rx;
   bool _print_evm;
+  bool _nowrap;
 };
 
 CLICK_ENDDECLS
