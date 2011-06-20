@@ -71,7 +71,17 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   else
     return 0;
 
-  cmda << " " << devname << " channel " << channel;
+  if ( devname == "" ) {
+    if ( _device == NULL ) {
+      return 0;
+    } else {
+      cmda << " " << _device->getDeviceName();
+    }
+  } else {
+    cmda << " " << devname;
+  }
+
+  cmda << " channel " << channel;
   String cmd = cmda.take_string();
 
   BRN_DEBUG("SetChannel command: %s",cmd.c_str());
@@ -86,17 +96,8 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   return 0;
 }
 
-
-static String 
-channel_read_param(Element *e, void */*thunk*/)
-{
-  BRN2SetChannel *sc = (BRN2SetChannel *)e;
-  StringAccum sa;
-  sa << "<setchannel channel=\"" << sc->get_channel() << "\" />\n";
-  return sa.take_string();
-}
-
-static int 
+/* set channel for packet anno */
+static int
 channel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
   BRN2SetChannel *sc = (BRN2SetChannel *)e;
@@ -104,10 +105,13 @@ channel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandl
   int channel;
   if (!cp_integer(s, &channel))
     return errh->error("channel parameter must be integer");
+
   sc->set_channel(channel);
 
   return 0;
 }
+
+/* set channel system wide */
 
 static int 
 setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
@@ -117,9 +121,18 @@ setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHa
   Vector<String> args;
   cp_spacevec(s, args);
 
-  String dev = args[0];
-  int channel;
-  if (!cp_integer(args[1], &channel))
+  String dev;
+  int channel_index, channel;
+
+  if ( args.size() < 2 ) {
+    dev = String("");
+    channel_index = 0;
+  } else {
+    dev = args[0];
+    channel_index = 1;
+  }
+
+  if (!cp_integer(args[channel_index], &channel))
     return errh->error("channel parameter must be integer");
   sc->set_channel(channel);
 
@@ -128,15 +141,40 @@ setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHa
   return 0;
 }
 
+/* Get Info */
+
+String
+BRN2SetChannel::get_info()
+{
+  StringAccum sa;
+  sa << "<setchannel name=\"" << BRN_NODE_NAME << " channel=\"" << get_channel()  << "\" >\n\t<device name=\"";
+  if ( _device != NULL ) {
+    sa << _device->getDeviceName() << "\" device_addr=\"" << _device->getEtherAddress() << "\" />\n";
+  } else {
+    sa << "n/a\" device_addr=\"n/a\" />\n";
+  }
+
+  sa << "</setchannel>\n";
+  return sa.take_string();
+}
+
+static String 
+BRN2SetChannel_channel_read_param(Element *e, void */*thunk*/)
+{
+  BRN2SetChannel *sc = (BRN2SetChannel *)e;
+
+  return sc->get_info();
+}
+
 void
 BRN2SetChannel::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("channel", channel_read_param, (void *)0);
+  add_read_handler("channel", BRN2SetChannel_channel_read_param, (void *)0);
   add_write_handler("channel", channel_write_param, (void *)0);
 
-  add_read_handler("systemchannel", channel_read_param, (void *)0);
+  add_read_handler("systemchannel", BRN2SetChannel_channel_read_param, (void *)0);
   add_write_handler("systemchannel", setchannel_write_param, (void *)0);
 }
 
