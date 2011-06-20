@@ -81,7 +81,7 @@ class SetTXPowerRate : public BRNElement { public:
   String getInfo();
 
   typedef HashMap<EtherAddress, DstInfo> NeighborTable;
-  typedef DstMap::const_iterator NIter;
+  typedef NeighborTable::const_iterator NIter;
 
  private:
 

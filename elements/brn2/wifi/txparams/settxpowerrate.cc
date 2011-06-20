@@ -87,11 +87,11 @@ SetTXPowerRate::pull(int port)
 SetTXPowerRate::DstInfo *
 SetTXPowerRate::getDstInfo(EtherAddress ea)
 {
-  DstInfo *di = _dst_map.findp(ea);
+  DstInfo *di = _neighbors.findp(ea);
 
   if ( di == NULL ) {
-    _dst_map.insert(ea,DstInfo(ea, _non_ht_rates, &_ht_rates[0][0], (uint8_t)_max_power));
-    di = _dst_map.findp(ea);
+    _neighbors.insert(ea,DstInfo(ea, _non_ht_rates, &_ht_rates[0][0], (uint8_t)_max_power));
+    di = _neighbors.findp(ea);
   }
 
   return di;
