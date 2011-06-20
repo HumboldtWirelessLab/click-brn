@@ -147,7 +147,7 @@ String
 BrnSetTXPower::get_info()
 {
   StringAccum sa;
-  sa << "<settxpower name=\"" << BRN_NODE_NAME << "\" power=\"" << _power  << "\" >\n\t<device name=\"";
+  sa << "<settxpower name=\"" << BRN_NODE_NAME << "\" id=\"" << BRN_NODE_ADDRESS << "\" power=\"" << _power  << "\" >\n\t<device name=\"";
   if ( _device != NULL ) {
     sa << _device->getDeviceName() << "\" device_addr=\"" << _device->getEtherAddress()->unparse() << "\" />\n";
   } else {
