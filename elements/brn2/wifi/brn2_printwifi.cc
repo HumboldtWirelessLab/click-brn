@@ -28,7 +28,10 @@
 #include <click/packet_anno.hh>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/wifi/brnwifi.hh"
+
 #include "brn2_printwifi.hh"
 
 CLICK_DECLS
@@ -658,7 +661,7 @@ BRN2PrintWifi::simple_action(Packet *p)
       (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP)) {
 
     if ( _nowrap )
-      click_chatter("%s", sa.c_str());
+      BrnLogger::chatter("%s", sa.c_str());
     else
       click_chatter("%s\n", sa.c_str());
 
@@ -726,7 +729,7 @@ BRN2PrintWifi::simple_action(Packet *p)
 
  done:
   if ( _nowrap )
-    click_chatter("%s", sa.c_str());
+    BrnLogger::chatter("%s", sa.c_str());
   else
     click_chatter("%s\n", sa.c_str());
 
