@@ -147,7 +147,7 @@ String
 BRN2SetChannel::get_info()
 {
   StringAccum sa;
-  sa << "<setchannel name=\"" << BRN_NODE_NAME << "\" id=\"" << BRN_NODE_ADDRESS << "\" channel=\"" << get_channel()  << "\" >\n\t<device name=\"";
+  sa << "<setchannel name=\"" << BRN_NODE_NAME << "\" id=\"" << BRN_NODE_NAME << "\" channel=\"" << get_channel()  << "\" >\n\t<device name=\"";
   if ( _device != NULL ) {
     sa << _device->getDeviceName() << "\" device_addr=\"" << _device->getEtherAddress()->unparse() << "\" />\n";
   } else {
