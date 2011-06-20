@@ -43,6 +43,8 @@ class BRN2SetChannel : public BRNElement {
 
   void add_handlers();
 
+  String get_info();
+
  private:
   BRN2Device *_device;
 

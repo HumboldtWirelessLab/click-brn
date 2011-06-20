@@ -2,6 +2,10 @@
 #define BRN_SETTXPOWER_HH
 #include <click/element.hh>
 #include <click/glue.hh>
+
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
+
 CLICK_DECLS
 
 /*
@@ -31,7 +35,8 @@ Same as POWER argument.
 =a  SetTXRate
 */
 
-class BrnSetTXPower : public Element { public:
+class BrnSetTXPower : public BRNElement {
+ public:
 
   BrnSetTXPower();
   ~BrnSetTXPower();
@@ -46,9 +51,13 @@ class BrnSetTXPower : public Element { public:
   Packet *simple_action(Packet *);
 
   int set_power_iwconfig(const String &devname, int power, ErrorHandler *errh);
+  String get_info();
 
   void add_handlers();
   unsigned _power;
+
+ private:
+  BRN2Device *_device;
 
 };
 

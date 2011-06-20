@@ -31,8 +31,11 @@
 #include "brn2_settxpower.hh"
 CLICK_DECLS
 
-BrnSetTXPower::BrnSetTXPower()
+BrnSetTXPower::BrnSetTXPower():
+    _power(0),
+    _device(NULL)
 {
+  BRNElement::init();
 }
 
 BrnSetTXPower::~BrnSetTXPower()
@@ -42,8 +45,10 @@ BrnSetTXPower::~BrnSetTXPower()
 int
 BrnSetTXPower::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    _power = 0;
-    return Args(conf, this, errh).read_p("POWER", _power).complete();
+    return Args(conf, this, errh).read("DEVICE", ElementCastArg("BRN2Device"), _device)
+                                 .read_p("POWER", _power)
+                                 .read_p("DEBUG", _debug)
+                                 .complete();
 }
 
 Packet *
@@ -72,7 +77,17 @@ BrnSetTXPower::set_power_iwconfig(const String &devname, int power, ErrorHandler
   else
     return 0;
 
-  cmda << " " << devname << " txpower " << power;
+  if ( devname == "" ) {
+    if ( _device == NULL ) {
+      return 0;
+    } else {
+      cmda << " " << _device->getDeviceName();
+    }
+  } else {
+    cmda << " " << devname;
+  }
+
+  cmda << " txpower " << power;
   String cmd = cmda.take_string();
 
   click_chatter("SetPower command: %s",cmd.c_str());
@@ -87,21 +102,6 @@ BrnSetTXPower::set_power_iwconfig(const String &devname, int power, ErrorHandler
   return 0;
 }
 
-
-static String
-BrnSetTXPower_read_param(Element *e, void *thunk)
-{
-  BrnSetTXPower *td = (BrnSetTXPower *)e;
-  switch ((uintptr_t) thunk) {
-  case H_POWER: {
-    StringAccum sa;
-    sa << "<setpower power=\"" << td->_power << "\" />\n";
-    return sa.take_string();
-  }
-  default:
-    return String();
-  }
-}
 static int
 BrnSetTXPower_write_param(const String &in_s, Element *e, void *vparam,
       ErrorHandler *errh)
@@ -120,10 +120,19 @@ BrnSetTXPower_write_param(const String &in_s, Element *e, void *vparam,
       Vector<String> args;
       cp_spacevec(s, args);
 
-      String dev = args[0];
-      int power;
-      if (!cp_integer(args[1], &power))
-        return errh->error("power parameter must be unsigned");
+      String dev;
+      int power_index, power;
+
+      if ( args.size() < 2 ) {
+        dev = String("");
+        power_index = 0;
+      } else {
+        dev = args[0];
+        power_index = 1;
+      }
+
+      if (!cp_integer(args[power_index], &power))
+        return errh->error("channel parameter must be integer");
 
       f->set_power_iwconfig(dev, power, errh);
       break;
@@ -132,9 +141,42 @@ BrnSetTXPower_write_param(const String &in_s, Element *e, void *vparam,
   return 0;
 }
 
+/* Get Info */
+
+String
+BrnSetTXPower::get_info()
+{
+  StringAccum sa;
+  sa << "<settxpower name=\"" << BRN_NODE_NAME << " power=\"" << _power  << "\" >\n\t<device name=\"";
+  if ( _device != NULL ) {
+    sa << _device->getDeviceName() << "\" device_addr=\"" << _device->getEtherAddress() << "\" />\n";
+  } else {
+    sa << "n/a\" device_addr=\"n/a\" />\n";
+  }
+
+  sa << "</settxpower>\n";
+  return sa.take_string();
+}
+
+
+static String
+BrnSetTXPower_read_param(Element *e, void *thunk)
+{
+  BrnSetTXPower *td = (BrnSetTXPower *)e;
+  switch ((uintptr_t) thunk) {
+    case H_POWER: {
+      return td->get_info();
+    }
+    default:
+      return String();
+  }
+}
+
 void
 BrnSetTXPower::add_handlers()
-  {
+{
+  BRNElement::add_handlers();
+
   add_read_handler("power", BrnSetTXPower_read_param, (void *) H_POWER);
   add_write_handler("power", BrnSetTXPower_write_param, (void *) H_POWER);
 
