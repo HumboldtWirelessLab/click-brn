@@ -6,6 +6,7 @@
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/wifi/channelstats.hh"
 #include "elements/brn2/wifi/brnavailablerates.hh"
+#include "rateselection/rateselection.hh"
 
 CLICK_DECLS
 
@@ -17,6 +18,18 @@ struct power_rate_info {
   uint8_t power;
 };
 
+/*
+ * Input:
+ * 0 : packets to send
+ * 1 : txfeedback packets
+ * 2 : received packets
+ *
+ * Output:
+ * 0 : packets to send
+ * 1 : txfeedback packets
+ * 2 : received packets
+ */
+
 class SetTXPowerRate : public BRNElement { public:
 
   class DstInfo {
@@ -27,15 +40,10 @@ class SetTXPowerRate : public BRNElement { public:
       Vector<uint8_t> _non_ht_rates;
       int8_t _ht_rates[4][2];
 
-      int _current_mode;
-      int _current_index;
-      int _successes;
-
-      int _stepup;
-      bool _wentup;
-
       uint8_t _max_power;
       uint8_t _power;
+
+      void *_rs_data;
 
       DstInfo() {
       }
@@ -70,14 +78,17 @@ class SetTXPowerRate : public BRNElement { public:
 
   void add_handlers();
 
-  typedef HashMap<EtherAddress, DstInfo> DstMap;
-  typedef DstMap::const_iterator DstMapIter;
+  String getInfo();
+
+  typedef HashMap<EtherAddress, DstInfo> NeighborTable;
+  typedef DstMap::const_iterator NIter;
 
  private:
 
   DstInfo* getDstInfo(EtherAddress ea);
 
   BrnAvailableRates *_rtable;
+  RateSelection *_rate_selection;
 
   Vector<uint8_t> _non_ht_rates;
   int8_t _ht_rates[4][2];
@@ -86,7 +97,7 @@ class SetTXPowerRate : public BRNElement { public:
 
   ChannelStats *_cst;
 
-  DstMap _dst_map;
+  NeighborTable _neighbors;
 
 };
 

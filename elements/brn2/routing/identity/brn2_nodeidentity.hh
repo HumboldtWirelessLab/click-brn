@@ -68,15 +68,17 @@ class BRN2NodeIdentity : public BRNElement {
   const EtherAddress *getMasterAddress();
   const EtherAddress *getServiceAddress();
 
-//  void setNodeName(String name);
-  String getNodeName() { return getMasterAddress()->unparse();}
-//  void setMasterDeviceName(String name);
-//  void setMasterDeviceID(int id);
+  String _nodename;           //name of node. if not set, then etheraddr of _master_device is the name
+
+  void setNodeName(String name) { _nodename = name; }
+  String getNodeName() { return _nodename; }
+
+  //void setMasterDeviceName(String name);
+  //void setMasterDeviceID(int id);
+
   md5_byte_t *getNodeID() { return _node_id; };
 
   Vector<BRN2Device*> _node_devices;   //TODO: should be private
-
-  String _nodename;           //name of node. if not set, then etheraddr of _master_device is the name
 
  private:
   //

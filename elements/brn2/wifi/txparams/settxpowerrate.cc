@@ -11,7 +11,9 @@
 CLICK_DECLS
 
 
-SetTXPowerRate::SetTXPowerRate()
+SetTXPowerRate::SetTXPowerRate():
+  _rate_selection(NULL),
+  _cst(NULL)
 {
   BRNElement::init();
 }
@@ -24,10 +26,11 @@ int
 SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "RT", cpkM, cpElement, &_rtable,
-      "MAXPOWER", cpkM, cpElement, &_max_power,
+      "RT", cpkM+cpkP, cpElement, &_rtable,
+      "MAXPOWER", cpkM+cpkP, cpInteger, &_max_power,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
-      "DEBUG", 0, cpBool, &_debug,
+      "RATESELECTION", cpkP, cpElement, &_rate_selection,
+      "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
   return 0;
@@ -94,10 +97,40 @@ SetTXPowerRate::getDstInfo(EtherAddress ea)
   return di;
 }
 
+String
+SetTXPowerRate::getInfo()
+{
+  StringAccum sa;
+
+  String rs;
+
+  if ( _rate_selection == NULL ) rs = "n/a";
+  else rs = _rate_selection->name();
+  sa << "<ratecontrol rateselection=\"" << rs << "\" >\n";
+
+  sa << "</ratecontrol>\n";
+
+  return sa.take_string();
+}
+
+enum {H_INFO};
+
+static String
+SetTXPowerRate_read_param(Element *e, void *thunk)
+{
+  SetTXPowerRate *spr = (SetTXPowerRate *)e;
+  switch ((uintptr_t) thunk) {
+    case H_INFO: return spr->getInfo();
+  }
+  return String();
+}
+
 void
 SetTXPowerRate::add_handlers()
 {
   BRNElement::add_handlers();
+
+  add_read_handler("info", SetTXPowerRate_read_param, (void *) H_INFO);
 }
 
 CLICK_ENDDECLS
