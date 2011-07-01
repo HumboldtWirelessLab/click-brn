@@ -218,7 +218,7 @@ BrnMadwifiRate::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
   uint32_t rate_h = rate / 10;
 
   sa << "<neighbour addr=\"" << nri->_eth.unparse() << "\" rate=\"" << rate_h << "." << rate_l;
-  sa << " successes=\"" << (int)nfo->_successes << "\" failures=\"" << (int)nfo->_failures;
+  sa << "\" successes=\"" << (int)nfo->_successes << "\" failures=\"" << (int)nfo->_failures;
   sa << "\" retries=\"" << (int)nfo->_retries << "\" credits=\"" << (int)nfo->_credits << "\" />\n";
 
   return sa.take_string();
