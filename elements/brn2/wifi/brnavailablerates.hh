@@ -46,6 +46,97 @@ Shows the entries in the database.
 #define RATE_HT40_BLOCK     6
 #define RATE_HT40_SGI_BLOCK 7
 
+#define INVALID_RIDX 255
+
+/* TODO: use int32_t for MCS, for _data_rate use lookup table */
+
+class MCS {
+  public:
+    uint32_t _data_rate; //datarate * 10
+
+    uint8_t _rate;  //used for click_wifi (datarate * 2) only for non_ht
+
+    bool _is_ht;
+
+    uint8_t _sgi;
+    uint8_t _ht40;
+
+    uint8_t _ridx;
+
+    MCS() : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+      BrnWifi::fromMCS(_ridx, _ht40, _sgi, &_rate);
+    }
+
+    MCS(uint8_t rate) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+      _rate = rate;
+      _data_rate = _rate * 5;
+    }
+
+    MCS(uint8_t ridx, uint8_t ht40, uint8_t sgi) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+      set(ridx, ht40, sgi);
+    }
+
+    MCS(click_wifi_extra *ceh, int8_t idx) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
+      getWifiRate(ceh,idx);
+    }
+
+    inline void set(uint8_t ridx, uint8_t ht40, uint8_t sgi) {
+      _is_ht = true;
+      _ridx = ridx;
+      _ht40 = ht40;
+      _sgi = sgi;
+      _data_rate = BrnWifi::getMCSRate(ridx, _ht40, _sgi);
+      BrnWifi::fromMCS(_ridx, _ht40, _sgi, &_rate);
+    }
+
+    inline void set(uint8_t rate) {
+      _is_ht = false;
+      _ridx = 0;
+      _ht40 = 0;
+      _sgi = 0;
+      _rate = rate;
+      _data_rate = _rate * 5;
+    }
+
+    /* Set rate to header */
+    inline void setWifiRate(struct click_wifi_extra *ceh, int index) {
+      BrnWifi::setMCS(ceh, index, _is_ht?1:0);
+
+      switch (index) {
+        case 0: ceh->rate = _rate; break;
+        case 1: ceh->rate1 = _rate; break;
+        case 2: ceh->rate2 = _rate; break;
+        case 3: ceh->rate3 = _rate; break;
+        default: click_chatter("Invalid index");
+      }
+    }
+
+    inline void getWifiRate(struct click_wifi_extra *ceh, int index) {
+      switch (index) {
+        case 0: _rate = ceh->rate; break;
+        case 1: _rate = ceh->rate1; break;
+        case 2: _rate = ceh->rate2; break;
+        case 3: _rate = ceh->rate3; break;
+        default: return;
+      }
+
+      if (_is_ht = (BrnWifi::getMCS(ceh, index) == 1 )) {
+        BrnWifi::toMCS(&_ridx, &_ht40, &_sgi, _rate);
+        _data_rate = BrnWifi::getMCSRate(_ridx, _ht40, _sgi);
+      } else {
+        _data_rate = _rate * 5;
+      }
+    }
+
+    bool equals(MCS mcs) {
+      return ((mcs._is_ht == _is_ht) && (mcs._rate == _rate));
+    }
+
+    uint32_t get_rate() {
+      return _data_rate;
+    }
+};
+
 class BrnAvailableRates : public BRNElement { public:
 
   BrnAvailableRates();
@@ -61,55 +152,11 @@ class BrnAvailableRates : public BRNElement { public:
   void add_handlers();
   void take_state(Element *e, ErrorHandler *);
 
-#define INVALID_RIDX 255
-
-  class MCS {
-    public:
-      int _data_rate; //datarate * 10
-
-      uint8_t _rate;
-
-      bool _is_ht;
-
-      bool _sgi;
-      bool _ht40;
-
-      uint8_t _ridx;
-
-      bool _is_rate_block;
-      uint8_t _start_ridx;
-      uint8_t _end_ridx;
-
-      MCS(): _data_rate(10), _rate(2), _is_ht(false), _sgi(false), _ht40(false),
-             _ridx(INVALID_RIDX), _is_rate_block(false), _start_ridx(INVALID_RIDX), _end_ridx(INVALID_RIDX) {
-        click_chatter("MCS constructor");
-      }
-
-      MCS(uint8_t rate) {
-        _rate = rate;
-        _data_rate = _rate * 5;
-      }
-
-      MCS(uint8_t ridx, bool ht40, bool sgi ) {
-        _rate = 0;
-        _ridx = ridx;
-        _ht40 = ht40;
-        _sgi = sgi;
-        _data_rate = BrnWifi::getMCSRate(ridx, ht40?1:0, sgi?1:0);
-      }
-
-       MCS(uint8_t start_ridx, int8_t /*end_ridx*/, bool ht40, bool sgi ) {
-        _rate = 0;
-        _ht40 = ht40;
-        _sgi = sgi;
-        _data_rate = BrnWifi::getMCSRate(start_ridx, ht40?1:0, sgi?1:0);
-      }
-  };
-
   class DstInfo {
-  public:
+   public:
     EtherAddress _eth;
     Vector<MCS> _rates;
+
     DstInfo() {
       memset(this, 0, sizeof(*this));
     }
@@ -122,6 +169,7 @@ class BrnAvailableRates : public BRNElement { public:
     ~DstInfo() {
       _rates.clear();
     }
+
   };
 
   typedef HashMap<EtherAddress, DstInfo> RTable;
@@ -129,8 +177,6 @@ class BrnAvailableRates : public BRNElement { public:
 
   Vector<MCS> lookup(EtherAddress eth);
   int insert(EtherAddress eth, Vector<MCS>);
-
-  EtherAddress _bcast;
 
   int parse_and_insert(String s, ErrorHandler *errh);
 

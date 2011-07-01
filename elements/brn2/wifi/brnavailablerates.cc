@@ -137,7 +137,7 @@ BrnAvailableRates::take_state(Element *e, ErrorHandler *)
 
 }
 
-Vector<BrnAvailableRates::MCS>
+Vector<MCS>
 BrnAvailableRates::lookup(EtherAddress eth)
 {
   if (!eth) {
@@ -197,21 +197,25 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
   case H_RATES: {
     StringAccum sa;
+    sa << "<available_rates>\n\t<default rates=\"";
     if (td->_default_rates.size()) {
-      sa << "DEFAULT ";
       for (int x = 0; x < td->_default_rates.size(); x++) {
-        sa << " " << td->_default_rates[x]._data_rate;
+        if ( x != 0 ) sa << " ";
+        sa << td->_default_rates[x]._data_rate;
       }
-      sa << "\n";
+      sa << "\" />\n\t<destination>\n";
     }
     for (BrnAvailableRates::RIter iter = td->_rtable.begin(); iter.live(); iter++) {
       BrnAvailableRates::DstInfo n = iter.value();
-      sa << n._eth.unparse() << " ";
+      sa << "\t\t<node addr=\"" << n._eth.unparse() << "\" rates=\"";
       for (int x = 0; x < n._rates.size(); x++) {
-        sa << " " << n._rates[x]._data_rate;
+        if ( x != 0 ) sa << " ";
+        sa << n._rates[x]._data_rate;
       }
-      sa << "\n";
+      sa << "\" />\n";
     }
+    sa << "\t</destination>\n</available_rates>";
+
     return sa.take_string();
   }
   default:

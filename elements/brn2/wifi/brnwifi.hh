@@ -108,10 +108,10 @@ class BrnWifi
   }
 
   static inline void setExtRxStatus(struct click_wifi_extra *ceh, uint8_t ext_rx_status) {
-    if ( ext_rx_status )
-      ceh->flags |= WIFI_EXTRA_EXT_RX_STATUS;
+    if (ext_rx_status)
+      ceh->flags |= (uint32_t)WIFI_EXTRA_EXT_RX_STATUS;
     else
-      ceh->flags &= ~WIFI_EXTRA_EXT_RX_STATUS;
+      ceh->flags &= ~(uint32_t)WIFI_EXTRA_EXT_RX_STATUS;
   }
 
   /* Single bit signals, whether rate is mcs-rate or "normal" rate */
@@ -120,7 +120,11 @@ class BrnWifi
   }
 
   static inline void setMCS(struct click_wifi_extra *ceh, int index, uint8_t mcs) {
-    ceh->flags |= (mcs & 1) << (WIFI_EXTRA_FLAG_MCS_RATE_START+index);
+    if (mcs) {
+      ceh->flags |= (uint32_t)1 << (WIFI_EXTRA_FLAG_MCS_RATE_START+index);
+    } else {
+      ceh->flags &= ~((uint32_t)1 << (WIFI_EXTRA_FLAG_MCS_RATE_START+index));
+    }
   }
 
   /* Convert rate to/from mcs-rate (rate-index, bw, guard_interval) */
@@ -138,7 +142,7 @@ class BrnWifi
   /* MCS flags, which have no impact on the datarate */
   /***************************************************/
   static inline void clear_click_wifi_extra_extention(struct brn_click_wifi_extra_extention *ceh) {
-    memset((void*)ceh,0,sizeof(struct brn_click_wifi_extra_extention));
+    memset((void*)ceh, 0, sizeof(struct brn_click_wifi_extra_extention));
   }
 
   static inline struct brn_click_wifi_extra_extention *get_brn_click_wifi_extra_extention(Packet *p) {
@@ -146,11 +150,14 @@ class BrnWifi
   }
 
   static inline uint8_t getFEC(struct brn_click_wifi_extra_extention *ceh, int index) {
-    return ((ceh->mcs_flags[index] /*>> IEEE80211_FEC_INDEX*/) & 1);
+    return ((ceh->mcs_flags[index]) & 1);
   }
 
   static inline void setFEC(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t fec_type) {
-    ceh->mcs_flags[index] |= (fec_type & 1) /*<< IEEE80211_FEC_INDEX*/;
+    if ( fec_type )
+      ceh->mcs_flags[index] |= (uint8_t)1;    // set flag
+    else
+      ceh->mcs_flags[index] &= ~((uint8_t)1); // clear flag
   }
 
   static inline uint8_t getHTMode(struct brn_click_wifi_extra_extention *ceh, int index) {
@@ -158,7 +165,10 @@ class BrnWifi
   }
 
   static inline void setHTMode(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t htmode) {
-    ceh->mcs_flags[index] |= (htmode & 1) << IEEE80211_HT_MODE_INDEX;
+    if (htmode)
+      ceh->mcs_flags[index] |= ((uint8_t)1) << IEEE80211_HT_MODE_INDEX;
+    else
+      ceh->mcs_flags[index] &= ~(((uint8_t)1) << IEEE80211_HT_MODE_INDEX);
   }
 
   static inline uint8_t getPreambleLength(struct brn_click_wifi_extra_extention *ceh, int index) {
@@ -166,7 +176,10 @@ class BrnWifi
   }
 
   static inline void setPreambleLength(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t pl) {
-    ceh->mcs_flags[index] |= (pl & 1) << IEEE80211_PREAMBLE_LENGTH_INDEX;
+    if (pl)
+      ceh->mcs_flags[index] |= ((uint8_t)1) << IEEE80211_PREAMBLE_LENGTH_INDEX;
+    else
+      ceh->mcs_flags[index] &= ~(((uint8_t)1) << IEEE80211_PREAMBLE_LENGTH_INDEX);
   }
 
   static inline uint8_t getSTBC(struct brn_click_wifi_extra_extention *ceh, int index) {
@@ -174,7 +187,10 @@ class BrnWifi
   }
 
   static inline void setSTBC(struct brn_click_wifi_extra_extention *ceh, int index, uint8_t stbc) {
-    ceh->mcs_flags[index] |= (stbc & 1) << IEEE80211_STBC_INDEX;
+    if (stbc)
+      ceh->mcs_flags[index] |= ((uint8_t)1) << IEEE80211_STBC_INDEX;
+    else
+      ceh->mcs_flags[index] &= ~(((uint8_t)1) << IEEE80211_STBC_INDEX);
   }
 
   /* Functions for rate calculation */
@@ -209,11 +225,11 @@ class BrnWifi
       uint8_t mcs_index, bandwidth, guard_interval;
 
       switch (index) {
-        case 0: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
-        case 1: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate1);
-        case 2: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate2);
-        case 3: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate3);
-        default: return 0;
+        case 0: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate); break;
+        case 1: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate1); break;
+        case 2: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate2); break;
+        case 3: toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate3); break;
+        default: click_chatter("Unknown rate index"); return 0;
       }
 
       return getMCSRate(mcs_index, bandwidth, guard_interval);
@@ -227,6 +243,7 @@ class BrnWifi
       }
     }
 
+    click_chatter("Unknown rate index");
     return 0;
   }
 
