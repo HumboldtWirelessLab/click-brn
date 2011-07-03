@@ -20,7 +20,7 @@
 
 /*
  * brncompoundhandler.{cc,hh} -- combines handlers on a class basis
- * M. Kurth
+ * R. Sombrutzki & M. Kurth
  */
 
 #include <click/config.h>
@@ -35,9 +35,9 @@
 #include <click/handlercall.hh>
 CLICK_DECLS
 
-BrnCompoundHandler::BrnCompoundHandler() :
-        _debug(2)
+BrnCompoundHandler::BrnCompoundHandler()
 {
+  BRNElement::init();
 }
 
 BrnCompoundHandler::~BrnCompoundHandler()
@@ -47,173 +47,221 @@ BrnCompoundHandler::~BrnCompoundHandler()
 int
 BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-    if (cp_va_kparse(conf, this, errh,
-                     "HANDLER", cpkP+cpkM, cpString, &_handler,
-                     "CLASSES", cpkP, cpString, &_items,
-                     "VALUE", cpkP, cpString, &_value,
-                     cpEnd) < 0)
-        return -1;
-
-    if ( 0 >= _handler.length() )
-        return errh->error("Handler not specified");
-
-    /*  if( 0 >= _items.length() )
-        return errh->error("Handler items not specified");
-      */
-    /*
-     * The location of handlers is carried out in 'initialize', because
-     * add_handlers is called after configure, but before initialize.
-     */
-    return 0;
+  if (cp_va_kparse(conf, this, errh,
+                    "HANDLER", cpkP, cpString, &_handler,
+                    "CLASSES", cpkP, cpString, &_classes,
+                    "CLASSESHANDLER", cpkP, cpString, &_classes_handler,
+                    "CLASSESVALUE", cpkP, cpString, &_classes_value,
+                    "DEBUG", cpkP, cpInteger, &_debug,
+                    cpEnd) < 0)
+      return -1;
+  /*
+    * The location of handlers is carried out in 'initialize', because
+    * add_handlers is called after configure, but before initialize.
+    */
+  return 0;
 }
 
 int
 BrnCompoundHandler::initialize(ErrorHandler *errh)
 {
+  BRN_DEBUG(" * BrnCompoundHandler: processing handler %s.", _handler.c_str() );
+  cp_spacevec(_handler, _vec_handlers);
 
+  // Build vector of class names
+  Vector<String> vecClasses;
+  cp_spacevec( _classes, vecClasses );
 
+  if ( 0 >= vecClasses.size() ) return 0;
 
-    // Build vector of class names
-    /*  Vector<String> vecClasses;
-      cp_spacevec( _items, vecClasses );
-      if( 0 >= vecClasses.size() )
-        return errh->error("Handler items not specified");
-      */
-    // Collect handlers from elements with appropriate class names in a vector
-    /*  Vector<Element*> vecElements = router()->elements();
-      for(int j = 0; j < vecClasses.size(); j++ )
+  // Collect handlers from elements with appropriate class names in a vector
+  Vector<Element*> vecElements = router()->elements();
+  for (int j = 0; j < vecClasses.size(); j++ ) {
+
+    bool bFound = false;
+    BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
+
+    for (int i = 0; i < vecElements.size(); i++) {
+      Element* pElement = vecElements[i];
+      BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
+
+      if ( String(pElement->class_name()) == vecClasses[j]
+          || router()->ename(pElement->eindex()) == vecClasses[j] )
       {
-        bool bFound = false;
-        BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
+        BRN_DEBUG(" * BrnCompoundHandler: processing handler %s on element %s. %s\n",
+                  _classes_handler.c_str(), router()->ename(pElement->eindex()).c_str(),
+                  pElement->declaration().c_str() );
 
-        click_chatter("FOO"); //output wie printf
-
-        for (int i = 0; i < vecElements.size(); i++)
-        {
-          Element* pElement = vecElements[i];
-          BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
-
-          if( String(pElement->class_name()) == vecClasses[j]
-            || router()->ename(pElement->eindex()) == vecClasses[j] )
-          {
-            BRN_DEBUG(" * BrnCompoundHandler: processing handler %s on element %s.\n",
-                _handler.c_str(), router()->ename(pElement->eindex()).c_str() );//pElement->declaration().c_str() );
-
-            const Handler* pHandler = Router::handler( pElement, _handler );
-            if( NULL == pHandler
-              || false == pHandler->writable() )
-            {
-              return errh->error("Element class %s has no write handler %s.\n",
-                pElement->class_name(), _handler.c_str() );
-            }
-
-            _vec_elements.push_back( pElement );
-            _vec_handlers.push_back( pHandler );
-            bFound = true;
-          }
+        const Handler* pHandler = Router::handler( pElement, _classes_handler );
+        if ( NULL == pHandler || false == pHandler->writable() ) {
+          return errh->error("Element class %s has no write handler %s.\n",
+                             pElement->class_name(), _classes_handler.c_str() );
         }
 
-        if( false == bFound )
-        {
-          return errh->error("Handler item %s could no be resolved.\n",
-             vecClasses[j].c_str() );
-        }
+        _vec_elements.push_back( pElement );
+        _vec_elements_handlers.push_back( pHandler );
+        _vec_handlers.push_back( router()->ename(pElement->eindex()) + "." + _classes_handler);
+        bFound = true;
       }
+    }
 
-      if( 0 >= _vec_handlers.size() )
-        return errh->error("Handler classes not specified");
+    if ( false == bFound ) {
+      return errh->error("Handler item %s could no be resolved.\n", vecClasses[j].c_str() );
+    }
+  }
 
-      // Set default value
-      if( 0 < _value.length() )
-      {
-        set_value( _value, errh );
-      }
-      */
-    return 0;
+  // Set default value
+  if((0 < _classes_value.length()) && (_vec_elements.size() > 0 )) {
+    set_value( _classes_value, errh );
+  }
+
+  return 0;
 }
 
 void
 BrnCompoundHandler::set_value( const String& value, ErrorHandler *errh )
 {
-    _value = value;
+  _classes_value = value;
 
-    for ( int i = 0; i < _vec_handlers.size(); i++ )
-    {
-        const Handler* pHandler = _vec_handlers[i];
-        Element* pElement = _vec_elements[i];
+  for ( int i = 0; i < _vec_elements_handlers.size(); i++ )
+  {
+    const Handler* pHandler = _vec_elements_handlers[i];
+    Element* pElement = _vec_elements[i];
 
-        BRN_DEBUG(" * BrnCompoundHandler: calling handler %s on element %s"
-                  " with value %s.", _handler.c_str(), pElement->declaration().c_str(),
-                  _value.c_str() );
+    BRN_DEBUG(" * BrnCompoundHandler: calling handler %s on element %s with value %s.",
+              _classes_handler.c_str(), pElement->declaration().c_str(), _classes_value.c_str() );
 
-        ContextErrorHandler cerrh( errh, String("In write handler '" +
-                                                pHandler->unparse_name(pElement) + "':").c_str());
+    ContextErrorHandler cerrh( errh, String("In write handler '" +
+                                            pHandler->unparse_name(pElement) + "':").c_str());
 
-        pHandler->call_write( _value, pElement, &cerrh );
-    }
+    pHandler->call_write( _classes_value, pElement, &cerrh );
+  }
 }
+
+String
+BrnCompoundHandler::read_handler()
+{
+  StringAccum sa;
+
+  sa << "<compoundhandler>\n";
+  for ( int j = 0; j < _vec_handlers.size(); j++) {
+    sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
+    sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                         ErrorHandler::default_handler()).c_str();
+    sa << "\t</handler>\n";
+  }
+  sa << "</compoundhandler>\n";
+
+  return sa.take_string();
+}
+
+String
+BrnCompoundHandler::handler()
+{
+  StringAccum sa;
+
+  sa << "<compoundhandlerinfo >\n";
+  for ( int j = 0; j < _vec_handlers.size(); j++) {
+    sa << "\t<handler name=\"" << _vec_handlers[j] << "\" />\n";
+  }
+  sa << "</compoundhandlerinfo>\n";
+
+  return sa.take_string();
+}
+
+
+enum { H_HANDLER_INSERT, H_HANDLER_REMOVE};
+
+int
+BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler */*errh*/)
+{
+  switch((intptr_t)vparam) {
+    case H_HANDLER_INSERT:
+      {
+        BRN_DEBUG("Search handler %s to avoid dups",in_s.c_str());
+        int i = 0;
+        for( ; i < _vec_handlers.size(); i++ ) {
+          if ( in_s == _vec_handlers[i]) {
+            BRN_DEBUG("Found handler %s: index %d (%s).",in_s.c_str(),i,_vec_handlers[i].c_str());
+            break;
+          }
+        }
+        if ( i == _vec_handlers.size() ) {
+          BRN_DEBUG("Didn't found handler %s. Insert.",in_s.c_str());
+          _vec_handlers.push_back(in_s);
+        }
+        break;
+      }
+    case H_HANDLER_REMOVE:
+      {
+        for( int i = 0; i < _vec_handlers.size(); i++ ) {
+          if ( in_s == _vec_handlers[i] ) {
+            _vec_handlers.erase(_vec_handlers.begin() + i);
+            break;
+          }
+        }
+        break;
+      }
+    default: {}
+  }
+  return 0;
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
-//CHRIS
-String
-BrnCompoundHandler::read_handlers()
-{
-    // readhandler ansprechen: /testbedhome/testbed/click/click-brn-x86/elements/brn2/test/brn2_packetqueuecontrol.cc
-    StringAccum sa;
-    Vector<Element*> vecElements = router()->elements();
-
-    for (int i = 0; i < vecElements.size(); i++) {
-        Element* pElement = vecElements[i];
-        BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
-    }
-
-    Vector<String> vecHandler;
-    cp_spacevec(_handler, vecHandler);
-
-    sa << "<compound_handler>\n";
-    for ( int j=0; j < vecHandler.size(); j++) {
-        sa << "\t<handler name=\"" << vecHandler[j] << "\">\n";
-        sa << "\t" << HandlerCall::call_read(vecHandler[j], router()->root_element(), ErrorHandler::default_handler()).c_str() << "\n";
-        sa << "\t</handler>\n";
-    }
-    sa << "</compound_handler>\n";
-
-    return sa.take_string();
-}
-
-
 static String
-read_handler(Element *e, void *thunk)
+BrnCompoundHandler_read_handler(Element *e, void */*thunk*/)
 {
-    return ((BrnCompoundHandler*)e)->read_handlers();
+  return ((BrnCompoundHandler*)e)->read_handler();
 }
 
 static String
-read_param(Element *e, void *thunk)
+BrnCompoundHandler_handler(Element *e, void */*thunk*/)
 {
+  return ((BrnCompoundHandler*)e)->handler();
 }
 
 static int
-write_param(const String &in_s, Element *e, void *,
-            ErrorHandler *errh)
+BrnCompoundHandler_handler_operation(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-    BrnCompoundHandler *dd = (BrnCompoundHandler *)e;
+  return ((BrnCompoundHandler*)e)->handler_operation(in_s, vparam, errh);
+}
 
-    String s = cp_uncomment(in_s);
-    dd->set_value( s, errh );
+static String
+BrnCompoundHandler_read_param(Element */*e*/, void */*thunk*/)
+{
+  return String();
+}
 
-    return( 0 );
+static int
+BrnCompoundHandler_write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+
+  String s = cp_uncomment(in_s);
+  ch->set_value(s, errh);
+
+  return( 0 );
 }
 
 void
 BrnCompoundHandler::add_handlers()
 {
-    //add_read_handler( _handler, read_param, 0);
-    //add_write_handler( _handler, write_param, 0);
-    add_read_handler( "handler", read_handler, 0);
+  //BRNElement::add_handlers(); //what if handler has the name "debug"
+
+  if ( _classes_handler.length() > 0 ) {
+    add_read_handler( _handler, BrnCompoundHandler_read_param, 0);
+    add_write_handler( _handler, BrnCompoundHandler_write_param, 0);
+  }
+
+  add_read_handler( "read", BrnCompoundHandler_read_handler, 0);
+
+  add_read_handler( "handler", BrnCompoundHandler_handler, 0);
+  add_write_handler( "insert", BrnCompoundHandler_handler_operation, H_HANDLER_INSERT);
+  add_write_handler( "remove", BrnCompoundHandler_handler_operation, H_HANDLER_REMOVE);
 }
 
 CLICK_ENDDECLS

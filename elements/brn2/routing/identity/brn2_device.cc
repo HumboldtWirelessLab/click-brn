@@ -217,7 +217,7 @@ BRN2Device::device_info()
   return "<device node=\"" + BRN_NODE_NAME + "\" name=\"" + getDeviceName() +
       "\" address=\"" + getEtherAddress()->unparse() +
       "\" fix_address=\"" + getEtherAddressFix()->unparse() +
-      "\" type=\"" + getDeviceTypeString() + "\" />";
+      "\" type=\"" + getDeviceTypeString() + "\" />\n";
 }
 
 //-----------------------------------------------------------------------------

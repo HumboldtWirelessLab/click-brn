@@ -23,35 +23,38 @@
 
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
-class BrnCompoundHandler : public Element 
+class BrnCompoundHandler : public BRNElement
 {
-public:
+ public:
   BrnCompoundHandler();
   virtual ~BrnCompoundHandler();
 
-public:
+ public:
   const char *class_name() const  { return "BrnCompoundHandler"; }
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
   void add_handlers();
 
   void set_value( const String& value, ErrorHandler *errh );
+  String read_handler();
+  String handler();
+  int handler_operation(const String &in_s, void *vparam, ErrorHandler *errh);
 
-  String read_handlers();
+ private:
 
-
-public:
-  int _debug;
-
-private:
   String _handler;
-  String _items;
-  String _value;
+  String _classes;
+  String _classes_handler;
+  String _classes_value;
+
+  Vector<String> _vec_handlers;
 
   Vector<Element*> _vec_elements;
-  Vector<const Handler*> _vec_handlers;
+  Vector<const Handler*> _vec_elements_handlers;
 };
 
 CLICK_ENDDECLS

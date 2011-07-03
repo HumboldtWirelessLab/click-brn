@@ -144,8 +144,8 @@ SimDevice::sim_packet_transmission(Packet *p)
 
   int rates_field[4], tries_field[4];
 
-  click_chatter("Rates: %d (%d)  %d (%d)  %d (%d)  %d (%d)",ceh->rate, ceh->max_tries, ceh->rate1, ceh->max_tries1,
-                                                            ceh->rate2, ceh->max_tries2, ceh->rate3, ceh->max_tries3);
+  //click_chatter("Rates: %d (%d)  %d (%d)  %d (%d)  %d (%d)",ceh->rate, ceh->max_tries, ceh->rate1, ceh->max_tries1,
+  //                                                          ceh->rate2, ceh->max_tries2, ceh->rate3, ceh->max_tries3);
 
   rates_field[0] = ceh->rate; rates_field[1] = ceh->rate1; rates_field[2] = ceh->rate2; rates_field[3] = ceh->rate3;
 
