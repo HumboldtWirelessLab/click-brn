@@ -27,6 +27,8 @@ class RateSelection : public BRNElement
 
     void process_foreign(click_wifi_extra *, NeighbourRateInfo *) {}
 
+    void sort_rates_by_data_rate(NeighbourRateInfo *);
+
 };
 
 CLICK_ENDDECLS

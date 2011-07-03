@@ -167,6 +167,8 @@ BrnMadwifiRate::assign_rate(click_wifi_extra *ceh, NeighbourRateInfo *nri)
   DstInfo *nfo = (DstInfo*)nri->_rs_data;
 
   if (!nfo) {
+    sort_rates_by_data_rate(nri);
+
     click_chatter("New dst info");
     nfo = new DstInfo();
     nri->_rs_data = (void*)nfo;

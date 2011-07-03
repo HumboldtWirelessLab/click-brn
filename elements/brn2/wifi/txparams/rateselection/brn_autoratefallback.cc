@@ -132,6 +132,8 @@ BrnAutoRateFallback::assign_rate(click_wifi_extra *eh, NeighbourRateInfo *nri)
   DstInfo *nfo = (DstInfo*)nri->_rs_data;
 
   if (!nfo) {
+    sort_rates_by_data_rate(nri);
+
     nfo = new DstInfo();
     nri->_rs_data = (void*)nfo;
 
@@ -177,7 +179,21 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
 
   sa << "<neighbour addr=\"" << nri->_eth.unparse() << "\" rate=\"" << rate_h << "." << rate_l;
   sa << "\" successes=\"" << (int)nfo->_successes << "\" stepup=\"" << (int)nfo->_stepup;
-  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" />\n";
+  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" >\n";
+
+  for ( int i = 0; i < tabs; i++ ) sa << "\t";
+
+  sa << "\t<rates>";
+
+  for ( int i = 0; i < nri->_rates.size(); i++) {
+    if ( i > 0 ) sa << ",";
+    sa << nri->_rates[i]._data_rate;
+  }
+
+  sa << "</rates>\n";
+
+  for ( int i = 0; i < tabs; i++ ) sa << "\t";
+  sa << "</neighbour>\n";
 
   return sa.take_string();
 }
