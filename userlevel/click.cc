@@ -87,7 +87,7 @@ static const Clp_Option options[] = {
     { "quit", 'q', QUIT_OPT, 0, 0 },
     { "simtime", 0, SIMTIME_OPT, Clp_ValDouble, Clp_Optional },
     { "simulation-time", 0, SIMTIME_OPT, Clp_ValDouble, Clp_Optional },
-    { "threads", 0, THREADS_OPT, Clp_ValInt, 0 },
+    { "threads", 'j', THREADS_OPT, Clp_ValInt, 0 },
     { "time", 't', TIME_OPT, 0, 0 },
     { "unix-socket", 'u', UNIX_SOCKET_OPT, Clp_ValString, 0 },
     { "version", 'v', VERSION_OPT, 0, 0 },
@@ -119,7 +119,7 @@ Usage: %s [OPTION]... [ROUTERFILE]\n\
 Options:\n\
   -f, --file FILE               Read router configuration from FILE.\n\
   -e, --expression EXPR         Use EXPR as router configuration.\n\
-      --threads N               Start N threads (default 1).\n\
+  -j, --threads N               Start N threads (default 1).\n\
   -p, --port PORT               Listen for control connections on TCP port.\n\
   -u, --unix-socket FILE        Listen for control connections on Unix socket.\n\
       --socket FD               Add a file descriptor control connection.\n\
@@ -190,9 +190,9 @@ call_read_handler(Element *e, String handler_name,
   const Handler *rh = Router::handler(e, handler_name);
   String full_name = Handler::unparse_name(e, handler_name);
   if (!rh || !rh->visible())
-    return errh->error("no '%s' handler", full_name.c_str());
+    return errh->error("no %<%s%> handler", full_name.c_str());
   else if (!rh->read_visible())
-    return errh->error("'%s' is a write handler", full_name.c_str());
+    return errh->error("%<%s%> is a write handler", full_name.c_str());
 
   if (print_name)
     fprintf(stdout, "%s:\n", full_name.c_str());
@@ -234,7 +234,7 @@ expand_handler_elements(const String& pattern, const String& handler_name,
 		elements.push_back(router->element(i));
 	}
     if (!any)
-	return errh->error((is_pattern ? "no element matching '%s'" : "no element '%s'"), pattern.c_str());
+	return errh->error((is_pattern ? "no element matching %<%s%>" : "no element %<%s%>"), pattern.c_str());
     else
 	return 2;
 }
@@ -308,10 +308,17 @@ static Router *
 parse_configuration(const String &text, bool text_is_expr, bool hotswap,
 		    ErrorHandler *errh)
 {
-    Master *master = (router ? router->master() : new Master(nthreads));
+    Master *new_master = 0, *master;
+    if (router)
+	master = router->master();
+    else
+	master = new_master = new Master(nthreads);
+
     Router *r = click_read_router(text, text_is_expr, errh, false, master);
-    if (!r)
+    if (!r) {
+	delete new_master;
 	return 0;
+    }
 
     // add new ControlSockets
     String retries = (hotswap ? ", RETRIES 1, RETRY_WARNINGS false" : "");
@@ -351,6 +358,7 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
 
   if (errh->nerrors() > 0 || r->initialize(errh) < 0) {
     delete r;
+    delete new_master;
     return 0;
   } else
     return r;
@@ -424,6 +432,14 @@ static void *thread_driver(void *user_data)
 }
 #endif
 
+static int
+cleanup(Clp_Parser *clp, int exit_value)
+{
+    Clp_DeleteParser(clp);
+    click_static_cleanup();
+    return exit_value;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -463,7 +479,7 @@ main(int argc, char **argv)
       for (const char *s = clp->vstr; *s; s++)
 	  if (*s == '=' && s > clp->vstr) {
 	      if (!click_lexer()->global_scope().define(String(clp->vstr, s), s + 1, false))
-		  errh->error("parameter '%.*s' multiply defined", s - clp->vstr, clp->vstr);
+		  errh->error("parameter %<%.*s%> multiply defined", s - clp->vstr, clp->vstr);
 	      goto next_argument;
 	  } else if (!isalnum((unsigned char) *s) && *s != '_')
 	      break;
@@ -559,8 +575,7 @@ main(int argc, char **argv)
 
      case HELP_OPT:
       usage();
-      exit(0);
-      break;
+      return cleanup(clp, 0);
 
      case VERSION_OPT:
       printf("click (Click) %s\n", CLICK_VERSION);
@@ -571,14 +586,12 @@ Copyright (C) 2004-2011 Regents of the University of California\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
-      exit(0);
-      break;
+      return cleanup(clp, 0);
 
      bad_option:
      case Clp_BadOption:
       short_usage();
-      exit(1);
-      break;
+      return cleanup(clp, 1);
 
      case Clp_Done:
       goto done;
@@ -598,7 +611,7 @@ particular purpose.\n");
   // parse configuration
   router = parse_configuration(router_file, file_is_expr, false, errh);
   if (!router)
-    exit(1);
+    return cleanup(clp, 1);
   router->use();
 
   int exit_value = 0;
@@ -694,10 +707,11 @@ particular purpose.\n");
   router->unuse();
 #if HAVE_MULTITHREAD
   for (int i = 0; i < other_threads.size(); ++i)
-      (void) pthread_cancel(other_threads[i]);
+      master->thread(i + 1)->wake();
+  for (int i = 0; i < other_threads.size(); ++i)
+      (void) pthread_join(other_threads[i], 0);
 #endif
   delete master;
-  click_static_cleanup();
-  Clp_DeleteParser(clp);
-  return exit_value;
+
+  return cleanup(clp, exit_value);
 }
