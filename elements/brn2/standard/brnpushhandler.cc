@@ -39,8 +39,8 @@ CLICK_DECLS
 
 
 BrnPushHandler::BrnPushHandler():
-	_pushhandler_timer(static_lookup_timer_hook,(void*)this),
-	_period(1000)
+  _period(1000),
+  _pushhandler_timer(static_push_handler_timer_hook,(void*)this)
 {
     BRNElement::init();
 }
@@ -52,208 +52,103 @@ BrnPushHandler::~BrnPushHandler()
 int
 BrnPushHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-    if (cp_va_kparse(conf, this, errh,
-                     "HANDLER", cpkP, cpString, &_handler,
-                     "PERIOD", cpkP, cpInteger, &_period,
-                     "DEBUG", cpkP, cpInteger, &_debug,
-                     cpEnd) < 0)
-        return -1;
-    /*
-      * The location of handlers is carried out in 'initialize', because
-      * add_handlers is called after configure, but before initialize.
-      */
-    return 0;
-}
+  if (cp_va_kparse(conf, this, errh,
+                    "HANDLER", cpkP+cpkM, cpString, &_handler,
+                    "PERIOD", cpkP, cpInteger, &_period,
+                    "DEBUG", cpkP, cpInteger, &_debug,
+                    cpEnd) < 0)
+    return -1;
 
+  return 0;
+}
 
 int
-BrnPushHandler::initialize(ErrorHandler *errh)
+BrnPushHandler::initialize(ErrorHandler */*errh*/)
 {
 
-	BRN_DEBUG(" * BrnPushHandler: processing handler %s.", _handler.c_str() );
+  BRN_DEBUG(" * BrnPushHandler: processing handler %s.", _handler.c_str() );
 
-	_pushhandler_timer.initialize(this);
-	_pushhandler_timer.schedule_after_msec(_period);
+  _pushhandler_timer.initialize(this);
+  _pushhandler_timer.schedule_after_msec(_period);
 
-	return 0;
-}
-
-
-void
-BrnPushHandler::static_lookup_timer_hook(Timer *, void *f)
-{
-  ((BrnPushHandler*)f)->test();
+  return 0;
 }
 
 void
-BrnPushHandler::test()
+BrnPushHandler::static_push_handler_timer_hook(Timer *, void *f)
+{
+  ((BrnPushHandler*)f)->push_handler();
+}
+
+void
+BrnPushHandler::push_handler()
 {
 
   String handler_output = HandlerCall::call_read(_handler,router()->root_element(), ErrorHandler::default_handler());
 
   click_chatter("%s\n%d",handler_output.c_str(), handler_output.length());
+
+  WritablePacket *p = WritablePacket::make(64, handler_output.data(), handler_output.length(), 32);
+
+  if (p) output(0).push(p);
+
   _pushhandler_timer.schedule_after_msec(_period);
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-void
-BrnPushHandler::set_value( const String& value, ErrorHandler *errh )
-{
-  _classes_value = value;
-
-  for ( int i = 0; i < _vec_elements_handlers.size(); i++ )
-  {
-    const Handler* pHandler = _vec_elements_handlers[i];
-    Element* pElement = _vec_elements[i];
-
-    BRN_DEBUG(" * BrnPushHandler: calling handler %s on element %s with value %s.",
-              _classes_handler.c_str(), pElement->declaration().c_str(), _classes_value.c_str() );
-
-    ContextErrorHandler cerrh( errh, String("In write handler '" +
-                                            pHandler->unparse_name(pElement) + "':").c_str());
-
-    pHandler->call_write( _classes_value, pElement, &cerrh );
-  }
-}
-
-String
-BrnPushHandler::read_handler()
-{
-    StringAccum sa;
-
-    sa << "<compoundhandler>\n";
-    for ( int j = 0; j < _vec_handlers.size(); j++) {
-        sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-        sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                             ErrorHandler::default_handler()).c_str();
-        sa << "\t</handler>\n";
-    }
-    sa << "</compoundhandler>\n";
-
-    return sa.take_string();
-}
-
-String
-BrnPushHandler::handler()
-{
-    StringAccum sa;
-
-    sa << "<compoundhandlerinfo >\n";
-    for ( int j = 0; j < _vec_handlers.size(); j++) {
-        sa << "\t<handler name=\"" << _vec_handlers[j] << "\" />\n";
-    }
-    sa << "</compoundhandlerinfo>\n";
-
-    return sa.take_string();
-}
-
-
-enum { H_HANDLER_INSERT, H_HANDLER_REMOVE};
-
-int
-BrnPushHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler */*errh*/)
-{
-    switch((intptr_t)vparam) {
-    case H_HANDLER_INSERT:
-    {
-        BRN_DEBUG("Search handler %s to avoid dups",in_s.c_str());
-        int i = 0;
-        for( ; i < _vec_handlers.size(); i++ ) {
-            if ( in_s == _vec_handlers[i]) {
-                BRN_DEBUG("Found handler %s: index %d (%s).",in_s.c_str(),i,_vec_handlers[i].c_str());
-                break;
-            }
-        }
-        if ( i == _vec_handlers.size() ) {
-            BRN_DEBUG("Didn't found handler %s. Insert.",in_s.c_str());
-            _vec_handlers.push_back(in_s);
-        }
-        break;
-    }
-    case H_HANDLER_REMOVE:
-    {
-        for( int i = 0; i < _vec_handlers.size(); i++ ) {
-            if ( in_s == _vec_handlers[i] ) {
-                _vec_handlers.erase(_vec_handlers.begin() + i);
-                break;
-            }
-        }
-        break;
-    }
-    default:
-    {}
-    }
-    return 0;
-}
-
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-BrnPushHandler_read_handler(Element *e, void */*thunk*/)
-{
-    return ((BrnPushHandler*)e)->read_handler();
-}
+enum { H_PERIOD, H_HANDLER};
 
 static String
-BrnPushHandler_handler(Element *e, void */*thunk*/)
+BrnPushHandler_read_param(Element *e, void *vparam)
 {
-    return ((BrnPushHandler*)e)->handler();
+  BrnPushHandler *ph = (BrnPushHandler *)e;
+  StringAccum sa;
+
+
+  switch((intptr_t)vparam) {
+    case H_PERIOD:
+    case H_HANDLER: {
+      sa << "<pushhandler period=\"" << ph->_period << "\" handler=\"" << ph->_handler << "\" />\n";
+      return sa.take_string();
+    }
+  }
+  return String();
 }
 
 static int
-BrnPushHandler_handler_operation(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+BrnPushHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-    return ((BrnPushHandler*)e)->handler_operation(in_s, vparam, errh);
-}
+  BrnPushHandler *ph = (BrnPushHandler *)e;
 
-static String
-BrnPushHandler_read_param(Element */*e*/, void */*thunk*/)
-{
-    return String();
-}
+  switch((intptr_t)vparam) {
+    case H_PERIOD: {
+      cp_integer(in_s, &(ph->_period));
+      break;
+    }
+    case H_HANDLER: {
+      ph->_handler = in_s;
+      break;
+    }
+  }
 
-static int
-BrnPushHandler_write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-    BrnPushHandler *ch = (BrnPushHandler *)e;
-
-    String s = cp_uncomment(in_s);
-    ch->set_value(s, errh);
-
-    return( 0 );
+  return 0;
 }
 
 void
 BrnPushHandler::add_handlers()
 {
-    //BRNElement::add_handlers(); //what if handler has the name "debug"
+  BRNElement::add_handlers(); //what if handler has the name "debug"
 
-    if ( _classes_handler.length() > 0 ) {
-        add_read_handler( _handler, BrnPushHandler_read_param, 0);
-        add_write_handler( _handler, BrnPushHandler_write_param, 0);
-    }
+  add_read_handler( "handler", BrnPushHandler_read_param, H_HANDLER);
+  add_read_handler( "period", BrnPushHandler_read_param, H_PERIOD);
 
-    add_read_handler( "read", BrnPushHandler_read_handler, 0);
-
-    add_read_handler( "handler", BrnPushHandler_handler, 0);
-    add_write_handler( "insert", BrnPushHandler_handler_operation, H_HANDLER_INSERT);
-    add_write_handler( "remove", BrnPushHandler_handler_operation, H_HANDLER_REMOVE);
+  add_write_handler( "handler", BrnPushHandler_write_param, H_HANDLER);
+  add_write_handler( "period", BrnPushHandler_write_param, H_PERIOD);
 }
-
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnPushHandler)

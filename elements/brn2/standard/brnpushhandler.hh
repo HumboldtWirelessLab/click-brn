@@ -29,40 +29,31 @@ CLICK_DECLS
 
 class BrnPushHandler : public BRNElement
 {
-	public:
-		BrnPushHandler();
-		virtual ~BrnPushHandler();
+  public:
+    BrnPushHandler();
+    virtual ~BrnPushHandler();
 
-	public:
-		const char *class_name() const  {return "BrnPushHandler";}
-		int configure(Vector<String> &, ErrorHandler *);
-		int initialize(ErrorHandler *);
-		void add_handlers();
+  public:
+    const char *class_name() const  {return "BrnPushHandler";}
 
-		void set_value( const String& value, ErrorHandler *errh );
-		String read_handler();
-		String handler();
-		int handler_operation(const String &in_s, void *vparam, ErrorHandler *errh);
+    const char *processing() const  { return PUSH; }
+    const char *port_count() const  { return "0/1"; }
 
-		static void static_lookup_timer_hook(Timer *, void *);
-		void test();
+    int configure(Vector<String> &, ErrorHandler *);
+    int initialize(ErrorHandler *);
+    void add_handlers();
 
-	private:
-		String _handler;
-		String _classes;
-		String _classes_handler;
-		String _classes_value;
+    static void static_push_handler_timer_hook(Timer *, void *);
+    void push_handler();
 
-		Timer _pushhandler_timer;
+    String _handler;
+    int _period;
 
-		Vector<String> _vec_handlers;
+  private:
 
-		Vector<Element*> _vec_elements;
-		Vector<const Handler*> _vec_elements_handlers;
-
-	    int _period;
+    Timer _pushhandler_timer;
 };
 
 CLICK_ENDDECLS
 
-#endif /*BrnPushHANDLER_HH_*/
+#endif /*BRNPUSHHANDLER_HH_*/
