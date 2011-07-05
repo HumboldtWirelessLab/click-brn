@@ -102,7 +102,7 @@ BatmanForwarder::push( int /*port*/, Packet *packet )
   bh->hops--;
 
   if ( bh->hops == 0 || ttl == 0 ) {
-    BRN_ERROR("To many hops (TTL: %d Hops: %d. Route Error.",(int)ttl,(int)bh->hops);
+    BRN_ERROR("Too many hops (TTL: %d Hops: %d. Route Error.",(int)ttl,(int)bh->hops);
     output(2).push(packet);
     return;
   }

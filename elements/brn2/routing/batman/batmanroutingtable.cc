@@ -115,24 +115,31 @@ BatmanRoutingTable::print_rt()
 {
   StringAccum sa;
 
-  sa << "Routing Info" << "\n";
+  sa << "<batmanroutingtable ";
   if ( _nodeid != NULL ) {
-    sa << "Address: " << _nodeid->getMasterAddress()->unparse() << " Nodes: " << _nodemap.size() << "\n";
+    sa << "addr=\"" << _nodeid->getMasterAddress()->unparse() << "\"";
   }
 
-  sa << "Node\t\t\tBest Forwarder\t\tHops\tMetric\tSrcOID\tLastFwdOID\n";
+  sa << " >\n\t<nodes count=\"" << _nodemap.size() << "\" >\n";
+
 
   for (BatmanNodeMapIter i = _nodemap.begin(); i.live(); i++) {
     BatmanNode *bn = _nodemap.findp(i.key());
     BatmanForwarderEntry *bfe = getBestForwarder(bn->_addr);
 
+    sa << "\t\t<node addr=\"" << bn->_addr.unparse() << "\" nexthop=\"";
+
+
     if ( bfe == NULL ) {
-      sa << bn->_addr.unparse() << "\t00-00-00-00-00-00\t-1\t0\t0\t0\n";
+      sa << "00-00-00-00-00-00\" hops=\"0\" metric=\"0\" lastorigid=\"0\" lastfwdorigid=\"0\" />\n";
     } else {
-      sa << bn->_addr.unparse() << "\t" << bfe->_forwarder.unparse() << "\t" << (int)bfe->_hops << "\t";
-      sa << bfe->_metric << "\t" << bn->_latest_originator_id << "\t" << bn->_last_forward_originator_id << "\n" ;
+      sa << bfe->_forwarder.unparse() << "\" hops=\"" << (int)bfe->_hops << "\" metric=\"" << bfe->_metric;
+      sa << "\" lastorigid=\"" << bn->_latest_originator_id << "\" lastfwdorigid=\"" << bn->_last_forward_originator_id;
+      sa << "\" />\n";
     }
   }
+
+  sa << "\t</nodes>\n</batmanroutingtable>\n";
 
   return sa.take_string();
 }
