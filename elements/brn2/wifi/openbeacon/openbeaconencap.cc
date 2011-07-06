@@ -16,6 +16,7 @@ CLICK_DECLS
 OpenBeaconEncap::OpenBeaconEncap()
   :_debug(BrnLogger::DEFAULT)
 {
+	
 }
 
 OpenBeaconEncap::~OpenBeaconEncap()
@@ -28,6 +29,7 @@ OpenBeaconEncap::configure(Vector<String> &conf, ErrorHandler* errh)
   int ret;
 
   ret = cp_va_kparse(conf, this, errh,
+		     "SRC", cpkP+cpkM, cpEthernetAddress, &opbecon_filter,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
   _errh = errh;
@@ -42,7 +44,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   click_wifi_extra *ceh = NULL;
 	
   // save MAC
-  uint8_t	e_dhost[6], e_shost[6];
+  uint8_t	e_dhost[6], e_shost[6], hlen;
   int i=0;	
   
   for(i=0; i<6; i++) { 
@@ -50,28 +52,33 @@ OpenBeaconEncap::simple_action(Packet *p)
 	e_shost[i] = p->ether_header()->ether_shost[i];
   }
   
+  hlen = p->length()-12;
   q = p->push( sizeof(Click2OBD_header)-12  );  
 
   if ( !q ) {
     p->kill();
     return NULL;
   }
-
+  
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
 
+  crh->length	= hlen;
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
   crh->rate 	= ceh->rate;
   
-  for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
-	  crh->openbeacon_dmac[i-1] = e_dhost[ i + 6 - sizeof( crh->openbeacon_dmac ) - 1 ];
-	  crh->openbeacon_smac[i-1] = e_shost[ i + 6 - sizeof( crh->openbeacon_smac ) - 1 ];
+  for(i=1; i>=0; i--) {
+	  crh->openbeacon_smac[ i ] =   e_dhost[ 5-i ];  // ok
+	  crh->openbeacon_smac[ sizeof( crh->openbeacon_dmac ) - i - 1 ] =  e_shost[ 5-(1-i) ];
   }
+  for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
+	  crh->openbeacon_dmac[ 6 - i - 1 ] =  opbecon_filter[ sizeof( crh->openbeacon_dmac ) - i + 1];
+  }  
   
   // check the packet data
-  HW_rxtx_Test *  hwt = (HW_rxtx_Test*) (q->data()+ sizeof(Click2OBD_header) - sizeof( crh->openbeacon_smac ) );
+ /* HW_rxtx_Test *  hwt = (HW_rxtx_Test*) (q->data()+ sizeof(Click2OBD_header) - sizeof( crh->openbeacon_smac ) );
   
   if(hwt->prot_type[0]==0x06 && hwt->prot_type[1]==0x06) {  // is a test packet
 	if(hwt->type==3) { // send only one packet from click over hw_link to click
@@ -83,10 +90,9 @@ OpenBeaconEncap::simple_action(Packet *p)
 	if(hwt->type==1) { // send count packets over hw-link
 		crh->status =  crh->status | STATUS_hw_rxtx_test;
 		crh->count = hwt->count;
-	}                                     
-
+	}
   }
-    
+    */
   return q;
 }
 

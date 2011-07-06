@@ -15,6 +15,7 @@ CLICK_DECLS
 OpenBeaconDecap::OpenBeaconDecap()
   :_debug(BrnLogger::DEFAULT)
 {
+	
 }
 
 OpenBeaconDecap::~OpenBeaconDecap()
@@ -37,19 +38,25 @@ OpenBeaconDecap::simple_action(Packet *p)
 {
 	Click2OBD_header *crh = (Click2OBD_header *)p->data(); 
 	uint8_t e_dhost[6], e_shost[6];
-	unsigned int i=0;
+	int i=0;
 	
 	WritablePacket *wp;
 	click_wifi_extra *ceh = NULL;
 	
-        for(i=0; i<6; i++) e_dhost[i] = 0;
-	for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
-		e_dhost[ i + 6 - sizeof( crh->openbeacon_dmac ) - 1 ] = crh->openbeacon_dmac[i-1];
-		e_shost[ i + 6 - sizeof( crh->openbeacon_smac ) - 1 ] = crh->openbeacon_smac[i-1];
+	for(i=0; i<(int)sizeof( crh->openbeacon_dmac ); i--) {
+		e_dhost[ i ] = 0;
+		e_shost[ i ] = 0;
 	}
-	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel;
 	
-	p->pull( sizeof(Click2OBD_header)-12 );
+	for(i=1; i>=0; i--) {
+		e_dhost[ 5-i ] = crh->openbeacon_smac[ i ];
+		e_shost[ 5-(1-i) ] = crh->openbeacon_smac[ sizeof( crh->openbeacon_dmac ) - i - 1 ];
+	}
+		
+	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel, length=crh->length;
+	
+	// trim das packet noch ;-)
+	p->pull( sizeof(Click2OBD_header)-13 );
 	wp = (WritablePacket *)p;
 		
 	p->set_mac_header( p->data(), 14);
