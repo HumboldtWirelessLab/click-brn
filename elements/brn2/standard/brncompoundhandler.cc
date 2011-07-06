@@ -35,7 +35,8 @@
 #include <click/handlercall.hh>
 CLICK_DECLS
 
-BrnCompoundHandler::BrnCompoundHandler()
+BrnCompoundHandler::BrnCompoundHandler():
+  _update_mode(UPDATEMODE_SEND_ALL)
 {
   BRNElement::init();
 }
@@ -52,6 +53,7 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
                     "CLASSES", cpkP, cpString, &_classes,
                     "CLASSESHANDLER", cpkP, cpString, &_classes_handler,
                     "CLASSESVALUE", cpkP, cpString, &_classes_value,
+                    "UPDATEMODE", cpkP, cpInteger, &_update_mode,
                     "DEBUG", cpkP, cpInteger, &_debug,
                     cpEnd) < 0)
       return -1;
@@ -145,9 +147,24 @@ BrnCompoundHandler::read_handler()
 
   sa << "<compoundhandler>\n";
   for ( int j = 0; j < _vec_handlers.size(); j++) {
-    sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-    sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                         ErrorHandler::default_handler()).c_str();
+    if ( _update_mode == UPDATEMODE_SEND_ALL ) {
+      sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
+      sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                          ErrorHandler::default_handler()).c_str();
+    } else if ( _update_mode == UPDATEMODE_SEND_INFO ) {
+      String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                                                  ErrorHandler::default_handler());
+
+      String *last_value = _last_handler_value.findp(_vec_handlers[j]);
+      sa << "\t<handler name=\"" << _vec_handlers[j];
+      if ( (last_value != NULL) && (*last_value == new_value)) {
+         sa << " \" update=\"false\" >\n";
+      } else {
+        _last_handler_value.insert(_vec_handlers[j],new_value);
+        sa << " \" update=\"true\" >\n";
+        sa << new_value.c_str();
+      }
+    }
     sa << "\t</handler>\n";
   }
   sa << "</compoundhandler>\n";

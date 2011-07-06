@@ -22,10 +22,16 @@
 #define BRNCOMPOUNDHANDLER_HH_
 
 #include <click/element.hh>
+#include <click/hashmap.hh>
+#include <click/bighashmap.hh>
 
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
+
+#define UPDATEMODE_SEND_ALL  0
+#define UPDATEMODE_SEND_INFO 1
+#define UPDATEMODE_SEND_DIFF 2
 
 class BrnCompoundHandler : public BRNElement
 {
@@ -55,6 +61,10 @@ class BrnCompoundHandler : public BRNElement
 
   Vector<Element*> _vec_elements;
   Vector<const Handler*> _vec_elements_handlers;
+
+
+  int _update_mode;
+  HashMap<String,String> _last_handler_value;
 };
 
 CLICK_ENDDECLS

@@ -52,6 +52,12 @@ class BrnPushHandler : public BRNElement
   private:
 
     Timer _pushhandler_timer;
+  public:
+    void set_period(int period) {
+      if ( _period != 0 ) _pushhandler_timer.unschedule();
+      _period = period;
+      if ( _period != 0 ) _pushhandler_timer.schedule_after_msec(_period);
+    }
 };
 
 CLICK_ENDDECLS

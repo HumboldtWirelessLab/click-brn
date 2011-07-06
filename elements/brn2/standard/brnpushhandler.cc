@@ -84,15 +84,19 @@ void
 BrnPushHandler::push_handler()
 {
 
-  String handler_output = HandlerCall::call_read(_handler,router()->root_element(), ErrorHandler::default_handler());
+  if ( _handler != "" ) {
+    String handler_output = HandlerCall::call_read(_handler,router()->root_element(), ErrorHandler::default_handler());
 
-  click_chatter("%s\n%d",handler_output.c_str(), handler_output.length());
+    BRN_DEBUG("%s\n%d",handler_output.c_str(), handler_output.length());
 
-  WritablePacket *p = WritablePacket::make(64, handler_output.data(), handler_output.length(), 32);
+    WritablePacket *p = WritablePacket::make(64, handler_output.data(), handler_output.length(), 32);
 
-  if (p) output(0).push(p);
+    if (p) output(0).push(p);
+  }
 
-  _pushhandler_timer.schedule_after_msec(_period);
+  if ( _period > 0 ) {
+    _pushhandler_timer.schedule_after_msec(_period);
+  }
 
 }
 
@@ -126,7 +130,9 @@ BrnPushHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
 
   switch((intptr_t)vparam) {
     case H_PERIOD: {
-      cp_integer(in_s, &(ph->_period));
+      int period;
+      cp_integer(in_s, &period);
+      ph->set_period(period);
       break;
     }
     case H_HANDLER: {
