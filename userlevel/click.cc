@@ -33,6 +33,9 @@
 #include <sys/stat.h>
 #include <sys/resource.h>
 #include <fcntl.h>
+#if HAVE_EXECINFO_H
+# include <execinfo.h>
+#endif
 
 #include <click/lexer.hh>
 #include <click/routerthread.hh>
@@ -46,7 +49,7 @@
 #include <click/glue.hh>
 #include <click/driver.hh>
 #include <click/userutils.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/handlercall.hh>
 #include "elements/standard/quitwatcher.hh"
 #include "elements/userlevel/controlsocket.hh"
@@ -69,6 +72,7 @@ CLICK_USING_DECLS
 #define EXIT_HANDLER_OPT	315
 #define THREADS_OPT		316
 #define SIMTIME_OPT		317
+#define SOCKET_OPT		318
 
 static const Clp_Option options[] = {
     { "allow-reconfigure", 'R', ALLOW_RECONFIG_OPT, 0, Clp_Negate },
@@ -78,11 +82,12 @@ static const Clp_Option options[] = {
     { "handler", 'h', HANDLER_OPT, Clp_ValString, 0 },
     { "help", 0, HELP_OPT, 0, 0 },
     { "output", 'o', OUTPUT_OPT, Clp_ValString, 0 },
+    { "socket", 0, SOCKET_OPT, Clp_ValInt, 0 },
     { "port", 'p', PORT_OPT, Clp_ValString, 0 },
     { "quit", 'q', QUIT_OPT, 0, 0 },
     { "simtime", 0, SIMTIME_OPT, Clp_ValDouble, Clp_Optional },
     { "simulation-time", 0, SIMTIME_OPT, Clp_ValDouble, Clp_Optional },
-    { "threads", 0, THREADS_OPT, Clp_ValInt, 0 },
+    { "threads", 'j', THREADS_OPT, Clp_ValInt, 0 },
     { "time", 't', TIME_OPT, 0, 0 },
     { "unix-socket", 'u', UNIX_SOCKET_OPT, Clp_ValString, 0 },
     { "version", 'v', VERSION_OPT, 0, 0 },
@@ -114,9 +119,10 @@ Usage: %s [OPTION]... [ROUTERFILE]\n\
 Options:\n\
   -f, --file FILE               Read router configuration from FILE.\n\
   -e, --expression EXPR         Use EXPR as router configuration.\n\
-      --threads N               Start N threads (default 1).\n\
+  -j, --threads N               Start N threads (default 1).\n\
   -p, --port PORT               Listen for control connections on TCP port.\n\
   -u, --unix-socket FILE        Listen for control connections on Unix socket.\n\
+      --socket FD               Add a file descriptor control connection.\n\
   -R, --allow-reconfigure       Provide a writable 'hotconfig' handler.\n\
   -h, --handler ELEMENT.H       Call ELEMENT's read handler H after running\n\
                                 driver and print result to standard output.\n\
@@ -149,6 +155,29 @@ stop_signal_handler(int sig)
     else
 	router->set_runcount(Router::STOP_RUNCOUNT);
 }
+
+#if HAVE_EXECINFO_H
+static void
+catch_dump_signal(int sig)
+{
+    (void) sig;
+
+    /* reset these signals so if we do something bad we just exit */
+    click_signal(SIGSEGV, SIG_DFL, false);
+    click_signal(SIGBUS, SIG_DFL, false);
+    click_signal(SIGILL, SIG_DFL, false);
+    click_signal(SIGABRT, SIG_DFL, false);
+    click_signal(SIGFPE, SIG_DFL, false);
+
+    /* dump the results to standard error */
+    void *return_addrs[50];
+    int naddrs = backtrace(return_addrs, sizeof(return_addrs) / sizeof(void *));
+    backtrace_symbols_fd(return_addrs, naddrs, STDERR_FILENO);
+
+    /* dump core and quit */
+    abort();
+}
+#endif
 }
 
 
@@ -161,9 +190,9 @@ call_read_handler(Element *e, String handler_name,
   const Handler *rh = Router::handler(e, handler_name);
   String full_name = Handler::unparse_name(e, handler_name);
   if (!rh || !rh->visible())
-    return errh->error("no '%s' handler", full_name.c_str());
+    return errh->error("no %<%s%> handler", full_name.c_str());
   else if (!rh->read_visible())
-    return errh->error("'%s' is a write handler", full_name.c_str());
+    return errh->error("%<%s%> is a write handler", full_name.c_str());
 
   if (print_name)
     fprintf(stdout, "%s:\n", full_name.c_str());
@@ -205,7 +234,7 @@ expand_handler_elements(const String& pattern, const String& handler_name,
 		elements.push_back(router->element(i));
 	}
     if (!any)
-	return errh->error((is_pattern ? "no element matching '%s'" : "no element '%s'"), pattern.c_str());
+	return errh->error((is_pattern ? "no element matching %<%s%>" : "no element %<%s%>"), pattern.c_str());
     else
 	return 2;
 }
@@ -262,6 +291,7 @@ hotswap_hook(Task *, void *)
 
 static Vector<String> cs_unix_sockets;
 static Vector<String> cs_ports;
+static Vector<String> cs_sockets;
 static bool warnings = true;
 static int nthreads = 1;
 
@@ -278,17 +308,27 @@ static Router *
 parse_configuration(const String &text, bool text_is_expr, bool hotswap,
 		    ErrorHandler *errh)
 {
-  Master *master = (router ? router->master() : new Master(nthreads));
-  Router *r = click_read_router(text, text_is_expr, errh, false, master);
-  if (!r)
-    return 0;
+    Master *new_master = 0, *master;
+    if (router)
+	master = router->master();
+    else
+	master = new_master = new Master(nthreads);
 
-  // add new ControlSockets
-  String retries = (hotswap ? ", RETRIES 1, RETRY_WARNINGS false" : "");
-  for (int i = 0; i < cs_ports.size(); i++)
-    r->add_element(new ControlSocket, click_driver_control_socket_name(i), "tcp, " + cs_ports[i] + retries, "click", 0);
-  for (int i = 0; i < cs_unix_sockets.size(); i++)
-    r->add_element(new ControlSocket, click_driver_control_socket_name(i + cs_ports.size()), "unix, " + cp_quote(cs_unix_sockets[i]) + retries, "click", 0);
+    Router *r = click_read_router(text, text_is_expr, errh, false, master);
+    if (!r) {
+	delete new_master;
+	return 0;
+    }
+
+    // add new ControlSockets
+    String retries = (hotswap ? ", RETRIES 1, RETRY_WARNINGS false" : "");
+    int ncs = 0;
+    for (String *it = cs_ports.begin(); it != cs_ports.end(); ++it, ++ncs)
+	r->add_element(new ControlSocket, click_driver_control_socket_name(ncs), "TCP, " + *it + retries, "click", 0);
+    for (String *it = cs_unix_sockets.begin(); it != cs_unix_sockets.end(); ++it, ++ncs)
+	r->add_element(new ControlSocket, click_driver_control_socket_name(ncs), "UNIX, " + *it + retries, "click", 0);
+    for (String *it = cs_sockets.begin(); it != cs_sockets.end(); ++it, ++ncs)
+	r->add_element(new ControlSocket, click_driver_control_socket_name(ncs), "SOCKET, " + *it + retries, "click", 0);
 
   // catch signals (only need to do the first time)
   if (!hotswap) {
@@ -297,6 +337,19 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
       click_signal(SIGTERM, stop_signal_handler, true);
       // ignore SIGPIPE
       click_signal(SIGPIPE, SIG_IGN, false);
+
+#if HAVE_EXECINFO_H
+    const char *click_backtrace = getenv("CLICK_BACKTRACE");
+    bool do_click_backtrace;
+    if (click_backtrace && (!BoolArg().parse(click_backtrace, do_click_backtrace)
+			    || do_click_backtrace)) {
+	click_signal(SIGSEGV, catch_dump_signal, false);
+	click_signal(SIGBUS, catch_dump_signal, false);
+	click_signal(SIGILL, catch_dump_signal, false);
+	click_signal(SIGABRT, catch_dump_signal, false);
+	click_signal(SIGFPE, catch_dump_signal, false);
+    }
+#endif
   }
 
   // register hotswap router on new router
@@ -305,6 +358,7 @@ parse_configuration(const String &text, bool text_is_expr, bool hotswap,
 
   if (errh->nerrors() > 0 || r->initialize(errh) < 0) {
     delete r;
+    delete new_master;
     return 0;
   } else
     return r;
@@ -344,7 +398,7 @@ timewarp_write_handler(const String &text, Element *, void *, ErrorHandler *errh
 	Timestamp::warp_set_class(Timestamp::warp_nowait);
     else {
 	double factor;
-	if (!cp_double(text, &factor))
+	if (!DoubleArg().parse(text, factor))
 	    return errh->error("expected double");
 	else if (factor <= 0)
 	    return errh->error("timefactor must be > 0");
@@ -377,6 +431,14 @@ static void *thread_driver(void *user_data)
 }
 }
 #endif
+
+static int
+cleanup(Clp_Parser *clp, int exit_value)
+{
+    Clp_DeleteParser(clp);
+    click_static_cleanup();
+    return exit_value;
+}
 
 int
 main(int argc, char **argv)
@@ -417,7 +479,7 @@ main(int argc, char **argv)
       for (const char *s = clp->vstr; *s; s++)
 	  if (*s == '=' && s > clp->vstr) {
 	      if (!click_lexer()->global_scope().define(String(clp->vstr, s), s + 1, false))
-		  errh->error("parameter '%.*s' multiply defined", s - clp->vstr, clp->vstr);
+		  errh->error("parameter %<%.*s%> multiply defined", s - clp->vstr, clp->vstr);
 	      goto next_argument;
 	  } else if (!isalnum((unsigned char) *s) && *s != '_')
 	      break;
@@ -464,6 +526,10 @@ main(int argc, char **argv)
       cs_unix_sockets.push_back(clp->vstr);
       break;
 
+    case SOCKET_OPT:
+	cs_sockets.push_back(clp->vstr);
+	break;
+
      case ALLOW_RECONFIG_OPT:
       allow_reconfigure = !clp->negated;
       break;
@@ -509,26 +575,23 @@ main(int argc, char **argv)
 
      case HELP_OPT:
       usage();
-      exit(0);
-      break;
+      return cleanup(clp, 0);
 
      case VERSION_OPT:
       printf("click (Click) %s\n", CLICK_VERSION);
       printf("Copyright (C) 1999-2001 Massachusetts Institute of Technology\n\
 Copyright (C) 2001-2003 International Computer Science Institute\n\
-Copyright (C) 2004-2007 Regents of the University of California\n\
 Copyright (C) 2008-2009 Meraki, Inc.\n\
+Copyright (C) 2004-2011 Regents of the University of California\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
-      exit(0);
-      break;
+      return cleanup(clp, 0);
 
      bad_option:
      case Clp_BadOption:
       short_usage();
-      exit(1);
-      break;
+      return cleanup(clp, 1);
 
      case Clp_Done:
       goto done;
@@ -548,10 +611,11 @@ particular purpose.\n");
   // parse configuration
   router = parse_configuration(router_file, file_is_expr, false, errh);
   if (!router)
-    exit(1);
+    return cleanup(clp, 1);
   router->use();
 
   int exit_value = 0;
+  Vector<pthread_t> other_threads;
 
   // output flat configuration
   if (output_file) {
@@ -593,6 +657,7 @@ particular purpose.\n");
     for (int t = 1; t < nthreads; ++t) {
 	pthread_t p;
 	pthread_create(&p, 0, thread_driver, router->master()->thread(t));
+	other_threads.push_back(p);
     }
 #endif
     router->master()->thread(0)->driver();
@@ -628,9 +693,9 @@ particular purpose.\n");
     bool b;
     if (errh->nerrors() != before)
       exit_value = -1;
-    else if (cp_integer(cp_uncomment(exit_string), &exit_value))
+    else if (IntArg().parse(cp_uncomment(exit_string), exit_value))
       /* nada */;
-    else if (cp_bool(cp_uncomment(exit_string), &b))
+    else if (BoolArg().parse(cp_uncomment(exit_string), b))
       exit_value = (b ? 0 : 1);
     else {
       errh->error("exit handler value should be integer");
@@ -640,8 +705,13 @@ particular purpose.\n");
 
   Master *master = router->master();
   router->unuse();
+#if HAVE_MULTITHREAD
+  for (int i = 0; i < other_threads.size(); ++i)
+      master->thread(i + 1)->wake();
+  for (int i = 0; i < other_threads.size(); ++i)
+      (void) pthread_join(other_threads[i], 0);
+#endif
   delete master;
-  click_static_cleanup();
-  Clp_DeleteParser(clp);
-  return exit_value;
+
+  return cleanup(clp, exit_value);
 }

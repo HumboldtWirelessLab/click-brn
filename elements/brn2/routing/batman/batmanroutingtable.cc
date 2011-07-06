@@ -34,8 +34,8 @@
 CLICK_DECLS
 
 BatmanRoutingTable::BatmanRoutingTable()
-  :_debug(/*BrnLogger::DEFAULT*/0)
 {
+  BRNElement::init();
 }
 
 BatmanRoutingTable::~BatmanRoutingTable()
@@ -48,7 +48,9 @@ BatmanRoutingTable::configure(Vector<String> &conf, ErrorHandler* errh)
   _nodeid = NULL;
 
   if (cp_va_kparse(conf, this, errh,
-      "NODEID", cpkP , cpElement, &_nodeid,
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "LINKTABLE", cpkP+cpkM , cpElement, &_linktable,
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -64,113 +66,80 @@ BatmanRoutingTable::initialize(ErrorHandler *)
 BatmanRoutingTable::BatmanNode*
 BatmanRoutingTable::getBatmanNode(EtherAddress addr)
 {
-  BatmanNode *bn;
-
-  for ( int i = 0; i < _nodelist.size(); i++ )
-  {
-    bn = &(_nodelist[i]);
-    if ( bn->_addr == addr ) {
-      return bn;
-    }
-  }
-
-  return NULL;
+  return _nodemap.findp(addr);
 }
 
-int
+BatmanRoutingTable::BatmanNode*
 BatmanRoutingTable::addBatmanNode(EtherAddress addr)
 {
-  _nodelist.push_back(BatmanNode(addr));
+  BatmanRoutingTable::BatmanNode* _node;
+  if ( (_node = _nodemap.findp(addr)) != NULL ) return _node;
 
-  return 0;
+  _nodemap.insert(addr,BatmanNode(addr));
+
+  return _nodemap.findp(addr);
 }
 
-bool
-BatmanRoutingTable::isNewOriginator(uint32_t id, EtherAddress src)
-{
-  BatmanNode *bn;
-
-  bn = getBatmanNode(src);
-  if ( bn == NULL ) return false;
-
-  return ( ! bn->gotOriginator(id) );
-}
-
-void
-BatmanRoutingTable::handleNewOriginator(uint32_t id, EtherAddress src, EtherAddress fwd, uint8_t devId, int hops)
-{
-  BatmanNode *bn;
-
-  bn = getBatmanNode(src);
-
-  if ( bn == NULL ) {
-    addBatmanNode(src);
-    bn = getBatmanNode(src);
-    if ( bn == NULL ) click_chatter("Not able to add new Node");
-  }
-
-  bn->add_originator( fwd, devId, id, hops );
-}
-
-void
-BatmanRoutingTable::addBatmanNeighbour(EtherAddress addr)
-{
-  for ( int i = 0; i < _neighbours.size(); i++) {
-    if ( _neighbours[i]._addr == addr ) {
-      _neighbours[i]._last_originator_time = Timestamp::now();
-      return;
-    }
-  }
-  _neighbours.push_back(BatmanNeighbour(addr));
-  return;
-}
 
 BatmanRoutingTable::BatmanForwarderEntry *
 BatmanRoutingTable::getBestForwarder(EtherAddress dst)
 {
   BatmanNode *bn;
-  BatmanRoutingTable::BatmanForwarderEntry *best;
 
-  bn = getBatmanNode(dst);
+  if ( (bn = getBatmanNode(dst)) == NULL ) return NULL;
 
-  if ( bn == NULL ) return NULL;
-  if ( bn->_forwarder.size() == 0 ) return NULL;
-
-  //TODO: what happend if stats are running out of time
-  best = &bn->_forwarder[0];
-  for ( int i = 1; i < bn->_forwarder.size(); i++ )
-  {
-    if ( best->getAverageHopCount() > bn->_forwarder[i].getAverageHopCount() ) {
-      best = &bn->_forwarder[i];
-    }
-  }
-  return best;
+  return bn->getBatmanForwarderEntry(bn->_best_forwarder);
 }
 
 
+void
+BatmanRoutingTable::update_originator(EtherAddress src, EtherAddress fwd, uint32_t id,
+                                      int hops, uint32_t metric_fwd_src, uint32_t metric_to_fwd)
+{
+  BatmanRoutingTable::BatmanNode* bn = BatmanRoutingTable::addBatmanNode(src);
+  bn->update_originator(id, fwd, metric_fwd_src, metric_to_fwd, hops);
+}
+
+
+void
+BatmanRoutingTable::get_nodes_to_be_forwarded(int originator_id, BatmanNodePList *bnl)
+{
+  for (BatmanNodeMapIter i = _nodemap.begin(); i.live(); i++) {
+    BatmanNode *bn = _nodemap.findp(i.key());
+    if ( bn->should_be_forwarded(originator_id) ) bnl->push_back(bn);
+  }
+}
+
 String
-BatmanRoutingTable::infoGetNodes()
+BatmanRoutingTable::print_rt()
 {
   StringAccum sa;
 
-  sa << "Routing Info" << "\n";
+  sa << "<batmanroutingtable ";
   if ( _nodeid != NULL ) {
-    BRN2Device *dev = _nodeid->getDeviceByIndex(0);
-    sa << "Address: " << dev->getEtherAddress()->unparse() << "\n";
+    sa << "addr=\"" << _nodeid->getMasterAddress()->unparse() << "\"";
   }
-  for ( int i = 0; i < _nodelist.size(); i++ ) {
-    sa << " " << _nodelist[i]._addr.unparse() << "\t" << _nodelist[i]._last_originator_id << "\n";
 
-    for ( int j = 0; j < _nodelist[i]._forwarder.size(); j++ ) {
-      sa << "   Forwarder " << j << ": " << _nodelist[i]._forwarder[j]._addr.unparse();
-      sa << "\t#Originator: " << _nodelist[i]._forwarder[j]._oil.size() << " #AvgHops: " << _nodelist[i]._forwarder[j].getAverageHopCount() << "\n";
+  sa << " >\n\t<nodes count=\"" << _nodemap.size() << "\" >\n";
+
+
+  for (BatmanNodeMapIter i = _nodemap.begin(); i.live(); i++) {
+    BatmanNode *bn = _nodemap.findp(i.key());
+    BatmanForwarderEntry *bfe = getBestForwarder(bn->_addr);
+
+    sa << "\t\t<node addr=\"" << bn->_addr.unparse() << "\" nexthop=\"";
+
+
+    if ( bfe == NULL ) {
+      sa << "00-00-00-00-00-00\" hops=\"0\" metric=\"0\" lastorigid=\"0\" lastfwdorigid=\"0\" />\n";
+    } else {
+      sa << bfe->_forwarder.unparse() << "\" hops=\"" << (int)bfe->_hops << "\" metric=\"" << bfe->_metric;
+      sa << "\" lastorigid=\"" << bn->_latest_originator_id << "\" lastfwdorigid=\"" << bn->_last_forward_originator_id;
+      sa << "\" />\n";
     }
   }
 
-  sa << "\n Neighbourinfo" << "\n";
-  for ( int i = 0; i < _neighbours.size(); i++ ) {
-    sa << "  " << _neighbours[i]._addr.unparse() << "\n";
-  }
+  sa << "\t</nodes>\n</batmanroutingtable>\n";
 
   return sa.take_string();
 }
@@ -180,45 +149,29 @@ BatmanRoutingTable::infoGetNodes()
 //-----------------------------------------------------------------------------
 
 enum {
-  H_NODES,
-  H_DEBUG
+  H_NODES
 };
 
 static String
-read_debug_param(Element *e, void *thunk)
+read_param(Element *e, void *thunk)
 {
   BatmanRoutingTable *brt = (BatmanRoutingTable *)e;
 
   switch ((uintptr_t) thunk)
   {
     case H_NODES :
-      return ( brt->infoGetNodes() );
-    case H_DEBUG :
-      return String(brt->_debug) + "\n";
-    default: return String();
+      return ( brt->print_rt() );
   }
 
-  return String(brt->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BatmanRoutingTable *fl = (BatmanRoutingTable *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
+  return String();
 }
 
 void
 BatmanRoutingTable::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, H_DEBUG);
-  add_read_handler("nodes", read_debug_param, H_NODES);
-  add_write_handler("debug", write_debug_param, H_DEBUG);
+  BRNElement::add_handlers();
+
+  add_read_handler("nodes", read_param, H_NODES);
 }
 
 CLICK_ENDDECLS

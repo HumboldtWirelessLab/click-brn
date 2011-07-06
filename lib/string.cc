@@ -38,14 +38,6 @@ CLICK_DECLS
  * and its substrings generally share memory.  Accessing a character by index
  * takes O(1) time; so does creating a substring.
  *
- * <h3>Initialization</h3>
- *
- * The String implementation must be explicitly initialized before use; see
- * static_initialize().  Explicit initialization is used because static
- * constructors and other automatic initialization tricks don't work in the
- * kernel.  However, at user level, you can declare a String::Initializer
- * object to initialize the library.
- *
  * <h3>Out-of-memory strings</h3>
  *
  * When there is not enough memory to create a particular string, a special
@@ -405,7 +397,7 @@ String::append_garbage(int len)
 	&& ((dirty = _r.memo->dirty), _r.memo->capacity > dirty + len)) {
 	char *real_dirty = _r.memo->real_data + dirty;
 	if (real_dirty == _r.data + _r.length
-	    && atomic_uint32_t::compare_and_swap(_r.memo->dirty, dirty, dirty + len)) {
+	    && atomic_uint32_t::compare_swap(_r.memo->dirty, dirty, dirty + len) == dirty) {
 	    _r.length += len;
 	    assert(_r.memo->dirty < _r.memo->capacity);
 #if HAVE_STRING_PROFILING
@@ -831,21 +823,6 @@ String::compare(const char *s, int len) const
 	int v = memcmp(_r.data, s, len);
 	return (v ? v : 1);
     }
-}
-
-
-String::Initializer::Initializer()
-{
-}
-
-void
-String::static_initialize()
-{
-}
-
-void
-String::static_cleanup()
-{
 }
 
 CLICK_ENDDECLS

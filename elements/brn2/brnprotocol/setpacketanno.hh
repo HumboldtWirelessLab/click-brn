@@ -23,6 +23,9 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -32,7 +35,7 @@ CLICK_DECLS
  * ...
  * =d
  */
-class SetPacketAnno : public Element {
+class SetPacketAnno : public BRNElement {
 
  public:
    SetPacketAnno();
@@ -47,6 +50,8 @@ class SetPacketAnno : public Element {
 
   int initialize(ErrorHandler *);
 
+  void add_handlers();
+
   Packet *smaction(Packet *);
   void push(int, Packet *);
   Packet *pull(int);
@@ -54,16 +59,9 @@ class SetPacketAnno : public Element {
   //
   //member
   //
-  int _ttl;
-  int _tos;
+  int _ttl, _tos, _queue;
+  bool _queue_like_tos;
 
-  int _debug;
-
-  //
-  //methods
-  //
-
-  void add_handlers();
 
 };
 

@@ -21,11 +21,12 @@
 #ifndef NBDETECTELEMENT_HH
 #define NBDETECTELEMENT_HH
 
+#include <click/element.hh>
 #include <click/etheraddress.hh>
 #include <click/bighashmap.hh>
-#include <elements/brn2/routing/identity/brn2_device.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include <elements/brn2/routing/neighbor/brn2_nblist.hh>
-#include <click/element.hh>
 
 CLICK_DECLS
 /*
@@ -38,7 +39,7 @@ CLICK_DECLS
  * TODO currently not entries will removed from the the list, implement a way
  * to remove them.
  */
-class NeighborDetect : public Element {
+class NeighborDetect : public BRNElement {
 
  public:
 
@@ -59,7 +60,6 @@ class NeighborDetect : public Element {
   void add_handlers();
 
   BRN2NBList *_nblist;
-  BRN2Device *_device;
 
 };
 

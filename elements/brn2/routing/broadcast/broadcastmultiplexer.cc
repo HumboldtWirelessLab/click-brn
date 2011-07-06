@@ -34,8 +34,10 @@
 CLICK_DECLS
 
 BroadcastMultiplexer::BroadcastMultiplexer()
-  :_me(NULL)
+  :_me(NULL),
+   _use_anno(false)
 {
+  BRNElement::init();
 }
 
 BroadcastMultiplexer::~BroadcastMultiplexer()
@@ -50,6 +52,7 @@ BroadcastMultiplexer::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "USEANNO", cpkP, cpBool, &_use_anno,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -77,32 +80,57 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 {
   const EtherAddress *ea;
 
-  for ( int i = 1; i < _me->countDevices(); i++) {
-    ea = _me->getDeviceByIndex(i)->getEtherAddress();
-    Packet *p_copy = p_in->clone();
+  EtherAddress src;
 
-    if ( _use_anno ) {
-      BRNPacketAnno::set_src_ether_anno(p_copy, *ea);
-    } else {
-      click_ether *ether = (click_ether *) p_copy->data();
+  if ( _use_anno )
+    src = EtherAddress(BRNPacketAnno::src_ether_anno(p_in));
+  else
+    src = EtherAddress(((click_ether *)p_in->data())->ether_shost);
 
-      memcpy(ether->ether_shost,ea->data(),6);
-    }
-    output(0).push(p_copy);
-  }
-
-  if ( _me->countDevices() > 0 ) {
-    ea = _me->getDeviceByIndex(0)->getEtherAddress();
-
-    if ( _use_anno ) {
-      BRNPacketAnno::set_src_ether_anno(p_in, *ea);
-    } else {
-      click_ether *ether = (click_ether *) p_in->data();
-
-       memcpy(ether->ether_shost,ea->data(),6);
-    }
-
+  if ( ! src.is_broadcast() ) {  //src address looks valid, so no need to send it on all devices
     output(0).push(p_in);
+  } else {                       //forward packet using all devices which allow broadcast
+    int f;
+    BRN2Device *first_device = NULL;
+
+    for ( f = 0; f < _me->countDevices(); f++) {
+      if ( _me->getDeviceByIndex(f)->allow_broadcast() ) {
+        first_device = _me->getDeviceByIndex(f);
+        break;
+      }
+    }
+
+    for ( int i = f+1; i < _me->countDevices(); i++) {
+      if ( _me->getDeviceByIndex(i)->allow_broadcast() ) {
+
+        ea = _me->getDeviceByIndex(i)->getEtherAddress();
+
+        Packet *p_copy = p_in->clone();
+
+        if ( _use_anno ) {
+          BRNPacketAnno::set_src_ether_anno(p_copy, *ea);
+        } else {
+          click_ether *ether = (click_ether *) p_copy->data();
+
+          memcpy(ether->ether_shost,ea->data(),6);
+        }
+        output(0).push(p_copy);
+      }
+    }
+
+    if ( first_device ) {
+      ea = first_device->getEtherAddress();
+
+      if ( _use_anno ) {
+        BRNPacketAnno::set_src_ether_anno(p_in, *ea);
+      } else {
+        click_ether *ether = (click_ether *) p_in->data();
+
+        memcpy(ether->ether_shost,ea->data(),6);
+      }
+
+      output(0).push(p_in);
+    }
   }
 }
 
@@ -110,30 +138,10 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BroadcastMultiplexer *ds = (BroadcastMultiplexer *)e;
-  return String(ds->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BroadcastMultiplexer *ds = (BroadcastMultiplexer *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  ds->_debug = debug;
-  return 0;
-}
-
 void
 BroadcastMultiplexer::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 EXPORT_ELEMENT(BroadcastMultiplexer)

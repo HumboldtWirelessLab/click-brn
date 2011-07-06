@@ -21,13 +21,16 @@
 #ifndef BRN2ETXMETRIC_HH
 #define BRN2ETXMETRIC_HH
 #include <click/element.hh>
-#include "brn2_genericmetric.hh"
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
+
+#include "brn2_genericmetric.hh"
+
 #include <elements/wifi/bitrate.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+
 CLICK_DECLS
 
 /*
@@ -81,13 +84,11 @@ public:
   static String read_stats(Element *xf, void *);
 
   void update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
-    Vector<int> fwd, Vector<int> rev, uint32_t seq);
+                   Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
 
 private:
   class Brn2LinkTable *_link_table;
 
-public:
-  int _debug;
 };
 
 CLICK_ENDDECLS

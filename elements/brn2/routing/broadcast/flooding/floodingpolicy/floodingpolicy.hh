@@ -2,12 +2,14 @@
 #define FLOODING_POLICY_HH
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 #define POLICY_ID_SIMPLE      1
 #define POLICY_ID_PROBABILITY 2
 
-class FloodingPolicy : public Element
+class FloodingPolicy : public BRNElement
 {
   public:
     FloodingPolicy();

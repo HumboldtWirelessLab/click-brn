@@ -19,13 +19,10 @@
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
 #include "tcpfragmenter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/standard/alignmentinfo.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 TCPFragmenter::TCPFragmenter()
@@ -40,9 +37,9 @@ int
 TCPFragmenter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     uint16_t mtu;
-    if (cp_va_kparse(conf, this, errh,
-		     "MTU", cpkP+cpkM, cpUnsignedShort, &mtu,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read("MTU", mtu)
+	.complete() < 0)
 	return -1;
 
     if (mtu == 0)

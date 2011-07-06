@@ -2,6 +2,8 @@
 #ifndef CLICK_TIMESTAMP_HH
 #define CLICK_TIMESTAMP_HH
 #include <click/glue.hh>
+#include <click/type_traits.hh>
+#include <click/integers.hh>
 #if !CLICK_LINUXMODULE && !CLICK_BSDMODULE
 # include <math.h>
 #endif
@@ -120,7 +122,14 @@ class Timestamp { public:
 
     enum {
 	max_seconds = (seconds_type) 2147483647U,
-	min_seconds = (seconds_type) -2147483648U,
+			/**< Maximum number of seconds representable in a
+			     Timestamp. */
+	min_seconds = (seconds_type) -2147483648U
+			/**< Minimum number of seconds representable in a
+			     Timestamp. */
+    };
+
+    enum {
 	nsec_per_sec = 1000000000,
 	nsec_per_msec = 1000000,
 	nsec_per_usec = 1000,
@@ -332,6 +341,11 @@ class Timestamp { public:
     /** @brief Return the smallest nonzero timestamp, Timestamp(0, 1). */
     static inline Timestamp epsilon() {
 	return Timestamp(0, 1);
+    }
+
+    /** @brief Clear this timestamp. */
+    inline void clear() {
+	assign(0, 0);
     }
 
     /** Set this timestamp to a seconds-and-subseconds value.
@@ -576,41 +590,14 @@ class Timestamp { public:
     }
 
     static inline value_type value_div(value_type a, uint32_t b) {
-#if CLICK_LINUXMODULE && TIMESTAMP_VALUE_INT64 && BITS_PER_LONG < 64
-	do_div(a, b);
-	return a;
-#else
-	return a / b;
-#endif
+	return int_divide(a, b);
     }
 
     static inline void value_div_mod(int32_t &div, int32_t &rem,
 				     value_type a, uint32_t b) {
-#if CLICK_LINUXMODULE && TIMESTAMP_VALUE_INT64 && BITS_PER_LONG < 64
-	if (unlikely(a < 0)) {
-	    a = -a - 1;
-	    rem = do_div(a, b);
-	    div = -a - 1;
-	    if (rem)
-		rem = b - rem;
-	} else {
-	    rem = do_div(a, b);
-	    div = a;
-	}
-#else
-	// This arithmetic is about twice as fast on my laptop as the
-	// alternative "div = a / b;
-	//		rem = a - (value_type) div * b;
-	//		if (rem < 0) div--, rem += b;",
-	// and 3-4x faster than "div = a / b;
-	//			 rem = a % b;
-	//			 if (rem < 0) div--, rem += b;".
-	if (unlikely(a < 0))
-	    div = -((-a - 1) / b) - 1;
-	else
-	    div = a / b;
-	rem = a - (value_type) div * b;
-#endif
+	value_type quot;
+	rem = int_divide(a, b, quot);
+	div = quot;
     }
 
     inline void assign_now(bool raw);
@@ -1253,6 +1240,27 @@ Timestamp::warp_real_delay() const
 	return *this / _warp_speed;
 }
 #endif
+
+
+class ArgContext;
+extern const ArgContext blank_args;
+bool cp_time(const String &str, Timestamp *result, bool allow_negative);
+
+/** @class TimestampArg
+  @brief Parser class for timestamps. */
+struct TimestampArg {
+    TimestampArg(bool is_signed = false)
+	: is_signed(is_signed) {
+    }
+    bool parse(const String &str, Timestamp &value, const ArgContext &args = blank_args) {
+	(void) args;
+	return cp_time(str, &value, is_signed);
+    }
+    bool is_signed;
+};
+
+template<> struct DefaultArg<Timestamp> : public TimestampArg {};
+template<> struct has_trivial_copy<Timestamp> : public true_type {};
 
 CLICK_ENDDECLS
 #endif

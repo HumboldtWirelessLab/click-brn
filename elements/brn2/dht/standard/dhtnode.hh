@@ -5,7 +5,7 @@
 #include <clicknet/ether.h>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 
 CLICK_DECLS
 
@@ -32,9 +32,8 @@ CLICK_DECLS
 //TODO: use 0 for invalid
 #define INVALID_NODE_ID        MAX_DIGEST_LENGTH + 1
 
-#define MAX_NODEID_LENTGH 16   /*Bytes*/
-
-
+#define MAX_NODEID_LENTGH    16   /*Bytes*/
+#define MAX_NODEID_LENTGH_32  4   /*32 Bits*/
 
 class DHTnode
 {
@@ -42,7 +41,8 @@ class DHTnode
   public:
 
     md5_byte_t _md5_digest[MAX_NODEID_LENTGH];
-    int _digest_length;             //number of used BITS of _md5_digest
+    int _digest_length;                        //number of used BITS of _md5_digest
+    uint32_t *_md5_digest32;                   //TODO: use this for faster compare of nodeids
 
     EtherAddress _ether_addr;
 
@@ -64,7 +64,7 @@ class DHTnode
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length);
 
-    void init();
+    void reset();                       //TODO: check need
 
     void set_update_addr(uint8_t *ea);  //Takes and sets etheraddr and calculates node_id (md5) TODO: finds better name
     void set_etheraddress(uint8_t *ea); //only sets node_id
@@ -76,7 +76,7 @@ class DHTnode
     void set_age_s(int s);           //TODO: Is that used ??
     void set_age(Timestamp *);
     void set_age_now();
-    int  get_age_s();                //TODO: change to ms (msec1())
+    int  get_age_s(Timestamp *now = NULL);                //TODO: change to ms (msec1())
     Timestamp get_age();
 
     void set_last_ping_s(int s);

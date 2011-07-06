@@ -44,9 +44,9 @@
 CLICK_DECLS
 
 FilterBSSID::FilterBSSID()
-  : _debug(BrnLogger::DEFAULT),
-  _winfo(0)
+  : _winfo(0)
 {
+  BRNElement::init();
 }
 
 FilterBSSID::~FilterBSSID()
@@ -60,11 +60,9 @@ FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
   _debug = false;
   _active = true;
   if (cp_va_kparse(conf, this, errh,
-		  /* not required */
-		  //cpKeywords,
-      "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
+      "ACTIVE", cpkP+cpkM, cpBool, &_active,
+      "DEBUG", cpkP+cpkM, cpInteger, &_debug,
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, &_winfo,
 		  cpEnd) < 0)
     return -1;
 
@@ -87,11 +85,11 @@ FilterBSSID::push(int, Packet *p)
 
   // TODO why click_llc??
   if (p->length() < sizeof(struct click_wifi) + sizeof(struct click_llc)) {
-    BRN_ERROR("got too small packet ... discard.");
-    p->kill();
+    BRN_WARN("got too small packet.");
+    checked_output_push(2, p);
     return;
   }
-  
+
   dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
 
   switch (dir) {
@@ -142,15 +140,13 @@ FilterBSSID::push(int, Packet *p)
 }
 
 
-enum {H_DEBUG,H_ACTIVE};
+enum {H_ACTIVE};
 
 static String 
 FilterBSSID_read_param(Element *e, void *thunk)
 {
   FilterBSSID *td = (FilterBSSID *)e;
   switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
   case H_ACTIVE:
     return String(td->_active) + "\n";
   default:
@@ -164,13 +160,6 @@ FilterBSSID_write_param(const String &in_s, Element *e, void *vparam,
   FilterBSSID *f = (FilterBSSID *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
-  case H_DEBUG: {    //debug
-    int debug;
-    if (!cp_integer(s, &debug)) 
-      return errh->error("debug parameter must be an integer value between 0 and 4");
-    f->_debug = debug;
-    break;
-  }
   case H_ACTIVE: {    //debug
     bool active;
     if (!cp_bool(s, &active)) 
@@ -185,8 +174,8 @@ FilterBSSID_write_param(const String &in_s, Element *e, void *vparam,
 void
 FilterBSSID::add_handlers()
 {
-  add_read_handler("debug", FilterBSSID_read_param, (void *) H_DEBUG);
-  add_write_handler("debug", FilterBSSID_write_param, (void *) H_DEBUG);
+  BRNElement::add_handlers();
+
   add_read_handler("active", FilterBSSID_read_param, (void *) H_ACTIVE);
   add_write_handler("active", FilterBSSID_write_param, (void *) H_ACTIVE);
 }

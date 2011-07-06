@@ -32,7 +32,7 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
 {
   int result;
 
-  CLASS_BRN_DEBUG("Handle DHT-Operation: %d",op->header.operation);
+  CLASS_BRN_DEBUG("DHTOperationHandler: Handle DHT-Operation: %d",op->header.operation);
   //TODO: use switch-case and test for all possible combinations -> more readable ?? possible with lock ??
   if ( ( op->header.operation & OPERATION_INSERT ) == OPERATION_INSERT )
   {
@@ -40,14 +40,14 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
     {
       result = dht_test(op);
       if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND ) {
-        CLASS_BRN_DEBUG("insert on overwrite");
+        CLASS_BRN_DEBUG("DHTOperationHandler: insert on overwrite");
         result = dht_insert(op);
       } else {
-        CLASS_BRN_DEBUG("overwrite existing");
+        CLASS_BRN_DEBUG("DHTOperationHandler: overwrite existing");
         result = dht_write(op);
       }
     } else {
-      CLASS_BRN_DEBUG("insert");
+      CLASS_BRN_DEBUG("DHTOperationHandler: insert");
       result = dht_insert(op);
     }
   }
@@ -55,7 +55,7 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
   //Lock after insert
   if ( ( op->header.operation & OPERATION_LOCK ) == OPERATION_LOCK )
   {
-    CLASS_BRN_DEBUG("lock");
+    CLASS_BRN_DEBUG("DHTOperationHandler: lock");
     result = dht_lock(op);
     if ( result == -1 ) return 0;
   }
@@ -66,14 +66,14 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
     {
       if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
-        CLASS_BRN_DEBUG("Read/write");
+        CLASS_BRN_DEBUG("DHTOperationHandler: Read/write");
         CLASS_BRN_DEBUG("DHTOperationHandler: this doesn't wort: read and write:chaeck");
         result = dht_read(op);
         result = dht_write(op);
       }
       else
       {
-        CLASS_BRN_DEBUG("write");
+        CLASS_BRN_DEBUG("DHTOperationHandler: write");
         result = dht_write(op);
       }
     }
@@ -132,7 +132,7 @@ DHTOperationHandler::dht_insert(DHTOperation *op)
   }
   else
   {
-    CLASS_BRN_DEBUG("Key already exists");
+    CLASS_BRN_DEBUG("DHTOperationHandler: Key already exists");
     op->header.status = DHT_STATUS_KEY_ALREADY_EXISTS;
   }
 

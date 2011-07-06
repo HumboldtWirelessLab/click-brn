@@ -7,6 +7,14 @@
 
 CLICK_DECLS
 
+/* next annos ( byte 0-4) overwrites IPv64-annos which are not used for MAC-layer and lower */
+
+#define BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET    0
+#define BRN_WIFI_EXTRA_EXTENTION_ANNO_SIZE      4
+
+#define BRN_WIFI_EXTRA_RX_STATUS_ANNO_OFFSET    4
+#define BRN_WIFI_EXTRA_RX_STATUS_ANNO_SIZE     12
+
 /* next annos ( byte 4-16) overwrites parts of IPv6-annos which are not used if ipv4 is used */
 
 #define DST_ETHER_ANNO_OFFSET    4
@@ -58,6 +66,22 @@ class BRNPacketAnno : public Element { public:
 
   const char *class_name() const	{ return "BRNPacketAnno"; }
 
+  static inline void clean_brn_wifi_extra_extention_anno(const Packet *p) {
+    memset(((uint8_t*)(p->anno_u8()) + BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET),0,BRN_WIFI_EXTRA_EXTENTION_ANNO_SIZE);
+  }
+
+  static inline void* get_brn_wifi_extra_extention_anno(const Packet *p) {
+    return (void*)&(((uint8_t*)(p->anno_u8()) + BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET)[0]);
+  }
+
+  static inline void clean_brn_wifi_extra_rx_status_anno(const Packet *p) {
+    memset(((uint8_t*)(p->anno_u8()) + BRN_WIFI_EXTRA_RX_STATUS_ANNO_OFFSET),0,BRN_WIFI_EXTRA_RX_STATUS_ANNO_SIZE);
+  }
+
+  static inline void* get_brn_wifi_extra_rx_status_anno(const Packet *p) {
+    return (void*)&(((uint8_t*)(p->anno_u8()) + BRN_WIFI_EXTRA_RX_STATUS_ANNO_OFFSET)[0]);
+  }
+
   static EtherAddress dst_ether_anno(Packet *p);
   static void set_dst_ether_anno(Packet *p, const EtherAddress &);
 
@@ -90,6 +114,12 @@ class BRNPacketAnno : public Element { public:
 
   static uint8_t tos_anno(Packet *p);
   static void set_tos_anno(Packet *p, uint8_t tos);
+
+  static uint8_t queue_anno(Packet *p);
+  static void set_queue_anno(Packet *p, uint8_t tos);
+
+  static void tos_anno(Packet *p, uint8_t *tos, uint8_t *queue);
+  static void set_tos_anno(Packet *p, uint8_t tos, uint8_t queue);
 
   static uint8_t ttl_anno(Packet *p);
   static void set_ttl_anno(Packet *p, uint8_t ttl);

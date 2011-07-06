@@ -8,6 +8,7 @@
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn2/topology/nhopneighbouring/nhopneighbouring_info.hh"
 
 #define UPDATE_ALARM_NEW_NODE       1
 #define UPDATE_ALARM_NEW_ID         2
@@ -15,6 +16,9 @@
 #define UPDATE_ALARM_NEW_FORWARDER  8
 
 #define UPDATE_ALARM_NEED_FORWARD ( UPDATE_ALARM_NEW_NODE | UPDATE_ALARM_NEW_ID | UPDATE_ALARM_UPDATE_HOPS )
+
+#define DEFAULT_MIN_NEIGHBOUR_FRACTION 100
+
 
 CLICK_DECLS
 
@@ -104,6 +108,8 @@ class AlarmingState : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+
+
   Vector<AlarmNode> _alarm_nodes;
 
   AlarmNode *get_node_by_address(uint8_t type, const EtherAddress *ea);
@@ -114,16 +120,27 @@ class AlarmingState : public BRNElement {
   void get_incomlete_forward_types(int max_fraction, Vector<int> *types);
   void get_incomlete_forward_nodes(int max_fraction, int max_retries, int max_hops, int type, Vector<AlarmNode*> *nodes);
 
+  void trigger_alarm();
+  String get_state();
+
+
   int _hop_limit;
-  int _retry_limit;
-
-  int _min_neighbour_fraction;
-
   uint32_t _forward_flags;
 
  private:
 
   Brn2LinkTable *_lt;
+  NHopNeighbouringInfo *_nhopn_info;
+
+ public:
+  int _retry_limit;
+
+  int _min_neighbour_fraction;
+  uint32_t _min_alarm_fraction;
+
+  bool _triggered_alarm;
+  Timestamp _triggered_alarm_time;
+
 };
 
 CLICK_ENDDECLS

@@ -4,6 +4,8 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -14,14 +16,9 @@ CLICK_DECLS
  * =d
  */
 
-class BRN2PacketSource : public Element {
+class BRN2PacketSource : public BRNElement {
 
  public:
-
-   int _debug;
-  //
-  //methods
-  //
 
 /* brn2_packetsource.cc**/
 
@@ -59,6 +56,9 @@ class BRN2PacketSource : public Element {
   uint32_t _burst,_channel,_bitrate,_power;
 
   uint32_t _headroom;
+
+  uint32_t _max_packets;
+  uint32_t _send_packets;
 
   Packet *createpacket(int size);
 

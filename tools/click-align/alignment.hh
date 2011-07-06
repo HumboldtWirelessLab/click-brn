@@ -1,6 +1,7 @@
 #ifndef ALIGNMENT_HH
 #define ALIGNMENT_HH
 #include <click/string.hh>
+class ElementT;
 
 class Alignment { public:
 
@@ -14,6 +15,8 @@ class Alignment { public:
 	: _modulus(modulus), _offset(offset) {
 	assert(modulus > 0 && offset >= 0 && offset < modulus);
     }
+    /** @brief Construct an alignment from an Align element's configuration. */
+    Alignment(ElementT *element);
     /** @brief Return a bad alignment.
      *
      * A bad alignment represents unsatisfiable alignment constraints,
@@ -23,7 +26,11 @@ class Alignment { public:
     }
     /** @brief Return a universal alignment.
      *
-     * A universal alignment matches any alignment specification. */
+     * A universal alignment matches any alignment specification.  It is
+     * generally used for impossible paths: if an element will not emit
+     * any packets on some output, then that output's packets have
+     * universal alignment, because all emitted packets trivially match any
+     * downstream alignment requirements.*/
     static inline Alignment make_universal() {
 	return Alignment(universal_modulus, 0, 0);
     }
@@ -95,7 +102,9 @@ class Alignment { public:
      * match either @a x or *this.
      *
      * If *this is empty, then *this is set to @a x.  If @a x is empty, then
-     * *this remains unchanged. */
+     * *this remains unchanged.  If *this is universal and @a x is a real
+     * alignment, then *this is set to @a x.  (See make_universal() to
+     * understand why this makes sense.) */
     Alignment &operator|=(const Alignment &x);
 
     /** @brief Return a string representation of this alignment. */

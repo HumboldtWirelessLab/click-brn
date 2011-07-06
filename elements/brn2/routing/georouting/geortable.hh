@@ -41,9 +41,8 @@ class GeorTable : public Element {
   GPSPosition *getClosestNeighbour(GPSPosition *pos, EtherAddress *ea);
   GPSPosition *getLocalPosition();
 
-
  private:
-   GPSRoutingTable _rt;
+   GPSRoutingTable _rt; //TODO: replace by GPSMap
 
  public:
 

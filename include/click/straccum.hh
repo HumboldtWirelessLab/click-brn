@@ -4,7 +4,11 @@
 #include <click/glue.hh>
 #include <click/string.hh>
 #ifdef CLICK_LINUXMODULE
+# include <click/cxxprotect.h>
+CLICK_CXX_PROTECT
 # include <asm/string.h>
+CLICK_CXX_UNPROTECT
+# include <click/cxxunprotect.h>
 #elif defined(CLICK_BSDMODULE)
 # include <sys/systm.h>
 #else	/* User-space */
@@ -228,6 +232,16 @@ class StringAccum { public:
     inline void set_length(int len) {
 	assert(len >= 0 && _len <= _cap);
 	_len = len;
+    }
+
+    /** @brief Set the StringAccum's length to @a len.
+     * @pre @a len >= 0 */
+    inline int resize(int len) {
+	assert(len >= 0);
+	if (unlikely(len > _cap && !grow(len)))
+	    return -ENOMEM;
+	_len = len;
+	return 0;
     }
 
     /** @brief Adjust the StringAccum's length.
@@ -585,7 +599,7 @@ operator<<(StringAccum &sa, uint64_t q)
 /** @relates StringAccum
     @brief Append the contents of @a str to @a sa.
     @return @a sa */
-StringAccum &
+inline StringAccum &
 operator<<(StringAccum &sa, const String &str)
 {
     if (likely(!str.out_of_memory()))
@@ -615,6 +629,11 @@ operator<<(StringAccum &sa, const StringAccum &sb)
 }
 
 inline void click_swap(StringAccum &a, StringAccum &b)
+{
+    a.swap(b);
+}
+
+inline void assign_consume(StringAccum &a, StringAccum &b)
 {
     a.swap(b);
 }

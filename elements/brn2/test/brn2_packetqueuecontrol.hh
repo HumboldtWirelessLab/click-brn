@@ -5,6 +5,8 @@
 #include <click/timer.hh>
 #include <click/handlercall.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -15,7 +17,9 @@ CLICK_DECLS
  * =d
  */
 
-class BRN2PacketQueueControl : public Element {
+#define DEFAULT_PACKETHEADERSIZE 32
+
+class BRN2PacketQueueControl : public BRNElement {
 
  public:
 
@@ -33,6 +37,13 @@ class BRN2PacketQueueControl : public Element {
      int _max_bandwidth; // in Bit/s
      int _interval;
 
+     int _queue_empty;
+
+     uint32_t _id;
+
+     Timestamp _start_ts;
+     Timestamp _end_ts;
+
      Flow(int start, int end, int packetsize, int interval ) {
        _start = start;
        _end = end;
@@ -40,25 +51,21 @@ class BRN2PacketQueueControl : public Element {
        _running = false;
        _send_packets = 0;
        _interval = interval;
+       _queue_empty = 0;
      }
    };
-
-   int _debug;
-  //
-  //methods
-  //
-
-/* brn2_packetsource.cc**/
 
   BRN2PacketQueueControl();
   ~BRN2PacketQueueControl();
 
   const char *class_name() const  { return "BRN2PacketQueueControl"; }
   const char *processing() const  { return AGNOSTIC; }
-  const char *port_count() const  { return "0/1"; }
+  const char *port_count() const  { return "0-1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
+
+  void push(int port, Packet *p);
 
   static void static_queue_timer_hook(Timer *, void *);
   static void static_flow_timer_hook(Timer *, void *);
@@ -66,24 +73,46 @@ class BRN2PacketQueueControl : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  //
+  //methods
+  //
+
   void setFlow(Flow *f);
-  Flow *getAcFlow() { return acflow; }
+  Flow *get_flow() { return ac_flow; }
   void handle_flow_timer();
   void handle_queue_timer();
+
+  String flow_stats();
 
   uint32_t _min_count_p;
   uint32_t _max_count_p;
 
- private:
-
   Timer _queue_timer;
   Timer _flow_timer;
+
+ private:
+
   HandlerCall* _queue_size_handler;
   HandlerCall* _queue_reset_handler;
+  HandlerCall* _suppressor_active_handler;
 
-  Flow *acflow;
+  Flow *ac_flow;
 
-  Packet *createpacket(int size);
+  Packet *create_packet(int size);
+
+  uint32_t _flow_id;
+
+  bool _disable_queue_reset;
+  bool _txfeedback_reuse;
+  bool _queue_timer_enabled;
+
+  /*
+   * Unicast-support: to decrease cpu-load and allow higher rates, unicast to a non-existing mac can be used
+   */
+  uint32_t _unicast_retries;
+
+ public:
+  int _packetheadersize;
 
 };
 

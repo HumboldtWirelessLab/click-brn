@@ -17,8 +17,7 @@ struct ElementT {
 
     bool live() const			{ return _type; }
     bool dead() const			{ return !_type; }
-    void full_kill();
-    inline void simple_kill();
+    void kill();
 
     const String &name() const		{ return _name; }
     const char *name_c_str() const	{ return _name.c_str(); }
@@ -140,12 +139,12 @@ struct PortT {
     int index_in(const Vector<PortT> &, int start = 0) const;
     int force_index_in(Vector<PortT> &, int start = 0) const;
 
-    String unparse(bool isoutput) const;
-    String unparse_input() const {
-	return unparse(false);
+    String unparse(bool isoutput, bool with_class = false) const;
+    String unparse_input(bool with_class = false) const {
+	return unparse(false, with_class);
     }
-    String unparse_output() const {
-	return unparse(false);
+    String unparse_output(bool with_class = false) const {
+	return unparse(true, with_class);
     }
 
     static void sort(Vector<PortT> &);
@@ -155,8 +154,8 @@ struct PortT {
 class ConnectionT { public:
 
     inline ConnectionT();
-    ConnectionT(const PortT &, const PortT &, const LandmarkT & = LandmarkT::empty_landmark());
-    ConnectionT(const PortT &, const PortT &, const LandmarkT &, int, int);
+    ConnectionT(const PortT &from, const PortT &to,
+		const LandmarkT &landmark = LandmarkT::empty_landmark());
 
     typedef PortT::unspecified_bool_type unspecified_bool_type;
     inline operator unspecified_bool_type() const;
@@ -193,36 +192,20 @@ class ConnectionT { public:
     String decorated_landmark() const	{ return _landmark.decorated_str(); }
     const LandmarkT &landmarkt() const	{ return _landmark; }
 
-    int next(bool isoutput) const {
-	return _next[isoutput];
-    }
-    int next_from() const		{ return next(end_from); }
-    int next_to() const			{ return next(end_to); }
-
-    String unparse() const;
-    String unparse_end(bool isoutput) const {
-	return end(isoutput).unparse(isoutput);
+    String unparse(bool with_class = false) const;
+    String unparse_end(bool isoutput, bool with_class = false) const {
+	return end(isoutput).unparse(isoutput, with_class);
     }
 
   private:
 
     PortT _end[2];
     LandmarkT _landmark;
-    int _next[2];
 
     friend class RouterT;
 
 };
 
-
-inline void
-ElementT::simple_kill()
-{
-    if (_type)
-	_type->unuse();
-    _type = 0;
-    unresolve_type();
-}
 
 inline RouterT *
 ElementT::resolved_router(const VariableEnvironment &env, ErrorHandler *errh) const
@@ -318,9 +301,7 @@ operator>=(const PortT &h1, const PortT &h2)
 
 inline
 ConnectionT::ConnectionT()
-    : _landmark()
 {
-    _next[0] = _next[1] = -1;
 }
 
 inline

@@ -21,12 +21,9 @@
 #include <clicknet/ip6.h>
 #include <click/ip6address.hh>
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/standard/alignmentinfo.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 CheckIP6Header::CheckIP6Header()
@@ -48,10 +45,10 @@ CheckIP6Header::configure(Vector<String> &conf, ErrorHandler *errh)
  // ips.push_back("0::0"); // this address is only bad if we are a router
  ips.push_back("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"); // bad IP6 address
 
-  if (cp_va_kparse(conf, this, errh,
-		      "BADADDRS", cpkP, cpString, &badaddrs,
-		      "OFFSET", cpkP, cpUnsigned, &_offset,
-		      cpEnd) < 0)
+ if (Args(conf, this, errh)
+     .read_p("BADADDRS", badaddrs)
+     .read_p("OFFSET", _offset)
+     .complete() < 0)
     return -1;
 
   if (badaddrs) {

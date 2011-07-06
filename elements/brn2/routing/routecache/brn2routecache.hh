@@ -67,6 +67,7 @@ public:
   typedef struct tagEntryType {
     RouteType m_route;
     int       m_iTTL;
+    uint32_t  m_metric;
   }                                                           EntryType;
   typedef HashMap<AddressPairType,EntryType>               RouteMapType;
   
@@ -100,7 +101,8 @@ public:
   bool get_cached_route( 
     /*[in]*/  const AddressType&  addrSrc,
     /*[in]*/  const AddressType&  addrDst,
-    /*[out]*/ RouteType&          route );
+    /*[out]*/ RouteType&          route,
+              uint32_t *metric);
 
   /**
    * @brief Inserts a route into the route cache.
@@ -111,7 +113,8 @@ public:
   void insert_route( 
     /*[in]*/ const AddressType& addrSrc,
     /*[in]*/ const AddressType& addrDst,
-    /*[in]*/ const RouteType&   route );
+    /*[in]*/ const RouteType&   route,
+             uint32_t metric);
 
   /**
    * @brief Inform the cache about a link change.

@@ -26,13 +26,22 @@
 
 CLICK_DECLS
 
+PacketPool *BRNElement::_packet_pool = NULL;
+
 BRNElement::BRNElement() :
   _debug(BrnLogger::DEFAULT)
 {
+  if ( _packet_pool == NULL ) {
+    _packet_pool = new PacketPool(PACKET_POOL_CAPACITY, PACKET_POOL_SIZE_STEPS, PACKET_POOL_MIN_SIZE, PACKET_POOL_MAX_SIZE, DEFAULT_HEADROOM, DEFAULT_TAILROOM);
+  }
 }
 
 BRNElement::~BRNElement()
 {
+  if ( _packet_pool ) {
+    delete _packet_pool;
+    _packet_pool = NULL;
+  }
 }
 
 void
@@ -41,23 +50,48 @@ BRNElement::init(void)
   _debug = BrnLogger::DEFAULT;
 }
 
-enum {H_DEBUG};
+void
+BRNElement::packet_kill(Packet *p)
+{
+  if ( BRNElement::_packet_pool ) {
+    BRNElement::_packet_pool->insert(p);
+  } else {
+    p->kill();
+  }
+}
+
+WritablePacket *
+BRNElement::packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom)
+{
+  if ( BRNElement::_packet_pool ) {
+    return BRNElement::_packet_pool->get(headroom, data, size, tailroom);
+  } else {
+    return WritablePacket::make(headroom, data, size, tailroom);
+  }
+}
+
+enum {H_DEBUG, H_PACKETPOOL};
 
 static String
-read_debug(Element *e, void *thunk)
+read_brnelement(Element *e, void *thunk)
 {
   BRNElement *td = (BRNElement *)e;
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
+  case H_PACKETPOOL:
+    if ( BRNElement::_packet_pool ) {
+      return BRNElement::_packet_pool->stats();
+    } else {
+      return String();
+    }
   default:
     return String();
   }
 }
 
 static int
-write_debug(const String &in_s, Element *e, void *vparam,
-          ErrorHandler *errh)
+write_brnelement(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   BRNElement *f = (BRNElement *)e;
   String s = cp_uncomment(in_s);
@@ -79,8 +113,10 @@ write_debug(const String &in_s, Element *e, void *vparam,
 void
 BRNElement::add_handlers()
 {
-  add_read_handler("debug", read_debug, (void *) H_DEBUG);
-  add_write_handler("debug", write_debug, (void *) H_DEBUG);
+  add_read_handler("debug", read_brnelement, (void *) H_DEBUG);
+  add_read_handler("packetpool", read_brnelement, (void *) H_PACKETPOOL);
+
+  add_write_handler("debug", write_brnelement, (void *) H_DEBUG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

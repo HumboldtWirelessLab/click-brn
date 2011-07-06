@@ -5,7 +5,9 @@
 #include <click/straccum.hh>
 #include <clicknet/wifi.h>
 #include "wifierrorclassifier.hh"
-#include "elements/brn2/wifi/brnwifi.h"
+#include "elements/brn2/wifi/brnwifi.hh"
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
@@ -19,6 +21,7 @@ WifiErrorClassifier::WifiErrorClassifier()
     _p_zerorate(0),
     _p_unknown(0)
 {
+  BRNElement::init();
 }
 
 WifiErrorClassifier::~WifiErrorClassifier()
@@ -103,7 +106,7 @@ WifiErrorClassifier::simple_action(Packet *p)
     if ( noutputs() > 7 )
       output(7).push(p);
     else {
-      click_chatter("Discard unknown error");
+      BRN_DEBUG("Discard unknown error");
       p->kill();
     }
 
@@ -139,6 +142,8 @@ WifiErrorClassifier_read_param(Element *e, void *thunk)
 void
 WifiErrorClassifier::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("ok", WifiErrorClassifier_read_param, (void *) H_OK);
   add_read_handler("crc", WifiErrorClassifier_read_param, (void *) H_CRC);
   add_read_handler("phy", WifiErrorClassifier_read_param, (void *) H_PHY);

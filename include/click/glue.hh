@@ -57,6 +57,7 @@ CLICK_CXX_UNPROTECT
 
 # include <stdio.h>
 # include <stdlib.h>
+# include <stddef.h>
 # include <string.h>
 # include <ctype.h>
 # include <errno.h>
@@ -291,7 +292,9 @@ typedef struct device net_device;
 
 // COMPILE-TIME ASSERTION CHECKING
 
-#define static_assert(x) switch (x) case 0: case !!(x):
+#if !defined(__cplusplus) || !HAVE_CXX_STATIC_ASSERT
+# define static_assert(x, ...) switch (x) case 0: case !!(x):
+#endif
 
 
 // PROCESSOR IDENTITIES
@@ -361,6 +364,10 @@ click_invalid_processor()
     return -1;
 #endif
 }
+
+#if CLICK_USERLEVEL && HAVE_MULTITHREAD && HAVE___THREAD_STORAGE_CLASS
+extern __thread int click_current_thread_id;
+#endif
 
 
 // TIMEVALS AND JIFFIES

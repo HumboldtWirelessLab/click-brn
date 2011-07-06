@@ -20,17 +20,22 @@ CC = @CC@
 CPP = @CPP@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
+DEPCFLAGS = @DEPCFLAGS@
 AR_CREATE = @AR@ @AR_CREATEFLAGS@
 RANLIB = @RANLIB@
 INSTALL = @INSTALL@
 mkinstalldirs = $(conf_auxdir)/mkinstalldirs
 
 ifeq ($(V),1)
-ccompile = $(COMPILE) $(1)
-cxxcompile = $(CXXCOMPILE) $(1)
+ccompile = $(COMPILE) $(DEPCFLAGS) $(1)
+ccompile_nodep = $(COMPILE) $(1)
+cxxcompile = $(CXXCOMPILE) $(DEPCFLAGS) $(1)
+cxxcompile_nodep = $(CXXCOMPILE) $(1)
 else
-ccompile = @/bin/echo ' ' $(2) $< && $(COMPILE) $(1)
-cxxcompile = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(1)
+ccompile = @/bin/echo ' ' $(2) $< && $(COMPILE) $(DEPCFLAGS) $(1)
+ccompile_nodep = @/bin/echo ' ' $(2) $< && $(COMPILE) $(1)
+cxxcompile = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(DEPCFLAGS) $(1)
+cxxcompile_nodep = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(1)
 endif
 
 .SUFFIXES:
@@ -47,16 +52,16 @@ endif
 .cc.s:
 	$(call cxxcompile,-S $< -o $@,CXX -S)
 .cc.ii:
-	$(call cxxcompile,-E $< > $@,CXXCPP)
+	$(call cxxcompile_nodep,-E $< > $@,CXXCPP)
 
 
 GENERIC_OBJS = string.o straccum.o nameinfo.o \
 	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
-	error.o timestamp.o glue.o task.o timer.o atomic.o gaprate.o \
+	error.o timestamp.o glue.o task.o timer.o atomic.o fromfile.o gaprate.o \
 	element.o \
-	confparse.o variableenv.o lexer.o elemfilter.o routervisitor.o \
+	confparse.o args.o variableenv.o lexer.o elemfilter.o routervisitor.o \
 	routerthread.o router.o master.o handlercall.o notifier.o \
 	integers.o md5.o crc32.o in_cksum.o iptable.o \
 	archive.o userutils.o driver.o \
@@ -72,7 +77,6 @@ OBJS = $(ELEMENT_OBJS) $(ELEMENTSCONF).o nsclick.o
 CPPFLAGS = @CPPFLAGS@ -DCLICK_NS
 CFLAGS = @CFLAGS@ -fPIC
 CXXFLAGS = @CXXFLAGS@ -fPIC
-DEPCFLAGS = @DEPCFLAGS@
 
 DEFS = @DEFS@
 INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
@@ -80,10 +84,10 @@ INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
 LDFLAGS = @LDMODULEFLAGS@
 LIBS = @LIBS@ `$(top_builddir)/click-buildtool --otherlibs` $(ELEMENT_LIBS)
 
-CXXCOMPILE = $(CXX) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS) $(DEPCFLAGS)
+CXXCOMPILE = $(CXX) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
 CXXLINK = $(CXXLD) $(CXXFLAGS) $(LDFLAGS) -o $@
-COMPILE = $(CC) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CFLAGS) $(DEPCFLAGS)
+COMPILE = $(CC) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
 
@@ -103,11 +107,11 @@ ifneq ($(MAKECMDGOALS),clean)
 endif
 
 libnsclick.so: Makefile $(LIBOBJS) $(OBJS)
-	$(CXXLINK) -shared $(LIBOBJS) $(OBJS)
+	$(CXXLINK) -shared $(LIBOBJS) $(OBJS) $(LIBS)
 libnsclick.dylib: Makefile $(LIBOBJS) $(OBJS)
-	$(CXXLINK) -dynamiclib $(LIBOBJS) $(OBJS)
+	$(CXXLINK) -dynamiclib $(LIBOBJS) $(OBJS) $(LIBS)
 libnsclick.a: Makefile $(LIBOBJS) $(OBJS)
-	$(AR_CREATE) libnsclick.a $(LIBOBJS) $(OBJS)
+	$(AR_CREATE) libnsclick.a $(LIBOBJS) $(OBJS) $(LIBS)
 	$(RANLIB) libnsclick.a
 
 nsclick-test: libnsclick.a nsclick-test.o
@@ -136,6 +140,8 @@ endif
 install: $(INSTALLLIBS)
 	$(mkinstalldirs) $(DESTDIR)$(libdir)
 	for i in $(INSTALLLIBS); do $(INSTALL) $$i $(DESTDIR)$(libdir)/$$i; done
+install-include:
+	@:
 uninstall:
 	for i in $(INSTALLLIBS); do rm -f $(DESTDIR)$(libdir)/$$i; done
 
@@ -145,4 +151,5 @@ clean:
 distclean: clean
 	-rm -f Makefile
 
-.PHONY: all clean distclean elemlist install uninstall
+.PHONY: all clean distclean elemlist \
+	install install-include uninstall

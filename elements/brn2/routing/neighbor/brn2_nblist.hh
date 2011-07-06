@@ -1,16 +1,18 @@
 #ifndef BRN2_NBLIST_HH
 #define BRN2_NBLIST_HH
+#include <click/element.hh>
 #include <click/etheraddress.hh>
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
 
-#include <elements/brn2/routing/identity/brn2_device.hh>
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
 
-#include <click/element.hh>
 CLICK_DECLS
 
-class BRN2NBList : public Element
+class BRN2NBList : public BRNElement
 {
   public:
     class NeighborInfo {
@@ -56,13 +58,16 @@ class BRN2NBList : public Element
 
     bool isContained(EtherAddress *v);
     NeighborInfo *getEntry(EtherAddress *v);
+
     int insert(EtherAddress eth, BRN2Device *dev);
+    int insert(EtherAddress eth, uint8_t dev_number);
+
     String printNeighbors();
+
     const EtherAddress *getDeviceAddressForNeighbor(EtherAddress *v);
 
     typedef HashMap<EtherAddress, NeighborInfo> NBMap;
 
-    int _debug;
   private:
 
     //
@@ -70,6 +75,7 @@ class BRN2NBList : public Element
     //
 
     NBMap _nb_list;
+    BRN2NodeIdentity *_nodeid;
 
 };
 

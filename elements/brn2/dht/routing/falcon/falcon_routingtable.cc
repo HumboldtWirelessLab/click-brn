@@ -134,16 +134,18 @@ FalconRoutingTable::isBetterPredecessor(DHTnode *node)
 DHTnode*
 FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
 {
+  Timestamp now = Timestamp::now();
   DHTnode *best = _me;
   DHTnode *n;
 
   if ( node->equals(_me) ) best = successor;
   for ( int i = 0; i < _allnodes.size(); i++ ) {
     n = _allnodes.get_dhtnode(i);
-  //  BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
-//    BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(),node->_ether_addr.unparse().c_str(),best->_ether_addr.unparse().c_str());
-    if ( ( n->get_age_s() <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
-  //    BRN_DEBUG("YES");
+  //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
+  //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
+  //                                       best->_ether_addr.unparse().c_str());
+    if ( ( n->get_age_s(&now) <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
+  //  BRN_DEBUG("YES");
       best = n;
     }/* else {
       BRN_DEBUG("NO");
@@ -171,10 +173,13 @@ FalconRoutingTable::add_node(DHTnode *node)
     n = node->clone();
     _allnodes.add_dhtnode(n);
   } else {
-    n->_status = node->_status;                //update node
-    n->set_age(&(node->_age));
-    if ( node->_digest_length != 0 ) n->set_nodeid(node->_md5_digest);
-    return 0;                                 //get back since there is no new node (succ and pred will not changed)
+    if ( node->_age > n->_age ) {
+      n->_status = node->_status;              //update node
+      n->set_age(&(node->_age));
+      //TODO: update node if id changes , but always copy is too expesive
+      if ( ( node->_md5_digest[0] != n->_md5_digest[0] ) && ( node->_digest_length != 0 ) ) n->set_nodeid(node->_md5_digest);//TODO!!
+    }
+    return 0;              //get back since there is no new node (succ and pred will not changed)
   }
 
   if ( isBetterSuccessor(n) ) {

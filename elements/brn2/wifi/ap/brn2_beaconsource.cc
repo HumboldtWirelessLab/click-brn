@@ -46,7 +46,8 @@ BRN2BeaconSource::BRN2BeaconSource()
     _debug(false),
     _active(true),
     _switch_channel_countdown(0),
-    _rtable(0)
+    _rtable(0),
+    _headroom(32)
 {
   _bcast = EtherAddress();
   memset(_bcast.data(), 0xff, 6);
@@ -67,6 +68,7 @@ BRN2BeaconSource::configure(Vector<String> &conf, ErrorHandler *errh)
       "WIRELESSINFOLIST", cpkP, cpElement, &_winfolist,
       "RT", cpkP, cpElement, &_rtable,
       "ACTIVE", cpkP, cpBool, &_active,
+      "HEADROOM", cpkP, cpInteger, &_headroom,
       "DEBUG", cpkP, cpBool, &_debug,
     cpEnd) < 0)
     return -1;
@@ -154,7 +156,7 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
     max_len += 2 + 3;                   //Channel Switch Announcement
   }
 
-  WritablePacket *p = Packet::make(max_len);
+  WritablePacket *p = WritablePacket::make(_headroom, NULL, max_len, 32);
 
   if (p == 0)
     return;
@@ -174,8 +176,8 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
   memcpy(w->i_addr2, bssid.data(), 6);
   memcpy(w->i_addr3, bssid.data(), 6);
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr;
 

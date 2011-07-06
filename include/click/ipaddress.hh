@@ -3,9 +3,14 @@
 #define CLICK_IPADDRESS_HH
 #include <click/string.hh>
 #include <click/glue.hh>
+#include <click/type_traits.hh>
 #include <clicknet/ip.h>
 CLICK_DECLS
 class StringAccum;
+class ArgContext;
+extern const ArgContext blank_args;
+class IPAddressArg;
+template <typename T> class Vector;
 
 class IPAddress { public:
 
@@ -78,11 +83,22 @@ class IPAddress { public:
 	return IPAddress(0xFFFFFFFF);
     }
 
+    /** @brief Test if the address is 0.0.0.0. */
+    inline bool empty() const {
+	return !_addr;
+    }
 
-    typedef uint32_t (IPAddress::*unspecified_bool_type)() const;
-    /** @brief Return true iff the address is not 0.0.0.0. */
-    inline operator unspecified_bool_type() const {
-	return _addr != 0 ? &IPAddress::addr : 0;
+    /** @brief Return the address as a uint32_t in network byte order. */
+    inline uint32_t addr() const {
+	return _addr;
+    }
+
+    /** @brief Return the address as a uint32_t in network byte order.
+     *
+     * Also suitable for use as an operator bool, returning true iff
+     * the address is not 0.0.0.0. */
+    inline operator uint32_t() const {
+	return _addr;
     }
 
     /** @brief Return true iff the address is a multicast address.
@@ -91,9 +107,6 @@ class IPAddress { public:
     inline bool is_multicast() const {
 	return (_addr & htonl(0xF0000000)) == htonl(0xE0000000);
     }
-
-    inline uint32_t addr() const;
-    inline operator uint32_t() const;
 
     inline struct in_addr in_addr() const;
     inline operator struct in_addr() const;
@@ -137,20 +150,6 @@ class IPAddress { public:
 
 };
 
-
-/** @brief Return the address as a uint32_t in network byte order. */
-inline
-IPAddress::operator uint32_t() const
-{
-    return _addr;
-}
-
-/** @brief Return the address as a uint32_t in network byte order. */
-inline uint32_t
-IPAddress::addr() const
-{
-    return _addr;
-}
 
 /** @relates IPAddress
     @brief Compare two IPAddress objects for equality. */
@@ -358,6 +357,60 @@ IPAddress::s() const
 {
     return unparse();
 }
+
+
+/** @class IPAddressArg
+  @brief Parser class for IPv4 addresses. */
+struct IPAddressArg {
+    static const char *basic_parse(const char *begin, const char *end,
+				   unsigned char value[4], int &nbytes);
+    static bool parse(const String &str, IPAddress &result,
+		      const ArgContext &args = blank_args);
+    static bool parse(const String &str, struct in_addr &result,
+		      const ArgContext &args = blank_args) {
+	return parse(str, reinterpret_cast<IPAddress &>(result), args);
+    }
+    static bool parse(const String &str, Vector<IPAddress> &result,
+		      const ArgContext &args = blank_args);
+};
+
+/** @class IPPrefixArg
+  @brief Parser class for IPv4 prefixes. */
+struct IPPrefixArg {
+    IPPrefixArg(bool allow_bare_address_ = false)
+	: allow_bare_address(allow_bare_address_) {
+    }
+    bool parse(const String &str,
+	       IPAddress &result_addr, IPAddress &result_mask,
+	       const ArgContext &args = blank_args) const;
+    bool parse(const String &str,
+	       struct in_addr &result_addr, struct in_addr &result_mask,
+	       const ArgContext &args = blank_args) const {
+	return parse(str, reinterpret_cast<IPAddress &>(result_addr),
+		     reinterpret_cast<IPAddress &>(result_mask), args);
+    }
+    bool allow_bare_address;
+};
+
+template<> struct DefaultArg<IPAddress> : public IPAddressArg {};
+template<> struct DefaultArg<struct in_addr> : public IPAddressArg {};
+template<> struct DefaultArg<Vector<IPAddress> > : public IPAddressArg {};
+template<> struct has_trivial_copy<IPAddress> : public true_type {};
+
+
+/** @class IPPortArg
+  @brief Parser class for TCP/UDP ports.
+
+  The constructor argument is the relevant IP protocol. */
+struct IPPortArg {
+    IPPortArg(int p)
+	: ip_p(p) {
+	assert(ip_p > 0 && ip_p < 256);
+    }
+    bool parse(const String &str, uint16_t &result,
+	       const ArgContext &args = blank_args) const;
+    int ip_p;
+};
 
 CLICK_ENDDECLS
 #endif

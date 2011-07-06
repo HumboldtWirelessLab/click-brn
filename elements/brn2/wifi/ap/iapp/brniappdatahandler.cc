@@ -91,7 +91,7 @@ BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BrnIappDataHandler::initialize(ErrorHandler *errh)
+BrnIappDataHandler::initialize(ErrorHandler */*errh*/)
 {
   return 0;
 }

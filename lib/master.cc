@@ -24,6 +24,7 @@
 #include <click/router.hh>
 #include <click/error.hh>
 #include <click/handlercall.hh>
+#include <click/heap.hh>
 #if CLICK_USERLEVEL
 # include <fcntl.h>
 # include <click/userutils.hh>
@@ -38,7 +39,7 @@
 #endif
 CLICK_DECLS
 
-#if CLICK_USERLEVEL && (!HAVE_POLL_H || HAVE_USE_SELECT)
+#if CLICK_USERLEVEL && !HAVE_ALLOW_POLL
 enum { POLLIN = Element::SELECT_READ, POLLOUT = Element::SELECT_WRITE };
 #endif
 
@@ -47,11 +48,6 @@ volatile sig_atomic_t Master::signals_pending;
 static volatile sig_atomic_t signal_pending[NSIG];
 # if HAVE_MULTITHREAD
 static RouterThread * volatile selecting_thread;
-#  if HAVE___SYNC_SYNCHRONIZE
-#   define click_master_mb()	__sync_synchronize()
-#  else
-#   define click_master_mb()	__asm__ volatile("" : : : "memory")
-#  endif
 # else
 static int sig_pipe[2] = { -1, -1 };
 # endif
@@ -59,13 +55,13 @@ extern "C" { static void sighandler(int signo); }
 #endif
 
 Master::Master(int nthreads)
-    : _routers(0), _pending_head(0), _pending_tail(&_pending_head)
+    : _routers(0)
 {
     _refcount = 0;
     _stopper = 0;
     _master_paused = 0;
 
-    for (int tid = -2; tid < nthreads; tid++)
+    for (int tid = -1; tid < nthreads; tid++)
 	_threads.push_back(new RouterThread(this, tid));
 
     // timer information
@@ -84,10 +80,10 @@ Master::Master(int nthreads)
 
 #if CLICK_USERLEVEL
     // select information
-# if HAVE_USE_KQUEUE
+# if HAVE_ALLOW_KQUEUE
     _kqueue = kqueue();
 # endif
-# if !HAVE_POLL_H || HAVE_USE_SELECT
+# if !HAVE_ALLOW_POLL
     FD_ZERO(&_read_select_fd_set);
     FD_ZERO(&_write_select_fd_set);
     _max_select_fd = -1;
@@ -97,7 +93,7 @@ Master::Master(int nthreads)
     // _pollfds.begin() is nonnull, preventing crashes on Mac OS X
     struct pollfd dummy;
     dummy.events = dummy.fd = 0;
-# if HAVE_POLL_H && !HAVE_USE_SELECT
+# if HAVE_ALLOW_POLL
     dummy.revents = 0;
 # endif
     _pollfds.push_back(dummy);
@@ -147,7 +143,7 @@ Master::~Master()
 
     for (int i = 0; i < _threads.size(); i++)
 	delete _threads[i];
-#if CLICK_USERLEVEL && HAVE_USE_KQUEUE
+#if CLICK_USERLEVEL && HAVE_ALLOW_KQUEUE
     if (_kqueue >= 0)
 	close(_kqueue);
 #endif
@@ -179,9 +175,7 @@ Master::pause()
 #if CLICK_USERLEVEL
     _select_lock.acquire();
 #endif
-    SpinlockIRQ::flags_t flags = _master_task_lock.acquire();
     _master_paused++;
-    _master_task_lock.release(flags);
 #if CLICK_USERLEVEL
     _select_lock.release();
 #endif
@@ -266,14 +260,17 @@ Master::kill_router(Router *router)
     {
 	lock_timers();
 	assert(!_timer_runchunk.size());
-	Timer* t;
-	for (Timer** tp = _timer_heap.end(); tp > _timer_heap.begin(); )
-	    if ((t = *--tp, t->router() == router)) {
-		remove_heap(_timer_heap.begin(), _timer_heap.end(), tp, timer_less(), timer_place(_timer_heap.begin()));
+	for (Timer::heap_element *thp = _timer_heap.end();
+	     thp > _timer_heap.begin(); ) {
+	    --thp;
+	    Timer *t = thp->t;
+	    if (t->router() == router) {
+		remove_heap<4>(_timer_heap.begin(), _timer_heap.end(), thp, Timer::heap_less(), Timer::heap_place());
 		_timer_heap.pop_back();
 		t->_owner = 0;
 		t->_schedpos1 = 0;
 	    }
+	}
 	set_timer_expiry();
 	unlock_timers();
     }
@@ -316,7 +313,7 @@ Master::kill_router(Router *router)
 #endif
 
     // something has happened, so wake up threads
-    for (RouterThread** tp = _threads.begin() + 2; tp < _threads.end(); tp++)
+    for (RouterThread** tp = _threads.begin() + 1; tp < _threads.end(); tp++)
 	(*tp)->wake();
 }
 
@@ -385,38 +382,6 @@ Master::check_driver()
 }
 
 
-// PENDING TASKS
-
-void
-Master::process_pending(RouterThread *thread)
-{
-    // must be called with thread's lock acquired
-
-    // claim the current pending list
-    thread->set_thread_state(RouterThread::S_RUNPENDING);
-    SpinlockIRQ::flags_t flags = _master_task_lock.acquire();
-    if (_master_paused > 0) {
-	_master_task_lock.release(flags);
-	return;
-    }
-    uintptr_t my_pending = _pending_head;
-    _pending_head = 0;
-    _pending_tail = &_pending_head;
-    thread->_any_pending = 0;
-    _master_task_lock.release(flags);
-
-    // process the list
-    while (Task *t = Task::pending_to_task(my_pending)) {
-	my_pending = t->_pending_nextptr;
-	t->_pending_nextptr = 0;
-#if HAVE_MULTITHREAD && HAVE___SYNC_SYNCHRONIZE
-	__sync_synchronize();
-#endif
-	t->process_pending(thread);
-    }
-}
-
-
 // TIMERS
 
 void
@@ -466,11 +431,11 @@ Master::run_timers(RouterThread *thread)
 	_timer_task = current;
 #endif
 	_timer_check = Timestamp::now();
-	Timer *t = _timer_heap.at_u(0);
+	Timer::heap_element *th = _timer_heap.begin();
 
-	if (t->_expiry <= _timer_check) {
+	if (th->expiry <= _timer_check) {
 	    // potentially adjust timer stride
-	    Timestamp adj_expiry = t->_expiry + Timer::adjustment();
+	    Timestamp adj_expiry = th->expiry + Timer::adjustment();
 	    if (adj_expiry <= _timer_check) {
 		_timer_count = 0;
 		if (_timer_stride > 1)
@@ -484,14 +449,16 @@ Master::run_timers(RouterThread *thread)
 	    // actually run timers
 	    int max_timers = 64;
 	    do {
-		pop_heap(_timer_heap.begin(), _timer_heap.end(), timer_less(), timer_place(_timer_heap.begin()));
+		Timer *t = th->t;
+		assert(t->expiry() == th->expiry);
+		pop_heap<4>(_timer_heap.begin(), _timer_heap.end(), Timer::heap_less(), Timer::heap_place());
 		_timer_heap.pop_back();
 		set_timer_expiry();
 		t->_schedpos1 = 0;
 
 		run_one_timer(t);
 	    } while (_timer_heap.size() > 0 && !_stopper
-		     && (t = _timer_heap.at_u(0), t->_expiry <= _timer_check)
+		     && (th = _timer_heap.begin(), th->expiry <= _timer_check)
 		     && --max_timers >= 0);
 
 	    // If we ran out of timers to run, then perhaps there's an
@@ -502,13 +469,14 @@ Master::run_timers(RouterThread *thread)
 	    if (max_timers < 0 && !_stopper) {
 		_timer_runchunk.reserve(32);
 		do {
-		    pop_heap(_timer_heap.begin(), _timer_heap.end(), timer_less(), timer_place(_timer_heap.begin()));
+		    Timer *t = th->t;
+		    pop_heap<4>(_timer_heap.begin(), _timer_heap.end(), Timer::heap_less(), Timer::heap_place());
 		    _timer_heap.pop_back();
 		    t->_schedpos1 = -_timer_runchunk.size() - 1;
 
 		    _timer_runchunk.push_back(t);
 		} while (_timer_heap.size() > 0
-			 && (t = _timer_heap.at_u(0), t->_expiry <= _timer_check));
+			 && (th = _timer_heap.begin(), th->expiry <= _timer_check));
 		set_timer_expiry();
 
 		Vector<Timer*>::iterator i = _timer_runchunk.begin();
@@ -564,7 +532,7 @@ Master::register_select(int fd, bool add_read, bool add_write)
     if (add_write)
 	_pollfds[pi].events |= POLLOUT;
 
-#if HAVE_USE_KQUEUE
+#if HAVE_ALLOW_KQUEUE
     if (_kqueue >= 0) {
 	// Add events to the kqueue
 	struct kevent kev[2];
@@ -587,7 +555,7 @@ Master::register_select(int fd, bool add_read, bool add_write)
     }
 #endif
 
-#if !HAVE_POLL_H || HAVE_USE_SELECT
+#if !HAVE_ALLOW_POLL
     // Add 'mask' to the fd_sets
     if (fd < FD_SETSIZE) {
 	if (add_read)
@@ -598,7 +566,7 @@ Master::register_select(int fd, bool add_read, bool add_write)
 	    _max_select_fd = fd;
     } else {
 	static int warned = 0;
-# if HAVE_USE_KQUEUE
+# if HAVE_ALLOW_KQUEUE
 	if (_kqueue < 0)
 # endif
 	    if (!warned) {
@@ -678,7 +646,7 @@ Master::remove_pollfd(int pi, int event)
     else
 	_element_selectors[fd].write = 0;
 
-#if HAVE_USE_KQUEUE
+#if HAVE_ALLOW_KQUEUE
     // remove event from kqueue
     if (_kqueue >= 0) {
 	struct kevent kev;
@@ -688,7 +656,7 @@ Master::remove_pollfd(int pi, int event)
 	    click_chatter("Master::remove_pollfd(fd %d): kevent: %s", _pollfds[pi].fd, strerror(errno));
     }
 #endif
-#if !HAVE_POLL_H || HAVE_USE_SELECT
+#if !HAVE_ALLOW_POLL
     // remove event from select list
     if (fd < FD_SETSIZE) {
 	fd_set *fd_ptr = (event == POLLIN ? &_read_select_fd_set : &_write_select_fd_set);
@@ -706,7 +674,7 @@ Master::remove_pollfd(int pi, int event)
     _fd_to_pollfd[fd] = -1;
     if (pi < _pollfds.size())
 	_fd_to_pollfd[_pollfds[pi].fd] = pi;
-#if !HAVE_POLL_H || HAVE_USE_SELECT
+#if !HAVE_ALLOW_POLL
     if (fd == _max_select_fd) {
 	_max_select_fd = -1;
 	for (int pix = 0; pix < _pollfds.size(); ++pix)
@@ -784,7 +752,7 @@ Master::next_timer_delay(bool more_tasks, Timestamp &t) const
 #endif
 }
 
-#if HAVE_USE_KQUEUE
+#if HAVE_ALLOW_KQUEUE
 static int
 kevent_compare(const void *ap, const void *bp, void *)
 {
@@ -799,7 +767,7 @@ Master::run_selects_kqueue(RouterThread *thread, bool more_tasks)
 {
 # if HAVE_MULTITHREAD
     selecting_thread = thread;
-    click_master_mb();
+    click_fence();
     _select_lock.release();
 
     struct kevent wp_kev;
@@ -827,9 +795,8 @@ Master::run_selects_kqueue(RouterThread *thread, bool more_tasks)
 # if HAVE_MULTITHREAD
     thread->set_thread_state(RouterThread::S_LOCKSELECT);
     _select_lock.acquire();
-    click_master_mb();
+    click_fence();
     selecting_thread = 0;
-    thread->_select_blocked = false;
 
     thread->set_thread_state(RouterThread::S_RUNSELECT);
     wp_kev.flags = EV_DELETE;
@@ -844,7 +811,7 @@ Master::run_selects_kqueue(RouterThread *thread, bool more_tasks)
 	click_qsort(&kev[0], n, sizeof(struct kevent), kevent_compare, 0);
 	for (struct kevent *p = &kev[0]; p < &kev[n]; ) {
 	    int fd = (int) p->ident, mask = 0;
-	    for (; (int) p->ident == fd; ++p)
+	    for (; p < &kev[n] && (int) p->ident == fd; ++p)
 		if (p->filter == EVFILT_READ)
 		    mask |= Element::SELECT_READ;
 		else if (p->filter == EVFILT_WRITE)
@@ -853,9 +820,9 @@ Master::run_selects_kqueue(RouterThread *thread, bool more_tasks)
 	}
     }
 }
-#endif /* HAVE_USE_KQUEUE */
+#endif /* HAVE_ALLOW_KQUEUE */
 
-#if HAVE_POLL_H && !HAVE_USE_SELECT
+#if HAVE_ALLOW_POLL
 void
 Master::run_selects_poll(RouterThread *thread, bool more_tasks)
 {
@@ -864,7 +831,7 @@ Master::run_selects_poll(RouterThread *thread, bool more_tasks)
     // block
     Vector<struct pollfd> my_pollfds(_pollfds);
     selecting_thread = thread;
-    click_master_mb();
+    click_fence();
     _select_lock.release();
 
     pollfd wake_pollfd;
@@ -894,9 +861,8 @@ Master::run_selects_poll(RouterThread *thread, bool more_tasks)
 # if HAVE_MULTITHREAD
     thread->set_thread_state(RouterThread::S_LOCKSELECT);
     _select_lock.acquire();
-    click_master_mb();
+    click_fence();
     selecting_thread = 0;
-    thread->_select_blocked = false;
 # endif
     thread->set_thread_state(RouterThread::S_RUNSELECT);
 
@@ -924,7 +890,7 @@ Master::run_selects_poll(RouterThread *thread, bool more_tasks)
 	    }
 }
 
-#else /* !HAVE_POLL_H || HAVE_USE_SELECT */
+#else /* !HAVE_ALLOW_POLL */
 void
 Master::run_selects_select(RouterThread *thread, bool more_tasks)
 {
@@ -934,10 +900,10 @@ Master::run_selects_select(RouterThread *thread, bool more_tasks)
 
 # if HAVE_MULTITHREAD
     selecting_thread = thread;
-    click_master_mb();
+    click_fence();
     _select_lock.release();
 
-    FD_SET(&read_mask, thread->_wake_pipe[0]);
+    FD_SET(thread->_wake_pipe[0], &read_mask);
     if (thread->_wake_pipe[0] >= n_select_fd)
 	n_select_fd = thread->_wake_pipe[0] + 1;
 # endif
@@ -961,9 +927,8 @@ Master::run_selects_select(RouterThread *thread, bool more_tasks)
 # if HAVE_MULTITHREAD
     thread->set_thread_state(RouterThread::S_LOCKSELECT);
     _select_lock.acquire();
-    click_master_mb();
+    click_fence();
     selecting_thread = 0;
-    thread->_select_blocked = false;
 # endif
     thread->set_thread_state(RouterThread::S_RUNSELECT);
 
@@ -991,7 +956,7 @@ Master::run_selects_select(RouterThread *thread, bool more_tasks)
 		    p--;
 	    }
 }
-#endif /* HAVE_POLL_H && !HAVE_USE_SELECT */
+#endif /* HAVE_ALLOW_POLL */
 
 void
 Master::run_selects(RouterThread *thread)
@@ -1001,14 +966,6 @@ Master::run_selects(RouterThread *thread)
 
     if (!_select_lock.attempt())
 	return;
-
-#if HAVE_MULTITHREAD
-    // set _select_blocked to true first: then, if someone else is
-    // concurrently waking us up, we will either detect that the thread is now
-    // active(), or wake up on the write to the thread's _wake_pipe
-    thread->_select_blocked = true;
-    click_master_mb();
-#endif
 
     bool more_tasks = thread->active();
 
@@ -1044,37 +1001,29 @@ Master::run_selects(RouterThread *thread)
 	    (void) r;
 	}
 	run_signals(thread);
-	thread->_select_blocked = false;
 	return;
     }
 #endif
 
     // Return early if paused.
-    if (_master_paused > 0) {
-#if HAVE_MULTITHREAD
-	thread->_select_blocked = false;
-#endif
+    if (_master_paused > 0)
 	goto unlock_exit;
-    }
 
     // Return early (just run signals) if there are no selectors and there are
     // tasks to run.
     if (_pollfds.size() == 0 && more_tasks) {
 	run_signals(thread);
-#if HAVE_MULTITHREAD
-	thread->_select_blocked = false;
-#endif
 	goto unlock_exit;
     }
 
     // Call the relevant selector implementation.
-#if HAVE_USE_KQUEUE
+#if HAVE_ALLOW_KQUEUE
     if (_kqueue >= 0) {
 	run_selects_kqueue(thread, more_tasks);
 	goto unlock_exit;
     }
 #endif
-#if HAVE_POLL_H && !HAVE_USE_SELECT
+#if HAVE_ALLOW_POLL
     run_selects_poll(thread, more_tasks);
 #else
     run_selects_select(thread, more_tasks);
@@ -1097,7 +1046,7 @@ sighandler(int signo)
 {
     Master::signals_pending = signal_pending[signo] = 1;
 # if HAVE_MULTITHREAD
-    click_master_mb();
+    click_fence();
     if (selecting_thread)
 	selecting_thread->wake();
 # else
@@ -1242,9 +1191,7 @@ Master::process_signals(RouterThread *thread)
 	if (sigismember(&_sig_dispatching, signo) > 0) {
 	    if (sigismember(&sigset_active, signo) == 0) {
 		click_signal(signo, SIG_DFL, false);
-#if HAVE_MULTITHREAD
-		click_master_mb();
-#endif
+		click_fence();
 		if (signal_pending[signo] != 0) {
 		    signal_pending[signo] = 0;
 		    goto suicide;
@@ -1286,17 +1233,16 @@ Master::info() const
     StringAccum sa;
     sa << "paused:\t\t" << _master_paused << '\n';
     sa << "stopper:\t" << _stopper << '\n';
-    sa << "pending:\t" << (Task::pending_to_task(_pending_head) != 0) << '\n';
     for (int i = 0; i < _threads.size(); i++) {
 	RouterThread *t = _threads[i];
-	sa << "thread " << (i - 2) << ":";
+	sa << "thread " << (i - 1) << ":";
 # ifdef CLICK_LINUXMODULE
 	if (t->_sleeper)
 	    sa << "\tsleep";
 	else
 	    sa << "\twake";
 # endif
-	if (t->_any_pending)
+	if (t->_pending_head)
 	    sa << "\tpending";
 # if CLICK_USERLEVEL && HAVE_MULTITHREAD
 	if (t->_wake_pipe[0] >= 0) {

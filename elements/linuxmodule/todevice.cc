@@ -28,7 +28,7 @@
 #include "todevice.hh"
 #include <click/error.hh>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/straccum.hh>
@@ -37,11 +37,11 @@
 CLICK_CXX_PROTECT
 #include <net/pkt_sched.h>
 #include <net/dst.h>
-#if __i386__
-#include <asm/msr.h>
-#endif
 CLICK_CXX_UNPROTECT
 #include <click/cxxunprotect.h>
+#if __i386__
+#include <click/perfctr-i586.hh>
+#endif
 
 /* for watching when devices go offline */
 static AnyDeviceMap to_device_map;
@@ -123,12 +123,12 @@ ToDevice::configure(Vector<String> &conf, ErrorHandler *errh)
     _burst = 16;
     int tx_queue = 0;
     if (AnyDevice::configure_keywords(conf, errh, false) < 0
-	|| cp_va_kparse(conf, this, errh,
-			"DEVNAME", cpkP+cpkM, cpString, &_devname,
-			"BURST", cpkP, cpUnsigned, &_burst,
-			"NO_PAD", 0, cpBool, &_no_pad,
-			"QUEUE", 0, cpInteger, &tx_queue,
-			cpEnd) < 0)
+	|| (Args(conf, this, errh)
+	    .read_mp("DEVNAME", _devname)
+	    .read_p("BURST", _burst)
+	    .read("NO_PAD", _no_pad)
+	    .read("QUEUE", tx_queue)
+	    .complete() < 0))
 	return -1;
 #if !HAVE_NETDEV_GET_TX_QUEUE
     if (tx_queue != 0)

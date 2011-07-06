@@ -22,7 +22,7 @@
 #include "fromdevice.hh"
 #include <click/error.hh>
 #include <click/straccum.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/glue.hh>
 #include <click/packet_anno.hh>
 #include <click/standard/scheduleinfo.hh>
@@ -75,27 +75,31 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
     bool promisc = false, outbound = false, sniffer = true;
     _snaplen = 2046;
     _headroom = Packet::default_headroom;
-    _headroom += (4 - (_headroom + 2) % 4) % 4; // default 4/2 alignment
+    _tailroom = 0;
     _force_ip = false;
     String bpf_filter, capture, encap_type;
     bool has_encap;
-    if (cp_va_kparse(conf, this, errh,
-		     "DEVNAME", cpkP+cpkM, cpString, &_ifname,
-		     "PROMISC", cpkP, cpBool, &promisc,
-		     "SNAPLEN", cpkP, cpUnsigned, &_snaplen,
-		     "SNIFFER", 0, cpBool, &sniffer,
-		     "FORCE_IP", 0, cpBool, &_force_ip,
-		     "CAPTURE", 0, cpWord, &capture,
-		     "BPF_FILTER", 0, cpString, &bpf_filter,
-		     "OUTBOUND", 0, cpBool, &outbound,
-		     "HEADROOM", 0, cpUnsigned, &_headroom,
-		     "ENCAP", cpkC, &has_encap, cpWord, &encap_type,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("DEVNAME", _ifname)
+	.read_p("PROMISC", promisc)
+	.read_p("SNAPLEN", _snaplen)
+	.read("SNIFFER", sniffer)
+	.read("FORCE_IP", _force_ip)
+	.read("CAPTURE", WordArg(), capture)
+	.read("BPF_FILTER", bpf_filter)
+	.read("OUTBOUND", outbound)
+	.read("HEADROOM", _headroom)
+    .read("TAILROOM", _tailroom)
+    .read("ENCAP", WordArg(), encap_type).read_status(has_encap)
+	.complete() < 0)
 	return -1;
     if (_snaplen > 8190 || _snaplen < 14)
 	return errh->error("SNAPLEN out of range");
+    _headroom += (4 - (_headroom + 2) % 4) % 4; // default 4/2 alignment
     if (_headroom > 8190)
 	return errh->error("HEADROOM out of range");
+    if (_tailroom > 8190)
+      return errh->error("TAILROOM out of range");
 
 #if FROMDEVICE_PCAP
     _bpf_filter = bpf_filter;
@@ -210,6 +214,19 @@ FromDevice::set_promiscuous(int fd, String ifname, bool promisc)
 }
 #endif /* FROMDEVICE_LINUX */
 
+#if FROMDEVICE_PCAP
+String
+FromDevice::get_pcap_error(const char *ebuf)
+{
+    if ((!ebuf || !ebuf[0]) && _pcap)
+	ebuf = pcap_geterr(_pcap);
+    if (!ebuf || !ebuf[0])
+	return "unknown error";
+    else
+	return ebuf;
+}
+#endif
+
 int
 FromDevice::initialize(ErrorHandler *errh)
 {
@@ -221,18 +238,22 @@ FromDevice::initialize(ErrorHandler *errh)
 	assert(!_pcap);
 	char *ifname = _ifname.mutable_c_str();
 	char ebuf[PCAP_ERRBUF_SIZE];
+	ebuf[0] = 0;
 	_pcap = pcap_open_live(ifname, _snaplen, _promisc,
 			       1,     /* timeout: don't wait for packets */
 			       ebuf);
 	// Note: pcap error buffer will contain the interface name
 	if (!_pcap)
-	    return errh->error("%s", ebuf);
+	    return errh->error("%s while opening %s", get_pcap_error(ebuf).c_str(), ifname);
+	else if (ebuf[0])
+	    errh->warning("%s", ebuf);
 
 	// nonblocking I/O on the packet socket so we can poll
 	int pcap_fd = fd();
 # if HAVE_PCAP_SETNONBLOCK
-	if (pcap_setnonblock(_pcap, 1, ebuf) < 0)
-	    errh->warning("pcap_setnonblock: %s", ebuf);
+	ebuf[0] = 0;
+	if (pcap_setnonblock(_pcap, 1, ebuf) < 0 || ebuf[0])
+	    errh->warning("pcap_setnonblock: %s", get_pcap_error(ebuf).c_str());
 # else
 	if (fcntl(pcap_fd, F_SETFL, O_NONBLOCK) < 0)
 	    errh->warning("setting nonblocking: %s", strerror(errno));
@@ -267,8 +288,9 @@ FromDevice::initialize(ErrorHandler *errh)
 
 	bpf_u_int32 netmask;
 	bpf_u_int32 localnet;
-	if (pcap_lookupnet(ifname, &localnet, &netmask, ebuf) < 0)
-	    errh->warning("%s", ebuf);
+	ebuf[0] = 0;
+	if (pcap_lookupnet(ifname, &localnet, &netmask, ebuf) < 0 || ebuf[0] != 0)
+	    errh->warning("%s", get_pcap_error(ebuf).c_str());
 
 	// Later versions of pcap distributed with linux (e.g. the redhat
 	// linux pcap-0.4-16) want to have a filter installed before they
@@ -347,11 +369,11 @@ FromDevice_get_packet(u_char* clientdata,
 		      const struct pcap_pkthdr* pkthdr,
 		      const u_char* data)
 {
-    static char bcast_addr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+    static unsigned char bcast_addr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
     FromDevice *fd = (FromDevice *) clientdata;
     int length = pkthdr->caplen;
-    Packet *p = Packet::make(fd->_headroom, data, length, 0);
+    Packet *p = Packet::make(fd->_headroom, data, length, fd->_tailroom);
 
     // set packet type annotation
     if (p->data()[0] & 1) {
@@ -392,7 +414,7 @@ FromDevice::selected(int, int)
     if (_capture == CAPTURE_LINUX) {
 	struct sockaddr_ll sa;
 	socklen_t fromlen = sizeof(sa);
-	WritablePacket *p = Packet::make(_headroom, 0, _snaplen, 0);
+	WritablePacket *p = Packet::make(_headroom, 0, _snaplen, _tailroom);
 	int len = recvfrom(_linux_fd, p->data(), p->length(), MSG_TRUNC, (sockaddr *)&sa, &fromlen);
 	if (len > 0 && (sa.sll_pkttype != PACKET_OUTGOING || _outbound)) {
 	    if (len > _snaplen) {

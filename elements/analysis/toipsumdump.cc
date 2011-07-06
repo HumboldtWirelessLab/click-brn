@@ -4,7 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 2001-3 International Computer Science Institute
- * Copyright (c) 2004-8 Regents of the University of California
+ * Copyright (c) 2004-2011 Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -20,7 +20,7 @@
 #include <click/config.h>
 #include "toipsumdump.hh"
 #include <click/standard/scheduleinfo.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/packet_anno.hh>
 #include <clicknet/ip.h>
@@ -52,19 +52,19 @@ ToIPSummaryDump::configure(Vector<String> &conf, ErrorHandler *errh)
     bool header = true;
     bool extra_length = true;
 
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_filename,
-		     "CONTENTS", 0, cpArgument, &save,
-		     "DATA", 0, cpArgument, &save,
-		     "VERBOSE", 0, cpBool, &verbose,
-		     "HEADER", 0, cpBool, &header,
-		     "BANNER", 0, cpString, &_banner,
-		     "MULTIPACKET", 0, cpBool, &multipacket,
-		     "BAD_PACKETS", 0, cpBool, &bad_packets,
-		     "CAREFUL_TRUNC", 0, cpBool, &careful_trunc,
-		     "EXTRA_LENGTH", 0, cpBool, &extra_length,
-		     "BINARY", 0, cpBool, &binary,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _filename)
+	.read("CONTENTS", AnyArg(), save)
+	.read("DATA", AnyArg(), save)
+	.read("VERBOSE", verbose)
+	.read("HEADER", header)
+	.read("BANNER", _banner)
+	.read("MULTIPACKET", multipacket)
+	.read("BAD_PACKETS", bad_packets)
+	.read("CAREFUL_TRUNC", careful_trunc)
+	.read("EXTRA_LENGTH", extra_length)
+	.read("BINARY", binary)
+	.complete() < 0)
 	return -1;
 
     Vector<String> v;
@@ -263,7 +263,7 @@ ToIPSummaryDump::push(int, Packet *p)
 {
     if (_active)
 	write_packet(p, _multipacket);
-    p->kill();
+    checked_output_push(0, p);
 }
 
 bool
@@ -273,7 +273,7 @@ ToIPSummaryDump::run_task(Task *)
 	return false;
     if (Packet *p = input(0).pull()) {
 	write_packet(p, _multipacket);
-	p->kill();
+	checked_output_push(0, p);
 	_task.fast_reschedule();
 	return true;
     } else if (_signal) {

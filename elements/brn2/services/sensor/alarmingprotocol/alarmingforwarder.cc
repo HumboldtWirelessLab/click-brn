@@ -86,7 +86,7 @@ AlarmingForwarder::push( int port, Packet *p)
     BRNPacketAnno::set_ether_anno(p_out, *_nodeid->getMasterAddress(), brn_etheraddress_broadcast, ETHERTYPE_BRN);
 
     if ( _rssi_delay ) {
-      p_out->timestamp_anno() = p->timestamp_anno() + Timestamp(0, click_random() % 5);
+      p_out->timestamp_anno() = p->timestamp_anno() + Timestamp::make_msec(click_random() % 5);
     }
     output(0).push(p_out);
 
@@ -110,7 +110,7 @@ AlarmingForwarder::push( int port, Packet *p)
       if (((an->ttl - BRNPacketAnno::ttl_anno(p)) >= _as->_hop_limit ) ||
           ((result & _as->_forward_flags) == 0 )) {
           an->ttl = DEFAULT_HOP_INVALID;
-          BRN_ERROR("DELETE INFO");
+          BRN_INFO("DELETE INFO");
       }
     }
 
@@ -130,9 +130,7 @@ AlarmingForwarder::push( int port, Packet *p)
 
       if ( _rssi_delay ) {
         click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-
-        int rssi_delay = ceh->rssi;
-        p_out->timestamp_anno() = p->timestamp_anno() + Timestamp(0,rssi_delay);
+        p_out->timestamp_anno() = p->timestamp_anno() + Timestamp::make_msec((int)ceh->rssi);
       }
       output(0).push(p_out);
     } else {

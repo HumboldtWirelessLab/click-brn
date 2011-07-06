@@ -784,7 +784,7 @@ Router::set_runcount(int32_t rc)
     if (rc <= 0) {
 	_master->set_stopper(1);
 	// ensure that at least one thread is awake to handle the stop event
-	_master->_threads[2]->wake();
+	_master->wake_somebody();
     }
 }
 
@@ -806,20 +806,20 @@ void
 Router::adjust_runcount(int32_t delta)
 {
     // beware of overflow
-    int32_t old_value, new_value;
+    uint32_t old_value, new_value;
     do {
 	old_value = _runcount;
-	if (delta > 0 && old_value > 0x7FFFFFFF - delta)
+	if (delta > 0 && (int32_t) old_value > 0x7FFFFFFF - delta)
 	    new_value = 0x7FFFFFFF;
-	else if (delta < 0 && old_value < STOP_RUNCOUNT - delta)
+	else if (delta < 0 && (int32_t) old_value < STOP_RUNCOUNT - delta)
 	    new_value = STOP_RUNCOUNT;
 	else
 	    new_value = old_value + delta;
-    } while (!_runcount.compare_and_swap(old_value, new_value));
-    if (new_value <= 0) {
+    } while (_runcount.compare_swap(old_value, new_value) != old_value);
+    if ((int32_t) new_value <= 0) {
 	_master->set_stopper(1);
 	// ensure that at least one thread is awake to handle the stop event
-	_master->_threads[2]->wake();
+	_master->wake_somebody();
     }
 }
 
@@ -2234,7 +2234,7 @@ stop_global_handler(const String &s, Element *e, void *, ErrorHandler *errh)
 {
     if (e) {
 	int n = 1;
-	(void) cp_integer(s, &n);
+	(void) IntArg().parse(s, n);
 	e->router()->adjust_runcount(-n);
     } else
 	errh->message("no router to stop");
@@ -2350,6 +2350,11 @@ Router::sim_get_node_id() {
 int
 Router::sim_get_next_pkt_id() {
     return simclick_sim_command(_master->simnode(), SIMCLICK_GET_NEXT_PKT_ID);
+}
+
+int
+Router::sim_if_promisc(int ifid) {
+    return simclick_sim_command(_master->simnode(), SIMCLICK_IF_PROMISC, ifid);
 }
 
 #endif // CLICK_NS

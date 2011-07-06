@@ -31,6 +31,7 @@ struct ElementTraits {
     String requirements;
     String provisions;
     String libs;
+    String noexport;
     int def_index;
     int driver_mask;
     int name_next;
@@ -41,9 +42,10 @@ struct ElementTraits {
 
     bool allows_driver(int d) const	{ return (driver_mask&(1<<d)) != 0; }
 
-    bool requires(const String &) const;
-    bool provides(const String &) const;
-    int flag_value(int) const;
+    bool requires(const String &str) const;
+    bool provides(const String &str) const;
+    inline int flag_value(const String &str) const;
+    int hard_flag_value(const String &str) const;
 
     String *component(int);
     String *component(const String &);
@@ -54,7 +56,7 @@ struct ElementTraits {
 	D_NONE,
 	D_CLASS, D_CXX_CLASS, D_HEADER_FILE, D_PORT_COUNT, D_PROCESSING,
 	D_FLOW_CODE, D_FLAGS, D_METHODS, D_REQUIREMENTS, D_PROVISIONS, D_LIBS,
-	D_SOURCE_FILE, D_DOC_NAME,
+	D_SOURCE_FILE, D_DOC_NAME, D_NOEXPORT,
 	D_FIRST_DEFAULT = D_CLASS, D_LAST_DEFAULT = D_LIBS
     };
     static int parse_component(const String &);
@@ -81,6 +83,12 @@ inline String *
 ElementTraits::component(const String &s)
 {
     return component(parse_component(s));
+}
+
+inline int
+ElementTraits::flag_value(const String &str) const
+{
+    return flags ? hard_flag_value(str) : -1;
 }
 
 #endif

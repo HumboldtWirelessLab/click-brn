@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/llc.h>
@@ -48,17 +48,12 @@ AssociationResponder::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "WIRELESS_INFO", 0, cpElement, &_winfo,
-		   "RT", 0, cpElement, &_rtable,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("WIRELESS_INFO", ElementCastArg("WirelessInfo"), _winfo)
+      .read_m("RT", ElementCastArg("AvailableRates"), _rtable)
+      .complete() < 0)
     return -1;
-
-
-  if (!_rtable || _rtable->cast("AvailableRates") == 0)
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
-
   return 0;
 }
 
@@ -271,8 +266,8 @@ AssociationResponder::send_association_response(EtherAddress dst, uint16_t statu
   memcpy(w->i_addr3, bssid.data(), 6);
 
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
   int actual_length = sizeof(struct click_wifi);
@@ -354,8 +349,8 @@ AssociationResponder::send_disassociation(EtherAddress dst, uint16_t reason)
   memcpy(w->i_addr3, bssid.data(), 6);
 
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
 
   uint8_t *ptr;
@@ -391,7 +386,7 @@ AssociationResponder_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;

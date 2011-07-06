@@ -182,7 +182,10 @@ class HandlerCall { public:
 
 
     enum Flags {
-	h_read = Handler::h_read, h_write = Handler::h_write,
+	readable = Handler::h_read,
+	h_read = Handler::h_read,
+	writable = Handler::h_write,
+	h_write = Handler::h_write,
 	h_preinitialize = 4, h_unquote_param = 8
     };
 
@@ -226,7 +229,7 @@ class HandlerCall { public:
      *  @param  context  optional element context
      *  @param  errh     optional error handler
      *
-     *  Equivalent to @link initialize(int, Element*, ErrorHandler*)
+     *  Equivalent to @link initialize(int, const Element*, ErrorHandler*)
      *  initialize@endlink(h_read, @a context, @a errh). */
     inline int initialize_read(const Element *context, ErrorHandler *errh = 0);
 
@@ -234,7 +237,7 @@ class HandlerCall { public:
      *  @param  context  optional element context
      *  @param  errh     optional error handler
      *
-     *  Equivalent to @link initialize(int, Element*, ErrorHandler*)
+     *  Equivalent to @link initialize(int, const Element*, ErrorHandler*)
      *  initialize@endlink(h_write, @a context, @a errh). */
     inline int initialize_write(const Element *context, ErrorHandler *errh = 0);
 
@@ -339,7 +342,7 @@ class HandlerCall { public:
      *  @return  0 on success, -EINVAL on failure
      *
      *  Creates a HandlerCall and initializes it.  Behaves analogously to
-     *  reset(HandlerCall*&, const String&, int, Element*, ErrorHandler*). */
+     *  reset(HandlerCall*&, const String&, int, const Element*, ErrorHandler*). */
     static int reset(HandlerCall *&hcall,
 		     Element *e, const String &hname, const String &value,
 		     int flags, ErrorHandler *errh = 0);
@@ -353,7 +356,7 @@ class HandlerCall { public:
      *  @return  0 on success, -EINVAL on failure
      *
      *  Equivalent to
-     *  @link reset(HandlerCall*&, const String&, int, Element*, ErrorHandler*) reset@endlink(@a hcall, @a hdesc, h_read, @a context, @a errh). */
+     *  @link reset(HandlerCall*&, const String&, int, const Element*, ErrorHandler*) reset@endlink(@a hcall, @a hdesc, h_read, @a context, @a errh). */
     static inline int reset_read(HandlerCall *&hcall, const String &hdesc,
 				 const Element *context, ErrorHandler *errh = 0);
 
@@ -378,7 +381,7 @@ class HandlerCall { public:
      *  @return  0 on success, -EINVAL on failure
      *
      *  Equivalent to
-     *  @link reset(HandlerCall*&, const String&, int, Element*, ErrorHandler*) reset@endlink(@a hcall, @a hdesc, h_write, @a context, @a errh). */
+     *  @link reset(HandlerCall*&, const String&, int, const Element*, ErrorHandler*) reset@endlink(@a hcall, @a hdesc, h_write, @a context, @a errh). */
     static inline int reset_write(HandlerCall *&hcall, const String &hdesc,
 				  const Element *context, ErrorHandler *errh = 0);
 
@@ -545,6 +548,27 @@ HandlerCall::call_write(Element *e, const String &hname, ErrorHandler *errh)
 {
     return call_write(e, hname, String(), errh);
 }
+
+
+/** @class HandlerCallArg
+  @brief Parser class for handler call specifications.
+
+  The constructor argument should generally be either HandlerCall::writable or
+  HandlerCall::readable.  For example:
+
+  @code
+  HandlerCall end_h;
+  ... Args(...) ...
+     .read("END_CALL", HandlerCallArg(HandlerCall::writable), end_h)
+     ...
+  @endcode */
+struct HandlerCallArg {
+    HandlerCallArg(int f)
+	: flags(f) {
+    }
+    bool parse(const String &str, HandlerCall &result, const ArgContext &args);
+    int flags;
+};
 
 CLICK_ENDDECLS
 #endif

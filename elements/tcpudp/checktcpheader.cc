@@ -21,13 +21,10 @@
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/bitvector.hh>
 #include <click/straccum.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 const char *CheckTCPHeader::reason_texts[NREASONS] = {
@@ -48,18 +45,21 @@ CheckTCPHeader::~CheckTCPHeader()
 int
 CheckTCPHeader::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  bool verbose = false;
-  bool details = false;
+    bool verbose = false;
+    bool details = false;
 
-  if (cp_va_kparse(conf, this, errh,
-		   "VERBOSE", 0, cpBool, &verbose,
-		   "DETAILS", 0, cpBool, &details,
-		   cpEnd) < 0)
-    return -1;
+    if (Args(conf, this, errh)
+	.read("VERBOSE", verbose)
+	.read("DETAILS", details)
+	.complete() < 0)
+	return -1;
 
   _verbose = verbose;
-  if (details)
+  if (details) {
     _reason_drops = new atomic_uint32_t[NREASONS];
+    for (int i = 0; i < NREASONS; ++i)
+      _reason_drops[i] = 0;
+  }
 
   return 0;
 }
@@ -68,7 +68,7 @@ Packet *
 CheckTCPHeader::drop(Reason reason, Packet *p)
 {
   if (_drops == 0 || _verbose)
-    click_chatter("TCP header check failed: %s", reason_texts[reason]);
+    click_chatter("%{element}: TCP header check failed: %s", this, reason_texts[reason]);
   _drops++;
 
   if (_reason_drops)

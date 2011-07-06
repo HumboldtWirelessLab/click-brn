@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "wifidefrag.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -38,13 +38,8 @@ WifiDefrag::~WifiDefrag()
 int
 WifiDefrag::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
-  _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   cpEnd) < 0)
-    return -1;
-  return 0;
+    _debug = false;
+    return Args(conf, this, errh).read("DEBUG", _debug).complete();
 }
 
 Packet *
@@ -53,8 +48,8 @@ WifiDefrag::simple_action(Packet *p)
 
   click_wifi *w = (click_wifi *) p->data();
   EtherAddress src = EtherAddress(w->i_addr2);
-  uint16_t seq = le16_to_cpu(*(uint16_t *) w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
-  uint8_t frag = le16_to_cpu(*(u_int16_t *)w->i_seq) & WIFI_SEQ_FRAG_MASK;
+  uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+  uint8_t frag = le16_to_cpu(w->i_seq) & WIFI_SEQ_FRAG_MASK;
   u_int8_t more_frag = w->i_fc[1] & WIFI_FC1_MORE_FRAG;
   PacketInfo *nfo = _packets.findp(src);
 
@@ -139,7 +134,7 @@ WifiDefrag::simple_action(Packet *p)
   }
   p = nfo->p;
   w = (click_wifi *) p->data();
-  *((uint16_t *) w->i_seq) = cpu_to_le16(((u_int16_t) nfo->seq) << WIFI_SEQ_SEQ_SHIFT);
+  w->i_seq = cpu_to_le16(((u_int16_t) nfo->seq) << WIFI_SEQ_SEQ_SHIFT);
   w->i_fc[1] ^= WIFI_FC1_MORE_FRAG;
 
   nfo->p = 0;
@@ -174,7 +169,7 @@ WifiDefrag::write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;

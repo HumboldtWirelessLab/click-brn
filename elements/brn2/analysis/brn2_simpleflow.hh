@@ -9,9 +9,11 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
-class BRN2SimpleFlow : public Element
+class BRN2SimpleFlow : public BRNElement
 {
   CLICK_SIZE_PACKED_STRUCTURE(
   struct flowPacketHeader {,
@@ -30,8 +32,11 @@ class BRN2SimpleFlow : public Element
     uint8_t  mode;
     uint8_t  reply;
 
+    uint32_t tv_sec;   /* seconds since 1.1.1970 */ //previous: unsigned long
+    uint32_t tv_usec;  /* und microseconds */       //previous: long
   });
 
+#define SIMPLEFLOW_MAXHOPCOUNT   100
 #define MINIMUM_FLOW_PACKET_SIZE sizeof(struct flowPacketHeader)
 
   typedef enum flowType
@@ -40,12 +45,6 @@ class BRN2SimpleFlow : public Element
     TYPE_SMALL_ACK = 1,
     TYPE_FULL_ACK  = 2
   } FlowType;
-
-  typedef enum flowDir
-  {
-    DIR_ME_SENDER   = 0,
-    DIR_ME_RECEIVER = 1
-  } FlowDir;
 
  public:
   class Flow
@@ -56,7 +55,6 @@ class BRN2SimpleFlow : public Element
 
       uint32_t _id;
 
-      FlowDir _dir;
       FlowType _type;
 
       uint32_t _rate;
@@ -70,14 +68,17 @@ class BRN2SimpleFlow : public Element
 
       uint32_t _rxCrcErrors;
 
+      uint32_t _cum_sum_hops;
+
+      uint32_t _cum_sum_rt_time;
+
       Flow() {}
 
-      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, FlowDir dir, int rate, int size, int duration) {
+      Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
         _src = src;
         _dst = dst;
         _id = id;
         _type = type;
-        _dir = dir;
         _rate = rate;
         _size = size;
         _duration = duration;
@@ -85,20 +86,30 @@ class BRN2SimpleFlow : public Element
         _txPackets = 0;
         _rxPackets = 0;
         _rxCrcErrors = 0;
+        _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
       }
 
       ~Flow() {}
 
+      void reset() {
+        _active = false;
+        _txPackets = 1;
+        _rxPackets = 0;
+        _rxCrcErrors = 0;
+        _cum_sum_hops = 0;
+        _cum_sum_rt_time = 0;
+      }
   };
-
-  public:
 
     Timer _timer;
 
     typedef HashMap<EtherAddress, Flow> FlowMap;
     typedef FlowMap::const_iterator FMIter;
 
-    FlowMap _flowMap;
+    /*****************/
+    /** M E M B E R **/
+    /*****************/
 
     BRN2SimpleFlow();
     ~BRN2SimpleFlow();
@@ -115,32 +126,39 @@ class BRN2SimpleFlow : public Element
 
     int initialize(ErrorHandler *);
 
-    void push( int port, Packet *packet );
+    void push(int port, Packet *packet);
 
     void add_handlers();
 
     void run_timer(Timer *t);
 
-    void set_active();
-    uint32_t get_txpackets(void) { return txFlow._txPackets; }
-    EtherAddress *get_txdest(void) { return &txFlow._dst; }
+    void set_active(EtherAddress *dst, bool active);
+    bool is_active(EtherAddress *dst);
+    void schedule_next(EtherAddress *dst);
 
     void add_flow( EtherAddress src, EtherAddress dst,
                    uint32_t rate, uint32_t size, uint32_t mode,
-                   uint32_t duration, uint32_t active );
+                   uint32_t duration, bool active );
 
-    EtherAddress _src;
+    void reset();
+
+    FlowMap _rx_flowMap;
+    FlowMap _tx_flowMap;
+
+    EtherAddress dst_of_flow;
+
+    String xml_stats();
+
   private:
 
     WritablePacket*  nextPacketforFlow(Flow *f);
-    Flow txFlow;
 
-    bool _clearp;
-
+    bool _clear_packet;
     int _headroom;
 
-    int _debug;
+    bool _start_active;
 
+    uint32_t _flow_id;
 };
 
 CLICK_ENDDECLS

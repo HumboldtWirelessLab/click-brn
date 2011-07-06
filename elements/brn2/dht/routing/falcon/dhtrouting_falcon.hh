@@ -1,7 +1,7 @@
 #ifndef CLICK_DHTROUTING_FALCON_HH
 #define CLICK_DHTROUTING_FALCON_HH
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 #include "elements/brn2/dht/routing/dhtrouting.hh"
 #include "falcon_leave_organizer.hh"
 #include "falcon_routingtable.hh"

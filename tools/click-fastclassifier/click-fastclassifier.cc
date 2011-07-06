@@ -5,8 +5,8 @@
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
  * Copyright (c) 2000-2001 Mazu Networks, Inc.
  * Copyright (c) 2001 International Computer Science Institute
- * Copyright (c) 2007 Regents of the University of California
  * Copyright (c) 2010 Intel Corporation
+ * Copyright (c) 2007-2011 Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -154,8 +154,11 @@ Classifier_Insn::write_state(int state, bool check_length, bool take_short,
 	else
 	    sa << "l >= " << required_length() << " && ";
     }
-    sa << "(" << data << " & " << mask.u << "U) "
-       << (switched ? "!= " : "== ") << value.u << "U)\n    ";
+    if (mask.u == 4294967295U)
+	sa << data;
+    else
+	sa << "(" << data << " & " << mask.u << "U)";
+    sa << (switched ? " != " : " == ") << value.u << "U)\n    ";
     write_branch(j[!switched], label_prefix, sa);
     if (j[switched] != state + 1) {
 	sa << "  ";
@@ -170,17 +173,20 @@ combine_classifiers(RouterT *router, ElementT *from, int from_port, ElementT *to
   assert(from->type() == classifier_t && to->type() == classifier_t);
 
   // find where 'to' is heading for
-  Vector<int> first_hop, second_hop;
+  Vector<RouterT::conn_iterator> first_hop, second_hop;
   router->find_connection_vector_from(from, first_hop);
   router->find_connection_vector_from(to, second_hop);
 
   // check for weird configurations
   for (int i = 0; i < first_hop.size(); i++)
-    if (first_hop[i] < 0)
+    if (!first_hop[i].is_back())
       return false;
-  for (int i = 0; i < second_hop.size(); i++)
-    if (second_hop[i] < 0)
+  Vector<PortT> second_hop_to;
+  for (int i = 0; i < second_hop.size(); i++) {
+    if (!second_hop[i].is_back())
       return false;
+    second_hop_to.push_back(second_hop[i]->to());
+  }
   if (second_hop.size() == 0)
     return false;
 
@@ -206,12 +212,11 @@ combine_classifiers(RouterT *router, ElementT *from, int from_port, ElementT *to
   from->set_configuration(cp_unargvec(new_words));
 
   // change connections
-  router->kill_connection(router->find_connection(first_hop[from_port]));
+  router->erase(first_hop[from_port]);
   for (int i = from_port + 1; i < first_hop.size(); i++)
     router->change_connection_from(first_hop[i], PortT(from, i + to_words.size() - 1));
-  const Vector<ConnectionT> &conn = router->connections();
-  for (int i = 0; i < second_hop.size(); i++)
-    router->add_connection(PortT(from, from_port + i), conn[second_hop[i]].to());
+  for (int i = 0; i < second_hop_to.size(); i++)
+    router->add_connection(PortT(from, from_port + i), second_hop_to[i]);
 
   return true;
 }
@@ -241,19 +246,14 @@ try_combine_classifiers(RouterT *router, ElementT *classifier)
 static void
 try_remove_classifiers(RouterT *router, Vector<ElementT *> &classifiers)
 {
-  for (int i = 0; i < classifiers.size(); i++) {
-    Vector<PortT> v;
-    router->find_connections_to(PortT(classifiers[i], 0), v);
-    if (v.size() == 0) {
-      classifiers[i]->simple_kill();
-      classifiers[i] = classifiers.back();
-      classifiers.pop_back();
-      i--;
-    }
-  }
-
-  router->remove_dead_elements();
-  router->compact_connections();
+    for (int i = 0; i < classifiers.size(); i++)
+	if (!router->find_connections_to(PortT(classifiers[i], 0))) {
+	    classifiers[i]->kill();
+	    classifiers[i] = classifiers.back();
+	    classifiers.pop_back();
+	    i--;
+	}
+    router->remove_dead_elements();
 }
 
 
@@ -886,7 +886,7 @@ main(int argc, char **argv)
       printf("Copyright (c) 1999-2000 Massachusetts Institute of Technology\n\
 Copyright (c) 2000-2001 Mazu Networks, Inc.\n\
 Copyright (c) 2001 International Computer Science Institute\n\
-Copyright (c) 2007 Regents of the University of California\n\
+Copyright (c) 2007-2011 Regents of the University of California\n\
 This is free software; see the source for copying conditions.\n\
 There is NO warranty, not even for merchantability or fitness for a\n\
 particular purpose.\n");
@@ -1006,7 +1006,7 @@ particular purpose.\n");
   Vector<ElementT *> classifiers;
   for (RouterT::iterator x = r->begin_elements(); x; x++)
     if (cid_name_map.get(x->type_name()) >= 0)
-      classifiers.push_back(x);
+      classifiers.push_back(x.get());
 
   // quit early if no Classifiers
   if (classifiers.size() == 0) {

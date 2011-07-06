@@ -22,7 +22,7 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/bitvector.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
@@ -78,14 +78,14 @@ int
 DSRRouteTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   // read the parameters from a configuration string
-  if (cp_va_kparse(conf, this, errh,
-		   "IP", cpkP+cpkM, cpIPAddress, me,
-		   "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
-		   "OUTQUEUE", 0, cpElement, &_outq,
-		   "METRIC", 0, cpElement, &_metric,
-		   "USE_BLACKLIST", 0, cpBool, &_use_blacklist,
-		   "DEBUG", 0, cpBool, &_debug,
-		   cpEnd)<0)
+  if (Args(conf, this, errh)
+      .read_mp("IP", *me)
+      .read_mp("LINKTABLE", reinterpret_cast<Element *&>(_link_table))
+      .read("OUTQUEUE", reinterpret_cast<Element *&>(_outq))
+      .read("METRIC", reinterpret_cast<Element *&>(_metric))
+      .read("USE_BLACKLIST", _use_blacklist)
+      .read("DEBUG", _debug)
+      .complete()<0)
       return -1;
 
   if (_outq && _outq->cast("SimpleQueue") == 0)
@@ -955,14 +955,6 @@ DSRRouteTable::add_dsr_header(Packet *p_in, const Vector<IPAddress> &source_rout
 
   DEBUG_CHATTER(" * add_dsr_header: new packet size is %d, old was %d \n", p->length(), old_len);
 
-  // there's not really much mention of TTL in the IETF draft (other
-  // than in the case of RREQs), I suppose it's sort of implicitly the
-  // length of the source route.  so right now we're not checking OR
-  // decrementing the TTL when forwarding (again, except in the case
-  // of RREQs).
-  //
-  ip->ip_ttl = 255;
-
   ip->ip_len = htons(p->length());
   ip->ip_dst.s_addr = (unsigned)p->dst_ip_anno(); // XXX not sure I understand why we need to reset this
   ip->ip_sum = 0;
@@ -1018,7 +1010,7 @@ DSRRouteTable::strip_headers(Packet *p_in)
 
   p->set_ip_header((click_ip*)p->data(),sizeof(click_ip));
 
-  DEBUG_CHATTER(" * stripping headers; removed %d bytes\n");
+  DEBUG_CHATTER(" * stripping headers; removed %d bytes\n", dsr_len);
 
   return p;
 }

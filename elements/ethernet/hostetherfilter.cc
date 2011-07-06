@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include "hostetherfilter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/etheraddress.hh>
@@ -35,51 +35,50 @@ HostEtherFilter::~HostEtherFilter()
 int
 HostEtherFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  bool drop_own = false, drop_other = true;
-  _offset = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "ETHER", cpkP+cpkM, cpEthernetAddress, &_addr,
-		   "DROP_OWN", cpkP, cpBool, &drop_own,
-		   "DROP_OTHER", cpkP, cpBool, &drop_other,
-		   "OFFSET", 0, cpUnsigned, &_offset,
-		   cpEnd) < 0)
-    return -1;
-  _drop_own = drop_own;
-  _drop_other = drop_other;
-  return 0;
-}
-
-Packet *
-HostEtherFilter::drop(Packet *p)
-{
-  if (noutputs() == 2)
-    output(1).push(p);
-  else
-    p->kill();
-  return 0;
+    bool drop_own = false, drop_other = true;
+    uint32_t offset = 0;
+    if (Args(conf, this, errh)
+	.read_mp("ETHER", _addr)
+	.read_p("DROP_OWN", drop_own)
+	.read_p("DROP_OTHER", drop_other)
+	.read("OFFSET", offset)
+	.complete() < 0)
+	return -1;
+    _offset = offset;
+    _drop_own = drop_own;
+    _drop_other = drop_other;
+    return 0;
 }
 
 Packet *
 HostEtherFilter::simple_action(Packet *p)
 {
-  const click_ether *e = (const click_ether *) (p->data() + _offset);
-  const unsigned short *daddr = (const unsigned short *)e->ether_dhost;
+    const click_ether *e = (const click_ether *) (p->data() + _offset);
+    const unsigned short *daddr = (const unsigned short *)e->ether_dhost;
 
-  if (_drop_own && memcmp(e->ether_shost, _addr, 6) == 0)
-    return drop(p);
-  else if (memcmp(e->ether_dhost, _addr, 6) == 0) {
-    p->set_packet_type_anno(Packet::HOST);
+    if (_drop_own && memcmp(e->ether_shost, _addr.data(), 6) == 0) {
+	checked_output_push(1, p);
+	p = 0;
+    } else if (memcmp(e->ether_dhost, _addr.data(), 6) == 0) {
+	p->set_packet_type_anno(Packet::HOST);
+    } else if (daddr[0] == 0xFFFF && daddr[1] == 0xFFFF && daddr[2] == 0xFFFF) {
+	p->set_packet_type_anno(Packet::BROADCAST);
+    } else if (e->ether_dhost[0] & 0x01) {
+	p->set_packet_type_anno(Packet::MULTICAST);
+    } else {
+	p->set_packet_type_anno(Packet::OTHERHOST);
+	if (_drop_other) {
+	    checked_output_push(1, p);
+	    p = 0;
+	}
+    }
     return p;
-  } else if (daddr[0] == 0xFFFF && daddr[1] == 0xFFFF && daddr[2] == 0xFFFF) {
-    p->set_packet_type_anno(Packet::BROADCAST);
-    return p;
-  } else if (e->ether_dhost[0] & 0x01) {
-    p->set_packet_type_anno(Packet::MULTICAST);
-    return p;
-  } else {
-    p->set_packet_type_anno(Packet::OTHERHOST);
-    return (_drop_other ? drop(p) : p);
-  }
+}
+
+void
+HostEtherFilter::add_handlers()
+{
+    add_data_handlers("ether", Handler::OP_READ | Handler::OP_WRITE, &_addr);
 }
 
 CLICK_ENDDECLS

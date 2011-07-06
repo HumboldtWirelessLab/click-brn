@@ -25,7 +25,7 @@
 #include "routert.hh"
 #include "lexert.hh"
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/clp.h>
 #include <click/straccum.hh>
 #include <click/driver.hh>
@@ -78,7 +78,8 @@ static const Clp_Option options[] = {
 #if FOR_LINUXMODULE
   { "map", 'm', MAP_OPT, 0, 0 },
   { "private", 'p', PRIVATE_OPT, 0, Clp_Negate },
-  { "threads", 't', THREADS_OPT, Clp_ValUnsigned, 0 },
+  { "threads", 'j', THREADS_OPT, Clp_ValUnsigned, 0 },
+  { 0, 't', THREADS_OPT, Clp_ValUnsigned, 0 }, // deprecated
   { "greedy", 'G', GREEDY_OPT, 0, Clp_Negate },
   { "uid", 'U', UID_OPT, Clp_ValString, 0 },
   { "user", 0, UID_OPT, Clp_ValString, 0 },
@@ -124,7 +125,7 @@ Options:\n\
   printf("\
   -p, --private            Make /click readable only by owning user.\n\
   -U, --user USER[:GROUP]  Set owning user [root].\n\
-  -t, --threads N          Use N threads (multithreaded Click only).\n\
+  -j, --threads N          Use N threads (multithreaded Click only).\n\
   -G, --greedy             Make Click thread take up an entire CPU.\n\
       --cpu N              Click thread runs on CPU N.\n");
 # if HAVE_LINUXMODULE_2_6
@@ -401,7 +402,7 @@ particular purpose.\n");
 	const char *colon = find(clp->vstr, clp->vstr + strlen(clp->vstr), ':');
 	if (colon > clp->vstr) {
 	    String s(clp->vstr, colon);
-	    if (!cp_integer(s, &uid)) {
+	    if (!IntArg().parse(s, uid)) {
 		errno = 0;
 		struct passwd *pwd = getpwnam(s.c_str());
 		if (!pwd && errno)
@@ -421,7 +422,7 @@ particular purpose.\n");
 
     gid:
     case GID_OPT: {
-	if (!cp_integer(clp->vstr, &gid)) {
+	if (!IntArg().parse(clp->vstr, gid)) {
 	    errno = 0;
 	    struct group *grp = getgrnam(clp->vstr);
 	    if (!grp && errno)

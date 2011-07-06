@@ -4,7 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 2001 International Computer Science Institute
- * Copyright (c) 2004-2007 Regents of the University of California
+ * Copyright (c) 2004-2011 Regents of the University of California
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -19,7 +19,7 @@
 
 #include <click/config.h>
 #include <click/handlercall.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/error.hh>
 CLICK_DECLS
@@ -69,7 +69,7 @@ static int
 handler_error(Element* e, const String &hname, bool write, ErrorHandler* errh)
 {
     if (errh)
-	errh->error((write ? "no '%s' write handler" : "no '%s' read handler"), Handler::unparse_name(e, hname).c_str());
+	errh->error((write ? "no %<%s%> write handler" : "no %<%s%> read handler"), Handler::unparse_name(e, hname).c_str());
     return -ENOENT;
 }
 
@@ -84,7 +84,7 @@ HandlerCall::assign(Element *e, const String &hname, const String &value, int fl
     else if ((flags & OP_READ) && !h->readable())
 	return handler_error(e, hname, false, errh);
     else if (value && (flags & OP_READ) && !h->read_param()) {
-	errh->error("read handler '%s' does not take parameters", Handler::unparse_name(e, hname).c_str());
+	errh->error("read handler %<%s%> does not take parameters", Handler::unparse_name(e, hname).c_str());
 	return -EINVAL;
     }
 
@@ -197,7 +197,7 @@ HandlerCall::call_write(Element* e, const String& hname, const String& value, Er
  *
  *  Searches for a write handler matching @a hdesc.  Any element name in @a
  *  hdesc is looked up relative to @a context (see @link
- *  HandlerCall::call_read(const String &, Element *, ErrorHandler *)
+ *  HandlerCall::call_read(const String &, const Element *, ErrorHandler *)
  *  above@endlink).  If the handler exists, calls it with the value
  *  specified by @a hdesc and returns the result.  If @a errh is nonnull, then
  *  errors, such as a missing handler or a read-only handler, are reported
@@ -223,7 +223,7 @@ HandlerCall::call_write(const String &hdesc, const Element *context, ErrorHandle
  *
  *  Searches for a write handler matching @a hdesc.  Any element name in @a
  *  hdesc is looked up relative to @a context (see @link
- *  HandlerCall::call_read(const String &, Element *, ErrorHandler *)
+ *  HandlerCall::call_read(const String &, const Element *, ErrorHandler *)
  *  above@endlink).  If the handler exists, calls it with @a value and returns
  *  the result.  (Any value specified by @a hdesc is ignored.)  If @a errh is
  *  nonnull, then errors, such as a missing handler or a read-only handler,
@@ -254,6 +254,19 @@ HandlerCall::unparse() const
 	return _value;
     else
 	return "<empty handler>";
+}
+
+
+bool
+HandlerCallArg::parse(const String &str, HandlerCall &result, const ArgContext &args)
+{
+    HandlerCall hc(str);
+    PrefixErrorHandler perrh(args.errh(), args.error_prefix());
+    if (hc.initialize(flags | HandlerCall::h_preinitialize, args.context(), &perrh) >= 0) {
+	result = hc;
+	return true;
+    } else
+	return false;
 }
 
 CLICK_ENDDECLS

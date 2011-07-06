@@ -35,7 +35,8 @@
 CLICK_DECLS
 
 GPS::GPS()
-  :_gpsmode(GPSMODE_HANDLER)
+  :_gpsmode(GPSMODE_HANDLER),
+   _gpsmap(NULL)
 {
   BRNElement::init();
 }
@@ -49,6 +50,7 @@ GPS::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "GPSMODE", cpkP, cpInteger, &_gpsmode,
+      "GPSMAP", cpkP, cpElement, &_gpsmap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -62,11 +64,21 @@ GPS::initialize(ErrorHandler *)
   return 0;
 }
 
+/* Used for communication with gpsd,... */
 void
 GPS::push( int /*port*/, Packet *packet )
 {
   packet->kill();
 }
+
+void
+GPS::updateMap()
+{
+  if ( _gpsmap ) {
+    _gpsmap->insert(EtherAddress(), _position);
+  }
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -77,6 +89,16 @@ enum {
   H_GPS_COORD,
   H_SPEED
 };
+
+String
+GPS::read_gps()
+{
+  StringAccum sa;
+  sa << "<gps id=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse();
+  sa << "\" lat=\"" << _position._latitude.unparse() << "\" long=\"" << _position._longitude.unparse();
+  sa << "\" alt=\"" << _position._altitude.unparse() << "\" speed=\"" << _position._speed.unparse() << "\" />\n";
+  return sa.take_string();
+}
 
 static String
 read_position_param(Element *e, void *thunk)
@@ -92,14 +114,7 @@ read_position_param(Element *e, void *thunk)
       break;
     }
     case H_GPS_COORD: {
-      sa << pos->_latitude.unparse() << " ";
-      sa << pos->_longitude.unparse() << " ";
-      sa << pos->_altitude.unparse();
-      break;
-    }
-    case H_SPEED: {
-      sa << pos->_speed.unparse();
-     break;
+      return gps->read_gps();
     }
   }
   return sa.take_string();
@@ -127,6 +142,9 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
         z = 0;
 
       pos->setCC(x,y,z);
+
+      gps->updateMap();
+
       break;
     }
     case H_GPS_COORD: {
@@ -140,6 +158,8 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
         pos->setGPSC(args[0],args[1], "0.0");
       }
 
+      gps->updateMap();
+
       break;
     }
     case H_SPEED: {
@@ -148,6 +168,9 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
       cp_spacevec(s, args);
 
       pos->setSpeed(args[0]);
+
+      gps->updateMap();
+
       break;
     }
   }
@@ -162,9 +185,10 @@ GPS::add_handlers()
 
   add_read_handler("cart_coord", read_position_param, H_CART_COORD);
   add_write_handler("cart_coord", write_position_param, H_CART_COORD);
+
   add_read_handler("gps_coord", read_position_param, H_GPS_COORD);
   add_write_handler("gps_coord", write_position_param, H_GPS_COORD);
-  add_read_handler("speed", read_position_param, H_SPEED);
+
   add_write_handler("speed", write_position_param, H_SPEED);
 }
 

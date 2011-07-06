@@ -1,6 +1,7 @@
 #ifndef CLICK_HOSTETHERFILTER_HH
 #define CLICK_HOSTETHERFILTER_HH
 #include <click/element.hh>
+#include <click/etheraddress.hh>
 CLICK_DECLS
 
 /*
@@ -56,17 +57,17 @@ class HostEtherFilter : public Element { public:
   const char *processing() const		{ return PROCESSING_A_AH; }
 
   int configure(Vector<String> &, ErrorHandler *);
+  bool can_live_reconfigure() const		{ return true; }
 
   Packet *simple_action(Packet *);
+  void add_handlers();
 
  private:
 
   bool _drop_own : 1;
   bool _drop_other : 1;
   int _offset;
-  unsigned char _addr[6];
-
-  inline Packet *drop(Packet *);
+  EtherAddress _addr;
 
 };
 

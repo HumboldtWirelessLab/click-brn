@@ -64,6 +64,8 @@ class LPRLinkProbeHandler : public Element {
   unsigned char *known_links;
   unsigned char *known_timestamps;
   int max_hosts;
+
+  bool _active;
 };
 
 CLICK_ENDDECLS

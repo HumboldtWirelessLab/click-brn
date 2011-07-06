@@ -298,6 +298,7 @@ Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
   return nfo->_metric_to_me;
 }
 
+/*
 uint32_t 
 Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
 {
@@ -306,10 +307,28 @@ Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
   }
   BrnHostInfo *nfo = _hosts.findp(s);
   if (!nfo) {
-    return 0;
+    click_chatter("Neighbour not found");
+    return BRN_DSR_INVALID_ROUTE_METRIC; //TODO: return value was 0 before. Check what is correct
   }
   return nfo->_metric_from_me;
 }
+*/
+uint32_t 
+Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
+{
+  int best_metric = BRN_DSR_INVALID_ROUTE_METRIC;
+
+  for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
+    int c_metric = get_link_metric(s, *(_node_identity->getDeviceByIndex(d)->getEtherAddress()));
+    /* TODO: use "is_better"-funtion of metric */
+    if ( c_metric < best_metric ) {
+      best_metric = c_metric;
+    }
+  }
+
+  return best_metric;
+}
+
 
 uint32_t 
 Brn2LinkTable::get_link_metric(EtherAddress from, EtherAddress to)
@@ -438,11 +457,13 @@ Brn2LinkTable::valid_route(const Vector<EtherAddress> &route)
 }
 
 Vector<EtherAddress> 
-Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
+Brn2LinkTable::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
 {
   Vector<EtherAddress> reverse_route;
   Vector<EtherAddress> route;
+
   if (!dst) {
+    metric = 0;
     return route;
   }
   BrnHostInfo *nfo = _hosts.findp(dst);
@@ -450,6 +471,7 @@ Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
   if (from_me) {
     while (nfo && nfo->_metric_from_me != 0) {
       reverse_route.push_back(nfo->_ether);
+      *metric = nfo->_metric_from_me;
       nfo = _hosts.findp(nfo->_prev_from_me);
     }
     if (nfo && nfo->_metric_from_me == 0) {
@@ -457,6 +479,7 @@ Brn2LinkTable::best_route(EtherAddress dst, bool from_me)
     }
   } else {
     while (nfo && nfo->_metric_to_me != 0) {
+      *metric = nfo->_metric_to_me;
       reverse_route.push_back(nfo->_ether);
       nfo = _hosts.findp(nfo->_prev_to_me);
     }
@@ -536,7 +559,8 @@ Brn2LinkTable::print_routes(bool from_me)
 
   for (int x = 0; x < ether_addrs.size(); x++) {
     EtherAddress ether = ether_addrs[x];
-    Vector <EtherAddress> r = best_route(ether, from_me);
+    uint32_t metric_trash;
+    Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
     if (valid_route(r)) {
       sa << ether.unparse().c_str() << " ";
       for (int i = 0; i < r.size(); i++) {
@@ -870,7 +894,8 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
     if (!cp_ethernet_address(s, &m)) 
       return errh->error("dijkstra parameter must be etheraddress");
 
-    Vector<EtherAddress> route = f->best_route(m, true);
+    uint32_t metric_trash;
+    Vector<EtherAddress> route = f->best_route(m, true, &metric_trash);
 
     for (int j=0; j<route.size(); j++) {
       click_chatter(" - %d  %s", j, route[j].unparse().c_str());
@@ -890,7 +915,8 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
       return errh->error("dijkstra parameter must be etheraddress x etheraddress");
 
     f->dijkstra(src, true);
-    Vector<EtherAddress> route = f->best_route(dst, true);
+    uint32_t metric_trash;
+    Vector<EtherAddress> route = f->best_route(dst, true, &metric_trash);
 
     for (int j=0; j<route.size(); j++) {
       click_chatter(" - %d  %s", j, route[j].unparse().c_str());

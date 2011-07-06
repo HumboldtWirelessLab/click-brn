@@ -41,7 +41,7 @@ enum {
 
 static bool icmp_extract(PacketDesc& d, const FieldWriter *f)
 {
-    int transport_length = d.p->transport_length();
+    int transport_length = d.transport_length();
     switch (f->user_data) {
 
 #define CHECK(l) do { if (!d.icmph || transport_length < (l)) return field_missing(d, IP_PROTO_ICMP, (l)); } while (0)
@@ -189,7 +189,7 @@ static bool icmp_ina(PacketOdesc &d, const String &str, const FieldReader *f)
 		&& d.v < 256)
 		return true;
 	} else {
-	    if (cp_integer(str, &d.v) && d.v < 256)
+	    if (IntArg().parse(str, d.v) && d.v < 256)
 		return true;
 	}
 	break;

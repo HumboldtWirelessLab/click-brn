@@ -3,7 +3,7 @@
  * confparsetest.{cc,hh} -- regression test element for configuration parsing
  * Eddie Kohler
  *
- * Copyright (c) 2007 Regents of the University of California
+ * Copyright (c) 2007-2011 Regents of the University of California
  * Copyright (c) 2008 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -19,13 +19,31 @@
 
 #include <click/config.h>
 #include "confparsetest.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
+#if HAVE_IP6
+# include <click/ip6address.hh>
+#endif
 #if CLICK_USERLEVEL
 # include <click/userutils.hh>
 #endif
 CLICK_DECLS
+
+namespace {
+class RecordErrorHandler : public ErrorHandler { public:
+    RecordErrorHandler() {
+    }
+    void *emit(const String &str, void *, bool) {
+	_sa.append(skip_anno(str.begin(), str.end()), str.end());
+	return 0;
+    }
+    String take_string() {
+	return _sa.take_string();
+    }
+    StringAccum _sa;
+};
+}
 
 ConfParseTest::ConfParseTest()
 {
@@ -35,7 +53,17 @@ ConfParseTest::~ConfParseTest()
 {
 }
 
-#define CHECK(x) if (!(x)) return errh->error("%s:%d: test `%s' failed", __FILE__, __LINE__, #x);
+#define CHECK(x) do {				\
+	if (!(x))				\
+	    return errh->error("%s:%d: test %<%s%> failed", __FILE__, __LINE__, #x); \
+    } while (0)
+#define CHECK_ERR(x, errstr) do {		\
+	if (!(x))				\
+	    return errh->error("%s:%d: test %<%s%> failed", __FILE__, __LINE__, #x); \
+	String msg(rerrh.take_string());		\
+	if (!msg.equals(errstr, -1))	\
+	    return errh->error("%s:%d: test %<%s%> produces unexpected error message %<%s%>", __FILE__, __LINE__, #x, msg.c_str()); \
+    } while (0)
 
 int
 ConfParseTest::initialize(ErrorHandler *errh)
@@ -67,6 +95,7 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK(v.size() == 10);
     CHECK(v[9] == "'a /*?*/ b'c");
 
+    // cp_integer parsing
     int32_t i32;
     uint32_t u32;
     u32 = 97;
@@ -82,48 +111,134 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK(cp_integer("0xFFFFFFFFF", &u32) == true && u32 == 4294967295U && cp_errno == CPE_OVERFLOW);
     CHECK(cp_integer("4294967296", &i32) == true && i32 == 2147483647 && cp_errno == CPE_OVERFLOW);
     CHECK(cp_integer("2147483647", &i32) == true && i32 == 2147483647 && cp_errno == CPE_OK);
+    CHECK(cp_integer("2147483648", &i32) == true && i32 == 2147483647 && cp_errno == CPE_OVERFLOW);
     CHECK(cp_integer("-2147483648", &i32) == true && i32 == -2147483647 - 1 && cp_errno == CPE_OK);
     CHECK(cp_integer("-4294967296", &i32) == true && i32 == -2147483647 - 1 && cp_errno == CPE_OVERFLOW);
     const char *s = "-127 ";
     CHECK(cp_integer(s, s + strlen(s) - 1, 10, &i32) == s + 4 && i32 == -127);
     CHECK(cp_integer(String(s), &i32) == false && cp_errno == CPE_FORMAT);
-
 #if HAVE_LONG_LONG && SIZEOF_LONG_LONG == 8
-    long long ll;
-    unsigned long long ull;
-    CHECK(cp_integer("9223372036854775807", &ll) == true && ll == 0x7FFFFFFFFFFFFFFFULL);
-    CHECK(cp_integer("-9223372036854775808", &ll) == true && ll == (long long) 0x8000000000000000ULL);
-    CHECK(cp_integer("18446744073709551616", &ull) == true && ull == 0xFFFFFFFFFFFFFFFFULL && cp_errno == CPE_OVERFLOW);
+    {
+	long long ll;
+	unsigned long long ull;
+	CHECK(cp_integer("9223372036854775807", &ll) == true && ll == 0x7FFFFFFFFFFFFFFFULL);
+	CHECK(cp_integer("-9223372036854775808", &ll) == true && ll == (long long) 0x8000000000000000ULL);
+	CHECK(cp_integer("18446744073709551616", &ull) == true && ull == 0xFFFFFFFFFFFFFFFFULL && cp_errno == CPE_OVERFLOW);
+    }
 #endif
 
+    // IntArg parsing
+    RecordErrorHandler rerrh;
+    Args args(0, &rerrh);
+    u32 = 97;
+    IntArg ia;
+    CHECK(IntArg().parse("0", i32) == true && i32 == 0);
+    CHECK(IntArg().parse("-0", i32) == true && i32 == 0);
+    CHECK(IntArg().parse("-5", i32) == true && i32 == -5);
+    CHECK(u32 == 97);
+    CHECK(IntArg().parse("0", u32) == true && u32 == 0);
+    CHECK(IntArg().parse("-0", u32) == false);
+    CHECK(IntArg().parse("4294967294", u32) == true && u32 == 4294967294U);
+    CHECK(IntArg().parse("0xFFFFFFFE", u32) == true && u32 == 4294967294U);
+    CHECK_ERR(ia.parse("4294967296", u32, args) == false && u32 == 4294967294U, "out of range, bound 4294967295");
+    CHECK(IntArg().parse_saturating("4294967296", u32) == true && u32 == 4294967295U);
+    u32 = 97;
+    CHECK_ERR(ia.parse("42949672961939", u32, args) == false && u32 == 97, "out of range, bound 4294967295");
+    CHECK_ERR(ia.parse_saturating("42949672961939", u32, args) == true && u32 == 4294967295U, "");
+    CHECK(IntArg().parse("0xFFFFFFFFF", u32) == false);
+    CHECK(IntArg().parse_saturating("0xFFFFFFFFF", u32) == true && u32 == 0xFFFFFFFFU);
+    CHECK_ERR(ia.parse("4294967296", i32, args) == false, "out of range, bound 2147483647");
+    CHECK_ERR(ia.parse_saturating("4294967296", i32, args) == true && i32 == 2147483647, "");
+    CHECK_ERR(ia.parse("2147483647", i32, args) == true && i32 == 2147483647, "");
+    CHECK_ERR(ia.parse("2147483648", i32, args) == false && i32 == 2147483647, "out of range, bound 2147483647");
+    CHECK_ERR(ia.parse_saturating("2147483648", i32, args) == true && i32 == 2147483647, "");
+    CHECK_ERR(ia.parse("-2147483648", i32, args) == true && i32 == -2147483647 - 1, "");
+    CHECK_ERR(ia.parse("-2147483649", i32, args) == false && i32 == -2147483647 - 1, "out of range, bound -2147483648");
+    i32 = 0;
+    CHECK_ERR(ia.parse_saturating("-2147483649", i32, args) == true && i32 == -2147483647 - 1, "");
+    CHECK_ERR(ia.parse("-4294967296", i32, args) == false && i32 == -2147483647 - 1, "out of range, bound -2147483648");
+    int8_t i8 = 0;
+    CHECK_ERR(ia.parse("97", i8, args) == true && i8 == 97, "");
+    CHECK_ERR(ia.parse("128", i8, args) == false && i8 == 97, "out of range, bound 127");
+    CHECK_ERR(ia.parse_saturating("128", i8, args) == true && i8 == 127, "");
+#if HAVE_INT64_TYPES
+    int64_t i64;
+    uint64_t u64 = 0;
+    CHECK_ERR(ia.parse("9223372036854775807", i64, args) == true && i64 == int64_t(0x7FFFFFFFFFFFFFFFULL), "");
+    CHECK_ERR(ia.parse("-9223372036854775808", i64, args) == true && i64 == int64_t(0x8000000000000000ULL), "");
+    CHECK_ERR(ia.parse("-5", i64, args) == true && i64 == -5, "");
+    CHECK_ERR(ia.parse("18446744073709551616", u64, args) == false && u64 == 0, "out of range, bound 18446744073709551615");
+    CHECK_ERR(ia.parse_saturating("18446744073709551616", u64, args) == true && u64 == 0xFFFFFFFFFFFFFFFFULL, "");
+#endif
+
+    bool b; (void) b;
+    CHECK(FixedPointArg(1).parse("0.5", i32) == true && i32 == 1);
+    CHECK(FixedPointArg(1).parse("-0.5", i32) == true && i32 == -1);
+#define CHECK_FIXEDPOINT(s, frac_bits, result) { String q = (#s); uint32_t r; \
+    if (!FixedPointArg((frac_bits)).parse(q, r)) \
+	return errh->error("%s:%d: %<%s%> unparseable", __FILE__, __LINE__, q.c_str()); \
+    String qq = cp_unparse_real2(r, (frac_bits)); \
+    if (qq != (result)) \
+	return errh->error("%s:%d: %<%s%> parsed and unparsed is %<%s%>, should be %<%s%>", __FILE__, __LINE__, q.c_str(), qq.c_str(), result); \
+}
+    CHECK_FIXEDPOINT(0.418, 8, "0.418");
+    CHECK_FIXEDPOINT(0.417, 8, "0.418");
+    CHECK_FIXEDPOINT(0.416, 8, "0.414");
+    CHECK_FIXEDPOINT(0.42, 8, "0.42");
+    CHECK_FIXEDPOINT(0.3, 16, "0.3");
+    CHECK_FIXEDPOINT(0.49, 16, "0.49");
+    CHECK_FIXEDPOINT(0.499, 16, "0.499");
+    CHECK_FIXEDPOINT(0.4999, 16, "0.4999");
+    CHECK_FIXEDPOINT(0.49999, 16, "0.49998");
+    CHECK_FIXEDPOINT(0.499999, 16, "0.5");
+    CHECK_FIXEDPOINT(0.49998, 16, "0.49998");
+    CHECK_FIXEDPOINT(0.999999, 16, "1");
+#undef CHECK_FIXEDPOINT
+
     CHECK(cp_real2("-0.5", 1, &i32) == true && i32 == -1);
+    CHECK(SecondsArg().parse("3600", u32) == true && u32 == 3600);
     CHECK(cp_seconds_as("3600", 0, &u32) == true && u32 == 3600);
-    CHECK(cp_seconds_as("3600s", 0, &u32) == true && u32 == 3600);
-    CHECK(cp_seconds_as("3.6e6 msec", 0, &u32) == true && u32 == 3600);
-    CHECK(cp_seconds_as("60m", 0, &u32) == true && u32 == 3600);
-    CHECK(cp_seconds_as("1 hr", 0, &u32) == true && u32 == 3600);
+    CHECK(SecondsArg().parse("3600s", u32) == true && u32 == 3600);
+    CHECK(SecondsArg().parse("3.6e6 msec", u32) == true && u32 == 3600);
+    CHECK(SecondsArg().parse("60m", u32) == true && u32 == 3600);
+    CHECK(SecondsArg().parse("1 hr", u32) == true && u32 == 3600);
+    CHECK(SecondsArg().parse("1.99 hr", u32) == true && u32 == 7164);
+    CHECK(SecondsArg().parse("1.99 s", u32) == true && u32 == 2);
+    CHECK(SecondsArg(1).parse("1.99 s", u32) == true && u32 == 20);
+    CHECK(SecondsArg(2).parse("1.99 s", u32) == true && u32 == 199);
+    CHECK(SecondsArg().parse("1ms", u32) == true && u32 == 0);
+    CHECK(SecondsArg(3).parse("1ms", u32) == true && u32 == 1);
+    CHECK(SecondsArg(3).parse("1.9ms", u32) == true && u32 == 2);
+    CHECK(SecondsArg(6).parse("1ms", u32) == true && u32 == 1000);
+    CHECK(SecondsArg(6).parse("1.9ms", u32) == true && u32 == 1900);
 
 #if HAVE_FLOAT_TYPES
     double d;
-    CHECK(cp_seconds("3600", &d) == true && d == 3600);
-    CHECK(cp_seconds("3600s", &d) == true && d == 3600);
-    CHECK(cp_seconds("3.6e6 msec", &d) == true && d == 3600);
-    CHECK(cp_seconds("60m", &d) == true && d == 3600);
-    CHECK(cp_seconds("1 hr", &d) == true && d == 3600);
+    CHECK(SecondsArg().parse("3600", d) == true && d == 3600);
+    CHECK(SecondsArg().parse("3600s", d) == true && d == 3600);
+    CHECK(SecondsArg().parse("3.6e6 msec", d) == true && d == 3600);
+    CHECK(SecondsArg().parse("60m", d) == true && d == 3600);
+    CHECK(SecondsArg().parse("1 hr", d) == true && d == 3600);
 #endif
+
+    BandwidthArg bwarg;
+    CHECK(bwarg.parse("8", u32) == true && bwarg.status == NumArg::status_unitless && u32 == 8);
+    CHECK(bwarg.parse("8 baud", u32) == true && bwarg.status == NumArg::status_ok && u32 == 1);
+    CHECK(bwarg.parse("8Kbps", u32) == true && bwarg.status == NumArg::status_ok && u32 == 1000);
+    CHECK(bwarg.parse("8KBps", u32) == true && bwarg.status == NumArg::status_ok && u32 == 8000);
 
     {
 	IPAddress a, m;
-	CHECK(cp_ip_prefix("18.26.4/24", &a, &m, this) == true
+	CHECK(IPPrefixArg().parse("18.26.4/24", a, m, this) == true
 	      && a.unparse_with_mask(m) == "18.26.4.0/24");
-	CHECK(cp_ip_prefix("18.26.4/28", &a, &m, this) == false);
+	CHECK(IPPrefixArg().parse("18.26.4/28", a, m, this) == false);
     }
 
-#if CLICK_IP6
+#if HAVE_IP6
     {
 	IP6Address a;
-	CHECK(cp_ip6_address("1080:0:0:0:8:800:200C:417a", &a, this) == true
-	      && a.data32()[0] == ntohl(0x10800000)
+	CHECK(cp_ip6_address("1080:0:0:0:8:800:200C:417a", &a, this) == true);
+	CHECK(a.data32()[0] == ntohl(0x10800000)
 	      && a.data32()[1] == ntohl(0x00000000)
 	      && a.data32()[2] == ntohl(0x00080800)
 	      && a.data32()[3] == ntohl(0x200C417a));
@@ -143,7 +258,7 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	      && a.data32()[2] == ntohl(0x0000FFFF)
 	      && a.data32()[3] == ntohl(0x81903426));
 	IPAddress a4;
-	if (cp_ip_address("ip4_addr", &a4, this) == true)
+	if (IPAddressArg().parse("ip4_addr", a4, this) == true)
 	    CHECK(cp_ip6_address("0::ip4_addr", &a, this) == true
 		  && a.data32()[0] == 0x00000000 && a.data32()[1] == 0x00000000
 		  && a.data32()[2] == 0x00000000
@@ -154,12 +269,13 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	      && a.data32()[2] == 0xFFFFFFFF
 	      && a.data32()[3] == 0);
 	CHECK(a.mask_to_prefix_len() == 96);
-	CHECK(cp_ip6_address("ffff:ffff:ffff:ffff:ffff:ffff:8000:", &a, this) == true
+	CHECK(cp_ip6_address("ffff:ffff:ffff:ffff:ffff:ffff:8000:0", &a, this) == true
 	      && a.data32()[0] == 0xFFFFFFFF
 	      && a.data32()[1] == 0xFFFFFFFF
 	      && a.data32()[2] == 0xFFFFFFFF
 	      && a.data32()[3] == htonl(0x80000000));
 	CHECK(a.mask_to_prefix_len() == 97);
+	CHECK(cp_ip6_address("ffff:ffff:ffff:ffff:ffff:ffff:8000:", &a, this) == false);
 	CHECK(cp_ip6_address("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff", &a, this) == true
 	      && a.data32()[0] == 0xFFFFFFFF
 	      && a.data32()[1] == 0xFFFFFFFF
@@ -172,6 +288,13 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	      && a.data32()[2] == 0
 	      && a.data32()[3] == 0);
 	CHECK(a.mask_to_prefix_len() == 0);
+	CHECK(cp_ip6_address(":::", &a, this) == false);
+	CHECK(cp_ip6_address("8000::1:1:1:1:1:1:1", &a, this) == false);
+	CHECK(cp_ip6_address("8000::", &a, this) == true
+	      && a.data32()[0] == htonl(0x80000000)
+	      && a.data32()[1] == 0
+	      && a.data32()[2] == 0
+	      && a.data32()[3] == 0);
 	CHECK(cp_ip6_address("::8000", &a, this) == true
 	      && a.data32()[0] == 0
 	      && a.data32()[1] == 0
@@ -304,6 +427,36 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK(click_strcmp("a-2", "a-3") < 0);
     CHECK(click_strcmp("a1.2", "a1a") > 0);
 #endif
+
+    Vector<String> conf;
+    conf.push_back("SIZE 123456789");
+    size_t test_size;
+    CHECK(cp_va_kparse(conf, this, errh,
+                       "SIZE", 0, cpSize, &test_size,
+                       cpEnd) == 1 && test_size == 123456789);
+    CHECK(Args(conf, this, errh)
+	  .read("SIZE", test_size).read_status(b)
+	  .complete() >= 0 && b == true && test_size == 123456789);
+
+    Vector<String> results;
+    bool b2;
+    CHECK(Args(this, errh).push_back_args("A 1, B 2, A 3, A 4   , A 5")
+	  .read_all_with("A", AnyArg(), results).read_status(b)
+	  .read("B", i32).read_status(b2)
+	  .complete() >= 0);
+    CHECK(b == true);
+    CHECK(b2 == true);
+    CHECK(i32 == 2);
+    CHECK(results.size() == 4);
+    CHECK(results[0] == "1" && results[1] == "3" && results[2] == "4" && results[3] == "5");
+
+    results.clear();
+    CHECK(Args(this, errh).push_back_args("B 3")
+	  .read_all_with("A", AnyArg(), results).read_status(b)
+	  .read("B", i32).read_status(b2)
+	  .complete() >= 0
+	  && b == false && b2 == true && i32 == 3
+	  && results.size() == 0);
 
     errh->message("All tests pass!");
     return 0;

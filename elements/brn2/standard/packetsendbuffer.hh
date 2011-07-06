@@ -33,6 +33,7 @@ class PacketSendBuffer
   {
     public:
       Packet *_p;
+      Timestamp _send_time_b;
       struct timeval _send_time;
       int _port;
 
@@ -94,7 +95,10 @@ class PacketSendBuffer
   public:
     int size() { return queue.size(); }
     PacketSendBuffer::BufferedPacket *get(int i) { return queue[i]; }
-    void del(int i) { queue.erase(queue.begin() + i); }
+    void del(int i) {
+      delete queue[i];
+      queue.erase(queue.begin() + i);
+    }
 
 };
 

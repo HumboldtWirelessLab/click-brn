@@ -104,7 +104,8 @@ bool
 Brn2RouteCache::get_cached_route(
   /*[in]*/  const AddressType&  addrSrc,
   /*[in]*/  const AddressType&  addrDst,
-  /*[out]*/ RouteType&          route )
+  /*[out]*/ RouteType&          route,
+            uint32_t *metric )
 {
   if( false == m_bActive )
     return( false );
@@ -129,6 +130,7 @@ Brn2RouteCache::get_cached_route(
       BRN_DEBUG("using cached route.");
 
       route = pEntry->m_route;
+      *metric = pEntry->m_metric;
       return( true );
     }
 
@@ -148,7 +150,8 @@ void
 Brn2RouteCache::insert_route(
   /*[in]*/ const AddressType& addrSrc,
   /*[in]*/ const AddressType& addrDst,
-  /*[in]*/ const RouteType&   route )
+  /*[in]*/ const RouteType&   route,
+           uint32_t metric)
 {
   // Plausi test
   if( 2 > route.size()
@@ -163,6 +166,7 @@ Brn2RouteCache::insert_route(
   
   entry.m_route = route;
   entry.m_iTTL  = m_iInitialTTL;
+  entry.m_metric = metric;
   
   // Insert the route under key pair(src,dst)
   m_mapRoutes.insert( pairSrcDst, entry );

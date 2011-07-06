@@ -43,15 +43,18 @@
 CLICK_DECLS
 
 BRN2DNSServer::BRN2DNSServer() :
-  _debug(BrnLogger::DEFAULT),
   _dhcpsubnetlist(NULL),
-  _vlantable(NULL)
+  _vlantable(NULL),
+  _server_redirect(false)
 {
+  BRNElement::init();
 }
 
 BRN2DNSServer::~BRN2DNSServer()
 {
-  BRN_DEBUG("BRN2DNSServer: end: free all");
+  if (_debug >= BrnLogger::INFO) {
+    click_chatter("BRN2DNSServer: end: free all");
+  }
 
   for ( int i = 0; i < client_info_list.size(); i++ )
   {
@@ -73,6 +76,7 @@ BRN2DNSServer::configure(Vector<String> &conf, ErrorHandler* errh)
       "DOMAIN", cpkP, cpString, &_domain_name,
       "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
       "DHCPSUBNETLIST", cpkP, cpElement, &_dhcpsubnetlist,
+      "SERVERREDIRECT", cpkP, cpBool, &_server_redirect,
       "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
     cpEnd) < 0)
       return -1;
@@ -137,6 +141,7 @@ BRN2DNSServer::handle_dht_reply(DNSClientInfo *client_info, DHTOperation *op)
                                                                sizeof(nameoffset), 1, 1, 300,
                                                                op->header.valuelen, op->value);
     client_info->_client_packet = NULL;                  //packet is send (and away) so remove reference)
+    ans->set_dst_ip_anno(client_info->_ip);
     output(0).push(ans);
   }
 
@@ -155,6 +160,9 @@ BRN2DNSServer::push( int port, Packet *p_in )
   if ( port == 0 )
   {
     BRN_DEBUG("BRN2DNSServer: Responder::dnsresponse");
+
+    const click_ip *iph = p_in->ip_header();
+
     char *cname = DNSProtocol::get_name(p_in);
     String name = String(cname);
     delete[] cname;
@@ -165,20 +173,29 @@ BRN2DNSServer::push( int port, Packet *p_in )
       uint16_t nameoffset = 0x0cc0;
       WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
                                                                 1, 1, 300, 4, _server_ident.data());
+      ans->set_dst_ip_anno(IPAddress(iph->ip_src.s_addr));
       output(0).push(ans);
 
-    } else if ( DNSProtocol::isInDomain( name, _domain_name ) ) {
+    } else if ( (DNSProtocol::isInDomain( name, _domain_name )) && (_dht_storage != NULL) ) {
       BRN_INFO("Ask for other in domain");
 
-      DNSClientInfo *ci = new DNSClientInfo(p_in,IPAddress(0),name);
+      DNSClientInfo *ci = new DNSClientInfo(p_in, IPAddress(iph->ip_src.s_addr), name);
       client_info_list.push_back(ci);
       DHTOperation *op = new DHTOperation();
       op->read((uint8_t*)name.data(), name.length());
       dht_request(ci,op);
 
     } else {
-      BRN_INFO("Ask for other ( %s <-> %s )",name.c_str(), _domain_name.c_str());
-      output(1).push(p_in); //TODO: fragt nach anderen -> weiterleiten (NAT ??)
+      if ( _server_redirect ) {
+        uint16_t nameoffset = 0x0cc0;
+        WritablePacket *ans = DNSProtocol::dns_question_to_answer(p_in, &nameoffset, sizeof(nameoffset),
+                                                                  1, 1, 300, 4, _server_ident.data());
+        ans->set_dst_ip_anno(IPAddress(iph->ip_src.s_addr));
+        output(0).push(ans);
+      } else {
+        BRN_INFO("Ask for other ( %s <-> %s )",name.c_str(), _domain_name.c_str());
+        output(1).push(p_in); //TODO: fragt nach anderen -> weiterleiten (NAT ??)
+      }
     }
   }
 }
@@ -206,37 +223,7 @@ BRN2DNSServer::remove_client(DNSClientInfo *client_info)
   return(0);
 }
 
-enum { H_SERVER_INFO, H_DEBUG };
-
-static String
-read_param(Element *e, void *thunk)
-{
-  BRN2DNSServer *td = (BRN2DNSServer *)e;
-  switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
-  default:
-    return String();
-  }
-}
-
-static int
-write_param(const String &in_s, Element *e, void *vparam,
-            ErrorHandler *errh)
-{
-  BRN2DNSServer *f = (BRN2DNSServer *)e;
-  String s = cp_uncomment(in_s);
-  switch((intptr_t)vparam) {
-    case H_DEBUG: {    //debug
-      int debug;
-      if (!cp_integer(s, &debug))
-        return errh->error("debug parameter must be boolean");
-      f->_debug = debug;
-      break;
-    }
-  }
-  return 0;
-}
+enum { H_SERVER_INFO};
 
 static String
 BRN2DNSServer_read_param(Element *e, void *thunk)
@@ -254,10 +241,9 @@ BRN2DNSServer_read_param(Element *e, void *thunk)
 void
 BRN2DNSServer::add_handlers()
 {
-  add_read_handler("server_info", BRN2DNSServer_read_param , (void *)H_SERVER_INFO);
+  BRNElement::add_handlers();
 
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
+  add_read_handler("server_info", BRN2DNSServer_read_param , (void *)H_SERVER_INFO);
 }
 
 String

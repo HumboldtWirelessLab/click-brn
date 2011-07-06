@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include "checklength.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 CLICK_DECLS
 
@@ -32,9 +32,7 @@ CheckLength::~CheckLength()
 int
 CheckLength::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  return cp_va_kparse(conf, this, errh,
-		      "LENGTH", cpkP+cpkM, cpUnsigned, &_max,
-		      cpEnd);
+    return Args(conf, this, errh).read_mp("LENGTH", _max).complete();
 }
 
 void
@@ -55,6 +53,12 @@ CheckLength::pull(int)
     return 0;
   } else
     return p;
+}
+
+void
+CheckLength::add_handlers()
+{
+    add_data_handlers("length", Handler::OP_READ | Handler::OP_WRITE, &_max);
 }
 
 CLICK_ENDDECLS

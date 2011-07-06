@@ -37,7 +37,7 @@
 #include "fromsimdevice.hh"
 #include "tosimdevice.hh"
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/glue.hh>
 #include <unistd.h>
 #include <fcntl.h>
@@ -61,13 +61,24 @@ int
 FromSimDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _packetbuf_size = 2048;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEVNAME", cpkP+cpkM, cpString, &_ifname,
-		   "SNAPLEN", cpkP+cpkM, cpUnsigned, &_packetbuf_size,
-		   cpEnd) < 0)
+  _promisc = false;
+  _headroom = Packet::default_headroom;
+  _tailroom = 0;
+  if (Args(conf, this, errh)
+      .read_mp("DEVNAME", _ifname)
+      .read_p("PROMISC", _promisc)
+      .read_p("SNAPLEN", _packetbuf_size)
+      .read_p("HEADROOM", _headroom)
+      .read_p("TAILROOM", _tailroom)
+      .complete() < 0)
     return -1;
   if (_packetbuf_size > 8192 || _packetbuf_size < 128)
     return errh->error("maximum packet length out of range");
+  _headroom += (4 - (_headroom + 2) % 4) % 4; // 4/2 alignment
+  if (_headroom > 8190)
+    return errh->error("HEADROOM out of range");
+  if (_tailroom > 8190)
+    return errh->error("TAILROOM out of range");
   return 0;
 }
 
@@ -91,6 +102,10 @@ FromSimDevice::initialize(ErrorHandler *errh)
   // Request that we get packets sent to us from the simulator
   myrouter->sim_listen(_fd,eindex());
 
+  // Set the promisc mode on the interface
+  if (_promisc) {
+    myrouter->sim_if_promisc(_fd);
+  }
   return 0;
 }
 
@@ -135,7 +150,7 @@ FromSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,
   int result = 0;
   (void) ifid;
 
-  Packet *p = Packet::make(32, data, len, 32);
+  Packet *p = Packet::make(_headroom, data, len, _tailroom);
   set_annotations(p,ptype);
   p->set_sim_packetinfo(pinfo);
   output(0).push(p);

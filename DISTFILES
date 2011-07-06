@@ -385,6 +385,7 @@ clicknet
 ./include/click:
 algorithm.hh
 archive.hh
+args.hh
 atomic.hh
 bighashmap.cc
 bighashmap.hh
@@ -405,6 +406,7 @@ error.hh
 etheraddress.hh
 ewma.hh
 fixconfig.h
+fromfile.hh
 gaprate.hh
 glue.hh
 handler.hh
@@ -447,6 +449,8 @@ sync.hh
 task.hh
 timer.hh
 timestamp.hh
+tokenbucket.hh
+type_traits.hh
 userutils.hh
 variableenv.hh
 vector.cc
@@ -479,6 +483,7 @@ wifi.h
 
 ./lib:
 archive.cc
+args.cc
 atomic.cc
 bighashmap_arena.cc
 bitvector.cc
@@ -491,6 +496,7 @@ elemfilter.cc
 error.cc
 etheraddress.cc
 exportstub.cc
+fromfile.cc
 gaprate.cc
 glue.cc
 handlercall.cc
@@ -528,6 +534,7 @@ vectorv.cc
 Makefile.in
 clickfs.cc
 config.cc
+fixincludes.pl
 kernelversion.c
 module.cc
 moduleparm.h

@@ -9,6 +9,8 @@
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 
+#include <elements/brn2/brnelement.hh>
+
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
 #define MODE_INSERT 0
@@ -17,7 +19,7 @@
 
 CLICK_DECLS
 
-class DHTStorageTest : public Element
+class DHTStorageTest : public BRNElement
 {
   public:
     DHTStorageTest();
@@ -37,6 +39,8 @@ class DHTStorageTest : public Element
 
     static void static_request_timer_hook(Timer *, void *);
     void request_timer_hook(Timer *t);
+    void request(uint32_t key, uint8_t mode);
+
 
     static void callback_func(void *e, DHTOperation *op);
     void callback(DHTOperation *op);
@@ -46,8 +50,6 @@ class DHTStorageTest : public Element
     uint32_t _key;
     int _interval;
     uint8_t _mode;
-
-    int _debug;
 
   private:
 
@@ -80,6 +82,11 @@ class DHTStorageTest : public Element
     int _retries;
     int _replica;
 
+    uint32_t last_key;
+    bool last_read;
+    bool last_timeout;
+    bool last_not_found;
+    char last_value[10];
 };
 
 CLICK_ENDDECLS

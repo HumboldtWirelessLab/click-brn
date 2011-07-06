@@ -113,6 +113,15 @@ ElementClassT::base_type(const String &name)
 }
 
 
+ElementTraits &
+ElementClassT::force_traits(ElementMap *emap) const
+{
+    ElementTraits &traits = emap->force_traits(_name);
+    _traits = &traits;
+    _traits_version = emap->version();
+    return traits;
+}
+
 const ElementTraits *
 ElementClassT::find_traits(ElementMap *emap) const
 {
@@ -214,7 +223,7 @@ ElementClassT::expand_element(
     ElementClassT *found_c = c->resolve(inputs_used, outputs_used, args, errh, e->landmarkt());
     if (!found_c) {		// destroy element
 	if (fromr == tor)
-	    e->simple_kill();
+	    e->kill();
 	return 0;
     }
 

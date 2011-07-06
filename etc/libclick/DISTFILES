@@ -23,6 +23,7 @@ include
 include/click
 include/click/algorithm.hh
 include/click/archive.hh
+include/click/args.hh
 include/click/atomic.hh
 include/click/bitvector.hh
 include/click/bighashmap.cc
@@ -41,6 +42,7 @@ include/click/error.hh
 include/click/etheraddress.hh
 include/click/ewma.hh
 include/click/fixconfig.h
+include/click/fromfile.hh
 include/click/gaprate.hh
 include/click/glue.hh
 include/click/handler.hh
@@ -51,6 +53,7 @@ include/click/hashcontainer.hh
 include/click/hashmap.cc
 include/click/hashmap.hh
 include/click/hashtable.hh
+include/click/heap.hh
 include/click/integers.hh
 include/click/ipaddress.hh
 include/click/ip6address.hh
@@ -80,6 +83,7 @@ include/click/sync.hh
 include/click/task.hh
 include/click/timer.hh
 include/click/timestamp.hh
+include/click/type_traits.hh
 include/click/userutils.hh
 include/click/variableenv.hh
 include/click/vector.cc
@@ -111,6 +115,7 @@ include/clicknet/wifi.h
 lib:libsrc
 etc/libclick/lc-libsrc-Makefile.in:libsrc/Makefile.in
 lib/archive.cc:libsrc/archive.cc
+lib/args.cc:libsrc/args.cc
 lib/atomic.cc:libsrc/atomic.cc
 lib/bighashmap_arena.cc:libsrc/bighashmap_arena.cc
 lib/bitvector.cc:libsrc/bitvector.cc
@@ -123,6 +128,7 @@ lib/elemfilter.cc:libsrc/elemfilter.cc
 lib/error.cc:libsrc/error.cc
 lib/etheraddress.cc:libsrc/etheraddress.cc
 lib/exportstub.cc:libsrc/exportstub.cc
+lib/fromfile.cc:libsrc/fromfile.cc
 lib/gaprate.cc:libsrc/gaprate.cc
 lib/glue.cc:libsrc/glue.cc
 lib/handlercall.cc:libsrc/handlercall.cc

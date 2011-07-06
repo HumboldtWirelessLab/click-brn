@@ -713,6 +713,7 @@ SOCKET_LIBS
 EXTRA_DRIVER_OBJS
 EXTRA_TOOL_OBJS
 LINUXMODULE_2_6
+clickdatadir
 POSSIBLE_DRIVERS
 DRIVERS
 HAVE_USERLEVEL_DRIVER
@@ -730,11 +731,14 @@ EXPAT_INCLUDES
 EXPAT_LIBS
 linux_makeargs
 LINUX_FIXINCLUDES_PROGRAM
+CLICKLINUX_FIXINCLUDES_PROGRAM
 INSTALL_PROGRAM
 INSTALL_SCRIPT
 INSTALL_DATA
 INSTALL_IF_CHANGED
 CLICKINSTALL
+CLICK_BUILD_INSTALL
+CLICK_BUILD_INSTALL_IF_CHANGED
 SUBMAKE
 GMAKE
 AUTOCONF
@@ -750,7 +754,6 @@ INSTALL_INFO
 MAKEINFO
 TEXI2DVI
 POD2MAN
-clickdatadir
 provisions
 LTLIBOBJS'
 ac_subst_files=''
@@ -1344,9 +1347,12 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-userlevel     disable user-level driver
     --enable-user-multithread support userlevel multithreading (EXPERIMENTAL)
-    --enable-select=[select|poll|kqueue] set select() mechanism
+    --enable-select=[select|poll|kqueue] set file descriptor wait mechanism
+    --disable-select          do not use select()
+    --disable-poll            do not use poll()
+    --disable-kqueue          do not use kqueue()
   --disable-linuxmodule   disable Linux kernel driver
-    --enable-fixincludes      automatically fix Linux includes
+    --disable-fixincludes     do not patch Linux kernel headers for C++
     --enable-multithread[=N]  support kernel multithreading, N threads max
     --enable-warp9            reduce PollDevice functionality for speed
     --enable-kassert          enable kernel assertions
@@ -1380,7 +1386,9 @@ Optional Features:
   --enable-experimental   enable experimental elements in normal groups
   --enable-skip-elements=ELTS disable comma-separated elements
   --disable-int64         disable 64-bit integer support
+  --enable-ialign         whether target-maschine is indifferent to alignment
   --enable-nanotimestamp  enable nanosecond timestamps
+  --enable-bound-port-transfer  enable port transfer function ptr optimization
   --enable-tools=WHERE    enable tools (host/build/mixed/no) [mixed]
   --disable-dynamic-linking disable dynamic linking
   --enable-stats[=LEVEL]  enable statistics collection
@@ -4804,6 +4812,123 @@ _ACEOF
     test -n "$GXX" && test "$GXX_MAJOR" -lt 3 && VTABLE_THUNKS=-fvtable-thunks
 
 
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands constexpr" >&5
+echo $ECHO_N "checking whether the C++ compiler understands constexpr... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_constexpr+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+constexpr int f(int x) { return x + 1; }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_constexpr=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_constexpr=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_constexpr" >&5
+echo "${ECHO_T}$ac_cv_cxx_constexpr" >&6; }
+    if test "$ac_cv_cxx_constexpr" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_CONSTEXPR 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands static_assert" >&5
+echo $ECHO_N "checking whether the C++ compiler understands static_assert... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_static_assert+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+const int f = 2;
+int
+main ()
+{
+static_assert(f == 2, "f should be 2");
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_static_assert=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_static_assert=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_static_assert" >&5
+echo "${ECHO_T}$ac_cv_cxx_static_assert" >&6; }
+    if test "$ac_cv_cxx_static_assert" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_STATIC_ASSERT 1
+_ACEOF
+
+    fi
+
+
     CXX_WARNINGS=
     test -z "$ac_user_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
 	CXX_WARNINGS='-W -Wall'
@@ -5735,41 +5860,49 @@ fi
 if test "${enable_select+set}" = set; then
   enableval=$enable_select; :
 else
-  enable_select=
+  enable_select='select poll kqueue'
+fi
+
+# Check whether --enable-poll was given.
+if test "${enable_poll+set}" = set; then
+  enableval=$enable_poll; :
+else
+  enable_poll=yes
+fi
+
+# Check whether --enable-kqueue was given.
+if test "${enable_kqueue+set}" = set; then
+  enableval=$enable_kqueue; :
+else
+  enable_kqueue=yes
 fi
 
 
-if test "$enable_select" = select; then
+if test "$enable_select" = yes; then
+    enable_select='select poll kqueue'
+elif test "$enable_select" = no; then
+    enable_select='poll kqueue'
+fi
+if echo "$enable_select" | grep select >/dev/null 2>&1; then
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_USE_SELECT 1
+#define HAVE_ALLOW_SELECT 1
 _ACEOF
 
-elif test "$enable_select" = poll; then
+fi
+if echo "$enable_select" | grep poll >/dev/null 2>&1 && test "$enable_poll" = yes; then
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_USE_POLL 1
+#define HAVE_ALLOW_POLL 1
 _ACEOF
 
-elif test "$enable_select" = kqueue; then
+fi
+if echo "$enable_select" | grep kqueue >/dev/null 2>&1 && test "$enable_kqueue" = yes; then
 
 cat >>confdefs.h <<\_ACEOF
-#define HAVE_USE_KQUEUE 1
+#define HAVE_ALLOW_KQUEUE 1
 _ACEOF
 
-elif test -n "$enable_select"; then
-    { echo "$as_me:$LINENO: WARNING:
-=========================================
-
-Unexpected --enable-select type ignored.
-
-=========================================" >&5
-echo "$as_me: WARNING:
-=========================================
-
-Unexpected --enable-select type ignored.
-
-=========================================" >&2;}
 fi
 
 
@@ -5786,7 +5919,7 @@ fi
 if test "${enable_fixincludes+set}" = set; then
   enableval=$enable_fixincludes; :
 else
-  enable_fixincludes=no
+  enable_fixincludes=yes
 fi
 
 LINUXMODULE_FIXINCLUDES=
@@ -6078,7 +6211,7 @@ if test "${enable_analysis+set}" = set; then
 else
   enable_analysis=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_analysis" = xNO && enable_analysis=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_analysis" = xNO -o "x$enable_analysis" = x \) && enable_analysis=yes
 if test "x$enable_analysis" = xyes; then
     :
 
@@ -6089,7 +6222,7 @@ if test "${enable_app+set}" = set; then
 else
   enable_app=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_app" = xNO && enable_app=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_app" = xNO -o "x$enable_app" = x \) && enable_app=yes
 if test "x$enable_app" = xyes; then
     :
 
@@ -6100,7 +6233,7 @@ if test "${enable_aqm+set}" = set; then
 else
   enable_aqm=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_aqm" = xNO && enable_aqm=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_aqm" = xNO -o "x$enable_aqm" = x \) && enable_aqm=yes
 if test "x$enable_aqm" = xyes; then
     :
 
@@ -6111,7 +6244,7 @@ if test "${enable_ethernet+set}" = set; then
 else
   enable_ethernet=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_ethernet" = xNO && enable_ethernet=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_ethernet" = xNO -o "x$enable_ethernet" = x \) && enable_ethernet=yes
 if test "x$enable_ethernet" = xyes; then
     :
 
@@ -6122,7 +6255,7 @@ if test "${enable_etherswitch+set}" = set; then
 else
   enable_etherswitch=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_etherswitch" = xNO && enable_etherswitch=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_etherswitch" = xNO -o "x$enable_etherswitch" = x \) && enable_etherswitch=yes
 if test "x$enable_etherswitch" = xyes; then
     :
 
@@ -6133,7 +6266,7 @@ if test "${enable_grid+set}" = set; then
 else
   enable_grid=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_grid" = xNO && enable_grid=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_grid" = xNO -o "x$enable_grid" = x \) && enable_grid=yes
 if test "x$enable_grid" = xyes; then
     :
 
@@ -6144,7 +6277,7 @@ if test "${enable_icmp+set}" = set; then
 else
   enable_icmp=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_icmp" = xNO && enable_icmp=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_icmp" = xNO -o "x$enable_icmp" = x \) && enable_icmp=yes
 if test "x$enable_icmp" = xyes; then
     :
 
@@ -6155,7 +6288,7 @@ if test "${enable_ip+set}" = set; then
 else
   enable_ip=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_ip" = xNO && enable_ip=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_ip" = xNO -o "x$enable_ip" = x \) && enable_ip=yes
 if test "x$enable_ip" = xyes; then
     :
 
@@ -6166,7 +6299,7 @@ if test "${enable_ip6+set}" = set; then
 else
   enable_ip6=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_ip6" = xNO && enable_ip6=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_ip6" = xNO -o "x$enable_ip6" = x \) && enable_ip6=yes
 if test "x$enable_ip6" = xyes; then
     :
     cat >>confdefs.h <<\_ACEOF
@@ -6180,7 +6313,7 @@ if test "${enable_ipsec+set}" = set; then
 else
   enable_ipsec=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_ipsec" = xNO && enable_ipsec=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_ipsec" = xNO -o "x$enable_ipsec" = x \) && enable_ipsec=yes
 if test "x$enable_ipsec" = xyes; then
     :
     cat >>confdefs.h <<\_ACEOF
@@ -6194,7 +6327,7 @@ if test "${enable_local+set}" = set; then
 else
   enable_local=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_local" = xNO && enable_local=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_local" = xNO -o "x$enable_local" = x \) && enable_local=yes
 if test "x$enable_local" = xyes; then
     :
 
@@ -6205,7 +6338,7 @@ if test "${enable_radio+set}" = set; then
 else
   enable_radio=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_radio" = xNO && enable_radio=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_radio" = xNO -o "x$enable_radio" = x \) && enable_radio=yes
 if test "x$enable_radio" = xyes; then
     :
 
@@ -6216,7 +6349,7 @@ if test "${enable_simple+set}" = set; then
 else
   enable_simple=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_simple" = xNO && enable_simple=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_simple" = xNO -o "x$enable_simple" = x \) && enable_simple=yes
 if test "x$enable_simple" = xyes; then
     :
 
@@ -6227,7 +6360,7 @@ if test "${enable_standard+set}" = set; then
 else
   enable_standard=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_standard" = xNO && enable_standard=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_standard" = xNO -o "x$enable_standard" = x \) && enable_standard=yes
 if test "x$enable_standard" = xyes; then
     :
 
@@ -6238,7 +6371,7 @@ if test "${enable_tcpudp+set}" = set; then
 else
   enable_tcpudp=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_tcpudp" = xNO && enable_tcpudp=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_tcpudp" = xNO -o "x$enable_tcpudp" = x \) && enable_tcpudp=yes
 if test "x$enable_tcpudp" = xyes; then
     :
 
@@ -6249,7 +6382,7 @@ if test "${enable_test+set}" = set; then
 else
   enable_test=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_test" = xNO && enable_test=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_test" = xNO -o "x$enable_test" = x \) && enable_test=yes
 if test "x$enable_test" = xyes; then
     :
 
@@ -6260,7 +6393,7 @@ if test "${enable_threads+set}" = set; then
 else
   enable_threads=yes
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_threads" = xNO && enable_threads=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_threads" = xNO -o "x$enable_threads" = x \) && enable_threads=yes
 if test "x$enable_threads" = xyes; then
     :
 
@@ -6271,7 +6404,7 @@ if test "${enable_wifi+set}" = set; then
 else
   enable_wifi=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_wifi" = xNO && enable_wifi=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_wifi" = xNO -o "x$enable_wifi" = x \) && enable_wifi=yes
 if test "x$enable_wifi" = xyes; then
     :
 
@@ -6282,7 +6415,7 @@ if test "${enable_brn+set}" = set; then
 else
   enable_brn=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_brn" = xNO && enable_brn=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_brn" = xNO -o "x$enable_brn" = x \) && enable_brn=yes
 if test "x$enable_brn" = xyes; then
     :
 
@@ -6293,7 +6426,7 @@ if test "${enable_brn2+set}" = set; then
 else
   enable_brn2=NO
 fi
-test "x$enable_all_elements" = xyes -a "x$enable_brn2" = xNO && enable_brn2=yes
+test "x$enable_all_elements" = xyes -a \( "x$enable_brn2" = xNO -o "x$enable_brn2" = x \) && enable_brn2=yes
 if test "x$enable_brn2" = xyes; then
     :
 
@@ -6315,7 +6448,7 @@ fi
 
 for i in `(cd $srcdir/elements; ls | sed '/^CVS$/d;/^bsdmodule$/d;/^linuxmodule$/d;/^ns$/d;/^jist$/d;/^userlevel$/d')`; do
     enableval=`eval 'echo $'"enable_$i"`
-    test "x$enable_all_elements" = xyes -a "x$enableval" '!=' 'no' && enableval=yes
+    test "x$enable_all_elements" = xyes -a "x$enableval" '!=' xno && enableval=yes
     test -d "$srcdir/elements/$i" -a "$enableval" = "yes" && element_groups="$element_groups $i"
 done
 
@@ -6579,7 +6712,9 @@ done
 
 
 
-for ac_func in random snprintf strnlen strtoul tcgetpgrp vsnprintf
+
+
+for ac_func in random snprintf strnlen strtof strtold strtoul tcgetpgrp vsnprintf
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
@@ -8311,6 +8446,65 @@ _ACEOF
 
 
 
+{ echo "$as_me:$LINENO: checking whether char is unsigned" >&5
+echo $ECHO_N "checking whether char is unsigned... $ECHO_C" >&6; }
+if test "${ac_cv_c_char_unsigned+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+$ac_includes_default
+int
+main ()
+{
+static int test_array [1 - 2 * !(((char) -1) < 0)];
+test_array [0] = 0
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_c_char_unsigned=no
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_c_char_unsigned=yes
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_c_char_unsigned" >&5
+echo "${ECHO_T}$ac_cv_c_char_unsigned" >&6; }
+if test $ac_cv_c_char_unsigned = yes && test "$GCC" != yes; then
+  cat >>confdefs.h <<\_ACEOF
+#define __CHAR_UNSIGNED__ 1
+_ACEOF
+
+fi
+
+
 for ac_header in inttypes.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -8529,6 +8723,14 @@ Neither uint32_t nor u_int32_t defined by <inttypes.h> or <sys/types.h>!
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
     fi
+# Check whether --enable-ialign was given.
+if test "${enable_ialign+set}" = set; then
+  enableval=$enable_ialign; :
+else
+  enable_ialign=no
+fi
+
+if test "x$enable_ialign" = xno; then
 
     { echo "$as_me:$LINENO: checking whether machine is indifferent to alignment" >&5
 echo $ECHO_N "checking whether machine is indifferent to alignment... $ECHO_C" >&6; }
@@ -8610,6 +8812,24 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
     fi
+else
+    { echo "$as_me:$LINENO: checking whether machine is indifferent to alignment" >&5
+echo $ECHO_N "checking whether machine is indifferent to alignment... $ECHO_C" >&6; }
+if test "${ac_cv_alignment_indifferent+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  ac_cv_alignment_indifferent=yes
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_alignment_indifferent" >&5
+echo "${ECHO_T}$ac_cv_alignment_indifferent" >&6; }
+    if test "x$ac_cv_alignment_indifferent" = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_INDIFFERENT_ALIGNMENT 1
+_ACEOF
+
+    fi
+fi
 if test "x$enable_int64" = xyes; then
     { echo "$as_me:$LINENO: checking for long long" >&5
 echo $ECHO_N "checking for long long... $ECHO_C" >&6; }
@@ -9534,7 +9754,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9537 "configure"
+#line 9757 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -9560,7 +9780,7 @@ EOF
 		echo "configure: failed program was:" >&5
 		cat conftest.$ac_ext >&5
 	    fi
-	    rm -f conftest*
+	    rm -f conftest.$ac_ext conftest.result conftest.out
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_endian" >&5
 echo "${ECHO_T}$ac_cv_endian" >&6; }
@@ -10356,6 +10576,120 @@ echo "${ECHO_T}$ac_cv_have___sync_synchronize_args" >&6; }
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE___SYNC_SYNCHRONIZE_ARGUMENTS 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking for __has_trivial_copy" >&5
+echo $ECHO_N "checking for __has_trivial_copy... $ECHO_C" >&6; }
+if test "${ac_cv_have___has_trivial_copy+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+long x = 1; if (__has_trivial_copy(long)) x = 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have___has_trivial_copy=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have___has_trivial_copy=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have___has_trivial_copy" >&5
+echo "${ECHO_T}$ac_cv_have___has_trivial_copy" >&6; }
+    if test $ac_cv_have___has_trivial_copy = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE___HAS_TRIVIAL_COPY 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking for __thread storage class support" >&5
+echo $ECHO_N "checking for __thread storage class support... $ECHO_C" >&6; }
+if test "${ac_cv_have___thread+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+__thread long x;
+int
+main ()
+{
+x == 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have___thread=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have___thread=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have___thread" >&5
+echo "${ECHO_T}$ac_cv_have___thread" >&6; }
+    if test $ac_cv_have___thread = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE___THREAD_STORAGE_CLASS 1
 _ACEOF
 
     fi
@@ -11895,6 +12229,25 @@ fi
 
 
 
+# Check whether --enable-bound-port-transfer was given.
+if test "${enable_bound_port_transfer+set}" = set; then
+  enableval=$enable_bound_port_transfer; :
+else
+  enable_bound_port_transfer=no
+fi
+
+
+if test "$enable_bound_port_transfer" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_BOUND_PORT_TRANSFER 1
+_ACEOF
+
+  CXXFLAGS="$CXXFLAGS -Wno-pmf-conversions"
+fi
+
+
+
 # Check whether --enable-tools was given.
 if test "${enable_tools+set}" = set; then
   enableval=$enable_tools; :
@@ -12107,7 +12460,8 @@ fi
 
 
 
-for ac_header in termio.h netdb.h sys/event.h pwd.h grp.h
+
+for ac_header in termio.h netdb.h sys/event.h pwd.h grp.h execinfo.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
 if { as_var=$as_ac_Header; eval "test \"\${$as_var+set}\" = set"; }; then
@@ -13332,13 +13686,17 @@ fi
 	{ { echo "$as_me:$LINENO: error:
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================" >&5
 echo "$as_me: error:
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================" >&2;}
    { (exit 1); exit 1; }; }
@@ -14884,7 +15242,32 @@ if test "$linux_system_map" = NONE; then
     fi
 fi
 
-if test ! -f "$linux_system_map"; then
+{ echo "$as_me:$LINENO: checking for Linux System.map" >&5
+echo $ECHO_N "checking for Linux System.map... $ECHO_C" >&6; }
+if test -r "$linux_system_map"; then
+    { echo "$as_me:$LINENO: result: $linux_system_map" >&5
+echo "${ECHO_T}$linux_system_map" >&6; }
+elif test -f "$linux_system_map"; then
+    { echo "$as_me:$LINENO: result: $linux_system_map (unreadable)" >&5
+echo "${ECHO_T}$linux_system_map (unreadable)" >&6; }
+    { { echo "$as_me:$LINENO: error:
+=========================================
+
+The Linux System.map file $linux_system_map cannot be read.
+Try running the ./configure script as root (or use the --with-linux=DIR
+and/or --with-linux-map=MAP options).
+
+=========================================" >&5
+echo "$as_me: error:
+=========================================
+
+The Linux System.map file $linux_system_map cannot be read.
+Try running the ./configure script as root (or use the --with-linux=DIR
+and/or --with-linux-map=MAP options).
+
+=========================================" >&2;}
+   { (exit 1); exit 1; }; }
+else
     if test "x$enable_linuxmodule_default" = xyes; then
 	{ echo "$as_me:$LINENO: WARNING:
 =========================================
@@ -14930,25 +15313,33 @@ fi
 
 if test $ac_have_linux_kernel = y; then
 
-{ echo "$as_me:$LINENO: checking for Linux 2.6" >&5
-echo $ECHO_N "checking for Linux 2.6... $ECHO_C" >&6; }
-if test "${ac_cv_linux26+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
+{ echo "$as_me:$LINENO: checking Linux version" >&5
+echo $ECHO_N "checking Linux version... $ECHO_C" >&6; }
+linuxpath_makefile=`find_linuxpath Makefile`
+linux_version=`grep '^VERSION[ 	]*=[ 	]*[0-9][0-9]*[ 	]*$' "$linuxpath_makefile" | tr -c -d 0-9`
+linux_patchlevel=`grep '^PATCHLEVEL[ 	]*=[ 	]*[0-9][0-9]*[ 	]*$' "$linuxpath_makefile" | tr -c -d 0-9`
+linux_sublevel=`grep '^SUBLEVEL[ 	]*=[ 	]*[0-9][0-9]*[ 	]*$' "$linuxpath_makefile" | tr -c -d 0-9`
+if test -n "$linux_version" -a -n "$linux_patchlevel" -a -z "$linux_sublevel"; then linux_sublevel=0; fi
+if test -n "$linux_version" -a -n "$linux_patchlevel" -a -n "$linux_sublevel"; then
+    { echo "$as_me:$LINENO: result: $linux_version.$linux_patchlevel.$linux_sublevel" >&5
+echo "${ECHO_T}$linux_version.$linux_patchlevel.$linux_sublevel" >&6; }
+    linux_version_code=`expr $linux_version '*' 65536 + $linux_patchlevel '*' 256 + $linux_sublevel`
 else
-  if grep '^PATCHLEVEL 	*= 	*6' `find_linuxpath Makefile` >/dev/null 2>&1; then ac_cv_linux26=yes; else ac_cv_linux26=no; fi
+    { echo "$as_me:$LINENO: result: unknown" >&5
+echo "${ECHO_T}unknown" >&6; }
+    linux_version_code=0
 fi
-{ echo "$as_me:$LINENO: result: $ac_cv_linux26" >&5
-echo "${ECHO_T}$ac_cv_linux26" >&6; }
-LINUXMODULE_2_6=0
-if test "$ac_cv_linux26" = yes; then LINUXMODULE_2_6=1; fi
 
-if test $LINUXMODULE_2_6 = 1; then
+LINUXMODULE_2_6=0
+if test "$linux_version.$linux_patchlevel" = 2.6; then
+    LINUXMODULE_2_6=1
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUXMODULE_2_6 1
 _ACEOF
 
 fi
+
 
 { echo "$as_me:$LINENO: checking for Click Linux kernel extensions" >&5
 echo $ECHO_N "checking for Click Linux kernel extensions... $ECHO_C" >&6; }
@@ -15058,6 +15449,24 @@ _ACEOF
 
 fi
 
+{ echo "$as_me:$LINENO: checking for files_lglock kernel symbol" >&5
+echo $ECHO_N "checking for files_lglock kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_files_lglock+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_files_lglock" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_files_lglock=yes
+else ac_cv_linux_files_lglock=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_files_lglock" >&5
+echo "${ECHO_T}$ac_cv_linux_files_lglock" >&6; }
+if test $ac_cv_linux_files_lglock = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_FILES_LGLOCK 1
+_ACEOF
+
+fi
+
 { echo "$as_me:$LINENO: checking for sb_lock kernel symbol" >&5
 echo $ECHO_N "checking for sb_lock kernel symbol... $ECHO_C" >&6; }
 if test "${ac_cv_linux_sb_lock+set}" = set; then
@@ -15108,6 +15517,42 @@ echo "${ECHO_T}$ac_cv_linux_devinet_ioctl" >&6; }
 if test $ac_cv_linux_devinet_ioctl = yes; then
     cat >>confdefs.h <<\_ACEOF
 #define HAVE_LINUX_DEVINET_IOCTL 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for inet_ioctl kernel symbol" >&5
+echo $ECHO_N "checking for inet_ioctl kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_inet_ioctl+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_inet_ioctl" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_inet_ioctl=yes
+else ac_cv_linux_inet_ioctl=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_inet_ioctl" >&5
+echo "${ECHO_T}$ac_cv_linux_inet_ioctl" >&6; }
+if test $ac_cv_linux_inet_ioctl = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_INET_IOCTL 1
+_ACEOF
+
+fi
+
+{ echo "$as_me:$LINENO: checking for inet_ctl_sock_create kernel symbol" >&5
+echo $ECHO_N "checking for inet_ctl_sock_create kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_inet_ctl_sock_create+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_inet_ctl_sock_create" $linux_system_map >/dev/null 2>&1; then
+    ac_cv_linux_inet_ctl_sock_create=yes
+else ac_cv_linux_inet_ctl_sock_create=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_inet_ctl_sock_create" >&5
+echo "${ECHO_T}$ac_cv_linux_inet_ctl_sock_create" >&6; }
+if test $ac_cv_linux_inet_ctl_sock_create = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_INET_CTL_SOCK_CREATE 1
 _ACEOF
 
 fi
@@ -15866,6 +16311,44 @@ _ACEOF
 fi
 
 done
+
+
+
+
+shell_expand () {
+    val=`eval echo '$'"$1"`
+    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
+    eval "$1='$val'"
+}
+
+test "x$prefix" = xNONE && prefix=$ac_default_prefix
+test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
+
+if test x$infodir = 'x${prefix}/info'; then
+    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
+fi
+
+shell_expand bindir
+shell_expand sbindir
+shell_expand libdir
+shell_expand datarootdir
+shell_expand datadir
+shell_expand includedir
+
+clickdatadir="$datadir/click"
+
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_BINDIR "$bindir"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_LIBDIR "$libdir"
+_ACEOF
+
+cat >>confdefs.h <<_ACEOF
+#define CLICK_DATADIR "$clickdatadir"
+_ACEOF
 
 
 
@@ -17484,6 +17967,7 @@ Can't find Linux 2.6 compilation flags.
 	echo "$lCPPFLAGS $lCFLAGS $lLINUXINCLUDE $lKBUILD_CPPFLAGS $lKBUILD_CFLAGS" >conftest.dat
 	LINUX_CFLAGS="`sed -e 's,-Iinclude ',-I$linux_builddir/include' ,g' \
 	    -e 's,-Iinclude2 ',-I$linux_builddir/include2' ,g' \
+	    -e 's,-Iarch/um/include/shared',-I$linux_builddir/arch/um/include/shared',g' \
 	    -e 's, include/, '$linux_builddir/include/,g \
 	    -e s,-Iinclude/,-I${linux_srcdir}include/,g \
 	    -e s,-Wno-pointer-sign,,g \
@@ -17498,13 +17982,13 @@ echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
     fi
 
     LINUX_FIXINCLUDES_PROGRAM=
+    CLICKLINUX_FIXINCLUDES_PROGRAM=
     if test "$LINUXMODULE_FIXINCLUDES" = 1; then
-	{ echo "$as_me:$LINENO: checking for C++-safe versions of Linux include files" >&5
-echo $ECHO_N "checking for C++-safe versions of Linux include files... $ECHO_C" >&6; }
-	$srcdir/linuxmodule/fixincludes.pl -o "`pwd`/include/click-linuxmodule" $LINUX_CFLAGS >conftest.dat
+	{ echo "$as_me:$LINENO: making C++-safe versions of Linux kernel headers (may take a while)" >&5
+echo "$as_me: making C++-safe versions of Linux kernel headers (may take a while)" >&6;}
+	mydir="`pwd`/include/click-linuxmodule"
+	$srcdir/linuxmodule/fixincludes.pl -o "$mydir" $LINUX_CFLAGS >conftest.dat
 	if test $? != 0; then
-	    { echo "$as_me:$LINENO: result: failed" >&5
-echo "${ECHO_T}failed" >&6; }
 	    { { echo "$as_me:$LINENO: error:
 ==============================================
 
@@ -17521,9 +18005,9 @@ fixincludes.pl execution failed.
 	fi
 	LINUX_CFLAGS="`head -n 1 conftest.dat`"
 	LINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat`"
-	{ echo "$as_me:$LINENO: result: $LINUX_CFLAGS" >&5
-echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
+	CLICKLINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat | sed -e "s	$mydir	$includedir/click-linuxmodule	g"`"
     fi
+
 
 
 
@@ -17531,6 +18015,18 @@ echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
 
 
     # CLICK_LINUXMODULE_PROLOGUE()
+    linux_autoconf_include=
+    if test "$linux_version_code" -lt 132638; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CHECK_AUTOCONF_INCLUDED 1
+_ACEOF
+
+	linux_autoconf_include="#if !defined(AUTOCONF_INCLUDED)
+# include <linux/autoconf.h>
+#endif
+"
+    fi
 
 
 
@@ -17568,7 +18064,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/signal.h>
 #include <linux/skbuff.h>
@@ -17640,7 +18137,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/types.h>
 void f1(long) {
@@ -17721,7 +18219,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/types.h>
 void f1(long long) {
@@ -17802,7 +18301,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/types.h>
 
@@ -17886,7 +18386,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -17968,7 +18469,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -18050,7 +18552,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -18132,7 +18635,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -18214,7 +18718,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -18296,7 +18801,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 int
@@ -18378,7 +18884,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/netdevice.h>
 int
@@ -18454,7 +18961,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <net/dst.h>
 
@@ -18540,7 +19048,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 
@@ -18598,6 +19107,93 @@ _ACEOF
 
     fi
 
+    { echo "$as_me:$LINENO: checking whether skb_linearize is declared" >&5
+echo $ECHO_N "checking whether skb_linearize is declared... $ECHO_C" >&6; }
+if test "${ac_cv_have_decl_skb_linearize+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#if HAVE_LINUXMODULE_2_6
+# define KBUILD_STR(s)		#s
+# define KBUILD_BASENAME	KBUILD_STR(click)
+# define KBUILD_MODNAME		KBUILD_STR(click)
+#endif
+#define new linux_new
+#define this linux_this
+#define delete linux_delete
+#define class linux_class
+#define virtual linux_virtual
+#define typename linux_typename
+#define private linux_private
+#define protected linux_protected
+#define public linux_public
+#define namespace linux_namespace
+#define false linux_false
+#define true linux_true
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
+#include <asm/types.h>
+#include <linux/skbuff.h>
+
+int
+main ()
+{
+#ifndef skb_linearize
+  (void) skb_linearize;
+#endif
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_have_decl_skb_linearize=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_have_decl_skb_linearize=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_skb_linearize" >&5
+echo "${ECHO_T}$ac_cv_have_decl_skb_linearize" >&6; }
+if test $ac_cv_have_decl_skb_linearize = yes; then
+  ac_cv_skb_linearize=yes
+else
+  ac_cv_skb_linearize=no
+fi
+
+    if test $ac_cv_skb_linearize = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_SKB_LINEARIZE 1
+_ACEOF
+
+    fi
+
     { echo "$as_me:$LINENO: checking whether netif_receive_skb has been extended" >&5
 echo $ECHO_N "checking whether netif_receive_skb has been extended... $ECHO_C" >&6; }
 if test "${ac_cv_linuxmodule_netif_receive_skb_extended+set}" = set; then
@@ -18632,7 +19228,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/netdevice.h>
 int
@@ -18714,7 +19311,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -18801,7 +19399,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -18888,7 +19487,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -18975,7 +19575,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -19062,7 +19663,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -19149,7 +19751,8 @@ cat >>conftest.$ac_ext <<_ACEOF
 #define namespace linux_namespace
 #define false linux_false
 #define true linux_true
-#include <linux/autoconf.h>
+#define CLICK_CXX_PROTECTED 1
+$linux_autoconf_include
 #include <asm/types.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
@@ -19208,6 +19811,23 @@ _ACEOF
 
     fi
 
+    { echo "$as_me:$LINENO: checking for netdev_rx_handler_register kernel symbol" >&5
+echo $ECHO_N "checking for netdev_rx_handler_register kernel symbol... $ECHO_C" >&6; }
+if test "${ac_cv_linux_netdev_rx_handler_register+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  if grep "__ksymtab_netdev_rx_handler_register" $linux_system_map >/dev/null 2>&1; then
+        ac_cv_linux_netdev_rx_handler_register=yes
+    else ac_cv_linux_netdev_rx_handler_register=no; fi
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_linux_netdev_rx_handler_register" >&5
+echo "${ECHO_T}$ac_cv_linux_netdev_rx_handler_register" >&6; }
+    if test $ac_cv_linux_netdev_rx_handler_register = yes; then
+        cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_NETDEV_RX_HANDLER_REGISTER 1
+_ACEOF
+
+    fi
 
     CC="$save_cc"
     CXX="$save_cxx"
@@ -19420,6 +20040,10 @@ echo "${ECHO_T}no" >&6; }
     rm -f conftest.1 conftest.2
 
     CLICKINSTALL=`echo "$INSTALL" | sed 's|^\$(.*)/|\$(clickdatadir)/|'`
+
+    CLICK_BUILD_INSTALL="$INSTALL"
+
+    CLICK_BUILD_INSTALL_IF_CHANGED="`echo "$INSTALL_IF_CHANGED" | sed 's|(INSTALL)|(CLICK_BUILD_INSTALL)|'`"
 
 
 
@@ -19927,44 +20551,6 @@ fi
 
 
 
-
-
-
-
-shell_expand () {
-    val=`eval echo '$'"$1"`
-    while echo "x$val" | grep '\$' >/dev/null 2>&1; do val=`eval echo "$val"`; done
-    eval "$1='$val'"
-}
-
-test "x$prefix" = xNONE && prefix=$ac_default_prefix
-test "x$exec_prefix" = xNONE && exec_prefix='${prefix}'
-
-if test x$infodir = 'x${prefix}/info'; then
-    test ! -d ${prefix}/info && test -d ${prefix}/share/info && infodir='${prefix}/share/info'
-fi
-
-shell_expand bindir
-shell_expand sbindir
-shell_expand libdir
-shell_expand datarootdir
-shell_expand datadir
-shell_expand includedir
-
-clickdatadir="$datadir/click"
-
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_BINDIR "$bindir"
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_LIBDIR "$libdir"
-_ACEOF
-
-cat >>confdefs.h <<_ACEOF
-#define CLICK_DATADIR "$clickdatadir"
-_ACEOF
 
 
 
@@ -20815,6 +21401,7 @@ for ac_last_try in false false false false false :; do
 EXTRA_DRIVER_OBJS!$EXTRA_DRIVER_OBJS$ac_delim
 EXTRA_TOOL_OBJS!$EXTRA_TOOL_OBJS$ac_delim
 LINUXMODULE_2_6!$LINUXMODULE_2_6$ac_delim
+clickdatadir!$clickdatadir$ac_delim
 POSSIBLE_DRIVERS!$POSSIBLE_DRIVERS$ac_delim
 DRIVERS!$DRIVERS$ac_delim
 HAVE_USERLEVEL_DRIVER!$HAVE_USERLEVEL_DRIVER$ac_delim
@@ -20832,11 +21419,14 @@ EXPAT_INCLUDES!$EXPAT_INCLUDES$ac_delim
 EXPAT_LIBS!$EXPAT_LIBS$ac_delim
 linux_makeargs!$linux_makeargs$ac_delim
 LINUX_FIXINCLUDES_PROGRAM!$LINUX_FIXINCLUDES_PROGRAM$ac_delim
+CLICKLINUX_FIXINCLUDES_PROGRAM!$CLICKLINUX_FIXINCLUDES_PROGRAM$ac_delim
 INSTALL_PROGRAM!$INSTALL_PROGRAM$ac_delim
 INSTALL_SCRIPT!$INSTALL_SCRIPT$ac_delim
 INSTALL_DATA!$INSTALL_DATA$ac_delim
 INSTALL_IF_CHANGED!$INSTALL_IF_CHANGED$ac_delim
 CLICKINSTALL!$CLICKINSTALL$ac_delim
+CLICK_BUILD_INSTALL!$CLICK_BUILD_INSTALL$ac_delim
+CLICK_BUILD_INSTALL_IF_CHANGED!$CLICK_BUILD_INSTALL_IF_CHANGED$ac_delim
 SUBMAKE!$SUBMAKE$ac_delim
 GMAKE!$GMAKE$ac_delim
 AUTOCONF!$AUTOCONF$ac_delim
@@ -20852,12 +21442,11 @@ INSTALL_INFO!$INSTALL_INFO$ac_delim
 MAKEINFO!$MAKEINFO$ac_delim
 TEXI2DVI!$TEXI2DVI$ac_delim
 POD2MAN!$POD2MAN$ac_delim
-clickdatadir!$clickdatadir$ac_delim
 provisions!$provisions$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 43; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 46; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

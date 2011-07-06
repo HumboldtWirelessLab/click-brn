@@ -109,10 +109,7 @@ class Task { public:
      * Usually, task->thread()->@link RouterThread::thread_id()
      * thread_id()@endlink == task->home_thread_id().  They can differ,
      * however, if move_thread() was called but the task hasn't yet been moved
-     * to the new thread, or if the task was strongly unscheduled with
-     * strong_unschedule().  (In this last case, task->thread()->@link
-     * RouterThread::thread_id() thread_id()@endlink ==
-     * RouterThread::THREAD_STRONG_UNSCHEDULE.) */
+     * to the new thread. */
     inline RouterThread *thread() const;
 
     /** @brief Return the router to which this task belongs. */
@@ -155,17 +152,14 @@ class Task { public:
 
     /** @brief Return true iff the task is currently scheduled to run.
      *
-     * @note The scheduled() function is only approximate.  It may return
-     * false for a scheduled task, or true for an unscheduled task, due to
-     * locking issues that prevent some unschedule() and reschedule()
-     * operations from completing immediately. */
-    inline bool scheduled() const;
-
-#if CLICK_DEBUG_SCHEDULING
-    inline bool should_be_scheduled() const {
-	return _should_be_scheduled;
+     * @note A scheduled task will usually run very soon, but not
+     * always; due to locking issues, the effects of some reschedule()
+     * requests may be delayed.  Also, a task unscheduled with
+     * strong_unschedule() may apper scheduled(), but will not run
+     * until strong_reschedule() is called. */
+    inline bool scheduled() const {
+	return _status.is_scheduled;
     }
-#endif
 
 
     /** @brief Unschedule the task.
@@ -173,32 +167,68 @@ class Task { public:
      * After unschedule() returns, the task will not run until it is
      * rescheduled with reschedule().
      *
-     * @note scheduled() may return true for a short time even after
-     * unschedule().
-     *
-     * @sa reschedule, strong_unschedule, fast_unschedule */
-    void unschedule();
+     * @sa reschedule, strong_unschedule */
+    inline void unschedule() {
+	_status.is_scheduled = false;
+    }
 
     /** @brief Reschedule the task.
      *
      * The task is rescheduled on its home thread.  The task will eventually
-     * run (unless the home thread is quiescent).  Due to locking issues, the
-     * task may not be scheduled right away -- scheduled() may not immediately
-     * return true.
+     * run (unless the home thread is quiescent).
      *
      * @sa unschedule, strong_reschedule */
     inline void reschedule();
 
-    void strong_unschedule();
-    void strong_reschedule();
-
-#if HAVE_TASK_HEAP
-    void fast_reschedule();
-#else
+    /** @brief Reschedule a task from the task's callback function.
+     *
+     * @warning fast_reschedule() should be called while that task is being
+     * fired: Task::fire() calls the task's callback function (often
+     * Element::run_task()), which may call fast_reschedule() to reschedule
+     * the task.  It is an error to call @a task.fast_reschedule() at other
+     * times.  For instance, if MyElement::run_task() calls fast_reschedule(),
+     * then it is an error to call MyElement::run_task() from
+     * MyElement::run_timer() -- the fast_reschedule() might not actually take
+     * effect.
+     */
     inline void fast_reschedule();
-#endif
 
-    void move_thread(int thread_id);
+
+    /** @brief Unschedule the Task until strong_reschedule().
+     *
+     * Like unschedule(), but in addition, future reschedule() calls
+     * will not actually schedule the task.  Only after strong_reschedule()
+     * will the task run again.
+     * @sa strong_reschedule, unschedule
+     */
+    inline void strong_unschedule() {
+	_status.is_scheduled = false;
+	_status.is_strong_unscheduled = true;
+    }
+
+    /** @brief Reschedule the Task, undoing a prior strong_unschedule().
+     *
+     * This function undoes any previous strong_unschedule() and
+     * reschedules the task.
+     * @sa reschedule, strong_unschedule
+     */
+    inline void strong_reschedule() {
+	_status.is_strong_unscheduled = false;
+	reschedule();
+    }
+
+
+    /** @brief Move the Task to a new home thread.
+     *
+     * The home thread ID is set to @a new_thread_id.  The task, if it is
+     * currently scheduled, is rescheduled on thread @a new_thread_id
+     * (which generally takes some time to take effect).  If @a new_thread_id
+     * is less than zero or greater than the number of threads on the router,
+     * it is coerced to -1, and the task is scheduled on a quiescent thread
+     * that never actually runs.
+     */
+    void move_thread(int new_thread_id);
+
 
 #if HAVE_STRIDE_SCHED
     inline int tickets() const;
@@ -206,7 +236,7 @@ class Task { public:
     inline void adjust_tickets(int delta);
 #endif
 
-    inline void fire();
+    inline bool fire();
 
 #if HAVE_ADAPTIVE_SCHEDULER
     inline unsigned runs() const;
@@ -227,17 +257,12 @@ class Task { public:
 
   private:
 
-    /* if gcc keeps this ordering, we may get some cache locality on a 16 or 32
-     * byte cache line: the first three fields are used in list traversal */
-
 #if HAVE_TASK_HEAP
     int _schedpos;
 #else
     Task* _prev;
     Task* _next;
 #endif
-    bool _should_be_scheduled;
-    bool _should_be_strong_unscheduled;
 
 #if HAVE_STRIDE_SCHED
     unsigned _pass;
@@ -245,8 +270,17 @@ class Task { public:
     int _tickets;
 #endif
 
+    union Status {
+	struct {
+	    int16_t home_thread_id;
+	    uint8_t is_scheduled;
+	    uint8_t is_strong_unscheduled;
+	};
+	int32_t status;
+    } _status;
+
     TaskCallback _hook;
-    void* _thunk;
+    void *_thunk;
 
 #if HAVE_ADAPTIVE_SCHEDULER
     unsigned _runs;
@@ -258,28 +292,42 @@ class Task { public:
 #endif
 
     RouterThread *_thread;
-    int _home_thread_id;
 
     Element *_owner;
 
     volatile uintptr_t _pending_nextptr;
 
-    Task(const Task&);
-    Task& operator=(const Task&);
+    Task(const Task &x);
+    Task &operator=(const Task &x);
     void cleanup();
 
+#if CLICK_DEBUG_SCHEDULING
+ public:
+#endif
+    inline bool on_scheduled_list() const;
+    inline bool on_pending_list() const {
+	return _pending_nextptr;
+    }
+#if CLICK_DEBUG_SCHEDULING
+ private:
+#endif
+
+    inline void add_pending_locked(RouterThread *thread);
     void add_pending();
-    void process_pending(RouterThread*);
+    inline void remove_pending_locked(RouterThread *thread);
+    void remove_pending();
+    void process_pending(RouterThread *thread);
+
+    inline void complete_schedule(unsigned new_pass);
     inline void fast_schedule();
     void true_reschedule();
-    inline void lock_tasks();
-    inline bool attempt_lock_tasks();
+    inline void remove_from_scheduled_list();
 
-    static bool error_hook(Task*, void*);
+    static bool error_hook(Task *task, void *user_data);
 
-    inline void fast_unschedule(bool should_be_scheduled);
+    void move_thread_second_half();
 
-    static inline Task *pending_to_task(uintptr_t);
+    static inline Task *pending_to_task(uintptr_t ptr);
     inline Task *pending_to_task() const;
 
     friend class RouterThread;
@@ -301,7 +349,6 @@ Task::Task(TaskCallback f, void *user_data)
 #else
     : _prev(0), _next(0),
 #endif
-      _should_be_scheduled(false), _should_be_strong_unscheduled(false),
 #if HAVE_STRIDE_SCHED
       _pass(0), _stride(0), _tickets(-1),
 #endif
@@ -312,9 +359,10 @@ Task::Task(TaskCallback f, void *user_data)
 #if HAVE_MULTITHREAD
       _cycle_runs(0),
 #endif
-      _thread(0), _home_thread_id(-1),
-      _owner(0), _pending_nextptr(0)
+      _thread(0), _owner(0), _pending_nextptr(0)
 {
+    _status.home_thread_id = -1;
+    _status.is_scheduled = _status.is_strong_unscheduled = false;
 }
 
 inline
@@ -324,7 +372,6 @@ Task::Task(Element* e)
 #else
     : _prev(0), _next(0),
 #endif
-      _should_be_scheduled(false), _should_be_strong_unscheduled(false),
 #if HAVE_STRIDE_SCHED
       _pass(0), _stride(0), _tickets(-1),
 #endif
@@ -335,9 +382,10 @@ Task::Task(Element* e)
 #if HAVE_MULTITHREAD
       _cycle_runs(0),
 #endif
-      _thread(0), _home_thread_id(-1),
-      _owner(0), _pending_nextptr(0)
+      _thread(0), _owner(0), _pending_nextptr(0)
 {
+    _status.home_thread_id = -1;
+    _status.is_scheduled = _status.is_strong_unscheduled = false;
 }
 
 inline bool
@@ -347,7 +395,7 @@ Task::initialized() const
 }
 
 inline bool
-Task::scheduled() const
+Task::on_scheduled_list() const
 {
 #if HAVE_TASK_HEAP
     return _schedpos >= 0;
@@ -377,7 +425,7 @@ Task::thunk() const
 inline int
 Task::home_thread_id() const
 {
-    return _home_thread_id;
+    return _status.home_thread_id;
 }
 
 inline RouterThread *
@@ -387,17 +435,11 @@ Task::thread() const
 }
 
 inline void
-Task::fast_unschedule(bool should_be_scheduled)
+Task::remove_from_scheduled_list()
 {
-#if CLICK_LINUXMODULE
-    assert(!in_interrupt());
-#endif
-#if CLICK_BSDMODULE
-    GIANT_REQUIRED;
-#endif
-    if (scheduled()) {
+    if (on_scheduled_list()) {
 #if HAVE_TASK_HEAP
-	Task* back = _thread->_task_heap.back();
+	Task *back = _thread->_task_heap.back().t;
 	_thread->_task_heap.pop_back();
 	if (_thread->_task_heap.size() > 0)
 	    _thread->task_reheapify_from(_schedpos, back);
@@ -408,7 +450,6 @@ Task::fast_unschedule(bool should_be_scheduled)
 	_next = _prev = 0;
 #endif
     }
-    _should_be_scheduled = should_be_scheduled;
 }
 
 #if HAVE_STRIDE_SCHED
@@ -458,106 +499,87 @@ Task::adjust_tickets(int delta)
     set_tickets(_tickets + delta);
 }
 
-# if !HAVE_TASK_HEAP
-/** @brief Reschedule the task.  The task's current thread must be currently
- * locked.
- *
- * This accomplishes the same function as reschedule(), but does a faster job
- * because it assumes the task's thread lock is held.  Generally, this can be
- * guaranteed only from within a task's run_task() callback function.
- */
-inline void
-Task::fast_reschedule()
-{
-    assert(_thread);
-#  if CLICK_LINUXMODULE
-    // tasks never run at interrupt time in Linux
-    assert(!in_interrupt());
-#  endif
-#  if CLICK_BSDMODULE
-    GIANT_REQUIRED;
-#  endif
-
-    if (!scheduled()) {
-	// increase pass
-	_pass += _stride;
-
-#  if 0
-	// look for 'n' immediately before where we should be scheduled
-	Task* n = _thread->_prev;
-	while (n != _thread && PASS_GT(n->_pass, _pass))
-	    n = n->_prev;
-
-	// schedule after 'n'
-	_next = n->_next;
-	_prev = n;
-	n->_next = this;
-	_next->_prev = this;
-#  else
-	// look for 'n' immediately after where we should be scheduled
-	Task* n = _thread->_next;
-#   ifdef CLICK_BSDMODULE /* XXX MARKO a race occured here when not spl'ed */
-	while (n->_next != NULL && n != _thread && !PASS_GT(n->_pass, _pass))
-#   else
-	while (n != _thread && !PASS_GT(n->_pass, _pass))
-#   endif
-	    n = n->_next;
-
-	// schedule before 'n'
-	_prev = n->_prev;
-	_next = n;
-	_prev->_next = this;
-	n->_prev = this;
-#  endif
-    }
-}
-# endif /* !HAVE_TASK_HEAP */
-
-inline void
-Task::fast_schedule()
-{
-    GIANT_REQUIRED;
-    assert(_tickets >= 1);
-    _pass = _thread->_pass;
-    fast_reschedule();
-}
-
-#else /* !HAVE_STRIDE_SCHED */
-
-inline void
-Task::fast_reschedule()
-{
-    assert(_thread);
-#if CLICK_LINUXMODULE
-    // tasks never run at interrupt time
-    assert(!in_interrupt());
-#endif
-#if CLICK_BSDMODULE
-    // assert(!intr_nesting_level);
-    GIANT_REQUIRED;
-#endif
-    if (!scheduled()) {
-	_prev = _thread->_prev;
-	_next = _thread;
-	_thread->_prev = this;
-	_thread->_next = this;
-    }
-}
-
-inline void
-Task::fast_schedule()
-{
-    fast_reschedule();
-}
-
 #endif /* HAVE_STRIDE_SCHED */
 
 
 inline void
+Task::fast_reschedule()
+{
+    _status.is_scheduled = true;
+}
+
+inline void
+Task::complete_schedule(unsigned new_pass)
+{
+    assert(_thread && !on_scheduled_list());
+#if CLICK_LINUXMODULE
+    // tasks never run at interrupt time in Linux
+    assert(!in_interrupt());
+#endif
+#if CLICK_BSDMODULE
+    GIANT_REQUIRED;
+#endif
+
+#if HAVE_STRIDE_SCHED
+    // update pass
+    _pass = new_pass;
+
+# if HAVE_TASK_HEAP
+    _schedpos = _thread->_task_heap.size();
+    _thread->_task_heap.push_back(RouterThread::task_heap_element());
+    _thread->task_reheapify_from(_schedpos, this);
+# elif 0
+    // look for 'n' immediately before where we should be scheduled
+    Task* n = _thread->_prev;
+    while (n != _thread && PASS_GT(n->_pass, _pass))
+	n = n->_prev;
+    // schedule after 'n'
+    _next = n->_next;
+    _prev = n;
+    n->_next = this;
+    _next->_prev = this;
+# else
+    // look for 'n' immediately after where we should be scheduled
+    Task* n = _thread->_next;
+    while (n != _thread && !PASS_GT(n->_pass, _pass))
+	n = n->_next;
+    // schedule before 'n'
+    _prev = n->_prev;
+    _next = n;
+    n->_prev = this;
+    _prev->_next = this;
+# endif
+
+#else /* !HAVE_STRIDE_SCHED */
+    (void) new_pass;
+
+    // schedule at the end of the list
+    _prev = _thread->_prev;
+    _next = _thread;
+    _thread->_prev = this;
+    _prev->_next = this;
+#endif /* HAVE_STRIDE_SCHED */
+}
+
+inline void
+Task::fast_schedule()
+{
+    if (!on_scheduled_list()) {
+#if HAVE_STRIDE_SCHED
+	assert(_tickets >= 1);
+	complete_schedule(_thread->pass() + _stride);
+#else
+	complete_schedule(0);
+#endif
+    }
+}
+
+inline void
 Task::reschedule()
 {
-    GIANT_REQUIRED;
-    if (!scheduled())
+    _status.is_scheduled = true;
+    if (!on_scheduled_list()
+	|| (likely(_thread) && !_thread->current_thread_is_running()))
 	true_reschedule();
 }
 
@@ -567,7 +589,7 @@ Task::reschedule()
  * This function is generally called by the RouterThread implementation; there
  * should be no need to call it yourself.
  */
-inline void
+inline bool
 Task::fire()
 {
 #if CLICK_STATS >= 2
@@ -576,22 +598,20 @@ Task::fire()
 #if HAVE_MULTITHREAD
     _cycle_runs++;
 #endif
+    bool work_done;
+    if (!_hook)
+	work_done = ((Element*)_thunk)->run_task(this);
+    else
+	work_done = _hook(this, _thunk);
 #if HAVE_ADAPTIVE_SCHEDULER
-    _runs++;
-    if (!_hook)
-	_work_done += ((Element*)_thunk)->run_task(this);
-    else
-	_work_done += _hook(this, _thunk);
-#else
-    if (!_hook)
-	(void) ((Element*)_thunk)->run_task(this);
-    else
-	(void) _hook(this, _thunk);
+    ++_runs;
+    _work_done += work_done;
 #endif
 #if CLICK_STATS >= 2
     ++_owner->_task_calls;
     _owner->_task_cycles += click_get_cycles() - start_cycles;
 #endif
+    return work_done;
 }
 
 #if HAVE_ADAPTIVE_SCHEDULER

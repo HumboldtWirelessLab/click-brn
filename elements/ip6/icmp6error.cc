@@ -21,7 +21,7 @@
 #include <clicknet/ip.h>
 #include "icmp6error.hh"
 #include <click/ip6address.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/packet_anno.hh>
@@ -39,13 +39,11 @@ ICMP6Error::~ICMP6Error()
 int
 ICMP6Error::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_kparse(conf, this, errh,
-		   "SRC", cpkP+cpkM, cpIP6Address, &_src_ip,
-		   "TYPE", cpkP+cpkM, cpInteger, &_type,
-		   "CODE", cpkP+cpkM, cpInteger, &_code,
-		   cpEnd) < 0)
-    return -1;
-  return 0;
+    return Args(conf, this, errh)
+	.read_mp("SRC", _src_ip)
+	.read_mp("TYPE", _type)
+	.read_mp("CODE", _code)
+	.complete();
 }
 
 bool
@@ -178,7 +176,7 @@ ICMP6Error::simple_action(Packet *p)
 
   //set ip6 header
   nip = (click_ip6 *) q->data();
-  nip->ip6_flow = 0;
+  nip->ip6_flow = 0;	/* must set first: overlaps vfc */
   nip->ip6_v = 6;
   nip->ip6_plen = htons(q->length()-40);
   nip->ip6_nxt = IP_PROTO_ICMP6;  /* next header */

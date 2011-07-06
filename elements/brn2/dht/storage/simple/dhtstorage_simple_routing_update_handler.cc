@@ -72,8 +72,13 @@ DHTStorageSimpleRoutingUpdateHandler::handle_notify_callback(int status)
 
 int DHTStorageSimpleRoutingUpdateHandler::initialize(ErrorHandler *)
 {
-  _dht_routing->add_notify_callback(notify_callback_func,(void*)this);
-  _move_data_timer.initialize(this);
+  if ( _dht_routing != NULL ) {
+    _dht_routing->add_notify_callback(notify_callback_func,(void*)this);
+    _move_data_timer.initialize(this);
+  } else {
+    BRN_INFO("No DHT-Routing.");
+  }
+
   return 0;
 }
 
@@ -123,6 +128,11 @@ DHTStorageSimpleRoutingUpdateHandler::handle_node_update()
   DHTnode *next;
   DHTMovedDataInfo *mdi;
   WritablePacket *data_p, *p;
+
+  if ( _dht_routing == NULL ) {
+    BRN_INFO("No DHT-Routing.");
+    return 0;
+  }
 
   for ( int i = 0; i < _db->size(); i++ ) {
     _row = _db->getRow(i);
@@ -179,6 +189,11 @@ DHTStorageSimpleRoutingUpdateHandler::get_move_info(EtherAddress *ea)
 void
 DHTStorageSimpleRoutingUpdateHandler::handle_moved_data(Packet *p)
 {
+  if ( _dht_routing == NULL ) {
+    BRN_INFO("No DHT-Routing.");
+    return;
+  }
+
   DHTnode *next;
 
   struct dht_simple_storage_data *dssd = DHTProtocolStorageSimple::get_data_packet_header(p); //points to header (moveid)
@@ -269,6 +284,11 @@ DHTStorageSimpleRoutingUpdateHandler::data_move_timer_hook(Timer *, void *f)
 void
 DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
 {
+  if ( _dht_routing == NULL ) {
+    BRN_INFO("No DHT-Routing.");
+    return;
+  }
+
   DHTMovedDataInfo *mdi;
   Timestamp now = Timestamp::now();
   BRNDB::DBrow *_row;

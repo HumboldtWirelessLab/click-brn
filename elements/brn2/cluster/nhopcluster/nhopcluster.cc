@@ -73,22 +73,22 @@ NHopCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+handler(void *element, EtherAddress *ea, char *buffer, int size, bool direction)
 {
   NHopCluster *dcl = (NHopCluster*)element;
 
   if ( direction )
     return dcl->lpSendHandler(buffer, size);
   else
-    return dcl->lpReceiveHandler(buffer, size);
+    return dcl->lpReceiveHandler(ea, buffer, size);
 }
 
 int
 NHopCluster::initialize(ErrorHandler *)
 {
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  click_srandom(_node_identity->getNodeID32());
 
-  _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
+  _cluster_head = ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
 
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &handler);
 
@@ -103,16 +103,16 @@ NHopCluster::lpSendHandler(char *buffer, int size)
 {
   struct nhopcluster_lp_info info;
 
-  if ( _cluster_head_selected ) {
-    _cluster_head.getInfo(&info);
-    return NHopClusterProtocol::pack_lp(&info, (uint8_t*)buffer, size);
+  if ( _cluster_head_selected ) {                                       //if clusterhead is valid (available), then
+    _cluster_head.getInfo(&info);                                       //put info of current clusterhead into struct
+    return NHopClusterProtocol::pack_lp(&info, (uint8_t*)buffer, size); //put struct into linkprobe
   }
 
   return -1;  //NO info. TODO: check linkstat for returning 0 instead of -1
 }
 
 int
-NHopCluster::lpReceiveHandler(char *buffer, int size)
+NHopCluster::lpReceiveHandler(EtherAddress *src, char *buffer, int size)
 {
   int len;
   struct nhopcluster_lp_info info;
@@ -125,6 +125,7 @@ NHopCluster::lpReceiveHandler(char *buffer, int size)
     } else {
       if ( info.hops < _max_distance ) {
         _cluster_head.setInfo(&info);
+        _cluster_head.setBestNextHop(src);
         _cluster_head._distance = info.hops + 1;
         _cluster_head_selected = true;
       }
@@ -153,7 +154,7 @@ NHopCluster::timer_hook()
       _nhop_timer.schedule_after_msec(5000);
       break;
     case NHOP_MODE_REQUEST:
-      _cluster_head = ClusterHead(_node_identity->getMasterAddress(), 0);
+      _cluster_head = ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
       _mode = NHOP_MODE_NOTIFY;
       _cluster_head_selected = true;
       send_notify();

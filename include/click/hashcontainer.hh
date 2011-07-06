@@ -14,6 +14,7 @@ template <typename T, typename A = HashContainer_adapter<T> > class HashContaine
 template <typename T, typename A = HashContainer_adapter<T> > class HashContainer_iterator;
 template <typename T, typename A = HashContainer_adapter<T> > class HashContainer;
 
+/** @cond never */
 template <typename T, typename A>
 class HashContainer_rep : public A {
     T **buckets;
@@ -24,6 +25,7 @@ class HashContainer_rep : public A {
     friend class HashContainer_const_iterator<T, A>;
     friend class HashContainer_iterator<T, A>;
 };
+/** @endcond */
 
 template <typename T>
 class HashContainer_adapter { public:
@@ -572,7 +574,7 @@ inline void HashContainer<T, A>::insert_at(iterator &it, T *element)
     click_hash_assert(it._hc == this && it._bucket < _rep.nbuckets);
     click_hash_assert(bucket(_rep.hashkey(element)) == it._bucket);
     ++_rep.size;
-    if (!(_rep.hashnext(element) = it._element))
+    if (!(_rep.hashnext(element) = *it._pprev))
 	_rep.first_bucket = 0;
     *it._pprev = element;
     it._pprev = &_rep.hashnext(element);

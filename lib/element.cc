@@ -5,7 +5,7 @@
  * statistics: Robert Morris
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
- * Copyright (c) 2004-2008 Regents of the University of California
+ * Copyright (c) 2004-2011 Regents of the University of California
  * Copyright (c) 2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,7 +25,7 @@
 #include <click/glue.hh>
 #include <click/element.hh>
 #include <click/bitvector.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/router.hh>
 #include <click/master.hh>
@@ -77,7 +77,7 @@ int Element::nelements_allocated = 0;
  *  modules (which we call <em>elements</em>).
  *
  *  Most documented Click classes can be found under the "Classes" tab.  Get
- *  started by looking at the Element class, or the confparse.hh header file
+ *  started by looking at the Element class, or the args.hh header file
  *  for configuration string parsing.
  *
  *  <a href='http://www.read.cs.ucla.edu/click/'>Main Click page</a>
@@ -434,9 +434,9 @@ Element::Element()
 Element::~Element()
 {
     nelements_allocated--;
-    if (_ports[0] < _inline_ports || _ports[0] >= _inline_ports + INLINE_PORTS)
+    if (_ports[0] < _inline_ports || _ports[0] > _inline_ports + INLINE_PORTS)
 	delete[] _ports[0];
-    if (_ports[1] < _inline_ports || _ports[1] >= _inline_ports + INLINE_PORTS)
+    if (_ports[1] < _inline_ports || _ports[1] > _inline_ports + INLINE_PORTS)
 	delete[] _ports[1];
 }
 
@@ -600,9 +600,9 @@ Element::set_nports(int new_ninputs, int new_noutputs)
 
     // decide if inputs & outputs were inlined
     bool old_in_inline =
-	(_ports[0] >= _inline_ports && _ports[0] < _inline_ports + INLINE_PORTS);
+	(_ports[0] >= _inline_ports && _ports[0] <= _inline_ports + INLINE_PORTS);
     bool old_out_inline =
-	(_ports[1] >= _inline_ports && _ports[1] < _inline_ports + INLINE_PORTS);
+	(_ports[1] >= _inline_ports && _ports[1] <= _inline_ports + INLINE_PORTS);
     bool prefer_pull = (processing() == PULL);
 
     // decide if inputs & outputs should be inlined
@@ -673,8 +673,8 @@ Element::set_nports(int new_ninputs, int new_noutputs)
  * Click extracts port count specifiers from the source for use by tools.  For
  * Click to find a port count specifier, the function definition must appear
  * inline, on a single line, inside the element class's declaration, and must
- * return a C string constant.  It should also have public accessibility.
- * Here's an acceptable port_count() definition:
+ * return a C string constant (or a name below).  It should also have public
+ * accessibility.  Here's an acceptable port_count() definition:
  *
  * @code
  * const char *port_count() const     { return "1/1"; }
@@ -1347,13 +1347,12 @@ Element::configure_phase() const
  * set_ninputs() or set_noutputs() function from configure(), then all push,
  * pull, and neighbor information is invalidated until initialize() time.
  *
- * @sa live_reconfigure, confparse.hh for useful parsing functions like
- * cp_va_kparse()
+ * @sa live_reconfigure, args.hh for argument parsing
  */
 int
 Element::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    return cp_va_kparse(conf, this, errh, cpEnd);
+    return Args(conf, this, errh).complete();
 }
 
 /** @brief Install the element's handlers.
@@ -2074,8 +2073,8 @@ write_task_tickets(const String &s, Element *e, void *thunk, ErrorHandler *errh)
 {
   Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
   int tix;
-  if (!cp_integer(s, &tix))
-    return errh->error("%<tickets%> takes an integer between 1 and %d", Task::MAX_TICKETS);
+  if (!IntArg().parse_saturating(s, tix))
+    return errh->error("syntax error");
   if (tix < 1) {
     errh->warning("tickets pinned at 1");
     tix = 1;
@@ -2095,12 +2094,30 @@ read_task_scheduled(Element *e, void *thunk)
 #if CLICK_DEBUG_SCHEDULING
     StringAccum sa;
     sa << task->scheduled();
-    if (!task->scheduled() && task->should_be_scheduled())
-	sa << " /* but pending */";
+    if (!task->on_scheduled_list() && task->scheduled()) {
+	sa << " /* not on list";
+	if (task->on_pending_list())
+	    sa << ", on pending";
+	sa << " */";
+    }
     return sa.take_string();
 #else
     return String(task->scheduled());
 #endif
+}
+
+static int
+write_task_scheduled(const String &str, Element *e, void *thunk, ErrorHandler *errh)
+{
+    Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
+    bool scheduled;
+    if (!BoolArg().parse(str, scheduled))
+	return errh->error("syntax error");
+    if (scheduled)
+	task->reschedule();
+    else
+	task->unschedule();
+    return 0;
 }
 
 #if CLICK_DEBUG_SCHEDULING
@@ -2126,7 +2143,7 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
     Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
     Master *m = task->master();
     int tid;
-    if (!cp_integer(str, &tid) || tid > m->nthreads())
+    if (!IntArg().parse(str, tid) || tid > m->nthreads())
 	return errh->error("bad thread");
     task->move_thread(tid);
     return 0;
@@ -2137,21 +2154,35 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
  *
  * @param task Task object
  * @param signal optional NotifierSignal object
+ * @param flags defines handlers to install
  * @param prefix prefix for each handler
  *
- * Adds a standard set of handlers for the task.  They are:
+ * Adds a standard set of handlers for the task.  They can include:
  *
  * @li A "scheduled" read handler, which returns @c true if the task is
  * scheduled and @c false if not.
+ * @li A "scheduled" write handler, which accepts a Boolean and unschedules
+ * or reschedules the task as appropriate.
  * @li A "tickets" read handler, which returns the task's tickets.
  * @li A "tickets" write handler to set the task's tickets.
  * @li A "home_thread" read handler, which returns the task's home thread ID.
+ * @li A "home_thread" write handler, which sets the task's home thread ID.
+ *
+ * The @a flags argument controls which handlers are installed.  By default,
+ * this is all but the the "scheduled" write handler.  Individual flags are:
+ *
+ * @li TASKHANDLER_WRITE_SCHEDULED: A "scheduled" write handler.
+ * @li TASKHANDLER_WRITE_TICKETS: A "tickets" write handler.
+ * @li TASKHANDLER_WRITE_HOME_THREAD: A "home_thread" write handler.
+ * @li TASKHANDLER_WRITE_ALL: All available write handlers.
+ * @li TASKHANDLER_DEFAULT: Equals TASKHANDLER_WRITE_TICKETS |
+ * TASKHANDLER_WRITE_HOME_THREAD.
  *
  * Depending on Click's configuration options, some of these handlers might
  * not be available.  If Click was configured with schedule debugging, the
  * "scheduled" read handler will additionally report whether an unscheduled
- * task is pending, and a "notifier" read handler will report the state of
- * the @a signal, if any.
+ * task is pending, and a "notifier" read handler will report the state of the
+ * @a signal, if any.
  *
  * Each handler name is prefixed with the @a prefix string, so an element with
  * multiple Task objects can register handlers for each of them.
@@ -2159,18 +2190,22 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
  * @sa add_read_handler, add_write_handler, set_handler
  */
 void
-Element::add_task_handlers(Task *task, NotifierSignal *signal, const String &prefix)
+Element::add_task_handlers(Task *task, NotifierSignal *signal, int flags, const String &prefix)
 {
     intptr_t task_offset = (uint8_t *)task - (uint8_t *)this;
     void *thunk = (void *)task_offset;
     add_read_handler(prefix + "scheduled", read_task_scheduled, thunk);
+    if (flags & TASKHANDLER_WRITE_SCHEDULED)
+	add_write_handler(prefix + "scheduled", write_task_scheduled, thunk);
 #if HAVE_STRIDE_SCHED
     add_read_handler(prefix + "tickets", read_task_tickets, thunk);
-    add_write_handler(prefix + "tickets", write_task_tickets, thunk);
+    if (flags & TASKHANDLER_WRITE_TICKETS)
+	add_write_handler(prefix + "tickets", write_task_tickets, thunk);
 #endif
 #if HAVE_MULTITHREAD
     add_read_handler(prefix + "home_thread", read_task_home_thread, thunk);
-    add_write_handler(prefix + "home_thread", write_task_home_thread, thunk);
+    if (flags & TASKHANDLER_WRITE_HOME_THREAD)
+	add_write_handler(prefix + "home_thread", write_task_home_thread, thunk);
 #endif
 #if CLICK_DEBUG_SCHEDULING
     if (signal) {
@@ -2190,7 +2225,7 @@ uint8_t_data_handler(int op, String &str, Element *element, const Handler *h, Er
     if (op == Handler::h_read) {
 	str = String((int) *ptr);
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 256) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 256) {
 	*ptr = x;
 	return 0;
     } else
@@ -2202,9 +2237,9 @@ bool_data_handler(int op, String &str, Element *element, const Handler *h, Error
 {
     bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
     if (op == Handler::h_read) {
-	str = cp_unparse_bool(*ptr);
+	str = String(*ptr);
 	return 0;
-    } else if (cp_bool(str, ptr))
+    } else if (BoolArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected boolean");
@@ -2218,7 +2253,7 @@ uint16_t_data_handler(int op, String &str, Element *element, const Handler *h, E
     if (op == Handler::h_read) {
 	str = String((int) *ptr);
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 65536) {
 	*ptr = x;
 	return 0;
     } else
@@ -2233,7 +2268,7 @@ uint16_t_net_data_handler(int op, String &str, Element *element, const Handler *
     if (op == Handler::h_read) {
 	str = String((int) ntohs(*ptr));
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 65536) {
 	*ptr = htons(x);
 	return 0;
     } else
@@ -2248,7 +2283,7 @@ uint32_t_net_data_handler(int op, String &str, Element *element, const Handler *
     if (op == Handler::h_read) {
 	str = String(ntohl(*ptr));
 	return 0;
-    } else if (cp_integer(str, &x)) {
+    } else if (IntArg().parse(str, x)) {
 	*ptr = htonl(x);
 	return 0;
     } else
@@ -2262,7 +2297,7 @@ integer_data_handler(int op, String &str, Element *element, const Handler *h, Er
     if (op == Handler::h_read) {
 	str = String(*ptr);
 	return 0;
-    } else if (cp_integer(str, ptr))
+    } else if (IntArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected integer");
@@ -2276,7 +2311,7 @@ atomic_uint32_t_data_handler(int op, String &str, Element *element, const Handle
     if (op == Handler::h_read) {
 	str = String(ptr->value());
 	return 0;
-    } else if (cp_integer(str, &value)) {
+    } else if (IntArg().parse(str, value)) {
 	*ptr = value;
 	return 0;
     } else
@@ -2291,7 +2326,7 @@ double_data_handler(int op, String &str, Element *element, const Handler *h, Err
     if (op == Handler::h_read) {
 	str = String(*ptr);
 	return 0;
-    } else if (cp_double(str, ptr))
+    } else if (DoubleArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected real number");
@@ -2316,7 +2351,7 @@ ip_address_data_handler(int op, String &str, Element *element, const Handler *h,
     if (op == Handler::h_read) {
 	str = ptr->unparse();
 	return 0;
-    } if (cp_ip_address(str, ptr, element))
+    } if (IPAddressArg().parse(str, *ptr, element))
 	return 0;
     else
 	return errh->error("expected IP address");
@@ -2348,6 +2383,19 @@ timestamp_data_handler(int op, String &str, Element *element, const Handler *h, 
 	return errh->error("expected timestamp");
 }
 
+static int
+interval_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
+{
+    Timestamp *ptr = reinterpret_cast<Timestamp *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = ptr->unparse_interval();
+	return 0;
+    } else if (cp_time(str, ptr, true))
+	return 0;
+    else
+	return errh->error("expected time in seconds");
+}
+
 inline void
 Element::add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data)
 {
@@ -2367,8 +2415,8 @@ Element::add_data_handlers(const String &name, int flags, HandlerCallback callba
  * Handler::h_write), registers a write handler.  These handlers read or set
  * the data stored at @a *data, which might, for example, be an element
  * instance variable.  This data is unparsed and/or parsed using the expected
- * functions; for example, the <tt>bool</tt> version uses cp_unparse_bool()
- * and cp_bool().
+ * functions; for example, the <tt>bool</tt> version uses BoolArg::unparse()
+ * and BoolArg::parse().
  *
  * Overloaded versions of this function are available for many fundamental
  * data types.
@@ -2453,18 +2501,6 @@ Element::add_data_handlers(const String &name, int flags, double *data)
 }
 #endif
 
-/** @brief Register read and/or write handlers accessing @a data.
- *
- * This function's read handler returns *@a data unchanged, and its write
- * handler sets *@a data to the input string as received, without unquoting or
- * removing leading and trailing whitespace.
- */
-void
-Element::add_data_handlers(const String &name, int flags, String *data)
-{
-    add_data_handlers(name, flags, string_data_handler, data);
-}
-
 /** @overload */
 void
 Element::add_data_handlers(const String &name, int flags, IPAddress *data)
@@ -2479,11 +2515,29 @@ Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
     add_data_handlers(name, flags, ether_address_data_handler, data);
 }
 
-/** @overload */
+/** @brief Register read and/or write handlers accessing @a data.
+ *
+ * This function's read handler returns *@a data unchanged, and its write
+ * handler sets *@a data to the input string as received, without unquoting or
+ * removing leading and trailing whitespace.
+ */
 void
-Element::add_data_handlers(const String &name, int flags, Timestamp *data)
+Element::add_data_handlers(const String &name, int flags, String *data)
 {
-    add_data_handlers(name, flags, timestamp_data_handler, data);
+    add_data_handlers(name, flags, string_data_handler, data);
+}
+
+/** @brief Register read and/or write handlers accessing @a data.
+ * @param is_interval If true, the read handler unparses *@a data as an
+ *   interval. */
+void
+Element::add_data_handlers(const String &name, int flags, Timestamp *data,
+			   bool is_interval)
+{
+    if (is_interval)
+	add_data_handlers(name, flags, interval_data_handler, data);
+    else
+	add_data_handlers(name, flags, timestamp_data_handler, data);
 }
 
 /** @brief Register read and/or write handlers accessing @a data in network
@@ -2526,23 +2580,25 @@ configuration_handler(int operation, String &str, Element *e,
 	keyword += 2;
     }
 
-    int gotit = 0;
+    bool found = false, found_positional = false;
     String value, rest;
     if (keyword)
-	gotit = cp_va_kparse_remove_keywords(conf, e, errh, keyword, 0, cpArgument, &value, cpEnd);
-    if (gotit == 0 && argno >= 0 && conf.size() > argno
+	(void) Args(e, errh).bind(conf)
+	    .read(keyword, AnyArg(), value).read_status(found)
+	    .consume();
+    if (!found && argno >= 0 && conf.size() > argno
 	&& (!keyword || !cp_keyword(conf[argno], &value, &rest) || !rest))
-	gotit = 2;
+	found = found_positional = true;
 
     if (operation == Handler::h_read) {
-	if (gotit == 1)
-	    str = value;
-	else if (gotit == 2)
+	if (found_positional)
 	    str = conf[argno];
+	else if (found)
+	    str = value;
 	else
 	    str = String();
-    } else if (keyword || gotit == 2) {
-	if (gotit == 2)
+    } else if (keyword || found_positional) {
+	if (found_positional)
 	    conf[argno] = str;
 	else
 	    conf.push_back(String(keyword) + " " + str);
@@ -2777,10 +2833,9 @@ Element::local_llrpc(unsigned command, void *data)
 void
 Element::push(int port, Packet *p)
 {
-    (void) port;
     p = simple_action(p);
     if (p)
-	output(0).push(p);
+	output(port).push(p);
 }
 
 /** @brief Pull a packet from pull output @a port.
@@ -2798,8 +2853,7 @@ Element::push(int port, Packet *p)
 Packet *
 Element::pull(int port)
 {
-    (void) port;
-    Packet *p = input(0).pull();
+    Packet *p = input(port).pull();
     if (p)
 	p = simple_action(p);
     return p;
@@ -2843,6 +2897,11 @@ Element::pull(int port)
  * a processing() code like AGNOSTIC or "a/ah", and a flow_code() like
  * COMPLETE_FLOW or "x/x" indicating that packets can flow between the first
  * input and the first output.
+ *
+ * Most elements that use simple_action() have exactly one input and one
+ * output.  However, simple_action() may be used for any number of inputs and
+ * outputs; a packet arriving on input port P will be emitted or output port
+ * P.
  *
  * For technical branch prediction-related reasons, elements that use
  * simple_action() can perform quite a bit slower than elements that use

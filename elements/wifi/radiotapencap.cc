@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "radiotapencap.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -60,13 +60,8 @@ RadiotapEncap::~RadiotapEncap()
 int
 RadiotapEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
-  _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   cpEnd) < 0)
-    return -1;
-  return 0;
+    _debug = false;
+    return Args(conf, this, errh).read("DEBUG", _debug).complete();
 }
 
 Packet *
@@ -127,7 +122,7 @@ RadiotapEncap_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
