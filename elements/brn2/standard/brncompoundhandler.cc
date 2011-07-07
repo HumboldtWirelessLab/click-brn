@@ -36,13 +36,26 @@
 CLICK_DECLS
 
 BrnCompoundHandler::BrnCompoundHandler():
-  _update_mode(UPDATEMODE_SEND_ALL)
+  _update_mode(UPDATEMODE_SEND_ALL),
+  _record_mode(RECORDMODE_LAST_ONLY),
+  _record_samples(10),
+  _sample_time(1000),
+  _record_timer(this)
 {
   BRNElement::init();
 }
 
 BrnCompoundHandler::~BrnCompoundHandler()
 {
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    HandlerRecord *hr = iter.value();
+    delete hr;
+  }
+  _record_handler.clear();
+  _last_handler_value.clear();
+  _vec_elements.clear();
+  _vec_elements_handlers.clear();
+  _vec_handlers.clear();
 }
 
 int
@@ -54,6 +67,9 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
                     "CLASSESHANDLER", cpkP, cpString, &_classes_handler,
                     "CLASSESVALUE", cpkP, cpString, &_classes_value,
                     "UPDATEMODE", cpkP, cpInteger, &_update_mode,
+                    "RECORDMODE", cpkP, cpInteger, &_record_mode,
+                    "RECORDSAMPLES", cpkP, cpInteger, &_record_samples,
+                    "SAMPLETIME", cpkP, cpInteger, &_sample_time,
                     "DEBUG", cpkP, cpInteger, &_debug,
                     cpEnd) < 0)
       return -1;
@@ -74,50 +90,80 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   Vector<String> vecClasses;
   cp_spacevec( _classes, vecClasses );
 
-  if ( 0 >= vecClasses.size() ) return 0;
+  if ( vecClasses.size() != 0 ) {
 
-  // Collect handlers from elements with appropriate class names in a vector
-  Vector<Element*> vecElements = router()->elements();
-  for (int j = 0; j < vecClasses.size(); j++ ) {
+    // Collect handlers from elements with appropriate class names in a vector
+    Vector<Element*> vecElements = router()->elements();
+    for (int j = 0; j < vecClasses.size(); j++ ) {
 
-    bool bFound = false;
-    BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
+      bool bFound = false;
+      BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
 
-    for (int i = 0; i < vecElements.size(); i++) {
-      Element* pElement = vecElements[i];
-      BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
+      for (int i = 0; i < vecElements.size(); i++) {
+        Element* pElement = vecElements[i];
+        BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
 
-      if ( String(pElement->class_name()) == vecClasses[j]
-          || router()->ename(pElement->eindex()) == vecClasses[j] )
-      {
-        BRN_DEBUG(" * BrnCompoundHandler: processing handler %s on element %s. %s\n",
-                  _classes_handler.c_str(), router()->ename(pElement->eindex()).c_str(),
-                  pElement->declaration().c_str() );
+        if ( String(pElement->class_name()) == vecClasses[j]
+            || router()->ename(pElement->eindex()) == vecClasses[j] )
+        {
+          BRN_DEBUG(" * BrnCompoundHandler: processing handler %s on element %s. %s\n",
+                    _classes_handler.c_str(), router()->ename(pElement->eindex()).c_str(),
+                    pElement->declaration().c_str() );
 
-        const Handler* pHandler = Router::handler( pElement, _classes_handler );
-        if ( NULL == pHandler || false == pHandler->writable() ) {
-          return errh->error("Element class %s has no write handler %s.\n",
-                             pElement->class_name(), _classes_handler.c_str() );
+          const Handler* pHandler = Router::handler( pElement, _classes_handler );
+          if ( NULL == pHandler || false == pHandler->writable() ) {
+            return errh->error("Element class %s has no write handler %s.\n",
+                                pElement->class_name(), _classes_handler.c_str() );
+          }
+
+          _vec_elements.push_back( pElement );
+          _vec_elements_handlers.push_back( pHandler );
+          _vec_handlers.push_back( router()->ename(pElement->eindex()) + "." + _classes_handler);
+
+          bFound = true;
         }
+      }
 
-        _vec_elements.push_back( pElement );
-        _vec_elements_handlers.push_back( pHandler );
-        _vec_handlers.push_back( router()->ename(pElement->eindex()) + "." + _classes_handler);
-        bFound = true;
+      if ( false == bFound ) {
+        return errh->error("Handler item %s could no be resolved.\n", vecClasses[j].c_str() );
       }
     }
 
-    if ( false == bFound ) {
-      return errh->error("Handler item %s could no be resolved.\n", vecClasses[j].c_str() );
+    // Set default value
+    if((0 < _classes_value.length()) && (_vec_elements.size() > 0 )) {
+      set_value( _classes_value, errh );
     }
   }
 
-  // Set default value
-  if((0 < _classes_value.length()) && (_vec_elements.size() > 0 )) {
-    set_value( _classes_value, errh );
+  for (int j = 0; j < _vec_handlers.size(); j++ ) {
+    _record_handler.insert( _vec_handlers[j], new HandlerRecord(_record_samples, 0));
+  }
+
+  _record_timer.initialize(this);
+  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+    _record_timer.schedule_after_msec(_sample_time);
   }
 
   return 0;
+}
+
+void
+BrnCompoundHandler::run_timer(Timer *)
+{
+  Timestamp now = Timestamp::now();
+  String new_value;
+
+  for ( int j = 0; j < _vec_handlers.size(); j++) {
+    new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                              ErrorHandler::default_handler());
+    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
+
+    hr->insert(now,new_value);
+  }
+
+  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+    _record_timer.schedule_after_msec(_sample_time);
+  }
 }
 
 void
@@ -145,27 +191,66 @@ BrnCompoundHandler::read_handler()
 {
   StringAccum sa;
 
-  sa << "<compoundhandler>\n";
-  for ( int j = 0; j < _vec_handlers.size(); j++) {
-    if ( _update_mode == UPDATEMODE_SEND_ALL ) {
-      sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-      sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                          ErrorHandler::default_handler()).c_str();
-    } else if ( _update_mode == UPDATEMODE_SEND_INFO ) {
-      String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                                                  ErrorHandler::default_handler());
+  sa << "<compoundhandler time=\"" << Timestamp::now().unparse().c_str() << "\" recordmode=\"" << _record_mode << "\" updatemode=\"" << _update_mode << "\" >\n";
 
-      String *last_value = _last_handler_value.findp(_vec_handlers[j]);
-      sa << "\t<handler name=\"" << _vec_handlers[j];
-      if ( (last_value != NULL) && (*last_value == new_value)) {
-         sa << " \" update=\"false\" >\n";
-      } else {
-        _last_handler_value.insert(_vec_handlers[j],new_value);
-        sa << " \" update=\"true\" >\n";
-        sa << new_value.c_str();
+  if ( _record_mode == RECORDMODE_LAST_ONLY ) {
+    for ( int j = 0; j < _vec_handlers.size(); j++) {
+      if ( _update_mode == UPDATEMODE_SEND_ALL ) {
+        sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
+        sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                            ErrorHandler::default_handler()).c_str();
+      } else if ( _update_mode == UPDATEMODE_SEND_INFO ) {
+        String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                                                    ErrorHandler::default_handler());
+
+        String *last_value = _last_handler_value.findp(_vec_handlers[j]);
+        sa << "\t<handler name=\"" << _vec_handlers[j];
+        if ( (last_value != NULL) && (*last_value == new_value)) {
+          sa << " \" update=\"false\" >\n";
+        } else {
+          _last_handler_value.insert(_vec_handlers[j],new_value);
+          sa << " \" update=\"true\" >\n";
+          sa << new_value.c_str();
+        }
       }
     }
-    sa << "\t</handler>\n";
+  } else { // show samples
+    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+      String handler = iter.key();
+      HandlerRecord *hr = iter.value();
+      sa << "\t<handler name=\"" << handler.c_str();
+      if ( hr == NULL ) {
+        BRN_ERROR("No handler rec");
+        sa << "\" error=\"true\" >\n\t</handler>\n";
+      } else {
+        sa << "\" count_records=\"" << hr->count_records();
+        sa << "\" count_read=\"" << hr->_rec_index << "\" overflow=\"" << hr->overflow() << "\" >\n";
+        int rec_count = hr->count_records();
+
+        String *last_value = hr->get_record_i(0);
+        for ( int i = 0; i < rec_count; i++) {
+          sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse() << "\" update=\"";
+          if ( _update_mode == UPDATEMODE_SEND_INFO ) {
+            if (i == 0) {
+              sa << "true\" >\n" << last_value->c_str();
+            } else {
+              String *current_value = hr->get_record_i(i);
+              if ( *last_value == *current_value ) {
+                sa << "false\" >\n";
+              } else {
+                sa << "true\" >\n" << current_value->c_str();
+                last_value = current_value;
+              }
+            }
+          } else {
+            sa << "true\" >\n" << hr->get_record_i(i)->c_str();
+          }
+          sa << "\t\t</record>\n";
+        }
+        sa << "\t</handler>\n";
+        hr->clear();
+      }
+    }
   }
   sa << "</compoundhandler>\n";
 

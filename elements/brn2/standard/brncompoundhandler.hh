@@ -33,16 +33,82 @@ CLICK_DECLS
 #define UPDATEMODE_SEND_INFO 1
 #define UPDATEMODE_SEND_DIFF 2
 
+#define RECORDMODE_LAST_ONLY  0
+#define RECORDMODE_LAST_SAMP  1
+
 class BrnCompoundHandler : public BRNElement
 {
+ public:
+
+  class HandlerRecord {
+
+   public:
+    int _rec_max;
+    int _rec_index;
+    int _interval;
+
+    Timestamp *_rec_times;
+    String *_rec;
+
+    HandlerRecord(): _rec_times(NULL), _rec(NULL) {
+    }
+
+    HandlerRecord(int max_records, int interval): _rec_times(NULL), _rec(NULL) {
+      _rec_max = max_records;
+      _rec_index = 0;
+      _interval = interval;
+      _rec = new String[_rec_max];
+      _rec_times = new Timestamp[_rec_max];
+   }
+
+    ~HandlerRecord() {
+      if ( _rec != NULL ) delete[] _rec;
+      if ( _rec_times != NULL ) delete[] _rec_times;
+
+      _rec = NULL;
+      _rec_times = NULL;
+    }
+
+    void insert(const Timestamp& now, const String& value) {
+      int index = _rec_index % _rec_max;
+      _rec[index] = value;
+      _rec_times[index] = now;
+      _rec_index++;
+    }
+
+    bool overflow() {
+      return _rec_index > _rec_max;
+    }
+
+    void clear() {
+      _rec_index = 0;
+    }
+
+    int count_records() {
+      return (_rec_index>=_rec_max)?_rec_max:_rec_index;
+    }
+
+    String *get_record_i(int i) {
+      return &(_rec[(_rec_index>=_rec_max)?((i+_rec_index)%_rec_max):i]);
+    }
+
+    Timestamp *get_timestamp_i(int i) {
+      return &(_rec_times[(_rec_index>=_rec_max)?((i+_rec_index)%_rec_max):i]);
+    }
+  };
+
+  typedef HashMap<String,HandlerRecord *> HandlerRecordMap;
+  typedef HandlerRecordMap::const_iterator HandlerRecordMapIter;
+
  public:
   BrnCompoundHandler();
   virtual ~BrnCompoundHandler();
 
- public:
-  const char *class_name() const  { return "BrnCompoundHandler"; }
+ const char *class_name() const  { return "BrnCompoundHandler"; }
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
+  void run_timer(Timer *);
+
   void add_handlers();
 
   void set_value( const String& value, ErrorHandler *errh );
@@ -62,9 +128,14 @@ class BrnCompoundHandler : public BRNElement
   Vector<Element*> _vec_elements;
   Vector<const Handler*> _vec_elements_handlers;
 
-
   int _update_mode;
   HashMap<String,String> _last_handler_value;
+
+  HandlerRecordMap _record_handler;
+  int _record_mode;
+  int _record_samples;
+  int _sample_time;
+  Timer _record_timer;
 };
 
 CLICK_ENDDECLS
