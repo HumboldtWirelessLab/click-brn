@@ -21,6 +21,7 @@ BRN2NodeIdentity::BRN2NodeIdentity()
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
 {
+  _node_devices.clear();
 }
 
 int

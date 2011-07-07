@@ -37,11 +37,11 @@
 CLICK_DECLS
 
 DCluster::DCluster()
-  : _cluster_head(NULL),
-    _max_no_min_rounds(1),
+  : _max_no_min_rounds(1),
     _max_no_max_rounds(1),
     _ac_min_round(0),
     _ac_max_round(0),
+    _cluster_head(NULL),
     _delay(0)
 {
   Clustering::init();

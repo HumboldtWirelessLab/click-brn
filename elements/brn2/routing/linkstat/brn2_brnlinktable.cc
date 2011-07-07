@@ -62,6 +62,11 @@ Brn2LinkTable::~Brn2LinkTable()
   }
 
   BRN_DEBUG(" * Linktable at shutdown: %s", print_links().c_str());
+
+  _links.clear();
+  _hosts.clear();
+  last_route.clear();
+  _blacklist.clear();
 }
 
 int

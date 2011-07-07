@@ -64,6 +64,11 @@ BRN2LinkStat::~BRN2LinkStat()
   if (_timer)
     delete _timer;
   _timer = NULL;
+
+  _bcast_stats.clear();
+  _neighbors.clear();
+  _ads_rs.clear();
+  _bad_table.clear();
 }
 
 int

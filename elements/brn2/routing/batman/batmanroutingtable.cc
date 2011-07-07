@@ -40,6 +40,8 @@ BatmanRoutingTable::BatmanRoutingTable()
 
 BatmanRoutingTable::~BatmanRoutingTable()
 {
+  click_chatter("Dest");
+  _nodemap.clear();
 }
 
 int

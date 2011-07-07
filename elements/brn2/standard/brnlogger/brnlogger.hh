@@ -170,6 +170,15 @@ protected:
   static int   _buffer_len;
   static HashMap<void*,String>* _id_map;
   static String* _s_na;
+
+public:
+
+  static void destroy() {
+    if ( _id_map != NULL ) {
+      delete _id_map;
+      _id_map = NULL;
+    }
+  }
 };
 
 inline BrnLogger::BrnLogger(
