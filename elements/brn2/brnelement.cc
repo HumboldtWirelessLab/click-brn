@@ -27,20 +27,29 @@
 CLICK_DECLS
 
 PacketPool *BRNElement::_packet_pool = NULL;
+int BRNElement::_ref_counter = 0;
 
 BRNElement::BRNElement() :
   _debug(BrnLogger::DEFAULT)
 {
   if ( _packet_pool == NULL ) {
+    _ref_counter = 1;
     _packet_pool = new PacketPool(PACKET_POOL_CAPACITY, PACKET_POOL_SIZE_STEPS, PACKET_POOL_MIN_SIZE, PACKET_POOL_MAX_SIZE, DEFAULT_HEADROOM, DEFAULT_TAILROOM);
+  } else {
+    _ref_counter++;
   }
 }
 
 BRNElement::~BRNElement()
 {
-  if ( _packet_pool ) {
-    delete _packet_pool;
-    _packet_pool = NULL;
+  _ref_counter--;
+  if ( _ref_counter == 0 ) {
+    if ( _packet_pool ) {
+      delete _packet_pool;
+      _packet_pool = NULL;
+    }
+
+    BrnLogger::destroy();
   }
 }
 

@@ -47,6 +47,7 @@ class BRNElement : public Element {
   int _debug;
 
   static PacketPool *_packet_pool;
+  static int _ref_counter;
 
   void packet_kill(Packet *p);
   WritablePacket *packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom);
