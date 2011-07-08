@@ -18,6 +18,7 @@ CLICK_DECLS
 OpenBeaconTests::OpenBeaconTests()
   :_debug(BrnLogger::DEFAULT)
 {
+	
 }
 
 OpenBeaconTests::~OpenBeaconTests()
