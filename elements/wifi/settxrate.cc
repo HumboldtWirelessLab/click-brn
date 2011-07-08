@@ -57,7 +57,8 @@ SetTXRate::configure(Vector<String> &conf, ErrorHandler *errh)
   if (_tries < 1) {
 	  return errh->error("TRIES must be >= 0");
   }
-  
+
+
   return 0;
 }
 
