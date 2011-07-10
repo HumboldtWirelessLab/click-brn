@@ -16533,141 +16533,7 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 	fi
-	{ echo "$as_me:$LINENO: checking whether pcap_inject is declared" >&5
-echo $ECHO_N "checking whether pcap_inject is declared... $ECHO_C" >&6; }
-if test "${ac_cv_have_decl_pcap_inject+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <pcap.h>
-
-int
-main ()
-{
-#ifndef pcap_inject
-  (void) pcap_inject;
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_cxx_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_have_decl_pcap_inject=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_have_decl_pcap_inject=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_pcap_inject" >&5
-echo "${ECHO_T}$ac_cv_have_decl_pcap_inject" >&6; }
-if test $ac_cv_have_decl_pcap_inject = yes; then
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_PCAP_INJECT 1
-_ACEOF
-
-
-else
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_PCAP_INJECT 0
-_ACEOF
-
-
-fi
-{ echo "$as_me:$LINENO: checking whether pcap_sendpacket is declared" >&5
-echo $ECHO_N "checking whether pcap_sendpacket is declared... $ECHO_C" >&6; }
-if test "${ac_cv_have_decl_pcap_sendpacket+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-#include <pcap.h>
-
-int
-main ()
-{
-#ifndef pcap_sendpacket
-  (void) pcap_sendpacket;
-#endif
-
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext
-if { (ac_try="$ac_compile"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_compile") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_cxx_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest.$ac_objext; then
-  ac_cv_have_decl_pcap_sendpacket=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_have_decl_pcap_sendpacket=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_have_decl_pcap_sendpacket" >&5
-echo "${ECHO_T}$ac_cv_have_decl_pcap_sendpacket" >&6; }
-if test $ac_cv_have_decl_pcap_sendpacket = yes; then
-
-cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_PCAP_SENDPACKET 1
-_ACEOF
-
-
-else
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_DECL_PCAP_SENDPACKET 0
-_ACEOF
-
-
-fi
-{ echo "$as_me:$LINENO: checking whether pcap_setnonblock is declared" >&5
+	{ echo "$as_me:$LINENO: checking whether pcap_setnonblock is declared" >&5
 echo $ECHO_N "checking whether pcap_setnonblock is declared... $ECHO_C" >&6; }
 if test "${ac_cv_have_decl_pcap_setnonblock+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
@@ -16963,7 +16829,8 @@ _ACEOF
 
 
 
-for ac_func in pcap_inject pcap_sendpacket pcap_setnonblock
+
+for ac_func in pcap_inject pcap_sendpacket pcap_setdirection pcap_setnonblock
 do
 as_ac_var=`echo "ac_cv_func_$ac_func" | $as_tr_sh`
 { echo "$as_me:$LINENO: checking for $ac_func" >&5
