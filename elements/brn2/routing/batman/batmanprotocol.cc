@@ -150,6 +150,39 @@ BatmanProtocol::get_ether_header(Packet *p)
   return ( (struct click_ether *)&(p->data()[sizeof(struct batman_header) + sizeof(struct batman_routing)]));
 }
 
+/*********************************************************************************************/
+/************************************ R O U T I N G ******************************************/
+/*********************************************************************************************/
+
+WritablePacket *
+BatmanProtocol::add_batman_error(Packet *p, uint8_t code, EtherAddress *src)
+{
+  WritablePacket *q;
+  struct batman_routing_error *bre;
+
+  if ( (q = p->push(sizeof(struct batman_routing_error))) != NULL ) {
+    bre = (struct batman_routing_error *)q->data();
+    bre->error_code = code;
+    bre->packet_info = BATMAN_ERROR_PACKET_FULL;
+    memcpy(bre->error_src, src->data(), 6);
+    return q;
+  }
+
+  return NULL;
+}
+
+struct batman_routing_error *
+BatmanProtocol::get_batman_error(Packet *p)
+{
+  return ( (struct batman_routing_error *)&(p->data()[sizeof(struct batman_header)]));
+}
+
+void
+BatmanProtocol::pull_batman_error(Packet *p)
+{
+  p->pull(sizeof(struct batman_header) + sizeof(struct batman_routing) + sizeof(struct batman_routing_error));
+}
+
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BatmanProtocol)
 

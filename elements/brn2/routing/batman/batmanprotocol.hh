@@ -36,13 +36,23 @@ struct batman_routing {
   uint16_t id;
 } __attribute__ ((packed));
 
+struct batman_routing_error {
+  uint8_t error_code;
+  uint8_t packet_info;
+  uint8_t error_src[6];
+} __attribute__ ((packed));
+
 /********************** Originator *****************************************************
 | WIFIHEADER | BRNHEADER | BATMANHEADER | BATMANORIGINATOR | BATMANNODES | BATMANNO... |
 ***************************************************************************************/
 
-/************************ Routing ****************************************
+/************************ Routing ***************************************
 | WIFIHEADER | BRNHEADER | BATMANHEADER | BATMANROUTING | ETHERNETFRAME |
 *************************************************************************/
+
+/************************ Routing Error ******************************************************
+| WIFIHEADER | BRNHEADER | BATMANHEADER | BATMANROUTINGERROR | BATMANROUTING | ETHERNETFRAME |
+*********************************************************************************************/
 
 /***** TYPE ******/
 #define BATMAN_UNKNOWN         0
@@ -54,6 +64,17 @@ struct batman_routing {
 #define BATMAN_ORIGINATOR_FWD_MODE            1
 #define BATMAN_ORIGINATOR_FWD_MODE_SINGLE_HOP 1
 #define BATMAN_ORIGINATOR_FWD_MODE_FULL_PATH  0
+
+/*********** ERROR CODES ********/
+#define BATMAN_ERROR_CODE_TTL_EXPIRED      1 << 0
+#define BATMAN_ERROR_CODE_UNKNOWN_DST      1 << 1
+#define BATMAN_ERROR_CODE_LOOP_DETECTED    1 << 2
+
+/*********** PACKET INFO ********/
+#define BATMAN_ERROR_PACKET_MODE            3
+#define BATMAN_ERROR_PACKET_FULL            0
+#define BATMAN_ERROR_PACKET_HEADER          1
+#define BATMAN_ERROR_PACKET_NONE            2
 
 /**
  TODO: check type and header while getting wanted header
@@ -90,6 +111,11 @@ class BatmanProtocol : public Element { public:
   static void pull_batman_routing_header(Packet *p);
 
   static struct click_ether *get_ether_header(Packet *p);
+
+  /* Error */
+  static WritablePacket *add_batman_error(Packet *p, uint8_t code, EtherAddress *src);
+  static struct batman_routing_error *get_batman_error(Packet *p);
+  static void pull_batman_error(Packet *p);
 
 };
 

@@ -40,7 +40,7 @@ BatmanRoutingTable::BatmanRoutingTable()
 
 BatmanRoutingTable::~BatmanRoutingTable()
 {
-  click_chatter("Dest");
+  BRN_DEBUG("Destructor");
   _nodemap.clear();
 }
 
