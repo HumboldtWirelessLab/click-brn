@@ -16825,6 +16825,7 @@ _ACEOF
 
 
 	saveflags="$LDFLAGS"
+	LIBS="$LIBS $PCAP_LIBS"
 	LDFLAGS="$saveflags $PCAP_LIBS"
 
 
