@@ -43,10 +43,8 @@ OpenBeaconDecap::simple_action(Packet *p)
 	WritablePacket *wp;
 	click_wifi_extra *ceh = NULL;
 	
-	for(i=0; i<(int)sizeof( crh->openbeacon_dmac ); i--) {
-		e_dhost[ i ] = 0;
-		e_shost[ i ] = 0;
-	}
+	memcpy( e_dhost, "\0\0\0\0\0\0" ,6 );
+	memcpy( e_shost, "\0\0\0\0\0\0" ,6 );
 	
 	for(i=1; i>=0; i--) {
 		e_dhost[ 5-i ] = crh->openbeacon_smac[ i ];
@@ -56,13 +54,13 @@ OpenBeaconDecap::simple_action(Packet *p)
 	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel, length=crh->length;
 	
 	// trim das packet noch ;-)
-	p->pull( sizeof(Click2OBD_header)-13 );
+	p->pull( sizeof(Click2OBD_header)-12 );
 	wp = (WritablePacket *)p;
 		
 	p->set_mac_header( p->data(), 14);
         for(i=0; i<6; i++) {
-		wp->data()[i]     = e_dhost[i];
-		wp->data()[i+6] = e_shost[i];
+		wp->data()[i]     = e_dhost[ i ] ;
+		wp->data()[i+6] = e_shost[ i ] ;
 	}
 	
 	ceh = WIFI_EXTRA_ANNO(p);
