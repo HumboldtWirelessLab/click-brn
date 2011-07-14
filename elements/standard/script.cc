@@ -167,8 +167,6 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	.consume() < 0)
 	return -1;
 
-    int before = errh->nerrors();
-
     String type_word = cp_shift_spacevec(type_arg);
     if (type_word == "ACTIVE" && !type_arg)
 	_type = type_active;
@@ -308,7 +306,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	add_insn(INSN_WAIT_STEP, 1, 0);
     add_insn(_type == type_driver ? insn_stop : insn_end, 0);
 
-    return (errh->nerrors() == before ? 0 : -1);
+    return errh->nerrors() ? -1 : 0;
 }
 
 int
@@ -669,6 +667,8 @@ Script::Expander::expand(const String &vname, String &out, int vartype, int) con
     if (vname.length() == 1 && vname[0] == '$') {
 #if CLICK_USERLEVEL
 	out = String(getpid());
+#elif CLICK_BSDMODULE
+	out = String(curproc->p_pid);
 #else
 	out = String(current->pid);
 #endif

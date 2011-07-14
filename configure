@@ -1360,6 +1360,7 @@ Optional Features:
                               between Click and the kernel (EXPERIMENTAL)
     --disable-linux-symbols   do not export Click symbols (breaks packages)
   --enable-bsdmodule      enable FreeBSD kernel driver (EXPERIMENTAL)
+    --disable-netisr          disable NETISR scheduling in BSD
   --enable-nsclick        enable NS simulator driver (EXPERIMENTAL)
   --enable-jistclick        enable JiST/SWANS simulator driver (EXPERIMENTAL)
   --enable-all-elements   include all provided element groups
@@ -6030,6 +6031,21 @@ else
 fi
 
 
+# Check whether --enable-netisr was given.
+if test "${enable_netisr+set}" = set; then
+  enableval=$enable_netisr; :
+else
+  enable_netisr=yes
+fi
+
+if test $enable_netisr = yes; then
+    cat >>confdefs.h <<\_ACEOF
+#define BSD_NETISRSCHED 1
+_ACEOF
+
+fi
+
+
 
 # Check whether --enable-nsclick was given.
 if test "${enable_nsclick+set}" = set; then
@@ -9754,7 +9770,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 9757 "configure"
+#line 9773 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -15668,7 +15684,7 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 #include <sys/param.h>
-#if __FreeBSD_version < 500000
+#if __FreeBSD_version < 700000
 #include <NONEXISTENT_FILE>
 #endif
 int
@@ -15722,13 +15738,13 @@ _ACEOF
 	{ echo "$as_me:$LINENO: WARNING:
 =========================================
 
-Your version of FreeBSD is old.  Click works with FreeBSD 5.x and later.
+Your version of FreeBSD is old.  Click works with FreeBSD 7.x and later.
 
 =========================================" >&5
 echo "$as_me: WARNING:
 =========================================
 
-Your version of FreeBSD is old.  Click works with FreeBSD 5.x and later.
+Your version of FreeBSD is old.  Click works with FreeBSD 7.x and later.
 
 =========================================" >&2;}
     fi

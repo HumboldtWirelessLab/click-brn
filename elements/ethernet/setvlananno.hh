@@ -6,7 +6,7 @@ CLICK_DECLS
 /*
 =c
 
-SetVlanAnno(VLAN [, VLAN_PCP])
+SetVLANAnno(VLAN_TCI [, VLAN_PCP])
 
 =s ethernet
 
@@ -14,14 +14,17 @@ sets VLAN annotation
 
 =d
 
-Sets passing packets' VLAN annotations to the configured values.  VLAN must be
-between 0 and 0xFFE.  VLAN_PCP defaults to 0, and must be between 0 and 7.
+Sets passing packets' VLAN_TCI annotations to the configured values.  Set the
+annotation using VLAN_TCI (the whole annotation), or VLAN_ID and VLAN_PCP
+(setting the ID and Priority Code Point components, respectively).
 
-Return or set the ETHERTYPE parameter.
+=h vlan_tci read/write
 
-=h vlan read/write
+Return or set the VLAN_TCI parameter.
 
-Return or set the VLAN parameter.
+=h vlan_id read/write
+
+Return or set the VLAN_ID parameter.
 
 =h vlan_pcp read/write
 
@@ -29,14 +32,14 @@ Return or set the VLAN_PCP parameter.
 
 =a
 
-EtherVlanEncap */
+EtherVLANEncap */
 
-class SetVlanAnno : public Element { public:
+class SetVLANAnno : public Element { public:
 
-    SetVlanAnno();
-    ~SetVlanAnno();
+    SetVLANAnno();
+    ~SetVLANAnno();
 
-    const char *class_name() const	{ return "SetVlanAnno"; }
+    const char *class_name() const	{ return "SetVLANAnno"; }
     const char *port_count() const	{ return PORTS_1_1; }
 
     int configure(Vector<String> &conf, ErrorHandler *errh);
@@ -49,7 +52,7 @@ class SetVlanAnno : public Element { public:
 
     uint16_t _vlan_tci;
 
-    enum { h_vlan, h_vlan_pcp };
+    enum { h_config, h_vlan_tci };
     static String read_handler(Element *e, void *user_data);
 
 };
