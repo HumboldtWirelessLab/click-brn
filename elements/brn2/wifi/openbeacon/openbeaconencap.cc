@@ -67,7 +67,11 @@ OpenBeaconEncap::simple_action(Packet *p)
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
-  crh->rate 	= ceh->rate;
+  if ( crh->rate == 0 ) {
+    crh->rate = 0;
+  } else {
+    crh->rate = (ceh->rate/2);
+  }
   
   for(i=1; i>=0; i--) {
 	  crh->openbeacon_smac[ i ] =   e_dhost[ 5-i ];  // ok
