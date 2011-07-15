@@ -155,10 +155,12 @@ BrnCompoundHandler::run_timer(Timer *)
 
   for ( int j = 0; j < _vec_handlers.size(); j++) {
     new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                              ErrorHandler::default_handler());
+                                       ErrorHandler::default_handler());
+
     HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
 
     hr->insert(now,new_value);
+
   }
 
   if ( _record_mode == RECORDMODE_LAST_SAMP ) {
@@ -185,6 +187,9 @@ BrnCompoundHandler::set_value( const String& value, ErrorHandler *errh )
     pHandler->call_write( _classes_value, pElement, &cerrh );
   }
 }
+
+/* TODO: leerer record wegnehemn */
+
 
 String
 BrnCompoundHandler::read_handler()
@@ -291,6 +296,7 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
         if ( i == _vec_handlers.size() ) {
           BRN_DEBUG("Didn't found handler %s. Insert.",in_s.c_str());
           _vec_handlers.push_back(in_s);
+          _record_handler.insert( in_s, new HandlerRecord(_record_samples, 0));
         }
         break;
       }
@@ -298,6 +304,7 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
       {
         for( int i = 0; i < _vec_handlers.size(); i++ ) {
           if ( in_s == _vec_handlers[i] ) {
+            _record_handler.erase(in_s);
             _vec_handlers.erase(_vec_handlers.begin() + i);
             break;
           }
