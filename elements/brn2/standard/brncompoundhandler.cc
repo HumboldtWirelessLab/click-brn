@@ -232,20 +232,20 @@ BrnCompoundHandler::read_handler()
           sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse() << "\" update=\"";
           if ( _update_mode == UPDATEMODE_SEND_INFO ) {
             if (i == 0) {
-              sa << "true\" >\n" << last_value->c_str();
+              sa << "true\" >\n\t<![CDATA[" << last_value->c_str();
             } else {
               String *current_value = hr->get_record_i(i);
               if ( *last_value == *current_value ) {
                 sa << "false\" >\n";
               } else {
-                sa << "true\" >\n" << current_value->c_str();
+                sa << "true\" >\n\t<![CDATA[" << current_value->c_str();
                 last_value = current_value;
               }
             }
           } else {
-            sa << "true\" >\n" << hr->get_record_i(i)->c_str();
+            sa << "true\" >\n\t<![CDATA[" << hr->get_record_i(i)->c_str();
           }
-          sa << "\t\t</record>\n";
+          sa << "]]>\n\t\t</record>\n";
         }
         sa << "\t</handler>\n";
         hr->clear();
