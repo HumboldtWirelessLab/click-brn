@@ -204,20 +204,23 @@ BrnCompoundHandler::read_handler()
         sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
         sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
                                             ErrorHandler::default_handler()).c_str();
-      } else if ( _update_mode == UPDATEMODE_SEND_INFO ) {
+        sa << "\t";
+      } else if (( _update_mode == UPDATEMODE_SEND_INFO ) ||
+                 ( _update_mode == UPDATEMODE_SEND_UPDATE_ONLY )) {
         String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
                                                                     ErrorHandler::default_handler());
 
         String *last_value = _last_handler_value.findp(_vec_handlers[j]);
         sa << "\t<handler name=\"" << _vec_handlers[j];
         if ( (last_value != NULL) && (*last_value == new_value)) {
-          sa << " \" update=\"false\" >\n";
+          sa << " \" update=\"false\" >";
         } else {
           _last_handler_value.insert(_vec_handlers[j],new_value);
           sa << " \" update=\"true\" >\n";
-          sa << new_value.c_str();
+          sa << new_value.c_str() << "\t";
         }
       }
+      sa << "</handler>\n";
     }
   } else { // show samples
     for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
@@ -234,23 +237,23 @@ BrnCompoundHandler::read_handler()
 
         String *last_value = hr->get_record_i(0);
         for ( int i = 0; i < rec_count; i++) {
-          sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse() << "\" update=\"";
-          if ( _update_mode == UPDATEMODE_SEND_INFO ) {
-            if (i == 0) {
-              sa << "true\" >\n\t<![CDATA[" << last_value->c_str();
+          if ( (_update_mode == UPDATEMODE_SEND_INFO) || (_update_mode == UPDATEMODE_SEND_UPDATE_ONLY) ) {
+            String *current_value = hr->get_record_i(i);
+            if ( (i == 0) || (*last_value != *current_value) ) {
+              sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse() << "\" update=\"";
+              sa << "true\" >\n\t\t\t<![CDATA[" << current_value->c_str();
+              last_value = current_value;
+              sa << "]]>\n\t\t</record>\n";
             } else {
-              String *current_value = hr->get_record_i(i);
-              if ( *last_value == *current_value ) {
-                sa << "false\" >\n\t<![CDATA[";
-              } else {
-                sa << "true\" >\n\t<![CDATA[" << current_value->c_str();
-                last_value = current_value;
+              if (_update_mode == UPDATEMODE_SEND_INFO) {
+                sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse();
+                sa << "\" update=\"false\" ><![CDATA[]]></record>\n";
               }
             }
           } else {
-            sa << "true\" >\n\t<![CDATA[" << hr->get_record_i(i)->c_str();
+            sa << "\t\t<record time=\"" << hr->get_timestamp_i(i)->unparse() << "\" update=\"true\" >\n\t\t\t<![CDATA[";
+            sa << hr->get_record_i(i)->c_str() << "]]>\n\t\t</record>\n";
           }
-          sa << "]]>\n\t\t</record>\n";
         }
         sa << "\t</handler>\n";
         hr->clear();
