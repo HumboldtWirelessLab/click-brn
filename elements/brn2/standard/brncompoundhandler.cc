@@ -236,7 +236,7 @@ BrnCompoundHandler::read_handler()
             } else {
               String *current_value = hr->get_record_i(i);
               if ( *last_value == *current_value ) {
-                sa << "false\" >\n";
+                sa << "false\" >\n\t<![CDATA[";
               } else {
                 sa << "true\" >\n\t<![CDATA[" << current_value->c_str();
                 last_value = current_value;
