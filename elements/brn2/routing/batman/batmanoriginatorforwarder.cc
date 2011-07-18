@@ -52,7 +52,8 @@ BatmanOriginatorForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEID", cpkP+cpkM , cpElement, &_nodeid,
-      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
+      "BATMANTABLE", cpkP+cpkM, cpElement, &_brt,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -82,24 +83,16 @@ void
 BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
 {
   BRN_DEBUG("Push");
-  EtherAddress last_hop;
-  EtherAddress src;
 
-  uint8_t devId;
+  struct batman_header *bh = BatmanProtocol::get_batman_header(packet);
+  struct batman_originator *bo = BatmanProtocol::get_batman_originator(packet);
 
-  struct batman_header *bh;
-  struct batman_originator *bo;
-
-  bh = BatmanProtocol::get_batman_header(packet);
-  bo = BatmanProtocol::get_batman_originator(packet);
-
-  last_hop = BRNPacketAnno::src_ether_anno(packet);
-  devId = BRNPacketAnno::devicenumber_anno(packet);
+  EtherAddress src = BRNPacketAnno::src_ether_anno(packet);
+  uint8_t devId = BRNPacketAnno::devicenumber_anno(packet);
   BRN2Device *dev = _nodeid->getDeviceByIndex(devId);
 
-  src = last_hop;
 
-  BRN_DEBUG("Got originator from %s",src.unparse().c_str());
+  BRN_DEBUG("Got originator from %s. Device: %s",src.unparse().c_str(),(*(dev->getEtherAddress())).unparse().c_str() );
 
   if ( src == EtherAddress(dev->getEtherAddress()->data())) {
     BRN_DEBUG("It's me. Killing.");
@@ -107,22 +100,32 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
     return;
   }
 
+  if ( bh->hops == 0 ) { //neighgour
+    Timestamp now = Timestamp::now();
+    BatmanNeighbourInfo *bni = _neighbour_map.find(src);
+    if ( bni == NULL ) {
+      _neighbour_map.insert(src,new BatmanNeighbourInfo(100, 2000));
+      bni = _neighbour_map.find(src);
+    }
+    bni->add_originator(ntohl(bo->id), &now);
+  }
+
   uint32_t metric_src_to_me = _brt->get_link_metric(src,*(dev->getEtherAddress()));
   BRN_DEBUG("Metric: originatorsrc <-> me : %d", metric_src_to_me);
+
   _brt->update_originator(src, src, ntohl(bo->id), 1, 0, metric_src_to_me);
 
-
   uint32_t cnt_bn = BatmanProtocol::count_batman_nodes(packet);
-
   BRN_DEBUG("Found %d nodes in Originator-Message",cnt_bn);
-  for( uint32_t bn_i = 0; bn_i < cnt_bn; bn_i++ ) {
-    EtherAddress src_ea;
-    struct batman_node *bn = BatmanProtocol::get_batman_node(packet, bn_i);
-    BRN_DEBUG("Node: %s ID: %d Hops: %d Metric: %d",
-              EtherAddress(bn->src).unparse().c_str(), ntohl(bn->id), bn->hops + 1, ntohs(bn->metric));
-    src_ea = EtherAddress(bn->src);
 
-    if ( ! _nodeid->isIdentical(&src_ea) ) {
+  for( uint32_t bn_i = 0; bn_i < cnt_bn; bn_i++ ) {
+    struct batman_node *bn = BatmanProtocol::get_batman_node(packet, bn_i);
+    EtherAddress src_ea = EtherAddress(bn->src);
+
+    BRN_DEBUG("Node: %s ID: %d Hops: %d Metric: %d",
+              src_ea.unparse().c_str(), ntohl(bn->id), bn->hops + 1, ntohs(bn->metric));
+
+    if ( ! _nodeid->isIdentical(&src_ea) ) { //don't update myself
       _brt->update_originator(src_ea, src, ntohl(bn->id), bn->hops + 1, ntohs(bn->metric), metric_src_to_me);
     }
   }
@@ -143,14 +146,58 @@ BatmanOriginatorForwarder::push( int/*port*/, Packet *packet )
   }
 }
 
+String
+BatmanOriginatorForwarder::print_links()
+{
+  StringAccum sa;
+
+  sa << "<links node=\"" << _nodeid->getMasterAddress()->unparse() << "\" >\n";
+
+  Timestamp now = Timestamp::now();
+
+  for (BatmanNeighbourInfoMapIter i = _neighbour_map.begin(); i.live(); i++) {
+    BatmanNeighbourInfo *bni = _neighbour_map.find(i.key());
+    uint32_t psr = (uint32_t)(bni->get_fwd_psr(100000,now));
+    if ( psr > 0 ) {
+      sa << "\t<node addr=\"" << i.key().unparse() << "\" fwd=\"" << psr << "\" />\n";
+    }
+  }
+
+  sa << "</links>\n";
+
+  return sa.take_string();
+}
+
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
+
+enum {
+  H_LINKS
+};
+
+static String
+read_param(Element *e, void *thunk)
+{
+  BatmanOriginatorForwarder *bof = (BatmanOriginatorForwarder *)e;
+
+  switch ((uintptr_t) thunk)
+  {
+    case H_LINKS:
+      return ( bof->print_links() );
+  }
+
+  return String();
+}
+
 
 void
 BatmanOriginatorForwarder::add_handlers()
 {
   BRNElement::add_handlers();
+
+  add_read_handler("links", read_param, H_LINKS);
 }
 
 CLICK_ENDDECLS

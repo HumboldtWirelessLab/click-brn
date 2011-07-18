@@ -33,7 +33,8 @@
 
 CLICK_DECLS
 
-BatmanRoutingTable::BatmanRoutingTable()
+BatmanRoutingTable::BatmanRoutingTable():
+  _originator_mode(BATMAN_ORIGINATORMODE_COMPRESSED)
 {
   BRNElement::init();
 }
@@ -52,6 +53,7 @@ BatmanRoutingTable::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEID", cpkP+cpkM , cpElement, &_nodeid,
       "LINKTABLE", cpkP+cpkM , cpElement, &_linktable,
+      "ORIGINATORMODE", cpkP+cpkM , cpInteger, &_originator_mode,
       "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
     return -1;

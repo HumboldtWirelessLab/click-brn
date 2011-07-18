@@ -13,6 +13,9 @@
 
 CLICK_DECLS
 
+#define BATMAN_ORIGINATORMODE_FWD        0
+#define BATMAN_ORIGINATORMODE_COMPRESSED 1
+
 class BatmanRoutingTable : public BRNElement {
 
  Timestamp now;
@@ -256,6 +259,8 @@ class BatmanRoutingTable : public BRNElement {
   uint32_t get_link_metric(EtherAddress from, EtherAddress to) {
     return _linktable->get_link_metric( from, to);
   }
+
+  uint32_t _originator_mode;
 };
 
 CLICK_ENDDECLS

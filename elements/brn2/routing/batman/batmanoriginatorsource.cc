@@ -94,35 +94,39 @@ BatmanOriginatorSource::sendOriginator()
 {
   _id++;
 
+  BatmanRoutingTable::BatmanNodePList bnl;
   BRN2Device *dev = _nodeid->getDeviceByIndex(0);
-
   int num_neighbours = 0;
 
-  /*Version b*/
-  BatmanRoutingTable::BatmanNodePList bnl;
-  _brt->get_nodes_to_be_forwarded(_id, &bnl);
-  num_neighbours = bnl.size();
-  /*end version b*/
+  if ( _brt->_originator_mode == BATMAN_ORIGINATORMODE_COMPRESSED ) {
+    /*Compressed Version*/
+    _brt->get_nodes_to_be_forwarded(_id, &bnl);
+    num_neighbours = bnl.size();
+    /*End Compressed Version*/
+  }
 
   WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, num_neighbours);
 
-  /*Version b*/
-  struct batman_node s_bn;
-  for ( int i = 0; i < bnl.size(); i++ ) {
-    BatmanRoutingTable::BatmanNode *bn = bnl[i];
+  if ( _brt->_originator_mode == BATMAN_ORIGINATORMODE_COMPRESSED ) {
+    /*Compressed Version*/
+    struct batman_node s_bn;
+    for ( int i = 0; i < bnl.size(); i++ ) {
+      BatmanRoutingTable::BatmanNode *bn = bnl[i];
 
-    s_bn.id = htonl(bn->_latest_originator_id);
-    s_bn.metric = htons(bn->_best_metric);
-    s_bn.flags = 0;
-    s_bn.hops = bn->_hops_best_metric;
-    memcpy(s_bn.src, bn->_addr.data(), 6);
+      s_bn.id = htonl(bn->_latest_originator_id);
+      s_bn.metric = htons(bn->_best_metric);
+      s_bn.flags = 0;
+      s_bn.hops = bn->_hops_best_metric;
+      memcpy(s_bn.src, bn->_addr.data(), 6);
 
-    BatmanProtocol::add_batman_node(p, &s_bn, i);
-    bn->forward_node(_id);
+      BatmanProtocol::add_batman_node(p, &s_bn, i);
+      bn->forward_node(_id);
+    }
+    /*End Compressed Version*/
   }
-  /*end version b*/
 
-  WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN, BATMAN_MAX_ORIGINATOR_HOPS, DEFAULT_TOS);
+  WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN,
+                                                         BATMAN_MAX_ORIGINATOR_HOPS, DEFAULT_TOS);
 
   BRNPacketAnno::set_ether_anno(p_brn, dev->getEtherAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
