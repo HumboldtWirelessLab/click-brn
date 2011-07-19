@@ -90,7 +90,7 @@ static int rt_check_header(struct ieee80211_radiotap_header *th, int len)
 		return 0;
 	}
 
-	if (le16_to_cpu(th->it_len) > len) {
+	if (le16_to_cpu(th->it_len) > (uint32_t)len) {
 		return 0;
 	}
 
