@@ -117,6 +117,8 @@ class BrnCompoundHandler : public BRNElement
   String handler();
   int handler_operation(const String &in_s, void *vparam, ErrorHandler *errh);
 
+  void reset();
+
  private:
 
   String _handler;

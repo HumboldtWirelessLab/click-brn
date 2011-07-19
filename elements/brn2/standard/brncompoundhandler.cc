@@ -265,6 +265,14 @@ BrnCompoundHandler::read_handler()
   return sa.take_string();
 }
 
+void
+BrnCompoundHandler::reset()
+{
+  for( int i = 0; i < _vec_handlers.size(); i++ )  _record_handler.erase(_vec_handlers[i]);
+
+  _vec_handlers.clear();
+}
+
 String
 BrnCompoundHandler::handler()
 {
@@ -280,27 +288,42 @@ BrnCompoundHandler::handler()
 }
 
 
-enum { H_HANDLER_INSERT, H_HANDLER_REMOVE};
+enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET};
 
 int
-BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler */*errh*/)
+BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler *errh)
 {
   switch((intptr_t)vparam) {
     case H_HANDLER_INSERT:
       {
-        BRN_DEBUG("Search handler %s to avoid dups",in_s.c_str());
-        int i = 0;
-        for( ; i < _vec_handlers.size(); i++ ) {
-          if ( in_s == _vec_handlers[i]) {
-            BRN_DEBUG("Found handler %s: index %d (%s).",in_s.c_str(),i,_vec_handlers[i].c_str());
-            break;
+        BRN_DEBUG("New handler %s",in_s.c_str());
+        String s = cp_uncomment(in_s);
+        Vector<String> args;
+        cp_spacevec(s, args);
+
+        for ( int args_i = 0 ; args_i < args.size(); args_i++ ) {
+          BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
+          int i = 0;
+          for( ; i < _vec_handlers.size(); i++ ) {
+            if ( args[args_i] == _vec_handlers[i]) {
+              BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
+              break;
+            }
+          }
+          if ( i == _vec_handlers.size() ) {
+            BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
+            _vec_handlers.push_back(args[args_i]);
+            _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, 0));
           }
         }
-        if ( i == _vec_handlers.size() ) {
-          BRN_DEBUG("Didn't found handler %s. Insert.",in_s.c_str());
-          _vec_handlers.push_back(in_s);
-          _record_handler.insert( in_s, new HandlerRecord(_record_samples, 0));
-        }
+        break;
+      }
+    case H_HANDLER_SET:
+      {
+        BRN_DEBUG("Reset");
+        reset();
+        BRN_DEBUG("Set");
+        handler_operation(in_s, (void*)H_HANDLER_INSERT, errh);
         break;
       }
     case H_HANDLER_REMOVE:
@@ -313,6 +336,11 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
           }
         }
         break;
+      }
+    case H_HANDLER_RESET:
+      {
+        BRN_DEBUG("Reset");
+        reset();
       }
     default: {}
   }
@@ -373,7 +401,9 @@ BrnCompoundHandler::add_handlers()
 
   add_read_handler( "handler", BrnCompoundHandler_handler, 0);
   add_write_handler( "insert", BrnCompoundHandler_handler_operation, H_HANDLER_INSERT);
+  add_write_handler( "set", BrnCompoundHandler_handler_operation, H_HANDLER_SET);
   add_write_handler( "remove", BrnCompoundHandler_handler_operation, H_HANDLER_REMOVE);
+  add_write_handler( "reset", BrnCompoundHandler_handler_operation, H_HANDLER_RESET);
 }
 
 CLICK_ENDDECLS
