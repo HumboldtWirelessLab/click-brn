@@ -177,6 +177,7 @@ class ChannelStats : public BRNElement {
       uint32_t _rssi;
       uint32_t _sum_sq_rssi;
       uint32_t _pkt_count;
+      uint32_t _byte_count;
 
       uint32_t _avg_rssi;
       uint32_t _std_rssi;
@@ -198,7 +199,7 @@ class ChannelStats : public BRNElement {
       int32_t _avg_ctl_rssi[3];
       int32_t _avg_ext_rssi[3];
 
-      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0),
+      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0),
                  _min_rssi(1000), _max_rssi(0), _calc_finished(false),
                  _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
       {  //TODO: better start value for min_rssi (replace 1000)
@@ -206,9 +207,10 @@ class ChannelStats : public BRNElement {
         memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
       }
 
-      SrcInfo(uint32_t rssi): _rssi(0), _sum_sq_rssi(0), _pkt_count(0),
-                              _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
-                              _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
+      SrcInfo(uint32_t rssi, uint32_t packet_size):
+          _rssi(0), _sum_sq_rssi(0), _pkt_count(1), _byte_count(packet_size),
+          _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
+          _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
       {
         if ( rssi != 0 ) {
           _rssi = rssi;
@@ -217,13 +219,12 @@ class ChannelStats : public BRNElement {
 
         _min_rssi = _max_rssi = rssi;
         _rssi_hist[_rssi_hist_index++] = rssi;
-        _pkt_count = 1;
 
         memset(_avg_ctl_rssi,0, sizeof(_avg_ctl_rssi));
         memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
       }
 
-     void add_rssi(uint32_t rssi) {
+     void add_packet_info(uint16_t rssi, uint16_t packet_size) {
        if ( rssi > 0 ) {
          _rssi += rssi;
          _sum_sq_rssi += rssi * rssi;
@@ -241,7 +242,7 @@ class ChannelStats : public BRNElement {
        }
 
        _pkt_count++;
-
+       _byte_count += packet_size;
      }
 
      void add_ctl_ext_rssi(struct brn_click_wifi_extra_rx_status *rx_status) {
