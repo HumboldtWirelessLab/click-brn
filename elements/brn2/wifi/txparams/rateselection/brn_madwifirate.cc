@@ -85,6 +85,8 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 
   bool enough = (nfo->_successes + nfo->_failures) > 10;
 
+  if ( enough )
+    BRN_DEBUG("Enough data");
   /* all packets need retry in average */
   if (enough && nfo->_successes < nfo->_retries)
     stepdown = true;
@@ -95,6 +97,7 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
     stepup = true;
 
   if (stepdown) {
+    BRN_DEBUG("StepDown");
     if ( WIFI_MAX(nfo->_current_index - 1, 0) != nfo->_current_index) {
       BRN_DEBUG("stepping down for %s from %d to %d\n",
                    nri->_eth.unparse().c_str(), nri->_rates[nfo->_current_index].get_rate(),
@@ -103,6 +106,7 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
     nfo->_current_index = WIFI_MAX(nfo->_current_index - 1, 0);
     nfo->_credits = 0;
   } else if (stepup) {
+    BRN_DEBUG("StepUp");
     nfo->_credits++;
     if (nfo->_credits >= CREDITS_FOR_RAISE) {
       BRN_DEBUG("steping up for %s from %d to %d\n",
@@ -112,6 +116,7 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
       nfo->_credits = 0;
     }
   } else {
+    BRN_DEBUG("Stay");
     if (enough && nfo->_credits > 0) {
       nfo->_credits--;
     }

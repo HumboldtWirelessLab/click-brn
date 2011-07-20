@@ -155,7 +155,6 @@ SimDevice::sim_packet_transmission(Packet *p)
 
   for ( int r_i = 0; r_i < 4; r_i++ ) {
     for ( int i = 0; i < (int)tries_field[r_i]; i++ ) {
-      tries++;
       if ( BrnWifi::getMCS(ceh,0) == 1) {
         BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, rates_field[r_i]);
         rate = BrnWifi::getMCSRate(rate_index, rate_bw, rate_sgi);
@@ -191,6 +190,7 @@ SimDevice::sim_packet_transmission(Packet *p)
           return p;
         }
       }
+      tries++;
     }
   }
 
