@@ -272,7 +272,7 @@ ChannelStats::push(int port, Packet *p)
       new_pi->_rate = ceh->rate;
     }
 
-    if ( ceh->rate != 0 ) {
+    if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
 
       uint32_t duration;
 
@@ -799,9 +799,9 @@ ChannelStats::stats_handler(int mode)
       sa << "\" phy_err_pkt=\"" << stats->phy_packets << "\" unknown_err_pkt=\"" << stats->unknown_err_packets;
       sa << "\" tx_pkt=\"" << stats->txpackets;
       sa << "\" rx_unicast_pkt=\"" << stats->rx_ucast_packets << "\" rx_retry_pkt=\"" << stats->rx_retry_packets;
-      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets << " \" rx_bytes=\"" << stats->rx_bytes;
+      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets << "\" rx_bytes=\"" << stats->rx_bytes;
       sa << "\" tx_unicast_pkt=\"" << stats->tx_ucast_packets << "\" tx_retry_pkt=\"" << stats->tx_retry_packets;
-      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets << " \" tx_bytes=\"" << stats->tx_bytes;
+      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets << "\" tx_bytes=\"" << stats->tx_bytes;
       sa << "\" zero_err_pkt=\"" << stats->zero_rate_packets;
       sa << "\" last_packet_time=\"" << stats->last.unparse();
       sa << "\" no_src=\"" << stats->no_sources << "\" />\n";
