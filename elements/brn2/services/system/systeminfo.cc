@@ -190,7 +190,12 @@ read_handler(Element *e, void *thunk)
 
   //click_chatter(" * %s, %s\n", first_col[0].c_str(), second_col[0].c_str());
 
-  sa << "\t<cpu_usage real=\"" << cpu / ACCURACY_FACTOR << "." << cpu % ACCURACY_FACTOR;
+  sa << "\t<cpu_usage real=\"" << cpu / ACCURACY_FACTOR;
+  cpu %= ACCURACY_FACTOR;
+  if ( cpu < 10 ) sa << ".0";
+  else sa << ".";
+  sa << cpu;
+
   sa << "\" user=\"" << ucpu / ACCURACY_FACTOR;
   ucpu %= ACCURACY_FACTOR;
   if ( ucpu < 10 ) sa << ".0";

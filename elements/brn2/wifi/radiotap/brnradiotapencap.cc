@@ -106,13 +106,9 @@ BrnRadiotapEncap::simple_action(Packet *p)
     p->kill();
     return 0;
   }
-  //uint32_t allign (4 Byte)
-#warning TODO Check fix for 64Bit
-#if HAVE_INT64_TYPES
-  uint32_t pad = (uint32_t)(((uint64_t)p_out->data() + sizeof(struct click_radiotap_header)) & 3);
-#else
-  uint32_t pad = ((uint32_t)p_out->data() + sizeof(struct click_radiotap_header)) & (uint32_t)3;
-#endif
+  //uint32_t align (4 Byte)
+  uint32_t pad = (uint32_t)(((size_t)p_out->data() + sizeof(struct click_radiotap_header)) & 3);
+
   if (pad) pad = 4 - pad;
   p_out = p_out->push(sizeof(struct click_radiotap_header) + pad);
 
