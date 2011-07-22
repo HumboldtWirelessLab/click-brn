@@ -272,7 +272,7 @@ ChannelStats::push(int port, Packet *p)
       new_pi->_rate = ceh->rate;
     }
 
-    if ( ceh->rate != 0 ) {
+    if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
 
       uint32_t duration;
 
@@ -362,14 +362,16 @@ ChannelStats::push(int port, Packet *p)
           if ( state == STATE_OK ) {
             SrcInfo *src_info;
             if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {
-              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi));
+              //inser new ( rssi value is set via constructor)
+              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p->length() + 4)); 
               src_info = _small_stats_src_tab[_current_small_stats].findp(src);
             } else {
-              src_info->add_rssi(rssi);
+              src_info->add_packet_info(rssi,p->length() + 4);
             }
 
             if (BrnWifi::hasExtRxStatus(ceh))
-              src_info->add_ctl_ext_rssi((struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p));
+              src_info->add_ctl_ext_rssi((struct brn_click_wifi_extra_rx_status *)
+                                          BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p));
           }
         }
       }
@@ -580,9 +582,9 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
           if ( src_tab != NULL ) {
             SrcInfo *src_i;
             if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
-              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi));
+              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi,(uint32_t)pi->_length));
             } else {
-              src_i->add_rssi((uint32_t)pi->_rssi);
+              src_i->add_packet_info((uint32_t)pi->_rssi,(uint32_t)pi->_length);
             }
           }
         }
@@ -797,9 +799,9 @@ ChannelStats::stats_handler(int mode)
       sa << "\" phy_err_pkt=\"" << stats->phy_packets << "\" unknown_err_pkt=\"" << stats->unknown_err_packets;
       sa << "\" tx_pkt=\"" << stats->txpackets;
       sa << "\" rx_unicast_pkt=\"" << stats->rx_ucast_packets << "\" rx_retry_pkt=\"" << stats->rx_retry_packets;
-      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets << " \" rx_bytes=\"" << stats->rx_bytes;
+      sa << "\" rx_bcast_pkt=\"" << stats->rx_bcast_packets << "\" rx_bytes=\"" << stats->rx_bytes;
       sa << "\" tx_unicast_pkt=\"" << stats->tx_ucast_packets << "\" tx_retry_pkt=\"" << stats->tx_retry_packets;
-      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets << " \" tx_bytes=\"" << stats->tx_bytes;
+      sa << "\" tx_bcast_pkt=\"" << stats->tx_bcast_packets << "\" tx_bytes=\"" << stats->tx_bytes;
       sa << "\" zero_err_pkt=\"" << stats->zero_rate_packets;
       sa << "\" last_packet_time=\"" << stats->last.unparse();
       sa << "\" no_src=\"" << stats->no_sources << "\" />\n";
@@ -833,7 +835,7 @@ ChannelStats::stats_handler(int mode)
         EtherAddress ea = iter.key();
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"";
         sa  << src._std_rssi << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
-        sa << "\" pkt_cnt=\"" << src._pkt_count << "\">\n";
+        sa << "\" pkt_cnt=\"" << src._pkt_count << "\" rx_bytes=\"" << src._byte_count << "\" >\n";
         sa << "\t\t\t<rssi_extended>\n\t\t\t\t<ctl rssi0=\"" << src._avg_ctl_rssi[0];
         sa << "\" rssi1=\"" << src._avg_ctl_rssi[1] << "\" rssi2=\"" << src._avg_ctl_rssi[2] << "\" />\n\t\t\t\t<ext rssi0=\"";
         sa << src._avg_ext_rssi[0] << "\" rssi1=\"" << src._avg_ext_rssi[1] << "\" rssi2=\"" << src._avg_ext_rssi[2] << "\" />\n";

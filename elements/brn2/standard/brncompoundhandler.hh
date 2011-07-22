@@ -29,9 +29,10 @@
 
 CLICK_DECLS
 
-#define UPDATEMODE_SEND_ALL  0
-#define UPDATEMODE_SEND_INFO 1
-#define UPDATEMODE_SEND_DIFF 2
+#define UPDATEMODE_SEND_ALL         0
+#define UPDATEMODE_SEND_INFO        1
+#define UPDATEMODE_SEND_UPDATE_ONLY 2
+#define UPDATEMODE_SEND_DIFF        3
 
 #define RECORDMODE_LAST_ONLY  0
 #define RECORDMODE_LAST_SAMP  1
@@ -115,6 +116,8 @@ class BrnCompoundHandler : public BRNElement
   String read_handler();
   String handler();
   int handler_operation(const String &in_s, void *vparam, ErrorHandler *errh);
+
+  void reset();
 
  private:
 

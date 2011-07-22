@@ -36,7 +36,9 @@
 
 CLICK_DECLS
 
-BatmanRouting::BatmanRouting()
+BatmanRouting::BatmanRouting():
+  _routeId(0),
+  _hop_margin(0)
 {
   BRNElement::init();
 }
@@ -51,6 +53,7 @@ BatmanRouting::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEID", cpkP+cpkM , cpElement, &_nodeid,
       "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
+      "HOPMARGIN", cpkP, cpInteger, &_hop_margin,
       cpEnd) < 0)
        return -1;
 
@@ -60,7 +63,6 @@ BatmanRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanRouting::initialize(ErrorHandler *)
 {
-  _routeId = 0;
   return 0;
 }
 
@@ -87,14 +89,14 @@ BatmanRouting::push( int /*port*/, Packet *packet )
   //BRN2Device *dev = _nodeid->getDeviceByIndex(bfe->_recvDeviceId);
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
- if ( ttl == 0 ) ttl = bfe->_hops + 3 /*HOP-MARGIN*/;  //TODO: Discard if ttl higher than expected hops ??
+  if ( ttl == 0 ) ttl = bfe->_hops + _hop_margin /*HOP-MARGIN*/;  //TODO: Discard if ttl higher than expected hops ??
 
   BRN_DEBUG("Start forward. Next hop: %s",bfe->_forwarder.unparse().c_str());
   //int int_ttl = ttl;
   //click_chatter("Wanted ttl: %d",int_ttl);
-  _routeId++;
+  if ( ++_routeId == 0 ) _routeId = 1;
   WritablePacket *batroutep = BatmanProtocol::add_batman_routing(packet, 0, _routeId );
-  WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, bfe->_hops + 10/*HOP-MARGIN*/);
+  WritablePacket *batp = BatmanProtocol::add_batman_header(batroutep, BATMAN_ROUTING_FORWARD, ttl );
 
   WritablePacket *brnrp = BRNProtocol::add_brn_header(batp, BRN_PORT_BATMAN, BRN_PORT_BATMAN, ttl, DEFAULT_TOS);
 

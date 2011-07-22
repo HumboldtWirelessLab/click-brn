@@ -59,7 +59,7 @@ BRN2EtherDecap::simple_action(Packet *p)
 
   p->set_ether_header(ether);
 
-  BRNPacketAnno::set_ether_anno(p, EtherAddress(ether->ether_shost), EtherAddress(ether->ether_dhost), ether->ether_type);
+  BRNPacketAnno::set_ether_anno(p, EtherAddress(ether->ether_shost), EtherAddress(ether->ether_dhost), ntohs(ether->ether_type));
 
   return p;
 }

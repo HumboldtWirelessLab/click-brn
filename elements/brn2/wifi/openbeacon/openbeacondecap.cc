@@ -39,18 +39,25 @@ OpenBeaconDecap::simple_action(Packet *p)
 	Click2OBD_header *crh = (Click2OBD_header *)p->data(); 
 	uint8_t e_dhost[6], e_shost[6];
 	int i=0;
+	uint8_t ob_bcats[] = {255, 255};
+	uint8_t ob_bcats_ext[] = {255, 255,255,255};
+	
 	
 	WritablePacket *wp;
 	click_wifi_extra *ceh = NULL;
-	
+
 	memcpy( e_dhost, "\0\0\0\0\0\0" ,6 );
 	memcpy( e_shost, "\0\0\0\0\0\0" ,6 );
-	
+
 	for(i=1; i>=0; i--) {
 		e_dhost[ 5-i ] = crh->openbeacon_smac[ i ];
 		e_shost[ 5-(1-i) ] = crh->openbeacon_smac[ sizeof( crh->openbeacon_dmac ) - i - 1 ];
 	}
-		
+
+	if ( memcmp(&(e_dhost[4]),ob_bcats,2) == 0 ) {
+	  memcpy( e_dhost, ob_bcats_ext ,4 );
+	}
+
 	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel, length=crh->length;
 	
 	// trim das packet noch ;-)

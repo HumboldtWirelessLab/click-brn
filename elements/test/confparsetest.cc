@@ -171,6 +171,10 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK_ERR(ia.parse_saturating("18446744073709551616", u64, args) == true && u64 == 0xFFFFFFFFFFFFFFFFULL, "");
 #endif
 
+    CHECK_ERR(BoundedIntArg(0, 10).parse("10", i32, args) == true && i32 == 10, "");
+    CHECK_ERR(BoundedIntArg(0, 9).parse("10", i32, args) == false && i32 == 10, "out of range, bound 9");
+    CHECK_ERR(BoundedIntArg(-1, 9).parse("-10", i32, args) == false && i32 == 10, "out of range, bound -1");
+
     bool b; (void) b;
     CHECK(FixedPointArg(1).parse("0.5", i32) == true && i32 == 1);
     CHECK(FixedPointArg(1).parse("-0.5", i32) == true && i32 == -1);
@@ -420,12 +424,19 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK(click_strcmp("-0.2", "-0.1") < 0);
     CHECK(click_strcmp("-2.2", "-2") < 0);
     CHECK(click_strcmp("2.2", "2") > 0);
-    CHECK(click_strcmp(".2", "0.1") > 0);
-    CHECK(click_strcmp(".2", "0.39") < 0);
+    CHECK(click_strcmp("0.2", "0.1") > 0);
+    CHECK(click_strcmp("0.2", "0.39") < 0);
     CHECK(click_strcmp(".2", "0.2") < 0);
     CHECK(click_strcmp("a-2", "a-23") < 0);
     CHECK(click_strcmp("a-2", "a-3") < 0);
     CHECK(click_strcmp("a1.2", "a1a") > 0);
+    CHECK(click_strcmp("1.2.3.4", "10.2.3.4") < 0);
+    CHECK(click_strcmp("1.12", "1.2") < 0);
+    CHECK(click_strcmp("1.012", "1.2") < 0);
+    CHECK(click_strcmp("1.012.", "1.2.") < 0);
+    CHECK(click_strcmp("1.12.3.4", "1.2.3.4") > 0);
+    CHECK(click_strcmp("1.2.10.4", "1.2.9.4") > 0);
+    CHECK(click_strcmp("1.2.10.4:100", "1.2.10.4:2") > 0);
 #endif
 
     Vector<String> conf;

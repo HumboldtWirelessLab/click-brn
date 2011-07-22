@@ -1,8 +1,140 @@
 Click NEWS
 
-Version 2.0
+Version 2.0   16.Jul.2011
 
-* Thanks to Dmitriy Bubnov.
+* New elements: AdjustTimestamp, BlockThread, ClickyInfo, EtherVLANEncap,
+  HandlerTask, ICMPIPEncap, NullTask, SetVLANAnno, StoreUDPTimeSeqRecord,
+  StripDSRHeader, StripEtherVLANHeader, TCPFragmenter, UDPIP6Encap,
+  UnstripDSRHeader.
+
+* Improved elements: ARPQuerier, AddressInfo, BandwidthRatedSplitter,
+  BandwidthRatedUnqueue, CheckLength, DRRSched, FromDevice linuxmodule,
+  FromDevice userlevel, FromHost userlevel, FromIPSummaryDump,
+  FromSimDevice, FromUserDevice, GetIPAddress, HostEtherFilter, IPFilter
+  ("ether" comparisons, faster initialization), InfiniteSource, KernelTun,
+  LinkUnqueue, RandomSource, RatedSource, RatedSplitter, RatedUnqueue,
+  Script, SetIPAddress, SetTimestamp, TCPIPSend, TimeSortedSched, ToDevice
+  userlevel, ToUserDevice, Truncate, Unqueue2, and others.
+
+* Element and tool bug fixes: CheckTCPHeader, CheckUDPHeader, DSRRouteTable
+  DelayUnqueue, FastUDPSourceIP6, FromHost, FromUserDevice, IP6Encap,
+  IPAddrRewriter, IPFilter and other classifiers, KernelFilter,
+  RadiotapDecap, RadixIPLookup, SetIP6DSCP, Socket, ThreadSafeQueue,
+  TimeSortedSched, ToUserDevice, UDPIPEncap, WifiDecap, click-align,
+  click-undead, and others.
+
+* Performance improvements
+
+** Tasks: A simplified reschedule implementation and streamlined driver
+   loop is both faster and less error prone (now calling fast_reschedule()
+   outside of Element::run_task() is safe).
+
+** Tasks: If a task does no work, delay re-running it.  This simple change
+   improves performance on many configurations, particularly those mixing
+   file descriptor or timer access and Tasks.
+
+** Timers: A 4-heap improves performance with very large numbers of timers.
+
+** User-level: Device elements default to libpcap even on Linux, offering
+   improved performance depending on how libpcap was compiled (e.g. packet
+   mmap support).  A packet memory pool suggested by Luigi Rizzo offers
+   much better performance for packet allocation and freeing.
+
+** The round-robin scheduler (--disable-stride) works again.
+
+** New configure option --enable-bound-port-transfer slightly optimizes
+   push() and pull() calls (Cliff Frey).
+
+* Language changes
+
+** New "require(library FILE)" allows one Click script to include another
+   (Christian Kreibich).
+
+** Many-to-one, one-to-many, and many-to-many connections cleanly express
+   some connection patterns.  For example, "c :: Classifier => a1, a2, a3"
+   means the same as "c :: Classifier; c [0] -> a1; c [1] -> a2; c [2] ->
+   a3".
+
+** Element groups cleanly express short detours from a connection path.
+   For example, this:
+
+	c :: Classifier(00/01);
+	x -> c -> y;
+	c [1] -> Paint(1) -> y;
+
+   can be expressed like this:
+
+	x -> c :: Classifier(00/01) => (
+            [0] -> [0]; [1] -> Paint(1) -> [0]
+        ) -> y;
+
+* Multithreading
+
+** Many performance and stability improvements to multithreaded
+   configurations, particularly at userlevel.
+
+** Lazy Task rescheduling reduces opportunities for bugs.
+
+** Each thread gains its own sets of Timers (and, at user level, selector
+   file descriptors).  An element's Timers are initially scheduled on the
+   same thread as its Tasks.  This should simplify reasoning about
+   Task/Timer conflicts, and can help improve performance.
+
+* Linuxmodule
+
+** Patchless installs are on by default.  Click installs and works without
+   a patch on many versions of Linux up to 2.6.38.
+
+* Clicky changes
+
+** Per-router styles: ClickyInfo elements let a script specify how it
+   should be drawn.
+
+** "Run" and "Stop" buttons can execute a configuration.
+
+* Internals
+
+** Args: This new class and its helpers support concise, easy-to-use,
+   type-safe argument parsing and are strongly preferred to cp_va_kparse in
+   new code.
+
+** TokenBucket: This new template class supports fast, flexible,
+   integer-based token bucket rate management.
+
+** Timestamps default to nanosecond precision on many platforms.
+
+** Element::simple_action() can be used for multi-port elements.
+
+** On some platforms, set environment variable CLICK_BACKTRACE to 1 and get
+   a useful stack backtrace if Click crashes (Cliff Frey).
+
+** Other improvements: more flexible handlers, simple_action, type traits,
+   faster multi-precision arithmetic, better IPv6 address unparsing.
+
+* Acknowledgements
+
+** Thanks to Cliff Frey for extensive discussion, multithreaded debugging,
+   802.1Q elements, TokenBucket, TCPFragmenter, bound port transfer, and
+   others.
+
+** Thanks to Joonwoo Park for Linux kernel module patches.
+
+** Thanks to Jimmy Kjällman and Pekka Nikander for FreeBSD kernel module
+   support.
+
+** Thanks to Johan Bergs, Jesse Brown, Roman Chertov, Beyers Cronje, Jens
+   De Wit, Kevin Paul Herbert, Sascha Alexander Jopen, Christian Kreibich,
+   Bobby Longpocket, Ruben Merz, Derrick Pallas, Roberto Riggio, Luigi
+   Rizzo, Jim Roewe, Ian Rose, Harald Schiöberg, Florian Sesser, Lalith
+   Suresh, and Wim Vandenberghe for patches, bug fixes, and new elements.
+
+** Thanks to Dan Aguayo, Mark Allman, Manel Bourguiba, Bart Braem, Lars
+   Bro, Dmitriy Bubnov, Rémi Clavier, Jonathan Kirchhoff, Dan Levin, José
+   Pedro Oliveira, Kostas Pelechrinis, Sami Ruponen, Robert Shanks, Robert
+   Sombrutzki, Patrick Verkaik, Nicholas Weaver, Xianghua Xiao, and
+   xuhui122000 gmail com for bug reports.
+
+** Thanks to everyone else who supports and uses Click.
 
 
 Version 1.8.0   28.Feb.2010

@@ -106,8 +106,11 @@ BrnRadiotapEncap::simple_action(Packet *p)
     p->kill();
     return 0;
   }
+  //uint32_t align (4 Byte)
+  uint32_t pad = (uint32_t)(((size_t)p_out->data() + sizeof(struct click_radiotap_header)) & 3);
 
-  p_out = p_out->push(sizeof(struct click_radiotap_header));
+  if (pad) pad = 4 - pad;
+  p_out = p_out->push(sizeof(struct click_radiotap_header) + pad);
 
   if (p_out) {
 	  struct click_radiotap_header *crh  = (struct click_radiotap_header *) p_out->data();
@@ -118,15 +121,15 @@ BrnRadiotapEncap::simple_action(Packet *p)
 	  memset(crh, 0, sizeof(struct click_radiotap_header));
 
 	  crh->wt_ihdr.it_version = 0;
-	  crh->wt_ihdr.it_len = cpu_to_le16(sizeof(struct click_radiotap_header));
+	  crh->wt_ihdr.it_len = cpu_to_le16(sizeof(struct click_radiotap_header) + pad);
 	  crh->wt_ihdr.it_present = cpu_to_le32(CLICK_RADIOTAP_PRESENT);
 
-    if ( BrnWifi::getMCS(ceh, 0) == 1 ) {
-      crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;
+    if ( BrnWifi::getMCS(ceh, 0) == 1 ) {                                         //Is MCS-rate ?
+      crh->wt_rate = RADIOTAP_RATE_MCS_INVALID;                                   //yes, so set normal rate to invalid
 
       uint8_t mcs_index, mcs_bandwidth, mcs_guard_interval;
 
-      BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate);
+      BrnWifi::toMCS(&mcs_index, &mcs_bandwidth, &mcs_guard_interval, ceh->rate); //get mcs data
 
       crh->wt_known = (uint8_t)_mcs_known;
       crh->wt_flags = mcs_bandwidth | (mcs_guard_interval << 2) | (BrnWifi::getHTMode(wee, 0) << 3) |

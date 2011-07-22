@@ -55,6 +55,7 @@ class BatmanRouting : public BRNElement {
   BRN2NodeIdentity *_nodeid;
 
   int _routeId;
+  uint16_t _hop_margin;
 
 };
 
