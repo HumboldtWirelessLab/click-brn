@@ -32,10 +32,10 @@ CLICK_DECLS
 #define UPDATEMODE_SEND_ALL         0
 #define UPDATEMODE_SEND_INFO        1
 #define UPDATEMODE_SEND_UPDATE_ONLY 2
-#define UPDATEMODE_SEND_DIFF        3
+//#define UPDATEMODE_SEND_DIFF        3
 
-#define RECORDMODE_LAST_ONLY  0
-#define RECORDMODE_LAST_SAMP  1
+#define RECORDMODE_LAST_ONLY    0
+#define RECORDMODE_LAST_SAMPLE  1
 
 class BrnCompoundHandler : public BRNElement
 {
@@ -96,6 +96,49 @@ class BrnCompoundHandler : public BRNElement
     Timestamp *get_timestamp_i(int i) {
       return &(_rec_times[(_rec_index>=_rec_max)?((i+_rec_index)%_rec_max):i]);
     }
+
+    void set_max_records(int max_records) {
+      /*TODO: performance improvemence */
+      if ( max_records == _rec_max ) return;
+
+      String *new_rec = new String[max_records];
+      Timestamp *new_rec_times = new Timestamp[max_records];
+
+      int start_index, max_index;
+
+      if (overflow()) {
+        start_index = _rec_index%_rec_max;
+        if ( max_records < _rec_max ) {
+          max_index = max_records;
+          start_index = (start_index+(_rec_max - max_records)) %_rec_max;
+        } else {
+          max_index = _rec_max;
+        }
+      } else {
+        if ( max_records < _rec_index ) {
+          max_index = max_records;
+        } else {
+          max_index = _rec_index;
+        }
+      }
+
+      for ( int i = 0; i < max_index; i++,start_index++) {
+        new_rec[i] = _rec[start_index % _rec_max];
+        new_rec_times[i] = _rec_times[start_index % _rec_max];
+      }
+
+      delete[] _rec;
+      delete[] _rec_times;
+
+      _rec = new_rec;
+      _rec_times = new_rec_times;
+
+      new_rec = NULL;
+      new_rec_times = NULL;
+
+      _rec_max = max_records;
+      _rec_index = start_index;
+    }
   };
 
   typedef HashMap<String,HandlerRecord *> HandlerRecordMap;
@@ -139,6 +182,19 @@ class BrnCompoundHandler : public BRNElement
   int _record_samples;
   int _sample_time;
   Timer _record_timer;
+
+ public:
+
+  void set_updatemode(int mode);
+  void set_recordmode(int mode);
+  void set_samplecount(int count);
+  void set_sampletime(int time);
+
+  int get_updatemode() { return _update_mode; }
+  int get_recordmode() { return _record_mode; }
+  int get_samplecount() { return _record_samples; }
+  int get_sampletime() { return _sample_time; }
+
 };
 
 CLICK_ENDDECLS

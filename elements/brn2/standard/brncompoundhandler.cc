@@ -140,7 +140,7 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   }
 
   _record_timer.initialize(this);
-  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
 
@@ -163,7 +163,7 @@ BrnCompoundHandler::run_timer(Timer *)
 
   }
 
-  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
 }
@@ -202,9 +202,9 @@ BrnCompoundHandler::read_handler()
     for ( int j = 0; j < _vec_handlers.size(); j++) {
       if ( _update_mode == UPDATEMODE_SEND_ALL ) {
         sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-        sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+        sa << "\t<![CDATA[" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
                                             ErrorHandler::default_handler()).c_str();
-        sa << "\t";
+        sa << "]]>\t";
       } else if (( _update_mode == UPDATEMODE_SEND_INFO ) ||
                  ( _update_mode == UPDATEMODE_SEND_UPDATE_ONLY )) {
         String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
@@ -213,11 +213,11 @@ BrnCompoundHandler::read_handler()
         String *last_value = _last_handler_value.findp(_vec_handlers[j]);
         sa << "\t<handler name=\"" << _vec_handlers[j];
         if ( (last_value != NULL) && (*last_value == new_value)) {
-          sa << " \" update=\"false\" >";
+          sa << "\" update=\"false\" >";
         } else {
           _last_handler_value.insert(_vec_handlers[j],new_value);
-          sa << " \" update=\"true\" >\n";
-          sa << new_value.c_str() << "\t";
+          sa << "\" update=\"true\" >\n<![CDATA[";
+          sa << new_value.c_str() << "]]>\t";
         }
       }
       sa << "</handler>\n";
@@ -288,7 +288,7 @@ BrnCompoundHandler::handler()
 }
 
 
-enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET};
+enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET, H_HANDLER_UPDATEMODE, H_HANDLER_RECORDMODE, H_HANDLER_SAMPLECOUNT, H_HANDLER_SAMPLETIME };
 
 int
 BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler *errh)
@@ -347,6 +347,60 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
   return 0;
 }
 
+void
+BrnCompoundHandler::set_recordmode(int mode)
+{
+  if ( mode == _record_mode ) return;
+
+  _record_mode = mode;
+
+  if ( _record_mode != RECORDMODE_LAST_SAMPLE ) {
+    _record_timer.unschedule();
+  } else {
+    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+      HandlerRecord *hr = iter.value();
+      hr->clear();
+    }
+    _record_timer.schedule_after_msec(_sample_time);
+  }
+}
+
+void
+BrnCompoundHandler::set_updatemode(int mode)
+{
+  if ( mode == _update_mode ) return;
+
+  _update_mode = mode;
+
+  if ( (_update_mode != UPDATEMODE_SEND_ALL) && (_record_mode != RECORDMODE_LAST_SAMPLE) ) {
+    for( int i = 0; i < _vec_handlers.size(); i++ ) {
+      _last_handler_value.insert(_vec_handlers[i],String());
+    }
+  }
+}
+
+void
+BrnCompoundHandler::set_samplecount(int count)
+{
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    HandlerRecord *hr = iter.value();
+    hr->set_max_records(count);
+  }
+  _record_samples = count;
+}
+
+void
+BrnCompoundHandler::set_sampletime(int time)
+{
+  if ( _sample_time == time ) return;
+
+  _sample_time = time;
+
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
+    _record_timer.unschedule();
+    _record_timer.schedule_after_msec(_sample_time);
+  }
+}
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -370,14 +424,16 @@ BrnCompoundHandler_handler_operation(const String &in_s, Element *e, void *vpara
   return ((BrnCompoundHandler*)e)->handler_operation(in_s, vparam, errh);
 }
 
+/* Single handler for many handler with the same name */
+
 static String
-BrnCompoundHandler_read_param(Element */*e*/, void */*thunk*/)
+BrnCompoundHandler_read_compoundparam(Element */*e*/, void */*thunk*/)
 {
   return String();
 }
 
 static int
-BrnCompoundHandler_write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+BrnCompoundHandler_write_compoundparam(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
 
@@ -387,23 +443,111 @@ BrnCompoundHandler_write_param(const String &in_s, Element *e, void *, ErrorHand
   return( 0 );
 }
 
+/* handler to control the element */
+
+static String
+BrnCompoundHandler_read_param(Element *e, void *vparam)
+{
+  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  StringAccum sa;
+
+  switch((intptr_t)vparam) {
+    case H_HANDLER_UPDATEMODE:
+    {
+      sa << ch->get_updatemode();
+      break;
+    }
+    case H_HANDLER_RECORDMODE:
+    {
+      sa << ch->get_recordmode();
+      break;
+    }
+    case H_HANDLER_SAMPLECOUNT:
+    {
+      sa << ch->get_samplecount();
+      break;
+    }
+    case H_HANDLER_SAMPLETIME:
+    {
+      sa << ch->get_sampletime();
+      break;
+    }
+  }
+
+  sa << "\n";
+
+  return sa.take_string();
+
+}
+
+static int
+BrnCompoundHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  String s = cp_uncomment(in_s);
+  int value;
+
+  if (!cp_integer(s, &value))
+    return errh->error("value must be integer");
+
+  switch((intptr_t)vparam) {
+    case H_HANDLER_UPDATEMODE:
+    {
+      ch->set_updatemode(value);
+      break;
+    }
+    case H_HANDLER_RECORDMODE:
+    {
+      ch->set_recordmode(value);
+      break;
+    }
+    case H_HANDLER_SAMPLECOUNT:
+    {
+      ch->set_samplecount(value);
+      break;
+    }
+    case H_HANDLER_SAMPLETIME:
+    {
+      ch->set_sampletime(value);
+      break;
+    }
+  }
+
+  return( 0 );
+
+}
+
+/* add handler function */
+
 void
 BrnCompoundHandler::add_handlers()
 {
   //BRNElement::add_handlers(); //what if handler has the name "debug"
 
   if ( _classes_handler.length() > 0 ) {
-    add_read_handler( _handler, BrnCompoundHandler_read_param, 0);
-    add_write_handler( _handler, BrnCompoundHandler_write_param, 0);
+    add_read_handler( _handler, BrnCompoundHandler_read_compoundparam, 0);
+    add_write_handler( _handler, BrnCompoundHandler_write_compoundparam, 0);
   }
 
   add_read_handler( "read", BrnCompoundHandler_read_handler, 0);
 
   add_read_handler( "handler", BrnCompoundHandler_handler, 0);
+
   add_write_handler( "insert", BrnCompoundHandler_handler_operation, H_HANDLER_INSERT);
   add_write_handler( "set", BrnCompoundHandler_handler_operation, H_HANDLER_SET);
   add_write_handler( "remove", BrnCompoundHandler_handler_operation, H_HANDLER_REMOVE);
   add_write_handler( "reset", BrnCompoundHandler_handler_operation, H_HANDLER_RESET);
+
+  add_read_handler( "updatemode", BrnCompoundHandler_read_param, H_HANDLER_UPDATEMODE);
+  add_read_handler( "recordmode", BrnCompoundHandler_read_param, H_HANDLER_RECORDMODE);
+  add_read_handler( "samples", BrnCompoundHandler_read_param, H_HANDLER_SAMPLECOUNT);
+  add_read_handler( "sampletime", BrnCompoundHandler_read_param, H_HANDLER_SAMPLETIME);
+
+  add_write_handler( "updatemode", BrnCompoundHandler_write_param, H_HANDLER_UPDATEMODE);
+  add_write_handler( "recordmode", BrnCompoundHandler_write_param, H_HANDLER_RECORDMODE);
+  add_write_handler( "samplecount", BrnCompoundHandler_write_param, H_HANDLER_SAMPLECOUNT);
+  add_write_handler( "sampletime", BrnCompoundHandler_write_param, H_HANDLER_SAMPLETIME);
+
 }
 
 CLICK_ENDDECLS
