@@ -34,7 +34,8 @@ BRNElement::BRNElement() :
 {
   if ( _packet_pool == NULL ) {
     _ref_counter = 1;
-    _packet_pool = new PacketPool(PACKET_POOL_CAPACITY, PACKET_POOL_SIZE_STEPS, PACKET_POOL_MIN_SIZE, PACKET_POOL_MAX_SIZE, DEFAULT_HEADROOM, DEFAULT_TAILROOM);
+    _packet_pool = new PacketPool(PACKET_POOL_CAPACITY, PACKET_POOL_SIZE_STEPS,
+                                  PACKET_POOL_MIN_SIZE, PACKET_POOL_MAX_SIZE, DEFAULT_HEADROOM, DEFAULT_TAILROOM);
   } else {
     _ref_counter++;
   }
