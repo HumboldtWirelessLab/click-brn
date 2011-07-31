@@ -333,7 +333,7 @@ BrnCompoundHandler::handler()
 }
 
 
-enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET, H_HANDLER_UPDATEMODE, H_HANDLER_RECORDMODE, H_HANDLER_SAMPLECOUNT, H_HANDLER_SAMPLETIME };
+enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET, H_HANDLER_UPDATEMODE, H_HANDLER_RECORDMODE, H_HANDLER_SAMPLECOUNT, H_HANDLER_SAMPLETIME, H_HANDLER_COMPRESSIONLIMIT };
 
 int
 BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler *errh)
@@ -521,6 +521,11 @@ BrnCompoundHandler_read_param(Element *e, void *vparam)
       sa << ch->get_sampletime();
       break;
     }
+    case H_HANDLER_COMPRESSIONLIMIT:
+    {
+      sa << ch->get_compressionlimit();
+      break;
+    }
   }
 
   sa << "\n";
@@ -560,6 +565,11 @@ BrnCompoundHandler_write_param(const String &in_s, Element *e, void *vparam, Err
       ch->set_sampletime(value);
       break;
     }
+    case H_HANDLER_COMPRESSIONLIMIT:
+    {
+      ch->set_compressionlimit(value);
+      break;
+    }
   }
 
   return( 0 );
@@ -591,11 +601,13 @@ BrnCompoundHandler::add_handlers()
   add_read_handler( "recordmode", BrnCompoundHandler_read_param, H_HANDLER_RECORDMODE);
   add_read_handler( "samples", BrnCompoundHandler_read_param, H_HANDLER_SAMPLECOUNT);
   add_read_handler( "sampletime", BrnCompoundHandler_read_param, H_HANDLER_SAMPLETIME);
+  add_read_handler( "compressionlimit", BrnCompoundHandler_read_param, H_HANDLER_COMPRESSIONLIMIT);
 
   add_write_handler( "updatemode", BrnCompoundHandler_write_param, H_HANDLER_UPDATEMODE);
   add_write_handler( "recordmode", BrnCompoundHandler_write_param, H_HANDLER_RECORDMODE);
   add_write_handler( "samplecount", BrnCompoundHandler_write_param, H_HANDLER_SAMPLECOUNT);
   add_write_handler( "sampletime", BrnCompoundHandler_write_param, H_HANDLER_SAMPLETIME);
+  add_write_handler( "compressionlimit", BrnCompoundHandler_write_param, H_HANDLER_COMPRESSIONLIMIT);
 
 }
 

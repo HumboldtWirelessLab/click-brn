@@ -200,11 +200,13 @@ class BrnCompoundHandler : public BRNElement
   void set_recordmode(int mode);
   void set_samplecount(int count);
   void set_sampletime(int time);
+  void set_compressionlimit(int limit) { _compression_limit = limit; }
 
   int get_updatemode() { return _update_mode; }
   int get_recordmode() { return _record_mode; }
   int get_samplecount() { return _record_samples; }
   int get_sampletime() { return _sample_time; }
+  int get_compressionlimit() { return _compression_limit; }
 
 };
 
