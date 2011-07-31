@@ -25,6 +25,8 @@
 #include <click/hashmap.hh>
 #include <click/bighashmap.hh>
 
+#include "elements/brn2/standard/compression/lzw.hh"
+
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
@@ -182,6 +184,15 @@ class BrnCompoundHandler : public BRNElement
   int _record_samples;
   int _sample_time;
   Timer _record_timer;
+
+  LZW lzw;
+  int _compression_limit;
+
+  unsigned char* _lzw_buffer;
+  int _lzw_buffer_size;
+
+  unsigned char* _base64_buffer;
+  int _base64_buffer_size;
 
  public:
 

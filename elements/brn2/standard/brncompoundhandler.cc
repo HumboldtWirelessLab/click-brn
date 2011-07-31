@@ -33,6 +33,9 @@
 
 #include "brncompoundhandler.hh"
 #include <click/handlercall.hh>
+
+#include "elements/brn2/standard/compression/base64.hh"
+
 CLICK_DECLS
 
 BrnCompoundHandler::BrnCompoundHandler():
@@ -40,7 +43,12 @@ BrnCompoundHandler::BrnCompoundHandler():
   _record_mode(RECORDMODE_LAST_ONLY),
   _record_samples(10),
   _sample_time(1000),
-  _record_timer(this)
+  _record_timer(this),
+  _compression_limit(0),
+  _lzw_buffer(NULL),
+  _lzw_buffer_size(32768),
+  _base64_buffer(NULL),
+  _base64_buffer_size(43692)
 {
   BRNElement::init();
 }
@@ -56,6 +64,9 @@ BrnCompoundHandler::~BrnCompoundHandler()
   _vec_elements.clear();
   _vec_elements_handlers.clear();
   _vec_handlers.clear();
+
+  if ( _lzw_buffer != NULL ) delete[] _lzw_buffer;
+  if ( _base64_buffer != NULL ) delete[] _base64_buffer;
 }
 
 int
@@ -70,6 +81,7 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
                     "RECORDMODE", cpkP, cpInteger, &_record_mode,
                     "RECORDSAMPLES", cpkP, cpInteger, &_record_samples,
                     "SAMPLETIME", cpkP, cpInteger, &_sample_time,
+                    "COMPRESSIONLIMIT", cpkP, cpInteger, &_compression_limit,
                     "DEBUG", cpkP, cpInteger, &_debug,
                     cpEnd) < 0)
       return -1;
@@ -83,6 +95,9 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BrnCompoundHandler::initialize(ErrorHandler *errh)
 {
+  _lzw_buffer = new unsigned char[_lzw_buffer_size];
+  _base64_buffer = new unsigned char[_base64_buffer_size];
+
   BRN_DEBUG(" * BrnCompoundHandler: processing handler %s.", _handler.c_str() );
   cp_spacevec(_handler, _vec_handlers);
 
@@ -262,6 +277,36 @@ BrnCompoundHandler::read_handler()
   }
   sa << "</compoundhandler>\n";
 
+  if ( ( _compression_limit != 0 ) && ( sa.length() > _compression_limit ) ) {
+    if ( sa.length() > _lzw_buffer_size ) {
+      _lzw_buffer_size = 2 * sa.length();
+      _base64_buffer_size = (( 4 * _lzw_buffer_size ) / 3) + 2;
+
+      delete[] _lzw_buffer;
+      delete[] _base64_buffer;
+
+      _lzw_buffer = new unsigned char[_lzw_buffer_size];
+      _base64_buffer = new unsigned char[_base64_buffer_size];
+    }
+
+    String result = sa.take_string();
+    int lzw_len = lzw.encode((unsigned char*)result.data(), result.length(), _lzw_buffer, _lzw_buffer_size);
+
+    //unsigned char foo[1999];
+    //int lzw_unlen = lzw.decode(_lzw_buffer, lzw_len, foo , 1000);
+    //click_chatter("First: %d", (int)_lzw_buffer[0]);
+
+    int xml_len = sprintf((char*)_base64_buffer,
+                         "<compressed_data type=\"lzw,base64\" uncompressed=\"%d\" compressed=\"%d\"><![CDATA[",
+                         result.length(), lzw_len);
+
+    int base64_len = Base64::encode(_lzw_buffer, lzw_len, &(_base64_buffer[xml_len]), _base64_buffer_size-xml_len);
+
+    xml_len += sprintf((char*)&(_base64_buffer[xml_len + base64_len]),"]]></compressed_data>\n");
+
+    return String((char*)_base64_buffer);
+  }
+
   return sa.take_string();
 }
 
@@ -330,7 +375,11 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
       {
         for( int i = 0; i < _vec_handlers.size(); i++ ) {
           if ( in_s == _vec_handlers[i] ) {
-            _record_handler.erase(in_s);
+            HandlerRecord *hr = _record_handler.find(in_s);
+            if ( hr != NULL ) {
+              delete hr;
+              _record_handler.erase(in_s);
+            }
             _vec_handlers.erase(_vec_handlers.begin() + i);
             break;
           }

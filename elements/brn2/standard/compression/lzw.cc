@@ -1,7 +1,4 @@
 #include <click/config.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
 #include "lzw.hh"
 
 CLICK_DECLS
@@ -110,7 +107,7 @@ LZW::input_code(unsigned char *input, int *pos, int inputlen)
 
   while (input_bit_count <= 24)
   {
-    if ( *pos > inputlen ) return LZW_DECODE_ERROR;
+    if ( *pos >= inputlen ) return MAX_VALUE;
     c = input[*pos];
     *pos = *pos + 1;
     input_bit_buffer |= (unsigned long)c << (24-input_bit_count);
@@ -153,7 +150,6 @@ LZW::output_code(unsigned char *output, int *pos, unsigned int code, int max_out
 ** match to the algorithm accompanying the article.
 **
 */
-//void compress(FILE *input,FILE *output)
 int
 LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int max_outputlen)
 {
@@ -257,7 +253,7 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_o
   **  This is the main expansion loop.  It reads in characters from the LZW file
   **  until it sees the special code used to inidicate the end of the data.
   */
-  while ( ( new_code = input_code(input, &inputpos, inputlen) ) != (MAX_VALUE))
+  while ( ( new_code = input_code(input, &inputpos, inputlen) ) != MAX_VALUE)
   {
     /*
     ** This code checks for the special STRING+CHARACTER+STRING+CHARACTER+STRING
