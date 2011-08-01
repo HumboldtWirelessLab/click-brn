@@ -98,7 +98,7 @@ Base64::decode(unsigned char *input, int inputlen, unsigned char *output, int ma
     if (i ==4) {
       for (i = 0; i <4; i++) {
         unsigned char f = base64_chars_find(char_array_4[i]);
-        if ( f == 255 ) click_chatter("Foo: %d",(int)char_array_4[i]);
+        if ( f == 255 ) click_chatter("Unknown char: %d",(int)char_array_4[i]);
         char_array_4[i] = f;
       }
 
@@ -117,9 +117,11 @@ Base64::decode(unsigned char *input, int inputlen, unsigned char *output, int ma
       char_array_4[j] = 0;
 
     for (j = 0; j <4; j++) {
-      unsigned char f = base64_chars_find(char_array_4[j]);
-      if ( f == 255 ) click_chatter("Foo: %d",(int)char_array_4[j]);
-      char_array_4[j] = f;
+      if ( char_array_4[j] != 0 ) {
+        unsigned char f = base64_chars_find(char_array_4[j]);
+        if ( f == 255 ) click_chatter("Unknown char(remain): %d",(int)char_array_4[j]);
+        char_array_4[j] = f;
+      }
     }
 
     char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
