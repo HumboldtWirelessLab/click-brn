@@ -105,11 +105,22 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   Vector<String> vecClasses;
   cp_spacevec( _classes, vecClasses );
 
+  // Init blacklist
+  Vector<Element*> vecElements = router()->elements();
+
+  for (int i = 0; i < vecElements.size(); i++) {
+    Element* pElement = vecElements[i];
+    BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
+    if ( String(pElement->class_name()) == String("BrnCompoundHandler") ) {
+      _handler_blacklist.insert(String(router()->ename(pElement->eindex()) + ".read"),
+                                String(router()->ename(pElement->eindex()) + ".read"));
+    }
+  }
+
   if ( vecClasses.size() != 0 ) {
 
-    // Collect handlers from elements with appropriate class names in a vector
-    Vector<Element*> vecElements = router()->elements();
     for (int j = 0; j < vecClasses.size(); j++ ) {
+      // Collect handlers from elements with appropriate class names in a vector
 
       bool bFound = false;
       BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
@@ -203,9 +214,6 @@ BrnCompoundHandler::set_value( const String& value, ErrorHandler *errh )
   }
 }
 
-/* TODO: leerer record wegnehemn */
-
-
 String
 BrnCompoundHandler::read_handler()
 {
@@ -292,10 +300,6 @@ BrnCompoundHandler::read_handler()
     String result = sa.take_string();
     int lzw_len = lzw.encode((unsigned char*)result.data(), result.length(), _lzw_buffer, _lzw_buffer_size);
 
-    //unsigned char foo[1999];
-    //int lzw_unlen = lzw.decode(_lzw_buffer, lzw_len, foo , 1000);
-    //click_chatter("First: %d", (int)_lzw_buffer[0]);
-
     int xml_len = sprintf((char*)_base64_buffer,
                          "<compressed_data type=\"lzw,base64\" uncompressed=\"%d\" compressed=\"%d\"><![CDATA[",
                          result.length(), lzw_len);
@@ -332,7 +336,6 @@ BrnCompoundHandler::handler()
   return sa.take_string();
 }
 
-
 enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET, H_HANDLER_UPDATEMODE, H_HANDLER_RECORDMODE, H_HANDLER_SAMPLECOUNT, H_HANDLER_SAMPLETIME, H_HANDLER_COMPRESSIONLIMIT };
 
 int
@@ -347,18 +350,27 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
         cp_spacevec(s, args);
 
         for ( int args_i = 0 ; args_i < args.size(); args_i++ ) {
-          BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
-          int i = 0;
-          for( ; i < _vec_handlers.size(); i++ ) {
-            if ( args[args_i] == _vec_handlers[i]) {
-              BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
-              break;
+          HandlerCall hcall(args[args_i]);
+          if ( hcall.initialize(HandlerCall::OP_READ, router()->root_element(), NULL) >= 0 ) {
+            if ( _handler_blacklist.findp(args[args_i]) == NULL ) {
+              BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
+              int i = 0;
+              for( ; i < _vec_handlers.size(); i++ ) {
+                if ( args[args_i] == _vec_handlers[i]) {
+                  BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
+                  break;
+                }
+              }
+              if ( i == _vec_handlers.size() ) {
+                BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
+                _vec_handlers.push_back(args[args_i]);
+                _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, 0));
+              }
+            } else {
+              BRN_DEBUG("Handler %s (index %d) is compoundhandler read.",args[args_i].c_str(),args_i);
             }
-          }
-          if ( i == _vec_handlers.size() ) {
-            BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
-            _vec_handlers.push_back(args[args_i]);
-            _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, 0));
+          } else {
+            BRN_DEBUG("Handler %s (index %d) is not valid.",args[args_i].c_str(),args_i);
           }
         }
         break;

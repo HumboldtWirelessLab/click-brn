@@ -194,6 +194,8 @@ class BrnCompoundHandler : public BRNElement
   unsigned char* _base64_buffer;
   int _base64_buffer_size;
 
+  HashMap<String,String> _handler_blacklist;
+
  public:
 
   void set_updatemode(int mode);
