@@ -387,6 +387,12 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
               for( ; i < _vec_handlers.size(); i++ ) {
                 if ( args[args_i] == _vec_handlers[i]) {
                   BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
+                  if ( found_time ) {
+                    HandlerRecord *hr = _record_handler.find(_vec_handlers[i]);
+                    if ( hr != NULL ) {
+                      hr->_interval = t;
+                    }
+                  }
                   break;
                 }
               }
