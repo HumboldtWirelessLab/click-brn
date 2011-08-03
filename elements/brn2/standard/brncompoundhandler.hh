@@ -50,6 +50,8 @@ class BrnCompoundHandler : public BRNElement
     int _rec_index;
     int _interval;
 
+    int _base_time;
+
     Timestamp *_rec_times;
     String *_rec;
 
@@ -59,6 +61,7 @@ class BrnCompoundHandler : public BRNElement
     HandlerRecord(int max_records, int interval): _rec_times(NULL), _rec(NULL) {
       _rec_max = max_records;
       _rec_index = 0;
+      _base_time = 0;
       _interval = interval;
       _rec = new String[_rec_max];
       _rec_times = new Timestamp[_rec_max];
@@ -184,6 +187,7 @@ class BrnCompoundHandler : public BRNElement
   int _record_samples;
   int _sample_time;
   Timer _record_timer;
+  uint32_t _time_position;
 
   LZW lzw;
   int _compression_limit;

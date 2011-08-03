@@ -162,10 +162,12 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   }
 
   for (int j = 0; j < _vec_handlers.size(); j++ ) {
-    _record_handler.insert( _vec_handlers[j], new HandlerRecord(_record_samples, 0));
+    _record_handler.insert( _vec_handlers[j], new HandlerRecord(_record_samples, _sample_time));
   }
 
   _record_timer.initialize(this);
+  _time_position = 0;
+
   if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
@@ -179,19 +181,23 @@ BrnCompoundHandler::run_timer(Timer *)
   Timestamp now = Timestamp::now();
   String new_value;
 
-  for ( int j = 0; j < _vec_handlers.size(); j++) {
-    new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                       ErrorHandler::default_handler());
-
-    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
-
-    hr->insert(now,new_value);
-
-  }
-
   if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
+
+  for ( int j = 0; j < _vec_handlers.size(); j++) {
+    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
+
+    if ( ((_time_position + hr->_base_time) % hr->_interval) == 0 ) {
+      new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                         ErrorHandler::default_handler());
+      hr->insert(now,new_value);
+    }
+  }
+
+  _time_position += _sample_time;
+  /* Avoid overflow : TODO: impl. better solution */
+  if ( _time_position > 2100000000 ) _time_position -= 2100000000;
 }
 
 void
@@ -329,7 +335,11 @@ BrnCompoundHandler::handler()
 
   sa << "<compoundhandlerinfo >\n";
   for ( int j = 0; j < _vec_handlers.size(); j++) {
-    sa << "\t<handler name=\"" << _vec_handlers[j] << "\" />\n";
+    sa << "\t<handler name=\"" << _vec_handlers[j];
+
+    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
+    if ( hr != NULL )  sa << "\" record_interval=\"" << hr->_interval << "\" unit=\"ms";
+    sa << "\" />\n";
   }
   sa << "</compoundhandlerinfo>\n";
 
@@ -344,6 +354,8 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
   switch((intptr_t)vparam) {
     case H_HANDLER_INSERT:
       {
+        uint32_t t;
+        bool found_time;
         BRN_DEBUG("New handler %s",in_s.c_str());
         String s = cp_uncomment(in_s);
         Vector<String> args;
@@ -352,6 +364,23 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
         for ( int args_i = 0 ; args_i < args.size(); args_i++ ) {
           HandlerCall hcall(args[args_i]);
           if ( hcall.initialize(HandlerCall::OP_READ, router()->root_element(), NULL) >= 0 ) {
+
+            found_time = false;
+            if ( (args_i+1) == args.size() ){
+              t = _sample_time;
+            } else {
+              if ( cp_integer(args[args_i+1], &t) ) {
+                found_time = true;
+                if ( (int)t < _sample_time ) {
+                  t = _sample_time;
+                } else if ( (t % _sample_time) != 0 ) {
+                  t = (t / _sample_time) * _sample_time;
+                }
+              } else {
+                t = _sample_time;
+              }
+            }
+
             if ( _handler_blacklist.findp(args[args_i]) == NULL ) {
               BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
               int i = 0;
@@ -364,10 +393,14 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
               if ( i == _vec_handlers.size() ) {
                 BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
                 _vec_handlers.push_back(args[args_i]);
-                _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, 0));
+                _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, t));
               }
             } else {
               BRN_DEBUG("Handler %s (index %d) is compoundhandler read.",args[args_i].c_str(),args_i);
+            }
+
+            if ( found_time ) {
+              args_i++;
             }
           } else {
             BRN_DEBUG("Handler %s (index %d) is not valid.",args[args_i].c_str(),args_i);
@@ -455,7 +488,16 @@ BrnCompoundHandler::set_sampletime(int time)
 {
   if ( _sample_time == time ) return;
 
-  _sample_time = time;
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    HandlerRecord *hr = iter.value();
+
+    _sample_time = time;
+
+    if (( hr->_interval % time ) != 0 ) {
+      hr->_interval = _sample_time * (hr->_interval/_sample_time);
+      if ( hr->_interval == 0 ) hr->_interval = _sample_time;
+    }
+  }
 
   if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.unschedule();
