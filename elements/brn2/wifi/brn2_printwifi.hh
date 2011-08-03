@@ -50,6 +50,7 @@ class BRN2PrintWifi : public Element {
   bool _print_ext_rx;
   bool _print_evm;
   bool _nowrap;
+  bool _print_used_rate;
 };
 
 CLICK_ENDDECLS
