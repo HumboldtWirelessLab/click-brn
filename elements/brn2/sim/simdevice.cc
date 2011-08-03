@@ -29,6 +29,7 @@ SimDevice::SimDevice()
     empirical_index(0),
     empirical_packet_count(100)
 {
+  BRNElement::init();
 }
 
 SimDevice::~SimDevice()
@@ -49,11 +50,21 @@ SimDevice::configure(Vector<String> &conf, ErrorHandler *errh)
     return errh->error("interface not set");
 
   if (_empirical_file) {
-    empirical_data_ht_size = 16 * 2 * 2 * empirical_packet_count;
-    empirical_data_ht = new int[empirical_data_ht_size];
+    empirical_data_ht_size = NO_HT_RATES * empirical_packet_count;     //MCS-Index: 16 BW: 2 SGI: 2
 
-    empirical_data_non_ht_size = ( 4 + 8 ) * empirical_packet_count;
+    empirical_data_ht = new int[empirical_data_ht_size];
+    empirical_psr_ht = new uint16_t[NO_HT_RATES];
+
+    memset(empirical_data_ht, 0, empirical_data_ht_size * sizeof(int));
+    memset(empirical_psr_ht, 0, NO_HT_RATES * sizeof(uint16_t));
+
+    empirical_data_non_ht_size = NO_NON_HT_RATES * empirical_packet_count;  //
+
     empirical_data_non_ht = new int[empirical_data_non_ht_size];
+    empirical_psr_non_ht = new uint16_t[NO_NON_HT_RATES];
+
+    memset(empirical_data_non_ht, 0, empirical_data_non_ht_size * sizeof(int));
+    memset(empirical_psr_non_ht, 0, NO_NON_HT_RATES * sizeof(uint16_t));
   }
 
   return 0;
@@ -82,6 +93,9 @@ get_index(int rate)
   return -1;
 }
 
+static int abg_rates[] = { 10, 20, 55, 110, 60, 90, 120, 180, 240, 360, 480, 540 };
+static char abg_mode[] = { 'b', 'b', 'b', 'b', 'g', 'g', 'g', 'g', 'g', 'g', 'g', 'g' };
+
 int
 SimDevice::initialize(ErrorHandler *errh)
 {
@@ -109,6 +123,8 @@ SimDevice::initialize(ErrorHandler *errh)
       cp_integer(emp_data[i+5],&rssi);
       cp_integer(emp_data[i+7],&seq);
 
+      if ( (rssi == 0) || (rssi > 100) ) rssi = 255;
+
       if ( rate_is_ht == 1 ) {
         empirical_data_ht[100 * ( 4 * rate_index + 2 * ht40 + sgi ) + seq] = rssi;
       } else {
@@ -116,6 +132,24 @@ SimDevice::initialize(ErrorHandler *errh)
       }
     }
   }
+
+  /* Calc PSR */
+  for ( int i = 0; i < NO_HT_RATES; i++ ) {
+    int rx_pkt = 0;
+    for ( int p = 0; p < 100; p++) {
+      if (empirical_data_ht[(100 * i) + p] != 0) rx_pkt++;
+    }
+    empirical_psr_ht[i] = rx_pkt;
+  }
+
+  for ( int i = 0; i < NO_NON_HT_RATES; i++ ) {
+    int rx_pkt = 0;
+    for ( int p = 0; p < 100; p++) {
+      if (empirical_data_non_ht[(100 * i) + p] != 0) rx_pkt++;
+    }
+    empirical_psr_non_ht[i] = rx_pkt;
+  }
+
 
   if (input_is_pull(0)) {
     ScheduleInfo::join_scheduler(this, &_task, errh);
@@ -155,7 +189,7 @@ SimDevice::sim_packet_transmission(Packet *p)
 
   for ( int r_i = 0; r_i < 4; r_i++ ) {
     for ( int i = 0; i < (int)tries_field[r_i]; i++ ) {
-      if ( BrnWifi::getMCS(ceh,0) == 1) {
+      if ( BrnWifi::getMCS(ceh,r_i) == 1) {
         BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, rates_field[r_i]);
         rate = BrnWifi::getMCSRate(rate_index, rate_bw, rate_sgi);
         rate_is_ht = 1;
@@ -178,6 +212,11 @@ SimDevice::sim_packet_transmission(Packet *p)
         if ( rssi > 0 ) {
           ceh->retries = tries;
           ceh->flags |= WIFI_EXTRA_TX;
+          ceh->silence = (uint8_t)-95;
+          if ( rssi == 255 ) ceh->rssi = 0;
+          else ceh->rssi = rssi;
+
+          //if ( r_i > 0 ) ceh->flags |= WIFI_EXTRA_TX_USED_ALT_RATE;
           return p;
         }
       } else {
@@ -187,6 +226,9 @@ SimDevice::sim_packet_transmission(Packet *p)
         if ( r <= pro ) {
           ceh->retries = tries;
           ceh->flags |= WIFI_EXTRA_TX;
+          ceh->silence = (uint8_t)-95;
+          ceh->rssi = snr;
+          //if ( r_i > 0 ) ceh->flags |= WIFI_EXTRA_TX_USED_ALT_RATE;
           return p;
         }
       }
@@ -197,6 +239,7 @@ SimDevice::sim_packet_transmission(Packet *p)
   ceh->retries = tries;
   ceh->flags |= WIFI_EXTRA_TX;
   ceh->flags |= WIFI_EXTRA_TX_FAIL;
+  //ceh->flags |= WIFI_EXTRA_TX_USED_ALT_RATE;
 
   return p;
 }
@@ -262,11 +305,68 @@ SimDevice::run_task(Task *)
   return active;
 }
 
+/*************************************************************************/
+/************************ H A N D L E R **********************************/
+/*************************************************************************/
+
+String
+SimDevice::print_psr()
+{
+  StringAccum sa;
+
+  sa << "<simdev>\n\t<psr>\n\t\t<htrates>\n";
+
+/*for ( int i = 0; i < NO_HT_RATES; i++ ) {
+    sa << "\t\t\t<htrate index=\"" << i << "\" psr=\"" << empirical_psr_ht[i] << "\" />\n";
+  }*/
+
+  for ( int rate_bw = 0; rate_bw <= 1; rate_bw++ ) {
+    for ( int rate_sgi= 0; rate_sgi <= 1; rate_sgi++ ) {
+      sa << "\t\t\t<htrate mode=\"n\" ht40=\"" << rate_bw << "\" sgi=\"" << rate_sgi << "\" >\n";
+      for ( int rate_index = 0; rate_index < 16; rate_index++ ) {
+        uint32_t rate = BrnWifi::getMCSRate(rate_index, rate_bw, rate_sgi);
+        uint32_t psr = empirical_psr_ht[( 4 * (int)rate_index + 2 * (int)rate_bw + (int)rate_sgi )];
+        sa << "\t\t\t\t<htrate mcs_index=\"" << rate_index << "\" rate=\"" << rate << "\" psr=\"" << psr;
+        sa << "\" achivable_rate=\"" << (rate * psr)  << "\" />\n";
+      }
+      sa << "\t\t\t</htrate>\n";
+    }
+  }
+
+  sa << "\t\t</htrates>\n\t\t<nonhtrates>\n";
+
+  for ( int i = 0; i < NO_NON_HT_RATES; i++ ) {
+    uint32_t psr = empirical_psr_non_ht[i];
+    sa << "\t\t\t<rate mode=\"" << abg_mode[i] << "\" rate=\"" << abg_rates[i] << "\" psr=\"";
+    sa << psr << "\" achivable_rate=\"" << (abg_rates[i] * psr) << "\" />\n";
+  }
+
+  sa << "\t\t</nonhtrates>\n\n\t</psr>\n</simdev>\n";
+
+  return sa.take_string();
+}
+
+enum { H_PSR };
+
+static String
+read_handler(Element *e, void *thunk)
+{
+  switch ((uintptr_t) thunk) {
+    case H_PSR: return ((SimDevice*)e)->print_psr();
+  }
+  return String();
+}
+
+
 void
 SimDevice::add_handlers()
 {
   if (input_is_pull(0))
     add_task_handlers(&_task);
+
+  BRNElement::add_handlers();
+
+  add_read_handler("psr", read_handler, (void *)H_PSR);
 }
 
 CLICK_ENDDECLS

@@ -7,6 +7,10 @@
 
 #include "elements/brn2/brnelement.hh"
 
+#define NO_NON_HT_RATES (4 + 8)
+#define NO_HT_RATES (16 * 2 * 2)
+
+
 CLICK_DECLS
 
 class SimDevice : public BRNElement {
@@ -30,6 +34,8 @@ class SimDevice : public BRNElement {
   void push(int port, Packet *);
   bool run_task(Task *);
 
+  String print_psr();
+
   private:
 
     String _ifname;
@@ -48,9 +54,11 @@ class SimDevice : public BRNElement {
 
     int *empirical_data_ht;
     int empirical_data_ht_size;
+    uint16_t *empirical_psr_ht;
 
     int *empirical_data_non_ht;
     int empirical_data_non_ht_size;
+    uint16_t *empirical_psr_non_ht;
 
     int empirical_index;
 
