@@ -540,13 +540,23 @@ String
 Brn2LinkTable::print_links()
 {
   StringAccum sa;
-
+  sa << "<linktable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+	
   for (LTIter iter = _links.begin(); iter.live(); ++iter) {
     BrnLinkInfo n = iter.value();
-    sa << "\t" << n._from.unparse().c_str() << " " << n._to.unparse().c_str();
-    sa << " " << n._metric;
-    sa << " " << n._seq << " " << n.age() << "\n";
+    sa << "\t<link from=\"" << n._from.unparse().c_str() << "\" to=\"" << n._to.unparse().c_str() << "\"";
+    sa << " metric=\"" << n._metric << "\"";
+    sa << " seq=\"" << n._seq << "\" age=\"" << n.age() << "\" />\n";
+    
+    //the following lines printing out linktable raw, not in XML
+    //sa << "\t" << n._from.unparse().c_str() << " " << n._to.unparse().c_str();
+    //sa << " " << n._metric;
+    //sa << " " << n._seq << " " << n.age() << "\n";
   }
+  
+  sa << "</linktable>";
   return sa.take_string();
 }
 
@@ -561,29 +571,47 @@ Brn2LinkTable::print_routes(bool from_me)
     ether_addrs.push_back(iter.key());
 
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
+  
+  sa << "<routetable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+  
   for (int x = 0; x < ether_addrs.size(); x++) {
     EtherAddress ether = ether_addrs[x];
     uint32_t metric_trash;
     Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
     if (valid_route(r)) {
-      sa << ether.unparse().c_str() << " ";
-      for (int i = 0; i < r.size(); i++) {
-	sa << " " << r[i] << " ";
-	if (i != r.size()-1) {
-	  EthernetPair pair = EthernetPair(r[i], r[i+1]);
-	  BrnLinkInfo *l = _links.findp(pair);
-         if (l) {
-	  	sa << l->_metric;
-	  	sa << " (" << l->_seq << "," << l->age() << ")";
-         } else {
-              sa << "(warning, lnkinfo not found!!!)";
-         }
-	}
-      }
-      sa << "\n";
+      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
+      //sa << ether.unparse().c_str() << " ";
+      
+		for (int i = 0; i < r.size()-1; i++) {
+			EthernetPair pair = EthernetPair(r[i], r[i+1]);
+			BrnLinkInfo *l = _links.findp(pair);
+			sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
+			sa << "metric=\"" << l->_metric << "\" ";
+			sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
+		}
+		sa << "\t</route>\n";
+
+//      for (int i = 0; i < r.size(); i++) {		  
+//		  sa << " " << r[i] << " ";
+//		  if (i != r.size()-1) {
+//			  EthernetPair pair = EthernetPair(r[i], r[i+1]);
+//			  BrnLinkInfo *l = _links.findp(pair);
+//			  if (l) {
+//				  sa << l->_metric;
+//				  sa << " (" << l->_seq << "," << l->age() << ")";
+//			  } else {
+//				  sa << "(warning, lnkinfo not found!!!)";
+//			  }
+//		  }
+//  }
+//	  sa << "\n";
     }
   }
+  
+  sa << "</routetable>";
+  
   return sa.take_string();
 }
 
