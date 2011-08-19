@@ -556,7 +556,7 @@ Brn2LinkTable::print_links()
     //sa << " " << n._seq << " " << n.age() << "\n";
   }
   
-  sa << "</linktable>";
+  sa << "</linktable>\n";
   return sa.take_string();
 }
 
@@ -610,7 +610,7 @@ Brn2LinkTable::print_routes(bool from_me)
     }
   }
   
-  sa << "</routetable>";
+  sa << "</routetable>\n";
   
   return sa.take_string();
 }
