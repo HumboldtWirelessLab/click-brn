@@ -19,6 +19,10 @@ enum Combiner {
     c_ternary
 };
 
+enum {
+    offset_max = 0x7FFFFFFF
+};
+
 namespace Wordwise {
 
 class DominatorOptimizer;
@@ -188,8 +192,8 @@ class Program { public:
     void remove_unused_states();
     void unaligned_optimize();
     void count_inbranches(Vector<int> &inbranches) const;
-    void bubble_sort_and_exprs(unsigned sort_stopper = 0x7FFFFFFF);
-    void optimize(unsigned sort_stopper = 0x7FFFFFFF);
+    void bubble_sort_and_exprs(const int *offset_map_begin, const int *offset_map_end, int last_offset);
+    void optimize(const int *offset_map_begin, const int *offset_map_end, int last_offset);
 
     void warn_unused_outputs(int noutputs, ErrorHandler *errh) const;
 
@@ -207,6 +211,8 @@ class Program { public:
     void redirect_subtree(int first, int next, int success, int failure);
 
     int length_checked_match(const Packet *p);
+    static inline int map_offset(int offset, const int *begin, const int *end);
+    static int hard_map_offset(int offset, const int *begin, const int *end);
 
     friend class DominatorOptimizer;
 
@@ -329,11 +335,16 @@ class DominatorOptimizer { public:
 		_pred_prev[_pred_next[br]] = _pred_prev[br];
 	}
 	if (to_state > 0) {
-	    if (_pred_first[to_state] >= 0)
-		_pred_prev[_pred_first[to_state]] = br;
-	    _pred_prev[br] = -1;
-	    _pred_next[br] = _pred_first[to_state];
-	    _pred_first[to_state] = br;
+	    int prev = -1, *pnext = &_pred_first[to_state];
+	    while (*pnext >= 0 && *pnext < br) {
+		prev = *pnext;
+		pnext = &_pred_next[*pnext];
+	    }
+	    _pred_prev[br] = prev;
+	    _pred_next[br] = *pnext;
+	    *pnext = br;
+	    if (_pred_next[br] >= 0)
+		_pred_prev[_pred_next[br]] = br;
 	}
 #endif
 	in.j[branch] = to_state;
