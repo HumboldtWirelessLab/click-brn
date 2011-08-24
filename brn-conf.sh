@@ -56,10 +56,11 @@ else
       XCFLAGS="$XCFLAGS -static"
       GCCPREFIX="i386-linux-"
     else
-      if [ "x$TARGET" = "xmips2" ];then
+      if [ "x$TARGET" = "xmips2" ]; then
         CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
         XCFLAGS="$XCFLAGS -static"
-	GCCPREFIX="mips-linux-"
+        GCCPREFIX="mips-linux-"
+        echo "FOO: $GCCPREFIX\g++"
       else
         CONFOPTION="$CONFOPTION --enable-tools=host"
       fi
@@ -96,7 +97,7 @@ for op in $@; do
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g\""
 	    ;;
 	"tools")
-	    ( cd elements/brn2/tools/tinyxml; make clean; rm -f *.o; CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
+	    ( cd elements/brn2/tools/tinyxml; make clean; rm -f *.o; CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
 	    exit 0
 	    ;;
 	    *)
