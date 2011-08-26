@@ -60,7 +60,6 @@ else
         CONFOPTION="$CONFOPTION --host=mips-linux --enable-tools=host --enable-ialign"
         XCFLAGS="$XCFLAGS -static"
         GCCPREFIX="mips-linux-"
-        echo "FOO: $GCCPREFIX\g++"
       else
         CONFOPTION="$CONFOPTION --enable-tools=host"
       fi
