@@ -38,7 +38,13 @@ echo "Host gitsar"
 echo "   User username"
 echo "   HostName localhost"
 echo "   Port 23452"
+echo ""
+echo "Open a terminal and login to gruenau using \"ssh gruenau\". Don't close the terminal until you finish the installation." 
 
+
+if [ "x$1" = "xhelp" ]; then
+  exit 0
+fi
 
 FULLFILENAME=`basename $0`
 FULLFILENAME=$DIR/$FULLFILENAME
