@@ -385,11 +385,6 @@ class ChannelStats : public BRNElement {
     static void static_proc_timer_hook(Timer *, void *);
     void proc_read();
 
-  public:
-
-    void set_channel(uint32_t channel) { _channel = channel; }                     //TODO: remove this
-    uint32_t get_channel() { return _device ? _device->getChannel() : _channel; }  //TODO: remove this
-
 };
 
 CLICK_ENDDECLS

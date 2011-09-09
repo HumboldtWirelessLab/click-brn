@@ -57,7 +57,7 @@ EewsState::configure(Vector<String> &conf, ErrorHandler* errh)
   bool _low_hop_forward = false;
 
   if (cp_va_kparse(conf, this, errh,
-	  "GPS", cpkP+cpkM, cpElement, &_gps,
+      "GPS", cpkP+cpkM, cpElement, &_gps,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "NHOPNEIGHBOURINFO", cpkP, cpElement, &_nhopn_info,
       "HOPLIMIT", cpkP, cpInteger, &_hop_limit,

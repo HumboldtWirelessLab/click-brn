@@ -23,6 +23,8 @@ class RateSelection : public BRNElement
     virtual int get_adjust_period() { return 0;}
     virtual void adjust_all(NeighborTable *) {};
 
+    virtual void init(BrnAvailableRates *) {};
+
     virtual String print_neighbour_info(NeighbourRateInfo *, int tabs = 0) = 0;
 
     void process_foreign(click_wifi_extra *, NeighbourRateInfo *) {}

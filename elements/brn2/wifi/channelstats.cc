@@ -30,6 +30,7 @@
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
 
+#include <elements/brn2/brn2.h>
 #include <elements/wifi/bitrate.hh>
 #include <elements/brn2/wifi/brnwifi.hh>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
@@ -155,7 +156,24 @@ ChannelStats::push(int port, Packet *p)
   struct airtime_stats *small_stats = &(_small_stats[_current_small_stats]);
 
   struct click_wifi *w = (struct click_wifi *) p->data();
-  EtherAddress src = EtherAddress(w->i_addr2);
+
+  int type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
+
+  EtherAddress src;
+  switch (type) {
+    case WIFI_FC0_TYPE_MGT:
+      src = EtherAddress(w->i_addr2);
+      break;
+    case WIFI_FC0_TYPE_CTL:
+      src = brn_etheraddress_broadcast;
+      break;
+    case WIFI_FC0_TYPE_DATA:
+      src = EtherAddress(w->i_addr2);
+      break;
+    default:
+      src = EtherAddress(w->i_addr2);
+      break;
+  }
   EtherAddress dst = EtherAddress(w->i_addr1);
 
   /* General stuff */

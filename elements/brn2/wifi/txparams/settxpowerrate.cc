@@ -45,7 +45,10 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 SetTXPowerRate::initialize(ErrorHandler *)
 {
+  _rate_selection->init(_rtable);
+
   _timer.initialize(this);
+
   if ( _rate_selection->get_adjust_period() > 0 ) {
     _timer.schedule_now();
   }

@@ -15,6 +15,7 @@
 CLICK_DECLS
 
 DHTRoutingFalcon::DHTRoutingFalcon():
+  _enable_range_query(true),
   _frt(NULL),
   _leave_organizer(NULL),
   _responsible(FALCON_RESPONSIBLE_FORWARD)
@@ -42,6 +43,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LEAVEORGANIZER", cpkP, cpElement, &_leave_organizer,
       "RESPONSIBLE", cpkP, cpInteger, &_responsible,
+      "ENABLERANGEQUERIES", cpkP, cpBool, &_enable_range_query,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;

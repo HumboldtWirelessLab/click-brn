@@ -48,10 +48,12 @@ class DHTRoutingFalcon : public DHTRouting
     DHTnode *get_responsibly_node_forward(md5_byte_t *key);
     DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
 
+    bool _enable_range_query;
+
   public:
     DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
 
-    bool range_query_support() { return true; }
+    bool range_query_support() { return _enable_range_query; }
     void range_query_min_max_id(uint8_t *min, uint8_t *max);
 
     int update_node(EtherAddress *ea, md5_byte_t *id, int id_len);
