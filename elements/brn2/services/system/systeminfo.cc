@@ -124,7 +124,6 @@ read_handler(Element *e, void *thunk)
   sa << "<system id=\"" << si->_me->getMasterAddress()->unparse() << "\" name=\"" << si->_me->_nodename << "\" time=\"" << now.unparse() << "\">\n";
 
   // meminfo
-
   Vector<String> first_col, second_col, third_col, fourth_col;
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
@@ -141,7 +140,7 @@ read_handler(Element *e, void *thunk)
   sa << "\" NFS_Unstable=\"" << second_col[17];
   sa << "\" />\n";
 #else
-  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"); 
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
   sa << "\t<mem total=\"0\" used=\"0\" cached=\"0\" buffers=\"0\" NFS_Unstable=\"0\" />\n";
 #endif
 #else
