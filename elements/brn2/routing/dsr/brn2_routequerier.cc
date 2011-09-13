@@ -50,7 +50,8 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _rreq_issue_timer(static_rreq_issue_hook, this),
     _blacklist_timer(static_blacklist_timer_hook, this),
     _metric(0),
-    _use_blacklist(false)
+    _use_blacklist(false),
+    _expired_packets(0)
 {
   BRNElement::init();
 
@@ -729,6 +730,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
         if (time_elapsed >= BRN_DSR_SENDBUFFER_TIMEOUT) {
           BRN_DEBUG(" * packet %d expired in send buffer", j);
           sb[j]._p->kill();
+          _expired_packets++;
         } else {
           // click_chatter(" * packet %d gets to stay\n", i);
           new_sb.push_back(sb[j]);
@@ -1111,7 +1113,13 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 // Handler
 //-----------------------------------------------------------------------------
 
-enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB};
+String
+BRN2RouteQuerier::print_stats()
+{
+  return "<dsrroutequerierstats node=\"" + BRN_NODE_NAME + "\" expired_packets=\"" + String((int)_expired_packets) + "\" />\n";
+}
+
+enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB, H_STATS};
 
 static String
 read_handler(Element *e, void * vparam)
@@ -1134,6 +1142,9 @@ read_handler(Element *e, void * vparam)
           ret += "\n";
       }
       return ret;
+    }
+    case H_STATS: {
+      return rq->print_stats();
     }
   }
 
@@ -1200,6 +1211,7 @@ BRN2RouteQuerier::add_handlers()
 {
   BRNElement::add_handlers();
 
+  add_read_handler("stats", read_handler, (void*) H_STATS);
   add_read_handler("fixed_route", read_handler, (void*) H_FIXED_ROUTE);
 
   add_write_handler("fixed_route", write_handler, (void*) H_FIXED_ROUTE);

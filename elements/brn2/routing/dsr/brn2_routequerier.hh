@@ -270,6 +270,8 @@ public:
   BRN2GenericMetric *_metric;
   bool _use_blacklist;
 
+  uint32_t _expired_packets;
+
   //---------------------------------------------------------------------------
   // private methods
   //---------------------------------------------------------------------------
@@ -290,6 +292,8 @@ public:
 
  public:
   void flush_sendbuffer();
+
+  String print_stats();
 };
 
 #ifndef FRHASHCODE
