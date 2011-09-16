@@ -41,13 +41,14 @@
 CLICK_DECLS
 
 Brn2LinkTable::Brn2LinkTable()
-  : _debug(BrnLogger::DEFAULT),
+  : _fix_linktable(false),
   _node_identity(),
   _timer(this),
   _sim_mode(false),
   _const_metric(0),
   _brn_routecache(NULL)
 {
+  BRNElement::init();
 }
 
 Brn2LinkTable::~Brn2LinkTable()
@@ -189,6 +190,10 @@ bool
 Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                         IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent)
 {
+  /* Don't update the linktable if it should be fix (e.g. for measurement and debug) */
+  /* TODO: check age and permant-flag of links */
+  if ( _fix_linktable ) return true;
+
   // Flush the route cache
   //_brn_routecache->on_link_changed( from, to );
   BRN_DEBUG("update_link: %s %s %d", from.unparse().c_str(), to.unparse().c_str(), metric);
@@ -857,7 +862,8 @@ enum {H_BLACKLIST,
       H_DIJKSTRA,
       H_DIJKSTRA_TIME,
       H_BEST_ROUTE,
-      H_BESTROUTE_DIJKSTRA};
+      H_BESTROUTE_DIJKSTRA,
+      H_FIX_LINKTABLE};
 
 static String 
 LinkTable_read_param(Element *e, void *thunk)
@@ -882,6 +888,9 @@ LinkTable_read_param(Element *e, void *thunk)
       StringAccum sa;
       sa << td->dijkstra_time << "\n";
       return sa.take_string();
+    }
+    case H_FIX_LINKTABLE: {
+      return "<fixlinktable value=\"" + String(td->_fix_linktable) + "\" />\n";
     }
     default:
       return String();
@@ -956,33 +965,25 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
     }
     break;
   }
+  case H_FIX_LINKTABLE: {
+    bool fix_linktable;
+    if (!cp_bool(s, &fix_linktable)) {
+      return errh->error("fix_linktable is a boolean");
+    } else {
+      f->_fix_linktable = fix_linktable;
+    }
+
+    break;
   }
-  return 0;
-}
-
-static String
-read_debug_param(Element *e, void *)
-{
-  Brn2LinkTable *lt = (Brn2LinkTable *)e;
-  return String(lt->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  Brn2LinkTable *lt = (Brn2LinkTable *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  lt->_debug = debug;
+  }
   return 0;
 }
 
 void
 Brn2LinkTable::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
@@ -990,7 +991,7 @@ Brn2LinkTable::add_handlers()
   add_read_handler("hosts", LinkTable_read_param, (void *)H_HOSTS);
   add_read_handler("blacklist", LinkTable_read_param, (void *)H_BLACKLIST);
   add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
-  add_read_handler("debug", read_debug_param, 0);
+  add_read_handler("fix_linktable", LinkTable_read_param, (void *)H_FIX_LINKTABLE);
 
   add_write_handler("clear", LinkTable_write_param, (void *)H_CLEAR);
   add_write_handler("blacklist_clear", LinkTable_write_param, (void *)H_BLACKLIST_CLEAR);
@@ -999,19 +1000,10 @@ Brn2LinkTable::add_handlers()
   add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
   add_write_handler("best_route", LinkTable_write_param, (void *)H_BEST_ROUTE);
   add_write_handler("best_route_and_dijkstra", LinkTable_write_param, (void *)H_BESTROUTE_DIJKSTRA);
-  add_write_handler("debug", write_debug_param, 0);
+  add_write_handler("fix_linktable", LinkTable_write_param, (void *)H_FIX_LINKTABLE);
 
   add_write_handler("update_link", static_update_link, 0);
 }
-
-#include <click/bighashmap.cc>
-#include <click/hashmap.cc>
-#include <click/vector.cc>
-#if EXPLICIT_TEMPLATE_INSTANCES
-template class HashMap<EtherAddress, EtherAddress>;
-template class HashMap<EtherPair, Brn2LinkTable::LinkInfo>;
-template class HashMap<EtherAddress, Brn2LinkTable::BrnHostInfo>;
-#endif
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Brn2LinkTable)

@@ -30,6 +30,8 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/routecache/brn2routecache.hh"
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 /*
  * =c
@@ -85,15 +87,14 @@ inline unsigned
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Brn2LinkTable: public Element {
+class Brn2LinkTable: public BRNElement {
  public:
   //
   //member
   //
-  int _debug;
-
   Vector<EtherAddress> last_route;
 
+  bool _fix_linktable;
   //
   //methods
   //
