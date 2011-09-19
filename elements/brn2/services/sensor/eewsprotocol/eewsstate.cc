@@ -246,7 +246,7 @@ EewsState::check_neighbor_alarm(uint8_t state, const EtherAddress *ea)
 }
 
 void
-EewsState::update_me(uint8_t state)
+EewsState::update_me(uint8_t /*state*/)
 {
   return;
   //if (_triggered_alarm == STATE_)

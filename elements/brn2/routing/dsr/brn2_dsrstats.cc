@@ -171,5 +171,4 @@ DSRStats::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(RoutingPeek)
 EXPORT_ELEMENT(DSRStats)

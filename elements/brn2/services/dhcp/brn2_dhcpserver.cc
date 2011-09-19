@@ -114,7 +114,7 @@ static void callback_func(void *e, DHTOperation *op)
   if ( client_info != NULL ) {
     s->handle_dht_reply(client_info,op);
   } else {
-    click_chatter("DHCPServer: No Client info for DHT-ID. ID = %d", op->get_id());
+    click_chatter("DHCPServer (%s): No Client info for DHT-ID. ID = %d", Timestamp::now().unparse().c_str(), op->get_id());
     delete op;
   }
 }

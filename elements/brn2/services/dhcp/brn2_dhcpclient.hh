@@ -27,6 +27,8 @@
 #include <click/vector.hh>
 #include "dhcp.h"
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -41,7 +43,7 @@ CLICK_DECLS
 #define DHCP_CLIENT_INFO
 
 
-class BRN2DHCPClient : public Element {
+class BRN2DHCPClient : public BRNElement {
 
  public:
 
@@ -58,7 +60,7 @@ class BRN2DHCPClient : public Element {
     struct timeval _time_start;
 
     uint8_t _last_action;
-    struct timeval _time_last_action;
+    Timestamp _last_action_time;
 
     uint8_t status;
     uint32_t lease;
@@ -72,7 +74,7 @@ class BRN2DHCPClient : public Element {
       ip_add = IPAddress(_ip);
 
       _time_start = Timestamp::now().timeval();
-      _time_last_action = Timestamp::now().timeval();
+      _last_action_time = Timestamp::now();
 
       _last_action = 0;
 
@@ -86,7 +88,7 @@ class BRN2DHCPClient : public Element {
       eth_add = EtherAddress(_mac);
 
       _time_start = Timestamp::now().timeval();
-      _time_last_action = Timestamp::now().timeval();
+      _last_action_time = Timestamp::now();
 
       _last_action = 0;
 
@@ -117,6 +119,8 @@ class BRN2DHCPClient : public Element {
   virtual void cleanup(CleanupStage stage);
   void add_handlers();
   void init_state();
+
+  String print_stats();
 
  private:
 

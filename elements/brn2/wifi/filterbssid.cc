@@ -44,7 +44,9 @@
 CLICK_DECLS
 
 FilterBSSID::FilterBSSID()
-  : _winfo(0)
+  : _winfo(0),
+    _winfo_list(0),
+    _active(true)
 {
   BRNElement::init();
 }
@@ -56,14 +58,13 @@ FilterBSSID::~FilterBSSID()
 int
 FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
-  _debug = false;
   _active = true;
   if (cp_va_kparse(conf, this, errh,
-      "ACTIVE", cpkP+cpkM, cpBool, &_active,
-      "DEBUG", cpkP+cpkM, cpInteger, &_debug,
       "WIRELESS_INFO", cpkP+cpkM, cpElement, &_winfo,
-		  cpEnd) < 0)
+      "WIRELESS_INFO_LIST", cpkP, cpElement, &_winfo_list,
+      "ACTIVE", cpkP, cpBool, &_active,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
     return -1;
 
   if (!_winfo || !_winfo->cast("WirelessInfo"))
@@ -78,7 +79,6 @@ FilterBSSID::push(int, Packet *p)
   EtherAddress dst;
   EtherAddress src;
   EtherAddress bssid;
- 
 
   uint8_t dir;
   struct click_wifi *w = (struct click_wifi *) p->data();
@@ -123,11 +123,22 @@ FilterBSSID::push(int, Packet *p)
   if (_winfo->_bssid == bssid)
   {
     output(0).push(p);
-    return; 
+    return;
+  }
+
+  if (_winfo_list != NULL ) {
+    BRN2WirelessInfoList::WifiInfo *wi;
+    for ( int i = 0; i < _winfo_list->countWifiInfo(); i++ ) {
+      wi = _winfo_list->getWifiInfo(i);
+      if ( wi->_bssid == bssid ) {
+        output(0).push(p);
+        return;
+      }
+    }
   }
 
   // If not active, simply print out a debug message
-  if (!_active) 
+  if (!_active)
   {
     BRN_WARN("packet with wrong bssid %s", bssid.unparse().c_str());
 
