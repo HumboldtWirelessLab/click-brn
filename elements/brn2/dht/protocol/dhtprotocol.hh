@@ -48,7 +48,7 @@ struct dht_packet_header {
   uint8_t  minor_type;
   uint8_t  src[6];           //since the packet takes several hops in the overlay, this is used to take a direct path to src of the request
   uint16_t payload_len;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define DHT_PACKET_HEADER_SIZE sizeof(dht_packet_header)
 

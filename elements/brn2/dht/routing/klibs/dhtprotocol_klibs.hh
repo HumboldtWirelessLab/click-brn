@@ -37,12 +37,12 @@ CLICK_DECLS
 struct klibs_protocolheader {
   uint8_t  version;
   uint8_t  entries;            //number of entries in the packet
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct klibs_rt_entry {
   uint8_t  etheraddr[6];
   uint32_t age;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 class DHTProtocolKlibs {
 

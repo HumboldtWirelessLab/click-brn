@@ -40,7 +40,7 @@ DartIDCache::getEntry(EtherAddress *ea)
 
   for(int i = 0; i < _idcache.size(); i++) {                           //search
     if ( memcmp(_idcache[i]->_ea.data(), ea->data(), 6) == 0 ) {       //if found
-      if ( (now - _idcache[i]->_time).msec1() < DARTMAXKEXCACHETIME ) { //check age, if not too old
+      if ( (now - _idcache[i]->_time).msecval() < DARTMAXKEXCACHETIME ) { //check age, if not too old
         return _idcache[i];                                       //give back
       } else {                                                    //too old ?
         delete _idcache[i];
