@@ -31,21 +31,23 @@ CLICK_DECLS
 #define min(x,y)      ((x)<(y) ? (x) : (y))
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 
-struct click_seismo_data_header {
-  int gps_lat;
-  int gps_long;
-  int gps_alt;
-  int gps_hdop;
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_seismo_data_header {,
+  int32_t gps_lat;
+  int32_t gps_long;
+  int32_t gps_alt;
+  int32_t gps_hdop;
 
-  int sampling_rate;
-  int samples;
-  int channels;
-};
+  int32_t sampling_rate;
+  int32_t samples;
+  int32_t channels;
+});
 
-struct click_seismo_data {
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_seismo_data {,
   uint64_t time;
-  int timing_quality;
-};
+  int32_t timing_quality;
+});
 
 class SrcInfo {
 

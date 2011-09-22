@@ -110,7 +110,7 @@ Seismo::push(int port, Packet *p)
       StringAccum sa;
       sa << "ID: " << src_node_id.unparse() << " Time: " << seismo_data->time;
       sa << " Time_qual: " << seismo_data->timing_quality << " Data:";
-      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << (int)ntohl(data32[j]);
+      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  sa << " " << (int32_t)ntohl(data32[j]);
       click_chatter("%s",sa.take_string().c_str());
     }
 
@@ -164,7 +164,6 @@ read_handler(Element *e, void */*thunk*/)
 
     sa << "</seismo>\n";
     sa << "</node>\n";
-
   }
 
   si->_node_stats_tab.clear();  // clear node stat before returning
