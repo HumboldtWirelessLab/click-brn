@@ -8,7 +8,7 @@ CLICK_DECLS
 struct event_header {
   uint8_t  _src[6];
   uint16_t _id;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 CLICK_ENDDECLS
 #endif
