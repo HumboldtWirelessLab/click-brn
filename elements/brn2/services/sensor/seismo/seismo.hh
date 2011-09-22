@@ -49,6 +49,12 @@ struct click_seismo_data {,
   int32_t timing_quality;
 });
 
+struct SeismoInfo {
+	uint64_t _time;
+	int _channels;
+	int32_t *_channel_values;
+};
+
 class SrcInfo {
 
   public:
@@ -198,6 +204,7 @@ class SrcInfo {
 
 typedef HashMap<EtherAddress, SrcInfo> NodeStats;
 typedef NodeStats::const_iterator NodeStatsIter;
+typedef Vector<SeismoInfo> LatestSeismoInfos;
 
 class Seismo : public BRNElement {
 
@@ -221,6 +228,7 @@ class Seismo : public BRNElement {
   bool _calc_stats;
   NodeStats _node_stats_tab;
   String _last_channelstatinfo;
+  LatestSeismoInfos _latest_seismo_infos;
 };
 
 CLICK_ENDDECLS
