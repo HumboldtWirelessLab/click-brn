@@ -127,7 +127,7 @@ Seismo::push(int port, Packet *p)
 		SeismoInfo seismo_info;
 		seismo_info._time = seismo_data->time;
 		seismo_info._channels = ntohl(seismo_header->channels);
-		seismo_info._channel_values = data32;
+		for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ ) seismo_info._channel_values[j] = (int32_t)ntohl(data32[j]);
 		_latest_seismo_infos.push_back(seismo_info);
     }
 
@@ -193,7 +193,7 @@ latest_handler(Element *e, void */*thunk*/)
   for (LatestSeismoInfos::const_iterator iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
 	  sa << "  <channel_info time='" << iter->_time << "'";
 	  for (int32_t j = 0; j < iter->_channels; j++) {
-		sa << " channel_" << j << "='" << (int)ntohl(iter->_channel_values[j]) << "'";
+		sa << " channel_" << j << "='" << iter->_channel_values[j] << "'";
 	  }
 	  sa << "/>\n";
   }

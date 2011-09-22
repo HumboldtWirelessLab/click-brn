@@ -52,7 +52,7 @@ struct click_seismo_data {,
 struct SeismoInfo {
 	uint64_t _time;
 	int _channels;
-	int32_t *_channel_values;
+	int32_t _channel_values[4];
 };
 
 class SrcInfo {
