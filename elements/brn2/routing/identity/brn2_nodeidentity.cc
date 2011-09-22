@@ -192,6 +192,7 @@ read_version_param(Element *e, void *)
 
   sa << "<version name=\"" << id->_nodename << "\">\n";
   sa << "\t<click_binary version=\"" << CLICK_VERSION << "\" brn_version=\"" << BRN_VERSION << "\"";
+  sa << " build_date=\"" << __DATE__ << "\" build_time=\"" << __TIME__ << "\"";
 #if CLICK_USERLEVEL == 1
 #if CLICK_NS == 1
   sa << " mode=\"sim\"";
