@@ -159,7 +159,10 @@ OpenAuthRequester::send_auth_request()
 
 
   w->i_dur = 0;
-  w->i_seq = 0;
+  w->i_seq = cpu_to_le16(1);
+
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  ceh->flags |= WIFI_EXTRA_NO_SEQ;
 
   uint8_t *ptr;
 
