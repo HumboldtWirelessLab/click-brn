@@ -203,6 +203,28 @@ latest_handler(Element *e, void */*thunk*/)
   return sa.take_string();
 }
 
+static String
+small_handler(Element *e, void */*thunk*/)
+{
+  Seismo *si = (Seismo*)e;
+  StringAccum sa;
+  SeismoInfo stats = *(si->_latest_seismo_infos.begin());
+
+  sa << "<c>\n";
+  for (LatestSeismoInfos::const_iterator iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
+	  sa << "  <v t='" << iter->_time << "'";
+	  int channels = iter->_channels - 1;
+	  for (int32_t j = 0; j < channels; j++) {
+		sa << " c" << j << "='" << iter->_channel_values[j] << "'";
+	  }
+	  sa << "/>\n";
+  }
+  sa << "</c>\n";
+  si->_latest_seismo_infos.clear();
+
+  return sa.take_string();
+}
+
 void
 Seismo::add_handlers()
 {
@@ -210,6 +232,7 @@ Seismo::add_handlers()
 
   add_read_handler("channelstatinfo", read_handler, 0);
   add_read_handler("latestchannelinfos", latest_handler, 0);
+  add_read_handler("small", small_handler, 0);
 }
 
 CLICK_ENDDECLS
