@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 namespace clicky {
 
