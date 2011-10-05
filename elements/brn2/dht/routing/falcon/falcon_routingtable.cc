@@ -42,10 +42,11 @@ FalconRoutingTable::FalconRoutingTable():
   backlog(NULL),
   _lastUpdatedPosition(0),
   fix_successor(false),
-  _debug(BrnLogger::DEFAULT),
   _dbg_routing_info(0),
-  max_node_age(RT_MAX_NODE_AGE)
+  max_node_age(RT_MAX_NODE_AGE),
+  _passive_monitoring(false)
 {
+  BRNElement::init();
 }
 
 FalconRoutingTable::~FalconRoutingTable()
@@ -487,7 +488,7 @@ FalconRoutingTable::routing_info(void)
     else
       sa << "\tfalse";
 
-    sa << "\t\t" << (int)node->_status;
+    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
     sa << "\t" << node->get_age();
     sa << "\t" << node->get_last_ping();
 
@@ -509,7 +510,7 @@ FalconRoutingTable::routing_info(void)
     else
       sa << "\tfalse";
 
-    sa << "\t\t" << (int)node->_status;
+    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
     sa << "\t" << node->get_age();
     sa << "\t" << node->get_last_ping();
 
@@ -531,7 +532,7 @@ FalconRoutingTable::routing_info(void)
     else
       sa << "\tfalse";
 
-    sa << "\t\t" << (int)node->_status;
+    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
     sa << "\t" << node->get_age();
     sa << "\t" << node->get_last_ping();
     sa << "\n";
@@ -583,6 +584,8 @@ read_param(Element *e, void *thunk)
 void
 FalconRoutingTable::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
   add_read_handler("debug_routing_info", read_param , (void *)H_DEBUG_ROUTING_INFO);
 }

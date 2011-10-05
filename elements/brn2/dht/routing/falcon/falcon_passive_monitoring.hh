@@ -14,6 +14,16 @@ CLICK_DECLS
 class FalconPassiveMonitoring : public BRNElement
 {
   public:
+    class MonitoredDHTNode {
+      DHTnode _node;
+
+      Timestamp _age;
+
+      DHTnodelist _reverse_fingertable;
+    };
+
+    Vector<MonitoredDHTNode*> _dhtnodelist;
+
     FalconPassiveMonitoring();
     ~FalconPassiveMonitoring();
 
@@ -39,7 +49,8 @@ class FalconPassiveMonitoring : public BRNElement
 
     void handle_leave_monitoring_activate(Packet *packet);
     void handle_leave_monitoring_deactivate(Packet *packet);
-
+    void handle_node_failure(Packet *packet);
+    void handle_node_update(Packet *packet);
 };
 
 CLICK_ENDDECLS
