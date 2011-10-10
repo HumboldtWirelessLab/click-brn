@@ -210,14 +210,14 @@ small_handler(Element *e, void */*thunk*/)
   StringAccum sa;
   SeismoInfo stats = *(si->_latest_seismo_infos.begin());
 
-  sa << "<c>\n";
+  sa << "<c>";
   for (LatestSeismoInfos::const_iterator iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
-	  sa << "  <v t='" << iter->_time << "'";
+	  sa << "<v t='" << iter->_time << "'";
 	  int channels = iter->_channels - 1;
 	  for (int32_t j = 0; j < channels; j++) {
 		sa << " c" << j << "='" << iter->_channel_values[j] << "'";
 	  }
-	  sa << "/>\n";
+	  sa << "/>";
   }
   sa << "</c>\n";
   si->_latest_seismo_infos.clear();
