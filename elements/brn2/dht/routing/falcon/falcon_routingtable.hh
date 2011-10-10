@@ -29,6 +29,8 @@
 #include "elements/brn2/dht/standard/dhtnode.hh"
 #include "elements/brn2/dht/standard/dhtnodelist.hh"
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 #define RT_UPDATE_NONE        0
@@ -60,7 +62,7 @@ CLICK_DECLS
        - in other tables only delete the referenz (NOT the Object (DHTnode))
 */
 
-class FalconRoutingTable : public Element
+class FalconRoutingTable : public BRNElement
 {
  public:
 
@@ -182,12 +184,12 @@ class FalconRoutingTable : public Element
   void inc_successor_counter(void) { ping_successor_counter++; }
   int get_successor_counter(void) { return ping_successor_counter; }
 
-  int _debug;
-
   int _dbg_routing_info;
 
  private:
   int max_node_age;
+
+  bool _passive_monitoring;
 
  public:
   int get_max_node_age() { return max_node_age; }

@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
+#include <gtk/gtk.h> 
+#include <gtk/gtkwidget.h>
+
 extern "C" {
 #include "interface.h"
 #include "support.h"
@@ -1124,9 +1127,9 @@ void wmain::config_check(bool install)
 void wmain::set_diagram_mode(int configuration, int diagram)
 {
     if (configuration < 0)
-	configuration = gtk_widget_get_visible(lookup_widget(_window, "configwindow"));
+	configuration = GTK_WIDGET_VISIBLE/*gtk_widget_get_visible*/(lookup_widget(_window, "configwindow"));
     if (diagram < 0)
-	diagram = gtk_widget_get_visible(lookup_widget(_window, "diagramwindow"));
+	diagram = GTK_WIDGET_VISIBLE/*gtk_widget_get_visible*/(lookup_widget(_window, "diagramwindow"));
     if (!configuration && !diagram)
 	return;
 

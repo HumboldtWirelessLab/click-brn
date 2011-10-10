@@ -41,13 +41,19 @@ int FalconPassiveMonitoring::configure(Vector<String> &conf, ErrorHandler *errh)
 int FalconPassiveMonitoring::initialize(ErrorHandler *)
 {
   _lookup_timer.initialize(this);
+
+  _lookup_timer.schedule_after_msec(5000);
   return 0;
 }
 
 void
-FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void */*f*/)
+FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
+
+  ((FalconPassiveMonitoring*)f)->_lookup_timer.schedule_after_msec(5000);
+
+  /* genereate packet with reverse fingertable (FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE) */
 }
 
 void
@@ -61,6 +67,14 @@ FalconPassiveMonitoring::push( int port, Packet *packet )
         break;
       case FALCON_MINOR_PASSIVE_MONITORING_DEACTIVATE:
         handle_leave_monitoring_deactivate(packet);
+        packet->kill();
+        break;
+      case FALCON_MINOR_PASSIVE_MONITORING_NODEFAILURE:
+        handle_node_failure(packet);
+        packet->kill();
+        break;
+      case FALCON_MINOR_PASSIVE_MONITORING_NODEUPDATE:
+        handle_node_update(packet);
         packet->kill();
         break;
       default:
@@ -81,6 +95,15 @@ FalconPassiveMonitoring::handle_leave_monitoring_deactivate(Packet */*packet*/)
 {
 }
 
+void
+FalconPassiveMonitoring::handle_node_failure(Packet */*packet*/)
+{
+}
+
+void
+FalconPassiveMonitoring::handle_node_update(Packet */*packet*/)
+{
+}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(FalconPassiveMonitoring)

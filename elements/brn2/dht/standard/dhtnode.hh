@@ -26,6 +26,8 @@ CLICK_DECLS
 #define STATUS_LEAVE       5  /*node has/will leave the network*/
 #define STATUS_NONEXISTENT 6  /*node doesn't exist. Use to handle request for node that doesn't exist*/
 
+static String dht_node_status_string[] = { "unknown", "new", "ok", "missed", "away", "leave", "nonexist" };
+
 #define DEFAULT_DIGEST_LENGTH  128 /* 16*8 Bits*/
 #define MAX_DIGEST_LENGTH      128 /* 16*8 Bits*/
 
