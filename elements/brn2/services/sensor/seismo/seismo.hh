@@ -49,11 +49,15 @@ struct click_seismo_data {,
   int32_t timing_quality;
 });
 
-struct SeismoInfo {
-  uint64_t _time;
-  int _channels;
-  int32_t _channel_values[4];
+class SeismoInfo {
+  public:
+    uint64_t _time;
+    int _channels;
+    int32_t _channel_values[4];
 };
+
+typedef Vector<SeismoInfo> LatestSeismoInfos;
+typedef LatestSeismoInfos::const_iterator LatestSeismoInfosIter;
 
 class SrcInfo {
 
@@ -76,6 +80,8 @@ class SrcInfo {
     int* _chan_max_vals; // observed maxima
 
     int sample_series;
+
+    LatestSeismoInfos _latest_seismo_infos;
 
     SrcInfo() {
       update_gps(-1,-1,-1,-1);
@@ -205,9 +211,6 @@ class SrcInfo {
 typedef HashMap<EtherAddress, SrcInfo> NodeStats;
 typedef NodeStats::const_iterator NodeStatsIter;
 
-typedef Vector<SeismoInfo> LatestSeismoInfos;
-typedef LatestSeismoInfos::const_iterator LatestSeismoInfosIter;
-
 class Seismo : public BRNElement {
 
   public:
@@ -228,9 +231,12 @@ class Seismo : public BRNElement {
   GPS *_gps;
   bool _print;
   bool _calc_stats;
+
   NodeStats _node_stats_tab;
-  String _last_channelstatinfo;
-  LatestSeismoInfos _latest_seismo_infos;
+  String _last_channelstatinfo;  //includes the string of the last channel info (incl, info about all nodes)
+                                 //used if no new data is available
+  SrcInfo *_local_info;
+
 };
 
 CLICK_ENDDECLS

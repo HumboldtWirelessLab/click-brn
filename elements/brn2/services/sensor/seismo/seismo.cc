@@ -34,7 +34,8 @@ CLICK_DECLS
 
 Seismo::Seismo():
   _gps(NULL),
-  _print(false)
+  _print(false),
+  _local_info(NULL)
 {
   BRNElement::init();
 }
@@ -96,6 +97,9 @@ Seismo::push(int port, Packet *p)
                                                     ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop),
                                                     ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
         src_i = _node_stats_tab.findp(src_node_id);
+        if ( port == 0 ) {
+          _local_info = src_i;
+        }
       } else {
         src_i->update_gps(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
                           ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop));
@@ -124,12 +128,12 @@ Seismo::push(int port, Packet *p)
 
     // add info to latest seismo infos
     if ( port == 0 ) {  //add only local data to latest stats
-      if (_latest_seismo_infos.size() < 1000) {
+      if (src_i->_latest_seismo_infos.size() < 1000) {
         SeismoInfo seismo_info;
         seismo_info._time = seismo_data->time;
         seismo_info._channels = ntohl(seismo_header->channels);
         for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ ) seismo_info._channel_values[j] = (int32_t)ntohl(data32[j]);
-          _latest_seismo_infos.push_back(seismo_info);
+        src_i->_latest_seismo_infos.push_back(seismo_info);
       }
     }
 
@@ -178,6 +182,7 @@ read_handler(Element *e, void */*thunk*/)
   }
 
   si->_node_stats_tab.clear();  // clear node stat before returning
+  si->_local_info = NULL;           // clear link to local info
 
   si->_last_channelstatinfo = sa.take_string();
   return si->_last_channelstatinfo;
@@ -191,17 +196,19 @@ latest_handler(Element *e, void */*thunk*/)
   StringAccum sa;
 
   sa << "<channel_infos>\n";
-  if ( si->_latest_seismo_infos.size() != 0 ) {
-    for (LatestSeismoInfosIter iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
-      sa << "  <channel_info time='" << iter->_time << "'";
-      for (int32_t j = 0; j < iter->_channels; j++) {
-        sa << " channel_" << j << "='" << iter->_channel_values[j] << "'";
+  if ( si->_local_info != NULL ) {
+    if ( si->_local_info->_latest_seismo_infos.size() != 0 ) {
+      for (LatestSeismoInfosIter iter = si->_local_info->_latest_seismo_infos.begin(); iter != si->_local_info->_latest_seismo_infos.end(); iter++) {
+        sa << "  <channel_info time='" << iter->_time << "'";
+        for (int32_t j = 0; j < iter->_channels; j++) {
+          sa << " channel_" << j << "='" << iter->_channel_values[j] << "'";
+        }
+        sa << "/>\n";
       }
-      sa << "/>\n";
     }
   }
   sa << "</channel_infos>\n";
-  si->_latest_seismo_infos.clear();
+  si->_local_info->_latest_seismo_infos.clear();
 
   return sa.take_string();
 }
@@ -213,18 +220,20 @@ small_handler(Element *e, void */*thunk*/)
   StringAccum sa;
 
   sa << "<c>";
-  if ( si->_latest_seismo_infos.size() != 0 ) {
-    for (LatestSeismoInfosIter iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
-      sa << "<v t='" << iter->_time << "'";
-      int channels = iter->_channels - 1;
-      for (int32_t j = 0; j < channels; j++) {
-        sa << " c" << j << "='" << iter->_channel_values[j] << "'";
+  if ( si->_local_info != NULL ) {
+    if ( si->_local_info->_latest_seismo_infos.size() != 0 ) {
+      for (LatestSeismoInfosIter iter = si->_local_info->_latest_seismo_infos.begin(); iter != si->_local_info->_latest_seismo_infos.end(); iter++) {
+        sa << "<v t='" << iter->_time << "'";
+        int channels = iter->_channels - 1;
+        for (int32_t j = 0; j < channels; j++) {
+          sa << " c" << j << "='" << iter->_channel_values[j] << "'";
+        }
+        sa << "/>";
       }
-      sa << "/>";
     }
   }
   sa << "</c>\n";
-  si->_latest_seismo_infos.clear();
+  si->_local_info->_latest_seismo_infos.clear();
 
   return sa.take_string();
 }
