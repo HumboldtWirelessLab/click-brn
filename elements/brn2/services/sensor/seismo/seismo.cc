@@ -208,7 +208,9 @@ latest_handler(Element *e, void */*thunk*/)
     }
   }
   sa << "</channel_infos>\n";
-  si->_local_info->_latest_seismo_infos.clear();
+  if ( si->_local_info != NULL ) {
+    si->_local_info->_latest_seismo_infos.clear();
+  }
 
   return sa.take_string();
 }
@@ -233,7 +235,9 @@ small_handler(Element *e, void */*thunk*/)
     }
   }
   sa << "</c>\n";
-  si->_local_info->_latest_seismo_infos.clear();
+  if ( si->_local_info != NULL ) {
+    si->_local_info->_latest_seismo_infos.clear();
+  }
 
   return sa.take_string();
 }
