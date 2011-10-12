@@ -123,12 +123,14 @@ Seismo::push(int port, Packet *p)
     }
 
     // add info to latest seismo infos
-    if (_latest_seismo_infos.size() < 1000) {
-		SeismoInfo seismo_info;
-		seismo_info._time = seismo_data->time;
-		seismo_info._channels = ntohl(seismo_header->channels);
-		for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ ) seismo_info._channel_values[j] = (int32_t)ntohl(data32[j]);
-		_latest_seismo_infos.push_back(seismo_info);
+    if ( port == 0 ) {  //add only local data to latest stats
+      if (_latest_seismo_infos.size() < 1000) {
+        SeismoInfo seismo_info;
+        seismo_info._time = seismo_data->time;
+        seismo_info._channels = ntohl(seismo_header->channels);
+        for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ ) seismo_info._channel_values[j] = (int32_t)ntohl(data32[j]);
+          _latest_seismo_infos.push_back(seismo_info);
+      }
     }
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
@@ -187,15 +189,16 @@ latest_handler(Element *e, void */*thunk*/)
 {
   Seismo *si = (Seismo*)e;
   StringAccum sa;
-  SeismoInfo stats = *(si->_latest_seismo_infos.begin());
 
   sa << "<channel_infos>\n";
-  for (LatestSeismoInfos::const_iterator iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
-	  sa << "  <channel_info time='" << iter->_time << "'";
-	  for (int32_t j = 0; j < iter->_channels; j++) {
-		sa << " channel_" << j << "='" << iter->_channel_values[j] << "'";
-	  }
-	  sa << "/>\n";
+  if ( si->_latest_seismo_infos.size() != 0 ) {
+    for (LatestSeismoInfosIter iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
+      sa << "  <channel_info time='" << iter->_time << "'";
+      for (int32_t j = 0; j < iter->_channels; j++) {
+        sa << " channel_" << j << "='" << iter->_channel_values[j] << "'";
+      }
+      sa << "/>\n";
+    }
   }
   sa << "</channel_infos>\n";
   si->_latest_seismo_infos.clear();
@@ -208,16 +211,17 @@ small_handler(Element *e, void */*thunk*/)
 {
   Seismo *si = (Seismo*)e;
   StringAccum sa;
-  SeismoInfo stats = *(si->_latest_seismo_infos.begin());
 
   sa << "<c>";
-  for (LatestSeismoInfos::const_iterator iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
-	  sa << "<v t='" << iter->_time << "'";
-	  int channels = iter->_channels - 1;
-	  for (int32_t j = 0; j < channels; j++) {
-		sa << " c" << j << "='" << iter->_channel_values[j] << "'";
-	  }
-	  sa << "/>";
+  if ( si->_latest_seismo_infos.size() != 0 ) {
+    for (LatestSeismoInfosIter iter = si->_latest_seismo_infos.begin(); iter != si->_latest_seismo_infos.end(); iter++) {
+      sa << "<v t='" << iter->_time << "'";
+      int channels = iter->_channels - 1;
+      for (int32_t j = 0; j < channels; j++) {
+        sa << " c" << j << "='" << iter->_channel_values[j] << "'";
+      }
+      sa << "/>";
+    }
   }
   sa << "</c>\n";
   si->_latest_seismo_infos.clear();
@@ -231,6 +235,7 @@ Seismo::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("channelstatinfo", read_handler, 0);
+
   add_read_handler("latestchannelinfos", latest_handler, 0);
   add_read_handler("small", small_handler, 0);
 }
