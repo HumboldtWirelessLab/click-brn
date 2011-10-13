@@ -25,11 +25,14 @@
 
 #include "elements/brn2/services/sensor/gps/gps.hh"
 
-
 CLICK_DECLS
 
 #define min(x,y)      ((x)<(y) ? (x) : (y))
 #define max(x,y)      ((x)>(y) ? (x) : (y))
+
+#define SEISMO_TAG_LENGTH_LONG  0
+#define SEISMO_TAG_LENGTH_SHORT 1
+
 
 CLICK_SIZE_PACKED_STRUCTURE(
 struct click_seismo_data_header {,
@@ -231,11 +234,14 @@ class Seismo : public BRNElement {
   GPS *_gps;
   bool _print;
   bool _calc_stats;
+  bool _record_data;
 
   NodeStats _node_stats_tab;
   String _last_channelstatinfo;  //includes the string of the last channel info (incl, info about all nodes)
                                  //used if no new data is available
   SrcInfo *_local_info;
+
+  uint8_t _tag_len;
 
 };
 
