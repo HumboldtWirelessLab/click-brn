@@ -275,15 +275,55 @@ local_latest_handler(Element *e, void */*thunk*/)
   return sa.take_string();
 }
 
+static String
+read_tag_param(Element *e, void */*thunk*/)
+{
+  Seismo *si = (Seismo*)e;
+  StringAccum sa;
+
+  if (si->_tag_len == SEISMO_TAG_LENGTH_LONG) {
+    sa << "false";
+  } else {
+    sa << "true";
+  }
+
+  return sa.take_string();
+}
+
+static int
+write_tag_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  Seismo *si = (Seismo*)e;
+  String s = cp_uncomment(in_s);
+
+  bool shorttag;
+  if (!cp_bool(s, &shorttag))
+    return errh->error("short tag is bool");
+
+  if ( shorttag && (si->_tag_len == SEISMO_TAG_LENGTH_LONG)) {
+    si->_tag_len = SEISMO_TAG_LENGTH_SHORT;
+  } else {
+    if ( (!shorttag) && (si->_tag_len == SEISMO_TAG_LENGTH_SHORT)) {
+      si->_tag_len = SEISMO_TAG_LENGTH_LONG;
+    }
+  }
+
+  return 0;
+}
+
 void
 Seismo::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("channelstatinfo", read_handler, 0);
+  add_read_handler("channelinfostats", read_handler);
 
-  add_read_handler("latestchannelinfos", latest_handler, 0);
-  add_read_handler("local_latestchannelinfos", local_latest_handler, 0);
+  add_read_handler("channelinfo", latest_handler);
+  add_read_handler("localchannelinfo", local_latest_handler);
+
+  add_read_handler("shorttag", read_tag_param);
+  add_write_handler("shorttag", write_tag_param);
+
 }
 
 CLICK_ENDDECLS
