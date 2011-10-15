@@ -212,7 +212,7 @@ latest_handler(Element *e, void */*thunk*/)
     SrcInfo *src = si->_node_stats_tab.findp(id);
 
     int no_blocks = src->get_last_block()->_block_index - src->_next_seismo_info_block_for_handler + 1;
-    if ( ! src->get_last_block()->is_complete() ) no_blocks++;
+    if ( ! src->get_last_block()->is_complete() ) no_blocks--;
 
     sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n\t\t<channel_infos size='";
     sa << (no_blocks * CHANNEL_INFO_BLOCK_SIZE) << "' >\n";
