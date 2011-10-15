@@ -33,6 +33,8 @@ CLICK_DECLS
 #define SEISMO_TAG_LENGTH_LONG  0
 #define SEISMO_TAG_LENGTH_SHORT 1
 
+#define CHANNEL_INFO_BLOCK_SIZE       100
+#define MAX_CHANNEL_INFO_BLOCK_COUNT   10
 
 CLICK_SIZE_PACKED_STRUCTURE(
 struct click_seismo_data_header {,
@@ -52,15 +54,47 @@ struct click_seismo_data {,
   int32_t timing_quality;
 });
 
-class SeismoInfo {
+class SeismoInfoBlock {
   public:
-    uint64_t _time;
-    int _channels;
-    int32_t _channel_values[4];
+    uint64_t _time[CHANNEL_INFO_BLOCK_SIZE];
+
+    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4];
+    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];
+
+    uint32_t _block_index;
+    uint16_t _next_value_index;
+
+    SeismoInfoBlock(uint32_t block_index) :_next_value_index(0)
+    {
+      _block_index = block_index;
+    }
+
+    int insert(uint64_t time, uint32_t channels, int32_t *values, bool net2host = true) {
+      if ( _block_index == CHANNEL_INFO_BLOCK_SIZE ) return -1;
+
+      _channels[_next_value_index] = (uint8_t)channels;
+      _time[_next_value_index] = time;
+
+      if ( net2host ) {
+        for ( uint32_t i = 0; i < channels; i++ ) {
+          _channel_values[_next_value_index][i] = (uint32_t)ntohl(values[i]);
+        }
+      } else {
+        for ( uint32_t i = 0; i < channels; i++ ) {
+          _channel_values[_next_value_index][i] = values[i];
+        }
+      }
+
+      _next_value_index++;
+
+      return _next_value_index;
+    }
+
+    inline bool is_complete() { return (_next_value_index == CHANNEL_INFO_BLOCK_SIZE); }
 };
 
-typedef Vector<SeismoInfo> LatestSeismoInfos;
-typedef LatestSeismoInfos::const_iterator LatestSeismoInfosIter;
+typedef Vector<SeismoInfoBlock*> SeismoInfoBlockList;
+typedef SeismoInfoBlockList::const_iterator SeismoInfoBlockListIter;
 
 class SrcInfo {
 
@@ -84,7 +118,9 @@ class SrcInfo {
 
     int sample_series;
 
-    LatestSeismoInfos _latest_seismo_infos;
+    SeismoInfoBlockList _seismo_infos;
+    uint32_t _next_seismo_info_block_for_handler;
+    uint32_t _max_seismo_info_blocks;
 
     SrcInfo() {
       update_gps(-1,-1,-1,-1);
@@ -97,6 +133,9 @@ class SrcInfo {
       _chan_cum_sq_vals = NULL;
       _chan_min_vals = NULL;
       _chan_max_vals = NULL;
+
+      _next_seismo_info_block_for_handler = 0;
+      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
     }
 
     void reset() {
@@ -119,6 +158,9 @@ class SrcInfo {
       _chan_min_vals = new int[channels];
       _chan_max_vals = new int[channels];
 
+      _next_seismo_info_block_for_handler = 0;
+      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
+
       update_gps(gps_lat, gps_long, gps_alt, gps_hdop);
       reset();
     }
@@ -137,6 +179,10 @@ class SrcInfo {
       _chan_cum_sq_vals = new int64_t[o._channels];
       _chan_min_vals = new int[o._channels];
       _chan_max_vals = new int[o._channels];
+
+      _next_seismo_info_block_for_handler = 0;
+      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
+
       for (int i=0; i<o._channels; i++) {
         _chan_cum_vals[i] = o._chan_cum_vals[i];
         _chan_cum_sq_vals[i] = o._chan_cum_sq_vals[i];
@@ -154,9 +200,15 @@ class SrcInfo {
       _chan_min_vals = NULL;
       if (_chan_max_vals) delete [] _chan_max_vals;
       _chan_max_vals = NULL;
+
+      for ( int i = _seismo_infos.size()-1; i >= 0; i-- ) {
+        delete _seismo_infos[i];
+        _seismo_infos.erase(_seismo_infos.begin() + i);
+      }
+
     }
 
-   inline void update_gps(int gps_lat, int gps_long, int gps_alt, int gps_hdop) {
+    inline void update_gps(int gps_lat, int gps_long, int gps_alt, int gps_hdop) {
       _gps_lat = gps_lat;
       _gps_long = gps_long;
       _gps_alt = gps_alt;
@@ -209,6 +261,40 @@ class SrcInfo {
     int min_channel_info(int channel) { return _chan_min_vals[channel]; }
 
     int max_channel_info(int channel) { return _chan_max_vals[channel]; }
+
+    SeismoInfoBlock* new_block() {
+      int block_index = 0;
+      if ( _seismo_infos.size() != 0 )
+        block_index = _seismo_infos[_seismo_infos.size()-1]->_block_index + 1;
+
+      SeismoInfoBlock *nb;
+
+      if ( _seismo_infos.size() == (int)_max_seismo_info_blocks ) {
+        nb = _seismo_infos[0];
+        _seismo_infos.erase(_seismo_infos.begin());
+        nb->_block_index = block_index;
+        nb->_next_value_index = 0;
+      } else {
+        nb = new SeismoInfoBlock(block_index);
+      }
+
+      _seismo_infos.push_back(nb);
+
+      return nb;
+    }
+
+    SeismoInfoBlock* get_block(uint32_t block_index) {
+      for ( int i = 0; i < _seismo_infos.size(); i++ ) {
+        if ( _seismo_infos[i]->_block_index == block_index ) return _seismo_infos[i];
+      }
+
+      return NULL;
+    }
+
+    SeismoInfoBlock* get_last_block() {
+      if ( _seismo_infos.size() == 0 ) return NULL;
+      return _seismo_infos[_seismo_infos.size()-1];
+    }
 };
 
 typedef HashMap<EtherAddress, SrcInfo> NodeStats;
