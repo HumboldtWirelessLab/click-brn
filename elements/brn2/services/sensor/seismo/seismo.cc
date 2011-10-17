@@ -212,7 +212,7 @@ latest_handler(Element *e, void */*thunk*/)
     EtherAddress id = iter.key();
     SrcInfo *src = si->_node_stats_tab.findp(id);
 
-    int no_blocks = src->get_last_block()->_block_index - src->_next_seismo_info_block_for_handler + 1;
+    int no_blocks = src->get_last_block()->_block_index - src->get_next_block(src->_next_seismo_info_block_for_handler)->_block_index;
     if ( ! src->get_last_block()->is_complete() ) no_blocks--;
 
     sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n\t\t<channel_infos size='";
@@ -220,10 +220,10 @@ latest_handler(Element *e, void */*thunk*/)
 
     SeismoInfoBlock* sib;
 
-    while ( (sib = src->get_block(src->_next_seismo_info_block_for_handler)) != NULL ) {
+    while ( (sib = src->get_next_block(src->_next_seismo_info_block_for_handler)) != NULL ) {
       if ( sib->is_complete() ) {
 
-        src->_next_seismo_info_block_for_handler++;
+        src->_next_seismo_info_block_for_handler = sib->_block_index + 1;;
 
         for (int i = 0; i < CHANNEL_INFO_BLOCK_SIZE; i++ ) {
 
@@ -262,9 +262,9 @@ local_latest_handler(Element *e, void */*thunk*/)
   if ( si->_local_info != NULL ) {
     SeismoInfoBlock* sib;
 
-    while ( (sib = si->_local_info->get_block(si->_local_info->_next_seismo_info_block_for_handler)) != NULL ) {
+    while ( (sib = si->_local_info->get_next_block(si->_local_info->_next_seismo_info_block_for_handler)) != NULL ) {
       if ( sib->is_complete() ) {
-        si->_local_info->_next_seismo_info_block_for_handler++;
+        si->_local_info->_next_seismo_info_block_for_handler = sib->_block_index + 1;
 
         for (int i = 0; i < CHANNEL_INFO_BLOCK_SIZE; i++ ) {
 

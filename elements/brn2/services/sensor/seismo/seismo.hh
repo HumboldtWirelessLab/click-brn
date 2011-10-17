@@ -291,6 +291,14 @@ class SrcInfo {
       return NULL;
     }
 
+    SeismoInfoBlock* get_next_block(uint32_t block_index) {
+      for ( int i = 0; i < _seismo_infos.size(); i++ ) {
+        if ( _seismo_infos[i]->_block_index >= block_index ) return _seismo_infos[i];
+      }
+
+      return NULL;
+    }
+
     SeismoInfoBlock* get_last_block() {
       if ( _seismo_infos.size() == 0 ) return NULL;
       return _seismo_infos[_seismo_infos.size()-1];
