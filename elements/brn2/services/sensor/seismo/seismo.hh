@@ -295,6 +295,7 @@ class SrcInfo {
       if ( _seismo_infos.size() == 0 ) return NULL;
       return _seismo_infos[_seismo_infos.size()-1];
     }
+
 };
 
 typedef HashMap<EtherAddress, SrcInfo> NodeStats;

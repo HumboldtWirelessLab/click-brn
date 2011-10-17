@@ -173,25 +173,26 @@ read_handler(Element *e, void */*thunk*/)
     EtherAddress id = iter.key();
     SrcInfo *src = si->_node_stats_tab.findp(id);
 
-    sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n";
-    sa << "\t\t<gps lat='" << src->_gps_lat << "' long='" << src->_gps_long << "' alt='" << src->_gps_alt << "' HDOP='";
-    sa << src->_gps_hdop << "' />\n";
-    sa << "\t\t<sensor samplingrate='" << src->_sampling_rate << "' sample_count='" << src->_sample_count << "' channels='";
-    sa << src->_channels << "' last_update='" << src->_last_update_time << "'>\n";
+    if (  src->_sample_count != 0 ) {
+      sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n";
+      sa << "\t\t<gps lat='" << src->_gps_lat << "' long='" << src->_gps_long << "' alt='" << src->_gps_alt << "' HDOP='";
+      sa << src->_gps_hdop << "' />\n";
+      sa << "\t\t<sensor samplingrate='" << src->_sampling_rate << "' sample_count='" << src->_sample_count << "' channels='";
+      sa << src->_channels << "' last_update='" << src->_last_update_time << "'>\n";
 
-    for (int32_t j = 0; j < src->_channels; j++) {
-      sa << "\t\t\t<chaninfo id='" << j << "' avg_value='" << (int)src->avg_channel_info(j);
-      sa << "' std_value='" << (int)src->std_channel_info(j) << "' min_value='" << (int)src->min_channel_info(j);
-      sa << "' max_value='" << (int)src->max_channel_info(j) << "'/>\n";
+      for (int32_t j = 0; j < src->_channels; j++) {
+        sa << "\t\t\t<chaninfo id='" << j << "' avg_value='" << (int)src->avg_channel_info(j);
+        sa << "' std_value='" << (int)src->std_channel_info(j) << "' min_value='" << (int)src->min_channel_info(j);
+        sa << "' max_value='" << (int)src->max_channel_info(j) << "'/>\n";
+      }
+
+      sa << "\t\t</sensor>\n";
+      sa << "\t</node>\n";
+
+      src->reset();
     }
-
-    sa << "\t\t</sensor>\n";
-    sa << "\t</node>\n";
   }
   sa << "</seismo>\n";
-
-  si->_node_stats_tab.clear();  // clear node stat before returning
-  si->_local_info = NULL;           // clear link to local info
 
   si->_last_channelstatinfo = sa.take_string();
   return si->_last_channelstatinfo;
