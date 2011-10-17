@@ -278,15 +278,11 @@ local_latest_handler(Element *e, void */*thunk*/)
           sa << "/>" << _seismo_stats_tags[si->_tag_len][3];
         }
       } else {
-        click_chatter("Block not complete");
         break;
       }
     }
-
-    click_chatter("No block left %d", si->_local_info->_next_seismo_info_block_for_handler);
-  } else {
-    click_chatter("No local Info");
   }
+
   sa << "</" << _seismo_stats_tags[si->_tag_len][0] << "\n";
 
   return sa.take_string();

@@ -70,7 +70,7 @@ class SeismoInfoBlock {
     }
 
     int insert(uint64_t time, uint32_t channels, int32_t *values, bool net2host = true) {
-      if ( _block_index == CHANNEL_INFO_BLOCK_SIZE ) return -1;
+      if ( _next_value_index == CHANNEL_INFO_BLOCK_SIZE ) return -1;
 
       _channels[_next_value_index] = (uint8_t)channels;
       _time[_next_value_index] = time;
@@ -270,6 +270,10 @@ class SrcInfo {
       SeismoInfoBlock *nb;
 
       if ( _seismo_infos.size() == (int)_max_seismo_info_blocks ) {
+        //TODO: check next 2 lines
+        if ( _seismo_infos[0]->_block_index == _next_seismo_info_block_for_handler ) {
+          _next_seismo_info_block_for_handler = _seismo_infos[1]->_block_index;
+        }
         nb = _seismo_infos[0];
         _seismo_infos.erase(_seismo_infos.begin());
         nb->_block_index = block_index;
