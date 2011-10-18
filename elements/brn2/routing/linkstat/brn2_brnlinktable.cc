@@ -138,8 +138,7 @@ Brn2LinkTable::take_state(Element *e, ErrorHandler *) {
 }
 
 int
-Brn2LinkTable::static_update_link(const String &arg, Element *e,
-			      void *, ErrorHandler *errh) 
+Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh)
 {
   Brn2LinkTable *n = (Brn2LinkTable *) e;
 

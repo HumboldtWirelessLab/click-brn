@@ -871,7 +871,7 @@ ChannelStats::stats_handler(int mode)
   return sa.take_string();
 }
 
-static String 
+static String
 ChannelStats_read_param(Element *e, void *thunk)
 {
   StringAccum sa;
@@ -888,7 +888,7 @@ ChannelStats_read_param(Element *e, void *thunk)
   return String();
 }
 
-static int 
+static int
 ChannelStats_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   ChannelStats *f = (ChannelStats *)e;

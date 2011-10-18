@@ -84,6 +84,14 @@ inline unsigned
   return hashcode(p._to) + hashcode(p._from);
 }
 
+
+/* Sources of Linkupdates
+ * Used to enable or disable linkupdates from a specific source
+ */
+#define LINKTABLE_UPDATESOURCE_LINKSTAT 0x0001
+#define LINKTABLE_UPDATESOURCE_ROUTING  0x0002
+#define LINKTABLE_UPDATESOURCE_LINKDIST 0x0004
+
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
