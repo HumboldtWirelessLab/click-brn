@@ -256,6 +256,34 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
   src->set_age_now();
 }
 
+/*********************************************************************************/
+/******************** P A S S I V E   M O N I T O R I N G ************************/
+/*********************************************************************************/
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable)
+{
+  return NULL;
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_deactive_packet(DHTnode *src)
+{
+
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node)
+{
+
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_leave_reply_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node)
+{
+
+}
+
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(DHTProtocol)
 ELEMENT_PROVIDES(DHTProtocolFalcon)
