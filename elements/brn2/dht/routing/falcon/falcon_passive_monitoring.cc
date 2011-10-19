@@ -18,7 +18,8 @@
 CLICK_DECLS
 
 FalconPassiveMonitoring::FalconPassiveMonitoring():
-  _lookup_timer(static_lookup_timer_hook,this)
+  _lookup_timer(static_lookup_timer_hook,this),
+  passive_monitoring_mode(FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED)
 {
   BRNElement::init();
 }
@@ -51,9 +52,16 @@ FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void *f)
 {
   if ( t == NULL ) click_chatter("Time is NULL");
 
-  ((FalconPassiveMonitoring*)f)->_lookup_timer.schedule_after_msec(5000);
+  ((FalconPassiveMonitoring*)f)->check_monitoring();
 
-  /* genereate packet with reverse fingertable (FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE) */
+  ((FalconPassiveMonitoring*)f)->_lookup_timer.schedule_after_msec(5000);
+}
+
+/* genereate packet with reverse fingertable (FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE) */
+void
+FalconPassiveMonitoring::check_monitoring()
+{
+
 }
 
 void
@@ -88,6 +96,7 @@ FalconPassiveMonitoring::push( int port, Packet *packet )
 void
 FalconPassiveMonitoring::handle_leave_monitoring_activate(Packet */*packet*/)
 {
+
 }
 
 void
