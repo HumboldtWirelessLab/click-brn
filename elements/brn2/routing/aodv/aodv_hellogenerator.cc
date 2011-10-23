@@ -45,7 +45,7 @@ AODVHelloGenerator::configure(Vector<String> &conf, ErrorHandler *errh)
 	return 0;
 }
 
-void AODVHelloGenerator::run_timer(){
+void AODVHelloGenerator::run_timer(Timer *){
 	// no tailroom needed, fixed size
 	int tailroom = 0;
 	int packet_size = sizeof(aodv_rrep_header);
