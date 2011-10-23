@@ -57,7 +57,7 @@ JitterUnqueue::initialize(ErrorHandler *errh)
 }
 
 bool
-JitterUnqueue::run_task()
+JitterUnqueue::run_task(Task *)
 {
 	// listening for notifications
 	struct timeval now;

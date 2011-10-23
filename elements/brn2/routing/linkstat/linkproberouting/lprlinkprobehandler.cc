@@ -64,20 +64,25 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
 
-  if ( direction )
-    return lph->lpSendHandler(buffer, size);
-  else
-    return lph->lpReceiveHandler(buffer, size);
+  return lph->lpSendHandler(buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
+
+  return lph->lpReceiveHandler(buffer, size);
 }
 
 int
 LPRLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&handler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&tx_handler,&rx_handler);
 
   max_hosts = 128;
   known_links = new unsigned char[max_hosts * max_hosts];

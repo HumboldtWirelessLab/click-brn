@@ -384,7 +384,7 @@ BRN2LinkStat::send_probe()
     lp->_flags |= PROBE_HANDLER_PAYLOAD; // indicate that handler_info are available
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
-      int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (space_left-4), true);
+      int res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, _dev->getEtherAddress(), (char*)&(ptr[3]), (space_left-4));
       if ( res > (space_left-4) ) {
         BRN_WARN("Handler %d want %d but %d was left",_reg_handler[h]._protocol,res,space_left-4);
         res = 0;
@@ -436,6 +436,10 @@ BRN2LinkStat::simple_action(Packet *p)
   struct timeval now = Timestamp::now().timeval();
   click_ether *eh = (click_ether *) p->ether_header();
   click_brn *brn = (click_brn *) p->data();
+
+  /* best_xxx used to set fwd and rev for rx_handler (other elements) */
+  uint8_t best_fwd = 0;
+  uint8_t best_rev = 0;
 
   EtherAddress src_ea = EtherAddress(eh->ether_shost);
   if (p->length() < (sizeof(click_brn) + sizeof(link_probe))) {
@@ -587,6 +591,7 @@ BRN2LinkStat::simple_action(Packet *p)
       Vector<BrnRateSize> rates;
       Vector<uint8_t> fwd;
       Vector<uint8_t> rev;
+
       for (int x = 0; x < num_rates; x++) {
         struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
 
@@ -596,9 +601,14 @@ BRN2LinkStat::simple_action(Packet *p)
         BrnRateSize rs = BrnRateSize(ntohs(nfo->_rate), ntohs(nfo->_size));
         // update other link stuff
         rates.push_back(rs);
+
         fwd.push_back(nfo->_fwd); // forward delivery ratio
+
         if (neighbor == *(_dev->getEtherAddress())) { // reverse delivery ratio is available -> use it.
-          rev.push_back(l->rev_rate(_start, rates[x]._rate, rates[x]._size));
+          if ( nfo->_fwd > best_fwd ) best_fwd = nfo->_fwd;
+          uint8_t rev_rate = l->rev_rate(_start, rates[x]._rate, rates[x]._size);
+          if ( rev_rate > best_rev ) best_rev = rev_rate;
+          rev.push_back(rev_rate);
         } else {
           rev.push_back(nfo->_rev);
         }
@@ -642,7 +652,8 @@ BRN2LinkStat::simple_action(Packet *p)
 
       for ( int h = 0; h < _reg_handler.size(); h++ ) {
         if ( proto == _reg_handler[h]._protocol )
-          /*int res =*/ _reg_handler[h]._handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s, false);
+          /*int res =*/ _reg_handler[h]._rx_handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s,
+           /*is_neighbour*/(best_fwd > 80) && (best_rev > 80), /*fwd_rate*/best_fwd , /*rev_rate*/best_rev);
       }
 
       ptr += s;
@@ -653,6 +664,17 @@ BRN2LinkStat::simple_action(Packet *p)
   BRNElement::packet_kill(p);
 
   return 0;
+}
+
+
+bool
+BRN2LinkStat::is_neighbour(EtherAddress *n)
+{
+  for (int x = 0; x < _neighbors.size(); x++) {
+    if ( _neighbors[x] == *n ) return true;
+  }
+
+  return false;
 }
 
 /* Returns some information about the nodes world model */
@@ -898,14 +920,16 @@ BRN2LinkStat::get_rev_rate(EtherAddress *ea)
   return ( probe->rev_rate(_start, rs._rate, rs._size) ); // reverse delivery ratio
 }
 
-int
-BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction)) {
-  _reg_handler.push_back(HandlerInfo(element, protocolId, handler));
+int32_t
+BRN2LinkStat::registerHandler(void *element, int protocolId, int32_t (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size),
+                              int32_t (*rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate))
+{
+  _reg_handler.push_back(HandlerInfo(element, protocolId, tx_handler, rx_handler));
   return 0;
 }
 
 int
-BRN2LinkStat::deregisterHandler(int /*handler*/, int /*protocolId*/) {
+BRN2LinkStat::deregisterHandler(int32_t /*handle*/, int /*protocolId*/) {
   //TODO
   return 0;
 }

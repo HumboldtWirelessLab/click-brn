@@ -62,25 +62,28 @@ GeorLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress *ea, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress *ea, char *buffer, int size)
 {
   GeorLinkProbeHandler *georh = (GeorLinkProbeHandler*)element;
+  return georh->lpSendHandler(buffer, size, ea);
+}
 
-  if ( direction )
-    return georh->lpSendHandler(buffer, size, ea);
-  else
-    return georh->lpReceiveHandler(buffer, size, ea);
+static int
+rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  GeorLinkProbeHandler *georh = (GeorLinkProbeHandler*)element;
+  return georh->lpReceiveHandler(buffer, size, ea);
 }
 
 int
 GeorLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_GEOR,&handler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_GEOR,&tx_handler,&rx_handler);
   return 0;
 }
 
 int
-GeorLinkProbeHandler::lpSendHandler(char *buffer, int size, EtherAddress */*ea*/)
+GeorLinkProbeHandler::lpSendHandler(char *buffer, int size, const EtherAddress */*ea*/)
 {
   struct gps_position *pos = (struct gps_position *)buffer;
 

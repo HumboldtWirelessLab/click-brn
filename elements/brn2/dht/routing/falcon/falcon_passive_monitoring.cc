@@ -19,7 +19,7 @@ CLICK_DECLS
 
 FalconPassiveMonitoring::FalconPassiveMonitoring():
   _lookup_timer(static_lookup_timer_hook,this),
-  passive_monitoring_mode(FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED)
+  _passive_monitoring_mode(FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED)
 {
   BRNElement::init();
 }
@@ -62,7 +62,60 @@ FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void *f)
 void
 FalconPassiveMonitoring::check_monitoring()
 {
+  if ( _frt->is_passive_monitoring() ) {
+    switch ( _passive_monitoring_mode ) {
+      case FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED:
+        {
+          // start passive monitoringthis
+          click_chatter("Switch to passive mode");
 
+          WritablePacket *p = DHTProtocolFalcon::new_passive_monitor_active_packet(_frt->_me, &(_frt->_reverse_fingertable));
+
+          _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
+
+          output(0).push(p);
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_REQUESTING:
+        {
+          //check for timeout
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_ACTIVATED:
+        {
+          //everything perfect just check
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_SIGNOFF:
+        {
+          // reset from signoff
+          _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
+        }
+      default:
+        {
+          click_chatter("unknown mode in passive monitor");
+        }
+    }
+  } else {  //no passive monitoring is requested
+    switch ( _passive_monitoring_mode ) { //our current mode
+      case FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED:
+        {
+          //everything perfect just check
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_REQUESTING:
+        {
+          // roll-back from request -> signoff
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_ACTIVATED:
+        {
+          // roll-back from request -> signoff
+        }
+      case FALCON_PASSIVE_MONITORING_MODE_SIGNOFF:
+        {
+          //check for timeout
+        }
+      default:
+        {
+        }
+    }
+  }
 }
 
 void

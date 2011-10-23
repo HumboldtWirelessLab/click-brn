@@ -194,12 +194,8 @@ class FalconRoutingTable : public BRNElement
  public:
   int get_max_node_age() { return max_node_age; }
 
- private:
-  bool passive_monitoring;
-
- public:
-  void set_passive_monitoring(bool pm) { passive_monitoring = pm; }
-  bool is_passive_monitoring() { return passive_monitoring; }
+  void set_passive_monitoring(bool pm) { _passive_monitoring = pm; }
+  bool is_passive_monitoring() { return _passive_monitoring; }
 };
 
 CLICK_ENDDECLS

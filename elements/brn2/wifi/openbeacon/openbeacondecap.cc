@@ -58,7 +58,7 @@ OpenBeaconDecap::simple_action(Packet *p)
 	  memcpy( e_dhost, ob_bcats_ext ,4 );
 	}
 
-	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel, length=crh->length;
+	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel/*, length=crh->length*/;
 	
 	// trim das packet noch ;-)
 	p->pull( sizeof(Click2OBD_header)-12 );

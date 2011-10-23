@@ -340,7 +340,7 @@ class TCPConnection : public MultiFlowHandler
 	void 		_do_iphdr(WritablePacket *p);
 	void 		ip_output(WritablePacket *p); 
 	inline void tcp_set_state(short);
-	inline void print_tcpstats(WritablePacket *p, char *label);
+	inline void print_tcpstats(WritablePacket *p, String label);
 	short tcp_state() const { return tp->t_state; } 
 
 	Task		* _stateless_pull; 

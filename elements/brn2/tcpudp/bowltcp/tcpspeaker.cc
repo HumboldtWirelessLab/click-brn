@@ -5,14 +5,16 @@
 #define TCPSTATES
 
 #include <click/packet_anno.hh>
-#include "tcpspeaker.hh"
-#include "tcpip.h"
 #include <click/error.hh>
 #include <click/router.hh>
 #include <click/confparse.hh>
 
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
+
+#include "tcpspeaker.hh"
+#include "tcpip.h"
+#include "tcp_fsm.h"
 
 /* 					TCPSpeaker Click Element
  * ------------------------------------------------------------
@@ -84,13 +86,13 @@ TCPConnection::push(const int port, Packet *_p)
 }
 
 inline void 
-TCPConnection::print_tcpstats(WritablePacket *p, char* label)
+TCPConnection::print_tcpstats(WritablePacket *p, String label)
 {
     const click_tcp *tcph= p->tcp_header();
     const click_ip 	*iph = p->ip_header();
 	int len = ntohs(iph->ip_len) - sizeof(click_ip) - (tcph->th_off << 2); 
 
-	debug_output(VERB_TCPSTATS, "[%s] [%s] S/A: [%u/%u] len: [%u] 59: [%u] 60: [%u] 62: [%u] 63: [%u] 64: [%u] 65: [%u] 67: [%u] 68: [%u] 80:[%u] 81:[%u] fifo: [%u] q1st/len: [%u/%u] qlast: [%u] qbtok: [%u] qisord: [%u]", SPKRNAME, label, ntohl(tcph->th_seq), ntohl(tcph->th_ack), len, tp->snd_una, tp->snd_nxt, tp->snd_wl1, tp->snd_wl2, tp->iss, tp->snd_wnd, tp->rcv_wnd, tp->rcv_nxt, tp->snd_cwnd, tp->snd_ssthresh, _q_usr_input.byte_length(), _q_recv.first(), _q_recv.first_len(), _q_recv.last(), _q_recv.bytes_ok(), _q_recv.is_ordered());
+	debug_output(VERB_TCPSTATS, "[%s] [%s] S/A: [%u/%u] len: [%u] 59: [%u] 60: [%u] 62: [%u] 63: [%u] 64: [%u] 65: [%u] 67: [%u] 68: [%u] 80:[%u] 81:[%u] fifo: [%u] q1st/len: [%u/%u] qlast: [%u] qbtok: [%u] qisord: [%u]", SPKRNAME, label.c_str(), ntohl(tcph->th_seq), ntohl(tcph->th_ack), len, tp->snd_una, tp->snd_nxt, tp->snd_wl1, tp->snd_wl2, tp->iss, tp->snd_wnd, tp->rcv_wnd, tp->rcv_nxt, tp->snd_cwnd, tp->snd_ssthresh, _q_usr_input.byte_length(), _q_recv.first(), _q_recv.first_len(), _q_recv.last(), _q_recv.bytes_ok(), _q_recv.is_ordered());
 
 }
 
@@ -763,7 +765,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 	    /* 943 */
 		//NOTICE: unsigned/signed comparison acked is an int, byte_length() returns an unsigned 32 int
 		//this is taken verbatim from TCP Illustrated vol2
-	    if (acked > _q_usr_input.byte_length()) { 
+	    if (acked > (int)_q_usr_input.byte_length()) { 
 			tp->snd_wnd -= _q_usr_input.byte_length(); 
 			_q_usr_input.drop_until(_q_usr_input.byte_length()); 
 			ourfinisacked = 1; 
@@ -789,7 +791,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 			if (ourfinisacked) {
 				tcp_set_state(TCPS_TIME_WAIT);  
 				tp->t_timer[TCPT_2MSL] = 2 * TCPTV_MSL;
-				if (_q_recv.push(p, ti.ti_seq, ti.ti_seq + ti.ti_len < 0)) {
+				if (_q_recv.push(p, ti.ti_seq, ((int)(ti.ti_seq + ti.ti_len) < 0))) {
 					debug_output(VERB_ERRORS, "TCPClosing segment push into reassembly Queue FAILED");
 				}
 				
@@ -1024,7 +1026,7 @@ again:
     }
 	/* we subtract off, because off bytes have been sent and are awaiting
 	 * acknowledgement */
-    len = min(_q_usr_input.byte_length(),  win) - off; 
+    len = min((long)_q_usr_input.byte_length(), win) - off;
 
     /*106*/
     if (len < 0) { 
@@ -1056,7 +1058,7 @@ again:
 		 * incoming tcp payload bytes are less than maxseg due to header options. */
 		if (adv >= (long) (tp->t_maxseg + 1)) 
 			goto send;
-		if (2 * adv >= so_recv_buffer_size )
+		if (2 * adv >= (long)so_recv_buffer_size )
 			goto send;
     } else {
 		debug_output(VERB_TCPSTATS, "[%s] win: [%u]  (radv: [%u] rnxt: [%u]) [%u]", SPKRNAME, win, tp->rcv_adv, tp->rcv_nxt, tp->rcv_adv-tp->rcv_nxt);
@@ -1136,7 +1138,7 @@ send:
 		
     hdrlen += optlen; 
 
-    if (len > tp->t_maxseg - optlen) { 
+    if (len > (long)(tp->t_maxseg - optlen)) { 
 		len = tp->t_maxseg - optlen; 
 		sendalot = 1; 
     } 
@@ -1148,10 +1150,10 @@ send:
 			debug_output(VERB_ERRORS, "[%s] offset [%u] not in fifo!", SPKRNAME, off); 
 			return; 
 		}
-		if (p->length() > len) {
+		if ((long)p->length() > len) {
 			p->take(p->length() - len);
 		}
-		if (p->length() < len) { 
+		if ((long)p->length() < len) { 
 			len = p->length(); 
 			sendalot = 1; 
 		}
@@ -1275,7 +1277,7 @@ TCPConnection::tcp_respond(tcp_seq_t ack, tcp_seq_t seq, int flags)
 	p->set_network_header(p->data(), sizeof(click_ip)); 
 	click_tcp *th = p->tcp_header(); 
 
-	int win = min(so_recv_buffer_space(),  TCP_MAXWIN << tp->rcv_scale); 
+  int win = min((tcp_seq_t)so_recv_buffer_space(),  (tcp_seq_t)(TCP_MAXWIN << tp->rcv_scale));
 
 	if (! (flags & TH_RST)) {
 	    tlen = 0; 
@@ -1983,7 +1985,7 @@ TCPConnection::tcp_newtcpcb()
 
 
 TCPConnection::TCPConnection(TCPSpeaker *s, const IPFlowID &id, const char dir)
-	: MultiFlowHandler(s,id,dir), _q_recv(this), _q_usr_input(this)
+  : MultiFlowHandler(s,id,dir), _q_usr_input(this), _q_recv(this)
 {
 
     tp = tcp_newtcpcb();  
@@ -2398,7 +2400,7 @@ TCPQueue::push(WritablePacket * p, tcp_seq_t seq, tcp_seq_t seq_nxt)
 		/* If the packet overlaps with _q_first trim qe at end of packet */
 		int overlap = (int)(seq_nxt - first());
 		if (overlap > 0) {
-			if (overlap > p->length()) { return -2; }
+			if (overlap > (int)p->length()) { return -2; }
 			p->take(overlap);
 			debug_output(VERB_TCPQUEUE, "[%s] Tail overlap [%d] bytes", _con->SPKRNAME, overlap);
 			// Should we update qe->seq_nxt? I don't think we need to.
@@ -2457,7 +2459,7 @@ TCPQueue::push(WritablePacket * p, tcp_seq_t seq, tcp_seq_t seq_nxt)
 	// Test for overlap of front of packet with wrk
 	int overlap = (int) (wrk->seq_nxt - seq);
 	if (overlap > 0) {
-		if (overlap > p->length()) { return -2; }
+		if (overlap > (int)p->length()) { return -2; }
 		debug_output(VERB_TCPQUEUE, "[%s] head overlap [%d] bytes", _con->SPKRNAME, overlap);
 		p->pull(overlap);
 		seq += overlap;
@@ -2467,7 +2469,7 @@ TCPQueue::push(WritablePacket * p, tcp_seq_t seq, tcp_seq_t seq_nxt)
 	if (wrk->nxt) {
 		overlap = (int) (seq_nxt - wrk->nxt->seq);
 		if (overlap > 0) {
-			if (overlap > p->length()) { return -2; }
+			if (overlap > (int)p->length()) { return -2; }
 			debug_output(VERB_TCPQUEUE, "[%s] Tail overlap [%d] bytes", _con->SPKRNAME, overlap);
 			p->take(overlap);
 			seq_nxt -= overlap;
@@ -2660,7 +2662,7 @@ TCPFifo::pkts_to_send(int offset, int win)
 	int wo = 0; 
 	
 	//TEST try casting offset as unsigned - POSSIBLY INTRODUCES WRAPAROUND ERROR
-	while (wo + _q[wp]->length() <=  offset) {
+	while (wo + (int)_q[wp]->length() <=  offset) {
 	    wo += _q[wp]->length(); 
 	    wp = (wp + 1) % FIFO_SIZE; 
 	    if (wp == _head ) return 0; 
@@ -2670,7 +2672,7 @@ TCPFifo::pkts_to_send(int offset, int win)
 	    return 1; 
 
 	//TEST try casting win as unsigned - POSSIBLY INTRODUCES WRAPAROUND ERROR
-	if (wo + _q[wp]->length() >=  win)
+	if (wo + (int)_q[wp]->length() >=  win)
 	    return 1;
 
 	return 2;

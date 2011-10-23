@@ -86,7 +86,7 @@ void AODVTrackNeighbours::push (int port, Packet * packet){
 	if (ipheader->ip_src != *myIP) {
 		if (packet->length() == aodv_headeroffset + sizeof(aodv_rrep_header)) { //RREP or HELLO - wait with cast of data until now because expensive
 		
-			const aodv_rrep_header * rrep = (const aodv_rrep_header*) (packet->data() + aodv_headeroffset);
+			//const aodv_rrep_header * rrep = (const aodv_rrep_header*) (packet->data() + aodv_headeroffset);
 		
 			// don't use RERR information, must be AODV type 2, ttl 1 and non-existing entry
 /*robat			if (rrep->type == 2 && ipheader->ip_ttl == 1 && !neighbour_timers.find_pair(rrep->originator)) {

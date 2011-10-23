@@ -73,24 +73,30 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
-
-  if ( direction )
-    return dhtf->lpSendHandler(buffer, size);
-  else
-    return dhtf->lpReceiveHandler(buffer, size);
-
   if ( dhtf == NULL ) return 0;
 
-  return 0;
+  return dhtf->lpSendHandler(buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
+  if ( dhtf == NULL ) return 0;
+
+  if ( is_neighbour ) click_chatter("neig");
+  else click_chatter("no neigh");
+
+  return dhtf->lpReceiveHandler(buffer, size, is_neighbour);
 }
 
 int
 FalconLinkProbeHandler::register_linkprobehandler()
 {
-  if ( _register_handler ) _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON,&handler);
+  if ( _register_handler ) _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON, &tx_handler, &rx_handler);
   return 0;
 }
 
@@ -129,7 +135,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 }
 
 int
-FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
+FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size, bool is_neighbour)
 {
   int len;
   DHTnode first;
@@ -141,7 +147,13 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
   BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
   BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );
-  _frt->add_neighbour(&first);
+
+  if ( is_neighbour) {
+    _frt->add_neighbour(&first);
+  } else {
+    _frt->add_node(&first);
+  }
+
   _frt->add_nodes(&nodes);
 
   nodes.del();

@@ -176,7 +176,7 @@ void AODVWaitingForDiscovery::push (int port, Packet * packet){
 		}
 	} else { //RREP
 		assert(packet->ip_header());
-		aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
+		//aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
 		
 		//click_chatter("RREP from %s at destination (%s)", IPAddress(rrep->destination).s().c_str(), IPAddress(rrep->originator).s().c_str());
 		

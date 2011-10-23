@@ -10,7 +10,7 @@
 
 CLICK_DECLS
 
-Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddress & myEA, int ttl){
+Packet* AODVBroadcastHeader::setBroadcastHeader(Packet *packet, const EtherAddress &/*myEA*/, int ttl){
 	IPAddress destination("255.255.255.255"); // broadcast
 	
 	WritablePacket * writable = packet->push(sizeof(click_udp) + sizeof(click_ip));
