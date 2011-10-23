@@ -92,15 +92,23 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*direction*/)
+tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*size*/)
 {
   DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
-
-  /*  if ( direction )
-    return lph->lpSendHandler(buffer, size);
-  else
-    return lph->lpReceiveHandler(buffer, size);*/
   if ( dhtrk == NULL ) return 0;
+
+  //return lph->lpSendHandler(buffer, size);
+
+  return 0;
+}
+
+static int
+rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
+  if ( dhtrk == NULL ) return 0;
+
+  //return lph->lpReceiveHandler(buffer, size);*/
 
   return 0;
 }
@@ -111,7 +119,7 @@ DHTRoutingKlibs::initialize(ErrorHandler *)
   click_srandom(_me->_ether_addr.hashcode());
 
   if ( _linkstat )
-    _linkstat->registerHandler(this,0,&handler);
+    _linkstat->registerHandler(this,0,&tx_handler,&rx_handler);
 
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( click_random() % _start_time );

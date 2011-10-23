@@ -50,7 +50,10 @@ class FalconRoutingTableMaintenance : public Element
 
     int _debug;
 
-   HawkRoutingtable *_rfrt;
+    int _rounds_to_passive_monitoring;
+    int _current_round2pm;
+
+    HawkRoutingtable *_rfrt;
 
   public:
     void setHawkRoutingTable(HawkRoutingtable *t) { _rfrt = t; }

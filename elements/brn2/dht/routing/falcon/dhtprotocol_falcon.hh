@@ -85,6 +85,32 @@ struct falcon_nws_packet {
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /**
+ * structure is used to determinate the networksize
+ */
+
+struct dht_falcon_reverse_table_node_entry {
+  uint8_t    etheraddr[6];
+  md5_byte_t node_id[MAX_NODEID_LENTGH];
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct falcon_passiv_monitoring_info {
+  uint8_t status;
+  uint8_t no_nodes;
+
+  md5_byte_t passive_node_id[MAX_NODEID_LENTGH];
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct falcon_passiv_monitoring_notification {
+  uint8_t status;
+
+  uint8_t passive_node[6];
+  md5_byte_t passive_node_id[MAX_NODEID_LENTGH];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+
+
+/**
  * Packet: me, pred, succ, fingertable
 */
 
@@ -107,6 +133,12 @@ class DHTProtocolFalcon {
     static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
     static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);
+
+    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable);
+    static WritablePacket *new_passive_monitor_deactive_packet(DHTnode *src);
+
+    static WritablePacket *new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
+    static WritablePacket *new_passive_monitor_leave_reply_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
 
 };
 

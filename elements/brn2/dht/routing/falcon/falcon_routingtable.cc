@@ -176,6 +176,8 @@ FalconRoutingTable::add_node(DHTnode *node)
   } else {
     if ( node->_age > n->_age ) {
       n->_status = node->_status;              //update node
+      n->_neighbor = node->_neighbor;          //set not to "not a neighbour" only if you don't recieve a msg from him  for a
+                                               //long time. Avoid setting a node to non-neighbour by receiving a msg form another node
       n->set_age(&(node->_age));
       //TODO: update node if id changes , but always copy is too expesive
       if ( ( node->_md5_digest[0] != n->_md5_digest[0] ) && ( node->_digest_length != 0 ) ) n->set_nodeid(node->_md5_digest);//TODO!!
@@ -188,7 +190,7 @@ FalconRoutingTable::add_node(DHTnode *node)
     if ( predecessor == NULL ) {
       predecessor = n;
       update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
-                                              //       called by complex function, so it can result in problems
+                                               //      called by complex function, so it can result in problems
     }
 
     successor = n;

@@ -22,7 +22,7 @@ public:
 	int configure(Vector<String> &, ErrorHandler *);
 	int initialize(ErrorHandler *);
 
-	bool run_task();
+  bool run_task(Task *task);
 	
 	void add_handlers();
 

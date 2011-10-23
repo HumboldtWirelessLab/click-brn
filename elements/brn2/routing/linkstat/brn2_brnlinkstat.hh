@@ -246,14 +246,20 @@ public:
   class HandlerInfo {
    public:
     void *_element;
-    int _protocol;
-    int (*_handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction);
+    int32_t _protocol;
+    int32_t (*_tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size);
+    int32_t (*_rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour,
+                           uint8_t fwd_rate, uint8_t rev_rate);
 
-    HandlerInfo(void *element,int protocol, int (*handler)(void *element , EtherAddress *ea,
-                char *buffer, int size, bool direction)) {
+    HandlerInfo(void *element,int protocol,
+                int32_t (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size),
+                int32_t (*rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour,
+                                                                            uint8_t fwd_rate, uint8_t rev_rate)) {
+
       _element = element;
       _protocol = protocol;
-      _handler = handler;
+      _tx_handler = tx_handler;
+      _rx_handler = rx_handler;
     }
   };
 
@@ -306,6 +312,7 @@ public:
       ether_addrs->push_back(i.key());
   }
 
+  bool is_neighbour(EtherAddress *n);
   // map contains information about the link quality to all my neighbors
   ProbeMap _bcast_stats;
   void add_bcast_stat(EtherAddress, const link_probe &);
@@ -332,8 +339,12 @@ public:
   BadTable _bad_table;
 
   Vector <HandlerInfo> _reg_handler;
-  int registerHandler(void *element, int protocolId, int (*handler)(void* element, EtherAddress *src, char *buffer, int size, bool direction));
-  int deregisterHandler(int handler, int protocolId);
+  int32_t registerHandler(void *element, int protocolId,
+                          int (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int size),
+                          int (*rx_handler)(void* element, EtherAddress *src, char *buffer, int size, bool is_neighbour,
+                                            uint8_t fwd_rate, uint8_t rev_rate));
+
+  int32_t deregisterHandler(int32_t handle, int protocolId);
 
   int get_rev_rate(EtherAddress *ea);
 
