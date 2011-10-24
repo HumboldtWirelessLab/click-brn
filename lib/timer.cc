@@ -264,7 +264,11 @@ Timer::schedule_at_steady(const Timestamp &when)
     ts.lock_timers();
 
     // set expiration timer (ensure nonzero)
+#ifdef CLICK_NS
+    _expiry_s = when;
+#else
     _expiry_s = when ? when : Timestamp::epsilon();
+#endif
     ts.check_timer_expiry(this);
 
     // manipulate list; this is essentially a "decrease-key" operation
