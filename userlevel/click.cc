@@ -8,6 +8,7 @@
  * Copyright (c) 2001-2003 International Computer Science Institute
  * Copyright (c) 2004-2006 Regents of the University of California
  * Copyright (c) 2008-2009 Meraki, Inc.
+ * Copyright (c) 1999-2011 Eddie Kohler
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -404,8 +405,7 @@ timewarp_write_handler(const String &text, Element *, void *, ErrorHandler *errh
 	    return errh->error("expected double");
 	else if (factor <= 0)
 	    return errh->error("timefactor must be > 0");
-	Timestamp::warp_set_class(Timestamp::warp_linear);
-	Timestamp::warp_set_speed(factor);
+	Timestamp::warp_set_class(Timestamp::warp_linear, factor);
     }
     return 0;
 }
@@ -509,12 +509,12 @@ main(int argc, char **argv)
 
   case PORT_OPT: {
       uint16_t portno;
-      int portno_int;
+      int portno_int = -1;
       String vstr(clp->vstr);
-      if (cp_tcpudp_port(vstr, IP_PROTO_TCP, &portno))
+      if (IPPortArg(IP_PROTO_TCP).parse(vstr, portno))
 	  cs_ports.push_back(String(portno));
       else if (vstr && vstr.back() == '+'
-	       && cp_integer(vstr.substring(0, -1), 0, &portno_int)
+	       && IntArg().parse(vstr.substring(0, -1), portno_int)
 	       && portno_int > 0 && portno_int < 65536)
 	  cs_ports.push_back(String(portno_int) + "+");
       else {
@@ -567,7 +567,7 @@ main(int argc, char **argv)
     case SIMTIME_OPT: {
 	Timestamp::warp_set_class(Timestamp::warp_simulation);
 	Timestamp simbegin(clp->have_val ? clp->val.d : 1000000000);
-	Timestamp::warp_set_now(simbegin);
+	Timestamp::warp_set_now(simbegin, simbegin);
 	break;
     }
 
@@ -617,7 +617,9 @@ particular purpose.\n");
   router->use();
 
   int exit_value = 0;
+#if HAVE_MULTITHREAD
   Vector<pthread_t> other_threads;
+#endif
 
   // output flat configuration
   if (output_file) {
@@ -641,7 +643,7 @@ particular purpose.\n");
 
   struct rusage before, after;
   getrusage(RUSAGE_SELF, &before);
-  Timestamp before_time = Timestamp::now_real_time();
+  Timestamp before_time = Timestamp::now_unwarped();
   Timestamp after_time = Timestamp::uninitialized_t();
 
   // run driver
@@ -666,7 +668,7 @@ particular purpose.\n");
   } else if (!quit_immediately && warnings)
     errh->warning("%s: configuration has no elements, exiting", filename_landmark(router_file, file_is_expr));
 
-  after_time.assign_now_real_time();
+  after_time.assign_now_unwarped();
   getrusage(RUSAGE_SELF, &after);
   // report time
   if (report_time) {

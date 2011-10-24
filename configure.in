@@ -11,7 +11,7 @@ dnl The Software is provided WITHOUT ANY WARRANTY, EXPRESS OR IMPLIED. This
 dnl notice is a summary of the Click LICENSE file; the license in that file is
 dnl legally binding.
 
-AC_INIT([click], [2.0])
+AC_INIT([click], [2.0.1])
 AC_PREREQ(2.60)
 AC_CONFIG_HEADER(include/click/config.h:config.h.in include/click/pathvars.h:pathvars.h.in include/click/config-bsdmodule.h:config-bsdmodule.h.in include/click/config-linuxmodule.h:config-linuxmodule.h.in include/click/config-ns.h:config-ns.h.in include/click/config-userlevel.h:config-userlevel.h.in)
 AC_CONFIG_SRCDIR(click-buildtool.in)
@@ -47,6 +47,8 @@ CLICK_PROG_KERNEL_CXX
 ac_preset_ar="$AR"
 AC_CHECK_TOOL(AR, ar)
 AC_CHECK_TOOL(LD, ld)
+AC_CHECK_TOOL(NM, nm)
+AC_CHECK_TOOL(OBJCOPY, objcopy)
 AC_CHECK_TOOL(RANLIB, ranlib, :)
 AC_CHECK_TOOL(STRIP, strip, :)
 
@@ -634,9 +636,9 @@ elif test -f "$linux_system_map"; then
     AC_MSG_ERROR([
 =========================================
 
-The Linux System.map file $linux_system_map cannot be read.
-Try running the ./configure script as root (or use the --with-linux=DIR
-and/or --with-linux-map=MAP options).
+$linux_system_map exists, but is unreadable.
+Either run ./configure as root, run 'chmod go+r $linux_system_map' as root,
+or use the --with-linux=DIR and/or --with-linux-map=MAP options.
 
 =========================================])
 else
@@ -1093,13 +1095,6 @@ if test "x$ac_cv_sockaddr_in_sin_len" = xyes; then
     AC_DEFINE([HAVE_SOCKADDR_IN_SIN_LEN], [1], [Define if 'struct sockaddr_in' has a 'sin_len' member.])
 fi
 
-AC_CACHE_CHECK([offset of ifr_addr in struct ifreq], [ac_cv_offsetof_ifr_addr_ifreq],
-    [AC_COMPUTE_INT([ac_cv_offsetof_ifr_addr_ifreq], [offsetof(struct ifreq, ifr_addr)], [#include <stddef.h>
-#include <net/if.h>
-], [ac_cv_offsetof_ifr_addr_ifreq=0])])
-AC_DEFINE_UNQUOTED([OFFSETOF_IFR_ADDR_IFREQ], $ac_cv_offsetof_ifr_addr_ifreq, [The offset of ifr_addr within `struct ifreq', as computed by offsetof.])
-dnl '` fix syntax highlighting
-
 
 dnl PlanetLab "Privileged Operations" library
 
@@ -1487,6 +1482,22 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
         AC_DEFINE(HAVE_LINUX_NETDEV_RX_HANDLER_REGISTER)
     fi
 
+    AC_CACHE_CHECK([for get_monotonic_coarse kernel symbol], [ac_cv_linux_get_monotonic_coarse],
+    [if grep "__ksymtab_get_monotonic_coarse" $linux_system_map >/dev/null 2>&1; then
+        ac_cv_linux_get_monotonic_coarse=yes
+    else ac_cv_linux_get_monotonic_coarse=no; fi])
+    if test $ac_cv_linux_get_monotonic_coarse = yes; then
+        AC_DEFINE(HAVE_LINUX_GET_MONOTONIC_COARSE)
+    fi
+
+    AC_CACHE_CHECK([for getboottime kernel symbol], [ac_cv_linux_getboottime],
+    [if grep "__ksymtab_getboottime" $linux_system_map >/dev/null 2>&1; then
+        ac_cv_linux_getboottime=yes
+    else ac_cv_linux_getboottime=no; fi])
+    if test $ac_cv_linux_getboottime = yes; then
+        AC_DEFINE(HAVE_LINUX_GETBOOTTIME)
+    fi
+
     CC="$save_cc"
     CXX="$save_cxx"
     CPPFLAGS="$save_cppflags"
@@ -1578,6 +1589,7 @@ CLICK_PROG_PERL5
 AC_PROG_AWK
 AC_PROG_GREP
 AC_PROG_EGREP
+AC_CHECK_PROGS([MD5SUM], [md5sum md5])
 
 if test -z "$GMAKE"; then
     AC_MSG_ERROR([

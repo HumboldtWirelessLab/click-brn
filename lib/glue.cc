@@ -386,7 +386,6 @@ click_lalloc(size_t size)
 	click_dmalloc_curnew++;
 # if CLICK_DMALLOC
 	click_dmalloc_curmem += size;
-	click_dmalloc_totalmem += size;
 # endif
     } else
 	click_dmalloc_failnew++;
@@ -465,6 +464,13 @@ click_random_srandom()
 	result ^= buf.u32[i];
 	result = (result << 1) | (result >> 31);
     }
+
+#if CLICK_LINUXMODULE
+    uint32_t kernrand;
+    get_random_bytes(&kernrand, sizeof(kernrand));
+    result ^= kernrand;
+#endif
+
     click_srandom(result);
 }
 
@@ -630,7 +636,8 @@ click_qsort(void *base, size_t n, size_t size,
 	size_t s = (pa - a < pb - pa ? pa - a : pb - pa);
 	if (s)
 	    cq_swapfunc(a, pb - s, s, swaptype);
-	s = ((size_t) (pd - pc) < pn - pd - size ? pd - pc : pn - pd - size);
+	size_t pd_minus_pc = pd - pc;
+	s = (pd_minus_pc < pn - pd - size ? pd_minus_pc : pn - pd - size);
 	if (s)
 	    cq_swapfunc(pb, pn - s, s, swaptype);
 

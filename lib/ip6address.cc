@@ -33,7 +33,7 @@ IP6Address::IP6Address(const String &str)
     static_assert(sizeof(*this) == 16, "IPAddress has the wrong size.");
     static_assert(sizeof(click_in6_addr) == 16, "click_in6_addr has the wrong size.");
     static_assert(sizeof(struct click_ip6) == 40, "click_ip6 has the wrong size.");
-    if (!cp_ip6_address(str, this))
+    if (!IP6AddressArg::parse(str, *this))
 	memset(&_addr, 0, sizeof(_addr));
 }
 
@@ -404,12 +404,10 @@ IP6AddressArg::parse(const String &str, IP6Address &result, const ArgContext &ar
 	return true;
     }
 #if !CLICK_TOOL
-    if (args.context())
-	return AddressInfo::query_ip6(str, result.data(), args.context());
+    return AddressInfo::query_ip6(str, result.data(), args.context());
 #else
-    (void) args;
-#endif
     return false;
+#endif
 }
 
 bool
@@ -445,13 +443,11 @@ IP6PrefixArg::parse(const String &str,
     }
 
 #if !CLICK_TOOL
-    if (args.context()
-	&& AddressInfo::query_ip6_prefix(str, result_addr.data(),
-					 &result_prefix_len, args.context()))
-	return true;
-#endif
-
+    return AddressInfo::query_ip6_prefix(str, result_addr.data(),
+					 &result_prefix_len, args.context());
+#else
     return false;
+#endif
 }
 
 bool

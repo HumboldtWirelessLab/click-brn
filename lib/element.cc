@@ -133,9 +133,8 @@ class MyNothingElement : public Element { public:
   nothing.  The required class_name() function informs Click's infrastructure
   of the element's class name.
 
-  Although this element definition is complete, Click's compilation process
-  requires that a real element come with a bit more boilerplate.  Here's a
-  possible definition of our nothing element, including all boilerplate:
+  Although this element is code-complete, Click's build process requires a bit
+  more boilerplate, like so:
 
 @code
 // ================== elements/local/mynothingelement.hh ==================
@@ -165,9 +164,7 @@ EXPORT_ELEMENT(MyNothingElement)
   - The element class must be defined in a header file and a source file.
   - The header file is protected from multiple inclusion.  A common error is
     to copy and paste another element's header file, but forget to change the
-    header protection symbol (here, CLICK_MYNOTHINGELEMENT_HH).  This will
-    cause an error when Click tries to compile a generated file called
-    elements.cc.
+    header protection symbol (here, CLICK_MYNOTHINGELEMENT_HH).
   - All Click declarations are enclosed within a macro pair,
     <tt>CLICK_DECLS</tt> and <tt>CLICK_ENDDECLS</tt>.  These are required for
     the NS and FreeBSD kernel drivers.  Note that <tt>\#include</tt> statements
@@ -549,6 +546,7 @@ Element::name() const
     return (s ? s : String::make_stable("<unknown>", 9));
 }
 
+/** @cond never */
 /** @brief Return the element's name (deprecated).
  *
  * @deprecated This function is deprecated; use name() instead. */
@@ -556,19 +554,6 @@ String
 Element::id() const
 {
     return name();
-}
-
-/** @brief Return a string giving the element's name and class name.
- *
- * The result has the form &quot;@e name :: @e class_name&quot;.  Element
- * classes can override this function to supply additional important
- * information, if desired; for example, @e FromDump returns a string &quot;@e
- * name :: @e class_name(@e filename)&quot;.
- */
-String
-Element::declaration() const
-{
-    return name() + " :: " + class_name();
 }
 
 /** @brief Return a string describing where the element was declared.
@@ -582,6 +567,20 @@ Element::landmark() const
     if (Router *r = router())
 	s = r->elandmark(_eindex);
     return (s ? s : String::make_stable("<unknown>", 9));
+}
+/** @endcond never */
+
+/** @brief Return a string giving the element's name and class name.
+ *
+ * The result has the form &quot;@e name :: @e class_name&quot;.  Element
+ * classes can override this function to supply additional important
+ * information, if desired; for example, @e FromDump returns a string &quot;@e
+ * name :: @e class_name(@e filename)&quot;.
+ */
+String
+Element::declaration() const
+{
+    return name() + " :: " + class_name();
 }
 
 // INPUTS AND OUTPUTS
@@ -1806,6 +1805,20 @@ Element::add_read_handler(const String &name, ReadHandlerCallback read_callback,
     Router::add_read_handler(this, name, read_callback, (void *) u, flags);
 }
 
+/** @brief Register a read handler named @a name.
+ *
+ * This version of add_read_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::add_read_handler(const char *name, ReadHandlerCallback read_callback, int user_data, uint32_t flags)
+{
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_read_handler(this, String::make_stable(name), read_callback, (void *) u, flags);
+}
+
 /** @brief Register a write handler named @a name.
  *
  * @param name handler name
@@ -1849,6 +1862,20 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
 {
     uintptr_t u = (uintptr_t) user_data;
     Router::add_write_handler(this, name, write_callback, (void *) u, flags);
+}
+
+/** @brief Register a write handler named @a name.
+ *
+ * This version of add_write_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::add_write_handler(const char *name, WriteHandlerCallback write_callback, int user_data, uint32_t flags)
+{
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_write_handler(this, String::make_stable(name), write_callback, (void *) u, flags);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1903,6 +1930,20 @@ Element::set_handler(const String &name, int flags, HandlerCallback callback, in
 {
     uintptr_t u1 = (uintptr_t) read_user_data, u2 = (uintptr_t) write_user_data;
     Router::set_handler(this, name, flags, callback, (void *) u1, (void *) u2);
+}
+
+/** @brief Register a comprehensive handler named @a name.
+ *
+ * This version of set_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::set_handler(const char *name, int flags, HandlerCallback callback, int read_user_data, int write_user_data)
+{
+    uintptr_t u1 = (uintptr_t) read_user_data, u2 = (uintptr_t) write_user_data;
+    Router::set_handler(this, String::make_stable(name), flags, callback, (void *) u1, (void *) u2);
 }
 
 /** @brief Set flags for the handler named @a name.
@@ -2399,7 +2440,7 @@ interval_data_handler(int op, String &str, Element *element, const Handler *h, E
 }
 
 inline void
-Element::add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data)
+Element::add_data_handlers(const char *name, int flags, HandlerCallback callback, void *data)
 {
     uintptr_t x = reinterpret_cast<uintptr_t>(data) - reinterpret_cast<uintptr_t>(this);
     set_handler(name, flags, callback, x, x);
@@ -2418,62 +2459,64 @@ Element::add_data_handlers(const String &name, int flags, HandlerCallback callba
  * the data stored at @a *data, which might, for example, be an element
  * instance variable.  This data is unparsed and/or parsed using the expected
  * functions; for example, the <tt>bool</tt> version uses BoolArg::unparse()
- * and BoolArg::parse().
+ * and BoolArg::parse().  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
  *
  * Overloaded versions of this function are available for many fundamental
  * data types.
  */
 void
-Element::add_data_handlers(const String &name, int flags, uint8_t *data)
+Element::add_data_handlers(const char *name, int flags, uint8_t *data)
 {
     add_data_handlers(name, flags, uint8_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, bool *data)
+Element::add_data_handlers(const char *name, int flags, bool *data)
 {
     add_data_handlers(name, flags, bool_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, uint16_t *data)
+Element::add_data_handlers(const char *name, int flags, uint16_t *data)
 {
     add_data_handlers(name, flags, uint16_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, int *data)
+Element::add_data_handlers(const char *name, int flags, int *data)
 {
     add_data_handlers(name, flags, integer_data_handler<int>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned *data)
+Element::add_data_handlers(const char *name, int flags, unsigned *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, atomic_uint32_t *data)
+Element::add_data_handlers(const char *name, int flags, atomic_uint32_t *data)
 {
     add_data_handlers(name, flags, atomic_uint32_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, long *data)
+Element::add_data_handlers(const char *name, int flags, long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<long>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned long *data)
+Element::add_data_handlers(const char *name, int flags, unsigned long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned long>, data);
 }
@@ -2481,14 +2524,14 @@ Element::add_data_handlers(const String &name, int flags, unsigned long *data)
 #if HAVE_LONG_LONG
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, long long *data)
+Element::add_data_handlers(const char *name, int flags, long long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<long long>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned long long *data)
+Element::add_data_handlers(const char *name, int flags, unsigned long long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned long long>, data);
 }
@@ -2497,7 +2540,7 @@ Element::add_data_handlers(const String &name, int flags, unsigned long long *da
 #if HAVE_FLOAT_TYPES
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, double *data)
+Element::add_data_handlers(const char *name, int flags, double *data)
 {
     add_data_handlers(name, flags, double_data_handler, data);
 }
@@ -2505,14 +2548,14 @@ Element::add_data_handlers(const String &name, int flags, double *data)
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, IPAddress *data)
+Element::add_data_handlers(const char *name, int flags, IPAddress *data)
 {
     add_data_handlers(name, flags, ip_address_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
+Element::add_data_handlers(const char *name, int flags, EtherAddress *data)
 {
     add_data_handlers(name, flags, ether_address_data_handler, data);
 }
@@ -2524,16 +2567,20 @@ Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
  * removing leading and trailing whitespace.
  */
 void
-Element::add_data_handlers(const String &name, int flags, String *data)
+Element::add_data_handlers(const char *name, int flags, String *data)
 {
     add_data_handlers(name, flags, string_data_handler, data);
 }
 
 /** @brief Register read and/or write handlers accessing @a data.
+ * @param name handler name
+ * @param flags handler flags, containing at least one of Handler::h_read
+ * and Handler::h_write
+ * @param data pointer to data
  * @param is_interval If true, the read handler unparses *@a data as an
  *   interval. */
 void
-Element::add_data_handlers(const String &name, int flags, Timestamp *data,
+Element::add_data_handlers(const char *name, int flags, Timestamp *data,
 			   bool is_interval)
 {
     if (is_interval)
@@ -2557,14 +2604,14 @@ Element::add_data_handlers(const String &name, int flags, Timestamp *data,
  * instance variable.
  */
 void
-Element::add_net_order_data_handlers(const String &name, int flags, uint16_t *data)
+Element::add_net_order_data_handlers(const char *name, int flags, uint16_t *data)
 {
     add_data_handlers(name, flags, uint16_t_net_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_net_order_data_handlers(const String &name, int flags, uint32_t *data)
+Element::add_net_order_data_handlers(const char *name, int flags, uint32_t *data)
 {
     add_data_handlers(name, flags, uint32_t_net_data_handler, data);
 }
@@ -2628,9 +2675,9 @@ configuration_handler(int operation, String &str, Element *e,
  * configuration arguments:
  *
  * @code
- * add_read_handler("first", read_positional_handler, (void *) 0);
- * add_read_handler("second", read_positional_handler, (void *) 1);
- * add_read_handler("third", read_positional_handler, (void *) 2);
+ * add_read_handler("first", read_positional_handler, 0);
+ * add_read_handler("second", read_positional_handler, 1);
+ * add_read_handler("third", read_positional_handler, 2);
  * @endcode
  *
  * Returns the empty string if there aren't enough arguments.
@@ -2658,7 +2705,7 @@ Element::read_positional_handler(Element *element, void *user_data)
  * returns the element's "DATA" keyword argument:
  *
  * @code
- * add_read_handler("data", read_keyword_handler, (void *) "DATA");
+ * add_read_handler("data", read_keyword_handler, "DATA");
  * @endcode
  *
  * Returns the empty string if the configuration doesn't have the specified
@@ -2671,7 +2718,7 @@ Element::read_positional_handler(Element *element, void *user_data)
  * missing:
  *
  * @code
- * add_write_handler("data", reconfigure_keyword_handler, (void *) "0 DATA");
+ * add_write_handler("data", reconfigure_keyword_handler, "0 DATA");
  * @endcode
  *
  * @sa configuration: used to obtain the element's current configuration.
@@ -2925,32 +2972,12 @@ Element::simple_action(Packet *p)
  * The Task(Element *) constructor creates a Task object that calls this
  * method when it fires.  Most elements that have tasks use this method.
  *
- * @note The default implementation calls the deprecated run_timer() method
- * (the one with no parameters).  In future, the default implementation will
- * cause an assertion failure.
+ * @note The default implementation causes an assertion failure.
  */
 bool
 Element::run_task(Task *)
 {
-    return run_task();
-}
-
-/** @brief Run the element's task (deprecated).
- *
- * @return true if the task accomplished some meaningful work, false otherwise
- *
- * @deprecated This method is deprecated.  Elements should override the
- * run_task(Task *) function instead, which can differentiate between
- * multiple Task objects.
- *
- * The Task(Element *) constructor creates a Task object that calls this
- * method (via Element::run_task(Task *)) when it fires.  The default
- * implementation causes an assertion failure.
- */
-bool
-Element::run_task()
-{
-    assert(0 /* run_task not overridden */);
+    assert(0 /* run_task implementation missing */);
     return false;
 }
 
@@ -2961,34 +2988,13 @@ Element::run_task()
  * The Timer(Element *) constructor creates a Timer object that calls this
  * method when it fires.  Most elements that have timers use this method.
  *
- * @note The default implementation calls the deprecated run_timer() method
- * (the one with no parameters).  In future, the default implementation will
- * cause an assertion failure.
+ * @note The default implementation causes an assertion failure.
  */
 void
 Element::run_timer(Timer *timer)
 {
-    static int nwarn = 0;
-    if (nwarn++ < 3)
-	click_chatter("warning: calling deprecated run_timer() method for %{element};\nreplace with run_timer(Timer *) in your code", this);
-    run_timer();
+    assert(0 /* run_timer implementation missing */);
     (void) timer;
-}
-
-/** @brief Run the element's timer (deprecated).
- *
- * @deprecated This method is deprecated.  Elements should override the
- * run_timer(Timer *) function instead, which can differentiate between
- * multiple Timer objects.
- *
- * The Timer(Element *) constructor creates a Timer object that calls this
- * method (via Element::run_timer(Timer *)) when it fires.  The default
- * implementation causes an assertion failure.
- */
-void
-Element::run_timer()
-{
-    assert(0 /* run_timer not overridden */);
 }
 
 CLICK_ENDDECLS

@@ -74,8 +74,7 @@ class Task : private TaskLink { public:
      * were available. */
     inline Task(TaskCallback f, void *user_data);
 
-    /** @brief Construct a task that calls @a e ->@link Element::run_task(Task
-     * *) run_task()@endlink.
+    /** @brief Construct a task that calls @a e ->@link Element::run_task(Task*) run_task()@endlink.
      *
      * @param e element to call
      *
@@ -211,7 +210,9 @@ class Task : private TaskLink { public:
      * MyElement::run_timer() -- the fast_reschedule() might not actually take
      * effect.
      */
-    inline void fast_reschedule();
+    inline void fast_reschedule() {
+	_status.is_scheduled = true;
+    }
 
 
     /** @brief Unschedule the Task until strong_reschedule().
@@ -292,7 +293,7 @@ class Task : private TaskLink { public:
 	    uint8_t is_scheduled;
 	    uint8_t is_strong_unscheduled;
 	};
-	int32_t status;
+	uint32_t status;
     } _status;
 
     TaskCallback _hook;
@@ -515,12 +516,6 @@ Task::adjust_tickets(int delta)
 
 #endif /* HAVE_STRIDE_SCHED */
 
-
-inline void
-Task::fast_reschedule()
-{
-    _status.is_scheduled = true;
-}
 
 inline void
 Task::complete_schedule(unsigned new_pass)

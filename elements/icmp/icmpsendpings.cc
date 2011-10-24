@@ -48,6 +48,7 @@ ICMPPingSource::~ICMPPingSource()
 int
 ICMPPingSource::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+    bool has_interval;
     _icmp_id = 0;
     _interval = 1000;
     _data = String();
@@ -56,7 +57,7 @@ ICMPPingSource::configure(Vector<String> &conf, ErrorHandler *errh)
     if (Args(conf, this, errh)
 	.read_mp("SRC", _src)
 	.read_mp("DST", _dst)
-	.read("INTERVAL", SecondsArg(3), _interval)
+	.read("INTERVAL", SecondsArg(3), _interval).read_status(has_interval)
 	.read("IDENTIFIER", _icmp_id)
 	.read("DATA", _data)
 	.read("LIMIT", _limit)
@@ -69,6 +70,8 @@ ICMPPingSource::configure(Vector<String> &conf, ErrorHandler *errh)
 #endif
     if (_interval == 0)
 	errh->warning("INTERVAL so small that it is zero");
+    if (output_is_pull(0) && has_interval)
+	errh->warning("element is pull, INTERVAL parameter will be ignored");
     return 0;
 }
 
@@ -308,21 +311,21 @@ ICMPPingSource::write_handler(const String &s, Element *e, void *thunk, ErrorHan
 void
 ICMPPingSource::add_handlers()
 {
-    add_read_handler("active", read_handler, (void *)H_ACTIVE, Handler::CHECKBOX);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("src", read_handler, (void *)H_SRC, Handler::CALM);
-    add_write_handler("src", write_handler, (void *)H_SRC);
-    add_read_handler("dst", read_handler, (void *)H_DST, Handler::CALM);
-    add_write_handler("dst", write_handler, (void *)H_DST);
-    add_read_handler("count", read_handler, (void *)H_COUNT);
-    add_write_handler("limit", write_handler, (void *)H_LIMIT, Handler::CALM);
-    add_write_handler("interval", write_handler, (void *)H_INTERVAL);
-    add_write_handler("reset_counts", write_handler, (void *)H_RESET_COUNTS, Handler::BUTTON);
+    add_read_handler("active", read_handler, H_ACTIVE, Handler::CHECKBOX);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("src", read_handler, H_SRC, Handler::CALM);
+    add_write_handler("src", write_handler, H_SRC);
+    add_read_handler("dst", read_handler, H_DST, Handler::CALM);
+    add_write_handler("dst", write_handler, H_DST);
+    add_read_handler("count", read_handler, H_COUNT);
+    add_write_handler("limit", write_handler, H_LIMIT, Handler::CALM);
+    add_write_handler("interval", write_handler, H_INTERVAL);
+    add_write_handler("reset_counts", write_handler, H_RESET_COUNTS, Handler::BUTTON);
     if (ninputs() > 0) {
-	add_read_handler("summary", read_handler, (void *)H_SUMMARY);
-	add_read_handler("rtt_min", read_handler, (void *)H_RTT_MIN);
-	add_read_handler("rtt_avg", read_handler, (void *)H_RTT_AVG);
-	add_read_handler("rtt_max", read_handler, (void *)H_RTT_MAX);
+	add_read_handler("summary", read_handler, H_SUMMARY);
+	add_read_handler("rtt_min", read_handler, H_RTT_MIN);
+	add_read_handler("rtt_avg", read_handler, H_RTT_AVG);
+	add_read_handler("rtt_max", read_handler, H_RTT_MAX);
     }
 }
 

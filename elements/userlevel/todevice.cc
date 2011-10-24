@@ -135,9 +135,11 @@ FromDevice *
 ToDevice::find_fromdevice() const
 {
     Router *r = router();
-    for (int ei = 0; ei < r->nelements(); ++ei)
-	if (FromDevice *fd = (FromDevice *) r->element(ei)->cast("FromDevice"))
+    for (int ei = 0; ei < r->nelements(); ++ei) {
+	FromDevice *fd = (FromDevice *) r->element(ei)->cast("FromDevice");
+	if (fd && fd->ifname() == _ifname && fd->fd() >= 0)
 	    return fd;
+    }
     return 0;
 }
 
@@ -157,6 +159,8 @@ ToDevice::initialize(ErrorHandler *errh)
 		return -1;
 	    _my_pcap = true;
 	}
+	_fd = pcap_fileno(_pcap);
+	/* _my_fd = false by default */
     }
 #endif
 
@@ -315,7 +319,7 @@ ToDevice::run_task(Task *)
 	    add_select(_fd, SELECT_WRITE);
 	} else {
 	    _timer.schedule_after(Timestamp::make_usec(_backoff));
-	    if (_backoff < 32768)
+	    if (_backoff < 256)
 		_backoff *= 2;
 	    if (_debug) {
 		Timestamp now = Timestamp::now();
