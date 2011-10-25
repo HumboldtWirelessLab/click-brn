@@ -36,8 +36,13 @@ CLICK_DECLS
 #define CHANNEL_INFO_BLOCK_SIZE       100
 #define MAX_CHANNEL_INFO_BLOCK_COUNT   10
 
+#define CLICK_SEISMO_VERSION 0x8080
+#define CLICK_SEISMO_FLAG_SYSTIME_SET 1
+
 CLICK_SIZE_PACKED_STRUCTURE(
 struct click_seismo_data_header {,
+  uint16_t version;
+  uint16_t flags;
   int32_t gps_lat;
   int32_t gps_long;
   int32_t gps_alt;
@@ -46,6 +51,11 @@ struct click_seismo_data_header {,
   int32_t sampling_rate;
   int32_t samples;
   int32_t channels;
+
+  struct {
+    uint64_t tv_sec;
+    uint32_t tv_usec;
+  } time __attribute__((packed));
 });
 
 CLICK_SIZE_PACKED_STRUCTURE(
