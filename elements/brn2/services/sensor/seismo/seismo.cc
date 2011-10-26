@@ -45,6 +45,13 @@ Seismo::Seismo():
 
 Seismo::~Seismo()
 {
+  for (NodeStatsIter iter = _node_stats_tab.begin(); iter.live(); iter++) {
+    EtherAddress id = iter.key();
+    SrcInfo *src = _node_stats_tab.find(id);
+    delete src;
+  };
+
+  _node_stats_tab.clear();
 }
 
 int
@@ -100,12 +107,12 @@ Seismo::push(int port, Packet *p)
   // store in internal structure
   SrcInfo *src_i;
   if ( _calc_stats || _record_data ) {
-      src_i = _node_stats_tab.findp(src_node_id);
+      src_i = _node_stats_tab.find(src_node_id);
       if (!src_i) {
-        _node_stats_tab.insert(src_node_id, SrcInfo(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
+        _node_stats_tab.insert(src_node_id, new SrcInfo(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
                                                     ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop),
                                                     ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
-        src_i = _node_stats_tab.findp(src_node_id);
+        src_i = _node_stats_tab.find(src_node_id);
         if ( port == 0 ) {
           _local_info = src_i;
         }
@@ -171,7 +178,7 @@ read_handler(Element *e, void */*thunk*/)
   for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
 
     EtherAddress id = iter.key();
-    SrcInfo *src = si->_node_stats_tab.findp(id);
+    SrcInfo *src = si->_node_stats_tab.find(id);
 
     if (  src->_sample_count != 0 ) {
       sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n";
@@ -210,7 +217,7 @@ latest_handler(Element *e, void */*thunk*/)
   for (NodeStatsIter iter = si->_node_stats_tab.begin(); iter.live(); iter++) {
 
     EtherAddress id = iter.key();
-    SrcInfo *src = si->_node_stats_tab.findp(id);
+    SrcInfo *src = si->_node_stats_tab.find(id);
 
     int no_blocks = src->get_last_block()->_block_index - src->get_next_block(src->_next_seismo_info_block_for_handler)->_block_index;
     if ( ! src->get_last_block()->is_complete() ) no_blocks--;

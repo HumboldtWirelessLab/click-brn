@@ -175,32 +175,6 @@ class SrcInfo {
       reset();
     }
 
-    SrcInfo(const SrcInfo& o) {
-      _gps_lat = o._gps_lat;
-      _gps_long = o._gps_long;
-      _gps_alt = o._gps_alt;
-      _gps_hdop = o._gps_hdop;
-      _last_update_time = o._last_update_time;
-
-      _sampling_rate = o._sampling_rate;
-      _channels = o._channels;
-      _sample_count = o._sample_count;
-      _chan_cum_vals = new int64_t[o._channels];
-      _chan_cum_sq_vals = new int64_t[o._channels];
-      _chan_min_vals = new int[o._channels];
-      _chan_max_vals = new int[o._channels];
-
-      _next_seismo_info_block_for_handler = 0;
-      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
-
-      for (int i=0; i<o._channels; i++) {
-        _chan_cum_vals[i] = o._chan_cum_vals[i];
-        _chan_cum_sq_vals[i] = o._chan_cum_sq_vals[i];
-        _chan_min_vals[i] = o._chan_min_vals[i];
-        _chan_max_vals[i] = o._chan_max_vals[i];
-      }
-    }
-
     ~SrcInfo() {
       if (_chan_cum_vals) delete [] _chan_cum_vals;
       _chan_cum_vals = NULL;
@@ -320,7 +294,7 @@ class SrcInfo {
 
 };
 
-typedef HashMap<EtherAddress, SrcInfo> NodeStats;
+typedef HashMap<EtherAddress, SrcInfo*> NodeStats;
 typedef NodeStats::const_iterator NodeStatsIter;
 
 class Seismo : public BRNElement {
