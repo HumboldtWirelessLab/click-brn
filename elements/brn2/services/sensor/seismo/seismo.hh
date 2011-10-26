@@ -67,6 +67,7 @@ struct click_seismo_data {,
 class SeismoInfoBlock {
   public:
     uint64_t _time[CHANNEL_INFO_BLOCK_SIZE];
+    uint64_t _systime[CHANNEL_INFO_BLOCK_SIZE];
 
     int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4];
     uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];
@@ -74,16 +75,24 @@ class SeismoInfoBlock {
     uint32_t _block_index;
     uint16_t _next_value_index;
 
-    SeismoInfoBlock(uint32_t block_index) :_next_value_index(0)
+    uint16_t _next_systemtime_index;
+
+    SeismoInfoBlock(uint32_t block_index) :_next_value_index(0),_next_systemtime_index(0)
     {
       _block_index = block_index;
     }
 
-    int insert(uint64_t time, uint32_t channels, int32_t *values, bool net2host = true) {
+    void reset() {
+      _next_systemtime_index = 0;
+      _next_value_index = 0;
+    }
+
+    inline int32_t insert(uint64_t time, uint64_t systime, uint32_t channels, int32_t *values, bool net2host = true) {
       if ( _next_value_index == CHANNEL_INFO_BLOCK_SIZE ) return -1;
 
       _channels[_next_value_index] = (uint8_t)channels;
       _time[_next_value_index] = time;
+      _systime[_next_value_index] = systime;
 
       if ( net2host ) {
         for ( uint32_t i = 0; i < channels; i++ ) {
@@ -100,7 +109,14 @@ class SeismoInfoBlock {
       return _next_value_index;
     }
 
+    inline void update_systemtime(uint64_t systime) {
+      _systime[_next_systemtime_index++] = systime;
+    }
+
     inline bool is_complete() { return (_next_value_index == CHANNEL_INFO_BLOCK_SIZE); }
+    inline bool systime_complete() { return  (_next_systemtime_index == _next_value_index); }
+    inline uint16_t missing_time_updates() { return (_next_value_index - _next_systemtime_index); }
+
 };
 
 typedef Vector<SeismoInfoBlock*> SeismoInfoBlockList;
@@ -261,7 +277,7 @@ class SrcInfo {
         nb = _seismo_infos[0];
         _seismo_infos.erase(_seismo_infos.begin());
         nb->_block_index = block_index;
-        nb->_next_value_index = 0;
+        nb->reset();
       } else {
         nb = new SeismoInfoBlock(block_index);
       }
@@ -292,6 +308,10 @@ class SrcInfo {
       return _seismo_infos[_seismo_infos.size()-1];
     }
 
+    SeismoInfoBlock* get_next_to_last_block() {
+      if ( _seismo_infos.size() < 2 ) return NULL;
+      return _seismo_infos[_seismo_infos.size()-2];
+    }
 };
 
 typedef HashMap<EtherAddress, SrcInfo*> NodeStats;
@@ -325,6 +345,8 @@ class Seismo : public BRNElement {
   SrcInfo *_local_info;
 
   uint8_t _tag_len;
+
+  long long _last_systemtime;
 
 };
 

@@ -81,6 +81,12 @@ Seismo::push(int port, Packet *p)
   uint8_t *data = (uint8_t*)&seismo_header[1];
   EtherAddress src_node_id;
 
+  if ( seismo_header->version != CLICK_SEISMO_VERSION ) {
+    click_chatter("Unsupported seismo version");
+    p->kill();
+    return;
+  }
+
   if ( port == 0 ) {  //local data
     FixPointNumber fp_lat,fp_long,fp_alt;
     fp_lat.convertFromPrefactor(ntohl(seismo_header->gps_lat), 100000);
@@ -124,6 +130,37 @@ Seismo::push(int port, Packet *p)
 
   SeismoInfoBlock* sib = src_i->get_last_block();
 
+  /* update systime */
+  //get time in usec
+  uint64_t systemtime = (uint64_t)(seismo_header->time.tv_sec) * 1000000 + (uint64_t)seismo_header->time.tv_usec;
+
+  if ( sib != NULL ) {  //we already have data, so update the time
+    uint64_t sample_interval = 0;
+    uint16_t missing_times = sib->missing_time_updates();
+
+    SeismoInfoBlock* pre_sib = src_i->get_next_to_last_block();
+    if ( pre_sib != NULL ) missing_times += pre_sib->missing_time_updates();
+
+    if ( missing_times == 0 ) {
+      assert(missing_times != 0);
+    }
+    sample_interval = (systemtime - _last_systemtime) / missing_times;
+
+    if ( pre_sib != NULL ) {
+      while ( ! pre_sib->systime_complete() ) {
+        pre_sib->update_systemtime(_last_systemtime);
+        _last_systemtime += sample_interval;
+      }
+    }
+
+    while ( ! sib->systime_complete() ) {
+      sib->update_systemtime(_last_systemtime);
+      _last_systemtime += sample_interval;
+    }
+  }
+
+  _last_systemtime = systemtime;
+
   for ( uint32_t i = 0; i < ntohl(seismo_header->samples); i++) {
     struct click_seismo_data *seismo_data = (struct click_seismo_data *)data;
     int32_t *data32 = (int32_t*)&seismo_data[1];
@@ -148,7 +185,7 @@ Seismo::push(int port, Packet *p)
     if ( _record_data ) {
       //click_chatter("!");
       if ( (sib == NULL) || (sib->is_complete()) ) sib = src_i->new_block();
-      sib->insert(seismo_data->time, ntohl(seismo_header->channels), data32);
+      sib->insert(seismo_data->time, _last_systemtime, ntohl(seismo_header->channels), data32);
     }
 
     data = (uint8_t*)&data32[ntohl(seismo_header->channels)];
@@ -220,7 +257,7 @@ latest_handler(Element *e, void */*thunk*/)
     SrcInfo *src = si->_node_stats_tab.find(id);
 
     int no_blocks = src->get_last_block()->_block_index - src->get_next_block(src->_next_seismo_info_block_for_handler)->_block_index;
-    if ( ! src->get_last_block()->is_complete() ) no_blocks--;
+    if ( (! src->get_last_block()->is_complete()) || (! src->get_last_block()->systime_complete()) ) no_blocks--;
 
     sa << "\t<node id='" << id.unparse() << "'" << " time='" << now.unparse() << "'>\n\t\t<channel_infos size='";
     sa << (no_blocks * CHANNEL_INFO_BLOCK_SIZE) << "' >\n";
@@ -228,13 +265,13 @@ latest_handler(Element *e, void */*thunk*/)
     SeismoInfoBlock* sib;
 
     while ( (sib = src->get_next_block(src->_next_seismo_info_block_for_handler)) != NULL ) {
-      if ( sib->is_complete() ) {
+      if ( sib->is_complete() && sib->systime_complete()) {
 
         src->_next_seismo_info_block_for_handler = sib->_block_index + 1;;
 
         for (int i = 0; i < CHANNEL_INFO_BLOCK_SIZE; i++ ) {
 
-          sa << "\t\t\t<channel_info time='" << sib->_time[i] << "'";
+          sa << "\t\t\t<channel_info time='" << sib->_time[i] << "' systime='" << sib->_systime[i] << "'";
           int channels = sib->_channels[i] - 1;
 
           for (int32_t j = 0; j < channels; j++) {
@@ -256,8 +293,8 @@ latest_handler(Element *e, void */*thunk*/)
   return sa.take_string();
 }
 
-static String _seismo_stats_tags[2][4] = { { "channel_infos>", "\t<channel_info time='", " channel_", "\n" },
-                                           { "c>", "<v t='", " c", "" } };
+static String _seismo_stats_tags[2][5] = { { "channel_infos>", "\t<channel_info time='", " systime='", " channel_", "\n" },
+                                           { "c>", "<v t='", " c", " s='", "" } };
 
 static String
 local_latest_handler(Element *e, void */*thunk*/)
@@ -265,24 +302,25 @@ local_latest_handler(Element *e, void */*thunk*/)
   Seismo *si = (Seismo*)e;
   StringAccum sa;
 
-  sa << "<" << _seismo_stats_tags[si->_tag_len][0] << _seismo_stats_tags[si->_tag_len][3];
+  sa << "<" << _seismo_stats_tags[si->_tag_len][0] << _seismo_stats_tags[si->_tag_len][4];
   if ( si->_local_info != NULL ) {
     SeismoInfoBlock* sib;
 
     while ( (sib = si->_local_info->get_next_block(si->_local_info->_next_seismo_info_block_for_handler)) != NULL ) {
-      if ( sib->is_complete() ) {
+      if ( sib->is_complete() && sib->systime_complete()) {
         si->_local_info->_next_seismo_info_block_for_handler = sib->_block_index + 1;
 
         for (int i = 0; i < CHANNEL_INFO_BLOCK_SIZE; i++ ) {
 
           sa << _seismo_stats_tags[si->_tag_len][1] << sib->_time[i] << "'";
+          sa << _seismo_stats_tags[si->_tag_len][2] << sib->_systime[i] << "'";
           int channels = sib->_channels[i] - 1;
 
           for (int32_t j = 0; j < channels; j++) {
-            sa << _seismo_stats_tags[si->_tag_len][2] << j << "='" << sib->_channel_values[i][j] << "'";
+            sa << _seismo_stats_tags[si->_tag_len][3] << j << "='" << sib->_channel_values[i][j] << "'";
           }
 
-          sa << "/>" << _seismo_stats_tags[si->_tag_len][3];
+          sa << "/>" << _seismo_stats_tags[si->_tag_len][4];
         }
       } else {
         break;
