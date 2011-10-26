@@ -48,7 +48,7 @@ SimpleFlooding::initialize(ErrorHandler *)
 }
 
 bool
-SimpleFlooding::do_forward(EtherAddress */*src*/, int /*id*/, bool is_known)
+SimpleFlooding::do_forward(EtherAddress */*src*/, uint32_t /*id*/, bool is_known)
 {
   return ! is_known;
 }

@@ -54,14 +54,16 @@ class Flooding : public BRNElement {
 
    class BroadcastNode
    {
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE 50
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS 8
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE 1 << DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK DEFAULT_MAX_BCAST_ID_QUEUE_SIZE - 1
+
 #define DEFAULT_MAX_BCAST_ID_TIMEOUT    10000
 
      public:
       EtherAddress  _src;
 
-      int32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //TODO: use comination of hashmap and vector
-      uint32_t _next_index;
+      uint32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //TODO: use comination of hashmap and vector
 
       Timestamp _last_id_time;
 
@@ -77,7 +79,7 @@ class Flooding : public BRNElement {
         init();
       }
 
-      BroadcastNode( EtherAddress *src, int32_t id )
+      BroadcastNode( EtherAddress *src, uint32_t id )
       {
         _src = *src;
         init();
@@ -93,20 +95,14 @@ class Flooding : public BRNElement {
       }
 
       void reset_queue() {
-        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) _bcast_id_list[i] = -1;
-        _next_index = 0;
+        memset(_bcast_id_list, sizeof(_bcast_id_list), 0);
       }
 
-      bool have_id(int32_t id) {
-        for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-          if ( _bcast_id_list[i] == id ) return true;
-          if ( _bcast_id_list[i] == -1 ) return false;
-        }
-
-        return false;
+      inline bool have_id(uint32_t id) {
+        return (_bcast_id_list[id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK] == id );
       }
 
-      inline bool have_id(int32_t id, Timestamp now) {
+      inline bool have_id(uint32_t id, Timestamp now) {
         if ( is_outdated(now) ) {
           reset_queue();
           return false;
@@ -115,9 +111,8 @@ class Flooding : public BRNElement {
         return have_id(id);
       }
 
-      inline void add_id(int32_t id, Timestamp now) {
-        _bcast_id_list[_next_index] = id;
-        _next_index = (_next_index + 1) % DEFAULT_MAX_BCAST_ID_QUEUE_SIZE;
+      inline void add_id(uint32_t id, Timestamp now) {
+        _bcast_id_list[id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK] = id;
         _last_id_time = now;
       }
 
@@ -133,7 +128,7 @@ class Flooding : public BRNElement {
   ~Flooding();
 
   const char *class_name() const  { return "Flooding"; }
-  const char *processing() const  { return AGNOSTIC; }
+  const char *processing() const  { return PUSH; }
 
   const char *port_count() const  { return "2/2"; } 
 
@@ -145,8 +140,8 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void add_id(EtherAddress *src, int32_t id, Timestamp *now);
-  bool have_id(EtherAddress *src, int32_t id, Timestamp *now);
+  void add_id(EtherAddress *src, uint32_t id, Timestamp *now);
+  bool have_id(EtherAddress *src, uint32_t id, Timestamp *now);
 
   String stats();
   String table();
@@ -158,17 +153,17 @@ class Flooding : public BRNElement {
   //
   FloodingPolicy *_flooding_policy;
 
-  uint16_t bcast_id;
+  uint16_t _bcast_id;
 
   typedef HashMap<EtherAddress, BroadcastNode> BcastNodeMap;
   typedef BcastNodeMap::const_iterator BcastNodeMapIter;
 
-  BcastNodeMap bcast_map;
+  BcastNodeMap _bcast_map;
 
  public:
 
-  int _flooding_src;
-  int _flooding_fwd;
+  uint32_t _flooding_src;
+  uint32_t _flooding_fwd;
 };
 
 CLICK_ENDDECLS

@@ -31,8 +31,8 @@ class ProbabilityFlooding : public FloodingPolicy
     void add_handlers();
 
     const char *floodingpolicy_name() const { return "ProbabilityFlooding"; }
-    bool do_forward(EtherAddress *src, int id, bool is_known);
-    void add_broadcast(EtherAddress *, int ) {};
+    bool do_forward(EtherAddress *src, uint32_t id, bool is_known);
+    void add_broadcast(EtherAddress *, uint32_t ) {};
     int policy_id();
 
     String flooding_info(void);
