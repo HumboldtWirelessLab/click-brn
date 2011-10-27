@@ -65,7 +65,7 @@ class NeighbourRateInfo {
     }
 };
 
-typedef HashMap<EtherAddress, NeighbourRateInfo> NeighborTable;
+typedef HashMap<EtherAddress, NeighbourRateInfo*> NeighborTable;
 typedef NeighborTable::const_iterator NIter;
 
 CLICK_ENDDECLS
