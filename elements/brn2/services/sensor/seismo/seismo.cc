@@ -297,7 +297,7 @@ latest_handler(Element *e, void */*thunk*/)
 }
 
 static String _seismo_stats_tags[2][5] = { { "channel_infos>", "\t<channel_info time='", " systime='", " channel_", "\n" },
-                                           { "c>", "<v t='", " c", " s='", "" } };
+                                           { "c>", "<v t='", " s='", " c", "" } };
 
 static String
 local_latest_handler(Element *e, void */*thunk*/)
