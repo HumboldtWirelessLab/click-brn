@@ -49,7 +49,7 @@ Flooding::Flooding()
 
 Flooding::~Flooding()
 {
-  _bcast_map.clear();
+  reset();
 }
 
 int
@@ -114,6 +114,9 @@ Flooding::push( int port, Packet *packet )
 
   } else if ( port == 1 ) {                                   // kommt von brn
 
+    click_ether *ether = (click_ether *)packet->ether_header();
+    EtherAddress fwd = EtherAddress(ether->ether_shost);
+
     BRN_DEBUG("Flooding: PUSH von BRN\n");
 
     Timestamp now = packet->timestamp_anno();
@@ -121,11 +124,13 @@ Flooding::push( int port, Packet *packet )
     bcast_header = (struct click_brn_bcast *)(packet->data());
     src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
 
+    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
+
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
     bool is_known = have_id(&src, p_bcast_id, &now);
     ttl--;
 
-    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, p_bcast_id, is_known);
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, p_bcast_id, is_known);
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
@@ -169,16 +174,16 @@ Flooding::push( int port, Packet *packet )
 void
 Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now)
 {
-  BroadcastNode *bcn = _bcast_map.findp(*src);
+  BroadcastNode *bcn = _bcast_map.find(*src);
 
-  if ( bcn == NULL ) _bcast_map.insert(*src, BroadcastNode(src, id));
+  if ( bcn == NULL ) _bcast_map.insert(*src, new BroadcastNode(src, id));
   else bcn->add_id(id,*now);
 }
 
 bool
 Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now)
 {
-  BroadcastNode *bcn = _bcast_map.findp(*src);
+  BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return false;
 
@@ -189,6 +194,14 @@ void
 Flooding::reset()
 {
   _flooding_src = _flooding_fwd = 0;
+
+  BcastNodeMapIter iter = _bcast_map.begin();
+  while (iter != _bcast_map.end())
+  {
+    BroadcastNode* bcn = iter.value();
+    delete bcn;
+  }
+
   _bcast_map.clear();
 }
 
@@ -213,12 +226,12 @@ Flooding::table()
   BcastNodeMapIter iter = _bcast_map.begin();
   while (iter != _bcast_map.end())
   {
-    BroadcastNode bcn = iter.value();
-    sa << "\t<src node=\"" << bcn._src.unparse() << "\" ids=\"";
+    BroadcastNode* bcn = iter.value();
+    sa << "\t<src node=\"" << bcn->_src.unparse() << "\" ids=\"";
     for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn._bcast_id_list[i] == -1 ) break;
+      if ( bcn->_bcast_id_list[i] == -1 ) break;
       if ( i != 0 ) sa << ",";
-      sa << bcn._bcast_id_list[i];
+      sa << bcn->_bcast_id_list[i];
     }
     sa << "\" />\n";
     iter++;

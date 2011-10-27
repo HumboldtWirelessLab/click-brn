@@ -155,7 +155,7 @@ class Flooding : public BRNElement {
 
   uint16_t _bcast_id;
 
-  typedef HashMap<EtherAddress, BroadcastNode> BcastNodeMap;
+  typedef HashMap<EtherAddress, BroadcastNode*> BcastNodeMap;
   typedef BcastNodeMap::const_iterator BcastNodeMapIter;
 
   BcastNodeMap _bcast_map;

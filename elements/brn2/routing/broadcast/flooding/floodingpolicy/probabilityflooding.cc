@@ -52,7 +52,8 @@ ProbabilityFlooding::initialize(ErrorHandler *)
 }
 
 bool
-ProbabilityFlooding::do_forward(EtherAddress */*src*/, uint32_t /*id*/, bool is_known)
+ProbabilityFlooding::do_forward(EtherAddress */*src*/,  EtherAddress */*fwd*/, EtherAddress */*rcv*/,
+                                uint32_t /*id*/, bool is_known)
 {
   click_random_srandom();
 
