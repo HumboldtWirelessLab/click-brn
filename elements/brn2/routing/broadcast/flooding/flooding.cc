@@ -56,6 +56,7 @@ int
 Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -130,7 +131,9 @@ Flooding::push( int port, Packet *packet )
     bool is_known = have_id(&src, p_bcast_id, &now);
     ttl--;
 
-    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, p_bcast_id, is_known);
+    uint8_t dev_id = BRNPacketAnno::devicenumber_anno(packet);
+
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known);
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;

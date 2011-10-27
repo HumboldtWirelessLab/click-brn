@@ -31,6 +31,7 @@
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "floodingpolicy/floodingpolicy.hh"
 
 CLICK_DECLS
@@ -151,6 +152,8 @@ class Flooding : public BRNElement {
   //
   //member
   //
+  BRN2NodeIdentity *_me;
+
   FloodingPolicy *_flooding_policy;
 
   uint16_t _bcast_id;

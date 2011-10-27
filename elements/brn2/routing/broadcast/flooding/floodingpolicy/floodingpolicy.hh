@@ -17,7 +17,7 @@ class FloodingPolicy : public BRNElement
     ~FloodingPolicy();
 
     virtual const char *floodingpolicy_name() const = 0;
-    virtual bool do_forward(EtherAddress *src, EtherAddress *fwd, EtherAddress *rcv, uint32_t id, bool is_known) = 0;
+    virtual bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known) = 0;
     virtual void add_broadcast(EtherAddress *src, uint32_t id) = 0; //used for local generated broadcast
     virtual int policy_id() = 0;
 
