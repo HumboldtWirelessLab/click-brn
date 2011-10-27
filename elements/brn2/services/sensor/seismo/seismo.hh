@@ -224,14 +224,12 @@ class SrcInfo {
 
     void add_channel_val(int channel, int value) {
       // required for mean calc
-      if (_chan_cum_vals != NULL) _chan_cum_vals[channel] += value;
+      _chan_cum_vals[channel] += value;
       // required for std calc
-      if (_chan_cum_sq_vals != NULL) {
-        int64_t value64 = value;
-        _chan_cum_sq_vals[channel] += (value64 * value64);
-      }
-      if (_chan_min_vals != NULL) _chan_min_vals[channel] = min(value, _chan_min_vals[channel]);
-      if (_chan_max_vals != NULL) _chan_max_vals[channel] = max(value, _chan_max_vals[channel]);
+      int64_t value64 = value;
+      _chan_cum_sq_vals[channel] += (value64 * value64);
+      _chan_min_vals[channel] = min(value, _chan_min_vals[channel]);
+      _chan_max_vals[channel] = max(value, _chan_max_vals[channel]);
     }
 
     int avg_channel_info(int channel) { return (_chan_cum_vals[channel]/_sample_count); }

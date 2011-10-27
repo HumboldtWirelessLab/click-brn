@@ -93,6 +93,7 @@ Seismo::push(int port, Packet *p)
     fp_long.convertFromPrefactor(ntohl(seismo_header->gps_long), 100000);
     fp_alt.convertFromPrefactor(ntohl(seismo_header->gps_alt), 100000);
 
+    //TODO: check precision
     _gps->set_gps(fp_lat,fp_long,fp_alt);
 
     src_node_id = EtherAddress();
@@ -142,9 +143,11 @@ Seismo::push(int port, Packet *p)
     if ( pre_sib != NULL ) missing_times += pre_sib->missing_time_updates();
 
     if ( missing_times == 0 ) {
-      assert(missing_times != 0);
+      BRN_WARN("No missing systimes");
+      //assert(missing_times != 0);
+    } else {
+      sample_interval = (systemtime - _last_systemtime) / missing_times;
     }
-    sample_interval = (systemtime - _last_systemtime) / missing_times;
 
     if ( pre_sib != NULL ) {
       while ( ! pre_sib->systime_complete() ) {
