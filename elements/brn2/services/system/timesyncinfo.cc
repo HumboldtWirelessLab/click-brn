@@ -107,7 +107,7 @@ TimeSyncInfo::read_syncinfo()
   }
 
   for ( int i = start; i <= end; i++ ) {
-    sa << "\t<syncpacket time='" << _timestamps[i%_max_ids] << "' id='" << _packet_ids[i%_max_ids] << "' />\n";
+    sa << "\t<syncpacket time='" << _timestamps[i%_max_ids].usecval() << "' unit='us' id='" << _packet_ids[i%_max_ids] << "' />\n";
   }
 
   sa << "</timesyncinfo>\n";
