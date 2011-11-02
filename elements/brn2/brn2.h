@@ -116,17 +116,6 @@ const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadc
 
 #define ETHERADDRESS_BROADCAST brn_etheraddress_broadcast
 
-class BRNTools {
-
-  static int getBitposition(uint32_t x) {
-    int pos = 0;
-    while(x >>= 1) ++pos;
-    return pos;
-  }
-};
-
-#define BITPOSITION(x) BRNTools::getBitposition(x)
-
 CLICK_ENDDECLS
 
 #endif
