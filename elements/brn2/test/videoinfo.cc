@@ -77,7 +77,7 @@ VideoInfo::read_info()
 
   StringAccum sa;
 
-  sa << "<videoinfo id='" << BRN_NODE_ADDRESS << ">\n";
+  sa << "<videoinfo id='" << BRN_NODE_NAME << "'>\n";
   for ( int i = 0; i < _vil.size(); i++) {
     sa << "\t<info time='" << _vil[i]._time.unparse() << "' value='" <<  _vil[i]._data << "' />\n";
   }
