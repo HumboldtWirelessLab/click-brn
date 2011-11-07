@@ -61,14 +61,13 @@ OLSRHNAGenerator::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 	IPAddress network_addr = IPAddress();
 	IPAddress netmask = IPAddress();
-	int res = cp_va_parse(conf, this, errh,
-	                      cpInteger, "HNA sending interval (msec)", &_period,
-	                      cpInteger, "HNA Holding Time (msec)",&_hna_hold_time,
-	                      cpIPAddress, "my main IPAddress", &_my_ip,
-	                      cpKeywords,
-	                      "NETWORK", cpIPPrefix, "the network that HNA should advertise e.g. 10.0.0.0/24", &network_addr, &netmask,
-	                      "ASSOCIATION_INFO", cpElement, "AssociationInfoBase element: contains the networks to be advertised", &_association_info,
-	                      0);
+	int res = cp_va_kparse(conf, this, errh,
+                         "HNA sending interval (msec)", cpkP, cpInteger,&_period,
+                         "HNA Holding Time (msec)",cpkP, cpInteger,&_hna_hold_time,
+                         "my main IPAddress", cpkP, cpIPAddress, &_my_ip,
+	                      "NETWORK", cpkP, cpIPPrefix, /* "the network that HNA should advertise e.g. 10.0.0.0/24", */&network_addr, &netmask,
+	                      "ASSOCIATION_INFO", cpkP, cpElement, /*"AssociationInfoBase element: contains the networks to be advertised",*/ &_association_info,
+	                      cpEnd);
 
 	if ( res < 0 )
 		return res;
@@ -91,8 +90,8 @@ OLSRHNAGenerator::initialize(ErrorHandler *)
 	_timer.initialize(this);
 	_timer.schedule_after_msec(_period); // Send OLSR HELLO periodically
 	_vtime = compute_vtime();
-	_end_of_validity_time = make_timeval(0,0);
-	_last_msg_sent_at = make_timeval(0,0);
+	_end_of_validity_time = Timestamp(0,0).timeval();
+  _last_msg_sent_at = Timestamp(0,0).timeval();
 	return 0;
 }
 
@@ -237,9 +236,9 @@ OLSRHNAGenerator::add_association_write_handler(const String &conf, Element *e, 
 	OLSRHNAGenerator* me = (OLSRHNAGenerator *) e;
 	IPAddress network_addr;
 	IPAddress netmask;
-	int res = cp_va_parse(conf, me, errh,
-	                      cpIPPrefix, "the network address that HNA should advertise", &network_addr, &netmask,
-	                      0);
+	int res = cp_va_kparse(conf, me, errh,
+                         "the network address that HNA should advertise", cpkP, cpIPPrefix,&network_addr, &netmask,
+	                      cpEnd);
 	if ( res < 0 )
 		return res;
 	_Association association;

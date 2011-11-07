@@ -22,14 +22,14 @@ OLSRIdealRecoverFromLinkLayer::~OLSRIdealRecoverFromLinkLayer()
 int
 OLSRIdealRecoverFromLinkLayer::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	if (cp_va_parse(conf, this, errh,
-	                cpElement, "NeighborInfoBase Element", &_neighborInfoBase,
-	                cpElement, "LinkInfoBase Element", &_linkInfoBase,
-			cpElement, "InterfaceInfoBase Element", &_interfaceInfoBase,
-			cpElement, "TCGenerator Element", &_tcGenerator,
-			cpElement, "RoutingTable Element", &_routingTable,
-	                cpIPAddress, "Nodes main IP address", &_myMainIP,
-	                0) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "NeighborInfoBase Element", cpkP, cpElement, &_neighborInfoBase,
+      "LinkInfoBase Element", cpkP, cpElement, &_linkInfoBase,
+      "InterfaceInfoBase Element", cpkP, cpElement, &_interfaceInfoBase,
+      "TCGenerator Element", cpkP, cpElement, &_tcGenerator,
+      "RoutingTable Element",cpkP, cpElement,  &_routingTable,
+      "Nodes main IP address", cpkP, cpIPAddress,&_myMainIP,
+	                cpEnd) < 0)
 		return -1;
 	return 0;
 }
@@ -45,7 +45,7 @@ void
 OLSRIdealRecoverFromLinkLayer::notify(const IPAddress &next_hop_IP)
 {
 	timeval now;
-	click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
 
 	/// @TODO what to do with timeval2double
 	/// click_chatter("%f | %s | %s | ideal recover: next hop: %s", timeval2double(now), _myMainIP.unparse().c_str(), __FUNCTION__, next_hop_IP.s().c_str());
@@ -86,7 +86,7 @@ OLSRIdealRecoverFromLinkLayer::notify_handler(const String &conf, Element *e, vo
 {
 	OLSRIdealRecoverFromLinkLayer* me = (OLSRIdealRecoverFromLinkLayer *) e;
 	IPAddress next_hop_ip;
-	int res = cp_va_parse( conf, me, errh, cpIPAddress, "Next Hop IP", &next_hop_ip, 0 );	
+  int res = cp_va_kparse( conf, me, errh, "Next Hop IP",  cpkP, cpIPAddress, &next_hop_ip, cpEnd );
 	if ( res < 0 )
 		return res;
 	me->notify(next_hop_ip);

@@ -49,17 +49,16 @@ OLSRARPQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
     _bcast_addr = IPAddress();
     IPAddress bcast_mask;
     bool confirm_bcast = false;
-    if (cp_va_parse_remove_keywords(conf, 1, this, errh,
-				    "CAPACITY", cpUnsigned, "packet capacity", &_capacity,
-				    cpConfirmKeywords,
-				    "BROADCAST", cpIPAddress, "IP local broadcast address", &confirm_bcast, &_bcast_addr,
+    if (cp_va_kparse_remove_keywords(conf, this, errh,
+				    "CAPACITY", cpkP, cpUnsigned, /*"packet capacity",*/ &_capacity,
+				    "BROADCAST", cpkP + cpkC, cpIPAddress, /*"IP local broadcast address",*/ &confirm_bcast, &_bcast_addr,
 				    cpEnd) < 0)
 	return -1;
     if (conf.size() == 1)
 	conf.push_back(conf[0]);
-    if (cp_va_parse(conf, this, errh,
-		    cpIPAddressOrPrefix, "IP address", &_my_ip, &bcast_mask,
-		    cpEthernetAddress, "Ethernet address", &_my_en,
+    if (cp_va_kparse(conf, this, errh,
+        "IP address", cpkP, cpIPAddressOrPrefix, &_my_ip, &bcast_mask,
+        "Ethernet address", cpkP, cpEthernetAddress, &_my_en,
 		    cpEnd) < 0)
 	return -1;
     if (!_bcast_addr)
@@ -449,7 +448,7 @@ OLSRARPQuerier::read_table(Element *e, void *)
   String s;
   for (int i = 0; i < NMAP; i++)
     for (ARPEntry *e = q->_map[i]; e; e = e->next) {
-      s += e->ip.s() + " " + (e->ok ? "1" : "0") + " " + e->en.s() + "\n";
+      s += e->ip.unparse() + " " + (e->ok ? "1" : "0") + " " + e->en.unparse() + "\n";
     }
   return s;
 }

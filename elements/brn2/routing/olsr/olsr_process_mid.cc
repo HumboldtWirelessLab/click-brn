@@ -23,10 +23,10 @@ OLSRProcessMID::~OLSRProcessMID()
 int
 OLSRProcessMID::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpElement, "InterfaceInfoBase Element", &_interfaceInfo,
-		  cpElement, "Routing Table Element", &_routingTable, 
-		  0) < 0)
+  if (cp_va_kparse(conf, this, errh,
+      "InterfaceInfoBase Element", cpkP, cpElement,&_interfaceInfo,
+      "Routing Table Element", cpkP, cpElement,&_routingTable,
+		  cpEnd) < 0)
     return -1;
   return 0;
 }
@@ -44,7 +44,7 @@ OLSRProcessMID::push(int, Packet *packet){
   int mid_msg_offset, bytes_left;
   struct timeval now;
 
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   msg_info = OLSRPacketHandle::get_msg_hdr_info(packet, 0);
 
   mid_msg_offset = sizeof(olsr_msg_hdr);
@@ -56,13 +56,13 @@ OLSRProcessMID::push(int, Packet *packet){
     data = _interfaceInfo->find_interface(interface_address);
     
     if ( data == 0 ){
-      _interfaceInfo->add_interface(interface_address, msg_info.originator_address, now + msg_info.validity_time);
+      _interfaceInfo->add_interface(interface_address, msg_info.originator_address, (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval());
 //      click_chatter("adding new interface: %s\n", interface_address.unparse().cc()); 
       interface_changed = true;
     }
     else{
 //      click_chatter("found interface %s, updating\n", interface_address.unparse().cc());
-      _interfaceInfo->update_interface(interface_address, now + msg_info.validity_time);
+      _interfaceInfo->update_interface(interface_address, (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval());
     }
     bytes_left -= sizeof(in_addr);
     mid_msg_offset += sizeof(in_addr);

@@ -105,14 +105,14 @@ void
 OLSRDuplicateSet::run_timer(Timer *)
 {
   struct timeval now, next_timeout;
-  click_gettimeofday(&now);
-  next_timeout = make_timeval(0, 0);
+  now = Timestamp::now().timeval();
+  next_timeout = Timestamp(0, 0).timeval();
 
   //find expired duplicate entries and delete them
   if (! _duplicateSet->empty()){
     for (DuplicateSet::iterator iter = _duplicateSet->begin(); iter != _duplicateSet->end(); iter++){
       duplicate_data *entry = (duplicate_data *) iter.value();
-      if (entry->D_time <= now){
+      if (Timestamp(entry->D_time) <= Timestamp(now)){
 	remove_duplicate_entry(entry->D_addr, entry->D_seq_num);
       }
     }
@@ -124,7 +124,7 @@ OLSRDuplicateSet::run_timer(Timer *)
       duplicate_data *entry = (duplicate_data *) iter.value();
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = entry->D_time;
-      if ( entry->D_time < next_timeout )
+      if ( Timestamp(entry->D_time) < Timestamp(next_timeout) )
 	next_timeout = entry->D_time;
     }
   }

@@ -25,19 +25,18 @@ OLSRRoutingTable::~OLSRRoutingTable()
 int
 OLSRRoutingTable::configure( Vector<String> &conf, ErrorHandler *errh )
 {
-	if ( cp_va_parse( conf, this, errh,
-	                  cpElement, "Neighbor InfoBase Element", &_neighborInfo,
-	                  cpElement, "Link InfoBase Element", &_linkInfo,
-	                  cpElement, "Topology InfoBase Element", &_topologyInfo,
-	                  cpElement, "Interface InfoBase", &_interfaceInfo,
-	                  cpElement, "local Interface Infobase", &_localIfaces,
-	                  cpElement, "association Infobase", &_associationInfo,
-	                  cpElement, "Routing table", &_linearIPlookup,
-	                  cpIPAddress, "own IPAddress", &_myIP,
-	                  cpKeywords,
-	                  "SUBNET_MASK", cpIPAddress, "subnet mask", &_myMask,
-	                  "VISITOR_INFO", cpElement, "visitor Infobase", &_visitorInfo,
-	                  0 ) < 0 )
+	if ( cp_va_kparse( conf, this, errh,
+       "Neighbor InfoBase Element", cpkP, cpElement, &_neighborInfo,
+       "Link InfoBase Element", cpkP, cpElement, &_linkInfo,
+       "Topology InfoBase Element", cpkP, cpElement, &_topologyInfo,
+       "Interface InfoBase",cpkP, cpElement,  &_interfaceInfo,
+       "local Interface Infobase", cpkP, cpElement, &_localIfaces,
+       "association Infobase", cpkP, cpElement, &_associationInfo,
+       "Routing table", cpkP, cpElement, &_linearIPlookup,
+       "own IPAddress", cpkP, cpIPAddress, &_myIP,
+       "SUBNET_MASK",cpkP,  cpIPAddress, /*"subnet mask",*/ &_myMask,
+       "VISITOR_INFO",cpkP,  cpElement, /*"visitor Infobase",*/ &_visitorInfo,
+	                  cpEnd ) < 0 )
 		return -1;
 
 	_errh = errh;
@@ -70,7 +69,7 @@ void
 OLSRRoutingTable::print_routing_table()
 {
 	struct timeval now;
-	click_gettimeofday( &now );
+  now = Timestamp::now().timeval();
 //robat	click_chatter( "%f | %s | %s\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), _linearIPlookup->dump_routes().c_str() );
 }
 
@@ -281,9 +280,9 @@ OLSRRoutingTable::compute_routing_table()
 		for ( OLSRLinearIPLookup::IPRouteTableIterator iter = _linearIPlookup->begin() ; iter != _linearIPlookup->end(); iter++ ) {
 			// click_chatter ("%s | CHECKING if node %s is visiting my network\n",_myIP.unparse().c_str(), _linearIPlookup->_t[index].addr.unparse().c_str());
 			if ( iter->mask == netmask32 && !iter->addr.matches_prefix( _myIP, _myMask ) ) { // check if this node is on my subnet
-				_visitorInfo->add_tuple( iter->gw, iter->addr, iter->mask, make_timeval( 0, 0 ) );
+				_visitorInfo->add_tuple( iter->gw, iter->addr, iter->mask, Timestamp( 0, 0 ).timeval() );
 				timeval now;
-				click_gettimeofday( &now );
+        now = Timestamp::now().timeval();
 //robat				click_chatter ( "%f | %s | node %s is visiting my network\n", Timestamp( now ).doubleval(), _myIP.unparse().c_str(), iter->addr.unparse().c_str() );
 			}
 		}

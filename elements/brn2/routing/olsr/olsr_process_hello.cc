@@ -27,17 +27,17 @@ OLSRProcessHello::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 	int neighbor_hold_time;
 
-	if (cp_va_parse(conf, this, errh,
-	                cpInteger,"Neihbor Hold time",&neighbor_hold_time,
-	                cpElement, "LinkInfoBase Element", &_linkInfo,
-	                cpElement, "NeighborInfoBase Element", &_neighborInfo,
-	                cpElement, "InterfaceInfoBase Element", &_interfaceInfo,
-	                cpElement, "Routing Table Element", &_routingTable,
-	                cpElement, "TC generator element", &_tcGenerator,
-	                cpElement, "localIfInfoBase Element", &_localIfInfoBase,
-	                cpIPAddress, "Main IPAddress of node", &_myMainIp,  0) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "Neihbor Hold time",cpkP,cpInteger,&neighbor_hold_time,
+                 "LinkInfoBase Element",cpkP, cpElement, &_linkInfo,
+                 "NeighborInfoBase Element", cpkP, cpElement,&_neighborInfo,
+                "InterfaceInfoBase Element", cpkP, cpElement,&_interfaceInfo,
+                 "Routing Table Element", cpkP, cpElement,&_routingTable,
+                 "TC generator element", cpkP, cpElement,&_tcGenerator,
+                 "localIfInfoBase Element", cpkP, cpElement,&_localIfInfoBase,
+                 "Main IPAddress of node",cpkP, cpIPAddress,&_myMainIp,  cpEnd) < 0)
 		return -1;
-	_neighbor_hold_time_tv=make_timeval ((int) (neighbor_hold_time / 1000),(neighbor_hold_time % 1000));
+	_neighbor_hold_time_tv=Timestamp((int) (neighbor_hold_time / 1000),(neighbor_hold_time % 1000)).timeval();
 	return 0;
 }
 
@@ -58,7 +58,7 @@ OLSRProcessHello::push(int, Packet *packet)
 	bool mpr_selector_added = false;
 	struct timeval now;
 	IPAddress neighbor_main_address, originator_address, source_address;
-	click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
 	msg_info = OLSRPacketHandle::get_msg_hdr_info(packet, 0);
 
 	//click_chatter ("Process HELLO: validity time %d %d",  msg_info.validity_time.tv_sec,msg_info.validity_time.tv_usec);
@@ -73,18 +73,18 @@ OLSRProcessHello::push(int, Packet *packet)
 
 	if (link_tuple == NULL)
 	{
-		link_tuple = _linkInfo->add_link(receiving_If_IP, source_address, (now + msg_info.validity_time));
-		link_tuple->L_SYM_time = now - make_timeval(1,0);
-		link_tuple->L_ASYM_time = now + msg_info.validity_time;
+		link_tuple = _linkInfo->add_link(receiving_If_IP, source_address, (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval());
+		link_tuple->L_SYM_time = (Timestamp(now) - Timestamp(1,0)).timeval();
+    link_tuple->L_ASYM_time = (Timestamp(now) + msg_info.validity_time).timeval();
 		link_tuple->_main_addr = originator_address;
 		click_chatter("%s adding link to %s\n", receiving_If_IP.unparse().c_str(), source_address.unparse().c_str());
 	}
 	else
 	{
-		link_tuple->L_ASYM_time = now + msg_info.validity_time;
+    link_tuple->L_ASYM_time = (Timestamp(now) + msg_info.validity_time).timeval();
 		if ( _interfaceInfo->get_main_address(link_tuple->L_neigh_iface_addr) == originator_address)
 		{ // From RFC 8.2.1
-			if (link_tuple->L_SYM_time >= now)
+      if (Timestamp(link_tuple->L_SYM_time) >= Timestamp(now))
 				update_twohop = true;
 		}
 	}
@@ -119,21 +119,21 @@ OLSRProcessHello::push(int, Packet *packet)
 				{
 					if (link_info.link_type == OLSR_LOST_LINK)
 					{
-						link_tuple->L_SYM_time = now - make_timeval(1,0);  // == expired
+						link_tuple->L_SYM_time = (Timestamp(now) - Timestamp(1,0)).timeval();  // == expired
 					}
 					else if (link_info.link_type == OLSR_SYM_LINK || link_info.link_type == OLSR_ASYM_LINK)
 					{
-						link_tuple->L_SYM_time = now + msg_info.validity_time;
-						link_tuple->L_time = link_tuple->L_SYM_time + _neighbor_hold_time_tv;
+						link_tuple->L_SYM_time = (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval();
+            link_tuple->L_time = (Timestamp(link_tuple->L_SYM_time) + Timestamp(_neighbor_hold_time_tv)).timeval();
 					}
 
-					if (link_tuple->L_time < link_tuple->L_ASYM_time)
+          if (Timestamp(link_tuple->L_time) < Timestamp(link_tuple->L_ASYM_time))
 					{
 						link_tuple->L_time = link_tuple->L_ASYM_time;
 					}
 
 					//from RFC 8.1
-					if ( link_tuple->L_SYM_time >= now )
+          if ( Timestamp(link_tuple->L_SYM_time) >= Timestamp(now) )
 					{
 						if (neighbor_tuple->N_status != OLSR_SYM_NEIGH)
 						{ //RFC 8.5
@@ -156,7 +156,7 @@ OLSRProcessHello::push(int, Packet *packet)
 						IPAddress main_neighbor_address = _interfaceInfo->get_main_address(neighbor_address);
 						if (_neighborInfo->find_twohop_neighbor(originator_address, main_neighbor_address) == 0)
 							new_twohop_added = true;
-						_neighborInfo->add_twohop_neighbor(originator_address, main_neighbor_address, (now+msg_info.validity_time));
+            _neighborInfo->add_twohop_neighbor(originator_address, main_neighbor_address, (Timestamp(now)+Timestamp(msg_info.validity_time)).timeval());
 					}
 				}
 				else if (update_twohop && link_info.neigh_type == OLSR_NOT_NEIGH)
@@ -175,12 +175,12 @@ OLSRProcessHello::push(int, Packet *packet)
 						mpr_selector_data *mpr_selector = _neighborInfo->find_mpr_selector(originator_address);
 						if (mpr_selector == 0)
 						{
-							mpr_selector = _neighborInfo->add_mpr_selector(originator_address, (now + msg_info.validity_time));
+              mpr_selector = _neighborInfo->add_mpr_selector(originator_address, (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval());
 							mpr_selector_added = true;
 						}
 						else
 						{
-							mpr_selector->MS_time = now + msg_info.validity_time;
+							mpr_selector->MS_time = (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval();
 						}
 					}
 				}//end 8.4.1
@@ -214,7 +214,7 @@ OLSRProcessHello::push(int, Packet *packet)
 void
 OLSRProcessHello::set_neighbor_hold_time_tv(int neighbor_hold_time)
 {
-	_neighbor_hold_time_tv=make_timeval ((int) (neighbor_hold_time / 1000),(neighbor_hold_time % 1000));;
+	_neighbor_hold_time_tv=Timestamp((int) (neighbor_hold_time / 1000),(neighbor_hold_time % 1000)).timeval();
 	click_chatter ("_neighbor_hold_time_tv = %d %d\n", _neighbor_hold_time_tv.tv_sec,  _neighbor_hold_time_tv.tv_usec);
 }
 
@@ -223,7 +223,7 @@ OLSRProcessHello::set_neighbor_hold_time_tv_handler(const String &conf, Element 
 {
 	OLSRProcessHello* me = (OLSRProcessHello *) e;
 	int new_nbr_hold_time;
-	int res = cp_va_parse( conf, me, errh, cpInteger, "Neighbor Hold time", &new_nbr_hold_time, 0 );	
+  int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, cpEnd );
 	if ( res < 0 )
 		return res;
 	me->set_neighbor_hold_time_tv(new_nbr_hold_time);

@@ -22,15 +22,15 @@ OLSRRecoverFromLinkLayer::~OLSRRecoverFromLinkLayer()
 int
 OLSRRecoverFromLinkLayer::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	if (cp_va_parse(conf, this, errh,
-	                cpElement, "NeighborInfoBase Element", &_neighborInfoBase,
-	                cpElement, "LinkInfoBase Element", &_linkInfoBase,
-			cpElement, "InterfaceInfoBase Element", &_interfaceInfoBase,
-			cpElement, "TCGenerator Element", &_tcGenerator,
-			cpElement, "RoutingTable Element", &_routingTable,
-	                cpElement, "OLSR ARP Querier Element", &_arpQuerier,
-	                cpIPAddress, "Nodes main IP address", &_myMainIP,
-	                0) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "NeighborInfoBase Element", cpkP, cpElement, &_neighborInfoBase,
+      "LinkInfoBase Element", cpkP, cpElement, &_linkInfoBase,
+      "InterfaceInfoBase Element", cpkP, cpElement, &_interfaceInfoBase,
+      "TCGenerator Element", cpkP, cpElement, &_tcGenerator,
+      "RoutingTable Element", cpkP, cpElement, &_routingTable,
+      "OLSR ARP Querier Element", cpkP, cpElement, &_arpQuerier,
+      "Nodes main IP address", cpkP, cpIPAddress, &_myMainIP,
+	                cpEnd) < 0)
 		return -1;
 	return 0;
 }
@@ -46,7 +46,7 @@ void
 OLSRRecoverFromLinkLayer::push(int, Packet *packet)
 {
 	timeval now;
-	click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
 
 	EtherAddress ether_addr;
 	memcpy(ether_addr.data(), packet->data(), 6);

@@ -52,11 +52,11 @@ OLSRProcessHNA::~OLSRProcessHNA()
 int
 OLSRProcessHNA::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpElement, "AssociationInfoBase Element", &_associationInfo,
-		  cpElement, "NeighborInfoBase Element", &_neighborInfo,
-		  cpElement, "Routing Table Element", &_routingTable,
-		  cpIPAddress, "My main address", &_my_ip, 0) < 0)
+  if (cp_va_kparse(conf, this, errh,
+      "AssociationInfoBase Element", cpkP, cpElement, &_associationInfo,
+      "NeighborInfoBase Element",cpkP, cpElement,  &_neighborInfo,
+      "Routing Table Element",cpkP, cpElement,  &_routingTable,
+      "My main address", cpkP, cpIPAddress,&_my_ip, cpEnd) < 0)
     return -1;
   return 0;
 }
@@ -75,7 +75,7 @@ OLSRProcessHNA::push(int, Packet *packet){
   IPAddress network_address, originator_address, source_address, netmask;
   in_addr * addr;
 
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
 
   msg_info = OLSRPacketHandle::get_msg_hdr_info(packet, 0);
   originator_address = msg_info.originator_address;
@@ -107,10 +107,10 @@ OLSRProcessHNA::push(int, Packet *packet){
 
       association_tuple = _associationInfo->find_tuple(originator_address, network_address, netmask);
       if (association_tuple != 0) {
-        association_tuple->A_time = now + msg_info.validity_time;
+        association_tuple->A_time = (Timestamp(now) + Timestamp(msg_info.validity_time)).timeval();
 	update_hna = true;
       } else {
-	_associationInfo->add_tuple(originator_address, network_address, netmask, (now + msg_info.validity_time));
+        _associationInfo->add_tuple(originator_address, network_address, netmask, (Timestamp(now) +  Timestamp(msg_info.validity_time)).timeval());
 	new_hna_added = true;
       }
 

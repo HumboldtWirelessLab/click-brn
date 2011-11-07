@@ -23,13 +23,13 @@ OLSRProcessTC::~OLSRProcessTC()
 int
 OLSRProcessTC::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh, 
-		  cpElement, "TopologyInfoBase Element", &_topologyInfo,
-		  cpElement, "Neighbor InfoBase Element", &_neighborInfo,
-		  cpElement, "InterfaceInfoBase Element", &_interfaceInfo,
-		  cpElement, "Routing Table Element", &_routingTable,
-		  cpIPAddress, "my main IP", &_myMainIP,
-		  0) < 0)
+  if (cp_va_kparse(conf, this, errh, 
+      "TopologyInfoBase Element", cpkP,cpElement, &_topologyInfo,
+      "Neighbor InfoBase Element", cpkP,cpElement, &_neighborInfo,
+      "InterfaceInfoBase Element", cpkP,cpElement, &_interfaceInfo,
+      "Routing Table Element", cpkP,cpElement, &_routingTable,
+      "my main IP", cpkP, cpIPAddress, &_myMainIP,
+		  cpEnd) < 0)
     return -1;
   return 0;
 }
@@ -49,7 +49,7 @@ OLSRProcessTC::push(int, Packet *packet)
   topology_data *topology_tuple;
   IPAddress originator_address;
   struct timeval now;
-  click_gettimeofday(&now);
+  now = Timestamp::now().timeval();
   
   msg_info = OLSRPacketHandle::get_msg_hdr_info(packet, 0);
   tc_info = OLSRPacketHandle::get_tc_hdr_info(packet, (int) sizeof(olsr_msg_hdr));
@@ -89,13 +89,13 @@ OLSRProcessTC::push(int, Packet *packet)
       //dont record entries for myself or my neighbors
       topology_tuple = _topologyInfo->find_tuple(dest_addr, originator_address);
       if ( topology_tuple == 0 ){
-	topology_tuple = _topologyInfo->add_tuple(dest_addr, originator_address, (now+msg_info.validity_time));
+	topology_tuple = _topologyInfo->add_tuple(dest_addr, originator_address, (Timestamp(now)+Timestamp(msg_info.validity_time)).timeval());
 	topology_tuple->T_seq = ansn;
 	//click_chatter("topology tuple added\n");
 	topology_tuple_added = true;
       }
       else{
-	topology_tuple->T_time = now + msg_info.validity_time;
+	topology_tuple->T_time = (Timestamp(now) +Timestamp( msg_info.validity_time)).timeval();
 	//click_chatter ("topology tuple updates\n");
       }
     }

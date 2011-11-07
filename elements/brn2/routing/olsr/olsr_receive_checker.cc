@@ -24,10 +24,10 @@ OLSRReceiveChecker::~OLSRReceiveChecker()
 int
 OLSRReceiveChecker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	int res = cp_va_parse(conf, this, errh,
-	                      cpInteger, "Timeout value (msec)", &_period,
-	                      cpElement, "OLSR Neighbor Infobase Element", &_neighborInfo,
-	                      cpIPAddress, "my main IPAddress", &_myIP,
+	int res = cp_va_kparse(conf, this, errh,
+                         "Timeout value (msec)", cpkP,  cpInteger,&_period,
+                         "OLSR Neighbor Infobase Element", cpkP, cpElement,&_neighborInfo,
+                         "my main IPAddress", cpkP, cpIPAddress, &_myIP,
 	                      cpEnd);
 	if ( res < 0 )
 		return res;
