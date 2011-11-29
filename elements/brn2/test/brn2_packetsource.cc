@@ -131,7 +131,7 @@ BRN2PacketSource::push( int port, Packet *packet )
   if ( port == 0 ) {
     if ( ( _max_packets == 0 ) || ( _max_packets > _send_packets ) ) {
       WritablePacket *packet_out = packet->uniqueify();
-      uint8_t *packet_data = (uint8_t*)packet_out->data();
+      uint8_t *packet_data = (uint8_t*)&(((uint8_t*)packet_out->data())[_reuseoffset]);
 
       pinfo.seq_num = htonl(_seq_num);
       memcpy(packet_data, &pinfo, sizeof(struct packetinfo));
