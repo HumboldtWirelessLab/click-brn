@@ -25,7 +25,7 @@
 #include <click/etheraddress.hh>
 CLICK_DECLS
 
-PacketLossInformationet::PacketLossInformation()
+PacketLossInformation::PacketLossInformation()
 {
 }
 
@@ -33,7 +33,7 @@ PacketLossInformation::~PacketLossInformation()
 {
 }
 
-int
+//int
 //SetRTS::configure(Vector<String> &conf, ErrorHandler *errh)
 //{
  //   return Args(conf, this, errh).read_mp("RTS", _rts).complete();
@@ -56,9 +56,9 @@ int
 }*/
 
 //enum {H_RTS};
-static String
- PacketLossInformation_read_param(Element *e, void *thunk)
-{
+//static String
+// PacketLossInformation_read_param(Element *e, void *thunk)
+//{
 //  SetRTS *td = (SetRTS *)e;
 //  switch ((uintptr_t) thunk) {
  // case H_RTS:
@@ -67,12 +67,12 @@ static String
   //  return String();
  // }
 
-}
+//}
 
-static int
-PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
-{
+//static int
+//PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
+//		      ErrorHandler *errh)
+//{
  /* SetRTS *f = (SetRTS *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
@@ -86,13 +86,13 @@ PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
   }
     return 0;
 */
-}
-void
-PacketLossInformation::add_handlers()
-{
-  add_read_handler("rts", SetRTS_read_param, H_RTS);
-  add_write_handler("rts", SetRTS_write_param, H_RTS);
-}
+//}
+//void
+//PacketLossInformation::add_handlers()
+//{
+//  add_read_handler("rts", SetRTS_read_param, H_RTS);
+ // add_write_handler("rts", SetRTS_write_param, H_RTS);
+//}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(PacketLossInformation)

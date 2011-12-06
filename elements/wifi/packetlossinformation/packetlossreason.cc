@@ -23,7 +23,7 @@
 #include "packetlossreason.hh"
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-#include "graph_node.hh" 
+//#include "graph_node.hh" 
  
 CLICK_DECLS
 
@@ -35,36 +35,36 @@ PacketLossReason::~PacketLossReason()
 {
 }
 
-Packet_Loss_Reason id;//fraction type
+//Packet_Loss_Reason id;//fraction type
 
 int label;//node label
 
 PacketLossReason *ptr_parent;//parent node
 
-map<int, PacketLossReason> childs;//child nodes
+//map<int, PacketLossReason> childs;//child nodes
 
 
 int fraction; // 0 -100
 void *stats;//additional statics
 
 //calculation of likelihood
-int overall_fract(int depth)
+int PacketLossReason::overall_fract(int depth)
 {
 	if (ptr_parent == NULL) return fraction;
 	return	fraction * ptr_parent -> overall_fract(depth-1);
 } 
 
 
-static graph_packet_loss_init()
+static void graph_packet_loss_init()
 {
         
-  PACKET_LOSS_GRAPH_NODE node_packet_loss = create_new();//TODO:TEst
+//  PACKET_LOSS_GRAPH_NODE node_packet_loss = graph_node::create_new();//TODO:TEst
   //generate graph (static)
 
 }
 //static String
- PacketLossInformation_read_param(Element *e, void *thunk)
-{
+// PacketLossInformation_read_param(Element *e, void *thunk)
+//{
 //  SetRTS *td = (SetRTS *)e;
 //  switch ((uintptr_t) thunk) {
  // case H_RTS:
@@ -73,12 +73,12 @@ static graph_packet_loss_init()
   //  return String();
  // }
 
-}
+//}
 
-static int
-PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
-		      ErrorHandler *errh)
-{
+//static int
+//PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
+//		      ErrorHandler *errh)
+//{
  /* SetRTS *f = (SetRTS *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
@@ -92,13 +92,13 @@ PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
   }
     return 0;
 */
-}
-void
-PacketLossInformation::add_handlers()
-{
-  add_read_handler("rts", SetRTS_read_param, H_RTS);
-  add_write_handler("rts", SetRTS_write_param, H_RTS);
-}
+//}
+//void
+//PacketLossInformation::add_handlers()
+//{
+//  add_read_handler("rts", SetRTS_read_param, H_RTS);
+//  add_write_handler("rts", SetRTS_write_param, H_RTS);
+//}
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(PacketLossInformation)
+EXPORT_ELEMENT(PacketLossReason)

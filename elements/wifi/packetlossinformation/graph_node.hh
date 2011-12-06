@@ -36,9 +36,9 @@ class PACKET_LOSS_GRAPH_NODE : public Element { public:
   //int configure(Vector<String> &, ErrorHandler *);
   //Packet *simple_action(Packet *);
 
-  void add_handlers();
+//  void add_handlers();
 
- PACKET_LOSS_GRAPH_NODE create_new();
+// *PACKET_LOSS_GRAPH_NODE create_new();
 
 /*typedef enum _PacketLossReason {
   INTERFERENCE, 

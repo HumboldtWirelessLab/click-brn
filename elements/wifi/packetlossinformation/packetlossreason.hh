@@ -1,5 +1,5 @@
-#ifndef CLICK_SETRTS_HH
-#define CLICK_SETRTS_HH
+#ifndef CLICK_PacketLossReason_HH
+#define CLICK_PacketLossReason_HH
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -36,7 +36,7 @@ class PacketLossReason : public Element { public:
   //int configure(Vector<String> &, ErrorHandler *);
   //Packet *simple_action(Packet *);
 
-  void add_handlers();
+//  void add_handlers();
 
 int overall_fract(int depth);
 
