@@ -19,7 +19,7 @@
  */
 
 /*
- * queuemapper.{cc,hh}
+ * tos2queuemapper.{cc,hh}
  */
 
 #include <click/config.h>
@@ -30,30 +30,31 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
-#include "queuemapper.hh"
+#include "tos2queuemapper.hh"
 
 CLICK_DECLS
 
-QueueMapper::QueueMapper()
+Tos2QueueMapper::Tos2QueueMapper():
+    _cst(NULL)
 {
 }
 
-QueueMapper::~QueueMapper()
+Tos2QueueMapper::~Tos2QueueMapper()
 {
 }
 
 int
-QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
+Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  String s_cwmin;
-  String s_cwmax;
-  String s_aifs;
+  String s_cwmin = "";
+  String s_cwmax = "";
+  String s_aifs = "";
   int v;
 
   if (cp_va_kparse(conf, this, errh,
-      "CWMIN", cpkM+cpkP, cpString, &s_cwmin,
-      "CWMAX", cpkM+cpkP, cpString, &s_cwmax,
-      "AIFS", cpkM+cpkP, cpString, &s_aifs,
+      "CWMIN", cpkP, cpString, &s_cwmin,
+      "CWMAX", cpkP, cpString, &s_cwmax,
+      "AIFS", cpkP, cpString, &s_aifs,
       "CHANNELSTAT", cpkP, cpElement, &_cst,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -64,28 +65,30 @@ QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 
   no_queues = args.size();
 
-  _cwmin = new uint16_t(no_queues);
-  _cwmax = new uint16_t[no_queues];
-  _aifs = new uint16_t[no_queues];
+  if ( no_queues > 0 ) {
+    _cwmin = new uint16_t(no_queues);
+    _cwmax = new uint16_t[no_queues];
+    _aifs = new uint16_t[no_queues];
 
 #warning TODO: Better check for params. Better Error handling.
-  for( int i = 0; i < no_queues; i++ ) {
-    cp_integer(args[i], &v);
-    _cwmin[i] = v;
-  }
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmin[i] = v;
+    }
 
-  cp_spacevec(s_cwmax, args);
-  if ( args.size() < no_queues ) no_queues = args.size();
-  for( int i = 0; i < no_queues; i++ ) {
-    cp_integer(args[i], &v);
-    _cwmax[i] = v;
-  }
+    cp_spacevec(s_cwmax, args);
+    if ( args.size() < no_queues ) no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmax[i] = v;
+    }
 
-  cp_spacevec(s_aifs, args);
-  if ( args.size() < no_queues ) no_queues = args.size();
-  for( int i = 0; i < no_queues; i++ ) {
-    cp_integer(args[i], &v);
-    _aifs[i] = v;
+    cp_spacevec(s_aifs, args);
+    if ( args.size() < no_queues ) no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _aifs[i] = v;
+    }
   }
 
   return 0;
@@ -93,13 +96,13 @@ QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 
 
 Packet *
-QueueMapper::simple_action(Packet *p)
+Tos2QueueMapper::simple_action(Packet *p)
 {
   uint8_t tos = BRNPacketAnno::tos_anno(p);
 
   int opt_queue = tos;
 
-  if ( _cst != null ) {
+  if ( _cst != NULL ) {
     struct airtime_stats as;
     _cst->get_stats(&as,0);
 
@@ -112,22 +115,22 @@ QueueMapper::simple_action(Packet *p)
     if ( opt_queue < 0 ) opt_queue = 0;
     else if ( opt_queue > no_queues ) opt_queue = no_queues;
   }
-  
-  if ( opt_queue > 4 ) opt_queue = 4;
-  
+
+  if ( opt_queue > 3 ) opt_queue = 3;
+
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  BrnWifi::setTxQueue(ceh, 2);
+  BrnWifi::setTxQueue(ceh, opt_queue);
 
   return p;
 }
 
 int
-QueueMapper::get_cwmin(int /*busy*/, int /*nodes*/) {
+Tos2QueueMapper::get_cwmin(int /*busy*/, int /*nodes*/) {
   return 10;
 }
 
 int
-QueueMapper::find_queue(int cwmin) {
+Tos2QueueMapper::find_queue(int cwmin) {
   for ( int i = 0; i < no_queues; i++ ) {
     if ( _cwmin[i] > cwmin ) return i;
   }
@@ -137,5 +140,5 @@ QueueMapper::find_queue(int cwmin) {
 
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(QueueMapper)
-ELEMENT_MT_SAFE(QueueMapper)
+EXPORT_ELEMENT(Tos2QueueMapper)
+ELEMENT_MT_SAFE(Tos2QueueMapper)

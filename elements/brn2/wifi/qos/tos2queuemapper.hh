@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef QUEUEMAPPERELEMENT_HH
-#define QUEUEMAPPERELEMENT_HH
+#ifndef TOS2QUEUEMAPPERELEMENT_HH
+#define TOS2QUEUEMAPPERELEMENT_HH
 #include <click/element.hh>
 #include <elements/brn2/brnelement.hh>
 #include <elements/brn2/wifi/channelstats.hh>
@@ -34,14 +34,14 @@ CLICK_DECLS
 
 */
 
-class QueueMapper : public BRNElement {
+class Tos2QueueMapper : public BRNElement {
 
  public:
 
-  QueueMapper();
-  ~QueueMapper();
+  Tos2QueueMapper();
+  ~Tos2QueueMapper();
 
-  const char *class_name() const  { return "QueueMapper"; }
+  const char *class_name() const  { return "Tos2QueueMapper"; }
   const char *port_count() const  { return "1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
