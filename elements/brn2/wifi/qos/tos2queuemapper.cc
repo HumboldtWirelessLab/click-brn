@@ -97,19 +97,26 @@ QueueMapper::simple_action(Packet *p)
 {
   uint8_t tos = BRNPacketAnno::tos_anno(p);
 
-  struct airtime_stats as;
-  _cst->get_stats(&as,0);
+  int opt_queue = tos;
 
-  int opt_cwmin = get_cwmin(as.frac_mac_busy, as.no_sources);
-  int opt_queue = find_queue(opt_cwmin);
+  if ( _cst != null ) {
+    struct airtime_stats as;
+    _cst->get_stats(&as,0);
 
-  int diff_q = (no_queues / 2) - tos - 1;
-  opt_queue -= diff_q;
+    int opt_cwmin = get_cwmin(as.frac_mac_busy, as.no_sources);
+    opt_queue = find_queue(opt_cwmin);
 
-  if ( opt_queue < 0 ) opt_queue = 0;
-  else if ( opt_queue > no_queues ) opt_queue = no_queues;
+    int diff_q = (no_queues / 2) - tos - 1;
+    opt_queue -= diff_q;
 
-  BRNPacketAnno::set_tos_anno(p, opt_queue);
+    if ( opt_queue < 0 ) opt_queue = 0;
+    else if ( opt_queue > no_queues ) opt_queue = no_queues;
+  }
+  
+  if ( opt_queue > 4 ) opt_queue = 4;
+  
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  BrnWifi::setTxQueue(ceh, 2);
 
   return p;
 }
