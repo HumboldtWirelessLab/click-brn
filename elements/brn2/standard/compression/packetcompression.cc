@@ -40,7 +40,8 @@
 
 CLICK_DECLS
 
-PacketCompression::PacketCompression()
+PacketCompression::PacketCompression() :
+ _compression(COMPRESSION_LZW)
 {
   BRNElement::init();
 }
@@ -54,6 +55,8 @@ PacketCompression::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "CMODE", cpkP+cpkM, cpUnsigned, &cmode,
+      "COMPRESSION", cpkP, cpUnsigned, &_compression,
+      "STRIPLEN", cpkP, cpUnsigned, &_strip_len,
       "DEBUG", cpkP, cpUnsigned, &_debug,
       cpEnd) < 0)
        return -1;
@@ -85,16 +88,27 @@ PacketCompression::push( int /*port*/, Packet *packet )
 
   switch (cmode) {
     case COMPRESSION_MODE_FULL: {
-      resultsize = lzw.encode(p->data(), oldlen, compbuf, MAX_COMPRESSION_BUFFER);
+      if ( _compression == COMPRESSION_LZW ) {
+        resultsize = lzw.encode(p->data(), oldlen, compbuf, MAX_COMPRESSION_BUFFER);
+        if ( ( resultsize < oldlen ) && ( resultsize > 0 ) ) {
+          p->take(p->length() - resultsize);
+          memcpy(p->data(), compbuf, resultsize);
+        }
+      } else if ( _compression == COMPRESSION_STRIP ) {
+        if ( oldlen > _strip_len ) {
+          p->take(oldlen - _strip_len);
+          resultsize=_strip_len;
+        } else {
+          resultsize = oldlen;
+        }
+      }
 
       if ( ( resultsize < oldlen ) && ( resultsize > 0 ) ) {
-        p->take(p->length() - resultsize);
-        memcpy(p->data(), compbuf, resultsize);
         p = p->push(sizeof(struct compression_header));
         ch = (struct compression_header *)p->data();
         ch->marker = COMPRESSION_MARKER;
         ch->compression_mode = COMPRESSION_MODE_FULL;
-        ch->compression_type = COMPRESSION_LZW;
+        ch->compression_type = _compression;
         ch->uncompressed_len = htons(oldlen);
         output(COMP_OUTPORT).push(p);
       } else {

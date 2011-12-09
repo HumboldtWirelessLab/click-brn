@@ -41,8 +41,9 @@ CLICK_SIZE_PACKED_STRUCTURE(
 #define COMPRESSION_MODE_BRN       2
 
   uint8_t compression_type:5;
-#define COMPRESSION_NONE 0
-#define COMPRESSION_LZW  1
+#define COMPRESSION_NONE  0
+#define COMPRESSION_LZW   1
+#define COMPRESSION_STRIP 2
 
   uint16_t uncompressed_len;
 });
@@ -81,6 +82,8 @@ class PacketCompression : public BRNElement
   void compression_test();
 
   uint8_t cmode;
+  uint32_t _compression;
+  uint32_t _strip_len;
   unsigned char compbuf[MAX_COMPRESSION_BUFFER];
   uint16_t ethertype;
 };

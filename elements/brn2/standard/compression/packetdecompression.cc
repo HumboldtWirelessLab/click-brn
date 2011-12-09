@@ -79,14 +79,22 @@ PacketDecompression::push( int /*port*/, Packet *packet )
     case COMPRESSION_MODE_FULL: {
       struct compression_header *ch = (struct compression_header *)p->data();
       int uncompsize = ntohs(ch->uncompressed_len);
+      bool is_lzw = false;
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
-        resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+        if ( ch->compression_type == COMPRESSION_LZW ) {
+          resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+          is_lzw = true;
+        } else if ( ch->compression_type == COMPRESSION_STRIP ) {
+          resultsize = uncompsize;
+        }
 
         if ( resultsize == uncompsize ) {
           p->pull(sizeof(struct compression_header));
           p = p->put(uncompsize - p->length());
-          memcpy(p->data(), compbuf, uncompsize );
+          if ( is_lzw ) {
+            memcpy(p->data(), compbuf, uncompsize );
+          }
           BRN_INFO("Decode: Uncomplen %d Resultlen: %d.", uncompsize, resultsize);
           output(DECOMP_OUTPORT).push(p);
         } else {
