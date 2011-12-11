@@ -35,15 +35,21 @@ CLICK_SIZE_PACKED_STRUCTURE(
   uint8_t marker;
 #define COMPRESSION_MARKER 0x9F
 
-  uint8_t compression_mode:3;
 #define COMPRESSION_MODE_FULL      0
 #define COMPRESSION_MODE_ETHERNET  1
 #define COMPRESSION_MODE_BRN       2
 
+#define COMPRESSION_TYPE_NONE  0
+#define COMPRESSION_TYPE_LZW   1
+#define COMPRESSION_TYPE_STRIP 2
+
+#if BYTE_ORDER == BIG_ENDIAN
+  uint8_t compression_mode:3;
   uint8_t compression_type:5;
-#define COMPRESSION_NONE  0
-#define COMPRESSION_LZW   1
-#define COMPRESSION_STRIP 2
+#else
+  uint8_t compression_type:5;
+  uint8_t compression_mode:3;
+#endif
 
   uint16_t uncompressed_len;
 });
@@ -86,6 +92,7 @@ class PacketCompression : public BRNElement
   uint32_t _strip_len;
   unsigned char compbuf[MAX_COMPRESSION_BUFFER];
   uint16_t ethertype;
+
 };
 
 CLICK_ENDDECLS

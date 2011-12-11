@@ -82,11 +82,14 @@ PacketDecompression::push( int /*port*/, Packet *packet )
       bool is_lzw = false;
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
-        if ( ch->compression_type == COMPRESSION_LZW ) {
+
+        if ( ch->compression_type == COMPRESSION_TYPE_LZW ) {
           resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
           is_lzw = true;
-        } else if ( ch->compression_type == COMPRESSION_STRIP ) {
+        } else if ( ch->compression_type == COMPRESSION_TYPE_STRIP ) {
           resultsize = uncompsize;
+        } else {
+          BRN_WARN("Shit. Unknown compression type");
         }
 
         if ( resultsize == uncompsize ) {

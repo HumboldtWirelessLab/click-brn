@@ -41,7 +41,7 @@
 CLICK_DECLS
 
 PacketCompression::PacketCompression() :
- _compression(COMPRESSION_LZW)
+ _compression(COMPRESSION_TYPE_LZW)
 {
   BRNElement::init();
 }
@@ -88,13 +88,13 @@ PacketCompression::push( int /*port*/, Packet *packet )
 
   switch (cmode) {
     case COMPRESSION_MODE_FULL: {
-      if ( _compression == COMPRESSION_LZW ) {
+      if ( _compression == COMPRESSION_TYPE_LZW ) {
         resultsize = lzw.encode(p->data(), oldlen, compbuf, MAX_COMPRESSION_BUFFER);
         if ( ( resultsize < oldlen ) && ( resultsize > 0 ) ) {
           p->take(p->length() - resultsize);
           memcpy(p->data(), compbuf, resultsize);
         }
-      } else if ( _compression == COMPRESSION_STRIP ) {
+      } else if ( _compression == COMPRESSION_TYPE_STRIP ) {
         if ( oldlen > _strip_len ) {
           p->take(oldlen - _strip_len);
           resultsize=_strip_len;
@@ -136,7 +136,7 @@ PacketCompression::push( int /*port*/, Packet *packet )
           ch = (struct compression_header*)&data[14];
           ch->marker = COMPRESSION_MARKER;
           ch->compression_mode = COMPRESSION_MODE_ETHERNET;
-          ch->compression_type = COMPRESSION_LZW;
+          ch->compression_type = COMPRESSION_TYPE_LZW;
           ch->uncompressed_len = htons(oldlen);
         }
 
@@ -146,7 +146,7 @@ PacketCompression::push( int /*port*/, Packet *packet )
           ch = (struct compression_header*)p->data();
           ch->marker = COMPRESSION_MARKER;
           ch->compression_mode = COMPRESSION_MODE_BRN;
-          ch->compression_type = COMPRESSION_LZW;
+          ch->compression_type = COMPRESSION_TYPE_LZW;
           ch->uncompressed_len = htons(oldlen);
           p = BRNProtocol::add_brn_header(p, BRN_PORT_COMPRESSION, BRN_PORT_COMPRESSION, 255, 0);
           p = p->push(sizeof(click_ether));
