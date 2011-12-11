@@ -10,8 +10,13 @@ CLICK_DECLS
 #define BATMAN_MAX_ORIGINATOR_HOPS 50
 
 struct batman_header {
+#if BYTE_ORDER == BIG_ENDIAN
   uint8_t type:4;
   uint8_t flags:4;
+#else
+  uint8_t flags:4;
+  uint8_t type:4;
+#fi
   uint8_t hops;
 } __attribute__ ((packed));
 
