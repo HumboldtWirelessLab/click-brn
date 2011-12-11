@@ -16,7 +16,7 @@ struct batman_header {
 #else
   uint8_t flags:4;
   uint8_t type:4;
-#fi
+#endif
   uint8_t hops;
 } __attribute__ ((packed));
 
