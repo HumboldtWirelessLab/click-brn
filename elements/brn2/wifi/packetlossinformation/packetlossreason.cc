@@ -23,24 +23,27 @@
 #include "packetlossreason.hh"
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-//#include "graph_node.hh" 
+//#include "graph_node.hh
  
 CLICK_DECLS
 
 PacketLossReason::PacketLossReason()
 {
+//PacketLossReason::test();
+
 }
 
 PacketLossReason::~PacketLossReason()
 {
 }
 
-//Packet_Loss_Reason id;//fraction type
+PacketLossReason::Packet_Loss_Reason id;//fraction type
 
 int label;//node label
 
 PacketLossReason *ptr_parent;//parent node
 
+HashTable<String, int> h(0);
 //map<int, PacketLossReason> childs;//child nodes
 
 
@@ -54,7 +57,17 @@ int PacketLossReason::overall_fract(int depth)
 	return	fraction * ptr_parent -> overall_fract(depth-1);
 } 
 
-
+void PacketLossReason::test()
+{
+	 h["A"] = 1;
+  if (!h["B"])      // Nota bene
+      printf("B wasn't in table, but it is now\n");
+  for (HashMap<String, int>::iterator it = h.begin(); it; ++it)
+      printf("%s -> %d\n", it.key().c_str(), it.value());
+                    // Prints  B wasn't in table, but it is now
+                    //         A -> 1
+                    //         B -> 0
+}
 static void graph_packet_loss_init()
 {
         
@@ -74,6 +87,10 @@ static void graph_packet_loss_init()
  // }
 
 //}
+int configure(Vector<String> &, ErrorHandler *)
+{
+
+}
 
 //static int
 //PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam,
@@ -99,6 +116,10 @@ static void graph_packet_loss_init()
 //  add_read_handler("rts", SetRTS_read_param, H_RTS);
 //  add_write_handler("rts", SetRTS_write_param, H_RTS);
 //}
-
+// macro magic to use bighashmap
+//#include <click/bighashmap.cc>
+//#if EXPLICIT_TEMPLATE_INSTANCES
+//template class HashMap<Packet*, IPAddress*>;
+//#endif
 CLICK_ENDDECLS
 EXPORT_ELEMENT(PacketLossReason)
