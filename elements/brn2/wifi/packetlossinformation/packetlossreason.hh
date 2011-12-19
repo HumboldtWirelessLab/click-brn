@@ -3,6 +3,9 @@
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -24,7 +27,7 @@ Enable/disable rts/cts for a packet.
 =a ExtraEncap, ExtraDecap
 */
 
-class PacketLossReason : public Element { public:
+class PacketLossReason : public BRNElement { public:
 
   PacketLossReason();
   ~PacketLossReason();

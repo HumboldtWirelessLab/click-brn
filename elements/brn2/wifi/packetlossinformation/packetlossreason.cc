@@ -37,13 +37,24 @@ PacketLossReason::~PacketLossReason()
 {
 }
 
+
+int
+PacketLossReason::configure(Vector<String> &conf, ErrorHandler* errh)
+{
+  int ret = cp_va_kparse(conf, this, errh,
+                         "DEBUG", cpkP, cpInteger, &_debug,
+                         cpEnd);
+
+  return ret;
+}
+
 PacketLossReason::Packet_Loss_Reason id;//fraction type
 
 int label;//node label
 
 PacketLossReason *ptr_parent;//parent node
 
-HashTable<String, int> h(0);
+//HashTable<String, int> h(0);
 //map<int, PacketLossReason> childs;//child nodes
 
 
@@ -58,7 +69,7 @@ int PacketLossReason::overall_fract(int depth)
 } 
 
 void PacketLossReason::test()
-{
+{/*
 	 h["A"] = 1;
   if (!h["B"])      // Nota bene
       printf("B wasn't in table, but it is now\n");
@@ -67,6 +78,7 @@ void PacketLossReason::test()
                     // Prints  B wasn't in table, but it is now
                     //         A -> 1
                     //         B -> 0
+  */
 }
 static void graph_packet_loss_init()
 {
