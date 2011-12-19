@@ -93,6 +93,8 @@ class PacketCompression : public BRNElement
   unsigned char compbuf[MAX_COMPRESSION_BUFFER];
   uint16_t ethertype;
 
+  uint16_t compress(Packet *p, uint16_t offset, uint16_t compression_type);
+
 };
 
 CLICK_ENDDECLS
