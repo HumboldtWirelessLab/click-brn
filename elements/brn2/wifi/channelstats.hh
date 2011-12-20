@@ -57,7 +57,7 @@ ChannelStats()
 
 */
 
-/* TODO: CHannel stats: add rx/ty bytes and ext/ctl-rssi for fullstats */
+/* TODO: Channel stats: add rx/ty bytes and ext/ctl-rssi for fullstats */
 
 struct airtime_stats {
   uint32_t stats_id;
