@@ -24,48 +24,14 @@ PacketLossReason::~PacketLossReason()
 {
 }
 
-<<<<<<< HEAD
-=======
-
-int
-PacketLossReason::configure(Vector<String> &conf, ErrorHandler* errh)
-{
-  int ret = cp_va_kparse(conf, this, errh,
-                         "DEBUG", cpkP, cpInteger, &_debug,
-                         cpEnd);
-
-  return ret;
-}
-
-PacketLossReason::Packet_Loss_Reason id;//fraction type
-
-int label;//node label
-
-PacketLossReason *ptr_parent;//parent node
-
-//HashTable<String, int> h(0);
-//map<int, PacketLossReason> childs;//child nodes
-
-
-int fraction; // 0 -100
-void *stats;//additional statics
->>>>>>> bc27073c936a8a884383c0437a803e245dd89d3c
 
 //calculation of likelihood
 int PacketLossReason::overall_fract(int depth)
 {
 	if (ptr_parent == NULL) return fraction;
 	return	fraction * ptr_parent -> overall_fract(depth-1);
-//	PacketLossReason *ptr_pa = get
-
-//	int fraction = 1;
-//	for (int i = 0; i < depth;i++) {
-//		if (ptr_parent == NULL) return fraction;
-//		fraction = fraction * ptr_parent
-//	}
 } 
 
-<<<<<<< HEAD
 PacketLossReason::PossibilityE PacketLossReason::write_test_id(int id)
 {
 	if (0 == id  ) { click_chatter("PACKET_LOSS_ROOT_NODE");}
@@ -90,21 +56,6 @@ PacketLossReason::PossibilityE PacketLossReason::write_test_id(int id)
 }
 
 void PacketLossReason::write_test_childs()
-=======
-void PacketLossReason::test()
-{/*
-	 h["A"] = 1;
-  if (!h["B"])      // Nota bene
-      printf("B wasn't in table, but it is now\n");
-  for (HashMap<String, int>::iterator it = h.begin(); it; ++it)
-      printf("%s -> %d\n", it.key().c_str(), it.value());
-                    // Prints  B wasn't in table, but it is now
-                    //         A -> 1
-                    //         B -> 0
-  */
-}
-static void graph_packet_loss_init()
->>>>>>> bc27073c936a8a884383c0437a803e245dd89d3c
 {
 	for (HashTable<int,PacketLossReason*>::iterator it = children.begin(); it; ++it) {
 		PacketLossReason::write_test_id(getID());
