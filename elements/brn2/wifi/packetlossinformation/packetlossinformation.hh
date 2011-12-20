@@ -3,64 +3,25 @@
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
+#include "elements/brn2/brnelement.hh"
+#include "packetlossreason.hh"
+
 CLICK_DECLS
 
-/*
-=c
+class PacketLossInformation : public BRNElement { public:
 
-SetRTS(Bool)
+	PacketLossInformation();
+	~PacketLossInformation();
 
-=s Wifi
+	const char *class_name() const		{ return "PacketLossInformation"; }
+	const char *port_count() const		{ return PORTS_1_1; }
+	const char *processing() const		{ return AGNOSTIC; }
 
-Enable/disable RTS/CTS for a packet
-
-=d
-
-Enable/disable RTS/CTS for a packet
-
-=h rts read/write
-Enable/disable rts/cts for a packet.
-
-=a ExtraEncap, ExtraDecap
-*/
-
-class PacketLossInformation : public Element { public:
-
-  PacketLossInformation();
-  ~PacketLossInformation();
-
-  const char *class_name() const		{ return "PacketLossInformation"; }
- // const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
-
-  //int configure(Vector<String> &, ErrorHandler *);
-  //Packet *simple_action(Packet *);
-
-//  void add_handlers();
-
-
-/*typedef enum _PacketLossReason {
-  INTERFERENCE, 
-  CHANNEL_FADING,
-  WIFI,
-  NON_WIFI,
-  WEAK_SIGNAL,
-  SHADOWING,
-  MULTIPATH_FADING,
-  CO_CHANNEL,
-  ADJACENT_CHANNEL,
-  G_VS_B,
-  NARROWBAND,
-  BROADBAND,
-  IN_RANGE,
-  HIDDEN_NODE,
-  NARROWBAND_COOPERATIVE,
-  NARROWBAND_NON_COOPERATIVE,
-  BROADBAND_COOPERATIVE,
- BROADBAND_NON_COOPERATIVE
-} Packet_Loss_Reason;
-*/
-
+	int configure(Vector<String> &, ErrorHandler *);
+	int initialize(ErrorHandler *);
+	void test();
+	void write_test_id(PacketLossReason::PossibilityE id);
+	void write_test_obj(PacketLossReason* ptr_obj);
 };
 
 CLICK_ENDDECLS

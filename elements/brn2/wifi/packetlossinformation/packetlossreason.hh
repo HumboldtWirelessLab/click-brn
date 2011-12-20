@@ -1,66 +1,75 @@
 #ifndef CLICK_PacketLossReason_HH
 #define CLICK_PacketLossReason_HH
 #include <click/element.hh>
-#include <click/glue.hh>
-#include <clicknet/wifi.h>
+#include <click/hashtable.hh>
+
+
 CLICK_DECLS
 
-/*
-=c
+class PacketLossReason { 
+public:
 
-SetRTS(Bool)
+	PacketLossReason();
+	~PacketLossReason();
 
-=s Wifi
+	typedef enum _PacketLossReason {
+	  PACKET_LOSS_ROOT_NODE = 0,
+	  INTERFERENCE, 
+	  CHANNEL_FADING,
+	  WIFI,
+	  NON_WIFI,
+	  WEAK_SIGNAL,
+	  SHADOWING,
+	  MULTIPATH_FADING,
+	  CO_CHANNEL,
+	  ADJACENT_CHANNEL,
+	  G_VS_B,
+	  NARROWBAND,
+	  BROADBAND,
+	  IN_RANGE,
+	  HIDDEN_NODE,
+	  NARROWBAND_COOPERATIVE,
+	  NARROWBAND_NON_COOPERATIVE,
+	  BROADBAND_COOPERATIVE,
+	  BROADBAND_NON_COOPERATIVE
+	} PossibilityE;
 
-Enable/disable RTS/CTS for a packet
 
-=d
+	int overall_fract(int depth);
+	// 0 = label off
+	// 1 = label on
+	int getLabel();
+	void setLabel(int la);
 
-Enable/disable RTS/CTS for a packet
+	void setParent(PacketLossReason *ptr_paren);
+	PacketLossReason* getParent();
 
-=h rts read/write
-Enable/disable rts/cts for a packet.
+	void setChild(int poss, PacketLossReason* ptr_element_next);
 
-=a ExtraEncap, ExtraDecap
-*/
+	PacketLossReason* getChild(PossibilityE poss);
 
-class PacketLossReason : public Element { public:
+	void write_test_childs();
 
-  PacketLossReason();
-  ~PacketLossReason();
+	//Fraction range [0-100]
+	void setFraction(int frac);
+	int getFraction();
 
-  const char *class_name() const		{ return "PacketLossReason"; }
-  const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
+	//additional statics
+	void setStatistics(void *st);
+	void* getStatistics();
 
-  int configure(Vector<String> &, ErrorHandler *);
-  //Packet *simple_action(Packet *);
+	void setID(PossibilityE poss);
+	PossibilityE getID();
 
-//  void add_handlers();
+	PossibilityE write_test_id(int id);
 
-int overall_fract(int depth);
-void test();
-
-typedef enum _PacketLossReason {
-  INTERFERENCE, 
-  CHANNEL_FADING,
-  WIFI,
-  NON_WIFI,
-  WEAK_SIGNAL,
-  SHADOWING,
-  MULTIPATH_FADING,
-  CO_CHANNEL,
-  ADJACENT_CHANNEL,
-  G_VS_B,
-  NARROWBAND,
-  BROADBAND,
-  IN_RANGE,
-  HIDDEN_NODE,
-  NARROWBAND_COOPERATIVE,
-  NARROWBAND_NON_COOPERATIVE,
-  BROADBAND_COOPERATIVE,
- BROADBAND_NON_COOPERATIVE
-} Packet_Loss_Reason;
+private:
+	PossibilityE possiblity_id;
+	HashTable<int,PacketLossReason*> children;
+	int label;
+	PacketLossReason *ptr_parent;
+	int fraction; 
+	void *stats;
 
 };
 
