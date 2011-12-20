@@ -96,7 +96,7 @@ class Flooding : public BRNElement {
       }
 
       void reset_queue() {
-        memset(_bcast_id_list, sizeof(_bcast_id_list), 0);
+        memset(_bcast_id_list, 0, sizeof(_bcast_id_list));
       }
 
       inline bool have_id(uint32_t id) {
