@@ -22,6 +22,10 @@ class PacketLossInformation : public BRNElement { public:
 	void test();
 	void write_test_id(PacketLossReason::PossibilityE id);
 	void write_test_obj(PacketLossReason* ptr_obj);
+
+  PacketLossReason *_root;
+  PacketLossReason *get_reason(PacketLossReason::PossibilityE id);
+
 };
 
 CLICK_ENDDECLS
