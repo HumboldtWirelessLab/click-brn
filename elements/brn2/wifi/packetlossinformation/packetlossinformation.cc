@@ -63,6 +63,11 @@ void PacketLossInformation::write_test_obj(PacketLossReason* ptr_obj)
  	ptr_obj->write_test_childs();
 } 
 
+int PacketLossInformation::overall_fract(PacketLossReason* ptr_node,int depth)
+{
+	return ptr_node->overall_fract(depth);
+}
+
 void PacketLossInformation::test() 
 {
 	 BRN_DEBUG("PacketLossInformation::test() start\n");
@@ -189,15 +194,10 @@ void PacketLossInformation::test()
 	PacketLossInformation::write_test_obj(ptr_BROADBAND_NON_COOPERATIVE);
 
       	BRN_DEBUG("PacketLossInformation::test() end\n");
-      	BRN_DEBUG("Hidden-Node overallFkt = %d",ptr_HIDDEN_NODE->overall_fract(4));
+      	BRN_DEBUG("Hidden-Node overallFkt = %d",overall_fract(ptr_HIDDEN_NODE,4));
 
 }
 
-
-int PacketLossInformation::configure(Vector<String> &, ErrorHandler *)
-{
-	 //_debug = 4;
-}
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(PacketLossReason)
