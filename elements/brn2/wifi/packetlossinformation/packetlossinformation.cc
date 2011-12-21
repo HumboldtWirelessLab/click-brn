@@ -25,6 +25,13 @@ int PacketLossInformation::initialize(ErrorHandler *)
 
 }
 
+
+int PacketLossInformation::configure(Vector<String> &, ErrorHandler *)
+{
+
+}
+
+
 void PacketLossInformation::write_test_id(PacketLossReason::PossibilityE id)
 {
  	if (PacketLossReason::PACKET_LOSS_ROOT_NODE == id  ) { BRN_DEBUG("PACKET_LOSS_ROOT_NODE\n");}
