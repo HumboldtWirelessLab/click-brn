@@ -86,6 +86,7 @@ union addr {
 #define BRN_PORT_FRAGMENTATION            54 /*0x36*/
 /*Info*/
 #define BRN_PORT_NODEINFO                 60 /*0x3c*/
+#define BRN_PORT_CHANNELSTATSINFO         61 /*0x3d*/
 
 #define DEFAULT_TTL 128
 #define DEFAULT_TOS 0
