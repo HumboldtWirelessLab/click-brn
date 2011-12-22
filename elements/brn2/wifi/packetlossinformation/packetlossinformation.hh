@@ -25,6 +25,7 @@ class PacketLossInformation : public BRNElement { public:
 
   PacketLossReason *_root;
   PacketLossReason *get_reason(PacketLossReason::PossibilityE id);
+  int overall_fract(PacketLossReason* ptr_node,int depth);
 
 };
 
