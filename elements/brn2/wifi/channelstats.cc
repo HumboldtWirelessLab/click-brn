@@ -90,8 +90,6 @@ ChannelStats::initialize(ErrorHandler *)
 {
   reset();
 
-  click_random_srandom();
-
   _stats_timer.initialize(this);
   _proc_timer.initialize(this);
 

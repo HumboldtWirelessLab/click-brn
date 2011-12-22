@@ -58,8 +58,8 @@ ChannelStats()
 */
 
 /* TODO: Channel stats: add rx/ty bytes and ext/ctl-rssi for fullstats */
-
-struct airtime_stats {
+//CLICK_SIZE_PACKED_STRUCTURE(
+struct airtime_stats {//,
   uint32_t stats_id;
 
   uint32_t duration;
@@ -131,7 +131,7 @@ struct airtime_stats {
   int32_t avg_ctl_rssi[3];
   int32_t avg_ext_rssi[3];
 
-};
+}/*)*/;
 
 
 class ChannelStats : public BRNElement {
@@ -308,6 +308,7 @@ class ChannelStats : public BRNElement {
     typedef Vector<PacketInfoHW*> PacketListHW;
     typedef PacketListHW::const_iterator PacketListHWIter;
 
+#warning Use pointer to object instead of obj
     typedef HashMap<EtherAddress, SrcInfo> SrcInfoTable;
     typedef SrcInfoTable::const_iterator SrcInfoTableIter;
 
@@ -316,7 +317,7 @@ class ChannelStats : public BRNElement {
     ChannelStats();
     ~ChannelStats();
 
-    const char *class_name() const	{ return "ChannelStats"; }
+    const char *class_name() const  { return "ChannelStats"; }
     const char *processing() const  { return PUSH; }
     const char *port_count() const  { return "1/1"; }
 
@@ -338,6 +339,8 @@ class ChannelStats : public BRNElement {
     void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
+
+    struct airtime_stats *get_last_stats();
 
   private:
 
@@ -384,6 +387,11 @@ class ChannelStats : public BRNElement {
 
     static void static_proc_timer_hook(Timer *, void *);
     void proc_read();
+
+  public:
+    struct airtime_stats *get_latest_stats() {
+      return &_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE];
+    }
 
 };
 
