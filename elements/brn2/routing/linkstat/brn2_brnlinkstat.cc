@@ -102,8 +102,8 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (_etx_metric && !_etx_metric->cast("BRN2ETXMetric"))
     return errh->error("BRNETXMetric element is not a BRNETXMetric");
 
-  if (!_rtable || !_rtable->cast("AvailableRates"))
-    return errh->error("RT element is not a AvailableRates");
+  if (!_rtable || !_rtable->cast("BrnAvailableRates"))
+    return errh->error("RT element is not a BrnAvailableRates");
 
   return res;
 }
@@ -308,14 +308,14 @@ BRN2LinkStat::send_probe()
    */
   if (_rtable) {
     // my wireless device is capable to transmit packets at rates (e.g. 2 4 11 12 18 22 24 36 48 72 96 108)
-    Vector<int> rates = _rtable->lookup(*(_dev->getEtherAddress()));
+    Vector<MCS> rates = _rtable->lookup(*(_dev->getEtherAddress()));
 
     if (rates.size() && 1 + ptr + rates.size() < end) { // put my available rates into the packet
       ptr[0] = rates.size(); // available rates count
       ptr++;
       int x = 0;
       while (ptr < end && x < rates.size()) {
-        ptr[x] = rates[x];
+        ptr[x] = rates[x].get_packed_8();
         x++;
       }
       ptr += rates.size();
@@ -411,7 +411,9 @@ BRN2LinkStat::send_probe()
    */
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
-  ceh->rate = rate;                                     // this packet should be transmitted at the given rate
+  MCS mcs;
+  mcs.set_packed_16(rate);
+  mcs.setWifiRate(ceh, 0);                                    // this packet should be transmitted at the given rate
   ceh->max_tries = 1;
   ceh->max_tries1 = 0;
   ceh->max_tries2 = 0;
@@ -561,11 +563,12 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (lp->_flags & PROBE_AVAILABLE_RATES) { // available rates where transmitted
     int num_rates = ptr[0];
-    Vector<int> rates;
+    Vector<MCS> rates;
     ptr++;
     int x = 0;
     while (ptr < end && x < num_rates) {
-      int rate = ptr[x];
+      MCS rate;
+      rate.set_packed_8(ptr[x]);
       rates.push_back(rate);
       x++;
     }
@@ -804,8 +807,8 @@ sa << "</xs:schema>";
 String
 BRN2LinkStat::read_bcast_stats()
 {
-
   Timestamp now = Timestamp::now();
+  MCS rate;
 
   Vector<EtherAddress> ether_addrs;
 
@@ -833,7 +836,8 @@ BRN2LinkStat::read_bcast_stats()
 
     for (int x = 0; x < pl->_probe_types.size(); x++) {
       sa << "\t\t<link_info size='" << pl->_probe_types[x]._size << "'";
-      sa << " rate='" << pl->_probe_types[x]._rate << "'";
+      rate.set_packed_16(pl->_probe_types[x]._rate);
+      sa << " rate='" << rate.to_string() << "'";
       int rev_rate = pl->rev_rate(_start, pl->_probe_types[x]._rate,
                                  pl->_probe_types[x]._size);
       sa << " fwd='" << (uint32_t)pl->_fwd_rates[x] << "'";
@@ -975,8 +979,10 @@ BRNLinkStat_read_param(Element *e, void *thunk)
       sa << "<probes id='" << *(td->_dev->getEtherAddress()) << "'";
       sa << " time='" << now.unparse() << "'>\n";
 
+      MCS rate;
       for(int x = 0; x < td->_ads_rs.size(); x++) {
-        sa << "<probe rate='" << td->_ads_rs[x]._rate << "' size='" << td->_ads_rs[x]._size << "' />\n";
+        rate.set_packed_16(td->_ads_rs[x]._rate);
+        sa << "<probe rate='" << rate.to_string()/*get_rate()*/ << "' size='" << td->_ads_rs[x]._size << "' />\n";
       }
       sa << "</probes>\n";
       return sa.take_string() + "\n";
@@ -1015,22 +1021,59 @@ BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandl
       break;
     }
     case H_PROBES: {
+      MCS new_mcs;
       Vector<BrnRateSize> ads_rs;
-      Vector<String> a;
-      cp_spacevec(s, a);
-      if (a.size() % 2 != 0) {
-        return errh->error("must provide even number of numbers\n");
-      }
-      for (int x = 0; x < a.size() - 1; x += 2) {
+      Vector<String> args;
+      cp_spacevec(s, args);
+//    if (args.size() % 2 != 0) {
+//      return errh->error("must provide even number of numbers\n");
+//    }
+      for (int x = 0; x < args.size() - 1;) {
         int rate;
         int size;
-        if (!cp_integer(a[x], &rate)) {
+        int8_t ht_rate = RATE_HT_NONE;
+        uint8_t sgi = 0;
+        uint8_t ht = 0;
+
+        ht_rate = RATE_HT_NONE;
+
+        if (args[x] == "HT20") {
+          ht_rate = RATE_HT20;
+          sgi = 0;
+          ht = 0;
+        } else if (args[x] == "HT20_SGI") {
+          ht_rate = RATE_HT20_SGI;
+          sgi = 1;
+          ht = 0;
+        } else if (args[x] == "HT40") {
+          ht_rate = RATE_HT40;
+          sgi = 0;
+          ht = 1;
+        } else if (args[x] == "HT40_SGI") {
+          ht_rate = RATE_HT40_SGI;
+          sgi = 1;
+          ht = 1;
+        }
+
+        if ( ht_rate != RATE_HT_NONE ) { //we have a ht rate so rate is next index now
+          x++;
+        }
+
+        if (!cp_integer(args[x], &rate)) {
           return errh->error("invalid PROBES rate value\n");
         }
-        if (!cp_integer(a[x + 1], &size)) {
+
+        if (!cp_integer(args[x + 1], &size)) {
           return errh->error("invalid PROBES size value\n");
         }
-        ads_rs.push_back(BrnRateSize(rate, size));
+
+        x+=2;
+
+        if ( ht_rate == RATE_HT_NONE )
+          ads_rs.push_back(BrnRateSize(rate, size));
+        else {
+          ads_rs.push_back(BrnRateSize(MCS(rate, ht, sgi).get_packed_16(), size));
+        }
       }
       if (!ads_rs.size()) {
         return errh->error("no PROBES provided\n");

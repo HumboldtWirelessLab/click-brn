@@ -73,7 +73,7 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <click/timer.hh>
 #include <click/string.hh>
 #include <click/timestamp.hh>
-#include <elements/wifi/availablerates.hh>
+#include "elements/brn2/wifi/brnavailablerates.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brn2.h"
@@ -92,8 +92,8 @@ static const uint8_t _ett2_version = 0x02;
 
 class BrnRateSize {
  public:
-  uint16_t _rate;
-  uint16_t _size;
+  uint16_t _rate; //Rate of Linkprobe //for n use packed_16
+  uint16_t _size; //Size of Linkprobe
   BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
 
   inline bool operator==(BrnRateSize other)
@@ -125,7 +125,7 @@ public:
 
     uint16_t _cksum;       // internet checksum
 
-    uint16_t _rate;        // rate
+    uint16_t _rate;        // rate //for n use packed_16
     uint16_t _size;        // size
     uint32_t _seq;         // sequence number
     uint32_t _tau;         // this node's loss-rate averaging period, in msecs
@@ -134,7 +134,7 @@ public:
     uint8_t _num_links;    // number of wifi_link_entry entries following
 
     link_probe() { memset(this, 0x0, sizeof(this)); }
-  };
+  } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   struct link_entry {
     uint8_t _ether[6];
@@ -148,14 +148,14 @@ public:
     link_entry(EtherAddress ether) {
       memcpy(_ether, ether.data(), 6);
     }
-  };
+  } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   struct link_info {
     uint16_t _size;   //linkprobe size
-    uint16_t _rate;   //linkprobe rate
+    uint16_t _rate;   //linkprobe rate //for n use packed_16
     uint8_t _fwd;     //fwd ratio
     uint8_t _rev;     //rev ratio
-  };
+  } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   /**************** PROBELIST ********************/
   /* Stores information about the probes of neighbouring nodes */
@@ -163,12 +163,12 @@ public:
   struct probe_t {
     struct timeval _when;
     uint32_t _seq;
-    uint16_t _rate;
+    uint16_t _rate; //for n use packed_16
     uint16_t _size;
 
     probe_t(const struct timeval &t,
             uint32_t s,
-            uint8_t r,
+            uint16_t r,
             uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
   };
 
@@ -185,7 +185,7 @@ public:
      */
     Vector<BrnRateSize> _probe_types;
 
-    Vector<uint8_t> _fwd_rates;
+    Vector<uint8_t> _fwd_rates;  //psr (packet success rate)
 
     struct timeval _last_rx;
     DEQueue<probe_t> _probes;          // most recently received probes
@@ -333,7 +333,7 @@ public:
   Vector <BrnRateSize> _ads_rs;
   int _ads_rs_index;
 
-  class AvailableRates *_rtable;
+  BrnAvailableRates *_rtable;
 
   /* keeps track of neighbors nodes with wrong protocol */
   BadTable _bad_table;
