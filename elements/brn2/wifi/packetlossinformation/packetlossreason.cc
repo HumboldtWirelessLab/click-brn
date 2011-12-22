@@ -18,6 +18,7 @@ PacketLossReason::PacketLossReason()
 	stats = NULL;
 	possiblity_id = PACKET_LOSS_ROOT_NODE;
 	label = 0;
+	search_number_order = 0;
 }
 
 PacketLossReason::~PacketLossReason()
@@ -32,7 +33,8 @@ int PacketLossReason::overall_fract(int depth)
 	return	fraction * ptr_parent -> overall_fract(depth-1);
 } 
 
-PacketLossReason::PossibilityE PacketLossReason::write_test_id(int id)
+
+void PacketLossReason::write_test_id(int id)
 {
 	if (0 == id  ) { click_chatter("PACKET_LOSS_ROOT_NODE");}
 	else  if (1 == id){ click_chatter("INTERFERENCE");}
@@ -60,7 +62,7 @@ void PacketLossReason::write_test_childs()
 	for (HashTable<int,PacketLossReason*>::iterator it = children.begin(); it; ++it) {
 		PacketLossReason::write_test_id(getID());
 		click_chatter("->");
-		PacketLossReason::PossibilityE child = PacketLossReason::write_test_id((it.value())->getID()); 
+		PacketLossReason::write_test_id((it.value())->getID()); 
 		click_chatter("\n");
 	}
 }
