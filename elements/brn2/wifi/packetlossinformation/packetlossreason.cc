@@ -16,9 +16,8 @@ PacketLossReason::PacketLossReason()
 	ptr_parent = NULL;
 	fraction = 0;
 	stats = NULL;
-	possiblity_id = PACKET_LOSS_ROOT_NODE;
+	possiblity_id = PACKET_LOSS;
 	label = 0;
-	search_number_order = 0;
 }
 
 PacketLossReason::~PacketLossReason()
