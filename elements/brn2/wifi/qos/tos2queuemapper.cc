@@ -55,7 +55,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "CWMIN", cpkP, cpString, &s_cwmin,
       "CWMAX", cpkP, cpString, &s_cwmax,
       "AIFS", cpkP, cpString, &s_aifs,
-      "CHANNELSTAT", cpkP, cpElement, &_cst,
+      "CHANNELSTATS", cpkP, cpElement, &_cst,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
