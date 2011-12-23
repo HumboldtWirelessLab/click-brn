@@ -223,10 +223,13 @@ BRN2LinkStat::send_probe_hook()
   int p = _period / _ads_rs.size(); //period (msecs); _ads_rs.size(): probe count
   unsigned max_jitter = p / 10;
 
-  send_probe();
-
   struct timeval period;
   timerclear(&period);
+
+  send_probe();
+
+//  struct timeval period;
+//  timerclear(&period);
 
   period.tv_usec += (p * 1000);
   period.tv_sec += period.tv_usec / 1000000;
@@ -235,6 +238,8 @@ BRN2LinkStat::send_probe_hook()
   timeradd(&period, &_next, &_next);
   brn2add_jitter2(max_jitter, &_next);
   _timer->schedule_at(_next);
+
+
 }
 
 /*
@@ -496,8 +501,9 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (WIFI_EXTRA_MAGIC == ceh->magic)  // check if extra header is present !!!
   {
-    if (ceh->rate != rate) {
-      BRN_WARN("packet says rate %d is %d; drop it.", rate,  ceh->rate);
+    MCS mcs = MCS(ceh,0);
+    if (mcs.get_packed_16() != rate) {
+      BRN_WARN("packet says rate %d is %d; drop it.", rate, mcs.get_packed_16());
       BRNElement::packet_kill(p);
       //p->kill();
       return 0;
@@ -836,8 +842,12 @@ BRN2LinkStat::read_bcast_stats()
 
     for (int x = 0; x < pl->_probe_types.size(); x++) {
       sa << "\t\t<link_info size='" << pl->_probe_types[x]._size << "'";
+
       rate.set_packed_16(pl->_probe_types[x]._rate);
-      sa << " rate='" << rate.to_string() << "'";
+      uint32_t is_ht = (rate._is_ht)?(uint32_t)1:(uint32_t)0;
+      sa << " rate='" << rate.to_string() << "' n='" << is_ht;
+      sa <<  "' mcsindex='" << (uint32_t)rate._ridx << "' ht40='" << (uint32_t)rate._ht40 << "' sgi='" << (uint32_t)rate._sgi << "'";
+
       int rev_rate = pl->rev_rate(_start, pl->_probe_types[x]._rate,
                                  pl->_probe_types[x]._size);
       sa << " fwd='" << (uint32_t)pl->_fwd_rates[x] << "'";
@@ -982,7 +992,9 @@ BRNLinkStat_read_param(Element *e, void *thunk)
       MCS rate;
       for(int x = 0; x < td->_ads_rs.size(); x++) {
         rate.set_packed_16(td->_ads_rs[x]._rate);
-        sa << "<probe rate='" << rate.to_string()/*get_rate()*/ << "' size='" << td->_ads_rs[x]._size << "' />\n";
+        uint32_t is_ht = (rate._is_ht)?(uint32_t)1:(uint32_t)0;
+        sa << "<probe rate='" << rate.to_string() << "' n='" << is_ht << "' mcsindex='" << (uint32_t)rate._ridx;
+        sa << "' ht40='" << (uint32_t)rate._ht40 << "' sgi='" << (uint32_t)rate._sgi << "' size='" << td->_ads_rs[x]._size << "' />\n";
       }
       sa << "</probes>\n";
       return sa.take_string() + "\n";

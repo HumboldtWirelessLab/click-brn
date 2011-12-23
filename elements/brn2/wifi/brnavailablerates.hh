@@ -156,7 +156,7 @@ class MCS {
       if ( (packet_mcs & 128) == 0 ) {
         set(packet_mcs & 127); //clear highest bit and set rate (non_ht)
       } else {
-        set(packet_mcs & 31, (packet_mcs << 5) & 1, (packet_mcs << 6) & 1);
+        set(packet_mcs & 31, (packet_mcs >> 5) & 1, (packet_mcs >> 6) & 1);
       }
     }
 
@@ -169,10 +169,10 @@ class MCS {
     }
 
     void set_packed_16(uint16_t packet_mcs) {
-      if ( (packet_mcs & 32768) == 0 ) {
-        set(packet_mcs & 32767); //clear highest bit and set rate (non_ht)
+      if ( (packet_mcs & (uint16_t)32768) == 0 ) {
+        set(packet_mcs & (uint16_t)32767); //clear highest bit and set rate (non_ht)
       } else {
-        set(packet_mcs & 31, (packet_mcs << 5) & 1, (packet_mcs << 6) & 1);
+        set(packet_mcs & 31, (packet_mcs >> 5) & 3, (packet_mcs >> 7) & 1);
       }
     }
 
