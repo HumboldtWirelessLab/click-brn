@@ -29,6 +29,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -47,8 +48,6 @@ BRN2LinkStat::BRN2LinkStat()
     _tau(10000),
     _period(1000),
     _seq(0),
-    _ett_metric(0),
-    _etx_metric(0),
     _next_neighbor_to_add(0),
     _timer(0),
     _stale_timer(this),
@@ -57,6 +56,7 @@ BRN2LinkStat::BRN2LinkStat()
     _stale(LINKSTAT_DEFAULT_STALE)
 {
   BRNElement::init();
+  _metrics.clear();
 }
 
 BRN2LinkStat::~BRN2LinkStat()
@@ -81,8 +81,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "TAU", cpkP+cpkM, cpUnsigned, &_tau,
               "PROBES", cpkP+cpkM, cpString, &probes,
               "RT", cpkP+cpkM, cpElement, &_rtable,
-              "ETT", cpkP, cpElement, &_ett_metric,
-              "ETX", cpkP, cpElement, &_etx_metric,
+              "METRIC", cpkP, cpString, &_metric_str,
               "STALE", cpkP, cpInteger, &_stale,
               "DEBUG", cpkP, cpInteger, &_debug,
             cpEnd);
@@ -96,12 +95,6 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_dev || !_dev->cast("BRN2Device"))
     return errh->error("BRN2Device element is not provided or not a BRN2Device");
 
-  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
-    return errh->error("BRNETTMetric element is not a BRNETTMetric");
-
-  if (_etx_metric && !_etx_metric->cast("BRN2ETXMetric"))
-    return errh->error("BRNETXMetric element is not a BRNETXMetric");
-
   if (!_rtable || !_rtable->cast("BrnAvailableRates"))
     return errh->error("RT element is not a BrnAvailableRates");
 
@@ -112,6 +105,21 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2LinkStat::initialize(ErrorHandler *errh)
 {
+
+  Vector<String> metric_vec;
+  cp_spacevec(_metric_str, metric_vec);
+
+  for (int i = 0; i < metric_vec.size(); i++) {
+    Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
+    if ( new_element != NULL ) {
+      //click_chatter("El-Name: %s", new_element->class_name());
+      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      if ( gm != NULL ) {
+        _metrics.push_back(gm);
+      }
+    }
+  }
+
   if (noutputs() > 0) {
     if (!_dev) return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
 
@@ -198,14 +206,8 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
 void
 BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
 {
-  if (_ett_metric) {
-    BRN_DEBUG(" * update ett_metric.");
-    _ett_metric->update_link(from, to, rs, fwd, rev, seq);
-  }
-
-  if (_etx_metric) {
-    BRN_DEBUG(" * update etx_metric.");
-    _etx_metric->update_link(from, to, rs, fwd, rev, seq);
+  for (int i = 0; i < _metrics.size(); i++) {
+    _metrics[i]->update_link(from, to, rs, fwd, rev, seq);
   }
 }
 

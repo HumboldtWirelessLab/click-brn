@@ -64,9 +64,6 @@ inline unsigned brn2txcount2_metric(int ack_prob, int data_prob, int data_rate)
   return average;
 }
 
-class BRN2LinkStat;
-class BrnRateSize;
-
 class BRN2ETXMetric : public BRN2GenericMetric {
 
 public:
@@ -86,8 +83,8 @@ public:
   void update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
                    Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
 
-private:
-  class Brn2LinkTable *_link_table;
+ private:
+  Brn2LinkTable *_link_table;
 
 };
 

@@ -73,14 +73,13 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <click/timer.hh>
 #include <click/string.hh>
 #include <click/timestamp.hh>
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/wifi/brnavailablerates.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brn2.h"
-#include "metric/brn2_brnetxmetric.hh"
-#include "metric/brnettmetric.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "metric/brn2_genericmetric.hh"
 
 CLICK_DECLS
 
@@ -89,18 +88,6 @@ CLICK_DECLS
 static const uint8_t _ett2_version = 0x02;
 
 #define LINKSTAT_DEFAULT_STALE 10000
-
-class BrnRateSize {
- public:
-  uint16_t _rate; //Rate of Linkprobe //for n use packed_16
-  uint16_t _size; //Size of Linkprobe
-  BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
-
-  inline bool operator==(BrnRateSize other)
-  {
-    return (other._rate == _rate && other._size == _size);
-  }
-};
 
 
 class BRN2LinkStat : public BRNElement {
@@ -298,8 +285,9 @@ public:
   uint32_t _period;    // msecs (time between 2 linkprobes
   uint32_t _seq;       // sequence number
 
-  class BRNETTMetric *_ett_metric;
-  class BRN2ETXMetric *_etx_metric;
+  Vector<BRN2GenericMetric *> _metrics;
+  /* just for metrics during configure/initialize*/
+  String _metric_str;
 
   // record probes received from other hosts
   Vector <EtherAddress> _neighbors;

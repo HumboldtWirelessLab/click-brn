@@ -226,7 +226,7 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   EthernetPair p = EthernetPair(from, to);
   BrnLinkInfo *lnfo = _links.findp(p);
   if (!lnfo) {
-    _links.insert(p, BrnLinkInfo(from, to, seq, age, metric,permanent));
+    _links.insert(p, BrnLinkInfo(from, to, seq, age, metric, permanent));
   } else {
     // AZu: new sequence number must be greater than the old one; otherwise no update will be taken
     uint32_t new_seq = seq;

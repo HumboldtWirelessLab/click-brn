@@ -41,12 +41,13 @@ CLICK_DECLS
 /*
  * Common structures, classes, etc.
  */
-#define BRN_DSR_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
-#define BRN_DSR_WIRED_MEDIUM_METRIC        10     // static metric for wired links
-#define BRN_DSR_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
+#define BRN_LT_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
+#define BRN_LT_WIRED_MEDIUM_METRIC        10     // static metric for wired links
+#define BRN_LT_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
 
-#define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
-#define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
+#define BRN_LT_STATION_METRIC            100  ///< metric for assoc'd stations
+#define BRN_LT_ROAMED_STATION_METRIC    5000  ///< metric for roamed stations
+#define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
 
 class StringTokenizer {
   public:

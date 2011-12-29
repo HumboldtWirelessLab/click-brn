@@ -130,7 +130,7 @@ class Brn2LinkTable: public BRNElement {
   String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
   /* other public functions */
 
-  bool update_link(EtherAddress from, EtherAddress to, 
+  bool update_link(EtherAddress from, EtherAddress to,
                    uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
     return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, permanent);
   }
@@ -138,14 +138,15 @@ class Brn2LinkTable: public BRNElement {
   bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                    IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
 
-  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age,
+                         uint32_t metric, bool permanent=false) {
     return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
   }
 
-  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, 
-        IPAddress b_ip, uint32_t seq, uint32_t age, uint32_t metric,bool permanent=false) {
-          if (update_link(a, a_ip, b, b_ip, seq,age, metric, permanent)) {
-            return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
+  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, IPAddress b_ip,
+                         uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+    if (update_link(a, a_ip, b, b_ip, seq, age, metric, permanent)) {
+      return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
     }
     return false;
   }
@@ -220,13 +221,13 @@ private:
     uint32_t _age;
     bool     _permanent;
     struct timeval _last_updated;
-    BrnLinkInfo() { 
-      _from = EtherAddress(); 
-      _to = EtherAddress(); 
-      _metric = 0; 
+    BrnLinkInfo() {
+      _from = EtherAddress();
+      _to = EtherAddress();
+      _metric = 0;
       _seq = 0;
       _age = 0;
-      _last_updated.tv_sec = 0; 
+      _last_updated.tv_sec = 0;
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to, 
@@ -253,6 +254,7 @@ private:
       now = Timestamp::now().timeval();
       return _age + (now.tv_sec - _last_updated.tv_sec);
     }
+
     void update(uint32_t seq, uint32_t age, uint32_t metric) {
       if (seq <= _seq) {
         return;
