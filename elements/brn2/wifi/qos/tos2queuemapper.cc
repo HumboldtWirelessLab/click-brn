@@ -34,6 +34,8 @@
 
 CLICK_DECLS
 
+static uint32_t tos2frac[] = { 63, 70, 77, 85 };
+
 Tos2QueueMapper::Tos2QueueMapper():
     _cst(NULL)
 {
@@ -56,6 +58,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "CWMAX", cpkP, cpString, &s_cwmax,
       "AIFS", cpkP, cpString, &s_aifs,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
+      "COLLISIONINFO", cpkP, cpElement, &_colinf,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -91,6 +94,9 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
     }
   }
 
+  _queue_usage = new uint32_t[no_queues];
+  reset_queue_usage();
+
   return 0;
 }
 
@@ -102,7 +108,38 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   int opt_queue = tos;
 
-  if ( _cst != NULL ) {
+  if ( _colinf != NULL ) {
+    if ( _colinf->_global_rs != NULL ) {
+      uint32_t target_frac = tos2frac[tos];
+      //find queue with min. frac of target_frac
+      int ofq = -1;
+      for ( int i = 0; i < no_queues; i++ ) {
+        if (ofq == -1) {
+/*          click_chatter("Foo");
+          click_chatter("%p",_colinf->_global_rs);
+          click_chatter("queu: %d",_colinf->_global_rs->get_frac(i));
+          int foo = _colinf->_global_rs->get_frac(i);*/
+          if (_colinf->_global_rs->get_frac(i) >= target_frac) {
+            if ( i == 0 ) {
+              ofq = i;
+            } else if ( _colinf->_global_rs->get_frac(i-1) == -1 ) {
+              ofq = i - 1;
+            } else {
+              ofq = i;
+            }
+          } else {
+            if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
+              if ( i < (no_queues - 2) ) {
+                ofq = 1 + 1;
+              }
+            }
+          }
+        }
+      }
+      if ( ofq == -1 ) opt_queue = no_queues - 1;
+      else opt_queue = ofq;
+    }
+  } else if ( _cst != NULL ) {
     struct airtime_stats as;
     _cst->get_stats(&as,0);
 
@@ -116,10 +153,15 @@ Tos2QueueMapper::simple_action(Packet *p)
     else if ( opt_queue > no_queues ) opt_queue = no_queues;
   }
 
-  if ( opt_queue > 3 ) opt_queue = 3;
+  //trunc overflow
+  if ( opt_queue >= no_queues ) opt_queue = no_queues - 1;
 
+  //set queue
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   BrnWifi::setTxQueue(ceh, opt_queue);
+
+  //add stats
+  _queue_usage[opt_queue]++;
 
   return p;
 }
@@ -138,6 +180,51 @@ Tos2QueueMapper::find_queue(int cwmin) {
   return no_queues - 1;
 }
 
+enum {H_STATS, H_RESET};
+
+static String
+Tos2QueueMapper_read_param(Element *e, void *thunk)
+{
+  Tos2QueueMapper *td = (Tos2QueueMapper *)e;
+  switch ((uintptr_t) thunk) {
+    case H_STATS:
+      StringAccum sa;
+
+      sa << "<queueusage queues=\"" << (uint32_t)td->no_queues << "\" >\n";
+
+      for ( int i = 0; i < td->no_queues; i++) {
+        sa << "\t<queue index=\"" << i << "\" usage=\"" << td->_queue_usage[i] << "\" />\n";
+      }
+      sa << "</queueusage>\n";
+      return sa.take_string();
+      break;
+  }
+
+  return String();
+}
+
+static int
+Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  Tos2QueueMapper *f = (Tos2QueueMapper *)e;
+  String s = cp_uncomment(in_s);
+  switch((intptr_t)vparam) {
+    case H_RESET: {
+      f->reset_queue_usage();
+      break;
+    }
+  }
+  return 0;
+}
+
+void
+Tos2QueueMapper::add_handlers()
+{
+  BRNElement::add_handlers();
+
+  add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_STATS);
+  add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_RESET);
+}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Tos2QueueMapper)

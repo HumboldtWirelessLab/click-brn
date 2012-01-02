@@ -23,6 +23,8 @@
 #include <click/element.hh>
 #include <elements/brn2/brnelement.hh>
 #include <elements/brn2/wifi/channelstats.hh>
+#include <elements/brn2/wifi/collisioninfo.hh>
+
 
 CLICK_DECLS
 
@@ -46,17 +48,26 @@ class Tos2QueueMapper : public BRNElement {
 
   int configure(Vector<String> &, ErrorHandler *);
 
+  void add_handlers();
+
   Packet *simple_action(Packet *);
 
   int get_cwmin(int busy, int nodes);
   int find_queue(int cwmin);
 
   ChannelStats *_cst;
+  CollisionInfo *_colinf;
 
   uint8_t no_queues;
   uint16_t *_cwmin;
   uint16_t *_cwmax;
   uint16_t *_aifs;
+
+  uint32_t *_queue_usage;
+
+  void reset_queue_usage() {
+    memset(_queue_usage, 0, sizeof(uint32_t) * no_queues);
+  }
 };
 
 CLICK_ENDDECLS
