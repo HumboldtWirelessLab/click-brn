@@ -15,7 +15,7 @@ public:
 	~PacketLossReason();
 
 	typedef enum _PacketLossReason {
-	  PACKET_LOSS_ROOT_NODE = 0,
+	  PACKET_LOSS,
 	  INTERFERENCE, 
 	  CHANNEL_FADING,
 	  WIFI,
@@ -49,8 +49,9 @@ public:
 	void setChild(int poss, PacketLossReason* ptr_element_next);
 
 	PacketLossReason* getChild(PossibilityE poss);
+	
+	PacketLossReason* getChildDirection(PossibilityE poss);
 
-	void write_test_childs();
 
 	//Fraction range [0-100]
 	void setFraction(int frac);
@@ -62,8 +63,10 @@ public:
 
 	void setID(PossibilityE poss);
 	PossibilityE getID();
+	
+	void write_test_id(int id);
+	void write_test_childs();
 
-	PossibilityE write_test_id(int id);
 
 private:
 	PossibilityE possiblity_id;
@@ -72,7 +75,6 @@ private:
 	PacketLossReason *ptr_parent;
 	int fraction; 
 	void *stats;
-
 };
 
 CLICK_ENDDECLS
