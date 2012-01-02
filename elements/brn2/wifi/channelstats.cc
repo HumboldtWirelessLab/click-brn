@@ -872,7 +872,6 @@ ChannelStats::stats_handler(int mode)
 static String
 ChannelStats_read_param(Element *e, void *thunk)
 {
-  StringAccum sa;
   ChannelStats *td = (ChannelStats *)e;
   switch ((uintptr_t) thunk) {
     case H_STATS:
