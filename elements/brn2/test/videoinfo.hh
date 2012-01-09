@@ -18,45 +18,49 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef QUEUEMAPPERELEMENT_HH
-#define QUEUEMAPPERELEMENT_HH
+#ifndef VIDEOINFOELEMENT_HH
+#define VIDEOINFOELEMENT_HH
 #include <click/element.hh>
-#include <elements/brn2/brnelement.hh>
-#include <elements/brn2/wifi/channelstats.hh>
+#include "elements/brn2/brnelement.hh"
+
 
 CLICK_DECLS
 
-/*
-=c
-()
+class VideoInfoData {
 
-=d
+  public:
+    Timestamp _time;
+    String _data;
 
-*/
+    VideoInfoData(String data) {
+      _data = data;
+      _time = Timestamp::now();
+    }
+};
 
-class QueueMapper : public BRNElement {
+typedef Vector<VideoInfoData> VideoInfoList;
 
- public:
+class VideoInfo : public BRNElement {
 
-  QueueMapper();
-  ~QueueMapper();
+  public:
 
-  const char *class_name() const  { return "QueueMapper"; }
-  const char *port_count() const  { return "1/1"; }
+  VideoInfo();
+  ~VideoInfo();
+
+  const char *class_name() const  { return "VideoInfo"; }
+  const char *processing() const  { return AGNOSTIC; }
+
+  const char *port_count() const  { return "1/0"; }
 
   int configure(Vector<String> &, ErrorHandler *);
+  void add_handlers();
 
-  Packet *simple_action(Packet *);
+  void push(int, Packet *p);
 
-  int get_cwmin(int busy, int nodes);
-  int find_queue(int cwmin);
+  String read_info();
 
-  ChannelStats *_cst;
+  VideoInfoList _vil;
 
-  uint8_t no_queues;
-  uint16_t *_cwmin;
-  uint16_t *_cwmax;
-  uint16_t *_aifs;
 };
 
 CLICK_ENDDECLS

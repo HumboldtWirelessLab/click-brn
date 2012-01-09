@@ -20,10 +20,13 @@ enum {
   WIFI_EXTRA_MCS_RATE2       = (1<<23),
   WIFI_EXTRA_MCS_RATE1       = (1<<22),
   WIFI_EXTRA_MCS_RATE0       = (1<<21),
-  WIFI_EXTRA_EXT_RX_STATUS   = (1<<20)
+  WIFI_EXTRA_EXT_RX_STATUS   = (1<<20),
+  WIFI_EXTRA_TX_QUEUE_HIGH   = (1<<19),
+  WIFI_EXTRA_TX_QUEUE_LOW    = (1<<18)
 };
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21
+#define WIFI_EXTRA_TX_QUEUE_START 18
 
 /****************************/
 /* BRN wifi extra extention */
@@ -248,6 +251,15 @@ class BrnWifi
   }
 
   static uint32_t pkt_duration(uint32_t pktlen, uint8_t rix, uint8_t width, uint8_t half_gi);
+
+  static inline void setTxQueue(struct click_wifi_extra *ceh, uint32_t queue) {
+    ceh->flags &= ~(3 << WIFI_EXTRA_TX_QUEUE_START );   //clear old txqueue info
+    ceh->flags |= (queue << WIFI_EXTRA_TX_QUEUE_START); //set new txqueue
+  }
+
+  static inline uint8_t getTxQueue(struct click_wifi_extra *ceh) {
+    return (ceh->flags >> WIFI_EXTRA_TX_QUEUE_START) & 3; //get txqueue
+  }
 
 };
 

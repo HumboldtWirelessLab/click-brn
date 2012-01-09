@@ -31,17 +31,16 @@ OLSRHelloGenerator::~OLSRHelloGenerator()
 int
 OLSRHelloGenerator::configure( Vector<String> &conf, ErrorHandler *errh )
 {
-	int res = cp_va_parse( conf, this, errh,
-	                       cpInteger, "period (msec)", &_period,
-	                       cpInteger, "Neighbor Hold time", &_neighbor_hold_time,
-	                       cpElement, "Element LinkInfoBase", &_linkInfoBase,
-	                       cpElement, "Element NeighborInfoBase", &_neighborInfoBase,
-	                       cpElement, "Element InterfaceInfoBase", &_interfaceInfoBase,
-	                       cpElement, "Element OLSRForward", &_forward,
-	                       cpIPAddress, "Interface IPAddress", &_local_iface_addr,
-	                       cpIPAddress, "Main IPAddress of node", &_myMainIP,
-	                       cpKeywords,
-	                       "WILLINGNESS", cpInteger, "Willingness of the node", &_node_willingness
+	int res = cp_va_kparse( conf, this, errh,
+                          "period (msec)", cpkP, cpInteger,  &_period,
+                          "Neighbor Hold time", cpkP, cpInteger,  &_neighbor_hold_time,
+                          "Element LinkInfoBase", cpkP, cpElement,  &_linkInfoBase,
+                          "Element NeighborInfoBase", cpkP, cpElement, &_neighborInfoBase,
+                          "Element InterfaceInfoBase", cpkP, cpElement, &_interfaceInfoBase,
+                          "Element OLSRForward", cpkP, cpElement, &_forward,
+                          "Interface IPAddress", cpkP, cpIPAddress, &_local_iface_addr,
+                          "Main IPAddress of node", cpkP, cpIPAddress, &_myMainIP,
+	                       "WILLINGNESS", cpkP, cpInteger/*, "Willingness of the node"*/, &_node_willingness
 	                       , 0 );
 	if ( res < 0 )
 		return res;
@@ -78,8 +77,8 @@ OLSRHelloGenerator::generate_hello()
 {
 	//  uint64_t cycles=click_get_cycles();
 	struct timeval now;
-	click_gettimeofday( &now );
-	int number_link_codes = 0;
+	now = Timestamp::now().timeval();
+  int number_link_codes = 0;
 	int number_addresses = 0;
 	HashMap<uint8_t, Vector<IPAddress> > neighbor_interfaces;
 	HashMap<IPAddress, bool> neighbor_included;
@@ -91,7 +90,7 @@ OLSRHelloGenerator::generate_hello()
 		{
 			struct link_data *data;
 			data = ( link_data * ) iter.value();
-			if ( ( data->L_local_iface_addr == _local_iface_addr ) && ( data->L_time >= now ) )
+			if ( ( data->L_local_iface_addr == _local_iface_addr ) && ((Timestamp)data->L_time >= Timestamp(now) ) )
 			{
 				uint8_t link_code = get_link_code( data, now );
 				//click_chatter ("link with link_code: %d\n",link_code);
@@ -160,8 +159,7 @@ OLSRHelloGenerator::generate_hello()
 	}
 	memset( packet->data(), 0, packet->length() );
 	//packet->set_perfctr_anno(cycles);
-	struct timeval tv;
-	click_gettimeofday( &tv );
+	struct timeval tv = Timestamp::now().timeval();
 	packet->set_timestamp_anno( tv );
 
 	olsr_pkt_hdr *pkt_hdr = ( olsr_pkt_hdr * ) packet->data();
@@ -244,9 +242,9 @@ uint8_t
 OLSRHelloGenerator::get_link_code( struct link_data *data, timeval now )
 {
 	uint8_t link_code;
-	if ( data->L_SYM_time >= now )
+	if ( Timestamp(data->L_SYM_time) >= Timestamp(now) )
 		link_code = OLSR_SYM_LINK;
-	else if ( data->L_ASYM_time >= now && data->L_SYM_time < now )
+  else if ( Timestamp(data->L_ASYM_time) >= Timestamp(now) && Timestamp(data->L_SYM_time) < Timestamp(now) )
 		link_code = OLSR_ASYM_LINK;
 	else
 		link_code = OLSR_LOST_LINK;
@@ -332,7 +330,7 @@ OLSRHelloGenerator::set_period_handler(const String &conf, Element *e, void *, E
 {
 	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
 	int new_period;
-	int res = cp_va_parse( conf, me, errh,cpInteger, "period (msec)", &new_period, 0 );
+  int res = cp_va_kparse( conf, me, errh,"period (msec)", cpkP, cpInteger, &new_period, 0 );
 	if ( res < 0 )
 		return res;
 	if ( new_period <= 0 )
@@ -346,7 +344,7 @@ OLSRHelloGenerator::set_neighbor_hold_time_handler(const String &conf, Element *
 {
 	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
 	int new_nbr_hold_time;
-	int res = cp_va_parse( conf, me, errh, cpInteger, "Neighbor Hold time", &new_nbr_hold_time, 0 );	
+  int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, 0 );
 	if ( res < 0 )
 		return res;
 	me->set_neighbor_hold_time(new_nbr_hold_time);

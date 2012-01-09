@@ -124,16 +124,10 @@ read_handler(Element *e, void *thunk)
   sa << "<system id=\"" << si->_me->getMasterAddress()->unparse() << "\" name=\"" << si->_me->_nodename << "\" time=\"" << now.unparse() << "\">\n";
 
   // meminfo
+  Vector<String> first_col, second_col, third_col, fourth_col;
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
   String raw_info = file_string("/proc/meminfo");
-#else
-  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"); 
-#endif
-#else
-  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
-#endif
-  Vector<String> first_col, second_col, third_col, fourth_col;
 
   parse_tabbed_lines(raw_info, &first_col, &second_col, &third_col, &fourth_col, NULL);
 
@@ -145,6 +139,14 @@ read_handler(Element *e, void *thunk)
   sa << "\" buffers=\"" << second_col[2];
   sa << "\" NFS_Unstable=\"" << second_col[17];
   sa << "\" />\n";
+#else
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+  sa << "\t<mem total=\"0\" used=\"0\" cached=\"0\" buffers=\"0\" NFS_Unstable=\"0\" />\n";
+#endif
+#else
+  String raw_info = String("0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0");
+  sa << "\t<mem total=\"0\" used=\"0\" cached=\"0\" buffers=\"0\" NFS_Unstable=\"0\" />\n";
+#endif
 
   // recycle vectors
   first_col.clear();
@@ -228,7 +230,11 @@ read_handler(Element *e, void *thunk)
 #if CLICK_USERLEVEL
 #ifndef CLICK_NS
   raw_info = String(file_string("/proc/version"));
+#else
+  raw_info = String("simulation");
 #endif
+#else
+  raw_info = String("kernel");
 #endif
 
   sa << "\t<linux version=\"" << raw_info.trim_space() << "\" />\n</system>\n";

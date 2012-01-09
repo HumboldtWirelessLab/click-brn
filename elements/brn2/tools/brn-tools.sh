@@ -38,7 +38,13 @@ echo "Host gitsar"
 echo "   User username"
 echo "   HostName localhost"
 echo "   Port 23452"
+echo ""
+echo "Open a terminal and login to gruenau using \"ssh gruenau\". Don't close the terminal until you finish the installation." 
 
+
+if [ "x$1" = "xhelp" ]; then
+  exit 0
+fi
 
 FULLFILENAME=`basename $0`
 FULLFILENAME=$DIR/$FULLFILENAME
@@ -97,7 +103,7 @@ fi
 rm -rf $DIR/brn-ns2-click
 
 echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$DIR/click-brn/ns/:$DIR/ns2/lib" > $DIR/brn-tools.bashrc
-echo "export PATH=$DIR/ns2/bin/:$DIR/helper/simulation/bin/:\$PATH" >> $DIR/brn-tools.bashrc
+echo "export PATH=$DIR/ns2/bin/:$CLICKPATH/userlevel/:$CLICKPATH/tools/click-align/:$DIR/helper/simulation/bin/:$DIR/helper/evaluation/bin:\$PATH" >> $DIR/brn-tools.bashrc
 
 cat $FULLFILENAME | grep "^#INFO" | sed -e "s/#INFO[[:space:]]*//g" -e "s#TARGETDIR#$DIR#g"
 

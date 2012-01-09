@@ -299,7 +299,7 @@ typedef struct device net_device;
 // COMPILE-TIME ASSERTION CHECKING
 
 #if !defined(__cplusplus) || !HAVE_CXX_STATIC_ASSERT
-# define static_assert(x, ...) switch (x) case 0: case !!(x):
+# define static_assert(x, ...) switch ((int) (x)) case 0: case !!((int) (x)):
 #endif
 
 
@@ -377,7 +377,7 @@ extern __thread int click_current_thread_id;
 
 
 // TIMEVALS AND JIFFIES
-// click_jiffies_t is the type of click_jiffies() and is usually unsigned.
+// click_jiffies_t is the type of click_jiffies() and must be unsigned.
 // click_jiffies_difference_t is the signed version of click_jiffies_t.
 // CLICK_JIFFIES_MONOTONIC is true if click_jiffies() never goes backwards.
 

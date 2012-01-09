@@ -22,7 +22,9 @@ BRN2PacketSource::BRN2PacketSource()
     _power(0),
     _headroom(128),
     _max_packets(0),
-    _send_packets(0)
+    _send_packets(0),
+    _reuse(false),
+    _reuseoffset(0)
 {
   BRNElement::init();
 }
@@ -46,6 +48,8 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "POWER", cpkP, cpInteger, &_power,
       "ACTIVE", cpkP, cpBool, &_active,
       "HEADROOM", cpkP, cpInteger, &_headroom,
+      "REUSE", cpkP, cpBool, &_reuse,
+      "REUSEOFFSET", cpkP, cpInteger, &_reuseoffset,
       cpEnd) < 0)
         return -1;
 
@@ -96,7 +100,7 @@ BRN2PacketSource::run_timer(Timer *t)
       output(0).push(packet_out);
     }
 
-    if ( ( _max_packets == 0 ) || ( _max_packets > _send_packets ) ) {
+    if ( (( _max_packets == 0 ) || ( _max_packets > _send_packets )) && !_reuse ) {
       _timer.reschedule_after_msec(_interval);
     }
   }
@@ -124,9 +128,26 @@ BRN2PacketSource::set_active(bool set_active)
 void
 BRN2PacketSource::push( int port, Packet *packet )
 {
-  if ( port == 0 )
-    output(0).push(packet);
-  else
+  if ( port == 0 ) {
+    if ( ( _max_packets == 0 ) || ( _max_packets > _send_packets ) ) {
+      WritablePacket *packet_out = packet->uniqueify();
+      uint8_t *packet_data = (uint8_t*)&(((uint8_t*)packet_out->data())[_reuseoffset]);
+
+      pinfo.seq_num = htonl(_seq_num);
+      memcpy(packet_data, &pinfo, sizeof(struct packetinfo));
+
+      _send_packets++;
+      _seq_num++;
+
+      if ( noutputs() > 1 )
+        output(1).push(packet_out);
+      else
+        output(0).push(packet_out);
+
+    } else {
+      packet->kill();
+    }
+  } else
     packet->kill();
 }
 

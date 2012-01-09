@@ -36,7 +36,7 @@ struct dht_omni_node_entry {
   uint8_t  etheraddr[6];
   uint8_t  age_sec;
   uint8_t  status;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 class DHTProtocolOmni {
 

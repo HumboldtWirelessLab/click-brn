@@ -109,23 +109,41 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
   GPSPosition finpos = GPSPosition(pos);
 
   int best;
-  int min_dist;
+  int min_dist = -1;
+
+  BRN_INFO("Search next hop for neighbor %s",finpos.unparse_coord().c_str());
 
   _lt->get_local_neighbors(neighbors);
 
   if ( neighbors.size() > 0 ) {
-    gpspos = _rt.findp(neighbors[0]);
-    best = 0;
-    min_dist = finpos.getDistance(gpspos);
-    BRN_INFO("Check distance to %s: %d",neighbors[0].unparse().c_str(),min_dist);
-
-    for( int i = 1; i < neighbors.size(); i++ ) {
-      gpspos = _rt.findp(neighbors[i]);
-      BRN_INFO("Check distance to %s: %d",neighbors[i].unparse().c_str(),finpos.getDistance(gpspos));
-      if ( finpos.getDistance(gpspos) < min_dist ) {
+    int i = 0;
+    for (;i < neighbors.size(); i++) {
+      if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
+        gpspos = _rt.findp(neighbors[i]);
         best = i;
         min_dist = finpos.getDistance(gpspos);
+        BRN_INFO("Check distance to %s: %d",neighbors[0].unparse().c_str(),min_dist);
+        break;
+      } else {
+        BRN_DEBUG("Bad metric: %s %d",neighbors[i].unparse().c_str(),_lt->get_host_metric_from_me(neighbors[i]));
       }
+    }
+
+    for( ; i < neighbors.size(); i++ ) {
+      if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
+        gpspos = _rt.findp(neighbors[i]);
+        BRN_INFO("Check distance to %s: %d",neighbors[i].unparse().c_str(),finpos.getDistance(gpspos));
+        if ( finpos.getDistance(gpspos) < min_dist ) {
+          best = i;
+          min_dist = finpos.getDistance(gpspos);
+        }
+      } else {
+        BRN_DEBUG("Bad metric: %s %d",neighbors[i].unparse().c_str(),_lt->get_host_metric_from_me(neighbors[i]));
+      }
+    }
+    if ( min_dist == -1 ) {
+      BRN_INFO("No good Neighbor. No neighbors: %d",neighbors.size());
+      return NULL;
     }
   } else {
     BRN_INFO("No Neighbor");

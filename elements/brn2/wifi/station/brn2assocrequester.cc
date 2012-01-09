@@ -195,6 +195,9 @@ BRN2AssocRequester::send_reassoc_req()
   w->i_dur = 0;
   w->i_seq = 0;
 
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  ceh->flags |= WIFI_EXTRA_NO_SEQ;
+
   // Use mac address and bssid of the new ap like madwifi does
   // see madwifi:ieee80211_output.c ieee80211_mgmt_output()
   memcpy(w->i_addr1, newAp.data(), 6);

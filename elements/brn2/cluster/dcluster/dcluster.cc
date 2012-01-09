@@ -68,14 +68,17 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   DCluster *dcl = (DCluster*)element;
+  return dcl->lpSendHandler(buffer, size);
+}
 
-  if ( direction )
-    return dcl->lpSendHandler(buffer, size);
-  else
-    return dcl->lpReceiveHandler(buffer, size);
+static int
+rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DCluster *dcl = (DCluster*)element;
+  return dcl->lpReceiveHandler(buffer, size);
 }
 
 int
@@ -86,7 +89,7 @@ DCluster::initialize(ErrorHandler *)
   _max_round = new ClusterNodeInfo[_max_distance];
   _min_round = new ClusterNodeInfo[_max_distance];
 
-  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &handler);
+  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &tx_handler, &rx_handler);
 
   return 0;
 }

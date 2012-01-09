@@ -86,25 +86,30 @@ DHTRoutingOmni::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*direction*/)
+tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*size*/)
 {
   DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
-/*  if ( direction )
-  return lph->lpSendHandler(buffer, size);
-  else
-  return lph->lpReceiveHandler(buffer, size);*/
   if ( dhtro == NULL ) return 0;
-
+//  return lph->lpSendHandler(buffer, size);
   return 0;
 }
 
+static int
+rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DHTRoutingOmni *dhtro = (DHTRoutingOmni*)element;
+  if ( dhtro == NULL ) return 0;
+//  return lph->lpReceiveHandler(buffer, size);*/
+
+  return 0;
+}
 int
 DHTRoutingOmni::initialize(ErrorHandler *)
 {
   click_srandom(_me->_ether_addr.hashcode());
 
   if ( _linkstat )
-    _linkstat->registerHandler(this,0,&handler);
+    _linkstat->registerHandler(this,0,&tx_handler,&rx_handler);
 
   _ping_timer.initialize(this);
   _lookup_timer.initialize(this);

@@ -30,7 +30,7 @@ class GeorLinkProbeHandler : public Element {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  int lpSendHandler(char *buffer, int size, EtherAddress *ea);
+  int lpSendHandler(char *buffer, int size, const EtherAddress *ea);
   int lpReceiveHandler(char *buffer, int size, EtherAddress *ea);
 
   String get_info();

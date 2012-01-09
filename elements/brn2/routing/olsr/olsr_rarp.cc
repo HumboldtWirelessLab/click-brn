@@ -22,10 +22,10 @@ OLSRRARP::~OLSRRARP()
 int
 OLSRRARP::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	if (cp_va_parse(conf, this, errh,
-	                cpElement, "OLSR ARP Querier Element", &_arpQuerier,
-	                cpIPAddress, "Nodes main IP address", &_myMainIP,
-	                0) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "OLSR ARP Querier Element",cpkP, cpElement, &_arpQuerier,
+      "Nodes main IP address", cpkP,cpIPAddress, &_myMainIP,
+	                cpEnd) < 0)
 		return -1;
 	return 0;
 }
@@ -41,7 +41,7 @@ void
 OLSRRARP::push(int, Packet *packet)
 {
 	timeval now;
-	click_gettimeofday(&now);
+	now = Timestamp::now().timeval();
 
 	EtherAddress ether_addr;
 	memcpy(ether_addr.data(), packet->data(), 6);

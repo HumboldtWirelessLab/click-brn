@@ -36,12 +36,13 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////
 
 Brn2RouteCache::Brn2RouteCache() :
-  _debug(BrnLogger::DEFAULT),
   m_bActive( false ),
   m_tRouteAging( on_routeaging_expired, this ),
   m_iInitialTTL( 20 ),
   m_iDropProb( 50 )
 {
+  BRNElement::init();
+
   m_tvLifetimeSlice.tv_sec  = 1;
   m_tvLifetimeSlice.tv_usec = 0;
 }
@@ -65,7 +66,7 @@ Brn2RouteCache::initialize(ErrorHandler *)
   {
     m_tRouteAging.schedule_after( m_tvLifetimeSlice );
   }
-  
+
   return( 0 );
 }
 
@@ -76,7 +77,7 @@ Brn2RouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
   int ret;
   uint32_t ullSlice = m_tvLifetimeSlice.tv_sec * 1000000 +
                       m_tvLifetimeSlice.tv_usec;
-  
+
   ret = cp_va_kparse(conf, this, errh,
     "DEBUG", cpkN, cpInteger, /*"Debug indicator",*/ &_debug,
     "ACTIVE", cpkN, cpBool, /*"Active indicator",*/ &m_bActive,
@@ -84,7 +85,7 @@ Brn2RouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
     "TTL", cpkN, cpInteger, /*"Initial route ttl in slices",*/ &m_iInitialTTL,
     "SLICE", cpkN, cpUnsigned, /*"Lifetime slice in us",*/ &ullSlice,
     cpEnd);
-  
+
   if( 0 != ullSlice )
   {
     m_tvLifetimeSlice.tv_sec  = ullSlice / 1000000;
@@ -95,12 +96,12 @@ Brn2RouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
     m_tvLifetimeSlice.tv_sec  = 1000000;
     m_tvLifetimeSlice.tv_usec = 0;
   }
-  
+
   return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////
-bool 
+bool
 Brn2RouteCache::get_cached_route(
   /*[in]*/  const AddressType&  addrSrc,
   /*[in]*/  const AddressType&  addrDst,
@@ -112,16 +113,16 @@ Brn2RouteCache::get_cached_route(
 
   EntryType* pEntry;
   route.clear();
-  
+
   BRN_DEBUG("wuery for route %s -> %s.",
     addrSrc.unparse().c_str(), addrDst.unparse().c_str());
-  
+
   // Find the corresponding entry
   pEntry = m_mapRoutes.findp( AddressPairType(addrSrc,addrDst) );
   if( NULL != pEntry )
   {
     int32_t iRand = (0 == m_iDropProb) ? 1 : click_random() % m_iDropProb;
-    
+
     // Return the cached entry if the ttl is greater null and the 
     // random value is not equal null.
     if( 0 < pEntry->m_iTTL 
@@ -135,12 +136,12 @@ Brn2RouteCache::get_cached_route(
     }
 
     BRN_DEBUG("random route drop.");
-    
+
     // Delete the entry and fall through to return...
     pEntry = NULL;
     remove_route( addrSrc, addrDst );
   }
-  
+
   BRN_DEBUG("no cached route found.");
   return( false );
 }
@@ -160,17 +161,17 @@ Brn2RouteCache::insert_route(
 
   BRN_DEBUG("inserting route %s -> %s.",
     addrSrc.unparse().c_str(), addrDst.unparse().c_str());
-  
+
   EntryType entry;
   AddressPairType pairSrcDst(addrSrc,addrDst);
-  
+
   entry.m_route = route;
   entry.m_iTTL  = m_iInitialTTL;
   entry.m_metric = metric;
-  
+
   // Insert the route under key pair(src,dst)
   m_mapRoutes.insert( pairSrcDst, entry );
-  
+
   // Insert all links into the map, pointing to the route
   RouteType::const_iterator iter_a = route.begin();
   RouteType::const_iterator iter_b = iter_a + 1;
@@ -237,18 +238,18 @@ Brn2RouteCache::remove_route(
       m_mapLinkToRoute.findp( AddressPairType(*iter_a,*iter_b) );
     if( NULL == pLinkVector )
       continue; // Strange thing that no route vector is avail, but...
-      
+
     // Loop through vector and delete the current route entry 
     AddrPairVectorType::iterator iter_link = pLinkVector->begin();
     while( *iter_link != pairSrcDst )
       ++iter_link;
-    
+
     // We found the route entry in the vector
     if( *iter_link == pairSrcDst )
     {
       pLinkVector->erase(iter_link);
     }
-    
+
     // Cleanup, remove LinkToRoute entry, if not used anymore
     if( true == pLinkVector->empty() )
     {
@@ -270,7 +271,7 @@ Brn2RouteCache::on_link_changed(
     return;
 
   AddressPairType addrPairAB(addrLinkNodeA,addrLinkNodeB);
-  
+
   BRN_DEBUG("link %s -> %s changed.",
     addrLinkNodeA.unparse().c_str(), addrLinkNodeB.unparse().c_str());
 
@@ -280,14 +281,14 @@ Brn2RouteCache::on_link_changed(
   // We do not have information about the link, so go home...
     // Be aware that both iterators are not stable!!
   while( NULL != pLinkVector )
-  {  
+  {
     // Loop through vector ...
     AddrPairVectorType::iterator iter_link = pLinkVector->begin();
     if( iter_link == pLinkVector->end() )
     {
       // Remove the empty link vector
       m_mapLinkToRoute.remove( addrPairAB );
-      
+
       /// @TODO error message??
       return;
     }
@@ -315,13 +316,13 @@ Brn2RouteCache::on_routeaging_expired(
     /// @TODO error message
     return;
   }
-  
+
   Brn2RouteCache* pThis = static_cast<Brn2RouteCache*>(pVoid);
   pThis->on_routeaging_expired( pTimer );
 }
 
 ////////////////////////////////////////////////////////////////////////
-void 
+void
 Brn2RouteCache::on_routeaging_expired(
   /*[in]*/  Timer* pTimer )
 {
@@ -334,17 +335,17 @@ Brn2RouteCache::on_routeaging_expired(
   {
     // Remember the current and go to next.
     RouteMapType::iterator iter_curr = iter; ++iter;
-    
+
     // Decrement the ttl
     iter_curr.value().m_iTTL -= 1;
-    
+
     // If the lifetime is expired, delete the route entry
     if( 0 >= iter_curr.value().m_iTTL )
     {
       remove_route( iter_curr.key().first, iter_curr.key().second );
     }
   }
-  
+
   // Reschedule the timer
   pTimer->reschedule_after( m_tvLifetimeSlice );
 }
@@ -352,28 +353,16 @@ Brn2RouteCache::on_routeaging_expired(
 ////////////////////////////////////////////////////////////////////////
 // Handler
 ////////////////////////////////////////////////////////////////////////
-static String
-read_debug_param(Element *e, void *thunk)
-{
-  UNREFERENCED_PARAMETER(thunk);
-  
-  Brn2RouteCache *rq = (Brn2RouteCache *)e;
-  return String(rq->_debug) + "\n";
-}
-
-////////////////////////////////////////////////////////////////////////
-static int 
-write_debug_param(const String &in_s, Element *e, void *vparam,
-          ErrorHandler *errh)
+static int
+write_reset_param(const String &/*in_s*/, Element *e, void *vparam,
+          ErrorHandler */*errh*/)
 {
   UNREFERENCED_PARAMETER(vparam);
 
   Brn2RouteCache *rq = (Brn2RouteCache *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  rq->_debug = debug;
+
+  rq->flush_cache();
+
   return 0;
 }
 
@@ -382,7 +371,7 @@ static String
 read_active_param(Element *e, void *thunk)
 {
   UNREFERENCED_PARAMETER(thunk);
-  
+
   Brn2RouteCache *rq = (Brn2RouteCache *)e;
   return String(rq->m_bActive) + "\n";
 }
@@ -415,11 +404,12 @@ write_active_param(const String &in_s, Element *e, void *vparam,
 void
 Brn2RouteCache::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 
   add_read_handler("active", read_active_param, 0);
   add_write_handler("active", write_active_param, 0);
+
+  add_write_handler("reset", write_reset_param, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -434,7 +424,6 @@ template class HashMap<Brn2RouteCache::AddressPairType,Brn2RouteCache::EntryType
 template class Vector<Brn2RouteCache::AddressPairType>;
 template class HashMap<Brn2RouteCache::AddressPairType,Brn2RouteCache::AddrPairVectorType>;
 #endif
-
 
 ////////////////////////////////////////////////////////////////////////
 

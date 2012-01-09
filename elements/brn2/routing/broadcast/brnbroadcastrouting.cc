@@ -76,10 +76,13 @@ BrnBroadcastRouting::push( int port, Packet *packet )
   {
     BRN_DEBUG("BrnBroadcastRouting: PUSH vom Client :%s\n",_node_id->getMasterAddress()->unparse().c_str());
 
+    uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+    if ( ttl == 0 ) ttl = BROADCASTROUTING_DAFAULT_MAX_HOP_COUNT;
+
     ether = (click_ether *)packet->data();
     EtherAddress src = EtherAddress(ether->ether_shost);
 
-    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
+    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING, ttl);
     BRNPacketAnno::set_ether_anno(out_packet, src.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
     output(1).push(out_packet);  //to brn -> flooding
   }
@@ -96,10 +99,14 @@ BrnBroadcastRouting::push( int port, Packet *packet )
       BRN_DEBUG("This is for me");
       ether = (click_ether *)packet->data();
       packet->set_ether_header(ether);
+
+      uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+      if ( BRNProtocol::is_brn_etherframe(packet) )
+        BRNProtocol::get_brnheader_in_etherframe(packet)->ttl = ttl;
+
       output(0).push(packet);
     } else {
       BRN_DEBUG("Not for me");
-      packet->set_ether_header((click_ether*)packet_data);
       packet->kill();
     }
   }

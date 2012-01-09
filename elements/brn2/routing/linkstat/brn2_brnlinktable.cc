@@ -41,13 +41,14 @@
 CLICK_DECLS
 
 Brn2LinkTable::Brn2LinkTable()
-  : _debug(BrnLogger::DEFAULT),
+  : _fix_linktable(false),
   _node_identity(),
   _timer(this),
   _sim_mode(false),
   _const_metric(0),
   _brn_routecache(NULL)
 {
+  BRNElement::init();
 }
 
 Brn2LinkTable::~Brn2LinkTable()
@@ -137,8 +138,7 @@ Brn2LinkTable::take_state(Element *e, ErrorHandler *) {
 }
 
 int
-Brn2LinkTable::static_update_link(const String &arg, Element *e,
-			      void *, ErrorHandler *errh) 
+Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh)
 {
   Brn2LinkTable *n = (Brn2LinkTable *) e;
 
@@ -189,6 +189,10 @@ bool
 Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                         IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent)
 {
+  /* Don't update the linktable if it should be fix (e.g. for measurement and debug) */
+  /* TODO: check age and permant-flag of links */
+  if ( _fix_linktable ) return true;
+
   // Flush the route cache
   //_brn_routecache->on_link_changed( from, to );
   BRN_DEBUG("update_link: %s %s %d", from.unparse().c_str(), to.unparse().c_str(), metric);
@@ -222,7 +226,7 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   EthernetPair p = EthernetPair(from, to);
   BrnLinkInfo *lnfo = _links.findp(p);
   if (!lnfo) {
-    _links.insert(p, BrnLinkInfo(from, to, seq, age, metric,permanent));
+    _links.insert(p, BrnLinkInfo(from, to, seq, age, metric, permanent));
   } else {
     // AZu: new sequence number must be greater than the old one; otherwise no update will be taken
     uint32_t new_seq = seq;
@@ -540,13 +544,23 @@ String
 Brn2LinkTable::print_links()
 {
   StringAccum sa;
-
+  sa << "<linktable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+	
   for (LTIter iter = _links.begin(); iter.live(); ++iter) {
     BrnLinkInfo n = iter.value();
-    sa << "\t" << n._from.unparse().c_str() << " " << n._to.unparse().c_str();
-    sa << " " << n._metric;
-    sa << " " << n._seq << " " << n.age() << "\n";
+    sa << "\t<link from=\"" << n._from.unparse().c_str() << "\" to=\"" << n._to.unparse().c_str() << "\"";
+    sa << " metric=\"" << n._metric << "\"";
+    sa << " seq=\"" << n._seq << "\" age=\"" << n.age() << "\" />\n";
+    
+    //the following lines printing out linktable raw, not in XML
+    //sa << "\t" << n._from.unparse().c_str() << " " << n._to.unparse().c_str();
+    //sa << " " << n._metric;
+    //sa << " " << n._seq << " " << n.age() << "\n";
   }
+  
+  sa << "</linktable>\n";
   return sa.take_string();
 }
 
@@ -561,29 +575,47 @@ Brn2LinkTable::print_routes(bool from_me)
     ether_addrs.push_back(iter.key());
 
   click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
+  
+  sa << "<routetable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+  
   for (int x = 0; x < ether_addrs.size(); x++) {
     EtherAddress ether = ether_addrs[x];
     uint32_t metric_trash;
     Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
     if (valid_route(r)) {
-      sa << ether.unparse().c_str() << " ";
-      for (int i = 0; i < r.size(); i++) {
-	sa << " " << r[i] << " ";
-	if (i != r.size()-1) {
-	  EthernetPair pair = EthernetPair(r[i], r[i+1]);
-	  BrnLinkInfo *l = _links.findp(pair);
-         if (l) {
-	  	sa << l->_metric;
-	  	sa << " (" << l->_seq << "," << l->age() << ")";
-         } else {
-              sa << "(warning, lnkinfo not found!!!)";
-         }
-	}
-      }
-      sa << "\n";
+      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
+      //sa << ether.unparse().c_str() << " ";
+      
+		for (int i = 0; i < r.size()-1; i++) {
+			EthernetPair pair = EthernetPair(r[i], r[i+1]);
+			BrnLinkInfo *l = _links.findp(pair);
+			sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
+			sa << "metric=\"" << l->_metric << "\" ";
+			sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
+		}
+		sa << "\t</route>\n";
+
+//      for (int i = 0; i < r.size(); i++) {		  
+//		  sa << " " << r[i] << " ";
+//		  if (i != r.size()-1) {
+//			  EthernetPair pair = EthernetPair(r[i], r[i+1]);
+//			  BrnLinkInfo *l = _links.findp(pair);
+//			  if (l) {
+//				  sa << l->_metric;
+//				  sa << " (" << l->_seq << "," << l->age() << ")";
+//			  } else {
+//				  sa << "(warning, lnkinfo not found!!!)";
+//			  }
+//		  }
+//  }
+//	  sa << "\n";
     }
   }
+  
+  sa << "</routetable>\n";
+  
   return sa.take_string();
 }
 
@@ -829,7 +861,8 @@ enum {H_BLACKLIST,
       H_DIJKSTRA,
       H_DIJKSTRA_TIME,
       H_BEST_ROUTE,
-      H_BESTROUTE_DIJKSTRA};
+      H_BESTROUTE_DIJKSTRA,
+      H_FIX_LINKTABLE};
 
 static String 
 LinkTable_read_param(Element *e, void *thunk)
@@ -854,6 +887,9 @@ LinkTable_read_param(Element *e, void *thunk)
       StringAccum sa;
       sa << td->dijkstra_time << "\n";
       return sa.take_string();
+    }
+    case H_FIX_LINKTABLE: {
+      return "<fixlinktable value=\"" + String(td->_fix_linktable) + "\" />\n";
     }
     default:
       return String();
@@ -928,33 +964,25 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
     }
     break;
   }
+  case H_FIX_LINKTABLE: {
+    bool fix_linktable;
+    if (!cp_bool(s, &fix_linktable)) {
+      return errh->error("fix_linktable is a boolean");
+    } else {
+      f->_fix_linktable = fix_linktable;
+    }
+
+    break;
   }
-  return 0;
-}
-
-static String
-read_debug_param(Element *e, void *)
-{
-  Brn2LinkTable *lt = (Brn2LinkTable *)e;
-  return String(lt->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  Brn2LinkTable *lt = (Brn2LinkTable *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  lt->_debug = debug;
+  }
   return 0;
 }
 
 void
 Brn2LinkTable::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
@@ -962,7 +990,7 @@ Brn2LinkTable::add_handlers()
   add_read_handler("hosts", LinkTable_read_param, (void *)H_HOSTS);
   add_read_handler("blacklist", LinkTable_read_param, (void *)H_BLACKLIST);
   add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
-  add_read_handler("debug", read_debug_param, 0);
+  add_read_handler("fix_linktable", LinkTable_read_param, (void *)H_FIX_LINKTABLE);
 
   add_write_handler("clear", LinkTable_write_param, (void *)H_CLEAR);
   add_write_handler("blacklist_clear", LinkTable_write_param, (void *)H_BLACKLIST_CLEAR);
@@ -971,19 +999,10 @@ Brn2LinkTable::add_handlers()
   add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
   add_write_handler("best_route", LinkTable_write_param, (void *)H_BEST_ROUTE);
   add_write_handler("best_route_and_dijkstra", LinkTable_write_param, (void *)H_BESTROUTE_DIJKSTRA);
-  add_write_handler("debug", write_debug_param, 0);
+  add_write_handler("fix_linktable", LinkTable_write_param, (void *)H_FIX_LINKTABLE);
 
   add_write_handler("update_link", static_update_link, 0);
 }
-
-#include <click/bighashmap.cc>
-#include <click/hashmap.cc>
-#include <click/vector.cc>
-#if EXPLICIT_TEMPLATE_INSTANCES
-template class HashMap<EtherAddress, EtherAddress>;
-template class HashMap<EtherPair, Brn2LinkTable::LinkInfo>;
-template class HashMap<EtherAddress, Brn2LinkTable::BrnHostInfo>;
-#endif
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Brn2LinkTable)

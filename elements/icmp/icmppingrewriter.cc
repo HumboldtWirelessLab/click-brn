@@ -137,10 +137,8 @@ ICMPPingRewriter::add_flow(int, const IPFlowID &flowid,
 	return 0;
 
     ICMPPingFlow *flow = new(data) ICMPPingFlow
-	(flowid, _input_specs[input].foutput,
-	 rewritten_flowid, _input_specs[input].routput,
-	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts),
-	 this, input);
+	(&_input_specs[input], flowid, rewritten_flowid,
+	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts));
 
     return store_flow(flow, input, _map);
 }
@@ -214,7 +212,7 @@ ICMPPingRewriter::dump_mappings_handler(Element *e, void *)
 void
 ICMPPingRewriter::add_handlers()
 {
-    add_read_handler("mappings", dump_mappings_handler, (void *)0);
+    add_read_handler("mappings", dump_mappings_handler, 0);
     add_rewriter_handlers(true);
 }
 

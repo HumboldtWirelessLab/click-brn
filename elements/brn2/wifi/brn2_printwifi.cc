@@ -42,7 +42,8 @@ BRN2PrintWifi::BRN2PrintWifi()
     _print_ht(false),
     _print_ext_rx(false),
     _print_evm(false),
-    _nowrap(false)
+    _nowrap(false),
+    _print_used_rate(false)
 {
   _label = "";
 }
@@ -62,6 +63,7 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
       "PRINTHT", cpkP, cpBool, &_print_ht,
       "PRINTRXSTATUS", cpkP, cpBool, &_print_ext_rx,
       "PRINTEVM", cpkP, cpBool, &_print_evm,
+      "PRINTUSEDRATE", cpkP, cpBool, &_print_used_rate,
       "NOWRAP", cpkP, cpBool, &_nowrap,
       cpEnd);
   return ret;
@@ -367,24 +369,64 @@ BRN2PrintWifi::simple_action(Packet *p)
 
   uint8_t mcs_index, bandwidth, guard_interval;
 
-  if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
-    BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
-    int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
+  if ( (ceh->flags & WIFI_EXTRA_TX) && _print_used_rate ) {
+    uint8_t used_rate = ceh->rate;
+    int tries_idx = ceh->max_tries;
+    int idx = 0;
 
-    int mcs_rate_b = mcs_rate/10;
-    int mcs_rate_l = mcs_rate%10;
+    if ( (ceh->max_tries1 != 0) && (ceh->retries >= tries_idx) )  {
+      used_rate = ceh->rate1;
+      tries_idx += ceh->max_tries1;
+      idx = 1;
 
-    sa << " " << mcs_rate_b << "." << mcs_rate_l;
+      if ( (ceh->max_tries2 != 0) && (ceh->retries >= tries_idx) )  {
+        used_rate = ceh->rate2;
+        tries_idx += ceh->max_tries2;
+        idx = 2;
 
-  } else {
-    if (ceh->rate == 11) {
-      sa << " 5.5";
+        if ( (ceh->max_tries3 != 0) && (ceh->retries >= tries_idx) )  {
+          used_rate = ceh->rate3;
+          idx = 3;
+        }
+      }
+    }
+
+    if ( BrnWifi::getMCS(ceh,idx) == 1 ) {
+      BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, used_rate);
+      int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
+
+      int mcs_rate_b = mcs_rate/10;
+      int mcs_rate_l = mcs_rate%10;
+
+      sa << mcs_rate_b << "." << mcs_rate_l;
+
     } else {
-      len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
-      sa.adjust_length(len);
+      if (used_rate == 11) {
+        sa << "5.5";
+      } else {
+        len = sprintf(sa.reserve(2), "%2d", used_rate/2);
+        sa.adjust_length(len);
+      }
+    }
+  } else {
+    if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
+      BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
+      int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
+
+      int mcs_rate_b = mcs_rate/10;
+      int mcs_rate_l = mcs_rate%10;
+
+      sa << mcs_rate_b << "." << mcs_rate_l;
+
+    } else {
+      if (ceh->rate == 11) {
+        sa << "5.5";
+      } else {
+        len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
+        sa.adjust_length(len);
+      }
     }
   }
-
   sa << "Mb ";
 
   if ( _print_ht ) {

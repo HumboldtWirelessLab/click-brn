@@ -31,7 +31,7 @@ class AODVHelloGenerator : public Element {
 		
 		virtual void push (int, Packet *);
 		
-		void run_timer();
+		void run_timer(Timer *);
 		
 	private:
 		Timer timer;

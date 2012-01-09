@@ -82,7 +82,7 @@
  * that TH_FIN is sent only if all data queued for output is included in the
  * segment.
  */
-static u_char	tcp_outflags[TCP_NSTATES] = {
+static const u_char	tcp_outflags[TCP_NSTATES] = {
 	TH_RST|TH_ACK,		/* 0, CLOSED */
 	0,			/* 1, LISTEN */
 	TH_SYN,			/* 2, SYN_SENT */
@@ -94,7 +94,7 @@ static u_char	tcp_outflags[TCP_NSTATES] = {
 	TH_FIN|TH_ACK,		/* 8, LAST_ACK */
 	TH_ACK,			/* 9, FIN_WAIT_2 */
 	TH_ACK,			/* 10, TIME_WAIT */
-};	
+};
 #endif
 
 #ifdef KPROF

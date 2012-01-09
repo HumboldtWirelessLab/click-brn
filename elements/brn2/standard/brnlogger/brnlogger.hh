@@ -178,6 +178,10 @@ public:
       delete _id_map;
       _id_map = NULL;
     }
+    if ( _buffer != NULL ) {
+      delete[] _buffer;
+      _buffer = NULL;
+    }
   }
 };
 

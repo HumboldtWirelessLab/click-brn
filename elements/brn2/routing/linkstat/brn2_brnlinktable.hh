@@ -30,6 +30,8 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/routecache/brn2routecache.hh"
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 /*
  * =c
@@ -82,18 +84,25 @@ inline unsigned
   return hashcode(p._to) + hashcode(p._from);
 }
 
+
+/* Sources of Linkupdates
+ * Used to enable or disable linkupdates from a specific source
+ */
+#define LINKTABLE_UPDATESOURCE_LINKSTAT 0x0001
+#define LINKTABLE_UPDATESOURCE_ROUTING  0x0002
+#define LINKTABLE_UPDATESOURCE_LINKDIST 0x0004
+
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Brn2LinkTable: public Element {
+class Brn2LinkTable: public BRNElement {
  public:
   //
   //member
   //
-  int _debug;
-
   Vector<EtherAddress> last_route;
 
+  bool _fix_linktable;
   //
   //methods
   //
@@ -121,7 +130,7 @@ class Brn2LinkTable: public Element {
   String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
   /* other public functions */
 
-  bool update_link(EtherAddress from, EtherAddress to, 
+  bool update_link(EtherAddress from, EtherAddress to,
                    uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
     return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, permanent);
   }
@@ -129,14 +138,15 @@ class Brn2LinkTable: public Element {
   bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                    IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
 
-  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age,
+                         uint32_t metric, bool permanent=false) {
     return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
   }
 
-  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, 
-        IPAddress b_ip, uint32_t seq, uint32_t age, uint32_t metric,bool permanent=false) {
-          if (update_link(a, a_ip, b, b_ip, seq,age, metric, permanent)) {
-            return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
+  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, IPAddress b_ip,
+                         uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+    if (update_link(a, a_ip, b, b_ip, seq, age, metric, permanent)) {
+      return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
     }
     return false;
   }
@@ -211,13 +221,13 @@ private:
     uint32_t _age;
     bool     _permanent;
     struct timeval _last_updated;
-    BrnLinkInfo() { 
-      _from = EtherAddress(); 
-      _to = EtherAddress(); 
-      _metric = 0; 
+    BrnLinkInfo() {
+      _from = EtherAddress();
+      _to = EtherAddress();
+      _metric = 0;
       _seq = 0;
       _age = 0;
-      _last_updated.tv_sec = 0; 
+      _last_updated.tv_sec = 0;
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to, 
@@ -244,6 +254,7 @@ private:
       now = Timestamp::now().timeval();
       return _age + (now.tv_sec - _last_updated.tv_sec);
     }
+
     void update(uint32_t seq, uint32_t age, uint32_t metric) {
       if (seq <= _seq) {
         return;

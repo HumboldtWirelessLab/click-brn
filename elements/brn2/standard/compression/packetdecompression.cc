@@ -79,14 +79,25 @@ PacketDecompression::push( int /*port*/, Packet *packet )
     case COMPRESSION_MODE_FULL: {
       struct compression_header *ch = (struct compression_header *)p->data();
       int uncompsize = ntohs(ch->uncompressed_len);
+      bool is_lzw = false;
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
-        resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+
+        if ( ch->compression_type == COMPRESSION_TYPE_LZW ) {
+          resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+          is_lzw = true;
+        } else if ( ch->compression_type == COMPRESSION_TYPE_STRIP ) {
+          resultsize = uncompsize;
+        } else {
+          BRN_WARN("Shit. Unknown compression type");
+        }
 
         if ( resultsize == uncompsize ) {
           p->pull(sizeof(struct compression_header));
           p = p->put(uncompsize - p->length());
-          memcpy(p->data(), compbuf, uncompsize );
+          if ( is_lzw ) {
+            memcpy(p->data(), compbuf, uncompsize );
+          }
           BRN_INFO("Decode: Uncomplen %d Resultlen: %d.", uncompsize, resultsize);
           output(DECOMP_OUTPORT).push(p);
         } else {
@@ -109,21 +120,24 @@ PacketDecompression::push( int /*port*/, Packet *packet )
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
         resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header) + sizeof(struct click_ether)]),
-                                  p->length() - (sizeof(struct compression_header) + sizeof(struct click_ether)), compbuf, uncompsize );
+                                  p->length() - (sizeof(struct compression_header) + sizeof(struct click_ether)),
+                                  compbuf, uncompsize );
 
         if ( resultsize == uncompsize ) {
           p->pull(sizeof(struct compression_header) + sizeof(struct click_ether)); //remove mac + compression header
           p = p->put(resultsize - p->length());
           memcpy(p->data(), compbuf, resultsize );
 
-          p = p->push(sizeof(click_ether) - sizeof(uint16_t));  //add mac  //TODO: short this ( don't pull than push again, use 1 pull )
+          p = p->push(sizeof(click_ether) - sizeof(uint16_t));  //add mac //TODO: short this ( don't pull than push again, use 1 pull )
           memcpy(p->data(), macbuf, sizeof(click_ether) - sizeof(uint16_t));
 
           output(DECOMP_OUTPORT).push(p);
         } else {
+          BRN_WARN("Resultsize not accepted: RS: %d vs. UNCS: %d",resultsize, uncompsize);
           output(DECOMP_ERROR_OUTPORT).push(packet);
         }
       } else {
+        BRN_WARN("Buffer too small");
         output(DECOMP_ERROR_OUTPORT).push(packet);
       }
       break;
@@ -134,7 +148,8 @@ PacketDecompression::push( int /*port*/, Packet *packet )
       int uncompsize = ntohs(ch->uncompressed_len);
 
       if ( uncompsize <= MAX_COMPRESSION_BUFFER ) {
-        resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header), compbuf, uncompsize);
+        resultsize = lzw.decode(&(p->data()[sizeof(struct compression_header)]), p->length() - sizeof(struct compression_header),
+                                  compbuf, uncompsize);
 
         if ( resultsize == uncompsize ) {
           p->pull(sizeof(struct compression_header));
@@ -147,15 +162,54 @@ PacketDecompression::push( int /*port*/, Packet *packet )
 
           output(DECOMP_OUTPORT).push(p);
         } else {
+          BRN_WARN("Resultsize not accepted: RS: %d vs. UNCS: %d",resultsize, uncompsize);
           output(DECOMP_ERROR_OUTPORT).push(p);
         }
       } else {
+        BRN_WARN("Buffer too small");
         output(DECOMP_ERROR_OUTPORT).push(p);
       }
     }
   }
 }
 
+/*Packet *
+PacketDecompression::decompress(Packet *p, uint16_t offset, uint16_t compression_type, uint16_t uncompsize)
+{
+  WritablePacket *p_uncomp;
+  int resultsize;
+
+  switch ( compression_type ) {
+    case COMPRESSION_TYPE_LZW :
+    {
+      resultsize = lzw.decode(((unsigned char*)p->data()) + offset, p->length() - offset, compbuf, uncompsize);
+
+      if ( resultsize == uncompsize ) {
+        p_uncomp = p->put(resultsize - (p->length() - offset));
+        memcpy(((unsigned char*)p->data()) + offset, compbuf, uncompsize );
+
+
+      break;
+    }
+    case COMPRESSION_TYPE_STRIP :
+    {
+      if ( oldlen > _strip_len ) {
+        p->take(oldlen - _strip_len);
+        resultsize = _strip_len;
+      } else {
+        resultsize = oldlen;
+      }
+      break;
+    }
+    default :
+    {
+      BRN_WARN("Unknown compression_type: %d",compression_type);
+    }
+  }
+
+  return resultsize;
+}
+*/
 void
 PacketDecompression::add_handlers()
 {

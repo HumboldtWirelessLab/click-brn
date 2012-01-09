@@ -35,14 +35,13 @@ JitterUnqueue::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 	int maxdelay =0;
 	int mindelay = 0;
-	int result =  cp_va_parse(conf, this, errh,
-	                          cpInteger, "maxdelay", &maxdelay,
-	                          cpOptional,
-	                          cpInteger, "mindelay", &mindelay,
-	                          0);
-	_maxdelay = make_timeval ((int) (maxdelay / 1000),(maxdelay % 1000));
-	_mindelay = make_timeval ((int) (mindelay / 1000),(mindelay % 1000));
-	_minmaxdiff = _maxdelay - _mindelay;
+	int result =  cp_va_kparse(conf, this, errh,
+	                          "maxdelay", cpkP+cpkM, cpInteger, &maxdelay,
+                            "mindelay", cpkP, cpInteger, &mindelay,
+	                          cpEnd);
+	_maxdelay = Timestamp((int) (maxdelay / 1000),(maxdelay % 1000)).timeval();
+	_mindelay = Timestamp((int) (mindelay / 1000),(mindelay % 1000)).timeval();
+  _minmaxdiff = (Timestamp(_maxdelay) - Timestamp(_mindelay)).timeval();
 	_minmaxdiff_usec = _minmaxdiff.tv_usec + 1000000*_minmaxdiff.tv_sec;
 	return result;
 }
@@ -52,16 +51,17 @@ JitterUnqueue::initialize(ErrorHandler *errh)
 {
 	ScheduleInfo::initialize_task(this, &_task, errh);
 	_signal = Notifier::upstream_empty_signal(this, 0, &_task);
-	_expire.tv_sec=0;_expire.tv_usec=0;
+	_expire.tv_sec=0;
+  _expire.tv_usec=0;
 	return 0;
 }
 
 bool
-JitterUnqueue::run_task()
+JitterUnqueue::run_task(Task *)
 {
 	// listening for notifications
 	struct timeval now;
-	click_gettimeofday(&now);
+	 now = Timestamp::now().timeval();
 
 	//timeradd(&now, &_delay, &expires);
 	bool worked = false;
@@ -74,7 +74,7 @@ JitterUnqueue::run_task()
 
 		}
 		uint32_t delay_usec = (_minmaxdiff_usec) ? (click_random() % _minmaxdiff_usec) : 0;
-		_expire = now + _mindelay + mk_tval(0,delay_usec);
+		_expire = (Timestamp(now) + Timestamp(_mindelay) + Timestamp(mk_tval(0,delay_usec))).timeval();
 
 		if ((!worked) && (!_signal)) // no Packet available
 			return false;		// without rescheduling
@@ -88,16 +88,16 @@ void
 JitterUnqueue::set_maxdelay(int maxdelay)
 {
 
-	_maxdelay = make_timeval ((int) (maxdelay / 1000),(maxdelay % 1000));
-	_minmaxdiff = _maxdelay - _mindelay;
+	_maxdelay = Timestamp((int) (maxdelay / 1000),(maxdelay % 1000)).timeval();
+	_minmaxdiff = (Timestamp(_maxdelay) - Timestamp(_mindelay)).timeval();
 	_minmaxdiff_usec = _minmaxdiff.tv_usec + 1000000*_minmaxdiff.tv_sec;
 }
 
 void
 JitterUnqueue::set_mindelay(int mindelay)
 {
-	_mindelay = make_timeval ((int) (mindelay / 1000),(mindelay % 1000));
-	_minmaxdiff = _maxdelay - _mindelay;
+	_mindelay = Timestamp((int) (mindelay / 1000),(mindelay % 1000)).timeval();
+	_minmaxdiff = (Timestamp(_maxdelay) - Timestamp(_mindelay)).timeval();
 	_minmaxdiff_usec = _minmaxdiff.tv_usec + 1000000*_minmaxdiff.tv_sec;
 }
 
@@ -106,9 +106,9 @@ JitterUnqueue::set_maxdelay_handler(const String &conf, Element *e, void *, Erro
 {
 	JitterUnqueue* me = (JitterUnqueue *) e;
 	int maxdelay = 0;
-	int res =  cp_va_parse(conf, me, errh,
-	                          cpInteger, "maxdelay", &maxdelay,
-	                          0);
+	int res =  cp_va_kparse(conf, me, errh,
+                          "maxdelay", cpkP, cpInteger, &maxdelay,
+	                          cpEnd);
 	me->set_maxdelay(maxdelay);
 	return res;
 }
@@ -118,9 +118,9 @@ JitterUnqueue::set_mindelay_handler(const String &conf, Element *e, void *, Erro
 {
 	JitterUnqueue* me = (JitterUnqueue *) e;
 	int mindelay = 0;
-	int res =  cp_va_parse(conf, me, errh,
-	                          cpInteger, "mindelay", &mindelay,
-	                          0);
+	int res =  cp_va_kparse(conf, me, errh,
+                          "mindelay", cpkP, cpInteger, &mindelay,
+	                          cpEnd);
 	me->set_mindelay(mindelay);
 	return res;
 }

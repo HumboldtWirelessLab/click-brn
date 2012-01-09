@@ -27,7 +27,7 @@ class BRN2PacketSource : public BRNElement {
 
   const char *class_name() const  { return "BRN2PacketSource"; }
   const char *processing() const  { return PUSH; }
-  const char *port_count() const  { return "0-1/1"; }
+  const char *port_count() const  { return "0-1/1-2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -74,6 +74,9 @@ class BRN2PacketSource : public BRNElement {
   } __attribute__ ((packed));
 
   struct packetinfo pinfo;
+
+  bool _reuse;
+  uint32_t _reuseoffset;
 
 };
 

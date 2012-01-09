@@ -53,7 +53,7 @@ inline unsigned ett2_metric(int ack_prob, int data_prob, int data_rate)
   unsigned low_usecs = calc_usecs_wifi_packet(1500, data_rate, retries/100);
   unsigned high_usecs = calc_usecs_wifi_packet(1500, data_rate, (retries/100) + 1);
 
-  click_chatter("low_usecs = %d, high_usecs = %d\n", low_usecs, high_usecs);
+  //click_chatter("low_usecs = %d, high_usecs = %d\n", low_usecs, high_usecs);
 
   unsigned diff = retries % 100;
   unsigned average = (diff * high_usecs + (100 - diff) * low_usecs) / 100;
@@ -68,6 +68,7 @@ public:
 
   BRNETTMetric();
   ~BRNETTMetric();
+
   const char *class_name() const { return "BRNETTMetric"; }
   const char *processing() const { return AGNOSTIC; }
 

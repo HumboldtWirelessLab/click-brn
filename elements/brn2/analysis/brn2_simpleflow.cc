@@ -370,10 +370,10 @@ BRN2SimpleFlow::xml_stats()
     sa << " packet_size=\"" << fl._size << "\"";
     sa << " replies=\"" << fl._rxPackets << "\"";
     if ( fl._rxPackets > 0 ) {
-      sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
+      sa << " avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
       sa << " time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
     } else {
-      sa << " avg. hops=\"0\" time=\"0\" />\n";
+      sa << " avg_hops=\"0\" time=\"0\" />\n";
     }
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
@@ -383,8 +383,8 @@ BRN2SimpleFlow::xml_stats()
     sa << " dst=\"" << fl._dst.unparse().c_str() << "\" flowid=\"" << fl._id << "\"";
     sa << " packet_count=\"" << fl._rxPackets << "\" packet_size=\"" << fl._size << "\"";
     sa << " crc_err=\"" << fl._rxCrcErrors << "\"";
-    if ( fl._rxPackets == 0 ) sa << " avg. hops=\"-1\" />\n";
-    else sa << " avg. hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
+    if ( fl._rxPackets == 0 ) sa << " avg_hops=\"-1\" />\n";
+    else sa << " avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
   }
   sa << "</flowstats>\n";
   return sa.take_string();

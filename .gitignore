@@ -31,3 +31,6 @@ click_install/*
 man
 stamp-egroup
 stamp-h
+include/tinyxml
+lib/libtinyxml.a
+userlevel/libtinyxml.a

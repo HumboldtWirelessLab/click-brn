@@ -1,4 +1,4 @@
-// -*- mode: c++; c-basic-offset: 4 -*-
+// -*- related-file-name: "../include/click/fromfile.hh"; c-basic-offset: 4 -*-
 /*
  * fromfile.{cc,hh} -- provides convenient, fast access to files
  * Eddie Kohler
@@ -418,6 +418,8 @@ FromFile::take_state(FromFile &o, ErrorHandler *errh)
     _mmap = o._mmap;
     _mmap_unit = o._mmap_unit;
     _mmap_off = o._mmap_off;
+#else
+    (void) errh;
 #endif
 
     _file_offset = o._file_offset;

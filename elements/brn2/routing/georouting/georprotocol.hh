@@ -11,8 +11,9 @@ CLICK_DECLS
 
 #define GEOR_TYPE_ROUTING      0
 #define GEOR_TYPE_ROUTEREQUEST 1
-#define GEOR_TYPE_ROUTEREPLAY  2
+#define GEOR_TYPE_ROUTEREPLY   2
 
+#define GEOR_DAFAULT_MAX_HOP_COUNT 45
 
 struct geor_header {
   uint8_t type;

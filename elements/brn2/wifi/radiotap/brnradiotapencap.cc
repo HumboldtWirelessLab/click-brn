@@ -175,7 +175,7 @@ BrnRadiotapEncap::simple_action(Packet *p)
     crh->wt_data_retries2 = ceh->max_tries2;
     crh->wt_data_retries3 = ceh->max_tries3;
 
-    crh->wt_queue = BRNPacketAnno::tos_anno(p);
+    crh->wt_queue = BrnWifi::getTxQueue(ceh);
   }
 
   return p_out;

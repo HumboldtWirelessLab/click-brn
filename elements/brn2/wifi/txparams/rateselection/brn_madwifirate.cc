@@ -58,8 +58,8 @@ BrnMadwifiRate::adjust_all(NeighborTable *neighbors)
   Vector<EtherAddress> n;
 
   for (NIter iter = neighbors->begin(); iter.live(); iter++) {
-    NeighbourRateInfo nri = iter.value();
-    n.push_back(nri._eth);
+    NeighbourRateInfo *nri = iter.value();
+    n.push_back(nri->_eth);
   }
 
   for (int x =0; x < n.size(); x++) {
@@ -70,7 +70,7 @@ BrnMadwifiRate::adjust_all(NeighborTable *neighbors)
 void
 BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 {
-  NeighbourRateInfo *nri = neighbors->findp(dst);
+  NeighbourRateInfo *nri = neighbors->find(dst);
   DstInfo *nfo = (DstInfo*)nri->_rs_data;
 
   BRN_DEBUG("Adjust");

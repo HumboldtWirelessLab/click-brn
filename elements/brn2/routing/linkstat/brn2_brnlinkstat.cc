@@ -29,6 +29,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -47,8 +48,6 @@ BRN2LinkStat::BRN2LinkStat()
     _tau(10000),
     _period(1000),
     _seq(0),
-    _ett_metric(0),
-    _etx_metric(0),
     _next_neighbor_to_add(0),
     _timer(0),
     _stale_timer(this),
@@ -57,6 +56,7 @@ BRN2LinkStat::BRN2LinkStat()
     _stale(LINKSTAT_DEFAULT_STALE)
 {
   BRNElement::init();
+  _metrics.clear();
 }
 
 BRN2LinkStat::~BRN2LinkStat()
@@ -81,8 +81,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "TAU", cpkP+cpkM, cpUnsigned, &_tau,
               "PROBES", cpkP+cpkM, cpString, &probes,
               "RT", cpkP+cpkM, cpElement, &_rtable,
-              "ETT", cpkP, cpElement, &_ett_metric,
-              "ETX", cpkP, cpElement, &_etx_metric,
+              "METRIC", cpkP, cpString, &_metric_str,
               "STALE", cpkP, cpInteger, &_stale,
               "DEBUG", cpkP, cpInteger, &_debug,
             cpEnd);
@@ -96,14 +95,8 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_dev || !_dev->cast("BRN2Device"))
     return errh->error("BRN2Device element is not provided or not a BRN2Device");
 
-  if (_ett_metric && !_ett_metric->cast("BRNETTMetric"))
-    return errh->error("BRNETTMetric element is not a BRNETTMetric");
-
-  if (_etx_metric && !_etx_metric->cast("BRN2ETXMetric"))
-    return errh->error("BRNETXMetric element is not a BRNETXMetric");
-
-  if (!_rtable || !_rtable->cast("AvailableRates"))
-    return errh->error("RT element is not a AvailableRates");
+  if (!_rtable || !_rtable->cast("BrnAvailableRates"))
+    return errh->error("RT element is not a BrnAvailableRates");
 
   return res;
 }
@@ -112,6 +105,21 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2LinkStat::initialize(ErrorHandler *errh)
 {
+
+  Vector<String> metric_vec;
+  cp_spacevec(_metric_str, metric_vec);
+
+  for (int i = 0; i < metric_vec.size(); i++) {
+    Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
+    if ( new_element != NULL ) {
+      //click_chatter("El-Name: %s", new_element->class_name());
+      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      if ( gm != NULL ) {
+        _metrics.push_back(gm);
+      }
+    }
+  }
+
   if (noutputs() > 0) {
     if (!_dev) return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
 
@@ -198,14 +206,8 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
 void
 BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
 {
-  if (_ett_metric) {
-    BRN_DEBUG(" * update ett_metric.");
-    _ett_metric->update_link(from, to, rs, fwd, rev, seq);
-  }
-
-  if (_etx_metric) {
-    BRN_DEBUG(" * update etx_metric.");
-    _etx_metric->update_link(from, to, rs, fwd, rev, seq);
+  for (int i = 0; i < _metrics.size(); i++) {
+    _metrics[i]->update_link(from, to, rs, fwd, rev, seq);
   }
 }
 
@@ -223,10 +225,13 @@ BRN2LinkStat::send_probe_hook()
   int p = _period / _ads_rs.size(); //period (msecs); _ads_rs.size(): probe count
   unsigned max_jitter = p / 10;
 
-  send_probe();
-
   struct timeval period;
   timerclear(&period);
+
+  send_probe();
+
+//  struct timeval period;
+//  timerclear(&period);
 
   period.tv_usec += (p * 1000);
   period.tv_sec += period.tv_usec / 1000000;
@@ -235,6 +240,8 @@ BRN2LinkStat::send_probe_hook()
   timeradd(&period, &_next, &_next);
   brn2add_jitter2(max_jitter, &_next);
   _timer->schedule_at(_next);
+
+
 }
 
 /*
@@ -308,14 +315,14 @@ BRN2LinkStat::send_probe()
    */
   if (_rtable) {
     // my wireless device is capable to transmit packets at rates (e.g. 2 4 11 12 18 22 24 36 48 72 96 108)
-    Vector<int> rates = _rtable->lookup(*(_dev->getEtherAddress()));
+    Vector<MCS> rates = _rtable->lookup(*(_dev->getEtherAddress()));
 
     if (rates.size() && 1 + ptr + rates.size() < end) { // put my available rates into the packet
       ptr[0] = rates.size(); // available rates count
       ptr++;
       int x = 0;
       while (ptr < end && x < rates.size()) {
-        ptr[x] = rates[x];
+        ptr[x] = rates[x].get_packed_8();
         x++;
       }
       ptr += rates.size();
@@ -384,7 +391,7 @@ BRN2LinkStat::send_probe()
     lp->_flags |= PROBE_HANDLER_PAYLOAD; // indicate that handler_info are available
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
-      int res = _reg_handler[h]._handler(_reg_handler[h]._element, NULL, (char*)&(ptr[3]), (space_left-4), true);
+      int res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, _dev->getEtherAddress(), (char*)&(ptr[3]), (space_left-4));
       if ( res > (space_left-4) ) {
         BRN_WARN("Handler %d want %d but %d was left",_reg_handler[h]._protocol,res,space_left-4);
         res = 0;
@@ -411,7 +418,9 @@ BRN2LinkStat::send_probe()
    */
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   ceh->magic = WIFI_EXTRA_MAGIC;
-  ceh->rate = rate;                                     // this packet should be transmitted at the given rate
+  MCS mcs;
+  mcs.set_packed_16(rate);
+  mcs.setWifiRate(ceh, 0);                                    // this packet should be transmitted at the given rate
   ceh->max_tries = 1;
   ceh->max_tries1 = 0;
   ceh->max_tries2 = 0;
@@ -436,6 +445,10 @@ BRN2LinkStat::simple_action(Packet *p)
   struct timeval now = Timestamp::now().timeval();
   click_ether *eh = (click_ether *) p->ether_header();
   click_brn *brn = (click_brn *) p->data();
+
+  /* best_xxx used to set fwd and rev for rx_handler (other elements) */
+  uint8_t best_fwd = 0;
+  uint8_t best_rev = 0;
 
   EtherAddress src_ea = EtherAddress(eh->ether_shost);
   if (p->length() < (sizeof(click_brn) + sizeof(link_probe))) {
@@ -490,8 +503,9 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (WIFI_EXTRA_MAGIC == ceh->magic)  // check if extra header is present !!!
   {
-    if (ceh->rate != rate) {
-      BRN_WARN("packet says rate %d is %d; drop it.", rate,  ceh->rate);
+    MCS mcs = MCS(ceh,0);
+    if (mcs.get_packed_16() != rate) {
+      BRN_WARN("packet says rate %d is %d; drop it.", rate, mcs.get_packed_16());
       BRNElement::packet_kill(p);
       //p->kill();
       return 0;
@@ -557,11 +571,12 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (lp->_flags & PROBE_AVAILABLE_RATES) { // available rates where transmitted
     int num_rates = ptr[0];
-    Vector<int> rates;
+    Vector<MCS> rates;
     ptr++;
     int x = 0;
     while (ptr < end && x < num_rates) {
-      int rate = ptr[x];
+      MCS rate;
+      rate.set_packed_8(ptr[x]);
       rates.push_back(rate);
       x++;
     }
@@ -587,6 +602,7 @@ BRN2LinkStat::simple_action(Packet *p)
       Vector<BrnRateSize> rates;
       Vector<uint8_t> fwd;
       Vector<uint8_t> rev;
+
       for (int x = 0; x < num_rates; x++) {
         struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
 
@@ -596,9 +612,14 @@ BRN2LinkStat::simple_action(Packet *p)
         BrnRateSize rs = BrnRateSize(ntohs(nfo->_rate), ntohs(nfo->_size));
         // update other link stuff
         rates.push_back(rs);
+
         fwd.push_back(nfo->_fwd); // forward delivery ratio
+
         if (neighbor == *(_dev->getEtherAddress())) { // reverse delivery ratio is available -> use it.
-          rev.push_back(l->rev_rate(_start, rates[x]._rate, rates[x]._size));
+          if ( nfo->_fwd > best_fwd ) best_fwd = nfo->_fwd;
+          uint8_t rev_rate = l->rev_rate(_start, rates[x]._rate, rates[x]._size);
+          if ( rev_rate > best_rev ) best_rev = rev_rate;
+          rev.push_back(rev_rate);
         } else {
           rev.push_back(nfo->_rev);
         }
@@ -642,7 +663,8 @@ BRN2LinkStat::simple_action(Packet *p)
 
       for ( int h = 0; h < _reg_handler.size(); h++ ) {
         if ( proto == _reg_handler[h]._protocol )
-          /*int res =*/ _reg_handler[h]._handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s, false);
+          /*int res =*/ _reg_handler[h]._rx_handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s,
+           /*is_neighbour*/(best_fwd > 80) && (best_rev > 80), /*fwd_rate*/best_fwd , /*rev_rate*/best_rev);
       }
 
       ptr += s;
@@ -653,6 +675,17 @@ BRN2LinkStat::simple_action(Packet *p)
   BRNElement::packet_kill(p);
 
   return 0;
+}
+
+
+bool
+BRN2LinkStat::is_neighbour(EtherAddress *n)
+{
+  for (int x = 0; x < _neighbors.size(); x++) {
+    if ( _neighbors[x] == *n ) return true;
+  }
+
+  return false;
 }
 
 /* Returns some information about the nodes world model */
@@ -782,8 +815,8 @@ sa << "</xs:schema>";
 String
 BRN2LinkStat::read_bcast_stats()
 {
-
   Timestamp now = Timestamp::now();
+  MCS rate;
 
   Vector<EtherAddress> ether_addrs;
 
@@ -811,7 +844,12 @@ BRN2LinkStat::read_bcast_stats()
 
     for (int x = 0; x < pl->_probe_types.size(); x++) {
       sa << "\t\t<link_info size='" << pl->_probe_types[x]._size << "'";
-      sa << " rate='" << pl->_probe_types[x]._rate << "'";
+
+      rate.set_packed_16(pl->_probe_types[x]._rate);
+      uint32_t is_ht = (rate._is_ht)?(uint32_t)1:(uint32_t)0;
+      sa << " rate='" << rate.to_string() << "' n='" << is_ht;
+      sa <<  "' mcsindex='" << (uint32_t)rate._ridx << "' ht40='" << (uint32_t)rate._ht40 << "' sgi='" << (uint32_t)rate._sgi << "'";
+
       int rev_rate = pl->rev_rate(_start, pl->_probe_types[x]._rate,
                                  pl->_probe_types[x]._size);
       sa << " fwd='" << (uint32_t)pl->_fwd_rates[x] << "'";
@@ -898,14 +936,16 @@ BRN2LinkStat::get_rev_rate(EtherAddress *ea)
   return ( probe->rev_rate(_start, rs._rate, rs._size) ); // reverse delivery ratio
 }
 
-int
-BRN2LinkStat::registerHandler(void *element, int protocolId, int (*handler)(void *element, EtherAddress *ea, char *buffer, int size, bool direction)) {
-  _reg_handler.push_back(HandlerInfo(element, protocolId, handler));
+int32_t
+BRN2LinkStat::registerHandler(void *element, int protocolId, int32_t (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size),
+                              int32_t (*rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate))
+{
+  _reg_handler.push_back(HandlerInfo(element, protocolId, tx_handler, rx_handler));
   return 0;
 }
 
 int
-BRN2LinkStat::deregisterHandler(int /*handler*/, int /*protocolId*/) {
+BRN2LinkStat::deregisterHandler(int32_t /*handle*/, int /*protocolId*/) {
   //TODO
   return 0;
 }
@@ -951,8 +991,12 @@ BRNLinkStat_read_param(Element *e, void *thunk)
       sa << "<probes id='" << *(td->_dev->getEtherAddress()) << "'";
       sa << " time='" << now.unparse() << "'>\n";
 
+      MCS rate;
       for(int x = 0; x < td->_ads_rs.size(); x++) {
-        sa << "<probe rate='" << td->_ads_rs[x]._rate << "' size='" << td->_ads_rs[x]._size << "' />\n";
+        rate.set_packed_16(td->_ads_rs[x]._rate);
+        uint32_t is_ht = (rate._is_ht)?(uint32_t)1:(uint32_t)0;
+        sa << "<probe rate='" << rate.to_string() << "' n='" << is_ht << "' mcsindex='" << (uint32_t)rate._ridx;
+        sa << "' ht40='" << (uint32_t)rate._ht40 << "' sgi='" << (uint32_t)rate._sgi << "' size='" << td->_ads_rs[x]._size << "' />\n";
       }
       sa << "</probes>\n";
       return sa.take_string() + "\n";
@@ -991,22 +1035,59 @@ BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandl
       break;
     }
     case H_PROBES: {
+      MCS new_mcs;
       Vector<BrnRateSize> ads_rs;
-      Vector<String> a;
-      cp_spacevec(s, a);
-      if (a.size() % 2 != 0) {
-        return errh->error("must provide even number of numbers\n");
-      }
-      for (int x = 0; x < a.size() - 1; x += 2) {
+      Vector<String> args;
+      cp_spacevec(s, args);
+//    if (args.size() % 2 != 0) {
+//      return errh->error("must provide even number of numbers\n");
+//    }
+      for (int x = 0; x < args.size() - 1;) {
         int rate;
         int size;
-        if (!cp_integer(a[x], &rate)) {
+        int8_t ht_rate = RATE_HT_NONE;
+        uint8_t sgi = 0;
+        uint8_t ht = 0;
+
+        ht_rate = RATE_HT_NONE;
+
+        if (args[x] == "HT20") {
+          ht_rate = RATE_HT20;
+          sgi = 0;
+          ht = 0;
+        } else if (args[x] == "HT20_SGI") {
+          ht_rate = RATE_HT20_SGI;
+          sgi = 1;
+          ht = 0;
+        } else if (args[x] == "HT40") {
+          ht_rate = RATE_HT40;
+          sgi = 0;
+          ht = 1;
+        } else if (args[x] == "HT40_SGI") {
+          ht_rate = RATE_HT40_SGI;
+          sgi = 1;
+          ht = 1;
+        }
+
+        if ( ht_rate != RATE_HT_NONE ) { //we have a ht rate so rate is next index now
+          x++;
+        }
+
+        if (!cp_integer(args[x], &rate)) {
           return errh->error("invalid PROBES rate value\n");
         }
-        if (!cp_integer(a[x + 1], &size)) {
+
+        if (!cp_integer(args[x + 1], &size)) {
           return errh->error("invalid PROBES size value\n");
         }
-        ads_rs.push_back(BrnRateSize(rate, size));
+
+        x+=2;
+
+        if ( ht_rate == RATE_HT_NONE )
+          ads_rs.push_back(BrnRateSize(rate, size));
+        else {
+          ads_rs.push_back(BrnRateSize(MCS(rate, ht, sgi).get_packed_16(), size));
+        }
       }
       if (!ads_rs.size()) {
         return errh->error("no PROBES provided\n");

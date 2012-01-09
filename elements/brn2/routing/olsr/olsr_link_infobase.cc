@@ -26,12 +26,12 @@ OLSRLinkInfoBase::~OLSRLinkInfoBase()
 int
 OLSRLinkInfoBase::configure (Vector<String> &conf, ErrorHandler *errh)
 {
-	if (cp_va_parse(conf, this, errh,
-	                cpElement, "NeighborInfoBase element", &_neighborInfo,
-	                cpElement, "InterfaceInfoBase element", &_interfaceInfo,
-	                cpElement, "Duplicate Set element", &_duplicateSet,
-	                cpElement, "Routing Table Element", &_routingTable,
-	                cpElement, "TC generator element", &_tcGenerator, 0) < 0)
+	if (cp_va_kparse(conf, this, errh,
+      "NeighborInfoBase element", cpkP, cpElement,&_neighborInfo,
+      "InterfaceInfoBase element",cpkP,  cpElement,&_interfaceInfo,
+      "Duplicate Set element", cpkP, cpElement,&_duplicateSet,
+      "Routing Table Element", cpkP, cpElement,&_routingTable,
+      "TC generator element",cpkP,  cpElement,&_tcGenerator, cpEnd) < 0)
 		return -1;
 	return 0;
 }
@@ -57,8 +57,8 @@ OLSRLinkInfoBase::run_timer(Timer *)
 	bool neighbor_removed = false;
 	bool mpr_selector_removed=false;
 	bool neighbor_downgraded = false;
-	click_gettimeofday(&now);
-	next_timeout = make_timeval(0,0);
+	now = Timestamp::now().timeval();
+	next_timeout = Timestamp(0,0).timeval();
 	IPAddress neighbor;
 //	neighbor_data *neighbor_entry;
 	HashMap<IPAddress, IPAddress> links_removed_obj;
@@ -74,13 +74,13 @@ OLSRLinkInfoBase::run_timer(Timer *)
 			link_data *data = (link_data *)iter.value();
 			//store the main address of the node to which this was a link
 			neighbor = data->_main_addr; //_interfaceInfo->get_main_address(data->L_neigh_iface_addr);	
-			if (data->L_time <= now)
+      if (Timestamp(data->L_time) <= Timestamp(now))
 			{
 				links_removed->insert(data->L_neigh_iface_addr, neighbor);
 				click_chatter("link %s <--> %s expired | %d %d\n", data->L_local_iface_addr.unparse().c_str(), data->L_neigh_iface_addr.unparse().c_str(), data->L_time.tv_sec, data->L_time.tv_usec);
 				remove_link(data->L_local_iface_addr, data->L_neigh_iface_addr);
 			}
-			else if (data->L_SYM_time <= now)
+      else if (Timestamp(data->L_SYM_time) <= Timestamp(now))
 			{
 				links_downgraded->insert(data->L_neigh_iface_addr, neighbor);
 // 				neighbor_data* nbr_entry = _neighborInfo->find_neighbor(neighbor);
@@ -105,7 +105,7 @@ OLSRLinkInfoBase::run_timer(Timer *)
 			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end(); link++)
 			{
 				link_data *data = (link_data *)link.value();
-				if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && data->L_SYM_time > now)
+        if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && Timestamp(data->L_SYM_time) > Timestamp(now))
 				{
 					other_links_left = true;
 				}
@@ -131,7 +131,7 @@ OLSRLinkInfoBase::run_timer(Timer *)
 			for (LinkSet::iterator link = _linkSet->begin(); link != _linkSet->end(); link++)
 			{
 				link_data *data = (link_data *)link.value();
-				if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && data->L_SYM_time > now)
+        if (_interfaceInfo->get_main_address(data->L_neigh_iface_addr) == iter.value() && Timestamp(data->L_SYM_time) > Timestamp(now))
 				{
 					sym_link_left = true;
 				}
@@ -170,7 +170,7 @@ OLSRLinkInfoBase::run_timer(Timer *)
 			{
 				next_timeout = time;
 			}
-			if ( time < next_timeout )
+			if ( Timestamp(time) < Timestamp(next_timeout) )
 			{
 				next_timeout = time;
 			}

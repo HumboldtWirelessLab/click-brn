@@ -281,7 +281,7 @@ FromDump::take_state(Element *e, ErrorHandler *errh)
     else if (_force_ip && !fake_pcap_dlt_force_ipable(_linktype))
 	_ff.warning(errh, "unknown linktype %d; can't force IP packets", _linktype);
 
-    _time_offset = o->_time_offset;
+    _timing_offset = o->_timing_offset;
     _packet_filepos = o->_packet_filepos;
 }
 
@@ -316,7 +316,7 @@ FromDump::prepare_times(const Timestamp &ts)
     else if (_last_time_interval)
 	_last_time += _first_time;
     if (_timing)
-	_time_offset = Timestamp::now() - ts;
+	_timing_offset = Timestamp::now_steady() - ts;
     _have_any_times = true;
 }
 
@@ -408,6 +408,26 @@ FromDump::read_packet(ErrorHandler *errh)
     return true;
 }
 
+bool
+FromDump::check_timing(Packet *p)
+{
+    Timestamp now_s = Timestamp::now_steady();
+    Timestamp t = p->timestamp_anno() + _timing_offset;
+    if (now_s < t) {
+	t -= Timer::adjustment();
+	if (now_s < t) {
+	    _timer.schedule_at_steady(t);
+	    if (output_is_pull(0))
+		_notifier.sleep();
+	} else {
+	    if (output_is_push(0))
+		_task.fast_reschedule();
+	}
+	return false;
+    }
+    return true;
+}
+
 void
 FromDump::run_timer(Timer *)
 {
@@ -432,18 +452,8 @@ FromDump::run_task(Task *)
 	    _end_h->call_write(ErrorHandler::default_handler());
 	return false;
     }
-    if (_packet && _timing) {
-	Timestamp now = Timestamp::now();
-	Timestamp t = _packet->timestamp_anno() + _time_offset;
-	if (now < t) {
-	    t -= Timer::adjustment();
-	    if (now < t)
-		_timer.schedule_at(t);
-	    else
-		_task.fast_reschedule();
-	    return false;
-	}
-    }
+    if (_packet && _timing && !check_timing(_packet))
+	return false;
     if (_packet && _force_ip && !fake_pcap_force_ip(_packet, _linktype)) {
 	checked_output_push(1, _packet);
 	_packet = 0;
@@ -472,18 +482,8 @@ FromDump::pull(int)
     bool more = true;
     if (!_packet)
 	more = read_packet(0);
-    if (_packet && _timing) {
-	Timestamp now = Timestamp::now();
-	Timestamp t = _packet->timestamp_anno() + _time_offset;
-	if (t > now) {
-	    t -= Timestamp::make_msec(50);
-	    if (t > now) {
-		_timer.schedule_at(t);
-		_notifier.sleep();
-	    }
-	    return 0;
-	}
-    }
+    if (_packet && _timing && !check_timing(_packet))
+	return 0;
     if (_packet && _force_ip && !fake_pcap_force_ip(_packet, _linktype)) {
 	checked_output_push(1, _packet);
 	_packet = 0;
@@ -566,16 +566,16 @@ void
 FromDump::add_handlers()
 {
     _ff.add_handlers(this, true);
-    add_read_handler("sampling_prob", read_handler, (void *)H_SAMPLING_PROB);
+    add_read_handler("sampling_prob", read_handler, H_SAMPLING_PROB);
     add_data_handlers("active", Handler::OP_READ | Handler::CHECKBOX, &_active);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("encap", read_handler, (void *)H_ENCAP);
-    add_write_handler("stop", write_handler, (void *)H_STOP, Handler::BUTTON);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("encap", read_handler, H_ENCAP);
+    add_write_handler("stop", write_handler, H_STOP, Handler::BUTTON);
     add_data_handlers("packet_filepos", Handler::OP_READ, &_packet_filepos);
-    add_write_handler("extend_interval", write_handler, (void *)H_EXTEND_INTERVAL);
+    add_write_handler("extend_interval", write_handler, H_EXTEND_INTERVAL);
     add_data_handlers("count", Handler::OP_READ, &_count);
-    add_write_handler("reset_counts", write_handler, (void *)H_RESET_COUNTS, Handler::BUTTON);
-    add_write_handler("reset_timing", write_handler, (void *)H_RESET_TIMING, Handler::BUTTON);
+    add_write_handler("reset_counts", write_handler, H_RESET_COUNTS, Handler::BUTTON);
+    add_write_handler("reset_timing", write_handler, H_RESET_TIMING, Handler::BUTTON);
     if (output_is_push(0))
 	add_task_handlers(&_task);
 }

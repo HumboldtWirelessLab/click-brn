@@ -23,6 +23,7 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 
+#include "elements/brn2/wifi/brn2_wirelessinfolist.hh"
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
@@ -55,8 +56,11 @@ class FilterBSSID : public BRNElement { public:
 
   void push(int port, Packet *p);
 
-  bool _active;
   class WirelessInfo *_winfo;
+  BRN2WirelessInfoList *_winfo_list;
+
+  bool _active;
+
 };
 
 CLICK_ENDDECLS

@@ -38,7 +38,7 @@ namespace IPSummaryDump {
 
 static bool ip_extract(PacketDesc& d, const FieldWriter *f)
 {
-    int network_length = d.network_length();
+    uint32_t network_length = d.network_length();
     switch (f->user_data) {
 
 	// IP header properties
@@ -91,7 +91,7 @@ static bool ip_extract(PacketDesc& d, const FieldWriter *f)
 	d.v = d.iph->ip_p;
 	return true;
       case T_IP_OPT:
-	if (!d.iph || (d.iph->ip_hl > 5 && network_length < (int)(d.iph->ip_hl << 2)))
+	if (!d.iph || (d.iph->ip_hl > 5 && network_length < (uint32_t)(d.iph->ip_hl << 2)))
 	    return field_missing(d, MISSING_IP, (d.iph ? d.iph->ip_hl << 2 : 20));
 	if (d.iph->ip_hl <= 5)
 	    d.vptr[0] = d.vptr[1] = 0;
@@ -347,7 +347,7 @@ static bool ip_ina(PacketOdesc& d, const String &s, const FieldReader *f)
 static void ip_outb(const PacketDesc& d, bool ok, const FieldWriter *f)
 {
     if (f->user_data == T_IP_OPT) {
-	if (!ok || !d.vptr)
+	if (!ok || !d.vptr[0])
 	    *d.sa << '\0';
 	else
 	    unparse_ip_opt_binary(*d.sa, d.vptr[0], d.vptr[1] - d.vptr[0], DO_IPOPT_ALL);

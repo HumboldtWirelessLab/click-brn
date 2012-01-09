@@ -52,10 +52,11 @@ Shows the entries in the database.
 
 class MCS {
   public:
-    uint32_t _data_rate; //datarate * 10
+    uint32_t _data_rate; //datarate * 10 (e.g. 5.5MBit/s -> 11)
 
-    uint8_t _rate;  //used for click_wifi (datarate * 2) only for non_ht
-
+    uint8_t _rate;       //used for click_wifi
+                         // for non_ht: datarate * 2 (e.g. 1MBit/s -> 2)
+                         // for ht: see BrnWifi::fromMCS()
     bool _is_ht;
 
     uint8_t _sgi;
@@ -135,6 +136,55 @@ class MCS {
     uint32_t get_rate() {
       return _data_rate;
     }
+
+/* packet_mcs
+---------------------------------------------------------------------
+|   0   |   1   |   2   |   3   |   4   |   5   |     6    |  7     |
+|                  MCS INDEX            |   BW  | GUARDINT | IS N   |
+---------------------------------------------------------------------
+*/
+    uint8_t get_packed_8() {
+      if ( _is_ht ) {
+        uint8_t _small_ht = ( _ht40 > 0 )?1:0;
+        return (uint8_t)128 | _ridx | (_small_ht << 5) | (_sgi << 6);
+      } else {
+        return _rate;
+      }
+    }
+
+    void set_packed_8(uint8_t packet_mcs) {
+      if ( (packet_mcs & 128) == 0 ) {
+        set(packet_mcs & 127); //clear highest bit and set rate (non_ht)
+      } else {
+        set(packet_mcs & 31, (packet_mcs >> 5) & 1, (packet_mcs >> 6) & 1);
+      }
+    }
+
+    uint16_t get_packed_16() {
+      if ( _is_ht ) {
+        return (uint16_t)32768 | (uint16_t)_rate;
+      } else {
+        return _rate;
+      }
+    }
+
+    void set_packed_16(uint16_t packet_mcs) {
+      if ( (packet_mcs & (uint16_t)32768) == 0 ) {
+        set(packet_mcs & (uint16_t)32767); //clear highest bit and set rate (non_ht)
+      } else {
+        set(packet_mcs & 31, (packet_mcs >> 5) & 3, (packet_mcs >> 7) & 1);
+      }
+    }
+
+    String to_string() {
+      StringAccum sa;
+      sa << _data_rate / 10;
+      if ( ( _data_rate % 10 ) != 0 ) {
+        sa << "." << ( _data_rate % 10 );
+      }
+      return sa.take_string();
+    }
+
 };
 
 class BrnAvailableRates : public BRNElement { public:

@@ -41,8 +41,13 @@
 CLICK_DECLS
 
 BRN2DNSClient::BRN2DNSClient()
-  : _debug(BrnLogger::DEFAULT), _timer(this)
+  : _timer(this),
+    _running_request(false),
+    _no_requests(0),
+    _no_replies(0),
+    _sum_request_time(0)
 {
+  BRNElement::init();
 }
 
 BRN2DNSClient::~BRN2DNSClient()
@@ -99,6 +104,11 @@ BRN2DNSClient::run_timer(Timer* )
 
   packet_out = DNSProtocol::new_dns_question( _domain, 1, 1);
   DNSProtocol::set_dns_header(packet_out, transid++, DNS_STANDARD_QUERY, 0x0001, 0,0,0);
+
+  _no_requests++;
+  _last_request = Timestamp::now();
+  _running_request  = true;
+
   output(0).push(packet_out);
 }
 
@@ -113,6 +123,11 @@ BRN2DNSClient::push( int, Packet *packet )
 
   IPAddress ip = IPAddress(DNSProtocol::get_rddata(packet,&s));
 
+  _ip = ip;
+  _running_request = false;
+  _sum_request_time += (Timestamp::now() - _last_request).msecval();
+  _no_replies++;
+
   name = DNSProtocol::get_name(packet);
   BRN_INFO("DNS-Reply: Name: %s IP: %s",name, ip.unparse().c_str());
   delete[] name;
@@ -120,9 +135,28 @@ BRN2DNSClient::push( int, Packet *packet )
 
 }
 
+String
+BRN2DNSClient::print_stats()
+{
+  StringAccum sa;
+
+  sa << "<dnsclient requested_domains=\"1\" interval=\"" << _interval << "\" >\n";
+  sa << "\t<dns_request domain=\"" << _domain << "\" ip=\"" << _ip << "\" requests=\"" << _no_requests << "\" replies=\"";
+  sa << _no_replies << "\" avg_response_time=\"";
+  if ( _no_replies != 0 ) {
+    sa << (_sum_request_time/_no_replies);
+  } else {
+    sa << "0";
+  }
+
+  sa << "\" />\n";
+  sa << "</dnsclient>\n";
+
+  return sa.take_string();
+}
 
 enum {
-  H_DEBUG,
+  H_STATS,
   H_ACTIVE
 };
 
@@ -131,12 +165,12 @@ read_param(Element *e, void *thunk)
 {
   BRN2DNSClient *td = (BRN2DNSClient *)e;
   switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
-  case H_ACTIVE:
-    return String(td->_active) + "\n";
-  default:
-    return String();
+    case H_STATS:
+      return td->print_stats();
+    case H_ACTIVE:
+      return String(td->_active) + "\n";
+    default:
+      return String();
   }
 }
 
@@ -147,14 +181,6 @@ write_param(const String &in_s, Element *e, void *vparam,
   BRN2DNSClient *f = (BRN2DNSClient *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
-  case H_DEBUG: 
-    {    //debug
-      int debug;
-      if (!cp_integer(s, &debug)) 
-        return errh->error("debug parameter must be int");
-      f->_debug = debug;
-      break;
-    }
   case H_ACTIVE:
     {
       bool active;
@@ -175,8 +201,9 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 BRN2DNSClient::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
+  BRNElement::add_handlers();
+
+  add_read_handler("stats", read_param, (void *) H_STATS);
 
   add_read_handler("active", read_param, (void *) H_ACTIVE);
   add_write_handler("active", write_param, (void *) H_ACTIVE);

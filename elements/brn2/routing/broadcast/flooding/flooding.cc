@@ -41,20 +41,22 @@ CLICK_DECLS
 
 Flooding::Flooding()
   : _flooding_src(0),
-    _flooding_fwd(0)
+    _flooding_fwd(0),
+    _bcast_id(1)
 {
   BRNElement::init();
 }
 
 Flooding::~Flooding()
 {
-  bcast_map.clear();
+  reset();
 }
 
 int
 Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -66,7 +68,6 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 Flooding::initialize(ErrorHandler *)
 {
-  bcast_id = 0;
   return 0;
 }
 
@@ -92,12 +93,15 @@ Flooding::push( int port, Packet *packet )
     WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast)); //add BroadcastHeader
     struct click_brn_bcast *bch = (struct click_brn_bcast*)new_packet->data();
 
-    bch->bcast_id = htons(++bcast_id);
+    bch->bcast_id = htons(_bcast_id);
 
-    add_id(&src,(int32_t)bcast_id, &now);
+    add_id(&src,(uint32_t)_bcast_id, &now);
 
-    _flooding_policy->add_broadcast(&src,(int)bcast_id);
+    _flooding_policy->add_broadcast(&src,(uint32_t)_bcast_id);
     _flooding_src++;                                                           //i was src of a flooding
+
+    _bcast_id++;
+    if ( _bcast_id == 0 ) _bcast_id = 1;
 
     if ( ttl == 0 ) ttl = DEFAULT_TTL;
 
@@ -105,11 +109,14 @@ Flooding::push( int port, Packet *packet )
                                                                          ttl, DEFAULT_TOS);
     BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
 
-    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),bcast_id);
+    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),_bcast_id);
 
     output(1).push(out_packet);
 
   } else if ( port == 1 ) {                                   // kommt von brn
+
+    click_ether *ether = (click_ether *)packet->ether_header();
+    EtherAddress fwd = EtherAddress(ether->ether_shost);
 
     BRN_DEBUG("Flooding: PUSH von BRN\n");
 
@@ -118,11 +125,15 @@ Flooding::push( int port, Packet *packet )
     bcast_header = (struct click_brn_bcast *)(packet->data());
     src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
 
+    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
+
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
     bool is_known = have_id(&src, p_bcast_id, &now);
     ttl--;
 
-    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, p_bcast_id, is_known);
+    uint8_t dev_id = BRNPacketAnno::devicenumber_anno(packet);
+
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known);
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
@@ -164,18 +175,18 @@ Flooding::push( int port, Packet *packet )
 }
 
 void
-Flooding::add_id(EtherAddress *src, int32_t id, Timestamp *now)
+Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now)
 {
-  BroadcastNode *bcn = bcast_map.findp(*src);
+  BroadcastNode *bcn = _bcast_map.find(*src);
 
-  if ( bcn == NULL ) bcast_map.insert(*src, BroadcastNode(src, id));
+  if ( bcn == NULL ) _bcast_map.insert(*src, new BroadcastNode(src, id));
   else bcn->add_id(id,*now);
 }
 
 bool
-Flooding::have_id(EtherAddress *src, int32_t id, Timestamp *now)
+Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now)
 {
-  BroadcastNode *bcn = bcast_map.findp(*src);
+  BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return false;
 
@@ -186,7 +197,15 @@ void
 Flooding::reset()
 {
   _flooding_src = _flooding_fwd = 0;
-  bcast_map.clear();
+
+  BcastNodeMapIter iter = _bcast_map.begin();
+  while (iter != _bcast_map.end())
+  {
+    BroadcastNode* bcn = iter.value();
+    delete bcn;
+  }
+
+  _bcast_map.clear();
 }
 
 
@@ -207,15 +226,15 @@ Flooding::table()
   StringAccum sa;
 
   sa << "<flooding_table node=\"" << BRN_NODE_NAME << "\" >\n";
-  BcastNodeMapIter iter = bcast_map.begin();
-  while (iter != bcast_map.end())
+  BcastNodeMapIter iter = _bcast_map.begin();
+  while (iter != _bcast_map.end())
   {
-    BroadcastNode bcn = iter.value();
-    sa << "\t<src node=\"" << bcn._src.unparse() << "\" ids=\"";
+    BroadcastNode* bcn = iter.value();
+    sa << "\t<src node=\"" << bcn->_src.unparse() << "\" ids=\"";
     for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn._bcast_id_list[i] == -1 ) break;
+      if ( bcn->_bcast_id_list[i] == -1 ) break;
       if ( i != 0 ) sa << ",";
-      sa << bcn._bcast_id_list[i];
+      sa << bcn->_bcast_id_list[i];
     }
     sa << "\" />\n";
     iter++;

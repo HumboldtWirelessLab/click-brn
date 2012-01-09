@@ -27,6 +27,8 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 
@@ -36,7 +38,7 @@ CLICK_DECLS
 /*
  * BRN2ARPClient stuff
  */
-class BRN2ARPClient : public Element {
+class BRN2ARPClient : public BRNElement {
 
  public:
   class BRN2ARPClientRequest {
@@ -45,11 +47,11 @@ class BRN2ARPClient : public Element {
 
    IPAddress ip_add;
 
-   struct timeval _time_start;
+   Timestamp _time_start;
 
    BRN2ARPClientRequest( int _ip )
    {
-     _time_start = Timestamp::now().timeval();
+     _time_start = Timestamp::now();
      ip_add = IPAddress(_ip);
    }
 
@@ -67,7 +69,7 @@ class BRN2ARPClient : public Element {
   const char *class_name() const  { return "BRN2ARPClient"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "1/1"; } 
+  const char *port_count() const  { return "1/1"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
@@ -81,15 +83,14 @@ class BRN2ARPClient : public Element {
   static void static_request_timer_hook(Timer *t, void *f);
   void request_timer_func();
 
+  String print_stats();
+
  private:
   int arp_reply(Packet *p);
   int send_arp_request( uint8_t *d_ip_add );
 
-  long diff_in_ms(timeval t1, timeval t2);
-
 // Data
 public:
-  int _debug;
   IPAddress _client_ip;
   EtherAddress _client_ethernet;
 

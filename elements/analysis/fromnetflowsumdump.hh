@@ -135,7 +135,6 @@ class FromNetFlowSummaryDump : public Element { public:
 
     const char *class_name() const	{ return "FromNetFlowSummaryDump"; }
     const char *port_count() const	{ return PORTS_0_1; }
-    const char *processing() const	{ return AGNOSTIC; }
     void *cast(const char *);
 
     int configure(Vector<String> &, ErrorHandler *);
@@ -156,6 +155,7 @@ class FromNetFlowSummaryDump : public Element { public:
     bool _stop : 1;
     bool _format_complaint : 1;
     bool _timing;
+    bool _have_timing;
     bool _zero;
     bool _active;
     bool _multipacket;
@@ -170,11 +170,12 @@ class FromNetFlowSummaryDump : public Element { public:
     Task _task;
     ActiveNotifier _notifier;
 
-    Timestamp _time_offset;
+    Timestamp _timing_offset;
 
     Packet *read_packet(ErrorHandler *);
     Packet *handle_multipacket(Packet *);
     Packet *next_packet();
+    bool check_timing(Packet *p);
 
     static String read_handler(Element *, void *);
     static int write_handler(const String &, Element *, void *, ErrorHandler *);

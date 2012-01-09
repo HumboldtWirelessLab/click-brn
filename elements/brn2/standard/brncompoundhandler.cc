@@ -33,6 +33,9 @@
 
 #include "brncompoundhandler.hh"
 #include <click/handlercall.hh>
+
+#include "elements/brn2/standard/compression/base64.hh"
+
 CLICK_DECLS
 
 BrnCompoundHandler::BrnCompoundHandler():
@@ -40,7 +43,12 @@ BrnCompoundHandler::BrnCompoundHandler():
   _record_mode(RECORDMODE_LAST_ONLY),
   _record_samples(10),
   _sample_time(1000),
-  _record_timer(this)
+  _record_timer(this),
+  _compression_limit(0),
+  _lzw_buffer(NULL),
+  _lzw_buffer_size(32768),
+  _base64_buffer(NULL),
+  _base64_buffer_size(43692)
 {
   BRNElement::init();
 }
@@ -56,6 +64,9 @@ BrnCompoundHandler::~BrnCompoundHandler()
   _vec_elements.clear();
   _vec_elements_handlers.clear();
   _vec_handlers.clear();
+
+  if ( _lzw_buffer != NULL ) delete[] _lzw_buffer;
+  if ( _base64_buffer != NULL ) delete[] _base64_buffer;
 }
 
 int
@@ -70,6 +81,7 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
                     "RECORDMODE", cpkP, cpInteger, &_record_mode,
                     "RECORDSAMPLES", cpkP, cpInteger, &_record_samples,
                     "SAMPLETIME", cpkP, cpInteger, &_sample_time,
+                    "COMPRESSIONLIMIT", cpkP, cpInteger, &_compression_limit,
                     "DEBUG", cpkP, cpInteger, &_debug,
                     cpEnd) < 0)
       return -1;
@@ -83,6 +95,9 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BrnCompoundHandler::initialize(ErrorHandler *errh)
 {
+  _lzw_buffer = new unsigned char[_lzw_buffer_size];
+  _base64_buffer = new unsigned char[_base64_buffer_size];
+
   BRN_DEBUG(" * BrnCompoundHandler: processing handler %s.", _handler.c_str() );
   cp_spacevec(_handler, _vec_handlers);
 
@@ -90,11 +105,22 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   Vector<String> vecClasses;
   cp_spacevec( _classes, vecClasses );
 
+  // Init blacklist
+  Vector<Element*> vecElements = router()->elements();
+
+  for (int i = 0; i < vecElements.size(); i++) {
+    Element* pElement = vecElements[i];
+    BRN_DEBUG(" * BrnCompoundHandler: processing element %s.", pElement->declaration().c_str() );
+    if ( String(pElement->class_name()) == String("BrnCompoundHandler") ) {
+      _handler_blacklist.insert(String(router()->ename(pElement->eindex()) + ".read"),
+                                String(router()->ename(pElement->eindex()) + ".read"));
+    }
+  }
+
   if ( vecClasses.size() != 0 ) {
 
-    // Collect handlers from elements with appropriate class names in a vector
-    Vector<Element*> vecElements = router()->elements();
     for (int j = 0; j < vecClasses.size(); j++ ) {
+      // Collect handlers from elements with appropriate class names in a vector
 
       bool bFound = false;
       BRN_DEBUG(" * BrnCompoundHandler: processing parameter %s.", vecClasses[j].c_str() );
@@ -136,11 +162,13 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   }
 
   for (int j = 0; j < _vec_handlers.size(); j++ ) {
-    _record_handler.insert( _vec_handlers[j], new HandlerRecord(_record_samples, 0));
+    _record_handler.insert( _vec_handlers[j], new HandlerRecord(_record_samples, _sample_time));
   }
 
   _record_timer.initialize(this);
-  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+  _time_position = 0;
+
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
 
@@ -153,19 +181,23 @@ BrnCompoundHandler::run_timer(Timer *)
   Timestamp now = Timestamp::now();
   String new_value;
 
-  for ( int j = 0; j < _vec_handlers.size(); j++) {
-    new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
-                                       ErrorHandler::default_handler());
-
-    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
-
-    hr->insert(now,new_value);
-
-  }
-
-  if ( _record_mode == RECORDMODE_LAST_SAMP ) {
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
     _record_timer.schedule_after_msec(_sample_time);
   }
+
+  for ( int j = 0; j < _vec_handlers.size(); j++) {
+    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
+
+    if ( ((_time_position + hr->_base_time) % hr->_interval) == 0 ) {
+      new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+                                         ErrorHandler::default_handler());
+      hr->insert(now,new_value);
+    }
+  }
+
+  _time_position += _sample_time;
+  /* Avoid overflow : TODO: impl. better solution */
+  if ( _time_position > 2100000000 ) _time_position -= 2100000000;
 }
 
 void
@@ -188,9 +220,6 @@ BrnCompoundHandler::set_value( const String& value, ErrorHandler *errh )
   }
 }
 
-/* TODO: leerer record wegnehemn */
-
-
 String
 BrnCompoundHandler::read_handler()
 {
@@ -202,9 +231,9 @@ BrnCompoundHandler::read_handler()
     for ( int j = 0; j < _vec_handlers.size(); j++) {
       if ( _update_mode == UPDATEMODE_SEND_ALL ) {
         sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-        sa << "\t" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+        sa << "\t<![CDATA[" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
                                             ErrorHandler::default_handler()).c_str();
-        sa << "\t";
+        sa << "]]>\t";
       } else if (( _update_mode == UPDATEMODE_SEND_INFO ) ||
                  ( _update_mode == UPDATEMODE_SEND_UPDATE_ONLY )) {
         String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
@@ -213,11 +242,11 @@ BrnCompoundHandler::read_handler()
         String *last_value = _last_handler_value.findp(_vec_handlers[j]);
         sa << "\t<handler name=\"" << _vec_handlers[j];
         if ( (last_value != NULL) && (*last_value == new_value)) {
-          sa << " \" update=\"false\" >";
+          sa << "\" update=\"false\" >";
         } else {
           _last_handler_value.insert(_vec_handlers[j],new_value);
-          sa << " \" update=\"true\" >\n";
-          sa << new_value.c_str() << "\t";
+          sa << "\" update=\"true\" >\n<![CDATA[";
+          sa << new_value.c_str() << "]]>\t";
         }
       }
       sa << "</handler>\n";
@@ -262,6 +291,32 @@ BrnCompoundHandler::read_handler()
   }
   sa << "</compoundhandler>\n";
 
+  if ( ( _compression_limit != 0 ) && ( sa.length() > _compression_limit ) ) {
+    if ( sa.length() > _lzw_buffer_size ) {
+      _lzw_buffer_size = 2 * sa.length();
+      _base64_buffer_size = (( 4 * _lzw_buffer_size ) / 3) + 2;
+
+      delete[] _lzw_buffer;
+      delete[] _base64_buffer;
+
+      _lzw_buffer = new unsigned char[_lzw_buffer_size];
+      _base64_buffer = new unsigned char[_base64_buffer_size];
+    }
+
+    String result = sa.take_string();
+    int lzw_len = lzw.encode((unsigned char*)result.data(), result.length(), _lzw_buffer, _lzw_buffer_size);
+
+    int xml_len = sprintf((char*)_base64_buffer,
+                         "<compressed_data type=\"lzw,base64\" uncompressed=\"%d\" compressed=\"%d\"><![CDATA[",
+                         result.length(), lzw_len);
+
+    int base64_len = Base64::encode(_lzw_buffer, lzw_len, &(_base64_buffer[xml_len]), _base64_buffer_size-xml_len);
+
+    xml_len += sprintf((char*)&(_base64_buffer[xml_len + base64_len]),"]]></compressed_data>\n");
+
+    return String((char*)_base64_buffer);
+  }
+
   return sa.take_string();
 }
 
@@ -280,15 +335,18 @@ BrnCompoundHandler::handler()
 
   sa << "<compoundhandlerinfo >\n";
   for ( int j = 0; j < _vec_handlers.size(); j++) {
-    sa << "\t<handler name=\"" << _vec_handlers[j] << "\" />\n";
+    sa << "\t<handler name=\"" << _vec_handlers[j];
+
+    HandlerRecord *hr = _record_handler.find(_vec_handlers[j]);
+    if ( hr != NULL )  sa << "\" record_interval=\"" << hr->_interval << "\" unit=\"ms";
+    sa << "\" />\n";
   }
   sa << "</compoundhandlerinfo>\n";
 
   return sa.take_string();
 }
 
-
-enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET};
+enum { H_HANDLER_INSERT, H_HANDLER_SET, H_HANDLER_REMOVE, H_HANDLER_RESET, H_HANDLER_UPDATEMODE, H_HANDLER_RECORDMODE, H_HANDLER_SAMPLECOUNT, H_HANDLER_SAMPLETIME, H_HANDLER_COMPRESSIONLIMIT };
 
 int
 BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHandler *errh)
@@ -296,24 +354,62 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
   switch((intptr_t)vparam) {
     case H_HANDLER_INSERT:
       {
+        uint32_t t;
+        bool found_time;
         BRN_DEBUG("New handler %s",in_s.c_str());
         String s = cp_uncomment(in_s);
         Vector<String> args;
         cp_spacevec(s, args);
 
         for ( int args_i = 0 ; args_i < args.size(); args_i++ ) {
-          BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
-          int i = 0;
-          for( ; i < _vec_handlers.size(); i++ ) {
-            if ( args[args_i] == _vec_handlers[i]) {
-              BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
-              break;
+          HandlerCall hcall(args[args_i]);
+          if ( hcall.initialize(HandlerCall::OP_READ, router()->root_element(), NULL) >= 0 ) {
+
+            found_time = false;
+            if ( (args_i+1) == args.size() ){
+              t = _sample_time;
+            } else {
+              if ( cp_integer(args[args_i+1], &t) ) {
+                found_time = true;
+                if ( (int)t < _sample_time ) {
+                  t = _sample_time;
+                } else if ( (t % _sample_time) != 0 ) {
+                  t = (t / _sample_time) * _sample_time;
+                }
+              } else {
+                t = _sample_time;
+              }
             }
-          }
-          if ( i == _vec_handlers.size() ) {
-            BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
-            _vec_handlers.push_back(args[args_i]);
-            _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, 0));
+
+            if ( _handler_blacklist.findp(args[args_i]) == NULL ) {
+              BRN_DEBUG("Search handler %s to avoid dups",args[args_i].c_str());
+              int i = 0;
+              for( ; i < _vec_handlers.size(); i++ ) {
+                if ( args[args_i] == _vec_handlers[i]) {
+                  BRN_DEBUG("Found handler %s: index %d (%s).",args[args_i].c_str(),i,_vec_handlers[i].c_str());
+                  if ( found_time ) {
+                    HandlerRecord *hr = _record_handler.find(_vec_handlers[i]);
+                    if ( hr != NULL ) {
+                      hr->_interval = t;
+                    }
+                  }
+                  break;
+                }
+              }
+              if ( i == _vec_handlers.size() ) {
+                BRN_DEBUG("Didn't found handler %s. Insert.",args[args_i].c_str());
+                _vec_handlers.push_back(args[args_i]);
+                _record_handler.insert( args[args_i], new HandlerRecord(_record_samples, t));
+              }
+            } else {
+              BRN_DEBUG("Handler %s (index %d) is compoundhandler read.",args[args_i].c_str(),args_i);
+            }
+
+            if ( found_time ) {
+              args_i++;
+            }
+          } else {
+            BRN_DEBUG("Handler %s (index %d) is not valid.",args[args_i].c_str(),args_i);
           }
         }
         break;
@@ -330,7 +426,11 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
       {
         for( int i = 0; i < _vec_handlers.size(); i++ ) {
           if ( in_s == _vec_handlers[i] ) {
-            _record_handler.erase(in_s);
+            HandlerRecord *hr = _record_handler.find(in_s);
+            if ( hr != NULL ) {
+              delete hr;
+              _record_handler.erase(in_s);
+            }
             _vec_handlers.erase(_vec_handlers.begin() + i);
             break;
           }
@@ -347,6 +447,69 @@ BrnCompoundHandler::handler_operation(const String &in_s, void *vparam, ErrorHan
   return 0;
 }
 
+void
+BrnCompoundHandler::set_recordmode(int mode)
+{
+  if ( mode == _record_mode ) return;
+
+  _record_mode = mode;
+
+  if ( _record_mode != RECORDMODE_LAST_SAMPLE ) {
+    _record_timer.unschedule();
+  } else {
+    for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+      HandlerRecord *hr = iter.value();
+      hr->clear();
+    }
+    _record_timer.schedule_after_msec(_sample_time);
+  }
+}
+
+void
+BrnCompoundHandler::set_updatemode(int mode)
+{
+  if ( mode == _update_mode ) return;
+
+  _update_mode = mode;
+
+  if ( (_update_mode != UPDATEMODE_SEND_ALL) && (_record_mode != RECORDMODE_LAST_SAMPLE) ) {
+    for( int i = 0; i < _vec_handlers.size(); i++ ) {
+      _last_handler_value.insert(_vec_handlers[i],String());
+    }
+  }
+}
+
+void
+BrnCompoundHandler::set_samplecount(int count)
+{
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    HandlerRecord *hr = iter.value();
+    hr->set_max_records(count);
+  }
+  _record_samples = count;
+}
+
+void
+BrnCompoundHandler::set_sampletime(int time)
+{
+  if ( _sample_time == time ) return;
+
+  for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
+    HandlerRecord *hr = iter.value();
+
+    _sample_time = time;
+
+    if (( hr->_interval % time ) != 0 ) {
+      hr->_interval = _sample_time * (hr->_interval/_sample_time);
+      if ( hr->_interval == 0 ) hr->_interval = _sample_time;
+    }
+  }
+
+  if ( _record_mode == RECORDMODE_LAST_SAMPLE ) {
+    _record_timer.unschedule();
+    _record_timer.schedule_after_msec(_sample_time);
+  }
+}
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -370,14 +533,16 @@ BrnCompoundHandler_handler_operation(const String &in_s, Element *e, void *vpara
   return ((BrnCompoundHandler*)e)->handler_operation(in_s, vparam, errh);
 }
 
+/* Single handler for many handler with the same name */
+
 static String
-BrnCompoundHandler_read_param(Element */*e*/, void */*thunk*/)
+BrnCompoundHandler_read_compoundparam(Element */*e*/, void */*thunk*/)
 {
   return String();
 }
 
 static int
-BrnCompoundHandler_write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+BrnCompoundHandler_write_compoundparam(const String &in_s, Element *e, void *, ErrorHandler *errh)
 {
   BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
 
@@ -387,23 +552,123 @@ BrnCompoundHandler_write_param(const String &in_s, Element *e, void *, ErrorHand
   return( 0 );
 }
 
+/* handler to control the element */
+
+static String
+BrnCompoundHandler_read_param(Element *e, void *vparam)
+{
+  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  StringAccum sa;
+
+  switch((intptr_t)vparam) {
+    case H_HANDLER_UPDATEMODE:
+    {
+      sa << ch->get_updatemode();
+      break;
+    }
+    case H_HANDLER_RECORDMODE:
+    {
+      sa << ch->get_recordmode();
+      break;
+    }
+    case H_HANDLER_SAMPLECOUNT:
+    {
+      sa << ch->get_samplecount();
+      break;
+    }
+    case H_HANDLER_SAMPLETIME:
+    {
+      sa << ch->get_sampletime();
+      break;
+    }
+    case H_HANDLER_COMPRESSIONLIMIT:
+    {
+      sa << ch->get_compressionlimit();
+      break;
+    }
+  }
+
+  sa << "\n";
+
+  return sa.take_string();
+
+}
+
+static int
+BrnCompoundHandler_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  BrnCompoundHandler *ch = (BrnCompoundHandler *)e;
+  String s = cp_uncomment(in_s);
+  int value;
+
+  if (!cp_integer(s, &value))
+    return errh->error("value must be integer");
+
+  switch((intptr_t)vparam) {
+    case H_HANDLER_UPDATEMODE:
+    {
+      ch->set_updatemode(value);
+      break;
+    }
+    case H_HANDLER_RECORDMODE:
+    {
+      ch->set_recordmode(value);
+      break;
+    }
+    case H_HANDLER_SAMPLECOUNT:
+    {
+      ch->set_samplecount(value);
+      break;
+    }
+    case H_HANDLER_SAMPLETIME:
+    {
+      ch->set_sampletime(value);
+      break;
+    }
+    case H_HANDLER_COMPRESSIONLIMIT:
+    {
+      ch->set_compressionlimit(value);
+      break;
+    }
+  }
+
+  return( 0 );
+
+}
+
+/* add handler function */
+
 void
 BrnCompoundHandler::add_handlers()
 {
   //BRNElement::add_handlers(); //what if handler has the name "debug"
 
   if ( _classes_handler.length() > 0 ) {
-    add_read_handler( _handler, BrnCompoundHandler_read_param, 0);
-    add_write_handler( _handler, BrnCompoundHandler_write_param, 0);
+    add_read_handler( _handler, BrnCompoundHandler_read_compoundparam, 0);
+    add_write_handler( _handler, BrnCompoundHandler_write_compoundparam, 0);
   }
 
   add_read_handler( "read", BrnCompoundHandler_read_handler, 0);
 
   add_read_handler( "handler", BrnCompoundHandler_handler, 0);
+
   add_write_handler( "insert", BrnCompoundHandler_handler_operation, H_HANDLER_INSERT);
   add_write_handler( "set", BrnCompoundHandler_handler_operation, H_HANDLER_SET);
   add_write_handler( "remove", BrnCompoundHandler_handler_operation, H_HANDLER_REMOVE);
   add_write_handler( "reset", BrnCompoundHandler_handler_operation, H_HANDLER_RESET);
+
+  add_read_handler( "updatemode", BrnCompoundHandler_read_param, H_HANDLER_UPDATEMODE);
+  add_read_handler( "recordmode", BrnCompoundHandler_read_param, H_HANDLER_RECORDMODE);
+  add_read_handler( "samples", BrnCompoundHandler_read_param, H_HANDLER_SAMPLECOUNT);
+  add_read_handler( "sampletime", BrnCompoundHandler_read_param, H_HANDLER_SAMPLETIME);
+  add_read_handler( "compressionlimit", BrnCompoundHandler_read_param, H_HANDLER_COMPRESSIONLIMIT);
+
+  add_write_handler( "updatemode", BrnCompoundHandler_write_param, H_HANDLER_UPDATEMODE);
+  add_write_handler( "recordmode", BrnCompoundHandler_write_param, H_HANDLER_RECORDMODE);
+  add_write_handler( "samplecount", BrnCompoundHandler_write_param, H_HANDLER_SAMPLECOUNT);
+  add_write_handler( "sampletime", BrnCompoundHandler_write_param, H_HANDLER_SAMPLETIME);
+  add_write_handler( "compressionlimit", BrnCompoundHandler_write_param, H_HANDLER_COMPRESSIONLIMIT);
+
 }
 
 CLICK_ENDDECLS

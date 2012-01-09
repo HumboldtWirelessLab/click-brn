@@ -73,14 +73,17 @@ NHopCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress *ea, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   NHopCluster *dcl = (NHopCluster*)element;
+  return dcl->lpSendHandler(buffer, size);
+}
 
-  if ( direction )
-    return dcl->lpSendHandler(buffer, size);
-  else
-    return dcl->lpReceiveHandler(ea, buffer, size);
+static int
+rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  NHopCluster *dcl = (NHopCluster*)element;
+  return dcl->lpReceiveHandler(ea, buffer, size);
 }
 
 int
@@ -90,7 +93,7 @@ NHopCluster::initialize(ErrorHandler *)
 
   _cluster_head = ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
 
-  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &handler);
+  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &tx_handler, &rx_handler);
 
   _nhop_timer.initialize(this);
   _nhop_timer.schedule_after_msec( _start + ( click_random() % _startdelay ));

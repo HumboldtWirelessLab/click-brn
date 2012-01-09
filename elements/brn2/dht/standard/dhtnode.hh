@@ -26,6 +26,8 @@ CLICK_DECLS
 #define STATUS_LEAVE       5  /*node has/will leave the network*/
 #define STATUS_NONEXISTENT 6  /*node doesn't exist. Use to handle request for node that doesn't exist*/
 
+static String dht_node_status_string[] = { "unknown", "new", "ok", "missed", "away", "leave", "nonexist" };
+
 #define DEFAULT_DIGEST_LENGTH  128 /* 16*8 Bits*/
 #define MAX_DIGEST_LENGTH      128 /* 16*8 Bits*/
 
@@ -48,7 +50,9 @@ class DHTnode
 
     uint8_t _status;
     Timestamp _age;
+    Timestamp _last_neighbouring_rx_msg;       //last time a direct msg (as neighbour) from this node is received
     Timestamp _last_ping;
+
     int _failed_ping;
     bool _neighbor;
 

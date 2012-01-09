@@ -32,15 +32,14 @@ OLSRTCGenerator::configure(Vector<String> &conf, ErrorHandler *errh)
 	bool add_tc_msg=false;
 	bool mpr_full_link_state=false;
 	bool full_link_state=false;
-	int res = cp_va_parse(conf, this, errh,
-	                      cpInteger, "TC sending interval (msec)", &_period,
-	                      cpInteger, "Topology Holding Time (msec)",&_top_hold_time,
-	                      cpElement, "Neighbor InfoBase element", &_neighborInfo,
-	                      cpIPAddress, "my main IPAddress", &_myIP,
-	                      cpOptional, cpKeywords,
-	                      "ADDITIONAL_TC",cpBool,"send addtional TC messages?",&add_tc_msg,
-	                      "MPR_FULL_LINK_STATE", cpBool, "send full link state information", &mpr_full_link_state,
-	                      "FULL_LINK_STATE", cpBool, "enable sending TC packets even when a node is not an MPR", &full_link_state,
+	int res = cp_va_kparse(conf, this, errh,
+                         "TC sending interval (msec)", cpkP, cpInteger,  &_period,
+                         "Topology Holding Time (msec)", cpkP, cpInteger, &_top_hold_time,
+                         "Neighbor InfoBase element", cpkP, cpElement,  &_neighborInfo,
+                         "my main IPAddress",  cpkP, cpIPAddress, &_myIP,
+	                      "ADDITIONAL_TC",cpkP, cpBool/*,"send addtional TC messages?"*/,&add_tc_msg,
+	                      "MPR_FULL_LINK_STATE", cpkP, cpBool/*, "send full link state information"*/, &mpr_full_link_state,
+	                      "FULL_LINK_STATE", cpkP, cpBool,/* "enable sending TC packets even when a node is not an MPR",*/ &full_link_state,
 	                      cpEnd);
 	_additional_TC_msg=add_tc_msg;
 	_mpr_full_link_state=mpr_full_link_state;
@@ -60,10 +59,10 @@ OLSRTCGenerator::initialize(ErrorHandler *)
 	_timer.initialize(this);
 
 	_vtime = compute_vtime();
-	_end_of_validity_time = make_timeval(0,0);
+	_end_of_validity_time = Timestamp(0,0).timeval();
 	_node_is_mpr = false;
 	_ansn = 1;
-	_last_msg_sent_at = make_timeval(0,0);
+  _last_msg_sent_at = Timestamp(0,0).timeval();
 	return 0;
 }
 
@@ -93,7 +92,7 @@ OLSRTCGenerator::set_node_is_mpr(bool value)
 	_node_is_mpr = value;
 	if (_node_is_mpr)
 	{
-		_end_of_validity_time = make_timeval(0,0);
+		_end_of_validity_time = Timestamp(0,0).timeval();
 		int delay=(int) (click_random() % (_period/20));
 		_timer.schedule_after_msec(delay);
 		click_chatter ("node %s has become MPR, emitting tc after %d ms\n",_myIP.unparse().c_str(),delay);
@@ -101,10 +100,10 @@ OLSRTCGenerator::set_node_is_mpr(bool value)
 	else if (node_was_mpr && !_node_is_mpr)
 	{
 		struct timeval now;
-		click_gettimeofday(&now);
+		now = Timestamp::now().timeval();
 		_end_of_validity_time.tv_sec=_period/1000; //period in msec
 		_end_of_validity_time.tv_usec=_period*1000;
-		_end_of_validity_time += now;
+    _end_of_validity_time = (Timestamp(_end_of_validity_time) + Timestamp(now)).timeval();
 		int delay=(int) (click_random() % (_period/20));
 		_timer.schedule_after_msec(delay);
 		click_chatter ("is not mpr emitting tc_not_mpr after %d ms\n",_myIP.unparse().c_str(),delay);
@@ -158,7 +157,7 @@ OLSRTCGenerator::generate_tc()
 	pkt_hdr->pkt_seq = 0; //added in OLSRForward
 
 	struct timeval now;
-	click_gettimeofday(&now);
+	now = Timestamp::now().timeval();
 	packet->set_timestamp_anno(now);
 
 
@@ -240,8 +239,8 @@ OLSRTCGenerator::generate_tc_when_not_mpr()
 {
 	//   uint64_t cycles=click_get_cycles();
 	struct timeval now;
-	click_gettimeofday(&now);
-	if (now <= _end_of_validity_time)
+	now = Timestamp::now().timeval();
+	if ( Timestamp(now) <= Timestamp(_end_of_validity_time))
 	{
 		int packet_size = sizeof(olsr_pkt_hdr) + sizeof(olsr_msg_hdr) + sizeof(olsr_tc_hdr) ;
 		int headroom = sizeof(click_ether) + sizeof(click_ip) + sizeof(click_udp);

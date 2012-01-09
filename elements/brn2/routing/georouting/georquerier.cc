@@ -79,16 +79,24 @@ GeorQuerier::push( int port, Packet *packet )
     GPSPosition *dpos = _rt->getPosition(&dea);
     GPSPosition *spos = _rt->getLocalPosition();
 
+    BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
+
     EtherAddress nextHop;
     GPSPosition *nhpos;
 
     if ( dpos ) {
+      uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+      if ( ttl == 0 ) ttl = GEOR_DAFAULT_MAX_HOP_COUNT;
+
+      BRN_INFO("Set ttl %d",(int)ttl);
+
       packet->pull(12);                           //strip etheradress
       WritablePacket *pout = GeorProtocol::addRoutingHeader(packet,&sea, spos, &dea, dpos);
 
       nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
 
-      WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING);
+      WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING,
+                                                               ttl, DEFAULT_TOS);
       BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, ETHERTYPE_BRN);
 
       output(0).push(out_packet);

@@ -46,7 +46,7 @@ TimerSet::TimerSet()
 #elif HAVE_MULTITHREAD
     _timer_processor = click_invalid_processor();
 #endif
-    _timer_check = Timestamp::now();
+    _timer_check = Timestamp::now_steady();
     _timer_check_reports = 0;
 }
 
@@ -82,12 +82,12 @@ void
 TimerSet::check_timer_expiry(Timer *t)
 {
     // do not schedule timers for too far in the past
-    if (t->_expiry.sec() + Timer::behind_sec < _timer_check.sec()) {
+    if (t->_expiry_s.sec() + Timer::behind_sec < _timer_check.sec()) {
 	if (_timer_check_reports > 0) {
 	    --_timer_check_reports;
-	    click_chatter("timer %p outdated expiry %{timestamp} updated to %{timestamp}", t, &t->_expiry, &_timer_check, &t->_expiry);
+	    click_chatter("timer %p outdated expiry %{timestamp} updated to %{timestamp}", t, &t->_expiry_s, &_timer_check);
 	}
-	t->_expiry = _timer_check;
+	t->_expiry_s = _timer_check;
     }
 }
 
@@ -95,14 +95,18 @@ inline void
 TimerSet::run_one_timer(Timer *t)
 {
 #if CLICK_STATS >= 2
-    click_cycles_t start_cycles = click_get_cycles();
+    Element *owner = t->_owner;
+    click_cycles_t start_cycles = click_get_cycles(),
+	start_child_cycles = owner->_child_cycles;
 #endif
 
     t->_hook.callback(t, t->_thunk);
 
 #if CLICK_STATS >= 2
-    t->_owner->_timer_cycles += click_get_cycles() - start_cycles;
-    t->_owner->_timer_calls++;
+    click_cycles_t all_delta = click_get_cycles() - start_cycles,
+	own_delta = all_delta - (owner->_child_cycles - start_child_cycles);
+    owner->_timer_calls += 1;
+    owner->_timer_own_cycles += own_delta;
 #endif
 }
 
@@ -118,12 +122,12 @@ TimerSet::run_timers(RouterThread *thread, Master *master)
 #elif HAVE_MULTITHREAD
 	_timer_processor = click_current_processor();
 #endif
-	_timer_check = Timestamp::now();
+	_timer_check = Timestamp::now_steady();
 	heap_element *th = _timer_heap.begin();
 
-	if (th->expiry <= _timer_check) {
+	if (th->expiry_s <= _timer_check) {
 	    // potentially adjust timer stride
-	    Timestamp adj_expiry = th->expiry + Timer::adjustment();
+	    Timestamp adj_expiry = th->expiry_s + Timer::adjustment();
 	    if (adj_expiry <= _timer_check) {
 		_timer_count = 0;
 		if (_timer_stride > 1)
@@ -138,7 +142,7 @@ TimerSet::run_timers(RouterThread *thread, Master *master)
 	    int max_timers = 64;
 	    do {
 		Timer *t = th->t;
-		assert(t->expiry() == th->expiry);
+		assert(t->expiry_steady() == th->expiry_s);
 		pop_heap<4>(_timer_heap.begin(), _timer_heap.end(), heap_less(), heap_place());
 		_timer_heap.pop_back();
 		set_timer_expiry();
@@ -146,7 +150,7 @@ TimerSet::run_timers(RouterThread *thread, Master *master)
 
 		run_one_timer(t);
 	    } while (_timer_heap.size() > 0 && !thread->stop_flag()
-		     && (th = _timer_heap.begin(), th->expiry <= _timer_check)
+		     && (th = _timer_heap.begin(), th->expiry_s <= _timer_check)
 		     && --max_timers >= 0);
 
 	    // If we ran out of timers to run, then perhaps there's an
@@ -164,7 +168,7 @@ TimerSet::run_timers(RouterThread *thread, Master *master)
 
 		    _timer_runchunk.push_back(t);
 		} while (_timer_heap.size() > 0
-			 && (th = _timer_heap.begin(), th->expiry <= _timer_check));
+			 && (th = _timer_heap.begin(), th->expiry_s <= _timer_check));
 		set_timer_expiry();
 
 		Vector<Timer*>::iterator i = _timer_runchunk.begin();
@@ -178,7 +182,7 @@ TimerSet::run_timers(RouterThread *thread, Master *master)
 		for (; i != _timer_runchunk.end(); ++i)
 		    if (*i) {
 			(*i)->_schedpos1 = 0;
-			(*i)->schedule_at((*i)->_expiry);
+			(*i)->schedule_at_steady((*i)->_expiry_s);
 		    }
 		_timer_runchunk.clear();
 	    }

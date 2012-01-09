@@ -12,22 +12,22 @@ CLICK_DECLS
  * @brief Functions for manipulating integers.
  */
 
-#if HAVE_INT64_TYPES
-
+#if HAVE_INT64_TYPES && !defined(htonq)
 /** @brief Return @a x translated from host to network byte order. */
 inline uint64_t htonq(uint64_t x) {
     uint32_t hi = x >> 32;
     uint32_t lo = x & 0xffffffff;
     return (((uint64_t)htonl(lo)) << 32) | htonl(hi);
 }
+#endif
 
+#if HAVE_INT64_TYPES && !defined(ntohq)
 /** @brief Return @a x translated from network to host byte order. */
 inline uint64_t ntohq(uint64_t x) {
     uint32_t hi = x >> 32;
     uint32_t lo = x & 0xffffffff;
     return (((uint64_t)ntohl(lo)) << 32) | ntohl(hi);
 }
-
 #endif
 
 /** @brief Translate @a x to network byte order.
@@ -392,7 +392,9 @@ void int_multiply(T a, T b, T &xlow, T &xhigh)
 }
 
 template<typename T>
-struct has_fast_int_multiply : public false_type {};
+struct has_fast_int_multiply : public false_type {
+    enum { check_t_integral = integer_traits<T>::is_signed };
+};
 
 #if defined(__i386__) || defined(__x86_64__)
 inline void int_multiply(unsigned a, unsigned b, unsigned &xlow, unsigned &xhigh)

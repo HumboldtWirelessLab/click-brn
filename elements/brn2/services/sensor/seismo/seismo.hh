@@ -25,27 +25,102 @@
 
 #include "elements/brn2/services/sensor/gps/gps.hh"
 
-
 CLICK_DECLS
 
 #define min(x,y)      ((x)<(y) ? (x) : (y))
 #define max(x,y)      ((x)>(y) ? (x) : (y))
 
-struct click_seismo_data_header {
-  int gps_lat;
-  int gps_long;
-  int gps_alt;
-  int gps_hdop;
+#define SEISMO_TAG_LENGTH_LONG  0
+#define SEISMO_TAG_LENGTH_SHORT 1
 
-  int sampling_rate;
-  int samples;
-  int channels;
-};
+#define CHANNEL_INFO_BLOCK_SIZE       100
+#define MAX_CHANNEL_INFO_BLOCK_COUNT   10
 
-struct click_seismo_data {
+#define CLICK_SEISMO_VERSION 0x8080
+#define CLICK_SEISMO_FLAG_SYSTIME_SET 1
+
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_seismo_data_header {,
+  uint16_t version;
+  uint16_t flags;
+  int32_t gps_lat;
+  int32_t gps_long;
+  int32_t gps_alt;
+  int32_t gps_hdop;
+
+  int32_t sampling_rate;
+  int32_t samples;
+  int32_t channels;
+
+  struct {
+    uint64_t tv_sec;
+    uint32_t tv_usec;
+  } time __attribute__((packed));
+});
+
+CLICK_SIZE_PACKED_STRUCTURE(
+struct click_seismo_data {,
   uint64_t time;
-  int timing_quality;
+  int32_t timing_quality;
+});
+
+class SeismoInfoBlock {
+  public:
+    uint64_t _time[CHANNEL_INFO_BLOCK_SIZE];
+    uint64_t _systime[CHANNEL_INFO_BLOCK_SIZE];
+
+    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4];
+    uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];
+
+    uint32_t _block_index;
+    uint16_t _next_value_index;
+
+    uint16_t _next_systemtime_index;
+
+    SeismoInfoBlock(uint32_t block_index) :_next_value_index(0),_next_systemtime_index(0)
+    {
+      _block_index = block_index;
+    }
+
+    void reset() {
+      _next_systemtime_index = 0;
+      _next_value_index = 0;
+    }
+
+    inline int32_t insert(uint64_t time, uint64_t systime, uint32_t channels, int32_t *values, bool net2host = true) {
+      if ( _next_value_index == CHANNEL_INFO_BLOCK_SIZE ) return -1;
+
+      _channels[_next_value_index] = (uint8_t)channels;
+      _time[_next_value_index] = time;
+      _systime[_next_value_index] = systime;
+
+      if ( net2host ) {
+        for ( uint32_t i = 0; i < channels; i++ ) {
+          _channel_values[_next_value_index][i] = (uint32_t)ntohl(values[i]);
+        }
+      } else {
+        for ( uint32_t i = 0; i < channels; i++ ) {
+          _channel_values[_next_value_index][i] = values[i];
+        }
+      }
+
+      _next_value_index++;
+
+      return _next_value_index;
+    }
+
+    inline void update_systemtime(uint64_t systime) {
+      _systime[_next_systemtime_index++] = systime;
+    }
+
+    inline bool is_complete() { return (_next_value_index == CHANNEL_INFO_BLOCK_SIZE); }
+    inline bool systime_complete() { return  (_next_systemtime_index == _next_value_index); }
+    inline uint16_t missing_time_updates() { return (_next_value_index - _next_systemtime_index); }
+
 };
+
+typedef Vector<SeismoInfoBlock*> SeismoInfoBlockList;
+typedef SeismoInfoBlockList::const_iterator SeismoInfoBlockListIter;
 
 class SrcInfo {
 
@@ -69,6 +144,10 @@ class SrcInfo {
 
     int sample_series;
 
+    SeismoInfoBlockList _seismo_infos;
+    uint32_t _next_seismo_info_block_for_handler;
+    uint32_t _max_seismo_info_blocks;
+
     SrcInfo() {
       update_gps(-1,-1,-1,-1);
 
@@ -80,6 +159,9 @@ class SrcInfo {
       _chan_cum_sq_vals = NULL;
       _chan_min_vals = NULL;
       _chan_max_vals = NULL;
+
+      _next_seismo_info_block_for_handler = 0;
+      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
     }
 
     void reset() {
@@ -102,30 +184,11 @@ class SrcInfo {
       _chan_min_vals = new int[channels];
       _chan_max_vals = new int[channels];
 
+      _next_seismo_info_block_for_handler = 0;
+      _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
+
       update_gps(gps_lat, gps_long, gps_alt, gps_hdop);
       reset();
-    }
-
-    SrcInfo(const SrcInfo& o) {
-      _gps_lat = o._gps_lat;
-      _gps_long = o._gps_long;
-      _gps_alt = o._gps_alt;
-      _gps_hdop = o._gps_hdop;
-      _last_update_time = o._last_update_time;
-
-      _sampling_rate = o._sampling_rate;
-      _channels = o._channels;
-      _sample_count = o._sample_count;
-      _chan_cum_vals = new int64_t[o._channels];
-      _chan_cum_sq_vals = new int64_t[o._channels];
-      _chan_min_vals = new int[o._channels];
-      _chan_max_vals = new int[o._channels];
-      for (int i=0; i<o._channels; i++) {
-        _chan_cum_vals[i] = o._chan_cum_vals[i];
-        _chan_cum_sq_vals[i] = o._chan_cum_sq_vals[i];
-        _chan_min_vals[i] = o._chan_min_vals[i];
-        _chan_max_vals[i] = o._chan_max_vals[i];
-      }
     }
 
     ~SrcInfo() {
@@ -137,9 +200,15 @@ class SrcInfo {
       _chan_min_vals = NULL;
       if (_chan_max_vals) delete [] _chan_max_vals;
       _chan_max_vals = NULL;
+
+      for ( int i = _seismo_infos.size()-1; i >= 0; i-- ) {
+        delete _seismo_infos[i];
+        _seismo_infos.erase(_seismo_infos.begin() + i);
+      }
+
     }
 
-   inline void update_gps(int gps_lat, int gps_long, int gps_alt, int gps_hdop) {
+    inline void update_gps(int gps_lat, int gps_long, int gps_alt, int gps_hdop) {
       _gps_lat = gps_lat;
       _gps_long = gps_long;
       _gps_alt = gps_alt;
@@ -155,14 +224,12 @@ class SrcInfo {
 
     void add_channel_val(int channel, int value) {
       // required for mean calc
-      if (_chan_cum_vals != NULL) _chan_cum_vals[channel] += value;
+      _chan_cum_vals[channel] += value;
       // required for std calc
-      if (_chan_cum_sq_vals != NULL) {
-        int64_t value64 = value;
-        _chan_cum_sq_vals[channel] += (value64 * value64);
-      }
-      if (_chan_min_vals != NULL) _chan_min_vals[channel] = min(value, _chan_min_vals[channel]);
-      if (_chan_max_vals != NULL) _chan_max_vals[channel] = max(value, _chan_max_vals[channel]);
+      int64_t value64 = value;
+      _chan_cum_sq_vals[channel] += (value64 * value64);
+      _chan_min_vals[channel] = min(value, _chan_min_vals[channel]);
+      _chan_max_vals[channel] = max(value, _chan_max_vals[channel]);
     }
 
     int avg_channel_info(int channel) { return (_chan_cum_vals[channel]/_sample_count); }
@@ -192,14 +259,65 @@ class SrcInfo {
     int min_channel_info(int channel) { return _chan_min_vals[channel]; }
 
     int max_channel_info(int channel) { return _chan_max_vals[channel]; }
+
+    SeismoInfoBlock* new_block() {
+      int block_index = 0;
+      if ( _seismo_infos.size() != 0 )
+        block_index = _seismo_infos[_seismo_infos.size()-1]->_block_index + 1;
+
+      SeismoInfoBlock *nb;
+
+      if ( _seismo_infos.size() == (int)_max_seismo_info_blocks ) {
+        //TODO: check next 2 lines
+        if ( _seismo_infos[0]->_block_index == _next_seismo_info_block_for_handler ) {
+          _next_seismo_info_block_for_handler = _seismo_infos[1]->_block_index;
+        }
+        nb = _seismo_infos[0];
+        _seismo_infos.erase(_seismo_infos.begin());
+        nb->_block_index = block_index;
+        nb->reset();
+      } else {
+        nb = new SeismoInfoBlock(block_index);
+      }
+
+      _seismo_infos.push_back(nb);
+
+      return nb;
+    }
+
+    SeismoInfoBlock* get_block(uint32_t block_index) {
+      for ( int i = 0; i < _seismo_infos.size(); i++ ) {
+        if ( _seismo_infos[i]->_block_index == block_index ) return _seismo_infos[i];
+      }
+
+      return NULL;
+    }
+
+    SeismoInfoBlock* get_next_block(uint32_t block_index) {
+      for ( int i = 0; i < _seismo_infos.size(); i++ ) {
+        if ( _seismo_infos[i]->_block_index >= block_index ) return _seismo_infos[i];
+      }
+
+      return NULL;
+    }
+
+    SeismoInfoBlock* get_last_block() {
+      if ( _seismo_infos.size() == 0 ) return NULL;
+      return _seismo_infos[_seismo_infos.size()-1];
+    }
+
+    SeismoInfoBlock* get_next_to_last_block() {
+      if ( _seismo_infos.size() < 2 ) return NULL;
+      return _seismo_infos[_seismo_infos.size()-2];
+    }
 };
 
-typedef HashMap<EtherAddress, SrcInfo> NodeStats;
+typedef HashMap<EtherAddress, SrcInfo*> NodeStats;
 typedef NodeStats::const_iterator NodeStatsIter;
 
 class Seismo : public BRNElement {
 
- public:
+  public:
 
   Seismo();
   ~Seismo();
@@ -217,8 +335,17 @@ class Seismo : public BRNElement {
   GPS *_gps;
   bool _print;
   bool _calc_stats;
+  bool _record_data;
+
   NodeStats _node_stats_tab;
-  String _last_channelstatinfo;
+  String _last_channelstatinfo;  //includes the string of the last channel info (incl, info about all nodes)
+                                 //used if no new data is available
+  SrcInfo *_local_info;
+
+  uint8_t _tag_len;
+
+  long long _last_systemtime;
+
 };
 
 CLICK_ENDDECLS

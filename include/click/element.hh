@@ -159,10 +159,13 @@ class Element { public:
     // HANDLERS
     void add_read_handler(const String &name, ReadHandlerCallback read_callback, const void *user_data = 0, uint32_t flags = 0);
     void add_read_handler(const String &name, ReadHandlerCallback read_callback, int user_data, uint32_t flags = 0);
+    void add_read_handler(const char *name, ReadHandlerCallback read_callback, int user_data = 0, uint32_t flags = 0);
     void add_write_handler(const String &name, WriteHandlerCallback write_callback, const void *user_data = 0, uint32_t flags = 0);
     void add_write_handler(const String &name, WriteHandlerCallback write_callback, int user_data, uint32_t flags = 0);
+    void add_write_handler(const char *name, WriteHandlerCallback write_callback, int user_data = 0, uint32_t flags = 0);
     void set_handler(const String &name, int flags, HandlerCallback callback, const void *read_user_data = 0, const void *write_user_data = 0);
     void set_handler(const String &name, int flags, HandlerCallback callback, int read_user_data, int write_user_data = 0);
+    void set_handler(const char *name, int flags, HandlerCallback callback, int read_user_data = 0, int write_user_data = 0);
     int set_handler_flags(const String &name, int set_flags, int clear_flags = 0);
     enum { TASKHANDLER_WRITE_SCHEDULED = 1,
 	   TASKHANDLER_WRITE_TICKETS = 2,
@@ -177,27 +180,27 @@ class Element { public:
 	add_task_handlers(task, 0, TASKHANDLER_DEFAULT, prefix);
     }
 
-    void add_data_handlers(const String &name, int flags, uint8_t *data);
-    void add_data_handlers(const String &name, int flags, bool *data);
-    void add_data_handlers(const String &name, int flags, uint16_t *data);
-    void add_data_handlers(const String &name, int flags, int *data);
-    void add_data_handlers(const String &name, int flags, unsigned *data);
-    void add_data_handlers(const String &name, int flags, atomic_uint32_t *data);
-    void add_data_handlers(const String &name, int flags, long *data);
-    void add_data_handlers(const String &name, int flags, unsigned long *data);
+    void add_data_handlers(const char *name, int flags, uint8_t *data);
+    void add_data_handlers(const char *name, int flags, bool *data);
+    void add_data_handlers(const char *name, int flags, uint16_t *data);
+    void add_data_handlers(const char *name, int flags, int *data);
+    void add_data_handlers(const char *name, int flags, unsigned *data);
+    void add_data_handlers(const char *name, int flags, atomic_uint32_t *data);
+    void add_data_handlers(const char *name, int flags, long *data);
+    void add_data_handlers(const char *name, int flags, unsigned long *data);
 #if HAVE_LONG_LONG
-    void add_data_handlers(const String &name, int flags, long long *data);
-    void add_data_handlers(const String &name, int flags, unsigned long long *data);
+    void add_data_handlers(const char *name, int flags, long long *data);
+    void add_data_handlers(const char *name, int flags, unsigned long long *data);
 #endif
-    void add_net_order_data_handlers(const String &name, int flags, uint16_t *data);
-    void add_net_order_data_handlers(const String &name, int flags, uint32_t *data);
+    void add_net_order_data_handlers(const char *name, int flags, uint16_t *data);
+    void add_net_order_data_handlers(const char *name, int flags, uint32_t *data);
 #if HAVE_FLOAT_TYPES
-    void add_data_handlers(const String &name, int flags, double *data);
+    void add_data_handlers(const char *name, int flags, double *data);
 #endif
-    void add_data_handlers(const String &name, int flags, String *data);
-    void add_data_handlers(const String &name, int flags, IPAddress *data);
-    void add_data_handlers(const String &name, int flags, EtherAddress *data);
-    void add_data_handlers(const String &name, int flags, Timestamp *data, bool is_interval = false);
+    void add_data_handlers(const char *name, int flags, String *data);
+    void add_data_handlers(const char *name, int flags, IPAddress *data);
+    void add_data_handlers(const char *name, int flags, EtherAddress *data);
+    void add_data_handlers(const char *name, int flags, Timestamp *data, bool is_interval = false);
 
     static String read_positional_handler(Element*, void*);
     static String read_keyword_handler(Element*, void*);
@@ -246,11 +249,10 @@ class Element { public:
     };
 
     // DEPRECATED
+    /** @cond never */
     String id() const CLICK_DEPRECATED;
     String landmark() const CLICK_DEPRECATED;
-
-    virtual bool run_task() CLICK_ELEMENT_DEPRECATED;
-    virtual void run_timer() CLICK_ELEMENT_DEPRECATED;
+    /** @endcond never */
 
   private:
 
@@ -266,19 +268,19 @@ class Element { public:
 
 #if CLICK_STATS >= 2
     // STATISTICS
-    unsigned _calls;		// Push and pull calls into this element.
-    click_cycles_t _self_cycles;	// Cycles spent in self and children.
+    unsigned _xfer_calls;	// Push and pull calls into this element.
+    click_cycles_t _xfer_own_cycles;	// Cycles spent in self from push and pull.
     click_cycles_t _child_cycles;	// Cycles spent in children.
 
     unsigned _task_calls;	// Calls to tasks owned by this element.
-    click_cycles_t _task_cycles;	// Cycles spent in self from tasks.
+    click_cycles_t _task_own_cycles;	// Cycles spent in self from tasks.
 
     unsigned _timer_calls;	// Calls to timers owned by this element.
-    click_cycles_t _timer_cycles;	// Cycles spent in self from timers.
+    click_cycles_t _timer_own_cycles;	// Cycles spent in self from timers.
 
     inline void reset_cycles() {
-	_calls = _task_calls = _timer_calls = 0;
-	_self_cycles = _child_cycles = _task_cycles = _timer_cycles = 0;
+	_xfer_calls = _task_calls = _timer_calls = 0;
+	_xfer_own_cycles = _task_own_cycles = _timer_own_cycles = _child_cycles = 0;
     }
     static String read_cycles_handler(Element *, void *);
     static int write_cycles_handler(const String &, Element *, void *, ErrorHandler *);
@@ -299,7 +301,7 @@ class Element { public:
 
     static String read_handlers_handler(Element *e, void *user_data);
     void add_default_handlers(bool writable_config);
-    inline void add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data);
+    inline void add_data_handlers(const char *name, int flags, HandlerCallback callback, void *data);
 
     friend class Router;
 #if CLICK_STATS >= 2
@@ -316,11 +318,11 @@ class Element { public:
 
 /** @brief Initialize static data for this element class.
  *
- * Elements that need to initialize global state, such as global hash tables
- * or configuration parsing functions, should place that initialization code
- * inside a static_initialize() static member function.  Click's build
- * machinery will find that function and cause it to be called when the
- * element code is loaded, before any elements of the class are created.
+ * Place initialization code for an element class's shared global state in the
+ * static_initialize() static member function.  (For example, the IPFilter
+ * element class uses static_initialize() to set up various parsing tables.)
+ * Click drivers will call this function when the element code is loaded,
+ * before any elements of the class are created.
  *
  * static_initialize functions are called in an arbitrary and unpredictable
  * order (not, for example, the configure_phase() order).  Element authors are
@@ -336,6 +338,9 @@ class Element { public:
  *
  * It must also have public accessibility.
  *
+ * @note In most cases you should also define a static_cleanup() function to
+ * clean up state initialized by static_initialize().
+ *
  * @sa Element::static_cleanup
  */
 inline void
@@ -345,10 +350,9 @@ Element::static_initialize()
 
 /** @brief Clean up static data for this element class.
  *
- * Elements that need to free global state, such as global hash tables or
- * configuration parsing functions, should place that code inside a
- * static_cleanup() static member function.  Click's build machinery will find
- * that function and cause it to be called when the element code is unloaded.
+ * Place cleanup code for an element class's shared global state in the
+ * static_cleanup() static member function.  Click drivers will call this
+ * function before unloading the element code.
  *
  * static_cleanup functions are called in an arbitrary and unpredictable order
  * (not, for example, the configure_phase() order, and not the reverse of the
@@ -601,16 +605,18 @@ Element::Port::push(Packet* p) const
 #endif
 #if CLICK_STATS >= 2
     ++_e->input(_port)._packets;
-    click_cycles_t c0 = click_get_cycles();
+    click_cycles_t start_cycles = click_get_cycles(),
+	start_child_cycles = _e->_child_cycles;
 # if HAVE_BOUND_PORT_TRANSFER
     _bound.push(_e, _port, p);
 # else
     _e->push(_port, p);
 # endif
-    click_cycles_t x = click_get_cycles() - c0;
-    ++_e->_calls;
-    _e->_self_cycles += x;
-    _owner->_child_cycles += x;
+    click_cycles_t all_delta = click_get_cycles() - start_cycles,
+	own_delta = all_delta - (_e->_child_cycles - start_child_cycles);
+    _e->_xfer_calls += 1;
+    _e->_xfer_own_cycles += own_delta;
+    _owner->_child_cycles += all_delta;
 #else
 # if HAVE_BOUND_PORT_TRANSFER
     _bound.push(_e, _port, p);
@@ -641,18 +647,20 @@ Element::Port::pull() const
 {
     assert(_e);
 #if CLICK_STATS >= 2
-    click_cycles_t c0 = click_get_cycles();
+    click_cycles_t start_cycles = click_get_cycles(),
+	old_child_cycles = _e->_child_cycles;
 # if HAVE_BOUND_PORT_TRANSFER
     Packet *p = _bound.pull(_e, _port);
 # else
     Packet *p = _e->pull(_port);
 # endif
-    click_cycles_t x = click_get_cycles() - c0;
-    ++_e->_calls;
-    _e->_self_cycles += x;
-    _owner->_child_cycles += x;
     if (p)
-	++_e->output(_port)._packets;
+	_e->output(_port)._packets += 1;
+    click_cycles_t all_delta = click_get_cycles() - start_cycles,
+	own_delta = all_delta - (_e->_child_cycles - old_child_cycles);
+    _e->_xfer_calls += 1;
+    _e->_xfer_own_cycles += own_delta;
+    _owner->_child_cycles += all_delta;
 #else
 # if HAVE_BOUND_PORT_TRANSFER
     Packet *p = _bound.pull(_e, _port);

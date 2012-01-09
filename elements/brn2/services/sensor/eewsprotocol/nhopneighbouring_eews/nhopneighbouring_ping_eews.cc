@@ -54,7 +54,7 @@ NHopNeighbouringPingEews::configure(Vector<String> &conf, ErrorHandler* errh)
 {
 
   if (cp_va_kparse(conf, this, errh,
-	  "EEWSSTATE", cpkP+cpkM , cpElement, &_as,
+      "EEWSSTATE", cpkP+cpkM , cpElement, &_as,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
       "NHOPN_INFO", cpkP+cpkM, cpElement, &nhop_info,
       "INTERVAL", cpkP, cpInteger, &_interval,
@@ -94,7 +94,12 @@ NHopNeighbouringPingEews::send_ping()
 	uint32_t num_neighbors = nhop_info->count_neighbours();
 	uint32_t hop_limit = nhop_info->get_hop_limit();
 
-	WritablePacket *p = NHopNeighbouringProtocolEews::new_ping(src, num_neighbors,
+  if ( gpspos == NULL ) {
+    BRN_ERROR("No valid position");
+    return;
+  }
+
+  WritablePacket *p = NHopNeighbouringProtocolEews::new_ping(src, num_neighbors,
                                                          hop_limit, gpspos, state);
   BRN_DEBUG("Create ping Packet by eth:%s loc:%s state:%d num-neighbors: %d hop-limit: %d", src->unparse().c_str(), gpspos->unparse_coord().c_str(), state, num_neighbors, hop_limit);
 

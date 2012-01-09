@@ -40,7 +40,7 @@ AODVGenerateRREQ::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 // RFC 6.3
-void AODVGenerateRREQ::generateRREQ(const IPAddress & destination, bool destinationonly, uint8_t ttl){
+void AODVGenerateRREQ::generateRREQ(const IPAddress & destination, bool destinationonly, uint8_t /*ttl*/){
 	// no tailroom needed, fixed size
 	int tailroom = 0;
 	int packet_size = sizeof(aodv_rreq_header);

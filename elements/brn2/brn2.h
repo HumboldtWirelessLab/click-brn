@@ -41,12 +41,13 @@ CLICK_DECLS
 /*
  * Common structures, classes, etc.
  */
-#define BRN_DSR_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
-#define BRN_DSR_WIRED_MEDIUM_METRIC        10     // static metric for wired links
-#define BRN_DSR_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
+#define BRN_LT_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
+#define BRN_LT_WIRED_MEDIUM_METRIC        10     // static metric for wired links
+#define BRN_LT_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
 
-#define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
-#define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
+#define BRN_LT_STATION_METRIC            100  ///< metric for assoc'd stations
+#define BRN_LT_ROAMED_STATION_METRIC    5000  ///< metric for roamed stations
+#define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
 
 class StringTokenizer {
   public:
@@ -115,17 +116,6 @@ const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
 const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
 
 #define ETHERADDRESS_BROADCAST brn_etheraddress_broadcast
-
-class BRNTools {
-
-  static int getBitposition(uint32_t x) {
-    int pos = 0;
-    while(x >>= 1) ++pos;
-    return pos;
-  }
-};
-
-#define BITPOSITION(x) BRNTools::getBitposition(x)
 
 CLICK_ENDDECLS
 

@@ -45,6 +45,8 @@ CLICK_DECLS
  * broadcast-flooding, which is an extra element
  */
 
+#define BROADCASTROUTING_DAFAULT_MAX_HOP_COUNT 100
+
 class BrnBroadcastRouting : public BRNElement {
 
  public:

@@ -18,7 +18,7 @@ struct dns_header {
   uint16_t ancount;//OCTET 7,8   ANCOUNT
   uint16_t nscount;//OCTET 9,10  NSCOUNT
   uint16_t arcount;//OCTET 11,12 ARCOUNT
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define DNS_HEADER_SIZE sizeof(dns_header)
 

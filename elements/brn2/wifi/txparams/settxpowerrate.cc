@@ -45,7 +45,10 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 SetTXPowerRate::initialize(ErrorHandler *)
 {
+  _rate_selection->init(_rtable);
+
   _timer.initialize(this);
+
   if ( _rate_selection->get_adjust_period() > 0 ) {
     _timer.schedule_now();
   }
@@ -114,11 +117,11 @@ SetTXPowerRate::pull(int port)
 NeighbourRateInfo *
 SetTXPowerRate::getDstInfo(EtherAddress ea)
 {
-  NeighbourRateInfo *di = _neighbors.findp(ea);
+  NeighbourRateInfo *di = _neighbors.find(ea);
 
   if ( di == NULL ) {
-    _neighbors.insert(ea,NeighbourRateInfo(ea, _rtable->lookup(ea), (uint8_t)_max_power));
-    di = _neighbors.findp(ea);
+    _neighbors.insert(ea, new NeighbourRateInfo(ea, _rtable->lookup(ea), (uint8_t)_max_power));
+    di = _neighbors.find(ea);
   }
 
   return di;
@@ -136,8 +139,8 @@ SetTXPowerRate::getInfo()
   sa << "<ratecontrol rateselection=\"" << rs << "\" >\n";
   sa << "\t<neighbours count=\"" << _neighbors.size() << "\" >\n";
   for (NIter iter = _neighbors.begin(); iter.live(); iter++) {
-    NeighbourRateInfo nri = iter.value();
-    sa << _rate_selection->print_neighbour_info(&nri,2);
+    NeighbourRateInfo *nri = iter.value();
+    sa << _rate_selection->print_neighbour_info(nri,2);
   }
   sa << "\t</neighbours>\n</ratecontrol>\n";
 

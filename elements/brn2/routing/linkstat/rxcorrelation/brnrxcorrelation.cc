@@ -33,20 +33,23 @@ BrnRXCorrelation::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-lphandler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   BrnRXCorrelation *lph = (BrnRXCorrelation*)element;
-  if ( direction )
-    return lph->lpSendHandler((unsigned char*)buffer, size);
-  else
-    return lph->lpReceiveHandler((unsigned char*)buffer, size);
-  return 0;
+  return lph->lpSendHandler((unsigned char*)buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  BrnRXCorrelation *lph = (BrnRXCorrelation*)element;
+  return lph->lpReceiveHandler((unsigned char*)buffer, size);
 }
 
 int
 BrnRXCorrelation::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_RXC,&lphandler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_RXC,&tx_handler, &rx_handler);
 
   return 0;
 }

@@ -29,11 +29,11 @@ OLSRMIDGenerator::~OLSRMIDGenerator()
 int
 OLSRMIDGenerator::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int res = cp_va_parse(conf, this, errh,
-			cpInteger, "MID sending interval (msec)", &_period,
-			cpInteger, "MID Holding Time", &_mid_hold_time,
-			cpElement, "local Interface Information base", &_localIfInfoBase
-			, 0);
+  int res = cp_va_kparse(conf, this, errh,
+                         "MID sending interval (msec)",  cpkP, cpInteger, &_period,
+                         "MID Holding Time", cpkP, cpInteger, &_mid_hold_time,
+                         "local Interface Information base", cpkP, cpElement, &_localIfInfoBase
+			, cpEnd);
   if ( res < 0 )
     return res;
   if ( _period <= 0 )
@@ -78,7 +78,7 @@ OLSRMIDGenerator::generate_mid()
   }
   memset(packet->data(), 0, packet->length());
    struct timeval tv;
-  click_gettimeofday(&tv);
+  tv = Timestamp::now().timeval();
   packet->set_timestamp_anno(tv);
   
   olsr_pkt_hdr *pkt_hdr = (olsr_pkt_hdr *) packet->data();

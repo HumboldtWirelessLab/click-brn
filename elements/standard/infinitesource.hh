@@ -4,6 +4,7 @@
 #include <click/task.hh>
 #include <click/notifier.hh>
 CLICK_DECLS
+class HandlerCall;
 
 /*
 =c
@@ -52,6 +53,11 @@ Boolean. Same as the ACTIVE argument.
 Boolean. If true, then stop the driver once LIMIT packets are sent. Default is
 false.
 
+=item END_CALL
+
+A write handler called once LIMIT packets are sent. END_CALL and
+STOP are mutually exclusive.
+
 =item TIMESTAMP
 
 Boolean. If false, do not set the timestamp annotation on generated
@@ -60,7 +66,7 @@ packets. Defaults to true.
 =back
 
 To generate a particular traffic pattern, use this element and RatedSource
-in conjunction with PokeHandlers.
+in conjunction with Script.
 
 =e
 
@@ -91,7 +97,7 @@ Makes the element active or inactive.
 
 =a
 
-RatedSource, PokeHandlers */
+RatedSource, Script */
 
 class InfiniteSource : public Element, public ActiveNotifier { public:
 
@@ -130,11 +136,11 @@ class InfiniteSource : public Element, public ActiveNotifier { public:
     ucounter_t _count;
     int _datasize;
     bool _active;
-    bool _stop;
     bool _timestamp;
     Task _task;
     String _data;
     NotifierSignal _nonfull_signal;
+    HandlerCall *_end_h;
 
     enum {
 	h_data, h_limit, h_burst, h_active, h_reset, h_count, h_length,
