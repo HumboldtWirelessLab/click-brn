@@ -13,8 +13,13 @@ CLICK_DECLS
 #define VERSION_BASE_MAC_LZW 1
 
 struct packed_link_header {
+#if BYTE_ORDER == BIG_ENDIAN
   unsigned char _version:4;
   unsigned char _reserved:4;
+#else
+  unsigned char _reserved:4;
+  unsigned char _version:4;
+#endif
 
   unsigned char _no_nodes;
 } __attribute__ ((packed));

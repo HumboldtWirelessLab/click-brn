@@ -21,7 +21,7 @@
 #include <click/config.h>
 #include <click/glue.hh>
 #include "todump.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #if CLICK_NS
 # include <click/master.hh>
@@ -49,20 +49,22 @@ ToDump::configure(Vector<String> &conf, ErrorHandler *errh)
     String use_encap_from;
     _snaplen = 2000;
     _extra_length = true;
+    _unbuffered = false;
 #if CLICK_NS
     bool per_node = false;
 #endif
 
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_filename,
-		     "SNAPLEN", cpkP, cpUnsigned, &_snaplen,
-		     "ENCAP", cpkP, cpWord, &encap_type,
-		     "USE_ENCAP_FROM", 0, cpArgument, &use_encap_from,
-		     "EXTRA_LENGTH", 0, cpBool, &_extra_length,
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _filename)
+	.read_p("SNAPLEN", _snaplen)
+	.read_p("ENCAP", WordArg(), encap_type)
+	.read("USE_ENCAP_FROM", AnyArg(), use_encap_from)
+	.read("EXTRA_LENGTH", _extra_length)
+	.read("UNBUFFERED", _unbuffered)
 #if CLICK_NS
-		     "PER_NODE", 0, cpBool, &per_node,
+	.read("PER_NODE", per_node)
 #endif
-		     cpEnd) < 0)
+	.complete() < 0)
 	return -1;
 
     if (_snaplen == 0)
@@ -153,6 +155,9 @@ ToDump::initialize(ErrorHandler *errh)
 	    _fp = stdout;
 	    _filename = "<stdout>";
 	}
+
+	if (_unbuffered)
+	    setvbuf(_fp, (char *) 0, _IONBF, 0);
 
 	struct fake_pcap_file_header h;
 
@@ -285,9 +290,9 @@ ToDump::write_handler(const String &, Element *e, void *, ErrorHandler *)
 void
 ToDump::add_handlers()
 {
-    add_read_handler("filename", read_handler, (void *)H_FILENAME);
-    add_read_handler("count", read_handler, (void *)H_COUNT);
-    add_write_handler("reset_counts", write_handler, (void *)H_RESET_COUNTS, Handler::BUTTON);
+    add_read_handler("filename", read_handler, H_FILENAME);
+    add_read_handler("count", read_handler, H_COUNT);
+    add_write_handler("reset_counts", write_handler, H_RESET_COUNTS, Handler::BUTTON);
     if (input_is_pull(0) && noutputs() == 0)
 	add_task_handlers(&_task);
 }

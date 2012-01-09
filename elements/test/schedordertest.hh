@@ -40,6 +40,8 @@ forever.  Default is 0.
 Boolean.  If true, SchedOrderTest will stop the driver when the ID sequence is
 full.  (Note that this has to do with SIZE, not LIMIT.)  Default is false.
 
+=back
+
 =h order read-only
 
 Reports the ID sequence as a space-separated list of integers.
@@ -55,8 +57,6 @@ class SchedOrderTest : public Element { public:
     ~SchedOrderTest();
 
     const char *class_name() const		{ return "SchedOrderTest"; }
-    const char *port_count() const		{ return PORTS_0_0; }
-    const char *processing() const		{ return AGNOSTIC; }
 
     int configure(Vector<String> &, ErrorHandler *);
     int initialize(ErrorHandler *);

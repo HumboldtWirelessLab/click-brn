@@ -1,6 +1,6 @@
 #include <click/config.h>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/packet_anno.hh>
 #include <click/straccum.hh>
@@ -58,7 +58,7 @@ FilterFailures_read_param(Element *e, void *thunk)
 void
 FilterFailures::add_handlers()
 {
-  add_read_handler("drops", FilterFailures_read_param, (void *) H_DROPS);
+  add_read_handler("drops", FilterFailures_read_param, H_DROPS);
 }
 
 CLICK_ENDDECLS

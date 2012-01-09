@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "linktable.hh"
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <elements/wifi/path.hh>
@@ -66,10 +66,10 @@ LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
   int stale_period = 120;
-  ret = cp_va_kparse(conf, this, errh,
-		     "IP", 0, cpIPAddress, &_ip,
-		     "STALE", 0, cpUnsigned, &stale_period,
-		     cpEnd);
+  ret = Args(conf, this, errh)
+      .read("IP", _ip)
+      .read("STALE", stale_period)
+      .complete();
 
   if (!_ip)
     return errh->error("IP not specified");
@@ -110,22 +110,21 @@ LinkTable::static_update_link(const String &arg, Element *e,
   }
 
 
-  if (!cp_ip_address(args[0], &from)) {
+  if (!IPAddressArg().parse(args[0], from)) {
     return errh->error("Couldn't read IPAddress out of from");
   }
-
-  if (!cp_ip_address(args[1], &to)) {
+  if (!IPAddressArg().parse(args[1], to)) {
     return errh->error("Couldn't read IPAddress out of to");
   }
-  if (!cp_unsigned(args[2], &metric)) {
+  if (!IntArg().parse(args[2], metric)) {
     return errh->error("Couldn't read metric");
   }
 
-  if (!cp_unsigned(args[3], &seq)) {
+  if (!IntArg().parse(args[3], seq)) {
     return errh->error("Couldn't read seq");
   }
 
-  if (!cp_unsigned(args[4], &age)) {
+  if (!IntArg().parse(args[4], age)) {
     return errh->error("Couldn't read age");
   }
 
@@ -681,14 +680,14 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam,
   }
   case H_BLACKLIST_ADD: {
     IPAddress m;
-    if (!cp_ip_address(s, &m))
+    if (!IPAddressArg().parse(s, m))
       return errh->error("blacklist_add parameter must be ipaddress");
     f->_blacklist.insert(m, m);
     break;
   }
   case H_BLACKLIST_REMOVE: {
     IPAddress m;
-    if (!cp_ip_address(s, &m))
+    if (!IPAddressArg().parse(s, m))
       return errh->error("blacklist_add parameter must be ipaddress");
     f->_blacklist.erase(m);
     break;
@@ -702,20 +701,20 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam,
 
 void
 LinkTable::add_handlers() {
-  add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_old", LinkTable_read_param, (void *)H_ROUTES_OLD);
-  add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
-  add_read_handler("links", LinkTable_read_param, (void *)H_LINKS);
-  add_read_handler("hosts", LinkTable_read_param, (void *)H_HOSTS);
-  add_read_handler("blacklist", LinkTable_read_param, (void *)H_BLACKLIST);
-  add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
+  add_read_handler("routes", LinkTable_read_param, H_ROUTES_FROM);
+  add_read_handler("routes_old", LinkTable_read_param, H_ROUTES_OLD);
+  add_read_handler("routes_from", LinkTable_read_param, H_ROUTES_FROM);
+  add_read_handler("routes_to", LinkTable_read_param, H_ROUTES_TO);
+  add_read_handler("links", LinkTable_read_param, H_LINKS);
+  add_read_handler("hosts", LinkTable_read_param, H_HOSTS);
+  add_read_handler("blacklist", LinkTable_read_param, H_BLACKLIST);
+  add_read_handler("dijkstra_time", LinkTable_read_param, H_DIJKSTRA_TIME);
 
-  add_write_handler("clear", LinkTable_write_param, (void *)H_CLEAR);
-  add_write_handler("blacklist_clear", LinkTable_write_param, (void *)H_BLACKLIST_CLEAR);
-  add_write_handler("blacklist_add", LinkTable_write_param, (void *)H_BLACKLIST_ADD);
-  add_write_handler("blacklist_remove", LinkTable_write_param, (void *)H_BLACKLIST_REMOVE);
-  add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
+  add_write_handler("clear", LinkTable_write_param, H_CLEAR);
+  add_write_handler("blacklist_clear", LinkTable_write_param, H_BLACKLIST_CLEAR);
+  add_write_handler("blacklist_add", LinkTable_write_param, H_BLACKLIST_ADD);
+  add_write_handler("blacklist_remove", LinkTable_write_param, H_BLACKLIST_REMOVE);
+  add_write_handler("dijkstra", LinkTable_write_param, H_DIJKSTRA);
 
 
   add_write_handler("update_link", static_update_link, 0);

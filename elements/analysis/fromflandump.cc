@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include "fromflandump.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/error.hh>
@@ -58,13 +58,13 @@ FromFlanDump::configure(Vector<String> &conf, ErrorHandler *errh)
     bool stop = false, active = true;
     bool have_packets, packets, have_flows, flows;
 
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_dirname,
-		     "STOP", 0, cpBool, &stop,
-		     "ACTIVE", 0, cpBool, &active,
-		     "PACKETS", cpkC, &have_packets, cpBool, &packets,
-		     "FLOWS", cpkC, &have_flows, cpBool, &flows,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _dirname)
+	.read("STOP", stop)
+	.read("ACTIVE", active)
+	.read("PACKETS", have_packets, packets)
+	.read("FLOWS", have_flows, flows)
+	.complete() < 0)
 	return -1;
 
     // check packets vs. flows
@@ -422,7 +422,7 @@ FromFlanDump::read_handler(Element *e, void *thunk)
     FromFlanDump *fd = static_cast<FromFlanDump *>(e);
     switch ((intptr_t)thunk) {
       case ACTIVE_THUNK:
-	return cp_unparse_bool(fd->_active);
+	return BoolArg::unparse(fd->_active);
       case FILESIZE_THUNK: {
 	  struct stat s;
 	  if (fd->_fd >= 0 && fstat(fd->_fd, &s) >= 0 && S_ISREG(s.st_mode))
@@ -445,11 +445,11 @@ FromFlanDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHa
     switch ((intptr_t)thunk) {
       case ACTIVE_THUNK: {
 	  bool active;
-	  if (cp_bool(s, &active)) {
+	  if (BoolArg().parse(s, active)) {
 	      fd->set_active(active);
 	      return 0;
 	  } else
-	      return errh->error("`active' should be Boolean");
+	      return errh->error("type mismatch");
       }
       case STOP_THUNK:
 	fd->set_active(false);
@@ -463,11 +463,11 @@ FromFlanDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHa
 void
 FromFlanDump::add_handlers()
 {
-    add_read_handler("active", read_handler, (void *)ACTIVE_THUNK, Handler::CHECKBOX);
-    add_write_handler("active", write_handler, (void *)ACTIVE_THUNK);
-    add_write_handler("stop", write_handler, (void *)STOP_THUNK, Handler::BUTTON);
-    add_read_handler("filesize", read_handler, (void *)FILESIZE_THUNK);
-    add_read_handler("filepos", read_handler, (void *)FILEPOS_THUNK);
+    add_read_handler("active", read_handler, ACTIVE_THUNK, Handler::CHECKBOX);
+    add_write_handler("active", write_handler, ACTIVE_THUNK);
+    add_write_handler("stop", write_handler, STOP_THUNK, Handler::BUTTON);
+    add_read_handler("filesize", read_handler, FILESIZE_THUNK);
+    add_read_handler("filepos", read_handler, FILEPOS_THUNK);
     if (output_is_push(0))
 	add_task_handlers(&_task);
 }

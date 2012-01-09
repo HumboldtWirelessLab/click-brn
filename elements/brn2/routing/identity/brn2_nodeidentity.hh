@@ -25,7 +25,8 @@
 #include <click/vector.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/brnelement.hh"
+#include "elements/brn2/standard/brn_md5.hh"
 
 #include "brn2_device.hh"
 
@@ -38,14 +39,9 @@ CLICK_DECLS
  * stores the ethernet address of associated node (clients, brn nodes) ...
  * =d
  */
-class BRN2NodeIdentity : public Element {
+class BRN2NodeIdentity : public BRNElement {
 
  public:
-  //
-  //member
-  //
-  int _debug;
-
   //
   //methods
   //
@@ -72,27 +68,36 @@ class BRN2NodeIdentity : public Element {
   const EtherAddress *getMasterAddress();
   const EtherAddress *getServiceAddress();
 
-//  void setNodeName(String name);
-  String getNodeName() { return getMasterAddress()->unparse();}
-//  void setMasterDeviceName(String name);
-//  void setMasterDeviceID(int id);
+  String _nodename;           //name of node. if not set, then etheraddr of _master_device is the name
+
+  void setNodeName(String name) { _nodename = name; }
+  String getNodeName() { return _nodename; }
+
+  //void setMasterDeviceName(String name);
+  //void setMasterDeviceID(int id);
+
   md5_byte_t *getNodeID() { return _node_id; };
+  uint32_t getNodeID32() { return _node_id_32; };
 
   Vector<BRN2Device*> _node_devices;   //TODO: should be private
-
-  String _nodename;           //name of node. if not set, then etheraddr of _master_device is the name
 
  private:
   //
   //member
   //
   md5_byte_t _node_id[16];  //md5 sum of master addr (nodeid)
+  uint32_t _node_id_32;  //md5 sum of master addr (nodeid)
 
-  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set, then the first device is master
+  BRN2Device* _master_device; //name of master device. This can also be a virtual device. If not set,
+                              //then the first device is master
   int _master_device_id;      //id of master device
 
   BRN2Device* _service_device;
   int _service_device_id;
+
+ public:
+  md5_byte_t _click_binary_id[16];  //md5 sum of click_binary
+  md5_byte_t _click_script_id[16];  //md5 sum of click_script
 
 };
 

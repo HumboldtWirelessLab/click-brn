@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "wififragment.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -41,10 +41,10 @@ WifiFragment::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _debug = false;
   _max_length = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "MTU", cpkP, cpUnsigned, &_max_length,
-		   "DEBUG", 0, cpBool, &_debug,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read_p("MTU", _max_length)
+      .read("DEBUG", _debug)
+      .complete() < 0)
     return -1;
   return 0;
 }
@@ -55,7 +55,7 @@ WifiFragment::push(int port, Packet *p)
 {
 
   click_wifi *w = (click_wifi *) p->data();
-  uint16_t seq = le16_to_cpu(*(u_int16_t *)w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+  uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
   if (!_max_length ||
       p->length() <= sizeof(click_wifi) + _max_length) {
     if (_debug) {
@@ -95,7 +95,7 @@ WifiFragment::push(int port, Packet *p)
 	   frag_len);
     click_wifi *w_o = (click_wifi *) p_out->data();
     uint16_t seq_o = (seq << WIFI_SEQ_SEQ_SHIFT) | (((u_int8_t) frag) & WIFI_SEQ_FRAG_MASK);
-    *((uint16_t *)w_o->i_seq) = cpu_to_le16(seq_o);
+    w_o->i_seq = cpu_to_le16(seq_o);
     if (frag != num_frags - 1) {
       w_o->i_fc[1] |= WIFI_FC1_MORE_FRAG;
     }
@@ -130,7 +130,7 @@ WifiFragment::write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -142,9 +142,9 @@ WifiFragment::write_param(const String &in_s, Element *e, void *vparam,
 void
 WifiFragment::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
+  add_read_handler("debug", read_param, H_DEBUG);
 
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
+  add_write_handler("debug", write_param, H_DEBUG);
 }
 
 EXPORT_ELEMENT(WifiFragment)

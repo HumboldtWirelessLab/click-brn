@@ -44,6 +44,7 @@ BRN2SrcForwarder::BRN2SrcForwarder()
     _dsr_encap(),
     _dsr_decap(),
     _link_table(),
+    _route_querier(),
     _dsr_rid_cache(NULL)
 {
   BRNElement::init();
@@ -61,6 +62,7 @@ BRN2SrcForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
+      "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -172,8 +174,15 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
           j, source_route[j].ether().unparse().c_str(), source_route[j]._metric);
     }
 
+    struct click_brn *brnh = (struct click_brn *)p_in->data();
+    brnh->ttl--;
+    BRNPacketAnno::set_ttl_anno(p_in, brnh->ttl);
+    int source_hops  = brn_dsr->dsr_hop_count;
+    int segments     = brn_dsr->dsr_segsleft;
+    int index = source_hops - segments - 2;
+
     // update link table
-    add_route_to_link_table(source_route);
+    _route_querier->add_route_to_link_table(source_route, DSR_ELEMENT_SRC_FORWARDER, index);
 
     //BRN_DEBUG(_link_table->print_links().c_str());
 
@@ -242,6 +251,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
   if (segments < source_hops) {
     // intermediate hop
     me = EtherAddress (dsr_hops[index - 1].hw.data);
+    dsr_hops[index - 1].metric = htons(_link_table->get_link_metric(last, me));//update metric in route from last to me 26.11.2010
   } else {
     // first hop
   }
@@ -272,10 +282,6 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
     memcpy(ether->ether_shost, me.data(), sizeof(ether->ether_shost));
     memcpy(ether->ether_dhost, next.data(), sizeof(ether->ether_dhost));
     ether->ether_type = htons(ETHERTYPE_BRN);                             //TODO: CHECK: this is important ??
-
-    // the following line would effectively destroy p_in as it creates a shared ether header between p and p_in
-    // Yet, there is no obvious reason to have it around at all. We shouldn't touch p_in here.
-    //p_in->set_ether_header(ether);
 
     output(2).push(p);  //Route-Error
     return;
@@ -328,46 +334,13 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
   BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
   BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
 
+  if ( BRNProtocol::is_brn_etherframe(p) ) { //set ttl if payload is brn_packet
+    struct click_brn *brnh = BRNProtocol::get_brnheader_in_etherframe(p);
+    brnh->ttl = BRNPacketAnno::ttl_anno(p);
+  }
+
   return p;
 }
-
-void
-BRN2SrcForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
-{
-
-  for (int i = 0; i < route.size() - 1; i++) {
-    EtherAddress ether1 = route[i].ether();
-    EtherAddress ether2 = route[i+1].ether();
-
-    if (ether1 == ether2)
-      continue;
-
-    if (_me->isIdentical(&ether2)) // learn only from route prefix; suffix will be set along the way
-      return;
-
-    uint16_t metric = route[i+1]._metric; //metric starts with offset 1
-
-    IPAddress ip1 = route[i].ip();
-    IPAddress ip2 = route[i+1].ip();
-
-/*
-    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
-      metric = 9999;
-    }
-    if (metric == 0) {
-      metric = 1; // TODO remove this hack
-    }
-*/
-    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
-
-    if (ret) {
-      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
-    }
-  }
-}
-
 
 //-----------------------------------------------------------------------------
 // Handler

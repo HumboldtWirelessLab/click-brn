@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include "simplepullswitch.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/llrpc.h>
 CLICK_DECLS
@@ -34,9 +34,7 @@ int
 SimplePullSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     int input = 0;
-    if (cp_va_kparse(conf, this, errh,
-		     "INPUT", cpkP, cpInteger, &input,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh).read_p("INPUT", input).complete() < 0)
 	return -1;
     set_input(input);
     return 0;
@@ -62,7 +60,7 @@ SimplePullSwitch::write_param(const String &s, Element *e, void *, ErrorHandler 
 {
     SimplePullSwitch *sw = static_cast<SimplePullSwitch *>(e);
     int input;
-    if (!cp_integer(s, &input))
+    if (!IntArg().parse(s, input))
 	return errh->error("syntax error");
     sw->set_input(input);
     return 0;
@@ -72,7 +70,7 @@ void
 SimplePullSwitch::add_handlers()
 {
     add_data_handlers("switch", Handler::OP_READ, &_input);
-    add_write_handler("switch", write_param, 0);
+    add_write_handler("switch", write_param);
     add_data_handlers("config", Handler::OP_READ, &_input);
     set_handler_flags("config", 0, Handler::CALM);
 }

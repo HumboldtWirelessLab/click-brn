@@ -25,7 +25,7 @@
 #include <click/router.hh>
 #include <click/master.hh>
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/task.hh>
 #include <click/error.hh>
 
@@ -47,10 +47,10 @@ BalancedThreadSched::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     _interval = 1000;
     _increasing = true;
-    if (cp_va_kparse(conf, this, errh,
-		     "INTERVAL", cpkP, cpUnsigned, &_interval,
-		     "INCREASING", cpkP, cpBool, &_increasing,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_p("INTERVAL", _interval)
+	.read_p("INCREASING", _increasing)
+	.complete() < 0)
 	return -1;
     return 0;
 }
@@ -80,20 +80,23 @@ BalancedThreadSched::run_timer(Timer *)
 {
     Master *m = router()->master();
 
-    // develop load list
+    // develop task lists and load list
+    Vector<int> task_offset;
+    Vector<Task *> tasks;
     Vector<int> load;
     int total_load = 0;
     for (int tid = 0; tid < m->nthreads(); tid++) {
-	RouterThread *thread = m->thread(tid);
-	thread->lock_tasks();
+	int my_offset = tasks.size();
+	task_offset.push_back(my_offset);
+	m->thread(tid)->scheduled_tasks(router(), tasks);
+
 	int thread_load = 0;
-	Task *end = thread->task_end();
-	for (Task *t = thread->task_begin(); t != end; t = thread->task_next(t))
-	    thread_load += t->cycles();
-	thread->unlock_tasks();
+	for (int i = my_offset; i < tasks.size(); ++i)
+	    thread_load += tasks[i]->cycles();
 	total_load += thread_load;
 	load.push_back(thread_load);
     }
+    task_offset.push_back(task_offset.size());
     int avg_load = total_load / m->nthreads();
 
     for (int rounds = 0; rounds < m->nthreads(); rounds++) {
@@ -112,37 +115,21 @@ BalancedThreadSched::run_timer(Timer *)
 	    break;
 #endif
 
-	// lock max_thread
-	RouterThread *thread = m->thread(max_tid);
-	thread->lock_tasks();
-
-	// collect tasks from max-loaded thread
-	total_load -= load[max_tid];
-	load[max_tid] = 0;
-	Vector<Task *> tasks;
-	Task *end = thread->task_end();
-	for (Task *t = thread->task_begin(); t != end; t = thread->task_next(t)) {
-	    load[max_tid] += t->cycles();
-	    tasks.push_back(t);
-	}
-	total_load += load[max_tid];
-	avg_load = total_load / m->nthreads();
-
 	// sort tasks by cycle count
-	click_qsort(tasks.begin(), tasks.size(), sizeof(Task *), (_increasing ? task_increasing_sorter : task_decreasing_sorter));
+	Task **tbegin = tasks.begin() + task_offset[max_tid];
+	Task **tend = tasks.begin() + task_offset[max_tid + 1];
+	click_qsort(tbegin, tend - tbegin, sizeof(Task *), (_increasing ? task_increasing_sorter : task_decreasing_sorter));
 
-	// move tasks
+	// move tasks (checking that task hasn't moved for other reasons)
 	int highwater = avg_load + (avg_load >> 2);
-	for (Task **tt = tasks.begin(); tt < tasks.end(); tt++)
+	for (Task **tt = tbegin; tt != tend; ++tt)
 	    if (load[min_tid] + (*tt)->cycles() < highwater
-		&& load[min_tid] + 2*(*tt)->cycles() <= load[max_tid]) {
+		&& load[min_tid] + 2*(*tt)->cycles() <= load[max_tid]
+		&& (*tt)->home_thread_id() == max_tid) {
 		load[min_tid] += (*tt)->cycles();
 		load[max_tid] -= (*tt)->cycles();
 		(*tt)->move_thread(min_tid);
 	    }
-
-	// done with this round!
-	thread->unlock_tasks();
     }
 
     _timer.schedule_after_msec(_interval);

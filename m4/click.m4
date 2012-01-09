@@ -13,12 +13,14 @@ dnl If so, we don't screw with their choices later.
 dnl
 
 AC_DEFUN([CLICK_INIT], [
-    ac_user_cc=; test -n "$CC" && ac_user_cc=y
-    ac_user_kernel_cc=; test -n "$KERNEL_CC" && ac_user_kernel_cc=y
-    ac_user_cxx=; test -n "$CXX" && ac_user_cxx=y
-    ac_user_build_cxx=; test -n "$BUILD_CXX" && ac_user_build_cxx=y
-    ac_user_kernel_cxx=; test -n "$KERNEL_CXX" && ac_user_kernel_cxx=y
-    ac_user_depcflags=; test -n "$DEPCFLAGS" && ac_user_depcflags=y
+    ac_user_cc=${CC+y}
+    ac_user_cflags=${CFLAGS+y}
+    ac_user_kernel_cc=${KERNEL_CC+y}
+    ac_user_cxx=${CXX+y}
+    ac_user_cxxflags=${CXXFLAGS+y}
+    ac_user_build_cxx=${BUILD_CXX+y}
+    ac_user_kernel_cxx=${KENREL_CXX+y}
+    ac_user_depcflags=${DEPCFLAGS+y}
     ac_compile_with_warnings=y
 
     conf_auxdir=$1
@@ -41,15 +43,20 @@ AC_DEFUN([CLICK_PROG_CC], [
     AC_REQUIRE([AC_PROG_CC])
 
     ac_base_cc="$CC"
-    test -z "$ac_user_cc" -a -n "$GCC" -a -n "$ac_compile_with_warnings" && \
-	CC="$CC -W -Wall"
 
-    test -z "$ac_user_cc" -a -n "$GCC" -a -n "$ac_compile_with_warnings" -a -z "$ac_user_depcflags" && \
+    test -z "$ac_user_cflags" -a -n "$GCC" -a -n "$ac_compile_with_warnings" -a -z "$ac_user_depcflags" && \
 	DEPCFLAGS="-MD -MP"
     AC_SUBST(DEPCFLAGS)
 
-    CFLAGS_NDEBUG=`echo "$CFLAGS" | sed 's/-g//'`
-    AC_SUBST(CFLAGS_NDEBUG)
+    dnl do not add WARNING_CFLAGS to KERNEL_CFLAGS
+    KERNEL_CFLAGS=`echo "$CFLAGS" | sed 's/-g//'`
+    AC_SUBST(KERNEL_CFLAGS)
+
+    WARNING_CFLAGS=
+    test -z "$ac_user_cflags" -a -n "$GCC" -a -n "$ac_compile_with_warnings" && \
+	WARNING_CFLAGS=" -W -Wall"
+    CFLAGS="$CFLAGS$WARNING_CFLAGS"
+
     AC_CHECK_HEADERS(sys/types.h unistd.h)
 ])
 
@@ -82,22 +89,6 @@ and Linux header files are GCC-specific.)
     fi
 
     AC_LANG_CPLUSPLUS
-    if test -n "$GXX"; then
-	changequote(<<,>>)GXX_VERSION=`$CXX --version | head -n 1 | sed 's/^[^0-9]*\([0-9.]*\).*/\1/'`
-	GXX_MAJOR=`echo $GXX_VERSION | sed 's/\..*//'`
-	GXX_MINOR=`echo $GXX_VERSION | sed 's/^[^.]*\.\([^.]*\).*/\1/'`changequote([,])
-
-	if test $GXX_MAJOR -lt 2 -o \( $GXX_MAJOR -eq 2 -a $GXX_MINOR -le 7 \); then
-	    AC_MSG_ERROR([
-=========================================
-
-Your GNU C++ compiler ($CXX) is too old!
-Either download a newer compiler, or tell me to use a different compiler
-by setting the 'CXX' environment variable and rerunning me.
-
-=========================================])
-	fi
-    fi
 
     dnl check for <new> and <new.h>
 
@@ -121,23 +112,40 @@ by setting the 'CXX' environment variable and rerunning me.
 	fi
     fi
 
-    dnl check for -fvtable-thunks
+    dnl check for C++0x constexpr and static_assert
 
-    VTABLE_THUNKS=
-    test -n "$GXX" && test "$GXX_MAJOR" -lt 3 && VTABLE_THUNKS=-fvtable-thunks
+    AC_CACHE_CHECK([whether the C++ compiler understands constexpr], [ac_cv_cxx_constexpr], [
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[constexpr int f(int x) { return x + 1; }]], [[]])],
+	    [ac_cv_cxx_constexpr=yes], [ac_cv_cxx_constexpr=no])])
+    if test "$ac_cv_cxx_constexpr" = yes; then
+	AC_DEFINE([HAVE_CXX_CONSTEXPR], [1], [Define if the C++ compiler understands constexpr.])
+    fi
+
+    AC_CACHE_CHECK([whether the C++ compiler understands static_assert], [ac_cv_cxx_static_assert], [
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[const int f = 2;]], [[static_assert(f == 2, "f should be 2");]])],
+	    [ac_cv_cxx_static_assert=yes], [ac_cv_cxx_static_assert=no])])
+    if test "$ac_cv_cxx_static_assert" = yes; then
+	AC_DEFINE([HAVE_CXX_STATIC_ASSERT], [1], [Define if the C++ compiler understands static_assert.])
+    fi
+
+    AC_CACHE_CHECK([[whether the C++ compiler understands #pragma interface]], [ac_cv_cxx_pragma_interface], [
+	save_cxxflags="$CXXFLAGS"; CXXFLAGS="$CXXFLAGS -Werror -Wall -W"
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#pragma interface "foo.c"
+#pragma implementation "foo.c"]], [[]])], [ac_cv_cxx_pragma_interface=yes], [ac_cv_cxx_pragma_interface=no])
+        CXXFLAGS="$save_cxxflags"
+    ])
+    if test "$ac_cv_cxx_pragma_interface" = yes; then
+	AC_DEFINE([HAVE_CXX_PRAGMA_INTERFACE], [1], [Define if the C++ compiler understands #pragma interface.])
+    fi
 
     dnl define correct warning options
 
-    CXX_WARNINGS=
-    test -z "$ac_user_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
-	CXX_WARNINGS='-W -Wall'
-
     ac_base_cxx="$CXX"
-    test -z "$ac_user_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
-	CXX="$CXX $CXX_WARNINGS $VTABLE_THUNKS"
+    test -z "$ac_user_cxxflags" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
+	CXX="$CXX$CFLAGS_WARNINGS"
 
-    CXXFLAGS_NDEBUG=`echo "$CXXFLAGS" | sed 's/-g//'`
-    AC_SUBST(CXXFLAGS_NDEBUG)
+    KERNEL_CXXFLAGS=`echo "$CXXFLAGS" | sed 's/-g//'`
+    AC_SUBST(KERNEL_CXXFLAGS)
 ])
 
 
@@ -150,7 +158,7 @@ AC_DEFUN([CLICK_PROG_BUILD_CXX], [
     dnl This doesn't really work, but it's close.
     ac_base_build_cxx="$CXX"
     test -z "$ac_user_build_cxx" -a -n "$ac_compile_with_warnings" && \
-	BUILD_CXX="$BUILD_CXX $CXX_WARNINGS $VTABLE_THUNKS"
+	BUILD_CXX="$BUILD_CXX$WARNING_CFLAGS"
 ])
 
 
@@ -164,7 +172,7 @@ AC_DEFUN([CLICK_PROG_KERNEL_CC], [
     test -z "$ac_user_kernel_cc" && \
 	KERNEL_CC="$ac_base_cc"
     test -z "$ac_user_kernel_cc" -a -n "$GCC" -a -n "$ac_compile_with_warnings" && \
-	KERNEL_CC="$ac_base_cc -w $CXX_WARNINGS"
+	KERNEL_CC="$ac_base_cc -w $WARNING_CFLAGS"
     AC_SUBST(KERNEL_CC)
 ])
 
@@ -179,14 +187,14 @@ AC_DEFUN([CLICK_PROG_KERNEL_CXX], [
     test -z "$ac_user_kernel_cxx" && \
 	KERNEL_CXX="$ac_base_cxx"
     test -z "$ac_user_kernel_cxx" -a -n "$GXX" -a -n "$ac_compile_with_warnings" && \
-	KERNEL_CXX="$ac_base_cxx -w $CXX_WARNINGS -fno-exceptions -fno-rtti $VTABLE_THUNKS -fpermissive"
+	KERNEL_CXX="$ac_base_cxx -w $WARNING_CFLAGS -fno-exceptions -fno-rtti -fpermissive"
     AC_SUBST(KERNEL_CXX)
 ])
 
 
 dnl
 dnl CLICK_CHECK_DYNAMIC_LINKING
-dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist 
+dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist
 dnl and work.  Also defines LDMODULEFLAGS, the flags to pass to the linker
 dnl when building a loadable module.
 dnl
@@ -219,7 +227,7 @@ AC_DEFUN([CLICK_CHECK_DYNAMIC_LINKING], [
 
 dnl
 dnl CLICK_CHECK_BUILD_DYNAMIC_LINKING
-dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist 
+dnl Defines HAVE_DYNAMIC_LINKING and DL_LIBS if <dlfcn.h> and -ldl exist
 dnl and work, on the build system. Must have done CLICK_CHECK_DYNAMIC_LINKING
 dnl already.
 dnl
@@ -239,7 +247,9 @@ AC_DEFUN([CLICK_CHECK_BUILD_DYNAMIC_LINKING], [
 	AC_MSG_ERROR([
 =========================================
 
-Build system and host system don't have the same dynamic linking state!
+You have configured Click with '--enable-dynamic-linking', which requires
+that both the build system and host system support dynamic linking.
+Try running 'configure' with the '--disable-dynamic-linking' option.
 
 =========================================])
     fi
@@ -291,7 +301,7 @@ AC_DEFUN([CLICK_CHECK_LIBPCAP], [
 	if test "$ac_cv_bpf_timeval" = yes; then
 	    AC_DEFINE([HAVE_BPF_TIMEVAL], [1], [Define if <pcap.h> uses bpf_timeval.])
 	fi
-	AC_CHECK_DECLS(pcap_setnonblock, [], [], [#include <pcap.h>])
+	AC_CHECK_DECLS([pcap_setnonblock], [], [], [#include <pcap.h>])
 	CPPFLAGS="$saveflags"
     fi
 
@@ -340,8 +350,9 @@ AC_DEFUN([CLICK_CHECK_LIBPCAP], [
 	AC_DEFINE([HAVE_PCAP], [1], [Define if you have -lpcap and pcap.h.])
 
 	saveflags="$LDFLAGS"
+	LIBS="$LIBS $PCAP_LIBS"
 	LDFLAGS="$saveflags $PCAP_LIBS"
-	AC_CHECK_FUNCS(pcap_setnonblock)
+	AC_CHECK_FUNCS([pcap_inject pcap_sendpacket pcap_setdirection pcap_setnonblock])
 	LDFLAGS="$saveflags"
     fi
 ])
@@ -367,6 +378,10 @@ AC_DEFUN([CLICK_PROG_INSTALL], [
     AC_SUBST(INSTALL_IF_CHANGED)
     CLICKINSTALL=`echo "$INSTALL" | sed 's|^\$(.*)/|\$(clickdatadir)/|'`
     AC_SUBST(CLICKINSTALL)
+    CLICK_BUILD_INSTALL="$INSTALL"
+    AC_SUBST(CLICK_BUILD_INSTALL)
+    CLICK_BUILD_INSTALL_IF_CHANGED="`echo "$INSTALL_IF_CHANGED" | sed 's|(INSTALL)|(CLICK_BUILD_INSTALL)|'`"
+    AC_SUBST(CLICK_BUILD_INSTALL_IF_CHANGED)
 ])
 
 
@@ -413,7 +428,7 @@ AC_DEFUN([CLICK_PROG_PERL5], [
     else
 	perl5="$PERL"
     fi
-    
+
     test "$perl5" != missing && $perl5 -e "$ac_foo" && perl5=missing
 
     if test "$perl5" = "missing"; then
@@ -492,10 +507,12 @@ dnl
 dnl CLICK_CHECK_INTEGER_TYPES
 dnl Finds definitions for 'int8_t' ... 'int32_t' and 'uint8_t' ... 'uint32_t'.
 dnl Also defines shell variable 'have_inttypes_h' to 'yes' iff the header
-dnl file <inttypes.h> exists.  If 'uintXX_t' doesn't exist, try 'u_intXX_t'.
+dnl file <inttypes.h> exists.  If 'uintXX_t' does not exist, try 'u_intXX_t'.
+dnl Also defines __CHAR_UNSIGNED__ if 'char' is unsigned.
 dnl
 
 AC_DEFUN([CLICK_CHECK_INTEGER_TYPES], [
+    AC_C_CHAR_UNSIGNED
     AC_CHECK_HEADERS(inttypes.h, have_inttypes_h=yes, have_inttypes_h=no)
 
     if test $have_inttypes_h = no; then
@@ -584,7 +601,7 @@ dnl Checks endianness of machine.
 dnl
 
 AC_DEFUN([CLICK_CHECK_ENDIAN], [
-    AC_CHECK_HEADERS(endian.h machine/endian.h, 
+    AC_CHECK_HEADERS(endian.h machine/endian.h,
 dnl autoconf 2.53 versus autoconf 2.13
 		    if test "x$ac_header" != x; then
 		        endian_hdr=$ac_header
@@ -594,7 +611,7 @@ dnl autoconf 2.53 versus autoconf 2.13
 		    break, endian_hdr=no)
     if test "x$endian_hdr" != xno; then
 	AC_CACHE_CHECK(endianness, ac_cv_endian, [
-	    dnl can't use AC_PREPROC_IFELSE because it throws out the results
+	    dnl cannot use AC_PREPROC_IFELSE because it throws out the results
 	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
 [#]line __oline__ "configure"
@@ -619,7 +636,7 @@ EOF
 		echo "configure: failed program was:" >&5
 		cat conftest.$ac_ext >&5
 	    fi
-	    rm -f conftest*])
+	    rm -f conftest.$ac_ext conftest.result conftest.out])
     elif test "x$cross_compiling" != xyes ; then
 	AC_CACHE_CHECK(endianness, ac_cv_endian,
 	    [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdlib.h>
@@ -655,11 +672,11 @@ AC_DEFUN([CLICK_CHECK_SIGNED_SHIFT], [
 
 
 dnl
-dnl CLICK_CHECK_INTEGER_BUILTINS
-dnl Checks for '__builtin_clz', '__builtin_clzll', and other builtins.
+dnl CLICK_CHECK_COMPILER_INTRINSICS
+dnl Checks for '__builtin_clz', '__builtin_clzll', and other intrinsics.
 dnl
 
-AC_DEFUN([CLICK_CHECK_INTEGER_BUILTINS], [
+AC_DEFUN([CLICK_CHECK_COMPILER_INTRINSICS], [
     AC_CACHE_CHECK([for __builtin_clz], [ac_cv_have___builtin_clz],
 	 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[volatile int x = 11;]], [[int y = __builtin_clz(x);]])], [ac_cv_have___builtin_clz=yes], [ac_cv_have___builtin_clz=no])])
     if test $ac_cv_have___builtin_clz = yes; then
@@ -703,6 +720,18 @@ AC_DEFUN([CLICK_CHECK_INTEGER_BUILTINS], [
 	AC_DEFINE([HAVE___SYNC_SYNCHRONIZE_ARGUMENTS], [1], [Define if the __sync_synchronize function supports arguments.])
     fi
 
+    AC_CACHE_CHECK([for __has_trivial_copy], [ac_cv_have___has_trivial_copy],
+	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[long x = 1; if (__has_trivial_copy(long)) x = 0;]])], [ac_cv_have___has_trivial_copy=yes], [ac_cv_have___has_trivial_copy=no])])
+    if test $ac_cv_have___has_trivial_copy = yes; then
+	AC_DEFINE([HAVE___HAS_TRIVIAL_COPY], [1], [Define if you have the __has_trivial_copy compiler intrinsic.])
+    fi
+
+    AC_CACHE_CHECK([for __thread storage class support], [ac_cv_have___thread],
+	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[__thread long x;]], [[x == 1;]])], [ac_cv_have___thread=yes], [ac_cv_have___thread=no])])
+    if test $ac_cv_have___thread = yes; then
+	AC_DEFINE([HAVE___THREAD_STORAGE_CLASS], [1], [Define if you have the __thread storage class specifier.])
+    fi
+
     AC_CHECK_HEADERS(strings.h)
     AC_CHECK_FUNCS(ffs ffsl ffsll)
     ])
@@ -742,7 +771,7 @@ dnl
 
 AC_DEFUN([CLICK_CHECK_LARGE_FILE_SUPPORT], [
     AC_LANG_C
-    AC_CACHE_CHECK([for large file support in C library], 
+    AC_CACHE_CHECK([for large file support in C library],
 	ac_cv_large_file_support,
 	[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _LARGEFILE_SOURCE 1
 #define _FILE_OFFSET_BITS 64

@@ -18,8 +18,8 @@ CLICK_DECLS
 
 DHTStorageTest::DHTStorageTest():
   _dht_storage(NULL),
-  _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this),
+  _starttime(0),
   _startkey(0),
   _write(false),
   _read(true),
@@ -40,6 +40,7 @@ DHTStorageTest::DHTStorageTest():
   _replica(0)
 
 {
+  BRNElement::init();
 }
 
 DHTStorageTest::~DHTStorageTest()
@@ -52,8 +53,8 @@ int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
   _countkey = 100;
 
   if (cp_va_kparse(conf, this, errh,
-    "DHTSTORAGE", cpkN, cpElement, &_dht_storage,
-    "STARTTIME",cpkN, cpInteger, &_starttime,
+    "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
+    "STARTTIME", cpkP+cpkM, cpInteger, &_starttime,
     "INTERVAL",cpkN, cpInteger, &_interval,
     "COUNTKEYS", cpkN, cpInteger, &_countkey,
     "STARTKEY", cpkN, cpInteger, &_startkey,
@@ -79,13 +80,22 @@ int DHTStorageTest::initialize(ErrorHandler *)
   click_srandom(_dht_storage->_dht_routing->_me->_ether_addr.hashcode());
 
   _request_timer.initialize(this);
-  _request_timer.schedule_after_msec( _starttime + ( click_random() % _interval ) );
 
-  _key = _startkey;
-  if ( _write )
-    _mode = MODE_INSERT;
-  else
-    _mode = MODE_READ;
+  if ( _starttime > 0 ) {
+    _request_timer.schedule_after_msec( _starttime + ( click_random() % _interval ) );
+
+    _key = _startkey;
+    if ( _write )
+      _mode = MODE_INSERT;
+    else
+      _mode = MODE_READ;
+  }
+
+  last_key = 0;
+  last_read = true;
+  last_timeout = false;
+  last_not_found = false;
+  sprintf(last_value,"NONE");
 
   return 0;
 }
@@ -107,6 +117,10 @@ DHTStorageTest::callback(DHTOperation *op) {
   memcpy(string, op->value, op->header.valuelen);
   string[op->header.valuelen] = '\0';
   memcpy((char*)&my_key, op->key, sizeof(uint32_t));
+  my_key = ntohl(my_key);
+
+  last_key = my_key;
+  sprintf(last_value,"%s",string);
 
   if ( op->is_reply() )
   {
@@ -117,10 +131,16 @@ DHTStorageTest::callback(DHTOperation *op) {
       if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT ) { //TODO: it should make sure that it is only insert !!
         write_rep++;
         write_time += op->request_duration;
+        last_read = false;
       } else {
         read_rep++;
         read_time += op->request_duration;
+        last_read = true;
       }
+
+      last_timeout = false;
+      last_not_found = false;
+
       BRN_DEBUG("Result: %s = %d",string,my_key);
     } else {
       if ( op->header.status == DHT_STATUS_TIMEOUT ) {
@@ -129,11 +149,17 @@ DHTStorageTest::callback(DHTOperation *op) {
         if ( max_timeout_time < op->request_duration ) max_timeout_time = op->request_duration;
 
         BRN_DEBUG("DHT-Test: Timeout: %s", string);
+        last_timeout = true;
       } else {
         not_found++;
         notfound_time += op->request_duration;
         BRN_DEBUG("Result: %d not found",my_key);
+        last_timeout = false;
       }
+
+      sprintf(last_value,"FAILED");
+      last_not_found = true;
+      last_read = ! ((op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT );
     }
   }
 
@@ -150,24 +176,13 @@ DHTStorageTest::static_request_timer_hook(Timer *t, void *f)
 void
 DHTStorageTest::request_timer_hook(Timer *t)
 {
-  DHTOperation *req;
-  int result;
-  char *my_value;
+
+  if ((_mode != MODE_INSERT) && ! _read ) return;
+
+  request(_key, _mode);
 
   if ( _mode == MODE_INSERT )
   {
-    BRN_DEBUG("Insert Key: %d",_key);
-
-    req = new DHTOperation();
-
-    write_req++;
-    my_value = new char[10];
-    sprintf(my_value,">%d<",_key);
-
-    req->insert((uint8_t*)&_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
-    req->max_retries = _retries;
-    req->set_replica(_replica);
-    delete[] my_value;
     _key++;
 
     if ( _key == (_startkey + _countkey) )
@@ -175,19 +190,54 @@ DHTStorageTest::request_timer_hook(Timer *t)
       _key = _startkey;
       _mode = MODE_READ;
     }
+  } else {
+    _key = _startkey + ( (_key - _startkey + 1) % _countkey );
+  }
+
+  t->schedule_after_msec( _interval );
+
+}
+
+void
+DHTStorageTest::request(uint32_t key, uint8_t mode)
+{
+  DHTOperation *req;
+  int result;
+  char my_value[10];
+  uint32_t net_key = htonl(key);
+
+  req = new DHTOperation();
+
+  last_key = key;
+  last_timeout = false;
+  last_not_found = false;
+
+  if ( mode == MODE_INSERT )
+  {
+    BRN_DEBUG("Insert Key: %d",key);
+
+    write_req++;
+    sprintf(my_value,">%d<",key);
+
+    req->insert((uint8_t*)&net_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    req->max_retries = _retries;
+    req->set_replica(_replica);
+
+    last_read = false;
+    sprintf(last_value,">%d<",key);
   }
   else
   {
-    if ( ! _read ) return;
-
-    req = new DHTOperation();
+    BRN_DEBUG("Read Key: %d",key);
 
     read_req++;
-    BRN_DEBUG("Read Key: %d",_key);
-    req->read((uint8_t*)&_key, sizeof(uint32_t));
+
+    req->read((uint8_t*)&net_key, sizeof(uint32_t));
     req->max_retries = _retries;
     req->set_replica(_replica);
-    _key = _startkey + ( (_key - _startkey + 1) % _countkey );
+
+    last_read = true;
+    sprintf(last_value,"NONE");
   }
 
   result = _dht_storage->dht_request(req, callback_func, (void*)this );
@@ -197,8 +247,8 @@ DHTStorageTest::request_timer_hook(Timer *t)
     BRN_DEBUG("Got direct-reply (local)");
     callback_func((void*)this,req);
   }
-  t->schedule_after_msec( _interval );
 }
+
 
 
 //-----------------------------------------------------------------------------
@@ -206,7 +256,8 @@ DHTStorageTest::request_timer_hook(Timer *t)
 //-----------------------------------------------------------------------------
 
 enum {
-  H_STORAGE_STATS
+  H_STORAGE_STATS,
+  H_USER_TEST
 };
 
 static String
@@ -219,7 +270,6 @@ read_param(Element *e, void *thunk)
   {
     case H_STORAGE_STATS :
     {
-
       int avg_op_time, avg_read_time, avg_write_time, avg_notf_time, avg_to_time;
       avg_op_time = avg_read_time = avg_write_time = avg_notf_time = avg_to_time = 0;
 
@@ -237,36 +287,57 @@ read_param(Element *e, void *thunk)
       sa << "Not-Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
       sa << "Timeout: " << dht_str->no_timeout << " (Avg. time: " << avg_to_time << " ms  Max. time: ";
       sa << dht_str->max_timeout_time << " ms )\n";
-      return sa.take_string();
+      break;
+    }
+    case H_USER_TEST:
+    {
+      sa << "last key: " << dht_str->last_key << " value: " << String(dht_str->last_value);
+      if ( dht_str->last_read ) sa << " mode: read ";
+      else sa << " mode: write ";
+      if ( dht_str->last_timeout ) sa << "timeout: yes ";
+      else sa << "timeout: no ";
+      if ( dht_str->last_not_found ) sa << "found: yes ";
+      else sa << "found: no ";
+      sa << "\n";
+      break;
     }
     default: return String();
   }
+
+  return sa.take_string();
 }
 
-static String
-read_debug_param(Element *e, void *)
+static int
+write_param(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*errh*/)
 {
-  DHTStorageTest *dt = (DHTStorageTest *)e;
-  return String(dt->_debug) + "\n";
-}
+  DHTStorageTest *dht_str = (DHTStorageTest *)e;
 
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  DHTStorageTest *dt = (DHTStorageTest *)e;
   String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  dt->_debug = debug;
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  uint32_t key;
+  uint8_t mode;
+
+  if ( args.size() == 2 ) {
+    if ( args[0] == String("write") ) mode = MODE_INSERT;
+    else mode = MODE_READ;
+    cp_integer(args[1], &key);
+    dht_str->request(key, mode);
+  }
+
   return 0;
 }
 
 void DHTStorageTest::add_handlers()
 {
-  add_read_handler("stats", read_param , (void *)H_STORAGE_STATS);
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
+
+  add_read_handler("stats", read_param, (void *)H_STORAGE_STATS);
+  add_read_handler("test", read_param, (void *)H_USER_TEST);
+
+  add_write_handler("test", write_param, (void *)H_USER_TEST);
+
 }
 
 #include <click/vector.cc>

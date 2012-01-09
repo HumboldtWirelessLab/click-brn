@@ -19,7 +19,7 @@
 #include <click/config.h>
 #include "lookupip6route.hh"
 #include <click/ip6address.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 CLICK_DECLS
 
@@ -37,7 +37,6 @@ LookupIP6Route::configure(Vector<String> &conf, ErrorHandler *errh)
   int maxout = -1;
   _t.clear();
 
-  int before = errh->nerrors();
   for (int i = 0; i < conf.size(); i++) {
     IP6Address dst, mask, gw;
     int output_num;
@@ -48,7 +47,7 @@ LookupIP6Route::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if ((words.size()==2 || words.size()==3 )
       && cp_ip6_prefix(words[0], (unsigned char *)&dst, (unsigned char *)&mask, true, this)
-	&& cp_integer(words.back(), &output_num))
+	&& IntArg().parse(words.back(), output_num))
     {
       if (words.size()==3)
 	ok = cp_ip6_address(words[1], (unsigned char *)&gw, this);
@@ -68,7 +67,7 @@ LookupIP6Route::configure(Vector<String> &conf, ErrorHandler *errh)
   }
 
 
-  if (errh->nerrors()!=before)
+  if (errh->nerrors())
     return -1;
   if (maxout <0)
     errh->warning("no routes");

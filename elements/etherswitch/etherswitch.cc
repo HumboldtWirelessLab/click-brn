@@ -20,7 +20,7 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/error.hh>
 CLICK_DECLS
@@ -38,9 +38,9 @@ EtherSwitch::~EtherSwitch()
 int
 EtherSwitch::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    return cp_va_kparse(conf, this, errh,
-			"TIMEOUT", 0, cpSeconds, &_timeout,
-			cpEnd);
+    return Args(conf, this, errh)
+	.read("TIMEOUT", SecondsArg(), _timeout)
+	.complete();
 }
 
 void
@@ -111,7 +111,7 @@ int
 EtherSwitch::writer(const String &s, Element *e, void *, ErrorHandler *errh)
 {
     EtherSwitch *sw = (EtherSwitch *) e;
-    if (!cp_seconds_as(s, 0, &sw->_timeout))
+    if (!SecondsArg().parse_saturating(s, sw->_timeout))
 	return errh->error("expected timeout (integer)");
     return 0;
 }
@@ -120,7 +120,7 @@ void
 EtherSwitch::add_handlers()
 {
     add_read_handler("table", reader, 0);
-    add_read_handler("timeout", reader, (void *) 1);
+    add_read_handler("timeout", reader, 1);
     add_write_handler("timeout", writer, 0);
 }
 

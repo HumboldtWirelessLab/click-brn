@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/llc.h>
@@ -45,11 +45,11 @@ OpenAuthRequester::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "ETH", 0, cpEthernetAddress, &_eth,
-		   "WIRELESS_INFO", 0, cpElement, &_winfo,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("ETH", _eth)
+      .read("WIRELESS_INFO", ElementCastArg("WirelessInfo"), _winfo)
+      .complete() < 0)
     return -1;
 
   return 0;
@@ -158,8 +158,11 @@ OpenAuthRequester::send_auth_request()
   memcpy(w->i_addr3, bssid.data(), 6);
 
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = cpu_to_le16(1);
+
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  ceh->flags |= WIFI_EXTRA_NO_SEQ;
 
   uint8_t *ptr;
 
@@ -202,7 +205,7 @@ OpenAuthRequester_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -225,12 +228,12 @@ OpenAuthRequester_write_param(const String &in_s, Element *e, void *vparam,
 void
 OpenAuthRequester::add_handlers()
 {
-  add_read_handler("debug", OpenAuthRequester_read_param, (void *) H_DEBUG);
-  add_read_handler("eth", OpenAuthRequester_read_param, (void *) H_ETH);
+  add_read_handler("debug", OpenAuthRequester_read_param, H_DEBUG);
+  add_read_handler("eth", OpenAuthRequester_read_param, H_ETH);
 
-  add_write_handler("debug", OpenAuthRequester_write_param, (void *) H_DEBUG);
-  add_write_handler("eth", OpenAuthRequester_write_param, (void *) H_ETH);
-  add_write_handler("send_auth_req", OpenAuthRequester_write_param, (void *) H_SEND_AUTH_REQ);
+  add_write_handler("debug", OpenAuthRequester_write_param, H_DEBUG);
+  add_write_handler("eth", OpenAuthRequester_write_param, H_ETH);
+  add_write_handler("send_auth_req", OpenAuthRequester_write_param, H_SEND_AUTH_REQ);
 }
 
 CLICK_ENDDECLS

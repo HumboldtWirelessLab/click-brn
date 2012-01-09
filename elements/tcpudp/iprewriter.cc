@@ -21,7 +21,7 @@
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
 #include <clicknet/udp.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <click/timer.hh>
@@ -53,18 +53,22 @@ IPRewriter::cast(const char *n)
 int
 IPRewriter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+    bool has_udp_streaming_timeout = false;
     _udp_timeouts[0] = 60 * 5;	// 5 minutes
     _udp_timeouts[1] = 5;	// 5 seconds
 
-    if (cp_va_kparse_remove_keywords
-	(conf, this, errh,
-	 "UDP_TIMEOUT", 0, cpSeconds, &_udp_timeouts[0],
-	 "UDP_GUARANTEE", 0, cpSeconds, &_udp_timeouts[1],
-	 cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("UDP_TIMEOUT", SecondsArg(), _udp_timeouts[0])
+	.read("UDP_STREAMING_TIMEOUT", SecondsArg(), _udp_streaming_timeout).read_status(has_udp_streaming_timeout)
+	.read("UDP_GUARANTEE", SecondsArg(), _udp_timeouts[1])
+	.consume() < 0)
 	return -1;
 
+    if (!has_udp_streaming_timeout)
+	_udp_streaming_timeout = _udp_timeouts[0];
     _udp_timeouts[0] *= CLICK_HZ; // change timeouts to jiffies
     _udp_timeouts[1] *= CLICK_HZ;
+    _udp_streaming_timeout *= CLICK_HZ; // IPRewriterBase handles the others
 
     return TCPRewriter::configure(conf, errh);
 }
@@ -97,13 +101,12 @@ IPRewriter::add_flow(int ip_p, const IPFlowID &flowid,
     if (!(data = _udp_allocator.allocate()))
 	return 0;
 
+    IPRewriterInput *rwinput = &_input_specs[input];
     IPRewriterFlow *flow = new(data) IPRewriterFlow
-	(flowid, _input_specs[input].foutput,
-	 rewritten_flowid, _input_specs[input].routput, ip_p,
-	 !!_udp_timeouts[1], click_jiffies() + relevant_timeout(_udp_timeouts),
-	 this, input);
+	(rwinput, flowid, rewritten_flowid, ip_p,
+	 !!_udp_timeouts[1], click_jiffies() + relevant_timeout(_udp_timeouts));
 
-    return store_flow(flow, input, _udp_map, &reply_udp_map(input));
+    return store_flow(flow, input, _udp_map, &reply_udp_map(rwinput));
 }
 
 void
@@ -151,8 +154,12 @@ IPRewriter::push(int port, Packet *p_in)
 	else
 	    tcpmf->change_expiry(_heap, false, now_j + tcp_flow_timeout(tcpmf));
     } else {
-	mf->apply(p, m->direction(), _annos);
-	mf->change_expiry_by_timeout(_heap, now_j, _udp_timeouts);
+	UDPFlow *udpmf = static_cast<UDPFlow *>(mf);
+	udpmf->apply(p, m->direction(), _annos);
+	if (_udp_timeouts[1])
+	    udpmf->change_expiry(_heap, true, now_j + _udp_timeouts[1]);
+	else
+	    udpmf->change_expiry(_heap, false, now_j + udp_flow_timeout(udpmf));
     }
 
     output(m->output()).push(p);

@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include "ipflowrawsockets.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/packet_anno.hh>
 #include <click/router.hh>
@@ -78,7 +78,7 @@ IPFlowRawSockets::Flow::initialize(ErrorHandler *errh, int snaplen, bool usepcap
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = PF_INET;
     sin.sin_port = _flowid.sport();
-    sin.sin_addr = inet_makeaddr(0, 0);
+    sin.sin_addr = IPAddress().in_addr();
 
     // bind to source port
     if (bind(_wd, (struct sockaddr *)&sin, sizeof(sin)) < 0)
@@ -191,12 +191,12 @@ IPFlowRawSockets::configure(Vector<String> &conf, ErrorHandler *errh)
 
     _snaplen = 2046;
     _usepcap = true;
-    if (cp_va_kparse(conf, this, errh,
-		     "NOTIFIER", 0, cpElement, &e,
-		     "SNAPLEN", 0, cpUnsigned, &_snaplen,
-		     "PCAP", 0, cpBool, &_usepcap,
-		     "HEADROOM", 0, cpUnsigned, &_headroom,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read("NOTIFIER", e)
+	.read("SNAPLEN", _snaplen)
+	.read("PCAP", _usepcap)
+	.read("HEADROOM", _headroom)
+	.complete() < 0)
 	return -1;
 
     if (e && !(_agg_notifier = (AggregateNotifier *)e->cast("AggregateNotifier")))
@@ -442,7 +442,7 @@ IPFlowRawSockets::write_handler(const String &, Element *e, void *thunk, ErrorHa
 void
 IPFlowRawSockets::add_handlers()
 {
-    add_write_handler("clear", write_handler, (void *)H_CLEAR);
+    add_write_handler("clear", write_handler, H_CLEAR);
     if (input_is_pull(0))
 	add_task_handlers(&_task);
 }

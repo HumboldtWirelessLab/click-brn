@@ -19,8 +19,8 @@ ACLOCAL = :
 PERL = @PERL@
 INSTALL = @INSTALL@
 INSTALL_IF_CHANGED = @INSTALL_IF_CHANGED@
-INSTALL_DATA = @INSTALL@ -m 644
-INSTALL_DATA_IF_CHANGED = @INSTALL_IF_CHANGED@ -m 644
+INSTALL_DATA = $(INSTALL) -m 644
+INSTALL_DATA_IF_CHANGED = $(INSTALL_IF_CHANGED) -m 644
 mkinstalldirs = $(conf_auxdir)/mkinstalldirs
 
 EXTRA_PROVIDES =
@@ -101,13 +101,12 @@ install-local: elementmap.xml click-buildtool click-compile config.mk \
 	$(INSTALL_DATA_IF_CHANGED) $(srcdir)/etc/pkg-userlevel.mk $(DESTDIR)$(clickdatadir)/pkg-userlevel.mk
 	$(INSTALL_DATA_IF_CHANGED) $(srcdir)/etc/pkg-linuxmodule.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule.mk
 	$(INSTALL_DATA_IF_CHANGED) $(srcdir)/etc/pkg-linuxmodule-26.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule-26.mk
+	$(INSTALL_DATA_IF_CHANGED) $(srcdir)/etc/pkg-bsdmodule.mk $(DESTDIR)$(clickdatadir)/pkg-bsdmodule.mk
 	(cd $(top_srcdir); pwd) > $(DESTDIR)$(clickdatadir)/srcdir
 	/bin/rm -rf $(DESTDIR)$(clickdatadir)/src
 	/bin/ln -s "`cd $(top_srcdir); pwd`" $(DESTDIR)$(clickdatadir)/src
 install-doc: elementmap.xml
 	@cd doc && $(MAKE) install
-install-info:
-	@cd doc && $(MAKE) install-info
 install-man: elementmap.xml
 	@-for d in $(ALL_TARGETS) doc; do (cd $$d && $(MAKE) install-man); done
 install-local-include: stamp-h installch
@@ -121,7 +120,7 @@ install-local-include: stamp-h installch
 	$(mkinstalldirs) $(DESTDIR)$(netincludedir)
 	$(INSTALL_DATA_IF_CHANGED) $(srcdir)/include/clicknet/*.h $(DESTDIR)$(netincludedir)
 install-include: install-local-include
-	@cd tools && $(MAKE) install-include
+	@for d in $(ALL_TARGETS) tools; do (cd $$d && $(MAKE) install-include) || exit 1; done
 install-lib:
 	@if echo $(ALL_TARGETS) | grep userlevel >/dev/null 2>&1; then cd userlevel && $(MAKE) install-lib; fi
 	@if echo $(ALL_TARGETS) | grep tools >/dev/null 2>&1; then cd tools && $(MAKE) install-lib; fi
@@ -131,7 +130,7 @@ uninstall: elementmap.xml
 	@$(MAKE) uninstall-local uninstall-local-include
 uninstall-local:
 	/bin/rm -f $(DESTDIR)$(bindir)/click-buildtool $(DESTDIR)$(bindir)/click-compile $(DESTDIR)$(bindir)/click-mkelemmap $(DESTDIR)$(bindir)/testie $(DESTDIR)$(clickdatadir)/elementmap.xml $(DESTDIR)$(clickdatadir)/srcdir $(DESTDIR)$(clickdatadir)/src $(DESTDIR)$(clickdatadir)/config.mk $(DESTDIR)$(clickdatadir)/mkinstalldirs
-	/bin/rm -f $(DESTDIR)$(clickdatadir)/pkg-config.mk $(DESTDIR)$(clickdatadir)/pkg-userlevel.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule-26.mk $(DESTDIR)$(clickdatadir)/pkg-Makefile
+	/bin/rm -f $(DESTDIR)$(clickdatadir)/pkg-config.mk $(DESTDIR)$(clickdatadir)/pkg-userlevel.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule.mk $(DESTDIR)$(clickdatadir)/pkg-linuxmodule-26.mk $(DESTDIR)$(clickdatadir)/pkg-bsdmodule.mk $(DESTDIR)$(clickdatadir)/pkg-Makefile
 uninstall-local-include:
 	cd $(srcdir)/include/click; for i in *.h *.hh *.cc; do /bin/rm -f $(DESTDIR)$(clickincludedir)/$$i; done
 	cd $(top_builddir)/include/click; for i in *.h; do /bin/rm -f $(DESTDIR)$(clickincludedir)/$$i; done
@@ -209,13 +208,13 @@ dist: distdir
 	-rm -rf $(distdir)
 distdir: $(srcdir)/configure
 	-rm -rf doc/click.info* doc/testie.1 $(srcdir)/doc/click.info* $(srcdir)/doc/testie.1
-	cd doc && $(MAKE) info testie.1
+	cd doc && $(MAKE) testie.1
 	cd $(srcdir)/etc/samplepackage && $(AUTOCONF)
 	-rm -rf $(distdir)
 	mkdir $(distdir)
 	chmod 777 $(distdir)
 	@echo Copying library, documentation, configuration, and driver files...
-	[ "$(srcdir)" = . ] || cp doc/click.info* doc/testie.1 $(srcdir)/doc
+	[ "$(srcdir)" = . ] || cp doc/testie.1 $(srcdir)/doc
 	@for file in `cat $(srcdir)/DISTFILES | grep .`; do \
 	  if expr "$$file" : '.*:$$' >/dev/null 2>&1; then \
 	    d=`echo $$file | sed 's/:$$//;s/^\.\///'`; \
@@ -232,7 +231,7 @@ distdir: $(srcdir)/configure
 	done
 	@echo Copying element files...
 	@d=$(srcdir); \
-	for dir in `cd $$d && find elements -type d | grep -v 'exopc\|CVS'`; do \
+	for dir in `cd $$d && find elements -type d -print | grep -v 'exopc\|CVS'`; do \
 	  mkdir $(distdir)/$$dir 2>/dev/null; \
 	  chmod 777 $(distdir)/$$dir; \
 	  for cfile in `cd $$d && find $$dir -maxdepth 1 \( -type f -and \( -name \[^,.]\*.cc -or -name \[^,.]\*.c -or -name \[^,.]\*.hh -or -name \[^,.]\*.h -or -name README \) \) -print`; do \
@@ -244,7 +243,7 @@ distdir: $(srcdir)/configure
 	for i in `cat $(srcdir)/NODIST`; do \
 	  rm -rf $(distdir)/$$i; \
 	done; fi
-	@if grep -q 'Id:.*benjie' `find $(srcdir)/etc -maxdepth 1 -type f`; then \
+	@if grep -q 'Id:.*benjie' `find $(srcdir)/etc -maxdepth 1 -type f -print`; then \
 	  echo 'ERROR: Benjie must be punished!'; exit 1; \
 	fi
 	@if test `grep 'CLICK_VERSION=' $(srcdir)/configure.in` != `grep 'CLICK_VERSION=' $(srcdir)/etc/libclick/lc-configure.in`; then \

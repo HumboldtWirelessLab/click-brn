@@ -217,7 +217,8 @@ wdiagram::wdiagram(wmain *rw)
     for (int i = 0; i < 3; i++)
 	_highlight[i].clear();
     static_assert((int) ncursors > (int) deg_corner_lrt
-		  && (int) c_element == (int) deg_element);
+		  && (int) c_element == (int) deg_element,
+		  "Corner constants screwup.");
     for (int i = 0; i < ncursors; i++)
 	_cursor[i] = 0;
     _last_cursorno = c_main;
@@ -500,10 +501,10 @@ void wdiagram::notify_active_ports(String value)
 		if (dconn *c = e->find_connection(isoutput, port))
 		    actives.push_back(std::make_pair(c, lineno));
 
-	    int cid = chain.back_router()->find_connection_id_touching(PortT(element, port), isoutput);
-	    assert(cid >= 0);
+	    RouterT::conn_iterator cit = chain.back_router()->find_connections_touching(PortT(element, port), isoutput);
+	    assert(cit.is_back());
 
-	    PortT oport = chain.back_router()->connection(cid).end(!isoutput);
+	    PortT oport = cit->end(!isoutput);
 	    ElementClassT *oclass = chain.resolved_type(oport.element);
 	    if (RouterT *subr = oclass->cast_router()) {
 		chain.enter_element(oport.element);

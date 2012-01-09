@@ -30,17 +30,16 @@ OLSRNeighborInfoBase::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 	bool add_hello_msg=false;
 	bool add_mprs = false;
-	if ( cp_va_parse(conf, this, errh,
-	                 cpElement, "Routing Table Element", &_routingTable,
-	                 cpElement, "TC Generator Element", &_tcGenerator,
-	                 cpElement, "Hello Generator Element",&_helloGenerator,
-	                 cpElement, "Link Information Base", &_linkInfoBase,
-	                 cpElement, "Interface Information Base", &_interfaceInfoBase,
-	                 cpIPAddress, "Nodes main IP address", &_myMainIP,
-	                 cpOptional,
-	                 cpKeywords,"ADDITIONAL_HELLO",cpBool,"send additional hello message?",&add_hello_msg,
-	                 cpKeywords,"ADDITIONAL_MPRS",cpBool,"choose additional mprs",&add_mprs,
-	                 0) < 0 )
+	if ( cp_va_kparse(conf, this, errh,
+       "Routing Table Element", cpkP, cpElement,&_routingTable,
+       "TC Generator Element", cpkP, cpElement,&_tcGenerator,
+       "Hello Generator Element",cpkP, cpElement,&_helloGenerator,
+       "Link Information Base", cpkP, cpElement,&_linkInfoBase,
+       "Interface Information Base", cpkP, cpElement,&_interfaceInfoBase,
+       "Nodes main IP address", cpkP, cpIPAddress,&_myMainIP,
+       "ADDITIONAL_HELLO",cpkP, cpBool/*,"send additional hello message?"*/,&add_hello_msg,
+       "ADDITIONAL_MPRS",cpkP, cpBool/*,"choose additional mprs"*/,&add_mprs,
+	                 cpEnd) < 0 )
 
 		return -1;
 	_additional_hello_message=add_hello_msg;
@@ -81,8 +80,8 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 	OLSRNeighborInfoBase *nib = (OLSRNeighborInfoBase *) thunk;
 	bool mpr_selector_removed = false;
 	struct timeval now, next_timeout;
-	click_gettimeofday(&now);
-	next_timeout = make_timeval(0, 0);
+	now = Timestamp::now().timeval();
+	next_timeout = Timestamp(0, 0).timeval();
 
 	//find expired MPR selectors and delete them
 	if (! nib->_mprSelectorSet->empty())
@@ -90,7 +89,7 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 		for (MPRSelectorSet::iterator iter = nib->_mprSelectorSet->begin(); iter != nib->_mprSelectorSet->end(); iter++)
 		{
 			mpr_selector_data *mpr_selector = (mpr_selector_data *) iter.value();
-			if (mpr_selector->MS_time <= now)
+			if (Timestamp(mpr_selector->MS_time) <= Timestamp(now))
 			{
 				//s        click_chatter ("node %s: MPR_Selector %s has expired, about to delete it\n",nib->_myMainIP.unparse().c_str(),mpr_selector->MS_main_addr.unparse().c_str());
 				nib->remove_mpr_selector(mpr_selector->MS_main_addr);
@@ -107,7 +106,7 @@ OLSRNeighborInfoBase::mpr_selector_expiry_hook(Timer *timer, void *thunk)
 			mpr_selector_data *mpr_selector = (mpr_selector_data *) iter.value();
 			if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 				next_timeout = mpr_selector->MS_time;
-			else if ( mpr_selector->MS_time < next_timeout )
+			else if ( Timestamp(mpr_selector->MS_time) < Timestamp(next_timeout) )
 				next_timeout = mpr_selector->MS_time;
 		}
 	}
@@ -127,8 +126,8 @@ OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 	OLSRNeighborInfoBase *nib = (OLSRNeighborInfoBase *) thunk;
 	struct timeval now, next_timeout;
 	bool twohop_removed = false;;
-	click_gettimeofday(&now);
-	next_timeout = make_timeval(0,0);
+	now = Timestamp::now().timeval();
+	next_timeout = Timestamp(0,0).timeval();
 
 	//find expired twohop neighbors and delete them
 	if (! nib->_twohopSet->empty())
@@ -136,7 +135,7 @@ OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 		for (TwoHopSet::iterator iter = nib->_twohopSet->begin(); iter != nib->_twohopSet->end(); iter++)
 		{
 			twohop_data *twohop = (twohop_data *) iter.value();
-			if (twohop->N_time <= now)
+			if (Timestamp(twohop->N_time) <= Timestamp(now))
 			{
 				nib->remove_twohop_neighbor(twohop->N_neigh_main_addr, twohop->N_twohop_addr);
 				twohop_removed = true;
@@ -152,7 +151,7 @@ OLSRNeighborInfoBase::twohop_expiry_hook(Timer *timer, void *thunk)
 			twohop_data *twohop = (twohop_data *) iter.value();
 			if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 				next_timeout = twohop->N_time;
-			else if ( twohop->N_time < next_timeout )
+			else if ( Timestamp(twohop->N_time) < Timestamp(next_timeout) )
 				next_timeout = twohop->N_time;
 		}
 	}

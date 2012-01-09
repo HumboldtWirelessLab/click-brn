@@ -23,15 +23,14 @@ OLSRAssociationInfoBase::~OLSRAssociationInfoBase()
 int
 OLSRAssociationInfoBase::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if ( cp_va_parse( conf, this, errh,
-		    cpElement, "Routing Table Element", &_routingTable,
-		    cpKeywords,
-		    "USE_TIMER", cpBool, "use a timer", &_useTimer,
-			"REDUNDANCY_CHECK", cpBool, "remove redundant association entries", &_redundancyCheck,
-			"HNA_COMPACTING", cpBool, "compact HNA messages", &_compact,
-			"HOME_NETWORK", cpIPAddress, "home network", &_home_network,
-			"HOME_NETWORK_NETMASK", cpIPAddress, "home network netmask", &_home_netmask,
-		    0) < 0 )
+  if ( cp_va_kparse( conf, this, errh,
+       "Routing Table Element", cpkP, cpElement, &_routingTable,
+		    "USE_TIMER", cpkP, cpBool/*, "use a timer"*/, &_useTimer,
+      "REDUNDANCY_CHECK", cpkP, cpBool/*, "remove redundant association entries"*/, &_redundancyCheck,
+      "HNA_COMPACTING", cpkP, cpBool/*, "compact HNA messages"*/, &_compact,
+      "HOME_NETWORK", cpkP, cpIPAddress/*, "home network"*/, &_home_network,
+      "HOME_NETWORK_NETMASK", cpkP, cpIPAddress/*, "home network netmask"*/, &_home_netmask,
+		    cpEnd) < 0 )
     return -1;
 	
 
@@ -166,14 +165,14 @@ OLSRAssociationInfoBase::run_timer(Timer *)
 {
   struct timeval now, next_timeout;
   bool association_tuple_removed = false;
-  click_gettimeofday(&now);
-  next_timeout = make_timeval(0, 0);
+  now = Timestamp::now().timeval();
+  next_timeout = Timestamp(0, 0).timeval();
 
   //find expired topology tuple and delete them
   if (! _associationSet->empty()){
     for (AssociationSet::iterator iter = _associationSet->begin(); iter != _associationSet->end(); iter++){
       association_data *tuple = (association_data *) iter.value();
-      if (tuple->A_time <= now){
+      if (Timestamp(tuple->A_time) <= Timestamp(now)){
 	remove_tuple(tuple->A_gateway_addr, tuple->A_network_addr, tuple->A_netmask);
 	//click_chatter("Association tuple expired");
 	association_tuple_removed = true;
@@ -187,7 +186,7 @@ OLSRAssociationInfoBase::run_timer(Timer *)
       association_data *tuple = (association_data *) iter.value();
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->A_time;
-      if ( tuple->A_time < next_timeout )
+      if ( Timestamp(tuple->A_time) < Timestamp(next_timeout) )
 	next_timeout = tuple->A_time;
     }
   }
@@ -284,9 +283,9 @@ int
 OLSRAssociationInfoBase::set_home_network_write_handler(const String &conf, Element *e, void *, ErrorHandler * errh)
 {
   OLSRAssociationInfoBase* me = (OLSRAssociationInfoBase *) e;
-  int res = cp_va_parse(conf, me, errh,
-			cpIPPrefix, "the network address that HNA should advertise", &me->_home_network, &me->_home_netmask,
-			0);
+  int res = cp_va_kparse(conf, me, errh,
+                         "the network address that HNA should advertise", cpkP, cpIPPrefix,  &me->_home_network, &me->_home_netmask,
+			cpEnd);
   if ( res < 0 )
     return res;  
   return 0;

@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/llc.h>
@@ -46,15 +46,12 @@ BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "WIRELESS_INFO", 0, cpElement, &_winfo,
-		   "RT", 0, cpElement, &_rtable,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("WIRELESS_INFO", ElementCastArg("WirelessInfo"), _winfo)
+      .read_m("RT", ElementCastArg("AvailableRates"), _rtable)
+      .complete() < 0)
     return -1;
-
-  if (_rtable && _rtable->cast("AvailableRates") == 0)
-    return errh->error("AvailableRates element is not a AvailableRates");
 
   return 0;
 }
@@ -303,7 +300,7 @@ BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -318,11 +315,11 @@ BeaconScanner_write_param(const String &in_s, Element *e, void *vparam,
 void
 BeaconScanner::add_handlers()
 {
-  add_read_handler("debug", BeaconScanner_read_param, (void *) H_DEBUG);
-  add_read_handler("scan", BeaconScanner_read_param, (void *) H_SCAN);
+  add_read_handler("debug", BeaconScanner_read_param, H_DEBUG);
+  add_read_handler("scan", BeaconScanner_read_param, H_SCAN);
 
-  add_write_handler("debug", BeaconScanner_write_param, (void *) H_DEBUG);
-  add_write_handler("reset", BeaconScanner_write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("debug", BeaconScanner_write_param, H_DEBUG);
+  add_write_handler("reset", BeaconScanner_write_param, H_RESET, Handler::BUTTON);
 }
 
 CLICK_ENDDECLS

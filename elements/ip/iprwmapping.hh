@@ -11,6 +11,7 @@ CLICK_DECLS
 class IPRewriterBase;
 class IPRewriterFlow;
 class IPRewriterHeap;
+class IPRewriterInput;
 
 class IPRewriterEntry { public:
 
@@ -66,10 +67,9 @@ class IPRewriterEntry { public:
 
 class IPRewriterFlow { public:
 
-    IPRewriterFlow(const IPFlowID &flowid, int output,
-		   const IPFlowID &rewritten_flowid, int reply_output,
-		   uint8_t ip_p, bool guaranteed, click_jiffies_t expiry_j,
-		   IPRewriterBase *owner, int owner_input);
+    IPRewriterFlow(IPRewriterInput *owner, const IPFlowID &flowid,
+		   const IPFlowID &rewritten_flowid,
+		   uint8_t ip_p, bool guaranteed, click_jiffies_t expiry_j);
 
     IPRewriterEntry &entry(bool direction) {
 	return _e[direction];
@@ -117,29 +117,12 @@ class IPRewriterFlow { public:
 	change_expiry(h, !!timeouts[1], now_j + timeout);
     }
 
-
-    enum {
-	s_forward_done = 1, s_reply_done = 2,
-	s_both_done = (s_forward_done | s_reply_done),
-	s_forward_data = 4, s_reply_data = 8,
-	s_both_data = (s_forward_data | s_reply_data)
-    };
-    bool both_done() const {
-	return (_state & s_both_done) == s_both_done;
-    }
-    bool both_data() const {
-	return (_state & s_both_data) == s_both_data;
-    }
-
     uint8_t ip_p() const {
 	return _ip_p;
     }
 
-    IPRewriterBase *owner() const {
+    IPRewriterInput *owner() const {
 	return _owner;
-    }
-    int owner_input() const {
-	return _owner_input;
     }
 
     uint8_t reply_anno() const {
@@ -149,7 +132,7 @@ class IPRewriterFlow { public:
 	_reply_anno = reply_anno;
     }
 
-    static inline void update_csum(uint16_t &csum, bool direction,
+    static inline void update_csum(uint16_t *csum, bool direction,
 				   uint16_t csum_delta);
 
     void apply(WritablePacket *p, bool direction, unsigned annos);
@@ -157,23 +140,15 @@ class IPRewriterFlow { public:
     void unparse(StringAccum &sa, bool direction, click_jiffies_t now) const;
     void unparse_ports(StringAccum &sa, bool direction, click_jiffies_t now) const;
 
-    struct less {
-	less() {
-	}
-	bool operator()(IPRewriterFlow *a, IPRewriterFlow *b) {
+    struct heap_less {
+	inline bool operator()(IPRewriterFlow *a, IPRewriterFlow *b) {
 	    return click_jiffies_less(a->expiry(), b->expiry());
 	}
     };
-
-    struct place {
-	place(IPRewriterFlow **begin)
-	    : _begin(begin) {
+    struct heap_place {
+	inline void operator()(IPRewriterFlow **begin, IPRewriterFlow **it) {
+	    (*it)->_place = it - begin;
 	}
-	void operator()(IPRewriterFlow **it) {
-	    (*it)->_place = it - _begin;
-	}
-      private:
-	IPRewriterFlow **_begin;
     };
 
   protected:
@@ -184,12 +159,10 @@ class IPRewriterFlow { public:
     click_jiffies_t _expiry_j;
     size_t _place : 32;
     uint8_t _ip_p;
-    uint8_t _state : 7;
-    uint8_t _guaranteed : 1;
     uint8_t _tflags;
+    bool _guaranteed;
     uint8_t _reply_anno;
-    IPRewriterBase *_owner;
-    int _owner_input;
+    IPRewriterInput *_owner;
 
     friend class IPRewriterBase;
     friend class IPRewriterEntry;
@@ -208,10 +181,10 @@ IPRewriterEntry::rewritten_flowid() const
 }
 
 inline void
-IPRewriterFlow::update_csum(uint16_t &csum, bool direction, uint16_t csum_delta)
+IPRewriterFlow::update_csum(uint16_t *csum, bool direction, uint16_t csum_delta)
 {
     if (csum_delta)
-	click_update_in_cksum(&csum, 0, direction ? csum_delta : ~csum_delta);
+	click_update_in_cksum(csum, 0, direction ? csum_delta : ~csum_delta);
 }
 
 CLICK_ENDDECLS

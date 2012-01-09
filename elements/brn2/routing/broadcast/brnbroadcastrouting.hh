@@ -24,6 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
@@ -43,7 +45,9 @@ CLICK_DECLS
  * broadcast-flooding, which is an extra element
  */
 
-class BrnBroadcastRouting : public Element {
+#define BROADCASTROUTING_DAFAULT_MAX_HOP_COUNT 100
+
+class BrnBroadcastRouting : public BRNElement {
 
  public:
 
@@ -71,10 +75,6 @@ class BrnBroadcastRouting : public Element {
   //member
   //
  BRN2NodeIdentity *_node_id;
- EtherAddress _my_ether_addr;
-
- public:
-  int _debug;
 
 };
 

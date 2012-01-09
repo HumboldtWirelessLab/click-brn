@@ -16,7 +16,7 @@
  */
 
 #include <click/config.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <clicknet/ether.h>
 #include <click/error.hh>
 #include <click/glue.hh>
@@ -42,14 +42,14 @@ LinkStat::~LinkStat()
 int
 LinkStat::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int res = cp_va_kparse(conf, this, errh,
-			 "WINDOW", 0, cpUnsigned, &_window,
-			 "ETH", 0, cpEthernetAddress, &_eth,
-			 "PERIOD", 0, cpUnsigned, &_period,
-			 "TAU", 0, cpUnsigned, &_tau,
-			 "SIZE", 0, cpUnsigned, &_probe_size,
-			 "USE_SECOND_PROTO", 0, cpBool, &_use_proto2,
-			 cpEnd);
+  int res = Args(conf, this, errh)
+      .read("WINDOW", _window)
+      .read("ETH", _eth)
+      .read("PERIOD", _period)
+      .read("TAU", _tau)
+      .read("SIZE", _probe_size)
+      .read("USE_SECOND_PROTO", _use_proto2)
+      .complete();
   if (res < 0)
     return res;
 
@@ -116,8 +116,7 @@ LinkStat::send_hook()
 
   unsigned max_jitter = _period / 10;
   unsigned j = click_random(0, max_jitter * 2);
-  _next_bcast += Timestamp::make_usec(1000 * (_period + j - max_jitter));
-  _send_timer->schedule_at(_next_bcast);
+  _send_timer->reschedule_after_msec(_period + j - max_jitter);
 
   checked_output_push(0, p);
 }
@@ -158,8 +157,7 @@ LinkStat::initialize(ErrorHandler *errh)
       return errh->error("Source Ethernet address must be specified to send probes");
     _send_timer = new Timer(static_send_hook, this);
     _send_timer->initialize(this);
-    _next_bcast = Timestamp::now() + Timestamp(1, 0);
-    _send_timer->schedule_at(_next_bcast);
+    _send_timer->schedule_after_sec(1);
   }
   return 0;
 }
@@ -392,7 +390,7 @@ LinkStat::write_window(const String &arg, Element *el,
 		       void *, ErrorHandler *errh)
 {
   LinkStat *e = (LinkStat *) el;
-  if (!cp_integer(arg, &e->_window))
+  if (!IntArg().parse(arg, e->_window))
     return errh->error("window must be >= 0");
   return 0;
 }
@@ -402,7 +400,7 @@ LinkStat::write_period(const String &arg, Element *el,
 		       void *, ErrorHandler *errh)
 {
   LinkStat *e = (LinkStat *) el;
-  if (!cp_integer(arg, &e->_period))
+  if (!IntArg().parse(arg, e->_period))
     return errh->error("period must be >= 0");
 
   return 0;
@@ -413,7 +411,7 @@ LinkStat::write_tau(const String &arg, Element *el,
 		       void *, ErrorHandler *errh)
 {
   LinkStat *e = (LinkStat *) el;
-  if (!cp_integer(arg, &e->_tau))
+  if (!IntArg().parse(arg, e->_tau))
     return errh->error("tau must be >= 0");
   return 0;
 }

@@ -19,7 +19,7 @@
 #include <click/config.h>
 
 #include "fromtcpdump.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/error.hh>
@@ -61,14 +61,14 @@ FromTcpdump::configure(Vector<String> &conf, ErrorHandler *errh)
     _sampling_prob = (1 << SAMPLING_SHIFT);
     _absolute_seq = -1;
 
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_ff.filename(),
-		     "STOP", 0, cpBool, &stop,
-		     "ACTIVE", 0, cpBool, &active,
-		     "ZERO", 0, cpBool, &zero,
-		     "CHECKSUM", 0, cpBool, &checksum,
-		     "SAMPLE", 0, cpUnsignedReal2, SAMPLING_SHIFT, &_sampling_prob,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _ff.filename())
+	.read("STOP", stop)
+	.read("ACTIVE", active)
+	.read("ZERO", zero)
+	.read("CHECKSUM", checksum)
+	.read("SAMPLE", FixedPointArg(SAMPLING_SHIFT), _sampling_prob)
+	.complete() < 0)
 	return -1;
     if (_sampling_prob > (1 << SAMPLING_SHIFT)) {
 	errh->warning("SAMPLE probability reduced to 1");
@@ -417,12 +417,12 @@ FromTcpdump::read_packet(ErrorHandler *errh)
 	    const char *sm = s2 - 1;
 	    while (sm > s && *sm != '.' && *sm != ':')
 		sm--;
-	    if (!cp_ip_address(line.substring(s, sm), &iph->ip_src)
-		|| !cp_tcpudp_port(line.substring(sm + 1, s2), iph->ip_p, &udph->uh_sport))
+	    if (!IPAddressArg().parse(line.substring(s, sm), iph->ip_src)
+		|| !IPPortArg(iph->ip_p).parse(line.substring(sm + 1, s2), udph->uh_sport))
 		break;
 	    else
 		udph->uh_sport = htons(udph->uh_sport);
-	} else if (!cp_ip_address(line.substring(s, s2), &iph->ip_src))
+	} else if (!IPAddressArg().parse(line.substring(s, s2), iph->ip_src))
 	    break;
 	s = s2 + 3;
 
@@ -432,12 +432,12 @@ FromTcpdump::read_packet(ErrorHandler *errh)
 	    const char *sm = s2 - 1;
 	    while (sm > s && *sm != '.' && *sm != ':')
 		sm--;
-	    if (!cp_ip_address(line.substring(s, sm), &iph->ip_dst)
-		|| !cp_tcpudp_port(line.substring(sm + 1, s2), iph->ip_p, &udph->uh_dport))
+	    if (!IPAddressArg().parse(line.substring(s, sm), iph->ip_dst)
+		|| !IPPortArg(iph->ip_p).parse(line.substring(sm + 1, s2), udph->uh_dport))
 		break;
 	    else
 		udph->uh_dport = htons(udph->uh_dport);
-	} else if (!cp_ip_address(line.substring(s, s2), &iph->ip_dst))
+	} else if (!IPAddressArg().parse(line.substring(s, s2), iph->ip_dst))
 	    break;
 
 	// then, read protocol data
@@ -622,7 +622,7 @@ FromTcpdump::read_handler(Element *e, void *thunk)
       case H_SAMPLING_PROB:
 	return cp_unparse_real2(fd->_sampling_prob, SAMPLING_SHIFT);
       case H_ACTIVE:
-	return cp_unparse_bool(fd->_active);
+	return BoolArg::unparse(fd->_active);
       case H_ENCAP:
 	return "IP";
       default:
@@ -638,7 +638,7 @@ FromTcpdump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
     switch ((intptr_t)thunk) {
       case H_ACTIVE: {
 	  bool active;
-	  if (cp_bool(s, &active)) {
+	  if (BoolArg().parse(s, active)) {
 	      fd->_active = active;
 	      if (fd->output_is_push(0) && active && !fd->_task.scheduled())
 		  fd->_task.reschedule();
@@ -646,7 +646,7 @@ FromTcpdump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
 		  fd->_notifier.set_active(active, true);
 	      return 0;
 	  } else
-	      return errh->error("`active' should be Boolean");
+	      return errh->error("syntax error");
       }
       case H_STOP:
 	fd->_active = false;
@@ -660,16 +660,16 @@ FromTcpdump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
 void
 FromTcpdump::add_handlers()
 {
-    add_read_handler("sampling_prob", read_handler, (void *)H_SAMPLING_PROB);
-    add_read_handler("active", read_handler, (void *)H_ACTIVE, Handler::CHECKBOX);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("encap", read_handler, (void *)H_ENCAP);
-    add_write_handler("stop", write_handler, (void *)H_STOP, Handler::BUTTON);
+    add_read_handler("sampling_prob", read_handler, H_SAMPLING_PROB);
+    add_read_handler("active", read_handler, H_ACTIVE, Handler::CHECKBOX);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("encap", read_handler, H_ENCAP);
+    add_write_handler("stop", write_handler, H_STOP, Handler::BUTTON);
     _ff.add_handlers(this);
     if (output_is_push(0))
 	add_task_handlers(&_task);
 }
 
-ELEMENT_REQUIRES(userlevel FromFile IPSummaryDump)
+ELEMENT_REQUIRES(userlevel IPSummaryDump)
 EXPORT_ELEMENT(FromTcpdump)
 CLICK_ENDDECLS

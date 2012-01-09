@@ -45,6 +45,7 @@ struct nhopcluster_managment {
 struct nhopcluster_lp_info {
   uint8_t hops;
 
+  uint32_t id;
   uint8_t clusterhead[6];
 
 }__attribute__ ((packed));

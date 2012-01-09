@@ -19,7 +19,7 @@
 #include <click/config.h>
 #include <click/error.hh>
 #include "storetimestamp.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 CLICK_DECLS
 
@@ -36,10 +36,10 @@ StoreTimestamp::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     _offset = -1;
     bool tail = false;
-    if (cp_va_kparse(conf, this, errh,
-		     "OFFSET", cpkP, cpInteger, &_offset,
-		     "TAIL", 0, cpBool, &tail,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_p("OFFSET", _offset)
+	.read("TAIL", tail)
+	.complete() < 0)
 	return -1;
     if (_offset >= 0 ? tail : !tail)
 	return errh->error("supply exactly one of 'OFFSET' and 'TAIL'");
@@ -49,7 +49,7 @@ StoreTimestamp::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 StoreTimestamp::simple_action(Packet *p)
 {
-    int offset = (_offset < 0 ? p->length() : _offset);
+    int offset = (_offset < 0 ? (int) p->length() : _offset);
     int delta = offset + 8 - p->length();
     if (WritablePacket *q = p->put(delta < 0 ? 0 : delta)) {
 	memcpy(q->data() + offset, &q->timestamp_anno(), 8);

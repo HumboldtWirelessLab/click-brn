@@ -50,6 +50,8 @@ CLICK_CXX_PROTECT
 # include <sys/libkern.h>
 # include <sys/proc.h>
 # include <sys/sysproto.h>
+# include <sys/limits.h>
+# include <sys/module.h> /* XXX: for packages */
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 
@@ -57,6 +59,7 @@ CLICK_CXX_UNPROTECT
 
 # include <stdio.h>
 # include <stdlib.h>
+# include <stddef.h>
 # include <string.h>
 # include <ctype.h>
 # include <errno.h>
@@ -277,7 +280,11 @@ extern unsigned char _ctype[];
 
 # define strchr(s, c)	index(s, c)
 
-# define memmove(dst, src, len)		bcopy((src), (dst), (len))
+# if __FreeBSD_version >= 700000 && __FreeBSD_version < 730000
+/* memmove() appeared in the FreeBSD 7.3 kernel */
+extern "C" void *memmove(void *dest, const void *src, size_t len);
+# endif
+
 
 typedef struct ifnet net_device;
 
@@ -291,7 +298,9 @@ typedef struct device net_device;
 
 // COMPILE-TIME ASSERTION CHECKING
 
-#define static_assert(x) switch (x) case 0: case !!(x):
+#if !defined(__cplusplus) || !HAVE_CXX_STATIC_ASSERT
+# define static_assert(x, ...) switch ((int) (x)) case 0: case !!((int) (x)):
+#endif
 
 
 // PROCESSOR IDENTITIES
@@ -362,9 +371,13 @@ click_invalid_processor()
 #endif
 }
 
+#if CLICK_USERLEVEL && HAVE_MULTITHREAD && HAVE___THREAD_STORAGE_CLASS
+extern __thread int click_current_thread_id;
+#endif
+
 
 // TIMEVALS AND JIFFIES
-// click_jiffies_t is the type of click_jiffies() and is usually unsigned.
+// click_jiffies_t is the type of click_jiffies() and must be unsigned.
 // click_jiffies_difference_t is the signed version of click_jiffies_t.
 // CLICK_JIFFIES_MONOTONIC is true if click_jiffies() never goes backwards.
 
@@ -379,7 +392,7 @@ typedef long click_jiffies_difference_t;
 # define HAS_LONG_CLICK_JIFFIES_T	1
 #elif CLICK_BSDMODULE
 # define click_gettimeofday(tvp)	(getmicrotime(tvp))
-typedef int click_jiffies_t;
+typedef unsigned click_jiffies_t;
 typedef int click_jiffies_difference_t;
 # define click_jiffies()		(ticks)
 # define CLICK_HZ			hz

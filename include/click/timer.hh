@@ -6,6 +6,7 @@
 #include <click/element.hh>
 #include <click/timestamp.hh>
 CLICK_DECLS
+class RouterThread;
 
 typedef void (*TimerCallback)(Timer *timer, void *user_data);
 typedef TimerCallback TimerHook CLICK_DEPRECATED;
@@ -58,10 +59,15 @@ class Timer { public:
 
 
     /** @brief Change the Timer to do nothing when fired. */
-    inline void assign(const do_nothing_t &unused) {
-	(void) unused;
+    inline void assign() {
 	_hook.callback = do_nothing_hook;
 	_thunk = (void *) 1;
+    }
+
+    /** @brief Change the Timer to do nothing when fired. */
+    inline void assign(const do_nothing_t &unused) {
+	(void) unused;
+	assign();
     }
 
     /** @brief Change the Timer to call @a f(this, @a user_data) when fired.
@@ -98,19 +104,54 @@ class Timer { public:
 	return _schedpos1 != 0;
     }
 
-    /** @brief Return the Timer's current expiration time.
+
+    /** @brief Return the Timer's steady-clock expiration time.
      *
-     * The expiration time is the absolute time at which the timer is next
-     * scheduled to fire.  If the timer is not currently scheduled, then
-     * expiry() returns the last assigned expiration time. */
-    inline const Timestamp &expiry() const {
-	return _expiry;
+     * This is the absolute time, according to the steady clock, at which the
+     * timer is next scheduled to fire.  If the timer is not currently
+     * scheduled, then expiry_steady() returns the last assigned expiration
+     * time.
+     *
+     * @sa expiry() */
+    inline const Timestamp &expiry_steady() const {
+	return _expiry_s;
+    }
+
+    /** @brief Return the Timer's system-clock expiration time.
+     *
+     * Timer expirations are measured using the system's steady clock, which
+     * increases monotonically.  (See Timestamp::now_steady().)  The expiry()
+     * function, however, returns the timer's expiration time according to the
+     * system clock.  This is a calculated value: if the system clock changes
+     * -- because the user changes the current system time, for example --
+     * then the timer's expiry() will also change.  (The timer's
+     * expiry_steady() value will not change, however.)
+     *
+     * @sa expiry_steady() */
+    inline Timestamp expiry() const {
+	if (_expiry_s)
+	    return _expiry_s + Timestamp::recent() - Timestamp::recent_steady();
+	else
+	    return _expiry_s;
     }
 
     /** @brief Return the Timer's associated Router. */
     inline Router *router() const {
 	return _owner->router();
     }
+
+    /** @brief Return the Timer's owning element. */
+    inline Element *element() const {
+	return _owner;
+    }
+
+    /** @brief Return the Timer's associated RouterThread. */
+    inline RouterThread *thread() const {
+	return _thread;
+    }
+
+    /** @brief Return the Timer's associated home thread ID. */
+    int home_thread_id() const;
 
 
     /** @brief Initialize the timer.
@@ -127,54 +168,68 @@ class Timer { public:
      *
      * Initializing a Timer constructed by the default constructor, Timer(),
      * will produce a warning. */
-    inline void initialize(Element *owner, bool quiet = false) {
-	assert(!initialized() || _owner->router() == owner->router());
-	_owner = owner;
-	if (unlikely(_hook.callback == do_nothing_hook && !_thunk) && !quiet)
-	    click_chatter("initializing Timer %{element} [%p], which does nothing", _owner, this);
-    }
+    void initialize(Element *owner, bool quiet = false);
 
     /** @brief Initialize the timer.
      * @param router the owner router
      *
-     * This function is shorthand for @link Timer::initialize(Element *)
-     * Timer::initialize@endlink(@a router ->@link Router::root_element
-     * root_element@endlink()).  However, it is better to
-     * explicitly associate timers with real elements. */
+     * This function is shorthand for @link
+     * Timer::initialize(Element*,bool) Timer::initialize@endlink(@a
+     * router ->@link Router::root_element root_element@endlink()).
+     * However, it is better to explicitly associate timers with real
+     * elements. */
     void initialize(Router *router);
 
 
+    /** @brief Schedule the timer to fire at @a when_steady.
+     * @param when_steady expiration time according to the steady clock
+     *
+     * If @a when_steady is more than 2 seconds behind the current time, then
+     * the expiration time is silently updated to the current time.
+     *
+     * @sa schedule_at() */
+    void schedule_at_steady(const Timestamp &when_steady);
+
+    /** @brief Schedule the timer to fire at @a when_steady.
+     * @param when_steady expiration time according to the steady clock
+     *
+     * This is a synonym for schedule_at_steady(). */
+    void reschedule_at_steady(const Timestamp &when_steady);
+
     /** @brief Schedule the timer to fire at @a when.
-     * @param when expiration time
+     * @param when expiration time according to the system clock
      *
      * If @a when is more than 2 seconds behind system time, then the
-     * expiration time is silently updated to the current system time. */
-    void schedule_at(const Timestamp &when);
+     * expiration time is silently updated to the current system time.
+     *
+     * @note The schedule_at_steady() function should generally be preferred
+     * to schedule_at().  schedule_at() is implemented in terms of
+     * schedule_at_steady().
+     *
+     * @sa schedule_at_steady() */
+    inline void schedule_at(const Timestamp &when);
 
     /** @brief Schedule the timer to fire at @a when.
      * @param when expiration time
      *
-     * This element is a synonym for schedule_at(). */
-    inline void reschedule_at(const Timestamp &when) {
-	schedule_at(when);
-    }
+     * This is a synonym for schedule_at(). */
+    inline void reschedule_at(const Timestamp &when);
 
     /** @brief Shedule the timer to fire immediately.
      *
-     * Equivalent to schedule_at(Timestamp::now()). */
+     * Equivalent to schedule_at(Timestamp::recent()). */
     inline void schedule_now() {
-	schedule_at(Timestamp::now());
+	schedule_at_steady(Timestamp::recent_steady());
     }
 
     /** @brief Schedule the timer to fire @a delta time in the future.
      * @param delta interval until expiration time
      *
      * The schedule_after methods schedule the timer relative to the current
-     * system time, Timestamp::now().  When called from a timer's callback
-     * function, this will usually be slightly after the timer's nominal
-     * expiration time.  To schedule a timer at a strict interval,
-     * compensating for small amounts of drift, use the reschedule_after
-     * methods. */
+     * time.  When called from a timer's callback function, this will usually
+     * be slightly after the timer's nominal expiration time.  To schedule a
+     * timer at a strict interval, compensating for small amounts of drift,
+     * use the reschedule_after methods. */
     void schedule_after(const Timestamp &delta);
 
     /** @brief Schedule the timer to fire after @a delta_sec seconds.
@@ -202,7 +257,7 @@ class Timer { public:
      *
      * @sa schedule_after */
     inline void reschedule_after(const Timestamp &delta) {
-	schedule_at(_expiry + delta);
+	schedule_at_steady(_expiry_s + delta);
     }
 
     /** @brief Schedule the timer to fire @a delta_sec seconds after its
@@ -211,7 +266,7 @@ class Timer { public:
      *
      * @sa schedule_after_sec, reschedule_after */
     inline void reschedule_after_sec(uint32_t delta_sec) {
-	schedule_at(Timestamp(_expiry.sec() + delta_sec, _expiry.subsec()));
+	schedule_at_steady(Timestamp(_expiry_s.sec() + delta_sec, _expiry_s.subsec()));
     }
 
     /** @brief Schedule the timer to fire @a delta_msec milliseconds after its
@@ -220,7 +275,7 @@ class Timer { public:
      *
      * @sa schedule_after_msec, reschedule_after */
     inline void reschedule_after_msec(uint32_t delta_msec) {
-	schedule_at(_expiry + Timestamp::make_msec(delta_msec));
+	schedule_at_steady(_expiry_s + Timestamp::make_msec(delta_msec));
     }
 
 
@@ -232,7 +287,7 @@ class Timer { public:
     /** @brief Unschedule the timer and reset its expiration time. */
     inline void clear() {
 	unschedule();
-	_expiry = Timestamp();
+	_expiry_s = Timestamp();
     }
 
 
@@ -247,7 +302,7 @@ class Timer { public:
      * Timer::adjustment() is an appropriate value for this time
      * difference. */
     static inline Timestamp adjustment() {
-#if CLICK_USERLEVEL
+#if TIMESTAMP_WARPABLE
 	if (Timestamp::warp_jumping())
 	    return Timestamp();
 #endif
@@ -284,12 +339,13 @@ class Timer { public:
   private:
 
     int _schedpos1;
-    Timestamp _expiry;
+    Timestamp _expiry_s;
     union {
 	TimerCallback callback;
     } _hook;
     void *_thunk;
     Element *_owner;
+    RouterThread *_thread;
 
     Timer &operator=(const Timer &x);
 
@@ -297,9 +353,21 @@ class Timer { public:
     static void element_hook(Timer *t, void *user_data);
     static void task_hook(Timer *t, void *user_data);
 
-    friend class Master;
+    friend class TimerSet;
 
 };
+
+inline void
+Timer::schedule_at(const Timestamp &when)
+{
+    schedule_at_steady(when + Timestamp::recent_steady() - Timestamp::recent());
+}
+
+inline void
+Timer::reschedule_at(const Timestamp &when)
+{
+    schedule_at(when);
+}
 
 inline void
 Timer::schedule_after_s(uint32_t delta_sec)

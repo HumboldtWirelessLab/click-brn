@@ -69,9 +69,11 @@ BRN2EtherEncap::smaction(Packet *p)
 
     if ( annotated_ether && (! _use_anno ) ) {  // are the mac annotations available?
 
-      memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
-      memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
-      ether->ether_type = annotated_ether->ether_type;
+      if ( (void*)annotated_ether != (void*)ether ) {
+        memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
+        memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
+        ether->ether_type = annotated_ether->ether_type;
+      }
 
       //debug  //TODO: Remove this
       if ( memcmp((BRNPacketAnno::dst_ether_anno(q)).data(),annotated_ether->ether_dhost,6) != 0 ) {
@@ -89,6 +91,8 @@ BRN2EtherEncap::smaction(Packet *p)
                                    (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str(),
                                     htons((BRNPacketAnno::ethertype_anno(q)))); //TODO:
       }
+
+      BRN_INFO("%s %s",(BRNPacketAnno::src_ether_anno(q)).unparse().c_str(), (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
 
       memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(q)).data(), 6);
       memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
@@ -124,13 +128,30 @@ BRN2EtherEncap::pull(int)
 }
 
 Packet *
-push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype) {
-  WritablePacket *q;
-  q = p->push(14);
+BRN2EtherEncap::push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype)
+{
+  WritablePacket *q = p->push(14);
   if (q) {
     click_ether *ether = (click_ether *) q->data();
     memcpy(ether->ether_shost, src, 6);
     memcpy(ether->ether_dhost, dst, 6);
+    ether->ether_type = htons(ethertype);
+  } else {
+    click_chatter("No space for etherheader");
+    return NULL;
+  }
+
+  return q;
+}
+
+Packet *
+BRN2EtherEncap::push_ether_header(Packet *p, EtherAddress *src, EtherAddress *dst, uint16_t ethertype)
+{
+  WritablePacket *q = p->push(14);
+  if (q) {
+    click_ether *ether = (click_ether *) q->data();
+    memcpy(ether->ether_shost, src->data(), 6);
+    memcpy(ether->ether_dhost, dst->data(), 6);
     ether->ether_type = htons(ethertype);
   } else {
     click_chatter("No space for etherheader");

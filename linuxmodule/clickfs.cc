@@ -504,19 +504,13 @@ free_handler_string(int hs)
 static void
 lock_threads()
 {
-    for (int i = 0; i < click_master->nthreads(); i++)
-	click_master->thread(i)->schedule_block_tasks();
-    for (int i = 0; i < click_master->nthreads(); i++)
-	click_master->thread(i)->block_tasks(true);
-    click_master->pause();
+    click_master->block_all();
 }
 
 static void
 unlock_threads()
 {
-    click_master->unpause();
-    for (int i = click_master->nthreads() - 1; i >= 0; i--)
-	click_master->thread(i)->unblock_tasks();
+    click_master->unblock_all();
 }
 
 
@@ -814,9 +808,9 @@ handler_release(struct inode *, struct file *filp)
     return 0;
 }
 
-static int
-handler_ioctl(struct inode *inode, struct file *filp,
-	      unsigned command, unsigned long address)
+static inline int
+do_handler_ioctl(struct inode *inode, struct file *filp,
+		 unsigned command, unsigned long address)
 {
     if (command & _CLICK_IOC_SAFE)
 	LOCK_CONFIG_READ();
@@ -891,6 +885,22 @@ handler_ioctl(struct inode *inode, struct file *filp,
     return retval;
 }
 
+#if HAVE_UNLOCKED_IOCTL
+static int
+handler_unlocked_ioctl(struct file *filp,
+		       unsigned command, unsigned address)
+{
+    return do_handler_ioctl(filp->f_dentry->d_inode, filp, command, address);
+}
+#else
+static int
+handler_ioctl(struct inode *inode, struct file *filp,
+	      unsigned command, unsigned long address)
+{
+    return do_handler_ioctl(inode, filp, command, address);
+}
+#endif
+
 #if INO_DEBUG
 static String
 read_ino_info(Element *, void *)
@@ -926,9 +936,9 @@ int
 init_clickfs()
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 0)
-    static_assert(sizeof(((struct inode *)0)->u) >= sizeof(ClickInodeInfo));
+    static_assert(sizeof(((struct inode *)0)->u) >= sizeof(ClickInodeInfo), "The file-system-specific data in struct inode isn't big enough.");
 #endif
-    static_assert(HANDLER_DIRECT + HANDLER_DONE + HANDLER_RAW + HANDLER_SPECIAL_INODE + HANDLER_WRITE_UNLIMITED < Handler::USER_FLAG_0);
+    static_assert(HANDLER_DIRECT + HANDLER_DONE + HANDLER_RAW + HANDLER_SPECIAL_INODE + HANDLER_WRITE_UNLIMITED < Handler::USER_FLAG_0, "Too few driver handler flags available.");
 
     spin_lock_init(&handler_strings_lock);
     spin_lock_init(&clickfs_lock);
@@ -961,7 +971,11 @@ init_clickfs()
 
     click_handler_file_ops->read = handler_read;
     click_handler_file_ops->write = handler_write;
+#if HAVE_UNLOCKED_IOCTL
+    click_handler_file_ops->unlocked_ioctl = handler_unlocked_ioctl;
+#else
     click_handler_file_ops->ioctl = handler_ioctl;
+#endif
     click_handler_file_ops->open = handler_open;
     click_handler_file_ops->flush = handler_flush;
     click_handler_file_ops->release = handler_release;

@@ -21,7 +21,7 @@
 
 #include "ipsumdump_anno.hh"
 #include <click/packet.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/packet_anno.hh>
 CLICK_DECLS
 
@@ -33,7 +33,7 @@ namespace IPSummaryDump {
 
 static bool anno_extract(PacketDesc& d, const FieldWriter *f)
 {
-    Packet *p = d.p;
+    const Packet *p = d.p;
     switch (f->user_data) {
       case T_TIMESTAMP:
 	d.u32[0] = p->timestamp_anno().sec();
@@ -59,8 +59,8 @@ static bool anno_extract(PacketDesc& d, const FieldWriter *f)
 #endif
       }
       case T_FIRST_TIMESTAMP:
-	d.u32[0] = FIRST_TIMESTAMP_ANNO(p).sec();
-	d.u32[1] = FIRST_TIMESTAMP_ANNO(p).nsec();
+	d.u32[0] = CONST_FIRST_TIMESTAMP_ANNO(p).sec();
+	d.u32[1] = CONST_FIRST_TIMESTAMP_ANNO(p).nsec();
 	return true;
       case T_COUNT:
 	d.v = 1 + EXTRA_PACKETS_ANNO(p);
@@ -163,7 +163,7 @@ static bool anno_ina(PacketOdesc& d, const String &s, const FieldReader *f)
 	    d.v = 1;
 	    return true;
 	} else
-	    return cp_integer(s, &d.v);
+	    return IntArg().parse(s, d.v);
     }
     return false;
 }

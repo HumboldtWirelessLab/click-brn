@@ -20,8 +20,13 @@ BRN2PacketSource::BRN2PacketSource()
     _channel(0),
     _bitrate(0),
     _power(0),
-    _headroom(128)
+    _headroom(128),
+    _max_packets(0),
+    _send_packets(0),
+    _reuse(false),
+    _reuseoffset(0)
 {
+  BRNElement::init();
 }
 
 BRN2PacketSource::~BRN2PacketSource()
@@ -37,14 +42,17 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "INTERVAL", cpkP+cpkM, cpInteger, &_interval,
       "MAXSEQ", cpkP+cpkM, cpInteger, &_max_seq_num,
       "BURST", cpkP+cpkM, cpInteger, &_burst,
+      "PACKETCOUNT", cpkP, cpInteger, &_max_packets,
       "CHANNEL", cpkP, cpInteger, &_channel,
       "BITRATE", cpkP, cpInteger, &_bitrate,
       "POWER", cpkP, cpInteger, &_power,
       "ACTIVE", cpkP, cpBool, &_active,
       "HEADROOM", cpkP, cpInteger, &_headroom,
+      "REUSE", cpkP, cpBool, &_reuse,
+      "REUSEOFFSET", cpkP, cpInteger, &_reuseoffset,
       cpEnd) < 0)
         return -1;
- 
+
   return 0;
 }
 
@@ -66,7 +74,7 @@ BRN2PacketSource::initialize(ErrorHandler *)
 
   if ( _active && ( _interval > 0 )) {
     _seq_num = 1;
-    _timer.reschedule_after_msec(_interval);
+    _timer.schedule_after_msec(_interval);
   }
 
   return 0;
@@ -81,9 +89,7 @@ BRN2PacketSource::run_timer(Timer *t)
 
   if ( _active ) {
 
-    _timer.reschedule_after_msec(_interval);
-
-    for ( uint32_t i = 0; i < _burst; i++) {
+    for ( uint32_t i = 0; (i < _burst) && ((_max_packets == 0)||(_max_packets>_send_packets)); i++,_send_packets++ ) {
       packet_out = createpacket(_size);
 
       if ( ( _max_seq_num != 0 ) && ( _seq_num == _max_seq_num ) )
@@ -92,6 +98,10 @@ BRN2PacketSource::run_timer(Timer *t)
       _seq_num++;
 
       output(0).push(packet_out);
+    }
+
+    if ( (( _max_packets == 0 ) || ( _max_packets > _send_packets )) && !_reuse ) {
+      _timer.reschedule_after_msec(_interval);
     }
   }
 }
@@ -105,6 +115,7 @@ BRN2PacketSource::set_active(bool set_active)
     if ( _interval <= 0 ) return;
 
     _seq_num = 1;
+    _send_packets = 0;
     _timer.reschedule_after_msec(_interval);
   } else {
     _timer.clear();
@@ -117,16 +128,33 @@ BRN2PacketSource::set_active(bool set_active)
 void
 BRN2PacketSource::push( int port, Packet *packet )
 {
-  if ( port == 0 )
-    output(0).push(packet);
-  else
+  if ( port == 0 ) {
+    if ( ( _max_packets == 0 ) || ( _max_packets > _send_packets ) ) {
+      WritablePacket *packet_out = packet->uniqueify();
+      uint8_t *packet_data = (uint8_t*)&(((uint8_t*)packet_out->data())[_reuseoffset]);
+
+      pinfo.seq_num = htonl(_seq_num);
+      memcpy(packet_data, &pinfo, sizeof(struct packetinfo));
+
+      _send_packets++;
+      _seq_num++;
+
+      if ( noutputs() > 1 )
+        output(1).push(packet_out);
+      else
+        output(0).push(packet_out);
+
+    } else {
+      packet->kill();
+    }
+  } else
     packet->kill();
 }
 
 Packet *
 BRN2PacketSource::createpacket(int size)
 {
-  WritablePacket *new_packet = WritablePacket::make(_headroom ,NULL /* *data */, size, 32);
+  WritablePacket *new_packet = BRNElement::packet_new(_headroom, NULL, size, 32);
   uint8_t *new_packet_data = (uint8_t*)new_packet->data();
 
   memset(new_packet_data,0,size);
@@ -182,6 +210,8 @@ write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/
 void
 BRN2PacketSource::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_read_handler("active", read_param, H_ACTIVE);
   add_write_handler("active", write_param, H_ACTIVE);
 }

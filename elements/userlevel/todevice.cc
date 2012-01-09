@@ -4,6 +4,7 @@
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
  * Copyright (c) 2005-2008 Regents of the University of California
+ * Copyright (c) 2011 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -26,7 +27,7 @@
 #include "todevice.hh"
 #include <click/error.hh>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/packet_anno.hh>
@@ -34,13 +35,14 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#if TODEVICE_BSD_DEV_BPF
+#if TODEVICE_ALLOW_DEVBPF
 # include <fcntl.h>
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <sys/ioctl.h>
 # include <net/if.h>
-#elif TODEVICE_LINUX
+#endif
+#if TODEVICE_ALLOW_LINUX
 # include <sys/socket.h>
 # include <sys/ioctl.h>
 # include <net/if.h>
@@ -56,10 +58,16 @@
 CLICK_DECLS
 
 ToDevice::ToDevice()
-  : _task(this), _timer(&_task), _fd(-1), _my_fd(false),
-    _q(0),
-    _pulls(0)
+    : _task(this), _timer(&_task), _q(0), _pulls(0)
 {
+#if TODEVICE_ALLOW_PCAP
+    _pcap = 0;
+    _my_pcap = false;
+#endif
+#if TODEVICE_ALLOW_LINUX || TODEVICE_ALLOW_DEVBPF || TODEVICE_ALLOW_PCAPFD
+    _fd = -1;
+    _my_fd = false;
+#endif
 }
 
 ToDevice::~ToDevice()
@@ -69,91 +77,166 @@ ToDevice::~ToDevice()
 int
 ToDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+    String method;
+    _burst = 1;
+    if (Args(conf, this, errh)
+	.read_mp("DEVNAME", _ifname)
+	.read("DEBUG", _debug)
+	.read("METHOD", WordArg(), method)
+	.read("BURST", _burst)
+	.complete() < 0)
+	return -1;
+    if (!_ifname)
+	return errh->error("interface not set");
+    if (_burst <= 0)
+	return errh->error("bad BURST");
 
-  if (cp_va_kparse(conf, this, errh,
-		   "DEVNAME", cpkP+cpkM, cpString, &_ifname,
-		   "DEBUG", 0, cpBool, &_debug,
-		   cpEnd) < 0)
-    return -1;
-  if (!_ifname)
-    return errh->error("interface not set");
-  return 0;
+    if (method == "") {
+#if TODEVICE_ALLOW_PCAP && TODEVICE_ALLOW_LINUX
+	_method = method_pcap;
+	if (FromDevice *fd = find_fromdevice())
+	    if (fd->linux_fd())
+		_method = method_linux;
+#elif TODEVICE_ALLOW_PCAP
+	_method = method_pcap;
+#elif TODEVICE_ALLOW_LINUX
+	_method = method_linux;
+#elif TODEVICE_ALLOW_DEVBPF
+	_method = method_devbpf;
+#elif TODEVICE_ALLOW_PCAPFD
+	_method = method_pcapfd;
+#else
+	return errh->error("cannot send packets on this platform");
+#endif
+    }
+#if TODEVICE_ALLOW_PCAP
+    else if (method == "PCAP")
+	_method = method_pcap;
+#endif
+#if TODEVICE_ALLOW_LINUX
+    else if (method == "LINUX")
+	_method = method_linux;
+#endif
+#if TODEVICE_ALLOW_DEVBPF
+    else if (method == "DEVBPF")
+	_method = method_devbpf;
+#endif
+#if TODEVICE_ALLOW_PCAPFD
+    else if (method == "PCAPFD")
+	_method = method_pcapfd;
+#endif
+    else
+	return errh->error("bad METHOD");
+
+    return 0;
+}
+
+FromDevice *
+ToDevice::find_fromdevice() const
+{
+    Router *r = router();
+    for (int ei = 0; ei < r->nelements(); ++ei) {
+	FromDevice *fd = (FromDevice *) r->element(ei)->cast("FromDevice");
+	if (fd && fd->ifname() == _ifname && fd->fd() >= 0)
+	    return fd;
+    }
+    return 0;
 }
 
 int
 ToDevice::initialize(ErrorHandler *errh)
 {
-  _timer.initialize(this);
-  _fd = -1;
+    _timer.initialize(this);
 
-#if TODEVICE_BSD_DEV_BPF
-
-  /* pcap_open_live() doesn't open for writing. */
-  for (int i = 0; i < 16 && _fd < 0; i++) {
-    char tmp[64];
-    sprintf(tmp, "/dev/bpf%d", i);
-    _fd = open(tmp, 1);
-  }
-  if (_fd < 0)
-    return(errh->error("open /dev/bpf* for write: %s", strerror(errno)));
-
-  struct ifreq ifr;
-  strncpy(ifr.ifr_name, _ifname.c_str(), sizeof(ifr.ifr_name));
-  ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = 0;
-  if (ioctl(_fd, BIOCSETIF, (caddr_t)&ifr) < 0)
-    return errh->error("BIOCSETIF %s failed", ifr.ifr_name);
-# ifdef BIOCSHDRCMPLT
-  int yes = 1;
-  if (ioctl(_fd, BIOCSHDRCMPLT, (caddr_t)&yes) < 0)
-      errh->warning("BIOCSHDRCMPLT %s failed", ifr.ifr_name);
-# endif
-  _my_fd = true;
-
-#elif TODEVICE_LINUX || TODEVICE_PCAP
-
-  // find a FromDevice and reuse its socket if possible
-  for (int ei = 0; ei < router()->nelements() && _fd < 0; ei++) {
-    Element *e = router()->element(ei);
-    FromDevice *fdev = (FromDevice *)e->cast("FromDevice");
-    if (fdev && fdev->ifname() == _ifname && fdev->fd() >= 0) {
-      _fd = fdev->fd();
-      _my_fd = false;
+#if TODEVICE_ALLOW_PCAP
+    if (_method == method_pcap) {
+	FromDevice *fd = find_fromdevice();
+	if (fd && fd->pcap())
+	    _pcap = fd->pcap();
+	else {
+	    _pcap = FromDevice::open_pcap(_ifname, FromDevice::default_snaplen, false, errh);
+	    if (!_pcap)
+		return -1;
+	    _my_pcap = true;
+	}
+	_fd = pcap_fileno(_pcap);
+	/* _my_fd = false by default */
     }
-  }
-  if (_fd < 0) {
-# if TODEVICE_LINUX
-    _fd = FromDevice::open_packet_socket(_ifname, errh);
-    _my_fd = true;
-# else
-    return errh->error("ToDevice requires an initialized FromDevice on this platform") ;
-# endif
-  }
-  if (_fd < 0)
-    return -1;
-
-#else
-
-  return errh->error("ToDevice is not supported on this platform");
-
 #endif
 
-  // check for duplicate writers
-  void *&used = router()->force_attachment("device_writer_" + _ifname);
-  if (used)
-    return errh->error("duplicate writer for device `%s'", _ifname.c_str());
-  used = this;
+#if TODEVICE_ALLOW_DEVBPF
+    if (_method == method_devbpf) {
+	/* pcap_open_live() doesn't open for writing. */
+	for (int i = 0; i < 16 && _fd < 0; i++) {
+	    char tmp[64];
+	    sprintf(tmp, "/dev/bpf%d", i);
+	    _fd = open(tmp, 1);
+	}
+	if (_fd < 0)
+	    return(errh->error("open /dev/bpf* for write: %s", strerror(errno)));
+	_my_fd = true;
 
-  ScheduleInfo::join_scheduler(this, &_task, errh);
-  _signal = Notifier::upstream_empty_signal(this, 0, &_task);
-  return 0;
+	struct ifreq ifr;
+	strncpy(ifr.ifr_name, _ifname.c_str(), sizeof(ifr.ifr_name));
+	ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = 0;
+	if (ioctl(_fd, BIOCSETIF, (caddr_t)&ifr) < 0)
+	    return errh->error("BIOCSETIF %s failed", ifr.ifr_name);
+# ifdef BIOCSHDRCMPLT
+	int yes = 1;
+	if (ioctl(_fd, BIOCSHDRCMPLT, (caddr_t)&yes) < 0)
+	    errh->warning("BIOCSHDRCMPLT %s failed", ifr.ifr_name);
+# endif
+    }
+#endif
+
+#if TODEVICE_ALLOW_LINUX
+    if (_method == method_linux) {
+	FromDevice *fd = find_fromdevice();
+	if (fd && fd->linux_fd() >= 0)
+	    _fd = fd->linux_fd();
+	else {
+	    _fd = FromDevice::open_packet_socket(_ifname, errh);
+	    if (_fd < 0)
+		return -1;
+	    _my_fd = true;
+	}
+    }
+#endif
+
+#if TODEVICE_ALLOW_PCAPFD
+    if (_method == method_pcapfd) {
+	FromDevice *fd = find_fromdevice();
+	if (fd && fd->pcap())
+	    _fd = fd->fd();
+	else
+	    return errh->error("initialized FromDevice required on this platform");
+    }
+#endif
+
+    // check for duplicate writers
+    void *&used = router()->force_attachment("device_writer_" + _ifname);
+    if (used)
+	return errh->error("duplicate writer for device %<%s%>", _ifname.c_str());
+    used = this;
+
+    ScheduleInfo::join_scheduler(this, &_task, errh);
+    _signal = Notifier::upstream_empty_signal(this, 0, &_task);
+    return 0;
 }
 
 void
 ToDevice::cleanup(CleanupStage)
 {
-  if (_fd >= 0 && _my_fd)
-    close(_fd);
-  _fd = -1;
+#if TODEVICE_ALLOW_PCAP
+    if (_pcap && _my_pcap)
+	pcap_close(_pcap);
+    _pcap = 0;
+#endif
+#if TODEVICE_ALLOW_LINUX || TODEVICE_ALLOW_DEVBPF || TODEVICE_ALLOW_PCAPFD
+    if (_fd >= 0 && _my_fd)
+	close(_fd);
+    _fd = -1;
+#endif
 }
 
 
@@ -167,63 +250,91 @@ ToDevice::cleanup(CleanupStage)
  * timer if buffers are not available.
  * --jbicket
  */
+int
+ToDevice::send_packet(Packet *p)
+{
+    int r = 0;
+    errno = 0;
+
+#if TODEVICE_ALLOW_PCAP
+    if (_method == method_pcap) {
+# if HAVE_PCAP_INJECT
+	r = pcap_inject(_pcap, p->data(), p->length());
+# else
+	r = pcap_sendpacket(_pcap, p->data(), p->length());
+# endif
+    }
+#endif
+
+#if TODEVICE_ALLOW_LINUX
+    if (_method == method_linux)
+	r = send(_fd, p->data(), p->length(), 0);
+#endif
+
+#if TODEVICE_ALLOW_DEVBPF
+    if (_method == method_devbpf)
+	if (write(_fd, p->data(), p->length()) != (ssize_t) p->length())
+	    r = -1;
+#endif
+
+#if TODEVICE_ALLOW_PCAPFD
+    if (_method == method_pcapfd)
+	if (write(_fd, p->data(), p->length()) != (ssize_t) p->length())
+	    r = -1;
+#endif
+
+    if (r >= 0)
+	return 0;
+    else
+	return errno ? -errno : -EINVAL;
+}
+
 bool
 ToDevice::run_task(Task *)
 {
     Packet *p = _q;
     _q = 0;
-    if (!p) {
-	p = input(0).pull();
-	_pulls++;
-    }
+    int count = 0, r = 0;
 
-    if (p) {
-	int retval;
-	const char *syscall;
-
-#if TODEVICE_WRITE
-	retval = ((uint32_t) write(_fd, p->data(), p->length()) == p->length() ? 0 : -1);
-	syscall = "write";
-#elif TODEVICE_SEND
-	retval = send(_fd, p->data(), p->length(), 0);
-	syscall = "send";
-#else
-	retval = 0;
-#endif
-
-	if (retval >= 0) {
+    do {
+	if (!p) {
+	    ++_pulls;
+	    if (!(p = input(0).pull()))
+		break;
+	}
+	if ((r = send_packet(p)) >= 0) {
 	    _backoff = 0;
 	    checked_output_push(0, p);
+	    ++count;
+	} else
+	    break;
+    } while (count < _burst);
 
-	} else if (errno == ENOBUFS || errno == EAGAIN) {
-	    assert(!_q);
-	    _q = p;
+    if (r == -ENOBUFS || r == -EAGAIN) {
+	assert(!_q);
+	_q = p;
 
-	    if (!_backoff) {
-		_backoff = 1;
-		add_select(_fd, SELECT_WRITE);
-	    } else {
-		_timer.schedule_after(Timestamp::make_usec(_backoff));
-		if (_backoff < 32768)
-		    _backoff *= 2;
-		if (_debug) {
-		    Timestamp now = Timestamp::now();
-		    click_chatter("%{element} backing off for %d at %{timestamp}\n", this, _backoff, &now);
-		}
-	    }
-
-	    return false;
-
+	if (!_backoff) {
+	    _backoff = 1;
+	    add_select(_fd, SELECT_WRITE);
 	} else {
-	    click_chatter("ToDevice(%s) %s: %s", _ifname.c_str(), syscall, strerror(errno));
-	    checked_output_push(1, p);
+	    _timer.schedule_after(Timestamp::make_usec(_backoff));
+	    if (_backoff < 256)
+		_backoff *= 2;
+	    if (_debug) {
+		Timestamp now = Timestamp::now();
+		click_chatter("%{element} backing off for %d at %{timestamp}\n", this, _backoff, &now);
+	    }
 	}
+	return count > 0;
+    } else if (r < 0) {
+	click_chatter("ToDevice(%s): %s", _ifname.c_str(), strerror(-r));
+	checked_output_push(1, p);
     }
 
-    if (!p && !_signal)
-	return false;
-    _task.fast_reschedule();
-    return p != 0;
+    if (p || _signal)
+	_task.fast_reschedule();
+    return count > 0;
 }
 
 void
@@ -234,56 +345,51 @@ ToDevice::selected(int, int)
 }
 
 
-enum {H_DEBUG, H_SIGNAL, H_PULLS, H_Q};
-
 String
 ToDevice::read_param(Element *e, void *thunk)
 {
-  ToDevice *td = (ToDevice *)e;
-  switch((uintptr_t) thunk) {
-  case H_DEBUG:
-      return String(td->_debug);
-  case H_SIGNAL:
-      return String(td->_signal);
-  case H_PULLS:
-      return String(td->_pulls);
-  case H_Q:
-      return String((bool) td->_q);
-  default:
-      return String();
-  }
+    ToDevice *td = (ToDevice *)e;
+    switch((uintptr_t) thunk) {
+    case h_debug:
+	return String(td->_debug);
+    case h_signal:
+	return String(td->_signal);
+    case h_pulls:
+	return String(td->_pulls);
+    case h_q:
+	return String((bool) td->_q);
+    default:
+	return String();
+    }
 }
 
 int
 ToDevice::write_param(const String &in_s, Element *e, void *vparam,
 		     ErrorHandler *errh)
 {
-  ToDevice *td = (ToDevice *)e;
-  String s = cp_uncomment(in_s);
-  switch ((intptr_t)vparam) {
-  case H_DEBUG: {
-    bool debug;
-    if (!cp_bool(s, &debug))
-      return errh->error("debug parameter must be boolean");
-    td->_debug = debug;
-    break;
-  }
-  }
-  return 0;
+    ToDevice *td = (ToDevice *)e;
+    String s = cp_uncomment(in_s);
+    switch ((intptr_t)vparam) {
+    case h_debug: {
+	bool debug;
+	if (!BoolArg().parse(s, debug))
+	    return errh->error("type mismatch");
+	td->_debug = debug;
+	break;
+    }
+    }
+    return 0;
 }
 
 void
 ToDevice::add_handlers()
 {
-  add_task_handlers(&_task);
-
-  add_read_handler("debug", read_param, (void *) H_DEBUG, Handler::CHECKBOX);
-  add_read_handler("pulls", read_param, (void *) H_PULLS);
-  add_read_handler("signal", read_param, (void *) H_SIGNAL);
-  add_read_handler("q", read_param, (void *) H_Q);
-
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
-
+    add_task_handlers(&_task);
+    add_read_handler("debug", read_param, h_debug, Handler::CHECKBOX);
+    add_read_handler("pulls", read_param, h_pulls);
+    add_read_handler("signal", read_param, h_signal);
+    add_read_handler("q", read_param, h_q);
+    add_write_handler("debug", write_param, h_debug);
 }
 
 CLICK_ENDDECLS

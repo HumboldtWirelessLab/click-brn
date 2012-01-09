@@ -4,6 +4,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "batmanroutingtable.hh"
@@ -20,9 +22,8 @@ CLICK_DECLS
  * Output 1 : Packets to local
   * =d
  */
-#define MAX_QUEUE_SIZE  1500
 
-class BatmanRouting : public Element {
+class BatmanRouting : public BRNElement {
 
  public:
 
@@ -54,8 +55,7 @@ class BatmanRouting : public Element {
   BRN2NodeIdentity *_nodeid;
 
   int _routeId;
- public:
-  int _debug;
+  uint16_t _hop_margin;
 
 };
 

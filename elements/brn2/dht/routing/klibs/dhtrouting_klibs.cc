@@ -15,7 +15,7 @@
 #include "elements/brn2/brnconf.h"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -92,15 +92,23 @@ DHTRoutingKlibs::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*direction*/)
+tx_handler(void *element, const EtherAddress */*src*/, char */*buffer*/, int /*size*/)
 {
   DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
-
-  /*  if ( direction )
-    return lph->lpSendHandler(buffer, size);
-  else
-    return lph->lpReceiveHandler(buffer, size);*/
   if ( dhtrk == NULL ) return 0;
+
+  //return lph->lpSendHandler(buffer, size);
+
+  return 0;
+}
+
+static int
+rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DHTRoutingKlibs *dhtrk = (DHTRoutingKlibs*)element;
+  if ( dhtrk == NULL ) return 0;
+
+  //return lph->lpReceiveHandler(buffer, size);*/
 
   return 0;
 }
@@ -111,7 +119,7 @@ DHTRoutingKlibs::initialize(ErrorHandler *)
   click_srandom(_me->_ether_addr.hashcode());
 
   if ( _linkstat )
-    _linkstat->registerHandler(this,0,&handler);
+    _linkstat->registerHandler(this,0,&tx_handler,&rx_handler);
 
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( click_random() % _start_time );
@@ -219,44 +227,40 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
   DHTnode *me_from_list;
   uint8_t ptype;
   count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
-  EtherAddress *ea = DHTProtocol::get_src(p_in);
+  EtherAddress ea = EtherAddress(DHTProtocol::get_src_data(p_in));
   DHTnode *node;
   bool notify_storage = false;
 
-  if ( ea != NULL ) {
-    node = _foreign_dhtnodes.get_dhtnode(ea);
-    if ( node == NULL ) {
-      node = _own_dhtnodes.get_dhtnode(ea);
-    }
-    if ( node != NULL ) {
-      node->set_age_now();
-      node->_status = STATUS_OK;
-    } else {
-      node = new DHTnode(*ea);
-      node->_status = STATUS_OK;
-      node->_neighbor = false;
-      node->set_age_now();
+  node = _foreign_dhtnodes.get_dhtnode(&ea);
+  if ( node == NULL ) {
+    node = _own_dhtnodes.get_dhtnode(&ea);
+  }
+  if ( node != NULL ) {
+    node->set_age_now();
+    node->_status = STATUS_OK;
+  } else {
+    node = new DHTnode(ea);
+    node->_status = STATUS_OK;
+    node->_neighbor = false;
+    node->set_age_now();
 
-      if ( is_own(node) ) {
-        _own_dhtnodes.add_dhtnode(node);
-        _own_dhtnodes.sort();
-        notify_storage = true;
-      } else {
-        if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
-        _foreign_dhtnodes.add_dhtnode(node);
-        _foreign_dhtnodes.sort();
-        if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
-          DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
-          _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
-        }
+    if ( is_own(node) ) {
+      _own_dhtnodes.add_dhtnode(node);
+      _own_dhtnodes.sort();
+      notify_storage = true;
+    } else {
+      if ( _foreign_dhtnodes.size() == 0 ) notify_storage = true; //notify storage only if we have the first foreign node
+      _foreign_dhtnodes.add_dhtnode(node);
+      _foreign_dhtnodes.sort();
+      if ( _foreign_dhtnodes.size() > _max_foreign_nodes ) {
+        DHTnode *oldest = _foreign_dhtnodes.get_dhtnode_oldest_age();
+        _foreign_dhtnodes.erase_dhtnode(&(oldest->_ether_addr));
       }
     }
+  }
 
-    if ( ( me_from_list = dhtlist.get_dhtnode(_me) ) != NULL ) {
-      node->set_last_ping_s(me_from_list->get_age_s());
-    }
-
-    delete ea;
+  if ( ( me_from_list = dhtlist.get_dhtnode(_me) ) != NULL ) {
+    node->set_last_ping_s(me_from_list->get_age_s());
   }
 
 //  click_chatter("Nodes: %d",count_nodes);

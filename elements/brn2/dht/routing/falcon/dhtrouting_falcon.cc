@@ -15,6 +15,7 @@
 CLICK_DECLS
 
 DHTRoutingFalcon::DHTRoutingFalcon():
+  _enable_range_query(true),
   _frt(NULL),
   _leave_organizer(NULL),
   _responsible(FALCON_RESPONSIBLE_FORWARD)
@@ -42,6 +43,8 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LEAVEORGANIZER", cpkP, cpElement, &_leave_organizer,
       "RESPONSIBLE", cpkP, cpInteger, &_responsible,
+      "ENABLERANGEQUERIES", cpkP, cpBool, &_enable_range_query,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
@@ -76,7 +79,8 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
   if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
        FalconFunctions::is_equals(_frt->_me, key) ) return _frt->_me;
   if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key) ||
-       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor;  //TODO: this should be handle by checking the FT
+       FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor; //TODO: this should be handle
+                                                                                  //by checking the FT
 
   best = _frt->successor;      //default
 
@@ -87,7 +91,8 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
     }
   }
 
-  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+  //check this first and not the fingertable, since all nodes includes also the FT-node
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) { 
     if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);

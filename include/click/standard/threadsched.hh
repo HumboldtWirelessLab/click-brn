@@ -5,13 +5,12 @@ CLICK_DECLS
 
 class ThreadSched { public:
 
-    enum { THREAD_QUIESCENT = -1, THREAD_STRONG_UNSCHEDULE = -2,
-	   THREAD_UNKNOWN = -1000 };
+    enum { THREAD_QUIESCENT = -1, THREAD_UNKNOWN = -1000 };
 
     ThreadSched()			{ }
     virtual ~ThreadSched()		{ }
 
-    virtual int initial_home_thread_id(Element *owner, Task *t, bool scheduled);
+    virtual int initial_home_thread_id(const Element *e);
 
 };
 

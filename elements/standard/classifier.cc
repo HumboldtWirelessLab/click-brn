@@ -206,7 +206,7 @@ Classifier::parse_program(Classification::Wordwise::Program &prog,
     prog.finish_subtree(tree, Classification::c_or, Classification::j_never, Classification::j_never);
 
     // click_chatter("%s", prog.unparse().c_str());
-    prog.optimize();
+    prog.optimize(0, 0, Classification::offset_max);
     // click_chatter("%s", prog.unparse().c_str());
 }
 
@@ -216,11 +216,10 @@ Classifier::configure(Vector<String> &conf, ErrorHandler *errh)
     if (conf.size() != noutputs())
 	return errh->error("need %d arguments, one per output port", noutputs());
 
-    int before = errh->nerrors();
     Classification::Wordwise::Program prog = empty_program(errh);
     parse_program(prog, conf, errh);
 
-    if (errh->nerrors() == before) {
+    if (!errh->nerrors()) {
 	prog.warn_unused_outputs(noutputs(), errh);
 	_prog = prog;
 	return 0;

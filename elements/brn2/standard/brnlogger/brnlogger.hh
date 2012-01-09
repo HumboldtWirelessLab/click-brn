@@ -83,6 +83,9 @@ CLICK_DECLS
  */
 #define BRN_DEBUG   if (_debug >= BrnLogger::DEBUG) BrnLogger(__FILE__,__LINE__,this).debug
 
+#define BRN_NODE_NAME BrnLogger(__FILE__,__LINE__,this).get_name()
+#define BRN_NODE_ADDRESS BrnLogger(__FILE__,__LINE__,this).get_address()
+
 #endif
 
 #define BRN_CHECK_EXPR(expr,err)                                       \
@@ -146,6 +149,8 @@ public:
 
   static void chatter(const char *fmt, ...);
 
+  inline String get_name() const;
+  inline String get_address() const;
 
 protected:
   void log(int level, const char* format, va_list ptr) const;
@@ -165,6 +170,19 @@ protected:
   static int   _buffer_len;
   static HashMap<void*,String>* _id_map;
   static String* _s_na;
+
+public:
+
+  static void destroy() {
+    if ( _id_map != NULL ) {
+      delete _id_map;
+      _id_map = NULL;
+    }
+    if ( _buffer != NULL ) {
+      delete[] _buffer;
+      _buffer = NULL;
+    }
+  }
 };
 
 inline BrnLogger::BrnLogger(
@@ -200,6 +218,18 @@ BrnLogger::get_na()
     _s_na = new String("n/a");
 
   return (*_s_na);
+}
+
+inline String
+BrnLogger::get_address() const
+{
+  return get_na();
+}
+
+inline String
+BrnLogger::get_name() const
+{
+  return (_id);
 }
 
 inline void

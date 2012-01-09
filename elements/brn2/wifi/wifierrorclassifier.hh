@@ -4,9 +4,12 @@
 #include <click/etheraddress.hh>
 #include <click/bighashmap.hh>
 #include <click/glue.hh>
+
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
-class WifiErrorClassifier : public Element {
+class WifiErrorClassifier : public BRNElement {
  public:
 
   WifiErrorClassifier();

@@ -24,12 +24,17 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
+#include "brniappencap.hh"
+#include "brniapprouteupdatehandler.hh"
+
 CLICK_DECLS
 
-class BRN2NodeIdentity;
-class RBN2AssocList;
-class BrnIappEncap;
-class BrnIappRouteUpdateHandler;
+//class BRN2NodeIdentity;
+//class RBN2AssocList;
+//class BrnIappEncap;
+//class BrnIappRouteUpdateHandler;
 
 /*
  * =c

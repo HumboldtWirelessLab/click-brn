@@ -104,7 +104,6 @@ class IPPrint : public Element { public:
 
   const char *class_name() const		{ return "IPPrint"; }
   const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
@@ -135,6 +134,7 @@ class IPPrint : public Element { public:
 #endif
   ErrorHandler *_errh;
 
+    static StringAccum &address_pair(StringAccum &sa, const click_ip *iph);
     void tcp_line(StringAccum &, const Packet *, int transport_len) const;
     void udp_line(StringAccum &, const Packet *, int transport_len) const;
     void icmp_line(StringAccum &, const Packet *, int transport_len) const;

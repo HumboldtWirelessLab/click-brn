@@ -21,10 +21,11 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
+#include <click/packet_anno.hh>
 CLICK_DECLS
 
 ARPResponder::ARPResponder()
@@ -48,11 +49,11 @@ ARPResponder::add(Vector<Entry> &v, const String &arg, ErrorHandler *errh) const
 
     for (int i = 0; i < words.size(); ++i) {
 	IPAddress addr, mask;
-	if (cp_ip_prefix(words[i], &addr, &mask, true, this)) {
+	if (IPPrefixArg(true).parse(words[i], addr, mask, this)) {
 	    v.push_back(Entry());
 	    v.back().dst = addr & mask;
 	    v.back().mask = mask;
-	} else if (cp_ethernet_address(words[i], &ena, this)) {
+	} else if (EtherAddressArg().parse(words[i], ena, this)) {
 	    if (have_ena) {
 		v.resize(old_vsize);
 		return errh->error("more than one ETH");
@@ -66,7 +67,7 @@ ARPResponder::add(Vector<Entry> &v, const String &arg, ErrorHandler *errh) const
 
     // check for an argument that is both IP address and Ethernet address
     for (int i = 0; !have_ena && i < words.size(); ++i)
-	if (cp_ethernet_address(words[i], &ena, this))
+	if (EtherAddressArg().parse(words[i], ena, this))
 	    have_ena = true;
 
     if (v.size() == old_vsize)
@@ -121,12 +122,11 @@ int
 ARPResponder::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     Vector<Entry> v;
-    int before = errh->nerrors();
     for (int i = 0; i < conf.size(); i++) {
 	PrefixErrorHandler perrh(errh, "argument " + String(i) + ": ");
 	add(v, conf[i], &perrh);
     }
-    if (before == errh->nerrors()) {
+    if (!errh->nerrors()) {
 	normalize(v, true, errh);
 	_v.swap(v);
 	return 0;
@@ -149,8 +149,10 @@ ARPResponder::make_response(const uint8_t target_eth[6], /* them */
 
     // in case of FromLinux, set the device annotation: want to make it seem
     // that ARP response came from the device that the query arrived on
-    if (p)
+    if (p) {
 	q->set_device_anno(p->device_anno());
+	SET_VLAN_TCI_ANNO(q, VLAN_TCI_ANNO(p));
+    }
 
     click_ether *e = (click_ether *) q->data();
     q->set_ether_header(e);
@@ -209,7 +211,7 @@ ARPResponder::lookup_handler(int, String &str, Element *e, const Handler *, Erro
 {
     ARPResponder *ar = static_cast<ARPResponder *>(e);
     IPAddress a;
-    if (cp_ip_address(str, &a, ar)) {
+    if (IPAddressArg().parse(str, a, ar)) {
 	if (const EtherAddress *ena = ar->lookup(a))
 	    str = ena->unparse();
 	else
@@ -237,7 +239,7 @@ ARPResponder::remove_handler(const String &s, Element *e, void *, ErrorHandler *
 {
     ARPResponder *ar = static_cast<ARPResponder *>(e);
     IPAddress addr, mask;
-    if (!cp_ip_prefix(s, &addr, &mask, true, ar))
+    if (!IPPrefixArg(true).parse(s, addr, mask, ar))
 	return errh->error("expected IP/MASK");
     addr &= mask;
     for (Vector<Entry>::iterator it = ar->_v.begin(); it != ar->_v.end(); ++it)

@@ -28,7 +28,10 @@
 #include <click/packet_anno.hh>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include "elements/brn2/wifi/brnwifi.h"
+
+#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn2/wifi/brnwifi.hh"
+
 #include "brn2_printwifi.hh"
 
 CLICK_DECLS
@@ -36,7 +39,11 @@ CLICK_DECLS
 BRN2PrintWifi::BRN2PrintWifi()
   : _print_anno(false),
     _print_checksum(false),
-    _fixhighrssi(false)
+    _print_ht(false),
+    _print_ext_rx(false),
+    _print_evm(false),
+    _nowrap(false),
+    _print_used_rate(false)
 {
   _label = "";
 }
@@ -53,7 +60,11 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
   ret = cp_va_kparse(conf, this, errh,
       "LABEL", cpkP, cpString, &_label,
       "TIMESTAMP", cpkP, cpBool, &_timestamp,
-      "FIXHIGHRSSI", cpkP, cpBool, &_fixhighrssi,
+      "PRINTHT", cpkP, cpBool, &_print_ht,
+      "PRINTRXSTATUS", cpkP, cpBool, &_print_ext_rx,
+      "PRINTEVM", cpkP, cpBool, &_print_evm,
+      "PRINTUSEDRATE", cpkP, cpBool, &_print_used_rate,
+      "NOWRAP", cpkP, cpBool, &_nowrap,
       cpEnd);
   return ret;
 }
@@ -340,7 +351,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
   int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
-  int duration = cpu_to_le16(*(uint16_t *) wh->i_dur);
+  int duration = cpu_to_le16(wh->i_dur);
   EtherAddress src;
   EtherAddress dst;
   EtherAddress bssid;
@@ -356,18 +367,99 @@ BRN2PrintWifi::simple_action(Packet *p)
   len = sprintf(sa.reserve(9), "%4d | ", p->length());
   sa.adjust_length(len);
 
-  if (ceh->rate == 11) {
-    sa << " 5.5";
+  uint8_t mcs_index, bandwidth, guard_interval;
+
+  if ( (ceh->flags & WIFI_EXTRA_TX) && _print_used_rate ) {
+    uint8_t used_rate = ceh->rate;
+    int tries_idx = ceh->max_tries;
+    int idx = 0;
+
+    if ( (ceh->max_tries1 != 0) && (ceh->retries >= tries_idx) )  {
+      used_rate = ceh->rate1;
+      tries_idx += ceh->max_tries1;
+      idx = 1;
+
+      if ( (ceh->max_tries2 != 0) && (ceh->retries >= tries_idx) )  {
+        used_rate = ceh->rate2;
+        tries_idx += ceh->max_tries2;
+        idx = 2;
+
+        if ( (ceh->max_tries3 != 0) && (ceh->retries >= tries_idx) )  {
+          used_rate = ceh->rate3;
+          idx = 3;
+        }
+      }
+    }
+
+    if ( BrnWifi::getMCS(ceh,idx) == 1 ) {
+      BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, used_rate);
+      int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
+
+      int mcs_rate_b = mcs_rate/10;
+      int mcs_rate_l = mcs_rate%10;
+
+      sa << mcs_rate_b << "." << mcs_rate_l;
+
+    } else {
+      if (used_rate == 11) {
+        sa << "5.5";
+      } else {
+        len = sprintf(sa.reserve(2), "%2d", used_rate/2);
+        sa.adjust_length(len);
+      }
+    }
   } else {
-    len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
-    sa.adjust_length(len);
+    if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
+      BrnWifi::toMCS(&mcs_index, &bandwidth, &guard_interval, ceh->rate);
+      int mcs_rate = BrnWifi::getMCSRate(mcs_index, bandwidth, guard_interval);
+
+      int mcs_rate_b = mcs_rate/10;
+      int mcs_rate_l = mcs_rate%10;
+
+      sa << mcs_rate_b << "." << mcs_rate_l;
+
+    } else {
+      if (ceh->rate == 11) {
+        sa << "5.5";
+      } else {
+        len = sprintf(sa.reserve(2), "%2d", ceh->rate/2);
+        sa.adjust_length(len);
+      }
+    }
   }
   sa << "Mb ";
 
-  if ( ( ceh->rssi > 200 ) && _fixhighrssi )
-    len = sprintf(sa.reserve(9), "+00/");
-  else
-    len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
+  if ( _print_ht ) {
+    if ( ceh->flags & WIFI_EXTRA_MCS_RATE0 ) {
+      sa << " 1 " << (uint32_t)mcs_index << " " << (uint32_t)bandwidth << " " << (uint32_t)guard_interval << " ";
+    } else {
+      sa << " 0 0 0 0 ";
+    }
+  }
+
+  if ( _print_ext_rx ) {
+    if ( ceh->flags & WIFI_EXTRA_EXT_RX_STATUS ) {
+      struct brn_click_wifi_extra_rx_status *ext_status =
+          (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+      sa << ext_status->rssi_ctl[0] << " " << ext_status->rssi_ctl[1] << " " << ext_status->rssi_ctl[2] << " ";
+      sa << ext_status->rssi_ext[0] << " " << ext_status->rssi_ext[1] << " " << ext_status->rssi_ext[2] << " ";
+    } else {
+      sa << " 0 0 0 0 0 0 ";
+    }
+  }
+
+  if ( _print_evm ) {
+    if ( ceh->flags & WIFI_EXTRA_EXT_RX_STATUS ) {
+      struct brn_click_wifi_extra_rx_status *ext_status =
+          (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+      sa << ext_status->evm[0] << " " << ext_status->evm[1] << " " << ext_status->evm[2] << " ";
+      sa << ext_status->evm[3] << " " << ext_status->evm[4] << " ";
+    } else {
+      sa << " 0 0 0 0 0 ";
+    }
+  }
+
+  len = sprintf(sa.reserve(9), "+%02d/", ceh->rssi);
   sa.adjust_length(len);
 
   len = sprintf(sa.reserve(9), "%02d | ", ((signed char)ceh->silence));
@@ -610,7 +702,11 @@ BRN2PrintWifi::simple_action(Packet *p)
   if ((type == WIFI_FC0_TYPE_MGT) &&
       (subtype == WIFI_FC0_SUBTYPE_BEACON || subtype == WIFI_FC0_SUBTYPE_PROBE_RESP)) {
 
-    click_chatter("%s\n", sa.c_str());
+    if ( _nowrap )
+      BrnLogger::chatter("%s", sa.c_str());
+    else
+      click_chatter("%s\n", sa.c_str());
+
     return p;
   }
 
@@ -636,8 +732,8 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
   if (p->length() >= sizeof(click_wifi)) {
-    uint16_t seq = le16_to_cpu(*(u_int16_t *)wh->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
-    uint8_t frag = le16_to_cpu(*(u_int16_t *)wh->i_seq) & WIFI_SEQ_FRAG_MASK;
+    uint16_t seq = le16_to_cpu(wh->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+    uint8_t frag = le16_to_cpu(wh->i_seq) & WIFI_SEQ_FRAG_MASK;
     sa << "seq: " << (int) seq;
     if (frag || wh->i_fc[1] & WIFI_FC1_MORE_FRAG) {
       sa << " frag: " << (int) frag;
@@ -674,7 +770,11 @@ BRN2PrintWifi::simple_action(Packet *p)
   }
 
  done:
-  click_chatter("%s\n", sa.c_str());
+  if ( _nowrap )
+    BrnLogger::chatter("%s", sa.c_str());
+  else
+    click_chatter("%s\n", sa.c_str());
+
   return p;
 }
 

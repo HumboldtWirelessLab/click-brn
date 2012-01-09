@@ -71,8 +71,10 @@ StoreIPEthernet::simple_action(Packet *p_in)
   const click_ip *ip = (click_ip *)(p_in->data() + sizeof(click_ether));
   IPAddress src_ip_addr(ip->ip_src);
 
-  BRN_DEBUG("* new mapping: %s -> %s", src_ether_addr.unparse().c_str(), src_ip_addr.unparse().c_str());
-  _arp_table->insert(src_ip_addr, src_ether_addr);
+  if (!((src_ip_addr.addr() == 0) || (~src_ip_addr.addr() == 0) || (src_ether_addr.is_broadcast()))) {
+    BRN_DEBUG("* new mapping: %s -> %s", src_ether_addr.unparse().c_str(), src_ip_addr.unparse().c_str());
+    _arp_table->insert(src_ip_addr, src_ether_addr);
+  }
 
   return p_in;
 }

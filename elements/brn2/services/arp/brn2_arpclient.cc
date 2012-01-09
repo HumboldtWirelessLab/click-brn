@@ -39,9 +39,9 @@
 CLICK_DECLS
 
 BRN2ARPClient::BRN2ARPClient() :
-  _debug(BrnLogger::DEFAULT),
   _request_timer(static_request_timer_hook,this)
 {
+  BRNElement::init();
 }
 
 BRN2ARPClient::~BRN2ARPClient()
@@ -123,14 +123,13 @@ BRN2ARPClient::request_timer_func()
 {
   long time_diff;
   //BRN_DEBUG("BRN2ARPClient: Timer");
-  struct timeval _time_now;
-  _time_now = Timestamp::now().timeval();
+  Timestamp _time_now = Timestamp::now();
 
   int i;
 
   for ( i = 0; i < _request_queue.size(); i++ )
   {
-    time_diff = diff_in_ms(_time_now, _request_queue[i]._time_start );
+    time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
     if ( time_diff > _timeout )
     {
        _count_timeout++;
@@ -215,8 +214,7 @@ BRN2ARPClient::arp_reply(Packet *p)
 
   BRN_DEBUG("BRN2ARPClient: Packet\n");
 
-  struct timeval _time_now;
-  _time_now = Timestamp::now().timeval();
+  Timestamp _time_now = Timestamp::now();
 
   click_ether *ethp = (click_ether *) p->data();                  //etherhaeder rausholen
   click_ether_arp *arpp = (click_ether_arp *) (ethp + 1);         //arpheader rausholen
@@ -232,7 +230,7 @@ BRN2ARPClient::arp_reply(Packet *p)
     {
       if ( _request_queue[i].ip_add == ip_add )
       {
-        time_diff = diff_in_ms(_time_now, _request_queue[i]._time_start );
+        time_diff = (_time_now - _request_queue[i]._time_start ).msecval();
         BRN_DEBUG("BRN2ARPClient: TIME: %d",time_diff);
         _count_reply++;
         _request_queue.erase( _request_queue.begin() + i );
@@ -251,7 +249,6 @@ BRN2ARPClient::arp_reply(Packet *p)
 
   return 0;
 }
-
 
 int
 BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
@@ -293,26 +290,21 @@ BRN2ARPClient::send_arp_request( uint8_t *d_ip_add )
 
 }
 
-long
-BRN2ARPClient::diff_in_ms(timeval t1, timeval t2)
+String
+BRN2ARPClient::print_stats()
 {
-  long s, us, ms;
+  StringAccum sa;
 
-  while (t1.tv_usec < t2.tv_usec) {
-    t1.tv_usec += 1000000;
-    t1.tv_sec -= 1;
-  }
+  sa << "<arpclient requested_ips=\"1\" interval=\"" << _client_interval << "\" >\n";
+  sa << "\t<arp_request ip=\"" << _start_range.unparse() << "\" requests=\"" << _count_request << "\" replies=\"";
+  sa << _count_reply << "\" timeouts=\"" << _count_timeout << "\" />\n";
+  sa << "</arpclient>\n";
 
-  s = t1.tv_sec - t2.tv_sec;
-
-  us = t1.tv_usec - t2.tv_usec;
-  ms = s * 1000L + us / 1000L;
-
-  return ms;
+  return sa.take_string();
 }
 
+
 enum {
-  H_DEBUG,
   H_CLIENT_IP,
   H_CLIENT_ETHERNET,
   H_START_RANGE,
@@ -322,7 +314,8 @@ enum {
   H_COUNT,
   H_REQUESTS_AT_ONCE,
   H_TIMEOUT,
-  H_ACTIVE
+  H_ACTIVE,
+  H_STATS
 };
 
 static String 
@@ -330,8 +323,8 @@ read_param(Element *e, void *thunk)
 {
   BRN2ARPClient *td = (BRN2ARPClient *)e;
   switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
+  case H_STATS:
+    return td->print_stats();
   case H_CLIENT_IP:
     return td->_client_ip.unparse() + "\n";
   case H_CLIENT_ETHERNET:
@@ -364,14 +357,6 @@ write_param(const String &in_s, Element *e, void *vparam,
   BRN2ARPClient *f = (BRN2ARPClient *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
-  case H_DEBUG:
-    {    //debug
-      int debug;
-      if (!cp_integer(s, &debug)) 
-        return errh->error("debug parameter must be int");
-      f->_debug = debug;
-      break;
-    }
   case H_CLIENT_IP:
     {
       IPAddress client_ip;
@@ -463,8 +448,7 @@ write_param(const String &in_s, Element *e, void *vparam,
 void 
 BRN2ARPClient::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
+  BRNElement::add_handlers();
 
   add_read_handler("client_ip", read_param, (void *) H_CLIENT_IP);
   add_write_handler("client_ip", write_param, (void *) H_CLIENT_IP);
@@ -495,6 +479,8 @@ BRN2ARPClient::add_handlers()
 
   add_read_handler("active", read_param, (void *) H_ACTIVE);
   add_write_handler("active", write_param, (void *) H_ACTIVE);
+
+  add_read_handler("stats", read_param, (void *) H_STATS);
 }
 
 #include <click/vector.cc>

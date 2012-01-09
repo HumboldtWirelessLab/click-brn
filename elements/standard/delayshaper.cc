@@ -19,7 +19,7 @@
 
 #include <click/config.h>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/glue.hh>
 #include "delayshaper.hh"
 #include <click/standard/scheduleinfo.hh>
@@ -49,8 +49,7 @@ int
 DelayShaper::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     _notifier.initialize(Notifier::EMPTY_NOTIFIER, router());
-    return cp_va_kparse(conf, this, errh,
-			"DELAY", cpkP+cpkM, cpTimestamp, &_delay, cpEnd);
+    return Args(conf, this, errh).read_mp("DELAY", _delay).complete();
 }
 
 int
@@ -132,8 +131,8 @@ DelayShaper::write_param(const String &s, Element *e, void *, ErrorHandler *errh
 void
 DelayShaper::add_handlers()
 {
-    add_read_handler("delay", read_param, (void *)0, Handler::CALM);
-    add_write_handler("delay", write_param, (void *)0, Handler::NONEXCLUSIVE);
+    add_read_handler("delay", read_param, 0, Handler::CALM);
+    add_write_handler("delay", write_param, 0, Handler::NONEXCLUSIVE);
 }
 
 CLICK_ENDDECLS

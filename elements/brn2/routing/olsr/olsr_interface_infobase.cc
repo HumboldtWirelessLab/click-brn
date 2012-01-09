@@ -23,10 +23,10 @@ OLSRInterfaceInfoBase::~OLSRInterfaceInfoBase()
 int
 OLSRInterfaceInfoBase::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if ( cp_va_parse(conf, this, errh, 
-		   cpElement, "Routing Table Element", &_routingTable,
-		   cpElement, "local Interfaces Information Base", &_localIfInfoBase,
-		   0) < 0 )
+  if ( cp_va_kparse(conf, this, errh, 
+       "Routing Table Element", cpkP, cpElement,&_routingTable,
+       "local Interfaces Information Base", cpkP, cpElement,&_localIfInfoBase,
+		   cpEnd) < 0 )
     return -1;
   return 0;
 }
@@ -152,15 +152,15 @@ OLSRInterfaceInfoBase::run_timer(Timer *)
 {
   struct timeval now, next_timeout;
   bool interface_removed = false;
-  click_gettimeofday(&now);
-  next_timeout = make_timeval(0,0);
+  now = Timestamp::now().timeval();
+  next_timeout = Timestamp(0,0).timeval();
   
   //find expired interface tuples
   if (!_interfaceSet->empty()){
     for (InterfaceSet::iterator iter = _interfaceSet->begin(); iter != _interfaceSet->end(); iter++){
       interface_data *tuple = (interface_data *) iter.value();
 //       if (tuple->I_time <= now) {
-      if (tuple->I_time <= now) {
+      if (Timestamp(tuple->I_time) <= Timestamp(now)) {
 	remove_interface(tuple->I_iface_addr);
 	interface_removed = true;
       }
@@ -173,7 +173,7 @@ OLSRInterfaceInfoBase::run_timer(Timer *)
       interface_data *tuple = (interface_data *) iter.value();
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->I_time;
-      if ( tuple->I_time < next_timeout )
+      if ( Timestamp(tuple->I_time) < Timestamp(next_timeout) )
 	next_timeout = tuple->I_time;
     }
   }

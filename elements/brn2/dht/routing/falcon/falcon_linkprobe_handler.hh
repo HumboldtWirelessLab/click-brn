@@ -57,7 +57,7 @@ class FalconLinkProbeHandler : public BRNElement
   void add_handlers();
 
   int lpSendHandler(char *buffer, int size);
-  int lpReceiveHandler(char *buffer, int size);
+  int lpReceiveHandler(char *buffer, int size, bool is_neighbour);
 
   int register_linkprobehandler();
   bool _register_handler;

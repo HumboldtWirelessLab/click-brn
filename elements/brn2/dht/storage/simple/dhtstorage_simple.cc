@@ -101,16 +101,23 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
     //This enables to set a own key for value -> e.g. for range queries. If digest is not set use default(md5)
 
   //Check whether routing support replica and whether the requested number of replica is support. Correct if something cannot be performed by routing
-  if ( _dht_routing->max_replication() < op->header.replica )
-    replica_count = _dht_routing->max_replication();
-  else
-    replica_count = op->header.replica;
+  if ( _dht_routing != NULL ) {
+    if ( _dht_routing->max_replication() < op->header.replica )
+      replica_count = _dht_routing->max_replication();
+    else
+      replica_count = op->header.replica;
+  } else {
+    replica_count = 0; //DHT used for local storage, so no replicas
+  }
 
   fwd_op = new DHTOperationForward(op, info_func, info_obj, replica_count);
 
   dht_id = get_next_dht_id();
   op->set_id(dht_id);
-  op->set_src_address_of_operation(_dht_routing->_me->_ether_addr.data());   //Set my etheradress as sender
+
+  if ( _dht_routing != NULL ) {
+    op->set_src_address_of_operation(_dht_routing->_me->_ether_addr.data());   //Set my etheradress as sender
+  }
 
   for ( uint32_t r = 0; r <= replica_count; r++ ) {
 
@@ -120,25 +127,29 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
 
     /* Get next node (EtherAddress): 1. KeyCache 2. DHTRouting */
     next_ea = NULL;
-    if ( _dht_key_cache != NULL ) next_ea = _dht_key_cache->getEntry(op->header.key_digest, r);
-    if ( next_ea == NULL ) {
-        next = _dht_routing->get_responsibly_node(op->header.key_digest, r);
-        if ( next != NULL ) next_ea = &(next->_ether_addr);
-    }
+    if ( _dht_key_cache != NULL ) {
+      next_ea = _dht_key_cache->getEntry(op->header.key_digest, r);
 #ifdef DHT_STORAGE_STATS
-      else _stats_cache_hits++;
+      if ( next_ea != NULL ) _stats_cache_hits++;
 #endif
+    }
+
+    if ( (_dht_routing != NULL) && (next_ea == NULL) ) {
+      next = _dht_routing->get_responsibly_node(op->header.key_digest, r);
+      if ( next != NULL ) next_ea = &(next->_ether_addr);
+    }
 
     op->header.replica = r;
 
-    if ( next_ea == NULL )
+    if ( (_dht_routing != NULL) && (next_ea == NULL) ) //We have routing but no next node
     {
       BRN_DEBUG("No next node!");
       fwd_op->replicaList[r].status = DHT_STATUS_KEY_NOT_FOUND;
       fwd_op->set_replica_reply(r);
     } else {
-      if ( _dht_routing->is_me(next_ea) )
+      if ( (_dht_routing == NULL) || (_dht_routing->is_me(next_ea)) ) //handle local if i'm the next or no routing available
       {
+        BRN_DEBUG("Handle Operation locally");
         status = _dht_op_handler->handle_dht_operation(op);
 
         fwd_op->replicaList[r].status = status;
@@ -162,7 +173,9 @@ DHTStorageSimple::dht_request(DHTOperation *op, void (*info_func)(void*,DHTOpera
           fwd_op->set_replica_reply(r);
         } else {
           p = DHTProtocolStorageSimple::new_dht_operation_packet(op, _dht_routing->_me, next_ea, _add_node_id);
-          output(0).push(p);
+          if ( noutputs() > 0 ) {
+            output(0).push(p);
+          }
         }
       }
     }
@@ -306,7 +319,9 @@ void DHTStorageSimple::push( int port, Packet *packet )
                 p = DHTProtocolStorageSimple::new_dht_operation_packet(_op, _dht_routing->_me, &dst_node, _add_node_id); //create packet
 
                 delete _op;
-                output(0).push(p);
+                if ( noutputs() > 0 ) {
+                  output(0).push(p);
+                }
               }
             }
             else
@@ -322,7 +337,9 @@ void DHTStorageSimple::push( int port, Packet *packet )
               DHTProtocolStorageSimple::inc_hops_of_dht_operation_packet(p, _add_node_id);  //inc the count of hops direct
               p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);
               delete _op;
-              output(0).push(p);
+              if ( noutputs() > 0 ) {
+                output(0).push(p);
+              }
               return;  //Reuse packet so return here to prevend packet->kill() //TODO: reorder all
             }
           }
@@ -435,15 +452,18 @@ DHTStorageSimple::check_queue()
 #ifdef DHT_STORAGE_STATS
         _stats_retries++;
 #endif
+        if ( _dht_routing != NULL ) {
+          for ( uint16_t r = 0; r <= fwd->replica_count; r++ ) {
+            if ( ! fwd->have_replica(r) ) {
+              next = _dht_routing->get_responsibly_node(_op->header.key_digest, r);  //TODO:handle if next is null or me
 
-        for ( uint16_t r = 0; r <= fwd->replica_count; r++ ) {
-          if ( ! fwd->have_replica(r) ) {
-            next = _dht_routing->get_responsibly_node(_op->header.key_digest, r);  //TODO:handle if next is null or me
+              _op->header.replica = r;
 
-            _op->header.replica = r;
-
-            p = DHTProtocolStorageSimple::new_dht_operation_packet(_op, _dht_routing->_me, &(next->_ether_addr), _add_node_id);
-            output(0).push(p);
+              p = DHTProtocolStorageSimple::new_dht_operation_packet(_op, _dht_routing->_me, &(next->_ether_addr), _add_node_id);
+              if ( noutputs() > 0 ) {
+                output(0).push(p);
+              }
+            }
           }
         }
       }
@@ -490,6 +510,25 @@ enum {
   H_DHT_STORAGE_STATS
 };
 
+String
+DHTStorageSimple::read_db_size()
+{
+  StringAccum sa;
+
+  sa << "DB-Node: " << BRN_NODE_NAME << "\n";
+  sa << "DB-Size (No. rows): " << _dht_op_handler->_db->size() << "\n";
+
+  int moved = 0;
+  for ( int i = _dht_op_handler->_db->size() - 1 ; i >= 0; i-- ) {
+    BRNDB::DBrow *_row = _dht_op_handler->_db->getRow(i);
+
+    if ( _row->move_id != 0 ) moved++;
+  }
+  sa << "Moved rows: " << moved;
+
+  return ( sa.take_string() );
+}
+
 static String
 read_param(Element *e, void *thunk)
 {
@@ -498,26 +537,9 @@ read_param(Element *e, void *thunk)
 
   switch ((uintptr_t) thunk)
   {
-    case H_DB_SIZE :
-                {
-                  sa << "DB-Node: " << dhtstorage_simple->_dht_routing->_me->_ether_addr.unparse() << "\n";
-                  sa << "DB-Size (No. rows): " << dhtstorage_simple->_dht_op_handler->_db->size() << "\n";
-
-                  int moved = 0;
-                  for ( int i = dhtstorage_simple->_dht_op_handler->_db->size() - 1 ; i >= 0; i-- ) {
-                    BRNDB::DBrow *_row = dhtstorage_simple->_dht_op_handler->_db->getRow(i);
-
-                    if ( _row->move_id != 0 ) moved++;
-                  }
-                  sa << "Moved rows: " << moved;
-                  return ( sa.take_string() );
-                }
+    case H_DB_SIZE : return dhtstorage_simple->read_db_size();
 #ifdef DHT_STORAGE_STATS
-    case H_DHT_STORAGE_STATS:
-                {
-                  return dhtstorage_simple->read_stats();
-                  break;
-                }
+    case H_DHT_STORAGE_STATS: return dhtstorage_simple->read_stats();
 #endif
   }
 

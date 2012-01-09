@@ -39,13 +39,15 @@
 
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief Caching of routes.
- * 
+ *
  * @note Parameters
  *  - DEBUG: Debug indicator (Write debug messages),
  *  - ACTIVE: Whether to use the cache or not,
@@ -53,9 +55,9 @@ CLICK_DECLS
  *          flushes
  *  - TTL: Initial route ttl in slices
  *  - SLICE: Lifetime slice in us, 0 disables aging
- * 
+ *
  */
-class Brn2RouteCache : public Element
+class Brn2RouteCache : public BRNElement
 {
 //----------------------------------------------------------------------
 // Types
@@ -67,18 +69,19 @@ public:
   typedef struct tagEntryType {
     RouteType m_route;
     int       m_iTTL;
+    uint32_t  m_metric;
   }                                                           EntryType;
   typedef HashMap<AddressPairType,EntryType>               RouteMapType;
-  
+
   typedef Vector<AddressPairType>                    AddrPairVectorType;
   typedef HashMap<AddressPairType,AddrPairVectorType>  LinkRouteMapType;
-  
+
 //----------------------------------------------------------------------
 // Construction
 //----------------------------------------------------------------------
-public:
-	Brn2RouteCache();
-	virtual ~Brn2RouteCache();
+ public:
+  Brn2RouteCache();
+  virtual ~Brn2RouteCache();
 
   const char* class_name() const { return "Brn2RouteCache"; }
 
@@ -97,10 +100,11 @@ public:
    * @param route @a [in] Holds the route, if found.
    * @return true if a cached route was found, false otherwise.
    */
-  bool get_cached_route( 
+  bool get_cached_route(
     /*[in]*/  const AddressType&  addrSrc,
     /*[in]*/  const AddressType&  addrDst,
-    /*[out]*/ RouteType&          route );
+    /*[out]*/ RouteType&          route,
+              uint32_t *metric);
 
   /**
    * @brief Inserts a route into the route cache.
@@ -108,10 +112,11 @@ public:
    * @param addrDst @a [in] The destination of the route.
    * @param route @a [in] The route to cache.
    */
-  void insert_route( 
+  void insert_route(
     /*[in]*/ const AddressType& addrSrc,
     /*[in]*/ const AddressType& addrDst,
-    /*[in]*/ const RouteType&   route );
+    /*[in]*/ const RouteType&   route,
+             uint32_t metric);
 
   /**
    * @brief Inform the cache about a link change.
@@ -147,22 +152,21 @@ protected:
    * @param pTimer @a [in] The expired timer.
    * @param pVoid @a [in] Reference to the route cache object.
    */
-  static void on_routeaging_expired( 
-    /*[in]*/  Timer* pTimer, 
+  static void on_routeaging_expired(
+    /*[in]*/  Timer* pTimer,
     /*[in]*/  void*  pVoid );
 
-  void on_routeaging_expired( 
+  void on_routeaging_expired(
     /*[in]*/  Timer* pTimer );
 
 //----------------------------------------------------------------------
 // Data
 //----------------------------------------------------------------------
 public:
-  int     _debug; ///< Debug indicator
   bool    m_bActive; ///< Whether the cache should be used.
   Timer   m_tRouteAging; ///< Timer for aging the routes.
   timeval m_tvLifetimeSlice; ///< Time slice for the entry life timer
-  
+
 private:
   int     m_iInitialTTL; ///< Initial value of the entriy TTL 
   int     m_iDropProb; ///< drop probability = 1/m_iDropProb

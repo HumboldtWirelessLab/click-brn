@@ -43,12 +43,13 @@ sub sunprotect ($) {
     $t;
 }
 
-sub expand_initializer ($$) {
-    my($var, $v) = @_;
-    my(@prefix, $r, $slot);
+sub expand_initializer ($$$) {
+    my($var, $v, $f) = @_;
+    my(@prefix, $r, $slot, $originalv);
     push @prefix, $var;
     $r = "";
     $v =~ tr/\n/ /;
+    $originalv = $v;
     while (1) {
 	$v =~ s/\A\s+//;
 	if ($v =~ /\A\}(.*)\z/s) {
@@ -65,16 +66,19 @@ sub expand_initializer ($$) {
 	    } elsif ($v =~ /\A(.*?)([,\{\}].*)\z/s) {
 		$r .= join(".", @prefix, $slot) . " = $1;\n";
 		$v = $2;
+	    } elsif ($v =~ /\A([^;\{\}]*?)\s*\z/s) {
+		$r .= join(".", @prefix, $slot) . " = $1;\n";
+		$v = "";
 	    } else {
-		die "$v (2)";
+		die "$f: $slot : $v @ $originalv (2)";
 	    }
 	} elsif ($v eq "") {
 	    last;
 	} else {
-	    die "$v [$r] (3)";
+	    die "$f: $v [$r] (3)";
 	}
     }
-    die "(4)" if @prefix != 1;
+    die "$f: (4)" if @prefix != 1;
     return $r;
 }
 
@@ -89,6 +93,8 @@ sub expand_array_initializer ($$$) {
     return $text . "#else\n#error \"fixincludes.pl needs updating\"\n#endif\n";
 }
 
+my($click_cxx_protect) = "#if defined(__cplusplus) && !CLICK_CXX_PROTECTED\n# error \"missing #include <click/cxxprotect.h>\"\n#endif\n";
+
 sub one_includeroot ($$) {
     my($includeroot, $outputroot) = @_;
     my(@dirs, $d, $dd, $f);
@@ -102,8 +108,17 @@ sub one_includeroot ($$) {
 
 	opendir(D, "$includeroot$dd") || die "fixincludes.pl: $includeroot$dd: $!";
 	-d "$outputroot$dd" || mkdir("$outputroot$dd") || die "fixincludes.pl: mkdir $outputroot$dd: $!";
+
+	opendir(OD, "$outputroot$dd");
+	my(%previousfiles);
+	foreach $d (readdir(OD)) {
+	    $previousfiles{$d} = 1 if $d !~ /^\./;
+	}
+	closedir(OD);
+
 	while (($d = readdir(D))) {
 	    next if $d =~ /^\./;
+	    delete $previousfiles{$d};
 	    $f = "$includeroot$dd/$d";
 	    if (-d $f) {
 		push @dirs, "$ddy$d";
@@ -163,15 +178,13 @@ sub one_includeroot ($$) {
 	    s{([\{,]\s*)\.\s*([a-zA-Z_]\w*)\s*=}{$1$2: }g;
 	    s{([\{,]\s*\\\n\s*)\.\s*([a-zA-Z_]\w*)\s*=}{$1$2: }g;
 
-	    # ktime initializers
-	    s{(return|=)\s*\((\w+)\)\s*(\{[^\{\}]*\})}{$1 \(\{ $2 __magic_$2__ = $3; __magic_$2__; \}\)}g;
-	    s{(return|=)\s*\((\w+)\)\s*(\{[^\{\}]*\{[^\{\}]*\}[^\{\}]*\})}{$1 \(\{ $2 __magic_$2__ = $3; __magic_$2__; \}\)}g;
-	    s{\(struct\s+(\w+)\)\s*(__.*\(.*?\));}{\(\{ struct $1 __magic_$1__ = $2; __magic_$1__; \}\);}g;
-
 	    # "new" and other keywords
 	    s{\bnew\b}{new_value}g;
 	    s{\band\b}{and_value}g;
 	    s{\bswap\b}{linux_swap}g;
+	    # including "P[new]" in inline assembly string (look for
+	    # protected version)
+	    1 while (s{(asm.*\333)\356\345\367\335}{$1\356\345\367\337\366\341\354\365\345\335}g);
 
 	    # "sizeof" isn't nice to the preprocessor
 	    s{sizeof(?:\s+(?:unsigned\s+)?long|\s*\(\s*(?:unsigned\s+)?long\s*\))}{(BITS_PER_LONG/8 /*=BITS_PER_BYTE*/)}g;
@@ -182,6 +195,9 @@ sub one_includeroot ($$) {
 	    s{__xchg_u64\((\w+)\s*,}{__xchg_u64((volatile __u64 *) $1,}g;
 	    s{void\s+([\w\s]+)\s*;}{void *$1;}g;
 
+	    # constant expressions
+	    s{__cpu_to_be32 *\( *([0-9][0-9a-fxA-FX]*) *\)}{__constant_htonl($1)}g;
+
 	    # stuff for particular files (what a shame)
 	    if ($d eq "page-flags.h") {
 		s{(#define PAGE_FLAGS_H)}{$1\n#undef private};
@@ -191,7 +207,7 @@ sub one_includeroot ($$) {
 		s{enum hrtimer_restart}{int};
 	    }
 	    if ($d eq "route.h") {
-		s{\b(\w+)\s*=\s*\{(\s*\w+:.*)\}\s*;}{"$1;\n" . expand_initializer($1, $2)}sge;
+		s{\b(\w+)\s*=\s*\{(\s*\w+:.*)\}\s*;}{"$1;\n" . expand_initializer($1, $2, $f)}sge;
 	    }
 	    if ($d eq "types.h") {
 		s{(typedef.*bool\s*;)}{#ifndef __cplusplus\n$1\n#endif};
@@ -207,6 +223,39 @@ sub one_includeroot ($$) {
 	    }
 	    if ($d eq "sched.h") {
 		s<^(extern char ___assert_task_state)((?:.*?\n)*?.*?\;.*)$><\#ifndef __cplusplus\n$1$2\n\#endif>mg;
+	    }
+	    if ($d eq "kobject.h") {
+		s<(^#include[\000-\377]*)(^enum kobj_ns_type\s+\{[\000-\377]*?\}.*\n)><$2$1>mg;
+	    }
+	    if ($d eq "netdevice.h") {
+		1 while (s<(^struct net_device \{[\000-\377]*)^\tenum( \{[^}]*\}) (\w+)><enum net_device_$3$2;\n$1\tenum net_device_$3 $3>mg);
+	    }
+
+	    # ktime initializers
+	    if ($d eq "ktime.h") {
+		s{(return|=)\s*\((\w+)\)\s*(\{[^\{\}]*\})}{$1 \(\{ $2 __magic_$2__ = $3; __magic_$2__; \}\)}g;
+		s{(return|=)\s*\((\w+)\)\s*(\{[^\{\}]*\{[^\{\}]*\}[^\{\}]*\})}{$1 \(\{ $2 __magic_$2__ = $3; __magic_$2__; \}\)}g;
+		s{\(struct\s+(\w+)\)\s*(__.*\(.*?\));}{\(\{ struct $1 __magic_$1__ = $2; __magic_$1__; \}\);}g;
+	    }
+
+	    if ($d eq "semaphore.h") {
+		s{(static inline void sema_init)}{#ifndef __cplusplus\n$1};
+	        s/(lockdep.*})/$1\n#endif\n/s;
+	    }
+	    if ($d eq "radix-tree.h") {
+		# errors in the RCU macros with rcu_dereference(*pslot)
+		1 while s<void \*\*pslot([^\}]*?)\{><void **____pslot$1\{char **pslot = (char **) ____pslot;>;
+		1 while s<void \*item([^\}]*?)\{><void *____item$1\{char *item = (char *) ____item;>;
+	    }
+
+	    # CLICK_CXX_PROTECTED check
+	    if (m<\A[\s\200-\377]*\z>) {
+		# empty file, do nothing
+	    } elsif (m<(\A[\s\200-\377]*^\#ifndef.*\n)>m
+		     || m<(\A[\s\200-\377]*^\#if\s+!\s*defined.*\n)>m) {
+		$_ = $1 . $click_cxx_protect . substr($_, length($1));
+	    } elsif ($d ne "version.h" && $d ne "autoconf.h") {
+		$_ = $click_cxx_protect . $_;
 	    }
 
 	    # unquote.
@@ -226,6 +275,15 @@ sub one_includeroot ($$) {
 	    print F "/* created by click/linuxmodule/fixincludes.pl on " . localtime() . " */\n/* from $f */\n", $_;
 	    close(F);
 	}
+
+	# delete unused files
+	foreach $d (keys(%previousfiles)) {
+	    if (-d "$outputroot$dd/$d") {
+		system("rm -rf \"$outputroot$dd/$d\"");
+	    } else {
+		unlink("$outputroot$dd/$d");
+	    }
+	}
     }
 }
 
@@ -238,8 +296,7 @@ foreach my $i (@ARGV) {
 	    push @new_argv, $i;
 	} elsif (!$done{$1}) {
 	    $dir = "$outputroot/include$numdirs";
-	    -d $dir && system("rm -rf \"$dir\"");
-	    mkdir $dir || die "fixincludes.pl: mkdir $dir: $!";
+	    -d $dir || mkdir $dir || die "fixincludes.pl: mkdir $dir: $!";
 	    $done{$1} = $dir;
 	    ++$numdirs;
 	    one_includeroot($1, $dir);

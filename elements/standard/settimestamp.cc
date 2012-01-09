@@ -20,7 +20,7 @@
 
 #include <click/config.h>
 #include "settimestamp.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/packet_anno.hh>
 #include <click/error.hh>
 CLICK_DECLS
@@ -39,15 +39,14 @@ SetTimestamp::configure(Vector<String> &conf, ErrorHandler *errh)
     bool first = false, delta = false;
     _tv.set_sec(-1);
     _action = ACT_NOW;
-    if (cp_va_kparse(conf, this, errh,
-		     "TIMESTAMP", cpkP, cpTimestamp, &_tv,
-		     "FIRST", 0, cpBool, &first,
-		     "DELTA", 0, cpBool, &delta,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_p("TIMESTAMP", _tv)
+	.read("FIRST", first)
+	.read("DELTA", delta).complete() < 0)
 	return -1;
-    if ((first && delta) || (_tv.sec() >= 0 && delta))
-	return errh->error("must specify at most one of %<FIRST%> and %<DELTA%>");
-    _action = (delta ? ACT_DELTA : (_tv.sec() < 0 ? ACT_NOW : ACT_TIME) + (first ? ACT_FIRST_NOW : ACT_NOW));
+    if (delta)
+	return errh->error("SetTimestamp(DELTA) is deprecated, use SetTimestampDelta(TYPE FIRST)");
+    _action = (_tv.sec() < 0 ? ACT_NOW : ACT_TIME) + (first ? ACT_FIRST_NOW : ACT_NOW);
     return 0;
 }
 
@@ -60,10 +59,8 @@ SetTimestamp::simple_action(Packet *p)
 	p->timestamp_anno() = _tv;
     else if (_action == ACT_FIRST_NOW)
 	FIRST_TIMESTAMP_ANNO(p).assign_now();
-    else if (_action == ACT_FIRST_TIME)
-	FIRST_TIMESTAMP_ANNO(p) = _tv;
     else
-	p->timestamp_anno() -= FIRST_TIMESTAMP_ANNO(p);
+	FIRST_TIMESTAMP_ANNO(p) = _tv;
     return p;
 }
 

@@ -37,8 +37,7 @@ CLICK_CXX_PROTECT
 # include <sys/kthread.h>
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
-#endif
-#if CLICK_USERLEVEL && HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL
 # include <fcntl.h>
 #endif
 CLICK_DECLS
@@ -67,26 +66,18 @@ static unsigned long greedy_schedule_jiffies;
  */
 
 RouterThread::RouterThread(Master *m, int id)
-#if HAVE_TASK_HEAP
-    : _task_heap_hole(0), _master(m), _id(id)
-#else
-    : Task(Task::error_hook, 0), _master(m), _id(id)
-#endif
+    : _stop_flag(0), _pending_head(0), _pending_tail(&_pending_head),
+      _master(m), _id(id)
 {
-#if HAVE_TASK_HEAP
-    _pass = 0;
-#else
-    _prev = _next = _thread = this;
+#if !HAVE_TASK_HEAP
+    _prev = _next = this;
 #endif
-    _any_pending = 0;
 #if CLICK_LINUXMODULE
     _linux_task = 0;
-#elif HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_invalid_processor();
-    _select_blocked = false;
-    _wake_pipe[0] = _wake_pipe[1] = -1;
-    _wake_pipe_pending = false;
 #endif
+
     _task_blocker = 0;
     _task_blocker_waiting = 0;
 #if HAVE_ADAPTIVE_SCHEDULER
@@ -106,11 +97,8 @@ RouterThread::RouterThread(Master *m, int id)
 #endif
 #endif
 
-#if CLICK_USERLEVEL
-    _iters_per_os = 64;           /* iterations per select() */
-#else
-    _iters_per_os = 2;          /* iterations per OS schedule() */
-#endif
+    _iters_per_os = 2;		// userlevel: iterations per select()
+				// kernel: iterations per OS schedule()
 
 #if CLICK_LINUXMODULE || CLICK_BSDMODULE
     _greedy = false;
@@ -131,20 +119,13 @@ RouterThread::RouterThread(Master *m, int id)
 #endif
 
     static_assert(THREAD_QUIESCENT == (int) ThreadSched::THREAD_QUIESCENT
-		  && THREAD_STRONG_UNSCHEDULE == (int) ThreadSched::THREAD_STRONG_UNSCHEDULE
-		  && THREAD_UNKNOWN == (int) ThreadSched::THREAD_UNKNOWN);
+		  && THREAD_UNKNOWN == (int) ThreadSched::THREAD_UNKNOWN,
+		  "Thread constants screwup.");
 }
 
 RouterThread::~RouterThread()
 {
-    _any_pending = 0;
     assert(!active());
-#if CLICK_USERLEVEL && HAVE_MULTITHREAD
-    if (_wake_pipe[0] >= 0) {
-	close(_wake_pipe[0]);
-	close(_wake_pipe[1]);
-    }
-#endif
 }
 
 inline void
@@ -164,7 +145,7 @@ RouterThread::driver_lock_tasks()
     }
 #endif
 
-    while (!_task_blocker.compare_and_swap(0, (uint32_t) -1)) {
+    while (_task_blocker.compare_swap(0, (uint32_t) -1) != 0) {
 #if CLICK_LINUXMODULE
 	schedule();
 #endif
@@ -174,8 +155,41 @@ RouterThread::driver_lock_tasks()
 inline void
 RouterThread::driver_unlock_tasks()
 {
-    bool ok = _task_blocker.compare_and_swap((uint32_t) -1, 0);
-    assert(ok);
+    uint32_t val = _task_blocker.compare_swap((uint32_t) -1, 0);
+    assert(val == (uint32_t) -1);
+}
+
+void
+RouterThread::scheduled_tasks(Router *router, Vector<Task *> &x)
+{
+    lock_tasks();
+    for (Task *t = task_begin(); t != task_end(); t = task_next(t))
+	if (t->router() == router)
+	    x.push_back(t);
+    unlock_tasks();
+}
+
+void
+RouterThread::request_stop()
+{
+    _stop_flag = 1;
+    if (current_thread_is_running()) {
+	// Set the current thread's tasks to "is_scheduled 2" and mark them as
+	// pending.  As a result the driver loop will not run these tasks:
+	// it's checking for "is_scheduled 1".  (We cannot call
+	// Task::remove_from_scheduled_list(), because run_tasks keeps the
+	// current task in limbo, so it must stay in the scheduled list.)
+	Task::Status want_status;
+	want_status.home_thread_id = thread_id();
+	want_status.is_scheduled = true;
+	want_status.is_strong_unscheduled = false;
+	Task::Status new_status(want_status);
+	new_status.is_strong_unscheduled = 2;
+
+	for (Task *t = task_begin(); t != task_end(); t = task_next(t))
+	    if (atomic_uint32_t::compare_swap(t->_status.status, want_status.status, new_status.status) == want_status.status)
+		t->add_pending();
+    }
 }
 
 
@@ -227,28 +241,26 @@ RouterThread::client_set_tickets(int client, int new_tickets)
 }
 
 inline void
-RouterThread::client_update_pass(int client, const Timestamp &t_before, const Timestamp &t_after)
+RouterThread::client_update_pass(int client, const Timestamp &t_before)
 {
     Client &c = _clients[client];
-    Timestamp::seconds_type elapsed = (t_after - t_before).usec1();
+    Timestamp t_now = Timestamp::now();
+    Timestamp::seconds_type elapsed = (t_now - t_before).usec1();
     if (elapsed > 0)
 	c.pass += (c.stride * elapsed) / DRIVER_QUANTUM;
     else
 	c.pass += c.stride;
-}
 
-inline void
-RouterThread::check_restride(Timestamp &t_before, const Timestamp &t_now, int &restride_iter)
-{
-    Timestamp::seconds_type elapsed = (t_now - t_before).usec1();
+    // check_restride
+    Timestamp::seconds_type elapsed = (t_now - _adaptive_restride_timestamp).usec1();
     if (elapsed > DRIVER_RESTRIDE_INTERVAL || elapsed < 0) {
 	// mark new measurement period
-	t_before = t_now;
+	_adaptive_restride_timestamp = t_now;
 
 	// reset passes every 10 intervals, or when time moves backwards
-	if (++restride_iter == 10 || elapsed < 0) {
+	if (++_adaptive_restride_iter == 10 || elapsed < 0) {
 	    _global_pass = _clients[C_CLICK].tickets = _clients[C_KERNEL].tickets = 0;
-	    restride_iter = 0;
+	    _adaptive_restride_iter = 0;
 	} else
 	    _global_pass += (DRIVER_GLOBAL_STRIDE * elapsed) / DRIVER_QUANTUM;
 
@@ -310,27 +322,28 @@ void
 RouterThread::task_reheapify_from(int pos, Task* t)
 {
     // MUST be called with task lock held
-    Task** tbegin = _task_heap.begin();
-    Task** tend = _task_heap.end();
+    task_heap_element *tbegin = _task_heap.begin();
+    task_heap_element *tend = _task_heap.end();
     int npos;
 
     while (pos > 0
-	   && (npos = (pos-1) >> 1, PASS_GT(tbegin[npos]->_pass, t->_pass))) {
+	   && (npos = (pos-1) >> 1, PASS_GT(tbegin[npos].pass, t->_pass))) {
 	tbegin[pos] = tbegin[npos];
-	tbegin[npos]->_schedpos = pos;
+	tbegin[npos].t->_schedpos = pos;
 	pos = npos;
     }
 
     while (1) {
-	Task* smallest = t;
-	Task** tp = tbegin + 2*pos + 1;
-	if (tp < tend && PASS_GE(smallest->_pass, tp[0]->_pass))
-	    smallest = tp[0];
-	if (tp + 1 < tend && PASS_GE(smallest->_pass, tp[1]->_pass))
-	    smallest = tp[1], tp++;
+	Task *smallest = t;
+	task_heap_element *tp = tbegin + 2*pos + 1;
+	if (tp < tend && PASS_GE(smallest->_pass, tp[0].pass))
+	    smallest = tp[0].t;
+	if (tp + 1 < tend && PASS_GE(smallest->_pass, tp[1].pass))
+	    smallest = tp[1].t, ++tp;
 
 	smallest->_schedpos = pos;
-	tbegin[pos] = smallest;
+	tbegin[pos].t = smallest;
+	tbegin[pos].pass = smallest->_pass;
 
 	if (smallest == t)
 	    return;
@@ -351,6 +364,12 @@ RouterThread::run_tasks(int ntasks)
     if ((_driver_task_epoch % TASK_EPOCH_BUFSIZ) == 0)
 	_task_epoch_first = _driver_task_epoch;
 #endif
+#if HAVE_ADAPTIVE_SCHEDULER
+    Timestamp t_before = Timestamp::now();
+#endif
+#if CLICK_BSDMODULE && !BSD_NETISRSCHED
+    int bsd_spl = splimp();
+#endif
 
     // never run more than 32768 tasks
     if (ntasks > 32768)
@@ -361,53 +380,37 @@ RouterThread::run_tasks(int ntasks)
     click_cycles_t cycles = 0;
 #endif
 
-    Task *t;
-#if HAVE_TASK_HEAP
-    while (_task_heap.size() > 0 && ntasks >= 0) {
-	t = _task_heap.at_u(0);
-#else
-    while ((t = task_begin()), t != this && ntasks >= 0) {
-#endif
+    Task::Status want_status;
+    want_status.home_thread_id = thread_id();
+    want_status.is_scheduled = true;
+    want_status.is_strong_unscheduled = false;
 
-	// 22.May.2008: If pending changes on this task, break early to
-	// take care of them.
-	if (t->_pending_nextptr)
+    Task *t;
+#if HAVE_MULTITHREAD
+    int runs;
+#endif
+    bool work_done;
+
+    for (; ntasks >= 0; --ntasks) {
+	t = task_begin();
+	if (t == task_end())
 	    break;
 
+	if (unlikely(t->_status.status != want_status.status)) {
+	    t->remove_from_scheduled_list();
+	    if (t->_status.home_thread_id != thread_id())
+		t->move_thread_second_half();
+	    continue;
+	}
+
 #if HAVE_MULTITHREAD
-	int runs = t->cycle_runs();
+	runs = t->cycle_runs();
 	if (runs > PROFILE_ELEMENT)
 	    cycles = click_get_cycles();
 #endif
 
-#if HAVE_TASK_HEAP
-	t->_schedpos = -1;
-	_task_heap_hole = 1;
-#else
-	t->fast_unschedule(false);
-#endif
-
-#if HAVE_STRIDE_SCHED
-	// 21.May.2007: Always set the current thread's pass to the current
-	// task's pass, to avoid problems when fast_reschedule() interacts
-	// with fast_schedule() (passes got out of sync).
-	_pass = t->_pass;
-#endif
-
-	t->fire();
-
-#if HAVE_TASK_HEAP
-	if (_task_heap_hole) {
-	    Task* back = _task_heap.back();
-	    _task_heap.pop_back();
-	    if (_task_heap.size() > 0)
-		task_reheapify_from(0, back);
-	    _task_heap_hole = 0;
-	    // No need to reset t->_schedpos: 'back == t' only if
-	    // '_task_heap.size() == 0' now, in which case we didn't call
-	    // task_reheapify_from().
-	}
-#endif
+	t->_status.is_scheduled = false;
+	work_done = t->fire();
 
 #if HAVE_MULTITHREAD
 	if (runs > PROFILE_ELEMENT) {
@@ -416,8 +419,66 @@ RouterThread::run_tasks(int ntasks)
 	}
 #endif
 
-	--ntasks;
+	// fix task list
+	if (t->scheduled()) {
+	    // adjust position in scheduled list
+#if HAVE_STRIDE_SCHED
+	    t->_pass += t->_stride;
+#endif
+
+	    // If the task didn't do any work, don't run it next.  This might
+	    // require delaying its pass, or exiting the scheduling loop
+	    // entirely.
+	    if (!work_done) {
+#if HAVE_STRIDE_SCHED && HAVE_TASK_HEAP
+		if (_task_heap.size() < 2)
+		    break;
+#else
+		if (t->_next == this)
+		    break;
+#endif
+#if HAVE_STRIDE_SCHED
+# if HAVE_TASK_HEAP
+		unsigned p1 = _task_heap.at_u(1).pass;
+		if (_task_heap.size() > 2 && PASS_GT(p1, _task_heap.at_u(2).pass))
+		    p1 = _task_heap.at_u(2).pass;
+# else
+		unsigned p1 = t->_next->_pass;
+# endif
+		if (PASS_GT(p1, t->_pass))
+		    t->_pass = p1;
+#endif
+	    }
+
+#if HAVE_STRIDE_SCHED && HAVE_TASK_HEAP
+	    task_reheapify_from(0, t);
+#else
+# if HAVE_STRIDE_SCHED
+	    TaskLink *n = t->_next;
+	    while (n != this && !PASS_GT(n->_pass, t->_pass))
+		n = n->_next;
+# else
+	    TaskLink *n = this;
+# endif
+	    if (t->_next != n) {
+		t->_next->_prev = t->_prev;
+		t->_prev->_next = t->_next;
+		t->_next = n;
+		t->_prev = n->_prev;
+		n->_prev->_next = t;
+		n->_prev = t;
+	    }
+#endif
+	} else
+	    t->remove_from_scheduled_list();
     }
+
+#if CLICK_BSDMODULE && !BSD_NETISRSCHED
+    splx(bsd_spl);
+#endif
+#if HAVE_ADAPTIVE_SCHEDULER
+    client_update_pass(C_CLICK, t_before);
+#endif
 }
 
 inline void
@@ -428,9 +489,12 @@ RouterThread::run_os()
     set_current_state(TASK_INTERRUPTIBLE);
 #endif
     driver_unlock_tasks();
+#if HAVE_ADAPTIVE_SCHEDULER
+    Timestamp t_before = Timestamp::now();
+#endif
 
 #if CLICK_USERLEVEL
-    _master->run_selects(this);
+    select_set().run_selects(this);
 #elif CLICK_LINUXMODULE		/* Linux kernel module */
     if (_greedy) {
 	if (time_after(jiffies, greedy_schedule_jiffies + 5 * CLICK_HZ)) {
@@ -446,8 +510,8 @@ RouterThread::run_os()
       block:
 	set_thread_state(S_BLOCKED);
 	schedule();
-    } else if (Timestamp wait = _master->next_timer_expiry_adjusted()) {
-	wait -= Timestamp::now();
+    } else if (Timestamp wait = timer_set().timer_expiry_steady_adjusted()) {
+	wait -= Timestamp::now_steady();
 	if (!(wait > Timestamp(0, Timestamp::subsec_per_sec / CLICK_HZ)))
 	    goto short_pause;
 	set_thread_state(S_TIMERWAIT);
@@ -473,130 +537,140 @@ RouterThread::run_os()
 # error "Compiling for unknown target."
 #endif
 
+#if HAVE_ADAPTIVE_SCHEDULER
+    client_update_pass(C_KERNEL, t_before);
+#endif
     driver_lock_tasks();
+}
+
+void
+RouterThread::process_pending()
+{
+    // must be called with thread's lock acquired
+
+    // claim the current pending list
+    set_thread_state(RouterThread::S_RUNPENDING);
+    SpinlockIRQ::flags_t flags = _pending_lock.acquire();
+    uintptr_t my_pending = _pending_head;
+    _pending_head = 0;
+    _pending_tail = &_pending_head;
+    _pending_lock.release(flags);
+
+    // process the list
+    while (Task *t = Task::pending_to_task(my_pending)) {
+	my_pending = t->_pending_nextptr;
+	t->_pending_nextptr = 0;
+	click_fence();
+	t->process_pending(this);
+    }
 }
 
 void
 RouterThread::driver()
 {
-    const volatile int * const stopper = _master->stopper_ptr();
     int iter = 0;
 #if CLICK_LINUXMODULE
     // this task is running the driver
     _linux_task = current;
-#elif HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL
+    select_set().initialize();
+# if CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_current_processor();
-    if (_wake_pipe[0] < 0 && pipe(_wake_pipe) >= 0) {
-	fcntl(_wake_pipe[0], F_SETFL, O_NONBLOCK);
-	fcntl(_wake_pipe[1], F_SETFL, O_NONBLOCK);
-	fcntl(_wake_pipe[0], F_SETFD, FD_CLOEXEC);
-	fcntl(_wake_pipe[1], F_SETFD, FD_CLOEXEC);
-    }
-    assert(_wake_pipe[0] >= 0);
+#  if HAVE___THREAD_STORAGE_CLASS
+    click_current_thread_id = _id;
+#  endif
+# endif
 #endif
 
     driver_lock_tasks();
 
 #if HAVE_ADAPTIVE_SCHEDULER
-    int restride_iter = 0;
-    Timestamp t_before = Timestamp::uninitialized_t();
-    Timestamp restride_t_before = Timestamp::uninitialized_t();
-    Timestamp t_now = Timestamp::uninitialized_t();
     client_set_tickets(C_CLICK, DRIVER_TOTAL_TICKETS / 2);
     client_set_tickets(C_KERNEL, DRIVER_TOTAL_TICKETS / 2);
     _cur_click_share = Task::MAX_UTILIZATION / 2;
-    restride_t_before.assign_now();
+    _adaptive_restride_timestamp.assign_now();
+    _adaptive_restride_iter = 0;
 #endif
 
-#if !CLICK_NS && !BSD_NETISRSCHED
-  driver_loop:
-#endif
-
+    while (1) {
 #if CLICK_DEBUG_SCHEDULING
-    _driver_epoch++;
+	_driver_epoch++;
 #endif
 
-    if (*stopper == 0) {
+#if !BSD_NETISRSCHED
+	// check to see if driver is stopped
+	if (_stop_flag > 0) {
+	    driver_unlock_tasks();
+	    bool b = _master->check_driver();
+	    driver_lock_tasks();
+	    if (!b)
+		break;
+	}
+#endif
+
 	// run occasional tasks: timers, select, etc.
 	iter++;
 
+	// run task requests
+	if (_pending_head)
+	    process_pending();
+
+	// run tasks
+	do {
+#if HAVE_ADAPTIVE_SCHEDULER
+	    if (PASS_GT(_clients[C_CLICK].pass, _clients[C_KERNEL].pass))
+		break;
+#endif
+	    run_tasks(_tasks_per_iter);
+	} while (0);
+
 #if CLICK_USERLEVEL
-	_master->run_signals(this);
+	// run signals
+	run_signals();
 #endif
 
-#if !(HAVE_ADAPTIVE_SCHEDULER || BSD_NETISRSCHED)
-	if ((iter % _iters_per_os) == 0)
-	    run_os();
-#endif
-
-	bool run_timers = (iter % _master->timer_stride()) == 0;
-#if BSD_NETISRSCHED
-	run_timers = run_timers || _oticks != ticks;
-#endif
-	if (run_timers) {
-#if BSD_NETISRSCHED
+	// run timers
+	do {
+#if !BSD_NETISRSCHED
+	    if (iter % timer_set().timer_stride())
+		break;
+#elif BSD_NETISRSCHED
+	    if (iter % timer_set().timer_stride() && _oticks == ticks)
+		break;
 	    _oticks = ticks;
 #endif
-	    _master->run_timers(this);
+	    timer_set().run_timers(this, _master);
 #if CLICK_NS
 	    // If there's another timer, tell the simulator to make us
 	    // run when it's due to go off.
-	    if (Timestamp next_expiry = _master->next_timer_expiry()) {
+	    if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
 		struct timeval nexttime = next_expiry.timeval();
 		simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
 	    }
 #endif
-	}
+	} while (0);
+
+	// run operating system
+	do {
+#if !HAVE_ADAPTIVE_SCHEDULER && !BSD_NETISRSCHED
+	    if (iter % _iters_per_os)
+		break;
+#elif HAVE_ADAPTIVE_SCHEDULER
+	    if (!PASS_GT(_clients[C_CLICK].pass, _clients[C_KERNEL].pass))
+		break;
+#elif BSD_NETISRSCHED
+	    break;
+#endif
+	    run_os();
+	} while (0);
+
+#if CLICK_NS || BSD_NETISRSCHED
+	// Everyone except the NS driver stays in driver() until the driver is
+	// stopped.
+	break;
+#endif
     }
 
-    // run task requests (1)
-    if (_any_pending)
-	_master->process_pending(this);
-
-#if !HAVE_ADAPTIVE_SCHEDULER
-    // run a bunch of tasks
-# if CLICK_BSDMODULE && !BSD_NETISRSCHED
-    int s = splimp();
-# endif
-    run_tasks(_tasks_per_iter);
-# if CLICK_BSDMODULE && !BSD_NETISRSCHED
-    splx(s);
-# endif
-#else /* HAVE_ADAPTIVE_SCHEDULER */
-    t_before.assign_now();
-    int client;
-    if (PASS_GT(_clients[C_KERNEL].pass, _clients[C_CLICK].pass)) {
-	client = C_CLICK;
-	run_tasks(_tasks_per_iter);
-    } else {
-	client = C_KERNEL;
-	run_os();
-    }
-    t_now.assign_now();
-    client_update_pass(client, t_before, t_now);
-    check_restride(restride_t_before, t_now, restride_iter);
-#endif
-
-#if !BSD_NETISRSCHED
-    // check to see if driver is stopped
-    if (*stopper > 0) {
-	driver_unlock_tasks();
-	bool b = _master->check_driver();
-	driver_lock_tasks();
-	if (!b)
-	    goto finish_driver;
-    }
-#endif
-
-#if !CLICK_NS && !BSD_NETISRSCHED
-    // Everyone except the NS driver stays in driver() until the driver is
-    // stopped.
-    goto driver_loop;
-#endif
-
-#if !BSD_NETISRSCHED
-  finish_driver:
-#endif
     driver_unlock_tasks();
 
 #if HAVE_ADAPTIVE_SCHEDULER
@@ -604,8 +678,11 @@ RouterThread::driver()
 #endif
 #if CLICK_LINUXMODULE
     _linux_task = 0;
-#elif HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_invalid_processor();
+# if HAVE___THREAD_STORAGE_CLASS
+    click_current_thread_id = 0;
+# endif
 #endif
 }
 
@@ -620,41 +697,39 @@ RouterThread::driver_once()
     if (!_master->check_driver())
 	return;
 
-#if CLICK_BSDMODULE  /* XXX MARKO */
-    int s = splimp();
-#elif CLICK_LINUXMODULE
+#if CLICK_LINUXMODULE
     // this task is running the driver
     _linux_task = current;
-#elif HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_current_processor();
+# if HAVE___THREAD_STORAGE_CLASS
+    click_current_thread_id = _id;
+# endif
 #endif
     driver_lock_tasks();
 
-    Task *t = task_begin();
-    if (t != task_end() && !t->_pending_nextptr) {
-	t->fast_unschedule(false);
-	t->fire();
-    }
+    run_tasks(1);
 
     driver_unlock_tasks();
-#if CLICK_BSDMODULE  /* XXX MARKO */
-    splx(s);
-#elif CLICK_LINUXMODULE
+#if CLICK_LINUXMODULE
     _linux_task = 0;
-#elif HAVE_MULTITHREAD
+#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_invalid_processor();
+# if HAVE___THREAD_STORAGE_CLASS
+    click_current_thread_id = 0;
+# endif
 #endif
 }
 
 void
-RouterThread::unschedule_router_tasks(Router* r)
+RouterThread::kill_router(Router *r)
 {
     lock_tasks();
 #if HAVE_TASK_HEAP
-    Task* t;
-    for (Task** tp = _task_heap.end(); tp > _task_heap.begin(); )
-	if ((t = *--tp, t->router() == r)) {
-	    task_reheapify_from(tp - _task_heap.begin(), _task_heap.back());
+    Task *t;
+    for (task_heap_element *tp = _task_heap.end(); tp > _task_heap.begin(); )
+	if ((t = (--tp)->t, t->router() == r)) {
+	    task_reheapify_from(tp - _task_heap.begin(), _task_heap.back().t);
 	    // must clear _schedpos AFTER task_reheapify_from
 	    t->_schedpos = -1;
 	    // recheck this slot; have moved a task there
@@ -663,10 +738,10 @@ RouterThread::unschedule_router_tasks(Router* r)
 		tp++;
 	}
 #else
-    Task* prev = this;
-    Task* t;
+    TaskLink *prev = this;
+    TaskLink *t;
     for (t = prev->_next; t != this; t = t->_next)
-	if (t->router() == r)
+	if (static_cast<Task *>(t)->router() == r)
 	    t->_prev = 0;
 	else {
 	    prev->_next = t;
@@ -677,6 +752,11 @@ RouterThread::unschedule_router_tasks(Router* r)
     t->_prev = prev;
 #endif
     unlock_tasks();
+
+    _timers.kill_router(r);
+#if CLICK_USERLEVEL
+    _selects.kill_router(r);
+#endif
 }
 
 #if CLICK_DEBUG_SCHEDULING

@@ -40,7 +40,8 @@ CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
   : _etx_metric(0),
-    _debug(BrnLogger::DEFAULT)
+    _debug(BrnLogger::DEFAULT),
+    _active(false)
 {
 }
 
@@ -54,6 +55,8 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
       "ETXMETRIC", cpkP , cpElement, &_etx_metric,
+      "ACTIVE", cpkP , cpBool, &_active,
+      "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -61,20 +64,25 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
 
-  if ( direction )
-    return lph->lpSendHandler(buffer, size);
-  else
-    return lph->lpReceiveHandler(buffer, size);
+  return lph->lpSendHandler(buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  LPRLinkProbeHandler *lph = (LPRLinkProbeHandler*)element;
+
+  return lph->lpReceiveHandler(buffer, size);
 }
 
 int
 LPRLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&handler);
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&tx_handler,&rx_handler);
 
   max_hosts = 128;
   known_links = new unsigned char[max_hosts * max_hosts];
@@ -82,7 +90,7 @@ LPRLinkProbeHandler::initialize(ErrorHandler *)
   known_timestamps = new unsigned char[max_hosts];
   memset(known_timestamps, 0, max_hosts);
 
-  known_hosts.push_back(EtherAddress(_linkstat->_me->getEtherAddress()->data()));
+  known_hosts.push_back(EtherAddress(_linkstat->_dev->getEtherAddress()->data()));
 
   _seq = 0;
 
@@ -94,6 +102,8 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
 {
   struct packed_link_header lprh;
   struct packed_link_info  lpri;
+
+  if ( ! _active ) return 0;
 
   updateKnownHosts();
   updateLinksToMe();
@@ -126,14 +136,14 @@ LPRLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   if ( len == -1 ) {
     len = 0;
-    click_chatter("To heavy");
+    BRN_WARN("To heavy");
   }
 
   delete[] addr;
   delete[] links;
   delete[] timestamp;
 
-  click_chatter("Call send: %d space: %d",len,size);
+  BRN_DEBUG("Call send: %d space: %d",len,size);
   return len;
 }
 
@@ -183,7 +193,9 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   struct packed_link_info  *lpri;
   uint8_t *macs;
 
-//click_chatter("Call receive %d",size);
+  if ( ! _active ) return size;
+
+  BRN_DEBUG("Call receive %d",size);
 
   lpri = LPRProtocol::unpack2((unsigned char *)buffer, size);
   macs = (uint8_t*)lpri->_macs;
@@ -203,8 +215,8 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   bool changes = false;
   Vector<BrnRateSize> brs;
   brs.push_back(BrnRateSize(2,1500)); //TODO: got real use value (linkstat)
-  Vector<int> fwd;
-  Vector<int> rev;
+  Vector<uint8_t> fwd;
+  Vector<uint8_t> rev;
 
   for ( int nh1 = 0; nh1 < lpri->_header->_no_nodes; nh1++ ) {
 
@@ -225,8 +237,8 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
             known_links[kh1 * max_hosts + kh2] = lpri->_links[nh1*lpri->_header->_no_nodes + nh2];
 
-            if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) &&
-                   ( memcmp(known_hosts[kh2].data(), _linkstat->_me->getEtherAddress()->data(), 6) != 0 ) ) {
+            if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) &&
+                   ( memcmp(known_hosts[kh2].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) ) {
 
               if ( _etx_metric && ( known_links[kh1 * max_hosts + kh2] != 0 ) && ( known_links[kh2 * max_hosts + kh1] != 0 ) ) {
                 fwd.push_back(10 * known_links[kh1 * max_hosts + kh2]);
@@ -291,6 +303,24 @@ read_table_param(Element *e, void *)
   return fl->get_info();
 }
 
+static String
+read_active_param(Element *e, void *)
+{
+  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  return String(fl->_active) + "\n";
+}
+
+static int 
+write_active_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+{
+  LPRLinkProbeHandler *fl = (LPRLinkProbeHandler *)e;
+  String s = cp_uncomment(in_s);
+  bool active;
+  if (!cp_bool(s, &active))
+    return errh->error("active parameter must be an bool value (true/false)");
+  fl->_active = active;
+  return 0;
+}
 
 static String
 read_debug_param(Element *e, void *)
@@ -314,8 +344,11 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 LPRLinkProbeHandler::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
   add_read_handler("table", read_table_param, 0);
+  add_read_handler("active", read_active_param, 0);
+  add_read_handler("debug", read_debug_param, 0);
+
+  add_write_handler("active", write_active_param, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
 

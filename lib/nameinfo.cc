@@ -4,6 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 2005-2008 The Regents of the University of California
+ * Copyright (c) 2011 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -131,7 +132,8 @@ static const StaticNameDB::Entry annotation_entries[] = {
 #endif
     { "REV_RATE", MKAI(REV_RATE) },
     { "SEQUENCE_NUMBER", MKAI(SEQUENCE_NUMBER) },
-    { "VLAN", MKAI(VLAN) },
+    { "VLAN", MKAI(VLAN_TCI) },
+    { "VLAN_TCI", MKAI(VLAN_TCI) },
     { "WIFI_EXTRA", MKAI(WIFI_EXTRA) }
 };
 
@@ -296,7 +298,7 @@ NameInfo::NameInfo()
 NameInfo::~NameInfo()
 {
     for (int i = 0; i < _namedbs.size(); i++) {
-	_namedbs[i]->_installed = false;
+	_namedbs[i]->_installed = 0;
 	delete _namedbs[i];
     }
 }
@@ -510,13 +512,13 @@ NameInfo::query(uint32_t type, const Element *e, const String &name, void *value
 bool
 NameInfo::query_int(uint32_t type, const Element *e, const String &name, int32_t *value)
 {
-    return query(type, e, name, value, 4) || cp_integer(name, value);
+    return query(type, e, name, value, 4) || IntArg().parse(name, *value);
 }
 
 bool
 NameInfo::query_int(uint32_t type, const Element *e, const String &name, uint32_t *value)
 {
-    return query(type, e, name, value, 4) || cp_integer(name, value);
+    return query(type, e, name, value, 4) || IntArg().parse(name, *value);
 }
 
 String

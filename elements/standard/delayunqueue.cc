@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/glue.hh>
 #include "delayunqueue.hh"
 #include <click/standard/scheduleinfo.hh>
@@ -36,9 +36,7 @@ DelayUnqueue::~DelayUnqueue()
 int
 DelayUnqueue::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    return cp_va_kparse(conf, this, errh,
-			"DELAY", cpkP+cpkM, cpTimestamp, &_delay,
-			cpEnd);
+    return Args(conf, this, errh).read_mp("DELAY", _delay).complete();
 }
 
 int
@@ -74,7 +72,6 @@ DelayUnqueue::run_task(Task *)
 	Timestamp now = Timestamp::now();
 	if (_p->timestamp_anno() <= now) {
 	    // packet ready for output
-	    _p->timestamp_anno() = now;
 	    output(0).push(_p);
 	    _p = 0;
 	    worked = true;
@@ -100,17 +97,10 @@ DelayUnqueue::run_task(Task *)
     return worked;
 }
 
-String
-DelayUnqueue::read_param(Element *e, void *)
-{
-    DelayUnqueue *u = (DelayUnqueue *)e;
-    return u->_delay.unparse_interval();
-}
-
 void
 DelayUnqueue::add_handlers()
 {
-    add_read_handler("delay", read_param, (void *)0, Handler::CALM);
+    add_data_handlers("delay", Handler::OP_READ | Handler::OP_WRITE, &_delay, true);
     add_task_handlers(&_task);
 }
 

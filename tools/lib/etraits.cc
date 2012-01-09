@@ -42,7 +42,7 @@ static const char * const driver_multithread_names[] = {
 const char *
 Driver::name(int d)
 {
-    static_assert(USERLEVEL == 0 && LINUXMODULE == 1 && BSDMODULE == 2 && NSMODULE == 3);
+    static_assert(USERLEVEL == 0 && LINUXMODULE == 1 && BSDMODULE == 2 && NSMODULE == 3, "Constant misassignments.");
     if (d >= 0 && d <= COUNT)
 	return driver_names[d];
     else
@@ -135,22 +135,30 @@ ElementTraits::provides(const String &n) const
 }
 
 int
-ElementTraits::flag_value(int flag) const
+ElementTraits::hard_flag_value(const String &str) const
 {
-    const unsigned char *data = reinterpret_cast<const unsigned char *>(flags.data());
-    int len = flags.length();
-    for (int i = 0; i < len; i++) {
-	if (data[i] == flag) {
-	    if (i < len - 1 && isdigit(data[i+1])) {
-		int value = 0;
-		for (i++; i < len && isdigit(data[i]); i++)
-		    value = 10*value + data[i] - '0';
-		return value;
-	    } else
+    assert(str);
+    const char *s = flags.begin(), *end = flags.end() - str.length();
+    while (s <= end) {
+	if (memcmp(s, str.begin(), str.length()) == 0
+	    && (s == end || isdigit((unsigned char) s[str.length()])
+		|| isspace((unsigned char) s[str.length()])
+		|| s[str.length()] == '=')) {
+	    s += str.length();
+	    end = flags.end();
+	    if (s != end && *s == '=')
+		++s;
+	    if (s == end || !isdigit((unsigned char) *s))
 		return 1;
+	    int i = 0;
+	    do {
+		i = i * 10 + *s - '0';
+		++s;
+	    } while (s != end && isdigit((unsigned char) *s));
+	    return (s == end || isspace((unsigned char) *s) ? i : 1);
 	} else
-	    while (i < len && !isspace((unsigned char) data[i]))
-		i++;
+	    while (s <= end && !isspace((unsigned char) *s))
+		++s;
     }
     return -1;
 }
@@ -190,6 +198,7 @@ ElementTraits::component(int what)
       case D_PROVISIONS:	return &provisions;
       case D_LIBS:		return &libs;
       case D_DOC_NAME:		return &documentation_name;
+      case D_NOEXPORT:		return &noexport;
       default:			return 0;
     }
 }
@@ -214,6 +223,7 @@ ElementTraits::parse_component(const String &s)
 	components.set("libs", D_LIBS);
 	components.set("docname", D_DOC_NAME);
 	components.set("flags", D_FLAGS);
+	components.set("noexport", D_NOEXPORT);
 	// for compatibility
 	components.set("class", D_CLASS);
 	components.set("cxx_class", D_CXX_CLASS);

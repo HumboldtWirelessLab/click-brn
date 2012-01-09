@@ -5,7 +5,7 @@
  * statistics: Robert Morris
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
- * Copyright (c) 2004-2008 Regents of the University of California
+ * Copyright (c) 2004-2011 Regents of the University of California
  * Copyright (c) 2010 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
@@ -25,7 +25,7 @@
 #include <click/glue.hh>
 #include <click/element.hh>
 #include <click/bitvector.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/router.hh>
 #include <click/master.hh>
@@ -77,7 +77,7 @@ int Element::nelements_allocated = 0;
  *  modules (which we call <em>elements</em>).
  *
  *  Most documented Click classes can be found under the "Classes" tab.  Get
- *  started by looking at the Element class, or the confparse.hh header file
+ *  started by looking at the Element class, or the args.hh header file
  *  for configuration string parsing.
  *
  *  <a href='http://www.read.cs.ucla.edu/click/'>Main Click page</a>
@@ -133,9 +133,8 @@ class MyNothingElement : public Element { public:
   nothing.  The required class_name() function informs Click's infrastructure
   of the element's class name.
 
-  Although this element definition is complete, Click's compilation process
-  requires that a real element come with a bit more boilerplate.  Here's a
-  possible definition of our nothing element, including all boilerplate:
+  Although this element is code-complete, Click's build process requires a bit
+  more boilerplate, like so:
 
 @code
 // ================== elements/local/mynothingelement.hh ==================
@@ -165,9 +164,7 @@ EXPORT_ELEMENT(MyNothingElement)
   - The element class must be defined in a header file and a source file.
   - The header file is protected from multiple inclusion.  A common error is
     to copy and paste another element's header file, but forget to change the
-    header protection symbol (here, CLICK_MYNOTHINGELEMENT_HH).  This will
-    cause an error when Click tries to compile a generated file called
-    elements.cc.
+    header protection symbol (here, CLICK_MYNOTHINGELEMENT_HH).
   - All Click declarations are enclosed within a macro pair,
     <tt>CLICK_DECLS</tt> and <tt>CLICK_ENDDECLS</tt>.  These are required for
     the NS and FreeBSD kernel drivers.  Note that <tt>\#include</tt> statements
@@ -434,9 +431,9 @@ Element::Element()
 Element::~Element()
 {
     nelements_allocated--;
-    if (_ports[0] < _inline_ports || _ports[0] >= _inline_ports + INLINE_PORTS)
+    if (_ports[0] < _inline_ports || _ports[0] > _inline_ports + INLINE_PORTS)
 	delete[] _ports[0];
-    if (_ports[1] < _inline_ports || _ports[1] >= _inline_ports + INLINE_PORTS)
+    if (_ports[1] < _inline_ports || _ports[1] > _inline_ports + INLINE_PORTS)
 	delete[] _ports[1];
 }
 
@@ -549,6 +546,7 @@ Element::name() const
     return (s ? s : String::make_stable("<unknown>", 9));
 }
 
+/** @cond never */
 /** @brief Return the element's name (deprecated).
  *
  * @deprecated This function is deprecated; use name() instead. */
@@ -556,19 +554,6 @@ String
 Element::id() const
 {
     return name();
-}
-
-/** @brief Return a string giving the element's name and class name.
- *
- * The result has the form &quot;@e name :: @e class_name&quot;.  Element
- * classes can override this function to supply additional important
- * information, if desired; for example, @e FromDump returns a string &quot;@e
- * name :: @e class_name(@e filename)&quot;.
- */
-String
-Element::declaration() const
-{
-    return name() + " :: " + class_name();
 }
 
 /** @brief Return a string describing where the element was declared.
@@ -582,6 +567,20 @@ Element::landmark() const
     if (Router *r = router())
 	s = r->elandmark(_eindex);
     return (s ? s : String::make_stable("<unknown>", 9));
+}
+/** @endcond never */
+
+/** @brief Return a string giving the element's name and class name.
+ *
+ * The result has the form &quot;@e name :: @e class_name&quot;.  Element
+ * classes can override this function to supply additional important
+ * information, if desired; for example, @e FromDump returns a string &quot;@e
+ * name :: @e class_name(@e filename)&quot;.
+ */
+String
+Element::declaration() const
+{
+    return name() + " :: " + class_name();
 }
 
 // INPUTS AND OUTPUTS
@@ -600,9 +599,9 @@ Element::set_nports(int new_ninputs, int new_noutputs)
 
     // decide if inputs & outputs were inlined
     bool old_in_inline =
-	(_ports[0] >= _inline_ports && _ports[0] < _inline_ports + INLINE_PORTS);
+	(_ports[0] >= _inline_ports && _ports[0] <= _inline_ports + INLINE_PORTS);
     bool old_out_inline =
-	(_ports[1] >= _inline_ports && _ports[1] < _inline_ports + INLINE_PORTS);
+	(_ports[1] >= _inline_ports && _ports[1] <= _inline_ports + INLINE_PORTS);
     bool prefer_pull = (processing() == PULL);
 
     // decide if inputs & outputs should be inlined
@@ -673,8 +672,8 @@ Element::set_nports(int new_ninputs, int new_noutputs)
  * Click extracts port count specifiers from the source for use by tools.  For
  * Click to find a port count specifier, the function definition must appear
  * inline, on a single line, inside the element class's declaration, and must
- * return a C string constant.  It should also have public accessibility.
- * Here's an acceptable port_count() definition:
+ * return a C string constant (or a name below).  It should also have public
+ * accessibility.  Here's an acceptable port_count() definition:
  *
  * @code
  * const char *port_count() const     { return "1/1"; }
@@ -1310,7 +1309,7 @@ Element::configure_phase() const
  *
  * Any errors, warnings, or messages should be reported to @a errh.  Messages
  * need not specify the element name or type, since this information will be
- * provided as context.
+ * provided as context.  @a errh.nerrors() is initially zero.
  *
  * configure() should return a negative number if configuration fails.
  * Returning a negative number prevents the router from initializing.  The
@@ -1347,13 +1346,12 @@ Element::configure_phase() const
  * set_ninputs() or set_noutputs() function from configure(), then all push,
  * pull, and neighbor information is invalidated until initialize() time.
  *
- * @sa live_reconfigure, confparse.hh for useful parsing functions like
- * cp_va_kparse()
+ * @sa live_reconfigure, args.hh for argument parsing
  */
 int
 Element::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    return cp_va_kparse(conf, this, errh, cpEnd);
+    return Args(conf, this, errh).complete();
 }
 
 /** @brief Install the element's handlers.
@@ -1392,7 +1390,8 @@ Element::add_handlers()
  * line. It performs any final initialization, and provides the last chance to
  * abort router installation with an error.  Any errors, warnings, or messages
  * should be reported to @a errh.  Messages need not specify the element
- * name; this information will be supplied externally.
+ * name; this information will be supplied externally.  @a errh.nerrors()
+ * is initially zero.
  *
  * initialize() should return zero if initialization succeeds, or a negative
  * number if it fails.  Returning a negative number prevents the router from
@@ -1651,6 +1650,14 @@ Element::configuration() const
 }
 
 
+/** @brief Return the element's home thread. */
+RouterThread *
+Element::home_thread() const
+{
+    return master()->thread(router()->home_thread_id(this));
+}
+
+
 // SELECT
 
 #if CLICK_USERLEVEL
@@ -1724,7 +1731,7 @@ Element::selected(int fd)
 int
 Element::add_select(int fd, int mask)
 {
-    return master()->add_select(fd, this, mask);
+    return home_thread()->select_set().add_select(fd, this, mask);
 }
 
 /** @brief Remove interest in @a mask events on file descriptor @a fd.
@@ -1743,7 +1750,7 @@ Element::add_select(int fd, int mask)
 int
 Element::remove_select(int fd, int mask)
 {
-    return master()->remove_select(fd, this, mask);
+    return home_thread()->select_set().remove_select(fd, this, mask);
 }
 
 #endif
@@ -1798,6 +1805,20 @@ Element::add_read_handler(const String &name, ReadHandlerCallback read_callback,
     Router::add_read_handler(this, name, read_callback, (void *) u, flags);
 }
 
+/** @brief Register a read handler named @a name.
+ *
+ * This version of add_read_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::add_read_handler(const char *name, ReadHandlerCallback read_callback, int user_data, uint32_t flags)
+{
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_read_handler(this, String::make_stable(name), read_callback, (void *) u, flags);
+}
+
 /** @brief Register a write handler named @a name.
  *
  * @param name handler name
@@ -1841,6 +1862,20 @@ Element::add_write_handler(const String &name, WriteHandlerCallback write_callba
 {
     uintptr_t u = (uintptr_t) user_data;
     Router::add_write_handler(this, name, write_callback, (void *) u, flags);
+}
+
+/** @brief Register a write handler named @a name.
+ *
+ * This version of add_write_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::add_write_handler(const char *name, WriteHandlerCallback write_callback, int user_data, uint32_t flags)
+{
+    uintptr_t u = (uintptr_t) user_data;
+    Router::add_write_handler(this, String::make_stable(name), write_callback, (void *) u, flags);
 }
 
 /** @brief Register a comprehensive handler named @a name.
@@ -1895,6 +1930,20 @@ Element::set_handler(const String &name, int flags, HandlerCallback callback, in
 {
     uintptr_t u1 = (uintptr_t) read_user_data, u2 = (uintptr_t) write_user_data;
     Router::set_handler(this, name, flags, callback, (void *) u1, (void *) u2);
+}
+
+/** @brief Register a comprehensive handler named @a name.
+ *
+ * This version of set_handler() is useful when @a name is a static
+ * constant string.  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
+ */
+void
+Element::set_handler(const char *name, int flags, HandlerCallback callback, int read_user_data, int write_user_data)
+{
+    uintptr_t u1 = (uintptr_t) read_user_data, u2 = (uintptr_t) write_user_data;
+    Router::set_handler(this, String::make_stable(name), flags, callback, (void *) u1, (void *) u2);
 }
 
 /** @brief Set flags for the handler named @a name.
@@ -2013,23 +2062,16 @@ read_ocounts_handler(Element *f, void *)
 #endif /* CLICK_STATS >= 1 */
 
 #if CLICK_STATS >= 2
-/*
- * cycles:
- * # of calls to this element (push or pull).
- * cycles spent in this element and elements it pulls or pushes.
- * cycles spent in the elements this one pulls and pushes.
- */
 String
 Element::read_cycles_handler(Element *e, void *)
 {
     StringAccum sa;
-    if (e->_calls)
-	sa << e->_calls << ' ' << e->_self_cycles << ' '
-	   << e->_child_cycles << '\n';
     if (e->_task_calls)
-	sa << "tasks " << e->_task_calls << ' ' << e->_task_cycles << "\n";
+	sa << "tasks " << e->_task_calls << ' ' << e->_task_own_cycles << '\n';
     if (e->_timer_calls)
-	sa << "timers " << e->_timer_calls << ' ' << e->_timer_cycles << "\n";
+	sa << "timers " << e->_timer_calls << ' ' << e->_timer_own_cycles << '\n';
+    if (e->_xfer_calls)
+	sa << "xfer " << e->_xfer_calls << ' ' << e->_xfer_own_cycles << '\n';
     return sa.take_string();
 }
 
@@ -2074,8 +2116,8 @@ write_task_tickets(const String &s, Element *e, void *thunk, ErrorHandler *errh)
 {
   Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
   int tix;
-  if (!cp_integer(s, &tix))
-    return errh->error("%<tickets%> takes an integer between 1 and %d", Task::MAX_TICKETS);
+  if (!IntArg().parse_saturating(s, tix))
+    return errh->error("syntax error");
   if (tix < 1) {
     errh->warning("tickets pinned at 1");
     tix = 1;
@@ -2095,12 +2137,30 @@ read_task_scheduled(Element *e, void *thunk)
 #if CLICK_DEBUG_SCHEDULING
     StringAccum sa;
     sa << task->scheduled();
-    if (!task->scheduled() && task->should_be_scheduled())
-	sa << " /* but pending */";
+    if (!task->on_scheduled_list() && task->scheduled()) {
+	sa << " /* not on list";
+	if (task->on_pending_list())
+	    sa << ", on pending";
+	sa << " */";
+    }
     return sa.take_string();
 #else
     return String(task->scheduled());
 #endif
+}
+
+static int
+write_task_scheduled(const String &str, Element *e, void *thunk, ErrorHandler *errh)
+{
+    Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
+    bool scheduled;
+    if (!BoolArg().parse(str, scheduled))
+	return errh->error("syntax error");
+    if (scheduled)
+	task->reschedule();
+    else
+	task->unschedule();
+    return 0;
 }
 
 #if CLICK_DEBUG_SCHEDULING
@@ -2126,7 +2186,7 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
     Task *task = (Task *)((uint8_t *)e + (intptr_t)thunk);
     Master *m = task->master();
     int tid;
-    if (!cp_integer(str, &tid) || tid > m->nthreads())
+    if (!IntArg().parse(str, tid) || tid > m->nthreads())
 	return errh->error("bad thread");
     task->move_thread(tid);
     return 0;
@@ -2137,21 +2197,35 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
  *
  * @param task Task object
  * @param signal optional NotifierSignal object
+ * @param flags defines handlers to install
  * @param prefix prefix for each handler
  *
- * Adds a standard set of handlers for the task.  They are:
+ * Adds a standard set of handlers for the task.  They can include:
  *
  * @li A "scheduled" read handler, which returns @c true if the task is
  * scheduled and @c false if not.
+ * @li A "scheduled" write handler, which accepts a Boolean and unschedules
+ * or reschedules the task as appropriate.
  * @li A "tickets" read handler, which returns the task's tickets.
  * @li A "tickets" write handler to set the task's tickets.
  * @li A "home_thread" read handler, which returns the task's home thread ID.
+ * @li A "home_thread" write handler, which sets the task's home thread ID.
+ *
+ * The @a flags argument controls which handlers are installed.  By default,
+ * this is all but the the "scheduled" write handler.  Individual flags are:
+ *
+ * @li TASKHANDLER_WRITE_SCHEDULED: A "scheduled" write handler.
+ * @li TASKHANDLER_WRITE_TICKETS: A "tickets" write handler.
+ * @li TASKHANDLER_WRITE_HOME_THREAD: A "home_thread" write handler.
+ * @li TASKHANDLER_WRITE_ALL: All available write handlers.
+ * @li TASKHANDLER_DEFAULT: Equals TASKHANDLER_WRITE_TICKETS |
+ * TASKHANDLER_WRITE_HOME_THREAD.
  *
  * Depending on Click's configuration options, some of these handlers might
  * not be available.  If Click was configured with schedule debugging, the
  * "scheduled" read handler will additionally report whether an unscheduled
- * task is pending, and a "notifier" read handler will report the state of
- * the @a signal, if any.
+ * task is pending, and a "notifier" read handler will report the state of the
+ * @a signal, if any.
  *
  * Each handler name is prefixed with the @a prefix string, so an element with
  * multiple Task objects can register handlers for each of them.
@@ -2159,18 +2233,22 @@ write_task_home_thread(const String &str, Element *e, void *thunk, ErrorHandler 
  * @sa add_read_handler, add_write_handler, set_handler
  */
 void
-Element::add_task_handlers(Task *task, NotifierSignal *signal, const String &prefix)
+Element::add_task_handlers(Task *task, NotifierSignal *signal, int flags, const String &prefix)
 {
     intptr_t task_offset = (uint8_t *)task - (uint8_t *)this;
     void *thunk = (void *)task_offset;
     add_read_handler(prefix + "scheduled", read_task_scheduled, thunk);
+    if (flags & TASKHANDLER_WRITE_SCHEDULED)
+	add_write_handler(prefix + "scheduled", write_task_scheduled, thunk);
 #if HAVE_STRIDE_SCHED
     add_read_handler(prefix + "tickets", read_task_tickets, thunk);
-    add_write_handler(prefix + "tickets", write_task_tickets, thunk);
+    if (flags & TASKHANDLER_WRITE_TICKETS)
+	add_write_handler(prefix + "tickets", write_task_tickets, thunk);
 #endif
 #if HAVE_MULTITHREAD
     add_read_handler(prefix + "home_thread", read_task_home_thread, thunk);
-    add_write_handler(prefix + "home_thread", write_task_home_thread, thunk);
+    if (flags & TASKHANDLER_WRITE_HOME_THREAD)
+	add_write_handler(prefix + "home_thread", write_task_home_thread, thunk);
 #endif
 #if CLICK_DEBUG_SCHEDULING
     if (signal) {
@@ -2190,7 +2268,7 @@ uint8_t_data_handler(int op, String &str, Element *element, const Handler *h, Er
     if (op == Handler::h_read) {
 	str = String((int) *ptr);
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 256) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 256) {
 	*ptr = x;
 	return 0;
     } else
@@ -2202,9 +2280,9 @@ bool_data_handler(int op, String &str, Element *element, const Handler *h, Error
 {
     bool *ptr = reinterpret_cast<bool *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
     if (op == Handler::h_read) {
-	str = cp_unparse_bool(*ptr);
+	str = String(*ptr);
 	return 0;
-    } else if (cp_bool(str, ptr))
+    } else if (BoolArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected boolean");
@@ -2218,7 +2296,7 @@ uint16_t_data_handler(int op, String &str, Element *element, const Handler *h, E
     if (op == Handler::h_read) {
 	str = String((int) *ptr);
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 65536) {
 	*ptr = x;
 	return 0;
     } else
@@ -2233,7 +2311,7 @@ uint16_t_net_data_handler(int op, String &str, Element *element, const Handler *
     if (op == Handler::h_read) {
 	str = String((int) ntohs(*ptr));
 	return 0;
-    } else if (cp_integer(str, &x) && x >= 0 && x < 65536) {
+    } else if (IntArg().parse(str, x) && x >= 0 && x < 65536) {
 	*ptr = htons(x);
 	return 0;
     } else
@@ -2248,7 +2326,7 @@ uint32_t_net_data_handler(int op, String &str, Element *element, const Handler *
     if (op == Handler::h_read) {
 	str = String(ntohl(*ptr));
 	return 0;
-    } else if (cp_integer(str, &x)) {
+    } else if (IntArg().parse(str, x)) {
 	*ptr = htonl(x);
 	return 0;
     } else
@@ -2262,7 +2340,7 @@ integer_data_handler(int op, String &str, Element *element, const Handler *h, Er
     if (op == Handler::h_read) {
 	str = String(*ptr);
 	return 0;
-    } else if (cp_integer(str, ptr))
+    } else if (IntArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected integer");
@@ -2276,7 +2354,7 @@ atomic_uint32_t_data_handler(int op, String &str, Element *element, const Handle
     if (op == Handler::h_read) {
 	str = String(ptr->value());
 	return 0;
-    } else if (cp_integer(str, &value)) {
+    } else if (IntArg().parse(str, value)) {
 	*ptr = value;
 	return 0;
     } else
@@ -2291,7 +2369,7 @@ double_data_handler(int op, String &str, Element *element, const Handler *h, Err
     if (op == Handler::h_read) {
 	str = String(*ptr);
 	return 0;
-    } else if (cp_double(str, ptr))
+    } else if (DoubleArg().parse(str, *ptr))
 	return 0;
     else
 	return errh->error("expected real number");
@@ -2316,7 +2394,7 @@ ip_address_data_handler(int op, String &str, Element *element, const Handler *h,
     if (op == Handler::h_read) {
 	str = ptr->unparse();
 	return 0;
-    } if (cp_ip_address(str, ptr, element))
+    } if (IPAddressArg().parse(str, *ptr, element))
 	return 0;
     else
 	return errh->error("expected IP address");
@@ -2348,8 +2426,21 @@ timestamp_data_handler(int op, String &str, Element *element, const Handler *h, 
 	return errh->error("expected timestamp");
 }
 
+static int
+interval_data_handler(int op, String &str, Element *element, const Handler *h, ErrorHandler *errh)
+{
+    Timestamp *ptr = reinterpret_cast<Timestamp *>(reinterpret_cast<uintptr_t>(element) + reinterpret_cast<uintptr_t>(h->user_data(op)));
+    if (op == Handler::h_read) {
+	str = ptr->unparse_interval();
+	return 0;
+    } else if (cp_time(str, ptr, true))
+	return 0;
+    else
+	return errh->error("expected time in seconds");
+}
+
 inline void
-Element::add_data_handlers(const String &name, int flags, HandlerCallback callback, void *data)
+Element::add_data_handlers(const char *name, int flags, HandlerCallback callback, void *data)
 {
     uintptr_t x = reinterpret_cast<uintptr_t>(data) - reinterpret_cast<uintptr_t>(this);
     set_handler(name, flags, callback, x, x);
@@ -2367,63 +2458,65 @@ Element::add_data_handlers(const String &name, int flags, HandlerCallback callba
  * Handler::h_write), registers a write handler.  These handlers read or set
  * the data stored at @a *data, which might, for example, be an element
  * instance variable.  This data is unparsed and/or parsed using the expected
- * functions; for example, the <tt>bool</tt> version uses cp_unparse_bool()
- * and cp_bool().
+ * functions; for example, the <tt>bool</tt> version uses BoolArg::unparse()
+ * and BoolArg::parse().  @a name is passed to String::make_stable.  The memory
+ * referenced by @a name must remain valid for as long as the router containing
+ * this element.
  *
  * Overloaded versions of this function are available for many fundamental
  * data types.
  */
 void
-Element::add_data_handlers(const String &name, int flags, uint8_t *data)
+Element::add_data_handlers(const char *name, int flags, uint8_t *data)
 {
     add_data_handlers(name, flags, uint8_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, bool *data)
+Element::add_data_handlers(const char *name, int flags, bool *data)
 {
     add_data_handlers(name, flags, bool_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, uint16_t *data)
+Element::add_data_handlers(const char *name, int flags, uint16_t *data)
 {
     add_data_handlers(name, flags, uint16_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, int *data)
+Element::add_data_handlers(const char *name, int flags, int *data)
 {
     add_data_handlers(name, flags, integer_data_handler<int>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned *data)
+Element::add_data_handlers(const char *name, int flags, unsigned *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, atomic_uint32_t *data)
+Element::add_data_handlers(const char *name, int flags, atomic_uint32_t *data)
 {
     add_data_handlers(name, flags, atomic_uint32_t_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, long *data)
+Element::add_data_handlers(const char *name, int flags, long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<long>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned long *data)
+Element::add_data_handlers(const char *name, int flags, unsigned long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned long>, data);
 }
@@ -2431,14 +2524,14 @@ Element::add_data_handlers(const String &name, int flags, unsigned long *data)
 #if HAVE_LONG_LONG
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, long long *data)
+Element::add_data_handlers(const char *name, int flags, long long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<long long>, data);
 }
 
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, unsigned long long *data)
+Element::add_data_handlers(const char *name, int flags, unsigned long long *data)
 {
     add_data_handlers(name, flags, integer_data_handler<unsigned long long>, data);
 }
@@ -2447,11 +2540,25 @@ Element::add_data_handlers(const String &name, int flags, unsigned long long *da
 #if HAVE_FLOAT_TYPES
 /** @overload */
 void
-Element::add_data_handlers(const String &name, int flags, double *data)
+Element::add_data_handlers(const char *name, int flags, double *data)
 {
     add_data_handlers(name, flags, double_data_handler, data);
 }
 #endif
+
+/** @overload */
+void
+Element::add_data_handlers(const char *name, int flags, IPAddress *data)
+{
+    add_data_handlers(name, flags, ip_address_data_handler, data);
+}
+
+/** @overload */
+void
+Element::add_data_handlers(const char *name, int flags, EtherAddress *data)
+{
+    add_data_handlers(name, flags, ether_address_data_handler, data);
+}
 
 /** @brief Register read and/or write handlers accessing @a data.
  *
@@ -2460,30 +2567,26 @@ Element::add_data_handlers(const String &name, int flags, double *data)
  * removing leading and trailing whitespace.
  */
 void
-Element::add_data_handlers(const String &name, int flags, String *data)
+Element::add_data_handlers(const char *name, int flags, String *data)
 {
     add_data_handlers(name, flags, string_data_handler, data);
 }
 
-/** @overload */
+/** @brief Register read and/or write handlers accessing @a data.
+ * @param name handler name
+ * @param flags handler flags, containing at least one of Handler::h_read
+ * and Handler::h_write
+ * @param data pointer to data
+ * @param is_interval If true, the read handler unparses *@a data as an
+ *   interval. */
 void
-Element::add_data_handlers(const String &name, int flags, IPAddress *data)
+Element::add_data_handlers(const char *name, int flags, Timestamp *data,
+			   bool is_interval)
 {
-    add_data_handlers(name, flags, ip_address_data_handler, data);
-}
-
-/** @overload */
-void
-Element::add_data_handlers(const String &name, int flags, EtherAddress *data)
-{
-    add_data_handlers(name, flags, ether_address_data_handler, data);
-}
-
-/** @overload */
-void
-Element::add_data_handlers(const String &name, int flags, Timestamp *data)
-{
-    add_data_handlers(name, flags, timestamp_data_handler, data);
+    if (is_interval)
+	add_data_handlers(name, flags, interval_data_handler, data);
+    else
+	add_data_handlers(name, flags, timestamp_data_handler, data);
 }
 
 /** @brief Register read and/or write handlers accessing @a data in network
@@ -2501,14 +2604,14 @@ Element::add_data_handlers(const String &name, int flags, Timestamp *data)
  * instance variable.
  */
 void
-Element::add_net_order_data_handlers(const String &name, int flags, uint16_t *data)
+Element::add_net_order_data_handlers(const char *name, int flags, uint16_t *data)
 {
     add_data_handlers(name, flags, uint16_t_net_data_handler, data);
 }
 
 /** @overload */
 void
-Element::add_net_order_data_handlers(const String &name, int flags, uint32_t *data)
+Element::add_net_order_data_handlers(const char *name, int flags, uint32_t *data)
 {
     add_data_handlers(name, flags, uint32_t_net_data_handler, data);
 }
@@ -2526,23 +2629,25 @@ configuration_handler(int operation, String &str, Element *e,
 	keyword += 2;
     }
 
-    int gotit = 0;
+    bool found = false, found_positional = false;
     String value, rest;
     if (keyword)
-	gotit = cp_va_kparse_remove_keywords(conf, e, errh, keyword, 0, cpArgument, &value, cpEnd);
-    if (gotit == 0 && argno >= 0 && conf.size() > argno
+	(void) Args(e).bind(conf)
+	    .read(keyword, AnyArg(), value).read_status(found)
+	    .consume();
+    if (!found && argno >= 0 && conf.size() > argno
 	&& (!keyword || !cp_keyword(conf[argno], &value, &rest) || !rest))
-	gotit = 2;
+	found = found_positional = true;
 
     if (operation == Handler::h_read) {
-	if (gotit == 1)
-	    str = value;
-	else if (gotit == 2)
+	if (found_positional)
 	    str = conf[argno];
+	else if (found)
+	    str = value;
 	else
 	    str = String();
-    } else if (keyword || gotit == 2) {
-	if (gotit == 2)
+    } else if (keyword || found_positional) {
+	if (found_positional)
 	    conf[argno] = str;
 	else
 	    conf.push_back(String(keyword) + " " + str);
@@ -2570,9 +2675,9 @@ configuration_handler(int operation, String &str, Element *e,
  * configuration arguments:
  *
  * @code
- * add_read_handler("first", read_positional_handler, (void *) 0);
- * add_read_handler("second", read_positional_handler, (void *) 1);
- * add_read_handler("third", read_positional_handler, (void *) 2);
+ * add_read_handler("first", read_positional_handler, 0);
+ * add_read_handler("second", read_positional_handler, 1);
+ * add_read_handler("third", read_positional_handler, 2);
  * @endcode
  *
  * Returns the empty string if there aren't enough arguments.
@@ -2587,7 +2692,8 @@ String
 Element::read_positional_handler(Element *element, void *user_data)
 {
     String str;
-    (void) configuration_handler(Handler::h_read, str, element, (uintptr_t) user_data, 0, ErrorHandler::silent_handler());
+    SilentErrorHandler errh;
+    (void) configuration_handler(Handler::h_read, str, element, (uintptr_t) user_data, 0, &errh);
     return str;
 }
 
@@ -2599,7 +2705,7 @@ Element::read_positional_handler(Element *element, void *user_data)
  * returns the element's "DATA" keyword argument:
  *
  * @code
- * add_read_handler("data", read_keyword_handler, (void *) "DATA");
+ * add_read_handler("data", read_keyword_handler, "DATA");
  * @endcode
  *
  * Returns the empty string if the configuration doesn't have the specified
@@ -2612,7 +2718,7 @@ Element::read_positional_handler(Element *element, void *user_data)
  * missing:
  *
  * @code
- * add_write_handler("data", reconfigure_keyword_handler, (void *) "0 DATA");
+ * add_write_handler("data", reconfigure_keyword_handler, "0 DATA");
  * @endcode
  *
  * @sa configuration: used to obtain the element's current configuration.
@@ -2622,7 +2728,8 @@ String
 Element::read_keyword_handler(Element *element, void *user_data)
 {
     String str;
-    (void) configuration_handler(Handler::h_read, str, element, -1, (const char *) user_data, ErrorHandler::silent_handler());
+    SilentErrorHandler errh;
+    (void) configuration_handler(Handler::h_read, str, element, -1, (const char *) user_data, &errh);
     return str;
 }
 
@@ -2777,10 +2884,9 @@ Element::local_llrpc(unsigned command, void *data)
 void
 Element::push(int port, Packet *p)
 {
-    (void) port;
     p = simple_action(p);
     if (p)
-	output(0).push(p);
+	output(port).push(p);
 }
 
 /** @brief Pull a packet from pull output @a port.
@@ -2798,8 +2904,7 @@ Element::push(int port, Packet *p)
 Packet *
 Element::pull(int port)
 {
-    (void) port;
-    Packet *p = input(0).pull();
+    Packet *p = input(port).pull();
     if (p)
 	p = simple_action(p);
     return p;
@@ -2844,6 +2949,11 @@ Element::pull(int port)
  * COMPLETE_FLOW or "x/x" indicating that packets can flow between the first
  * input and the first output.
  *
+ * Most elements that use simple_action() have exactly one input and one
+ * output.  However, simple_action() may be used for any number of inputs and
+ * outputs; a packet arriving on input port P will be emitted or output port
+ * P.
+ *
  * For technical branch prediction-related reasons, elements that use
  * simple_action() can perform quite a bit slower than elements that use
  * push() and pull() directly.  The devirtualizer (click-devirtualize) can
@@ -2862,32 +2972,12 @@ Element::simple_action(Packet *p)
  * The Task(Element *) constructor creates a Task object that calls this
  * method when it fires.  Most elements that have tasks use this method.
  *
- * @note The default implementation calls the deprecated run_timer() method
- * (the one with no parameters).  In future, the default implementation will
- * cause an assertion failure.
+ * @note The default implementation causes an assertion failure.
  */
 bool
 Element::run_task(Task *)
 {
-    return run_task();
-}
-
-/** @brief Run the element's task (deprecated).
- *
- * @return true if the task accomplished some meaningful work, false otherwise
- *
- * @deprecated This method is deprecated.  Elements should override the
- * run_task(Task *) function instead, which can differentiate between
- * multiple Task objects.
- *
- * The Task(Element *) constructor creates a Task object that calls this
- * method (via Element::run_task(Task *)) when it fires.  The default
- * implementation causes an assertion failure.
- */
-bool
-Element::run_task()
-{
-    assert(0 /* run_task not overridden */);
+    assert(0 /* run_task implementation missing */);
     return false;
 }
 
@@ -2898,34 +2988,13 @@ Element::run_task()
  * The Timer(Element *) constructor creates a Timer object that calls this
  * method when it fires.  Most elements that have timers use this method.
  *
- * @note The default implementation calls the deprecated run_timer() method
- * (the one with no parameters).  In future, the default implementation will
- * cause an assertion failure.
+ * @note The default implementation causes an assertion failure.
  */
 void
 Element::run_timer(Timer *timer)
 {
-    static int nwarn = 0;
-    if (nwarn++ < 3)
-	click_chatter("warning: calling deprecated run_timer() method for %{element};\nreplace with run_timer(Timer *) in your code", this);
-    run_timer();
+    assert(0 /* run_timer implementation missing */);
     (void) timer;
-}
-
-/** @brief Run the element's timer (deprecated).
- *
- * @deprecated This method is deprecated.  Elements should override the
- * run_timer(Timer *) function instead, which can differentiate between
- * multiple Timer objects.
- *
- * The Timer(Element *) constructor creates a Timer object that calls this
- * method (via Element::run_timer(Timer *)) when it fires.  The default
- * implementation causes an assertion failure.
- */
-void
-Element::run_timer()
-{
-    assert(0 /* run_timer not overridden */);
 }
 
 CLICK_ENDDECLS

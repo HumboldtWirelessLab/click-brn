@@ -24,6 +24,9 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
+
+#include "elements/brn2/brnelement.hh"
+
 #include "elements/brn2/vlan/brn2vlantable.hh"
 #include "elements/brn2/services/dhcp/dhcp.h"
 #include "elements/brn2/services/dhcp/dhcpsubnetlist.hh"
@@ -48,7 +51,7 @@ CLICK_DECLS
 
 //#define NO_DHT
 
-class BRN2DNSServer : public Element {
+class BRN2DNSServer : public BRNElement {
 
  public:
   //
@@ -125,9 +128,6 @@ class BRN2DNSServer : public Element {
   //
   //member
   //
-public:
-  int _debug;
-
 private:
   EtherAddress _me;
 
@@ -143,6 +143,8 @@ private:
   BRN2DHCPSubnetList *_dhcpsubnetlist;
   BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
+
+  bool _server_redirect;
 };
 
 CLICK_ENDDECLS

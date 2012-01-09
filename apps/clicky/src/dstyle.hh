@@ -15,7 +15,7 @@ class handler_value;
 
 enum {
     dedisp_none = 0,
-    dedisp_open = 1,
+    dedisp_normal = 1,
     dedisp_closed = 2,
     dedisp_passthrough = -1,
     dedisp_expanded = -2,
@@ -53,7 +53,7 @@ static inline bool dedisp_visible(int dedisp) {
 }
 
 static inline bool dedisp_children_visible(int dedisp) {
-    return dedisp == dedisp_open || dedisp == dedisp_expanded;
+    return dedisp == dedisp_normal || dedisp == dedisp_expanded;
 }
 
 enum {
@@ -136,7 +136,6 @@ struct dactivity_style : public enable_ref_ptr {
     int type;
     double min_value;
     double max_value;
-    double rate_period;
     double decay;
     int autorefresh;
     int autorefresh_period;
@@ -174,6 +173,7 @@ class dcss_selector { public:
 	return _type_glob;
     }
 
+    void unparse(StringAccum &sa) const;
     String unparse() const;
 
     bool match(crouter *cr, const delt *e, int *sensitivity = 0) const;
@@ -402,7 +402,10 @@ class dcss { public:
 
     const char *parse(const String &str, const String &media, const char *s);
 
+    void unparse_selector(StringAccum &sa) const;
     String unparse_selector() const;
+    void unparse(StringAccum &sa) const;
+    String unparse() const;
 
     int assign(dcss_propmatch **begin, dcss_propmatch **end) const;
     static void assign_all(dcss_propmatch *pbegin, dcss_propmatch *pend,
@@ -449,6 +452,9 @@ class dcss_set { public:
     }
     const String &text() const {
 	return _text;
+    }
+    dcss_set *below() const {
+	return _below;
     }
 
     dcss_set *remedia(const String &media);

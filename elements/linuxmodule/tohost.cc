@@ -19,7 +19,7 @@
 
 #include <click/config.h>
 #include "tohost.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 
 #include <click/cxxprotect.h>
@@ -73,11 +73,11 @@ ToHost::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     String type;
     if (AnyDevice::configure_keywords(conf, errh, false) < 0
-	|| cp_va_kparse(conf, this, errh,
-			"DEVNAME", cpkP, cpString, &_devname,
-			"SNIFFERS", 0, cpBool, &_sniffers,
-			"TYPE", 0, cpWord, &type,
-			cpEnd) < 0)
+	|| (Args(conf, this, errh)
+	    .read_p("DEVNAME", _devname)
+	    .read("SNIFFERS", _sniffers)
+	    .read("TYPE", WordArg(), type)
+	    .complete() < 0))
 	return -1;
     if (type == "ETHER" || type == "")
 	_type = ARPHRD_ETHER;
@@ -96,12 +96,11 @@ ToHost::initialize(ErrorHandler *errh)
 
     // Avoid warnings about "device down" with FromHost devices -- FromHost
     // brings up its device during initialize().
-    int before = errh->nerrors();
     if (_devname) {
 	net_device *dev = lookup_device(errh);
 	set_device(dev, &to_host_map, 0);
     }
-    return errh->nerrors() == before ? 0 : -1;
+    return errh->nerrors() ? -1 : 0;
 }
 
 void

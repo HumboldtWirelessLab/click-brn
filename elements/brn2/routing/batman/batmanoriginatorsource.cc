@@ -40,9 +40,9 @@
 CLICK_DECLS
 
 BatmanOriginatorSource::BatmanOriginatorSource()
-  :  _send_timer(static_send_timer_hook,this),
-     _debug(/*BrnLogger::DEFAULT*/0)
+  :  _send_timer(static_send_timer_hook,this)
 {
+  BRNElement::init();
 }
 
 BatmanOriginatorSource::~BatmanOriginatorSource()
@@ -53,8 +53,10 @@ int
 BatmanOriginatorSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEID", cpkP+cpkM , cpElement, &_nodeid,  //TODO: replace by nodeid and send paket to each (wireless) device
+      "BATMANTABLE", cpkP+cpkM , cpElement, &_brt,
+      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
       "INTERVAL", cpkP+cpkM , cpInteger, &_interval,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -92,9 +94,39 @@ BatmanOriginatorSource::sendOriginator()
 {
   _id++;
 
+  BatmanRoutingTable::BatmanNodePList bnl;
   BRN2Device *dev = _nodeid->getDeviceByIndex(0);
-  WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, dev->getEtherAddress(),0);
-  WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN, 10, DEFAULT_TOS);
+  int num_neighbours = 0;
+
+  if ( _brt->_originator_mode == BATMAN_ORIGINATORMODE_COMPRESSED ) {
+    /*Compressed Version*/
+    _brt->get_nodes_to_be_forwarded(_id, &bnl);
+    num_neighbours = bnl.size();
+    /*End Compressed Version*/
+  }
+
+  WritablePacket *p = BatmanProtocol::new_batman_originator(_id, 0, num_neighbours);
+
+  if ( _brt->_originator_mode == BATMAN_ORIGINATORMODE_COMPRESSED ) {
+    /*Compressed Version*/
+    struct batman_node s_bn;
+    for ( int i = 0; i < bnl.size(); i++ ) {
+      BatmanRoutingTable::BatmanNode *bn = bnl[i];
+
+      s_bn.id = htonl(bn->_latest_originator_id);
+      s_bn.metric = htons(bn->_best_metric);
+      s_bn.flags = 0;
+      s_bn.hops = bn->_hops_best_metric;
+      memcpy(s_bn.src, bn->_addr.data(), 6);
+
+      BatmanProtocol::add_batman_node(p, &s_bn, i);
+      bn->forward_node(_id);
+    }
+    /*End Compressed Version*/
+  }
+
+  WritablePacket *p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_BATMAN, BRN_PORT_BATMAN,
+                                                         BATMAN_MAX_ORIGINATOR_HOPS, DEFAULT_TOS);
 
   BRNPacketAnno::set_ether_anno(p_brn, dev->getEtherAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
 
@@ -105,30 +137,10 @@ BatmanOriginatorSource::sendOriginator()
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BatmanOriginatorSource *fl = (BatmanOriginatorSource *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BatmanOriginatorSource *fl = (BatmanOriginatorSource *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 BatmanOriginatorSource::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

@@ -4,25 +4,33 @@
 
 #include "dhtnode.hh"
 
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 
 CLICK_DECLS
-DHTnode::DHTnode()
+DHTnode::DHTnode():
+  _status(STATUS_UNKNOWN),
+  _last_ping(Timestamp(0)),
+  _failed_ping(0),
+  _neighbor(false),
+  _hop_distance(0),
+  _rtt(0),
+  _extra(NULL)
 {
-  init();
-
   _ether_addr = EtherAddress();
 
   memset(_md5_digest, 0, sizeof(_md5_digest));
   _digest_length = DEFAULT_DIGEST_LENGTH;
-
-  _extra = NULL;
 }
 
-DHTnode::DHTnode(EtherAddress addr)
+DHTnode::DHTnode(EtherAddress addr):
+  _status(STATUS_UNKNOWN),
+  _last_ping(Timestamp(0)),
+  _failed_ping(0),
+  _neighbor(false),
+  _hop_distance(0),
+  _rtt(0),
+  _extra(NULL)
 {
-  init();
-
   _ether_addr = addr;
 
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(addr.data()).c_str(),
@@ -31,20 +39,30 @@ DHTnode::DHTnode(EtherAddress addr)
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
-DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid)
+DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid):
+  _status(STATUS_UNKNOWN),
+  _last_ping(Timestamp(0)),
+  _failed_ping(0),
+  _neighbor(false),
+  _hop_distance(0),
+  _rtt(0),
+  _extra(NULL)
 {
-  init();
-
   _ether_addr = addr;
 
   memcpy(_md5_digest, nodeid, 16);
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
-DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length)
+DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length):
+  _status(STATUS_UNKNOWN),
+  _last_ping(Timestamp(0)),
+  _failed_ping(0),
+  _neighbor(false),
+  _hop_distance(0),
+  _rtt(0),
+  _extra(NULL)
 {
-  init();
-
   _ether_addr = addr;
 
   memset(_md5_digest, 0, sizeof(_md5_digest));
@@ -59,7 +77,7 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length)
 }
 
 void
-DHTnode::init()
+DHTnode::reset()
 {
   _status = STATUS_UNKNOWN;
   _extra = NULL;
@@ -142,8 +160,9 @@ DHTnode::set_age(Timestamp *age)
 }
 
 int
-DHTnode::get_age_s()
+DHTnode::get_age_s(Timestamp *now)
 {
+  if (now) return (*now - _age).sec();
   return( (Timestamp::now() - _age).sec());
 }
 

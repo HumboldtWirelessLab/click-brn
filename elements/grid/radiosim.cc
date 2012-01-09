@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include "radiosim.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <math.h>
@@ -45,10 +45,10 @@ RadioSim::configure(Vector<String> &conf, ErrorHandler *errh)
     String rest;
     if (cp_keyword(conf[i], &kw, &rest)) {
       if (kw == "USE_XY") {
-	bool res = cp_bool(rest, &_use_xy);
-	if (!res)
-	  return errh->error("unable to parse boolean arg to USE_XY keyword");
-      continue;
+	  bool res = BoolArg().parse(rest, _use_xy);
+	  if (!res)
+	      return errh->error("unable to parse boolean arg to USE_XY keyword");
+	  continue;
       }
     }
 
@@ -149,7 +149,7 @@ RadioSim::rs_write_handler(const String &arg, Element *element,
   cp_spacevec(arg, words);
   int xi, xlat, xlon;
   if(words.size() != 3 ||
-     !cp_integer(words[0], 10, &xi) ||
+     !IntArg(10).parse(words[0], xi) ||
      !cp_real10(words[1], 5, &xlat) ||
      !cp_real10(words[2], 5, &xlon))
     return errh->error("%s: expecting node-index lat lon", l->name().c_str());
@@ -184,8 +184,8 @@ RadioSim::rs_read_handler(Element *f, void *)
 void
 RadioSim::add_handlers()
 {
-  add_write_handler("loc", rs_write_handler, (void *) 0);
-  add_read_handler("loc", rs_read_handler, (void *) 0);
+  add_write_handler("loc", rs_write_handler, 0);
+  add_read_handler("loc", rs_read_handler, 0);
 }
 
 CLICK_ENDDECLS

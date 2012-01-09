@@ -87,21 +87,32 @@ class TCPRewriter : public IPRewriterBase { public:
 
     class TCPFlow : public IPRewriterFlow { public:
 
-	TCPFlow(const IPFlowID &flowid, int output,
-		const IPFlowID &rewritten_flowid, int reply_output,
-		bool guaranteed, click_jiffies_t expiry_j,
-		IPRewriterBase *owner, int owner_input)
-	    : IPRewriterFlow(flowid, output, rewritten_flowid, reply_output,
-			     IP_PROTO_TCP, guaranteed, expiry_j,
-			     owner, owner_input) {
-	    _trigger[0] = _trigger[1] = 0;
-	    _delta[0] = _delta[1] = _old_delta[0] = _old_delta[1] = 0;
-	    _tflags = 0;
+	TCPFlow(IPRewriterInput *owner, const IPFlowID &flowid,
+		const IPFlowID &rewritten_flowid,
+		bool guaranteed, click_jiffies_t expiry_j)
+	    : IPRewriterFlow(owner, flowid, rewritten_flowid,
+			     IP_PROTO_TCP, guaranteed, expiry_j), _dt(0) {
+	}
+
+	~TCPFlow() {
+	    while (delta_transition *x = _dt) {
+		_dt = x->next();
+		delete x;
+	    }
 	}
 
 	enum {
-	    tf_seqno_delta = 1, tf_reply_seqno_delta = 2
+	    s_forward_done = 1, s_reply_done = 2,
+	    s_both_done = (s_forward_done | s_reply_done),
+	    s_forward_data = 4, s_reply_data = 8,
+	    s_both_data = (s_forward_data | s_reply_data)
 	};
+	bool both_done() const {
+	    return (_tflags & s_both_done) == s_both_done;
+	}
+	bool both_data() const {
+	    return (_tflags & s_both_data) == s_both_data;
+	}
 
 	int update_seqno_delta(bool direction, tcp_seq_t old_seqno, int32_t delta);
 	tcp_seq_t new_seq(bool direction, tcp_seq_t seqno) const;
@@ -113,9 +124,22 @@ class TCPRewriter : public IPRewriterBase { public:
 
       private:
 
-	tcp_seq_t _trigger[2];
-	int32_t _delta[2];
-	int32_t _old_delta[2];
+	struct delta_transition {
+	    int32_t delta[2];
+	    tcp_seq_t trigger[2];
+	    uintptr_t nextptr;
+	    delta_transition() {
+		memset(this, 0, sizeof(delta_transition));
+	    }
+	    delta_transition *next() const {
+		return reinterpret_cast<delta_transition *>(nextptr - (nextptr & 3));
+	    }
+	    bool has_trigger(bool direction) const {
+		return nextptr & (1 << direction);
+	    }
+	};
+
+	delta_transition *_dt;
 
 	void apply_sack(bool direction, click_tcp *tcp, int transport_len);
 
@@ -144,8 +168,8 @@ class TCPRewriter : public IPRewriterBase { public:
 
     SizedHashAllocator<sizeof(TCPFlow)> _allocator;
     unsigned _annos;
-    int _tcp_data_timeout;
-    int _tcp_done_timeout;
+    uint32_t _tcp_data_timeout;
+    uint32_t _tcp_done_timeout;
 
     int tcp_flow_timeout(const TCPFlow *mf) const {
 	if (mf->both_done())
@@ -171,14 +195,21 @@ TCPRewriter::destroy_flow(IPRewriterFlow *flow)
 inline tcp_seq_t
 TCPRewriter::TCPFlow::new_seq(bool direction, tcp_seq_t seqno) const
 {
-    return seqno + (SEQ_GEQ(seqno, _trigger[direction]) ? _delta[direction] : _old_delta[direction]);
+    delta_transition *dt = _dt;
+    while (dt && dt->has_trigger(direction)
+	   && !SEQ_GEQ(seqno, dt->trigger[direction]))
+	dt = dt->next();
+    return dt ? seqno + dt->delta[direction] : seqno;
 }
 
 inline tcp_seq_t
 TCPRewriter::TCPFlow::new_ack(bool direction, tcp_seq_t ackno) const
 {
-    tcp_seq_t mod_ackno = ackno - _delta[!direction];
-    return (SEQ_GEQ(mod_ackno, _trigger[!direction]) ? mod_ackno : ackno - _old_delta[!direction]);
+    delta_transition *dt = _dt;
+    while (dt && dt->has_trigger(!direction)
+	   && !SEQ_GEQ(ackno - dt->delta[!direction], dt->trigger[!direction]))
+	dt = dt->next();
+    return dt ? ackno - dt->delta[!direction] : ackno;
 }
 
 CLICK_ENDDECLS

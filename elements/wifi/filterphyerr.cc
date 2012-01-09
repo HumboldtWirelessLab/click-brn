@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/packet_anno.hh>
 #include <click/straccum.hh>
 #include <clicknet/wifi.h>
@@ -73,7 +73,7 @@ FilterPhyErr_read_param(Element *e, void *thunk)
 void
 FilterPhyErr::add_handlers()
 {
-  add_read_handler("drops", FilterPhyErr_read_param, (void *) H_DROPS);
+  add_read_handler("drops", FilterPhyErr_read_param, H_DROPS);
 }
 
 CLICK_ENDDECLS

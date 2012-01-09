@@ -5,12 +5,6 @@
 
 CLICK_DECLS
 
-#define MAGIC_1     (0x1f)    /* from GNU/Linux version */
-#define MAGIC_2     (0x9D)    /* from GNU/Linux version */
-#define FIRST       (257)     /* from GNU/Linux version */
-#define BIT_MASK    (0x1f)    /* from GNU/Linux version */
-#define BLOCK_MODE  (0x80)    /* from GNU/Linux version */
-
 #define BITS 12                   /* Setting the number of bits to 12, 13*/
 #define HASHING_SHIFT (BITS-8)    /* or 14 affects several constants.    */
 #define MAX_VALUE (1 << BITS) - 1 /* Note that MS-DOS machines need to   */
@@ -47,29 +41,22 @@ class LZW
  private:
 
   void reset_tables();
-  int find_match(unsigned int hash_prefix, unsigned int hash_character);
-  unsigned char *decode_string(unsigned char *buffer,unsigned int code);
-  unsigned int input_code(unsigned char *input, int *pos, int inputlen);
-  void output_code(unsigned char *output, int *pos, unsigned int code, int max_outputlen);
+  int32_t find_match(uint32_t hash_prefix, uint32_t hash_character);
+  unsigned char *decode_string(unsigned char *buffer, uint32_t code);
+  uint32_t input_code(unsigned char *input, int32_t *pos, int32_t inputlen);
+  void output_code(unsigned char *output, int32_t *pos, uint32_t code, int32_t max_outputlen);
 
-  /******************************************************************************************/
-  /*****************************  Unused GNU Code *******************************************/
-  /******************************************************************************************/
-  unsigned int mask(const int n_bits);
-  unsigned int input_code_gnu(unsigned char *input, int *pos, int inputlen, const int n_bits);
-  void output_code_gnu(unsigned char *output, int *pos, unsigned int code, const int n_bits);
-
-  int *code_value;                  /* This is the code value array        */
-  unsigned int *prefix_code;        /* This array holds the prefix codes   */
+  int32_t *code_value;                  /* This is the code value array        */
+  uint32_t *prefix_code;        /* This array holds the prefix codes   */
   unsigned char *append_character;  /* This array holds the appended chars */
   unsigned char *decode_stack;      /* This array holds the decoded string */
 
-  unsigned int b_mask;
-  int n_bits_prev;
-  int input_bit_count;
-  unsigned long input_bit_buffer;
-  int output_bit_count;
-  unsigned long output_bit_buffer;
+  uint32_t b_mask;
+  int32_t n_bits_prev;
+  int32_t input_bit_count;
+  uint32_t input_bit_buffer;
+  int32_t output_bit_count;
+  uint32_t output_bit_buffer;
 
   int _debug;
 };

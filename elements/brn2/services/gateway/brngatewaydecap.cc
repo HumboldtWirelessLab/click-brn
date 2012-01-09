@@ -39,7 +39,10 @@
 
 CLICK_DECLS
 
-BRNGatewayDecap::BRNGatewayDecap() {}
+BRNGatewayDecap::BRNGatewayDecap()
+{
+  BRNElement::init();
+}
 
 BRNGatewayDecap::~BRNGatewayDecap() {}
 
@@ -47,6 +50,7 @@ int
 BRNGatewayDecap::configure (Vector<String> &conf, ErrorHandler *errh) {
   if (cp_va_kparse(conf, this, errh,
                   "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
+                  "DEBUG", cpkP, cpInteger, &_debug,
                   cpEnd) < 0)
     return -1;
 
@@ -125,6 +129,12 @@ BRNGatewayDecap::push(int port, Packet *p) {
   
 	// ... and output
 	output(0).push(p);
+}
+
+void
+BRNGatewayDecap::add_handlers()
+{
+  BRNElement::add_handlers();
 }
 
 EXPORT_ELEMENT(BRNGatewayDecap)

@@ -20,7 +20,7 @@
 
 #include <click/config.h>
 #include "aggpktcounter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/packet_anno.hh>
 #include <click/router.hh>
@@ -100,10 +100,10 @@ AggregatePacketCounter::configure(Vector<String> &conf, ErrorHandler *errh)
     Element *e = 0;
     String anno = String::make_stable("PACKET_NUMBER");
 
-    if (cp_va_kparse(conf, this, errh,
-		     "NOTIFIER", 0, cpElement, &e,
-		     "ANNO", 0, cpWord, &anno,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read("NOTIFIER", e)
+	.read("ANNO", WordArg(), anno)
+	.complete() < 0)
 	return -1;
 
     if (anno == "NONE")
@@ -295,10 +295,8 @@ AggregatePacketCounter::flow_handler(uint32_t aggregate, FlowFunc func)
 int
 AggregatePacketCounter::thing_read_handler(int, String& s, Element* e, const Handler* h, ErrorHandler* errh)
 {
-    uint32_t aggregate;
-    if (!s)
-	aggregate = 0;
-    else if (!cp_integer(cp_uncomment(s), &aggregate))
+    uint32_t aggregate = 0;
+    if (s && !IntArg().parse(cp_uncomment(s), aggregate))
 	return errh->error("argument should be aggregate number");
     FlowFunc ff = (h->read_user_data() ? &Flow::undelivered : &Flow::received);
     AggregatePacketCounter *apc = static_cast<AggregatePacketCounter *>(e);
@@ -309,8 +307,8 @@ AggregatePacketCounter::thing_read_handler(int, String& s, Element* e, const Han
 void
 AggregatePacketCounter::add_handlers()
 {
-    add_write_handler("clear", write_handler, (void *)H_CLEAR);
-    add_read_handler("count", read_handler, (void *)H_COUNT);
+    add_write_handler("clear", write_handler, H_CLEAR);
+    add_read_handler("count", read_handler, H_COUNT);
     set_handler("received", Handler::h_read | Handler::h_read_param, thing_read_handler, 0);
     set_handler("undelivered", Handler::h_read | Handler::h_read_param, thing_read_handler, (void*) 1);
 }

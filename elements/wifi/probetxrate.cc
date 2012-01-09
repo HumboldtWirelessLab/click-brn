@@ -16,7 +16,7 @@
  */
 
 #include <click/config.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/packet_anno.hh>
@@ -50,23 +50,19 @@ ProbeTXRate::configure(Vector<String> &conf, ErrorHandler *errh)
   _active = true;
   _original_retries = 4;
   _min_sample = 20;
-  int ret = cp_va_kparse(conf, this, errh,
-			 "OFFSET", 0, cpUnsigned, &_offset,
-			 "WINDOW", 0, cpUnsigned, &_rate_window_ms,
-			 "THRESHOLD", 0, cpUnsigned, &_packet_size_threshold,
-			 "DEBUG", 0, cpBool, &_debug,
-			 "RT", 0, cpElement, &_rtable,
-			 "ACTIVE", 0, cpBool, &_active,
-			 cpEnd);
+  int ret = Args(conf, this, errh)
+      .read("OFFSET", _offset)
+      .read("WINDOW", _rate_window_ms)
+      .read("THRESHOLD", _packet_size_threshold)
+      .read("DEBUG", _debug)
+      .read_m("RT", ElementCastArg("AvailableRates"), _rtable)
+      .read("ACTIVE", _active)
+      .complete();
   if (ret < 0) {
     return ret;
   }
   if (_rate_window_ms <= 0)
     return errh->error("WINDOW must be > 0");
-
-  if (!_rtable || _rtable->cast("AvailableRates") == 0)
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
-
 
   _rate_window = Timestamp::make_msec(_rate_window_ms);
 
@@ -315,21 +311,21 @@ ProbeTXRate_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
   }
   case H_THRESHOLD: {
     unsigned m;
-    if (!cp_unsigned(s, &m))
+    if (!IntArg().parse(s, m))
       return errh->error("threshold parameter must be unsigned");
     f->_packet_size_threshold = m;
     break;
   }
   case H_OFFSET: {
     unsigned m;
-    if (!cp_unsigned(s, &m))
+    if (!IntArg().parse(s, m))
       return errh->error("offset parameter must be unsigned");
     f->_offset = m;
     break;
@@ -339,7 +335,7 @@ ProbeTXRate_write_param(const String &in_s, Element *e, void *vparam,
     break;
  case H_ACTIVE: {
     bool active;
-    if (!cp_bool(s, &active))
+    if (!BoolArg().parse(s, active))
       return errh->error("active must be boolean");
     f->_active = active;
     break;
@@ -353,17 +349,17 @@ ProbeTXRate_write_param(const String &in_s, Element *e, void *vparam,
 void
 ProbeTXRate::add_handlers()
 {
-  add_read_handler("debug", ProbeTXRate_read_param, (void *) H_DEBUG);
-  add_read_handler("rates", ProbeTXRate_read_param, (void *) H_RATES);
-  add_read_handler("threshold", ProbeTXRate_read_param, (void *) H_THRESHOLD);
-  add_read_handler("offset", ProbeTXRate_read_param, (void *) H_OFFSET);
-  add_read_handler("active", ProbeTXRate_read_param, (void *) H_ACTIVE);
+  add_read_handler("debug", ProbeTXRate_read_param, H_DEBUG);
+  add_read_handler("rates", ProbeTXRate_read_param, H_RATES);
+  add_read_handler("threshold", ProbeTXRate_read_param, H_THRESHOLD);
+  add_read_handler("offset", ProbeTXRate_read_param, H_OFFSET);
+  add_read_handler("active", ProbeTXRate_read_param, H_ACTIVE);
 
-  add_write_handler("debug", ProbeTXRate_write_param, (void *) H_DEBUG);
-  add_write_handler("threshold", ProbeTXRate_write_param, (void *) H_THRESHOLD);
-  add_write_handler("offset", ProbeTXRate_write_param, (void *) H_OFFSET);
-  add_write_handler("reset", ProbeTXRate_write_param, (void *) H_RESET, Handler::BUTTON);
-  add_write_handler("active", ProbeTXRate_write_param, (void *) H_ACTIVE);
+  add_write_handler("debug", ProbeTXRate_write_param, H_DEBUG);
+  add_write_handler("threshold", ProbeTXRate_write_param, H_THRESHOLD);
+  add_write_handler("offset", ProbeTXRate_write_param, H_OFFSET);
+  add_write_handler("reset", ProbeTXRate_write_param, H_RESET, Handler::BUTTON);
+  add_write_handler("active", ProbeTXRate_write_param, H_ACTIVE);
 
 }
 

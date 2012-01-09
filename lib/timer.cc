@@ -24,6 +24,7 @@
 #include <click/master.hh>
 #include <click/routerthread.hh>
 #include <click/task.hh>
+#include <click/heap.hh>
 CLICK_DECLS
 
 /** @file timer.hh
@@ -77,11 +78,11 @@ CLICK_DECLS
  void PeriodicPrinter::run_timer(Timer *timer) {
      // This function is called when the timer fires.
      assert(timer == &_timer);
-     Timestamp now = Timestamp::now();
+     Timestamp now = Timestamp::now_steady();
      click_chatter("%s: %{timestamp}: timer fired with expiry %{timestamp}!\n",
-                   declaration().c_str(), &now, &_timer.expiry());
-		   // _timer.expiry() is the Timestamp at which the timer
-		   // was set to fire.
+                   declaration().c_str(), &now, &_timer.expiry_steady());
+		   // _timer.expiry_steady() is the steady-clock Timestamp
+		   // at which the timer was set to fire.
      _timer.reschedule_after_sec(5);  // Fire again 5 seconds later.
  }
  @endcode
@@ -99,9 +100,9 @@ CLICK_DECLS
  </pre>
 
  The expiry time measures when the timer was supposed to fire, while
- Timestamp::now() reports the current system time.  Note that the timer's
- expiry time goes up by exactly 5 seconds each time, and that system time
- is always later than the expiry time.
+ Timestamp::now_steady() reports the current steady-clock time.  Note that the
+ timer's expiry time goes up by exactly 5 seconds each time, and that
+ steady-clock time is always later than the expiry time.
 
  Click aims to fire the timer as soon as possible after the expiry time, but
  cannot hit the expiry time exactly.  The reschedule_after_sec() function and
@@ -111,18 +112,18 @@ CLICK_DECLS
 
  @code
  void PeriodicPrinter::run_timer(Timer *timer) {
-     Timestamp now = Timestamp::now();
+     Timestamp now = Timestamp::now_steady();
      click_chatter("%s: %{timestamp}: timer fired with expiry %{timestamp}!\n",
-                   name().c_str(), &now, &_timer.expiry());
+                   name().c_str(), &now, &_timer.expiry_steady());
      _timer.schedule_after_sec(5);  // Fire again 5 seconds later.
          // This is the same as:
-	 // _timer.schedule_at(Timestamp::now() + Timestamp::make_sec(5));
+	 // _timer.schedule_at_steady(Timestamp::now_steady() + Timestamp::make_sec(5));
  }
  @endcode
 
  The schedule_after_sec() function sets the timer to fire an interval after
- the <em>current system time</em>, not the previous expiry.  As a result, the
- timer drifts:
+ the <em>current steady-clock time</em>, not the previous expiry.  As a
+ result, the timer drifts:
 
  <pre>
  pp: 1204658494.374277: timer fired with expiry 1204658494.374256!
@@ -137,8 +138,8 @@ CLICK_DECLS
  </pre>
 
  Timers that are set to fire more than 1 second in the past are silently
- updated to the current system time.  Thus, the reschedule_after() methods
- will never fall more than a second or two behind system time.
+ updated to the current steady-clock time.  Thus, the reschedule_after()
+ methods will never fall more than a second or two behind steady-clock time.
 
  <h3>Notes</h3>
 
@@ -192,37 +193,38 @@ Timer::task_hook(Timer *, void *thunk)
 
 
 Timer::Timer()
-    : _schedpos1(0), _thunk(0), _owner(0)
+    : _schedpos1(0), _thunk(0), _owner(0), _thread(0)
 {
+    static_assert(sizeof(TimerSet::heap_element) == 16, "size_element should be 16 bytes long.");
     _hook.callback = do_nothing_hook;
 }
 
 Timer::Timer(const do_nothing_t &)
-    : _schedpos1(0), _thunk((void *) 1), _owner(0)
+    : _schedpos1(0), _thunk((void *) 1), _owner(0), _thread(0)
 {
     _hook.callback = do_nothing_hook;
 }
 
 Timer::Timer(TimerCallback f, void *user_data)
-    : _schedpos1(0), _thunk(user_data), _owner(0)
+    : _schedpos1(0), _thunk(user_data), _owner(0), _thread(0)
 {
     _hook.callback = f;
 }
 
 Timer::Timer(Element* element)
-    : _schedpos1(0), _thunk(element), _owner(0)
+    : _schedpos1(0), _thunk(element), _owner(0), _thread(0)
 {
     _hook.callback = element_hook;
 }
 
 Timer::Timer(Task* task)
-    : _schedpos1(0), _thunk(task), _owner(0)
+    : _schedpos1(0), _thunk(task), _owner(0), _thread(0)
 {
     _hook.callback = task_hook;
 }
 
 Timer::Timer(const Timer &x)
-    : _schedpos1(0), _hook(x._hook), _thunk(x._thunk), _owner(0)
+    : _schedpos1(0), _hook(x._hook), _thunk(x._thunk), _owner(0), _thread(0)
 {
 }
 
@@ -233,15 +235,41 @@ Timer::initialize(Router *router)
 }
 
 void
-Timer::schedule_at(const Timestamp& when)
+Timer::initialize(Element *owner, bool quiet)
+{
+    assert(!initialized() || _owner->router() == owner->router());
+    _owner = owner;
+    if (unlikely(_hook.callback == do_nothing_hook && !_thunk) && !quiet)
+	click_chatter("initializing Timer %{element} [%p], which does nothing", _owner, this);
+
+    int tid = owner->router()->home_thread_id(owner);
+    _thread = owner->master()->thread(tid);
+}
+
+int
+Timer::home_thread_id() const
+{
+    if (_thread)
+	return _thread->thread_id();
+    else
+	return ThreadSched::THREAD_UNKNOWN;
+}
+
+void
+Timer::schedule_at_steady(const Timestamp &when)
 {
     // acquire lock, unschedule
     assert(_owner && initialized());
-    Master* master = _owner->master();
-    master->lock_timers();
+    TimerSet &ts = _thread->timer_set();
+    ts.lock_timers();
 
-    // set expiration timer
-    _expiry = when;
+    // set expiration timer (ensure nonzero)
+#ifdef CLICK_NS
+    _expiry_s = when;
+#else
+    _expiry_s = when ? when : Timestamp::epsilon();
+#endif
+    ts.check_timer_expiry(this);
 
     // manipulate list; this is essentially a "decrease-key" operation
     // any reschedule removes a timer from the runchunk (XXX -- even backwards
@@ -249,29 +277,29 @@ Timer::schedule_at(const Timestamp& when)
     int old_schedpos1 = _schedpos1;
     if (_schedpos1 <= 0) {
 	if (_schedpos1 < 0)
-	    master->_timer_runchunk[-_schedpos1 - 1] = 0;
-	_schedpos1 = master->_timer_heap.size() + 1;
-	master->_timer_heap.push_back(this);
-    }
-    master->check_timer_expiry(this);
-    change_heap(master->_timer_heap.begin(), master->_timer_heap.end(),
-		master->_timer_heap.begin() + _schedpos1 - 1,
-		Master::timer_less(), Master::timer_place(master->_timer_heap.begin()));
+	    ts._timer_runchunk[-_schedpos1 - 1] = 0;
+	_schedpos1 = ts._timer_heap.size() + 1;
+	ts._timer_heap.push_back(TimerSet::heap_element(this));
+    } else
+	ts._timer_heap.at_u(_schedpos1 - 1).expiry_s = _expiry_s;
+    change_heap<4>(ts._timer_heap.begin(), ts._timer_heap.end(),
+		   ts._timer_heap.begin() + _schedpos1 - 1,
+		   TimerSet::heap_less(), TimerSet::heap_place());
     if (old_schedpos1 == 1 || _schedpos1 == 1)
-	master->set_timer_expiry();
+	ts.set_timer_expiry();
 
-    // if we changed the timeout, wake up the first thread
+    // if we changed the timeout, wake up the thread
     if (_schedpos1 == 1)
-	master->_threads[2]->wake();
+	_thread->wake();
 
     // done
-    master->unlock_timers();
+    ts.unlock_timers();
 }
 
 void
 Timer::schedule_after(const Timestamp &delta)
 {
-    schedule_at(Timestamp::now() + delta);
+    schedule_at_steady(Timestamp::recent_steady() + delta);
 }
 
 void
@@ -279,20 +307,20 @@ Timer::unschedule()
 {
     if (!scheduled())
 	return;
-    Master* master = _owner->master();
-    master->lock_timers();
+    TimerSet &ts = _thread->timer_set();
+    ts.lock_timers();
     int old_schedpos1 = _schedpos1;
     if (_schedpos1 > 0) {
-	remove_heap(master->_timer_heap.begin(), master->_timer_heap.end(),
-		    master->_timer_heap.begin() + _schedpos1 - 1,
-		    Master::timer_less(), Master::timer_place(master->_timer_heap.begin()));
-	master->_timer_heap.pop_back();
+	remove_heap<4>(ts._timer_heap.begin(), ts._timer_heap.end(),
+		       ts._timer_heap.begin() + _schedpos1 - 1,
+		       TimerSet::heap_less(), TimerSet::heap_place());
+	ts._timer_heap.pop_back();
 	if (old_schedpos1 == 1)
-	    master->set_timer_expiry();
+	    ts.set_timer_expiry();
     } else if (_schedpos1 < 0)
-	master->_timer_runchunk[-_schedpos1 - 1] = 0;
+	ts._timer_runchunk[-_schedpos1 - 1] = 0;
     _schedpos1 = 0;
-    master->unlock_timers();
+    ts.unlock_timers();
 }
 
 // list-related functions in master.cc

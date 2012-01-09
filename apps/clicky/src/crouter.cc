@@ -14,11 +14,13 @@
 #include <clicktool/processingt.hh>
 #include <click/straccum.hh>
 #include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/pathvars.h>
 #include <math.h>
 #include <algorithm>
 #include <unistd.h>
 #include <fcntl.h>
+#include <signal.h>
 #include <sys/ioctl.h>
 namespace clicky {
 
@@ -36,11 +38,10 @@ String g_click_to_utf8(const String &str)
     return str;
 }
 
-crouter::crouter()
+crouter::crouter(dcss_set *ccss)
     : _r(0), _emap(0), _selected_driver(-1), _processing(0),
-      _hvalues(this), _driver(0), _driver_active(false),
-      _ccss(new dcss_set(dcss_set::default_set("screen"))),
-      _throbber_count(0)
+      _hvalues(this), _driver(0), _driver_active(false), _driver_process(0),
+      _ccss(ccss), _router_ccss(false), _gerrh(true), _throbber_count(0)
 {
 }
 
@@ -88,8 +89,11 @@ void crouter::clear(bool alive)
 
     if (_driver)
 	delete _driver;
+    if (_driver_process)
+	kill(_driver_process, SIGHUP);
     _driver = 0;
     _driver_active = false;
+    _driver_process = 0;
 
     // XXX _hvalues.clear();
 }
@@ -98,22 +102,6 @@ void crouter::set_landmark(const String &landmark)
 {
     _landmark = landmark;
     on_landmark_changed();
-}
-
-String crouter::ccss_text() const
-{
-    return _ccss->text();
-}
-
-void crouter::set_ccss_text(const String &str)
-{
-    if (_ccss->text() != str) {
-	String media = _ccss->media();
-	delete _ccss;
-	_ccss = new dcss_set(dcss_set::default_set(media));
-	_ccss->parse(str);
-	on_ccss_changed();
-    }
 }
 
 void crouter::set_ccss_media(const String &media)
@@ -181,7 +169,7 @@ void crouter::set_config(const String &conf, bool replace)
 	if (ArchiveElement *ae = ArchiveElement::find(archive, "config"))
 	    _conf = ae->data;
 	else {
-	    _gerrh.error("archive has no 'config' section");
+	    _gerrh.error("archive has no %<config%> section");
 	    _conf = String();
 	}
     }
@@ -190,6 +178,7 @@ void crouter::set_config(const String &conf, bool replace)
     if (!_conf.length())
 	_gerrh.warning("empty configuration");
     LexerT lexer(&_gerrh, false);
+    lexer.expand_groups(true);
     lexer.reset(_conf, archive, (_driver ? "config" : _landmark));
     LexerTInfo *lexinfo = on_config_changed_prepare();
     if (lexinfo)
@@ -224,6 +213,7 @@ void crouter::set_config(const String &conf, bool replace)
 	_processing = processing;
 	_downstreams.clear();
 	_upstreams.clear();
+	calculate_router_ccss();
     } else {
 	delete r;
 	delete emap;
@@ -233,6 +223,34 @@ void crouter::set_config(const String &conf, bool replace)
     on_config_changed(replace, lexinfo);
 
     delete lexinfo;
+}
+
+void
+crouter::calculate_router_ccss()
+{
+    if (_router_ccss) {
+	dcss_set *old_ccss = _ccss;
+	_ccss = old_ccss->below();
+	delete old_ccss;
+	_router_ccss = false;
+    }
+
+    StringAccum sa;
+    for (RouterT::type_iterator it = _r->begin_elements(ElementClassT::base_type("ClickyInfo"));
+	 it != _r->end_elements(); ++it) {
+	String s;
+	(void) Args().push_back_args(it->config())
+	    .read_p("STYLE", AnyArg(), s).execute();
+	if (s && s[0] == '\"')
+	    s = cp_unquote(s);
+	if (s)
+	    sa << s << '\n';
+    }
+
+    if (sa) {
+	_ccss = new dcss_set(_ccss);
+	_ccss->parse(dcss_set::expand_imports(sa.take_string(), _landmark, 0));
+    }
 }
 
 
@@ -247,6 +265,77 @@ void crouter::set_driver(cdriver *driver, bool active)
     assert(driver && (!_driver || driver == _driver));
     _driver = driver;
     _driver_active = active;
+    on_driver_changed();
+}
+
+void crouter::on_driver_connected()
+{
+    _hvalues.clear();
+}
+
+void crouter::kill_driver()
+{
+    if (_driver)
+	delete _driver;
+    if (_driver_process)
+	kill(_driver_process, SIGHUP);
+    _driver = 0;
+    _driver_active = false;
+    _driver_process = 0;
+    _hvalues.clear();
+    on_driver_changed();
+}
+
+void crouter::run(ErrorHandler *errh)
+{
+    kill_driver();
+
+    int configpipe[2], ctlsocket[2];
+    if (pipe(configpipe) == -1)
+	assert(0);
+    if (socketpair(PF_UNIX, SOCK_STREAM, 0, ctlsocket) == -1)
+	assert(0);
+
+    _driver_process = fork();
+    if (_driver_process == -1)
+	assert(0);
+    else if (_driver_process == 0) {
+	close(0);
+	dup2(configpipe[0], 0);
+	close(configpipe[0]);
+	close(configpipe[1]);
+	close(ctlsocket[0]);
+
+	String arg = String(ctlsocket[1]);
+	execlp("click", "click", "-R", "--socket", arg.c_str(), (const char *) 0);
+	assert(0);
+    }
+
+    close(configpipe[0]);
+    close(ctlsocket[1]);
+    if (csocket_cdriver::make_nonblocking(ctlsocket[0], errh) != 0)
+	assert(0);
+
+    int pos = 0;
+    while (pos != _conf.length()) {
+	ssize_t r = write(configpipe[1], _conf.begin() + pos, _conf.length() - pos);
+	if (r == 0 || (r == -1 && errno != EAGAIN && errno != EINTR)) {
+	    if (r == -1)
+		errh->message("%s while writing configuration", strerror(errno));
+	    break;
+	} else if (r != -1)
+	    pos += r;
+    }
+    if (pos != _conf.length()) {
+	kill_driver();
+	close(configpipe[1]);
+	close(ctlsocket[0]);
+    } else {
+	close(configpipe[1]);
+	GIOChannel *channel = g_io_channel_unix_new(ctlsocket[0]);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	new csocket_cdriver(this, channel, true);
+    }
 }
 
 void crouter::on_handler_read(const String &hname, const String &hparam,
@@ -368,7 +457,7 @@ void crouter::reachable_match_t::set_seed(const ConnectionT &conn)
 void crouter::reachable_match_t::set_seed_connections(ElementT *e, int port)
 {
     assert(port >= -1 && port < e->nports(_forward));
-    for (RouterT::conn_iterator cit = _router->begin_connections_touching(PortT(e, port), _forward);
+    for (RouterT::conn_iterator cit = _router->find_connections_touching(PortT(e, port), _forward);
 	 cit != _router->end_connections(); ++cit)
 	set_seed(*cit);
 }
@@ -380,9 +469,9 @@ bool crouter::reachable_match_t::add_matches(reachable_t &reach, ErrorHandler *d
 	if (glob_match(it->name(), _name)
 	    || glob_match(it->type_name(), _name)
 	    || (_name && _name[0] == '#' && glob_match(it->name(), _name.substring(1))))
-	    set_seed_connections(it, _port);
+	    set_seed_connections(it.get(), _port);
 	else if (it->resolved_router(_processing->scope())) {
-	    reachable_match_t sub_match(*this, it);
+	    reachable_match_t sub_match(*this, it.get());
 	    RouterT *sub_router = sub_match._router;
 	    if (sub_match.add_matches(reach, debug_errh)) {
 		assert(!reach.compound.get_pointer(sub_match._router_name));
@@ -391,7 +480,7 @@ bool crouter::reachable_match_t::add_matches(reachable_t &reach, ErrorHandler *d
 		       && sub_router->element(1)->name() == "output");
 		for (int p = 0; p < sub_router->element(_forward)->nports(!_forward); ++p)
 		    if (sub_match.get_seed(_forward, p))
-			set_seed_connections(it, p);
+			set_seed_connections(it.get(), p);
 	    }
 	}
     if (_seed.size()) {
@@ -423,7 +512,7 @@ void crouter::reachable_match_t::export_matches(reachable_t &reach, ErrorHandler
 	    }
 	if (any && it->resolved_router(_processing->scope())) {
 	    // spread matches from inputs through the compound
-	    reachable_match_t sub_match(*this, it);
+	    reachable_match_t sub_match(*this, it.get());
 	    RouterT *sub_router = sub_match._router;
 	    for (int p = 0; p < it->nports(!_forward); ++p)
 		if (_seed[pidx + p])

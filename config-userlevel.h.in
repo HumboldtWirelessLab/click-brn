@@ -2,8 +2,20 @@
 #ifndef CLICK_CONFIG_USERLEVEL_H
 #define CLICK_CONFIG_USERLEVEL_H
 
+/* Define if you have the __thread storage class specifier. */
+#undef HAVE___THREAD_STORAGE_CLASS
+
 /* Define if accept() uses socklen_t. */
 #undef HAVE_ACCEPT_SOCKLEN_T
+
+/* Define if kqueue() may be used to wait for file descriptor events. */
+#undef HAVE_ALLOW_KQUEUE
+
+/* Define if poll() may be used to wait for file descriptor events. */
+#undef HAVE_ALLOW_POLL
+
+/* Define if select() may be used to wait for file descriptor events. */
+#undef HAVE_ALLOW_SELECT
 
 /* Define if <pcap.h> uses bpf_timeval. */
 #undef HAVE_BPF_TIMEVAL
@@ -32,6 +44,9 @@
 /* Define if dynamic linking is possible. */
 #undef HAVE_DYNAMIC_LINKING
 
+/* Define if you have the <execinfo.h> header file. */
+#undef HAVE_EXECINFO_H
+
 /* Define if you have the ffs function. */
 #undef HAVE_FFS
 
@@ -52,6 +67,9 @@
 
 /* Define if 'struct if_data' has an 'ifi_datalen' member. */
 #undef HAVE_IF_DATA_IFI_DATALEN
+
+/* Define if you have the <ifaddrs.h> header file. */
+#undef HAVE_IFADDRS_H
 
 /* Define if 'int64_t' is typedefed to 'long' at user level. */
 #undef HAVE_INT64_IS_LONG_USERLEVEL
@@ -80,14 +98,23 @@
 /* Define if you have the <net/bpf.h> header file. */
 #undef HAVE_NET_BPF_H
 
+/* Define if you have the <net/if_dl.h> header file. */
+#undef HAVE_NET_IF_DL_H
+
 /* Define if you have the <net/if_tap.h> header file. */
 #undef HAVE_NET_IF_TAP_H
 
 /* Define if you have the <net/if_tun.h> header file. */
 #undef HAVE_NET_IF_TUN_H
 
+/* Define if you have the <net/if_types.h> header file. */
+#undef HAVE_NET_IF_TYPES_H
+
 /* Define if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
+
+/* Define if you have the <netpacket/packet.h> header file. */
+#undef HAVE_NETPACKET_PACKET_H
 
 /* Define if <new.h> exists and works. */
 #undef HAVE_NEW_H
@@ -97,6 +124,15 @@
 
 /* Define if you have -lpcap and pcap.h. */
 #undef HAVE_PCAP
+
+/* Define if you have the pcap_inject function. */
+#undef HAVE_PCAP_INJECT
+
+/* Define if you have the pcap_sendpacket function. */
+#undef HAVE_PCAP_SENDPACKET
+
+/* Define if you have the pcap_setdirection function. */
+#undef HAVE_PCAP_SETDIRECTION
 
 /* Define if you have the pcap_setnonblock function. */
 #undef HAVE_PCAP_SETNONBLOCK
@@ -138,6 +174,12 @@
 /* Define if you have the strnlen function. */
 #undef HAVE_STRNLEN
 
+/* Define if you have the strtof function. */
+#undef HAVE_STRTOF
+
+/* Define if you have the strtold function. */
+#undef HAVE_STRTOLD
+
 /* Define if you have the strtoul function. */
 #undef HAVE_STRTOUL
 
@@ -159,15 +201,6 @@
 /* Define if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Define if kqueue() should be used to wait for file descriptor events. */
-#undef HAVE_USE_KQUEUE
-
-/* Define if poll() should be used to wait for file descriptor events. */
-#undef HAVE_USE_POLL
-
-/* Define if select() should be used to wait for file descriptor events. */
-#undef HAVE_USE_SELECT
-
 /* Define if a Click user-level driver might run multiple threads. */
 #undef HAVE_USER_MULTITHREAD
 
@@ -179,9 +212,6 @@
 
 /* Define if you have the vsnprintf function. */
 #undef HAVE_VSNPRINTF
-
-/* The offset of ifr_addr within `struct ifreq', as computed by offsetof. */
-#undef OFFSETOF_IFR_ADDR_IFREQ
 
 /* The size of a `click_jiffies_t', as computed by sizeof. */
 #define SIZEOF_CLICK_JIFFIES_T SIZEOF_INT
@@ -197,6 +227,9 @@
 # endif
 # define _LARGEFILE_SOURCE 1
 # define _FILE_OFFSET_BITS 64
+#endif
+#ifdef __APPLE__
+# define _DARWIN_UNLIMITED_SELECT 1
 #endif
 
 /* Include integer type definitions. */

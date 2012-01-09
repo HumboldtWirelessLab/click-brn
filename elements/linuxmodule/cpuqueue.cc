@@ -1,7 +1,7 @@
 #include <click/config.h>
 #include "cpuqueue.hh"
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 
 CPUQueue::CPUQueue()
   : _last(0), _drops(0)
@@ -16,13 +16,13 @@ CPUQueue::~CPUQueue()
 int
 CPUQueue::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  unsigned new_capacity = 128;
-  if (cp_va_kparse(conf, this, errh,
-		   "CAPACITY", cpkP, cpUnsigned, &new_capacity,
-		   cpEnd) < 0)
-    return -1;
-  _capacity = new_capacity;
-  return 0;
+    unsigned new_capacity = 128;
+    if (Args(conf, this, errh)
+	.read_p("CAPACITY", new_capacity)
+	.complete() < 0)
+	return -1;
+    _capacity = new_capacity;
+    return 0;
 }
 
 int
@@ -107,8 +107,8 @@ CPUQueue::read_handler(Element *e, void *thunk)
 void
 CPUQueue::add_handlers()
 {
-  add_read_handler("capacity", read_handler, (void *)0);
-  add_read_handler("drops", read_handler, (void *)1);
+  add_read_handler("capacity", read_handler, 0);
+  add_read_handler("drops", read_handler, 1);
 }
 
 ELEMENT_REQUIRES(linuxmodule)

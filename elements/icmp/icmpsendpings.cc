@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include "icmpsendpings.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/ip.h>
@@ -48,27 +48,30 @@ ICMPPingSource::~ICMPPingSource()
 int
 ICMPPingSource::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+    bool has_interval;
     _icmp_id = 0;
     _interval = 1000;
     _data = String();
     _active = true;
     _verbose = true;
-    if (cp_va_kparse(conf, this, errh,
-		     "SRC", cpkP+cpkM, cpIPAddress, &_src,
-		     "DST", cpkP+cpkM, cpIPAddress, &_dst,
-		     "INTERVAL", 0, cpSecondsAsMilli, &_interval,
-		     "IDENTIFIER", 0, cpUnsignedShort, &_icmp_id,
-		     "DATA", 0, cpString, &_data,
-		     "LIMIT", 0, cpInteger, &_limit,
-		     "ACTIVE", 0, cpBool, &_active,
-		     "VERBOSE", 0, cpBool, &_verbose,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("SRC", _src)
+	.read_mp("DST", _dst)
+	.read("INTERVAL", SecondsArg(3), _interval).read_status(has_interval)
+	.read("IDENTIFIER", _icmp_id)
+	.read("DATA", _data)
+	.read("LIMIT", _limit)
+	.read("ACTIVE", _active)
+	.read("VERBOSE", _verbose)
+	.complete() < 0)
 	return -1;
 #ifndef __linux__
     _icmp_id = htons(_icmp_id);
 #endif
     if (_interval == 0)
 	errh->warning("INTERVAL so small that it is zero");
+    if (output_is_pull(0) && has_interval)
+	errh->warning("element is pull, INTERVAL parameter will be ignored");
     return 0;
 }
 
@@ -212,7 +215,7 @@ ICMPPingSource::push(int, Packet *p)
 	    uint16_t readable_seq = ntohs(icmph->icmp_sequence);
 #endif
 	    if (_verbose)
-		click_chatter("%s: %d bytes from %{ip_ptr}: icmp_seq=%u ttl=%u time=%d.%03d ms", declaration().c_str(), ntohs(iph->ip_len) - (iph->ip_hl << 2) - sizeof(*icmph), &iph->ip_dst, readable_seq, iph->ip_ttl, (unsigned)(diffval/1000), (unsigned)(diffval % 1000));
+		click_chatter("%s: %d bytes from %{ip_ptr}: icmp_seq=%u ttl=%u time=%d.%03d ms", declaration().c_str(), ntohs(iph->ip_len) - (iph->ip_hl << 2) - sizeof(*icmph), &iph->ip_src, readable_seq, iph->ip_ttl, (unsigned)(diffval/1000), (unsigned)(diffval % 1000));
 	}
     }
     p->kill();
@@ -267,30 +270,30 @@ ICMPPingSource::write_handler(const String &s, Element *e, void *thunk, ErrorHan
 {
     ICMPPingSource *ps = static_cast<ICMPPingSource *>(e);
     switch ((uintptr_t)thunk) {
-      case H_ACTIVE:
-	if (!cp_bool(s, &ps->_active))
-	    return errh->error("'active' should be bool");
+    case H_ACTIVE:
+	if (!BoolArg().parse(s, ps->_active))
+	    return errh->error("type mismatch");
 	if (ps->_active && !ps->_timer.scheduled() && ps->output_is_push(0))
 	    ps->_timer.schedule_now();
 	else if (!ps->_active)
 	    ps->_timer.unschedule();
 	return 0;
-      case H_SRC:
-	if (!cp_ip_address(s, &ps->_src))
-	    return errh->error("'src' should be IP address");
+    case H_SRC:
+	if (!IPAddressArg().parse(s, ps->_src))
+	    return errh->error("syntax error");
 	return 0;
-      case H_DST:
-	if (!cp_ip_address(s, &ps->_dst))
-	    return errh->error("'dst' should be IP address");
+    case H_DST:
+	if (!IPAddressArg().parse(s, ps->_dst))
+	    return errh->error("syntax error");
 	return 0;
       case H_LIMIT:
-	if (!cp_integer(s, &ps->_limit))
+	  if (!IntArg().parse(s, ps->_limit))
 	    return errh->error("'limit' should be integer");
 	if ((ps->_count < ps->_limit || ps->_limit < 0) && ps->_active && !ps->_timer.scheduled() && ps->output_is_push(0))
 	    ps->_timer.schedule_after_msec(ps->_interval);
 	return 0;
       case H_INTERVAL:
-	if (!cp_seconds_as_milli(s, (uint32_t *)&ps->_interval))
+	  if (!SecondsArg(3).parse_saturating(s, ps->_interval))
 	    return errh->error("'interval' should be an interval");
 	return 0;
       case H_RESET_COUNTS:
@@ -308,21 +311,21 @@ ICMPPingSource::write_handler(const String &s, Element *e, void *thunk, ErrorHan
 void
 ICMPPingSource::add_handlers()
 {
-    add_read_handler("active", read_handler, (void *)H_ACTIVE, Handler::CHECKBOX);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("src", read_handler, (void *)H_SRC, Handler::CALM);
-    add_write_handler("src", write_handler, (void *)H_SRC);
-    add_read_handler("dst", read_handler, (void *)H_DST, Handler::CALM);
-    add_write_handler("dst", write_handler, (void *)H_DST);
-    add_read_handler("count", read_handler, (void *)H_COUNT);
-    add_write_handler("limit", write_handler, (void *)H_LIMIT, Handler::CALM);
-    add_write_handler("interval", write_handler, (void *)H_INTERVAL);
-    add_write_handler("reset_counts", write_handler, (void *)H_RESET_COUNTS, Handler::BUTTON);
+    add_read_handler("active", read_handler, H_ACTIVE, Handler::CHECKBOX);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("src", read_handler, H_SRC, Handler::CALM);
+    add_write_handler("src", write_handler, H_SRC);
+    add_read_handler("dst", read_handler, H_DST, Handler::CALM);
+    add_write_handler("dst", write_handler, H_DST);
+    add_read_handler("count", read_handler, H_COUNT);
+    add_write_handler("limit", write_handler, H_LIMIT, Handler::CALM);
+    add_write_handler("interval", write_handler, H_INTERVAL);
+    add_write_handler("reset_counts", write_handler, H_RESET_COUNTS, Handler::BUTTON);
     if (ninputs() > 0) {
-	add_read_handler("summary", read_handler, (void *)H_SUMMARY);
-	add_read_handler("rtt_min", read_handler, (void *)H_RTT_MIN);
-	add_read_handler("rtt_avg", read_handler, (void *)H_RTT_AVG);
-	add_read_handler("rtt_max", read_handler, (void *)H_RTT_MAX);
+	add_read_handler("summary", read_handler, H_SUMMARY);
+	add_read_handler("rtt_min", read_handler, H_RTT_MIN);
+	add_read_handler("rtt_avg", read_handler, H_RTT_AVG);
+	add_read_handler("rtt_max", read_handler, H_RTT_MAX);
     }
 }
 

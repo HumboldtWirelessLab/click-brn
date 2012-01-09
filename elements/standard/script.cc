@@ -35,6 +35,9 @@
 CLICK_DECLS
 
 static const StaticNameDB::Entry instruction_entries[] = {
+#if CLICK_USERLEVEL
+    { "append", Script::insn_append },
+#endif
     { "end", Script::insn_end },
     { "error", Script::insn_error },
     { "errorq", Script::insn_errorq },
@@ -53,6 +56,9 @@ static const StaticNameDB::Entry instruction_entries[] = {
     { "readq", Script::INSN_READQ },
     { "return", Script::INSN_RETURN },
     { "returnq", Script::insn_returnq },
+#if CLICK_USERLEVEL
+    { "save", Script::insn_save },
+#endif
     { "set", Script::INSN_SET },
     { "setq", Script::insn_setq },
     { "stop", Script::insn_stop },
@@ -138,7 +144,7 @@ Script::find_label(const String &label) const
     if (NameInfo::query_int(NameInfo::T_SCRIPT_INSN, this, label, &insn)
 	&& insn < 0)
 	return insn;		// negative instructions are also labels
-    if (label.equals("begin", 5))
+    if (label.equals("begin", 5) || label.equals("loop", 4))
 	return 0;
     return _insns.size();
 }
@@ -162,13 +168,10 @@ int
 Script::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     String type_arg;
-    if (cp_va_kparse_remove_keywords
-	(conf, this, errh,
-	 "TYPE", 0, cpArgument, &type_arg,
-	 cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("TYPE", AnyArg(), type_arg)
+	.consume() < 0)
 	return -1;
-
-    int before = errh->nerrors();
 
     String type_word = cp_shift_spacevec(type_arg);
     if (type_word == "ACTIVE" && !type_arg)
@@ -228,7 +231,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	wait_step:
 	case INSN_WAIT_STEP: {
 	    unsigned n = 1;
-	    if (!conf[i] || cp_integer(conf[i], &n))
+	    if (!conf[i] || IntArg().parse(conf[i], n))
 		add_insn(INSN_WAIT_STEP, n, 0);
 	    else
 		goto syntax_error;
@@ -241,6 +244,10 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	case INSN_READQ:
 	case INSN_PRINT:
 	case INSN_PRINTN:
+#if CLICK_USERLEVEL
+	case insn_save:
+	case insn_append:
+#endif
 	case INSN_GOTO:
 	    add_insn(insn, 0, 0, conf[i]);
 	    break;
@@ -309,7 +316,7 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	add_insn(INSN_WAIT_STEP, 1, 0);
     add_insn(_type == type_driver ? insn_stop : insn_end, 0);
 
-    return (errh->nerrors() == before ? 0 : -1);
+    return errh->nerrors() ? -1 : 0;
 }
 
 int
@@ -415,11 +422,20 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 	    }
 	    break;
 
+#if CLICK_USERLEVEL
+	case insn_save:
+	case insn_append: {
+	    String word = cp_shift_spacevec(_args3[ipos]);
+	    String file = (_args3[ipos] ? _args3[ipos] : "-");
+	    _args3[ipos] = (">>" + (insn == insn_save)) + file + " " + word;
+	    /* FALLTHRU */
+	}
+#endif
 	case INSN_PRINT:
 	case INSN_PRINTN: {
 	    String text = _args3[ipos];
 
-#if CLICK_USERLEVEL || CLICK_TOOL
+#if CLICK_USERLEVEL
 	    FILE *f = stdout;
 	    if (text.length() && text[0] == '>') {
 		bool append = (text.length() > 1 && text[1] == '>');
@@ -450,7 +466,7 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 		&& insn != INSN_PRINTN)
 		result += "\n";
 
-#if CLICK_USERLEVEL || CLICK_TOOL
+#if CLICK_USERLEVEL
 	    ignore_result(fwrite(result.data(), 1, result.length(), f));
 	    if (f == stdout)
 		fflush(f);
@@ -506,7 +522,7 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 	    // reset intervening instructions
 	    String cond_text = cp_expand(_args3[ipos], expander);
 	    bool cond;
-	    if (cond_text && !cp_bool(cond_text, &cond))
+	    if (cond_text && !BoolArg().parse(cond_text, cond))
 		errh->error("bad condition %<%s%>", cond_text.c_str());
 	    else if (!cond_text || cond) {
 		if (_args[ipos] < 0)
@@ -615,7 +631,7 @@ Script::push(int port, Packet *p)
     complete_step(&out);
 
     port = -1;
-    (void) cp_integer(out, &port);
+    (void) IntArg().parse(out, port);
     checked_output_push(port, p);
 }
 
@@ -639,7 +655,7 @@ Script::pull(int)
     complete_step(&out);
 
     int port = -1;
-    (void) cp_integer(out, &port);
+    (void) IntArg().parse(out, port);
     if (port == 0)
 	return p;
     else {
@@ -648,45 +664,47 @@ Script::pull(int)
     }
 }
 
-bool
-Script::Expander::expand(const String &vname, int vartype, int quote, StringAccum &sa) const
+int
+Script::Expander::expand(const String &vname, String &out, int vartype, int) const
 {
     int x = script->find_variable(vname, false);
     if (x < script->_vars.size()) {
-	sa << cp_expand_in_quotes(script->_vars[x + 1], quote);
+	out = script->_vars[x + 1];
 	return true;
     }
 
     if (vname.length() == 1 && vname[0] == '?') {
-	sa << script->_write_status;
+	out = String(script->_write_status);
 	return true;
     }
 
     if (vname.equals("args", 4)) {
-	sa << cp_expand_in_quotes(script->_run_args, quote);
+	out = script->_run_args;
 	return true;
     }
 
     if (vname.length() == 1 && vname[0] == '$') {
 #if CLICK_USERLEVEL
-	sa << getpid();
+	out = String(getpid());
+#elif CLICK_BSDMODULE
+	out = String(curproc->p_pid);
 #else
-	sa << current->pid;
+	out = String(current->pid);
 #endif
 	return true;
     }
 
     if (vname.length() == 1 && vname[0] == '0') {
-	sa << script->_run_handler_name;
+	out = script->_run_handler_name;
 	return true;
     }
 
     if (vname.length() > 0 && vname[0] >= '1' && vname[0] <= '9'
-	&& cp_integer(vname, &x)) {
+	&& IntArg().parse(vname, x)) {
 	String arg, run_args = script->_run_args;
 	for (; x > 0; --x)
 	    arg = cp_shift_spacevec(run_args);
-	sa << cp_expand_in_quotes(arg, quote);
+	out = arg;
 	return true;
     }
 
@@ -694,19 +712,19 @@ Script::Expander::expand(const String &vname, int vartype, int quote, StringAccu
 	String run_args = script->_run_args;
 	for (x = 0; cp_shift_spacevec(run_args); )
 	    ++x;
-	sa << cp_expand_in_quotes(String(x), quote);
+	out = String(x);
 	return true;
     }
 
     if (vname.equals("write", 5)) {
-	sa << cp_unparse_bool(script->_run_op & Handler::OP_WRITE);
+	out = BoolArg::unparse(script->_run_op & Handler::OP_WRITE);
 	return true;
     }
 
     if (vartype == '(') {
 	HandlerCall hc(vname);
 	if (hc.initialize_read(script, errh) >= 0) {
-	    sa << cp_expand_in_quotes(hc.call_read(errh), quote);
+	    out = hc.call_read(errh);
 	    return true;
 	}
     }
@@ -743,7 +761,7 @@ Script::step_handler(int op, String &str, Element *e, const Handler *h, ErrorHan
 	    nsteps = 1, steptype = STEP_ROUTER;
 	else if (!data)
 	    nsteps = 1, steptype = STEP_NORMAL;
-	else if (cp_integer(data, &nsteps))
+	else if (IntArg().parse(data, nsteps))
 	    steptype = STEP_NORMAL;
 	else
 	    return errh->error("syntax error");
@@ -785,52 +803,52 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	str = cp_shift_spacevec(str);
 	return 0;
 
-    case AR_ADD:
-    case AR_SUB:
-    case AR_MUL:
-    case AR_DIV:
-    case AR_IDIV: {
-	click_intmax_t accum = (what == AR_ADD || what == AR_SUB ? 0 : 1), arg;
+    case ar_add:
+    case ar_sub:
+    case ar_mul:
+    case ar_div:
+    case ar_idiv: {
+	click_intmax_t accum = (what == ar_add || what == ar_sub ? 0 : 1), arg;
 	bool first = true;
 #if CLICK_USERLEVEL
-	double daccum = (what == AR_ADD || what == AR_SUB ? 0 : 1), darg;
-	bool use_daccum = (what == AR_DIV || what == AR_IDIV);
+	double daccum = (what == ar_add || what == ar_sub ? 0 : 1), darg;
+	bool use_daccum = (what == ar_div || what == ar_idiv);
 #endif
 	while (1) {
 	    String word = cp_shift_spacevec(str);
 	    if (!word && cp_is_space(str))
 		break;
 #if CLICK_USERLEVEL
-	    if (!use_daccum && !cp_integer(word, &arg)) {
+	    if (!use_daccum && !IntArg().parse(word, arg)) {
 		use_daccum = true;
 		daccum = accum;
 	    }
-	    if (use_daccum && !cp_double(word, &darg))
+	    if (use_daccum && !DoubleArg().parse(word, darg))
 		return errh->error("expected list of numbers");
 	    if (use_daccum) {
 		if (first)
 		    daccum = darg;
-		else if (what == AR_ADD)
+		else if (what == ar_add)
 		    daccum += darg;
-		else if (what == AR_SUB)
+		else if (what == ar_sub)
 		    daccum -= darg;
-		else if (what == AR_MUL)
+		else if (what == ar_mul)
 		    daccum *= darg;
 		else
 		    daccum /= darg;
 		goto set_first;
 	    }
 #else
-	    if (!cp_integer(word, &arg))
+	    if (!IntArg().parse(word, arg))
 		return errh->error("expected list of numbers");
 #endif
 	    if (first)
 		accum = arg;
-	    else if (what == AR_ADD)
+	    else if (what == ar_add)
 		accum += arg;
-	    else if (what == AR_SUB)
+	    else if (what == ar_sub)
 		accum -= arg;
-	    else if (what == AR_MUL)
+	    else if (what == ar_mul)
 		accum *= arg;
 	    else {
 #if CLICK_USERLEVEL || !HAVE_INT64_TYPES
@@ -848,7 +866,7 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    first = false;
 	}
 #if CLICK_USERLEVEL
-	if (what == AR_IDIV) {
+	if (what == ar_idiv) {
 	    use_daccum = false;
 	    accum = (click_intmax_t) daccum;
 	}
@@ -865,10 +883,11 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	click_intmax_t a, b;
 	if (str || !astr || !bstr)
 	    goto expected_two_numbers;
-	if (!cp_integer(astr, &a) || !cp_integer(bstr, &b)) {
+	if (!IntArg().parse(astr, a) || !IntArg().parse(bstr, b)) {
 #if CLICK_USERLEVEL
 	    double da, db;
-	    if (what == ar_mod || !cp_double(astr, &da) || !cp_double(bstr, &db))
+	    if (what == ar_mod || !DoubleArg().parse(astr, da)
+		|| !DoubleArg().parse(bstr, db))
 		goto expected_two_numbers;
 	    str = String(fmod(da, db));
 	    return 0;
@@ -888,6 +907,25 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	}
     }
 
+    case ar_neg:
+    case ar_abs: {
+	click_intmax_t x;
+	if (!IntArg().parse(str, x)) {
+#if CLICK_USERLEVEL
+	    double dx;
+	    if (!DoubleArg().parse(str, dx))
+		goto expected_one_number;
+	    str = String(what == ar_neg ? -dx : fabs(dx));
+	    return 0;
+#else
+	    goto expected_one_number;
+#endif
+	} else {
+	    str = String(what == ar_neg || x < 0 ? -x : x);
+	    return 0;
+	}
+    }
+
     case AR_LT:
     case AR_EQ:
     case AR_GT:
@@ -900,21 +938,21 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	if (str || !astr || !bstr)
 	    goto expected_two_numbers;
 #if CLICK_USERLEVEL
-	if (!cp_integer(astr, &a) || !cp_integer(bstr, &b)) {
+	if (!IntArg().parse(astr, a) || !IntArg().parse(bstr, b)) {
 	    double da, db;
-	    if (!cp_double(astr, &da) || !cp_double(bstr, &db))
+	    if (!DoubleArg().parse(astr, da) || !DoubleArg().parse(bstr, db))
 		goto compare_strings;
 	    comparison = (da < db ? AR_LT : (da == db ? AR_EQ : AR_GT));
 	    goto compare_return;
 	}
 #else
-	if (!cp_integer(astr, &a) || !cp_integer(bstr, &b))
+	if (!IntArg().parse(astr, a) || !IntArg().parse(bstr, b))
 	    goto compare_strings;
 #endif
 	comparison = (a < b ? AR_LT : (a == b ? AR_EQ : AR_GT));
     compare_return:
-	str = cp_unparse_bool(what == comparison
-			      || (what >= AR_GE && what != comparison + 3));
+	str = BoolArg::unparse(what == comparison
+			       || (what >= AR_GE && what != comparison + 3));
 	return 0;
     compare_strings:
 	a = String::compare(cp_unquote(astr), cp_unquote(bstr));
@@ -924,9 +962,9 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 
     case AR_NOT: {
 	bool x;
-	if (!cp_bool(str, &x))
+	if (!BoolArg().parse(str, x))
 	    return errh->error("syntax error");
-	str = cp_unparse_bool(!x);
+	str = BoolArg::unparse(!x);
 	return 0;
     }
 
@@ -937,19 +975,19 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	bool zero = (what == ar_and || what == ar_nand), current_value = zero;
 	while (current_value == zero && str) {
 	    bool x;
-	    if (!cp_bool(cp_shift_spacevec(str), &x))
+	    if (!BoolArg().parse(cp_shift_spacevec(str), x))
 		return errh->error("syntax error");
 	    current_value = (what == ar_and ? current_value && x : current_value || x);
 	}
 	if (what == ar_nand || what == ar_nor)
 	    current_value = !current_value;
-	str = cp_unparse_bool(current_value);
+	str = BoolArg::unparse(current_value);
 	return 0;
     }
 
     case ar_if: {
 	bool x;
-	if (!cp_bool(cp_shift_spacevec(str), &x))
+	if (!BoolArg().parse(cp_shift_spacevec(str), x))
 	    return errh->error("syntax error");
 	if (x)
 	    str = cp_shift_spacevec(str);
@@ -965,7 +1003,7 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	bool answer = false;
 	while (word && str && !answer)
 	    answer = (word == cp_unquote(cp_shift_spacevec(str)));
-	str = cp_unparse_bool(answer);
+	str = BoolArg::unparse(answer);
 	return 0;
     }
 
@@ -986,9 +1024,9 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    } while (pct < end && (*pct == '0' || *pct == '#'
 				|| *pct == '-' || *pct == ' ' || *pct == '+'));
 	    // field width
-	    int fw;
+	    int fw = 0;
 	    if (pct < end && *pct == '*') {
-		if (!cp_integer(cp_shift_spacevec(str), &fw))
+		if (!IntArg().parse(cp_shift_spacevec(str), fw))
 		    return errh->error("syntax error");
 		pf << fw;
 	    } else
@@ -998,7 +1036,7 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    if (pct < end && *pct == '.') {
 		pct++;
 		if (pct < end && *pct == '*') {
-		    if (!cp_integer(cp_shift_spacevec(str), &fw) || fw < 0)
+		    if (!IntArg().parse(cp_shift_spacevec(str), fw) || fw < 0)
 			return errh->error("syntax error");
 		    pf << '.' << fw;
 		} else if (pct < end && *pct >= '0' && *pct <= '9') {
@@ -1023,7 +1061,7 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    if (pct < end && (*pct == 'o' || *pct == 'x' || *pct == 'X' || *pct == 'u')) {
 		click_uintmax_t ival;
 		String x = cp_shift_spacevec(str);
-		if (!cp_integer(x, &ival))
+		if (!IntArg().parse(x, ival))
 		    return errh->error("syntax error");
 		if (width_flag == 'h')
 		    ival = (unsigned short) ival;
@@ -1032,8 +1070,8 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 		pf << CLICK_INTMAX_CVT << *pct;
 		result << ErrorHandler::xformat(pf.c_str(), ival);
 	    } else if (pct < end && (*pct == 'd' || *pct == 'i')) {
-		click_intmax_t ival;
-		if (!cp_integer(cp_shift_spacevec(str), &ival))
+		click_intmax_t ival = 0;
+		if (!IntArg().parse(cp_shift_spacevec(str), ival))
 		    return errh->error("syntax error");
 		if (width_flag == 'h')
 		    ival = (short) ival;
@@ -1067,10 +1105,10 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	else {
 	    uint32_t n1, n2;
 	    bool have_n2 = false;
-	    if (cp_va_space_kparse(str, e, errh,
-				   "N1", cpkP+cpkM, cpUnsigned, &n1,
-				   "N2", cpkP+cpkC, &have_n2, cpUnsigned, &n2,
-				   cpEnd) < 0)
+	    if (Args(e, errh).push_back_words(str)
+		.read_mp("N1", n1)
+		.read_mp("N2", n2).read_status(have_n2)
+		.complete() < 0)
 		return -1;
 	    if ((have_n2 && n2 < n1) || (!have_n2 && n1 == 0))
 		return errh->error("bad N");
@@ -1085,7 +1123,7 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 #if CLICK_USERLEVEL
     case ar_cat: {
 	String filename;
-	if (!cp_filename(str, &filename))
+	if (!FilenameArg().parse(str, filename))
 	    return errh->error("bad FILE");
 	int nerrors = errh->nerrors();
 	str = file_string(filename, errh);
@@ -1099,8 +1137,8 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
 	    || signo < 0 || signo > 32)
 	    return errh->error("bad SIGNO");
 	while (str) {
-	    pid_t pid;
-	    if (!cp_integer(cp_shift_spacevec(str), &pid))
+	    pid_t pid = 0;
+	    if (!IntArg().parse(cp_shift_spacevec(str), pid))
 		return errh->error("bad PID");
 	    if (kill(pid, signo) != 0) {
 		int e = errno;
@@ -1137,6 +1175,9 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
     expected_two_numbers:
 	return errh->error("expected two numbers");
 
+    expected_one_number:
+	return errh->error("expected one number");
+
     }
 
     return -1;
@@ -1163,13 +1204,15 @@ Script::add_handlers()
     set_handler("step", Handler::OP_WRITE, step_handler, 0, ST_STEP);
     set_handler("goto", Handler::OP_WRITE, step_handler, 0, ST_GOTO);
     set_handler("run", Handler::OP_READ | Handler::READ_PARAM | Handler::OP_WRITE, step_handler, 0, ST_RUN);
-    set_handler("add", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_ADD, 0);
-    set_handler("sub", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_SUB, 0);
-    set_handler("mul", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_MUL, 0);
-    set_handler("div", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_DIV, 0);
-    set_handler("idiv", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_IDIV, 0);
+    set_handler("add", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_add, 0);
+    set_handler("sub", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_sub, 0);
+    set_handler("mul", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_mul, 0);
+    set_handler("div", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_div, 0);
+    set_handler("idiv", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_idiv, 0);
     set_handler("mod", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_mod, 0);
     set_handler("rem", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_rem, 0);
+    set_handler("neg", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_neg, 0);
+    set_handler("abs", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_abs, 0);
     set_handler("eq", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_EQ, 0);
     set_handler("ne", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_NE, 0);
     set_handler("gt", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, AR_GT, 0);

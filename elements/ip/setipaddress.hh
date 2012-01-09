@@ -6,19 +6,21 @@ CLICK_DECLS
 
 /*
  * =c
- * SetIPAddress(IPADDR)
+ * SetIPAddress(IPADDR [, ANNO])
  * =s ip
  * sets destination IP address annotations
  * =d
  * Set the destination IP address annotation of incoming packets to the
- * static IP address IPADDR.
+ * static IP address IPADDR.  The ANNO argument, if given, sets the destination
+ * IP address annotation number.
  *
  * =a StoreIPAddress, GetIPAddress
  */
 
 class SetIPAddress : public Element {
 
-  IPAddress _ip;
+    IPAddress _ip;
+    int _anno;
 
  public:
 
@@ -27,7 +29,6 @@ class SetIPAddress : public Element {
 
   const char *class_name() const		{ return "SetIPAddress"; }
   const char *port_count() const		{ return PORTS_1_1; }
-  const char *processing() const		{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const		{ return true; }

@@ -37,7 +37,7 @@ AODVDestinationClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
 void AODVDestinationClassifier::push (int port, Packet * packet){
 	assert(port == 0);
 	assert(packet);
-	const aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
+	//const aodv_rrep_header * rrep = (aodv_rrep_header*) (packet->data() + aodv_headeroffset);
 	//click_chatter("rrep for %s from %s received in %s", IPAddress(rrep->originator).s().c_str(), IPAddress(rrep->destination).s().c_str(), myIP->s().c_str());
 /*RobAt	if (rrep->originator == *myIP){
 		output(0).push(packet); // new information for waitingfordiscovery

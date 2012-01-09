@@ -25,9 +25,11 @@
 #include <click/vector.hh>
 #include <click/ipaddress.hh>
 
+#include <elements/brn2/brnelement.hh>
 #include <elements/brn2/standard/fixpointnumber.hh>
 
-#include <elements/brn2/brnelement.hh>
+#include "gps_position.hh"
+#include "gps_map.hh"
 
 
 CLICK_DECLS
@@ -42,105 +44,8 @@ CLICK_DECLS
  */
 
 #define GPSMODE_HANDLER 0
-#define GPSMODE_GPSD 0
-#define GPSMODE_SERIAL 0
-
-struct gps_position {
-  int x;
-  int y;
-  int z;
-  int speed;
-} __attribute__ ((packed));
-
-
-class GPSPosition {
- public:
-   FixPointNumber _latitude;
-   FixPointNumber _longitude;
-   FixPointNumber _altitude;
-
-   FixPointNumber _speed;
-
-  int _x,_y,_z;
-
-  Timestamp gpstime;
-
-  GPSPosition() {
-    _latitude = FixPointNumber();
-    _longitude = FixPointNumber();
-    _altitude = FixPointNumber();
-
-    _speed = FixPointNumber();
-
-    _z=0; _x=0; _y=0;
-  }
-
-  GPSPosition(struct gps_position *pos) {
-    _z=pos->z; _x=pos->x; _y=pos->y;
-  }
-
-  GPSPosition(FixPointNumber lat, FixPointNumber lon, FixPointNumber h) {
-    _latitude = lat;
-    _longitude = lon;
-    _altitude = h;
-  }
-
-  void setCC(int x, int y, int z) {
-    _z=z; _x=x; _y=y;
-  }
-
-  void setGPSC(String lat, String lon, String alt) {
-    _latitude.fromString(lat);
-    _longitude.fromString(lon);
-    _altitude.fromString(alt);
-  }
-
-  /*sqrt for integer*/
-  int isrqt(uint32_t n) {
-    int x,x1;
-
-    if ( n == 0 ) return 0;
-
-    x1 = n;
-
-    do {
-      x = x1;
-      x1 = (x + n/x) >> 1;
-    } while ((( (x - x1)  > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-    return x1;
-  }
-
-  int getDistance(GPSPosition *pos) {
-    return isrqt(((pos->_x - _x) * (pos->_x - _x)) + ((pos->_y - _y) * (pos->_y - _y)) + ((pos->_z - _z) * (pos->_z - _z)));
-  }
-
-  void getPosition(struct gps_position *pos)
-  {
-    pos->x = _x;
-    pos->y = _y;
-    pos->z = _z;
-    pos->speed = _speed.getPacketInt();
-  }
-
-  void setPosition(struct gps_position *pos)
-  {
-    _x = pos->x;
-    _y = pos->y;
-    _z = pos->z;
-    _speed.setPacketInt(pos->speed);
-  }
-
-  void setSpeed(int speed)
-  {
-    _speed.setPacketInt(speed);
-  }
-
-  void setSpeed(String speed)
-  {
-    _speed.fromString(speed);
-  }
-};
+#define GPSMODE_GPSD    1
+#define GPSMODE_SERIAL  2
 
 class GPS : public BRNElement {
 
@@ -166,17 +71,27 @@ class GPS : public BRNElement {
   void add_handlers();
 
   GPSPosition *getPosition() { return &_position;}
+  inline String read_gps();
+
+  void updateMap();
+
+  int _gpsmode;
 
  private:
   //
   //member
   //
   GPSPosition _position;
+  GPSMap *_gpsmap;
 
  public:
-  int _gpsmode;
+
+  void set_gps(FixPointNumber lat, FixPointNumber lon, FixPointNumber alt) {
+    _position.setGPS(lat,lon,alt);
+  }
 
   String _gpsdevice;
+
   IPAddress _gpsd_ip;
   int _gpsd_port;
 

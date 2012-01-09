@@ -33,8 +33,8 @@ AddARPEntry::~AddARPEntry()
 int
 AddARPEntry::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-	return cp_va_parse(conf, this, errh,
-	                   cpElement, "ARP Querier/Table", &_arpQuerier,
+	return cp_va_kparse(conf, this, errh,
+                     "ARP Querier/Table", cpkP, cpElement,&_arpQuerier,
 	                   cpEnd);
 }
 

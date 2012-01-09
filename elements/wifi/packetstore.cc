@@ -1,5 +1,5 @@
 #include <click/config.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/packet_anno.hh>
@@ -101,7 +101,7 @@ write_param(const String &in_s, Element *e, void *vparam,
 	switch((intptr_t)vparam) {
 	case H_RESET: {
 		bool active;
-		if (!cp_bool(s, &active))
+		if (!BoolArg().parse(s, active))
 			return errh->error("reset parameter must be boolean");
 		if (active) {
 			while (td->_packets.size()) {
@@ -117,10 +117,10 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 PacketStore::add_handlers()
 {
-	add_read_handler("length", read_param, (void *) H_LEN);
-	add_read_handler("pop", read_param, (void *) H_POP, Handler::RAW);
-	add_read_handler("dirty", read_param, (void *) H_DIRTY);
-	add_write_handler("reset", write_param, (void *) H_RESET);
+	add_read_handler("length", read_param, H_LEN);
+	add_read_handler("pop", read_param, H_POP, Handler::RAW);
+	add_read_handler("dirty", read_param, H_DIRTY);
+	add_write_handler("reset", write_param, H_RESET);
 	add_task_handlers(&_task);
 }
 

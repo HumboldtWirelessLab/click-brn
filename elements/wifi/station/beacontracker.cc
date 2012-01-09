@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/llc.h>
@@ -45,11 +45,11 @@ BeaconTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   _debug = false;
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "WIRELESS_INFO", 0, cpElement, &_winfo,
-		   "TRACK", 0, cpInteger, &_track,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("WIRELESS_INFO", ElementCastArg("WirelessInfo"), _winfo)
+      .read("TRACK", _track)
+      .complete() < 0)
     return -1;
 
 
@@ -117,7 +117,7 @@ BeaconTracker::simple_action(Packet *p)
 
 
   struct beacon_t b;
-  uint16_t seq = le16_to_cpu(*(uint16_t *) w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+  uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
 
   b.rx = p->timestamp_anno();
@@ -184,7 +184,7 @@ write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -199,14 +199,14 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 BeaconTracker::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_read_handler("scan", read_param, (void *) H_SCAN);
-  add_read_handler("stats", read_param, (void *) H_STATS);
-  add_read_handler("track", read_param, (void *) H_TRACK);
-  add_read_handler("beacon_interval", read_param, (void *) H_BEACON_INTERVAL);
+  add_read_handler("debug", read_param, H_DEBUG);
+  add_read_handler("scan", read_param, H_SCAN);
+  add_read_handler("stats", read_param, H_STATS);
+  add_read_handler("track", read_param, H_TRACK);
+  add_read_handler("beacon_interval", read_param, H_BEACON_INTERVAL);
 
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
-  add_write_handler("reset", write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("debug", write_param, H_DEBUG);
+  add_write_handler("reset", write_param, H_RESET, Handler::BUTTON);
 }
 
 CLICK_ENDDECLS

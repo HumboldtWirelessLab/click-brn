@@ -19,7 +19,7 @@
 #include <click/config.h>
 #include <click/error.hh>
 #include "settimestampdelta.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/packet_anno.hh>
 CLICK_DECLS
@@ -36,9 +36,9 @@ int
 SetTimestampDelta::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     String typ = "RANGE";
-    if (cp_va_kparse(conf, this, errh,
-		     "TYPE", 0, cpWord, &typ,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read("TYPE", WordArg(), typ)
+	.complete() < 0)
 	return -1;
     if (typ == "RANGE")
 	_type = 0;
@@ -99,8 +99,8 @@ SetTimestampDelta::write_handler(const String &, Element *e, void *, ErrorHandle
 void
 SetTimestampDelta::add_handlers()
 {
-    add_read_handler("first", read_handler, (void *)0);
-    add_write_handler("reset", write_handler, (void *)0, Handler::BUTTON);
+    add_read_handler("first", read_handler);
+    add_write_handler("reset", write_handler, 0, Handler::BUTTON);
 }
 
 CLICK_ENDDECLS

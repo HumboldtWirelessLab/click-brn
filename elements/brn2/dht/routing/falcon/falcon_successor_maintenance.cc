@@ -8,7 +8,6 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/md5.h"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 
@@ -81,12 +80,15 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   BRN_DEBUG("Successor maintenance timer");
+
   //TODO: check age of succ and set him fix if the information is not too old
   if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE ) && ( _frt->successor ) ) {
-    BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(), _frt->successor->_ether_addr.unparse().c_str() );
+    BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(),
+                                              _frt->successor->_ether_addr.unparse().c_str() );
 
     _frt->successor->set_last_ping_now();
-    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor, FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor,
+                                                FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
   }
 }
@@ -143,6 +145,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   _frt->add_node(&src);
   _frt->add_node(&succ);
 
+  /* Update HAWK RoutingTable used for dht-based routing */
   if ( _rfrt != NULL ) {
     if ( memcmp(succ._ether_addr.data(), src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Add neighbourhop.");
@@ -192,27 +195,33 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
 
   if ( succ.equals(_frt->_me) ) {                  //request really for me ??
-    //Wenn ich er mich fï¿½r seinen Nachfolger hï¿½lt, teste ob er mein Vorgï¿½nger ist oder mein Vorgï¿½nger fï¿½r ihn ein besserer Nachfolger ist.
+    //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger
+    //für ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {        //src is my pre, so everything is good
       BRN_DEBUG("I'm his successor !");           //just send reply
-      BRN_DEBUG("Src: %s Dst: %s Node: %s",src._ether_addr.unparse().c_str(),_frt->_me->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
-      WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR, _frt->_me, FALCON_RT_POSITION_SUCCESSOR);
-      packet->kill();
-
+      BRN_DEBUG("Src: %s Dst: %s Node: %s", src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),
+                                            succ._ether_addr.unparse().c_str());
+      WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR,
+                                                                    _frt->_me, FALCON_RT_POSITION_SUCCESSOR, packet);
       output(0).push(p);
     } else {                                     //he is NOT my pre, i try to give a better one
-      BRN_DEBUG("He (%s) is before my predecessor: %s",src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
+      BRN_DEBUG("He (%s) is before my predecessor: %s",
+                src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
                                                 //don't search for too old information
-      DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); 
+      DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); //TODO: use params
 
-      if ( best_succ->equals(_frt->_me) ) best_succ = _frt->predecessor; //if predecessor is too old, then it's possible that findBestSuccessor returns me
-                                                                         //and that wrong at this point. so set best to pred manually. TODO: do it better
+      if ( best_succ->equals(_frt->_me) ) best_succ = _frt->predecessor; //if predecessor is too old, then it's possible
+                                                                         //that findBestSuccessor returns me
+                                                                         //and that wrong at this point. so set best to pred
+                                                                         //manually. TODO: do it better
       /* Now just some info to print to find errors. TODO; Maybe remove in the future.*/
       if ( best_succ->equals(_frt->predecessor) ) {
         BRN_DEBUG("------1-------: My pre is his succ");
       } else {
-        BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
-        BRN_DEBUG("------2-------: I've better succ than my pre.  Succ: %s  Pre: %s", best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+        BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s",
+                            _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
+        BRN_DEBUG("------2-------: I've better succ than my pre.  Succ: %s  Pre: %s",
+                            best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
         BRN_DEBUG("%s",_frt->routing_info().c_str());
       }
       /*end of debug stuff*/
@@ -221,14 +230,14 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       WritablePacket *p;
       if ( (_rfrt == NULL) && ( (_opti & FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) == 0 ) ) {
         BRN_INFO("Fwd request");
-        p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, packet);
+        p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, packet);  //recyl. packet
       } else {  //otherwise send a reply with the better information
-         BRN_INFO("Send reply");
-         p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src,  FALCON_MINOR_REPLY_SUCCESSOR, best_succ, FALCON_RT_POSITION_SUCCESSOR);
-        packet->kill();
+        BRN_INFO("Send reply");
+        p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src,  FALCON_MINOR_REPLY_SUCCESSOR,
+                                                      best_succ, FALCON_RT_POSITION_SUCCESSOR,packet);
       }
       output(0).push(p);
-    } 
+    }
   } else {
     BRN_WARN("Error??? Me: %s Succ: %s", _frt->_me->_ether_addr.unparse().c_str(), succ._ether_addr.unparse().c_str());
     packet->kill();
@@ -243,7 +252,7 @@ void
 FalconSuccessorMaintenance::handle_routing_update_callback(int status)
 {
   if ( status == RT_UPDATE_SUCCESSOR ) {
-    click_chatter("Update Successor");
+    BRN_DEBUG("Update Successor");
   }
 }
 

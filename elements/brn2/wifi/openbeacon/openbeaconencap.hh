@@ -30,6 +30,8 @@ class OpenBeaconEncap : public Element {
   private:
     int _debug;
     ErrorHandler* _errh;
+  
+    uint8_t	opbecon_filter[6];
 };
 
 CLICK_ENDDECLS

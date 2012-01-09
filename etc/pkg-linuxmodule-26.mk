@@ -19,26 +19,28 @@ CLICKBUILD = linux26module
 CLICKCPPFLAGS += -DCLICK_LINUXMODULE
 CLICKINCLUDES := -I$(clickincludedir) -I$(clicksrcdir)
 
-LINUXCFLAGS = $(shell echo "$(CPPFLAGS) $(CFLAGS)" \
+LINUXCFLAGS = $(shell echo "$(CPPFLAGS) $(CFLAGS) $(LINUXINCLUDE)" \
 	"$(KBUILD_CPPFLAGS) $(KBUILD_CFLAGS) $(CFLAGS_MODULE)" | sed \
 	-e s,-fno-unit-at-a-time,, -e s,-Wstrict-prototypes,, \
 	-e s,-Wdeclaration-after-statement,, \
 	-e s,-Wno-pointer-sign,, -e s,-fno-common,, \
 	-e s,-Werror-implicit-function-declaration,, \
-	-e s,-Iinclude/,-I$(clicklinux_srcdir)include/,g)
+	-e "s,-Iinclude ,-I$(CLICKLINUX_BUILDDIR)/include ",g \
+	-e "s,-Iinclude2 ,-I$(CLICKLINUX_BUILDDIR)/include2 ",g \
+	-e s,-Iinclude/,-I$(CLICKLINUX_SRCDIR)include/,g $(CLICKLINUX_FIXINCLUDES_PROGRAM))
 
-CXXFLAGS ?= $(CLICKCXXFLAGS_NDEBUG)
+CXXFLAGS ?= $(CLICKKERNEL_CXXFLAGS)
 DEPCFLAGS ?= -Wp,-MD,$(depfile)
 
 DEFS ?= $(CLICKDEFS)
 INCLUDES ?= $(CLICKINCLUDES)
 
 CXXCOMPILE = $(CLICKKERNEL_CXX) $(LINUXCFLAGS) $(CLICKCPPFLAGS) \
-	$(CLICKCFLAGS_NDEBUG) $(CXXFLAGS) $(PACKAGE_CXXFLAGS) \
-	$(DEFS) $(INCLUDES) $(DEPCFLAGS)
+	$(CLICKKERNEL_CFLAGS) $(CXXFLAGS) $(PACKAGE_CXXFLAGS) \
+	$(DEFS) $(INCLUDES)
 COMPILE = $(CLICKKERNEL_CC) $(LINUXCFLAGS) $(CLICKCPPFLAGS) \
-	$(CLICKCFLAGS_NDEBUG) $(PACKAGE_CFLAGS) \
-	$(DEFS) $(INCLUDES) $(DEPCFLAGS)
+	$(CLICKKERNEL_CFLAGS) $(PACKAGE_CFLAGS) \
+	$(DEFS) $(INCLUDES)
 
 packagesrcdir ?= $(srcdir)
 PACKAGE_OBJS ?= kpackage.ko
@@ -47,13 +49,29 @@ PACKAGE_DEPS ?=
 CLICK_BUILDTOOL ?= $(clickbindir)/click-buildtool
 CLICK_ELEM2PACKAGE ?= $(CLICK_BUILDTOOL) elem2package $(ELEM2PACKAGE_INCLUDES)
 
+KBUILD_EXTRA_SYMBOLS ?= $(clicklibdir)/click.symvers
+
+ifeq ($(PREPROCESS),1)
+compile_option = -E
+else
+compile_option = -c
+endif
+
+cmd_shortensyms = $(CLICK_BUILDTOOL) shortensyms $@
+
 quiet_cmd_cxxcompile = CXX $(quiet_modtag) $(subst $(obj)/,,$@)
-cmd_cxxcompile = $(CXXCOMPILE) -c -o $@ $<
+cmd_cxxcompile = $(CXXCOMPILE) $(DEPCFLAGS) $(compile_option) -o $@ $< && $(cmd_shortensyms)
+
+quiet_cmd_cxxcompile_nodep = CXX $(quiet_modtag) $(subst $(obj)/,,$@)
+cmd_cxxcompile_nodep = $(CXXCOMPILE) $(compile_option) -o $@ $< && $(cmd_shortensyms)
 
 quiet_cmd_ccompile = CC $(quiet_modtag) $(subst $(obj)/,,$@)
-cmd_ccompile = $(COMPILE) -c -o $@ $<
+cmd_ccompile = $(COMPILE) $(DEPCFLAGS) $(compile_option) -o $@ $<
 
-EXTRA_CFLAGS += $(CLICKCPPFLAGS) $(CLICKCFLAGS_NDEBUG) $(CLICKDEFS) $(CLICKINCLUDES) 
+quiet_cmd_ccompile_nodep = CC $(quiet_modtag) $(subst $(obj)/,,$@)
+cmd_ccompile_nodep = $(COMPILE) $(compile_option) -o $@ $<
+
+EXTRA_CFLAGS += $(CLICKCPPFLAGS) $(CLICKKERNEL_CFLAGS) $(CLICKDEFS) $(CLICKINCLUDES)
 
 ifneq ($(KBUILD_EXTMOD),)
 ifeq ($(srcdir),.)

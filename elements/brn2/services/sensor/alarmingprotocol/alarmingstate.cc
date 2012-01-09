@@ -37,10 +37,12 @@ CLICK_DECLS
 
 AlarmingState::AlarmingState():
   _hop_limit(DEFAULT_HOP_LIMT),
-  _lt(NULL),
   _forward_flags(UPDATE_ALARM_NEW_NODE|UPDATE_ALARM_NEW_ID),
+  _lt(NULL),
   _retry_limit(DEFAULT_RETRY_LIMIT),
-  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUT_FRACTION)
+  _min_neighbour_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
+  _min_alarm_fraction(DEFAULT_MIN_NEIGHBOUR_FRACTION),
+  _triggered_alarm(false)
 {
   BRNElement::init();
 }
@@ -56,10 +58,12 @@ AlarmingState::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (cp_va_kparse(conf, this, errh,
       "LINKTABLE", cpkP, cpElement, &_lt,
+      "NHOPNEIGHBOURINFO", cpkP, cpElement, &_nhopn_info,
       "HOPLIMIT", cpkP, cpInteger, &_hop_limit,
       "LOWHOPFWD", cpkP, cpBool, &_low_hop_forward,
       "RETRIES", cpkP, cpInteger, &_retry_limit,
       "MINNEIGHBOURFRACT", cpkP, cpInteger, &_min_neighbour_fraction,
+      "MINFRACT", cpkP, cpInteger, &_min_alarm_fraction,
       "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -100,6 +104,13 @@ AlarmingState::update_alarm(int type, const EtherAddress *ea, int id, int hops, 
     result |= UPDATE_ALARM_NEW_ID;
     an->add_alarm_info(id, hops);
     ai = an->get_info_by_id(id);
+
+    /**
+     * A new Alarm ID was add, so now check whether there are enough node to trigger an alarm
+     * TODO: element, which we can ask whether it is useful to generate an alarm
+    */
+    trigger_alarm();
+
   } else {
     if ( hops < ai->_hops ) {
       ai->_hops = hops;  //TODO: delete Forarders ??
@@ -174,27 +185,23 @@ AlarmingState::update_neighbours()
 
 
 void
-AlarmingState::get_incomlete_forward_types(int max_fraction, Vector<int> *types)
+AlarmingState::get_incomlete_forward_types(int /*max_fraction*/, Vector<int> *types)
 {
   int type, t_i;
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
     type = _alarm_nodes[an_i]._type;
     for( t_i = types->size()-1 ; t_i >= 0; t_i--) {
-      int ftype = (*types)[t_i];
-//      click_chatter("Want type: %d Found type: %d",type, ftype);
+      //int ftype = (*types)[t_i];
       if ( (*types)[t_i] == type ) break;
     }
 
     if ( t_i < 0 ) types->push_back(type);
   }
 
-/*for( int i = 0; i < types->size();i++) {
-    click_chatter("Type: %d",(*types)[i]);
-  }*/
 }
 
 void
-AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int max_hops, int type, Vector<AlarmNode*> *nodes)
+AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, int /*max_hops*/, int type, Vector<AlarmNode*> *nodes)
 {
   for( int an_i = _alarm_nodes.size()-1; an_i >= 0; an_i--) {
     AlarmNode *an = &(_alarm_nodes[an_i]);
@@ -208,32 +215,63 @@ AlarmingState::get_incomlete_forward_nodes(int max_fraction, int max_retries, in
       }
     }
   }
-/*click_chatter("Node for type %d:",type);
-  for (int i = 0; i < nodes->size(); i++ ) {
-    AlarmNode *an = (*nodes)[i];
-    click_chatter("Node %s",an->_ea.unparse().c_str());
-  }*/
 }
 
+/*
+ * check, whether a alarm should be triggerd an trigger it
+ */
+void
+AlarmingState::trigger_alarm()
+{
+  if ( (_alarm_nodes.size() >= (int)((_min_alarm_fraction * _nhopn_info->count_neighbours())/100)) && !_triggered_alarm ) {
+    click_chatter("ALARM ! %d of %d nodes.",_alarm_nodes.size(), _nhopn_info->count_neighbours());
+    _triggered_alarm = true;
+    _triggered_alarm_time = Timestamp::now();
+  }
+}
+
+
+
+String
+AlarmingState::get_state()
+{
+  StringAccum sa;
+
+  update_neighbours();
+
+  sa << "<alarmingstate id='"<< BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' size='" << _alarm_nodes.size() << "' ";
+  sa << "triggered_alarm='" << _triggered_alarm << "' triggered_alarm_time='";
+  if ( _triggered_alarm )
+    sa << _triggered_alarm_time.unparse() << "' >\n";
+  else
+    sa << "0.0' >\n";
+
+  for( int i = 0; i < _alarm_nodes.size(); i++ ) {
+    sa << "\t<alarmingnode node='" << _alarm_nodes[i]._ea.unparse().c_str() << "' ";
+    sa << "hops='" << (int)_alarm_nodes[i]._info[0]._hops << "' ";
+    sa << "no_alarm='" << _alarm_nodes[i]._info.size() << "' >\n";
+
+    for( int j = 0; j < _alarm_nodes[i]._info.size(); j++ ) {
+      sa << "\t\t<alarm fract_fwd='" << _alarm_nodes[i]._info[j]._fract_fwd << "' ";
+      sa << "missing_fwd='" << _alarm_nodes[i]._info[j]._fwd_missing << "' />\n";
+    }
+    sa << "\t</alarmingnode>\n";
+  }
+
+  sa << "</alarmingstate>";
+
+  return sa.take_string();
+}
+
+
+/*****************************************************************************/
+/***************************** H A N D L E R *********************************/
+/*****************************************************************************/
 
 static String
 read_state_param(Element *e, void *)
 {
-  AlarmingState *as = (AlarmingState *)e;
-  StringAccum sa;
-
-  as->update_neighbours();
-
-  sa << "Size: " << as->_alarm_nodes.size();
-  sa << "\nNodes:\n";
-  for( int i = 0; i < as->_alarm_nodes.size(); i++ ) {
-    sa << " " << as->_alarm_nodes[i]._ea.unparse().c_str();
-    sa << " Hops: " << (int)as->_alarm_nodes[i]._info[0]._hops;
-    sa << " No. Alarm: " << as->_alarm_nodes[i]._info.size();
-    sa << " Fract. Fwd: " << as->_alarm_nodes[i]._info[0]._fract_fwd;
-    sa << " Missing Fwd: " << as->_alarm_nodes[i]._info[0]._fwd_missing << "\n";
-  }
-  return sa.take_string();
+  return ((AlarmingState *)e)->get_state();
 }
 
 void
@@ -242,7 +280,18 @@ AlarmingState::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("state", read_state_param, 0);
+
 }
+
+
+
+
+
+
+
+
+
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(AlarmingState)

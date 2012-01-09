@@ -37,19 +37,6 @@ ProtocolTranslator46::~ProtocolTranslator46()
 }
 
 
-int
-ProtocolTranslator46::configure(Vector<String> &conf, ErrorHandler *errh)
-{
-  int before = errh->nerrors();
-  if (!(conf.size()==0))
-    {
-     errh->error("there should be no arguments");
-    }
-  return (before ==errh->nerrors() ? 0: -1);
-}
-
-
-
 //make the ipv4->ipv6 translation of the packet according to SIIT (RFC 2765)
 Packet *
 ProtocolTranslator46::make_translate46(IP6Address src,
@@ -71,7 +58,7 @@ ProtocolTranslator46::make_translate46(IP6Address src,
   click_udp *udp = (click_udp *)(ip6+1);
 
   //set ipv6 header
-  ip6->ip6_flow = 0;
+  ip6->ip6_flow = 0;	/* must set first: overlaps vfc */
   ip6->ip6_v = 6;
   ip6->ip6_plen = htons(ntohs(ip->ip_len)-sizeof(click_ip));
   ip6->ip6_hlim = ip->ip_ttl + 0x40-0xff;

@@ -34,19 +34,22 @@ CLICK_DECLS
 #define FALCON_RT_POSITION_PREDECESSOR 65535
 
 /***** M I N O R  - R O U T I N G **********/
-#define FALCON_MINOR_REQUEST_SUCCESSOR              1
-#define FALCON_MINOR_UPDATE_SUCCESSOR               2
-#define FALCON_MINOR_REPLY_SUCCESSOR                3
-#define FALCON_MINOR_REQUEST_PREDECESSOR            4
-#define FALCON_MINOR_REPLY_PREDECESSOR              5
-#define FALCON_MINOR_REQUEST_POSITION               6
-#define FALCON_MINOR_REPLY_POSITION                 7
-#define FALCON_MINOR_LEAVE_NETWORK_NOTIFICATION     8
-#define FALCON_MINOR_LEAVE_NETWORK_REPLY            9
-#define FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE   10
-#define FALCON_MINOR_PASSIVE_MONITORING_DEACTIVATE 11
+#define FALCON_MINOR_REQUEST_SUCCESSOR               1
+#define FALCON_MINOR_UPDATE_SUCCESSOR                2
+#define FALCON_MINOR_REPLY_SUCCESSOR                 3
+#define FALCON_MINOR_REQUEST_PREDECESSOR             4
+#define FALCON_MINOR_REPLY_PREDECESSOR               5
+#define FALCON_MINOR_REQUEST_POSITION                6
+#define FALCON_MINOR_REPLY_POSITION                  7
+#define FALCON_MINOR_LEAVE_NETWORK_NOTIFICATION      8
+#define FALCON_MINOR_LEAVE_NETWORK_REPLY             9
 
-#define FALCON_MINOR_NWS_REQUEST               10
+#define FALCON_MINOR_NWS_REQUEST                    10
+
+#define FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE    11
+#define FALCON_MINOR_PASSIVE_MONITORING_DEACTIVATE  12
+#define FALCON_MINOR_PASSIVE_MONITORING_NODEFAILURE 13
+#define FALCON_MINOR_PASSIVE_MONITORING_NODEUPDATE  14
 
 /**
  * structure is used for linkprobes
@@ -82,6 +85,32 @@ struct falcon_nws_packet {
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /**
+ * structure is used to determinate the networksize
+ */
+
+struct dht_falcon_reverse_table_node_entry {
+  uint8_t    etheraddr[6];
+  md5_byte_t node_id[MAX_NODEID_LENTGH];
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct falcon_passiv_monitoring_info {
+  uint8_t status;
+  uint8_t no_nodes;
+
+  md5_byte_t passive_node_id[MAX_NODEID_LENTGH];
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct falcon_passiv_monitoring_notification {
+  uint8_t status;
+
+  uint8_t passive_node[6];
+  md5_byte_t passive_node_id[MAX_NODEID_LENTGH];
+
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+
+
+/**
  * Packet: me, pred, succ, fingertable
 */
 
@@ -89,11 +118,12 @@ class DHTProtocolFalcon {
 
   public:
 
+    static int max_no_nodes_in_lp(int buffer_len);
     static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
     static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
 
     static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
-    static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position);
+    static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position, Packet *p_recycle = NULL);
     static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p);
 
     static WritablePacket *new_route_leave_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position);
@@ -103,6 +133,12 @@ class DHTProtocolFalcon {
     static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
     static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);
+
+    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable);
+    static WritablePacket *new_passive_monitor_deactive_packet(DHTnode *src);
+
+    static WritablePacket *new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
+    static WritablePacket *new_passive_monitor_leave_reply_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
 
 };
 

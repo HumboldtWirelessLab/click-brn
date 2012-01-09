@@ -21,7 +21,7 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/bitvector.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
@@ -48,10 +48,10 @@ FloodingLocQuerier::~FloodingLocQuerier()
 int
 FloodingLocQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  return cp_va_kparse(conf, this, errh,
-		      "ETH", cpkP+cpkM, cpEthernetAddress, &_my_en,
-		      "IP", cpkP+cpkM, cpIPAddress, &_my_ip,
-		      cpEnd);
+    return Args(conf, this, errh)
+	.read_mp("ETH", _my_en)
+	.read_mp("IP", _my_ip)
+	.complete();
 }
 
 int
@@ -414,9 +414,9 @@ FloodingLocQuerier_read_stats(Element *e, void *)
 void
 FloodingLocQuerier::add_handlers()
 {
-  add_read_handler("table", read_table, (void *)0);
-  add_read_handler("queries", read_seqs, (void *)0);
-  add_read_handler("stats", FloodingLocQuerier_read_stats, (void *)0);
+  add_read_handler("table", read_table, 0);
+  add_read_handler("queries", read_seqs, 0);
+  add_read_handler("stats", FloodingLocQuerier_read_stats, 0);
 }
 
 EXPORT_ELEMENT(FloodingLocQuerier)

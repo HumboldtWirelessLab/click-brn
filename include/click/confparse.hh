@@ -156,7 +156,7 @@ bool cp_seconds_as_micro(const String& str, uint32_t* result);
 #if HAVE_FLOAT_TYPES
 bool cp_seconds(const String& str, double* result);
 #endif
-bool cp_time(const String& str, Timestamp* result);
+bool cp_time(const String &str, Timestamp *result, bool allow_negative = false);
 bool cp_time(const String& str, struct timeval* result);
 
 bool cp_bandwidth(const String& str, uint32_t* result);
@@ -196,10 +196,6 @@ Element *cp_element(const String &str, const Element *context, ErrorHandler *err
 Element *cp_element(const String &str, Router *router, ErrorHandler *errh = 0, const char *argname = 0);
 bool cp_handler_name(const String& str, Element** result_element, String* result_hname, const Element* context, ErrorHandler* errh=0);
 bool cp_handler(const String& str, int flags, Element** result_element, const Handler** result_handler, const Element* context, ErrorHandler* errh=0);
-#endif
-
-#if HAVE_IPSEC
-bool cp_des_cblock(const String& str, unsigned char* result);
 #endif
 
 #if CLICK_USERLEVEL || CLICK_TOOL
@@ -273,6 +269,7 @@ extern const CpVaParseCmd
     cpSecondsAsMilli,	///< Result storage uint32_t*, parsed by cp_seconds_as_milli().
     cpSecondsAsMicro,	///< Result storage uint32_t*, parsed by cp_seconds_as_micro().
     cpTimestamp,	///< Result storage Timestamp*, parsed by cp_time().
+    cpTimestampSigned,	///< Result storage Timestamp*, parsed by cp_time().
     cpTimeval,		///< Result storage struct timeval*, parsed by cp_time().
     cpBandwidth,	///< Result storage uint32_t*, parsed by cp_bandwidth().
     cpIPAddress,	///< Result storage IPAddress* or equivalent, parsed by cp_ip_address().
@@ -294,7 +291,6 @@ extern const CpVaParseCmd
     cpIP6Prefix,	///< Result storage IP6Address* addr and IP6Address* mask, parsed by cp_ip6_prefix().
     cpIP6PrefixLen,	///< Result storage IP6Address* addr and int* prefix_len, parsed by cp_ip6_prefix().
     cpIP6AddressOrPrefix,///< Result storage IP6Address* addr and IP6Address* mask, parsed by cp_ip6_prefix().
-    cpDesCblock,	///< Result storage uint8_t[8], parsed by cp_des_cblock().
 #if CLICK_USERLEVEL || CLICK_TOOL
     cpFilename,		///< Result storage String*, parsed by cp_filename().
     cpFileOffset,	///< Result storage off_t*, parsed by cp_integer().

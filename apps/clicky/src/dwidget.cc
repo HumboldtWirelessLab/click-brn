@@ -177,7 +177,7 @@ void delt::create_elements(crouter *cr, RouterT *router,
     // create sub-elements for open or expanded compounds
     for (iterator e = begin_contents(); e; ++e)
 	if (e->_resolved_router
-	    && (e->_display == dedisp_open || e->_display == dedisp_expanded)) {
+	    && (e->_display == dedisp_normal || e->_display == dedisp_expanded)) {
 	    chain.enter_element(e->_e);
 	    ProcessingT subprocessing(*processing, e->_e);
 	    e->create_elements(cr, subprocessing.router(), &subprocessing,
@@ -210,7 +210,7 @@ void delt::create_connections(std::vector<delt_conn> &cc, crouter *cr) const
     for (iterator e = begin_contents(); e; ++e) {
 	if (e->_elt.size() && e->_display == dedisp_expanded)
 	    e->create_connections(cc, cr);
-	else if (e->_elt.size() && e->_display == dedisp_open)
+	else if (e->_elt.size() && e->_display == dedisp_normal)
 	    e->create_connections(cr);
     }
 }
@@ -222,7 +222,7 @@ void delt::create_connections(crouter *cr)
 	delete *it;
     _conn.clear();
 
-    if (!root() && _des->display != dedisp_open)
+    if (!root() && _des->display != dedisp_normal)
 	return;
 
     // create initial connections
@@ -241,7 +241,7 @@ void delt::create_connections(crouter *cr)
 
 	if (c.from->display() == dedisp_expanded) {
 	    RouterT *subr = c.from->_resolved_router;
-	    for (RouterT::conn_iterator it = subr->begin_connections_to(PortT(subr->element(1), c.from_port));
+	    for (RouterT::conn_iterator it = subr->find_connections_to(PortT(subr->element(1), c.from_port));
 		 it != subr->end_connections(); ++it)
 		cc.push_back(delt_conn(c.from->_elt[it->from_eindex()],
 				       it->from_port(), c.to, c.to_port));
@@ -250,7 +250,7 @@ void delt::create_connections(crouter *cr)
 
 	if (c.to->display() == dedisp_expanded) {
 	    RouterT *subr = c.to->_resolved_router;
-	    for (RouterT::conn_iterator it = subr->begin_connections_from(PortT(subr->element(0), c.to_port));
+	    for (RouterT::conn_iterator it = subr->find_connections_from(PortT(subr->element(0), c.to_port));
 		 it != subr->end_connections(); ++it)
 		cc.push_back(delt_conn(c.from, c.from_port,
 				       c.to->_elt[it->to_eindex()],
@@ -262,7 +262,7 @@ void delt::create_connections(crouter *cr)
 	    && c.from->parent()->display() == dedisp_expanded) {
 	    delt *pp = c.from->parent()->parent();
 	    RouterT *subr = pp->_resolved_router;
-	    for (RouterT::conn_iterator it = subr->begin_connections_to(PortT(c.from->parent()->_e, c.from_port));
+	    for (RouterT::conn_iterator it = subr->find_connections_to(PortT(c.from->parent()->_e, c.from_port));
 		 it != subr->end_connections(); ++it)
 		cc.push_back(delt_conn(pp->_elt[it->from_eindex()], it->from_port(), c.to, c.to_port));
 	    continue;
@@ -272,7 +272,7 @@ void delt::create_connections(crouter *cr)
 	    && c.to->parent()->display() == dedisp_expanded) {
 	    delt *pp = c.to->parent()->parent();
 	    RouterT *subr = pp->_resolved_router;
-	    for (RouterT::conn_iterator it = subr->begin_connections_from(PortT(c.to->parent()->_e, c.to_port));
+	    for (RouterT::conn_iterator it = subr->find_connections_from(PortT(c.to->parent()->_e, c.to_port));
 		 it != subr->end_connections(); ++it)
 		cc.push_back(delt_conn(c.from, c.from_port, pp->_elt[it->to_eindex()], it->to_port()));
 	    continue;
@@ -284,7 +284,7 @@ void delt::create_connections(crouter *cr)
 	    RouterT *subr = c.to->_e->router();
 	    for (int p = 0; p < c.to->noutputs(); ++p)
 		if (bv[p]) {
-		    for (RouterT::conn_iterator it = subr->begin_connections_from(PortT(c.to->_e, p));
+		    for (RouterT::conn_iterator it = subr->find_connections_from(PortT(c.to->_e, p));
 			 it != subr->end_connections(); ++it)
 			cc.push_back(delt_conn(c.from, c.from_port,
 					       c.to->parent()->_elt[it->to_eindex()],
@@ -803,7 +803,7 @@ bool delt::reccss(crouter *cr, int change)
 	    || (_flow_split && old_des && old_des->flow_split != _des->flow_split))
 	    resplit = true;
 	if (_display == dedisp_expanded && primitive())
-	    _display = dedisp_open;
+	    _display = dedisp_normal;
 	if (dedisp_visible(_display)
 	    && (_parent->root()		// NB _parent->_display is not yet set
 		|| dedisp_children_visible(_parent->_des->display)))
@@ -814,7 +814,7 @@ bool delt::reccss(crouter *cr, int change)
 	if (_e->tunnel() && !_parent->root()
 	    && (this == _parent->_elt[0] || this == _parent->_elt[1])) {
 	    _visible = false;
-	    _display = dedisp_open;
+	    _display = dedisp_normal;
 	}
     }
 
@@ -919,7 +919,7 @@ void delt::layout_contents(dcontext &dcx)
     for (iterator e = begin_contents(); e; ++e)
 	e->layout(dcx);
 
-    if (root() || _display == dedisp_open)
+    if (root() || _display == dedisp_normal)
 	position_contents_dot(dcx.cr, dcx.cr->error_handler());
     //position_contents_scc(router);
     //position_contents_first_heuristic(router);
@@ -1161,7 +1161,7 @@ void delt::layout(dcontext &dcx)
     }
 
     double xpad[4];
-    static_assert(sizeof(_dess->padding) == sizeof(xpad));
+    static_assert(sizeof(_dess->padding) == sizeof(xpad), "Padding screwup.");
     memcpy(xpad, _dess->padding, sizeof(xpad));
     if (!_contents_height) {	// Open displays already account for port widths
 	xpad[orientation()] = MAX(xpad[orientation()], _ports_width[0]);
@@ -1375,7 +1375,7 @@ void delt::remove(rect_search<dwidget> &rects, rectangle &bounds)
 	    rects.remove(*it);
 	}
 
-    if (_parent && _elt.size() && _display == dedisp_open) {
+    if (_parent && _elt.size() && _display == dedisp_normal) {
 	delt *ein = _elt[0], *eout = _elt[1];
 	ein->remove(rects, bounds);
 	eout->remove(rects, bounds);
@@ -1402,7 +1402,7 @@ void delt::insert(rect_search<dwidget> &rects, crouter *cr,
 	    rects.insert(*it);
 	}
 
-    if (_parent && _elt.size() && _display == dedisp_open) {
+    if (_parent && _elt.size() && _display == dedisp_normal) {
 	layout_compound_ports(cr);
 	delt *ein = _elt[0], *eout = _elt[1];
 	ein->insert(rects, cr, bounds);

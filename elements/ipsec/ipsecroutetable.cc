@@ -28,7 +28,7 @@
 
 #include <click/config.h>
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
@@ -50,21 +50,21 @@ cp_ipsec_route(String s, IPsecRoute *r_store, bool remove_route, Element *contex
 
     SADataTuple * sa_data;
 
-    if (!cp_ip_prefix(cp_shift_spacevec(s), &r.addr, &r.mask, true, context))
+    if (!IPPrefixArg(true).parse(cp_shift_spacevec(s), r.addr, r.mask, context))
 	return false;
 
     r.addr &= r.mask;
     String word = cp_shift_spacevec(s);
     if (word == "-")
 	/* null gateway; do nothing */;
-    else if (cp_ip_address(word, &r.gw, context))
+    else if (IPAddressArg().parse(word, r.gw, context))
 	/* do nothing */;
     else
 	goto two_words;
 
     word = cp_shift_spacevec(s);
   two_words:
-    if (cp_integer(word, &r.port) || (!word && remove_route))
+    if (IntArg().parse(word, r.port) || (!word && remove_route))
 	//Ipsec extensions parsing
 	word = cp_shift_spacevec(s);
 
@@ -81,13 +81,13 @@ cp_ipsec_route(String s, IPsecRoute *r_store, bool remove_route, Element *contex
     words.push_back(word);
     cp_spacevec(s, words);
     String enc_key, auth_key;
-    if (cp_va_kparse(words, context, ErrorHandler::default_handler(),
-		     "SPI", cpkP+cpkM, cpUnsigned, &r.spi,
-		     "ENCRYPT_KEY", cpkP+cpkM, cpString, &enc_key,
-		     "AUTH_KEY", cpkP+cpkM, cpString, &auth_key,
-		     "REPLAY", cpkP+cpkM, cpUnsigned, &replay,
-		     "OOSIZE", cpkP+cpkM, cpUnsigned, &oowin,
-		     cpEnd) < 0)
+    if (Args(words, context, ErrorHandler::default_handler())
+	.read_mp("SPI", r.spi)
+	.read_mp("ENCRYPT_KEY", enc_key)
+	.read_mp("AUTH_KEY", auth_key)
+	.read_mp("REPLAY", replay)
+	.read_mp("OOSIZE", oowin)
+	.complete() < 0)
 	return false;
     if (enc_key.length() != 16 || auth_key.length() != 16) {
 	click_chatter("key has bad length");
@@ -153,7 +153,6 @@ IPsecRouteTable::cast(const char *name)
 int
 IPsecRouteTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    int before = errh->nerrors();
     IPsecRoute r;
     for (int i = 0; i < conf.size(); i++) {
 	if (cp_ipsec_route(conf[i], &r, false, this)
@@ -162,8 +161,7 @@ IPsecRouteTable::configure(Vector<String> &conf, ErrorHandler *errh)
 	else
 	    errh->error("argument %d should be 'ADDR/MASK [GATEWAY] OUTPUT'", i+1);
     }
-
-    return (errh->nerrors() != before ? -1 : 0);
+    return errh->nerrors() ? -1 : 0;
 }
 
 int
@@ -363,7 +361,7 @@ IPsecRouteTable::lookup_handler(int, String& s, Element* e, const Handler*, Erro
 {
     IPsecRouteTable *table = static_cast<IPsecRouteTable*>(e);
     IPAddress a;
-    if (cp_ip_address(cp_uncomment(s), &a, table)) {
+    if (IPAddressArg().parse(cp_uncomment(s), a, table)) {
 	IPAddress gw;
 	uint32_t spi;
 	SADataTuple * sa_data;
@@ -381,7 +379,7 @@ void
 IPsecRouteTable::add_handlers()
 {
     add_write_handler("add", add_route_handler, 0);
-    add_write_handler("set", add_route_handler, (void*) 1);
+    add_write_handler("set", add_route_handler, 1);
     add_write_handler("remove", remove_route_handler, 0);
     add_write_handler("ctrl", ctrl_handler, 0);
     add_read_handler("table", table_handler, 0);

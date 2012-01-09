@@ -55,10 +55,10 @@ GENERIC_OBJS = string.o straccum.o nameinfo.o \
 	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
-	error.o timestamp.o glue.o task.o timer.o atomic.o gaprate.o \
+	error.o timestamp.o glue.o task.o timer.o atomic.o fromfile.o gaprate.o \
 	element.o \
-	confparse.o variableenv.o lexer.o elemfilter.o routervisitor.o \
-	routerthread.o router.o master.o handlercall.o notifier.o \
+	confparse.o args.o variableenv.o lexer.o elemfilter.o routervisitor.o \
+	routerthread.o router.o master.o timerset.o selectset.o handlercall.o notifier.o \
 	integers.o md5.o crc32.o in_cksum.o iptable.o \
 	archive.o userutils.o driver.o \
 	$(EXTRA_DRIVER_OBJS)
@@ -107,9 +107,9 @@ ifneq ($(MAKECMDGOALS),clean)
 endif
 
 libjistclick.so: Makefile $(LIBOBJS) $(OBJS)
-	$(CXX) -shared -o libjistclick.so $(LIBOBJS) $(OBJS) $(LDFLAGS) $(CXXFLAGS)
+	$(CXX) -shared -o libjistclick.so $(LIBOBJS) $(OBJS) $(LDFLAGS) $(CXXFLAGS) $(LIBS)
 libjistclick.a: Makefile $(LIBOBJS) $(OBJS)
-	$(AR_CREATE) libjistclick.a $(LIBOBJS) $(OBJS)
+	$(AR_CREATE) libjistclick.a $(LIBOBJS) $(OBJS) $(LIBS)
 	$(RANLIB) libjistclick.a
 
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status

@@ -1,7 +1,4 @@
 #include <click/config.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <string.h>
 #include "lzw.hh"
 
 CLICK_DECLS
@@ -9,11 +6,10 @@ CLICK_DECLS
 LZW::LZW()
 {
   //TODO: Handle malloc-error
-  code_value= new int[TABLE_SIZE];
-  prefix_code=new unsigned int[TABLE_SIZE];
+  code_value= new int32_t[TABLE_SIZE];
+  prefix_code=new uint32_t[TABLE_SIZE];
   append_character=new unsigned char[TABLE_SIZE];
   decode_stack=new unsigned char[LZW_DECODE_STACK_SIZE];
-
 
   if (code_value==NULL || prefix_code==NULL || append_character==NULL || decode_stack==NULL)
     click_chatter("Fatal error allocating table space!\n");
@@ -32,8 +28,8 @@ LZW::~LZW()
 void
 LZW::reset_tables()
 {
-  memset(code_value,0, TABLE_SIZE*sizeof(int));
-  memset(prefix_code,0,TABLE_SIZE*sizeof(unsigned int));
+  memset(code_value,0, TABLE_SIZE*sizeof(int32_t));
+  memset(prefix_code,0,TABLE_SIZE*sizeof(uint32_t));
   memset(append_character,0,TABLE_SIZE*sizeof(unsigned char));
 
   b_mask = 0;
@@ -51,9 +47,9 @@ LZW::reset_tables()
 */
 
 unsigned char *
-LZW::decode_string(unsigned char *buffer, unsigned int code)
+LZW::decode_string(unsigned char *buffer, uint32_t code)
 {
-  int i = 0;
+  int32_t i = 0;
 
   while (code > 255)
   {
@@ -78,11 +74,11 @@ LZW::decode_string(unsigned char *buffer, unsigned int code)
 ** returned instead.
 */
 
-int
-LZW::find_match(unsigned int hash_prefix, unsigned int hash_character)
+int32_t
+LZW::find_match(uint32_t hash_prefix, uint32_t hash_character)
 {
-  int index = 0;
-  int offset = 0;
+  int32_t index = 0;
+  int32_t offset = 0;
 
   index = (hash_character << HASHING_SHIFT) ^ hash_prefix;
   if (index == 0)
@@ -102,18 +98,18 @@ LZW::find_match(unsigned int hash_prefix, unsigned int hash_character)
   }
 }
 
-unsigned int
-LZW::input_code(unsigned char *input, int *pos, int inputlen)
+uint32_t
+LZW::input_code(unsigned char *input, int32_t *pos, int32_t inputlen)
 {
-  unsigned long c;
-  unsigned int return_value;
+  uint32_t c;
+  uint32_t return_value;
 
   while (input_bit_count <= 24)
   {
-    if ( *pos > inputlen ) return LZW_DECODE_ERROR;
+    if ( *pos >= inputlen ) return MAX_VALUE;
     c = input[*pos];
     *pos = *pos + 1;
-    input_bit_buffer |= (unsigned long)c << (24-input_bit_count);
+    input_bit_buffer |= c << (24-input_bit_count);
     input_bit_count += 8;
   }
 
@@ -121,15 +117,15 @@ LZW::input_code(unsigned char *input, int *pos, int inputlen)
   input_bit_buffer <<= BITS;
   input_bit_count -= BITS;
 
-  return(return_value);
+  return return_value;
 }
 
 void
-LZW::output_code(unsigned char *output, int *pos, unsigned int code, int max_outputlen)
+LZW::output_code(unsigned char *output, int32_t *pos, uint32_t code, int32_t max_outputlen)
 {
   unsigned char outc;
 
-  output_bit_buffer |= (unsigned long) code << (32-BITS-output_bit_count);
+  output_bit_buffer |= code << (32-BITS-output_bit_count);
   output_bit_count += BITS;
 
   while (output_bit_count >= 8)
@@ -153,17 +149,16 @@ LZW::output_code(unsigned char *output, int *pos, unsigned int code, int max_out
 ** match to the algorithm accompanying the article.
 **
 */
-//void compress(FILE *input,FILE *output)
 int
 LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int max_outputlen)
 {
-  unsigned int next_code;
-  unsigned int character;
-  unsigned int string_code;
-  unsigned int index = 0;
-  int inputpos;
-  int outputpos;
-  int i;
+  uint32_t next_code;
+  uint32_t character;
+  uint32_t string_code;
+  uint32_t index = 0;
+  int32_t inputpos;
+  int32_t outputpos;
+  int32_t i;
 
   reset_tables();
 
@@ -227,14 +222,14 @@ LZW::encode(unsigned char *input, int inputlen, unsigned char *output, int max_o
 int
 LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_outputlen)
 {
-  unsigned int next_code;
-  unsigned int new_code;
-  unsigned int old_code;
-  int character;
-  int counter;
+  uint32_t next_code;
+  uint32_t new_code;
+  uint32_t old_code;
+  int32_t character;
+  int32_t counter;
   unsigned char *string;
-  int inputpos;
-  int outputpos;
+  int32_t inputpos;
+  int32_t outputpos;
 
   if ( max_outputlen == 0 ) return LZW_DECODE_ERROR;
 
@@ -257,7 +252,7 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_o
   **  This is the main expansion loop.  It reads in characters from the LZW file
   **  until it sees the special code used to inidicate the end of the data.
   */
-  while ( ( new_code = input_code(input, &inputpos, inputlen) ) != (MAX_VALUE))
+  while ( ( new_code = input_code(input, &inputpos, inputlen) ) != MAX_VALUE)
   {
     /*
     ** This code checks for the special STRING+CHARACTER+STRING+CHARACTER+STRING
@@ -304,73 +299,5 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_o
   return outputpos;
 }
 
-/******************************************************************************************/
-/*****************************  Unused GNU Code *******************************************/
-/******************************************************************************************/
-
-/* Helper for input_code() */
-unsigned int
-LZW::mask(const int n_bits)
-{
-  if (n_bits_prev == n_bits) return b_mask;
-  n_bits_prev = n_bits;
-
-  b_mask = 0;
-  for (int i = 0; i < n_bits; i++)
-  {
-    b_mask <<= 1;
-    b_mask |= 1;
-  }
-
-  return b_mask;
-}
-
-/* Modified to read bytes in least significate order - djm */
-unsigned int
-LZW::input_code_gnu(unsigned char *input, int *pos, int inputlen, const int n_bits)
-{
-  int c;
-  unsigned int      return_value;
-
-  while (input_bit_count < n_bits)
-  {
-    if ( *pos == inputlen ) return MAX_VALUE;
-    c = input[*pos];
-    *pos = *pos + 1;
-    input_bit_buffer |= c << input_bit_count;
-    input_bit_count += 8;
-  }
-
-  return_value = input_bit_buffer & mask(n_bits);
-  input_bit_buffer >>= n_bits;
-  input_bit_count -= n_bits;
-
-  return return_value;
-}
-
-
-/* Modified so sends least signifigant bytes first like GNU/Linux version - djm */
-void
-LZW::output_code_gnu(unsigned char *output, int *pos, unsigned int code, const int n_bits)
-{
-  unsigned char outc;
-
-  output_bit_buffer |= (unsigned long)code << output_bit_count;
-  output_bit_count += n_bits;
-
-//  click_chatter("Bit: %d",n_bits);
-
-  while (output_bit_count >= 8)
-  {
-    outc = output_bit_buffer & 0xff;
-    output[*pos] = outc;
-    *pos = *pos + 1;
-    output_bit_buffer >>= 8;
-    output_bit_count -= 8;
-  }
-}
-
-
 CLICK_ENDDECLS
-
 ELEMENT_PROVIDES(LZW)

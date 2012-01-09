@@ -20,7 +20,7 @@
 #include "comparepackets.hh"
 #include <click/straccum.hh>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 CLICK_DECLS
 
 ComparePackets::ComparePackets()
@@ -39,9 +39,7 @@ int
 ComparePackets::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     bool timestamp = true;
-    if (cp_va_kparse(conf, this, errh,
-		     "TIMESTAMP", 0, cpBool, &timestamp,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh).read("TIMESTAMP", timestamp).complete() < 0)
 	return -1;
     _timestamp = timestamp;
     return 0;
@@ -144,7 +142,7 @@ ComparePackets::read_handler(Element *e, void *thunk)
 	  return sa.take_string();
       }
       case H_ALL_SAME:
-	return cp_unparse_bool(cp->_ndiff == 0);
+	return BoolArg::unparse(cp->_ndiff == 0);
       default:
 	return "<error>";
     }
@@ -153,9 +151,9 @@ ComparePackets::read_handler(Element *e, void *thunk)
 void
 ComparePackets::add_handlers()
 {
-    add_read_handler("diffs", read_handler, (void *) H_DIFFS);
-    add_read_handler("diff_details", read_handler, (void *) H_DIFF_DETAILS);
-    add_read_handler("all_same", read_handler, (void *) H_ALL_SAME);
+    add_read_handler("diffs", read_handler, H_DIFFS);
+    add_read_handler("diff_details", read_handler, H_DIFF_DETAILS);
+    add_read_handler("all_same", read_handler, H_ALL_SAME);
 }
 
 CLICK_ENDDECLS

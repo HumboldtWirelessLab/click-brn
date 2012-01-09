@@ -48,6 +48,7 @@ typedef struct {
 #define STATUS_hw_rxtx_test		0x10				// set 1, if hw must send [count ] packets
 #define STATUS_full_test			0x20				// set 1, if packet send from HOST to HOST
 
+
 typedef struct {	
     unsigned portCHAR  status;									 	// State:   echo_ok?, echo_error?;  crc? , no_tx?, hw_rxtx_test?  ...
     unsigned portCHAR  count;										

@@ -22,13 +22,33 @@
 #define BRN2GENERICMETRIC_HH
 #include <click/element.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 //
 // Common interface of all route metric elements.
 //
 
-class BRN2GenericMetric : public Element {};
+class BrnRateSize {
+  public:
+    uint16_t _rate; //Rate of Linkprobe //for n use packed_16
+    uint16_t _size; //Size of Linkprobe
+    BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
+
+    inline bool operator==(BrnRateSize other)
+    {
+      return (other._rate == _rate && other._size == _size);
+    }
+};
+
+class BRN2GenericMetric : public BRNElement {
+
+ public:
+  virtual void update_link(EtherAddress from, EtherAddress to,
+                           Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq) = 0;
+
+};
 
 CLICK_ENDDECLS
 #endif

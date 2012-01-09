@@ -22,10 +22,12 @@
 #include <click/config.h>
 #include <click/glue.hh>
 #include "anydevice.hh"
-#include <click/confparse.hh>
+#include "fromdevice.hh"
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/handlercall.hh>
 #include <clicknet/ether.h>
+#include <click/etheraddress.hh>
 #include <click/cxxprotect.h>
 CLICK_CXX_PROTECT
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0)
@@ -68,24 +70,29 @@ AnyDevice::configure_keywords(Vector<String> &conf, ErrorHandler *errh,
     bool quiet = _quiet;
     bool promisc = _promisc;
     bool timestamp = _timestamp;
+    HandlerCall up_call, down_call;
 
-    if (cp_va_kparse_remove_keywords(conf, this, errh,
-			"UP_CALL", 0, cpHandlerCallPtrWrite, &_up_call,
-			"DOWN_CALL", 0, cpHandlerCallPtrWrite, &_down_call,
-			"ALLOW_NONEXISTENT", 0, cpBool, &allow_nonexistent,
-			"QUIET", 0, cpBool, &quiet,
-			cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("UP_CALL", HandlerCallArg(HandlerCall::writable), up_call)
+	.read("DOWN_CALL", HandlerCallArg(HandlerCall::writable), down_call)
+	.read("ALLOW_NONEXISTENT", allow_nonexistent)
+	.read("QUIET", quiet)
+	.consume() < 0)
 	return -1;
-    if (is_reader && cp_va_kparse_remove_keywords(conf, this, errh,
-			"PROMISC", 0, cpBool, &promisc,
-			"TIMESTAMP", 0, cpBool, &timestamp,
-			cpEnd) < 0)
+    if (is_reader && (Args(this, errh).bind(conf)
+		      .read("PROMISC", promisc)
+		      .read("TIMESTAMP", timestamp)
+		      .consume() < 0))
 	return -1;
 
     _allow_nonexistent = allow_nonexistent;
     _quiet = quiet;
     _promisc = promisc;
     _timestamp = timestamp;
+    delete _up_call;
+    _up_call = up_call ? new HandlerCall(up_call) : 0;
+    delete _down_call;
+    _down_call = down_call ? new HandlerCall(down_call) : 0;
     return 0;
 }
 
@@ -117,24 +124,37 @@ AnyDevice::alter_promiscuity(int delta)
 void
 AnyDevice::alter_from_device(int delta)
 {
-#if !HAVE_CLICK_KERNEL && (defined(CONFIG_BRIDGE) || defined(CONFIG_BRIDGE_MODULE)) && LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 24)
-    fake_bridge *fb = reinterpret_cast<fake_bridge *>(_dev->br_port);
-    if (fb && fb->magic != fake_bridge::click_magic) {
-	printk("<1>%s: appears to be owned by the bridge module!", _devname.c_str());
+#if HAVE_CLICK_KERNEL
+    (void) delta;
+#elif CLICK_FROMDEVICE_USE_BRIDGE
+    if (!_dev)
 	return;
-    }
-
-    if (delta < 0 && fb && atomic_dec_and_test(&fb->refcount)) {
+    fake_bridge *fb = reinterpret_cast<fake_bridge *>(_dev->br_port);
+    if (fb && fb->magic != fake_bridge::click_magic)
+	printk("<1>%s: appears to be owned by the bridge module!", _devname.c_str());
+    else if (delta < 0 && fb && atomic_dec_and_test(&fb->refcount)) {
 	delete fb;
 	rcu_assign_pointer(_dev->br_port, NULL);
-    } else if (delta > 0 && fb)
-	atomic_inc(&fb->refcount);
-    else if (delta > 0) {
+    } else if (delta > 0 && !fb) {
 	fb = new fake_bridge;
 	fb->magic = fake_bridge::click_magic;
 	atomic_set(&fb->refcount, 1);
 	rcu_assign_pointer(_dev->br_port, reinterpret_cast<struct net_bridge_port *>(fb));
-    }
+    } else if (delta > 0)
+	atomic_inc(&fb->refcount);
+#elif HAVE_LINUX_NETDEV_RX_HANDLER_REGISTER
+    if (!_dev)
+	return;
+    rtnl_lock();
+    if (_dev->rx_handler && _dev->rx_handler != click_fromdevice_rx_handler)
+	printk("<1>%s: rx_handler already set!", _devname.c_str());
+    else if (delta < 0 && !_dev->rx_handler_data)
+	netdev_rx_handler_unregister(_dev);
+    else if (delta > 0 && !_dev->rx_handler)
+	netdev_rx_handler_register(_dev, click_fromdevice_rx_handler, 0);
+    else
+	_dev->rx_handler_data = (void *) ((uintptr_t) _dev->rx_handler_data + delta);
+    rtnl_unlock();
 #else
     (void) delta;
 #endif
@@ -308,7 +328,7 @@ AnyDeviceMap::lookup_unknown(net_device *dev, AnyDevice *last) const
 	    return d;
 	} else if ((dev->type == ARPHRD_ETHER || dev->type == ARPHRD_80211)
 		   && !d->_devname_exists
-		   && cp_ethernet_address(d->devname(), en, d)
+		   && EtherAddressArg().parse(d->devname(), en, d)
 		   && memcmp(en, dev->dev_addr, 6) == 0)
 	    return d;
 
@@ -335,7 +355,7 @@ net_device *
 AnyDevice::get_by_ether_address(const String &name, Element *context)
 {
     unsigned char en[6];
-    if (!cp_ethernet_address(name, en, context))
+    if (!EtherAddressArg().parse(name, en, context))
 	return 0;
     read_lock(&dev_base_lock);
     net_device *dev;
@@ -354,5 +374,5 @@ AnyDevice::get_by_ether_address(const String &name, Element *context)
     return dev;
 }
 
-ELEMENT_REQUIRES(linuxmodule)
+ELEMENT_REQUIRES(linuxmodule FromDevice)
 ELEMENT_PROVIDES(AnyDevice)

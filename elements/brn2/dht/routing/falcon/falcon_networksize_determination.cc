@@ -8,7 +8,6 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/md5.h"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 
@@ -20,9 +19,9 @@
 CLICK_DECLS
 
 FalconNetworkSizeDetermination::FalconNetworkSizeDetermination():
-  _networksize(1),
-  _debug(BrnLogger::DEFAULT)
+  _networksize(1)
 {
+  BRNElement::init();
 }
 
 FalconNetworkSizeDetermination::~FalconNetworkSizeDetermination()
@@ -97,6 +96,7 @@ FalconNetworkSizeDetermination::request_nws()
     }
 
     size = 1 << position;
+    BRN_DEBUG("Next is %s",next->_ether_addr.unparse().c_str());
 
     WritablePacket *p = DHTProtocolFalcon::new_nws_packet(_frt->_me, next, size);
     output(0).push(p);
@@ -132,6 +132,8 @@ FalconNetworkSizeDetermination::handle_nws(Packet *packet)
 
     size = size + (1 << position);
 
+    BRN_DEBUG("Next is %s",route_next->_ether_addr.unparse().c_str());
+
     WritablePacket *p = DHTProtocolFalcon::fwd_nws_packet(_frt->_me, route_next, size, packet);
     output(0).push(p);
   }
@@ -165,16 +167,11 @@ read_param(Element *e, void *thunk)
 }
 
 static int
-write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
+write_param(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
   FalconNetworkSizeDetermination *nws = (FalconNetworkSizeDetermination *)e;
 
-  String s = cp_uncomment(in_s);
-  int start;
-  if (!cp_integer(s, &start))
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-
-  if ( start == 1 ) nws->request_nws();
+  nws->request_nws();
 
   return 0;
 }
@@ -182,6 +179,8 @@ write_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 void
 FalconNetworkSizeDetermination::add_handlers()
 {
+  BRNElement::add_handlers();
+
   add_write_handler("start_request", write_param , (void *)H_START_REQUEST);
   add_read_handler("networksize", read_param , (void *)H_NETWORK_SIZE);
 }

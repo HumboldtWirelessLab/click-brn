@@ -17,12 +17,12 @@
  */
 
 #include <click/config.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/packet_anno.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
 #include "wifidupefilter.hh"
@@ -42,11 +42,7 @@ WifiDupeFilter::~WifiDupeFilter()
 int
 WifiDupeFilter::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  int ret;
-  ret = cp_va_kparse(conf, this, errh,
-		     "DEBUG", 0, cpBool, &_debug,
-		     cpEnd);
-  return ret;
+    return Args(conf, this, errh).read("DEBUG", _debug).complete();
 }
 
 Packet *
@@ -60,8 +56,8 @@ WifiDupeFilter::simple_action(Packet *p_in)
 
   EtherAddress src = EtherAddress(w->i_addr2);
   EtherAddress dst = EtherAddress(w->i_addr1);
-  uint16_t seq = le16_to_cpu(*(uint16_t *) w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
-  uint8_t frag = le16_to_cpu(*(u_int16_t *)w->i_seq) & WIFI_SEQ_FRAG_MASK;
+  uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+  uint8_t frag = le16_to_cpu(w->i_seq) & WIFI_SEQ_FRAG_MASK;
   u_int8_t more_frag = w->i_fc[1] & WIFI_FC1_MORE_FRAG;
 
   bool is_frag = frag || more_frag;
@@ -142,7 +138,7 @@ WifiDupeFilter_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
@@ -157,12 +153,12 @@ WifiDupeFilter_write_param(const String &in_s, Element *e, void *vparam,
 void
 WifiDupeFilter::add_handlers()
 {
-  add_read_handler("debug", WifiDupeFilter_read_param, (void *) H_DEBUG);
-  add_read_handler("dupes", WifiDupeFilter_read_param, (void *) H_DUPES);
-  add_read_handler("drops", WifiDupeFilter_read_param, (void *) H_DUPES);
+  add_read_handler("debug", WifiDupeFilter_read_param, H_DEBUG);
+  add_read_handler("dupes", WifiDupeFilter_read_param, H_DUPES);
+  add_read_handler("drops", WifiDupeFilter_read_param, H_DUPES);
 
-  add_write_handler("debug", WifiDupeFilter_write_param, (void *) H_DEBUG);
-  add_write_handler("reset", WifiDupeFilter_write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("debug", WifiDupeFilter_write_param, H_DEBUG);
+  add_write_handler("reset", WifiDupeFilter_write_param, H_RESET, Handler::BUTTON);
 
   add_read_handler("stats", static_read_stats, 0);
 }

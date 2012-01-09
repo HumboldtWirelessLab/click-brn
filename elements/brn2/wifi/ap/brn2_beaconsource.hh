@@ -5,7 +5,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/wifi/brn2_wirelessinfolist.hh"
-#include "elements/brn2/wifi/brn2_setchannel.hh"
+#include "elements/brn2/wifi/txparams/brn2_setchannel.hh"
 
 CLICK_DECLS
 
@@ -80,6 +80,7 @@ class BRN2BeaconSource : public Element { public:
 
   bool is_protected_ssid(String ssid);
   bool _switch_channel;
+  int _headroom;
 };
 
 CLICK_ENDDECLS

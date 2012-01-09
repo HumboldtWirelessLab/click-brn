@@ -34,6 +34,9 @@
 #include <click/notifier.hh>
 #include <click/nameinfo.hh>
 #include <click/bighashmap_arena.hh>
+#if CLICK_STATS >= 2
+# include <click/hashtable.hh>
+#endif
 #include <click/standard/errorelement.hh>
 #include <click/standard/threadsched.hh>
 #if CLICK_BSDMODULE
@@ -346,6 +349,17 @@ Router::elandmark(int eindex) const
 	return filename + String(lineno);
     else
 	return filename + String(':') + String(lineno);
+}
+
+int
+Router::hard_home_thread_id(const Element *e) const
+{
+    int &x = _element_home_thread_ids[e->eindex() + 1];
+    if (x == ThreadSched::THREAD_UNKNOWN && _thread_sched)
+	x = _thread_sched->initial_home_thread_id(e);
+    if (x == ThreadSched::THREAD_UNKNOWN)
+	return 0;
+    return x;
 }
 
 
@@ -781,11 +795,8 @@ void
 Router::set_runcount(int32_t rc)
 {
     _runcount = rc;
-    if (rc <= 0) {
-	_master->set_stopper(1);
-	// ensure that at least one thread is awake to handle the stop event
-	_master->_threads[2]->wake();
-    }
+    if (rc <= 0)
+	_master->request_stop();
 }
 
 /** @brief  Adjust the runcount by @a delta.
@@ -806,21 +817,18 @@ void
 Router::adjust_runcount(int32_t delta)
 {
     // beware of overflow
-    int32_t old_value, new_value;
+    uint32_t old_value, new_value;
     do {
 	old_value = _runcount;
-	if (delta > 0 && old_value > 0x7FFFFFFF - delta)
+	if (delta > 0 && (int32_t) old_value > 0x7FFFFFFF - delta)
 	    new_value = 0x7FFFFFFF;
-	else if (delta < 0 && old_value < STOP_RUNCOUNT - delta)
+	else if (delta < 0 && (int32_t) old_value < STOP_RUNCOUNT - delta)
 	    new_value = STOP_RUNCOUNT;
 	else
 	    new_value = old_value + delta;
-    } while (!_runcount.compare_and_swap(old_value, new_value));
-    if (new_value <= 0) {
-	_master->set_stopper(1);
-	// ensure that at least one thread is awake to handle the stop event
-	_master->_threads[2]->wake();
-    }
+    } while (_runcount.compare_swap(old_value, new_value) != old_value);
+    if ((int32_t) new_value <= 0)
+	_master->request_stop();
 }
 
 
@@ -1057,6 +1065,9 @@ Router::initialize(ErrorHandler *errh)
     if (check_hookup_elements(errh) < 0)
 	return -1;
 
+    // prepare thread IDs
+    _element_home_thread_ids.assign(nelements() + 1, ThreadSched::THREAD_UNKNOWN);
+
     // set up configuration order
     _element_configure_order.assign(nelements(), 0);
     if (_element_configure_order.size()) {
@@ -1095,19 +1106,19 @@ Router::initialize(ErrorHandler *errh)
 	// Set the random seed to a "truly random" value by default.
 	click_random_srandom();
 	for (int ord = 0; ord < _elements.size(); ord++) {
-	    int i = _element_configure_order[ord];
+	    int i = _element_configure_order[ord], r;
 #if CLICK_DMALLOC
 	    sprintf(dmalloc_buf, "c%d  ", i);
 	    CLICK_DMALLOC_REG(dmalloc_buf);
 #endif
 	    RouterContextErrh cerrh(errh, "While configuring", element(i));
-	    int before = cerrh.nerrors(), r;
+	    assert(!cerrh.nerrors());
 	    conf.clear();
 	    cp_argvec(_element_configurations[i], conf);
 	    if ((r = _elements[i]->configure(conf, &cerrh)) < 0) {
 		element_stage[i] = Element::CLEANUP_CONFIGURE_FAILED;
 		all_ok = false;
-		if (cerrh.nerrors() == before) {
+		if (!cerrh.nerrors()) {
 		    if (r == -ENOMEM)
 			cerrh.error("out of memory");
 		    else
@@ -1134,13 +1145,13 @@ Router::initialize(ErrorHandler *errh)
 	    CLICK_DMALLOC_REG(dmalloc_buf);
 #endif
 	    RouterContextErrh cerrh(errh, "While initializing", element(i));
-	    int before = cerrh.nerrors();
+	    assert(!cerrh.nerrors());
 	    if (_elements[i]->initialize(&cerrh) >= 0)
 		element_stage[i] = Element::CLEANUP_INITIALIZED;
 	    else {
 		// don't report 'unspecified error' for ErrorElements:
 		// keep error messages clean
-		if (cerrh.nerrors() == before && !_elements[i]->cast("Error"))
+		if (!cerrh.nerrors() && !_elements[i]->cast("Error"))
 		    cerrh.error("unspecified error");
 		element_stage[i] = Element::CLEANUP_INITIALIZE_FAILED;
 		all_ok = false;
@@ -1155,6 +1166,14 @@ Router::initialize(ErrorHandler *errh)
     // If there were errors, uninitialize any elements that we initialized
     // successfully and return -1 (error). Otherwise, we're all set!
     if (all_ok) {
+	// Get a home thread for every element, not just the ones that have
+	// been explicitly queried so far.
+	for (int i = 0; i <= nelements(); ++i) {
+	    int &x = _element_home_thread_ids[i];
+	    if (x == ThreadSched::THREAD_UNKNOWN)
+		x = hard_home_thread_id(i ? _elements[i - 1] : _root_element);
+	}
+
 	_state = ROUTER_LIVE;
 #ifdef CLICK_NAMEDB_CHECK
 	NameInfo::check(_root_element, errh);
@@ -1885,7 +1904,7 @@ Router::notifier_signal_name(const atomic_uint32_t *signal) const
 }
 
 int
-ThreadSched::initial_home_thread_id(Element *, Task *, bool)
+ThreadSched::initial_home_thread_id(const Element *)
 {
     return 0;
 }
@@ -2131,7 +2150,15 @@ Router::configuration_string() const
 
 enum { GH_VERSION, GH_CONFIG, GH_FLATCONFIG, GH_LIST, GH_REQUIREMENTS,
        GH_DRIVER, GH_ACTIVE_PORTS, GH_ACTIVE_PORT_STATS, GH_STRING_PROFILE,
-       GH_STRING_PROFILE_LONG, GH_SCHEDULING_PROFILE };
+       GH_STRING_PROFILE_LONG, GH_SCHEDULING_PROFILE, GH_STOP,
+       GH_ELEMENT_CYCLES, GH_CLASS_CYCLES, GH_RESET_CYCLES };
+
+#if CLICK_STATS >= 2
+struct stats_info {
+    click_cycles_t task_own_cycles, timer_own_cycles, xfer_own_cycles;
+    uint32_t task_calls, timer_calls, xfer_calls, nelements;
+};
+#endif
 
 String
 Router::router_read_handler(Element *e, void *thunk)
@@ -2225,19 +2252,119 @@ Router::router_read_handler(Element *e, void *thunk)
 	break;
 #endif
 
+#if CLICK_STATS >= 2
+    case GH_ELEMENT_CYCLES:
+	if (!r)
+	    break;
+	sa << "name,class,task_calls,task_cycles,cycles_per_task,timer_calls,timer_cycles,cycles_per_timer,xfer_calls,xfer_cycles,cycles_per_xfer,any_cycles,cycles_per_any\n";
+	for (int ei = 0; ei < r->nelements(); ++ei) {
+	    Element *e = r->element(ei);
+	    if (!(e->_task_own_cycles || e->_timer_own_cycles || e->_xfer_own_cycles))
+		continue;
+	    sa << r->_element_names[ei] << ','
+	       << e->class_name() << ','
+	       << e->_task_calls << ','
+	       << e->_task_own_cycles << ','
+	       << int_divide(e->_task_own_cycles, e->_task_calls ? e->_task_calls : 1) << ','
+	       << e->_timer_calls << ','
+	       << e->_timer_own_cycles << ','
+	       << int_divide(e->_timer_own_cycles, e->_timer_calls ? e->_timer_calls : 1) << ','
+	       << e->_xfer_calls << ','
+	       << e->_xfer_own_cycles << ','
+	       << int_divide(e->_xfer_own_cycles, e->_xfer_calls ? e->_xfer_calls : 1) << ',';
+	    click_cycles_t any_cycles = e->_task_own_cycles + e->_timer_own_cycles + e->_xfer_own_cycles;
+	    uint32_t any_calls = e->_task_calls + e->_timer_calls + e->_xfer_calls;
+	    sa << any_cycles << ','
+	       << int_divide(any_cycles, any_calls ? any_calls : 1) << '\n';
+	}
+	break;
+
+    case GH_CLASS_CYCLES: {
+	if (!r)
+	    break;
+	HashTable<String, int> class_map(-1);
+	int nclasses = 0;
+	for (int ei = 0; ei < r->nelements(); ++ei) {
+	    Element *e = r->element(ei);
+	    if (!(e->_task_own_cycles || e->_timer_own_cycles || e->_xfer_own_cycles))
+		continue;
+	    int &x = class_map[e->class_name()];
+	    if (x < 0)
+		x = nclasses++;
+	}
+
+	stats_info *si = new stats_info[nclasses];
+	memset(si, 0, sizeof(stats_info) * nclasses);
+	for (int ei = 0; ei < r->nelements(); ++ei) {
+	    Element *e = r->element(ei);
+	    int x = class_map.get(e->class_name());
+	    if (!(e->_task_own_cycles || e->_timer_own_cycles || e->_xfer_own_cycles) || x < 0)
+		continue;
+	    stats_info &sii = si[x];
+	    sii.task_own_cycles += e->_task_own_cycles;
+	    sii.task_calls += e->_task_calls;
+	    sii.timer_own_cycles += e->_timer_own_cycles;
+	    sii.timer_calls += e->_timer_calls;
+	    sii.xfer_own_cycles += e->_xfer_own_cycles;
+	    sii.xfer_calls += e->_xfer_calls;
+	    sii.nelements += 1;
+	}
+
+	sa << "class,nelements,task_calls,task_cycles,cycles_per_task,timer_calls,timer_cycles,cycles_per_timer,xfer_calls,xfer_cycles,cycles_per_xfer,any_cycles,cycles_per_any\n";
+	for (HashTable<String, int>::iterator it = class_map.begin();
+	     it != class_map.end(); ++it) {
+	    stats_info &sii = si[it.value()];
+	    sa << it.key() << ','
+	       << sii.nelements << ','
+	       << sii.task_calls << ','
+	       << sii.task_own_cycles << ','
+	       << int_divide(sii.task_own_cycles, sii.task_calls ? sii.task_calls : 1) << ','
+	       << sii.timer_calls << ','
+	       << sii.timer_own_cycles << ','
+	       << int_divide(sii.timer_own_cycles, sii.timer_calls ? sii.timer_calls : 1) << ','
+	       << sii.xfer_calls << ','
+	       << sii.xfer_own_cycles << ','
+	       << int_divide(sii.xfer_own_cycles, sii.xfer_calls ? sii.xfer_calls : 1) << ',';
+	    click_cycles_t any_cycles = sii.task_own_cycles + sii.timer_own_cycles + sii.xfer_own_cycles;
+	    uint32_t any_calls = sii.task_calls + sii.timer_calls + sii.xfer_calls;
+	    sa << any_cycles << ','
+	       << int_divide(any_cycles, any_calls ? any_calls : 1) << '\n';
+	}
+
+	delete[] si;
+	break;
+    }
+#endif
+
     }
     return sa.take_string();
 }
 
-static int
-stop_global_handler(const String &s, Element *e, void *, ErrorHandler *errh)
+int
+Router::router_write_handler(const String &s, Element *e, void *thunk, ErrorHandler *errh)
 {
-    if (e) {
+    Router *r = (e ? e->router() : 0);
+    if (!r)
+	return 0;
+    switch ((uintptr_t) thunk) {
+    case GH_STOP: {
 	int n = 1;
-	(void) cp_integer(s, &n);
-	e->router()->adjust_runcount(-n);
-    } else
-	errh->message("no router to stop");
+	(void) IntArg().parse(s, n);
+	if (r)
+	    r->adjust_runcount(-n);
+	else
+	    errh->message("no router to stop");
+	break;
+    }
+#if CLICK_STATS >= 2
+    case GH_RESET_CYCLES:
+	for (int i = 0; i < (r ? r->nelements() : 0); i++)
+	    r->_elements[i]->reset_cycles();
+	break;
+#endif
+    default:
+	break;
+    }
     return 0;
 }
 
@@ -2253,7 +2380,7 @@ Router::static_initialize()
 	add_read_handler(0, "requirements", router_read_handler, (void *)GH_REQUIREMENTS);
 	add_read_handler(0, "handlers", Element::read_handlers_handler, 0);
 	add_read_handler(0, "list", router_read_handler, (void *)GH_LIST);
-	add_write_handler(0, "stop", stop_global_handler, 0);
+	add_write_handler(0, "stop", router_write_handler, (void *)GH_STOP);
 #if CLICK_STATS >= 1
 	add_read_handler(0, "active_ports", router_read_handler, (void *)GH_ACTIVE_PORTS);
 	add_read_handler(0, "active_port_stats", router_read_handler, (void *)GH_ACTIVE_PORT_STATS);
@@ -2266,6 +2393,11 @@ Router::static_initialize()
 #endif
 #if CLICK_DEBUG_MASTER || CLICK_DEBUG_SCHEDULING
 	add_read_handler(0, "scheduling_profile", router_read_handler, (void *) GH_SCHEDULING_PROFILE);
+#endif
+#if CLICK_STATS >= 2
+        add_read_handler(0, "element_cycles.csv", router_read_handler, (void *)GH_ELEMENT_CYCLES);
+        add_read_handler(0, "class_cycles.csv", router_read_handler, (void *)GH_CLASS_CYCLES);
+        add_write_handler(0, "reset_cycles", router_write_handler, (void *)GH_RESET_CYCLES);
 #endif
     }
 }
@@ -2350,6 +2482,11 @@ Router::sim_get_node_id() {
 int
 Router::sim_get_next_pkt_id() {
     return simclick_sim_command(_master->simnode(), SIMCLICK_GET_NEXT_PKT_ID);
+}
+
+int
+Router::sim_if_promisc(int ifid) {
+    return simclick_sim_command(_master->simnode(), SIMCLICK_IF_PROMISC, ifid);
 }
 
 #endif // CLICK_NS

@@ -60,6 +60,12 @@ USE_ENCAP_FROM. FromDump and FromDevice.u have `encap' handlers.
 Boolean. Set to true if you want ToDump to store any extra length as recorded
 in packets' extra length annotations. Default is true.
 
+=item UNBUFFERED
+
+Boolean. Set to true if you want ToDump to use unbuffered IO when saving data to
+a file.  This is unlikely to work with compressed dump formats. Default is
+false.
+
 =back
 
 This element is only available at user level.
@@ -91,7 +97,6 @@ class ToDump : public Element { public:
 
     const char *class_name() const	{ return "ToDump"; }
     const char *port_count() const	{ return "1/0-1"; }
-    const char *processing() const	{ return AGNOSTIC; }
     const char *flags() const		{ return "S2"; }
 
     // configure after FromDevice and FromDump
@@ -115,6 +120,7 @@ class ToDump : public Element { public:
     int _linktype;
     bool _active;
     bool _extra_length;
+    bool _unbuffered;
 
 #if HAVE_INT64_TYPES
     typedef uint64_t counter_t;

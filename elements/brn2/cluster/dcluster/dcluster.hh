@@ -12,7 +12,7 @@
 #include "dclusterprotocol.hh"
 
 /**
- NOTE: Paper: Max-Min D-Clusetr Formation in Wireless Ad Hoc Networks
+ NOTE: Paper: Max-Min D-Cluster Formation in Wireless Ad Hoc Networks
 
  TODO:
 */
@@ -94,6 +94,9 @@ class DCluster : public Clustering {
   DCluster::ClusterNodeInfo* selectClusterHead();
   DCluster::ClusterNodeInfo* getClusterHead() { return _cluster_head;}
   void informClusterHead(DCluster::ClusterNodeInfo*);
+
+  void init_cluster_node_info();
+
  private:
   //
   //member
@@ -104,10 +107,10 @@ class DCluster : public Clustering {
 
  public:
 
-  int _max_distance;
+  int _max_distance; //TODO: check usage
 
-  int _my_min_round;
-  int _my_max_round;
+  int _max_no_min_rounds;
+  int _max_no_max_rounds;
 
   int _ac_min_round;
   int _ac_max_round;

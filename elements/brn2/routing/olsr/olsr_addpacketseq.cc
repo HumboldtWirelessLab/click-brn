@@ -20,9 +20,9 @@ OLSRAddPacketSeq::~OLSRAddPacketSeq()
 int
 OLSRAddPacketSeq::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if ( cp_va_parse(conf, this, errh,
-		   cpIPAddress, "Output Interface Address", &_interfaceAddress,
-		   0) < 0 )
+  if ( cp_va_kparse(conf, this, errh,
+       "Output Interface Address", cpkP, cpIPAddress, &_interfaceAddress,
+		   cpEnd) < 0 )
     return -1;
   return 0;
 }

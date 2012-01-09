@@ -7,7 +7,7 @@ CLICK_DECLS
 /*
 =c
 
-SetTimestamp([TIMESTAMP, I<keyword> FIRST, DELTA])
+SetTimestamp([TIMESTAMP, I<keyword> FIRST])
 
 =s timestamps
 
@@ -26,17 +26,11 @@ Keyword arguments are:
 =item FIRST
 
 Boolean.  If true, then set the packet's "first timestamp" annotation, not its
-timestamp annotation.  Default is true.
-
-=item DELTA
-
-Boolean.  If true, then set the packet's timestamp annotation to the
-difference between its current timestamp annotation and its "first timestamp"
-annotation.  Default is false.
+timestamp annotation.  Default is false.
 
 =back
 
-=a StoreTimestamp, PrintOld */
+=a StoreTimestamp, AdjustTimestamp, SetTimestampDelta, PrintOld */
 
 class SetTimestamp : public Element { public:
 
@@ -45,14 +39,13 @@ class SetTimestamp : public Element { public:
 
     const char *class_name() const		{ return "SetTimestamp"; }
     const char *port_count() const		{ return PORTS_1_1; }
-    const char *processing() const		{ return AGNOSTIC; }
     int configure(Vector<String> &, ErrorHandler *);
 
     Packet *simple_action(Packet *);
 
   private:
 
-    enum { ACT_NOW, ACT_TIME, ACT_FIRST_NOW, ACT_FIRST_TIME, ACT_DELTA };
+    enum { ACT_NOW, ACT_TIME, ACT_FIRST_NOW, ACT_FIRST_TIME }; // order matters
     int _action;
     Timestamp _tv;
 

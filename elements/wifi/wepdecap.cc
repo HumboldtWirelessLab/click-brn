@@ -49,7 +49,7 @@
 #include <click/config.h>
 #include "wepdecap.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -72,12 +72,12 @@ WepDecap::configure(Vector<String> &conf, ErrorHandler *errh)
   _debug = false;
   _strict = false;
   _keyid = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "KEY", cpkP, cpString, &_key,
-		   "KEYID", cpkP, cpUnsigned, &_keyid,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "STRICT", 0, cpBool, &_strict,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read_p("KEY", _key)
+      .read_p("KEYID", _keyid)
+      .read("DEBUG", _debug)
+      .read("STRICT", _strict)
+      .complete() < 0)
     return -1;
   memset(&_rc4, 0,sizeof(_rc4));
   return 0;
@@ -127,14 +127,16 @@ WepDecap::simple_action(Packet *p_in)
   /* decrypt ICV and compare to CRC */
   icv = payload + payload_len;
   rc4_crypt_skip(&_rc4, icv, crcbuf, WIFI_WEP_CRCLEN, 0);
+  u_int32_t crc_foo;
+  memcpy(&crc_foo, crcbuf, 4);
 
-  if (crc != ~le32_to_cpu(*(u_int32_t *)crcbuf)) {
+  if (crc != ~le32_to_cpu(crc_foo)) {
     click_chatter("crc failed keyid %d iv %d %x wanted %x %x\n",
 		  keyid,
 		  iv,
 		  crc,
-		  ~le32_to_cpu(*(u_int32_t *)crcbuf),
-		  *(u_int32_t *)crcbuf);
+		  ~le32_to_cpu(crc_foo),
+		  crc_foo);
     /* packet failed decrypt */
     return p;
   }
@@ -173,14 +175,14 @@ write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
   }
   case H_KEYID: {
     unsigned m;
-    if (!cp_unsigned(s, &m))
+    if (!IntArg().parse(s, m))
       return errh->error("keyid parameter must be unsigned");
     f->_keyid = m;
     break;
@@ -199,13 +201,13 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 WepDecap::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_read_handler("key", read_param, (void *) H_KEY);
-  add_read_handler("keyid", read_param, (void *) H_KEYID);
+  add_read_handler("debug", read_param, H_DEBUG);
+  add_read_handler("key", read_param, H_KEY);
+  add_read_handler("keyid", read_param, H_KEYID);
 
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
-  add_write_handler("key", write_param, (void *) H_KEY);
-  add_write_handler("keyid", write_param, (void *) H_KEYID);
+  add_write_handler("debug", write_param, H_DEBUG);
+  add_write_handler("key", write_param, H_KEY);
+  add_write_handler("keyid", write_param, H_KEYID);
 }
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(rc4)

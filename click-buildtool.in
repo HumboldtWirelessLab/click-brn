@@ -6,8 +6,9 @@
 # Copyright (c) 2000-2001 Massachusetts Institute of Technology
 # Copyright (c) 2000-2008 Mazu Networks, Inc.
 # Copyright (c) 2001-2003 International Computer Science Institute
-# Copyright (c) 2004-2007 Regents of the University of California
 # Copyright (c) 2008 Meraki, Inc.
+# Copyright (c) 2004-2011 Regents of the University of California
+# Copyright (c) 2000-2011 Eddie Kohler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -48,6 +49,116 @@ echo_n () {
 }
 
 
+###############
+# SHORTENSYMS #
+###############
+
+shortensyms_usage () {
+    echo "Usage: click-buildtool shortensyms OBJ..." 1>&2
+    echo "Try 'click-buildtool shortensyms --help' for more information." 1>&2
+    exit 1
+}
+
+shortensyms () {
+    driver=""
+    date=`date`
+    objs=
+    len=56
+    while [ x"$1" != x ]; do
+    case $1 in
+    -n|--l|--le|--len|--leng|--lengt|--length)
+	if test $# -lt 2; then shortensyms_usage; fi
+	len="$2"; shift 2;;
+    -n*)
+	len="`echo "$1" | sed 's/^-n//'`"; shift 1;;
+    --l=*|--le=*|--len=*|--leng=*|--lengt=*|--length=*)
+	len="`echo "$1" | sed 's/^[^=]*=//'`"; shift 1;;
+    -h|--h|--he|--hel|--help)
+	cat <<'EOF' 1>&2
+'Click-buildtool shortensyms' shortens the symbols in the object files listed
+on the command line to be at most 56 characters long.
+
+Usage: click-buildtool shortensyms OBJ...
+
+Options:
+  -n, --length=N           Set maximum symbol length to N.
+  -h, --help               Print this message and exit.
+
+Report bugs to <click@pdos.lcs.mit.edu>.
+EOF
+	exit 0;;
+    *)
+	objs="$objs
+$1"; shift 1;;
+    esac
+    done
+
+    test -z "$objs" && shortensyms_usage
+    objs=`echo "$objs" | sort | uniq`
+    if test -z "$NM"; then NM="@NM@"; fi
+    if test -z "$OBJCOPY"; then OBJCOPY="@OBJCOPY@"; fi
+    if test -z "$MD5SUM"; then MD5SUM="@MD5SUM@"; fi
+
+    for obj in $objs; do
+	longsyms=`$NM -g $obj | sed 's/^[^ 	]*[ 	]*.[ 	]*//
+/^.\{0,'$len'\}$/d'`
+	if test -z "$longsyms"; then
+	    continue
+	elif test -z "$OBJCOPY"; then
+	    echo "$obj: 'objcopy' missing, 'click-buildtool shortensyms' must leave long symbols unchanged" 1>&2
+	    continue
+	elif test -z "$MD5SUM"; then
+	    # We don't need security, so default to a weaker checksum.
+	    if echo | sum >/dev/null; then MD5SUM=sum; else MD5SUM=cat; fi
+	fi
+
+	/bin/rm -f $obj.shortenmap $obj~
+	echo "$longsyms" | $awk 'BEGIN {
+  split("28HashContainer_const_iterator 3HCj \
+22HashContainer_iterator 3HCi \
+21HashContainer_adapter 3HCa \
+13HashContainer 2HC \
+26TokenBucketJiffyParameters 3TBJ \
+12TokenBucketX 3TBX \
+20can_live_reconfigure 10can_reconf \
+16live_reconfigure 6reconf \
+24HashTable_const_iterator 3HTj \
+18HashTable_iterator 3HTi \
+9HashTable 2HT \
+16OrderedHashTable 3OHT \
+12ErrorHandler 2EH \
+10ArgContext 4Argx \
+14NotifierSignal 4NSig \
+9IPAddress 2IP \
+12EtherAddress 3Eth \
+10IP6Address 3IP6 \
+6Vector 1V \
+11StringAccum 2SA \
+6String 1S \
+7Element 2El \
+6Packet 1P", pats, "[^A-Za-z0-9_]*");
+}
+{
+  orig = $0;
+  for (i = 1; length() > '$len' && pats[i]; i += 2)
+    gsub(pats[i], pats[i+1]);
+  if (length() > '$len') {
+    ("echo " orig " | '"$MD5SUM"'") | getline hash
+    sub("[^A-Za-z_0-9.].*", "", hash)
+    $0 = substr($0, 1, '$len' - 12) ".H" substr(hash, 1, 10)
+  }
+  print orig, $0;
+}' > $obj.shortenmap || exit 1
+	$OBJCOPY --redefine-syms=$obj.shortenmap $obj || { /bin/rm -f $obj.shortenmap; exit 1; }
+	/bin/rm -f $obj.shortenmap
+    done
+}
+
+if test "$1" = shortensyms; then
+    shift 1; shortensyms "$@"; exit 0
+fi
+
+
 ############
 # FINDELEM #
 ############
@@ -73,7 +184,7 @@ elementmap_provisions () {
 }
 END {
   # delete references to drivers
-  delete prov["userlevel"]; delete prov["linuxmodule"]; 
+  delete prov["userlevel"]; delete prov["linuxmodule"];
   delete prov["bsdmodule"]; delete prov["ns"];
   for (j in prov) print j;
 }'
@@ -348,8 +459,8 @@ $bad_files"
 	outscriptlet='i, "\t", header[i], "\t", ex'
     fi
 
-    $egrep '^ELEMENT_PROVIDES|^EXPORT_ELEMENT|^ELEMENT_HEADER|^ELEMENT_LIBS|^class|^[ 	]*const[ 	]*char[ 	]*\*[ 	]*class_name|^[ 	]*static[ 	]*void[ 	]*static_[ic]|^}' $files $header_files /dev/null 2>/dev/null | $awk -F: 'BEGIN {
-  OFS = ""; cur_class = ""; line_warned = 0; nexports = 0
+    $egrep '^(ELEMENT_|EXPORT_|class|[ 	]*(virtual[ 	]*)?const[ 	]*char[ 	]*\*[ 	]*class_name|[ 	]*static[ 	]*void[ 	]*static_[ic]|[ 	]*(virtual[ 	]*)?[bv]o..[ 	]*run_t|[ 	]*(virtual[ 	]*)?int[ 	]*initial_home|[}])' $files $header_files /dev/null 2>/dev/null | $awk -F: 'BEGIN {
+  OFS = ""; cur_class = ""; errors = 0; class_name_warned = 0; nexports = 0
 }
 /:class[ 	]/ {
   sub(/^class[ 	]*/, "", $2);
@@ -408,8 +519,9 @@ $bad_files"
 }
 /class_name/ {
   print $1, ": ", cur_class, "::class_name method malformed" | "cat 1>&2"
-  if (++line_warned == 1)
+  if (++class_name_warned == 1)
     print "  (class_name methods must be written on a single line.)" | "cat 1>&2"
+  ++errors
 }
 /static_initialize/ {
   static_initialize[cur_class] = 1
@@ -419,10 +531,26 @@ $bad_files"
   static_cleanup[cur_class] = 1
   next
 }
+/void[ 	]*run_task/ {
+  print $1, ": ", cur_class, "::run_task must return bool" | "cat 1>&2"
+  ++errors
+}
+/[^_a-z]run_task *\( *\)/ {
+  print $1, ": ", cur_class, "::run_task should take a Task * argument" | "cat 1>&2"
+  ++errors
+}
+/[^_a-z]run_timer *\( *\)/ {
+  print $1, ": ", cur_class, "::run_timer should take a Timer * argument" | "cat 1>&2"
+  ++errors
+}
+/[^_a-z]initial_home_thread_id *\([ 	]*E/ {
+  print $1, ": ", cur_class, "::initial_home_thread_id should take ONLY a const Element * argument" | "cat 1>&2"
+  ++errors
+}
 END {
   if (nexports == 0)
     print "click-buildtool: No elements found" | "cat 1>&2"
-  if (line_warned || nexports == 0)
+  if (errors || nexports == 0)
     system("kill -HUP '$$'")
   for (i in exports) {
     if (header[i] == "") {
@@ -639,10 +767,10 @@ EOF
 	obj_scriptlet='    obj = "%'"$osuffix"'";'
 	action_scriptlet='    action["c" obj] = "	$(call ccompile,-c $< -o $@,CC)";
     action["C" obj] = "	$(call cxxcompile,-c $< -o $@,CXX)";
-    action["c%.i"] = "	$(call ccompile,-E $< -o $@,CPP)";
-    action["C%.ii"] = "	$(call cxxcompile,-E $< -o $@,CXXCPP)";
-    action["c%.s"] = "	$(call ccompile,-S $< -o $@,CC -S)";
-    action["C%.s"] = "	$(call cxxcompile,-S $< -o $@,CXX -S)";'
+    action["c%.i"] = "	$(call ccompile_nodep,-E $< -o $@,CPP)";
+    action["C%.ii"] = "	$(call cxxcompile_nodep,-E $< -o $@,CXXCPP)";
+    action["c%.s"] = "	$(call ccompile_nodep,-S $< -o $@,CC -S)";
+    action["C%.s"] = "	$(call cxxcompile_nodep,-S $< -o $@,CXX -S)";'
 	if test -n "$L"; then
 	    action_scriptlet="$action_scriptlet"'
     action["c" obj] = action["c" obj] "\n	$(FIXDEP)";
@@ -699,7 +827,7 @@ END {
 	print "";
     }
 }' | sed "$excludes"
-    
+
     if test -n "$libs"; then
 	libvar=`echo $makevar | sed 's/OBJS$/LIBS/'`
 	echo $libvar = $libs
@@ -731,7 +859,7 @@ elem2xxx () {
 	    cat <<'EOF' 1>&2
 'Click-buildtool elem2export' reads an 'elements.conf' file generated by
 'click-buildtool findelem' on the standard input, examines those files for
-exported elements, and writes a C++ source file defining the 
+exported elements, and writes a C++ source file defining the
 click_export_elements() function to the standard output.
 
 Usage: click-buildtool elem2export [-V] < elements.conf
@@ -809,7 +937,7 @@ END {
   print "  click_provide(\"", packname, "\");\n", B, "  CLICK_DMALLOC_REG(\"nXXX\");\n  return 0;";
   print "#ifdef CLICK_BSDMODULE\n  } else if (t == MOD_UNLOAD) {\n#else\n}\nextern \"C\" void\ncleanup_module()\n{\n#endif";
   print C, "  click_unprovide(\"", packname, "\");";
-  print "#ifdef CLICK_BSDMODULE\n  return 0;\n  } else\n    return 0;\n}\nstatic moduledata_t modinfo = {\n  \"", packname, "\", modevent, 0\n};\nDECLARE_MODULE(", packname, ", modinfo, SI_SUB_PSEUDO, SI_ORDER_ANY);\n#else\n}\n#endif";
+  print "#ifdef CLICK_BSDMODULE\n  return 0;\n  } else\n    return 0;\n}\nstatic moduledata_t modinfo = {\n  \"", packname, "\", modevent, 0\n};\nDECLARE_MODULE(", packname, ", modinfo, SI_SUB_PSEUDO, SI_ORDER_ANY);\nMODULE_VERSION(", packname, ", 1);\nMODULE_DEPEND(", packname, ", click, 1, 1, 1);\n#else\n}\n#endif";
 }
 '
 
@@ -1248,7 +1376,7 @@ PACKAGE_CXXFLAGS = $cflags
 
 include ${clickdatadir}/config.mk
 include ${clickdatadir}/pkg-Makefile" > Makefile
-    
+
     test -z "$quiet" && echo "+" $gmake $pkg$osuffix
     $gmake $quiet $pkg$osuffix
 }
@@ -1317,18 +1445,19 @@ $1"; shift 1;;
 $exclude" | sort | uniq -u`
 
     if test -n "$dir"; then cd "$dir"; fi
+    if test -z "$NM"; then NM="@NM@"; fi
     echo "// Created by 'click-buildtool ksyms' on $date"
     echo "#include <click/config.h>"
     echo "#include <linux/version.h>"
     echo "#include <linux/module.h>"
-    nm -g $objs | $awk '
+    $NM -g $objs | $awk '
 BEGIN {
     printed["init_module"] = printed["cleanup_module"] = 1;
 }
-/^[ 	]/ { 
-    next 
+/^[ 	]/ {
+    next
 }
-/........[ 	][ABCDGRSTVW]/ {
+/^.*[ 	][ABCDGRSTVW]/ {
     x = $3;
     if (x ~ /^[_A-Za-z][_A-Za-z0-9]*$/ && !printed[x]) {
 	printed[x] = 1;
@@ -1382,6 +1511,7 @@ Usage: click-buildtool elem2make [-V] [-p PREFIX] < [ELEMENTS]
    or: click-buildtool kbuild
    or: click-buildtool kversion [--gpl]
    or: click-buildtool ksyms OBJS > KSYMSFILE
+   or: click-buildtool shortensyms OBJS
    or: click-buildtool [--cflags | --otherlibs | --toolcflags | --toollibs]
 
 Options:
@@ -1414,6 +1544,8 @@ EOF
      shift 1; kbuild "$@"; exit 0;;
   ksyms)
      shift 1; ksyms "$@"; exit 0;;
+  shortensyms)
+     shift 1; shortensyms "$@"; exit 0;;
   --c|--cf|--cfl|--cfla|--cflag|--cflags|--d|--de|--def|--defs)
      echo @PROPER_INCLUDES@ @PCAP_INCLUDES@ -I@includedir@; exit 0;;
   --o|--ot|--oth|--othe|--other|--otherl|--otherli|--otherlib|--otherlibs)

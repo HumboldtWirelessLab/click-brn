@@ -17,11 +17,10 @@
 
 #include <click/config.h>
 #include "perfcountuser.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/router.hh>
 #include <click/glue.hh>
-#include <asm/msr.h>
 #include <click/perfctr-i586.hh>
 
 PerfCountUser::PerfCountUser()

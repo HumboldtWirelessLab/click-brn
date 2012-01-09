@@ -30,6 +30,8 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/routecache/brn2routecache.hh"
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 /*
  * =c
@@ -82,18 +84,25 @@ inline unsigned
   return hashcode(p._to) + hashcode(p._from);
 }
 
+
+/* Sources of Linkupdates
+ * Used to enable or disable linkupdates from a specific source
+ */
+#define LINKTABLE_UPDATESOURCE_LINKSTAT 0x0001
+#define LINKTABLE_UPDATESOURCE_ROUTING  0x0002
+#define LINKTABLE_UPDATESOURCE_LINKDIST 0x0004
+
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Brn2LinkTable: public Element {
+class Brn2LinkTable: public BRNElement {
  public:
   //
   //member
   //
-  int _debug;
-
   Vector<EtherAddress> last_route;
 
+  bool _fix_linktable;
   //
   //methods
   //
@@ -121,22 +130,23 @@ class Brn2LinkTable: public Element {
   String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
   /* other public functions */
 
-  bool update_link(EtherAddress from, EtherAddress to, 
+  bool update_link(EtherAddress from, EtherAddress to,
                    uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
     return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, permanent);
   }
 
-  bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to, 
+  bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
                    IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
 
-  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+  bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age,
+                         uint32_t metric, bool permanent=false) {
     return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
   }
 
-  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, 
-        IPAddress b_ip, uint32_t seq, uint32_t age, uint32_t metric,bool permanent=false) {
-          if (update_link(a, a_ip, b, b_ip, seq,age, metric, permanent)) {
-            return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
+  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, IPAddress b_ip,
+                         uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
+    if (update_link(a, a_ip, b, b_ip, seq, age, metric, permanent)) {
+      return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
     }
     return false;
   }
@@ -151,8 +161,8 @@ class Brn2LinkTable: public Element {
   uint32_t get_link_seq(EtherAddress from, EtherAddress to);
   uint32_t get_link_age(EtherAddress from, EtherAddress to);
   bool valid_route(const Vector<EtherAddress> &route);
-  //String ether_routes_to_string(const Vector<Path> &routes);
-  signed get_route_metric(const Vector<EtherAddress> &route);
+
+  int32_t get_route_metric(const Vector<EtherAddress> &route);
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
   void get_local_neighbors(Vector<EtherAddress> &neighbors);
   EtherAddress *get_neighbor(EtherAddress ether);
@@ -171,6 +181,12 @@ class Brn2LinkTable: public Element {
     /*[in]*/  const EtherAddress&   addrDst,
     /*[out]*/ Vector<EtherAddress>& route );
 
+  inline void update_route(
+  /*[in]*/  const EtherAddress&   addrSrc,
+  /*[in]*/  const EtherAddress&   addrDst,
+  /*[out]*/ Vector<EtherAddress>& route,
+            uint32_t metric);
+
   Vector< Vector<EtherAddress> > top_n_routes(EtherAddress dst, int n);
   uint32_t get_host_metric_to_me(EtherAddress s);
   uint32_t get_host_metric_from_me(EtherAddress s);
@@ -186,7 +202,7 @@ class Brn2LinkTable: public Element {
 
   struct timeval dijkstra_time;
   void dijkstra(EtherAddress src, bool);
-  Vector<EtherAddress> best_route(EtherAddress dst, bool from_me);
+  Vector<EtherAddress> best_route(EtherAddress dst, bool from_me, uint32_t *metric);
 
   void get_stale_timeout(timeval& t) { 
     t.tv_sec = _stale_timeout.tv_sec; 
@@ -194,28 +210,28 @@ class Brn2LinkTable: public Element {
   }
 
 private:
-  unsigned int _brn_dsr_min_link_metric_within_route;
+  uint32_t _brn_dsr_min_link_metric_within_route;
 
   class BrnLinkInfo {
   public:
     EtherAddress _from;
     EtherAddress _to;
-    unsigned _metric;
+    uint32_t _metric;
     uint32_t _seq;
     uint32_t _age;
     bool     _permanent;
     struct timeval _last_updated;
-    BrnLinkInfo() { 
-      _from = EtherAddress(); 
-      _to = EtherAddress(); 
-      _metric = 0; 
+    BrnLinkInfo() {
+      _from = EtherAddress();
+      _to = EtherAddress();
+      _metric = 0;
       _seq = 0;
       _age = 0;
-      _last_updated.tv_sec = 0; 
+      _last_updated.tv_sec = 0;
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to, 
-      uint32_t seq, uint32_t age, unsigned metric, bool permanent=false) {
+      uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
       _from = from;
       _to = to;
       _metric = metric;
@@ -238,7 +254,8 @@ private:
       now = Timestamp::now().timeval();
       return _age + (now.tv_sec - _last_updated.tv_sec);
     }
-    void update(uint32_t seq, uint32_t age, unsigned metric) {
+
+    void update(uint32_t seq, uint32_t age, uint32_t metric) {
       if (seq <= _seq) {
         return;
       }
@@ -336,10 +353,12 @@ Brn2LinkTable::query_route(
   /*[in]*/  const EtherAddress&   addrDst,
   /*[out]*/ Vector<EtherAddress>& route )
 {
+  uint32_t metric;
   // First, search the route cache
-  bool bCached = _brn_routecache->get_cached_route( addrSrc, 
-                                                    addrDst, 
-                                                    route );
+  bool bCached = _brn_routecache->get_cached_route( addrSrc,
+                                                    addrDst,
+                                                    route,
+                                                    &metric);
 
   if( false == bCached )
   {
@@ -347,12 +366,38 @@ Brn2LinkTable::query_route(
     // so lookup route from dsr table and generate a dsr packet
     dijkstra(addrSrc, true);
 
-    route = best_route(addrDst, true);
+    route = best_route(addrDst, true, &metric);
 
     // Cache the found route ...
     if( false == route.empty() )
     {
-      _brn_routecache->insert_route( addrSrc, addrDst, route );
+      _brn_routecache->insert_route( addrSrc, addrDst, route, metric );
+    }
+  }
+}
+
+inline void
+Brn2LinkTable::update_route(
+  /*[in]*/  const EtherAddress&   addrSrc,
+  /*[in]*/  const EtherAddress&   addrDst,
+  /*[out]*/ Vector<EtherAddress>& route,
+            uint32_t metric)
+{
+
+  Vector<EtherAddress> old_route;
+  uint32_t old_metric;
+
+  // First, search the route cache
+  bool bCached = _brn_routecache->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
+
+  if( false == bCached )
+  {
+    // current node is not final destination of the packet,
+    // so lookup route from dsr table and generate a dsr packet
+    _brn_routecache->insert_route( addrSrc, addrDst, route, metric );
+  } else {
+    if ( old_metric > metric ) {
+      _brn_routecache->insert_route( addrSrc, addrDst, route, metric );
     }
   }
 }

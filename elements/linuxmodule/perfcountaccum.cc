@@ -17,11 +17,11 @@
 
 #include <click/config.h>
 #include "perfcountaccum.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/packet_anno.hh>
-#include <asm/msr.h>
+#include <click/perfctr-i586.hh>
 
 PerfCountAccum::PerfCountAccum()
 {
@@ -46,9 +46,9 @@ int
 PerfCountAccum::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   String metric_name;
-  if (cp_va_kparse(conf, this, errh,
-		   "METRIC", cpkP+cpkM, cpWord, &metric_name,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read_mp("METRIC", WordArg(), metric_name)
+      .complete() < 0)
     return -1;
   _which = PerfCountUser::prepare(metric_name, errh);
   return (_which < 0 ? -1 : 0);
@@ -115,9 +115,9 @@ PerfCountAccum::reset_handler(const String &, Element *e, void *, ErrorHandler *
 void
 PerfCountAccum::add_handlers()
 {
-  add_read_handler("count", read_handler, (void *)0);
-  add_read_handler("accum", read_handler, (void *)1);
-  add_write_handler("reset_counts", reset_handler, (void *)0, Handler::BUTTON);
+  add_read_handler("count", read_handler, 0);
+  add_read_handler("accum", read_handler, 1);
+  add_write_handler("reset_counts", reset_handler, 0, Handler::BUTTON);
 }
 
 ELEMENT_REQUIRES(linuxmodule i586 int64 PerfCountUser)

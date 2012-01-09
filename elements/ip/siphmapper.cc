@@ -17,7 +17,7 @@
  */
 
 #include <click/config.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #if CLICK_BSDMODULE
@@ -57,7 +57,7 @@ SourceIPHashMapper::parse_server(const String &conf, IPRewriterInput *input,
   int32_t id;
 
   if (words.size () <= 1
-      || !cp_integer(words[words.size() - 1], &id)
+      || !IntArg().parse(words[words.size() - 1], id)
       || id < 0)
     return errh->error("bad server ID in pattern spec");
   words.resize(words.size() - 1);
@@ -76,17 +76,15 @@ SourceIPHashMapper::configure(Vector<String> &conf, ErrorHandler *errh)
   else if (conf.size() == 2)
     errh->warning("only one pattern given");
 
-  int before = errh->nerrors();
-
   int nnodes;
   int32_t seed;
   Vector<String> params;
   cp_spacevec (conf[0], params);
   if (params.size () != 2)
     return errh->error("requires 2 config params: numnodes seed");
-  if (!cp_integer(params[0], &nnodes) || nnodes <= 0)
+  if (!IntArg().parse(params[0], nnodes) || nnodes <= 0)
     return errh->error("number of nodes must be an integer");
-  if (!cp_integer(params[1], &seed))
+  if (!IntArg().parse(params[1], seed))
     return errh->error("hash seed must be an integer");
 
   int idp = 0;
@@ -108,7 +106,7 @@ SourceIPHashMapper::configure(Vector<String> &conf, ErrorHandler *errh)
   _hasher = new chash_t<int> (idp, ids, nnodes, seed);
 
   delete [] ids;
-  return (errh->nerrors() == before ? 0 : -1);
+  return errh->nerrors() ? -1 : 0;
 }
 
 void
@@ -120,12 +118,14 @@ SourceIPHashMapper::cleanup(CleanupStage)
 }
 
 void
-SourceIPHashMapper::notify_rewriter(IPRewriterBase *rw, ErrorHandler *errh)
+SourceIPHashMapper::notify_rewriter(IPRewriterBase *user,
+				    IPRewriterInput *input, ErrorHandler *errh)
 {
-    int no = rw->noutputs();
-    for (int i = 0; i < _is.size(); i++)
-	if (_is[i].foutput >= no || _is[i].routput >= no)
-	    errh->error("port in %<%s%> out of range for %<%s%>", declaration().c_str(), rw->declaration().c_str());
+    for (int i = 0; i < _is.size(); i++) {
+	if (_is[i].foutput >= user->noutputs()
+	    || _is[i].routput >= input->reply_element->noutputs())
+	    errh->error("output port out of range in %s pattern %d", declaration().c_str(), i);
+    }
 }
 
 int

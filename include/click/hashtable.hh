@@ -178,7 +178,7 @@ class HashTable<T> {
 
     /** @brief Return an iterator for the first element in the table.
      *
-     * @node HashTable iterators return elements in random order. */
+     * HashTable iterators return elements in random order. */
     inline iterator begin();
     /** @overload */
     inline const_iterator begin() const;
@@ -1049,6 +1049,12 @@ inline bool operator!=(const HashTable_const_iterator<T> &a, const HashTable_con
 
 template <typename K, typename V>
 inline void click_swap(HashTable<K, V> &a, HashTable<K, V> &b)
+{
+    a.swap(b);
+}
+
+template <typename K, typename V>
+inline void assign_consume(HashTable<K, V> &a, HashTable<K, V> &b)
 {
     a.swap(b);
 }

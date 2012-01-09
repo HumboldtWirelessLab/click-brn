@@ -20,7 +20,7 @@
 #include <click/master.hh>
 #include <click/router.hh>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 CLICK_DECLS
 
 StaticThreadSched::StaticThreadSched()
@@ -38,10 +38,10 @@ StaticThreadSched::configure(Vector<String> &conf, ErrorHandler *errh)
     Element *e;
     int preference;
     for (int i = 0; i < conf.size(); i++) {
-	if (cp_va_space_kparse(conf[i], this, errh,
-			       "ELEMENT", cpkP+cpkM, cpElement, &e,
-			       "THREAD", cpkP+cpkM, cpInteger, &preference,
-			       cpEnd) < 0)
+	if (Args(this, errh).push_back_words(conf[i])
+	    .read_mp("ELEMENT", e)
+	    .read_mp("THREAD", preference)
+	    .complete() < 0)
 	    return -1;
 	if (e->eindex() >= _thread_preferences.size())
 	    _thread_preferences.resize(e->eindex() + 1, THREAD_UNKNOWN);
@@ -57,15 +57,14 @@ StaticThreadSched::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 int
-StaticThreadSched::initial_home_thread_id(Element *owner, Task *task,
-					  bool scheduled)
+StaticThreadSched::initial_home_thread_id(const Element *e)
 {
-    int eidx = owner->eindex();
+    int eidx = e->eindex();
     if (eidx >= 0 && eidx < _thread_preferences.size()
 	&& _thread_preferences[eidx] != THREAD_UNKNOWN)
 	return _thread_preferences[eidx];
     if (_next_thread_sched)
-	return _next_thread_sched->initial_home_thread_id(owner, task, scheduled);
+	return _next_thread_sched->initial_home_thread_id(e);
     else
 	return THREAD_UNKNOWN;
 }

@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "setip6dscp.hh"
 #include <clicknet/ip6.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 CLICK_DECLS
 
@@ -31,33 +31,28 @@ SetIP6DSCP::~SetIP6DSCP()
 }
 
 int
-SetIP6DSCP::configure(const Vector<String> &conf, ErrorHandler *errh)
+SetIP6DSCP::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  unsigned dscp_val;
-  if (cp_va_kparse(conf, this, errh,
-		   "DSCP", cpkP+cpkM, cpUnsigned, &dscp_val,
-		   cpEnd) < 0)
-    return -1;
-  if (dscp_val > 0x3F)
-    return errh->error("diffserv code point out of range");
+    unsigned dscp_val;
+    if (Args(conf, this, errh).read_mp("DSCP", dscp_val).complete() < 0)
+	return -1;
+    if (dscp_val > 0x3F)
+	return errh->error("diffserv code point out of range");
 
-  // OK: set values
-  _dscp = (dscp_val << IP6_DSCP_SHIFT);
-  return 0;
+    // OK: set values
+    _dscp = htonl(dscp_val << IP6_DSCP_SHIFT);
+    return 0;
 }
 
 
 inline Packet *
 SetIP6DSCP::smaction(Packet *p_in)
 {
-  WritablePacket *p = p_in->uniqueify();
-  assert(p->has_network_header());
-  click_ip6 *ip6 = p->ip6_header();
-
-  uint32_t flow = ntohl(ip6->ip6_flow);
-  ip6->ip6_flow = htonl((flow & ~IP6_DSCP_MASK) | _dscp);
-
-  return p;
+    WritablePacket *p = p_in->uniqueify();
+    assert(p->has_network_header());
+    click_ip6 *ip6 = p->ip6_header();
+    ip6->ip6_flow = (ip6->ip6_flow & htonl(~IP6_DSCP_MASK)) | _dscp;
+    return p;
 }
 
 void

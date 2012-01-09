@@ -39,8 +39,8 @@
 CLICK_DECLS
 
 BrnBroadcastRouting::BrnBroadcastRouting()
-  :_debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 BrnBroadcastRouting::~BrnBroadcastRouting()
@@ -52,7 +52,6 @@ BrnBroadcastRouting::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_id,         //Use this for srcaddr
-      "SOURCEADDRESS", cpkP, cpEtherAddress, &_my_ether_addr,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -69,25 +68,28 @@ BrnBroadcastRouting::initialize(ErrorHandler *)
 void
 BrnBroadcastRouting::push( int port, Packet *packet )
 {
-  BRN_DEBUG("BrnBroadcastRouting: PUSH :%s\n",_my_ether_addr.unparse().c_str());
+  BRN_DEBUG("BrnBroadcastRouting: PUSH :%s\n",_node_id->getMasterAddress()->unparse().c_str());
 
   click_ether *ether;
 
   if ( port == 0 )  //from client
   {
-    BRN_DEBUG("BrnBroadcastRouting: PUSH vom Client :%s\n",_my_ether_addr.unparse().c_str());
+    BRN_DEBUG("BrnBroadcastRouting: PUSH vom Client :%s\n",_node_id->getMasterAddress()->unparse().c_str());
+
+    uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+    if ( ttl == 0 ) ttl = BROADCASTROUTING_DAFAULT_MAX_HOP_COUNT;
 
     ether = (click_ether *)packet->data();
     EtherAddress src = EtherAddress(ether->ether_shost);
 
-    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING);
+    WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_BCASTROUTING, BRN_PORT_BCASTROUTING, ttl);
     BRNPacketAnno::set_ether_anno(out_packet, src.data(), brn_ethernet_broadcast, ETHERTYPE_BRN);
     output(1).push(out_packet);  //to brn -> flooding
   }
 
   if ( port == 1 )               // from brn (flooding)
   {
-    BRN_DEBUG("BrnBroadcastRouting: PUSH von BRN :%s\n",_my_ether_addr.unparse().c_str());
+    BRN_DEBUG("BrnBroadcastRouting: PUSH von BRN :%s\n",_node_id->getMasterAddress()->unparse().c_str());
 
     uint8_t *packet_data = (uint8_t *)packet->data();
     ether = (click_ether *)packet_data;
@@ -97,10 +99,14 @@ BrnBroadcastRouting::push( int port, Packet *packet )
       BRN_DEBUG("This is for me");
       ether = (click_ether *)packet->data();
       packet->set_ether_header(ether);
+
+      uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+      if ( BRNProtocol::is_brn_etherframe(packet) )
+        BRNProtocol::get_brnheader_in_etherframe(packet)->ttl = ttl;
+
       output(0).push(packet);
     } else {
       BRN_DEBUG("Not for me");
-      packet->set_ether_header((click_ether*)packet_data);
       packet->kill();
     }
   }
@@ -111,30 +117,10 @@ BrnBroadcastRouting::push( int port, Packet *packet )
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BrnBroadcastRouting *fl = (BrnBroadcastRouting *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  BrnBroadcastRouting *fl = (BrnBroadcastRouting *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 BrnBroadcastRouting::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

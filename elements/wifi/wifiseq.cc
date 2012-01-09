@@ -18,7 +18,7 @@
 #include <click/config.h>
 #include "wifiseq.hh"
 #include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
@@ -46,12 +46,12 @@ WifiSeq::configure(Vector<String> &conf, ErrorHandler *errh)
   _bytes = 2;
   _shift = 4;
 
-  if (cp_va_kparse(conf, this, errh,
-		   "DEBUG", 0, cpBool, &_debug,
-		   "OFFSET", 0, cpUnsigned, &_offset,
-		   "BYTES", 0, cpUnsigned, &_bytes,
-		   "SHIFT", 0, cpUnsigned, &_shift,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh)
+      .read("DEBUG", _debug)
+      .read("OFFSET", _offset)
+      .read("BYTES", _bytes)
+      .read("SHIFT", _shift)
+      .complete() < 0)
     return -1;
 
   if (_bytes != 2 && _bytes != 4) {
@@ -75,6 +75,7 @@ WifiSeq::simple_action(Packet *p_in) {
 
   if (p && p->length() > _offset + _bytes) {
     struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_in);
+    if ( ceh->flags & WIFI_EXTRA_NO_SEQ ) return p;
     ceh->flags |= WIFI_EXTRA_NO_SEQ;
     char *data = (char *)(p->data() + _offset);
     if (_bytes == 2) {
@@ -119,15 +120,15 @@ WifiSeq::write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_DEBUG: {    //debug
     bool debug;
-    if (!cp_bool(s, &debug))
+    if (!BoolArg().parse(s, debug))
       return errh->error("debug parameter must be boolean");
     f->_debug = debug;
     break;
   }
 
   case H_SEQ: {    //debug
-    u_int32_t seq;
-    if (!cp_unsigned(s, &seq))
+    uint32_t seq;
+    if (!IntArg().parse(s, seq))
       return errh->error("seq parameter must be unsigned");
     f->_seq = seq;
     break;
@@ -140,15 +141,15 @@ WifiSeq::write_param(const String &in_s, Element *e, void *vparam,
 void
 WifiSeq::add_handlers()
 {
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_read_handler("seq", read_param, (void *) H_SEQ);
-  add_read_handler("offset", read_param, (void *) H_OFFSET);
-  add_read_handler("bytes", read_param, (void *) H_BYTES);
-  add_read_handler("shift", read_param, (void *) H_SHIFT);
+  add_read_handler("debug", read_param, H_DEBUG);
+  add_read_handler("seq", read_param, H_SEQ);
+  add_read_handler("offset", read_param, H_OFFSET);
+  add_read_handler("bytes", read_param, H_BYTES);
+  add_read_handler("shift", read_param, H_SHIFT);
 
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
-  add_write_handler("seq", write_param, (void *) H_SEQ);
-  add_write_handler("reset", write_param, (void *) H_RESET, Handler::BUTTON);
+  add_write_handler("debug", write_param, H_DEBUG);
+  add_write_handler("seq", write_param, H_SEQ);
+  add_write_handler("reset", write_param, H_RESET, Handler::BUTTON);
 }
 CLICK_ENDDECLS
 EXPORT_ELEMENT(WifiSeq)

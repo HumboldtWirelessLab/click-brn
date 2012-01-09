@@ -3,7 +3,7 @@
 #include <clicknet/wifi.h>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
-#include <elements/brn2/wifi/brnwifi.h>
+#include <elements/brn2/wifi/brnwifi.hh>
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -15,6 +15,7 @@ CLICK_DECLS
 OpenBeaconDecap::OpenBeaconDecap()
   :_debug(BrnLogger::DEFAULT)
 {
+	
 }
 
 OpenBeaconDecap::~OpenBeaconDecap()
@@ -37,25 +38,36 @@ OpenBeaconDecap::simple_action(Packet *p)
 {
 	Click2OBD_header *crh = (Click2OBD_header *)p->data(); 
 	uint8_t e_dhost[6], e_shost[6];
-	unsigned int i=0;
+	int i=0;
+	uint8_t ob_bcats[] = {255, 255};
+	uint8_t ob_bcats_ext[] = {255, 255,255,255};
+	
 	
 	WritablePacket *wp;
 	click_wifi_extra *ceh = NULL;
-	
-        for(i=0; i<6; i++) e_dhost[i] = 0;
-	for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
-		e_dhost[ i + 6 - sizeof( crh->openbeacon_dmac ) - 1 ] = crh->openbeacon_dmac[i-1];
-		e_shost[ i + 6 - sizeof( crh->openbeacon_smac ) - 1 ] = crh->openbeacon_smac[i-1];
+
+	memcpy( e_dhost, "\0\0\0\0\0\0" ,6 );
+	memcpy( e_shost, "\0\0\0\0\0\0" ,6 );
+
+	for(i=1; i>=0; i--) {
+		e_dhost[ 5-i ] = crh->openbeacon_smac[ i ];
+		e_shost[ 5-(1-i) ] = crh->openbeacon_smac[ sizeof( crh->openbeacon_dmac ) - i - 1 ];
 	}
-	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel;
+
+	if ( memcmp(&(e_dhost[4]),ob_bcats,2) == 0 ) {
+	  memcpy( e_dhost, ob_bcats_ext ,4 );
+	}
+
+	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel/*, length=crh->length*/;
 	
+	// trim das packet noch ;-)
 	p->pull( sizeof(Click2OBD_header)-12 );
 	wp = (WritablePacket *)p;
 		
 	p->set_mac_header( p->data(), 14);
         for(i=0; i<6; i++) {
-		wp->data()[i]     = e_dhost[i];
-		wp->data()[i+6] = e_shost[i];
+		wp->data()[i]     = e_dhost[ i ] ;
+		wp->data()[i+6] = e_shost[ i ] ;
 	}
 	
 	ceh = WIFI_EXTRA_ANNO(p);

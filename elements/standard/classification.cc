@@ -131,6 +131,17 @@ Insn::flip()
     short_output = !short_output;
 }
 
+static void
+jump_accum(StringAccum &sa, int j)
+{
+    if (j <= j_success)
+	sa << '[' << ("X-+"[j - j_never]) << ']';
+    else if (j <= 0)
+	sa << '[' << (-j) << ']';
+    else
+	sa << "step " << j;
+}
+
 StringAccum &
 operator<<(StringAccum &sa, const Insn &e)
 {
@@ -144,19 +155,9 @@ operator<<(StringAccum &sa, const Insn &e)
     for (int i = 0; i < 4; i++)
 	sprintf(buf + 9 + 2*i, "%02x", e.mask.c[i]);
     sa << buf << "  yes->";
-    if (e.yes() == j_never)
-	sa << "[X]";
-    else if (e.yes() <= 0)
-	sa << "[" << -e.yes() << "]";
-    else
-	sa << "step " << e.yes();
+    jump_accum(sa, e.yes());
     sa << "  no->";
-    if (e.no() == j_never)
-	sa << "[X]";
-    else if (e.no() <= 0)
-	sa << "[" << -e.no() << "]";
-    else
-	sa << "step " << e.no();
+    jump_accum(sa, e.no());
     if (e.short_output)
 	sa << "  short->yes";
     return sa;
@@ -328,9 +329,12 @@ Program::negate_subtree(Vector<int> &tree, bool flip_short)
    point to #3, since that is the destination of the #2.Y edge.)
 
    _dom holds all the Di sets for all states.
-   _dom_start[k] says where, in _dom, a given Di begins.
-   _domlist_start[S] says where, in _dom_start, the list of dominator sets
-   for state S begins.
+   _dom_start[k] says where, in _dom, Dk begins.
+   _domlist_start[S] says where, in _dom_start, the dominator sets for state
+   S begin.
+   The last element in a dominator list (so, for Dk, _dom[_dom_start[k+1]-1])
+   is a placeholder; its value has no persistent meaning and is reset
+   frequently.
 */
 
 static int
@@ -407,7 +411,6 @@ DominatorOptimizer::find_predecessors(int state, Vector<int> &v) const
 		vv.push_back(brno(i, k));
     }
 
-    click_qsort(v.begin(), v.size());
     assert(v.size() == vv.size() && memcmp(v.begin(), vv.begin(), sizeof(int) * v.size()) == 0);
 # endif
 #else
@@ -427,15 +430,21 @@ DominatorOptimizer::print()
     String s = _p->unparse();
     fprintf(stderr, "%s\n", s.c_str());
     for (int i = 0; i < _domlist_start.size() - 1; i++) {
+	if (_insn_id[i] == i)
+	    fprintf(stderr, "S%d    ", i);
+	else
+	    fprintf(stderr, "S%d[=%d]", i, _insn_id[i]);
 	if (_domlist_start[i] == _domlist_start[i+1])
-	    fprintf(stderr, "S-%d   NO DOMINATORS\n", i);
+	    fprintf(stderr, " :  NO DOMINATORS\n");
 	else {
-	    fprintf(stderr, "S-%d : ", i);
-	    for (int j = _domlist_start[i]; j < _domlist_start[i+1]; j++) {
+	    fprintf(stderr, " : ");
+	    for (int j = _domlist_start[i]; j < _domlist_start[i+1]; ++j) {
 		if (j > _domlist_start[i])
-		    fprintf(stderr, "    : ");
-		for (int k = _dom_start[j]; k < _dom_start[j+1]; k++)
-		    fprintf(stderr, " %d.%c", stateno(_dom[k]), br_yes(_dom[k]) ? 'Y' : 'N');
+		    fprintf(stderr, "       : ");
+		int endk = _dom_start[j+1];
+		for (int k = _dom_start[j]; k < endk; ++k)
+		    fprintf(stderr, k == endk - 1 ? " (%d.%c)" : " %d.%c",
+			    stateno(_dom[k]), br_yes(_dom[k]) ? 'Y' : 'N');
 		fprintf(stderr, "\n");
 	    }
 	}
@@ -454,20 +463,6 @@ DominatorOptimizer::calculate_dom(int state)
     Vector<int> predecessors;
     find_predecessors(state, predecessors);
 
-    // if no predecessors, kill this expr
-    if (predecessors.size() == 0) {
-	if (state > 0) {
-	    for (int k = 0; k < 2; ++k)
-		set_branch(state, k, Classification::j_never);
-	} else {
-	    assert(state == 0);
-	    _dom.push_back(brno(state, false));
-	    _dom_start.push_back(_dom.size());
-	}
-	_domlist_start.push_back(_dom_start.size() - 1);
-	return;
-    }
-
     // collect dominator lists from predecessors
     Vector<int> pdom, pdom_end;
     for (int i = 0; i < predecessors.size(); i++) {
@@ -483,8 +478,8 @@ DominatorOptimizer::calculate_dom(int state)
 	    continue;
 	}
 
-	// append all dom lists to pdom and pdom_end; modify dom array to end
-	// with branch 'p'
+	// append all dom list boundaries to pdom and pdom_end; modify dom
+	// array to end with the correct branch
 	int pred_brid = brno(_insn_id[s], br_yes(pred_br));
 	for (int j = _domlist_start[s]; j < _domlist_start[s+1]; j++) {
 	    int pos1 = _dom_start[j], pos2 = _dom_start[j+1];
@@ -501,24 +496,70 @@ DominatorOptimizer::calculate_dom(int state)
 
     // We now have pdom and pdom_end arrays pointing at predecessors'
     // dominators.
+    // But we may have eliminated every predecessor path as containing a
+    // contradiction.  In that case, this state cannot be reached and should
+    // be eliminated.  The pdom/pdom_end arrays will be empty.
+    int dom_start_oldsize = _dom_start.size();
 
-    // If we have too many arrays, combine some of them.
-    int pdom_pos = 0;
     if (pdom.size() > MAX_DOMLIST) {
+	// We have too many arrays, combine some of them.
 	intersect_lists(_dom, pdom, pdom_end, 0, pdom.size(), _dom);
 	_dom.push_back(brno(_insn_id[state], false));
 	_dom_start.push_back(_dom.size());
-	pdom_pos = pdom.size();	// skip loop
+    } else if (!pdom.empty()) {
+	// Our dominators equal predecessors' dominators.
+
+	// Check for redundant states, where all dominators have the same
+	// value for this state's test.
+	int mybr = brno(_insn_id[state], false), num_mybr = 0;
+
+	// Loop over predecessors.
+	for (int p = 0; p < pdom.size(); p++) {
+	    int endpos = pdom_end[p] - 1, last_pdom_br = _dom[endpos],
+		pred_mybr = -1;
+	    for (int i = pdom[p]; i <= endpos; ++i) {
+		int thisbr = _dom[i];
+		// Skip a state that will occur later in the list.
+		if (i < endpos && (thisbr ^ last_pdom_br) <= 1)
+		    continue;
+		// Check if list determines this state's test.
+		if ((thisbr ^ mybr) <= 1)
+		    pred_mybr = thisbr;
+		_dom.push_back(thisbr);
+	    }
+	    if (num_mybr >= 0 && pred_mybr >= 0
+		&& (num_mybr == 0 || mybr == pred_mybr))
+		mybr = pred_mybr, ++num_mybr;
+	    else
+		num_mybr = -1;
+	    _dom.push_back(mybr);
+	    _dom_start.push_back(_dom.size());
+	}
+
+	// If state is redundant, predecessors should skip it.
+	if (num_mybr > 0) {
+	    int new_state = insn(state).j[mybr & 1];
+	    for (int i = 0; i < predecessors.size(); ++i)
+		set_branch(stateno(predecessors[i]), br_yes(predecessors[i]),
+			   new_state);
+	    pdom.clear();	// mark this state as impossible (see below)
+	}
     }
 
-    // Our dominators equal predecessors' dominators.
-    for (int p = pdom_pos; p < pdom.size(); p++) {
-	for (int i = pdom[p]; i < pdom_end[p]; i++) {
-	    int x = _dom[i];
-	    _dom.push_back(x);
+    // Set branches of impossible states to "j_never".
+    if (pdom.empty()) {
+	// Clear out any changes to the dom arrays (redundant states only)
+	_dom.resize(_dom_start[dom_start_oldsize - 1]);
+	_dom_start.resize(dom_start_oldsize);
+
+	if (state > 0) {
+	    for (int k = 0; k < 2; ++k)
+		set_branch(state, k, Classification::j_never);
+	} else {
+	    assert(state == 0);
+	    _dom.push_back(brno(state, false));
+	    _dom_start.push_back(_dom.size());
 	}
-	_dom.push_back(brno(_insn_id[state], false));
-	_dom_start.push_back(_dom.size());
     }
 
     _domlist_start.push_back(_dom_start.size() - 1);
@@ -527,8 +568,8 @@ DominatorOptimizer::calculate_dom(int state)
 
 void
 DominatorOptimizer::intersect_lists(const Vector<int> &in, const Vector<int> &start, const Vector<int> &end, int pos1, int pos2, Vector<int> &out)
-  /* Define subvectors V1...Vk as in[start[i] ... end[i]-1] for each pos1 <= i
-     < pos2. This code places an intersection of V1...Vk in 'out'. */
+  /* For each i, pos1 <= i < pos2, let Vi be in[start[i] ... end[i]-1].
+     This code places an intersection of all such Vi in 'out'. */
 {
     assert(pos1 <= pos2 && pos2 <= start.size() && pos2 <= end.size());
     if (pos1 == pos2)
@@ -622,12 +663,13 @@ DominatorOptimizer::shift_branch(int state, bool branch)
 {
     // shift a branch by examining its dominators
 
-    int32_t nexts = insn(state).j[branch], new_nexts;
-    if (nexts <= 0)
-	return;
-    int br = brno(state, branch);
+    int32_t nexts = insn(state).j[branch], new_nexts,
+	br = brno(state, branch);
 
-    if (_domlist_start[state] + 1 == _domlist_start[state+1]) {
+    if (_domlist_start[state] == _domlist_start[state+1] || nexts <= 0)
+	// impossible or terminating branch
+	new_nexts = nexts;
+    else if (_domlist_start[state] + 1 == _domlist_start[state+1]) {
 	// single domlist; faster algorithm
 	int d = _domlist_start[state];
 	new_nexts = dom_shift_branch(br, nexts, _dom_start[d], _dom_start[d+1], 0);
@@ -726,7 +768,7 @@ Program::remove_unused_states()
 void
 Program::combine_compatible_states()
 {
-    for (int i = 0; i < _insn.size(); i++) {
+    for (int i = _insn.size() - 1; i >= 0; --i) {
 	Insn &in = _insn[i];
 	if (in.no() > 0) {
 	    Insn &no_in = _insn[in.no()];
@@ -737,7 +779,7 @@ Program::combine_compatible_states()
 		in.value.u &= ~the_bit;
 		in.mask.u &= ~the_bit;
 		in.no() = no_in.no();
-		--i;
+		++i;
 		continue;
 	    }
 	}
@@ -752,7 +794,7 @@ Program::combine_compatible_states()
 		in.offset = yes_in.offset;
 	    in.value.u = (in.value.u & in.mask.u) | (yes_in.value.u & yes_in.mask.u);
 	    in.mask.u |= yes_in.mask.u;
-	    --i;
+	    ++i;
 	}
     }
 }
@@ -769,8 +811,34 @@ Program::count_inbranches(Vector<int> &inbranches) const
     }
 }
 
+inline int
+Program::map_offset(int offset, const int *begin, const int *end)
+{
+    if (begin == end || offset < begin[0] || offset > end[-2])
+	return offset;
+    else
+	return hard_map_offset(offset, begin, end);
+}
+
+int
+Program::hard_map_offset(int offset, const int *begin, const int *end)
+{
+    while (begin != end) {
+	const int *mid = begin + (((end - begin) >> 2) << 1);
+	if (mid[0] == offset)
+	    return mid[1];
+	else if (mid[0] < offset)
+	    begin = mid + 2;
+	else
+	    end = begin;
+    }
+    return offset;
+}
+
 void
-Program::bubble_sort_and_exprs(unsigned sort_stopper)
+Program::bubble_sort_and_exprs(const int *offset_map_begin,
+			       const int *offset_map_end,
+			       int last_offset)
 {
     Vector<int> inbranch;
     count_inbranches(inbranch);
@@ -778,32 +846,42 @@ Program::bubble_sort_and_exprs(unsigned sort_stopper)
     // do bubblesort
     for (int i = 0; i < _insn.size(); i++) {
 	Insn &e1 = _insn[i];
-	for (int k = 0; k < 2; k++)
-	    if (e1.j[k] > 0) {
-		int j = e1.j[k];
-		Insn &e2 = _insn[j];
-		if (e1.j[!k] == e2.j[!k]
-		    && (e1.offset > e2.offset
-			|| (e1.offset == e2.offset && e1.mask.u > e2.mask.u))
-		    && e1.offset < sort_stopper && inbranch[j] > 0) {
-		    Insn temp(e2);
-		    e2 = e1;
-		    e2.j[k] = temp.j[k];
-		    e1 = temp;
-		    e1.j[k] = j;
-		    // step backwards to continue the sort
-		    i = (inbranch[i] > 0 ? inbranch[i] - 1 : i - 1);
-		    break;
-		}
+	for (int k = 0; k < 2; k++) {
+	    int j = e1.j[k];
+	    if (j <= 0
+		|| e1.offset >= static_cast<unsigned>(last_offset)
+		|| inbranch[j] <= 0)
+		continue;
+	    Insn &e2 = _insn[j];
+	    if (e1.j[!k] != e2.j[!k])
+		continue;
+	    int o1 = map_offset(e1.offset, offset_map_begin, offset_map_end),
+		o2 = map_offset(e2.offset, offset_map_begin, offset_map_end);
+	    if (o1 > o2
+		|| (o1 == o2
+		    && (ntohl(e1.mask.u) > ntohl(e2.mask.u)
+			|| (e1.mask.u == e2.mask.u
+			    && ntohl(e1.value.u) > ntohl(e2.value.u))))) {
+		Insn temp(e2);
+		e2 = e1;
+		e2.j[k] = temp.j[k];
+		e1 = temp;
+		e1.j[k] = j;
+		// step backwards to continue the sort
+		i = (inbranch[i] > 0 ? inbranch[i] - 1 : i - 1);
+		break;
 	    }
+	}
     }
 }
 
 void
-Program::optimize(unsigned sort_stopper)
+Program::optimize(const int *offset_map_begin,
+		  const int *offset_map_end,
+		  int last_offset)
 {
     // sort 'and' expressions
-    bubble_sort_and_exprs(sort_stopper);
+    bubble_sort_and_exprs(offset_map_begin, offset_map_end, last_offset);
 
     // click_chatter("%s", unparse().c_str());
 

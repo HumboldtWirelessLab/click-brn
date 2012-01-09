@@ -170,7 +170,7 @@ CLICK_DECLS
 struct iaddr {
   unsigned len;
   unsigned char iabuf [16];
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /*
 enum DHCP_VERSION {
@@ -187,7 +187,7 @@ struct dhcp_option
   uint8_t	code;
   uint8_t	length;
   uint8_t	data[MAX_OPTION_LEN];
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct dhcp_packet
 {
@@ -206,7 +206,7 @@ struct dhcp_packet
   char sname [DHCP_SNAME_LEN];	/* 40: Server name */
   char file [DHCP_FILE_LEN];	/* 104: Boot filename */
   unsigned char options [DHCP_OPTION_LEN];  /* 212: Optional parameters (actual length dependent on MTU). */
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define TFS(x)  (const struct true_false_string*)(x)
 
@@ -234,7 +234,7 @@ struct opt_info {
   const char  *text;
   enum field_type ftype;
   const void *data;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 typedef struct true_false_string {
   const char    *true_string;

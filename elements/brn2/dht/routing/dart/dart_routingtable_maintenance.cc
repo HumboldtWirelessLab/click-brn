@@ -8,7 +8,7 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/md5.h"
+#include "elements/brn2/standard/brn_md5.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 #include "elements/brn2/dht/standard/dhtnode.hh"
@@ -71,7 +71,7 @@ DartRoutingTableMaintenance::static_lookup_timer_hook(Timer *t, void *f)
 void
 DartRoutingTableMaintenance::set_lookup_timer()
 {
-  _lookup_timer.schedule_after_msec( _update_interval );
+  _lookup_timer.reschedule_after_msec( _update_interval );
 }
 
 /**
@@ -103,6 +103,7 @@ DartRoutingTableMaintenance::getBestNeighbour()
 void
 DartRoutingTableMaintenance::table_maintenance()
 {
+  BRN_DEBUG("table maintenance");
 
   if ( ( _activestart ) && ( ! _drt->_validID ) && ( _drt->_neighbours.size() == 0 ) )  {
     //I'm active, have no valid ID and no neighbour to ask for an ID

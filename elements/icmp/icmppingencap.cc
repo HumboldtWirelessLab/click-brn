@@ -20,7 +20,7 @@
 
 #include <click/config.h>
 #include "icmppingencap.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <clicknet/ip.h>
 #include <clicknet/icmp.h>
@@ -40,11 +40,11 @@ ICMPPingEncap::~ICMPPingEncap()
 int
 ICMPPingEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    if (cp_va_kparse(conf, this, errh,
-		     "SRC", cpkP+cpkM, cpIPAddress, &_src,
-		     "DST", cpkP+cpkM, cpIPAddress, &_dst,
-		     "IDENTIFIER", 0, cpUnsignedShort, &_icmp_id,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("SRC", _src)
+	.read_mp("DST", _dst)
+	.read("IDENTIFIER", _icmp_id)
+	.complete() < 0)
 	return -1;
 
 #if HAVE_FAST_CHECKSUM && FAST_CHECKSUM_ALIGNED
@@ -125,8 +125,8 @@ int ICMPPingEncap::write_handler(const String &str, Element *e, void *thunk, Err
 {
     ICMPPingEncap *i = static_cast<ICMPPingEncap *>(e);
     IPAddress a;
-    if (!cp_ip_address(str, &a))
-	return errh->error("expected IP address");
+    if (!IPAddressArg().parse(str, a))
+	return errh->error("syntax error");
     if (thunk)
 	i->_dst = a;
     else
@@ -136,10 +136,10 @@ int ICMPPingEncap::write_handler(const String &str, Element *e, void *thunk, Err
 
 void ICMPPingEncap::add_handlers()
 {
-    add_read_handler("src", read_handler, (void *) 0, Handler::CALM);
-    add_write_handler("src", write_handler, (void *) 0);
-    add_read_handler("dst", read_handler, (void *) 1, Handler::CALM);
-    add_write_handler("dst", write_handler, (void *) 1);
+    add_read_handler("src", read_handler, 0, Handler::CALM);
+    add_write_handler("src", write_handler, 0);
+    add_read_handler("dst", read_handler, 1, Handler::CALM);
+    add_write_handler("dst", write_handler, 1);
 }
 
 CLICK_ENDDECLS

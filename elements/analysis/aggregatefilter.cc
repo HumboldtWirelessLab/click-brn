@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include "aggregatefilter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/packet_anno.hh>
 CLICK_DECLS
@@ -58,7 +58,6 @@ AggregateFilter::find_group(uint32_t aggregate)
 int
 AggregateFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-    int before_nerrors = errh->nerrors();
     _default_output = noutputs() + 1;
     Group *g = 0;
 
@@ -77,7 +76,7 @@ AggregateFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	int port = noutputs();
 	if (words[0] == "allow")
 	    port = 0;
-	else if (cp_integer(words[0], (unsigned *)&port))
+	else if (IntArg().parse(words[0], port) && port >= 0)
 	    /* OK */;
 	else if (words[0] != "drop" && words[0] != "deny") {
 	    errh->error("pattern %d: expected a port number", argno);
@@ -90,14 +89,14 @@ AggregateFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	    _default_output = port;
 	else
 	    for (int i = 1; i < words.size(); i++) {
-		uint32_t agg1, agg2;
+		uint32_t agg1 = 0, agg2 = 0;
 		const char *dash;
-		if (cp_integer(words[i], &agg1))
+		if (IntArg().parse(words[i], agg1))
 		    agg2 = agg1;
 		else {
 		    dash = find(words[i], '-');
-		    if (!cp_integer(words[i].substring(words[i].begin(), dash), &agg1)
-			|| !cp_integer(words[i].substring(dash + 1, words[i].end()), &agg2)) {
+		    if (!IntArg().parse(words[i].substring(words[i].begin(), dash), agg1)
+			|| !IntArg().parse(words[i].substring(dash + 1, words[i].end()), agg2)) {
 			errh->error("pattern %d: bad aggregate number `%#s'", words[i].c_str());
 			continue;
 		    }
@@ -116,7 +115,7 @@ AggregateFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	    }
     }
 
-    return (errh->nerrors() == before_nerrors ? 0 : -1);
+    return errh->nerrors() ? -1 : 0;
 }
 
 void

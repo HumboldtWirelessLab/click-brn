@@ -6,6 +6,7 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn2/routing/linkstat/metric/brn2_brnetxmetric.hh"
 
 
 /**
@@ -64,6 +65,8 @@ class LPRLinkProbeHandler : public Element {
   unsigned char *known_links;
   unsigned char *known_timestamps;
   int max_hosts;
+
+  bool _active;
 };
 
 CLICK_ENDDECLS

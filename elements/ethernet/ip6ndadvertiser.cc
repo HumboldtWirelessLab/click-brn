@@ -22,7 +22,7 @@
 #include <clicknet/ip6.h>
 #include <click/etheraddress.hh>
 #include <click/ip6address.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 CLICK_DECLS
@@ -50,7 +50,6 @@ IP6NDAdvertiser::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _v.clear();
 
-  int before = errh->nerrors();
   for (int i = 0; i < conf.size(); i++) {
     IP6Address ipa, mask;
     EtherAddress ena;
@@ -65,7 +64,7 @@ IP6NDAdvertiser::configure(Vector<String> &conf, ErrorHandler *errh)
 	add_map(ipa, mask, EtherAddress());
       else if (cp_ip6_address(words[j], &ipa, this))
 	add_map(ipa, IP6Address("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"), EtherAddress());
-      else if (cp_ethernet_address(words[j], &ena, this)) {
+      else if (EtherAddressArg().parse(words[j], ena, this)) {
 	if (have_ena)
 	  errh->error("argument %d has more than one Ethernet address", i);
 	have_ena = true;
@@ -80,7 +79,7 @@ IP6NDAdvertiser::configure(Vector<String> &conf, ErrorHandler *errh)
       _v[j].ena = ena;
   }
 
-  return (before == errh->nerrors() ? 0 : -1);
+  return errh->nerrors() ? -1 : 0;
 }
 
 
@@ -114,7 +113,7 @@ IP6NDAdvertiser::make_response(u_char dha[6],   /*  des eth address */
   //set ip6 header
   ip6->ip6_flow = 0;		// set flow to 0 (includes version)
   ip6->ip6_v = 6;		// then set version to 6
-  ip6->ip6_plen=htons(sizeof(click_nd_adv));
+  ip6->ip6_plen = htons(sizeof(click_nd_adv));
   ip6->ip6_nxt=0x3a; //i.e. protocal: icmp6 message
   ip6->ip6_hlim=0xff; //indicate no router has processed it
   ip6->ip6_src = IP6Address(spa);

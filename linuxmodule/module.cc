@@ -115,7 +115,7 @@ click_assert_failed(const char *file, int line, const char *problem_text)
 static int
 write_assert_stop(const String &s, Element *, void *, ErrorHandler *errh)
 {
-    if (!cp_bool(s, &assert_stops_router))
+    if (!BoolArg().parse(s, assert_stops_router))
 	return errh->error("assert_stop must be a boolean");
     else
 	return 0;
@@ -144,7 +144,7 @@ KernelErrorHandler::buffer_store(uint32_t head, const char *begin, const char *e
 void
 KernelErrorHandler::log_line(String landmark, const char *begin, const char *end)
 {
-    static_assert((logbuf_siz & (logbuf_siz - 1)) == 0);
+    static_assert((logbuf_siz & (logbuf_siz - 1)) == 0, "logbuf_siz must be a power of two.");
 
     // ensure begin <= end
     if (begin > end)
@@ -166,7 +166,7 @@ KernelErrorHandler::log_line(String landmark, const char *begin, const char *end
     do {
 	line_head = _tail;
 	line_tail = line_head + (end - begin) + 1 + landmark.length();
-    } while (!atomic_uint32_t::compare_and_swap(_tail, line_head, line_tail));
+    } while (atomic_uint32_t::compare_swap(_tail, line_head, line_tail) != line_head);
     while (line_tail - _head > logbuf_siz)
 	/* spin */;
 
@@ -177,7 +177,7 @@ KernelErrorHandler::log_line(String landmark, const char *begin, const char *end
     _logbuf[(line_tail - 1) & (logbuf_siz - 1)] = '\n';
 
     // mark the line as stored
-    while (!atomic_uint32_t::compare_and_swap(_head, line_head, line_tail))
+    while (atomic_uint32_t::compare_swap(_head, line_head, line_tail) != line_head)
 	/* spin */;
     if (line_tail > logbuf_siz)
 	_wrapped = true;
@@ -218,7 +218,7 @@ KernelErrorHandler::read(click_handler_direct_info *hdi) const
 	initial = (_wrapped ? _tail - logbuf_siz : 0);
 	*hdi->string = String(initial);
     } else
-	cp_integer(*hdi->string, &initial);
+	IntArg().parse(*hdi->string, initial);
 
     uint32_t tail = _tail;
     uint32_t len = tail - initial;
@@ -340,9 +340,10 @@ cleanup_module()
     // filesystem interface
     cleanup_clickfs();
 
-    // extra packages, global handlers
+    // extra packages, global handlers, packets
     click_cleanup_packages();
     Router::static_cleanup();
+    Packet::static_cleanup();
 
     // config manager, thread manager, sk_buff manager
     click_cleanup_config();

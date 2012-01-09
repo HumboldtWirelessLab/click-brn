@@ -4,7 +4,7 @@
  * Eddie Kohler
  *
  * Copyright (c) 1999-2000 Massachusetts Institute of Technology
- * Copyright (c) 2008 Meraki, Inc.
+ * Copyright (c) 2008-2011 Meraki, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the "Software"),
@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <dirent.h>
@@ -48,17 +49,18 @@ glob_match(const String &str, const String &pattern)
 {
     const char *send = str.end();
     const char *pend = pattern.end();
-    Vector<const char *> state, nextstate;
-    state.push_back(pattern.data());
 
     // quick common-case check for suffix matches
     while (pattern.begin() < pend && str.begin() < send
 	   && pend[-1] != '*' && pend[-1] != '?' && pend[-1] != ']'
-	   && (pattern.begin() + 1 < pend || pend[-2] != '\\'))
+	   && (pattern.begin() + 1 == pend || pend[-2] != '\\'))
 	if (pend[-1] == send[-1])
 	    --pend, --send;
 	else
 	    return false;
+
+    Vector<const char *> state, nextstate;
+    state.push_back(pattern.data());
 
     for (const char *s = str.data(); s != send && state.size(); ++s) {
 	nextstate.clear();
@@ -181,13 +183,15 @@ click_strcmp(const String &a, const String &b)
 {
     const char *ad = a.begin(), *ae = a.end();
     const char *bd = b.begin(), *be = b.end();
+    const char *aperiod = 0;
+    bool aperiod_negative = false;
     int raw_compare = 0;
 
     while (ad < ae && bd < be) {
-	if ((isdigit((unsigned char) *ad) || *ad == '.')
-	    && (isdigit((unsigned char) *bd) || *bd == '.')) {
+	if (isdigit((unsigned char) *ad) && isdigit((unsigned char) *bd)) {
 	    // compare the two numbers, but treat them as strings
 	    // (a decimal conversion might cause overflow)
+	    bool potential_decimal = (ad == aperiod);
 
 	    // check if both are negative (note that if we get here, entire
 	    // string prefixes are identical)
@@ -218,35 +222,46 @@ click_strcmp(const String &a, const String &b)
 		++bd;
 	    }
 
+	    // real number comparison: leading zeros are significant,
+	    // digit comparisons take precedence
+	    if (potential_decimal) {
+		const char *ax = ad, *bx = bd;
+		while (ax < ae && isdigit((unsigned char) *ax))
+		    ++ax;
+		while (bx < be && isdigit((unsigned char) *bx))
+		    ++bx;
+		// watch for IP addresses: don't treat "0.2." like a decimal
+		if ((ax == ae || *ax != '.' || ax + 1 == ae || isspace((unsigned char) ax[1]))
+		    && (bx == be || *bx != '.' || bx + 1 == be || isspace((unsigned char) bx[1]))) {
+		    negative = aperiod_negative;
+		    if (longer_zeros)
+			return negative ? 1 : -1;
+		    if (digit_compare)
+			a_good = b_good;
+		}
+	    }
 	    // if one number is longer, it must also be larger
 	    if (a_good != b_good)
 		return negative == a_good ? -1 : 1;
 	    // otherwise, digit comparisons take precedence
 	    if (digit_compare)
 		return negative == (digit_compare > 0) ? -1 : 1;
-
-	    // otherwise, integer parts are equal; check for fractions and
-	    // compare them digit by digit
-	    a_good = ad+1 < ae && *ad == '.' && isdigit((unsigned char) ad[1]);
-	    b_good = bd+1 < be && *bd == '.' && isdigit((unsigned char) bd[1]);
-	    if (a_good && b_good) {
-		// inside fractions, the earliest digit difference wins
-		++ad, ++bd;
-		do {
-		    if (*ad != *bd)
-			return negative == (*ad > *bd) ? -1 : 1;
-		    ++ad, ++bd;
-		    a_good = ad < ae && isdigit((unsigned char) *ad);
-		    b_good = bd < be && isdigit((unsigned char) *bd);
-		} while (a_good && b_good);
-		// then longer strings are greater; fallthru dtrt
-	    }
-	    if (a_good || b_good)
-		return negative == a_good ? -1 : 1;
-
 	    // as a last resort, the longer string of zeros is greater
 	    if (longer_zeros)
 		return longer_zeros;
+	    // prepare for potential decimal comparison later
+	    if (!aperiod) {
+		a_good = ad + 1 < ae && *ad == '.'
+		    && isdigit((unsigned char) ad[1]);
+		b_good = bd + 1 < be && *bd == '.'
+		    && isdigit((unsigned char) bd[1]);
+		if (a_good != b_good)
+		    return negative == b_good ? 1 : -1;
+		else if (a_good) {
+		    aperiod = ad + 1;
+		    aperiod_negative = negative;
+		}
+	    }
 
 	    // if we get here, the numeric portions were byte-for-byte
 	    // identical; move on
@@ -261,6 +276,8 @@ click_strcmp(const String &a, const String &b)
 		return alower - blower;
 	    if (raw_compare == 0)
 		raw_compare = (unsigned char) *ad - (unsigned char) *bd;
+	    if (*ad != '.')
+		aperiod = 0;
 	    ++ad;
 	    ++bd;
 	}
@@ -317,37 +334,66 @@ shell_quote(const String &str, bool quote_tilde)
 String
 shell_command_output_string(String cmdline, const String &input, ErrorHandler *errh)
 {
-    FILE *f = tmpfile();
-    if (!f) {
-	errh->fatal("cannot create temporary file: %s", strerror(errno));
-	return String();
+    FILE *f;
+    int pfd[2] = {-1, -1};
+    pid_t child = -1;
+    StringAccum sa;
+
+    if (!(f = tmpfile())) {
+	errh->error("%<%s%>: tmpfile: %s", cmdline.c_str(), strerror(errno));
+	goto out;
     }
     ignore_result(fwrite(input.data(), 1, input.length(), f));
     fflush(f);
     rewind(f);
 
-    String new_cmdline = cmdline + " <&" + String(fileno(f));
-    FILE *p = popen(new_cmdline.c_str(), "r");
-    if (!p) {
-	errh->fatal("%<%s%>: %s", cmdline.c_str(), strerror(errno));
-	return String();
+    if (pipe(pfd) == -1) {
+	errh->error("%<%s%>: pipe: %s", cmdline.c_str(), strerror(errno));
+	fclose(f);
+	goto out;
     }
 
-  StringAccum sa;
-  while (!feof(p)) {
-    if (char *s = sa.reserve(2048)) {
-      int x = fread(s, 1, 2048, p);
-      if (x > 0)
-	sa.adjust_length(x);
-    } else /* out of memory */
-      break;
-  }
-  if (!feof(p))
-    errh->warning("%<%s%> output too long, truncated", cmdline.c_str());
+    child = fork();
+    if (child == -1)
+	errh->error("%<%s%>: fork: %s", cmdline.c_str(), strerror(errno));
+    else if (child == 0) {
+	close(0);
+	close(1);
+	close(pfd[0]);
+	dup2(fileno(f), 0);
+	dup2(pfd[1], 1);
+	close(fileno(f));
+	close(pfd[1]);
 
-  fclose(f);
-  pclose(p);
-  return sa.take_string();
+	execl("/bin/sh", "sh", "-c", cmdline.c_str(), (char *) 0);
+	exit(127);
+    }
+
+    close(pfd[1]);
+    fclose(f);
+    while (1) {
+	char *s = sa.reserve(4096);
+	if (!s) {
+	    errh->error("%<%s%>: out of memory", cmdline.c_str());
+	    sa.clear();
+	    break;
+	}
+	ssize_t r = read(pfd[0], s, 4096);
+	if (r == 0 || (r == -1 && errno != EAGAIN && errno != EINTR)) {
+	    if (r == -1)
+		errh->error("%<%s%>: %s", cmdline.c_str(), strerror(errno));
+	    break;
+	} else if (r != -1)
+	    sa.adjust_length(r);
+    }
+
+    close(pfd[0]);
+    int status;
+    while (child > 0 && waitpid(child, &status, 0) != child)
+	/* nada */;
+
+ out:
+    return sa.take_string();
 }
 
 String

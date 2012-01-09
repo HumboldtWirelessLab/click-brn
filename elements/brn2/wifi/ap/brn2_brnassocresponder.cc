@@ -397,8 +397,8 @@ BRN2AssocResponder::send_reassociation_response(
   memcpy(w->i_addr2, bssid.data(), 6);
   memcpy(w->i_addr3, bssid.data(), 6);
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
   int actual_length = sizeof(struct click_wifi);
@@ -507,8 +507,8 @@ BRN2AssocResponder::send_disassociation(EtherAddress dst, uint16_t reason)
   memcpy(w->i_addr2, bssid.data(), 6);
   memcpy(w->i_addr3, bssid.data(), 6);
 
-  *(uint16_t *) w->i_dur = 0;
-  *(uint16_t *) w->i_seq = 0;
+  w->i_dur = 0;
+  w->i_seq = 0;
 
   uint8_t *ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
 

@@ -8,6 +8,7 @@
 # Copyright (c) 1999-2001 Massachusetts Institute of Technology
 # Copyright (c) 2001-2003 International Computer Science Institute
 # Copyright (c) 2006-2007 Regents of the University of California
+# Copyright (c) 2011 Meraki, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -35,9 +36,9 @@ my(%section_takes_args) =
       'd' => 0, 'n' => 0, 'e' => 0, 'h' => 1, 'a' => 2, 'title' => 1,
       'deprecated' => 1, 'package' => 2 );
 my(%section_takes_text) =
-    ( 'head1' => 2, 'c' => 1, 's' => 1,
+    ( 'head1' => 2, 'c' => 1, 's' => 2,
       'io' => 2, 'processing' => 2, 'drivers' => 2,
-      'd' => 1, 'n' => 1, 'e' => 1, 'h' => 1, 'a' => 2, 'title' => 0,
+      'd' => 2, 'n' => 1, 'e' => 1, 'h' => 2, 'a' => 2, 'title' => 0,
       'deprecated' => 0, 'package' => 1 );
 my(%xsection_takes_args) =
     ( 'head1' => 1, 'head2' => 1, 'item' => 1, 'over' => 1, 'back' => 0,
@@ -155,7 +156,7 @@ sub textize_add_links ($$) {
 	my $result = ($r eq $PrimaryElement ? "$selfref<$r>" : "L<$r>");
 	for ($pos = index($t, $r); $pos >= 0; $pos = index($t, $r, $pos + 1)) {
 	    if (($pos == 0 || substr($t, $pos - 1, 1) =~ /^[^\w@\/<]$/s)
-		&& (substr($t, $pos + $l, 1) =~ /^[^\w@\/]$/s)) {
+		&& (substr($t, $pos + $l) =~ /\A(?:[^\w@\/]|\z)/s)) {
 		substr($t, $pos, $l) = $result;
 		$pos += 2 + $l;
 	    }
@@ -226,13 +227,25 @@ sub nroff_fixfP ($$) {
     $x;
 }
 
+sub nroff_manref ($$$$) {
+    map { $_ = "\"$_\"" if (s/\"/\\(dq/g) } @_;
+    my($x);
+    if ($_[0] eq "") {
+	$x = "\n.M " . $_[1] . " " . $_[2];
+    } else {
+	$x = "\n.RM " . $_[0] . " " . $_[1] . " " . $_[2];
+    }
+    $x .= " " . $_[3] if $_[3] ne "";
+    $x . "\n";
+}
+
 sub nroffize_text ($) {
     my($t) = @_;
     my($s);
 
     # embolden & manpageize
     $t = textize_add_links($t, 'L');
-  
+
     $t =~ s/\\/\\\\/g;
     $t =~ s/^\./\\&./gm;
     $t =~ s/^'/\\&'/gm;
@@ -246,32 +259,34 @@ sub nroffize_text ($) {
     # get rid of entities
     $t =~ s{[\200-\377]}{"E<" . ord($1) . ">"}ge;
     $t =~ s{(E<[^>]*>)}{nroff_quote($1)}ge;
-  
+
     my $maxnest = 10;
     while ($maxnest-- && $t =~ /[A-Z]</) {
-    
+
 	# can't do C font here
 	$t =~ s/([BI])<($nonest)>/"\\f$1" . nroff_fixfP($2, $1) . "\\fP"/eg;
 	$t =~ s/[PU]<($nonest)>/$1/g;
-    
+
 	# files and filelike refs in italics
 	$t =~ s/F<($nonest)>/I<$1>/g;
-    
-	# LREF: man page references
-	$t =~ s{L<($nonest)\(([\dln])\)>(\S*)(\s*)}{\n.M $1 $2 $3\n}g;
-    
+
+	# comments
 	$t =~ s/V<($nonest)>//g;
-    
-	# LREF: a la HREF L<show this text|man/section>
-	$t =~ s{L<($nonest)>(\S*)(\s*)}{
-	    if (($s = $RelatedSource{$1})) {
-		"\n.M $1 \"$s\" $2\n";
+
+	# LREF: man page references, or a la HREF L<show this text|man/section>
+	$t =~ s{(\S*)L<($nonest)>(\S*)(\s*)}{
+	    my($pre, $text, $post, $space, $s, $i) = ($1, $2, $3, $4);
+	    if ($text =~ /\A(.*)\((\d+|[ln])\)\z/) {
+		nroff_manref($pre, $1, $2, $post);
+	    } elsif (($s = $RelatedSource{$text})) {
+		nroff_manref($pre, $text, $s, $post);
+	    } elsif (($i = index($text, "|")) >= 0) {
+		$pre . substr($text, 0, $i) . $post . $space;
 	    } else {
-		my $i = index($1, "|");
-		($i >= 0 ? substr($1, 0, $i) . $2 . $3 : "\\fB$1\\fP$2$3");
+		$pre . "\\fB" . $text . "\\fP" . $post . $space;
 	    }
 	}eg;
-    
+
 	$t =~ s/Z<>/\\&/g;
 	$t =~ s/N<>(\n?)/\n.br\n/g;
 
@@ -281,13 +296,13 @@ sub nroffize_text ($) {
 
     # replace entities
     $t =~ s/\305\274([^\276]*)\276/nroff_unentity($1)/ge;
-  
+
     # fix fonts
     $t =~ s/\\fP/\\fR/g;
 
     # fix manual
     $t =~ s/\n\.M (\S+) \"(\S+)\" (\(\2\))/\n.M $1 \"$2\" /sg;
-    
+
     $t =~ s/\n+/\n/sg;
     $t =~ s/^\n+//;
     $t =~ s/\n+$//;
@@ -349,7 +364,7 @@ sub nroff_do_section ($$$) {
     } elsif ($Begun) {
 	return;
     }
-  
+
     if ($name eq 'head1') {
 	print OUT ".SH \"", protquote(nroffize($args)), "\"\n";
     } elsif ($name eq 'head2') {
@@ -362,11 +377,8 @@ sub nroff_do_section ($$$) {
 	    print STDERR "click-elem2man: $Filename: bad arguments to '=over'\n";
 	}
     } elsif ($name eq 'item') {
-	if (@Over == 0) {
-	    print STDERR "click-elem2man: $Filename: '=item' outside any '=over' section\n";
-	} else {
-	    print OUT ".IP \"", protquote(nroffize($args)), "\" $Over[-1]\n";
-	}
+	my($over) = (@Over ? $Over[-1] : 8);
+	print OUT ".IP \"", protquote(nroffize($args)), "\" $over\n";
     } elsif ($name eq 'back') {
 	my($overarg);
 	if ($args =~ /^\s*(\d+)\s*$/s) {
@@ -470,28 +482,28 @@ sub dokuwikiize_text ($) {
 
     # embolden & manpageize
     $t = textize_add_links($t, 'P');
-    
+
     # get rid of entities
     $t =~ s{E<([^>]*)>}{dokuwiki_unentity($1)}ge;
     $t =~ s{($dokuwiki_sensitive_char)}{^$1^}g;
 
     my $maxnest = 10;
     while ($maxnest-- && $t =~ /[A-Z]</) {
-    
+
 	# can't do C font here
 	$t =~ s/B<($nonest)>/dokuwiki_surround($1, "*")/eg;
 	$t =~ s.I<($nonest)>.dokuwiki_surround($1, "/").eg;
 	$t =~ s.U<($nonest)>.dokuwiki_surround($1, "_").eg;
 	$t =~ s/P<($nonest)>/$1/g;
 	$t =~ s/C<($nonest)>/dokuwiki_surround($1, "'")/eg;
-    
+
 	# files and filelike refs in italics
 	$t =~ s/F<($nonest)>/I<$1>/g;
-    
+
 	# LREF: man page references
 	$t =~ s{L<($nonest)\^\(\^[\dln]\^\)\^>}{[[$1]]}g;
 	$t =~ s{L<($nonest)>\^\(\^[\dln]\^\)\^}{[[$1]]}g;
-    
+
 	# LREF: a la HREF L<show this text|man/section>
 	$t =~ s{L<($nonest)\|($nonest)>}{[[$2|$1]]}g;
 	$t =~ s{L<($nonest)>}{[[$1]]}g;
@@ -500,7 +512,7 @@ sub dokuwikiize_text ($) {
 	$t =~ s/Z<>//g;
 	$t =~ s/N<>(\n?)/\\\\ /g;
     }
-    
+
     $t =~ s/\n+/\n/sg;
     $t =~ s/^\n+//;
     $t =~ s/\n+$//;
@@ -559,7 +571,7 @@ sub dokuwiki_do_section ($$$) {
     } elsif ($Begun) {
 	return;
     }
-    
+
     if ($name eq 'head1') {
 	print OUT "\n===== ", dokuwikiize($args), " =====\n\n";
     } elsif ($name eq 'head2') {
@@ -571,13 +583,11 @@ sub dokuwiki_do_section ($$$) {
 	    print STDERR "click-elem2man: $Filename: bad arguments to '=over'\n";
 	}
     } elsif ($name eq 'item') {
-	if (@Over == 0) {
-	    print STDERR "click-elem2man: $Filename: '=item' outside any '=over' section\n";
-	} else {
-	    print OUT "\n", ' ' x @Over, "? " if $dokuwiki_dl;
-	    print OUT dokuwikiize("B<" . quote_unquoted_gt($args) . ">");
-	    print OUT ($dokuwiki_dl ? "\n" : "\n\n");
-	}
+	my($nover) = scalar(@Over);
+	$nover = 1 if $nover == 0;
+	print OUT "\n", ' ' x $nover, "? " if $dokuwiki_dl;
+	print OUT dokuwikiize("B<" . quote_unquoted_gt($args) . ">");
+	print OUT ($dokuwiki_dl ? "\n" : "\n\n");
     } elsif ($name eq 'back') {
 	my($overarg);
 	if ($args =~ /^\s*(\d+)\s*$/s) {
@@ -638,6 +648,29 @@ my $do_section_func = \&nroff_do_section;
 my $do_text_func = \&nroffize;
 my $filename_func;
 
+sub canonicalize_section ($$) {
+    my($s, $args) = @_;
+    if ($s eq "io") {
+	return ("head1", "INPUTS AND OUTPUTS");
+    } elsif ($s eq "processing") {
+	return ("head1", "PROCESSING TYPE");
+    } elsif ($s eq "d") {
+	return ("head1", "DESCRIPTION");
+    } elsif ($s eq "n") {
+	return ("head1", "NOTES");
+    } elsif ($s eq "e") {
+	return ("head1", "EXAMPLES");
+    } elsif ($s eq "a") {
+	return ("head1", "SEE ALSO");
+    } elsif ($s eq "head" && $args =~ /\A\s*(\d+)\s*(.*)\z/s) {
+	return ("head" . $1, $2);
+    } elsif ($s eq "head") {
+	return ("head1", $args);
+    } else {
+	return ($s, $args);
+    }
+}
+
 sub do_section ($$$) {
     my($name, $args, $text) = @_;
     my(@text) = split(/^(=\w.*)$/m, $text);
@@ -646,6 +679,7 @@ sub do_section ($$$) {
     @Over = ();
     undef $Begun;
     for ($i = 0; $i < @text; ) {
+	($name, $args) = canonicalize_section($name, $args);
 	&$do_section_func($name, $args, $text[$i]);
 	($name, $args) = ($text[$i+1] =~ /=(\w+)\s*(.*)/)
 	    if ($i < @text - 1);
@@ -746,10 +780,10 @@ sub insert_section2 (\@\@\@$$$\%@) {
     }
 }
 
-sub process_comment ($$) {
-    my($t, $filename) = @_;
+sub process_comment ($$$) {
+    my($t, $filename, $lineno) = @_;
     my($i);
-    $Filename = $filename;
+    $Filename = $filename . ":" . $lineno;
 
     # split document into sections
     my(@section_text, @section_args, @section_name, $bad_section, $ref);
@@ -878,6 +912,7 @@ sub process_comment ($$) {
 
     # front matter
     my($oneliner) = (@classes == 1 ? "Click element" : "Click elements");
+    $all_roff_summaries{$outfiles[0]} = '';
     $i = $first_in_section{'s'};
     my($summary_section) = '';
     if (defined($i)) {
@@ -887,10 +922,9 @@ sub process_comment ($$) {
 	my($t) = &$do_text_func($section_text[$i]);
 	$oneliner .= ";\n" . $t;
 	$oneliner =~ s/\n(^\.)/ /g;
-	$all_roff_summaries{$outfiles[0]} = $t . "\n";
-    } else {
-	# avoid uninitialized value warns
-	$all_roff_summaries{$outfiles[0]} = '';
+	if ($t ne "") {
+	    $all_roff_summaries{$outfiles[0]} = $t . "\n";
+	}
     }
 
     # deprecation
@@ -921,7 +955,7 @@ sub process_comment ($$) {
 			'drivers', '', $drivers,
 			%first_in_section, 'processing', 'io', 'c');
     }
-	
+
     # processing
     if (!defined($first_in_section{'processing'})) { PROCESSING: {
 	# can we figure out the processing type?
@@ -947,7 +981,7 @@ sub process_comment ($$) {
     insert_section(@section_name, @section_args, @section_text,
 		   1, 'name!', $title, $oneliner);
     insert_section(@section_name, @section_args, @section_text,
-		   @section_name, 'end!', $outsections[0], $title);    
+		   @section_name, 'end!', $outsections[0], $title);
 
     # output
     my($special_section) = 0;
@@ -956,7 +990,7 @@ sub process_comment ($$) {
 	my($x) = $section_text[$i];
 	my($was_special_section) = $special_section;
 	$special_section = 0;
-	
+
 	if ($s eq 'c') {
 	    $x =~ s{(\S\s*)\n}{$1N<>\n}g;
 	    $x =~ s{N<>\n*\z}{};
@@ -966,22 +1000,16 @@ sub process_comment ($$) {
 	    $x =~ s/\A\s+//;
 	    $x =~ s/\s+\Z//;
 	    do_section('text', '', 'B<' . $infosection_name{$s} . '>: ' . $x . 'N<>');
-	} elsif ($s eq 'io') {
-	    do_section('head1', 'INPUTS AND OUTPUTS', $x);
-	} elsif ($s eq 'processing') {
-	    do_section('head1', 'PROCESSING TYPE', $x);
-	} elsif ($s eq 'd') {
-	    do_section('head1', 'DESCRIPTION', $x);
-	} elsif ($s eq 'n') {
-	    do_section('head1', 'NOTES', $x);
-	} elsif ($s eq 'e') {
-	    do_section('head1', 'EXAMPLES', $x);
 	} elsif ($s eq 'h') {
 	    my($t) = "=over 5\n";
 	    while ($i < @section_text && $section_name[$i] eq 'h') {
 		if ($section_args[$i] =~ /\A\s*(.*?)\s*"(.*?)"\s*\Z/
 		    || $section_args[$i] =~ /\A\s*(.*?)\s*(\S+)\s*\Z/) {
-		    $t .= "=item B<$1> (" . process_handler_type($2) . ")\n";
+		    $t .= "=item B<" . ($1 eq "" ? $2 : $1) . ">";
+		    if ($1 ne "") {
+			$t .= " (" . process_handler_type($2) . ")";
+		    }
+		    $t .= "\n";
 		} else {
 		    print STDERR "click-elem2man: $Filename: bad handler section arguments ('=h $section_args[$i]')\n";
 		    $t .= "=item B<$section_args[$i]>\n";
@@ -991,8 +1019,6 @@ sub process_comment ($$) {
 	    }
 	    $i--;
 	    do_section('head1', 'ELEMENT HANDLERS', $t);
-	} elsif ($s eq 'a') {
-	    do_section('head1', 'SEE ALSO', $x);
 	} elsif ($s eq 'title' || $s eq 's' || $s eq 'deprecated') {
 	    # nada
 	} else {
@@ -1026,9 +1052,11 @@ sub process_file ($;$) {
     my($filename, $text) = @_;
 
     print STDERR "Attempting $filename...\n" if $verbose;
-    $filename = "include/$1" if !-e $filename && $filename =~ /^<(.*)>$/s;
-    $filename = "$PREFIX/$filename" if !-e $filename && defined($PREFIX);
-    return if !-e $filename;
+    if ($filename ne "<stdin>") {
+	$filename = "include/$1" if !-e $filename && $filename =~ /^<(.*)>$/s;
+	$filename = "$PREFIX/$filename" if !-e $filename && defined($PREFIX);
+	return if !-e $filename;
+    }
     print STDERR "Found $filename\n" if $verbose;
     if (!defined($text)) {
 	if (!open(IN, $filename)) {
@@ -1039,14 +1067,34 @@ sub process_file ($;$) {
 	close IN;
     }
 
+    my($x, $t, $p, $lineno);
+    $lineno = 1;
     print "$filename??\n" if !defined $text;
     foreach $_ (split(m{(/\*.*?\*/)}s, $text)) {
-	if (/^\/\*/m && /^[\/*\s]+=/m) {
+	my($last_lineno) = $lineno;
+	$lineno += ($_ =~ tr/\n/\n/);
+	if (/^\/\*/m && /^[\/*\s]+=[a-z]/m) {
 	    s/^(.*?)\t/$1 . (' ' x (8 - (length($1) % 8)))/egm while /\t/;
 	    s/^\/\*\s*//g;
 	    s/\s*\*\/$//g;
-	    s/^ ?\* ?//gm;
-	    process_comment($_, $filename);
+	    if (/^ ?\*/m) {
+		$p = undef;
+		$t = "";
+		foreach $x (split("\n", $_)) {
+		    $x =~ s/\s*\z//;
+		    if (!defined($p) && $x =~ /\A ?\*( *)=/s) {
+			$p = $1;
+		    }
+		    if (defined($p) && $x =~ /\A ?\*( *)(.*)\z/s) {
+			$x = (length($1) <= length($p) ? "" : $p) . $2;
+		    } elsif ($x =~ /\A ?\* ?(.*)\z/s) {
+			$x = $1;
+		    }
+		    $t .= $x . "\n";
+		}
+		$_ = $t;
+	    }
+	    process_comment($_, $filename, $last_lineno);
 	}
     }
 }
@@ -1088,7 +1136,7 @@ sub read_elementmap_text ($;$) {
 		$requires{$n} = [] if !defined $requires{$n};
 		push @{$requires{$n}}, $req;
 	    }
-	    
+
 	    $headerhash->{xmlunquote($hf)} = 1 if defined($hf);
 	}
     }
@@ -1102,13 +1150,13 @@ sub read_elementmap ($;$) {
     close E;
 }
 
-sub process_file_set ($$) {
-    my($fn, $fnhash) = @_;
+sub process_file_set ($$\@) {
+    my($fn, $fnhash, $filedata) = @_;
     if (open(IN, ($fn eq '-' ? "<&STDIN" : $fn))) {
 	my(@a, @b, $t, $x);
 	$t = <IN>;
 	close IN;
-	
+
 	# Parse file; click-buildtool gets special treatment
 	if ($t =~ /\A#.*click-buildtool findelem/) {
 	    $t =~ s/^#.*//mg;
@@ -1125,8 +1173,11 @@ sub process_file_set ($$) {
 	} elsif ($t =~ /\A<\?xml/) {
 	    read_elementmap_text($t, $fnhash);
 	} elsif ($t =~ /[\(\)]/) {
-	    die if $fn eq '-';
-	    $fnhash->{$fn} = 1;
+	    if ($fn ne "-") {
+		$fnhash->{$fn} = 1;
+	    } else {
+		push @$filedata, $t;
+	    }
 	} else {
 	    $t =~ s/^#.*//mg;
 	    foreach $_ (split(/\s+/, $t)) {
@@ -1167,7 +1218,7 @@ my(%requires_fixed);
 sub fix_one_requires ($) {
     my($req) = @_;
     my($driver) = driver_requirement($req);
-    
+
     my($t, $i);
     my($changes) = '';
     foreach $t (split(/\s+/, $req)) {
@@ -1186,7 +1237,7 @@ sub fix_one_requires ($) {
 	    }
 	}
     }
-    
+
     if ($changes) {
 	join(' ', uniq(sort {$a cmp $b} split(/\s+/, $req . $changes)));
     } else {
@@ -1327,15 +1378,18 @@ if ($uninstall) {
 }
 
 # read file sets
-my(%fnhash);
+my(%fnhash, @filedata);
 foreach $fn (@files) {
-    process_file_set($fn, \%fnhash);
+    process_file_set($fn, \%fnhash, @filedata);
 }
 fix_requires();
 
 # process files
-foreach $fn (keys(%fnhash)) {
+foreach my $fn (keys(%fnhash)) {
     process_file($fn);
+}
+foreach my $text (@filedata) {
+    process_file("<stdin>", $text);
 }
 
 if ($uninstall || !$directory) {
@@ -1348,7 +1402,7 @@ if ($uninstall || !$directory) {
 
 sub read_elementlist ($) {
     my($fn) = @_;
-  
+
     local($/) = "\n";
     if (!open(IN, $fn)) {
 	print STDERR "click-elem2man: $fn: $!\n";
@@ -1388,33 +1442,45 @@ sub read_elementlist ($) {
 }
 
 my(%el_generated);
-sub one_elementlist (@) {
+sub one_elementlist ($@) {
+    my($sec) = shift @_;
     my($t);
     $t .= ".PP\n.PD 0\n";
     foreach $_ (sort { lc($a) cmp lc($b) } @_) {
 	$t .= ".TP 20\n.M " . $_ . " " . $all_outsections{$_};
 	$t .= " \" (deprecated)\"" if $deprecated{$_};
 	$t .= "\n";
-	$t .= $all_roff_summaries{$_} if $all_roff_summaries{$_};
+	$t .= $all_roff_summaries{$_} if $all_roff_summaries{$_} =~ /\S/;
 	$el_generated{$_} = 1;
     }
     $t . ".PD\n";
 }
 
-my(@Links, $Text);
+my(@Links, $Text, %unknown_shorthand);
 
 sub one_summary ($@) {
     my($name, @elts) = @_;
-    print STDERR "click-elem2man: warning: category '", $name, "' begins with a lowercase letter (used in @elts)\n" if $name =~ /^[a-z]/;
+    if ($name =~ /^[a-z]/) {
+	my(@badelts);
+	foreach my $x (@elts) {
+	    if (!exists($unknown_shorthand{"$x $name"})) {
+		$unknown_shorthand{"$x $name"} = 1;
+		push @badelts, $x;
+	    }
+	}
+	if (@badelts) {
+	    print STDERR "click-elem2man: warning: unknown category shorthand '$name' in ", join(", ", @badelts), "\n";
+	}
+    }
     my($a) = $name;
-    $a =~ s{([+\&\#\"\000-\037\177-\377])}{sprintf("%%%02X", $1)}eg;
+    $a =~ s{([+\&\#\"\000-\037\177-\377])}{sprintf("%%%02X", ord($1))}eg;
     $a =~ tr/ /+/;
     my($x) = $name;
     $x =~ s{ }{&nbsp;}g;
     if (@elts) {
 	push @Links, "<a href=\"#$a\">$x</a>";
 	$Text .= ".SS \"$name\"\n";
-	$Text .= one_elementlist(@elts);
+	$Text .= one_elementlist($name, @elts);
     }
 }
 
@@ -1447,6 +1513,7 @@ This page lists all Click element classes that have manual page documentation.
 EOD;
 
     $Text = "";
+    %el_generated = ();
     my(%did_section, $sec);
     # erase 'Miscellaneous' section, if any
     delete $summaries_by_section{'Miscellaneous'};
@@ -1469,7 +1536,7 @@ EOD;
     print OUT ".SH \"BY FUNCTION\"\n";
     print OUT $Text;
     print OUT ".SH \"ALPHABETICAL LIST\"\n";
-    print OUT one_elementlist(@all_outfiles);
+    print OUT one_elementlist("Alphabetical", @all_outfiles);
 
     close OUT if $filename_func;
 }

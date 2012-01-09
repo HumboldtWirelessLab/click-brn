@@ -11,32 +11,6 @@ class StringAccum;
 
 class String { public:
 
-    /** @brief Initialize the String implementation.
-     * @deprecated Initializing or cleaning up the String implementation is
-     * no longer necessary.
-     *
-     * In previous versions, this function needed to be called before any
-     * String functionality was used.  It currently does nothing. */
-    static void static_initialize() CLICK_DEPRECATED;
-
-    /** @brief Clean up the String implementation.
-     * @deprecated Initializing or cleaning up the String implementation is
-     * no longer necessary.
-     *
-     * In previous versions, this function was called to release memory
-     * allocated by the String implementation.  It currently does nothing. */
-    static void static_cleanup() CLICK_DEPRECATED;
-
-    /** @class String::Initializer
-     * @brief Initializes the String implementation.
-     * @deprecated Initializing or cleaning up the String implementation is
-     * no longer necessary.
-     *
-     * In previous versions, this class's constructor initialized the String
-     * implementation.  It currently does nothing. */
-    struct Initializer { Initializer() CLICK_DEPRECATED; };
-
-
     /** @brief Construct an empty String (with length 0). */
     inline String() {
 	assign_memo(&null_data, 0, 0);
@@ -70,6 +44,10 @@ class String { public:
     inline String(const char *s, int len) {
 	assign(s, len, false);
     }
+    /** @overload */
+    inline String(const unsigned char *s, int len) {
+	assign(reinterpret_cast<const char *>(s), len, false);
+    }
 
     /** @brief Construct a String containing the characters from @a begin
      * to @a end.
@@ -81,6 +59,11 @@ class String { public:
      * String::out_of_memory_data(), returns an out-of-memory string. */
     inline String(const char *begin, const char *end) {
 	assign(begin, (end > begin ? end - begin : 0), false);
+    }
+    /** @overload */
+    inline String(const unsigned char *begin, const unsigned char *end) {
+	assign(reinterpret_cast<const char *>(begin),
+	       (end > begin ? end - begin : 0), false);
     }
 
     /** @brief Construct a String equal to "true" or "false" depending on the
@@ -190,14 +173,6 @@ class String { public:
     static String make_numeric(int_large_t x, int base = 10, bool uppercase = true);
     /** @overload */
     static String make_numeric(uint_large_t x, int base = 10, bool uppercase = true);
-
-
-    static inline const String &empty_string() CLICK_DEPRECATED;
-    static inline String garbage_string(int len) CLICK_DEPRECATED;
-    static inline String stable_string(const char *s, int len = -1) CLICK_DEPRECATED;
-    static inline String stable_string(const char *begin, const char *end) CLICK_DEPRECATED;
-    static inline String numeric_string(int_large_t x, int base = 10, bool uppercase = true) CLICK_DEPRECATED;
-    static inline String numeric_string(uint_large_t x, int base = 10, bool uppercase = true) CLICK_DEPRECATED;
 
 
     /** @brief Return the string's length. */
@@ -519,11 +494,16 @@ class String { public:
     }
 
 
+    /** @brief Append the null-terminated C string @a s to this string.
+     * @param cstr data to append */
+    void append(const char *cstr) {
+	append(cstr, -1);
+    }
+
     /** @brief Append the first @a len characters of @a s to this string.
      * @param s data to append
      * @param len length of data
-     *
-     * If @a len @< 0, treats @a s as a null-terminated C string. */
+     * @pre @a len @>= 0 */
     void append(const char *s, int len);
 
     /** @brief Appends the data from @a begin to @a end to the end of this
@@ -558,7 +538,7 @@ class String { public:
      *
      * Returns the result. */
     inline String &operator+=(const char *cstr) {
-	append(cstr, -1);
+	append(cstr);
 	return *this;
     }
 
@@ -643,11 +623,11 @@ class String { public:
 	memo_t **pprev;
 	memo_t *next;
 #endif
-	char real_data[1];	// but it is almost certainly more
+	char real_data[8];	// but it might be more or less
     };
 
     enum {
-	MEMO_SPACE = offsetof(memo_t, real_data)
+	MEMO_SPACE = sizeof(memo_t) - 8
     };
 
     struct rep_t {
@@ -736,48 +716,10 @@ class String { public:
 
     static String make_claim(char *, int, int); // claim memory
 
-    friend class rep_t;
+    friend struct rep_t;
     friend class StringAccum;
 
 };
-
-
-/** @brief Return a const reference to an empty String.
- * @deprecated Use make_empty() instead. */
-inline const String &String::empty_string() {
-    return make_empty();
-}
-
-/** @brief Return a String containing @a len unknown characters.
- * @deprecated Use make_garbage() instead. */
-inline String String::garbage_string(int len) {
-    return make_garbage(len);
-}
-
-/** @brief Return a String that directly references the first @a len
- * characters of @a s.
- * @deprecated Use make_stable() instead. */
-inline String String::stable_string(const char *s, int len) {
-    return make_stable(s, len);
-}
-
-/** @brief Return a String that directly references the character data in
- * [@a begin, @a end).
- * @deprecated Use make_stable() instead. */
-inline String String::stable_string(const char *begin, const char *end) {
-    return make_stable(begin, end);
-}
-
-/** @brief Create and return a string representation of @a x.
- * @deprecated Use make_numeric() instead. */
-inline String String::numeric_string(int_large_t x, int base, bool uppercase) {
-    return make_numeric(x, base, uppercase);
-}
-
-/** @overload */
-inline String String::numeric_string(uint_large_t x, int base, bool uppercase) {
-    return make_numeric(x, base, uppercase);
-}
 
 
 /** @relates String
@@ -872,7 +814,7 @@ inline String operator+(String a, const String &b) {
 
 /** @relates String */
 inline String operator+(String a, const char *b) {
-    a.append(b, -1);
+    a.append(b);
     return a;
 }
 

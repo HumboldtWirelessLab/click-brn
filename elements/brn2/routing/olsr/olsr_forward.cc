@@ -21,16 +21,16 @@ int
 OLSRForward::configure(Vector<String> &conf, ErrorHandler *errh)
 {
  int dup_hold_time;
-  if (cp_va_parse(conf, this, errh,
-  		  cpInteger, "Duplicate Holding Time (sec)",&dup_hold_time,
-		  cpElement, "DuplicateSet Element", &_duplicateSet, 
-		  cpElement, "Neighbor InfoBase Element", &_neighborInfo,
-		  cpElement, "InterfaceInfoBase Element", &_interfaceInfo,
-		  cpElement, "localIfInfoBase Element", &_localIfInfoBase,
-		  cpIPAddress, "main IP address", &_myMainIP,
+  if (cp_va_kparse(conf, this, errh,
+      "Duplicate Holding Time (sec)", cpkP, cpInteger,&dup_hold_time,
+      "DuplicateSet Element", cpkP,cpElement, &_duplicateSet,
+      "Neighbor InfoBase Element",cpkP, cpElement, &_neighborInfo,
+      "InterfaceInfoBase Element", cpkP, cpElement,&_interfaceInfo,
+      "localIfInfoBase Element", cpkP,cpElement, &_localIfInfoBase,
+      "main IP address", cpkP, cpIPAddress, &_myMainIP,
 		  0) < 0)
     return -1;
- _dup_hold_time=make_timeval (dup_hold_time,0);
+ _dup_hold_time=Timestamp(dup_hold_time,0).timeval();
   return 0;
 }
 
@@ -45,7 +45,7 @@ void
 OLSRForward::push(int port, Packet *packet)
 {
     struct timeval now;
-  click_gettimeofday(&now);
+   now = Timestamp::now().timeval();
 
   int paint=static_cast<int>(PAINT_ANNO(packet));//packets get marked with paint 0..N depending on Interface they arrive on
   IPAddress receiving_If_IP=_localIfInfoBase->get_iface_addr(paint); //gets IP of Interface N
@@ -85,7 +85,7 @@ OLSRForward::push(int port, Packet *packet)
 	 //else click_chatter ("DISCARDING message because of TTL\n");
 	  if (duplicate_tuple == 0)
 	    duplicate_tuple = _duplicateSet->add_duplicate_entry(msg_info.originator_address, msg_info.msg_seq);
-	  duplicate_tuple->D_time = now + _dup_hold_time;
+	  duplicate_tuple->D_time = (Timestamp(now) + Timestamp(_dup_hold_time)).timeval();
 	  duplicate_tuple->D_iface_list.push_back(receiving_If_IP);
 	  duplicate_tuple->D_retransmitted = retransmit;
 	  }

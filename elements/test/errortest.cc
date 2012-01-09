@@ -57,7 +57,7 @@ ErrorTest::initialize(ErrorHandler *init_errh)
 
     IPAddress ipa(String("1.0.2.3"));
     EtherAddress etha;
-    cp_ethernet_address("0:1:3:5:A:B", &etha);
+    EtherAddressArg().parse("0:1:3:5:A:B", etha);
     errh.error("IP %{ip_ptr} %% ETH %{ether_ptr}", &ipa, &etha);
     CHECK("<3>IP 1.0.2.3 % ETH 00-01-03-05-0A-0B\n");
 
@@ -70,11 +70,11 @@ ErrorTest::initialize(ErrorHandler *init_errh)
     }
 
     {
+	ContextErrorHandler cerrh(&errh, "Context:");
 	PrefixErrorHandler perrh(&errh, "{context:no}");
-	ContextErrorHandler cerrh(&perrh, "Context:");
-	cerrh.error("Testing context 1");
+	perrh.error("Testing context 1");
 	CHECK("{context:no}<3>Testing context 1\n");
-	cerrh.error("Testing context 2");
+	perrh.error("Testing context 2");
 	CHECK("{context:no}<3>Testing context 2\n");
     }
 

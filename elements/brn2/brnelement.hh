@@ -25,6 +25,15 @@
 // Brn Logger
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
+#include "elements/brn2/standard/packetpool.hh"
+
+#define PACKET_POOL_CAPACITY 10
+#define PACKET_POOL_SIZE_STEPS 200
+#define PACKET_POOL_MIN_SIZE   180
+#define PACKET_POOL_MAX_SIZE   1600
+#define DEFAULT_HEADROOM 128
+#define DEFAULT_TAILROOM 32
+
 CLICK_DECLS
 
 class BRNElement : public Element {
@@ -36,6 +45,13 @@ class BRNElement : public Element {
   void init(void);
 
   int _debug;
+
+  static PacketPool *_packet_pool;
+  static int _ref_counter;
+
+  void packet_kill(Packet *p);
+  WritablePacket *packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom);
+
 };
 
 CLICK_ENDDECLS

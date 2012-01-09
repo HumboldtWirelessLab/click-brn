@@ -19,7 +19,7 @@
 #include <click/config.h>
 
 #include "fromcapdump.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <click/error.hh>
@@ -62,16 +62,15 @@ FromCapDump::configure(Vector<String> &conf, ErrorHandler *errh)
     bool stop = false, active = true, zero = true, checksum = false;
     _sampling_prob = (1 << SAMPLING_SHIFT);
 
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_ff.filename(),
-		     "STOP", 0, cpBool, &stop,
-		     "ACTIVE", 0, cpBool, &active,
-		     "ZERO", 0, cpBool, &zero,
-		     "CHECKSUM", 0, cpBool, &checksum,
-		     "AGGREGATE", 0, cpUnsigned, &_aggregate,
-		     "SAMPLE", 0, cpUnsignedReal2, SAMPLING_SHIFT, &_sampling_prob,
-		     "FLOWID", 0, cpArgument, &_flowid,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _ff.filename())
+	.read("STOP", stop)
+	.read("ACTIVE", active)
+	.read("ZERO", zero)
+	.read("CHECKSUM", checksum)
+	.read("AGGREGATE", _aggregate)
+	.read("SAMPLE", FixedPointArg(SAMPLING_SHIFT), _sampling_prob)
+	.complete() < 0)
 	return -1;
     if (_sampling_prob > (1 << SAMPLING_SHIFT)) {
 	errh->warning("SAMPLE probability reduced to 1");
@@ -440,7 +439,7 @@ FromCapDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
     switch ((intptr_t)thunk) {
       case H_ACTIVE: {
 	  bool active;
-	  if (cp_bool(s, &active)) {
+	  if (BoolArg().parse(s, active)) {
 	      fd->_active = active;
 	      if (fd->output_is_push(0) && active && !fd->_task.scheduled())
 		  fd->_task.reschedule();
@@ -448,7 +447,7 @@ FromCapDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
 		  fd->_notifier.set_active(active, true);
 	      return 0;
 	  } else
-	      return errh->error("'active' should be Boolean");
+	      return errh->error("type mismatch");
       }
       case H_STOP:
 	fd->_active = false;
@@ -462,16 +461,16 @@ FromCapDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHan
 void
 FromCapDump::add_handlers()
 {
-    add_read_handler("sampling_prob", read_handler, (void *)H_SAMPLING_PROB);
+    add_read_handler("sampling_prob", read_handler, H_SAMPLING_PROB);
     add_data_handlers("active", Handler::OP_READ | Handler::CHECKBOX, &_active);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("encap", read_handler, (void *)H_ENCAP);
-    add_write_handler("stop", write_handler, (void *)H_STOP);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("encap", read_handler, H_ENCAP);
+    add_write_handler("stop", write_handler, H_STOP);
     _ff.add_handlers(this);
     if (output_is_push(0))
 	add_task_handlers(&_task);
 }
 
-ELEMENT_REQUIRES(userlevel FromFile)
+ELEMENT_REQUIRES(userlevel)
 EXPORT_ELEMENT(FromCapDump)
 CLICK_ENDDECLS

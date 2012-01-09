@@ -19,7 +19,7 @@
 #include <click/config.h>
 #include "lookupiproutemp.hh"
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 
@@ -47,9 +47,8 @@ LookupIPRouteMP::configure(Vector<String> &conf, ErrorHandler *errh)
   int maxout = -1;
   _t.clear();
 
-  int before = errh->nerrors();
   for (int i = 0; i < conf.size(); i++) {
-    uint32_t dst, mask, gw = 0;
+    IPAddress dst, mask, gw;
     int32_t output_num;
     bool ok = false;
 
@@ -57,10 +56,10 @@ LookupIPRouteMP::configure(Vector<String> &conf, ErrorHandler *errh)
     cp_spacevec(conf[i], words);
 
     if ((words.size() == 2 || words.size() == 3)
-	&& cp_ip_prefix(words[0], (unsigned char *)&dst, (unsigned char *)&mask, true, this) // allow base IP addresses
-	&& cp_integer(words.back(), &output_num)) {
+	&& IPPrefixArg(true).parse(words[0], dst, mask, this) // allow base IP addresses
+	&& IntArg().parse(words.back(), output_num)) {
       if (words.size() == 3)
-	ok = cp_ip_address(words[1], (unsigned char *)&gw, this);
+	  ok = IPAddressArg().parse(words[1], gw, this);
       else
 	ok = true;
     }
@@ -72,7 +71,7 @@ LookupIPRouteMP::configure(Vector<String> &conf, ErrorHandler *errh)
     } else
       errh->error("argument %d should be `DADDR/MASK [GATEWAY] OUTPUT'", i+1);
   }
-  if (errh->nerrors() != before)
+  if (errh->nerrors())
     return -1;
   if (maxout < 0)
     errh->warning("no routes");

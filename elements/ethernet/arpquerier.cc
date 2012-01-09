@@ -22,12 +22,13 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/bitvector.hh>
 #include <click/straccum.hh>
 #include <click/router.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
+#include <click/packet_anno.hh>
 CLICK_DECLS
 
 ARPQuerier::ARPQuerier()
@@ -58,15 +59,15 @@ ARPQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
     bool have_capacity, have_entry_capacity, have_timeout, have_broadcast,
 	broadcast_poll = false;
     _arpt = 0;
-    if (cp_va_kparse_remove_keywords(conf, this, errh,
-		"CAPACITY", cpkC, &have_capacity, cpUnsigned, &capacity,
-		"ENTRY_CAPACITY", cpkC, &have_entry_capacity, cpUnsigned, &entry_capacity,
-		"TIMEOUT", cpkC, &have_timeout, cpTimestamp, &timeout,
-		"BROADCAST", cpkC, &have_broadcast, cpIPAddress, &_my_bcast_ip,
-		"TABLE", 0, cpElementCast, "ARPTable", &_arpt,
-		"POLL_TIMEOUT", 0, cpTimestamp, &poll_timeout,
-		"BROADCAST_POLL", 0, cpBool, &broadcast_poll,
-		cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("CAPACITY", capacity).read_status(have_capacity)
+	.read("ENTRY_CAPACITY", entry_capacity).read_status(have_entry_capacity)
+	.read("TIMEOUT", timeout).read_status(have_timeout)
+	.read("BROADCAST", _my_bcast_ip).read_status(have_broadcast)
+	.read("TABLE", ElementCastArg("ARPTable"), _arpt)
+	.read("POLL_TIMEOUT", poll_timeout)
+	.read("BROADCAST_POLL", broadcast_poll)
+	.consume() < 0)
 	return -1;
 
     if (!_arpt) {
@@ -86,10 +87,10 @@ ARPQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
     IPAddress my_mask;
     if (conf.size() == 1)
 	conf.push_back(conf[0]);
-    if (cp_va_kparse(conf, this, errh,
-		     "IP", cpkP+cpkM, cpIPAddressOrPrefix, &_my_ip, &my_mask,
-		     "ETH", cpkP+cpkM, cpEthernetAddress, &_my_en,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("IP", IPPrefixArg(true), _my_ip, my_mask)
+	.read_mp("ETH", _my_en)
+	.complete() < 0)
 	return -1;
 
     if (!have_broadcast) {
@@ -116,25 +117,25 @@ ARPQuerier::live_reconfigure(Vector<String> &conf, ErrorHandler *errh)
 	broadcast_poll(_broadcast_poll);
     IPAddress my_bcast_ip;
 
-    if (cp_va_kparse_remove_keywords(conf, this, errh,
-		"CAPACITY", cpkC, &have_capacity, cpUnsigned, &capacity,
-		"ENTRY_CAPACITY", cpkC, &have_entry_capacity, cpUnsigned, &entry_capacity,
-		"TIMEOUT", cpkC, &have_timeout, cpTimestamp, &timeout,
-		"BROADCAST", cpkC, &have_broadcast, cpIPAddress, &my_bcast_ip,
-		"TABLE", 0, cpIgnore,
-		"POLL_TIMEOUT", 0, cpTimestamp, &poll_timeout,
-		"BROADCAST_POLL", 0, cpBool, &broadcast_poll,
-		cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("CAPACITY", capacity).read_status(have_capacity)
+	.read("ENTRY_CAPACITY", entry_capacity).read_status(have_entry_capacity)
+	.read("TIMEOUT", timeout).read_status(have_timeout)
+	.read("BROADCAST", my_bcast_ip).read_status(have_broadcast)
+	.read_with("TABLE", AnyArg())
+	.read("POLL_TIMEOUT", poll_timeout)
+	.read("BROADCAST_POLL", broadcast_poll)
+	.consume() < 0)
 	return -1;
 
     IPAddress my_ip, my_mask;
     EtherAddress my_en;
     if (conf.size() == 1)
 	conf.push_back(conf[0]);
-    if (cp_va_kparse(conf, this, errh,
-		     "IP", cpkP+cpkM, cpIPAddressOrPrefix, &my_ip, &my_mask,
-		     "ETH", cpkP+cpkM, cpEthernetAddress, &my_en,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("IP", IPPrefixArg(true), my_ip, my_mask)
+	.read_mp("ETH", my_en)
+	.complete() < 0)
 	return -1;
     if (!have_broadcast) {
 	my_bcast_ip = my_ip | ~my_mask;
@@ -202,7 +203,7 @@ ARPQuerier::send_query_for(const Packet *p, bool ether_dhost_valid)
 {
     // Uses p's IP and Ethernet headers.
 
-    static_assert(Packet::default_headroom >= sizeof(click_ether));
+    static_assert(Packet::default_headroom >= sizeof(click_ether), "Packet::default_headroom must be at least 14.");
     WritablePacket *q = Packet::make(Packet::default_headroom - sizeof(click_ether),
 				     NULL, sizeof(click_ether) + sizeof(click_ether_arp), 0);
     if (!q) {
@@ -232,6 +233,7 @@ ARPQuerier::send_query_for(const Packet *p, bool ether_dhost_valid)
     memcpy(ea->arp_tpa, want_ip.data(), 4);
 
     q->set_timestamp_anno(p->timestamp_anno());
+    SET_VLAN_TCI_ANNO(q, VLAN_TCI_ANNO(p));
 
     _arp_queries++;
     output(noutputs() - 1).push(q);

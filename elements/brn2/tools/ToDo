@@ -1,0 +1,2 @@
+-Check correct usages of Timestamp
+-Use Timestamp instead of struct timeval

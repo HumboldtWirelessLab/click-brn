@@ -28,30 +28,26 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 NeighborDetect::NeighborDetect()
-// : _debug(BrnLogger::DEFAULT)
 {
-//  _nb_list = new NBMap();
+  BRNElement::init();
 }
 
 NeighborDetect::~NeighborDetect()
 {
-//  BRN_DEBUG(" * current nb list: %s", printNeighbors().c_str());
-
-//  delete _nb_list;
 }
 
 int
-    NeighborDetect::configure(Vector<String> &conf, ErrorHandler* errh)
+NeighborDetect::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NBLIST", cpkP+cpkM, cpElement, &_nblist,
-      "DEVICE", cpkP+cpkM, cpElement, &_device,
       cpEnd) < 0)
     return -1;
 
@@ -64,16 +60,12 @@ NeighborDetect::initialize(ErrorHandler *)
   return 0;
 }
 
-/* should be an annotated brn packet */
 Packet *
 NeighborDetect::simple_action(Packet *p_in)
 {
-  //const click_ether *ether = (const click_ether *)p_in->data();
   const click_ether *ether = (click_ether *)p_in->ether_header();
 
-  if (ether) {
-    _nblist->insert(EtherAddress(ether->ether_shost), _device);
-  }
+  if (ether) _nblist->insert(EtherAddress(ether->ether_shost), BRNPacketAnno::devicenumber_anno(p_in));
 
   return p_in;
 }
@@ -83,33 +75,10 @@ NeighborDetect::simple_action(Packet *p_in)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element */*e*/, void *)
-{
-  //NeighborDetect *nl = (NeighborDetect *)e;
-  return /*String(nl->_debug) + */"not supported\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element */*e*/, void *,
-		      ErrorHandler *errh)
-{
-  //NeighborDetect *nl = (NeighborDetect *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  //nl->_debug = debug;
-  return 0;
-}
-
 void
 NeighborDetect::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-
-//  add_write_handler("insert", static_insert, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 #include <click/bighashmap.cc>

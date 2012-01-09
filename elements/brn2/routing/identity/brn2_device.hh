@@ -8,6 +8,8 @@
 # include <click/ip6address.hh>
 #endif
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -28,7 +30,7 @@ CLICK_DECLS
 #define DEVICETYPE_WIRELESS 2
 #define DEVICETYPE_VIRTUAL  3
 
-class BRN2Device : public Element {
+class BRN2Device : public BRNElement {
   public:
     //
     //methods
@@ -50,6 +52,8 @@ class BRN2Device : public Element {
 
     const EtherAddress *getEtherAddress();
     void setEtherAddress(EtherAddress *ea);
+
+    EtherAddress *getEtherAddressFix();
 
     const IPAddress *getIPAddress();
     void setIPAddress(IPAddress *ip);
@@ -74,12 +78,13 @@ class BRN2Device : public Element {
     bool is_routable();
     void set_routable(bool routable);
 
-    //
-    //member
-    //
-    int _debug;
+    inline bool allow_broadcast() { return _allow_broadcast; }
+    inline void set_allow_broadcast(bool allow_bcast) { _allow_broadcast = allow_bcast; }
 
+    inline uint8_t getChannel() { return _channel; }
+    inline void setChannel(uint8_t c) { _channel = c; }
 
+    String device_info();
   private:
 
     //
@@ -89,7 +94,8 @@ class BRN2Device : public Element {
     String device_name;
 
     EtherAddress device_etheraddress;
-
+    EtherAddress device_etheraddress_fix;  //first device address. This is used to reset the mac address
+                                           //to default, e.g. after mac-cloning
     IPAddress ipv4;
 #ifdef HAVE_IP6
     IP6Address ipv6;
@@ -107,6 +113,10 @@ class BRN2Device : public Element {
 
     bool _routable;
 
+    bool _allow_broadcast;
+
+    /* wireless device */
+    uint8_t _channel;
 };
 
 CLICK_ENDDECLS

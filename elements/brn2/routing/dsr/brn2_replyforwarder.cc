@@ -37,17 +37,13 @@
 CLICK_DECLS
 
 BRN2ReplyForwarder::BRN2ReplyForwarder()
-  : _debug(BrnLogger::DEFAULT),
-    _me(),
+  : _me(),
     _dsr_encap(),
     _dsr_decap(),
     _route_querier(),
     _link_table()
 {
-  //add_input(); // previously generated reply packet needs to be forwarded
-  //add_input(); // receiving reply packet (dest reached or packet has to be forwarded)
-
-  //add_output(); //rrep has to be forwarded
+  BRNElement::init();
 }
 
 BRN2ReplyForwarder::~BRN2ReplyForwarder()
@@ -93,52 +89,6 @@ BRN2ReplyForwarder::uninitialize()
   //cleanup
 }
 
-Packet *
-BRN2ReplyForwarder::skipInMemoryHops(Packet *p_in)
-{
-  BRN_DEBUG(" * calling BRN2ReplyForwarder::skipInMemoryHops().");
-
-  click_brn_dsr *brn_dsr =
-      (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
-
-  int index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
-
-  BRN_DEBUG(" * index = %d brn_dsr->dsr_hop_count = %d", index, brn_dsr->dsr_hop_count);
-
-  if ( (brn_dsr->dsr_hop_count == 0) || (brn_dsr->dsr_segsleft == 0) )
-    return p_in;
-
-  assert(index >= 0 && index < BRN_DSR_MAX_HOP_COUNT);
-  assert(index <= brn_dsr->dsr_hop_count);
-
-  click_dsr_hop *dsr_hops = DSRProtocol::get_hops(brn_dsr);//RobAt:DSR
-
-  EtherAddress dest(dsr_hops[index].hw.data);
-
-  BRN_DEBUG(" * test next hop: %s", dest.unparse().c_str());
-  BRN_DEBUG(" * HC, Index, SL. %d %d %d", brn_dsr->dsr_hop_count, index, brn_dsr->dsr_segsleft);
-
-  while (_me->isIdentical(&dest) && (brn_dsr->dsr_segsleft > 0)) {
-    BRN_DEBUG(" * skip next hop: %s", dest.unparse().c_str());
-    brn_dsr->dsr_segsleft--;
-    index = brn_dsr->dsr_hop_count - brn_dsr->dsr_segsleft;
-
-    dest = EtherAddress(dsr_hops[index].hw.data);
-    BRN_DEBUG(" * check next hop (maybe skip required): %s", dest.unparse().c_str());
-  }
-
-  if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
-    BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
-  } else {
-    BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
-  }
-
-  return p_in;
-}
-
 /*
  * Process an incoming route request.  If it's for us, issue a reply.
  * If not, check for an entry in the request table, and insert one and
@@ -152,7 +102,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
   if (port == 0) { //previously created rrep packets
     BRN_DEBUG(" * receiving dsr_rrep packet; port 0");
 
-    Packet *p_out = skipInMemoryHops(p_in);
+    Packet *p_out = _dsr_encap->skipInMemoryHops(p_in);
 
     BRN_DEBUG(" * forward_rrep: Next Hop is %s",EtherAddress(BRNPacketAnno::dst_ether_anno(p_out)).unparse().c_str());
 
@@ -177,7 +127,11 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     _dsr_decap->extract_reply_route(p_in, reply_route);
 
-    BRN_DEBUG(" * learned from RREP ... route: size = %d", reply_route.size());
+    if ( _debug == BrnLogger::DEBUG ) {
+      uint32_t this_metric = _route_querier->route_metric(reply_route);
+
+      BRN_DEBUG(" * learned from RREP ... route: size = %d metric = %d", reply_route.size(), this_metric);
+    }
 
     for (int j = 0; j < reply_route.size(); j++) {
       BRN_DEBUG(" RREP - %d   %s (%d)",
@@ -187,7 +141,7 @@ BRN2ReplyForwarder::push(int port, Packet *p_in)
 
     // XXX really, is this necessary?  or are we only potentially
     // making the link data more stale, while marking it as current?
-    add_route_to_link_table(reply_route);
+    _route_querier->add_route_to_link_table(reply_route, DSR_ELEMENT_REP_FORWARDER, -1);
 
     // now check for packets in the sendbuffer whose destination has
     // been found using the information from the route reply
@@ -243,74 +197,14 @@ BRN2ReplyForwarder::forward_rrep(Packet * p_in)
   output(0).push(p_out);
 }
 
-void
-BRN2ReplyForwarder::add_route_to_link_table(const BRN2RouteQuerierRoute &route)
-{
-  for (int i = 0; i < route.size() - 1; i++) {
-    EtherAddress ether1 = route[i].ether();
-    EtherAddress ether2 = route[i+1].ether();
-
-    if (ether1 == ether2)
-      continue;
-
-    if (_me->isIdentical(&ether1)) // learn only from route prefix; suffix is not yet set
-      break;
-
-    uint16_t metric = route[i+1]._metric; //metric starts with offset 1
-
-    //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! remove this shit
-    if (metric == 0)
-      metric = 1;
-    IPAddress ip1 = route[i].ip();
-    IPAddress ip2 = route[i+1].ip();
-
-/*
-    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
-      metric = 9999;
-    }
-    if (metric == 0) {
-      metric = 1; // TODO remove this hack
-    }
-*/
-    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
-
-    if (ret)
-      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d\n",
-        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
-  }
-
-  BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
-}
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  BRN2ReplyForwarder *rf = (BRN2ReplyForwarder *)e;
-  return String(rf->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  BRN2ReplyForwarder *rf = (BRN2ReplyForwarder *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  rf->_debug = debug;
-  return 0;
-}
-
 void
 BRN2ReplyForwarder::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();
 }
 
 CLICK_ENDDECLS

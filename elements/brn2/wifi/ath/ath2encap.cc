@@ -9,6 +9,7 @@
 #include "elements/wifi/athdesc.h"
 #include "ath2encap.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/wifi/brnwifi.hh"
 
 CLICK_DECLS
 
@@ -50,9 +51,10 @@ Ath2Encap::simple_action(Packet *p)
 
   if (!p_out) { return 0; }
 
+  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
+
   if ( _athencap ) {
     struct ar5212_desc *desc  = (struct ar5212_desc *) (p_out->data() + 8);
-    click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p_out);
 
     memset((void *)p_out->data(), 0, ATHDESC2_HEADER_SIZE);  //set all to zero ( ath and ath_brn )
     ath2_h = (struct ath2_header*)(p_out->data() + ATHDESC_HEADER_SIZE);
@@ -81,8 +83,10 @@ Ath2Encap::simple_action(Packet *p)
   channel = BRNPacketAnno::channel_anno(p);
   ath2_h->anno.tx_anno.channel = channel;
 
-  tos = BRNPacketAnno::tos_anno(p);
-  ath2_h->anno.tx_anno.queue = tos;
+  ath2_h->anno.tx_anno.queue = BrnWifi::getTxQueue(ceh);
+
+  ath2_h->ath2_version = htons(ATHDESC2_VERSION);
+  ath2_h->madwifi_version = htons(MADWIFI_TRUNK);
 
   return p_out;
 }

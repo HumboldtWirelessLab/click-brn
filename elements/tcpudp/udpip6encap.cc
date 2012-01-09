@@ -22,15 +22,13 @@
  */
 
 #include <click/config.h>
+#include <clicknet/ip6.h>
 #include "udpip6encap.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/standard/alignmentinfo.hh>
 #include <click/ip6address.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 UDPIP6Encap::UDPIP6Encap()
@@ -52,12 +50,12 @@ UDPIP6Encap::configure(Vector<String> &conf, ErrorHandler *errh)
     uint16_t sport, dport;
     String daddr_str;
 
-    if (cp_va_kparse(conf, this, errh,
-		     "SRC", cpkP+cpkM, cpIP6Address, &saddr,
-		     "SPORT", cpkP+cpkM, cpUDPPort, &sport,
-		     "DST", cpkP+cpkM, cpArgument, &daddr_str,
-		     "DPORT", cpkP+cpkM, cpUDPPort, &dport,
-		     cpEnd) < 0)
+    if (Args(conf, this, errh)
+	.read_mp("SRC", saddr)
+	.read_mp("SPORT", IPPortArg(IP_PROTO_UDP), sport)
+	.read_mp("DST", AnyArg(), daddr_str)
+	.read_mp("DPORT", IPPortArg(IP_PROTO_UDP), dport)
+	.complete() < 0)
 	return -1;
 
     if (daddr_str.equals("DST_ANNO", 8)) {
@@ -144,13 +142,13 @@ String UDPIP6Encap::read_handler(Element *e, void *thunk)
 
 void UDPIP6Encap::add_handlers()
 {
-    add_read_handler("src", read_handler, (void *) 0);
+    add_read_handler("src", read_handler, 0);
     add_write_handler("src", reconfigure_keyword_handler, "0 SRC");
-    add_read_handler("sport", read_handler, (void *) 1);
+    add_read_handler("sport", read_handler, 1);
     add_write_handler("sport", reconfigure_keyword_handler, "1 SPORT");
-    add_read_handler("dst", read_handler, (void *) 2);
+    add_read_handler("dst", read_handler, 2);
     add_write_handler("dst", reconfigure_keyword_handler, "2 DST");
-    add_read_handler("dport", read_handler, (void *) 3);
+    add_read_handler("dport", read_handler, 3);
     add_write_handler("dport", reconfigure_keyword_handler, "3 DPORT");
 }
 

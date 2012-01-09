@@ -15,8 +15,7 @@ replace packet timestamps with deltas
 
 =d
 
-SetTimestampDelta passes packets through, but nonzero packet timestamps are
-replaced with deltas.
+SetTimestampDelta replaces nonzero packet timestamps with deltas.
 
 Keyword arguments are:
 
@@ -43,7 +42,7 @@ relative to the next nonzero timestamp encountered.
 
 =a
 
-TimeFilter */
+SetTimestamp, AdjustTimestamp, TimeFilter */
 
 class SetTimestampDelta : public Element { public:
 
@@ -52,7 +51,6 @@ class SetTimestampDelta : public Element { public:
 
     const char *class_name() const	{ return "SetTimestampDelta"; }
     const char *port_count() const	{ return PORTS_1_1; }
-    const char *processing() const	{ return AGNOSTIC; }
 
     int configure(Vector<String> &, ErrorHandler *);
     void add_handlers();

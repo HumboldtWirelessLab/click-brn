@@ -19,7 +19,7 @@
 
 #include <click/config.h>
 #include "fromdump.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/router.hh>
 #include <click/straccum.hh>
 #include <click/standard/scheduleinfo.hh>
@@ -80,6 +80,7 @@ FromDump::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     bool timing = false, stop = false, active = true, force_ip = false;
     Timestamp first_time, first_time_off, last_time, last_time_off, interval;
+    HandlerCall end_h;
     _sampling_prob = (1 << SAMPLING_SHIFT);
 #if CLICK_NS
     bool per_node = false;
@@ -88,24 +89,24 @@ FromDump::configure(Vector<String> &conf, ErrorHandler *errh)
 
     if (_ff.configure_keywords(conf, this, errh) < 0)
 	return -1;
-    if (cp_va_kparse(conf, this, errh,
-		     "FILENAME", cpkP+cpkM, cpFilename, &_ff.filename(),
-		     "TIMING", cpkP, cpBool, &timing,
-		     "STOP", 0, cpBool, &stop,
-		     "ACTIVE", 0, cpBool, &active,
-		     "SAMPLE", 0, cpUnsignedReal2, SAMPLING_SHIFT, &_sampling_prob,
-		     "FORCE_IP", 0, cpBool, &force_ip,
-		     "START", 0, cpTimestamp, &first_time,
-		     "START_AFTER", 0, cpTimestamp, &first_time_off,
-		     "END", 0, cpTimestamp, &last_time,
-		     "END_AFTER", 0, cpTimestamp, &last_time_off,
-		     "INTERVAL", 0, cpTimestamp, &interval,
-		     "END_CALL", 0, cpHandlerCallPtrWrite, &_end_h,
+    if (Args(conf, this, errh)
+	.read_mp("FILENAME", FilenameArg(), _ff.filename())
+	.read_p("TIMING", timing)
+	.read("STOP", stop)
+	.read("ACTIVE", active)
+	.read("SAMPLE", FixedPointArg(SAMPLING_SHIFT), _sampling_prob)
+	.read("FORCE_IP", force_ip)
+	.read("START", first_time)
+	.read("START_AFTER", first_time_off)
+	.read("END", last_time)
+	.read("END_AFTER", last_time_off)
+	.read("INTERVAL", interval)
+	.read("END_CALL", HandlerCallArg(HandlerCall::writable), end_h)
 #if CLICK_NS
-		     "PER_NODE", 0, cpBool, &per_node,
+	.read("PER_NODE", per_node)
 #endif
-		     "FILEPOS", 0, cpFileOffset, &_packet_filepos,
-		     cpEnd) < 0)
+	.read("FILEPOS", _packet_filepos)
+	.complete() < 0)
 	return -1;
 
     // check sampling rate
@@ -120,7 +121,7 @@ FromDump::configure(Vector<String> &conf, ErrorHandler *errh)
     _first_time_relative = _last_time_relative = _last_time_interval = false;
 
     if ((bool) first_time + (bool) first_time_off > 1)
-	return errh->error("'START' and 'START_AFTER' are mutually exclusive");
+	return errh->error("START and START_AFTER are mutually exclusive");
     else if (first_time)
 	_first_time = first_time;
     else if (first_time_off)
@@ -129,7 +130,7 @@ FromDump::configure(Vector<String> &conf, ErrorHandler *errh)
 	_have_first_time = false, _first_time_relative = true;
 
     if ((bool) last_time + (bool) last_time_off + (bool) interval > 1)
-	return errh->error("'END', 'END_AFTER', and 'INTERVAL' are mutually exclusive");
+	return errh->error("END, END_AFTER, and INTERVAL are mutually exclusive");
     else if (last_time)
 	_last_time = last_time;
     else if (last_time_off)
@@ -139,11 +140,13 @@ FromDump::configure(Vector<String> &conf, ErrorHandler *errh)
     else
 	_have_last_time = false;
 
-    if (stop && _end_h)
-	return errh->error("'END_CALL' and 'STOP' are mutually exclusive");
+    if (stop && end_h)
+	return errh->error("END_CALL and STOP are mutually exclusive");
+    else if (end_h)
+	_end_h = new HandlerCall(end_h);
     else if (stop)
 	_end_h = new HandlerCall(name() + ".stop");
-    else if (_have_last_time && !_end_h)
+    else if (_have_last_time)
 	_end_h = new HandlerCall(name() + ".active false");
 
     // set other variables
@@ -278,7 +281,7 @@ FromDump::take_state(Element *e, ErrorHandler *errh)
     else if (_force_ip && !fake_pcap_dlt_force_ipable(_linktype))
 	_ff.warning(errh, "unknown linktype %d; can't force IP packets", _linktype);
 
-    _time_offset = o->_time_offset;
+    _timing_offset = o->_timing_offset;
     _packet_filepos = o->_packet_filepos;
 }
 
@@ -313,7 +316,7 @@ FromDump::prepare_times(const Timestamp &ts)
     else if (_last_time_interval)
 	_last_time += _first_time;
     if (_timing)
-	_time_offset = Timestamp::now() - ts;
+	_timing_offset = Timestamp::now_steady() - ts;
     _have_any_times = true;
 }
 
@@ -405,6 +408,26 @@ FromDump::read_packet(ErrorHandler *errh)
     return true;
 }
 
+bool
+FromDump::check_timing(Packet *p)
+{
+    Timestamp now_s = Timestamp::now_steady();
+    Timestamp t = p->timestamp_anno() + _timing_offset;
+    if (now_s < t) {
+	t -= Timer::adjustment();
+	if (now_s < t) {
+	    _timer.schedule_at_steady(t);
+	    if (output_is_pull(0))
+		_notifier.sleep();
+	} else {
+	    if (output_is_push(0))
+		_task.fast_reschedule();
+	}
+	return false;
+    }
+    return true;
+}
+
 void
 FromDump::run_timer(Timer *)
 {
@@ -429,18 +452,8 @@ FromDump::run_task(Task *)
 	    _end_h->call_write(ErrorHandler::default_handler());
 	return false;
     }
-    if (_packet && _timing) {
-	Timestamp now = Timestamp::now();
-	Timestamp t = _packet->timestamp_anno() + _time_offset;
-	if (now < t) {
-	    t -= Timer::adjustment();
-	    if (now < t)
-		_timer.schedule_at(t);
-	    else
-		_task.fast_reschedule();
-	    return false;
-	}
-    }
+    if (_packet && _timing && !check_timing(_packet))
+	return false;
     if (_packet && _force_ip && !fake_pcap_force_ip(_packet, _linktype)) {
 	checked_output_push(1, _packet);
 	_packet = 0;
@@ -469,18 +482,8 @@ FromDump::pull(int)
     bool more = true;
     if (!_packet)
 	more = read_packet(0);
-    if (_packet && _timing) {
-	Timestamp now = Timestamp::now();
-	Timestamp t = _packet->timestamp_anno() + _time_offset;
-	if (t > now) {
-	    t -= Timestamp::make_msec(50);
-	    if (t > now) {
-		_timer.schedule_at(t);
-		_notifier.sleep();
-	    }
-	    return 0;
-	}
-    }
+    if (_packet && _timing && !check_timing(_packet))
+	return 0;
     if (_packet && _force_ip && !fake_pcap_force_ip(_packet, _linktype)) {
 	checked_output_push(1, _packet);
 	_packet = 0;
@@ -526,11 +529,11 @@ FromDump::write_handler(const String &s_in, Element *e, void *thunk, ErrorHandle
     switch ((intptr_t)thunk) {
       case H_ACTIVE: {
 	  bool active;
-	  if (cp_bool(s, &active)) {
+	  if (BoolArg().parse(s, active)) {
 	      fd->set_active(active);
 	      return 0;
 	  } else
-	      return errh->error("'active' should be Boolean");
+	      return errh->error("type mismatch");
       }
       case H_STOP:
 	fd->set_active(false);
@@ -563,20 +566,20 @@ void
 FromDump::add_handlers()
 {
     _ff.add_handlers(this, true);
-    add_read_handler("sampling_prob", read_handler, (void *)H_SAMPLING_PROB);
+    add_read_handler("sampling_prob", read_handler, H_SAMPLING_PROB);
     add_data_handlers("active", Handler::OP_READ | Handler::CHECKBOX, &_active);
-    add_write_handler("active", write_handler, (void *)H_ACTIVE);
-    add_read_handler("encap", read_handler, (void *)H_ENCAP);
-    add_write_handler("stop", write_handler, (void *)H_STOP, Handler::BUTTON);
+    add_write_handler("active", write_handler, H_ACTIVE);
+    add_read_handler("encap", read_handler, H_ENCAP);
+    add_write_handler("stop", write_handler, H_STOP, Handler::BUTTON);
     add_data_handlers("packet_filepos", Handler::OP_READ, &_packet_filepos);
-    add_write_handler("extend_interval", write_handler, (void *)H_EXTEND_INTERVAL);
+    add_write_handler("extend_interval", write_handler, H_EXTEND_INTERVAL);
     add_data_handlers("count", Handler::OP_READ, &_count);
-    add_write_handler("reset_counts", write_handler, (void *)H_RESET_COUNTS, Handler::BUTTON);
-    add_write_handler("reset_timing", write_handler, (void *)H_RESET_TIMING, Handler::BUTTON);
+    add_write_handler("reset_counts", write_handler, H_RESET_COUNTS, Handler::BUTTON);
+    add_write_handler("reset_timing", write_handler, H_RESET_TIMING, Handler::BUTTON);
     if (output_is_push(0))
 	add_task_handlers(&_task);
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns FakePcap FromFile)
+ELEMENT_REQUIRES(userlevel|ns FakePcap)
 EXPORT_ELEMENT(FromDump)

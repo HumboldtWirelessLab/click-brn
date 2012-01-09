@@ -29,19 +29,19 @@
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <click/algorithm.hh>
+#include <click/heap.hh>
 CLICK_DECLS
 
-IPRewriterFlow::IPRewriterFlow(const IPFlowID &flowid, int output,
-			       const IPFlowID &rewritten_flowid, int reply_output,
+IPRewriterFlow::IPRewriterFlow(IPRewriterInput *owner, const IPFlowID &flowid,
+			       const IPFlowID &rewritten_flowid,
 			       uint8_t ip_p, bool guaranteed,
-			       click_jiffies_t expiry_j,
-			       IPRewriterBase *owner, int owner_input)
-    : _expiry_j(expiry_j), _ip_p(ip_p), _state(0),
+			       click_jiffies_t expiry_j)
+    : _expiry_j(expiry_j), _ip_p(ip_p), _tflags(0),
       _guaranteed(guaranteed), _reply_anno(0),
-      _owner(owner), _owner_input(owner_input)
+      _owner(owner)
 {
-    _e[0].initialize(flowid, output, false);
-    _e[1].initialize(rewritten_flowid.reverse(), reply_output, true);
+    _e[0].initialize(flowid, owner->foutput, false);
+    _e[1].initialize(rewritten_flowid.reverse(), owner->routput, true);
 
     // set checksum deltas
     const uint16_t *swords = reinterpret_cast<const uint16_t *>(&flowid);
@@ -68,7 +68,7 @@ IPRewriterFlow::apply(WritablePacket *p, bool direction, unsigned annos)
 	p->set_dst_ip_anno(revflow.saddr());
     if (direction && (annos & 2))
 	p->set_anno_u8(annos >> 2, _reply_anno);
-    update_csum(iph->ip_sum, direction, _ip_csum_delta);
+    update_csum(&iph->ip_sum, direction, _ip_csum_delta);
 
     // end if not first fragment
     if (!IP_FIRSTFRAG(iph))
@@ -79,22 +79,13 @@ IPRewriterFlow::apply(WritablePacket *p, bool direction, unsigned annos)
 	click_tcp *tcph = p->tcp_header();
 	tcph->th_sport = revflow.dport();
 	tcph->th_dport = revflow.sport();
-	update_csum(tcph->th_sum, direction, _udp_csum_delta);
-
-	// check for session ending flags
-	if (tcph->th_flags & TH_RST)
-	    _state |= s_both_done;
-	else if (tcph->th_flags & TH_FIN)
-	    _state |= (s_forward_done << direction);
-	else if (tcph->th_flags & TH_SYN)
-	    _state &= ~(s_forward_done << direction);
-
+	update_csum(&tcph->th_sum, direction, _udp_csum_delta);
     } else if (iph->ip_p == IP_PROTO_UDP) {
 	click_udp *udph = p->udp_header();
 	udph->uh_sport = revflow.dport();
 	udph->uh_dport = revflow.sport();
 	if (udph->uh_sum)	// 0 checksum is no checksum
-	    update_csum(udph->uh_sum, direction, _udp_csum_delta);
+	    update_csum(&udph->uh_sum, direction, _udp_csum_delta);
     }
 }
 
@@ -108,17 +99,17 @@ IPRewriterFlow::change_expiry(IPRewriterHeap *h, bool guaranteed,
     if (_guaranteed != guaranteed) {
 	remove_heap(current_heap.begin(), current_heap.end(),
 		    current_heap.begin() + _place,
-		    less(), place(current_heap.begin()));
+		    heap_less(), heap_place());
 	current_heap.pop_back();
 	_guaranteed = guaranteed;
 	Vector<IPRewriterFlow *> &new_heap = h->_heaps[_guaranteed];
 	new_heap.push_back(this);
 	push_heap(new_heap.begin(), new_heap.end(),
-		  less(), place(new_heap.begin()));
+		  heap_less(), heap_place());
     } else
 	change_heap(current_heap.begin(), current_heap.end(),
 		    current_heap.begin() + _place,
-		    less(), place(current_heap.begin()));
+		    heap_less(), heap_place());
 }
 
 void
@@ -126,38 +117,38 @@ IPRewriterFlow::destroy(IPRewriterHeap *heap)
 {
     Vector<IPRewriterFlow *> &myheap = heap->_heaps[_guaranteed];
     remove_heap(myheap.begin(), myheap.end(), myheap.begin() + _place,
-		less(), place(myheap.begin()));
+		heap_less(), heap_place());
     myheap.pop_back();
-    --_owner->_input_specs[_owner_input].count;
-    _owner->destroy_flow(this);
+    --_owner->count;
+    _owner->owner->destroy_flow(this);
 }
 
 void
 IPRewriterFlow::unparse_ports(StringAccum &sa, bool direction,
 			      click_jiffies_t now) const
 {
-    Element *e = _owner->reply_element(_owner_input);
+    IPRewriterBase *my_e = _owner->owner, *reply_e = _owner->reply_element;
 #if 1 /* UNPARSE_PORTS_OUTPUTS */
     sa << " [";
     if (!direction)
 	sa << '*';
-    else if (e != _owner)
-	sa << _owner->name() << ':';
+    else if (my_e != reply_e)
+	sa << my_e->name() << ':';
     sa << _e[false].output() << ' ';
     if (direction)
 	sa << '*';
-    else if (e != _owner)
-	sa << e->name() << ':';
+    else if (my_e != reply_e)
+	sa << reply_e->name() << ':';
     click_jiffies_t expiry_j = _expiry_j;
     if (_guaranteed)
-	expiry_j = _owner->best_effort_expiry(this);
-    sa << _e[true].output() << "] i" << _owner_input << " exp"
+	expiry_j = my_e->best_effort_expiry(this);
+    sa << _e[true].output() << "] i" << _owner->owner_input << " exp"
        << (expiry_j + (CLICK_HZ / 2) - now) / CLICK_HZ;
 #else
     sa << " [";
-    if (direction && e != _owner)
-	sa << _owner->name() << ':';
-    sa << _owner_input << (direction ? " R]" : " F]");
+    if (direction && my_e != reply_e)
+	sa << my_e->name() << ':';
+    sa << _owner->owner_input << (direction ? " R]" : " F]");
 #endif
 }
 

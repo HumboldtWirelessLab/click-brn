@@ -23,11 +23,11 @@ OLSRClassifier::~OLSRClassifier()
 int
 OLSRClassifier::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if (cp_va_parse(conf, this, errh,
-		  cpElement, "Duplicate Set Element", &_duplicateSet,
-		  cpElement, "localIfInfoBase Element", &_localIfInfoBase,
-		  cpIPAddress, "Nodes main IP address", &_myMainIP,
-		  0) < 0)
+  if (cp_va_kparse(conf, this, errh,
+      "Duplicate Set Element", cpkP, cpElement,&_duplicateSet,
+      "localIfInfoBase Element", cpkP, cpElement, &_localIfInfoBase,
+      "Nodes main IP address", cpkP, cpIPAddress, &_myMainIP,
+		  cpEnd) < 0)
     return -1;
   return 0;
 }

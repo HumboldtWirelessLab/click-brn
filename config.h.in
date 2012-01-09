@@ -2,6 +2,11 @@
 #ifndef CLICK_CONFIG_H
 #define CLICK_CONFIG_H
 
+/* Define to 1 if type `char' is unsigned and you are not using gcc.  */
+#ifndef __CHAR_UNSIGNED__
+# undef __CHAR_UNSIGNED__
+#endif
+
 /* Define to byte order of target machine. */
 #undef CLICK_BYTE_ORDER
 #define CLICK_BIG_ENDIAN	4321
@@ -44,6 +49,9 @@
 /* Define if you have the __builtin_ffsll function. */
 #undef HAVE___BUILTIN_FFSLL
 
+/* Define if you have the __has_trivial_copy compiler intrinsic. */
+#undef HAVE___HAS_TRIVIAL_COPY
+
 /* Define if you have the __sync_synchronize function. */
 #undef HAVE___SYNC_SYNCHRONIZE
 
@@ -55,6 +63,18 @@
 
 /* Define if right shift of signed integers acts by sign extension. */
 #undef HAVE_ARITHMETIC_RIGHT_SHIFT
+
+/* Define if Port::push/Port::pull should use bound function pointers. */
+#undef HAVE_BOUND_PORT_TRANSFER
+
+/* Define if the C++ compiler understands constexpr. */
+#undef HAVE_CXX_CONSTEXPR
+
+/* Define if the C++ compiler understands #pragma interface. */
+#undef HAVE_CXX_PRAGMA_INTERFACE
+
+/* Define if the C++ compiler understands static_assert. */
+#undef HAVE_CXX_STATIC_ASSERT
 
 /* Define if the machine is indifferent to alignment. */
 #undef HAVE_INDIFFERENT_ALIGNMENT
@@ -116,17 +136,15 @@
 #undef __MTCLICK__
 #undef NUM_CLICK_CPUS
 
-#ifndef __cplusplus
 /* Define inline, if necessary. C only. */
+#ifndef __cplusplus
 #undef inline
 #endif
 
-#ifdef __cplusplus
-/* Explicit template instances? */
-#if __GNUC__ == 2 && __GNUC_MINOR__ < 90
-#define EXPLICIT_TEMPLATE_INSTANCES 1
+/* Define constexpr to const under C or old C++. */
+#if !defined(__cplusplus) || !HAVE_CXX_CONSTEXPR
+# define constexpr const
 #endif
-#endif /* __cplusplus */
 
 /* Define CLICK_DEBUG_SCHEDULING to 0 if disabled. */
 #ifndef CLICK_DEBUG_SCHEDULING
@@ -137,15 +155,11 @@
 #define CLICK_MAKE_VERSION_CODE(major, minor, patch) \
 		(((major) << 16) | ((minor) << 8) | (patch))
 
-/* Define macros for declaring packed structures. */
-#ifdef __GNUC__
-#define CLICK_PACKED_STRUCTURE(open, close) open close __attribute__((packed))
-#define CLICK_SIZE_PACKED_STRUCTURE(open, close) open close __attribute__((packed)) /* deprecated */
-#define CLICK_SIZE_PACKED_ATTRIBUTE __attribute__((packed))
+/* Define macro for aligning variables. */
+#if __GNUC__
+# define CLICK_ALIGNED(x) __attribute__((aligned(x)))
 #else
-#define CLICK_PACKED_STRUCTURE(open, close) _Cannot_pack_structure__Use_GCC
-#define CLICK_SIZE_PACKED_STRUCTURE(open, close) open close /* deprecated */
-#define CLICK_SIZE_PACKED_ATTRIBUTE
+# define CLICK_ALIGNED(x) /* nothing */
 #endif
 
 /* Define macro for deprecated functions. */
@@ -160,6 +174,26 @@
 # define CLICK_DEPRECATED_ENUM /* nothing */
 #else
 # define CLICK_DEPRECATED_ENUM __attribute__((deprecated))
+#endif
+
+/* Define macro for marking functions noninlinable. */
+#ifdef CLICK_LINUXMODULE
+# define CLICK_NOINLINE noinline
+#elif __GNUC__
+# define CLICK_NOINLINE __attribute__((noinline))
+#else
+# define CLICK_NOINLINE /* nothing */
+#endif
+
+/* Define macros for declaring packed structures. */
+#ifdef __GNUC__
+# define CLICK_PACKED_STRUCTURE(open, close) open close __attribute__((packed))
+# define CLICK_SIZE_PACKED_STRUCTURE(open, close) open close __attribute__((packed)) /* deprecated */
+# define CLICK_SIZE_PACKED_ATTRIBUTE __attribute__((packed))
+#else
+# define CLICK_PACKED_STRUCTURE(open, close) _Cannot_pack_structure__Use_GCC
+# define CLICK_SIZE_PACKED_STRUCTURE(open, close) open close /* deprecated */
+# define CLICK_SIZE_PACKED_ATTRIBUTE
 #endif
 
 /* Define macro for functions whose results should not be ignored. */
@@ -215,6 +249,13 @@
 /* Define stuff under tools or a user-level driver. */
 #if defined(CLICK_USERLEVEL) || defined(CLICK_TOOL)
 # include <click/config-userlevel.h>
+#endif
+
+/* Ensure declaration of DefaultArg template. */
+#ifdef __cplusplus
+CLICK_DECLS
+template <typename T> struct DefaultArg;
+CLICK_ENDDECLS
 #endif
 
 #endif /* CLICK_CONFIG_H */

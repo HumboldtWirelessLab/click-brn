@@ -12,17 +12,18 @@
 #if CLICK_BSDMODULE
 # include <sys/stddef.h>
 #endif
+#if CLICK_NS
+# include <click/simclick.h>
+#endif
+#if (CLICK_USERLEVEL || CLICK_NS) && (!HAVE_MULTITHREAD || HAVE___THREAD_STORAGE_CLASS)
+# define HAVE_CLICK_PACKET_POOL 1
+#endif
 struct click_ether;
 struct click_ip;
 struct click_icmp;
 struct click_ip6;
 struct click_tcp;
 struct click_udp;
-
-#if CLICK_NS
-# include <click/simclick.h>
-#endif
-
 CLICK_DECLS
 
 class IP6Address;
@@ -58,6 +59,8 @@ class Packet { public:
 				void (*destructor)(unsigned char *, size_t)) CLICK_WARN_UNUSED_RESULT;
 #endif
 
+    static void static_cleanup();
+
     inline void kill();
 
     inline bool shared() const;
@@ -80,6 +83,7 @@ class Packet { public:
     struct mbuf *m()			{ return _m; }
     const struct mbuf *m() const	{ return (const struct mbuf *)_m; }
     struct mbuf *steal_m();
+    struct mbuf *dup_jumbo_m(struct mbuf *mbuf);
 #endif
 
 
@@ -295,8 +299,8 @@ class Packet { public:
     const Anno *xanno() const		{ return (const Anno *)skb()->cb; }
     Anno *xanno()			{ return (Anno *)skb()->cb; }
 #else
-    const Anno *xanno() const		{ return (const Anno *)_cb; }
-    Anno *xanno()			{ return (Anno *)_cb; }
+    const Anno *xanno() const		{ return &_aa.cb; }
+    Anno *xanno()			{ return &_aa.cb; }
 #endif
     /** @endcond never */
   public:
@@ -422,11 +426,11 @@ class Packet { public:
 
     /** @brief Set annotation byte at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink */
-    void set_anno_u8(int i, uint8_t v) {
+    void set_anno_u8(int i, uint8_t x) {
 	assert(i >= 0 && i < anno_size);
-	xanno()->u8[i] = v;
+	xanno()->u8[i] = x;
     }
 
     /** @brief Return 16-bit annotation at offset @a i.
@@ -444,17 +448,17 @@ class Packet { public:
 
     /** @brief Set 16-bit annotation at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - 1
      * @pre On aligned targets, @a i must be evenly divisible by 2.
      *
      * Affects annotation bytes [@a i, @a i+1]. */
-    void set_anno_u16(int i, uint16_t v) {
+    void set_anno_u16(int i, uint16_t x) {
 	assert(i >= 0 && i < anno_size - 1);
 #if !HAVE_INDIFFERENT_ALIGNMENT
 	assert(i % 2 == 0);
 #endif
-	*reinterpret_cast<uint16_t *>(xanno()->c + i) = v;
+	*reinterpret_cast<uint16_t *>(xanno()->c + i) = x;
     }
 
     /** @brief Return 16-bit annotation at offset @a i.
@@ -472,17 +476,17 @@ class Packet { public:
 
     /** @brief Set 16-bit annotation at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - 1
      * @pre On aligned targets, @a i must be evenly divisible by 2.
      *
      * Affects annotation bytes [@a i, @a i+1]. */
-    void set_anno_s16(int i, int16_t v) {
+    void set_anno_s16(int i, int16_t x) {
 	assert(i >= 0 && i < anno_size - 1);
 #if !HAVE_INDIFFERENT_ALIGNMENT
 	assert(i % 2 == 0);
 #endif
-	*reinterpret_cast<int16_t *>(xanno()->c + i) = v;
+	*reinterpret_cast<int16_t *>(xanno()->c + i) = x;
     }
 
     /** @brief Return 32-bit annotation at offset @a i.
@@ -500,17 +504,17 @@ class Packet { public:
 
     /** @brief Set 32-bit annotation at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - 3
      * @pre On aligned targets, @a i must be evenly divisible by 4.
      *
      * Affects user annotation bytes [@a i, @a i+3]. */
-    void set_anno_u32(int i, uint32_t v) {
+    void set_anno_u32(int i, uint32_t x) {
 	assert(i >= 0 && i < anno_size - 3);
 #if !HAVE_INDIFFERENT_ALIGNMENT
 	assert(i % 4 == 0);
 #endif
-	*reinterpret_cast<uint32_t *>(xanno()->c + i) = v;
+	*reinterpret_cast<uint32_t *>(xanno()->c + i) = x;
     }
 
     /** @brief Return 32-bit annotation at offset @a i.
@@ -527,17 +531,17 @@ class Packet { public:
 
     /** @brief Set 32-bit annotation at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - 3
      * @pre On aligned targets, @a i must be evenly divisible by 4.
      *
      * Affects user annotation bytes [@a i, @a i+3]. */
-    void set_anno_s32(int i, int32_t v) {
+    void set_anno_s32(int i, int32_t x) {
 	assert(i >= 0 && i < anno_size - 3);
 #if !HAVE_INDIFFERENT_ALIGNMENT
 	assert(i % 4 == 0);
 #endif
-	*reinterpret_cast<int32_t *>(xanno()->c + i) = v;
+	*reinterpret_cast<int32_t *>(xanno()->c + i) = x;
     }
 
 #if HAVE_INT64_TYPES
@@ -556,19 +560,47 @@ class Packet { public:
 
     /** @brief Set 64-bit annotation at offset @a i.
      * @param i annotation offset in bytes
-     * @param v value
+     * @param x value
      * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - 7
      * @pre On aligned targets, @a i must be aligned properly for uint64_t.
      *
      * Affects user annotation bytes [@a i, @a i+7]. */
-    void set_anno_u64(int i, uint64_t v) {
+    void set_anno_u64(int i, uint64_t x) {
 	assert(i >= 0 && i < anno_size - 7);
 #if !HAVE_INDIFFERENT_ALIGNMENT
 	assert(i % __alignof__(uint64_t) == 0);
 #endif
-	*reinterpret_cast<uint64_t *>(xanno()->c + i) = v;
+	*reinterpret_cast<uint64_t *>(xanno()->c + i) = x;
     }
 #endif
+
+    /** @brief Return void * sized annotation at offset @a i.
+     * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - sizeof(void *)
+     * @pre On aligned targets, @a i must be aligned properly.
+     *
+     * Affects user annotation bytes [@a i, @a i+sizeof(void *)]. */
+    void *anno_ptr(int i) const {
+	assert(i >= 0 && i <= anno_size - (int)sizeof(void *));
+#if !HAVE_INDIFFERENT_ALIGNMENT
+	assert(i % __alignof__(void *) == 0);
+#endif
+	return *reinterpret_cast<void * const *>(xanno()->c + i);
+    }
+
+    /** @brief Set void * sized annotation at offset @a i.
+     * @param i annotation offset in bytes
+     * @param x value
+     * @pre 0 <= @a i < @link Packet::anno_size anno_size @endlink - sizeof(void *)
+     * @pre On aligned targets, @a i must be aligned properly.
+     *
+     * Affects user annotation bytes [@a i, @a i+sizeof(void *)]. */
+    void set_anno_ptr(int i, const void *x) {
+	assert(i >= 0 && i <= anno_size - (int)sizeof(void *));
+#if !HAVE_INDIFFERENT_ALIGNMENT
+	assert(i % __alignof__(void *) == 0);
+#endif
+	*reinterpret_cast<const void **>(xanno()->c + i) = x;
+    }
 
     inline void clear_annotations(bool all = true);
     inline void copy_annotations(const Packet *);
@@ -639,6 +671,24 @@ class Packet { public:
 #endif
 	// allocations: see packet_anno.hh
     };
+
+#if !CLICK_LINUXMODULE
+    // All packet annotations are stored in AllAnno so that
+    // clear_annotations(true) can memset() the structure to zero.
+    struct AllAnno {
+	Anno cb;
+	unsigned char *mac;
+	unsigned char *nh;
+	unsigned char *h;
+	PacketType pkt_type;
+	Timestamp timestamp;
+	Packet *next;
+	Packet *prev;
+	AllAnno()
+	    : timestamp(Timestamp::uninitialized_t()) {
+	}
+    };
+#endif
     /** @endcond never */
 
 #if !CLICK_LINUXMODULE
@@ -653,31 +703,26 @@ class Packet { public:
 # if CLICK_USERLEVEL
     void (*_destructor)(unsigned char *, size_t);
 # endif
-    unsigned char _cb[48];
-    unsigned char *_mac;
-    unsigned char *_nh;
-    unsigned char *_h;
-    PacketType _pkt_type;
-    Timestamp _timestamp;
 # if CLICK_BSDMODULE
     struct mbuf *_m;
 # endif
-    Packet *_next;
-    Packet *_prev;
+    AllAnno _aa;
 # if CLICK_NS
     SimPacketinfoWrapper _sim_packetinfo;
 # endif
 #endif
 
-    inline Packet();
-    Packet(const Packet &);
+    inline Packet() {
+#if CLICK_LINUXMODULE
+	panic("Packet constructor");
+#endif
+    }
+    Packet(const Packet &x);
     ~Packet();
-    Packet &operator=(const Packet &);
+    Packet &operator=(const Packet &x);
 
 #if !CLICK_LINUXMODULE
-    Packet(int, int, int)			{ }
-    static WritablePacket *make(int, int, int);
-    bool alloc_data(uint32_t, uint32_t, uint32_t);
+    bool alloc_data(uint32_t headroom, uint32_t length, uint32_t tailroom);
 #endif
 #if CLICK_BSDMODULE
     static void assimilate_mbuf(Packet *p);
@@ -716,33 +761,91 @@ class WritablePacket : public Packet { public:
 
  private:
 
-    WritablePacket()				{ }
-    WritablePacket(const Packet &)		{ }
-    ~WritablePacket()				{ }
+    inline WritablePacket() { }
+#if !CLICK_LINUXMODULE
+    inline void initialize();
+#endif
+    WritablePacket(const Packet &x);
+    ~WritablePacket() { }
+
+#if HAVE_CLICK_PACKET_POOL
+    static WritablePacket *pool_allocate(bool with_data);
+    static WritablePacket *pool_allocate(uint32_t headroom, uint32_t length,
+					 uint32_t tailroom);
+    static void recycle(WritablePacket *p);
+#endif
 
     friend class Packet;
 
 };
 
 
-inline
-Packet::Packet()
+/** @brief Clear all packet annotations.
+ * @param  all  If true, clear all annotations.  If false, clear only Click's
+ *   internal annotations.
+ *
+ * All user annotations and the address annotation are set to zero, the packet
+ * type annotation is set to HOST, the device annotation and all header
+ * pointers are set to null, the timestamp annotation is cleared, and the
+ * next/prev-packet annotations are set to null.
+ *
+ * If @a all is false, then the packet type, device, timestamp, header, and
+ * next/prev-packet annotations are left alone.
+ */
+inline void
+Packet::clear_annotations(bool all)
 {
 #if CLICK_LINUXMODULE
-    static_assert(sizeof(Anno) <= sizeof(((struct sk_buff *)0)->cb));
-    panic("Packet constructor");
+    memset(xanno(), 0, sizeof(Anno));
+    if (all) {
+	set_packet_type_anno(HOST);
+	set_device_anno(0);
+	set_timestamp_anno(Timestamp());
+
+	clear_mac_header();
+	clear_network_header();
+	clear_transport_header();
+
+	set_next(0);
+	set_prev(0);
+    }
 #else
+    memset(&_aa, 0, all ? sizeof(AllAnno) : sizeof(Anno));
+#endif
+}
+
+/** @brief Copy most packet annotations from @a p.
+ * @param p source of annotations
+ *
+ * This packet's user annotations, address annotation, packet type annotation,
+ * device annotation, and timestamp annotation are set to the corresponding
+ * annotations from @a p.
+ *
+ * @note The next/prev-packet and header annotations are not copied. */
+inline void
+Packet::copy_annotations(const Packet *p)
+{
+    *xanno() = *p->xanno();
+    set_packet_type_anno(p->packet_type_anno());
+    set_device_anno(p->device_anno());
+    set_timestamp_anno(p->timestamp_anno());
+}
+
+
+#if !CLICK_LINUXMODULE
+inline void
+WritablePacket::initialize()
+{
     _use_count = 1;
     _data_packet = 0;
-    _head = _data = _tail = _end = 0;
 # if CLICK_USERLEVEL
     _destructor = 0;
 # elif CLICK_BSDMODULE
     _m = 0;
 # endif
     clear_annotations();
-#endif
 }
+#endif
 
 /** @brief Return the packet's data pointer.
  *
@@ -855,7 +958,7 @@ Packet::next() const
 #if CLICK_LINUXMODULE
     return (Packet *)(skb()->next);
 #else
-    return _next;
+    return _aa.next;
 #endif
 }
 
@@ -865,7 +968,7 @@ Packet::next()
 #if CLICK_LINUXMODULE
     return (Packet *&)(skb()->next);
 #else
-    return _next;
+    return _aa.next;
 #endif
 }
 
@@ -875,7 +978,7 @@ Packet::set_next(Packet *p)
 #if CLICK_LINUXMODULE
     skb()->next = p->skb();
 #else
-    _next = p;
+    _aa.next = p;
 #endif
 }
 
@@ -885,7 +988,7 @@ Packet::prev() const
 #if CLICK_LINUXMODULE
     return (Packet *)(skb()->prev);
 #else
-    return _prev;
+    return _aa.prev;
 #endif
 }
 
@@ -895,7 +998,7 @@ Packet::prev()
 #if CLICK_LINUXMODULE
     return (Packet *&)(skb()->prev);
 #else
-    return _prev;
+    return _aa.prev;
 #endif
 }
 
@@ -905,7 +1008,7 @@ Packet::set_prev(Packet *p)
 #if CLICK_LINUXMODULE
     skb()->prev = p->skb();
 #else
-    _prev = p;
+    _aa.prev = p;
 #endif
 }
 
@@ -921,7 +1024,7 @@ Packet::has_mac_header() const
     return skb()->mac.raw != 0;
 # endif
 #else
-    return _mac != 0;
+    return _aa.mac != 0;
 #endif
 }
 
@@ -939,7 +1042,7 @@ Packet::mac_header() const
     return skb()->mac.raw;
 # endif
 #else
-    return _mac;
+    return _aa.mac;
 #endif
 }
 
@@ -959,7 +1062,7 @@ Packet::has_network_header() const
     return skb()->nh.raw != 0;
 # endif
 #else
-    return _nh != 0;
+    return _aa.nh != 0;
 #endif
 }
 
@@ -977,7 +1080,7 @@ Packet::network_header() const
     return skb()->nh.raw;
 # endif
 #else
-    return _nh;
+    return _aa.nh;
 #endif
 }
 
@@ -997,7 +1100,7 @@ Packet::has_transport_header() const
     return skb()->h.raw != 0;
 # endif
 #else
-    return _h != 0;
+    return _aa.h != 0;
 #endif
 }
 
@@ -1015,7 +1118,7 @@ Packet::transport_header() const
     return skb()->h.raw;
 # endif
 #else
-    return _h;
+    return _aa.h;
 #endif
 }
 
@@ -1116,7 +1219,7 @@ Packet::timestamp_anno() const
     return *reinterpret_cast<const Timestamp *>(&skb()->tstamp);
 # endif
 #else
-    return _timestamp;
+    return _aa.timestamp;
 #endif
 }
 
@@ -1130,7 +1233,7 @@ Packet::timestamp_anno()
     return *reinterpret_cast<Timestamp *>(&skb()->tstamp);
 # endif
 #else
-    return _timestamp;
+    return _aa.timestamp;
 #endif
 }
 
@@ -1176,7 +1279,7 @@ Packet::packet_type_anno() const
 #elif CLICK_LINUXMODULE
     return (PacketType)(skb()->pkt_type);
 #else
-    return _pkt_type;
+    return _aa.pkt_type;
 #endif
 }
 
@@ -1188,7 +1291,7 @@ Packet::set_packet_type_anno(PacketType p)
 #elif CLICK_LINUXMODULE
     skb()->pkt_type = p;
 #else
-    _pkt_type = p;
+    _aa.pkt_type = p;
 #endif
 }
 
@@ -1246,14 +1349,21 @@ Packet::make(uint32_t length)
 inline Packet *
 Packet::make(struct sk_buff *skb)
 {
+    struct sk_buff *nskb;
     if (atomic_read(&skb->users) == 1) {
 	skb_orphan(skb);
-	return reinterpret_cast<Packet *>(skb);
+	nskb = skb;
     } else {
-	Packet *p = reinterpret_cast<Packet *>(skb_clone(skb, GFP_ATOMIC));
+	nskb = skb_clone(skb, GFP_ATOMIC);
 	atomic_dec(&skb->users);
-	return p;
     }
+# if HAVE_SKB_LINEARIZE
+    if (nskb && skb_linearize(nskb) != 0) {
+	kfree_skb(nskb);
+	nskb = 0;
+    }
+# endif
+    return reinterpret_cast<Packet *>(nskb);
 }
 #endif
 
@@ -1272,6 +1382,9 @@ Packet::kill()
     b->list = 0;
 # endif
     skbmgr_recycle_skbs(b);
+#elif HAVE_CLICK_PACKET_POOL
+    if (_use_count.dec_and_test())
+	WritablePacket::recycle(static_cast<WritablePacket *>(this));
 #else
     if (_use_count.dec_and_test())
 	delete this;
@@ -1292,10 +1405,10 @@ Packet::assimilate_mbuf(Packet *p)
 				      m->m_dat);
   p->_data = (unsigned char *)m->m_data;
   p->_tail = (unsigned char *)(m->m_data + m->m_len);
-  p->_end = p->_head + (
-		m->m_flags & M_EXT    ? MCLBYTES :
-		m->m_flags & M_PKTHDR ? MHLEN :
-					MLEN);
+  p->_end = p->_head +
+	    (m->m_flags & M_EXT    ? min(m->m_pkthdr.len, m->m_ext.ext_size) :
+	     m->m_flags & M_PKTHDR ? MHLEN :
+				     MLEN);
 }
 
 inline void
@@ -1311,12 +1424,46 @@ Packet::make(struct mbuf *m)
     panic("trying to construct Packet from a non-packet mbuf");
 
   Packet *p = new Packet;
-  if (m->m_pkthdr.len != m->m_len) {
-    /* click needs contiguous data */
-    // click_chatter("m_pulldown, Click needs contiguous data");
+  if (!p) {
+    m_freem(m);
+    return 0;
+  }
+  p->_use_count = 1;
+  p->_data_packet = NULL;
 
-    if (m_pulldown(m, 0, m->m_pkthdr.len, NULL) == NULL)
-	panic("m_pulldown failed");
+  if (m->m_pkthdr.len != m->m_len) {
+    struct mbuf *m2;
+    /* click needs contiguous data */
+
+    if (m->m_pkthdr.len <= MCLBYTES) {
+      // click_chatter("m_pulldown, Click needs contiguous data");
+      m2 = m_pulldown(m, 0, m->m_pkthdr.len, NULL);
+      if (m2 == NULL)
+        panic("m_pulldown failed");
+      if (m2 != m) {
+        /*
+         * XXX: m_pulldown ensures that the data is contiguous, but
+         * it's not necessarily in the first mbuf in the chain.
+         * Currently that's not OK for Click, so we need to
+         * defragment the mbuf - which involves more copying etc.
+         */
+        m2 = m_defrag(m, M_DONTWAIT);
+        if (m2 == NULL) {
+          m_freem(m);
+          delete p;
+          return 0;
+        }
+        m = m2;
+      }
+    } else {
+      m2 = p->dup_jumbo_m(m);
+      m_freem(m);
+      if (m2 == NULL) {
+        delete p;
+        return 0;
+      }
+      m = m2;
+    }
   }
   p->_m = m;
   assimilate_mbuf(p);
@@ -1574,7 +1721,7 @@ Packet::set_mac_header(const unsigned char *p)
     skb()->mac.raw = const_cast<unsigned char *>(p);
 # endif
 #else				/* User-space and BSD kernel module */
-    _mac = const_cast<unsigned char *>(p);
+    _aa.mac = const_cast<unsigned char *>(p);
 #endif
 }
 
@@ -1595,8 +1742,8 @@ Packet::set_mac_header(const unsigned char *p, uint32_t len)
     skb()->nh.raw = const_cast<unsigned char *>(p) + len;
 # endif
 #else				/* User-space and BSD kernel module */
-    _mac = const_cast<unsigned char *>(p);
-    _nh = const_cast<unsigned char *>(p) + len;
+    _aa.mac = const_cast<unsigned char *>(p);
+    _aa.nh = const_cast<unsigned char *>(p) + len;
 #endif
 }
 
@@ -1626,7 +1773,7 @@ Packet::clear_mac_header()
     skb()->mac.raw = 0;
 # endif
 #else				/* User-space and BSD kernel module */
-    _mac = 0;
+    _aa.mac = 0;
 #endif
 }
 
@@ -1671,8 +1818,8 @@ Packet::set_network_header(const unsigned char *p, uint32_t len)
     skb()->h.raw = const_cast<unsigned char *>(p) + len;
 # endif
 #else				/* User-space and BSD kernel module */
-    _nh = const_cast<unsigned char *>(p);
-    _h = const_cast<unsigned char *>(p) + len;
+    _aa.nh = const_cast<unsigned char *>(p);
+    _aa.h = const_cast<unsigned char *>(p) + len;
 #endif
 }
 
@@ -1693,7 +1840,7 @@ Packet::set_network_header_length(uint32_t len)
     skb()->h.raw = skb()->nh.raw + len;
 # endif
 #else				/* User-space and BSD kernel module */
-    _h = _nh + len;
+    _aa.h = _aa.nh + len;
 #endif
 }
 
@@ -1747,7 +1894,7 @@ Packet::clear_network_header()
     skb()->nh.raw = 0;
 # endif
 #else				/* User-space and BSD kernel module */
-    _nh = 0;
+    _aa.nh = 0;
 #endif
 }
 
@@ -1863,55 +2010,8 @@ Packet::clear_transport_header()
     skb()->h.raw = 0;
 # endif
 #else				/* User-space and BSD kernel module */
-    _h = 0;
+    _aa.h = 0;
 #endif
-}
-
-/** @brief Clear all packet annotations.
- * @param  all  If true, clear all annotations.  If false, clear only Click's
- *   internal annotations.
- *
- * All user annotations and the address annotation are set to zero, the packet
- * type annotation is set to HOST, the device annotation and all header
- * pointers are set to null, the timestamp annotation is cleared, and the
- * next/prev-packet annotations are set to null.
- *
- * If @a all is false, then the packet type, device, timestamp, header, and
- * next/prev-packet annotations are left alone.
- */
-inline void
-Packet::clear_annotations(bool all)
-{
-    memset(xanno(), '\0', sizeof(Anno));
-    if (all) {
-	set_packet_type_anno(HOST);
-	set_device_anno(0);
-	set_timestamp_anno(Timestamp());
-
-	clear_mac_header();
-	clear_network_header();
-	clear_transport_header();
-
-	set_next(0);
-	set_prev(0);
-    }
-}
-
-/** @brief Copy most packet annotations from @a p.
- * @param p source of annotations
- *
- * This packet's user annotations, address annotation, packet type annotation,
- * device annotation, and timestamp annotation are set to the corresponding
- * annotations from @a p.
- *
- * @note The next/prev-packet and header annotations are not copied. */
-inline void
-Packet::copy_annotations(const Packet *p)
-{
-    *xanno() = *p->xanno();
-    set_packet_type_anno(p->packet_type_anno());
-    set_device_anno(p->device_anno());
-    set_timestamp_anno(p->timestamp_anno());
 }
 
 inline void
@@ -1938,9 +2038,9 @@ Packet::shift_header_annotations(const unsigned char *old_head,
 # endif
 #else
     ptrdiff_t shift = (_head - old_head) + extra_headroom;
-    _mac += (_mac ? shift : 0);
-    _nh += (_nh ? shift : 0);
-    _h += (_h ? shift : 0);
+    _aa.mac += (_aa.mac ? shift : 0);
+    _aa.nh += (_aa.nh ? shift : 0);
+    _aa.h += (_aa.h ? shift : 0);
 #endif
 }
 

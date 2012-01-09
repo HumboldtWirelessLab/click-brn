@@ -3,17 +3,29 @@
 #include <click/element.hh>
 
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/md5.h"
 
 #include "falcon_routingtable.hh"
+
 CLICK_DECLS
 
-#define FALCON_LEAVE_MODE_IDLE  0
-#define FALCON_LEAVE_MODE_LEAVE 1
+#define FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED 0
+#define FALCON_PASSIVE_MONITORING_MODE_REQUESTING  1
+#define FALCON_PASSIVE_MONITORING_MODE_ACTIVATED   2
+#define FALCON_PASSIVE_MONITORING_MODE_SIGNOFF     4
 
 class FalconPassiveMonitoring : public BRNElement
 {
   public:
+    class MonitoredDHTNode {
+      DHTnode _node;
+
+      Timestamp _age;
+
+      DHTnodelist _reverse_fingertable;
+    };
+
+    Vector<MonitoredDHTNode*> _dhtnodelist;
+
     FalconPassiveMonitoring();
     ~FalconPassiveMonitoring();
 
@@ -37,9 +49,14 @@ class FalconPassiveMonitoring : public BRNElement
     Timer _lookup_timer;
     static void static_lookup_timer_hook(Timer *, void *);
 
+    void check_monitoring();
+
     void handle_leave_monitoring_activate(Packet *packet);
     void handle_leave_monitoring_deactivate(Packet *packet);
+    void handle_node_failure(Packet *packet);
+    void handle_node_update(Packet *packet);
 
+    uint32_t _passive_monitoring_mode;
 };
 
 CLICK_ENDDECLS

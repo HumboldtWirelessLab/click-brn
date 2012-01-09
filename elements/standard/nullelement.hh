@@ -8,7 +8,7 @@ CLICK_DECLS
 Null
 
 =s basictransfer
-passes packets unchanged
+null element: passes packets unchanged
 
 =d
 Just passes packets along without doing anything else.
@@ -24,7 +24,6 @@ class NullElement : public Element { public:
 
   const char *class_name() const	{ return "Null"; }
   const char *port_count() const	{ return PORTS_1_1; }
-  const char *processing() const	{ return AGNOSTIC; }
 
   Packet *simple_action(Packet *);
 
@@ -35,7 +34,7 @@ class NullElement : public Element { public:
 PushNull
 
 =s basictransfer
-passes packets unchanged
+push-only null element
 
 =d
 Responds to each pushed packet by pushing it unchanged out its first output.
@@ -62,7 +61,7 @@ class PushNullElement : public Element { public:
 PullNull
 
 =s basictransfer
-passes packets unchanged
+pull-only null element
 
 =d
 Responds to each pull request by pulling a packet from its input and returning

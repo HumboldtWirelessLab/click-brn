@@ -8,7 +8,6 @@
 #include <click/timer.hh>
 
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/md5.h"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
 
@@ -24,6 +23,7 @@ FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
   _start(FALCON_DEFAULT_START_TIME),
   _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
   _debug(BrnLogger::DEFAULT),
+  _rounds_to_passive_monitoring(0),
   _rfrt(NULL)
 {
 }
@@ -38,6 +38,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "STARTTIME", cpkP+cpkM, cpInteger, &_start,
       "UPDATEINT", cpkP, cpInteger, &_update_interval,
+      "PMROUNDS", cpkP, cpInteger, &_rounds_to_passive_monitoring,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -50,6 +51,9 @@ int FalconRoutingTableMaintenance::initialize(ErrorHandler *)
   click_srandom(_frt->_me->_ether_addr.hashcode());
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
+
+  _current_round2pm = 0;
+
   return 0;
 }
 
@@ -70,16 +74,20 @@ FalconRoutingTableMaintenance::set_lookup_timer()
 void
 FalconRoutingTableMaintenance::table_maintenance()
 {
-  if ( _frt->isFixSuccessor() && ( _frt->_me->_status != STATUS_LEAVE  ) ) {
+  if ( _frt->isFixSuccessor() && ( _frt->_me->_status != STATUS_LEAVE  ) &&
+       (!_frt->is_passive_monitoring()) ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
     assert(nextToAsk != NULL ); //TODO: there was an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
     assert(! _frt->_me->equals(nextToAsk));  //TODO: There was an error, while setup the Routing-Table. I fixed it,
-                                               //      but if there is an error again please save this output (Routing Table)
+                                             //      but if there is an error again please save this output (Routing Table)
 
     nextToAsk->set_last_ping_now();
-    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION, _frt->_lastUpdatedPosition);
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION,
+                                                                    _frt->_lastUpdatedPosition);
     output(0).push(p);
+  } else {
+    _current_round2pm = 0; //TODO: not enough to do it here ??
   }
 }
 
@@ -90,7 +98,6 @@ FalconRoutingTableMaintenance::push( int port, Packet *packet )
     switch ( DHTProtocol::get_type(packet) ) {
       case FALCON_MINOR_REQUEST_POSITION:
         handle_request_pos(packet);
-        packet->kill();
         break;
       case FALCON_MINOR_REPLY_POSITION:
         handle_reply_pos(packet);
@@ -150,19 +157,22 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     BRN_WARN("Node (%s) ask for my position 0 (for him i'm his successor) but is not my predecessor",
                                                                    src._ether_addr.unparse().c_str());
     BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),
-                                     _frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
+                                             _frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
-    DHTnode *best_succ = _frt->findBestSuccessor(&src,20/* max age 20 s*/);
+    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/);
 
     if ( best_succ->equals(_frt->predecessor) ) {
       BRN_DEBUG("RoutingTable :------1-------: My pre is his succ");
     } else {
-      BRN_DEBUG("RoutingTable :------2-------: I've better succ than my pre. ME: %s  Src: %s  Succ: %s Pre: %s",_frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(), best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+      BRN_DEBUG("RoutingTable :------2-------: I've better succ than my pre. ME: %s  Src: %s  Succ: %s Pre: %s",
+                _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(),
+                best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+
       BRN_DEBUG("%s",_frt->routing_info().c_str());
     }
 
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
-                                                                  best_succ, FALCON_RT_POSITION_SUCCESSOR);
+                                                                  best_succ, FALCON_RT_POSITION_SUCCESSOR, packet);
     output(0).push(p);
     return;
   }
@@ -170,20 +180,19 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   /** search for the entry he wants to know */
   posnode = _frt->_fingertable.get_dhtnode(position);
 
+  WritablePacket *p;
+
   if ( posnode != NULL ) {
     BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(),
                                _frt->_me->_ether_addr.unparse().c_str(), position, posnode->_ether_addr.unparse().c_str());
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION,
-                                                                              posnode, position);
-    output(0).push(p);
+    p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position, packet);
   } else {
-    BRN_WARN("HE wants to know a node that i didn't know. Send negative reply.");
+    BRN_DEBUG("HE wants to know a node that i didn't know. Send negative reply.");
     node._status = STATUS_NONEXISTENT; //i don't have such node
     node.set_nodeid(NULL, 0);          //its and invalid node
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION,
-                                                                             &node, position);
-    output(0).push(p);
+    p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, &node, position, packet);
   }
+  output(0).push(p);
 }
 
 void
@@ -201,7 +210,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
   _frt->add_node(&src);
 
   if ( node._status == STATUS_NONEXISTENT ) {
-    BRN_WARN("Node %s has no node in table on position %d.",src._ether_addr.unparse().c_str(),position);
+    BRN_DEBUG("Node %s has no node in table on position %d.",src._ether_addr.unparse().c_str(),position);
     _frt->setLastUpdatedPosition(0);
     return;
   }
@@ -229,14 +238,23 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
          preposnode->equals(&node) ) ) {
     _frt->add_node_in_FT(nc, position + 1); //add node to Fingertable. THis also handles, that the node is already in
                                             //the Fingertable, but on another position
-    if ( nc->equals(_frt->predecessor) )    //in some cases the last node in the Fingertable is the predecessor.
+    if ( nc->equals(_frt->predecessor) ) {    //in some cases the last node in the Fingertable is the predecessor.
       _frt->setLastUpdatedPosition(0);      //then we can update our successor (position 0) next.
-    else
+      if ( _rounds_to_passive_monitoring > 0 ) _current_round2pm++;
+    } else {
       _frt->incLastUpdatedPosition();       //TODO: add this in add_node_in_FT (??). is that better ??
-
+    }
   } else {                             //---> Node is backlog
     _frt->backlog = nc;
     _frt->setLastUpdatedPosition(0);
+    if ( _rounds_to_passive_monitoring > 0 ) _current_round2pm++;
+  }
+
+  if ( ( _rounds_to_passive_monitoring > 0 ) &&
+       ( _current_round2pm == _rounds_to_passive_monitoring ) ) {
+     _rounds_to_passive_monitoring = 0;  //reset for nextToAsk
+     _frt->set_passive_monitoring(true); //enable pm, this will
+                                         //be disabled by passiv monitoring (and rt ??)
   }
 
     /** Hawk-Routing stuff. TODO: this should move to extra funtion */

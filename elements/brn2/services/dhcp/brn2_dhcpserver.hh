@@ -25,19 +25,25 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
+#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn2/brnelement.hh"
 #include "elements/brn2/vlan/brn2vlantable.hh"
-#include "dhcp.h"
-#include "dhcpsubnetlist.hh"
-
 #include "elements/brn2/dht/storage/dhtstorage.hh"
 
-#define MODE_WRITE_IP  0
-#define MODE_READ_IP   1
-#define MODE_REMOVE_IP 2
+#include "dhcp.h"
+#include "dhcpsubnetlist.hh"
+#include "brn2_dhcpleasetable.hh"
 
-#define MODE_WRITE_NAME  3
-#define MODE_READ_NAME   4
-#define MODE_REMOVE_NAME 5
+#define MODE_WRITE_IP  0
+#define MODE_UPDATE_IP 1
+#define MODE_READ_IP   2
+#define MODE_REMOVE_IP 3
+
+#define MODE_WRITE_NAME  4
+#define MODE_READ_NAME   5
+#define MODE_REMOVE_NAME 6
+
+
 
 CLICK_DECLS
 
@@ -53,7 +59,7 @@ CLICK_DECLS
 /**
  * TODO: What to do if no subnetInfo for Clients vlan
  */
-class BRN2DHCPServer : public Element {
+class BRN2DHCPServer : public BRNElement {
 
  public:
   //
@@ -70,6 +76,9 @@ class BRN2DHCPServer : public Element {
     unsigned char _chaddr[6];
     struct in_addr _ciaddr;
 
+    EtherAddress _ea; //currently not used
+    IPAddress _ip;    //currently not used
+
     IPAddress _subnet_ip;
     IPAddress _subnet_mask;
 
@@ -83,7 +92,11 @@ class BRN2DHCPServer : public Element {
 
     Packet *_client_packet;
 
-    DHCPClientInfo()
+    uint16_t _rerequest_counter;
+
+    BRN2Device *_dev;  //currently not used
+
+    DHCPClientInfo() : _rerequest_counter(0)
     {
       memcpy(&(_chaddr),"\0\0\0\0\0\0",6);
       memcpy(&(_ciaddr),"\0\0\0\0",4);
@@ -138,7 +151,7 @@ class BRN2DHCPServer : public Element {
 
  public:
   BRN2DHCPServer::DHCPClientInfo *get_client_by_mac(uint8_t *mac);
-  BRN2DHCPServer::DHCPClientInfo *get_client_by_dht_id(uint32_t id);                              //TODO: remove
+  BRN2DHCPServer::DHCPClientInfo *get_client_by_dht_id(uint32_t id);
   int remove_client(DHCPClientInfo *client_info);
 
   void find_client_ip(DHCPClientInfo *client_info, uint16_t vlan_id);
@@ -149,10 +162,8 @@ class BRN2DHCPServer : public Element {
   //
   //member
   //
-public:
-  int _debug;
 
-private:
+ private:
   EtherAddress _me;
   IPAddress start_ip_range;
 
@@ -180,6 +191,7 @@ private:
   BRN2DHCPSubnetList *_dhcpsubnetlist;
   BRN2VLANTable *_vlantable;
   DHTStorage *_dht_storage;
+  BRN2DHCPLeaseTable *_lease_table;
 };
 
 CLICK_ENDDECLS

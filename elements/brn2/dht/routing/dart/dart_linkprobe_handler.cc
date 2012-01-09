@@ -67,22 +67,22 @@ DartLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
 {
   DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
-
-  if ( direction )
-    return dhtd->lpSendHandler(buffer, size);
-  else
-    return dhtd->lpReceiveHandler(buffer, size);
-
-  return 0;
+  return dhtd->lpSendHandler(buffer, size);
 }
 
+static int
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
+  return dhtd->lpReceiveHandler(buffer, size);
+}
 int
 DartLinkProbeHandler::initialize(ErrorHandler *)
 {
-  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DHT_DART, &handler);
+  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DHT_DART, &tx_handler, &rx_handler);
   return 0;
 }
 

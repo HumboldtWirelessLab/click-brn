@@ -27,6 +27,7 @@
 #include <click/config.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
+
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
 #include "elements/brn2/brn2.h"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
@@ -37,8 +38,7 @@ CLICK_DECLS
 
 /* constructor initalizes timer, ... */
 BRN2RouteQuerier::BRN2RouteQuerier()
-  : _debug(BrnLogger::DEFAULT),
-    _sendbuffer_check_routes(false),
+  : _sendbuffer_check_routes(false),
     _sendbuffer_timer(static_sendbuffer_timer_hook, this),
     _me(NULL),
     _link_table(),
@@ -50,7 +50,8 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _rreq_issue_timer(static_rreq_issue_hook, this),
     _blacklist_timer(static_blacklist_timer_hook, this),
     _metric(0),
-    _use_blacklist(true)
+    _use_blacklist(false),
+    _expired_packets(0)
 {
   BRNElement::init();
 
@@ -80,6 +81,8 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "DSRENCAP",  cpkP+cpkM, cpElement, &_dsr_encap,
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
+      "METRIC", cpkP, cpElement, &_metric,
+      "USE_BLACKLIST", cpkP, cpBool, &_use_blacklist,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -148,6 +151,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   }
 
   click_ether *ether = (click_ether *)p_in->data();//better to use this, since ether_header is not always set.it also can be overwriten
+  uint8_t p_in_ttl = BRNPacketAnno::ttl_anno(p_in);
+  if ( p_in_ttl == 0) p_in_ttl = 255; //TODO: ttl = route len
 
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
@@ -177,7 +182,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     metric_of_route = _link_table->get_route_metric(route);
   }
 
-  BRN_DEBUG(" Metric of found route = %d", metric_of_route); 
+  BRN_DEBUG(" Metric of found route = %d route_length = %d", metric_of_route, route.size());
 
   if(_debug == BrnLogger::DEBUG) {
     String route_str = _link_table->print_routes(true);
@@ -213,7 +218,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     }
 
    // add BRN header
-    Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(dsr_p));
+    Packet *brn_p = BRNProtocol::add_brn_header(dsr_p, BRN_PORT_DSR, BRN_PORT_DSR, p_in_ttl,
+                                                BRNPacketAnno::tos_anno(dsr_p));
 
     // forward source routed packet to srcforwarder. this is required since
     // the address of the next hop could be mine (see nodeidentity)
@@ -687,7 +693,10 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
               }
 
               // add BRN header
-              Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, 255, BRNPacketAnno::tos_anno(p_out));
+              uint8_t p_in_ttl = BRNPacketAnno::ttl_anno(p_out);
+              if ( p_in_ttl == 0) p_in_ttl = 255; //TODO: ttl = route len
+              Packet *brn_p = BRNProtocol::add_brn_header(p_out, BRN_PORT_DSR, BRN_PORT_DSR, p_in_ttl,
+                                                          BRNPacketAnno::tos_anno(p_out));
 
               output(1).push(brn_p);
             }
@@ -721,6 +730,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
         if (time_elapsed >= BRN_DSR_SENDBUFFER_TIMEOUT) {
           BRN_DEBUG(" * packet %d expired in send buffer", j);
           sb[j]._p->kill();
+          _expired_packets++;
         } else {
           // click_chatter(" * packet %d gets to stay\n", i);
           new_sb.push_back(sb[j]);
@@ -892,7 +902,7 @@ BRN2RouteQuerier::diff_in_ms(timeval t1, timeval t2)
 
 // Ask LinkStat for the metric for the link from other to us.
 // ripped off from srcr.cc
-unsigned char
+uint32_t
 BRN2RouteQuerier::get_metric(EtherAddress)
 {
 
@@ -945,10 +955,10 @@ BRN2RouteQuerier::get_metric(EtherAddress)
 }
 
 bool
-BRN2RouteQuerier::metric_preferable(unsigned short a, unsigned short b)
+BRN2RouteQuerier::metric_preferable(uint32_t a, uint32_t b)
 {
   if (!_metric)
-    return (a < b); // fallback to minimum hop-count
+    return (a <= b); // fallback to minimum hop-count
 //TODO: AZU use real metric here
 /*
   else if (a == BRN_DSR_INVALID_ROUTE_METRIC || b == BRN_DSR_INVALID_ROUTE_METRIC)
@@ -957,28 +967,30 @@ BRN2RouteQuerier::metric_preferable(unsigned short a, unsigned short b)
     return _metric->metric_val_lt(_metric->unscale_from_char(a),
 				  _metric->unscale_from_char(b));
 */
-  return true;
+  return (a <= b);
 }
 
-unsigned short
+uint32_t
 BRN2RouteQuerier::route_metric(BRN2RouteQuerierRoute r)
 {
-#if 0
-  unsigned short ret = 0;
-  // the metric in r[i+1] represents the link between r[i] and r[i+1],
-  // so we start at 1
-  for (int i = 1; i < r.size(); i++) {
-    if (r[i]._metric == DSR_INVALID_HOP_METRIC) 
-      return DSR_INVALID_ROUTE_METRIC;
-    ret += r[i]._metric;
-  }
-  return ret;
-#endif
-
   if (r.size() < 2) {
     BRN_WARN(" route_metric: route is too short, less than two nodes????");
     return BRN_DSR_INVALID_ROUTE_METRIC;
   }
+
+  uint32_t sum_metric = 0;
+
+  // the metric in r[i+1] represents the link between r[i] and r[i+1],
+  // so we start at 1
+
+  for (int i = 1; i < r.size(); i++) {
+    if (r[i]._metric == BRN_DSR_INVALID_HOP_METRIC) return BRN_DSR_INVALID_ROUTE_METRIC;
+    sum_metric += r[i]._metric;
+  }
+
+  return sum_metric;
+
+#if 0
   if (!_metric) {
     BRN_DEBUG(" * fallback to hop-count: %d", r.size());
     return r.size(); // fallback to hop-count
@@ -1002,6 +1014,7 @@ BRN2RouteQuerier::route_metric(BRN2RouteQuerierRoute r)
     return BRN_DSR_INVALID_ROUTE_METRIC;
 */
   return BRN_DSR_INVALID_ROUTE_METRIC;
+#endif
 }
 
 
@@ -1018,11 +1031,95 @@ BRN2RouteQuerier::last_forwarder_eth(Packet *p)
   return (EtherAddress((unsigned char *)d));
 }
 
+
+void
+BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, int dsr_element, int end_index)
+{
+  Vector<EtherAddress> ea_route;
+
+  int route_size = route.size() - 1;
+  if ( end_index != -1 ) route_size = end_index;
+
+  for (int i=0; i < route_size; i++) {
+    EtherAddress ether1 = route[i].ether();
+    EtherAddress ether2 = route[i+1].ether();
+
+    if (ether1 == ether2) {
+      if ( i == route.size() - 2 ) ea_route.push_back(ether1);
+      continue;
+    }
+
+    ea_route.push_back(ether1);
+
+    uint16_t metric;
+
+    switch ( dsr_element ) {
+      case DSR_ELEMENT_REQ_FORWARDER: {
+        metric = route[i]._metric;     //metric starts with no offset
+        break;
+      }
+      case DSR_ELEMENT_REP_FORWARDER: {
+        if (_me->isIdentical(&ether1)) // learn only from route prefix; suffix is not yet set
+          break;
+
+        metric = route[i+1]._metric;   //metric starts with offset 1
+        //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! remove this shit
+        if (metric == 0) metric = 1;
+        break;
+      }
+      case DSR_ELEMENT_SRC_FORWARDER: {
+        if (_me->isIdentical(&ether2)) // learn only from route prefix; suffix will be set along the way
+          return;
+
+        metric = route[i+1]._metric;   //metric starts with offset 1
+        break;
+      }
+    }
+
+    IPAddress ip1 = route[i].ip();
+    IPAddress ip2 = route[i+1].ip();
+
+/*
+    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
+    metric = 9999;
+  }
+    if (metric == 0) {
+    metric = 1; // TODO remove this hack
+  }
+*/
+    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
+
+    if (ret) {
+      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
+        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
+    }
+  }
+
+  if ( dsr_element == DSR_ELEMENT_REP_FORWARDER ) {
+    uint32_t rmetric = route_metric(route);
+    EtherAddress dst = route[0].ether();
+    EtherAddress src = route[route.size()-1].ether();
+    _link_table->update_route(src, dst, ea_route, rmetric);
+    ea_route.clear();
+  }
+
+  BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
+
+}
+
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
-enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB};
+String
+BRN2RouteQuerier::print_stats()
+{
+  return "<dsrroutequerierstats node=\"" + BRN_NODE_NAME + "\" expired_packets=\"" + String((int)_expired_packets) + "\" />\n";
+}
+
+enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB, H_STATS};
 
 static String
 read_handler(Element *e, void * vparam)
@@ -1045,6 +1142,9 @@ read_handler(Element *e, void * vparam)
           ret += "\n";
       }
       return ret;
+    }
+    case H_STATS: {
+      return rq->print_stats();
     }
   }
 
@@ -1111,6 +1211,7 @@ BRN2RouteQuerier::add_handlers()
 {
   BRNElement::add_handlers();
 
+  add_read_handler("stats", read_handler, (void*) H_STATS);
   add_read_handler("fixed_route", read_handler, (void*) H_FIXED_ROUTE);
 
   add_write_handler("fixed_route", write_handler, (void*) H_FIXED_ROUTE);

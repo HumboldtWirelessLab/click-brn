@@ -34,9 +34,18 @@ CLICK_DECLS
 /*********************************************************************************/
 
 int
+DHTProtocolFalcon::max_no_nodes_in_lp(int buffer_len)
+{
+  return (buffer_len/sizeof(struct dht_falcon_node_entry))-1;
+}
+
+int
 DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
+  if ( (unsigned)buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
+
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
+
   ne->age_sec = 0;
   ne->status = me->_status;
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
@@ -113,9 +122,9 @@ DHTProtocolFalcon::new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t 
 }
 
 WritablePacket *
-DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position)
+DHTProtocolFalcon::new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t type, DHTnode *node, int request_position, Packet *p_recycle)
 {
-  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet));
+  WritablePacket *rrep_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, type, sizeof(struct falcon_routing_packet),p_recycle);
   struct falcon_routing_packet *reply = (struct falcon_routing_packet*)DHTProtocol::get_payload(rrep_p);
 
   reply->table_position = htons(request_position);
@@ -245,6 +254,47 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
   src->set_etheraddress(DHTProtocol::get_src_data(p));
   src->set_nodeid(request->src_node_id);
   src->set_age_now();
+}
+
+/*********************************************************************************/
+/******************** P A S S I V E   M O N I T O R I N G ************************/
+/*********************************************************************************/
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable)
+{
+  WritablePacket *act_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE,
+                                                       sizeof(struct falcon_passiv_monitoring_info) +
+                                      reverse_fingertable->size() * sizeof(struct dht_falcon_reverse_table_node_entry));
+
+  struct falcon_passiv_monitoring_info *fpmi = (struct falcon_passiv_monitoring_info*)DHTProtocol::get_payload(act_p);
+
+  uint8_t res = 0;
+  fpmi->status = 0;
+  fpmi->no_nodes = reverse_fingertable->size();
+  src->get_nodeid((md5_byte_t *)fpmi->passive_node_id, &res);
+
+//  struct dht_falcon_reverse_table_node_entry *node = (struct dht_falcon_reverse_table_node_entry *)&fpmi[1];
+
+  return act_p;
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_deactive_packet(DHTnode */*src*/)
+{
+  return NULL;
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_leave_notification_packet(DHTnode */*src*/, DHTnode */*dst*/, DHTnode */*leave_node*/)
+{
+  return NULL;
+}
+
+WritablePacket *
+DHTProtocolFalcon::new_passive_monitor_leave_reply_packet(DHTnode */*src*/, DHTnode */*dst*/, DHTnode */*leave_node*/)
+{
+  return NULL;
 }
 
 CLICK_ENDDECLS

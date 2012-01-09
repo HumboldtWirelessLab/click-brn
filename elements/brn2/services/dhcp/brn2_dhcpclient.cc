@@ -40,8 +40,9 @@
 CLICK_DECLS
 
 BRN2DHCPClient::BRN2DHCPClient()
-  : _debug(BrnLogger::DEFAULT), _timer(this)
+  : _timer(this)
 {
+  BRNElement::init();
 }
 
 BRN2DHCPClient::~BRN2DHCPClient()
@@ -132,7 +133,8 @@ BRN2DHCPClient::run_timer(Timer* )
     switch (request_queue[range_index].status) {
       case DHCPINIT:
         {
-          if ( request_queue[range_index]._last_action != DHCPDISCOVER )
+          if ( (request_queue[range_index]._last_action != DHCPDISCOVER) ||
+               ((Timestamp::now() - request_queue[range_index]._last_action_time).msecval() > 500) )
           {
             packet_out = dhcpdiscover(&request_queue[range_index]);
             if ( packet_out != NULL )  output(0).push(packet_out);
@@ -142,7 +144,8 @@ BRN2DHCPClient::run_timer(Timer* )
       case DHCPINITREBOOT:
       case DHCPSELECTING:
         {
-          if ( request_queue[range_index]._last_action != DHCPREQUEST )
+          if ( (request_queue[range_index]._last_action != DHCPREQUEST) ||
+               ((Timestamp::now() - request_queue[range_index]._last_action_time).msecval() > 500) )
           {
             packet_out = dhcprequest(&request_queue[range_index]);
             if ( packet_out != NULL )  output(1).push(packet_out);
@@ -165,7 +168,7 @@ BRN2DHCPClient::run_timer(Timer* )
           break;
         }
     }
-    range_index = ( range_index + 1 ) % _ip_range;
+    //range_index = ( range_index + 1 ) % _ip_range;
   }
 }
 
@@ -253,6 +256,7 @@ BRN2DHCPClient::dhcpdiscover(DHCPClientInfo *client_info)
 
   client_info->status = DHCPINIT;
   client_info->_last_action = DHCPDISCOVER;
+  client_info->_last_action_time = Timestamp::now();
 
   BRN_DEBUG("BRN2DHCPClient: Send Discover");
   BRN_DEBUG("BRN2DHCPClient: Packet ist %d Bytes gross", dhcp_packet_out->length());
@@ -287,6 +291,7 @@ BRN2DHCPClient::dhcprequest(DHCPClientInfo *client_info)
 
   client_info->status = DHCPSELECTING;
   client_info->_last_action = DHCPREQUEST;
+  client_info->_last_action_time = Timestamp::now();
 
   BRN_DEBUG("BRN2DHCPClient: send dhcp-request");
 
@@ -298,8 +303,11 @@ BRN2DHCPClient::dhcpbound(DHCPClientInfo *client_info)
 {
   client_info->status = DHCPBOUND;
   client_info->_last_action = DHCPACK;
+  client_info->_last_action_time = Timestamp::now();
 
   count_configured_clients++;
+
+  range_index = ( range_index + 1 ) % _ip_range;
 
   BRN_INFO("BRN2DHCPClient: Client is configured: MAC: %s IP: %s",
     client_info->eth_add.unparse().c_str(), client_info->ip_add.unparse().c_str());
@@ -360,19 +368,35 @@ BRN2DHCPClient::search_dhcpclient_by_xid(int xid)
 {
   for (int i = 0; i < request_queue.size(); i++ )
     if ( (int)request_queue[i].xid == xid ) return(i);
- 
+
   return(-1);
 }
 
+
+String
+BRN2DHCPClient::print_stats()
+{
+  StringAccum sa;
+
+  sa << "<dhcpclient requested_ips=\"" << request_queue.size() << "\" interval=\"" << _interval << "\" >\n";
+  for (int i = 0; i < request_queue.size(); i++ ) {
+    sa << "\t<dhcp_request mac=\"" << request_queue[i].eth_add.unparse() << "\" ip=\"" << request_queue[i].ip_add.unparse();
+    sa << "\" />\n";
+  }
+  sa << "</dhcpclient>\n";
+
+  return sa.take_string();
+}
+
 enum {
-  H_DEBUG,
   H_HW_ADDR,
   H_IP_ADDR,
   H_IP_RANGE,
   H_START_TIME,
   H_INTERVAL,
   H_SCHEDULED,
-  H_ACTIVE
+  H_ACTIVE,
+  H_STATS
 };
 
 static String 
@@ -380,8 +404,8 @@ read_param(Element *e, void *thunk)
 {
   BRN2DHCPClient *td = (BRN2DHCPClient *)e;
   switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
+  case H_STATS:
+    return td->print_stats();
   case H_HW_ADDR:
     return td->_hw_addr.unparse() + "\n";
   case H_IP_ADDR:
@@ -408,14 +432,6 @@ write_param(const String &in_s, Element *e, void *vparam,
   BRN2DHCPClient *f = (BRN2DHCPClient *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
-  case H_DEBUG: 
-    {    //debug
-      int debug;
-      if (!cp_integer(s, &debug)) 
-        return errh->error("debug parameter must be int");
-      f->_debug = debug;
-      break;
-    }
   case H_HW_ADDR:
     {
       EtherAddress hw_addr;
@@ -480,11 +496,10 @@ write_param(const String &in_s, Element *e, void *vparam,
 void
 BRN2DHCPClient::add_handlers()
 {
+  BRNElement::add_handlers();
+
   // needed for QuitWatcher
   add_read_handler("scheduled", read_param, (void *) H_SCHEDULED);
-
-  add_read_handler("debug", read_param, (void *) H_DEBUG);
-  add_write_handler("debug", write_param, (void *) H_DEBUG);
 
   add_read_handler("hw_addr", read_param, (void *) H_HW_ADDR);
   add_write_handler("hw_addr", write_param, (void *) H_HW_ADDR);
@@ -503,6 +518,8 @@ BRN2DHCPClient::add_handlers()
 
   add_read_handler("active", read_param, (void *) H_ACTIVE);
   add_write_handler("active", write_param, (void *) H_ACTIVE);
+
+  add_read_handler("stats", read_param, (void *) H_STATS);
 }
 
 #include <click/vector.cc>

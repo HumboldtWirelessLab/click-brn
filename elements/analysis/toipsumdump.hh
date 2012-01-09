@@ -27,6 +27,9 @@ binary format to save space.
 
 ToIPSummaryDump uses packets' extra-length and extra-packet-count annotations.
 
+ToIPSummaryDump can optionally be used as a filter: it pushes received packets
+to its output if that output exists.
+
 Keyword arguments are:
 
 =over 8
@@ -178,7 +181,8 @@ The end of the dump may contain a comment 'C<!drops N>', meaning that C<N>
 packets were dropped before they could be entered into the dump.
 
 A 'C<!flowid>' comment can specify source and destination addresses and ports
-for packets that otherwise don't have one.
+for packets that otherwise don't have one.  Its arguments are 'C<!flowid SRC
+SPORT DST DPORT [PROTO]>'.
 
 Any packet line may contain fewer fields than specified in the 'C<!data>'
 line, down to one field. Missing fields are treated as 'C<->'.
@@ -348,8 +352,8 @@ class ToIPSummaryDump : public Element, public IPSummaryDumpInfo { public:
     ~ToIPSummaryDump();
 
     const char *class_name() const	{ return "ToIPSummaryDump"; }
-    const char *port_count() const	{ return PORTS_1_0; }
-    const char *processing() const	{ return AGNOSTIC; }
+    const char *port_count() const	{ return "1/0-1"; }
+    const char *processing() const	{ return "a/h"; }
     const char *flags() const		{ return "S2"; }
 
     int configure(Vector<String> &, ErrorHandler *);

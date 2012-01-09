@@ -22,7 +22,7 @@
 #include "fakepcap.hh"
 #include <click/error.hh>
 #include <click/bitvector.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/glue.hh>
 #include <clicknet/ether.h>
@@ -69,7 +69,8 @@ CLICK_DECLS
 
 KernelTun::KernelTun()
     : _fd(-1), _tap(false), _task(this), _ignore_q_errs(false),
-      _printed_write_err(false), _printed_read_err(false)
+      _printed_write_err(false), _printed_read_err(false),
+      _selected_calls(0), _packets(0)
 {
 }
 
@@ -94,23 +95,27 @@ KernelTun::configure(Vector<String> &conf, ErrorHandler *errh)
     _adjust_headroom = false;
     _headroom += (4 - _headroom % 4) % 4; // default 4/0 alignment
     _mtu_out = DEFAULT_MTU;
-    if (cp_va_kparse(conf, this, errh,
-		     "ADDR", cpkP+cpkM, cpIPPrefix, &_near, &_mask,
-		     "GATEWAY", cpkP, cpIPAddress, &_gw,
-		     "TAP", 0, cpBool, &_tap,
-		     "HEADROOM", cpkC, &_adjust_headroom, cpUnsigned, &_headroom,
-		     "ETHER", 0, cpEthernetAddress, &_macaddr,
-		     "IGNORE_QUEUE_OVERFLOWS", 0, cpBool, &_ignore_q_errs,
-		     "MTU", 0, cpInteger, &_mtu_out,
+    _burst = 1;
+    if (Args(conf, this, errh)
+	.read_mp("ADDR", IPPrefixArg(), _near, _mask)
+	.read_p("GATEWAY", _gw)
+	.read("TAP", _tap)
+	.read("HEADROOM", _headroom).read_status(_adjust_headroom)
+	.read("BURST", _burst)
+	.read("ETHER", _macaddr)
+	.read("IGNORE_QUEUE_OVERFLOWS", _ignore_q_errs)
+	.read("MTU", _mtu_out)
 #if KERNELTUN_LINUX
-		     "DEV_NAME", cpkD, cpString, &_dev_name, // deprecated
-		     "DEVNAME", 0, cpString, &_dev_name,
+	.read("DEV_NAME", Args::deprecated, _dev_name)
+	.read("DEVNAME", _dev_name)
 #endif
-		    cpEnd) < 0)
+	.complete() < 0)
 	return -1;
 
     if (_gw && !_gw.matches_prefix(_near, _mask))
 	return errh->error("bad GATEWAY");
+    if (_burst < 1)
+	return errh->error("BURST must be >= 1");
     if (_mtu_out < (int) sizeof(click_ip))
 	return errh->error("MTU must be greater than %d", sizeof(click_ip));
     if (_headroom > 8192)
@@ -121,7 +126,7 @@ KernelTun::configure(Vector<String> &conf, ErrorHandler *errh)
 
 #if KERNELTUN_LINUX
 int
-KernelTun::try_linux_universal(ErrorHandler *errh)
+KernelTun::try_linux_universal()
 {
     int fd = open("/dev/net/tun", O_RDWR | O_NONBLOCK);
     if (fd < 0)
@@ -135,7 +140,6 @@ KernelTun::try_linux_universal(ErrorHandler *errh)
 	strncpy(ifr.ifr_name, _dev_name.c_str(), sizeof(ifr.ifr_name));
     int err = ioctl(fd, TUNSETIFF, (void *)&ifr);
     if (err < 0) {
-	errh->warning("Linux universal tun failed: %s", strerror(errno));
 	close(fd);
 	return -errno;
     }
@@ -177,12 +181,12 @@ KernelTun::alloc_tun(ErrorHandler *errh)
     StringAccum tried;
 
 #if KERNELTUN_LINUX
-    if ((error = try_linux_universal(errh)) >= 0)
+    if ((error = try_linux_universal()) >= 0)
 	return error;
     else if (!saved_error || error != -ENOENT) {
 	saved_error = error, saved_device = "net/tun";
 	if (error == -ENODEV)
-	    saved_message = "\n(Perhaps you need to enable tun in your kernel or load the `tun' module.)";
+	    saved_message = "\n(Perhaps you need to enable tun in your kernel or load the 'tun' module.)";
     }
     tried << "/dev/net/tun, ";
 #endif
@@ -237,7 +241,7 @@ KernelTun::alloc_tun(ErrorHandler *errh)
 	tried.pop_back(2);
 	return errh->error("could not find a tap device\n(checked %s)\nYou may need to load a kernel module to support tap.", tried.c_str());
     } else
-	return errh->error("could not allocate device /dev/%s: %s%s", saved_device.c_str(), strerror(-saved_error), saved_message.c_str());
+	return errh->error("/dev/%s: %s%s", saved_device.c_str(), strerror(-saved_error), saved_message.c_str());
 }
 
 int
@@ -247,44 +251,32 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
     int s = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
     if (s < 0)
 	return errh->error("socket() failed: %s", strerror(errno));
-#if defined(OFFSETOF_IFR_ADDR_IFREQ) && OFFSETOF_IFR_ADDR_IFREQ
-    union {
-	struct ifreq ifr;
-	struct {
-	    char padding[OFFSETOF_IFR_ADDR_IFREQ];
-	    struct sockaddr_in sin;
-	} sin;
-    } ifr;
-# define CLICK_IFR_SIN ifr.sin.sin
-#else
-    /* This path though easier is illegal in strict aliasing. */
-    union {
-	struct ifreq ifr;
-    } ifr;
-# define CLICK_IFR_SIN reinterpret_cast<struct sockaddr_in &>(ifr.ifr.ifr_addr)
-#endif
+    struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
-    strncpy(ifr.ifr.ifr_name, _dev_name.c_str(), sizeof(ifr.ifr.ifr_name));
+    strncpy(ifr.ifr_name, _dev_name.c_str(), sizeof(ifr.ifr_name));
+    struct sockaddr_in ifr_sin;
+    ifr_sin.sin_family = AF_INET;
+#if HAVE_SOCKADDR_IN_SIN_LEN
+    ifr_sin.sin_len = sizeof(struct sockaddr_in);
+#endif
+    ifr_sin.sin_port = 0;
 #if defined(SIOCSIFADDR) && defined(SIOCSIFNETMASK)
     for (int trynum = 0; trynum < 2; trynum++) {
-	CLICK_IFR_SIN.sin_family = AF_INET;
-# if HAVE_SOCKADDR_IN_SIN_LEN
-	CLICK_IFR_SIN.sin_len = sizeof(struct sockaddr_in);
-# endif
-	CLICK_IFR_SIN.sin_port = 0;
 	// Try setting the netmask twice.  On FreeBSD, we need to set the mask
 	// *before* we set the address, or there's nasty behavior where the
 	// tunnel cannot be assigned a different address.  (Or something like
 	// that, I forget now.)  But on Linux, you must set the mask *after*
 	// the address.
-	CLICK_IFR_SIN.sin_addr = mask;
+	ifr_sin.sin_addr = mask;
+	memcpy(&ifr.ifr_addr, &ifr_sin, sizeof(ifr_sin));
 	if (ioctl(s, SIOCSIFNETMASK, &ifr) == 0)
 	    trynum++;
 	else if (trynum == 1) {
 	    errh->error("SIOCSIFNETMASK failed: %s", strerror(errno));
 	    goto out;
 	}
-	CLICK_IFR_SIN.sin_addr = addr;
+	ifr_sin.sin_addr = addr;
+	memcpy(&ifr.ifr_addr, &ifr_sin, sizeof(ifr_sin));
 	if (trynum < 2 && ioctl(s, SIOCSIFADDR, &ifr) != 0) {
 	    errh->error("SIOCSIFADDR failed: %s", strerror(errno));
 	    goto out;
@@ -339,8 +331,8 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
 #endif
 #if defined(SIOCSIFHWADDR)
     if (_macaddr) {
-	ifr.ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
-	memcpy(ifr.ifr.ifr_hwaddr.sa_data, _macaddr.data(), sizeof(_macaddr));
+	ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
+	memcpy(ifr.ifr_hwaddr.sa_data, _macaddr.data(), sizeof(_macaddr));
 	if (ioctl(s, SIOCSIFHWADDR, &ifr) != 0)
 	    errh->warning("could not set interface Ethernet address: %s", strerror(errno));
     }
@@ -354,9 +346,9 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
 	errh->warning("could not set interface Ethernet address: no support for /dev/tun");
 #elif defined(__FreeBSD__)
     if (_macaddr && _tap) {
-	ifr.ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
-	ifr.ifr.ifr_addr.sa_family = AF_LINK;
-	memcpy(ifr.ifr.ifr_addr.sa_data, _macaddr.data(), ETHER_ADDR_LEN);
+	ifr.ifr_addr.sa_len = ETHER_ADDR_LEN;
+	ifr.ifr_addr.sa_family = AF_LINK;
+	memcpy(ifr.ifr_addr.sa_data, _macaddr.data(), ETHER_ADDR_LEN);
 	if (ioctl(s, SIOCSIFLLADDR, &ifr) != 0)
 	    errh->warning("could not set interface Ethernet address: %s", strerror(errno));
     } else if (_macaddr)
@@ -367,7 +359,7 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
 #endif
 #if defined(SIOCSIFMTU)
     if (_mtu_out != DEFAULT_MTU) {
-	ifr.ifr.ifr_mtu = _mtu_out;
+	ifr.ifr_mtu = _mtu_out;
 	if (ioctl(s, SIOCSIFMTU, &ifr) != 0)
 	    errh->warning("could not set interface MTU: %s", strerror(errno));
     }
@@ -378,8 +370,8 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
 	goto out;
     }
     if (_tap)
-	ifr.ifr.ifr_flags = (addr ? ifr.ifr.ifr_flags & ~IFF_NOARP : ifr.ifr.ifr_flags | IFF_NOARP);
-    ifr.ifr.ifr_flags = (addr ? ifr.ifr.ifr_flags | IFF_UP | IFF_PROMISC : ifr.ifr.ifr_flags & ~IFF_UP & ~IFF_PROMISC);
+	ifr.ifr_flags = (addr ? ifr.ifr_flags & ~IFF_NOARP : ifr.ifr_flags | IFF_NOARP);
+    ifr.ifr_flags = (addr ? ifr.ifr_flags | IFF_UP | IFF_PROMISC : ifr.ifr_flags & ~IFF_UP & ~IFF_PROMISC);
     if (ioctl(s, SIOCSIFFLAGS, &ifr) != 0) {
 	errh->error("SIOCSIFFLAGS failed: %s", strerror(errno));
 	goto out;
@@ -390,7 +382,6 @@ KernelTun::updown(IPAddress addr, IPAddress mask, ErrorHandler *errh)
  out:
     close(s);
     return (errh->nerrors() == before ? 0 : -1);
-#undef CLICK_IFR_SIN
 }
 
 int
@@ -502,16 +493,27 @@ KernelTun::cleanup(CleanupStage)
 void
 KernelTun::selected(int fd, int)
 {
+    Timestamp now = Timestamp::now();
     if (fd != _fd)
 	return;
+    ++_selected_calls;
+    unsigned n = _burst;
+    while (n > 0 && one_selected(now))
+	--n;
+}
+
+bool
+KernelTun::one_selected(const Timestamp &now)
+{
     WritablePacket *p = Packet::make(_headroom, 0, _mtu_in, 0);
     if (!p) {
 	click_chatter("out of memory!");
-	return;
+	return false;
     }
 
     int cc = read(_fd, p->data(), _mtu_in);
     if (cc > 0) {
+	++_packets;
 	p->take(_mtu_in - cc);
 	bool ok = false;
 
@@ -553,16 +555,19 @@ KernelTun::selected(int fd, int)
 	}
 
 	if (ok) {
-	    p->timestamp_anno().assign_now();
+	    p->set_timestamp_anno(now);
 	    output(0).push(p);
 	} else
 	    checked_output_push(1, p);
-
+	return true;
     } else {
-	if (!_ignore_q_errs || !_printed_read_err || (errno != ENOBUFS)) {
+	p->kill();
+	if (errno != EAGAIN && errno != EWOULDBLOCK
+	    && (!_ignore_q_errs || !_printed_read_err || errno != ENOBUFS)) {
 	    _printed_read_err = true;
 	    perror("KernelTun read");
 	}
+	return false;
     }
 }
 
@@ -668,19 +673,14 @@ KernelTun::push(int, Packet *p)
 	click_chatter("%s(%s): out of memory", class_name(), _dev_name.c_str());
 }
 
-String
-KernelTun::print_dev_name(Element *e, void *)
-{
-    KernelTun *kt = (KernelTun *) e;
-    return kt->_dev_name;
-}
-
 void
 KernelTun::add_handlers()
 {
     if (input_is_pull(0))
 	add_task_handlers(&_task);
-    add_read_handler("dev_name", print_dev_name, 0);
+    add_data_handlers("dev_name", Handler::OP_READ, &_dev_name);
+    add_data_handlers("selected_calls", Handler::OP_READ, &_selected_calls);
+    add_data_handlers("packets", Handler::OP_READ, &_packets);
 }
 
 CLICK_ENDDECLS

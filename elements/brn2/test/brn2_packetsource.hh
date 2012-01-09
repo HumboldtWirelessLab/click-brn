@@ -4,6 +4,8 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -14,14 +16,9 @@ CLICK_DECLS
  * =d
  */
 
-class BRN2PacketSource : public Element {
+class BRN2PacketSource : public BRNElement {
 
  public:
-
-   int _debug;
-  //
-  //methods
-  //
 
 /* brn2_packetsource.cc**/
 
@@ -30,7 +27,7 @@ class BRN2PacketSource : public Element {
 
   const char *class_name() const  { return "BRN2PacketSource"; }
   const char *processing() const  { return PUSH; }
-  const char *port_count() const  { return "0-1/1"; }
+  const char *port_count() const  { return "0-1/1-2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -60,6 +57,9 @@ class BRN2PacketSource : public Element {
 
   uint32_t _headroom;
 
+  uint32_t _max_packets;
+  uint32_t _send_packets;
+
   Packet *createpacket(int size);
 
   struct packetinfo {
@@ -74,6 +74,9 @@ class BRN2PacketSource : public Element {
   } __attribute__ ((packed));
 
   struct packetinfo pinfo;
+
+  bool _reuse;
+  uint32_t _reuseoffset;
 
 };
 

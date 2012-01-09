@@ -2,6 +2,10 @@
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
+#include <clicknet/ether.h>
+
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+
 #include "brnprotocol.hh"
 
 CLICK_DECLS
@@ -20,8 +24,12 @@ BRNProtocol::add_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint8
   uint16_t size = p->length();
 
   if ( (q = push_brn_header(p)) != NULL )
-    if ( set_brn_header(q, dst_port, src_port, size, ttl, tos) )
+    if ( set_brn_header(q, dst_port, src_port, size, ttl, tos) ) {
+      BRNPacketAnno::set_ttl_anno(q, ttl); //TODO: Good idea to set annos here ??
+      BRNPacketAnno::set_tos_anno(q, tos); //TODO: Good idea to set annos here ?? Maybe add bool to params,wether to do so
+
       return q;
+    }
 
   return NULL;
 }
@@ -78,6 +86,18 @@ BRNProtocol::push_brn_header(Packet *p) {
     return q;
 
   return NULL;
+}
+
+bool
+BRNProtocol::is_brn_etherframe(Packet *p)
+{
+  return ((click_ether *)p->data())->ether_type == htons(ETHERTYPE_BRN);
+}
+
+struct click_brn*
+BRNProtocol::get_brnheader_in_etherframe(Packet *p)
+{
+  return (struct click_brn*)&(p->data()[sizeof(click_ether)]);
 }
 
 CLICK_ENDDECLS

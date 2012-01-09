@@ -18,7 +18,7 @@
 
 #include <click/config.h>
 #include "ipaddrrewriter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <clicknet/tcp.h>
@@ -43,18 +43,18 @@ IPAddrRewriter::IPAddrFlow::apply(WritablePacket *p, bool direction,
 	if (annos & 2)
 	    p->set_anno_u8(annos >> 2, _reply_anno);
     }
-    update_csum(iph->ip_sum, direction, _ip_csum_delta);
+    update_csum(&iph->ip_sum, direction, _ip_csum_delta);
 
     // UDP/TCP header
     if (!IP_FIRSTFRAG(iph))
 	/* do nothing */;
     else if (iph->ip_p == IP_PROTO_TCP && p->transport_length() >= 18) {
 	click_tcp *tcph = p->tcp_header();
-	update_csum(tcph->th_sum, direction, _udp_csum_delta);
+	update_csum(&tcph->th_sum, direction, _udp_csum_delta);
     } else if (iph->ip_p == IP_PROTO_UDP && p->transport_length() >= 8) {
 	click_udp *udph = p->udp_header();
 	if (udph->uh_sum)	// 0 checksum is no checksum
-	    update_csum(udph->uh_sum, direction, _udp_csum_delta);
+	    update_csum(&udph->uh_sum, direction, _udp_csum_delta);
     }
 }
 
@@ -93,10 +93,9 @@ IPAddrRewriter::configure(Vector<String> &conf, ErrorHandler *errh)
     int reply_anno;
     _timeouts[0] = 60 * 120;	// 2 hours
 
-    if (cp_va_kparse_remove_keywords
-	(conf, this, errh,
-	 "REPLY_ANNO", cpkC, &has_reply_anno, cpAnno, 1, &reply_anno,
-	 cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("REPLY_ANNO", has_reply_anno, AnnoArg(1), reply_anno)
+	.consume() < 0)
 	return -1;
 
     _annos = 1 + (has_reply_anno ? 2 + (reply_anno << 2) : 0);
@@ -109,7 +108,7 @@ IPAddrRewriter::get_entry(int, const IPFlowID &xflowid, int input)
     IPFlowID flowid(xflowid.saddr(), 0, IPAddress(), 0);
     IPRewriterEntry *m = _map.get(flowid);
     if (!m) {
-	IPFlowID rflowid(0, 0, xflowid.daddr(), 0);
+	IPFlowID rflowid(IPAddress(), 0, xflowid.daddr(), 0);
 	m = _map.get(rflowid);
     }
     if (!m && (unsigned) input < (unsigned) _input_specs.size()) {
@@ -133,10 +132,8 @@ IPAddrRewriter::add_flow(int, const IPFlowID &flowid,
 	return 0;
 
     IPAddrFlow *flow = new(data) IPAddrFlow
-	(flowid, _input_specs[input].foutput,
-	 rewritten_flowid, _input_specs[input].routput,
-	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts),
-	 this, input);
+	(&_input_specs[input], flowid, rewritten_flowid,
+	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts));
 
     return store_flow(flow, input, _map);
 }
@@ -192,7 +189,7 @@ IPAddrRewriter::dump_mappings_handler(Element *e, void *)
 void
 IPAddrRewriter::add_handlers()
 {
-    add_read_handler("mappings", dump_mappings_handler, (void *)0);
+    add_read_handler("mappings", dump_mappings_handler);
     add_rewriter_handlers(true);
 }
 

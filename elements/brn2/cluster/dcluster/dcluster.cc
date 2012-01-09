@@ -37,10 +37,11 @@
 CLICK_DECLS
 
 DCluster::DCluster()
-  : _my_min_round(1),
-    _my_max_round(1),
+  : _max_no_min_rounds(1),
+    _max_no_max_rounds(1),
     _ac_min_round(0),
     _ac_max_round(0),
+    _cluster_head(NULL),
     _delay(0)
 {
   Clustering::init();
@@ -67,34 +68,38 @@ DCluster::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool direction)
+tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 {
   DCluster *dcl = (DCluster*)element;
+  return dcl->lpSendHandler(buffer, size);
+}
 
-  if ( direction )
-    return dcl->lpSendHandler(buffer, size);
-  else
-    return dcl->lpReceiveHandler(buffer, size);
+static int
+rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+{
+  DCluster *dcl = (DCluster*)element;
+  return dcl->lpReceiveHandler(buffer, size);
 }
 
 int
 DCluster::initialize(ErrorHandler *)
 {
-  md5_byte_t *md5_id = _node_identity->getNodeID();
-  uint32_t id = ((uint8_t*)md5_id)[0];
-  id = id * 256 + ((uint8_t*)md5_id)[1];
-  id = id * 256 + ((uint8_t*)md5_id)[2];
-  id = id * 256 + ((uint8_t*)md5_id)[3];
-
-  _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), id, 0);
-  _cluster_head = &_my_info;
+  init_cluster_node_info();
 
   _max_round = new ClusterNodeInfo[_max_distance];
   _min_round = new ClusterNodeInfo[_max_distance];
 
-  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &handler);
+  _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DCLUSTER, &tx_handler, &rx_handler);
 
   return 0;
+}
+
+void
+DCluster::init_cluster_node_info()
+{
+  BRN_INFO("Init Clusterhead: %u",_node_identity->getNodeID32());
+  _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
+  _cluster_head = &_my_info;
 }
 
 int
@@ -108,7 +113,14 @@ DCluster::lpSendHandler(char *buffer, int size)
   _my_info.storeStruct(&info.me);
   info.me.round=0;
 
-  //store actual max
+  /*
+   * store actual max which depends on the round *
+   * first round is the node itself              *
+   * next it is the max of the round before      *
+   * number of max rounds is the number of hops  *
+   * and so the cluster size
+   */
+
   if ( _ac_max_round == 0 ) {        //in the first round it's me
     _my_info.storeStruct(&info.max);
     info.max.round=0;
@@ -119,8 +131,17 @@ DCluster::lpSendHandler(char *buffer, int size)
 
   BRN_INFO("AC maxround: %d Address: %s",_ac_max_round,EtherAddress(info.max.etheraddr).unparse().c_str());
 
-  _ac_max_round = (_ac_max_round + 1) % _my_max_round;
+  /* switch to next round if available or back to round zero */
+  _ac_max_round = (_ac_max_round + 1) % _max_no_max_rounds;
 
+  /*
+   * if max round is finished ( currently we use a delay of 12 round   *
+   * then start the min round.                                         *
+   * In the first round the min is the max                             *
+   * if max round not finished, store myself and mark entry as invalid *
+   */
+
+  BRN_INFO("Delay: %d", _delay);
   if ( _delay > 12 ) {  //delay TODO: remove
     if ( _ac_min_round == 0 ) {                                                    //round 0
       if ( _max_round[_max_distance - 1]._distance == DCLUSTER_INVALID_ROUND ) {   //use invalid entry if max-round not finished
@@ -138,7 +159,7 @@ DCluster::lpSendHandler(char *buffer, int size)
       info.min.round = _ac_min_round;
     }
 
-    _ac_min_round = (_ac_min_round + 1) % _my_min_round;
+    _ac_min_round = (_ac_min_round + 1) % _max_no_min_rounds;
 
   } else {
     _my_info.storeStruct(&info.min);
@@ -159,14 +180,19 @@ DCluster::lpReceiveHandler(char *buffer, int size)
   len = DClusterProtocol::unpack(&info, buffer, size);
 
   if ( (info.max.hops < _max_distance) &&
-       ( (_max_round[info.max.round]._distance == DCLUSTER_INVALID_ROUND) ||    //is there already a valid entry ?
-        ((_max_round[info.max.round]._distance != DCLUSTER_INVALID_ROUND) &&
-           (( ntohl(info.max.id) > _max_round[info.max.round]._id ) ||         //new id bigger
-            ((ntohl(info.max.id) == _max_round[info.max.round]._id ) &&
+       ( (_max_round[info.max.round]._distance == DCLUSTER_INVALID_ROUND) ||          //there is no valid entry, or
+        ((_max_round[info.max.round]._distance != DCLUSTER_INVALID_ROUND) &&          //entry is valid and
+           (( ntohl(info.max.id) > _max_round[info.max.round]._id ) ||               //new id bigger
+            ((ntohl(info.max.id) == _max_round[info.max.round]._id ) &&              //o equal but lower hop count
             ((uint32_t)(info.max.hops + 1) < _max_round[info.max.round]._distance )))))) {
 
     _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
-    if ( _my_max_round == (info.max.round + 1) ) _my_max_round++;
+
+    /* Increase number of max round if a info with higher max round is received */
+    if ( _max_no_max_rounds == (info.max.round + 1) ) {
+      BRN_WARN("Increase number of rounds");
+      _max_no_max_rounds++;
+    }
   }
 
   if ((( info.min.round < _max_distance ) && ( info.min.round != DCLUSTER_INVALID_ROUND ) ) &&
@@ -174,14 +200,14 @@ DCluster::lpReceiveHandler(char *buffer, int size)
        ( ntohl(info.min.id) < _min_round[info.min.round]._id ) ||
         (( ntohl(info.min.id) == _min_round[info.min.round]._id ) &&
          ((uint32_t)(info.min.hops + 1) < _min_round[info.min.round]._distance )))) {
-    BRN_INFO("Got Min. Round: %d ID: %d",info.min.round, ntohl(info.min.id));
+    BRN_INFO("Got Min. Round: %d ID: %u",info.min.round, ntohl(info.min.id));
     _min_round[info.min.round].setInfo(info.min.etheraddr, ntohl(info.min.id), info.min.hops + 1);
-    if ( _my_min_round == (info.min.round + 1) ) {
-      _my_min_round++;
+    if ( _max_no_min_rounds == (info.min.round + 1) ) {
+      _max_no_min_rounds++;
     }
   }
 
-  if ( _my_min_round == _max_distance ) _cluster_head = selectClusterHead();
+  if ( _max_no_min_rounds == _max_distance ) _cluster_head = selectClusterHead();
 
   return len;
 }
@@ -224,8 +250,6 @@ DCluster::informClusterHead(DCluster::ClusterNodeInfo*) {
 
 
 }
-
-
 
 
 //-----------------------------------------------------------------------------

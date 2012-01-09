@@ -20,7 +20,7 @@
 #include "icmppingrewriter.hh"
 #include <clicknet/ip.h>
 #include <clicknet/icmp.h>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/error.hh>
 CLICK_DECLS
@@ -41,7 +41,7 @@ ICMPPingRewriter::ICMPPingFlow::apply(WritablePacket *p, bool direction, unsigne
 	p->set_dst_ip_anno(revflow.saddr());
     if (direction && (annos & 2))
 	p->set_anno_u8(annos >> 2, _reply_anno);
-    update_csum(iph->ip_sum, direction, _ip_csum_delta);
+    update_csum(&iph->ip_sum, direction, _ip_csum_delta);
 
     // end if not first fragment
     if (!IP_FIRSTFRAG(iph))
@@ -50,7 +50,7 @@ ICMPPingRewriter::ICMPPingFlow::apply(WritablePacket *p, bool direction, unsigne
     // ICMP header
     click_icmp_echo *icmph = reinterpret_cast<click_icmp_echo *>(p->transport_header());
     icmph->icmp_identifier = (direction ? revflow.sport() : revflow.dport());
-    update_csum(icmph->icmp_cksum, direction, _udp_csum_delta);
+    update_csum(&icmph->icmp_cksum, direction, _udp_csum_delta);
     click_update_zero_in_cksum(&icmph->icmp_cksum, p->transport_header(), p->transport_length());
 }
 
@@ -96,11 +96,10 @@ ICMPPingRewriter::configure(Vector<String> &conf, ErrorHandler *errh)
     bool dst_anno = true, has_reply_anno = false;
     int reply_anno;
 
-    if (cp_va_kparse_remove_keywords
-	(conf, this, errh,
-	 "DST_ANNO", 0, cpBool, &dst_anno,
-	 "REPLY_ANNO", cpkC, &has_reply_anno, cpAnno, 1, &reply_anno,
-	 cpEnd) < 0)
+    if (Args(this, errh).bind(conf)
+	.read("DST_ANNO", dst_anno)
+	.read("REPLY_ANNO", AnnoArg(1), reply_anno).read_status(has_reply_anno)
+	.consume() < 0)
 	return -1;
 
     _annos = (dst_anno ? 1 : 0) + (has_reply_anno ? 2 + (reply_anno << 2) : 0);
@@ -138,10 +137,8 @@ ICMPPingRewriter::add_flow(int, const IPFlowID &flowid,
 	return 0;
 
     ICMPPingFlow *flow = new(data) ICMPPingFlow
-	(flowid, _input_specs[input].foutput,
-	 rewritten_flowid, _input_specs[input].routput,
-	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts),
-	 this, input);
+	(&_input_specs[input], flowid, rewritten_flowid,
+	 !!_timeouts[1], click_jiffies() + relevant_timeout(_timeouts));
 
     return store_flow(flow, input, _map);
 }
@@ -215,7 +212,7 @@ ICMPPingRewriter::dump_mappings_handler(Element *e, void *)
 void
 ICMPPingRewriter::add_handlers()
 {
-    add_read_handler("mappings", dump_mappings_handler, (void *)0);
+    add_read_handler("mappings", dump_mappings_handler, 0);
     add_rewriter_handlers(true);
 }
 

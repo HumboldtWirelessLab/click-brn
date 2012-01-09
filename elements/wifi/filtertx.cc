@@ -1,6 +1,6 @@
 #include <click/config.h>
 #include <click/error.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/standard/scheduleinfo.hh>
 #include <clicknet/wifi.h>
 #include <click/straccum.hh>
@@ -57,7 +57,7 @@ FilterTX_read_param(Element *e, void *thunk)
 void
 FilterTX::add_handlers()
 {
-  add_read_handler("drops", FilterTX_read_param, (void *) H_DROPS);
+  add_read_handler("drops", FilterTX_read_param, H_DROPS);
 }
 
 CLICK_ENDDECLS

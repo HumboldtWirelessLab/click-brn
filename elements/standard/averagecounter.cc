@@ -17,7 +17,7 @@
 
 #include <click/config.h>
 #include "averagecounter.hh"
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 #include <click/sync.hh>
 #include <click/glue.hh>
@@ -45,9 +45,7 @@ int
 AverageCounter::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   _ignore = 0;
-  if (cp_va_kparse(conf, this, errh,
-		   "IGNORE", cpkP, cpUnsigned, &_ignore,
-		   cpEnd) < 0)
+  if (Args(conf, this, errh).read_p("IGNORE", _ignore).complete() < 0)
     return -1;
   _ignore *= CLICK_HZ;
   return 0;
@@ -64,7 +62,7 @@ Packet *
 AverageCounter::simple_action(Packet *p)
 {
     uint32_t jpart = click_jiffies();
-    _first.compare_and_swap(0, jpart);
+    _first.compare_swap(0, jpart);
     if (jpart - _first >= _ignore) {
 	_count++;
 	_byte_count += p->length();
@@ -113,9 +111,9 @@ void
 AverageCounter::add_handlers()
 {
   add_read_handler("count", averagecounter_read_count_handler, 0);
-  add_read_handler("byte_count", averagecounter_read_count_handler, (void *) 1);
+  add_read_handler("byte_count", averagecounter_read_count_handler, 1);
   add_read_handler("rate", averagecounter_read_rate_handler, 0);
-  add_read_handler("byte_rate", averagecounter_read_rate_handler, (void *) 1);
+  add_read_handler("byte_rate", averagecounter_read_rate_handler, 1);
   add_write_handler("reset", averagecounter_reset_write_handler, 0, Handler::BUTTON);
 }
 

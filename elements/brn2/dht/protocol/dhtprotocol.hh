@@ -48,13 +48,14 @@ struct dht_packet_header {
   uint8_t  minor_type;
   uint8_t  src[6];           //since the packet takes several hops in the overlay, this is used to take a direct path to src of the request
   uint16_t payload_len;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define DHT_PACKET_HEADER_SIZE sizeof(dht_packet_header)
 
 class DHTProtocol {
   public:
     static WritablePacket *new_dht_packet(uint8_t major_type, uint8_t minor_type, uint16_t payload_len);
+    static WritablePacket *new_dht_packet(uint8_t major_type, uint8_t minor_type, uint16_t payload_len, Packet *p_recycle);
     static struct dht_packet_header *get_header(Packet *p);
 
     static WritablePacket *push_brn_ether_header(WritablePacket *p, EtherAddress *src, EtherAddress *dst, uint8_t major_type);
@@ -66,7 +67,7 @@ class DHTProtocol {
     static uint16_t get_payload_len(Packet *p);
     static uint8_t *get_payload(Packet *p);
 
-    static EtherAddress *get_src(Packet *p);
+    //static EtherAddress *get_src(Packet *p); //TODO:remove this
     static uint8_t *get_src_data(Packet *p);
     static int set_src(Packet *p, uint8_t *ea);
 };

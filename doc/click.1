@@ -30,7 +30,7 @@
 .de RM
 .RB "\\$1" "\\$2" "(\\$3)\\$4"
 ..
-.TH CLICK 1 "26/Mar/2003" "Version \*V"
+.TH CLICK 1 "11/Jul/2011" "Version \*V"
 .SH NAME
 click \- Click user-level driver
 '
@@ -130,6 +130,27 @@ users, and elements within the router, to reconfigure the router
 dynamically. See
 .M click.o 8 's
 "/click/hotconfig" section for more information on hot-swapping.
+'
+.Sp
+.TP
+.BI \-j " N"
+.TP
+.BI \-\-threads " N"
+Run with
+.I N
+threads.  Only available if Click was configured with the
+\-\-enable\-user\-multithread option.
+'
+.Sp
+.TP
+.BI \-\-simtime
+Run in simulation time rather than real time, turning Click into an
+event-based simulator. In simulation time, the driver starts running at
+time 1000000000. Every request for the current time advances the simulated
+clock by 1 subsecond (either 1 microsecond or 1 nanosecond, depending on
+Click's timestamp precision). The simulated clock jumps ahead to the next
+scheduled Timer event whenever a real-time Click process would block. This
+mode is particularly useful for tests.
 '
 .Sp
 .TP
@@ -234,6 +255,11 @@ Print usage information and exit.
 Print the version number and some quickie warranty information and exit.
 '
 .PD
+'
+.SH "ENVIRONMENT"
+The CLICK_BACKTRACE environment variable controls Click's printing of stack
+backtraces.  Set CLICK_BACKTRACE to 1 and Click will print a stack
+backtrace immediately before crashing.
 '
 .SH "BUGS"
 If you get an unaligned access error, try running your configuration

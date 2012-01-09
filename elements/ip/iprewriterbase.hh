@@ -8,10 +8,12 @@ CLICK_DECLS
 class IPMapper;
 class IPRewriterPattern;
 
-struct IPRewriterInput {
+class IPRewriterInput { public:
     enum {
 	i_drop, i_nochange, i_keep, i_pattern, i_mapper
     };
+    IPRewriterBase *owner;
+    int owner_input;
     int kind;
     int foutput;
     IPRewriterBase *reply_element;
@@ -102,6 +104,9 @@ class IPRewriterBase : public Element { public:
     void add_rewriter_handlers(bool writable_patterns);
     void cleanup(CleanupStage);
 
+    const IPRewriterHeap *flow_heap() const {
+	return _heap;
+    }
     IPRewriterBase *reply_element(int input) const {
 	return _input_specs[input].reply_element;
     }
@@ -153,7 +158,7 @@ class IPRewriterBase : public Element { public:
     static void gc_timer_hook(Timer *t, void *user_data);
 
     int parse_input_spec(const String &str, IPRewriterInput &is,
-			 String name, ErrorHandler *errh);
+			 int input_number, ErrorHandler *errh);
 
     enum {			// < 0 because individual patterns are >= 0
 	h_nmappings = -1, h_mapping_failures = -2, h_patterns = -3,
@@ -182,7 +187,8 @@ class IPMapper { public:
     IPMapper()				{ }
     virtual ~IPMapper()			{ }
 
-    void notify_rewriter(IPRewriterBase*, ErrorHandler*);
+    virtual void notify_rewriter(IPRewriterBase *user, IPRewriterInput *input,
+				 ErrorHandler *errh);
     virtual int rewrite_flowid(IPRewriterInput *input,
 			       const IPFlowID &flowid,
 			       IPFlowID &rewritten_flowid,
@@ -230,7 +236,7 @@ IPRewriterBase::unmap_flow(IPRewriterFlow *flow, Map &map,
 {
     //click_chatter("kill %s", hashkey().s().c_str());
     if (!reply_map_ptr)
-	reply_map_ptr = &_input_specs[flow->owner_input()].reply_element->_map;
+	reply_map_ptr = &flow->owner()->reply_element->_map;
     Map::iterator it = map.find(flow->entry(0).hashkey());
     if (it.get() == &flow->entry(0))
 	map.erase(it);

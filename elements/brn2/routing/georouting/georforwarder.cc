@@ -77,11 +77,18 @@ GeorForwarder::push( int port, Packet *packet )
     GPSPosition dpos = GPSPosition(&(georh->dst_pos));
     GPSPosition spos = GPSPosition(&(georh->src_pos));
 
+    BRN_DEBUG("Forward packet from %s to %s",spos.unparse_coord().c_str(),dpos.unparse_coord().c_str());
+
     _rt->updateEntry(&sea,&(georh->src_pos));
     _rt->updateEntry(&dea,&(georh->dst_pos));  //TODO: check for positionrouting only
 
     BRN_INFO("Forwarder (%s): %s to %s",_nodeid->getMasterAddress()->unparse().c_str(),
              sea.unparse().c_str(),dea.unparse().c_str());
+
+    uint8_t ttl = BRNPacketAnno::ttl_anno(packet) - 1;
+    BRNPacketAnno::set_ttl_anno(packet, ttl);
+
+    BRN_INFO("Set ttl %d",(int)ttl);
 
     if ( ! _nodeid->isIdentical(&dea) ) {
       EtherAddress nextHop;
@@ -89,15 +96,24 @@ GeorForwarder::push( int port, Packet *packet )
 
       nhpos = _rt->getClosestNeighbour(&dpos, &nextHop);
 
-      WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING);
-      BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, ETHERTYPE_BRN);
+      WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING, ttl);
+      BRNPacketAnno::set_ether_anno(out_packet, *_nodeid->getMasterAddress(), nextHop, ETHERTYPE_BRN);
 
       output(0).push(out_packet);
     } else {
       GeorProtocol::stripRoutingHeader(packet);
+
+      if ( packet->push(12) ) {
+        if ( BRNProtocol::is_brn_etherframe(packet) ) { //set ttl if payload is brn_packet
+          struct click_brn *brnh = BRNProtocol::get_brnheader_in_etherframe(packet);
+          brnh->ttl = ttl;
+        }
+        packet->pull(12);
+      }
       uint16_t *ethertype = (uint16_t*)(packet->data());
       BRNPacketAnno::set_ether_anno(packet, sea, dea, ntohs(*ethertype));
       packet->pull(sizeof(uint16_t));
+
       output(1).push(packet);
     }
   } else {

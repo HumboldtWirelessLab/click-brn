@@ -57,9 +57,9 @@ void AODVKnownClassifier::push (int port, Packet * p){
 	// increment hopcount according to RFC 6.5
 	++rreq->hopcount;
 	
-	const click_ip * ipheader = packet->ip_header();
+	//const click_ip * ipheader = packet->ip_header();
 	
-	uint32_t newlifetime = (2 * AODV_NET_TRAVERSAL_TIME) - (2 * rreq->hopcount * AODV_NODE_TRAVERSAL_TIME);
+	//uint32_t newlifetime = (2 * AODV_NET_TRAVERSAL_TIME) - (2 * rreq->hopcount * AODV_NODE_TRAVERSAL_TIME);
 /*Robat	
 	neighbour_table->updateRoutetableEntry(rreq->originator, ntohl(rreq->originatorseqnr),rreq->hopcount, ipheader->ip_src, newlifetime);
 	

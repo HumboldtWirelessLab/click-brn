@@ -21,13 +21,10 @@
 #include <clicknet/ip.h>
 #include <clicknet/icmp.h>
 #include <click/glue.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/bitvector.hh>
 #include <click/straccum.hh>
-#ifdef CLICK_LINUXMODULE
-# include <net/checksum.h>
-#endif
 CLICK_DECLS
 
 const char *CheckICMPHeader::reason_texts[NREASONS] = {
@@ -48,14 +45,13 @@ CheckICMPHeader::~CheckICMPHeader()
 int
 CheckICMPHeader::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  bool verbose = false;
-  bool details = false;
+    bool verbose = false, details = false;
 
-  if (cp_va_kparse(conf, this, errh,
-		   "VERBOSE", 0, cpBool, &verbose,
-		   "DETAILS", 0, cpBool, &details,
-		   cpEnd) < 0)
-    return -1;
+    if (Args(conf, this, errh)
+	.read("VERBOSE", verbose)
+	.read("DETAILS", details)
+	.complete() < 0)
+	return -1;
 
   _verbose = verbose;
   if (details)
@@ -169,9 +165,9 @@ CheckICMPHeader::read_handler(Element *e, void *thunk)
 void
 CheckICMPHeader::add_handlers()
 {
-  add_read_handler("drops", read_handler, (void *)0);
+  add_read_handler("drops", read_handler, 0);
   if (_reason_drops)
-    add_read_handler("drop_details", read_handler, (void *)1);
+    add_read_handler("drop_details", read_handler, 1);
 }
 
 CLICK_ENDDECLS

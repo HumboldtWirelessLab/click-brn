@@ -23,6 +23,7 @@ include
 include/click
 include/click/algorithm.hh
 include/click/archive.hh
+include/click/args.hh
 include/click/atomic.hh
 include/click/bitvector.hh
 include/click/bighashmap.cc
@@ -41,6 +42,7 @@ include/click/error.hh
 include/click/etheraddress.hh
 include/click/ewma.hh
 include/click/fixconfig.h
+include/click/fromfile.hh
 include/click/gaprate.hh
 include/click/glue.hh
 include/click/handler.hh
@@ -51,6 +53,7 @@ include/click/hashcontainer.hh
 include/click/hashmap.cc
 include/click/hashmap.hh
 include/click/hashtable.hh
+include/click/heap.hh
 include/click/integers.hh
 include/click/ipaddress.hh
 include/click/ip6address.hh
@@ -73,13 +76,16 @@ include/click/perfctr-i586.hh
 include/click/router.hh
 include/click/routerthread.hh
 include/click/routervisitor.hh
+include/click/selectset.hh
 include/click/skbmgr.hh
 include/click/straccum.hh
 include/click/string.hh
 include/click/sync.hh
 include/click/task.hh
 include/click/timer.hh
+include/click/timerset.hh
 include/click/timestamp.hh
+include/click/type_traits.hh
 include/click/userutils.hh
 include/click/variableenv.hh
 include/click/vector.cc
@@ -111,6 +117,7 @@ include/clicknet/wifi.h
 lib:libsrc
 etc/libclick/lc-libsrc-Makefile.in:libsrc/Makefile.in
 lib/archive.cc:libsrc/archive.cc
+lib/args.cc:libsrc/args.cc
 lib/atomic.cc:libsrc/atomic.cc
 lib/bighashmap_arena.cc:libsrc/bighashmap_arena.cc
 lib/bitvector.cc:libsrc/bitvector.cc
@@ -123,6 +130,7 @@ lib/elemfilter.cc:libsrc/elemfilter.cc
 lib/error.cc:libsrc/error.cc
 lib/etheraddress.cc:libsrc/etheraddress.cc
 lib/exportstub.cc:libsrc/exportstub.cc
+lib/fromfile.cc:libsrc/fromfile.cc
 lib/gaprate.cc:libsrc/gaprate.cc
 lib/glue.cc:libsrc/glue.cc
 lib/handlercall.cc:libsrc/handlercall.cc
@@ -144,12 +152,14 @@ lib/packet.cc:libsrc/packet.cc
 lib/router.cc:libsrc/router.cc
 lib/routerthread.cc:libsrc/routerthread.cc
 lib/routervisitor.cc:libsrc/routervisitor.cc
+lib/selectset.cc:libsrc/selectset.cc
 lib/straccum.cc:libsrc/straccum.cc
 lib/strerror.c:libsrc/strerror.c
 lib/string.cc:libsrc/string.cc
 lib/task.cc:libsrc/task.cc
 lib/templatei.cc:libsrc/templatei.cc
 lib/timer.cc:libsrc/timer.cc
+lib/timerset.cc:libsrc/timerset.cc
 lib/timestamp.cc:libsrc/timestamp.cc
 lib/userutils.cc:libsrc/userutils.cc
 lib/variableenv.cc:libsrc/variableenv.cc

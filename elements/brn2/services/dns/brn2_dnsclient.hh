@@ -26,6 +26,8 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
+#include "elements/brn2/brnelement.hh"
+
 CLICK_DECLS
 
 /*
@@ -40,11 +42,9 @@ CLICK_DECLS
 #define DHCP_CLIENT_INFO
 
 
-class BRN2DNSClient : public Element {
+class BRN2DNSClient : public BRNElement {
 
  public:
-
-   int _debug;
 
    class DNSClientInfo {
 
@@ -74,14 +74,21 @@ class BRN2DNSClient : public Element {
   const char *class_name() const  { return "BRN2DNSClient"; }
   const char *processing() const  { return PUSH; }
   const char *port_count() const  { return "1/1"; }
+
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
+
   void push( int port, Packet *packet );
+
   void run_timer(Timer*);
+
   int initialize(ErrorHandler *);
   virtual void cleanup(CleanupStage stage);
+
   void add_handlers();
   void init_state();
+
+  String print_stats();
 
  private:
 
@@ -96,9 +103,17 @@ public:
   int _start_time;
   String _domain;
   Timer _timer;
+  IPAddress _ip;
 
   uint16_t transid;
   bool _active;
+
+  /*stats*/
+  bool _running_request;
+  Timestamp _last_request;
+  int _no_requests;
+  int _no_replies;
+  int _sum_request_time;
 };
 
 CLICK_ENDDECLS

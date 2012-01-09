@@ -22,9 +22,9 @@ OLSRTopologyInfoBase::~OLSRTopologyInfoBase()
 int
 OLSRTopologyInfoBase::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  if ( cp_va_parse( conf, this, errh,
-		    cpElement, "Routing Table Element", &_routingTable, 
-		    0) < 0 )
+  if ( cp_va_kparse( conf, this, errh,
+       "Routing Table Element", cpkP, cpElement, &_routingTable,
+		    cpEnd) < 0 )
     return -1;
   return 0;
 }
@@ -142,14 +142,14 @@ OLSRTopologyInfoBase::run_timer(Timer *)
 {
   struct timeval now, next_timeout;
   bool topology_tuple_removed = false;
-  click_gettimeofday(&now);
-  next_timeout = make_timeval(0, 0);
+  now = Timestamp::now().timeval();
+  next_timeout = Timestamp(0, 0).timeval();
 
   //find expired topology tuple and delete them
   if (! _topologySet->empty()){
     for (TopologySet::iterator iter = _topologySet->begin(); iter != _topologySet->end(); iter++){
       topology_data *tuple = (topology_data *) iter.value();
-      if (tuple->T_time <= now){
+      if (Timestamp(tuple->T_time) <= Timestamp(now)){
 	remove_tuple(tuple->T_dest_addr, tuple->T_last_addr);
 	//click_chatter("Topology tuple expired");
 	topology_tuple_removed = true;
@@ -163,7 +163,7 @@ OLSRTopologyInfoBase::run_timer(Timer *)
       topology_data *tuple = (topology_data *) iter.value();
       if (next_timeout.tv_sec == 0 && next_timeout.tv_usec == 0)
 	next_timeout = tuple->T_time;
-      if ( tuple->T_time < next_timeout )
+      if ( Timestamp(tuple->T_time) < Timestamp(next_timeout) )
 	next_timeout = tuple->T_time;
     }
   }

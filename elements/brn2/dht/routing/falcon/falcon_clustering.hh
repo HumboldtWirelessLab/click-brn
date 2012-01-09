@@ -3,7 +3,6 @@
 #include <click/element.hh>
 
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/md5.h"
 #include "elements/brn2/cluster/clustering.hh"
 
 #include "falcon_routingtable.hh"
