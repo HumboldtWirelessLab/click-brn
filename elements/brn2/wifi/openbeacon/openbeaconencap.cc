@@ -52,7 +52,7 @@ OpenBeaconEncap::simple_action(Packet *p)
 	e_shost[i] = p->ether_header()->ether_shost[i];
   }
   
-  hlen = p->length()-12;
+  hlen = p->length()+(sizeof(Click2OBD_header)-12);
   q = p->push( sizeof(Click2OBD_header)-12  );  
 
   if ( !q ) {
@@ -63,14 +63,15 @@ OpenBeaconEncap::simple_action(Packet *p)
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
 
-  crh->length	= hlen;
+  crh->length	= hlen-sizeof(Click2OBD_header);
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
+
   if ( crh->rate == 0 ) {
-    crh->rate = 0;
+	crh->rate = 0;
   } else {
-    crh->rate = (ceh->rate/2);
+	crh->rate = (ceh->rate/2);
   }
   
   for(i=1; i>=0; i--) {
@@ -81,22 +82,6 @@ OpenBeaconEncap::simple_action(Packet *p)
 	  crh->openbeacon_dmac[ 6 - i - 1 ] =  opbecon_filter[ sizeof( crh->openbeacon_dmac ) - i + 1];
   }  
   
-  // check the packet data
- /* HW_rxtx_Test *  hwt = (HW_rxtx_Test*) (q->data()+ sizeof(Click2OBD_header) - sizeof( crh->openbeacon_smac ) );
-  
-  if(hwt->prot_type[0]==0x06 && hwt->prot_type[1]==0x06) {  // is a test packet
-	if(hwt->type==3) { // send only one packet from click over hw_link to click
-		crh->status =  crh->status | STATUS_full_test;
-	}  	  
-	if(hwt->type==2) { // send only over usb-link
-		crh->status =  crh->status | STATUS_NO_TX;
-	}  
-	if(hwt->type==1) { // send count packets over hw-link
-		crh->status =  crh->status | STATUS_hw_rxtx_test;
-		crh->count = hwt->count;
-	}
-  }
-    */
   return q;
 }
 
