@@ -60,6 +60,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
 
+  crh->length	= q->length();
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
@@ -71,6 +72,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   }
   
   // check the packet data
+  /*
   HW_rxtx_Test *  hwt = (HW_rxtx_Test*) (q->data()+ sizeof(Click2OBD_header) - sizeof( crh->openbeacon_smac ) );
   
   if(hwt->prot_type[0]==0x06 && hwt->prot_type[1]==0x06) {  // is a test packet
@@ -83,9 +85,9 @@ OpenBeaconEncap::simple_action(Packet *p)
 	if(hwt->type==1) { // send count packets over hw-link
 		crh->status =  crh->status | STATUS_hw_rxtx_test;
 		crh->count = hwt->count;
-	}                                     
-
+	}
   }
+  */
     
   return q;
 }
