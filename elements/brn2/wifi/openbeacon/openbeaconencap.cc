@@ -62,7 +62,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
-
+/*
 <<<<<<< HEAD
   crh->length	= hlen-sizeof(Click2OBD_header);
 =======
@@ -106,7 +106,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   }
   */
     
->>>>>>> 70b5ce1f75a596ee7104bfc482fbd1969e8b3015
+//>>>>>>> 70b5ce1f75a596ee7104bfc482fbd1969e8b3015
   return q;
 }
 
