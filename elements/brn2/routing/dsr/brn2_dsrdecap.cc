@@ -29,6 +29,8 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
@@ -37,8 +39,6 @@
 CLICK_DECLS
 
 BRN2DSRDecap::BRN2DSRDecap()
-  : _me(),
-    _link_table()
 {
   BRNElement::init();
 }
@@ -51,16 +51,9 @@ int
 BRN2DSRDecap::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-      "LINKTABLE", cpkP+cpkM, cpElement,  &_link_table,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
-
-  if (!_me || !_me->cast("BRN2NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
-
-  if (!_link_table || !_link_table->cast("Brn2LinkTable"))
-    return errh->error("BRNLinkTable not specified");
 
   return 0;
 }
@@ -76,16 +69,16 @@ BRN2DSRDecap::initialize(ErrorHandler *)
  * so far accumulated.  (we then take this route and add it to the
  * link cache)
  */
-void
-BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2RouteQuerierRoute &route)
+uint16_t
+BRN2DSRDecap::extract_request_route(const Packet *p_in, BRN2RouteQuerierRoute &route,
+                                    EtherAddress *last_hop, uint16_t last_hop_metric )
 {
+  uint16_t route_metric = 0;
+
   BRN_DEBUG(" * extract_request_route from dsr packet.");
 
-  BRN2Device *dev = _me->getDeviceByNumber(BRNPacketAnno::devicenumber_anno((Packet *)p_in));
-  String device = dev->getDeviceName();
   // address of the node originating the rreq
-  /*const*/ click_brn_dsr *dsr_rreq =
-      (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
+  click_brn_dsr *dsr_rreq = (click_brn_dsr *)(p_in->data() + sizeof(click_brn));
   EtherAddress src_addr(dsr_rreq->dsr_src.data);
   EtherAddress dst_addr(dsr_rreq->dsr_dst.data);
 
@@ -93,8 +86,8 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
   IPAddress src_ip_addr(dsr_rreq->dsr_ip_src);
   IPAddress dst_ip_addr(dsr_rreq->dsr_ip_dst);
 
-  BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)",
-        src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(), dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
+  BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)", src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(),
+                                                dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   assert(dsr_rreq->dsr_type == BRN_DSR_RREQ);
 
@@ -108,32 +101,21 @@ BRN2DSRDecap::extract_request_route(const Packet *p_in, int *ref_metric, BRN2Rou
   /*
    * TODO: we have following problem: We need to obtain the metric between the first two ...
    */
-  route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, 100));
+  route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, BRN_LT_MEMORY_MEDIUM_METRIC));
 
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr_rreq);
-  for (int i=0; i<num_addr; i++) {
+  for (int i = 0; i < num_addr; i++) {
     click_dsr_hop hop = dsr_hops[i]; //dsr_rreq->addr[i];  //RobAt:DSR
     BRN_DEBUG(" * extract route %s with m=%d", EtherAddress(hop.hw.data).unparse().c_str(), ntohs(hop.metric));
     route.push_back(BRN2RouteQuerierHop(hop.hw, ntohs(hop.metric)));
+    route_metric += ntohs(hop.metric);
   }
 
-  // put the previous node into route list
-  const click_ether *ether = (click_ether *)p_in->ether_header();
-  assert(ether);
-  // ethernet address of the last hop
-  EtherAddress last_node_addr(ether->ether_shost);
+  route.push_back(BRN2RouteQuerierHop(*last_hop, last_hop_metric));
 
-  uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(p_in);
-  BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
-  const EtherAddress *my_rec_addr = indev->getEtherAddress(); // ethernet addr of the interface the packet is coming from
+  route_metric += last_hop_metric;
 
-  int metric = _link_table->get_link_metric(last_node_addr, *my_rec_addr);
-  *ref_metric = metric;
-
-  BRN_DEBUG(_link_table->print_links().c_str());
-  BRN_DEBUG(" * my (%s) metric for last hop (%s) is) %d", my_rec_addr->unparse().c_str(), last_node_addr.unparse().c_str(), metric);
-
-  route.push_back(BRN2RouteQuerierHop(last_node_addr, metric));
+  return route_metric;
 }
 
 /*
@@ -159,8 +141,8 @@ BRN2DSRDecap::extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route)
   IPAddress src_ip_addr(dsr->dsr_ip_src);
   IPAddress dst_ip_addr(dsr->dsr_ip_dst);
 
-  BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)",
-        src_ether.unparse().c_str(), src_ip_addr.unparse().c_str(), dest_ether.unparse().c_str(), dst_ip_addr.unparse().c_str());
+  BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s)", src_ether.unparse().c_str(), src_ip_addr.unparse().c_str(),
+                                                dest_ether.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   assert(dsr->dsr_type == BRN_DSR_RREP);
 
@@ -175,7 +157,6 @@ BRN2DSRDecap::extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route)
   click_dsr_hop *dsr_hops = DSRProtocol::get_hops(dsr);
 
   for(int i = 0; i < hop_count; i++) { // collect all hops
-//    route.push_back(BRN2RouteQuerierHop(dsr->addr[i].hw, ntohs(dsr->addr[i].metric)));
     route.push_back(BRN2RouteQuerierHop(dsr_hops[i].hw, ntohs(dsr_hops[i].metric)));
   }
 
@@ -210,7 +191,8 @@ BRN2DSRDecap::extract_source_route(const Packet *p_in, BRN2RouteQuerierRoute &ro
   IPAddress dst_ip_addr(dsr->dsr_ip_dst);
 
   BRN_DEBUG(" ** IP-Clients %s(%s) --> %s(%s).",
-        src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(), dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
+        src_addr.unparse().c_str(), src_ip_addr.unparse().c_str(),
+        dst_addr.unparse().c_str(), dst_ip_addr.unparse().c_str());
 
   // put the originator of this rreq into dsr route
   route.push_back(BRN2RouteQuerierHop(src_addr, src_ip_addr, 0)); //TODO Metric not used
