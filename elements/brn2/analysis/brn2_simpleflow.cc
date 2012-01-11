@@ -109,6 +109,7 @@ BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
     if ( ! is_active(dst)  ) {
       BRN_DEBUG("flow actived");
       txFlow->_active = active;
+      txFlow->_start_time = Timestamp::now();
       schedule_next(dst);
     }
   } else {
@@ -124,7 +125,17 @@ bool
 BRN2SimpleFlow::is_active(EtherAddress *dst)
 {
   Flow *txFlow = _tx_flowMap.findp(*dst);
-  if ( txFlow ) return txFlow->_active;
+  if ( txFlow ) {
+    Timestamp now = Timestamp::now();
+    if ( txFlow->_active ) {
+      if ( ((now - txFlow->_start_time).msecval() <= txFlow->_duration) ||
+            (txFlow->_duration == 0)/*endless*/ ) {
+        return true;
+      } else {
+        txFlow->_active = false;
+      }
+    }
+  }
 
   return false;
 }

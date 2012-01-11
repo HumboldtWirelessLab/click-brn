@@ -72,6 +72,8 @@ class BRN2SimpleFlow : public BRNElement
 
       uint32_t _cum_sum_rt_time;
 
+      Timestamp _start_time;
+
       Flow() {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
