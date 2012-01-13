@@ -22,13 +22,14 @@ PacketLossInformation::~PacketLossInformation()
 int PacketLossInformation::initialize(ErrorHandler *)
 {
 	PacketLossInformation::test();
-
+	return 0;
 }
 
 
 int PacketLossInformation::configure(Vector<String> &, ErrorHandler *)
 {
 
+	return 0;
 }
 
 

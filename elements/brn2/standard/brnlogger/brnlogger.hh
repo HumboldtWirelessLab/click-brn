@@ -59,28 +59,33 @@ CLICK_DECLS
 /**
  * Error occured which leads to an abort or an undefined state. 
  */
+#define BRN_DEBUG_LEVEL_FATAL (_debug >= BrnLogger::FATAL)
 #define BRN_FATAL   if (_debug >= BrnLogger::FATAL) BrnLogger(__FILE__,__LINE__,this).fatal
 
 /**
  * An error occured, but we are able to recover from it. 
  */
+#define BRN_DEBUG_LEVEL_ERROR (_debug >= BrnLogger::ERROR)
 #define BRN_ERROR   if (_debug >= BrnLogger::ERROR) BrnLogger(__FILE__,__LINE__,this).error
 
 /**
  * Print out a warn message. Is the default log level.
  */
+#define BRN_DEBUG_LEVEL_WARN (_debug >= BrnLogger::WARN)
 #define BRN_WARN    if (_debug >= BrnLogger::WARN) BrnLogger(__FILE__,__LINE__,this).warn
 
 /**
  * Print out an info message.
  * Should be coarse information which helps to understand what happens currently.
  */
+#define BRN_DEBUG_LEVEL_INFO (_debug >= BrnLogger::INFO)
 #define BRN_INFO    if (_debug >= BrnLogger::INFO) BrnLogger(__FILE__,__LINE__,this).info
 
 /**
  * Print out a debug message.
  * Should be detailed information like function enter/leave etc.
  */
+#define BRN_DEBUG_LEVEL_DEBUG (_debug >= BrnLogger::DEBUG)
 #define BRN_DEBUG   if (_debug >= BrnLogger::DEBUG) BrnLogger(__FILE__,__LINE__,this).debug
 
 #define BRN_NODE_NAME BrnLogger(__FILE__,__LINE__,this).get_name()

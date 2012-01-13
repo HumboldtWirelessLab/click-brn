@@ -8,14 +8,18 @@
 /*
 	Comunication Protocol Header for comunication between Openbeacon Deamon and Openbeacon HW.
 */
-#define UNKNOWN_DATA 		0
-#define PACKET_DATA 		1
-#define CONFIG_DATA 		2
-#define DEBUG_PRINT 		3
-#define MONITOR_PRINT 		4
-#define MONITOR_INPUT 		5
-#define MONITOR_HEX_PRINT   6
-#define DEBUG_HEX_PRINT	7
+#define UNKNOWN_DATA1	1 + ENCODING_PARAMETER
+#define PACKET_DATA 		2 + ENCODING_PARAMETER
+#define CONFIG_DATA 		3 + ENCODING_PARAMETER
+#define DEBUG_PRINT 		4 + ENCODING_PARAMETER
+#define MONITOR_PRINT 		5 + ENCODING_PARAMETER
+#define MONITOR_INPUT 		6 + ENCODING_PARAMETER
+#define MONITOR_HEX_PRINT   7 + ENCODING_PARAMETER
+#define DEBUG_HEX_PRINT	8 + ENCODING_PARAMETER
+#define SPEZIAL_PRINT		9 + ENCODING_PARAMETER
+#define TEST_DATA			10 + ENCODING_PARAMETER
+#define TEST_DATA_ECHO	11 + ENCODING_PARAMETER
+#define UNKNOWN_DATA2	12 + ENCODING_PARAMETER
 
 #ifndef portCHAR
 	#define portCHAR	char
@@ -44,7 +48,8 @@ typedef struct {
 #define STATUS_hw_rxtx_test		0x10				// set 1, if hw must send [count ] packets
 #define STATUS_full_test			0x20				// set 1, if packet send from HOST to HOST
 
-typedef struct {													             
+typedef struct {		
+												//             rx/tx?    // TODO:  beim empfangen auswerten, ob packet CRC ok ist
     unsigned portCHAR  status;									 	// State:   echo_ok?, echo_error?;  crc? , no_tx?, hw_rxtx_test?  ...
     unsigned portCHAR  count;										
     unsigned portCHAR  channel;                          							// channel frequency:      2400 MHz + rf_ch * a MHz       ( a=1 für 1 Mbps, 2 für 2 Mbps )
@@ -52,9 +57,8 @@ typedef struct {
     unsigned portCHAR  power;   					     				 	// power:		        	00 =  -18 dBm,		01 = -12 dBm		10 = -6 dBm		11 = 0 dBm
     unsigned portCHAR  openbeacon_dmac[ OPENBEACON_MACSIZE ];	 		// kann von 3-5 Byte variieren
     unsigned portCHAR  openbeacon_smac[ OPENBEACON_MACSIZE ];		 	// kann von 3-5 Byte variieren
-    unsigned portCHAR  length;										 
-} __attribute__ ((packed)) Click2OBD_header;   // 16
-
+    unsigned portCHAR  length;	
+} __attribute__ ((packed)) Click2OBD_header;   // 15
 
 /*
 	the struct for HW_RXTX_TEST
