@@ -24,17 +24,14 @@
  */
 
 #include <click/config.h>
-
-#include "brn2_dsrdecap.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
 #include "elements/brn2/brn2.h"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "brn2_dsrdecap.hh"
 
 CLICK_DECLS
 
