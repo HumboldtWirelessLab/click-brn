@@ -30,6 +30,10 @@
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
 
+#if CLICK_NS 
+#include <click/router.hh> 
+#endif 
+
 #include <elements/brn2/brn2.h>
 #include <elements/wifi/bitrate.hh>
 #include <elements/brn2/wifi/brnwifi.hh>
@@ -477,37 +481,53 @@ ChannelStats::clear_old_hw()
 void
 ChannelStats::readProcHandler()
 {
+  int busy, rx, tx;
+  uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
+  
+#if CLICK_NS
+  int stats[16];
+  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
+
+  busy = stats[0];
+  rx = stats[1];
+  tx = stats[2];
+  
+  hw_cycles = stats[3];
+  busy_cycles = stats[4];
+  rx_cycles = stats[5];
+  tx_cycles = stats[6];
+
+#else
   String raw_info = file_string(_proc_file);
   Vector<String> args;
 
   cp_spacevec(raw_info, args);
 
-  if ( args.size() > 6 ) {
-    Timestamp now = Timestamp::now();
+  if ( args.size() <= 6 ) return;
+    
+  cp_integer(args[1],&busy);
+  cp_integer(args[3],&rx);
+  cp_integer(args[5],&tx);
+  cp_integer(args[7],&hw_cycles);
+  cp_integer(args[9],&busy_cycles);
+  cp_integer(args[11],&rx_cycles);
+  cp_integer(args[13],&tx_cycles);
 
-    int busy, rx, tx;
-    uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
-    cp_integer(args[1],&busy);
-    cp_integer(args[3],&rx);
-    cp_integer(args[5],&tx);
-    cp_integer(args[7],&hw_cycles);
-    cp_integer(args[9],&busy_cycles);
-    cp_integer(args[11],&rx_cycles);
-    cp_integer(args[13],&tx_cycles);
+#endif
+  Timestamp now = Timestamp::now();
 
-    if ( _enable_full_stats ) {
-      addHWStat(&now, busy, rx, tx, hw_cycles, busy_cycles, rx_cycles, tx_cycles);
-    } else {
-      _small_stats[_current_small_stats].last_hw = now;
-      _small_stats[_current_small_stats].hw_busy += busy;
-      _small_stats[_current_small_stats].hw_rx += rx;
-      _small_stats[_current_small_stats].hw_tx += tx;
-      _small_stats[_current_small_stats].hw_count++;
-      _small_stats[_current_small_stats].hw_cycles += hw_cycles;
-      _small_stats[_current_small_stats].hw_busy_cycles += busy_cycles;
-      _small_stats[_current_small_stats].hw_rx_cycles += rx_cycles;
-      _small_stats[_current_small_stats].hw_tx_cycles += tx_cycles;
-    }
+  if ( _enable_full_stats ) {
+    addHWStat(&now, busy, rx, tx, hw_cycles, busy_cycles, rx_cycles, tx_cycles);
+  } else {
+    _small_stats[_current_small_stats].last_hw = now;
+    _small_stats[_current_small_stats].hw_busy += busy;
+    _small_stats[_current_small_stats].hw_rx += rx;
+    _small_stats[_current_small_stats].hw_tx += tx;
+    _small_stats[_current_small_stats].hw_count++;
+    _small_stats[_current_small_stats].hw_cycles += hw_cycles;
+    _small_stats[_current_small_stats].hw_busy_cycles += busy_cycles;
+    _small_stats[_current_small_stats].hw_rx_cycles += rx_cycles;
+    _small_stats[_current_small_stats].hw_tx_cycles += tx_cycles;
   }
 }
 
