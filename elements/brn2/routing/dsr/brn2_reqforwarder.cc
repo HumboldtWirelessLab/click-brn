@@ -137,6 +137,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
   const EtherAddress *device_addr = indev->getEtherAddress(); //ether addr of the interface the packet is coming from
 
   const click_ether *ether = (const click_ether *)p_in->ether_header();
+  click_brn *brn = (click_brn *)p_in->data();
   // rreq received from this node (last hop)
   EtherAddress prev_node(ether->ether_shost);
 
@@ -199,8 +200,12 @@ BRN2RequestForwarder::push(int, Packet *p_in)
   }
   */
 
-  if (_me->isIdentical(&src_addr) || (_link_table->is_associated(src_addr))) {
-    BRN_DEBUG("* I (=%s) sourced this RREQ; ignore., #ID %d",device_addr->unparse().c_str(), ntohs(brn_dsr->dsr_id));
+  if ( (_me->isIdentical(&src_addr)) ||
+       (_link_table->is_associated(src_addr)) ||
+       (findOwnIdentity(request_route) != -1) ) {
+    BRN_DEBUG("* I (=%s) sourced this RREQ or already listed; ignore., #ID %d", device_addr->unparse().c_str(),
+                                                                                ntohs(brn_dsr->dsr_id));
+
     if ( _passive_ack_interval != 0 ) {
       BRN_DEBUG("Check passive");
       check_passive_ack(&prev_node, &src_addr, ntohs(brn_dsr->dsr_id));
@@ -211,21 +216,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     return;
   }
 
-  if (findOwnIdentity(request_route) != -1) { // I am already listed
-      // I'm in the route somewhere other than at the end
-    BRN_DEBUG("* I'm already listed; killing packet, #ID %d", ntohs(brn_dsr->dsr_id));
-    BRN_DEBUG("Check passive");
-    if ( _passive_ack_interval != 0 ) {
-      check_passive_ack(&prev_node, &src_addr, ntohs(brn_dsr->dsr_id));
-    } else {
-      BRN_DEBUG("Don't check passive interval: %d",_passive_ack_interval);
-    }
-    p_in->kill();
-    return;
-  }
-
   if ( !(_me->isIdentical(&dst_addr) || _link_table->is_associated(dst_addr)) ) {
-    click_brn *brn = (click_brn *)p_in->data();
     if ( brn->ttl == 1) {
       BRN_DEBUG(" * time to live expired; killing packet\n");
       p_in->kill();
@@ -243,12 +234,14 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       _last_neighbor_update = now;
     }
   }
-  //Route improvements
 
+
+  //Route improvements
   EtherAddress *detour_nb = NULL;
   int detour_metric_last_nb;
+
   /* Route Optimization */
-  if (_enable_last_hop_optimization ) {
+  if ( _enable_last_hop_optimization && (brn->ttl > 1) ) {
     /* Last hop optimization */
     BRN_DEBUG("* RREQ: Try to optimize route from last hop to me.");
 
@@ -296,7 +289,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       }
     }
     /* Last hop optimization */
-    BRN_DEBUG("* RREQ: Finishing optimization.");
+    BRN_DEBUG("* RREQ: Finishing last hop optimization.");
   } else if ( _enable_full_route_optimization ) {
     /* Full route optimazation */
     BRN_DEBUG("* RREQ: Try to optimize route from src to me.");
@@ -322,7 +315,9 @@ BRN2RequestForwarder::push(int, Packet *p_in)
   }
 
   Timestamp now = Timestamp::now();
-  BRN_DEBUG("compare routes. Is a better one ? %d < %d ?", route_metric, rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now));
+  BRN_DEBUG("compare routes. Is a better one ? %d < %d ?", route_metric,
+                                                           rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now));
+
   if ( _route_querier->metric_preferable(route_metric, rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now)) ) {
     rreqi->set_metric(ntohs(brn_dsr->dsr_id), route_metric, &now);
   } else {
@@ -780,7 +775,7 @@ BRN2RequestForwarder::queue_timer_hook()
       output(0).push( out_packet );
       break;
     } else {
-      click_chatter("Time left: %d",_packet_queue.get(i)->diff_time(curr_time));
+      BRN_DEBUG("Time left: %d",_packet_queue.get(i)->diff_time(curr_time));
     }
   }
 
