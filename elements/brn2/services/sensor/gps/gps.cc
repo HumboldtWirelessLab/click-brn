@@ -15,7 +15,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
  *
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 /*
@@ -28,6 +28,10 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#if CLICK_NS
+#include <click/router.hh>
+#endif
+
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "gps.hh"
@@ -36,7 +40,11 @@ CLICK_DECLS
 
 GPS::GPS()
   :_gpsmode(GPSMODE_HANDLER),
-   _gpsmap(NULL)
+   _gpsmap(NULL),
+#if CLICK_NS
+   gps_timer(this),
+#endif
+   _interval(DEFAULT_GPS_UPDATE_INTERVAL)
 {
   BRNElement::init();
 }
@@ -51,6 +59,7 @@ GPS::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "GPSMODE", cpkP, cpInteger, &_gpsmode,
       "GPSMAP", cpkP, cpElement, &_gpsmap,
+      "UPDATEINTEVAL", cpkP, cpElement, &_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -61,7 +70,27 @@ GPS::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 GPS::initialize(ErrorHandler *)
 {
+#if CLICK_NS
+  gps_timer.initialize(this);
+
+  if ( _interval > 0 ) {
+    gps_timer.schedule_after_msec(_interval);
+  }
+#endif
+
   return 0;
+}
+
+void
+GPS::run_timer(Timer*)
+{
+#if CLICK_NS
+  int pos[4];
+  simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_POSITION, &pos);
+  _position.setCC(pos[0],pos[1],pos[2]);
+  _position.setSpeed(pos[3]);
+  gps_timer.schedule_after_msec(_interval);
+#endif
 }
 
 /* Used for communication with gpsd,... */
@@ -100,6 +129,17 @@ GPS::read_gps()
   return sa.take_string();
 }
 
+
+String
+GPS::read_cart()
+{
+  StringAccum sa;
+  sa << "<gps id=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse();
+  sa << "\" x=\"" << _position._x << "\" y=\"" << _position._y;
+  sa << "\" z=\"" << _position._z << "\" speed=\"" << _position._speed.unparse() << "\" />\n";
+  return sa.take_string();
+}
+
 static String
 read_position_param(Element *e, void *thunk)
 {
@@ -110,7 +150,7 @@ read_position_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk)
   {
     case H_CART_COORD: {
-      sa << pos->_x << " " << pos->_y << " " << pos->_z;
+      return gps->read_cart();
       break;
     }
     case H_GPS_COORD: {
@@ -153,9 +193,9 @@ write_position_param(const String &in_s, Element *e, void *thunk, ErrorHandler *
       cp_spacevec(s, args);
 
       if ( args.size() > 2 ) {
-        pos->setGPSC(args[0], args[1], args[2]);
+        pos->setGPS(args[0], args[1], args[2]);
       } else {
-        pos->setGPSC(args[0],args[1], "0.0");
+        pos->setGPS(args[0],args[1], "0.0");
       }
 
       gps->updateMap();
