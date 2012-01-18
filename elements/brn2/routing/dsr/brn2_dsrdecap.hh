@@ -24,8 +24,6 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 
 #include "brn2_dsrprotocol.hh"
 
@@ -57,17 +55,11 @@ class BRN2DSRDecap : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void extract_request_route(const Packet *, int *ref_metric, BRN2RouteQuerierRoute &route);
+  //return metric of hole route
+  uint16_t extract_request_route(const Packet *, BRN2RouteQuerierRoute &route,
+                             EtherAddress *last_hop, uint16_t last_hop_metric);
   void extract_reply_route(const Packet *p, BRN2RouteQuerierRoute &route);
   void extract_source_route(const Packet *p_in, BRN2RouteQuerierRoute &route);
-
- public:
-  //
-  //member
-  //
-  BRN2NodeIdentity *_me;
-
-  Brn2LinkTable *_link_table;
 
 };
 

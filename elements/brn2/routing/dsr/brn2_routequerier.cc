@@ -538,10 +538,17 @@ BRN2RouteQuerier::rreq_expire_hook()
     ForwardedReqVal &val = i.value();
 
     if (val.p != NULL) { // we issued a unidirectionality test
-      int last_hop_metric;
       BRN2RouteQuerierRoute req_route;
 
-      _dsr_decap->extract_request_route(val.p, &last_hop_metric, req_route);
+      uint8_t devicenumber = BRNPacketAnno::devicenumber_anno(val.p);
+      BRN2Device *indev = _me->getDeviceByNumber(devicenumber);
+      const EtherAddress *device_addr = indev->getEtherAddress();//ether addr of the interface the packet is coming from
+
+      const click_ether *ether = (const click_ether *)val.p->ether_header();
+     // rreq received from this node (last hop)
+      EtherAddress prev_node(ether->ether_shost);
+      uint16_t last_hop_metric = _link_table->get_link_metric(prev_node, *device_addr);
+      uint16_t metric_of_route = _dsr_decap->extract_request_route(val.p, req_route, &prev_node, last_hop_metric);
 
       EtherAddress last_forwarder = req_route[req_route.size() - 1].ether();
       EtherAddress last_eth = last_forwarder_eth(val.p);
@@ -567,6 +574,9 @@ BRN2RouteQuerier::rreq_expire_hook()
 //TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         val.best_metric = route_metric(req_route);
+
+        click_chatter("Route_metric: %d  metric_of_route: %d", val.best_metric, metric_of_route);
+        //val.best_metric = metric_of_route;
 
         val.p = NULL;
       } else if ((status == BRN_DSR_BLACKLIST_UNI_PROBABLE) ||
@@ -958,7 +968,7 @@ bool
 BRN2RouteQuerier::metric_preferable(uint32_t a, uint32_t b)
 {
   if (!_metric)
-    return (a <= b); // fallback to minimum hop-count
+    return (a < b); // fallback to minimum hop-count
 //TODO: AZU use real metric here
 /*
   else if (a == BRN_DSR_INVALID_ROUTE_METRIC || b == BRN_DSR_INVALID_ROUTE_METRIC)
@@ -967,7 +977,7 @@ BRN2RouteQuerier::metric_preferable(uint32_t a, uint32_t b)
     return _metric->metric_val_lt(_metric->unscale_from_char(a),
 				  _metric->unscale_from_char(b));
 */
-  return (a <= b);
+  return (a < b);
 }
 
 uint32_t
@@ -1079,20 +1089,15 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
     IPAddress ip1 = route[i].ip();
     IPAddress ip2 = route[i+1].ip();
 
-/*
-    if (metric == BRN_DSR_INVALID_HOP_METRIC) {
-    metric = 9999;
-  }
-    if (metric == 0) {
-    metric = 1; // TODO remove this hack
-  }
-*/
-    bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
+    //don't learn links from or to me from someone else
+    if ( !(_me->isIdentical(&ether1) || _me->isIdentical(&ether2)) ) {
+      bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
 
-    if (ret) {
-      BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-        route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-        route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
+      if (ret) {
+        BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
+          route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
+          route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
+      }
     }
   }
 
@@ -1100,7 +1105,10 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
     uint32_t rmetric = route_metric(route);
     EtherAddress dst = route[0].ether();
     EtherAddress src = route[route.size()-1].ether();
-    _link_table->update_route(src, dst, ea_route, rmetric);
+    //don't learn links from or to me from someone else
+    if ( !(_me->isIdentical(&src) || _me->isIdentical(&dst)) ) {
+      _link_table->update_route(src, dst, ea_route, rmetric);
+    }
     ea_route.clear();
   }
 

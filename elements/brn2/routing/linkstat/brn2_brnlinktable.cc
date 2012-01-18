@@ -193,6 +193,9 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   /* TODO: check age and permant-flag of links */
   if ( _fix_linktable ) return true;
 
+  //limit metric to BRN_LT_INVALID_LINK_METRIC
+  if ( metric > BRN_LT_INVALID_LINK_METRIC ) metric = BRN_LT_INVALID_LINK_METRIC;
+
   // Flush the route cache
   //_brn_routecache->on_link_changed( from, to );
   BRN_DEBUG("update_link: %s %s %d", from.unparse().c_str(), to.unparse().c_str(), metric);
@@ -706,25 +709,15 @@ Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
   get_neighbors(*me,neighbors);
 }
 
-//TODO: Short this function
-EtherAddress * 
+//check for device used for this neighbour (ether)
+const EtherAddress *
 Brn2LinkTable::get_neighbor(EtherAddress ether)
 {
-  typedef HashMap<EtherAddress, bool> EtherMap;
-  EtherMap ether_addrs;
-
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
-    ether_addrs.insert(iter.value()._ether, true);
-  }
-
-  for (EtherMap::const_iterator i = ether_addrs.begin(); i.live(); i++) {
-    BrnHostInfo *neighbor = _hosts.findp(i.key());
-    assert(neighbor);
-    if (ether != neighbor->_ether) {
-      BrnLinkInfo *lnfo = _links.findp(EthernetPair(ether, neighbor->_ether));
-      if (lnfo) {
-        return &(neighbor->_ether);
-      }
+  for ( int i = _node_identity->countDevices() - 1; i >= 0; i-- ) {
+    BrnLinkInfo *lnfo = _links.findp(EthernetPair(ether, *(_node_identity->getDeviceByIndex(i)->getEtherAddress())));
+    //TODO: check for device/etheraddr with best metric
+    if (lnfo) {
+      return _node_identity->getDeviceByIndex(i)->getEtherAddress();
     }
   }
 

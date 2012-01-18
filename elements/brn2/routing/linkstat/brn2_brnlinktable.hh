@@ -165,7 +165,7 @@ class Brn2LinkTable: public BRNElement {
   int32_t get_route_metric(const Vector<EtherAddress> &route);
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
   void get_local_neighbors(Vector<EtherAddress> &neighbors);
-  EtherAddress *get_neighbor(EtherAddress ether);
+  const EtherAddress *get_neighbor(EtherAddress ether);
   void clear_stale();
 
   /**
