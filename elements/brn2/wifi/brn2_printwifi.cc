@@ -175,7 +175,7 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
         sa << "ssid: " << ssid;
       else {
         String validssid = make_valid_ssid(&ssid);
-        sa << "ssid(invalid): " << ssid;
+        sa << "ssid(invalid): " << validssid;
       }
     }
   }
