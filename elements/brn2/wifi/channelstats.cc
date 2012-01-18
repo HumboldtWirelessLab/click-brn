@@ -189,7 +189,7 @@ ChannelStats::push(int port, Packet *p)
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
 
-    for ( int i = 0; i < (int) ceh->retries; i++ ) {
+    for ( int i = 0; i <= (int) ceh->retries; i++ ) {
       int t0,t1,t2,t3;
       uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
       t0 = ceh->max_tries + 1;
@@ -483,7 +483,7 @@ ChannelStats::readProcHandler()
 {
   int busy, rx, tx;
   uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
-  
+
 #if CLICK_NS
   int stats[16];
   simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
@@ -491,7 +491,7 @@ ChannelStats::readProcHandler()
   busy = stats[0];
   rx = stats[1];
   tx = stats[2];
-  
+
   hw_cycles = stats[3];
   busy_cycles = stats[4];
   rx_cycles = stats[5];
@@ -504,7 +504,7 @@ ChannelStats::readProcHandler()
   cp_spacevec(raw_info, args);
 
   if ( args.size() <= 6 ) return;
-    
+
   cp_integer(args[1],&busy);
   cp_integer(args[3],&rx);
   cp_integer(args[5],&tx);
