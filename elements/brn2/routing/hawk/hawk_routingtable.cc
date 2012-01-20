@@ -231,11 +231,14 @@ HawkRoutingtable::getNextPhyHop(EtherAddress *dst)
 {
   RTEntry *entry = getEntry(dst);
 
-  while ( ( entry != NULL ) && (! isNeighbour(entry->next_phy_hop)) ) {
-    next_phy_hop = _rt->getNextHop(next_phy_hop);
+  while ( ( entry != NULL ) && (! isNeighbour(&(entry->_next_phy_hop))) ) {
+    EtherAddress *next_phy_hop = getNextHop(next_phy_hop);
+    entry = getEntry(next_phy_hop);
   }
 
-  return ( memcmp(entry->_next_hop.data(), entry->_next_phy_hop.data(), 6 ) == 0 );
+  if ( entry == NULL ) return NULL;
+
+  return &(entry->_next_phy_hop);
 }
 
 /**************************************************************************/
@@ -247,15 +250,17 @@ HawkRoutingtable::routingtable()
 {
   StringAccum sa;
 
-  sa << "RoutingTable (" << _rt.size() << "):\n";
-  sa << "  Destination\t\tNext PhyHop\t\tNext OverlayHop\t\tAge\n";
-  RTEntry *entry;
+  sa << "<hawkroutingtable node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse() << "\" entries=\"" << _rt.size() << "\" >\n";
 
+  RTEntry *entry;
   for(int i = 0; i < _rt.size(); i++) {
     entry = _rt[i];
-    sa << "  " << entry->_dst.unparse() << "\t" << entry->_next_phy_hop.unparse();
-    sa << "\t" << entry->_next_hop.unparse() << "\tUnknown\n";
+
+    sa << "\t<entry node=\"" << entry->_dst.unparse() << "\" next_hop=\"" << entry->_next_phy_hop.unparse();
+    sa << "\" next_overlay=\"" << entry->_next_hop.unparse() << "\" age=\"0\" />\n";
   }
+
+  sa << "\n</hawkroutingtable>\n";
 
   return sa.take_string();
 }

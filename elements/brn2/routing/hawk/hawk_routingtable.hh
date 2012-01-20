@@ -95,6 +95,7 @@ class HawkRoutingtable : public BRNElement {
   EtherAddress *getNextHop(EtherAddress *dst);
   bool hasNextPhyHop(EtherAddress *dst);
 
+  EtherAddress *getNextPhyHop(EtherAddress *dst);
 
   RTEntry *getEntryForNextHop(EtherAddress *ea);
 
