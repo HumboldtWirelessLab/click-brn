@@ -158,6 +158,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size, bool is_neighbo
 
   nodes.del();
 
+  //Add Neighbour (src of lp)
   if ( _rfrt != NULL )
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
 
