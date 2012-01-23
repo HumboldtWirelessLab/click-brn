@@ -454,91 +454,64 @@ FalconRoutingTable::routing_info(void)
   numberOfNodes = _allnodes.size();
 
   MD5::printDigest(_me->_md5_digest, digest);
-  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << "\t" << digest << " )\n";
-  sa << "DHT-Nodes (" << (int)numberOfNodes  << ") :\n";
+  sa << "<falconroutingtable node=\"" << _me->_ether_addr.unparse() << "\" digest=\"" << digest;
+  sa << "\" time=\"" << Timestamp::now().unparse() << "\" nodes=\"" << (int)numberOfNodes  << "\" >\n";
 
   if ( successor != NULL ) {
     MD5::printDigest(successor->_md5_digest, digest);
-    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\t";
-    sa << isFixSuccessor() << " (" << get_successor_counter() << ")\n";
+    sa << "\t<successor addr=\"" << successor->_ether_addr.unparse() << "\" digest=\"" << digest << "\" fixed=\"";
+    sa << isFixSuccessor() << "\" counter=\"" << get_successor_counter() << "\" />\n";
   } else {
-    sa << "Successor: xx:xx:xx:xx:xx:xx\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(false)\n";
+    sa << "\t<successor addr=\"00:00:00:00:00:00\" digest=\"00000000000000000000000000000000\" fixed=\"false\" />\n";
   }
 
   if ( predecessor != NULL ) {
     MD5::printDigest(predecessor->_md5_digest, digest);
-    sa << "Predecessor: " << predecessor->_ether_addr.unparse() << "\t" << digest << "\n";
+    sa << "\t<predecessor addr=\"" << predecessor->_ether_addr.unparse() << "\" digest=\"" << digest << "\" />\n";
   }
 
   if ( backlog != NULL ) {
     MD5::printDigest(backlog->_md5_digest, digest);
-    sa << "Backlog: " << backlog->_ether_addr.unparse() << "\t" << digest << "\n";
+    sa << "\t<backlog addr=\"" << backlog->_ether_addr.unparse() << "\" digest=\"" << digest << "\" />\n";
   }
 
-  sa << "\nFingertable (" << _fingertable.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t<fingertable size=\"" << _fingertable.size() << "\" >\n";
   for( int i = 0; i < _fingertable.size(); i++ )
   {
     node = _fingertable.get_dhtnode(i);
 
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-
-    sa << "\n";
+    sa << "\t\t<finger index=\"" << i << "\" addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
 
-  sa << "\nReverse Fingertable (" << _reverse_fingertable.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t</fingertable>\n\t<reverse_fingertable size=\"" << _reverse_fingertable.size() << "\" >\n";
   for( int i = 0; i < _reverse_fingertable.size(); i++ )
   {
     node = _reverse_fingertable.get_dhtnode(i);
-
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-
-    sa << "\n";
+    sa << "\t\t<reversenode addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
 
-  sa << "\nAll nodes (" << _allnodes.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t</reverse_fingertable>\n\t<allnodes size=\"" << _allnodes.size() << "\" >\n";
   for( int i = 0; i < _allnodes.size(); i++ )
   {
     node = _allnodes.get_dhtnode(i);
-
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-    sa << "\n";
+    sa << "\t\t<reversenode addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
+  sa << "\t</allnodes>\n</falconroutingtable>\n";
 
   return sa.take_string();
 }
