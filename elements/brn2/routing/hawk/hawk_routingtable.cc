@@ -32,6 +32,7 @@ HawkRoutingtable::configure(Vector<String> &conf, ErrorHandler *errh)
        "LPRH", cpkP+cpkM, cpElement, &_lprh,
        "SUCCM", cpkP+cpkM, cpElement, &_succ_maint,
        "RTM", cpkP+cpkM, cpElement, &_rt_maint,
+       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
        "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -56,6 +57,16 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
   BRN_DEBUG("Add Entry.");
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
+
+  if ( *ea == *next_phy ) {
+    BRN_DEBUG("Add neighbour. Check first");
+#warning Use var instead of fix value
+    if ( _link_table->get_host_metric_to_me(*next_phy) > 300 ) {
+      BRN_DEBUG("Kill bad neighbour");
+      return NULL;
+    }
+  }
+
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
       memcpy(_rt[i]->_dst_id, id, MAX_NODEID_LENTGH);           //update id
@@ -260,7 +271,7 @@ HawkRoutingtable::routingtable()
     sa << "\" next_overlay=\"" << entry->_next_hop.unparse() << "\" age=\"0\" />\n";
   }
 
-  sa << "\n</hawkroutingtable>\n";
+  sa << "</hawkroutingtable>\n";
 
   return sa.take_string();
 }

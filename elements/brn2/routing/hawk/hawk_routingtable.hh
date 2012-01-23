@@ -75,6 +75,8 @@ class HawkRoutingtable : public BRNElement {
 
   Vector<RTEntry*> _rt;
 
+  Brn2LinkTable *_link_table;
+
   HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
                                       EtherAddress *next_phy);
 
