@@ -2,7 +2,8 @@
  *  
  */
 
-#include <click/config.h>
+#include <click/config.h>//have to be always the first include
+#include <click/confparse.hh>
 #include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
@@ -19,13 +20,16 @@
 
 
 
+
 CLICK_DECLS
 
 
-	Brn2_SetRTSCTS::Brn2_SetRTSCTS() : _winfo(0){
+	Brn2_SetRTSCTS::Brn2_SetRTSCTS() : _winfo(0),pli(NULL)  {
 		_debug = 4;
 		_rts = false;
 		_mode = WIFI_FC1_DIR_NODS;
+		pkt_total = 0;
+		
 	}
 
 
@@ -39,8 +43,12 @@ CLICK_DECLS
 		return 0;
 	}
 
-	int Brn2_SetRTSCTS::configure(Vector<String> &, ErrorHandler *) 
+	int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) //configure(Vector<String> &, ErrorHandler *) 
 	{
+		if (cp_va_kparse(conf, this, errh,
+      			"PLI", cpkP, cpElement, &pli,
+			//"DEBUG", cpkP, cpInteger, &_debug,
+		      cpEnd) < 0) return -1;
 		return 0;
 	}
 
@@ -59,7 +67,6 @@ CLICK_DECLS
 
 		struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 		ceh->magic = WIFI_EXTRA_MAGIC;
-		rts_cts_decision();
 		if (rts_get()) {
 			ceh->flags |= WIFI_EXTRA_DO_RTS_CTS;
 		} else {
@@ -108,16 +115,19 @@ CLICK_DECLS
 	bool Brn2_SetRTSCTS::is_number_in_random_range(unsigned int value)
 	{
 		int random_number = click_random(0, 100); //generate random number in range [0,100]
-		if (value <= random_number) return true;
+		BRN_DEBUG("Random_number = %d", random_number);
+		if (random_number <= value) return true;
 		else {
 			return false;
 		}
 	}
 	/* true = on, else off*/
-	void Brn2_SetRTSCTS::rts_cts_decision() 
+	void Brn2_SetRTSCTS::rts_cts_decision(unsigned int value) 
 	{
-		int value = 5;//hier von hidden node abhängig
-		if (is_number_in_random_range(value)) rts_set(true);
+		//int value = 5;//hier von hidden node abhängig
+		if (is_number_in_random_range(value)) {
+			rts_set(true);
+		}
 		else {
 			rts_set(false);
 		}	
@@ -131,7 +141,44 @@ CLICK_DECLS
 	{
 		_rts = value;
 	}
+	uint32_t Brn2_SetRTSCTS::neighbour_statistic_pkt_total_get() 
+	{
+		return 1; 
+	}
+	uint32_t Brn2_SetRTSCTS::neighbour_statistic_rts_on_get() 
+	{
+		return 2;
+	}
+	uint32_t Brn2_SetRTSCTS::neighbour_statistc_rts_off_get()
+	{
+		return (neighbour_statistic_pkt_total_get() - neighbour_statistic_rts_on_get());
+	}
 
+	Brn2_SetRTSCTS::PNEIGHBOUR_STATISTICS Brn2_SetRTSCTS::neighbours_statistic_get(EtherAddress dst_address)
+	{
+		return node_neighbours.get(dst_address);
+
+	}	
+	
+	void Brn2_SetRTSCTS::print_neighbour_statistics()
+	{
+		for (HashTable<EtherAddress,PNEIGHBOUR_STATISTICS>::iterator it = node_neighbours.begin(); it; ++it) {
+			BRN_DEBUG("pkt_total = %d; rts_on = %d", it.value()->pkt_total, it.value()->rts_on);
+		}
+	}
+	
+	void Brn2_SetRTSCTS::neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats)
+	{
+		node_neighbours[dst_address] = ptr_neighbour_stats;
+
+	}
+	
+	void Brn2_SetRTSCTS::neighbours_statistic_insert(EtherAddress dst_address) 
+	{
+		PNEIGHBOUR_STATISTICS ptr_neighbour_stats = new neighbour_statistics();
+		node_neighbours[dst_address] = ptr_neighbour_stats;
+
+	}
 Packet * Brn2_SetRTSCTS::dest_test(Packet *p)
 {
 
@@ -228,7 +275,41 @@ BRN_DEBUG("hallo:In Dest-Test: Destination: %s; Source: %s", dst.unparse().c_str
   }
 EtherAddress dst_1 = EtherAddress(w->i_addr1);
 BRN_DEBUG("In Dest-Test: Destination: %s; ", dst.unparse().c_str());//, src.unparse().c_str());
-
+//if (NULL == pli) BRN_DEBUG("PLI-Pointer is null");
+//else if(NULL != pli) {
+BRN_DEBUG("Before pli_graph");
+	PacketLossInformation_Graph *pli_graph = pli->graph_get(dst);
+BRN_DEBUG("AFTER pli_graph");
+	if(NULL == pli_graph) {
+		BRN_DEBUG("There is not a Graph available for the DST-Adress: %s", dst.unparse().c_str());
+		pli->graph_insert(dst);
+		BRN_DEBUG("Destination-Adress was inserted ");
+	}
+	else {
+	 	BRN_DEBUG("There is a Graph available for the DST-Adress: %s", dst.unparse().c_str());
+		PacketLossReason *pli_reason =	pli_graph->get_reason_by_name("hidden_node");
+		unsigned int frac = pli_reason->getFraction();
+		BRN_DEBUG("HIDDEN-NODE-FRACTIOn := %d", frac);
+		rts_cts_decision(frac);
+		PNEIGHBOUR_STATISTICS ptr_neighbour_stats = neighbours_statistic_get(dst);
+		if(NULL == ptr_neighbour_stats) {
+			neighbours_statistic_insert(dst);
+			ptr_neighbour_stats = neighbours_statistic_get(dst);
+		}
+		ptr_neighbour_stats->pkt_total++;
+		if (rts_get()) {
+			BRN_DEBUG("RTS-CTS on");
+			ptr_neighbour_stats->rts_on = ptr_neighbour_stats->rts_on + 1;
+		}
+		else {
+			BRN_DEBUG("RTS-CTS off");
+		}
+		//neighbours_statistic_set(dst,ptr_neighbour_stats);
+		pkt_total++;
+		BRN_DEBUG("Total Number of packets := %d",pkt_total);
+		print_neighbour_statistics();
+	}
+//}
 //  BRN_DEBUG("In Dest-Test: Destination: %s; Source: %s", (w->i_addr1).unparse(),(w->i_addr2).unparse());
   return p_out;
 }

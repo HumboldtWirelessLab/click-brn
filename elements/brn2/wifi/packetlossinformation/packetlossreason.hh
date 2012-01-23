@@ -1,5 +1,5 @@
-#ifndef CLICK_PacketLossReason_HH
-#define CLICK_PacketLossReason_HH
+#ifndef CLICK_PACKETLOSSREASON_HH
+#define CLICK_PACKETLOSSREASON_HH
 #include <click/element.hh>
 #include <click/hashtable.hh>
 #include <click/glue.hh>

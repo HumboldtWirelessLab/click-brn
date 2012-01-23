@@ -5,6 +5,9 @@
 #include <clicknet/wifi.h>
 #include "elements/brn2/brnelement.hh"
 #include <click/string.hh>
+#include <click/hashtable.hh>
+#include <click/etheraddress.hh>
+#include <elements/brn2/wifi/packetlossinformation/packetlossinformation.hh>
 
 CLICK_DECLS
 
@@ -19,23 +22,24 @@ public:
 	const char *port_count() const		{ return PORTS_1_1; }
 	const char *processing() const		{ return AGNOSTIC; }
 	
-//	int configure(Vector<String> &conf, ErrorHandler *errh);
 
 	int configure(Vector<String> &, ErrorHandler *);
 	int initialize(ErrorHandler *);
 
 	Packet *simple_action(Packet *);
 	void add_handlers();
-	/* true = on, else off*/
-	void rts_cts_decision();
+	void rts_cts_decision(unsigned int value);
 	bool is_number_in_random_range(unsigned int value); //range [0,100]
 
 	bool rts_get();
+	/* true = on, else off*/
 	void rts_set(bool value);
 
 
-	//void dest_test(Packet *p);
-	Packet * dest_test(Packet *p);
+	Packet* dest_test(Packet *p);
+	
+		
+	void print_neighbour_statistics();
 
 
 private:	
@@ -43,7 +47,24 @@ private:
 	unsigned _mode;
         EtherAddress _bssid;
 	class WirelessInfo *_winfo;
+	//total number of packets who got through this element
+	unsigned int pkt_total;	
+	struct _neighbour_statistics {
+        	 uint32_t pkt_total;
+		 uint32_t rts_on;
+	};
 
+typedef struct _neighbour_statistics neighbour_statistics,*PNEIGHBOUR_STATISTICS;
+	//TODO:struct bauen für value: 	Pakete zum jeweiligen Ziel, RTS-on, RTS-off
+	HashTable<EtherAddress,PNEIGHBOUR_STATISTICS> node_neighbours;
+	PacketLossInformation *pli; 
+	PNEIGHBOUR_STATISTICS neighbours_statistic_get(EtherAddress dst_address);	
+	void neighbours_statistic_insert(EtherAddress dst_address);
+	void neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats);
+	uint32_t neighbour_statistic_pkt_total_get();
+	uint32_t neighbour_statistic_rts_on_get();
+	uint32_t neighbour_statistc_rts_off_get();
+	
 };
 
 CLICK_ENDDECLS
