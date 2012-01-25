@@ -943,7 +943,6 @@ BRN2LinkStat::update_probes(String probes, ErrorHandler *errh)
   return(BRNLinkStat_write_param(probes, this, (void *) H_PROBES, errh));
 }
 
-
 void
 BRN2LinkStat::add_handlers()
 {

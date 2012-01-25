@@ -100,8 +100,6 @@ class Brn2LinkTable: public BRNElement {
   //
   //member
   //
-  Vector<EtherAddress> last_route;
-
   bool _fix_linktable;
   //
   //methods
@@ -347,7 +345,7 @@ private:
   bool is_associated(EtherAddress ea);
 };
 
-inline void 
+inline void
 Brn2LinkTable::query_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,
