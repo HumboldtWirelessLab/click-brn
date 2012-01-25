@@ -340,8 +340,6 @@ class ChannelStats : public BRNElement {
     void get_stats(struct airtime_stats *cstats, int /*time*/);
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
 
-    struct airtime_stats *get_last_stats();
-
   private:
 
     BRN2Device *_device;

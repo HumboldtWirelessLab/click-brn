@@ -64,7 +64,7 @@ private:
     void set_gateway(Packet *p);
 
     const EtherAddress choose_gateway();
-    void set_gateway_on_packet(Packet *, const EtherAddress);
+    void set_gateway_on_packet(Packet *, const *EtherAddress);
 
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
     Brn2LinkTable *_link_table; // link table to determine metric to available gateways

@@ -33,7 +33,7 @@ CPUStats::get_usage(const pid_t pid, struct pstat* result){
   FILE *fstat = fopen("/proc/stat", "r");
   if(fstat == NULL){
       printf("FOPEN ERROR");
-      fclose(fstat);
+      fclose(fpstat);
       return -1;
   }
   bzero(result, sizeof(struct pstat));

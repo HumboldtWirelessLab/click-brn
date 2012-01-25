@@ -188,12 +188,13 @@ BRNSetGateway::choose_gateway() {
  * Chooses a gateway and rewrites the packet
  * 
  */
+#WARNING gw per reference uebergeben
 void
-BRNSetGateway::set_gateway_on_packet(Packet *p_in, const EtherAddress gw) {
+BRNSetGateway::set_gateway_on_packet(Packet *p_in, const EtherAddress *gw) {
 
   WritablePacket* p = p_in->uniqueify();
 
-  if (!gw) {
+  if (!*gw) {
       // no gateway
       BRN_INFO("No Gateway found. Sending packet to port 1");
       output(1).push(p);
@@ -202,15 +203,16 @@ BRNSetGateway::set_gateway_on_packet(Packet *p_in, const EtherAddress gw) {
 
   // rewrite packet with new gateway
   click_ether *ether = p->ether_header();
-  memcpy(ether->ether_dhost, gw.data(), 6);
-  BRN_INFO("Rewriting packet for gateway %s and sending it to port 0", gw.unparse().c_str());
+  memcpy(ether->ether_dhost, gw->data(), 6);
+  BRN_INFO("Rewriting packet for gateway %s and sending it to port 0", gw->unparse().c_str());
   output(0).push(p);
 }
 
 void
 BRNSetGateway::set_gateway(Packet *p)
 {
-  set_gateway_on_packet(p, choose_gateway());
+    EtherAddress gw = choose_gateway();
+    set_gateway_on_packet(p, &gw);
   return;
 }
 

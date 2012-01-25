@@ -112,7 +112,8 @@ Seismo::push(int port, Packet *p)
   }
 
   // store in internal structure
-  SrcInfo *src_i;
+  SrcInfo *src_i = NULL;
+  SeismoInfoBlock *sib = NULL;
   if ( _calc_stats || _record_data ) {
       src_i = _node_stats_tab.find(src_node_id);
       if (!src_i) {
@@ -127,9 +128,9 @@ Seismo::push(int port, Packet *p)
         src_i->update_gps(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
                           ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop));
       }
+      sib = src_i->get_last_block();
   }
 
-  SeismoInfoBlock* sib = src_i->get_last_block();
 
   /* update systime */
   //get time in usec

@@ -79,12 +79,11 @@ GeorQuerier::push( int port, Packet *packet )
     GPSPosition *dpos = _rt->getPosition(&dea);
     GPSPosition *spos = _rt->getLocalPosition();
 
-    BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
-
     EtherAddress nextHop;
     GPSPosition *nhpos;
 
     if ( dpos ) {
+      BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
       uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
       if ( ttl == 0 ) ttl = GEOR_DAFAULT_MAX_HOP_COUNT;
 
