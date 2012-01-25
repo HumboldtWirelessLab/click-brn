@@ -816,21 +816,21 @@ BRN2RouteQuerier::rreq_issue_hook()
     } else {
       if (diff_in_ms(curr_time, ir._time_last_issued) > ir._backoff_interval) {
         BRN_DEBUG(" * time to issue new request for host %s", ir._target.unparse().c_str());
-	
-	if (ir._times_issued == 1) {
-	  // if this is the second request
-	  ir._backoff_interval = BRN_DSR_RREQ_DELAY2;
-	} else {
-	  ir._backoff_interval *= BRN_DSR_RREQ_BACKOFF_FACTOR;
-	  // i don't think there's any mention in the spec of a limit on
-	  // the backoff, but this MAX_DELAY seems reasonable
-	  if (ir._backoff_interval > BRN_DSR_RREQ_MAX_DELAY)
-	    ir._backoff_interval = BRN_DSR_RREQ_MAX_DELAY;
-	}
-	ir._times_issued++;
-	ir._time_last_issued = curr_time;
-	ir._ttl = BRN_DSR_RREQ_TTL2;
-	
+
+        if (ir._times_issued == 1) {
+          // if this is the second request
+          ir._backoff_interval = BRN_DSR_RREQ_DELAY2;
+        } else {
+          ir._backoff_interval *= BRN_DSR_RREQ_BACKOFF_FACTOR;
+          // i don't think there's any mention in the spec of a limit on
+          // the backoff, but this MAX_DELAY seems reasonable
+          if (ir._backoff_interval > BRN_DSR_RREQ_MAX_DELAY)
+            ir._backoff_interval = BRN_DSR_RREQ_MAX_DELAY;
+        }
+        ir._times_issued++;
+        ir._time_last_issued = curr_time;
+        ir._ttl = BRN_DSR_RREQ_TTL2;
+
         issue_rreq(ir._target, ir._target_ip, ir._source, ir._source_ip, ir._ttl);
       }
     }
