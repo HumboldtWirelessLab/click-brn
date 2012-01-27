@@ -2607,7 +2607,7 @@ TCPQueue::pretty_print(StringAccum &sa, int signed_width)
     }
     sa << "\n"; 
 	for (i = 0; i < width; i++ ) {
-		if (i == tail || i == exp || i == tail) 
+		if (i == tail || i == exp) 
 			sa << "|"; 
 		else
 			sa << " "; 

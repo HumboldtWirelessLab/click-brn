@@ -59,7 +59,6 @@ CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
                      cpEnd);
 
   return ret;
-  return 0;
 }
 
 int
