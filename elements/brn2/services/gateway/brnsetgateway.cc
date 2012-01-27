@@ -160,15 +160,15 @@ BRNSetGateway::choose_gateway() {
 			 // set failed to sent this packet to internet
 			 //brn_gw->failed = 0;
 
-			 output(0).push(p);
+       output(0).push(p);
      }
-            
+
      continue;
    }
 
    // is metric to found gateway better than to old gateway
    new_metric = _link_table->get_route_metric(route);
-        
+
    if ((_gw->_my_eth_addr == gw) || ((new_metric
         < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) { // TODO better combination of metric to gateway and gateway metric may be nedded
      // save new best gateway
@@ -178,8 +178,7 @@ BRNSetGateway::choose_gateway() {
    }
   }
 
-  BRN_INFO("Choose gateway %s which is reachable with a metric of %u.",
- 					best_gw.unparse().c_str(), best_metric_to_reach_gw);
+  BRN_INFO("Choose gateway %s which is reachable with a metric of %u.", best_gw.unparse().c_str(), best_metric_to_reach_gw);
   return best_gw;
 }
 
