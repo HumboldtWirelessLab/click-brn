@@ -151,7 +151,6 @@ read_position_param(Element *e, void *thunk)
   {
     case H_CART_COORD: {
       return gps->read_cart();
-      break;
     }
     case H_GPS_COORD: {
       return gps->read_gps();

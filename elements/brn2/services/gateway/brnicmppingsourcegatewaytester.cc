@@ -112,7 +112,7 @@ BRNICMPPingSourceGatewayTester::push(int port, Packet *p) {
     // - there must be a change
     // - this change must be a delta of 5
     // - a metric of 0 must be written
-    if ((_old_metric != metric) && ((metric == 0) || (_old_metric - metric >= 5 ) || (_old_metric - metric >= 5))) {
+    if ((_old_metric != metric) && ((metric == 0) || (_old_metric - metric >= 5))) {
         click_chatter("Significant change in metric (old: %u; new: %u). I try setting it.", _old_metric, metric);
 
         // set new metric and update saved metric
