@@ -74,6 +74,7 @@ class HawkRoutingtable : public BRNElement {
   String routingtable();
 
   Vector<RTEntry*> _rt;
+  HashMap<EtherAddress, EtherAddress> _known_hosts;
 
   Brn2LinkTable *_link_table;
 

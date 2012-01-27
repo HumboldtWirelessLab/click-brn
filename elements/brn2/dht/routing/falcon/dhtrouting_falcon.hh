@@ -44,13 +44,14 @@ class DHTRoutingFalcon : public DHTRouting
     int max_replication() const { return FALCON_MAX_REPLICA; }
 
   private:
-    DHTnode *get_responsibly_node_backward(md5_byte_t *key);
-    DHTnode *get_responsibly_node_forward(md5_byte_t *key);
-    DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
+    DHTnode *get_responsibly_node_backward(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas = NULL);
+    DHTnode *get_responsibly_node_forward(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas = NULL);
 
     bool _enable_range_query;
 
   public:
+    DHTnode *get_responsibly_node_for_key(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas = NULL);
+
     DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
 
     bool range_query_support() { return _enable_range_query; }

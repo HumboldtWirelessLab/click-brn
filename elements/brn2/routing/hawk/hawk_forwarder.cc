@@ -136,8 +136,9 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
 
       DHTnode *n = NULL;
 
-      if ( n == NULL )
-        n = _falconrouting->get_responsibly_node(header->_dst_nodeid);
+      if ( n == NULL ) {
+        n = _falconrouting->get_responsibly_node_for_key(header->_dst_nodeid, &(_rt->_known_hosts));
+      }
 
       BRN_DEBUG("Responsible is %s",n->_ether_addr.unparse().c_str());
 
@@ -151,10 +152,11 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
       } else {
         //Since next hop in the overlay is not necessarily my neighbour
         //i use the hawk table to get the real next hop
-        next_phy_hop = _rt->getNextHop(&dst_addr);
+        next_phy_hop = _rt->getNextHop(&(n->_ether_addr));
 
         if ( next_phy_hop == NULL ) {
           BRN_ERROR("No next hop for ovelay dst. Kill packet.");
+          BRN_ERROR("RT: %s",_rt->routingtable().c_str());
           p_in->kill();
           return;
         }

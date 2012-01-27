@@ -133,7 +133,7 @@ FalconRoutingTable::isBetterPredecessor(DHTnode *node)
 /*************************************************************************************************/
 
 DHTnode*
-FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
+FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age, HashMap<EtherAddress,EtherAddress> *used_eas)
 {
   Timestamp now = Timestamp::now();
   DHTnode *best = _me;
@@ -142,11 +142,17 @@ FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
   if ( node->equals(_me) ) best = successor;
   for ( int i = 0; i < _allnodes.size(); i++ ) {
     n = _allnodes.get_dhtnode(i);
-  //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
-  //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
-  //                                       best->_ether_addr.unparse().c_str());
+
+    // if nodes are limited due to the hashmap, check whether we can use this node (is it in the hashmap ??)
+    if ( used_eas != NULL ) {
+      if ( used_eas->findp(n->_ether_addr) == NULL ) continue;
+    }
+
+    //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
+    //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
+    //                                       best->_ether_addr.unparse().c_str());
     if ( ( n->get_age_s(&now) <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
-  //  BRN_DEBUG("YES");
+    //  BRN_DEBUG("YES");
       best = n;
     }/* else {
       BRN_DEBUG("NO");

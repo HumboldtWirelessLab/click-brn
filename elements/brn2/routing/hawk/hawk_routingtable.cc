@@ -82,6 +82,10 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
     }
   }
 
+  if ( _known_hosts.findp(*ea) == NULL ) {
+    _known_hosts.insert(*ea,*ea);
+  }
+
   BRN_DEBUG("Entry is new: Dst: %s Next: %s", ea->unparse().c_str(),
                                               next_phy->unparse().c_str());
   HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next_phy, next_phy);
