@@ -188,7 +188,7 @@ BRNSetGateway::choose_gateway() {
  * Chooses a gateway and rewrites the packet
  * 
  */
-//WARNING gw per reference uebergeben
+#warning gw per reference uebergeben
 void
 BRNSetGateway::set_gateway_on_packet(Packet *p_in, const EtherAddress *gw) {
 
