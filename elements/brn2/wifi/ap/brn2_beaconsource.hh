@@ -74,7 +74,7 @@ class BRN2BeaconSource : public Element { public:
   String scan_string();
 
   class WirelessInfo *_winfo;
-  class AvailableRates *_rtable;
+  class BrnAvailableRates *_rtable;
   class BRN2WirelessInfoList *_winfolist;
  private:
 

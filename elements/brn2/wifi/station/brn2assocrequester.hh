@@ -24,10 +24,10 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 
+#include "elements/brn2/wifi/brnavailablerates.hh"
 
 // Why are the click guys not able to deliver proper headers?
 CLICK_DECLS
-class AvailableRates;
 class WirelessInfo;
 CLICK_ENDDECLS
 
@@ -64,6 +64,7 @@ public:
 // Methods
 //------------------------------------------------------------------------------
 public:
+  void send_assoc_req();
   void send_reassoc_req();
 
   void process_reassoc_resp(Packet *p);
@@ -75,6 +76,8 @@ public:
 public:
   int _debug;
   EtherAddress _bssid;
+
+  BrnAvailableRates *_rtable;
 };
 
 CLICK_ENDDECLS
