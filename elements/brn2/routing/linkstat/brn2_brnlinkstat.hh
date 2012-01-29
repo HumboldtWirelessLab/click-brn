@@ -209,7 +209,6 @@ public:
       assert(_probe_types.size());
       uint32_t num_expected = max(1,min((fake_tau / _period),(_seq / _num_probes)));
 
-      
       return (uint8_t)(min(100, (100 * num) / num_expected));
     }
 

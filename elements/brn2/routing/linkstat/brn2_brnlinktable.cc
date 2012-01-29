@@ -44,8 +44,6 @@ Brn2LinkTable::Brn2LinkTable()
   : _fix_linktable(false),
   _node_identity(),
   _timer(this),
-  _sim_mode(false),
-  _const_metric(0),
   _brn_routecache(NULL),
 #warning Use const for _brn_dsr_min_link_metric_within_route
   _brn_dsr_min_link_metric_within_route(4000)
@@ -113,8 +111,6 @@ Brn2LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "ROUTECACHE", cpkP+cpkM, cpElement, &_brn_routecache,
         "STALE", cpkP+cpkM, cpUnsigned, &stale_period,
-        "SIMULATE", cpkP+cpkM, cpBool, &_sim_mode,
-        "CONSTMETRIC", cpkP+cpkM, cpInteger, &_const_metric,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
         "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
@@ -339,11 +335,7 @@ Brn2LinkTable::get_link_metric(EtherAddress from, EtherAddress to)
   EthernetPair p = EthernetPair(from, to);
   BrnLinkInfo *nfo = _links.findp(p);
   if (!nfo) {
-    if (_sim_mode) {
-      return _const_metric; // TODO what is that?
-    } else {
-      return BRN_DSR_INVALID_ROUTE_METRIC;
-    }
+    return BRN_DSR_INVALID_ROUTE_METRIC;
   }
   return nfo->_metric;
 }

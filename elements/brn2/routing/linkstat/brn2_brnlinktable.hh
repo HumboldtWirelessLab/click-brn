@@ -265,6 +265,7 @@ private:
 
   };
 
+ public:
   class BrnHostInfo {
   public:
     EtherAddress _ether;
@@ -333,8 +334,6 @@ private:
   BRN2NodeIdentity *_node_identity;
   struct timeval _stale_timeout;
   Timer _timer;
-  bool _sim_mode;
-  int _const_metric;
 
   Brn2RouteCache *_brn_routecache;
 
