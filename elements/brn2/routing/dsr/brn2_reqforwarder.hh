@@ -182,6 +182,10 @@ class BRN2RequestForwarder : public BRNElement {
 
   int initialize(ErrorHandler *);
   void uninitialize();
+
+  String
+  get_trackroutemap();
+
   void add_handlers();
 
   void forward_rreq(Packet *p_in, EtherAddress *detour_nb, int detour_metric_last_nb, RouteRequestInfo *rri, uint16_t rreq_id);
@@ -203,10 +207,11 @@ public:
   void check_passive_ack(EtherAddress *last_node_addr, EtherAddress *src, uint16_t rreq_id);
   int retransmission_index(EtherAddress *ea, uint16_t rreq_id);
 
+
+
  private:
   int _min_metric_rreq_fwd;
 
-  TrackRouteMap _track_route_map;
   uint32_t _max_age;
 
   RReqRetransmitInfoList _rreq_retransmit_list;
@@ -214,6 +219,8 @@ public:
 
   Vector<EtherAddress> _neighbors;
   Timestamp _last_neighbor_update;
+
+  TrackRouteMap _track_route_map;
   //
   //Timer methods
   PacketSendBuffer _packet_queue;
