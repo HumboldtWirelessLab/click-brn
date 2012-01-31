@@ -104,7 +104,7 @@ FalconRoutingPeek::handle_request(Packet *p)
   _frt->add_node(&dst);
 
   if ( DHTProtocol::get_type(p) == FALCON_MINOR_REQUEST_SUCCESSOR ) {
-    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20,NULL);
+    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
 
     if ( ! best_succ->equals(&dst) && ( FalconFunctions::is_in_between(&src, &dst, best_succ))) { //"is_in_between" makes sure that the found succ is better then current dst
       BRN_WARN("---------------------------------------------------- Found better Successor in PEEK");
@@ -154,7 +154,7 @@ FalconRoutingPeek::handle_reply(Packet *p)
   _frt->add_node(&dst);
 
   if ( position == FALCON_RT_POSITION_SUCCESSOR ) {
-    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20,NULL);
+    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20);
     if ( ! best_succ->equals(&dst) ) {
       BRN_WARN("I found a better successor. Change reply.");
     }
