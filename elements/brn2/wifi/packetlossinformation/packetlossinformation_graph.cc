@@ -406,7 +406,7 @@ void PacketLossInformation_Graph::graph_build()
 
 	ptr_HIDDEN_NODE->setID(PacketLossReason::HIDDEN_NODE);
  	ptr_HIDDEN_NODE->setParent(ptr_CO_CHANNEL);
-	ptr_HIDDEN_NODE->setFraction(10);
+//	ptr_HIDDEN_NODE->setFraction(10);
 	map_poss_packetlossreson.set(ptr_HIDDEN_NODE->getID(),ptr_HIDDEN_NODE);
 
 	ptr_NARROWBAND_COOPERATIVE->setID(PacketLossReason::NARROWBAND_COOPERATIVE);

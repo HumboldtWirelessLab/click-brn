@@ -43,11 +43,11 @@ CLICK_DECLS
 		return 0;
 	}
 
-	int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) //configure(Vector<String> &, ErrorHandler *) 
+	int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) 
 	{
 		if (cp_va_kparse(conf, this, errh,
       			"PLI", cpkP, cpElement, &pli,
-			//"DEBUG", cpkP, cpInteger, &_debug,
+			"DEBUG", cpkP, cpInteger, &_debug,
 		      cpEnd) < 0) return -1;
 		return 0;
 	}
@@ -141,17 +141,19 @@ CLICK_DECLS
 	{
 		_rts = value;
 	}
-	uint32_t Brn2_SetRTSCTS::neighbour_statistic_pkt_total_get() 
+	uint32_t Brn2_SetRTSCTS::neighbour_statistic_pkt_total_get(EtherAddress dst_address) 
 	{
-		return 1; 
+		PNEIGHBOUR_STATISTICS ptr_neighbour_stats = neighbours_statistic_get(dst_address);
+		return ptr_neighbour_stats->pkt_total;
 	}
-	uint32_t Brn2_SetRTSCTS::neighbour_statistic_rts_on_get() 
+	uint32_t Brn2_SetRTSCTS::neighbour_statistic_rts_on_get(EtherAddress dst_address)
 	{
-		return 2;
+		PNEIGHBOUR_STATISTICS ptr_neighbour_stats = neighbours_statistic_get(dst_address);
+		return ptr_neighbour_stats->rts_on;
 	}
-	uint32_t Brn2_SetRTSCTS::neighbour_statistc_rts_off_get()
+	uint32_t Brn2_SetRTSCTS::neighbour_statistc_rts_off_get(EtherAddress dst_address)
 	{
-		return (neighbour_statistic_pkt_total_get() - neighbour_statistic_rts_on_get());
+		return (neighbour_statistic_pkt_total_get(dst_address) - neighbour_statistic_rts_on_get(dst_address));
 	}
 
 	Brn2_SetRTSCTS::PNEIGHBOUR_STATISTICS Brn2_SetRTSCTS::neighbours_statistic_get(EtherAddress dst_address)
@@ -163,7 +165,7 @@ CLICK_DECLS
 	void Brn2_SetRTSCTS::print_neighbour_statistics()
 	{
 		for (HashTable<EtherAddress,PNEIGHBOUR_STATISTICS>::iterator it = node_neighbours.begin(); it; ++it) {
-			BRN_DEBUG("pkt_total = %d; rts_on = %d", it.value()->pkt_total, it.value()->rts_on);
+			BRN_DEBUG("pkt_total = %d; rts_on = %d; rts_off = %d", it.value()->pkt_total, it.value()->rts_on,(it.value()->pkt_total - it.value()->rts_on));
 		}
 	}
 	
@@ -276,7 +278,7 @@ BRN_DEBUG("hallo:In Dest-Test: Destination: %s; Source: %s", dst.unparse().c_str
 EtherAddress dst_1 = EtherAddress(w->i_addr1);
 BRN_DEBUG("In Dest-Test: Destination: %s; ", dst.unparse().c_str());//, src.unparse().c_str());
 //if (NULL == pli) BRN_DEBUG("PLI-Pointer is null");
-//else if(NULL != pli) {
+if(NULL != pli) {
 BRN_DEBUG("Before pli_graph");
 	PacketLossInformation_Graph *pli_graph = pli->graph_get(dst);
 BRN_DEBUG("AFTER pli_graph");
@@ -309,7 +311,7 @@ BRN_DEBUG("AFTER pli_graph");
 		BRN_DEBUG("Total Number of packets := %d",pkt_total);
 		print_neighbour_statistics();
 	}
-//}
+}
 //  BRN_DEBUG("In Dest-Test: Destination: %s; Source: %s", (w->i_addr1).unparse(),(w->i_addr2).unparse());
   return p_out;
 }

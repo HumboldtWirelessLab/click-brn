@@ -27,12 +27,13 @@ public:
 	int configure(Vector<String> &, ErrorHandler *);
 	int initialize(ErrorHandler *);
 	
-	void graph_set(EtherAddress pkt_address,PacketLossInformation_Graph* pli_graph);
 	void graph_insert(EtherAddress pkt_address);
+	void graph_delete(EtherAddress pkt_address);
 
 	PacketLossInformation_Graph* graph_get(EtherAddress pkt_address);
+	void graph_set(EtherAddress pkt_address,PacketLossInformation_Graph* pli_graph);
 
-
+	unsigned int neighbours_number_get();
 private:
 	HashTable<EtherAddress,PacketLossInformation_Graph*> node_neighbours;
 };

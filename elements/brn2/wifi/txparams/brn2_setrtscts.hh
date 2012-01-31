@@ -35,10 +35,6 @@ public:
 	/* true = on, else off*/
 	void rts_set(bool value);
 
-
-	Packet* dest_test(Packet *p);
-	
-		
 	void print_neighbour_statistics();
 
 
@@ -54,17 +50,16 @@ private:
 		 uint32_t rts_on;
 	};
 
-typedef struct _neighbour_statistics neighbour_statistics,*PNEIGHBOUR_STATISTICS;
-	//TODO:struct bauen für value: 	Pakete zum jeweiligen Ziel, RTS-on, RTS-off
+	typedef struct _neighbour_statistics neighbour_statistics,*PNEIGHBOUR_STATISTICS;
 	HashTable<EtherAddress,PNEIGHBOUR_STATISTICS> node_neighbours;
-	PacketLossInformation *pli; 
+	PacketLossInformation *pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 	PNEIGHBOUR_STATISTICS neighbours_statistic_get(EtherAddress dst_address);	
 	void neighbours_statistic_insert(EtherAddress dst_address);
 	void neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats);
-	uint32_t neighbour_statistic_pkt_total_get();
-	uint32_t neighbour_statistic_rts_on_get();
-	uint32_t neighbour_statistc_rts_off_get();
-	
+	uint32_t neighbour_statistic_pkt_total_get(EtherAddress dst_address);
+	uint32_t neighbour_statistic_rts_on_get(EtherAddress dst_address);
+	uint32_t neighbour_statistc_rts_off_get(EtherAddress dst_address);
+	Packet* dest_test(Packet *p);
 };
 
 CLICK_ENDDECLS
