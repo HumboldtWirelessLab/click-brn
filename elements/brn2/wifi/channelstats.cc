@@ -561,8 +561,6 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
   cstats->duration = _stats_interval;
   cstats->last_update = now;
 
-  int diff_time = 10 * _stats_interval;
-
   if ( _packet_list.size() == 0 ) return;
 
   PacketInfo *pi = _packet_list[0];
@@ -674,6 +672,8 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
     cstats->hw_tx_cycles += pi_hw->_tx_cycles;
   }
 
+  int diff_time = 10 * _stats_interval;
+
   cstats->hw_busy /= diff_time;
   cstats->hw_rx /= diff_time;
   cstats->hw_tx /= diff_time;
@@ -769,6 +769,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
   }
 
   if ( small_stats->hw_count > 0 ) {
+    small_stats->hw_available = true;
     small_stats->hw_busy /= small_stats->hw_count;
     small_stats->hw_rx /= small_stats->hw_count;
     small_stats->hw_tx /= small_stats->hw_count;
