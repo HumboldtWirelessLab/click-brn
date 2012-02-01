@@ -45,8 +45,7 @@ Brn2LinkTable::Brn2LinkTable()
   _node_identity(),
   _timer(this),
   _brn_routecache(NULL),
-#warning Use const for _brn_dsr_min_link_metric_within_route
-  _brn_dsr_min_link_metric_within_route(4000)
+  _brn_dsr_min_link_metric_within_route(BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE)
 {
   BRNElement::init();
 }
@@ -111,7 +110,7 @@ Brn2LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "ROUTECACHE", cpkP+cpkM, cpElement, &_brn_routecache,
         "STALE", cpkP+cpkM, cpUnsigned, &stale_period,
-        "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
+        "MIN_LINK_METRIC_IN_ROUTE", cpkP, cpInteger, &_brn_dsr_min_link_metric_within_route,
         "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 

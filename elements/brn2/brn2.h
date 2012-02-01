@@ -50,6 +50,8 @@ CLICK_DECLS
 #define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
 #define BRN_LT_INVALID_ROUTE_METRIC    65534  ///< metric for invalid/broken routes
 
+#define BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE    4000  ///< metric for invalid/broken routes
+
 class StringTokenizer {
   public:
     StringTokenizer(const String &s) {
