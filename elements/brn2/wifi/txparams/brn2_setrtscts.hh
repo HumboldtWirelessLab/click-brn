@@ -40,9 +40,8 @@ public:
 
 private:	
 	bool _rts;
-	unsigned _mode;
-        EtherAddress _bssid;
-	class WirelessInfo *_winfo;
+ //       EtherAddress _bssid;
+//	class WirelessInfo *_winfo;
 	//total number of packets who got through this element
 	unsigned int pkt_total;	
 	struct _neighbour_statistics {

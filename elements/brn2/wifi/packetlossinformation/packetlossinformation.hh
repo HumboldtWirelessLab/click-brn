@@ -28,18 +28,19 @@ public:
 	int configure(Vector<String> &, ErrorHandler *);
 	int initialize(ErrorHandler *);
 
+	bool ether_address_exists(EtherAddress pkt_address);
 	PacketLossInformation_Graph* graph_insert(EtherAddress pkt_address);
 	void graph_delete(EtherAddress pkt_address);
 
 	PacketLossInformation_Graph* graph_get(EtherAddress pkt_address);
-	void graph_set(EtherAddress pkt_address,PacketLossInformation_Graph* pli_graph);
+	void graph_set(EtherAddress pkt_address, PacketLossInformation_Graph* pli_graph);
 
 	typedef Vector<EtherAddress> NeighboursAddressesVector;
 	NeighboursAddressesVector node_neighbours_addresses_get();
 	typedef NeighboursAddressesVector::const_iterator NeighboursAddressesIterator;
 	void print();
 	unsigned int neighbours_number_get();
-
+	 
 
 private:
 	HashTable<EtherAddress,PacketLossInformation_Graph*> node_neighbours;
