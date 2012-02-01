@@ -804,7 +804,7 @@ BRN2RequestForwarder::reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQu
 //-----------------------------------------------------------------------------
 
 enum {
-  H_DSR_STATS
+  H_DSR_STATS, H_TRACK
 };
 
 static String
@@ -825,12 +825,40 @@ read_param(Element *e, void *thunk)
   return String();
 }
 
+
+static String
+read_trackroutemap(Element *e, void *thunk)
+{
+	BRN2RequestForwarder *f = (BRN2RequestForwarder *)e;
+
+	return f->get_trackroutemap();
+}
+
+String
+BRN2RequestForwarder::get_trackroutemap() {
+	StringAccum sa;
+
+	sa << "size " << _track_route_map.size() << "\n";
+
+	/*
+	for (TrackRouteMapIter i=_track_route_map.begin(); i != _track_route_map.end(); i++) {
+		sa << "content" << i->first << "\n";
+	}
+	*/
+	return sa.take_string();
+}
+
 void
 BRN2RequestForwarder::add_handlers()
 {
+
   BRNElement::add_handlers();
   add_read_handler("stats", read_param , (void *)H_DSR_STATS);
+  add_read_handler("routemap", read_trackroutemap, (void *)H_TRACK);
 }
+
+
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2RequestForwarder)
