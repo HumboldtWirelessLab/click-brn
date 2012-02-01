@@ -38,11 +38,11 @@ CLICK_DECLS
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
 
 Tos2QueueMapper::Tos2QueueMapper():
-    _cst(NULL), _colinf(NULL), pli(NULL)
+    _cst(NULL),
+    _colinf(NULL),
+    pli(NULL),
+    _bqs_strategy(0)
 {
-	_debug = 4;	
-	_bqs_strategy=0;
-	no_queues = 4;
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
