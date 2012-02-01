@@ -55,10 +55,10 @@ private:
 	PacketLossInformation *pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 	PNEIGHBOUR_STATISTICS neighbours_statistic_get(EtherAddress dst_address);	
 	void neighbours_statistic_insert(EtherAddress dst_address);
-	void neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats);
 	uint32_t neighbour_statistic_pkt_total_get(EtherAddress dst_address);
 	uint32_t neighbour_statistic_rts_on_get(EtherAddress dst_address);
 	uint32_t neighbour_statistc_rts_off_get(EtherAddress dst_address);
+	void neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats);
 	Packet* dest_test(Packet *p);
 };
 

@@ -64,7 +64,6 @@ CLICK_DECLS
 	{
 	  if (p){
 		dest_test(p);
-
 		struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 		ceh->magic = WIFI_EXTRA_MAGIC;
 		if (rts_get()) {
@@ -311,6 +310,7 @@ BRN_DEBUG("AFTER pli_graph");
 		BRN_DEBUG("Total Number of packets := %d",pkt_total);
 		print_neighbour_statistics();
 	}
+	pli->print();
 }
 //  BRN_DEBUG("In Dest-Test: Destination: %s; Source: %s", (w->i_addr1).unparse(),(w->i_addr2).unparse());
   return p_out;
