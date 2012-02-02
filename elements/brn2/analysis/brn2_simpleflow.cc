@@ -200,14 +200,13 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     Flow *f_tx = _tx_flowMap.findp(dst_ea);
     if ( f_tx ) {
       BRN_DEBUG("Got reply");
-      f_tx->_rxPackets++;
 
       Timestamp send_time;
       struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
       send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
 
-      f_tx->_cum_sum_rt_time += (Timestamp::now() - send_time).msecval();
-      f_tx->_cum_sum_hops += (SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet));
+      f_tx->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
+                         (uint32_t)(SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet)));
 
       packet->kill();
       return;
@@ -381,10 +380,12 @@ BRN2SimpleFlow::xml_stats()
     sa << " packet_size=\"" << fl._size << "\"";
     sa << " replies=\"" << fl._rxPackets << "\"";
     if ( fl._rxPackets > 0 ) {
-      sa << " avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\"";
-      sa << " time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
+      sa << " min_hops=\"" << fl._min_hops << "\" max_hops=\"" << fl._max_hops;
+      sa << "\" avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets;
+      sa << "\" min_time=\"" << fl._min_rt_time  << "\" max_time=\"" << fl._max_rt_time;
+      sa << "\" time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
     } else {
-      sa << " avg_hops=\"0\" time=\"0\" />\n";
+      sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" min_time=\"0\" max_time=\"0\" time=\"0\" />\n";
     }
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
