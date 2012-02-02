@@ -701,20 +701,6 @@ ChannelStats::reset()
 /****************************** CALC STATS FINAL (use for small and full stats) *******************************/
 /**************************************************************************************************************/
 
-int32_t isqrt32(int32_t n) {
-  int32_t x,x1;
-
-  if ( n == 0 ) return 0;
-
-  x1 = n;
-  do {
-    x = x1;
-    x1 = (x + n/x) >> 1;
-  } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-  return x1;
-}
-
 void
 ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration)
 {
