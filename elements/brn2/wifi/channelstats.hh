@@ -259,20 +259,6 @@ class ChannelStats : public BRNElement {
        return (_rssi/_pkt_count);
      }
 
-     int32_t isqrt32(int32_t n) {
-       int32_t x,x1;
-
-       if ( n == 0 ) return 0;
-
-       x1 = n;
-       do {
-         x = x1;
-         x1 = (x + n/x) >> 1;
-       } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-       return x1;
-     }
-
      uint32_t std_rssi() {
        int32_t q = _rssi/_pkt_count;
        return isqrt32((_sum_sq_rssi/_pkt_count)-(q*q));
