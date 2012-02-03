@@ -838,13 +838,21 @@ String
 BRN2RequestForwarder::get_trackroutemap() {
 	StringAccum sa;
 
-	sa << "size " << _track_route_map.size() << "\n";
+	sa << "<Requestmap nodes=\"" << _track_route_map.size() << "\">\n";
 
-	/*
-	for (TrackRouteMapIter i=_track_route_map.begin(); i != _track_route_map.end(); i++) {
-		sa << "content" << i->first << "\n";
+	for (TrackRouteMapIter i=_track_route_map.begin(); i.live(); i++) {
+		 RouteRequestInfo *rri = i.value();
+		sa << "\t<node addr=\"" << i.key() << "\">\n";
+
+		for (int j=0; j < sizeof(rri->_metric_list)/sizeof(rri->_metric_list[0]); j++) {
+			// if ((rri->_id_list[j] & METRIC_LIST_MASK) != 0)
+				sa << "\t\t<request id=\"" << rri->_id_list[j] << "\" metric=\"" << rri->_metric_list[j] << "\" time=\"" << rri->_times_list[j] << "\">\n";
+		}
+
+		sa << "\t</node>";
 	}
-	*/
+	sa << "</Requestmap>\n";
+
 	return sa.take_string();
 }
 
