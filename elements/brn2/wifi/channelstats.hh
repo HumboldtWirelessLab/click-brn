@@ -24,6 +24,7 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/wifi/brnwifi.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
@@ -257,20 +258,6 @@ class ChannelStats : public BRNElement {
 
      uint32_t avg_rssi() {
        return (_rssi/_pkt_count);
-     }
-
-     int32_t isqrt32(int32_t n) {
-       int32_t x,x1;
-
-       if ( n == 0 ) return 0;
-
-       x1 = n;
-       do {
-         x = x1;
-         x1 = (x + n/x) >> 1;
-       } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-       return x1;
      }
 
      uint32_t std_rssi() {

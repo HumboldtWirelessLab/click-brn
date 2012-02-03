@@ -79,6 +79,8 @@ class BRN2RequestForwarder : public BRNElement {
     uint16_t _passive_ack_retry_list[METRIC_LIST_SIZE];
     Timestamp _passive_ack_last_retry_list[METRIC_LIST_SIZE];
 
+    uint8_t _last_hop_opt[METRIC_LIST_SIZE];
+
    public:
 
     RouteRequestInfo(EtherAddress *src, uint16_t max_age ) {
@@ -97,11 +99,12 @@ class BRN2RequestForwarder : public BRNElement {
       return _metric_list[i];
     }
 
-    inline void set_metric(uint16_t req_id, uint16_t metric, Timestamp *now) {
+    inline void set_metric(uint16_t req_id, uint16_t metric, Timestamp *now, uint8_t last_hop_opt = 0) {
       uint16_t i = req_id & METRIC_LIST_MASK;
       _id_list[i] = req_id;
       _metric_list[i] = metric;
       _times_list[i] = *now;
+      _last_hop_opt[i] = last_hop_opt;
     }
 
     inline void reset_passive_ack(uint16_t req_id, uint16_t neighbour_count, uint16_t max_retries) {
@@ -183,8 +186,7 @@ class BRN2RequestForwarder : public BRNElement {
   int initialize(ErrorHandler *);
   void uninitialize();
 
-  String
-  get_trackroutemap();
+  String get_trackroutemap();
 
   void add_handlers();
 

@@ -319,7 +319,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
                                                            rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now));
 
   if ( _route_querier->metric_preferable(route_metric, rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now)) ) {
-    rreqi->set_metric(ntohs(brn_dsr->dsr_id), route_metric, &now);
+    rreqi->set_metric(ntohs(brn_dsr->dsr_id), route_metric, &now, (uint8_t)((detour_nb==NULL)?0:1));
   } else {
       //already forwarded with better metric
     BRN_DEBUG(" Seen Routerequest with better metric before; Drop packet! %d <= %d, #ID %d",
@@ -673,7 +673,6 @@ BRN2RequestForwarder::check_passive_ack(EtherAddress *last_node_addr, EtherAddre
     _rreq_retransmit_list.erase(_rreq_retransmit_list.begin() + index);
   }
 
-
 }
 
 int
@@ -820,53 +819,49 @@ read_param(Element *e, void *thunk)
       sa << "<stats better_route=\"" << rreq->_stats_receive_better_route << "\"/>\n";
       return ( sa.take_string() );
     }
+    case H_TRACK :
+    {
+      return rreq->get_trackroutemap();
+    }
   }
 
   return String();
 }
 
-
-static String
-read_trackroutemap(Element *e, void *thunk)
-{
-	BRN2RequestForwarder *f = (BRN2RequestForwarder *)e;
-
-	return f->get_trackroutemap();
-}
-
 String
 BRN2RequestForwarder::get_trackroutemap() {
-	StringAccum sa;
+  StringAccum sa;
 
-	sa << "<Requestmap nodes=\"" << _track_route_map.size() << "\">\n";
+  sa << "<requestforwarderstats id=\"" << BRN_NODE_NAME << "\" trackmapsize=\"" << _track_route_map.size() << "\">\n";
 
-	for (TrackRouteMapIter i=_track_route_map.begin(); i.live(); i++) {
-		 RouteRequestInfo *rri = i.value();
-		sa << "\t<node addr=\"" << i.key() << "\">\n";
+  for (TrackRouteMapIter iter = _track_route_map.begin(); iter.live(); iter++) {
+    EtherAddress ea = iter.key();
+    RouteRequestInfo *rri = iter.value();
 
-		for (int j=0; j < sizeof(rri->_metric_list)/sizeof(rri->_metric_list[0]); j++) {
-			// if ((rri->_id_list[j] & METRIC_LIST_MASK) != 0)
-				sa << "\t\t<request id=\"" << rri->_id_list[j] << "\" metric=\"" << rri->_metric_list[j] << "\" time=\"" << rri->_times_list[j] << "\">\n";
-		}
+    sa << "\t<requestnode src=\"" << ea.unparse() << "\" >\n";
 
-		sa << "\t</node>";
-	}
-	sa << "</Requestmap>\n";
+    for ( int i = 0; i < METRIC_LIST_SIZE; i++) {
+      if ( (rri->_id_list[i]) % METRIC_LIST_SIZE == i ) {
+        sa << "\t\t<request id=\"" << rri->_id_list[i] << "\" metric=\"" << rri->_metric_list[i];
+        sa << "\" last_hop_opt=\"" << (uint32_t)(rri->_last_hop_opt[i]) << "\" >\n";
+      }
+    }
+    sa << "\t</requestnode>\n";
+  }
 
-	return sa.take_string();
+  sa << "</requestforwarderstats>\n";
+
+  return sa.take_string();
 }
 
 void
 BRN2RequestForwarder::add_handlers()
 {
-
   BRNElement::add_handlers();
-  add_read_handler("stats", read_param , (void *)H_DSR_STATS);
-  add_read_handler("routemap", read_trackroutemap, (void *)H_TRACK);
+
+  add_read_handler("stats", read_param, (void *)H_DSR_STATS);
+  add_read_handler("routemap", read_param, (void *)H_TRACK);
 }
-
-
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2RequestForwarder)

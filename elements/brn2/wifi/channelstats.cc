@@ -104,6 +104,11 @@ ChannelStats::initialize(ErrorHandler *)
 
   if ( ! _enable_full_stats ) memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
 
+  memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+  _small_stats_src_tab[_current_small_stats].clear();
+  memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
+  _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
+
   return 0;
 }
 
@@ -561,8 +566,6 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
   cstats->duration = _stats_interval;
   cstats->last_update = now;
 
-  int diff_time = 10 * _stats_interval;
-
   if ( _packet_list.size() == 0 ) return;
 
   PacketInfo *pi = _packet_list[0];
@@ -674,6 +677,8 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
     cstats->hw_tx_cycles += pi_hw->_tx_cycles;
   }
 
+  int diff_time = 10 * _stats_interval;
+
   cstats->hw_busy /= diff_time;
   cstats->hw_rx /= diff_time;
   cstats->hw_tx /= diff_time;
@@ -695,20 +700,6 @@ ChannelStats::reset()
 /**************************************************************************************************************/
 /****************************** CALC STATS FINAL (use for small and full stats) *******************************/
 /**************************************************************************************************************/
-
-int32_t isqrt32(int32_t n) {
-  int32_t x,x1;
-
-  if ( n == 0 ) return 0;
-
-  x1 = n;
-  do {
-    x = x1;
-    x1 = (x + n/x) >> 1;
-  } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-  return x1;
-}
 
 void
 ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration)
@@ -769,6 +760,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
   }
 
   if ( small_stats->hw_count > 0 ) {
+    small_stats->hw_available = true;
     small_stats->hw_busy /= small_stats->hw_count;
     small_stats->hw_rx /= small_stats->hw_count;
     small_stats->hw_tx /= small_stats->hw_count;
