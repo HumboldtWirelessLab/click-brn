@@ -1,13 +1,12 @@
 #include <click/config.h>
-#include <click/error.hh>
 #include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/args.hh>
 #include <click/straccum.hh>
 
 #if CLICK_NS 
   #include <click/router.hh> 
 #endif 
-
-#include <iostream>
 #include "packetlossestimator.hh"
 
 CLICK_DECLS
@@ -17,14 +16,14 @@ PacketLossEstimator::PacketLossEstimator():
         _cinfo(NULL),
         _hnd(NULL),
         _pli(NULL),
-	_dev(NULL),
-        _debug(0)
-{ /* nothing */ }
+	_dev(NULL)
+{
+  _debug = 4;
+}
 
 PacketLossEstimator::~PacketLossEstimator() { /* nothing */ }
 
 int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
-  
   int ret = cp_va_kparse(conf, this, errh,
                      "CHANNELSTATS", cpkP, cpElement, &_cst,
                      "COLLISIONINFO", cpkP, cpElement, &_cinfo,
@@ -46,6 +45,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
     
     EtherAddress src = getSrcAddress(packet);
     EtherAddress dst = EtherAddress(((struct click_wifi *) packet->data())->i_addr1);
+    int packettype = getPacketType(packet);
     if (addNewPLINode(src) > 0) {
       
       int busy, rx, tx;
@@ -81,17 +81,79 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
         cp_integer(args[13],&tx_cycles);*/
 
       #endif
-      if(_debug) {
-	
-        std::cout << "Sta: " << _dev->getEtherAddress()->unparse() << "\n";
-        std::cout << "Dst: " << dst.unparse().c_str() << "\n";
-        std::cout << "Busy: " << busy << "  RX: " << rx << "  TX: " << tx << "\n";
-        std::cout << "HW_Cycles: " << hw_cycles << "  Busy_Cycles: " << busy_cycles << "  RX_Cycles: " << rx_cycles << "  TX_Cycles: " << tx_cycles << "\n\n\n";
-      }
-      updatePacketlossStatistics(src, stats);
+      BRN_DEBUG("OwnAddress: %s", _dev->getEtherAddress()->unparse().c_str());
+      BRN_DEBUG("SrcAddress: %s", src.unparse().c_str());
+      BRN_DEBUG("DstAddress: %s", dst.unparse().c_str());
+      BRN_DEBUG("Busy: %d\tRX: %d\tTX: %d", busy, rx, tx);
+      BRN_DEBUG("HW_Cycles: %d\tBusy_Cycles: %d\tRX_Cycles: %d\tTX_Cycles: %d\n\n", hw_cycles, busy_cycles, rx_cycles, tx_cycles);
+      updatePacketlossStatistics(src, dst, packettype, stats);
     }
   }
   return packet;	
+}
+
+uint8_t PacketLossEstimator::getPacketType(Packet *packet) {
+
+  struct click_wifi *wh = (struct click_wifi *) packet->data();
+  int returnval = 0;
+  switch (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) {
+
+    case WIFI_FC0_TYPE_MGT:
+      BRN_DEBUG("ManagementFrame");
+      //switch (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {.... }
+      returnval = 10;
+      break;
+    
+    case WIFI_FC0_TYPE_CTL:
+      BRN_DEBUG("ControlFrame");
+      returnval = 20;
+      switch (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {
+      
+        case WIFI_FC0_SUBTYPE_PS_POLL:
+          BRN_DEBUG("ps-poll");
+	  returnval = 21;
+          break;
+	
+        case WIFI_FC0_SUBTYPE_RTS:
+          BRN_DEBUG("rts");
+	  returnval = 22;
+          break;
+	
+        case WIFI_FC0_SUBTYPE_CTS:	
+          BRN_DEBUG("cts");
+	  returnval = 23;
+          break;
+	
+        case WIFI_FC0_SUBTYPE_ACK:	
+          BRN_DEBUG("ack");
+	  returnval = 24;
+          break;
+	
+        case WIFI_FC0_SUBTYPE_CF_END:
+          BRN_DEBUG("cf-end");
+	  returnval = 25;
+          break;
+	
+        case WIFI_FC0_SUBTYPE_CF_END_ACK:
+          BRN_DEBUG("cf-end-ack");
+	  returnval = 26;
+          break;
+	
+        default:
+          BRN_DEBUG("unknown subtype: %d", (int) (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK));
+      }
+      break;
+    
+    case WIFI_FC0_TYPE_DATA:
+      BRN_DEBUG("DataFrame");
+      returnval = 30;
+      break;
+    
+    default:
+      BRN_DEBUG("unknown type: %d", (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK));
+    
+    return returnval;
+  }
 }
 
 EtherAddress PacketLossEstimator::getSrcAddress(Packet *packet) {
@@ -119,10 +181,10 @@ EtherAddress PacketLossEstimator::getSrcAddress(Packet *packet) {
     return src;
 }
 
-void PacketLossEstimator::updatePacketlossStatistics(EtherAddress address, int stats[]) {
+void PacketLossEstimator::updatePacketlossStatistics(EtherAddress srcAddress, EtherAddress dstAddress, int packettype, int stats[]) {
   
-  estimateHiddenNode(address);
-  estimateInrange(address, stats);
+  estimateHiddenNode(srcAddress, dstAddress, packettype);
+  estimateInrange(srcAddress, stats);
   estimateNonWifi(stats);
 }
 
@@ -131,43 +193,79 @@ void PacketLossEstimator::updatePacketlossStatistics(EtherAddress address, int s
   if(_pli != NULL) {
     
     if(_pli->graph_get(address) == NULL) {
-    
+       
       _pli->graph_insert(address);
       PacketLossInformation_Graph *pliGraph = _pli->graph_get(address);
-      pliGraph->graph_build();
       
-      if(_debug) {
-        std::cout << "PLE::DEBUG: Address inserted: " << address.unparse().c_str() << "\n";
-	std::cout << "PLE::DEBUG: pliGraph: " << pliGraph->get_root_node()->getLabel() << "\n";
-      }
+      BRN_DEBUG("Address inserted: %s", address.unparse().c_str());
+      //BRN_DEBUG("PLE::DEBUG: pliGraph: %s", pliGraph->get_root_node()->getLabel());
+      
       return 0;
-    } else if(_debug) {
-       std::cout << "PLE::DEBUG: Address already exists: " << address.unparse().c_str() << "\n";
+    } else {
+      
+      BRN_DEBUG("Address already exists: %s", address.unparse().c_str());
       return 1;
     }
   }
   return -1;
 }
 
-void PacketLossEstimator::estimateHiddenNode(EtherAddress address) {
-
+void PacketLossEstimator::estimateHiddenNode(EtherAddress srcAddress, EtherAddress dstAddress, int packettype) {
+  
   if(_pli != NULL) {
-    // Hashmap neighbours (Address
-    // neighbour
-  }	
+    
+    if(packettype < 25 && packettype > 20) {
+      
+      BRN_DEBUG("ControllFrame catched");
+      // Hashmap neighbours (Address
+      // neighbour
+      
+      // pro nachbarn: wenn ich Daten-pakete mit src(Nachbar)->dst(x) höre -> Pakete mit src(x)->dst(Nachbar)? wenn ja, kein HN
+      // wenn nein, höre ich Acks addr1(x)? wenn nein, Knoten x nich da. Wenn ja, HN. HN(b) > 0
+      // Datenpakete + ACKS pro Zeit für Prozent Kanalbelegung -> HN-Wahrscheinlichkeit , Für mehere HN Wahrscheinlichkeiten addieren.
+
+	
+      // prüfen, ob ack für möglichen HN-Kandidaten eingetroffen, wenn ja, dann HN anpassen
+    } else {
+      BRN_DEBUG("Other Frame catched");
+      if (*_dev->getEtherAddress() != dstAddress) {
+	
+	addAddress2NodeList(srcAddress, dstAddress);
+      } 
+    }
+  } else {
+    // Beschweren, dass PLI NULL
+  }
+}
+
+void PacketLossEstimator::addAddress2NodeList(EtherAddress srcAddress, EtherAddress dstAddress){
+  BRN_DEBUG("Add Address 2 NodeList");
+  if (srcAddress != brn_etheraddress_broadcast) {
+  
+    if (nodeList.contains(srcAddress)) {
+      
+      nodeList.updateNeighbours(srcAddress, dstAddress);
+      
+    } else {
+      nodeList.add(srcAddress, dstAddress);
+    }
+    uint8_t hnProp = nodeList.calcHiddenNodesProbability(*_dev->getEtherAddress(), srcAddress);
+    _pli->graph_get(srcAddress)->get_reason_by_id(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
+    BRN_DEBUG("hnProp: %i", hnProp);
+  }
 }
 
 void PacketLossEstimator::estimateInrange(EtherAddress address, int stats[]) {
   
   if(_pli != NULL) {
-	  
+    
   }
 }
 
 void PacketLossEstimator::estimateNonWifi(int stats[]) {
   
   if(_pli != NULL) {
-	  
+    
   }	
 }
 
@@ -192,7 +290,6 @@ String PacketLossEstimator::stats_handler(int mode) {
     }
   }
   sa << "</packetlossreason>\n";
-
   return  sa.take_string();
 }
 
