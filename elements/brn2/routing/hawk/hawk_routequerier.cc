@@ -159,8 +159,8 @@ HawkRouteQuerier::push(int, Packet *p_in)
   BRN_DEBUG("Request for %s", dst_addr.unparse().c_str());
   BRN_INFO("currently we using MD5 to get the id of a node (MAC). Change in future");
 
-  DHTnode *n = new DHTnode(dst_addr);
-  WritablePacket *pr = HawkProtocol::add_route_header(n->_md5_digest,
+  DHTnode n = DHTnode(dst_addr);
+  WritablePacket *pr = HawkProtocol::add_route_header(n._md5_digest,
                                                       _dht_routing->_me->_md5_digest,
                                                       p_in);
   output(0).push(pr);  //push out packet with header (include the id of the final destination
