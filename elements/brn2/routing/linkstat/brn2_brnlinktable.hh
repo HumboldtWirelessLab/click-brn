@@ -100,8 +100,6 @@ class Brn2LinkTable: public BRNElement {
   //
   //member
   //
-  Vector<EtherAddress> last_route;
-
   bool _fix_linktable;
   //
   //methods
@@ -165,7 +163,7 @@ class Brn2LinkTable: public BRNElement {
   int32_t get_route_metric(const Vector<EtherAddress> &route);
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
   void get_local_neighbors(Vector<EtherAddress> &neighbors);
-  EtherAddress *get_neighbor(EtherAddress ether);
+  const EtherAddress *get_neighbor(EtherAddress ether);
   void clear_stale();
 
   /**
@@ -267,6 +265,7 @@ private:
 
   };
 
+ public:
   class BrnHostInfo {
   public:
     EtherAddress _ether;
@@ -335,8 +334,6 @@ private:
   BRN2NodeIdentity *_node_identity;
   struct timeval _stale_timeout;
   Timer _timer;
-  bool _sim_mode;
-  int _const_metric;
 
   Brn2RouteCache *_brn_routecache;
 
@@ -347,7 +344,7 @@ private:
   bool is_associated(EtherAddress ea);
 };
 
-inline void 
+inline void
 Brn2LinkTable::query_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,

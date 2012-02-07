@@ -3,6 +3,7 @@
  */
 
 #include <click/config.h>
+#include <click/straccum.hh>
 #include "packetlossreason.hh"
 
 CLICK_DECLS
@@ -121,7 +122,19 @@ PacketLossReason::PossibilityE PacketLossReason::getID()
 {
 	return possiblity_id;
 }
+enum {H_PRINT};
 
+String PacketLossReason::print(int mode)
+{
+	StringAccum sa;
+	switch (mode) {
+    	case H_PRINT:
+
+      	sa << "<packetlossreason";
+
+  }
+  return sa.take_string();
+}
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(PacketLossReason)
 

@@ -34,10 +34,14 @@
 
 CLICK_DECLS
 
+//TODO: wie kommen die Werte zustande?
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
 
 Tos2QueueMapper::Tos2QueueMapper():
-    _cst(NULL)
+    _cst(NULL),
+    _colinf(NULL),
+    pli(NULL),
+    _bqs_strategy(0)
 {
 }
 
@@ -59,6 +63,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "AIFS", cpkP, cpString, &s_aifs,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
       "COLLISIONINFO", cpkP, cpElement, &_colinf,
+      "PLI", cpkP, cpElement, &pli,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -69,7 +74,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   no_queues = args.size();
 
   if ( no_queues > 0 ) {
-    _cwmin = new uint16_t(no_queues);
+    _cwmin = new uint16_t[no_queues];
     _cwmax = new uint16_t[no_queues];
     _aifs = new uint16_t[no_queues];
 
@@ -100,14 +105,75 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
+void Tos2QueueMapper::no_queues_set(uint8_t number)
+{
+	no_queues = number;
+}
+
+
+uint8_t Tos2QueueMapper::no_queues_get()
+{
+	return	no_queues;
+}
+
+void Tos2QueueMapper::queue_usage_set(uint8_t position, uint32_t value)
+{
+	if (position < no_queues) _queue_usage[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::queue_usage_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues - 1;
+	return	_queue_usage[position];
+}
+
+void Tos2QueueMapper::cwmin_set(uint8_t position, uint32_t value)
+{
+	if (position < no_queues) _cwmin[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::cwmin_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues -1;
+	return	_cwmin[position];
+}
+
+void Tos2QueueMapper::cwmax_set(uint8_t position, uint32_t value)
+{
+	if (position <= no_queues) _cwmax[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::cwmax_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues - 1;
+	return	_cwmax[position];
+}
 
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
   uint8_t tos = BRNPacketAnno::tos_anno(p);
-
   int opt_queue = tos;
+  if (_bqs_strategy == 0) {
+	BRN_DEBUG("optimale queue:= %d",opt_queue);
+	for (int i = 0; i <= no_queues_get();i++) {
+	BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
+	BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+	BRN_DEBUG("queue_usage[%d] := %d",i,queue_usage_get(i));
+	if( NULL != pli) BRN_DEBUG("PLI is not Null\n\r");
+	if ( _cst != NULL ) {
+    		struct airtime_stats *as;
+    		as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
+		BRN_DEBUG("Number of Neighbours %d",as->no_sources);  
+	}
 
+  }
+
+}
+else if (_bqs_strategy == 1) {
   if ( _colinf != NULL ) {
     if ( _colinf->_global_rs != NULL ) {
       uint32_t target_frac = tos2frac[tos];
@@ -115,10 +181,10 @@ Tos2QueueMapper::simple_action(Packet *p)
       int ofq = -1;
       for ( int i = 0; i < no_queues; i++ ) {
         if (ofq == -1) {
-/*          click_chatter("Foo");
-          click_chatter("%p",_colinf->_global_rs);
-          click_chatter("queu: %d",_colinf->_global_rs->get_frac(i));
-          int foo = _colinf->_global_rs->get_frac(i);*/
+          BRN_DEBUG("Foo");
+          BRN_DEBUG("%p",_colinf->_global_rs);
+          BRN_DEBUG("queu: %d",_colinf->_global_rs->get_frac(i));
+          //int foo = _colinf->_global_rs->get_frac(i);
           if (_colinf->_global_rs->get_frac(i) >= target_frac) {
             if ( i == 0 ) {
               ofq = i;
@@ -152,6 +218,7 @@ Tos2QueueMapper::simple_action(Packet *p)
     if ( opt_queue < 0 ) opt_queue = 0;
     else if ( opt_queue > no_queues ) opt_queue = no_queues;
   }
+}
 
   //trunc overflow
   if ( opt_queue >= no_queues ) opt_queue = no_queues - 1;
@@ -180,6 +247,7 @@ Tos2QueueMapper::find_queue(int cwmin) {
   return no_queues - 1;
 }
 
+
 enum {H_STATS, H_RESET};
 
 static String
@@ -190,10 +258,10 @@ Tos2QueueMapper_read_param(Element *e, void *thunk)
     case H_STATS:
       StringAccum sa;
 
-      sa << "<queueusage queues=\"" << (uint32_t)td->no_queues << "\" >\n";
+      sa << "<queueusage queues=\"" << (uint32_t)td->no_queues_get() << "\" >\n";
 
-      for ( int i = 0; i < td->no_queues; i++) {
-        sa << "\t<queue index=\"" << i << "\" usage=\"" << td->_queue_usage[i] << "\" />\n";
+      for ( int i = 0; i < td->no_queues_get(); i++) {
+        sa << "\t<queue index=\"" << i << "\" usage=\"" << td->queue_usage_get(i) << "\" />\n";
       }
       sa << "</queueusage>\n";
       return sa.take_string();

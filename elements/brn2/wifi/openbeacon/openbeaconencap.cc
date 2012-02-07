@@ -70,7 +70,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   if ( ceh->rate == 0 ) {
     crh->rate = 0;
   } else {
-    crh->rate = (ceh->rate/2);
+	crh->rate = (ceh->rate/2);
   }
   
   for(i=1; i>=0; i--) {
@@ -80,7 +80,6 @@ OpenBeaconEncap::simple_action(Packet *p)
   for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
 	  crh->openbeacon_dmac[ 6 - i - 1 ] =  opbecon_filter[ sizeof( crh->openbeacon_dmac ) - i + 1];
   }  
-     
   return q;
 }
 

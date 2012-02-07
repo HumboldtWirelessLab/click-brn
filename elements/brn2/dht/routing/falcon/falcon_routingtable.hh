@@ -120,7 +120,7 @@ class FalconRoutingTable : public BRNElement
   bool isBetterSuccessor(DHTnode *node);
   bool isBetterPredecessor(DHTnode *node);
 
-  DHTnode* findBestSuccessor(DHTnode *node, int max_age);
+  DHTnode* findBestSuccessor(DHTnode *node, int max_age, HashMap<EtherAddress,EtherAddress> *used_eas = NULL);
 
   int add_node(DHTnode *node);
   int add_node(DHTnode *node, bool is_neighbour);

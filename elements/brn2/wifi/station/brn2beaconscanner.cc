@@ -26,11 +26,12 @@
 #include <click/vector.hh>
 #include <click/hashmap.hh>
 #include <click/packet_anno.hh>
-#include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "brn2beaconscanner.hh"
-#include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+
+#include "brn2beaconscanner.hh"
 
 CLICK_DECLS
 
@@ -60,8 +61,8 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
        cpEnd) < 0)
     return -1;
 
-  if (_rtable && _rtable->cast("AvailableRates") == 0) 
-    return errh->error("AvailableRates element is not a AvailableRates");
+  if (_rtable && _rtable->cast("BrnAvailableRates") == 0) 
+    return errh->error("BrnAvailableRates element is not a BrnAvailableRates");
 
   return 0;
 }
@@ -245,20 +246,20 @@ BRN2BeaconScanner::simple_action(Packet *p)
   ac_vap->_rates.clear();
   ac_vap->_last_rx = Timestamp::now();
 
-  Vector<int> all_rates;
+  Vector<MCS> all_rates;
 
   if (rates_l) {
     for (int x = 0; x < min((int)rates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = rates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {
-        ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
-        ac_vap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_basic_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
+        ac_vap->_basic_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
       } else {
-        ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
-        ac_vap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
+        ac_vap->_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
       }
-      all_rates.push_back((int)(rate & WIFI_RATE_VAL));
+      all_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
     }
   }
 
@@ -268,13 +269,13 @@ BRN2BeaconScanner::simple_action(Packet *p)
       uint8_t rate = xrates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {
-        ap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
-        ac_vap->_basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_basic_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
+        ac_vap->_basic_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
       } else {
-        ap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
-        ac_vap->_rates.push_back((int)(rate & WIFI_RATE_VAL));
+        ap->_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
+        ac_vap->_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
       }
-      all_rates.push_back((int)(rate & WIFI_RATE_VAL));
+      all_rates.push_back(MCS((int)(rate & WIFI_RATE_VAL)));
     }
   }
 
@@ -329,11 +330,11 @@ BRN2BeaconScanner::scan_string()
 
     sa << "( { ";
     for (int x = 0; x < ap._basic_rates.size(); x++) {
-      sa << ap._basic_rates[x] << " ";
+      sa << ap._basic_rates[x].to_string() << " ";
     }
     sa << "} ";
     for (int x = 0; x < ap._rates.size(); x++) {
-      sa << ap._rates[x] << " ";
+      sa << ap._rates[x].to_string() << " ";
     }
 
     sa << ")\n";
@@ -387,11 +388,11 @@ BRN2BeaconScanner::scan_string2()
 
       sa << "( { ";
       for (int x = 0; x < ap._basic_rates.size(); x++) {
-        sa << ap._basic_rates[x] << " ";
+        sa << ap._basic_rates[x].to_string() << " ";
       }
       sa << "} ";
       for (int x = 0; x < ap._rates.size(); x++) {
-        sa << ap._rates[x] << " ";
+        sa << ap._rates[x].to_string() << " ";
       }
 
       sa << ")\n";

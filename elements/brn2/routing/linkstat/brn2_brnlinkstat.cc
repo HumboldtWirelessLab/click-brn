@@ -34,8 +34,6 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
-#include <tinyxml/tinyxml.h>
-
 #include "brn2_brnlinkstat.hh"
 
 CLICK_DECLS
@@ -49,7 +47,7 @@ BRN2LinkStat::BRN2LinkStat()
     _period(1000),
     _seq(0),
     _next_neighbor_to_add(0),
-    _timer(0),
+    _timer(static_send_hook,this),
     _stale_timer(this),
     _ads_rs_index(0),
     _rtable(0),
@@ -61,9 +59,8 @@ BRN2LinkStat::BRN2LinkStat()
 
 BRN2LinkStat::~BRN2LinkStat()
 {
-  if (_timer)
-    delete _timer;
-  _timer = NULL;
+  _timer.unschedule();
+  _stale_timer.unschedule();
 
   _bcast_stats.clear();
   _neighbors.clear();
@@ -125,20 +122,21 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
 
     click_srandom(_dev->getEtherAddress()->hashcode());
 
-    _timer = new Timer(static_send_hook, this);
-    _timer->initialize(this);
+    _timer.initialize(this);
 
     _stale_timer.initialize(this);
     _stale_timer.schedule_now();
 
-    _next = Timestamp::now().timeval();
+    _next = Timestamp::now();
 
-    _next.tv_sec++;
-    brn2add_jitter2( (_period / 10), &_next);
+    int jitter = (click_random() % ((_period / 5) + 1)) - (_period / 10);
 
-    BRN_DEBUG("next %s", Timestamp(_next).unparse().c_str());
+    if ( jitter >= 0 ) _next += Timestamp::make_msec(jitter);
+    else _next -= Timestamp::make_msec(-1*jitter);
 
-    _timer->schedule_at(_next);
+    BRN_DEBUG("next %s", _next.unparse().c_str());
+
+    _timer.schedule_at(_next);
   }
 
   reset();
@@ -152,24 +150,6 @@ BRN2LinkStat::run_timer(Timer*)
   clear_stale();
   _stale_timer.schedule_after_msec(_stale);
 }
-
-void
-BRN2LinkStat::brn2add_jitter2(unsigned int max_jitter, struct timeval *t)
-{
-  struct timeval jitter;
-  unsigned j = (unsigned) (click_random() % (max_jitter + 1));
-  unsigned int delta_us = 1000 * j;
-  timerclear(&jitter);
-  jitter.tv_usec += delta_us;
-  jitter.tv_sec +=  jitter.tv_usec / 1000000;
-  jitter.tv_usec = (jitter.tv_usec % 1000000);
-  if (click_random() & 1) {
-    timeradd(t, &jitter, t);
-  } else {
-    timersub(t, &jitter, t);
-  }
-  return;
-    }
 
 void
 BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
@@ -192,12 +172,12 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
   _bcast_stats = q->_bcast_stats;
   _start = q->_start;
 
-  struct timeval now;
-  now = Timestamp::now().timeval();
+  Timestamp now;
+  now = Timestamp::now();
 
-  if (timercmp(&now, &q->_next, <)) {
-    _timer->unschedule();
-    _timer->schedule_at(q->_next);
+  if ( now < q->_next ) {
+    _timer.unschedule();
+    _timer.schedule_at(q->_next);
     _next = q->_next;
   }
 
@@ -222,25 +202,21 @@ BRN2LinkStat::send_probe_hook()
     return;
   }
 
-  int p = _period / _ads_rs.size(); //period (msecs); _ads_rs.size(): probe count
-  unsigned max_jitter = p / 10;
+  int p = _period / _ads_rs.size();
+  _next += Timestamp::make_msec(p);
 
-  struct timeval period;
-  timerclear(&period);
+  int jitter = (click_random() % ((p / 5) + 1)) - (p / 10);
+
+  Timestamp _next_with_jitter = _next;
+
+  if ( jitter >= 0 ) _next_with_jitter += Timestamp::make_msec(jitter);
+  else _next_with_jitter -= Timestamp::make_msec(-1*jitter);
+
+  _timer.schedule_at(_next_with_jitter);
+
+  BRN_DEBUG("Schedule next at %s",_next_with_jitter.unparse().c_str());
 
   send_probe();
-
-//  struct timeval period;
-//  timerclear(&period);
-
-  period.tv_usec += (p * 1000);
-  period.tv_sec += period.tv_usec / 1000000;
-  period.tv_usec = (period.tv_usec % 1000000);
-
-  timeradd(&period, &_next, &_next);
-  brn2add_jitter2(max_jitter, &_next);
-  _timer->schedule_at(_next);
-
 
 }
 
@@ -291,7 +267,7 @@ BRN2LinkStat::send_probe()
    * Fill linkprobe header
    */
   link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
-  lp->_version = _ett2_version;
+  lp->_version = LINKPROBE_VERSION;
   lp->_flags = 0;
 
   lp->_cksum = 0;
@@ -442,7 +418,7 @@ BRN2LinkStat::simple_action(Packet *p)
 {
   BRN_DEBUG(" * simple_action()");
 
-  struct timeval now = Timestamp::now().timeval();
+  Timestamp now = Timestamp::now();
   click_ether *eh = (click_ether *) p->ether_header();
   click_brn *brn = (click_brn *) p->data();
 
@@ -453,20 +429,18 @@ BRN2LinkStat::simple_action(Packet *p)
   EtherAddress src_ea = EtherAddress(eh->ether_shost);
   if (p->length() < (sizeof(click_brn) + sizeof(link_probe))) {
     BRN_ERROR("packet is too small");
-    BRNElement::packet_kill(p);
-    //p->kill();
+    p->kill();
     return 0;
   }
 
   if (brn->dst_port != BRN_PORT_LINK_PROBE) { // wrong packet type
     BRN_ERROR("got non-BRNLinkStat packet type");
-    BRNElement::packet_kill(p);
-    //p->kill();
+    p->kill();
     return 0;
   }
 
   link_probe *lp = (link_probe *)(p->data() + sizeof(click_brn));
-  if (lp->_version != _ett2_version) {
+  if (lp->_version != LINKPROBE_VERSION) {
     static bool version_warning = false;
     _bad_table.insert(EtherAddress(eh->ether_shost), lp->_version);
     if (!version_warning) {
@@ -475,8 +449,7 @@ BRN2LinkStat::simple_action(Packet *p)
         lp->_version, EtherAddress(eh->ether_shost).unparse().c_str());
     }
 
-    BRNElement::packet_kill(p);
-    //p->kill();
+    p->kill();
     return 0;
   }
 
@@ -492,8 +465,7 @@ BRN2LinkStat::simple_action(Packet *p)
 
   if (src_ea == *(_dev->getEtherAddress())) {
     BRN_WARN("got own packet; drop it. %s", src_ea.unparse().c_str());
-    BRNElement::packet_kill(p);
-    //p->kill();
+    p->kill();
     return 0;
   }
 
@@ -506,8 +478,7 @@ BRN2LinkStat::simple_action(Packet *p)
     MCS mcs = MCS(ceh,0);
     if (mcs.get_packed_16() != rate) {
       BRN_WARN("packet says rate %d is %d; drop it.", rate, mcs.get_packed_16());
-      BRNElement::packet_kill(p);
-      //p->kill();
+      p->kill();
       return 0;
     }
   }
@@ -560,7 +531,7 @@ BRN2LinkStat::simple_action(Packet *p)
 
   // keep stats for at least the averaging period; kick old probes
   while ((unsigned) l->_probes.size() &&
-        now.tv_sec - l->_probes[0]._when.tv_sec > (signed) (1 + (l->_tau / 1000)))
+        ((now - l->_probes[0]._when).msecval() > (signed)l->_tau) )
     l->_probes.pop_front();
 
   // pointer points to start and end of packet payload
@@ -637,7 +608,7 @@ BRN2LinkStat::simple_action(Packet *p)
       int seq = ntohl(entry->_seq);
 
 #ifdef LINKSTAT_EXTRA_DEBUG
-#warning "Enable Extra Linstat debug"
+#warning "Enable Extra Linkstat debug"
       uint8_t zero_mac[] = { 0,0,0,0,0,0 }; 
          if ( (memcmp(src_ea.data(), zero_mac, 6) == 0) || (memcmp(neighbor.data(), zero_mac, 6) == 0) ) {
         BRN_WARN("Found zero mac");
@@ -671,8 +642,7 @@ BRN2LinkStat::simple_action(Packet *p)
     }
   }
 
-  //p->kill();
-  BRNElement::packet_kill(p);
+  p->kill();
 
   return 0;
 }
@@ -690,129 +660,6 @@ BRN2LinkStat::is_neighbour(EtherAddress *n)
 
 /* Returns some information about the nodes world model */
 String
-BRN2LinkStat::read_schema()
-{
-  Timestamp now = Timestamp::now();
-
-  StringAccum sa;
-
-//sa << "<?xml version='1.0' encoding='UTF-8'?>";
-sa << "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>";
-sa << "<xs:element name='tau'>";
-sa << "<xs:complexType>";
-sa << "<xs:attribute name='value' type='xs:int' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='probes'>";
-sa << "<xs:complexType>";
-sa << "<xs:sequence>";
-sa << "<xs:element ref='probe' maxOccurs='unbounded'/>";
-sa << "</xs:sequence>";
-sa << "<xs:attribute name='time' type='xs:decimal' use='required'/>";
-sa << "<xs:attribute name='id' type='xs:string' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='probe'>";
-sa << "<xs:complexType>";
-sa << "<xs:attribute name='size' type='xs:short' use='required'/>";
-sa << "<xs:attribute name='rate' type='xs:byte' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='period'>";
-sa << "<xs:complexType>";
-sa << "<xs:attribute name='value' type='xs:int' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='link_info'>";
-sa << "<xs:complexType>";
-sa << "<xs:attribute name='size' type='xs:short' use='required'/>";
-sa << "<xs:attribute name='rev' type='xs:byte' use='required'/>";
-sa << "<xs:attribute name='rate' type='xs:byte' use='required'/>";
-sa << "<xs:attribute name='fwd' type='xs:byte' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='link'>";
-sa << "<xs:complexType>";
-sa << "<xs:sequence>";
-sa << "<xs:element ref='link_info' maxOccurs='unbounded'/>";
-sa << "</xs:sequence>";
-sa << "<xs:attribute name='to' type='xs:string' use='required'/>";
-sa << "<xs:attribute name='tau' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='seq' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='period' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='last_rx' type='xs:decimal' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='handlers'>";
-sa << "<xs:complexType>";
-sa << "<xs:sequence>";
-sa << "<xs:element ref='handler' maxOccurs='unbounded'/>";
-sa << "</xs:sequence>";
-sa << "<xs:attribute name='elem_name' use='required'>";
-sa << "<xs:simpleType>";
-sa << "<xs:restriction base='xs:string'>";
-sa << "<xs:enumeration value='BRN2LinkStat'/>";
-sa << "</xs:restriction>";
-sa << "</xs:simpleType>";
-sa << "</xs:attribute>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='handler'>";
-sa << "<xs:complexType>";
-sa << "<xs:choice>";
-sa << "<xs:element ref='badnodes'/>";
-sa << "<xs:element ref='entry'/>";
-sa << "<xs:element ref='period'/>";
-sa << "<xs:element ref='probes'/>";
-sa << "<xs:element ref='tau'/>";
-sa << "</xs:choice>";
-sa << "<xs:attribute name='name' use='required'>";
-sa << "<xs:simpleType>";
-sa << "<xs:restriction base='xs:string'>";
-sa << "<xs:enumeration value='bad_version'/>";
-sa << "<xs:enumeration value='bcast_stats'/>";
-sa << "<xs:enumeration value='period'/>";
-sa << "<xs:enumeration value='probes'/>";
-sa << "<xs:enumeration value='tau'/>";
-sa << "</xs:restriction>";
-sa << "</xs:simpleType>";
-sa << "</xs:attribute>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='entry'>";
-sa << "<xs:complexType>";
-sa << "<xs:sequence>";
-sa << "<xs:element ref='link' maxOccurs='unbounded'/>";
-sa << "</xs:sequence>";
-sa << "<xs:attribute name='time' type='xs:decimal' use='required'/>";
-sa << "<xs:attribute name='tau' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='seq' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='period' type='xs:int' use='required'/>";
-sa << "<xs:attribute name='from' type='xs:string' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='badnodes'>";
-sa << "<xs:complexType>";
-sa << "<xs:sequence>";
-sa << "<xs:element ref='badnode' maxOccurs='unbounded'/>";
-sa << "</xs:sequence>";
-sa << "<xs:attribute name='time' type='xs:decimal' use='required'/>";
-sa << "<xs:attribute name='id' type='xs:string' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "<xs:element name='badnode'>";
-sa << "<xs:complexType>";
-sa << "<xs:attribute name='version' type='xs:byte' use='required'/>";
-sa << "<xs:attribute name='id' type='xs:string' use='required'/>";
-sa << "</xs:complexType>";
-sa << "</xs:element>";
-sa << "</xs:schema>";
-
-  return sa.take_string();
-}
-
-/* Returns some information about the nodes world model */
-String
 BRN2LinkStat::read_bcast_stats()
 {
   Timestamp now = Timestamp::now();
@@ -820,7 +667,7 @@ BRN2LinkStat::read_bcast_stats()
 
   Vector<EtherAddress> ether_addrs;
 
-  for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++) 
+  for (ProbeMap::const_iterator i = _bcast_stats.begin(); i.live(); i++)
     ether_addrs.push_back(i.key());
 
   //sort
@@ -894,15 +741,13 @@ BRN2LinkStat::clear_stale()
 {
   Vector<EtherAddress> new_neighbors;
 
-  struct timeval now;
-
-  now = Timestamp::now().timeval();
+  Timestamp now = Timestamp::now();
   for (int x = 0; x < _neighbors.size(); x++) {
     EtherAddress n = _neighbors[x];
     probe_list_t *l = _bcast_stats.findp(n);
-    if (!l || (unsigned) now.tv_sec - l->_last_rx.tv_sec > 2 * l->_tau/1000) {
+    if (!l || (now - l->_last_rx).msecval() > (2 * l->_tau)) {
       BRN_DEBUG(" clearing stale neighbor %s age %d(brn_0)",
-        n.unparse().c_str(), now.tv_sec - l->_last_rx.tv_sec);
+        n.unparse().c_str(), (int)((now - l->_last_rx).msecval() / 1000 ));
       _bcast_stats.remove(n);
     } else {
       new_neighbors.push_back(n);
@@ -960,8 +805,7 @@ enum {
   H_BAD_VERSION,
   H_TAU,
   H_PERIOD,
-  H_PROBES,
-  H_SCHEMA
+  H_PROBES
 };
 
 static String
@@ -973,20 +817,17 @@ BRNLinkStat_read_param(Element *e, void *thunk)
     case H_BCAST_STATS: return td->read_bcast_stats(); //xml
     case H_BAD_VERSION: return td->bad_nodes(); //xml
     case H_TAU: { //xml
-	StringAccum sa;
-	sa << "<tau value='" << String(td->_tau) << "' />\n";
-	return sa.take_string();
+      StringAccum sa;
+      sa << "<tau value='" << String(td->_tau) << "' />\n";
+      return sa.take_string();
     }
     case H_PERIOD: { //xml
-	StringAccum sa;
-	sa << "<period value='" << String(td->_period) << "' />\n";
-	return sa.take_string();
+      StringAccum sa;
+      sa << "<period value='" << String(td->_period) << "' />\n";
+      return sa.take_string();
     }
     case H_PROBES: { //xml
       StringAccum sa;
-      TiXmlDocument doc("demotest.xml");
-      TiXmlElement meeting1( "Meeting" );
-      meeting1.SetAttribute( "where", "School" );
 
       sa << "<probes id='" << *(td->_dev->getEtherAddress()) << "'";
       sa << " time='" << now.unparse() << "'>\n";
@@ -1001,7 +842,6 @@ BRNLinkStat_read_param(Element *e, void *thunk)
       sa << "</probes>\n";
       return sa.take_string() + "\n";
     }
-    case H_SCHEMA: return td->read_schema(); //xml schema
     default:
       return String() + "\n";
   }
@@ -1039,9 +879,7 @@ BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandl
       Vector<BrnRateSize> ads_rs;
       Vector<String> args;
       cp_spacevec(s, args);
-//    if (args.size() % 2 != 0) {
-//      return errh->error("must provide even number of numbers\n");
-//    }
+
       for (int x = 0; x < args.size() - 1;) {
         int rate;
         int size;
@@ -1105,7 +943,6 @@ BRN2LinkStat::update_probes(String probes, ErrorHandler *errh)
   return(BRNLinkStat_write_param(probes, this, (void *) H_PROBES, errh));
 }
 
-
 void
 BRN2LinkStat::add_handlers()
 {
@@ -1116,7 +953,6 @@ BRN2LinkStat::add_handlers()
   add_read_handler("tau",    BRNLinkStat_read_param, (void *) H_TAU);
   add_read_handler("period", BRNLinkStat_read_param, (void *) H_PERIOD);
   add_read_handler("probes", BRNLinkStat_read_param, (void *) H_PROBES);
-  add_read_handler("schema", BRNLinkStat_read_param, (void *) H_SCHEMA);
 
   add_write_handler("reset",  BRNLinkStat_write_param, (void *) H_RESET);
   add_write_handler("tau",    BRNLinkStat_write_param, (void *) H_TAU);
@@ -1124,10 +960,5 @@ BRN2LinkStat::add_handlers()
   add_write_handler("probes", BRNLinkStat_write_param, (void *) H_PROBES);
 }
 
-#include <click/bighashmap.cc>
-#include <click/vector.cc>
-#include <click/dequeue.cc>
-
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2LinkStat)
-ELEMENT_LIBS(-L./ -ltinyxml)

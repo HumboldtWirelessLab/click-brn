@@ -70,7 +70,7 @@ int DHTRoutingFalcon::initialize(ErrorHandler *)
  */
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas)
 {
   DHTnode *best;
 
@@ -92,7 +92,11 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
   }
 
   //check this first and not the fingertable, since all nodes includes also the FT-node
-  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) { 
+  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {
+    if ( eas != NULL ) {
+      if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
+    }
+
     if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);
@@ -107,7 +111,7 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key)
  */
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas)
 {
   DHTnode *best;
 
@@ -129,6 +133,10 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key)
   }
 
   for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+    if ( eas != NULL ) {
+      if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
+    }
+
     if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
       best = _frt->_allnodes.get_dhtnode(i);
@@ -157,10 +165,10 @@ DHTRoutingFalcon::get_responsibly_node(md5_byte_t *key, int replica_number)
 }
 
 DHTnode *
-DHTRoutingFalcon::get_responsibly_node_for_key(md5_byte_t *key)
+DHTRoutingFalcon::get_responsibly_node_for_key(md5_byte_t *key, HashMap<EtherAddress, EtherAddress> *eas)
 {
-  if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key);
-  return get_responsibly_node_forward(key);
+  if ( _responsible == FALCON_RESPONSIBLE_CHORD ) return get_responsibly_node_backward(key, eas);
+  return get_responsibly_node_forward(key, eas);
 }
 
 void

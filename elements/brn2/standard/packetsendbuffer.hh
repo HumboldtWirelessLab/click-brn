@@ -54,11 +54,6 @@ class PacketSendBuffer
         }
       }
 
-      BufferedPacket(Packet *p, int time_diff)
-      {
-        BufferedPacket(p, time_diff, 0);
-      }
-
       void check() const { assert(_p); }
 
       bool timeout()

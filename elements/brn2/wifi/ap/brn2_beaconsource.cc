@@ -29,9 +29,9 @@
 #include <click/packet_anno.hh>
 #include <click/timer.hh>
 #include <click/error.hh>
-#include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
+#include "elements/brn2/wifi/brnavailablerates.hh"
 #include "brn2_beaconsource.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
@@ -74,8 +74,8 @@ BRN2BeaconSource::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
 
-  if (!_rtable || _rtable->cast("AvailableRates") == 0) 
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
+  if (!_rtable || _rtable->cast("BrnAvailableRates") == 0) 
+    return errh->error("BrnAvailableRates element is not provided or not a BrnAvailableRates");
 
   if ( (!_winfo || _winfo->cast("WirelessInfo") == 0) &&
     (!_winfolist || _winfolist->cast("BRN2WirelessInfoList") == 0 ) )
@@ -140,7 +140,7 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
   EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();  //TODO:
   String my_ssid = ssid;
 
-  Vector<int> rates = _rtable->lookup(bssid);
+  Vector<MCS> rates = _rtable->lookup(bssid);
   int max_len = sizeof (struct click_wifi) + 
     8 +                  /* timestamp */
     2 +                  /* beacon interval */
@@ -218,9 +218,9 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
   ptr[0] = WIFI_ELEMID_RATES;
   ptr[1] = min(WIFI_RATE_SIZE, rates.size());
   for (int x = 0; x < min (WIFI_RATE_SIZE, rates.size()); x++) {
-    ptr[2 + x] = (uint8_t) rates[x];
+    ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
 
-    if (rates[x] == 2) {
+    if (rates[x].get_packed_8() == 2) {
       ptr [2 + x] |= WIFI_RATE_BASIC;
     }
 
@@ -234,9 +234,9 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
     ptr[0] = WIFI_ELEMID_XRATES;
     ptr[1] = num_xrates;
     for (int x = 0; x < num_xrates; x++) {
-      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE];
+      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE].get_packed_8();
 
-      if (rates[x + WIFI_RATE_SIZE] == 2) {
+      if (rates[x + WIFI_RATE_SIZE].get_packed_8() == 2) {
         ptr [2 + x] |= WIFI_RATE_BASIC;
       }
 

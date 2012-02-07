@@ -109,6 +109,8 @@ class BRN2AssocResponder : public AssociationResponder {
   BRN2Device                  *_dev;
   BRN2WirelessInfoList        *_winfolist;
   BRN2VLANTable               *_vlantable;
+  class BrnAvailableRates     *_rtable;
+
 };
 
 CLICK_ENDDECLS

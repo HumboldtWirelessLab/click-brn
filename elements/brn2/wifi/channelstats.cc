@@ -30,6 +30,10 @@
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
 
+#if CLICK_NS 
+#include <click/router.hh> 
+#endif 
+
 #include <elements/brn2/brn2.h>
 #include <elements/wifi/bitrate.hh>
 #include <elements/brn2/wifi/brnwifi.hh>
@@ -99,6 +103,11 @@ ChannelStats::initialize(ErrorHandler *)
   if ( _proc_read && (_stats_interval != _proc_interval) ) _proc_timer.schedule_after_msec(_proc_interval);
 
   if ( ! _enable_full_stats ) memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+
+  memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+  _small_stats_src_tab[_current_small_stats].clear();
+  memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
+  _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
 
   return 0;
 }
@@ -185,7 +194,7 @@ ChannelStats::push(int port, Packet *p)
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
 
-    for ( int i = 0; i < (int) ceh->retries; i++ ) {
+    for ( int i = 0; i <= (int) ceh->retries; i++ ) {
       int t0,t1,t2,t3;
       uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
       t0 = ceh->max_tries + 1;
@@ -477,37 +486,53 @@ ChannelStats::clear_old_hw()
 void
 ChannelStats::readProcHandler()
 {
+  int busy, rx, tx;
+  uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
+
+#if CLICK_NS
+  int stats[16];
+  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
+
+  busy = stats[0];
+  rx = stats[1];
+  tx = stats[2];
+
+  hw_cycles = stats[3];
+  busy_cycles = stats[4];
+  rx_cycles = stats[5];
+  tx_cycles = stats[6];
+
+#else
   String raw_info = file_string(_proc_file);
   Vector<String> args;
 
   cp_spacevec(raw_info, args);
 
-  if ( args.size() > 6 ) {
-    Timestamp now = Timestamp::now();
+  if ( args.size() <= 6 ) return;
 
-    int busy, rx, tx;
-    uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
-    cp_integer(args[1],&busy);
-    cp_integer(args[3],&rx);
-    cp_integer(args[5],&tx);
-    cp_integer(args[7],&hw_cycles);
-    cp_integer(args[9],&busy_cycles);
-    cp_integer(args[11],&rx_cycles);
-    cp_integer(args[13],&tx_cycles);
+  cp_integer(args[1],&busy);
+  cp_integer(args[3],&rx);
+  cp_integer(args[5],&tx);
+  cp_integer(args[7],&hw_cycles);
+  cp_integer(args[9],&busy_cycles);
+  cp_integer(args[11],&rx_cycles);
+  cp_integer(args[13],&tx_cycles);
 
-    if ( _enable_full_stats ) {
-      addHWStat(&now, busy, rx, tx, hw_cycles, busy_cycles, rx_cycles, tx_cycles);
-    } else {
-      _small_stats[_current_small_stats].last_hw = now;
-      _small_stats[_current_small_stats].hw_busy += busy;
-      _small_stats[_current_small_stats].hw_rx += rx;
-      _small_stats[_current_small_stats].hw_tx += tx;
-      _small_stats[_current_small_stats].hw_count++;
-      _small_stats[_current_small_stats].hw_cycles += hw_cycles;
-      _small_stats[_current_small_stats].hw_busy_cycles += busy_cycles;
-      _small_stats[_current_small_stats].hw_rx_cycles += rx_cycles;
-      _small_stats[_current_small_stats].hw_tx_cycles += tx_cycles;
-    }
+#endif
+  Timestamp now = Timestamp::now();
+
+  if ( _enable_full_stats ) {
+    addHWStat(&now, busy, rx, tx, hw_cycles, busy_cycles, rx_cycles, tx_cycles);
+  } else {
+    _small_stats[_current_small_stats].last_hw = now;
+    _small_stats[_current_small_stats].hw_busy += busy;
+    _small_stats[_current_small_stats].hw_rx += rx;
+    _small_stats[_current_small_stats].hw_tx += tx;
+    _small_stats[_current_small_stats].hw_count++;
+    _small_stats[_current_small_stats].hw_cycles += hw_cycles;
+    _small_stats[_current_small_stats].hw_busy_cycles += busy_cycles;
+    _small_stats[_current_small_stats].hw_rx_cycles += rx_cycles;
+    _small_stats[_current_small_stats].hw_tx_cycles += tx_cycles;
   }
 }
 
@@ -540,8 +565,6 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
   cstats->stats_id = _stats_id++;
   cstats->duration = _stats_interval;
   cstats->last_update = now;
-
-  int diff_time = 10 * _stats_interval;
 
   if ( _packet_list.size() == 0 ) return;
 
@@ -654,6 +677,8 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
     cstats->hw_tx_cycles += pi_hw->_tx_cycles;
   }
 
+  int diff_time = 10 * _stats_interval;
+
   cstats->hw_busy /= diff_time;
   cstats->hw_rx /= diff_time;
   cstats->hw_tx /= diff_time;
@@ -675,20 +700,6 @@ ChannelStats::reset()
 /**************************************************************************************************************/
 /****************************** CALC STATS FINAL (use for small and full stats) *******************************/
 /**************************************************************************************************************/
-
-int32_t isqrt32(int32_t n) {
-  int32_t x,x1;
-
-  if ( n == 0 ) return 0;
-
-  x1 = n;
-  do {
-    x = x1;
-    x1 = (x + n/x) >> 1;
-  } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-  return x1;
-}
 
 void
 ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration)
@@ -749,6 +760,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
   }
 
   if ( small_stats->hw_count > 0 ) {
+    small_stats->hw_available = true;
     small_stats->hw_busy /= small_stats->hw_count;
     small_stats->hw_rx /= small_stats->hw_count;
     small_stats->hw_tx /= small_stats->hw_count;

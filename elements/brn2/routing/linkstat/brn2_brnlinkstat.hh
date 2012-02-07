@@ -85,7 +85,7 @@ CLICK_DECLS
 
 #define LINKSTAT_EXTRA_DEBUG
 
-static const uint8_t _ett2_version = 0x02;
+#define LINKPROBE_VERSION (uint8_t)0x02
 
 #define LINKSTAT_DEFAULT_STALE 10000
 
@@ -148,12 +148,12 @@ public:
   /* Stores information about the probes of neighbouring nodes */
 
   struct probe_t {
-    struct timeval _when;
+    Timestamp _when;
     uint32_t _seq;
     uint16_t _rate; //for n use packed_16
     uint16_t _size;
 
-    probe_t(const struct timeval &t,
+    probe_t(const Timestamp &t,
             uint32_t s,
             uint16_t r,
             uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
@@ -174,7 +174,7 @@ public:
 
     Vector<uint8_t> _fwd_rates;  //psr (packet success rate)
 
-    struct timeval _last_rx;
+    Timestamp _last_rx;
     DEQueue<probe_t> _probes;          // most recently received probes
 
     probe_list_t(const EtherAddress &et, unsigned int per, unsigned int t) :
@@ -186,12 +186,10 @@ public:
 
     probe_list_t() : _period(0), _tau(0), _seq(0) { }
 
-    uint8_t rev_rate(struct timeval start, int rate, int size) {
-      struct timeval now = Timestamp::now().timeval();
-      struct timeval p = { _tau / 1000, 1000 * (_tau % 1000) };
-      struct timeval earliest;
-
-      timersub(&now, &p, &earliest);
+    uint8_t rev_rate(Timestamp start, int rate, int size) {
+      Timestamp now = Timestamp::now();
+      Timestamp p = Timestamp::make_msec(_tau);
+      Timestamp earliest = now - p;
 
       if (_period == 0) {
         click_chatter("period is 0\n");
@@ -200,19 +198,18 @@ public:
 
       uint32_t num = 0;
       for (int i = _probes.size() - 1; i >= 0; i--) {
-        if (timercmp(&earliest, &(_probes[i]._when), >)) break;
+        if ( earliest > _probes[i]._when ) break;
         if ( _probes[i]._size == size && _probes[i]._rate == rate) num++;
       }
 
-      struct timeval since_start;
-      timersub(&now, &start, &since_start);
+      Timestamp since_start = now - start;
 
-      uint32_t ms_since_start = max(0, since_start.tv_sec * 1000 + since_start.tv_usec / 1000);
+      uint32_t ms_since_start = max(0, since_start.msecval());
       uint32_t fake_tau = min(_tau, ms_since_start);
       assert(_probe_types.size());
       uint32_t num_expected = max(1,min((fake_tau / _period),(_seq / _num_probes)));
 
-      return (uint8_t)(min(100, 100 * num / num_expected));
+      return (uint8_t)(min(100, (100 * num) / num_expected));
     }
 
     void clear() {
@@ -270,7 +267,6 @@ public:
   Packet *simple_action(Packet *);
 
   void run_timer(Timer*);
-  void brn2add_jitter2(unsigned int max_jitter, struct timeval *t);
 
   void add_handlers();
 
@@ -312,11 +308,11 @@ public:
   void send_probe();
   static void static_send_hook(Timer *, void *e) { ((BRN2LinkStat *) e)->send_probe_hook(); }
 
-  Timer *_timer;
+  Timer _timer;
   Timer _stale_timer;
 
-  struct timeval _next;
-  struct timeval _start;
+  Timestamp _next;
+  Timestamp _start;
 
   Vector <BrnRateSize> _ads_rs;
   int _ads_rs_index;

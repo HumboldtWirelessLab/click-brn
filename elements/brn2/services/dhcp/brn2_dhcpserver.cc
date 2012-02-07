@@ -472,6 +472,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     BRN_DEBUG("BRN2DHCPServer: Client not in queue! Create new one.");
 
     client_info = new DHCPClientInfo();
+    client_info_list.push_back(client_info);
   }
   else
   {
@@ -598,8 +599,6 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     }
   }
 
-  client_info_list.push_back(client_info);
-
   result = send_dht_request( client_info );
 
   return( result );
@@ -679,6 +678,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
   BRN_DEBUG("BRN2DHCPServer: Client not in queue! Create new one.");
 
   client_info = new DHCPClientInfo();
+  
 
   client_info->_dht_op = MODE_READ_IP;
   client_info->_xid = new_dhcp_packet->xid;

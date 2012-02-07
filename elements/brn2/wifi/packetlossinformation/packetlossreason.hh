@@ -1,9 +1,10 @@
-#ifndef CLICK_PacketLossReason_HH
-#define CLICK_PacketLossReason_HH
+#ifndef CLICK_PACKETLOSSREASON_HH
+#define CLICK_PACKETLOSSREASON_HH
 #include <click/element.hh>
 #include <click/hashtable.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
+#include <click/string.hh>
 
 
 CLICK_DECLS
@@ -66,6 +67,7 @@ public:
 	
 	void write_test_id(int id);
 	void write_test_childs();
+	String print(int mode);
 
 
 private:

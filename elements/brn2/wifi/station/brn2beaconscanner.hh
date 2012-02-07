@@ -4,8 +4,8 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <click/hashmap.hh>
-#include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
+#include "elements/brn2/wifi/brnavailablerates.hh"
 
 CLICK_DECLS
 
@@ -85,8 +85,8 @@ class BRN2BeaconScanner : public Element { public:
     int _channel;
     uint16_t _capability;
     uint16_t _beacon_int;
-    Vector<int> _rates;
-    Vector<int> _basic_rates;
+    Vector<MCS> _rates;
+    Vector<MCS> _basic_rates;
     int _rssi;
     Timestamp _last_rx;
 
@@ -115,7 +115,7 @@ class BRN2BeaconScanner : public Element { public:
   APTable _aps;
   PAPTable _paps;
 
-  AvailableRates *_rtable;
+  BrnAvailableRates *_rtable;
   WirelessInfo *_winfo;
 
 };

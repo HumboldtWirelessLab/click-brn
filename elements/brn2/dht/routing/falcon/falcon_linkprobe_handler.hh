@@ -72,6 +72,11 @@ class FalconLinkProbeHandler : public BRNElement
 
   HawkRoutingtable *_rfrt;
 
+  Timestamp _start;
+
+  bool _active;
+  uint32_t _delay;
+
  public:
   void setHawkRoutingTable(HawkRoutingtable *t) { _rfrt = t; }
 };

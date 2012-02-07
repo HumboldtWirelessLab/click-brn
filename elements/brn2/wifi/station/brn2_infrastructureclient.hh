@@ -31,15 +31,14 @@
 #include <click/string.hh>
 #include <click/timestamp.hh>
 
-#include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include <elements/wifi/wifiencap.hh>
-#include <elements/wifi/station/proberequester.hh>
 #include <elements/wifi/station/openauthrequester.hh>
 
-
+#include "elements/brn2/wifi/brnavailablerates.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include <elements/brn2/wifi/station/brn2assocrequester.hh>
+#include "elements/brn2/wifi/station/brn2assocrequester.hh"
+#include "elements/brn2/wifi/station/brn2proberequester.hh"
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"
 
@@ -80,10 +79,10 @@ public:
   String print_assoc();
 
   WirelessInfo *_wireless_info;
-  AvailableRates *_rtable;
+  BrnAvailableRates *_rtable;
   BRN2BeaconScanner *_beaconscanner;
 
-  ProbeRequester *_probereq;
+  BrnProbeRequester *_probereq;
   OpenAuthRequester *_authreq;
   BRN2AssocRequester *_assocreq;
   WifiEncap *_wifiencap;

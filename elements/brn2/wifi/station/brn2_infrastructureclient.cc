@@ -33,11 +33,13 @@
 #include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
 #include <elements/wifi/wifiencap.hh>
-#include <elements/wifi/station/associationrequester.hh>
 #include <elements/wifi/station/openauthrequester.hh>
+#include <click/timestamp.hh>
+
 #include "brn2beaconscanner.hh"
 #include "brn2_infrastructureclient.hh"
-#include <click/timestamp.hh>
+
+#include "elements/brn2/wifi/station/brn2assocrequester.hh"
 #include "elements/brn2/wifi/availablechannels.hh"
 #include "elements/brn2/wifi/ath/ath2operation.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -67,7 +69,7 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (cp_va_kparse(conf, this, errh,
       "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"Wirelessinfo",*/ &_wireless_info,
-      "RT", cpkP+cpkM, cpElement, /*"AvailabeRates",*/ &_rtable,
+      "RT", cpkP+cpkM, cpElement, /*"BrnAvailabeRates",*/ &_rtable,
       "BEACONSCANNER", cpkP+cpkM, cpElement, /*"Beaconscanner",*/ &_beaconscanner,
       "PROBE_REQUESTER", cpkP+cpkM, cpElement, /*"ProbeRequester",*/ &_probereq,
       "AUTH_REQUESTER", cpkP+cpkM, cpElement, /*"AuthRequester",*/ &_authreq,
@@ -86,14 +88,14 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_wireless_info || !_wireless_info->cast("WirelessInfo")) 
     return errh->error("WirelessInfo element is not provided or not a WirelessInfo");
 
-  if (!_rtable || !_rtable->cast("AvailableRates")) 
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
+  if (!_rtable || !_rtable->cast("BrnAvailableRates")) 
+    return errh->error("BrnAvailableRates element is not provided or not a BrnAvailableRates");
 
   if (!_beaconscanner || !_beaconscanner->cast("BRN2BeaconScanner")) 
     return errh->error("BeaconScanner element is not provided or not a BeaconScanner");
 
-  if (!_probereq || !_probereq->cast("ProbeRequester")) 
-    return errh->error("ProbeRequester element is not provided or not a ProbeRequester");
+  if (!_probereq || !_probereq->cast("BrnProbeRequester")) 
+    return errh->error("BrnProbeRequester element is not provided or not a BrnProbeRequester");
 
   if (!_authreq || !_authreq->cast("OpenAuthRequester"))
     return errh->error("OpenAuthRequester element is not provided or not a OpenAuthRequester");
