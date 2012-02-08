@@ -512,7 +512,7 @@ FalconRoutingTable::routing_info(void)
     node = _allnodes.get_dhtnode(i);
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t\t<reversenode addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\t\t<node addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
     sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
     sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
     sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
@@ -547,6 +547,7 @@ FalconRoutingTable::debug_routing_info(void)
 enum {
   H_ROUTING_INFO,
   H_DEBUG_ROUTING_INFO,
+  H_PASSIVE_MONITORING
 };
 
 static String
@@ -556,9 +557,29 @@ read_param(Element *e, void *thunk)
 
   switch ((uintptr_t) thunk)
   {
-    case H_ROUTING_INFO : return ( dht_falcon->routing_info( ) );
-    case H_DEBUG_ROUTING_INFO : return ( dht_falcon->debug_routing_info( ) );
+    case H_ROUTING_INFO : return ( dht_falcon->routing_info() );
+    case H_DEBUG_ROUTING_INFO : return ( dht_falcon->debug_routing_info() );
+    case H_PASSIVE_MONITORING : return ( String(dht_falcon->is_passive_monitoring()) );
     default: return String();
+  }
+}
+
+static int
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  FalconRoutingTable *dht_falcon = (FalconRoutingTable *)e;
+  String s = cp_uncomment(in_s);
+
+  switch ((uintptr_t) vparam)
+  {
+    case H_PASSIVE_MONITORING : {
+      bool pm;
+      if (!cp_bool(s, &pm))
+        return errh->error("passive_monitoring must be an bool");
+
+      dht_falcon->set_passive_monitoring(pm);
+    }
+    default: return 0;
   }
 }
 
@@ -569,6 +590,10 @@ FalconRoutingTable::add_handlers()
 
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
   add_read_handler("debug_routing_info", read_param , (void *)H_DEBUG_ROUTING_INFO);
+
+  add_read_handler("passive_monitoring", read_param , (void *)H_PASSIVE_MONITORING);
+  add_write_handler("passive_monitoring", write_param , (void *)H_PASSIVE_MONITORING);
+
 }
 
 CLICK_ENDDECLS
