@@ -134,7 +134,7 @@ class DHTProtocolFalcon {
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
     static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);
 
-    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable);
+    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, EtherAddress *, DHTnodelist *reverse_fingertable);
     static WritablePacket *new_passive_monitor_deactive_packet(DHTnode *src);
 
     static WritablePacket *new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);

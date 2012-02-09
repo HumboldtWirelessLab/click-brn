@@ -261,7 +261,7 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
 /*********************************************************************************/
 
 WritablePacket *
-DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable)
+DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, EtherAddress *dst, DHTnodelist *reverse_fingertable)
 {
   WritablePacket *act_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE,
                                                        sizeof(struct falcon_passiv_monitoring_info) +
@@ -274,9 +274,16 @@ DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *
   fpmi->no_nodes = reverse_fingertable->size();
   src->get_nodeid((md5_byte_t *)fpmi->passive_node_id, &res);
 
-//  struct dht_falcon_reverse_table_node_entry *node = (struct dht_falcon_reverse_table_node_entry *)&fpmi[1];
+  struct dht_falcon_reverse_table_node_entry *node_tab = (struct dht_falcon_reverse_table_node_entry *)&fpmi[1];
 
-  return act_p;
+  for ( int i = 0; i < reverse_fingertable->size(); i++ ) {
+    memcpy( node_tab[i].etheraddr, reverse_fingertable->get_dhtnode(i)->_ether_addr.data(),6);
+    memcpy(node_tab[i].node_id, reverse_fingertable->get_dhtnode(i)->_md5_digest,MAX_NODEID_LENTGH);
+  }
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(act_p, &(src->_ether_addr), dst, BRN_PORT_DHTROUTING);
+
+  return brn_p;
 }
 
 WritablePacket *
