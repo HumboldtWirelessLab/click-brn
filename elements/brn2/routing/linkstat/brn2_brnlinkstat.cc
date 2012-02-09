@@ -362,12 +362,12 @@ BRN2LinkStat::send_probe()
   uint16_t space_left = (end-ptr);
   BRN_DEBUG("Handler pre Ptr: %x End: %x space left: %d",ptr,end,space_left);
 
-  if ( _reg_handler.size() > 0 && ((space_left-4) > 0) ) {
+  if ( _reg_handler.size() > 0 && (space_left > 4) ) {
 
     lp->_flags |= PROBE_HANDLER_PAYLOAD; // indicate that handler_info are available
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
-      int res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, _dev->getEtherAddress(), (char*)&(ptr[3]), (space_left-4));
+      int32_t res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, _dev->getEtherAddress(), (char*)&(ptr[3]), (space_left-4));
       if ( res > (space_left-4) ) {
         BRN_WARN("Handler %d want %d but %d was left",_reg_handler[h]._protocol,res,space_left-4);
         res = 0;
