@@ -81,8 +81,8 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
  * src is the Etheraddress of the source of the LP if lp is received (see direction)
  */
 
-static int
-tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
+static int32_t
+tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t size)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
   if ( dhtf == NULL ) return 0;
@@ -90,8 +90,8 @@ tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
   return dhtf->lpSendHandler(buffer, size);
 }
 
-static int
-rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+static int32_t
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
   if ( dhtf == NULL ) return 0;
@@ -116,10 +116,10 @@ FalconLinkProbeHandler::initialize(ErrorHandler *)
   return 0;
 }
 
-int
-FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
+int32_t
+FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 {
-  int len, send_nodes;
+  int32_t len = 0, send_nodes = 0;
 
   if ( ! _active ) {
     if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;
@@ -132,7 +132,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   send_nodes = min(min(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
-  for (int i = 0; i < send_nodes; i++ ) {
+  for (int32_t i = 0; i < send_nodes; i++ ) {
     _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
     nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
   }
@@ -148,10 +148,10 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
   return len;
 }
 
-int
-FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size, bool is_neighbour)
+int32_t
+FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_neighbour)
 {
-  int len;
+  int32_t len;
   DHTnode first;
   DHTnodelist nodes;
 
