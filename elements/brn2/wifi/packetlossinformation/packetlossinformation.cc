@@ -10,27 +10,32 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 
-
 #include "packetlossinformation.hh"
+
 
 CLICK_DECLS
 
+
 PacketLossInformation::PacketLossInformation()
 {
-_debug = 4;
+	BRNElement::init();
 }
 
 PacketLossInformation::~PacketLossInformation()
 {
 }
 
-
-int PacketLossInformation::initialize(ErrorHandler *)
+void PacketLossInformation::address_broadcast_insert()
 {
 	EtherAddress broadcast_address = EtherAddress();
 	broadcast_address = broadcast_address.make_broadcast();
 	BRN_DEBUG("Ist Pointer Address? %d",broadcast_address.is_broadcast());
 	graph_insert(broadcast_address);
+}
+
+int PacketLossInformation::initialize(ErrorHandler *)
+{
+	address_broadcast_insert();
 	return 0;
 }
 
@@ -71,7 +76,7 @@ void PacketLossInformation::graph_delete(EtherAddress pkt_address)
 	PacketLossInformation_Graph *ptr_graph = graph_get(pkt_address);
 	if (NULL != ptr_graph) {
 		delete ptr_graph;
-		int pos = -1;
+		unsigned int pos = 0;
 		bool try_delete = false;
 		for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end();++it) {
 			++pos;
@@ -89,35 +94,7 @@ void PacketLossInformation::graph_delete(EtherAddress pkt_address)
 	}
 }
 
-void PacketLossInformation::print()
-{
-	EtherAddress pkt_address = EtherAddress();
-	pkt_address = pkt_address.make_broadcast();
-	BRN_DEBUG("PLI->print: before Iteration Size: %d",node_neighbours_vector.size());
-	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end(); ++it) {
-		//BRN_DEBUG("I have found an etheradress: %s\n\n",(*it).unparse().c_str());
-		BRN_DEBUG("I have found an etheradress: %s\n\n",(*it).unparse().c_str());
-
-	}
-	BRN_DEBUG("PLI->print: after Iteration");
-	int pos = -1;
-	bool try_delete = false;
-	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end();++it) {
-		++pos;
-		if(pkt_address == *it)  {
-			BRN_DEBUG("Found Address %s at Position = %d",(*it).unparse().c_str(), pos);
-			try_delete = true;
-			break;
-		}
-	}
-	BRN_DEBUG("Position = %d",pos);
-	if (try_delete) {
-		node_neighbours_vector.erase(node_neighbours_vector.begin()+pos);
-		BRN_DEBUG("Deleted Broadcast-Adress");
-	}
-}
-
-bool PacketLossInformation::ether_address_exists(EtherAddress pkt_address)
+bool PacketLossInformation::mac_address_exists(EtherAddress pkt_address)
 {
 	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end();++it){
 		if(pkt_address == *it) return true; 
@@ -139,6 +116,94 @@ PacketLossInformation_Graph* PacketLossInformation::graph_get(EtherAddress pkt_a
 	return	node_neighbours.get(pkt_address);
 }
 
+
+String  PacketLossInformation::print()
+{
+
+	StringAccum sa;
+	sa << "<brnelement name=\"PacketLossInformation\" myaddress=\""<< BRN_NODE_NAME << "\">\n";
+	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end(); ++it) {
+		sa << "\t<neighbour address=\"" << (*it).unparse().c_str() <<"\">\n";
+		PacketLossInformation_Graph* ptr_graph = graph_get(*it);
+		sa << ptr_graph->print();
+		sa.append("\t</neighbour>\n");
+	}
+	sa.append("</brnelement>\n");
+	return sa.take_string();
+}
+
+void PacketLossInformation::reset()
+{
+	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end(); ++it) {
+
+		graph_delete(*it);
+	}
+	address_broadcast_insert();
+}
+
+void PacketLossInformation::pli_global_set(String reason, PacketLossInformation_Graph::ATTRIBUTE attrib, unsigned int value)
+{
+	EtherAddress broadcast_address = EtherAddress();
+	broadcast_address = broadcast_address.make_broadcast();
+	PacketLossInformation_Graph *ptr_graph = graph_get(broadcast_address);
+	if (NULL != ptr_graph) {
+			ptr_graph->packetlossreason_set(reason,attrib,value); 
+	}
+}
+
+void PacketLossInformation::pli_global_set(String reason, PacketLossInformation_Graph::ATTRIBUTE attrib, void *ptr_value)
+{
+	EtherAddress broadcast_address = EtherAddress();
+	broadcast_address = broadcast_address.make_broadcast();
+	PacketLossInformation_Graph *ptr_graph = graph_get(broadcast_address);
+	if (NULL != ptr_graph) {
+			ptr_graph->packetlossreason_set(reason,attrib,ptr_value); 
+	}
+}
+
+
+enum {H_PLI_PRINT,H_PLI_RESET,H_PLI_HIDDEN_NODE,H_PLI_INRANGE};
+
+static String PacketLossInformation_read_param(Element *e, void *thunk)
+{
+	PacketLossInformation *f = (PacketLossInformation *)e;
+	switch ((uintptr_t) thunk) {
+		case H_PLI_PRINT:
+			return f->print();
+  			default:
+				return String();
+  	}
+}
+
+static int PacketLossInformation_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+	PacketLossInformation *f = (PacketLossInformation *)e;
+	String s = cp_uncomment(in_s);
+	unsigned int value = 0;
+	switch((intptr_t)vparam) {
+	  	case H_PLI_RESET: 
+			f->reset();
+		break;		
+    		case H_PLI_HIDDEN_NODE: 
+			if (!IntArg().parse(s, value)) return errh->error("stepup parameter must be unsigned");
+			f->pli_global_set("hidden_node",PacketLossInformation_Graph::FRACTION,value);
+		break;		
+	  	case H_PLI_INRANGE: 
+			if (!IntArg().parse(s, value)) return errh->error("stepup parameter must be unsigned");
+			f->pli_global_set("in_range", PacketLossInformation_Graph::FRACTION,value);
+		break;		
+	  }
+	  return 0;
+}
+
+void PacketLossInformation::add_handlers()
+{
+	BRNElement::add_handlers();
+	add_read_handler("print", PacketLossInformation_read_param, H_PLI_PRINT);
+	add_write_handler("reset",PacketLossInformation_write_param,H_PLI_RESET, Handler::h_button);
+	add_write_handler("hidden_node",PacketLossInformation_write_param,H_PLI_HIDDEN_NODE);
+	add_write_handler("inrange",PacketLossInformation_write_param,H_PLI_INRANGE);
+}
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(PacketLossInformation_Graph)
 EXPORT_ELEMENT(PacketLossInformation)
