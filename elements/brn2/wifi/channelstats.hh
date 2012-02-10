@@ -376,6 +376,7 @@ class ChannelStats : public BRNElement {
 
   public:
     struct airtime_stats *get_latest_stats() {
+      if ( _enable_full_stats ) return NULL;
       return &_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE];
     }
 
