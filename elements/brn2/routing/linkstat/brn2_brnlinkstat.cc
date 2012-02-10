@@ -127,12 +127,9 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
     _stale_timer.initialize(this);
     _stale_timer.schedule_now();
 
-    _next = Timestamp::now();
+    int jitter = (click_random() % ((_period / 5) + 1));
 
-    int jitter = (click_random() % ((_period / 5) + 1)) - (_period / 10);
-
-    if ( jitter >= 0 ) _next += Timestamp::make_msec(jitter);
-    else _next -= Timestamp::make_msec(-1*jitter);
+    _next = Timestamp::now() + Timestamp::make_msec(jitter);
 
     BRN_DEBUG("next %s", _next.unparse().c_str());
 
