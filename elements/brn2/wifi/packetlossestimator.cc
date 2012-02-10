@@ -56,9 +56,13 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
     
         if(_pli != NULL) {
             
+            struct airtime_stats *stats;
+            
             if(_cst != NULL) {
                 
                 BRN_DEBUG("CST NOT NULL");
+                stats = _cst->_small_stats;
+                BRN_DEBUG("RSSI: %i", stats->std_rssi);
             }
             
             if(_cinfo != NULL && packet_parameter->get_src_address() != brn_etheraddress_broadcast) {
@@ -67,7 +71,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                 CollisionInfo::RetryStats *rs = rs_tab.find(packet_parameter->get_src_address());
                 
                 if (rs != NULL) {
-                    BRN_DEBUG("CINFO fraction for %s: %d", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(0));
+                    BRN_DEBUG("CINFO fraction for %s: %i", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(0));
                 }
                 else {
                     BRN_DEBUG("CINFO fraction for %s is NULL!!!", packet_parameter->get_src_address().unparse().c_str());
@@ -89,13 +93,15 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                     
                   BRN_DEBUG("%s has no neighbours", packet_parameter->get_src_address().unparse().c_str());
                 }
+                
+                estimateHiddenNode();
+                estimateInrange();
             }
-    /*        
-            if (addNewPLINode() > 0) {
-          */  
-                int busy, rx, tx;
-                uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
-                int stats[16];
+
+/*
+            int busy, rx, tx;
+            uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
+            int stats[16];
                 #if CLICK_NS
                     
                     simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
@@ -109,7 +115,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                     rx_cycles = stats[5];
                     tx_cycles = stats[6];
                 #else
-        /*
+        
                     String raw_info = file_string(_proc_file);
                     Vector<String> args;
 
@@ -124,13 +130,15 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                     cp_integer(args[9],&busy_cycles);
                     cp_integer(args[11],&rx_cycles);
                     cp_integer(args[13],&tx_cycles);
-     */ 
+      
                 #endif
-                
-                BRN_DEBUG("Busy: %d\tRX: %d\tTX: %d", busy, rx, tx);
-                BRN_DEBUG("HW_Cycles: %d\tBusy_Cycles: %d\tRX_Cycles: %d\tTX_Cycles: %d\n\n", hw_cycles, busy_cycles, rx_cycles, tx_cycles);
-           
-                updatePacketlossStatistics(stats);
+*/              
+                if (_cst != NULL) {
+                    BRN_DEBUG("Last Timestamp: %s", stats->last_update.unparse().c_str());
+                    BRN_DEBUG("Busy: %i\tRX: %i\tTX: %i", stats->hw_busy, stats->hw_rx, stats->hw_tx);
+                    BRN_DEBUG("HW_Cycles: %i\tBusy_Cycles: %i\tRX_Cycles: %i\tTX_Cycles: %i\n\n", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
+                }
+                updatePacketlossStatistics();
 
         }
         return packet;
@@ -213,31 +221,11 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
     BRN_DEBUG("Destination Address: %s", packet_parameter->get_dst_address().unparse().c_str());
 }
 
-void PacketLossEstimator::updatePacketlossStatistics(int stats[]) {
+void PacketLossEstimator::updatePacketlossStatistics() {
     
-    estimateHiddenNode();
+    
     //estimateInrange(packet_parameter->get_src_address(), stats);
     //estimateNonWifi(stats);
-}
-
-int8_t PacketLossEstimator::addNewPLINode() {
-    /*
-    if(_pli->graph_get(packet_parameter->get_src_address()) == NULL) {
-        
-        _pli->graph_insert(packet_parameter->get_src_address());
-        PacketLossInformation_Graph *pliGraph = _pli->graph_get(packet_parameter->get_src_address());
-            
-        BRN_DEBUG("Address inserted: %s", packet_parameter->get_src_address().unparse().c_str());
-        //BRN_DEBUG("PLE::DEBUG: pliGraph: %s", pliGraph->get_root_node()->getLabel());
-            
-        return 0;
-    } else {
-    
-        BRN_DEBUG("Address already exists: %s", packet_parameter->get_src_address().unparse().c_str());
-        return 1;
-    }
-    */
-    return -1;
 }
 
 int inline fac(int n){
@@ -269,14 +257,14 @@ void PacketLossEstimator::estimateHiddenNode( ) {
             HiddenNodeDetection::NodeInfo *neighbour = _hnd->get_nodeinfo_table().find(packet_parameter->get_src_address());
             HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> otherNeighbourList = neighbour->get_links_to();
             
-            uint8_t neighbours = 0;
+            uint8_t neighbours = 1;
             
             for(HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = otherNeighbourList.begin(); i != otherNeighbourList.end(); i++) {
                 
                 EtherAddress tmpAdd = i.key();
                 BRN_DEBUG("Neighbours Neighbour is: %s", tmpAdd.unparse().c_str());
                 
-                if(!_hnd->get_nodeinfo_table().find(tmpAdd)) {
+                if(!_hnd->get_nodeinfo_table().find(tmpAdd) || !_hnd->get_nodeinfo_table().find(tmpAdd)->_neighbour) {
                     
                     BRN_DEBUG("Not in my Neighbour List");
                     uint32_t silence_period = Timestamp::now().msec() - _hnd->get_nodeinfo_table().find(packet_parameter->get_src_address())->get_links_usage().find(tmpAdd).msec();
@@ -295,72 +283,51 @@ void PacketLossEstimator::estimateHiddenNode( ) {
             }
             int period = 10;
             
-            hnProp = 1 - (fac(period)/(fac(period - neighbours) * pow(period, neighbours)));
+            hnProp = (1 - (fac(period)/(fac(period - neighbours) * pow(period, neighbours)))) * 100;
             if (hnProp < 6) hnProp = 6;
-        }
-        
-        //_pli->graph_get(packet_parameter->get_src_address())->get_reason_by_id(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
-        BRN_DEBUG("hnProp: %i", hnProp);
-
-//         if(packet_parameter->get_packet_type() < 25 && packet_parameter->get_packet_type() > 20) {
-//             
-//             BRN_DEBUG("Control Frame catched");
-//             
-//             if (packet_parameter->get_packet_type() == 24) {
-//                 
-//                 handleAckFrame(packet_parameter->get_dst_address());
-//             }
-//             // pro nachbarn: wenn ich Daten-pakete mit src(Nachbar)->dst(x) höre -> Pakete mit src(x)->dst(Nachbar)? wenn ja, kein HN
-//             // wenn nein, höre ich Acks addr1(x)? wenn nein, Knoten x nich da. Wenn ja, HN. HN(b) > 0
-//             // Datenpakete + ACKS pro Zeit für Prozent Kanalbelegung -> HN-Wahrscheinlichkeit , Für mehere HN Wahrscheinlichkeiten addieren.
-//                     
-//             // prüfen, ob ack für möglichen HN-Kandidaten eingetroffen, wenn ja, dann HN anpassen
-//         } else {
-//             
-//             addAddress2NodeList(packet_parameter->get_src_address(), packet_parameter->get_dst_address());    
-//         }
-        BRN_DEBUG("leave estimateHiddenNode");
-    }
-}
-
-void PacketLossEstimator::addAddress2NodeList(EtherAddress srcAddress, EtherAddress dstAddress){
-    
-    BRN_DEBUG("Add Address 2 NodeList");
-    if (srcAddress != brn_etheraddress_broadcast) {
-        
-        if(nodeList.contains(srcAddress))
-            nodeList.updateNeighbours(srcAddress, dstAddress);
-      
-        else
-            nodeList.add(srcAddress, dstAddress);
-    
-        uint8_t hnProp = nodeList.calcHiddenNodesProbability(*_dev->getEtherAddress(), srcAddress);
-        _pli->graph_get(srcAddress)->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
-        BRN_DEBUG("hnProp: %i", hnProp);
-    }
-}
-
-void PacketLossEstimator::handleAckFrame(EtherAddress dstAddress) {
-    
-    if(!nodeList.hasNeighbour(*_dev->getEtherAddress(), dstAddress)) {
-        
-        Vector<EtherAddress> addresses = nodeList.addAck(dstAddress);
-        for(Vector<EtherAddress>::iterator i = addresses.begin(); i != addresses.end(); i++) {
             
-            uint8_t hnProp = nodeList.calcHiddenNodesProbability(*_dev->getEtherAddress(), *i);
-            _pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);    
+            if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
+                
+                _pli->graph_insert(packet_parameter->get_src_address());
+            }
+            
+            _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
+            
+            // Problem: hidden nodes who never receive data packets connot be assigned to any neighbour node. This might be solved with cooperation.
+            BRN_DEBUG("hnProp: %i", hnProp);
         }
     }
 }
 
-void PacketLossEstimator::estimateInrange(EtherAddress address, int stats[]) {
+void PacketLossEstimator::estimateInrange() {
     
-    if(_pli != NULL) {
+    HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
+    uint8_t neighbours = 1;
+    uint8_t irProp = 6;
+    for(HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++) {
         
+        if(neighbours >= 255) {
+            neighbours = 255;
+        } else {
+            neighbours++;
+        }
     }
+    
+    int period = 10;
+    
+    irProp = (1 - (fac(period)/(fac(period - neighbours) * pow(period, neighbours)))) * 100;
+    if (irProp < 6) irProp = 6;
+    
+    if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
+        
+        _pli->graph_insert(packet_parameter->get_src_address());
+    }
+    
+    _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->setFraction(irProp);
+    BRN_DEBUG("irProp: %i", irProp);
 }
 
-void PacketLossEstimator::estimateNonWifi(int stats[]) {
+void PacketLossEstimator::estimateNonWifi() {
     
     if(_pli != NULL) {
         
