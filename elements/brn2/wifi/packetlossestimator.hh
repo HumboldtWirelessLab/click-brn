@@ -13,10 +13,47 @@
 #include "elements/brn2/wifi/collisioninfo.hh"
 #include "elements/brn2/wifi/hiddennodedetection.hh"
 #include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
+#include <click/ip6address.hh>
+#include <elements/analysis/timesortedsched.hh>
 
 CLICK_DECLS
 
 class PacketLossEstimator : public BRNElement {
+    
+
+    
+    class PacketParameter {
+    private:
+        EtherAddress own_address;
+        EtherAddress src_address;
+        EtherAddress dst_address;
+        uint8_t packet_type;
+        
+    public:
+        inline EtherAddress get_own_address() {
+            return own_address;
+        }
+        
+        inline EtherAddress get_src_address() {
+            return src_address;
+        }
+        
+        inline EtherAddress get_dst_address() {
+            return dst_address;
+        }
+        
+        inline uint8_t get_packet_type() {
+            return packet_type;
+        }        
+        
+        inline void put_params_(EtherAddress own, EtherAddress src, EtherAddress dst, uint8_t p_type) {
+            
+            own_address = own;
+            src_address = src;
+            dst_address = dst;
+            packet_type = p_type;
+        }
+    };
     
     class Node {
     private:
@@ -73,10 +110,9 @@ class PacketLossEstimator : public BRNElement {
             _debug = 4;	
         }
         
-        const char *class_name() const  { return "NodeList"; }
+        const char *class_name() const { return "NodeList"; }
         const char *port_count() const { return PORTS_1_1; }
         const char *processing() const { return AGNOSTIC; }
-
 
         inline bool contains(EtherAddress srcAddress) {
             
@@ -181,7 +217,6 @@ class PacketLossEstimator : public BRNElement {
         void addAddress2NodeList(EtherAddress, EtherAddress);
         
     private:
-        
         /// Collected Channel Stats
         ChannelStats *_cst;
         /// Collected Collision Infos
@@ -190,24 +225,22 @@ class PacketLossEstimator : public BRNElement {
         HiddenNodeDetection *_hnd;
         /// Class for storing statistical data about lost packets
         PacketLossInformation *_pli;
-    
+        ///Device
         BRN2Device *_dev;
-    
-        NodeList nodeList;
-    
-        ///< add new node to PLI. Returns 0 if node inserted, 1 if node already exists, >0 in error case.
-        int8_t addNewPLINode(EtherAddress);
-        ///< Retrieve Source-Mac-Address from packet.
-        EtherAddress getSrcAddress(Packet *);
         
-        uint8_t getPacketType(Packet *);
+        NodeList nodeList;
+        
+        PacketParameter *packet_parameter;
+        ///< add new node to PLI. Returns 0 if node inserted, 1 if node already exists, >0 in error case.
+        int8_t addNewPLINode();
         ///< Adopt the statistics for an adress according to new collected datas
-        void updatePacketlossStatistics(EtherAddress, EtherAddress, int, int[]);
-    
-        void estimateHiddenNode(EtherAddress, EtherAddress, int);
+        void updatePacketlossStatistics(int[]);
+        
+        void estimateHiddenNode();
         void estimateInrange(EtherAddress, int[]);
         void estimateNonWifi(int[]);
         void handleAckFrame(EtherAddress);
+        void gather_packet_infos_(Packet *);
 };
 
 CLICK_ENDDECLS

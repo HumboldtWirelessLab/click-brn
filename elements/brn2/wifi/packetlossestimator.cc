@@ -335,6 +335,8 @@ void PacketLossEstimator::addAddress2NodeList(EtherAddress srcAddress, EtherAddr
             nodeList.add(srcAddress, dstAddress);
     
         uint8_t hnProp = nodeList.calcHiddenNodesProbability(*_dev->getEtherAddress(), srcAddress);
+        _pli->graph_get(srcAddress)->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
+        BRN_DEBUG("hnProp: %i", hnProp);
     }
 }
 
@@ -346,7 +348,7 @@ void PacketLossEstimator::handleAckFrame(EtherAddress dstAddress) {
         for(Vector<EtherAddress>::iterator i = addresses.begin(); i != addresses.end(); i++) {
             
             uint8_t hnProp = nodeList.calcHiddenNodesProbability(*_dev->getEtherAddress(), *i);
-            _pli->graph_get(*i)->get_reason_by_id(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);    
+            _pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);    
         }
     }
 }
