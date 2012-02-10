@@ -40,37 +40,51 @@ HiddenNodeDetection()
 */
 
 class HiddenNodeDetection : public BRNElement {
+    
+    public:
+        
+        class NodeInfo;
+        typedef HashMap<EtherAddress, NodeInfo*> NodeInfoTable;
+        typedef NodeInfoTable::const_iterator NodeInfoTableIter;
+        
+        class NodeInfo {
+        public:
+        
+            Timestamp _last_notice;
+            bool _neighbour;
 
-    class NodeInfo;
+            NodeInfoTable _links_to;
+            HashMap<EtherAddress, Timestamp> _links_usage;
 
-    typedef HashMap<EtherAddress, NodeInfo*> NodeInfoTable;
-    typedef NodeInfoTable::const_iterator NodeInfoTableIter;
+            NodeInfo(): _neighbour(false) {
+                
+                _last_notice = Timestamp::now();
+            }
 
-    class NodeInfo {
-     public:
+            inline void add_link(EtherAddress ea, NodeInfo *ni) {
+                
+                if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
+                
+                _links_usage.insert(ea,Timestamp::now());
+            }
 
-      Timestamp _last_notice;
-      bool _neighbour;
+            inline void update() {
+                
+                _last_notice = Timestamp::now();
+            }
+            
+            inline HashMap<EtherAddress, NodeInfo*> get_links_to() {
+                
+                return _links_to;
+            }
+            
+            inline HashMap<EtherAddress, Timestamp> get_links_usage() {
+                
+                return _links_usage;
+            }
+        };
 
-      NodeInfoTable _links_to;
-      HashMap<EtherAddress, Timestamp> _links_usage;
-
-      NodeInfo(): _neighbour(false)
-      {
-        _last_notice = Timestamp::now();
-      }
-
-      inline void add_link(EtherAddress ea, NodeInfo *ni) {
-        if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
-        _links_usage.insert(ea,Timestamp::now());
-      }
-
-      inline void update() {
-        _last_notice = Timestamp::now();
-      }
-    };
-
-  public:
+  
 
     HiddenNodeDetection();
     ~HiddenNodeDetection();
@@ -87,6 +101,21 @@ class HiddenNodeDetection : public BRNElement {
     void push(int, Packet *p);
 
     String stats_handler(int mode);
+    
+    inline HashMap<EtherAddress, NodeInfo*> get_nodeinfo_table() {
+        
+        return _nodeinfo_tab;
+    }
+    
+    inline bool has_neighbours(EtherAddress address) {
+        
+        if (_nodeinfo_tab.find(address) != NULL) {
+            return _nodeinfo_tab.find(address)->_neighbour;
+        } else {
+            return false;   
+        }
+    }
+    
   private:
 
     BRN2Device *_device;
