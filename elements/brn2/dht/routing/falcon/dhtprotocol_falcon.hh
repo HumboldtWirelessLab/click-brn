@@ -118,9 +118,9 @@ class DHTProtocolFalcon {
 
   public:
 
-    static int max_no_nodes_in_lp(int buffer_len);
-    static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
-    static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
+    static int32_t max_no_nodes_in_lp(int32_t buffer_len);
+    static int32_t pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes);
+    static int32_t unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes);
 
     static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
     static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position, Packet *p_recycle = NULL);
