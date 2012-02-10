@@ -131,10 +131,11 @@ class CollisionInfo : public BRNElement {
 
   };
 
+ 
+  
+ public:
   typedef HashMap<EtherAddress, RetryStats*> RetryStatsTable;
   typedef RetryStatsTable::const_iterator RetryStatsTableIter;
-
- public:
 
   CollisionInfo();
   ~CollisionInfo();
@@ -149,7 +150,6 @@ class CollisionInfo : public BRNElement {
   void add_handlers();
 
   String stats_handler(int mode);
-
   RetryStatsTable rs_tab;
 
   uint32_t _interval;
