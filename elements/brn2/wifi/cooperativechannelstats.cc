@@ -32,6 +32,7 @@
 #include <elements/brn2/brn2.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include "elements/brn2/routing/identity/brn2_device.hh"
 
 #include "cooperativechannelstats.hh"
 
@@ -64,7 +65,7 @@ CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 CooperativeChannelStats::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_srandom(_cst->_device->getEtherAddress()->hashcode());
 
   _msg_timer.initialize(this);
 
@@ -77,8 +78,8 @@ CooperativeChannelStats::initialize(ErrorHandler *)
 void
 CooperativeChannelStats::run_timer(Timer *)
 {
-  send_message();
   _msg_timer.schedule_after_msec(_interval);
+  send_message();
 }
 
 
