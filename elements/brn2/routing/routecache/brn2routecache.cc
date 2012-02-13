@@ -114,8 +114,7 @@ Brn2RouteCache::get_cached_route(
   EntryType* pEntry;
   route.clear();
 
-  BRN_DEBUG("wuery for route %s -> %s.",
-    addrSrc.unparse().c_str(), addrDst.unparse().c_str());
+  BRN_DEBUG("query for route %s -> %s.", addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
   // Find the corresponding entry
   pEntry = m_mapRoutes.findp( AddressPairType(addrSrc,addrDst) );
@@ -123,10 +122,9 @@ Brn2RouteCache::get_cached_route(
   {
     int32_t iRand = (0 == m_iDropProb) ? 1 : click_random() % m_iDropProb;
 
-    // Return the cached entry if the ttl is greater null and the 
+    // Return the cached entry if the ttl is greater null and the
     // random value is not equal null.
-    if( 0 < pEntry->m_iTTL 
-      && 0 != iRand )
+    if( (0 < pEntry->m_iTTL) && (0 != iRand) )
     {
       BRN_DEBUG("using cached route.");
 
@@ -147,7 +145,7 @@ Brn2RouteCache::get_cached_route(
 }
 
 ////////////////////////////////////////////////////////////////////////
-void 
+void
 Brn2RouteCache::insert_route(
   /*[in]*/ const AddressType& addrSrc,
   /*[in]*/ const AddressType& addrDst,
@@ -159,8 +157,7 @@ Brn2RouteCache::insert_route(
     || false == m_bActive )
     return;
 
-  BRN_DEBUG("inserting route %s -> %s.",
-    addrSrc.unparse().c_str(), addrDst.unparse().c_str());
+  BRN_DEBUG("inserting route %s -> %s.", addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
   EntryType entry;
   AddressPairType pairSrcDst(addrSrc,addrDst);
@@ -306,9 +303,7 @@ Brn2RouteCache::on_link_changed(
 
 ////////////////////////////////////////////////////////////////////////
 void 
-Brn2RouteCache::on_routeaging_expired(
-  /*[in]*/  Timer* pTimer, 
-  /*[in]*/  void*  pVoid )
+Brn2RouteCache::on_routeaging_expired(/*[in]*/ Timer* pTimer, /*[in]*/  void*  pVoid )
 {
   if( NULL == pTimer
     || NULL == pVoid )
@@ -354,8 +349,7 @@ Brn2RouteCache::on_routeaging_expired(
 // Handler
 ////////////////////////////////////////////////////////////////////////
 static int
-write_reset_param(const String &/*in_s*/, Element *e, void *vparam,
-          ErrorHandler */*errh*/)
+write_reset_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
   UNREFERENCED_PARAMETER(vparam);
 
@@ -378,8 +372,7 @@ read_active_param(Element *e, void *thunk)
 
 ////////////////////////////////////////////////////////////////////////
 static int 
-write_active_param(const String &in_s, Element *e, void *vparam,
-          ErrorHandler *errh)
+write_active_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   UNREFERENCED_PARAMETER(vparam);
 
@@ -411,19 +404,6 @@ Brn2RouteCache::add_handlers()
 
   add_write_handler("reset", write_reset_param, 0);
 }
-
-////////////////////////////////////////////////////////////////////////
-
-#include <click/bighashmap.cc>
-#include <click/hashmap.cc>
-#include <click/vector.cc>
-#if EXPLICIT_TEMPLATE_INSTANCES
-template class Pair<Brn2RouteCache::AddressType,Brn2RouteCache::AddressType>;
-template class Vector<Brn2RouteCache::AddressType>;
-template class HashMap<Brn2RouteCache::AddressPairType,Brn2RouteCache::EntryType>;
-template class Vector<Brn2RouteCache::AddressPairType>;
-template class HashMap<Brn2RouteCache::AddressPairType,Brn2RouteCache::AddrPairVectorType>;
-#endif
 
 ////////////////////////////////////////////////////////////////////////
 

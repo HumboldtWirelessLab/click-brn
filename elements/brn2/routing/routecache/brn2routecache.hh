@@ -68,7 +68,7 @@ public:
   typedef Vector<AddressType>                                 RouteType;
   typedef struct tagEntryType {
     RouteType m_route;
-    int       m_iTTL;
+    int32_t   m_iTTL;
     uint32_t  m_metric;
   }                                                           EntryType;
   typedef HashMap<AddressPairType,EntryType>               RouteMapType;
@@ -143,7 +143,7 @@ protected:
    * @param addrSrc @a [in] The start point of the route.
    * @param addrDst @a [in] The end point of the route.
    */
-  void remove_route( 
+  void remove_route(
     /*[in]*/  const AddressType& addrSrc,
     /*[in]*/  const AddressType& addrDst );
 

@@ -57,8 +57,8 @@ int
 BRNSetGateway::configure (Vector<String> &conf, ErrorHandler *errh) {
   if (cp_va_kparse(conf, this, errh,
       "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
-      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
-                  cpEnd) < 0)
+      "ROUTINGTABLE", cpkP+cpkM, cpElement, &_routing_table,
+      cpEnd) < 0)
     return -1;
 
 
@@ -109,56 +109,56 @@ BRNSetGateway::choose_gateway() {
    uint32_t metric;
 
    // find a route
-   Vector<EtherAddress> route = _link_table->best_route(gw, true, &metric);
+   Vector<EtherAddress> route = _routing_table->best_route(gw, true, &metric);
 
-   if (!_link_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
+   if (!_routing_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 
-     BRN_WARN(" Route ist %s", _link_table->print_routes(true).c_str());
-          
+     BRN_WARN(" Route ist %s", _routing_table->print_routes(true).c_str());
+
      // run Dijstra to look for new route
      _link_table->dijkstra(gw, true);
-     if (_link_table->valid_route(_link_table->best_route(gw, true, &metric))) {
+     if (_link_table->valid_route(_routing_table->best_route(gw, true, &metric))) {
        // have a route now
        break; 
      }
-          
-     BRN_WARN(" Route ist %s", _link_table->print_routes(true).c_str());
-			
-		 // TODO
-		 // store a list of lastly used gateways
-		 // those are the best gateway for this node
-		 // improve lookup
-		 // but update round robin from time to time
-			
+
+     BRN_WARN(" Routes are\n%s", _routing_table->print_routes(true).c_str());
+
+     // TODO
+     // store a list of lastly used gateways
+     // those are the best gateway for this node
+     // improve lookup
+     // but update round robin from time to time
+
      BRN_WARN("Sending packet to %s to test metric.", gw.unparse().c_str());
-            
+
      // packet for checking the route
      if (WritablePacket* p = Packet::make(sizeof(click_ether) + sizeof(click_brn) + sizeof(brn_gateway))) {
        // set ether header
-   		 click_ether *ether = (click_ether *) p->data();
-   		 ether->ether_type = htons(ETHERTYPE_BRN);
+       click_ether *ether = (click_ether *) p->data();
+       ether->ether_type = htons(ETHERTYPE_BRN);
 
-			 memcpy(ether->ether_shost, _gw->_my_eth_addr.data(), 6);
-    	 memcpy(ether->ether_dhost, gw.data(), 6);
-		
-			 // set annotation
-    	 p->set_ether_header(ether);
+       memcpy(ether->ether_shost, _gw->_my_eth_addr.data(), 6);
+       memcpy(ether->ether_dhost, gw.data(), 6);
+
+       // set annotation
+       p->set_ether_header(ether);
 
 
-    	 // set brn header
-    	 click_brn* brn = (click_brn*) (p->data() + sizeof(click_ether));
+       // set brn header
+       click_brn* brn = (click_brn*) (p->data() + sizeof(click_ether));
 
-    	 brn->src_port = BRN_PORT_GATEWAY;
-    	 brn->dst_port = BRN_PORT_GATEWAY;
-    	 brn->tos = BRN_TOS_BE;
-    	 brn->ttl = 0xff;
-    	 brn->body_length = htons(sizeof(brn_gateway));
+       brn->src_port = BRN_PORT_GATEWAY;
+       brn->dst_port = BRN_PORT_GATEWAY;
+       brn->tos = BRN_TOS_BE;
+       brn->ttl = 0xff;
+       brn->body_length = htons(sizeof(brn_gateway));
 
-			 // set brn gateway header
-			 //brn_gateway* brn_gw = (brn_gateway*) (p->data() + sizeof(click_ether) + sizeof(click_brn));
-	
-			 // set failed to sent this packet to internet
-			 //brn_gw->failed = 0;
+       // set brn gateway header
+       //brn_gateway* brn_gw = (brn_gateway*) (p->data() + sizeof(click_ether) + sizeof(click_brn));
+
+       // set failed to sent this packet to internet
+       //brn_gw->failed = 0;
 
        output(0).push(p);
      }
@@ -167,10 +167,10 @@ BRNSetGateway::choose_gateway() {
    }
 
    // is metric to found gateway better than to old gateway
-   new_metric = _link_table->get_route_metric(route);
+   new_metric = _routing_table->get_route_metric(route);
 
-   if ((_gw->_my_eth_addr == gw) || ((new_metric
-        < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) { // TODO better combination of metric to gateway and gateway metric may be nedded
+   if ((_gw->_my_eth_addr == gw) || ((new_metric < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) {
+     // TODO better combination of metric to gateway and gateway metric may be nedded
      // save new best gateway
      best_metric_to_reach_gw = new_metric;
      best_gw_metric = gwe.get_metric();
@@ -178,7 +178,8 @@ BRNSetGateway::choose_gateway() {
    }
   }
 
-  BRN_INFO("Choose gateway %s which is reachable with a metric of %u.", best_gw.unparse().c_str(), best_metric_to_reach_gw);
+  BRN_INFO("Choose gateway %s which is reachable with a metric of %u.", best_gw.unparse().c_str(),
+                                                                        best_metric_to_reach_gw);
   return best_gw;
 }
 
@@ -226,19 +227,17 @@ BRNSetGateway::push(int port, Packet *p) {
 
   BRN_CHECK_EXPR_RETURN(ether == NULL,
             ("Ether header not available. Killing packet."), p->kill(); return;);
-  
+
   BRN_CHECK_EXPR_RETURN(htons(ether->ether_type) != ETHERTYPE_IP,
             ("No IP packet. Killing it. I should get non-IP packets. "
-            		"Error in click configuration."), p->kill(); return;);
-  
+             "Error in click configuration."), p->kill(); return;);
+
   click_ip *ip = (click_ip *) p->ip_header();
 
-	BRN_CHECK_EXPR_RETURN(ip == NULL,
-            ("No IP header found. Killing it."), p->kill(); return;);
+  BRN_CHECK_EXPR_RETURN(ip == NULL, ("No IP header found. Killing it."), p->kill(); return;);
 
- 	set_gateway(p);
+  set_gateway(p);
 }
 
 EXPORT_ELEMENT(BRNSetGateway)
-#include <click/bighashmap.cc>
 CLICK_ENDDECLS
