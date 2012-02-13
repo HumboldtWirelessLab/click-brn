@@ -21,7 +21,6 @@ PacketLossEstimator::PacketLossEstimator():
     _pli(NULL),
     _dev(NULL)
 {
-    _debug = 4;
     packet_parameter = new PacketParameter();
 }
 
