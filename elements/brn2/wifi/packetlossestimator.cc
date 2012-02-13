@@ -61,7 +61,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
             if(_cst != NULL) {
                 
                 BRN_DEBUG("CST NOT NULL");
-                stats = _cst->_small_stats;
+                stats = _cst->get_latest_stats();
                 BRN_DEBUG("RSSI: %i", stats->std_rssi);
             }
             
