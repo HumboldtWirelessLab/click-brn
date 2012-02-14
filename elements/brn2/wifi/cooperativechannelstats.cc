@@ -112,6 +112,10 @@ CooperativeChannelStats::send_message()
     ccsh->flags |= INCLUDES_NEIGHBOURS;
 
     for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+      SrcInfo src = iter.value();
+      EtherAddress ea = iter.key();
+
+      //src.get_airtime_stats(&ea, Pointer in datenteil des paketes)
       non++;
     }
   }
