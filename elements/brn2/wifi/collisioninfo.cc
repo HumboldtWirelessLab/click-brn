@@ -119,7 +119,7 @@ CollisionInfo::stats_handler(int mode)
 
     sa << "\t<nb addr=\"" << ea.unparse() << "\" time=\"" << rs->_last_index_inc.unparse() << "\" >\n";
 
-    for ( int i = 0; i < COLLISIONINFO_MAX_HW_QUEUES; i++ ) {
+    for ( int i = 0; i < rs->_no_queues; i++ ) {
       sa << "\t\t<queue no=\"" << i << "\" succ_rate=\"";
 
       if (rs->_l_unicast_tx[i] == 0) {
