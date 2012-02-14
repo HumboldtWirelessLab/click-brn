@@ -800,8 +800,8 @@ ChannelStats::stats_handler(int mode)
     stats = &_full_stats;
     src_tab = &_full_stats_srcinfo_tab;
   } else {
-    stats = &(_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
-    src_tab = &(_small_stats_src_tab[(_current_small_stats + SMALL_STATS_SIZE - 1)%SMALL_STATS_SIZE]);
+    stats = get_latest_stats();
+    src_tab = get_latest_stats_neighbours();
   }
 
   switch (mode) {
