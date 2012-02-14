@@ -381,11 +381,12 @@ BRN2SimpleFlow::xml_stats()
     sa << " replies=\"" << fl._rxPackets << "\"";
     if ( fl._rxPackets > 0 ) {
       sa << " min_hops=\"" << fl._min_hops << "\" max_hops=\"" << fl._max_hops;
-      sa << "\" avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets;
+      sa << "\" avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" std_hops=\"" << fl.std_hops();
       sa << "\" min_time=\"" << fl._min_rt_time  << "\" max_time=\"" << fl._max_rt_time;
-      sa << "\" time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" />\n";
+      sa << "\" time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" std_time=\"" << fl.std_time() << "\" />\n";
     } else {
-      sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" min_time=\"0\" max_time=\"0\" time=\"0\" />\n";
+      sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" std_hops=\"0\"";
+      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" />\n";
     }
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {

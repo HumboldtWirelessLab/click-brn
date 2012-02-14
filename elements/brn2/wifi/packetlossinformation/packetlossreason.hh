@@ -48,12 +48,9 @@ public:
 	PacketLossReason* getParent();
 
 	void setChild(int poss, PacketLossReason* ptr_element_next);
-
 	PacketLossReason* getChild(PossibilityE poss);
 	
-	PacketLossReason* getChildDirection(PossibilityE poss);
-
-
+	PossibilityE id_get(unsigned int id); 
 	//Fraction range [0-100]
 	void setFraction(int frac);
 	int getFraction();
@@ -65,9 +62,7 @@ public:
 	void setID(PossibilityE poss);
 	PossibilityE getID();
 	
-	void write_test_id(int id);
-	void write_test_childs();
-	String print(int mode);
+	String print();
 
 
 private:
