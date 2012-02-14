@@ -85,6 +85,7 @@ class BRN2Device : public BRNElement {
     inline void setChannel(uint8_t c) { _channel = c; }
 
     String device_info();
+
   private:
 
     //
@@ -117,6 +118,8 @@ class BRN2Device : public BRNElement {
 
     /* wireless device */
     uint8_t _channel;
+
+    uint8_t _no_hw_queues;
 };
 
 CLICK_ENDDECLS
