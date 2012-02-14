@@ -136,7 +136,8 @@ struct airtime_stats {//,
 
 
 class ChannelStats : public BRNElement {
-
+  friend class CooperativeChannelStats;
+  
   public:
     class PacketInfo {
      public:
@@ -328,7 +329,7 @@ class ChannelStats : public BRNElement {
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
 
   private:
-
+  
     BRN2Device *_device;
 
   public:
@@ -375,6 +376,7 @@ class ChannelStats : public BRNElement {
 
   public:
     struct airtime_stats *get_latest_stats() {
+      if ( _enable_full_stats ) return NULL;
       return &_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE];
     }
 

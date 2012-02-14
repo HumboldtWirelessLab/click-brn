@@ -14,6 +14,10 @@ CLICK_DECLS
 class Brn2_SetRTSCTS : public BRNElement { 
 
 public:
+	#define RTS_CTS_STRATEGY_ALWAYS_OFF 0 //default
+	#define RTS_CTS_STRATEGY_ALWAYS_ON 1
+	#define RTS_CTS_STRATEGY_RANDOM 2
+
 
 	Brn2_SetRTSCTS();
 	~Brn2_SetRTSCTS();
@@ -27,21 +31,16 @@ public:
 	int initialize(ErrorHandler *);
 
 	Packet *simple_action(Packet *);
+
 	void add_handlers();
-	void rts_cts_decision(unsigned int value);
-	bool is_number_in_random_range(unsigned int value); //range [0,100]
-
-	bool rts_get();
-	/* true = on, else off*/
-	void rts_set(bool value);
-
-	void print_neighbour_statistics();
-
+	String  print();
+	void reset();
+	uint16_t strategy_get();
+	void strategy_set(uint16_t value);
 
 private:	
-	bool _rts;
- //       EtherAddress _bssid;
-//	class WirelessInfo *_winfo;
+	bool _rts;//true:= rts on; false:=rts_off
+	uint16_t _rts_cts_strategy;//RTS-CTS Strategy
 	//total number of packets who got through this element
 	unsigned int pkt_total;	
 	struct _neighbour_statistics {
@@ -59,6 +58,12 @@ private:
 	uint32_t neighbour_statistc_rts_off_get(EtherAddress dst_address);
 	void neighbours_statistic_set(EtherAddress dst_address,PNEIGHBOUR_STATISTICS ptr_neighbour_stats);
 	Packet* dest_test(Packet *p);
+	void address_broadcast_insert();
+	bool rts_get();
+	/* true = on, else off*/
+	void rts_set(bool value);
+	void rts_cts_decision(unsigned int value);
+	bool is_number_in_random_range(unsigned int value); //range [0,100]
 };
 
 CLICK_ENDDECLS

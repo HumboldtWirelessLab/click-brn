@@ -102,12 +102,12 @@ ChannelStats::initialize(ErrorHandler *)
 
   if ( _proc_read && (_stats_interval != _proc_interval) ) _proc_timer.schedule_after_msec(_proc_interval);
 
-  if ( ! _enable_full_stats ) memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
-
-  memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
-  _small_stats_src_tab[_current_small_stats].clear();
-  memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
-  _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
+  if ( ! _enable_full_stats ) {
+    memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
+    _small_stats_src_tab[_current_small_stats].clear();
+    memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
+    _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
+  }
 
   return 0;
 }

@@ -118,9 +118,9 @@ class DHTProtocolFalcon {
 
   public:
 
-    static int max_no_nodes_in_lp(int buffer_len);
-    static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
-    static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
+    static int32_t max_no_nodes_in_lp(int32_t buffer_len);
+    static int32_t pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes);
+    static int32_t unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes);
 
     static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
     static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position, Packet *p_recycle = NULL);
@@ -134,7 +134,7 @@ class DHTProtocolFalcon {
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
     static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);
 
-    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable);
+    static WritablePacket *new_passive_monitor_active_packet(DHTnode *src, EtherAddress *, DHTnodelist *reverse_fingertable);
     static WritablePacket *new_passive_monitor_deactive_packet(DHTnode *src);
 
     static WritablePacket *new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);

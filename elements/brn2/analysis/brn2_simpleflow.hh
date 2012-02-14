@@ -129,6 +129,18 @@ class BRN2SimpleFlow : public BRNElement
         _sum_sq_hops += (hops*hops);
       }
 
+      uint32_t std_time() {
+        if ( _rxPackets == 0 ) return 0;
+        int32_t q = _cum_sum_rt_time/_rxPackets;
+        return isqrt32((_sum_sq_rt_time/_rxPackets)-(q*q));
+      }
+
+      uint32_t std_hops() {
+        if ( _rxPackets == 0 ) return 0;
+        int32_t q = _cum_sum_hops/_rxPackets;
+        return isqrt32((_sum_sq_hops/_rxPackets)-(q*q));
+      }
+
   };
 
     Timer _timer;

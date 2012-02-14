@@ -7,6 +7,7 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
 #include "elements/brn2/dht/protocol/dhtprotocol.hh"
@@ -69,7 +70,9 @@ FalconPassiveMonitoring::check_monitoring()
           // start passive monitoringthis
           click_chatter("Switch to passive mode");
 
-          WritablePacket *p = DHTProtocolFalcon::new_passive_monitor_active_packet(_frt->_me, &(_frt->_reverse_fingertable));
+          EtherAddress dst = EtherAddress(brn_ethernet_broadcast);
+          WritablePacket *p = DHTProtocolFalcon::new_passive_monitor_active_packet(_frt->_me, &dst,
+                                                                                &(_frt->_reverse_fingertable));
 
           _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
 

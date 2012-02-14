@@ -59,6 +59,9 @@ FalconRoutingClassifier::push( int /*port*/, Packet *packet )
     case FALCON_MINOR_NWS_REQUEST:
       output(FALCON_NETWORKSIZE_PORT).push(packet);
       break;
+    case FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE:
+      output(FALCON_PASSIVE_MONITOR_PORT).push(packet);
+      break;
     default:
       BRN_WARN("Unknown Operation in falcon-classifier: %d", DHTProtocol::get_type(packet));
       if ( noutputs() > FALCON_ROUTING_UNKNOWN_PORT )
