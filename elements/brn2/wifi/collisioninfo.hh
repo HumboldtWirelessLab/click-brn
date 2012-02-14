@@ -33,15 +33,18 @@ class CollisionInfo : public BRNElement {
  public:
   class RetryStats {
     public:
+      // (Pointer to) Array of (uint32_t) stats
       uint32_t *_unicast_tx;
       uint32_t *_unicast_retries;
       uint32_t *_unicast_succ;
       uint32_t *_unicast_frac;
 
+      // pointer to current stats
       uint32_t *_c_unicast_tx;
       uint32_t *_c_unicast_retries;
       uint32_t *_c_unicast_succ;
 
+      // pointer to current stats
       uint32_t *_l_unicast_tx;
       uint32_t *_l_unicast_retries;
       uint32_t *_l_unicast_succ;
