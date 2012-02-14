@@ -293,7 +293,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
   if ( _debug ) click_chatter("Noise: %d",ceh->silence);
 
-  if ( (ceh->silence == 0) && ((ceh->flags & WIFI_EXTRA_TX) != 0) ) {
+  if (ceh->silence == 0) {
     ceh->silence = -95;
     //click_chatter("Silence is 0. Set to -95");
   }
