@@ -134,10 +134,24 @@ struct airtime_stats {//,
 
 }/*)*/;
 
+CLICK_SIZE_PACKED_STRUCTURE(,
+struct neighbour_airtime_stats {
+  uint8_t _etheraddr[6];
+  uint16_t _reserved;
+
+  uint32_t _pkt_count;
+  uint32_t _byte_count;
+
+  uint32_t _avg_rssi;
+  uint32_t _std_rssi;
+
+  uint32_t _min_rssi;
+  uint32_t _max_rssi;
+});
 
 class ChannelStats : public BRNElement {
   friend class CooperativeChannelStats;
-  
+
   public:
     class PacketInfo {
      public:
@@ -176,6 +190,7 @@ class ChannelStats : public BRNElement {
 
     class SrcInfo {
      public:
+      uint16_t _reserved;
       uint32_t _rssi;
       uint32_t _sum_sq_rssi;
       uint32_t _pkt_count;
@@ -189,9 +204,11 @@ class ChannelStats : public BRNElement {
 
       bool _calc_finished;
 
+      /* future */
       uint8_t _mode;
       uint8_t _mcs_index;
       uint8_t _mcs_flags;
+      /* future end */
 
       uint8_t _rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE];
       uint32_t _rssi_hist_index;
@@ -283,6 +300,19 @@ class ChannelStats : public BRNElement {
         _calc_finished = true;
       }
 
+      void get_airtime_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
+        if ( ! _calc_finished ) calc_values();
+
+        memcpy(stats->_etheraddr, ea->data(), 6);
+        stats->_reserved = 0;
+        stats->_pkt_count = _pkt_count;
+        stats->_byte_count = _byte_count;
+        stats->_avg_rssi = _avg_rssi;
+        stats->_std_rssi = _std_rssi;
+        stats->_min_rssi = _min_rssi;
+        stats->_max_rssi = _max_rssi;
+
+      }
     };
 
     class LinkInfo {
@@ -329,7 +359,7 @@ class ChannelStats : public BRNElement {
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
 
   private:
-  
+
     BRN2Device *_device;
 
   public:
@@ -377,7 +407,12 @@ class ChannelStats : public BRNElement {
   public:
     struct airtime_stats *get_latest_stats() {
       if ( _enable_full_stats ) return NULL;
-      return &_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE];
+      return &(_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
+    }
+
+    SrcInfoTable *get_latest_stats_neighbours() {
+      if ( _enable_full_stats ) return NULL;
+      return &(_small_stats_src_tab[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
     }
 
 };
