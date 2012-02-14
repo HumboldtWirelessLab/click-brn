@@ -135,7 +135,7 @@ class BRN2RequestForwarder : public BRNElement {
   };
 
   typedef HashMap<EtherAddress, RouteRequestInfo*> TrackRouteMap;
-  typedef TrackRouteMap::const_iterator TrackRouteMapIter;
+  typedef TrackRouteMap::iterator TrackRouteMapIter;
 
   class RReqRetransmitInfo {
    public:
