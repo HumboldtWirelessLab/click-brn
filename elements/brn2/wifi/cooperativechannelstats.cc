@@ -41,7 +41,8 @@ CLICK_DECLS
 CooperativeChannelStats::CooperativeChannelStats():
     _cst(NULL),
     _msg_timer(this),
-    _interval(0)
+    _interval(0),
+    _add_neighbours(false)
 {
   BRNElement::init();
 }
@@ -56,6 +57,7 @@ CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
   int ret = cp_va_kparse(conf, this, errh,
                      "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
                      "INTERVAL", cpkP, cpInteger, &_interval,
+                     "NEIGHBOURS", cpkP, cpBool, &_add_neighbours,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
@@ -86,7 +88,7 @@ CooperativeChannelStats::run_timer(Timer *)
 void
 CooperativeChannelStats::send_message()
 {
-  struct airtime_stats *last_ats = _cst->get_latest_stats();
+  struct airtime_stats *last_ats = _cst->get_latest_stats(); //ats -> AirTimeStats
 
   if ( last_ats == NULL ) return;
 
@@ -96,11 +98,25 @@ CooperativeChannelStats::send_message()
 
   struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
   ccsh->endianess = ENDIANESS_TEST;
-  ccsh->reserved = 0;
+  ccsh->flags = 0;
 
   struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
 
   memcpy( ats, last_ats, sizeof(struct airtime_stats));
+
+  ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
+
+  uint8_t non = 0; //number of available neighbours
+
+  if ( _add_neighbours ) {
+    ccsh->flags |= INCLUDES_NEIGHBOURS;
+
+    for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+      non++;
+    }
+  }
+
+  ccsh->no_neighbours = non;
 
 #warning check stettings of brn_headers
   p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
@@ -126,6 +142,8 @@ CooperativeChannelStats::push(int port, Packet *p)
 
   ncs->set_stats(ats, ccsh->endianess );
 
+  
+
   p->kill();
 }
 
@@ -148,6 +166,13 @@ CooperativeChannelStats::stats_handler(int mode)
     EtherAddress ea = iter.key();
 
     sa << "\t<node address=\"" << ncs->node.unparse() << "\" />\n";
+
+    /*for (NodeChannelStatsTableIter iter = ncst.begin(); iter.live(); iter++) {
+      NodeChannelStats *ncs = iter.value();
+      EtherAddress ea = iter.key();
+
+      sa << "\t<neighbour address=\"" << ncs->node.unparse() << "\" />\n";
+    }*/
   }
 
   sa << "</cooperativechannelstats>\n";
