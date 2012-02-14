@@ -142,8 +142,6 @@ CooperativeChannelStats::push(int port, Packet *p)
 
   ncs->set_stats(ats, ccsh->endianess );
 
-  
-
   p->kill();
 }
 
