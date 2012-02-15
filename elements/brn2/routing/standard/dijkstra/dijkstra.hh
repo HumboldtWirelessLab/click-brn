@@ -47,7 +47,7 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Dijkstra: public BRNElement {
+class Dijkstra: public RoutingAlgorithm {
  public:
   //
   //methods

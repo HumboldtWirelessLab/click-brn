@@ -19,12 +19,12 @@
  */
 
 /**
- * @file brnroutecache.hh
- * @brief Declaration of the Brn2RouteCache class.
+ * @file brnroutingtable.hh
+ * @brief Declaration of the BrnRoutingTable class.
  */
 
-#ifndef BRN2ROUTECACHE_HH_
-#define BRN2ROUTECACHE_HH_
+#ifndef BRNROUTINGTABLE_HH_
+#define BRNROUTINGTABLE_HH_
 
 #include <click/glue.hh>
 #include <click/timer.hh>
@@ -46,7 +46,7 @@ CLICK_DECLS
 ////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Caching of routes.
+ * @brief Table of routes.
  *
  * @note Parameters
  *  - DEBUG: Debug indicator (Write debug messages),
@@ -57,7 +57,7 @@ CLICK_DECLS
  *  - SLICE: Lifetime slice in us, 0 disables aging
  *
  */
-class Brn2RouteCache : public BRNElement
+class BrnRoutingTable : public BRNElement
 {
 //----------------------------------------------------------------------
 // Types
@@ -80,10 +80,10 @@ public:
 // Construction
 //----------------------------------------------------------------------
  public:
-  Brn2RouteCache();
-  virtual ~Brn2RouteCache();
+  BrnRoutingTable();
+  virtual ~BrnRoutingTable();
 
-  const char* class_name() const { return "Brn2RouteCache"; }
+  const char* class_name() const { return "BrnRoutingTable"; }
 
   void add_handlers();
   int initialize(ErrorHandler *);
@@ -178,4 +178,4 @@ private:
 ////////////////////////////////////////////////////////////////////////
 
 CLICK_ENDDECLS
-#endif /*BRNROUTECACHE_HH_*/
+#endif /*BRNROUTINGTABLE_HH_*/

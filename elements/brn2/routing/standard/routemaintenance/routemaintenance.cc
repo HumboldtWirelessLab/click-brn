@@ -20,8 +20,8 @@
 
 
 /*
- * Dijkstra.{cc,hh} -- Shortes Path
- * R. Sombrutzki (A. Zubow)
+ * RouteMaintenance.{cc,hh}
+ * R. Sombrutzki
  *
  */
 #include <click/config.h>
@@ -35,11 +35,11 @@
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brn2.h"
 
-#include "dijkstra.hh"
+#include "routemaintenance.hh"
 
 CLICK_DECLS
 
-Dijkstra::Dijkstra()
+RoutingMaintenance::RoutingMaintenance()
   : _node_identity(),
     _timer(this),
     _brn_dsr_min_link_metric_within_route(BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE)
@@ -47,12 +47,12 @@ Dijkstra::Dijkstra()
   BRNElement::init();
 }
 
-Dijkstra::~Dijkstra()
+RoutingMaintenance::~RoutingMaintenance()
 {
 }
 
 int
-Dijkstra::initialize (ErrorHandler *)
+RoutingMaintenance::initialize (ErrorHandler *)
 {
   BRN2Device *dev;
 
@@ -63,28 +63,27 @@ Dijkstra::initialize (ErrorHandler *)
 }
 
 void
-Dijkstra::run_timer(Timer*)
+RoutingMaintenance::run_timer(Timer*)
 {
   //_timer.schedule_after_msec(5000);
 }
 
 void *
-Dijkstra::cast(const char *n)
+RoutingMaintenance::cast(const char *n)
 {
-  if (strcmp(n, "Dijkstra") == 0)
-    return (Dijkstra *) this;
+  if (strcmp(n, "RoutingMaintenance") == 0)
+    return (RoutingMaintenance *) this;
   else
     return 0;
 }
 
 int
-Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
+RoutingMaintenance::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret = cp_va_kparse(conf, this, errh,
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
-        "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
         "ROUTETABLE", cpkP+cpkM, cpElement, &_brn_routetable,
-        "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
+        "ROUTINGALGORITHM", cpkP+cpkM, cpElement, &_routing_algo,
         "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 
@@ -92,13 +91,13 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-Dijkstra::take_state(Element *e, ErrorHandler *) {
-  Dijkstra *q = (Dijkstra *)e->cast("LinkTable");
+RoutingMaintenance::take_state(Element *e, ErrorHandler *) {
+  RoutingMaintenance *q = (RoutingMaintenance *)e->cast("LinkTable");
   if (!q) return;
 }
 
 int32_t
-Dijkstra::get_route_metric(const Vector<EtherAddress> &route)
+RoutingMaintenance::get_route_metric(const Vector<EtherAddress> &route)
 {
 
   if ( route.size() == 0 ) return -1;
@@ -122,7 +121,7 @@ Dijkstra::get_route_metric(const Vector<EtherAddress> &route)
 
 
 Vector<EtherAddress>
-Dijkstra::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
+RoutingMaintenance::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
 {
   Vector<EtherAddress> reverse_route;
 
@@ -157,7 +156,7 @@ Dijkstra::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
 
 
 String
-Dijkstra::print_routes(bool from_me)
+RoutingMaintenance::print_routes(bool from_me)
 {
   StringAccum sa;
 
@@ -197,7 +196,7 @@ Dijkstra::print_routes(bool from_me)
 }
 
 bool
-Dijkstra::valid_route(const Vector<EtherAddress> &route)
+RoutingMaintenance::valid_route(const Vector<EtherAddress> &route)
 {
   if (route.size() < 1) {
     return false;
@@ -222,7 +221,7 @@ Dijkstra::valid_route(const Vector<EtherAddress> &route)
 }
 
 void
-Dijkstra::dijkstra(EtherAddress src, bool from_me)
+RoutingMaintenance::dijkstra(EtherAddress src, bool from_me)
 {
 
   if (!_lt->_hosts.findp(src)) {
@@ -347,7 +346,7 @@ enum {H_ROUTES_FROM,
 static String 
 LinkTable_read_param(Element *e, void *thunk)
 {
-  Dijkstra *td = (Dijkstra *)e;
+  RoutingMaintenance *td = (RoutingMaintenance *)e;
     switch ((uintptr_t) thunk) {
     case H_DIJKSTRA_TIME: {
       StringAccum sa;
@@ -364,7 +363,7 @@ LinkTable_read_param(Element *e, void *thunk)
 static int 
 LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Dijkstra *f = (Dijkstra *)e;
+  RoutingMaintenance *f = (RoutingMaintenance *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
   case H_DIJKSTRA: {
@@ -415,7 +414,7 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
 }
 
 void
-Dijkstra::add_handlers()
+RoutingMaintenance::add_handlers()
 {
   BRNElement::add_handlers();
 

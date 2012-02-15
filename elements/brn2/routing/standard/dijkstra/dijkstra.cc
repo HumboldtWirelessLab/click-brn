@@ -44,7 +44,7 @@ Dijkstra::Dijkstra()
     _timer(this),
     _brn_dsr_min_link_metric_within_route(BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE)
 {
-  BRNElement::init();
+  RoutingAlgorithm::init();
 }
 
 Dijkstra::~Dijkstra()
@@ -417,7 +417,7 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
 void
 Dijkstra::add_handlers()
 {
-  BRNElement::add_handlers();
+  RoutingAlgorithm::add_handlers();
 
   add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
