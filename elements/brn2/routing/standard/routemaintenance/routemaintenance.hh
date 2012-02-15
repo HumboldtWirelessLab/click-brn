@@ -28,7 +28,8 @@
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/routecache/brn2routecache.hh"
+#include "elements/brn2/routing/standard/routingt.hh"
+#include "elements/brn2/routing/routecache/brn2routeable/brnroutingtable.hh"
 
 #include "elements/brn2/brnelement.hh"
 
@@ -47,17 +48,17 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Dijkstra: public BRNElement {
+class RoutingMaintenance: public BRNElement {
  public:
   //
   //methods
   //
   /* generic click-mandated stuff*/
-  Dijkstra();
-  ~Dijkstra();
+  RoutingMaintenance();
+  ~RoutingMaintenance();
 
   void add_handlers();
-  const char* class_name() const { return "Dijkstra"; }
+  const char* class_name() const { return "RoutingMaintenance"; }
   int initialize(ErrorHandler *);
   void run_timer(Timer*);
   int configure(Vector<String> &conf, ErrorHandler *errh);
@@ -112,7 +113,7 @@ private:
 };
 
 inline void
-Dijkstra::query_route(
+RoutingMaintenance::query_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,
   /*[out]*/ Vector<EtherAddress>& route )
@@ -142,7 +143,7 @@ Dijkstra::query_route(
 }
 
 inline void
-Dijkstra::update_route(
+RoutingMaintenance::update_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,
   /*[out]*/ Vector<EtherAddress>& route,

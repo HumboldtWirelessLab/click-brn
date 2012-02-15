@@ -19,8 +19,8 @@
  */
 
 /**
- * @file brnroutecache.cc
- * @brief Implementation of the Brn2RouteCache class.
+ * @file brnroutingtable.cc
+ * @brief Implementation of the BrnRoutingTable class.
  */
 
 #include <click/config.h>
@@ -29,13 +29,13 @@
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brn2.h"
 
-#include "brn2routecache.hh"
+#include "brnroutingtable.hh"
 
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////
 
-Brn2RouteCache::Brn2RouteCache() :
+BrnRoutingTable::BrnRoutingTable() :
   m_bActive( false ),
   m_tRouteAging( on_routeaging_expired, this ),
   m_iInitialTTL( 20 ),
@@ -49,13 +49,13 @@ Brn2RouteCache::Brn2RouteCache() :
 
 ////////////////////////////////////////////////////////////////////////
 
-Brn2RouteCache::~Brn2RouteCache()
+BrnRoutingTable::~BrnRoutingTable()
 {
 }
 
 ////////////////////////////////////////////////////////////////////////
 int 
-Brn2RouteCache::initialize(ErrorHandler *)
+BrnRoutingTable::initialize(ErrorHandler *)
 {
   click_random_srandom();
 
@@ -72,7 +72,7 @@ Brn2RouteCache::initialize(ErrorHandler *)
 
 ////////////////////////////////////////////////////////////////////////
 int 
-Brn2RouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
+BrnRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
   uint32_t ullSlice = m_tvLifetimeSlice.tv_sec * 1000000 +
@@ -102,7 +102,7 @@ Brn2RouteCache::configure(Vector<String> &conf, ErrorHandler *errh)
 
 ////////////////////////////////////////////////////////////////////////
 bool
-Brn2RouteCache::get_cached_route(
+BrnRoutingTable::get_cached_route(
   /*[in]*/  const AddressType&  addrSrc,
   /*[in]*/  const AddressType&  addrDst,
   /*[out]*/ RouteType&          route,
@@ -146,7 +146,7 @@ Brn2RouteCache::get_cached_route(
 
 ////////////////////////////////////////////////////////////////////////
 void
-Brn2RouteCache::insert_route(
+BrnRoutingTable::insert_route(
   /*[in]*/ const AddressType& addrSrc,
   /*[in]*/ const AddressType& addrDst,
   /*[in]*/ const RouteType&   route,
@@ -202,7 +202,7 @@ Brn2RouteCache::insert_route(
 
 ////////////////////////////////////////////////////////////////////////
 void
-Brn2RouteCache::flush_cache()
+BrnRoutingTable::flush_cache()
 {
   m_mapLinkToRoute.clear();
   m_mapRoutes.clear();
@@ -210,7 +210,7 @@ Brn2RouteCache::flush_cache()
 
 ////////////////////////////////////////////////////////////////////////
 void 
-Brn2RouteCache::remove_route(
+BrnRoutingTable::remove_route(
   /*[in]*/  const AddressType& addrSrc,
   /*[in]*/  const AddressType& addrDst )
 {
@@ -260,7 +260,7 @@ Brn2RouteCache::remove_route(
 
 ////////////////////////////////////////////////////////////////////////
 void 
-Brn2RouteCache::on_link_changed(
+BrnRoutingTable::on_link_changed(
   /*[in]*/ const AddressType& addrLinkNodeA,
   /*[in]*/ const AddressType& addrLinkNodeB )
 {
@@ -303,7 +303,7 @@ Brn2RouteCache::on_link_changed(
 
 ////////////////////////////////////////////////////////////////////////
 void 
-Brn2RouteCache::on_routeaging_expired(/*[in]*/ Timer* pTimer, /*[in]*/  void*  pVoid )
+BrnRoutingTable::on_routeaging_expired(/*[in]*/ Timer* pTimer, /*[in]*/  void*  pVoid )
 {
   if( NULL == pTimer
     || NULL == pVoid )
@@ -312,13 +312,13 @@ Brn2RouteCache::on_routeaging_expired(/*[in]*/ Timer* pTimer, /*[in]*/  void*  p
     return;
   }
 
-  Brn2RouteCache* pThis = static_cast<Brn2RouteCache*>(pVoid);
+  BrnRoutingTable* pThis = static_cast<BrnRoutingTable*>(pVoid);
   pThis->on_routeaging_expired( pTimer );
 }
 
 ////////////////////////////////////////////////////////////////////////
 void
-Brn2RouteCache::on_routeaging_expired(
+BrnRoutingTable::on_routeaging_expired(
   /*[in]*/  Timer* pTimer )
 {
   if( false == m_bActive )
@@ -353,7 +353,7 @@ write_reset_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler
 {
   UNREFERENCED_PARAMETER(vparam);
 
-  Brn2RouteCache *rq = (Brn2RouteCache *)e;
+  BrnRoutingTable *rq = (BrnRoutingTable *)e;
 
   rq->flush_cache();
 
@@ -366,7 +366,7 @@ read_active_param(Element *e, void *thunk)
 {
   UNREFERENCED_PARAMETER(thunk);
 
-  Brn2RouteCache *rq = (Brn2RouteCache *)e;
+  BrnRoutingTable *rq = (BrnRoutingTable *)e;
   return String(rq->m_bActive) + "\n";
 }
 
@@ -376,7 +376,7 @@ write_active_param(const String &in_s, Element *e, void *vparam, ErrorHandler *e
 {
   UNREFERENCED_PARAMETER(vparam);
 
-  Brn2RouteCache *rq = (Brn2RouteCache *)e;
+  BrnRoutingTable *rq = (BrnRoutingTable *)e;
   String s = cp_uncomment(in_s);
   bool active;
   if (!cp_bool(s, &active)) 
@@ -395,7 +395,7 @@ write_active_param(const String &in_s, Element *e, void *vparam, ErrorHandler *e
 
 ////////////////////////////////////////////////////////////////////////
 void
-Brn2RouteCache::add_handlers()
+BrnRoutingTable::add_handlers()
 {
   BRNElement::add_handlers();
 
@@ -408,7 +408,7 @@ Brn2RouteCache::add_handlers()
 ////////////////////////////////////////////////////////////////////////
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(Brn2RouteCache)
-ELEMENT_MT_SAFE(Brn2RouteCache)
+EXPORT_ELEMENT(BrnRoutingTable)
+ELEMENT_MT_SAFE(BrnRoutingTable)
 
 ////////////////////////////////////////////////////////////////////////
