@@ -75,14 +75,16 @@ BRN2DHCPSubnetList_read_param(Element *e, void *thunk)
     }
     case H_READ: {
       StringAccum sa;
+      sa << "<dhcp_subnetlist>\n";
       for ( int i = 0; i < snl->_subnet_list.size(); i++ ) {
         BRN2DHCPSubnetList::DHCPSubnet sn = snl->_subnet_list[i];
-        sa << "Me: " << sn._me.unparse();
-        sa << "\tIP-Net: " << sn._net_address.unparse();
-        sa << "\tDomainname: " << sn._domain_name;
-        sa << "\tVLAN: " << (uint32_t)sn._vlan;
-        sa << "\n";
+        sa << "<name=\"" << sn._me.unparse() << "\" ";
+        sa << "ipnet=\"" << sn._net_address.unparse() << "\" ";
+        sa << "domainname=\"" << sn._domain_name << "\" ";
+        sa << "vlan=\"" << (uint32_t)sn._vlan << "\" ";
+        sa << ">\n";
       }
+      sa << "</dhcp_subnetlist>\n";
 
       return sa.take_string();
    }
