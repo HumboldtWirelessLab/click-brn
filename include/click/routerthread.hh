@@ -142,6 +142,11 @@ class RouterThread : private TaskLink { public:
 #if CLICK_USERLEVEL
     SelectSet _selects;
 #endif
+#if CLICK_NS
+    struct timeval _last_active_tv;
+    int _active_iter;
+    enum { ns_iters_per_time = 1000 };
+#endif
 
 #if CLICK_LINUXMODULE
     bool _greedy;
@@ -195,7 +200,7 @@ class RouterThread : private TaskLink { public:
 #if HAVE_STRIDE_SCHED
     inline unsigned pass() const {
 # if HAVE_TASK_HEAP
-	return _task_heap.size() ? _task_heap.at_u(0).pass : 0;
+	return _task_heap.size() ? _task_heap.unchecked_at(0).pass : 0;
 # else
 	return _next->_pass;
 # endif
@@ -215,6 +220,7 @@ class RouterThread : private TaskLink { public:
 #if HAVE_TASK_HEAP
     void task_reheapify_from(int pos, Task*);
 #endif
+    static inline bool running_in_interrupt();
     inline bool current_thread_is_running() const;
     void request_stop();
     inline void request_go();
@@ -290,7 +296,7 @@ inline Task *
 RouterThread::task_begin() const
 {
 #if HAVE_TASK_HEAP
-    return (_task_heap.size() ? _task_heap.at_u(0).t : 0);
+    return (_task_heap.size() ? _task_heap.unchecked_at(0).t : 0);
 #else
     return static_cast<Task *>(_next);
 #endif
@@ -310,7 +316,7 @@ RouterThread::task_next(Task *task) const
 {
 #if HAVE_TASK_HEAP
     int p = task->_schedpos + 1;
-    return (p < _task_heap.size() ? _task_heap.at_u(p).t : 0);
+    return (p < _task_heap.size() ? _task_heap.unchecked_at(p).t : 0);
 #else
     return static_cast<Task *>(task->_next);
 #endif
@@ -333,10 +339,20 @@ RouterThread::task_end() const
 }
 
 inline bool
+RouterThread::running_in_interrupt()
+{
+#if CLICK_LINUXMODULE
+    return in_interrupt();
+#else
+    return false;
+#endif
+}
+
+inline bool
 RouterThread::current_thread_is_running() const
 {
 #if CLICK_LINUXMODULE
-    return current == _linux_task;
+    return current == _linux_task && !running_in_interrupt();
 #elif CLICK_USERLEVEL && HAVE_MULTITHREAD && HAVE___THREAD_STORAGE_CLASS
     return click_current_thread_id == _id;
 #elif CLICK_USERLEVEL && HAVE_MULTITHREAD
@@ -356,7 +372,7 @@ RouterThread::schedule_block_tasks()
 inline void
 RouterThread::block_tasks(bool scheduled)
 {
-    assert(!current_thread_is_running());
+    assert(!current_thread_is_running() && !running_in_interrupt());
     if (!scheduled)
 	++_task_blocker_waiting;
     while (1) {
@@ -389,6 +405,7 @@ RouterThread::unblock_tasks()
 inline void
 RouterThread::lock_tasks()
 {
+    assert(!running_in_interrupt());
     if (unlikely(!current_thread_is_running())) {
 	block_tasks(false);
 	_task_lock.acquire();
@@ -398,6 +415,7 @@ RouterThread::lock_tasks()
 inline void
 RouterThread::unlock_tasks()
 {
+    assert(!running_in_interrupt());
     if (unlikely(!current_thread_is_running())) {
 	_task_lock.release();
 	unblock_tasks();
