@@ -20,17 +20,22 @@ CC = @CC@
 CPP = @CPP@
 CXX = @CXX@
 CXXCPP = @CXXCPP@
+DEPCFLAGS = @DEPCFLAGS@
 AR_CREATE = @AR@ @AR_CREATEFLAGS@
 RANLIB = @RANLIB@
 INSTALL = @INSTALL@
 mkinstalldirs = $(conf_auxdir)/mkinstalldirs
 
 ifeq ($(V),1)
-ccompile = $(COMPILE) $(1)
-cxxcompile = $(CXXCOMPILE) $(1)
+ccompile = $(COMPILE) $(DEPCFLAGS) $(1)
+ccompile_nodep = $(COMPILE) $(1)
+cxxcompile = $(CXXCOMPILE) $(DEPCFLAGS) $(1)
+cxxcompile_nodep = $(CXXCOMPILE) $(1)
 else
-ccompile = @/bin/echo ' ' $(2) $< && $(COMPILE) $(1)
-cxxcompile = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(1)
+ccompile = @/bin/echo ' ' $(2) $< && $(COMPILE) $(DEPCFLAGS) $(1)
+ccompile_nodep = @/bin/echo ' ' $(2) $< && $(COMPILE) $(1)
+cxxcompile = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(DEPCFLAGS) $(1)
+cxxcompile_nodep = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(1)
 endif
 
 .SUFFIXES:
@@ -47,12 +52,12 @@ endif
 .cc.s:
 	$(call cxxcompile,-S $< -o $@,CXX -S)
 .cc.ii:
-	$(call cxxcompile,-E $< > $@,CXXCPP)
+	$(call cxxcompile_nodep,-E $< > $@,CXXCPP)
 
 REMOVES_GENERIC_OBJS = ipaddresslist.o ewma64.o
 
 GENERIC_OBJS = string.o straccum.o nameinfo.o \
-	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
+	bitvector.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
 	error.o timestamp.o glue.o task.o timer.o atomic.o fromfile.o gaprate.o \
