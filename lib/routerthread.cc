@@ -107,6 +107,11 @@ RouterThread::RouterThread(Master *m, int id)
     greedy_schedule_jiffies = jiffies;
 #endif
 
+#if CLICK_NS
+    timerclear(&_last_active_tv);
+    _active_iter = 0;
+#endif
+
 #if CLICK_DEBUG_SCHEDULING
     _thread_state = S_BLOCKED;
     _driver_epoch = 0;
@@ -156,6 +161,7 @@ inline void
 RouterThread::driver_unlock_tasks()
 {
     uint32_t val = _task_blocker.compare_swap((uint32_t) -1, 0);
+    (void) val;
     assert(val == (uint32_t) -1);
 }
 
@@ -439,9 +445,9 @@ RouterThread::run_tasks(int ntasks)
 #endif
 #if HAVE_STRIDE_SCHED
 # if HAVE_TASK_HEAP
-		unsigned p1 = _task_heap.at_u(1).pass;
-		if (_task_heap.size() > 2 && PASS_GT(p1, _task_heap.at_u(2).pass))
-		    p1 = _task_heap.at_u(2).pass;
+		unsigned p1 = _task_heap.unchecked_at(1).pass;
+		if (_task_heap.size() > 2 && PASS_GT(p1, _task_heap.unchecked_at(2).pass))
+		    p1 = _task_heap.unchecked_at(2).pass;
 # else
 		unsigned p1 = t->_next->_pass;
 # endif
@@ -640,14 +646,6 @@ RouterThread::driver()
 	    _oticks = ticks;
 #endif
 	    timer_set().run_timers(this, _master);
-#if CLICK_NS
-	    // If there's another timer, tell the simulator to make us
-	    // run when it's due to go off.
-	    if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
-		struct timeval nexttime = next_expiry.timeval();
-		simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
-	    }
-#endif
 	} while (0);
 
 	// run operating system
@@ -678,11 +676,29 @@ RouterThread::driver()
 #endif
 #if CLICK_LINUXMODULE
     _linux_task = 0;
-#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
+#endif
+#if CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_invalid_processor();
 # if HAVE___THREAD_STORAGE_CLASS
     click_current_thread_id = 0;
 # endif
+#endif
+#if CLICK_NS
+    if (active()) {
+	struct timeval nexttime = Timestamp::now().timeval_ceil();
+	if (memcmp(&nexttime, &_last_active_tv, sizeof(struct timeval)) != 0) {
+	    _active_iter = 0;
+	    _last_active_tv = nexttime;
+	} else if (++_active_iter >= ns_iters_per_time) {
+	    ++nexttime.tv_usec;
+	    if (nexttime.tv_usec == 1000000)
+		++nexttime.tv_sec, nexttime.tv_usec = 0;
+	}
+	simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
+    } else if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
+	struct timeval nexttime = next_expiry.timeval_ceil();
+	simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
+    }
 #endif
 }
 
