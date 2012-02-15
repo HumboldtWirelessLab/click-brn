@@ -492,8 +492,4 @@ void BRN2SimpleFlow::add_handlers()
 }
 
 EXPORT_ELEMENT(BRN2SimpleFlow)
-#include <click/bighashmap.cc>
-#include <click/vector.cc>
-#include <click/dequeue.cc>
-
 CLICK_ENDDECLS
