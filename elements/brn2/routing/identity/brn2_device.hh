@@ -119,7 +119,18 @@ class BRN2Device : public BRNElement {
     /* wireless device */
     uint8_t _channel;
 
-    uint8_t _no_hw_queues;
+    uint8_t no_queues;//number of queues
+    uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
+    uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
+    uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+
+  public:
+
+    uint8_t get_no_queues() { return no_queues; }
+    uint16_t *get_cwmin() { return _cwmin; }
+    uint16_t *get_cwmax() { return _cwmax; }
+    uint16_t *get_aifs() { return _aifs; }
+
 };
 
 CLICK_ENDDECLS

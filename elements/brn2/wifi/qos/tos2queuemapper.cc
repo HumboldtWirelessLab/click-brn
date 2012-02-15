@@ -62,7 +62,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	int v;
 
 	if (cp_va_kparse(conf, this, errh,
-		"CWMIN", cpkP, cpString, &s_cwmin,
+	      	"CWMIN", cpkP, cpString, &s_cwmin,
 	      	"CWMAX", cpkP, cpString, &s_cwmax,
 	      	"AIFS", cpkP, cpString, &s_aifs,
 	      	"CHANNELSTATS", cpkP, cpElement, &_cst,
@@ -83,19 +83,22 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	    	for( int i = 0; i < no_queues; i++ ) {
 	      		cp_integer(args[i], &v);
 	      		_cwmin[i] = v;
-	    	}
+        }
+        args.clear();
 		cp_spacevec(s_cwmax, args);
 	    	if ( args.size() < no_queues ) no_queues = args.size();
 	    	for( int i = 0; i < no_queues; i++ ) {
 	      		cp_integer(args[i], &v);
 	      		_cwmax[i] = v;
 	    	}
+        args.clear();
 	    	cp_spacevec(s_aifs, args);
 	    	if ( args.size() < no_queues ) no_queues = args.size();
 	    	for( int i = 0; i < no_queues; i++ ) {
 	      		cp_integer(args[i], &v);
 	     		_aifs[i] = v;
 	    	}
+        args.clear();
 	}
   	_queue_usage = new uint32_t[no_queues];
 	reset_queue_usage();
@@ -287,13 +290,13 @@ static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vpa
       		break;
     		case H_TOS2QUEUEMAPPER_ALWAYS_OFF: 
 			f->backoff_strategy_set(BACKOFF_STRATEGY_ALWAYS_OFF);
-		break;		
+		break;
     		case H_TOS2QUEUEMAPPER_ALWAYS_NCSA: 
 			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE);
-		break;		
+		break;
     		case H_TOS2QUEUEMAPPER_PLIA: 
 			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE);
-		break;		
+		break;
       	}
 	return 0;
 }
@@ -302,12 +305,12 @@ void Tos2QueueMapper::add_handlers()
 {
   BRNElement::add_handlers();//for Debug-Handlers
 
-	add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
+  add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
 
-  	add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
-	add_write_handler("backoff_strategy_always_off",Tos2QueueMapper_write_param,H_TOS2QUEUEMAPPER_ALWAYS_OFF);
-	add_write_handler("backoff_strategy_ncsa",Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_ALWAYS_NCSA);// ncsa:=BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE
-	add_write_handler("backoff_strategy_plia", Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_PLIA);//plia:=BACKOFF_STRATEGY_NEIGHBOURS_PacketLossInformation_AWARE
+  add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
+  add_write_handler("backoff_strategy_always_off",Tos2QueueMapper_write_param,H_TOS2QUEUEMAPPER_ALWAYS_OFF);
+  add_write_handler("backoff_strategy_ncsa",Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_ALWAYS_NCSA);// ncsa:=BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE
+  add_write_handler("backoff_strategy_plia", Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_PLIA);//plia:=BACKOFF_STRATEGY_NEIGHBOURS_PacketLossInformation_AWARE
 }
 
 CLICK_ENDDECLS
