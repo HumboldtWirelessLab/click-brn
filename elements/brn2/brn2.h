@@ -120,6 +120,7 @@ extern "C" {
     int32_t x,x1;
 
     if ( n == 0 ) return 0;
+    if ( n < 0 ) return -1;
 
     x1 = n;
     do {
