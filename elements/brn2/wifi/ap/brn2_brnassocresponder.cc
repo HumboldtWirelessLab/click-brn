@@ -671,7 +671,6 @@ BRN2AssocResponder::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <click/dequeue.cc>
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2AssocResponder)
 
