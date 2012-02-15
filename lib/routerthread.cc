@@ -646,6 +646,15 @@ RouterThread::driver()
 	    _oticks = ticks;
 #endif
 	    timer_set().run_timers(this, _master);
+//Old Routerthread (BRN)
+#if CLICK_NS
+	    // If there's another timer, tell the simulator to make us
+	    // run when it's due to go off.
+	    if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
+        struct timeval nexttime = next_expiry.timeval();
+        simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
+	    }
+#endif
 	} while (0);
 
 	// run operating system
@@ -683,6 +692,7 @@ RouterThread::driver()
     click_current_thread_id = 0;
 # endif
 #endif
+/*
 #if CLICK_NS
     if (active()) {
 	struct timeval nexttime = Timestamp::now().timeval_ceil();
@@ -700,6 +710,7 @@ RouterThread::driver()
 	simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
     }
 #endif
+*/
 }
 
 
