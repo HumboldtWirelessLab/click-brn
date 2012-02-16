@@ -57,17 +57,13 @@ int
 BRNSetGateway::configure (Vector<String> &conf, ErrorHandler *errh) {
   if (cp_va_kparse(conf, this, errh,
       "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
-      "ROUTINGTABLE", cpkP+cpkM, cpElement, &_routing_table,
+      "ROUTINGMAINTENANCE", cpkP+cpkM, cpElement, &_routing_maintenance,
       cpEnd) < 0)
     return -1;
 
 
   if (_gw->cast("BRNGateway") == 0) {
     return errh->error("No element of type BRNGateway specified.");
-  }
-
-  if (_link_table->cast("Brn2LinkTable") == 0) {
-    return errh->error("No element of type BrnLinkTable specified.");
   }
 
   return 0;
@@ -109,20 +105,20 @@ BRNSetGateway::choose_gateway() {
    uint32_t metric;
 
    // find a route
-   Vector<EtherAddress> route = _routing_table->best_route(gw, true, &metric);
+   Vector<EtherAddress> route = _routing_maintenance->best_route(gw, true, &metric);
 
-   if (!_routing_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
+   if (!_routing_maintenance->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 
-     BRN_WARN(" Route ist %s", _routing_table->print_routes(true).c_str());
+     BRN_WARN(" Route ist %s", _routing_maintenance->print_routes(true).c_str());
 
      // run Dijstra to look for new route
-     _link_table->dijkstra(gw, true);
-     if (_link_table->valid_route(_routing_table->best_route(gw, true, &metric))) {
+     _routing_maintenance->calc_routes(gw, true);
+     if (_routing_maintenance->valid_route(_routing_maintenance->best_route(gw, true, &metric))) {
        // have a route now
        break; 
      }
 
-     BRN_WARN(" Routes are\n%s", _routing_table->print_routes(true).c_str());
+     BRN_WARN(" Routes are\n%s", _routing_maintenance->print_routes(true).c_str());
 
      // TODO
      // store a list of lastly used gateways
@@ -167,7 +163,7 @@ BRNSetGateway::choose_gateway() {
    }
 
    // is metric to found gateway better than to old gateway
-   new_metric = _routing_table->get_route_metric(route);
+   new_metric = _routing_maintenance->get_route_metric(route);
 
    if ((_gw->_my_eth_addr == gw) || ((new_metric < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) {
      // TODO better combination of metric to gateway and gateway metric may be nedded

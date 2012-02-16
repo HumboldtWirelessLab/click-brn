@@ -22,11 +22,10 @@
 #define BRNSETGATEWAY_HH
 
 #include <click/bighashmap.hh>
+#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
 
+#include "brngateway.hh"
 CLICK_DECLS
-
-class BRNGateway;
-class Brn2LinkTable;
 
 /*
  * =c
@@ -67,7 +66,7 @@ private:
     void set_gateway_on_packet(Packet *, const EtherAddress*);
 
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
-    Brn2LinkTable *_link_table; // link table to determine metric to available gateways
+    RoutingMaintenance *_routing_maintenance; // link table to determine metric to available gateways
 };
 
 CLICK_ENDDECLS

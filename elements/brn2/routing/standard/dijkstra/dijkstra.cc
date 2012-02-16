@@ -41,10 +41,10 @@ CLICK_DECLS
 
 Dijkstra::Dijkstra()
   : _node_identity(),
-    _timer(this),
-    _brn_dsr_min_link_metric_within_route(BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE)
+    _timer(this)
 {
   RoutingAlgorithm::init();
+  _min_link_metric_within_route = BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE;
 }
 
 Dijkstra::~Dijkstra()
@@ -84,7 +84,7 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
         "ROUTETABLE", cpkP+cpkM, cpElement, &_brn_routetable,
-        "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_brn_dsr_min_link_metric_within_route,
+        "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_min_link_metric_within_route,
         "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 
@@ -95,130 +95,6 @@ void
 Dijkstra::take_state(Element *e, ErrorHandler *) {
   Dijkstra *q = (Dijkstra *)e->cast("LinkTable");
   if (!q) return;
-}
-
-int32_t
-Dijkstra::get_route_metric(const Vector<EtherAddress> &route)
-{
-
-  if ( route.size() == 0 ) return -1;
-  if ( route.size() == 1 ) return 0;
-
-  unsigned metric = 0;
-  for (int i = 0; i < route.size() - 1; i++) {
-    EtherAddress src = route[i];
-    EtherAddress dst = route[i+1];
-    unsigned m = _lt->get_link_metric(src, dst);
-
-    metric += m;
-
-    if ( m >= _brn_dsr_min_link_metric_within_route ) {
-      BRN_DEBUG(" * metric %d is inferior as min_metric %d", m, _brn_dsr_min_link_metric_within_route);
-      return -1;
-    }
-  }
-  return metric;
-}
-
-
-Vector<EtherAddress>
-Dijkstra::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
-{
-  Vector<EtherAddress> reverse_route;
-
-  if (!dst) {
-    metric = 0;
-    return reverse_route;
-  }
-  BrnHostInfo *nfo = _lt->_hosts.findp(dst);
-
-  if (from_me) {
-    while (nfo && nfo->_metric_from_me != 0) {
-      reverse_route.push_back(nfo->_ether);
-      *metric = nfo->_metric_from_me;
-      nfo = _lt->_hosts.findp(nfo->_prev_from_me);
-    }
-    if (nfo && nfo->_metric_from_me == 0) {
-      reverse_route.push_back(nfo->_ether);
-    }
-  } else {
-    while (nfo && nfo->_metric_to_me != 0) {
-      reverse_route.push_back(nfo->_ether);
-      *metric = nfo->_metric_to_me;
-      nfo = _lt->_hosts.findp(nfo->_prev_to_me);
-    }
-    if (nfo && nfo->_metric_to_me == 0) {
-      reverse_route.push_back(nfo->_ether);
-    }
-  }
-
-  return reverse_route;
-}
-
-
-String
-Dijkstra::print_routes(bool from_me)
-{
-  StringAccum sa;
-
-  Vector<EtherAddress> ether_addrs;
-
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
-    ether_addrs.push_back(iter.key());
-
-  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
-  sa << "<routetable id=\"";
-  sa << _node_identity->getMasterAddress()->unparse().c_str();
-  sa << "\">\n";
-
-  for (int x = 0; x < ether_addrs.size(); x++) {
-    EtherAddress ether = ether_addrs[x];
-    uint32_t metric_trash;
-    Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
-    if (_lt->valid_route(r)) {
-      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
-
-      for (int i = 0; i < r.size()-1; i++) {
-        EthernetPair pair = EthernetPair(r[i], r[i+1]);
-        BrnLinkInfo *l = _lt->_links.findp(pair);
-        sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
-        sa << "metric=\"" << l->_metric << "\" ";
-        sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
-      }
-      sa << "\t</route>\n";
-
-    }
-  }
-
-  sa << "</routetable>\n";
-
-  return sa.take_string();
-}
-
-bool
-Dijkstra::valid_route(const Vector<EtherAddress> &route)
-{
-  if (route.size() < 1) {
-    return false;
-  }
-  /* ensure the metrics are all valid */
-  unsigned metric = get_route_metric(route);
-  if (metric  == 0 ||
-      metric >= BRN_LT_INVALID_ROUTE_METRIC){
-    return false;
-      }
-
-      /* ensure that a node appears no more than once */
-      for (int x = 0; x < route.size(); x++) {
-        for (int y = x + 1; y < route.size(); y++) {
-          if (route[x] == route[y]) {
-            return false;
-          }
-        }
-      }
-
-      return true;
 }
 
 void
@@ -337,12 +213,8 @@ Dijkstra::dijkstra(EtherAddress src, bool from_me)
 }
 
 
-enum {H_ROUTES_FROM,
-      H_ROUTES_TO,
-      H_DIJKSTRA,
-      H_DIJKSTRA_TIME,
-      H_BEST_ROUTE,
-      H_BESTROUTE_DIJKSTRA};
+enum {H_DIJKSTRA,
+      H_DIJKSTRA_TIME};
 
 static String 
 LinkTable_read_param(Element *e, void *thunk)
@@ -354,8 +226,6 @@ LinkTable_read_param(Element *e, void *thunk)
       sa << td->dijkstra_time << "\n";
       return sa.take_string();
     }
-    case H_ROUTES_TO: return td->print_routes(false);
-    case H_ROUTES_FROM: return td->print_routes(true);
     default:
       return String();
     }
@@ -367,49 +237,15 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
   Dijkstra *f = (Dijkstra *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
-  case H_DIJKSTRA: {
-    // run dijkstra for all associated clients
-    EtherAddress m;
-    if (!cp_ethernet_address(s, &m)) 
-      return errh->error("dijkstra parameter must be etheraddress");
+    case H_DIJKSTRA: {
+      // run dijkstra for all associated clients
+      EtherAddress m;
+      if (!cp_ethernet_address(s, &m))
+        return errh->error("dijkstra parameter must be etheraddress");
 
-    f->dijkstra(m, true);
-    break;
-  }
-  case H_BEST_ROUTE: {
-    EtherAddress m;
-    if (!cp_ethernet_address(s, &m)) 
-      return errh->error("dijkstra parameter must be etheraddress");
-
-    uint32_t metric_trash;
-    Vector<EtherAddress> route = f->best_route(m, true, &metric_trash);
-
-    for (int j=0; j<route.size(); j++) {
-      click_chatter(" - %d  %s", j, route[j].unparse().c_str());
+      f->dijkstra(m, true);
+      break;
     }
-    break;
-  }
-  case H_BESTROUTE_DIJKSTRA: {
-    Vector<String> args;
-    cp_spacevec(s, args);
-
-    EtherAddress src, dst;
-    if (args.size() != 2)
-      return errh->error("dijkstra parameter must be etheraddress x etheraddress");
-    if (!cp_ethernet_address(args[0], &src)) 
-      return errh->error("dijkstra parameter must be etheraddress x etheraddress");
-    if (!cp_ethernet_address(args[1], &dst)) 
-      return errh->error("dijkstra parameter must be etheraddress x etheraddress");
-
-    f->dijkstra(src, true);
-    uint32_t metric_trash;
-    Vector<EtherAddress> route = f->best_route(dst, true, &metric_trash);
-
-    for (int j=0; j<route.size(); j++) {
-      click_chatter(" - %d  %s", j, route[j].unparse().c_str());
-    }
-    break;
-  }
   }
   return 0;
 }
@@ -419,14 +255,8 @@ Dijkstra::add_handlers()
 {
   RoutingAlgorithm::add_handlers();
 
-  add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
   add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
-
   add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
-  add_write_handler("best_route", LinkTable_write_param, (void *)H_BEST_ROUTE);
-  add_write_handler("best_route_and_dijkstra", LinkTable_write_param, (void *)H_BESTROUTE_DIJKSTRA);
 }
 
 CLICK_ENDDECLS
