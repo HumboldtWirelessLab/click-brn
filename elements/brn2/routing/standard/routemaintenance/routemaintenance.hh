@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef CLICK_BRNDIJKSTRA_HH
-#define CLICK_BRNDIJKSTRA_HH
+#ifndef CLICK_ROUTINGMAINTENANCE_HH
+#define CLICK_ROUTINGMAINTENANCE_HH
 
 #include <click/glue.hh>
 #include <click/timer.hh>
@@ -28,8 +28,8 @@
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/standard/routingt.hh"
-#include "elements/brn2/routing/routecache/brn2routeable/brnroutingtable.hh"
+#include "elements/brn2/routing/standard/routingalgorithm.hh"
+#include "elements/brn2/routing/standard/routingtable/brnroutingtable.hh"
 
 #include "elements/brn2/brnelement.hh"
 
@@ -71,8 +71,6 @@ class RoutingMaintenance: public BRNElement {
   //member
   //
 
-  Timestamp dijkstra_time;
-  void dijkstra(EtherAddress src, bool);
   Vector<EtherAddress> best_route(EtherAddress dst, bool from_me, uint32_t *metric);
   bool valid_route(const Vector<EtherAddress> &route);
 
@@ -104,12 +102,13 @@ private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
-  Brn2RouteCache *_brn_routetable;
+  BrnRoutingTable *_routing_table;
+  RoutingAlgorithm *_routing_algo;
 
-  Timer _timer;
-
-  uint32_t _brn_dsr_min_link_metric_within_route;
-
+public:
+  void calc_routes(EtherAddress src, bool from_me) {
+    if ( _routing_algo != NULL ) _routing_algo->calc_routes(src,from_me);
+  }
 };
 
 inline void
@@ -121,7 +120,7 @@ RoutingMaintenance::query_route(
   uint32_t metric;
 
   // First, search the route cache
-  bool bCached = _brn_routetable->get_cached_route( addrSrc,
+  bool bCached = _routing_table->get_cached_route( addrSrc,
                                                     addrDst,
                                                     route,
                                                     &metric);
@@ -130,14 +129,14 @@ RoutingMaintenance::query_route(
   {
     // current node is not final destination of the packet,
     // so lookup route from dsr table and generate a dsr packet
-    dijkstra(addrSrc, true);
+    _routing_algo->calc_routes(addrSrc, true);
 
     route = best_route(addrDst, true, &metric);
 
     // Cache the found route ...
     if( false == route.empty() )
     {
-      _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
+      _routing_table->insert_route( addrSrc, addrDst, route, metric );
     }
   }
 }
@@ -154,16 +153,16 @@ RoutingMaintenance::update_route(
   uint32_t old_metric;
 
   // First, search the route cache
-  bool bCached = _brn_routetable->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
+  bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
 
   if( ! bCached )
   {
     // current node is not final destination of the packet,
     // so lookup route from dsr table and generate a dsr packet
-    _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
+    _routing_table->insert_route( addrSrc, addrDst, route, metric );
   } else {
     if ( metric < old_metric ) {
-      _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
+      _routing_table->insert_route( addrSrc, addrDst, route, metric );
     }
   }
 }

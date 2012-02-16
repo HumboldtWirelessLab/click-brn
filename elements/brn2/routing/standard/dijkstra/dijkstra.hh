@@ -28,7 +28,8 @@
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/routecache/brn2routecache.hh"
+#include "elements/brn2/routing/standard/routingtable/brnroutingtable.hh"
+#include "elements/brn2/routing/standard/routingalgorithm.hh"
 
 #include "elements/brn2/brnelement.hh"
 
@@ -58,13 +59,12 @@ class Dijkstra: public RoutingAlgorithm {
 
   void add_handlers();
   const char* class_name() const { return "Dijkstra"; }
+
   int initialize(ErrorHandler *);
   void run_timer(Timer*);
   int configure(Vector<String> &conf, ErrorHandler *errh);
   void take_state(Element *, ErrorHandler *);
   void *cast(const char *n);
-
-  Vector< Vector<EtherAddress> > top_n_routes(EtherAddress dst, int n);
 
   //
   //member
@@ -72,100 +72,19 @@ class Dijkstra: public RoutingAlgorithm {
 
   Timestamp dijkstra_time;
   void dijkstra(EtherAddress src, bool);
-  Vector<EtherAddress> best_route(EtherAddress dst, bool from_me, uint32_t *metric);
-  bool valid_route(const Vector<EtherAddress> &route);
 
-  int32_t get_route_metric(const Vector<EtherAddress> &route);
-  void get_inodes(Vector<EtherAddress> &ether_addrs);
-
-  String print_routes(bool);
-
-  /**
-   * @brief Query for a route between addrSrc and addrDst in cache
-   * and link table.
-   * @param addrSrc @a [in] The source of the route.
-   * @param addrDst @a [in] The destination of the route.
-   * @param route @a [in] Holds the route, if found.
-   * @note Substitute for dijkstra and best_route
-   */
-  inline void query_route(
-    /*[in]*/  const EtherAddress&   addrSrc,
-    /*[in]*/  const EtherAddress&   addrDst,
-    /*[out]*/ Vector<EtherAddress>& route );
-
-  inline void update_route(
-  /*[in]*/  const EtherAddress&   addrSrc,
-  /*[in]*/  const EtherAddress&   addrDst,
-  /*[out]*/ Vector<EtherAddress>& route,
-  uint32_t metric);
+  void calc_routes(EtherAddress src, bool from_me) { dijkstra(src, from_me); }
+  const char *routing_algorithm_name() const { return "Dijkstra"; }
 
 private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
-  Brn2RouteCache *_brn_routetable;
+  BrnRoutingTable *_brn_routetable;
 
   Timer _timer;
 
-  uint32_t _brn_dsr_min_link_metric_within_route;
-
 };
-
-inline void
-Dijkstra::query_route(
-  /*[in]*/  const EtherAddress&   addrSrc,
-  /*[in]*/  const EtherAddress&   addrDst,
-  /*[out]*/ Vector<EtherAddress>& route )
-{
-  uint32_t metric;
-
-  // First, search the route cache
-  bool bCached = _brn_routetable->get_cached_route( addrSrc,
-                                                    addrDst,
-                                                    route,
-                                                    &metric);
-
-  if( false == bCached )
-  {
-    // current node is not final destination of the packet,
-    // so lookup route from dsr table and generate a dsr packet
-    dijkstra(addrSrc, true);
-
-    route = best_route(addrDst, true, &metric);
-
-    // Cache the found route ...
-    if( false == route.empty() )
-    {
-      _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
-    }
-  }
-}
-
-inline void
-Dijkstra::update_route(
-  /*[in]*/  const EtherAddress&   addrSrc,
-  /*[in]*/  const EtherAddress&   addrDst,
-  /*[out]*/ Vector<EtherAddress>& route,
-            uint32_t metric)
-{
-
-  Vector<EtherAddress> old_route;
-  uint32_t old_metric;
-
-  // First, search the route cache
-  bool bCached = _brn_routetable->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
-
-  if( ! bCached )
-  {
-    // current node is not final destination of the packet,
-    // so lookup route from dsr table and generate a dsr packet
-    _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
-  } else {
-    if ( metric < old_metric ) {
-      _brn_routetable->insert_route( addrSrc, addrDst, route, metric );
-    }
-  }
-}
 
 CLICK_ENDDECLS
 #endif /* CLICK_BRNLINKTABLE_HH */
