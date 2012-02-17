@@ -708,8 +708,10 @@ BUILD_AR
 BUILD_RANLIB
 HOST_TOOLS
 DL_LIBS
+DL_LDFLAGS
 LDMODULEFLAGS
 SOSUFFIX
+BUILD_DL_LDFLAGS
 BUILD_DL_LIBS
 SOCKET_LIBS
 EXTRA_DRIVER_OBJS
@@ -10002,7 +10004,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 10005 "configure"
+#line 10007 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -13611,6 +13613,58 @@ _ACEOF
     fi
 
 
+    DL_LDFLAGS=
+    save_ldflags="$LDFLAGS"; LDFLAGS="$LDFLAGS -rdynamic"
+    { echo "$as_me:$LINENO: checking whether linker accepts the -rdynamic flag" >&5
+echo $ECHO_N "checking whether linker accepts the -rdynamic flag... $ECHO_C" >&6; }
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_rdynamic=yes; DL_LDFLAGS=-rdynamic
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_rdynamic=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+    { echo "$as_me:$LINENO: result: $ac_cv_rdynamic" >&5
+echo "${ECHO_T}$ac_cv_rdynamic" >&6; }
+    LDFLAGS="$save_ldflags"
+
+
     { echo "$as_me:$LINENO: checking compiler flags for building loadable modules" >&5
 echo $ECHO_N "checking compiler flags for building loadable modules... $ECHO_C" >&6; }
     LDMODULEFLAGS=-shared
@@ -13930,6 +13984,59 @@ fi
     if test "x$ac_build_have_dlopen" = xyes -a "x$ac_build_have_dlfcn_h" = xyes; then
 	ac_build_have_dynamic_linking=yes
     fi
+
+    BUILD_DL_LDFLAGS=
+    save_ldflags="$LDFLAGS"; LDFLAGS="$LDFLAGS -rdynamic"
+    { echo "$as_me:$LINENO: checking whether linker accepts the -rdynamic flag" >&5
+echo $ECHO_N "checking whether linker accepts the -rdynamic flag... $ECHO_C" >&6; }
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+int
+main ()
+{
+return 0;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_build_rdynamic=yes; BUILD_DL_LDFLAGS=-rdynamic
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_build_rdynamic=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+    { echo "$as_me:$LINENO: result: $ac_cv_build_rdynamic" >&5
+echo "${ECHO_T}$ac_cv_build_rdynamic" >&6; }
+    LDFLAGS="$save_ldflags"
+
+
     if test "x$ac_build_have_dynamic_linking" != "x$ac_have_dynamic_linking"; then
 	{ { echo "$as_me:$LINENO: error:
 =========================================
@@ -21378,8 +21485,8 @@ BUILD_AR!$BUILD_AR$ac_delim
 BUILD_RANLIB!$BUILD_RANLIB$ac_delim
 HOST_TOOLS!$HOST_TOOLS$ac_delim
 DL_LIBS!$DL_LIBS$ac_delim
+DL_LDFLAGS!$DL_LDFLAGS$ac_delim
 LDMODULEFLAGS!$LDMODULEFLAGS$ac_delim
-SOSUFFIX!$SOSUFFIX$ac_delim
 _ACEOF
 
   if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 97; then
@@ -21421,6 +21528,8 @@ _ACEOF
 ac_delim='%!_!# '
 for ac_last_try in false false false false false :; do
   cat >conf$$subs.sed <<_ACEOF
+SOSUFFIX!$SOSUFFIX$ac_delim
+BUILD_DL_LDFLAGS!$BUILD_DL_LDFLAGS$ac_delim
 BUILD_DL_LIBS!$BUILD_DL_LIBS$ac_delim
 SOCKET_LIBS!$SOCKET_LIBS$ac_delim
 EXTRA_DRIVER_OBJS!$EXTRA_DRIVER_OBJS$ac_delim
@@ -21478,7 +21587,7 @@ provisions!$provisions$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 55; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 57; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
