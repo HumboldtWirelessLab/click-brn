@@ -28,15 +28,14 @@
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
+
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"
 #include "brn2_reqforwarder.hh"
 #include "brn2_routeidcache.hh"
 
 CLICK_DECLS
-
-class BRN2DSRDecap;
-class BRN2DSREncap;
 
 /*
  * =c
@@ -252,6 +251,7 @@ public:
   //---------------------------------------------------------------------------
   BRN2NodeIdentity *_me;
   Brn2LinkTable *_link_table;
+  RoutingMaintenance *_routing_maintenance;
   BRN2DSREncap *_dsr_encap;
   BRN2DSRDecap *_dsr_decap;
   BrnRouteIdCache *_dsr_rid_cache;

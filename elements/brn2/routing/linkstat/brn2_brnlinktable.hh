@@ -71,16 +71,12 @@ class EthernetPair {
     }
     bool other(EtherAddress foo) { return ((_to == foo) ? _from : _to); }
 
-    inline bool
-        operator==(EthernetPair other)
-    {
+    inline bool operator==(EthernetPair other) {
       return (other._to == _to && other._from == _from);
     }
 };
 
-inline unsigned
-    hashcode(EthernetPair p)
-{
+inline unsigned hashcode(EthernetPair p) {
   return hashcode(p._to) + hashcode(p._from);
 }
 
@@ -151,18 +147,23 @@ class BrnLinkInfo {
   public:
     EtherAddress _from;
     EtherAddress _to;
+
     uint32_t _metric;
     uint32_t _seq;
     uint32_t _age;
     bool     _permanent;
-    struct timeval _last_updated;
+
+    uint8_t _symetry;
+
+    Timestamp _last_updated;
+
     BrnLinkInfo() {
       _from = EtherAddress();
       _to = EtherAddress();
       _metric = 0;
       _seq = 0;
       _age = 0;
-      _last_updated.tv_sec = 0;
+      _last_updated = Timestamp(0);
     }
 
     BrnLinkInfo(EtherAddress from, EtherAddress to,
@@ -173,7 +174,7 @@ class BrnLinkInfo {
       _seq = seq;
       _age = age;
       _permanent = permanent;
-      _last_updated = Timestamp::now().timeval();
+      _last_updated = Timestamp::now();
     }
 
     BrnLinkInfo(const BrnLinkInfo &p) :
@@ -185,9 +186,7 @@ class BrnLinkInfo {
       { }
 
     uint32_t age() {
-      struct timeval now;
-      now = Timestamp::now().timeval();
-      return _age + (now.tv_sec - _last_updated.tv_sec);
+      return _age + (Timestamp::now() - _last_updated).sec();
     }
 
     void update(uint32_t seq, uint32_t age, uint32_t metric) {
@@ -197,7 +196,7 @@ class BrnLinkInfo {
       _metric = metric;
       _seq = seq;
       _age = age;
-      _last_updated = Timestamp::now().timeval();
+      _last_updated = Timestamp::now();
     }
 };
 
@@ -230,16 +229,15 @@ class Brn2LinkTable: public BRNElement {
   int configure(Vector<String> &conf, ErrorHandler *errh);
   void take_state(Element *, ErrorHandler *);
   void *cast(const char *n);
+
   /* read/write handlers */
   String print_links();
   String print_hosts();
   void get_inodes(Vector<EtherAddress> &ether_addrs);
 
-
   static int static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh);
   void clear();
 
-  String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
   /* other public functions */
 
   bool update_link(EtherAddress from, EtherAddress to,

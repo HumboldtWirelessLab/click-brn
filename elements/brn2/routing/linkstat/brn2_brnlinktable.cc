@@ -15,7 +15,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
  *
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 
@@ -129,45 +129,6 @@ Brn2LinkTable::take_state(Element *e, ErrorHandler *) {
 
 }
 
-int
-Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh)
-{
-  Brn2LinkTable *n = (Brn2LinkTable *) e;
-
-  Vector<String> args;
-  EtherAddress from;
-  EtherAddress to;
-  uint32_t seq;
-  uint32_t age;
-  uint32_t metric;
-  cp_spacevec(arg, args);
-
-  if (args.size() != 5) {
-    return errh->error("Must have three arguments: currently has %d: %s", args.size(), args[0].c_str());
-  }
-
-  if (!cp_ethernet_address(args[0], &from)) {
-    return errh->error("Couldn't read EtherAddress out of from");
-  }
-
-  if (!cp_ethernet_address(args[1], &to)) {
-    return errh->error("Couldn't read EtherAddress out of to");
-  }
-  if (!cp_unsigned(args[2], &metric)) {
-    return errh->error("Couldn't read metric");
-  }
-
-  if (!cp_unsigned(args[3], &seq)) {
-    return errh->error("Couldn't read seq");
-  }
-
-  if (!cp_unsigned(args[4], &age)) {
-    return errh->error("Couldn't read age");
-  }
-
-  n->update_both_links(from, to, seq, age, metric);
-  return 0;
-}
 
 void
 Brn2LinkTable::clear()
@@ -247,7 +208,7 @@ bool
 Brn2LinkTable::is_associated(EtherAddress ea)
 {
   BrnHostInfo *n = _hosts.findp(ea);
-  if (n) return  n->_is_associated;
+  if (n) return n->_is_associated;
 
   return false;
 }
@@ -255,8 +216,9 @@ Brn2LinkTable::is_associated(EtherAddress ea)
 void
 Brn2LinkTable::remove_node(const EtherAddress& node)
 {
-  if (!node)
-    return;
+  if (!node) return;
+
+  _hosts.remove(node);
 
   LTable::iterator iter = _links.begin();
   while (iter != _links.end())
@@ -287,25 +249,9 @@ Brn2LinkTable::get_hosts(Vector<EtherAddress> &v)
 }
 
 uint32_t
-Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
-{
-  BRN_DEBUG("Search host %s in Hosttable",s.unparse().c_str());
-  if (!s) {
-    return 0;
-  }
-  BrnHostInfo *nfo = _hosts.findp(s);
-  if (!nfo) {
-    BRN_DEBUG("Couldn't find host %s in Hosttable",s.unparse().c_str());
-    return 0;
-  }
-  BRN_DEBUG("Find host %s in Hosttable",s.unparse().c_str());
-  return nfo->_metric_to_me;
-}
-
-uint32_t
 Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
 {
-  int best_metric = BRN_DSR_INVALID_ROUTE_METRIC;
+  int best_metric = BRN_LT_INVALID_LINK_METRIC;
 
   for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
     int c_metric = get_link_metric(s, *(_node_identity->getDeviceByIndex(d)->getEtherAddress()));
@@ -316,6 +262,12 @@ Brn2LinkTable::get_host_metric_from_me(EtherAddress s)
   }
 
   return best_metric;
+}
+
+uint32_t
+Brn2LinkTable::get_host_metric_to_me(EtherAddress s)
+{
+  return get_host_metric_from_me(s);
 }
 
 uint32_t
@@ -369,67 +321,6 @@ Brn2LinkTable::get_link_age(EtherAddress from, EtherAddress to)
   struct timeval now;
   now = Timestamp::now().timeval();
   return nfo->age();
-}
-
-String
-Brn2LinkTable::ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes)
-{
-  StringAccum sa;
-  for (int x = 0; x < routes.size(); x++) {
-    Vector <EtherAddress> r = routes[x];
-    for (int i = 0; i < r.size(); i++) {
-      if (i != 0) {
-        sa << " ";
-      }
-      sa << r[i] << " ";
-      if (i != r.size()-1) {
-        sa << get_link_metric(r[i], r[i+1]);
-      }
-    }
-    if (r.size() > 0) {
-      sa << "\n";
-    }
-  }
-  return sa.take_string();
-}
-
-String
-Brn2LinkTable::print_links()
-{
-  StringAccum sa;
-  sa << "<linktable id=\"";
-  sa << _node_identity->getMasterAddress()->unparse().c_str();
-  sa << "\">\n";
-
-  for (LTIter iter = _links.begin(); iter.live(); ++iter) {
-    BrnLinkInfo n = iter.value();
-    sa << "\t<link from=\"" << n._from.unparse().c_str() << "\" to=\"" << n._to.unparse().c_str() << "\"";
-    sa << " metric=\"" << n._metric << "\"";
-    sa << " seq=\"" << n._seq << "\" age=\"" << n.age() << "\" />\n";
-  }
-
-  sa << "</linktable>\n";
-  return sa.take_string();
-}
-
-String
-Brn2LinkTable::print_hosts()
-{
-  StringAccum sa;
-  Vector<EtherAddress> ether_addrs;
-
-  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
-    ether_addrs.push_back(iter.key());
-  }
-
-  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
-  for (int x = 0; x < ether_addrs.size(); x++) {
-    BrnHostInfo *nfo = _hosts.findp(ether_addrs[x]);
-    sa << ether_addrs[x] << " from_me: " << nfo->_metric_from_me << " to_me: " << nfo->_metric_to_me << " assosiated: " << nfo->_is_associated << "\n";
-  }
-
-  return sa.take_string();
 }
 
 void
@@ -521,9 +412,88 @@ enum {H_BLACKLIST,
       H_LINKS,
       H_HOSTS,
       H_CLEAR,
-      H_FIX_LINKTABLE};
+      H_FIX_LINKTABLE };
 
-static String 
+String
+Brn2LinkTable::print_hosts()
+{
+  StringAccum sa;
+  Vector<EtherAddress> ether_addrs;
+
+  for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+    ether_addrs.push_back(iter.key());
+  }
+
+  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
+
+  for (int x = 0; x < ether_addrs.size(); x++) {
+    BrnHostInfo *nfo = _hosts.findp(ether_addrs[x]);
+    sa << ether_addrs[x] << " from_me: " << nfo->_metric_from_me << " to_me: " << nfo->_metric_to_me << " assosiated: " << nfo->_is_associated << "\n";
+  }
+
+  return sa.take_string();
+}
+
+String
+Brn2LinkTable::print_links()
+{
+  StringAccum sa;
+  sa << "<linktable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+
+  for (LTIter iter = _links.begin(); iter.live(); ++iter) {
+    BrnLinkInfo n = iter.value();
+    sa << "\t<link from=\"" << n._from.unparse().c_str() << "\" to=\"" << n._to.unparse().c_str() << "\"";
+    sa << " metric=\"" << n._metric << "\"";
+    sa << " seq=\"" << n._seq << "\" age=\"" << n.age() << "\" />\n";
+  }
+
+  sa << "</linktable>\n";
+  return sa.take_string();
+}
+
+int
+Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh)
+{
+  Brn2LinkTable *n = (Brn2LinkTable *) e;
+
+  Vector<String> args;
+  EtherAddress from;
+  EtherAddress to;
+  uint32_t seq;
+  uint32_t age;
+  uint32_t metric;
+  cp_spacevec(arg, args);
+
+  if (args.size() != 5) {
+    return errh->error("Must have three arguments: currently has %d: %s", args.size(), args[0].c_str());
+  }
+
+  if (!cp_ethernet_address(args[0], &from)) {
+    return errh->error("Couldn't read EtherAddress out of from");
+  }
+
+  if (!cp_ethernet_address(args[1], &to)) {
+    return errh->error("Couldn't read EtherAddress out of to");
+  }
+  if (!cp_unsigned(args[2], &metric)) {
+    return errh->error("Couldn't read metric");
+  }
+
+  if (!cp_unsigned(args[3], &seq)) {
+    return errh->error("Couldn't read seq");
+  }
+
+  if (!cp_unsigned(args[4], &age)) {
+    return errh->error("Couldn't read age");
+  }
+
+  n->update_both_links(from, to, seq, age, metric);
+  return 0;
+}
+
+static String
 LinkTable_read_param(Element *e, void *thunk)
 {
   Brn2LinkTable *td = (Brn2LinkTable *)e;

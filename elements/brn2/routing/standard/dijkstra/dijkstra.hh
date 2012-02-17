@@ -49,6 +49,49 @@ CLICK_DECLS
  * Represents a link table storing {@link BrnLink} links.
  */
 class Dijkstra: public RoutingAlgorithm {
+
+#define DIJKSTRA_MAX_GRAPHS 16
+#define DIJKSTRA_GRAPH_MODE_FR0M_SRC 0
+#define DIJKSTRA_GRAPH_MODE_TO_DST   1
+
+  class DijkstraGraphInfo {
+    uint8_t _mode;
+    EtherAddress _node;
+
+    DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node) {}
+
+    inline bool equals(DijkstraGraphInfo dgi) {
+      return ((dgi._mode == _mode) && ( dgi._node == _node ));
+    }
+  };
+
+  class DijkstraNodeInfo {
+    public:
+      EtherAddress _ether;
+      IPAddress _ip;
+
+      uint32_t _metric[DIJKSTRA_MAX_GRAPHS];
+      DijkstraNodeInfo *_prev[DIJKSTRA_MAX_GRAPHS];
+      bool _marked[DIJKSTRA_MAX_GRAPHS];
+
+      BrnHostInfo(EtherAddress p, IPAddress ip) {
+        _ether = p;
+        _ip = ip;
+        memset(_metric, 0, DIJKSTRA_MAX_GRAPHS * sizeof(uint32_t));
+        memset(_prev, 0, DIJKSTRA_MAX_GRAPHS * sizeof(DijkstraNodeInfo *));
+        memset(_marked, 0, DIJKSTRA_MAX_GRAPHS * sizeof(bool));
+      }
+
+      void clear(uint32_t index) {
+        _prev[index] = NULL;
+        _metric[index] = 0;
+        _marked[index] = false;
+      }
+  };
+
+  typedef HashMap<EtherAddress, DijkstraInfo*> DNITable;
+  typedef DNITable::const_iterator DNITIter;
+
  public:
   //
   //methods

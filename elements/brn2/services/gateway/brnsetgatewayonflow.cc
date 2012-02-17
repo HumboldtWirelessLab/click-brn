@@ -54,7 +54,9 @@ CLICK_DECLS
 
 
 BRNSetGatewayOnFlow::BRNSetGatewayOnFlow()
-{}
+{
+  BRNElement::init();
+}
 
 BRNSetGatewayOnFlow::~BRNSetGatewayOnFlow() {}
 
@@ -63,7 +65,6 @@ BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
   if (cp_va_kparse(conf, this, errh,
                   "BRNGATEWAY", cpkP+cpkM, cpElement,/* "BRNGateway",*/ &_gw,
                   "AGGIPFLOWS", cpkP+cpkM, cpElement,/* "AggregateIPFlows",*/ &_aggflows,
-                  "LINKTABLE", cpkP+cpkM, cpElement,/* "BrnLinkTable",*/ &_link_table,
                   "ARPTABLE", cpkP+cpkM, cpElement,/* "ARPTable",*/ &_arp,
                   "PACKETBUFFER", cpkP+cpkM, cpElement,/* "BRNPacketBuffer",*/ &_buffer,
                   "IP", cpkP+cpkM, cpIPPrefix,/* "src IP address with prefix",*/ &_src_ip, &_src_ip_mask,
@@ -79,18 +80,14 @@ BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
       return errh->error("No element of type AggregateIPFlows specified.");
   }
 
-  if (_link_table->cast("Brn2LinkTable") == 0) {
-      return errh->error("No element of type BrnLinkTable specified.");
-  }
-
   if (_arp->cast("ARPTable") == 0) {
       return errh->error("No element of type ARPTable specified.");
-  }    
-  
+  }
+
   if (_buffer->cast("BRNPacketBuffer") == 0) {
       return errh->error("No element of type BRNPacketBuffer specified.");
   }
-  
+
   return 0;
 }
 
@@ -135,19 +132,19 @@ BRNSetGatewayOnFlow::choose_gateway() {
     BRN_DEBUG("Running over gateway %s", gw.unparse().c_str());
 
     // find a route
-    Vector<EtherAddress> route = _link_table->best_route(gw, true, &metric);
+    Vector<EtherAddress> route = _routing_maintenance->best_route(gw, true, &metric);
 
-    if (!_link_table->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
+    if (!_routing_maintenance->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 		  BRN_DEBUG("Don't know metric to gateway %s.", gw.unparse().c_str());
-         
+
       // run Dijstra to look for new route
-      _link_table->dijkstra(gw, true);
-      if (_link_table->valid_route(_link_table->best_route(gw, true, &metric))) {
+      _routing_maintenance->calc_routes(gw, true);
+      if (_routing_maintenance->valid_route(_routing_maintenance->best_route(gw, true, &metric))) {
         // have a route now
         break; 
       }
-        
-			// TODO
+
+      // TODO
 		  // store a list of lastly used gateways
 		  // those are the best gateway for this node
 		  // improve lookup
@@ -189,7 +186,7 @@ BRNSetGatewayOnFlow::choose_gateway() {
   	}
       
     // is metric to found gateway better than to old gateway
-    new_metric = _link_table->get_route_metric(route);
+    new_metric = _routing_maintenance->get_route_metric(route);
       
     if ((_gw->_my_eth_addr == gw) || ((new_metric
               < best_metric_to_reach_gw) && (gwe.get_metric() != 0))) { // TODO better combination of metric to gateway and gateway metric may be nedded
@@ -652,7 +649,7 @@ BRNSetGatewayOnFlow::write_handler(const String &data, Element *e, void *thunk, 
 
 void
 BRNSetGatewayOnFlow::add_handlers() {
-//  BRNElement::add_handlers();
+  BRNElement::add_handlers();
 
   add_read_handler("flows", read_handler, (void *) HANDLER_FLOWS);
   add_read_handler("flows_handed_over", read_handler, (void *) HANDLER_FLOWS_HAND_OVER);

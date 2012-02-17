@@ -26,8 +26,8 @@
 #include <click/etheraddress.hh>
 
 #include <elements/analysis/aggregatenotifier.hh>
-
-//#include <elements/brn/brnelement.hh>
+#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
+#include <elements/brn2/brnelement.hh>
 
 #include "brnpacketbuffertrigger.hh"
 
@@ -40,7 +40,6 @@ CLICK_DECLS
 
 class AggregateIPFlows;
 class ARPTable;
-class Brn2LinkTable;
 class BRNGateway;
 class BRNPacketBuffer;
 
@@ -60,7 +59,7 @@ typedef HashMap<IPFlowID, uint32_t> FlowAggregate;
 typedef HashMap<uint32_t, EtherAddress> FlowGateways;
 typedef HashMap<IPFlowID, EtherAddress> FlowsHandover;
 
-class BRNSetGatewayOnFlow : public Element, public AggregateListener, public BRNPacketBufferTrigger {
+class BRNSetGatewayOnFlow : public BRNElement, public AggregateListener, public BRNPacketBufferTrigger {
 public:
 
     BRNSetGatewayOnFlow();
@@ -97,15 +96,14 @@ public:
     bool add_handover_flow_from_client(IPFlowID, EtherAddress);
     void remove_handover_flows_from_client(EtherAddress);
 
-    int _debug;
 private:
     const EtherAddress choose_gateway();
     uint32_t get_aggregate(const Packet*);
   
     BRNGateway *_gw; // the gateway element, which stores infos about known hosts
-    Brn2LinkTable *_link_table; // link table to determine metric to available gateways
-    //RouteQuerier *_rq; // used to issue route request for gateways not in linktable
-	  AggregateIPFlows *_aggflows;
+    RoutingMaintenance *_routing_maintenance;
+
+    AggregateIPFlows *_aggflows;
     ARPTable *_arp; 
     
     Flows _flows;

@@ -71,6 +71,7 @@ RoutingMaintenance::configure (Vector<String> &conf, ErrorHandler *errh)
 {
   int ret = cp_va_kparse(conf, this, errh,
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
+        "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
         "ROUTETABLE", cpkP+cpkM, cpElement, &_routing_table,
         "ROUTINGALGORITHM", cpkP+cpkM, cpElement, &_routing_algo,
         "DEBUG", cpkP, cpInteger, &_debug,
@@ -100,6 +101,22 @@ RoutingMaintenance::get_route_metric(const Vector<EtherAddress> &route)
     }
   }
   return metric;
+}
+
+uint32_t
+RoutingMaintenance::get_route_metric_to_me(EtherAddress s)
+{
+  BRN_DEBUG("Search host %s in Hosttable",s.unparse().c_str());
+  if (!s) {
+    return 0;
+  }
+  BrnHostInfo *nfo = _lt->_hosts.findp(s);
+  if (!nfo) {
+    BRN_DEBUG("Couldn't find host %s in Hosttable",s.unparse().c_str());
+    return 0;
+  }
+  BRN_DEBUG("Find host %s in Hosttable",s.unparse().c_str());
+  return nfo->_metric_to_me;
 }
 
 Vector<EtherAddress>
@@ -157,7 +174,7 @@ RoutingMaintenance::print_routes(bool from_me)
     EtherAddress ether = ether_addrs[x];
     uint32_t metric_trash;
     Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
-    if (_lt->valid_route(r)) {
+    if (valid_route(r)) {
       sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
 
       for (int i = 0; i < r.size()-1; i++) {
@@ -174,6 +191,28 @@ RoutingMaintenance::print_routes(bool from_me)
 
   sa << "</routetable>\n";
 
+  return sa.take_string();
+}
+
+String
+RoutingMaintenance::ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes)
+{
+  StringAccum sa;
+  for (int x = 0; x < routes.size(); x++) {
+    Vector <EtherAddress> r = routes[x];
+    for (int i = 0; i < r.size(); i++) {
+      if (i != 0) {
+        sa << " ";
+      }
+      sa << r[i] << " ";
+      if (i != r.size()-1) {
+        sa << _lt->get_link_metric(r[i], r[i+1]);
+      }
+    }
+    if (r.size() > 0) {
+      sa << "\n";
+    }
+  }
   return sa.take_string();
 }
 
@@ -201,7 +240,8 @@ RoutingMaintenance::valid_route(const Vector<EtherAddress> &route)
 
 enum {H_ROUTES_FROM,
       H_ROUTES_TO,
-      H_BEST_ROUTE};
+      H_BEST_ROUTE,
+      H_ALGO_AND_BEST_ROUTE};
 
 static String 
 LinkTable_read_param(Element *e, void *thunk)
@@ -221,19 +261,39 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
   RoutingMaintenance *f = (RoutingMaintenance *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
-  case H_BEST_ROUTE: {
-    EtherAddress m;
-    if (!cp_ethernet_address(s, &m)) 
-      return errh->error("dijkstra parameter must be etheraddress");
+    case H_BEST_ROUTE:
+    case H_ALGO_AND_BEST_ROUTE: {
+      EtherAddress dst;
 
-    uint32_t metric_trash;
-    Vector<EtherAddress> route = f->best_route(m, true, &metric_trash);
+      if ( (long)vparam == H_ALGO_AND_BEST_ROUTE ) {
+        Vector<String> args;
+        cp_spacevec(s, args);
 
-    for (int j=0; j<route.size(); j++) {
-      click_chatter(" - %d  %s", j, route[j].unparse().c_str());
+        EtherAddress src;
+
+        if (args.size() != 2)
+          return errh->error("algo parameter must be etheraddress x etheraddress");
+        if (!cp_ethernet_address(args[0], &src))
+          return errh->error("algo parameter must be etheraddress x etheraddress");
+        if (!cp_ethernet_address(args[1], &dst))
+          return errh->error("algo parameter must be etheraddress x etheraddress");
+
+        f->calc_routes(src, true);
+      } else {
+        if (!cp_ethernet_address(s, &dst))
+          return errh->error("dijkstra parameter must be etheraddress");
+      }
+
+      uint32_t metric_trash;
+      Vector<EtherAddress> route = f->best_route(dst, true, &metric_trash);
+
+      if ( route.size() > 1 ) {
+        for (int j=0; j<route.size(); j++) {
+          click_chatter(" - %d  %s", j, route[j].unparse().c_str());
+        }
+      }
+      break;
     }
-    break;
-  }
   }
   return 0;
 }
@@ -247,8 +307,9 @@ RoutingMaintenance::add_handlers()
   add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
   add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
 
+  add_write_handler("algo_and_best_route", LinkTable_write_param, (void *)H_ALGO_AND_BEST_ROUTE);
   add_write_handler("best_route", LinkTable_write_param, (void *)H_BEST_ROUTE);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(Dijkstra)
+EXPORT_ELEMENT(RoutingMaintenance)

@@ -29,6 +29,7 @@
 #include <click/etheraddress.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/standard/routingalgorithm.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/standard/routingtable/brnroutingtable.hh"
 
 #include "elements/brn2/brnelement.hh"
@@ -60,9 +61,7 @@ class RoutingMaintenance: public BRNElement {
   void add_handlers();
   const char* class_name() const { return "RoutingMaintenance"; }
   int initialize(ErrorHandler *);
-  void run_timer(Timer*);
   int configure(Vector<String> &conf, ErrorHandler *errh);
-  void take_state(Element *, ErrorHandler *);
   void *cast(const char *n);
 
   Vector< Vector<EtherAddress> > top_n_routes(EtherAddress dst, int n);
@@ -71,6 +70,7 @@ class RoutingMaintenance: public BRNElement {
   //member
   //
 
+  uint32_t get_route_metric_to_me(EtherAddress s);
   Vector<EtherAddress> best_route(EtherAddress dst, bool from_me, uint32_t *metric);
   bool valid_route(const Vector<EtherAddress> &route);
 
@@ -78,6 +78,8 @@ class RoutingMaintenance: public BRNElement {
   void get_inodes(Vector<EtherAddress> &ether_addrs);
 
   String print_routes(bool);
+
+  String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
 
   /**
    * @brief Query for a route between addrSrc and addrDst in cache
