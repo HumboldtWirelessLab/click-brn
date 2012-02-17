@@ -35,7 +35,6 @@ int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
             "HIDDENNODE", cpkP, cpElement, &_hnd,
             "PLI", cpkP, cpElement, &_pli,
             "DEVICE", cpkP, cpElement, &_dev,
-            "COOP", cpkP, cpInteger, &_coop,
             "DEBUG", cpkP, cpInteger, &_debug,
             cpEnd);
 
@@ -46,11 +45,6 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
 
     if (packet != NULL) {
         
-        if(_coop > 0) {
-            
-            filter_corporation_data(packet);
-        }
-        
         gather_packet_infos_(packet);
         
         if (_pli != NULL) {
@@ -60,8 +54,8 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
             if (_cst != NULL) {
 
                 stats = _cst->get_latest_stats();
-                BRN_DEBUG("RSSI: %i", stats->avg_rssi);
                 estimateWeakSignal(stats);
+                estimateNonWifi();
             }
 
             if (_cinfo != NULL && packet_parameter->get_src_address() != brn_etheraddress_broadcast) {
@@ -100,85 +94,17 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                 estimateInrange();
             }
 
-            /*
-                        int busy, rx, tx;
-                        uint32_t hw_cycles, busy_cycles, rx_cycles, tx_cycles;
-                        int stats[16];
-                            #if CLICK_NS
-                    
-                                simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
-
-                                busy = stats[0];
-                                rx = stats[1];
-                                tx = stats[2];
-
-                                hw_cycles = stats[3];
-                                busy_cycles = stats[4];
-                                rx_cycles = stats[5];
-                                tx_cycles = stats[6];
-                            #else
-        
-                                String raw_info = file_string(_proc_file);
-                                Vector<String> args;
-
-                                cp_spacevec(raw_info, args);
-
-                                if ( args.size() <= 6 ) return;
-
-                                cp_integer(args[1],&busy);
-                                cp_integer(args[3],&rx);
-                                cp_integer(args[5],&tx);
-                                cp_integer(args[7],&hw_cycles);
-                                cp_integer(args[9],&busy_cycles);
-                                cp_integer(args[11],&rx_cycles);
-                                cp_integer(args[13],&tx_cycles);
-      
-                            #endif
-             */
             if (_cst != NULL) {
-
+                /*
                 BRN_DEBUG("RX-Packets: %i\tNo-Error-Packets: %i\tRX-Retry-Packets: %i\tRX-Unicast-Packets: %i", stats->rxpackets, stats->noerr_packets, stats->rx_retry_packets, stats->rx_ucast_packets);
                 BRN_DEBUG("TX-Packets: %i\tTX-Retry-Packets: %i\tTX-Unicast-Packets: %i", stats->txpackets, stats->tx_retry_packets, stats->tx_ucast_packets);
                 BRN_DEBUG("HW-Busy: %i\tHW-RX: %i\tHW-TX: %i", stats->hw_busy, stats->hw_rx, stats->hw_tx);
                 BRN_DEBUG("HW_Cycles: %i\tHW-Busy_Cycles: %i\tHW-RX_Cycles: %i\tHW-TX_Cycles: %i", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
+            */
             }
         }
         return packet;
     }
-}
-
-void PacketLossEstimator::run_timer(Timer *) {
-    
-    //_coop_timer.schedule_after_msec(100); // TODO put into Options
-    //send_stats_2_neighbours();
-}
-
-void PacketLossEstimator::send_stats_2_neighbours() {
-    
-    unsigned int size = static_cast<unsigned int>(_hnd->get_nodeinfo_table().size());
-    //struct packloss_corporation plc4transm;
-    StringAccum sa;
-    int count = 0;
-    for (HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = _hnd->get_nodeinfo_table().begin(); i != _hnd->get_nodeinfo_table().end(); i++) {
-        sa << i.key().unparse() << ",";
-    }
-    
-    WritablePacket *packet = Packet::make(sa.data(), sizeof(sa.data()));
-    
-    /*
-    WritablePacket *packet = Packet::make(128 , NULL,
-                                   sizeof(struct cooperative_channel_stats_header) + sizeof(struct airtime_stats),
-                                   32); //alignment
-
-  struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
-
-  struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
-
-  memcpy( ats, last_ats, sizeof(struct airtime_stats));
-*/
-  packet = BRNProtocol::add_brn_header(packet, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
-
-  output(0).push(packet);
 }
 
 void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
@@ -251,14 +177,14 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
             src_address = EtherAddress(wh->i_addr2);
     }
     packet_parameter->put_params_(own_address, src_address, dst_address, packet_type);
-
+/*
     BRN_DEBUG("Own Address: %s", packet_parameter->get_own_address().unparse().c_str());
     BRN_DEBUG("Source Address: %s", packet_parameter->get_src_address().unparse().c_str());
     BRN_DEBUG("Destination Address: %s", packet_parameter->get_dst_address().unparse().c_str());
+*/
 }
 
 void PacketLossEstimator::updatePacketlossStatistics() {
-
 
     //estimateInrange(packet_parameter->get_src_address(), stats);
     //estimateNonWifi(stats);
@@ -348,10 +274,28 @@ void PacketLossEstimator::estimateInrange() {
             neighbours++;
         }
     }
-
-    int period = 10;
-
-    irProp = (1 - (fac(period) / (fac(period - neighbours) * pow(period, neighbours)))) * 100;
+    
+    
+   
+//    uint8_t period = 1023; // maxCW
+//    irProp = (1 - (fac(period) / (fac(period - neighbours) * pow(period, neighbours)))) * 100;
+    
+    uint16_t *backoffsize = _dev->get_cwmax();
+    double temp = 1.0;
+    
+    if (neighbours >= *backoffsize) {
+        
+        irProp = 100;
+        
+    } else {
+        
+        for (int i = 1; i < neighbours; i++) {
+            
+            temp *= (double(*backoffsize) - double(i)) / double(*backoffsize);
+        }
+        
+        irProp = (1 - temp) * 100;
+    } 
     if (irProp < 6) irProp = 6;
 
     if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
@@ -360,27 +304,45 @@ void PacketLossEstimator::estimateInrange() {
     }
 
     _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->setFraction(irProp);
-    BRN_DEBUG("irProp: %i", irProp);
+    BRN_DEBUG("CWMax: %i\tirProp: %i", *backoffsize, irProp);
 }
 
 void PacketLossEstimator::estimateNonWifi() {
 
     if (_pli != NULL) {
-
+        
+        if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
+            
+            _pli->graph_insert(packet_parameter->get_src_address());
+    }
+    // cannot be estimated in simulator. There is no non_wifi.
+    _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::NON_WIFI)->setFraction(10);
     }
 }
 
 void PacketLossEstimator::estimateWeakSignal(struct airtime_stats *stats) {
     
+    int8_t weaksignal = 0;
+    
+    weaksignal = stats->avg_rssi - stats->std_rssi;
+    
+    if (weaksignal < 0)
+        weaksignal = 100;
+    else
+        weaksignal = 100 - weaksignal;
+    
+    if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
+
+        _pli->graph_insert(packet_parameter->get_src_address());
+    }
+    
+    _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(weaksignal);
+    
     BRN_DEBUG("Avg RSSI: %i", stats->avg_rssi);
     BRN_DEBUG("Std RSSI: %i", stats->std_rssi);
     BRN_DEBUG("Avg Noise: %i", stats->avg_noise);
     BRN_DEBUG("Std Noise: %i", stats->std_noise);
-}
-
-void PacketLossEstimator::filter_corporation_data(Packet *packet) {
-    
-    // Get the data from other nodes out of here
+    BRN_DEBUG("Weak Signal: %i", weaksignal);
 }
 
 ////////////////////////// STATS //////////////////////////////
@@ -395,8 +357,38 @@ String PacketLossEstimator::stats_handler(int mode) {
     struct airtime_stats *as;
 
     sa << "<packetlossreason>\n";
+    if (_pli != NULL) {
+        if (_hnd != NULL) {
+            
+            sa << "\t<hiddennodes>\n";
+            HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
+            BRN_DEBUG("111111111");
+            uint8_t fraction;
+            BRN_DEBUG("2222222222: %d", neighbour_nodes.size());
+            for (Vector<EtherAddress>::const_iterator i = _pli->node_neighbours_addresses_get().begin(); i != _pli->node_neighbours_addresses_get().end(); i++) {
+                //BRN_DEBUG("3333333333333");
+ //           for (HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++) {
+                //if (!_pli->mac_address_exists(i.key()))
+                  //  continue;
+                if (_pli->graph_get(*i) == NULL)
+                    continue;
+//                if (_pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE) == NULL)
+//                    continue;
+                sa << "\t\t<neighbour address=\"" << i->unparse().c_str() << "\">\n";
+                sa << "\t\t\t<fraction>"
+                        << _pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction()
+                        << "</fraction>\n";
+                //BRN_DEBUG("444444444444444");
+                sa << "\t\t</neighbour address>\n";
+            }
+            sa << "\t</hiddennodes>\n";
+        }
+        
+        
+    }
+    /*
     if (_cst != NULL) {
-
+        
         as = _cst->get_latest_stats();
         sa << "\t<rxPackets>" << as->rxpackets << "</rxPackets>\n";
         sa << "\t<txPackets>" << as->txpackets << "</txPackets>\n";
@@ -406,7 +398,7 @@ String PacketLossEstimator::stats_handler(int mode) {
         else
             sa << "false\" />\n";
 
-    }
+    }*/
     sa << "</packetlossreason>\n";
     return sa.take_string();
 }

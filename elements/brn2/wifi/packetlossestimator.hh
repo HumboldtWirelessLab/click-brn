@@ -77,8 +77,6 @@ public:
     
     Packet *simple_action(Packet *);
     
-    void run_timer(Timer *);
-    
     void add_handlers();
     
     String stats_handler(int);
@@ -99,7 +97,6 @@ private:
     /// Structure for gathering information about current packet
     PacketParameter *packet_parameter;
     
-    Timer _coop_timer;
     ///< Adopt the statistics for an adress according to new collected datas
     void updatePacketlossStatistics();
     ///< Estimate probability of channel error because of hidden nodes
@@ -112,10 +109,6 @@ private:
     void estimateWeakSignal(struct airtime_stats *);
     ///< put all necessary information about the current packet into one structure
     void gather_packet_infos_(Packet *);
-    
-    void send_stats_2_neighbours();
-    
-    void filter_corporation_data(Packet *);
 };
 
 CLICK_ENDDECLS
