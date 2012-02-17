@@ -436,7 +436,7 @@ FromDevice::selected(int, int)
 	    _count += r;
 	    _pcap_task.reschedule();
 	} else if (r < 0 && ++_pcap_complaints < 5)
-	    ErrorHandler::default_handler()->error("%{element}: %s", this, pcap_geterr(_pcap));
+	    ErrorHandler::default_handler()->error("%p{element}: %s", this, pcap_geterr(_pcap));
     }
 #endif
 #if FROMDEVICE_LINUX
@@ -481,7 +481,7 @@ FromDevice::run_task(Task *)
 	_count += r;
 	_pcap_task.fast_reschedule();
     } else if (r < 0 && ++_pcap_complaints < 5)
-	ErrorHandler::default_handler()->error("%{element}: %s", this, pcap_geterr(_pcap));
+	ErrorHandler::default_handler()->error("%p{element}: %s", this, pcap_geterr(_pcap));
     return r > 0;
 }
 #endif
