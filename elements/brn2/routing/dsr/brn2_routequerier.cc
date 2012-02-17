@@ -52,7 +52,8 @@ BRN2RouteQuerier::BRN2RouteQuerier()
     _metric(0),
     _use_blacklist(false),
     _expired_packets(0),
-    _requests(0)
+    _requests(0),
+    _max_retries(-1)
 {
   BRNElement::init();
 
@@ -84,6 +85,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
       "DSRIDCACHE", cpkP, cpElement, &_dsr_rid_cache,
       "METRIC", cpkP, cpElement, &_metric,
       "USE_BLACKLIST", cpkP, cpBool, &_use_blacklist,
+      "MAX_RETRIES", cpkP, cpInteger, &_max_retries,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -815,23 +817,29 @@ BRN2RouteQuerier::rreq_issue_hook()
       continue;
     } else {
       if (diff_in_ms(curr_time, ir._time_last_issued) > ir._backoff_interval) {
-        BRN_DEBUG(" * time to issue new request for host %s", ir._target.unparse().c_str());
+        if ( (_max_retries == -1 ) || (_max_retries >= ir._times_issued) ) {
 
-        if (ir._times_issued == 1) {
-          // if this is the second request
-          ir._backoff_interval = BRN_DSR_RREQ_DELAY2;
+          BRN_DEBUG(" * time to issue new request for host %s", ir._target.unparse().c_str());
+
+          if (ir._times_issued == 1) {
+            // if this is the second request
+            ir._backoff_interval = BRN_DSR_RREQ_DELAY2;
+          } else {
+            ir._backoff_interval *= BRN_DSR_RREQ_BACKOFF_FACTOR;
+            // i don't think there's any mention in the spec of a limit on
+            // the backoff, but this MAX_DELAY seems reasonable
+            if (ir._backoff_interval > BRN_DSR_RREQ_MAX_DELAY)
+              ir._backoff_interval = BRN_DSR_RREQ_MAX_DELAY;
+          }
+          ir._times_issued++;
+          ir._time_last_issued = curr_time;
+          ir._ttl = BRN_DSR_RREQ_TTL2;
+
+          issue_rreq(ir._target, ir._target_ip, ir._source, ir._source_ip, ir._ttl);
         } else {
-          ir._backoff_interval *= BRN_DSR_RREQ_BACKOFF_FACTOR;
-          // i don't think there's any mention in the spec of a limit on
-          // the backoff, but this MAX_DELAY seems reasonable
-          if (ir._backoff_interval > BRN_DSR_RREQ_MAX_DELAY)
-            ir._backoff_interval = BRN_DSR_RREQ_MAX_DELAY;
+          BRN_DEBUG(" * max retries for request for host %s is reached. Remove request.", ir._target.unparse().c_str());
+          remove_list.push_back(ir._target);
         }
-        ir._times_issued++;
-        ir._time_last_issued = curr_time;
-        ir._ttl = BRN_DSR_RREQ_TTL2;
-
-        issue_rreq(ir._target, ir._target_ip, ir._source, ir._source_ip, ir._ttl);
       }
     }
   }
@@ -1083,7 +1091,7 @@ BRN2RouteQuerier::print_stats()
   return sa.take_string();
 }
 
-enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB, H_STATS};
+enum { H_FIXED_ROUTE, H_FIXED_ROUTE_CLEAR, H_FLUSH_SB, H_STATS, H_MAX_RETRIES};
 
 static String
 read_handler(Element *e, void * vparam)
@@ -1109,6 +1117,9 @@ read_handler(Element *e, void * vparam)
     }
     case H_STATS: {
       return rq->print_stats();
+    }
+    case H_MAX_RETRIES: {
+      return "" + String(rq->_max_retries) + "\n";
     }
   }
 
@@ -1166,6 +1177,16 @@ write_handler(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
         rq->flush_sendbuffer();
       break;
     }
+    case H_MAX_RETRIES: {
+      int32_t max_retries;
+
+      if (!cp_integer(s, &max_retries))
+        return errh->error("flush_sb parameter must be a boolean.");
+
+      rq->_max_retries = max_retries;
+
+      break;
+    }
   }
   return 0;
 }
@@ -1177,10 +1198,12 @@ BRN2RouteQuerier::add_handlers()
 
   add_read_handler("stats", read_handler, (void*) H_STATS);
   add_read_handler("fixed_route", read_handler, (void*) H_FIXED_ROUTE);
+  add_read_handler("max_retries", read_handler, (void*) H_MAX_RETRIES);
 
   add_write_handler("fixed_route", write_handler, (void*) H_FIXED_ROUTE);
   add_write_handler("fixed_route_clear", write_handler, (void*) H_FIXED_ROUTE_CLEAR);
   add_write_handler("flush_sb", write_handler, (void*) H_FLUSH_SB);
+  add_write_handler("max_retries", write_handler, (void*) H_MAX_RETRIES);
 }
 
 
