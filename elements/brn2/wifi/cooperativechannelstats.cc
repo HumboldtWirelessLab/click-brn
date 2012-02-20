@@ -105,7 +105,7 @@ void CooperativeChannelStats::send_message() {
   ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
 
   uint8_t non = 0; //number of available neighbours
-
+  
   if ( _add_neighbours ) {
     ccsh->flags |= INCLUDES_NEIGHBOURS;
 
@@ -113,12 +113,13 @@ void CooperativeChannelStats::send_message() {
         
       ChannelStats::SrcInfo src = iter.value();
       EtherAddress ea = iter.key();
+      struct neighbour_airtime_stats *nats;
+      src.get_airtime_stats(&ea, nats);
       
-      //src.get_airtime_stats(&ea, airtime_stats);
       non++;
     }
   }
-
+  
   ccsh->no_neighbours = non;
 
 #warning check stettings of brn_headers
@@ -158,9 +159,12 @@ CooperativeChannelStats::push(int port, Packet *p)
     struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
     struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
     ncs->set_stats(ats, ccsh->endianess );
-    BRN_DEBUG("%s RSSI: %d", src_ea.unparse().c_str(), ncs->get_airtime_stats()->avg_rssi);
+    if (ncs->_n_stats.find(src_ea) != NULL) {
+        BRN_DEBUG("%s RSSI: %d", src_ea.unparse().c_str(), ncs->_n_stats.find(src_ea)->_avg_rssi);
+    }
+    BRN_DEBUG("%s Neighbour Number: %d", src_ea.unparse().c_str(), ccsh->no_neighbours);
  //   if (ccsh != NULL)
-        p->kill();
+    p->kill();
 //    else
 //        output(port).push(p);
 }
