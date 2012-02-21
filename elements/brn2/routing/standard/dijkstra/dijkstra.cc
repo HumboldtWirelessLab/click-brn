@@ -41,7 +41,8 @@ CLICK_DECLS
 
 Dijkstra::Dijkstra()
   : _node_identity(),
-    _timer(this)
+    _timer(this),
+    _max_graph_age(0)
 {
   RoutingAlgorithm::init();
   _min_link_metric_within_route = BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE;
@@ -49,23 +50,6 @@ Dijkstra::Dijkstra()
 
 Dijkstra::~Dijkstra()
 {
-}
-
-int
-Dijkstra::initialize (ErrorHandler *)
-{
-  BRN2Device *dev;
-
-  //_timer.initialize(this);
-  //_timer.schedule_now();
-
-  return 0;
-}
-
-void
-Dijkstra::run_timer(Timer*)
-{
-  //_timer.schedule_after_msec(5000);
 }
 
 void *
@@ -85,10 +69,28 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
         "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
         "ROUTETABLE", cpkP+cpkM, cpElement, &_brn_routetable,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_min_link_metric_within_route,
+        "MAXGRAPHAGE", cpkP, cpInteger, &_max_graph_age,
         "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd);
 
   return ret;
+}
+
+int
+Dijkstra::initialize (ErrorHandler *)
+{
+  //_timer.initialize(this);
+  //_timer.schedule_now();
+
+  _lt->add_informant((BrnLinkTableChangeInformant*)this);
+
+  return 0;
+}
+
+void
+Dijkstra::run_timer(Timer*)
+{
+  //_timer.schedule_after_msec(5000);
 }
 
 void
@@ -96,6 +98,106 @@ Dijkstra::take_state(Element *e, ErrorHandler *) {
   Dijkstra *q = (Dijkstra *)e->cast("LinkTable");
   if (!q) return;
 }
+
+/*void
+Dijkstra::dijkstra(EtherAddress src, bool from_me)
+*/
+
+void
+Dijkstra::dijkstra(int graph_index)
+{
+
+  DijkstraGraphInfo *dgi = &(_dgi_list[graph_index]);
+
+  if (!_dni_table.find(dgi->_node)) {
+    return;
+  }
+
+  Timestamp start = Timestamp::now();
+  dgi->_last_used = start;
+
+/*  typedef HashMap<EtherAddress, bool> EtherMap;
+  EtherMap ether_addrs;
+
+  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++) {
+    ether_addrs.insert(iter.value()._ether, true);
+  }
+*/
+  for (DNITIter i = _dni_table.begin(); i.live(); i++) {
+    /* clear them all initially */
+    DijkstraNodeInfo *dni = i.value();
+    dni->clear(graph_index);
+  }
+
+  DijkstraNodeInfo *root_info = _dni_table.find(dgi->_node);
+
+  assert(root_info);
+
+  root_info->_next[graph_index] = root_info;
+  root_info->_metric[graph_index] = 0;
+
+  EtherAddress current_min_ether = root_info->_ether;
+
+  while (current_min_ether) {
+    DijkstraNodeInfo *current_min = _dni_table.find(current_min_ether);
+    assert(current_min);
+
+    current_min->_marked[graph_index] = true;
+
+    for (DNITIter i = _dni_table.begin(); i.live(); i++) {
+      DijkstraNodeInfo *neighbor = i.value();
+
+      assert(neighbor);
+
+      if (neighbor->_marked[graph_index]) continue;
+
+      EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
+
+      if (_dgi_list[graph_index]._mode == DIJKSTRA_GRAPH_MODE_FR0M_SRC) {
+        pair = EthernetPair(current_min_ether, neighbor->_ether);
+      }
+
+      BrnLinkInfo *lnfo = _lt->_links.findp(pair);
+      if (NULL == lnfo || 0 == lnfo->_metric || BRN_LT_INVALID_LINK_METRIC <= lnfo->_metric) {
+        continue;
+      }
+
+      uint32_t neighbor_metric = neighbor->_metric[graph_index];
+      uint32_t current_metric = current_min->_metric[graph_index];
+
+      uint32_t adjusted_metric = current_metric + lnfo->_metric;
+
+      if (!neighbor_metric || adjusted_metric < neighbor_metric) {
+        neighbor->_metric[graph_index] = adjusted_metric;
+        neighbor->_next[graph_index] = _dni_table.find(current_min_ether);
+      }
+    }
+
+    current_min_ether = EtherAddress();
+    uint32_t  min_metric = ~0;
+
+    for (DNITIter i = _dni_table.begin(); i.live(); i++) {
+      DijkstraNodeInfo *dni = i.value();
+      assert(dni);
+
+      uint32_t metric = dni->_metric[graph_index];
+      bool marked = dni->_marked[graph_index];
+
+      if (!marked && metric && metric < min_metric) {
+        current_min_ether = dni->_ether;
+        min_metric = metric;
+      }
+    }
+  }
+
+  dijkstra_time = Timestamp::now()-start;
+
+  //if BRNDEBUG...
+  //StringAccum sa;
+  //sa << "dijstra took " << finish - start;
+  //click_chatter("%s: %s\n", id().c_str(), sa.take_string().c_str());
+}
+
 
 void
 Dijkstra::dijkstra(EtherAddress src, bool from_me)
@@ -212,6 +314,63 @@ Dijkstra::dijkstra(EtherAddress src, bool from_me)
   //click_chatter("%s: %s\n", id().c_str(), sa.take_string().c_str());
 }
 
+void
+Dijkstra::add_node(BrnHostInfo *bhi)
+{
+  _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+}
+
+void
+Dijkstra::remove_node(BrnHostInfo *bhi)
+{
+  DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
+  if ( info != NULL ) {
+    delete info;
+    _dni_table.erase(bhi->_ether);
+  }
+}
+
+int
+Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
+{
+  if ( _node_identity->isIdentical(&ea) ) {
+    if ( mode == DIJKSTRA_GRAPH_MODE_FR0M_SRC ) return 0;
+    if ( mode == DIJKSTRA_GRAPH_MODE_TO_DST ) return 1;
+    return -1;
+  }
+
+  int unused = -1;
+
+  for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+    if ( (_dgi_list[i]._mode == mode) && (_dgi_list[i]._node == ea) ) return i;
+    if ( (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_UNUSED) && ( unused == -1) ) unused = i;
+  };
+
+  if ( unused != -1 ) return unused;
+
+  Timestamp now = Timestamp::now();
+  int last_used = -1;
+  int oldest = -1;
+
+  for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+    if (oldest == -1) {
+      oldest = i;
+      last_used = (now - _dgi_list[i]._last_used).msecval();
+    } else {
+      int diff = (now - _dgi_list[i]._last_used).msecval();
+      if ( diff > last_used ) {
+        oldest = i;
+        last_used = diff;
+      }
+    }
+  };
+
+  return oldest;
+}
+
+/****************************************************************************************************************/
+/*********************************** H A N D L E R **************************************************************/
+/****************************************************************************************************************/
 
 enum {H_DIJKSTRA,
       H_DIJKSTRA_TIME};

@@ -29,6 +29,7 @@
 #include <click/etheraddress.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/standard/routingtable/brnroutingtable.hh"
+#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn2/routing/standard/routingalgorithm.hh"
 
 #include "elements/brn2/brnelement.hh"
@@ -48,17 +49,24 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class Dijkstra: public RoutingAlgorithm {
+class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
 
 #define DIJKSTRA_MAX_GRAPHS 16
-#define DIJKSTRA_GRAPH_MODE_FR0M_SRC 0
-#define DIJKSTRA_GRAPH_MODE_TO_DST   1
+#define DIJKSTRA_GRAPH_MODE_UNUSED   0
+#define DIJKSTRA_GRAPH_MODE_FR0M_SRC 1
+#define DIJKSTRA_GRAPH_MODE_TO_DST   2
 
   class DijkstraGraphInfo {
+   public:
     uint8_t _mode;
     EtherAddress _node;
+    Timestamp _last_used;
 
-    DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node) {}
+    DijkstraGraphInfo(): _mode(DIJKSTRA_GRAPH_MODE_UNUSED), _node(EtherAddress()) {
+      _last_used = Timestamp::now();
+    }
+
+    DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node), _last_used(Timestamp::now()) {}
 
     inline bool equals(DijkstraGraphInfo dgi) {
       return ((dgi._mode == _mode) && ( dgi._node == _node ));
@@ -71,25 +79,25 @@ class Dijkstra: public RoutingAlgorithm {
       IPAddress _ip;
 
       uint32_t _metric[DIJKSTRA_MAX_GRAPHS];
-      DijkstraNodeInfo *_prev[DIJKSTRA_MAX_GRAPHS];
+      DijkstraNodeInfo *_next[DIJKSTRA_MAX_GRAPHS];
       bool _marked[DIJKSTRA_MAX_GRAPHS];
 
-      BrnHostInfo(EtherAddress p, IPAddress ip) {
+      DijkstraNodeInfo(EtherAddress p, IPAddress ip) {
         _ether = p;
         _ip = ip;
         memset(_metric, 0, DIJKSTRA_MAX_GRAPHS * sizeof(uint32_t));
-        memset(_prev, 0, DIJKSTRA_MAX_GRAPHS * sizeof(DijkstraNodeInfo *));
+        memset(_next, 0, DIJKSTRA_MAX_GRAPHS * sizeof(DijkstraNodeInfo *));
         memset(_marked, 0, DIJKSTRA_MAX_GRAPHS * sizeof(bool));
       }
 
       void clear(uint32_t index) {
-        _prev[index] = NULL;
+        _next[index] = NULL;
         _metric[index] = 0;
         _marked[index] = false;
       }
   };
 
-  typedef HashMap<EtherAddress, DijkstraInfo*> DNITable;
+  typedef HashMap<EtherAddress, DijkstraNodeInfo*> DNITable;
   typedef DNITable::const_iterator DNITIter;
 
  public:
@@ -115,9 +123,15 @@ class Dijkstra: public RoutingAlgorithm {
 
   Timestamp dijkstra_time;
   void dijkstra(EtherAddress src, bool);
+  void dijkstra(int);
+
+  int get_graph_index(EtherAddress ea, uint8_t mode);
 
   void calc_routes(EtherAddress src, bool from_me) { dijkstra(src, from_me); }
   const char *routing_algorithm_name() const { return "Dijkstra"; }
+
+  void add_node(BrnHostInfo *);
+  void remove_node(BrnHostInfo *);
 
 private:
 
@@ -125,7 +139,13 @@ private:
   Brn2LinkTable *_lt;
   BrnRoutingTable *_brn_routetable;
 
+  DNITable _dni_table;
+
+  DijkstraGraphInfo _dgi_list[DIJKSTRA_MAX_GRAPHS];
+
   Timer _timer;
+
+  uint32_t _max_graph_age;
 
 };
 
