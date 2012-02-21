@@ -77,8 +77,7 @@ Brn2LinkTable::initialize (ErrorHandler *)
   for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
     dev = _node_identity->getDeviceByIndex(d);
 
-    if ( dev->is_routable() )
-      _hosts.insert(EtherAddress(dev->getEtherAddress()->data()), BrnHostInfo(EtherAddress(dev->getEtherAddress()->data()), IPAddress(0)));
+    if ( dev->is_routable() ) add_node(*dev->getEtherAddress(), IPAddress(0));
   }
 
   return 0;
@@ -165,16 +164,8 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   }
 
   /* make sure both the hosts exist */
-  BrnHostInfo *nfrom = _hosts.findp(from);
-  if (!nfrom) {
-    _hosts.insert(from, BrnHostInfo(from, from_ip));
-    nfrom = _hosts.findp(from);
-  }
-  BrnHostInfo *nto = _hosts.findp(to);
-  if (!nto) {
-    _hosts.insert(to, BrnHostInfo(to, to_ip));
-    nto = _hosts.findp(to);
-  }
+  BrnHostInfo *nfrom = add_node(from, from_ip);
+  BrnHostInfo *nto = add_node(to, to_ip);
 
   assert(nfrom);
   assert(nto);
@@ -218,6 +209,11 @@ Brn2LinkTable::remove_node(const EtherAddress& node)
 {
   if (!node) return;
 
+  BrnHostInfo *bhi = _hosts.findp(node);
+
+  if ( bhi )
+    for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->remove_node(bhi);
+
   _hosts.remove(node);
 
   LTable::iterator iter = _links.begin();
@@ -237,6 +233,18 @@ Brn2LinkTable::remove_node(const EtherAddress& node)
 
     iter++;
   }
+}
+
+BrnHostInfo *
+Brn2LinkTable::add_node(const EtherAddress& node, IPAddress ip)
+{
+  if (!node) return NULL;
+  BrnHostInfo *bhi = _hosts.findp(node);
+  if ( bhi != NULL ) return bhi;
+  _hosts.insert(node, BrnHostInfo( node, ip));
+  bhi = _hosts.findp(node);
+  for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->add_node(bhi);
+  return bhi;
 }
 
 void

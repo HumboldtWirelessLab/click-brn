@@ -206,6 +206,16 @@ typedef HTable::const_iterator HTIter;
 typedef HashMap<EthernetPair, BrnLinkInfo> LTable;
 typedef LTable::const_iterator LTIter;
 
+class BrnLinkTableChangeInformant {
+ public:
+  virtual void add_node(BrnHostInfo *) = 0;
+  virtual void remove_node(BrnHostInfo *) = 0;
+  //virtual void update_node(BrnHostInfo *) const = 0;
+  //virtual void add_link(BrnLinkInfo *) const = 0;
+  //virtual void remove_link(BrnLinkInfo *) const = 0;
+  //virtual void update_link(BrnLinkInfo *) const = 0;
+};
+
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
@@ -239,6 +249,7 @@ class Brn2LinkTable: public BRNElement {
   void clear();
 
   /* other public functions */
+  inline BrnHostInfo *add_node(const EtherAddress& node, IPAddress ip);
 
   bool update_link(EtherAddress from, EtherAddress to,
                    uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
@@ -308,6 +319,19 @@ class Brn2LinkTable: public BRNElement {
   /* associated client are insert into the linktable and marked as associated*/
   bool associated_host(EtherAddress ea);  //TODO: check for better solution
   bool is_associated(EtherAddress ea);
+
+
+  Vector<BrnLinkTableChangeInformant*> ltci;
+
+  void add_informant(BrnLinkTableChangeInformant *inf) {
+    ltci.push_back(inf);
+  }
+
+  void remove_informant(BrnLinkTableChangeInformant *inf) {
+    for( int i = ltci.size() - 1; i >= 0; i-- )
+      if ( ltci[i] == inf ) ltci.erase(ltci.begin() + i);
+  }
+
 };
 
 CLICK_ENDDECLS
