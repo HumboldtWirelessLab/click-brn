@@ -35,6 +35,7 @@ typedef struct {
     int simtype;		/* Original simulator packet type - useful
 				 * for morphing between raw and simulator
 				 * packet types */
+    int txfeedback; /* TXFeedback-flag: 0 -> rx  1 -> txfeedback */
 } simclick_simpacketinfo;
 
 
