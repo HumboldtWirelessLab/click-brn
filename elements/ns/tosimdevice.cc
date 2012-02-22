@@ -41,10 +41,13 @@
 
 #include <stdio.h>
 #include <unistd.h>
+
+#include <clicknet/wifi.h>
 CLICK_DECLS
 
 ToSimDevice::ToSimDevice()
-  : _fd(-1), _my_fd(false), _task(this), _encap_type(SIMCLICK_PTYPE_ETHER)
+  : _fd(-1), _my_fd(false), _task(this), _encap_type(SIMCLICK_PTYPE_ETHER),
+    _packets_in_sim_queue(0), _polling(true), _txfeedback_anno(false)
 {
 }
 
@@ -60,6 +63,8 @@ ToSimDevice::configure(Vector<String> &conf, ErrorHandler *errh)
   if (Args(conf, this, errh)
       .read_mp("DEVNAME", _ifname)
       .read_p("ENCAP", WordArg(), encap_type)
+      .read_p("POLLING", BoolArg(), _polling)
+      .read_p("HAVETXFEEDBACKANNO", BoolArg(), _txfeedback_anno)
       .complete() < 0)
     return -1;
   if (!_ifname)
@@ -94,6 +99,11 @@ ToSimDevice::initialize(ErrorHandler *errh)
     _signal = Notifier::upstream_empty_signal(this, 0, &_task);
   }
 
+  if ( ! _polling ) {
+    // Request that we get packets sent to us from the simulator
+    myrouter->sim_listen(_fd,eindex());
+  }
+
   return 0;
 }
 
@@ -122,6 +132,30 @@ ToSimDevice::push(int, Packet *p)
   send_packet(p);
 }
 
+int
+ToSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,int len,
+                        simclick_simpacketinfo* pinfo)
+{
+  bool feedback = false;
+
+  if ( _txfeedback_anno ) {
+    feedback = (pinfo->txfeedback == 1);
+  } else {
+    struct click_wifi_extra *ceh = (struct click_wifi_extra *)data;
+
+    feedback = (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_TX );
+  }
+
+  if ( feedback ) {
+    _packets_in_sim_queue--;
+
+    if ( (_packets_in_sim_queue == 0) && (!router()->sim_if_ready(_fd)) )
+      click_chatter("ERROR: SimDev not ready, but also no packets in sim dev queue");
+
+    _task.reschedule();
+  }
+}
+
 bool
 ToSimDevice::run_task(Task *)
 {
@@ -131,14 +165,17 @@ ToSimDevice::run_task(Task *)
     //fprintf(stderr,"Hey!!! Pulling ready!!!\n");
     if (Packet *p = input(0).pull()) {
       //fprintf(stderr,"Hey!!! Sending a packet!!!\n");
+      _packets_in_sim_queue++;
       send_packet(p);
       active = true;
     }
   }
 
   // don't reschedule if no packets upstream
-  if (active || _signal.active())
-      _task.fast_reschedule();
+  if ( (_polling && (active || _signal.active())) ||
+       (!_polling && (_packets_in_sim_queue == 0 ) && _signal.active()) )
+    _task.fast_reschedule();
+
   return active;
 }
 

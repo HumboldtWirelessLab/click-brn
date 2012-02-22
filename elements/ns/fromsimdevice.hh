@@ -2,6 +2,7 @@
 #define CLICK_FROMSIMDEVICE_HH
 #include <click/element.hh>
 #include <click/simclick.h>
+#include "simdevice.hh"
 CLICK_DECLS
 
 /*****************************************************************************
@@ -45,7 +46,7 @@ CLICK_DECLS
  *
  * =a ToSimDevice.u, FromDump, ToDump, FromDevice(n) */
 
-class FromSimDevice : public Element {
+class FromSimDevice : public SimDevice {
 
   String _ifname;
   int _packetbuf_size;

@@ -656,7 +656,7 @@ RouterThread::driver()
 #endif
 	    timer_set().run_timers(this, _master);
 //Old Routerthread (BRN)
-#if CLICK_NS
+#if CLICK_NS_DISABLE
 	    // If there's another timer, tell the simulator to make us
 	    // run when it's due to go off.
 	    if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
@@ -701,7 +701,6 @@ RouterThread::driver()
     click_current_thread_id = 0;
 # endif
 #endif
-/*
 #if CLICK_NS
     do {
 	Timestamp t = Timestamp::uninitialized_t();
@@ -730,7 +729,6 @@ RouterThread::driver()
 	_ns_scheduled = t;
     } while (0);
 #endif
-*/
 }
 
 
