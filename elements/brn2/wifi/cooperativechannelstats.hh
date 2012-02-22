@@ -91,7 +91,8 @@ class CooperativeChannelStats : public BRNElement {
       }
 
       void add_neighbour_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
-        //TODO
+          
+          _n_stats.insert(*ea, stats);
       }
     };
 
