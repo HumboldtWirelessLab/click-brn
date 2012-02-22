@@ -87,7 +87,11 @@ class NotifierQueue : public SimpleQueue { public:
 
   protected:
 
+#if CLICK_NS
+    enum { SLEEPINESS_TRIGGER = 0 };
+#else
     enum { SLEEPINESS_TRIGGER = 9 };
+#endif
     int _sleepiness;
     ActiveNotifier _empty_note;
 
