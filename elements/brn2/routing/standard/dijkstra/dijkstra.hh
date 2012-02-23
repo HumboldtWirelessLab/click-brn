@@ -49,12 +49,14 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
+static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNode" };
+
 class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
 
 #define DIJKSTRA_MAX_GRAPHS 16
-#define DIJKSTRA_GRAPH_MODE_UNUSED   0
-#define DIJKSTRA_GRAPH_MODE_FR0M_SRC 1
-#define DIJKSTRA_GRAPH_MODE_TO_DST   2
+#define DIJKSTRA_GRAPH_MODE_UNUSED    0
+#define DIJKSTRA_GRAPH_MODE_FR0M_NODE 1
+#define DIJKSTRA_GRAPH_MODE_TO_NODE   2
 
   class DijkstraGraphInfo {
    public:
@@ -132,6 +134,8 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
 
   void add_node(BrnHostInfo *);
   void remove_node(BrnHostInfo *);
+
+  void dijkstra_new(EtherAddress node, uint8_t mode);
 
 private:
 
