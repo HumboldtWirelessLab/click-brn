@@ -325,6 +325,10 @@ class Brn2LinkTable: public BRNElement {
 
   void add_informant(BrnLinkTableChangeInformant *inf) {
     ltci.push_back(inf);
+    for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
+      BrnHostInfo *bhi = _hosts.findp(iter.key());
+      inf->add_node(bhi);
+    }
   }
 
   void remove_informant(BrnLinkTableChangeInformant *inf) {

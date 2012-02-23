@@ -66,23 +66,6 @@ Brn2LinkTable::~Brn2LinkTable()
   _blacklist.clear();
 }
 
-int
-Brn2LinkTable::initialize (ErrorHandler *)
-{
-  BRN2Device *dev;
-
-  _timer.initialize(this);
-  _timer.schedule_now();
-
-  for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
-    dev = _node_identity->getDeviceByIndex(d);
-
-    if ( dev->is_routable() ) add_node(*dev->getEtherAddress(), IPAddress(0));
-  }
-
-  return 0;
-}
-
 void
 Brn2LinkTable::run_timer(Timer*)
 {
@@ -115,6 +98,21 @@ Brn2LinkTable::configure (Vector<String> &conf, ErrorHandler *errh)
   _stale_timeout.tv_usec = 0;
 
   return ret;
+}
+
+int
+Brn2LinkTable::initialize (ErrorHandler *)
+{
+  for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
+    BRN2Device *dev = _node_identity->getDeviceByIndex(d);
+
+    if ( dev->is_routable() ) add_node(*dev->getEtherAddress(), IPAddress(0));
+  }
+
+  _timer.initialize(this);
+  _timer.schedule_now();
+
+  return 0;
 }
 
 void
