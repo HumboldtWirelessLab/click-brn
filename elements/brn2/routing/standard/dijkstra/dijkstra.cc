@@ -84,6 +84,11 @@ Dijkstra::initialize (ErrorHandler *)
 
   _lt->add_informant((BrnLinkTableChangeInformant*)this);
 
+  _dgi_list[0]._node = *_node_identity->getMasterAddress();
+  _dgi_list[0]._mode = DIJKSTRA_GRAPH_MODE_FR0M_NODE;
+  _dgi_list[1]._node = *_node_identity->getMasterAddress();
+  _dgi_list[1]._mode = DIJKSTRA_GRAPH_MODE_TO_NODE;
+
   return 0;
 }
 
@@ -99,9 +104,13 @@ Dijkstra::take_state(Element *e, ErrorHandler *) {
   if (!q) return;
 }
 
-/*void
-Dijkstra::dijkstra(EtherAddress src, bool from_me)
-*/
+void
+Dijkstra::dijkstra_new(EtherAddress node, uint8_t mode)
+{
+  int index = get_graph_index(node, mode);
+
+  if ( (index >= 0) && (index < DIJKSTRA_MAX_GRAPHS) ) dijkstra(index);
+}
 
 void
 Dijkstra::dijkstra(int graph_index)
@@ -109,20 +118,19 @@ Dijkstra::dijkstra(int graph_index)
 
   DijkstraGraphInfo *dgi = &(_dgi_list[graph_index]);
 
+  if ( BRN_DEBUG_LEVEL_DEBUG ) {
+    BRN_MESSAGE("Graph index: %d",graph_index);
+    BRN_MESSAGE("Node: %s Mode: %s Last used: %s",dgi->_node.unparse().c_str(), dijkstra_graph_mode_strings[dgi->_mode],
+                                                  dgi->_last_used.unparse().c_str());
+  }
+
   if (!_dni_table.find(dgi->_node)) {
+    BRN_WARN("Couldn't find node");
     return;
   }
 
   Timestamp start = Timestamp::now();
-  dgi->_last_used = start;
 
-/*  typedef HashMap<EtherAddress, bool> EtherMap;
-  EtherMap ether_addrs;
-
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++) {
-    ether_addrs.insert(iter.value()._ether, true);
-  }
-*/
   for (DNITIter i = _dni_table.begin(); i.live(); i++) {
     /* clear them all initially */
     DijkstraNodeInfo *dni = i.value();
@@ -153,7 +161,7 @@ Dijkstra::dijkstra(int graph_index)
 
       EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
 
-      if (_dgi_list[graph_index]._mode == DIJKSTRA_GRAPH_MODE_FR0M_SRC) {
+      if (_dgi_list[graph_index]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) {
         pair = EthernetPair(current_min_ether, neighbor->_ether);
       }
 
@@ -190,12 +198,11 @@ Dijkstra::dijkstra(int graph_index)
     }
   }
 
-  dijkstra_time = Timestamp::now()-start;
+  dgi->_last_used = Timestamp::now();
 
-  //if BRNDEBUG...
-  //StringAccum sa;
-  //sa << "dijstra took " << finish - start;
-  //click_chatter("%s: %s\n", id().c_str(), sa.take_string().c_str());
+  dijkstra_time = dgi->_last_used - start;
+
+  BRN_DEBUG("dijstra took %s",dijkstra_time.unparse().c_str());
 }
 
 
@@ -333,9 +340,14 @@ Dijkstra::remove_node(BrnHostInfo *bhi)
 int
 Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 {
+  if (!_dni_table.find(ea)) {
+    BRN_WARN("Couldn't find node");
+    return -1;
+  }
+
   if ( _node_identity->isIdentical(&ea) ) {
-    if ( mode == DIJKSTRA_GRAPH_MODE_FR0M_SRC ) return 0;
-    if ( mode == DIJKSTRA_GRAPH_MODE_TO_DST ) return 1;
+    if ( mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE ) return 0;
+    if ( mode == DIJKSTRA_GRAPH_MODE_TO_NODE ) return 1;
     return -1;
   }
 
@@ -346,26 +358,31 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
     if ( (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_UNUSED) && ( unused == -1) ) unused = i;
   };
 
-  if ( unused != -1 ) return unused;
+  if ( unused == -1 ) {
+    Timestamp now = Timestamp::now();
+    int last_used = -1;
+    int oldest = -1;
 
-  Timestamp now = Timestamp::now();
-  int last_used = -1;
-  int oldest = -1;
-
-  for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
-    if (oldest == -1) {
-      oldest = i;
-      last_used = (now - _dgi_list[i]._last_used).msecval();
-    } else {
-      int diff = (now - _dgi_list[i]._last_used).msecval();
-      if ( diff > last_used ) {
+    for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+      if (oldest == -1) {
         oldest = i;
-        last_used = diff;
+        last_used = (now - _dgi_list[i]._last_used).msecval();
+      } else {
+        int diff = (now - _dgi_list[i]._last_used).msecval();
+        if ( diff > last_used ) {
+          oldest = i;
+          last_used = diff;
+        }
       }
     }
-  };
 
-  return oldest;
+    unused = oldest;
+  }
+
+  _dgi_list[unused]._node = ea;
+  _dgi_list[unused]._mode = mode;
+
+  return unused;
 }
 
 /****************************************************************************************************************/
@@ -403,6 +420,7 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
         return errh->error("dijkstra parameter must be etheraddress");
 
       f->dijkstra(m, true);
+      f->dijkstra_new(m, DIJKSTRA_GRAPH_MODE_FR0M_NODE);
       break;
     }
   }
