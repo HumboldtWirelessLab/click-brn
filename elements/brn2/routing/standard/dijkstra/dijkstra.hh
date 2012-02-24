@@ -124,7 +124,7 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
   //
 
   Timestamp dijkstra_time;
-  void dijkstra(EtherAddress src, bool);
+  void dijkstra(EtherAddress node, uint8_t mode);
   void dijkstra(int);
 
   int get_graph_index(EtherAddress ea, uint8_t mode);
@@ -135,7 +135,8 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
   void add_node(BrnHostInfo *);
   void remove_node(BrnHostInfo *);
 
-  void dijkstra_new(EtherAddress node, uint8_t mode);
+
+  Vector<EtherAddress> get_route(EtherAddress src, EtherAddress dst, uint32_t *metric);
 
 private:
 
