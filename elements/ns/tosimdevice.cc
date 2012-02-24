@@ -152,7 +152,9 @@ ToSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,int le
     if ( (_packets_in_sim_queue == 0) && (!router()->sim_if_ready(_fd)) )
       click_chatter("ERROR: SimDev not ready, but also no packets in sim dev queue");
 
-    _task.reschedule();
+    if ( _signal.active() ) {
+      _task.reschedule();
+    }
   }
 }
 
