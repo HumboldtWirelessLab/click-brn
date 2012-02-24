@@ -104,8 +104,14 @@ Dijkstra::take_state(Element *e, ErrorHandler *) {
   if (!q) return;
 }
 
+Vector<EtherAddress>
+Dijkstra::get_route(EtherAddress src, EtherAddress dst, uint32_t *metric)
+{
+
+}
+
 void
-Dijkstra::dijkstra_new(EtherAddress node, uint8_t mode)
+Dijkstra::dijkstra(EtherAddress node, uint8_t mode)
 {
   int index = get_graph_index(node, mode);
 
@@ -205,122 +211,6 @@ Dijkstra::dijkstra(int graph_index)
   BRN_DEBUG("dijstra took %s",dijkstra_time.unparse().c_str());
 }
 
-
-void
-Dijkstra::dijkstra(EtherAddress src, bool from_me)
-{
-
-  if (!_lt->_hosts.findp(src)) {
-    return;
-  }
-
-  Timestamp start = Timestamp::now();
-
-  typedef HashMap<EtherAddress, bool> EtherMap;
-  EtherMap ether_addrs;
-
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++) {
-    ether_addrs.insert(iter.value()._ether, true);
-  }
-
-  for (EtherMap::const_iterator i = ether_addrs.begin(); i.live(); i++) {
-    /* clear them all initially */
-    BrnHostInfo *n = _lt->_hosts.findp(i.key());
-    assert(n);
-    n->clear(from_me);
-  }
-  BrnHostInfo *root_info = _lt->_hosts.findp(src);
-
-  assert(root_info);
-
-  if (from_me) {
-    root_info->_prev_from_me = root_info->_ether;
-    root_info->_metric_from_me = 0;
-  } else {
-    root_info->_prev_to_me = root_info->_ether;
-    root_info->_metric_to_me = 0;
-  }
-
-  EtherAddress current_min_ether = root_info->_ether;
-
-  while (current_min_ether) {
-    BrnHostInfo *current_min = _lt->_hosts.findp(current_min_ether);
-    assert(current_min);
-    if (from_me) {
-      current_min->_marked_from_me = true;
-    } else {
-      current_min->_marked_to_me = true;
-    }
-
-    for (EtherMap::const_iterator i = ether_addrs.begin(); i.live(); i++) {
-      BrnHostInfo *neighbor = _lt->_hosts.findp(i.key());
-      assert(neighbor);
-      bool marked = neighbor->_marked_to_me;
-      if (from_me) {
-        marked = neighbor->_marked_from_me;
-      }
-
-      if (marked) {
-        continue;
-      }
-
-      EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
-      if (from_me) {
-        pair = EthernetPair(current_min_ether, neighbor->_ether);
-      }
-      BrnLinkInfo *lnfo = _lt->_links.findp(pair);
-      if (NULL == lnfo || 0 == lnfo->_metric 
-          || BRN_LT_INVALID_LINK_METRIC <= lnfo->_metric) {
-        continue;
-      }
-      uint32_t neighbor_metric = neighbor->_metric_to_me;
-      uint32_t current_metric = current_min->_metric_to_me;
-
-      if (from_me) {
-        neighbor_metric = neighbor->_metric_from_me;
-        current_metric = current_min->_metric_from_me;
-      }
-
-      uint32_t adjusted_metric = current_metric + lnfo->_metric;
-      if (!neighbor_metric || 
-          adjusted_metric < neighbor_metric) {
-        if (from_me) {
-          neighbor->_metric_from_me = adjusted_metric;
-          neighbor->_prev_from_me = current_min_ether;
-        } else {
-          neighbor->_metric_to_me = adjusted_metric;
-          neighbor->_prev_to_me = current_min_ether;
-        }
-      }
-    }
-
-    current_min_ether = EtherAddress();
-    uint32_t  min_metric = ~0;
-    for (EtherMap::const_iterator i = ether_addrs.begin(); i.live(); i++) {
-      BrnHostInfo *nfo = _lt->_hosts.findp(i.key());
-      assert(nfo);
-      uint32_t metric = nfo->_metric_to_me;
-      bool marked = nfo->_marked_to_me;
-      if (from_me) {
-        metric = nfo->_metric_from_me;
-        marked = nfo->_marked_from_me;
-      }
-      if (!marked && metric && 
-        metric < min_metric) {
-        current_min_ether = nfo->_ether;
-        min_metric = metric;
-      }
-    }
-  }
-
-  dijkstra_time = Timestamp::now()-start;
-
-  //if BRNDEBUG...
-  //StringAccum sa;
-  //sa << "dijstra took " << finish - start;
-  //click_chatter("%s: %s\n", id().c_str(), sa.take_string().c_str());
-}
-
 void
 Dijkstra::add_node(BrnHostInfo *bhi)
 {
@@ -389,10 +279,12 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 /*********************************** H A N D L E R **************************************************************/
 /****************************************************************************************************************/
 
-enum {H_DIJKSTRA,
-      H_DIJKSTRA_TIME};
+enum { H_DIJKSTRA,
+       H_DIJKSTRA_TO,
+       H_DIJKSTRA_FROM,
+       H_DIJKSTRA_TIME };
 
-static String 
+static String
 LinkTable_read_param(Element *e, void *thunk)
 {
   Dijkstra *td = (Dijkstra *)e;
@@ -407,22 +299,29 @@ LinkTable_read_param(Element *e, void *thunk)
     }
 }
 
-static int 
+static int
 LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   Dijkstra *f = (Dijkstra *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
-    case H_DIJKSTRA: {
+    case H_DIJKSTRA_TO:
+    case H_DIJKSTRA_FROM: {
       // run dijkstra for all associated clients
       EtherAddress m;
-      if (!cp_ethernet_address(s, &m))
-        return errh->error("dijkstra parameter must be etheraddress");
+      if (!cp_ethernet_address(s, &m)) return errh->error("dijkstra parameter must be etheraddress");
 
-      f->dijkstra(m, true);
-      f->dijkstra_new(m, DIJKSTRA_GRAPH_MODE_FR0M_NODE);
+      f->dijkstra(m, ((long)vparam == H_DIJKSTRA_TO)?DIJKSTRA_GRAPH_MODE_TO_NODE:DIJKSTRA_GRAPH_MODE_FR0M_NODE);
       break;
     }
+    case H_DIJKSTRA: {
+      // run dijkstra for all associated clients
+        EtherAddress m;
+        if (!cp_ethernet_address(s, &m)) return errh->error("dijkstra parameter must be etheraddress");
+
+        f->dijkstra(m, ((long)vparam == H_DIJKSTRA_TO)?DIJKSTRA_GRAPH_MODE_TO_NODE:DIJKSTRA_GRAPH_MODE_FR0M_NODE);
+        break;
+      }
   }
   return 0;
 }
@@ -432,8 +331,12 @@ Dijkstra::add_handlers()
 {
   RoutingAlgorithm::add_handlers();
 
-  add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
   add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
+  add_write_handler("dijkstra_from_node", LinkTable_write_param, (void *)H_DIJKSTRA_FROM);
+  add_write_handler("dijkstra_to_node", LinkTable_write_param, (void *)H_DIJKSTRA_TO);
+
+  add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
+
 }
 
 CLICK_ENDDECLS
