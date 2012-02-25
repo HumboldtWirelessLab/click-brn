@@ -44,7 +44,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   click_wifi_extra *ceh = NULL;
 	
   // save MAC
-  uint8_t	e_dhost[6], e_shost[6], hlen;
+  uint8_t	e_dhost[6], e_shost[6];
   int i=0;	
   
   for(i=0; i<6; i++) { 
@@ -52,7 +52,6 @@ OpenBeaconEncap::simple_action(Packet *p)
 	e_shost[i] = p->ether_header()->ether_shost[i];
   }
   
-  hlen = p->length()+(sizeof(Click2OBD_header)-12);
   q = p->push( sizeof(Click2OBD_header)-12  );  
 
   if ( !q ) {
@@ -63,12 +62,12 @@ OpenBeaconEncap::simple_action(Packet *p)
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
   
-  crh->length	= hlen-sizeof(Click2OBD_header);
+  crh->length	= q->length()-sizeof(Click2OBD_header);
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
 
-  if ( crh->rate == 0 ) {
+  if ( ceh->rate == 0 ) {
 	crh->rate = 0;
   } else {
 	crh->rate = (ceh->rate/2);

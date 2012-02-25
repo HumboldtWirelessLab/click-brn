@@ -60,18 +60,17 @@ OpenBeaconDecap::simple_action(Packet *p)
 
 	unsigned char rate = crh->rate, power = crh->power, channel = crh->channel/*, length=crh->length*/;
 	
-	// trim das packet noch ;-)
 	p->pull( sizeof(Click2OBD_header)-12 );
 	wp = (WritablePacket *)p;
 		
 	p->set_mac_header( p->data(), 14);
-        for(i=0; i<6; i++) {
+    for(i=0; i<6; i++) {
 		wp->data()[i]     = e_dhost[ i ] ;
 		wp->data()[i+6] = e_shost[ i ] ;
 	}
 	
 	ceh = WIFI_EXTRA_ANNO(p);
-	ceh->rate		= rate;         	
+	ceh->rate	= rate;
 	ceh->power 	= power;
 	BRNPacketAnno::set_channel_anno(p, channel,  OPERATION_SET_CHANNEL_BEFORE_PACKET);
 	
