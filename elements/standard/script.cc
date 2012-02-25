@@ -38,10 +38,10 @@ static const StaticNameDB::Entry instruction_entries[] = {
 #if CLICK_USERLEVEL
     { "append", Script::insn_append },
 #endif
-    { "end", Script::insn_end },
-    { "error", Script::insn_error },
-    { "errorq", Script::insn_errorq },
-    { "exit", Script::insn_exit },
+    { "end", (uint32_t) Script::insn_end },
+    { "error", (uint32_t) Script::insn_error },
+    { "errorq", (uint32_t) Script::insn_errorq },
+    { "exit", (uint32_t) Script::insn_exit },
     { "export", Script::insn_export },
     { "exportq", Script::insn_exportq },
     { "goto", Script::INSN_GOTO },
@@ -52,6 +52,8 @@ static const StaticNameDB::Entry instruction_entries[] = {
     { "pause", Script::INSN_WAIT_STEP },
     { "print", Script::INSN_PRINT },
     { "printn", Script::INSN_PRINTN },
+    { "printnq", Script::INSN_PRINTNQ },
+    { "printq", Script::INSN_PRINTQ },
     { "read", Script::INSN_READ },
     { "readq", Script::INSN_READQ },
     { "return", Script::INSN_RETURN },
@@ -61,7 +63,7 @@ static const StaticNameDB::Entry instruction_entries[] = {
 #endif
     { "set", Script::INSN_SET },
     { "setq", Script::insn_setq },
-    { "stop", Script::insn_stop },
+    { "stop", (uint32_t) Script::insn_stop },
     { "wait", Script::INSN_WAIT_PSEUDO },
     { "wait_for", Script::INSN_WAIT_TIME },
     { "wait_step", Script::INSN_WAIT_STEP },
@@ -243,7 +245,9 @@ Script::configure(Vector<String> &conf, ErrorHandler *errh)
 	case INSN_READ:
 	case INSN_READQ:
 	case INSN_PRINT:
+	case INSN_PRINTQ:
 	case INSN_PRINTN:
+	case INSN_PRINTNQ:
 #if CLICK_USERLEVEL
 	case insn_save:
 	case insn_append:
@@ -432,7 +436,9 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 	}
 #endif
 	case INSN_PRINT:
-	case INSN_PRINTN: {
+	case INSN_PRINTQ:
+	case INSN_PRINTN:
+	case INSN_PRINTNQ: {
 	    String text = _args3[ipos];
 
 #if CLICK_USERLEVEL
@@ -457,13 +463,18 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 	    int before = errh->nerrors();
 	    String result;
 	    if (text && (isalpha((unsigned char) text[0]) || text[0] == '@' || text[0] == '_')) {
-		result = cp_expand(text, expander);
-		result = HandlerCall::call_read(result, this, errh);
+		HandlerCall hc(cp_expand(text, expander));
+		int flags = HandlerCall::OP_READ + ((insn == INSN_PRINTQ || insn == INSN_PRINTNQ) ? HandlerCall::UNQUOTE_PARAM : 0);
+		if (hc.initialize(flags, this, errh) >= 0) {
+		    ContextErrorHandler c_errh(errh, "While calling %<%s%>:", hc.unparse().c_str());
+		    result = hc.call_read(&c_errh);
+		}
 	    } else
 		result = cp_unquote(cp_expand(text, expander, true));
 	    if (errh->nerrors() == before
 		&& (!result || result.back() != '\n')
-		&& insn != INSN_PRINTN)
+		&& insn != INSN_PRINTN
+		&& insn != INSN_PRINTNQ)
 		result += "\n";
 
 #if CLICK_USERLEVEL
@@ -558,7 +569,7 @@ Script::step(int nsteps, int step_type, int njumps, ErrorHandler *errh)
 
   done:
     if (njumps >= max_jumps) {
-	ErrorHandler::default_handler()->error("%{element}: too many jumps, giving up", this);
+	ErrorHandler::default_handler()->error("%p{element}: too many jumps, giving up", this);
 	_insn_pos = _insns.size();
 	_timer.unschedule();
     }
@@ -610,7 +621,7 @@ Script::run_timer(Timer *)
     // called when a timer expires
     assert(_insns[_insn_pos] == INSN_WAIT_TIME || _insns[_insn_pos] == INSN_INITIAL);
     ErrorHandler *errh = ErrorHandler::default_handler();
-    ContextErrorHandler cerrh(errh, "While executing %<%{element}%>:", this);
+    ContextErrorHandler cerrh(errh, "While executing %<%p{element}%>:", this);
     step(1, STEP_TIMER, 0, &cerrh);
     complete_step(0);
 }
@@ -619,7 +630,7 @@ void
 Script::push(int port, Packet *p)
 {
     ErrorHandler *errh = ErrorHandler::default_handler();
-    ContextErrorHandler cerrh(errh, "While executing %<%{element}%>:", this);
+    ContextErrorHandler cerrh(errh, "While executing %<%p{element}%>:", this);
 
     // This is slow, but it probably doesn't need to be fast.
     int i = find_variable(String::make_stable("input", 5), true);
@@ -643,7 +654,7 @@ Script::pull(int)
 	return 0;
 
     ErrorHandler *errh = ErrorHandler::default_handler();
-    ContextErrorHandler cerrh(errh, "While executing %<%{element}%>:", this);
+    ContextErrorHandler cerrh(errh, "While executing %<%p{element}%>:", this);
 
     // This is slow, but it probably doesn't need to be fast.
     int i = find_variable(String::make_stable("input", 5), true);
@@ -1121,12 +1132,15 @@ Script::arithmetic_handler(int, String &str, Element *e, const Handler *h, Error
     }
 
 #if CLICK_USERLEVEL
-    case ar_cat: {
+    case ar_cat:
+    case ar_catq: {
 	String filename;
 	if (!FilenameArg().parse(str, filename))
 	    return errh->error("bad FILE");
 	int nerrors = errh->nerrors();
 	str = file_string(filename, errh);
+	if (what == ar_catq)
+	    str = cp_quote(str);
 	return (errh->nerrors() == nerrors ? 0 : -errno);
     }
 
@@ -1236,6 +1250,7 @@ Script::add_handlers()
     set_handler("unquote", Handler::OP_READ | Handler::READ_PARAM, arithmetic_handler, ar_unquote, 0);
 #if CLICK_USERLEVEL
     set_handler("cat", Handler::OP_READ | Handler::READ_PARAM | Handler::READ_PRIVATE, arithmetic_handler, ar_cat, 0);
+    set_handler("catq", Handler::OP_READ | Handler::READ_PARAM | Handler::READ_PRIVATE, arithmetic_handler, ar_catq, 0);
     set_handler("kill", Handler::OP_READ | Handler::READ_PARAM | Handler::READ_PRIVATE, arithmetic_handler, ar_kill, 0);
 #endif
     if (_type == type_proxy)

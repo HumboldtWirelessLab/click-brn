@@ -32,6 +32,7 @@ HawkRoutingtable::configure(Vector<String> &conf, ErrorHandler *errh)
        "LPRH", cpkP+cpkM, cpElement, &_lprh,
        "SUCCM", cpkP+cpkM, cpElement, &_succ_maint,
        "RTM", cpkP+cpkM, cpElement, &_rt_maint,
+       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
        "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -56,6 +57,16 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
   BRN_DEBUG("Add Entry.");
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
+
+  if ( *ea == *next_phy ) {
+    BRN_DEBUG("Add neighbour. Check first");
+#warning Use var instead of fix value
+    if ( _link_table->get_host_metric_to_me(*next_phy) > 300 ) {
+      BRN_DEBUG("Kill bad neighbour");
+      return NULL;
+    }
+  }
+
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
       memcpy(_rt[i]->_dst_id, id, MAX_NODEID_LENTGH);           //update id
@@ -69,6 +80,10 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
 
       return _rt[i];
     }
+  }
+
+  if ( _known_hosts.findp(*ea) == NULL ) {
+    _known_hosts.insert(*ea,*ea);
   }
 
   BRN_DEBUG("Entry is new: Dst: %s Next: %s", ea->unparse().c_str(),
@@ -192,8 +207,14 @@ HawkRoutingtable::delEntry(EtherAddress *ea)
 bool
 HawkRoutingtable::isNeighbour(EtherAddress *ea)
 {
+  if ( ea == NULL ) {
+    BRN_WARN("Ask for being neighbour given NULL. I'll answer with no.");
+    return false;
+  }
+
   //Vector<EtherAddress> neighbors;
   //_lt->get_neighbors(, neighbors);
+
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
       return (memcmp(_rt[i]->_next_hop.data(), _rt[i]->_dst.data(), 6 ) == 0 );
@@ -220,7 +241,20 @@ HawkRoutingtable::hasNextPhyHop(EtherAddress *dst)
   return ( memcmp(entry->_next_hop.data(), entry->_next_phy_hop.data(), 6 ) == 0 );
 }
 
+EtherAddress*
+HawkRoutingtable::getNextPhyHop(EtherAddress *dst)
+{
+  RTEntry *entry = getEntry(dst);
 
+  while ( ( entry != NULL ) && (! isNeighbour(&(entry->_next_phy_hop))) ) {
+    EtherAddress *next_phy_hop = getNextHop(next_phy_hop);
+    entry = getEntry(next_phy_hop);
+  }
+
+  if ( entry == NULL ) return NULL;
+
+  return &(entry->_next_phy_hop);
+}
 
 /**************************************************************************/
 /************************** H A N D L E R *********************************/
@@ -231,15 +265,17 @@ HawkRoutingtable::routingtable()
 {
   StringAccum sa;
 
-  sa << "RoutingTable (" << _rt.size() << "):\n";
-  sa << "  Destination\t\tNext PhyHop\t\tNext OverlayHop\t\tAge\n";
-  RTEntry *entry;
+  sa << "<hawkroutingtable node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse() << "\" entries=\"" << _rt.size() << "\" >\n";
 
+  RTEntry *entry;
   for(int i = 0; i < _rt.size(); i++) {
     entry = _rt[i];
-    sa << "  " << entry->_dst.unparse() << "\t" << entry->_next_phy_hop.unparse();
-    sa << "\t" << entry->_next_hop.unparse() << "\tUnknown\n";
+
+    sa << "\t<entry node=\"" << entry->_dst.unparse() << "\" next_hop=\"" << entry->_next_phy_hop.unparse();
+    sa << "\" next_overlay=\"" << entry->_next_hop.unparse() << "\" age=\"0\" />\n";
   }
+
+  sa << "</hawkroutingtable>\n";
 
   return sa.take_string();
 }

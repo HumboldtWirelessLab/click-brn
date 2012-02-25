@@ -472,6 +472,7 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     BRN_DEBUG("BRN2DHCPServer: Client not in queue! Create new one.");
 
     client_info = new DHCPClientInfo();
+    client_info_list.push_back(client_info);
   }
   else
   {
@@ -598,8 +599,6 @@ BRN2DHCPServer::handle_dhcp_discover(Packet *p_in)
     }
   }
 
-  client_info_list.push_back(client_info);
-
   result = send_dht_request( client_info );
 
   return( result );
@@ -679,6 +678,7 @@ BRN2DHCPServer::handle_dhcp_request(Packet *p_in)
   BRN_DEBUG("BRN2DHCPServer: Client not in queue! Create new one.");
 
   client_info = new DHCPClientInfo();
+  
 
   client_info->_dht_op = MODE_READ_IP;
   client_info->_xid = new_dhcp_packet->xid;
@@ -1117,21 +1117,24 @@ BRN2DHCPServer::server_info(void)
 {
   StringAccum sa;
 
-  sa << "DHCP-Server-INFO\n";
-  sa << "Net: " << _net_address.unparse() << "\n";
-  sa << "Mask: " <<  _subnet_mask.unparse() << "\n";
-  sa << "Broadcast: " << _broadcast_address.unparse() << "\n";
 
-  sa << "Router: " << _router.unparse() << "\n";
-  sa << "Server: " << _server_ident << "\n";         //IP DHCP-Server
-  sa << "DNS: " << _name_server.unparse() << "\n";        //IP
+  sa << "<dhcp-server-info ";
+  sa << "net=\"" << _net_address.unparse() << "\" ";
+  sa << "mask=\"" <<  _subnet_mask.unparse() << "\" ";
+  sa << "broadcast=\"" << _broadcast_address.unparse() << "\" ";
 
-  sa << "Domain: " << _domain_name << "\n";
-  sa << "Queuesize: " << client_info_list.size() << "\n\n";
+  sa << "router=\"" << _router.unparse() << "\" ";
+  sa << "server=\"" << _server_ident << "\" ";         //IP DHCP-Server
+  sa << "dns=\"" << _name_server.unparse() << "\" ";        //IP
 
-  sa << "Range: " << start_ip_range.unparse() << "\n\n";
+  sa << "domain=\"" << _domain_name << "\" ";
+  sa << "queuesize=\"" << client_info_list.size() << "\" ";
 
-  sa << "DHCP Packets in Queue: " << debug_count_dhcp_packet << "\n";
+  sa << "range=\"" << start_ip_range.unparse() << "\" ";
+
+  sa << "dhcpPktsInQueue=\"" << debug_count_dhcp_packet << "\"";
+
+  sa << ">\n";
 
   return sa.take_string();
 }

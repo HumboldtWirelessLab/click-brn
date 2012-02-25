@@ -25,7 +25,6 @@
 #include <click/cxxprotect.h>
 CLICK_CXX_PROTECT
 #include <net/dst.h>
-#include <linux/smp_lock.h>
 #include <linux/if_ether.h>
 #include <linux/if_arp.h>
 #include <linux/etherdevice.h>
@@ -178,7 +177,7 @@ ToHost::push(int port, Packet *p)
     // check that device exists
     if (!skb->dev) {
 	if (++_drops == 1)
-	    click_chatter("%{element}: dropped a packet with null skb->dev", this);
+	    click_chatter("%p{element}: dropped a packet with null skb->dev", this);
 	p->kill();
 	return;
     }
@@ -272,9 +271,7 @@ ToHost::push(int port, Packet *p)
     br_read_unlock(BR_NETPROTO_LOCK);
     local_bh_enable();
 #  else
-    lock_kernel();
-    ptype_dispatch(skb, protocol);
-    unlock_kernel();
+#   error "Linux 2.2 is no longer supported"
 #  endif
 # else
     ++_drops;

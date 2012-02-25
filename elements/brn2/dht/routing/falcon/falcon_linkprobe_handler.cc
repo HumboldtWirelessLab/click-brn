@@ -44,7 +44,9 @@ FalconLinkProbeHandler::FalconLinkProbeHandler():
     _linkstat(NULL),
     _all_nodes_index(0),
     _no_nodes_per_lp(FALCON_DEFAULT_NO_NODES_PER_LINKPROBE),
-    _rfrt(NULL)
+    _rfrt(NULL),
+    _active(false),
+    _delay(0)
 {
   BRNElement::init();
 }
@@ -61,9 +63,16 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
       "NODESPERLP", cpkN, cpInteger, &_no_nodes_per_lp,
+      "DELAY", cpkN, cpInteger, &_delay,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+
+  _active = (_delay == 0);
+
+  //click_chatter("ACTIVE: %s Delay: %d", String(_active).c_str(),_delay);
+  _start = Timestamp::now();
 
   return 0;
 }
@@ -72,8 +81,8 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
  * src is the Etheraddress of the source of the LP if lp is received (see direction)
  */
 
-static int
-tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
+static int32_t
+tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t size)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
   if ( dhtf == NULL ) return 0;
@@ -81,14 +90,11 @@ tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
   return dhtf->lpSendHandler(buffer, size);
 }
 
-static int
-rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+static int32_t
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
   if ( dhtf == NULL ) return 0;
-
-  if ( is_neighbour ) click_chatter("neig");
-  else click_chatter("no neigh");
 
   return dhtf->lpReceiveHandler(buffer, size, is_neighbour);
 }
@@ -96,7 +102,9 @@ rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool is
 int
 FalconLinkProbeHandler::register_linkprobehandler()
 {
-  if ( _register_handler ) _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON, &tx_handler, &rx_handler);
+  if ( _register_handler )
+    _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_DHT_FALCON, &tx_handler, &rx_handler);
+
   return 0;
 }
 
@@ -108,10 +116,15 @@ FalconLinkProbeHandler::initialize(ErrorHandler *)
   return 0;
 }
 
-int
-FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
+int32_t
+FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 {
-  int len, send_nodes;
+  int32_t len = 0, send_nodes = 0;
+
+  if ( ! _active ) {
+    if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;
+    else return len;
+  }
 
   BRN_DEBUG("Send");
 
@@ -119,29 +132,36 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int size)
 
   send_nodes = min(min(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
-  for (int i = 0; i < send_nodes; i++ ) {
+  for (int32_t i = 0; i < send_nodes; i++ ) {
     _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
     nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
   }
 
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
 
-  BRN_DEBUG("Send nodes: %d Size: %d Len: %d nodes_per_lp: %d Max_nodes_per_lp: %d",send_nodes,size,len,_no_nodes_per_lp,
-                                                                              DHTProtocolFalcon::max_no_nodes_in_lp(size));
+  BRN_DEBUG("Send nodes: %d Size: %d Len: %d nodes_per_lp: %d Max_nodes_per_lp: %d",
+                                                                     send_nodes,size,len,_no_nodes_per_lp,
+                                                                     DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
   nodes.clear();
 
   return len;
 }
 
-int
-FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size, bool is_neighbour)
+int32_t
+FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_neighbour)
 {
-  int len;
+  int32_t len;
   DHTnode first;
   DHTnodelist nodes;
 
-  BRN_DEBUG("receive");
+  if ( ! _active ) {
+    BRN_DEBUG("Not active. Time since start: %d. delay: %d", (Timestamp::now() - _start).msecval(),_delay);
+    if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;
+    else return 0;
+  }
+
+  BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
 
   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
 
@@ -158,7 +178,8 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int size, bool is_neighbo
 
   nodes.del();
 
-  if ( _rfrt != NULL )
+  //Add Neighbour (src of lp)
+  if ( (_rfrt != NULL) && (is_neighbour) )
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
 
   return 0;

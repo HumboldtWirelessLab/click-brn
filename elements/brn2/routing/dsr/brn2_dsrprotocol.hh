@@ -20,10 +20,11 @@ class BRN2RouteQuerierHop
     IPAddress ip_address;
     uint16_t _metric;
 
-#define BRN_DSR_INVALID_HOP_METRIC 0xFFFF
-#define BRN_DSR_INVALID_ROUTE_METRIC 9999
-#define BRN_DSR_MIN_METRIC_RREQ_FWD 1000
-#define BRN_DSR_MIN_LINK_METRIC_WITHIN_ROUTE 1000
+#define BRN_DSR_INVALID_HOP_METRIC     9999
+#define BRN_DSR_INVALID_ROUTE_METRIC 0xFFFF
+
+#define BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD          4000
+#define BRN_DSR_DEFAULT_MIN_LINK_METRIC_WITHIN_ROUTE 4000
 
     BRN2RouteQuerierHop(EtherAddress ether, uint16_t c) : ether_address(ether), ip_address(), _metric(c) {}
     BRN2RouteQuerierHop(EtherAddress ether, IPAddress ip, uint16_t c) : ether_address(ether), ip_address(ip), _metric(c) {}

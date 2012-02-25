@@ -73,7 +73,6 @@ BRN2VLANTable_read_param(Element *e, void *thunk)
     }
     case H_READ: {
       return vt->all_vlans();
-      break;
     }
     default:
       return String();

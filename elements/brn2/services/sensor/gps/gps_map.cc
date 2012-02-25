@@ -91,9 +91,9 @@ insert_node(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*err
   cp_ethernet_address(args[0], &ea);
 
   if ( args.size() > 3 ) {
-    pos.setGPSC(args[1], args[2], args[3]);
+    pos.setGPS(args[1], args[2], args[3]);
   } else {
-    pos.setGPSC(args[1],args[2], "0.0");
+    pos.setGPS(args[1],args[2], "0.0");
   }
 
   gpsmap->insert(ea,pos);

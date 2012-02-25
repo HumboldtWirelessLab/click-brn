@@ -584,8 +584,6 @@ BRN2AssocList::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <click/bighashmap.cc>
-#include <click/dequeue.cc>
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2AssocList)
 

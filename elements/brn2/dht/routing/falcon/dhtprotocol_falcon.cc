@@ -33,14 +33,14 @@ CLICK_DECLS
 /****************************** L I N K P R O B E ********************************/
 /*********************************************************************************/
 
-int
-DHTProtocolFalcon::max_no_nodes_in_lp(int buffer_len)
+int32_t
+DHTProtocolFalcon::max_no_nodes_in_lp(int32_t buffer_len)
 {
   return (buffer_len/sizeof(struct dht_falcon_node_entry))-1;
 }
 
-int
-DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes)
+int32_t
+DHTProtocolFalcon::pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes)
 {
   if ( (unsigned)buffer_len < sizeof(struct dht_falcon_node_entry) ) return 0;
 
@@ -51,8 +51,8 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnode
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
   memcpy(ne->node_id, me->_md5_digest, sizeof(ne->node_id));
 
-  int buffer_left = buffer_len - sizeof(struct dht_falcon_node_entry);
-  int node_index = 0;
+  int32_t buffer_left = buffer_len - sizeof(struct dht_falcon_node_entry);
+  int32_t node_index = 0;
 
   if ( nodes != NULL ) {
     while ( (buffer_left >= (int)sizeof(struct dht_falcon_node_entry)) && ( node_index < nodes->size()) ) {
@@ -69,8 +69,8 @@ DHTProtocolFalcon::pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnode
   return sizeof(dht_falcon_node_entry) * (node_index + 1);
 }
 
-int
-DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes)
+int32_t
+DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes)
 {
   struct dht_falcon_node_entry *ne = (struct dht_falcon_node_entry*)buffer;
 
@@ -79,8 +79,8 @@ DHTProtocolFalcon::unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DH
   first->set_etheraddress(ne->etheraddr);
   first->set_nodeid(ne->node_id);
 
-  int buffer_left = sizeof(struct dht_falcon_node_entry);
-  int node_index = 0;
+  int32_t buffer_left = sizeof(struct dht_falcon_node_entry);
+  int32_t node_index = 0;
 
   if ( nodes != NULL ) {
     while ( buffer_left < buffer_len ) {
@@ -261,7 +261,7 @@ DHTProtocolFalcon::get_nws_info(Packet *p, DHTnode *src, uint32_t *size)
 /*********************************************************************************/
 
 WritablePacket *
-DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *reverse_fingertable)
+DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, EtherAddress *dst, DHTnodelist *reverse_fingertable)
 {
   WritablePacket *act_p = DHTProtocol::new_dht_packet(ROUTING_FALCON, FALCON_MINOR_PASSIVE_MONITORING_ACTIVATE,
                                                        sizeof(struct falcon_passiv_monitoring_info) +
@@ -274,9 +274,16 @@ DHTProtocolFalcon::new_passive_monitor_active_packet(DHTnode *src, DHTnodelist *
   fpmi->no_nodes = reverse_fingertable->size();
   src->get_nodeid((md5_byte_t *)fpmi->passive_node_id, &res);
 
-//  struct dht_falcon_reverse_table_node_entry *node = (struct dht_falcon_reverse_table_node_entry *)&fpmi[1];
+  struct dht_falcon_reverse_table_node_entry *node_tab = (struct dht_falcon_reverse_table_node_entry *)&fpmi[1];
 
-  return act_p;
+  for ( int i = 0; i < reverse_fingertable->size(); i++ ) {
+    memcpy( node_tab[i].etheraddr, reverse_fingertable->get_dhtnode(i)->_ether_addr.data(),6);
+    memcpy(node_tab[i].node_id, reverse_fingertable->get_dhtnode(i)->_md5_digest,MAX_NODEID_LENTGH);
+  }
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(act_p, &(src->_ether_addr), dst, BRN_PORT_DHTROUTING);
+
+  return brn_p;
 }
 
 WritablePacket *

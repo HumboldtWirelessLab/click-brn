@@ -378,13 +378,21 @@ BRN2DHCPClient::print_stats()
 {
   StringAccum sa;
 
-  sa << "<dhcpclient requested_ips=\"" << request_queue.size() << "\" interval=\"" << _interval << "\" >\n";
+  sa << "<info hw=\"" << _hw_addr.unparse() << "\" ip_addr=\"" << _ip_addr.unparse() << "\">\n";
+
+  sa << "\t<params ip_range=\"" << String(_ip_range) << "\" start_time=\"" << String(_start_time) << "\" interval=\"" << String(_interval) << "\" active=\"" << String(_active) << "\">\n";
+
+  sa << "\">";
+
+  sa << "\t<dhcpclient requested_ips=\"" << request_queue.size() << "\" interval=\"" << _interval << "\" >\n";
   for (int i = 0; i < request_queue.size(); i++ ) {
-    sa << "\t<dhcp_request mac=\"" << request_queue[i].eth_add.unparse() << "\" ip=\"" << request_queue[i].ip_add.unparse();
+    sa << "\t\t<dhcp_request mac=\"" << request_queue[i].eth_add.unparse() << "\" ip=\"" << request_queue[i].ip_add.unparse();
     sa << "\" />\n";
   }
-  sa << "</dhcpclient>\n";
+  sa << "\t</dhcpclient>\n";
 
+
+  sa << "</info>\n";
   return sa.take_string();
 }
 
@@ -403,26 +411,8 @@ static String
 read_param(Element *e, void *thunk)
 {
   BRN2DHCPClient *td = (BRN2DHCPClient *)e;
-  switch ((uintptr_t) thunk) {
-  case H_STATS:
-    return td->print_stats();
-  case H_HW_ADDR:
-    return td->_hw_addr.unparse() + "\n";
-  case H_IP_ADDR:
-    return td->_ip_addr.unparse() + "\n";
-  case H_IP_RANGE:
-    return String(td->_ip_range) + "\n";
-  case H_START_TIME:
-    return String(td->_start_time) + "\n";
-  case H_INTERVAL:
-    return String(td->_interval) + "\n";
-  case H_SCHEDULED:
-    return "false\n";
-  case H_ACTIVE:
-    return String(td->_active) + "\n";
-  default:
-    return String();
-  }
+  return td->print_stats();
+
 }
 
 static int 
@@ -500,23 +490,12 @@ BRN2DHCPClient::add_handlers()
 
   // needed for QuitWatcher
   add_read_handler("scheduled", read_param, (void *) H_SCHEDULED);
-
-  add_read_handler("hw_addr", read_param, (void *) H_HW_ADDR);
   add_write_handler("hw_addr", write_param, (void *) H_HW_ADDR);
-
-  add_read_handler("ip_addr", read_param, (void *) H_IP_ADDR);
   add_write_handler("ip_addr", write_param, (void *) H_IP_ADDR);
-
-  add_read_handler("ip_range", read_param, (void *) H_IP_RANGE);
   add_write_handler("ip_range", write_param, (void *) H_IP_RANGE);
-
-  add_read_handler("start_time", read_param, (void *) H_START_TIME);
   add_write_handler("start_time", write_param, (void *) H_START_TIME);
-
-  add_read_handler("interval", read_param, (void *) H_INTERVAL);
   add_write_handler("interval", write_param, (void *) H_INTERVAL);
 
-  add_read_handler("active", read_param, (void *) H_ACTIVE);
   add_write_handler("active", write_param, (void *) H_ACTIVE);
 
   add_read_handler("stats", read_param, (void *) H_STATS);

@@ -72,7 +72,29 @@ BRN2PrintWifi::configure(Vector<String> &conf, ErrorHandler* errh)
 bool
 valid_ssid(String *ssid)
 {
-  return ssid->data()[0] > 31;
+  for ( int i = 0; i < ssid->length(); i++ )
+    if ( (((uint8_t)(ssid->data()[i])) <= 32) || (((uint8_t)(ssid->data()[i])) >= 127) )
+      return false;
+
+  return true;
+}
+
+String
+make_valid_ssid(String *ssid)
+{
+  StringAccum sa;
+  for ( int i = 0; i < ssid->length(); i++ ) {
+    if ( (((uint8_t)(ssid->data()[i])) <= 32) || (((uint8_t)(ssid->data()[i])) >= 127) ) {
+      if ( ((uint8_t)(ssid->data()[i])) == 32)
+        sa << '_';
+      else
+        sa << '*';
+    } else {
+      sa << ssid->data()[i];
+    }
+  }
+
+  return sa.take_string();
 }
 
 String
@@ -149,10 +171,12 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
     if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
       sa << "ssid: (empty)";
     else {
-      if ( valid_ssid(&ssid) )
+      if ( valid_ssid(&ssid) ) 
         sa << "ssid: " << ssid;
-      else
-        sa << "ssid: (invalid_ssid)";
+      else {
+        String validssid = make_valid_ssid(&ssid);
+        sa << "ssid(invalid): " << validssid;
+      }
     }
   }
 

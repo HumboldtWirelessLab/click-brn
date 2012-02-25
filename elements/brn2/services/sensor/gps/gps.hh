@@ -24,6 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
 #include <click/ipaddress.hh>
+#include <click/timer.hh>
 
 #include <elements/brn2/brnelement.hh>
 #include <elements/brn2/standard/fixpointnumber.hh>
@@ -46,6 +47,8 @@ CLICK_DECLS
 #define GPSMODE_HANDLER 0
 #define GPSMODE_GPSD    1
 #define GPSMODE_SERIAL  2
+
+#define DEFAULT_GPS_UPDATE_INTERVAL 1000
 
 class GPS : public BRNElement {
 
@@ -70,7 +73,10 @@ class GPS : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  void run_timer(Timer*);
+
   GPSPosition *getPosition() { return &_position;}
+  String read_cart();
   inline String read_gps();
 
   void updateMap();
@@ -83,6 +89,12 @@ class GPS : public BRNElement {
   //
   GPSPosition _position;
   GPSMap *_gpsmap;
+
+#if CLICK_NS
+  Timer gps_timer;
+#endif
+
+  uint32_t _interval;
 
  public:
 

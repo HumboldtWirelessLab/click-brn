@@ -134,7 +134,8 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   BRN_DEBUG("ME: %s Src: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str());
   BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
 
-  if ( ! isUpdate ) {  //if it's not an update, it's a normal reply so inc the counter and check if we have enough, so that succ can be set to be fix
+  if ( ! isUpdate ) {  // if it's not an update, it's a normal reply so inc the counter and
+                       // check if we have enough, so that succ can be set to be fix
     _frt->inc_successor_counter();
     if ( _min_successor_ping == _frt->get_successor_counter() ) {
       _frt->fixSuccessor(true);              // i check the successor so now its fix (for now)
@@ -155,6 +156,8 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 
     click_ether *annotated_ether = (click_ether *)packet->ether_header();
     EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+
+    BRN_DEBUG("Dest %s Next Phy Hop: %s",succ._ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
     _rfrt->addEntry(&(succ._ether_addr), succ._md5_digest, succ._digest_length,
                     &srcEther, &(src._ether_addr));
@@ -179,7 +182,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
 
   /** Hawk-Routing stuff. TODO: this should move to extra funtion */
-/*  if ( _rfrt != NULL ) {
+  if ( _rfrt != NULL ) {
     click_ether *annotated_ether = (click_ether *)packet->ether_header();
     if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Add neighbourhop.");
@@ -190,7 +193,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
     EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
     _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
                     &(srcEther));
-  }*/
+  }
   /** End Hawk stuff */
 
 
@@ -208,12 +211,19 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       BRN_DEBUG("He (%s) is before my predecessor: %s",
                 src._ether_addr.unparse().c_str(),_frt->predecessor->_ether_addr.unparse().c_str() );
                                                 //don't search for too old information
-      DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); //TODO: use params
+
+      DHTnode *best_succ;
+
+      if ( _rfrt != NULL ) {
+        best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/, &(_rfrt->_known_hosts)); //TODO: use params
+      } else {
+        best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); //TODO: use params
+      }
 
       if ( best_succ->equals(_frt->_me) ) best_succ = _frt->predecessor; //if predecessor is too old, then it's possible
                                                                          //that findBestSuccessor returns me
-                                                                         //and that wrong at this point. so set best to pred
-                                                                         //manually. TODO: do it better
+                                                                         //and that wrong at this point. so set best to
+                                                                         //pred manually. TODO: do it better
       /* Now just some info to print to find errors. TODO; Maybe remove in the future.*/
       if ( best_succ->equals(_frt->predecessor) ) {
         BRN_DEBUG("------1-------: My pre is his succ");
@@ -221,7 +231,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
         BRN_DEBUG("------2-------: I've better succ than my pre.  ME: %s  Src: %s",
                             _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
         BRN_DEBUG("------2-------: I've better succ than my pre.  Succ: %s  Pre: %s",
-                            best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
+                         best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
         BRN_DEBUG("%s",_frt->routing_info().c_str());
       }
       /*end of debug stuff*/

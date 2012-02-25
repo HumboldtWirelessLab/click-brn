@@ -23,6 +23,7 @@
  */
 
 #include <click/config.h>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
@@ -34,12 +35,18 @@
 
 CLICK_DECLS
 
+
+
+//TODO: wie kommen die Werte zustande?
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
 
 Tos2QueueMapper::Tos2QueueMapper():
-    _cst(NULL),
-    _colinf(NULL)
+    _cst(NULL),//Channelstats-Element
+    _colinf(NULL),//Collission-Information-Element
+    pli(NULL)//PacketLossInformation-Element
 {
+	_bqs_strategy = BACKOFF_STRATEGY_ALWAYS_OFF;
+
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
@@ -49,122 +56,195 @@ Tos2QueueMapper::~Tos2QueueMapper()
 int
 Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  String s_cwmin = "";
-  String s_cwmax = "";
-  String s_aifs = "";
-  int v;
+	String s_cwmin = "";
+	String s_cwmax = "";
+	String s_aifs = "";
+	int v;
 
-  if (cp_va_kparse(conf, this, errh,
-      "CWMIN", cpkP, cpString, &s_cwmin,
-      "CWMAX", cpkP, cpString, &s_cwmax,
-      "AIFS", cpkP, cpString, &s_aifs,
-      "CHANNELSTATS", cpkP, cpElement, &_cst,
-      "COLLISIONINFO", cpkP, cpElement, &_colinf,
-      "DEBUG", cpkP, cpInteger, &_debug,
-      cpEnd) < 0)
-    return -1;
+	if (cp_va_kparse(conf, this, errh,
+	      	"CWMIN", cpkP, cpString, &s_cwmin,
+	      	"CWMAX", cpkP, cpString, &s_cwmax,
+	      	"AIFS", cpkP, cpString, &s_aifs,
+	      	"CHANNELSTATS", cpkP, cpElement, &_cst,
+	      	"COLLISIONINFO", cpkP, cpElement, &_colinf,
+	      	"PLI", cpkP, cpElement, &pli,
+	      	"DEBUG", cpkP, cpInteger, &_debug,
+	      	cpEnd) < 0) return -1;
 
-  Vector<String> args;
-  cp_spacevec(s_cwmin, args);
+	Vector<String> args;
+	cp_spacevec(s_cwmin, args);
+  	no_queues = args.size();
+  	if ( no_queues > 0 ) {
+		_cwmin = new uint16_t[no_queues];
+	    	_cwmax = new uint16_t[no_queues];
+	    	_aifs = new uint16_t[no_queues];
 
-  no_queues = args.size();
-
-  if ( no_queues > 0 ) {
-    _cwmin = new uint16_t(no_queues);
-    _cwmax = new uint16_t[no_queues];
-    _aifs = new uint16_t[no_queues];
-
-#warning TODO: Better check for params. Better Error handling.
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmin[i] = v;
-    }
-
-    cp_spacevec(s_cwmax, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmax[i] = v;
-    }
-
-    cp_spacevec(s_aifs, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _aifs[i] = v;
-    }
-  }
-
-  _queue_usage = new uint32_t[no_queues];
-  reset_queue_usage();
-
-  return 0;
+	#warning TODO: Better check for params. Better Error handling.
+	    	for( int i = 0; i < no_queues; i++ ) {
+	      		cp_integer(args[i], &v);
+	      		_cwmin[i] = v;
+        }
+        args.clear();
+		cp_spacevec(s_cwmax, args);
+	    	if ( args.size() < no_queues ) no_queues = args.size();
+	    	for( int i = 0; i < no_queues; i++ ) {
+	      		cp_integer(args[i], &v);
+	      		_cwmax[i] = v;
+	    	}
+        args.clear();
+	    	cp_spacevec(s_aifs, args);
+	    	if ( args.size() < no_queues ) no_queues = args.size();
+	    	for( int i = 0; i < no_queues; i++ ) {
+	      		cp_integer(args[i], &v);
+	     		_aifs[i] = v;
+	    	}
+        args.clear();
+	}
+  	_queue_usage = new uint32_t[no_queues];
+	reset_queue_usage();
+  	return 0;
 }
 
+void Tos2QueueMapper::no_queues_set(uint8_t number)
+{
+	no_queues = number;
+}
+
+
+uint8_t Tos2QueueMapper::no_queues_get()
+{
+	return	no_queues;
+}
+
+void Tos2QueueMapper::queue_usage_set(uint8_t position, uint32_t value)
+{
+	if (position < no_queues) _queue_usage[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::queue_usage_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues - 1;
+	return	_queue_usage[position];
+}
+
+void Tos2QueueMapper::cwmin_set(uint8_t position, uint32_t value)
+{
+	if (position < no_queues) _cwmin[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::cwmin_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues -1;
+	return	_cwmin[position];
+}
+
+void Tos2QueueMapper::cwmax_set(uint8_t position, uint32_t value)
+{
+	if (position <= no_queues) _cwmax[position] = value;
+}
+
+
+uint32_t Tos2QueueMapper::cwmax_get(uint8_t position)
+{
+	if (position >= no_queues) position = no_queues - 1;
+	return	_cwmax[position];
+}
+
+
+void Tos2QueueMapper::backoff_strategy_set(uint16_t value)
+{
+	_bqs_strategy = value;
+}
+
+
+uint16_t Tos2QueueMapper::backoff_strategy_get()
+{
+	return _bqs_strategy;
+}
 
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
-  uint8_t tos = BRNPacketAnno::tos_anno(p);
+  	uint8_t tos = BRNPacketAnno::tos_anno(p);
+  	int opt_queue = tos;
 
-  int opt_queue = tos;
+	switch (backoff_strategy_get()) {
+		case BACKOFF_STRATEGY_ALWAYS_OFF:
+		break;
+		case BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE: 
+			BRN_DEBUG("optimale queue:= %d",opt_queue);
+			for (int i = 0; i <= no_queues_get();i++) {
+				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
+				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+				BRN_DEBUG("queue_usage[%d] := %d",i,queue_usage_get(i));
+				if( NULL != pli) BRN_DEBUG("PLI is not Null\n\r");
+				if ( _cst != NULL ) {
+					struct airtime_stats *as;
+					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
+					BRN_DEBUG("Number of Neighbours %d",as->no_sources);  
+				}
 
-  if ( _colinf != NULL ) {
-    if ( _colinf->_global_rs != NULL ) {
-      uint32_t target_frac = tos2frac[tos];
-      //find queue with min. frac of target_frac
-      int ofq = -1;
-      for ( int i = 0; i < no_queues; i++ ) {
-        if (ofq == -1) {
-/*          click_chatter("Foo");
-          click_chatter("%p",_colinf->_global_rs);
-          click_chatter("queu: %d",_colinf->_global_rs->get_frac(i));
-          int foo = _colinf->_global_rs->get_frac(i);*/
-          if (_colinf->_global_rs->get_frac(i) >= target_frac) {
-            if ( i == 0 ) {
-              ofq = i;
-            } else if ( _colinf->_global_rs->get_frac(i-1) == -1 ) {
-              ofq = i - 1;
-            } else {
-              ofq = i;
-            }
-          } else {
-            if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
-              if ( i < (no_queues - 2) ) {
-                ofq = 1 + 1;
-              }
-            }
-          }
-        }
-      }
-      if ( ofq == -1 ) opt_queue = no_queues - 1;
-      else opt_queue = ofq;
-    }
-  } else if ( _cst != NULL ) {
-    struct airtime_stats as;
-    _cst->get_stats(&as,0);
+			}
+		break;
+		case  BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE: 
+			if ( _colinf != NULL ) {
+				if ( _colinf->_global_rs != NULL ) {
+					uint32_t target_frac = tos2frac[tos];
+					//find queue with min. frac of target_frac
+					int ofq = -1;
+					for ( int i = 0; i < no_queues; i++ ) {
+						if (ofq == -1) {
+							BRN_DEBUG("Foo");
+							BRN_DEBUG("%p",_colinf->_global_rs);
+							BRN_DEBUG("queu: %d",_colinf->_global_rs->get_frac(i));
+							//int foo = _colinf->_global_rs->get_frac(i);
+							if (_colinf->_global_rs->get_frac(i) >= target_frac) {
+								if ( i == 0 ) {
+									ofq = i;
+								} else if ( _colinf->_global_rs->get_frac(i-1) == -1 ) {
+									ofq = i - 1;
+								} else {
+									ofq = i;
+								}
+								} else {
+									if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
+										if ( i < (no_queues - 2) ) {
+											ofq = 1 + 1;
+										}
+									}
+								}
+						}
+					}
+					if ( ofq == -1 ) opt_queue = no_queues - 1;
+					else opt_queue = ofq;
+				}
+			} else if ( _cst != NULL ) {
+				struct airtime_stats as;
+				_cst->get_stats(&as,0);
 
-    int opt_cwmin = get_cwmin(as.frac_mac_busy, as.no_sources);
-    opt_queue = find_queue(opt_cwmin);
+				int opt_cwmin = get_cwmin(as.frac_mac_busy, as.no_sources);
+				opt_queue = find_queue(opt_cwmin);
 
-    int diff_q = (no_queues / 2) - tos - 1;
-    opt_queue -= diff_q;
+				int diff_q = (no_queues / 2) - tos - 1;
+				opt_queue -= diff_q;
 
-    if ( opt_queue < 0 ) opt_queue = 0;
-    else if ( opt_queue > no_queues ) opt_queue = no_queues;
-  }
+				if ( opt_queue < 0 ) opt_queue = 0;
+				else if ( opt_queue > no_queues ) opt_queue = no_queues;
+			}
+		break;
+	
+  	}	
+  	//trunc overflow
+  	if ( opt_queue >= no_queues ) opt_queue = no_queues - 1;
 
-  //trunc overflow
-  if ( opt_queue >= no_queues ) opt_queue = no_queues - 1;
-
-  //set queue
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  BrnWifi::setTxQueue(ceh, opt_queue);
-
-  //add stats
-  _queue_usage[opt_queue]++;
-
-  return p;
+  	//set queue
+ 	struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  	BrnWifi::setTxQueue(ceh, opt_queue);
+  	//add stats
+  	_queue_usage[opt_queue]++;
+  	return p;
 }
 
 int
@@ -181,50 +261,56 @@ Tos2QueueMapper::find_queue(int cwmin) {
   return no_queues - 1;
 }
 
-enum {H_STATS, H_RESET};
+enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_ALWAYS_OFF,H_TOS2QUEUEMAPPER_ALWAYS_NCSA, H_TOS2QUEUEMAPPER_PLIA};
 
-static String
-Tos2QueueMapper_read_param(Element *e, void *thunk)
+static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 {
-  Tos2QueueMapper *td = (Tos2QueueMapper *)e;
-  switch ((uintptr_t) thunk) {
-    case H_STATS:
-      StringAccum sa;
-
-      sa << "<queueusage queues=\"" << (uint32_t)td->no_queues << "\" >\n";
-
-      for ( int i = 0; i < td->no_queues; i++) {
-        sa << "\t<queue index=\"" << i << "\" usage=\"" << td->_queue_usage[i] << "\" />\n";
-      }
-      sa << "</queueusage>\n";
-      return sa.take_string();
-      break;
-  }
-
+  	Tos2QueueMapper *td = (Tos2QueueMapper *)e;
+  	switch ((uintptr_t) thunk) {
+    	case H_TOS2QUEUEMAPPER_STATS:
+      		StringAccum sa;
+      		sa << "<queueusage queues=\"" << (uint32_t)td->no_queues_get() << "\" >\n";
+      		for ( int i = 0; i < td->no_queues_get(); i++) {
+        		sa << "\t<queue index=\"" << i << "\" usage=\"" << td->queue_usage_get(i) << "\" />\n";
+      		}
+      		sa << "</queueusage>\n";
+      		return sa.take_string();
+      	break;
+  	}
   return String();
 }
 
-static int
-Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  Tos2QueueMapper *f = (Tos2QueueMapper *)e;
-  String s = cp_uncomment(in_s);
-  switch((intptr_t)vparam) {
-    case H_RESET: {
-      f->reset_queue_usage();
-      break;
-    }
-  }
-  return 0;
+  	Tos2QueueMapper *f = (Tos2QueueMapper *)e;
+  	String s = cp_uncomment(in_s);
+ 	switch((intptr_t)vparam) {
+    		case H_TOS2QUEUEMAPPER_RESET: 
+      			f->reset_queue_usage();
+      		break;
+    		case H_TOS2QUEUEMAPPER_ALWAYS_OFF: 
+			f->backoff_strategy_set(BACKOFF_STRATEGY_ALWAYS_OFF);
+		break;
+    		case H_TOS2QUEUEMAPPER_ALWAYS_NCSA: 
+			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE);
+		break;
+    		case H_TOS2QUEUEMAPPER_PLIA: 
+			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE);
+		break;
+      	}
+	return 0;
 }
 
-void
-Tos2QueueMapper::add_handlers()
+void Tos2QueueMapper::add_handlers()
 {
-  BRNElement::add_handlers();
+  BRNElement::add_handlers();//for Debug-Handlers
 
-  add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_STATS);
-  add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_RESET);
+  add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
+
+  add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
+  add_write_handler("backoff_strategy_always_off",Tos2QueueMapper_write_param,H_TOS2QUEUEMAPPER_ALWAYS_OFF);
+  add_write_handler("backoff_strategy_ncsa",Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_ALWAYS_NCSA);// ncsa:=BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE
+  add_write_handler("backoff_strategy_plia", Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_PLIA);//plia:=BACKOFF_STRATEGY_NEIGHBOURS_PacketLossInformation_AWARE
 }
 
 CLICK_ENDDECLS

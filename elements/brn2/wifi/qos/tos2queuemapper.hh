@@ -24,6 +24,7 @@
 #include <elements/brn2/brnelement.hh>
 #include <elements/brn2/wifi/channelstats.hh>
 #include <elements/brn2/wifi/collisioninfo.hh>
+#include <elements/brn2/wifi/packetlossinformation/packetlossinformation.hh>
 
 
 CLICK_DECLS
@@ -39,35 +40,52 @@ CLICK_DECLS
 class Tos2QueueMapper : public BRNElement {
 
  public:
+	#define BACKOFF_STRATEGY_ALWAYS_OFF 0 //default
+	#define BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE 2
+	#define BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE 1  //PLI:=PacketLossInformation
 
-  Tos2QueueMapper();
-  ~Tos2QueueMapper();
 
-  const char *class_name() const  { return "Tos2QueueMapper"; }
-  const char *port_count() const  { return "1/1"; }
+	Tos2QueueMapper();
+	~Tos2QueueMapper();
 
-  int configure(Vector<String> &, ErrorHandler *);
 
-  void add_handlers();
+	const char *class_name() const  { return "Tos2QueueMapper"; }
+	const char *port_count() const  { return "1/1"; }
 
-  Packet *simple_action(Packet *);
+	int configure(Vector<String> &, ErrorHandler *);
 
-  int get_cwmin(int busy, int nodes);
-  int find_queue(int cwmin);
+	void add_handlers();
 
-  ChannelStats *_cst;
-  CollisionInfo *_colinf;
+	Packet *simple_action(Packet *);
+	void no_queues_set(uint8_t number);
+	uint8_t no_queues_get();
+	void queue_usage_set(uint8_t position, uint32_t value);
+	uint32_t queue_usage_get(uint8_t position);
+	uint32_t cwmax_get(uint8_t position);
+	void cwmax_set(uint8_t position, uint32_t value);
 
-  uint8_t no_queues;
-  uint16_t *_cwmin;
-  uint16_t *_cwmax;
-  uint16_t *_aifs;
+	uint32_t cwmin_get(uint8_t position);
+	void cwmin_set(uint8_t position, uint32_t value);
+	int get_cwmin(int busy, int nodes);
+	int find_queue(int cwmin);
+	void reset_queue_usage() {
+		memset(_queue_usage, 0, sizeof(uint32_t) * no_queues);
+	  }
+	void backoff_strategy_set(uint16_t value);
+	uint16_t backoff_strategy_get();
 
-  uint32_t *_queue_usage;
+  private:
+	ChannelStats *_cst; //Channel-Statistics-Element (see: ../channelstats.hh)
+	CollisionInfo *_colinf;//Collision-Information-Element (see: ../collisioninfo.hh)
+	PacketLossInformation *pli;//PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 
-  void reset_queue_usage() {
-    memset(_queue_usage, 0, sizeof(uint32_t) * no_queues);
-  }
+	uint8_t no_queues;//number of queues
+	uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
+	uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
+	uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+	uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
+	uint32_t *_queue_usage;//frequency of the used queues
+
 };
 
 CLICK_ENDDECLS

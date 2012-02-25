@@ -32,6 +32,7 @@
 #include <elements/brn2/brn2.h>
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 #include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include "elements/brn2/routing/identity/brn2_device.hh"
 
 #include "cooperativechannelstats.hh"
 
@@ -40,7 +41,8 @@ CLICK_DECLS
 CooperativeChannelStats::CooperativeChannelStats():
     _cst(NULL),
     _msg_timer(this),
-    _interval(0)
+    _interval(0),
+    _add_neighbours(false)
 {
   BRNElement::init();
 }
@@ -55,38 +57,36 @@ CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
   int ret = cp_va_kparse(conf, this, errh,
                      "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
                      "INTERVAL", cpkP, cpInteger, &_interval,
+                     "NEIGHBOURS", cpkP, cpBool, &_add_neighbours,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
   return ret;
-  return 0;
 }
 
-int
-CooperativeChannelStats::initialize(ErrorHandler *)
-{
-  click_random_srandom();
+int CooperativeChannelStats::initialize(ErrorHandler *) {
+    
+    click_srandom(_cst->_device->getEtherAddress()->hashcode());
+    _msg_timer.initialize(this);
+    
+    if ( _interval > 0 ) {
+        
+        _msg_timer.schedule_after_msec((click_random() % (_interval-100)) + 100);
+    }
 
-  _msg_timer.initialize(this);
-
-  if ( _interval > 0 ) {
-    _msg_timer.schedule_after_msec((click_random() % (_interval-100)) + 100);
-  }
-  return 0;
+    return 0;
 }
 
-void
-CooperativeChannelStats::run_timer(Timer *)
-{
-  send_message();
-  _msg_timer.schedule_after_msec(_interval);
+void CooperativeChannelStats::run_timer(Timer *) {
+
+    _msg_timer.schedule_after_msec(_interval);
+    send_message();
 }
 
 
-void
-CooperativeChannelStats::send_message()
-{
-  struct airtime_stats *last_ats = _cst->get_latest_stats();
+void CooperativeChannelStats::send_message() {
+    
+  struct airtime_stats *last_ats = _cst->get_latest_stats(); //ats -> AirTimeStats
 
   if ( last_ats == NULL ) return;
 
@@ -96,11 +96,31 @@ CooperativeChannelStats::send_message()
 
   struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
   ccsh->endianess = ENDIANESS_TEST;
-  ccsh->reserved = 0;
+  ccsh->flags = 0;
 
   struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
 
   memcpy( ats, last_ats, sizeof(struct airtime_stats));
+
+  ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
+
+  uint8_t non = 0; //number of available neighbours
+  
+  if ( _add_neighbours ) {
+    ccsh->flags |= INCLUDES_NEIGHBOURS;
+
+    for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+        
+      ChannelStats::SrcInfo src = iter.value();
+      EtherAddress ea = iter.key();
+      struct neighbour_airtime_stats *nats;
+      src.get_airtime_stats(&ea, nats);
+      
+      non++;
+    }
+  }
+  
+  ccsh->no_neighbours = non;
 
 #warning check stettings of brn_headers
   p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
@@ -114,19 +134,39 @@ CooperativeChannelStats::send_message()
 void
 CooperativeChannelStats::push(int port, Packet *p)
 {
-  click_ether *eh = (click_ether *) p->ether_header();
-  EtherAddress src_ea = EtherAddress(eh->ether_shost);
-
-  if ( ncst.find(src_ea) == NULL ) ncst.insert(src_ea, new NodeChannelStats(src_ea));
-
-  NodeChannelStats *ncs = ncst.find(src_ea);
-
-  struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
-  struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
-
-  ncs->set_stats(ats, ccsh->endianess );
-
-  p->kill();
+    struct click_wifi *wh = (struct click_wifi *) p->data();
+  // click_ether *eh = (click_ether *) p->ether_header(); // THIS IS NULL
+  // EtherAddress src_ea = EtherAddress(eh->ether_shost);
+    
+    EtherAddress src_ea;
+    switch (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) {
+        
+        case WIFI_FC0_TYPE_MGT:
+            src_ea = EtherAddress(wh->i_addr2);
+            break;
+        case WIFI_FC0_TYPE_CTL:
+            src_ea = brn_etheraddress_broadcast;
+            break;
+        case WIFI_FC0_TYPE_DATA:
+            src_ea = EtherAddress(wh->i_addr2);
+            break;
+        default:
+            src_ea = EtherAddress(wh->i_addr2);
+    }
+    
+    if ( ncst.find(src_ea) == NULL ) ncst.insert(src_ea, new NodeChannelStats(src_ea));
+    NodeChannelStats *ncs = ncst.find(src_ea);
+    struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
+    struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
+    ncs->set_stats(ats, ccsh->endianess );
+    if (ncs->_n_stats.find(src_ea) != NULL) {
+        BRN_DEBUG("%s RSSI: %d", src_ea.unparse().c_str(), ncs->_n_stats.find(src_ea)->_avg_rssi);
+    }
+    BRN_DEBUG("%s Neighbour Number: %d", src_ea.unparse().c_str(), ccsh->no_neighbours);
+ //   if (ccsh != NULL)
+    p->kill();
+//    else
+//        output(port).push(p);
 }
 
 /**************************************************************************************************************/
@@ -148,6 +188,13 @@ CooperativeChannelStats::stats_handler(int mode)
     EtherAddress ea = iter.key();
 
     sa << "\t<node address=\"" << ncs->node.unparse() << "\" />\n";
+
+    /*for (NodeChannelStatsTableIter iter = ncst.begin(); iter.live(); iter++) {
+      NodeChannelStats *ncs = iter.value();
+      EtherAddress ea = iter.key();
+
+      sa << "\t<neighbour address=\"" << ncs->node.unparse() << "\" />\n";
+    }*/
   }
 
   sa << "</cooperativechannelstats>\n";

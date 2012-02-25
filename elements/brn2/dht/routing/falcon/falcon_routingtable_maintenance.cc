@@ -78,16 +78,17 @@ FalconRoutingTableMaintenance::table_maintenance()
        (!_frt->is_passive_monitoring()) ) {
     DHTnode *nextToAsk = _frt->_fingertable.get_dhtnode(_frt->_lastUpdatedPosition);
 
-    assert(nextToAsk != NULL ); //TODO: there was an error in the maintenance of th elastUpdatedPosition. Please solve the problem.
-    assert(! _frt->_me->equals(nextToAsk));  //TODO: There was an error, while setup the Routing-Table. I fixed it,
-                                             //      but if there is an error again please save this output (Routing Table)
+    assert(nextToAsk != NULL );              //TODO: there was an error in the maintenance of the
+                                             //      lastUpdatedPosition. Please solve the problem.
+    assert(! _frt->_me->equals(nextToAsk));  //TODO: There was an error, while setup the Routing-Table. I fixed it, but
+                                             //      if there is an error again please save this output (Routing Table)
 
     nextToAsk->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION,
                                                                     _frt->_lastUpdatedPosition);
     output(0).push(p);
   } else {
-    _current_round2pm = 0; //TODO: not enough to do it here ??
+    _current_round2pm = 0; //TODO: not enough. Find better place to do it ??
   }
 }
 
@@ -128,6 +129,8 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   _frt->add_node(&src);
 
   find_node = _frt->find_node(&src);
+
+  //TODO: chack whether reverse node for position changes.
   if ( find_node) _frt->set_node_in_reverse_FT(find_node, position);
   else BRN_ERROR("Couldn't find inserted node");
 
@@ -259,15 +262,17 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
     /** Hawk-Routing stuff. TODO: this should move to extra funtion */
   if ( _rfrt != NULL ) {
-    click_ether *annotated_ether = (click_ether *)packet->ether_header();
-    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
     BRN_INFO("Add foreign hop");
 
     //don't add route to myself
-    if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
+    if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 ) {
+      click_ether *annotated_ether = (click_ether *)packet->ether_header();
+      EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
                       NULL, &(src._ether_addr));
+    }
   }
   /** End Hawk stuff */
 

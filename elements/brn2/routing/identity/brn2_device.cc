@@ -15,7 +15,11 @@ BRN2Device::BRN2Device()
     is_master_dev(false),
     _routable(true),
     _allow_broadcast(true),
-    _channel(0)
+    _channel(0),
+    no_queues(0),
+    _cwmin(NULL),
+    _cwmax(NULL),
+    _aifs(NULL)
 {
   BRNElement::init();
 }
@@ -29,6 +33,11 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   EtherAddress me;
 
+  String s_cwmin = "";
+  String s_cwmax = "";
+  String s_aifs = "";
+  int v;
+
   if (cp_va_kparse(conf, this, errh,
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
       "ETHERADDRESS", cpkP+cpkM, cpEtherAddress, &me,
@@ -38,6 +47,9 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
       "ROUTABLE", cpkP, cpBool, &_routable,
       "ALLOW_BROADCAST", cpkP, cpBool, &_allow_broadcast,
+      "CWMIN", cpkP, cpString, &s_cwmin,
+      "CWMAX", cpkP, cpString, &s_cwmax,
+      "AIFS", cpkP, cpString, &s_aifs,
       cpEnd) < 0)
     return -1;
 
@@ -61,6 +73,35 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 
   device_etheraddress_fix = device_etheraddress;
 
+  Vector<String> args;
+  cp_spacevec(s_cwmin, args);
+  no_queues = args.size();
+  if ( no_queues > 0 ) {
+    _cwmin = new uint16_t[no_queues];
+    _cwmax = new uint16_t[no_queues];
+    _aifs = new uint16_t[no_queues];
+
+#warning TODO: Better check for params. Better Error handling.
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmin[i] = v;
+    }
+    args.clear();
+    cp_spacevec(s_cwmax, args);
+    if ( args.size() < no_queues ) no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmax[i] = v;
+    }
+    args.clear();
+    cp_spacevec(s_aifs, args);
+    if ( args.size() < no_queues ) no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _aifs[i] = v;
+    }
+    args.clear();
+  }
   return 0;
 }
 
@@ -214,10 +255,17 @@ BRN2Device::getTypeStringByInt(uint32_t type)
 String
 BRN2Device::device_info()
 {
-  return "<device node=\"" + BRN_NODE_NAME + "\" name=\"" + getDeviceName() +
-      "\" address=\"" + getEtherAddress()->unparse() +
-      "\" fix_address=\"" + getEtherAddressFix()->unparse() +
-      "\" type=\"" + getDeviceTypeString() + "\" />\n";
+  StringAccum sa;
+  sa << "<device node=\"" << BRN_NODE_NAME << "\" name=\"" << getDeviceName() << "\" address=\"" << getEtherAddress()->unparse();
+  sa << "\" fix_address=\"" << getEtherAddressFix()->unparse() << "\" type=\"" << getDeviceTypeString() << "\" >\n";
+  sa << "\t<queues count=\"" << (uint32_t)no_queues << "\" >\n";
+
+  for ( uint32_t i = 0; i < no_queues; i++ )
+    sa << "\t\t<queue index=\"" << i << "\" cwmin=\"" << (uint32_t)_cwmin[i] << "\" cwmax=\"" << (uint32_t)_cwmax[i] << "\" aifs=\"" << (uint32_t)_aifs[i] << "\" />\n";
+
+  sa << "\t</queues>\n</device>\n";
+
+  return sa.take_string();
 }
 
 //-----------------------------------------------------------------------------

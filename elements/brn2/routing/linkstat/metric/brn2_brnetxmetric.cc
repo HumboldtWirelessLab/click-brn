@@ -78,10 +78,10 @@ void
 BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize>,
                            Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
 {
-  int metric = BRN_LT_INVALID_LINK_METRIC;
+  int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
   if (fwd.size() && rev.size() &&
       fwd[0] && rev[0]) {
-    metric = 100 * 100 * 100 / (fwd[0] * rev[0]); 
+    metric = /*100 * 100 * 100*/ 1000000 / (fwd[0] * rev[0]);
   }
   /* update linktable */
   if (metric &&

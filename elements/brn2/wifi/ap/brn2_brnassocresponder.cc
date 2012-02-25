@@ -25,14 +25,17 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include <elements/wifi/availablerates.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "brn2_brnassocresponder.hh"
+
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
+
+#include "elements/brn2/wifi/brnavailablerates.hh"
 #include "elements/brn2/vlan/brn2vlantable.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 #include "elements/brn2/brn2.h"
+
+#include "brn2_brnassocresponder.hh"
 
 CLICK_DECLS
 
@@ -84,8 +87,8 @@ BRN2AssocResponder::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
     return -1;
 
-  if (!_rtable || _rtable->cast("AvailableRates") == 0) 
-    return errh->error("AvailableRates element is not provided or not a AvailableRates");
+  if (!_rtable || _rtable->cast("BrnAvailableRates") == 0) 
+    return errh->error("BrnAvailableRates element is not provided or not a BrnAvailableRates");
 
   if (!_winfo || _winfo->cast("WirelessInfo") == 0) 
     return errh->error("WirelessInfo element is not provided or not a WirelessInfo");
@@ -361,20 +364,98 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
 ////////////////////////////////////////////////////////////////////////////////
 
 void
-BRN2AssocResponder::send_association_response(
-  EtherAddress dst, uint16_t status, uint16_t associd)
+BRN2AssocResponder::send_association_response(EtherAddress dst, uint16_t status, uint16_t associd)
 {
-  AssociationResponder::send_association_response(dst, status, associd);
+  EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
+  Vector<MCS> rates = _rtable->lookup(bssid);
+  int max_len = sizeof (struct click_wifi) +
+      2 +                  /* cap_info */
+      2 +                  /* status  */
+      2 +                  /* assoc_id */
+      2 + WIFI_RATES_MAXSIZE +  /* rates */
+      2 + WIFI_RATES_MAXSIZE +  /* xrates */
+      0;
+
+  WritablePacket *p = Packet::make(max_len);
+
+  if (p == 0)
+    return;
+
+  struct click_wifi *w = (struct click_wifi *) p->data();
+
+  w->i_fc[0] = WIFI_FC0_VERSION_0 | WIFI_FC0_TYPE_MGT | WIFI_FC0_SUBTYPE_ASSOC_RESP;
+  w->i_fc[1] = WIFI_FC1_DIR_NODS;
+
+  memcpy(w->i_addr1, dst.data(), 6);
+  memcpy(w->i_addr2, bssid.data(), 6);
+  memcpy(w->i_addr3, bssid.data(), 6);
+
+  w->i_dur = 0;
+  w->i_seq = 0;
+
+  uint8_t *ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
+  int actual_length = sizeof(struct click_wifi);
+
+  uint16_t cap_info = 0;
+  cap_info |= WIFI_CAPINFO_ESS;
+  *(uint16_t *)ptr = cpu_to_le16(cap_info);
+  ptr += 2;
+  actual_length += 2;
+
+  *(uint16_t *)ptr = cpu_to_le16(status);
+  ptr += 2;
+  actual_length += 2;
+
+  *(uint16_t *)ptr = cpu_to_le16(associd);
+  ptr += 2;
+  actual_length += 2;
+
+
+  /* rates */
+  ptr[0] = WIFI_ELEMID_RATES;
+  ptr[1] = WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+  for (int x = 0; x < WIFI_MIN(WIFI_RATE_SIZE, rates.size()); x++) {
+    ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
+
+    if (rates[x].get_packed_8() == 2) {
+      ptr [2 + x] |= WIFI_RATE_BASIC;
+    }
+
+  }
+  ptr += 2 + WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+  actual_length += 2 + WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+
+
+  int num_xrates = rates.size() - WIFI_RATE_SIZE;
+  if (num_xrates > 0) {
+    /* rates */
+    ptr[0] = WIFI_ELEMID_XRATES;
+    ptr[1] = num_xrates;
+    for (int x = 0; x < num_xrates; x++) {
+      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE].get_packed_8();
+
+      if (rates[x + WIFI_RATE_SIZE].get_packed_8() == 2) {
+        ptr [2 + x] |= WIFI_RATE_BASIC;
+      }
+
+    }
+    ptr += 2 + num_xrates;
+    actual_length += 2 + num_xrates;
+  }
+
+  p->take(max_len - actual_length);
+
+  output(0).push(p);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void 
+void
 BRN2AssocResponder::send_reassociation_response(
     EtherAddress dst, uint16_t status, uint16_t associd)
 {
   EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
-  Vector<int> rates = _rtable->lookup(bssid);
+  Vector<MCS> rates = _rtable->lookup(bssid);
   int max_len = sizeof (struct click_wifi) + 
     2 +                  /* cap_info */
     2 +                  /* status  */
@@ -421,8 +502,8 @@ BRN2AssocResponder::send_reassociation_response(
   ptr[0] = WIFI_ELEMID_RATES;
   ptr[1] = min(WIFI_RATE_SIZE, rates.size());
   for (int x = 0; x < min (WIFI_RATE_SIZE, rates.size()); x++) {
-    ptr[2 + x] = (uint8_t) rates[x];
-    if (rates[x] == 2) {
+    ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
+    if (rates[x].get_packed_8() == 2) {
       ptr [2 + x] |= WIFI_RATE_BASIC;
     }
   }
@@ -436,8 +517,8 @@ BRN2AssocResponder::send_reassociation_response(
     ptr[0] = WIFI_ELEMID_XRATES;
     ptr[1] = num_xrates;
     for (int x = 0; x < num_xrates; x++) {
-      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE];
-      if (rates[x + WIFI_RATE_SIZE] == 2) {
+      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE].get_packed_8();
+      if (rates[x + WIFI_RATE_SIZE].get_packed_8() == 2) {
         ptr [2 + x] |= WIFI_RATE_BASIC;
       }
     }
@@ -452,7 +533,7 @@ BRN2AssocResponder::send_reassociation_response(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void 
+void
 BRN2AssocResponder::static_response_timer_hook(Timer *, void *v)
 {
   BRN2AssocResponder *rt = (BRN2AssocResponder*)v;
@@ -461,12 +542,12 @@ BRN2AssocResponder::static_response_timer_hook(Timer *, void *v)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void 
+void
 BRN2AssocResponder::response_timer_hook()
 {
   DelayedResponse* resp = _responses.front();
   _responses.pop_front();
-  
+
   if (false == resp->reassoc)
     send_association_response(resp->src, resp->status, resp->associd);
   else
@@ -489,7 +570,7 @@ void
 BRN2AssocResponder::send_disassociation(EtherAddress dst, uint16_t reason)
 {
   EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
-  int len = sizeof (struct click_wifi) + 
+  int len = sizeof (struct click_wifi) +
     2 +                  /* reason */
     0;
 
@@ -514,7 +595,7 @@ BRN2AssocResponder::send_disassociation(EtherAddress dst, uint16_t reason)
 
   *(uint16_t *)ptr = cpu_to_le16(reason);
   ptr += 2;
-  
+
   /*
   // TODO may be to late here, because dst has no ssid anymore; already removed from assoclistRbrnvlan
   // remove station from vlan
@@ -526,7 +607,7 @@ BRN2AssocResponder::send_disassociation(EtherAddress dst, uint16_t reason)
   else
     BRN_ERROR("Client %s was associated with ssid %s, but no VLAN known for this SSID.", dst.unparse().c_str(), ssid.c_str());
   */
-  
+
   output(0).push(p);
 }
 
@@ -590,7 +671,6 @@ BRN2AssocResponder::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <click/dequeue.cc>
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BRN2AssocResponder)
 

@@ -41,32 +41,58 @@ CooperativeChannelStats()
 */
 
 #define ENDIANESS_TEST 0x1234
+#define INCLUDES_NEIGHBOURS 1
 
 struct cooperative_channel_stats_header {
   uint16_t endianess;
-  uint16_t reserved; //alignment to 32 bit (faster memcpy of airtime_stats)
+  uint8_t flags;         // flags
+  uint8_t no_neighbours; // number of neighbours
 };
 
 class CooperativeChannelStats : public BRNElement {
+    typedef HashMap<EtherAddress, struct neighbour_airtime_stats*> NeighbourStatsTable;
+    typedef NeighbourStatsTable::const_iterator NeighbourStatsTableIter;
 
   private:
     class NodeChannelStats {
      public:
       EtherAddress node;
-      struct airtime_stats stats;
       uint16_t _endianess;
+      bool _is_fix_endianess;
 
+      NeighbourStatsTable _n_stats;
+
+     private:
+      struct airtime_stats stats;
+
+     public:
       NodeChannelStats() {
         node = EtherAddress();
+        _is_fix_endianess = false;
       }
 
       NodeChannelStats(EtherAddress ea) {
         node = ea;
+        _is_fix_endianess = false;
       }
 
       void set_stats(struct airtime_stats *new_stats, uint16_t endianess) {
         memcpy(&stats, new_stats, sizeof(struct airtime_stats));
         _endianess = endianess;
+        _is_fix_endianess = false;
+      }
+
+      struct airtime_stats *get_airtime_stats() {
+        if ( ! _is_fix_endianess ) {
+          //fix it
+          _is_fix_endianess = true;
+        }
+        return &stats;
+      }
+
+      void add_neighbour_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
+          
+          _n_stats.insert(*ea, stats);
       }
     };
 
@@ -78,7 +104,7 @@ class CooperativeChannelStats : public BRNElement {
     CooperativeChannelStats();
     ~CooperativeChannelStats();
 
-    const char *class_name() const	{ return "CooperativeChannelStats"; }
+    const char *class_name() const  { return "CooperativeChannelStats"; }
     const char *processing() const  { return PUSH; }
     const char *port_count() const  { return "1/1"; }
 
@@ -102,6 +128,8 @@ class CooperativeChannelStats : public BRNElement {
     uint32_t _interval;
 
     NodeChannelStatsTable ncst;
+
+    bool _add_neighbours;
 
 };
 

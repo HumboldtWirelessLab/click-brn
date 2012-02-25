@@ -11,6 +11,7 @@
 #include "openbeaconencap.hh"
 #include "openbeacon_comunication.h"
 
+
 CLICK_DECLS
 
 OpenBeaconEncap::OpenBeaconEncap()
@@ -61,7 +62,7 @@ OpenBeaconEncap::simple_action(Packet *p)
   
   ceh = WIFI_EXTRA_ANNO(q);
   crh = (Click2OBD_header *)q->data();
-  
+
   crh->length	= q->length()-sizeof(Click2OBD_header);
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
@@ -80,7 +81,6 @@ OpenBeaconEncap::simple_action(Packet *p)
   for(i=sizeof( crh->openbeacon_dmac ); i>0; i--) {
 	  crh->openbeacon_dmac[ 6 - i - 1 ] =  opbecon_filter[ sizeof( crh->openbeacon_dmac ) - i + 1];
   }  
-  
   return q;
 }
 

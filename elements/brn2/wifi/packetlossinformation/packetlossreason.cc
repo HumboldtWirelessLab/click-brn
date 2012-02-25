@@ -3,9 +3,15 @@
  */
 
 #include <click/config.h>
+#include <click/straccum.hh>
 #include "packetlossreason.hh"
 
+
+
 CLICK_DECLS
+
+#undef DEBUG
+
 
 /*
  * Konstruktor und Destruktor
@@ -33,38 +39,58 @@ int PacketLossReason::overall_fract(int depth)
 } 
 
 
-void PacketLossReason::write_test_id(int id)
+PacketLossReason::PossibilityE PacketLossReason::id_get(unsigned int id) 
 {
-	if (0 == id  ) { click_chatter("PACKET_LOSS_ROOT_NODE");}
-	else  if (1 == id){ click_chatter("INTERFERENCE");}
-	else  if (2 == id){click_chatter("CHANNEL_FADING");}
-	else if (3 == id){click_chatter("WIFI");}
-	else if (4 == id){click_chatter("NON_WIFI");}
-	else if (5 == id){click_chatter("WEAK_SIGNAL");}
-	else if (6 == id){click_chatter("SHADOWING");}
-	else if (7 == id){click_chatter("MULTIPATH_FADING");}
-	else if (8 == id){click_chatter("CO_CHANNEL");}
-	else if (9 == id){click_chatter("ADJACENT_CHANNEL");}
-	else if (10 == id){click_chatter("G_VS_B");}
-	else if (11 == id){click_chatter("NARROWBAND");}
-	else if (12 == id){click_chatter("BROADBAND");}
-	else if (13 == id){click_chatter("IN_RANGE");}
-	else if (14 == id){click_chatter("HIDDEN_NODE");}
-	else if (15 == id){click_chatter("NARROWBAND_COOPERATIVE");}
-	else if (16 == id){click_chatter("NARROWBAND_NON_COOPERATIVE");}
-	else if (17 == id){click_chatter("BROADBAND_COOPERATIVE");}
-	else if (18 == id){click_chatter("BROADBAND_NON_COOPERATIVE");}
+	if (0 == id) { return PACKET_LOSS;}
+	else  if (1 == id){ return INTERFERENCE;}
+	else  if (2 == id){ return CHANNEL_FADING;}
+	else if (3 == id){return WIFI;}
+	else if (4 == id){return NON_WIFI;}
+	else if (5 == id){return WEAK_SIGNAL;}
+	else if (6 == id){return SHADOWING;}
+	else if (7 == id){return MULTIPATH_FADING;}
+	else if (8 == id){return CO_CHANNEL;}
+	else if (9 == id){return ADJACENT_CHANNEL;}
+	else if (10 == id){return G_VS_B;}
+	else if (11 == id){return NARROWBAND;}
+	else if (12 == id){return BROADBAND;}
+	else if (13 == id){return IN_RANGE;}
+	else if (14 == id){return HIDDEN_NODE;}
+	else if (15 == id){return NARROWBAND_COOPERATIVE;}
+	else if (16 == id){return NARROWBAND_NON_COOPERATIVE;}
+	else if (17 == id){return BROADBAND_COOPERATIVE;}
+	else if (18 == id){return BROADBAND_NON_COOPERATIVE;}
 }
 
-void PacketLossReason::write_test_childs()
+
+String PacketLossReason::print() 
 {
-	for (HashTable<int,PacketLossReason*>::iterator it = children.begin(); it; ++it) {
-		PacketLossReason::write_test_id(getID());
-		click_chatter("->");
-		PacketLossReason::write_test_id((it.value())->getID()); 
-		click_chatter("\n");
-	}
+	StringAccum sa;
+	int id = getID();
+	sa << "<packetlossreason reason=\"";
+	if (0 == id) { sa << "PACKET_LOSS_ROOT_NODE";}
+	else  if (1 == id){ sa <<"INTERFERENCE";}
+	else  if (2 == id){sa <<"CHANNEL_FADING";}
+	else if (3 == id){sa <<"WIFI";}
+	else if (4 == id){sa <<"NON_WIFI";}
+	else if (5 == id){sa <<"WEAK_SIGNAL";}
+	else if (6 == id){sa <<"SHADOWING";}
+	else if (7 == id){sa <<"MULTIPATH_FADING";}
+	else if (8 == id){sa <<"CO_CHANNEL";}
+	else if (9 == id){sa <<"ADJACENT_CHANNEL";}
+	else if (10 == id){sa <<"G_VS_B";}
+	else if (11 == id){sa <<"NARROWBAND";}
+	else if (12 == id){sa <<"BROADBAND";}
+	else if (13 == id){sa <<"IN_RANGE";}
+	else if (14 == id){sa <<"HIDDEN_NODE";}
+	else if (15 == id){sa <<"NARROWBAND_COOPERATIVE";}
+	else if (16 == id){sa <<"NARROWBAND_NON_COOPERATIVE";}
+	else if (17 == id){sa <<"BROADBAND_COOPERATIVE";}
+	else if (18 == id){sa <<"BROADBAND_NON_COOPERATIVE";}
+	sa << "\" label=\"" << getLabel() << "\" fraction=\"" <<  getFraction() << "\"/>";//</fraction>\n</packetlossreason>";
+	return sa.take_string();
 }
+
 
 int PacketLossReason::getLabel() {
 	return label; 

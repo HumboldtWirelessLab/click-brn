@@ -9,7 +9,9 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnelement.hh"
+
 
 CLICK_DECLS
 
@@ -69,8 +71,16 @@ class BRN2SimpleFlow : public BRNElement
       uint32_t _rxCrcErrors;
 
       uint32_t _cum_sum_hops;
+      uint32_t _min_hops;
+      uint32_t _max_hops;
+      uint32_t _sum_sq_hops;
 
       uint32_t _cum_sum_rt_time;
+      uint32_t _min_rt_time;
+      uint32_t _max_rt_time;
+      uint32_t _sum_sq_rt_time;
+
+      Timestamp _start_time;
 
       Flow() {}
 
@@ -88,6 +98,8 @@ class BRN2SimpleFlow : public BRNElement
         _rxCrcErrors = 0;
         _cum_sum_hops = 0;
         _cum_sum_rt_time = 0;
+        _min_hops = _max_hops = _sum_sq_hops = 0;
+        _min_rt_time = _max_rt_time = _sum_sq_rt_time = 0;
       }
 
       ~Flow() {}
@@ -97,9 +109,38 @@ class BRN2SimpleFlow : public BRNElement
         _txPackets = 1;
         _rxPackets = 0;
         _rxCrcErrors = 0;
-        _cum_sum_hops = 0;
+        _cum_sum_hops = _min_hops = _max_hops = _sum_sq_hops = 0;
+
+        _min_rt_time = _max_rt_time = _sum_sq_rt_time =
         _cum_sum_rt_time = 0;
       }
+
+      void add_rx_stats(uint32_t time, uint32_t hops) {
+        _rxPackets++;
+
+        _cum_sum_rt_time += time;
+        if ( time > _max_rt_time ) _max_rt_time = time;
+        if ( (time < _min_rt_time) || ( _min_rt_time == 0 ) ) _min_rt_time = time;
+        _sum_sq_rt_time += (time*time);
+
+        _cum_sum_hops += hops;
+        if ( hops > _max_hops ) _max_hops = hops;
+        if ( (hops < _min_hops) || ( _min_hops == 0 ) ) _min_hops = hops;
+        _sum_sq_hops += (hops*hops);
+      }
+
+      uint32_t std_time() {
+        if ( _rxPackets == 0 ) return 0;
+        int32_t q = _cum_sum_rt_time/_rxPackets;
+        return isqrt32((_sum_sq_rt_time/_rxPackets)-(q*q));
+      }
+
+      uint32_t std_hops() {
+        if ( _rxPackets == 0 ) return 0;
+        int32_t q = _cum_sum_hops/_rxPackets;
+        return isqrt32((_sum_sq_hops/_rxPackets)-(q*q));
+      }
+
   };
 
     Timer _timer;

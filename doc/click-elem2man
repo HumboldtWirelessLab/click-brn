@@ -9,6 +9,7 @@
 # Copyright (c) 2001-2003 International Computer Science Institute
 # Copyright (c) 2006-2007 Regents of the University of California
 # Copyright (c) 2011 Meraki, Inc.
+# Copyright (c) 2012 Eddie Kohler
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -228,14 +229,15 @@ sub nroff_fixfP ($$) {
 }
 
 sub nroff_manref ($$$$) {
-    map { $_ = "\"$_\"" if (s/\"/\\(dq/g) } @_;
+    my(@a) = @_;
+    map { $_ = "\"$_\"" if (s/\"/\\(dq/g) } @a;
     my($x);
-    if ($_[0] eq "") {
-	$x = "\n.M " . $_[1] . " " . $_[2];
+    if ($a[0] eq "") {
+	$x = "\n.M " . $a[1] . " " . $a[2];
     } else {
-	$x = "\n.RM " . $_[0] . " " . $_[1] . " " . $_[2];
+	$x = "\n.RM " . $a[0] . " " . $a[1] . " " . $a[2];
     }
-    $x .= " " . $_[3] if $_[3] ne "";
+    $x .= " " . $a[3] if $a[3] ne "";
     $x . "\n";
 }
 
@@ -1562,5 +1564,5 @@ if ($elementlist && @all_outfiles) {
 	write_elementlist($fename, $uninstall);
     }
     read_main_elementlist();
-    write_elementlist("elements", 0);
+    write_elementlist("elements", $uninstall && defined($package) && $package eq "DEFAULT");
 }

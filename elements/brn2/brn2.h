@@ -48,6 +48,9 @@ CLICK_DECLS
 #define BRN_LT_STATION_METRIC            100  ///< metric for assoc'd stations
 #define BRN_LT_ROAMED_STATION_METRIC    5000  ///< metric for roamed stations
 #define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
+#define BRN_LT_INVALID_ROUTE_METRIC    65534  ///< metric for invalid/broken routes
+
+#define BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE    4000  ///< metric for invalid/broken routes
 
 class StringTokenizer {
   public:
@@ -109,6 +112,23 @@ extern "C" {
         return 1;
     }
     return 0;
+  }
+}
+
+extern "C" {
+  static inline int32_t isqrt32(int32_t n) {
+    int32_t x,x1;
+
+    if ( n == 0 ) return 0;
+    if ( n < 0 ) return -1;
+
+    x1 = n;
+    do {
+      x = x1;
+      x1 = (x + n/x) >> 1;
+    } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
+
+    return x1;
   }
 }
 

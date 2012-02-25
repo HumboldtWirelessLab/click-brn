@@ -9,6 +9,8 @@
 #endif
 CLICK_DECLS
 class String;
+class Timestamp;
+Timestamp operator+(Timestamp, const Timestamp &);
 
 // Timestamp has three possible internal representations, selected by #defines.
 // * TIMESTAMP_REP_FLAT64: a 64-bit integer number of nanoseconds
@@ -154,6 +156,9 @@ class Timestamp { public:
 #endif
 	subsec_per_msec = subsec_per_sec / msec_per_sec,
 	subsec_per_usec = subsec_per_sec / usec_per_sec
+#if CLICK_NS
+	, schedule_granularity = usec_per_sec
+#endif
     };
 
     enum {
@@ -241,8 +246,10 @@ class Timestamp { public:
 
 #if TIMESTAMP_PUNS_TIMEVAL
     inline const struct timeval &timeval() const;
+    inline const struct timeval &timeval_ceil() const;
 #else
     inline struct timeval timeval() const;
+    inline struct timeval timeval_ceil() const;
 #endif
 #if HAVE_STRUCT_TIMESPEC
 # if TIMESTAMP_PUNS_TIMESPEC
@@ -278,6 +285,25 @@ class Timestamp { public:
 #else
 	return (value_type) _t.sec * nsec_per_sec + subsec_to_nsec(_t.subsec);
 #endif
+    }
+
+    /** @brief Return the next millisecond-valued timestamp no smaller than *this. */
+    inline Timestamp msec_ceil() const {
+	uint32_t x = subsec() % subsec_per_msec;
+	return (x ? *this + Timestamp(0, subsec_per_msec - x) : *this);
+    }
+    /** @brief Return the next microsecond-valued timestamp no smaller than *this. */
+    inline Timestamp usec_ceil() const {
+#if TIMESTAMP_NANOSEC
+	uint32_t x = subsec() % subsec_per_usec;
+	return (x ? *this + Timestamp(0, subsec_per_usec - x) : *this);
+#else
+	return *this;
+#endif
+    }
+    /** @brief Return the next nanosecond-valued timestamp no smaller than *this. */
+    inline Timestamp nsec_ceil() const {
+	return *this;
     }
 
 #if !CLICK_TOOL
@@ -821,9 +847,13 @@ Timestamp::assign_now(bool recent, bool steady, bool unwarped)
     TIMESTAMP_RESOLVE_TVP;
 
 #elif CLICK_NS
-    TIMESTAMP_DECLARE_TVP;
-    simclick_gettimeofday(&tvp);
-    TIMESTAMP_RESOLVE_TVP;
+    if (schedule_granularity == usec_per_sec) {
+	TIMESTAMP_DECLARE_TVP;
+	simclick_gettimeofday(&tvp);
+	TIMESTAMP_RESOLVE_TVP;
+    } else {
+	assert(0 && "nanosecond precision not available yet");
+    }
 
 #elif HAVE_USE_CLOCK_GETTIME
     TIMESTAMP_DECLARE_TSP;
@@ -1056,52 +1086,6 @@ Timestamp::nsec1() const
     return _t.sec * nsec_per_sec + subsec_to_nsec(_t.subsec);
 #endif
 }
-
-#if TIMESTAMP_PUNS_TIMEVAL
-inline const struct timeval &
-Timestamp::timeval() const
-{
-    return _t.tv;
-}
-#else
-/** @brief Return a struct timeval with the same value as this timestamp.
-
-    If Timestamp and struct timeval have the same size and representation,
-    then this operation returns a "const struct timeval &" whose address is
-    the same as this Timestamp. */
-inline struct timeval
-Timestamp::timeval() const
-{
-    struct timeval tv;
-    tv.tv_sec = sec();
-    tv.tv_usec = usec();
-    return tv;
-}
-#endif
-
-#if HAVE_STRUCT_TIMESPEC
-# if TIMESTAMP_PUNS_TIMESPEC
-inline const struct timespec &
-Timestamp::timespec() const
-{
-    return _t.tspec;
-}
-# else
-/** @brief Return a struct timespec with the same value as this timestamp.
-
-    If Timestamp and struct timespec have the same size and representation,
-    then this operation returns a "const struct timespec &" whose address is
-    the same as this Timestamp. */
-inline struct timespec
-Timestamp::timespec() const
-{
-    struct timespec ts;
-    ts.tv_sec = sec();
-    ts.tv_nsec = nsec();
-    return ts;
-}
-# endif
-#endif
 
 #if !CLICK_TOOL
 inline click_jiffies_t
@@ -1437,6 +1421,70 @@ Timestamp::warp_real_delay() const
     else
 	return *this / _warp_speed;
 }
+#endif
+
+#if TIMESTAMP_PUNS_TIMEVAL
+inline const struct timeval &
+Timestamp::timeval() const
+{
+    return _t.tv;
+}
+
+inline const struct timeval &
+Timestamp::timeval_ceil() const
+{
+    return _t.tv;
+}
+#else
+/** @brief Return a struct timeval that approximates this timestamp.
+
+    If Timestamp and struct timeval have the same size and representation,
+    then this operation returns a "const struct timeval &" whose address is
+    the same as this Timestamp. If Timestamps have nanosecond precision,
+    the conversion rounds down, so Timestamp(t.timeval()) <= t. */
+inline struct timeval
+Timestamp::timeval() const
+{
+    struct timeval tv;
+    tv.tv_sec = sec();
+    tv.tv_usec = usec();
+    return tv;
+}
+
+/** @brief Return the minimum struct timeval >= this timestamp.
+
+    If Timestamp and struct timeval have the same size and representation,
+    then this operation returns a "const struct timeval &" whose address is
+    the same as this Timestamp. */
+inline struct timeval
+Timestamp::timeval_ceil() const
+{
+    return (*this + Timestamp(0, subsec_per_usec - 1)).timeval();
+}
+#endif
+
+#if HAVE_STRUCT_TIMESPEC
+# if TIMESTAMP_PUNS_TIMESPEC
+inline const struct timespec &
+Timestamp::timespec() const
+{
+    return _t.tspec;
+}
+# else
+/** @brief Return a struct timespec with the same value as this timestamp.
+
+    If Timestamp and struct timespec have the same size and representation,
+    then this operation returns a "const struct timespec &" whose address is
+    the same as this Timestamp. */
+inline struct timespec
+Timestamp::timespec() const
+{
+    struct timespec ts;
+    ts.tv_sec = sec();
+    ts.tv_nsec = nsec();
+    return ts;
+}
+# endif
 #endif
 
 

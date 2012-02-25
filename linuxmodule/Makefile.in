@@ -16,7 +16,7 @@ linux_srcdir = @linux_srcdir@
 linux_makeargs = @linux_makeargs@
 
 LIB_CXX_OBJS = string.o straccum.o nameinfo.o \
-	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
+	bitvector.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
 	error.o timestamp.o glue.o task.o timer.o atomic.o gaprate.o \
@@ -42,11 +42,18 @@ ifndef MINDRIVER
 DRIVER = click
 ELEMENTSCONF = elements
 KSYMS = ksyms
-FINDELEMFLAGS = @FINDELEMFLAGS@
+FINDELEMFLAGS = @FINDELEMFLAGS@ --checksum elements.csmk
+-include elements.csmk
 else
 DRIVER = $(MINDRIVER)click
 ELEMENTSCONF = elements_$(MINDRIVER)
 KSYMS = ksyms_$(MINDRIVER)
+endif
+
+ifneq ($(ELEMENT_CHECKSUM),)
+ifneq ($(shell $(ELEMENT_CHECKSUMCOMMAND)),$(ELEMENT_CHECKSUM))
+$(shell rm -f $(ELEMENTSCONF).conf $(ELEMENTSCONF).csmk)
+endif
 endif
 
 INSTALLOBJS = $(DRIVER).o proclikefs.o
@@ -99,7 +106,8 @@ LINUXCFLAGS = $(shell echo "$(CPPFLAGS) $(CFLAGS) $(LINUXINCLUDE)" \
 	-e s,-Werror-implicit-function-declaration,, \
 	-e "s,-Iinclude ,-I$(linux_builddir)/include ",g \
 	-e "s,-Iinclude2 ,-I$(linux_builddir)/include2 ",g \
-	-e s,-Iinclude/,-I$(linux_srcdir)include/,g @LINUX_FIXINCLUDES_PROGRAM@)
+	-e s,-Iinclude/,-I$(linux_srcdir)include/,g \
+	@LINUX_FIXINCLUDES_PROGRAM@)
 CLICKCPPFLAGS = @CPPFLAGS@ -DCLICK_LINUXMODULE
 CLICKCFLAGS = @KERNEL_CFLAGS@
 CLICKCXXFLAGS = @KERNEL_CXXFLAGS@
@@ -329,7 +337,7 @@ endif
 ## ANY LINUX								##
 
 elemlist:
-	@/bin/rm -f elements.conf
+	@/bin/rm -f elements.conf elements.csmk
 	@$(MAKE) elements.conf
 elements.conf: $(top_builddir)/config.status $(top_builddir)/click-buildtool
 	echo "linuxmodule @element_groups@" | $(top_builddir)/click-buildtool findelem -r linuxmodule -p $(top_srcdir) -X $(srcdir)/elements.exclude $(FINDELEMFLAGS) > elements.conf
@@ -349,7 +357,7 @@ always:
 clean:
 	-rm -f *~ *.d *.o *.mod.c *.ko
 	-rm -f .version .*.o.flags .*.o.d .*.o.cmd .*.ko.cmd
-	-rm -f $(ELEMENTSCONF).mk $(ELEMENTSCONF).cc $(KSYMS).c elements.conf
+	-rm -f $(ELEMENTSCONF).mk $(ELEMENTSCONF).cc $(KSYMS).c elements.conf elements.csmk
 	-rm -rf Module.symvers .tmp_versions modules.order
 distclean: clean
 	-rm -f Makefile

@@ -61,7 +61,7 @@ endif
 
 
 GENERIC_OBJS = string.o straccum.o nameinfo.o \
-	bitvector.o vectorv.o templatei.o bighashmap_arena.o hashallocator.o \
+	bitvector.o bighashmap_arena.o hashallocator.o \
 	ipaddress.o ipflowid.o etheraddress.o \
 	packet.o \
 	error.o timestamp.o glue.o task.o timer.o atomic.o fromfile.o gaprate.o \
@@ -88,6 +88,7 @@ INCLUDES = -I$(top_builddir)/include -I$(top_srcdir)/include \
 	-I$(srcdir) -I$(top_srcdir) @PROPER_INCLUDES@ @PCAP_INCLUDES@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@ `$(top_builddir)/click-buildtool --otherlibs` $(ELEMENT_LIBS)
+DL_LDFLAGS = @DL_LDFLAGS@
 
 CXXCOMPILE = $(CXX) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
@@ -100,12 +101,20 @@ ifndef MINDRIVER
 DRIVER = click
 ELEMENTSCONF = elements
 INSTALLLIBS = libclick.a
-FINDELEMFLAGS = @FINDELEMFLAGS@
+FINDELEMFLAGS = @FINDELEMFLAGS@ --checksum elements.csmk
+-include elements.csmk
 else
 DRIVER = $(MINDRIVER)click
 ELEMENTSCONF = elements_$(MINDRIVER)
 endif
 INSTALLPROGS = $(DRIVER)
+
+ifneq ($(ELEMENT_CHECKSUM),)
+ifneq ($(shell $(ELEMENT_CHECKSUMCOMMAND)),$(ELEMENT_CHECKSUM))
+$(shell rm -f $(ELEMENTSCONF).conf $(ELEMENTSCONF).csmk)
+endif
+endif
+
 
 all: $(INSTALLPROGS) $(INSTALLLIBS)
 
@@ -114,7 +123,7 @@ ifneq ($(MAKECMDGOALS),clean)
 endif
 
 $(DRIVER): Makefile libclick.a $(OBJS)
-	$(call cxxlink,-rdynamic $(OBJS) libclick.a $(LIBS),LINK)
+	$(call cxxlink,$(DL_LDFLAGS) $(OBJS) libclick.a $(LIBS),LINK)
 
 libclick.a: Makefile $(LIBOBJS)
 	$(call verbose_cmd,$(AR_CREATE) libclick.a $(LIBOBJS),AR libclick.a)
@@ -125,7 +134,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	  && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 elemlist:
-	@rm -f elements.conf
+	@rm -f elements.conf elements.csmk
 	@$(MAKE) elements.conf
 elements.conf: $(top_builddir)/config.status $(top_builddir)/click-buildtool
 	$(call verbose_cmd,echo "userlevel @element_groups@" | $(top_builddir)/click-buildtool findelem -r userlevel -p $(top_srcdir) -X $(srcdir)/elements.exclude $(FINDELEMFLAGS) >,FINDELEMENTS,elements.conf)
@@ -155,7 +164,7 @@ uninstall:
 	for i in $(INSTALLPROGS); do rm -f $(DESTDIR)$(bindir)/$$i; done
 
 clean:
-	rm -f *.d *.o $(INSTALLPROGS) $(ELEMENTSCONF).mk $(ELEMENTSCONF).cc elements.conf libclick.a
+	rm -f *.d *.o $(INSTALLPROGS) $(ELEMENTSCONF).mk $(ELEMENTSCONF).cc elements.conf elements.csmk libclick.a
 clean-lib:
 	rm -f $(LIBOBJS) libclick.a
 distclean: clean

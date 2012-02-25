@@ -271,7 +271,12 @@ public:
   bool _use_blacklist;
 
   uint32_t _expired_packets;
+  uint32_t _requests;
 
+ public:
+  int32_t _max_retries;
+
+ private:
   //---------------------------------------------------------------------------
   // private methods
   //---------------------------------------------------------------------------
@@ -283,10 +288,6 @@ public:
   bool buffer_packet(Packet *p);
 
   static unsigned long diff_in_ms(timeval, timeval);
-
-  uint32_t get_metric(EtherAddress);
-
-  EtherAddress last_forwarder_eth(Packet *);
 
   void check();
 

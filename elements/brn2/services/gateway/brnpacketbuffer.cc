@@ -131,13 +131,13 @@ BRNPacketBuffer::flush_bucket(uint32_t bucket) {
 void
 BRNPacketBuffer::run_timer(Timer *t) {
     assert(_buckettimer.size() > 0);
-    
+
     // get timed bucket
     BucketTimer buckettimer = _buckettimer.front();
     uint32_t bucket = buckettimer.get_bucket();
 
     BRN_INFO("Timer for bucket %u is scheduled.", bucket);
-    
+
     // this must be the same timer we scheduled
     assert(t == buckettimer.get_timer());
     // clean up timer
@@ -147,13 +147,10 @@ BRNPacketBuffer::run_timer(Timer *t) {
     if (_buffer.findp(bucket) == NULL) {
       BRN_INFO("Bucket %u has already been flushed.", bucket);
       return;
-    }        
+    }
 
     flush_bucket(bucket);
 }
 
 EXPORT_ELEMENT(BRNPacketBuffer)
-#include <click/dequeue.cc>
-#include <click/vector.cc>
-#include <click/bighashmap.cc>
 CLICK_ENDDECLS

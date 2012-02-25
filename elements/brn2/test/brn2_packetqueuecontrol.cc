@@ -227,6 +227,10 @@ BRN2PacketQueueControl::push(int /*port*/, Packet *p)
 
 void
 BRN2PacketQueueControl::setFlow(Flow *f) {
+  if ( ac_flow != NULL ) {
+    delete ac_flow;
+  }
+
   ac_flow = f;
 
   BRN_DEBUG("Start flow timer in %d ms",ac_flow->_start);

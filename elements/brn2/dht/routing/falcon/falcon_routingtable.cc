@@ -133,7 +133,7 @@ FalconRoutingTable::isBetterPredecessor(DHTnode *node)
 /*************************************************************************************************/
 
 DHTnode*
-FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
+FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age, HashMap<EtherAddress,EtherAddress> *used_eas)
 {
   Timestamp now = Timestamp::now();
   DHTnode *best = _me;
@@ -142,11 +142,17 @@ FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age)
   if ( node->equals(_me) ) best = successor;
   for ( int i = 0; i < _allnodes.size(); i++ ) {
     n = _allnodes.get_dhtnode(i);
-  //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
-  //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
-  //                                       best->_ether_addr.unparse().c_str());
+
+    // if nodes are limited due to the hashmap, check whether we can use this node (is it in the hashmap ??)
+    if ( used_eas != NULL ) {
+      if ( used_eas->findp(n->_ether_addr) == NULL ) continue;
+    }
+
+    //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
+    //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
+    //                                       best->_ether_addr.unparse().c_str());
     if ( ( n->get_age_s(&now) <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
-  //  BRN_DEBUG("YES");
+    //  BRN_DEBUG("YES");
       best = n;
     }/* else {
       BRN_DEBUG("NO");
@@ -454,91 +460,64 @@ FalconRoutingTable::routing_info(void)
   numberOfNodes = _allnodes.size();
 
   MD5::printDigest(_me->_md5_digest, digest);
-  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << "\t" << digest << " )\n";
-  sa << "DHT-Nodes (" << (int)numberOfNodes  << ") :\n";
+  sa << "<falconroutingtable node=\"" << _me->_ether_addr.unparse() << "\" digest=\"" << digest;
+  sa << "\" time=\"" << Timestamp::now().unparse() << "\" nodes=\"" << (int)numberOfNodes  << "\" >\n";
 
   if ( successor != NULL ) {
     MD5::printDigest(successor->_md5_digest, digest);
-    sa << "Successor: " << successor->_ether_addr.unparse() << "\t" << digest << "\t";
-    sa << isFixSuccessor() << " (" << get_successor_counter() << ")\n";
+    sa << "\t<successor addr=\"" << successor->_ether_addr.unparse() << "\" digest=\"" << digest << "\" fixed=\"";
+    sa << isFixSuccessor() << "\" counter=\"" << get_successor_counter() << "\" />\n";
   } else {
-    sa << "Successor: xx:xx:xx:xx:xx:xx\txxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\t(false)\n";
+    sa << "\t<successor addr=\"00:00:00:00:00:00\" digest=\"00000000000000000000000000000000\" fixed=\"false\" />\n";
   }
 
   if ( predecessor != NULL ) {
     MD5::printDigest(predecessor->_md5_digest, digest);
-    sa << "Predecessor: " << predecessor->_ether_addr.unparse() << "\t" << digest << "\n";
+    sa << "\t<predecessor addr=\"" << predecessor->_ether_addr.unparse() << "\" digest=\"" << digest << "\" />\n";
   }
 
   if ( backlog != NULL ) {
     MD5::printDigest(backlog->_md5_digest, digest);
-    sa << "Backlog: " << backlog->_ether_addr.unparse() << "\t" << digest << "\n";
+    sa << "\t<backlog addr=\"" << backlog->_ether_addr.unparse() << "\" digest=\"" << digest << "\" />\n";
   }
 
-  sa << "\nFingertable (" << _fingertable.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t<fingertable size=\"" << _fingertable.size() << "\" >\n";
   for( int i = 0; i < _fingertable.size(); i++ )
   {
     node = _fingertable.get_dhtnode(i);
 
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-
-    sa << "\n";
+    sa << "\t\t<finger index=\"" << i << "\" addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
 
-  sa << "\nReverse Fingertable (" << _reverse_fingertable.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t</fingertable>\n\t<reverse_fingertable size=\"" << _reverse_fingertable.size() << "\" >\n";
   for( int i = 0; i < _reverse_fingertable.size(); i++ )
   {
     node = _reverse_fingertable.get_dhtnode(i);
-
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-
-    sa << "\n";
+    sa << "\t\t<reversenode addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
 
-  sa << "\nAll nodes (" << _allnodes.size() << ") :\n";
-  sa << "Etheraddress\t\tNode-ID\t\t\t\t\tNeighbour\tStatus\tAge\t\tLast Ping\n";
+  sa << "\t</reverse_fingertable>\n\t<allnodes size=\"" << _allnodes.size() << "\" >\n";
   for( int i = 0; i < _allnodes.size(); i++ )
   {
     node = _allnodes.get_dhtnode(i);
-
-    sa << node->_ether_addr.unparse();
     MD5::printDigest(node->_md5_digest, digest);
 
-    sa << "\t" << digest;
-    if ( node->_neighbor )
-      sa << "\ttrue";
-    else
-      sa << "\tfalse";
-
-    sa << "\t\t" << (int)node->_status << "(" << dht_node_status_string[(int)node->_status] << ")";
-    sa << "\t" << node->get_age();
-    sa << "\t" << node->get_last_ping();
-    sa << "\n";
+    sa << "\t\t<node addr=\"" << node->_ether_addr.unparse() << "\" digest=\"" << digest;
+    sa << "\" neighbour=\"" << node->_neighbor << "\" state=\"" << (int)node->_status;
+    sa << "\" statestring=\"" << dht_node_status_string[(int)node->_status] << "\" age=\"" << node->get_age();
+    sa << "\" last_ping=\"" << node->get_last_ping() << "\" />\n";
   }
+  sa << "\t</allnodes>\n</falconroutingtable>\n";
 
   return sa.take_string();
 }
@@ -568,6 +547,7 @@ FalconRoutingTable::debug_routing_info(void)
 enum {
   H_ROUTING_INFO,
   H_DEBUG_ROUTING_INFO,
+  H_PASSIVE_MONITORING
 };
 
 static String
@@ -577,9 +557,29 @@ read_param(Element *e, void *thunk)
 
   switch ((uintptr_t) thunk)
   {
-    case H_ROUTING_INFO : return ( dht_falcon->routing_info( ) );
-    case H_DEBUG_ROUTING_INFO : return ( dht_falcon->debug_routing_info( ) );
+    case H_ROUTING_INFO : return ( dht_falcon->routing_info() );
+    case H_DEBUG_ROUTING_INFO : return ( dht_falcon->debug_routing_info() );
+    case H_PASSIVE_MONITORING : return ( String(dht_falcon->is_passive_monitoring()) );
     default: return String();
+  }
+}
+
+static int
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  FalconRoutingTable *dht_falcon = (FalconRoutingTable *)e;
+  String s = cp_uncomment(in_s);
+
+  switch ((uintptr_t) vparam)
+  {
+    case H_PASSIVE_MONITORING : {
+      bool pm;
+      if (!cp_bool(s, &pm))
+        return errh->error("passive_monitoring must be an bool");
+
+      dht_falcon->set_passive_monitoring(pm);
+    }
+    default: return 0;
   }
 }
 
@@ -590,6 +590,10 @@ FalconRoutingTable::add_handlers()
 
   add_read_handler("routing_info", read_param , (void *)H_ROUTING_INFO);
   add_read_handler("debug_routing_info", read_param , (void *)H_DEBUG_ROUTING_INFO);
+
+  add_read_handler("passive_monitoring", read_param , (void *)H_PASSIVE_MONITORING);
+  add_write_handler("passive_monitoring", write_param , (void *)H_PASSIVE_MONITORING);
+
 }
 
 CLICK_ENDDECLS

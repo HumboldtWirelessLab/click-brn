@@ -55,7 +55,7 @@ class GPSPosition {
     _z=z; _x=x; _y=y;
   }
 
-  void setGPSC(String lat, String lon, String alt) {
+  void setGPS(String lat, String lon, String alt) {
     _latitude.fromString(lat);
     _longitude.fromString(lon);
     _altitude.fromString(alt);
@@ -95,6 +95,12 @@ class GPSPosition {
     _y = pos->y;
     _z = pos->z;
     _speed.setPacketInt(pos->speed);
+  }
+
+#warning Check setSpeep usage in GPS
+  void setSpeed(FixPointNumber speed)
+  {
+    _speed = speed;
   }
 
   void setSpeed(int speed)

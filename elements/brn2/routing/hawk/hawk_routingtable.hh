@@ -74,6 +74,9 @@ class HawkRoutingtable : public BRNElement {
   String routingtable();
 
   Vector<RTEntry*> _rt;
+  HashMap<EtherAddress, EtherAddress> _known_hosts;
+
+  Brn2LinkTable *_link_table;
 
   HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
                                       EtherAddress *next_phy);
@@ -95,6 +98,7 @@ class HawkRoutingtable : public BRNElement {
   EtherAddress *getNextHop(EtherAddress *dst);
   bool hasNextPhyHop(EtherAddress *dst);
 
+  EtherAddress *getNextPhyHop(EtherAddress *dst);
 
   RTEntry *getEntryForNextHop(EtherAddress *ea);
 

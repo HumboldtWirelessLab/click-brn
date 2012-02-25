@@ -35,6 +35,7 @@ typedef struct {
     int simtype;		/* Original simulator packet type - useful
 				 * for morphing between raw and simulator
 				 * packet types */
+    int txfeedback; /* TXFeedback-flag: 0 -> rx  1 -> txfeedback */
 } simclick_simpacketinfo;
 
 
@@ -106,6 +107,10 @@ int simclick_gettimeofday(struct timeval* tv);
 #define SIMCLICK_CHANGE_CHANNEL		11 // int ifid, int channelid
 #define SIMCLICK_IF_PROMISC		12 // int ifid
 #define SIMCLICK_IPPREFIX_FROM_NAME	13 // const char *ifname, char *buf, int len
+
+#define SIMCLICK_GET_NODE_POSITION      20 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_GET_PERFORMANCE_COUNTER 21 // int ifid, int *performance_counter
+#define SIMCLICK_CCA_OPERATION           22 // int ifid, int cca_operation, int cca_value
 
 int simclick_sim_command(simclick_node_t *sim, int cmd, ...);
 int simclick_click_command(simclick_node_t *sim, int cmd, ...);

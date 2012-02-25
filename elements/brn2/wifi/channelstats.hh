@@ -24,6 +24,7 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/wifi/brnwifi.hh"
 #include "elements/brn2/routing/identity/brn2_device.hh"
@@ -131,10 +132,29 @@ struct airtime_stats {//,
   int32_t avg_ctl_rssi[3];
   int32_t avg_ext_rssi[3];
 
+  int32_t nav;
+
 }/*)*/;
 
+CLICK_SIZE_PACKED_STRUCTURE(,
+struct neighbour_airtime_stats {
+  uint8_t _etheraddr[6];
+  uint16_t _reserved;
+
+  uint32_t _pkt_count;
+  uint32_t _byte_count;
+
+  uint32_t _avg_rssi;
+  uint32_t _std_rssi;
+
+  uint32_t _min_rssi;
+  uint32_t _max_rssi;
+
+  uint32_t _duration;
+});
 
 class ChannelStats : public BRNElement {
+  friend class CooperativeChannelStats;
 
   public:
     class PacketInfo {
@@ -153,6 +173,8 @@ class ChannelStats : public BRNElement {
       uint8_t _state;
       bool _retry;
       bool _unicast;
+
+      uint16_t _nav;
 
       uint8_t _mode;
       uint8_t _mcs_index;
@@ -174,10 +196,14 @@ class ChannelStats : public BRNElement {
 
     class SrcInfo {
      public:
+      uint16_t _reserved;
       uint32_t _rssi;
       uint32_t _sum_sq_rssi;
       uint32_t _pkt_count;
       uint32_t _byte_count;
+      uint32_t _duration;
+
+      uint32_t _nav;
 
       uint32_t _avg_rssi;
       uint32_t _std_rssi;
@@ -187,9 +213,11 @@ class ChannelStats : public BRNElement {
 
       bool _calc_finished;
 
+      /* future */
       uint8_t _mode;
       uint8_t _mcs_index;
       uint8_t _mcs_flags;
+      /* future end */
 
       uint8_t _rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE];
       uint32_t _rssi_hist_index;
@@ -199,17 +227,17 @@ class ChannelStats : public BRNElement {
       int32_t _avg_ctl_rssi[3];
       int32_t _avg_ext_rssi[3];
 
-      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0),
-                 _min_rssi(1000), _max_rssi(0), _calc_finished(false),
+      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0), _duration(0),
+                 _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false),
                  _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
       {  //TODO: better start value for min_rssi (replace 1000)
         memset(_avg_ctl_rssi,0, sizeof(_avg_ctl_rssi));
         memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
       }
 
-      SrcInfo(uint32_t rssi, uint32_t packet_size):
-          _rssi(0), _sum_sq_rssi(0), _pkt_count(1), _byte_count(packet_size),
-          _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
+      SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav):
+          _rssi(0), _sum_sq_rssi(0), _pkt_count(1), _byte_count(packet_size), _duration(0),
+          _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
           _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
       {
         if ( rssi != 0 ) {
@@ -220,11 +248,14 @@ class ChannelStats : public BRNElement {
         _min_rssi = _max_rssi = rssi;
         _rssi_hist[_rssi_hist_index++] = rssi;
 
-        memset(_avg_ctl_rssi,0, sizeof(_avg_ctl_rssi));
-        memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
+        memset(_avg_ctl_rssi, 0, sizeof(_avg_ctl_rssi));
+        memset(_avg_ext_rssi, 0, sizeof(_avg_ext_rssi));
+
+        _duration = duration;
+        _nav = nav;
       }
 
-     void add_packet_info(uint16_t rssi, uint16_t packet_size) {
+      void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav) {
        if ( rssi > 0 ) {
          _rssi += rssi;
          _sum_sq_rssi += rssi * rssi;
@@ -243,6 +274,9 @@ class ChannelStats : public BRNElement {
 
        _pkt_count++;
        _byte_count += packet_size;
+
+       _duration += duration;
+       _nav += nav;
      }
 
      void add_ctl_ext_rssi(struct brn_click_wifi_extra_rx_status *rx_status) {
@@ -257,20 +291,6 @@ class ChannelStats : public BRNElement {
 
      uint32_t avg_rssi() {
        return (_rssi/_pkt_count);
-     }
-
-     int32_t isqrt32(int32_t n) {
-       int32_t x,x1;
-
-       if ( n == 0 ) return 0;
-
-       x1 = n;
-       do {
-         x = x1;
-         x1 = (x + n/x) >> 1;
-       } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-       return x1;
      }
 
      uint32_t std_rssi() {
@@ -295,6 +315,19 @@ class ChannelStats : public BRNElement {
         _calc_finished = true;
       }
 
+      void get_airtime_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
+        if ( ! _calc_finished ) calc_values();
+
+        memcpy(stats->_etheraddr, ea->data(), 6);
+        stats->_reserved = 0;
+        stats->_pkt_count = _pkt_count;
+        stats->_byte_count = _byte_count;
+        stats->_avg_rssi = _avg_rssi;
+        stats->_std_rssi = _std_rssi;
+        stats->_min_rssi = _min_rssi;
+        stats->_max_rssi = _max_rssi;
+        stats->_duration = _duration;
+      }
     };
 
     class LinkInfo {
@@ -339,8 +372,6 @@ class ChannelStats : public BRNElement {
     void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
-
-    struct airtime_stats *get_last_stats();
 
   private:
 
@@ -390,7 +421,13 @@ class ChannelStats : public BRNElement {
 
   public:
     struct airtime_stats *get_latest_stats() {
-      return &_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE];
+      if ( _enable_full_stats ) return NULL;
+      return &(_small_stats[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
+    }
+
+    SrcInfoTable *get_latest_stats_neighbours() {
+      if ( _enable_full_stats ) return NULL;
+      return &(_small_stats_src_tab[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
     }
 
 };
