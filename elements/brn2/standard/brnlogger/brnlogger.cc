@@ -103,6 +103,9 @@ BrnLogger::log(int level, const char* format, va_list ptr) const
   case DEBUG:
     level_string = "DEBUG";
     break;
+  case LOG:
+    level_string = "LOG";
+    break;
   }
 
   int buffer_needed = 0;
