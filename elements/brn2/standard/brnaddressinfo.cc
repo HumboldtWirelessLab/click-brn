@@ -328,8 +328,10 @@ static bool
 
 
 bool
-    BRNAddressInfo::query_ip(String s, unsigned char *store, const Element *e)
+BRNAddressInfo::query_ip(const String &suffixed_s, unsigned char *store,
+                             const Element *context)
 {
+  String s(suffixed_s);
   int colon = s.find_right(':');
   if (colon >= 0) {
     String typestr = s.substring(colon).lower();
@@ -339,7 +341,7 @@ bool
     else if (typestr.equals(":bcast", 6)) {
       // ":bcast" type only supported for NameDB at the moment
       uint32_t addr[2];
-      if (NameInfo::query(NameInfo::T_IP_PREFIX, e, s, &addr[0], 8)) {
+      if (NameInfo::query(NameInfo::T_IP_PREFIX, context, s, &addr[0], 8)) {
         addr[0] |= ~addr[1];
         memcpy(store, addr, 4);
         return true;
@@ -349,7 +351,7 @@ bool
       return false;
   }
 
-  if (NameInfo::query(NameInfo::T_IP_ADDR, e, s, store, 4))
+  if (NameInfo::query(NameInfo::T_IP_ADDR, context, s, store, 4))
     return true;
 
     // if it's a device name, return a primary IP address
@@ -376,9 +378,9 @@ bool
       return true;
   }
 #elif CLICK_NS
-  if (e) {
+  if (context) {
     char tmp[255];
-    int r = simclick_sim_command(e->router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, s.c_str(), tmp, 255);
+    int r = simclick_sim_command(context->router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, s.c_str(), tmp, 255);
     if (r >= 0 && tmp[0] && IPAddressArg().parse(tmp, *reinterpret_cast<IPAddress *>(store)))
       return true;
   }

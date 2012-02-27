@@ -101,7 +101,7 @@ class BRNAddressInfo : public Element { public:
   int configure_phase() const		{ return CONFIGURE_PHASE_FIRST; }
   int configure(Vector<String> &, ErrorHandler *);
 
-  static bool query_ip(String, unsigned char *, const Element *);
+  static bool query_ip(const String &s, unsigned char *store, const Element *context);
   static bool query_ip_prefix(String, unsigned char *, unsigned char *, const Element *);
 #ifdef HAVE_IP6
   static bool query_ip6(String, unsigned char *, const Element *);
