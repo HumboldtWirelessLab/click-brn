@@ -27,6 +27,8 @@
 #include <click/hashmap.hh>
 #include <click/packet_anno.hh>
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn2/brn2.h"
 #include "elements/brn2/wifi/brnavailablerates.hh"
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -34,9 +36,6 @@
 #include "brn2beaconscanner.hh"
 
 CLICK_DECLS
-
-#define min(x,y)      ((x)<(y) ? (x) : (y))
-#define max(x,y)      ((x)>(y) ? (x) : (y))
 
 BRN2BeaconScanner::BRN2BeaconScanner()
   : _debug(BrnLogger::DEFAULT),
@@ -157,7 +156,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
   if (ssid_l && ssid_l[1]) {
     //click_chatter("%d %d %d",(int)ssid_l[1],(int)ssid_l[2],(int)ssid_l[3]);
     if ( (int)ssid_l[2] != 0 )
-      ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
+      ssid = String((char *) ssid_l + 2, MIN((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
   EtherAddress bssid = EtherAddress(w->i_addr3);
@@ -249,7 +248,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
   Vector<MCS> all_rates;
 
   if (rates_l) {
-    for (int x = 0; x < min((int)rates_l[1], WIFI_RATE_SIZE); x++) {
+    for (int x = 0; x < MIN((int)rates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = rates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {
@@ -265,7 +264,7 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
 
   if (xrates_l) {
-    for (int x = 0; x < min((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
+    for (int x = 0; x < MIN((int)xrates_l[1], WIFI_RATE_SIZE); x++) {
       uint8_t rate = xrates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {

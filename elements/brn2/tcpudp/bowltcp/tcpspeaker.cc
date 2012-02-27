@@ -12,6 +12,8 @@
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
 
+#include "elements/brn2/brn2.h"
+
 #include "tcpspeaker.hh"
 #include "tcpip.h"
 #include "tcp_fsm.h"
@@ -49,9 +51,6 @@
 
 #define CONNECTION_CLOSED 	0x01
 #define CONNECTION_HAS_DATA	0x02
-
-#define min(a,b) (((a)<(b))?(a):(b))
-#define max(a,b) (((a)>(b))?(a):(b))
 
 #define TCP_PAWS_IDLE	(24 * 24 * 60 * 60 * PR_SLOWHZ)
 
@@ -347,7 +346,7 @@ TCPConnection::tcp_input(WritablePacket *p)
     int win; 
 	win = so_recv_buffer_space();
 	if (win < 0) { win = 0; }
-	tp->rcv_wnd = max(win, (int)(tp->rcv_adv - tp->rcv_nxt)); 
+	tp->rcv_wnd = MAX(win, (int)(tp->rcv_adv - tp->rcv_nxt)); 
 
     /* 456 Transitioning FROM tp->t_state TO... */
 	switch (tp->t_state) {
@@ -688,7 +687,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 					tp->t_dupacks = 0 ;
 				else if (++tp->t_dupacks == TCP_REXMT_THRESH ) {
 					tcp_seq_t onxt = tp->snd_nxt;
-					u_int win = min(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg; 
+					u_int win = MIN(tp->snd_wnd, tp->snd_cwnd) / 2 / tp->t_maxseg; 
 					if (win < 2) 
 						win = 2;
 					tp->snd_ssthresh = win * tp->t_maxseg;
@@ -758,7 +757,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 		u_int incr = tp->t_maxseg;
 		if (cw > tp->snd_ssthresh ) 
 		    incr = incr * incr / cw; 
-		tp->snd_cwnd = min(cw + incr, (u_int) TCP_MAXWIN << tp->snd_scale); 
+		tp->snd_cwnd = MIN(cw + incr, (u_int) TCP_MAXWIN << tp->snd_scale); 
 		debug_output(VERB_TCP, "[%s] now: [%u] cwnd: %u, increase: %u", SPKRNAME, speaker()->tcp_now(), tp->snd_cwnd, incr); 		
 	    }
 
@@ -1010,7 +1009,7 @@ again:
 	/* off is the offset in bytes from the beginning of the send buf of the
 	 * first data byte to send - a.k.a. bytes already sent, but unacked*/
     off = tp->snd_nxt - tp->snd_una; 
-    win = min(tp->snd_wnd, tp->snd_cwnd); 
+    win = MIN(tp->snd_wnd, tp->snd_cwnd); 
     flags = tcp_outflags[tp->t_state]; 
 
     /*80*/
@@ -1026,7 +1025,7 @@ again:
     }
 	/* we subtract off, because off bytes have been sent and are awaiting
 	 * acknowledgement */
-    len = min((long)_q_usr_input.byte_length(), win) - off;
+    len = MIN((long)_q_usr_input.byte_length(), win) - off;
 
     /*106*/
     if (len < 0) { 
@@ -1049,9 +1048,9 @@ again:
 	
     /*154*/
     if (win > 0) { 
-		long adv = min(win, (long)TCP_MAXWIN << tp->rcv_scale) -
+		long adv = MIN(win, (long)TCP_MAXWIN << tp->rcv_scale) -
 		(tp->rcv_adv - tp->rcv_nxt);
-		debug_output(VERB_TCPSTATS, "[%s] adv: [%d] = min([%u],[%u]):  - (radv: [%u] rnxt: [%u]) [%u]", SPKRNAME, adv, win, (long)TCP_MAXWIN << tp->rcv_scale, tp->rcv_adv, tp->rcv_nxt, tp->rcv_adv-tp->rcv_nxt);
+		debug_output(VERB_TCPSTATS, "[%s] adv: [%d] = MIN([%u],[%u]):  - (radv: [%u] rnxt: [%u]) [%u]", SPKRNAME, adv, win, (long)TCP_MAXWIN << tp->rcv_scale, tp->rcv_adv, tp->rcv_nxt, tp->rcv_adv-tp->rcv_nxt);
 		/* Slight Hack Below - we are using (t_maxseg + 1) here to ensure that
 		 * once we have recvd at least 1 byte more than a full MSS we goto send
 		 * to dispatch an ACK to the sender. This is necessary because the
@@ -1277,7 +1276,7 @@ TCPConnection::tcp_respond(tcp_seq_t ack, tcp_seq_t seq, int flags)
 	p->set_network_header(p->data(), sizeof(click_ip)); 
 	click_tcp *th = p->tcp_header(); 
 
-  int win = min((tcp_seq_t)so_recv_buffer_space(),  (tcp_seq_t)(TCP_MAXWIN << tp->rcv_scale));
+  int win = MIN((tcp_seq_t)so_recv_buffer_space(),  (tcp_seq_t)(TCP_MAXWIN << tp->rcv_scale));
 
 	if (! (flags & TH_RST)) {
 	    tlen = 0; 
@@ -1407,7 +1406,7 @@ dropit:
 		  tp->snd_nxt = tp->snd_una; 
 		  tp->t_rtt = 0; 
 		  { 
-		    u_int win = min(tp->snd_wnd, tp->snd_cwnd)
+		    u_int win = MIN(tp->snd_wnd, tp->snd_cwnd)
 		    		/ 2 / tp->t_maxseg; 
 		    if ( win < 2 )
 			win = 2; 
@@ -1533,7 +1532,7 @@ TCPConnection::tcp_mss(u_int offer) {
 	/* FIXME sensible mss function */ 
 	u_int mss ;
 	if (offer) { 
-		mss = min(glbmaxseg, offer);  
+		mss = MIN(glbmaxseg, offer);  
 	} else { 
 		mss = glbmaxseg;
 	}
@@ -1917,7 +1916,7 @@ TCPConnection::_tcp_dooptions(u_char *cp, int cnt, const click_tcp * ti,
 					continue;
 				tp->t_flags |=  TF_RCVD_SCALE;
 				
-				tp->requested_s_scale = min(cp[2], TCP_MAX_WINSHIFT); 
+				tp->requested_s_scale = MIN(cp[2], TCP_MAX_WINSHIFT); 
 				debug_output(VERB_DEBUG, "[%s] WSCALE set, flags [%x], req_s_sc [%x]\n", SPKRNAME,
 						tp->t_flags, tp->requested_s_scale );
 				break;

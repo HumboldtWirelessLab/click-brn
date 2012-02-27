@@ -11,12 +11,12 @@
 
 CLICK_DECLS
 
-#ifndef min
-#define min(x,y)      ((x)<(y) ? (x) : (y))
+#ifndef MIN
+#define MIN(x,y)      ((x)<(y) ? (x) : (y))
 #endif
 
-#ifndef max
-#define max(x,y)      ((x)>(y) ? (x) : (y))
+#ifndef MAX
+#define MAX(x,y)      ((x)>(y) ? (x) : (y))
 #endif
 
 #define BRN_VERSION "0.0.1"
