@@ -31,15 +31,14 @@
 #include <click/error.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
+#include "elements/brn2/brn2.h"
+
 #include "elements/brn2/wifi/brnavailablerates.hh"
 #include "brn2_beaconsource.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
-
-#define min(x,y)      ((x)<(y) ? (x) : (y))
-#define max(x,y)      ((x)>(y) ? (x) : (y))
 
 BRN2BeaconSource::BRN2BeaconSource()
   : _timer(this),
@@ -216,8 +215,8 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
 
   /* rates */
   ptr[0] = WIFI_ELEMID_RATES;
-  ptr[1] = min(WIFI_RATE_SIZE, rates.size());
-  for (int x = 0; x < min (WIFI_RATE_SIZE, rates.size()); x++) {
+  ptr[1] = MIN(WIFI_RATE_SIZE, rates.size());
+  for (int x = 0; x < MIN(WIFI_RATE_SIZE, rates.size()); x++) {
     ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
 
     if (rates[x].get_packed_8() == 2) {
@@ -225,8 +224,8 @@ BRN2BeaconSource::send_beacon(EtherAddress dst, bool probe, String ssid)
     }
 
   }
-  ptr += 2 + min(WIFI_RATE_SIZE, rates.size());
-  actual_length += 2 + min(WIFI_RATE_SIZE, rates.size());
+  ptr += 2 + MIN(WIFI_RATE_SIZE, rates.size());
+  actual_length += 2 + MIN(WIFI_RATE_SIZE, rates.size());
 
   int num_xrates = rates.size() - WIFI_RATE_SIZE;
   if (num_xrates > 0) {
@@ -361,7 +360,7 @@ BRN2BeaconSource::push(int, Packet *p)
   StringAccum sa;
   String ssid = "";
   if (ssid_l && ssid_l[1]) {
-    ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
+    ssid = String((char *) ssid_l + 2, MIN((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
   if (ssid != "" && ssid != _winfo->_ssid) {
@@ -383,7 +382,7 @@ BRN2BeaconSource::push(int, Packet *p)
 
   sa << "rates {";
   if (rates_l) {
-    for (int x = 0; x < min((int)rates_l[1], WIFI_RATES_MAXSIZE); x++) {
+    for (int x = 0; x < MIN((int)rates_l[1], WIFI_RATES_MAXSIZE); x++) {
       uint8_t rate = rates_l[x + 2];
 
       if (rate & WIFI_RATE_BASIC) {

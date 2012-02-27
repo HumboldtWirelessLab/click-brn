@@ -22,13 +22,11 @@
 #define SEISMO_ELEMENT_HH
 #include <click/element.hh>
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/brn2.h"
 
 #include "elements/brn2/services/sensor/gps/gps.hh"
 
 CLICK_DECLS
-
-#define min(x,y)      ((x)<(y) ? (x) : (y))
-#define max(x,y)      ((x)>(y) ? (x) : (y))
 
 #define SEISMO_TAG_LENGTH_LONG  0
 #define SEISMO_TAG_LENGTH_SHORT 1
@@ -228,8 +226,8 @@ class SrcInfo {
       // required for std calc
       int64_t value64 = value;
       _chan_cum_sq_vals[channel] += (value64 * value64);
-      _chan_min_vals[channel] = min(value, _chan_min_vals[channel]);
-      _chan_max_vals[channel] = max(value, _chan_max_vals[channel]);
+      _chan_min_vals[channel] = MIN(value, _chan_min_vals[channel]);
+      _chan_max_vals[channel] = MAX(value, _chan_max_vals[channel]);
     }
 
     int avg_channel_info(int channel) { return (_chan_cum_vals[channel]/_sample_count); }

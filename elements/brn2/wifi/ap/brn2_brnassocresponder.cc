@@ -223,7 +223,7 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
   Vector<int> rates;
   Vector<int> all_rates;
   if (rates_l) {
-    for (int x = 0; x < min((int)rates_l[1], WIFI_RATES_MAXSIZE); x++) {
+    for (int x = 0; x < MIN((int)rates_l[1], WIFI_RATES_MAXSIZE); x++) {
       uint8_t rate = rates_l[x + 2];
       if (rate & WIFI_RATE_BASIC) {
         basic_rates.push_back((int)(rate & WIFI_RATE_VAL));
@@ -240,7 +240,7 @@ BRN2AssocResponder::recv_association_request(Packet *p, uint8_t subtype)
   BRN2WirelessInfoList::WifiInfo *wi;
 
   if (ssid_l && ssid_l[1]) {
-    ssid = String((char *) ssid_l + 2, min((int)ssid_l[1], WIFI_NWID_MAXSIZE));
+    ssid = String((char *) ssid_l + 2, MIN((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   } else {
     /* there was no element or it has zero length */
     ssid = "";
@@ -500,15 +500,15 @@ BRN2AssocResponder::send_reassociation_response(
 
   /* rates */
   ptr[0] = WIFI_ELEMID_RATES;
-  ptr[1] = min(WIFI_RATE_SIZE, rates.size());
-  for (int x = 0; x < min (WIFI_RATE_SIZE, rates.size()); x++) {
+  ptr[1] = MIN(WIFI_RATE_SIZE, rates.size());
+  for (int x = 0; x < MIN(WIFI_RATE_SIZE, rates.size()); x++) {
     ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
     if (rates[x].get_packed_8() == 2) {
       ptr [2 + x] |= WIFI_RATE_BASIC;
     }
   }
-  ptr += 2 + min(WIFI_RATE_SIZE, rates.size());
-  actual_length += 2 + min(WIFI_RATE_SIZE, rates.size());
+  ptr += 2 + MIN(WIFI_RATE_SIZE, rates.size());
+  actual_length += 2 + MIN(WIFI_RATE_SIZE, rates.size());
 
 
   int num_xrates = rates.size() - WIFI_RATE_SIZE;

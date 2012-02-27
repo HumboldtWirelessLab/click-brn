@@ -204,12 +204,12 @@ public:
 
       Timestamp since_start = now - start;
 
-      uint32_t ms_since_start = max(0, since_start.msecval());
-      uint32_t fake_tau = min(_tau, ms_since_start);
+      uint32_t ms_since_start = MAX(0, since_start.msecval());
+      uint32_t fake_tau = MIN(_tau, ms_since_start);
       assert(_probe_types.size());
-      uint32_t num_expected = max(1,min((fake_tau / _period),(_seq / _num_probes)));
+      uint32_t num_expected = MAX(1,MIN((fake_tau / _period),(_seq / _num_probes)));
 
-      return (uint8_t)(min(100, (100 * num) / num_expected));
+      return (uint8_t)(MIN(100, (100 * num) / num_expected));
     }
 
     void clear() {
