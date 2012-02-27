@@ -216,8 +216,8 @@ Dijkstra::dijkstra(int graph_index)
   dgi->_no_calcs++;
 
   if ( BRN_DEBUG_LEVEL_DEBUG ) {
-    BRN_MESSAGE("Graph index: %d",graph_index);
-    BRN_MESSAGE("Node: %s Mode: %s Last used: %s",dgi->_node.unparse().c_str(), dijkstra_graph_mode_strings[dgi->_mode],
+    BRN_LOG(BrnLogger::LOG,"Graph index: %d",graph_index);
+    BRN_LOG(BrnLogger::LOG,"Node: %s Mode: %s Last used: %s",dgi->_node.unparse().c_str(), dijkstra_graph_mode_strings[dgi->_mode],
                                                   dgi->_last_used.unparse().c_str());
   }
 
