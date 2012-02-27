@@ -727,6 +727,7 @@ TOOLDIRS
 TOOL_TARGETS
 PCAP_INCLUDES
 PCAP_LIBS
+NETMAP_INCLUDES
 PROPER_INCLUDES
 PROPER_LIBS
 XML2CLICK
@@ -1357,11 +1358,13 @@ Optional Features:
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-userlevel     disable user-level driver
-    --enable-user-multithread support userlevel multithreading
-    --enable-select=[select|poll|kqueue] set file descriptor wait mechanism
-    --disable-select          do not use select()
-    --disable-poll            do not use poll()
-    --disable-kqueue          do not use kqueue()
+    --enable-user-multithread
+                          support userlevel multithreading
+    --enable-select=select|poll|kqueue
+                          set file descriptor wait mechanism
+    --disable-select      do not use select()
+    --disable-poll        do not use poll()
+    --disable-kqueue      do not use kqueue()
   --disable-linuxmodule   disable Linux kernel driver
     --disable-fixincludes     do not patch Linux kernel headers for C++
     --enable-multithread      support kernel multithreading
@@ -1419,6 +1422,7 @@ Optional Packages:
   --with-linux-map[=FILE] filename for Linux System.map [LINUXDIR/System.map]
   --with-freebsd[=SRC,INC] FreeBSD source code is in SRC [/usr/src/sys],
                           include directory is INC [/usr/include]
+  --with-netmap           enable netmap [no]
   --with-proper[=PREFIX]  use PlanetLab Proper library (optional)
   --with-expat[=PREFIX]   locate expat XML library (optional)
 
@@ -6104,7 +6108,7 @@ fi
 if test "${enable_select+set}" = set; then
   enableval=$enable_select; :
 else
-  enable_select='select poll kqueue'
+  enable_select="select poll kqueue"
 fi
 
 # Check whether --enable-poll was given.
@@ -10004,7 +10008,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 10007 "configure"
+#line 10011 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -17280,7 +17284,128 @@ done
 	LDFLAGS="$saveflags"
     fi
 
-    if test "$HAVE_PCAP" != yes -a "$ac_cv_under_linux" != yes; then
+
+
+# Check whether --with-netmap was given.
+if test "${with_netmap+set}" = set; then
+  withval=$with_netmap; use_netmap=$withval
+else
+  use_netmap=no
+fi
+
+
+    if test "$use_netmap" != "yes" -a "$use_netmap" != "no"; then
+	if test "${NETMAP_INCLUDES-NO}" != NO; then
+	    :
+	elif test -f "$use_netmap/net/netmap.h"; then
+	    NETMAP_INCLUDES="-I$use_netmap"
+	elif test -f "$use_netmap/include/net/netmap.h"; then
+	    NETMAP_INCLUDES="-I$use_netmap/include"
+	fi
+    fi
+    saveflags="$CPPFLAGS"
+    CPPFLAGS="$saveflags $NETMAP_INCLUDES"
+
+    HAVE_NETMAP=no
+    { echo "$as_me:$LINENO: checking for net/netmap.h" >&5
+echo $ECHO_N "checking for net/netmap.h... $ECHO_C" >&6; }
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <net/netmap.h>
+_ACEOF
+if { (ac_try="$ac_cpp conftest.$ac_ext"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null && {
+	 test -z "$ac_c_preproc_warn_flag$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       }; then
+  ac_cv_net_netmap_header_path="found"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_cv_net_netmap_header_path="not found"
+fi
+
+rm -f conftest.err conftest.$ac_ext
+    { echo "$as_me:$LINENO: result: $ac_cv_net_netmap_header_path" >&5
+echo "${ECHO_T}$ac_cv_net_netmap_header_path" >&6; }
+
+    if test "$ac_cv_net_netmap_header_path" = "found"; then
+	HAVE_NETMAP=yes
+    fi
+
+    if test "$HAVE_NETMAP" = yes; then
+	{ echo "$as_me:$LINENO: checking whether net/netmap.h works" >&5
+echo $ECHO_N "checking whether net/netmap.h works... $ECHO_C" >&6; }
+if test "${ac_cv_working_net_netmap_h+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <net/netmap.h>
+_ACEOF
+if { (ac_try="$ac_cpp conftest.$ac_ext"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_cpp conftest.$ac_ext") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } >/dev/null && {
+	 test -z "$ac_c_preproc_warn_flag$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       }; then
+  ac_cv_working_net_netmap_h=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+  ac_cv_working_net_netmap_h=no
+fi
+
+rm -f conftest.err conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_working_net_netmap_h" >&5
+echo "${ECHO_T}$ac_cv_working_net_netmap_h" >&6; }
+	test "$ac_cv_working_net_netmap_h" != yes && HAVE_NETMAP=
+    fi
+
+    CPPFLAGS="$saveflags"
+    if test "$HAVE_NETMAP" = yes -a "$use_netmap" != no; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_NET_NETMAP_H 1
+_ACEOF
+
+    fi
+
+
+    if test "$HAVE_PCAP" != yes -a "$HAVE_NETMAP" != yes -a "$ac_cv_under_linux" != yes; then
 	{ echo "$as_me:$LINENO: WARNING:
 =========================================
 
@@ -20724,6 +20849,10 @@ if test $ac_have_linux_kernel = y; then
     fi
 fi
 
+if test "x$HAVE_NETMAP" = xyes; then
+    provisions="$provisions netmap"
+fi
+
 if test "x$HAVE_PCAP" = xyes; then
     provisions="$provisions pcap"
 fi
@@ -21545,6 +21674,7 @@ TOOLDIRS!$TOOLDIRS$ac_delim
 TOOL_TARGETS!$TOOL_TARGETS$ac_delim
 PCAP_INCLUDES!$PCAP_INCLUDES$ac_delim
 PCAP_LIBS!$PCAP_LIBS$ac_delim
+NETMAP_INCLUDES!$NETMAP_INCLUDES$ac_delim
 PROPER_INCLUDES!$PROPER_INCLUDES$ac_delim
 PROPER_LIBS!$PROPER_LIBS$ac_delim
 XML2CLICK!$XML2CLICK$ac_delim
@@ -21587,7 +21717,7 @@ provisions!$provisions$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 57; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 58; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
