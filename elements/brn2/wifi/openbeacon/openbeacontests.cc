@@ -37,7 +37,6 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 		     "COUNT", cpkP, cpInteger, &_count,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
-	
   // check parameter
   if(_mode==0) {
 	errh->error("MODE parameter must be an integer value.      value 1: send COUNT packets over hw-link\n\t\t\t\t\t\tvalue 2: send a packets to hw. ");
@@ -72,13 +71,15 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 				unsigned char* data = wP->data() + 6 + (6 - OPENBEACON_MACSIZE);
 				HW_rxtx_Test *  hwt = (HW_rxtx_Test*) data;
 
+				// TODO: Test neu aufbauen (ist veraltet)
+/*
 				hwt->type = _mode;
 				if(_mode==1) { hwt->count = _count; 
 					click_chatter("OpenBeaconTests::push: Mode %d , Count %d", hwt->type, hwt->count);
 				} else {
 					click_chatter("OpenBeaconTests::push: Mode %d", hwt->type);
 				}
-				
+*/
 				hwt->prot_type[0] = 0x06;
 				hwt->prot_type[1] = 0x06;  // set valid proto type 
 
@@ -96,6 +97,7 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 			HW_rxtx_Test *  hwt = (HW_rxtx_Test*) data;
 			
 			if(hwt->prot_type[0] == 0x06 && hwt->prot_type[1] == 0x06)  {
+/*
 				if(hwt->type==1) {  
 					click_chatter("OpenBeaconTests::push: Test1");
 					
@@ -107,7 +109,8 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 				if(hwt->type==3) {
 					click_chatter("OpenBeaconTests::push: Test3");
 					
-				} 
+				}
+*/
 			}
 			
 		}	

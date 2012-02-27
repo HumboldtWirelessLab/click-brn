@@ -34,3 +34,6 @@ stamp-h
 include/tinyxml
 lib/libtinyxml.a
 userlevel/libtinyxml.a
+/.cproject
+/elements/brn2/tools/tinyxml/libtinyxml.a
+/.project
