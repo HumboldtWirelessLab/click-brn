@@ -41,7 +41,6 @@ CLICK_DECLS
 
 Dijkstra::Dijkstra()
   : _node_identity(),
-    _timer(this),
     _max_graph_age(0)
 {
   RoutingAlgorithm::init();
@@ -79,9 +78,6 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
 int
 Dijkstra::initialize (ErrorHandler *)
 {
-  //_timer.initialize(this);
-  //_timer.schedule_now();
-
   _lt->add_informant((BrnLinkTableChangeInformant*)this);
 
   _dgi_list[0]._node = *_node_identity->getMasterAddress();
@@ -93,29 +89,123 @@ Dijkstra::initialize (ErrorHandler *)
 }
 
 void
-Dijkstra::run_timer(Timer*)
-{
-  //_timer.schedule_after_msec(5000);
-}
-
-void
 Dijkstra::take_state(Element *e, ErrorHandler *) {
   Dijkstra *q = (Dijkstra *)e->cast("LinkTable");
   if (!q) return;
 }
 
-Vector<EtherAddress>
-Dijkstra::get_route(EtherAddress src, EtherAddress dst, uint32_t *metric)
+void
+Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric)
 {
+  metric = 0;
 
+  if (( _dni_table.find(dst) == NULL ) || ( _dni_table.find(src) == NULL ) ) return;
+
+  int graph_id_src = -1;
+  int graph_id_dst = -1;
+  int graph_id_me = -1;
+
+  if ( _node_identity->isIdentical(&src) && (_dgi_list[0]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) ) graph_id_me = 0;
+  else if ( _node_identity->isIdentical(&dst) && (_dgi_list[1]._mode == DIJKSTRA_GRAPH_MODE_TO_NODE) ) graph_id_me = 1;
+
+  for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+    if ( (_dgi_list[i]._node == src) && (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) ) graph_id_src = i;
+    else if ( (_dgi_list[i]._node == dst) && (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_TO_NODE) ) graph_id_dst = i;
+  }
+
+  int graph_id = -1;
+
+  if ( (graph_id_src == -1) && (graph_id_dst == -1) && (graph_id_me == -1) ) {
+    if ( _node_identity->isIdentical(&src) ) {                        // try to calc routes
+      graph_id = get_graph_index(src, DIJKSTRA_GRAPH_MODE_FR0M_NODE); // from me
+    } else if ( _node_identity->isIdentical(&dst) ) {                 // or
+      graph_id = get_graph_index(dst, DIJKSTRA_GRAPH_MODE_TO_NODE);   // to me (prefere this)
+    } else {
+      graph_id = get_graph_index(src, DIJKSTRA_GRAPH_MODE_FR0M_NODE);
+    }
+
+    dijkstra(graph_id);
+  } else { //if you found graph, choose the latest one
+    if (graph_id_me != -1) graph_id = graph_id_me;
+    if ((graph_id_src != -1) && ((graph_id == -1) || (_dgi_list[graph_id_src]._last_used > _dgi_list[graph_id]._last_used)))
+      graph_id = graph_id_src;
+    if ((graph_id_dst != -1) && ((graph_id == -1) || (_dgi_list[graph_id_dst]._last_used > _dgi_list[graph_id]._last_used)))
+      graph_id = graph_id_dst;
+
+    if ( (_dgi_list[graph_id]._last_used == Timestamp(0,0)) || // if also the latest not ready (graphs with links from or to me)
+         ((Timestamp::now() - _dgi_list[graph_id]._last_used).msecval() > _max_graph_age) ) { // with links from or to me) or
+                                                                                 // or if the graph is too old -> start dijkstra
+      dijkstra(graph_id);
+    }
+  }
+
+  BRN_DEBUG("Graph ID: %d",graph_id);
+
+  EtherAddress s_ea = _node_identity->isIdentical(&src)?*_node_identity->getMasterAddress():src;
+  EtherAddress d_ea = _node_identity->isIdentical(&dst)?*_node_identity->getMasterAddress():dst;
+
+  DijkstraNodeInfo *s_node = _dni_table.find(s_ea);
+  DijkstraNodeInfo *d_node = _dni_table.find(d_ea);
+
+  route.clear();
+
+  if ( ! s_node->_marked[graph_id] || ! d_node->_marked[graph_id] ) return;
+
+  if ( _dgi_list[graph_id]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE ) {
+    DijkstraNodeInfo *current_node = _dni_table.find(d_ea);
+    while ( current_node->_ether != s_ea ) {
+      BRN_DEBUG("Next add to route(from): %s",current_node->_ether.unparse().c_str());
+      route.push_front(current_node->_ether);
+      current_node = current_node->_next[graph_id];
+    }
+    route.push_front(current_node->_ether);
+  } else {
+    DijkstraNodeInfo *current_node = _dni_table.find(s_ea);
+    while ( current_node->_ether != d_ea ) {
+      BRN_DEBUG("Next add to route(to): %s",current_node->_ether.unparse().c_str());
+      route.push_back(current_node->_ether);
+      current_node = current_node->_next[graph_id];
+    }
+    route.push_back(current_node->_ether);
+  }
+
+  // TODO: fix dst and src is it s me and if we have multiple radios/devices
 }
 
-void
+int32_t
+Dijkstra::metric_from_me(EtherAddress dst)
+{
+  DijkstraNodeInfo *dni = _dni_table.find(dst);
+
+  if ( ! dni ) return -1;
+
+  if ( (_dgi_list[0]._last_used == Timestamp(0,0)) ||
+       ((Timestamp::now() - _dgi_list[0]._last_used).msecval() > _max_graph_age) ) dijkstra(0);
+
+  return dni->_metric[0];
+}
+
+int32_t
+Dijkstra::metric_to_me(EtherAddress src)
+{
+  DijkstraNodeInfo *dni = _dni_table.find(src);
+
+  if ( ! dni ) return -1;
+
+  if ( (_dgi_list[1]._last_used == Timestamp(0,0)) ||
+        ((Timestamp::now() - _dgi_list[1]._last_used).msecval() > _max_graph_age) ) dijkstra(1);
+
+  return dni->_metric[1];
+}
+
+int
 Dijkstra::dijkstra(EtherAddress node, uint8_t mode)
 {
   int index = get_graph_index(node, mode);
 
   if ( (index >= 0) && (index < DIJKSTRA_MAX_GRAPHS) ) dijkstra(index);
+
+  return index;
 }
 
 void
@@ -123,6 +213,7 @@ Dijkstra::dijkstra(int graph_index)
 {
 
   DijkstraGraphInfo *dgi = &(_dgi_list[graph_index]);
+  dgi->_no_calcs++;
 
   if ( BRN_DEBUG_LEVEL_DEBUG ) {
     BRN_MESSAGE("Graph index: %d",graph_index);
@@ -211,22 +302,6 @@ Dijkstra::dijkstra(int graph_index)
   BRN_DEBUG("dijstra took %s",dijkstra_time.unparse().c_str());
 }
 
-void
-Dijkstra::add_node(BrnHostInfo *bhi)
-{
-  _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
-}
-
-void
-Dijkstra::remove_node(BrnHostInfo *bhi)
-{
-  DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
-  if ( info != NULL ) {
-    delete info;
-    _dni_table.erase(bhi->_ether);
-  }
-}
-
 int
 Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 {
@@ -245,7 +320,10 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 
   for ( int i = 2; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
     if ( (_dgi_list[i]._mode == mode) && (_dgi_list[i]._node == ea) ) return i;
-    if ( (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_UNUSED) && ( unused == -1) ) unused = i;
+    if ( (_dgi_list[i]._mode == DIJKSTRA_GRAPH_MODE_UNUSED) && (unused == -1) ) {
+      unused = i;
+      break;
+    }
   };
 
   if ( unused == -1 ) {
@@ -271,21 +349,52 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 
   _dgi_list[unused]._node = ea;
   _dgi_list[unused]._mode = mode;
+  _dgi_list[unused]._no_calcs = 0;
 
   return unused;
+}
+
+void
+Dijkstra::add_node(BrnHostInfo *bhi)
+{
+  _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+}
+
+void
+Dijkstra::remove_node(BrnHostInfo *bhi)
+{
+  DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
+  if ( info != NULL ) {
+    delete info;
+    _dni_table.erase(bhi->_ether);
+  }
 }
 
 /****************************************************************************************************************/
 /*********************************** H A N D L E R **************************************************************/
 /****************************************************************************************************************/
 
+String
+Dijkstra::stats()
+{
+  StringAccum sa;
+  int c = 0;
+  for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) if (_dgi_list[i]._mode != DIJKSTRA_GRAPH_MODE_UNUSED) c++; 
+
+  sa << "<dijkstra used_graphs=\"" << c << " max_graphs=\"" << DIJKSTRA_MAX_GRAPHS << "\" >";
+
+
+}
+
 enum { H_DIJKSTRA,
        H_DIJKSTRA_TO,
        H_DIJKSTRA_FROM,
-       H_DIJKSTRA_TIME };
+       H_DIJKSTRA_ROUTE,
+       H_DIJKSTRA_TIME,
+       H_DIJKSTRA_STATS};
 
 static String
-LinkTable_read_param(Element *e, void *thunk)
+Dijkstra_read_param(Element *e, void *thunk)
 {
   Dijkstra *td = (Dijkstra *)e;
     switch ((uintptr_t) thunk) {
@@ -294,13 +403,16 @@ LinkTable_read_param(Element *e, void *thunk)
       sa << td->dijkstra_time << "\n";
       return sa.take_string();
     }
+    case H_DIJKSTRA_STATS: {
+      return td->stats();
+    }
     default:
       return String();
     }
 }
 
 static int
-LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+Dijkstra_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   Dijkstra *f = (Dijkstra *)e;
   String s = cp_uncomment(in_s);
@@ -319,7 +431,26 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
         EtherAddress m;
         if (!cp_ethernet_address(s, &m)) return errh->error("dijkstra parameter must be etheraddress");
 
-        f->dijkstra(m, ((long)vparam == H_DIJKSTRA_TO)?DIJKSTRA_GRAPH_MODE_TO_NODE:DIJKSTRA_GRAPH_MODE_FR0M_NODE);
+        f->dijkstra(m,DIJKSTRA_GRAPH_MODE_TO_NODE);
+        f->dijkstra(m,DIJKSTRA_GRAPH_MODE_FR0M_NODE);
+        break;
+      }
+      case H_DIJKSTRA_ROUTE: {
+        Vector<String> args;
+        cp_spacevec(s, args);
+      // run dijkstra for all associated clients
+        EtherAddress s,d;
+
+        if (!cp_ethernet_address(args[0], &s)) return errh->error("dijkstra parameter must be etheraddress");
+        if (!cp_ethernet_address(args[1], &d)) return errh->error("dijkstra parameter must be etheraddress");
+
+        uint32_t metric;
+        Vector<EtherAddress> r;
+        f->get_route(s, d, r, &metric);
+
+        for ( int i = 0; i < r.size(); i++ ) {
+          click_chatter("%d -> %s",i,r[i].unparse().c_str());
+        }
         break;
       }
   }
@@ -331,11 +462,13 @@ Dijkstra::add_handlers()
 {
   RoutingAlgorithm::add_handlers();
 
-  add_write_handler("dijkstra", LinkTable_write_param, (void *)H_DIJKSTRA);
-  add_write_handler("dijkstra_from_node", LinkTable_write_param, (void *)H_DIJKSTRA_FROM);
-  add_write_handler("dijkstra_to_node", LinkTable_write_param, (void *)H_DIJKSTRA_TO);
+  add_write_handler("dijkstra", Dijkstra_write_param, (void *)H_DIJKSTRA);
+  add_write_handler("dijkstra_from_node", Dijkstra_write_param, (void *)H_DIJKSTRA_FROM);
+  add_write_handler("dijkstra_to_node", Dijkstra_write_param, (void *)H_DIJKSTRA_TO);
+  add_write_handler("dijkstra_route", Dijkstra_write_param, (void *)H_DIJKSTRA_ROUTE);
 
-  add_read_handler("dijkstra_time", LinkTable_read_param, (void *)H_DIJKSTRA_TIME);
+  add_read_handler("dijkstra_time", Dijkstra_read_param, (void *)H_DIJKSTRA_TIME);
+  add_read_handler("stats", Dijkstra_read_param, (void *)H_DIJKSTRA_STATS);
 
 }
 

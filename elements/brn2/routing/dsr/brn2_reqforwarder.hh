@@ -31,7 +31,6 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
 
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
 #include "elements/brn2/standard/packetsendbuffer.hh"
 
 #include "brn2_routequerier.hh"

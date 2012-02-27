@@ -434,7 +434,7 @@ Brn2LinkTable::print_hosts()
 
   for (int x = 0; x < ether_addrs.size(); x++) {
     BrnHostInfo *nfo = _hosts.findp(ether_addrs[x]);
-    sa << ether_addrs[x] << " from_me: " << nfo->_metric_from_me << " to_me: " << nfo->_metric_to_me << " assosiated: " << nfo->_is_associated << "\n";
+    sa << ether_addrs[x] << " assosiated: " << nfo->_is_associated << "\n";
   }
 
   return sa.take_string();

@@ -176,7 +176,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     return;
   }
 
-  int metric_of_route = -1;
+  uint32_t metric_of_route = 0;
   EtherAddresses* fixed_route = fixed_routes.findp(EtherPair(dst_addr, src_addr));
 
   if ( fixed_route && (fixed_route->size() >= 2)
@@ -190,8 +190,8 @@ BRN2RouteQuerier::push(int, Packet *p_in)
 
   } else {
     BRN_DEBUG(" query route: %s (src) to %s (dst)",src_addr.unparse().c_str(),dst_addr.unparse().c_str());
-    _routing_maintenance->query_route( src_addr, dst_addr, route );
-    metric_of_route = _routing_maintenance->get_route_metric(route);
+    _routing_maintenance->query_route( src_addr, dst_addr, route, &metric_of_route );
+    metric_of_route = _routing_maintenance->get_route_metric(route); //update metric if lanks have changed
   }
 
   BRN_DEBUG(" Metric of found route = %d route_length = %d", metric_of_route, route.size());
@@ -201,7 +201,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     BRN_DEBUG(" * routestr:\n%s", route_str.c_str());
   }
 
-  if ( ( route.size() > 1 ) && ( metric_of_route != -1 ) ) { // route available
+  if ( ( route.size() > 1 ) && ( metric_of_route != 0 ) ) { // route available
     if(_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" * have cached route:");
       for (int j=0; j < route.size(); j++) {
@@ -658,7 +658,7 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
                         dst.unparse().c_str());
 
         // search route for destination in the link cache first
-        int metric_of_route = -1;
+        uint32_t metric_of_route = 0;
         EtherAddresses route;
         EtherAddresses* fixed_route = fixed_routes.findp(EtherPair(dst, src));
         if ( fixed_route && fixed_route->size() >= 2 &&
@@ -667,11 +667,11 @@ BRN2RouteQuerier::sendbuffer_timer_hook()
           route = *fixed_route;
           metric_of_route = 1;
         } else {
-          _routing_maintenance->query_route( src, dst, route );
-          metric_of_route = _routing_maintenance->get_route_metric(route);
+          _routing_maintenance->query_route( src, dst, route, &metric_of_route );
+          metric_of_route = _routing_maintenance->get_route_metric(route);    //update metric if links have changed
         }
 
-        if ( ( route.size() > 1 )  && ( metric_of_route != -1 ) ) { // route available
+        if ( ( route.size() > 1 )  && ( metric_of_route != 0 ) ) { // route available
 
           if(_debug == BrnLogger::DEBUG) {
             BRN_DEBUG(" * have a route:");
@@ -809,9 +809,10 @@ BRN2RouteQuerier::rreq_issue_hook()
     // we could find out a route by some other means than a direct
     // RREP.  if this is the case, stop issuing requests.
     EtherAddresses route;
-    _routing_maintenance->query_route( ir._source, ir._target, route );
+    uint32_t metric_of_route;
 
-    int metric_of_route = _routing_maintenance->get_route_metric(route);
+    _routing_maintenance->query_route( ir._source, ir._target, route, &metric_of_route);
+    metric_of_route = _routing_maintenance->get_route_metric(route);
 
     if(_debug == BrnLogger::DEBUG) {
       BRN_DEBUG(" BUGTRACK: * Metric for route is %d\n * Route is", metric_of_route);
@@ -821,7 +822,7 @@ BRN2RouteQuerier::rreq_issue_hook()
       }
     }
 
-    if ( ( route.size() > 1 )  && ( metric_of_route != -1 ) ) { // route available
+    if ( ( route.size() > 1 )  && ( metric_of_route != 0 ) ) { // route available
       remove_list.push_back(ir._target);
       continue;
     } else {

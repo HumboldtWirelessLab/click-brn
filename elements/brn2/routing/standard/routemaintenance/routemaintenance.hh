@@ -64,22 +64,10 @@ class RoutingMaintenance: public BRNElement {
   int configure(Vector<String> &conf, ErrorHandler *errh);
   void *cast(const char *n);
 
-  Vector< Vector<EtherAddress> > top_n_routes(EtherAddress dst, int n);
-
   //
   //member
   //
-
-  uint32_t get_route_metric_to_me(EtherAddress s);
-  Vector<EtherAddress> best_route(EtherAddress dst, bool from_me, uint32_t *metric);
-  bool valid_route(const Vector<EtherAddress> &route);
-
-  int32_t get_route_metric(const Vector<EtherAddress> &route);
-  void get_inodes(Vector<EtherAddress> &ether_addrs);
-
-  String print_routes(bool);
-
-  String ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes);
+  void best_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric);
 
   /**
    * @brief Query for a route between addrSrc and addrDst in cache
@@ -92,13 +80,26 @@ class RoutingMaintenance: public BRNElement {
   inline void query_route(
     /*[in]*/  const EtherAddress&   addrSrc,
     /*[in]*/  const EtherAddress&   addrDst,
-    /*[out]*/ Vector<EtherAddress>& route );
+    /*[out]*/ Vector<EtherAddress>& route,
+              uint32_t *metric );
 
   inline void update_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,
   /*[out]*/ Vector<EtherAddress>& route,
-  uint32_t metric);
+            uint32_t metric);
+
+  Vector< Vector<EtherAddress> > top_n_routes(EtherAddress src, EtherAddress dst, int n);
+  int32_t get_route_metric(const Vector<EtherAddress> &route);
+
+  void best_route_to_me(EtherAddress src, Vector<EtherAddress> &route, uint32_t *metric);
+  void best_route_from_me(EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric);
+  uint32_t get_route_metric_to_me(EtherAddress s);
+  uint32_t get_route_metric_from_me(EtherAddress d);
+
+  bool valid_route(const Vector<EtherAddress> &route);
+
+  String print_routes(bool);
 
 private:
 
@@ -107,38 +108,24 @@ private:
   BrnRoutingTable *_routing_table;
   RoutingAlgorithm *_routing_algo;
 
-public:
-  void calc_routes(EtherAddress src, bool from_me) {
-    if ( _routing_algo != NULL ) _routing_algo->calc_routes(src,from_me);
-  }
 };
 
 inline void
 RoutingMaintenance::query_route(
   /*[in]*/  const EtherAddress&   addrSrc,
   /*[in]*/  const EtherAddress&   addrDst,
-  /*[out]*/ Vector<EtherAddress>& route )
+  /*[out]*/ Vector<EtherAddress>& route,
+            uint32_t *metric )
 {
-  uint32_t metric;
-
   // First, search the route cache
-  bool bCached = _routing_table->get_cached_route( addrSrc,
-                                                    addrDst,
-                                                    route,
-                                                    &metric);
+  bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, route, metric);
 
-  if( false == bCached )
-  {
-    // current node is not final destination of the packet,
-    // so lookup route from dsr table and generate a dsr packet
-    _routing_algo->calc_routes(addrSrc, true);
-
-    route = best_route(addrDst, true, &metric);
+  if( ! bCached ) {
+    _routing_algo->get_route(addrDst, addrSrc, route, metric);
 
     // Cache the found route ...
-    if( false == route.empty() )
-    {
-      _routing_table->insert_route( addrSrc, addrDst, route, metric );
+    if( ! route.empty() ) {
+      _routing_table->insert_route( addrSrc, addrDst, route, *metric );
     }
   }
 }
@@ -157,10 +144,7 @@ RoutingMaintenance::update_route(
   // First, search the route cache
   bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
 
-  if( ! bCached )
-  {
-    // current node is not final destination of the packet,
-    // so lookup route from dsr table and generate a dsr packet
+  if( ! bCached ){
     _routing_table->insert_route( addrSrc, addrDst, route, metric );
   } else {
     if ( metric < old_metric ) {
@@ -170,4 +154,4 @@ RoutingMaintenance::update_route(
 }
 
 CLICK_ENDDECLS
-#endif /* CLICK_BRNLINKTABLE_HH */
+#endif /* CLICK_ROUTINGMAINTENANCE_HH */

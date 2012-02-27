@@ -105,15 +105,14 @@ BRNSetGateway::choose_gateway() {
    uint32_t metric;
 
    // find a route
-   Vector<EtherAddress> route = _routing_maintenance->best_route(gw, true, &metric);
+   Vector<EtherAddress> route;
+   _routing_maintenance->best_route_from_me(gw, route, &metric);
 
    if (!_routing_maintenance->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 
-     BRN_WARN(" Route ist %s", _routing_maintenance->print_routes(true).c_str());
+     BRN_WARN(" Routes are %s", _routing_maintenance->print_routes(true).c_str());
 
-     // run Dijstra to look for new route
-     _routing_maintenance->calc_routes(gw, true);
-     if (_routing_maintenance->valid_route(_routing_maintenance->best_route(gw, true, &metric))) {
+     if (_routing_maintenance->valid_route(route)) {
        // have a route now
        break; 
      }

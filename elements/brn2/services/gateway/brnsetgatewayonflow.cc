@@ -132,14 +132,13 @@ BRNSetGatewayOnFlow::choose_gateway() {
     BRN_DEBUG("Running over gateway %s", gw.unparse().c_str());
 
     // find a route
-    Vector<EtherAddress> route = _routing_maintenance->best_route(gw, true, &metric);
+    Vector<EtherAddress> route;
+    _routing_maintenance->best_route_from_me(gw, route, &metric);
 
     if (!_routing_maintenance->valid_route(route) && !(_gw->_my_eth_addr == gw)) {
 		  BRN_DEBUG("Don't know metric to gateway %s.", gw.unparse().c_str());
 
-      // run Dijstra to look for new route
-      _routing_maintenance->calc_routes(gw, true);
-      if (_routing_maintenance->valid_route(_routing_maintenance->best_route(gw, true, &metric))) {
+      if (_routing_maintenance->valid_route(route)) {
         // have a route now
         break; 
       }

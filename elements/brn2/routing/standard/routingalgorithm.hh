@@ -19,8 +19,10 @@ class RoutingAlgorithm : public BRNElement
     virtual const char *routing_algorithm_name() const = 0; //const : function doesn't change the object (members).
                                                             //virtual: späte Bindung
 
-    //virtual const char *calc_routes() const = 0; //const : function doesn't change the object (members).
-    virtual void calc_routes(EtherAddress src, bool from_me) = 0; //const : function doesn't change the object (members).
+    virtual void get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric) = 0;
+    virtual int32_t metric_from_me(EtherAddress dst) = 0;
+    virtual int32_t metric_to_me(EtherAddress src) = 0;
+
     virtual void add_handlers();
 
     uint32_t _min_link_metric_within_route;
