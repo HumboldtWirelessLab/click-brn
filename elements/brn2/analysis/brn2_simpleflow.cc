@@ -29,6 +29,14 @@ BRN2SimpleFlow::BRN2SimpleFlow()
 
 BRN2SimpleFlow::~BRN2SimpleFlow()
 {
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); fm++) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
+    delete fl;
+  }
+  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
+    delete fl;
+  }
 }
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
@@ -87,7 +95,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
     BRN_DEBUG("Is active");
 
-    Flow *txFlow = _tx_flowMap.findp(dst_of_flow);
+    Flow *txFlow = _tx_flowMap.find(dst_of_flow);
     if ( txFlow) {
       BRN_DEBUG("Send Next");
 
@@ -104,7 +112,7 @@ void
 BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 {
   BRN_DEBUG("set_active");
-  Flow *txFlow = _tx_flowMap.findp(*dst);
+  Flow *txFlow = _tx_flowMap.find(*dst);
   if ( active ) {
     if ( ! is_active(dst)  ) {
       BRN_DEBUG("flow actived");
@@ -124,7 +132,7 @@ BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
 bool
 BRN2SimpleFlow::is_active(EtherAddress *dst)
 {
-  Flow *txFlow = _tx_flowMap.findp(*dst);
+  Flow *txFlow = _tx_flowMap.find(*dst);
   if ( txFlow ) {
     Timestamp now = Timestamp::now();
     if ( txFlow->_active ) {
@@ -143,7 +151,7 @@ BRN2SimpleFlow::is_active(EtherAddress *dst)
 void
 BRN2SimpleFlow::schedule_next(EtherAddress *dst)
 {
-  Flow *txFlow = _tx_flowMap.findp(*dst);
+  Flow *txFlow = _tx_flowMap.find(*dst);
 
   if ( txFlow ) {
     if ( txFlow->_active && txFlow->_rate > 0 ) {
@@ -171,12 +179,12 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
                           uint32_t rate, uint32_t size, uint32_t mode,
                           uint32_t duration, bool active )
 {
-  Flow *txFlow = _tx_flowMap.findp(dst);
+  Flow *txFlow = _tx_flowMap.find(dst);
 
   if ( txFlow != NULL ) {
     if ( active ) txFlow->reset();
   } else {
-    _tx_flowMap.insert(dst, Flow(src, dst, _flow_id++, (FlowType)mode, rate, size, duration));
+    _tx_flowMap.insert(dst, new Flow(src, dst, _flow_id++, (FlowType)mode, rate, size, duration));
   }
 
   dst_of_flow = dst;
@@ -197,7 +205,7 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   /*Handle Reply*/
   if ( header->reply == 1 ) {
     EtherAddress dst_ea = EtherAddress(header->dst);
-    Flow *f_tx = _tx_flowMap.findp(dst_ea);
+    Flow *f_tx = _tx_flowMap.find(dst_ea);
     if ( f_tx ) {
       BRN_DEBUG("Got reply");
 
@@ -215,12 +223,12 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 
   /*Handle Packet*/
   EtherAddress src_ea = EtherAddress(header->src);
-  Flow *f = _rx_flowMap.findp(src_ea);
+  Flow *f = _rx_flowMap.find(src_ea);
 
   if ( f == NULL ) {  //TODO: shorten this
-    _rx_flowMap.insert(src_ea, Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
+    _rx_flowMap.insert(src_ea, new Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
                        (flowType)header->mode, ntohl(header->rate), ntohs(header->size), 0) );
-    f = _rx_flowMap.findp(src_ea);
+    f = _rx_flowMap.find(src_ea);
   }
 
   f->_rxPackets++;
@@ -372,32 +380,32 @@ BRN2SimpleFlow::xml_stats()
 
   sa << "<flowstats node=\"" << BRN_NODE_NAME << "\">\n";
   for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); fm++) {
-    BRN2SimpleFlow::Flow fl = fm.value();
+    BRN2SimpleFlow::Flow *fl = fm.value();
     sa << "\t<txflow";
-    sa << " src=\"" << fl._src.unparse().c_str() << "\"";
-    sa << " dst=\"" << fl._dst.unparse().c_str() << "\" flowid=\"" << fl._id << "\"";
-    sa << " packet_count=\"" << fl._txPackets << "\"";
-    sa << " packet_size=\"" << fl._size << "\"";
-    sa << " replies=\"" << fl._rxPackets << "\"";
-    if ( fl._rxPackets > 0 ) {
-      sa << " min_hops=\"" << fl._min_hops << "\" max_hops=\"" << fl._max_hops;
-      sa << "\" avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" std_hops=\"" << fl.std_hops();
-      sa << "\" min_time=\"" << fl._min_rt_time  << "\" max_time=\"" << fl._max_rt_time;
-      sa << "\" time=\"" << fl._cum_sum_rt_time/fl._rxPackets << "\" std_time=\"" << fl.std_time() << "\" />\n";
+    sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
+    sa << " dst=\"" << fl->_dst.unparse().c_str() << "\" flowid=\"" << fl->_id << "\"";
+    sa << " packet_count=\"" << fl->_txPackets << "\"";
+    sa << " packet_size=\"" << fl->_size << "\"";
+    sa << " replies=\"" << fl->_rxPackets << "\"";
+    if ( fl->_rxPackets > 0 ) {
+      sa << " min_hops=\"" << fl->_min_hops << "\" max_hops=\"" << fl->_max_hops;
+      sa << "\" avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" std_hops=\"" << fl->std_hops();
+      sa << "\" min_time=\"" << fl->_min_rt_time  << "\" max_time=\"" << fl->_max_rt_time;
+      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\" />\n";
     } else {
       sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" std_hops=\"0\"";
       sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" />\n";
     }
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
-    BRN2SimpleFlow::Flow fl = fm.value();
+    BRN2SimpleFlow::Flow *fl = fm.value();
     sa << "\t<rxflow";
-    sa << " src=\"" << fl._src.unparse().c_str() << "\"";
-    sa << " dst=\"" << fl._dst.unparse().c_str() << "\" flowid=\"" << fl._id << "\"";
-    sa << " packet_count=\"" << fl._rxPackets << "\" packet_size=\"" << fl._size << "\"";
-    sa << " crc_err=\"" << fl._rxCrcErrors << "\"";
-    if ( fl._rxPackets == 0 ) sa << " avg_hops=\"-1\" />\n";
-    else sa << " avg_hops=\"" << fl._cum_sum_hops/fl._rxPackets << "\" />\n";
+    sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
+    sa << " dst=\"" << fl->_dst.unparse().c_str() << "\" flowid=\"" << fl->_id << "\"";
+    sa << " packet_count=\"" << fl->_rxPackets << "\" packet_size=\"" << fl->_size << "\"";
+    sa << " crc_err=\"" << fl->_rxCrcErrors << "\"";
+    if ( fl->_rxPackets == 0 ) sa << " avg_hops=\"-1\" />\n";
+    else sa << " avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" />\n";
   }
   sa << "</flowstats>\n";
   return sa.take_string();

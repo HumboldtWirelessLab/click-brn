@@ -145,7 +145,7 @@ class BRN2SimpleFlow : public BRNElement
 
     Timer _timer;
 
-    typedef HashMap<EtherAddress, Flow> FlowMap;
+    typedef HashMap<EtherAddress, Flow*> FlowMap;
     typedef FlowMap::const_iterator FMIter;
 
     /*****************/
