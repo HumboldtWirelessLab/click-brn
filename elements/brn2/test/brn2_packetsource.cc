@@ -50,6 +50,7 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "HEADROOM", cpkP, cpInteger, &_headroom,
       "REUSE", cpkP, cpBool, &_reuse,
       "REUSEOFFSET", cpkP, cpInteger, &_reuseoffset,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
         return -1;
 
