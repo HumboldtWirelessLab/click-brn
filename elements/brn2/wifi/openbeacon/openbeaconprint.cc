@@ -37,6 +37,7 @@ OpenBeaconPrint::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 OpenBeaconPrint::simple_action(Packet *p)
 {
+
 	Click2OBD_header *crh = (Click2OBD_header *)p->data();
 	StringAccum dmac_sa( sizeof(crh->openbeacon_dmac)*4 ), smac_sa( sizeof(crh->openbeacon_smac)*4);
 	unsigned int i, dlen=0, slen=0;

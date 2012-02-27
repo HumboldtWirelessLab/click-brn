@@ -67,8 +67,9 @@ OpenBeaconEncap::simple_action(Packet *p)
   crh->status    = 0;
   crh->channel	= BRNPacketAnno::channel_anno(q);
   crh->power	= ceh->power;
+
   if ( ceh->rate == 0 ) {
-    crh->rate = 0;
+	crh->rate = 0;
   } else {
 	crh->rate = (ceh->rate/2);
   }
