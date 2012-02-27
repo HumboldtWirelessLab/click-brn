@@ -83,7 +83,6 @@ RoutingMaintenance::configure (Vector<String> &conf, ErrorHandler *errh)
 int32_t
 RoutingMaintenance::get_route_metric(const Vector<EtherAddress> &route)
 {
-
   if ( route.size() == 0 ) return -1;
   if ( route.size() == 1 ) return 0;
 
@@ -106,114 +105,48 @@ RoutingMaintenance::get_route_metric(const Vector<EtherAddress> &route)
 uint32_t
 RoutingMaintenance::get_route_metric_to_me(EtherAddress s)
 {
-  BRN_DEBUG("Search host %s in Hosttable",s.unparse().c_str());
-  if (!s) {
-    return 0;
-  }
-  BrnHostInfo *nfo = _lt->_hosts.findp(s);
-  if (!nfo) {
-    BRN_DEBUG("Couldn't find host %s in Hosttable",s.unparse().c_str());
-    return 0;
-  }
-  BRN_DEBUG("Find host %s in Hosttable",s.unparse().c_str());
-  return nfo->_metric_to_me;
+  return _routing_algo->metric_to_me(s);
 }
 
-Vector<EtherAddress>
-RoutingMaintenance::best_route(EtherAddress dst, bool from_me, uint32_t *metric)
+uint32_t
+RoutingMaintenance::get_route_metric_from_me(EtherAddress s)
 {
-  Vector<EtherAddress> reverse_route;
-
-  if (!dst) {
-    metric = 0;
-    return reverse_route;
-  }
-  BrnHostInfo *nfo = _lt->_hosts.findp(dst);
-
-  if (from_me) {
-    while (nfo && nfo->_metric_from_me != 0) {
-      reverse_route.push_back(nfo->_ether);
-      *metric = nfo->_metric_from_me;
-      nfo = _lt->_hosts.findp(nfo->_prev_from_me);
-    }
-    if (nfo && nfo->_metric_from_me == 0) {
-      reverse_route.push_back(nfo->_ether);
-    }
-  } else {
-    while (nfo && nfo->_metric_to_me != 0) {
-      reverse_route.push_back(nfo->_ether);
-      *metric = nfo->_metric_to_me;
-      nfo = _lt->_hosts.findp(nfo->_prev_to_me);
-    }
-    if (nfo && nfo->_metric_to_me == 0) {
-      reverse_route.push_back(nfo->_ether);
-    }
-  }
-
-  return reverse_route;
+  return _routing_algo->metric_from_me(s);
 }
 
-
-String
-RoutingMaintenance::print_routes(bool from_me)
+void
+RoutingMaintenance::best_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric)
 {
-  StringAccum sa;
-
-  Vector<EtherAddress> ether_addrs;
-
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
-    ether_addrs.push_back(iter.key());
-
-  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
-  sa << "<routetable id=\"";
-  sa << _node_identity->getMasterAddress()->unparse().c_str();
-  sa << "\">\n";
-
-  for (int x = 0; x < ether_addrs.size(); x++) {
-    EtherAddress ether = ether_addrs[x];
-    uint32_t metric_trash;
-    Vector <EtherAddress> r = best_route(ether, from_me, &metric_trash);
-    if (valid_route(r)) {
-      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
-
-      for (int i = 0; i < r.size()-1; i++) {
-        EthernetPair pair = EthernetPair(r[i], r[i+1]);
-        BrnLinkInfo *l = _lt->_links.findp(pair);
-        sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
-        sa << "metric=\"" << l->_metric << "\" ";
-        sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
-      }
-      sa << "\t</route>\n";
-
-    }
+  if (!dst) metric = 0;
+  else {
+    _routing_algo->get_route(src, dst, route, metric);
   }
-
-  sa << "</routetable>\n";
-
-  return sa.take_string();
 }
 
-String
-RoutingMaintenance::ether_routes_to_string(const Vector< Vector<EtherAddress> > &routes)
+void
+RoutingMaintenance::best_route_to_me(EtherAddress src, Vector<EtherAddress> &route, uint32_t *metric)
 {
-  StringAccum sa;
-  for (int x = 0; x < routes.size(); x++) {
-    Vector <EtherAddress> r = routes[x];
-    for (int i = 0; i < r.size(); i++) {
-      if (i != 0) {
-        sa << " ";
-      }
-      sa << r[i] << " ";
-      if (i != r.size()-1) {
-        sa << _lt->get_link_metric(r[i], r[i+1]);
-      }
-    }
-    if (r.size() > 0) {
-      sa << "\n";
+  //TODO: route cache
+  if (!src) metric = 0;
+  else {
+    _routing_algo->get_route(src, *_node_identity->getMasterAddress(), route, metric);
+    if ( route.size() > 2 ) {
+      if ( _node_identity->isIdentical(&route[route.size()-2]) ) route.pop_back();
     }
   }
-  return sa.take_string();
+}
+
+void
+RoutingMaintenance::best_route_from_me(EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric)
+{
+  //TODO: route cache
+  if (!dst) metric = 0;
+  else {
+    _routing_algo->get_route(*_node_identity->getMasterAddress(), dst, route, metric);
+    if ( route.size() > 1 ) {
+      if ( _node_identity->isIdentical(&route[1]) ) route.pop_front();
+    }
+  }
 }
 
 bool
@@ -243,7 +176,52 @@ enum {H_ROUTES_FROM,
       H_BEST_ROUTE,
       H_ALGO_AND_BEST_ROUTE};
 
-static String 
+String
+RoutingMaintenance::print_routes(bool from_me)
+{
+  StringAccum sa;
+
+  Vector<EtherAddress> ether_addrs;
+
+  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
+    ether_addrs.push_back(iter.key());
+
+  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
+
+  sa << "<routetable id=\"";
+  sa << _node_identity->getMasterAddress()->unparse().c_str();
+  sa << "\">\n";
+
+  for (int x = 0; x < ether_addrs.size(); x++) {
+    EtherAddress ether = ether_addrs[x];
+    uint32_t metric_trash;
+    Vector <EtherAddress> r;
+    if ( from_me )
+      best_route_from_me(ether, r, &metric_trash);
+    else
+      best_route_to_me(ether, r, &metric_trash);
+
+    if (valid_route(r)) {
+      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
+
+      for (int i = 0; i < r.size()-1; i++) {
+        EthernetPair pair = EthernetPair(r[i], r[i+1]);
+        BrnLinkInfo *l = _lt->_links.findp(pair);
+        sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
+        sa << "metric=\"" << l->_metric << "\" ";
+        sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
+      }
+      sa << "\t</route>\n";
+
+    }
+  }
+
+  sa << "</routetable>\n";
+
+  return sa.take_string();
+}
+
+static String
 LinkTable_read_param(Element *e, void *thunk)
 {
   RoutingMaintenance *td = (RoutingMaintenance *)e;
@@ -255,7 +233,7 @@ LinkTable_read_param(Element *e, void *thunk)
     }
 }
 
-static int 
+static int
 LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   RoutingMaintenance *f = (RoutingMaintenance *)e;
@@ -264,28 +242,21 @@ LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler
     case H_BEST_ROUTE:
     case H_ALGO_AND_BEST_ROUTE: {
       EtherAddress dst;
+      EtherAddress src;
 
-      if ( (long)vparam == H_ALGO_AND_BEST_ROUTE ) {
-        Vector<String> args;
-        cp_spacevec(s, args);
+      Vector<String> args;
+      cp_spacevec(s, args);
 
-        EtherAddress src;
-
-        if (args.size() != 2)
-          return errh->error("algo parameter must be etheraddress x etheraddress");
-        if (!cp_ethernet_address(args[0], &src))
-          return errh->error("algo parameter must be etheraddress x etheraddress");
-        if (!cp_ethernet_address(args[1], &dst))
-          return errh->error("algo parameter must be etheraddress x etheraddress");
-
-        f->calc_routes(src, true);
-      } else {
-        if (!cp_ethernet_address(s, &dst))
-          return errh->error("dijkstra parameter must be etheraddress");
-      }
+      if (args.size() != 2)
+        return errh->error("algo parameter must be etheraddress x etheraddress");
+      if (!cp_ethernet_address(args[0], &src))
+        return errh->error("algo parameter must be etheraddress x etheraddress");
+      if (!cp_ethernet_address(args[1], &dst))
+        return errh->error("algo parameter must be etheraddress x etheraddress");
 
       uint32_t metric_trash;
-      Vector<EtherAddress> route = f->best_route(dst, true, &metric_trash);
+      Vector<EtherAddress> route;
+      f->best_route(dst, src, route, &metric_trash);
 
       if ( route.size() > 1 ) {
         for (int j=0; j<route.size(); j++) {

@@ -92,26 +92,12 @@ class BrnHostInfo {
   public:
     EtherAddress _ether;
     IPAddress _ip;
-    uint32_t _metric_from_me;
-    uint32_t _metric_to_me;
-
-    EtherAddress _prev_from_me;
-    EtherAddress _prev_to_me;
-
-    bool _marked_from_me;
-    bool _marked_to_me;
 
     bool _is_associated;
 
     BrnHostInfo(EtherAddress p, IPAddress ip) {
       _ether = p;
       _ip = ip;
-      _metric_from_me = 0;
-      _metric_to_me = 0;
-      _prev_from_me = EtherAddress();
-      _prev_to_me = EtherAddress();
-      _marked_from_me = false;
-      _marked_to_me = false;
       _is_associated = false;
     }
 
@@ -121,26 +107,8 @@ class BrnHostInfo {
     BrnHostInfo(const BrnHostInfo &p) :
       _ether(p._ether),
       _ip(p._ip),
-      _metric_from_me(p._metric_from_me),
-      _metric_to_me(p._metric_to_me),
-      _prev_from_me(p._prev_from_me),
-      _prev_to_me(p._prev_to_me),
-      _marked_from_me(p._marked_from_me),
-      _marked_to_me(p._marked_to_me),
       _is_associated(p._is_associated)
       { }
-
-    void clear(bool from_me) {
-      if (from_me ) {
-        _prev_from_me = EtherAddress();
-        _metric_from_me = 0;
-        _marked_from_me = false;
-      } else {
-        _prev_to_me = EtherAddress();
-        _metric_to_me = 0;
-        _marked_to_me = false;
-      }
-    }
 };
 
 class BrnLinkInfo {
@@ -281,7 +249,6 @@ class Brn2LinkTable: public BRNElement {
   uint32_t get_link_metric(EtherAddress from, EtherAddress to);
   uint32_t get_link_seq(EtherAddress from, EtherAddress to);
   uint32_t get_link_age(EtherAddress from, EtherAddress to);
-  bool valid_route(const Vector<EtherAddress> &route);
 
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
   void get_local_neighbors(Vector<EtherAddress> &neighbors);

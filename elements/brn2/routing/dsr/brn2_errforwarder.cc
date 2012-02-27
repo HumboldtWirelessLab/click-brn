@@ -174,7 +174,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
 
     reverse_route(trunc_route, rev_route);
     EtherAddress src_addr(dsr->dsr_src.data); // originator of this msg
-    if (!( _link_table->get_host_metric_to_me(src_addr) == 50 ) && !_me->isIdentical(&src_addr)) {
+    if (!( _link_table->is_associated(src_addr)) && !_me->isIdentical(&src_addr)) {
       issue_rerr(bad_src, bad_dst, src_addr, rev_route);
     } else {
       BRN_DEBUG("* originator is associated with me; no rerr!");
@@ -232,7 +232,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
     // XXX DSR_INVALID_HOP_METRIC isn't really an appropriate name here
     _link_table->update_both_links(err_src, unreachable, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
 
-    if (_me->isIdentical(&err_dst) || ( _link_table->get_host_metric_to_me(err_dst) == 50 )) {
+    if (_me->isIdentical(&err_dst) || ( _link_table->is_associated(err_dst))) {
       BRN_DEBUG("* error packet killed (reached final destination)");
       p_in->kill();
     } else {

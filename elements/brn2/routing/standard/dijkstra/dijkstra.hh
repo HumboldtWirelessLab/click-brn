@@ -63,12 +63,13 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
     uint8_t _mode;
     EtherAddress _node;
     Timestamp _last_used;
+    uint32_t _no_calcs;
 
-    DijkstraGraphInfo(): _mode(DIJKSTRA_GRAPH_MODE_UNUSED), _node(EtherAddress()) {
+    DijkstraGraphInfo(): _mode(DIJKSTRA_GRAPH_MODE_UNUSED), _node(EtherAddress()), _no_calcs(0) {
       _last_used = Timestamp::now();
     }
 
-    DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node), _last_used(Timestamp::now()) {}
+    DijkstraGraphInfo(uint8_t mode,EtherAddress node): _mode(mode), _node(node), _last_used(Timestamp::now()), _no_calcs(0) {}
 
     inline bool equals(DijkstraGraphInfo dgi) {
       return ((dgi._mode == _mode) && ( dgi._node == _node ));
@@ -114,7 +115,6 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
   const char* class_name() const { return "Dijkstra"; }
 
   int initialize(ErrorHandler *);
-  void run_timer(Timer*);
   int configure(Vector<String> &conf, ErrorHandler *errh);
   void take_state(Element *, ErrorHandler *);
   void *cast(const char *n);
@@ -122,23 +122,24 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
   //
   //member
   //
+  const char *routing_algorithm_name() const { return "Dijkstra"; }
 
   Timestamp dijkstra_time;
-  void dijkstra(EtherAddress node, uint8_t mode);
-  void dijkstra(int);
+  int dijkstra(EtherAddress node, uint8_t mode);
 
-  int get_graph_index(EtherAddress ea, uint8_t mode);
-
-  void calc_routes(EtherAddress src, bool from_me) { dijkstra(src, from_me); }
-  const char *routing_algorithm_name() const { return "Dijkstra"; }
+  void get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric);
+  int32_t metric_from_me(EtherAddress dst);
+  int32_t metric_to_me(EtherAddress src);
 
   void add_node(BrnHostInfo *);
   void remove_node(BrnHostInfo *);
 
+  String stats();
 
-  Vector<EtherAddress> get_route(EtherAddress src, EtherAddress dst, uint32_t *metric);
+ private:
 
-private:
+  void dijkstra(int graph_index);
+  int get_graph_index(EtherAddress ea, uint8_t mode);
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
@@ -147,8 +148,6 @@ private:
   DNITable _dni_table;
 
   DijkstraGraphInfo _dgi_list[DIJKSTRA_MAX_GRAPHS];
-
-  Timer _timer;
 
   uint32_t _max_graph_age;
 
