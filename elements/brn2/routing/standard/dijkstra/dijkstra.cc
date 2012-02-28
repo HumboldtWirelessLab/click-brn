@@ -381,9 +381,18 @@ Dijkstra::stats()
   int c = 0;
   for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) if (_dgi_list[i]._mode != DIJKSTRA_GRAPH_MODE_UNUSED) c++; 
 
-  sa << "<dijkstra used_graphs=\"" << c << " max_graphs=\"" << DIJKSTRA_MAX_GRAPHS << "\" >";
+  sa << "<dijkstra node=\"" << BRN_NODE_NAME << "\" used_graphs=\"" << c << " max_graphs=\"" << DIJKSTRA_MAX_GRAPHS;
+  sa << "\" max_age=\"" << _max_graph_age << "\" >\n";
 
+  for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+    sa << "\t<graph id=\"" << i << "\" node=\"" << _dgi_list[i]._node.unparse() << "\" mode=\"";
+    sa << dijkstra_graph_mode_strings[_dgi_list[i]._mode] << "\" last_used=\"" << _dgi_list[i]._last_used.unparse();
+    sa << "\" no_calcs=\"" << _dgi_list[i]._no_calcs << "\" >\n";
+  }
 
+  sa << "</dijkstra>\n";
+
+  return sa.take_string();
 }
 
 enum { H_DIJKSTRA,
