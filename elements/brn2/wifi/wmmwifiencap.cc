@@ -8,6 +8,9 @@
 #include <clicknet/llc.h>
 #include <click/packet_anno.hh>
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn2/wifi/brnwifi.hh"
+
 CLICK_DECLS
 
 WMMWifiEncap::WMMWifiEncap()
@@ -55,7 +58,7 @@ WMMWifiEncap::simple_action(Packet *p)
   uint16_t ethtype;
   WritablePacket *p_out = 0;
 
-  uint8_t *qos_field;
+  struct wifi_qos_field *qos_field;
 
   if (p->length() < sizeof(struct click_ether)) {
     click_chatter("%{element}: packet too small: %d vs %d\n",
@@ -89,8 +92,9 @@ WMMWifiEncap::simple_action(Packet *p)
   memcpy(p_out->data(), WIFI_LLC_HEADER, WIFI_LLC_HEADER_LEN);
   memcpy(p_out->data() + 6, &ethtype, 2);
 
-  if (!(p_out = p_out->push(sizeof(struct click_wifi) + 2 * sizeof(uint8_t))))  //add 2 bye for QOS 
-      return 0;
+  //add 2 byte for QOS
+  if (!(p_out = p_out->push(sizeof(struct click_wifi) + 2 * sizeof(uint8_t)))) return 0;
+
   struct click_wifi *w = (struct click_wifi *) p_out->data();
 
   memset(p_out->data(), 0, sizeof(click_wifi));
@@ -98,34 +102,10 @@ WMMWifiEncap::simple_action(Packet *p)
   w->i_fc[1] = 0;
   w->i_fc[1] |= (uint8_t) (WIFI_FC1_DIR_MASK & _mode);
 
-  qos_field = p_out->data();
-  qos_field = (uint8_t *) &(qos_field[sizeof(struct click_wifi)]);
+  qos_field = (struct wifi_qos_field*)&(w[1]);
 
-/* QOS-Field 1
-  | RESERVER (Bit7) | ACK_Policy (Bit 5-6) | EOSP (Bit 4) | TID (Bit 0-3) | 
-
-TID
-  0 Besteffort
-  1-2 Background
-  3-5 Video
-  6-7 Voice
-  
-  QOS-Field 2
-  Queue-Size
-  Transmit Opprtunity
-  
-*/
-
-#define QOS_PRIORITY_BEST_EFFORT 0
-
-#define NORMAL_ACK      0 << 5
-#define NO_ACK          1 << 5
-#define NO_EXPLICIT_ACK 2 << 5
-#define BLOCK_ACK       3 << 5
-
-
-  qos_field[0] = qos; //16 + 8 + 4;
-  qos_field[1] = queue;          //queue-size
+  qos_field->qos = qos;        //16 + 8 + 4;
+  qos_field->queue = queue;    //queue-size
 
   switch (_mode) {
   case WIFI_FC1_DIR_NODS:
