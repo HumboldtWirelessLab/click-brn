@@ -86,46 +86,56 @@ void CooperativeChannelStats::run_timer(Timer *) {
 
 void CooperativeChannelStats::send_message() {
     
-  struct airtime_stats *last_ats = _cst->get_latest_stats(); //ats -> AirTimeStats
+    BRN_DEBUG("Send message...");
+    //struct neighbour_airtime_stats *nats;
+    ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
+    
+    
+    //struct airtime_stats *last_ats = _cst->get_latest_stats(); //ats -> AirTimeStats
 
-  if ( last_ats == NULL ) return;
+    // if ( last_ats == NULL ) return;
+    
+    WritablePacket *p = Packet::make(128 /*headroom*/, NULL,
+                //sizeof(struct cooperative_channel_stats_header) + sizeof(struct airtime_stats),
+                sizeof(struct cooperative_channel_stats_header) + sizeof(struct neighbour_airtime_stats) * sit->size() /* all neighbours */,
+                32); //alignment
 
-  WritablePacket *p = Packet::make(128 /*headroom*/, NULL,
-                                   sizeof(struct cooperative_channel_stats_header) + sizeof(struct airtime_stats),
-                                   32); //alignment
+    struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
+    ccsh->endianess = ENDIANESS_TEST;
+    ccsh->flags = 0;
 
-  struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
-  ccsh->endianess = ENDIANESS_TEST;
-  ccsh->flags = 0;
+//    struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
+    
+//    memcpy( ats, last_ats, sizeof(struct airtime_stats));
 
-  struct airtime_stats *ats = (struct airtime_stats *)&(ccsh[1]);
-
-  memcpy( ats, last_ats, sizeof(struct airtime_stats));
-
-  ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
-
-  uint8_t non = 0; //number of available neighbours
-  
-  if ( _add_neighbours ) {
-    ccsh->flags |= INCLUDES_NEIGHBOURS;
-
-    for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+    uint8_t non = 0; //number of available neighbours
+    struct neighbour_airtime_stats *all_nats = (struct neighbour_airtime_stats *)&(ccsh[1]);
+    
+    if ( _add_neighbours ) {
         
-      ChannelStats::SrcInfo src = iter.value();
-      EtherAddress ea = iter.key();
-      struct neighbour_airtime_stats *nats;
-      src.get_airtime_stats(&ea, nats);
-      
-      non++;
+        BRN_DEBUG("include Neighbours");
+        ccsh->flags |= INCLUDES_NEIGHBOURS;
+        
+        uint8_t it = 0;
+        for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++) {
+            
+            ChannelStats::SrcInfo src = iter.value();
+            EtherAddress ea = iter.key();
+            struct neighbour_airtime_stats nats;
+            src.get_airtime_stats(&ea, &nats);
+            non++;
+            memcpy(all_nats, &nats, sizeof(struct neighbour_airtime_stats));
+        }
     }
-  }
-  
-  ccsh->no_neighbours = non;
+    
+    BRN_DEBUG("Number of Neighbours: %d", non);
+    ccsh->no_neighbours = non;
 
 #warning check stettings of brn_headers
   p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
 
   output(0).push(p);
+  BRN_DEBUG(".....Send Message");
 }
 
 /*********************************************/
@@ -134,6 +144,7 @@ void CooperativeChannelStats::send_message() {
 void
 CooperativeChannelStats::push(int port, Packet *p)
 {
+    BRN_DEBUG("Push....");
     struct click_wifi *wh = (struct click_wifi *) p->data();
   // click_ether *eh = (click_ether *) p->ether_header(); // THIS IS NULL
   // EtherAddress src_ea = EtherAddress(eh->ether_shost);
@@ -162,6 +173,7 @@ CooperativeChannelStats::push(int port, Packet *p)
     if (ncs->_n_stats.find(src_ea) != NULL) {
         BRN_DEBUG("%s RSSI: %d", src_ea.unparse().c_str(), ncs->_n_stats.find(src_ea)->_avg_rssi);
     }
+    BRN_DEBUG("CSSH flags: %d", ccsh->flags);
     BRN_DEBUG("%s Neighbour Number: %d", src_ea.unparse().c_str(), ccsh->no_neighbours);
  //   if (ccsh != NULL)
     p->kill();

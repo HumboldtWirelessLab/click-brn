@@ -24,6 +24,7 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+
 #include "elements/brn2/brn2.h"
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/wifi/brnwifi.hh"
@@ -196,6 +197,7 @@ class ChannelStats : public BRNElement {
 
     class SrcInfo {
      public:
+
       uint16_t _reserved;
       uint32_t _rssi;
       uint32_t _sum_sq_rssi;
@@ -316,8 +318,9 @@ class ChannelStats : public BRNElement {
       }
 
       void get_airtime_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
+          
         if ( ! _calc_finished ) calc_values();
-
+          
         memcpy(stats->_etheraddr, ea->data(), 6);
         stats->_reserved = 0;
         stats->_pkt_count = _pkt_count;
