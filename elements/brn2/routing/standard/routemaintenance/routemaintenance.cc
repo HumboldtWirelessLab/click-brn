@@ -174,7 +174,8 @@ RoutingMaintenance::valid_route(const Vector<EtherAddress> &route)
 enum {H_ROUTES_FROM,
       H_ROUTES_TO,
       H_BEST_ROUTE,
-      H_ALGO_AND_BEST_ROUTE};
+      H_ALGO_AND_BEST_ROUTE,
+      H_STATS};
 
 String
 RoutingMaintenance::print_routes(bool from_me)
@@ -220,21 +221,73 @@ RoutingMaintenance::print_routes(bool from_me)
 
   return sa.take_string();
 }
+ uint32_t _route_requests;
+ uint32_t _route_algo_usages;
+ uint32_t _route_updates;
+ uint32_t _cache_hits;
+ uint32_t _cache_inserts;
+ uint32_t _cache_updates;
+
+String
+RoutingMaintenance::print_stats()
+{
+  StringAccum sa;
+
+  Vector<EtherAddress> ether_addrs;
+
+  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
+    ether_addrs.push_back(iter.key());
+
+  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
+
+  sa << "<routingmaintenancestats id=\"" << _node_identity->getMasterAddress()->unparse().c_str() << "\">\n";
+
+  for (int x = 0; x < ether_addrs.size(); x++) {
+    EtherAddress ether = ether_addrs[x];
+    uint32_t metric_trash;
+    Vector <EtherAddress> r;
+    if ( from_me )
+      best_route_from_me(ether, r, &metric_trash);
+    else
+      best_route_to_me(ether, r, &metric_trash);
+
+    if (valid_route(r)) {
+      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
+
+      for (int i = 0; i < r.size()-1; i++) {
+        EthernetPair pair = EthernetPair(r[i], r[i+1]);
+        BrnLinkInfo *l = _lt->_links.findp(pair);
+        sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
+        sa << "metric=\"" << l->_metric << "\" ";
+        sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
+      }
+      sa << "\t</route>\n";
+
+    }
+  }
+
+  sa << "</routetable>\n";
+
+  return sa.take_string();
+
+}
+
 
 static String
-LinkTable_read_param(Element *e, void *thunk)
+RoutingMaintenance_read_param(Element *e, void *thunk)
 {
   RoutingMaintenance *td = (RoutingMaintenance *)e;
     switch ((uintptr_t) thunk) {
     case H_ROUTES_TO: return td->print_routes(false);
     case H_ROUTES_FROM: return td->print_routes(true);
+    case H_STATS: return td->print_stats();
     default:
       return String();
     }
 }
 
 static int
-LinkTable_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+RoutingMaintenance_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   RoutingMaintenance *f = (RoutingMaintenance *)e;
   String s = cp_uncomment(in_s);
@@ -274,12 +327,13 @@ RoutingMaintenance::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("routes", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_from", LinkTable_read_param, (void *)H_ROUTES_FROM);
-  add_read_handler("routes_to", LinkTable_read_param, (void *)H_ROUTES_TO);
+  add_read_handler("routes", RoutingMaintenance_read_param, (void *)H_ROUTES_FROM);
+  add_read_handler("routes_from", RoutingMaintenance_read_param, (void *)H_ROUTES_FROM);
+  add_read_handler("routes_to", RoutingMaintenance_read_param, (void *)H_ROUTES_TO);
+  add_read_handler("stats", RoutingMaintenance_read_param, (void *)H_STATS);
 
-  add_write_handler("algo_and_best_route", LinkTable_write_param, (void *)H_ALGO_AND_BEST_ROUTE);
-  add_write_handler("best_route", LinkTable_write_param, (void *)H_BEST_ROUTE);
+  add_write_handler("algo_and_best_route", RoutingMaintenance_write_param, (void *)H_ALGO_AND_BEST_ROUTE);
+  add_write_handler("best_route", RoutingMaintenance_write_param, (void *)H_BEST_ROUTE);
 }
 
 CLICK_ENDDECLS

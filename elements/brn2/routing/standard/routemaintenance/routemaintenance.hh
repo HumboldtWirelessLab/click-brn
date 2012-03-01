@@ -101,12 +101,21 @@ class RoutingMaintenance: public BRNElement {
 
   String print_routes(bool);
 
+  String print_stats();
+
 private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
   BrnRoutingTable *_routing_table;
   RoutingAlgorithm *_routing_algo;
+
+  uint32_t _route_requests;
+  uint32_t _route_algo_usages;
+  uint32_t _route_updates;
+  uint32_t _cache_hits;
+  uint32_t _cache_inserts;
+  uint32_t _cache_updates;
 
 };
 
@@ -117,16 +126,21 @@ RoutingMaintenance::query_route(
   /*[out]*/ Vector<EtherAddress>& route,
             uint32_t *metric )
 {
+  _route_requests++;
   // First, search the route cache
   bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, route, metric);
 
   if( ! bCached ) {
     _routing_algo->get_route(addrDst, addrSrc, route, metric);
+    _route_algo_usages++;
 
     // Cache the found route ...
     if( ! route.empty() ) {
       _routing_table->insert_route( addrSrc, addrDst, route, *metric );
+      _cache_inserts++;
     }
+  } else {
+    _cache_hits++;
   }
 }
 
@@ -146,9 +160,11 @@ RoutingMaintenance::update_route(
 
   if( ! bCached ){
     _routing_table->insert_route( addrSrc, addrDst, route, metric );
+    _cache_inserts++;
   } else {
     if ( metric < old_metric ) {
       _routing_table->insert_route( addrSrc, addrDst, route, metric );
+      _cache_updates++;
     }
   }
 }
