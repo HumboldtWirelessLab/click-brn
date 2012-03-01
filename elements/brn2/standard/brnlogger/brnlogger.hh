@@ -158,7 +158,7 @@ public:
   inline String get_address() const;
 
 protected:
-  void log(int level, const char* format, va_list ptr) const;
+  bool log(int level, const char* format, va_list ptr) const;
 
   static const String& get_id(const Element* elem);
 
@@ -242,7 +242,10 @@ BrnLogger::log(int level, const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(level, format, ptr);
+  while ( ! log(level, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
@@ -251,7 +254,10 @@ BrnLogger::fatal(const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(FATAL, format, ptr);
+  while ( ! log(FATAL, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
@@ -260,7 +266,10 @@ BrnLogger::error(const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(ERROR, format, ptr);
+  while ( ! log(ERROR, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
@@ -269,7 +278,10 @@ BrnLogger::warn(const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(WARN, format, ptr);
+  while ( ! log(WARN, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
@@ -278,7 +290,10 @@ BrnLogger::info(const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(INFO, format, ptr);
+  while ( ! log(INFO, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
@@ -287,7 +302,10 @@ BrnLogger::debug(const char* format, ...) const
 {
   va_list ptr;
   va_start(ptr, format);
-  log(DEBUG, format, ptr);
+  while ( ! log(DEBUG, format, ptr) ) {
+    va_end(ptr);
+    va_start(ptr, format);
+  }
   va_end(ptr);
 }
 
