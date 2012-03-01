@@ -42,7 +42,7 @@ int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
 }
 
 Packet *PacketLossEstimator::simple_action(Packet *packet) {
-
+    
     if (packet != NULL) {
         
         gather_packet_infos_(packet);
@@ -54,8 +54,11 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
             if (_cst != NULL) {
 
                 stats = _cst->get_latest_stats();
+                
                 estimateWeakSignal(stats);
+               
                 estimateNonWifi();
+                
             }
 
             if (_cinfo != NULL && packet_parameter->get_src_address() != brn_etheraddress_broadcast) {
@@ -64,16 +67,18 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                 CollisionInfo::RetryStats *rs = rs_tab.find(packet_parameter->get_src_address());
 
                 if (rs != NULL) {
+                    
                     BRN_DEBUG("CINFO fraction for %s with queue 0: %i", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(0));
                     BRN_DEBUG("CINFO fraction for %s with queue 0: %i", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(1));
                     BRN_DEBUG("CINFO fraction for %s with queue 0: %i", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(2));
                     BRN_DEBUG("CINFO fraction for %s with queue 0: %i", packet_parameter->get_src_address().unparse().c_str(), rs->get_frac(3));
                 } else {
+                    
                     BRN_DEBUG("CINFO fraction for %s is NULL!!!", packet_parameter->get_src_address().unparse().c_str());
                 }
                 
             }
-
+            
             if (_hnd != NULL && packet_parameter->get_src_address() != brn_etheraddress_broadcast) {
 
                 if (_hnd->has_neighbours(packet_parameter->get_src_address())) {
@@ -275,11 +280,6 @@ void PacketLossEstimator::estimateInrange() {
         }
     }
     
-    
-   
-//    uint8_t period = 1023; // maxCW
-//    irProp = (1 - (fac(period) / (fac(period - neighbours) * pow(period, neighbours)))) * 100;
-    
     uint16_t *backoffsize = _dev->get_cwmax();
     double temp = 1.0;
     
@@ -314,34 +314,43 @@ void PacketLossEstimator::estimateNonWifi() {
         if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
             
             _pli->graph_insert(packet_parameter->get_src_address());
-    }
-    // cannot be estimated in simulator. There is no non_wifi.
-    _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::NON_WIFI)->setFraction(10);
+        }
+        // cannot be estimated in simulator. There is no non_wifi.
+        _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::NON_WIFI)->setFraction(10);
     }
 }
 
 void PacketLossEstimator::estimateWeakSignal(struct airtime_stats *stats) {
     
     int8_t weaksignal = 0;
-    
-    weaksignal = stats->avg_rssi - stats->std_rssi;
-    
-    if (weaksignal < 0)
-        weaksignal = 100;
-    else
-        weaksignal = 100 - weaksignal;
-    
+
+    if (stats != NULL) {
+        
+        if (stats->avg_rssi > 0) {
+            
+            weaksignal = stats->avg_rssi - stats->std_rssi;
+            
+            if (weaksignal < 2)
+                weaksignal = 100;
+            else
+                if(weaksignal < 11) // this is only for atheros because RSSI-MAX is differs from vendor to vendor
+                    weaksignal = 50;
+
+        }
+    }
     if (!_pli->mac_address_exists(packet_parameter->get_src_address())) {
 
         _pli->graph_insert(packet_parameter->get_src_address());
     }
     
     _pli->graph_get(packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(weaksignal);
-    
+
+    /*
     BRN_DEBUG("Avg RSSI: %i", stats->avg_rssi);
     BRN_DEBUG("Std RSSI: %i", stats->std_rssi);
     BRN_DEBUG("Avg Noise: %i", stats->avg_noise);
     BRN_DEBUG("Std Noise: %i", stats->std_noise);
+     */
     BRN_DEBUG("Weak Signal: %i", weaksignal);
 }
 
@@ -362,11 +371,10 @@ String PacketLossEstimator::stats_handler(int mode) {
             
             sa << "\t<hiddennodes>\n";
             HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
-            BRN_DEBUG("111111111");
             uint8_t fraction;
             BRN_DEBUG("2222222222: %d", neighbour_nodes.size());
             for (Vector<EtherAddress>::const_iterator i = _pli->node_neighbours_addresses_get().begin(); i != _pli->node_neighbours_addresses_get().end(); i++) {
-                //BRN_DEBUG("3333333333333");
+
  //           for (HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++) {
                 //if (!_pli->mac_address_exists(i.key()))
                   //  continue;
@@ -378,7 +386,6 @@ String PacketLossEstimator::stats_handler(int mode) {
                 sa << "\t\t\t<fraction>"
                         << _pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction()
                         << "</fraction>\n";
-                //BRN_DEBUG("444444444444444");
                 sa << "\t\t</neighbour address>\n";
             }
             sa << "\t</hiddennodes>\n";

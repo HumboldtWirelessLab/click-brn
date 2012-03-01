@@ -97,6 +97,49 @@ struct brn_click_wifi_extra_rx_status {
 -------------------------------------------------------------------
 */
 
+
+struct wifi_n_ht_control {
+  uint16_t link_adaption;
+  uint8_t  calibration;
+  uint8_t  aggregation;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+
+
+/* QOS-Field 1
+  | RESERVER (Bit7) | ACK_Policy (Bit 5-6) | EOSP (Bit 4) | TID (Bit 0-3) | 
+
+TID
+  0 Besteffort
+  1-2 Background
+  3-5 Video
+  6-7 Voice
+
+  QOS-Field 2
+  Queue-Size
+  Transmit Opprtunity
+
+*/
+
+#define QOS_PRIORITY_BEST_EFFORT 0
+
+#define NORMAL_ACK      0 << 5
+#define NO_ACK          1 << 5
+#define NO_EXPLICIT_ACK 2 << 5
+#define BLOCK_ACK       3 << 5
+
+struct wifi_qos_field {
+  uint8_t qos;
+  uint8_t queue;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+struct wifi_n_msdu_header {
+  uint8_t  da[6];
+  uint8_t  sa[6];
+  uint16_t len;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+
 class BrnWifi
 {
 
