@@ -174,8 +174,11 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
 
       if ( ! HawkProtocol::has_next_hop(p_in) ) HawkProtocol::set_next_hop(p_in,next_phy_hop);
 
+      int loop_counter = 0;
       while ( ( next_phy_hop != NULL ) && (! _rt->isNeighbour(next_phy_hop)) ) {
         next_phy_hop = _rt->getNextHop(next_phy_hop);
+        loop_counter++;
+        if ( loop_counter > 10 ) next_phy_hop = NULL;
       }
 
       if ( next_phy_hop == NULL ) {

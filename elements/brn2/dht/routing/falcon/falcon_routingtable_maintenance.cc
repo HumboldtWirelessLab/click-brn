@@ -68,7 +68,7 @@ FalconRoutingTableMaintenance::static_lookup_timer_hook(Timer *t, void *f)
 void
 FalconRoutingTableMaintenance::set_lookup_timer()
 {
-  _lookup_timer.schedule_after_msec( _update_interval );
+  _lookup_timer.reschedule_after_msec( _update_interval );
 }
 
 void
