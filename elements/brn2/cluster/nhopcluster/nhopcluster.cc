@@ -247,6 +247,8 @@ NHopCluster::handle_request(Packet *p)
     if ( mgt->hops < _max_distance ) {
       _fwd_req++;
       forward(p);
+    } else {
+      p->kill();
     }
   } else {
     p->kill();
@@ -295,6 +297,8 @@ NHopCluster::handle_notification(Packet *p)
     if ( mgt->hops < _max_distance ) {
       _fwd_notification++;
       forward(p);
+    } else {
+      p->kill();
     }
   } else {
     p->kill();
