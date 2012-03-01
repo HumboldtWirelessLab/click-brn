@@ -234,7 +234,7 @@ BRN2PacketQueueControl::setFlow(Flow *f) {
   ac_flow = f;
 
   BRN_DEBUG("Start flow timer in %d ms",ac_flow->_start);
-  _flow_timer.schedule_after_msec(ac_flow->_start);
+  _flow_timer.reschedule_after_msec(ac_flow->_start);
 
   ac_flow->_id = ++_flow_id;
 
@@ -267,7 +267,7 @@ BRN2PacketQueueControl::flow_stats()
   sa << "duration=\"" << (ac_flow->_end-ac_flow->_start) <<  "\" send_packets=\"" << ac_flow->_send_packets << "\" ";
   sa << "packetsize=\"" << ac_flow->_packetsize + _packetheadersize << "\" ";
   sa << "rate=\"" << rate << "\" ";
-  sa << "unit=\"bits per sec\" ";
+  sa << "unit=\"bits/sec\" ";
   sa << "running=\"" << ac_flow->_running << "\" ";
   sa << "interval=\"" << ac_flow->_interval << "\" ";
   sa << "queue_empty_cnt=\"" << ac_flow->_queue_empty << "\" />\n";
