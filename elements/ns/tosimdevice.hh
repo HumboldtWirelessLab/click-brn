@@ -4,6 +4,7 @@
 #include <click/string.hh>
 #include <click/task.hh>
 #include <click/notifier.hh>
+#include "simdevice.hh"
 CLICK_DECLS
 
 /*****************************************************************************
@@ -64,7 +65,7 @@ CLICK_DECLS
  * Can push or pull.
  */
 
-class ToSimDevice : public Element { public:
+class ToSimDevice : public SimDevice { public:
 
   ToSimDevice();
   ~ToSimDevice();
@@ -85,6 +86,11 @@ class ToSimDevice : public Element { public:
   void push(int port, Packet *);
   bool run_task(Task *);
 
+  int _packets_in_sim_queue;
+
+  virtual int incoming_packet(int ifid,int ptype,const unsigned char* data,int len,
+                              simclick_simpacketinfo* pinfo);
+
   private:
 
     String _ifname;
@@ -95,6 +101,9 @@ class ToSimDevice : public Element { public:
     NotifierSignal _signal;
 
     void send_packet(Packet *);
+
+    bool _polling;
+    bool _txfeedback_anno;
 
 };
 
