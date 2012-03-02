@@ -55,7 +55,7 @@ FalconPassiveMonitoring::static_lookup_timer_hook(Timer *t, void *f)
 
   ((FalconPassiveMonitoring*)f)->check_monitoring();
 
-  ((FalconPassiveMonitoring*)f)->_lookup_timer.schedule_after_msec(5000);
+  ((FalconPassiveMonitoring*)f)->_lookup_timer.reschedule_after_msec(5000);
 
 }
 

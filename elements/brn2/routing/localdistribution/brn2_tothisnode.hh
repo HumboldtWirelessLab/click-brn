@@ -65,6 +65,9 @@ class BRN2ToThisNode : public Element {
   //member
   //
   class BRN2NodeIdentity *_id;
+  EtherAddress _addr;
+
+  uint32_t _mode;
 };
 
 CLICK_ENDDECLS
