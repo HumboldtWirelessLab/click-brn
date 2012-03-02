@@ -35,9 +35,15 @@
 
 CLICK_DECLS
 
+enum {MODE_NONE = 0,
+      MODE_ID = 1,
+      MODE_ADDR = 2,
+      MODE_BOTH = 3};
+
+
 BRN2ToThisNode::BRN2ToThisNode()
-//: _i(BrnLogger::DEFAULT)
-  : _id(NULL)
+  : _id(NULL),
+    _mode(MODE_NONE)
 {
 }
 
@@ -48,13 +54,21 @@ BRN2ToThisNode::~BRN2ToThisNode()
 int
 BRN2ToThisNode::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _addr = EtherAddress();
+
   if (cp_va_kparse(conf, this, errh,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, /*"NodeIdentity",*/ &_id,
+      "NODEIDENTITY", cpkP, cpElement, &_id,
+      "NODEADDRESS", cpkP, cpEtherAddress, &_addr,
       cpEnd) < 0)
     return -1;
 
-  if (!_id || !_id->cast("BRN2NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
+  if ( _id ) {
+    if (!_id->cast("BRN2NodeIdentity"))
+      return errh->error("NodeIdentity has wrong type");
+    _mode = MODE_ID;
+  }
+
+  if ( _addr != EtherAddress() ) _mode |= MODE_ADDR;
 
   return 0;
 }
@@ -84,15 +98,30 @@ BRN2ToThisNode::push(int, Packet *p_in)
   // get dst mac
   EtherAddress dst_addr(ether->ether_dhost);
 
-  if (_id->isIdentical(&dst_addr)) {
-//    BRN_DEBUG(" * packet is sent to this node (output port 0)");
-    output(0).push(p_in);
+  if ( dst_addr.is_broadcast() ) {
+    output(1).push(p_in);
     return;
-  } else {
-    if ( dst_addr.is_broadcast() ) {
-      output(1).push(p_in);
-      return;
-    }
+  }
+
+  switch (_mode) {
+    case MODE_ID:
+      if (_id->isIdentical(&dst_addr)) {
+        output(0).push(p_in);
+        return;
+      }
+      break;
+    case MODE_ADDR:
+      if (_addr == dst_addr) {
+        output(0).push(p_in);
+        return;
+      }
+      break;
+    case MODE_BOTH:
+      if ((_addr == dst_addr) || (_id->isIdentical(&dst_addr))) {
+        output(0).push(p_in);
+        return;
+      }
+      break;
   }
 
   output(2).push(p_in);
