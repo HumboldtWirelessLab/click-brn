@@ -145,26 +145,9 @@ void
 CooperativeChannelStats::push(int port, Packet *p)
 {
     BRN_DEBUG("Push....");
-    struct click_wifi *wh = (struct click_wifi *) p->data();
-  // click_ether *eh = (click_ether *) p->ether_header(); // THIS IS NULL
-  // EtherAddress src_ea = EtherAddress(eh->ether_shost);
-    
-    EtherAddress src_ea;
-    switch (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) {
-        
-        case WIFI_FC0_TYPE_MGT:
-            src_ea = EtherAddress(wh->i_addr2);
-            break;
-        case WIFI_FC0_TYPE_CTL:
-            src_ea = brn_etheraddress_broadcast;
-            break;
-        case WIFI_FC0_TYPE_DATA:
-            src_ea = EtherAddress(wh->i_addr2);
-            break;
-        default:
-            src_ea = EtherAddress(wh->i_addr2);
-    }
-    
+    click_ether *eh = (click_ether*)p->ether_header();
+    EtherAddress src_ea = EtherAddress(eh->ether_shost);
+
     if ( ncst.find(src_ea) == NULL ) ncst.insert(src_ea, new NodeChannelStats(src_ea));
     NodeChannelStats *ncs = ncst.find(src_ea);
     struct cooperative_channel_stats_header *ccsh = (struct cooperative_channel_stats_header*)p->data();
