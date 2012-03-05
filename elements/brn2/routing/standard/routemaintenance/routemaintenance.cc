@@ -233,40 +233,7 @@ RoutingMaintenance::print_stats()
 {
   StringAccum sa;
 
-  Vector<EtherAddress> ether_addrs;
-
-  for (HTIter iter = _lt->_hosts.begin(); iter.live(); iter++)
-    ether_addrs.push_back(iter.key());
-
-  click_qsort(ether_addrs.begin(), ether_addrs.size(), sizeof(EtherAddress), etheraddr_sorter);
-
-  sa << "<routingmaintenancestats id=\"" << _node_identity->getMasterAddress()->unparse().c_str() << "\">\n";
-
-  for (int x = 0; x < ether_addrs.size(); x++) {
-    EtherAddress ether = ether_addrs[x];
-    uint32_t metric_trash;
-    Vector <EtherAddress> r;
-    if ( from_me )
-      best_route_from_me(ether, r, &metric_trash);
-    else
-      best_route_to_me(ether, r, &metric_trash);
-
-    if (valid_route(r)) {
-      sa << "\t<route from=\"" << r[0] << "\" to=\"" << r[r.size()-1] << "\">\n";
-
-      for (int i = 0; i < r.size()-1; i++) {
-        EthernetPair pair = EthernetPair(r[i], r[i+1]);
-        BrnLinkInfo *l = _lt->_links.findp(pair);
-        sa << "\t\t<link from=\"" << r[i] << "\" to=\"" << r[i+1] << "\" ";
-        sa << "metric=\"" << l->_metric << "\" ";
-        sa << "seq=\"" << l->_seq << "\" age=\"" << l->age() << "\" />\n";
-      }
-      sa << "\t</route>\n";
-
-    }
-  }
-
-  sa << "</routetable>\n";
+  sa << "<routingmaintenancestats id=\"" << _node_identity->getMasterAddress()->unparse().c_str() << "\" >\n";
 
   return sa.take_string();
 
