@@ -68,6 +68,7 @@ BRNSetGatewayOnFlow::configure (Vector<String> &conf, ErrorHandler *errh) {
                   "ARPTABLE", cpkP+cpkM, cpElement,/* "ARPTable",*/ &_arp,
                   "PACKETBUFFER", cpkP+cpkM, cpElement,/* "BRNPacketBuffer",*/ &_buffer,
                   "IP", cpkP+cpkM, cpIPPrefix,/* "src IP address with prefix",*/ &_src_ip, &_src_ip_mask,
+                  "ROUTINGMAINTENANCE", cpkP+cpkM, cpElement, &_routing_maintenance,
                   cpEnd) < 0)
       return -1;
 
