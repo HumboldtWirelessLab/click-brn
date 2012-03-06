@@ -46,16 +46,11 @@ int
 BRNGatewaySupervisor::configure (Vector<String> &conf, ErrorHandler *errh) {
   if (cp_va_kparse(conf, this, errh,
                   "BRNGATEWAY", cpkP+cpkM, cpElement, &_gw,
-                  "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
                   cpEnd) < 0)
     return -1;
 
   if (_gw->cast("BRNGateway") == 0) {
     return errh->error("No element of type BRNGateway specified.");
-  }
-
-  if (_link_table->cast("Brn2LinkTable") == 0) {
-    return errh->error("No element of type BrnLinkTable specified.");
   }
 
   return 0;
@@ -80,7 +75,6 @@ BRNGatewaySupervisor::push(int port, Packet *p) {
 
 	  if (port == 0) {
       // flow packet which arrived at non-gateway node
-        	
       output(2).push(p);
       return;
 		}
