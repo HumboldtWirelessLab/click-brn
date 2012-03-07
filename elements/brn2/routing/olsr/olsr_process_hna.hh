@@ -62,7 +62,7 @@ public:
   const char *class_name() const   { return "OLSRProcessHNA"; }
   const char *processing() const   { return PUSH; }
   OLSRProcessHNA *clone() const  { return new OLSRProcessHNA(); }  	
-  const char *port_count() const  	{ return "1/2"; }
+  const char *port_count() const  	{ return "1/1"; }
   //Packet *simple_action(Packet *);
 
   int configure(Vector<String> &, ErrorHandler *);
