@@ -45,6 +45,7 @@ RoutingMaintenance::RoutingMaintenance()
     _routing_algo(NULL)
 {
   BRNElement::init();
+  stats_reset();
 }
 
 RoutingMaintenance::~RoutingMaintenance()
@@ -221,12 +222,6 @@ RoutingMaintenance::print_routes(bool from_me)
 
   return sa.take_string();
 }
- uint32_t _route_requests;
- uint32_t _route_algo_usages;
- uint32_t _route_updates;
- uint32_t _cache_hits;
- uint32_t _cache_inserts;
- uint32_t _cache_updates;
 
 String
 RoutingMaintenance::print_stats()
@@ -234,6 +229,8 @@ RoutingMaintenance::print_stats()
   StringAccum sa;
 
   sa << "<routingmaintenancestats id=\"" << _node_identity->getMasterAddress()->unparse().c_str() << "\" >\n";
+  sa << "\t<routes requests=\"" << _route_requests << "\" algo_usage=\"" << _route_algo_usages << "\" updates=\"" << _route_updates << "\" />\n";
+  sa << "\t<cache hits=\"" << _cache_hits << "\" inserts=\"" << _cache_inserts << "\" updates=\"" << _cache_updates << "\" />\n</routingmaintenancestats>\n";
 
   return sa.take_string();
 
