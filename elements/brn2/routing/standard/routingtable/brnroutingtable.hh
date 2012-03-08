@@ -71,7 +71,7 @@ public:
     int32_t   m_iTTL;
     uint32_t  m_metric;
   }                                                           EntryType;
-  typedef HashMap<AddressPairType,EntryType>               RouteMapType;
+  typedef HashMap<AddressPairType,EntryType*>               RouteMapType;
 
   typedef Vector<AddressPairType>                    AddrPairVectorType;
   typedef HashMap<AddressPairType,AddrPairVectorType>  LinkRouteMapType;
@@ -134,6 +134,8 @@ public:
    */
   void flush_cache();
 
+  String print_stats();
+
 //----------------------------------------------------------------------
 // Helpers
 //----------------------------------------------------------------------
@@ -165,7 +167,7 @@ protected:
 public:
   bool    m_bActive; ///< Whether the cache should be used.
   Timer   m_tRouteAging; ///< Timer for aging the routes.
-  timeval m_tvLifetimeSlice; ///< Time slice for the entry life timer
+  int m_tvLifetimeSlice; ///< Time slice for the entry life timer
 
 private:
   int     m_iInitialTTL; ///< Initial value of the entriy TTL 
