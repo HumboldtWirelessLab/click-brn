@@ -103,7 +103,7 @@ class RoutingMaintenance: public BRNElement {
 
   String print_stats();
 
-private:
+ private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
@@ -116,6 +116,11 @@ private:
   uint32_t _cache_hits;
   uint32_t _cache_inserts;
   uint32_t _cache_updates;
+
+ public:
+  void stats_reset() {
+    _route_requests = _route_algo_usages = _route_updates = _cache_hits = _cache_inserts = _cache_updates = 0;
+  }
 
 };
 
