@@ -49,6 +49,8 @@ BrnRoutingTable::BrnRoutingTable() :
 
 BrnRoutingTable::~BrnRoutingTable()
 {
+  click_chatter("Dest");
+  flush_cache();
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -147,15 +149,20 @@ BrnRoutingTable::insert_route(
 
   BRN_DEBUG("inserting route %s -> %s.", addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
-  EntryType *entry = new EntryType();
   AddressPairType pairSrcDst(addrSrc,addrDst);
+  EntryType** ppEntry = m_mapRoutes.findp( pairSrcDst );
+  EntryType *entry = NULL;
+
+  if( NULL != ppEntry ) remove_route( addrSrc, addrDst );
+
+  entry = new EntryType();
+
+  // Insert the route under key pair(src,dst)
+  m_mapRoutes.insert( pairSrcDst, entry );
 
   entry->m_route = route;
   entry->m_iTTL  = m_iInitialTTL;
   entry->m_metric = metric;
-
-  // Insert the route under key pair(src,dst)
-  m_mapRoutes.insert( pairSrcDst, entry );
 
   RouteMapType::iterator iter = m_mapRoutes.begin();
   while( iter != m_mapRoutes.end() )
@@ -205,6 +212,14 @@ BrnRoutingTable::flush_cache()
 {
   BRN_DEBUG("CACHE: Flush");
   m_mapLinkToRoute.clear();
+
+  RouteMapType::iterator iter = m_mapRoutes.begin();
+  while( iter != m_mapRoutes.end() ) {
+    RouteMapType::iterator iter_curr = iter; ++iter;
+    iter_curr.value()->m_route.clear();
+    delete iter_curr.value();
+  }
+
   m_mapRoutes.clear();
 }
 
@@ -255,6 +270,7 @@ BrnRoutingTable::remove_route(
     }
   }
 
+  pEntry->m_route.clear();
   delete pEntry;
 
   // Remove the route from route map
