@@ -126,6 +126,16 @@ BRN2RequestForwarder::findOwnIdentity(const BRN2RouteQuerierRoute &r)
   return -1;
 }
 
+int
+BRN2RequestForwarder::findInRoute(const BRN2RouteQuerierRoute &r, EtherAddress *node)
+{
+  for (int i=0; i<r.size(); i++) {
+    EtherAddress ea = EtherAddress((r[i].ether()).data());
+    if ( ea == *node ) return i;
+  }
+  return -1;
+}
+
 
 /* process an incoming route request packet */
 void
@@ -270,7 +280,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         }
       }
 
-      if (best_detour_metric < last_hop_metric) {
+      if (best_detour_metric < last_hop_metric && findInRoute(request_route, &best_nb) == -1 ) {
         BRN_DEBUG("* RREQ: Insert detour over %s. with metric %d instead of %d",
                   best_nb.unparse().c_str(), best_detour_metric, last_hop_metric);
         //Change metric to last hop since this is not between the node and me, instead it is between last hop
@@ -287,6 +297,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         last_hop_metric = best_metric_nb_me;
       }
     }
+
     /* Last hop optimization */
     BRN_DEBUG("* RREQ: Finishing last hop optimization.");
   } else if ( _enable_full_route_optimization ) {

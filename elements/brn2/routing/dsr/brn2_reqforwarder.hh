@@ -234,6 +234,7 @@ public:
   void reverse_route(const BRN2RouteQuerierRoute &in, BRN2RouteQuerierRoute &out);
   void issue_rrep(EtherAddress, IPAddress, EtherAddress, IPAddress, const BRN2RouteQuerierRoute &, uint16_t rreq_id);
   int findOwnIdentity(const BRN2RouteQuerierRoute &r);
+  int findInRoute(const BRN2RouteQuerierRoute &r, EtherAddress *node);
 
   bool _enable_last_hop_optimization;
   bool _enable_full_route_optimization;
