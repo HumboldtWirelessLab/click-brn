@@ -1044,12 +1044,14 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
     uint32_t rmetric = route_metric(route);
     EtherAddress dst = route[0].ether();
     EtherAddress src = route[route.size()-1].ether();
-    //don't learn links from or to me from someone else
-    if ( !(_me->isIdentical(&src) || _me->isIdentical(&dst)) ) {
+
+    //if ( !(_me->isIdentical(&dst) || _me->isIdentical(&src)) ) {
+      //TODO: check, whether we should restrict route updates (only src/dst or something else
       _routing_maintenance->update_route(src, dst, ea_route, rmetric);
-    }
-    ea_route.clear();
+    //}
   }
+
+  ea_route.clear();
 
   BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
 
