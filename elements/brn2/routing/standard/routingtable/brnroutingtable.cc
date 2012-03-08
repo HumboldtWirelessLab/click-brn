@@ -381,7 +381,9 @@ BrnRoutingTable::print_stats()
   RouteMapType::iterator iter = m_mapRoutes.begin();
   while( iter != m_mapRoutes.end() ) {
     RouteMapType::iterator iter_curr = iter; ++iter;
-    sa << "\t<route ttl=\"" << iter_curr.value()->m_iTTL << "\" />\n";
+    sa << "\t<route src=\"" << iter_curr.key().first.unparse() << "\" dst=\"" << iter_curr.key().second.unparse();
+    sa << "\" metric=\"" << iter_curr.value()->m_metric << "\" hops=\"" << iter_curr.value()->m_route.size();
+    sa << "\" ttl=\"" << iter_curr.value()->m_iTTL << "\" />\n";
   }
 
   sa << "</routingtable>\n";
