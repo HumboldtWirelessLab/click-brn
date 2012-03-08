@@ -39,12 +39,10 @@ BrnRoutingTable::BrnRoutingTable() :
   m_bActive( false ),
   m_tRouteAging( on_routeaging_expired, this ),
   m_iInitialTTL( 20 ),
-  m_iDropProb( 50 )
+  m_iDropProb( 50 ),
+  m_tvLifetimeSlice(1000)
 {
   BRNElement::init();
-
-  m_tvLifetimeSlice.tv_sec  = 1;
-  m_tvLifetimeSlice.tv_usec = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -62,9 +60,9 @@ BrnRoutingTable::initialize(ErrorHandler *)
   m_tRouteAging.initialize(this);
 
   // Reschedule the timer
-  if( m_tvLifetimeSlice.tv_sec < 1000000 )
+  if( true == m_bActive && m_tvLifetimeSlice != 0 )
   {
-    m_tRouteAging.schedule_after( m_tvLifetimeSlice );
+    m_tRouteAging.schedule_after_msec( m_tvLifetimeSlice );
   }
 
   return( 0 );
@@ -75,27 +73,14 @@ int
 BrnRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int ret;
-  uint32_t ullSlice = m_tvLifetimeSlice.tv_sec * 1000000 +
-                      m_tvLifetimeSlice.tv_usec;
 
   ret = cp_va_kparse(conf, this, errh,
     "DEBUG", cpkN, cpInteger, /*"Debug indicator",*/ &_debug,
     "ACTIVE", cpkN, cpBool, /*"Active indicator",*/ &m_bActive,
     "DROP", cpkN, cpInteger, /*"Route flush probability",*/ &m_iDropProb,
     "TTL", cpkN, cpInteger, /*"Initial route ttl in slices",*/ &m_iInitialTTL,
-    "SLICE", cpkN, cpUnsigned, /*"Lifetime slice in us",*/ &ullSlice,
+    "SLICE", cpkN, cpUnsigned, /*"Lifetime slice in ms",*/ &m_tvLifetimeSlice,
     cpEnd);
-
-  if( 0 != ullSlice )
-  {
-    m_tvLifetimeSlice.tv_sec  = ullSlice / 1000000;
-    m_tvLifetimeSlice.tv_usec = ullSlice % 1000000;
-  }
-  else
-  {
-    m_tvLifetimeSlice.tv_sec  = 1000000;
-    m_tvLifetimeSlice.tv_usec = 0;
-  }
 
   return ret;
 }
@@ -117,9 +102,10 @@ BrnRoutingTable::get_cached_route(
   BRN_DEBUG("query for route %s -> %s.", addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
   // Find the corresponding entry
-  pEntry = m_mapRoutes.findp( AddressPairType(addrSrc,addrDst) );
+  pEntry = m_mapRoutes.find( AddressPairType(addrSrc,addrDst) );
   if( NULL != pEntry )
   {
+    //BRN_DEBUG("Found entry");
     int32_t iRand = (0 == m_iDropProb) ? 1 : click_random() % m_iDropProb;
 
     // Return the cached entry if the ttl is greater null and the
@@ -138,7 +124,9 @@ BrnRoutingTable::get_cached_route(
     // Delete the entry and fall through to return...
     pEntry = NULL;
     remove_route( addrSrc, addrDst );
-  }
+  }/* else {
+    BRN_DEBUG("No entry found. (%d)",m_mapRoutes.size());
+  }*/
 
   BRN_DEBUG("no cached route found.");
   return( false );
@@ -159,15 +147,24 @@ BrnRoutingTable::insert_route(
 
   BRN_DEBUG("inserting route %s -> %s.", addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
-  EntryType entry;
+  EntryType *entry = new EntryType();
   AddressPairType pairSrcDst(addrSrc,addrDst);
 
-  entry.m_route = route;
-  entry.m_iTTL  = m_iInitialTTL;
-  entry.m_metric = metric;
+  entry->m_route = route;
+  entry->m_iTTL  = m_iInitialTTL;
+  entry->m_metric = metric;
 
   // Insert the route under key pair(src,dst)
   m_mapRoutes.insert( pairSrcDst, entry );
+
+  RouteMapType::iterator iter = m_mapRoutes.begin();
+  while( iter != m_mapRoutes.end() )
+  {
+    // Remember the current and go to next.
+    RouteMapType::iterator iter_curr = iter; ++iter;
+
+    BRN_DEBUG("RouteTTL: %d (%d)",iter_curr.value()->m_iTTL,m_iInitialTTL);
+  }
 
   // Insert all links into the map, pointing to the route
   RouteType::const_iterator iter_a = route.begin();
@@ -198,12 +195,15 @@ BrnRoutingTable::insert_route(
       pLinkVector->push_back( pairSrcDst );
     }
   }
+
+  BRN_DEBUG("Mapsiez: %d",m_mapRoutes.size());
 }
 
 ////////////////////////////////////////////////////////////////////////
 void
 BrnRoutingTable::flush_cache()
 {
+  BRN_DEBUG("CACHE: Flush");
   m_mapLinkToRoute.clear();
   m_mapRoutes.clear();
 }
@@ -220,9 +220,10 @@ BrnRoutingTable::remove_route(
     addrSrc.unparse().c_str(), addrDst.unparse().c_str());
 
   // Remove the mappings link to route
-  EntryType* pEntry = m_mapRoutes.findp( pairSrcDst );
-  if( NULL == pEntry )
-    return;
+  EntryType** ppEntry = m_mapRoutes.findp( pairSrcDst );
+  if( NULL == ppEntry ) return;
+
+  EntryType* pEntry = *ppEntry;
 
   // Loop through all links along the route
   const RouteType& route = pEntry->m_route;
@@ -231,14 +232,14 @@ BrnRoutingTable::remove_route(
   for( ;iter_a != route.end(); iter_a++, iter_b++ )
   {
     // Get the corresponding route vector for the link
-    AddrPairVectorType* pLinkVector = 
+    AddrPairVectorType* pLinkVector =
       m_mapLinkToRoute.findp( AddressPairType(*iter_a,*iter_b) );
     if( NULL == pLinkVector )
       continue; // Strange thing that no route vector is avail, but...
 
     // Loop through vector and delete the current route entry 
     AddrPairVectorType::iterator iter_link = pLinkVector->begin();
-    while( *iter_link != pairSrcDst )
+    while( iter_link != pLinkVector->end() && *iter_link != pairSrcDst )
       ++iter_link;
 
     // We found the route entry in the vector
@@ -253,6 +254,8 @@ BrnRoutingTable::remove_route(
       m_mapLinkToRoute.remove( AddressPairType(*iter_a,*iter_b) );
     }
   }
+
+  delete pEntry;
 
   // Remove the route from route map
   m_mapRoutes.remove( pairSrcDst );
@@ -331,23 +334,53 @@ BrnRoutingTable::on_routeaging_expired(
     // Remember the current and go to next.
     RouteMapType::iterator iter_curr = iter; ++iter;
 
+    BRN_DEBUG("Dec RouteTTL: %d (%d)",iter_curr.value()->m_iTTL,m_iInitialTTL);
     // Decrement the ttl
-    iter_curr.value().m_iTTL -= 1;
+    iter_curr.value()->m_iTTL--;
 
     // If the lifetime is expired, delete the route entry
-    if( 0 >= iter_curr.value().m_iTTL )
+    if( 0 >= iter_curr.value()->m_iTTL )
     {
+      BRN_DEBUG("Remove old route");
       remove_route( iter_curr.key().first, iter_curr.key().second );
     }
   }
 
   // Reschedule the timer
-  pTimer->reschedule_after( m_tvLifetimeSlice );
+  pTimer->reschedule_after_msec( m_tvLifetimeSlice );
 }
 
 ////////////////////////////////////////////////////////////////////////
 // Handler
 ////////////////////////////////////////////////////////////////////////
+
+String
+BrnRoutingTable::print_stats()
+{
+  StringAccum sa;
+
+  sa << "<routingtable node=\"" << BRN_NODE_NAME << "\" active=\"" << String(m_bActive) << "\" slice=\"";
+  sa << m_tvLifetimeSlice << "\" ttl=\"" << m_iInitialTTL << "\" routes=\"" << m_mapRoutes.size() << "\" >\n";
+
+  RouteMapType::iterator iter = m_mapRoutes.begin();
+  while( iter != m_mapRoutes.end() ) {
+    RouteMapType::iterator iter_curr = iter; ++iter;
+    sa << "\t<route ttl=\"" << iter_curr.value()->m_iTTL << "\" />\n";
+  }
+
+  sa << "</routingtable>\n";
+
+  return sa.take_string();
+}
+
+static String
+read_stats_param(Element *e, void *thunk)
+{
+  return ((BrnRoutingTable *)e)->print_stats();
+}
+
+////////////////////////////////////////////////////////////////////////
+
 static int
 write_reset_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
@@ -384,10 +417,9 @@ write_active_param(const String &in_s, Element *e, void *vparam, ErrorHandler *e
   rq->m_bActive = active;
   rq->flush_cache();
 
-  if( true == active 
-    && rq->m_tvLifetimeSlice.tv_sec < 1000000 )
+  if( true == active && rq->m_tvLifetimeSlice != 0 )
   {
-    rq->m_tRouteAging.schedule_after( rq->m_tvLifetimeSlice );
+    rq->m_tRouteAging.schedule_after_msec( rq->m_tvLifetimeSlice );
   }
 
   return 0;
@@ -403,6 +435,8 @@ BrnRoutingTable::add_handlers()
   add_write_handler("active", write_active_param, 0);
 
   add_write_handler("reset", write_reset_param, 0);
+
+  add_read_handler("stats", read_stats_param, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////
