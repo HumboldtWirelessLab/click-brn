@@ -9,6 +9,7 @@
 CLICK_DECLS
 
 enum {
+  //TODO: compress error types (there will never be received a combination of them 
   WIFI_EXTRA_RX_CRC_ERR      = (1<<31), /* failed crc check */
   WIFI_EXTRA_RX_PHY_ERR      = (1<<30), /* failed phy check */
   WIFI_EXTRA_RX_FIFO_ERR     = (1<<29), /* failed fifo check */
@@ -22,7 +23,8 @@ enum {
   WIFI_EXTRA_MCS_RATE0       = (1<<21),
   WIFI_EXTRA_EXT_RX_STATUS   = (1<<20),
   WIFI_EXTRA_TX_QUEUE_HIGH   = (1<<19),
-  WIFI_EXTRA_TX_QUEUE_LOW    = (1<<18)
+  WIFI_EXTRA_TX_QUEUE_LOW    = (1<<18),
+  WIFI_EXTRA_JAMMER_MESSAGE  = (1<<17)
 };
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21
@@ -302,6 +304,17 @@ class BrnWifi
 
   static inline uint8_t getTxQueue(struct click_wifi_extra *ceh) {
     return (ceh->flags >> WIFI_EXTRA_TX_QUEUE_START) & 3; //get txqueue
+  }
+
+  static inline bool isJammer(struct click_wifi_extra *ceh ) {
+    return ((ceh->flags & WIFI_EXTRA_JAMMER_MESSAGE) != 0 );
+  }
+
+  static inline void setJammer(struct click_wifi_extra *ceh, bool jammer) {
+    if (jammer)
+      ceh->flags |= (uint32_t)WIFI_EXTRA_JAMMER_MESSAGE;
+    else
+      ceh->flags &= ~(uint32_t)WIFI_EXTRA_JAMMER_MESSAGE;
   }
 
 };
