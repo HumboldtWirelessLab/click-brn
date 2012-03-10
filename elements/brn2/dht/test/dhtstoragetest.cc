@@ -91,11 +91,11 @@ int DHTStorageTest::initialize(ErrorHandler *)
       _mode = MODE_READ;
   }
 
-  last_key = 0;
+  last_key = "";
   last_read = true;
   last_timeout = false;
   last_not_found = false;
-  sprintf(last_value,"NONE");
+  last_value = "NONE";
 
   return 0;
 }
@@ -109,18 +109,16 @@ DHTStorageTest::callback_func(void *e, DHTOperation *op)
 
 void
 DHTStorageTest::callback(DHTOperation *op) {
-  char string[100];
-  uint32_t my_key;
+  String value;
+  String key;
 
   BRN_DEBUG("callback %s: Status %d",class_name(),op->header.operation);
 
-  memcpy(string, op->value, op->header.valuelen);
-  string[op->header.valuelen] = '\0';
-  memcpy((char*)&my_key, op->key, sizeof(uint32_t));
-  my_key = ntohl(my_key);
+  value = String(op->value, op->header.valuelen);
+  key = String(op->key, op->header.keylen);
 
-  last_key = my_key;
-  sprintf(last_value,"%s",string);
+  last_key = key;
+  last_value = value;
 
   if ( op->is_reply() )
   {
@@ -141,23 +139,23 @@ DHTStorageTest::callback(DHTOperation *op) {
       last_timeout = false;
       last_not_found = false;
 
-      BRN_DEBUG("Result: %s = %d",string,my_key);
+      BRN_DEBUG("Result: %s = %s",value.c_str(), key.c_str());
     } else {
       if ( op->header.status == DHT_STATUS_TIMEOUT ) {
         no_timeout++;
         timeout_time += op->request_duration;
         if ( max_timeout_time < op->request_duration ) max_timeout_time = op->request_duration;
 
-        BRN_DEBUG("DHT-Test: Timeout: %s", string);
+        BRN_DEBUG("DHT-Test: Timeout: %s", value.c_str());
         last_timeout = true;
       } else {
         not_found++;
         notfound_time += op->request_duration;
-        BRN_DEBUG("Result: %d not found",my_key);
+        BRN_DEBUG("Result: %s not found",key.c_str());
         last_timeout = false;
       }
 
-      sprintf(last_value,"FAILED");
+      last_value = "FAILED";
       last_not_found = true;
       last_read = ! ((op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT );
     }
@@ -201,43 +199,48 @@ DHTStorageTest::request_timer_hook(Timer *t)
 void
 DHTStorageTest::request(uint32_t key, uint8_t mode)
 {
+  String s_key = String(key);
+  String s_value = ">" + String(key) + "<";
+
+  request(s_key, s_value, mode);
+}
+
+void
+DHTStorageTest::request(String key, String value, uint8_t mode)
+{
   DHTOperation *req;
   int result;
-  char my_value[10];
-  uint32_t net_key = htonl(key);
 
   req = new DHTOperation();
 
   last_key = key;
+  last_value = value;
   last_timeout = false;
-  last_not_found = false;
+  last_not_found = true;
 
   if ( mode == MODE_INSERT )
   {
-    BRN_DEBUG("Insert Key: %d",key);
+    BRN_DEBUG("Insert Key: %s",key.c_str());
 
     write_req++;
-    sprintf(my_value,">%d<",key);
-
-    req->insert((uint8_t*)&net_key, sizeof(uint32_t), (uint8_t*)my_value, strlen(my_value));
+    req->insert((uint8_t*)key.data(), key.length(), (uint8_t*)value.data(), value.length());
     req->max_retries = _retries;
     req->set_replica(_replica);
 
     last_read = false;
-    sprintf(last_value,">%d<",key);
   }
   else
   {
-    BRN_DEBUG("Read Key: %d",key);
+    BRN_DEBUG("Read Key: %s",key.c_str());
 
     read_req++;
 
-    req->read((uint8_t*)&net_key, sizeof(uint32_t));
+    req->read((uint8_t*)key.data(), key.length());
     req->max_retries = _retries;
     req->set_replica(_replica);
 
     last_read = true;
-    sprintf(last_value,"NONE");
+    last_value = "NONE";
   }
 
   result = _dht_storage->dht_request(req, callback_func, (void*)this );
@@ -291,13 +294,13 @@ read_param(Element *e, void *thunk)
     }
     case H_USER_TEST:
     {
-      sa << "last key: " << dht_str->last_key << " value: " << String(dht_str->last_value);
+      sa << "last key: " << dht_str->last_key << " value: " << dht_str->last_value;
       if ( dht_str->last_read ) sa << " mode: read ";
       else sa << " mode: write ";
       if ( dht_str->last_timeout ) sa << "timeout: yes ";
       else sa << "timeout: no ";
-      if ( dht_str->last_not_found ) sa << "found: yes ";
-      else sa << "found: no ";
+      if ( dht_str->last_not_found ) sa << "found: no ";
+      else sa << "found: yes ";
       sa << "\n";
       break;
     }
@@ -316,14 +319,17 @@ write_param(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*err
   Vector<String> args;
   cp_spacevec(s, args);
 
-  uint32_t key;
+  String key;
+  String value;
   uint8_t mode;
 
-  if ( args.size() == 2 ) {
+  if ( args.size() > 1 ) {
     if ( args[0] == String("write") ) mode = MODE_INSERT;
     else mode = MODE_READ;
-    cp_integer(args[1], &key);
-    dht_str->request(key, mode);
+    key = args[1];
+    if ( args.size() > 2 ) value = args[2];
+    else value = ">" + args[1] + "<"; //=key
+    dht_str->request(key, value, mode);
   }
 
   return 0;

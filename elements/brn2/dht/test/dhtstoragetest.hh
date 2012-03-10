@@ -40,6 +40,7 @@ class DHTStorageTest : public BRNElement
     static void static_request_timer_hook(Timer *, void *);
     void request_timer_hook(Timer *t);
     void request(uint32_t key, uint8_t mode);
+    void request(String key, String value, uint8_t mode);
 
 
     static void callback_func(void *e, DHTOperation *op);
@@ -82,11 +83,11 @@ class DHTStorageTest : public BRNElement
     int _retries;
     int _replica;
 
-    uint32_t last_key;
+    String last_key;
+    String last_value;
     bool last_read;
     bool last_timeout;
     bool last_not_found;
-    char last_value[10];
 };
 
 CLICK_ENDDECLS
