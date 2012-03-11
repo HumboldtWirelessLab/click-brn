@@ -91,11 +91,11 @@ int DHTStorageTest::initialize(ErrorHandler *)
       _mode = MODE_READ;
   }
 
-  last_key = "";
+  last_key = "n/a";
   last_read = true;
   last_timeout = false;
   last_not_found = false;
-  last_value = "NONE";
+  last_value = "n/a";
 
   return 0;
 }
@@ -155,7 +155,7 @@ DHTStorageTest::callback(DHTOperation *op) {
         last_timeout = false;
       }
 
-      last_value = "FAILED";
+      last_value = "n/a";
       last_not_found = true;
       last_read = ! ((op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_INSERT );
     }
@@ -240,7 +240,7 @@ DHTStorageTest::request(String key, String value, uint8_t mode)
     req->set_replica(_replica);
 
     last_read = true;
-    last_value = "NONE";
+    last_value = "n/a";
   }
 
   result = _dht_storage->dht_request(req, callback_func, (void*)this );
@@ -263,51 +263,62 @@ enum {
   H_USER_TEST
 };
 
+String
+DHTStorageTest::print_stats()
+{
+  StringAccum sa;
+
+  int avg_op_time, avg_read_time, avg_write_time, avg_notf_time, avg_to_time;
+  avg_op_time = avg_read_time = avg_write_time = avg_notf_time = avg_to_time = 0;
+
+  if ( op_rep != 0 ) avg_op_time = op_time/op_rep;
+  if ( read_rep != 0 ) avg_read_time = read_time/read_rep;
+  if ( write_rep != 0 ) avg_write_time = write_time/write_rep;
+  if ( not_found != 0 ) avg_notf_time = notfound_time/not_found;
+  if ( no_timeout != 0 ) avg_to_time = timeout_time/no_timeout;
+
+  sa << "<dhtstoragetest node=\"" << BRN_NODE_NAME << "\" replies=\"" << op_rep << "\" avg_time=\"";
+  sa << avg_op_time << "\" unit=\"ms\" >\n";
+  sa << "\t<read requests=\"" << read_req << "\" replies=\"" << read_rep;
+  sa << "\" avg_time=\"" << avg_read_time << "\" />\n";
+  sa << "\t<write requests=\"" << write_req << "\" replies=\"" << write_rep;
+  sa << "\" avg_time=\"" << avg_write_time << "\" />\n";
+  sa << "\t<not_found count=\"" << not_found << "\" avg_time=\"" << avg_notf_time << "\" />\n";
+  sa << "\t<timeout count=\"" << no_timeout << "\" avg_time=\"" << avg_to_time << "\"  max_time=\"";
+  sa << max_timeout_time << "\" />\n</dhtstoragetest>\n";
+
+  return sa.take_string();
+}
+
+String
+DHTStorageTest::print_test_results()
+{
+  StringAccum sa;
+
+  sa << "<dhtstoragetestoperation node=\"" << BRN_NODE_NAME << "\" key=\"" << last_key << "\" value=\"" << last_value;
+  if ( last_read ) sa << "\" mode=\"read\" ";
+  else sa << "\" mode=\"write\" ";
+  if ( last_timeout ) sa << "timeout=\"yes\" ";
+  else sa << "timeout=\"no\" ";
+  if ( last_not_found ) sa << "found=\"no\" ";
+  else sa << "found=\"yes\" ";
+  sa << "/>\n";
+
+  return sa.take_string();
+}
+
 static String
 read_param(Element *e, void *thunk)
 {
-  StringAccum sa;
   DHTStorageTest *dht_str = (DHTStorageTest *)e;
 
   switch ((uintptr_t) thunk)
   {
-    case H_STORAGE_STATS :
-    {
-      int avg_op_time, avg_read_time, avg_write_time, avg_notf_time, avg_to_time;
-      avg_op_time = avg_read_time = avg_write_time = avg_notf_time = avg_to_time = 0;
-
-      if ( dht_str->op_rep != 0 ) avg_op_time = dht_str->op_time/dht_str->op_rep;
-      if ( dht_str->read_rep != 0 ) avg_read_time = dht_str->read_time/dht_str->read_rep;
-      if ( dht_str->write_rep != 0 ) avg_write_time = dht_str->write_time/dht_str->write_rep;
-      if ( dht_str->not_found != 0 ) avg_notf_time = dht_str->notfound_time/dht_str->not_found;
-      if ( dht_str->no_timeout != 0 ) avg_to_time = dht_str->timeout_time/dht_str->no_timeout;
-
-      sa << "Operation-Reply: " << dht_str->op_rep << " (Avg. time: " << avg_op_time << " ms )\n";
-      sa << "READ-request: " << dht_str->read_req << "\n";
-      sa << "READ-reply: " << dht_str->read_rep << " (Avg. time: " << avg_read_time << " ms )\n";
-      sa << "WRITE-request: " << dht_str->write_req << "\n";
-      sa << "WRITE-reply: " << dht_str->write_rep << " (Avg. time: " << avg_write_time << " ms )\n";
-      sa << "Not-Found: " << dht_str->not_found << " (Avg. time: " << avg_notf_time << " ms )\n";
-      sa << "Timeout: " << dht_str->no_timeout << " (Avg. time: " << avg_to_time << " ms  Max. time: ";
-      sa << dht_str->max_timeout_time << " ms )\n";
-      break;
-    }
-    case H_USER_TEST:
-    {
-      sa << "last key: " << dht_str->last_key << " value: " << dht_str->last_value;
-      if ( dht_str->last_read ) sa << " mode: read ";
-      else sa << " mode: write ";
-      if ( dht_str->last_timeout ) sa << "timeout: yes ";
-      else sa << "timeout: no ";
-      if ( dht_str->last_not_found ) sa << "found: no ";
-      else sa << "found: yes ";
-      sa << "\n";
-      break;
-    }
-    default: return String();
+    case H_STORAGE_STATS : return dht_str->print_stats();
+    case H_USER_TEST: return dht_str->print_test_results();
   }
 
-  return sa.take_string();
+  return String();
 }
 
 static int

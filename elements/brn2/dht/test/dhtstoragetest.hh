@@ -46,6 +46,9 @@ class DHTStorageTest : public BRNElement
     static void callback_func(void *e, DHTOperation *op);
     void callback(DHTOperation *op);
 
+    String print_test_results();
+    String print_stats();
+
     DHTStorage *_dht_storage;
 
     uint32_t _key;
