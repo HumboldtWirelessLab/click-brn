@@ -189,8 +189,6 @@ class DHTStorageSimple : public DHTStorage
 
   public:
     String read_stats();
-    String read_db_size();
-
 #endif
 };
 

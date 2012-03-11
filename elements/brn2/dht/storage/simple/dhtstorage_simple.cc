@@ -486,48 +486,46 @@ DHTStorageSimple::req_queue_timer_hook(Timer *, void *f)
 /************************** H A N D L E R *********************************/
 /**************************************************************************/
 
-#ifdef DHT_STORAGE_STATS
+enum {
+  H_STATS
+};
+
 String
 DHTStorageSimple::read_stats()
 {
   StringAccum sa;
 
-  sa << "No. Request: " << _stats_requests;
-  sa << "\nNo. Replies: " << _stats_replies;
-  sa << "\nNo. Retries: " << _stats_retries;
-  sa << "\nNo. Timeouts: " << _stats_timeouts;
-  sa << "\nNo. excessive Timeouts: " << _stats_excessive_timeouts;
-  sa << "\nNo. CacheHits: " << _stats_cache_hits;
-  if ( _stats_replies > 0 ) sa << "\nAvg. no. hops: " << (_stats_hops_sum / _stats_replies);
-  else sa << "\nAvg. no. hops: 0";
+  sa << "<dhtstorage id=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
+
+#ifdef DHT_STORAGE_STATS
+  sa << "\t<stats request=\"" << _stats_requests << "\" replies=\"" << _stats_replies << "\" retries=\"" << _stats_retries;
+  sa << "\" timeouts=\"" << _stats_timeouts << "\" excessive_timeouts=\"" << _stats_excessive_timeouts;
+  sa << "\" cachehits=\"" << _stats_cache_hits;
+  sa << "\" avg_hops=\"" << (uint32_t)((_stats_replies)?(_stats_hops_sum/_stats_replies):0) << "\" />\n";
+#endif
+
+
+  int moved = 0;
+  for ( int i = _dht_op_handler->_db->size() - 1 ; i >= 0; i-- )
+    if ( _dht_op_handler->_db->getRow(i)->move_id != 0 ) moved++;
+
+  sa << "\t<db rows=\"" << _dht_op_handler->_db->size() << "\" moved=\"" << moved << "\" >\n";
+
+  char digest[16*2 + 1];
+
+  for ( int i = _dht_op_handler->_db->size() - 1 ; i >= 0; i-- ) {
+    BRNDB::DBrow *_row = _dht_op_handler->_db->getRow(i);
+    MD5::printDigest(_row->md5_key, digest);
+
+    sa << "\t\t<row md5=\"" << digest << "\" keylen=\"" << _row->keylen << "\" valuelen=\"" << _row->valuelen << "\" locked=\"";
+    sa << String(_row->locked) << "\" movedid=\"" << _row->move_id << "\" replica=\"" << (uint32_t)_row->replica << "\" />\n";
+  }
+
+  sa << "\t</db>\n</dhtstorage>\n";
 
   return sa.take_string();
 }
-#endif
 
-enum {
-  H_DB_SIZE,
-  H_DHT_STORAGE_STATS
-};
-
-String
-DHTStorageSimple::read_db_size()
-{
-  StringAccum sa;
-
-  sa << "DB-Node: " << BRN_NODE_NAME << "\n";
-  sa << "DB-Size (No. rows): " << _dht_op_handler->_db->size() << "\n";
-
-  int moved = 0;
-  for ( int i = _dht_op_handler->_db->size() - 1 ; i >= 0; i-- ) {
-    BRNDB::DBrow *_row = _dht_op_handler->_db->getRow(i);
-
-    if ( _row->move_id != 0 ) moved++;
-  }
-  sa << "Moved rows: " << moved;
-
-  return ( sa.take_string() );
-}
 
 static String
 read_param(Element *e, void *thunk)
@@ -537,10 +535,7 @@ read_param(Element *e, void *thunk)
 
   switch ((uintptr_t) thunk)
   {
-    case H_DB_SIZE : return dhtstorage_simple->read_db_size();
-#ifdef DHT_STORAGE_STATS
-    case H_DHT_STORAGE_STATS: return dhtstorage_simple->read_stats();
-#endif
+    case H_STATS : return dhtstorage_simple->read_stats();
   }
 
   return String();
@@ -551,11 +546,9 @@ DHTStorageSimple::add_handlers()
 {
   DHTStorage::add_handlers();
 
-  add_read_handler("db_size", read_param , (void *)H_DB_SIZE);
-#ifdef DHT_STORAGE_STATS
-  add_read_handler("stats", read_param , (void *)H_DHT_STORAGE_STATS);
-#endif
+  add_read_handler("stats", read_param , (void *)H_STATS);
 }
+
 #include <click/vector.cc>
 template class Vector<DHTStorageSimple::DHTOperationForward*>;
 
