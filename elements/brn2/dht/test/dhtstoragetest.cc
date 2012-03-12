@@ -260,7 +260,8 @@ DHTStorageTest::request(String key, String value, uint8_t mode)
 
 enum {
   H_STORAGE_STATS,
-  H_USER_TEST
+  H_USER_TEST,
+  H_RETRIES
 };
 
 String
@@ -316,13 +317,14 @@ read_param(Element *e, void *thunk)
   {
     case H_STORAGE_STATS : return dht_str->print_stats();
     case H_USER_TEST: return dht_str->print_test_results();
+    case H_RETRIES: return String(dht_str->_retries);
   }
 
   return String();
 }
 
 static int
-write_param(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*errh*/)
+write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
 {
   DHTStorageTest *dht_str = (DHTStorageTest *)e;
 
@@ -330,17 +332,29 @@ write_param(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*err
   Vector<String> args;
   cp_spacevec(s, args);
 
-  String key;
-  String value;
-  uint8_t mode;
+  switch ((uintptr_t) thunk)
+  {
+    case H_USER_TEST: {
+      String key;
+      String value;
+      uint8_t mode;
 
-  if ( args.size() > 1 ) {
-    if ( args[0] == String("write") ) mode = MODE_INSERT;
-    else mode = MODE_READ;
-    key = args[1];
-    if ( args.size() > 2 ) value = args[2];
-    else value = ">" + args[1] + "<"; //=key
-    dht_str->request(key, value, mode);
+      if ( args.size() > 1 ) {
+        if ( args[0] == String("write") ) mode = MODE_INSERT;
+        else mode = MODE_READ;
+        key = args[1];
+        if ( args.size() > 2 ) value = args[2];
+        else value = ">" + args[1] + "<"; //=key
+        dht_str->request(key, value, mode);
+      }
+      break;
+    }
+    case H_RETRIES: {
+      int ret;
+      if (!cp_integer(args[0], &ret)) return errh->error("retries parameter must be integer");
+      dht_str->_retries = ret;
+      break;
+    }
   }
 
   return 0;
@@ -352,7 +366,9 @@ void DHTStorageTest::add_handlers()
 
   add_read_handler("stats", read_param, (void *)H_STORAGE_STATS);
   add_read_handler("test", read_param, (void *)H_USER_TEST);
+  add_read_handler("retries", read_param, (void *)H_RETRIES);
 
+  add_write_handler("retries", write_param, (void *)H_RETRIES);
   add_write_handler("test", write_param, (void *)H_USER_TEST);
 
 }
