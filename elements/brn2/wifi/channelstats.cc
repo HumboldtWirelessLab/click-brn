@@ -497,7 +497,7 @@ ChannelStats::readProcHandler()
 
 #if CLICK_NS
   int stats[16];
-  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &stats);
+  simclick_sim_command(router()->simnode(), SIMCLICK_GET_PERFORMANCE_COUNTER, &stats);
 
   busy = stats[0];
   rx = stats[1];
