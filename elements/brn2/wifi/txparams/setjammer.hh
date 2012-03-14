@@ -33,6 +33,9 @@ public:
 
 	void add_handlers();
 
+  void set_cca(int cs_threshold, int rx_treshold, int cp_treshold);
+  String read_cca();
+
   bool _jammer;
 };
 
