@@ -34,7 +34,7 @@ class PacketLossEstimator : public BRNElement {
         EtherAddress src_address;
         EtherAddress dst_address;
         uint8_t packet_type;
-
+        
     public:
 
         inline EtherAddress get_own_address() {
@@ -59,6 +59,7 @@ class PacketLossEstimator : public BRNElement {
             src_address = src;
             dst_address = dst;
             packet_type = p_type;
+            
         }
     };
 
@@ -80,6 +81,18 @@ public:
     void add_handlers();
     
     String stats_handler(int);
+    
+    void add_ack(EtherAddress dest_addr) {
+        
+        uint32_t acks = _acks_by_node.find(dest_addr);
+        
+        _acks_by_node.insert(dest_addr, ++acks);
+    }
+    
+    uint32_t get_acks_by_node(EtherAddress dest_addr) {
+        
+        return _acks_by_node.find(dest_addr);
+    }
 
 private:
     /// Collected Channel Stats
@@ -95,18 +108,18 @@ private:
     /// Switch cooperation on or off
     int *_coop;
     /// Structure for gathering information about current packet
-    PacketParameter *packet_parameter;
+    PacketParameter *_packet_parameter;
     
-    ///< Adopt the statistics for an adress according to new collected datas
-    void updatePacketlossStatistics();
+    HashMap<EtherAddress, uint32_t> _acks_by_node;
+    
     ///< Estimate probability of channel error because of hidden nodes
     void estimateHiddenNode();
     ///< Estimate probability of channel error because of inrange collisions
     void estimateInrange();
     ///< Estimate probability of channel error because non-wifi-signals
-    void estimateNonWifi();
+    void estimateNonWifi(struct airtime_stats *);
     ///< Estimate probability of channel error because of weak signal
-    void estimateWeakSignal(struct airtime_stats *);
+    void estimateWeakSignal(ChannelStats::SrcInfo *);
     ///< put all necessary information about the current packet into one structure
     void gather_packet_infos_(Packet *);
 };
