@@ -44,9 +44,15 @@ CooperativeChannelStats()
 #define INCLUDES_NEIGHBOURS 1
 
 struct cooperative_channel_stats_header {
-  uint16_t endianess;
-  uint8_t flags;         // flags
-  uint8_t no_neighbours; // number of neighbours
+    uint16_t endianess;
+    uint8_t flags;         // flags
+    uint8_t no_neighbours; // number of neighbours
+};
+
+struct cooperative_message_body {
+    
+    struct cooperative_channel_stats_header ccsh;
+    struct neighbour_airtime_stats *nats_arr;
 };
 
 class CooperativeChannelStats : public BRNElement {
