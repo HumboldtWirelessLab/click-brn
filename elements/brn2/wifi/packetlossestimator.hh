@@ -19,12 +19,6 @@
 
 CLICK_DECLS
 
-struct packloss_corporation {
-    
-    EtherAddress neighbours[];
-    uint8_t rssi; 
-};
-
 class PacketLossEstimator : public BRNElement {
 
     class PacketParameter {

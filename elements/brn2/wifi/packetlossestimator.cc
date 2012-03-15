@@ -186,25 +186,12 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
             src_address = EtherAddress(wh->i_addr2);
     }
     _packet_parameter->put_params_(own_address, src_address, dst_address, packet_type);
-/*
-    BRN_DEBUG("Own Address: %s", packet_parameter->get_own_address().unparse().c_str());
-    BRN_DEBUG("Source Address: %s", packet_parameter->get_src_address().unparse().c_str());
-    BRN_DEBUG("Destination Address: %s", packet_parameter->get_dst_address().unparse().c_str());
-*/
+
+    BRN_DEBUG("Own Address: %s", _packet_parameter->get_own_address().unparse().c_str());
+    BRN_DEBUG("Source Address: %s", _packet_parameter->get_src_address().unparse().c_str());
+    BRN_DEBUG("Destination Address: %s", _packet_parameter->get_dst_address().unparse().c_str());
+
 }
-
-/*int inline fac(int n) {
-
-    int res = 1;
-
-    while (n > 0) {
-        res = res*n;
-        n = n - 1;
-    }
-
-    return res;
-}
-*/
 
 void PacketLossEstimator::estimateHiddenNode() {
 
@@ -284,11 +271,15 @@ void PacketLossEstimator::estimateInrange() {
     HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
     uint8_t neighbours = 1;
     uint8_t irProp = 6;
+    
     for (HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++) {
 
         if (neighbours >= 255) {
+            
             neighbours = 255;
+            
         } else {
+            
             neighbours++;
         }
     }
@@ -373,13 +364,7 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info) {
     
     _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(weaksignal);
 
-    /*
-    BRN_DEBUG("Avg RSSI: %i", stats->avg_rssi);
-    BRN_DEBUG("Std RSSI: %i", stats->std_rssi);
-    BRN_DEBUG("Avg Noise: %i", stats->avg_noise);
-    BRN_DEBUG("Std Noise: %i", stats->std_noise);
-     */
-    BRN_DEBUG("Weak Signal: %i", weaksignal);
+    BRN_DEBUG("Weak Signal for %s: %i", _packet_parameter->get_src_address().unparse().c_str(), weaksignal);
 }
 
 ////////////////////////// STATS //////////////////////////////
