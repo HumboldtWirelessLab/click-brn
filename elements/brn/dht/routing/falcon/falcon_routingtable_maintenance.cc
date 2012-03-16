@@ -145,15 +145,19 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
     if ( memcmp(annotated_ether->ether_shost, src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Is neighbourhop. Not added to table.");
-    } else {
+    } else { //use last hop to get to the src of the packet
       BRN_INFO("Add foreign hop");
    //  _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
    //                 &(srcEther));
     }
 
-   //  if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
-   //   _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
-   //                  &(srcEther),99999999);
+
+    //wenn ich nicht der knoten bin, der eigentlich gefragt werden sollte, dann gibt es einen weg zu dem Knoten
+    //der eigentlich gefragt werden sollte über den letzten Knoten
+    //if me is not the original request node
+    //if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
+    //  _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
+    //                  &(srcEther),99999999);
 
   }
   /** End Hawk stuff */
