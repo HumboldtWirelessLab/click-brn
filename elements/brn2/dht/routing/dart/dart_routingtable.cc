@@ -144,15 +144,23 @@ DartRoutingTable::routing_info(void)
 {
   StringAccum sa;
 
-  sa << "Routing Info ( Node: " << _me->_ether_addr.unparse() << " )\n";
-  sa << "ID: " << DartFunctions::print_id(_me) << "   Valid ID: " << _validID << "\n";
-  sa << "Neighbours (" << _neighbours.size() << "):\n";
-  for ( int n = 0; n < _neighbours.size(); n++ )
-    sa << " " << n << ": " << _neighbours.get_dhtnode(n)->_ether_addr.unparse() << " ID: " << DartFunctions::print_id(_neighbours.get_dhtnode(n)) << "\n";
+  sa << "<dartroutinginfo addr=\"" << _me->_ether_addr.unparse() << "\" id=\"" << DartFunctions::print_raw_id(_me);
+  sa << "\" id_len=\"" << _me->_digest_length << "\" valid_id=\"" << String(_validID) << "\" >\n\t<neighbours count=\"";
+  sa << _neighbours.size() << "\" >\n";
+  for ( int n = 0; n < _neighbours.size(); n++ ) {
+    DHTnode *node = _neighbours.get_dhtnode(n);
+    sa << "\t\t<neighbour addr=\"" << node->_ether_addr.unparse() << "\" id=\"";
+    sa << DartFunctions::print_raw_id(node) << "\" id_len=\"" << node->_digest_length << "\" />\n";
+  }
 
-  sa << "All Nodes (" << _allnodes.size() << "):\n";
-  for ( int n = 0; n < _allnodes.size(); n++ )
-    sa << " " << n << ": " << _allnodes.get_dhtnode(n)->_ether_addr.unparse() << " ID: " << DartFunctions::print_id(_allnodes.get_dhtnode(n)) << "\n";
+  sa << "\t</neighbours>\n\t<allnodes count=\"" << _allnodes.size() << "\" >\n";
+  for ( int n = 0; n < _allnodes.size(); n++ ) {
+    DHTnode *node = _allnodes.get_dhtnode(n);
+    sa << "\t\t<node addr=\"" << node->_ether_addr.unparse() << "\" id=\"";
+    sa << DartFunctions::print_raw_id(node) << "\" id_len=\"" << node->_digest_length << "\" />\n";
+  }
+
+  sa << "\t</allnodes>\n</dartroutinginfo>\n";
 
   return sa.take_string();
 }
