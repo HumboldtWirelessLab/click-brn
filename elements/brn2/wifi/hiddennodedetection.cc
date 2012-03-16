@@ -151,7 +151,7 @@ HiddenNodeDetection::push(int port, Packet *p)
 //        case WIFI_FC0_TYPE_CTL:
 //          break;
       }
-
+            
       BRN_DEBUG("Fin");
 
     } else { //RX with rate = 0
