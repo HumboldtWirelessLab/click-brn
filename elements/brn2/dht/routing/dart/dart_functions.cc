@@ -49,6 +49,23 @@ DartFunctions::print_id(DHTnode* n)
   return print_id(n->_md5_digest, n->_digest_length);
 }
 
+String
+DartFunctions::print_raw_id(md5_byte_t *digest, int len)
+{
+  StringAccum sa;
+
+  for ( int i = 0; i < len; i++ ) sa << ( ( digest[ i / 8 ] >> ( i % 8 ) ) & 1 );
+
+  return sa.take_string();
+}
+
+String
+DartFunctions::print_raw_id(DHTnode* n)
+{
+  return print_raw_id(n->_md5_digest, n->_digest_length);
+}
+
+
 bool
 DartFunctions::has_max_id_length(DHTnode *n)
 {

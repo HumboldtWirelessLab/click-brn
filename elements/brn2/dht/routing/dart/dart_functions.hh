@@ -33,6 +33,8 @@ class DartFunctions {
 
     static String print_id(DHTnode* n);
     static String print_id(md5_byte_t *digest, int len);
+    static String print_raw_id(DHTnode* n);
+    static String print_raw_id(md5_byte_t *digest, int len);
     static bool has_max_id_length(DHTnode *n);
     static void copy_id(DHTnode *dst, DHTnode *src);
     static void append_id_bit(DHTnode *node, int bit);
