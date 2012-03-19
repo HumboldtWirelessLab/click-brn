@@ -12,6 +12,7 @@
 #include "elements/brn2/wifi/channelstats.hh"
 #include "elements/brn2/wifi/collisioninfo.hh"
 #include "elements/brn2/wifi/hiddennodedetection.hh"
+#include "elements/brn2/wifi/cooperativechannelstats.hh"
 #include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
 #include <click/ip6address.hh>
 #include <elements/analysis/timesortedsched.hh>
@@ -53,7 +54,6 @@ class PacketLossEstimator : public BRNElement {
             src_address = src;
             dst_address = dst;
             packet_type = p_type;
-            
         }
     };
 
@@ -76,17 +76,9 @@ public:
     
     String stats_handler(int);
     
-    void add_ack(EtherAddress dest_addr) {
-        
-        uint32_t acks = _acks_by_node.find(dest_addr);
-        
-        _acks_by_node.insert(dest_addr, ++acks);
-    }
+    void add_ack(EtherAddress);
     
-    uint32_t get_acks_by_node(EtherAddress dest_addr) {
-        
-        return _acks_by_node.find(dest_addr);
-    }
+    uint32_t get_acks_by_node(EtherAddress);
 
 private:
     /// Collected Channel Stats
@@ -97,14 +89,18 @@ private:
     HiddenNodeDetection *_hnd;
     /// Class for storing statistical data about lost packets
     PacketLossInformation *_pli;
+    
+    CooperativeChannelStats *_cocst;
+    
+    static HashMap<EtherAddress, uint32_t> _acks_by_node;
+    
+    bool _pessimistic_hn_detection;
     /// Device pointer
     BRN2Device *_dev;
     /// Switch cooperation on or off
     int *_coop;
     /// Structure for gathering information about current packet
     PacketParameter *_packet_parameter;
-    
-    HashMap<EtherAddress, uint32_t> _acks_by_node;
     
     ///< Estimate probability of channel error because of hidden nodes
     void estimateHiddenNode();
