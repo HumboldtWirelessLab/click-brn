@@ -125,7 +125,9 @@ class CooperativeChannelStats : public BRNElement {
     String stats_handler(int mode);
 
     void send_message();
-
+    
+    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
+    
   private:
     ChannelStats *_cst;
 
@@ -136,7 +138,6 @@ class CooperativeChannelStats : public BRNElement {
     NodeChannelStatsTable ncst;
 
     bool _add_neighbours;
-
 };
 
 CLICK_ENDDECLS
