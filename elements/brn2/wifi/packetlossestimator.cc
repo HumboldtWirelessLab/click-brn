@@ -50,10 +50,9 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
     
     if (packet != NULL) {
         
-        gather_packet_infos_(packet);
-        
         if (_pli != NULL) {
             
+            gather_packet_infos_(packet);
             struct airtime_stats *stats;
             HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab;
             
@@ -121,52 +120,53 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
     EtherAddress own_address = *_dev->getEtherAddress();
     EtherAddress dst_address = EtherAddress(wh->i_addr1);
     EtherAddress src_address;
-
     uint8_t packet_type = 0;
-
+    StringAccum type;
+    StringAccum subtype;
+    
     switch (wh->i_fc[0] & WIFI_FC0_TYPE_MASK) {
 
         case WIFI_FC0_TYPE_MGT:
-            BRN_DEBUG("ManagementFrame");
+            type.append("ManagementFrame");
             src_address = EtherAddress(wh->i_addr2);
             //switch (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {.... }
             packet_type = 10;
             break;
 
         case WIFI_FC0_TYPE_CTL:
-            BRN_DEBUG("ControlFrame");
+            type.append("ControlFrame");
             src_address = brn_etheraddress_broadcast;
             packet_type = 20;
             switch (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {
 
                 case WIFI_FC0_SUBTYPE_PS_POLL:
-                    BRN_DEBUG("ps-poll");
+                    subtype.append("ps-poll");
                     packet_type = 21;
                     break;
                     
                 case WIFI_FC0_SUBTYPE_RTS:
-                    BRN_DEBUG("rts");
+                    subtype.append("rts");
                     packet_type = 22;
                     break;
                     
                 case WIFI_FC0_SUBTYPE_CTS:
-                    BRN_DEBUG("cts");
+                    subtype.append("cts");
                     packet_type = 23;
                     break;
                     
                 case WIFI_FC0_SUBTYPE_ACK:
-                    BRN_DEBUG("ack");
+                    subtype.append("ack");
                     packet_type = 24;
                     add_ack(dst_address);
                     break;
                     
                 case WIFI_FC0_SUBTYPE_CF_END:
-                    BRN_DEBUG("cf-end");
+                    subtype.append("cf-end");
                     packet_type = 25;
                     break;
                     
                 case WIFI_FC0_SUBTYPE_CF_END_ACK:
-                    BRN_DEBUG("cf-end-ack");
+                    subtype.append("cf-end-ack");
                     packet_type = 26;
                     break;
                     
@@ -176,7 +176,7 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
             break;
 
         case WIFI_FC0_TYPE_DATA:
-            BRN_DEBUG("DataFrame");
+            type.append("DataFrame");
             src_address = EtherAddress(wh->i_addr2);
             packet_type = 30;
             break;
@@ -186,8 +186,23 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
             src_address = EtherAddress(wh->i_addr2);
     }
     
+    if (_debug == 4) {
+        
+        if (type != NULL)
+            BRN_DEBUG("Frame type: %s", type.take_string().c_str());
+            
+        if (subtype != NULL)
+            BRN_DEBUG("Frame subtype: %s", subtype.take_string().c_str());  
+    }
+    
     _packet_parameter->put_params_(own_address, src_address, dst_address, packet_type);
     
+    if (!_pli->mac_address_exists(src_address) && src_address != own_address && src_address != brn_etheraddress_broadcast)
+        _pli->graph_insert(src_address);
+
+    if (!_pli->mac_address_exists(dst_address)&& dst_address != own_address && dst_address != brn_etheraddress_broadcast)
+        _pli->graph_insert(dst_address);
+
     if (_debug == 4) {
         
         BRN_DEBUG("Own Address: %s", _packet_parameter->get_own_address().unparse().c_str());
@@ -198,6 +213,9 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
 
 void PacketLossEstimator::estimateHiddenNode() {
     
+    if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
+        return;
+    
     if (_packet_parameter->get_own_address() != _packet_parameter->get_dst_address()) {
         
         if (_hnd->has_neighbours(_packet_parameter->get_own_address()))
@@ -206,6 +224,8 @@ void PacketLossEstimator::estimateHiddenNode() {
             BRN_DEBUG("Own address has no neighbours");
 
         uint8_t hnProp = 6;
+        bool coopst = false;
+        
         if (_hnd->has_neighbours(_packet_parameter->get_src_address())) {
             
             BRN_DEBUG("%s has neighbours", _packet_parameter->get_src_address().unparse().c_str());
@@ -230,19 +250,45 @@ void PacketLossEstimator::estimateHiddenNode() {
                     else
                         neighbours++;
 
-                    //hnProp += i.value()->;
-                    //1 - ((Zeit)!/((Zeit-Nachbarn)! * Zeit ^Nachbarn)) Zeit = 10 ms (besser backoffzeiten und sendeh�ufigkeit mit einbeziehen)
                 } else
                     BRN_DEBUG("In my Neighbour List");
             }
-/*            int period = 10;
-            hnProp = (1 - (fac(period) / (fac(period - neighbours) * pow(period, neighbours)))) * 100;
-            if (hnProp < 6) hnProp = 6;
-*/
+            
             if (_cocst != NULL) {
                 
-                // DO STH
-            } else {
+                HashMap<EtherAddress, struct neighbour_airtime_stats*> nats_map = _cocst->get_stats(&_packet_parameter->get_src_address());
+                
+                if (!nats_map.empty()) {
+                    
+                    BRN_DEBUG("NATS-size: %d", nats_map.size());
+                    
+                    uint8_t duration = 0;
+                    
+                    for (HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator i = nats_map.begin(); i != nats_map.end(); i++) {
+                        
+                        EtherAddress tmpAdd = i.key();
+                        struct neighbour_airtime_stats* nats = i.value();
+                        
+                        BRN_DEBUG("EA: %s", tmpAdd.unparse().c_str());
+                        BRN_DEBUG("NATS-EA: %s", EtherAddress(nats->_etheraddr).unparse().c_str());
+                        BRN_DEBUG("PKT-Count: %d", nats->_pkt_count);
+                        BRN_DEBUG("Duration: %d", nats->_duration);
+                        
+                        if (!_hnd->get_nodeinfo_table().find(tmpAdd) || !_hnd->get_nodeinfo_table().find(tmpAdd)->_neighbour)
+                            duration += nats->_duration;
+                    }
+                    
+                    if (duration != 0) {
+                        
+                        hnProp = 1000000/duration;
+                        coopst = true;
+                    }
+                    
+                } else
+                    BRN_DEBUG("NATS NULL");   
+            }
+            
+            if (!coopst) {
                 
                 if (_pessimistic_hn_detection && neighbours > 0) { // pessimistic estimator, if we do have one hidden node, he will send as often as possible and as slow as possible. The may interrupt all of our transmissions
                 
@@ -257,13 +303,10 @@ void PacketLossEstimator::estimateHiddenNode() {
                 BRN_DEBUG("%d Acks received for %s", get_acks_by_node(_packet_parameter->get_dst_address()), _packet_parameter->get_dst_address().unparse().c_str());
             }
             
-            if (!_pli->mac_address_exists(_packet_parameter->get_src_address()))
-                _pli->graph_insert(_packet_parameter->get_src_address());
-            
             _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
 
             // Problem: hidden nodes who never receive data packets cannot be assigned to any neighbour node. This might be solved with cooperation.
-            BRN_DEBUG("hnProp: %i", hnProp);
+            BRN_DEBUG("hnProp1 for %s: %i", _packet_parameter->get_src_address().unparse().c_str(), hnProp);
         }
     }
 }
@@ -276,11 +319,14 @@ void PacketLossEstimator::add_ack(EtherAddress dest_addr) {
     
 uint32_t PacketLossEstimator::get_acks_by_node(EtherAddress dest_addr) {
         
-            return PacketLossEstimator::_acks_by_node.find(dest_addr);
+    return PacketLossEstimator::_acks_by_node.find(dest_addr);
 }
 
 void PacketLossEstimator::estimateInrange() {
-
+    
+    if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
+        return;
+    
     HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
     uint8_t neighbours = 1;
     uint8_t irProp = 6;
@@ -312,17 +358,17 @@ void PacketLossEstimator::estimateInrange() {
     if (irProp < 6) 
         irProp = 6;
 
-    if (!_pli->mac_address_exists(_packet_parameter->get_src_address()))
-        _pli->graph_insert(_packet_parameter->get_src_address());
-    
     _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->setFraction(irProp);
-    BRN_DEBUG("In-Range for %s: %i", _packet_parameter->get_src_address().unparse().c_str(), irProp);
+    BRN_DEBUG("In-Range1 for %s: %i", _packet_parameter->get_src_address().unparse().c_str(), irProp);
 }
 
 void PacketLossEstimator::estimateNonWifi(struct airtime_stats *ats) {
 
     if (_pli != NULL) {
         
+        if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
+        return;
+
         if (ats != NULL) {
             
             BRN_DEBUG("Mac Busy: %d", ats->frac_mac_busy);
@@ -331,12 +377,6 @@ void PacketLossEstimator::estimateNonWifi(struct airtime_stats *ats) {
             BRN_DEBUG("Mac TX: %d", ats->frac_mac_tx);
             BRN_DEBUG("Retries: %d", ats->rx_retry_packets);
         }
-        
-        if (!_pli->mac_address_exists(_packet_parameter->get_src_address())) {
-            
-            _pli->graph_insert(_packet_parameter->get_src_address());
-        }
-        // cannot be estimated in simulator. There is no non_wifi.
         
         uint8_t non_wifi = 10;
         if (ats->frac_mac_rx + ats->frac_mac_tx <= ats->frac_mac_busy) {
@@ -350,6 +390,9 @@ void PacketLossEstimator::estimateNonWifi(struct airtime_stats *ats) {
 }
 
 void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info) {
+    
+    if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
+        return;
     
     int8_t weaksignal = 0;
 
@@ -367,11 +410,6 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info) {
         }
     }
     
-    if (!_pli->mac_address_exists(_packet_parameter->get_src_address())) {
-
-        _pli->graph_insert(_packet_parameter->get_src_address());
-    }
-    
     _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(weaksignal);
     BRN_DEBUG("Weak Signal for %s: %i", _packet_parameter->get_src_address().unparse().c_str(), weaksignal);
 }
@@ -385,57 +423,78 @@ enum {
 String PacketLossEstimator::stats_handler(int mode) {
 
     StringAccum sa;
-    struct airtime_stats *as;
-
+    
     sa << "<packetlossreason>\n";
     if (_pli != NULL) {
         
         if (_hnd != NULL) {
             
             sa << "\t<hiddennodes>\n";
-            HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*> neighbour_nodes = _hnd->get_nodeinfo_table();
-            //uint8_t fraction;
+            int cou = 0;
             
-            for (Vector<EtherAddress>::const_iterator i = _pli->node_neighbours_addresses_get().begin(); i != _pli->node_neighbours_addresses_get().end(); i++) {
+            for (cou = 0; cou < _pli->node_neighbours_addresses_get().size(); cou++) {
                 
- //           for (HashMap<EtherAddress, HiddenNodeDetection::NodeInfo*>::iterator i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++) {
-                if (!_pli->mac_address_exists(*i))
-                   continue;
-                BRN_DEBUG("addr: %c", i->unparse().c_str());
+                EtherAddress ea = _pli->node_neighbours_addresses_get().at(cou);
                 
-                if (_pli->graph_get(*i) == NULL)
+                if (ea == brn_etheraddress_broadcast)
                     continue;
-//                if (_pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE) == NULL)
-//                    continue;
-                BRN_DEBUG("3333333333333");
-                sa << "\t\t<neighbour address=\"" << i->unparse().c_str() << "\">\n";
+             
+                sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
                 sa << "\t\t\t<fraction>"
-                        << _pli->graph_get(*i)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction()
+                        << _pli->graph_get(ea)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction()
                         << "</fraction>\n";
-                sa << "\t\t</neighbour address>\n";
-                BRN_DEBUG("44444444444");
+                sa << "\t\t</neighbour>\n";
             }
             
             sa << "\t</hiddennodes>\n";
             sa << "\t<inrange>\n";
             
-            for (Vector<EtherAddress>::const_iterator i = _pli->node_neighbours_addresses_get().begin(); i != _pli->node_neighbours_addresses_get().end(); i++) {
+            for (cou = 0; cou < _pli->node_neighbours_addresses_get().size(); cou++) {
                 
-                if (!_pli->mac_address_exists(*i))
-                   continue;
-                BRN_DEBUG("addr: %c", i->unparse().c_str());
+                EtherAddress ea = _pli->node_neighbours_addresses_get().at(cou);
                 
-                if (_pli->graph_get(*i) == NULL)
+                if (ea == brn_etheraddress_broadcast)
                     continue;
-                
-                sa << "\t\t<neighbour address=\"" << i->unparse().c_str() << "\">\n";
+              
+                sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
                 sa << "\t\t\t<fraction>"
-                        << _pli->graph_get(*i)->reason_get(PacketLossReason::IN_RANGE)->getFraction()
+                        << _pli->graph_get(ea)->reason_get(PacketLossReason::IN_RANGE)->getFraction()
                         << "</fraction>\n";
-                sa << "\t\t</neighbour address>\n";
+                sa << "\t\t</neighbour>\n";
             }
             
             sa << "\t</inrange>\n";
+            sa << "\t<weak_signal>\n";
+            
+            for (cou = 0; cou < _pli->node_neighbours_addresses_get().size(); cou++) {
+                
+                EtherAddress ea = _pli->node_neighbours_addresses_get().at(cou);
+                
+                if (ea == brn_etheraddress_broadcast)
+                    continue;
+              
+                sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
+                sa << "\t\t\t<fraction>"
+                        << _pli->graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction()
+                        << "</fraction>\n";
+                sa << "\t\t</neighbour>\n";
+            }
+            sa << "\t</weak_signal>\n";
+            sa << "\t<non_wifi>\n";
+            for (cou = 0; cou < _pli->node_neighbours_addresses_get().size(); cou++) {
+                
+                EtherAddress ea = _pli->node_neighbours_addresses_get().at(cou);
+                
+                if (ea == brn_etheraddress_broadcast)
+                    continue;
+              
+                sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
+                sa << "\t\t\t<fraction>"
+                        << _pli->graph_get(ea)->reason_get(PacketLossReason::NON_WIFI)->getFraction()
+                        << "</fraction>\n";
+                sa << "\t\t</neighbour>\n";
+            }
+            sa << "\t</non_wifi>\n";
         }
     }
     
