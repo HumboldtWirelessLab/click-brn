@@ -85,13 +85,20 @@ void CooperativeChannelStats::run_timer(Timer *) {
 
 inline WritablePacket * create_new_packet(struct cooperative_channel_stats_header ccsh, struct neighbour_airtime_stats nats_arr[]) {
     
-    struct cooperative_message_body cmb;
-    cmb.ccsh = ccsh;
-    cmb.nats_arr = new struct neighbour_airtime_stats [ccsh.no_neighbours];
+    WritablePacket *p = Packet::make(128, NULL,
+            sizeof(struct cooperative_channel_stats_header) + sizeof(neighbour_airtime_stats) * ccsh.no_neighbours, 32);
     
-    memcpy(cmb.nats_arr, nats_arr, sizeof(struct neighbour_airtime_stats) * cmb.ccsh.no_neighbours);
-    
-    WritablePacket *p = Packet::make(128, &cmb, sizeof(cmb), 32);
+    unsigned char *data = p->data();
+    memcpy(data, &ccsh, sizeof(struct cooperative_channel_stats_header));
+    if (ccsh.no_neighbours > 0) {
+        
+        int pointer = sizeof(struct cooperative_channel_stats_header);
+        for (int i = 0; i < ccsh.no_neighbours; i++) {
+            
+            memcpy(&data[pointer], &nats_arr[i], sizeof(neighbour_airtime_stats));
+            pointer += sizeof(neighbour_airtime_stats);
+        }
+    }
     
     return p;
 }
@@ -130,6 +137,7 @@ void CooperativeChannelStats::send_message() {
     
     #warning check stettings of brn_headers
     p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
+    BRN_DEBUG("Send Packet-Length: %d", p->length());
     
     output(0).push(p);
 }
@@ -137,9 +145,10 @@ void CooperativeChannelStats::send_message() {
 /*********************************************/
 /************* Info from nodes****************/
 /*********************************************/
-void CooperativeChannelStats::push(int port, Packet *p)
+void CooperativeChannelStats::push(int, Packet *p)
 {
     BRN_DEBUG("push");
+    BRN_DEBUG("received Packet-Length: %d", p->length());
     
     click_ether *eh = (click_ether*)p->ether_header();
     EtherAddress src_ea = EtherAddress(eh->ether_shost);
@@ -147,24 +156,32 @@ void CooperativeChannelStats::push(int port, Packet *p)
     if (ncst.find(src_ea) == NULL ) ncst.insert(src_ea, new NodeChannelStats(src_ea));
     NodeChannelStats *ncs = ncst.find(src_ea);
     
-    struct cooperative_message_body *cmb = (struct cooperative_message_body*) p->data();
-    BRN_DEBUG("FLAGG: %d", cmb->ccsh.flags);
-     
-    if (cmb->ccsh.flags > 0) {
+    const unsigned char *data = p->data();
+    struct cooperative_channel_stats_header ccsh; 
+    
+    memcpy(&ccsh, data, sizeof(cooperative_channel_stats_header));
+    
+    BRN_DEBUG("FLAGG: %d", ccsh.flags);
+    BRN_DEBUG("Neighbours: %d", ccsh.no_neighbours);
+    
+    if (ccsh.flags > 0) {
+        
+        struct neighbour_airtime_stats nats_arr[ccsh.no_neighbours];
+        memcpy(&nats_arr, &data[sizeof(cooperative_channel_stats_header)], sizeof(neighbour_airtime_stats) * ccsh.no_neighbours);
         
         uint8_t i = 0;
-        for (i = 0; i < cmb->ccsh.no_neighbours; i++) {
+        for (i = 0; i < ccsh.no_neighbours; i++) {
             
-            EtherAddress temp_ea = EtherAddress(cmb->nats_arr[i]._etheraddr);
+            EtherAddress temp_ea = EtherAddress(nats_arr[i]._etheraddr);
             
             BRN_DEBUG("RECEIVED: Address %s: bytes: %d, packets: %d, duration: %d, avg_rssi: %d", 
                     temp_ea.unparse().c_str(),
-                    cmb->nats_arr[i]._byte_count,
-                    cmb->nats_arr[i]._pkt_count,
-                    cmb->nats_arr[i]._duration,
-                    cmb->nats_arr[i]._avg_rssi);
+                    nats_arr[i]._byte_count,
+                    nats_arr[i]._pkt_count,
+                    nats_arr[i]._duration,
+                    nats_arr[i]._avg_rssi);
             
-            ncs->add_neighbour_stats(&temp_ea, &cmb->nats_arr[i]);
+            ncs->add_neighbour_stats(&temp_ea, &nats_arr[i]);
         }
     }
     
