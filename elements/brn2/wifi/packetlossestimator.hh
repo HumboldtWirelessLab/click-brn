@@ -20,8 +20,17 @@
 
 CLICK_DECLS
 
-class PacketLossEstimator : public BRNElement {
+struct packet_loss_interv {
+    
+    Timestamp last_short;
+    Timestamp last_mid;
+    bool mid_now;
+    Timestamp last_long;
+    bool long_now;
+};
 
+class PacketLossEstimator : public BRNElement {
+    
     class PacketParameter {
         
     private:
@@ -99,8 +108,18 @@ private:
     BRN2Device *_dev;
     /// Switch cooperation on or off
     int *_coop;
+    
+    int *_midterm;
+    
+    int *_longterm;
+    
     /// Structure for gathering information about current packet
     PacketParameter *_packet_parameter;
+    
+    static struct packet_loss_interv _ple_interv;
+    
+    PacketLossInformation _mid_term_pli;
+    PacketLossInformation _long_term_pli;
     
     ///< Estimate probability of channel error because of hidden nodes
     void estimateHiddenNode();
