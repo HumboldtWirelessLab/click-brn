@@ -18,10 +18,11 @@ PacketLossEstimator::PacketLossEstimator() :
     _cinfo(NULL),
     _hnd(NULL),
     _pli(NULL),
+    _midterm(5),
+    _longterm(10),
     _dev(NULL) {
         
-        *_midterm = 10;
-        *_longterm = 60;
+    BRN_DEBUG("Constructing");
         _packet_parameter = new PacketParameter();
 //        _mid_term_pli = new PacketLossInformation();
 //        _long_term_pli = new PacketLossInformation();
@@ -33,10 +34,10 @@ PacketLossEstimator::~PacketLossEstimator() {
 }
 
 HashMap<EtherAddress, uint32_t> PacketLossEstimator::_acks_by_node = HashMap<EtherAddress, uint32_t>();
-packet_loss_interv PacketLossEstimator::_ple_interv;
 
 int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
-
+    
+    BRN_DEBUG("Configure");
     int ret = cp_va_kparse(conf, this, errh,
             "CHANNELSTATS", cpkP, cpElement, &_cst,
             "COLLISIONINFO", cpkP, cpElement, &_cinfo,
@@ -55,6 +56,7 @@ int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
 
 Packet *PacketLossEstimator::simple_action(Packet *packet) {
     
+    BRN_DEBUG("Simple Action");
     if (packet != NULL) {
         
         if (_pli != NULL) {
@@ -65,39 +67,34 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
             
             if (_cst != NULL) {
                 
-//                _ple_interv.last_short = packet->timestamp_anno();
-//                if (_ple_interv.last_short.msec() - _ple_interv.last_mid.msec() > _midterm * 1000) {
-//                    
-//                    _ple_interv.last_mid = packet->timestamp_anno();
-//                    _ple_interv.mid_now = true;
-//                }
-//                
-//                if (_ple_interv.last_short.msec() - _ple_interv.last_long.msec() > _longterm * 1000) {
-//                    
-//                    _ple_interv.last_long = packet->timestamp_anno();
-//                    _ple_interv.long_now = true;
-//                }
-                
                 int time_now = packet->timestamp_anno().msec() * 1000;
                 
-                if (_mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get("time") == NULL)
-                    _mid_term_pli.graph_get(_packet_parameter->get_src_address())->packetlossreason_set("time", PacketLossInformation_Graph::ADDSTATS, (packet->timestamp_anno().msec() * 1000));
-                
-                else if (time_now - (_mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get("time")->getFraction()) > *_midterm) {
+                if (_packet_parameter->get_src_address() != brn_etheraddress_broadcast && _packet_parameter->get_src_address() != _packet_parameter->get_own_address()) {
                     
-                   _mid_term_pli.graph_get(_packet_parameter->get_src_address())->packetlossreason_set("time", PacketLossInformation_Graph::ADDSTATS, (packet->timestamp_anno().msec() * 1000));
-                   _ple_interv.mid_now = true;
-                }
- 
-                if (_long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get("time") == NULL)
-                    _long_term_pli.graph_get(_packet_parameter->get_src_address())->packetlossreason_set("time", PacketLossInformation_Graph::ADDSTATS, (packet->timestamp_anno().msec() * 1000));
-                
-                else if (time_now - (_long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get("time")->getFraction()) > *_longterm) {
+                    click_chatter("%s", _packet_parameter->get_src_address().unparse().c_str());
                     
-                   _long_term_pli.graph_get(_packet_parameter->get_src_address())->packetlossreason_set("time", PacketLossInformation_Graph::ADDSTATS, (packet->timestamp_anno().msec() * 1000));
-                   _ple_interv.long_now = true;
+                    if (!_pli->mac_address_exists( _packet_parameter->get_src_address()))
+                        click_chatter("%s does not exist!!!!", _packet_parameter->get_src_address().unparse().c_str());
+                    
+                    if (_mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS) == NULL)
+                        _mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
+                    
+                    else if (time_now - (_mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->getFraction()) > _midterm) {
+                        
+                        _mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
+                        _ple_interv.mid_now = true;
+                    }
+                    
+                    if (_long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS) == NULL)
+                        _long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
+
+                    else if (time_now - (_long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->getFraction()) > _longterm) {
+                        
+                        _long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
+                        _ple_interv.long_now = true;
+                    }
                 }
- 
+
                 stats = _cst->get_latest_stats();
                 src_tab = _cst->get_latest_stats_neighbours();
                 ChannelStats::SrcInfo srcInfo = src_tab->find(_packet_parameter->get_src_address());
@@ -247,11 +244,12 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
         _mid_term_pli.graph_insert(src_address);
         _long_term_pli.graph_insert(src_address);
     }
-    if (!_pli->mac_address_exists(dst_address)&& dst_address != own_address && dst_address != brn_etheraddress_broadcast) {
+    
+    if (!_pli->mac_address_exists(dst_address) && dst_address != own_address && dst_address != brn_etheraddress_broadcast) {
         
         _pli->graph_insert(dst_address);
-        _mid_term_pli.graph_insert(src_address);
-        _long_term_pli.graph_insert(src_address);
+        _mid_term_pli.graph_insert(dst_address);
+        _long_term_pli.graph_insert(dst_address);
     }
     
     if (_debug == 4) {
@@ -523,6 +521,7 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info) {
             else if (ea != _packet_parameter->get_src_address()) {
                 
                 int last_ws = _pli->graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
+                
                 if (last_ws >= 10)
                     _pli->graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction((last_ws + last_ws - 10)/2);
                 else
