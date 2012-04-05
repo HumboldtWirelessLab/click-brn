@@ -106,17 +106,15 @@ private:
     bool _pessimistic_hn_detection;
     /// Device pointer
     BRN2Device *_dev;
-    /// Switch cooperation on or off
-    int *_coop;
     
-    int *_midterm;
+    uint32_t _midterm;
     
-    int *_longterm;
+    uint32_t _longterm;
     
     /// Structure for gathering information about current packet
     PacketParameter *_packet_parameter;
     
-    static struct packet_loss_interv _ple_interv;
+    struct packet_loss_interv _ple_interv;
     
     PacketLossInformation _mid_term_pli;
     PacketLossInformation _long_term_pli;
