@@ -73,8 +73,17 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                     
                     click_chatter("%s", _packet_parameter->get_src_address().unparse().c_str());
                     
-                    if (!_pli->mac_address_exists( _packet_parameter->get_src_address()))
-                        click_chatter("%s does not exist!!!!", _packet_parameter->get_src_address().unparse().c_str());
+                    if (!_mid_term_pli.mac_address_exists(_packet_parameter->get_src_address())) {
+                        
+                        click_chatter("midterm %s does not exist!!!!", _packet_parameter->get_src_address().unparse().c_str());
+                        _mid_term_pli.graph_insert(_packet_parameter->get_src_address());                        
+                    }
+                    
+                    if (!_long_term_pli.mac_address_exists(_packet_parameter->get_src_address())) {
+                        
+                        click_chatter("longterm %s does not exist!!!!", _packet_parameter->get_src_address().unparse().c_str());
+                        _long_term_pli.graph_insert(_packet_parameter->get_src_address());
+                    }  
                     
                     if (_mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS) == NULL)
                         _mid_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
