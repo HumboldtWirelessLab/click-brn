@@ -1196,6 +1196,9 @@ AC_SUBST(EXPAT_INCLUDES)
 AC_SUBST(EXPAT_LIBS)
 
 
+AC_SEARCH_LIBS(SSL_library_init, ssl)
+AC_SEARCH_LIBS(SHA1_Init, crypto)
+
 dnl check linuxmodule for Linux
 
 if test $ac_have_linux_kernel = y; then
