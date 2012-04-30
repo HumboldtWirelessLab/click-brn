@@ -44,7 +44,7 @@ private:
 	EtherAddress _me;
 
 	// Parameters to control the refreshing of key material
-	int _interval;
+	int _interval; // equals ( _key_list_cardinality * _key_timeout )
 	int _start_time;
 	Timer _timer;
 

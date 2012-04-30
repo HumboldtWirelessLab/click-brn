@@ -39,7 +39,6 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 		"KEY_LIST_CARDINALITY", cpkP, cpInteger, &_key_list_cardinality,
 		"KEY_TIMEOUT", cpkP, cpInteger, &_key_timeout,
 		"START", cpkP, cpInteger, &_start_time,
-		"INTERVAL", cpkP, cpInteger, &_interval,
 		cpEnd) < 0)
 		return -1;
 
@@ -58,7 +57,8 @@ int keyserver::initialize(ErrorHandler* errh) {
 
 void keyserver::push(int port, Packet *p) {
 	// As a server we handle client requests
-	//handle_kpd_req(p);
+	// todo: handle_kpd_req(p);
+	BRN_DEBUG("yey, fist packet for kdp !!! =)");
 }
 
 void keyserver::run_timer(Timer* ) {
