@@ -3,6 +3,10 @@
  *
  *  Created on: 18.04.2012
  *      Author: aureliano
+ *
+ *  todo:
+ *  - Uncertanty in case of renegotiation. No experience and testing here!
+ *  - Uncertanty in case of packet lost. Need for tcp-wise connection.
  */
 #include <iostream>
 #include <unistd.h>
@@ -132,6 +136,9 @@ int TLS::initialize(ErrorHandler* errh) {
 	if (!bio_err) {print_err(); return -1;}
 	SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 
+	// to read additional protocol bytes wenn calling SSL_pending containing more SSL records
+ 	SSL_set_read_ahead(conn, 1);
+
 	// Must be called before first SSL_read or SSL_write
 	(role=="CLIENT")? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 
@@ -141,33 +148,74 @@ int TLS::initialize(ErrorHandler* errh) {
 }
 
 void TLS::push(int port, Packet *p) {
-	BRN_DEBUG("using port %d", port);
 
 	if (port == 0) { // data from network
-		BRN_DEBUG("rcv ssl-record (%d bytes) <<<", p->length());
+		BRN_DEBUG("port %d: rcv ssl-record (%d bytes) <<<", port, p->length());
 		rcv_data(p);
 	} else if (port == 1) { // data to encrypt
-		BRN_DEBUG("encrypting %d bytes >>>", p->length());
+		BRN_DEBUG("port %d: encrypting %d bytes >>>", port, p->length());
 		encrypt(p);
 	} else {
-		BRN_DEBUG("oops !!", p->length());
+		BRN_DEBUG("port %d: oops !!", port, p->length());
 		p->kill();
 	}
 }
 
+/*
+ * *******************************************************
+ *               private functions
+ * *******************************************************
+ */
+
+bool TLS::do_handshake() {
+	BRN_DEBUG("try out handshake ...");
+
+	// todo: maybe this loop is obsolete
+	for(int tries = 0; tries < 3; tries++) {
+		int temp = SSL_do_handshake(conn);
+		snd_data(); // push data manually as we are dealing with membufs
+
+		// take action based on SSL errors
+		switch (SSL_get_error(conn, temp)) {
+		case SSL_ERROR_NONE:
+			BRN_DEBUG("handshake complete");
+
+			// In case that the application wanted to send
+			// some data but had to do handshake before:
+			if (! pkt_storage.empty() )
+				snd_stored_data();
+
+			return true;
+			break;
+		case SSL_ERROR_WANT_READ:
+			BRN_DEBUG("HANDSHAKE WANT_READ");
+			//rcv_data(); // useless??
+			break;
+		case SSL_ERROR_WANT_WRITE:
+			BRN_DEBUG("HANDSHAKE WANT_WRITE");
+			//snd_data();
+			break;
+		case SSL_ERROR_SSL:
+		case SSL_ERROR_SYSCALL:
+		case SSL_ERROR_ZERO_RETURN:
+		default:
+			print_err();
+			return false;
+		}
+	}
+
+	return false;
+}
 
 // non-blocking
 void TLS::encrypt(Packet *p) {
 	if(p->length() <= 0){
-		BIO_puts(bio_err, "SSL_write with bufsize=0 is undefined.");
+		BRN_ERROR("SSL_write with bufsize=0 is undefined.");
 		print_err();
 		return;
 	}
 
 	// todo: Empfänger und Absender zwischenspeichern
-
-	bool handshaked = false;
-
 
 	int ret = SSL_write(conn,p->data(),p->length());
 	if(ret>0) {
@@ -180,90 +228,35 @@ void TLS::encrypt(Packet *p) {
 	}
 }
 
-
-
 // non-blocking
-void TLS::receive() {
-	bool handshaked = false;
+void TLS::decrypt() {
+	int size = SSL_pending(conn);
+	BRN_DEBUG("processing app-data ...");
 
-	// It's okay to try several times. Reasons are re-negotiation; SSL_read
-	// uncomplete; SSL_pending returns 0.
-	for(int tries = 0; tries < 3; tries++) {
-		/* Check for application data.
-		 * No matter if size is 0, it's possibly more important
-		 * to go on to SSL_read and maybe do a handshake. This is only
-		 * a hard believe.
-		 * In case of size>0 SSL proccessed a full record which
-		 * is ready to pick.
-		 */
-		int size = SSL_pending(conn);
-		data_t *data = (data_t *)malloc(size);
-		if(!data) {
-			BIO_puts(bio_err, "SSL_CONN::receive no memory allocated.");
-			print_err();
-			return;
-		}
 
-		int ret = SSL_read(conn,data,size); // data received in records of max 16kB
-
-		// If SSL_read was successful receiving full records, then ret > 0.
-		if(ret > 0) {
-			// Push decrypted message to the next element.
-			WritablePacket *p = Packet::make(data, size);
-			output(1).push(p);
-
-			tries = 0; // Maybe another ssl-record is in the pipe.
-		} else if (!handshaked) {
-			do_handshake();
-			handshaked = true;
-		}
-
-		free(data);
+	data_t *data = (data_t *)malloc(size);
+	if(!data) {
+		BRN_ERROR("SSL_CONN::receive no memory allocated.");
+		print_err();
+		return;
 	}
-	return;
+
+	int ret = SSL_read(conn,data,size); // data received in records of max 16kB
+
+	// If SSL_read was successful receiving full records, then ret > 0.
+	if(ret > 0) {
+		BRN_DEBUG("...... decrypted");
+		// Push decrypted message to the next element.
+		WritablePacket *p = Packet::make(data, size);
+		output(1).push(p);
+	} else {
+		BRN_DEBUG("...... decryption failed");
+	}
+
+	free(data);
 }
 
 
-/*
- * *******************************************************
- *               private functions
- * *******************************************************
- */
-
-int TLS::do_handshake() {
-	BRN_DEBUG("try out handshake ...");
-
-	// todo: maybe this loop is obsolete
-	for(int tries = 0; tries < 3; tries++) {
-		int temp = SSL_do_handshake(conn);
-		snd_data(); // push data manually as we are dealing with membufs
-
-		// take action based on SSL errors
-		switch (SSL_get_error(conn, temp)) {
-		case SSL_ERROR_NONE:
-			BRN_DEBUG("handshake complete");
-			snd_stored_data();
-			return 1;
-			break;
-		case SSL_ERROR_WANT_READ:
-			BRN_DEBUG("HANDSHAKE WANT_READ");
-			//rcv_data(); // useless??
-			break;
-		case SSL_ERROR_WANT_WRITE:
-			BRN_DEBUG("HANDSHAKE WANT_WRITE");
-			snd_data();
-			break;
-		case SSL_ERROR_SSL:
-		case SSL_ERROR_SYSCALL:
-		case SSL_ERROR_ZERO_RETURN:
-		default:
-			print_err();
-			return 0;
-		}
-	}
-
-	return 0;
-}
 
 void TLS::store_data(Packet *p) {
 	pkt_storage.push(p);
@@ -277,9 +270,7 @@ void TLS::snd_stored_data() {
 	}
 }
 
-int TLS::rcv_data(Packet *p) {
-	int len = p->length();
-
+void TLS::rcv_data(Packet *p) {
 	// todo: lookup in hashtable, find ssl-object, if not ex., then add entry
 	// Save associated sender address.
 	dst = BRNPacketAnno::src_ether_anno(p);
@@ -288,9 +279,13 @@ int TLS::rcv_data(Packet *p) {
 	BIO_write(bioIn,p->data(),p->length());
 	p->kill();
 
-	do_handshake(); // in case a handshake has to be done
-
-	return len;
+	// If handshake is complete we assume
+	// that incomming data is for application
+	if (do_handshake() == true
+			&& SSL_read(conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
+			&& SSL_pending(conn) > 0) {
+		decrypt();
+	}
 }
 
 
@@ -323,9 +318,7 @@ int TLS::snd_data() {
 }
 
 void TLS::print_err() {
-	ERR_print_errors(bio_err);
 	BRN_ERROR("%s" , ERR_error_string(ERR_get_error(), NULL));
-	// exit(EXIT_FAILURE);
 }
 
 
@@ -342,13 +335,15 @@ int pem_passwd_cb(char *buf, int size, int rwflag, void *password) {
 
 static String handler_triggered_handshake(Element *e, void *thunk) {
 	TLS *tls = (TLS *)e;
-	tls->do_handshake();
+	// to test this, make do_handshake public!
+	// tls->do_handshake();
 	return String();
 }
 
 void TLS::add_handlers()
 {
   BRNElement::add_handlers();
+
 
   add_read_handler("handshake", handler_triggered_handshake, NULL);
 }

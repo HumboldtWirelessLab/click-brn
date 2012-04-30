@@ -43,10 +43,6 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
-	void encrypt(Packet *p); // send application data
-	void receive(); // receive application data
-	int do_handshake();
-
 	void add_handlers();
 private:
 	String role;
@@ -65,12 +61,17 @@ private:
 	//Hashmap<EtherAddress, SSL_CTX> ssl_table;
 	EtherAddress dst;
 
+	void encrypt(Packet *p); // send application data
+	void decrypt(); // receive application data
+
+	bool do_handshake();
+
 	queue<Packet *> pkt_storage;
 	void store_data(Packet *p);
 	void snd_stored_data();
 
 	int snd_data();
-	int rcv_data(Packet *p);
+	void rcv_data(Packet *p);
 	void print_err();
 };
 
