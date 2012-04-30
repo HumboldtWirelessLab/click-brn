@@ -8,10 +8,12 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
+#include <queue>
 
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <click/packet.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -166,19 +168,15 @@ void TLS::encrypt(Packet *p) {
 
 	bool handshaked = false;
 
-	// re-negotiation is always possible, so SSL_read must be repeated
-	for(int tries = 0, ret = 0; tries < 2; tries++) {
 
-		ret += SSL_write(conn,p->data(),p->length());
-		if(ret>0) snd_data();
-
-		if(p->length() > ret && ret > 0) {
-			BRN_DEBUG("Check if some day %d == %d", p->length(), ret);
-			tries = 0;
-		} else if (!handshaked) {
-			do_handshake();
-			handshaked = true;
-		}
+	int ret = SSL_write(conn,p->data(),p->length());
+	if(ret>0) {
+		BRN_DEBUG("SSL ready... sending encrypted data");
+		snd_data();
+	} else {
+		BRN_DEBUG("SSL not ready... storing data while doing handshake");
+		store_data(p);
+		do_handshake();
 	}
 }
 
@@ -235,6 +233,7 @@ void TLS::receive() {
 int TLS::do_handshake() {
 	BRN_DEBUG("try out handshake ...");
 
+	// todo: maybe this loop is obsolete
 	for(int tries = 0; tries < 3; tries++) {
 		int temp = SSL_do_handshake(conn);
 		snd_data(); // push data manually as we are dealing with membufs
@@ -243,6 +242,7 @@ int TLS::do_handshake() {
 		switch (SSL_get_error(conn, temp)) {
 		case SSL_ERROR_NONE:
 			BRN_DEBUG("handshake complete");
+			snd_stored_data();
 			return 1;
 			break;
 		case SSL_ERROR_WANT_READ:
@@ -263,6 +263,18 @@ int TLS::do_handshake() {
 	}
 
 	return 0;
+}
+
+void TLS::store_data(Packet *p) {
+	pkt_storage.push(p);
+}
+
+void TLS::snd_stored_data() {
+	while(! pkt_storage.empty() ) {
+		Packet *p = pkt_storage.front();
+		encrypt(p);
+		pkt_storage.pop();
+	}
 }
 
 int TLS::rcv_data(Packet *p) {
