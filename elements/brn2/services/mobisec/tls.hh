@@ -9,9 +9,12 @@
 #define TLS_HH_
 
 #include <string>
+#include <queue>
+
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/hashmap.hh>
+#include <click/packet.hh>
 #include "elements/brn2/brnelement.hh"
 
 #include <openssl/ssl.h>
@@ -61,6 +64,10 @@ private:
 	// todo: meherer Verbindungen verwalten über hashmap
 	//Hashmap<EtherAddress, SSL_CTX> ssl_table;
 	EtherAddress dst;
+
+	queue<Packet *> pkt_storage;
+	void store_data(Packet *p);
+	void snd_stored_data();
 
 	int snd_data();
 	int rcv_data(Packet *p);
