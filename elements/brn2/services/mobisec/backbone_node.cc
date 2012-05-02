@@ -54,7 +54,10 @@ int backbone_node::initialize(ErrorHandler* errh) {
 
 void backbone_node::push(int port, Packet *p) {
 	if(port == 0) {
-		//Problem: Paket-Struktur des ankommenden Pakets klassifizieren
+		BRN_DEBUG("Got kdp-server reply... yey");
+		handle_kdp_reply(p);
+	} else {
+		p->kill();
 	}
 }
 
@@ -68,7 +71,7 @@ void backbone_node::snd_kdp_req() {
 	output(0).push(p);
 }
 
-void backbone_node::handle_kdp_reply() {
+void backbone_node::handle_kdp_reply(Packet *p) {
 
 }
 

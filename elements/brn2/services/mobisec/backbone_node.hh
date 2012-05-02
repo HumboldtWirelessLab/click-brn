@@ -39,7 +39,7 @@ private:
 	enum proto_type _protocol_type;
 	int req_id;
 
-	void handle_kdp_reply();
+	void handle_kdp_reply(Packet *);
 
 	void add_handlers();
 };
