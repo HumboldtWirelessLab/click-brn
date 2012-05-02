@@ -7,6 +7,13 @@
  *  todo:
  *  - Uncertanty in case of renegotiation. No experience and testing here!
  *  - Uncertanty in case of packet lost. Need for tcp-wise connection.
+ *
+ *  Usefull commands:
+ *  - openssl req -new -newkey rsa:2028 -days 9999 -x509 -out ca.pem
+ *    to create a ca cert
+ *  -
+ *
+ *  - more info on: man ca
  */
 #include <iostream>
 #include <unistd.h>
@@ -100,20 +107,20 @@ int TLS::initialize(ErrorHandler* errh) {
 	char *dir = new char[512];
 
 	if(role=="CLIENT") {
-		sprintf( dir, "%s%s", keydir.c_str(), "certs/client.pem" );
+		sprintf( dir, "%s%s", keydir.c_str(), "certs/client2.pem" );
 		SSL_CTX_use_certificate_file(ctx, dir , SSL_FILETYPE_PEM);
-		sprintf( dir, "%s%s", keydir.c_str(), "certs/key.pem" );
+		sprintf( dir, "%s%s", keydir.c_str(), "certs/key2.pem" );
 		SSL_CTX_use_RSAPrivateKey_file(ctx, dir, SSL_FILETYPE_PEM);
 
-		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert.pem" );
+		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert2.pem" );
 		if (!SSL_CTX_load_verify_locations(ctx, dir,NULL)) {
 			print_err();
 			return -1;
 		}
 	} else if(role=="SERVER") {
-		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert.pem" );
+		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert2.pem" );
 		SSL_CTX_use_certificate_file(ctx, dir, SSL_FILETYPE_PEM);
-		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/private/cakey.pem" );
+		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/private/cakey2.pem" );
 		SSL_CTX_use_RSAPrivateKey_file(ctx, dir, SSL_FILETYPE_PEM);
 	}
 

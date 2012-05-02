@@ -53,7 +53,7 @@ private:
 	int _key_list_cardinality;
 	int _key_timeout;
 
-	void handle_kpd_req(Packet *p);
+	void handle_kdp_req(Packet *p);
 };
 
 CLICK_ENDDECLS

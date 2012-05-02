@@ -17,6 +17,7 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include "keyserver.hh"
+#include "kdp.hh"
 
 CLICK_DECLS
 
@@ -56,14 +57,26 @@ int keyserver::initialize(ErrorHandler* errh) {
 }
 
 void keyserver::push(int port, Packet *p) {
-	// As a server we handle client requests
-	// todo: handle_kpd_req(p);
-	BRN_DEBUG("yey, fist packet for kdp !!! =)");
+	if(port==0) {
+		BRN_DEBUG("kdp request received");
+		handle_kdp_req(p);
+	} else {
+		BRN_DEBUG("Oops. Wrong port.");
+		p->kill();
+	}
 }
 
 void keyserver::run_timer(Timer* ) {
 
 }
+
+void keyserver::handle_kdp_req(Packet *p) {
+	p->kill();
+	WritablePacket *reply = kdp::kdp_reply_msg_cli_driv();
+
+	output(0).push(reply);
+}
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(keyserver)

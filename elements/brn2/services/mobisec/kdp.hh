@@ -12,12 +12,15 @@
 
 
 #include <string>
+#include <time.h>
+
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/hashmap.hh>
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
+
 
 enum proto_type {SERVER_DRIVEN, CLIENT_DRIVEN};
 
@@ -26,11 +29,12 @@ struct kdp_req {
 	EtherAddress node_id;
 };
 
-/* todo: hier probieren, ob ich ein user defined type (class) hinbekomme!!
-struct kdp_rep {
-
+struct kdp_reply_header {
+	time_t timestamp;
+	int cardinality; // also interpretable as rounds
+	int key_len;
+	int seed_len;
 };
-*/
 
 class kdp : public BRNElement {
 public:
@@ -76,7 +80,9 @@ public:
 	 *
 	 * Wie sieht dieser speicher aus und in welchem Modul befindet er sich?
 	 */
-	static WritablePacket *kdp_reply_msg(enum proto_type);
+	static WritablePacket *kdp_reply_msg_cli_driv();
+
+	static WritablePacket *kdp_reply_msg_srv_driv();
 
 };
 
