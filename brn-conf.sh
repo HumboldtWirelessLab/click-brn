@@ -68,7 +68,7 @@ else
 fi
 
 if [ "x$1" = "x" ]; then
-  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" -g\""
+  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" $CXXFLAGS -g\""
 fi
 
 for op in $@; do
