@@ -92,7 +92,7 @@ fi
 #***********************************************************************
 
 if [ "x$BUILDCLICK" = "xyes" ]; then
-  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh tools; /bin/sh brn-conf.sh ns2_userlevel; make)
+  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh tools; XCFLAGS="-fpermissive -fPIC" /bin/sh brn-conf.sh ns2_userlevel; make)
 fi
 
 (cd brn-ns2-click; DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$CLICKPATH ./install_ns2.sh)
