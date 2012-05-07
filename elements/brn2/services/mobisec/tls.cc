@@ -357,4 +357,4 @@ void TLS::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(TLS)
-ELEMENT_LIBS(-lssl)
+ELEMENT_LIBS(-lssl -lcrypto)
