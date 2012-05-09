@@ -68,7 +68,7 @@ else
 fi
 
 if [ "x$1" = "x" ]; then
-  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" -g\""
+  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g\" CXXFLAGS=\" $CXXFLAGS -g\""
 fi
 
 for op in $@; do
@@ -90,13 +90,13 @@ for op in $@; do
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-userlevel --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" -g $XCFLAGS\""
 	    ;;
 	"ns2_userlevel")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g\""
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g $XCFLAGS\""
 	    ;;
 	"sim_userlevel")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g\" CXXFLAGS=\" -g\""
 	    ;;
 	"tools")
-	    ( cd elements/brn2/tools/tinyxml; make clean; rm -f *.o; CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
+	    #( cd elements/brn2/tools/tinyxml; make clean; rm -f *.o; CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
 	    exit 0
 	    ;;
 	    *)
