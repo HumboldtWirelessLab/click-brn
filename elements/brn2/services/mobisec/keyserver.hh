@@ -20,6 +20,7 @@
 #include "elements/brn2/brnelement.hh"
 
 #include "kdp.hh"
+#include "keymanagement.hh"
 
 
 CLICK_DECLS
@@ -47,6 +48,8 @@ private:
 	int _interval; // equals ( _key_list_cardinality * _key_timeout )
 	int _start_time;
 	Timer _timer;
+
+	keymanagement km;
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;

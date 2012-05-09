@@ -19,6 +19,8 @@
 #include <click/hashmap.hh>
 #include "elements/brn2/brnelement.hh"
 
+#include "keymanagement.hh"
+
 CLICK_DECLS
 
 
@@ -80,10 +82,10 @@ public:
 	 *
 	 * Wie sieht dieser speicher aus und in welchem Modul befindet er sich?
 	 */
-	static WritablePacket *kdp_reply_msg_cli_driv();
+	static WritablePacket *kdp_reply_msg_cli_driv(crypto_info *);
 
-	static WritablePacket *kdp_reply_msg_srv_driv();
-
+	static WritablePacket *kdp_reply_msg_srv_driv(crypto_info *);
+private:
 };
 
 CLICK_ENDDECLS
