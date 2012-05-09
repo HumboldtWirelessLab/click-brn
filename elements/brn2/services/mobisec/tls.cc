@@ -82,8 +82,8 @@ int TLS::initialize(ErrorHandler* errh) {
 	ERR_load_BIO_strings();
 	SSL_library_init();
 
-	// Check for "openssl 0.9.8o release" when using SSL_CTX_new
-	#if OPENSSL_VERSION_NUMBER == 0x0009080ff
+	// Check for "openssl 0.9.8 release" when using SSL_CTX_new
+  #if (OPENSSL_VERSION_NUMBER & 0xfffff000) == 0x00908000
 		SSL_METHOD *meth;
 	#else
 		const SSL_METHOD *meth;
@@ -357,4 +357,4 @@ void TLS::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(TLS)
-ELEMENT_LIBS(-lssl)
+ELEMENT_LIBS(-lssl -lcrypto)
