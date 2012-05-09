@@ -10,9 +10,11 @@
 
 
 #include <string>
+
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 #include "kdp.hh"
 
@@ -35,10 +37,13 @@ public:
 	void snd_kdp_req();
 
 private:
+	BRN2NodeIdentity *_me;
 	int _debug;
 	enum proto_type _protocol_type;
+
 	int req_id;
 
+	//todo: kmm-objekt erstellen
 	void handle_kdp_reply(Packet *);
 
 	void add_handlers();

@@ -238,7 +238,7 @@ void TLS::encrypt(Packet *p) {
 // non-blocking
 void TLS::decrypt() {
 	int size = SSL_pending(conn);
-	BRN_DEBUG("processing app-data ...");
+	//BRN_DEBUG("processing app-data ...");
 
 
 	data_t *data = (data_t *)malloc(size);
@@ -252,7 +252,7 @@ void TLS::decrypt() {
 
 	// If SSL_read was successful receiving full records, then ret > 0.
 	if(ret > 0) {
-		BRN_DEBUG("...... decrypted");
+		// BRN_DEBUG("...... decrypted");
 		// Push decrypted message to the next element.
 		WritablePacket *p = Packet::make(data, size);
 		output(1).push(p);

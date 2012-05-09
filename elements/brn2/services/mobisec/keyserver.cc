@@ -18,14 +18,16 @@
 
 #include "keyserver.hh"
 #include "kdp.hh"
+#include "keymanagement.hh"
 
 CLICK_DECLS
 
 keyserver::keyserver()
 	: _debug(false),
-	  _timer(this)
+	  _timer(this),
+	  km()
 {
-	BRNElement::init(); // what for??
+	BRNElement::init();
 }
 
 keyserver::~keyserver() {
@@ -54,6 +56,10 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 }
 
 int keyserver::initialize(ErrorHandler* errh) {
+	if (_protocol_type == SERVER_DRIVEN)
+		km.generate_crypto_srv_driv();
+	else if (_protocol_type == CLIENT_DRIVEN)
+		km.generate_crypto_cli_driv();
 }
 
 void keyserver::push(int port, Packet *p) {
@@ -71,9 +77,24 @@ void keyserver::run_timer(Timer* ) {
 }
 
 void keyserver::handle_kdp_req(Packet *p) {
+	/*
+	 * todo: protocol checks
+	 * here good place to control replay attacks
+	 */
+	kdp_req *req = (kdp_req *)p->data();
+	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
-	WritablePacket *reply = kdp::kdp_reply_msg_cli_driv();
 
+	WritablePacket *reply;
+	if(_protocol_type == CLIENT_DRIVEN) {
+
+		crypto_info *ci = km.get_crypto_info();
+		reply = kdp::kdp_reply_msg_cli_driv(ci);
+	} else if (_protocol_type == SERVER_DRIVEN) {
+		//reply = kdp::kdp_reply_msg_srv_driv();
+	}
+
+	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
 }
 
