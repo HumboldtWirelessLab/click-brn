@@ -21,6 +21,7 @@ CLICK_DECLS
 
 backbone_node::backbone_node()
 	: _debug(false),
+	  _timer(this),
 	  km()
 {
 	BRNElement::init();
@@ -64,6 +65,10 @@ void backbone_node::push(int port, Packet *p) {
 	}
 }
 
+void backbone_node::run_timer(Timer* ) {
+
+}
+
 void backbone_node::snd_kdp_req() {
 	WritablePacket *p = kdp::kdp_request_msg();
 
@@ -88,14 +93,7 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 	if (km.get_ctrl_data()->seed_len > 0) {
 		km.set_seed(payload);
 	} else
-		;// todo: else memcpy keylist
-
-
-	if(_protocol_type == SERVER_DRIVEN) {
-
-	} else if (_protocol_type == CLIENT_DRIVEN) {
-		//BRN_INFO("seed: %#x%x%x%x%x", km.seed[0], km.seed[4], km.seed[8], km.seed[12], km.seed[16]);
-	}
+		;// todo: set key list
 
 	p->kill();
 }
