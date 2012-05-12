@@ -86,9 +86,9 @@ void keyserver::handle_kdp_req(Packet *p) {
 	p->kill();
 
 	WritablePacket *reply;
-	if(_protocol_type == CLIENT_DRIVEN) {
+	crypto_info *ci = km.get_crypto_info();
 
-		crypto_info *ci = km.get_crypto_info();
+	if(_protocol_type == CLIENT_DRIVEN) {
 		reply = kdp::kdp_reply_msg_cli_driv(ci);
 	} else if (_protocol_type == SERVER_DRIVEN) {
 		//reply = kdp::kdp_reply_msg_srv_driv();

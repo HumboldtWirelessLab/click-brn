@@ -177,7 +177,6 @@ void TLS::push(int port, Packet *p) {
 bool TLS::do_handshake() {
 	BRN_DEBUG("try out handshake ...");
 
-	// todo: maybe this loop is obsolete
 	for(int tries = 0; tries < 3; tries++) {
 		int temp = SSL_do_handshake(conn);
 		snd_data(); // push data manually as we are dealing with membufs

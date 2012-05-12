@@ -4,8 +4,6 @@
  *  Created on: 28.04.2012
  *      Author: aureliano
  */
-
-
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
@@ -85,10 +83,12 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 		// todo: Install crypto information
 
 	} else if (_protocol_type == CLIENT_DRIVEN) {
-		int seed = *((int *)(&(p->data()[sizeof(kdp_reply_header)])));
+		int seed_len = hdr->seed_len;
+		const unsigned char *seed = &(p->data()[sizeof(kdp_reply_header)]);
+		//int seed = *((int *)(&(p->data()[sizeof(kdp_reply_header)])));
 
 		// todo: Install crypto information
-		BRN_INFO("Ready to install all crypto info on backbone router (seed: %d)", seed);
+		BRN_INFO("seed: %#x%x%x%x%x", seed[0], seed[4], seed[8], seed[12], seed[16]);
 	}
 
 	p->kill();
@@ -111,6 +111,7 @@ void backbone_node::add_handlers()
 
   add_read_handler("snd_kdp_request", handler_triggered_request, NULL);
 }
+
 
 
 CLICK_ENDDECLS
