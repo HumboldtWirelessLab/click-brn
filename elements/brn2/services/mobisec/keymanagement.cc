@@ -24,36 +24,64 @@
 CLICK_DECLS
 
 keymanagement::keymanagement()
-	: _debug(false),
-	  ci()
+	: _debug(false)
 {
 	BRNElement::init();
+
+	ctrl_data = (crypto_ctrl_data *)malloc(sizeof(crypto_ctrl_data));
+	if (ctrl_data == NULL) BRN_ERROR("Could not allocate crypto_ctrl_data.");
 }
 
 keymanagement::~keymanagement() {
+	free(ctrl_data);
+	free(seed);
+	//todo: free(keylist)
 }
 
-crypto_info *keymanagement::get_crypto_info() {
-	return &ci;
+void keymanagement::set_cardinality(int card) {
+	ctrl_data->cardinality = card;
+}
+
+void keymanagement::set_seed(const unsigned char *data) {
+	if(ctrl_data->seed_len > 0) {
+		if(seed == NULL) seed = new unsigned char[ctrl_data->seed_len];
+		memcpy(seed, data, ctrl_data->seed_len);
+	} else {
+		BRN_ERROR("Trying to set seed having seed length 0.");
+	}
+}
+
+unsigned char *keymanagement::get_seed() {
+	return seed;
+}
+
+void keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
+	memcpy(ctrl_data, data, sizeof(crypto_ctrl_data));
+}
+crypto_ctrl_data *keymanagement::get_ctrl_data() {
+	return ctrl_data;
 }
 
 void keymanagement::generate_crypto_cli_driv() {
 
-	ci.timestamp = time(NULL);
-	ci.cardinality = 4;
-	ci.key_len = 0;
-	ci.seed_len = 20; //160 bit for sha1  make less than 20 byte
+	ctrl_data->timestamp = time(NULL);
+	ctrl_data->cardinality = 4;
+	ctrl_data->key_len = 0;
+	ctrl_data->seed_len = 20; //160 bit for sha1  make less than 20 byte
 
-	RAND_seed("Some seed here =) 10f3jdsdfgj34409jg", 20);
+	RAND_seed("10f3jxYEAH--->dsdfgj34409jg", 20);
 
-	unsigned char *seed = new unsigned char[ci.seed_len];
-	RAND_bytes(seed, ci.seed_len);
-
-	ci.data = seed;
+	if(seed == NULL) seed = new unsigned char[ctrl_data->seed_len];
+	RAND_bytes(seed, ctrl_data->seed_len);
 }
 
 
 void keymanagement::generate_crypto_srv_driv() {
+
+}
+
+
+void keymanagement::install_keys_on_phy() {
 
 }
 

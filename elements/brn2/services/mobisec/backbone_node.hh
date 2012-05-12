@@ -17,6 +17,7 @@
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 
 #include "kdp.hh"
+#include "keymanagement.hh"
 
 CLICK_DECLS
 
@@ -42,6 +43,8 @@ private:
 	enum proto_type _protocol_type;
 
 	int req_id;
+
+	keymanagement km;
 
 	//todo: kmm-objekt erstellen
 	void handle_kdp_reply(Packet *);

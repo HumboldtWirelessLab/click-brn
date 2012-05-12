@@ -20,7 +20,8 @@
 CLICK_DECLS
 
 backbone_node::backbone_node()
-	: _debug(false)
+	: _debug(false),
+	  km()
 {
 	BRNElement::init();
 }
@@ -76,19 +77,24 @@ void backbone_node::snd_kdp_req() {
 }
 
 void backbone_node::handle_kdp_reply(Packet *p) {
-	kdp_reply_header *hdr = (kdp_reply_header *)p->data();
+	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
+	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
+
+	// Store crypto control data
+	km.set_ctrl_data(hdr);
+	BRN_INFO("kard: %d; seed_len: %d", km.get_ctrl_data()->cardinality, km.get_ctrl_data()->seed_len);
+
+	// Store crypto material
+	if (km.get_ctrl_data()->seed_len > 0) {
+		km.set_seed(payload);
+	} else
+		;// todo: else memcpy keylist
+
 
 	if(_protocol_type == SERVER_DRIVEN) {
-		// todo: extract crypto information
-		// todo: Install crypto information
 
 	} else if (_protocol_type == CLIENT_DRIVEN) {
-		int seed_len = hdr->seed_len;
-		const unsigned char *seed = &(p->data()[sizeof(kdp_reply_header)]);
-		//int seed = *((int *)(&(p->data()[sizeof(kdp_reply_header)])));
-
-		// todo: Install crypto information
-		BRN_INFO("seed: %#x%x%x%x%x", seed[0], seed[4], seed[8], seed[12], seed[16]);
+		//BRN_INFO("seed: %#x%x%x%x%x", km.seed[0], km.seed[4], km.seed[8], km.seed[12], km.seed[16]);
 	}
 
 	p->kill();

@@ -60,6 +60,9 @@ int keyserver::initialize(ErrorHandler* errh) {
 		km.generate_crypto_srv_driv();
 	else if (_protocol_type == CLIENT_DRIVEN)
 		km.generate_crypto_cli_driv();
+
+	// set cardinality in keymanagement
+	km.set_cardinality(_key_list_cardinality);
 }
 
 void keyserver::push(int port, Packet *p) {
@@ -85,14 +88,18 @@ void keyserver::handle_kdp_req(Packet *p) {
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
 
-	WritablePacket *reply;
-	crypto_info *ci = km.get_crypto_info();
+	crypto_ctrl_data *hdr = km.get_ctrl_data();
+	const unsigned char *payload;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
-		reply = kdp::kdp_reply_msg_cli_driv(ci);
+		payload = km.get_seed();
+
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		//reply = kdp::kdp_reply_msg_srv_driv();
+		//todo: payload = km.keylist;
 	}
+
+	WritablePacket *reply;
+	reply = kdp::kdp_reply_msg(hdr, payload);
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
