@@ -48,21 +48,18 @@ WritablePacket * kdp::kdp_request_msg() {
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg_cli_driv(crypto_info *ci) {
+WritablePacket *kdp::kdp_reply_msg(crypto_ctrl_data *hdr, const unsigned char *payload) {
 
-	WritablePacket *p = Packet::make(128, NULL, sizeof(kdp_reply_header)+ci->seed_len, 32);
+	int data_len = (hdr->seed_len > 0) ? hdr->seed_len : (hdr->key_len*hdr->cardinality);
 
-	kdp_reply_header hdr = {ci->timestamp, ci->cardinality, ci->key_len, ci->seed_len};
+	WritablePacket *p = Packet::make(128, NULL, sizeof(crypto_ctrl_data)+data_len, 32);
 
-	memcpy(p->data(), &hdr, sizeof(kdp_reply_header));
-	memcpy(&p->data()[sizeof(kdp_reply_header)], ci->data, ci->seed_len);
+	memcpy(p->data(), hdr, sizeof(crypto_ctrl_data));
+	memcpy(&p->data()[sizeof(crypto_ctrl_data)], payload, data_len);
 
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg_srv_driv(crypto_info *ci) {
-
-}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(kdp)

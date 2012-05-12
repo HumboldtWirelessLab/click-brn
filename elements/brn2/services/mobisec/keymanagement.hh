@@ -5,8 +5,8 @@
  *      Author: aureliano
  */
 
-#ifndef keymanagement_HH_
-#define keymanagement_HH_
+#ifndef KEYMANAGEMENT_HH_
+#define KEYMANAGEMENT_HH_
 
 
 #include <string>
@@ -16,13 +16,11 @@
 
 CLICK_DECLS
 
-class crypto_info {
-public:
+struct crypto_ctrl_data {
 	time_t timestamp;
 	int cardinality; // also interpretable as rounds
 	int key_len;
 	int seed_len;
-	void *data; // todo: free data after destruction
 };
 
 class keymanagement : public BRNElement {
@@ -32,6 +30,14 @@ public:
 
 	const char *class_name() const { return "keymanagement"; }
 
+	void set_cardinality(int card);
+
+	void set_seed(const unsigned char *);
+	unsigned char *get_seed();
+
+	void set_ctrl_data(crypto_ctrl_data *);
+	crypto_ctrl_data *get_ctrl_data();
+
 	// The crypto_generator will be executed periodically by the key server
 	void generate_crypto_cli_driv();
 	void generate_crypto_srv_driv();
@@ -39,14 +45,16 @@ public:
 	// This function will be called by both server and client to install keys
 	void install_keys_on_phy();
 
-	crypto_info *get_crypto_info();
-
 private:
 	int _debug;
-	crypto_info ci;
+
+	crypto_ctrl_data *ctrl_data;
+	unsigned char *seed;
+
+	//todo: store structure for key list
 
 	void store_crypto_info();
 };
 
 CLICK_ENDDECLS
-#endif /* keymanagement_HH_ */
+#endif /* KEYMANAGEMENT_HH_ */
