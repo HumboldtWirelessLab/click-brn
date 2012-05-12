@@ -53,8 +53,6 @@ WritablePacket *kdp::kdp_reply_msg_cli_driv(crypto_info *ci) {
 	WritablePacket *p = Packet::make(128, NULL, sizeof(kdp_reply_header)+ci->seed_len, 32);
 
 	kdp_reply_header hdr = {ci->timestamp, ci->cardinality, ci->key_len, ci->seed_len};
-	// todo: benutzte len von dat um die interpretation zu vermeiden, sonder einfach die Daten zu kopieren
-	//int seed = *((int *)ci->data);
 
 	memcpy(p->data(), &hdr, sizeof(kdp_reply_header));
 	memcpy(&p->data()[sizeof(kdp_reply_header)], ci->data, ci->seed_len);

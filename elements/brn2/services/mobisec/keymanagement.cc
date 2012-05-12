@@ -16,9 +16,8 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
-#include <openssl/opensslv.h>
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 
 #include "keymanagement.hh"
 
@@ -39,12 +38,18 @@ crypto_info *keymanagement::get_crypto_info() {
 }
 
 void keymanagement::generate_crypto_cli_driv() {
+
 	ci.timestamp = time(NULL);
 	ci.cardinality = 4;
 	ci.key_len = 0;
-	ci.seed_len = sizeof(int); //150 bit for sha1  make less than 32 byte
+	ci.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
-	ci.data = new int(1337); // use char array
+	RAND_seed("Some seed here =) 10f3jdsdfgj34409jg", 20);
+
+	unsigned char *seed = new unsigned char[ci.seed_len];
+	RAND_bytes(seed, ci.seed_len);
+
+	ci.data = seed;
 }
 
 
@@ -54,4 +59,4 @@ void keymanagement::generate_crypto_srv_driv() {
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(keymanagement)
-ELEMENT_LIBS(-lssl)
+ELEMENT_LIBS(-lssl -lcrypto)
