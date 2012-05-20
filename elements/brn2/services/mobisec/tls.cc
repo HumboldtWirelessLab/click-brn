@@ -66,7 +66,7 @@ int TLS::configure(Vector<String> &conf, ErrorHandler *errh) {
 		cpEnd) < 0)
 		return -1;
 
-	BRN_INFO("Recognized as %s", role.c_str());
+	BRN_INFO("Recognized as TLS-%s", role.c_str());
 
 	if (role != "SERVER" && role != "CLIENT") {
 		BRN_ERROR("no role specified");
