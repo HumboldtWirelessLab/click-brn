@@ -29,6 +29,7 @@ public:
 	~keymanagement();
 
 	const char *class_name() const { return "keymanagement"; }
+	int initialization();
 
 	void set_cardinality(int card);
 
@@ -48,7 +49,7 @@ public:
 private:
 	int _debug;
 
-	crypto_ctrl_data *ctrl_data;
+	crypto_ctrl_data ctrl_data;
 	unsigned char *seed;
 
 	//todo: store structure for key list
