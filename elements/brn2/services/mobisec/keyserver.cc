@@ -25,7 +25,7 @@ CLICK_DECLS
 keyserver::keyserver()
 	: _debug(false),
 	  _timer(this),
-	  km()
+	  keyman()
 {
 	BRNElement::init();
 }
@@ -57,12 +57,15 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 int keyserver::initialize(ErrorHandler* errh) {
 	if (_protocol_type == SERVER_DRIVEN)
-		km.generate_crypto_srv_driv();
+		keyman.generate_crypto_srv_driv();
 	else if (_protocol_type == CLIENT_DRIVEN)
-		km.generate_crypto_cli_driv();
+		keyman.generate_crypto_cli_driv();
 
 	// set cardinality in keymanagement
-	km.set_cardinality(_key_list_cardinality);
+	keyman.set_cardinality(_key_list_cardinality);
+
+	BRN_DEBUG("Key server initialized");
+	return 0;
 }
 
 void keyserver::push(int port, Packet *p) {
@@ -88,14 +91,14 @@ void keyserver::handle_kdp_req(Packet *p) {
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
 
-	crypto_ctrl_data *hdr = km.get_ctrl_data();
+	crypto_ctrl_data *hdr = keyman.get_ctrl_data();
 	const unsigned char *payload;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
-		payload = km.get_seed();
+		payload = keyman.get_seed();
 
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		//todo: payload = km.keylist;
+		//todo: payload = keyman.keylist;
 	}
 
 	WritablePacket *reply;

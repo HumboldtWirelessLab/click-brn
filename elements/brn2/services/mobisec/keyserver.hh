@@ -49,7 +49,7 @@ private:
 	int _start_time;
 	Timer _timer;
 
-	keymanagement km;
+	keymanagement keyman;
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;

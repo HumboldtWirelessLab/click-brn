@@ -22,7 +22,7 @@ CLICK_DECLS
 backbone_node::backbone_node()
 	: _debug(false),
 	  _timer(this),
-	  km()
+	  keyman()
 {
 	BRNElement::init();
 }
@@ -53,6 +53,7 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 int backbone_node::initialize(ErrorHandler* errh) {
 	req_id = 7;
 
+	BRN_DEBUG("Backbone node initialized");
 	return 0;
 }
 
@@ -86,12 +87,12 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
 	// Store crypto control data
-	km.set_ctrl_data(hdr);
-	BRN_INFO("kard: %d; seed_len: %d", km.get_ctrl_data()->cardinality, km.get_ctrl_data()->seed_len);
+	keyman.set_ctrl_data(hdr);
+	BRN_INFO("kard: %d; seed_len: %d", keyman.get_ctrl_data()->cardinality, keyman.get_ctrl_data()->seed_len);
 
 	// Store crypto material
-	if (km.get_ctrl_data()->seed_len > 0) {
-		km.set_seed(payload);
+	if (keyman.get_ctrl_data()->seed_len > 0) {
+		keyman.set_seed(payload);
 	} else
 		;// todo: set key list
 

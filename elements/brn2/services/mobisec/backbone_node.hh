@@ -52,7 +52,7 @@ private:
 
 	int req_id;
 
-	keymanagement km;
+	keymanagement keyman;
 
 	//todo: kmm-objekt erstellen
 	void handle_kdp_reply(Packet *);
