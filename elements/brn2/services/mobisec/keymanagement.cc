@@ -8,7 +8,6 @@
  * Furthermore it stores the crypto material in order to apply it on the WEP-Module.
  *
  */
-#include <stdlib.h>
 
 #include <click/config.h>
 #include <click/element.hh>
@@ -22,6 +21,7 @@
 
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <openssl/sha.h>
 
 #include "keymanagement.hh"
 
@@ -35,7 +35,7 @@ keymanagement::keymanagement()
 
 keymanagement::~keymanagement() {
 	free(seed);
-	//todo: free(keylist)
+	keylist.clear();
 }
 
 int keymanagement::initialization() {
@@ -47,13 +47,19 @@ int keymanagement::initialization() {
 	return 0;
 }
 
+/*
+ * *******************************************************
+ *         		useful getter & setter functions
+ * *******************************************************
+ */
+
 void keymanagement::set_cardinality(int card) {
 	ctrl_data.cardinality = card;
 }
 
 void keymanagement::set_seed(const unsigned char *data) {
 	if(ctrl_data.seed_len > 0) {
-		if(seed == NULL) seed = new unsigned char[ctrl_data.seed_len];
+		seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
 		memcpy(seed, data, ctrl_data.seed_len);
 	} else {
 		BRN_ERROR("Trying to set seed having seed length 0.");
@@ -71,10 +77,16 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
 	return &ctrl_data;
 }
 
-void keymanagement::generate_crypto_cli_driv() {
+/*
+ * *******************************************************
+ *         functions for CLIENT_DRIVEN protocol
+ * *******************************************************
+ */
+
+void keymanagement::gen_crypto_cli_driv() {
 	ctrl_data.timestamp = time(NULL);
 	ctrl_data.cardinality = 4;
-	ctrl_data.key_len = 0;
+	ctrl_data.key_len = 5;
 	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
 	RAND_seed("10f3jxYEAH--.dsdfgj34409jg", 20);
@@ -88,13 +100,32 @@ void keymanagement::generate_crypto_cli_driv() {
 		BRN_ERROR("Seed generation failed.");
 }
 
+void keymanagement::constr_keylist_cli_driv() {
+	unsigned char *curr_key = seed;
 
-void keymanagement::generate_crypto_srv_driv() {
+	for(int i=0; i < ctrl_data.cardinality; i++) {
+		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);
 
+		String s;
+		s.append((const char*)curr_key, ctrl_data.key_len);
+
+		keylist.push_back(s);
+	}
 }
 
 
-void keymanagement::install_keys_on_phy() {
+/*
+ * *******************************************************
+ *         functions for SERVER_DRIVEN protocol
+ * *******************************************************
+ */
+
+void keymanagement::gen_crypto_srv_driv() {
+
+}
+
+// This method uses the list to set the adequate key
+void keymanagement::install_key_on_phy() {
 
 }
 
