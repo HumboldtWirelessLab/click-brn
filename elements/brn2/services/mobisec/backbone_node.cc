@@ -88,13 +88,16 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 
 	// Store crypto control data
 	keyman.set_ctrl_data(hdr);
-	BRN_INFO("kard: %d; seed_len: %d", keyman.get_ctrl_data()->cardinality, keyman.get_ctrl_data()->seed_len);
+	BRN_INFO("card: %d; seed_len: %d", keyman.get_ctrl_data()->cardinality, keyman.get_ctrl_data()->seed_len);
 
 	// Store crypto material
 	if (keyman.get_ctrl_data()->seed_len > 0) {
 		keyman.set_seed(payload);
 	} else
 		;// todo: set key list
+
+	BRN_DEBUG("Constructing key list");
+	keyman.constr_keylist_cli_driv();
 
 	p->kill();
 }

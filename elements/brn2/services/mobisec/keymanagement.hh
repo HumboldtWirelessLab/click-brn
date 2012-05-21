@@ -8,6 +8,7 @@
 #ifndef KEYMANAGEMENT_HH_
 #define KEYMANAGEMENT_HH_
 
+#include <vector>
 
 #include <string>
 #include <click/element.hh>
@@ -22,6 +23,7 @@ struct crypto_ctrl_data {
 	int key_len;
 	int seed_len;
 };
+
 
 class keymanagement : public BRNElement {
 public:
@@ -40,19 +42,24 @@ public:
 	crypto_ctrl_data *get_ctrl_data();
 
 	// The crypto_generator will be executed periodically by the key server
-	void generate_crypto_cli_driv();
-	void generate_crypto_srv_driv();
+		/* CLIENT_DRIVEN */
+	void gen_crypto_cli_driv();
+	void constr_keylist_cli_driv();
+		/* SERVER_DRIVEN */
+	void gen_crypto_srv_driv();
+	void constr_keylist_srv_driv();
 
-	// This function will be called by both server and client to install keys
-	void install_keys_on_phy();
 
+	// This method uses the list to set the adequate key
+	void install_key_on_phy();
+	std::vector<String> keylist;
 private:
 	int _debug;
 
 	crypto_ctrl_data ctrl_data;
 	unsigned char *seed;
 
-	//todo: store structure for key list
+
 
 	void store_crypto_info();
 };

@@ -57,12 +57,15 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 int keyserver::initialize(ErrorHandler* errh) {
 	if (_protocol_type == SERVER_DRIVEN)
-		keyman.generate_crypto_srv_driv();
+		keyman.gen_crypto_srv_driv();
 	else if (_protocol_type == CLIENT_DRIVEN)
-		keyman.generate_crypto_cli_driv();
+		keyman.gen_crypto_cli_driv();
 
 	// set cardinality in keymanagement
 	keyman.set_cardinality(_key_list_cardinality);
+
+	// todo: temporarily doing the call here (has to be done by a timed function)
+	keyman.constr_keylist_cli_driv();
 
 	BRN_DEBUG("Key server initialized");
 	return 0;
