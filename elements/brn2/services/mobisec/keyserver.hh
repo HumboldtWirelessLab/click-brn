@@ -17,7 +17,10 @@
 #include <click/timer.hh>
 #include <click/element.hh>
 #include <click/confparse.hh>
+
 #include "elements/brn2/brnelement.hh"
+#include "elements/wifi/wepencap.hh"
+#include "elements/wifi/wepdecap.hh"
 
 #include "kdp.hh"
 #include "keymanagement.hh"
@@ -43,6 +46,8 @@ public:
 private:
 	int _debug;
 	EtherAddress _me;
+	Element *_wepencap;
+	Element *_wepdecap;
 
 	// Parameters to control the refreshing of key material
 	int _interval; // equals ( _key_list_cardinality * _key_timeout )

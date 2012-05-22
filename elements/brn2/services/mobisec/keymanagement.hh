@@ -50,16 +50,15 @@ public:
 	void constr_keylist_srv_driv();
 
 
-	// This method uses the list to set the adequate key
-	void install_key_on_phy();
-	std::vector<String> keylist;
+	// This method uses the list to set the adequate key on phy layer
+	void install_key_on_phy(Element *_wepencap, Element *_wepdecap);
 private:
 	int _debug;
 
 	crypto_ctrl_data ctrl_data;
 	unsigned char *seed;
 
-
+	std::vector<String> keylist;
 
 	void store_crypto_info();
 };

@@ -37,11 +37,13 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
+		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
+		"KEY_LIST_CARDINALITY", cpkP+cpkM, cpInteger, &_key_list_cardinality,
+		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
+		"START", cpkP+cpkM, cpInteger, &_start_time,
+		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
+		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
-		"PROTOCOL_TYPE", cpkP, cpString, &_protocol_type_str,
-		"KEY_LIST_CARDINALITY", cpkP, cpInteger, &_key_list_cardinality,
-		"KEY_TIMEOUT", cpkP, cpInteger, &_key_timeout,
-		"START", cpkP, cpInteger, &_start_time,
 		cpEnd) < 0)
 		return -1;
 

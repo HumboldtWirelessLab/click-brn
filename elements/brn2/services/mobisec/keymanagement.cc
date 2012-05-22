@@ -7,11 +7,13 @@
  * The key management holds the data structure for the cryptographic control data.
  * Furthermore it stores the crypto material in order to apply it on the WEP-Module.
  *
+ * Todo: Need better specification for key_len, seed_len, cardinality.
  */
 
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <click/handlercall.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -41,8 +43,6 @@ keymanagement::~keymanagement() {
 int keymanagement::initialization() {
 	crypto_ctrl_data ctrl_data = {0 , 0, 0, 0};
 	seed = NULL;
-
-	BRN_DEBUG("Key Managament ready.");
 
 	return 0;
 }
@@ -109,6 +109,7 @@ void keymanagement::constr_keylist_cli_driv() {
 		String s;
 		s.append((const char*)curr_key, ctrl_data.key_len);
 
+		// todo: not really tested
 		keylist.push_back(s);
 	}
 }
@@ -124,9 +125,19 @@ void keymanagement::gen_crypto_srv_driv() {
 
 }
 
-// This method uses the list to set the adequate key
-void keymanagement::install_key_on_phy() {
+/*
+ * *******************************************************
+ *       					other
+ * *******************************************************
+ */
 
+// This method uses the list to set the adequate key
+void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
+	// todo: select right key from list depending on time
+	const String handler = "key";
+	const String key = "weizenbaum";
+	int success = HandlerCall::call_write(_wepencap, handler, key, NULL);
+	BRN_DEBUG("new key: %s", HandlerCall::call_read(_wepencap, handler).c_str() );
 }
 
 CLICK_ENDDECLS
