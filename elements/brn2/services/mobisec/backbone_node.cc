@@ -35,7 +35,9 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
-		"PROTOCOL_TYPE", cpkP, cpString, &_protocol_type_str,
+		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
+		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
+		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -93,11 +95,11 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 	// Store crypto material
 	if (keyman.get_ctrl_data()->seed_len > 0) {
 		keyman.set_seed(payload);
-	} else
-		;// todo: set key list
 
-	BRN_DEBUG("Constructing key list");
-	keyman.constr_keylist_cli_driv();
+		BRN_DEBUG("Constructing key list");
+		keyman.constr_keylist_cli_driv();
+	} else
+		;// todo: store the received key list
 
 	p->kill();
 }

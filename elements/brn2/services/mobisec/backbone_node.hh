@@ -17,6 +17,8 @@
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/wifi/wepencap.hh"
+#include "elements/wifi/wepdecap.hh"
 
 #include "kdp.hh"
 #include "keymanagement.hh"
@@ -42,6 +44,8 @@ public:
 
 private:
 	BRN2NodeIdentity *_me;
+	Element *_wepencap;
+	Element *_wepdecap;
 	int _debug;
 	enum proto_type _protocol_type;
 
