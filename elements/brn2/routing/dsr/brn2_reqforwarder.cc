@@ -48,9 +48,17 @@ BRN2RequestForwarder::BRN2RequestForwarder()
   _enable_full_route_optimization(false),
   _enable_delay_queue(true),
   _stats_receive_better_route(0),
+  _stats_avoid_bad_route_forward(0),
+  _stats_del_passive_ack_retransmissioninfo(0),
+  _stats_del_passive_ack_reason_full_neighbours(0),
+  _stats_del_passive_ack_reason_full_retries(0),
+  _stats_del_passive_ack_inserts(0),
+  _stats_del_passive_ack_reinserts(0),
+  _stats_opt_route(0),
   _min_metric_rreq_fwd(BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD),
   _passive_ack_retries(0),
   _passive_ack_interval(0),
+  _passive_ack_force_retries(false),
   _retransmission_timer(static_rreq_retransmit_timer_hook,this)
 {
   BRNElement::init();
@@ -75,6 +83,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "ENABLE_DELAY_QUEUE", cpkP, cpBool, &_enable_delay_queue,
       "PASSIVE_ACK_RETRIES", cpkP, cpInteger, &_passive_ack_retries,
       "PASSIVE_ACK_INTERVAL", cpkP, cpInteger, &_passive_ack_interval,
+      "FORCE_PASSIVE_ACK_RETRIES", cpkP, cpBool, &_passive_ack_force_retries,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -229,6 +238,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
     if ( brn->ttl == 1) {
       BRN_DEBUG(" * time to live expired; killing packet\n");
       p_in->kill();
+      _stats_avoid_bad_route_forward++;
       return;
       } // ttl is decremented in forward_rreq
   }
@@ -295,6 +305,8 @@ BRN2RequestForwarder::push(int, Packet *p_in)
         route_metric = route_metric - last_hop_metric + best_detour_metric;
 
         last_hop_metric = best_metric_nb_me;
+
+        _stats_opt_route++;
       }
     }
 
@@ -313,11 +325,17 @@ BRN2RequestForwarder::push(int, Packet *p_in)
       last_hop_metric, _min_metric_rreq_fwd, ntohs(brn_dsr->dsr_id));
     BRN_DEBUG(" Kill Routerequest from junk link, #ID %d", ntohs(brn_dsr->dsr_id));
     p_in->kill();
+    _stats_avoid_bad_route_forward++;
     return;
   }
 
-  /* Check for already forwarded request */
-  RouteRequestInfo *rreqi = _track_route_map.find(src_addr);
+  BRN_DEBUG("_track_route_map: %d\n", _track_route_map.size());
+  RouteRequestInfo *rreqi = NULL;
+
+  if ( _track_route_map.size() > 0 ) {
+    /* Check for already forwarded request */
+    rreqi = _track_route_map.find(src_addr);
+  }
 
   if ( rreqi == NULL ) {
     rreqi = new RouteRequestInfo(&src_addr, _max_age);
@@ -330,10 +348,12 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
   if ( _route_querier->metric_preferable(route_metric, rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now)) ) {
     rreqi->set_metric(ntohs(brn_dsr->dsr_id), route_metric, &now, (uint8_t)((detour_nb==NULL)?0:1));
+    _stats_receive_better_route++;
   } else {
       //already forwarded with better metric
     BRN_DEBUG(" Seen Routerequest with better metric before; Drop packet! %d <= %d, #ID %d",
               rreqi->get_current_metric(ntohs(brn_dsr->dsr_id), &now), route_metric, ntohs(brn_dsr->dsr_id));
+    _stats_avoid_bad_route_forward++;
     p_in->kill(); // kill the original RREQ
     return;
   }
@@ -589,6 +609,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
       rreq_retr_i = new RReqRetransmitInfo(p->clone(), &(rri->_src), rreq_id);
       _rreq_retransmit_list.push_back(rreq_retr_i);
       just_update = false;
+      _stats_del_passive_ack_inserts++;
     } else {
       rreq_retr_i = _rreq_retransmit_list[old_index];
       BRN_DEBUG("Alreday schedule this rreq %d", old_index);
@@ -597,6 +618,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
       } else {
         rreq_retr_i->_p->kill();
       }
+      _stats_del_passive_ack_reinserts++;
       rreq_retr_i->_p = p->clone();
     }
 
@@ -610,7 +632,8 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
 
     BRN_DEBUG("RetransmitQueue - Size: %d", _rreq_retransmit_list.size());
     //only start timer if we didn't start it yet (first retransmission in the queue)
-    if ( rri->has_neighbours_left(rreq_id) && ( _rreq_retransmit_list.size() == 1 ) && (!just_update)) {
+    if ( ((rri->has_neighbours_left(rreq_id)) || (_passive_ack_force_retries)) &&
+          ( _rreq_retransmit_list.size() == 1 ) && (!just_update)) {
       BRN_DEBUG("Start Retransmit - Size: %d", _rreq_retransmit_list.size());
       _retransmission_timer.schedule_after_msec(_passive_ack_interval);
     }
@@ -670,18 +693,21 @@ BRN2RequestForwarder::check_passive_ack(EtherAddress *last_node_addr, EtherAddre
   RouteRequestInfo *rri = _track_route_map.find(*src);
   int32_t ion = index_of_neighbor(last_node_addr);
 
-  click_chatter("------------------- %d %d", index, ion);
+  BRN_DEBUG("Retransmission-Index: %d Index of Neighbour: %d", index, ion);
+
   if ( ion == -1 ) return;
 
   RReqRetransmitInfo *rreq_retr_i = _rreq_retransmit_list[index];
 
   rri->received_neighbour(rreq_id, (uint16_t)ion);
 
-  if ( ! rri->has_neighbours_left(rreq_id) ) {
+  if ( (!rri->has_neighbours_left(rreq_id)) && (!_passive_ack_force_retries) ) {
     BRN_DEBUG("Delete Retransmit rreq");
     rreq_retr_i->_p->kill();
     delete _rreq_retransmit_list[index];
     _rreq_retransmit_list.erase(_rreq_retransmit_list.begin() + index);
+    _stats_del_passive_ack_retransmissioninfo++;
+    _stats_del_passive_ack_reason_full_neighbours++;
   }
 
 }
@@ -718,15 +744,19 @@ BRN2RequestForwarder::rreq_retransmit_timer_hook()
       //now delete rreqretransmitinfo
       delete rreq_retr_i;
       _rreq_retransmit_list.erase(_rreq_retransmit_list.begin() + i);
+      _stats_del_passive_ack_retransmissioninfo++;
       continue;
     }
 
     rri->dec_retries(rreq_retr_i->_rreq_id);
     if ( rri->left_retries(rreq_retr_i->_rreq_id) == 0 ) {
+      BRN_DEBUG("Last retry for passive ack. Delete rreq_retr");
       p = rreq_retr_i->_p;
       //delete rreqretransmitinfo
       delete rreq_retr_i;
       _rreq_retransmit_list.erase(_rreq_retransmit_list.begin() + i);
+      _stats_del_passive_ack_reason_full_retries++;
+      _stats_del_passive_ack_retransmissioninfo++;
     } else {
       p = rreq_retr_i->_p->clone();
     }
@@ -827,7 +857,14 @@ read_param(Element *e, void *thunk)
   {
     case H_DSR_STATS :
     {
-      sa << "<stats better_route=\"" << rreq->_stats_receive_better_route << "\"/>\n";
+      sa << "<requestfwdstats better_route=\"" << rreq->_stats_receive_better_route;
+      sa << " avoid_bad_route_forward=\"" << rreq->_stats_avoid_bad_route_forward << "\" opt_route=\"";
+      sa << rreq->_stats_opt_route << "\">\n";
+      sa << "\t<passive_ack_stats del_passive_ack_retransmissioninfo=\"" <<  rreq->_stats_del_passive_ack_retransmissioninfo;
+      sa << "\" full_neighbours=\"" << rreq->_stats_del_passive_ack_reason_full_neighbours << "\" full_retries=\"";
+      sa << rreq->_stats_del_passive_ack_reason_full_retries << "\" passive_ack_list_size=\"" << rreq->_rreq_retransmit_list.size();
+      sa << "\" inserts=\"" << rreq->_stats_del_passive_ack_inserts << "\" reinserts=\"" << rreq->_stats_del_passive_ack_reinserts << "\" />\n";
+      sa << "</requestfwdstats>\n";
       return ( sa.take_string() );
     }
     case H_TRACK :
@@ -843,7 +880,7 @@ String
 BRN2RequestForwarder::get_trackroutemap() {
   StringAccum sa;
 
-  sa << "<requestforwarderstats id=\"" << BRN_NODE_NAME << "\" trackmapsize=\"" << _track_route_map.size() << "\">\n";
+  sa << "<routemap id=\"" << BRN_NODE_NAME << "\" trackmapsize=\"" << _track_route_map.size() << "\">\n";
 
   for (TrackRouteMapIter iter = _track_route_map.begin(); iter.live(); iter++) {
     EtherAddress ea = iter.key();
@@ -860,7 +897,7 @@ BRN2RequestForwarder::get_trackroutemap() {
     sa << "\t</requestnode>\n";
   }
 
-  sa << "</requestforwarderstats>\n";
+  sa << "</routemap>\n";
 
   return sa.take_string();
 }
