@@ -66,7 +66,7 @@ int TLS::configure(Vector<String> &conf, ErrorHandler *errh) {
 		cpEnd) < 0)
 		return -1;
 
-	BRN_INFO("Recognized as %s", role.c_str());
+	BRN_INFO("Recognized as TLS-%s", role.c_str());
 
 	if (role != "SERVER" && role != "CLIENT") {
 		BRN_ERROR("no role specified");
@@ -177,7 +177,6 @@ void TLS::push(int port, Packet *p) {
 bool TLS::do_handshake() {
 	BRN_DEBUG("try out handshake ...");
 
-	// todo: maybe this loop is obsolete
 	for(int tries = 0; tries < 3; tries++) {
 		int temp = SSL_do_handshake(conn);
 		snd_data(); // push data manually as we are dealing with membufs
@@ -238,7 +237,7 @@ void TLS::encrypt(Packet *p) {
 // non-blocking
 void TLS::decrypt() {
 	int size = SSL_pending(conn);
-	BRN_DEBUG("processing app-data ...");
+	//BRN_DEBUG("processing app-data ...");
 
 
 	data_t *data = (data_t *)malloc(size);
@@ -252,7 +251,7 @@ void TLS::decrypt() {
 
 	// If SSL_read was successful receiving full records, then ret > 0.
 	if(ret > 0) {
-		BRN_DEBUG("...... decrypted");
+		// BRN_DEBUG("...... decrypted");
 		// Push decrypted message to the next element.
 		WritablePacket *p = Packet::make(data, size);
 		output(1).push(p);

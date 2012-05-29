@@ -17,9 +17,13 @@
 #include <click/timer.hh>
 #include <click/element.hh>
 #include <click/confparse.hh>
+
 #include "elements/brn2/brnelement.hh"
+#include "elements/wifi/wepencap.hh"
+#include "elements/wifi/wepdecap.hh"
 
 #include "kdp.hh"
+#include "keymanagement.hh"
 
 
 CLICK_DECLS
@@ -42,11 +46,15 @@ public:
 private:
 	int _debug;
 	EtherAddress _me;
+	Element *_wepencap;
+	Element *_wepdecap;
 
 	// Parameters to control the refreshing of key material
 	int _interval; // equals ( _key_list_cardinality * _key_timeout )
 	int _start_time;
 	Timer _timer;
+
+	keymanagement keyman;
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;

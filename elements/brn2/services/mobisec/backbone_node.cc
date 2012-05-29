@@ -4,8 +4,6 @@
  *  Created on: 28.04.2012
  *      Author: aureliano
  */
-
-
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
@@ -22,9 +20,11 @@
 CLICK_DECLS
 
 backbone_node::backbone_node()
-	: _debug(false)
+	: _debug(false),
+	  _timer(this),
+	  keyman()
 {
-	BRNElement::init(); // what for??
+	BRNElement::init();
 }
 
 backbone_node::~backbone_node() {
@@ -34,7 +34,10 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
-		"PROTOCOL_TYPE", cpkP, cpString, &_protocol_type_str,
+		"NODEID", cpkP+cpkM, cpElement, &_me,
+		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
+		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
+		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -50,29 +53,55 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 }
 
 int backbone_node::initialize(ErrorHandler* errh) {
+	req_id = 7;
+
+	BRN_DEBUG("Backbone node initialized");
+	return 0;
 }
 
 void backbone_node::push(int port, Packet *p) {
 	if(port == 0) {
-		BRN_DEBUG("Got kdp-server reply... yey");
+		BRN_DEBUG("kdp reply received");
 		handle_kdp_reply(p);
 	} else {
 		p->kill();
 	}
 }
 
+void backbone_node::run_timer(Timer* ) {
+
+}
+
 void backbone_node::snd_kdp_req() {
 	WritablePacket *p = kdp::kdp_request_msg();
 
-	kdp_req *req = (kdp_req *)p;
-	req->req_id = req_id++; // Problem: speicherung von req_id
+	// Enrich packet with information.
+	kdp_req *req = (kdp_req *)p->data();
+	req->node_id = *(_me->getServiceAddress());
+	req->req_id = req_id++;
 
 	BRN_DEBUG("Sending KDP-Request...");
 	output(0).push(p);
 }
 
 void backbone_node::handle_kdp_reply(Packet *p) {
+	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
+	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
+	// Store crypto control data
+	keyman.set_ctrl_data(hdr);
+	BRN_INFO("card: %d; seed_len: %d", keyman.get_ctrl_data()->cardinality, keyman.get_ctrl_data()->seed_len);
+
+	// Store crypto material
+	if (keyman.get_ctrl_data()->seed_len > 0) {
+		keyman.set_seed(payload);
+
+		BRN_DEBUG("Constructing key list");
+		keyman.constr_keylist_cli_driv();
+	} else
+		;// todo: store the received key list
+
+	p->kill();
 }
 
 /*
@@ -92,6 +121,7 @@ void backbone_node::add_handlers()
 
   add_read_handler("snd_kdp_request", handler_triggered_request, NULL);
 }
+
 
 
 CLICK_ENDDECLS

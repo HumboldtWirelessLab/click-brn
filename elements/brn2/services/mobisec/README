@@ -1,6 +1,9 @@
 Author: 	xcrkx --- kuehne@informatik.hu-berlin.de
 Projekt: 	Studienarbeit über ein im Mashnetwork eingesetztes 
-			zentralisiertes Authentisierungssystem (MobiSEC).
+			zentralisiertes Authentisierungssystem MobiSEC. 
+			(Martignon et al.: Design and Implementation of MobiSEC:
+			A complete security architecture for wireless mesh 
+			networks, Elsevier (2009), DOI:10.1016/j.comnet.2009.04.002)
 Jahr: 		2012
 
 
