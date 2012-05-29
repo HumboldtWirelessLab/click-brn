@@ -19,18 +19,27 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include "kdp.hh"
+#include "keymanagement.hh"
 
 CLICK_DECLS
 
-kdp::kdp() {
+kdp::kdp()
+{
+	BRNElement::init();
 }
 
 kdp::~kdp() {
 }
 
+/*
+ * *******************************************************
+ *               Packet Generation Functions
+ * *******************************************************
+ */
+
 // This function used for both server and client driven kdp
 WritablePacket * kdp::kdp_request_msg() {
-	WritablePacket *p = Packet::make(128, NULL, sizeof(struct kdp_req), 32);
+	WritablePacket *p = Packet::make(128, NULL, sizeof(kdp_req), 32);
 
 	kdp_req req;
 
@@ -39,26 +48,18 @@ WritablePacket * kdp::kdp_request_msg() {
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg_cli_driv() {
-	//todo: instead of statical infos we have to retrieve infos from KMM
-	int seed_len = 150; //sha1
-	int cardinality = 4;
-	time_t ts = time(NULL);
-	int seed = 1337;
+WritablePacket *kdp::kdp_reply_msg(crypto_ctrl_data *hdr, const unsigned char *payload) {
 
-	WritablePacket *p = Packet::make(128, NULL, sizeof(struct kdp_reply_header)+seed_len, 32);
+	int data_len = (hdr->seed_len > 0) ? hdr->seed_len : (hdr->key_len*hdr->cardinality);
 
-	kdp_reply_header hdr = {ts, cardinality, 0, seed_len};
+	WritablePacket *p = Packet::make(128, NULL, sizeof(crypto_ctrl_data)+data_len, 32);
 
-	memcpy(p->data(), &hdr, sizeof(struct kdp_reply_header));
-	memcpy(p->data()+sizeof(struct kdp_reply_header), &seed, sizeof(int));
+	memcpy(p->data(), hdr, sizeof(crypto_ctrl_data));
+	memcpy(&p->data()[sizeof(crypto_ctrl_data)], payload, data_len);
 
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg_srv_driv() {
-
-}
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(kdp)
