@@ -1195,6 +1195,44 @@ AC_SUBST(XML2CLICK)
 AC_SUBST(EXPAT_INCLUDES)
 AC_SUBST(EXPAT_LIBS)
 
+dnl openssl library
+
+explicit_openssl=yes
+AC_ARG_WITH(openssl, [[  --with-openssl[=PREFIX]   locate openssl library (optional)]],
+  [opensslprefix=$withval; if test -z "$withval" -o "$withval" = no; then opensslprefix=; fi],
+  opensslprefix=; explicit_openssl=yes)
+
+if test "$opensslprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$opensslprefix" && CPPFLAGS="$CPPFLAGS -I$opensslprefix/include"
+    AC_CHECK_HEADER(openssl/opensslconf.h, have_openssl_h=yes, have_openssl_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    saveflags="$LDFLAGS"; test -n "$opensslprefix" && LDFLAGS="$LDFLAGS -L$opensslprefix/lib"
+    AC_CHECK_LIB(ssl, SSL_library_init, have_libopenssl=yes, have_libopenssl=no)
+    LDFLAGS="$saveflags"
+
+    if test $have_openssl_h = yes -a $have_libopenssl = yes; then
+	AC_DEFINE(HAVE_OPENSSL)
+	test -n "$opensslprefix" && OPENSSL_INCLUDES="-I$opensslprefix/include" && OPENSSL_LIBS="-L$opensslprefix/lib"
+	OPENSSL_LIBS="$OPENSSL_LIBS -lssl -lcrypto"
+        AC_DEFINE([HAVE_OPENSSL], [1], [Define if you have -lssl, -lcrypto and openssl/opensslconf.h.])
+	LIBS="$LIBS $OPENSSL_LIBS"
+    elif test $explicit_openssl = yes; then
+	OPENSSL_INCLUDES= OPENSSL_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-openssl, but the openssl headers and/or libraries
+are not where you said they would be.  Run again supplying --without-openssl
+or --with-openssl=PREFIX.
+
+=========================================])
+    fi
+fi
+AC_SUBST(OPENSSL_INCLUDES)
+AC_SUBST(OPENSSL_LIBS)
+
 
 dnl check linuxmodule for Linux
 

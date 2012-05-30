@@ -144,6 +144,9 @@
    preferred to their non-proper counterparts. */
 #undef HAVE_PROPER
 
+/* Define if you have -lssl and opensslconf.h. */
+#undef HAVE_OPENSSL
+
 /* Define if you have a non-emulated <poll.h> header file. */
 #undef HAVE_POLL_H
 
