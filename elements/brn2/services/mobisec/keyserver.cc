@@ -115,4 +115,5 @@ void keyserver::handle_kdp_req(Packet *p) {
 
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(keyserver)
