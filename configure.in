@@ -1197,10 +1197,10 @@ AC_SUBST(EXPAT_LIBS)
 
 dnl openssl library
 
-explicit_openssl=yes
+explicit_openssl=no
 AC_ARG_WITH(openssl, [[  --with-openssl[=PREFIX]   locate openssl library (optional)]],
-  [opensslprefix=$withval; if test -z "$withval" -o "$withval" = no; then opensslprefix=; fi],
-  opensslprefix=; explicit_openssl=yes)
+  [opensslprefix=$withval; if test -z "$withval" -o "$withval" = yes; then opensslprefix=; fi],
+  opensslprefix=; explicit_openssl=no)
 
 if test "$opensslprefix" != no; then
     saveflags="$CPPFLAGS"; test -n "$opensslprefix" && CPPFLAGS="$CPPFLAGS -I$opensslprefix/include"
