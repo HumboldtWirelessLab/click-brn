@@ -141,5 +141,5 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(keymanagement)
-ELEMENT_LIBS(-lssl -lcrypto)

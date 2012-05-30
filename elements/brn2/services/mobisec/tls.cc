@@ -355,5 +355,5 @@ void TLS::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(TLS)
-ELEMENT_LIBS(-lssl -lcrypto)

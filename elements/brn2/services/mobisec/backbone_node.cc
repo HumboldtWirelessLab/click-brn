@@ -125,4 +125,5 @@ void backbone_node::add_handlers()
 
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(backbone_node)
