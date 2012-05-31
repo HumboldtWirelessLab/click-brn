@@ -62,4 +62,5 @@ WritablePacket *kdp::kdp_reply_msg(crypto_ctrl_data *hdr, const unsigned char *p
 
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(kdp)

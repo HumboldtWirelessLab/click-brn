@@ -215,7 +215,9 @@ public:
 
   uint32_t _max_age;
 
+  public:
   RReqRetransmitInfoList _rreq_retransmit_list;
+  private:
   Timer _retransmission_timer;
 
   Vector<EtherAddress> _neighbors;
@@ -244,9 +246,17 @@ public:
  public:
   int _stats_receive_better_route;
   int _stats_avoid_bad_route_forward;
+  int _stats_opt_route;
+
+  int _stats_del_passive_ack_retransmissioninfo;
+  int _stats_del_passive_ack_reason_full_neighbours;
+  int _stats_del_passive_ack_reason_full_retries;
+  int _stats_del_passive_ack_inserts;
+  int _stats_del_passive_ack_reinserts;
 
   uint32_t _passive_ack_retries;
   uint32_t _passive_ack_interval;
+  bool _passive_ack_force_retries;
 
   inline int32_t index_of_neighbor(EtherAddress *ea) {
     for ( int i = 0; i < _neighbors.size(); i++ ) if (_neighbors[i] == *ea) return i;
