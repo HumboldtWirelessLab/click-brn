@@ -397,7 +397,7 @@ BRN2RouteQuerier::buffer_packet(Packet *p)
     const click_brn_dsr *dsr = (const click_brn_dsr *)( p->data() + sizeof(click_brn) );  //TODO: BRN-packet in queue is alway dsr ??
     dst = EtherAddress(dsr->dsr_dst.data);
     src = EtherAddress(dsr->dsr_src.data);
-    click_chatter("BRN in queue-----------------------------------------------------------------------------------");
+    BRN_DEBUG("BRN in queue");
   } else {
     dst = EtherAddress(ether->ether_dhost);
     src = EtherAddress(ether->ether_shost);
