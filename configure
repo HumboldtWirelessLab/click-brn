@@ -10667,7 +10667,8 @@ fi
 $as_echo "#define HAVE_OPENSSL 1" >>confdefs.h
 
 	LIBS="$LIBS $OPENSSL_LIBS"
-    elif test $explicit_openssl = yes; then
+    else
+      if test $explicit_openssl = yes; then
 	OPENSSL_INCLUDES= OPENSSL_LIBS=
 	as_fn_error $? "
 =========================================
@@ -10677,6 +10678,15 @@ are not where you said they would be.  Run again supplying --without-openssl
 or --with-openssl=PREFIX.
 
 =========================================" "$LINENO" 5
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,FakeOpenSSL"
+      else
+        FINDELEMFLAGS="-x FakeOpenSSL"
+      fi
+
+
     fi
 fi
 
