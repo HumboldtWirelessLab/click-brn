@@ -69,6 +69,10 @@ int keyserver::initialize(ErrorHandler* errh) {
 	// todo: temporarily doing the call here (has to be done by a timed function)
 	keyman.constr_keylist_cli_driv();
 
+	// Set timer for key setting
+	_timer.initialize(this);
+	_timer.schedule_after_msec(_start_time);
+
 	BRN_DEBUG("Key server initialized");
 	return 0;
 }
@@ -85,12 +89,21 @@ void keyserver::push(int port, Packet *p) {
 
 void keyserver::run_timer(Timer* ) {
 
+	_timer.reschedule_after_msec(_key_timeout);
+
+	/*
+	 * Todo: 2 Fälle:
+	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
+	 * parallele Schlüssel entfernen.
+	 * 2. Sonst, Schlüsselliste konstruieren und zwei Schlüssel parallel einsetzen
+	 */
+
+	keyman.install_key_on_phy(_wepencap, _wepdecap);
 }
 
 void keyserver::handle_kdp_req(Packet *p) {
 	/*
-	 * todo: protocol checks
-	 * here good place to control replay attacks
+	 * Further Work: protocol checks; here good place to control replay attacks
 	 */
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());

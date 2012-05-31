@@ -36,6 +36,8 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
+		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
+		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
