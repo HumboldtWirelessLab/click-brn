@@ -9,6 +9,8 @@
  *
  * Todo: Need better specification for key_len, seed_len, cardinality.
  */
+#include <time.h>
+#include <cmath>
 
 #include <click/config.h>
 #include <click/element.hh>
@@ -133,11 +135,27 @@ void keymanagement::gen_crypto_srv_driv() {
 
 // This method uses the list to set the adequate key
 void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
-	// todo: select right key from list depending on time
+	// TODO: Totally Alpha-Version here :S
+	time_t time_now = time(NULL);
+	time_t time_keylist = ctrl_data.timestamp;
+	int timeout = 5000;
+	int index = std::floor(((float)time_now - (float)time_keylist)/timeout) + 1; // something wrong here with types
+	const String key = keylist.at(index);
+
 	const String handler = "key";
-	const String key = "weizenbaum";
-	int success = HandlerCall::call_write(_wepencap, handler, key, NULL);
-	BRN_DEBUG("new key: %s", HandlerCall::call_read(_wepencap, handler).c_str() );
+
+	/* **********************************
+	 * Set keys in WEPencap and WEPdecap
+	 * **********************************
+	 */
+	int success;
+	success = HandlerCall::call_write(_wepencap, handler, key, NULL);
+	if(success==0) click_chatter("On WEPencap new key: %s", HandlerCall::call_read(_wepencap, handler).c_str() );
+	else click_chatter("ERROR while setting new key");
+
+	success = HandlerCall::call_write(_wepdecap, handler, key, NULL);
+	if(success==0) click_chatter("On WEPdecap new key: %s", HandlerCall::call_read(_wepdecap, handler).c_str() );
+	else click_chatter("ERROR while setting new key");
 }
 
 CLICK_ENDDECLS
