@@ -63,6 +63,7 @@ class DHTRoutingFalcon : public DHTRouting
     FalconRoutingTable *_frt;
     FalconLeaveOrganizer *_leave_organizer;
     int _responsible;
+    bool _use_all_nodes;
 
     void handle_routing_update_callback(int status);
 };
