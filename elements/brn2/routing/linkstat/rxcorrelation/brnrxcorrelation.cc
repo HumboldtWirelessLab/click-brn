@@ -10,7 +10,8 @@
 CLICK_DECLS
 
 BrnRXCorrelation::BrnRXCorrelation()
-  :_debug(BrnLogger::DEFAULT)
+  :_debug(BrnLogger::DEFAULT),
+   _linkprobe_id(0)
 {
 }
 
