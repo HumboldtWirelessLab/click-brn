@@ -18,7 +18,8 @@ DHTRoutingFalcon::DHTRoutingFalcon():
   _enable_range_query(true),
   _frt(NULL),
   _leave_organizer(NULL),
-  _responsible(FALCON_RESPONSIBLE_FORWARD)
+  _responsible(FALCON_RESPONSIBLE_FORWARD),
+  _use_all_nodes(true)
 {
   DHTRouting::init();
 }
@@ -44,6 +45,7 @@ int DHTRoutingFalcon::configure(Vector<String> &conf, ErrorHandler *errh)
       "LEAVEORGANIZER", cpkP, cpElement, &_leave_organizer,
       "RESPONSIBLE", cpkP, cpInteger, &_responsible,
       "ENABLERANGEQUERIES", cpkP, cpBool, &_enable_range_query,
+      "USEALLNODES", cpkP, cpBool, &_use_all_nodes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -74,10 +76,13 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key, HashMap<EtherAd
 {
   DHTnode *best;
 
-  if ( ( _frt->successor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
+  if ( ( _frt->predecessor == NULL ) || ( _frt->_fingertable.size() == 0 ) ) return _frt->_me;
 
   if ( FalconFunctions::is_in_between( _frt->predecessor, _frt->_me, key) ||
        FalconFunctions::is_equals(_frt->_me, key) ) return _frt->_me;
+
+  if ( _frt->successor == NULL ) return _frt->_me;  //Ring not stable! so i'm responsible
+
   if ( FalconFunctions::is_in_between( _frt->_me, _frt->successor, key) ||
        FalconFunctions::is_equals(_frt->successor, key) ) return _frt->successor; //TODO: this should be handle
                                                                                   //by checking the FT
@@ -91,15 +96,17 @@ DHTRoutingFalcon::get_responsibly_node_backward(md5_byte_t *key, HashMap<EtherAd
     }
   }
 
-  //check this first and not the fingertable, since all nodes includes also the FT-node
-  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {
-    if ( eas != NULL ) {
-      if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
-    }
+  if ( _use_all_nodes ) {
+    //check this first and not the fingertable, since all nodes includes also the FT-node
+    for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {
+      if ( eas != NULL ) {
+        if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
+      }
 
-    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
-         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
-      best = _frt->_allnodes.get_dhtnode(i);
+      if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
+        best = _frt->_allnodes.get_dhtnode(i);
+      }
     }
   }
 
@@ -132,14 +139,16 @@ DHTRoutingFalcon::get_responsibly_node_forward(md5_byte_t *key, HashMap<EtherAdd
     }
   }
 
-  for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
-    if ( eas != NULL ) {
-      if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
-    }
+  if ( _use_all_nodes ) {
+    for ( int i = ( _frt->_allnodes.size() - 1 ); i >= 0; i-- ) {  //check this first and not the fingertable, since all nodes includes also the FT-node
+      if ( eas != NULL ) {
+        if ( eas->findp(_frt->_allnodes.get_dhtnode(i)->_ether_addr) == NULL ) continue;
+      }
 
-    if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
-         FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
-      best = _frt->_allnodes.get_dhtnode(i);
+      if ( FalconFunctions::is_in_between( best, key, _frt->_allnodes.get_dhtnode(i) ) ||
+          FalconFunctions::is_equals( _frt->_allnodes.get_dhtnode(i), key ) ) {
+        best = _frt->_allnodes.get_dhtnode(i);
+      }
     }
   }
 
