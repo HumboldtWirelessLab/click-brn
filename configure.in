@@ -1218,7 +1218,8 @@ if test "$opensslprefix" != no; then
 	OPENSSL_LIBS="$OPENSSL_LIBS -lssl -lcrypto"
         AC_DEFINE([HAVE_OPENSSL], [1], [Define if you have -lssl, -lcrypto and openssl/opensslconf.h.])
 	LIBS="$LIBS $OPENSSL_LIBS"
-    elif test $explicit_openssl = yes; then
+    else
+      if test $explicit_openssl = yes; then
 	OPENSSL_INCLUDES= OPENSSL_LIBS=
 	AC_MSG_ERROR([
 =========================================
@@ -1228,6 +1229,15 @@ are not where you said they would be.  Run again supplying --without-openssl
 or --with-openssl=PREFIX.
 
 =========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,FakeOpenSSL"
+      else
+        FINDELEMFLAGS="-x FakeOpenSSL"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
     fi
 fi
 AC_SUBST(OPENSSL_INCLUDES)
