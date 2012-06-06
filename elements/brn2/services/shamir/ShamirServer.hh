@@ -27,7 +27,7 @@ struct shamir_reply {
     unsigned int share_id;
     unsigned int share_len;
     unsigned char *share;
-}
+};
 
 class ShamirServer : public BRNElement {
 public:
@@ -44,13 +44,13 @@ public:
 	int initialize(ErrorHandler* errh);
 
 	void add_handlers();
-private:
-    BN_CTX *_bn_ctx;
+
     BIGNUM *_modulus;
     BIGNUM *_share;
-    unsigned int _share_id;
-
 	int _debug;
+private:
+    unsigned int _share_id;
+    BN_CTX *_bn_ctx;
 
     int handle_request(Packet *p);
 };

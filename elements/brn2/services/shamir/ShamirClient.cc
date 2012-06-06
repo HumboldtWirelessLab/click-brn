@@ -32,12 +32,8 @@ ShamirClient::ShamirClient()
 	BRNElement::init(); // what for??
 }
 
-TLS::~TLS() {
-	SSL_shutdown(conn);
-	ERR_free_strings();
-	SSL_CTX_free(ctx);
-	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
-	BIO_free(bio_err);
+ShamirClient::~ShamirClient() {
+
 }
 
 
@@ -55,7 +51,7 @@ void ShamirClient::push(int port, Packet *p) {
 
 	if (port == 0) { // data from network
 		BRN_DEBUG("Received Shamir reply");
-		handle_request(p);
+		this->store_reply(p);
 	} else {
 		BRN_DEBUG("port %d: oops !!", port, p->length());
 		p->kill();
@@ -68,7 +64,7 @@ void ShamirClient::push(int port, Packet *p) {
  * *******************************************************
  */
 
-BIGNUM * combine() {
+BIGNUM * ShamirClient::combine() {
     BIGNUM *tmp, *product, *result;
     uint32_t current_id;
 
@@ -77,19 +73,19 @@ BIGNUM * combine() {
     result = BN_new();
     BN_zero(result);
 
-    for (HashTable<uint32_t, BIGNUM *>::iterator it = _received_shares.begin(), it; ++it)
+    for (HashTable<uint32_t, BIGNUM *>::iterator it = _received_shares.begin(); it; ++it) {
         current_id = it.key();
         uint32_t current_lagrange = 1;
 
         /* Compute the Lagrange coeffient for the base polynomial at x=0
          * l_{i,0} = \Prod{j}{j-1} \forall j \in A, j \neq i where A is the set of
          * cooperating nodes */
-        for (HashTable<uint32_t, BIGNUM *>::iterator it2 = _received_shares.begin(), it2; ++it2) {
-            if (current_id == it.key())
+        for (HashTable<uint32_t, BIGNUM *>::iterator it2 = _received_shares.begin(); it2; ++it2) {
+            if (current_id == it2.key())
                 continue;
             else
                 /*FIXME: Division in Z_p is not necessarily feasible (if p is not prime and phi(p) is unknown) */
-                current_lagrange *= it.key() / (it.key() - current_id);
+                current_lagrange *= it2.key() / (it2.key() - current_id);
         }
         /* Multiply each share with its corresponding Lagrange coeffiecient */
         tmp = BN_new(); //TODO: Use BN_CTX_get
@@ -98,26 +94,27 @@ BIGNUM * combine() {
             current_lagrange *= -1;
             BN_set_word(tmp, current_lagrange);
             BN_set_negative(tmp, 1);
-        } ecurrent_lagrangese {
+        } else {
             BN_set_word(tmp, current_lagrange);
         }
         BN_mod_mul(product, tmp, it.value(), _modulus, _bn_ctx);
-        BN_mod_add(sum, sum, product, _modulus, _bn_ctx);
+        BN_mod_add(result, result, product, _modulus, _bn_ctx);
         BN_free(tmp);
         BN_free(product);
     }
 
-    return sum;
+    return result;
 }
-int store_reply(Packet *p) {
+
+int ShamirClient::store_reply(Packet *p) {
 
     uint32_t share_id, share_length;
-    unsigned char *data = p->data();
+    const unsigned char *data = p->data();
     BIGNUM *bn = NULL;
 
-    reply->share_id = *(uint32_t*) data;
-    reply->share_length = *(uint32_t*) (data + sizeof(uint32_t);
-    bn = BN_bin2bn((data + 2*sizeof(uint32_t), reply->share_length, NULL);
+    share_id = *(uint32_t*) data;
+    share_length = *(uint32_t*) (data + sizeof(uint32_t));
+    bn = BN_bin2bn(data + 2*sizeof(uint32_t), share_length, NULL);
 
     if (!bn) {
         BRN_DEBUG("Failed to parse reply");
@@ -146,10 +143,10 @@ static String read_param(Element *e, void *thunk) {
     char *c = NULL;
     string ret;
 
-    switch((intptr_t) vparam) {
+    switch((intptr_t) thunk) {
     case H_MODULUS:
         {
-            c = BN_bn2hex(shamir_client->_modulus)
+            c = BN_bn2hex(shamir_client->_modulus);
             s << c;
             free(c);
             break;
@@ -165,15 +162,14 @@ static String read_param(Element *e, void *thunk) {
 
 static int write_param(const String &in_s, Element *e, void *vparam,
             ErrorHandler *errh) {
-    ShamirClient *s = (ShamirClient) *e;
+    ShamirClient *s = (ShamirClient*) e;
 
     switch((intptr_t) vparam) {
         case H_MODULUS:
             {
                 BIGNUM *bn = NULL;
-                if (!BN_hex2bn(&bn, in_s->c_str()))
+                if (!BN_hex2bn(&bn, in_s.c_str()))
                     BRN_DEBUG("Invalid call to write handler");
-                }
                 if (s->_modulus)
                     BN_free(s->_modulus);
                 s->_modulus = BN_dup(bn);
@@ -184,6 +180,7 @@ static int write_param(const String &in_s, Element *e, void *vparam,
             {
                 BRN_DEBUG("Invalid call to write handler");
             }
+    }
     return 0;
 }
 
@@ -191,8 +188,8 @@ void ShamirClient::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("modulus", handler_triggered_handshake, NULL);
-  add_write_handler("modulus", handler_triggered_handshake, NULL);
+  add_read_handler("modulus", read_param, H_MODULUS);
+  add_write_handler("modulus", write_param, H_MODULUS);
 }
 
 CLICK_ENDDECLS
