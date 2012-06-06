@@ -31,15 +31,22 @@ CLICK_DECLS
 ShamirServer::ShamirServer()
 	: _debug(false)
 {
-	BRNElement::init(); // what for??
+	BRNElement::init();
+
+    _bn_ctx = BN_CTX_new();
+    if (_bn_ctx)
+        BN_CTX_init(_bn_ctx);
+    else
+        BRN_DEBUG("Failed to initialize ShamirServer");
 }
 
-TLS::~TLS() {
-	SSL_shutdown(conn);
-	ERR_free_strings();
-	SSL_CTX_free(ctx);
-	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
-	BIO_free(bio_err);
+ShamirServer::~ShamirServer() {
+    if (_bn_ctx)
+        BN_CTX_free(_bn_ctx);
+    if (_modulus)
+        BN_clear_free(_modulus);
+    if (_share)
+        BN_clear_free(_share);
 }
 
 
@@ -192,5 +199,5 @@ void ShamirServer::add_handlers()
 }
 
 CLICK_ENDDECLS
-//EXPORT_ELEMENT(TLS)
+//EXPORT_ELEMENT(ShamirServer)
 ELEMENT_LIBS(-lssl -lcrypto)
