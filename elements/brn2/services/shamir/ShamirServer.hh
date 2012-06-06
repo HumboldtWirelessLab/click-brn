@@ -13,7 +13,6 @@
 
 #include <click/element.hh>
 #include <click/confparse.hh>
-#include <click/hashmap.hh>
 #include <click/packet.hh>
 #include "elements/brn2/brnelement.hh"
 
