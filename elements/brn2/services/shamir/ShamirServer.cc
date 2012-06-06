@@ -77,18 +77,18 @@ void ShamirServer::push(int port, Packet *p) {
  * *******************************************************
  */
 
-int handle_request(Packet *p) {
+int ShamirServer::handle_request(Packet *p) {
 
-    shamir_reply reply;
-    reply->share_id = _share_id;
-    reply->share_length = BN_bn2bin(_share, reply->share);
-    if (!reply->share_length) {
+    struct shamir_reply reply;
+    reply.share_id = _share_id;
+    reply.share_len = BN_bn2bin(_share, reply.share);
+    if (!reply.share_len) {
         BRN_DEBUG("Failed to handle request");
         p->kill();
         return -1;
     }
 
-    WriteablePacket *reply = Packet::make(128, NULL, 2*sizeof(uint32_t)+reply->share_length);
+    Packet *reply_packet = Packet::make(128, NULL, 2*sizeof(uint32_t)+reply->share_length);
     return 0;
 }
 
@@ -107,19 +107,19 @@ enum {
 static String read_param(Element *e, void *thunk) {
 	ShamirServer *shamir_server = (ShamirServer *)e;
     char *c = NULL;
-    string ret;
+    ostringstream s;
 
-    switch((intptr_t) vparam) {
+    switch((intptr_t) thunk) {
     case H_MODULUS:
         {
-            c = BN_bn2hex(shamir_server->_modulus)
+            c = BN_bn2hex(shamir_server->_modulus);
             s << c;
             free(c);
             break;
         }
     case H_SHARE:
         {
-            c = BN_bn2hex(shamir_server->_share)
+            c = BN_bn2hex(shamir_server->_share);
             s << c;
             free(c);
             break;
@@ -135,20 +135,19 @@ static String read_param(Element *e, void *thunk) {
         }
     }
 
-    return s;
+    return s.str();
 }
 
 static int write_param(const String &in_s, Element *e, void *vparam,
             ErrorHandler *errh) {
-    ShamirServer *s = (ShamirServer) *e;
+    ShamirServer *s = (ShamirServer*) e;
 
     switch((intptr_t) vparam) {
         case H_MODULUS:
             {
                 BIGNUM *bn = NULL;
-                if (!BN_hex2bn(&bn, in_s->c_str()))
+                if (!BN_hex2bn(&bn, in_s.c_str()))
                     BRN_DEBUG("Invalid call to write handler");
-                }
                 if (s->_modulus)
                     BN_free(s->_modulus);
                 s->_modulus = BN_dup(bn);
@@ -160,7 +159,6 @@ static int write_param(const String &in_s, Element *e, void *vparam,
                 BIGNUM *bn = NULL;
                 if (!BN_hex2bn(&bn, in_s->c_str()))
                     BRN_DEBUG("Invalid call to write handler");
-                }
                 if (s->_share)
                     BN_free(s->_share);
                 s->_share = BN_dup(bn);
@@ -183,6 +181,7 @@ static int write_param(const String &in_s, Element *e, void *vparam,
             {
                 BRN_DEBUG("Invalid call to write handler");
             }
+    }
     return 0;
 }
 
@@ -190,12 +189,12 @@ void ShamirServer::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("modulus", handler_triggered_handshake, NULL);
-  add_write_handler("modulus", handler_triggered_handshake, NULL);
-  add_read_handler("share", handler_triggered_handshake, NULL);
-  add_write_handler("share", handler_triggered_handshake, NULL);
-  add_read_handler("share_id", handler_triggered_handshake, NULL);
-  add_write_handler("share_id", handler_triggered_handshake, NULL);
+  add_read_handler("modulus", handler_triggered_handshake, H_MODULUS);
+  add_write_handler("modulus", handler_triggered_handshake, H_MODULUS);
+  add_read_handler("share", handler_triggered_handshake, H_SHARE);
+  add_write_handler("share", handler_triggered_handshake, H_SHARE);
+  add_read_handler("share_id", handler_triggered_handshake, H_SHARE_ID);
+  add_write_handler("share_id", handler_triggered_handshake, H_SHARE_ID);
 }
 
 CLICK_ENDDECLS
