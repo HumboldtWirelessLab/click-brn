@@ -891,7 +891,8 @@ BRN2RequestForwarder::get_trackroutemap() {
     for ( int i = 0; i < METRIC_LIST_SIZE; i++) {
       if ( (rri->_id_list[i]) % METRIC_LIST_SIZE == i ) {
         sa << "\t\t<request id=\"" << rri->_id_list[i] << "\" metric=\"" << rri->_metric_list[i];
-        sa << "\" last_hop_opt=\"" << (uint32_t)(rri->_last_hop_opt[i]) << "\" >\n";
+        sa << "\" last_hop_opt=\"" << (uint32_t)(rri->_last_hop_opt[i]) << "\" left_retries=\"";
+        sa << (uint32_t)(rri->_passive_ack_retry_list[i]) << "\" last_retry=\"" << rri->_passive_ack_last_retry_list[i].unparse() << "\" />\n";
       }
     }
     sa << "\t</requestnode>\n";
