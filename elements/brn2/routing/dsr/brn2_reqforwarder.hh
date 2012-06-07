@@ -86,6 +86,7 @@ class BRN2RequestForwarder : public BRNElement {
       _src = EtherAddress(src->data());
       memset(_id_list, 0, sizeof(_id_list));
       _id_list[0] = 1; //set entry 0 to 1 so that it is mark as unused (1 & METRIC_LIST_MASK) != 0)
+      memset(_passive_ack_retry_list, 0, sizeof(_passive_ack_retry_list));
       _max_age = max_age;
     }
 
