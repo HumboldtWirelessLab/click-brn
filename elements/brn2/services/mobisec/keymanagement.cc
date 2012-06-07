@@ -9,13 +9,13 @@
  *
  * Todo: Need better specification for key_len, seed_len, cardinality.
  */
-#include <time.h>
 #include <cmath>
 
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/handlercall.hh>
+#include <click/timestamp.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -44,6 +44,7 @@ keymanagement::~keymanagement() {
 
 int keymanagement::initialization() {
 	crypto_ctrl_data ctrl_data = {0 , 0, 0, 0};
+
 	seed = NULL;
 
 	return 0;
@@ -54,9 +55,16 @@ int keymanagement::initialization() {
  *         		useful getter & setter functions
  * *******************************************************
  */
+void keymanagement::set_validity_start_time(Timestamp::seconds_type time) {
+	ctrl_data.timestamp = time;
+}
 
 void keymanagement::set_cardinality(int card) {
 	ctrl_data.cardinality = card;
+}
+
+void keymanagement::set_key_timeout(int timeout) {
+	key_timeout = timeout;
 }
 
 void keymanagement::set_seed(const unsigned char *data) {
@@ -86,8 +94,6 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
  */
 
 void keymanagement::gen_crypto_cli_driv() {
-	ctrl_data.timestamp = time(NULL);
-	ctrl_data.cardinality = 4;
 	ctrl_data.key_len = 5;
 	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
@@ -108,8 +114,8 @@ void keymanagement::constr_keylist_cli_driv() {
 	for(int i=0; i < ctrl_data.cardinality; i++) {
 		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);
 
-		String s;
-		s.append((const char*)curr_key, ctrl_data.key_len);
+		// We use only key_len-bytes of the the hash value
+		String s((const char*)curr_key, ctrl_data.key_len);
 
 		// todo: not really tested
 		keylist.push_back(s);
@@ -127,6 +133,10 @@ void keymanagement::gen_crypto_srv_driv() {
 
 }
 
+void keymanagement::constr_keylist_srv_driv() {
+
+}
+
 /*
  * *******************************************************
  *       					other
@@ -135,26 +145,34 @@ void keymanagement::gen_crypto_srv_driv() {
 
 // This method uses the list to set the adequate key
 void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
-	// TODO: Totally Alpha-Version here :S
-	time_t time_now = time(NULL);
-	time_t time_keylist = ctrl_data.timestamp;
-	int timeout = 5000;
-	int index = std::floor(((float)time_now - (float)time_keylist)/timeout) + 1; // something wrong here with types
+	Timestamp::seconds_type time_now = Timestamp::now().sec();
+	Timestamp::seconds_type time_keylist = ctrl_data.timestamp/1000; 	// Problem: Cant't work in milliseconds due to Timestamp features
+	int timeout = key_timeout/1000; 									// Problem: same here
+
+	// (I wonder, if the next lines are totally type safe ?!)
+	int term = (time_now - time_keylist)/timeout;
+	// click_chatter("DEBUG: %d %d %d", time_now, time_keylist, timeout);
+	int index = std::floor((float)term) + 1;
+
+	if (!(0 <= index && index <= keylist.size())) {
+		// Todo: Need some check with feedback here!
+		return;
+	}
+
 	const String key = keylist.at(index);
 
 	const String handler = "key";
 
 	/* **********************************
 	 * Set keys in WEPencap and WEPdecap
-	 * **********************************
-	 */
+	 * ***********************************/
 	int success;
 	success = HandlerCall::call_write(_wepencap, handler, key, NULL);
-	if(success==0) click_chatter("On WEPencap new key: %s", HandlerCall::call_read(_wepencap, handler).c_str() );
+	if(success==0) click_chatter("On WEPencap new key(%d): %s", index, HandlerCall::call_read(_wepencap, handler).c_str() );
 	else click_chatter("ERROR while setting new key");
 
 	success = HandlerCall::call_write(_wepdecap, handler, key, NULL);
-	if(success==0) click_chatter("On WEPdecap new key: %s", HandlerCall::call_read(_wepdecap, handler).c_str() );
+	if(success==0) click_chatter("On WEPdecap new key(%d): %s", index, HandlerCall::call_read(_wepdecap, handler).c_str() );
 	else click_chatter("ERROR while setting new key");
 }
 

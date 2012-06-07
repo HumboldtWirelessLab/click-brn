@@ -63,11 +63,16 @@ int keyserver::initialize(ErrorHandler* errh) {
 	else if (_protocol_type == CLIENT_DRIVEN)
 		keyman.gen_crypto_cli_driv();
 
-	// set cardinality in keymanagement
+	// set crypto parameters made by configuration
+	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
+	keyman.set_key_timeout(_key_timeout);
 
 	// todo: temporarily doing the call here (has to be done by a timed function)
-	keyman.constr_keylist_cli_driv();
+	if (_protocol_type == SERVER_DRIVEN)
+		keyman.constr_keylist_srv_driv();
+	else if (_protocol_type == CLIENT_DRIVEN)
+		keyman.constr_keylist_cli_driv();
 
 	// Set timer for key setting
 	_timer.initialize(this);
@@ -98,6 +103,7 @@ void keyserver::run_timer(Timer* ) {
 	 * 2. Sonst, Schlüsselliste konstruieren und zwei Schlüssel parallel einsetzen
 	 */
 
+	BRN_DEBUG("Installing new keys: ");
 	keyman.install_key_on_phy(_wepencap, _wepdecap);
 }
 

@@ -57,6 +57,12 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 int backbone_node::initialize(ErrorHandler* errh) {
 	req_id = 7;
 
+	keyman.set_key_timeout(_key_timeout);
+
+	// Set timer for key setting
+	_timer.initialize(this);
+	_timer.schedule_after_msec(_start_time);
+
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
 }
@@ -71,7 +77,17 @@ void backbone_node::push(int port, Packet *p) {
 }
 
 void backbone_node::run_timer(Timer* ) {
+	_timer.reschedule_after_msec(_key_timeout);
 
+	/*
+	 * Todo: 2 Fälle:
+	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
+	 * parallele Schlüssel entfernen.
+	 * 2. Sonst, Schlüsselliste konstruieren und zwei Schlüssel parallel einsetzen
+	 */
+
+	BRN_DEBUG("Installing new keys: ");
+	keyman.install_key_on_phy(_wepencap, _wepdecap);
 }
 
 void backbone_node::snd_kdp_req() {

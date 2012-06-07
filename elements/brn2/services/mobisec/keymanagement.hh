@@ -8,19 +8,20 @@
 #ifndef KEYMANAGEMENT_HH_
 #define KEYMANAGEMENT_HH_
 
-#include <vector>
-
-#include <string>
+#include <click/timestamp.hh>
+#include <click/vector.hh>
+#include <click/string.hh>
 #include <click/element.hh>
 #include <click/confparse.hh>
+
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS
 
 struct crypto_ctrl_data {
-	time_t timestamp;
-	int cardinality; // also interpretable as rounds
-	int key_len;
+	Timestamp::seconds_type timestamp;
+	int cardinality; 	// also interpretable as rounds
+	int key_len; 		// WEP key length
 	int seed_len;
 };
 
@@ -33,11 +34,14 @@ public:
 	const char *class_name() const { return "keymanagement"; }
 	int initialization();
 
+	void set_validity_start_time(Timestamp::seconds_type time);
 	void set_cardinality(int card);
+	void set_key_timeout(int timeout);
 
 	void set_seed(const unsigned char *);
 	unsigned char *get_seed();
 
+	// Useful for installation of complete ctrl_data
 	void set_ctrl_data(crypto_ctrl_data *);
 	crypto_ctrl_data *get_ctrl_data();
 
@@ -58,7 +62,11 @@ private:
 	crypto_ctrl_data ctrl_data;
 	unsigned char *seed;
 
-	std::vector<String> keylist;
+	// key_timeout is needed for the calculation of the keylist's index
+	int key_timeout;
+
+
+	Vector<String> keylist;
 
 	void store_crypto_info();
 };
