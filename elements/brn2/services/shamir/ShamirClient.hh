@@ -24,12 +24,6 @@ using namespace std;
 
 CLICK_DECLS
 
-struct shamir_reply {
-    unsigned int share_id;
-    unsigned int share_len;
-    unsigned char *share;
-};
-
 class ShamirClient : public BRNElement {
 public:
 	ShamirClient();

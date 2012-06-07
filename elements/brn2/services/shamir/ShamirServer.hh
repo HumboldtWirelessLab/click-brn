@@ -48,8 +48,8 @@ public:
     BIGNUM *_modulus;
     BIGNUM *_share;
 	int _debug;
-private:
     unsigned int _share_id;
+private:
     BN_CTX *_bn_ctx;
 
     int handle_request(Packet *p);
