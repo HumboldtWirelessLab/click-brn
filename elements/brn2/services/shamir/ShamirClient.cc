@@ -47,6 +47,10 @@ int ShamirClient::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
+int ShamirClient::initialize(ErrorHandler *) {
+    return 0;
+}
+
 void ShamirClient::push(int port, Packet *p) {
 
 	if (port == 0) { // data from network
@@ -138,10 +142,10 @@ enum {
     H_MODULUS,
 };
 
-static String read_param(Element *e, void *thunk) {
+static string read_param(Element *e, void *thunk) {
 	ShamirClient *shamir_client = (ShamirClient *)e;
     char *c = NULL;
-    string ret;
+    stringstream s;
 
     switch((intptr_t) thunk) {
     case H_MODULUS:
@@ -153,11 +157,11 @@ static String read_param(Element *e, void *thunk) {
         }
     default:
         {
-            BRN_DEBUG("Invalid call to write handler");
+//            BRN_DEBUG("Invalid call to write handler");
         }
     }
 
-    return s;
+    return s.str();
 }
 
 static int write_param(const String &in_s, Element *e, void *vparam,
@@ -169,7 +173,8 @@ static int write_param(const String &in_s, Element *e, void *vparam,
             {
                 BIGNUM *bn = NULL;
                 if (!BN_hex2bn(&bn, in_s.c_str()))
-                    BRN_DEBUG("Invalid call to write handler");
+                  break;
+                  //  BRN_DEBUG("Invalid call to write handler");
                 if (s->_modulus)
                     BN_free(s->_modulus);
                 s->_modulus = BN_dup(bn);
@@ -178,7 +183,7 @@ static int write_param(const String &in_s, Element *e, void *vparam,
             }
         default:
             {
-                BRN_DEBUG("Invalid call to write handler");
+ //               BRN_DEBUG("Invalid call to write handler");
             }
     }
     return 0;
@@ -193,5 +198,5 @@ void ShamirClient::add_handlers()
 }
 
 CLICK_ENDDECLS
-//EXPORT_ELEMENT(ShamirClient)
+EXPORT_ELEMENT(ShamirClient)
 ELEMENT_LIBS(-lssl -lcrypto)
