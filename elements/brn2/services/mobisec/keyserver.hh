@@ -28,12 +28,12 @@
 
 CLICK_DECLS
 
-class keyserver : public BRNElement {
+class KEYSERVER : public BRNElement {
 public:
-	keyserver();
-	~keyserver();
+	KEYSERVER();
+	~KEYSERVER();
 
-	const char *class_name() const { return "keyserver"; }
+	const char *class_name() const { return "KEYSERVER"; }
 	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
@@ -44,10 +44,10 @@ public:
 
 
 	void jmp_next_session();
-	static void session_trigger(Timer *t, void *element) { ((keyserver *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
 
 	void jmp_next_epoche();
-	static void epoche_trigger(Timer *t, void *element) { ((keyserver *)element)->jmp_next_epoche(); }
+	static void epoche_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoche(); }
 
 private:
 	int _debug;
@@ -57,7 +57,6 @@ private:
 
 	// Parameters to control the refreshing of key material
 	int _start_time;
-	Timer _timer; 			// Todo: tmp...
 	Timer session_timer; 	// Controls installation of keys
 	Timer epoche_timer; 	// Controls the keylist refreshing
 

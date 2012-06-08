@@ -25,12 +25,12 @@
 
 CLICK_DECLS
 
-class backbone_node : public BRNElement {
+class BACKBONE_NODE : public BRNElement {
 public:
-	backbone_node();
-	~backbone_node();
+	BACKBONE_NODE();
+	~BACKBONE_NODE();
 
-	const char *class_name() const { return "backbone_node"; }
+	const char *class_name() const { return "BACKBONE_NODE"; }
 	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);

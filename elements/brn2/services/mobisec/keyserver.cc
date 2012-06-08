@@ -23,7 +23,7 @@
 
 CLICK_DECLS
 
-keyserver::keyserver()
+KEYSERVER::KEYSERVER()
 	: _debug(false),
 	  session_timer(session_trigger, this),
 	  epoche_timer(epoche_trigger, this),
@@ -32,10 +32,10 @@ keyserver::keyserver()
 	BRNElement::init();
 }
 
-keyserver::~keyserver() {
+KEYSERVER::~KEYSERVER() {
 }
 
-int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
+int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
@@ -59,7 +59,7 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
-int keyserver::initialize(ErrorHandler* errh) {
+int KEYSERVER::initialize(ErrorHandler* errh) {
 	start_flag = true;
 
 	// Set crypto parameters made by configuration
@@ -67,11 +67,11 @@ int keyserver::initialize(ErrorHandler* errh) {
 	keyman.set_cardinality(_key_list_cardinality);
 	keyman.set_key_timeout(_key_timeout);
 
-	// Set timer to coordinate key and keylist installation.
+	// Set timer to coordinate session keys
 	session_timer.initialize(this);
 	session_timer.schedule_at(Timestamp::make_msec(_start_time));
 
-	// Set timer to build crypto material.
+	// Set timer to coordinate epoche keylists
 	epoche_timer.initialize(this);
 	jmp_next_epoche(); // We do the triggering manually here
 
@@ -79,7 +79,7 @@ int keyserver::initialize(ErrorHandler* errh) {
 	return 0;
 }
 
-void keyserver::push(int port, Packet *p) {
+void KEYSERVER::push(int port, Packet *p) {
 	if(port==0) {
 		BRN_DEBUG("kdp request received");
 		handle_kdp_req(p);
@@ -89,7 +89,7 @@ void keyserver::push(int port, Packet *p) {
 	}
 }
 
-void keyserver::handle_kdp_req(Packet *p) {
+void KEYSERVER::handle_kdp_req(Packet *p) {
 	// Todo: Future Work: protocol checks; here good place to control replay attacks
 
 	kdp_req *req = (kdp_req *)p->data();
@@ -118,7 +118,7 @@ void keyserver::handle_kdp_req(Packet *p) {
  *         Time-dependent tasks
  * *******************************************************
  */
-void keyserver::jmp_next_session() {
+void KEYSERVER::jmp_next_session() {
 	/*
 	 * Todo: 2 Fälle:
 	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
@@ -138,10 +138,10 @@ void keyserver::jmp_next_session() {
 
 /*
  * Two jobs have to be done in the last session of an epoche:
- * 1. The keyserver must produce new crypto material before next kdp request come from backbone nodes
- * 2. The keyserver needs to build his own new keylist
+ * 1. The KEYSERVER must produce new crypto material before next kdp request come from backbone nodes
+ * 2. The KEYSERVER needs to build his own new keylist
  */
-void keyserver::jmp_next_epoche() {
+void KEYSERVER::jmp_next_epoche() {
 	BRN_DEBUG("Preparing new Epoche ...");
 
 	if (_protocol_type == SERVER_DRIVEN)
@@ -173,4 +173,4 @@ void keyserver::jmp_next_epoche() {
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(keyserver)
+EXPORT_ELEMENT(KEYSERVER)

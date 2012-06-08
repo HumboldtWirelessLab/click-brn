@@ -19,7 +19,7 @@
 
 CLICK_DECLS
 
-backbone_node::backbone_node()
+BACKBONE_NODE::BACKBONE_NODE()
 	: _debug(false),
 	  _timer(this),
 	  keyman()
@@ -27,10 +27,10 @@ backbone_node::backbone_node()
 	BRNElement::init();
 }
 
-backbone_node::~backbone_node() {
+BACKBONE_NODE::~BACKBONE_NODE() {
 }
 
-int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
+int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
@@ -54,7 +54,7 @@ int backbone_node::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
-int backbone_node::initialize(ErrorHandler* errh) {
+int BACKBONE_NODE::initialize(ErrorHandler* errh) {
 	req_id = 7;
 
 	keyman.set_key_timeout(_key_timeout);
@@ -67,7 +67,7 @@ int backbone_node::initialize(ErrorHandler* errh) {
 	return 0;
 }
 
-void backbone_node::push(int port, Packet *p) {
+void BACKBONE_NODE::push(int port, Packet *p) {
 	if(port == 0) {
 		BRN_DEBUG("kdp reply received");
 		handle_kdp_reply(p);
@@ -76,7 +76,7 @@ void backbone_node::push(int port, Packet *p) {
 	}
 }
 
-void backbone_node::run_timer(Timer* ) {
+void BACKBONE_NODE::run_timer(Timer* ) {
 	_timer.reschedule_after_msec(_key_timeout);
 
 	/*
@@ -90,7 +90,7 @@ void backbone_node::run_timer(Timer* ) {
 	keyman.install_key_on_phy(_wepencap, _wepdecap);
 }
 
-void backbone_node::snd_kdp_req() {
+void BACKBONE_NODE::snd_kdp_req() {
 	WritablePacket *p = kdp::kdp_request_msg();
 
 	// Enrich packet with information.
@@ -102,7 +102,7 @@ void backbone_node::snd_kdp_req() {
 	output(0).push(p);
 }
 
-void backbone_node::handle_kdp_reply(Packet *p) {
+void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
@@ -129,12 +129,12 @@ void backbone_node::handle_kdp_reply(Packet *p) {
  * *******************************************************
  */
 static String handler_triggered_request(Element *e, void *thunk) {
-	backbone_node *bn = (backbone_node *)e;
+	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
 	bn->snd_kdp_req();
 	return String();
 }
 
-void backbone_node::add_handlers()
+void BACKBONE_NODE::add_handlers()
 {
   BRNElement::add_handlers();
 
@@ -145,4 +145,4 @@ void backbone_node::add_handlers()
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(backbone_node)
+EXPORT_ELEMENT(BACKBONE_NODE)
