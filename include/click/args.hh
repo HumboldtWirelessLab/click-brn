@@ -740,7 +740,12 @@ class Args : public ArgContext {
 #endif
     };
 
+#if !CLICK_DEBUG_ARGS_USAGE
     bool _my_conf;
+#else
+    bool _my_conf : 1;
+    bool _consumed : 1;
+#endif
     bool _status;
     uint8_t _simple_slotpos;
 

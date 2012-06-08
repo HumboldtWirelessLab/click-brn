@@ -173,8 +173,10 @@ ToDevice::initialize(ErrorHandler *errh)
 	    } else if (_method == method_netmap)
 		return -1;
 	}
-	if (_fd >= 0)
+	if (_fd >= 0) {
 	    _method = method_netmap;
+	    _netmap.initialize_rings_tx();
+	}
     }
 #endif
 
@@ -382,6 +384,7 @@ ToDevice::run_task(Task *)
 	    _backoff = 0;
 	    checked_output_push(0, p);
 	    ++count;
+	    p = 0;
 	} else
 	    break;
     } while (count < _burst);
