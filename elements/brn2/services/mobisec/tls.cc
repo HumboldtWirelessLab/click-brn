@@ -11,8 +11,6 @@
  *  Usefull commands:
  *  - openssl req -new -newkey rsa:2028 -days 9999 -x509 -out ca.pem
  *    to create a ca cert
- *  -
- *
  *  - more info on: man ca
  */
 #include <iostream>
@@ -43,7 +41,7 @@ CLICK_DECLS
 TLS::TLS()
 	: _debug(false)
 {
-	BRNElement::init(); // what for??
+	BRNElement::init();
 }
 
 TLS::~TLS() {
@@ -310,6 +308,7 @@ int TLS::snd_data() {
 
 	if ( BIO_read(bioOut,p->data(), p->length()) ) {
 		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", dst.unparse().c_str(), len);
+
 		// Pack into BRN-Pkt
 		BRNPacketAnno::set_ether_anno(p, _me, dst, ETHERTYPE_BRN);
 	    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS);

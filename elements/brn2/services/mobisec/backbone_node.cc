@@ -111,13 +111,14 @@ void backbone_node::handle_kdp_reply(Packet *p) {
 	BRN_INFO("card: %d; seed_len: %d", keyman.get_ctrl_data()->cardinality, keyman.get_ctrl_data()->seed_len);
 
 	// Store crypto material
-	if (keyman.get_ctrl_data()->seed_len > 0) {
+	if (_protocol_type == CLIENT_DRIVEN) {
 		keyman.set_seed(payload);
 
 		BRN_DEBUG("Constructing key list");
 		keyman.constr_keylist_cli_driv();
-	} else
+	} else if (_protocol_type == SERVER_DRIVEN) {
 		;// todo: store the received key list
+	}
 
 	p->kill();
 }

@@ -19,7 +19,7 @@
 CLICK_DECLS
 
 struct crypto_ctrl_data {
-	Timestamp::seconds_type timestamp;
+	int32_t timestamp;
 	int cardinality; 	// also interpretable as rounds
 	int key_len; 		// WEP key length
 	int seed_len;
@@ -34,7 +34,9 @@ public:
 	const char *class_name() const { return "keymanagement"; }
 	int initialization();
 
-	void set_validity_start_time(Timestamp::seconds_type time);
+	void set_validity_start_time(int32_t time);
+	int32_t get_validity_start_time();
+
 	void set_cardinality(int card);
 	void set_key_timeout(int timeout);
 

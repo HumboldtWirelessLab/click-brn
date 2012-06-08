@@ -9,7 +9,6 @@
  *
  * Todo: Need better specification for key_len, seed_len, cardinality.
  */
-#include <cmath>
 
 #include <click/config.h>
 #include <click/element.hh>
@@ -55,7 +54,11 @@ int keymanagement::initialization() {
  *         		useful getter & setter functions
  * *******************************************************
  */
-void keymanagement::set_validity_start_time(Timestamp::seconds_type time) {
+int32_t keymanagement::get_validity_start_time(){
+	return ctrl_data.timestamp;
+}
+
+void keymanagement::set_validity_start_time(int32_t time) {
 	ctrl_data.timestamp = time;
 }
 
@@ -94,6 +97,8 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
  */
 
 void keymanagement::gen_crypto_cli_driv() {
+	// Todo: check if all information are available for generation
+
 	ctrl_data.key_len = 5;
 	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
@@ -117,7 +122,6 @@ void keymanagement::constr_keylist_cli_driv() {
 		// We use only key_len-bytes of the the hash value
 		String s((const char*)curr_key, ctrl_data.key_len);
 
-		// todo: not really tested
 		keylist.push_back(s);
 	}
 }
@@ -145,17 +149,15 @@ void keymanagement::constr_keylist_srv_driv() {
 
 // This method uses the list to set the adequate key
 void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
-	Timestamp::seconds_type time_now = Timestamp::now().sec();
-	Timestamp::seconds_type time_keylist = ctrl_data.timestamp/1000; 	// Problem: Cant't work in milliseconds due to Timestamp features
-	int timeout = key_timeout/1000; 									// Problem: same here
+	int32_t time_now = Timestamp::now().msecval();
+	int32_t time_keylist = ctrl_data.timestamp;
 
-	// (I wonder, if the next lines are totally type safe ?!)
-	int term = (time_now - time_keylist)/timeout;
-	// click_chatter("DEBUG: %d %d %d", time_now, time_keylist, timeout);
-	int index = std::floor((float)term) + 1;
+	// Note: The implicit int-type handling causes automatically a round down
+	int index = (time_now - time_keylist)/key_timeout;
 
-	if (!(0 <= index && index <= keylist.size())) {
-		// Todo: Need some check with feedback here!
+	if (!(0 <= index && index < keylist.size())) {
+		click_chatter("ERROR: No keys available. Need for kdp-request!");
+		// Todo: Index out of range, need feedback here!
 		return;
 	}
 
