@@ -24,10 +24,6 @@ FullNoteQueue::FullNoteQueue()
 {
 }
 
-FullNoteQueue::~FullNoteQueue()
-{
-}
-
 void *
 FullNoteQueue::cast(const char *n)
 {
@@ -79,6 +75,23 @@ FullNoteQueue::pull(int)
     else
 	return pull_failure();
 }
+
+#if CLICK_DEBUG_SCHEDULING
+String
+FullNoteQueue::read_handler(Element *e, void *)
+{
+    FullNoteQueue *fq = static_cast<FullNoteQueue *>(e);
+    return "nonempty " + fq->_empty_note.unparse(fq->router())
+	+ "\nnonfull " + fq->_full_note.unparse(fq->router());
+}
+
+void
+FullNoteQueue::add_handlers()
+{
+    NotifierQueue::add_handlers();
+    add_read_handler("notifier_state", read_handler, 0);
+}
+#endif
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(NotifierQueue)
