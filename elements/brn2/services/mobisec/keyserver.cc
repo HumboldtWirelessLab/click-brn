@@ -9,6 +9,7 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <click/timestamp.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -24,7 +25,8 @@ CLICK_DECLS
 
 keyserver::keyserver()
 	: _debug(false),
-	  _timer(this),
+	  session_timer(session_trigger, this),
+	  epoche_timer(epoche_trigger, this),
 	  keyman()
 {
 	BRNElement::init();
@@ -58,25 +60,20 @@ int keyserver::configure(Vector<String> &conf, ErrorHandler *errh) {
 }
 
 int keyserver::initialize(ErrorHandler* errh) {
-	if (_protocol_type == SERVER_DRIVEN)
-		keyman.gen_crypto_srv_driv();
-	else if (_protocol_type == CLIENT_DRIVEN)
-		keyman.gen_crypto_cli_driv();
+	start_flag = true;
 
-	// set crypto parameters made by configuration
+	// Set crypto parameters made by configuration
 	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
 	keyman.set_key_timeout(_key_timeout);
 
-	// todo: temporarily doing the call here (has to be done by a timed function)
-	if (_protocol_type == SERVER_DRIVEN)
-		keyman.constr_keylist_srv_driv();
-	else if (_protocol_type == CLIENT_DRIVEN)
-		keyman.constr_keylist_cli_driv();
+	// Set timer to coordinate key and keylist installation.
+	session_timer.initialize(this);
+	session_timer.schedule_at(Timestamp::make_msec(_start_time));
 
-	// Set timer for key setting
-	_timer.initialize(this);
-	_timer.schedule_after_msec(_start_time);
+	// Set timer to build crypto material.
+	epoche_timer.initialize(this);
+	jmp_next_epoche(); // We do the triggering manually here
 
 	BRN_DEBUG("Key server initialized");
 	return 0;
@@ -92,25 +89,9 @@ void keyserver::push(int port, Packet *p) {
 	}
 }
 
-void keyserver::run_timer(Timer* ) {
-
-	_timer.reschedule_after_msec(_key_timeout);
-
-	/*
-	 * Todo: 2 Fälle:
-	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
-	 * parallele Schlüssel entfernen.
-	 * 2. Sonst, Schlüsselliste konstruieren und zwei Schlüssel parallel einsetzen
-	 */
-
-	BRN_DEBUG("Installing new keys: ");
-	keyman.install_key_on_phy(_wepencap, _wepdecap);
-}
-
 void keyserver::handle_kdp_req(Packet *p) {
-	/*
-	 * Further Work: protocol checks; here good place to control replay attacks
-	 */
+	// Todo: Future Work: protocol checks; here good place to control replay attacks
+
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
@@ -130,6 +111,63 @@ void keyserver::handle_kdp_req(Packet *p) {
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
+}
+
+/*
+ * *******************************************************
+ *         Time-dependent tasks
+ * *******************************************************
+ */
+void keyserver::jmp_next_session() {
+	/*
+	 * Todo: 2 Fälle:
+	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
+	 * parallele Schlüssel entfernen.
+	 * 2. Sonst, zwei Schlüssel parallel einsetzen
+	 */
+
+	BRN_DEBUG("NEW Installing new keys: ");
+	keyman.install_key_on_phy(_wepencap, _wepdecap);
+
+	// Find out time slice we are in since keylist timestamp. Every slice has the length of _key_timeout.
+	// (Note: Round down is done implicitly through integer arithmetic.
+	int offset = ((Timestamp::now().msecval()-keyman.get_validity_start_time()) / _key_timeout)*_key_timeout + _key_timeout;
+
+	session_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + offset));
+}
+
+/*
+ * Two jobs have to be done in the last session of an epoche:
+ * 1. The keyserver must produce new crypto material before next kdp request come from backbone nodes
+ * 2. The keyserver needs to build his own new keylist
+ */
+void keyserver::jmp_next_epoche() {
+	BRN_DEBUG("Preparing new Epoche ...");
+
+	if (_protocol_type == SERVER_DRIVEN)
+		keyman.gen_crypto_srv_driv();
+	else if (_protocol_type == CLIENT_DRIVEN)
+		keyman.gen_crypto_cli_driv();
+
+	BRN_DEBUG("Built crypto material");
+
+	if (_protocol_type == SERVER_DRIVEN)
+		keyman.constr_keylist_srv_driv();
+	else if (_protocol_type == CLIENT_DRIVEN)
+		keyman.constr_keylist_cli_driv();
+
+	BRN_DEBUG("Constructed new keylist");
+
+	int keylist_livetime = _key_timeout*_key_list_cardinality;
+
+	// Omit first induction step for right order
+	if(start_flag)
+		start_flag = false;
+	else
+		keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
+
+	int tolerance = 0.5*_key_timeout;
+	epoche_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
 }
 
 

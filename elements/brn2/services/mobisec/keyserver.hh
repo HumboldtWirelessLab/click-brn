@@ -41,7 +41,13 @@ public:
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
-	void run_timer(Timer*);
+
+
+	void jmp_next_session();
+	static void session_trigger(Timer *t, void *element) { ((keyserver *)element)->jmp_next_session(); }
+
+	void jmp_next_epoche();
+	static void epoche_trigger(Timer *t, void *element) { ((keyserver *)element)->jmp_next_epoche(); }
 
 private:
 	int _debug;
@@ -51,7 +57,11 @@ private:
 
 	// Parameters to control the refreshing of key material
 	int _start_time;
-	Timer _timer;
+	Timer _timer; 			// Todo: tmp...
+	Timer session_timer; 	// Controls installation of keys
+	Timer epoche_timer; 	// Controls the keylist refreshing
+
+	bool start_flag;
 
 	keymanagement keyman;
 
