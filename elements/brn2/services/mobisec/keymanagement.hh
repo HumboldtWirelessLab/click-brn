@@ -50,10 +50,10 @@ public:
 
 	// The crypto_generator will be executed periodically by the key server
 		/* CLIENT_DRIVEN */
-	void gen_crypto_cli_driv();
+	void gen_seed();
 	void install_keylist_cli_driv();
 		/* SERVER_DRIVEN */
-	void gen_crypto_srv_driv();
+	void gen_keylist();
 	void install_keylist_srv_driv();
 
 

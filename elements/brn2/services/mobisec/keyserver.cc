@@ -26,7 +26,7 @@ CLICK_DECLS
 KEYSERVER::KEYSERVER()
 	: _debug(false),
 	  session_timer(session_trigger, this),
-	  epoche_timer(epoche_trigger, this),
+	  epoch_timer(epoch_trigger, this),
 	  keyman(),
 	  TMP_keyman()
 {
@@ -71,7 +71,7 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	/*
 	 * Todo: Vielleicht eleganter, wenn ich einen "copy constructor" benutze
 	 *
-	 * Grund: In prepare_new_epoche() können sich sonst Fehler einschleichen,
+	 * Grund: In prepare_new_epoch() können sich sonst Fehler einschleichen,
 	 * weil ich nicht alle nötigen Daten in TMP_keyman übernehme. TMP_keyman
 	 * ist jedoch wichtig, weil es die Quelle für keyman darstellt.
 	 *
@@ -81,9 +81,9 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	 */
 
 
-	prepare_new_epoche();
-	epoche_timer.initialize(this);	// Set timer to coordinate epoche keylists
-	jmp_next_epoche(); 				// We do the triggering manually here
+	prepare_new_epoch();
+	epoch_timer.initialize(this);	// Set timer to coordinate epoch keylists
+	jmp_next_epoch(); 				// We do the triggering manually here
 
 	// Set timer to coordinate session keys
 	session_timer.initialize(this);
@@ -143,7 +143,7 @@ void KEYSERVER::jmp_next_session() {
 	 * 2. Sonst, zwei Schlüssel parallel einsetzen
 	 */
 
-	BRN_DEBUG("NEW Installing new keys: ");
+	BRN_DEBUG("Installing new keys: ");
 	keyman.install_key_on_phy(_wepencap, _wepdecap);
 
 	// Find out session we are in since keylist timestamp. Every session has the length of _key_timeout.
@@ -153,8 +153,8 @@ void KEYSERVER::jmp_next_session() {
 	session_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + offset));
 }
 
-void KEYSERVER::jmp_next_epoche() {
-	// Copy new epoche data from TMP_keyman to keyman
+void KEYSERVER::jmp_next_epoch() {
+	// Copy new epoch data from TMP_keyman to keyman
 	keyman.set_ctrl_data( TMP_keyman.get_ctrl_data() );
 	keyman.set_seed( TMP_keyman.get_seed() );
 	keyman.set_validity_start_time( TMP_keyman.get_validity_start_time() );
@@ -162,28 +162,28 @@ void KEYSERVER::jmp_next_epoche() {
 										:
 										keyman.install_keylist_cli_driv();
 
-	BRN_DEBUG("Switched to new epoche");
+	BRN_DEBUG("Switched to new epoch");
 
-	prepare_new_epoche();
+	prepare_new_epoch();
 
-	// Set timer for the next epoche jump
+	// Set timer for the next epoch jump
 	int tolerance = 0.5*_key_timeout;
 	int keylist_livetime = _key_timeout*_key_list_cardinality;
-	epoche_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
+	epoch_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
 }
 
 /*
- * This function allows asynchronous handling of "jumping to the next epoche"
- * and preparing the data for the NEXT epoche. This idea reflects the inticacies
+ * This function allows asynchronous handling of "jumping to the next epoch"
+ * and preparing the data for the NEXT epoch. This idea reflects the inticacies
  * of network communication, where on the one hand everybody operates
  * with the same data, on the other hand every node has to think of his future
- * communication and therefore assure that the data for the next epoche is
+ * communication and therefore assure that the data for the next epoch is
  * present in time.
  */
-void KEYSERVER::prepare_new_epoche() {
-	(_protocol_type == SERVER_DRIVEN) ? TMP_keyman.gen_crypto_srv_driv()
+void KEYSERVER::prepare_new_epoch() {
+	(_protocol_type == SERVER_DRIVEN) ? TMP_keyman.gen_keylist()
 										:
-										TMP_keyman.gen_crypto_cli_driv();
+										TMP_keyman.gen_seed();
 
 	int keylist_livetime = _key_timeout*_key_list_cardinality;
 
@@ -196,7 +196,7 @@ void KEYSERVER::prepare_new_epoche() {
 		TMP_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
 	}
 
-	BRN_DEBUG("Prepared next epoche");
+	BRN_DEBUG("Prepared next epoch");
 }
 
 

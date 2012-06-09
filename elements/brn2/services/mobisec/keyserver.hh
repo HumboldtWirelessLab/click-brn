@@ -46,10 +46,10 @@ public:
 	void jmp_next_session();
 	static void session_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
 
-	void jmp_next_epoche();
-	static void epoche_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoche(); }
+	void jmp_next_epoch();
+	static void epoch_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
 
-	void prepare_new_epoche();
+	void prepare_new_epoch();
 
 private:
 	int _debug;
@@ -60,12 +60,12 @@ private:
 	// Parameters to control the refreshing of key material
 	int _start_time;
 	Timer session_timer; 	// Controls installation of keys
-	Timer epoche_timer; 	// Controls the keylist refreshing
+	Timer epoch_timer; 	// Controls the keylist refreshing
 
 	bool start_flag;
 
 	keymanagement keyman;
-	keymanagement TMP_keyman;	// epoche changes need a second structure for temporal storage
+	keymanagement TMP_keyman;	// epoch changes need a second structure for temporal storage
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;

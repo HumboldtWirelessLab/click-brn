@@ -101,7 +101,7 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
  */
 
 /* This function should normally only used by the keyserver */
-void keymanagement::gen_crypto_cli_driv() {
+void keymanagement::gen_seed() {
 	// Todo: check if all information are available for generation
 
 	ctrl_data.key_len = 5;
@@ -121,9 +121,9 @@ void keymanagement::gen_crypto_cli_driv() {
 
 // Installation of keylist
 void keymanagement::install_keylist_cli_driv() {
-	unsigned char *curr_key = seed;
-
 	keylist.clear();
+
+	unsigned char *curr_key = seed;
 
 	for(int i=0; i < ctrl_data.cardinality; i++) {
 		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);
@@ -143,7 +143,7 @@ void keymanagement::install_keylist_cli_driv() {
  */
 
 /* This function should normally only used by the keyserver */
-void keymanagement::gen_crypto_srv_driv() {
+void keymanagement::gen_keylist() {
 
 }
 
