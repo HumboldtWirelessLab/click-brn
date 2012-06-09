@@ -25,7 +25,6 @@ struct crypto_ctrl_data {
 	int seed_len;
 };
 
-
 class keymanagement : public BRNElement {
 public:
 	keymanagement();
@@ -38,6 +37,8 @@ public:
 	int32_t get_validity_start_time();
 
 	void set_cardinality(int card);
+	int get_cardinality();
+
 	void set_key_timeout(int timeout);
 
 	void set_seed(const unsigned char *);
@@ -50,10 +51,10 @@ public:
 	// The crypto_generator will be executed periodically by the key server
 		/* CLIENT_DRIVEN */
 	void gen_crypto_cli_driv();
-	void constr_keylist_cli_driv();
+	void install_keylist_cli_driv();
 		/* SERVER_DRIVEN */
 	void gen_crypto_srv_driv();
-	void constr_keylist_srv_driv();
+	void install_keylist_srv_driv();
 
 
 	// This method uses the list to set the adequate key on phy layer
@@ -63,12 +64,10 @@ private:
 
 	crypto_ctrl_data ctrl_data;
 	unsigned char *seed;
-
-	// key_timeout is needed for the calculation of the keylist's index
-	int key_timeout;
-
-
 	Vector<String> keylist;
+
+	int key_timeout; // session time
+
 
 	void store_crypto_info();
 };

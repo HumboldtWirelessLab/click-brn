@@ -115,7 +115,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 		keyman.set_seed(payload);
 
 		BRN_DEBUG("Constructing key list");
-		keyman.constr_keylist_cli_driv();
+		keyman.install_keylist_cli_driv();
 	} else if (_protocol_type == SERVER_DRIVEN) {
 		;// todo: store the received key list
 	}
