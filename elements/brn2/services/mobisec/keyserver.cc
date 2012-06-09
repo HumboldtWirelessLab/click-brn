@@ -27,7 +27,8 @@ KEYSERVER::KEYSERVER()
 	: _debug(false),
 	  session_timer(session_trigger, this),
 	  epoche_timer(epoche_trigger, this),
-	  keyman()
+	  keyman(),
+	  TMP_keyman()
 {
 	BRNElement::init();
 }
@@ -62,18 +63,31 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 int KEYSERVER::initialize(ErrorHandler* errh) {
 	start_flag = true;
 
-	// Set crypto parameters made by configuration
+	// Configuration determines some crypto parameters
 	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
 	keyman.set_key_timeout(_key_timeout);
 
+	/*
+	 * Todo: Vielleicht eleganter, wenn ich einen "copy constructor" benutze
+	 *
+	 * Grund: In prepare_new_epoche() können sich sonst Fehler einschleichen,
+	 * weil ich nicht alle nötigen Daten in TMP_keyman übernehme. TMP_keyman
+	 * ist jedoch wichtig, weil es die Quelle für keyman darstellt.
+	 *
+	 * Vorgehen: http://en.wikipedia.org/wiki/Rule_of_three_%28C%2B%2B_programming%29
+	 *
+	 * TMP_keyman = keyman;
+	 */
+
+
+	prepare_new_epoche();
+	epoche_timer.initialize(this);	// Set timer to coordinate epoche keylists
+	jmp_next_epoche(); 				// We do the triggering manually here
+
 	// Set timer to coordinate session keys
 	session_timer.initialize(this);
 	session_timer.schedule_at(Timestamp::make_msec(_start_time));
-
-	// Set timer to coordinate epoche keylists
-	epoche_timer.initialize(this);
-	jmp_next_epoche(); // We do the triggering manually here
 
 	BRN_DEBUG("Key server initialized");
 	return 0;
@@ -95,6 +109,9 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
+
+	// TODO: Hier muss entschieden werden, aus welcher Epoche die Informationen
+	// verschickt werden sollen!
 
 	crypto_ctrl_data *hdr = keyman.get_ctrl_data();
 	const unsigned char *payload;
@@ -129,45 +146,57 @@ void KEYSERVER::jmp_next_session() {
 	BRN_DEBUG("NEW Installing new keys: ");
 	keyman.install_key_on_phy(_wepencap, _wepdecap);
 
-	// Find out time slice we are in since keylist timestamp. Every slice has the length of _key_timeout.
+	// Find out session we are in since keylist timestamp. Every session has the length of _key_timeout.
 	// (Note: Round down is done implicitly through integer arithmetic.
 	int offset = ((Timestamp::now().msecval()-keyman.get_validity_start_time()) / _key_timeout)*_key_timeout + _key_timeout;
 
 	session_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + offset));
 }
 
-/*
- * Two jobs have to be done in the last session of an epoche:
- * 1. The KEYSERVER must produce new crypto material before next kdp request come from backbone nodes
- * 2. The KEYSERVER needs to build his own new keylist
- */
 void KEYSERVER::jmp_next_epoche() {
-	BRN_DEBUG("Preparing new Epoche ...");
+	// Copy new epoche data from TMP_keyman to keyman
+	keyman.set_ctrl_data( TMP_keyman.get_ctrl_data() );
+	keyman.set_seed( TMP_keyman.get_seed() );
+	keyman.set_validity_start_time( TMP_keyman.get_validity_start_time() );
+	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv() // Todo: how to get keylist here???
+										:
+										keyman.install_keylist_cli_driv();
 
-	if (_protocol_type == SERVER_DRIVEN)
-		keyman.gen_crypto_srv_driv();
-	else if (_protocol_type == CLIENT_DRIVEN)
-		keyman.gen_crypto_cli_driv();
+	BRN_DEBUG("Switched to new epoche");
 
-	BRN_DEBUG("Built crypto material");
+	prepare_new_epoche();
 
-	if (_protocol_type == SERVER_DRIVEN)
-		keyman.constr_keylist_srv_driv();
-	else if (_protocol_type == CLIENT_DRIVEN)
-		keyman.constr_keylist_cli_driv();
+	// Set timer for the next epoche jump
+	int tolerance = 0.5*_key_timeout;
+	int keylist_livetime = _key_timeout*_key_list_cardinality;
+	epoche_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
+}
 
-	BRN_DEBUG("Constructed new keylist");
+/*
+ * This function allows asynchronous handling of "jumping to the next epoche"
+ * and preparing the data for the NEXT epoche. This idea reflects the inticacies
+ * of network communication, where on the one hand everybody operates
+ * with the same data, on the other hand every node has to think of his future
+ * communication and therefore assure that the data for the next epoche is
+ * present in time.
+ */
+void KEYSERVER::prepare_new_epoche() {
+	(_protocol_type == SERVER_DRIVEN) ? TMP_keyman.gen_crypto_srv_driv()
+										:
+										TMP_keyman.gen_crypto_cli_driv();
 
 	int keylist_livetime = _key_timeout*_key_list_cardinality;
 
-	// Omit first induction step for right order
-	if(start_flag)
+	// First induction step is a little bit tricky. Some arrangements have to be done.
+	if(start_flag) {
 		start_flag = false;
-	else
-		keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
+		TMP_keyman.set_validity_start_time(keyman.get_validity_start_time());
+		TMP_keyman.set_cardinality(keyman.get_cardinality());
+	} else {
+		TMP_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
+	}
 
-	int tolerance = 0.5*_key_timeout;
-	epoche_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
+	BRN_DEBUG("Prepared next epoche");
 }
 
 

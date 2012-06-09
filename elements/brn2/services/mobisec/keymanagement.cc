@@ -66,6 +66,10 @@ void keymanagement::set_cardinality(int card) {
 	ctrl_data.cardinality = card;
 }
 
+int keymanagement::get_cardinality() {
+	return ctrl_data.cardinality;
+}
+
 void keymanagement::set_key_timeout(int timeout) {
 	key_timeout = timeout;
 }
@@ -96,6 +100,7 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
  * *******************************************************
  */
 
+/* This function should normally only used by the keyserver */
 void keymanagement::gen_crypto_cli_driv() {
 	// Todo: check if all information are available for generation
 
@@ -107,14 +112,18 @@ void keymanagement::gen_crypto_cli_driv() {
 	// Deallocation and allocation to prepare for dynamic seeding.
 	seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
 
-	if (seed != NULL)
+	if (seed != NULL) {
 		RAND_bytes(seed, ctrl_data.seed_len);
-	else
-		BRN_ERROR("Seed generation failed.");
+	} else {
+		click_chatter("Seed generation failed.");
+	}
 }
 
-void keymanagement::constr_keylist_cli_driv() {
+// Installation of keylist
+void keymanagement::install_keylist_cli_driv() {
 	unsigned char *curr_key = seed;
+
+	keylist.clear();
 
 	for(int i=0; i < ctrl_data.cardinality; i++) {
 		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);
@@ -133,11 +142,13 @@ void keymanagement::constr_keylist_cli_driv() {
  * *******************************************************
  */
 
+/* This function should normally only used by the keyserver */
 void keymanagement::gen_crypto_srv_driv() {
 
 }
 
-void keymanagement::constr_keylist_srv_driv() {
+// Installation of keylist
+void keymanagement::install_keylist_srv_driv() {
 
 }
 

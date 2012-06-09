@@ -49,6 +49,8 @@ public:
 	void jmp_next_epoche();
 	static void epoche_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoche(); }
 
+	void prepare_new_epoche();
+
 private:
 	int _debug;
 	EtherAddress _me;
@@ -63,6 +65,7 @@ private:
 	bool start_flag;
 
 	keymanagement keyman;
+	keymanagement TMP_keyman;	// epoche changes need a second structure for temporal storage
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;
