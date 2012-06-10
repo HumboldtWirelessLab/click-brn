@@ -38,29 +38,40 @@ public:
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
-	void run_timer(Timer* );
 
 	void snd_kdp_req();
+
+	void jmp_next_session();
+	static void session_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
+
+	void jmp_next_epoch();
+	static void epoch_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
+
+	static void kdp_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
 
 private:
 	BRN2NodeIdentity *_me;
 	Element *_wepencap;
 	Element *_wepdecap;
 	int _debug;
+	int _start_time;
 
 	// Parameters to control the refreshing of key material
-	int _start_time;
-	Timer _timer;
+	Timer session_timer; 	// Controls installation of keys
+	Timer epoch_timer; 		// Controls the keylist refreshing
+	Timer kdp_timer;		// Controls the kdp-req sending process
+	int tolerance;			// "Back Off" time for kdp-req in
+							// order to receive the kdp-replies in time
 
 	int req_id;
 
 	keymanagement keyman;
+	keymanagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;
 	int _key_timeout;
 
-	//todo: kmm-objekt erstellen
 	void handle_kdp_reply(Packet *);
 
 	void add_handlers();
