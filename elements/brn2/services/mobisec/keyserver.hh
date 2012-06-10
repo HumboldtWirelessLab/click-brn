@@ -42,7 +42,6 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
-
 	void jmp_next_session();
 	static void session_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
 
@@ -65,7 +64,7 @@ private:
 	bool start_flag;
 
 	keymanagement keyman;
-	keymanagement TMP_keyman;	// epoch changes need a second structure for temporal storage
+	keymanagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;

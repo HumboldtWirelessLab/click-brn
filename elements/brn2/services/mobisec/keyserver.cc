@@ -28,7 +28,7 @@ KEYSERVER::KEYSERVER()
 	  session_timer(session_trigger, this),
 	  epoch_timer(epoch_trigger, this),
 	  keyman(),
-	  TMP_keyman()
+	  BUF_keyman()
 {
 	BRNElement::init();
 }
@@ -72,14 +72,13 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	 * Todo: Vielleicht eleganter, wenn ich einen "copy constructor" benutze
 	 *
 	 * Grund: In prepare_new_epoch() können sich sonst Fehler einschleichen,
-	 * weil ich nicht alle nötigen Daten in TMP_keyman übernehme. TMP_keyman
+	 * weil ich nicht alle nötigen Daten in BUF_keyman übernehme. BUF_keyman
 	 * ist jedoch wichtig, weil es die Quelle für keyman darstellt.
 	 *
 	 * Vorgehen: http://en.wikipedia.org/wiki/Rule_of_three_%28C%2B%2B_programming%29
 	 *
-	 * TMP_keyman = keyman;
+	 * BUF_keyman = keyman;
 	 */
-
 
 	prepare_new_epoch();
 	epoch_timer.initialize(this);	// Set timer to coordinate epoch keylists
@@ -106,18 +105,39 @@ void KEYSERVER::push(int port, Packet *p) {
 void KEYSERVER::handle_kdp_req(Packet *p) {
 	// Todo: Future Work: protocol checks; here good place to control replay attacks
 
+	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
+
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
 
-	// TODO: Hier muss entschieden werden, aus welcher Epoche die Informationen
-	// verschickt werden sollen!
+	int keylist_livetime = _key_timeout*keyman.get_cardinality();
+	int now = Timestamp::now().msecval();
+	int epoch_begin = keyman.get_validity_start_time() - _key_timeout * 1.5;
+	int epoch_end = epoch_begin + keylist_livetime;
+	int thrashold = epoch_end - _key_timeout * 1.5;
 
-	crypto_ctrl_data *hdr = keyman.get_ctrl_data();
+	/*
+	 * Two cases can happen for a reply:
+	 * 1. We are in the current epoch, thus a client gets the CURRENT key material.
+	 * 2. We are on the edge to a new epoch, thus the client gets the BRAND NEW key material.
+	 */
+	keymanagement *tmp_keyman;
+	if (epoch_begin < now && now <= thrashold) {
+		tmp_keyman = &keyman;
+	} else if (thrashold < now && now <= epoch_end+keylist_livetime) {
+		tmp_keyman = &BUF_keyman;
+	} else {
+		BRN_ERROR("keyserver seams to be out of epoch! begin:%d end:%d now:%d", epoch_begin, epoch_end, now);
+		return;
+	}
+
+	crypto_ctrl_data *hdr = tmp_keyman->get_ctrl_data();
+
 	const unsigned char *payload;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
-		payload = keyman.get_seed();
+		payload = tmp_keyman->get_seed();
 
 	} else if (_protocol_type == SERVER_DRIVEN) {
 		//todo: payload = keyman.keylist;
@@ -136,13 +156,6 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
  * *******************************************************
  */
 void KEYSERVER::jmp_next_session() {
-	/*
-	 * Todo: 2 Fälle:
-	 * 1. Wenn nicht der vorletzte Schlüssel ansteht, dann einfach passenden Schlüssel an erster Stelle einsetzen,
-	 * parallele Schlüssel entfernen.
-	 * 2. Sonst, zwei Schlüssel parallel einsetzen
-	 */
-
 	BRN_DEBUG("Installing new keys: ");
 	keyman.install_key_on_phy(_wepencap, _wepdecap);
 
@@ -154,10 +167,10 @@ void KEYSERVER::jmp_next_session() {
 }
 
 void KEYSERVER::jmp_next_epoch() {
-	// Copy new epoch data from TMP_keyman to keyman
-	keyman.set_ctrl_data( TMP_keyman.get_ctrl_data() );
-	keyman.set_seed( TMP_keyman.get_seed() );
-	keyman.set_validity_start_time( TMP_keyman.get_validity_start_time() );
+	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
+	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
+	keyman.set_seed( BUF_keyman.get_seed() );
+	keyman.set_validity_start_time( BUF_keyman.get_validity_start_time() );
 	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv() // Todo: how to get keylist here???
 										:
 										keyman.install_keylist_cli_driv();
@@ -167,9 +180,9 @@ void KEYSERVER::jmp_next_epoch() {
 	prepare_new_epoch();
 
 	// Set timer for the next epoch jump
-	int tolerance = 0.5*_key_timeout;
-	int keylist_livetime = _key_timeout*_key_list_cardinality;
-	epoch_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - tolerance));
+	int anticipation = 0.5*_key_timeout;
+	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
+	epoch_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - anticipation));
 }
 
 /*
@@ -181,19 +194,19 @@ void KEYSERVER::jmp_next_epoch() {
  * present in time.
  */
 void KEYSERVER::prepare_new_epoch() {
-	(_protocol_type == SERVER_DRIVEN) ? TMP_keyman.gen_keylist()
+	(_protocol_type == SERVER_DRIVEN) ? BUF_keyman.gen_keylist()
 										:
-										TMP_keyman.gen_seed();
+										BUF_keyman.gen_seed();
 
-	int keylist_livetime = _key_timeout*_key_list_cardinality;
+	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
 
 	// First induction step is a little bit tricky. Some arrangements have to be done.
 	if(start_flag) {
 		start_flag = false;
-		TMP_keyman.set_validity_start_time(keyman.get_validity_start_time());
-		TMP_keyman.set_cardinality(keyman.get_cardinality());
+		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time());
+		BUF_keyman.set_cardinality(keyman.get_cardinality());
 	} else {
-		TMP_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
+		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
 	}
 
 	BRN_DEBUG("Prepared next epoch");
