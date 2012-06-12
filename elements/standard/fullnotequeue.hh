@@ -68,13 +68,15 @@ FrontDropQueue */
 class FullNoteQueue : public NotifierQueue { public:
 
     FullNoteQueue();
-    ~FullNoteQueue();
 
     const char *class_name() const		{ return "Queue"; }
     void *cast(const char *);
 
     int configure(Vector<String> &conf, ErrorHandler *);
     int live_reconfigure(Vector<String> &conf, ErrorHandler *errh);
+#if CLICK_DEBUG_SCHEDULING
+    void add_handlers();
+#endif
 
     void push(int port, Packet *p);
     Packet *pull(int port);
@@ -90,7 +92,9 @@ class FullNoteQueue : public NotifierQueue { public:
 				Storage::index_type nh);
     inline Packet *pull_failure();
 
-    static int write_handler(const String&, Element*, void*, ErrorHandler*);
+#if CLICK_DEBUG_SCHEDULING
+    static String read_handler(Element *e, void *user_data);
+#endif
 
 };
 
