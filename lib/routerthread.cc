@@ -66,12 +66,14 @@ static unsigned long greedy_schedule_jiffies;
  * @brief A set of Tasks scheduled on the same CPU.
  */
 
-RouterThread::RouterThread(Master *m, int id)
-    : _stop_flag(0), _pending_head(0), _pending_tail(&_pending_head),
-      _master(m), _id(id)
+RouterThread::RouterThread(Master *master, int id)
+    : _stop_flag(0), _master(master), _id(id)
 {
+    _pending_head.x = 0;
+    _pending_tail = &_pending_head;
+
 #if !HAVE_TASK_HEAP
-    _prev = _next = this;
+    _task_link._prev = _task_link._next = &_task_link;
 #endif
 #if CLICK_LINUXMODULE
     _linux_task = 0;
@@ -441,7 +443,7 @@ RouterThread::run_tasks(int ntasks)
 		if (_task_heap.size() < 2)
 		    break;
 #else
-		if (t->_next == this)
+		if (t->_next == &_task_link)
 		    break;
 #endif
 #if HAVE_STRIDE_SCHED
@@ -462,10 +464,10 @@ RouterThread::run_tasks(int ntasks)
 #else
 # if HAVE_STRIDE_SCHED
 	    TaskLink *n = t->_next;
-	    while (n != this && !PASS_GT(n->_pass, t->_pass))
+	    while (n != &_task_link && !PASS_GT(n->_pass, t->_pass))
 		n = n->_next;
 # else
-	    TaskLink *n = this;
+	    TaskLink *n = &_task_link;
 # endif
 	    if (t->_next != n) {
 		t->_next->_prev = t->_prev;
@@ -558,15 +560,16 @@ RouterThread::process_pending()
     // claim the current pending list
     set_thread_state(RouterThread::S_RUNPENDING);
     SpinlockIRQ::flags_t flags = _pending_lock.acquire();
-    uintptr_t my_pending = _pending_head;
-    _pending_head = 0;
+    Task::Pending my_pending = _pending_head;
+    _pending_head.x = 0;
     _pending_tail = &_pending_head;
     _pending_lock.release(flags);
 
     // process the list
-    while (Task *t = Task::pending_to_task(my_pending)) {
+    while (my_pending.x > 1) {
+	Task *t = my_pending.t;
 	my_pending = t->_pending_nextptr;
-	t->_pending_nextptr = 0;
+	t->_pending_nextptr.x = 0;
 	click_fence();
 	t->process_pending(this);
     }
@@ -627,7 +630,8 @@ RouterThread::driver()
 	iter++;
 
 	// run task requests
-	if (_pending_head)
+	click_compiler_fence();
+	if (_pending_head.x)
 	    process_pending();
 
 	// run tasks
@@ -732,40 +736,6 @@ RouterThread::driver()
 }
 
 
-/******************************/
-/* Secondary driver functions */
-/******************************/
-
-void
-RouterThread::driver_once()
-{
-    if (!_master->check_driver())
-	return;
-
-#if CLICK_LINUXMODULE
-    // this task is running the driver
-    _linux_task = current;
-#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
-    _running_processor = click_current_processor();
-# if HAVE___THREAD_STORAGE_CLASS
-    click_current_thread_id = _id;
-# endif
-#endif
-    driver_lock_tasks();
-
-    run_tasks(1);
-
-    driver_unlock_tasks();
-#if CLICK_LINUXMODULE
-    _linux_task = 0;
-#elif CLICK_USERLEVEL && HAVE_MULTITHREAD
-    _running_processor = click_invalid_processor();
-# if HAVE___THREAD_STORAGE_CLASS
-    click_current_thread_id = 0;
-# endif
-#endif
-}
-
 void
 RouterThread::kill_router(Router *r)
 {
@@ -783,9 +753,9 @@ RouterThread::kill_router(Router *r)
 		tp++;
 	}
 #else
-    TaskLink *prev = this;
+    TaskLink *prev = &_task_link;
     TaskLink *t;
-    for (t = prev->_next; t != this; t = t->_next)
+    for (t = prev->_next; t != &_task_link; t = t->_next)
 	if (static_cast<Task *>(t)->router() == r)
 	    t->_prev = 0;
 	else {
