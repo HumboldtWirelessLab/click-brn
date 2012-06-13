@@ -59,7 +59,11 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
         return -1;
 
   if ( (_interval == 0) && (_rate != 0) ) {
-    _interval = _size / _rate /*in KB/s*/; //interval in ms
+    _interval = (_burst * _size) / _rate /*in KB/s*/; //interval in ms
+    _burst = 10;
+    if ( _interval == 0 ) {
+      _interval = (_burst * _size) / _rate /*in KB/s*/; //interval in ms
+    }
   }
 
   return 0;
