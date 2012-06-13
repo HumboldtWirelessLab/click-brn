@@ -43,9 +43,11 @@ class BRN2PacketSource : public BRNElement {
   void set_active(bool set_active);
 
  private:
+  uint32_t _size;
+
   int _interval;
 
-  uint32_t _size;
+  int _rate;
 
   uint32_t _seq_num;
 

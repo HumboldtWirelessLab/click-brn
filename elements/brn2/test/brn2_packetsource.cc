@@ -16,6 +16,9 @@ CLICK_DECLS
 BRN2PacketSource::BRN2PacketSource()
   : _active(false),
     _timer(this),
+    _size(100),
+    _interval(0),
+    _rate(0),
     _burst(1),
     _channel(0),
     _bitrate(0),
@@ -39,9 +42,10 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "SIZE", cpkP+cpkM, cpInteger, &_size,
-      "INTERVAL", cpkP+cpkM, cpInteger, &_interval,
-      "MAXSEQ", cpkP+cpkM, cpInteger, &_max_seq_num,
-      "BURST", cpkP+cpkM, cpInteger, &_burst,
+      "INTERVAL", cpkP, cpInteger, &_interval,
+      "RATE", cpkP, cpInteger, &_rate,
+      "MAXSEQ", cpkP, cpInteger, &_max_seq_num,
+      "BURST", cpkP, cpInteger, &_burst,
       "PACKETCOUNT", cpkP, cpInteger, &_max_packets,
       "CHANNEL", cpkP, cpInteger, &_channel,
       "BITRATE", cpkP, cpInteger, &_bitrate,
@@ -53,6 +57,10 @@ BRN2PacketSource::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
         return -1;
+
+  if ( (_interval == 0) && (_rate != 0) ) {
+    _interval = _size / _rate /*in KB/s*/; //interval in ms
+  }
 
   return 0;
 }
