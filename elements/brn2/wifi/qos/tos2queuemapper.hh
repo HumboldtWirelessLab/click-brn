@@ -73,6 +73,7 @@ class Tos2QueueMapper : public BRNElement {
 	  }
 	void backoff_strategy_set(uint16_t value);
 	uint16_t backoff_strategy_get();
+    int backoff_strategy_neighbours_pli_aware(Packet *p);
 
   private:
 	ChannelStats *_cst; //Channel-Statistics-Element (see: ../channelstats.hh)
