@@ -47,6 +47,7 @@
 
 
 #include <click/config.h>
+#include "wep.hh"
 #include "wepencap.hh"
 #include <click/etheraddress.hh>
 #include <click/args.hh>
@@ -92,9 +93,27 @@ WepEncap::simple_action(Packet *p_in)
   struct click_wifi *w = (struct click_wifi *) p->data();
   int type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
   int subtype = w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
+
   if (!_active) {
     return p;
   }
+
+  /* Painting-technique gives us packet oriented control. See wepdecap.hh */
+  int color = static_cast<int>(p_in->anno_u8(PAINT_ANNO_OFFSET));
+  switch(color) {
+  case WEP_GREEN:
+	  // continue, the destiny of this packet is to be encrypted :)
+	  break;
+  case WEP_YELLOW:
+	  /* we want wep-module to be active, but this packet must not
+	   * be encrypted
+	   */
+	  return p;
+  default:
+	  /* no painting used */
+	  break;
+  }
+
   if (type != WIFI_FC0_TYPE_DATA &&
       !(type == WIFI_FC0_TYPE_MGT && subtype == WIFI_FC0_SUBTYPE_AUTH)) {
     /* only encrypt data and auth frames */

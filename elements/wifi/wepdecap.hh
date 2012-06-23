@@ -31,6 +31,8 @@ Turns 802.11 packets into ethernet packets
 =a WifiEncap
  */
 
+
+
 class WepDecap : public Element { public:
 
   WepDecap();
