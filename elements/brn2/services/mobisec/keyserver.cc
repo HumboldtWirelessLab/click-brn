@@ -180,7 +180,7 @@ void KEYSERVER::jmp_next_epoch() {
 	prepare_new_epoch();
 
 	// Set timer for the next epoch jump
-	int anticipation = 0.5*_key_timeout;
+	int anticipation = 200;
 	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
 	epoch_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - anticipation));
 }
