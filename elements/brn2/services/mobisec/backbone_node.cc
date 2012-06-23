@@ -7,6 +7,7 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <click/handlercall.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -59,7 +60,10 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 int BACKBONE_NODE::initialize(ErrorHandler* errh) {
 	req_id = 7; // Not used, but maybe useful for future work on replay-defense
+	last_req_try = 0;
+
 	tolerance = _key_timeout * 1.5;
+	backoff = _key_timeout * 0.5;
 
 	// Configuration determines some crypto parameters
 	keyman.set_key_timeout(_key_timeout);
@@ -87,6 +91,16 @@ void BACKBONE_NODE::push(int port, Packet *p) {
 }
 
 void BACKBONE_NODE::snd_kdp_req() {
+	/*
+	 * Turn off WEP temporarily, if we can't receive a kdp-reply.
+	 * Reason: Packets might be wep-encrypted wrong due to
+	 * missing or wrong keys. Therefore wep must be switched off
+	 * temporarily.
+	 */
+	if (last_req_try + backoff < Timestamp::now().msecval())
+		switch_wep("false");
+	last_req_try = Timestamp::now().msecval();
+
 	WritablePacket *p = kdp::kdp_request_msg();
 
 	// Enrich packet with information.
@@ -97,18 +111,17 @@ void BACKBONE_NODE::snd_kdp_req() {
 	BRN_DEBUG("Sending KDP-Request...");
 	output(0).push(p);
 
-	/*
-	 * This is our "hope" mechanism:
-	 * We expect a reply up to a certain time. Otherwise
-	 * we need to send a new request and pray.
-	 */
-	if (BUF_keyman.get_validity_start_time() < Timestamp::now().msecval())
-		kdp_timer.schedule_after_sec(4);
+	/* Begin of "resend mechanism" in case of no response */
+	// Todo: Find a reasonable time for backoff
+	kdp_timer.schedule_after_msec(backoff);
 }
 
 void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
+
+	// We got some key material, keep WEP connection online.
+	switch_wep("true");
 
 	// Buffer crypto control data
 	BUF_keyman.set_ctrl_data(hdr);
@@ -168,6 +181,14 @@ void BACKBONE_NODE::jmp_next_epoch() {
  *               extra functions
  * *******************************************************
  */
+
+void BACKBONE_NODE::switch_wep(String ctl) {
+	const String handler = "active";
+	int success = HandlerCall::call_write(_wepencap, handler, ctl, NULL);
+	if(success==0) BRN_DEBUG("Switched WEPencap active to %s", ctl.c_str());
+	else BRN_DEBUG("ERROR while switching WEPencap");
+}
+
 static String handler_triggered_request(Element *e, void *thunk) {
 	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
 	bn->snd_kdp_req();
