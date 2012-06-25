@@ -81,13 +81,15 @@ BRN2PacketSource::initialize(ErrorHandler *)
   pinfo.bitrate = (uint8_t)_bitrate;
   pinfo.power = (uint8_t)_power;
 
-  click_random_srandom();
+  //TODO: simulation not good idea
+#warning Fix Random stuff
+  click_srandom((int)this);
 
   _timer.initialize(this);
 
   if ( _active && ( _interval > 0 )) {
     _seq_num = 1;
-    _timer.schedule_after_msec(_interval);
+    _timer.schedule_after_msec(click_random() % _interval);
   }
 
   return 0;
