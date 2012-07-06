@@ -46,8 +46,8 @@ public:
 
 	void set_key_timeout(int timeout);
 
-	void set_seed(const unsigned char *);
-	unsigned char *get_seed();
+	void set_seed(const data_t *);
+	data_t *get_seed();
 
 	// Useful for installation of complete ctrl_data
 	void set_ctrl_data(crypto_ctrl_data *);
@@ -59,10 +59,10 @@ public:
 	// The crypto_generator will be executed periodically by the key server
 		/* CLIENT_DRIVEN */
 	void gen_seed();
-	void install_keylist_cli_driv();
+	void install_keylist_cli_driv(data_t *);
 		/* SERVER_DRIVEN */
 	void gen_keylist();
-	void install_keylist_srv_driv(const unsigned char *keylist);
+	void install_keylist_srv_driv(data_t *keylist);
 	void install_keylist_srv_driv(Vector<String> keylist);
 
 
@@ -72,7 +72,7 @@ private:
 	int _debug;
 
 	crypto_ctrl_data ctrl_data;
-	unsigned char *seed;
+	data_t *seed;
 	Vector<String> keylist;
 	data_t *keylist_string;
 

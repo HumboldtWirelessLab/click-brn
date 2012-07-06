@@ -123,24 +123,24 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	 * 1. We are in the current epoch, thus a client gets the CURRENT key material.
 	 * 2. We are on the edge to a new epoch, thus the client gets the BRAND NEW key material.
 	 */
-	keymanagement *tmp_keyman;
+	keymanagement *curr_keyman;
 	if (epoch_begin < now && now <= thrashold) {
-		tmp_keyman = &keyman;
+		curr_keyman = &keyman;
 	} else if (thrashold < now && now <= epoch_end+keylist_livetime) {
-		tmp_keyman = &BUF_keyman;
+		curr_keyman = &BUF_keyman;
 	} else {
 		BRN_ERROR("keyserver seams to be out of epoch! begin:%d end:%d now:%d", epoch_begin, epoch_end, now);
 		return;
 	}
 
-	crypto_ctrl_data *hdr = tmp_keyman->get_ctrl_data();
+	crypto_ctrl_data *hdr = curr_keyman->get_ctrl_data();
 
 	const unsigned char *payload;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
-		payload = tmp_keyman->get_seed();
+		payload = curr_keyman->get_seed();
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		payload = tmp_keyman->get_keylist_string();
+		payload = curr_keyman->get_keylist_string();
 	}
 
 	WritablePacket *reply;
@@ -170,12 +170,12 @@ void KEYSERVER::jmp_next_session() {
 
 void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
+
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-	keyman.set_seed( BUF_keyman.get_seed() );
 
 	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv(BUF_keyman.get_keylist())
 										:
-										keyman.install_keylist_cli_driv(); // todo: transform function to get input
+										keyman.install_keylist_cli_driv(BUF_keyman.get_seed());
 
 	BRN_DEBUG("Switched to new epoch");
 

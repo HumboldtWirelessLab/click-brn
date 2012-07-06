@@ -129,14 +129,14 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
-		BUF_keyman.set_seed(payload);
-
+		data_t *seed = (data_t *)payload;
 		BRN_DEBUG("Constructing and installing key list");
-		BUF_keyman.install_keylist_cli_driv();
+		BUF_keyman.install_keylist_cli_driv(seed);
 
 	} else if (_protocol_type == SERVER_DRIVEN) {
+		data_t *keylist_string = (data_t *)payload;
 		BRN_DEBUG("Installing key list");
-		BUF_keyman.install_keylist_srv_driv(payload);
+		BUF_keyman.install_keylist_srv_driv(keylist_string);
 	}
 
 	// Set timer to jump right into the coming epoch, it's unbelievable close
@@ -168,12 +168,12 @@ void BACKBONE_NODE::jmp_next_session() {
 
 void BACKBONE_NODE::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
+
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-	keyman.set_seed( BUF_keyman.get_seed() );
-	keyman.set_validity_start_time( BUF_keyman.get_validity_start_time() );
-	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv( BUF_keyman.get_keylist() ) // Todo: how to get keylist here???
+
+	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv( BUF_keyman.get_keylist() )
 										:
-										keyman.install_keylist_cli_driv();
+										keyman.install_keylist_cli_driv( BUF_keyman.get_seed() );
 
 	BRN_DEBUG("Switched to new epoch");
 }
