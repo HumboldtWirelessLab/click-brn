@@ -30,6 +30,9 @@
 
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include <clicknet/ether.h>
+#include <click/etheraddress.hh>
+#include <clicknet/wifi.h>
 
 #include "tos2queuemapper.hh"
 
@@ -39,6 +42,26 @@ CLICK_DECLS
 
 //TODO: wie kommen die Werte zustande?
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
+/* Backoff-Matrix is  generated with the help of the birthday paradoxon with the following values (see matlab/backoff/script_backoff_nachbarn_aprox.m; "matrix_merken"
+   neighbours_min = 0
+   neighbours_max = 40
+   packet_loss = [0.1,0.15,0.2,0.25, 0.30,0.35,0.4,0.45,0.50,0.55]
+
+   _backoff_matrix[packet_loss][neighbours]
+*/
+static const uint32_t _backoff_packet_loss[10] = {0.1,0.15,0.2,0.25, 0.30,0.35,0.4,0.45,0.50,0.55};
+static const uint32_t _backoff_matrix[10][40]={
+  {0,1,10,30,59,97,145,202,269,345,431,526,631,745,869,1002,1145,1297,1459,1630,1810,2001,2200,2409,2628,2856,3094,3341,3597,3863,4139,4424,4719,5023,5336,5659,5992,6334,6685,7046},
+    {0,1,7,20,39,64,95,132,175,225,281,342,410,485,565,651,744,843,948,1059,1176,1300,1429,1565,1707,1855,2009,2169,2336,2508,2687,2872,3063,3260,3464,3673,3889,4111,4339,4573}, 
+    {0,1,5,15,29,47,70,97,129,165,205,251,300,354,413,476,543,615,692,773,858,948,1043,1142,1245,1353,1465,1582,1704,1829,1960,2095,2234,2378,2526,2678,2836,2997,3163,3334},
+    {0,1,5,12,23,37,55,76,100,129,160,195,234,276,321,370,423,479,538,601,667,737,811,887,968,1052,1139,1229,1324,1421,1522,1627,1735,1847,1962,2080,2202,2328,2457,2589},
+    {0,1,4,10,19,30,44,62,82,104,130,158,189,223,260,300,342,387,435,486,540,596,655,717,782,850,920,993,1069,1148,1230,1314,1402,1492,1585,1680,1779,1880,1984,2091}, 
+    {0,1,3,8,16,25,37,51,68,87,108,132,158,186,216,249,284,322,362,404,448,495,544,595,649,705,763,824,887,953,1020,1090,1162,1237,1314,1393,1475,1559,1645,1734},
+    {0,1,3,7,13,22,32,44,58,74,92,112,134,157,183,211,241,272,306,341,379,418,460,503,549,596,645,697,750,805,862,921,982,1045,1110,1177,1246,1316,1389,1464},
+    {0,1,3,6,12,19,27,38,50,64,79,96,115,135,157,181,206,234,262,293,325,359,394,431,470,511,553,597,642,689,738,789,841,895,950,1007,1066,1127,1189,1253},
+    {0,1,3,6,10,17,24,33,43,55,69,83,100,117,136,157,179,202,227,253,281,310,341,373,407,442,478,516,555,596,638,682,727,773,821,870,921,974,1027,1082}, 
+    {0,1,2,5,9,15,21,29,38,49,60,73,87,102,119,137,156,176,198,221,245,270,297,325,354,384,416,449,483,519,555,593,632,673,714,757,801,847,893,941}};
+
 
 Tos2QueueMapper::Tos2QueueMapper():
     _cst(NULL),//Channelstats-Element
@@ -46,7 +69,6 @@ Tos2QueueMapper::Tos2QueueMapper():
     pli(NULL)//PacketLossInformation-Element
 {
 	_bqs_strategy = BACKOFF_STRATEGY_ALWAYS_OFF;
-
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
@@ -164,6 +186,95 @@ uint16_t Tos2QueueMapper::backoff_strategy_get()
 	return _bqs_strategy;
 }
 
+int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p)
+{
+int fraction  = 0;
+             int number_of_neighbours = 0;
+        	struct click_wifi *wh = (struct click_wifi *) p->data();
+        	EtherAddress src;
+        	EtherAddress dst;
+            EtherAddress bssid;
+            switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
+          		case WIFI_FC1_DIR_NODS:
+    	    		dst = EtherAddress(wh->i_addr1);
+    		    	src = EtherAddress(wh->i_addr2);
+    		    	bssid = EtherAddress(wh->i_addr3);
+        		break;
+                case WIFI_FC1_DIR_TODS:
+                        bssid = EtherAddress(wh->i_addr1);
+                        src = EtherAddress(wh->i_addr2);
+                        dst = EtherAddress(wh->i_addr3);
+                    break;
+                case WIFI_FC1_DIR_FROMDS:
+                        dst = EtherAddress(wh->i_addr1);
+                        bssid = EtherAddress(wh->i_addr2);
+                        src = EtherAddress(wh->i_addr3);
+                    break;
+                case WIFI_FC1_DIR_DSTODS:
+                        dst = EtherAddress(wh->i_addr1);
+                        src = EtherAddress(wh->i_addr2);
+                        bssid = EtherAddress(wh->i_addr3);
+                    break;
+                default:
+                BRN_DEBUG("Packet-Mode is unknown");
+            }
+        	if(NULL != pli) {
+                BRN_DEBUG("Before pli_graph");
+                PacketLossInformation_Graph *pli_graph = pli->graph_get(dst);
+                BRN_DEBUG("AFTER pli_graph");
+                if(NULL != pli_graph) {
+                    BRN_DEBUG("There is not a Graph available for the DST-Adress: %s", dst.unparse().c_str());
+                    PacketLossReason* pli_reason = pli_graph->reason_get("in_range");
+                    fraction = pli_reason->getFraction();                    
+                    BRN_DEBUG("In-Range-FRACTIOn := %d", fraction);
+                }
+            }
+            if ( _cst != NULL ) {
+					struct airtime_stats *as;
+					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
+                    number_of_neighbours = as->no_sources;
+					BRN_DEBUG("Number of Neighbours %d",number_of_neighbours);  
+			}
+            int index = -1;
+            int packet_loss_index_max = 10;
+            for (int i = 0; i<= packet_loss_index_max; i++){
+                if(fraction <= _backoff_packet_loss[i]) index = i;
+            }
+            if (index = -1) index = packet_loss_index_max;
+
+            if(number_of_neighbours > 40) number_of_neighbours = 40;
+            unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
+            int opt_queue = 0; 
+            for (int i = 0; i <= no_queues_get();i++) {
+				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
+				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+                if(cwmax_get(i) <= backoff_value){
+                    opt_queue = i;
+                    break;
+                }
+            }
+            return opt_queue;
+
+     /*       unsigned int backoff_value = 0; 
+/            unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
+			BRN_DEBUG("optimale queue:= %d",opt_queue);
+			for (int i = 0; i <= no_queues_get();i++) {
+				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
+				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+                if(cwmax_get(i) <= backoff_value){
+                    opt_queue = i;
+                    break;
+                }
+				//BRN_DEBUG("queue_usage[%d] := %d",i,queue_usage_get(i));
+				///if( NULL != pli) BRN_DEBUG("PLI is not Null\n\r");
+				if ( _cst != NULL ) {
+					struct airtime_stats *as;
+					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
+					BRN_DEBUG("Number of Neighbours %d",as->no_sources);  
+				
+			}*/
+
+}
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
@@ -174,20 +285,9 @@ Tos2QueueMapper::simple_action(Packet *p)
 		case BACKOFF_STRATEGY_ALWAYS_OFF:
 		break;
 		case BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE: 
-			BRN_DEBUG("optimale queue:= %d",opt_queue);
-			for (int i = 0; i <= no_queues_get();i++) {
-				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
-				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
-				BRN_DEBUG("queue_usage[%d] := %d",i,queue_usage_get(i));
-				if( NULL != pli) BRN_DEBUG("PLI is not Null\n\r");
-				if ( _cst != NULL ) {
-					struct airtime_stats *as;
-					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
-					BRN_DEBUG("Number of Neighbours %d",as->no_sources);  
-				}
+        opt_queue = backoff_strategy_neighbours_pli_aware(p);
 
-			}
-		break;
+        break;
 		case  BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE: 
 			if ( _colinf != NULL ) {
 				if ( _colinf->_global_rs != NULL ) {

@@ -44,28 +44,31 @@ CooperativeChannelStats::CooperativeChannelStats():
     _interval(0),
     _add_neighbours(false)
 {
-  BRNElement::init();
+    BRN_DEBUG("CooperativeChannelStats::CooperativeChannelStats():");
+    BRNElement::init();
 }
 
 CooperativeChannelStats::~CooperativeChannelStats()
 {
+    BRN_DEBUG("CooperativeChannelStats::~CooperativeChannelStats()");
 }
 
-int
-CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
-{
-  int ret = cp_va_kparse(conf, this, errh,
+int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh) {
+    
+    BRN_DEBUG("int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)");
+    int ret = cp_va_kparse(conf, this, errh,
                      "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
                      "INTERVAL", cpkP, cpInteger, &_interval,
                      "NEIGHBOURS", cpkP, cpBool, &_add_neighbours,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
-  return ret;
+    return ret;
 }
 
 int CooperativeChannelStats::initialize(ErrorHandler *) {
-    
+
+    BRN_DEBUG("int CooperativeChannelStats::initialize(ErrorHandler *)");
     click_srandom(_cst->_device->getEtherAddress()->hashcode());
     _msg_timer.initialize(this);
     
@@ -79,20 +82,26 @@ int CooperativeChannelStats::initialize(ErrorHandler *) {
 
 void CooperativeChannelStats::run_timer(Timer *) {
 
+    BRN_DEBUG("void CooperativeChannelStats::run_timer(Timer *)");
     _msg_timer.schedule_after_msec(_interval);
     send_message();
 }
 
 inline WritablePacket * create_new_packet(struct cooperative_channel_stats_header ccsh, struct neighbour_airtime_stats nats_arr[]) {
-    
-    WritablePacket *p = Packet::make(128, NULL,
-            sizeof(struct cooperative_channel_stats_header) + sizeof(neighbour_airtime_stats) * ccsh.no_neighbours, 32);
+
+    WritablePacket *p = Packet::make(
+            128,
+            NULL,
+            sizeof(struct cooperative_channel_stats_header) + sizeof(neighbour_airtime_stats) * ccsh.no_neighbours,
+            32);
     
     unsigned char *data = p->data();
     memcpy(data, &ccsh, sizeof(struct cooperative_channel_stats_header));
+
     if (ccsh.no_neighbours > 0) {
         
         int pointer = sizeof(struct cooperative_channel_stats_header);
+
         for (int i = 0; i < ccsh.no_neighbours; i++) {
             
             memcpy(&data[pointer], &nats_arr[i], sizeof(neighbour_airtime_stats));
@@ -104,7 +113,8 @@ inline WritablePacket * create_new_packet(struct cooperative_channel_stats_heade
 }
 
 void CooperativeChannelStats::send_message() {
-    
+
+    BRN_DEBUG("void CooperativeChannelStats::send_message()");
     ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours();
      
     struct cooperative_channel_stats_header ccsh;
@@ -114,7 +124,7 @@ void CooperativeChannelStats::send_message() {
     struct neighbour_airtime_stats nats_arr[sit->size()];
     uint8_t non = 0; //number of available neighbours
     
-    if ( _add_neighbours ) {
+    if (_add_neighbours) {
         
         BRN_DEBUG("include Neighbours");
         ccsh.flags |= INCLUDES_NEIGHBOURS;
@@ -145,9 +155,9 @@ void CooperativeChannelStats::send_message() {
 /*********************************************/
 /************* Info from nodes****************/
 /*********************************************/
-void CooperativeChannelStats::push(int, Packet *p)
-{
-    BRN_DEBUG("push");
+void CooperativeChannelStats::push(int, Packet *p) {
+    
+    BRN_DEBUG("void CooperativeChannelStats::push(int, Packet *p)");
     BRN_DEBUG("received Packet-Length: %d", p->length());
     
     click_ether *eh = (click_ether*)p->ether_header();
@@ -190,6 +200,7 @@ void CooperativeChannelStats::push(int, Packet *p)
 
 HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats(EtherAddress *ea) {
     
+    BRN_DEBUG("HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats(EtherAddress *ea)");
     if (ncst.find(*ea) != NULL) {
         
         BRN_DEBUG("FOUND EA: %s", ea->unparse().c_str());
