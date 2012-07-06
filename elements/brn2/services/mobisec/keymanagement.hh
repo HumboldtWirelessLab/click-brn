@@ -58,13 +58,13 @@ public:
 
 	// The crypto_generator will be executed periodically by the key server
 		/* CLIENT_DRIVEN */
-	void gen_seed();
-	void install_keylist_cli_driv(data_t *);
+	void gen_seeded_keylist();
+	void install_keylist_cli_driv(data_t *payload_seed);
 		/* SERVER_DRIVEN */
 	void gen_keylist();
-	void install_keylist_srv_driv(data_t *keylist);
-	void install_keylist_srv_driv(Vector<String> keylist);
+	void install_keylist_srv_driv(data_t *payload_keylist);
 
+	void install_keylist(Vector<String> keylist);
 
 	// This method uses the list to set the adequate key on phy layer
 	void install_key_on_phy(Element *_wepencap, Element *_wepdecap);

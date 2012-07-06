@@ -173,9 +173,7 @@ void KEYSERVER::jmp_next_epoch() {
 
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
 
-	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv(BUF_keyman.get_keylist())
-										:
-										keyman.install_keylist_cli_driv(BUF_keyman.get_seed());
+	keyman.install_keylist( BUF_keyman.get_keylist() );
 
 	BRN_DEBUG("Switched to new epoch");
 
@@ -207,7 +205,7 @@ void KEYSERVER::prepare_new_epoch() {
 
 	(_protocol_type == SERVER_DRIVEN) ? BUF_keyman.gen_keylist()
 										:
-										BUF_keyman.gen_seed();
+										BUF_keyman.gen_seeded_keylist();
 
 	BRN_DEBUG("Prepared next epoch");
 }
