@@ -31,7 +31,6 @@
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
-#include "elements/wifi/wep.hh"
 #include "tls.hh"
 
 #include <openssl/opensslv.h>
@@ -311,10 +310,8 @@ void TLS::rcv_data(Packet *p) {
 
 	/* Painting-technique gives us packet oriented control. See wep.hh */
 	uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
-	switch (color) {
-	case WEP_GREEN: 	curr->wep_state = true; break;
-	case WEP_YELLOW: 	curr->wep_state = false; break;
-	default: 			curr->wep_state = false; BRN_ERROR("TLS packet has no WEP color"); break;
+	if(color == 42) {
+		curr->wep_state = (color == 42) ? true : false;
 	}
 
 	BIO_write(curr->bioIn,p->data(),p->length());
@@ -355,8 +352,10 @@ int TLS::snd_data() {
 	    // and adminstrating encrypted and unencrypted TLS-connections. MAC layer and
 	    // network layer seem not to be adequate for this job, while transport layer
 	    // is the place where connections are supervised.
-	    uint8_t color = (curr->wep_state == true) ? WEP_GREEN : WEP_YELLOW;
-	    p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
+	    if(curr->wep_state == true) {
+	    	uint8_t color = 42;
+	    	p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
+	    }
 
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
