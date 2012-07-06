@@ -94,7 +94,7 @@ void keymanagement::set_seed(const unsigned char *data) {
 	}
 }
 
-unsigned char *keymanagement::get_seed() {
+data_t *keymanagement::get_seed() {
 	return seed;
 }
 
@@ -137,10 +137,10 @@ void keymanagement::gen_seed() {
 }
 
 // Installation of keylist
-void keymanagement::install_keylist_cli_driv() {
+void keymanagement::install_keylist_cli_driv(data_t *_seed) {
 	keylist.clear();
 
-	unsigned char *curr_key = seed;
+	data_t *curr_key = (data_t *)_seed;
 
 	for(int i=0; i < ctrl_data.cardinality; i++) {
 		curr_key = SHA1((const unsigned char *)curr_key, ctrl_data.seed_len, NULL);
@@ -192,7 +192,7 @@ void keymanagement::install_keylist_srv_driv(Vector<String> _keylist) {
 	}
 }
 
-void keymanagement::install_keylist_srv_driv(const unsigned char *_keylist) {
+void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
 	keylist.clear();
 
 	for(int i=0; i<ctrl_data.cardinality; i++) {
