@@ -32,28 +32,31 @@ struct packet_loss_interv {
 class PacketLossEstimator : public BRNElement {
     
     class PacketParameter {
-        
+
     private:
         EtherAddress own_address;
         EtherAddress src_address;
         EtherAddress dst_address;
         uint8_t packet_type;
-        
-    public:
 
+    public:
         inline EtherAddress get_own_address() {
+
             return own_address;
         }
 
         inline EtherAddress get_src_address() {
+
             return src_address;
         }
 
         inline EtherAddress get_dst_address() {
+
             return dst_address;
         }
 
         inline uint8_t get_packet_type() {
+
             return packet_type;
         }
 
@@ -66,6 +69,18 @@ class PacketLossEstimator : public BRNElement {
         }
     };
 
+    class StatsRingBuffer {
+
+    private:
+        uint32_t size;
+        uint32_t start_elem;
+        uint32_t end_elem;
+        // Map with Lists as Ringbuffer (Adr->Buffer)
+    public:
+        // Constructor and Destructor
+        // getter and setter
+        // is_full/is_empty
+    };
 public:
 
     PacketLossEstimator();
@@ -98,11 +113,11 @@ private:
     HiddenNodeDetection *_hnd;
     /// Class for storing statistical data about lost packets
     PacketLossInformation *_pli;
-    
+    /// Stats from other cooperating nodes
     CooperativeChannelStats *_cocst;
-    
+    /// ACKS received from other nodes
     static HashMap<EtherAddress, uint32_t> _acks_by_node;
-    
+    /// switch if pessimistic hidden node prediction is used
     bool _pessimistic_hn_detection;
     /// Device pointer
     BRN2Device *_dev;
