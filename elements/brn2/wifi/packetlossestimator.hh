@@ -75,11 +75,41 @@ class PacketLossEstimator : public BRNElement {
         uint32_t size;
         uint32_t start_elem;
         uint32_t end_elem;
-        // Map with Lists as Ringbuffer (Adr->Buffer)
+        HashMap<EtherAddress, airtime_stats>* time_buffer;
+        
     public:
-        // Constructor and Destructor
+        StatsRingBuffer(uint32_t start_size) {
+            start_elem = 0;
+            end_elem = 0;
+            size = start_size;
+            time_buffer = new HashMap<EtherAddress, airtime_stats>[start_size];
+        }
+        
+        ~StatsRingBuffer() {
+            delete time_buffer;
+        }
+        
+        uint32_t get_size() {
+            return size;
+        }
+        
+        bool is_full () {
+            return false;
+        }
+        
+        bool is_empty () {
+            return false;
+        }
+        
+        void put_data_in(HashMap<EtherAddress, airtime_stats> data) {
+            
+        }
+        
+        bool get_data(HashMap<EtherAddress, airtime_stats> &data) {
+            
+        }
         // getter and setter
-        // is_full/is_empty
+        
     };
 public:
 
