@@ -66,6 +66,7 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	// Configuration determines some crypto parameters
 	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
+	keyman.set_keylen(5);
 	keyman.set_key_timeout(_key_timeout);
 
 	/*
@@ -138,9 +139,8 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	if(_protocol_type == CLIENT_DRIVEN) {
 		payload = tmp_keyman->get_seed();
-
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		//todo: payload = keyman.keylist;
+		payload = tmp_keyman->get_keylist_string();
 	}
 
 	WritablePacket *reply;
@@ -148,6 +148,8 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
+
+
 }
 
 /*
@@ -170,10 +172,10 @@ void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
 	keyman.set_seed( BUF_keyman.get_seed() );
-	keyman.set_validity_start_time( BUF_keyman.get_validity_start_time() );
-	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv() // Todo: how to get keylist here???
+
+	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv(BUF_keyman.get_keylist())
 										:
-										keyman.install_keylist_cli_driv();
+										keyman.install_keylist_cli_driv(); // todo: transform function to get input
 
 	BRN_DEBUG("Switched to new epoch");
 
@@ -194,20 +196,18 @@ void KEYSERVER::jmp_next_epoch() {
  * present in time.
  */
 void KEYSERVER::prepare_new_epoch() {
+	// First induction step is a little bit tricky. Some arrangements have to be done manually.
+	if(start_flag) {
+		start_flag = false;
+		BUF_keyman.set_ctrl_data(keyman.get_ctrl_data());
+	} else {
+		int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
+		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
+	}
+
 	(_protocol_type == SERVER_DRIVEN) ? BUF_keyman.gen_keylist()
 										:
 										BUF_keyman.gen_seed();
-
-	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
-
-	// First induction step is a little bit tricky. Some arrangements have to be done.
-	if(start_flag) {
-		start_flag = false;
-		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time());
-		BUF_keyman.set_cardinality(keyman.get_cardinality());
-	} else {
-		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
-	}
 
 	BRN_DEBUG("Prepared next epoch");
 }

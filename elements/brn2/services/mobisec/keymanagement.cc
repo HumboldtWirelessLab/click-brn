@@ -28,6 +28,9 @@
 
 #include "keymanagement.hh"
 
+#define MIN_KEYLEN 5
+#define MAX_KEYLEN 16
+
 CLICK_DECLS
 
 keymanagement::keymanagement()
@@ -70,6 +73,14 @@ int keymanagement::get_cardinality() {
 	return ctrl_data.cardinality;
 }
 
+void keymanagement::set_keylen(int len) {
+	ctrl_data.key_len = (MIN_KEYLEN<=len && len<=MAX_KEYLEN)? len : 5;
+}
+
+int keymanagement::get_keylen() {
+	return ctrl_data.key_len;
+}
+
 void keymanagement::set_key_timeout(int timeout) {
 	key_timeout = timeout;
 }
@@ -94,6 +105,14 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
 	return &ctrl_data;
 }
 
+Vector<String> keymanagement::get_keylist() {
+	return keylist;
+}
+
+data_t *keymanagement::get_keylist_string() {
+	return keylist_string;
+}
+
 /*
  * *******************************************************
  *         functions for CLIENT_DRIVEN protocol
@@ -103,11 +122,9 @@ crypto_ctrl_data *keymanagement::get_ctrl_data() {
 /* This function should normally only used by the keyserver */
 void keymanagement::gen_seed() {
 	// Todo: check if all information are available for generation
-
-	ctrl_data.key_len = 5;
 	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
-	RAND_seed("10f3jxYEAH--.dsdfgj34409jg", 20);
+	RAND_seed("Wir möchten gerne, dass der Computer das tut, was wir wollen; doch er tut nur das, was wir schreiben. Ich weiß auch nicht warum -- W.", 80);
 
 	// Deallocation and allocation to prepare for dynamic seeding.
 	seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
@@ -144,12 +161,47 @@ void keymanagement::install_keylist_cli_driv() {
 
 /* This function should normally only used by the keyserver */
 void keymanagement::gen_keylist() {
+	keylist_string = (unsigned char*)realloc(keylist_string, ctrl_data.cardinality * ctrl_data.key_len);
 
+	unsigned char *ith_key = (unsigned char *)malloc(ctrl_data.key_len);
+
+	RAND_seed("Wer nichts als Informatik versteht, versteht auch die nicht recht -- L1cht3nb3r9 (powned)", 80);
+
+	click_chatter("gen_keylist card:%i", ctrl_data.cardinality);
+	for(int i=0; i<ctrl_data.cardinality; i++) {
+		// Generate a new key for the list
+		RAND_bytes(ith_key, ctrl_data.key_len);
+
+		String s((const char*)ith_key, ctrl_data.key_len);
+
+		// Build the keylist of type vector
+		keylist.push_back(s);
+		// Build a keylist of type char
+		memcpy(keylist_string+(i*ctrl_data.key_len), s.data(), ctrl_data.key_len);
+	}
+
+	free(ith_key);
 }
 
 // Installation of keylist
-void keymanagement::install_keylist_srv_driv() {
+void keymanagement::install_keylist_srv_driv(Vector<String> _keylist) {
+	keylist.clear();
 
+	for(int i=0; i<_keylist.size();i++) {
+		keylist.push_back(_keylist[i]);
+	}
+}
+
+void keymanagement::install_keylist_srv_driv(const unsigned char *_keylist) {
+	keylist.clear();
+
+	for(int i=0; i<ctrl_data.cardinality; i++) {
+		for(int j=0; j<ctrl_data.key_len; j++) {
+			int index = i*ctrl_data.key_len + j;
+			String ith_key((const char*)(&(_keylist[index])), ctrl_data.key_len);
+			keylist.push_back(ith_key);
+		}
+	}
 }
 
 /*
