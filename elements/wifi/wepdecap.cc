@@ -47,7 +47,6 @@
  */
 
 #include <click/config.h>
-#include "wep.hh"
 #include "wepdecap.hh"
 #include <click/etheraddress.hh>
 #include <click/args.hh>
@@ -95,8 +94,6 @@ WepDecap::simple_action(Packet *p_in)
 
   if (!(w->i_fc[1] & WIFI_FC1_WEP)) {
     /* not a wep packet */
-	click_chatter("not a wep packet");
-	p->set_anno_u8(PAINT_ANNO_OFFSET, WEP_YELLOW);
     return p;
   }
 
@@ -141,12 +138,8 @@ WepDecap::simple_action(Packet *p_in)
 		  crc,
 		  ~le32_to_cpu(crc_foo),
 		  crc_foo);
-
-    /* packet failed decrypt, hence discard */
-    p->kill();
-    click_chatter("Packet discarded!");
-    return 0;
-    // return p;
+    /* packet failed decrypt */
+    return p;
   }
   /* strip the wep header off */
   memmove((void *)(p->data() + WIFI_WEP_HEADERSIZE), p->data(), sizeof(click_wifi));
@@ -156,8 +149,6 @@ WepDecap::simple_action(Packet *p_in)
 
   w = (struct click_wifi *) p->data();
   w->i_fc[1] &= ~WIFI_FC1_WEP;
-
-  p->set_anno_u8(PAINT_ANNO_OFFSET, WEP_GREEN);
 
   return p;
 }
