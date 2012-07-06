@@ -294,7 +294,10 @@ void TLS::rcv_data(Packet *p) {
 	EtherAddress sender_addr = BRNPacketAnno::src_ether_anno(p);
 	BRN_DEBUG("Communicating with %s", sender_addr.unparse().c_str());
 
-	// Server needs to adapt the connection, depending on whom he is communicating with
+	/*
+	 * Dynamic SSL-object selection here:
+	 * Server needs to adapt the connection, depending on whom he is communicating with
+	 */
 	if (role == SERVER) {
 		com_obj *tmp = com_table.find(sender_addr);
 		if(tmp) {
@@ -303,7 +306,6 @@ void TLS::rcv_data(Packet *p) {
 			curr = new com_obj(ctx, role);
 			curr->sender_addr = sender_addr;
 			com_table.insert(sender_addr, curr);
-			BRN_DEBUG("test");
 		}
 	}
 
