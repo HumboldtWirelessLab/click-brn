@@ -119,8 +119,8 @@ data_t *keymanagement::get_keylist_string() {
  * *******************************************************
  */
 
-/* This function should normally only used by the keyserver */
-void keymanagement::gen_seed() {
+/* This function should only used by the keyserver */
+void keymanagement::gen_seeded_keylist() {
 	// Todo: check if all information are available for generation
 	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
@@ -134,9 +134,11 @@ void keymanagement::gen_seed() {
 	} else {
 		click_chatter("Seed generation failed.");
 	}
+
+	install_keylist_cli_driv(seed);
 }
 
-// Installation of keylist
+/* for backbone node and keyserver */
 void keymanagement::install_keylist_cli_driv(data_t *_seed) {
 	keylist.clear();
 
@@ -159,7 +161,7 @@ void keymanagement::install_keylist_cli_driv(data_t *_seed) {
  * *******************************************************
  */
 
-/* This function should normally only used by the keyserver */
+/* This function should only used by the keyserver */
 void keymanagement::gen_keylist() {
 	keylist_string = (unsigned char*)realloc(keylist_string, ctrl_data.cardinality * ctrl_data.key_len);
 
@@ -183,15 +185,7 @@ void keymanagement::gen_keylist() {
 	free(ith_key);
 }
 
-// Installation of keylist
-void keymanagement::install_keylist_srv_driv(Vector<String> _keylist) {
-	keylist.clear();
-
-	for(int i=0; i<_keylist.size();i++) {
-		keylist.push_back(_keylist[i]);
-	}
-}
-
+/* for backbone node and keyserver */
 void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
 	keylist.clear();
 
@@ -201,6 +195,21 @@ void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
 			String ith_key((const char*)(&(_keylist[index])), ctrl_data.key_len);
 			keylist.push_back(ith_key);
 		}
+	}
+}
+
+/*
+ * *******************************************************
+ *         functions for both protocols
+ * *******************************************************
+ */
+
+/* for backbone node and keyserver */
+void keymanagement::install_keylist(Vector<String> _keylist) {
+	keylist.clear();
+
+	for(int i=0; i<_keylist.size();i++) {
+		keylist.push_back(_keylist[i]);
 	}
 }
 
