@@ -57,6 +57,8 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	else
 		return -1;
 
+	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
+
 	return 0;
 }
 
@@ -67,6 +69,7 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
 	keyman.set_keylen(5);
+	keyman.set_seedlen(20);//160 bit for sha1  make less than 20 byte
 	keyman.set_key_timeout(_key_timeout);
 
 	/*
@@ -95,7 +98,6 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 
 void KEYSERVER::push(int port, Packet *p) {
 	if(port==0) {
-		BRN_DEBUG("kdp request received");
 		handle_kdp_req(p);
 	} else {
 		BRN_DEBUG("Oops. Wrong port.");
@@ -170,9 +172,8 @@ void KEYSERVER::jmp_next_session() {
 
 void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
-
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-
+	keyman.set_seed( BUF_keyman.get_seed() );
 	keyman.install_keylist( BUF_keyman.get_keylist() );
 
 	BRN_DEBUG("Switched to new epoch");
