@@ -77,6 +77,10 @@ void keymanagement::set_keylen(int len) {
 	ctrl_data.key_len = (MIN_KEYLEN<=len && len<=MAX_KEYLEN)? len : 5;
 }
 
+void keymanagement::set_seedlen(int len) {
+	ctrl_data.seed_len = len;
+}
+
 int keymanagement::get_keylen() {
 	return ctrl_data.key_len;
 }
@@ -122,7 +126,6 @@ data_t *keymanagement::get_keylist_string() {
 /* This function should only used by the keyserver */
 void keymanagement::gen_seeded_keylist() {
 	// Todo: check if all information are available for generation
-	ctrl_data.seed_len = 20; //160 bit for sha1  make less than 20 byte
 
 	RAND_seed("Wir möchten gerne, dass der Computer das tut, was wir wollen; doch er tut nur das, was wir schreiben. Ich weiß auch nicht warum -- W.", 80);
 
@@ -224,16 +227,21 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	int32_t time_now = Timestamp::now().msecval();
 	int32_t time_keylist = ctrl_data.timestamp;
 
+	// Yet another reasonability check
+	if (time_now - time_keylist > ctrl_data.cardinality*key_timeout) {
+		click_chatter("INFO: crypto material expired");
+		return;
+	}
+
 	// Note: The implicit int-type handling causes automatically a round down
 	int index = (time_now - time_keylist)/key_timeout;
 
 	if (!(0 <= index && index < keylist.size())) {
-		click_chatter("ERROR: No keys available. Need for kdp-request!");
-		// Todo: Index out of range, need feedback here!
+		click_chatter("ERROR: No keys available for index %i", index);
 		return;
 	}
 
-	const String key = keylist.at(index);
+	const String key = keylist[index];
 
 	const String handler = "key";
 
