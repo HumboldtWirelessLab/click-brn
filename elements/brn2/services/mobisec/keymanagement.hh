@@ -48,6 +48,7 @@ public:
 
 	void set_seed(const data_t *);
 	data_t *get_seed();
+	void set_seedlen(int);
 
 	// Useful for installation of complete ctrl_data
 	void set_ctrl_data(crypto_ctrl_data *);
