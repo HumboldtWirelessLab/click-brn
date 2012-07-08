@@ -40,10 +40,10 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
-		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+		"START", cpkP, cpInteger, &_start_time,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -54,6 +54,8 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 		_protocol_type = CLIENT_DRIVEN;
 	else
 		return -1;
+
+	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
 
 	return 0;
 }
@@ -70,12 +72,15 @@ int BACKBONE_NODE::initialize(ErrorHandler* errh) {
 
 	// Set timer to send first kdp-request
 	kdp_timer.initialize(this);
-	kdp_timer.schedule_at(Timestamp::make_msec(_start_time));
+	if(_start_time > 0)
+		kdp_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	session_timer.initialize(this);
 	session_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	epoch_timer.initialize(this);
+
+	switch_wep("false");
 
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
@@ -97,9 +102,11 @@ void BACKBONE_NODE::snd_kdp_req() {
 	 * missing or wrong keys. Therefore wep must be switched off
 	 * temporarily.
 	 */
-	if (last_req_try + backoff < Timestamp::now().msecval())
+	if (Timestamp::now().msecval()-last_req_try < backoff*1.5) {// If request was send a little time ago, retry without wep
+		BRN_DEBUG("Retry kdp process...");
 		switch_wep("false");
-	last_req_try = Timestamp::now().msecval();
+	} else // If not, then we are about to send our first request for next epoche data
+		last_req_try = Timestamp::now().msecval();
 
 	WritablePacket *p = kdp::kdp_request_msg();
 
@@ -183,6 +190,8 @@ void BACKBONE_NODE::jmp_next_epoch() {
  */
 
 void BACKBONE_NODE::switch_wep(String ctl) {
+	if(ctl != "true" && ctl != "false") {BRN_ERROR("switch_wep: wrong argument '%s'", ctl.c_str()); return;}
+
 	const String handler = "active";
 	int success = HandlerCall::call_write(_wepencap, handler, ctl, NULL);
 	if(success==0) BRN_DEBUG("Switched WEPencap active to %s", ctl.c_str());
