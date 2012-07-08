@@ -7,6 +7,7 @@
  *  todo:
  *  - Uncertanty in case of renegotiation. No experience and testing here!
  *  - Uncertanty in case of packet lost. Need for tcp-wise connection.
+ *  - Eliminate restart_timer, when having reliable tcp-connection
  *
  *  Usefull commands:
  *  - openssl req -new -newkey rsa:2028 -days 9999 -x509 -out ca.pem
@@ -37,10 +38,13 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#define BACKOFF_TLS_RETRY 3
+
 CLICK_DECLS
 
 TLS::TLS()
-	: _debug(false)
+	: _debug(false),
+	  restart_timer(restart_trigger, this)
 {
 	BRNElement::init();
 }
@@ -139,7 +143,11 @@ int TLS::initialize(ErrorHandler* errh) {
 	if (role == CLIENT) {
 		curr = new com_obj(ctx, role);
 		curr->sender_addr = _ks_addr;
+
+		restart_timer.initialize(this);
 	}
+
+
 
 	BRN_INFO("initialized");
 
@@ -168,7 +176,7 @@ void TLS::push(int port, Packet *p) {
 
 
 bool TLS::do_handshake() {
-	BRN_DEBUG("try out handshake ...");
+	BRN_DEBUG("check out handshake ...");
 
 	for(int tries = 0; tries < 3; tries++) {
 		int temp = SSL_do_handshake(curr->conn);
@@ -178,6 +186,7 @@ bool TLS::do_handshake() {
 		switch (SSL_get_error(curr->conn, temp)) {
 		case SSL_ERROR_NONE:
 			BRN_DEBUG("handshake complete");
+			if (role == CLIENT) restart_timer.clear();
 
 			// In case that the application wanted to send
 			// some data but had to do handshake before:
@@ -203,8 +212,13 @@ bool TLS::do_handshake() {
 		}
 	}
 
+	if (role == CLIENT)
+		if(restart_timer.expiry().msecval() <= Timestamp::now().msecval())
+			restart_timer.schedule_after_s(BACKOFF_TLS_RETRY);
+
 	return false;
 }
+
 
 // non-blocking
 void TLS::encrypt(Packet *p) {
@@ -221,19 +235,8 @@ void TLS::encrypt(Packet *p) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
 		snd_data();
 	} else {
-		BRN_DEBUG("SSL not ready... storing data while doing handshake");
-		/*
-		 * In case of network errors it might happen that the ssl
-		 * handshake will never complete, because a respond is missing.
-		 * In this case we use rejuvenation technique by resetting
-		 * the ssl object.
-		 */
-		if(curr->pkt_storage.size() > 3) {
-			BRN_DEBUG("SSL handshake got stucked, start all over again");
-			clear_pkt_storage();
-			SSL_clear(curr->conn);
-		}
 
+		BRN_DEBUG("SSL not ready... storing data while doing handshake");
 		store_data(p);
 
 		do_handshake();
@@ -306,13 +309,13 @@ void TLS::rcv_data(Packet *p) {
 			curr->sender_addr = sender_addr;
 			com_table.insert(sender_addr, curr);
 		}
+
+		/* Painting-technique gives the server packet oriented control. */
+		uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
+		curr->wep_state = (color == 42) ? false : true;
 	}
 
-	/* Painting-technique gives us packet oriented control. See wep.hh */
-	uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
-	if(color == 42) {
-		curr->wep_state = (color == 42) ? true : false;
-	}
+
 
 	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
@@ -347,14 +350,13 @@ int TLS::snd_data() {
 		BRNPacketAnno::set_ether_anno(p, _me, curr->sender_addr, ETHERTYPE_BRN);
 	    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS);
 
-	    // Todo: colorize packet to indicate WEP-Module if it should wep-encrypt or not.
-	    // I do this in TLS-Module because I think it is the best place for checking
-	    // and adminstrating encrypted and unencrypted TLS-connections. MAC layer and
-	    // network layer seem not to be adequate for this job, while transport layer
-	    // is the place where connections are supervised.
-	    if(curr->wep_state == true) {
-	    	uint8_t color = 42;
-	    	p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
+
+	    /* Painting-technique gives the server packet oriented control. */
+	    if (role == SERVER) {
+			if(curr->wep_state == false) {
+				uint8_t color = 42;
+				p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
+			}
 	    }
 
 		output(0).push(p_out);
@@ -372,6 +374,13 @@ int TLS::snd_data() {
  *               extra functions
  * *******************************************************
  */
+
+// Todo: Eliminate this, when having reliable tcp-connection
+void TLS::restart_tls() {
+	BRN_DEBUG("Timeout -> restart tls conn");
+	SSL_clear(curr->conn);
+	do_handshake();
+}
 
 int pem_passwd_cb(char *buf, int size, int rwflag, void *password) {
 	strncpy(buf, (char *)(password), size);

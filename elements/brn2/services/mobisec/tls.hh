@@ -15,6 +15,7 @@
 #include <click/confparse.hh>
 #include <click/hashmap.hh>
 #include <click/packet.hh>
+#include <click/timer.hh>
 
 #include "elements/brn2/brnelement.hh"
 
@@ -91,6 +92,9 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
+	void restart_tls();
+	static void restart_trigger(Timer *t, void *element) { ((TLS *)element)->restart_tls(); }
+
 	void add_handlers();
 
 private:
@@ -122,6 +126,8 @@ private:
 	void rcv_data(Packet *p);
 
 	void print_err();
+
+	Timer restart_timer;
 };
 
 // For now, this functions is not integrable because
