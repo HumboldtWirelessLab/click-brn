@@ -92,6 +92,7 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
+	/* For reliable communication */
 	void restart_tls();
 	static void restart_trigger(Timer *t, void *element) { ((TLS *)element)->restart_tls(); }
 

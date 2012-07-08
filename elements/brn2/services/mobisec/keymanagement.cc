@@ -229,7 +229,7 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 
 	// Yet another reasonability check
 	if (time_now - time_keylist > ctrl_data.cardinality*key_timeout) {
-		click_chatter("INFO: crypto material expired");
+		click_chatter("INFO: crypto material not existent or expired");
 		return;
 	}
 
@@ -250,12 +250,12 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	 * ***********************************/
 	int success;
 	success = HandlerCall::call_write(_wepencap, handler, key, NULL);
-	if(success==0) click_chatter("On WEPencap new key(%d): %s", index, HandlerCall::call_read(_wepencap, handler).c_str() );
-	else click_chatter("ERROR while setting new key");
+	if(success==0) click_chatter("WEPencap: new key(%d): %s", index, HandlerCall::call_read(_wepencap, handler).c_str() );
+	else click_chatter("WEPencap: ERROR while setting new key");
 
 	success = HandlerCall::call_write(_wepdecap, handler, key, NULL);
-	if(success==0) click_chatter("On WEPdecap new key(%d): %s", index, HandlerCall::call_read(_wepdecap, handler).c_str() );
-	else click_chatter("ERROR while setting new key");
+	if(success==0) click_chatter("WEPdecap: new key(%d): %s", index, HandlerCall::call_read(_wepdecap, handler).c_str() );
+	else click_chatter("WEPdecap: ERROR while setting new key");
 }
 
 CLICK_ENDDECLS
