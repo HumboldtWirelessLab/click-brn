@@ -108,11 +108,12 @@ void KEYSERVER::push(int port, Packet *p) {
 void KEYSERVER::handle_kdp_req(Packet *p) {
 	// Todo: Future Work: protocol checks; here good place to control replay attacks
 
-	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
-
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 	p->kill();
+
+	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
+	if(req->req_id <= 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
 
 	int keylist_livetime = _key_timeout*keyman.get_cardinality();
 	int now = Timestamp::now().msecval();
@@ -138,11 +139,18 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	crypto_ctrl_data *hdr = curr_keyman->get_ctrl_data();
 
 	const unsigned char *payload;
+	data_t *keylist_string;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
 		payload = curr_keyman->get_seed();
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		payload = curr_keyman->get_keylist_string();
+		keylist_string = curr_keyman->get_keylist_string();
+		payload = keylist_string;
+	}
+
+	if(!payload) {
+		BRN_ERROR("NO PAYLOAD! ABORT");
+		return;
 	}
 
 	WritablePacket *reply;
@@ -151,7 +159,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
 
-
+	free(keylist_string);
 }
 
 /*
@@ -173,7 +181,8 @@ void KEYSERVER::jmp_next_session() {
 void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-	keyman.set_seed( BUF_keyman.get_seed() );
+	if (BUF_keyman.get_seed())
+		keyman.set_seed( BUF_keyman.get_seed() );
 	keyman.install_keylist( BUF_keyman.get_keylist() );
 
 	BRN_DEBUG("Switched to new epoch");

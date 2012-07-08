@@ -63,6 +63,7 @@ public:
 	void install_keylist_cli_driv(data_t *payload_seed);
 		/* SERVER_DRIVEN */
 	void gen_keylist();
+	void gen_keylist_string();
 	void install_keylist_srv_driv(data_t *payload_keylist);
 
 	void install_keylist(Vector<String> keylist);
@@ -75,7 +76,6 @@ private:
 	crypto_ctrl_data ctrl_data;
 	data_t *seed;
 	Vector<String> keylist;
-	data_t *keylist_string;
 
 	int key_timeout; // session time
 
