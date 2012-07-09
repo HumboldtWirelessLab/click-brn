@@ -16,6 +16,8 @@
 
 #include "elements/brn2/brnelement.hh"
 
+typedef unsigned char data_t;
+
 CLICK_DECLS
 
 struct crypto_ctrl_data {
@@ -39,23 +41,31 @@ public:
 	void set_cardinality(int card);
 	int get_cardinality();
 
+	void set_keylen(int);
+	int get_keylen();
+
 	void set_key_timeout(int timeout);
 
-	void set_seed(const unsigned char *);
-	unsigned char *get_seed();
+	void set_seed(const data_t *);
+	data_t *get_seed();
+	void set_seedlen(int);
 
 	// Useful for installation of complete ctrl_data
 	void set_ctrl_data(crypto_ctrl_data *);
 	crypto_ctrl_data *get_ctrl_data();
 
+	Vector<String> get_keylist();
+	data_t* get_keylist_string(); // Same as get_keylist, but returning a string of chars
+
 	// The crypto_generator will be executed periodically by the key server
 		/* CLIENT_DRIVEN */
-	void gen_seed();
-	void install_keylist_cli_driv();
+	void gen_seeded_keylist();
+	void install_keylist_cli_driv(data_t *payload_seed);
 		/* SERVER_DRIVEN */
 	void gen_keylist();
-	void install_keylist_srv_driv();
+	void install_keylist_srv_driv(data_t *payload_keylist);
 
+	void install_keylist(Vector<String> keylist);
 
 	// This method uses the list to set the adequate key on phy layer
 	void install_key_on_phy(Element *_wepencap, Element *_wepdecap);
@@ -63,8 +73,9 @@ private:
 	int _debug;
 
 	crypto_ctrl_data ctrl_data;
-	unsigned char *seed;
+	data_t *seed;
 	Vector<String> keylist;
+	data_t *keylist_string;
 
 	int key_timeout; // session time
 

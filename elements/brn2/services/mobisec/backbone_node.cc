@@ -7,6 +7,7 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <click/handlercall.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -39,10 +40,10 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
-		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+		"START", cpkP, cpInteger, &_start_time,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -54,24 +55,32 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	else
 		return -1;
 
+	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
+
 	return 0;
 }
 
 int BACKBONE_NODE::initialize(ErrorHandler* errh) {
 	req_id = 7; // Not used, but maybe useful for future work on replay-defense
+	last_req_try = 0;
+
 	tolerance = _key_timeout * 1.5;
+	backoff = _key_timeout * 0.5;
 
 	// Configuration determines some crypto parameters
 	keyman.set_key_timeout(_key_timeout);
 
 	// Set timer to send first kdp-request
 	kdp_timer.initialize(this);
-	kdp_timer.schedule_at(Timestamp::make_msec(_start_time));
+	if(_start_time > 0)
+		kdp_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	session_timer.initialize(this);
 	session_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	epoch_timer.initialize(this);
+
+	switch_wep("false");
 
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
@@ -87,6 +96,18 @@ void BACKBONE_NODE::push(int port, Packet *p) {
 }
 
 void BACKBONE_NODE::snd_kdp_req() {
+	/*
+	 * Turn off WEP temporarily, if we can't receive a kdp-reply.
+	 * Reason: Packets might be wep-encrypted wrong due to
+	 * missing or wrong keys. Therefore wep must be switched off
+	 * temporarily.
+	 */
+	if (Timestamp::now().msecval()-last_req_try < backoff*1.5) {// If request was send a little time ago, retry without wep
+		BRN_DEBUG("Retry kdp process...");
+		switch_wep("false");
+	} else // If not, then we are about to send our first request for next epoche data
+		last_req_try = Timestamp::now().msecval();
+
 	WritablePacket *p = kdp::kdp_request_msg();
 
 	// Enrich packet with information.
@@ -97,18 +118,17 @@ void BACKBONE_NODE::snd_kdp_req() {
 	BRN_DEBUG("Sending KDP-Request...");
 	output(0).push(p);
 
-	/*
-	 * This is our "hope" mechanism:
-	 * We expect a reply up to a certain time. Otherwise
-	 * we need to send a new request and pray.
-	 */
-	if (BUF_keyman.get_validity_start_time() < Timestamp::now().msecval())
-		kdp_timer.schedule_after_sec(4);
+	/* Begin of "resend mechanism" in case of no response */
+	// Todo: Find a reasonable time for backoff
+	kdp_timer.schedule_after_msec(backoff);
 }
 
 void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
+
+	// We got some key material, keep WEP connection online.
+	switch_wep("true");
 
 	// Buffer crypto control data
 	BUF_keyman.set_ctrl_data(hdr);
@@ -116,12 +136,14 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
-		BUF_keyman.set_seed(payload);
+		data_t *seed = (data_t *)payload;
+		BRN_DEBUG("Constructing and installing key list");
+		BUF_keyman.install_keylist_cli_driv(seed);
 
-		BRN_DEBUG("Constructing key list");
-		BUF_keyman.install_keylist_cli_driv();
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		;// todo: store the received key list
+		data_t *keylist_string = (data_t *)payload;
+		BRN_DEBUG("Installing key list");
+		BUF_keyman.install_keylist_srv_driv(keylist_string);
 	}
 
 	// Set timer to jump right into the coming epoch, it's unbelievable close
@@ -153,12 +175,10 @@ void BACKBONE_NODE::jmp_next_session() {
 
 void BACKBONE_NODE::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
+
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-	keyman.set_seed( BUF_keyman.get_seed() );
-	keyman.set_validity_start_time( BUF_keyman.get_validity_start_time() );
-	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv() // Todo: how to get keylist here???
-										:
-										keyman.install_keylist_cli_driv();
+
+	keyman.install_keylist( BUF_keyman.get_keylist() );
 
 	BRN_DEBUG("Switched to new epoch");
 }
@@ -168,6 +188,16 @@ void BACKBONE_NODE::jmp_next_epoch() {
  *               extra functions
  * *******************************************************
  */
+
+void BACKBONE_NODE::switch_wep(String ctl) {
+	if(ctl != "true" && ctl != "false") {BRN_ERROR("switch_wep: wrong argument '%s'", ctl.c_str()); return;}
+
+	const String handler = "active";
+	int success = HandlerCall::call_write(_wepencap, handler, ctl, NULL);
+	if(success==0) BRN_DEBUG("Switched WEPencap active to %s", ctl.c_str());
+	else BRN_DEBUG("ERROR while switching WEPencap");
+}
+
 static String handler_triggered_request(Element *e, void *thunk) {
 	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
 	bn->snd_kdp_req();
