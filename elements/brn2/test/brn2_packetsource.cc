@@ -83,7 +83,8 @@ BRN2PacketSource::initialize(ErrorHandler *)
 
   //TODO: simulation not good idea
 #warning Fix Random stuff
-  click_srandom((int)this);
+  long p = (long)this;
+  click_srandom((int)p);
 
   _timer.initialize(this);
 
