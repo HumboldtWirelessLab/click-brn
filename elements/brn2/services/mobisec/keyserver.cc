@@ -57,6 +57,8 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	else
 		return -1;
 
+	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
+
 	return 0;
 }
 
@@ -66,6 +68,8 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 	// Configuration determines some crypto parameters
 	keyman.set_validity_start_time(_start_time);
 	keyman.set_cardinality(_key_list_cardinality);
+	keyman.set_keylen(5);
+	keyman.set_seedlen(20);//160 bit for sha1  make less than 20 byte
 	keyman.set_key_timeout(_key_timeout);
 
 	/*
@@ -94,7 +98,6 @@ int KEYSERVER::initialize(ErrorHandler* errh) {
 
 void KEYSERVER::push(int port, Packet *p) {
 	if(port==0) {
-		BRN_DEBUG("kdp request received");
 		handle_kdp_req(p);
 	} else {
 		BRN_DEBUG("Oops. Wrong port.");
@@ -122,25 +125,24 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	 * 1. We are in the current epoch, thus a client gets the CURRENT key material.
 	 * 2. We are on the edge to a new epoch, thus the client gets the BRAND NEW key material.
 	 */
-	keymanagement *tmp_keyman;
+	keymanagement *curr_keyman;
 	if (epoch_begin < now && now <= thrashold) {
-		tmp_keyman = &keyman;
+		curr_keyman = &keyman;
 	} else if (thrashold < now && now <= epoch_end+keylist_livetime) {
-		tmp_keyman = &BUF_keyman;
+		curr_keyman = &BUF_keyman;
 	} else {
 		BRN_ERROR("keyserver seams to be out of epoch! begin:%d end:%d now:%d", epoch_begin, epoch_end, now);
 		return;
 	}
 
-	crypto_ctrl_data *hdr = tmp_keyman->get_ctrl_data();
+	crypto_ctrl_data *hdr = curr_keyman->get_ctrl_data();
 
 	const unsigned char *payload;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
-		payload = tmp_keyman->get_seed();
-
+		payload = curr_keyman->get_seed();
 	} else if (_protocol_type == SERVER_DRIVEN) {
-		//todo: payload = keyman.keylist;
+		payload = curr_keyman->get_keylist_string();
 	}
 
 	WritablePacket *reply;
@@ -148,6 +150,8 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
+
+
 }
 
 /*
@@ -170,17 +174,14 @@ void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
 	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
 	keyman.set_seed( BUF_keyman.get_seed() );
-	keyman.set_validity_start_time( BUF_keyman.get_validity_start_time() );
-	(_protocol_type == SERVER_DRIVEN) ? keyman.install_keylist_srv_driv() // Todo: how to get keylist here???
-										:
-										keyman.install_keylist_cli_driv();
+	keyman.install_keylist( BUF_keyman.get_keylist() );
 
 	BRN_DEBUG("Switched to new epoch");
 
 	prepare_new_epoch();
 
 	// Set timer for the next epoch jump
-	int anticipation = 0.5*_key_timeout;
+	int anticipation = 200;
 	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
 	epoch_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + keylist_livetime - anticipation));
 }
@@ -194,20 +195,18 @@ void KEYSERVER::jmp_next_epoch() {
  * present in time.
  */
 void KEYSERVER::prepare_new_epoch() {
-	(_protocol_type == SERVER_DRIVEN) ? BUF_keyman.gen_keylist()
-										:
-										BUF_keyman.gen_seed();
-
-	int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
-
-	// First induction step is a little bit tricky. Some arrangements have to be done.
+	// First induction step is a little bit tricky. Some arrangements have to be done manually.
 	if(start_flag) {
 		start_flag = false;
-		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time());
-		BUF_keyman.set_cardinality(keyman.get_cardinality());
+		BUF_keyman.set_ctrl_data(keyman.get_ctrl_data());
 	} else {
+		int keylist_livetime = _key_timeout*BUF_keyman.get_cardinality();
 		BUF_keyman.set_validity_start_time(keyman.get_validity_start_time() + keylist_livetime);
 	}
+
+	(_protocol_type == SERVER_DRIVEN) ? BUF_keyman.gen_keylist()
+										:
+										BUF_keyman.gen_seeded_keylist();
 
 	BRN_DEBUG("Prepared next epoch");
 }

@@ -7,6 +7,7 @@
  *  todo:
  *  - Uncertanty in case of renegotiation. No experience and testing here!
  *  - Uncertanty in case of packet lost. Need for tcp-wise connection.
+ *  - Eliminate restart_timer, when having reliable tcp-connection
  *
  *  Usefull commands:
  *  - openssl req -new -newkey rsa:2028 -days 9999 -x509 -out ca.pem
@@ -23,6 +24,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/packet.hh>
+#include <click/glue.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -36,20 +38,25 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
+#define BACKOFF_TLS_RETRY 3
+
 CLICK_DECLS
 
 TLS::TLS()
-	: _debug(false)
+	: _debug(false),
+	  restart_timer(restart_trigger, this)
 {
 	BRNElement::init();
 }
 
 TLS::~TLS() {
-	SSL_shutdown(conn);
+	for (HashMap<EtherAddress, com_obj*>::const_iterator it = com_table.begin(); it.live(); it++) {
+		it.value()->~com_obj();
+	}
+	com_table.clear();
+
 	ERR_free_strings();
 	SSL_CTX_free(ctx);
-	SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
-	BIO_free(bio_err);
 }
 
 
@@ -57,19 +64,24 @@ int TLS::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
 		"ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
-		"dst", cpkP, cpEthernetAddress, &dst,
-		"ROLE", cpkP, cpString, &role,
+		"KEYSERVER", cpkP, cpEthernetAddress, &_ks_addr,
+		"ROLE", cpkP, cpString, &_role,
 		"KEYDIR", cpkP, cpString, &keydir,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
 
-	BRN_INFO("Recognized as TLS-%s", role.c_str());
-
-	if (role != "SERVER" && role != "CLIENT") {
+	if(_role == "SERVER") {
+		role = SERVER;
+		BRN_INFO("Recognized as TLS-SERVER");
+	} else if (_role == "CLIENT") {
+		role = CLIENT;
+		BRN_INFO("Recognized as TLS-CLIENT");
+	} else {
 		BRN_ERROR("no role specified");
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -87,7 +99,7 @@ int TLS::initialize(ErrorHandler* errh) {
 		const SSL_METHOD *meth;
 	#endif
 
-    meth = (role=="CLIENT")? TLSv1_client_method() : TLSv1_server_method();
+    meth = (role==CLIENT)? TLSv1_client_method() : TLSv1_server_method();
 	ctx = SSL_CTX_new(meth);
 	if (!ctx) {print_err(); return -1;}
 
@@ -104,7 +116,7 @@ int TLS::initialize(ErrorHandler* errh) {
 
 	char *dir = new char[512];
 
-	if(role=="CLIENT") {
+	if(role==CLIENT) {
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/client2.pem" );
 		SSL_CTX_use_certificate_file(ctx, dir , SSL_FILETYPE_PEM);
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/key2.pem" );
@@ -115,7 +127,7 @@ int TLS::initialize(ErrorHandler* errh) {
 			print_err();
 			return -1;
 		}
-	} else if(role=="SERVER") {
+	} else if(role==SERVER) {
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert2.pem" );
 		SSL_CTX_use_certificate_file(ctx, dir, SSL_FILETYPE_PEM);
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/private/cakey2.pem" );
@@ -123,29 +135,19 @@ int TLS::initialize(ErrorHandler* errh) {
 	}
 
 	if(!SSL_CTX_check_private_key(ctx)) {
-		BRN_ERROR("Dooong. Private key check failed");
+		BRN_ERROR("Gooong... Interesting, instead of a private key you found a chinese instrument ;)");
 		print_err();
 		return -1;
 	}
 
-	conn = SSL_new(ctx);
-	if (!conn) {print_err(); return -1;}
+	if (role == CLIENT) {
+		curr = new com_obj(ctx, role);
+		curr->sender_addr = _ks_addr;
 
-	bioIn = BIO_new(BIO_s_mem());
-	if (!bioIn) {print_err(); return -1;}
+		restart_timer.initialize(this);
+	}
 
-	bioOut = BIO_new(BIO_s_mem());
-	if (!bioOut) {print_err(); return -1;}
 
-	bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-	if (!bio_err) {print_err(); return -1;}
-	SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
-
-	// to read additional protocol bytes wenn calling SSL_pending containing more SSL records
- 	SSL_set_read_ahead(conn, 1);
-
-	// Must be called before first SSL_read or SSL_write
-	(role=="CLIENT")? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 
 	BRN_INFO("initialized");
 
@@ -172,21 +174,23 @@ void TLS::push(int port, Packet *p) {
  * *******************************************************
  */
 
+
 bool TLS::do_handshake() {
-	BRN_DEBUG("try out handshake ...");
+	BRN_DEBUG("check out handshake ...");
 
 	for(int tries = 0; tries < 3; tries++) {
-		int temp = SSL_do_handshake(conn);
+		int temp = SSL_do_handshake(curr->conn);
 		snd_data(); // push data manually as we are dealing with membufs
 
 		// take action based on SSL errors
-		switch (SSL_get_error(conn, temp)) {
+		switch (SSL_get_error(curr->conn, temp)) {
 		case SSL_ERROR_NONE:
 			BRN_DEBUG("handshake complete");
+			if (role == CLIENT) restart_timer.clear();
 
 			// In case that the application wanted to send
 			// some data but had to do handshake before:
-			if (! pkt_storage.empty() )
+			if (! curr->pkt_storage.empty() )
 				snd_stored_data();
 
 			return true;
@@ -208,8 +212,13 @@ bool TLS::do_handshake() {
 		}
 	}
 
+	if (role == CLIENT)
+		if(restart_timer.expiry().msecval() <= Timestamp::now().msecval())
+			restart_timer.schedule_after_s(BACKOFF_TLS_RETRY);
+
 	return false;
 }
+
 
 // non-blocking
 void TLS::encrypt(Packet *p) {
@@ -221,20 +230,22 @@ void TLS::encrypt(Packet *p) {
 
 	// todo: Empfänger und Absender zwischenspeichern
 
-	int ret = SSL_write(conn,p->data(),p->length());
+	int ret = SSL_write(curr->conn,p->data(),p->length());
 	if(ret>0) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
 		snd_data();
 	} else {
+
 		BRN_DEBUG("SSL not ready... storing data while doing handshake");
 		store_data(p);
+
 		do_handshake();
 	}
 }
 
 // non-blocking
 void TLS::decrypt() {
-	int size = SSL_pending(conn);
+	int size = SSL_pending(curr->conn);
 	//BRN_DEBUG("processing app-data ...");
 
 
@@ -245,7 +256,7 @@ void TLS::decrypt() {
 		return;
 	}
 
-	int ret = SSL_read(conn,data,size); // data received in records of max 16kB
+	int ret = SSL_read(curr->conn,data,size); // data received in records of max 16kB
 
 	// If SSL_read was successful receiving full records, then ret > 0.
 	if(ret > 0) {
@@ -260,34 +271,60 @@ void TLS::decrypt() {
 	free(data);
 }
 
-
+void TLS::clear_pkt_storage() {
+	BRN_DEBUG("Clearing pkt storage");
+	/*  (This seems computationally inefficient to me) */
+	while(!curr->pkt_storage.empty()) {
+		curr->pkt_storage.front()->kill();
+		curr->pkt_storage.pop();
+	}
+}
 
 void TLS::store_data(Packet *p) {
-	pkt_storage.push(p);
+	curr->pkt_storage.push(p);
 }
 
 void TLS::snd_stored_data() {
-	while(! pkt_storage.empty() ) {
-		Packet *p = pkt_storage.front();
+	while(! curr->pkt_storage.empty() ) {
+		Packet *p = curr->pkt_storage.front();
 		encrypt(p);
-		pkt_storage.pop();
+		curr->pkt_storage.pop();
 	}
 }
 
 void TLS::rcv_data(Packet *p) {
-	// todo: lookup in hashtable, find ssl-object, if not ex., then add entry
-	// Save associated sender address.
-	dst = BRNPacketAnno::src_ether_anno(p);
-	BRN_DEBUG("Setting dst: %s", dst.unparse().c_str());
+	EtherAddress sender_addr = BRNPacketAnno::src_ether_anno(p);
+	BRN_DEBUG("Communicating with %s", sender_addr.unparse().c_str());
 
-	BIO_write(bioIn,p->data(),p->length());
+	/*
+	 * Dynamic SSL-object selection here:
+	 * Server needs to adapt the connection, depending on whom he is communicating with
+	 */
+	if (role == SERVER) {
+		com_obj *tmp = com_table.find(sender_addr);
+		if(tmp) {
+			curr = tmp;
+		} else {
+			curr = new com_obj(ctx, role);
+			curr->sender_addr = sender_addr;
+			com_table.insert(sender_addr, curr);
+		}
+
+		/* Painting-technique gives the server packet oriented control. */
+		uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
+		curr->wep_state = (color == 42) ? false : true;
+	}
+
+
+
+	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
 
 	// If handshake is complete we assume
 	// that incomming data is for application
 	if (do_handshake() == true
-			&& SSL_read(conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
-			&& SSL_pending(conn) > 0) {
+			&& SSL_read(curr->conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
+			&& SSL_pending(curr->conn) > 0) {
 		decrypt();
 	}
 }
@@ -297,7 +334,7 @@ int TLS::snd_data() {
 	BRN_DEBUG("Check SSL-send-buffer ... ");
 
 	int len;
-	if ( (len = BIO_ctrl_pending(bioOut)) <= 0 )
+	if ( (len = BIO_ctrl_pending(curr->bioOut)) <= 0 )
 		return 0; // nothing to do
 
 	WritablePacket *p = Packet::make(128, NULL, len, 32);
@@ -306,12 +343,22 @@ int TLS::snd_data() {
 		return 0;
 	}
 
-	if ( BIO_read(bioOut,p->data(), p->length()) ) {
-		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", dst.unparse().c_str(), len);
+	if ( BIO_read(curr->bioOut,p->data(), p->length()) ) {
+		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", curr->sender_addr.unparse().c_str(), len);
 
 		// Pack into BRN-Pkt
-		BRNPacketAnno::set_ether_anno(p, _me, dst, ETHERTYPE_BRN);
+		BRNPacketAnno::set_ether_anno(p, _me, curr->sender_addr, ETHERTYPE_BRN);
 	    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS);
+
+
+	    /* Painting-technique gives the server packet oriented control. */
+	    if (role == SERVER) {
+			if(curr->wep_state == false) {
+				uint8_t color = 42;
+				p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
+			}
+	    }
+
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
 	} else {
@@ -322,16 +369,19 @@ int TLS::snd_data() {
 	return len;
 }
 
-void TLS::print_err() {
-	BRN_ERROR("%s" , ERR_error_string(ERR_get_error(), NULL));
-}
-
-
 /*
  * *******************************************************
  *               extra functions
  * *******************************************************
  */
+
+// Todo: Eliminate this, when having reliable tcp-connection
+void TLS::restart_tls() {
+	BRN_DEBUG("Timeout -> restart tls conn");
+	SSL_clear(curr->conn);
+	do_handshake();
+}
+
 int pem_passwd_cb(char *buf, int size, int rwflag, void *password) {
 	strncpy(buf, (char *)(password), size);
 	buf[size - 1] = '\0';
@@ -344,6 +394,11 @@ static String handler_triggered_handshake(Element *e, void *thunk) {
 	// tls->do_handshake();
 	return String();
 }
+
+void TLS::print_err() {
+	BRN_ERROR("%s" , ERR_error_string(ERR_get_error(), NULL));
+}
+
 
 void TLS::add_handlers()
 {

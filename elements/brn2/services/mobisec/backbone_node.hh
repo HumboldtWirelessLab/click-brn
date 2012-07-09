@@ -60,8 +60,10 @@ private:
 	Timer session_timer; 	// Controls installation of keys
 	Timer epoch_timer; 		// Controls the keylist refreshing
 	Timer kdp_timer;		// Controls the kdp-req sending process
-	int tolerance;			// "Back Off" time for kdp-req in
+	int tolerance;			// Tolerated time for kdp-req in
 							// order to receive the kdp-replies in time
+	int backoff; 			// Time between resending a new kdp without wep encryption
+	int last_req_try;		// Save the timestamp of last kdp-request try
 
 	int req_id;
 
@@ -73,6 +75,7 @@ private:
 	int _key_timeout;
 
 	void handle_kdp_reply(Packet *);
+	void switch_wep(String);
 
 	void add_handlers();
 };
