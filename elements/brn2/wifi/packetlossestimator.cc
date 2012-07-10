@@ -33,6 +33,7 @@ PacketLossEstimator::~PacketLossEstimator() {
 }
 
 HashMap<EtherAddress, uint32_t> PacketLossEstimator::_acks_by_node = HashMap<EtherAddress, uint32_t>();
+PacketLossEstimator::StatsCircularBuffer stats_buffer = PacketLossEstimator::StatsCircularBuffer(200);
 
 int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh) {
     
@@ -63,14 +64,22 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
             gather_packet_infos_(packet);
             struct airtime_stats *stats;
             HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab;
+            HashMap<EtherAddress, airtime_stats> ether_stats;
             
             if (_cst != NULL) {
                 
-                int time_now = packet->timestamp_anno().msec() * 1000;
+                int time_now = packet->timestamp_anno().msec();
                 
                 if (_packet_parameter->get_src_address() != brn_etheraddress_broadcast && _packet_parameter->get_src_address() != _packet_parameter->get_own_address()) {
                     
-                    click_chatter("%s", _packet_parameter->get_src_address().unparse().c_str());
+                    click_chatter("TIME: %d", time_now);
+                    
+                    ether_stats.insert(_packet_parameter->get_src_address(), *_cst->get_latest_stats());
+                    
+                    stats_buffer.put_data_in(&ether_stats);
+                    
+                    
+/*   TO DELETE                 click_chatter("%s", _packet_parameter->get_src_address().unparse().c_str());
                     
                     if (!_mid_term_pli.mac_address_exists(_packet_parameter->get_src_address())) {
                         
@@ -100,7 +109,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
                         
                         _long_term_pli.graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::PACKET_LOSS)->setFraction(packet->timestamp_anno().msec() * 1000);
                         _ple_interv.long_now = true;
-                    }
+                    }*/
                 }
                 
                 stats = _cst->get_latest_stats();
