@@ -2,7 +2,7 @@
  * ShamirServer.cc
  *
  *  Created on: 08.05.2012
- *      Author: Dominik Oepe
+ *      Author: Dominik Oepen
  *
  */
 
@@ -10,6 +10,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/packet.hh>
+#include <click/error.hh>
 
 #include <iostream>
 #include <sstream>
@@ -62,6 +63,9 @@ void ShamirClient::push(int port, Packet *p) {
 	}
 }
 
+int ShamirClient::send_request() {
+    return 0;
+}
 /*
  * *******************************************************
  *               private functions
@@ -128,6 +132,10 @@ int ShamirClient::store_reply(Packet *p) {
         _received_shares.set(share_id, bn);
     }
 
+    //Check if we have enough shares to combine the secret
+    if (_received_shares.size() >= _threshold)
+        combine();
+
     p->kill();
     return 0;
 }
@@ -140,6 +148,8 @@ int ShamirClient::store_reply(Packet *p) {
 
 enum {
     H_MODULUS,
+    H_THRESHOLD,
+    H_ACTIVE,
 };
 
 static string read_param(Element *e, void *thunk) {
@@ -173,13 +183,24 @@ static int write_param(const String &in_s, Element *e, void *vparam,
             {
                 BIGNUM *bn = NULL;
                 if (!BN_hex2bn(&bn, in_s.c_str()))
-                  break;
-                  //  BRN_DEBUG("Invalid call to write handler");
+                    return errh->error("Failed to parse modulus parameter");
                 if (s->_modulus)
                     BN_free(s->_modulus);
                 s->_modulus = BN_dup(bn);
                 BN_free(bn);
                 break;
+            }
+        case H_THRESHOLD:
+            {
+                int threshold;
+                if (!cp_integer(in_s, &threshold))
+                        return errh->error("threshold parameter must be integer");
+                s->_threshold = threshold;
+                break;
+            }
+        case H_ACTIVE:
+            {
+                s->send_request();
             }
         default:
             {
@@ -195,6 +216,8 @@ void ShamirClient::add_handlers()
 
   add_read_handler("modulus", read_param, H_MODULUS);
   add_write_handler("modulus", write_param, H_MODULUS);
+  add_write_handler("threshold", write_param, H_THRESHOLD);
+  add_write_handler("active", write_param, H_ACTIVE);
 }
 
 CLICK_ENDDECLS

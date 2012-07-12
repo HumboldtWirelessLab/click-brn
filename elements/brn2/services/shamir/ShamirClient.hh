@@ -37,17 +37,17 @@ public:
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
+    int send_request();
 
 	void add_handlers();
     BIGNUM *_modulus;
+    unsigned int _threshold;
 	int _debug;
 private:
     BN_CTX *_bn_ctx;
     unsigned int _num_shares;
     HashTable<uint32_t, BIGNUM *> _received_shares;
 
-
-    int send_request();
     int store_reply(Packet *p);
     BIGNUM *combine();
 };
