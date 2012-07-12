@@ -2,7 +2,7 @@
  * ShamirServer.cc
  *
  *  Created on: 08.05.2012
- *      Author: Dominik Oepe
+ *      Author: Dominik Oepen
  *
  */
 
