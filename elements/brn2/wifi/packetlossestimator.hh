@@ -90,7 +90,7 @@ public:
             start_elem = 0;
             counter = 0;
             size = 0;
-            delete time_buffer;
+            //delete time_buffer;
         }
         
         uint32_t get_size() {
