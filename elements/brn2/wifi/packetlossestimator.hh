@@ -87,10 +87,11 @@ public:
         }
         
         ~StatsCircularBuffer() {
+            
+            delete[] time_buffer;
             start_elem = 0;
             counter = 0;
             size = 0;
-            delete time_buffer;
         }
         
         uint32_t get_size() {
