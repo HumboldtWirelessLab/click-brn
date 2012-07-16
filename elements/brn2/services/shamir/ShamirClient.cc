@@ -64,6 +64,11 @@ void ShamirClient::push(int port, Packet *p) {
 }
 
 int ShamirClient::send_request() {
+    String s = "HOTSAUCE";
+    WritablePacket *p = Packet::make(128, NULL, sizeof("HOTSAUCE"), 32);
+    memcpy(p->data(), &s, sizeof(s));
+    BRN_DEBUG("Sending Shamir request");
+    output(0).push(p);
     return 0;
 }
 /*
