@@ -157,10 +157,10 @@ enum {
     H_ACTIVE,
 };
 
-static string read_param(Element *e, void *thunk) {
+static String read_param(Element *e, void *thunk) {
 	ShamirClient *shamir_client = (ShamirClient *)e;
     char *c = NULL;
-    stringstream s;
+    StringAccum s;
 
     switch((intptr_t) thunk) {
     case H_MODULUS:
@@ -176,7 +176,7 @@ static string read_param(Element *e, void *thunk) {
         }
     }
 
-    return s.str();
+    return s.take_string();
 }
 
 static int write_param(const String &in_s, Element *e, void *vparam,
