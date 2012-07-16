@@ -131,16 +131,14 @@ BRN2SrcForwarder::skipInMemoryHops(Packet *p_in)
 
   BRN_DEBUG("Use Source: %s",src.unparse().c_str());
 
+  BRNPacketAnno::set_src_ether_anno(p_in,src);  //TODO: CHECK
   if (index == brn_dsr->dsr_hop_count) {// no hops left; use final dst
     BRN_DEBUG(" * using final dst. %d %d", brn_dsr->dsr_hop_count, index);
-    BRNPacketAnno::set_src_ether_anno(p_in,src);                        //TODO: CHECK
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(brn_dsr->dsr_dst.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   } else {
-    BRNPacketAnno::set_src_ether_anno(p_in,src);                        //TODO: CHECK
     BRNPacketAnno::set_dst_ether_anno(p_in,EtherAddress(dsr_hops[index].hw.data));
-    BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
   }
+  BRNPacketAnno::set_ethertype_anno(p_in,ETHERTYPE_BRN);
 
   return p_in;
 }
