@@ -201,6 +201,7 @@ BRN2SrcForwarder::push(int port, Packet *p_in)
 
         BrnRouteIdCache::RouteIdEntry* rid_e = _dsr_rid_cache->get_entry(&src, ntohs(brn_dsr->dsr_id));
         if ( ( ! rid_e ) && (ntohs(brn_dsr->dsr_id) != 0) )
+          //FIXME: rid_e is never used
           rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
       }
       // remove all brn header and return packet to kernel
@@ -266,6 +267,7 @@ BRN2SrcForwarder::forward_data(Packet *p_in)
       rid_e->update();
     } else {
       if ( ntohs(brn_dsr->dsr_id) != 0 )
+        //FIXME: rid_e is never used
         rid_e = _dsr_rid_cache->insert_entry(&src, &dst, &last, &next, ntohs(brn_dsr->dsr_id));
     }
   }
@@ -317,6 +319,7 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
   click_ether* ether_anno = const_cast<click_ether*>(p->ether_header());
   if( NULL == ether_anno ) {
     p = p->push_mac_header(sizeof(click_ether));
+    //FIXME: ether_anno is never used
     ether_anno = const_cast<click_ether*>(p->ether_header());
 
     //TODO: ether type cannot be set here.
