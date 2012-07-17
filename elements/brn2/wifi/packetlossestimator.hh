@@ -20,16 +20,16 @@
 
 CLICK_DECLS
 
-struct packet_loss_interv {
-    
-    Timestamp last_short;
-    Timestamp last_mid;
-    bool mid_now;
-    Timestamp last_long;
-    bool long_now;
-};
-
 class PacketLossEstimator : public BRNElement {
+    
+    struct packetloss_statistics {
+
+        uint8_t hidden_node;
+        uint8_t inrange_coll;
+        uint8_t non_wifi;
+        uint8_t weak_signal;
+    };
+
     
     class PacketParameter {
 
@@ -71,19 +71,21 @@ class PacketLossEstimator : public BRNElement {
     
 public:
     class StatsCircularBuffer {
-
+                
     private:
         uint32_t size;
         uint32_t start_elem;
         uint32_t counter;
-        HashMap<EtherAddress, airtime_stats>* time_buffer;
+        
+        HashMap<EtherAddress, struct packetloss_statistics>* time_buffer;
         
     public:
         StatsCircularBuffer(uint32_t start_size) {
+            
             start_elem = 0;
             counter = 0;
             size = start_size;
-            time_buffer = new HashMap<EtherAddress, airtime_stats>[start_size];
+            time_buffer = new HashMap<EtherAddress, struct packetloss_statistics>[start_size];
         }
         
         ~StatsCircularBuffer() {
@@ -106,7 +108,7 @@ public:
             return counter == 0;
         }
         
-        void put_data_in(HashMap<EtherAddress, airtime_stats> *data) {
+        void put_data_in (HashMap<EtherAddress, struct packetloss_statistics> *data) {
             
             uint32_t last_elem = (start_elem + counter) % size;
             time_buffer[last_elem] = *data;
@@ -118,7 +120,7 @@ public:
             }
         }
         
-        bool pull_data(HashMap<EtherAddress, airtime_stats> &data) {
+        bool pull_data (HashMap<EtherAddress, struct packetloss_statistics> &data) {
             
             data = time_buffer[start_elem];
             start_elem = (start_elem + 1) % size;
@@ -126,16 +128,17 @@ public:
             return true;
         }
         
-        bool read_data(HashMap<EtherAddress, airtime_stats> &data, uint32_t entries) {
+        uint32_t read_data (HashMap<EtherAddress, struct packetloss_statistics> &data, uint32_t entries) {
             
             if (entries > size) {
-                return false;
+                return 0;
             }
             
-            HashMap<EtherAddress, airtime_stats> temp_data[entries];
+            HashMap<EtherAddress, struct packetloss_statistics> temp_data[entries];
             uint32_t overflow_counter = size;
+            uint32_t i = 0;
             
-            for (uint32_t i = 0; i < entries; i++) {
+            for (i; i < entries; i++) {
                 
                 if (start_elem - i < 0) {
                     
@@ -152,7 +155,7 @@ public:
             }
             
             data = *temp_data;
-            return true;
+            return i;
         }
     };
 //public:
@@ -187,37 +190,34 @@ private:
     HiddenNodeDetection *_hnd;
     /// Class for storing statistical data about lost packets
     PacketLossInformation *_pli;
-    /// Stats from other cooperating nodes
+    /// Statistics from cooperating nodes
     CooperativeChannelStats *_cocst;
     /// ACKS received from other nodes
     static HashMap<EtherAddress, uint32_t> _acks_by_node;
+    
+    static StatsCircularBuffer _stats_buffer;
     /// switch if pessimistic hidden node prediction is used
     bool _pessimistic_hn_detection;
     /// Device pointer
     BRN2Device *_dev;
-    
-    uint32_t _midterm;
-    
-    uint32_t _longterm;
-    
     /// Structure for gathering information about current packet
     PacketParameter *_packet_parameter;
     
-    struct packet_loss_interv _ple_interv;
-    
-    PacketLossInformation _mid_term_pli;
-    PacketLossInformation _long_term_pli;
-    
     ///< Estimate probability of channel error because of hidden nodes
-    void estimateHiddenNode();
+    void estimateHiddenNode(struct packetloss_statistics *);
     ///< Estimate probability of channel error because of inrange collisions
-    void estimateInrange();
+    void estimateInrange(struct packetloss_statistics *);
     ///< Estimate probability of channel error because non-wifi-signals
-    void estimateNonWifi(struct airtime_stats *);
+    void estimateNonWifi(struct airtime_stats *, struct packetloss_statistics *);
     ///< Estimate probability of channel error because of weak signal
-    void estimateWeakSignal(ChannelStats::SrcInfo *);
+    void estimateWeakSignal(ChannelStats::SrcInfo *, struct packetloss_statistics *);
     ///< put all necessary information about the current packet into one structure
     void gather_packet_infos_(Packet *);
+    
+    StringAccum stats_get_hidden_node(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_inrange(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_weak_signal(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_non_wifi(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
 };
 
 CLICK_ENDDECLS
