@@ -222,6 +222,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
       } else {
         _rid_ac++;
         _path_id = _rid_ac; 
+        //FIXME: rid_e is never used
         rid_e = _dsr_rid_cache->insert_entry(&src_addr, &dst_addr, &src_addr, &(route[route.size() - 2]) , _path_id);
       }
 

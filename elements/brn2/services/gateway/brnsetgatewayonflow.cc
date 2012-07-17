@@ -26,7 +26,6 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/etheraddress.hh>
-#include <click/bighashmap.hh>
 #include <click/straccum.hh>
 #include <click/packet_anno.hh>
 
@@ -658,5 +657,4 @@ BRNSetGatewayOnFlow::add_handlers() {
 
 ELEMENT_REQUIRES(AggregateNotifier)
 EXPORT_ELEMENT(BRNSetGatewayOnFlow)
-#include <click/bighashmap.cc>
 CLICK_ENDDECLS
