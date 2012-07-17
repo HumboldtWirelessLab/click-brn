@@ -689,5 +689,4 @@ BRNGateway::update_gateways_from_dht_response(uint8_t *value, uint32_t valuelen)
 }
 
 EXPORT_ELEMENT(BRNGateway)
-#include <click/bighashmap.cc>
 CLICK_ENDDECLS
