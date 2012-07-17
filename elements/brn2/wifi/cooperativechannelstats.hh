@@ -112,19 +112,30 @@ private:
     typedef NodeChannelStatsTable::const_iterator NodeChannelStatsTableIter;
 
 public:
-
+    
     class CooperativeStatsCircularBuffer {
 
     private:
         uint32_t size;
         uint32_t start_elem;
         uint32_t counter;
-        HashMap<EtherAddress, neighbour_airtime_stats>* time_buffer;
-
+        struct neighbour_airtime_stats* airtime_stats_history;
+        
     public:
-
+        
+        CooperativeStatsCircularBuffer(uint32_t start_size) {
+            
+            airtime_stats_history = new struct neighbour_airtime_stats[start_size];
+        }
+        
+        ~CooperativeStatsCircularBuffer() {
+            
+            delete[] airtime_stats_history;
+        }
     };
-
+    
+    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+    
     // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
     CooperativeChannelStats();
     ~CooperativeChannelStats();
