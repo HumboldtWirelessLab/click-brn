@@ -37,6 +37,7 @@ public:
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
+    /** @brief Broadcast a request to reconstruct the key */
     int send_request();
 
 	void add_handlers();
