@@ -72,7 +72,7 @@ if [ "x$1" = "x" ]; then
 fi
 
 for op in $@; do
-  
+
     case "$op" in
 	"kernel")
 	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --enable-fixincludes --disable-userlevel"
@@ -110,9 +110,9 @@ done
 echo "./configure $CONFOPTION"
 
 if [ "x$TARGET" = "xmips" ] || [ "x$TARGET" = "xarm" ]; then
-  eval ARCH=$TARGET ./configure $CONFOPTION 
+  eval ARCH=$TARGET ./configure $CONFOPTION
 else
-  eval ./configure $CONFOPTION 
+  eval ./configure $CONFOPTION
 fi
 
 exit 0
