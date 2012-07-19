@@ -282,8 +282,9 @@ void PacketLossEstimator::estimateHiddenNode(struct packetloss_statistics *new_s
             }
             
             if (_cocst != NULL) {
-                
-                HashMap<EtherAddress, struct neighbour_airtime_stats*> nats_map = _cocst->get_stats(&_packet_parameter->get_src_address());
+
+                EtherAddress t_src = _packet_parameter->get_src_address();
+                HashMap<EtherAddress, struct neighbour_airtime_stats*> nats_map = _cocst->get_stats(&t_src);
                 
                 if (!nats_map.empty()) {
                     
