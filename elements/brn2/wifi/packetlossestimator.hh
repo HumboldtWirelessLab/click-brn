@@ -96,15 +96,15 @@ public:
             size = 0;
         }
         
-        uint32_t get_size() {
+        inline uint32_t get_size() {
             return size;
         }
         
-        bool is_full () {
+        inline bool is_full () {
             return size == counter;
         }
         
-        bool is_empty () {
+        inline bool is_empty () {
             return counter == 0;
         }
         
@@ -120,15 +120,15 @@ public:
             }
         }
         
-        bool pull_data (HashMap<EtherAddress, struct packetloss_statistics> &data) {
+        bool pull_data (HashMap<EtherAddress, struct packetloss_statistics> *data) {
             
-            data = time_buffer[start_elem];
+            *data = time_buffer[start_elem];
             start_elem = (start_elem + 1) % size;
             counter--;
             return true;
         }
         
-        uint32_t read_data (HashMap<EtherAddress, struct packetloss_statistics> &data, uint32_t entries) {
+        uint32_t read_data (HashMap<EtherAddress, struct packetloss_statistics> *data, uint32_t entries) {
             
             if (entries > size) {
                 return 0;
@@ -154,7 +154,7 @@ public:
                 }
             }
             
-            data = *temp_data;
+            *data = *temp_data;
             return i;
         }
     };

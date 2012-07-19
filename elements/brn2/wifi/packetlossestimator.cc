@@ -597,22 +597,46 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
 
     inrange_sa << "\t</inrange>\n";
 
-    HashMap<EtherAddress, packetloss_statistics> *midtermstats;
+    HashMap<EtherAddress, packetloss_statistics> midtermstats;
+    HashMap<EtherAddress, uint8_t[20]> midtermvalues;
     
-    if (uint32_t datacount = _stats_buffer.read_data(&midtermstats, 10) > 0) {
+    if (uint32_t datacount = _stats_buffer.read_data(&midtermstats, 20) > 0) {
 
         inrange_sa << "\t<inrange observation_period=\"mid\">\n";
         
         for (int i = 0; i < datacount; i++) {
         
-            for (HashMap::iterator hmit = midtermstats->begin(); hmit != midtermstats->end(); hmit++) {
-
-                inrange_sa << "\t\t<neighbour address=\"" << hmit->key().unparse().c_str() << "\">\n";
-
-
-
-                inrange_sa << "\t\t</neighbour>\n";
+            for (HashMap<EtherAddress, packetloss_statistics>::iterator hmit = midtermstats.begin(); hmit != midtermstats.end(); hmit++) {
+                
+                uint8_t val[20];                
+                if (midtermvalues.find(hmit.key()) != NULL) {
+                    
+                    val[i] = hmit.value().inrange_coll;
+                    midtermvalues.insert(hmit.key(), val);
+                            
+                } else {
+                    
+                    midtermvalues.find(hmit.key(), val);
+                    val[i] = hmit.value().inrange_coll;
+                    
+                }
             }
+        }
+        
+        for (HashMap<EtherAddress, uint8_t[20]>::iterator mit = midtermvalues.begin(); mit != midtermvalues.end(); mit++) {
+            
+            inrange_sa << "\t\t<neighbour address=\"" << mit.key().unparse().c_str() << "\">\n";
+            
+            uint8_t val[20];
+            memcpy(val, mit.value(), sizeof(val));
+            uint16_t allval = 0;
+            
+            for (uint8_t i = 0; i < 20; i++) {
+                
+                allval += val[i];
+            }
+            inrange_sa << "\t\t\t<fraction>" << allval << "</fraction>\n";
+            inrange_sa << "\t\t</neighbour>\n";
         }
 
         inrange_sa << "\t</inrange>\n";
