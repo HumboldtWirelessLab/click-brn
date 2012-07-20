@@ -3,7 +3,6 @@
 #include <click/element.hh>
 #include <click/ipaddress.hh>
 #include <click/etheraddress.hh>
-#include <click/bighashmap.hh>
 #include <click/glue.hh>
 #include <click/vector.hh>
 
