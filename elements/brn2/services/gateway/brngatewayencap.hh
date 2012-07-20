@@ -22,7 +22,6 @@
 #define BRNGATEWAYENCAP_H_
 
 //#include <elements/brn/brnelement.hh>
-#include <click/bighashmap.hh>
 
 CLICK_DECLS
 

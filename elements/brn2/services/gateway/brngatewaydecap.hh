@@ -21,7 +21,6 @@
 #ifndef BRNGATEWAYDECAP_H_
 #define BRNGATEWAYDECAP_H_
 
-#include <click/bighashmap.hh>
 #include "elements/brn2/brnelement.hh"
 
 CLICK_DECLS

@@ -108,7 +108,6 @@ WepDecap::simple_action(Packet *p_in)
   u_int8_t keyid = icp[WIFI_WEP_IVLEN];
 
   if (keyid != _keyid) {
-	/* crk: What's this for? For different WEP-networks? Need for comment */
     return p;
   }
   iv = icp[0] | (icp[1] << 8) | (icp[2] << 16) | (icp[3] << 24);
@@ -149,7 +148,6 @@ WepDecap::simple_action(Packet *p_in)
 
   w = (struct click_wifi *) p->data();
   w->i_fc[1] &= ~WIFI_FC1_WEP;
-
   return p;
 }
 

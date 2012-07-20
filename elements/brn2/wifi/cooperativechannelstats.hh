@@ -57,57 +57,75 @@ struct cooperative_message_body {
 };
 
 class CooperativeChannelStats : public BRNElement {
+    
     typedef HashMap<EtherAddress, struct neighbour_airtime_stats*> NeighbourStatsTable;
     typedef NeighbourStatsTable::const_iterator NeighbourStatsTableIter;
 
-  private:
+private:
+
     class NodeChannelStats {
-     public:
-      EtherAddress node;
-      uint16_t _endianess;
-      bool _is_fix_endianess;
 
-      NeighbourStatsTable _n_stats;
+    private:
+        struct airtime_stats stats;
 
-     private:
-      struct airtime_stats stats;
+    public:
+        EtherAddress node;
+        uint16_t _endianess;
+        bool _is_fix_endianess;
+        NeighbourStatsTable _n_stats;
 
-     public:
-      NodeChannelStats() {
-        node = EtherAddress();
-        _is_fix_endianess = false;
-      }
+        NodeChannelStats() {
 
-      NodeChannelStats(EtherAddress ea) {
-        node = ea;
-        _is_fix_endianess = false;
-      }
-
-      void set_stats(struct airtime_stats *new_stats, uint16_t endianess) {
-        memcpy(&stats, new_stats, sizeof(struct airtime_stats));
-        _endianess = endianess;
-        _is_fix_endianess = false;
-      }
-
-      struct airtime_stats *get_airtime_stats() {
-        if ( ! _is_fix_endianess ) {
-          //fix it
-          _is_fix_endianess = true;
+            node = EtherAddress();
+            _is_fix_endianess = false;
         }
-        return &stats;
-      }
 
-      void add_neighbour_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
-          
-          _n_stats.insert(*ea, stats);
-      }
+        NodeChannelStats(EtherAddress ea) {
+
+            node = ea;
+            _is_fix_endianess = false;
+        }
+
+        void set_stats(struct airtime_stats *new_stats, uint16_t endianess) {
+
+            memcpy(&stats, new_stats, sizeof(struct airtime_stats));
+            _endianess = endianess;
+            _is_fix_endianess = false;
+        }
+
+        struct airtime_stats *get_airtime_stats() {
+
+            if ( ! _is_fix_endianess ) {
+                //fix it
+                _is_fix_endianess = true;
+            }
+            return &stats;
+        }
+
+        void add_neighbour_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
+
+            _n_stats.insert(*ea, stats);
+        }
     };
 
     typedef HashMap<EtherAddress, NodeChannelStats*> NodeChannelStatsTable;
     typedef NodeChannelStatsTable::const_iterator NodeChannelStatsTableIter;
 
-  public:
+public:
 
+    class CooperativeStatsCircularBuffer {
+
+    private:
+        uint32_t size;
+        uint32_t start_elem;
+        uint32_t counter;
+        HashMap<EtherAddress, neighbour_airtime_stats>* time_buffer;
+
+    public:
+
+    };
+
+    // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
     CooperativeChannelStats();
     ~CooperativeChannelStats();
 
@@ -129,7 +147,7 @@ class CooperativeChannelStats : public BRNElement {
     
     HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
     
-  private:
+private:
     ChannelStats *_cst;
 
     Timer _msg_timer;

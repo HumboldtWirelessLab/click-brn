@@ -68,20 +68,94 @@ class PacketLossEstimator : public BRNElement {
             packet_type = p_type;
         }
     };
-
-    class StatsRingBuffer {
+    
+public:
+    class StatsCircularBuffer {
 
     private:
         uint32_t size;
         uint32_t start_elem;
-        uint32_t end_elem;
-        // Map with Lists as Ringbuffer (Adr->Buffer)
+        uint32_t counter;
+        HashMap<EtherAddress, airtime_stats>* time_buffer;
+        
     public:
-        // Constructor and Destructor
-        // getter and setter
-        // is_full/is_empty
+        StatsCircularBuffer(uint32_t start_size) {
+            start_elem = 0;
+            counter = 0;
+            size = start_size;
+            time_buffer = new HashMap<EtherAddress, airtime_stats>[start_size];
+        }
+        
+        ~StatsCircularBuffer() {
+            
+            delete[] time_buffer;
+            start_elem = 0;
+            counter = 0;
+            size = 0;
+        }
+        
+        uint32_t get_size() {
+            return size;
+        }
+        
+        bool is_full () {
+            return size == counter;
+        }
+        
+        bool is_empty () {
+            return counter == 0;
+        }
+        
+        void put_data_in(HashMap<EtherAddress, airtime_stats> *data) {
+            
+            uint32_t last_elem = (start_elem + counter) % size;
+            time_buffer[last_elem] = *data;
+            
+            if (size == counter) {
+                start_elem = (start_elem + 1) % size;   // if circular buffer filled completely override
+            } else {
+                start_elem++;
+            }
+        }
+        
+        bool pull_data(HashMap<EtherAddress, airtime_stats> &data) {
+            
+            data = time_buffer[start_elem];
+            start_elem = (start_elem + 1) % size;
+            counter--;
+            return true;
+        }
+        
+        bool read_data(HashMap<EtherAddress, airtime_stats> &data, uint32_t entries) {
+            
+            if (entries > size) {
+                return false;
+            }
+            
+            HashMap<EtherAddress, airtime_stats> temp_data[entries];
+            uint32_t overflow_counter = size;
+            
+            for (uint32_t i = 0; i < entries; i++) {
+                
+                if (start_elem - i < 0) {
+                    
+                    if (NULL == &time_buffer[overflow_counter]) {
+                        
+                        break;
+                    }
+                    
+                    temp_data[i] = time_buffer[overflow_counter--];
+                    
+                } else {
+                    temp_data[i] = time_buffer[start_elem - i];
+                }
+            }
+            
+            data = *temp_data;
+            return true;
+        }
     };
-public:
+//public:
 
     PacketLossEstimator();
     ~PacketLossEstimator();
