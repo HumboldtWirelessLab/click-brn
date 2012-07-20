@@ -162,12 +162,15 @@ BRN2DSREncap::add_src_header(Packet *p_in, EtherAddresses src_route)
   // set destination anno
   if (hop_count > 0) { // next hop on tour
     EtherAddress next_hop(src_route[route_len - 2].data());
+    BRN_DEBUG(" * testing next hop %s", next_hop.unparse().c_str());
+    BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   } else { // final destination is the last hop
     EtherAddress next_hop(src_route[0].data());
+    BRN_DEBUG(" * next hop %s", next_hop.unparse().c_str());
+    BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
+    BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
   }
-  BRN_DEBUG(" * testing next hop %s", next_hop.unparse().c_str());
-  BRNPacketAnno::set_dst_ether_anno(p,next_hop); //think about this
-  BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
 
   //TODO: remove the next stuff
   click_ether *cether = (click_ether *)p->ether_header();
