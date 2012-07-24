@@ -57,6 +57,20 @@ if [ "x$DEVELOP" = "x" ]; then
   DEVELOP=1
 fi
 
+if [ "x$CLEAN" = "x" ]; then
+  CLEAN=1
+fi
+
+if [ "x$CPUS" = "x" ]; then
+  if [ -f /proc/cpuinfo ]; then
+    CPUS=`grep -e "^processor" /proc/cpuinfo | wc -l`
+  else
+    CPUS=1
+  fi
+fi
+
+echo "Use $CPUS cpus"
+
 #***********************************************************************
 #*************************** G E T   S O U R C E S *********************
 #***********************************************************************
@@ -92,21 +106,48 @@ fi
 #***********************************************************************
 
 if [ "x$BUILDCLICK" = "xyes" ]; then
-  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh tools; XCFLAGS="-fpermissive -fPIC" /bin/sh brn-conf.sh ns2_userlevel; make)
+  (cd click-brn;touch ./configure; /bin/sh brn-conf.sh tools; XCFLAGS="-fpermissive -fPIC" /bin/sh brn-conf.sh ns2_userlevel; make -j $CPUS) 2>&1 | tee click_build.log
 fi
 
-(cd brn-ns2-click; DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CLICKPATH=$CLICKPATH ./install_ns2.sh)
+(cd brn-ns2-click; CLEAN=$CLEAN DEVELOP=$DEVELOP VERSION=5 PREFIX=$DIR/ns2 CPUS=$CPUS CLICKPATH=$CLICKPATH ./install_ns2.sh) 2>&1 | tee ns2_build.log
 
 #if [ "x$BUILDCLICKSCRIPTS" = "xyes" ]; then
 #  (cd click-brn-scripts; ./build.sh)
 #fi
 
-rm -rf $DIR/brn-ns2-click
+if [ $CLEAN -eq 1 ]; then
+  rm -rf $DIR/brn-ns2-click
+fi
 
 echo "export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:$DIR/click-brn/ns/:$DIR/ns2/lib" > $DIR/brn-tools.bashrc
 echo "export PATH=$DIR/ns2/bin/:$CLICKPATH/userlevel/:$CLICKPATH/tools/click-align/:$DIR/helper/simulation/bin/:$DIR/helper/evaluation/bin:\$PATH" >> $DIR/brn-tools.bashrc
 
 cat $FULLFILENAME | grep "^#INFO" | sed -e "s/#INFO[[:space:]]*//g" -e "s#TARGETDIR#$DIR#g"
+
+if [ "x$DISABLE_TEST" = "x1" ]; then
+  echo "Test disabled"
+  rm -f click_build.log ns2_build.log
+else
+  echo "Start Tests"
+
+  . $DIR/brn-tools.bashrc
+
+  (cd $DIR/click-brn-scripts/; sh ./test.sh) > test.log
+
+  #less test.log
+
+  TESTS_OVERALL=`cat test.log | wc -l`
+  TESTS_OK=`cat test.log | awk '{print $3}' | grep "ok" | wc -l`
+
+  echo "$TESTS_OK of $TESTS_OVERALL tests finished without errors. See $DIR/click-brn-scripts/testbed.pdf for more details."
+
+  if [ $TESTS_OK -ne $TESTS_OVERALL ]; then
+    echo "Detect failures. Please send test.log, click_build.log and ns2_build.log (hwl-team)."
+  else
+    rm -f test.log click_build.log ns2_build.log
+  fi
+
+fi
 
 exit 0
 
