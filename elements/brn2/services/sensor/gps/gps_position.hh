@@ -97,7 +97,7 @@ class GPSPosition {
     _speed.setPacketInt(pos->speed);
   }
 
-#pragma message Check setSpeed usage in GPS
+#pragma message "Check setSpeed usage in GPS"
   void setSpeed(FixPointNumber speed)
   {
     _speed = speed;
