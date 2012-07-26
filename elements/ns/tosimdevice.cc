@@ -117,9 +117,9 @@ void
 ToSimDevice::send_packet(Packet *p)
 {
   Router* myrouter = router();
-  int retval;
+  //int retval;
   // We send out either ethernet or IP
-  retval = myrouter->sim_write(_fd,_encap_type,p->data(),p->length(),
+  /*retval =*/ myrouter->sim_write(_fd,_encap_type,p->data(),p->length(),
 				 p->get_sim_packetinfo());
   p->kill();
 }
