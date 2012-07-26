@@ -195,7 +195,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 			if (flags & IEEE80211_RADIOTAP_F_FCS) {
 				p->take(4);
 			}
-#warning TODO Check type of Error. Now all errors are CRC
+#pragma message TODO Check type of Error. Now all errors are CRC
       if (flags & IEEE80211_RADIOTAP_F_BADFCS) {
         ceh->flags |= WIFI_EXTRA_RX_ERR;
         ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
@@ -229,7 +229,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
       if ((flags & IEEE80211_RADIOTAP_F_RX_BADFCS) || (flags & IEEE80211_RADIOTAP_F_RX_BADPLCP) ) {
 				ceh->flags |= WIFI_EXTRA_RX_ERR;
-#warning TODO Check type of Error. Now all errors are CRC
+#pragma message TODO Check type of Error. Now all errors are CRC
         ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
       }
 		}

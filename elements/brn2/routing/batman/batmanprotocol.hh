@@ -11,11 +11,11 @@ CLICK_DECLS
 
 struct batman_header {
 #if BYTE_ORDER == BIG_ENDIAN
-#warning IS_BIG_ENDIAN
+#pragma message IS_BIG_ENDIAN
   uint8_t type:4;
   uint8_t flags:4;
 #else
-#warning IS_LITTLE_ENDIAN
+#pragma message IS_LITTLE_ENDIAN
   uint8_t flags:4;
   uint8_t type:4;
 #endif
