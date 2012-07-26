@@ -60,7 +60,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
 
   if ( *ea == *next_phy ) {
     BRN_DEBUG("Add neighbour. Check first");
-#pragma message Use var instead of fix value
+#pragma message "Use var instead of fix value"
     if ( _link_table->get_host_metric_to_me(*next_phy) > 300 ) {
       BRN_DEBUG("Kill bad neighbour");
       return NULL;
