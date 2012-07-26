@@ -344,7 +344,7 @@ class ChannelStats : public BRNElement {
     typedef Vector<PacketInfoHW*> PacketListHW;
     typedef PacketListHW::const_iterator PacketListHWIter;
 
-#warning Use pointer to object instead of obj
+#pragma message Use pointer to object instead of obj
     typedef HashMap<EtherAddress, SrcInfo> SrcInfoTable;
     typedef SrcInfoTable::const_iterator SrcInfoTableIter;
 
