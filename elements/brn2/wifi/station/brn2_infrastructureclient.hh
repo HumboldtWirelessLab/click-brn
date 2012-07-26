@@ -22,7 +22,7 @@
 #define BRN2INFRASTRUCTURECLIENTELEMENT_HH
 
 #include <click/bighashmap.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <click/etheraddress.hh>
