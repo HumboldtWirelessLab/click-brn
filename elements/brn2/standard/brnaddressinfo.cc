@@ -83,7 +83,7 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
     if (parts.size() < 2) {
 #ifdef CLICK_NS
       // Maybe get info from the simulator...
-      int r;
+      //int r;  //TODO: eval return value
       String simif = parts[1];
       String simip;
       String simeth;
@@ -97,9 +97,9 @@ BRNAddressInfo::configure(Vector<String> &conf, ErrorHandler *errh)
         char tmp[255];
 
         simif = simif.substring(0,colon);
-        r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, simif.c_str(), tmp, 255);
+        /*r =*/ simclick_sim_command(router()->master()->simnode(), SIMCLICK_IPADDR_FROM_NAME, simif.c_str(), tmp, 255);
         simip = tmp;
-        r = simclick_sim_command(router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, simif.c_str(), tmp, 255);
+        /*r =*/ simclick_sim_command(router()->master()->simnode(), SIMCLICK_MACADDR_FROM_NAME, simif.c_str(), tmp, 255);
         simeth = tmp;
 
         if (simip.length()) {
