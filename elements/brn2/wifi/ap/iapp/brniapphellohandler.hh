@@ -24,7 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/timer.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
 
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
@@ -48,7 +48,7 @@ class BrnIappHelloHandler : public Element
 // Construction
 //------------------------------------------------------------------------------
 public:
-  typedef DEQueue<EtherAddress> EtherAddressQueue;
+  typedef Deque<EtherAddress> EtherAddressQueue;
 
 //------------------------------------------------------------------------------
 // Construction

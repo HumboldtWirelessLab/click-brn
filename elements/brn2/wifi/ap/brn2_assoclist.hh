@@ -25,7 +25,7 @@
 #include <click/vector.hh>
 #include <click/element.hh>
 #include <click/bighashmap.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
 #include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
 
 CLICK_DECLS
@@ -46,7 +46,7 @@ class BRN2AssocList : public Element
 // Types
 //------------------------------------------------------------------------------
 public:
-  typedef DEQueue<Packet*>                                           PacketList;
+  typedef Deque<Packet*>                                           PacketList;
   typedef HashMap<EtherAddress,EtherAddress>                              CnMap;
 
   typedef enum tag_client_state {

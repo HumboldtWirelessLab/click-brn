@@ -73,9 +73,9 @@ SetJammer::read_cca()
 }
 
 void
+#if CLICK_NS
 SetJammer::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
 {
-#if CLICK_NS
   int cca[4];
   cca[0] = 1; //command set
   cca[1] = cs_threshold;
@@ -83,7 +83,12 @@ SetJammer::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
   cca[3] = cp_threshold;
 
   simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &cca);
+#else
+
+SetJammer::set_cca(int /*cs_threshold*/, int /*rx_threshold*/, int /*cp_threshold*/)
+{
 #endif
+
 }
 
 

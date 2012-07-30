@@ -46,8 +46,8 @@
 CLICK_DECLS
 
 ToSimDevice::ToSimDevice()
-  : _fd(-1), _my_fd(false), _task(this), _encap_type(SIMCLICK_PTYPE_ETHER),
-    _packets_in_sim_queue(0), _polling(true), _txfeedback_anno(false)
+  : _packets_in_sim_queue(0), _fd(-1), _my_fd(false), _task(this), _encap_type(SIMCLICK_PTYPE_ETHER),
+    _polling(true), _txfeedback_anno(false)
 {
 }
 
@@ -117,9 +117,9 @@ void
 ToSimDevice::send_packet(Packet *p)
 {
   Router* myrouter = router();
-  int retval;
+  //int retval;
   // We send out either ethernet or IP
-  retval = myrouter->sim_write(_fd,_encap_type,p->data(),p->length(),
+  /*retval =*/ myrouter->sim_write(_fd,_encap_type,p->data(),p->length(),
 				 p->get_sim_packetinfo());
   p->kill();
 }
@@ -133,7 +133,7 @@ ToSimDevice::push(int, Packet *p)
 }
 
 int
-ToSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,int len,
+ToSimDevice::incoming_packet(int /*ifid*/, int /*ptype*/, const unsigned char* data, int /*len*/,
                         simclick_simpacketinfo* pinfo)
 {
   bool feedback = false;
@@ -156,6 +156,8 @@ ToSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,int le
       _task.reschedule();
     }
   }
+  
+  return 0;
 }
 
 bool

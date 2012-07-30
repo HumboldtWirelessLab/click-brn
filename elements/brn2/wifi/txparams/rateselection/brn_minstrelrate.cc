@@ -553,9 +553,9 @@ minstrel_alloc(struct ieee80211_hw *hw, struct dentry *debugfsdir)
 /************************************************************************************/
 
 void
-BrnMinstrelRate::adjust_all(NeighborTable *neighbors)
+BrnMinstrelRate::adjust_all(NeighborTable * /*neighbors*/)
 {
-  Vector<EtherAddress> n;
+//  Vector<EtherAddress> n;
 
   /*for (NIter iter = neighbors->begin(); iter.live(); iter++) {
     NeighbourRateInfo nri = iter.value();
@@ -568,7 +568,7 @@ BrnMinstrelRate::adjust_all(NeighborTable *neighbors)
 }
 
 void
-BrnMinstrelRate::adjust(NeighborTable *neighbors, EtherAddress dst)
+BrnMinstrelRate::adjust(NeighborTable * /*neighbors*/, EtherAddress /*dst*/)
 {
  /* NeighbourRateInfo *nri = neighbors->findp(dst);
   DstInfo *nfo = (DstInfo*)nri->_rs_data;
@@ -580,10 +580,10 @@ BrnMinstrelRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 }
 
 void
-BrnMinstrelRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, NeighbourRateInfo * /*nri*/)
 {
-  bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
-  bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
+//  bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
+//  bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
 
 /*  DstInfo *nfo = (DstInfo*)(nri->_rs_data);
 
@@ -597,7 +597,7 @@ BrnMinstrelRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
 }
 
 void
-BrnMinstrelRate::assign_rate(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMinstrelRate::assign_rate(click_wifi_extra * /*ceh*/, NeighbourRateInfo * /*nri*/)
 {
   /*if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {
@@ -613,7 +613,7 @@ BrnMinstrelRate::assign_rate(click_wifi_extra *ceh, NeighbourRateInfo *nri)
 }
 
 String
-BrnMinstrelRate::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
+BrnMinstrelRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
 {
   StringAccum sa;
 
@@ -626,8 +626,9 @@ BrnMinstrelRate::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
 /************************************* H A N D L E R ***************************************/
 /*******************************************************************************************/
 
-enum { H_INFO};
+//enum { H_INFO};
 
+/*
 static String
 BrnMinstrelRate_read_param(Element *e, void *thunk)
 {
@@ -651,7 +652,7 @@ BrnMinstrelRate_write_param(const String &in_s, Element *e, void *vparam, ErrorH
   }
   return 0;
 }
-
+*/
 void
 BrnMinstrelRate::add_handlers()
 {

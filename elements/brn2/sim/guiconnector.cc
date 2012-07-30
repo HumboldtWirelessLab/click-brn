@@ -51,8 +51,9 @@ GuiConnector::configure(Vector<String> &conf, ErrorHandler *errh)
 
 
 int
-GuiConnector::initialize_socket_error(ErrorHandler *errh, const char *syscall)
+GuiConnector::initialize_socket_error(ErrorHandler * /*errh*/, const char * /*syscall*/)
 {
+  return 0;
 }
 
 int
@@ -110,6 +111,7 @@ GuiConnector::initialize(ErrorHandler *errh)
 
   String out_str = "init";
   int len = write(_active, out_str.data(), out_str.length());
+  if ( len < 0 ) BRN_WARN("Write error");
 
   communicationLoop();
 
@@ -124,6 +126,7 @@ GuiConnector::run_timer(Timer* )
 
   String out_str = "schedule";
   int len = write(_active, out_str.data(), out_str.length());
+  if ( len < 0 ) BRN_WARN("Write error");
 
   communicationLoop();
 }
@@ -142,6 +145,8 @@ GuiConnector::finish()
     String out_str = "finish";
     _timer.unschedule();
     int len = write(_active, out_str.data(), out_str.length());
+    
+    if ( len < 0 ) BRN_WARN("Write error");
 
     communicationLoop();
 
@@ -195,6 +200,8 @@ GuiConnector::handleOperation(String op)
     BRN_DEBUG("read");
     String out_str = HandlerCall::call_read(args[1], router()->root_element(), ErrorHandler::default_handler());
     int len = write(_active, out_str.data(), out_str.length());
+    if ( len < 0 ) BRN_WARN("Write error");
+
     return true;
   }
 
@@ -214,6 +221,8 @@ GuiConnector::handleOperation(String op)
 
     String out_str = sa.take_string();
     int len = write(_active, out_str.data(), out_str.length());
+    if ( len < 0 ) BRN_WARN("Write error");
+
     return true;
   }
 
@@ -235,6 +244,8 @@ write_param(const String &/*in_s*/, Element *e, void *vparam,
       f->finish();
       break;
   }
+  
+  return 0;
 }
 
 
