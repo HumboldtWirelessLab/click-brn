@@ -42,7 +42,7 @@ Ath2Encap::simple_action(Packet *p)
 {
   WritablePacket *p_out;
   struct ath2_header *ath2_h;
-  uint8_t channel, tos;
+  uint8_t channel;
 
   if ( _athencap )
     p_out = p->push(ATHDESC2_HEADER_SIZE);       //ATH-HEADER and ATH_BRN-HEADER
