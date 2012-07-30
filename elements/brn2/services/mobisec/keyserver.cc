@@ -62,7 +62,7 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
-int KEYSERVER::initialize(ErrorHandler* errh) {
+int KEYSERVER::initialize(ErrorHandler *) {
 	start_flag = true;
 
 	// Configuration determines some crypto parameters

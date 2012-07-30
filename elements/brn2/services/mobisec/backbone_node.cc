@@ -54,15 +54,16 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 		_protocol_type = SERVER_DRIVEN;
 	else if (_protocol_type_str == "CLIENT-DRIVEN")
 		_protocol_type = CLIENT_DRIVEN;
-	else
+	else {
 		return -1;
+	}
 
 	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
 
 	return 0;
 }
 
-int BACKBONE_NODE::initialize(ErrorHandler* errh) {
+int BACKBONE_NODE::initialize() {
 	// Pseudo randomness as creepy solution for simulation in
 	// order to get asynchronous packet transmission
 	long randnum = (long)this;
@@ -117,8 +118,9 @@ void BACKBONE_NODE::snd_kdp_req() {
 		BRN_DEBUG("Retry kdp process...");
 		//switch_dev(dev_client);
 		switch_dev(dev_ap);
-	} else // If not, then we are about to send our first request for next epoch data
+	} else { // If not, then we are about to send our first request for next epoch data
 		last_req_try = Timestamp::now().msecval();
+	}
 
 	WritablePacket *p = kdp::kdp_request_msg();
 
@@ -222,7 +224,7 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	HandlerCall::call_write(_dev_control_down, "switch", port, NULL);
 }
 
-static String handler_triggered_request(Element *e, void *thunk) {
+static String handler_triggered_request(Element *e, void *) {
 	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
 	bn->snd_kdp_req();
 	return String();
@@ -232,7 +234,7 @@ void BACKBONE_NODE::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("snd_kdp_request", handler_triggered_request, NULL);
+  add_read_handler("snd_kdp_request", handler_triggered_request, 0);
 }
 
 
