@@ -250,11 +250,12 @@ void PacketLossEstimator::estimateHiddenNode() {
     
     if ((_packet_parameter->get_own_address()) != (_packet_parameter->get_dst_address())) {
         
-        if (_hnd->has_neighbours(_packet_parameter->get_own_address()))
+        if (_hnd->has_neighbours(_packet_parameter->get_own_address())) {
             BRN_INFO("Own address has neighbours");
-        else
+        } else {
             BRN_INFO("Own address has no neighbours");
-
+        }
+	
         uint8_t hnProp = 6;
         bool coopst = false;
         
