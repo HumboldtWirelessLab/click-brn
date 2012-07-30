@@ -23,8 +23,7 @@ int
 OLSRCheckPacketHeader::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "Duplicate Set Element", cpkP, cpElement, &_duplicateSet,
-		  0) < 0)
+      "Duplicate Set Element", cpkP, cpElement, &_duplicateSet, cpEnd) < 0)
     return -1;
   return 0;
 }

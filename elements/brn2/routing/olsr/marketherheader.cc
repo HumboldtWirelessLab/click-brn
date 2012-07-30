@@ -30,7 +30,7 @@ MarkEtherHeader::~MarkEtherHeader()
 }
 
 int
-MarkEtherHeader::configure(Vector<String> &conf, ErrorHandler *errh)
+MarkEtherHeader::configure(Vector<String> &/*conf*/, ErrorHandler */*errh*/)
 {
 
     return 0;
