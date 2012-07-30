@@ -231,8 +231,8 @@ Flooding::table()
   {
     BroadcastNode* bcn = iter.value();
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" ids=\"";
-    for( int i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn->_bcast_id_list[i] == -1 ) break;
+    for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
+      if ( bcn->_bcast_id_list[i] == 0 ) break;
       if ( i != 0 ) sa << ",";
       sa << bcn->_bcast_id_list[i];
     }

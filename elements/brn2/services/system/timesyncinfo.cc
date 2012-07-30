@@ -61,13 +61,13 @@ TimeSyncInfo::initialize(ErrorHandler */*errh*/)
   _timestamps = new Timestamp[_max_ids];
   _packet_ids = new int32_t[_max_ids];
 
-  for(int i = 0; i < _max_ids; i++ ) _packet_ids[i] = -1;
+  for(uint32_t i = 0; i < _max_ids; i++ ) _packet_ids[i] = -1;
 
   return 0;
 }
 
 void
-TimeSyncInfo::push(int port, Packet *p)
+TimeSyncInfo::push(int /*port*/, Packet *p)
 {
   int32_t id = (int32_t)*((int32_t*)p->data());
   _packet_ids[_next_id] = ntohl(id);
