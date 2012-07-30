@@ -39,6 +39,8 @@
 
 CLICK_DECLS
 
+static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNode" };
+
 Dijkstra::Dijkstra()
   : _node_identity(),
     _max_graph_age(0)
@@ -95,9 +97,9 @@ Dijkstra::take_state(Element *e, ErrorHandler *) {
 }
 
 void
-Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t *metric)
+Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &route, uint32_t * /*metric*/)
 {
-  metric = 0;
+  //metric = 0;
 
   if (( _dni_table.find(dst) == NULL ) || ( _dni_table.find(src) == NULL ) ) return;
 
