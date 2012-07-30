@@ -226,7 +226,7 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_o
   uint32_t new_code;
   uint32_t old_code;
   int32_t character;
-  int32_t counter;
+  //int32_t counter;
   unsigned char *string;
   int32_t inputpos;
   int32_t outputpos;
@@ -240,7 +240,7 @@ LZW::decode(unsigned char *input, int inputlen, unsigned char *output, int max_o
 
   new_code=256;            /* Init value. not need but better it avoids valgrind errors */
   next_code=256;           /* This is the next available code to define */
-  counter=0;               /* Counter is used as a pacifier.            */
+  //counter=0;               /* Counter is used as a pacifier.            */
 
   old_code=input_code(input, &inputpos, inputlen);  /* Read in the first code, initialize the */
   character=old_code;                               /* character variable, and send the first */

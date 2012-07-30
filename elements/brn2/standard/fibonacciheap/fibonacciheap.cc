@@ -517,7 +517,7 @@ void FibonacciHeap::changeNodeValue(int nodeId, int newValue){
 // p r i n t H e a p
 //
 void FibonacciHeap::printHeap() const {
-  int i;
+//  int i;
 
   /*std::cout << std::endl << std::endl ;
   std::cout << "           Number of Nodes : " << m_numberOfNodes << std::endl;
