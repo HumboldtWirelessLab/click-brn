@@ -94,7 +94,7 @@ GeorForwarder::push( int port, Packet *packet )
       EtherAddress nextHop;
       //GPSPosition *nhpos;
 
-      //nhpos = _rt->getClosestNeighbour(&dpos, &nextHop);
+      /*nhpos =*/ _rt->getClosestNeighbour(&dpos, &nextHop);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING, ttl);
       BRNPacketAnno::set_ether_anno(out_packet, *_nodeid->getMasterAddress(), nextHop, ETHERTYPE_BRN);
