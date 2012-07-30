@@ -15,10 +15,10 @@ CLICK_DECLS
 
 BRN2PacketSource::BRN2PacketSource()
   : _active(false),
-    _timer(this),
     _size(100),
     _interval(0),
     _rate(0),
+    _timer(this),
     _burst(1),
     _channel(0),
     _bitrate(0),
