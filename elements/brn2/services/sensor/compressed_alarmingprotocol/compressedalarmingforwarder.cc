@@ -74,11 +74,10 @@ CompressedAlarmingForwarder::initialize(ErrorHandler *)
 void
 CompressedAlarmingForwarder::push( int port, Packet *p)
 {
-  uint32_t result;
   struct compressed_alarming_header *ah = CompressedAlarmingProtocol::getCompressedAlarmingHeader(p);
 
   if ( port == 0 ) { //from local
-    result = _as->update_alarm(ah->type, _nodeid->getMasterAddress(), alarm_id, 0, _nodeid->getMasterAddress());
+    _as->update_alarm(ah->type, _nodeid->getMasterAddress(), alarm_id, 0, _nodeid->getMasterAddress());
     WritablePacket *p_n = CompressedAlarmingProtocol::add_node(p, _nodeid->getMasterAddress(), START_TTL, alarm_id);
     alarm_id++;
 

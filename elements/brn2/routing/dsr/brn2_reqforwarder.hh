@@ -57,7 +57,7 @@ class BRN2RouteQuerier;
  */
 
 #define METRIC_LIST_SIZE (uint32_t)64
-#define METRIC_LIST_MASK METRIC_LIST_SIZE - 1
+#define METRIC_LIST_MASK (METRIC_LIST_SIZE - 1)
 #define METRIC_INVALID 0xFFFF
 
 #define PASSIVE_ACK_MAX_NEIGHBOURS 16
@@ -91,16 +91,16 @@ class BRN2RequestForwarder : public BRNElement {
     }
 
     inline uint16_t get_current_metric(uint16_t req_id, Timestamp *now) {
-      uint16_t i = req_id & METRIC_LIST_MASK;
+      uint16_t i = (req_id & METRIC_LIST_MASK);
       if ( (_id_list[i] != req_id) ||
-           ((*now - _times_list[req_id & METRIC_LIST_MASK]).msecval() > _max_age)) {
+           ((*now - _times_list[(req_id & METRIC_LIST_MASK)]).msecval() > _max_age)) {
         return METRIC_INVALID;
       }
       return _metric_list[i];
     }
 
     inline void set_metric(uint16_t req_id, uint16_t metric, Timestamp *now, uint8_t last_hop_opt = 0) {
-      uint16_t i = req_id & METRIC_LIST_MASK;
+      uint16_t i = (req_id & METRIC_LIST_MASK);
       _id_list[i] = req_id;
       _metric_list[i] = metric;
       _times_list[i] = *now;
@@ -108,29 +108,29 @@ class BRN2RequestForwarder : public BRNElement {
     }
 
     inline void reset_passive_ack(uint16_t req_id, uint16_t neighbour_count, uint16_t max_retries) {
-      uint16_t i = req_id & METRIC_LIST_MASK;
+      uint16_t i = (req_id & METRIC_LIST_MASK);
       _passive_ack_retry_list[i] = max_retries;
       _passive_ack_vector_list[i] = (uint16_t)((((uint32_t)1) << neighbour_count) - 1);
     }
 
     inline uint16_t left_retries(uint16_t req_id) {
-      return _passive_ack_retry_list[req_id & METRIC_LIST_MASK];
+      return _passive_ack_retry_list[(req_id & METRIC_LIST_MASK)];
     }
 
     inline void dec_retries(uint16_t req_id) {
-      _passive_ack_retry_list[req_id & METRIC_LIST_MASK]--;
+      _passive_ack_retry_list[(req_id & METRIC_LIST_MASK)]--;
     }
 
     inline void received_neighbour(uint16_t req_id, uint16_t neighbour) {
-      _passive_ack_vector_list[req_id & METRIC_LIST_MASK] &= ~((uint16_t)(1 << neighbour));
+      _passive_ack_vector_list[(req_id & METRIC_LIST_MASK)] &= ~((uint16_t)(1 << neighbour));
     }
 
     inline bool has_neighbours_left(uint16_t req_id) {
-      return _passive_ack_vector_list[req_id & METRIC_LIST_MASK] != 0;
+      return _passive_ack_vector_list[(req_id & METRIC_LIST_MASK)] != 0;
     }
 
     inline bool includes_rreq(uint16_t req_id) {
-      return (_id_list[req_id & METRIC_LIST_MASK] == req_id);
+      return (_id_list[(req_id & METRIC_LIST_MASK)] == req_id);
     }
   };
 

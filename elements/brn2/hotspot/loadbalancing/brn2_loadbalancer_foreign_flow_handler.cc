@@ -44,7 +44,7 @@ void LoadBalancerForeignFlowHandler::push( int port, Packet *packet )
   ForeignFlowInfo *foreignFlow;
 
   EtherAddress *fromEther;
-  EtherAddress *toEther;
+//  EtherAddress *toEther;
   IPAddress *fromIP;
   IPAddress *toIP;
   uint8_t headerLen;
@@ -62,7 +62,7 @@ void LoadBalancerForeignFlowHandler::push( int port, Packet *packet )
 
     p_data = (uint8_t *)packet->data();
 
-    toEther = new EtherAddress(&p_data[0]);
+//    toEther = new EtherAddress(&p_data[0]);
     fromEther = new EtherAddress(&p_data[6]);
 
     headerLen = ip_header->ip_hl;

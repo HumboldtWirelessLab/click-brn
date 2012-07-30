@@ -74,11 +74,10 @@ EewsForwarder::initialize(ErrorHandler *)
 void
 EewsForwarder::push( int port, Packet *p)
 {
-  uint32_t result;
   struct eews_header *ah = EewsProtocol::getEewsHeader(p);
 
   if ( port == 0 ) { //from local
-    result = _as->update_alarm(ah->type, _nodeid->getMasterAddress(), alarm_id, 0, _nodeid->getMasterAddress());
+    _as->update_alarm(ah->type, _nodeid->getMasterAddress(), alarm_id, 0, _nodeid->getMasterAddress());
     WritablePacket *p_n = EewsProtocol::add_node(p, _nodeid->getMasterAddress(), START_TTL, alarm_id);
     alarm_id++;
 
