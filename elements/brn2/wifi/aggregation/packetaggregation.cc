@@ -77,15 +77,15 @@ PacketAggregation::amsdu_aggregation(Vector<Packet *> *packets, uint32_t max_siz
 }
 
 Packet *
-PacketAggregation::amsdu_deaggregation(Vector<Packet *> *packets, uint32_t max_size, Vector<Packet *> *used_packets)
+PacketAggregation::amsdu_deaggregation(Vector<Packet *> * /*packets*/, uint32_t /*max_size*/ , Vector<Packet *> * /*used_packets*/)
 {
-
+    return NULL;
 }
 
 Packet *
-PacketAggregation::ampdu_aggregation(Vector<Packet *> *packets, uint32_t max_size, Vector<Packet *> *used_packets)
+PacketAggregation::ampdu_aggregation(Vector<Packet *> * /*packets*/ , uint32_t /*max_size*/, Vector<Packet *> * /*used_packets*/)
 {
-
+    return NULL;
 }
 
 CLICK_ENDDECLS

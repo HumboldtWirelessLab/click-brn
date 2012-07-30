@@ -38,7 +38,7 @@ public:
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
 
-	int configure(Vector<String> &conf, ErrorHandler *errh);
+	int configure(Vector<String> &conf, ErrorHandler *);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 

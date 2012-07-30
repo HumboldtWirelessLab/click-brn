@@ -45,7 +45,7 @@ keymanagement::~keymanagement() {
 }
 
 int keymanagement::initialization() {
-	crypto_ctrl_data ctrl_data = {0 , 0, 0, 0};
+	//crypto_ctrl_data ctrl_data = {0 , 0, 0, 0};
 
 	seed = NULL;
 

@@ -86,7 +86,7 @@ int TLS::configure(Vector<String> &conf, ErrorHandler *errh) {
 }
 
 // called just before router is placed online
-int TLS::initialize(ErrorHandler* errh) {
+int TLS::initialize(ErrorHandler *) {
 
 	SSL_load_error_strings();
 	ERR_load_BIO_strings();
@@ -382,14 +382,14 @@ void TLS::restart_tls() {
 	do_handshake();
 }
 
-int pem_passwd_cb(char *buf, int size, int rwflag, void *password) {
+int pem_passwd_cb(char *buf, int size, int , void *password) {
 	strncpy(buf, (char *)(password), size);
 	buf[size - 1] = '\0';
 	return(strlen(buf));
 }
 
-static String handler_triggered_handshake(Element *e, void *thunk) {
-	TLS *tls = (TLS *)e;
+static String handler_triggered_handshake(Element *, void *) {
+	// TLS *tls = (TLS *)e;
 	// to test this, make do_handshake public!
 	// tls->do_handshake();
 	return String();
