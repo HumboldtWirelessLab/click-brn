@@ -49,7 +49,7 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-//static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNode" };
+static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNode" };
 
 class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
 
