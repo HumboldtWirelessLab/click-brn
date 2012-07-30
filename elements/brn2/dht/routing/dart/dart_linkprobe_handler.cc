@@ -102,7 +102,7 @@ DartLinkProbeHandler::lpSendHandler(char *buffer, int size)
 int
 DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 {
-  int len;
+//  int len;
   DHTnode first;
   DHTnodelist nodes;
 
