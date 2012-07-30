@@ -38,7 +38,7 @@ public:
 
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
-	int initialize(ErrorHandler* errh);
+	int initialize();
 
 	void snd_kdp_req();
 
@@ -91,7 +91,6 @@ private:
 	void add_handlers();
 };
 
-static String handler_triggered_request(Element *e, void *thunk);
 
 
 CLICK_ENDDECLS
