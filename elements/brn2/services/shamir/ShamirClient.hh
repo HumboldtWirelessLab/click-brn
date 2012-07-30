@@ -49,7 +49,7 @@ private:
     HashTable<uint32_t, BIGNUM *> _received_shares;
 
     int store_reply(Packet *p);
-    BIGNUM *combine();
+    void combine();
 };
 
 CLICK_ENDDECLS
