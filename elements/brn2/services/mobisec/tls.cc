@@ -214,7 +214,7 @@ bool TLS::do_handshake() {
 
 	if (role == CLIENT)
 		if(restart_timer.expiry().msecval() <= Timestamp::now().msecval())
-			restart_timer.schedule_after_s(BACKOFF_TLS_RETRY);
+			restart_timer.schedule_after_sec(BACKOFF_TLS_RETRY);
 
 	return false;
 }
@@ -405,7 +405,7 @@ void TLS::add_handlers()
   BRNElement::add_handlers();
 
 
-  add_read_handler("handshake", handler_triggered_handshake, NULL);
+  add_read_handler("handshake", handler_triggered_handshake, 0);
 }
 
 CLICK_ENDDECLS
