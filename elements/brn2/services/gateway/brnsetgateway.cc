@@ -79,7 +79,7 @@ const EtherAddress
 BRNSetGateway::choose_gateway() {
   // the gateway's metric to reach it and the gateway metric itself
   EtherAddress best_gw = EtherAddress();
-  uint8_t best_gw_metric = 0xFF;
+  //uint8_t best_gw_metric = 0xFF;
   uint32_t best_metric_to_reach_gw = 0xFFFFFFFF;
 
   const BRNGatewayList *list_of_gws = _gw->get_gateways();
@@ -168,7 +168,7 @@ BRNSetGateway::choose_gateway() {
      // TODO better combination of metric to gateway and gateway metric may be nedded
      // save new best gateway
      best_metric_to_reach_gw = new_metric;
-     best_gw_metric = gwe.get_metric();
+     //best_gw_metric = gwe.get_metric();
      best_gw = gw;
    }
   }
