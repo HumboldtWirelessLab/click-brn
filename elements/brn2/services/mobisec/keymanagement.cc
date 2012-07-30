@@ -103,7 +103,8 @@ data_t *keymanagement::get_seed() {
 }
 
 void keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
-	memcpy(&ctrl_data, data, sizeof(crypto_ctrl_data));
+	if (data)
+		memcpy(&ctrl_data, data, sizeof(crypto_ctrl_data));
 }
 crypto_ctrl_data *keymanagement::get_ctrl_data() {
 	return &ctrl_data;
@@ -114,6 +115,14 @@ Vector<String> keymanagement::get_keylist() {
 }
 
 data_t *keymanagement::get_keylist_string() {
+	data_t *keylist_string = (unsigned char*)malloc(ctrl_data.cardinality * ctrl_data.key_len);
+	if(!keylist_string) { BRN_ERROR("NO MEM FOR keylist_string");}
+
+	for(int i=0; i<ctrl_data.cardinality; i++) {
+		// Build a keylist of type char
+		memcpy(keylist_string+(i*ctrl_data.key_len), keylist[i].data(), ctrl_data.key_len);
+	}
+
 	return keylist_string;
 }
 
@@ -166,14 +175,12 @@ void keymanagement::install_keylist_cli_driv(data_t *_seed) {
 
 /* This function should only used by the keyserver */
 void keymanagement::gen_keylist() {
-	keylist_string = (unsigned char*)realloc(keylist_string, ctrl_data.cardinality * ctrl_data.key_len);
-
 	unsigned char *ith_key = (unsigned char *)malloc(ctrl_data.key_len);
 
-	RAND_seed("Wer nichts als Informatik versteht, versteht auch die nicht recht -- L1cht3nb3r9 (powned)", 80);
+	RAND_seed("Wer nichts als Informatik versteht, versteht auch die nicht recht -- L1cht3nb3r9", 80);
 
 	click_chatter("gen_keylist card:%i", ctrl_data.cardinality);
-	for(int i=0; i<ctrl_data.cardinality; i++) {
+	for(int i=0; i<ctrl_data.cardinality && ctrl_data.cardinality <= 1000; i++) {
 		// Generate a new key for the list
 		RAND_bytes(ith_key, ctrl_data.key_len);
 
@@ -181,8 +188,6 @@ void keymanagement::gen_keylist() {
 
 		// Build the keylist of type vector
 		keylist.push_back(s);
-		// Build a keylist of type char
-		memcpy(keylist_string+(i*ctrl_data.key_len), s.data(), ctrl_data.key_len);
 	}
 
 	free(ith_key);
