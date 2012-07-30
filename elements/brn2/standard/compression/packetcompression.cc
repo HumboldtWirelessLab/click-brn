@@ -170,7 +170,7 @@ PacketCompression::compress(Packet *p, uint16_t offset, uint16_t compression_typ
       }
     case COMPRESSION_TYPE_STRIP :
       {
-        if ( oldlen > _strip_len ) {
+        if ( oldlen > (int32_t)_strip_len ) {
           p->take(oldlen - _strip_len);
           resultsize = _strip_len;
         } else {

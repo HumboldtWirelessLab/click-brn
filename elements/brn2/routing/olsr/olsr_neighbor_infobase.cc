@@ -770,6 +770,7 @@ OLSRNeighborInfoBase::compute_mprset()
 							best_mpr = n_member->N_neigh_main_addr;
 						}
 						else if (n_member->N_willingness == best_mpr_willingness)
+                        {
 							if (reaches > best_mpr_reachability)
 							{
 								best_mpr_reachability = reaches;
@@ -777,11 +778,14 @@ OLSRNeighborInfoBase::compute_mprset()
 								best_mpr = n_member->N_neigh_main_addr;
 							}
 							else if (reaches == best_mpr_reachability)
+                            {
 								if (d_y>best_mpr_d_y)
 								{
 									best_mpr_d_y = d_y;
 									best_mpr = n_member->N_neigh_main_addr;
 								}
+                            }
+                        }
 					}
 				}
 			}
@@ -827,7 +831,7 @@ OLSRNeighborInfoBase::compute_mprset()
 #endif
 		// make sure that the tmp data structure is empty
 		mprset.clear();
-		int best_mpr_willingness = 0;
+		//int best_mpr_willingness = 0;
 		//int best_mpr_reachability = 0;
 		int best_mpr_d_y = 0;
 		IPAddress best_mpr;
@@ -859,7 +863,7 @@ OLSRNeighborInfoBase::compute_mprset()
 						if (best_mpr_d_y >= d_y)
 						{
 
-							best_mpr_willingness = n_member->N_willingness;
+							//best_mpr_willingness = n_member->N_willingness;
 							//best_mpr_reachability = reaches;
 							best_mpr_d_y = d_y;
 							best_mpr = n_member->N_neigh_main_addr;

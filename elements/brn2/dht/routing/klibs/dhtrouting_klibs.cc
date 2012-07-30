@@ -223,10 +223,10 @@ DHTRoutingKlibs::handle_hello(Packet *p_in)
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   DHTnodelist dhtlist;
-  int count_nodes;
+//  int count_nodes;
   DHTnode *me_from_list;
   uint8_t ptype;
-  count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
+  /*count_nodes =*/ DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
   EtherAddress ea = EtherAddress(DHTProtocol::get_src_data(p_in));
   DHTnode *node;
   bool notify_storage = false;
@@ -311,14 +311,14 @@ DHTRoutingKlibs::handle_request(Packet *p_in, uint32_t node_group)
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
   DHTnodelist send_dhtlist;
-  int count_nodes;
+//  int count_nodes;
   DHTnode *node = NULL;
   bool notify_storage = false;
 
 //  click_chatter("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
 //                  EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
   uint8_t ptype;
-  count_nodes = DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
+  /*count_nodes =*/ DHTProtocolKlibs::get_dhtnodes(p_in, &ptype, &dhtlist);
   notify_storage = update_nodes(&dhtlist);
 
   if ( is_me(ether_header->ether_dhost) )
@@ -542,7 +542,7 @@ DHTRoutingKlibs::nodeDetection()
   DHTnodelist _list;
   bool _list_filled = false;
 
-  bool is_own;
+//  bool is_own;
 
 
   if ( _linkstat == NULL ) return;
@@ -556,11 +556,11 @@ DHTRoutingKlibs::nodeDetection()
     node = _own_dhtnodes.get_dhtnode(&(neighbors[i]));       //TODO: better check whether node is foreign or own
 
     if ( node == NULL ) {
-      is_own = false;
+//      is_own = false;
       node = _foreign_dhtnodes.get_dhtnode(&(neighbors[i]));
-    } else {
+    } /*else {
       is_own = true;
-    }
+    }*/
 
     if ( node == NULL ) {
       //Don't add the node. Just send him a packet with routing information. if it is a dht-node

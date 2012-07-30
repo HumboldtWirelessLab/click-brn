@@ -71,6 +71,10 @@ if [ "x$1" = "x" ]; then
   CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" $CXXFLAGS -g $XCFLAGS\""
 fi
 
+if [ ! "x$WALL" = "x0" ]; then
+  XCFLAGS="$XCFLAGS -Wall -Wextra -fpermissive"
+fi
+
 for op in $@; do
 
     case "$op" in

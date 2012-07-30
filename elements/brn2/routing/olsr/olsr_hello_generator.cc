@@ -41,7 +41,7 @@ OLSRHelloGenerator::configure( Vector<String> &conf, ErrorHandler *errh )
                           "Interface IPAddress", cpkP, cpIPAddress, &_local_iface_addr,
                           "Main IPAddress of node", cpkP, cpIPAddress, &_myMainIP,
 	                       "WILLINGNESS", cpkP, cpInteger/*, "Willingness of the node"*/, &_node_willingness
-	                       , 0 );
+	                       , cpEnd );
 	if ( res < 0 )
 		return res;
 	if ( _period <= 0 )
@@ -330,7 +330,7 @@ OLSRHelloGenerator::set_period_handler(const String &conf, Element *e, void *, E
 {
 	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
 	int new_period;
-  int res = cp_va_kparse( conf, me, errh,"period (msec)", cpkP, cpInteger, &new_period, 0 );
+    int res = cp_va_kparse( conf, me, errh,"period (msec)", cpkP, cpInteger, &new_period, cpEnd);
 	if ( res < 0 )
 		return res;
 	if ( new_period <= 0 )
@@ -344,7 +344,7 @@ OLSRHelloGenerator::set_neighbor_hold_time_handler(const String &conf, Element *
 {
 	OLSRHelloGenerator* me = (OLSRHelloGenerator *) e;
 	int new_nbr_hold_time;
-  int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, 0 );
+    int res = cp_va_kparse( conf, me, errh, "Neighbor Hold time", cpkP, cpInteger, &new_nbr_hold_time, cpEnd);
 	if ( res < 0 )
 		return res;
 	me->set_neighbor_hold_time(new_nbr_hold_time);
