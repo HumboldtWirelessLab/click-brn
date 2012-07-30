@@ -57,7 +57,7 @@ BRN2RouteQuerier::BRN2RouteQuerier()
 {
   BRNElement::init();
 
-  timeval tv = Timestamp::now().timeval();
+  //timeval tv = Timestamp::now().timeval();
 }
 
 /* destructor processes some cleanup */
