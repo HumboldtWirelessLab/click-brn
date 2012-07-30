@@ -107,7 +107,7 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
   DHTnodelist nodes;
 
   BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
-  len = DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
+  /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
 
   _drt->add_neighbour(&first);
   _drt->add_nodes(&nodes);
