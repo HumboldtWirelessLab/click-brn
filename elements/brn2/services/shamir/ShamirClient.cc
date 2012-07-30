@@ -88,7 +88,7 @@ void ShamirClient::combine() {
 
     for (HashTable<uint32_t, BIGNUM *>::iterator it = _received_shares.begin(); it; ++it) {
         current_id = it.key();
-        uint32_t current_lagrange = 1;
+        int current_lagrange = 1;
 
         /* Compute the Lagrange coeffient for the base polynomial at x=0
          * l_{i,0} = \Prod{j}{j-1} \forall j \in A, j \neq i where A is the set of
