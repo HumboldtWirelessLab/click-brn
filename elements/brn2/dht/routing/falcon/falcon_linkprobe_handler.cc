@@ -164,6 +164,10 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_nei
   BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
 
   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
+  if ( len == -1 ) {
+    BRN_WARN("Error on linkprobe unpack");
+  }
+
 
   BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
   BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );

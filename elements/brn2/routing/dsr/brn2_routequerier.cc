@@ -191,7 +191,9 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   } else {
     BRN_DEBUG(" query route: %s (src) to %s (dst)",src_addr.unparse().c_str(),dst_addr.unparse().c_str());
     _routing_maintenance->query_route( src_addr, dst_addr, route, &metric_of_route );
-    metric_of_route = _routing_maintenance->get_route_metric(route); //update metric if lanks have changed
+    int32_t mor = _routing_maintenance->get_route_metric(route); //update metric if lanks have changed
+    if ( mor < 0 ) metric_of_route = 0;
+    else metric_of_route = (uint32_t)mor;
   }
 
   BRN_DEBUG(" Metric of found route = %d route_length = %d", metric_of_route, route.size());
@@ -242,7 +244,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   } else {
 
     if (_debug == BrnLogger::DEBUG) {
-      if (metric_of_route == -1) {
+      if (metric_of_route == 0) {
         BRN_DEBUG(" * metric of route is too bad ! drop it !");
         BRN_DEBUG(" * My Linktable: \n%s", _link_table->print_links().c_str());
       }
@@ -828,7 +830,7 @@ BRN2RouteQuerier::rreq_issue_hook()
       continue;
     } else {
       if (diff_in_ms(curr_time, ir._time_last_issued) > ir._backoff_interval) {
-        if ( (_max_retries == -1 ) || (_max_retries >= ir._times_issued) ) {
+        if ( (_max_retries == -1 ) || (_max_retries >= (int32_t)ir._times_issued) ) {
 
           BRN_DEBUG(" * time to issue new request for host %s", ir._target.unparse().c_str());
 

@@ -64,7 +64,7 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
   EtherAddress *redirectNode;
 
   EtherAddress *fromEther;
-  EtherAddress *toEther;
+//  EtherAddress *toEther;
   IPAddress *fromIP;
   IPAddress *toIP;
   uint8_t headerLen;
@@ -83,7 +83,7 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
     click_ether *ether = (click_ether *)packet->data();
     click_ip *ip_header = (click_ip *)&packet->data()[14];
 
-    toEther = new EtherAddress(&p_data[0]);
+//    toEther = new EtherAddress(&p_data[0]);
     fromEther = new EtherAddress(&p_data[6]);
 
     headerLen = ip_header->ip_hl;
@@ -130,7 +130,7 @@ void LoadBalancerRedirect::push( int port, Packet *packet )
     //click_ether *ether = (click_ether *)packet->data();
     click_ip *ip_header = (click_ip *)&packet->data()[14];
 
-    toEther = new EtherAddress(&p_data[0]);
+//    toEther = new EtherAddress(&p_data[0]);
     fromEther = new EtherAddress(&p_data[6]);
 
     headerLen = ip_header->ip_hl;
