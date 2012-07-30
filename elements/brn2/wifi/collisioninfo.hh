@@ -67,7 +67,7 @@ class CollisionInfo : public BRNElement {
         memset(_unicast_tx, 0, sizeof(uint32_t) * no_queues * records);
         memset(_unicast_retries, 0, sizeof(uint32_t) * no_queues * records);
         memset(_unicast_succ, 0, sizeof(uint32_t) * no_queues * records);
-        for ( int i = 0; i < no_queues * records; i++ ) _unicast_frac[i] = -1;
+        for ( int i = 0; i < (no_queues * records); i++ ) _unicast_frac[i] = 0; //TODO: ErrorHandling -1;
 
         _c_unicast_tx = _unicast_tx;
         _c_unicast_retries = _unicast_retries;

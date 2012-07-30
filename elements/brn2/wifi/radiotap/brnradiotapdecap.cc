@@ -245,7 +245,9 @@ BrnRadiotapDecap::simple_action(Packet *p)
       ceh->retries = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_DATA_RETRIES));
     }
     if (rt_el_present(th, IEEE80211_RADIOTAP_MCS)) {
-      uint8_t known, flags, index;
+      uint8_t known = 0;
+      uint8_t flags = 0;
+      uint8_t index = 0;
       uint8_t *rt_el_offset_p = (uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS);
 
       //click_chatter("p: %d mcs p: %d",p->data(),rt_el_offset_p);

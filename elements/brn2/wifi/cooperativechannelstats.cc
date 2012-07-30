@@ -221,7 +221,7 @@ HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::
 
 enum { H_STATS };
 
-String CooperativeChannelStats::stats_handler(int mode) {
+String CooperativeChannelStats::stats_handler(int /*mode*/) {
     
     StringAccum sa;
     
@@ -231,7 +231,7 @@ String CooperativeChannelStats::stats_handler(int mode) {
     for (NodeChannelStatsTableIter iter = ncst.begin(); iter.live(); iter++) {
         
         NodeChannelStats *ncs = iter.value();
-        EtherAddress ea = iter.key();
+        //EtherAddress ea = iter.key();
         
         sa << "\t<node address=\"" << ncs->node.unparse() << "\" />\n";
     }
