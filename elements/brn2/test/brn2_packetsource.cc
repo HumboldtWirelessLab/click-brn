@@ -82,7 +82,7 @@ BRN2PacketSource::initialize(ErrorHandler *)
   pinfo.power = (uint8_t)_power;
 
   //TODO: simulation not good idea
-#warning Fix Random stuff
+#pragma message "Fix Random stuff"
   long p = (long)this;
   click_srandom((int)p);
 

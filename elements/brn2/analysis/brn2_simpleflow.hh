@@ -1,7 +1,6 @@
 #ifndef CLICK_BRN2SIMPLEFLOW_HH
 #define CLICK_BRN2SIMPLEFLOW_HH
 #include <click/bighashmap.hh>
-#include <click/dequeue.hh>
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
