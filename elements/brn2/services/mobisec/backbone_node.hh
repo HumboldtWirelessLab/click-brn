@@ -43,12 +43,12 @@ public:
 	void snd_kdp_req();
 
 	void jmp_next_session();
-	static void session_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
 
-	static void kdp_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
+	static void kdp_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
 
 private:
 	BRN2NodeIdentity *_me;

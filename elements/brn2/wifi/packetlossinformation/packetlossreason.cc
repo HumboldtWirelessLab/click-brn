@@ -60,6 +60,8 @@ PacketLossReason::PossibilityE PacketLossReason::id_get(unsigned int id)
 	else if (16 == id){return NARROWBAND_NON_COOPERATIVE;}
 	else if (17 == id){return BROADBAND_COOPERATIVE;}
 	else if (18 == id){return BROADBAND_NON_COOPERATIVE;}
+    else
+        return ERROR;
 }
 
 
