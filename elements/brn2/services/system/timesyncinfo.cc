@@ -46,8 +46,6 @@ TimeSyncInfo::~TimeSyncInfo()
 int
 TimeSyncInfo::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  uint32_t cpu_interval = 0;
-
   if (cp_va_kparse(conf, this, errh,
       "MAXIDS", cpkP, cpInteger, &_max_ids,
       "DEBUG", cpkP, cpInteger, &_debug,

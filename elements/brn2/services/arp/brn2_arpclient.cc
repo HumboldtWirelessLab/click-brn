@@ -194,12 +194,10 @@ BRN2ARPClient::request_timer_func()
 void
 BRN2ARPClient::push( int port, Packet *packet )
 {
-  int result;
-
   BRN_DEBUG("BRN2ARPClient: PUSH an port: %d\n",port);
 
   if ( port == 0 )
-    result = arp_reply(packet);
+    arp_reply(packet);
 
   BRN_DEBUG("BRN2ARPClient: Skript %s %d %d %d %d",_client_ip.unparse().c_str(),
     _count_request,_count_reply,_count_timeout,_request_queue.size());

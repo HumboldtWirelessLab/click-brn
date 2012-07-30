@@ -93,7 +93,6 @@ DHTProtocolOmni::new_route_reply_packet(EtherAddress *me, DHTnodelist *list)
   msg->status = STATUS_OK;
 
   DHTnode *n;
-  Timestamp now = Timestamp::now();
 
   for( int i = 0;i < listsize ;i++ ) {
     n = list->get_dhtnode(i);

@@ -136,9 +136,9 @@ LPRProtocol::unpack(unsigned char *packet, int p_len) {
 int
 LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_len)
 {
-  int bitsPerNode, bitsPerTS, bitsPerLink, bitsPerDoubleLink;
+  int bitsPerNode, bitsPerTS, bitsPerDoubleLink; /*bitsPerLink*/
   int invalidNode;
-  int bitLen,len,links, doubleLinks, pindex,b;
+  int bitLen, links, doubleLinks, pindex,b;
   int overallLink;
 
   LZW lzw;
@@ -149,7 +149,7 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   bitsPerNode = calcNoBits(info->_header->_no_nodes);
   invalidNode = (1 << bitsPerNode) - 1;
   bitsPerTS = 8;
-  bitsPerLink = 4;
+  //bitsPerLink = 4;
   bitsPerDoubleLink = 7;
 
   bitLen = ( sizeof(struct packed_link_header) + (info->_header->_no_nodes * 6 ) ) * 8;  //header, macs
@@ -170,10 +170,6 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   bitLen += links * (bitsPerNode + bitsPerDoubleLink);  //Src + link
   bitLen += (doubleLinks / 2) * (bitsPerNode + bitsPerDoubleLink);  //Src + link
 
-  len = (bitLen + 7) / 8;
-  //if ( len > p_len ) return -1;
-
-  //memset(packet,0,len);
   memset(packet,0,p_len);
   memcpy(packet, info->_header, sizeof(struct packed_link_header));
   pindex = sizeof(struct packed_link_header);
@@ -225,7 +221,7 @@ struct packed_link_info *
 LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   struct packed_link_header *plh = new struct packed_link_header;
   struct packed_link_info *pli = new struct packed_link_info;
-  int bitsPerNode, bitsPerTS, bitsPerLink, bitsPerDoubleLink;
+  int bitsPerNode, bitsPerTS, bitsPerDoubleLink; /*bitsPerLink */
   int invalidNode;
   int b;
   int pindex = 0;
@@ -243,7 +239,7 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
   bitsPerNode = calcNoBits(pli->_header->_no_nodes);
   invalidNode = (1 << bitsPerNode) - 1;
   bitsPerTS = 8;
-  bitsPerLink = 4;
+  //bitsPerLink = 4;
   bitsPerDoubleLink = 7;
 
   pli->_macs = new struct etheraddr[pli->_header->_no_nodes];

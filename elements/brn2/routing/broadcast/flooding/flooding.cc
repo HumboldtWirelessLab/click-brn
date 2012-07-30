@@ -40,9 +40,9 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _flooding_src(0),
-    _flooding_fwd(0),
-    _bcast_id(1)
+  : _bcast_id(1),
+    _flooding_src(0),
+    _flooding_fwd(0)
 {
   BRNElement::init();
 }

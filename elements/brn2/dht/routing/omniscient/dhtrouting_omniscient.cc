@@ -215,7 +215,6 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
 {
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
-  int count_nodes;
 
   EtherAddress ea;
   DHTnode *node;
@@ -223,7 +222,6 @@ DHTRoutingOmni::handle_hello(Packet *p_in)
   BRN_DEBUG("Got Hello from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
                   EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
-  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
 
   dhtlist.del();
@@ -240,7 +238,6 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
   WritablePacket *p,*big_p; 
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
-  int count_nodes;
 
   EtherAddress ea;
   DHTnode *node;
@@ -248,7 +245,6 @@ DHTRoutingOmni::handle_hello_request(Packet *p_in)
   BRN_DEBUG("Got Hello Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
                   EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
-  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
 
   if ( is_me(ether_header->ether_dhost) )
@@ -278,14 +274,12 @@ DHTRoutingOmni::handle_routetable_request(Packet *p_in)
 {
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
-  int count_nodes;
   EtherAddress ea;
 
   BRN_DEBUG("Got Route Table Request from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
                 EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
   ea = EtherAddress(ether_header->ether_shost);
-  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
   dhtlist.clear();
 
@@ -298,12 +292,10 @@ DHTRoutingOmni::handle_routetable_reply(Packet *p_in)
 {
   click_ether *ether_header = (click_ether*)p_in->ether_header();
   DHTnodelist dhtlist;
-  int count_nodes;
 
   BRN_DEBUG("Got Route Table reply from %s to %s. me is %s",EtherAddress(ether_header->ether_shost).unparse().c_str(),
              EtherAddress(ether_header->ether_dhost).unparse().c_str(),_me->_ether_addr.unparse().c_str());
 
-  count_nodes = DHTProtocolOmni::get_dhtnodes(p_in, &dhtlist);
   update_nodes(&dhtlist);
 
   dhtlist.del();
