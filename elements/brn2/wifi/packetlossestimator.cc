@@ -245,7 +245,7 @@ void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
 void PacketLossEstimator::estimateHiddenNode() {
 
     BRN_DEBUG("void PacketLossEstimator::estimateHiddenNode()");
-    if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
+    if ((_packet_parameter->get_src_address() == brn_etheraddress_broadcast) || (_packet_parameter->get_src_address() == _packet_parameter->get_own_address()))
         return;
     
     if ((_packet_parameter->get_own_address()) != (_packet_parameter->get_dst_address())) {
