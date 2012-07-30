@@ -113,7 +113,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	p->kill();
 
 	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
-	if(req->req_id <= 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
+	if(req->req_id < 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
 
 	int keylist_livetime = _key_timeout*keyman.get_cardinality();
 	int now = Timestamp::now().msecval();
@@ -139,7 +139,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	crypto_ctrl_data *hdr = curr_keyman->get_ctrl_data();
 
 	const unsigned char *payload;
-	data_t *keylist_string;
+	data_t *keylist_string = NULL;
 
 	if(_protocol_type == CLIENT_DRIVEN) {
 		payload = curr_keyman->get_seed();
