@@ -64,10 +64,10 @@ Mobility::initialize(ErrorHandler *)
   return 0;
 }
 
+#if CLICK_NS
 void
 Mobility::move(int x, int y, int z, int speed)
 {
-#if CLICK_NS
   int pos[4];
   pos[0] = x;
   pos[1] = y;
@@ -75,8 +75,13 @@ Mobility::move(int x, int y, int z, int speed)
   pos[3] = speed;
 
   simclick_sim_command(router()->simnode(), SIMCLICK_SET_NODE_POSITION, &pos);
-#endif
 }
+#else
+void
+Mobility::move(int, int, int, int)
+{
+}
+#endif
 
 
 //-----------------------------------------------------------------------------
