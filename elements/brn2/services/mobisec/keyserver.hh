@@ -43,10 +43,10 @@ public:
 	int initialize(ErrorHandler* errh);
 
 	void jmp_next_session();
-	static void session_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
 
 	void prepare_new_epoch();
 

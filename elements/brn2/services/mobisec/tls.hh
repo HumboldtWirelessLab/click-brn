@@ -94,7 +94,7 @@ public:
 
 	/* For reliable communication */
 	void restart_tls();
-	static void restart_trigger(Timer *t, void *element) { ((TLS *)element)->restart_tls(); }
+	static void restart_trigger(Timer *, void *element) { ((TLS *)element)->restart_tls(); }
 
 	void add_handlers();
 
