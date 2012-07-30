@@ -609,6 +609,7 @@ OLSRNeighborInfoBase::compute_mprset()
 		N = &(it.value()); // Neighborset for this interface
 		N2=n2_set.findp(it.key());
 		twohopset=twohop_set.findp(it.key());
+		if ( twohopset == NULL ) click_chatter("Empty twohop set");
 		click_chatter ("\tNeighborset\t\n");
 		if (! N->empty())
 		{
