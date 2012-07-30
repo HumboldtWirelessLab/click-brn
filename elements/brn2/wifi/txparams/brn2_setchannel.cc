@@ -34,12 +34,12 @@ BRN2SetChannel::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 BRN2SetChannel::simple_action(Packet *p_in)
 {
-  uint8_t operation;
+//  uint8_t operation;
   uint8_t set_channel;
 
   if ( p_in != NULL )
   {
-    operation = BRNPacketAnno::operation_anno(p_in);
+//    operation = BRNPacketAnno::operation_anno(p_in);
     set_channel = BRNPacketAnno::channel_anno(p_in);
 
     if ( ( set_channel == 0 ) && ( _channel != 0 ) )

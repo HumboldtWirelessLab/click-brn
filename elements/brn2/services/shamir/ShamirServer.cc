@@ -81,17 +81,21 @@ void ShamirServer::push(int port, Packet *p) {
  * *******************************************************
  */
 
-int ShamirServer::handle_request(Packet *p) {
+int ShamirServer::handle_request(Packet *p_in) {
 
     struct shamir_reply reply;
     reply.share_id = _share_id;
     reply.share_len = BN_bn2bin(_share, reply.share);
     if (!reply.share_len) {
         BRN_DEBUG("Failed to handle request");
-        p->kill();
+        p_in->kill();
         return -1;
     }
 
+    WritablePacket *p = p_in->push(sizeof(shamir_reply));
+
+    memcpy(p->data(), &reply, sizeof(struct shamir_reply));
+    output(0).push(p);
     //Packet *reply_packet = Packet::make(128, NULL, 2*sizeof(uint32_t)+reply.share_len);
     return 0;
 }

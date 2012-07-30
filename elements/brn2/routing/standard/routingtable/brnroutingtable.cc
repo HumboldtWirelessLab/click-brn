@@ -38,9 +38,9 @@ CLICK_DECLS
 BrnRoutingTable::BrnRoutingTable() :
   m_bActive( false ),
   m_tRouteAging( on_routeaging_expired, this ),
+  m_tvLifetimeSlice(1000),
   m_iInitialTTL( 20 ),
-  m_iDropProb( 50 ),
-  m_tvLifetimeSlice(1000)
+  m_iDropProb( 50 )
 {
   BRNElement::init();
 }

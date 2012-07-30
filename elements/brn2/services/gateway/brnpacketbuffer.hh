@@ -22,7 +22,7 @@
 #define BRNPACKETBUFFER_HH
 
 #include <click/bighashmap.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
 #include <click/vector.hh>
 
 CLICK_DECLS
@@ -70,7 +70,7 @@ private:
       void check() const { assert(_p); }
     };
 
-    typedef DEQueue<BufferedPacket> PacketBuffer;
+    typedef Deque<BufferedPacket> PacketBuffer;
     typedef HashMap<uint32_t, PacketBuffer> BucketPacketBuffer;
     typedef BucketPacketBuffer::iterator BucketPacketBufferIter;
     

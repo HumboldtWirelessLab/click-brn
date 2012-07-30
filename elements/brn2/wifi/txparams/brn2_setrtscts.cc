@@ -68,7 +68,7 @@ Packet *Brn2_SetRTSCTS::simple_action(Packet *p)
 
 bool Brn2_SetRTSCTS::is_number_in_random_range(unsigned int value)
 {
-	int random_number = click_random(0, 100); //generate random number in range [0,100]
+	unsigned int random_number = click_random(0, 100); //generate random number in range [0,100]
 	BRN_DEBUG("Random_number = %d", random_number);
 	if (random_number <= value) return true;
 	else {
@@ -241,7 +241,7 @@ static String SetRTSCTS_read_param(Element *e, void *thunk)
 }
 
 
-static int SetRTSCTS_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+static int SetRTSCTS_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler * /*errh*/)
 {
 	Brn2_SetRTSCTS *f = (Brn2_SetRTSCTS *)e;
 	String s = cp_uncomment(in_s);

@@ -104,7 +104,7 @@ AlarmingForwarder::push( int port, Packet *p)
 
       EtherAddress ea = EtherAddress(an->node_ea);
 
-      int result = _as->update_alarm(ah->type, &ea, an->id, (an->ttl - BRNPacketAnno::ttl_anno(p)) + 1, &fwd_ea);
+      result = _as->update_alarm(ah->type, &ea, an->id, (an->ttl - BRNPacketAnno::ttl_anno(p)) + 1, &fwd_ea);
 
       /* if node is to far or already known, mark to delete it */
       if (((an->ttl - BRNPacketAnno::ttl_anno(p)) >= _as->_hop_limit ) ||

@@ -26,7 +26,7 @@
 #include <click/handlercall.hh>
 #include <clicknet/wifi.h>
 #include <click/timer.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
 #include <elements/wifi/ap/associationresponder.hh>
 #include "brn2_assoclist.hh"
 #include "../brn2_wirelessinfolist.hh"
@@ -49,7 +49,7 @@ class BRN2AssocResponder : public AssociationResponder {
 
   protected:
 
-  typedef DEQueue<DelayedResponse*> DelayedResponseQueue;
+  typedef Deque<DelayedResponse*> DelayedResponseQueue;
 
  public:
   //

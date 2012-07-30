@@ -42,7 +42,7 @@ CLICK_DECLS
 
 #ifdef CLICK_LINUXMODULE
 
-#warning "Click_LinuxModule: BRN_LOG etc. is defined as click_chatter"
+#pragma message "Click_LinuxModule: BRN_LOG etc. is defined as click_chatter"
 #define BRN_LOG   if (_debug >= BrnLogger::LOG) click_chatter
 #define BRN_FATAL if (_debug >= BrnLogger::FATAL) click_chatter
 #define BRN_ERROR if (_debug >= BrnLogger::ERROR) click_chatter
