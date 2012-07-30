@@ -888,7 +888,7 @@ BRN2RequestForwarder::get_trackroutemap() {
 
     sa << "\t<requestnode src=\"" << ea.unparse() << "\" >\n";
 
-    for ( int i = 0; i < METRIC_LIST_SIZE; i++) {
+    for ( uint32_t i = 0; i < METRIC_LIST_SIZE; i++) {
       if ( (rri->_id_list[i]) % METRIC_LIST_SIZE == i ) {
         sa << "\t\t<request id=\"" << rri->_id_list[i] << "\" metric=\"" << rri->_metric_list[i];
         sa << "\" last_hop_opt=\"" << (uint32_t)(rri->_last_hop_opt[i]) << "\" left_retries=\"";
