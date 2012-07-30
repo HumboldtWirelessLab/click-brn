@@ -100,15 +100,16 @@ CollisionInfo::simple_action(Packet *p)
       rs->update(&now, ceh->retries, ceh->flags, q);
 
     }
-  }
+    }
+    return p;
 
-  return p;
+  
 }
 
 enum {H_STATS};
 
 String
-CollisionInfo::stats_handler(int mode)
+CollisionInfo::stats_handler(int /*mode*/)
 {
   StringAccum sa;
 

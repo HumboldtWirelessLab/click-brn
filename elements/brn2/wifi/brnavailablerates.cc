@@ -119,8 +119,9 @@ BrnAvailableRates::configure(Vector<String> &conf, ErrorHandler *errh)
   int res = 0;
   for (int x = 0; x < conf.size(); x++) {
     res = parse_and_insert(conf[x], errh);
-    if (res != 0) {
-      return res;
+    if (res != 0) 
+    {
+        return res;
     }
   }
 

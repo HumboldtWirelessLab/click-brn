@@ -137,7 +137,7 @@ public:
             
             for (uint32_t i = 0; i < entries; i++) {
                 
-                if (start_elem - i < 0) {
+                if ((start_elem - i) == 0) { //TODO:Error-Handling
                     
                     if (NULL == &time_buffer[overflow_counter]) {
                         
