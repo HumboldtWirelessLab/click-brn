@@ -18,9 +18,10 @@ PacketLossEstimator::PacketLossEstimator() :
     _cinfo(NULL),
     _hnd(NULL),
     _pli(NULL),
+    _dev(NULL),
     _midterm(5),
-    _longterm(12),
-    _dev(NULL) {
+    _longterm(12)
+     {
         
         BRN_DEBUG("PacketLossEstimator::PacketLossEstimator()");
         _packet_parameter = new PacketParameter();
@@ -134,8 +135,9 @@ Packet *PacketLossEstimator::simple_action(Packet *packet) {
         _ple_interv.mid_now = false;
         _ple_interv.long_now = false;
 
-        return packet;
     }
+        return packet;
+
 }
 
 void PacketLossEstimator::gather_packet_infos_(Packet* packet) {
@@ -246,7 +248,7 @@ void PacketLossEstimator::estimateHiddenNode() {
     if (_packet_parameter->get_src_address() == brn_etheraddress_broadcast || _packet_parameter->get_src_address() == _packet_parameter->get_own_address())
         return;
     
-    if (_packet_parameter->get_own_address() != _packet_parameter->get_dst_address()) {
+    if ((_packet_parameter->get_own_address()) != (_packet_parameter->get_dst_address())) {
         
         if (_hnd->has_neighbours(_packet_parameter->get_own_address()))
             BRN_INFO("Own address has neighbours");
@@ -487,7 +489,7 @@ enum {
     H_STATS
 };
 
-String PacketLossEstimator::stats_handler(int mode) {
+String PacketLossEstimator::stats_handler(int /*mode*/) {
 
     StringAccum sa;
     

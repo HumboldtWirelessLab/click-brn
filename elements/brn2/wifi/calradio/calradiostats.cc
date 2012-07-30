@@ -34,9 +34,8 @@ CalradioStats::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 CalradioStats::simple_action(Packet *p)
 {
-  struct calradio_header *crh = NULL;
-
-  crh = (struct calradio_header *)p->data();
+    //struct calradio_header *crh = NULL;
+    //crh = (struct calradio_header *)p->data();
 
   return p;
 }
