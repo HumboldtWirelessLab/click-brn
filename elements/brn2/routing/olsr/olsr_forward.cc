@@ -28,7 +28,7 @@ OLSRForward::configure(Vector<String> &conf, ErrorHandler *errh)
       "InterfaceInfoBase Element", cpkP, cpElement,&_interfaceInfo,
       "localIfInfoBase Element", cpkP,cpElement, &_localIfInfoBase,
       "main IP address", cpkP, cpIPAddress, &_myMainIP,
-		  0) < 0)
+	  cpEnd ) < 0)
     return -1;
  _dup_hold_time=Timestamp(dup_hold_time,0).timeval();
   return 0;
