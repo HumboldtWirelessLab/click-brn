@@ -77,7 +77,7 @@ int ShamirClient::send_request() {
  * *******************************************************
  */
 
-BIGNUM * ShamirClient::combine() {
+void ShamirClient::combine() {
     BIGNUM *tmp, *product, *result;
     uint32_t current_id;
 
@@ -116,7 +116,9 @@ BIGNUM * ShamirClient::combine() {
         BN_free(product);
     }
 
-    return result;
+    BRN_DEBUG(BN_bn2hex(result));
+
+    return;
 }
 
 int ShamirClient::store_reply(Packet *p) {
