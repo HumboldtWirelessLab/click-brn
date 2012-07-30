@@ -408,7 +408,7 @@ enum {
 };
 
 static String 
-read_param(Element *e, void *thunk)
+read_param(Element *e, void */*thunk*/)
 {
   BRN2DHCPClient *td = (BRN2DHCPClient *)e;
   return td->print_stats();
