@@ -38,3 +38,5 @@ userlevel/libtinyxml.a
 /.cproject
 /elements/brn2/tools/tinyxml/libtinyxml.a
 /.project
+ns/elements.csmk
+userlevel/elements.csmk
