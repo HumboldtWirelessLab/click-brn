@@ -40,12 +40,12 @@ CooperativeChannelStats::~CooperativeChannelStats()
 int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 {    
     BRN_DEBUG("int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)");
-    int ret = cp_va_kparse(conf, this, errh,
-                     "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
-                     "INTERVAL", cpkP, cpInteger, &_interval,
-                     "NEIGHBOURS", cpkP, cpBool, &_add_neighbours,
-                     "DEBUG", cpkP, cpInteger, &_debug,
-                     cpEnd);
+    int ret = cp_va_kparse( conf, this, errh,
+                            "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
+                            "INTERVAL", cpkP, cpInteger, &_interval,
+                            "NEIGHBOURS", cpkP, cpBool, &_add_neighbours,
+                            "DEBUG", cpkP, cpInteger, &_debug,
+                            cpEnd);
 
     return ret;
 }
@@ -183,19 +183,32 @@ void CooperativeChannelStats::push(int, Packet *p)
     p->kill();
 }
 
-HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats(const EtherAddress &ea)
+HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats(EtherAddress *ea)
 {
-    
+    click_chatter ("get_stats entry");
     BRN_DEBUG("HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats(EtherAddress *ea)");
-    if (_ncst.find(ea) != NULL)
+
+    if (_ncst.empty ())
     {
-        BRN_DEBUG("FOUND EA: %s", ea.unparse().c_str());
-        return _ncst.find(ea)->_n_stats;
+        click_chatter ("_ncst IS EMPTY");
+    } else
+    {
+        click_chatter ("_ncst IS NOT EMPTY");
+    }
+
+    if (!_ncst.empty () || _ncst.find(*ea) != NULL)
+    {
+        if (_debug == 4)
+            click_chatter ("find ea entry");
+        BRN_DEBUG("FOUND EA: %s", ea->unparse().c_str());
+        return _ncst.find(*ea)->_n_stats;
         
     } else
     {
+        if (_debug == 4)
+            click_chatter ("find ea else entry");
         HashMap<EtherAddress, struct neighbour_airtime_stats*> hm;
-        BRN_DEBUG("DID NOT FOUND EA: %s", ea.unparse().c_str());
+        BRN_DEBUG("DID NOT FOUND EA: %s", ea->unparse().c_str());
         
         return hm;
     }
