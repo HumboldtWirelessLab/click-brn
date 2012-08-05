@@ -8,6 +8,7 @@
 #ifndef STATSCIRCULARBUFFER_HH
 #define	STATSCIRCULARBUFFER_HH
 #include <map>
+#include <list>
 #include "packetparameter.hh"
 #include "packetlossstatistics.hh"
 #include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
@@ -24,13 +25,15 @@ public:
     Vector<PacketLossStatistics> get_values(EtherAddress &, uint16_t);
     void set_buffer_size(uint16_t size);
     uint16_t get_buffer_size();
-    Vector<PacketLossStatistics> get_all_values(EtherAddress &);
-    Vector<EtherAddress> get_stored_addressess();
+    std::list<PacketLossStatistics> get_all_values(EtherAddress &);
+    Vector<EtherAddress> get_stored_addresses();
     
 private:
     StatsCircularBuffer();
     uint16_t buffer_size;
-    std::map<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
+
+    //std::map<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
+    std::map<EtherAddress, std::list<PacketLossStatistics > > ether_address_time_map;
 };
 
 CLICK_ENDDECLS

@@ -58,15 +58,15 @@ CooperativeChannelStats()
 
 struct cooperative_channel_stats_header
 {
-    uint16_t endianess;     // endianess-test
-    uint8_t flags;          // flags
-    uint8_t no_neighbours;  // number of neighbours
+    uint16_t    endianess;      // endianess-test
+    uint8_t     flags;          // flags
+    uint8_t     no_neighbours;  // number of neighbours
 };
 
 struct cooperative_message_body
 {    
     struct cooperative_channel_stats_header ccsh;
-    struct neighbour_airtime_stats *nats_arr;
+    struct neighbour_airtime_stats          *nats_arr;
 };
 
 class CooperativeChannelStats : public BRNElement
@@ -77,7 +77,7 @@ public:
     
     // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
     CooperativeChannelStats();
-    ~CooperativeChannelStats();
+    virtual ~CooperativeChannelStats();
 
     const char *class_name() const  { return "CooperativeChannelStats"; }
     const char *processing() const  { return PUSH; }
@@ -95,7 +95,7 @@ public:
 
     void send_message();
     
-    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(const EtherAddress &);
+    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
     
 private:
     typedef HashMap<EtherAddress, struct neighbour_airtime_stats*>  NeighbourStatsTable;

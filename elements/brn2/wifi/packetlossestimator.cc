@@ -55,7 +55,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
             {
                 int time_now = packet->timestamp_anno().msec();
 
-                if (!_packet_parameter->is_broadcast_or_self()) 
+                if (!_packet_parameter->is_broadcast_or_self() && _debug == 4)
                 {
                 //if (*_packet_parameter->get_src_address() != brn_etheraddress_broadcast && *_packet_parameter->get_src_address() != *_packet_parameter->get_own_address()) {
                     
@@ -120,10 +120,12 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
                 BRN_DEBUG("HW_Cycles: %i\tHW-Busy_Cycles: %i\tHW-RX_Cycles: %i\tHW-TX_Cycles: %i", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
             */
             }
+
+            if (_debug == 4)
+                click_chatter ("before insert_values");
             
             _stats_buffer.insert_values(*_packet_parameter, *_pli);
-//            new_ether_stats_old.insert(_packet_parameter->get_src_address(), new_stats);
-//            _stats_buffer_old.put_data_in(&new_ether_stats_old);
+            BRN_DEBUG("After insert_values");
         }
 
         return packet;
@@ -261,10 +263,12 @@ void PacketLossEstimator::estimateHiddenNode()
         {
             BRN_INFO("%s has neighbours", _packet_parameter->get_src_address()->unparse().c_str());
             
-            HiddenNodeDetection::NodeInfo       *neighbour          = _hnd->get_nodeinfo_table().find(*_packet_parameter->get_src_address());
-            HiddenNodeDetection::NodeInfoTable  otherNeighbourList  = neighbour->get_links_to();
-            uint8_t                             neighbours          = 0;
-            for (HiddenNodeDetection::NodeInfoTableIter i = otherNeighbourList.begin(); i != otherNeighbourList.end(); i++)
+            HiddenNodeDetection::NodeInfo           *neighbour          = _hnd->get_nodeinfo_table().find(*_packet_parameter->get_src_address());
+            HiddenNodeDetection::NodeInfoTable      otherNeighbourList  = neighbour->get_links_to();
+            uint8_t                                 neighbours          = 0;
+            HiddenNodeDetection::NodeInfoTableIter  otherNeighbourListEnd = otherNeighbourList.end();
+            
+            for (HiddenNodeDetection::NodeInfoTableIter i = otherNeighbourList.begin(); i != otherNeighbourListEnd; i++)
             {
                 EtherAddress tmpAdd = i.key();
                 BRN_INFO("Neighbours Neighbour is: %s", tmpAdd.unparse().c_str());
@@ -286,22 +290,43 @@ void PacketLossEstimator::estimateHiddenNode()
                     BRN_INFO("In my Neighbour List");
                 }
             }
-            _cocst = NULL;
+            //_cocst = NULL;
             if (_cocst != NULL)
             {
-                EtherAddress                                            t_src       = *_packet_parameter->get_src_address();
+                EtherAddress                                            t_src       = _packet_parameter->get_non_const_src_address();
                 BRN_DEBUG("after t_src: %s", t_src.unparse().data());
-                HashMap<EtherAddress, struct neighbour_airtime_stats*>  nats_map;
+                HashMap<EtherAddress, struct neighbour_airtime_stats*>  *nats_map;
                 BRN_DEBUG("before declaration");
-                nats_map = _cocst->get_stats(t_src);
+                if (_cocst == NULL)
+                {
+                    if (_debug == 4)
+                        click_chatter ("COCST IS NULL");
+                } else
+                {
+                    if (_debug == 4)
+                        click_chatter ("_COCST IS NOT NULL");
+                    
+                    nats_map = &_cocst->get_stats(&t_src);
+                    if (nats_map == NULL)
+                    {
+                        if (_debug == 4)
+                            click_chatter ("_cocst->get_stats(&t_src) IS NULL");
+                    } else
+                    {
+                        if (_debug == 4)
+                            click_chatter ("_cocst->get_stats(&t_src) IS NOT NULL");
+                    }
+                }
+                //nats_map = _cocst->get_stats(&t_src);
                 BRN_DEBUG("after nats_map");
-                if (!nats_map.empty())
+                if (!nats_map->empty())
                 {                    
-                    BRN_INFO("NATS-size: %d", nats_map.size());
+                    BRN_INFO("NATS-size: %d", nats_map->size());
                     
-                    uint8_t duration = 0;
+                    uint8_t                                                             duration = 0;
+                    HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator    nats_end = nats_map->end();
                     
-                    for (HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator i = nats_map.begin(); i != nats_map.end(); i++)
+                    for (HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator i = nats_map->begin(); i != nats_end; i++)
                     {                        
                         EtherAddress                    tmpAdd  = i.key();
                         struct neighbour_airtime_stats* nats    = i.value();
@@ -325,6 +350,9 @@ void PacketLossEstimator::estimateHiddenNode()
                 } else {
                     BRN_INFO("NATS NULL");
                 }
+            } else
+            {
+                BRN_INFO("_cocst == NULL");
             }
             
             if (!coopst)
@@ -341,8 +369,6 @@ void PacketLossEstimator::estimateHiddenNode()
                 BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()), _packet_parameter->get_dst_address()->unparse().c_str());
             }
             
-            //int last_hn = _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction();
-            //hnProp = (last_hn + hnProp) / 2;
             _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
             BRN_INFO(";;;;;;;;hnProp for %s: %i", _packet_parameter->get_src_address()->unparse().c_str(), hnProp);
         }
@@ -372,11 +398,13 @@ void PacketLossEstimator::estimateInrange()
     //if (*_packet_parameter->get_src_address() == brn_etheraddress_broadcast || *_packet_parameter->get_src_address() == *_packet_parameter->get_own_address())
         return;
     }
-    HiddenNodeDetection::NodeInfoTable  neighbour_nodes = _hnd->get_nodeinfo_table();
+
     uint8_t                             neighbours      = 1;
     uint8_t                             irProp          = 6;
-    
-    for (HiddenNodeDetection::NodeInfoTableIter i = neighbour_nodes.begin(); i != neighbour_nodes.end(); i++)
+    HiddenNodeDetection::NodeInfoTable  neighbour_nodes = _hnd->get_nodeinfo_table();
+    HiddenNodeDetection::NodeInfoTableIter neighbour_nodes_end = neighbour_nodes.end();
+
+    for (HiddenNodeDetection::NodeInfoTableIter i = neighbour_nodes.begin(); i != neighbour_nodes_end; i++)
     {
         if (neighbours >= 255)
         {
@@ -389,28 +417,41 @@ void PacketLossEstimator::estimateInrange()
     
     uint16_t    *backoffsize    = _dev->get_cwmax();
     double      temp            = 1.0;
+
+    if (*backoffsize == NULL)
+        click_chatter ("backoffsize == NULL");
+
+    if (_debug == 4)
+        click_chatter ("before if");
     
     if (neighbours >= *backoffsize)
     {
+        if (_debug == 4)
+            click_chatter ("in if");
         irProp = 100;
     } else
     {
+        if (_debug == 4)
+            click_chatter ("in else");
         for (int i = 1; i < neighbours; i++)
         {
+            if (_debug == 4)
+                click_chatter ("in elsefor");
             temp *= (double(*backoffsize) - double(i)) / double(*backoffsize);
         }
         
         irProp = (1 - temp) * 100;
     }
-    
+    if (_debug == 4)
+        click_chatter ("after if ");
+
     if (irProp < 6)
     {
         irProp = 6;
     }
-    //int last_ir = _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->getFraction();
-    //irProp = (last_ir + irProp) / 2;
+    if (_debug == 4)
+        click_chatter ("before setFraction");
     _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->setFraction(irProp);
-    //new_stats->inrange_coll = irProp;
     BRN_INFO(";;;;;;;;In-Range1 for %s: %i", _packet_parameter->get_src_address()->unparse().c_str(), irProp);
 }
 
@@ -441,10 +482,7 @@ void PacketLossEstimator::estimateNonWifi(struct airtime_stats &ats)
             non_wifi = ats.hw_busy - ats.frac_mac_busy;
         }
         
-        //int last_nw = _pli->graph_get(_packet_parameter->get_src_address())->reason_get(PacketLossReason::NON_WIFI)->getFraction();
-        //non_wifi = (last_nw + non_wifi) / 2;
         _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::NON_WIFI)->setFraction(non_wifi);
-        //new_stats->non_wifi = non_wifi;
         BRN_INFO(";;;;;;;;Non-Wifi: %i", non_wifi);
     }
 }
@@ -504,11 +542,7 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo &src_info)
         }
     }
     
-    int last_ws = _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
-    weaksignal = (last_ws + weaksignal) / 2;
-    
     _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(weaksignal);
-    //new_stats->weak_signal = weaksignal;
     BRN_INFO(";;;;;;;;Weak Signal for %s: %i", _packet_parameter->get_src_address()->unparse().c_str(), weaksignal);    
 }
 
@@ -543,7 +577,7 @@ String PacketLossEstimator::stats_handler(int mode)    // TODO: statistics for m
 }
 
 StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli)
-{    
+{
     StringAccum     hidden_node_sa;
     const int       neighbour_no = hnd_info_tab.size();
     EtherAddress    neighbours[neighbour_no];
@@ -612,11 +646,10 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
     return hidden_node_sa;
 }
 
-StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli) {
-    
+StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli)
+{
     StringAccum inrange_sa;
     inrange_sa << "\t<inrange observation_period=\"short\">\n";
-
     for (int cou = 0; cou < _pli.node_neighbours_addresses_get().size(); cou++) {
 
         EtherAddress ea = _pli.node_neighbours_addresses_get().at(cou);
@@ -633,8 +666,7 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
     }
 
     inrange_sa << "\t</inrange>\n";
-
-    Vector<EtherAddress> etheraddresses = _stats_buffer.get_stored_addressess();
+    Vector<EtherAddress> etheraddresses = _stats_buffer.get_stored_addresses();
 
     inrange_sa << "\t<inrange observation_period=\"mid\">\n";
 
@@ -702,13 +734,31 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
     }
  */
     inrange_sa << "\t<inrange observation_period=\"long\">\n";
+    for (Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin (); ea_iter != etheraddresses.end (); ea_iter++)
+    {
+        inrange_sa  << "\t\t<neighbour address=\"" << ea_iter->unparse().c_str() << "\">\n";
+        uint16_t count = 200;
+        Vector<PacketLossStatistics> pls = _stats_buffer.get_values(*ea_iter, count);
+
+        uint16_t temp_inrange = 0;
+
+        for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); pls_iter++)
+        {
+            temp_inrange += pls_iter->get_inrange_probability();
+        }
+
+        inrange_sa  << "\t\t\t<fraction>" << temp_inrange / 20 << "</fraction>\n";
+        inrange_sa  << "\t\t</neighbour>\n";
+    }
+    
     inrange_sa << "\t</inrange>\n";
 
     return inrange_sa;
 }
 
 StringAccum PacketLossEstimator::stats_get_weak_signal(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli)
-{    
+{
+    BRN_DEBUG("StringAccum PacketLossEstimator::stats_get_weak_signal");
     StringAccum weak_signal_sa;
     weak_signal_sa << "\t<weak_signal observation_period=\"short\">\n";
 
@@ -739,7 +789,8 @@ StringAccum PacketLossEstimator::stats_get_weak_signal(HiddenNodeDetection::Node
 }
 
 StringAccum PacketLossEstimator::stats_get_non_wifi(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli)
-{    
+{
+    BRN_DEBUG("StringAccum PacketLossEstimator::stats_get_non_wifi");
     StringAccum non_wifi_sa;
     non_wifi_sa << "\t<non_wifi observation_period=\"short\">\n";
 

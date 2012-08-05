@@ -24,6 +24,11 @@ const EtherAddress *PacketParameter::get_src_address()
     return &src_address;
 }
 
+EtherAddress PacketParameter::get_non_const_src_address()
+{
+    return src_address;
+}
+
 const EtherAddress *PacketParameter::get_dst_address()
 {
     return &dst_address;
