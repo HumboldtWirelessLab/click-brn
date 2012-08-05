@@ -22,7 +22,6 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/etheraddress.hh>
-#include <click/bighashmap.hh>
 
 // protocol structures
 #include <clicknet/ether.h>
@@ -92,5 +91,4 @@ BRNGatewaySupervisor::push(int port, Packet *p) {
 }
 
 EXPORT_ELEMENT(BRNGatewaySupervisor)
-#include <click/bighashmap.cc>
 CLICK_ENDDECLS
