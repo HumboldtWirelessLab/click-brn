@@ -14,13 +14,7 @@ StatsCircularBuffer::~StatsCircularBuffer()
 void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, PacketLossInformation &pli)
 {
     EtherAddress ea = *packet_parameter.get_src_address();
-    click_chatter("after get_src_address");
     PacketLossInformation_Graph *pli_graph = pli.graph_get(ea);
-    if (pli_graph == NULL)
-        click_chatter("pli_graph == NULL");
-    click_chatter("after get ea");
-    click_chatter("pli_graph: %s", pli_graph->print().c_str());
-    click_chatter("before get fraction");
     const uint8_t hn_fraction = pli_graph->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction();
     const uint8_t ir_fraction = pli_graph->reason_get(PacketLossReason::IN_RANGE)->getFraction();
     const uint8_t nw_fraction = pli_graph->reason_get(PacketLossReason::NON_WIFI)->getFraction();
@@ -31,7 +25,6 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
     pls.set_inrange_probability(ir_fraction);
     pls.set_non_wifi_probability(nw_fraction);
     pls.set_weak_signal_probability(ws_fraction);
-click_chatter("after pls");
     if (ether_address_time_map.find (ea) == ether_address_time_map.end ())
     {
         //click_chatter ("in if");
@@ -43,7 +36,6 @@ click_chatter("after pls");
 
     } else
     {
-        click_chatter ("in else");
         std::list<PacketLossStatistics> pls_temp_list = ether_address_time_map.at (ea);
         
         //Vector<PacketLossStatistics> temp_vector;
@@ -65,13 +57,12 @@ click_chatter("after pls");
         {
             ether_address_time_map.erase (ea);
         }
-        //click_chatter ("after erase");
+
         if (pls_temp_list.size () > buffer_size)
         {
             pls_temp_list.pop_back ();
         }
-        //click_chatter ("pls_temp_list-size after pop: %d", pls_temp_list.size ());
-        
+
         ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
         
         //click_chatter ("size for %s in map: %d", ea.unparse ().data () , ether_address_time_map.at (ea).size ());
