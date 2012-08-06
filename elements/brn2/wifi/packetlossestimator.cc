@@ -54,22 +54,16 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
             if (_cst != NULL)
             {
                 int time_now = packet->timestamp_anno().msec();
-
-                if (!_packet_parameter->is_broadcast_or_self() && _debug == 4)
-                {
-                //if (*_packet_parameter->get_src_address() != brn_etheraddress_broadcast && *_packet_parameter->get_src_address() != *_packet_parameter->get_own_address()) {
-                    
-                    click_chatter("TIME: %d", time_now);
-                }
                 
                 stats = _cst->get_latest_stats();
                 src_tab = _cst->get_latest_stats_neighbours();
-                ChannelStats::SrcInfo srcInfo = src_tab->find(*_packet_parameter->get_src_address());
+                ChannelStats::SrcInfo srcInfo;
+                srcInfo = src_tab->find(*_packet_parameter->get_src_address());
                 estimateWeakSignal(srcInfo);
                 estimateNonWifi(*stats);
             } else
             {
-                BRN_ERROR("Channelstats == NULL");
+                BRN_ERROR("Channelstats is NULL");
             }
 
             if (_cinfo != NULL && *_packet_parameter->get_src_address() != brn_etheraddress_broadcast)
@@ -94,18 +88,15 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
             {
                 if (_hnd->has_neighbours(*_packet_parameter->get_src_address()))
                 {
-                    HiddenNodeDetection::NodeInfo* neighbours = _hnd->get_nodeinfo_table().find(*_packet_parameter->get_src_address());
-                    HiddenNodeDetection::NodeInfoTable neighbours_neighbours = neighbours->get_links_to();
-                    BRN_INFO("Neighbours of %s", _packet_parameter->get_src_address()->unparse().c_str());
-                    
-                    for (HiddenNodeDetection::NodeInfoTableIter i = neighbours_neighbours.begin(); i != neighbours_neighbours.end(); i++)
-                    {
-                        BRN_INFO("  Neighbour: %s", i.key().unparse().c_str());
-                    }                    
+                    HiddenNodeDetection::NodeInfo*      neighbours = _hnd->get_nodeinfo_table().find(*_packet_parameter->get_src_address());
+                    HiddenNodeDetection::NodeInfoTable  neighbours_neighbours = neighbours->get_links_to();
+
+                    BRN_INFO("Neighbours of %s", _packet_parameter->get_src_address()->unparse().c_str());                    
                 } else
                 {
                     BRN_INFO("%s has no neighbours", _packet_parameter->get_src_address()->unparse().c_str());
                 }
+
                 estimateHiddenNode();
                 estimateInrange();
                 BRN_DEBUG("After estimateInrange");
@@ -119,10 +110,6 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
                 BRN_DEBUG("HW-Busy: %i\tHW-RX: %i\tHW-TX: %i", stats->hw_busy, stats->hw_rx, stats->hw_tx);
                 BRN_DEBUG("HW_Cycles: %i\tHW-Busy_Cycles: %i\tHW-RX_Cycles: %i\tHW-TX_Cycles: %i", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
             */
-
-            new_ether_stats.insert(_packet_parameter->get_src_address(), new_stats);
-            _stats_buffer.put_data_in(&new_ether_stats);
-
             }
 
             if (_debug == 4)
@@ -247,9 +234,9 @@ void PacketLossEstimator::estimateHiddenNode()
     BRN_DEBUG("void PacketLossEstimator::estimateHiddenNode()");
     if (_packet_parameter->is_broadcast_or_self())
     {
-    //if (*_packet_parameter->get_src_address() == brn_etheraddress_broadcast || *_packet_parameter->get_src_address() == *_packet_parameter->get_own_address())
         return;
     }
+
     if (_packet_parameter->get_own_address() != _packet_parameter->get_dst_address())
     {
         if (_hnd->has_neighbours(*_packet_parameter->get_own_address()))
@@ -280,7 +267,6 @@ void PacketLossEstimator::estimateHiddenNode()
                 if (!_hnd->get_nodeinfo_table().find(tmpAdd) || !_hnd->get_nodeinfo_table().find(tmpAdd)->_neighbour)
                 {
                     BRN_INFO("Not in my Neighbour List");
-                    //uint32_t silence_period = Timestamp::now().msec() - _hnd->get_nodeinfo_table().find(_packet_parameter->get_src_address())->get_links_usage().find(tmpAdd).msec();
 
                     if (neighbours >= 255)
                     {
@@ -294,7 +280,7 @@ void PacketLossEstimator::estimateHiddenNode()
                     BRN_INFO("In my Neighbour List");
                 }
             }
-            //_cocst = NULL;
+
             if (_cocst != NULL)
             {
                 EtherAddress                                            t_src       = _packet_parameter->get_non_const_src_address();
@@ -351,7 +337,8 @@ void PacketLossEstimator::estimateHiddenNode()
                         hnProp = 1000000/duration;
                         coopst = true;
                     }                    
-                } else {
+                } else
+                {
                     BRN_INFO("NATS NULL");
                 }
             } else
@@ -376,8 +363,6 @@ void PacketLossEstimator::estimateHiddenNode()
             _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::HIDDEN_NODE)->setFraction(hnProp);
             BRN_INFO(";;;;;;;;hnProp for %s: %i", _packet_parameter->get_src_address()->unparse().c_str(), hnProp);
         }
-        
-        //new_stats->hidden_node = hnProp;
     }
 }
 
@@ -399,14 +384,13 @@ void PacketLossEstimator::estimateInrange()
     BRN_DEBUG("void PacketLossEstimator::estimateInrange()");
     if (_packet_parameter->is_broadcast_or_self())
     {
-    //if (*_packet_parameter->get_src_address() == brn_etheraddress_broadcast || *_packet_parameter->get_src_address() == *_packet_parameter->get_own_address())
         return;
     }
 
-    uint8_t                             neighbours      = 1;
-    uint8_t                             irProp          = 6;
-    HiddenNodeDetection::NodeInfoTable  neighbour_nodes = _hnd->get_nodeinfo_table();
-    HiddenNodeDetection::NodeInfoTableIter neighbour_nodes_end = neighbour_nodes.end();
+    uint8_t                                     neighbours      = 1;
+    uint8_t                                     irProp          = 6;
+    HiddenNodeDetection::NodeInfoTable          neighbour_nodes = _hnd->get_nodeinfo_table();
+    HiddenNodeDetection::NodeInfoTableIter      neighbour_nodes_end = neighbour_nodes.end();
 
     for (HiddenNodeDetection::NodeInfoTableIter i = neighbour_nodes.begin(); i != neighbour_nodes_end; i++)
     {
@@ -466,9 +450,9 @@ void PacketLossEstimator::estimateNonWifi(struct airtime_stats &ats)
     {
         if (_packet_parameter->is_broadcast_or_self())
         {
-        //if (*_packet_parameter->get_src_address() == brn_etheraddress_broadcast || *_packet_parameter->get_src_address() == *_packet_parameter->get_own_address())
             return;
         }
+
         if (&ats != NULL)
         {            
             BRN_INFO("Mac Busy: %d", ats.frac_mac_busy);
@@ -496,26 +480,23 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo &src_info)
     BRN_DEBUG("void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info)");
     if (_packet_parameter->is_broadcast_or_self())
     {
-    //if (*_packet_parameter->get_src_address() == brn_etheraddress_broadcast || *_packet_parameter->get_src_address() == *_packet_parameter->get_own_address())
         return;
     }
+
     int8_t weaksignal = 0;
     
-    if (&src_info != NULL)
+    if (&src_info != NULL && src_info._avg_rssi > 0)
     {
-        if (src_info._avg_rssi > 0) 
+        weaksignal = src_info._avg_rssi - src_info._std_rssi;
+
+        if (weaksignal < 2)
         {
-            weaksignal = src_info._avg_rssi - src_info._std_rssi;
-            
-            if (weaksignal < 2)
+            weaksignal = 100;
+        } else
+        {
+            if(weaksignal < 11) // this is only for atheros because RSSI-MAX is differs from vendor to vendor
             {
-                weaksignal = 100;
-            } else
-            {
-                if(weaksignal < 11) // this is only for atheros because RSSI-MAX is differs from vendor to vendor
-                {
-                    weaksignal = 50;
-                }
+                weaksignal = 50;
             }
         }
     }
