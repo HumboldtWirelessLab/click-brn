@@ -19,6 +19,9 @@
 /* Define for Click memory allocation debugging. */
 #undef CLICK_DMALLOC
 
+/* Define to generate smaller object files. */
+#undef CLICK_OPTIMIZE_SIZE
+
 /* Version number of package */
 #undef CLICK_VERSION
 
@@ -73,8 +76,14 @@
 /* Define if the C++ compiler understands #pragma interface. */
 #undef HAVE_CXX_PRAGMA_INTERFACE
 
+/* Define if the C++ compiler understands rvalue references. */
+#undef HAVE_CXX_RVALUE_REFERENCES
+
 /* Define if the C++ compiler understands static_assert. */
 #undef HAVE_CXX_STATIC_ASSERT
+
+/* Define if the C++ compiler understands template alias. */
+#undef HAVE_CXX_TEMPLATE_ALIAS
 
 /* Define if the machine is indifferent to alignment. */
 #undef HAVE_INDIFFERENT_ALIGNMENT
@@ -269,6 +278,11 @@
 #ifdef __cplusplus
 CLICK_DECLS
 template <typename T> struct DefaultArg;
+
+/** @class uninitialized_type
+    @brief Type tag indicating an object should not be initialized. */
+struct uninitialized_type {
+};
 CLICK_ENDDECLS
 #endif
 
