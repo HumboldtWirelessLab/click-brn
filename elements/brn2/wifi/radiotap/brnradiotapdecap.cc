@@ -195,7 +195,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 			if (flags & IEEE80211_RADIOTAP_F_FCS) {
 				p->take(4);
 			}
-#warning TODO Check type of Error. Now all errors are CRC
+#pragma message "TODO Check type of Error. Now all errors are CRC"
       if (flags & IEEE80211_RADIOTAP_F_BADFCS) {
         ceh->flags |= WIFI_EXTRA_RX_ERR;
         ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
@@ -229,7 +229,7 @@ BrnRadiotapDecap::simple_action(Packet *p)
 
       if ((flags & IEEE80211_RADIOTAP_F_RX_BADFCS) || (flags & IEEE80211_RADIOTAP_F_RX_BADPLCP) ) {
 				ceh->flags |= WIFI_EXTRA_RX_ERR;
-#warning TODO Check type of Error. Now all errors are CRC
+#pragma message "TODO Check type of Error. Now all errors are CRC"
         ceh->flags |= WIFI_EXTRA_RX_CRC_ERR;
       }
 		}
@@ -245,12 +245,14 @@ BrnRadiotapDecap::simple_action(Packet *p)
       ceh->retries = *((u_int8_t *) rt_el_offset(th, IEEE80211_RADIOTAP_DATA_RETRIES));
     }
     if (rt_el_present(th, IEEE80211_RADIOTAP_MCS)) {
-      uint8_t known, flags, index;
+      //uint8_t known = 0;
+      uint8_t flags = 0;
+      uint8_t index = 0;
       uint8_t *rt_el_offset_p = (uint8_t *)rt_el_offset(th, IEEE80211_RADIOTAP_MCS);
 
       //click_chatter("p: %d mcs p: %d",p->data(),rt_el_offset_p);
 
-      known = rt_el_offset_p[0];
+      //known = rt_el_offset_p[0];
       flags = rt_el_offset_p[1];
       index = rt_el_offset_p[2];
 

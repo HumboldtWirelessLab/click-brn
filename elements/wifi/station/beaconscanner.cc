@@ -61,7 +61,7 @@ BeaconScanner::simple_action(Packet *p)
 {
 
 
-  uint8_t dir;
+//  uint8_t dir;
   uint8_t type;
   uint8_t subtype;
 
@@ -76,7 +76,7 @@ BeaconScanner::simple_action(Packet *p)
   struct click_wifi *w = (struct click_wifi *) p->data();
 
 
-  dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
+//  dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
   type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
   subtype = w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
 

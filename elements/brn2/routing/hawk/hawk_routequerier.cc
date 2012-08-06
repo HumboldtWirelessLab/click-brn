@@ -171,9 +171,9 @@ HawkRouteQuerier::push(int, Packet *p_in)
 void
 HawkRouteQuerier::send_packets(EtherAddress *dst, HawkRoutingtable::RTEntry */*entry*/ )
 {
-  PacketSendBuffer::BufferedPacket *buffp;
+//  PacketSendBuffer::BufferedPacket *buffp;
   for ( int i = _packet_buffer.size() - 1; i >= 0; i-- ) {
-    buffp = _packet_buffer.get(i);
+    //buffp = _packet_buffer.get(i);
 
     //click_ether *ether = (click_ether *)buffp->_p->data();
 

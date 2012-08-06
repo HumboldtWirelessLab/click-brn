@@ -146,7 +146,6 @@ read_position_param(Element *e, void *thunk)
   StringAccum sa;
   GPS *gps = (GPS *)e;
 
-  GPSPosition *pos = gps->getPosition();
   switch ((uintptr_t) thunk)
   {
     case H_CART_COORD: {

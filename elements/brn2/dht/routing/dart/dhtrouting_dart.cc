@@ -84,7 +84,7 @@ DHTRoutingDart::routingtable_callback_func(void *e, int status)
 DHTnode *
 DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
 {
-  int diffbit;
+//  int diffbit;
   DHTnode *best_node = NULL;
   int position_best_node;
   DHTnode *acnode;
@@ -97,7 +97,7 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
     return _drt->_me;
   }
 
-  diffbit = DartFunctions::diff_bit(_drt->_me, key);
+  /*diffbit =*/ DartFunctions::diff_bit(_drt->_me, key);
 
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours.get_dhtnode(n);

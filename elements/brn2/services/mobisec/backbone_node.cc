@@ -40,10 +40,12 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
+		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
-		"START", cpkP, cpInteger, &_start_time,
+		"DEVICE_CONTROL_UP", cpkP, cpElement, &_dev_control_up,
+		"DEVICE_CONTROL_DOWN", cpkP, cpElement, &_dev_control_down,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -52,35 +54,45 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 		_protocol_type = SERVER_DRIVEN;
 	else if (_protocol_type_str == "CLIENT-DRIVEN")
 		_protocol_type = CLIENT_DRIVEN;
-	else
+	else {
 		return -1;
+	}
 
 	BRN_DEBUG("Protocol type: %s", _protocol_type_str.c_str());
 
 	return 0;
 }
 
-int BACKBONE_NODE::initialize(ErrorHandler* errh) {
-	req_id = 7; // Not used, but maybe useful for future work on replay-defense
+int BACKBONE_NODE::initialize() {
+	// Pseudo randomness as creepy solution for simulation in
+	// order to get asynchronous packet transmission
+	long randnum = (long)this;
+	click_srandom((int)randnum);
+	randnum = randnum%1337;
+	BRN_DEBUG("random number: %i", randnum);
+
+	req_id = 0;
 	last_req_try = 0;
 
-	tolerance = _key_timeout * 1.5;
-	backoff = _key_timeout * 0.5;
+	// As mentioned in the MobiSEC-Paper, but defined by myself
+	tolerance = _key_timeout * 1.5 + randnum;
+
+	// Time between retries of kdp request transmission
+	backoff = _key_timeout * 0.5 + randnum;
 
 	// Configuration determines some crypto parameters
 	keyman.set_key_timeout(_key_timeout);
 
 	// Set timer to send first kdp-request
 	kdp_timer.initialize(this);
-	if(_start_time > 0)
-		kdp_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	session_timer.initialize(this);
 	session_timer.schedule_at(Timestamp::make_msec(_start_time));
 
 	epoch_timer.initialize(this);
 
-	switch_wep("false");
+	//switch_dev(dev_client);
+	switch_dev(dev_ap);
 
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
@@ -104,9 +116,11 @@ void BACKBONE_NODE::snd_kdp_req() {
 	 */
 	if (Timestamp::now().msecval()-last_req_try < backoff*1.5) {// If request was send a little time ago, retry without wep
 		BRN_DEBUG("Retry kdp process...");
-		switch_wep("false");
-	} else // If not, then we are about to send our first request for next epoche data
+		//switch_dev(dev_client);
+		switch_dev(dev_ap);
+	} else { // If not, then we are about to send our first request for next epoch data
 		last_req_try = Timestamp::now().msecval();
+	}
 
 	WritablePacket *p = kdp::kdp_request_msg();
 
@@ -128,7 +142,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
 	// We got some key material, keep WEP connection online.
-	switch_wep("true");
+	switch_dev(dev_ap);
 
 	// Buffer crypto control data
 	BUF_keyman.set_ctrl_data(hdr);
@@ -188,17 +202,29 @@ void BACKBONE_NODE::jmp_next_epoch() {
  *               extra functions
  * *******************************************************
  */
+void BACKBONE_NODE::switch_dev(enum dev_type type) {
+	String type_str;
+	String port;
 
-void BACKBONE_NODE::switch_wep(String ctl) {
-	if(ctl != "true" && ctl != "false") {BRN_ERROR("switch_wep: wrong argument '%s'", ctl.c_str()); return;}
+	switch(type) {
+	case dev_ap:
+		port = "1";
+		BRN_DEBUG("Switched device to dev_ap");
+		break;
+	case dev_client:
+		port = "0";
+		BRN_DEBUG("Switched device to dev_client");
+		break;
+	default:
+		BRN_ERROR("Received wrong arg in switch_dev()");
+		break;
+	}
 
-	const String handler = "active";
-	int success = HandlerCall::call_write(_wepencap, handler, ctl, NULL);
-	if(success==0) BRN_DEBUG("Switched WEPencap active to %s", ctl.c_str());
-	else BRN_DEBUG("ERROR while switching WEPencap");
+	HandlerCall::call_write(_dev_control_up, "switch", port, NULL);
+	HandlerCall::call_write(_dev_control_down, "switch", port, NULL);
 }
 
-static String handler_triggered_request(Element *e, void *thunk) {
+static String handler_triggered_request(Element *e, void *) {
 	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
 	bn->snd_kdp_req();
 	return String();
@@ -208,7 +234,7 @@ void BACKBONE_NODE::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("snd_kdp_request", handler_triggered_request, NULL);
+  add_read_handler("snd_kdp_request", handler_triggered_request, 0);
 }
 
 

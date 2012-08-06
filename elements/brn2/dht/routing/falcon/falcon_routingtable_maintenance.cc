@@ -267,8 +267,9 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
     //don't add route to myself
     if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 ) {
-      click_ether *annotated_ether = (click_ether *)packet->ether_header();
-      EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+       //TODO: whats with annos
+//      click_ether *annotated_ether = (click_ether *)packet->ether_header();
+//      EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
                       NULL, &(src._ether_addr));

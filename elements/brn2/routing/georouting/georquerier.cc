@@ -80,7 +80,7 @@ GeorQuerier::push( int port, Packet *packet )
     GPSPosition *spos = _rt->getLocalPosition();
 
     EtherAddress nextHop;
-    GPSPosition *nhpos;
+    //GPSPosition *nhpos;
 
     if ( dpos ) {
       BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
@@ -92,7 +92,7 @@ GeorQuerier::push( int port, Packet *packet )
       packet->pull(12);                           //strip etheradress
       WritablePacket *pout = GeorProtocol::addRoutingHeader(packet,&sea, spos, &dea, dpos);
 
-      nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
+      /*nhpos =*/ _rt->getClosestNeighbour(dpos, &nextHop);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING,
                                                                ttl, DEFAULT_TOS);

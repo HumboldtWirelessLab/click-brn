@@ -319,8 +319,6 @@ BRN2DHCPServer::handle_dht_reply(DHCPClientInfo *client_info, DHTOperation *op)
 void
 BRN2DHCPServer::push( int port, Packet *p_in )
 {
-  int result = -1;
-
   BRN_DEBUG("BRN2DHCPServer: PUSH an Port %d",port);
 
   if ( port == 0 )
@@ -333,23 +331,23 @@ BRN2DHCPServer::push( int port, Packet *p_in )
 
     switch (packet_type) {
       case DHCPDISCOVER:
-        result = handle_dhcp_discover(p_in); // ask dht for ip
+        handle_dhcp_discover(p_in); // ask dht for ip
         break;
       case DHCPREQUEST:
-        result = handle_dhcp_request(p_in);  // send ack or nack to Client
+        handle_dhcp_request(p_in);  // send ack or nack to Client
         break;
       case DHCPRELEASE:
-        result = handle_dhcp_release(p_in);  // send ip to dht
+        handle_dhcp_release(p_in);  // send ip to dht
         break;
       case DHCPDECLINE:
-        result = handle_dhcp_decline(p_in);  // client say: ip already in use
+        handle_dhcp_decline(p_in);  // client say: ip already in use
         break;
       case DHCPINFORM:
-        result = handle_dhcp_inform(p_in);   // send info only to client
+        handle_dhcp_inform(p_in);   // send info only to client
         break;
-      case DHCPACK:         //sendet der Server 
-      case DHCPNAK:         //sendet der Server 
-      case DHCPOFFER:       //sendet der Server 
+      case DHCPACK:         //sendet der Server
+      case DHCPNAK:         //sendet der Server
+      case DHCPOFFER:       //sendet der Server
         break;
       default:
         {

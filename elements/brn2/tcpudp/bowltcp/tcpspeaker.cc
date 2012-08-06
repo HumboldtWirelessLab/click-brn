@@ -165,7 +165,7 @@ TCPConnection::tcp_input(WritablePacket *p)
 {
     unsigned 	tiwin, tiflags; 
     u_long		ts_val, ts_ecr;
-    int			len; //,tlen; /* seems to be unused */
+//    int			len; //,tlen; /* seems to be unused */
     unsigned	off, optlen;
     u_char		*optp;
     int		ts_present = 0;
@@ -892,7 +892,7 @@ dodata:
 
 
 		// TODO len calculation @Harald: What exactly needs to be done?
-		len = ti.ti_len; 
+		/*len = ti.ti_len; */
     } else {
 		p->kill();
 		tiflags &= ~TH_FIN;
@@ -1270,7 +1270,7 @@ send:
 void
 TCPConnection::tcp_respond(tcp_seq_t ack, tcp_seq_t seq, int flags)
 {
-	int tlen; 
+//	int tlen; 
 
 	WritablePacket *p = Packet::make(sizeof(click_ip) + sizeof(click_tcp)); 
 	p->set_network_header(p->data(), sizeof(click_ip)); 
@@ -1279,7 +1279,7 @@ TCPConnection::tcp_respond(tcp_seq_t ack, tcp_seq_t seq, int flags)
   int win = MIN((tcp_seq_t)so_recv_buffer_space(),  (tcp_seq_t)(TCP_MAXWIN << tp->rcv_scale));
 
 	if (! (flags & TH_RST)) {
-	    tlen = 0; 
+//	    tlen = 0; 
 	    flags = TH_ACK; 
 	    th->th_win = htons((u_short)(win >> tp->rcv_scale)); 
 		
