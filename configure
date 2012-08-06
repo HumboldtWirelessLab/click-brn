@@ -1368,15 +1368,16 @@ Optional Features:
     --disable-poll        do not use poll()
     --disable-kqueue      do not use kqueue()
   --disable-linuxmodule   disable Linux kernel driver
-    --disable-fixincludes     do not patch Linux kernel headers for C++
-    --enable-multithread      support kernel multithreading
-    --enable-warp9            reduce PollDevice functionality for speed
-    --enable-kassert          enable kernel assertions
-    --enable-adaptive         use adaptive scheduler to flexibly arbitrate
-                              between Click and the kernel (EXPERIMENTAL)
-    --disable-linux-symbols   do not export Click symbols (breaks packages)
+    --disable-fixincludes do not patch Linux kernel headers for C++
+    --enable-multithread  support kernel multithreading
+    --enable-warp9        reduce PollDevice functionality for speed
+    --enable-kassert      enable kernel assertions
+    --enable-adaptive     use adaptive scheduler to flexibly arbitrate between
+                          Click and the kernel (EXPERIMENTAL)
+    --disable-linux-symbols
+                          do not export Click symbols (breaks packages)
   --enable-bsdmodule      enable FreeBSD kernel driver (EXPERIMENTAL)
-    --disable-netisr          disable NETISR scheduling in BSD
+    --disable-netisr      disable NETISR scheduling in BSD
   --enable-nsclick        enable NS simulator driver
   --enable-jistclick        enable JiST/SWANS simulator driver (EXPERIMENTAL)
   --enable-all-elements   include all provided element groups
@@ -1390,6 +1391,7 @@ Optional Features:
   --disable-ip            do not include IP elements
   --enable-ip6            include IPv6 elements
   --enable-ipsec          include IP security elements
+  --enable-json           include JSON helpers
   --enable-local          include local elements
   --enable-radio          include radio elements
   --disable-simple        do not include simple versions of other elements
@@ -1402,6 +1404,7 @@ Optional Features:
   --enable-brn2           include brn2 support
   --enable-experimental   enable experimental elements in normal groups
   --enable-skip-elements=ELTS disable comma-separated elements
+  --enable-smaller-code   generate smaller code (sometimes slower)
   --disable-int64         disable 64-bit integer support
   --enable-ialign         whether target-maschine is indifferent to alignment
   --enable-nanotimestamp  enable nanosecond timestamps
@@ -1420,8 +1423,8 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-linux[=PATH]     Linux source code is in PATH
-  --with-linux-map[=FILE] filename for Linux System.map [LINUXDIR/System.map]
+  --with-linux=PATH       Linux source code is in PATH
+  --with-linux-map=FILE   filename for Linux System.map [LINUXDIR/System.map]
   --with-freebsd[=SRC,INC] FreeBSD source code is in SRC [/usr/src/sys],
                           include directory is INC [/usr/include]
   --with-netmap           enable netmap [no]
@@ -3828,8 +3831,113 @@ done
 	DEPCFLAGS="-MD -MP"
 
 
+    save_cflags="$CFLAGS"
+    { echo "$as_me:$LINENO: checking whether the C compiler accepts -W -Wall" >&5
+echo $ECHO_N "checking whether the C compiler accepts -W -Wall... $ECHO_C" >&6; }
+if test "${ac_cv_c_w_wall+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	CFLAGS="$CFLAGS -W -Wall"
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+int f(int x) { return x; }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_c_w_wall=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_c_w_wall=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_c_w_wall" >&5
+echo "${ECHO_T}$ac_cv_c_w_wall" >&6; }
+    { echo "$as_me:$LINENO: checking whether the C compiler accepts -Werror" >&5
+echo $ECHO_N "checking whether the C compiler accepts -Werror... $ECHO_C" >&6; }
+if test "${ac_cv_c_werror+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	CFLAGS="$CFLAGS -Werror"
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+int f(int x) { return x; }
+int
+main ()
+{
+
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_c_werror=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_c_werror=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_c_werror" >&5
+echo "${ECHO_T}$ac_cv_c_werror" >&6; }
+    CFLAGS="$save_cflags"
+
     WARNING_CFLAGS=
-    test -n "$GCC" -a -n "$ac_compile_with_warnings" && \
+    test -n "$ac_cv_c_w_wall" -a -n "$ac_compile_with_warnings" && \
 	WARNING_CFLAGS=" -W -Wall"
 
     test -z "$ac_user_cflags" && \
@@ -4809,6 +4917,9 @@ _ACEOF
 	fi
     fi
 
+        save_cxxflags="$CXXFLAGS"
+    test -n "$ac_cv_c_w_wall" && CXXFLAGS="$CXXFLAGS -W -Wall"
+    test -n "$ac_cv_c_werror" && CXXFLAGS="$CXXFLAGS -Werror"
 
     { echo "$as_me:$LINENO: checking whether the C++ compiler understands constexpr" >&5
 echo $ECHO_N "checking whether the C++ compiler understands constexpr... $ECHO_C" >&6; }
@@ -4864,6 +4975,64 @@ echo "${ECHO_T}$ac_cv_cxx_constexpr" >&6; }
 
 cat >>confdefs.h <<\_ACEOF
 #define HAVE_CXX_CONSTEXPR 1
+_ACEOF
+
+    fi
+
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands rvalue references" >&5
+echo $ECHO_N "checking whether the C++ compiler understands rvalue references... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_rvalue_references+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+int f(int &) { return 1; } int f(int &&) { return 0; }
+int
+main ()
+{
+return f(int());
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_rvalue_references=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_rvalue_references=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_rvalue_references" >&5
+echo "${ECHO_T}$ac_cv_cxx_rvalue_references" >&6; }
+    if test "$ac_cv_cxx_rvalue_references" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_RVALUE_REFERENCES 1
 _ACEOF
 
     fi
@@ -4926,13 +5095,70 @@ _ACEOF
 
     fi
 
+    { echo "$as_me:$LINENO: checking whether the C++ compiler understands template alias" >&5
+echo $ECHO_N "checking whether the C++ compiler understands template alias... $ECHO_C" >&6; }
+if test "${ac_cv_cxx_template_alias+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+
+	cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+template <typename T> struct X { typedef T type; }; template <typename T> using Y = X<T>; int f(int x) { return x; }
+int
+main ()
+{
+return f(Y<int>::type());
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  ac_cv_cxx_template_alias=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_cxx_template_alias=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_cxx_template_alias" >&5
+echo "${ECHO_T}$ac_cv_cxx_template_alias" >&6; }
+    if test "$ac_cv_cxx_template_alias" = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_CXX_TEMPLATE_ALIAS 1
+_ACEOF
+
+    fi
+
     { echo "$as_me:$LINENO: checking whether the C++ compiler understands #pragma interface" >&5
 echo $ECHO_N "checking whether the C++ compiler understands #pragma interface... $ECHO_C" >&6; }
 if test "${ac_cv_cxx_pragma_interface+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
 
-	save_cxxflags="$CXXFLAGS"; CXXFLAGS="$CXXFLAGS -Werror -Wall -W"
 	cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -4975,8 +5201,6 @@ sed 's/^/| /' conftest.$ac_ext >&5
 fi
 
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-        CXXFLAGS="$save_cxxflags"
-
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_cxx_pragma_interface" >&5
 echo "${ECHO_T}$ac_cv_cxx_pragma_interface" >&6; }
@@ -4987,6 +5211,8 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
     fi
+
+    CXXFLAGS="$save_cxxflags"
 
 
     ac_base_cxx="$CXX"
@@ -6578,6 +6804,17 @@ if test "x$enable_ipsec" = xyes; then
 _ACEOF
 
 fi
+# Check whether --enable-json was given.
+if test "${enable_json+set}" = set; then
+  enableval=$enable_json;
+else
+  enable_json=NO
+fi
+test "x$enable_all_elements" = xyes -a \( "x$enable_json" = xNO -o "x$enable_json" = x \) && enable_json=yes
+if test "x$enable_json" = xyes; then
+    :
+
+fi
 # Check whether --enable-local was given.
 if test "${enable_local+set}" = set; then
   enableval=$enable_local;
@@ -7072,6 +7309,21 @@ ac_compiler_gnu=$ac_cv_cxx_compiler_gnu
 
 
 
+
+# Check whether --enable-smaller-code was given.
+if test "${enable_smaller_code+set}" = set; then
+  enableval=$enable_smaller_code; :
+else
+  enable_smaller_code=no
+fi
+
+if test "x$enable_smaller_code" = xyes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define CLICK_OPTIMIZE_SIZE 1
+_ACEOF
+
+fi
 
 # Check whether --enable-int64 was given.
 if test "${enable_int64+set}" = set; then
@@ -10011,7 +10263,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 10014 "configure"
+#line 10266 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
