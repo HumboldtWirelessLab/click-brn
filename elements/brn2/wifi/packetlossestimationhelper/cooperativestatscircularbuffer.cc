@@ -71,6 +71,4 @@ std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > AbstractCircular
 {
     return ether_address_time_map;
 }
-
-         
-         */
+*/

@@ -50,7 +50,7 @@ int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
     return ret;
 }
 
-int CooperativeChannelStats::initialize(ErrorHandler *errh)
+int CooperativeChannelStats::initialize(ErrorHandler * /*errh*/)
 {
     BRN_DEBUG("int CooperativeChannelStats::initialize(ErrorHandler *)");
     click_srandom(_cst->_device->getEtherAddress()->hashcode());
@@ -64,7 +64,7 @@ int CooperativeChannelStats::initialize(ErrorHandler *errh)
     return 0;
 }
 
-void CooperativeChannelStats::run_timer(Timer *timer)
+void CooperativeChannelStats::run_timer(Timer * /*timer*/)
 {
     BRN_DEBUG("void CooperativeChannelStats::run_timer(Timer *)");
     _msg_timer.schedule_after_msec(_interval);
