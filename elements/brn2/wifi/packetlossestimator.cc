@@ -10,10 +10,7 @@ PacketLossEstimator::PacketLossEstimator() :
     _cinfo(NULL),
     _hnd(NULL),
     _pli(NULL),
-    _dev(NULL),
-    _midterm(5),
-    _longterm(12)
-{
+    _dev(NULL)
 {
         BRN_DEBUG("PacketLossEstimator::PacketLossEstimator()");
         _packet_parameter = new PacketParameter();
@@ -298,7 +295,7 @@ void PacketLossEstimator::estimateHiddenNode()
             //_cocst = NULL;
             if (_cocst != NULL)
             {
-                EtherAddress                                            t_src       = _packet_parameter->get_non_const_src_address();
+                EtherAddress t_src = _packet_parameter->get_non_const_src_address();
                 BRN_DEBUG("after t_src: %s", t_src.unparse().data());
                 HashMap<EtherAddress, struct neighbour_airtime_stats*>  *nats_map;
                 BRN_DEBUG("before declaration");
@@ -423,8 +420,8 @@ void PacketLossEstimator::estimateInrange()
     uint16_t    *backoffsize    = _dev->get_cwmax();
     double      temp            = 1.0;
 
-    if (*backoffsize == NULL)
-        click_chatter ("backoffsize == NULL");
+    if (*backoffsize == 0)
+        click_chatter ("backoffsize == 0");
 
     if (_debug == 4)
         click_chatter ("before if");
