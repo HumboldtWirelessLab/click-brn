@@ -34,7 +34,7 @@ const EtherAddress *PacketParameter::get_dst_address()
     return &dst_address;
 }
 
-const uint8_t PacketParameter::get_packet_type()
+uint8_t PacketParameter::get_packet_type()
 {
     return packet_type;
 }

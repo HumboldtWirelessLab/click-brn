@@ -114,8 +114,12 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
 
             if (_debug == 4)
                 click_chatter ("before insert_values");
+
+            if (!_packet_parameter->is_broadcast_or_self())
+            {
+                _stats_buffer.insert_values(*_packet_parameter, *_pli);
+            }
             
-            _stats_buffer.insert_values(*_packet_parameter, *_pli);
             BRN_DEBUG("After insert_values");
         }
 
@@ -285,40 +289,17 @@ void PacketLossEstimator::estimateHiddenNode()
 
             if (_cocst != NULL)
             {
-                EtherAddress t_src = _packet_parameter->get_non_const_src_address();
-                BRN_DEBUG("after t_src: %s", t_src.unparse().data());
-                HashMap<EtherAddress, struct neighbour_airtime_stats*>  *nats_map;
-                BRN_DEBUG("before declaration");
-                if (_cocst == NULL)
-                {
-                    if (_debug == 4)
-                        click_chatter ("COCST IS NULL");
-                } else
-                {
-                    if (_debug == 4)
-                        click_chatter ("_COCST IS NOT NULL");
-                    
-                    nats_map = &_cocst->get_stats(&t_src);
-                    if (nats_map == NULL)
-                    {
-                        if (_debug == 4)
-                            click_chatter ("_cocst->get_stats(&t_src) IS NULL");
-                    } else
-                    {
-                        if (_debug == 4)
-                            click_chatter ("_cocst->get_stats(&t_src) IS NOT NULL");
-                    }
-                }
-                //nats_map = _cocst->get_stats(&t_src);
-                BRN_DEBUG("after nats_map");
-                if (!nats_map->empty())
+                EtherAddress                                            t_src = _packet_parameter->get_non_const_src_address();
+                HashMap<EtherAddress, struct neighbour_airtime_stats*>  nats_map;
+                
+                nats_map = _cocst->get_stats(&t_src);
+
+                if (!nats_map.empty())
                 {                    
-                    BRN_INFO("NATS-size: %d", nats_map->size());
-                    
                     uint8_t                                                             duration = 0;
-                    HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator    nats_end = nats_map->end();
+                    HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator    nats_end = nats_map.end();
                     
-                    for (HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator i = nats_map->begin(); i != nats_end; i++)
+                    for (HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator i = nats_map.begin(); i != nats_end; i++)
                     {                        
                         EtherAddress                    tmpAdd  = i.key();
                         struct neighbour_airtime_stats* nats    = i.value();
@@ -408,39 +389,23 @@ void PacketLossEstimator::estimateInrange()
     uint16_t    *backoffsize    = _dev->get_cwmax();
     double      temp            = 1.0;
 
-    if (*backoffsize == 0)
-        click_chatter ("backoffsize == 0");
-
-    if (_debug == 4)
-        click_chatter ("before if");
-    
     if (neighbours >= *backoffsize)
     {
-        if (_debug == 4)
-            click_chatter ("in if");
         irProp = 100;
     } else
     {
-        if (_debug == 4)
-            click_chatter ("in else");
         for (int i = 1; i < neighbours; i++)
         {
-            if (_debug == 4)
-                click_chatter ("in elsefor");
             temp *= (double(*backoffsize) - double(i)) / double(*backoffsize);
         }
         
         irProp = (1 - temp) * 100;
     }
-    if (_debug == 4)
-        click_chatter ("after if ");
 
     if (irProp < 6)
     {
         irProp = 6;
     }
-    if (_debug == 4)
-        click_chatter ("before setFraction");
     _pli->graph_get(*_packet_parameter->get_src_address())->reason_get(PacketLossReason::IN_RANGE)->setFraction(irProp);
     BRN_INFO(";;;;;;;;In-Range1 for %s: %i", _packet_parameter->get_src_address()->unparse().c_str(), irProp);
 }
@@ -659,17 +624,21 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
     for (Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin (); ea_iter != etheraddresses.end (); ea_iter++)
     {
         inrange_sa  << "\t\t<neighbour address=\"" << ea_iter->unparse().c_str() << "\">\n";
-        uint16_t count = 16;
-        Vector<PacketLossStatistics> pls = _stats_buffer.get_values(*ea_iter, count);
-
-        uint16_t temp_inrange = 0;
+        
+        uint16_t                        count = 20;
+        uint16_t                        temp_inrange = 0;
+        uint16_t                        iteration_count = 0;
+        Vector<PacketLossStatistics>    pls = _stats_buffer.get_values(*ea_iter, count);
 
         for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); pls_iter++)
         {
+            ++iteration_count;
             temp_inrange += pls_iter->get_inrange_probability();
         }
-
-        inrange_sa  << "\t\t\t<fraction>" << temp_inrange / 20 << "</fraction>\n";
+        if (iteration_count != 0)
+        {
+                inrange_sa  << "\t\t\t<fraction>" << temp_inrange / iteration_count << "</fraction>\n";
+        }
         inrange_sa  << "\t\t</neighbour>\n";
     }
     inrange_sa << "\t</inrange>\n";
@@ -723,17 +692,21 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
     for (Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin (); ea_iter != etheraddresses.end (); ea_iter++)
     {
         inrange_sa  << "\t\t<neighbour address=\"" << ea_iter->unparse().c_str() << "\">\n";
-        uint16_t count = 200;
-        Vector<PacketLossStatistics> pls = _stats_buffer.get_values(*ea_iter, count);
-
-        uint16_t temp_inrange = 0;
+        uint16_t                        count = 200;
+        uint16_t                        temp_inrange = 0;
+        uint16_t                        iteration_count = 0;
+        Vector<PacketLossStatistics>    pls = _stats_buffer.get_values(*ea_iter, count);
 
         for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); pls_iter++)
         {
+            ++iteration_count;
             temp_inrange += pls_iter->get_inrange_probability();
         }
-
-        inrange_sa  << "\t\t\t<fraction>" << temp_inrange / 20 << "</fraction>\n";
+        if (iteration_count != 0)
+        {
+                inrange_sa  << "\t\t\t<fraction>" << temp_inrange / 20 << "</fraction>\n";
+        }
+        
         inrange_sa  << "\t\t</neighbour>\n";
     }
     inrange_sa << "\t<inrange observation_period=\"long\">\n";

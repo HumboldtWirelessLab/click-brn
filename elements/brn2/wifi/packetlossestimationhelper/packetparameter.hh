@@ -30,7 +30,7 @@ public:
     const EtherAddress *get_src_address();
     EtherAddress get_non_const_src_address();
     const EtherAddress *get_dst_address();
-    const uint8_t get_packet_type();
+    uint8_t get_packet_type();
     void put_params_(const EtherAddress &, const EtherAddress &, const EtherAddress &, const uint8_t);
     bool is_broadcast_or_self();
     
