@@ -14,17 +14,24 @@ StatsCircularBuffer::~StatsCircularBuffer()
 void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, PacketLossInformation &pli)
 {
     EtherAddress ea = *packet_parameter.get_src_address();
-    const uint8_t hn_fraction = pli.graph_get(ea)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction();
-    const uint8_t ir_fraction = pli.graph_get(ea)->reason_get(PacketLossReason::IN_RANGE)->getFraction();
-    const uint8_t nw_fraction = pli.graph_get(ea)->reason_get(PacketLossReason::NON_WIFI)->getFraction();
-    const uint8_t ws_fraction = pli.graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
-    
+    click_chatter("after get_src_address");
+    PacketLossInformation_Graph *pli_graph = pli.graph_get(ea);
+    if (pli_graph == NULL)
+        click_chatter("pli_graph == NULL");
+    click_chatter("after get ea");
+    click_chatter("pli_graph: %s", pli_graph->print().c_str());
+    click_chatter("before get fraction");
+    const uint8_t hn_fraction = pli_graph->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction();
+    const uint8_t ir_fraction = pli_graph->reason_get(PacketLossReason::IN_RANGE)->getFraction();
+    const uint8_t nw_fraction = pli_graph->reason_get(PacketLossReason::NON_WIFI)->getFraction();
+    const uint8_t ws_fraction = pli_graph->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
+
     PacketLossStatistics pls;
     pls.set_hidden_node_probability(hn_fraction);
     pls.set_inrange_probability(ir_fraction);
     pls.set_non_wifi_probability(nw_fraction);
     pls.set_weak_signal_probability(ws_fraction);
-
+click_chatter("after pls");
     if (ether_address_time_map.find (ea) == ether_address_time_map.end ())
     {
         //click_chatter ("in if");
@@ -36,7 +43,7 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
 
     } else
     {
-        //click_chatter ("in else");
+        click_chatter ("in else");
         std::list<PacketLossStatistics> pls_temp_list = ether_address_time_map.at (ea);
         
         //Vector<PacketLossStatistics> temp_vector;
@@ -52,7 +59,7 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
         //get_all_values(ea).push_front(pls);
         //temp_vector.push_back (pls);
         pls_temp_list.push_front (pls);
-        //click_chatter ("pls_temp_list-size after push: %d", pls_temp_list.size ());
+        click_chatter ("pls_temp_list-size after push: %d", pls_temp_list.size ());
 
         if (ether_address_time_map.find (ea) != ether_address_time_map.end ())
         {
