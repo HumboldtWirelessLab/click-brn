@@ -38,15 +38,15 @@ public:
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
 
-	int configure(Vector<String> &conf, ErrorHandler *errh);
+	int configure(Vector<String> &conf, ErrorHandler *);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
 	void jmp_next_session();
-	static void session_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *t, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
 
 	void prepare_new_epoch();
 

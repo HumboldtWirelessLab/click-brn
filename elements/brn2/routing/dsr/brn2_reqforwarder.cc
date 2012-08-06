@@ -42,24 +42,24 @@ BRN2RequestForwarder::BRN2RequestForwarder()
   _dsr_decap(),
   _dsr_encap(),
   _route_querier(),
-  _sendbuffer_timer(this),
+  _min_metric_rreq_fwd(BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD),
   _max_age(DEFAULT_REQUEST_MAX_AGE_MS),
+  _retransmission_timer(static_rreq_retransmit_timer_hook,this),
+  _sendbuffer_timer(this),
   _enable_last_hop_optimization(false),
   _enable_full_route_optimization(false),
   _enable_delay_queue(true),
   _stats_receive_better_route(0),
   _stats_avoid_bad_route_forward(0),
+  _stats_opt_route(0),
   _stats_del_passive_ack_retransmissioninfo(0),
   _stats_del_passive_ack_reason_full_neighbours(0),
   _stats_del_passive_ack_reason_full_retries(0),
   _stats_del_passive_ack_inserts(0),
   _stats_del_passive_ack_reinserts(0),
-  _stats_opt_route(0),
-  _min_metric_rreq_fwd(BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD),
   _passive_ack_retries(0),
   _passive_ack_interval(0),
-  _passive_ack_force_retries(false),
-  _retransmission_timer(static_rreq_retransmit_timer_hook,this)
+  _passive_ack_force_retries(false)
 {
   BRNElement::init();
 }
@@ -888,7 +888,7 @@ BRN2RequestForwarder::get_trackroutemap() {
 
     sa << "\t<requestnode src=\"" << ea.unparse() << "\" >\n";
 
-    for ( int i = 0; i < METRIC_LIST_SIZE; i++) {
+    for ( uint32_t i = 0; i < METRIC_LIST_SIZE; i++) {
       if ( (rri->_id_list[i]) % METRIC_LIST_SIZE == i ) {
         sa << "\t\t<request id=\"" << rri->_id_list[i] << "\" metric=\"" << rri->_metric_list[i];
         sa << "\" last_hop_opt=\"" << (uint32_t)(rri->_last_hop_opt[i]) << "\" left_retries=\"";

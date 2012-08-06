@@ -101,7 +101,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	    	_cwmax = new uint16_t[no_queues];
 	    	_aifs = new uint16_t[no_queues];
 
-	#warning TODO: Better check for params. Better Error handling.
+	#pragma message "TODO: Better check for params. Better Error handling."
 	    	for( int i = 0; i < no_queues; i++ ) {
 	      		cp_integer(args[i], &v);
 	      		_cwmin[i] = v;
@@ -188,8 +188,8 @@ uint16_t Tos2QueueMapper::backoff_strategy_get()
 
 int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p)
 {
-int fraction  = 0;
-             int number_of_neighbours = 0;
+    unsigned int fraction  = 0;
+    int number_of_neighbours = 0;
         	struct click_wifi *wh = (struct click_wifi *) p->data();
         	EtherAddress src;
         	EtherAddress dst;
@@ -240,7 +240,7 @@ int fraction  = 0;
             for (int i = 0; i<= packet_loss_index_max; i++){
                 if(fraction <= _backoff_packet_loss[i]) index = i;
             }
-            if (index = -1) index = packet_loss_index_max;
+            if (index == -1) index = packet_loss_index_max;
 
             if(number_of_neighbours > 40) number_of_neighbours = 40;
             unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
@@ -303,7 +303,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 							if (_colinf->_global_rs->get_frac(i) >= target_frac) {
 								if ( i == 0 ) {
 									ofq = i;
-								} else if ( _colinf->_global_rs->get_frac(i-1) == -1 ) {
+								} else if ( _colinf->_global_rs->get_frac(i-1) == 0 ) { //TODO: ERROR-RETURN-VALUE = -1 is missing
 									ofq = i - 1;
 								} else {
 									ofq = i;
@@ -380,7 +380,7 @@ static String Tos2QueueMapper_read_param(Element *e, void *thunk)
   return String();
 }
 
-static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler*)
 {
   	Tos2QueueMapper *f = (Tos2QueueMapper *)e;
   	String s = cp_uncomment(in_s);

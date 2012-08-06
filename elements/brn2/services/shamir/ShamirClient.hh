@@ -37,9 +37,13 @@ public:
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
+
+    /** @brief Broadcast a request to reconstruct the key */
     int send_request();
 
 	void add_handlers();
+
+    /** @brief The global modulus used for all threshold computation */
     BIGNUM *_modulus;
     unsigned int _threshold;
 	int _debug;
@@ -49,7 +53,7 @@ private:
     HashTable<uint32_t, BIGNUM *> _received_shares;
 
     int store_reply(Packet *p);
-    BIGNUM *combine();
+    void combine();
 };
 
 CLICK_ENDDECLS

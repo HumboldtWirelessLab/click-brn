@@ -10,7 +10,7 @@ PacketLossEstimator::PacketLossEstimator() :
     _cinfo(NULL),
     _hnd(NULL),
     _pli(NULL),
-    _dev(NULL) 
+    _dev(NULL)
 {
         BRN_DEBUG("PacketLossEstimator::PacketLossEstimator()");
         _packet_parameter = new PacketParameter();
@@ -119,8 +119,9 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
             BRN_DEBUG("After insert_values");
         }
 
-        return packet;
     }
+        return packet;
+
 }
 
 void PacketLossEstimator::gather_packet_infos_(const Packet &packet)
@@ -232,6 +233,7 @@ void PacketLossEstimator::gather_packet_infos_(const Packet &packet)
 void PacketLossEstimator::estimateHiddenNode()
 {
     BRN_DEBUG("void PacketLossEstimator::estimateHiddenNode()");
+
     if (_packet_parameter->is_broadcast_or_self())
     {
         return;
@@ -283,7 +285,7 @@ void PacketLossEstimator::estimateHiddenNode()
 
             if (_cocst != NULL)
             {
-                EtherAddress                                            t_src       = _packet_parameter->get_non_const_src_address();
+                EtherAddress t_src = _packet_parameter->get_non_const_src_address();
                 BRN_DEBUG("after t_src: %s", t_src.unparse().data());
                 HashMap<EtherAddress, struct neighbour_airtime_stats*>  *nats_map;
                 BRN_DEBUG("before declaration");
@@ -406,8 +408,8 @@ void PacketLossEstimator::estimateInrange()
     uint16_t    *backoffsize    = _dev->get_cwmax();
     double      temp            = 1.0;
 
-    if (*backoffsize == NULL)
-        click_chatter ("backoffsize == NULL");
+    if (*backoffsize == 0)
+        click_chatter ("backoffsize == 0");
 
     if (_debug == 4)
         click_chatter ("before if");
@@ -538,7 +540,7 @@ enum
     H_STATS
 };
 
-String PacketLossEstimator::stats_handler(int mode)    // TODO: statistics for mid and long term
+String PacketLossEstimator::stats_handler(int /*mode*/)
 {
     StringAccum sa;
     

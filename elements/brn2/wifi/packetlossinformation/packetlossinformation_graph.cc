@@ -68,6 +68,8 @@ PacketLossReason::PossibilityE PacketLossInformation_Graph::possibility_get(Stri
 	else if(name.compare("narrowband_non_cooperative") == 0){return PacketLossReason::NARROWBAND_NON_COOPERATIVE;}
 	else if(name.compare("broadband_cooperative") == 0){return PacketLossReason::BROADBAND_COOPERATIVE;}
 	else if(name.compare("broadband_non_cooperative") == 0){return PacketLossReason::BROADBAND_NON_COOPERATIVE;}
+    else
+        return PacketLossReason::ERROR;
 }
 
 

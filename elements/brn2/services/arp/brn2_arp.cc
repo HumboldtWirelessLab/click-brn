@@ -109,12 +109,10 @@ BRN2Arp::dht_request(DHTOperation *op)
 void
 BRN2Arp::push( int port, Packet *packet )
 {
-  int result;
-
   BRN_DEBUG("ARP: PUSH\n");
 
   if ( port == 0 )
-    result = handle_arp_request(packet);
+    handle_arp_request(packet);
 }
 
 
@@ -132,7 +130,7 @@ BRN2Arp::handle_arp_request(Packet *p)
     BRN_DEBUG("ARP: %s %s\n", _src_ip.unparse().c_str(), _src_ip_mask.unparse().c_str()); 
 
     if ( memcmp ( _router_ip.data(),arpp->arp_tpa, 4 ) == 0                                   //ask for router_ip
-        || _src_ip_mask && !IPAddress(arpp->arp_tpa).matches_prefix(_src_ip, _src_ip_mask) )  //TODO: use dhcpsubnetlist
+        || (_src_ip_mask && !IPAddress(arpp->arp_tpa).matches_prefix(_src_ip, _src_ip_mask)) )  //TODO: use dhcpsubnetlist
     {
       if ( memcmp ( _router_ip.data(),arpp->arp_tpa, 4 ) != 0 )
         BRN_WARN("ARP-Request: Src is other subnet, so etheraddress is router-ea. Please use SUBNETLIST");

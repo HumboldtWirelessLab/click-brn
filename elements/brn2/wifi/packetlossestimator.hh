@@ -153,7 +153,7 @@ CLICK_ENDDECLS
             
             for (i; i < entries; i++) {
                 
-                if (start_elem - i < 0) {
+                if ((start_elem - i) == 0) { //TODO:Error-Handling
                     
                     if (NULL == &time_buffer[overflow_counter]) {
                         
@@ -166,4 +166,10 @@ CLICK_ENDDECLS
                     temp_data[i] = time_buffer[start_elem - i];
                 }
             }
-           */ 
+            
+            *data = *temp_data;
+            return i;
+        }
+    };
+*/
+

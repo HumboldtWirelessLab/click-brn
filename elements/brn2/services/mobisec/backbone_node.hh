@@ -17,6 +17,7 @@
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/standard/suppressor.hh"
 #include "elements/wifi/wepencap.hh"
 #include "elements/wifi/wepdecap.hh"
 
@@ -37,24 +38,33 @@ public:
 
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
-	int initialize(ErrorHandler* errh);
+	int initialize();
 
 	void snd_kdp_req();
 
 	void jmp_next_session();
-	static void session_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
 
-	static void kdp_trigger(Timer *t, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
+	static void kdp_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
 
 private:
 	BRN2NodeIdentity *_me;
+
+	// Control of key usage in wep module
 	Element *_wepencap;
 	Element *_wepdecap;
+
+	// Control of packet flow dependent of authentication status of the node
+	Element *_dev_control_up;
+	Element *_dev_control_down;
+
 	int _debug;
 	int _start_time;
+
+	enum dev_type {dev_ap, dev_client};
 
 	// Parameters to control the refreshing of key material
 	Timer session_timer; 	// Controls installation of keys
@@ -76,11 +86,11 @@ private:
 
 	void handle_kdp_reply(Packet *);
 	void switch_wep(String);
+	void switch_dev(enum dev_type type);
 
 	void add_handlers();
 };
 
-static String handler_triggered_request(Element *e, void *thunk);
 
 
 CLICK_ENDDECLS

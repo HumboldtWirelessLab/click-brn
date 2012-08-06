@@ -50,7 +50,7 @@ int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
     return ret;
 }
 
-int CooperativeChannelStats::initialize(ErrorHandler *errh)
+int CooperativeChannelStats::initialize(ErrorHandler * /*errh*/)
 {
     BRN_DEBUG("int CooperativeChannelStats::initialize(ErrorHandler *)");
     click_srandom(_cst->_device->getEtherAddress()->hashcode());
@@ -64,7 +64,7 @@ int CooperativeChannelStats::initialize(ErrorHandler *errh)
     return 0;
 }
 
-void CooperativeChannelStats::run_timer(Timer *timer)
+void CooperativeChannelStats::run_timer(Timer * /*timer*/)
 {
     BRN_DEBUG("void CooperativeChannelStats::run_timer(Timer *)");
     _msg_timer.schedule_after_msec(_interval);
@@ -130,7 +130,7 @@ void CooperativeChannelStats::send_message()
 
     WritablePacket *p = create_new_packet(ccsh, nats_arr);
     
-    #warning check stettings of brn_headers
+#pragma message "check stettings of brn_headers"
     p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
     BRN_DEBUG("Send Packet-Length: %d", p->length());
     
@@ -220,8 +220,8 @@ HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::
 
 enum { H_STATS };
 
-String CooperativeChannelStats::stats_handler(int mode)
-{    
+String CooperativeChannelStats::stats_handler(int /*mode*/)
+{
     StringAccum sa;
     
     sa << "<cooperativechannelstats" << " node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now();
@@ -230,7 +230,7 @@ String CooperativeChannelStats::stats_handler(int mode)
     for (NodeChannelStatsTableIter iter = _ncst.begin(); iter.live(); iter++)
     {        
         NodeChannelStats *ncs = iter.value();
-        EtherAddress ea = iter.key();
+        //EtherAddress ea = iter.key();
         
         sa << "\t<node address=\"" << ncs->node.unparse() << "\" />\n";
     }

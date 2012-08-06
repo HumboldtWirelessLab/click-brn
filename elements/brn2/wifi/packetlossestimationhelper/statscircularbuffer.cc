@@ -112,7 +112,7 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values(EtherAddress &ea, u
         std::list<PacketLossStatistics>::iterator   list_iter = stored_pls.begin ();
         std::list<PacketLossStatistics>::iterator   list_end = stored_pls.end ();
 
-        for (list_iter; list_iter != list_end || i <= amount; ++list_iter)
+        for (/*list_iter*/; list_iter != list_end || i <= amount; ++list_iter)
         {
             ++i;
             pls.push_back (*list_iter);

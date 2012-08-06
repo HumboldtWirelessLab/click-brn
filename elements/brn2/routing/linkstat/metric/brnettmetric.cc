@@ -117,8 +117,8 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
 
   int rev_metric = 0;
   int fwd_metric = 0;
-  int best_rev_rate = 0;
-  int best_fwd_rate = 0;
+  //int best_rev_rate = 0;
+  //int best_fwd_rate = 0;
 
   for (int x = 0; x < rs.size(); x++) {
     if (rs[x]._size >= 100) {
@@ -134,7 +134,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
       int metric = ett2_metric(ack_rev, fwd[x], rs[x]._rate);
       //click_chatter("METRIC = %d\n", metric);
       if (!fwd_metric || (metric && metric < fwd_metric)) {
-        best_fwd_rate = rs[x]._rate;
+        //best_fwd_rate = rs[x]._rate;
         fwd_metric = metric;
       }
 
@@ -142,7 +142,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
 
       if (!rev_metric || (metric && metric < rev_metric)) {
         rev_metric = metric;
-        best_rev_rate= rs[x]._rate;
+        //best_rev_rate= rs[x]._rate;
       }
     }
   }

@@ -121,7 +121,7 @@ class MCS {
         default: return;
       }
 
-      if (_is_ht = (BrnWifi::getMCS(ceh, index) == 1 )) {
+      if ((_is_ht = (BrnWifi::getMCS(ceh, index))) == 1 ) {
         BrnWifi::toMCS(&_ridx, &_ht40, &_sgi, _rate);
         _data_rate = BrnWifi::getMCSRate(_ridx, _ht40, _sgi);
       } else {

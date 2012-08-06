@@ -54,7 +54,7 @@ VideoInfo::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 void
-VideoInfo::push(int port, Packet *p)
+VideoInfo::push(int /*port*/, Packet *p)
 {
 
   String videoinfo = String(p->data());
@@ -73,7 +73,7 @@ VideoInfo::push(int port, Packet *p)
 String
 VideoInfo::read_info()
 {
-  Timestamp now = Timestamp::now();
+  //Timestamp now = Timestamp::now();
 
   StringAccum sa;
 

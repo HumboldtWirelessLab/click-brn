@@ -36,17 +36,17 @@ calc_usecs_wifi_packet_tries(int length, int rate, int try0, int tryN)
 	}
 
 	/* pg 205 ieee.802.11.pdf */
-	unsigned t_slot = 20;
+//	unsigned t_slot = 20;
 	unsigned t_ack = 304; // 192 + 14*8/1
-	unsigned t_difs = 50;
+//	unsigned t_difs = 50;
 	unsigned t_sifs = 10;
 
 
 	if (!is_b_rate(rate)) {
 		/* with 802.11g, things are at 6 mbit/s */
-		t_slot = 9;
+//		t_slot = 9;
 		t_sifs = 9;
-		t_difs = 28;
+//		t_difs = 28;
 		t_ack = 30;
 	}
 
