@@ -20,13 +20,26 @@
 
 #ifndef CLICK_COOPERATIVECHANNELSTATS_HH
 #define CLICK_COOPERATIVECHANNELSTATS_HH
+#include <click/config.h>
+#include <click/straccum.hh>
+#include <click/confparse.hh>
+#include <click/packet_anno.hh>
+#include <click/hashmap.hh>
+#include <click/bighashmap.hh>
+#include <click/error.hh>
+#include <click/userutils.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
 
+#include "elements/brn2/brn2.h"
+#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn2/routing/identity/brn2_device.hh"
 #include "elements/brn2/brnelement.hh"
-#include "cooperativechannelstats.hh"
 #include "channelstats.hh"
+#include "packetlossestimationhelper/cooperativestatscircularbuffer.hh"
+#include "packetlossestimationhelper/nodechannelstats.hh"
 
 CLICK_DECLS
 
@@ -43,91 +56,28 @@ CooperativeChannelStats()
 #define ENDIANESS_TEST 0x1234
 #define INCLUDES_NEIGHBOURS 1
 
-struct cooperative_channel_stats_header {
-
-    uint16_t endianess;     // endianess-test
-    uint8_t flags;          // flags
-    uint8_t no_neighbours;  // number of neighbours
+struct cooperative_channel_stats_header
+{
+    uint16_t    endianess;      // endianess-test
+    uint8_t     flags;          // flags
+    uint8_t     no_neighbours;  // number of neighbours
 };
 
-struct cooperative_message_body {
-    
+struct cooperative_message_body
+{    
     struct cooperative_channel_stats_header ccsh;
-    struct neighbour_airtime_stats *nats_arr;
+    struct neighbour_airtime_stats          *nats_arr;
 };
 
-class CooperativeChannelStats : public BRNElement {
-    
-    typedef HashMap<EtherAddress, struct neighbour_airtime_stats*> NeighbourStatsTable;
-    typedef NeighbourStatsTable::const_iterator NeighbourStatsTableIter;
-
-private:
-
-    class NodeChannelStats {
-
-    private:
-        struct airtime_stats stats;
-
-    public:
-        EtherAddress node;
-        uint16_t _endianess;
-        bool _is_fix_endianess;
-        NeighbourStatsTable _n_stats;
-
-        NodeChannelStats() {
-
-            node = EtherAddress();
-            _is_fix_endianess = false;
-        }
-
-        NodeChannelStats(EtherAddress ea) {
-
-            node = ea;
-            _is_fix_endianess = false;
-        }
-
-        void set_stats(struct airtime_stats *new_stats, uint16_t endianess) {
-
-            memcpy(&stats, new_stats, sizeof(struct airtime_stats));
-            _endianess = endianess;
-            _is_fix_endianess = false;
-        }
-
-        struct airtime_stats *get_airtime_stats() {
-
-            if ( ! _is_fix_endianess ) {
-                //fix it
-                _is_fix_endianess = true;
-            }
-            return &stats;
-        }
-
-        void add_neighbour_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
-
-            _n_stats.insert(*ea, stats);
-        }
-    };
-
-    typedef HashMap<EtherAddress, NodeChannelStats*> NodeChannelStatsTable;
-    typedef NodeChannelStatsTable::const_iterator NodeChannelStatsTableIter;
-
+class CooperativeChannelStats : public BRNElement
+{
 public:
-
-    class CooperativeStatsCircularBuffer {
-
-    private:
-        uint32_t size;
-        uint32_t start_elem;
-        uint32_t counter;
-        HashMap<EtherAddress, neighbour_airtime_stats>* time_buffer;
-
-    public:
-
-    };
-
+    
+    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+    
     // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
     CooperativeChannelStats();
-    ~CooperativeChannelStats();
+    virtual ~CooperativeChannelStats();
 
     const char *class_name() const  { return "CooperativeChannelStats"; }
     const char *processing() const  { return PUSH; }
@@ -148,16 +98,37 @@ public:
     HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
     
 private:
-    ChannelStats *_cst;
+    typedef HashMap<EtherAddress, struct neighbour_airtime_stats*>  NeighbourStatsTable;
+    typedef NeighbourStatsTable::const_iterator                     NeighbourStatsTableIter;
+    typedef HashMap<EtherAddress, NodeChannelStats*>                NodeChannelStatsTable;
+    typedef NodeChannelStatsTable::const_iterator                   NodeChannelStatsTableIter;
 
-    Timer _msg_timer;
-
-    uint32_t _interval;
-
-    NodeChannelStatsTable ncst;
-
-    bool _add_neighbours;
+    ChannelStats            *_cst;
+    Timer                   _msg_timer;
+    uint32_t                _interval;
+    NodeChannelStatsTable   _ncst;
+    bool                    _add_neighbours;
 };
 
 CLICK_ENDDECLS
 #endif
+
+        /*
+         class AbstractCircularBuffer
+{
+public:
+    AbstractCircularBuffer();
+    AbstractCircularBuffer(const uint16_t);
+    virtual ~AbstractCircularBuffer();
+    virtual Vector<AbstractPacketLossStatistics *> get_all_values(EtherAddress &);
+    virtual bool add_etheraddress(const EtherAddress &);
+    virtual const uint16_t get_buffer_size();
+    virtual void set_buffer_size(const uint16_t);
+    std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > get_ether_address_time_map();
+    
+private:
+    std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > ether_address_time_map;
+    uint16_t buffer_size;
+};
+         
+         */
