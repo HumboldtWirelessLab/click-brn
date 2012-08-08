@@ -7,8 +7,14 @@
 
 #ifndef STATSCIRCULARBUFFER_HH
 #define	STATSCIRCULARBUFFER_HH
-#include <map>
-#include <list>
+#include <click/config.h>
+#include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/args.hh>
+#include <click/hashmap.hh>
+#include <click/element.hh>
+#include <click/vector.hh>
+#include "elements/brn2/brnelement.hh"
 #include "packetparameter.hh"
 #include "packetlossstatistics.hh"
 #include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
@@ -25,7 +31,8 @@ public:
     Vector<PacketLossStatistics> get_values(EtherAddress &, uint16_t);
     void set_buffer_size(uint16_t size);
     uint16_t get_buffer_size();
-    std::list<PacketLossStatistics> get_all_values(EtherAddress &);
+    Vector<PacketLossStatistics> get_all_values(EtherAddress &);
+    //std::list<PacketLossStatistics> get_all_values(EtherAddress &);
     Vector<EtherAddress> get_stored_addresses();
     
 private:
@@ -33,7 +40,7 @@ private:
     uint16_t buffer_size;
 
     //std::map<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
-    std::map<EtherAddress, std::list<PacketLossStatistics > > ether_address_time_map;
+    HashMap<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
 };
 
 CLICK_ENDDECLS
