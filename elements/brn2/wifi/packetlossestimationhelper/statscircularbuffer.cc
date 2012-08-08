@@ -13,30 +13,48 @@ StatsCircularBuffer::~StatsCircularBuffer()
 
 void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, PacketLossInformation &pli)
 {
-    EtherAddress ea = *packet_parameter.get_src_address();
+    if (&packet_parameter == NULL || &pli == NULL)
+    {
+        click_chatter ("%s:%d: PacketParameter and/or PacketLossInformation is NULL", __FILE__, __LINE__);
+        return;
+    }
+    
+    EtherAddress                ea = *packet_parameter.get_src_address();
     PacketLossInformation_Graph *pli_graph = pli.graph_get(ea);
+
+    if (pli_graph == NULL)
+    {
+        click_chatter ("%s:%d: Could not find PacketLossInformation_Graph for %s", __FILE__, __LINE__, ea.unparse ().c_str ());
+        return;
+    }
+
     const uint8_t hn_fraction = pli_graph->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction();
     const uint8_t ir_fraction = pli_graph->reason_get(PacketLossReason::IN_RANGE)->getFraction();
     const uint8_t nw_fraction = pli_graph->reason_get(PacketLossReason::NON_WIFI)->getFraction();
     const uint8_t ws_fraction = pli_graph->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
 
     PacketLossStatistics pls;
+    
     pls.set_hidden_node_probability(hn_fraction);
     pls.set_inrange_probability(ir_fraction);
     pls.set_non_wifi_probability(nw_fraction);
     pls.set_weak_signal_probability(ws_fraction);
-    if (ether_address_time_map.find (ea) == ether_address_time_map.end ())
+
+    if (ether_address_time_map.find (ea).empty ())
     {
         //click_chatter ("in if");
         //Vector<PacketLossStatistics> temp_vector;
         //temp_vector.push_back (pls);
-        std::list<PacketLossStatistics> pls_temp_list;
+        Vector<PacketLossStatistics> pls_temp_list;
+        //std::list<PacketLossStatistics> pls_temp_list;
         pls_temp_list.push_front (pls);
-        ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
+        ether_address_time_map.insert (ea, pls_temp_list);
+        //ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
 
     } else
     {
-        std::list<PacketLossStatistics> pls_temp_list = ether_address_time_map.at (ea);
+        Vector<PacketLossStatistics> pls_temp_list = ether_address_time_map.find (ea);
+        //std::list<PacketLossStatistics> pls_temp_list = ether_address_time_map.at (ea);
         
         //Vector<PacketLossStatistics> temp_vector;
         //click_chatter ("pls_temp_list-size before push: %d", pls_temp_list.size ());
@@ -50,10 +68,10 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
 //        }
         //get_all_values(ea).push_front(pls);
         //temp_vector.push_back (pls);
-        pls_temp_list.push_front (pls);
-        click_chatter ("pls_temp_list-size after push: %d", pls_temp_list.size ());
 
-        if (ether_address_time_map.find (ea) != ether_address_time_map.end ())
+        pls_temp_list.push_front (pls);
+
+        if (!ether_address_time_map.find (ea).empty ())
         {
             ether_address_time_map.erase (ea);
         }
@@ -63,7 +81,8 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
             pls_temp_list.pop_back ();
         }
 
-        ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
+        ether_address_time_map.insert (ea, pls_temp_list);
+        //ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
         
         //click_chatter ("size for %s in map: %d", ea.unparse ().data () , ether_address_time_map.at (ea).size ());
         
@@ -86,10 +105,10 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
 Vector<PacketLossStatistics> StatsCircularBuffer::get_values(EtherAddress &ea, uint16_t amount)
 {
     Vector<PacketLossStatistics> pls;
-    if (ether_address_time_map.find (ea) != ether_address_time_map.end ())
+
+    if (!ether_address_time_map.find (ea).empty ())
     {
-        std::list<PacketLossStatistics> stored_pls = ether_address_time_map.at (ea);
-        //click_chatter ("stored_pls-size for %s: %d", ea.unparse ().data (), stored_pls.size ());
+        Vector<PacketLossStatistics> stored_pls = ether_address_time_map.find (ea);
 
         if (amount > get_buffer_size())
         {
@@ -99,11 +118,10 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values(EtherAddress &ea, u
             amount = stored_pls.size ();
         }
 
-        int                                         i = 0;
-        std::list<PacketLossStatistics>::iterator   list_iter = stored_pls.begin ();
-        std::list<PacketLossStatistics>::iterator   list_end = stored_pls.end ();
+        int                                     i = 0;
+        Vector<PacketLossStatistics>::iterator  list_end = stored_pls.end ();
 
-        for (/*list_iter*/; list_iter != list_end || i <= amount; ++list_iter)
+        for (Vector<PacketLossStatistics>::iterator list_iter = stored_pls.begin (); list_iter != list_end && i <= amount; ++list_iter)
         {
             ++i;
             pls.push_back (*list_iter);
@@ -116,22 +134,22 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values(EtherAddress &ea, u
     return pls;
 }
 
-void StatsCircularBuffer::set_buffer_size(uint16_t size)
+void StatsCircularBuffer::set_buffer_size (uint16_t size)
 {
     buffer_size = size;
 }
 
-uint16_t StatsCircularBuffer::get_buffer_size()
+uint16_t StatsCircularBuffer::get_buffer_size ()
 {
     return buffer_size;
 }
 
-std::list<PacketLossStatistics> StatsCircularBuffer::get_all_values(EtherAddress &ea)
+Vector<PacketLossStatistics> StatsCircularBuffer::get_all_values (EtherAddress &ea)
 {
-    if (ether_address_time_map.find (ea) == ether_address_time_map.end ())
+    if (ether_address_time_map.find (ea).empty ())
     {
-        std::list<PacketLossStatistics> pls_temp_list;;
-        ether_address_time_map.insert (std::make_pair (ea, pls_temp_list));
+        Vector<PacketLossStatistics> pls_temp_list;;
+        ether_address_time_map.insert (ea, pls_temp_list);
     }
 
 /*    for (std::map<EtherAddress, Vector<PacketLossStatistics> >::iterator iter = ether_address_time_map.begin(); iter != ether_address_time_map.begin(); iter++)
@@ -141,17 +159,17 @@ std::list<PacketLossStatistics> StatsCircularBuffer::get_all_values(EtherAddress
     }
 */
     
-    return ether_address_time_map.at(ea);
+    return ether_address_time_map.find (ea);
 }
 
 Vector<EtherAddress> StatsCircularBuffer::get_stored_addresses()
 {
-    Vector<EtherAddress> ether_addresses;
-    std::map<EtherAddress, std::list<PacketLossStatistics> >::iterator iter;
+    Vector<EtherAddress>                                            ether_addresses;
+    HashMap<EtherAddress,Vector<PacketLossStatistics> >::iterator   end_of_map = ether_address_time_map.end ();
 
-    for (iter = ether_address_time_map.begin (); iter != ether_address_time_map.end (); iter++)
+    for (HashMap<EtherAddress, Vector<PacketLossStatistics> >::iterator iter = ether_address_time_map.begin (); iter != end_of_map; iter++)
     {
-        ether_addresses.push_back (iter->first);
+        ether_addresses.push_back (iter.key ());
     }
     
     return ether_addresses;
