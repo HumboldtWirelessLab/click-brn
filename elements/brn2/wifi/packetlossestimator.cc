@@ -10,7 +10,9 @@ PacketLossEstimator::PacketLossEstimator() :
     _cinfo(NULL),
     _hnd(NULL),
     _pli(NULL),
-    _dev(NULL)
+    _cocst(NULL),
+    _dev(NULL),
+    _pessimistic_hn_detection (false)
 {
         BRN_DEBUG("PacketLossEstimator::PacketLossEstimator()");
         _packet_parameter = new PacketParameter();
@@ -187,6 +189,7 @@ void PacketLossEstimator::gather_packet_infos_(const Packet &packet)
                     
                 default:
                     BRN_WARN("unknown subtype: %d", (int) (wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK));
+                    break;
             }
             break;
 
@@ -199,6 +202,7 @@ void PacketLossEstimator::gather_packet_infos_(const Packet &packet)
         default:
             BRN_WARN("unknown type: %d", (int) (wh->i_fc[0] & WIFI_FC0_TYPE_MASK));
             src_address = EtherAddress(wh->i_addr2);
+            break;
     }
 
     if (_debug == 4)
@@ -610,12 +614,12 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
                         << _pli.graph_get(ea)->reason_get(PacketLossReason::HIDDEN_NODE)->getFraction()
                         << "</fraction>\n";
 
-        if (hnd_info_tab.find(ea)->_neighbour)
+        if (hnd_info_tab.find (ea)->_neighbour)
         {
             bool hnds = false;
 
-            for (HiddenNodeDetection::NodeInfoTableIter itt = hnd_info_tab.find(ea)->_links_to.begin();
-                 itt != hnd_info_tab.find(ea)->_links_to.end(); 
+            for (HiddenNodeDetection::NodeInfoTableIter itt = hnd_info_tab.find (ea)->_links_to.begin ();
+                 itt != hnd_info_tab.find (ea)->_links_to.end ();
                  itt++)
             {
                 if (!hnd_info_tab.find(itt.key())->_neighbour)
@@ -923,7 +927,7 @@ click_chatter ("in stats_get_non_wifi");
     return non_wifi_sa;
 }
 
-static String PacketLossEstimator_read_param(Element *ele, void *thunk)
+static String PacketLossEstimator_read_param (Element *ele, void *thunk)
 {
     StringAccum         sa;
     PacketLossEstimator *ple = (PacketLossEstimator *) ele;
