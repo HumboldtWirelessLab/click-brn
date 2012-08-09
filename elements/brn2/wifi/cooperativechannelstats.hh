@@ -53,7 +53,6 @@ CooperativeChannelStats()
 
 */
 
-#define ENDIANESS_TEST 0x1234
 #define INCLUDES_NEIGHBOURS 1
 
 struct cooperative_channel_stats_header
@@ -73,29 +72,29 @@ class CooperativeChannelStats : public BRNElement
 {
 public:
     
-   HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+	HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
     
     // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
-    CooperativeChannelStats();
-    virtual ~CooperativeChannelStats();
+    CooperativeChannelStats ();
+    virtual ~CooperativeChannelStats ();
 
-    const char *class_name() const  { return "CooperativeChannelStats"; }
-    const char *processing() const  { return PUSH; }
-    const char *port_count() const  { return "1/1"; }
+    const char *class_name () const { return "CooperativeChannelStats"; }
+    const char *processing () const { return PUSH; }
+    const char *port_count () const { return "1/1"; }
 
-    int configure(Vector<String> &conf, ErrorHandler* errh);
-    int initialize(ErrorHandler *);
-    void run_timer(Timer *);
+    int configure (Vector<String> &, ErrorHandler *);
+    int initialize (ErrorHandler *);
+    void run_timer (Timer *);
 
-    void add_handlers();
+    void add_handlers ();
 
-    void push(int, Packet *p);
+    void push (int, Packet *p);
 
-    String stats_handler(int mode);
+    String stats_handler (int mode);
 
-    void send_message();
+    void send_message ();
     
-    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
+    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats (EtherAddress *);
     
 private:
     typedef HashMap<EtherAddress, struct neighbour_airtime_stats*>  NeighbourStatsTable;
@@ -103,11 +102,14 @@ private:
     typedef HashMap<EtherAddress, NodeChannelStats*>                NodeChannelStatsTable;
     typedef NodeChannelStatsTable::const_iterator                   NodeChannelStatsTableIter;
 
-    ChannelStats            *_cst;
-    Timer                   _msg_timer;
-    uint32_t                _interval;
-    NodeChannelStatsTable   _ncst;
-    bool                    _add_neighbours;
+    static CooperativeStatsCircularBuffer 	_coop_stats_buffer;
+    ChannelStats            				*_cst;
+    Timer                   				_msg_timer;
+    uint32_t                				_interval;
+    NodeChannelStatsTable   				_ncst;
+    bool                    				_add_neighbours;
+
+    WritablePacket *create_new_packet (struct cooperative_channel_stats_header, struct neighbour_airtime_stats []);
 };
 
 CLICK_ENDDECLS

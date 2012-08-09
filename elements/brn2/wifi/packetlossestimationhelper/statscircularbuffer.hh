@@ -7,8 +7,17 @@
 
 #ifndef STATSCIRCULARBUFFER_HH
 #define	STATSCIRCULARBUFFER_HH
-#include <map>
-#include <list>
+#include <click/config.h>
+#include <click/confparse.hh>
+#include <click/error.hh>
+#include <click/args.hh>
+#if CLICK_NS
+    #include <click/router.hh>
+#endif
+#include <click/hashmap.hh>
+#include <click/element.hh>
+#include <click/vector.hh>
+#include "elements/brn2/brnelement.hh"
 #include "packetparameter.hh"
 #include "packetlossstatistics.hh"
 #include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
@@ -19,27 +28,21 @@ class StatsCircularBuffer
 {
 
 public:
-    StatsCircularBuffer(const uint16_t);    
-    virtual ~StatsCircularBuffer();
-    void insert_values(PacketParameter &, PacketLossInformation &);
-    Vector<PacketLossStatistics> get_values(EtherAddress &, uint16_t);
-    void set_buffer_size(uint16_t size);
-    uint16_t get_buffer_size();
-    std::list<PacketLossStatistics> get_all_values(EtherAddress &);
-    Vector<EtherAddress> get_stored_addresses();
+    StatsCircularBuffer (const uint16_t);
+    virtual ~StatsCircularBuffer ();
+    void insert_values (PacketParameter &, PacketLossInformation &);
+    Vector<PacketLossStatistics> get_values (EtherAddress &, uint16_t);
+    void set_buffer_size (uint16_t size);
+    uint16_t get_buffer_size ();
+    Vector<PacketLossStatistics> get_all_values (EtherAddress &);
+    Vector<EtherAddress> get_stored_addresses ();
     
 private:
-    StatsCircularBuffer();
-    uint16_t buffer_size;
+    StatsCircularBuffer ();
 
-    //std::map<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
-    std::map<EtherAddress, std::list<PacketLossStatistics > > ether_address_time_map;
+    uint16_t 												buffer_size;
+    HashMap<EtherAddress, Vector<PacketLossStatistics> > 	ether_address_time_map;
 };
 
 CLICK_ENDDECLS
 #endif	/* STATSCIRCULARBUFFER_HH */
-        
-/*
-    virtual bool add_etheraddress(const EtherAddress &);
-    std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > get_ether_address_time_map();
-*/
