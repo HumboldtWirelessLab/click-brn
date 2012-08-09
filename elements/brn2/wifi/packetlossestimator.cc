@@ -53,7 +53,7 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
            
             if (_cst != NULL)
             {
-                int time_now = packet->timestamp_anno().msec();
+                //int time_now = packet->timestamp_anno().msec();
                 
                 stats = _cst->get_latest_stats();
                 src_tab = _cst->get_latest_stats_neighbours();
