@@ -168,6 +168,12 @@ BRN2RouteQuerier::push(int, Packet *p_in)
     return;
   }
 
+  if ( _me->isIdentical(&dst_addr) || _link_table->is_associated(dst_addr) ) {
+    BRN_DEBUG("Dest is me or associated client (should never happend ?)");
+    output(2).push(p_in);
+    return;
+  }
+
   uint16_t last_hop_metric = _link_table->get_host_metric_to_me(src_addr);
   if ( !(_me->isIdentical(&src_addr) || _link_table->is_associated(src_addr) || (last_hop_metric > 0) ) ) {
     //TODO: fix it
