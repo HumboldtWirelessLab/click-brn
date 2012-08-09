@@ -660,12 +660,13 @@ RouterThread::driver()
 #endif
 	    timer_set().run_timers(this, _master);
 //Old Routerthread (BRN)
-#if CLICK_NS_DISABLE
+#if CLICK_JIST
+//Old: #if CLICK_NS_DISABLE
 	    // If there's another timer, tell the simulator to make us
 	    // run when it's due to go off.
 	    if (Timestamp next_expiry = timer_set().timer_expiry_steady()) {
-        struct timeval nexttime = next_expiry.timeval();
-        simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
+    		struct timeval nexttime = next_expiry.timeval();
+    		simclick_sim_command(_master->simnode(), SIMCLICK_SCHEDULE, &nexttime);
 	    }
 #endif
 	} while (0);
