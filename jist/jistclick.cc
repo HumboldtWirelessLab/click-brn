@@ -505,10 +505,13 @@ JNIEXPORT jint JNICALL Java_click_runtime_ClickAdapter_click_1send
 
     if (SIMCLICK_PTYPE_WIFI_EXTRA == jtype) {
       click_wifi_extra* eh = (click_wifi_extra*)data;
-      if (txfeedback)
+      if (txfeedback) {
         assert(WIFI_EXTRA_TX == (eh->flags & WIFI_EXTRA_TX));
-      else
+	info.txfeedback = 1;
+      } else {
         assert(0 == (eh->flags & WIFI_EXTRA_TX));
+	info.txfeedback = 0;
+      }
     }
 
     // Click will copy the data
