@@ -2,7 +2,7 @@
 
 CLICK_DECLS
 
-CooperativeStatsCircularBuffer::CooperativeStatsCircularBuffer(const uint32_t start_size)
+CooperativeStatsCircularBuffer::CooperativeStatsCircularBuffer (const uint32_t start_size)
 {
     counter = 0;
     start_elem = 0;
@@ -10,14 +10,19 @@ CooperativeStatsCircularBuffer::CooperativeStatsCircularBuffer(const uint32_t st
     buffer_size = start_size;
 }
 
-CooperativeStatsCircularBuffer::~CooperativeStatsCircularBuffer()
+CooperativeStatsCircularBuffer::~CooperativeStatsCircularBuffer ()
 {
 }
 
-void CooperativeStatsCircularBuffer::insert_values(NodeChannelStats &ncst)
+void CooperativeStatsCircularBuffer::insert_values (NodeChannelStats &ncst)
 {
-	EtherAddress 													*ea = ncst.get_address ();
-	HashMap<EtherAddress, struct neighbour_airtime_stats*> 			nats_map = ncst.get_neighbour_stats_table ();
+    if (&ncst == NULL)
+    {
+        return;
+    }
+
+	EtherAddress 													    *ea = ncst.get_address ();
+	HashMap<EtherAddress, struct neighbour_airtime_stats*> 			    nats_map = ncst.get_neighbour_stats_table ();
 	Vector<HashMap<EtherAddress, struct neighbour_airtime_stats*> > 	nats_temp_vector;
 
 	if (ether_address_time_map.find (*ea).empty ())
