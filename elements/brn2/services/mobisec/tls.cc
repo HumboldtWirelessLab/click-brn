@@ -339,18 +339,18 @@ int TLS::snd_data() {
 	if ( (len = BIO_ctrl_pending(curr->bioOut)) <= 0 )
 		return 0; // nothing to do
 
-	WritablePacket *p = Packet::make(128, NULL, len, 32);
-	if(!p) {
+	WritablePacket *p_out = Packet::make(128, NULL, len, 32);
+	if(!p_out) {
 		BRN_DEBUG("snd_data(): Problems creating raw packets");
 		return 0;
 	}
 
-	if ( BIO_read(curr->bioOut,p->data(), p->length()) ) {
+	if ( BIO_read(curr->bioOut,p_out->data(), p_out->length()) ) {
 		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", curr->sender_addr.unparse().c_str(), len);
 
 		// Set information
-		BRNPacketAnno::set_ether_anno(p, _me, curr->sender_addr, ETHERTYPE_BRN);
-	    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS);
+		BRNPacketAnno::set_ether_anno(p_out, _me, curr->sender_addr, ETHERTYPE_BRN);
+	    //WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS); //todo: deprecated? using BRN2Encap()
 
 	    /* Painting-technique gives the server packet oriented control. */
 	    if (role == SERVER) {
@@ -363,7 +363,7 @@ int TLS::snd_data() {
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
 	} else {
-		p->kill();
+		p_out->kill();
 		BRN_DEBUG("sending data probably failed");
 	}
 
