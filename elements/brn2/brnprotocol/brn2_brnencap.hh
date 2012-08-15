@@ -40,6 +40,7 @@ class BRN2Encap : public Element {
 
   const char *class_name() const	{ return "BRN2Encap"; }
   const char *processing() const	{ return AGNOSTIC; }
+  const char *port_count() const  	{ return PORTS_1_1; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
