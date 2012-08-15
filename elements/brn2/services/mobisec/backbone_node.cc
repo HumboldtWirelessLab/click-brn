@@ -210,15 +210,23 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	switch(type) {
 	case dev_ap:
 		port = "1";
-		BRN_DEBUG("Switched device to dev_ap");
+		type_str = "dev_ap";
 		break;
 	case dev_client:
 		port = "0";
-		BRN_DEBUG("Switched device to dev_client");
+		type_str = "dev_client";
 		break;
 	default:
 		BRN_ERROR("Received wrong arg in switch_dev()");
-		break;
+		return;
+	}
+
+	String curr_port = HandlerCall::call_read(_dev_control_up, "switch", NULL);
+	if(curr_port == port) {
+		BRN_DEBUG("Using same dev: %s", type_str.c_str());
+		return;
+	} else {
+		BRN_DEBUG("Switching device to %s", type_str.c_str());
 	}
 
 	HandlerCall::call_write(_dev_control_up, "switch", port, NULL);
