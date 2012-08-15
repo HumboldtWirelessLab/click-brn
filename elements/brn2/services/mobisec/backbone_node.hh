@@ -38,7 +38,7 @@ public:
 
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
-	int initialize();
+	int initialize(ErrorHandler *);
 
 	void snd_kdp_req();
 
@@ -60,6 +60,7 @@ private:
 	// Control of packet flow dependent of authentication status of the node
 	Element *_dev_control_up;
 	Element *_dev_control_down;
+	Element *_dev_control_down2;
 
 	int _debug;
 	int _start_time;

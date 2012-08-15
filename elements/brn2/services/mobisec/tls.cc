@@ -326,6 +326,8 @@ void TLS::rcv_data(Packet *p) {
 			&& SSL_read(curr->conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
 			&& SSL_pending(curr->conn) > 0) {
 		decrypt();
+	} else {
+		BRN_DEBUG("Hic sunt dragones...");
 	}
 }
 
@@ -346,10 +348,9 @@ int TLS::snd_data() {
 	if ( BIO_read(curr->bioOut,p->data(), p->length()) ) {
 		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", curr->sender_addr.unparse().c_str(), len);
 
-		// Pack into BRN-Pkt
+		// Set information
 		BRNPacketAnno::set_ether_anno(p, _me, curr->sender_addr, ETHERTYPE_BRN);
 	    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS);
-
 
 	    /* Painting-technique gives the server packet oriented control. */
 	    if (role == SERVER) {
