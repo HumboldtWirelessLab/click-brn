@@ -47,7 +47,7 @@ int
 BRN2Encap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "SRCPORT", cpkP+cpkM , cpElement, &_src_port,
+      "SRCPORT", cpkP+cpkM , cpInteger, &_src_port,
       "DSTPORT", cpkP+cpkM , cpInteger, &_dst_port,
       "TTL", cpkP+cpkM , cpInteger, &_ttl,
       "TOS", cpkP+cpkM , cpInteger, &_tos,
