@@ -75,6 +75,8 @@ public:
 
   static SimState* simmain(simclick_node_t *simnode,const char* router_file);
   static bool didinit_;
+  
+  int unsupported_command_counter;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +121,9 @@ SimState::simmain(simclick_node_t *simnode, const char *router_file)
     exit(1);
 
   newstate->router->activate(errh);
+  
+  newstate->unsupported_command_counter = 0;
+  
   return newstate;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -853,7 +858,10 @@ int simclick_sim_command(simclick_node_t *simnode, int cmd, ...)
     }
     default:
     {
-      printf("unsupported command: %d\n",cmd);
+      if ( router_state->unsupported_command_counter < 5 ) {
+        printf("unsupported command: %d\n",cmd);
+	router_state->unsupported_command_counter++;
+      }
       r = -1;
     }
   }
