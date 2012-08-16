@@ -49,7 +49,6 @@ BrnRoutingTable::BrnRoutingTable() :
 
 BrnRoutingTable::~BrnRoutingTable()
 {
-  click_chatter("Dest");
   flush_cache();
 }
 
