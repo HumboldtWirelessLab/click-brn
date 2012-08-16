@@ -198,14 +198,17 @@ Flooding::reset()
 {
   _flooding_src = _flooding_fwd = 0;
 
-  BcastNodeMapIter iter = _bcast_map.begin();
-  while (iter != _bcast_map.end())
-  {
-    BroadcastNode* bcn = iter.value();
-    delete bcn;
-  }
+  if ( _bcast_map.size() > 0 ) {
+    BcastNodeMapIter iter = _bcast_map.begin();
+    while (iter != _bcast_map.end())
+    {
+      BroadcastNode* bcn = iter.value();
+      delete bcn;
+      iter++;
+    }
 
-  _bcast_map.clear();
+    _bcast_map.clear();
+  }
 }
 
 
