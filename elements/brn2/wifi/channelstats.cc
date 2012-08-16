@@ -132,6 +132,8 @@ ChannelStats::run_timer(Timer *)
 
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[_current_small_stats].clear();
+
+    _small_stats_rssiinfo[_current_small_stats].reset();
   }
 
   if ( _stats_interval > 0 ) _stats_timer.reschedule_after_msec(_stats_interval);
@@ -250,6 +252,8 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_rx = false;
         new_pi->_rate = rate;
 
+        new_pi->_is_ht_rate = (rate_is_ht == 1);
+
         if (rate != 0) {
           if ( rate_is_ht )
             new_pi->_duration = BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
@@ -296,6 +300,7 @@ ChannelStats::push(int port, Packet *p)
       new_pi->_channel = _channel;
       new_pi->_rx = true;
       new_pi->_rate = ceh->rate;
+      new_pi->_is_ht_rate = (BrnWifi::getMCS(ceh,0) == 1);
     }
 
     if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
@@ -351,6 +356,8 @@ ChannelStats::push(int port, Packet *p)
 
         small_stats->avg_rssi += rssi;
         small_stats->std_rssi += (rssi * rssi);
+
+        _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,BrnWifi::getMCS(ceh,0) == 1,rssi);
 
         if ( BrnWifi::hasExtRxStatus(ceh) ) {
           struct brn_click_wifi_extra_rx_status *rx_status = (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
@@ -548,11 +555,11 @@ ChannelStats::readProcHandler()
 
 void
 ChannelStats::get_stats(struct airtime_stats *cstats, int /*time*/) {
-  calc_stats(cstats, NULL);
+  calc_stats(cstats, NULL, NULL);
 }
 
 void
-ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
+ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab, RSSIInfo *rssi_tab)
 {
   Timestamp now = Timestamp::now();
   Timestamp diff;
@@ -565,6 +572,7 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
   if ( diff.usecval() <= _min_update_time * 1000 ) return;
 
   if ( src_tab ) src_tab->clear();
+  if ( rssi_tab ) rssi_tab->reset();
 
   memset(cstats, 0, sizeof(struct airtime_stats));
 
@@ -634,6 +642,8 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab)
             }
           }
         }
+
+        if ( rssi_tab != NULL ) rssi_tab->add(pi->_rate, pi->_is_ht_rate, pi->_rssi);
       } else {
         cstats->zero_rate_packets++;
       }
@@ -796,19 +806,22 @@ ChannelStats::stats_handler(int mode)
   StringAccum sa;
 
   struct airtime_stats *stats;
-  SrcInfoTable         *src_tab;
+  SrcInfoTable          *src_tab;
+  RSSIInfo              *rssi_info;
 
   if ( _enable_full_stats ) {
     if (_neighbour_stats)
-      calc_stats(&_full_stats, &_full_stats_srcinfo_tab);
+      calc_stats(&_full_stats, &_full_stats_srcinfo_tab, &_full_stats_rssiinfo);
     else
-      calc_stats(&_full_stats, NULL);
+      calc_stats(&_full_stats, NULL, &_full_stats_rssiinfo);
 
     stats = &_full_stats;
     src_tab = &_full_stats_srcinfo_tab;
+    rssi_info = &_full_stats_rssiinfo;
   } else {
     stats = get_latest_stats();
     src_tab = get_latest_stats_neighbours();
+    rssi_info = get_latest_rssi_info();
   }
 
   switch (mode) {
@@ -885,7 +898,15 @@ ChannelStats::stats_handler(int mode)
         }
         sa << "\" />\n\t\t</nb>\n";
       }
-      sa << "\t</neighbourstats>\n</channelstats>\n";
+      sa << "\t</neighbourstats>\n\t<rssi_stats min_rssi=\"" << (uint32_t)rssi_info->min_rssi << "\" >\n";
+
+      for ( int i = 0; i <= 255; i++ ) {
+        if ( rssi_info->min_rssi_per_rate[i] != 255 ) {
+          sa << "\t\t<rssi_for_rate rate=\"" << i << "\" min_rssi=\"" << (uint32_t)rssi_info->min_rssi_per_rate[i] << "\" />\n";
+        }
+      }
+
+      sa << "\t</rssi_stats>\n</channelstats>\n";
 
   }
   return sa.take_string();

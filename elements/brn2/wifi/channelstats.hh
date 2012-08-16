@@ -177,9 +177,7 @@ class ChannelStats : public BRNElement {
 
       uint16_t _nav;
 
-      uint8_t _mode;
-      uint8_t _mcs_index;
-      uint8_t _mcs_flags;
+      bool _is_ht_rate;
     };
 
     class PacketInfoHW {
@@ -318,9 +316,9 @@ class ChannelStats : public BRNElement {
       }
 
       void get_airtime_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
-          
+
         if ( ! _calc_finished ) calc_values();
-          
+
         memcpy(stats->_etheraddr, ea->data(), 6);
         stats->_reserved = 0;
         stats->_pkt_count = _pkt_count;
@@ -336,6 +334,30 @@ class ChannelStats : public BRNElement {
     class LinkInfo {
       public:
 
+    };
+//TODO: add 80211n support
+    class RSSIInfo {
+     public:
+      uint8_t min_rssi_per_rate[255];
+      uint8_t min_rssi_per_rate_ht[255];
+      uint8_t min_rssi;
+
+      RSSIInfo()
+      {
+        reset();
+      }
+
+      void reset() {
+        min_rssi = 255;
+        memset(min_rssi_per_rate,255,sizeof(min_rssi_per_rate));
+        memset(min_rssi_per_rate_ht,255,sizeof(min_rssi_per_rate_ht));
+      }
+
+      inline void add(uint8_t rate, bool is_ht, uint8_t rssi) {
+        min_rssi = MIN(rssi,min_rssi);
+        if (is_ht) min_rssi_per_rate_ht[rate] = MIN(rssi,min_rssi_per_rate_ht[rate]);
+        else min_rssi_per_rate[rate] = MIN(rssi,min_rssi_per_rate[rate]);
+      }
     };
 
     typedef Vector<PacketInfo*> PacketList;
@@ -372,7 +394,7 @@ class ChannelStats : public BRNElement {
     void addHWStat(Timestamp *time, uint8_t busy, uint8_t rx, uint8_t tx,
                    uint32_t _cycles = 0, uint32_t _busy_cycles = 0, uint32_t _rx_cycles = 0, uint32_t _tx_cycles = 0);
 
-    void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab);
+    void calc_stats(struct airtime_stats *stats, SrcInfoTable *src_tab, RSSIInfo *rssi_tab);
     void get_stats(struct airtime_stats *cstats, int /*time*/);
     void calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *src_tab, int duration);
 
@@ -406,9 +428,11 @@ class ChannelStats : public BRNElement {
 
     struct airtime_stats _full_stats;
     SrcInfoTable         _full_stats_srcinfo_tab;
+    RSSIInfo             _full_stats_rssiinfo;
 
     struct airtime_stats _small_stats[SMALL_STATS_SIZE];
     SrcInfoTable _small_stats_src_tab[SMALL_STATS_SIZE];
+    RSSIInfo _small_stats_rssiinfo[SMALL_STATS_SIZE];
     uint8_t _current_small_stats;
 
     Timer _stats_timer;
@@ -431,6 +455,11 @@ class ChannelStats : public BRNElement {
     SrcInfoTable *get_latest_stats_neighbours() {
       if ( _enable_full_stats ) return NULL;
       return &(_small_stats_src_tab[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
+    }
+
+    RSSIInfo *get_latest_rssi_info() {
+      if ( _enable_full_stats ) return NULL;
+      return &(_small_stats_rssiinfo[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
     }
 
 };
