@@ -335,7 +335,7 @@ class ChannelStats : public BRNElement {
       public:
 
     };
-//TODO: add 80211n support
+
     class RSSIInfo {
      public:
       uint8_t min_rssi_per_rate[255];
