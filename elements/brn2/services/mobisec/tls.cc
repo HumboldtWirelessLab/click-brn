@@ -228,8 +228,6 @@ void TLS::encrypt(Packet *p) {
 		return;
 	}
 
-	// todo: Empfänger und Absender zwischenspeichern
-
 	int ret = SSL_write(curr->conn,p->data(),p->length());
 	if(ret>0) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
@@ -246,7 +244,7 @@ void TLS::encrypt(Packet *p) {
 // non-blocking
 void TLS::decrypt() {
 	int size = SSL_pending(curr->conn);
-	//BRN_DEBUG("processing app-data ...");
+	//BRN_DEBUG("processing app-data ... %d bytes", size);
 
 
 	data_t *data = (data_t *)malloc(size);
@@ -263,7 +261,11 @@ void TLS::decrypt() {
 		// BRN_DEBUG("...... decrypted");
 		// Push decrypted message to the next element.
 		WritablePacket *p = Packet::make(data, size);
-		output(1).push(p);
+		if (p) {
+			output(1).push(p);
+		} else {
+			BRN_ERROR("In TLS::decrypt packet make failed.");
+		}
 	} else {
 		BRN_DEBUG("...... decryption failed");
 	}
@@ -311,8 +313,10 @@ void TLS::rcv_data(Packet *p) {
 		}
 
 		/* Painting-technique gives the server packet oriented control. */
+		/* Todo: deprecated ?
 		uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
 		curr->wep_state = (color == 42) ? false : true;
+		*/
 	}
 
 
@@ -325,9 +329,8 @@ void TLS::rcv_data(Packet *p) {
 	if (do_handshake() == true
 			&& SSL_read(curr->conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
 			&& SSL_pending(curr->conn) > 0) {
+		print_err();
 		decrypt();
-	} else {
-		BRN_DEBUG("Hic sunt dragones...");
 	}
 }
 
@@ -353,12 +356,14 @@ int TLS::snd_data() {
 	    //WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS); //todo: deprecated? using BRN2Encap()
 
 	    /* Painting-technique gives the server packet oriented control. */
+		/* Todo: deprecated ?
 	    if (role == SERVER) {
 			if(curr->wep_state == false) {
 				uint8_t color = 42;
 				p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
 			}
 	    }
+	    */
 
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
@@ -379,6 +384,7 @@ int TLS::snd_data() {
 // Todo: Eliminate this, when having reliable tcp-connection
 void TLS::restart_tls() {
 	BRN_DEBUG("Timeout -> restart tls conn");
+	SSL_shutdown(curr->conn);
 	SSL_clear(curr->conn);
 	do_handshake();
 }

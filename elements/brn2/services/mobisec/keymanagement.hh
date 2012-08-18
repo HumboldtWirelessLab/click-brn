@@ -51,7 +51,7 @@ public:
 	void set_seedlen(int);
 
 	// Useful for installation of complete ctrl_data
-	void set_ctrl_data(crypto_ctrl_data *);
+	bool set_ctrl_data(crypto_ctrl_data *);
 	crypto_ctrl_data *get_ctrl_data();
 
 	Vector<String> get_keylist();
