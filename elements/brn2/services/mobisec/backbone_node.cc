@@ -69,7 +69,7 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	// order to get asynchronous packet transmission
 	long randnum = (long)this;
 	click_srandom((int)randnum);
-	randnum = 2345;
+	randnum = randnum%1337;
 	BRN_DEBUG("random number: %i", randnum);
 
 	req_id = 0;
@@ -142,12 +142,14 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
-	// We got some key material, keep WEP connection online.
-	switch_dev(dev_ap);
-
 	// Buffer crypto control data
-	BUF_keyman.set_ctrl_data(hdr);
-	BRN_INFO("card: %d; seed_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->seed_len);
+	if(!BUF_keyman.set_ctrl_data(hdr))
+		return;
+
+	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
+
+	// We got some key material, switch to backbone network
+	switch_dev(dev_ap);
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
@@ -161,7 +163,10 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 		BUF_keyman.install_keylist_srv_driv(keylist_string);
 	}
 
-	// Set timer to jump right into the coming epoch, it's unbelievable close
+	// Set timer to jump right into the coming epoch. If a kdp request was received successfully on
+	// the first try, we are very close to enter the new epoche. If it takes longer to install
+	// the keys than we probably missed the entry point in time and have to wait until the actual
+	// session passes.
 	int anticipation = 200;
 	epoch_timer.schedule_at(Timestamp::make_msec(BUF_keyman.get_validity_start_time() - anticipation));
 

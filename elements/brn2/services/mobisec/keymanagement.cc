@@ -94,7 +94,7 @@ void keymanagement::set_seed(const unsigned char *data) {
 		seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
 		memcpy(seed, data, ctrl_data.seed_len);
 	} else {
-		BRN_ERROR("Trying to set seed having seed length 0.");
+		click_chatter("Trying to set seed having seed length 0.");
 	}
 }
 
@@ -102,9 +102,19 @@ data_t *keymanagement::get_seed() {
 	return seed;
 }
 
-void keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
-	if (data)
+bool keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
+	// Plausibility check
+	if (data &&
+		data->cardinality > 0 &&
+		data->key_len > 0 &&
+		data->timestamp > 0) {
+
 		memcpy(&ctrl_data, data, sizeof(crypto_ctrl_data));
+		return true;
+	} else {
+		click_chatter("Plausibility check failed. Wrong ctrl_data, nothing installed!");
+		return false;
+	}
 }
 crypto_ctrl_data *keymanagement::get_ctrl_data() {
 	return &ctrl_data;
@@ -116,7 +126,7 @@ Vector<String> keymanagement::get_keylist() {
 
 data_t *keymanagement::get_keylist_string() {
 	data_t *keylist_string = (unsigned char*)malloc(ctrl_data.cardinality * ctrl_data.key_len);
-	if(!keylist_string) { BRN_ERROR("NO MEM FOR keylist_string");}
+	if(!keylist_string) { click_chatter("NO MEM FOR keylist_string");}
 
 	for(int i=0; i<ctrl_data.cardinality; i++) {
 		// Build a keylist of type char
