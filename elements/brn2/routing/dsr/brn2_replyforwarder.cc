@@ -59,6 +59,7 @@ BRN2ReplyForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DSRDECAP", cpkP+cpkM, cpElement, &_dsr_decap,
       "ROUTEQUERIER", cpkP+cpkM, cpElement, &_route_querier,
       "DSRENCAP", cpkP+cpkM, cpElement, &_dsr_encap,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
