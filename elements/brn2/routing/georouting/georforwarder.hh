@@ -1,8 +1,8 @@
 #ifndef GEORFORWARDERELEMENT_HH
 #define GEORFORWARDERELEMENT_HH
 
+#include "elements/brn2/brnelement.hh"
 #include <click/etheraddress.hh>
-#include <click/element.hh>
 #include <click/vector.hh>
 #include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
 #include "geortable.hh"
@@ -10,7 +10,7 @@
 
 CLICK_DECLS
 
-class GeorForwarder : public Element {
+class GeorForwarder : public BRNElement {
 
  public:
 
@@ -40,9 +40,6 @@ class GeorForwarder : public Element {
 
   GeorTable *_rt;
   BRN2NodeIdentity *_nodeid;
-
- public:
-  int _debug;
 
 };
 
