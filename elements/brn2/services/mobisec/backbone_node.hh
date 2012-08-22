@@ -53,6 +53,11 @@ public:
 private:
 	BRN2NodeIdentity *_me;
 
+	Element *_tls;
+	Element *_assocreq;
+	Element *_ap_q;
+	Element *_client_q;
+
 	// Control of key usage in wep module
 	Element *_wepencap;
 	Element *_wepdecap;

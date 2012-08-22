@@ -64,7 +64,10 @@ public:
 	}
 
 	void print_err() {
-		click_chatter("%s" , ERR_error_string(ERR_get_error(), NULL));
+		unsigned long err;
+		while ((err = ERR_get_error())) {
+			click_chatter("%s" , ERR_error_string(err, NULL));
+		}
 	}
 
 	SSL* conn;
