@@ -38,8 +38,8 @@
 CLICK_DECLS
 
 GeorQuerier::GeorQuerier()
-  :_debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 GeorQuerier::~GeorQuerier()

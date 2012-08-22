@@ -1,8 +1,8 @@
 #ifndef GEORLINKPROBEHANDLERELEMENT_HH
 #define GEORLINKPROBEHANDLERELEMENT_HH
 
+#include "elements/brn2/brnelement.hh"
 #include <click/etheraddress.hh>
-#include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
 #include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
@@ -10,7 +10,7 @@
 
 CLICK_DECLS
 
-class GeorLinkProbeHandler : public Element {
+class GeorLinkProbeHandler : public BRNElement {
 
  public:
   //
@@ -43,7 +43,6 @@ class GeorLinkProbeHandler : public Element {
   BRN2LinkStat *_linkstat;
 
  public:
-  int _debug;
   GeorTable *_rt;
 
 };

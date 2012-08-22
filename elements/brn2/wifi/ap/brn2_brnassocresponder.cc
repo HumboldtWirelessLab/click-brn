@@ -164,13 +164,14 @@ BRN2AssocResponder::recv_association_response(
 ////////////////////////////////////////////////////////////////////////////////
 
 void 
-BRN2AssocResponder::recv_disassociation(
-  Packet *p)
+BRN2AssocResponder::recv_disassociation( Packet *p)
 {
   struct click_wifi *w = (struct click_wifi *) p->data();
   EtherAddress addr2(w->i_addr2);  // sta
 
   BRN_DEBUG("received disassocation from %s", addr2.unparse().c_str());
+
+  _assoc_list->disassociated(addr2);
 
   p->kill();
 }

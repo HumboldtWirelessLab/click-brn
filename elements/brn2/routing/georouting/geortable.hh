@@ -1,8 +1,8 @@
 #ifndef GEORTABLEELEMENT_HH
 #define GEORTABLEELEMENT_HH
 
+#include "elements/brn2/brnelement.hh"
 #include <click/etheraddress.hh>
-#include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
 #include "elements/brn2/services/sensor/gps/gps.hh"
@@ -10,7 +10,7 @@
 
 CLICK_DECLS
 
-class GeorTable : public Element {
+class GeorTable : public BRNElement {
 
  public:
   //
@@ -49,7 +49,6 @@ class GeorTable : public Element {
   Brn2LinkTable *_lt;
   GPS *_gps;
 
-  int _debug;
 };
 
 CLICK_ENDDECLS
