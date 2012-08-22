@@ -141,6 +141,118 @@ BRN2AssocRequester::push(int, Packet *p)
   return ;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+void
+BRN2AssocRequester::send_disassoc_req()
+{
+  EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
+  String ssid = _winfo ? _winfo->_ssid : "";
+  int linterval = _winfo ? _winfo->_interval : 1;
+  Vector<MCS> rates = _rtable->lookup(bssid);
+  int max_len = sizeof (struct click_wifi) +
+      2 + /* cap_info */
+      2 + /* listen_int */
+      2 + ssid.length() +
+      2 + WIFI_RATES_MAXSIZE +  /* rates */
+      2 + WIFI_RATES_MAXSIZE +  /* xrates */
+      0;
+
+
+  WritablePacket *p = Packet::make(max_len);
+
+  if(p == 0)
+    return;
+
+
+  if (!rates.size()) {
+    click_chatter("%{element}: couldn't lookup rates for %s\n",
+                  this,
+                  bssid.unparse().c_str());
+  }
+  struct click_wifi *w = (struct click_wifi *) p->data();
+  w->i_fc[0] = WIFI_FC0_VERSION_0 | WIFI_FC0_TYPE_MGT | WIFI_FC0_SUBTYPE_DISASSOC;
+  w->i_fc[1] = WIFI_FC1_DIR_NODS;
+
+  w->i_dur = 0;
+  w->i_seq = 0;
+
+  memcpy(w->i_addr1, bssid.data(), 6);
+  memcpy(w->i_addr2, _eth.data(), 6);
+  memcpy(w->i_addr3, bssid.data(), 6);
+
+  uint8_t *ptr = (uint8_t *)  p->data() + sizeof(click_wifi);
+  int actual_length = sizeof (struct click_wifi);
+
+  uint16_t capability = 0;
+  capability |= WIFI_CAPINFO_ESS;
+  if (_winfo && _winfo->_wep) {
+    capability |= WIFI_CAPINFO_PRIVACY;
+  }
+
+  /* capability */
+  *(uint16_t *) ptr = cpu_to_le16(capability);
+  ptr += 2;
+  actual_length += 2;
+
+  /* listen_int */
+  *(uint16_t *) ptr = cpu_to_le16(linterval);
+  ptr += 2;
+  actual_length += 2;
+
+  ptr[0] = WIFI_ELEMID_SSID;
+  ptr[1] = ssid.length();
+  ptr += 2;
+  actual_length += 2;
+
+  memcpy(ptr, ssid.c_str(), ssid.length());
+  ptr += ssid.length();
+  actual_length += ssid.length();
+
+  /* rates */
+  ptr[0] = WIFI_ELEMID_RATES;
+  ptr[1] = WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+  for (int x = 0; x < WIFI_MIN(WIFI_RATE_SIZE, rates.size()); x++) {
+    ptr[2 + x] = (uint8_t) rates[x].get_packed_8();
+
+    if (rates[x].get_packed_8() == 2) {
+      ptr [2 + x] |= WIFI_RATE_BASIC;
+    }
+
+    if (_winfo && _winfo->_channel > 15 && rates[x].get_packed_8() == 12) {
+      ptr [2 + x] |= WIFI_RATE_BASIC;
+    }
+
+  }
+  ptr += 2 + WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+  actual_length += 2 + WIFI_MIN(WIFI_RATE_SIZE, rates.size());
+
+
+  int num_xrates = rates.size() - WIFI_RATE_SIZE;
+  if (num_xrates > 0) {
+    /* rates */
+    ptr[0] = WIFI_ELEMID_XRATES;
+    ptr[1] = num_xrates;
+    for (int x = 0; x < num_xrates; x++) {
+      ptr[2 + x] = (uint8_t) rates[x + WIFI_RATE_SIZE].get_packed_8();
+
+      if (rates[x + WIFI_RATE_SIZE].get_packed_8() == 2) {
+        ptr [2 + x] |= WIFI_RATE_BASIC;
+      }
+      if (_winfo && _winfo->_channel > 15 && rates[x].get_packed_8() == 12) {
+        ptr [2 + x] |= WIFI_RATE_BASIC;
+      }
+
+    }
+    ptr += 2 + num_xrates;
+    actual_length += 2 + num_xrates;
+  }
+
+  p->take(max_len - actual_length);
+  output(0).push(p);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 void
 BRN2AssocRequester::send_assoc_req()
@@ -569,7 +681,7 @@ BRN2AssocRequester::process_reassoc_resp(Packet *p)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-enum {H_SEND_REASSOC_REQ};
+enum {H_SEND_REASSOC_REQ,H_SEND_DISASSOC_REQ};
 
 static int 
 BRN2AssocRequester_write_param(const String &in_s, Element *e, void *vparam,
@@ -582,6 +694,9 @@ BRN2AssocRequester_write_param(const String &in_s, Element *e, void *vparam,
   switch((intptr_t)vparam) {
   case H_SEND_REASSOC_REQ: {
     f->send_reassoc_req();
+  }
+  case H_SEND_DISASSOC_REQ: {
+    f->send_disassoc_req();
   }
   }
   return 0;
@@ -622,6 +737,8 @@ BRN2AssocRequester::add_handlers()
   add_write_handler("debug", write_debug_param, 0);
   add_write_handler("send_reassoc_req", 
     BRN2AssocRequester_write_param, (void *) H_SEND_REASSOC_REQ);
+  add_write_handler("send_disassoc_req",
+      BRN2AssocRequester_write_param, (void *) H_SEND_DISASSOC_REQ);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

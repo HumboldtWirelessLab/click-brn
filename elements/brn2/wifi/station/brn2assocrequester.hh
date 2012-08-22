@@ -66,6 +66,7 @@ public:
 public:
   void send_assoc_req();
   void send_reassoc_req();
+  void send_disassoc_req();
 
   void process_reassoc_resp(Packet *p);
   void process_response(Packet *p); 
