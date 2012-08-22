@@ -269,6 +269,9 @@ BRN2AssocList::disassociated(
   _client_list->remove(client);
   
   _link_table->remove_node(client);
+
+  // Because remove_node does not do this
+  _link_table->disassociated_host(client);
   
 //  ClientInfo *client_info = _client_list->findp(client);
 //  if (NULL == client_info)
