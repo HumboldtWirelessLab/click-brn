@@ -38,8 +38,8 @@
 CLICK_DECLS
 
 GeorForwarder::GeorForwarder()
-  :_debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 GeorForwarder::~GeorForwarder()
@@ -76,7 +76,7 @@ GeorForwarder::push( int port, Packet *packet )
 
     GPSPosition dpos = GPSPosition(&(georh->dst_pos));
     GPSPosition spos = GPSPosition(&(georh->src_pos));
-
+    
     BRN_DEBUG("Forward packet from %s to %s",spos.unparse_coord().c_str(),dpos.unparse_coord().c_str());
 
     _rt->updateEntry(&sea,&(georh->src_pos));

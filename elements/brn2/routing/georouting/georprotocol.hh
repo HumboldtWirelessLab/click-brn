@@ -1,6 +1,8 @@
 #ifndef GEORPROTOCOL_HH
 #define GEORPROTOCOL_HH
-#include <click/element.hh>
+
+#include "elements/brn2/brnelement.hh"
+
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
@@ -27,7 +29,7 @@ struct geor_header {
 } __attribute__ ((packed));
 
 
-class GeorProtocol : public Element { public:
+class GeorProtocol : public BRNElement { public:
 
   GeorProtocol();
   ~GeorProtocol();

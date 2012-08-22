@@ -1,15 +1,16 @@
 #ifndef GEORQUERIERELEMENT_HH
 #define GEORQUERIERELEMENT_HH
 
+#include "elements/brn2/brnelement.hh"
+
 #include <click/etheraddress.hh>
-#include <click/element.hh>
 #include <click/vector.hh>
 #include "geortable.hh"
 #include "georprotocol.hh"
 
 CLICK_DECLS
 
-class GeorQuerier : public Element {
+class GeorQuerier : public BRNElement {
 
  public:
 
@@ -39,9 +40,6 @@ class GeorQuerier : public Element {
 
   GeorTable *_rt;
   BRN2NodeIdentity *_nodeid;
-
- public:
-  int _debug;
 
 };
 
