@@ -35,8 +35,8 @@
 CLICK_DECLS
 
 GeorTable::GeorTable()
-  : _debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 GeorTable::~GeorTable()

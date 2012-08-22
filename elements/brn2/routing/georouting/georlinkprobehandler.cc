@@ -40,8 +40,8 @@
 CLICK_DECLS
 
 GeorLinkProbeHandler::GeorLinkProbeHandler()
-  : _debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 GeorLinkProbeHandler::~GeorLinkProbeHandler()
