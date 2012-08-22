@@ -38,13 +38,11 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#define BACKOFF_TLS_RETRY 3
 
 CLICK_DECLS
 
 TLS::TLS()
-	: _debug(false),
-	  restart_timer(restart_trigger, this)
+	: _debug(false)
 {
 	BRNElement::init();
 }
@@ -143,11 +141,7 @@ int TLS::initialize(ErrorHandler *) {
 	if (role == CLIENT) {
 		curr = new com_obj(ctx, role);
 		curr->sender_addr = _ks_addr;
-
-		restart_timer.initialize(this);
 	}
-
-
 
 	BRN_INFO("initialized");
 
@@ -186,7 +180,6 @@ bool TLS::do_handshake() {
 		switch (SSL_get_error(curr->conn, temp)) {
 		case SSL_ERROR_NONE:
 			BRN_DEBUG("handshake complete");
-			if (role == CLIENT) restart_timer.clear();
 
 			// In case that the application wanted to send
 			// some data but had to do handshake before:
@@ -211,10 +204,6 @@ bool TLS::do_handshake() {
 			return false;
 		}
 	}
-
-	if (role == CLIENT)
-		if(restart_timer.expiry().msecval() <= Timestamp::now().msecval())
-			restart_timer.schedule_after_sec(BACKOFF_TLS_RETRY);
 
 	return false;
 }
@@ -311,12 +300,6 @@ void TLS::rcv_data(Packet *p) {
 			curr->sender_addr = sender_addr;
 			com_table.insert(sender_addr, curr);
 		}
-
-		/* Painting-technique gives the server packet oriented control. */
-		/* Todo: deprecated ?
-		uint8_t color = static_cast<int>(p->anno_u8(PAINT_ANNO_OFFSET));
-		curr->wep_state = (color == 42) ? false : true;
-		*/
 	}
 
 
@@ -325,7 +308,7 @@ void TLS::rcv_data(Packet *p) {
 	p->kill();
 
 	// If handshake is complete we assume
-	// that incomming data is for application
+	// that incoming data is for application
 	if (do_handshake() == true
 			&& SSL_read(curr->conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
 			&& SSL_pending(curr->conn) > 0) {
@@ -353,17 +336,6 @@ int TLS::snd_data() {
 
 		// Set information
 		BRNPacketAnno::set_ether_anno(p_out, _me, curr->sender_addr, ETHERTYPE_BRN);
-	    //WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, 5, DEFAULT_TOS); //todo: deprecated? using BRN2Encap()
-
-	    /* Painting-technique gives the server packet oriented control. */
-		/* Todo: deprecated ?
-	    if (role == SERVER) {
-			if(curr->wep_state == false) {
-				uint8_t color = 42;
-				p_out->set_anno_u8(PAINT_ANNO_OFFSET, color);
-			}
-	    }
-	    */
 
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
@@ -384,6 +356,11 @@ int TLS::snd_data() {
 // Todo: Eliminate this, when having reliable tcp-connection
 void TLS::restart_tls() {
 	BRN_DEBUG("Timeout -> restart tls conn");
+
+	// Packet lost here. If the cause is a disassociation from backbone
+	// network, then we have to clear packet storage
+	clear_pkt_storage();
+
 	SSL_shutdown(curr->conn);
 	SSL_clear(curr->conn);
 	do_handshake();
@@ -402,8 +379,17 @@ static String handler_triggered_handshake(Element *, void *) {
 	return String();
 }
 
+static String handler_triggered_restart(Element *e, void *) {
+	TLS *tls = (TLS *)e;
+	tls->restart_tls();
+	return String();
+}
+
 void TLS::print_err() {
-	BRN_ERROR("%s" , ERR_error_string(ERR_get_error(), NULL));
+	unsigned long err;
+	while ((err = ERR_get_error())) {
+		BRN_ERROR("%s" , ERR_error_string(err, NULL));
+	}
 }
 
 
@@ -411,7 +397,7 @@ void TLS::add_handlers()
 {
   BRNElement::add_handlers();
 
-
+  add_read_handler("restart", handler_triggered_restart, 0);
   add_read_handler("handshake", handler_triggered_handshake, 0);
 }
 

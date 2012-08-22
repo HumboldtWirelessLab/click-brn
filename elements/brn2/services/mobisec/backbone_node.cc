@@ -44,6 +44,10 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+		"TLS", cpkP+cpkM, cpElement, &_tls,
+		"ASSOCREQ", cpkP+cpkM, cpElement, &_assocreq,
+		"AP_Q", cpkP+cpkM, cpElement, &_ap_q,
+		"CLIENT_Q", cpkP+cpkM, cpElement, &_client_q,
 		"DEVICE_CONTROL_UP", cpkP, cpElement, &_dev_control_up,
 		"DEVICE_CONTROL_DOWN", cpkP, cpElement, &_dev_control_down,
 		"DEVICE_CONTROL_DOWN2", cpkP, cpElement, &_dev_control_down2,
@@ -93,7 +97,6 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	epoch_timer.initialize(this);
 
 	switch_dev(dev_client);
-	//switch_dev(dev_ap);
 
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
@@ -118,7 +121,7 @@ void BACKBONE_NODE::snd_kdp_req() {
 	if (Timestamp::now().msecval()-last_req_try < backoff*1.5) {// If request was send a little time ago, retry without wep
 		BRN_DEBUG("Retry kdp process...");
 		switch_dev(dev_client);
-		//switch_dev(dev_ap);
+		HandlerCall::call_read(_tls, "restart", NULL);
 	} else { // If not, then we are about to send our first request for next epoch data
 		last_req_try = Timestamp::now().msecval();
 	}
@@ -175,6 +178,9 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	kdp_timer.reschedule_at(Timestamp::make_msec(BUF_keyman.get_validity_start_time() + keylist_livetime - tolerance));
 
 	p->kill();
+
+	BRN_DEBUG("Sending disassoc to abandon client status");
+	HandlerCall::call_write(_assocreq, "send_disassoc_req", NULL);
 }
 
 /*
@@ -237,6 +243,9 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	HandlerCall::call_write(_dev_control_up, "switch", port, NULL);
 	HandlerCall::call_write(_dev_control_down, "switch", port, NULL);
 	HandlerCall::call_write(_dev_control_down2, "switch", port, NULL);
+
+	HandlerCall::call_write(_ap_q, "reset", port, NULL);
+	HandlerCall::call_write(_client_q, "reset", port, NULL);
 }
 
 static String handler_triggered_request(Element *e, void *) {
