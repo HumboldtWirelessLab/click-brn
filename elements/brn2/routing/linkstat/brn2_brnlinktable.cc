@@ -194,15 +194,6 @@ Brn2LinkTable::associated_host(EtherAddress ea)
 }
 
 bool
-Brn2LinkTable::disassociated_host(EtherAddress ea)
-{
-  BrnHostInfo *n = _hosts.findp(ea);
-  if (n) n->_is_associated = false;
-
-  return true;
-}
-
-bool
 Brn2LinkTable::is_associated(EtherAddress ea)
 {
   BrnHostInfo *n = _hosts.findp(ea);

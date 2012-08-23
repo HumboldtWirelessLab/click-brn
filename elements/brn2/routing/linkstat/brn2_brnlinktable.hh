@@ -285,7 +285,6 @@ class Brn2LinkTable: public BRNElement {
   //Function is used for associated clients
   /* associated client are insert into the linktable and marked as associated*/
   bool associated_host(EtherAddress ea);  //TODO: check for better solution
-  bool disassociated_host(EtherAddress ea);  //TODO: check for better solution
   bool is_associated(EtherAddress ea);
 
 
