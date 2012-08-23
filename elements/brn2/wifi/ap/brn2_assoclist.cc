@@ -61,7 +61,7 @@ BRN2AssocList::print_content() const
 {
   StringAccum sa;
 
-  //sa << "assoc list(" << *_id->getMyWirelessAddress() << "):";
+  sa << "<assoclist node=\"" << BRN_NODE_NAME << "\" stations=\"" << (uint32_t)_client_list->size() << "\" >\n";
 
   for (ClientMap::iterator i = _client_list->begin(); i.live(); i++)
   {
@@ -70,25 +70,31 @@ BRN2AssocList::print_content() const
     switch (nfo.get_state())
     {
       case NON_EXIST:
-        state = " nonexist ";
+        state = "nonexist";
         break;
       case SEEN_OTHER:
-        state = " other    ";
+        state = "other";
         break;
       case SEEN_BRN:
-        state = " with_brn ";
+        state = "with_brn";
         break;
       case ASSOCIATED:
-        state = " assoc    ";
+        state = "assoc";
+        break;
+      case DISASSOCIATED:
+        state = "disassoc";
         break;
       case ROAMED:
-        state = " roamed   ";
+        state = "roamed";
         break;
     }
 
-    sa << "\n *) on SSID " << nfo.get_ssid() << " " << nfo.get_eth() << state /*<< nfo.get_dev_name() */<< " " 
-      << nfo.get_ap().unparse() << " " << nfo.get_age() << " " << nfo.get_last_updated();
+    sa << "\t<client ssid=\"" << nfo.get_ssid() << "\" addr=\"" << nfo.get_eth() << "\" state=\"" << state;
+    sa << "\" ap=\"" << nfo.get_ap().unparse() << "\" dev=\"" << nfo.get_dev_name();
+    sa << "\" age=\"" << nfo.get_age() << "\" last_update=\"" << nfo.get_last_updated() << "\" />\n" ;
   }
+  
+  sa << "</assoclist>\n";
 
   return sa.take_string();
 }
@@ -269,9 +275,6 @@ BRN2AssocList::disassociated(
   _client_list->remove(client);
   
   _link_table->remove_node(client);
-
-  // Because remove_node does not do this
-  _link_table->disassociated_host(client);
   
 //  ClientInfo *client_info = _client_list->findp(client);
 //  if (NULL == client_info)

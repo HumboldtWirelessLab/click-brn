@@ -54,6 +54,7 @@ public:
     SEEN_OTHER,   ///< Known and not associated with brn 
     SEEN_BRN,     ///< Known and associated with another BRN mesh node
     ASSOCIATED,   ///< Locally associated
+    DISASSOCIATED,///< Locally disassociated
     ROAMED        ///< Previously associated, but roamed
   } client_state;
 
@@ -95,8 +96,6 @@ public:
 
     String         _ssid; ///< station's associated SSID
 
-    int            _vlan;
-
     // internals
   protected:
     uint32_t       _age;
@@ -131,6 +130,10 @@ public:
 
     inline BRN2Device *get_dev() const {
       return (_dev); 
+    }
+
+    inline String get_dev_name() const {
+      return (_dev->getDeviceName());
     }
 
     inline String get_ssid() const {
