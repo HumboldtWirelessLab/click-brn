@@ -198,6 +198,8 @@ BRN2InfrastructureClient::run_timer(Timer* )
       if ( ( _assocreq->_associated == false ) && ( _ad_hoc == false ) )
       {
         send_assoc_to_ap();
+      } else {
+	return; //configured
       }
     }
   }
@@ -289,6 +291,22 @@ BRN2InfrastructureClient::send_assoc_to_ap()
   if ( _ap_available == true )
   {
     _assocreq->send_assoc_req();
+  }
+
+  return(0);
+}
+
+int
+BRN2InfrastructureClient::send_disassoc_to_ap()
+{
+  BRN_DEBUG("Try Disassoc");
+  
+  if ( _assocreq->_associated ) {
+    BRN_DEBUG("Send Disassoc");
+    _assocreq->send_disassoc_req();
+    _auth = false;
+  } else {
+    BRN_DEBUG("Assoc is false");
   }
 
   return(0);
@@ -392,6 +410,14 @@ send_assoc_handler(const String &in_s, Element *e, void *,
   return 0;
 }
 
+static int 
+send_disassoc_handler(const String &, Element *e, void *, ErrorHandler *)
+{
+  ((BRN2InfrastructureClient *)e)->send_disassoc_to_ap();
+  return 0;
+}
+
+
 static String
 read_debug_param(Element *e, void *)
 {
@@ -422,6 +448,7 @@ BRN2InfrastructureClient::add_handlers()
   add_write_handler("send_probe", send_probe_handler, 0);
   add_write_handler("send_auth", send_auth_handler, 0);
   add_write_handler("send_assoc", send_assoc_handler, 0);
+  add_write_handler("disassoc", send_disassoc_handler, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
 

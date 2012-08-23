@@ -250,6 +250,7 @@ BRN2AssocRequester::send_disassoc_req()
 
   p->take(max_len - actual_length);
   output(0).push(p);
+  _associated = false;
 }
 
 
