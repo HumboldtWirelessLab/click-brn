@@ -74,6 +74,7 @@ public:
   int send_probe_to_ap();
   int send_auth_to_ap();
   int send_assoc_to_ap();
+  int send_disassoc_to_ap();
 
   String wireless_info();
   String print_assoc();
