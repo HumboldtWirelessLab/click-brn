@@ -10,34 +10,34 @@ CLICK_DECLS
 
 #define DEFAULT_MAX_WINDOW_SIZE 16
 
-class FlowControlInfo {
 
+class FlowControlInfo {
+  
   public:
+
     FlowControlInfo();
+    FlowControlInfo(uint16_t max_window_size);
     ~FlowControlInfo();
 
-    Packet *packet_window;
-    uint16_t max_window_size;
-    uint16_t cur_window_size;
-    uint16_t window_index;
-    uint16_t min_seq;
-   
-    uint16_t next_seq;
+    Packet **_packet_window;
+    bool *_ack_window;
+    
+    uint16_t _max_window_size;
+    uint16_t _cur_window_size;
+    
+    uint16_t _window_start_index;
+    uint16_t _window_next_index;
+    
+    uint16_t _min_seq;
+    uint16_t _next_seq;
 
-    uint32_t rtt;
+    uint32_t _rtt;
 
-    uint16_t frag_size;
+    int insert_packet(Packet *p, uint16_t seq);
+    
+    uint32_t non_acked_packets();
 
-    void insert_packet(Packet */*p*/, uint16_t /*seq*/) {
-      return;
-    }
-
-    uint32_t non_acked_packets() {
-      return 0;
-    }
-
-    void clear() {
-    }
+    void clear();
 
 };
 
