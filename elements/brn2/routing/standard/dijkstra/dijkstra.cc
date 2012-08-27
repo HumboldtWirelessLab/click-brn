@@ -163,10 +163,19 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     route.push_front(current_node->_ether);
   } else {
     DijkstraNodeInfo *current_node = _dni_table.find(s_ea);
+    if(!current_node) {
+    	BRN_ERROR("Null pointer exception in Dijkstra::get_route.");
+    	return;
+    }
+
     while ( current_node->_ether != d_ea ) {
       BRN_DEBUG("Next add to route(to): %s",current_node->_ether.unparse().c_str());
       route.push_back(current_node->_ether);
       current_node = current_node->_next[graph_id];
+      if (!current_node || !current_node->_ether) {
+    	  BRN_ERROR("Null pointer exception in Dijkstra::get_route");
+    	  return;
+      }
     }
     route.push_back(current_node->_ether);
   }
