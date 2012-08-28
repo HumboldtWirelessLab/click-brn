@@ -162,9 +162,15 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     }
     route.push_front(current_node->_ether);
   } else {
+	if (_dni_table.findp(s_ea) == NULL) {
+		BRN_ERROR("dni table error");
+		BRN_ERROR("SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
+
+	}
+
     DijkstraNodeInfo *current_node = _dni_table.find(s_ea);
     if(!current_node) {
-      BRN_ERROR("Null pointer exception in Dijkstra::get_route.");
+      BRN_ERROR("111 Null pointer exception in Dijkstra::get_route.");
       BRN_ERROR("SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
       return;
     }
@@ -173,9 +179,8 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
       BRN_DEBUG("Next add to route(to): %s",current_node->_ether.unparse().c_str());
       route.push_back(current_node->_ether);
       current_node = current_node->_next[graph_id];
-      if (!current_node || !current_node->_ether) {
-        BRN_ERROR("Null pointer exception in Dijkstra::get_route");
-        BRN_ERROR("SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
+      if (!current_node) {
+        BRN_ERROR("222 SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
         return;
       }
     }
