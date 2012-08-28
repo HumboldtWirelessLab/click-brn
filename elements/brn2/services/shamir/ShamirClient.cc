@@ -228,5 +228,6 @@ void ShamirClient::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
 EXPORT_ELEMENT(ShamirClient)
 ELEMENT_LIBS(-lssl -lcrypto)
