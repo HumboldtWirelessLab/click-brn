@@ -11,9 +11,14 @@
 
 CLICK_DECLS
 
+#define FC_TYPE_DATA        0
+#define FC_TYPE_ACK         1
+#define FC_TYPE_RTT_REQUEST 2
+#define FC_TYPE_RTT_REPLY   3
+
 struct flowcontrol_header {
   //TODO: use 16 bits for flags and flowid
-  
+
   uint16_t _flags;
 
   uint16_t _flow_id;
@@ -36,6 +41,9 @@ class FlowControlProtocol {
   static struct flowcontrol_header *get_header(Packet *p);
   static void get_info(Packet *p, uint16_t *type, uint16_t *flowid, uint16_t *seq);
   static void strip_header(Packet *p);
+
+  static WritablePacket *make_ack(uint16_t flowid, uint16_t seq);
+
 };
 
 CLICK_ENDDECLS

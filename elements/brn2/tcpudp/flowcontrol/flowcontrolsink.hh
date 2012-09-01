@@ -9,7 +9,7 @@
 #include "elements/brn2/brnelement.hh"
 
 #include "flowcontrolprotocol.hh"
-
+#include "flowcontrolinfo.hh"
 
 CLICK_DECLS
 
@@ -27,7 +27,7 @@ class FlowControlSink : public BRNElement
   const char *class_name() const  { return "FlowControlSink"; }
   const char *processing() const  { return AGNOSTIC; }
 
-  const char *port_count() const  { return "2/1"; }
+  const char *port_count() const  { return "1/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -38,7 +38,7 @@ class FlowControlSink : public BRNElement
   void add_handlers();
 
  private:
-
+  FlowTable _flowtab;
 };
 
 CLICK_ENDDECLS
