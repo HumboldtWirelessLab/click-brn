@@ -18,6 +18,7 @@
 
 #include <openssl/bn.h>
 
+#define MAX_SHARESIZE 256 // Current max RSA modulus is 2048 Bit (256 Byte)
 
 using namespace std;
 
@@ -26,7 +27,7 @@ CLICK_DECLS
 struct shamir_reply {
     unsigned int share_id;
     unsigned int share_len;
-    unsigned char *share;
+    unsigned char share[MAX_SHARESIZE];
 };
 
 class ShamirServer : public BRNElement {
