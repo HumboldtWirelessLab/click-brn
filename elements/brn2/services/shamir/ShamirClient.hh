@@ -19,6 +19,7 @@
 
 #include <openssl/bn.h>
 
+#define MAX_SHARESIZE 256 //see ShamirServer.hh
 
 using namespace std;
 
