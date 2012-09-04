@@ -21,6 +21,7 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include "ShamirServer.hh"
+#include "Shamir.hh"
 
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
