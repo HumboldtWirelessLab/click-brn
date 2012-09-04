@@ -8,6 +8,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/handlercall.hh>
+#include <click/straccum.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -98,6 +99,11 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 
 	switch_dev(dev_client);
 
+	// Set stat variables
+	bb_join_cnt = 0;
+	kdp_retry_cnt = 0;
+	key_inst_cnt = 0;
+
 	BRN_DEBUG("Backbone node initialized");
 	return 0;
 }
@@ -119,9 +125,14 @@ void BACKBONE_NODE::snd_kdp_req() {
 	 * temporarily.
 	 */
 	if (Timestamp::now().msecval()-last_req_try < backoff*1.5) {// If request was send a little time ago, retry without wep
+
 		BRN_DEBUG("Retry kdp process...");
+		kdp_retry_cnt++;
+
 		switch_dev(dev_client);
+
 		HandlerCall::call_read(_tls, "restart", NULL);
+
 	} else { // If not, then we are about to send our first request for next epoch data
 		last_req_try = Timestamp::now().msecval();
 	}
@@ -145,8 +156,14 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
+	// Make a scummy check for packet repetition
+	if (hdr->timestamp == BUF_keyman.get_validity_start_time()) {
+		BRN_DEBUG("kdp-reply already received");
+		return;
+	}
+
 	// Buffer crypto control data
-	if(!BUF_keyman.set_ctrl_data(hdr))
+	if (!BUF_keyman.set_ctrl_data(hdr))
 		return;
 
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
@@ -166,6 +183,13 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 		BUF_keyman.install_keylist_srv_driv(keylist_string);
 	}
 
+	if(BUF_keyman.get_keylist().size() == BUF_keyman.get_cardinality()) {
+		BRN_DEBUG("READY TO JOIN BACKBONE");
+		bb_join_cnt++;
+	} else {
+		BRN_ERROR("KEYLIST ERROR");
+	}
+
 	// Set timer to jump right into the coming epoch. If a kdp request was received successfully on
 	// the first try, we are very close to enter the new epoche. If it takes longer to install
 	// the keys than we probably missed the entry point in time and have to wait until the actual
@@ -178,9 +202,6 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	kdp_timer.reschedule_at(Timestamp::make_msec(BUF_keyman.get_validity_start_time() + keylist_livetime - tolerance));
 
 	p->kill();
-
-	BRN_DEBUG("Sending disassoc to abandon client status");
-	HandlerCall::call_write(_assocreq, "send_disassoc_req", NULL);
 }
 
 /*
@@ -190,7 +211,9 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
  */
 void BACKBONE_NODE::jmp_next_session() {
 	BRN_DEBUG("Installing new keys: ");
-	keyman.install_key_on_phy(_wepencap, _wepdecap);
+	if (keyman.install_key_on_phy(_wepencap, _wepdecap)) {
+		key_inst_cnt++;
+	}
 
 	// Find out session we are in since keylist timestamp. Every session has the length of _key_timeout.
 	// (Note: Round down is done implicitly through integer arithmetic.
@@ -214,6 +237,7 @@ void BACKBONE_NODE::jmp_next_epoch() {
  *               extra functions
  * *******************************************************
  */
+
 void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	String type_str;
 	String port;
@@ -238,27 +262,63 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		return;
 	} else {
 		BRN_DEBUG("Switching device to %s", type_str.c_str());
+
+		// Both devices are functioning although the flow only runs through one device.
+		// So when switching the device its queue is possibly overflowed. Thus we
+		// have to reset the queues to get a clean start.
+		HandlerCall::call_write(_ap_q, "reset", port, NULL);
+		HandlerCall::call_write(_client_q, "reset", port, NULL);
+
+		if (port == "1") {
+			BRN_DEBUG("Sending disassoc to abandon client status");
+			HandlerCall::call_write(_assocreq, "send_disassoc_req", NULL);
+		}
 	}
 
+	// Tell the Click-Switch to switch and thus let the packet flow go through the
+	// other device.
 	HandlerCall::call_write(_dev_control_up, "switch", port, NULL);
 	HandlerCall::call_write(_dev_control_down, "switch", port, NULL);
 	HandlerCall::call_write(_dev_control_down2, "switch", port, NULL);
-
-	HandlerCall::call_write(_ap_q, "reset", port, NULL);
-	HandlerCall::call_write(_client_q, "reset", port, NULL);
 }
 
-static String handler_triggered_request(Element *e, void *) {
+
+String BACKBONE_NODE::stats() {
+	  StringAccum sa;
+
+	  sa << "<mobisec node=\"" << BRN_NODE_NAME
+			  << "\" bb_join_cnt=\"" << bb_join_cnt
+			  << "\" key_inst_cnt=\"" << key_inst_cnt
+			  << "\" kdp_retry_cnt=\"" << kdp_retry_cnt << "\" />";
+
+	  return sa.take_string();
+}
+
+
+
+enum {H_SND_KDP_REQ, H_STATS};
+
+static String backbone_read_param(Element *e, void *thunk) {
 	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
-	bn->snd_kdp_req();
-	return String();
+
+	switch ((uintptr_t) thunk) {
+	case H_SND_KDP_REQ: {
+		bn->snd_kdp_req();
+		return String();
+	}
+	case H_STATS: {
+		return bn->stats();
+	}
+	default:
+		return String();
+	}
 }
 
-void BACKBONE_NODE::add_handlers()
-{
-  BRNElement::add_handlers();
+void BACKBONE_NODE::add_handlers() {
+	BRNElement::add_handlers();
 
-  add_read_handler("snd_kdp_request", handler_triggered_request, 0);
+	add_read_handler("snd_kdp_request", backbone_read_param, (void *)H_SND_KDP_REQ);
+	add_read_handler("stats", backbone_read_param, (void *)H_STATS);
 }
 
 
