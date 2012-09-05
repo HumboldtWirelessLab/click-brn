@@ -21,6 +21,7 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include "ShamirServer.hh"
+#include "Shamir.hh"
 
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>
@@ -85,8 +86,15 @@ int ShamirServer::handle_request(Packet *p_in) {
 
     struct shamir_reply reply;
     reply.share_id = _share_id;
-    reply.share_len = BN_bn2bin(_share, reply.share);
-    if (!reply.share_len) {
+    reply.share_len = BN_num_bytes(_share);
+
+    if (reply.share_len > MAX_SHARESIZE) {
+        BRN_DEBUG("Share is bigger than MAX_SHARESIZE");
+        p_in->kill();
+        return -1;
+    }
+
+    if (!BN_bn2bin(_share, reply.share)) {
         BRN_DEBUG("Failed to handle request");
         p_in->kill();
         return -1;
@@ -96,7 +104,6 @@ int ShamirServer::handle_request(Packet *p_in) {
 
     memcpy(p->data(), &reply, sizeof(struct shamir_reply));
     output(0).push(p);
-    //Packet *reply_packet = Packet::make(128, NULL, 2*sizeof(uint32_t)+reply.share_len);
     return 0;
 }
 
