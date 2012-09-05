@@ -7,6 +7,7 @@
 #include <click/error.hh>
 #include <click/args.hh>
 #include <click/ip6address.hh>
+#include <click/packet_anno.hh>
 #if CLICK_NS 
     #include <click/router.hh>
 #endif
@@ -40,6 +41,12 @@ public:
     static uint8_t _max_weak_signal_value;
 
 private:
+    /// ACKS received from other nodes
+    static HashMap<EtherAddress, uint32_t> _acks_by_node;
+    /// Buffer for mid and long term statistics
+    static StatsCircularBuffer _stats_buffer;
+    ///
+    static HashMap<uint8_t, HashMap <uint8_t, uint64_t> > _rssi_histogram;
     /// Collected Channel Stats
     ChannelStats *_cst;
     /// Collected Collision Infos
@@ -50,11 +57,6 @@ private:
     PacketLossInformation *_pli;
     /// Statistics from cooperating nodes
     CooperativeChannelStats *_cocst;
-    /// ACKS received from other nodes
-    static HashMap<EtherAddress, uint32_t> _acks_by_node;
-
-    /// Buffer for mid and long term statistics
-    static StatsCircularBuffer _stats_buffer;
     /// Device pointer
     BRN2Device *_dev;
     /// switch if pessimistic hidden node prediction is used
@@ -76,6 +78,8 @@ private:
     void add_ack (const EtherAddress &);
     ///< Get number of received ACK-Packets for an ether address
     uint32_t get_acks_by_node (const EtherAddress &);
+
+    uint8_t calc_weak_signal_percentage (uint32_t, uint8_t, uint32_t, uint32_t);
 
     void add_weak_signal_raw_value (uint8_t);
     uint8_t get_weak_signal_percentage (uint8_t);
