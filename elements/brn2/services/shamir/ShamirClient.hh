@@ -1,8 +1,8 @@
 /*
- * tls.hh
+ * ShamirServer.hh
  *
- *  Created on: 18.04.2012
- *      Author: aureliano
+ *  Created on: 06.06.2012
+ *      Author: Dominik Oepen
  */
 
 #ifndef SHAMIR_CLIENT_HH_
@@ -18,8 +18,6 @@
 #include "elements/brn2/brnelement.hh"
 
 #include <openssl/bn.h>
-
-#define MAX_SHARESIZE 256 //see ShamirServer.hh
 
 using namespace std;
 
