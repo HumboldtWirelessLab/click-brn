@@ -42,8 +42,9 @@ ShamirClient::~ShamirClient() {
 int ShamirClient::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
-        "ETHERADDRESS"m cpkP, cpEthernetAddress, &_me,
+        "ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
+        "THRESHOLD", cpkP, cpInteger, &_threshold,
 		cpEnd) < 0)
 		return -1;
 
