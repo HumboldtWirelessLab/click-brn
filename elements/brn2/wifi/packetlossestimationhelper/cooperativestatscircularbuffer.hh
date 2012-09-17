@@ -25,19 +25,14 @@ CLICK_DECLS
 class CooperativeStatsCircularBuffer
 {
 public:
-    CooperativeStatsCircularBuffer(uint32_t start_size);
-    virtual ~CooperativeStatsCircularBuffer();
-    void insert_values(NodeChannelStats &);
-//    virtual Vector<neighbour_airtime_stats> get_values(EtherAddress &, uint16_t);
-//    virtual Vector<neighbour_airtime_stats> get_all_values(EtherAddress &);
+    CooperativeStatsCircularBuffer (uint32_t start_size);
+    virtual ~CooperativeStatsCircularBuffer ();
+    void insert_values (NodeChannelStats &);
     
 private:
-    CooperativeStatsCircularBuffer();
+    CooperativeStatsCircularBuffer ();
 
     uint16_t buffer_size;
-    uint32_t size;
-    uint32_t start_elem;
-    uint32_t counter;
     HashMap<EtherAddress, Vector <HashMap<EtherAddress, struct neighbour_airtime_stats*> > > ether_address_time_map;
 };
 

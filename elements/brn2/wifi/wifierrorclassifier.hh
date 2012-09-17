@@ -22,6 +22,10 @@ class WifiErrorClassifier : public BRNElement {
   void add_handlers();
   Packet *simple_action(Packet *);
 
+  String print_stats();
+  void reset();
+
+  uint32_t _p_all;
   uint32_t _p_ok;
   uint32_t _p_crc;
   uint32_t _p_phy;

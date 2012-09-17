@@ -22,7 +22,7 @@
 
 CLICK_DECLS
 
-CooperativeStatsCircularBuffer CooperativeChannelStats::_coop_stats_buffer = CooperativeStatsCircularBuffer(200);
+CooperativeStatsCircularBuffer CooperativeChannelStats::_coop_stats_buffer = CooperativeStatsCircularBuffer (200);
 
 CooperativeChannelStats::CooperativeChannelStats ():
     _cst (NULL),
@@ -187,7 +187,7 @@ void CooperativeChannelStats::push (int, Packet *p)
             
             ncs->add_neighbour_stats (temp_ea, nats_arr[i]);
         }
-        _coop_stats_buffer.insert_values(*ncs);
+        _coop_stats_buffer.insert_values (*ncs);
     }
     p->kill ();
 }
@@ -199,13 +199,12 @@ HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::
     if (!_ncst.empty () || _ncst.find (*ea) != NULL)
     {
     	BRN_INFO ("FOUND EA: %s", ea->unparse ().c_str ());
-        //return (_ncst.find (*ea)->_n_stats);
         return (_ncst.find (*ea)->get_neighbour_stats_table ());
         
     } else
     {
         HashMap<EtherAddress, struct neighbour_airtime_stats*> hm;
-        BRN_INFO ("DID NOT FOUND EA: %s", ea->unparse().c_str());
+        BRN_INFO ("DID NOT FOUND EA: %s", ea->unparse ().c_str ());
         
         return hm;
     }
@@ -227,7 +226,6 @@ String CooperativeChannelStats::stats_handler (int /*mode*/)
     for (NodeChannelStatsTableIter iter = _ncst.begin (); iter.live (); iter++)
     {        
         NodeChannelStats *ncs = iter.value();
-        //EtherAddress ea = iter.key();
         
         sa << "\t<node address=\"" << ncs->get_address ()->unparse () << "\" />\n";
     }
@@ -241,7 +239,8 @@ static String CooperativeChannelStats_read_param (Element *e, void *thunk)
 {
   StringAccum sa;
   CooperativeChannelStats *td = (CooperativeChannelStats *)e;
-  switch ( (uintptr_t) thunk) {
+  switch ( (uintptr_t) thunk)
+  {
     case H_STATS:
       return (td->stats_handler ( (uintptr_t) thunk));
       break;
@@ -258,7 +257,7 @@ void CooperativeChannelStats::add_handlers ()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(CooperativeChannelStats)
-ELEMENT_REQUIRES(NodeChannelStats)
-ELEMENT_REQUIRES(CooperativeStatsCircularBuffer)
-ELEMENT_MT_SAFE(CooperativeChannelStats)
+EXPORT_ELEMENT (CooperativeChannelStats)
+ELEMENT_REQUIRES (NodeChannelStats)
+ELEMENT_REQUIRES (CooperativeStatsCircularBuffer)
+ELEMENT_MT_SAFE (CooperativeChannelStats)

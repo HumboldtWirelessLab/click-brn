@@ -12,7 +12,8 @@
 CLICK_DECLS
 
 WifiErrorClassifier::WifiErrorClassifier()
-  : _p_ok(0),
+  : _p_all(0),
+    _p_ok(0),
     _p_crc(0),
     _p_phy(0),
     _p_fifo(0),
@@ -32,6 +33,8 @@ Packet *
 WifiErrorClassifier::simple_action(Packet *p)
 {
   struct click_wifi_extra *ceha = WIFI_EXTRA_ANNO(p);
+
+  _p_all++;
 
   if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_ERR) )
   {
@@ -119,9 +122,41 @@ WifiErrorClassifier::simple_action(Packet *p)
 
 }
 
+String
+WifiErrorClassifier::print_stats()
+{
+  StringAccum sa;
+
+  sa << "<wifierrorclassifier packets=\"" << _p_all << "\" ok=\"" << _p_ok << "\" crc=\"" << _p_crc;
+  sa << "\" phy=\"" << _p_phy << "\" fifo=\"" << _p_fifo << "\" decrypt=\"" << _p_decrypt;
+  sa << "\" mic=\"" << _p_mic << "\" zerorate=\"" << _p_zerorate << "\" unknown=\"" << _p_unknown << "\" />\n";
+
+  return sa.take_string();
+}
+
+void
+WifiErrorClassifier::reset()
+{
+  _p_all = _p_ok = _p_crc = _p_phy = _p_fifo = _p_decrypt = _p_mic = _p_zerorate = _p_unknown = 0;
+}
+
 enum { H_OK,
        H_PHY,
-       H_CRC };
+       H_CRC,
+       H_STATS,
+       H_RESET };
+
+static int
+WifiErrorClassifier_write_param(const String &/*in_s*/, Element *e, void *vparam, ErrorHandler */*errh*/)
+{
+  WifiErrorClassifier *f = (WifiErrorClassifier *)e;
+  switch((intptr_t)vparam) {
+    case H_RESET: {    //reset
+      f->reset();
+    }
+  }
+  return 0;
+}
 
 static String
 WifiErrorClassifier_read_param(Element *e, void *thunk)
@@ -134,11 +169,14 @@ WifiErrorClassifier_read_param(Element *e, void *thunk)
     return String(td->_p_crc) + "\n";
   case H_PHY:
     return String(td->_p_phy) + "\n";
+  case H_STATS:
+    return td->print_stats();
   default:
     return String();
   }
-
 }
+
+
 void
 WifiErrorClassifier::add_handlers()
 {
@@ -147,6 +185,11 @@ WifiErrorClassifier::add_handlers()
   add_read_handler("ok", WifiErrorClassifier_read_param, (void *) H_OK);
   add_read_handler("crc", WifiErrorClassifier_read_param, (void *) H_CRC);
   add_read_handler("phy", WifiErrorClassifier_read_param, (void *) H_PHY);
+
+  add_read_handler("stats", WifiErrorClassifier_read_param, (void *) H_STATS);
+
+  add_write_handler("reset", WifiErrorClassifier_write_param, (void *) H_RESET, Handler::BUTTON);
+
 }
 
 CLICK_ENDDECLS
