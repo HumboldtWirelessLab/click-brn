@@ -154,6 +154,14 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
   if ( ! s_node->_marked[graph_id] || ! d_node->_marked[graph_id] ) return;
 
   if ( _dgi_list[graph_id]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE ) {
+
+    DijkstraNodeInfo **current_node_p = _dni_table.findp(d_ea);
+    if (current_node_p == NULL ) {
+      BRN_ERROR("Node not found %s",d_ea.unparse().c_str());
+      click_chatter("%s",_lt->print_links().c_str());
+      click_chatter("%s",_lt->print_hosts().c_str());
+    }
+
     DijkstraNodeInfo *current_node = _dni_table.find(d_ea);
     while ( current_node->_ether != s_ea ) {
       BRN_DEBUG("Next add to route(from): %s",current_node->_ether.unparse().c_str());
@@ -162,11 +170,32 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     }
     route.push_front(current_node->_ether);
   } else {
+    if (_dni_table.findp(s_ea) == NULL) {
+      BRN_ERROR("dni table error");
+      BRN_ERROR("SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
+      BRN_ERROR("Node not found %s",d_ea.unparse().c_str());
+      click_chatter("%s",_lt->print_links().c_str());
+      click_chatter("%s",_lt->print_hosts().c_str());
+    }
+
     DijkstraNodeInfo *current_node = _dni_table.find(s_ea);
+    if(current_node == NULL) {
+      BRN_ERROR("111 Null pointer exception in Dijkstra::get_route.");
+      BRN_ERROR("SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
+      return;
+    }
+
     while ( current_node->_ether != d_ea ) {
       BRN_DEBUG("Next add to route(to): %s",current_node->_ether.unparse().c_str());
       route.push_back(current_node->_ether);
       current_node = current_node->_next[graph_id];
+
+      if (current_node == NULL) {
+        BRN_ERROR("222 SEA: %s DEA: %s SRC: %s DST: %s",s_ea.unparse().c_str(), d_ea.unparse().c_str(), src.unparse().c_str(), dst.unparse().c_str());
+        click_chatter("%s",_lt->print_links().c_str());
+        click_chatter("%s",_lt->print_hosts().c_str());
+        return;
+      }
     }
     route.push_back(current_node->_ether);
   }
@@ -276,6 +305,11 @@ Dijkstra::dijkstra(int graph_index)
 
       if (!neighbor_metric || adjusted_metric < neighbor_metric) {
         neighbor->_metric[graph_index] = adjusted_metric;
+        if ( _dni_table.findp(current_min_ether) == NULL ) {
+          BRN_ERROR("Node not found %s",current_min_ether.unparse().c_str());
+          click_chatter("%s",_lt->print_links().c_str());
+          click_chatter("%s",_lt->print_hosts().c_str());
+        }
         neighbor->_next[graph_index] = _dni_table.find(current_min_ether);
       }
     }
@@ -365,10 +399,16 @@ Dijkstra::add_node(BrnHostInfo *bhi)
 void
 Dijkstra::remove_node(BrnHostInfo *bhi)
 {
-  DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
-  if ( info != NULL ) {
+  if ( _dni_table.findp(bhi->_ether) != NULL ) {
+    DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
     delete info;
     _dni_table.erase(bhi->_ether);
+  }
+
+  //TODO: opotimize this
+  //node is delete so reset graph. all should be recalced
+  for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+    _dgi_list[i]._last_used = Timestamp(0,0);
   }
 }
 

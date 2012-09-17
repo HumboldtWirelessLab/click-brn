@@ -1,8 +1,8 @@
 /*
- * tls.hh
+ * ShamirServer.hh
  *
- *  Created on: 18.04.2012
- *      Author: aureliano
+ *  Created on: 05.06.2012
+ *      Author: Dominik Oepen
  */
 
 #ifndef SHAMIR_SERVER_HH_
@@ -18,16 +18,9 @@
 
 #include <openssl/bn.h>
 
-
 using namespace std;
 
 CLICK_DECLS
-
-struct shamir_reply {
-    unsigned int share_id;
-    unsigned int share_len;
-    unsigned char *share;
-};
 
 class ShamirServer : public BRNElement {
 public:
@@ -50,6 +43,7 @@ public:
 	int _debug;
     unsigned int _share_id;
 private:
+    EtherAddress _me;
     BN_CTX *_bn_ctx;
 
     int handle_request(Packet *p);

@@ -22,6 +22,7 @@
 #include "elements/brn2/brnprotocol/brnprotocol.hh"
 
 #include "ShamirClient.hh"
+#include "Shamir.hh"
 
 #include <openssl/bn.h>
 
@@ -129,6 +130,13 @@ int ShamirClient::store_reply(Packet *p) {
 
     share_id = *(uint32_t*) data;
     share_length = *(uint32_t*) (data + sizeof(uint32_t));
+
+    if (share_length > MAX_SHARESIZE) {
+        BRN_DEBUG("Received data is bigger than MAX_SHARESIZE");
+        p->kill();
+        return -1;
+    }
+
     bn = BN_bin2bn(data + 2*sizeof(uint32_t), share_length, NULL);
 
     if (!bn) {
