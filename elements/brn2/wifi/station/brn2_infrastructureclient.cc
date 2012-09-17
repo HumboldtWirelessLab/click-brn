@@ -330,6 +330,23 @@ BRN2InfrastructureClient::wireless_info()
   return sa.take_string();
 }
 
+int
+BRN2InfrastructureClient::start_assoc()
+{
+  _auth = false;
+  _ap_available = false;
+  _ad_hoc = false;
+
+  _channel_index = 0;
+
+  _channel_is_set = false;
+  _scan_all_channels = false;
+
+  request_timer.schedule_after_msec(10);
+
+  return 0;
+}
+
 String
 BRN2InfrastructureClient::print_assoc()
 {
@@ -417,6 +434,13 @@ send_disassoc_handler(const String &, Element *e, void *, ErrorHandler *)
   return 0;
 }
 
+static int 
+do_assoc_handler(const String &, Element *e, void *, ErrorHandler *)
+{
+  ((BRN2InfrastructureClient *)e)->start_assoc();
+  return 0;
+}
+
 
 static String
 read_debug_param(Element *e, void *)
@@ -449,6 +473,7 @@ BRN2InfrastructureClient::add_handlers()
   add_write_handler("send_auth", send_auth_handler, 0);
   add_write_handler("send_assoc", send_assoc_handler, 0);
   add_write_handler("disassoc", send_disassoc_handler, 0);
+  add_write_handler("do_assoc", do_assoc_handler, 0);
   add_write_handler("debug", write_debug_param, 0);
 }
 
