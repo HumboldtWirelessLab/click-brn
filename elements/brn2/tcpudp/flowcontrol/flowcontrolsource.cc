@@ -187,8 +187,8 @@ FlowControlSource::push( int port, Packet *packet)
 
     FlowControlProtocol::get_info(packet, &type, &flowid, &seq);
 
-    EtherAddress src = BRNPacketAnno::src_ether_anno(packet);
-    EtherAddress dst = BRNPacketAnno::dst_ether_anno(packet);
+    //EtherAddress src = BRNPacketAnno::src_ether_anno(packet);
+    //EtherAddress dst = BRNPacketAnno::dst_ether_anno(packet);
 
     packet->kill();
 
