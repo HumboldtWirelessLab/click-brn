@@ -257,7 +257,7 @@ class ChannelStats : public BRNElement {
 
       void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav) {
        if ( rssi > 0 ) {
-         _rssi += rssi;
+         _rssi = rssi;
          _sum_sq_rssi += rssi * rssi;
          if ( rssi > _max_rssi ) _max_rssi = rssi;
          else if ( rssi < _min_rssi ) _min_rssi = rssi;
