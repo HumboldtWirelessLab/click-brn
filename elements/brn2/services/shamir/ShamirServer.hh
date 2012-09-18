@@ -43,6 +43,7 @@ public:
 	int _debug;
     unsigned int _share_id;
 private:
+    EtherAddress _me;
     BN_CTX *_bn_ctx;
 
     int handle_request(Packet *p);

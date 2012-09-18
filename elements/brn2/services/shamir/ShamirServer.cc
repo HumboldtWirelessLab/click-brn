@@ -54,6 +54,7 @@ ShamirServer::~ShamirServer() {
 int ShamirServer::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
+        "ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -83,6 +84,8 @@ void ShamirServer::push(int port, Packet *p) {
  */
 
 int ShamirServer::handle_request(Packet *p_in) {
+    EtherAddress src_addr = BRNPacketAnno::src_ether_anno(p_in);
+    BRN_DEBUG("Received request from %s", src_addr.unparse().c_str());
 
     struct shamir_reply reply;
     reply.share_id = _share_id;
@@ -101,6 +104,7 @@ int ShamirServer::handle_request(Packet *p_in) {
     }
 
     WritablePacket *p = p_in->push(sizeof(shamir_reply));
+    BRNPacketAnno::set_ether_anno(p, _me, src_addr, ETHERTYPE_BRN);
 
     memcpy(p->data(), &reply, sizeof(struct shamir_reply));
     output(0).push(p);
