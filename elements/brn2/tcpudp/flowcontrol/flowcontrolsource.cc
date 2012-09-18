@@ -50,6 +50,7 @@ FlowControlSource::FlowControlSource():
 
 FlowControlSource::~FlowControlSource()
 {
+  clear_flowtab();
 }
 
 int
@@ -166,7 +167,7 @@ FlowControlSource::push( int port, Packet *packet)
 
     BRNPacketAnno::set_ether_anno(out_packet, src, dst, ntohs(ETHERTYPE_BRN));
 
-    int32_t res = fci->insert_packet(out_packet);
+    int32_t res = fci->insert_packet(out_packet->clone());
     if ( res < 0 ) {
       BRN_ERROR("Error while insert next packet (%d). Drop it",res);
       out_packet->kill();
@@ -203,8 +204,18 @@ FlowControlSource::gen_next_flowid()
 {
   uint16_t s_end = _flowid - 1;
   while ((_flowtab.findp(_flowid) != NULL) && (_flowid != s_end)) _flowid++;
-  click_chatter("Flowid = %d", _flowid);
+  BRN_DEBUG("Flowid = %d", _flowid);
   return (s_end != _flowid);
+}
+
+void
+FlowControlSource::clear_flowtab()
+{
+  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+    FlowControlInfo *fci = iter.value();
+
+    delete fci;
+  }
 }
 
 void

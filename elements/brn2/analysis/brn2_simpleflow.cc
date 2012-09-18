@@ -101,7 +101,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
       Timestamp now = Timestamp::now();
       if ( (txFlow->_duration != 0) &&
          (((now - txFlow->_start_time).msecval()+txFlow->_rate) >= txFlow->_duration)) {
-        click_chatter("Last Packet");
+        BRN_DEBUG("Last Packet");
         txFlow->_active = false;  //last packet for limited flow
       }
 
