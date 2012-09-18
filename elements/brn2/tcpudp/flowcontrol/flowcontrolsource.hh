@@ -7,6 +7,11 @@
 
 #include "elements/brn2/brnelement.hh"
 
+#include "flowcontrolinfo.hh"
+
+
+#define DEFAULT_RETRANSMIT_TIME 100
+
 CLICK_DECLS
 
 class FlowControlSource : public BRNElement
@@ -32,8 +37,23 @@ class FlowControlSource : public BRNElement
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  Timer _retransmit_timer;
+  static void static_retransmit_timer_hook(Timer *, void *);
+  void set_retransmit_timer();
+  void retransmit_data();
+
+  void clear_flowtab();
+  
  private:
-   
+  bool _etherannos;
+
+  uint16_t _flowid;
+
+  FlowTable _flowtab;
+
+  bool gen_next_flowid();
+
+  uint32_t retransmit_timeout;
 };
 
 CLICK_ENDDECLS
