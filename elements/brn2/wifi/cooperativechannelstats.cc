@@ -150,7 +150,7 @@ void CooperativeChannelStats::push (int, Packet *p)
     click_ether *eh = (click_ether*)p->ether_header ();
     EtherAddress src_ea = EtherAddress (eh->ether_shost);
     
-    if (_ncst.find (src_ea) == NULL )
+    if (_ncst.find (src_ea) == NULL)
 	{
     	_ncst.insert (src_ea, new NodeChannelStats (src_ea));
 	}
@@ -196,7 +196,7 @@ HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::
 {
     BRN_DEBUG ("HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::get_stats (EtherAddress *ea)");
 
-    if (!_ncst.empty () || _ncst.find (*ea) != NULL)
+    if (!_ncst.empty () && _ncst.find (*ea) != NULL)
     {
     	BRN_INFO ("FOUND EA: %s", ea->unparse ().c_str ());
         return (_ncst.find (*ea)->get_neighbour_stats_table ());
