@@ -50,6 +50,7 @@ public:
 
 	static void kdp_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
 
+	String stats();
 private:
 	BRN2NodeIdentity *_me;
 
@@ -89,6 +90,11 @@ private:
 	// Parameter to define the security level
 	enum proto_type _protocol_type;
 	int _key_timeout;
+
+	// Variables to collect statistical information
+	int bb_join_cnt;				// backbone join counter
+	int kdp_retry_cnt;
+	int key_inst_cnt;				// key installation counter
 
 	void handle_kdp_reply(Packet *);
 	void switch_wep(String);

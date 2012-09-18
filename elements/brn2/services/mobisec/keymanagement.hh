@@ -69,7 +69,7 @@ public:
 	void install_keylist(Vector<String> keylist);
 
 	// This method uses the list to set the adequate key on phy layer
-	void install_key_on_phy(Element *_wepencap, Element *_wepdecap);
+	bool install_key_on_phy(Element *_wepencap, Element *_wepdecap);
 private:
 	int _debug;
 
@@ -82,6 +82,7 @@ private:
 
 	void store_crypto_info();
 };
+
 
 CLICK_ENDDECLS
 #endif /* KEYMANAGEMENT_HH_ */

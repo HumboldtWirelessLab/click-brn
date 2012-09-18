@@ -9,7 +9,6 @@
  *
  * Todo: Need better specification for key_len, seed_len, cardinality.
  */
-
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
@@ -238,14 +237,14 @@ void keymanagement::install_keylist(Vector<String> _keylist) {
  */
 
 // This method uses the list to set the adequate key
-void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
+bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	int32_t time_now = Timestamp::now().msecval();
 	int32_t time_keylist = ctrl_data.timestamp;
 
 	// Yet another reasonability check
 	if (time_now - time_keylist > ctrl_data.cardinality*key_timeout) {
 		click_chatter("INFO: crypto material not existent or expired");
-		return;
+		return false;
 	}
 
 	// Note: The implicit int-type handling causes automatically a round down
@@ -253,7 +252,7 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 
 	if (!(0 <= index && index < keylist.size())) {
 		click_chatter("ERROR: No keys available for index %i", index);
-		return;
+		return false;
 	}
 
 	const String key = keylist[index];
@@ -263,15 +262,19 @@ void keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	/* **********************************
 	 * Set keys in WEPencap and WEPdecap
 	 * ***********************************/
-	int success;
-	success = HandlerCall::call_write(_wepencap, handler, key, NULL);
-	if(success==0) click_chatter("WEPencap: new key(%d): %s", index, HandlerCall::call_read(_wepencap, handler).c_str() );
-	else click_chatter("WEPencap: ERROR while setting new key");
+	int success1;
+	success1 = HandlerCall::call_write(_wepencap, handler, key, NULL);
+	if(success1==0) click_chatter("WEPencap: new key(%d): %s", index, key.quoted_hex().c_str());
+	else click_chatter("WEPencap: ERROR while setting new key (%s)", key.quoted_hex().c_str());
 
-	success = HandlerCall::call_write(_wepdecap, handler, key, NULL);
-	if(success==0) click_chatter("WEPdecap: new key(%d): %s", index, HandlerCall::call_read(_wepdecap, handler).c_str() );
-	else click_chatter("WEPdecap: ERROR while setting new key");
+	int success2;
+	success2 = HandlerCall::call_write(_wepdecap, handler, key, NULL);
+	if(success2==0) click_chatter("WEPdecap: new key(%d): %s", index,  key.quoted_hex().c_str());
+	else click_chatter("WEPdecap: ERROR while setting new key (%s)", key.quoted_hex().c_str());
+
+	return (success1==0 && success2==0)? true : false;
 }
+
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
