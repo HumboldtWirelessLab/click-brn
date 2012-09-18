@@ -73,12 +73,16 @@ FlowControlInfo::FlowControlInfo(uint16_t flowid, uint16_t max_window_size):
 FlowControlInfo::~FlowControlInfo()
 {
   clear();
-  delete _packet_window;
+  delete[] _packet_window;
+  delete[] _ack_window;
+  delete[] _packet_times;
 }
 
 int
 FlowControlInfo::insert_packet(Packet *p)
 {
+  //click_chatter("Insert Packet: %p",p);
+  
   if ( _packet_window[_window_next_index] != NULL ) return -1;
   if ( ((_window_next_index+1)%_cur_window_size) == _window_start_index ) return -1;
 
@@ -114,7 +118,7 @@ FlowControlInfo::insert_packet(Packet *p, uint16_t seq)
     click_chatter("Receive dupl. of packet");
   }
 
-  _packet_window[(seq%_cur_window_size)] = p->clone();
+  _packet_window[(seq%_cur_window_size)] = p;
   _ack_window[(seq%_cur_window_size)] = true;
   _packet_times[(seq%_cur_window_size)] = Timestamp::now();
 
@@ -187,14 +191,14 @@ FlowControlInfo::get_packet_with_max_age(int32_t age)
   for(int i = 0; i < _max_window_size; i++) {
     if (_packet_window[i] != NULL) {
       if ((now - _packet_times[i]).msecval() > age) {
-        click_chatter("Age: %d I: %d",(now - _packet_times[i]).msecval(),i);
+        //click_chatter("Age: %d I: %d p: %p",(now - _packet_times[i]).msecval(),i,_packet_window[i]);
         _packet_times[i] = now;
         return _packet_window[i]->clone();
       }
     }
   }
 
-  click_chatter("Nuescht");
+  //click_chatter("Nuescht");
 
   return NULL;
 }

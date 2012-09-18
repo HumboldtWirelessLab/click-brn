@@ -47,6 +47,7 @@ FlowControlSink::FlowControlSink()
 
 FlowControlSink::~FlowControlSink()
 {
+  clear_flowtab();
 }
 
 int
@@ -73,7 +74,7 @@ FlowControlSink::push( int /*port*/, Packet *packet )
 
   FlowControlProtocol::get_info(packet, &type, &flowid, &seq);
 
-  click_chatter("Flow: %d %d",flowid,seq);
+  BRN_DEBUG("Flow: %d %d",flowid,seq);
 
   if ( _flowtab.findp(flowid) == NULL ) {
    FlowControlInfo *new_fci = new FlowControlInfo(flowid);
@@ -126,7 +127,7 @@ FlowControlSink::push( int /*port*/, Packet *packet )
     p = fci->get_and_clear_acked_seq();
   }
 
-  click_chatter("%s",fci->print_info().c_str());
+  BRN_DEBUG("%s",fci->print_info().c_str());
 
   if ( fci->_min_seq == 0 ) return;
 
@@ -140,6 +141,16 @@ FlowControlSink::push( int /*port*/, Packet *packet )
   BRNPacketAnno::set_ether_anno(out_ack_p, dst, src, ntohs(ETHERTYPE_BRN));
 
   output(1).push(out_ack_p);
+}
+
+void
+FlowControlSink::clear_flowtab()
+{
+  for (FTIter iter = _flowtab.begin(); iter.live(); iter++) {
+    FlowControlInfo *fci = iter.value();
+
+    delete fci;
+  }
 }
 
 void

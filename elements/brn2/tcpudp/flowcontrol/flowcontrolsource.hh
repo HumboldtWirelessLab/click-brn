@@ -42,6 +42,8 @@ class FlowControlSource : public BRNElement
   void set_retransmit_timer();
   void retransmit_data();
 
+  void clear_flowtab();
+  
  private:
   bool _etherannos;
 

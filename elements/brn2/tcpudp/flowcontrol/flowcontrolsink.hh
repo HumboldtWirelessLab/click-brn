@@ -37,6 +37,8 @@ class FlowControlSink : public BRNElement
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  void clear_flowtab();
+ 
  private:
   FlowTable _flowtab;
 };
