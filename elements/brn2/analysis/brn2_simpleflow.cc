@@ -98,6 +98,12 @@ BRN2SimpleFlow::run_timer(Timer *t)
     Flow *txFlow = _tx_flowMap.find(dst_of_flow);
     if ( txFlow) {
       BRN_DEBUG("Send Next");
+      Timestamp now = Timestamp::now();
+      if ( (txFlow->_duration != 0) &&
+         (((now - txFlow->_start_time).msecval()+txFlow->_rate) >= txFlow->_duration)) {
+        BRN_DEBUG("Last Packet");
+        txFlow->_active = false;  //last packet for limited flow
+      }
 
       packet_out = nextPacketforFlow(txFlow);
 
@@ -170,7 +176,8 @@ BRN2SimpleFlow::schedule_next(EtherAddress *dst)
   if (_timer.scheduled()) {
     BRN_DEBUG("Timer is scheduled at %s",_timer.expiry().unparse().c_str());
   } else {
-    BRN_WARN("Timer is not scheduled");
+    if ( txFlow->_active )
+      BRN_WARN("Timer is not scheduled");
   }
 }
 
@@ -224,6 +231,7 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   /*Handle Packet*/
   EtherAddress src_ea = EtherAddress(header->src);
   Flow *f = _rx_flowMap.find(src_ea);
+  uint32_t packet_id = ntohl(header->packetID);
 
   if ( f == NULL ) {  //TODO: shorten this
     _rx_flowMap.insert(src_ea, new Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
@@ -247,6 +255,8 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   BRN_INFO("Insum: %d",checksum);
 
   if ( checksum != header->crc ) f->_rxCrcErrors++;
+  if ( packet_id < f->_max_packet_id ) f->_rx_out_of_order++;
+  else f->_max_packet_id = packet_id;
 
   if ( f->_type == TYPE_FULL_ACK ) {
     header->reply = 1;
@@ -333,6 +343,12 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 
   header->flowID = htonl(f->_id);
   header->packetID = htonl(f->_txPackets);
+  if ( f->_txPackets == 0 ) {
+    BRNPacketAnno::set_flow_ctrl_flags_anno(p, FLOW_CTRL_FLOW_START);
+  } else if ( ! f->_active ) { //stop the flow
+    BRNPacketAnno::set_flow_ctrl_flags_anno(p, FLOW_CTRL_FLOW_END);
+  }
+
   f->_txPackets++;
 
   header->rate = htonl(f->_rate);
@@ -403,6 +419,8 @@ BRN2SimpleFlow::xml_stats()
     sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
     sa << " dst=\"" << fl->_dst.unparse().c_str() << "\" flowid=\"" << fl->_id << "\"";
     sa << " packet_count=\"" << fl->_rxPackets << "\" packet_size=\"" << fl->_size << "\"";
+    sa << " max_packet_id=\"" << fl->_max_packet_id;
+    sa << "\" out_of_order=\"" << fl->_rx_out_of_order << "\"";
     sa << " crc_err=\"" << fl->_rxCrcErrors << "\"";
     if ( fl->_rxPackets == 0 ) sa << " avg_hops=\"-1\" />\n";
     else sa << " avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" />\n";
