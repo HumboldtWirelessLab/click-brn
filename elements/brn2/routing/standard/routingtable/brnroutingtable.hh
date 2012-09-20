@@ -100,7 +100,7 @@ public:
    * @param route @a [in] Holds the route, if found.
    * @return true if a cached route was found, false otherwise.
    */
-  bool get_cached_route(
+  bool get_route(
     /*[in]*/  const AddressType&  addrSrc,
     /*[in]*/  const AddressType&  addrDst,
     /*[out]*/ RouteType&          route,

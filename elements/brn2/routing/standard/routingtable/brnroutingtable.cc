@@ -88,7 +88,7 @@ BrnRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 
 ////////////////////////////////////////////////////////////////////////
 bool
-BrnRoutingTable::get_cached_route(
+BrnRoutingTable::get_route(
   /*[in]*/  const AddressType&  addrSrc,
   /*[in]*/  const AddressType&  addrDst,
   /*[out]*/ RouteType&          route,
