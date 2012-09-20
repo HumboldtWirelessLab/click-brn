@@ -106,8 +106,7 @@ FlowControlSink::push( int /*port*/, Packet *packet )
                                                   255, DEFAULT_TOS);
 
     //switch src & dst: its a reply
-    BRNPacketAnno::set_ether_anno(out_ack_p, dst, src,
-                                ntohs(ETHERTYPE_BRN));
+    BRNPacketAnno::set_ether_anno(out_ack_p, dst, src, ETHERTYPE_BRN);
 
     output(1).push(out_ack_p);
     return;
@@ -138,7 +137,7 @@ FlowControlSink::push( int /*port*/, Packet *packet )
                                                                  255, DEFAULT_TOS);
 
   //switch src & dst: its a reply
-  BRNPacketAnno::set_ether_anno(out_ack_p, dst, src, ntohs(ETHERTYPE_BRN));
+  BRNPacketAnno::set_ether_anno(out_ack_p, dst, src, ETHERTYPE_BRN);
 
   output(1).push(out_ack_p);
 }
