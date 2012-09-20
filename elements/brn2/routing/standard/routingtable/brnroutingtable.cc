@@ -320,6 +320,31 @@ BrnRoutingTable::on_link_changed(
 }
 
 ////////////////////////////////////////////////////////////////////////
+void
+BrnRoutingTable::remove_node(/*[in]*/  const AddressType& addr )
+{
+  RouteMapType::iterator iter = m_mapRoutes.begin();
+  while( iter != m_mapRoutes.end() )
+  {
+    AddressPairType addrPairAB = iter.key();
+    EntryType *pEntry = iter.value();
+    
+    const RouteType& route = pEntry->m_route;
+    RouteType::const_iterator iter_a = route.begin();
+    while( iter_a != route.end() ) {
+      
+      if (*iter_a == addr ) {
+        m_mapLinkToRoute.remove( addrPairAB ); 
+	break;
+      }
+      ++iter_a;
+    }
+    
+    ++iter;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////
 void 
 BrnRoutingTable::on_routeaging_expired(/*[in]*/ Timer* pTimer, /*[in]*/  void*  pVoid )
 {
