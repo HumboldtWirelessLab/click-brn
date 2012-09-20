@@ -49,7 +49,7 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class RoutingMaintenance: public BRNElement {
+class RoutingMaintenance: public BRNElement, public BrnLinkTableChangeInformant {
  public:
   //
   //methods
@@ -103,7 +103,10 @@ class RoutingMaintenance: public BRNElement {
 
   String print_stats();
 
- private:
+  void add_node(BrnHostInfo *);
+  void remove_node(BrnHostInfo *);
+ 
+private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
