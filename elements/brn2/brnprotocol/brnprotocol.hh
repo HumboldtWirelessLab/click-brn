@@ -84,6 +84,7 @@ union addr {
 #define BRN_PORT_FLOW                     52 /*0x34*/
 #define BRN_PORT_COMPRESSION              53 /*0x35*/
 #define BRN_PORT_FRAGMENTATION            54 /*0x36*/
+#define BRN_PORT_FLOWCONTROL              55 /*0x37*/
 /*Info*/
 #define BRN_PORT_NODEINFO                 60 /*0x3c*/
 #define BRN_PORT_CHANNELSTATSINFO         61 /*0x3d*/
