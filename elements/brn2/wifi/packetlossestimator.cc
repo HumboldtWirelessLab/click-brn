@@ -564,13 +564,13 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
     //uint8_t rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE]    = src_info._rssi_hist;
     uint8_t rssi_hist_size                          = src_info._rssi_hist_size;
     //uint32_t rssi                                   = src_info._rssi;
-    uint8_t histogram[255];
-    uint8_t min[255];
-    uint8_t highest[255];
-    uint8_t max[255];
-    uint8_t min_val[255];
-    uint8_t highest_val[255];
-    uint8_t max_val[255];
+    uint8_t histogram[256];
+    uint8_t min[256];
+    uint8_t highest[256];
+    uint8_t max[256];
+    uint8_t min_val[256];
+    uint8_t highest_val[256];
+    uint8_t max_val[256];
     uint8_t min_counter     = 0;
     uint8_t highest_counter = 0;
     uint8_t max_counter     = 0;
@@ -600,7 +600,7 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
             continue;
         } else
         {
-            histogram[src_info._rssi_hist[i]]++;
+            histogram[src_info._rssi_hist[i - 1]]++;
         }
     }
 
@@ -609,12 +609,12 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
      */
     BRN_INFO ("histogramm START");
     min[min_counter] = highest[highest_counter] = max[max_counter] = histogram[0];
-    for (uint8_t j = 1; j < 255; j++)
+    for (uint16_t j = 0; j < 256; j++)
     {
-        BRN_INFO ("histogramm: %d", histogram[j]);
-        if (min[min_counter] != 0 && min[min_counter] < histogram[j])
+        BRN_INFO ("histogramm %d: %d", j, histogram[j]);
+        if (min[min_counter] < histogram[j])
         {
-            if (min_counter == highest_counter)
+            if (min_counter <= highest_counter)
             {
                 ++min_counter;
             }
@@ -622,6 +622,10 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
         {
             min[min_counter] = histogram[j];
             min_val[min_counter] = j;
+
+            BRN_INFO ("MIN: %d", min[min_counter]);
+            BRN_INFO ("MIN_VAL: %d", min_val[min_counter]);
+            BRN_INFO ("MIN_COUNTER: %d", min_counter);
         }
 
         if (highest[highest_counter] < histogram[j])
