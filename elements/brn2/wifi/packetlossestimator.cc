@@ -52,19 +52,23 @@ Packet *PacketLossEstimator::simple_action (Packet *packet)
         if (_pli != NULL)
         {
             gather_packet_infos_ (*packet);
-            struct airtime_stats *stats;
-            HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab;
 
             if (_cst != NULL)
             {
-                //int time_now = packet->timestamp_anno ().msec ();
-                
-                stats = _cst->get_latest_stats ();
-                src_tab = _cst->get_latest_stats_neighbours ();
-                ChannelStats::SrcInfo srcInfo;
-                srcInfo = src_tab->find (*_packet_parameter->get_src_address ());
-                estimateWeakSignal (srcInfo);
+                struct airtime_stats *stats = _cst->get_latest_stats ();
+                HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab = _cst->get_latest_stats_neighbours ();
+                ChannelStats::SrcInfo src_info = src_tab->find (*_packet_parameter->get_src_address ());
+                ChannelStats::RSSIInfo *rssi_info = _cst->get_latest_rssi_info ();
+                estimateWeakSignal (src_info, *rssi_info);
                 estimateNonWifi (*stats);
+
+                /*
+                BRN_DEBUG ("RX-Packets: %i\tNo-Error-Packets: %i\tRX-Retry-Packets: %i\tRX-Unicast-Packets: %i", stats->rxpackets, stats->noerr_packets, stats->rx_retry_packets, stats->rx_ucast_packets);
+                BRN_DEBUG ("TX-Packets: %i\tTX-Retry-Packets: %i\tTX-Unicast-Packets: %i", stats->txpackets, stats->tx_retry_packets, stats->tx_ucast_packets);
+                BRN_DEBUG ("HW-Busy: %i\tHW-RX: %i\tHW-TX: %i", stats->hw_busy, stats->hw_rx, stats->hw_tx);
+                BRN_DEBUG ("HW_Cycles: %i\tHW-Busy_Cycles: %i\tHW-RX_Cycles: %i\tHW-TX_Cycles: %i", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
+                */
+
             } else
             {
                 BRN_ERROR ("Channelstats is NULL");
@@ -105,16 +109,6 @@ Packet *PacketLossEstimator::simple_action (Packet *packet)
                 estimateInrange ();
             }
 
-            if (_cst != NULL)
-            {
-                /*
-                BRN_DEBUG ("RX-Packets: %i\tNo-Error-Packets: %i\tRX-Retry-Packets: %i\tRX-Unicast-Packets: %i", stats->rxpackets, stats->noerr_packets, stats->rx_retry_packets, stats->rx_ucast_packets);
-                BRN_DEBUG ("TX-Packets: %i\tTX-Retry-Packets: %i\tTX-Unicast-Packets: %i", stats->txpackets, stats->tx_retry_packets, stats->tx_ucast_packets);
-                BRN_DEBUG ("HW-Busy: %i\tHW-RX: %i\tHW-TX: %i", stats->hw_busy, stats->hw_rx, stats->hw_tx);
-                BRN_DEBUG ("HW_Cycles: %i\tHW-Busy_Cycles: %i\tHW-RX_Cycles: %i\tHW-TX_Cycles: %i", stats->hw_cycles, stats->hw_busy_cycles, stats->hw_rx_cycles, stats->hw_tx_cycles);
-            */
-            }
-
             if (!_packet_parameter->is_broadcast_or_self ())
             {
                 _stats_buffer.insert_values (*_packet_parameter, *_pli);
@@ -135,13 +129,13 @@ void PacketLossEstimator::gather_packet_infos_ (const Packet &packet)
 {
     BRN_DEBUG ("void PacketLossEstimator::gather_packet_infos_ (Packet* packet)");
     struct click_wifi_extra *ceh    = WIFI_EXTRA_ANNO (&packet);
-    struct click_wifi   *wh         = (struct click_wifi *) packet.data ();
-    EtherAddress        own_address = *_dev->getEtherAddress ();
-    EtherAddress        dst_address = EtherAddress (wh->i_addr1);
-    EtherAddress        src_address;
-    uint8_t             packet_type = 0; // TODO: Enum
-    StringAccum         type;
-    StringAccum         subtype;
+    struct click_wifi       *wh         = (struct click_wifi *) packet.data ();
+    EtherAddress            own_address = *_dev->getEtherAddress ();
+    EtherAddress            dst_address = EtherAddress (wh->i_addr1);
+    EtherAddress            src_address;
+    uint8_t                 packet_type = 0; // TODO: Enum
+    StringAccum             type;
+    StringAccum             subtype;
     
     switch (wh->i_fc[0] & WIFI_FC0_TYPE_MASK)
     {
@@ -397,7 +391,7 @@ void PacketLossEstimator::estimateInrange ()
     }
 
     uint8_t                                     neighbours      = 1;
-    uint8_t                                     irProp          = 6;
+    uint8_t                                     irProp          = 0;
     HiddenNodeDetection::NodeInfoTable          neighbour_nodes = _hnd->get_nodeinfo_table ();
     HiddenNodeDetection::NodeInfoTableIter      neighbour_nodes_end = neighbour_nodes.end ();
 
@@ -444,7 +438,7 @@ void PacketLossEstimator::estimateInrange ()
         if (_pli != NULL)
         {
             _pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::IN_RANGE)->setFraction (irProp);
-            _pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::HIDDEN_NODE)->setFraction (0);
+            //_pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::HIDDEN_NODE)->setFraction (0);
         } else
         {
             BRN_ERROR ("PacketLossInformation is NULL");
@@ -492,11 +486,12 @@ void PacketLossEstimator::estimateNonWifi (struct airtime_stats &ats)
     }
 }
 
-void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info)
+void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, ChannelStats::RSSIInfo &rssi_info)
 {
     BRN_DEBUG ("void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo *src_info)");
     if (_packet_parameter->is_broadcast_or_self ())
     {
+        BRN_INFO ("own or broadcast adresses are not suitable for weak signal estimation... continuing");
         return;
     }
 
@@ -506,20 +501,27 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info)
         return;
     }
 
+    if (&rssi_info == NULL)
+    {
+        BRN_ERROR ("ChannelStats::RSSIInfo is NULL");
+        return;
+    }
+
     int8_t weaksignal = 100;
 
     if (src_info._rssi > 0)
     {
-        uint8_t rate = _packet_parameter->get_rate ();
+        //uint8_t rate = _packet_parameter->get_rate ();
 
-        HashMap<uint8_t, uint64_t> hist = PacketLossEstimator::_rssi_histogram.find (rate);
-        PacketLossEstimator::_rssi_histogram.erase (rate);
-        uint64_t value = hist.find (src_info._rssi);
-        hist.erase (src_info._rssi);
-        hist.insert (src_info._rssi, ++value);
-        PacketLossEstimator::_rssi_histogram.insert (rate, hist);
+//        HashMap<uint8_t, uint64_t> hist = PacketLossEstimator::_rssi_histogram.find (rate);
+//        PacketLossEstimator::_rssi_histogram.erase (rate);
+//        uint64_t value = hist.find (src_info._rssi);
+//        hist.erase (src_info._rssi);
+//        hist.insert (src_info._rssi, ++value);
+//        PacketLossEstimator::_rssi_histogram.insert (rate, hist);
 
-        weaksignal = calc_weak_signal_percentage (src_info._rssi, rate, src_info._avg_rssi, src_info._std_rssi);
+
+        weaksignal = calc_weak_signal_percentage (src_info, rssi_info);
     }
 
     if (_hnd != NULL && _pli != NULL)
@@ -556,8 +558,108 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info)
     }
 }
 
-uint8_t PacketLossEstimator::calc_weak_signal_percentage (uint32_t cur_rssi, uint8_t rate, uint32_t avg_rssi, uint32_t std_rssi)
+uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo &src_info, ChannelStats::RSSIInfo &rssi_info)
 {
+    //uint8_t rate                                    = _packet_parameter->get_rate ();
+    //uint8_t rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE]    = src_info._rssi_hist;
+    uint8_t rssi_hist_size                          = src_info._rssi_hist_size;
+    //uint32_t rssi                                   = src_info._rssi;
+    uint8_t histogram[255];
+    uint8_t min[255];
+    uint8_t highest[255];
+    uint8_t max[255];
+    uint8_t min_val[255];
+    uint8_t highest_val[255];
+    uint8_t max_val[255];
+    uint8_t min_counter     = 0;
+    uint8_t highest_counter = 0;
+    uint8_t max_counter     = 0;
+
+    memset (histogram, 0, sizeof (histogram));
+    memset (min, 0, sizeof (min));
+    memset (highest, 0, sizeof (highest));
+    memset (max, 0, sizeof (max));
+    memset (min_val, 0, sizeof (min_val));
+    memset (highest_val, 0, sizeof (highest_val));
+    memset (max_val, 0, sizeof (max_val));
+
+    if (&rssi_info == NULL)
+    {
+        BRN_INFO ("rssi_info NULL");
+    }
+
+    /*
+     * go through the history and create a real histogram, because we get only 50 values in any order
+     */
+    BRN_INFO ("_val START");
+    for (uint8_t i = 0; i < rssi_hist_size; i++)
+    {
+        BRN_INFO ("histogramm_val: %d", src_info._rssi_hist[i]);
+        if (src_info._rssi_hist[i] == 0)
+        {
+            continue;
+        } else
+        {
+            histogram[src_info._rssi_hist[i]]++;
+        }
+    }
+
+    /*
+     * find min, max and hightest values
+     */
+    BRN_INFO ("histogramm START");
+    min[min_counter] = highest[highest_counter] = max[max_counter] = histogram[0];
+    for (uint8_t j = 1; j < 255; j++)
+    {
+        BRN_INFO ("histogramm: %d", histogram[j]);
+        if (min[min_counter] != 0 && min[min_counter] < histogram[j])
+        {
+            if (min_counter == highest_counter)
+            {
+                ++min_counter;
+            }
+        } else
+        {
+            min[min_counter] = histogram[j];
+            min_val[min_counter] = j;
+        }
+
+        if (highest[highest_counter] < histogram[j])
+        {
+            highest[highest_counter] = histogram[j];
+            max[highest_counter] = histogram[j];
+            highest_val[highest_counter] = j;
+            max_val[highest_counter] = j;
+
+        } else
+        {
+            if (min_counter > highest_counter)
+            {
+                highest_counter = min_counter;
+            }
+        }
+
+        if (max[max_counter] > histogram[j] && highest[max_counter] != 0 && max[max_counter])
+        {
+            max[max_counter] = histogram[j];
+            max_val[max_counter] = j;
+        } else
+        {
+            if (max_counter < highest_counter)
+            {
+                max_counter = highest_counter;
+            }
+        }
+    }
+    BRN_INFO ("histogramm END");
+
+    BRN_INFO("histogramm MIN, HIGHEST, MAX 0: %d/%d/%d", min_val[0], highest_val[0], max_val[0]);
+    BRN_INFO("histogramm MIN, HIGHEST, MAX 0: %d/%d/%d", min_val[1], highest_val[1], max_val[1]);
+    BRN_INFO("histogramm MIN, HIGHEST, MAX 0: %d/%d/%d", min_val[2], highest_val[2], max_val[2]);
+    BRN_INFO("histogramm MIN, HIGHEST, MAX 0: %d/%d/%d", min_val[3], highest_val[3], max_val[3]);
+
+    return 0;
+/*
     HashMap<uint8_t, uint64_t> hist = PacketLossEstimator::_rssi_histogram.find (rate);
     HashMap<uint8_t, uint64_t>::const_iterator end = hist.end ();
 
@@ -582,37 +684,37 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (uint32_t cur_rssi, uin
             }
         }
     }
-
+*/
     /* if current rssi plus mean square root is greater than max and not near min
      * than weak signal should not be a problem --> return 0
      */
-    if ( (cur_rssi + std_rssi) >= max && ! ( (cur_rssi - std_rssi) <= min))
-    {
-        return 0;
-    }
+//    if ( (cur_rssi + std_rssi) >= max && ! ( (cur_rssi - std_rssi) <= min))
+//    {
+//        return 0;
+//    }
 
     /* if current rssi is greater than average and not near min
      * weak signal isn't a problem
      */
-    if (cur_rssi > avg_rssi && ! ( (cur_rssi - std_rssi) <= min))
-    {
-        return 0;
-    }
+//    if (cur_rssi > avg_rssi && ! ( (cur_rssi - std_rssi) <= min))
+//    {
+//        return 0;
+//    }
 
     /* if current rssi minus std_rssi is below zero, than it is likely the signal becomes zero
      * so we've a weak signal problem
      */
-    if (cur_rssi - std_rssi <= 0)
-    {
-        return 100;
-    }
-
-    if (hist.find (cur_rssi - 1) > hist.find (cur_rssi) && hist.find (cur_rssi - 1) - std_rssi <= 0)
-    {
-        return 50;
-    }
-
-    return 10;
+//    if (cur_rssi - std_rssi <= 0)
+//    {
+//        return 100;
+//    }
+//
+//    if (hist.find (cur_rssi - 1) > hist.find (cur_rssi) && hist.find (cur_rssi - 1) - std_rssi <= 0)
+//    {
+//        return 50;
+//    }
+//
+//    return 10;
 }
 
 inline void PacketLossEstimator::add_ack (const EtherAddress &dest_addr)
@@ -628,7 +730,7 @@ inline uint32_t PacketLossEstimator::get_acks_by_node (const EtherAddress &dest_
     BRN_DEBUG ("uint32_t PacketLossEstimator::get_acks_by_node (EtherAddress dest_addr)");
     return PacketLossEstimator::_acks_by_node.find (dest_addr);
 }
-
+/*
 inline void PacketLossEstimator::add_weak_signal_raw_value (uint8_t weak_signal_raw_value)
 {
     if (weak_signal_raw_value > PacketLossEstimator::_max_weak_signal_value)
@@ -650,7 +752,7 @@ inline uint8_t PacketLossEstimator::get_weak_signal_percentage (uint8_t abs_valu
         return 100;
     }
 }
-
+*/
 ////////////////////////// STATS //////////////////////////////
 
 enum
@@ -833,7 +935,7 @@ StringAccum PacketLossEstimator::stats_get_hidden_node (HiddenNodeDetection::Nod
                 if (*_dev->getEtherAddress() != nats_map_iter.key () || !_hnd->get_nodeinfo_table ().find (nats_map_iter.key ()) || !_hnd->get_nodeinfo_table ().find (nats_map_iter.key ())->_neighbour)
                 {
                     hidden_node_sa << "\t\t\t<hidden_neighbours>\n";
-                    hidden_node_sa << "\t\t\t\t<address>" << nats_map_iter.key () << "</address>\n"; // TODO: enter hiddennodeaddress
+                    hidden_node_sa << "\t\t\t\t<address>" << nats_map_iter.key () << "</address>\n";
                     hidden_node_sa << "\t\t\t</hidden_neighbours>\n";
                 }
             }
@@ -955,18 +1057,20 @@ StringAccum PacketLossEstimator::stats_get_weak_signal (HiddenNodeDetection::Nod
 
     for (Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin (); ea_iter != etheraddresses.end (); ea_iter++)
     {
-        weak_signal_sa  << "\t\t<neighbour address=\"" << ea_iter->unparse ().c_str () << "\">\n";
+        weak_signal_sa << "\t\t<neighbour address=\"" << ea_iter->unparse ().c_str () << "\">\n";
 
         uint16_t                        mid_count = 20;
         uint32_t                        mid_temp_weak_signal = 0;
         uint16_t                        mid_iteration_count = 0;
+
         Vector<PacketLossStatistics>    pls = _stats_buffer.get_values (*ea_iter, mid_count);
 
         for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); pls_iter++)
         {
             ++mid_iteration_count;
-            mid_temp_weak_signal += pls_iter->get_hidden_node_probability ();
+            mid_temp_weak_signal += pls_iter->get_weak_signal_probability ();
         }
+
         if (mid_iteration_count != 0)
         {
             weak_signal_sa << "\t\t\t<fraction>" << mid_temp_weak_signal / mid_iteration_count << "</fraction>\n";
@@ -986,7 +1090,7 @@ StringAccum PacketLossEstimator::stats_get_weak_signal (HiddenNodeDetection::Nod
         uint16_t                        long_iteration_count = 0;
         Vector<PacketLossStatistics>    pls = _stats_buffer.get_values (*ea_iter, long_count);
 
-        for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); pls_iter++)
+        for (Vector<PacketLossStatistics>::iterator pls_iter = pls.begin (); pls_iter != pls.end (); ++pls_iter)
         {
             ++long_iteration_count;
             long_temp_weak_signal += pls_iter->get_weak_signal_probability ();
