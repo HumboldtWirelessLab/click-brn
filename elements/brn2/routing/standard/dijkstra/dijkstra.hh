@@ -50,7 +50,7 @@ CLICK_DECLS
  * Represents a link table storing {@link BrnLink} links.
  */
 
-class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
+class Dijkstra: public RoutingAlgorithm {
 
 #define DIJKSTRA_MAX_GRAPHS 16
 #define DIJKSTRA_GRAPH_MODE_UNUSED    0
@@ -143,7 +143,6 @@ class Dijkstra: public RoutingAlgorithm, public BrnLinkTableChangeInformant {
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
-  BrnRoutingTable *_brn_routetable;
 
   DNITable _dni_table;
 

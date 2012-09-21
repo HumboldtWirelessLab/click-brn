@@ -31,6 +31,16 @@ CLICK_DECLS
 #define PULLED_BYTES_ANNO_OFFSET 36
 #define PULLED_BYTES_ANNO_SIZE    2
 
+#define FLOW_CONTROL_FLAGS_ANNO_OFFSET 38
+#define FLOW_CONTROL_FLAGS_ANNO_SIZE    1
+
+/* flow control flags */
+#define FLOW_CTRL_FLOW_START 1
+#define FLOW_CTRL_FLOW_END   2
+
+#define FLOW_CONTROL_APP_ID_ANNO_OFFSET 39
+#define FLOW_CONTROL_APP_ID_ANNO_SIZE    1
+
 /* next annos ( byte 40-47 ) overwrites PERFCTR_ANNO (Size is 8 Bytes) */
 
 #define ETHERTYPE_ANNO_OFFSET    40
@@ -100,6 +110,22 @@ class BRNPacketAnno : public Element { public:
   static void set_pulled_bytes_anno(Packet *p, const uint16_t p_bytes);
   static void inc_pulled_bytes_anno(Packet *p, const uint16_t inc_bytes);
   static void dec_pulled_bytes_anno(Packet *p, const uint16_t dec_bytes);
+
+  static inline uint8_t flow_ctrl_flags_anno(const Packet *p) {
+    return ((uint8_t*)(p->anno_u8()) + FLOW_CONTROL_FLAGS_ANNO_OFFSET)[0];
+  }
+
+  static inline void set_flow_ctrl_flags_anno(Packet *p, uint8_t flags) {
+    ((uint8_t*)((p->anno_u8()) + FLOW_CONTROL_FLAGS_ANNO_OFFSET))[0] = flags;
+  }
+
+  static inline uint8_t flow_ctrl_app_id_anno(const Packet *p) {
+    return ((uint8_t*)(p->anno_u8()) + FLOW_CONTROL_APP_ID_ANNO_OFFSET)[0];
+  }
+
+  static inline void set_flow_ctrl_app_id_anno(Packet *p, uint8_t id) {
+    ((uint8_t*)((p->anno_u8()) + FLOW_CONTROL_APP_ID_ANNO_OFFSET))[0] = id;
+  }
 
   static inline uint8_t devicenumber_anno(const Packet *p) {
     return ((uint8_t*)(p->anno_u8()) + DEVICENUMBER_ANNO_OFFSET)[0];
