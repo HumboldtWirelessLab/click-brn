@@ -1,5 +1,5 @@
 /*
- * ShamirServer.hh
+ * ShamirClient.hh
  *
  *  Created on: 06.06.2012
  *      Author: Dominik Oepen
@@ -47,6 +47,7 @@ public:
     unsigned int _threshold;
 	int _debug;
 private:
+    EtherAddress _me;
     BN_CTX *_bn_ctx;
     unsigned int _num_shares;
     HashTable<uint32_t, BIGNUM *> _received_shares;

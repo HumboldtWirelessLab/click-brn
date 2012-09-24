@@ -74,7 +74,6 @@ public:
     
 	HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
     
-    // todo: pro nachbar zeitarray mit native airtime stats um vergangene kanalauslastung auswerten zu können
     CooperativeChannelStats ();
     virtual ~CooperativeChannelStats ();
 
@@ -114,24 +113,3 @@ private:
 
 CLICK_ENDDECLS
 #endif
-
-        /*
-         class AbstractCircularBuffer
-{
-public:
-    AbstractCircularBuffer();
-    AbstractCircularBuffer(const uint16_t);
-    virtual ~AbstractCircularBuffer();
-    virtual Vector<AbstractPacketLossStatistics *> get_all_values(EtherAddress &);
-    virtual bool add_etheraddress(const EtherAddress &);
-    virtual const uint16_t get_buffer_size();
-    virtual void set_buffer_size(const uint16_t);
-    std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > get_ether_address_time_map();
-    
-private:
-    std::map<EtherAddress, Vector<AbstractPacketLossStatistics *> > ether_address_time_map;
-    uint16_t buffer_size;
-};
-         
-*/
-
