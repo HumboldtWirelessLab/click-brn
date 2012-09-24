@@ -68,7 +68,6 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
   int ret = cp_va_kparse(conf, this, errh,
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
-        "ROUTETABLE", cpkP+cpkM, cpElement, &_brn_routetable,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_min_link_metric_within_route,
         "MAXGRAPHAGE", cpkP, cpInteger, &_max_graph_age,
         "DEBUG", cpkP, cpInteger, &_debug,
@@ -80,8 +79,6 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
 int
 Dijkstra::initialize (ErrorHandler *)
 {
-  _lt->add_informant((BrnLinkTableChangeInformant*)this);
-
   _dgi_list[0]._node = *_node_identity->getMasterAddress();
   _dgi_list[0]._mode = DIJKSTRA_GRAPH_MODE_FR0M_NODE;
   _dgi_list[1]._node = *_node_identity->getMasterAddress();

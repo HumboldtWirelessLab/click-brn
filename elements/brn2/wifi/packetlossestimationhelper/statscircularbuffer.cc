@@ -87,7 +87,7 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values (EtherAddress &ea, 
         //click_chatter ("amount/iterations: %d/%d", amount, i);
     } else
     {
-        click_chatter("StatsCircularBuffer: no packet-loss data collected for longer period");
+        click_chatter ("StatsCircularBuffer: no packet-loss data collected for longer period");
     }
 
     return pls;
