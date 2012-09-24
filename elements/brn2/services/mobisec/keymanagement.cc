@@ -89,6 +89,11 @@ void keymanagement::set_key_timeout(int timeout) {
 }
 
 void keymanagement::set_seed(const unsigned char *data) {
+	if (!data) {
+		click_chatter("seed is null");
+		return;
+	}
+
 	if(ctrl_data.seed_len > 0) {
 		seed = (unsigned char *) realloc(seed, ctrl_data.seed_len);
 		memcpy(seed, data, ctrl_data.seed_len);
