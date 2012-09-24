@@ -146,6 +146,8 @@ BRN2AssocRequester::push(int, Packet *p)
 void
 BRN2AssocRequester::send_disassoc_req()
 {
+  //click_chatter("%{element}: Sending disassoc req");
+
   EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
   String ssid = _winfo ? _winfo->_ssid : "";
   int linterval = _winfo ? _winfo->_interval : 1;

@@ -180,10 +180,19 @@ void KEYSERVER::jmp_next_session() {
 
 void KEYSERVER::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
-	keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() );
-	if (BUF_keyman.get_seed())
-		keyman.set_seed( BUF_keyman.get_seed() );
-	keyman.install_keylist( BUF_keyman.get_keylist() );
+	if ( keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() ) ) {
+
+		// As key server we have to take care of seed, which is requested by clients
+		if (_protocol_type == CLIENT_DRIVEN) {
+			keyman.set_seed(BUF_keyman.get_seed());
+		}
+
+		keyman.install_keylist( BUF_keyman.get_keylist() );
+
+		BRN_DEBUG("Switched to new epoch");
+	} else {
+		BRN_DEBUG("Jump to next epoch failed due to wrong control data.");
+	}
 
 	BRN_DEBUG("Switched to new epoch");
 
