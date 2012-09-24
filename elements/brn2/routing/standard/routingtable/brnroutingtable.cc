@@ -88,7 +88,7 @@ BrnRoutingTable::configure(Vector<String> &conf, ErrorHandler *errh)
 
 ////////////////////////////////////////////////////////////////////////
 bool
-BrnRoutingTable::get_cached_route(
+BrnRoutingTable::get_route(
   /*[in]*/  const AddressType&  addrSrc,
   /*[in]*/  const AddressType&  addrDst,
   /*[out]*/ RouteType&          route,
@@ -316,6 +316,31 @@ BrnRoutingTable::on_link_changed(
 
     // The link vector could have been deleted in remove_route...
     pLinkVector = m_mapLinkToRoute.findp( addrPairAB );
+  }
+}
+
+////////////////////////////////////////////////////////////////////////
+void
+BrnRoutingTable::remove_node(/*[in]*/  const AddressType& addr )
+{
+  RouteMapType::iterator iter = m_mapRoutes.begin();
+  while( iter != m_mapRoutes.end() )
+  {
+    AddressPairType addrPairAB = iter.key();
+    EntryType *pEntry = iter.value();
+    
+    const RouteType& route = pEntry->m_route;
+    RouteType::const_iterator iter_a = route.begin();
+    while( iter_a != route.end() ) {
+      
+      if (*iter_a == addr ) {
+        m_mapLinkToRoute.remove( addrPairAB ); 
+	break;
+      }
+      ++iter_a;
+    }
+    
+    ++iter;
   }
 }
 

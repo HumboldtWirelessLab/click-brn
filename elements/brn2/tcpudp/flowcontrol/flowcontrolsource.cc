@@ -165,7 +165,7 @@ FlowControlSource::push( int port, Packet *packet)
                                                                    BRN_PORT_FLOWCONTROL,
                                                                    255, DEFAULT_TOS);
 
-    BRNPacketAnno::set_ether_anno(out_packet, src, dst, ntohs(ETHERTYPE_BRN));
+    BRNPacketAnno::set_ether_anno(out_packet, src, dst, ETHERTYPE_BRN);
 
     int32_t res = fci->insert_packet(out_packet->clone());
     if ( res < 0 ) {
