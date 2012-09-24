@@ -17,7 +17,7 @@ FlowControlProtocol::add_header(Packet *p, uint16_t type, uint16_t flowid, uint1
   header->_flags = htons(type);
   header->_flow_id = htons(flowid);
   header->_seq_number = htons(seq);
- 
+
   return(flc_p);
 }
 
@@ -40,6 +40,20 @@ void
 FlowControlProtocol::strip_header(Packet *p)
 {
   p->pull(sizeof(struct flowcontrol_header));
+}
+
+WritablePacket *
+FlowControlProtocol::make_ack(uint16_t flowid, uint16_t seq)
+{
+  WritablePacket *new_packet = WritablePacket::make( 256, NULL,
+                                                     sizeof(struct flowcontrol_header), 32);
+
+  struct flowcontrol_header *header = (struct flowcontrol_header *)new_packet->data();
+  header->_flags = htons(FC_TYPE_ACK);
+  header->_flow_id = htons(flowid);
+  header->_seq_number = htons(seq);
+
+  return new_packet;
 }
 
 CLICK_ENDDECLS

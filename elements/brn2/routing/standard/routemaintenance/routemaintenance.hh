@@ -49,7 +49,7 @@ CLICK_DECLS
 /*
  * Represents a link table storing {@link BrnLink} links.
  */
-class RoutingMaintenance: public BRNElement {
+class RoutingMaintenance: public BRNElement, public BrnLinkTableChangeInformant {
  public:
   //
   //methods
@@ -103,7 +103,10 @@ class RoutingMaintenance: public BRNElement {
 
   String print_stats();
 
- private:
+  void add_node(BrnHostInfo *);
+  void remove_node(BrnHostInfo *);
+ 
+private:
 
   BRN2NodeIdentity *_node_identity;
   Brn2LinkTable *_lt;
@@ -133,7 +136,7 @@ RoutingMaintenance::query_route(
 {
   _route_requests++;
   // First, search the route cache
-  bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, route, metric);
+  bool bCached = _routing_table->get_route( addrSrc, addrDst, route, metric);
 
   if( ! bCached ) {
     _routing_algo->get_route(addrDst, addrSrc, route, metric);
@@ -161,7 +164,7 @@ RoutingMaintenance::update_route(
   uint32_t old_metric;
 
   // First, search the route cache
-  bool bCached = _routing_table->get_cached_route( addrSrc, addrDst, old_route, &old_metric );
+  bool bCached = _routing_table->get_route( addrSrc, addrDst, old_route, &old_metric );
 
   if( ! bCached ){
     _routing_table->insert_route( addrSrc, addrDst, route, metric );

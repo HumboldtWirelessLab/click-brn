@@ -189,6 +189,12 @@ public:
       delete[] _buffer;
       _buffer = NULL;
     }
+    
+    if ( _s_na != NULL ) {
+      delete _s_na;
+      _s_na = NULL;
+    }
+    
   }
 };
 
