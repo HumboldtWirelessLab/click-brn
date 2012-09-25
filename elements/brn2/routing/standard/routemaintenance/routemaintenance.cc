@@ -187,6 +187,14 @@ RoutingMaintenance::remove_node(BrnHostInfo *bhi)
   _routing_table->remove_node(bhi->_ether);
 }
 
+void
+RoutingMaintenance::update_link(BrnLinkInfo *bli)
+{
+  _routing_algo->update_link(bli);
+}
+
+
+
 enum {H_ROUTES_FROM,
       H_ROUTES_TO,
       H_BEST_ROUTE,

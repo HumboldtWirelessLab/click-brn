@@ -134,6 +134,8 @@ class Dijkstra: public RoutingAlgorithm {
   void add_node(BrnHostInfo *);
   void remove_node(BrnHostInfo *);
 
+  void update_link(BrnLinkInfo *link);
+
   String stats();
 
  private:

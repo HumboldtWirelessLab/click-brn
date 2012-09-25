@@ -105,6 +105,7 @@ class RoutingMaintenance: public BRNElement, public BrnLinkTableChangeInformant 
 
   void add_node(BrnHostInfo *);
   void remove_node(BrnHostInfo *);
+  void update_link(BrnLinkInfo *);
  
 private:
 

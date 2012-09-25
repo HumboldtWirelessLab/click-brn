@@ -138,6 +138,7 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     }
   }
 
+  //dijkstra(graph_id);
   BRN_DEBUG("Graph ID: %d",graph_id);
 
   EtherAddress s_ea = _node_identity->isIdentical(&src)?*_node_identity->getMasterAddress():src;
@@ -390,12 +391,18 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 void
 Dijkstra::add_node(BrnHostInfo *bhi)
 {
-  _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+  if ( _dni_table.findp(bhi->_ether) == NULL ) {
+    _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+    for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+      _dgi_list[i]._last_used = Timestamp(0,0);
+    }
+  }
 }
 
 void
 Dijkstra::remove_node(BrnHostInfo *bhi)
 {
+
   if ( _dni_table.findp(bhi->_ether) != NULL ) {
     DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
     delete info;
@@ -408,6 +415,15 @@ Dijkstra::remove_node(BrnHostInfo *bhi)
     _dgi_list[i]._last_used = Timestamp(0,0);
   }
 }
+
+void
+Dijkstra::update_link(BrnLinkInfo *link)
+{
+    for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+      _dgi_list[i]._last_used = Timestamp(0,0);
+    }
+}
+
 
 /****************************************************************************************************************/
 /*********************************** H A N D L E R **************************************************************/

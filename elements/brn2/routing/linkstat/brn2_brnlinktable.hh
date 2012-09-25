@@ -181,7 +181,7 @@ class BrnLinkTableChangeInformant {
   //virtual void update_node(BrnHostInfo *) const = 0;
   //virtual void add_link(BrnLinkInfo *) const = 0;
   //virtual void remove_link(BrnLinkInfo *) const = 0;
-  //virtual void update_link(BrnLinkInfo *) const = 0;
+  virtual void update_link(BrnLinkInfo *) = 0;
 };
 
 /*
