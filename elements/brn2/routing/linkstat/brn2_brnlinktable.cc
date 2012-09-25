@@ -172,6 +172,7 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   BrnLinkInfo *lnfo = _links.findp(p);
   if (!lnfo) {
     _links.insert(p, BrnLinkInfo(from, to, seq, age, metric, permanent));
+    lnfo = _links.findp(p);
   } else {
     // AZu: new sequence number must be greater than the old one; otherwise no update will be taken
     uint32_t new_seq = seq;
@@ -180,6 +181,8 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
 
     lnfo->update(new_seq, age, metric);
   }
+
+  for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->update_link(lnfo);
 
   return true;
 }
