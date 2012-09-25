@@ -28,7 +28,7 @@ public:
 	~ShamirServer();
 
 	const char *class_name() const { return "ShamirServer"; }
-	const char *port_count() const { return "2/2"; }
+	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
 
