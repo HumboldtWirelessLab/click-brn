@@ -34,6 +34,8 @@ ShamirServer::ShamirServer()
 {
 	BRNElement::init();
 
+    _share = NULL;
+    _modulus = NULL;
     _bn_ctx = BN_CTX_new();
     if (_bn_ctx)
         BN_CTX_init(_bn_ctx);
@@ -53,6 +55,7 @@ ShamirServer::~ShamirServer() {
 
 int ShamirServer::configure(Vector<String> &conf, ErrorHandler *errh) {
 
+    BRN_DEBUG("Shamir server is booting up");
 	if (cp_va_kparse(conf, this, errh,
         "ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
