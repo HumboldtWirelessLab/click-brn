@@ -417,7 +417,7 @@ Dijkstra::remove_node(BrnHostInfo *bhi)
 }
 
 void
-Dijkstra::update_link(BrnLinkInfo *link)
+Dijkstra::update_link(BrnLinkInfo */*link*/)
 {
     for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
       _dgi_list[i]._last_used = Timestamp(0,0);
