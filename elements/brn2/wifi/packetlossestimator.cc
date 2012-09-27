@@ -57,7 +57,13 @@ Packet *PacketLossEstimator::simple_action (Packet *packet)
             {
                 struct airtime_stats *stats = _cst->get_latest_stats ();
                 HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab = _cst->get_latest_stats_neighbours ();
-                ChannelStats::SrcInfo src_info = src_tab->find (*_packet_parameter->get_src_address ());
+                ChannelStats::SrcInfo *src_info = src_tab->findp (*_packet_parameter->get_src_address ());
+                if ( src_info == NULL ) {
+                  click_chatter("SRC not found");
+                  return packet;
+                }
+
+                //click_chatter("Src:  RSSISize: %d",/*_packet_parameter->get_src_address()->unparse().c_str()*/ src_info->_rssi_hist_index);
                 ChannelStats::RSSIInfo *rssi_info = _cst->get_latest_rssi_info ();
                 estimateWeakSignal (src_info, *rssi_info);
                 estimateNonWifi (*stats);
@@ -486,7 +492,7 @@ void PacketLossEstimator::estimateNonWifi (struct airtime_stats &ats)
     }
 }
 
-void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, ChannelStats::RSSIInfo &rssi_info)
+void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo *src_info, ChannelStats::RSSIInfo &rssi_info)
 {
     BRN_DEBUG ("void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo *src_info)");
     if (_packet_parameter->is_broadcast_or_self ())
@@ -495,7 +501,7 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, C
         return;
     }
 
-    if (&src_info == NULL)
+    if (src_info == NULL)
     {
         BRN_ERROR ("ChannelStats::SrcInfo is NULL");
         return;
@@ -509,7 +515,7 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, C
 
     int8_t weaksignal = 100;
 
-    if (src_info._rssi > 0)
+    if (src_info->_rssi > 0)
     {
         //uint8_t rate = _packet_parameter->get_rate ();
 
@@ -550,7 +556,7 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, C
         }
 
         _pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::WEAK_SIGNAL)->setFraction (weaksignal);
-        BRN_INFO ("RSSI/Weak Signal for %s: %d/%d", _packet_parameter->get_src_address ()->unparse ().c_str (), src_info._rssi, weaksignal);
+        BRN_INFO ("RSSI/Weak Signal for %s: %d/%d", _packet_parameter->get_src_address ()->unparse ().c_str (), src_info->_rssi, weaksignal);
 
     } else
     {
@@ -558,11 +564,11 @@ void PacketLossEstimator::estimateWeakSignal (ChannelStats::SrcInfo &src_info, C
     }
 }
 
-uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo &src_info, ChannelStats::RSSIInfo &rssi_info)
+uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo *src_info, ChannelStats::RSSIInfo &rssi_info)
 {
     //uint8_t rate                                    = _packet_parameter->get_rate ();
     //uint8_t rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE]    = src_info._rssi_hist;
-    uint8_t rssi_hist_size                          = src_info._rssi_hist_size;
+    uint8_t rssi_hist_size                          = src_info->_rssi_hist_size;
     //uint32_t rssi                                   = src_info._rssi;
     uint8_t histogram[256];
     uint8_t min[256];
@@ -594,13 +600,13 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
     BRN_INFO ("_val START");
     for (uint8_t i = 0; i < rssi_hist_size; i++)
     {
-        BRN_INFO ("histogramm_val: %d", src_info._rssi_hist[i]);
-        if (src_info._rssi_hist[i] == 0)
+        BRN_INFO ("histogramm_val: %d", src_info->_rssi_hist[i]);
+        if (src_info->_rssi_hist[i] == 0)
         {
             continue;
         } else
         {
-            histogram[src_info._rssi_hist[i - 1]]++;
+            histogram[src_info->_rssi_hist[i - 1]]++;
         }
     }
 
