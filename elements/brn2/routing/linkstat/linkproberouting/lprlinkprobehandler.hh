@@ -14,7 +14,7 @@
        e.g. Double link: man weiss bei double links, wenn nur der link A->B eingetragen wurde ob B->A
        nicht existiert (bzw. wieder kaput ist) oder der entsprechende knoten ihn nicht eingetragen hat.
        wenn der Timestamp auf 255 ist, so hat der Knoten noch nicht eingetregen, sondern ist in der Tabelle
-       lediglich weil ain anderen ihn für den link braucht
+       lediglich weil ain anderen ihn fï¿½r den link braucht
 
        Use lprprotocol object to avoid several delete and malloc
 */
@@ -54,7 +54,10 @@ class LPRLinkProbeHandler : public Element {
   //
 
   BRN2LinkStat *_linkstat;
-  class BRN2ETXMetric *_etx_metric;
+
+  Vector<BRN2GenericMetric *> _metrics;
+  /* just for metrics during configure/initialize*/
+  String _metric_str;
 
   uint32_t _seq; //TODO: this just fakes a new seq-number for Linktable(ETX-etric). Try anotherway (check old seq,....) !!!
 

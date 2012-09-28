@@ -39,8 +39,7 @@
 CLICK_DECLS
 
 LPRLinkProbeHandler::LPRLinkProbeHandler()
-  : _etx_metric(0),
-    _debug(BrnLogger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
     _active(false)
 {
 }
@@ -54,7 +53,7 @@ LPRLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
-      "ETXMETRIC", cpkP , cpElement, &_etx_metric,
+      "METRIC", cpkP, cpString, &_metric_str,
       "ACTIVE", cpkP , cpBool, &_active,
       "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
@@ -80,8 +79,22 @@ rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*i
 }
 
 int
-LPRLinkProbeHandler::initialize(ErrorHandler *)
+LPRLinkProbeHandler::initialize(ErrorHandler *errh)
 {
+  Vector<String> metric_vec;
+  cp_spacevec(_metric_str, metric_vec);
+
+  for (int i = 0; i < metric_vec.size(); i++) {
+    Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
+    if ( new_element != NULL ) {
+      //click_chatter("El-Name: %s", new_element->class_name());
+      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      if ( gm != NULL ) {
+        _metrics.push_back(gm);
+      }
+    }
+  }
+
   _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&tx_handler,&rx_handler);
 
   max_hosts = 128;
@@ -240,11 +253,16 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
             if ( ( memcmp(known_hosts[kh1].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) &&
                    ( memcmp(known_hosts[kh2].data(), _linkstat->_dev->getEtherAddress()->data(), 6) != 0 ) ) {
 
-              if ( _etx_metric && ( known_links[kh1 * max_hosts + kh2] != 0 ) && ( known_links[kh2 * max_hosts + kh1] != 0 ) ) {
+              if ( (_metrics.size() != 0 ) &&
+                   ( known_links[kh1 * max_hosts + kh2] != 0 ) && 
+                   ( known_links[kh2 * max_hosts + kh1] != 0 ) ) {
+
                 fwd.push_back(10 * known_links[kh1 * max_hosts + kh2]);
                 rev.push_back(10 * known_links[kh2 * max_hosts + kh1]);
 
-                _etx_metric->update_link(known_hosts[kh1], known_hosts[kh2], brs, fwd, rev, _seq);
+                for (int i = 0; i < _metrics.size(); i++) {
+                  _metrics[i]->update_link(known_hosts[kh1], known_hosts[kh2], brs, fwd, rev, _seq);
+                }
 
                 fwd.clear();
                 rev.clear();
