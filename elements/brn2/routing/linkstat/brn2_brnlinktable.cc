@@ -41,9 +41,9 @@
 CLICK_DECLS
 
 Brn2LinkTable::Brn2LinkTable()
-  : _fix_linktable(false),
-    _node_identity(),
-    _timer(this)
+  : _node_identity(),
+    _timer(this),
+    _fix_linktable(false)
 {
   BRNElement::init();
 }
@@ -137,7 +137,8 @@ Brn2LinkTable::clear()
 
 bool 
 Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
-                        IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent)
+                           IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric,
+                           uint8_t link_update_mode, bool permanent)
 {
   /* Don't update the linktable if it should be fix (e.g. for measurement and debug) */
   /* TODO: check age and permant-flag of links */
@@ -176,10 +177,17 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
   } else {
     // AZu: new sequence number must be greater than the old one; otherwise no update will be taken
     uint32_t new_seq = seq;
-    if (seq <= lnfo->_seq)
+    if (seq <= lnfo->_seq) {
       new_seq = lnfo->_seq + 1;
+    } else {
+      BRN_INFO("Seq smaller than old one");
+    }
 
-    lnfo->update(new_seq, age, metric);
+    if ( (lnfo->_metric < 100) && ( link_update_mode != LINK_UPDATE_LOCAL_ACTIVE ) ) {
+      BRN_INFO("Links with metric smaller 100 can only be updated active/local.");
+    } else {
+      lnfo->update(new_seq, age, metric);
+    }
   }
 
   for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->update_link(lnfo);

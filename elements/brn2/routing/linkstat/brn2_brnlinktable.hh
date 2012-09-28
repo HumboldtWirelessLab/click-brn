@@ -190,10 +190,6 @@ class BrnLinkTableChangeInformant {
 class Brn2LinkTable: public BRNElement {
  public:
   //
-  //member
-  //
-  bool _fix_linktable;
-  //
   //methods
   //
   /* generic click-mandated stuff*/
@@ -216,29 +212,35 @@ class Brn2LinkTable: public BRNElement {
   static int static_update_link(const String &arg, Element *e, void *, ErrorHandler *errh);
   void clear();
 
-  /* other public functions */
-  inline BrnHostInfo *add_node(const EtherAddress& node, IPAddress ip);
+#define LINK_UPDATE_LOCAL_ACTIVE  0
+#define LINK_UPDATE_LOCAL_PASSIVE 1
+#define LINK_UPDATE_REMOTE        2
 
   bool update_link(EtherAddress from, EtherAddress to,
-                   uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
-    return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, permanent);
+                   uint32_t seq, uint32_t age, uint32_t metric,
+                   uint8_t link_update_mode, bool permanent=false) {
+    return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, link_update_mode, permanent);
   }
 
   bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
-                   IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false);
+                   IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric,
+                   uint8_t link_update_mode, bool permanent=false);
 
   bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age,
-                         uint32_t metric, bool permanent=false) {
-    return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, permanent);
+                         uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
+    return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, link_update_mode, permanent);
   }
 
   bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, IPAddress b_ip,
-                         uint32_t seq, uint32_t age, uint32_t metric, bool permanent=false) {
-    if (update_link(a, a_ip, b, b_ip, seq, age, metric, permanent)) {
-      return update_link(b, b_ip, a, a_ip, seq, age, metric, permanent);
+                         uint32_t seq, uint32_t age, uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
+    if (update_link(a, a_ip, b, b_ip, seq, age, metric, link_update_mode, permanent)) {
+      return update_link(b, b_ip, a, a_ip, seq, age, metric, link_update_mode, permanent);
     }
     return false;
   }
+
+  /* other public functions */
+  inline BrnHostInfo *add_node(const EtherAddress& node, IPAddress ip);
 
   /**
    * Removes all links containing the specified node
@@ -302,6 +304,15 @@ class Brn2LinkTable: public BRNElement {
     for( int i = ltci.size() - 1; i >= 0; i-- )
       if ( ltci[i] == inf ) ltci.erase(ltci.begin() + i);
   }
+
+  //
+  //member
+  //
+  /**
+   Fix linktable -> ignore updates !
+   !! Routing algorithm is not able to use new links!!
+  **/
+  bool _fix_linktable;
 
 };
 
