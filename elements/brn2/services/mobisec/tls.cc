@@ -302,8 +302,6 @@ void TLS::rcv_data(Packet *p) {
 		}
 	}
 
-
-
 	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
 
@@ -361,7 +359,9 @@ void TLS::restart_tls() {
 	// network, then we have to clear packet storage
 	clear_pkt_storage();
 
+	// shut down a TLS/SSL connection, must be done before SSL_clear
 	SSL_shutdown(curr->conn);
+	// reset SSL object to allow another connection
 	SSL_clear(curr->conn);
 	do_handshake();
 }

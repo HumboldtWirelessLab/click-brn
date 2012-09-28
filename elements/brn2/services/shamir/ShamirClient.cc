@@ -42,7 +42,9 @@ ShamirClient::~ShamirClient() {
 int ShamirClient::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
+        "ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
+        "THRESHOLD", cpkP, cpInteger, &_threshold,
 		cpEnd) < 0)
 		return -1;
 
@@ -66,8 +68,15 @@ void ShamirClient::push(int port, Packet *p) {
 
 int ShamirClient::send_request() {
     String s = "HOTSAUCE";
+
     WritablePacket *p = Packet::make(128, NULL, sizeof("HOTSAUCE"), 32);
     memcpy(p->data(), &s, sizeof(s));
+
+    WritablePacket *p_out = BRNProtocol::add_brn_header(p, BRN_PORT_SHAMIR
+                                                          , BRN_PORT_SHAMIR
+                                                          , 255
+                                                          , DEFAULT_TOS);
+    BRNPacketAnno::set_ether_anno(p_out, _me, brn_etheraddress_broadcast, ETHERTYPE_BRN);
     BRN_DEBUG("Sending Shamir request");
     output(0).push(p);
     return 0;

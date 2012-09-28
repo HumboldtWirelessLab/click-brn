@@ -55,6 +55,8 @@ RoutingMaintenance::~RoutingMaintenance()
 int
 RoutingMaintenance::initialize (ErrorHandler *)
 {
+  _lt->add_informant((BrnLinkTableChangeInformant*)this);
+  
   return 0;
 }
 
@@ -171,6 +173,27 @@ RoutingMaintenance::valid_route(const Vector<EtherAddress> &route)
 
   return true;
 }
+
+void
+RoutingMaintenance::add_node(BrnHostInfo *bhi)
+{
+  _routing_algo->add_node(bhi);
+}
+
+void
+RoutingMaintenance::remove_node(BrnHostInfo *bhi)
+{
+  _routing_algo->remove_node(bhi);
+  _routing_table->remove_node(bhi->_ether);
+}
+
+void
+RoutingMaintenance::update_link(BrnLinkInfo *bli)
+{
+  _routing_algo->update_link(bli);
+}
+
+
 
 enum {H_ROUTES_FROM,
       H_ROUTES_TO,
