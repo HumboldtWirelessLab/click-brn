@@ -181,10 +181,10 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
 }
 
 void
-BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq)
+BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq, uint8_t update_mode)
 {
   for (int i = 0; i < _metrics.size(); i++) {
-    _metrics[i]->update_link(from, to, rs, fwd, rev, seq);
+    _metrics[i]->update_link(from, to, rs, fwd, rev, seq, update_mode);
   }
 }
 
@@ -347,7 +347,7 @@ BRN2LinkStat::send_probe()
         rev.push_back(lnfo->_rev);
       }
       // update my own link table
-      update_link(*(_dev->getEtherAddress()), probe->_ether, rates, fwd, rev, probe->_seq);
+      update_link(*(_dev->getEtherAddress()), probe->_ether, rates, fwd, rev, probe->_seq, METRIC_UPDATE_PASSIVE );
 
       ptr += probe->_probe_types.size() * sizeof(link_info);
     }
@@ -614,7 +614,7 @@ BRN2LinkStat::simple_action(Packet *p)
       }
 #endif
 
-      update_link(src_ea, neighbor, rates, fwd, rev, seq);
+      update_link(src_ea, neighbor, rates, fwd, rev, seq, METRIC_UPDATE_ACTIVE);
       ptr += num_rates * sizeof(struct link_info);
     }
   }

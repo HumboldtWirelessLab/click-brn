@@ -80,7 +80,8 @@ public:
   static String read_stats(Element *xf, void *);
 
   void update_link(EtherAddress from, EtherAddress to,
-  Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
+                   Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev,
+                   uint32_t seq, uint8_t update_mode);
 
   int get_tx_rate(EtherAddress);
 
