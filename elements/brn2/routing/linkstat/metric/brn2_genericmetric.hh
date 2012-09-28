@@ -42,11 +42,14 @@ class BrnRateSize {
     }
 };
 
+#define METRIC_UPDATE_ACTIVE  LINK_UPDATE_LOCAL_ACTIVE
+#define METRIC_UPDATE_PASSIVE LINK_UPDATE_LOCAL_PASSIVE
+
 class BRN2GenericMetric : public BRNElement {
 
  public:
   virtual void update_link(EtherAddress from, EtherAddress to,
-                           Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq) = 0;
+                           Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq, uint8_t update_mode) = 0;
 
 };
 

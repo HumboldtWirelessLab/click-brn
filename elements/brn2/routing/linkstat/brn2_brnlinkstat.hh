@@ -302,7 +302,8 @@ public:
   void add_bcast_stat(EtherAddress, const link_probe &);
 
   void update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
-                         Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq);
+                         Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq,
+                         uint8_t update_mode);
 
   void send_probe_hook();
   void send_probe();
