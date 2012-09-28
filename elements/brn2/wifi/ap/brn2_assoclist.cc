@@ -448,13 +448,12 @@ BRN2AssocList::get_buffered_packets(
 {
   assert (ether_dst);
   ClientInfo* pClient = get_entry(ether_dst);
-  
-  
+
   if (NULL == pClient) {
     BRN_ERROR("client %s not known (get_buffered_packets).", ether_dst.unparse().c_str());
     return PacketList();
   }
-  
+
   if (ASSOCIATED != pClient->get_state()
       && ROAMED != pClient->get_state()) {
     BRN_ERROR("Unexpected state %u.", pClient->get_state());
@@ -494,9 +493,8 @@ BRN2AssocList::remove(EtherAddress eth)
   if (NULL == _client_list->findp(eth))
     return (false);
 
-/*  _link_table->update_both_links( *_dev->getEtherAddress(), eth,
-    0, 0, BRN_DSR_INVALID_ROUTE_METRIC, false); 
-*/
+  _link_table->remove_node(eth);
+
   return (_client_list->remove(eth));
 }
 
