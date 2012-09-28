@@ -488,19 +488,19 @@ BrnIappStationTracker::update_linktable(
 
   if (ap_new) {
     // TODO prevent loops and relaying of stations (inspect ap_old?)
-    ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC);
+    ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
 
-    ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_STATION_METRIC);
+    ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_STATION_METRIC);
+        ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
   }
 
   if (ap_old) {
-    ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
+    ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
@@ -513,7 +513,7 @@ BrnIappStationTracker::update_linktable(
       linkmetric_old_to_sta = BRN_DSR_INVALID_ROUTE_METRIC;
     }
 
-    ret &= _link_table->update_link(ap_old, sta, 0, 0, linkmetric_old_to_sta);
+    ret &= _link_table->update_link(ap_old, sta, 0, 0, linkmetric_old_to_sta, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
         ap_old.unparse().c_str(), sta.unparse().c_str(), linkmetric_old_to_sta);

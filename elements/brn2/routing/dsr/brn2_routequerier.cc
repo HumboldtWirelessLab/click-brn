@@ -1039,7 +1039,7 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 
     //don't learn links from or to me from someone else
     if ( !(_me->isIdentical(&ether1) || _me->isIdentical(&ether2)) ) {
-      bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric);
+      bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric, LINK_UPDATE_REMOTE);
 
       if (ret) {
         BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",

@@ -506,7 +506,7 @@ Brn2LinkTable::static_update_link(const String &arg, Element *e, void *, ErrorHa
     return errh->error("Couldn't read age");
   }
 
-  n->update_both_links(from, to, seq, age, metric);
+  n->update_both_links(from, to, seq, age, metric, LINK_UPDATE_REMOTE);
   return 0;
 }
 
