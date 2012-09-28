@@ -126,7 +126,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
     BRN_DEBUG("- removing link from %s to %s", bad_src.unparse().c_str(), bad_dst.unparse().c_str());
 
     // remove all links between nodes bad_src and bad_dst
-    _link_table->update_both_links(bad_src, bad_dst, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
+    _link_table->update_both_links(bad_src, bad_dst, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC, LINK_UPDATE_LOCAL_PASSIVE);
 
     //TODO: Azu Is this really a good idea???
     // it is possible that the node is no longer available
@@ -148,7 +148,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
       BRN_DEBUG("- punish link from %s to %s", 
           neighbors[i].unparse().c_str(), bad_dst.unparse().c_str());
 
-      _link_table->update_both_links(neighbors[i], bad_dst, 0, 0, old_metric);
+      _link_table->update_both_links(neighbors[i], bad_dst, 0, 0, old_metric, LINK_UPDATE_REMOTE);
     }
 
     BRN_DEBUG(" * current links: %s", _link_table->print_links().c_str());
@@ -230,7 +230,7 @@ BRN2ErrorForwarder::push(int port, Packet *p_in)
         err_src.unparse().c_str(), unreachable.unparse().c_str(), err_dst.unparse().c_str());
 
     // XXX DSR_INVALID_HOP_METRIC isn't really an appropriate name here
-    _link_table->update_both_links(err_src, unreachable, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
+    _link_table->update_both_links(err_src, unreachable, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC, LINK_UPDATE_REMOTE);
 
     if (_me->isIdentical(&err_dst) || ( _link_table->is_associated(err_dst))) {
       BRN_DEBUG("* error packet killed (reached final destination)");

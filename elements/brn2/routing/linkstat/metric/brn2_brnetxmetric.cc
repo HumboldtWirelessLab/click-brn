@@ -86,12 +86,12 @@ BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSiz
   /* update linktable */
   if (metric &&
       _link_table &&
-      !_link_table->update_link(from, to, seq, 0, metric)) {
+      !_link_table->update_link(from, to, seq, 0, metric, LINK_UPDATE_REMOTE)) {
     BRN_WARN(" couldn't update link %s > %d > %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
   }
   if (metric && 
       _link_table && 
-      !_link_table->update_link(to, from, seq, 0, metric)){
+      !_link_table->update_link(to, from, seq, 0, metric, LINK_UPDATE_REMOTE)){
     BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
   }
 }

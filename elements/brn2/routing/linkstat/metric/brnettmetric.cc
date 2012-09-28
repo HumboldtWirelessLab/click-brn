@@ -149,7 +149,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
 
   /* update linktable */
   if (fwd_metric && _link_table) {
-    if (!_link_table->update_link(from, to, seq, 0, fwd_metric)) {
+    if (!_link_table->update_link(from, to, seq, 0, fwd_metric, LINK_UPDATE_REMOTE)) {
       click_chatter("%{element} couldn't update link %s > %d > %s\n",
                     this, from.unparse().c_str(), fwd_metric, to.unparse().c_str());
     } else {
@@ -162,7 +162,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
       //click_chatter("%d", rev_metric);
       //exit(-1);
     }
-    if (!_link_table->update_link(to, from, seq, 0, rev_metric)) {
+    if (!_link_table->update_link(to, from, seq, 0, rev_metric, LINK_UPDATE_REMOTE)) {
       click_chatter("%{element} couldn't update link %s < %d < %s\n",
                     this, from.unparse().c_str(), rev_metric, to.unparse().c_str());
     } else {
