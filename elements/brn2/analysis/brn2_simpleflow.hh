@@ -81,6 +81,9 @@ class BRN2SimpleFlow : public BRNElement
 
       Timestamp _start_time;
 
+      uint32_t _max_packet_id;
+      uint32_t _rx_out_of_order;
+
       Flow() {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
@@ -99,6 +102,7 @@ class BRN2SimpleFlow : public BRNElement
         _cum_sum_rt_time = 0;
         _min_hops = _max_hops = _sum_sq_hops = 0;
         _min_rt_time = _max_rt_time = _sum_sq_rt_time = 0;
+        _max_packet_id = _rx_out_of_order = 0;
       }
 
       ~Flow() {}
@@ -112,6 +116,7 @@ class BRN2SimpleFlow : public BRNElement
 
         _min_rt_time = _max_rt_time = _sum_sq_rt_time =
         _cum_sum_rt_time = 0;
+        _max_packet_id = _rx_out_of_order = 0;
       }
 
       void add_rx_stats(uint32_t time, uint32_t hops) {

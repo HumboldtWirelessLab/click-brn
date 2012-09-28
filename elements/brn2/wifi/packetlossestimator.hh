@@ -71,18 +71,19 @@ private:
     ///< Estimate probability of channel error because non-wifi-signals
     void estimateNonWifi (struct airtime_stats &);
     ///< Estimate probability of channel error because of weak signal
-    void estimateWeakSignal (ChannelStats::SrcInfo &);
+    void estimateWeakSignal (ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
     ///< Put all necessary information about the current packet into one structure
     void gather_packet_infos_ (const Packet &);
     ///< Add received ACK-Packet to _acks_by_node-Hashmap
     void add_ack (const EtherAddress &);
     ///< Get number of received ACK-Packets for an ether address
     uint32_t get_acks_by_node (const EtherAddress &);
-
-    uint8_t calc_weak_signal_percentage (uint32_t, uint8_t, uint32_t, uint32_t);
-
+    ///<
+    uint8_t calc_weak_signal_percentage (ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
+/*
     void add_weak_signal_raw_value (uint8_t);
     uint8_t get_weak_signal_percentage (uint8_t);
+*/
     StringAccum stats_get_hidden_node (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
     StringAccum stats_get_inrange (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
     StringAccum stats_get_weak_signal (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);

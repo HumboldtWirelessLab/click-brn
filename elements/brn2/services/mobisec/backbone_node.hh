@@ -50,12 +50,15 @@ public:
 
 	static void kdp_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
 
+	void reset_key_material();
+
 	String stats();
+
 private:
 	BRN2NodeIdentity *_me;
 
 	Element *_tls;
-	Element *_assocreq;
+	Element *_wifidev_client;
 	Element *_ap_q;
 	Element *_client_q;
 
@@ -80,7 +83,7 @@ private:
 	int tolerance;			// Tolerated time for kdp-req in
 							// order to receive the kdp-replies in time
 	int backoff; 			// Time between resending a new kdp without wep encryption
-	int last_req_try;		// Save the timestamp of last kdp-request try
+	int retry_cnt_down;		// The retry countdown indicates the execution of a kdp retry
 
 	int req_id;
 

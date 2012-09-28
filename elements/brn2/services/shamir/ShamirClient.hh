@@ -1,5 +1,5 @@
 /*
- * ShamirServer.hh
+ * ShamirClient.hh
  *
  *  Created on: 06.06.2012
  *      Author: Dominik Oepen
@@ -29,7 +29,7 @@ public:
 	~ShamirClient();
 
 	const char *class_name() const { return "ShamirClient"; }
-	const char *port_count() const { return "2/2"; }
+	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
 
@@ -47,6 +47,7 @@ public:
     unsigned int _threshold;
 	int _debug;
 private:
+    EtherAddress _me;
     BN_CTX *_bn_ctx;
     unsigned int _num_shares;
     HashTable<uint32_t, BIGNUM *> _received_shares;

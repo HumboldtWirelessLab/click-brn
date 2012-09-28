@@ -100,7 +100,7 @@ public:
    * @param route @a [in] Holds the route, if found.
    * @return true if a cached route was found, false otherwise.
    */
-  bool get_cached_route(
+  bool get_route(
     /*[in]*/  const AddressType&  addrSrc,
     /*[in]*/  const AddressType&  addrDst,
     /*[out]*/ RouteType&          route,
@@ -129,6 +129,13 @@ public:
     /*[in]*/ const AddressType& addrLinkNodeA,
     /*[in]*/ const AddressType& addrLinkNodeB );
 
+   /**
+   * @brief Removes the route specified by addr from cache.
+   * @param addr @a [in] Single point of the route.
+   */
+   void remove_node(
+    /*[in]*/  const AddressType& addr );
+        
   /**
    * @brief Clears the cache.
    */
@@ -140,6 +147,7 @@ public:
 // Helpers
 //----------------------------------------------------------------------
 protected:
+
   /**
    * @brief Removes the route specified by src and dst from cache.
    * @param addrSrc @a [in] The start point of the route.
@@ -148,7 +156,7 @@ protected:
   void remove_route(
     /*[in]*/  const AddressType& addrSrc,
     /*[in]*/  const AddressType& addrDst );
-
+  
   /**
    * @brief Timer callback for m_tRouteAging timer.
    * @param pTimer @a [in] The expired timer.

@@ -68,7 +68,6 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
   int ret = cp_va_kparse(conf, this, errh,
         "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
         "LINKTABLE", cpkP+cpkM, cpElement, &_lt,
-        "ROUTETABLE", cpkP+cpkM, cpElement, &_brn_routetable,
         "MIN_LINK_METRIC_IN_ROUTE", cpkP+cpkM, cpInteger, &_min_link_metric_within_route,
         "MAXGRAPHAGE", cpkP, cpInteger, &_max_graph_age,
         "DEBUG", cpkP, cpInteger, &_debug,
@@ -80,8 +79,6 @@ Dijkstra::configure (Vector<String> &conf, ErrorHandler *errh)
 int
 Dijkstra::initialize (ErrorHandler *)
 {
-  _lt->add_informant((BrnLinkTableChangeInformant*)this);
-
   _dgi_list[0]._node = *_node_identity->getMasterAddress();
   _dgi_list[0]._mode = DIJKSTRA_GRAPH_MODE_FR0M_NODE;
   _dgi_list[1]._node = *_node_identity->getMasterAddress();
@@ -141,6 +138,7 @@ Dijkstra::get_route(EtherAddress src, EtherAddress dst, Vector<EtherAddress> &ro
     }
   }
 
+  //dijkstra(graph_id);
   BRN_DEBUG("Graph ID: %d",graph_id);
 
   EtherAddress s_ea = _node_identity->isIdentical(&src)?*_node_identity->getMasterAddress():src;
@@ -393,12 +391,18 @@ Dijkstra::get_graph_index(EtherAddress ea, uint8_t mode)
 void
 Dijkstra::add_node(BrnHostInfo *bhi)
 {
-  _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+  if ( _dni_table.findp(bhi->_ether) == NULL ) {
+    _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+    for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+      _dgi_list[i]._last_used = Timestamp(0,0);
+    }
+  }
 }
 
 void
 Dijkstra::remove_node(BrnHostInfo *bhi)
 {
+
   if ( _dni_table.findp(bhi->_ether) != NULL ) {
     DijkstraNodeInfo *info = _dni_table.find(bhi->_ether);
     delete info;
@@ -411,6 +415,15 @@ Dijkstra::remove_node(BrnHostInfo *bhi)
     _dgi_list[i]._last_used = Timestamp(0,0);
   }
 }
+
+void
+Dijkstra::update_link(BrnLinkInfo */*link*/)
+{
+    for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
+      _dgi_list[i]._last_used = Timestamp(0,0);
+    }
+}
+
 
 /****************************************************************************************************************/
 /*********************************** H A N D L E R **************************************************************/
