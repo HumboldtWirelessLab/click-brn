@@ -200,6 +200,12 @@ class SeismoAlarm {
 typedef Vector<SeismoAlarm> SeismoAlarmList;
 typedef SeismoAlarmList::const_iterator SeismoAlarmListIter;
 
+class SeismoAlarmAlgorithm {
+ public:
+  virtual void update(SlidingWindowList *) = 0;
+  virtual SeismoAlarmList *get_alarm() = 0;
+};
+
 class SeismoReporting : public BRNElement {
 
   public:
