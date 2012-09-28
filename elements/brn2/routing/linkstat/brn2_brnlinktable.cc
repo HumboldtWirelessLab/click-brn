@@ -184,7 +184,7 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
     }
 
     if ( (lnfo->_metric < 100) && ( link_update_mode != LINK_UPDATE_LOCAL_ACTIVE ) ) {
-      BRN_INFO("Links with metric smaller 100 can only be updated active/local.");
+      BRN_INFO("Links with metric smaller 100 can only be updated active/local. Metric: %d Mode %d",(uint32_t)lnfo->_metric,(uint32_t)link_update_mode );
     } else {
       lnfo->update(new_seq, age, metric);
     }
