@@ -261,7 +261,7 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
                 rev.push_back(10 * known_links[kh2 * max_hosts + kh1]);
 
                 for (int i = 0; i < _metrics.size(); i++) {
-                  _metrics[i]->update_link(known_hosts[kh1], known_hosts[kh2], brs, fwd, rev, _seq);
+                  _metrics[i]->update_link(known_hosts[kh1], known_hosts[kh2], brs, fwd, rev, _seq, METRIC_UPDATE_PASSIVE);
                 }
 
                 fwd.clear();
