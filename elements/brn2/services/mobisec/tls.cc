@@ -101,6 +101,8 @@ int TLS::initialize(ErrorHandler *) {
 	ctx = SSL_CTX_new(meth);
 	if (!ctx) {print_err(); return -1;}
 
+	//SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET);
+
 	char password[] = "test";
 	SSL_CTX_set_default_passwd_cb(ctx, &pem_passwd_cb); //passphrase for both the same
 	SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
@@ -140,7 +142,7 @@ int TLS::initialize(ErrorHandler *) {
 
 	if (role == CLIENT) {
 		curr = new com_obj(ctx, role);
-		curr->sender_addr = _ks_addr;
+		curr->dst_addr = _ks_addr;
 	}
 
 	BRN_INFO("initialized");
@@ -172,9 +174,12 @@ void TLS::push(int port, Packet *p) {
 bool TLS::do_handshake() {
 	BRN_DEBUG("check out handshake ...");
 
-	for(int tries = 0; tries < 3; tries++) {
+	// On real and bigger testbed it's probably good to increment the tries
+	for(int tries = 0; tries < 1; tries++) {
 		int temp = SSL_do_handshake(curr->conn);
 		snd_data(); // push data manually as we are dealing with membufs
+
+		BRN_ERROR("openssl state: %s", SSL_state_string_long(curr->conn));
 
 		// take action based on SSL errors
 		switch (SSL_get_error(curr->conn, temp)) {
@@ -197,10 +202,19 @@ bool TLS::do_handshake() {
 			//snd_data();
 			break;
 		case SSL_ERROR_SSL:
+			BRN_DEBUG("SSL_ERROR_SSL"); print_err(); break;
 		case SSL_ERROR_SYSCALL:
+			BRN_DEBUG("SSL_ERROR_SYSCALL"); print_err(); break;
 		case SSL_ERROR_ZERO_RETURN:
+			BRN_DEBUG("SSL_ERROR_ZERO_RETURN"); print_err(); break;
+		case SSL_ERROR_WANT_CONNECT:
+			BRN_DEBUG("SSL_ERROR_WANT_CONNECT"); print_err(); break;
+		case SSL_ERROR_WANT_ACCEPT:
+			BRN_DEBUG("SSL_ERROR_WANT_ACCEPT"); print_err(); break;
 		default:
+			BRN_DEBUG("UNKNOWN_SSL_ERROR -> restart tls");
 			print_err();
+			restart_tls();
 			return false;
 		}
 	}
@@ -284,21 +298,21 @@ void TLS::snd_stored_data() {
 }
 
 void TLS::rcv_data(Packet *p) {
-	EtherAddress sender_addr = BRNPacketAnno::src_ether_anno(p);
-	BRN_DEBUG("Communicating with %s", sender_addr.unparse().c_str());
+	EtherAddress dst_addr = BRNPacketAnno::src_ether_anno(p);
+	BRN_DEBUG("Communicating with %s", dst_addr.unparse().c_str());
 
 	/*
 	 * Dynamic SSL-object selection here:
 	 * Server needs to adapt the connection, depending on whom he is communicating with
 	 */
 	if (role == SERVER) {
-		com_obj *tmp = com_table.find(sender_addr);
+		com_obj *tmp = com_table.find(dst_addr);
 		if(tmp) {
 			curr = tmp;
 		} else {
 			curr = new com_obj(ctx, role);
-			curr->sender_addr = sender_addr;
-			com_table.insert(sender_addr, curr);
+			curr->dst_addr = dst_addr;
+			com_table.insert(dst_addr, curr);
 		}
 	}
 
@@ -330,10 +344,10 @@ int TLS::snd_data() {
 	}
 
 	if ( BIO_read(curr->bioOut,p_out->data(), p_out->length()) ) {
-		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", curr->sender_addr.unparse().c_str(), len);
+		BRN_DEBUG("Sending ssl-pkt to %s (%d bytes)", curr->dst_addr.unparse().c_str(), len);
 
 		// Set information
-		BRNPacketAnno::set_ether_anno(p_out, _me, curr->sender_addr, ETHERTYPE_BRN);
+		BRNPacketAnno::set_ether_anno(p_out, _me, curr->dst_addr, ETHERTYPE_BRN);
 
 		output(0).push(p_out);
 		BRN_DEBUG("data sent successfully");
@@ -353,17 +367,31 @@ int TLS::snd_data() {
 
 // Todo: Eliminate this, when having reliable tcp-connection
 void TLS::restart_tls() {
-	BRN_DEBUG("Timeout -> restart tls conn");
 
-	// Packet lost here. If the cause is a disassociation from backbone
-	// network, then we have to clear packet storage
-	clear_pkt_storage();
+	if (role == CLIENT) {
+		BRN_INFO("Clearing old conn");
 
-	// shut down a TLS/SSL connection, must be done before SSL_clear
-	SSL_shutdown(curr->conn);
-	// reset SSL object to allow another connection
-	SSL_clear(curr->conn);
-	do_handshake();
+		// shut down a TLS/SSL connection, must be done before SSL_clear
+		SSL_shutdown(curr->conn);
+		snd_data();
+		// reset SSL object to allow another connection
+		SSL_clear(curr->conn);
+
+		// Packet lost here. If the cause is a disassociation from backbone
+		// network, then we have to clear packet storage
+		clear_pkt_storage();
+
+		// Save destination address for later use
+		EtherAddress tmp_dst = curr->dst_addr;
+
+		// Delete old connection.
+		delete(curr);
+
+		BRN_INFO("Start new tls conn");
+		curr = new com_obj(ctx, role);
+		curr->dst_addr = tmp_dst;
+		do_handshake();
+	}
 }
 
 int pem_passwd_cb(char *buf, int size, int , void *password) {
@@ -388,7 +416,7 @@ static String handler_triggered_restart(Element *e, void *) {
 void TLS::print_err() {
 	unsigned long err;
 	while ((err = ERR_get_error())) {
-		BRN_ERROR("%s" , ERR_error_string(err, NULL));
+		BRN_ERROR("openssl error: %s", ERR_error_string(err, NULL));
 	}
 }
 
