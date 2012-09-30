@@ -133,6 +133,40 @@ extern "C" {
   }
 }
 
+extern "C" {
+  static inline int64_t isqrt64(int64_t n) {
+    int64_t x,x1;
+
+    if ( n == 0 ) return 0;
+    if ( n < 0 ) return -1;
+
+    x1 = n;
+    do {
+      x = x1;
+      x1 = (x + n/x) >> 1;
+    } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
+
+    return x1;
+  }
+}
+
+extern "C" {
+  static inline int64_t isqrt64(int64_t n) {
+    int64_t x,x1;
+
+    if ( n == 0 ) return 0;
+    if ( n < 0 ) return -1;
+
+    x1 = n;
+    do {
+      x = x1;
+      x1 = (x + n/x) >> 1;
+    } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
+
+    return x1;
+  }
+}
+
 const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
 const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
 

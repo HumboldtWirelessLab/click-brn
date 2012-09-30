@@ -67,8 +67,10 @@ class SeismoInfoBlock {
     uint64_t _time[CHANNEL_INFO_BLOCK_SIZE];
     uint64_t _systime[CHANNEL_INFO_BLOCK_SIZE];
 
-    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4];
+    int32_t _channel_values[CHANNEL_INFO_BLOCK_SIZE][4]; //raw data
     uint8_t _channels[CHANNEL_INFO_BLOCK_SIZE];
+
+    int64_t _channel_mean[4];                            //mean data
 
     uint32_t _block_index;
     uint16_t _next_value_index;
@@ -135,12 +137,6 @@ class SrcInfo {
     uint64_t _first_time;
     uint64_t _last_update_time;
     uint32_t _sample_count; // number of packets
-    int64_t *_chan_cum_vals; // sum of values
-    int64_t *_chan_cum_sq_vals; // sum of squared values
-    int* _chan_min_vals; // observed minima
-    int* _chan_max_vals; // observed maxima
-
-    int sample_series;
 
     SeismoInfoBlockList _seismo_infos;
     uint32_t _next_seismo_info_block_for_handler;
@@ -153,10 +149,6 @@ class SrcInfo {
       _channels = -1;
       _sample_count = 0; // start from zero
       _first_time = 0;
-      _chan_cum_vals = NULL;
-      _chan_cum_sq_vals = NULL;
-      _chan_min_vals = NULL;
-      _chan_max_vals = NULL;
 
       _next_seismo_info_block_for_handler = 0;
       _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
@@ -165,22 +157,11 @@ class SrcInfo {
     void reset() {
       _sample_count = 0; // start from zero
       _first_time = 0;
-
-      for (int i=0; i < _channels; i++) {
-        _chan_cum_vals[i] = 0;
-        _chan_cum_sq_vals[i] = 0;
-        _chan_min_vals[i] = INT_MAX;
-        _chan_max_vals[i] = INT_MIN;
-      }
     }
 
     SrcInfo(int gps_lat, int gps_long, int gps_alt, int gps_hdop, int sampling_rate, int channels) {
       _sampling_rate = sampling_rate;
       _channels = channels;
-      _chan_cum_vals = new int64_t[channels];
-      _chan_cum_sq_vals = new int64_t[channels];
-      _chan_min_vals = new int[channels];
-      _chan_max_vals = new int[channels];
 
       _next_seismo_info_block_for_handler = 0;
       _max_seismo_info_blocks = MAX_CHANNEL_INFO_BLOCK_COUNT;
@@ -190,20 +171,10 @@ class SrcInfo {
     }
 
     ~SrcInfo() {
-      if (_chan_cum_vals) delete [] _chan_cum_vals;
-      _chan_cum_vals = NULL;
-      if (_chan_cum_sq_vals) delete [] _chan_cum_sq_vals;
-      _chan_cum_sq_vals = NULL;
-      if (_chan_min_vals) delete [] _chan_min_vals;
-      _chan_min_vals = NULL;
-      if (_chan_max_vals) delete [] _chan_max_vals;
-      _chan_max_vals = NULL;
-
       for ( int i = _seismo_infos.size()-1; i >= 0; i-- ) {
         delete _seismo_infos[i];
         _seismo_infos.erase(_seismo_infos.begin() + i);
       }
-
     }
 
     inline void update_gps(int gps_lat, int gps_long, int gps_alt, int gps_hdop) {
@@ -219,44 +190,6 @@ class SrcInfo {
     }
 
     inline void inc_sample_count() { _sample_count++; }
-
-    void add_channel_val(int channel, int value) {
-      // required for mean calc
-      _chan_cum_vals[channel] += value;
-      // required for std calc
-      int64_t value64 = value;
-      _chan_cum_sq_vals[channel] += (value64 * value64);
-      _chan_min_vals[channel] = MIN(value, _chan_min_vals[channel]);
-      _chan_max_vals[channel] = MAX(value, _chan_max_vals[channel]);
-    }
-
-    int avg_channel_info(int channel) { return (_chan_cum_vals[channel]/_sample_count); }
-
-    int64_t isqrt(int64_t n) {
-      int64_t x,x1;
-
-      if ( n == 0 ) return 0;
-
-      x1 = n;
-      do {
-        x = x1;
-        x1 = (x + n/x) >> 1;
-      } while ((( (x - x1) > 1 ) || ( (x - x1)  < -1 )) && ( x1 != 0 ));
-
-      return x1;
-    }
-
-    int std_channel_info(int channel) {
-      int64_t _sample_count64 = _sample_count;
-      int64_t variance = (_chan_cum_vals[channel]/_sample_count64) * (_chan_cum_vals[channel]/_sample_count64);
-      variance = (_chan_cum_sq_vals[channel]/_sample_count64) - variance;
-
-      return isqrt(variance);
-    }
-
-    int min_channel_info(int channel) { return _chan_min_vals[channel]; }
-
-    int max_channel_info(int channel) { return _chan_max_vals[channel]; }
 
     SeismoInfoBlock* new_block() {
       int block_index = 0;
@@ -326,13 +259,17 @@ class Seismo : public BRNElement {
   const char *port_count() const  { return "1-2/0"; } //0: local 1: remote
 
   int configure(Vector<String> &, ErrorHandler *);
+  int initialize(ErrorHandler *);
+  void run_timer(Timer *);
+
   void add_handlers();
 
   void push(int, Packet *p);
 
+  void data_file_read();
+
   GPS *_gps;
   bool _print;
-  bool _calc_stats;
   bool _record_data;
 
   NodeStats _node_stats_tab;
@@ -343,6 +280,12 @@ class Seismo : public BRNElement {
   uint8_t _tag_len;
 
   long long _last_systemtime;
+
+  String _data_file;
+  uint32_t _data_file_interval;
+  uint32_t _data_file_index;
+
+  Timer _data_file_timer;
 
 };
 
