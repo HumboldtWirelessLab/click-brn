@@ -35,11 +35,7 @@ CLICK_DECLS
 SeismoReporting::SeismoReporting():
   _reporting_timer(this),
   _next_block_id(0),
-  _index_in_block(0),
-  _interval(SEISMO_REPORT_DEFAULT_INTERVAL),
-  _long_avg_count(SEISMO_REPORT_LONG_INTERVAL),
-  _short_avg_count(SEISMO_REPORT_SHORT_INTERVAL),
-  _max_alarm_count(SEISMO_REPORT_MAX_ALARM_COUNT)
+  _interval(SEISMO_REPORT_DEFAULT_INTERVAL)
 {
   BRNElement::init();
 }
@@ -52,32 +48,36 @@ int
 SeismoReporting::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "SEISMO", cpkP, cpElement, &_seismo,
+      "SEISMO", cpkP+cpkM, cpElement, &_seismo,
+      "ALGORITHMS", cpkP+cpkM, cpString, &_algo_string,
       "INTERVAL", cpkP, cpInteger, &_interval,
-      "LONGAVG", cpkP, cpInteger, &_long_avg_count,
-      "SHORTAVG", cpkP, cpInteger, &_short_avg_count,
-      "MAXALARM", cpkP, cpInteger, &_max_alarm_count,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
-
-  if ( _long_avg_count % _short_avg_count != 0 ) {
-    return errh->error("LONGAVG must be a multiple of SHORTAVG");
-  }
 
   return 0;
 }
 
 int
-SeismoReporting::initialize(ErrorHandler *)
+SeismoReporting::initialize(ErrorHandler *errh)
 {
+  Vector<String> algo_vec;
+  cp_spacevec(_algo_string, algo_vec);
+
+  for (int i = 0; i < algo_vec.size(); i++) {
+    Element *new_element = cp_element(algo_vec[i] , this, errh, NULL);
+    if ( new_element != NULL ) {
+      //click_chatter("El-Name: %s", new_element->class_name());
+      SeismoDetectionAlgorithm *sda =
+        (SeismoDetectionAlgorithm *)new_element->cast("SeismoDetectionAlgorithm");
+      if ( sda != NULL ) {
+        _sdal.push_back(sda);
+      }
+    }
+  }
 
   _reporting_timer.initialize(this);
   _reporting_timer.schedule_after_msec(_interval);
-
-  for ( int i = 0; i < 3; i++ ) {
-    swl.push_back(SlidingWindow(_short_avg_count, _long_avg_count/_short_avg_count));
-  }
 
   return 0;
 }
@@ -95,90 +95,47 @@ SeismoReporting::run_timer(Timer *)
 void
 SeismoReporting::seismo_evaluation()
 {
-  if ( _seismo->_local_info != NULL ) {
-    BRN_DEBUG("Has local info");
-    SeismoInfoBlock* sib;
+  SrcInfo *local_si = NULL;
+  SeismoInfoBlock *sib = NULL;
 
-    while ( (sib = _seismo->_local_info->get_block(_next_block_id)) != NULL ) {
+  if ( (local_si = _seismo->_local_info) != NULL ) {
+    BRN_DEBUG("local info");
+    if ( local_si->get_block(_next_block_id) != NULL ) {
+       BRN_DEBUG("got block");
+      if ( local_si->get_block(_next_block_id)->is_complete() ) {
+        BRN_DEBUG("is comp");
 
-      for ( ;_index_in_block < sib->_next_value_index; _index_in_block++ ) {
-        if ( swl[0].add_data(sib->_channel_values[_index_in_block][0]) == 1 ) {
-          /* check for alarm */
-          int32_t last = swl[0].get_history_index(-1);
-          int32_t current = swl[0].get_history_index(0);
-
-          int32_t last_stdev = swl[0]._stdev[last];
-          int32_t current_stdev = swl[0]._stdev[current];
-
-          if ( (sal.size() == 0) || (sal[sal.size() - 1]._mode == ALARM_MODE_END) ) {
-            if ( current_stdev > (3 * last_stdev) ) {
-              sal.push_back(SeismoAlarm(last_stdev, current_stdev));
-              if ( sal.size() > _max_alarm_count ) sal.erase(sal.begin());
-            }
-          } else {
-            if ( sal.size() != 0 ) {
-              if ( (current_stdev) < ( 3 * last_stdev)) {
-                sal[sal.size() - 1].end_alarm(current_stdev);
-              }
-            }
-          }
+        for ( int a = 0; a < _sdal.size(); a++ ) {
+          BRN_DEBUG("Update Algo");
+          _sdal[a]->update(local_si, _next_block_id);
         }
 
-        /*
-        click_chatter("%d %d %d", sib->_channel_values[_index_in_block][0],
-                                  sib->_channel_values[_index_in_block][1],
-                                  sib->_channel_values[_index_in_block][2]);
-        */
+        if ( (sib = local_si->get_last_block()) != NULL ) {
+          if ( sib->is_complete() ) _next_block_id = sib->_block_index+1;
+          else _next_block_id = sib->_block_index;
+          BRN_DEBUG("Next block ID: %d", _next_block_id);
+        } else {
+          BRN_DEBUG("no last block");
+          _next_block_id = 0;
+        }
       }
-
-      if ( ! sib->is_complete() ) break;
-      _next_block_id++;
-      _index_in_block = 0;
     }
-
-    if ( sib == NULL ) {
-      BRN_DEBUG("No data left in block");
-    }
-  } else {
-    BRN_DEBUG("No local info");
   }
-
 }
+
 /************************************************************************************/
 /********************************* H A N D L E R ************************************/
 /************************************************************************************/
-
-String
-SeismoReporting::print_stats()
-{
-  StringAccum sa;
-
-  sa << "<seismo_reporting>\n\t<history size='" << swl[0].size() << "' >\n";
-
-  for ( int32_t i = 0; i < swl[0].size(); i++ ) {
-    int32_t hi = swl[0].get_history_index(i);
-
-    sa << "\t\t<history_entry id='" << i << "' avg='" << swl[0]._avg[hi] << "' min='";
-    sa << swl[0]._min[hi] << "' max='" << swl[0]._max[hi] << "' stddev='";
-    sa << swl[0]._stdev[hi] << "' raw_avg='" << swl[0]._raw_avg[hi] << "'/>\n";
-  }
-
-  sa << "\t</history>\n</seismo_reporting>\n";
-
-  return sa.take_string();
-}
-
 
 String
 SeismoReporting::print_alarm()
 {
   StringAccum sa;
 
-  sa << "<seismo_alarm size='" << sal.size() << "' >\n";
+  sa << "<seismo_alarm size=\"" << _sal.size() << "\" >\n";
 
-  for ( int32_t i = 0; i < sal.size(); i++ ) {
-    sa << "\t<alarm start='" << sal[i]._start.unparse() << "' end='" << sal[i]._end.unparse() << "' std_before='";
-    sa << sal[i]._stdev_before << "' stdev_mid='" << sal[i]._stdev_during << "' std_end='" << sal[i]._stdev_after << "' />\n";
+  for ( int32_t i = 0; i < _sal.size(); i++ ) {
+    sa << "\t<alarm start=\"" << _sal[i]->_start.unparse() << "\" end=\"" << _sal[i]->_end.unparse() << "\" />\n";
   }
 
   sa << "</seismo_alarm>\n";
@@ -186,13 +143,13 @@ SeismoReporting::print_alarm()
   return sa.take_string();
 }
 
-static String
-read_stats_handler(Element *e, void */*thunk*/)
+/*static String
+read_stats_handler(Element *e, void *thunk)
 {
   SeismoReporting *sr = (SeismoReporting*)e;
   return sr->print_stats();
 }
-
+*/
 static String
 read_alarm_handler(Element *e, void */*thunk*/)
 {
@@ -205,7 +162,7 @@ SeismoReporting::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("stats", read_stats_handler);
+  //add_read_handler("stats", read_stats_handler);
   add_read_handler("alarm", read_alarm_handler);
 }
 

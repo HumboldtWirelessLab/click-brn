@@ -25,6 +25,10 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 
+#include <stdio.h>
+#include <unistd.h>
+#include <click/userutils.hh>
+
 #include "elements/brn2/brnprotocol/brnpacketanno.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -35,10 +39,11 @@ CLICK_DECLS
 Seismo::Seismo():
   _gps(NULL),
   _print(false),
-  _calc_stats(false),
   _record_data(true),
   _local_info(NULL),
-  _tag_len(SEISMO_TAG_LENGTH_LONG)
+  _tag_len(SEISMO_TAG_LENGTH_LONG),
+  _data_file_index(0),
+  _data_file_timer(this)
 {
   BRNElement::init();
 }
@@ -58,13 +63,15 @@ int
 Seismo::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   bool short_tag_len = false;
+  _data_file  = String("");
 
   if (cp_va_kparse(conf, this, errh,
       "GPS", cpkM+cpkP, cpElement, &_gps,
-      "CALCSTATS", cpkP, cpBool, &_calc_stats,
       "PRINT", cpkP, cpBool, &_print,
       "RECORD", cpkP, cpBool, &_record_data,
       "SHORTTAGS", cpkP, cpBool, &short_tag_len,
+      "DATAFILEPREFIX" , cpkP, cpString, &_data_file,
+      "DATAFILEINTERVAL" , cpkP, cpInteger, &_data_file_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -72,6 +79,74 @@ Seismo::configure(Vector<String> &conf, ErrorHandler* errh)
   if ( short_tag_len ) _tag_len = SEISMO_TAG_LENGTH_SHORT;
 
   return 0;
+}
+
+int
+Seismo::initialize(ErrorHandler */*errh*/)
+{
+  if ( _data_file != "" ) {
+    _data_file_timer.initialize(this);
+    _data_file_timer.schedule_after_msec(_data_file_interval);
+  }
+
+  return 0;
+}
+
+void
+Seismo::run_timer(Timer *)
+{
+  BRN_DEBUG("Run timer");
+
+  data_file_read();
+  _data_file_timer.schedule_after_msec(_data_file_interval);
+}
+
+void
+Seismo::data_file_read()
+{
+  click_chatter("READ FILE");
+
+  String _data_file_final = _data_file + String(_data_file_index);
+  String _data = file_string(_data_file_final);
+  Vector<String> _data_vec;
+  cp_spacevec(_data, _data_vec);
+
+  EtherAddress src_node_id = EtherAddress();
+
+  if ( _data_file_index == 0 )
+    _node_stats_tab.insert(src_node_id, new SrcInfo( 0, 0, 0, 0, 100, 4));
+
+  SrcInfo *src_i = _node_stats_tab.find(src_node_id);
+  SeismoInfoBlock *sib = src_i->get_last_block();
+
+  for ( int32_t i = 0; i < _data_vec.size() * 6; i += 6) {
+
+    uint32_t t;
+    int32_t value[4];
+
+    cp_integer(_data_vec[i+1],&t);
+    cp_integer(_data_vec[i+2],&value[0]);
+    cp_integer(_data_vec[i+3],&value[1]);
+    cp_integer(_data_vec[i+4],&value[2]);
+    value[3] = 0;
+
+    if (_print) {
+      StringAccum sa;
+      sa << "ID: " << src_node_id.unparse() << " Time: " << t;
+      sa << " Time_qual: 0 Data: " << " " << value[0] << " " << value[1] << " " << value[2];
+      click_chatter("%s",sa.take_string().c_str());
+    }
+
+    src_i->update_time(t);
+    src_i->inc_sample_count();
+
+    //click_chatter("Size: %d",src_i->_latest_seismo_infos.size() );
+    if ( _record_data ) {
+      //click_chatter("!");
+      if ( (sib == NULL) || (sib->is_complete()) ) sib = src_i->new_block();
+      sib->insert(t, t, 4, value);
+    }
+  }
 }
 
 void
@@ -114,12 +189,16 @@ Seismo::push(int port, Packet *p)
   // store in internal structure
   SrcInfo *src_i = NULL;
   SeismoInfoBlock *sib = NULL;
-  if ( _calc_stats || _record_data ) {
+  if ( _record_data ) {
       src_i = _node_stats_tab.find(src_node_id);
       if (!src_i) {
-        _node_stats_tab.insert(src_node_id, new SrcInfo(ntohl(seismo_header->gps_lat), ntohl(seismo_header->gps_long),
-                                                    ntohl(seismo_header->gps_alt), ntohl(seismo_header->gps_hdop),
-                                                    ntohl(seismo_header->sampling_rate), ntohl(seismo_header->channels)));
+        _node_stats_tab.insert(src_node_id, new SrcInfo(
+                                                    ntohl(seismo_header->gps_lat),
+                                                    ntohl(seismo_header->gps_long),
+                                                    ntohl(seismo_header->gps_alt),
+                                                    ntohl(seismo_header->gps_hdop),
+                                                    ntohl(seismo_header->sampling_rate),
+                                                    ntohl(seismo_header->channels)));
         src_i = _node_stats_tab.find(src_node_id);
         if ( port == 0 ) {
           _local_info = src_i;
@@ -177,13 +256,8 @@ Seismo::push(int port, Packet *p)
       click_chatter("%s",sa.take_string().c_str());
     }
 
-    // update stats counter
-    if (_calc_stats) {
-      src_i->update_time(seismo_data->time);
-      src_i->inc_sample_count();
-
-      for ( uint32_t j = 0; j < ntohl(seismo_header->channels); j++ )  src_i->add_channel_val(j, (int)ntohl(data32[j]));
-    }
+    src_i->update_time(seismo_data->time);
+    src_i->inc_sample_count();
 
     //click_chatter("Size: %d",src_i->_latest_seismo_infos.size() );
     if ( _record_data ) {
@@ -227,13 +301,6 @@ read_handler(Element *e, void */*thunk*/)
       sa << src->_gps_hdop << "' />\n";
       sa << "\t\t<sensor samplingrate='" << src->_sampling_rate << "' sample_count='" << src->_sample_count << "' channels='";
       sa << src->_channels << "' last_update='" << src->_last_update_time << "'>\n";
-
-      for (int32_t j = 0; j < src->_channels; j++) {
-        sa << "\t\t\t<chaninfo id='" << j << "' avg_value='" << (int)src->avg_channel_info(j);
-        sa << "' std_value='" << (int)src->std_channel_info(j) << "' min_value='" << (int)src->min_channel_info(j);
-        sa << "' max_value='" << (int)src->max_channel_info(j) << "'/>\n";
-      }
-
       sa << "\t\t</sensor>\n";
       sa << "\t</node>\n";
 
@@ -369,6 +436,29 @@ write_tag_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *
       si->_tag_len = SEISMO_TAG_LENGTH_LONG;
     }
   }
+
+  return 0;
+}
+
+static int
+write_data_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  Seismo *si = (Seismo*)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  uint32_t time, x, y, z, f;
+
+  if ((args.size() < 5) ||
+      (!cp_integer(args[0], &time)) ||
+      (!cp_integer(args[1], &x)) ||
+      (!cp_integer(args[2], &y)) ||
+      (!cp_integer(args[3], &z)) ||
+      (!cp_integer(args[4], &f)))
+        return errh->error("Wrong params. Use 'time x y z f'!");
+
+  //si->add_data(time, x, y, z, f);
 
   return 0;
 }

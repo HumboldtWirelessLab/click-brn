@@ -94,6 +94,13 @@ CLICK_DECLS
 
 #endif
 
+#define NON_BRN_LOG   if (_debug >= BrnLogger::LOG) click_chatter
+#define NON_BRN_FATAL if (_debug >= BrnLogger::FATAL) click_chatter
+#define NON_BRN_ERROR if (_debug >= BrnLogger::ERROR) click_chatter
+#define NON_BRN_WARN  if (_debug >= BrnLogger::WARN) click_chatter
+#define NON_BRN_INFO  if (_debug >= BrnLogger::INFO) click_chatter
+#define NON_BRN_DEBUG if (_debug >= BrnLogger::DEBUG) click_chatter
+
 #define BRN_CHECK_EXPR(expr,err)                                       \
 {                                                                      \
   if (expr)                                                            \
