@@ -414,7 +414,7 @@ void PacketLossEstimator::estimateInrange ()
 
     if (_dev != NULL)
     {
-        uint16_t    *backoffsize    = _dev->get_cwmax ();
+        uint16_t    backoffsize    = _dev->get_cwmax ()[0];
         double      temp            = 1.0;
 
         if (backoffsize == 0)
@@ -423,14 +423,14 @@ void PacketLossEstimator::estimateInrange ()
             return;
         }
 
-        if (neighbours >= *backoffsize)
+        if (neighbours >= backoffsize)
         {
             irProp = 100;
         } else
         {
             for (int i = 1; i < neighbours; i++)
             {
-                temp *= (double (*backoffsize) - double (i)) / double (*backoffsize);
+                temp *= (double (backoffsize) - double (i)) / double (backoffsize);
             }
 
             irProp = (1 - temp) * 100;
@@ -444,13 +444,12 @@ void PacketLossEstimator::estimateInrange ()
         if (_pli != NULL)
         {
             _pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::IN_RANGE)->setFraction (irProp);
-            //_pli->graph_get (*_packet_parameter->get_src_address ())->reason_get (PacketLossReason::HIDDEN_NODE)->setFraction (0);
         } else
         {
             BRN_ERROR ("PacketLossInformation is NULL");
         }
 
-        BRN_INFO ("Backoff/Neighbours/In-Range for %s: %d/%d/%d", _packet_parameter->get_src_address ()->unparse ().c_str (), *backoffsize, neighbours, irProp);
+        BRN_INFO ("Backoff/Neighbours/In-Range for %s: %d/%d/%d", _packet_parameter->get_src_address ()->unparse ().c_str (), backoffsize, neighbours, irProp);
     } else
     {
         BRN_ERROR ("BRN2Device is NULL");
@@ -597,7 +596,7 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage (ChannelStats::SrcInfo 
     /*
      * go through the history and create a real histogram, because we get only 50 values in any order
      */
-    BRN_INFO ("_val START");
+    BRN_INFO ("_val START: %d", rssi_hist_size);
     for (uint8_t i = 0; i < rssi_hist_size; i++)
     {
         BRN_INFO ("histogramm_val: %d", src_info->_rssi_hist[i]);
