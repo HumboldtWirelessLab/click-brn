@@ -2,7 +2,11 @@
  * keyserver.cc
  *
  *  Created on: 27.04.2012
- *      Author: aureliano
+ *      Author: kuehne@informatik.hu-berlin.de
+ *      Description: The MobiSEC key server is one of the three parties
+ *      in a MobiSEC mash network, leaving the backbone node and the clients.
+ *      The key server uses the key distribution protocol to communicate
+ *      with the backbone node to deliver the key material.
  */
 
 

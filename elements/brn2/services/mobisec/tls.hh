@@ -37,16 +37,16 @@ class com_obj {
 public:
 	com_obj(SSL_CTX *ctx, enum role_t role) {
 		conn = SSL_new(ctx);
-		if (!conn) {print_err(); throw std::bad_alloc();}
+		if (!conn) {throw std::bad_alloc();}
 
 		bioIn = BIO_new(BIO_s_mem());
-		if (!bioIn) {print_err(); throw std::bad_alloc();}
+		if (!bioIn) {throw std::bad_alloc();}
 
 		bioOut = BIO_new(BIO_s_mem());
-		if (!bioOut) {print_err(); throw std::bad_alloc();}
+		if (!bioOut) {throw std::bad_alloc();}
 
 		bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
-		if (!bio_err) {print_err(); throw std::bad_alloc();}
+		if (!bio_err) {throw std::bad_alloc();}
 		SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 
 		// to read additional protocol bytes wenn calling SSL_pending containing more SSL records
@@ -54,30 +54,23 @@ public:
 
 		// Must be called before first SSL_read or SSL_write
 		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
-
-		wep_state = false;
 	}
 	~com_obj() {
-		SSL_shutdown(conn);
 		SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
 		BIO_free(bio_err);
-	}
 
-	void print_err() {
-		unsigned long err;
-		while ((err = ERR_get_error())) {
-			click_chatter("%s" , ERR_error_string(err, NULL));
+		while (!pkt_storage.empty()) {
+			pkt_storage.pop();
 		}
 	}
 
-	SSL* conn;
+	SSL* conn;						// This is actually the important ssl connection object
 	BIO* bioIn;
 	BIO* bioOut;
 	BIO* bio_err;
-	bool wep_state;
-	EtherAddress sender_addr;
+	EtherAddress dst_addr;			// This will be the other destination address of the p2p-TLS connection
 
-	queue<Packet *> pkt_storage;
+	queue<Packet *> pkt_storage;	// FiFo-Queue to buffer packets until TLS connection is established
 };
 
 
