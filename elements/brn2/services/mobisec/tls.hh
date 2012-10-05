@@ -47,9 +47,10 @@ public:
 
 		bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
 		if (!bio_err) {throw std::bad_alloc();}
+
 		SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 
-		// to read additional protocol bytes wenn calling SSL_pending containing more SSL records
+		// to read additional protocol bytes when calling SSL_pending containing more SSL records
 		SSL_set_read_ahead(conn, 1);
 
 		// Must be called before first SSL_read or SSL_write
@@ -88,9 +89,10 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
-	/* For reliable communication */
-	void restart_tls();
-	static void restart_trigger(Timer *, void *element) { ((TLS *)element)->restart_tls(); }
+	void restart_tls(); // Workaround for unreliable communication
+
+	void shutdown_tls();
+	bool is_shutdown(); // Ask TLS, if shutdown is done
 
 	void add_handlers();
 
@@ -123,8 +125,7 @@ private:
 	void rcv_data(Packet *p);
 
 	void print_err();
-
-	Timer restart_timer;
+	void print_state();
 };
 
 // For now, this functions is not integrable because
