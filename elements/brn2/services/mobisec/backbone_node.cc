@@ -190,6 +190,17 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
 
+	// Figure out, if TLS-connection is closed (at least to have a little reliability)
+	// (Yeah, some stupid cross-layer stuff)
+	for (int i = 0; i < 3; i++) {
+		if (HandlerCall::call_read(_tls, "is_shutdown", NULL)) {
+			break;
+		} else {
+			BRN_ERROR("No shutdown alert, TLS still on!");
+			sleep(1);
+		}
+	}
+
 	// We got some key material, switch to backbone network
 	switch_dev(dev_ap);
 
@@ -225,6 +236,9 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	retry_cnt_down = RETRY_CNT_DOWN; // reset retry countdown
 
 	p->kill();
+
+	// Remove ssl connection because of unreliable connection
+	// HandlerCall::call_read(_tls, "restart", NULL);
 }
 
 /*
