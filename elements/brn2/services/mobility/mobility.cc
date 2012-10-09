@@ -93,7 +93,7 @@ Mobility::move(int x, int y, int z, int speed, int move_type)
 }
 #else
 void
-Mobility::move(int, int, int, int)
+Mobility::move(int, int, int, int, int)
 {
 }
 #endif
