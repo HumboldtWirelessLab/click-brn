@@ -55,6 +55,7 @@ private:
 	EtherAddress _me;
 	Element *_wepencap;
 	Element *_wepdecap;
+	Element *_tls;
 
 	// Parameters to control the refreshing of key material
 	int _start_time;

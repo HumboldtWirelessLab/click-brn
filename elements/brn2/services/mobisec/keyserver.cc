@@ -14,6 +14,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/timestamp.hh>
+#include <click/handlercall.hh>
 
 #include "elements/brn2/brnelement.hh"
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
@@ -50,6 +51,7 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+		"TLS", cpkP+cpkM, cpElement, &_tls,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -162,6 +164,9 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
+
+	// After KDP execution server side shutdown finishes communication
+	HandlerCall::call_read(_tls, "shutdown", NULL);
 
 	free(keylist_string);
 }
