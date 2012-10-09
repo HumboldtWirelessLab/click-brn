@@ -84,7 +84,7 @@ class BRN2SimpleFlow : public BRNElement
       uint32_t _max_packet_id;
       uint32_t _rx_out_of_order;
 
-      Flow() {}
+      Flow(): _type(TYPE_NO_ACK), _active(false) {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
         _src = src;
