@@ -30,7 +30,7 @@
 #include "kdp.hh"
 #include "backbone_node.hh"
 
-#define RETRY_CNT_DOWN 1
+#define RETRY_CNT_DOWN 2
 
 CLICK_DECLS
 
@@ -154,7 +154,7 @@ void BACKBONE_NODE::snd_kdp_req() {
 
 		switch_dev(dev_client);
 
-		HandlerCall::call_read(_tls, "restart", NULL);
+		HandlerCall::call_read(_tls, "shutdown", NULL);
 	} else {
 		retry_cnt_down--;
 	}
@@ -189,17 +189,6 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 		return;
 
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
-
-	// Figure out, if TLS-connection is closed (at least to have a little reliability)
-	// (Yeah, some stupid cross-layer stuff)
-	for (int i = 0; i < 3; i++) {
-		if (HandlerCall::call_read(_tls, "is_shutdown", NULL)) {
-			break;
-		} else {
-			BRN_ERROR("No shutdown alert, TLS still on!");
-			sleep(1);
-		}
-	}
 
 	// We got some key material, switch to backbone network
 	switch_dev(dev_ap);
@@ -237,8 +226,9 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 
 	p->kill();
 
-	// Remove ssl connection because of unreliable connection
-	// HandlerCall::call_read(_tls, "restart", NULL);
+	// Todo: Need reliable transport
+	// Shutdown SSL because shutdown alert is sent over unreliable transport
+	HandlerCall::call_read(_tls, "shutdown", NULL);
 }
 
 /*
