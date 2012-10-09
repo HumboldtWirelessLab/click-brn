@@ -169,9 +169,19 @@ void CooperativeChannelStats::push (int, Packet *p)
     {
         struct neighbour_airtime_stats nats_arr[ccsh.no_neighbours];
         memcpy (&nats_arr, &data[sizeof (cooperative_channel_stats_header)], sizeof (neighbour_airtime_stats) * ccsh.no_neighbours);
+        struct neighbour_airtime_stats *temp_nats;
         for (uint8_t i = 0; i < ccsh.no_neighbours; i++)
         {
             EtherAddress temp_ea = EtherAddress (nats_arr[i]._etheraddr);
+            temp_nats = ncs->get_neighbour_stats_table().find (temp_ea);
+
+            if (temp_nats != NULL)
+            {
+                delete temp_nats;
+            }
+
+            temp_nats = new neighbour_airtime_stats;
+            memcpy (temp_nats, &nats_arr[i], sizeof (neighbour_airtime_stats));
 
             if (temp_ea == brn_etheraddress_broadcast)
             {
@@ -179,13 +189,13 @@ void CooperativeChannelStats::push (int, Packet *p)
             }
 
             BRN_INFO ("RECEIVED: Address %s: bytes: %d, packets: %d, duration: %d, avg_rssi: %d",
-                    	temp_ea.unparse ().c_str (),
-                    	nats_arr[i]._byte_count,
-                    	nats_arr[i]._pkt_count,
-                    	nats_arr[i]._duration,
-                    	nats_arr[i]._avg_rssi);
+                                    temp_ea.unparse ().c_str (),
+                                    temp_nats->_byte_count,
+                                    temp_nats->_pkt_count,
+                                    temp_nats->_duration,
+                                    temp_nats->_avg_rssi);
 
-            ncs->add_neighbour_stats (temp_ea, nats_arr[i]);
+            ncs->add_neighbour_stats (temp_ea, *temp_nats);
         }
         _coop_stats_buffer.insert_values (*ncs);
     }

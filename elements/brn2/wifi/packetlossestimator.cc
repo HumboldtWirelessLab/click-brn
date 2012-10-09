@@ -434,11 +434,10 @@ void PacketLossEstimator::estimateInrange ()
             {
                 //click_chatter ("before temp new / temp old: %d/%d", temp, temp_new);
                 temp *= (double (backoffsize) - double (i)) / double (backoffsize);
-                temp_new *= ((backoffsize * 100000 - i * 100000) / (backoffsize * 100000));
+                temp_new *= ((backoffsize * 1000000 - i * 1000000) / (backoffsize * 1000000));
                 //click_chatter ("backoffsize: %d neighbour: %d", backoffsize, i);
-                //click_chatter ("temp new / temp old: %d/%d", temp, temp_new);
             }
-
+            click_chatter ("temp new / temp old: %d/%d", temp, temp_new);
             irProp = (1 - temp) * 100;
         }
 
