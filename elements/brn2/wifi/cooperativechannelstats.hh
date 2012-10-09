@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #ifndef CLICK_COOPERATIVECHANNELSTATS_HH
@@ -63,7 +63,7 @@ struct cooperative_channel_stats_header
 };
 
 struct cooperative_message_body
-{    
+{
     struct cooperative_channel_stats_header ccsh;
     struct neighbour_airtime_stats          *nats_arr;
 };
@@ -71,9 +71,9 @@ struct cooperative_message_body
 class CooperativeChannelStats : public BRNElement
 {
 public:
-    
-	HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
-    
+
+    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+
     CooperativeChannelStats ();
     virtual ~CooperativeChannelStats ();
 
@@ -92,21 +92,21 @@ public:
     String stats_handler (int mode);
 
     void send_message ();
-    
+
     HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats (EtherAddress *);
-    
+
 private:
     typedef HashMap<EtherAddress, struct neighbour_airtime_stats*>  NeighbourStatsTable;
     typedef NeighbourStatsTable::const_iterator                     NeighbourStatsTableIter;
     typedef HashMap<EtherAddress, NodeChannelStats*>                NodeChannelStatsTable;
     typedef NodeChannelStatsTable::const_iterator                   NodeChannelStatsTableIter;
 
-    static CooperativeStatsCircularBuffer 	_coop_stats_buffer;
-    ChannelStats            				*_cst;
-    Timer                   				_msg_timer;
-    uint32_t                				_interval;
-    NodeChannelStatsTable   				_ncst;
-    bool                    				_add_neighbours;
+    static CooperativeStatsCircularBuffer   _coop_stats_buffer;
+    ChannelStats                            *_cst;
+    Timer                                   _msg_timer;
+    uint32_t                                _interval;
+    NodeChannelStatsTable                   _ncst;
+    bool                                    _add_neighbours;
 
     WritablePacket *create_new_packet (struct cooperative_channel_stats_header, struct neighbour_airtime_stats []);
 };
