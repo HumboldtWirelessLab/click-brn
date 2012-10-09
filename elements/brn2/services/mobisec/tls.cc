@@ -4,10 +4,19 @@
  *  Created on: 18.04.2012
  *      Author: aureliano
  *
+ * TLS with "quiete shutdown" (due to poor reliability of network connection,
+ * even unidirectional shutdown is not really possible) and session resumption (ticketing).
+ *
+ * Session resumption explained in HP paper on openssl setup.
+ *
+ * For the SSL operations this click module is non-blocking, because
+ * it uses non-blocking BIOs. To encrypt data the BIO we proactively
+ * send the data on our own initiative. To decrypt data we expect the
+ * push function to initiate the decryption process automatically.
+ *
  *  todo:
  *  - Uncertanty in case of renegotiation. No experience and testing here!
  *  - Uncertanty in case of packet lost. Need for tcp-wise connection.
- *  - Eliminate restart_timer, when having reliable tcp-connection
  *
  *  Usefull commands:
  *  - openssl req -new -newkey rsa:2028 -days 9999 -x509 -out ca.pem
@@ -101,7 +110,10 @@ int TLS::initialize(ErrorHandler *) {
 	ctx = SSL_CTX_new(meth);
 	if (!ctx) {print_err(); return -1;}
 
-	//SSL_CTX_set_options(ctx, SSL_OP_NO_TICKET);
+	// No shutdown alert will be sent, if flag is 1. We do this because of unreliable connection.
+	// "This behaviour violates the TLS standard" (see man SSL_CTX_set_quiet_shutdown).
+	// NOTE: IF ANY CHANGES ARE MADE HERE, PLEASE CHECK THE switch-case in shutdown_tls()
+	SSL_CTX_set_quiet_shutdown(ctx, 1);
 
 	char password[] = "test";
 	SSL_CTX_set_default_passwd_cb(ctx, &pem_passwd_cb); //passphrase for both the same
@@ -140,6 +152,7 @@ int TLS::initialize(ErrorHandler *) {
 		return -1;
 	}
 
+	// Create SSL object (Server does this reactive on incomming ssl request)
 	if (role == CLIENT) {
 		curr = new com_obj(ctx, role);
 		curr->dst_addr = _ks_addr;
@@ -179,7 +192,7 @@ bool TLS::do_handshake() {
 		int temp = SSL_do_handshake(curr->conn);
 		snd_data(); // push data manually as we are dealing with membufs
 
-		BRN_ERROR("openssl state: %s", SSL_state_string_long(curr->conn));
+		print_state();
 
 		// take action based on SSL errors
 		switch (SSL_get_error(curr->conn, temp)) {
@@ -195,28 +208,33 @@ bool TLS::do_handshake() {
 			break;
 		case SSL_ERROR_WANT_READ:
 			BRN_DEBUG("HANDSHAKE WANT_READ");
-			//rcv_data(); // useless??
+			//rcv_data(); // push() does automatic execution of rcv_data()
 			break;
 		case SSL_ERROR_WANT_WRITE:
 			BRN_DEBUG("HANDSHAKE WANT_WRITE");
-			//snd_data();
+			//snd_data(); // already done because the BIO needs a babysitter
 			break;
 		case SSL_ERROR_SSL:
-			BRN_DEBUG("SSL_ERROR_SSL"); print_err(); break;
+			BRN_DEBUG("SSL_ERROR_SSL");
+			shutdown_tls();
+			break;
 		case SSL_ERROR_SYSCALL:
-			BRN_DEBUG("SSL_ERROR_SYSCALL"); print_err(); break;
+			BRN_DEBUG("SSL_ERROR_SYSCALL");
+			break;
 		case SSL_ERROR_ZERO_RETURN:
-			BRN_DEBUG("SSL_ERROR_ZERO_RETURN"); print_err(); break;
+			BRN_DEBUG("SSL_ERROR_ZERO_RETURN");
+			shutdown_tls();
+			break;
 		case SSL_ERROR_WANT_CONNECT:
-			BRN_DEBUG("SSL_ERROR_WANT_CONNECT"); print_err(); break;
+			BRN_DEBUG("SSL_ERROR_WANT_CONNECT"); break;
 		case SSL_ERROR_WANT_ACCEPT:
-			BRN_DEBUG("SSL_ERROR_WANT_ACCEPT"); print_err(); break;
+			BRN_DEBUG("SSL_ERROR_WANT_ACCEPT"); break;
 		default:
-			BRN_DEBUG("UNKNOWN_SSL_ERROR -> restart tls");
-			print_err();
-			restart_tls();
-			return false;
+			BRN_DEBUG("UNKNOWN_SSL_ERROR -> shutdown tls");
+			shutdown_tls();
 		}
+
+		print_err();
 	}
 
 	return false;
@@ -231,13 +249,18 @@ void TLS::encrypt(Packet *p) {
 		return;
 	}
 
+	if (role == CLIENT) {
+		// We got a new application pkt. Check for a ssl connection.
+		start_ssl();
+	}
+
 	int ret = SSL_write(curr->conn,p->data(),p->length());
 	if(ret>0) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
 		snd_data();
 	} else {
 
-		BRN_DEBUG("SSL not ready... storing data while doing handshake");
+		BRN_DEBUG("SSL not ready... storing data while trying to ssl-connect");
 		store_data(p);
 
 		do_handshake();
@@ -247,8 +270,6 @@ void TLS::encrypt(Packet *p) {
 // non-blocking
 void TLS::decrypt() {
 	int size = SSL_pending(curr->conn);
-	//BRN_DEBUG("processing app-data ... %d bytes", size);
-
 
 	data_t *data = (data_t *)malloc(size);
 	if(!data) {
@@ -261,7 +282,7 @@ void TLS::decrypt() {
 
 	// If SSL_read was successful receiving full records, then ret > 0.
 	if(ret > 0) {
-		// BRN_DEBUG("...... decrypted");
+
 		// Push decrypted message to the next element.
 		WritablePacket *p = Packet::make(data, size);
 		if (p) {
@@ -270,7 +291,7 @@ void TLS::decrypt() {
 			BRN_ERROR("In TLS::decrypt packet make failed.");
 		}
 	} else {
-		BRN_DEBUG("...... decryption failed");
+		BRN_ERROR("In TLS::decrypt something wrong on SSL_read");
 	}
 
 	free(data);
@@ -309,6 +330,14 @@ void TLS::rcv_data(Packet *p) {
 		com_obj *tmp = com_table.find(dst_addr);
 		if(tmp) {
 			curr = tmp;
+			if (is_shutdown()) {
+				BRN_DEBUG("connection is shutdown before handshake! ===> refresh ssl and try session resumption");
+				curr->refresh();
+				print_err();
+				print_state();
+			} else {
+				BRN_DEBUG("is not shutdown");
+			}
 		} else {
 			curr = new com_obj(ctx, role);
 			curr->dst_addr = dst_addr;
@@ -319,13 +348,20 @@ void TLS::rcv_data(Packet *p) {
 	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
 
-	// If handshake is complete we assume
-	// that incoming data is for application
 	if (do_handshake() == true
 			&& SSL_read(curr->conn, NULL, 0)==0 /* read 0 bytes to help SSL_pending get a look on next SSL record*/
 			&& SSL_pending(curr->conn) > 0) {
-		print_err();
+		print_err(); // Errors from decryption are detectable here, because SSL_read is doing first try.
 		decrypt();
+	} else if (role == CLIENT && SSL_get_shutdown(curr->conn) & SSL_RECEIVED_SHUTDOWN) {
+		// Only client gets a shutdown alert at unidirectional shutdown protocol.
+		// By calling SSL_read the SSL_RECEIVED_SHUTDOWN flag is set.
+
+		print_err();
+
+		// Todo: If reliable transport exists, shutdown alert can be used
+		// BRN_DEBUG("Received shutdown alert from %s", curr->dst_addr.unparse().c_str());
+		// shutdown_tls();
 	}
 }
 
@@ -365,33 +401,57 @@ int TLS::snd_data() {
  * *******************************************************
  */
 
-// Todo: Eliminate this, when having reliable tcp-connection
-void TLS::restart_tls() {
+void TLS::start_ssl() {
+	if (role == CLIENT) {
+		if (is_shutdown()) {
+			BRN_DEBUG("connection is shutdown before handshake! ===> refresh ssl");
+			curr->refresh();
+
+			BRN_DEBUG("checkout timeout of session: %d sec", SSL_SESSION_get_timeout(session));
+
+			// Session resumption has to be checked before handshake
+			if (SSL_set_session(curr->conn, session)) {
+				BRN_DEBUG("set ssl session successfully");
+			}
+
+			print_err();
+			print_state();
+
+		} else {
+			BRN_DEBUG("is not shutdown, connection seams alive");
+		}
+	}
+}
+
+/*
+ * Normal implementation of unidirectional shutdown:
+ * 1. Server initiates unidirectional shutdown (which returns 0) and sends a shutdown alert.
+ * 2. Client receives alert and shuts tls down.
+ *
+ * For now we use "quiet shutdown" which sends no alert at all. Instead KDP shuts down
+ * tls on both sides
+ */
+void TLS::shutdown_tls() {
 
 	if (role == CLIENT) {
-		BRN_INFO("Clearing old conn");
+		if (! (session = SSL_get1_session(curr->conn)) ) {
+			BRN_DEBUG("no ssl session available");
+		} else {
+			BRN_DEBUG("ssl session saved");
+		}
 
-		// shut down a TLS/SSL connection, must be done before SSL_clear
-		SSL_shutdown(curr->conn);
-		snd_data();
-		// reset SSL object to allow another connection
-		SSL_clear(curr->conn);
-
-		// Packet lost here. If the cause is a disassociation from backbone
-		// network, then we have to clear packet storage
+		// Clean up.
 		clear_pkt_storage();
-
-		// Save destination address for later use
-		EtherAddress tmp_dst = curr->dst_addr;
-
-		// Delete old connection.
-		delete(curr);
-
-		BRN_INFO("Start new tls conn");
-		curr = new com_obj(ctx, role);
-		curr->dst_addr = tmp_dst;
-		do_handshake();
 	}
+
+	// Todo: Change when having reliable transport
+	// ret = SSL_shutdown(curr->conn);
+	// BRN_DEBUG("ssl_shutdown ret = %d", ret);
+	// No send or receive of shutdown alert at all. Just set flags.
+	SSL_set_shutdown(curr->conn, SSL_SENT_SHUTDOWN | SSL_RECEIVED_SHUTDOWN);
+	BRN_DEBUG("ssl set shutdown");
+
+	print_state();
 }
 
 int pem_passwd_cb(char *buf, int size, int , void *password) {
@@ -407,9 +467,15 @@ static String handler_triggered_handshake(Element *, void *) {
 	return String();
 }
 
-static String handler_triggered_restart(Element *e, void *) {
+static String handler_triggered_shutdown(Element *e, void *) {
 	TLS *tls = (TLS *)e;
-	tls->restart_tls();
+	tls->shutdown_tls();
+	return String();
+}
+
+static String handler_triggered_is_shutdown(Element *e, void *) {
+	TLS *tls = (TLS *)e;
+	tls->is_shutdown();
 	return String();
 }
 
@@ -420,12 +486,21 @@ void TLS::print_err() {
 	}
 }
 
+void TLS::print_state() {
+	BRN_INFO("openssl state: %s", SSL_state_string_long(curr->conn));
+}
+
+bool TLS::is_shutdown()  {
+	return (SSL_get_shutdown(curr->conn) > 0);
+}
+
 
 void TLS::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("restart", handler_triggered_restart, 0);
+  add_read_handler("is_shutdown", handler_triggered_is_shutdown, 0);
+  add_read_handler("shutdown", handler_triggered_shutdown, 0);
   add_read_handler("handshake", handler_triggered_handshake, 0);
 }
 

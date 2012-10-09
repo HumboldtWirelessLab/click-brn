@@ -30,7 +30,7 @@
 #include "kdp.hh"
 #include "backbone_node.hh"
 
-#define RETRY_CNT_DOWN 1
+#define RETRY_CNT_DOWN 2
 
 CLICK_DECLS
 
@@ -154,7 +154,7 @@ void BACKBONE_NODE::snd_kdp_req() {
 
 		switch_dev(dev_client);
 
-		HandlerCall::call_read(_tls, "restart", NULL);
+		HandlerCall::call_read(_tls, "shutdown", NULL);
 	} else {
 		retry_cnt_down--;
 	}
@@ -225,6 +225,10 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	retry_cnt_down = RETRY_CNT_DOWN; // reset retry countdown
 
 	p->kill();
+
+	// Todo: Need reliable transport
+	// Shutdown SSL because shutdown alert is sent over unreliable transport
+	HandlerCall::call_read(_tls, "shutdown", NULL);
 }
 
 /*
