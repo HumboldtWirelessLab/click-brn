@@ -33,8 +33,6 @@ class GeorTable : public BRNElement {
   void updateEntry(EtherAddress *ea, struct gps_position *pos);
   String get_routing_table();
 
-  typedef HashMap<EtherAddress, GPSPosition> GPSRoutingTable;
-
   GPSPosition *getPosition(EtherAddress *ea);
   GPSPosition *getClosest(struct gps_position *pos, EtherAddress *ea);
   GPSPosition *getClosestNeighbour(struct gps_position *pos, EtherAddress *ea);
@@ -42,13 +40,12 @@ class GeorTable : public BRNElement {
   GPSPosition *getLocalPosition();
 
  private:
-   GPSRoutingTable _rt; //TODO: replace by GPSMap
+  GPSMap *_gps_map;
 
  public:
 
   Brn2LinkTable *_lt;
   GPS *_gps;
-
 };
 
 CLICK_ENDDECLS

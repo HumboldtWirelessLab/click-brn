@@ -6,6 +6,7 @@
 #include <click/hashmap.hh>
 
 #include "elements/brn2/brnelement.hh"
+#include "elements/brn2/standard/vector/vector3d.hh"
 
 #include "gps_position.hh"
 
@@ -30,6 +31,11 @@ class GPSMap : public BRNElement {
   typedef EtherGPSMap::const_iterator EtherGPSMapIter;
 
   EtherGPSMap _map;
+
+  typedef HashMap<EtherAddress, Vector3D> EtherSpeedMap;
+  typedef EtherSpeedMap::const_iterator EtherSpeedMapIter;
+
+  EtherSpeedMap _speed_map;
 
   static String read_handler(Element *e, void *thunk);
   void add_handlers();

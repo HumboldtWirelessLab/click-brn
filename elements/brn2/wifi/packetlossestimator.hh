@@ -8,7 +8,7 @@
 #include <click/args.hh>
 #include <click/ip6address.hh>
 #include <click/packet_anno.hh>
-#if CLICK_NS 
+#if CLICK_NS
     #include <click/router.hh>
 #endif
 
@@ -25,7 +25,7 @@
 CLICK_DECLS
 
 class PacketLossEstimator : public BRNElement {
-   
+
 public:
 
     PacketLossEstimator ();
@@ -63,7 +63,7 @@ private:
     bool _pessimistic_hn_detection;
     /// Structure for gathering information about current packet
     PacketParameter *_packet_parameter;
-    
+
     ///< Estimate probability of channel error because of hidden nodes
     void estimateHiddenNode ();
     ///< Estimate probability of channel error because of inrange collisions
@@ -78,12 +78,10 @@ private:
     void add_ack (const EtherAddress &);
     ///< Get number of received ACK-Packets for an ether address
     uint32_t get_acks_by_node (const EtherAddress &);
+    void reset_acks();
     ///<
     uint8_t calc_weak_signal_percentage (ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
-/*
-    void add_weak_signal_raw_value (uint8_t);
-    uint8_t get_weak_signal_percentage (uint8_t);
-*/
+
     StringAccum stats_get_hidden_node (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
     StringAccum stats_get_inrange (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
     StringAccum stats_get_weak_signal (HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
@@ -92,49 +90,3 @@ private:
 
 CLICK_ENDDECLS
 #endif
-
-/*
-         void put_data_in (HashMap<EtherAddress, struct packetloss_statistics_old> *data) {
-            
-            uint32_t last_elem = (start_elem + counter) % size;
-            time_buffer[last_elem] = *data;
-            
-            if (size == counter) {
-                start_elem = (start_elem + 1) % size;   // if circular buffer filled completely override
-            } else {
-                start_elem++;
-            }
-        }
-        
-        uint32_t read_data (HashMap<EtherAddress, struct packetloss_statistics_old> *data, uint32_t entries) {
-            
-            if (entries > size) {
-                return 0;
-            }
-            
-            HashMap<EtherAddress, struct packetloss_statistics_old> temp_data[entries];
-            uint32_t overflow_counter = size;
-            uint32_t i = 0;
-            
-            for (i; i < entries; i++) {
-                
-                if ((start_elem - i) == 0) { //TODO:Error-Handling
-                    
-                    if (NULL == &time_buffer[overflow_counter]) {
-                        
-                        break;
-                    }
-                    
-                    temp_data[i] = time_buffer[overflow_counter--];
-                    
-                } else {
-                    temp_data[i] = time_buffer[start_elem - i];
-                }
-            }
-            
-            *data = *temp_data;
-            return i;
-        }
-    };
-*/
-

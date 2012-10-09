@@ -8,6 +8,7 @@
 #include <click/timestamp.hh>
 
 
+#include <elements/brn2/standard/vector/vector3d.hh>
 #include <elements/brn2/standard/fixpointnumber.hh>
 
 CLICK_DECLS
@@ -19,14 +20,20 @@ struct gps_position {
   int speed;
 } __attribute__ ((packed));
 
+struct gps_speed {
+  int x;
+  int y;
+  int z;
+} __attribute__ ((packed));
+
 
 class GPSPosition {
  public:
-   FixPointNumber _latitude;
-   FixPointNumber _longitude;
-   FixPointNumber _altitude;
+  FixPointNumber _latitude;
+  FixPointNumber _longitude;
+  FixPointNumber _altitude;
 
-   FixPointNumber _speed;
+  FixPointNumber _speed;
 
   int _x,_y,_z;
 
@@ -128,6 +135,9 @@ class GPSPosition {
 	  return sa.take_string().c_str();
   }
 
+  Vector3D vector3D() {
+    return Vector3D(_x,_y,_z);
+  }
 };
 
 CLICK_ENDDECLS
