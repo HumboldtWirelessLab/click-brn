@@ -35,7 +35,10 @@ CLICK_DECLS
 
 class com_obj {
 public:
-	com_obj(SSL_CTX *ctx, enum role_t role) {
+	com_obj(SSL_CTX *_ctx, enum role_t _role) {
+		role = _role;
+		ctx = _ctx;
+
 		conn = SSL_new(ctx);
 		if (!conn) {throw std::bad_alloc();}
 
@@ -56,6 +59,7 @@ public:
 		// Must be called before first SSL_read or SSL_write
 		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 	}
+
 	~com_obj() {
 		SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
 		BIO_free(bio_err);
@@ -65,6 +69,16 @@ public:
 		}
 	}
 
+	void refresh() {
+		conn = SSL_new(ctx);
+		SSL_set_bio(conn,bioIn,bioOut);
+		SSL_set_read_ahead(conn, 1);
+		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
+	}
+
+	enum role_t role;
+
+	SSL_CTX* ctx;
 	SSL* conn;						// This is actually the important ssl connection object
 	BIO* bioIn;
 	BIO* bioOut;
@@ -89,8 +103,6 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
-	void restart_tls(); // Workaround for unreliable communication
-
 	void shutdown_tls();
 	bool is_shutdown(); // Ask TLS, if shutdown is done
 
@@ -109,11 +121,15 @@ private:
 
 	com_obj *curr;
 
+	SSL_SESSION *session; 		// Used by client for session resumption
+
 	// Server variable: Store the tls-conn for every communicating node
 	HashMap<EtherAddress, com_obj*> com_table;
 
-	void encrypt(Packet *p); // send application data
-	void decrypt(); // receive application data
+	void encrypt(Packet *p); 	// send application data
+	void decrypt(); 			// receive application data
+
+	void start_ssl();
 
 	bool do_handshake();
 
