@@ -69,7 +69,7 @@ Vector3D::normalize(int norm)
     vec[2] /= fac;
   }
 #else
-  double len = length();
+  double len = length()/(double)norm;
   if ( len != 0.0 ) {
     _x /= len;
     _y /= len;

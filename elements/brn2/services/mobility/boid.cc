@@ -130,7 +130,7 @@ Boid::compute_behavior()
   ChannelStats::SrcInfoTable *src_tab = _cs->get_latest_stats_neighbours();
 
   for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
-    ChannelStats::SrcInfo src = iter.value();
+    //ChannelStats::SrcInfo src = iter.value();
     EtherAddress ea = iter.key();
 
     GPSPosition *pos = _gpsmap->lookup(ea);
@@ -166,7 +166,7 @@ Boid::compute_behavior()
   //for(SwarmObject neighbor :swarmCluster.get(clus)) {
   for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
 
-    ChannelStats::SrcInfo src = iter.value();
+    //ChannelStats::SrcInfo src = iter.value();
     EtherAddress ea = iter.key();
 
     GPSPosition *pos = _gpsmap->lookup(ea);
