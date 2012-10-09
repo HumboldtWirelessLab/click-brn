@@ -2,7 +2,18 @@
  * backbone_node.cc
  *
  *  Created on: 28.04.2012
- *      Author: aureliano
+ *      Author: kuehne@informatik.hu-berlin.de
+ *      Description: The MobiSEC backbone node is one of the three parties
+ *      in a MobiSEC mash network, leaving the key server and the clients.
+ *      The backbone node uses the key distribution protocol to communicate
+ *      with the key server to acquire the key material.
+ *
+ *      The subcomponents of the backbone node are: keymanagement, kdp. These
+ *      are organized by the backbone node itself.
+ *
+ *      The keymanagement gets the key material installs it on the physical layer.
+ *
+ *      The kdp provides the backbone node with kdp network packets.
  */
 #include <click/config.h>
 #include <click/element.hh>

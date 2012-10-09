@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #include "cooperativechannelstats.hh"
@@ -40,7 +40,7 @@ CooperativeChannelStats::~CooperativeChannelStats ()
 }
 
 int CooperativeChannelStats::configure (Vector<String> &conf, ErrorHandler* errh)
-{    
+{
     BRN_DEBUG ("int CooperativeChannelStats::configure (Vector<String> &conf, ErrorHandler* errh)");
     int ret = cp_va_kparse (conf, this, errh,
                             "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
@@ -57,9 +57,9 @@ int CooperativeChannelStats::initialize (ErrorHandler * /*errh*/)
     BRN_DEBUG ("int CooperativeChannelStats::initialize(ErrorHandler *)");
     click_srandom (_cst->_device->getEtherAddress()->hashcode());
     _msg_timer.initialize (this);
-    
+
     if ( _interval > 0 )
-    {    
+    {
         _msg_timer.schedule_after_msec ( (click_random() % (_interval-100)) + 100);
     }
 
@@ -82,7 +82,7 @@ inline WritablePacket *CooperativeChannelStats::create_new_packet (struct cooper
             sizeof (struct cooperative_channel_stats_header) + sizeof (neighbour_airtime_stats) * ccsh.no_neighbours,
             32
             );
-    
+
     unsigned char *data = p->data ();
     memcpy (data, &ccsh, sizeof (struct cooperative_channel_stats_header));
 
@@ -91,12 +91,12 @@ inline WritablePacket *CooperativeChannelStats::create_new_packet (struct cooper
         int pointer = sizeof (struct cooperative_channel_stats_header);
 
         for (uint16_t i = 0; i < ccsh.no_neighbours; i++)
-        {    
+        {
             memcpy (&data[pointer], &nats_arr[i], sizeof (neighbour_airtime_stats));
             pointer += sizeof (neighbour_airtime_stats);
         }
     }
-    
+
     return p;
 }
 
@@ -104,21 +104,21 @@ void CooperativeChannelStats::send_message ()
 {
     BRN_DEBUG("void CooperativeChannelStats::send_message ()");
     ChannelStats::SrcInfoTable *sit = _cst->get_latest_stats_neighbours ();
-     
+
     struct cooperative_channel_stats_header ccsh;
     ccsh.endianess = ENDIANESS_TEST;
     ccsh.flags = 0;
-    
+
     struct neighbour_airtime_stats nats_arr[sit->size ()];
     uint8_t non = 0; //number of available neighbours
-    
+
     if (_add_neighbours)
-    {    
+    {
         BRN_INFO ("include Neighbours");
         ccsh.flags |= INCLUDES_NEIGHBOURS;
-        
+
         for (ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++)
-        {            
+        {
             ChannelStats::SrcInfo src = iter.value ();
             EtherAddress ea = iter.key ();
             struct neighbour_airtime_stats nats;
@@ -126,16 +126,16 @@ void CooperativeChannelStats::send_message ()
             nats_arr[non++] = nats;
         }
     }
-    
+
     BRN_INFO ("Number of Neighbours: %d", non);
     ccsh.no_neighbours = non;
 
     WritablePacket *p = create_new_packet (ccsh, nats_arr);
-    
+
 #pragma message "check stettings of brn_headers"
     p = BRNProtocol::add_brn_header (p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
     BRN_INFO ("Send Packet-Length: %d", p->length());
-    
+
     output (0).push (p);
 }
 
@@ -143,28 +143,28 @@ void CooperativeChannelStats::send_message ()
 /************* Info from nodes****************/
 /*********************************************/
 void CooperativeChannelStats::push (int, Packet *p)
-{    
+{
     BRN_DEBUG ("void CooperativeChannelStats::push (int, Packet *p)");
     BRN_INFO ("received Packet-Length: %d", p->length ());
-    
+
     click_ether *eh = (click_ether*)p->ether_header ();
     EtherAddress src_ea = EtherAddress (eh->ether_shost);
-    
-    if (_ncst.find (src_ea) == NULL)
-	{
-    	_ncst.insert (src_ea, new NodeChannelStats (src_ea));
-	}
 
-    NodeChannelStats *ncs = _ncst.find(src_ea);
-    
+    if (_ncst.find (src_ea) == NULL)
+    {
+    	_ncst.insert (src_ea, new NodeChannelStats (src_ea));
+    }
+
+    NodeChannelStats *ncs = _ncst.find (src_ea);
+
     const unsigned char *data = p->data ();
-    struct cooperative_channel_stats_header ccsh; 
-    
+    struct cooperative_channel_stats_header ccsh;
+
     memcpy (&ccsh, data, sizeof (cooperative_channel_stats_header));
-    
+
     BRN_INFO ("FLAGG: %d", ccsh.flags);
     BRN_INFO ("Neighbours: %d", ccsh.no_neighbours);
-    
+
     if (ccsh.flags > 0)
     {
         struct neighbour_airtime_stats nats_arr[ccsh.no_neighbours];
@@ -172,7 +172,7 @@ void CooperativeChannelStats::push (int, Packet *p)
         for (uint8_t i = 0; i < ccsh.no_neighbours; i++)
         {
             EtherAddress temp_ea = EtherAddress (nats_arr[i]._etheraddr);
-            
+
             if (temp_ea == brn_etheraddress_broadcast)
             {
                 continue;
@@ -184,7 +184,7 @@ void CooperativeChannelStats::push (int, Packet *p)
                     	nats_arr[i]._pkt_count,
                     	nats_arr[i]._duration,
                     	nats_arr[i]._avg_rssi);
-            
+
             ncs->add_neighbour_stats (temp_ea, nats_arr[i]);
         }
         _coop_stats_buffer.insert_values (*ncs);
@@ -198,14 +198,14 @@ HashMap<EtherAddress, struct neighbour_airtime_stats*> CooperativeChannelStats::
 
     if (!_ncst.empty () && _ncst.find (*ea) != NULL)
     {
-    	BRN_INFO ("FOUND EA: %s", ea->unparse ().c_str ());
+        BRN_INFO ("FOUND EA: %s", ea->unparse ().c_str ());
         return (_ncst.find (*ea)->get_neighbour_stats_table ());
-        
+
     } else
     {
         HashMap<EtherAddress, struct neighbour_airtime_stats*> hm;
         BRN_INFO ("DID NOT FOUND EA: %s", ea->unparse ().c_str ());
-        
+
         return hm;
     }
 }
@@ -219,19 +219,19 @@ enum { H_STATS };
 String CooperativeChannelStats::stats_handler (int /*mode*/)
 {
     StringAccum sa;
-    
+
     sa << "<cooperativechannelstats" << " node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now ();
     sa << "\" neighbours=\"" << _ncst.size () << "\" >\n";
-    
+
     for (NodeChannelStatsTableIter iter = _ncst.begin (); iter.live (); iter++)
-    {        
+    {
         NodeChannelStats *ncs = iter.value();
-        
+
         sa << "\t<node address=\"" << ncs->get_address ()->unparse () << "\" />\n";
     }
-    
+
     sa << "</cooperativechannelstats>\n";
-    
+
     return sa.take_string ();
 }
 
