@@ -42,6 +42,9 @@ CLICK_DECLS
  *
  */
 
+#define MOVE_TYPE_ABSOLUTE 0
+#define MOVE_TYPE_RELATIVE 1
+
 class Mobility : public BRNElement {
 
  public:
@@ -63,7 +66,8 @@ class Mobility : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void move(int x, int y, int z, int speed);
+  void move(int x, int y, int z, int speed, int move_type = MOVE_TYPE_ABSOLUTE);
+  //void move(GPSPosition *gpspos, int move_type = MOVE_TYPE_ABSOLUTE);
 
 };
 

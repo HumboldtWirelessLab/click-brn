@@ -48,6 +48,7 @@ GeorTable::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "GPS", cpkP+cpkM, cpElement, &_gps,
+      "GPSMAP", cpkP+cpkM, cpElement, &_gps_map,
       "LINKTABLE", cpkP+cpkM , cpElement, &_lt,
       "DEBUG", cpkP , cpInteger, &_debug,
       cpEnd) < 0)
@@ -65,7 +66,7 @@ GeorTable::initialize(ErrorHandler *)
 GPSPosition *
 GeorTable::getPosition(EtherAddress *ea)
 {
-  return (_rt.findp(*ea));
+  return (_gps_map->lookup(*ea));
 }
 
 /** TODO: find better solutzon for first itertion */
@@ -78,15 +79,15 @@ GeorTable::getClosest(struct gps_position *pos, EtherAddress *ea)
   GPSPosition *gpspos;
   GPSPosition finpos = GPSPosition(pos);
 
-  for (GPSRoutingTable::const_iterator i = _rt.begin(); i.live(); i++) {
+  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live(); i++) {
     if ( first ) {
       best = i.key();
-      gpspos = _rt.findp(best);
+      gpspos = _gps_map->lookup(best);
       min_dist = finpos.getDistance(gpspos);
       first = false;
     } else {
       acea = i.key();
-      gpspos = _rt.findp(acea);
+      gpspos = _gps_map->lookup(acea);
       if ( finpos.getDistance(gpspos) < min_dist ) {
         best = acea;
         min_dist = finpos.getDistance(gpspos);
@@ -97,7 +98,7 @@ GeorTable::getClosest(struct gps_position *pos, EtherAddress *ea)
   if ( first ) return NULL;
 
   memcpy(ea->data(),acea.data(), 6);
-  return (_rt.findp(acea));
+  return (_gps_map->lookup(acea));
 }
 
 GPSPosition *
@@ -119,7 +120,7 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
     int i = 0;
     for (;i < neighbors.size(); i++) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
-        gpspos = _rt.findp(neighbors[i]);
+        gpspos = _gps_map->lookup(neighbors[i]);
         best = i;
         min_dist = finpos.getDistance(gpspos);
         BRN_INFO("Check distance to %s: %d",neighbors[0].unparse().c_str(),min_dist);
@@ -131,7 +132,7 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
 
     for( ; i < neighbors.size(); i++ ) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
-        gpspos = _rt.findp(neighbors[i]);
+        gpspos = _gps_map->lookup(neighbors[i]);
         BRN_INFO("Check distance to %s: %d",neighbors[i].unparse().c_str(),finpos.getDistance(gpspos));
         if ( finpos.getDistance(gpspos) < min_dist ) {
           best = i;
@@ -150,10 +151,10 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
     return NULL;
   }
 
-  BRN_INFO("Best neighbour: %s: %d",neighbors[best].unparse().c_str(),finpos.getDistance(_rt.findp(neighbors[best])));
+  BRN_INFO("Best neighbour: %s: %d",neighbors[best].unparse().c_str(),finpos.getDistance(_gps_map->lookup(neighbors[best])));
 
   memcpy(ea->data(),neighbors[best].data(), 6);
-  return (_rt.findp(neighbors[best]));
+  return (_gps_map->lookup(neighbors[best]));
 }
 
 GPSPosition *
@@ -173,10 +174,10 @@ GeorTable::getLocalPosition()
 void
 GeorTable::updateEntry(EtherAddress *ea, struct gps_position *pos)
 {
-  GPSPosition *gpspos = _rt.findp(*ea);
+  GPSPosition *gpspos = _gps_map->lookup(*ea);
 
   if ( !gpspos)
-    _rt.insert(*ea, GPSPosition(pos));
+    _gps_map->insert(*ea, GPSPosition(pos));
   else
     gpspos->setPosition(pos);
 }
@@ -190,9 +191,9 @@ GeorTable::get_routing_table()
 
   sa << "Local:\t" << getLocalPosition()->_x << " " << getLocalPosition()->_y << " " << getLocalPosition()->_z << "\n";
 
-  for (GPSRoutingTable::const_iterator i = _rt.begin(); i.live(); i++) {
+  for (GPSMap::EtherGPSMapIter i = _gps_map->_map.begin(); i.live(); i++) {
     ea = i.key();
-    gpspos = _rt.findp(ea);
+    gpspos = _gps_map->lookup(ea);
 
     sa << ea.unparse() << "\t" << gpspos->_x << " " << gpspos->_y << " " << gpspos->_z << "\n";
   }

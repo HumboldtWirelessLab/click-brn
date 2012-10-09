@@ -66,19 +66,34 @@ Mobility::initialize(ErrorHandler *)
 
 #if CLICK_NS
 void
-Mobility::move(int x, int y, int z, int speed)
+Mobility::move(int x, int y, int z, int speed, int move_type)
 {
   int pos[4];
-  pos[0] = x;
-  pos[1] = y;
-  pos[2] = z;
-  pos[3] = speed;
+
+  switch ( move_type ) {
+    case MOVE_TYPE_ABSOLUTE: {
+      pos[0] = x;
+      pos[1] = y;
+      pos[2] = z;
+      pos[3] = speed;
+      break;
+    }
+    case MOVE_TYPE_RELATIVE: {
+      simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_POSITION, &pos);
+      pos[0] += x;
+      pos[1] += y;
+      pos[2] += z;
+      pos[3] = speed;
+      break;
+    }
+    default: return;
+  }
 
   simclick_sim_command(router()->simnode(), SIMCLICK_SET_NODE_POSITION, &pos);
 }
 #else
 void
-Mobility::move(int, int, int, int)
+Mobility::move(int, int, int, int, int)
 {
 }
 #endif

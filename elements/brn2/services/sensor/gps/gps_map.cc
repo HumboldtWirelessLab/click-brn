@@ -65,8 +65,13 @@ GPSMap::read_handler(Element *e, void *thunk)
       for (EtherGPSMapIter iter = gpsmap->_map.begin(); iter.live(); iter++) {
         GPSPosition gps = iter.value();
         EtherAddress ea = iter.key();
+#ifdef CLICK_NS
+        sa << "\t<node mac=\"" << ea.unparse() << "\" lat=\"" << gps._x;
+        sa << "\" long=\"" << gps._y << "\" alt=\"" << gps._z;
+#else
         sa << "\t<node mac=\"" << ea.unparse() << "\" lat=\"" << gps._latitude.unparse();
         sa << "\" long=\"" << gps._longitude.unparse() << "\" alt=\"" << gps._altitude.unparse();
+#endif
         sa << "\" speed=\"" << gps._speed.unparse() << "\" />\n";
       }
       sa << "</gps_map>\n";
