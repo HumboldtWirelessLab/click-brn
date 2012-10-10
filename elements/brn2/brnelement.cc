@@ -131,5 +131,6 @@ BRNElement::add_handlers()
 
 ////////////////////////////////////////////////////////////////////////////////
 
-ELEMENT_PROVIDES(BRNElement)
 CLICK_ENDDECLS
+ELEMENT_PROVIDES(BRNElement)
+
