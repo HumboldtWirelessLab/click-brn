@@ -254,7 +254,7 @@ void CooperativeChannelStats::add_handlers()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT (CooperativeChannelStats)
-ELEMENT_REQUIRES (NodeChannelStats)
-ELEMENT_REQUIRES (CooperativeStatsCircularBuffer)
-ELEMENT_MT_SAFE (CooperativeChannelStats)
+EXPORT_ELEMENT(CooperativeChannelStats)
+ELEMENT_REQUIRES(NodeChannelStats)
+ELEMENT_REQUIRES(CooperativeStatsCircularBuffer)
+ELEMENT_MT_SAFE(CooperativeChannelStats)

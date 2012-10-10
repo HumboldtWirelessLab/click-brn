@@ -35,7 +35,10 @@ CLICK_DECLS
 
 class com_obj {
 public:
-	com_obj(SSL_CTX *ctx, enum role_t role) {
+	com_obj(SSL_CTX *_ctx, enum role_t _role) {
+		role = _role;
+		ctx = _ctx;
+
 		conn = SSL_new(ctx);
 		if (!conn) {throw std::bad_alloc();}
 
@@ -47,14 +50,16 @@ public:
 
 		bio_err = BIO_new_fp(stderr, BIO_NOCLOSE);
 		if (!bio_err) {throw std::bad_alloc();}
+
 		SSL_set_bio(conn,bioIn,bioOut); // connect the ssl-object to the bios
 
-		// to read additional protocol bytes wenn calling SSL_pending containing more SSL records
+		// to read additional protocol bytes when calling SSL_pending containing more SSL records
 		SSL_set_read_ahead(conn, 1);
 
 		// Must be called before first SSL_read or SSL_write
 		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
 	}
+
 	~com_obj() {
 		SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
 		BIO_free(bio_err);
@@ -64,6 +69,16 @@ public:
 		}
 	}
 
+	void refresh() {
+		conn = SSL_new(ctx);
+		SSL_set_bio(conn,bioIn,bioOut);
+		SSL_set_read_ahead(conn, 1);
+		(role==CLIENT)? SSL_set_connect_state(conn) : SSL_set_accept_state(conn);
+	}
+
+	enum role_t role;
+
+	SSL_CTX* ctx;
 	SSL* conn;						// This is actually the important ssl connection object
 	BIO* bioIn;
 	BIO* bioOut;
@@ -88,9 +103,8 @@ public:
 	bool can_live_reconfigure() const	{ return false; }
 	int initialize(ErrorHandler* errh);
 
-	/* For reliable communication */
-	void restart_tls();
-	static void restart_trigger(Timer *, void *element) { ((TLS *)element)->restart_tls(); }
+	void shutdown_tls();
+	bool is_shutdown(); // Ask TLS, if shutdown is done
 
 	void add_handlers();
 
@@ -107,11 +121,15 @@ private:
 
 	com_obj *curr;
 
+	SSL_SESSION *session; 		// Used by client for session resumption
+
 	// Server variable: Store the tls-conn for every communicating node
 	HashMap<EtherAddress, com_obj*> com_table;
 
-	void encrypt(Packet *p); // send application data
-	void decrypt(); // receive application data
+	void encrypt(Packet *p); 	// send application data
+	void decrypt(); 			// receive application data
+
+	void start_ssl();
 
 	bool do_handshake();
 
@@ -123,8 +141,7 @@ private:
 	void rcv_data(Packet *p);
 
 	void print_err();
-
-	Timer restart_timer;
+	void print_state();
 };
 
 // For now, this functions is not integrable because
