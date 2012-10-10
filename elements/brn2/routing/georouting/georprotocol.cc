@@ -38,4 +38,4 @@ GeorProtocol::addRoutingHeader(Packet *p,
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(GeorProtocol)
+ELEMENT_PROVIDES(GeorProtocol)

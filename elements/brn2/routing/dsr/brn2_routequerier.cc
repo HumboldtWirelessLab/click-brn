@@ -1227,17 +1227,7 @@ BRN2RouteQuerier::add_handlers()
   add_write_handler("max_retries", write_handler, (void*) H_MAX_RETRIES);
 }
 
-
+CLICK_ENDDECLS
 ELEMENT_REQUIRES(LinkTable)
 EXPORT_ELEMENT(BRN2RouteQuerier)
 
-#include <click/bighashmap.cc>
-#include <click/vector.cc>
-template class HashMap<ForwardedReqKey, ForwardedReqVal>;
-template class HashMap<EtherAddress, BRN2RouteQuerier::InitiatedReq>;
-template class Vector<BRN2RouteQuerier::BufferedPacket>;
-template class HashMap<EtherAddress, BRN2RouteQuerier::SendBuffer>;
-template class HashMap<EtherAddress, BRN2RouteQuerier::BlacklistEntry>;
-template class HashMap<BRN2RouteQuerier::EtherPair,EtherAddresses>;
-
-CLICK_ENDDECLS
