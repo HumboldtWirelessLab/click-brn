@@ -29,11 +29,11 @@ BRN2SimpleFlow::BRN2SimpleFlow()
 
 BRN2SimpleFlow::~BRN2SimpleFlow()
 {
-  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); fm++) {
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
     delete fl;
   }
-  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
+  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
     delete fl;
   }
@@ -87,8 +87,6 @@ BRN2SimpleFlow::run_timer(Timer *t)
 {
   BRN_DEBUG("Run timer.");
 
-  Packet *packet_out;
-
   if ( t == NULL ) click_chatter("Timer is NULL");
 
   if ( is_active(&dst_of_flow) ) {
@@ -97,6 +95,8 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
     Flow *txFlow = _tx_flowMap.find(dst_of_flow);
     if ( txFlow) {
+      Packet *packet_out;
+
       BRN_DEBUG("Send Next");
       Timestamp now = Timestamp::now();
       if ( (txFlow->_duration != 0) &&
@@ -395,7 +395,7 @@ BRN2SimpleFlow::xml_stats()
   StringAccum sa;
 
   sa << "<flowstats node=\"" << BRN_NODE_NAME << "\">\n";
-  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); fm++) {
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
     sa << "\t<txflow";
     sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
@@ -413,7 +413,7 @@ BRN2SimpleFlow::xml_stats()
       sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" />\n";
     }
   }
-  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); fm++) {
+  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
     sa << "\t<rxflow";
     sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
@@ -440,7 +440,7 @@ enum {
 static String
 BRN2SimpleFlow_read_param(Element *e, void *thunk)
 {
-  BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
+  BRN2SimpleFlow *sf = static_cast<BRN2SimpleFlow *>(e);
 
   switch ((uintptr_t) thunk) {
     case H_FLOW_STATS: {
@@ -454,7 +454,7 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
 static int 
 BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  BRN2SimpleFlow *sf = (BRN2SimpleFlow *)e;
+  BRN2SimpleFlow *sf = static_cast<BRN2SimpleFlow *>(e);
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
     case H_RESET: {
