@@ -178,6 +178,7 @@ class ChannelStats : public BRNElement {
       uint16_t _nav;
 
       bool _is_ht_rate;
+      uint16_t _seq;
     };
 
     class PacketInfoHW {
@@ -219,6 +220,9 @@ class ChannelStats : public BRNElement {
       uint8_t _mcs_flags;
       /* future end */
 
+      //TODO: Check idea for hist
+      /* IDEE: nicht den RSSI-Wert  notieren, sondern rssi wert ist index in ARRAY (size: 255), wert an index-stelle  wird erhöht: Bsp: rssi = 3 -> _rssi_hist[3]++;*/
+      /* Weitere Idee: Bei überlauf vom jetzigen modus in neuen siehe zeile drüber) wechseln*/
       uint8_t _rssi_hist[CS_DEFAULT_RSSI_HIST_SIZE];
       uint32_t _rssi_hist_index;
       uint32_t _rssi_hist_size;
@@ -227,18 +231,23 @@ class ChannelStats : public BRNElement {
       int32_t _avg_ctl_rssi[3];
       int32_t _avg_ext_rssi[3];
 
+      int16_t _last_seq;
+      uint32_t _missed_seq;
+      
       SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0), _duration(0),
                  _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false),
-                 _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
+                 _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false),
+                 _last_seq(-1), _missed_seq(0)
       {  //TODO: better start value for min_rssi (replace 1000)
         memset(_avg_ctl_rssi,0, sizeof(_avg_ctl_rssi));
         memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
       }
 
-      SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav):
+      SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq):
           _rssi(0), _sum_sq_rssi(0), _pkt_count(1), _byte_count(packet_size), _duration(0),
           _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
-          _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false)
+          _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false),
+          _last_seq(-1), _missed_seq(0)
       {
         if ( rssi != 0 ) {
           _rssi = rssi;
@@ -253,9 +262,11 @@ class ChannelStats : public BRNElement {
 
         _duration = duration;
         _nav = nav;
+	
+	_last_seq = seq;
       }
 
-      void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav) {
+      void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq) {
        if ( rssi > 0 ) {
          _rssi += rssi;
          _sum_sq_rssi += rssi * rssi;
@@ -277,6 +288,11 @@ class ChannelStats : public BRNElement {
 
        _duration += duration;
        _nav += nav;
+       
+       if ( seq < _last_seq ) _missed_seq += ((4096 - _last_seq) + seq) - 1;
+       else _missed_seq += seq - _last_seq - 1;
+   
+       _last_seq = seq;
      }
 
      void add_ctl_ext_rssi(struct brn_click_wifi_extra_rx_status *rx_status) {
