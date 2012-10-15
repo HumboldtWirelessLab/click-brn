@@ -36,6 +36,8 @@
 #define DEFAULT_RATIO_THRESHOLD 2147483647
 #define DEFAULT_NORMALIZE 10000
 
+//TODO: rename to LTA_STA
+
 CLICK_DECLS
 
 class SlidingWindow {
@@ -59,7 +61,8 @@ class SlidingWindow {
   int32_t *_raw;
   int32_t *_fixed_value;
 
-  int32_t _history_cum_raw_vals, _history_current_mean;
+  int64_t _history_cum_raw_vals;
+  int32_t _history_current_mean;
   int64_t _history_cum_vals, _history_cum_sq_vals, _history_cum_abs_vals;
   int32_t _history_stdev, _history_min, _history_max, _history_avg, _history_sq_avg;
   int32_t _history_abs_avg;
@@ -69,6 +72,7 @@ class SlidingWindow {
   int32_t _window_abs_avg;
 
   uint32_t _debug;
+  uint32_t _samplerate;
 
  public:
 
@@ -117,7 +121,7 @@ class SlidingWindow {
     _window_index = (_window_index + 1)%_history_size;
 
     //add raw value to get avg of raw values
-    _history_cum_raw_vals += value;
+    _history_cum_raw_vals += (int64_t)value;
 
     //remove old value from history data
     if ( _history_complete ) {
@@ -127,24 +131,24 @@ class SlidingWindow {
       _history_cum_raw_vals -= (int64_t)_raw[_history_index];
 
       if (_fixed_value[_history_index] < 0)
-        _history_cum_abs_vals+=_fixed_value[_history_index];
+        _history_cum_abs_vals+=(int64_t)_fixed_value[_history_index];
       else
-        _history_cum_abs_vals-=_fixed_value[_history_index];
+        _history_cum_abs_vals-=(int64_t)_fixed_value[_history_index];
 
       _history_no_values--;
     }
 
     //get new avg for raw values to correct values for history and slidung window
-    _history_current_mean = _history_cum_raw_vals / history_size();
+    _history_current_mean = (int32_t)(_history_cum_raw_vals / (int64_t)history_size());
 
     if ( _window_complete ) {
       _window_cum_sq_vals -= (int64_t)_fixed_value[_window_start] *
                              (int64_t)_fixed_value[_window_start];
-      _window_cum_vals -= _fixed_value[_window_start];
+      _window_cum_vals -= (int64_t)_fixed_value[_window_start];
       _window_start = (_window_start + 1)%_history_size;
 
-      if (_fixed_value[_window_start] < 0) _window_cum_abs_vals+=_fixed_value[_window_start];
-      else _window_cum_abs_vals-=_fixed_value[_window_start];
+      if (_fixed_value[_window_start] < 0) _window_cum_abs_vals+=(int64_t)_fixed_value[_window_start];
+      else _window_cum_abs_vals-=(int64_t)_fixed_value[_window_start];
 
       _window_no_values--;
     }
@@ -154,7 +158,10 @@ class SlidingWindow {
 
     _raw[_history_index] = value;
 
-    int32_t corr_value = value - _history_current_mean;
+    int64_t corr_value = (int64_t)value - (int64_t)_history_current_mean;
+    
+    //click_chatter("Value: %d Corr: %lli Mean: %lli", value, (int64_t)corr_value, (int64_t)_history_current_mean);
+    
     _fixed_value[_history_index] = corr_value;
     _history_cum_vals += corr_value;
     _window_cum_vals += corr_value;
@@ -176,10 +183,10 @@ class SlidingWindow {
 
     NON_BRN_INFO("--------------------------------------------------------------");
     NON_BRN_INFO("Insert: %d Cum: %d",_inserts,_history_cum_raw_vals);
-    NON_BRN_INFO("History: Index: %d NoE: %d Complete: %d Cum: %d CumSq: %d",
+    NON_BRN_INFO("History: Index: %d NoE: %d Complete: %d Cum: %lli CumSq: %lli",
                             _history_index,_history_no_values,_history_complete?1:0,
                             _history_cum_vals,_history_cum_sq_vals);
-    NON_BRN_INFO("Window: Start: %d Index: %d NoE: %d Complete: %d Cum: %d CumSq: %d",
+    NON_BRN_INFO("Window: Start: %d Index: %d NoE: %d Complete: %d Cum: %lli CumSq: %lli",
                        _window_start, _window_index,_window_no_values,_window_complete?1:0,
                        _window_cum_vals,_window_cum_sq_vals);
 
@@ -210,9 +217,9 @@ class SlidingWindow {
         _history_stdev = isqrt64(history_stdev);
       }
 
-      _history_avg = _history_cum_vals/hist_size;
-      _history_abs_avg = _history_cum_abs_vals/hist_size;
-      _history_sq_avg = _history_cum_sq_vals/hist_size;
+      _history_avg = _history_cum_vals/(int64_t)hist_size;
+      _history_abs_avg = _history_cum_abs_vals/(int64_t)hist_size;
+      _history_sq_avg = _history_cum_sq_vals/(int64_t)hist_size;
 
       int64_t window_stdev;
 
@@ -226,9 +233,9 @@ class SlidingWindow {
         _window_stdev = isqrt64(window_stdev);
       }
 
-      _window_avg = _window_cum_vals/win_size;
-      _window_abs_avg = _window_cum_abs_vals/win_size;
-      _window_sq_avg = _window_cum_sq_vals/win_size;
+      _window_avg = _window_cum_vals/(int64_t)win_size;
+      _window_abs_avg = _window_cum_abs_vals/(int64_t)win_size;
+      _window_sq_avg = _window_cum_sq_vals/(int64_t)win_size;
 
     }
 
@@ -263,7 +270,7 @@ class SlidingWindow {
 #define ALARM_MODE_START true
 #define ALARM_MODE_END   false
 
-class SeismoAlarmLSAvgInfo {
+class SeismoAlarmLTASTAInfo {
   public:
 
     int32_t _stdev_long;
@@ -273,32 +280,36 @@ class SeismoAlarmLSAvgInfo {
     int32_t _sq_avg_long;
     int32_t _sq_avg_short;
 
-    bool _start;
+    uint32_t _insert; //number of data (start of alarm)
+    
+    bool _mode;
 
-    SeismoAlarmLSAvgInfo(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
-                         int32_t avg_short, int32_t sq_avg_long, int32_t sq_avg_short) {
-      _start = ALARM_MODE_START;
+    SeismoAlarmLTASTAInfo(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
+                         int32_t avg_short, int32_t sq_avg_long, int32_t sq_avg_short, uint32_t insert) {
+      _mode = ALARM_MODE_START;
       _stdev_long = stdev_long;
       _stdev_short = stdev_short;
       _avg_long = avg_long;
       _avg_short = avg_short;
       _sq_avg_long = sq_avg_long;
       _sq_avg_short = sq_avg_short;
+      _insert = insert;
     }
 
     void update(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
-                int32_t avg_short, int32_t sq_avg_long, int32_t sq_avg_short) {
-      _start = ALARM_MODE_START;
+                int32_t avg_short, int32_t sq_avg_long, int32_t sq_avg_short, uint32_t insert) {
+      _mode = ALARM_MODE_START;
       _stdev_long = stdev_long;
       _stdev_short = stdev_short;
       _avg_long = avg_long;
       _avg_short = avg_short;
       _sq_avg_long = sq_avg_long;
       _sq_avg_short = sq_avg_short;
+      _insert = insert;
     }
 
     void end_alarm() {
-      _start = ALARM_MODE_END;
+      _mode = ALARM_MODE_END;
     }
 };
 
@@ -323,7 +334,6 @@ class SeismoDetectionLongShortAvg : public BRNElement, public SeismoDetectionAlg
 
   void update(SrcInfo *si, uint32_t next_new_block);
   SeismoAlarmList *get_alarm() { return NULL; };
-  void seismo_evaluation(SrcInfo *si, uint32_t next_new_block);
 
   uint32_t _long_avg_count;
   uint32_t _short_avg_count;
@@ -332,10 +342,13 @@ class SeismoDetectionLongShortAvg : public BRNElement, public SeismoDetectionAlg
   uint32_t _rthreshold;
   uint32_t _normalize;
 
- uint32_t _max_alarm_count;
+  uint32_t _max_alarm_count;
 
   SlidingWindow swin;
   SeismoAlarmList sal;
+  
+  bool _print_alarm;
+  bool _init_swin;
 
 };
 
