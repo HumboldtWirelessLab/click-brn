@@ -68,27 +68,18 @@ struct cooperative_message_body
     struct neighbour_airtime_stats *nats_arr;
 };
 
-class CooperativeChannelStats: public BRNElement
+class CooperativeChannelStats : public BRNElement
 {
 public:
 
     HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
 
     CooperativeChannelStats();
-    virtual ~CooperativeChannelStats();
+    ~CooperativeChannelStats();
 
-    const char *class_name() const
-    {
-        return "CooperativeChannelStats";
-    }
-    const char *processing() const
-    {
-        return PUSH;
-    }
-    const char *port_count() const
-    {
-        return "1/1";
-    }
+    const char *class_name() const { return "CooperativeChannelStats"; }
+    const char *processing() const { return PUSH; }
+    const char *port_count() const { return "1/1"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     int initialize(ErrorHandler *);
