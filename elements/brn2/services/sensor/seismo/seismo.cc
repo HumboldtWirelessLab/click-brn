@@ -97,31 +97,38 @@ Seismo::run_timer(Timer *)
 {
   BRN_DEBUG("Run timer");
 
-  data_file_read();
   _data_file_timer.schedule_after_msec(_data_file_interval);
+
+  data_file_read();
+  _data_file_index++;
 }
 
 void
 Seismo::data_file_read()
 {
-  click_chatter("READ FILE");
+  BRN_DEBUG("READ FILE");
 
   String _data_file_final = _data_file + String(_data_file_index);
   String _data = file_string(_data_file_final);
   Vector<String> _data_vec;
   cp_spacevec(_data, _data_vec);
 
+  BRN_DEBUG("Vector: %d File. %s",_data_vec.size(), _data_file_final.c_str());
+  
   EtherAddress src_node_id = EtherAddress();
 
-  if ( _data_file_index == 0 )
+  if ( _data_file_index == 0 ) {
     _node_stats_tab.insert(src_node_id, new SrcInfo( 0, 0, 0, 0, 100, 4));
+    SeismoInfoBlock *sib_new = _node_stats_tab.find(src_node_id)->new_block();
+  }
 
   SrcInfo *src_i = _node_stats_tab.find(src_node_id);
+  _local_info = src_i;
   SeismoInfoBlock *sib = src_i->get_last_block();
-
-  for ( int32_t i = 0; i < _data_vec.size() * 6; i += 6) {
-
-    uint32_t t;
+   
+  for ( int32_t i = 0; i < _data_vec.size(); i += 6) {
+ 
+    uint64_t t;
     int32_t value[4];
 
     cp_integer(_data_vec[i+1],&t);
@@ -144,9 +151,10 @@ Seismo::data_file_read()
     if ( _record_data ) {
       //click_chatter("!");
       if ( (sib == NULL) || (sib->is_complete()) ) sib = src_i->new_block();
-      sib->insert(t, t, 4, value);
+      sib->insert(t, t, 4, value, false);
     }
   }
+  
 }
 
 void
@@ -436,29 +444,6 @@ write_tag_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *
       si->_tag_len = SEISMO_TAG_LENGTH_LONG;
     }
   }
-
-  return 0;
-}
-
-static int
-write_data_param(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
-{
-  Seismo *si = (Seismo*)e;
-  String s = cp_uncomment(in_s);
-  Vector<String> args;
-  cp_spacevec(s, args);
-
-  uint32_t time, x, y, z, f;
-
-  if ((args.size() < 5) ||
-      (!cp_integer(args[0], &time)) ||
-      (!cp_integer(args[1], &x)) ||
-      (!cp_integer(args[2], &y)) ||
-      (!cp_integer(args[3], &z)) ||
-      (!cp_integer(args[4], &f)))
-        return errh->error("Wrong params. Use 'time x y z f'!");
-
-  //si->add_data(time, x, y, z, f);
 
   return 0;
 }
