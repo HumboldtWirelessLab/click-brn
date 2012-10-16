@@ -29,9 +29,10 @@
 CLICK_DECLS
 
 ShamirClient::ShamirClient()
-	: _debug(false)
+    : _debug(false)
 {
-	BRNElement::init(); // what for??
+    BRNElement::init();
+    _modulus = NULL;
 }
 
 ShamirClient::~ShamirClient() {
