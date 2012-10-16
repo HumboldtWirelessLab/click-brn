@@ -284,8 +284,10 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		return;
 	}
 
-	String curr_port = HandlerCall::call_read(_dev_control_up, "switch", NULL);
-	if(curr_port == network_stack_nr) {
+	// Use one of the "dev_contol"s to checkout the state of the whole switch mechanism
+	String curr_stack_nr = HandlerCall::call_read(_dev_control_up, "switch", NULL);
+
+	if(curr_stack_nr == network_stack_nr) {
 		BRN_DEBUG("Using same dev: %s", type_str.c_str());
 		return;
 	} else {
