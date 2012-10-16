@@ -8,8 +8,8 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnelement.hh"
 
 
 CLICK_DECLS

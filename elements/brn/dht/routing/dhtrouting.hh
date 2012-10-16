@@ -3,11 +3,11 @@
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 CLICK_DECLS
 
@@ -50,7 +50,7 @@ class DHTRouting : public BRNElement
     ~DHTRouting();
 
     virtual const char *dhtrouting_name() const = 0; //const : function doesn't change the object (members).
-                                                     //virtual: späte Bindung
+                                                     //virtual: spï¿½te Bindung
 
     virtual int change_node_id(md5_byte_t *key, int keylen);
 

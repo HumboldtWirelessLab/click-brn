@@ -26,8 +26,8 @@
 #include <click/bighashmap.hh>
 #include <click/router.hh>
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
 
 #include "gateway.h"
 

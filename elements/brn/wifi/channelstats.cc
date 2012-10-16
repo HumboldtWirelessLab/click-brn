@@ -34,10 +34,10 @@
 #include <click/router.hh> 
 #endif 
 
-#include <elements/brn2/brn2.h>
+#include <elements/brn/brn2.h>
 #include <elements/wifi/bitrate.hh>
-#include <elements/brn2/wifi/brnwifi.hh>
-#include <elements/brn2/brnprotocol/brnpacketanno.hh>
+#include <elements/brn/wifi/brnwifi.hh>
+#include <elements/brn/brnprotocol/brnpacketanno.hh>
 
 #include "channelstats.hh"
 

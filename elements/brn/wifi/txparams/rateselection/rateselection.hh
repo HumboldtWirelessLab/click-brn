@@ -2,8 +2,8 @@
 #define RATESELECTION_HH
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/txparams/neighbourrateinfo.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
 
 CLICK_DECLS
 

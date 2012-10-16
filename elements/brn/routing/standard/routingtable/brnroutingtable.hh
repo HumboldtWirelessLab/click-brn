@@ -39,7 +39,7 @@
 
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 

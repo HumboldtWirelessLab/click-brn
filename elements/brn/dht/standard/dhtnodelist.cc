@@ -2,7 +2,7 @@
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 #include "dhtnode.hh"
 #include "dhtnodelist.hh"

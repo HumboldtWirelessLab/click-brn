@@ -2,8 +2,8 @@
 #define FALCON_ROUTING_PEEK_HH
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/routing_peek.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/routing_peek.hh"
 
 #include "falcon_routingtable.hh"
 CLICK_DECLS

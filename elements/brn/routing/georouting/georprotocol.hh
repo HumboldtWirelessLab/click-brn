@@ -1,13 +1,13 @@
 #ifndef GEORPROTOCOL_HH
 #define GEORPROTOCOL_HH
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
 CLICK_DECLS
 

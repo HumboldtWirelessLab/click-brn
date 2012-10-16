@@ -30,10 +30,10 @@
 #include <click/string.hh>
 
 // to generate dht packets
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"

@@ -7,7 +7,7 @@
 #include <click/timer.hh>
 #include "lzw.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include "packetcompression.hh"
 
 /**

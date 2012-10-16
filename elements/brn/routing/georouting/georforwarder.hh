@@ -1,10 +1,10 @@
 #ifndef GEORFORWARDERELEMENT_HH
 #define GEORFORWARDERELEMENT_HH
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "geortable.hh"
 #include "georprotocol.hh"
 

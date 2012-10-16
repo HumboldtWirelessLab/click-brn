@@ -3,11 +3,11 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/channelstats.hh"
-#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 
-#include "elements/brn2/wifi/txparams/neighbourrateinfo.hh"
+#include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
 #include "rateselection/rateselection.hh"
 
 CLICK_DECLS

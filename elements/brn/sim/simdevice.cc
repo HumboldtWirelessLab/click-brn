@@ -14,9 +14,9 @@
 #include <unistd.h>
 #include <click/userutils.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include <elements/wifi/bitrate.hh>
-#include <elements/brn2/wifi/brnwifi.hh>
+#include <elements/brn/wifi/brnwifi.hh>
 #include "simdevice.hh"
 
 CLICK_DECLS

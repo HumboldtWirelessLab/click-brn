@@ -28,11 +28,11 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/standard/compression/lzw.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/standard/compression/lzw.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 #include "nhopcluster.hh"
 #include "nhopclusterprotocol.hh"

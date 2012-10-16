@@ -1,11 +1,11 @@
 #ifndef GEORLINKPROBEHANDLERELEMENT_HH
 #define GEORLINKPROBEHANDLERELEMENT_HH
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 #include "geortable.hh"
 
 CLICK_DECLS

@@ -29,12 +29,12 @@
 #include <click/straccum.hh>
 #include <click/router.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brncompoundhandler.hh"
 #include <click/handlercall.hh>
 
-#include "elements/brn2/standard/compression/base64.hh"
+#include "elements/brn/standard/compression/base64.hh"
 
 CLICK_DECLS
 

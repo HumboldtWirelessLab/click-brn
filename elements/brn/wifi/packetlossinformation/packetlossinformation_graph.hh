@@ -3,7 +3,7 @@
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include "packetlossreason.hh"
 #include <click/hashtable.hh>
 #include <click/string.hh>

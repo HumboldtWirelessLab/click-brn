@@ -30,8 +30,8 @@
 #include <click/straccum.hh>
 
 #include "timestampencap.hh"
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

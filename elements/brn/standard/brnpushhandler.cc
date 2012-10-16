@@ -30,7 +30,7 @@
 #include <click/router.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brnpushhandler.hh"
 #include <click/handlercall.hh>

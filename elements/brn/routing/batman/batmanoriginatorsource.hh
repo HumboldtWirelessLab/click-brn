@@ -5,9 +5,9 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
 #include "batmanroutingtable.hh"
 

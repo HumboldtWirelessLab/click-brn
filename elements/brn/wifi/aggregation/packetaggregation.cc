@@ -1,8 +1,8 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 #include "packetaggregation.hh"
-#include "elements/brn2/wifi/brnwifi.hh"
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 CLICK_DECLS
 
 PacketAggregation::PacketAggregation()

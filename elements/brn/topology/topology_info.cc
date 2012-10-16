@@ -26,7 +26,7 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "topology_info.hh"
 

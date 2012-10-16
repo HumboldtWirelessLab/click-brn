@@ -3,7 +3,7 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 #include "batmanprotocol.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 
 CLICK_DECLS
 

@@ -27,12 +27,12 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/routing/batman/batmanprotocol.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/routing/identity/brn2_device.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/routing/batman/batmanprotocol.hh"
+#include "elements/brn/brn2.h"
 
 
 CLICK_DECLS

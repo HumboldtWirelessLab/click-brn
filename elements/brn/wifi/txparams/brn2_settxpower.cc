@@ -27,7 +27,7 @@
 #include <click/userutils.hh>
 #include <unistd.h>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "brn2_settxpower.hh"
 CLICK_DECLS
 

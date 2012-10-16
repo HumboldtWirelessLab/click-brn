@@ -25,8 +25,8 @@
 #include <click/vector.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 #include "brn2_device.hh"
 

@@ -24,8 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
 #include "brniappencap.hh"
 #include "brniapprouteupdatehandler.hh"
 

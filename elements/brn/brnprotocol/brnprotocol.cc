@@ -4,7 +4,7 @@
 #include <click/packet_anno.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 #include "brnprotocol.hh"
 

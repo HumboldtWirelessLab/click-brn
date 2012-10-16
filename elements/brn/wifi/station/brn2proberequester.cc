@@ -28,7 +28,7 @@
 #include <click/packet_anno.hh>
 #include <click/error.hh>
 #include "brn2proberequester.hh"
-#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 #include <elements/wifi/wirelessinfo.hh>
 CLICK_DECLS
 

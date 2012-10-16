@@ -27,9 +27,9 @@
 #include <click/etheraddress.hh>
 #include <click/ipaddress.hh>
 
-#include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn/vlan/brn2vlantable.hh"
 #include "../dhcp/dhcpsubnetlist.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
 
 CLICK_DECLS
 

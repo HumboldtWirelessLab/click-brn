@@ -21,8 +21,8 @@
 #ifndef CLICK_ATH2DECAP_HH
 #define CLICK_ATH2DECAP_HH
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/channelstats.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/channelstats.hh"
 CLICK_DECLS
 
 /*

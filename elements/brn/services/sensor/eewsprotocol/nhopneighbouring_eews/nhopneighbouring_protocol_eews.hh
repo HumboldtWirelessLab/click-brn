@@ -23,9 +23,9 @@
 #ifndef NHOPNEIGHBOURING_PROTOCOL_EEWS_HH
 #define NHOPNEIGHBOURING_PROTOCOL_EEWS_HH
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
-#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
+#include "elements/brn/services/sensor/eewsprotocol/eewsstate.hh"
 
 #include <click/element.hh>
 

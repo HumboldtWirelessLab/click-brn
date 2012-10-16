@@ -25,8 +25,8 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "seismo_reporting.hh"
 #include "seismodetection_longshortavg.hh"

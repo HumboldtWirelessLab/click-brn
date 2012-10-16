@@ -30,7 +30,7 @@
 #include <click/router.hh>
 
 #include "brnlogger.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 

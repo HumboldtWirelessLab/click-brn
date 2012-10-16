@@ -14,7 +14,7 @@
 #include <netinet/tcp.h>
 #include <fcntl.h>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "guiconnector.hh"
 
 CLICK_DECLS

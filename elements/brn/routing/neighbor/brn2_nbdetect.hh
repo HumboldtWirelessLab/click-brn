@@ -25,8 +25,8 @@
 #include <click/etheraddress.hh>
 #include <click/bighashmap.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include <elements/brn2/routing/neighbor/brn2_nblist.hh>
+#include "elements/brn/brnelement.hh"
+#include <elements/brn/routing/neighbor/brn2_nblist.hh>
 
 CLICK_DECLS
 /*

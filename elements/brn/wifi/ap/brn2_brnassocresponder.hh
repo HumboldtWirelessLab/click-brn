@@ -32,7 +32,7 @@
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
 #include "../../routing/identity/brn2_device.hh"
-#include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn/vlan/brn2vlantable.hh"
 
 CLICK_DECLS
 

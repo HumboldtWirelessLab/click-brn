@@ -23,7 +23,7 @@
 
 #include <click/etheraddress.hh>
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "brn2_dsrprotocol.hh"
 

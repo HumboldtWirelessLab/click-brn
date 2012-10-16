@@ -29,7 +29,7 @@
 #include <click/straccum.hh>
 #include <click/router.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "signal.hh"
 

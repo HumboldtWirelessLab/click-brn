@@ -13,14 +13,14 @@
 #endif
 
 #include "elements/analysis/timesortedsched.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/wifi/channelstats.hh"
-#include "elements/brn2/wifi/collisioninfo.hh"
-#include "elements/brn2/wifi/hiddennodedetection.hh"
-#include "elements/brn2/wifi/cooperativechannelstats.hh"
-#include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
-#include "elements/brn2/wifi/packetlossestimationhelper/statscircularbuffer.hh"
-#include "elements/brn2/wifi/packetlossestimationhelper/packetparameter.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/collisioninfo.hh"
+#include "elements/brn/wifi/hiddennodedetection.hh"
+#include "elements/brn/wifi/cooperativechannelstats.hh"
+#include "elements/brn/wifi/packetlossinformation/packetlossinformation.hh"
+#include "elements/brn/wifi/packetlossestimationhelper/statscircularbuffer.hh"
+#include "elements/brn/wifi/packetlossestimationhelper/packetparameter.hh"
 
 CLICK_DECLS
 

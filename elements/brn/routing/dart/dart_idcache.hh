@@ -5,7 +5,7 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
 
 CLICK_DECLS
 

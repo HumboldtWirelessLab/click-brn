@@ -7,7 +7,7 @@
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
 
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 #include "settxrates.hh"
 

@@ -24,8 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
-#include <elements/brn2/ethernet/reversearptable.hh>
-#include <elements/brn2/brnelement.hh>
+#include <elements/brn/ethernet/reversearptable.hh>
+#include <elements/brn/brnelement.hh>
 
 CLICK_DECLS
 

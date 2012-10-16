@@ -25,8 +25,8 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
 /*

@@ -7,7 +7,7 @@
 #include <click/timer.hh>
 #include "lzw.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 /**
   TODO: - result of push and put (packet) in push-function is not considered. Change this !!!

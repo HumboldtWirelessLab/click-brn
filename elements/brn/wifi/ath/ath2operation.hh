@@ -6,8 +6,8 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
 
 #include "ath2_desc.h"
 

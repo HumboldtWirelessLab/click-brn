@@ -1,8 +1,8 @@
 #ifndef CLICK_LOADBALANCER_HH
 #define CLICK_LOADBALANCER_HH
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn2/hotspot/loadbalancing/brn2_lb_rerouting.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/hotspot/loadbalancing/brn2_lb_rerouting.hh"
 
 CLICK_DECLS
 

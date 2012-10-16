@@ -26,8 +26,8 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
 
 #include "brnroutingtable.hh"
 

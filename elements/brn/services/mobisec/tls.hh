@@ -17,7 +17,7 @@
 #include <click/packet.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>

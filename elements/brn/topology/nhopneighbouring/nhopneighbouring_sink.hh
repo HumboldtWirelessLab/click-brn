@@ -26,8 +26,8 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "nhopneighbouring_info.hh"
 
 CLICK_DECLS

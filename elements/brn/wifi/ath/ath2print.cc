@@ -29,7 +29,7 @@
 #include <click/packet_anno.hh>
 #include <elements/wifi/athdesc.h>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "ath2print.hh"
 #include "ath2_desc.h"

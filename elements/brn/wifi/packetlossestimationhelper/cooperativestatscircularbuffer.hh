@@ -16,9 +16,9 @@
     #include <click/router.hh>
 #endif
 #include <click/hashmap.hh>
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/channelstats.hh"
-#include "elements/brn2/wifi/packetlossestimationhelper/nodechannelstats.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/packetlossestimationhelper/nodechannelstats.hh"
 
 CLICK_DECLS
 

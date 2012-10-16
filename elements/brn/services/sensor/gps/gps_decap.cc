@@ -24,8 +24,8 @@
 
 #include <click/config.h>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "gps_info.hh"
 #include "gps_decap.hh"

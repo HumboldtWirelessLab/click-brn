@@ -24,9 +24,9 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
-#include <elements/brn2/brn2.h>
-#include "elements/brn2/wifi/brnwifi.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
+#include <elements/brn/brn2.h>
+#include "elements/brn/wifi/brnwifi.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
 

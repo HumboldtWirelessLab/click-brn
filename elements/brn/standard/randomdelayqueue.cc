@@ -13,8 +13,8 @@
 #include <click/timer.hh>
 
 #include "randomdelayqueue.hh"
-#include "elements/brn2/brnconf.h"
-#include "elements/brn2/standard/packetsendbuffer.hh"
+#include "elements/brn/brnconf.h"
+#include "elements/brn/standard/packetsendbuffer.hh"
 
 CLICK_DECLS
 

@@ -23,11 +23,11 @@
 #include <click/confparse.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/routing/dart/dart_functions.hh"
+#include "elements/brn/dht/routing/dart/dart_functions.hh"
 
 #include "dart_protocol.hh"
 #include "dart_routequerier.hh"

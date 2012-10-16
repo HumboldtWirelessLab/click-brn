@@ -1,8 +1,8 @@
 #ifndef DHT_OPERATION_HANDLER_HH
 #define DHT_OPERATION_HANDLER_HH
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/db/db.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/db/db.hh"
 
 CLICK_DECLS
 

@@ -23,8 +23,8 @@
 
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
 

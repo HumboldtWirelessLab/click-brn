@@ -31,9 +31,9 @@
 #include <click/error.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 
-#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 #include "brn2_beaconsource.hh"
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"

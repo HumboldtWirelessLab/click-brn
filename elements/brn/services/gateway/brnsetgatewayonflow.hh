@@ -26,8 +26,8 @@
 #include <click/etheraddress.hh>
 
 #include <elements/analysis/aggregatenotifier.hh>
-#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
-#include <elements/brn2/brnelement.hh>
+#include "elements/brn/routing/standard/routemaintenance/routemaintenance.hh"
+#include <elements/brn/brnelement.hh>
 
 #include "brnpacketbuffertrigger.hh"
 

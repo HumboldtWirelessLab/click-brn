@@ -27,10 +27,10 @@
 #include <click/bighashmap.hh>
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/standard/routingtable/brnroutingtable.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/standard/routingtable/brnroutingtable.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 /*

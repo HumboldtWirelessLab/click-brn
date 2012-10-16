@@ -25,8 +25,8 @@
 #include <clicknet/llc.h>
 
 #include "brnradiotapencap.hh"
-#include "elements/brn2/wifi/brnwifi.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/wifi/brnwifi.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 #include "brnradiotap.h"
 

@@ -7,8 +7,8 @@
 #include <click/bighashmap.hh>
 #include <click/hashmap.hh>
 
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
 
 CLICK_DECLS
 

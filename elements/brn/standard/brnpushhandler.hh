@@ -22,7 +22,7 @@
 #define BRNPUSHHANDLER_HH_
 
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 
 CLICK_DECLS

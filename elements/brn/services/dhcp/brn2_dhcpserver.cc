@@ -33,12 +33,12 @@
 #include <click/straccum.hh>
 #include <click/string.hh>
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/storage/rangequery/ip_rangequery.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/rangequery/ip_rangequery.hh"
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 #include "dhcpprotocol.hh"
 #include "brn2_dhcpserver.hh"

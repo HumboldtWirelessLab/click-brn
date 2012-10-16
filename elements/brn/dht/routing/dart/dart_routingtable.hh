@@ -2,8 +2,8 @@
 #define CLICK_DART_ROUTINGTABLE_HH
 #include <click/timer.hh>
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
 
 CLICK_DECLS
 

@@ -21,7 +21,7 @@
 #ifndef GPSPRINTELEMENT_HH
 #define GPSPRINTELEMENT_HH
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "gps_info.hh"
 

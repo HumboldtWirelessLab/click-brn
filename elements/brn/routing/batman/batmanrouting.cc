@@ -27,9 +27,9 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brn2.h"
 #include "batmanroutingtable.hh"
 #include "batmanprotocol.hh"
 

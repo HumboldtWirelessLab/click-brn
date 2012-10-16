@@ -23,8 +23,8 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/brn2.h"
 
 #include "seismo_reporting.hh"
 

@@ -3,7 +3,7 @@
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 
@@ -15,7 +15,7 @@ class Clustering : public BRNElement
     ~Clustering();
 
     virtual const char *clustering_name() const = 0; //const : function doesn't change the object (members).
-                                                     //virtual: späte Bindung
+                                                     //virtual: spï¿½te Bindung
     void init();
     virtual void add_handlers();
 

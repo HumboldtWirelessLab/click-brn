@@ -3,11 +3,11 @@
 #include <click/element.hh>
 #include <click/glue.hh>
 #include <clicknet/wifi.h>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include <click/string.hh>
 #include <click/hashtable.hh>
 #include <click/etheraddress.hh>
-#include <elements/brn2/wifi/packetlossinformation/packetlossinformation.hh>
+#include <elements/brn/wifi/packetlossinformation/packetlossinformation.hh>
 
 CLICK_DECLS
 

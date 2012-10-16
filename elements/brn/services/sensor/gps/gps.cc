@@ -32,7 +32,7 @@
 #include <click/router.hh>
 #endif
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "gps.hh"
 

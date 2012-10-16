@@ -25,13 +25,13 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
-#include "elements/brn2/vlan/brn2vlantable.hh"
-#include "elements/brn2/services/dhcp/dhcp.h"
-#include "elements/brn2/services/dhcp/dhcpsubnetlist.hh"
+#include "elements/brn/vlan/brn2vlantable.hh"
+#include "elements/brn/services/dhcp/dhcp.h"
+#include "elements/brn/services/dhcp/dhcpsubnetlist.hh"
 
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
 
 #define MODE_WRITE  0
 #define MODE_READ   1

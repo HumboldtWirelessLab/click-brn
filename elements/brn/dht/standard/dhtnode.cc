@@ -4,7 +4,7 @@
 
 #include "dhtnode.hh"
 
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 CLICK_DECLS
 DHTnode::DHTnode():

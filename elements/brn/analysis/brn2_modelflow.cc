@@ -10,8 +10,8 @@
 #include <click/timer.hh>
 #include <click/packet.hh>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
 

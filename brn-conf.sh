@@ -37,8 +37,8 @@ if [ "x$SYSTEMMAP" = "x" ]; then
   fi
 fi
 
-#CONFOPTION="--enable-wifi --enable-brn --enable-brn2 --enable-dhcp --enable-analysis"
-CONFOPTION="--enable-wifi --enable-brn2 --enable-analysis"
+#CONFOPTION="--enable-wifi --enable-brn --enable-dhcp --enable-analysis"
+CONFOPTION="--enable-wifi --enable-brn --enable-analysis"
 #CONFOPTION="--enable-wifi --enable-analysis"
 
 if [ "x$TARGET" = "xmips" ];then

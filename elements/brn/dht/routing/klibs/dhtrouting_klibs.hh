@@ -2,13 +2,13 @@
 #define CLICK_DHTROUTING_KLIBS_HH
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
-#include "elements/brn2/dht/routing/dhtrouting.hh"
-//#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
+//#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 

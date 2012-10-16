@@ -32,8 +32,8 @@
 #include <click/straccum.hh>
 #include "brn2_genericmetric.hh"
 #include "brn2_brnetxmetric.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

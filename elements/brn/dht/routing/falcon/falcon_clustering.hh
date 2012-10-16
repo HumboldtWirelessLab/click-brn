@@ -2,8 +2,8 @@
 #define FALCON_CLUSTERING_HH
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/cluster/clustering.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/cluster/clustering.hh"
 
 #include "falcon_routingtable.hh"
 CLICK_DECLS

@@ -32,9 +32,9 @@
 #include <click/timer.hh>
 #include "brn2_arp.hh"
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/storage/rangequery/ip_rangequery.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/rangequery/ip_rangequery.hh"
 
 CLICK_DECLS
 

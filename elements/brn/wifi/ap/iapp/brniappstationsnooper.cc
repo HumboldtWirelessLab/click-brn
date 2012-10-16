@@ -28,10 +28,10 @@
 #include <click/straccum.hh>
 #include <clicknet/wifi.h>
 
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brniapphellohandler.hh"
 #include "brniappstationtracker.hh"

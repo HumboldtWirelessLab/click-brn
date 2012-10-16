@@ -17,10 +17,10 @@
 #include <click/hashmap.hh>
 #include <click/element.hh>
 #include <click/vector.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 #include "packetparameter.hh"
 #include "packetlossstatistics.hh"
-#include "elements/brn2/wifi/packetlossinformation/packetlossinformation.hh"
+#include "elements/brn/wifi/packetlossinformation/packetlossinformation.hh"
 
 CLICK_DECLS
 

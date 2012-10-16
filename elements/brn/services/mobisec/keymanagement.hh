@@ -14,7 +14,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 typedef unsigned char data_t;
 

@@ -24,9 +24,9 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
-#include "elements/brn2/dht/routing/falcon/dhtrouting_falcon.hh"
+#include "elements/brn/dht/routing/falcon/dhtrouting_falcon.hh"
 #include "hawk_routingtable.hh"
 
 CLICK_DECLS

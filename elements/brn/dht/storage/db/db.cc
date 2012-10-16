@@ -7,7 +7,7 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "db.hh"
 

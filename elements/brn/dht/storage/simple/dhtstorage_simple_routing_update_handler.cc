@@ -8,11 +8,11 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
-#include "elements/brn2/dht/storage/db/db.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/storage/db/db.hh"
 
 #include "dhtprotocol_storagesimple.hh"
 #include "dhtstorage_simple_routing_update_handler.hh"

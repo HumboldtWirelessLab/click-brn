@@ -7,9 +7,9 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #include "dhtprotocol_falcon.hh"
 #include "falcon_routing_classifier.hh"
