@@ -39,10 +39,10 @@
 #include "brn2beaconscanner.hh"
 #include "brn2_infrastructureclient.hh"
 
-#include "elements/brn2/wifi/station/brn2assocrequester.hh"
-#include "elements/brn2/wifi/availablechannels.hh"
-#include "elements/brn2/wifi/ath/ath2operation.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/station/brn2assocrequester.hh"
+#include "elements/brn/wifi/availablechannels.hh"
+#include "elements/brn/wifi/ath/ath2operation.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

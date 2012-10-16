@@ -10,7 +10,7 @@
 #include <unistd.h>
 
 #include "elements/wifi/athdesc.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 #include "ath2operation.hh"
 

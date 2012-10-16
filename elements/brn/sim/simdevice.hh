@@ -5,7 +5,7 @@
 #include <click/task.hh>
 #include <click/notifier.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #define NO_NON_HT_RATES (4 + 8)
 #define NO_HT_RATES (16 * 2 * 2)

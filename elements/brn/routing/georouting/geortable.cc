@@ -28,7 +28,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "geortable.hh"
 

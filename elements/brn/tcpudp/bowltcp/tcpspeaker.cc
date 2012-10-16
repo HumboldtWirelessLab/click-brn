@@ -12,7 +12,7 @@
 #include <clicknet/ip.h>
 #include <clicknet/tcp.h>
 
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 
 #include "tcpspeaker.hh"
 #include "tcpip.h"

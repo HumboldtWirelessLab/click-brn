@@ -15,8 +15,8 @@
 #include <click/confparse.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/standard/suppressor.hh"
 #include "elements/wifi/wepencap.hh"
 #include "elements/wifi/wepdecap.hh"

@@ -9,10 +9,10 @@
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 */
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
-#include "elements/brn2/dht/routing/dhtrouting.hh"
-#include "elements/brn2/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
 
 CLICK_DECLS
 

@@ -23,7 +23,7 @@
 
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
-#include "elements/brn2/routing/neighbor/brn2_nblist.hh"
+#include "elements/brn/routing/neighbor/brn2_nblist.hh"
 
 /*
  * =c

@@ -25,10 +25,10 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/routing/dart/dart_routingtable.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/routing/dart/dart_routingtable.hh"
 
 CLICK_DECLS
 

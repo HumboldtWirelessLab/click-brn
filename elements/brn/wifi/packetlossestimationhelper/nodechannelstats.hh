@@ -16,8 +16,8 @@
 #if CLICK_NS
     #include <click/router.hh>
 #endif
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/channelstats.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/channelstats.hh"
 
 #define ENDIANESS_TEST 0x1234;
 

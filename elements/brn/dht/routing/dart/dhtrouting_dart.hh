@@ -2,10 +2,10 @@
 #define CLICK_DHTROUTING_DART_HH
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/brn_md5.hh"
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
-#include "elements/brn2/dht/routing/dhtrouting.hh"
+#include "elements/brn/standard/brn_md5.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
 
 #include "dart_routingtable.hh"
 

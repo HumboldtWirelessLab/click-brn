@@ -5,9 +5,9 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 
-#include "elements/brn2/dht/routing/falcon/falcon_linkprobe_handler.hh"
-#include "elements/brn2/dht/routing/falcon/falcon_successor_maintenance.hh"
-#include "elements/brn2/dht/routing/falcon/falcon_routingtable_maintenance.hh"
+#include "elements/brn/dht/routing/falcon/falcon_linkprobe_handler.hh"
+#include "elements/brn/dht/routing/falcon/falcon_successor_maintenance.hh"
+#include "elements/brn/dht/routing/falcon/falcon_routingtable_maintenance.hh"
 
 #include "hawk_routingtable.hh"
 

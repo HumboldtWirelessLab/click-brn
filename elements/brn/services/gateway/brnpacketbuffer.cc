@@ -23,7 +23,7 @@
 #include <click/timer.hh>
 #include <click/confparse.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brnsetgatewayonflow.hh"
 #include "brnpacketbuffer.hh"

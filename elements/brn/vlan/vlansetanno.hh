@@ -2,7 +2,7 @@
 #define BRNVLANSETANNO_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
-#include "elements/brn2/vlan/brn2vlantable.hh"
+#include "elements/brn/vlan/brn2vlantable.hh"
 
 CLICK_DECLS
 

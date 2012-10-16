@@ -22,15 +22,15 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/routing/dart/dart_routingtable.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/routing/dart/dart_routingtable.hh"
 
 #include "dart_protocol.hh"
 #include "dart_idstore.hh"

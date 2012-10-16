@@ -21,10 +21,10 @@
 #ifndef SEISMO_ELEMENT_HH
 #define SEISMO_ELEMENT_HH
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/brn2.h"
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
 CLICK_DECLS
 

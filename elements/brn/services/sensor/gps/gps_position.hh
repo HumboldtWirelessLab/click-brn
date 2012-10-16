@@ -8,8 +8,8 @@
 #include <click/timestamp.hh>
 
 
-#include <elements/brn2/standard/vector/vector3d.hh>
-#include <elements/brn2/standard/fixpointnumber.hh>
+#include <elements/brn/standard/vector/vector3d.hh>
+#include <elements/brn/standard/fixpointnumber.hh>
 
 CLICK_DECLS
 

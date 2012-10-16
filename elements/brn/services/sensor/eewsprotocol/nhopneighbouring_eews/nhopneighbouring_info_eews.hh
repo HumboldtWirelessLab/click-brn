@@ -6,13 +6,13 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
-#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
+#include "elements/brn/services/sensor/eewsprotocol/eewsstate.hh"
 
 #define DEFAULT_HOP_LIMIT       5
 

@@ -5,10 +5,10 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include <elements/brn2/brn2.h>
-#include <elements/brn2/version.h>
-#include <elements/brn2/standard/brnaddressinfo.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include <elements/brn/brn2.h>
+#include <elements/brn/version.h>
+#include <elements/brn/standard/brnaddressinfo.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

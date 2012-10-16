@@ -3,7 +3,7 @@
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 
@@ -35,7 +35,7 @@ class RoutingPeek : public BRNElement
     void init();
 
     virtual const char *routing_name() const = 0; //const : function doesn't change the object (members).
-                                                  //virtual: späte Bindung
+                                                  //virtual: spï¿½te Bindung
 
 
     int add_routing_peek(bool (*peek_func)(void*, Packet*, EtherAddress *, EtherAddress *, int), void *peek_obj, int brn_port)

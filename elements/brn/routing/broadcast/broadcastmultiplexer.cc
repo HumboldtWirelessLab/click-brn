@@ -29,7 +29,7 @@
 #include <click/straccum.hh>
 
 #include "broadcastmultiplexer.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

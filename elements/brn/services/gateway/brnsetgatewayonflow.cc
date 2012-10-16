@@ -38,10 +38,10 @@
 #include <elements/ethernet/arptable.hh>
 
 // used BRN elements
-#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brn2.h"
+#include <elements/brn/routing/linkstat/brn2_brnlinktable.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brn2.h"
 
 #include "brnsetgatewayonflow.hh"
 #include "brngateway.hh"

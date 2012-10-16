@@ -21,9 +21,9 @@
 #include <click/etheraddress.hh>
 #include <click/straccum.hh>
 
-#include "elements/brn2/standard/brn_md5.hh"
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
+#include "elements/brn/standard/brn_md5.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
 #include "dart_functions.hh"
 
 CLICK_DECLS

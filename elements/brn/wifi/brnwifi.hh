@@ -4,7 +4,7 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 
 CLICK_DECLS
 

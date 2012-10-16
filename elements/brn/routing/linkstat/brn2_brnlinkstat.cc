@@ -30,9 +30,9 @@
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_brnlinkstat.hh"
 

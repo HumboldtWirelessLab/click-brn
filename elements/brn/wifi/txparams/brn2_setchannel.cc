@@ -6,7 +6,7 @@
 #include <click/userutils.hh>
 #include <unistd.h>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "brn2_setchannel.hh"
 
 CLICK_DECLS

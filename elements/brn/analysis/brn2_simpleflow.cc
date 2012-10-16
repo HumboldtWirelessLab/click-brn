@@ -9,9 +9,9 @@
 #include <click/timer.hh>
 #include <click/packet.hh>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_simpleflow.hh"
 

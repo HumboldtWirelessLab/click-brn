@@ -32,8 +32,8 @@
 #include <click/router.hh>
 #endif
 
-#include "elements/brn2/standard/vector/vector3d.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/vector/vector3d.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "boid.hh"
 

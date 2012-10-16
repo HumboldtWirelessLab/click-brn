@@ -3,8 +3,8 @@
 #include <click/vector.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 #define DB_INT 0
 #define DB_ARRAY 1

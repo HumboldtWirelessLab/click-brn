@@ -20,9 +20,9 @@
 #include <click/config.h>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_detection_protocol.hh"
 
 CLICK_DECLS

@@ -7,7 +7,7 @@
 #include <clicknet/ether.h>
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 

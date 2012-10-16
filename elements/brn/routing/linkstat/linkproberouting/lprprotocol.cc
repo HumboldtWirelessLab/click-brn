@@ -3,8 +3,8 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 #include "lprprotocol.hh"
-#include "elements/brn2/standard/bitfield/bitfield.hh"
-#include "elements/brn2/standard/compression/lzw.hh"
+#include "elements/brn/standard/bitfield/bitfield.hh"
+#include "elements/brn/standard/compression/lzw.hh"
 
 CLICK_DECLS
 

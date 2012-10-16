@@ -24,10 +24,10 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/routing/falcon/falcon_routingtable.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/routing/falcon/falcon_routingtable.hh"
 
 #include "hawk_routingtable.hh"
 #include "hawk_routequerier.hh"

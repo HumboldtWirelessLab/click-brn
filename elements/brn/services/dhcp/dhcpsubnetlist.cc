@@ -8,7 +8,7 @@
 #include "dhcpsubnetlist.hh"
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

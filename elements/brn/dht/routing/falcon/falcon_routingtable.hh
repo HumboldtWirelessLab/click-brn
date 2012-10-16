@@ -26,10 +26,10 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 

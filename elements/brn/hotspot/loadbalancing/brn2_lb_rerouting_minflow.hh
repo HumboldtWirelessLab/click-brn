@@ -24,7 +24,7 @@
 #define LB_REROUTING_MINFLOW_HH
 
 #include <click/element.hh>
-#include "elements/brn2/hotspot/loadbalancing/brn2_lb_rerouting.hh"
+#include "elements/brn/hotspot/loadbalancing/brn2_lb_rerouting.hh"
 
 CLICK_DECLS
 

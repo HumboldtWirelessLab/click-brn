@@ -23,11 +23,11 @@
 #include <click/confparse.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
 
 #include "hawk_protocol.hh"
 #include "hawk_routequerier.hh"

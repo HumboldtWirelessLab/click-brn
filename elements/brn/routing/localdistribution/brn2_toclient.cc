@@ -27,8 +27,8 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
 #include "brn2_toclient.hh"
 
 CLICK_DECLS

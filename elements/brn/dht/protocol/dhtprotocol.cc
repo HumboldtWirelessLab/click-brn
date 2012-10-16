@@ -23,8 +23,8 @@
 #include <click/element.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "dhtprotocol.hh"
 
 CLICK_DECLS

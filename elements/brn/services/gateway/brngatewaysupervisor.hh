@@ -23,7 +23,7 @@
 
 //#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
-#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
+#include <elements/brn/routing/linkstat/brn2_brnlinktable.hh>
 
 CLICK_DECLS
 

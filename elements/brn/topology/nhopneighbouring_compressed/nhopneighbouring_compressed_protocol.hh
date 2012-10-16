@@ -25,7 +25,7 @@
 
 #include <click/element.hh>
 
-#include "elements/brn2/topology/nhopneighbouring/nhopneighbouring_info.hh"
+#include "elements/brn/topology/nhopneighbouring/nhopneighbouring_info.hh"
 
 CLICK_DECLS
 

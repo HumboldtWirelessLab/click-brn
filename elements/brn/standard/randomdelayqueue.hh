@@ -2,7 +2,7 @@
 #define RANDOMDELAYQUEUE_HH
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/packetsendbuffer.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
 
 CLICK_DECLS
 

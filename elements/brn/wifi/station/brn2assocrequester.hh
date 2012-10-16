@@ -24,7 +24,7 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 
 // Why are the click guys not able to deliver proper headers?
 CLICK_DECLS

@@ -12,11 +12,11 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/brn_md5.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
+#include "elements/brn/standard/brn_md5.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #include "dhtrouting_dart.hh"
 #include "dhtprotocol_dart.hh"

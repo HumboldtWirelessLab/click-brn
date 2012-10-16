@@ -1,7 +1,7 @@
 #ifndef GEORQUERIERELEMENT_HH
 #define GEORQUERIERELEMENT_HH
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include <click/etheraddress.hh>
 #include <click/vector.hh>

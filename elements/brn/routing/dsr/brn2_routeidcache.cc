@@ -29,9 +29,9 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/routing/dsr/brn2_routeidcache.hh"
+#include "elements/brn/routing/dsr/brn2_routeidcache.hh"
 
 CLICK_DECLS
 

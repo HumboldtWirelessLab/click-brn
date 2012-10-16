@@ -4,7 +4,7 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 
 CLICK_DECLS
 

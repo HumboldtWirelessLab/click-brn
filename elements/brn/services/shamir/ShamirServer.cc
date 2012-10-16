@@ -14,11 +14,11 @@
 
 #include <iostream>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "ShamirServer.hh"
 #include "Shamir.hh"

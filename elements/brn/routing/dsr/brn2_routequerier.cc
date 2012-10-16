@@ -28,10 +28,10 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 
-#include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "brn2_routequerier.hh"
 
 CLICK_DECLS

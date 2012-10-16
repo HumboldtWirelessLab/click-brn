@@ -5,7 +5,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "flowcontrolinfo.hh"
 

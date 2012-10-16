@@ -30,10 +30,10 @@
 #include "../brn2_wirelessinfolist.hh"
 #include "../../brnprotocol/brnpacketanno.hh"
 
-#include "elements/brn2/wifi/brnavailablerates.hh"
-#include "elements/brn2/vlan/brn2vlantable.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/vlan/brn2vlantable.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
 
 #include "brn2_brnassocresponder.hh"
 

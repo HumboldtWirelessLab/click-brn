@@ -10,7 +10,7 @@
 
 #include <elements/wifi/availablerates.hh>
 
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 #include "rateselection.hh"
 #include "brn_autoratefallback.hh"
 

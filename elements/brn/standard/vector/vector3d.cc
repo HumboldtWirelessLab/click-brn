@@ -1,12 +1,12 @@
 #include <click/config.h>
 
 #if CLICK_LINUXMODULE || CLICK_BSDMODULE
-#include "elements/brn2/standard/fixpointnumber.hh"
+#include "elements/brn/standard/fixpointnumber.hh"
 #else //Userspace
 #include "math.h"
 #endif
 
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 #include "vector3d.hh"
 
 CLICK_DECLS

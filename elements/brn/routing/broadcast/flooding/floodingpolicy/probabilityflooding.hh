@@ -2,7 +2,7 @@
 #define PROBABILITYFLOODING_HH
 #include <click/timer.hh>
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "floodingpolicy.hh"
 
 CLICK_DECLS

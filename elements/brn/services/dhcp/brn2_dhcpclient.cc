@@ -32,7 +32,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "brn2_dhcpclient.hh"
 #include "dhcpprotocol.hh"
 

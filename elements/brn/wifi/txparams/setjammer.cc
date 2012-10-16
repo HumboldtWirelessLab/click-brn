@@ -16,7 +16,7 @@
 #include <click/router.hh>
 #endif
 
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 #include "setjammer.hh"
 
 CLICK_DECLS

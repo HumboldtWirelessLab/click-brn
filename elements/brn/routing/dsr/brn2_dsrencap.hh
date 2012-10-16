@@ -24,8 +24,8 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "brn2_routequerier.hh"
 #include "brn2_dsrprotocol.hh"
 

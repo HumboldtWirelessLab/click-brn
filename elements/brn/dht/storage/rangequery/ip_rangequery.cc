@@ -4,8 +4,8 @@
 #include <click/error.hh>
 #include <click/straccum.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
 #include "ip_rangequery.hh"
 

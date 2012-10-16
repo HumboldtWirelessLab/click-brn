@@ -73,11 +73,11 @@ rate for each host.  Defaults to 10,000 (10 seconds).
 #include <click/timer.hh>
 #include <click/string.hh>
 #include <click/timestamp.hh>
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/brnavailablerates.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-#include "elements/brn2/routing/identity/brn2_device.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
+#include "elements/brn/brn2.h"
 
 #include "metric/brn2_genericmetric.hh"
 

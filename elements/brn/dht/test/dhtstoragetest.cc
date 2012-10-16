@@ -8,10 +8,10 @@
 #include <click/timer.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
 #include "dhtstoragetest.hh"
 
 CLICK_DECLS

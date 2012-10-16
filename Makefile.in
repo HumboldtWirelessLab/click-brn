@@ -181,10 +181,10 @@ stamp-h: $(srcdir)/config.h.in $(srcdir)/config-bsdmodule.h.in $(srcdir)/config-
 	echo > stamp-h
 
 brn-version:
-	@echo "#ifndef BRN_GIT_VERSION" > $(srcdir)/elements/brn2/version.h
-	@git show | head -n 1 | sed 's/commit /#define BRN_GIT_VERSION "/g' | tr '\n' '"' >> $(srcdir)/elements/brn2/version.h
-	@echo "" >> $(srcdir)/elements/brn2/version.h
-	@echo "#endif" >> $(srcdir)/elements/brn2/version.h
+	@echo "#ifndef BRN_GIT_VERSION" > $(srcdir)/elements/brn/version.h
+	@git show | head -n 1 | sed 's/commit /#define BRN_GIT_VERSION "/g' | tr '\n' '"' >> $(srcdir)/elements/brn/version.h
+	@echo "" >> $(srcdir)/elements/brn/version.h
+	@echo "#endif" >> $(srcdir)/elements/brn/version.h
 
 check-filenames:
 	@a=`find . \( -name \*.cc -or -name \*.c \) -print | sed 's/.*\/\(.*\)\.c*$$/\1.o/' | grep -v 'elements\.o' | sort | uniq -d`; \

@@ -5,7 +5,7 @@
 #include <click/router.hh>
 #include <click/handlercall.hh>
 #include <click/variableenv.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

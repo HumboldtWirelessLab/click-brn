@@ -22,7 +22,7 @@
 #define BRNSETGATEWAY_HH
 
 #include <click/bighashmap.hh>
-#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
+#include "elements/brn/routing/standard/routemaintenance/routemaintenance.hh"
 
 #include "brngateway.hh"
 CLICK_DECLS

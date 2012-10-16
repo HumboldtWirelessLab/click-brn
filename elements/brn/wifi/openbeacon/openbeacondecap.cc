@@ -3,9 +3,9 @@
 #include <clicknet/wifi.h>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
-#include <elements/brn2/wifi/brnwifi.hh>
-#include <elements/brn2/brnprotocol/brnpacketanno.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include <elements/brn/wifi/brnwifi.hh>
+#include <elements/brn/brnprotocol/brnpacketanno.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "openbeacondecap.hh"
 #include "openbeacon_comunication.h"

@@ -26,7 +26,7 @@
 #include "setetheraddr.hh"
 #include <click/confparse.hh>
 #include <click/error.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 

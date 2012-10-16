@@ -9,12 +9,12 @@
 #include <click/bighashmap.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/dht/routing/dhtrouting.hh"
-#include "elements/brn2/dht/storage/dhtstorage.hh"
-#include "elements/brn2/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/routing/dhtrouting.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
 
-#include "elements/brn2/dht/storage/db/db.hh"
-#include "elements/brn2/dht/storage/db/dhtoperationhandler.hh"
+#include "elements/brn/dht/storage/db/db.hh"
+#include "elements/brn/dht/storage/db/dhtoperationhandler.hh"
 
 #include "dhtstorage_key_cache.hh"
 

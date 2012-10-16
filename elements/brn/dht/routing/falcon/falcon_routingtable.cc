@@ -26,11 +26,11 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/standard/dhtnodelist.hh"
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/standard/dhtnodelist.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "falcon_functions.hh"
 #include "falcon_routingtable.hh"
 

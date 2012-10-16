@@ -21,7 +21,7 @@
 #ifndef GPSDECAPELEMENT_HH
 #define GPSDECAPELEMENT_HH
 #include <click/element.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "gps_info.hh"
 

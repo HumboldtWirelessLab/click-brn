@@ -29,9 +29,9 @@
 #include <click/straccum.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brniapprotocol.hh"
 #include "brniappdatahandler.hh"

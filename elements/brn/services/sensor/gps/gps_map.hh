@@ -5,8 +5,8 @@
 #include <click/etheraddress.hh>
 #include <click/hashmap.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/standard/vector/vector3d.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/vector/vector3d.hh"
 
 #include "gps_position.hh"
 

@@ -25,9 +25,9 @@
 #include <click/hashmap.hh>
 #include <click/bighashmap.hh>
 
-#include "elements/brn2/standard/compression/lzw.hh"
+#include "elements/brn/standard/compression/lzw.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 

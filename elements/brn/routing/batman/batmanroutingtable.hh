@@ -7,9 +7,9 @@
 #include <click/hashmap.hh>
 #include <click/vector.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 CLICK_DECLS
 

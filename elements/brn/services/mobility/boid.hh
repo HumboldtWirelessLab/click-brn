@@ -26,16 +26,16 @@
 #include <click/ipaddress.hh>
 #include <click/timer.hh>
 
-#include <elements/brn2/brnelement.hh>
-#include <elements/brn2/standard/fixpointnumber.hh>
+#include <elements/brn/brnelement.hh>
+#include <elements/brn/standard/fixpointnumber.hh>
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
-#include <elements/brn2/services/sensor/gps/gps_position.hh>
-#include <elements/brn2/services/sensor/gps/gps_map.hh>
+#include <elements/brn/services/sensor/gps/gps_position.hh>
+#include <elements/brn/services/sensor/gps/gps_map.hh>
 
 #include "mobility.hh"
-#include "elements/brn2/wifi/channelstats.hh"
+#include "elements/brn/wifi/channelstats.hh"
 
 
 CLICK_DECLS

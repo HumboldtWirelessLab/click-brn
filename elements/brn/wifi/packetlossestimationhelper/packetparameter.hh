@@ -13,7 +13,7 @@
 #include <click/error.hh>
 #include <click/args.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brn2.h"
+#include "elements/brn/brn2.h"
 #if CLICK_NS 
     #include <click/router.hh>
 #endif

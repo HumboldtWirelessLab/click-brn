@@ -9,7 +9,7 @@
 #include <click/packet_anno.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 CLICK_DECLS
 

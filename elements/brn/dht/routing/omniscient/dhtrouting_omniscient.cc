@@ -12,14 +12,14 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/standard/packetsendbuffer.hh"
-#include "elements/brn2/standard/brn_md5.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/packetsendbuffer.hh"
+#include "elements/brn/standard/brn_md5.hh"
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #include "dhtrouting_omniscient.hh"
 #include "dhtprotocol_omniscient.hh"

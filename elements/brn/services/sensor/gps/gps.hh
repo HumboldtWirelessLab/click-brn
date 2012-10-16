@@ -26,8 +26,8 @@
 #include <click/ipaddress.hh>
 #include <click/timer.hh>
 
-#include <elements/brn2/brnelement.hh>
-#include <elements/brn2/standard/fixpointnumber.hh>
+#include <elements/brn/brnelement.hh>
+#include <elements/brn/standard/fixpointnumber.hh>
 
 #include "gps_position.hh"
 #include "gps_map.hh"

@@ -25,9 +25,9 @@
 #include <click/vector.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "topology_info.hh"
 

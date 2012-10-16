@@ -6,8 +6,8 @@
 #include <click/bighashmap.hh>
 #include <click/glue.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 CLICK_DECLS
 

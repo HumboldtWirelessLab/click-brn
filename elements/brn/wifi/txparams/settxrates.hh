@@ -2,7 +2,7 @@
 #define CLICK_SETTXRATES_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
-#include "elements/brn2/wifi/brnwifi.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 CLICK_DECLS
 

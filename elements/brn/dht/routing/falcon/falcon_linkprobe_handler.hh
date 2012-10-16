@@ -25,10 +25,10 @@
 
 #include <click/element.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
-#include "elements/brn2/routing/hawk/hawk_routingtable.hh"
+#include "elements/brn/routing/hawk/hawk_routingtable.hh"
 
 #include "falcon_routingtable.hh"
 

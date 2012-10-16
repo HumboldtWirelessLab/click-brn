@@ -25,10 +25,10 @@
 
 #include <click/element.hh>
 
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/dht/standard/dhtnode.hh"
-#include "elements/brn2/dht/storage/dhtoperation.hh"
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/dht/standard/dhtnode.hh"
+#include "elements/brn/dht/storage/dhtoperation.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #define DHT_STORAGE_SIMPLE_MESSAGE         1
 #define DHT_STORAGE_SIMPLE_MOVEDDATA       2

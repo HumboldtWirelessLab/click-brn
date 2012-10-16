@@ -35,12 +35,12 @@
 #include <elements/wifi/wifiencap.hh>
 #include <elements/wifi/station/openauthrequester.hh>
 
-#include "elements/brn2/wifi/brnavailablerates.hh"
-#include "elements/brn2/routing/identity/brn2_nodeidentity.hh"
-#include "elements/brn2/wifi/station/brn2assocrequester.hh"
-#include "elements/brn2/wifi/station/brn2proberequester.hh"
-#include "elements/brn2/wifi/availablechannels.hh"
-#include "elements/brn2/wifi/ath/ath2operation.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/station/brn2assocrequester.hh"
+#include "elements/brn/wifi/station/brn2proberequester.hh"
+#include "elements/brn/wifi/availablechannels.hh"
+#include "elements/brn/wifi/ath/ath2operation.hh"
 
 #include "brn2beaconscanner.hh"
 

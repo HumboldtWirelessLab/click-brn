@@ -21,10 +21,10 @@
 #ifndef TOS2QUEUEMAPPERELEMENT_HH
 #define TOS2QUEUEMAPPERELEMENT_HH
 #include <click/element.hh>
-#include <elements/brn2/brnelement.hh>
-#include <elements/brn2/wifi/channelstats.hh>
-#include <elements/brn2/wifi/collisioninfo.hh>
-#include <elements/brn2/wifi/packetlossinformation/packetlossinformation.hh>
+#include <elements/brn/brnelement.hh>
+#include <elements/brn/wifi/channelstats.hh>
+#include <elements/brn/wifi/collisioninfo.hh>
+#include <elements/brn/wifi/packetlossinformation/packetlossinformation.hh>
 
 
 CLICK_DECLS

@@ -17,7 +17,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <click/hashmap.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include "keymanagement.hh"
 

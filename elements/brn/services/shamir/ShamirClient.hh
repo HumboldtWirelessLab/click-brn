@@ -15,7 +15,7 @@
 #include <click/confparse.hh>
 #include <click/hashtable.hh>
 #include <click/packet.hh>
-#include "elements/brn2/brnelement.hh"
+#include "elements/brn/brnelement.hh"
 
 #include <openssl/bn.h>
 

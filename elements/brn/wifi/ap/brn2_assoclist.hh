@@ -26,7 +26,7 @@
 #include <click/element.hh>
 #include <click/bighashmap.hh>
 #include <click/deque.hh>
-#include <elements/brn2/routing/linkstat/brn2_brnlinktable.hh>
+#include <elements/brn/routing/linkstat/brn2_brnlinktable.hh>
 
 CLICK_DECLS
 

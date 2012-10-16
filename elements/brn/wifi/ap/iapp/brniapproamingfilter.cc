@@ -30,9 +30,9 @@
 #include <click/straccum.hh>
 #include <elements/wifi/wirelessinfo.hh>
 
-#include "elements/brn2/wifi/ap/brn2_assoclist.hh"
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brniapproamingfilter.hh"
 

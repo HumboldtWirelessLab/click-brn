@@ -25,10 +25,10 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-#include "elements/brn2/routing/linkstat/metric/brn2_genericmetric.hh"
-#include "elements/brn2/routing/standard/routemaintenance/routemaintenance.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/routing/linkstat/metric/brn2_genericmetric.hh"
+#include "elements/brn/routing/standard/routemaintenance/routemaintenance.hh"
 
 #include "brn2_dsrencap.hh"
 #include "brn2_dsrdecap.hh"

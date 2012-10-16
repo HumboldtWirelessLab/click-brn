@@ -2,8 +2,8 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include <elements/brn2/standard/brnaddressinfo.hh>
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include <elements/brn/standard/brnaddressinfo.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "brn2_device.hh"
 

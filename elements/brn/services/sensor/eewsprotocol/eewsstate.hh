@@ -6,11 +6,11 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/brnelement.hh"
-#include "elements/brn2/routing/linkstat/brn2_brnlinktable.hh"
-#include "elements/brn2/topology/nhopneighbouring/nhopneighbouring_info.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/topology/nhopneighbouring/nhopneighbouring_info.hh"
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
 #define UPDATE_ALARM_NEW_NODE       1
 #define UPDATE_ALARM_NEW_ID         2

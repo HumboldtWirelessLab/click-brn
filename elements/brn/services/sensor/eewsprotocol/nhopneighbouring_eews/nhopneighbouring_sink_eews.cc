@@ -28,13 +28,13 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "elements/brn2/brnprotocol/brnprotocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/services/sensor/gps/gps.hh"
+#include "elements/brn/services/sensor/gps/gps.hh"
 
-#include "elements/brn2/services/sensor/eewsprotocol/eewsstate.hh"
+#include "elements/brn/services/sensor/eewsprotocol/eewsstate.hh"
 
 #include "nhopneighbouring_protocol_eews.hh"
 #include "nhopneighbouring_sink_eews.hh"

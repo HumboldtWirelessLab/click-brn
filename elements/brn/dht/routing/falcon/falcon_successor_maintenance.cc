@@ -7,9 +7,9 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "elements/brn2/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 
 #include "dhtprotocol_falcon.hh"
 #include "falcon_routingtable.hh"
@@ -198,8 +198,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
 
   if ( succ.equals(_frt->_me) ) {                  //request really for me ??
-    //Wenn ich er mich für seinen Nachfolger hält, teste ob er mein Vorgänger ist oder mein Vorgänger
-    //für ihn ein besserer Nachfolger ist.
+    //Wenn ich er mich fï¿½r seinen Nachfolger hï¿½lt, teste ob er mein Vorgï¿½nger ist oder mein Vorgï¿½nger
+    //fï¿½r ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {        //src is my pre, so everything is good
       BRN_DEBUG("I'm his successor !");           //just send reply
       BRN_DEBUG("Src: %s Dst: %s Node: %s", src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),

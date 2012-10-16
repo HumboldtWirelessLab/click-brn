@@ -30,8 +30,8 @@
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn2/brn2.h"
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "topology_detection.hh"
 #include "topology_detection_protocol.hh"

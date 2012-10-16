@@ -3,7 +3,7 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 #include "hawk_protocol.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
 

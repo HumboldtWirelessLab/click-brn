@@ -28,9 +28,9 @@
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
 
-#include "elements/brn2/standard/brnlogger/brnlogger.hh"
-#include "elements/brn2/wifi/brnwifi.hh"
-#include "elements/brn2/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/brnwifi.hh"
+#include "elements/brn/brn2.h"
 
 #include "collisioninfo.hh"
 
