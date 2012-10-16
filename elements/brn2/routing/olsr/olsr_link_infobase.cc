@@ -302,4 +302,3 @@ template class HashMap<OLSRIPPair, void *>::iterator;
 CLICK_ENDDECLS
 
 EXPORT_ELEMENT(OLSRLinkInfoBase);
-

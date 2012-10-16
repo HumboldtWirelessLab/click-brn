@@ -6,6 +6,7 @@
 #include <click/straccum.hh>
 
 #include <elements/brn2/brn2.h>
+#include <elements/brn2/version.h>
 #include <elements/brn2/standard/brnaddressinfo.hh>
 #include "elements/brn2/standard/brnlogger/brnlogger.hh"
 
@@ -206,7 +207,7 @@ read_version_param(Element *e, void *)
   sa << " mode=\"unknown\"";
 #endif
 #endif
-  sa << " md5_id=\"" << click_binary_digest << "\" />\n";
+  sa << " md5_id=\"" << click_binary_digest << "\" git_version=\"" << BRN_GIT_VERSION << "\" />\n";
   sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
   sa << "</version>\n";
 

@@ -123,4 +123,3 @@ template class Vector<IPAddress::push_back>
 CLICK_ENDDECLS
 
 EXPORT_ELEMENT(OLSRLocalIfInfoBase);
-

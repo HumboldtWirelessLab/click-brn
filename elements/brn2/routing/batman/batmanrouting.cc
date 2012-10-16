@@ -117,4 +117,5 @@ BatmanRouting::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(BatmanProtocol)
 EXPORT_ELEMENT(BatmanRouting)
