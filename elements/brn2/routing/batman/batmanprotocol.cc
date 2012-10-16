@@ -184,5 +184,5 @@ BatmanProtocol::pull_batman_error(Packet *p)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BatmanProtocol)
+ELEMENT_PROVIDES(BatmanProtocol)
 

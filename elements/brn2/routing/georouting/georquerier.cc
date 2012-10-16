@@ -137,4 +137,5 @@ GeorQuerier::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(GeorProtocol)
 EXPORT_ELEMENT(GeorQuerier)

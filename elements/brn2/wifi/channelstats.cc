@@ -103,8 +103,11 @@ ChannelStats::initialize(ErrorHandler *)
   if ( _proc_read && (_stats_interval != _proc_interval) ) _proc_timer.schedule_after_msec(_proc_interval);
 
   if ( ! _enable_full_stats ) {
+    //INIT: clear current stats
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[_current_small_stats].clear();
+    
+    //INIT: clear "last" stats
     memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
   }
@@ -130,6 +133,7 @@ ChannelStats::run_timer(Timer *)
 
     _current_small_stats = (_current_small_stats + 1) % SMALL_STATS_SIZE;
 
+    //TODO: don't clear. take info (e.g. last seq numebr) for next round
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[_current_small_stats].clear();
 
@@ -168,6 +172,7 @@ ChannelStats::push(int port, Packet *p)
 
   //click_chatter("Duration: %d", w->i_dur);
   int type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
+  uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
   EtherAddress src;
   switch (type) {
@@ -251,6 +256,7 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_channel = _channel;
         new_pi->_rx = false;
         new_pi->_rate = rate;
+	new_pi->_seq = seq;
 
         new_pi->_is_ht_rate = (rate_is_ht == 1);
 
@@ -301,6 +307,7 @@ ChannelStats::push(int port, Packet *p)
       new_pi->_rx = true;
       new_pi->_rate = ceh->rate;
       new_pi->_is_ht_rate = (BrnWifi::getMCS(ceh,0) == 1);
+      new_pi->_seq = seq;
     }
 
     if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
@@ -401,10 +408,10 @@ ChannelStats::push(int port, Packet *p)
             SrcInfo *src_info;
             if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {
               //inser new ( rssi value is set via constructor)
-              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p->length() + 4, duration, w->i_dur));
+              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p->length() + 4, duration, w->i_dur, seq));
               src_info = _small_stats_src_tab[_current_small_stats].findp(src);
             } else {
-              src_info->add_packet_info(rssi,p->length() + 4, duration, w->i_dur);
+              src_info->add_packet_info(rssi,p->length() + 4, duration, w->i_dur, seq);
             }
 
             if (BrnWifi::hasExtRxStatus(ceh))
@@ -636,9 +643,9 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab, RS
           if ( src_tab != NULL ) {
             SrcInfo *src_i;
             if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
-              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav));
+              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq));
             } else {
-              src_i->add_packet_info((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav);
+              src_i->add_packet_info((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq);
             }
           }
         }
@@ -886,7 +893,8 @@ ChannelStats::stats_handler(int mode)
         sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"";
         sa  << src._std_rssi << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
         sa << "\" pkt_cnt=\"" << src._pkt_count << "\" rx_bytes=\"" << src._byte_count;
-        sa << "\" duration=\"" << src._duration << "\" nav=\"" << src._nav << "\" >\n";
+        sa << "\" duration=\"" << src._duration << "\" nav=\"" << src._nav << "\" last_seq=\"" << src._last_seq;
+	sa << "\" missed_seq=\"" << src._missed_seq << "\" >\n";
         sa << "\t\t\t<rssi_extended>\n\t\t\t\t<ctl rssi0=\"" << src._avg_ctl_rssi[0];
         sa << "\" rssi1=\"" << src._avg_ctl_rssi[1] << "\" rssi2=\"" << src._avg_ctl_rssi[2] << "\" />\n\t\t\t\t<ext rssi0=\"";
         sa << src._avg_ext_rssi[0] << "\" rssi1=\"" << src._avg_ext_rssi[1] << "\" rssi2=\"" << src._avg_ext_rssi[2] << "\" />\n";
