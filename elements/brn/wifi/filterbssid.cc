@@ -25,8 +25,6 @@
  */
 
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <clicknet/wifi.h>
 #include <click/etheraddress.hh>
 #include <click/confparse.hh>
@@ -38,15 +36,19 @@
 #include <click/hashmap.hh>
 #include <click/packet_anno.hh>
 #include <click/error.hh>
-#include "filterbssid.hh"
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "filterbssid.hh"
 
 CLICK_DECLS
 
 FilterBSSID::FilterBSSID()
-  : _debug(BrnLogger::DEFAULT),
-  _winfo(0)
+  : _winfo(0),
+    _winfo_list(0),
+    _active(true)
 {
+  BRNElement::init();
 }
 
 FilterBSSID::~FilterBSSID()
@@ -56,16 +58,13 @@ FilterBSSID::~FilterBSSID()
 int
 FilterBSSID::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
-  _debug = false;
   _active = true;
   if (cp_va_kparse(conf, this, errh,
-		  /* not required */
-		  //cpKeywords,
-      "ACTIVE", cpkP+cpkM, cpBool, /*"Active",*/ &_active,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"wirleess_info",*/ &_winfo,
-		  cpEnd) < 0)
+      "WIRELESS_INFO", cpkP+cpkM, cpElement, &_winfo,
+      "WIRELESS_INFO_LIST", cpkP, cpElement, &_winfo_list,
+      "ACTIVE", cpkP, cpBool, &_active,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
     return -1;
 
   if (!_winfo || !_winfo->cast("WirelessInfo"))
@@ -80,18 +79,17 @@ FilterBSSID::push(int, Packet *p)
   EtherAddress dst;
   EtherAddress src;
   EtherAddress bssid;
- 
 
   uint8_t dir;
   struct click_wifi *w = (struct click_wifi *) p->data();
 
   // TODO why click_llc??
   if (p->length() < sizeof(struct click_wifi) + sizeof(struct click_llc)) {
-    BRN_ERROR("got too small packet ... discard.");
-    p->kill();
+    BRN_WARN("got too small packet.");
+    checked_output_push(2, p);
     return;
   }
-  
+
   dir = w->i_fc[1] & WIFI_FC1_DIR_MASK;
 
   switch (dir) {
@@ -125,11 +123,22 @@ FilterBSSID::push(int, Packet *p)
   if (_winfo->_bssid == bssid)
   {
     output(0).push(p);
-    return; 
+    return;
+  }
+
+  if (_winfo_list != NULL ) {
+    BRN2WirelessInfoList::WifiInfo *wi;
+    for ( int i = 0; i < _winfo_list->countWifiInfo(); i++ ) {
+      wi = _winfo_list->getWifiInfo(i);
+      if ( wi->_bssid == bssid ) {
+        output(0).push(p);
+        return;
+      }
+    }
   }
 
   // If not active, simply print out a debug message
-  if (!_active) 
+  if (!_active)
   {
     BRN_WARN("packet with wrong bssid %s", bssid.unparse().c_str());
 
@@ -142,15 +151,13 @@ FilterBSSID::push(int, Packet *p)
 }
 
 
-enum {H_DEBUG,H_ACTIVE};
+enum {H_ACTIVE};
 
 static String 
 FilterBSSID_read_param(Element *e, void *thunk)
 {
   FilterBSSID *td = (FilterBSSID *)e;
   switch ((uintptr_t) thunk) {
-  case H_DEBUG:
-    return String(td->_debug) + "\n";
   case H_ACTIVE:
     return String(td->_active) + "\n";
   default:
@@ -164,13 +171,6 @@ FilterBSSID_write_param(const String &in_s, Element *e, void *vparam,
   FilterBSSID *f = (FilterBSSID *)e;
   String s = cp_uncomment(in_s);
   switch((long)vparam) {
-  case H_DEBUG: {    //debug
-    int debug;
-    if (!cp_integer(s, &debug)) 
-      return errh->error("debug parameter must be an integer value between 0 and 4");
-    f->_debug = debug;
-    break;
-  }
   case H_ACTIVE: {    //debug
     bool active;
     if (!cp_bool(s, &active)) 
@@ -185,8 +185,8 @@ FilterBSSID_write_param(const String &in_s, Element *e, void *vparam,
 void
 FilterBSSID::add_handlers()
 {
-  add_read_handler("debug", FilterBSSID_read_param, (void *) H_DEBUG);
-  add_write_handler("debug", FilterBSSID_write_param, (void *) H_DEBUG);
+  BRNElement::add_handlers();
+
   add_read_handler("active", FilterBSSID_read_param, (void *) H_ACTIVE);
   add_write_handler("active", FilterBSSID_write_param, (void *) H_ACTIVE);
 }

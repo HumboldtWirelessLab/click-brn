@@ -35,8 +35,13 @@ stamp-h
 include/tinyxml
 lib/libtinyxml.a
 userlevel/libtinyxml.a
-/.cproject
-/elements/brn2/tools/tinyxml/libtinyxml.a
-/.project
+.cproject
+.project
 ns/elements.csmk
 userlevel/elements.csmk
+elements/brnold
+elements/brn/version.h
+linuxmodule/elements.csmk
+bsdmodule/elements.csmk
+*kdev4
+nbproject

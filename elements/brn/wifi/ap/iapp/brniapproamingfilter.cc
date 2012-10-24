@@ -24,15 +24,18 @@
  */
  
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <clicknet/wifi.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/brn2.h"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+
 #include "brniapproamingfilter.hh"
-#include "elements/brn/wifi/ap/assoclist.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +66,9 @@ BrnIappRoamingFilter::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
   
-  if (!_assoc_list && _assoc_list->cast("AssocList") == 0)
+/*RobAt  if (!_assoc_list && _assoc_list->cast("AssocList") == 0)
     return errh->error("ASSOCLIST element is not a AssocList");
-
+*/
   return 0;
 }
 
@@ -112,12 +115,12 @@ BrnIappRoamingFilter::pull(int port)
   
     // Check if this client moved away
     EtherAddress ether_dst(wifi->i_addr1);
-    if (NULL != _assoc_list && _assoc_list->is_roaming(ether_dst)) {
+/*RobAt    if (NULL != _assoc_list && _assoc_list->is_roaming(ether_dst)) {
       BRN_DEBUG("filtered packet to roamed sta %s", ether_dst.unparse().c_str());
       
       checked_output_push(1, p);
       p = NULL;
-    }
+    }*/
   }
     
   return p;

@@ -24,14 +24,15 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <click/timer.hh>
-#include <click/dequeue.hh>
+#include <click/deque.hh>
+
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 CLICK_DECLS
 
-class AssocList;
+class BRN2AssocList;
 class BrnIappEncap;
-class NodeIdentity;
-class BrnLinkTable; 
 
 /*
  * =c
@@ -47,7 +48,7 @@ class BrnIappHelloHandler : public Element
 // Construction
 //------------------------------------------------------------------------------
 public:
-  typedef DEQueue<EtherAddress> EtherAddressQueue;
+  typedef Deque<EtherAddress> EtherAddressQueue;
 
 //------------------------------------------------------------------------------
 // Construction
@@ -109,9 +110,9 @@ public:
   static int        _hello_trigger_interval_ms;
 
   // Elements
-  NodeIdentity*     _id;
-  AssocList*        _assoc_list;
-  BrnLinkTable*     _link_table; 
+  BRN2NodeIdentity*     _id;
+  BRN2AssocList*        _assoc_list;
+  Brn2LinkTable*     _link_table;
   BrnIappEncap*     _encap;
 };
 

@@ -22,14 +22,22 @@
  * brniappencap.{cc,hh} -- encap for the inter-ap protocol within brn
  * M. Kurth
  */
- 
-#include <click/config.h>
-#include "elements/brn/common.hh"
 
+#include <click/config.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/dsr/brn2_dsrprotocol.hh"
+
+#include "brniapprotocol.hh"
+
 #include "brniappencap.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////

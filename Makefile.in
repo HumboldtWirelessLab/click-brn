@@ -45,15 +45,15 @@ CLEAN_TARGETS = @CLEAN_TARGETS@
 
 all: $(ALL_TARGETS) Makefile
 
-bsdmodule: Makefile click-buildtool stamp-h
+bsdmodule: Makefile click-buildtool stamp-h brn-version
 	@cd bsdmodule && $(MAKE) all
-linuxmodule: Makefile click-buildtool stamp-h
+linuxmodule: Makefile click-buildtool stamp-h brn-version
 	@cd linuxmodule && $(MAKE) all
-ns: Makefile click-buildtool stamp-h
+ns: Makefile click-buildtool stamp-h brn-version
 	@cd ns && $(MAKE) all
-jist: Makefile click-buildtool stamp-h
+jist: Makefile click-buildtool stamp-h brn-version
 	@cd jist && $(MAKE) all
-userlevel: Makefile click-buildtool click-compile stamp-h
+userlevel: Makefile click-buildtool click-compile stamp-h brn-version
 	@cd userlevel && $(MAKE) all
 tools: Makefile stamp-h
 	@cd tools && $(MAKE) all
@@ -179,6 +179,12 @@ stamp-h: $(srcdir)/config.h.in $(srcdir)/config-bsdmodule.h.in $(srcdir)/config-
 	cd $(top_builddir) \
 	  && CONFIG_FILES= $(SHELL) ./config.status
 	echo > stamp-h
+
+brn-version:
+	@echo "#ifndef BRN_GIT_VERSION" > $(srcdir)/elements/brn/version.h
+	@git show | head -n 1 | sed 's/commit /#define BRN_GIT_VERSION "/g' | tr '\n' '"' >> $(srcdir)/elements/brn/version.h
+	@echo "" >> $(srcdir)/elements/brn/version.h
+	@echo "#endif" >> $(srcdir)/elements/brn/version.h
 
 check-filenames:
 	@a=`find . \( -name \*.cc -or -name \*.c \) -print | sed 's/.*\/\(.*\)\.c*$$/\1.o/' | grep -v 'elements\.o' | sort | uniq -d`; \

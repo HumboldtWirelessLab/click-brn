@@ -26,10 +26,10 @@
 
 CLICK_DECLS
 
-class AssocList;
+class BRN2AssocList;
 class BrnIappHelloHandler;
 class BrnIappStationTracker;
-class NodeIdentity;
+class BRN2NodeIdentity;
 
 /*
  * =c
@@ -77,8 +77,8 @@ public:
   bool                    _optimize;
 
   // Elements
-  NodeIdentity*           _id;
-  AssocList*              _assoc_list;
+  BRN2NodeIdentity*           _id;
+  BRN2AssocList*              _assoc_list;
   BrnIappStationTracker*  _sta_tracker;
   BrnIappHelloHandler*    _hello_handler;
 };

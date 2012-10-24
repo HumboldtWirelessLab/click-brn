@@ -24,13 +24,15 @@
  */
  
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "signal.hh"
 #include <click/router.hh>
+
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+
+#include "signal.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,13 +56,11 @@ Signal::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "SIGNALNAME", cpkP+cpkM, cpString, /*"signal name",*/ &_signal,
       "RECEPTIONLIST", cpkP+cpkM, cpString,/* "list of receptions",*/ &_receptions,
-      /* not required */
-      //cpKeywords,
       "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       "ACTIVE", cpkP, cpBool, /*"",*/ &_active,
       cpEnd) < 0)
     return -1;
-  
+
   if( 0 >= _signal.length() )
     return errh->error("signal not specified");
 
@@ -80,7 +80,7 @@ Signal::initialize(ErrorHandler *errh)
 {
   if (!_active)
     return 0;
-    
+
   // Build vector of reception names
   Vector<String> vec_receptions;
   cp_spacevec( _receptions, vec_receptions );
@@ -105,7 +105,7 @@ Signal::initialize(ErrorHandler *errh)
     _vec_elements.push_back(elem);
     _vec_handlers.push_back(handler);
   }
-  
+
   if (0 >= _vec_handlers.size())
     return errh->error("Handler classes not specified");
 
@@ -119,7 +119,7 @@ Signal::send_signal_action(const String& param, ErrorHandler *errh)
 {
   if (!_active)
     return;
-    
+
   for( int i = 0; i < _vec_handlers.size(); i++ )
   {
     const Handler* handler = _vec_handlers[i];
@@ -133,10 +133,10 @@ Signal::send_signal_action(const String& param, ErrorHandler *errh)
       errh = router()->chatter_channel(String("default"));
     }
 
-    ContextErrorHandler cerrh( errh, String("In write handler '" + 
+    ContextErrorHandler cerrh( errh, String("In write handler '" +
       handler->unparse_name(elem) + "':").c_str());
-  
-    handler->call_write( param, elem, true, &cerrh );
+
+    handler->call_write( param, elem, &cerrh );
   }
 }
 
@@ -158,7 +158,7 @@ read_param(Element *e, void *thunk)
   }
 }
 
-static int 
+static int
 write_param(const String &in_s, Element *e, void *vparam,
           ErrorHandler *errh)
 {
@@ -189,9 +189,9 @@ Signal::add_handlers()
   add_read_handler("debug", read_param, (void *) H_DEBUG);
   add_write_handler("debug", write_param, (void *) H_DEBUG);
 
-//  add_read_handler(_signal, read_param, (void *) H_SIGNAL);
+//add_read_handler(_signal, read_param, (void *) H_SIGNAL);
   add_write_handler(_signal, write_param, (void *) H_SIGNAL);
-  
+
   // NOTE: do not add handlers for _active
 }
 
@@ -199,6 +199,5 @@ Signal::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Signal)
-ELEMENT_REQUIRES(brn_common)
 
 ////////////////////////////////////////////////////////////////////////////////

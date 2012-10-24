@@ -24,7 +24,6 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <elements/ethernet/arptable.hh>
-#include "elements/brn/nodeidentity.hh"
 
 CLICK_DECLS
 /*
@@ -61,7 +60,6 @@ class ResolveEthernet : public Element {
   int _debug;
 
  private:
-  NodeIdentity *_me;
   EtherAddress _src;
   ARPTable *_arp_table;
 };
