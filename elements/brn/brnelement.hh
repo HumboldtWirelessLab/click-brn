@@ -23,17 +23,35 @@
 
 #include <click/element.hh>
 // Brn Logger
-#include "elements/brn/common.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+
+#include "elements/brn/standard/packetpool.hh"
+
+#define PACKET_POOL_CAPACITY 10
+#define PACKET_POOL_SIZE_STEPS 200
+#define PACKET_POOL_MIN_SIZE   180
+#define PACKET_POOL_MAX_SIZE   1600
+#define DEFAULT_HEADROOM 128
+#define DEFAULT_TAILROOM 32
 
 CLICK_DECLS
 
 class BRNElement : public Element {
-public:
-	BRNElement();
-	virtual ~BRNElement();
+ public:
+  BRNElement();
+  virtual ~BRNElement();
   virtual void add_handlers();
-  
+
+  void init(void);
+
   int _debug;
+
+  static PacketPool *_packet_pool;
+  static int _ref_counter;
+
+  void packet_kill(Packet *p);
+  WritablePacket *packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom);
+
 };
 
 CLICK_ENDDECLS

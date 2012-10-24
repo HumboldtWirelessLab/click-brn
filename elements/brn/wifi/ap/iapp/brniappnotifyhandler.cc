@@ -24,17 +24,24 @@
  */
  
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <elements/wifi/wirelessinfo.hh>
-#include "brniappnotifyhandler.hh"
-#include "elements/brn/nodeidentity.hh"
-#include "elements/brn/wifi/ap/assoclist.hh"
-#include "elements/brn/routing/linkstat/brnlinktable.hh"
+
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/wifi/ap/brn2_brnassocresponder.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/brn2.h"
+
+#include "elements/brn/routing/dsr/brn2_dsrprotocol.hh"
+
+#include "brniapprotocol.hh"
 #include "brniappencap.hh"
+#include "brniappnotifyhandler.hh"
 #include "brniappstationtracker.hh"
 CLICK_DECLS
 
@@ -71,6 +78,7 @@ BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "ASSOCLIST", cpkP+cpkM, cpElement,/* "AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement, /*"BrnIappNotifyHandler encap element",*/ &_encap,
       "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
       cpEnd) < 0)
     return -1;
 
@@ -82,19 +90,18 @@ BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (!_sta_tracker || !_sta_tracker->cast("BrnIappStationTracker")) 
     return errh->error("StationTracker not specified");
-  
+
+  if (!_id || !_id->cast("NodeIdentity"))
+    return errh->error("NodeIdentity not specified");
+
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BrnIappNotifyHandler::initialize(ErrorHandler *errh)
+BrnIappNotifyHandler::initialize(ErrorHandler */*errh*/)
 {
-  _id = _assoc_list->get_id();
-  if (!_id || !_id->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
-
   return 0;
 }
 
@@ -169,10 +176,10 @@ BrnIappNotifyHandler::recv_handover_reply(
   EtherAddress client(pHo->addr_sta);
   EtherAddress apOld(pHo->addr_mold);
   EtherAddress apNew(pHo->addr_mnew);
-  
+
   BRN_DEBUG("received reply to %s from %s (client %s)", 
     apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
-  
+
   if (CLICK_BRN_IAPP_PAYLOAD_EMPTY == pIapp->payload_type)
   {
     p->kill();p = NULL;pIapp = NULL;
@@ -181,20 +188,19 @@ BrnIappNotifyHandler::recv_handover_reply(
     BRN_DEBUG("Sending received handover reply to port 1");
     output(1).push(p); 
   }
-  
+
   NotifyTimer* t = _notifytimer.findp(client);
   // unschedule timer
   if (t != NULL) {
     BRN_INFO("Found notify timer");
-    
+
     // cleanup timer
     cleanup_timer_for_client(client);
   }
   else {
     BRN_WARN("Received reply, but no timer. Timing problem. Maybe reply just received %u late.", _notify_ms);
   }
-  
-    
+
   // If the final destination is reached, clean the internals and send reply
 
   // Cancel retransmission timer
@@ -213,7 +219,7 @@ BrnIappNotifyHandler::send_handover_notify(
   // Sanity check
   BRN_CHECK_EXPR(!_id->isIdentical(&apNew),
     ("send handover notify with new mesh node %s", apNew.unparse().c_str()));
-  
+
   BRN_DEBUG("send notify from %s to %s (client %s)", 
     apNew.unparse().c_str(), apOld.unparse().c_str(), client.unparse().c_str());
 
@@ -223,20 +229,20 @@ BrnIappNotifyHandler::send_handover_notify(
   click_brn*          pBrn   = (click_brn*)(pEther+1);
   click_brn_iapp*     pIapp  = (click_brn_iapp*)(pBrn+1);
   pIapp->payload_type = CLICK_BRN_IAPP_PAYLOAD_EMPTY;
-  
-  
+
+
   // starting timer
   BRN_DEBUG("Starting timer for client %s", client.unparse().c_str());
   Timer *t = new Timer(this);
   t->initialize(this);
-  
+
   NotifyTimer timer = NotifyTimer(t, p);
   timer.inc_num_notifies();
   assert(_notifytimer.insert(client, timer) == true);
-  
-  // 
+
+  //
   t->schedule_now();
-  
+
   //BRN_DEBUG("Sending handover notify to port 0");
   //output(0).push(p);
 }
@@ -253,10 +259,10 @@ BrnIappNotifyHandler::send_handover_reply(
   // Sanity check
   BRN_CHECK_EXPR(!_id->isIdentical(&apOld),
     ("send handover notify with old mesh node %s", apOld.unparse().c_str()));
-  
+
   // push out
   Packet* p = _encap->create_handover_reply(client, apNew, apOld, seq_no);
-  
+
   BRN_DEBUG("Sending handover reply to port 0");
   output(0).push(p);
 }
@@ -264,13 +270,13 @@ BrnIappNotifyHandler::send_handover_reply(
 void
 BrnIappNotifyHandler::run_timer(Timer *t) {
   assert(_notifytimer.size() > 0);
-    
+
   for (NotifyTimersIter i = _notifytimer.begin(); i.live(); i++) {
     NotifyTimer* timer = &i.value();
     if (timer->get_timer() == t) {
       // found timer
       Packet *p = timer->get_packet();
-      
+
       int scheduled = timer->get_num_notifies();
       if (scheduled < _num_resend) {
         BRN_INFO("Found timer. Was scheduled %u times.", scheduled);
@@ -280,18 +286,18 @@ BrnIappNotifyHandler::run_timer(Timer *t) {
         Packet *q = p->clone();
         output(0).push(p);
         timer->set_packet(q);
-        t->reschedule_after_msec(_notify_ms);          
+        t->reschedule_after_msec(_notify_ms);
       }
       else { 
         BRN_WARN("Send %u notifies, but received no reply. Deleting timer.", scheduled);
         cleanup_timer_for_client(i.key());
       }
-    }  
+    }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 enum {H_DEBUG};
 
 static String 
@@ -345,7 +351,6 @@ BrnIappNotifyHandler::add_handlers()
 ////////////////////////////////////////////////////////////////////////////////
 
 EXPORT_ELEMENT(BrnIappNotifyHandler)
-ELEMENT_REQUIRES(brn_common)
 #include <click/bighashmap.cc>
 CLICK_ENDDECLS
 

@@ -20,7 +20,7 @@
 
 #ifndef SETETHERADDR_HH
 #define SETETHERADDR_HH
-#include "elements/brn/brnelement.hh"
+#include <click/element.hh>
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 
@@ -32,7 +32,7 @@ CLICK_DECLS
  *=s set source, Ethernet
  *set ether src address in a packet
 */
-class SetEtherAddr : public BRNElement {
+class SetEtherAddr : public Element {
 
  public:
   //
@@ -51,11 +51,14 @@ class SetEtherAddr : public BRNElement {
   Packet *smaction(Packet *);
   void push(int, Packet *);
   Packet *pull(int);
- 
+
  private:
+  int _debug;
+
   EtherAddress _src;
   EtherAddress _dst;
- 
+
+  uint16_t _ethertype;
 };
 
 CLICK_ENDDECLS

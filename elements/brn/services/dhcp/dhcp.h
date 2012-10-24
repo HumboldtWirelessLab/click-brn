@@ -170,7 +170,7 @@ CLICK_DECLS
 struct iaddr {
   unsigned len;
   unsigned char iabuf [16];
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /*
 enum DHCP_VERSION {
@@ -187,7 +187,7 @@ struct dhcp_option
   uint8_t	code;
   uint8_t	length;
   uint8_t	data[MAX_OPTION_LEN];
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct dhcp_packet
 {
@@ -206,7 +206,7 @@ struct dhcp_packet
   char sname [DHCP_SNAME_LEN];	/* 40: Server name */
   char file [DHCP_FILE_LEN];	/* 104: Boot filename */
   unsigned char options [DHCP_OPTION_LEN];  /* 212: Optional parameters (actual length dependent on MTU). */
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define TFS(x)  (const struct true_false_string*)(x)
 
@@ -234,7 +234,7 @@ struct opt_info {
   const char  *text;
   enum field_type ftype;
   const void *data;
-};
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 typedef struct true_false_string {
   const char    *true_string;
@@ -244,13 +244,19 @@ typedef struct true_false_string {
 
 static const true_false_string toggle_tfs = { "Enabled", "Disabled" };
 
-static const true_false_string yes_no_tfs = { "Yes", "No" };   
+static const true_false_string yes_no_tfs = { "Yes", "No" };
+
+#ifdef NEED_DHCP_MESSAGE_TYPES
 
 static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request", "Decline",
   "Ack", "Nak", "Release", "Inform" };
 #define COUNT_OPTIONS 8
 
-  static struct opt_info opt[] = {
+#endif
+
+#ifdef NEED_DHCP_MESSAGE_OPTS
+
+static struct opt_info opt[] = {
     /*   0 */ { "Padding",          none, NULL },
     /*   1 */ { "Subnet Mask",        ipv4, NULL },
     /*   2 */ { "Time Offset",        time_in_secs, NULL },
@@ -507,8 +513,9 @@ static const char *message_types[] = { "Unknown", "Discover", "Offer", "Request"
     /* 253 */ { "Private",          opaque, NULL },
     /* 254 */ { "Private",          opaque, NULL },
     /* 255 */ { "End",          opaque, NULL }
-  };
+};
 
+#endif
 
 CLICK_ENDDECLS
 #endif

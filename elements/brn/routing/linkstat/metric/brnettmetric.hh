@@ -21,12 +21,17 @@
 #ifndef BRNBRNETTMetric_HH
 #define BRNBRNETTMetric_HH
 #include <click/element.hh>
-#include "genericmetric.hh"
 #include <click/hashmap.hh>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
 #include <elements/wifi/bitrate.hh>
-#include "elements/brn/routing/linkstat/brnlinkstat.hh"
+
+#include <elements/wifi/bitrate.hh>
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+
+#include "brn2_genericmetric.hh"
+
 CLICK_DECLS
 
 /*
@@ -48,22 +53,22 @@ inline unsigned ett2_metric(int ack_prob, int data_prob, int data_rate)
   unsigned low_usecs = calc_usecs_wifi_packet(1500, data_rate, retries/100);
   unsigned high_usecs = calc_usecs_wifi_packet(1500, data_rate, (retries/100) + 1);
 
-  click_chatter("low_usecs = %d, high_usecs = %d\n", low_usecs, high_usecs);
+  //click_chatter("low_usecs = %d, high_usecs = %d\n", low_usecs, high_usecs);
 
   unsigned diff = retries % 100;
   unsigned average = (diff * high_usecs + (100 - diff) * low_usecs) / 100;
   return average;
 }
 
-class BRNLinkStat;
 class BrnRateSize;
 
-class BRNETTMetric : public GenericMetric {
+class BRNETTMetric : public BRN2GenericMetric {
 
 public:
 
   BRNETTMetric();
   ~BRNETTMetric();
+
   const char *class_name() const { return "BRNETTMetric"; }
   const char *processing() const { return AGNOSTIC; }
 
@@ -74,16 +79,15 @@ public:
 
   static String read_stats(Element *xf, void *);
 
-  void update_link(EtherAddress from, EtherAddress to, 
-    Vector<BrnRateSize> rs, Vector<int> fwd, Vector<int> rev, uint32_t seq);
+  void update_link(EtherAddress from, EtherAddress to,
+                   Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev,
+                   uint32_t seq, uint8_t update_mode);
 
   int get_tx_rate(EtherAddress);
 
 private:
-  class BrnLinkTable *_link_table;
+  Brn2LinkTable *_link_table;
 
-public:
-  int _debug;
 };
 
 CLICK_ENDDECLS

@@ -24,17 +24,18 @@
  */
 
 #include <click/config.h>
-
-#include "resolveethernet.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#include "resolveethernet.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+
 CLICK_DECLS
 
 ResolveEthernet::ResolveEthernet()
   : _debug(BrnLogger::DEFAULT),
-  _me(),
-  _arp_table()
+    _arp_table()
 {
 }
 
@@ -47,16 +48,11 @@ ResolveEthernet::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_src,
-                  //cpElement, "NodeIdentity", &_me,
     "ARPTABLE", cpkP+cpkM, cpElement, &_arp_table,
     cpEnd) < 0)
       return -1;
 
-/*
-  if (!_me || !_me->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
-*/
-  if (!_arp_table || !_arp_table->cast("ARPTable")) 
+  if (!_arp_table || !_arp_table->cast("ARPTable"))
     return errh->error("ARPTable not specified");
 
   return 0;
@@ -85,12 +81,10 @@ ResolveEthernet::simple_action(Packet *p_in)
     click_ether *ether = (click_ether *) q->data();
 
     memcpy(ether->ether_dhost, dst_ether_addr.data(), 6);
-    //memcpy(ether->ether_shost, _me->getMyWirelessAddress()->data(), 6);
     memcpy(ether->ether_shost, _src.data(), 6);
     ether->ether_type = htons(ETHERTYPE_IP);
 
-    BRN_DEBUG(" * encapsulate in ethernet header: %s | %s | %d",
-          dst_ether_addr.unparse().c_str(), _me->getMyWirelessAddress()->unparse().c_str(), ETHERTYPE_IP);
+    BRN_DEBUG(" * encapsulate in ethernet header: %s | %s | %d", dst_ether_addr.unparse().c_str(), _src.unparse().c_str(), ETHERTYPE_IP);
 
     // set ether anno
     q->set_ether_header(ether);

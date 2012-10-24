@@ -27,9 +27,10 @@
 CLICK_DECLS
 
 class BrnIappEncap;
-class AssocList;
+class BRN2AssocList;
 class BrnIappHelloHandler;
-class NodeIdentity;
+class BRN2NodeIdentity;
+class Brn2LinkTable;
 
 /*
  * =c
@@ -85,8 +86,9 @@ protected:
 public:
   int                   _debug;
 
-  NodeIdentity*         _id;
-  AssocList*            _assoc_list;
+  BRN2NodeIdentity*     _id;
+  BRN2AssocList*        _assoc_list;
+  Brn2LinkTable*        _link_table;
   BrnIappEncap*         _encap;
   BrnIappHelloHandler*  _hello_handler;
 };

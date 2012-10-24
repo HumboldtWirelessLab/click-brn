@@ -26,12 +26,15 @@
 #include "setetheraddr.hh"
 #include <click/confparse.hh>
 #include <click/error.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 SetEtherAddr::SetEtherAddr() :
-	_src(EtherAddress()),
-	_dst(EtherAddress())
+  _debug(BrnLogger::DEFAULT),
+  _src(EtherAddress()),
+  _dst(EtherAddress()),
+  _ethertype(0)
 {
 }
 
@@ -42,42 +45,51 @@ SetEtherAddr::~SetEtherAddr()
 int
 SetEtherAddr::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  int et = 0;
   if (cp_va_kparse(conf, this, errh,
       "SRC", cpkP, cpEthernetAddress, &_src,
       "DST", cpkP, cpEthernetAddress, &_dst,
-		  cpEnd) < 0)
+      "ETHERTYPE", cpkP, cpInteger, &et,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
     return -1;
-  
-  if (!_src && !_dst)
-  	return errh->error("You have to specify at least one argument SRC or DST");
-    
+
+  if (!_src && !_dst && !et)
+    return errh->error("You have to specify at least one argument SRC, DST or ETHERTYPE");
+
+  _ethertype = et;
   return 0;
 }
 
 Packet *
 SetEtherAddr::smaction(Packet *p)
 {
-  
-  if (WritablePacket *q = p->uniqueify()) {
-  	click_ether *ether = (click_ether *) q->ether_header();
 
-  	BRN_CHECK_EXPR_RETURN(ether == NULL,
-  					    ("No ether header found. Killing packet."),
-  					    q->kill(); return NULL); 
-  	
+  if (WritablePacket *q = p->uniqueify()) {
+    click_ether *ether = (click_ether *) q->ether_header();
+
+    BRN_CHECK_EXPR_RETURN(ether == NULL,
+                ("No ether header found. Killing packet."),
+                q->kill(); return NULL);
+
     if (_src) {
-    	memcpy(ether->ether_shost, _src.data(), 6);
-    	BRN_DEBUG("Setting src address %s.", _src.unparse().c_str());
+      memcpy(ether->ether_shost, _src.data(), 6);
+      BRN_DEBUG("Setting src address %s.", _src.unparse().c_str());
     }
-    	
+
     if (_dst) {
-    	memcpy(ether->ether_dhost, _dst.data(), 6);
-    	BRN_DEBUG("Setting dst address %s.", _dst.unparse().c_str());
+      memcpy(ether->ether_dhost, _dst.data(), 6);
+      BRN_DEBUG("Setting dst address %s.", _dst.unparse().c_str());
     }
-    	
+
+    if (_ethertype) {
+      ether->ether_type = htons(_ethertype);
+      BRN_DEBUG("Setting ethertype %d.", _ethertype);
+    }
+
     return q;
   }
-  
+
   p->kill();
   return NULL;
 }

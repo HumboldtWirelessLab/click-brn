@@ -22,19 +22,28 @@
  * brniapprouteupdatehandler.{cc,hh} -- handles the inter-ap protocol within brn
  * M. Kurth
  */
- 
-#include <click/config.h>
-#include "elements/brn/common.hh"
 
+#include <click/config.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
 #include <elements/wifi/wirelessinfo.hh>
+
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
+
+#include "elements/brn/routing/dsr/brn2_routequerier.hh"
+
 #include "brniapprouteupdatehandler.hh"
-#include "elements/brn/nodeidentity.hh"
-#include "elements/brn/wifi/ap/assoclist.hh"
 #include "brniappencap.hh"
 #include "brniapphellohandler.hh"
+#include "brniapprotocol.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,12 +68,12 @@ int
 BrnIappRouteUpdateHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-      //cpKeywords,
       "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement, /*"BrnIapp encap element",*/ &_encap,
       "HELLOHDL", cpkP+cpkM, cpElement, /*"HelloHandler element",*/ &_hello_handler,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       cpEnd) < 0)
     return -1;
 
@@ -77,18 +86,17 @@ BrnIappRouteUpdateHandler::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_hello_handler || !_hello_handler->cast("BrnIappHelloHandler")) 
     return errh->error("HelloHandler not specified");
 
+  if (!_id || !_id->cast("NodeIdentity"))
+    return errh->error("NodeIdentity not specified");
+
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BrnIappRouteUpdateHandler::initialize(ErrorHandler *errh)
+BrnIappRouteUpdateHandler::initialize(ErrorHandler */*errh*/)
 {
-  _id = _assoc_list->get_id();
-  if (!_id || !_id->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
-
   return 0;
 }
 
@@ -111,7 +119,7 @@ BrnIappRouteUpdateHandler::send_handover_routeupdate(
   EtherAddress ap_old,
   uint8_t      seq_no)
 {
-  BRN_CHECK_EXPR_RETURN(dst == src || *_id->getMyWirelessAddress() == dst,
+  BRN_CHECK_EXPR_RETURN(dst == src || *_id->getMasterAddress() == dst,
     ("called with invalid arguments: src %s, dst %s, sta %s, new %s, old %s", 
     src.unparse().c_str(), dst.unparse().c_str(), sta.unparse().c_str(), 
     ap_new.unparse().c_str(), ap_old.unparse().c_str()), return);
@@ -150,11 +158,10 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
 
   BRN_DEBUG("received route update for sta %s, new %s and old %s", 
     sta.unparse().c_str(), ap_new.unparse().c_str(), ap_old.unparse().c_str());
-  
+
   // Check if the link update really proceeded
   if (_debug >= BrnLogger::INFO) {
-    BrnLinkTable* _link_table = _assoc_list->get_id()->get_link_table();
-    
+
     BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(ap_new, sta) 
       || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(sta, ap_new),
         ("corrupted link table, missing link from sta %s to new ap %s",
@@ -165,26 +172,26 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
         ("corrupted link table, link from sta %s to old ap %s still exists",
           sta.unparse().c_str(), ap_old.unparse().c_str()));
   }
-  
+
   // get the ether header
   click_ether* ether = (click_ether*) p->ether_header();
   BRN_CHECK_EXPR_RETURN(NULL == ether, 
     ("missing ether header"), p->kill();return;);
-  
+
   /// @TODO eleminate duplicates by using seq_no and ap_new
   UNREFERENCED_PARAMETER(seq_no);
-  
+
   // Finally kill the packet
   p->kill();
-  
+
   // Check if there is a route to the new ap, otherwise initiate a route discovery
   // We simply use a hello here for this purpose, because it is to_curr no one
   // will learn from this packet
-  _hello_handler->send_iapp_hello(sta, *_id->getMyWirelessAddress(), ap_new, true);
+  _hello_handler->send_iapp_hello(sta, *_id->getMasterAddress(), ap_new, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 enum {H_DEBUG};
 
 static String 
@@ -230,6 +237,6 @@ BrnIappRouteUpdateHandler::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnIappRouteUpdateHandler)
-ELEMENT_REQUIRES(brn_common)
+
 
 ////////////////////////////////////////////////////////////////////////////////

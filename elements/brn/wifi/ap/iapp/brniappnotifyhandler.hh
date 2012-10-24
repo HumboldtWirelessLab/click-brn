@@ -27,8 +27,8 @@
 
 CLICK_DECLS
 
-class NodeIdentity;
-class AssocList;
+class BRN2NodeIdentity;
+class BRN2AssocList;
 class BrnIappEncap;
 class BrnIappStationTracker;
 class BRNSetGatewayOnFlow;
@@ -105,8 +105,8 @@ public:
 
 
   // Elements
-  NodeIdentity*           _id;
-  AssocList*              _assoc_list;
+  BRN2NodeIdentity*           _id;
+  BRN2AssocList*              _assoc_list;
   BrnIappEncap*           _encap;
   BrnIappStationTracker*  _sta_tracker;
   

@@ -23,18 +23,20 @@
  * M. Kurth
  */
 #include <click/config.h>
-#include "elements/brn/common.hh"
-
-#include <clicknet/wifi.h>
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
-#include "brniappstationsnooper.hh"
-#include "elements/brn/nodeidentity.hh"
-#include "elements/brn/wifi/ap/assoclist.hh"
+#include <clicknet/wifi.h>
+
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/wifi/ap/brn2_assoclist.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
+
 #include "brniapphellohandler.hh"
 #include "brniappstationtracker.hh"
-#include "elements/brn2/brnprotocol/brnpacketanno.hh"
+#include "brniappstationsnooper.hh"
+
 CLICK_DECLS
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,13 +71,12 @@ int
 BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-      //cpKeywords,
       "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
       "OPTIMIZE", cpkP+cpkM, cpBool,/* "Optimize",*/ &_optimize,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
       "HELLOHDL", cpkP+cpkM, cpElement, /*"HelloHandler element",*/ &_hello_handler,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
       cpEnd) < 0)
     return -1;
 
@@ -90,18 +91,17 @@ BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_hello_handler || !_hello_handler->cast("BrnIappHelloHandler")) 
     return errh->error("BrnIappHelloHandler not specified");
 
+  if (!_id || !_id->cast("NodeIdentity"))
+    return errh->error("NodeIdentity not specified");
+
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 int
-BrnIappStationSnooper::initialize(ErrorHandler *errh)
+BrnIappStationSnooper::initialize(ErrorHandler */*errh*/)
 {
-  _id = _assoc_list->get_id();
-  if (!_id || !_id->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
-  
   return 0;
 }
 
@@ -116,15 +116,15 @@ BrnIappStationSnooper::push(int, Packet *p)
       p->kill();
     return;
   }
-  
+
   BRN_CHECK_EXPR_RETURN(NULL == p || p->length() < sizeof(struct click_wifi),
     ("invalid arguments"), if (p) p->kill();return;);
-  
+
   const click_wifi* wifi = (const click_wifi*) p->data();
-  
+
   BRN_CHECK_EXPR_RETURN(NULL == wifi,
     ("missing wifi header"), if (p) p->kill();return;);
-  
+
   // Check frame control
   BRN_CHECK_EXPR_RETURN(WIFI_FC0_VERSION_0 != (wifi->i_fc[0] & WIFI_FC0_VERSION_MASK),
     ("invalid frame type, discard (fc[0]=0x%x).", wifi->i_fc[0]), 
@@ -135,7 +135,7 @@ BrnIappStationSnooper::push(int, Packet *p)
     peek_data(p);
   else if (WIFI_FC0_TYPE_MGT == (wifi->i_fc[0] & WIFI_FC0_TYPE_MASK))
     peek_management(p);
-    
+
   // Kill packet anyway
   p->kill();
 }
@@ -185,7 +185,8 @@ BrnIappStationSnooper::peek_management(Packet *p)
     return;
   }
 
-  String dev(BRNPacketAnno::udevice_anno(p));
+  BRN2Device *brndev = _id->getDeviceByNumber(BRNPacketAnno::devicenumber_anno(p));
+  String dev = brndev->getDeviceName();
   bool to_ds = false;
 
   // check bssid address
@@ -198,7 +199,7 @@ BrnIappStationSnooper::peek_management(Packet *p)
       src.unparse().c_str(), dst.unparse().c_str(), bssid.unparse().c_str());
     return;
   }
-  
+
   EtherAddress sta( (true == to_ds) ? src : dst);  
   EtherAddress ap( (true != to_ds) ? src : dst);  
 
@@ -225,13 +226,13 @@ BrnIappStationSnooper::peek_management(Packet *p)
         break; 
 
       // take the state of the sta before and after the tracker was called
-      AssocList::client_state state = _assoc_list->get_state(sta);
-      _sta_tracker->sta_associated(sta, ap, EtherAddress(), BRNPacketAnno::udevice_anno(p), "");
+      BRN2AssocList::client_state state = _assoc_list->get_state(sta);
+      _sta_tracker->sta_associated(sta, ap, EtherAddress(), _id->getDeviceByNumber(BRNPacketAnno::devicenumber_anno(p)), "");
 
       // Generate iapp hello message, if not already known
       // NOTE: since we run in promisc, we also hear others assoc's!
-      AssocList::client_state new_state = _assoc_list->get_state(sta);
-      if (AssocList::SEEN_OTHER == new_state 
+      BRN2AssocList::client_state new_state = _assoc_list->get_state(sta);
+      if (BRN2AssocList::SEEN_OTHER == new_state
         &&new_state != state) 
       {
         // Do not send immediatly, because otherwise route requests will always collide
@@ -285,33 +286,32 @@ BrnIappStationSnooper::peek_data(Packet *p)
     return;
   }
 
-  String dev(BRNPacketAnno::udevice_anno(p));
+  BRN2Device *dev = _id->getDeviceByNumber(BRNPacketAnno::devicenumber_anno(p));
 
   BRN_DEBUG("seen frame for STA %s with BSSID %s and CN %s", 
     sta.unparse().c_str(), bssid.unparse().c_str(), cn.unparse().c_str());
-  
+
   // Filter tx feedback
   BRN_CHECK_EXPR_RETURN((WIFI_FC1_DIR_FROMDS == (wifi->i_fc[1] & WIFI_FC1_DIR_MASK))
     && _id->isIdentical(&bssid),
     ("seen tx feedbacked frame for STA %s with BSSID %s and CN %s", 
       sta.unparse().c_str(), bssid.unparse().c_str(), cn.unparse().c_str()), return;);
-  
+
   // Check for roaming
-  AssocList::client_state state = _assoc_list->get_state(sta);
-  if  (AssocList::ASSOCIATED == state 
+  BRN2AssocList::client_state state = _assoc_list->get_state(sta);
+  if  (BRN2AssocList::ASSOCIATED == state
     && !_id->isIdentical(&bssid))
   { // The previously associated sta moved to bssid
-    
     // TODO check if bssid is a BRN node
-    _sta_tracker->sta_roamed(sta, bssid, *_id->getMyWirelessAddress());
+    _sta_tracker->sta_roamed(sta, bssid, *_id->getMasterAddress());
   }
-  
+
   _assoc_list->client_seen(sta, bssid, dev);
-  
+
   // Generate iapp hello message, if not already known
-  AssocList::client_state new_state = _assoc_list->get_state(sta);
-  if (AssocList::SEEN_OTHER == new_state 
-    &&new_state != state) 
+  BRN2AssocList::client_state new_state = _assoc_list->get_state(sta);
+  if (BRN2AssocList::SEEN_OTHER == new_state
+    &&new_state != state)
   {
     // Do not send immediatly, because otherwise route requests will always collide
     // with hello messages.
@@ -371,7 +371,7 @@ BrnIappStationSnooper::add_handlers()
 {
   add_read_handler("debug", read_param, (void *) H_DEBUG);
   add_write_handler("debug", write_param, (void *) H_DEBUG);
-  
+
   add_read_handler("optimize", read_param, (void *) H_OPTIMIZE);
   add_write_handler("optimize", write_param, (void *) H_OPTIMIZE);
 }
@@ -380,6 +380,5 @@ BrnIappStationSnooper::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnIappStationSnooper)
-ELEMENT_REQUIRES(brn_common)
 
 ////////////////////////////////////////////////////////////////////////////////
