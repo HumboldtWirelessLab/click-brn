@@ -1086,6 +1086,7 @@ StringAccum PacketLossEstimator::stats_get_weak_signal(HiddenNodeDetection::Node
         }
         weak_signal_sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
         weak_signal_sa << "\t\t\t<fraction>" << _pli.graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction() << "</fraction>\n";
+        weak_signal_sa << "\t\t\t<last_avg_rssi>" << _cst->get_latest_stats_neighbours()->findp(ea)->_avg_rssi << "</last_avg_rssi>\n";
         weak_signal_sa << "\t\t</neighbour>\n";
     }
 
