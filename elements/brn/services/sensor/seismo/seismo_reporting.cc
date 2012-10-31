@@ -88,7 +88,7 @@ SeismoReporting::run_timer(Timer *)
   BRN_DEBUG("Run timer");
 
   _reporting_timer.schedule_after_msec(_interval);
-  
+
   seismo_evaluation();
 
 }

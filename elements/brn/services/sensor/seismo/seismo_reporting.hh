@@ -37,6 +37,7 @@ class SeismoAlarm {
 
     Timestamp _start;
     Timestamp _end;
+    uint16_t  _id;
 
     void *_detection_info;
 
