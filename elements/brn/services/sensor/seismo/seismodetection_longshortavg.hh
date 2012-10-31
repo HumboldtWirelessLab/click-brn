@@ -159,9 +159,9 @@ class SlidingWindow {
     _raw[_history_index] = value;
 
     int64_t corr_value = (int64_t)value - (int64_t)_history_current_mean;
-    
+
     //click_chatter("Value: %d Corr: %lli Mean: %lli", value, (int64_t)corr_value, (int64_t)_history_current_mean);
-    
+
     _fixed_value[_history_index] = corr_value;
     _history_cum_vals += corr_value;
     _window_cum_vals += corr_value;
@@ -281,7 +281,7 @@ class SeismoAlarmLTASTAInfo {
     int32_t _sq_avg_short;
 
     uint32_t _insert; //number of data (start of alarm)
-    
+
     bool _mode;
 
     SeismoAlarmLTASTAInfo(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
@@ -346,7 +346,7 @@ class SeismoDetectionLongShortAvg : public BRNElement, public SeismoDetectionAlg
 
   SlidingWindow swin;
   SeismoAlarmList sal;
-  
+
   bool _print_alarm;
   bool _init_swin;
 
