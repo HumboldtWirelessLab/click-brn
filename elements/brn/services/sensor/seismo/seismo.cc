@@ -119,7 +119,6 @@ Seismo::data_file_read()
 
   if ( _data_file_index == 0 ) {
     _node_stats_tab.insert(src_node_id, new SrcInfo( 0, 0, 0, 0, 100, 4));
-    SeismoInfoBlock *sib_new = _node_stats_tab.find(src_node_id)->new_block();
   }
 
   SrcInfo *src_i = _node_stats_tab.find(src_node_id);
