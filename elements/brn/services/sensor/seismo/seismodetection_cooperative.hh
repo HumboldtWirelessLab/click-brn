@@ -59,6 +59,8 @@ class SeismoDetectionCooperative : public BRNElement, public SeismoDetectionAlgo
 
   const char *port_count() const  { return "1/1"; } //0: local 1: remote
 
+  void *cast(const char *);
+
   int configure(Vector<String> &, ErrorHandler *);
   int initialize(ErrorHandler *);
 
@@ -78,12 +80,23 @@ class SeismoDetectionCooperative : public BRNElement, public SeismoDetectionAlgo
   SeismoDetectionAlgorithmList _sdal;
   NodeAlarmMap _salm;
 
+  bool has_alarm(SeismoAlarmList *al, uint32_t t, uint32_t range);
+  void get_cooperative_alarms();
+  void add_alarm(EtherAddress *node, Timestamp *alarmts, uint16_t id);
+
   String _algo_string;
 
   uint16_t _max_alarm;
+  uint32_t _merge_range;
 
   Timestamp _last_packet;
 
+  EtherAddress _local_addr;
+  EtherAddress _group_addr;
+  EtherAddress _alarm_addr;
+
+  uint32_t _group_alarm_id;
+  uint32_t _fract_threshold;
 };
 
 CLICK_ENDDECLS

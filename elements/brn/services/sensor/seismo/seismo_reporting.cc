@@ -64,13 +64,15 @@ SeismoReporting::initialize(ErrorHandler *errh)
   Vector<String> algo_vec;
   cp_spacevec(_algo_string, algo_vec);
 
+  BRN_DEBUG("Size: %d",algo_vec.size());
   for (int i = 0; i < algo_vec.size(); i++) {
     Element *new_element = cp_element(algo_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
-      //click_chatter("El-Name: %s", new_element->class_name());
+      click_chatter("El-Name: %s", new_element->class_name());
       SeismoDetectionAlgorithm *sda =
         (SeismoDetectionAlgorithm *)new_element->cast("SeismoDetectionAlgorithm");
       if ( sda != NULL ) {
+        BRN_DEBUG("Add");
         _sdal.push_back(sda);
       }
     }
