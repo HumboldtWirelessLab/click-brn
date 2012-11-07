@@ -355,11 +355,24 @@ void PacketLossEstimator::estimateHiddenNode()
                         hnProp = 100;
                     } else
                     {
-                        hnProp = get_acks_by_node(*_packet_parameter->get_dst_address()) * 12 / 10; // 12 ms per packet / 1000 ms * 100
+                        for(HiddenNodeDetection::NodeInfoTableIter i = other_neighbour_list.begin(); i != other_neighbour_list_end; i++)
+                        {
+                            EtherAddress tmpAdd = i.key();
+                            BRN_INFO("Neighbours Neighbour is: %s", tmpAdd.unparse().c_str());
+
+                            if(!_hnd->get_nodeinfo_table().find(tmpAdd) || !_hnd->get_nodeinfo_table().find(tmpAdd)->_neighbour)
+                            {
+                                BRN_INFO("Not in my Neighbour List");
+
+                                // nicht nur ACKS mit reinrechnen, sondern auch noch Netzwerkverkehr zum HN + Acks selbst!
+                                // evtl. Datenrate von Paketen der Nachbarstation an den HN rausfinden
+                                hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12 / 10; // 12 ms per packet / 1000 ms * 100
+                            }
+                        }
                     }
 
-                    BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()),
-                            _packet_parameter->get_dst_address()->unparse().c_str());
+//                    BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()),
+//                            _packet_parameter->get_dst_address()->unparse().c_str());
                 }
 
                 if(_pli != NULL)
@@ -548,25 +561,30 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info, Ch
 uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *src_info, ChannelStats::RSSIInfo &rssi_info)
 {
     uint32_t rssi_hist_index = src_info->_rssi_hist_index;
-    uint8_t min_counter = 0;
-    uint8_t highest_counter = 0;
-    uint8_t max_counter = 0;
+//    uint8_t min_counter = 0;
+//    uint8_t highest_counter = 0;
+//    uint8_t max_counter = 0;
     uint8_t result = 0;
     uint8_t histogram[256];
-    uint8_t min[256];
-    uint8_t highest[256];
-    uint8_t max[256];
-    uint8_t min_val[256];
-    uint8_t highest_val[256];
-    uint8_t max_val[256];
+    float norm_histogram[256];
+//    uint8_t min[256];
+//    uint8_t highest[256];
+//    uint8_t max[256];
+//    uint8_t min_val[256];
+//    uint8_t highest_val[256];
+//    uint8_t max_val[256];
+    float expected_value = 0.0;
+    float variance = 0.0;
+    float std_deviation = 0.0;
 
     memset(histogram, 0, sizeof(histogram));
-    memset(min, 0, sizeof(min));
-    memset(highest, 0, sizeof(highest));
-    memset(max, 0, sizeof(max));
-    memset(min_val, 0, sizeof(min_val));
-    memset(highest_val, 0, sizeof(highest_val));
-    memset(max_val, 0, sizeof(max_val));
+    memset(norm_histogram, 0.0, sizeof(norm_histogram));
+//    memset(min, 0, sizeof(min));
+//    memset(highest, 0, sizeof(highest));
+//    memset(max, 0, sizeof(max));
+//    memset(min_val, 0, sizeof(min_val));
+//    memset(highest_val, 0, sizeof(highest_val));
+//    memset(max_val, 0, sizeof(max_val));
 
     if(&rssi_info == NULL)
     {
@@ -590,11 +608,59 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *
     }
 
     /*
-     * find min, max and hightest values
+     * create normalized histogram
+     * calculate expected value and variance
      */
 
+    for(uint16_t k = 0; k < 256; k++)
+    {
+        if (histogram[k] == 0)
+        {
+            continue;
+        }
+
+        norm_histogram[k] = float(histogram[k]) / float(rssi_hist_index);
+        expected_value += float(k) * float(norm_histogram[k]);
+
+        BRN_INFO("Hist[%d]: %d / Norm-Hist[%d]: %f", k, histogram[k], k, norm_histogram[k]);
+    }
+
+    BRN_INFO("Expected value: %f", expected_value);
+
+    for(uint16_t l = 0; l < 256; l++)
+    {
+        if (norm_histogram[l] == 0)
+        {
+            continue;
+        }
+
+        variance += (float(l) - expected_value) * (float(l) - expected_value) * norm_histogram[l];
+    }
+
+    std_deviation = sqrtf(variance);
+
+    BRN_INFO("Variance: %f / Standard deviation: %f", variance, std_deviation);
+
+    if((expected_value - std_deviation) <= 0)
+    {
+        result = 100;
+    } else if((expected_value - std_deviation * 2) <= 0)
+    {
+        result = 50;
+    } else if((expected_value - std_deviation * 3) <= 0)
+    {
+        result = 25;
+    } else
+    {
+        result = 0;
+    }
+
+
+    /*
+     * find min, max and hightest values
+     */
+/*
     min[min_counter] = highest[highest_counter] = max[max_counter] = histogram[0];
-    //BRN_INFO("histogramm START");
     for(uint16_t j = 0; j < 256; j++)
     {
         //BRN_INFO("histogramm %d: %d", j, histogram[j]);
@@ -667,7 +733,7 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *
     {
         result = 0;
     }
-
+*/
     return result;
 }
 
@@ -1020,6 +1086,7 @@ StringAccum PacketLossEstimator::stats_get_weak_signal(HiddenNodeDetection::Node
         }
         weak_signal_sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
         weak_signal_sa << "\t\t\t<fraction>" << _pli.graph_get(ea)->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction() << "</fraction>\n";
+        weak_signal_sa << "\t\t\t<last_avg_rssi>" << _cst->get_latest_stats_neighbours()->findp(ea)->_avg_rssi << "</last_avg_rssi>\n";
         weak_signal_sa << "\t\t</neighbour>\n";
     }
 
