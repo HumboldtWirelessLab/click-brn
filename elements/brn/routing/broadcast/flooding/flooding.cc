@@ -155,6 +155,10 @@ Flooding::push( int port, Packet *packet )
       output(0).push(p_client_out);                           // to clients (arp,...)
     }
 
+#ifdef FLOODING_EXTRA_STATS
+    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward);
+#endif
+
     if (forward)
     {
       _flooding_fwd++;
@@ -182,6 +186,21 @@ Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now)
   if ( bcn == NULL ) _bcast_map.insert(*src, new BroadcastNode(src, id));
   else bcn->add_id(id,*now);
 }
+
+#ifdef FLOODING_EXTRA_STATS
+void
+Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) {
+    BRN_ERROR("BCastNode is unknown. Discard info.");
+    return;
+  }
+  
+  bcn->add_last_node(id, last_node, forwarded);
+}
+#endif
 
 bool
 Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now)
@@ -228,21 +247,37 @@ Flooding::table()
 {
   StringAccum sa;
 
-  sa << "<flooding_table node=\"" << BRN_NODE_NAME << "\" >\n";
+  sa << "<flooding_table node=\"" << BRN_NODE_NAME << "\">\n";
   BcastNodeMapIter iter = _bcast_map.begin();
   while (iter != _bcast_map.end())
   {
     BroadcastNode* bcn = iter.value();
-    sa << "\t<src node=\"" << bcn->_src.unparse() << "\" ids=\"";
-    for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn->_bcast_id_list[i] == 0 ) break;
-      if ( i != 0 ) sa << ",";
-      sa << bcn->_bcast_id_list[i];
-    }
-    sa << "\" />\n";
+    int id_c = 0;
+    for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ )
+       if ( bcn->_bcast_id_list[i] != 0 ) id_c++;
+ 
+    sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
+      for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
+        if ( bcn->_bcast_id_list[i] == 0 ) continue;
+#ifndef FLOODING_EXTRA_STATS
+	sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" />\n";
+#else
+	struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i]; 
+	sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" >\n";
+
+	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
+	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
+	  sa << (uint32_t)flnl[j].forwarded << "\" />\n";
+	}  
+
+        sa << "\t\t</id>\n";
+#endif
+	
+      }
+    sa << "\t</src>\n";
     iter++;
   }
-  sa << "</flooding>\n";
+  sa << "</flooding_table>\n";
 
   return sa.take_string();
 }
