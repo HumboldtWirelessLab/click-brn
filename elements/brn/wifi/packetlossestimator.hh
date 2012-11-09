@@ -83,6 +83,8 @@ private:
     void reset_acks();
     ///<
     uint8_t calc_weak_signal_percentage(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
+    ///<
+    void update_statistics(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
 
     StringAccum stats_get_hidden_node(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
     StringAccum stats_get_inrange(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
