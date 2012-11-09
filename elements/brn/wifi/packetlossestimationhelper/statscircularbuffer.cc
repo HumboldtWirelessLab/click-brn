@@ -8,7 +8,7 @@ StatsCircularBuffer::StatsCircularBuffer (const uint16_t initsize)
 }
 
 StatsCircularBuffer::~StatsCircularBuffer ()
-{    
+{
 }
 
 void StatsCircularBuffer::insert_values (PacketParameter &packet_parameter, PacketLossInformation &pli)
@@ -18,7 +18,7 @@ void StatsCircularBuffer::insert_values (PacketParameter &packet_parameter, Pack
         click_chatter ("%s:%d: PacketParameter and/or PacketLossInformation is NULL", __FILE__, __LINE__);
         return;
     }
-    
+
     EtherAddress                ea = *packet_parameter.get_src_address();
     PacketLossInformation_Graph *pli_graph = pli.graph_get(ea);
 
@@ -34,7 +34,7 @@ void StatsCircularBuffer::insert_values (PacketParameter &packet_parameter, Pack
     const uint8_t ws_fraction = pli_graph->reason_get (PacketLossReason::WEAK_SIGNAL)->getFraction ();
 
     PacketLossStatistics pls;
-    
+
     pls.set_hidden_node_probability (hn_fraction);
     pls.set_inrange_probability (ir_fraction);
     pls.set_non_wifi_probability (nw_fraction);
@@ -64,9 +64,9 @@ void StatsCircularBuffer::insert_values (PacketParameter &packet_parameter, Pack
 Vector<PacketLossStatistics> StatsCircularBuffer::get_values (EtherAddress &ea, uint16_t amount)
 {
     Vector<PacketLossStatistics> pls;
-    Vector<PacketLossStatistics> stored_pls = ether_address_time_map.find (ea);
+    Vector<PacketLossStatistics> stored_pls = ether_address_time_map.find(ea);
 
-    if (!stored_pls.empty ())
+    if (!stored_pls.empty())
     {
         if (amount > get_buffer_size ())
         {
@@ -82,7 +82,8 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values (EtherAddress &ea, 
         for (Vector<PacketLossStatistics>::iterator list_iter = stored_pls.begin (); list_iter != list_end && i <= amount; ++list_iter)
         {
             ++i;
-            pls.push_back (*list_iter);
+//            pls.push_back (*list_iter);
+            pls.push_front (*list_iter);
         }
         //click_chatter ("amount/iterations: %d/%d", amount, i);
     } else
@@ -122,8 +123,22 @@ Vector<EtherAddress> StatsCircularBuffer::get_stored_addresses ()
     {
         ether_addresses.push_back (iter.key ());
     }
-    
+
     return ether_addresses;
+}
+
+void StatsCircularBuffer::remove_stored_address(EtherAddress &ea)
+{
+	ether_address_time_map.erase(ea);
+}
+
+bool StatsCircularBuffer::exists_address(EtherAddress &ea)
+{
+	if (ether_address_time_map.find(ea).empty())
+	{
+		return false;
+	}
+	return true;
 }
 
 CLICK_ENDDECLS
