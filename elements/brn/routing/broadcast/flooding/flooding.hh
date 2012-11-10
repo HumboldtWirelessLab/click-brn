@@ -38,7 +38,9 @@ CLICK_DECLS
 
 struct click_brn_bcast {
   uint16_t      bcast_id;
-};
+  uint8_t       flags;
+  uint8_t       extra_data_size;
+} CLICK_SIZE_PACKED_ATTRIBUTE ;
 
 
 /*
@@ -131,7 +133,7 @@ class Flooding : public BRNElement {
   const char *class_name() const  { return "Flooding"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "2/2"; } 
+  const char *port_count() const  { return "3/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
