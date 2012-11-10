@@ -133,7 +133,14 @@ Flooding::push( int port, Packet *packet )
 
     uint8_t dev_id = BRNPacketAnno::devicenumber_anno(packet);
 
-    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known);
+    Vector<EtherAddress> forwarder;
+    Vector<EtherAddress> passiveack;
+    uint8_t extra_data[256];
+    uint32_t extra_data_size = 256;
+
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known,
+                                                             0 /*rx*/, NULL /*rx*/, &extra_data_size, extra_data,
+                                                             &forwarder, &passiveack);
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
@@ -170,8 +177,18 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
       if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
-  }
+  } else if ( port == 3 ) { //txfeedback
+    BRN_DEBUG("Flooding: TXFeedback\n");
 
+    bcast_header = (struct click_brn_bcast *)(packet->data());
+    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
+
+    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
+
+    uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+    forward_done(&src, p_bcast_id);
+    packet->kill();
+  }
 }
 
 void

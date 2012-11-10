@@ -1,5 +1,5 @@
-#ifndef PROBABILITYFLOODING_HH
-#define PROBABILITYFLOODING_HH
+#ifndef MULTIRATEFLOODING_HH
+#define MULTIRATEFLOODING_HH
 #include <click/timer.hh>
 
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
@@ -7,15 +7,15 @@
 
 CLICK_DECLS
 
-class ProbabilityFlooding : public FloodingPolicy
+class MultirateFlooding : public FloodingPolicy
 {
 
   public:
-    ProbabilityFlooding();
-    ~ProbabilityFlooding();
+    MultirateFlooding();
+    ~MultirateFlooding();
 
 /*ELEMENT*/
-    const char *class_name() const  { return "ProbabilityFlooding"; }
+    const char *class_name() const  { return "MultirateFlooding"; }
 
     void *cast(const char *name);
 
@@ -30,7 +30,7 @@ class ProbabilityFlooding : public FloodingPolicy
 
     void add_handlers();
 
-    const char *floodingpolicy_name() const { return "ProbabilityFlooding"; }
+    const char *floodingpolicy_name() const { return "MultirateFlooding"; }
     bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known,
                     uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                     Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack);
