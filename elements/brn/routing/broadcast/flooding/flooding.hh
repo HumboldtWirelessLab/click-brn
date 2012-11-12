@@ -206,7 +206,7 @@ class Flooding : public BRNElement {
   const char *class_name() const  { return "Flooding"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "3/2"; }
+  const char *port_count() const  { return "2-4/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }

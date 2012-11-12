@@ -39,6 +39,10 @@ class MPRFlooding : public FloodingPolicy
 
     String flooding_info(void);
 
+    int set_mpr_vector(const String &in_s, Vector<EtherAddress> *ea_vector);
+    int set_mpr_forwarder(const String &in_s);
+    int set_mpr_destination(const String &in_s);
+
   private:
 
     BRN2NodeIdentity *_me;
