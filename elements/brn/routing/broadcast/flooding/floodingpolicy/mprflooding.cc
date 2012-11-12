@@ -52,9 +52,9 @@ MPRFlooding::initialize(ErrorHandler *)
 }
 
 bool
-MPRFlooding::do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known,
-                        uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
-                        Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack)
+MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool is_known,
+                        uint32_t /*rx_data_size*/, uint8_t */*rxdata*/, uint32_t */*tx_data_size*/, uint8_t */*txdata*/,
+                        Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
   click_random_srandom();
 
@@ -106,29 +106,26 @@ MPRFlooding::set_mpr_vector(const String &in_s, Vector<EtherAddress> *ea_vector)
 
   ea_vector->clear();
 
-  String s = cp_uncomment(in_s);
-  Vector<String> args;
-  cp_spacevec(s, args);
-
-  ea_vector->clear();
-
+  EtherAddress ea;
+  
   for ( int i = 0; i < ea_vector->size(); i++ ) {
-     EtherAddress ea = EtherAddress(args[i]);
+     cp_ethernet_address(args[i], &ea);
      ea_vector->push_back(ea);
   }
 
+  return 0;
 }
 
 int
 MPRFlooding::set_mpr_forwarder(const String &in_s)
 {
-  return set_mpr_vector(in_s, mpr_forwarder);
+  return set_mpr_vector(in_s, &mpr_forwarder);
 }
 
 int
 MPRFlooding::set_mpr_destination(const String &in_s)
 {
-  return set_mpr_vector(in_s, mpr_unicast);
+  return set_mpr_vector(in_s, &mpr_unicast);
 }
 
 /*******************************************************************************************/
@@ -162,12 +159,12 @@ read_param(Element *e, void *thunk)
 }
 
 static int
-write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
   MPRFlooding *mprfl = (MPRFlooding *)e;
   String s = cp_uncomment(in_s);
 
-  switch ((uintptr_t) thunk)
+  switch ((uintptr_t) vparam)
   {
     case H_MPRFLOODING_FORWARDER : return ( mprfl->set_mpr_forwarder(in_s) );
     case H_MPRFLOODING_DESTINATION : return ( mprfl->set_mpr_destination(in_s) );

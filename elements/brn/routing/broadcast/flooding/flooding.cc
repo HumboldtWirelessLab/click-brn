@@ -181,8 +181,11 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
       if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
-  } else if ( port == 3 ) { //txfeedback
-    BRN_DEBUG("Flooding: TXFeedback\n");
+  } else if ( port == 2 ) { //txfeedback failure
+    BRN_DEBUG("Flooding: TXFeedback failure\n");
+    packet->kill();
+  } else if ( port == 3 ) { //txfeedback success
+    BRN_DEBUG("Flooding: TXFeedback success\n");
 
     bcast_header = (struct click_brn_bcast *)(packet->data());
     src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
@@ -288,11 +291,11 @@ Flooding::table()
         if ( bcn->_bcast_id_list[i] == 0 ) continue;
 #ifndef FLOODING_EXTRA_STATS
         sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" forwarded=\"";
-        sa << bcn->_bcast_fwd_done_list[i]?1:0 << "\" />\n";
+        sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" />\n";
 #else
         struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
         sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" forwarded=\"";
-        sa << bcn->_bcast_fwd_done_list[i]?1:0 << "\" >\n";
+        sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" >\n";
 
 	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
 	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";

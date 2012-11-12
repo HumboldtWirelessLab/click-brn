@@ -52,9 +52,9 @@ MultirateFlooding::initialize(ErrorHandler *)
 }
 
 bool
-MultirateFlooding::do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known,
-                              uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
-                              Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack)
+MultirateFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool /*is_known*/,
+                              uint32_t /*rx_data_size*/, uint8_t */*rxdata*/, uint32_t */*tx_data_size*/, uint8_t */*txdata*/,
+                              Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
   BRN_ERROR("No implementation");
 
