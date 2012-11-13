@@ -162,7 +162,7 @@ class Flooding : public BRNElement {
 
       inline void forward_done(uint32_t id) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] != id) _bcast_fwd_done_list[index] = true;
+        if (_bcast_id_list[index] == id) _bcast_fwd_done_list[index] = true;
       }
 
 #ifdef FLOODING_EXTRA_STATS
