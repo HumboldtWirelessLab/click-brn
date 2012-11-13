@@ -290,11 +290,11 @@ Flooding::table()
       for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
         if ( bcn->_bcast_id_list[i] == 0 ) continue;
 #ifndef FLOODING_EXTRA_STATS
-        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" forwarded=\"";
+        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" sent=\"";
         sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" />\n";
 #else
         struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
-        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" forwarded=\"";
+        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" sent=\"";
         sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" >\n";
 
 	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
