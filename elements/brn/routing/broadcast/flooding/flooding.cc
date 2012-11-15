@@ -266,7 +266,8 @@ Flooding::stats()
 {
   StringAccum sa;
 
-  sa << "<flooding node=\"" << BRN_NODE_NAME << "\" >\n\t<source count=\"" << _flooding_src << "\" />\n";
+  sa << "<flooding node=\"" << BRN_NODE_NAME << "\" policy=\"" <<  _flooding_policy->floodingpolicy_name();
+  sa << "\" >\n\t<source count=\"" << _flooding_src << "\" />\n";
   sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n</flooding>\n";
 
   return sa.take_string();

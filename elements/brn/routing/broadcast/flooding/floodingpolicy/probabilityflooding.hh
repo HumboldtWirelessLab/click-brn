@@ -43,6 +43,9 @@ class ProbabilityFlooding : public FloodingPolicy
 
     BRN2NodeIdentity *_me;
     Brn2LinkTable *_link_table;
+
+    uint32_t _min_no_neighbors;
+    uint32_t _fwd_probability;
     int _max_metric_to_neighbor;
 
     void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);

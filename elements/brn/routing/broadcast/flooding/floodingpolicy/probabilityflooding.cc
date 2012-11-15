@@ -10,7 +10,10 @@
 
 CLICK_DECLS
 
-ProbabilityFlooding::ProbabilityFlooding()
+ProbabilityFlooding::ProbabilityFlooding():
+  _min_no_neighbors(0),
+  _fwd_probability(100),
+  _max_metric_to_neighbor(5000)
 {
   BRNElement::init();
 }
@@ -37,6 +40,8 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+    "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
+    "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
@@ -62,10 +67,9 @@ ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddre
   Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
   get_filtered_neighbors(*me, nb_neighbors);
 
-  if ( nb_neighbors.size() < 3 ) return ! is_known;
-  if ( ( click_random() % (nb_neighbors.size() - 2) ) == 1 ) return false;
-
-  return ! is_known;
+  if ( nb_neighbors.size() <= _min_no_neighbors ) return !is_known;
+  
+  return !is_known & ((click_random() % 100) < _fwd_probability);
 }
 
 int
