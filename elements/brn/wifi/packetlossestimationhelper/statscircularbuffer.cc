@@ -82,7 +82,6 @@ Vector<PacketLossStatistics> StatsCircularBuffer::get_values (EtherAddress &ea, 
         for (Vector<PacketLossStatistics>::iterator list_iter = stored_pls.begin (); list_iter != list_end && i <= amount; ++list_iter)
         {
             ++i;
-//            pls.push_back (*list_iter);
             pls.push_front (*list_iter);
         }
         //click_chatter ("amount/iterations: %d/%d", amount, i);

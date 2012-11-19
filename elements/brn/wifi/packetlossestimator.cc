@@ -51,7 +51,6 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
                     return packet;
                 }
 
-                //click_chatter("Src:  RSSISize: %d",/*_packet_parameter->get_src_address()->unparse().c_str()*/ src_info->_rssi_hist_index);
                 ChannelStats::RSSIInfo *rssi_info = _cst->get_latest_rssi_info();
                 estimateWeakSignal(src_info, *rssi_info);
                 estimateNonWifi(*stats);
@@ -434,12 +433,9 @@ void PacketLossEstimator::estimateInrange()
         {
             for(int i = 1; i < neighbours; i++)
             {
-                //click_chatter("before temp new / temp old: %d/%d", temp, temp_new);
                 temp *= (double(backoffsize) - double(i)) / double(backoffsize);
-                temp_new *= ((backoffsize * 1000000 - i * 1000000) / (backoffsize * 1000000));
                 //click_chatter("backoffsize: %d neighbour: %d", backoffsize, i);
             }
-            click_chatter("temp new / temp old: %d/%d", temp, temp_new);
             irProp = (1 - temp) * 100;
         }
 
@@ -561,30 +557,15 @@ void PacketLossEstimator::estimateWeakSignal(ChannelStats::SrcInfo *src_info, Ch
 uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *src_info, ChannelStats::RSSIInfo &rssi_info)
 {
     uint32_t rssi_hist_index = src_info->_rssi_hist_index;
-//    uint8_t min_counter = 0;
-//    uint8_t highest_counter = 0;
-//    uint8_t max_counter = 0;
     uint8_t result = 0;
     uint8_t histogram[256];
     float norm_histogram[256];
-//    uint8_t min[256];
-//    uint8_t highest[256];
-//    uint8_t max[256];
-//    uint8_t min_val[256];
-//    uint8_t highest_val[256];
-//    uint8_t max_val[256];
     float expected_value = 0.0;
     float variance = 0.0;
     float std_deviation = 0.0;
 
     memset(histogram, 0, sizeof(histogram));
     memset(norm_histogram, 0.0, sizeof(norm_histogram));
-//    memset(min, 0, sizeof(min));
-//    memset(highest, 0, sizeof(highest));
-//    memset(max, 0, sizeof(max));
-//    memset(min_val, 0, sizeof(min_val));
-//    memset(highest_val, 0, sizeof(highest_val));
-//    memset(max_val, 0, sizeof(max_val));
 
     if(&rssi_info == NULL)
     {
@@ -597,7 +578,6 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *
 
     for(uint8_t i = 0; i < rssi_hist_index; i++)
     {
-        //BRN_INFO("histogramm_val: %d", src_info->_rssi_hist[i]);
         if(src_info->_rssi_hist[i] == 0)
         {
             continue;
@@ -932,7 +912,7 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
             }
         } else
         {
-            hidden_node_sa << "\t\t\t<hidden_neighbours available=\"false\" \\>\n";
+            hidden_node_sa << "\t\t\t<hidden_neighbours available=\"false\" />\n";
         }
 
         hidden_node_sa << "\t\t</neighbour>\n";
@@ -984,7 +964,7 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
         } else
         {
             click_chatter("hiddennode_sum/iter_count: %d/%d", temp_hidden_node, iteration_count);
-            hidden_node_sa << "\t\t\t<hidden_neighbours available=\"false\" \\>\n";
+            hidden_node_sa << "\t\t\t<hidden_neighbours available=\"false\" />\n";
         }
 
         hidden_node_sa << "\t\t</neighbour>\n";
@@ -1010,6 +990,7 @@ StringAccum PacketLossEstimator::stats_get_inrange(HiddenNodeDetection::NodeInfo
         }
 
         inrange_sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\">\n";
+        inrange_sa << "\t\t\t<last_cw_max>" << _dev->get_cwmax()[0] << "</last_cw_max>\n";
         inrange_sa << "\t\t\t<fraction>" << _pli.graph_get(ea)->reason_get(PacketLossReason::IN_RANGE)->getFraction() << "</fraction>\n";
         inrange_sa << "\t\t</neighbour>\n";
     }
@@ -1239,7 +1220,7 @@ void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &
 
     for(Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin(); ea_iter != etheraddresses.end(); ea_iter++)
     {
-		if(Timestamp::now().sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 10)
+		if(Timestamp::now().sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 60)
 		{
 			_stats_buffer.remove_stored_address(*ea_iter);
 
