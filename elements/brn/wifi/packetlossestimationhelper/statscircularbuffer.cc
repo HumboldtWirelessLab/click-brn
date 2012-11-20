@@ -49,14 +49,14 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
         ether_address_time_map.insert(ea, new_pls_temp_vector);
     } else
     {
-        click_chatter("BLA: %d/%d", pls_temp_vector.front().get_time_stamp() , pls.get_time_stamp() );
-        if (pls_temp_vector.front().get_time_stamp() >= pls.get_time_stamp())
-        {
-            click_chatter("out");
-            return;
-        }
-
-        click_chatter("go: %d/%d/%d/%d", hn_fraction, ir_fraction, nw_fraction, ws_fraction);
+//        click_chatter("BLA: %d/%d", pls_temp_vector.front().get_time_stamp() , pls.get_time_stamp() );
+//        if (pls_temp_vector.front().get_time_stamp() >= pls.get_time_stamp())
+//        {
+//            click_chatter("out");
+//            return;
+//        }
+//
+//        click_chatter("go: %d/%d/%d/%d", hn_fraction, ir_fraction, nw_fraction, ws_fraction);
         pls_temp_vector.push_front(pls);
         ether_address_time_map.erase(ea);
 

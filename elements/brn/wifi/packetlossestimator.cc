@@ -3,7 +3,8 @@
 CLICK_DECLS
 
 HashMap<EtherAddress, uint32_t> PacketLossEstimator::_acks_by_node = HashMap<EtherAddress, uint32_t>();
-HashMap<EtherAddress, uint32_t> PacketLossEstimator::_last_acks_by_node = HashMap<EtherAddress, uint32_t>();
+Vector<EtherAddress> PacketLossEstimator::_received_adrs = Vector<EtherAddress>();
+//HashMap<EtherAddress, uint32_t> PacketLossEstimator::_last_acks_by_node = HashMap<EtherAddress, uint32_t>();
 StatsCircularBuffer PacketLossEstimator::_stats_buffer = StatsCircularBuffer(200);
 uint8_t PacketLossEstimator::_max_weak_signal_value = 0;
 HashMap<uint8_t, HashMap<uint8_t, uint64_t> > PacketLossEstimator::_rssi_histogram;
@@ -105,7 +106,20 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
 
             if(!_packet_parameter->is_broadcast_or_self())
             {
-                _stats_buffer.insert_values(*_packet_parameter, *_pli);
+            	bool already_seen = false;
+            	for(Vector<EtherAddress>::iterator ea_iter = _received_adrs.begin(); ea_iter != _received_adrs.end(); ea_iter++)
+            	{
+            		if (*ea_iter == *_packet_parameter->get_src_address())
+            		{
+            			already_seen = true;
+            			break;
+            		}
+            	}
+            	if (!already_seen)
+            	{
+            		_received_adrs.push_front(*_packet_parameter->get_src_address());
+            	}
+//                _stats_buffer.insert_values(*_packet_parameter, *_pli);
             }
         } else
         {
@@ -464,19 +478,17 @@ void PacketLossEstimator::estimateNonWifi(struct airtime_stats &ats)
     if(_pli != NULL)
     {
         /*
-         if (&ats != NULL)
+         if(&ats != NULL)
          {
-
-         BRN_INFO("Mac Busy: %d", ats.frac_mac_busy);
-         BRN_INFO("Mac RX: %d", ats.frac_mac_rx);
-         BRN_INFO("Mac TX: %d", ats.frac_mac_tx);
-         BRN_INFO("HW Busy: %d", ats.hw_busy);
-         BRN_INFO("HW RX: %d", ats.hw_rx);
-         BRN_INFO("HW TX: %d", ats.hw_tx);
-         BRN_INFO("Retries: %d", ats.rx_retry_packets);
-
+         	 BRN_INFO("Mac Busy: %d", ats.frac_mac_busy);
+			 BRN_INFO("Mac RX: %d", ats.frac_mac_rx);
+			 BRN_INFO("Mac TX: %d", ats.frac_mac_tx);
+			 BRN_INFO("HW Busy: %d", ats.hw_busy);
+			 BRN_INFO("HW RX: %d", ats.hw_rx);
+			 BRN_INFO("HW TX: %d", ats.hw_tx);
+			 BRN_INFO("Retries: %d", ats.rx_retry_packets);
          }
-         */
+        */
         uint8_t non_wifi = 1;
         if(ats.frac_mac_busy <= ats.hw_busy)
         {
@@ -888,6 +900,8 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
             temp_hidden_node += pls_iter->get_hidden_node_probability();
         }
 
+        click_chatter("ITER-Count: %d", iteration_count);
+
         if(iteration_count != 0)
         {
             hidden_node_sa << "\t\t\t<fraction>" << temp_hidden_node / iteration_count << "</fraction>\n";
@@ -1217,16 +1231,22 @@ StringAccum PacketLossEstimator::stats_get_non_wifi(HiddenNodeDetection::NodeInf
 
 void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &hnd_info_tab, PacketLossInformation &_pli)
 {
-    Vector<EtherAddress> etheraddresses = _stats_buffer.get_stored_addresses();
+//    Vector<EtherAddress> etheraddresses = _stats_buffer.get_stored_addresses();
 
-    for(Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin(); ea_iter != etheraddresses.end(); ea_iter++)
+    for(Vector<EtherAddress>::iterator ea_iter = _received_adrs.begin(); ea_iter != _received_adrs.end(); ea_iter++)
     {
-		if(Timestamp::now().sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 60)
+    	Timestamp now = Timestamp::now();
+
+    	click_chatter("EA: %s", ea_iter->unparse().c_str());
+
+		if(now.sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 60)
 		{
+			click_chatter("RM");
 			_stats_buffer.remove_stored_address(*ea_iter);
 
-		} else if(Timestamp::now().sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 1)
+		} else if(now.sec() - hnd_info_tab.find(*ea_iter)->_last_notice.sec() > 1)
 		{
+			click_chatter("ADAPT");
 			PacketParameter pm;
 			_pli.graph_get(*ea_iter)->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(100);
 			_pli.graph_get(*ea_iter)->reason_get(PacketLossReason::IN_RANGE)->setFraction(0);
@@ -1236,8 +1256,16 @@ void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &
 			pm.put_params_(*ea_iter, *ea_iter, *ea_iter, 0, 0);
 
 			_stats_buffer.insert_values(pm, _pli);
+		} else
+		{
+			click_chatter("INSERT");
+			PacketParameter pm;
+			pm.put_params_(*ea_iter, *ea_iter, *ea_iter, 0, 0);
+
+			_stats_buffer.insert_values(pm, _pli);
 		}
     }
+    _received_adrs.clear();
 }
 
 static String PacketLossEstimator_read_param(Element *ele, void *thunk)
