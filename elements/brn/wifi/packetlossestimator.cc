@@ -3,6 +3,7 @@
 CLICK_DECLS
 
 HashMap<EtherAddress, uint32_t> PacketLossEstimator::_acks_by_node = HashMap<EtherAddress, uint32_t>();
+HashMap<EtherAddress, uint32_t> PacketLossEstimator::_last_acks_by_node = HashMap<EtherAddress, uint32_t>();
 StatsCircularBuffer PacketLossEstimator::_stats_buffer = StatsCircularBuffer(200);
 uint8_t PacketLossEstimator::_max_weak_signal_value = 0;
 HashMap<uint8_t, HashMap<uint8_t, uint64_t> > PacketLossEstimator::_rssi_histogram;
@@ -335,7 +336,7 @@ void PacketLossEstimator::estimateHiddenNode()
 
                         if(duration != 0)
                         {
-                            hnProp = 1000000 / duration;
+                            hnProp = 1048576 / duration;
                             coopst = true;
                         }
                     } else
@@ -363,15 +364,14 @@ void PacketLossEstimator::estimateHiddenNode()
                             {
                                 BRN_INFO("Not in my Neighbour List");
 
-                                // nicht nur ACKS mit reinrechnen, sondern auch noch Netzwerkverkehr zum HN + Acks selbst!
-                                // evtl. Datenrate von Paketen der Nachbarstation an den HN rausfinden
-                                hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12 / 10; // 12 ms per packet / 1000 ms * 100
+                                //hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12 / 10; // 12 ms per packet / 1000 ms * 100
+                                hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12.5 / 10;
                             }
                         }
                     }
 
-//                    BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()),
-//                            _packet_parameter->get_dst_address()->unparse().c_str());
+                    BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()),
+                            _packet_parameter->get_dst_address()->unparse().c_str());
                 }
 
                 if(_pli != NULL)
@@ -418,7 +418,6 @@ void PacketLossEstimator::estimateInrange()
     {
         uint16_t backoffsize = _dev->get_cwmax()[0];
         double temp = 1.0;
-        uint32_t temp_new = 1;
 
         if(backoffsize == 0)
         {
@@ -733,8 +732,15 @@ inline uint32_t PacketLossEstimator::get_acks_by_node(const EtherAddress &dest_a
 
 inline void PacketLossEstimator::reset_acks()
 {
+//    for(HashMap<EtherAddress, uint32_t>::iterator i = PacketLossEstimator::_last_acks_by_node.begin(); i != PacketLossEstimator::_acks_by_node.end(); i++)
+//    {
+//        _last_acks_by_node.remove(i.key());
+//    }
+
+
     for(HashMap<EtherAddress, uint32_t>::iterator i = PacketLossEstimator::_acks_by_node.begin(); i != PacketLossEstimator::_acks_by_node.end(); i++)
     {
+//        PacketLossEstimator::_last_acks_by_node.insert(i.key(), i.value());
         i.value() = 0;
     }
 }
@@ -820,17 +826,14 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
 
                 if(*_dev->getEtherAddress() == ea)
                 {
-                    click_chatter("address: %s", ea.unparse().c_str());
                     continue;
                 } else if(_hnd == NULL)
                 {
-                    click_chatter("hnd == NULL");
                     break;
                 }
 
                 if(_hnd->get_nodeinfo_table().find(ea) != NULL && _hnd->get_nodeinfo_table().find(ea)->_neighbour)
                 {
-                    click_chatter("address: %s, neighbour = true", ea.unparse().c_str());
                     continue;
                 }
 
@@ -887,7 +890,6 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
 
         if(iteration_count != 0)
         {
-            click_chatter("hiddennode_sum/iter_count: %d/%d", temp_hidden_node, iteration_count);
             hidden_node_sa << "\t\t\t<fraction>" << temp_hidden_node / iteration_count << "</fraction>\n";
         }
 
@@ -899,7 +901,6 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
             {
                 if(_hnd == NULL)
                 {
-                    click_chatter("hnd == NULL");
                     break;
                 }
                 if(*_dev->getEtherAddress() != nats_map_iter.key()
