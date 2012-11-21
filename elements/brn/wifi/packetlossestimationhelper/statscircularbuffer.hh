@@ -30,6 +30,8 @@ public:
 	StatsCircularBuffer(const uint16_t);
 	virtual ~StatsCircularBuffer();
 	void insert_values(PacketParameter &, PacketLossInformation &);
+	//< Insert Value without setting a timestamp
+	void insert_values_wo_time(PacketParameter &, PacketLossInformation &);
 	Vector<PacketLossStatistics> get_values(EtherAddress &, uint16_t);
 	void set_buffer_size(uint16_t size);
 	uint16_t get_buffer_size();
@@ -40,6 +42,7 @@ public:
 
 private:
 	StatsCircularBuffer();
+	void insert_values(PacketParameter &, PacketLossInformation &, bool);
 
 	uint16_t buffer_size;
 	HashMap<EtherAddress, Vector<PacketLossStatistics> > ether_address_time_map;
