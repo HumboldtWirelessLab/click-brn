@@ -6,27 +6,24 @@
 #include <click/straccum.hh>
 
 #include "floodingpolicy.hh"
-#include "probabilityflooding.hh"
+#include "multirateflooding.hh"
 
 CLICK_DECLS
 
-ProbabilityFlooding::ProbabilityFlooding():
-  _min_no_neighbors(0),
-  _fwd_probability(100),
-  _max_metric_to_neighbor(5000)
+MultirateFlooding::MultirateFlooding()
 {
   BRNElement::init();
 }
 
-ProbabilityFlooding::~ProbabilityFlooding()
+MultirateFlooding::~MultirateFlooding()
 {
 }
 
 void *
-ProbabilityFlooding::cast(const char *name)
+MultirateFlooding::cast(const char *name)
 {
-  if (strcmp(name, "ProbabilityFlooding") == 0)
-    return (ProbabilityFlooding *) this;
+  if (strcmp(name, "MultirateFlooding") == 0)
+    return (MultirateFlooding *) this;
   else if (strcmp(name, "FloodingPolicy") == 0)
          return (FloodingPolicy *) this;
        else
@@ -34,14 +31,12 @@ ProbabilityFlooding::cast(const char *name)
 }
 
 int
-ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
+MultirateFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
-    "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
-    "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
@@ -51,36 +46,30 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 int
-ProbabilityFlooding::initialize(ErrorHandler *)
+MultirateFlooding::initialize(ErrorHandler *)
 {
   return 0;
 }
 
 bool
-ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known,
-                                uint32_t, uint8_t *, uint32_t *, uint8_t *,
-                                Vector<EtherAddress> *, Vector<EtherAddress> *)
+MultirateFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool /*is_known*/,
+                              uint32_t /*rx_data_size*/, uint8_t */*rxdata*/, uint32_t */*tx_data_size*/, uint8_t */*txdata*/,
+                              Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
-  click_random_srandom();
+  BRN_ERROR("No implementation");
 
-  const EtherAddress *me = _me->getMasterAddress();
-  Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
-  get_filtered_neighbors(*me, nb_neighbors);
-
-  if ( nb_neighbors.size() <= _min_no_neighbors ) return !is_known;
-  
-  return !is_known & ((click_random() % 100) < _fwd_probability);
+  return false;
 }
 
 int
-ProbabilityFlooding::policy_id()
+MultirateFlooding::policy_id()
 {
-  return POLICY_ID_PROBABILITY;
+  return POLICY_ID_MULTIRATE;
 }
 
 
 void
-ProbabilityFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
+MultirateFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
 {
   if (_link_table) {
     Vector<EtherAddress> neighbors_tmp;
@@ -105,7 +94,7 @@ ProbabilityFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<Eth
 /*******************************************************************************************/
 
 String
-ProbabilityFlooding::flooding_info(void)
+MultirateFlooding::flooding_info(void)
 {
   StringAccum sa;
 
@@ -119,7 +108,7 @@ enum {
 static String
 read_param(Element *e, void *thunk)
 {
-  ProbabilityFlooding *sfl = (ProbabilityFlooding *)e;
+  MultirateFlooding *sfl = (MultirateFlooding *)e;
 
   switch ((uintptr_t) thunk)
   {
@@ -128,7 +117,7 @@ read_param(Element *e, void *thunk)
   }
 }
 
-void ProbabilityFlooding::add_handlers()
+void MultirateFlooding::add_handlers()
 {
   BRNElement::add_handlers();
 
@@ -136,4 +125,4 @@ void ProbabilityFlooding::add_handlers()
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(ProbabilityFlooding)
+EXPORT_ELEMENT(MultirateFlooding)
