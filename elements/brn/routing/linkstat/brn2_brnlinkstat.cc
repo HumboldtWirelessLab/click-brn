@@ -833,7 +833,7 @@ BRNLinkStat_read_param(Element *e, void *thunk)
       for(int x = 0; x < td->_ads_rs.size(); x++) {
         rate.set_packed_16(td->_ads_rs[x]._rate);
         uint32_t is_ht = (rate._is_ht)?(uint32_t)1:(uint32_t)0;
-        sa << "<probe rate='" << rate.to_string() << "' n='" << is_ht << "' mcsindex='" << (uint32_t)rate._ridx;
+        sa << "\t<probe rate='" << rate.to_string() << "' n='" << is_ht << "' mcsindex='" << (uint32_t)rate._ridx;
         sa << "' ht40='" << (uint32_t)rate._ht40 << "' sgi='" << (uint32_t)rate._sgi << "' size='" << td->_ads_rs[x]._size << "' />\n";
       }
       sa << "</probes>\n";

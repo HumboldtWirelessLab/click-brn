@@ -207,6 +207,9 @@ void
 BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 {
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
+  Timestamp send_time;
+  send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
+
   uint16_t checksum;
 
   /*Handle Reply*/
@@ -215,10 +218,6 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     Flow *f_tx = _tx_flowMap.find(dst_ea);
     if ( f_tx ) {
       BRN_DEBUG("Got reply");
-
-      Timestamp send_time;
-      struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
-      send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
 
       f_tx->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
                          (uint32_t)(SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet)));
@@ -232,21 +231,16 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
   EtherAddress src_ea = EtherAddress(header->src);
   Flow *f = _rx_flowMap.find(src_ea);
   uint32_t packet_id = ntohl(header->packetID);
-
+  
   if ( f == NULL ) {  //TODO: shorten this
     _rx_flowMap.insert(src_ea, new Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
                        (flowType)header->mode, ntohl(header->rate), ntohs(header->size), 0) );
     f = _rx_flowMap.find(src_ea);
   }
 
-  f->_rxPackets++;
-
-  /*int maxttl = SIMPLEFLOW_MAXHOPCOUNT;
-  int cttl= BRNPacketAnno::ttl_anno(packet);
-  click_chatter("MAXcount: %d TTL: %d", maxttl, cttl);*/
-
-  f->_cum_sum_hops += (SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet));
-
+  f->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
+                  (uint32_t)(SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet)));
+ 
 #if HAVE_FAST_CHECKSUM
   checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
 #else
@@ -422,8 +416,15 @@ BRN2SimpleFlow::xml_stats()
     sa << " max_packet_id=\"" << fl->_max_packet_id;
     sa << "\" out_of_order=\"" << fl->_rx_out_of_order << "\"";
     sa << " crc_err=\"" << fl->_rxCrcErrors << "\"";
-    if ( fl->_rxPackets == 0 ) sa << " avg_hops=\"-1\" />\n";
-    else sa << " avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" />\n";
+    if ( fl->_rxPackets > 0 ) {
+      sa << " min_hops=\"" << fl->_min_hops << "\" max_hops=\"" << fl->_max_hops;
+      sa << "\" avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" std_hops=\"" << fl->std_hops();
+      sa << "\" min_time=\"" << fl->_min_rt_time  << "\" max_time=\"" << fl->_max_rt_time;
+      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\" />\n";
+    } else {
+      sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" std_hops=\"0\"";
+      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" />\n";
+    };
   }
   sa << "</flowstats>\n";
   return sa.take_string();
