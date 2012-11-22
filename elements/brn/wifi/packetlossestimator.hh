@@ -84,6 +84,7 @@ private:
     void add_ack(const EtherAddress &);
     ///< Get number of received ACK-Packets for an ether address
     uint32_t get_acks_by_node(const EtherAddress &);
+    ///<
     void reset_acks();
     ///<
     uint8_t calc_weak_signal_percentage(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
