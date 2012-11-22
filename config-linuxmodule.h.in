@@ -15,6 +15,9 @@
 /* Define if your Linux kernel has Click transmit notification extensions. */
 #undef HAVE_CLICK_KERNEL_TX_NOTIFY
 
+/* Define if your Linux kernel has Click skb_recycle. */
+#undef HAVE_CLICK_SKB_RECYCLE
+
 /* Define if fast checksum functions available. */
 #define HAVE_FAST_CHECKSUM 1
 
@@ -39,6 +42,9 @@
 
 /* Define if your Linux kernel architecture defines atomic_set_mask. */
 #undef HAVE_LINUX_ATOMIC_SET_MASK
+
+/* Define if your Linux kernel architecture defines atomic_cmpxchg */
+#undef HAVE_LINUX_ATOMIC_CMPXCHG
 
 /* Define if your Linux kernel has files_lock. */
 #undef HAVE_LINUX_FILES_LOCK
@@ -81,6 +87,9 @@
 
 /* Define if 'struct skb_shared_info' has an 'ip6_frag_id' member. */
 #undef HAVE_LINUX_SKB_SHINFO_IP6_FRAG_ID
+
+/* Define if 'struct skb_shared_info' has an 'tx_flags' member defining 'SKBTX_DEV_ZEROCOPY'. */
+#undef HAVE_LINUX_SKB_SHINFO_TX_FLAGS_SKBTX_DEV_ZEROCOPY
 
 /* Define if 'struct skb_shared_info' has a 'tso_size' member. */
 #undef HAVE_LINUX_SKB_SHINFO_TSO_SIZE

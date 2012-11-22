@@ -247,6 +247,19 @@ sub one_includeroot ($$) {
 		1 while s<void \*\*pslot([^\}]*?)\{><void **____pslot$1\{char **pslot = (char **) ____pslot;>;
 		1 while s<pslot, void \*item([^\}]*?)\{><pslot, void *____item$1\{char *item = (char *) ____item;>;
 	    }
+	    if ($d eq "spinlock_types.h") {
+		s<(typedef\s+struct[^\}]+)(struct\s+__raw_tickets\s+)({[^\}]+})><$2$3;\n$1$2>;
+	    }
+	    if ($d eq "spinlock.h") {
+		s<struct\s+__raw_tickets\s+(\w+)\s*=\s*\{\s*tail:\s*(\S+?)\s*\};><struct __raw_tickets $1 = {}; $1.tail = $2;>;
+	    }
+	    if ($d eq "compiler.h") {
+		s<^#define ACCESS_ONCE\(x\) \(\*\(volatile typeof\(x\) \*\)\&\(x\)\)><#define ACCESS_ONCE(x) (*(typeof(x) * volatile)&(x))>m;
+	    }
+
+	    if ($d eq "fs.h") {
+		s<enum migrate_mode;><enum migrate_mode \{MIGRATE_DUMMY\};>;
+	    }
 
 	    # CLICK_CXX_PROTECTED check
 	    if (m<\A[\s\200-\377]*\z>) {
