@@ -9,7 +9,7 @@
 #include <click/ip6address.hh>
 #include <click/packet_anno.hh>
 #if CLICK_NS
-#include <click/router.hh>
+	#include <click/router.hh>
 #endif
 
 #include "elements/analysis/timesortedsched.hh"
@@ -45,6 +45,10 @@ public:
 private:
     /// ACKS received from other nodes
     static HashMap<EtherAddress, uint32_t> _acks_by_node;
+    /// Addresses packets received from
+    static Vector<EtherAddress> _received_adrs;
+    /// ACKS received from other nodes last period (mostly 1 s)
+//    static HashMap<EtherAddress, uint32_t> _last_acks_by_node;
     /// Buffer for mid and long term statistics
     static StatsCircularBuffer _stats_buffer;
     ///
@@ -80,6 +84,7 @@ private:
     void add_ack(const EtherAddress &);
     ///< Get number of received ACK-Packets for an ether address
     uint32_t get_acks_by_node(const EtherAddress &);
+    ///<
     void reset_acks();
     ///<
     uint8_t calc_weak_signal_percentage(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
