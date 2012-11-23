@@ -445,6 +445,15 @@ void PacketLossEstimator::estimateInrange()
 
     for(HiddenNodeDetection::NodeInfoTableIter i = neighbour_nodes.begin(); i != neighbour_nodes_end; i++)
     {
+
+    	if (i.value()->_neighbour)
+    	{
+    	 	click_chatter("Inrange-Neighbour: %s is a Neighbour", i.key().unparse().c_str() );
+    	} else
+    	{
+    		click_chatter("Inrange-Neighbour: %s is not a Neighbour", i.key().unparse().c_str() );
+    	}
+
     	if (_hnd->get_nodeinfo_table().find(i.key())->_neighbour)	// if entry is not a direct neighbour it should not be counted for inrange
     	{
 			if(neighbours >= 255)
