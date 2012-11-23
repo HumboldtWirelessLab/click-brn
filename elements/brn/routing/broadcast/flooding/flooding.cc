@@ -86,6 +86,8 @@ Flooding::push( int port, Packet *packet )
     Timestamp now = Timestamp::now();
     BRN_DEBUG("Flooding: PUSH vom Client\n");
 
+    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),_bcast_id);
+
     click_ether *ether = (click_ether *)packet->data();
     src = EtherAddress(ether->ether_shost);
 
@@ -96,6 +98,10 @@ Flooding::push( int port, Packet *packet )
     bch->bcast_id = htons(_bcast_id);
 
     add_id(&src,(uint32_t)_bcast_id, &now);
+    forward_try(&src, _bcast_id);
+#ifdef FLOODING_EXTRA_STATS
+    add_last_node(&src,(int32_t)_bcast_id, &src, true);
+#endif
 
     _flooding_policy->add_broadcast(&src,(uint32_t)_bcast_id);
     _flooding_src++;                                                           //i was src of a flooding
@@ -108,8 +114,6 @@ Flooding::push( int port, Packet *packet )
     WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING,
                                                                          ttl, DEFAULT_TOS);
     BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
-
-    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),_bcast_id);
 
     output(1).push(out_packet);
 
@@ -170,6 +174,8 @@ Flooding::push( int port, Packet *packet )
     {
       _flooding_fwd++;
 
+      forward_try(&src, p_bcast_id);
+      
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
@@ -230,6 +236,16 @@ Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now)
   if ( bcn == NULL ) return false;
 
   return bcn->have_id(id,*now);
+}
+
+void
+Flooding::forward_try(EtherAddress *src, uint32_t id)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) return;
+
+  return bcn->forward_try(id);
 }
 
 void
@@ -295,8 +311,9 @@ Flooding::table()
         sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" />\n";
 #else
         struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
-        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" sent=\"";
-        sa << (bcn->_bcast_fwd_done_list[i]?(int)1:(int)0) << "\" >\n";
+        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
+	sa << (uint32_t)((bcn->_bcast_fwd_list[i]) & 1) << "\" sent=\"";
+        sa << (uint32_t)((bcn->_bcast_fwd_list[i] >> 1 ) & 1) << "\" >\n";
 
 	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
 	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
