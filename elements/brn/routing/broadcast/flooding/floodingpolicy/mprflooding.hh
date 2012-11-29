@@ -39,6 +39,8 @@ class MPRFlooding : public FloodingPolicy
 
     String flooding_info(void);
 
+    void set_mpr();
+
     int set_mpr_vector(const String &in_s, Vector<EtherAddress> *ea_vector);
     int set_mpr_forwarder(const String &in_s);
     int set_mpr_destination(const String &in_s);
@@ -51,6 +53,7 @@ class MPRFlooding : public FloodingPolicy
 
     Vector<EtherAddress> mpr_forwarder;
     Vector<EtherAddress> mpr_unicast;
+    Vector<EtherAddress> _neighbours;
 
     void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
 
