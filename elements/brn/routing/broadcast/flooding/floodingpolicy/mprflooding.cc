@@ -187,7 +187,7 @@ MPRFlooding::set_mpr()
       
       uint8_t n = uncovered.find(ea);
       if ( n == 1 ) {                                         //covered only once
-        BRN_ERROR("Covered by one: %s",ea.unparse().c_str());
+        BRN_DEBUG("Covered by one: %s",ea.unparse().c_str());
         uint8_t node_id = neighbour_map.find(ea);
 	uint8_t conn_count = 0;
 	uint16_t one_hop_neighbour = 0;
@@ -226,12 +226,12 @@ MPRFlooding::set_mpr()
 	  }
 	}
       } else {
-	BRN_ERROR("Covered by %d nodes",(int)n);
+	BRN_DEBUG("Covered by %d nodes",(int)n);
       }
     }
     
     for( int m = 0; m < mpr_forwarder.size(); m++ ) {
-      BRN_ERROR("MPR: %s", mpr_forwarder[m].unparse().c_str());
+      BRN_DEBUG("MPR: %s", mpr_forwarder[m].unparse().c_str());
     }
     //check for one hop nodes which covers most of 2 hop nbbs
 //    int unc_s = uncovered.size();
@@ -243,7 +243,7 @@ MPRFlooding::set_mpr()
 
       for( int g = count_one_hop_nbs; g < adj_mat_used; g++ ) {
         if ( uncovered.findp(neighbors[g]) != NULL ) {
-	  BRN_ERROR("Uncovered node: %s",neighbors[g].unparse().c_str());
+	  BRN_DEBUG("Uncovered node: %s",neighbors[g].unparse().c_str());
 	}
       }
        
@@ -253,7 +253,7 @@ MPRFlooding::set_mpr()
         
 	uint16_t cnt_2hop_nb = 0;
 	
-	BRN_ERROR("Non mpr node: %s %d %d",ea.unparse().c_str(),max_id,cnt_2hop_nb);
+	BRN_DEBUG("Non mpr node: %s %d %d",ea.unparse().c_str(),max_id,cnt_2hop_nb);
 	
 	for( int j = count_one_hop_nbs; j < adj_mat_used; j++ ) {
 	  if ( adj_mat[j*adj_mat_size + i] == 1 ) cnt_2hop_nb++;
@@ -266,9 +266,11 @@ MPRFlooding::set_mpr()
 	  max_id = i;
 	}
       }
-      BRN_ERROR("MaxCount: %d", max_count);
+      
+      BRN_DEBUG("MaxCount: %d", max_count);
+      
       if ( max_count == 0 ) {
-	BRN_ERROR("Error");
+	BRN_DEBUG("Error");
       } else {
 	mpr_forwarder.push_back(max_ea); //node is mpr
         mpr_nodes.insert(max_ea,max_ea);
