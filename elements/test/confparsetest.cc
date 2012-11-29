@@ -170,6 +170,10 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK_ERR(BoundedIntArg(0, 10).parse("10", i32, args) == true && i32 == 10, "");
     CHECK_ERR(BoundedIntArg(0, 9).parse("10", i32, args) == false && i32 == 10, "out of range, bound 9");
     CHECK_ERR(BoundedIntArg(-1, 9).parse("-10", i32, args) == false && i32 == 10, "out of range, bound -1");
+    CHECK_ERR(BoundedIntArg(-1000, -90).parse("0xFFFFFF00", u32, args) == false && i32 == 10, "out of range, bound -90");
+    CHECK_ERR(BoundedIntArg(0U, 100U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
+    CHECK_ERR(BoundedIntArg(0U, 100U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
+    CHECK_ERR(BoundedIntArg(0U, ~0U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
 
     bool b; (void) b;
     CHECK(FixedPointArg(1).parse("0.5", i32) == true && i32 == 1);
@@ -427,6 +431,28 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	CHECK(((uintptr_t) s3.data() & 3) != ((uintptr_t) s4.data() & 3));
     }
 
+    // String confparse
+    {
+	String s1 = String::make_stable("click-align");
+	CHECK(s1.find_left('c') == 0);
+	CHECK(s1.find_left('c', 1) == 3);
+	CHECK(s1.find_left('c', 3) == 3);
+	CHECK(s1.find_left('c', 4) == -1);
+	CHECK(s1.find_left("c") == 0);
+	CHECK(s1.find_left("c", 1) == 3);
+	CHECK(s1.find_left("c", 3) == 3);
+	CHECK(s1.find_left("c", 5) == -1);
+	CHECK(s1.find_left("li") == 1);
+	CHECK(s1.find_left("li", 2) == 7);
+	CHECK(s1.find_left("li", 8) == -1);
+	CHECK(s1.find_left("", 0) == 0);
+	CHECK(s1.find_left("", 10) == 10);
+	CHECK(s1.find_left("", 11) == 11);
+	CHECK(s1.find_left("", 12) == -1);
+	CHECK(s1.find_left("a") == 6);
+	CHECK(s1.substring(0, -1).find_left('n') == -1);
+    }
+
 #if CLICK_USERLEVEL
     // click_strcmp
     CHECK(click_strcmp("a", "b") < 0);
@@ -501,6 +527,14 @@ ConfParseTest::initialize(ErrorHandler *errh)
 	sa << true << ' ' << false;
 	CHECK(sa.take_string() == "true false");
     }
+
+    results.clear();
+    CHECK(Args(this, errh).push_back_args("A 1, B 2, A 3, A 4, A 5")
+	  .read_all("A", AnyArg(), results).read_status(b)
+	  .consume() >= 0);
+    CHECK(b == true);
+    CHECK(results.size() == 4);
+    CHECK(results[0] == "1" && results[1] == "3" && results[2] == "4" && results[3] == "5");
 
     errh->message("All tests pass!");
     return 0;
