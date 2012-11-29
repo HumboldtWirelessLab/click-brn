@@ -40,7 +40,8 @@
 CLICK_DECLS
 
 HiddenNodeDetection::HiddenNodeDetection():
-    _device(NULL)
+    _device(NULL),
+    _hd_del_interval(1000)
 {
   BRNElement::init();
 }
@@ -54,6 +55,7 @@ HiddenNodeDetection::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret = cp_va_kparse(conf, this, errh,
                      "DEVICE", cpkP, cpElement, &_device,
+                     "TIMEOUT", cpkP, cpInteger, &_hd_del_interval,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
@@ -65,9 +67,27 @@ HiddenNodeDetection::initialize(ErrorHandler *)
 {
   _last_data_dst = brn_etheraddress_broadcast;
 
+  _hn_del_timer.initialize(this);
+  _hn_del_timer.schedule_after_msec(_hd_del_interval);
+
   return 0;
 }
 
+void
+HiddenNodeDetection::run_timer(Timer *)
+{
+  Timestamp now = Timestamp::now();
+
+  for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
+    NodeInfo *node = iter.value();
+    EtherAddress ea = iter.key();
+    if ( (now - node->_last_notice).msecval() > _hd_del_interval ) {
+      _nodeinfo_tab.erase(ea);
+    }
+  }
+
+  _hn_del_timer.reschedule_after_msec(_hd_del_interval);
+}
 /*********************************************/
 /************* RX BASED STATS ****************/
 /*********************************************/

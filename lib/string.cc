@@ -329,7 +329,7 @@ String::make_claim(char *str, int len, int capacity)
     @param base base; must be 8, 10, or 16, defaults to 10
     @param uppercase if true, then use uppercase letters in base 16 */
 String
-String::make_numeric(int_large_t num, int base, bool uppercase)
+String::make_numeric(intmax_t num, int base, bool uppercase)
 {
     StringAccum sa;
     sa.append_numeric(num, base, uppercase);
@@ -338,7 +338,7 @@ String::make_numeric(int_large_t num, int base, bool uppercase)
 
 /** @overload */
 String
-String::make_numeric(uint_large_t num, int base, bool uppercase)
+String::make_numeric(uintmax_t num, int base, bool uppercase)
 {
     StringAccum sa;
     sa.append_numeric(num, base, uppercase);
@@ -600,9 +600,12 @@ String::find_left(char c, int start) const
 {
     if (start < 0)
 	start = 0;
-    for (int i = start; i < _r.length; i++)
-	if (_r.data[i] == c)
-	    return i;
+    if (start < _r.length) {
+	const char *x = (const char *)
+	    memchr(_r.data + start, c, _r.length - start);
+	if (x)
+	    return x - _r.data;
+    }
     return -1;
 }
 
@@ -618,16 +621,21 @@ String::find_left(const String &x, int start) const
 {
     if (start < 0)
 	start = 0;
-    if (start >= length())
-	return -1;
-    if (!x.length())
+    if (x.length() == 0 && start <= length())
 	return start;
-    int first_c = (unsigned char)x[0];
-    int pos = start, max_pos = length() - x.length();
-    for (pos = find_left(first_c, pos); pos >= 0 && pos <= max_pos;
-	 pos = find_left(first_c, pos + 1))
-	if (!memcmp(_r.data + pos, x.data(), x.length()))
-	    return pos;
+    if (start + x.length() > length())
+	return -1;
+    const char *pos = _r.data + start;
+    const char *end_pos = _r.data + length() - x.length() + 1;
+    char first_c = (unsigned char) x[0];
+    while (pos < end_pos) {
+	pos = (const char *) memchr(pos, first_c, end_pos - pos);
+	if (!pos)
+	    break;
+	if (memcmp(pos + 1, x.data() + 1, x.length() - 1) == 0)
+	    return pos - _r.data;
+	++pos;
+    }
     return -1;
 }
 

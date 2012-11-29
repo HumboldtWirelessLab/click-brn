@@ -99,6 +99,7 @@ class HiddenNodeDetection : public BRNElement {
     void add_handlers();
 
     void push(int, Packet *p);
+    void run_timer(Timer *);
 
     String stats_handler(int mode);
     
@@ -119,6 +120,9 @@ class HiddenNodeDetection : public BRNElement {
   private:
 
     BRN2Device *_device;
+
+    Timer _hn_del_timer;
+    uint32_t _hd_del_interval;
 
     NodeInfoTable _nodeinfo_tab;
 
