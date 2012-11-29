@@ -4,6 +4,9 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
+#include <click/vector.hh>
+#include <click/hashmap.hh>
+#include <click/bighashmap.hh>
 
 #include "floodingpolicy.hh"
 #include "mprflooding.hh"
@@ -56,14 +59,7 @@ MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const Ethe
                         uint32_t /*rx_data_size*/, uint8_t */*rxdata*/, uint32_t */*tx_data_size*/, uint8_t */*txdata*/,
                         Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
-  click_random_srandom();
-
-  const EtherAddress *me = _me->getMasterAddress();
-  Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
-  get_filtered_neighbors(*me, nb_neighbors);
-
-  if ( nb_neighbors.size() < 3 ) return ! is_known;
-  if ( ( click_random() % (nb_neighbors.size() - 2) ) == 1 ) return false;
+  
 
   return ! is_known;
 }
@@ -74,6 +70,228 @@ MPRFlooding::policy_id()
   return POLICY_ID_MPR;
 }
 
+void
+MPRFlooding::set_mpr()
+{  
+  Vector<EtherAddress> neighbors;
+
+  HashMap<EtherAddress, int> neighbour_map; 
+  HashMap<EtherAddress, int> uncovered; 
+
+  HashMap<EtherAddress, EtherAddress> mpr_nodes; 
+
+  uint8_t *adj_mat;
+  uint16_t adj_mat_size = 16;
+  uint16_t adj_mat_used = 0;
+  
+  uint16_t count_one_hop_nbs = 0;
+ 
+  mpr_forwarder.clear();
+  _neighbours.clear();
+  
+  if (_link_table) {
+    //
+    //get neighbours
+    //
+    const EtherAddress *me = _me->getMasterAddress();
+    get_filtered_neighbors(*me, neighbors);
+    
+    if (neighbors.size() == 0) {
+      BRN_DEBUG("No neighbours, so no mprs.");
+      return;
+    }
+   
+    if ( neighbors.size() > 4 )
+      adj_mat_size = neighbors.size() * neighbors.size();
+    
+    adj_mat = new uint8_t[adj_mat_size*adj_mat_size]; //Matrix
+    memset(adj_mat, 0, adj_mat_size*adj_mat_size);
+
+    count_one_hop_nbs = adj_mat_used = neighbors.size();
+
+    for( int n_i = 0; n_i < neighbors.size(); n_i++) {
+      neighbour_map.insert(neighbors[n_i],n_i);
+      _neighbours.push_back(neighbors[n_i]);
+    }
+     
+    // 
+    // get 2-hop neighbours
+    //
+    for( int n_i = 0; n_i < count_one_hop_nbs; n_i++) { // iterate over all my neighbors
+      
+      Vector<EtherAddress> nb_neighbors;               // the neighbors of my neighbors
+      get_filtered_neighbors(neighbors[n_i], nb_neighbors);
+
+      for( int n_j = 0; n_j < nb_neighbors.size(); n_j++) { // iterate over all my neighbors neighbours
+        
+        int adj_mat_index;
+        
+	if ( neighbour_map.findp(nb_neighbors[n_j]) == NULL ) {
+
+	  adj_mat_index = adj_mat_used;
+	  neighbour_map.insert(nb_neighbors[n_j],adj_mat_index);
+	  uncovered.insert(nb_neighbors[n_j],1);
+	  neighbors.push_back(nb_neighbors[n_j]);
+	  
+	  if ( adj_mat_used == adj_mat_size ) {
+	    adj_mat_size *= 2;
+	    uint8_t *new_adj_mat = new uint8_t[adj_mat_size*adj_mat_size]; //Matrix
+            memset(new_adj_mat, 0, adj_mat_size*adj_mat_size);
+	    
+	    //copy old matrix
+	    for ( int i = 0; i < adj_mat_index; i++ )
+	      for ( int j = 0; j < adj_mat_index; j++ )
+	        new_adj_mat[i*adj_mat_size + j] = adj_mat[i*adj_mat_used + j];
+	      
+	    delete adj_mat;
+	    adj_mat = new_adj_mat;
+	  }
+	
+	  adj_mat_used++;
+	  
+	} else {
+	  adj_mat_index = neighbour_map.find(nb_neighbors[n_j]);
+	  if ( adj_mat_index >= count_one_hop_nbs ) {           //is a two hop neighbour
+	    int *cov_count = uncovered.findp(nb_neighbors[n_j]);
+	    (*cov_count)++;
+	  }
+	}
+          
+	adj_mat[n_i*adj_mat_size + adj_mat_index] = 1;
+	adj_mat[adj_mat_index*adj_mat_size + n_i] = 1;
+      }
+    }
+    
+    //
+    // DEBUG
+    //
+    if ( BRN_DEBUG_LEVEL_DEBUG ) {
+      StringAccum sa;
+      sa << "Neighbours: " << count_one_hop_nbs << " 2hop-neighbours: " << uncovered.size() <<"\n";
+      for ( int y = 0; y < adj_mat_used;y++) {  
+	for ( int z = 0; z < adj_mat_used;z++) {
+	  sa << (int)adj_mat[y*adj_mat_size + z] << " ";
+	}
+	sa << "\n";
+      }
+
+      click_chatter("%s", sa.take_string().c_str());
+    }
+    
+    //found one hop neighbours who are single cov for 2-hop-neighbour
+    
+    for( int i = count_one_hop_nbs; i < adj_mat_used; i++) {  //check all 2-hop neighbours
+      EtherAddress ea = neighbors[i];
+      
+      if ( uncovered.findp(ea) == NULL ) continue;            //already coverd
+      
+      uint8_t n = uncovered.find(ea);
+      if ( n == 1 ) {                                         //covered only once
+        BRN_ERROR("Covered by one: %s",ea.unparse().c_str());
+        uint8_t node_id = neighbour_map.find(ea);
+	uint8_t conn_count = 0;
+	uint16_t one_hop_neighbour = 0;
+        for ( int a = 0; a < count_one_hop_nbs; a++ ) {
+	  if ( adj_mat[a*adj_mat_size + node_id] == 1 ) {
+	    one_hop_neighbour = a;   
+	    conn_count++;
+	  }
+	}
+	  
+        if ( conn_count == 1 ) {                             // 2 hop node only covered by onre hop node one_hop_neighbour
+	  uncovered.erase(ea);                               //node is coverd by one node (mpr)
+	  mpr_forwarder.push_back(neighbors[one_hop_neighbour]); //node is mpr
+          mpr_nodes.insert(neighbors[one_hop_neighbour],neighbors[one_hop_neighbour]);
+	  
+	  //delete edges to node
+	  for ( int x = 0; x < adj_mat_size;x++) {
+	    adj_mat[x*adj_mat_size + i] = 0;
+	    adj_mat[i*adj_mat_size + x] = 0;
+	  }
+	      
+	  
+	  for( int j = count_one_hop_nbs; j < adj_mat_used; j++ ) {  //check for other nodes coverd by one hop node
+	    if ( adj_mat[j*adj_mat_size + one_hop_neighbour] == 1 ) {
+              
+	      //every node coverd by mpr can be deleted
+	      for ( int x = 0; x < adj_mat_size;x++) {
+                adj_mat[x*adj_mat_size + j] = 0;
+                adj_mat[j*adj_mat_size + x] = 0;
+              }
+
+	      EtherAddress two_hop_nb = neighbors[j];
+	      if ( uncovered.findp(two_hop_nb) != NULL )
+	        uncovered.erase(two_hop_nb);
+	    }
+	  }
+	}
+      } else {
+	BRN_ERROR("Covered by %d nodes",(int)n);
+      }
+    }
+    
+    for( int m = 0; m < mpr_forwarder.size(); m++ ) {
+      BRN_ERROR("MPR: %s", mpr_forwarder[m].unparse().c_str());
+    }
+    //check for one hop nodes which covers most of 2 hop nbbs
+//    int unc_s = uncovered.size();
+    int unc_s = 2;
+    while ( unc_s != 0 ) {
+      EtherAddress max_ea = EtherAddress::make_broadcast();
+      uint16_t max_count = 0;
+      uint16_t max_id = 0;
+
+      for( int g = count_one_hop_nbs; g < adj_mat_used; g++ ) {
+        if ( uncovered.findp(neighbors[g]) != NULL ) {
+	  BRN_ERROR("Uncovered node: %s",neighbors[g].unparse().c_str());
+	}
+      }
+       
+      for( int i = 0; i < count_one_hop_nbs; i++) {  //check all 1-hop neighbours
+        EtherAddress ea = neighbors[i];
+        if ( mpr_nodes.findp(ea) != NULL ) continue;
+        
+	uint16_t cnt_2hop_nb = 0;
+	
+	BRN_ERROR("Non mpr node: %s %d %d",ea.unparse().c_str(),max_id,cnt_2hop_nb);
+	
+	for( int j = count_one_hop_nbs; j < adj_mat_used; j++ ) {
+	  if ( adj_mat[j*adj_mat_size + i] == 1 ) cnt_2hop_nb++;
+	  else if ( adj_mat[i*adj_mat_size + j] == 1 ) cnt_2hop_nb++;
+	}
+	
+	if ( cnt_2hop_nb > max_count ) {
+	  max_ea = ea;
+	  max_count = cnt_2hop_nb;
+	  max_id = i;
+	}
+      }
+      BRN_ERROR("MaxCount: %d", max_count);
+      if ( max_count == 0 ) {
+	BRN_ERROR("Error");
+      } else {
+	mpr_forwarder.push_back(max_ea); //node is mpr
+        mpr_nodes.insert(max_ea,max_ea);
+	
+	for( int j = count_one_hop_nbs; j < adj_mat_used; j++ ) {  //check for other nodes coverd by one hop node
+	  if ( adj_mat[j*adj_mat_size + max_id ] == 1 ) {
+              
+	    for ( int x = 0; x < adj_mat_size;x++) {             //2hop node is coverd: delete edges
+              adj_mat[x*adj_mat_size + j] = 0;
+              adj_mat[j*adj_mat_size + x] = 0;
+            }
+
+	    EtherAddress two_hop_nb = neighbors[j];
+	    if ( uncovered.findp(two_hop_nb) != NULL )
+	      uncovered.erase(two_hop_nb);
+	  }
+        }
+      }
+      
+      unc_s--;
+    }
+  }
+}
 
 void
 MPRFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
@@ -136,6 +354,22 @@ String
 MPRFlooding::flooding_info(void)
 {
   StringAccum sa;
+  
+  sa << "<mprflooding node=\"" << _me->getMasterAddress()->unparse().c_str() << "\" >\n";
+  
+  sa << "\t<mprset size=\"" << mpr_forwarder.size() << "\" >\n";
+  for( int i = 0; i < mpr_forwarder.size(); i++ ) {
+    sa << "\t\t<mpr node=\"" << mpr_forwarder[i].unparse().c_str() << "\" />\n";
+  }
+  sa << "\t</mprset>\n";
+
+  sa << "\t<neighbourset size=\"" << _neighbours.size() << "\" >\n";
+  for( int i = 0; i < _neighbours.size(); i++ ) {
+    sa << "\t\t<neighbour node=\"" << _neighbours[i].unparse().c_str() << "\" />\n";
+  }
+  sa << "\t</neighbourset>\n";
+  
+  sa << "</mprflooding>\n";
 
   return sa.take_string();
 }
@@ -143,7 +377,8 @@ MPRFlooding::flooding_info(void)
 enum {
   H_FLOODING_INFO,
   H_MPRFLOODING_FORWARDER,
-  H_MPRFLOODING_DESTINATION
+  H_MPRFLOODING_DESTINATION,
+  H_MPRFLOODING_GET_MPR
 };
 
 static String
@@ -168,6 +403,10 @@ write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/
   {
     case H_MPRFLOODING_FORWARDER : return ( mprfl->set_mpr_forwarder(in_s) );
     case H_MPRFLOODING_DESTINATION : return ( mprfl->set_mpr_destination(in_s) );
+    case H_MPRFLOODING_GET_MPR : {
+                                    mprfl->set_mpr();
+				    return 0;
+                                 }
     default: return 0;
   }
 
@@ -182,7 +421,8 @@ void MPRFlooding::add_handlers()
 
   add_write_handler("forwarder", write_param, (void *) H_MPRFLOODING_FORWARDER);
   add_write_handler("destination", write_param, (void *) H_MPRFLOODING_DESTINATION);
-
+  add_write_handler("mpr_algo", write_param, (void *) H_MPRFLOODING_GET_MPR);
+  
 }
 
 CLICK_ENDDECLS
