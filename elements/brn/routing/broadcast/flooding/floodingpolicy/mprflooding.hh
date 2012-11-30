@@ -7,6 +7,8 @@
 
 CLICK_DECLS
 
+#define MPR_DEFAULT_UPDATE_INTERVAL 5000
+
 class MPRFlooding : public FloodingPolicy
 {
 
@@ -51,8 +53,12 @@ class MPRFlooding : public FloodingPolicy
     Brn2LinkTable *_link_table;
     int _max_metric_to_neighbor;
 
-    Vector<EtherAddress> mpr_forwarder;
-    Vector<EtherAddress> mpr_unicast;
+    Timestamp _last_set_mpr_call;
+    uint32_t _update_interval;
+    bool _fix_mpr;
+
+    Vector<EtherAddress> _mpr_forwarder;
+    Vector<EtherAddress> _mpr_unicast;
     Vector<EtherAddress> _neighbours;
 
     void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
