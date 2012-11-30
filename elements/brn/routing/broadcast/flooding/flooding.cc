@@ -91,19 +91,34 @@ Flooding::push( int port, Packet *packet )
     click_ether *ether = (click_ether *)packet->data();
     src = EtherAddress(ether->ether_shost);
 
-    packet->pull(6);                                                           //remove mac Broadcast-Address
-    WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast)); //add BroadcastHeader
-    struct click_brn_bcast *bch = (struct click_brn_bcast*)new_packet->data();
-
-    bch->bcast_id = htons(_bcast_id);
-
     add_id(&src,(uint32_t)_bcast_id, &now);
     forward_try(&src, _bcast_id);
 #ifdef FLOODING_EXTRA_STATS
     add_last_node(&src,(int32_t)_bcast_id, &src, true);
 #endif
+   
+    Vector<EtherAddress> forwarder;
+    Vector<EtherAddress> passiveack;
+    uint8_t extra_data[256];
+    uint32_t extra_data_size = 256;
 
-    _flooding_policy->add_broadcast(&src,(uint32_t)_bcast_id);
+    _flooding_policy->init_broadcast(&src,(uint32_t)_bcast_id, 
+                                     &extra_data_size, extra_data, &forwarder, &passiveack);
+    
+    if ( extra_data_size == 256 ) extra_data_size = 0;
+
+    packet->pull(6);                                                           //remove mac Broadcast-Address
+    
+
+    WritablePacket *new_packet = packet->push(sizeof(struct click_brn_bcast) + extra_data_size); //add BroadcastHeader
+
+    bcast_header = (struct click_brn_bcast *)(new_packet->data());
+    bcast_header->bcast_id = htons(_bcast_id);
+    bcast_header->flags = 0;
+    bcast_header->extra_data_size = extra_data_size;
+
+    if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size); 
+    
     _flooding_src++;                                                           //i was src of a flooding
 
     _bcast_id++;
@@ -132,6 +147,8 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
 
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+    uint8_t flags = bcast_header->flags;
+
     bool is_known = have_id(&src, p_bcast_id, &now);
     ttl--;
 
@@ -139,13 +156,21 @@ Flooding::push( int port, Packet *packet )
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
+
+    uint32_t rxdatasize =  bcast_header->extra_data_size;
+    uint8_t *rxdata = NULL;
+    
+    if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]);
+    
     uint8_t extra_data[256];
     uint32_t extra_data_size = 256;
 
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known,
-                                                             0 /*rx*/, NULL /*rx*/, &extra_data_size, extra_data,
+                                                              rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
                                                              &forwarder, &passiveack);
 
+    if ( extra_data_size == 256 ) extra_data_size = 0;
+    
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
 
@@ -157,6 +182,8 @@ Flooding::push( int port, Packet *packet )
         p_client = packet;
 
       p_client->pull(sizeof(struct click_brn_bcast));         //remove bcast_header
+      if ( rxdatasize > 0 ) p_client->pull(rxdatasize);       //remove extra stuff
+      
       WritablePacket *p_client_out = p_client->push(6);       //add space for bcast_addr
       memcpy(p_client_out->data(), brn_ethernet_broadcast, 6);//set dest to bcast
 
@@ -177,6 +204,20 @@ Flooding::push( int port, Packet *packet )
       forward_try(&src, p_bcast_id);
       
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
+      
+      if ( rxdatasize > 0 ) packet->pull(rxdatasize);           //remove rx data
+      
+      if ( extra_data_size > 0 ) 
+        if ( packet->push(extra_data_size) == NULL) //add space for new stuff (txdata)
+          BRN_ERROR("packet->push failed");
+
+      bcast_header = (struct click_brn_bcast *)(packet->data());
+	
+      bcast_header->bcast_id = htons(p_bcast_id);
+      bcast_header->flags = flags;
+      bcast_header->extra_data_size = extra_data_size;
+
+      if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size); 
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
       BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
@@ -194,7 +235,7 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Flooding: TXFeedback success\n");
 
     bcast_header = (struct click_brn_bcast *)(packet->data());
-    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
+    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
 
     BRN_DEBUG("Src: %s",src.unparse().c_str());
 
