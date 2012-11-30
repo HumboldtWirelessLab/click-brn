@@ -41,6 +41,7 @@ CLICK_DECLS
 
 HiddenNodeDetection::HiddenNodeDetection():
     _device(NULL),
+    _hn_del_timer(this),
     _hd_del_interval(1000)
 {
   BRNElement::init();
