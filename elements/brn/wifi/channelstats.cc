@@ -743,7 +743,7 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
   small_stats->duration = duration;
 
   if ( small_stats->frac_mac_busy > 100 ) {
-    BRN_ERROR("Overflow");
+    BRN_ERROR("Mac Busy: Overflow: %d", small_stats->frac_mac_busy);
     small_stats->frac_mac_busy = 100;
 
     if ( small_stats->frac_mac_rx > 100 ) {
