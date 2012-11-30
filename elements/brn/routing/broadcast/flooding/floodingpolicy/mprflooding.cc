@@ -8,6 +8,8 @@
 #include <click/hashmap.hh>
 #include <click/bighashmap.hh>
 
+
+#include "elements/brn/brn2.h"
 #include "floodingpolicy.hh"
 #include "mprflooding.hh"
 
@@ -58,30 +60,61 @@ MPRFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
+void
+MPRFlooding::init_broadcast(EtherAddress *, uint32_t, uint32_t *tx_data_size, uint8_t *txdata, Vector<EtherAddress> *, Vector<EtherAddress> *)
+{
+  if ((_mpr_forwarder.size() == 0) || //if we have now mpr
+      ((!_fix_mpr) &&                 //or we dont use fixed mprs & need update
+	(Timestamp::now() - _last_set_mpr_call).msecval() > _update_interval)) {
+      set_mpr();
+  }
+
+  if ( *tx_data_size < (uint32_t)(6 * _mpr_forwarder.size()) ) {  //i have more mprs than expected 
+    BRN_ERROR("MPRHeader: no space left");
+    memcpy(txdata, brn_ethernet_broadcast, 6);         //every neighbour should forward
+    *tx_data_size = 6;
+  } else {
+    for ( int a = 0, index = 0 ; a < _mpr_forwarder.size(); a++, index+=6 )
+      memcpy(&(txdata[index]), _mpr_forwarder[a].data(), 6);
+    
+    *tx_data_size = 6 * _mpr_forwarder.size();
+  }
+}
+
 bool
 MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool is_known,
                         uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                         Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
   EtherAddress ea;
-  int i;
+  uint32_t i;
 
   if ( is_known ) return false;
 
   for(i = 0; i < rx_data_size; i +=6) {
     ea = EtherAddress(&(rxdata[i]));
-    if ( _me->isIdentical(&ea) ) break;
+    if ( _me->isIdentical(&ea) || (ea == brn_etheraddress_broadcast)) break;
   }
 
-  if ( i < rx_data_size ) { //i'm a mpr
+  if ( i <= rx_data_size ) { //i'm a mpr
     if ((_mpr_forwarder.size() == 0) || //if we have now mpr
         ((!_fix_mpr) &&                 //or we dont use fixed mprs & need update
          (Timestamp::now() - _last_set_mpr_call).msecval() > _update_interval)) {
        set_mpr();
     }
 
-    if ( tx_data_size > (6 * _mpr_forwarder.size()) ) {
+    if ( *tx_data_size < (uint32_t)(6 * _mpr_forwarder.size()) ) {  //i have more mprs than expected 
+      BRN_ERROR("MPRHeader: no space left");
+      memcpy(txdata, brn_ethernet_broadcast, 6);         //every neighbour should forward
+      *tx_data_size = 6;
+    } else {
+      for ( int a = 0, index = 0 ; a < _mpr_forwarder.size(); a++, index+=6 )
+        memcpy(&(txdata[index]), _mpr_forwarder[a].data(), 6);
+      
+      *tx_data_size = 6 * _mpr_forwarder.size();
     }
+    
+    return true;
   }
 
   return false;

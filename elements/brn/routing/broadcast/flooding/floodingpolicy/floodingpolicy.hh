@@ -22,7 +22,8 @@ class FloodingPolicy : public BRNElement
                              uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                              Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack) = 0;
 
-    virtual void add_broadcast(EtherAddress *src, uint32_t id) = 0; //used for local generated broadcast
+    virtual void init_broadcast(EtherAddress *src, uint32_t id, uint32_t *tx_data_size, uint8_t *txdata,
+                                 Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack ) = 0; //used for local generated broadcast
     virtual int policy_id() = 0;
 
 };

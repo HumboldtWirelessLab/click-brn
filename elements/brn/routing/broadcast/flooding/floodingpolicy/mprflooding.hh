@@ -36,7 +36,8 @@ class MPRFlooding : public FloodingPolicy
     bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known,
                     uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                     Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack);
-    void add_broadcast(EtherAddress *, uint32_t ) {};
+    void init_broadcast(EtherAddress *, uint32_t, uint32_t *, uint8_t *,
+		       Vector<EtherAddress> *, Vector<EtherAddress> *);
     int policy_id();
 
     String flooding_info(void);
