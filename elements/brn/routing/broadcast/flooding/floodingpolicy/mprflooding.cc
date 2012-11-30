@@ -13,7 +13,8 @@
 
 CLICK_DECLS
 
-MPRFlooding::MPRFlooding()
+MPRFlooding::MPRFlooding():
+  _update_interval(MPR_DEFAULT_UPDATE_INTERVAL)
 {
   BRNElement::init();
 }
@@ -41,6 +42,7 @@ MPRFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
+    "MPRUPDATEINTERVAL",cpkP, cpInteger, &_update_interval,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -51,17 +53,38 @@ MPRFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 MPRFlooding::initialize(ErrorHandler *)
 {
+  _last_set_mpr_call = Timestamp::now();
+
   return 0;
 }
 
 bool
 MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool is_known,
-                        uint32_t /*rx_data_size*/, uint8_t */*rxdata*/, uint32_t */*tx_data_size*/, uint8_t */*txdata*/,
+                        uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                         Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
-  
+  EtherAddress ea;
+  int i;
 
-  return ! is_known;
+  if ( is_known ) return false;
+
+  for(i = 0; i < rx_data_size; i +=6) {
+    ea = EtherAddress(&(rxdata[i]));
+    if ( _me->isIdentical(&ea) ) break;
+  }
+
+  if ( i < rx_data_size ) { //i'm a mpr
+    if ((_mpr_forwarder.size() == 0) || //if we have now mpr
+        ((!_fix_mpr) &&                 //or we dont use fixed mprs & need update
+         (Timestamp::now() - _last_set_mpr_call).msecval() > _update_interval)) {
+       set_mpr();
+    }
+
+    if ( tx_data_size > (6 * _mpr_forwarder.size()) ) {
+    }
+  }
+
+  return false;
 }
 
 int
@@ -72,7 +95,7 @@ MPRFlooding::policy_id()
 
 void
 MPRFlooding::set_mpr()
-{  
+{
   Vector<EtherAddress> neighbors;
 
   HashMap<EtherAddress, int> neighbour_map; 
@@ -83,27 +106,29 @@ MPRFlooding::set_mpr()
   uint8_t *adj_mat;
   uint16_t adj_mat_size = 16;
   uint16_t adj_mat_used = 0;
-  
+
   uint16_t count_one_hop_nbs = 0;
- 
-  mpr_forwarder.clear();
+
+  _last_set_mpr_call = Timestamp::now();
+
+  _mpr_forwarder.clear();
   _neighbours.clear();
-  
+
   if (_link_table) {
     //
     //get neighbours
     //
     const EtherAddress *me = _me->getMasterAddress();
     get_filtered_neighbors(*me, neighbors);
-    
+
     if (neighbors.size() == 0) {
       BRN_DEBUG("No neighbours, so no mprs.");
       return;
     }
-   
+
     if ( neighbors.size() > 4 )
       adj_mat_size = neighbors.size() * neighbors.size();
-    
+
     adj_mat = new uint8_t[adj_mat_size*adj_mat_size]; //Matrix
     memset(adj_mat, 0, adj_mat_size*adj_mat_size);
 
@@ -113,19 +138,19 @@ MPRFlooding::set_mpr()
       neighbour_map.insert(neighbors[n_i],n_i);
       _neighbours.push_back(neighbors[n_i]);
     }
-     
-    // 
+
+    //
     // get 2-hop neighbours
     //
     for( int n_i = 0; n_i < count_one_hop_nbs; n_i++) { // iterate over all my neighbors
-      
+
       Vector<EtherAddress> nb_neighbors;               // the neighbors of my neighbors
       get_filtered_neighbors(neighbors[n_i], nb_neighbors);
 
       for( int n_j = 0; n_j < nb_neighbors.size(); n_j++) { // iterate over all my neighbors neighbours
-        
+
         int adj_mat_index;
-        
+
 	if ( neighbour_map.findp(nb_neighbors[n_j]) == NULL ) {
 
 	  adj_mat_index = adj_mat_used;
@@ -200,7 +225,7 @@ MPRFlooding::set_mpr()
 	  
         if ( conn_count == 1 ) {                             // 2 hop node only covered by onre hop node one_hop_neighbour
 	  uncovered.erase(ea);                               //node is coverd by one node (mpr)
-	  mpr_forwarder.push_back(neighbors[one_hop_neighbour]); //node is mpr
+	  _mpr_forwarder.push_back(neighbors[one_hop_neighbour]); //node is mpr
           mpr_nodes.insert(neighbors[one_hop_neighbour],neighbors[one_hop_neighbour]);
 	  
 	  //delete edges to node
@@ -230,8 +255,8 @@ MPRFlooding::set_mpr()
       }
     }
     
-    for( int m = 0; m < mpr_forwarder.size(); m++ ) {
-      BRN_DEBUG("MPR: %s", mpr_forwarder[m].unparse().c_str());
+    for( int m = 0; m < _mpr_forwarder.size(); m++ ) {
+      BRN_DEBUG("MPR: %s", _mpr_forwarder[m].unparse().c_str());
     }
     //check for one hop nodes which covers most of 2 hop nbbs
 //    int unc_s = uncovered.size();
@@ -272,7 +297,7 @@ MPRFlooding::set_mpr()
       if ( max_count == 0 ) {
 	BRN_DEBUG("Error");
       } else {
-	mpr_forwarder.push_back(max_ea); //node is mpr
+	_mpr_forwarder.push_back(max_ea); //node is mpr
         mpr_nodes.insert(max_ea,max_ea);
 	
 	for( int j = count_one_hop_nbs; j < adj_mat_used; j++ ) {  //check for other nodes coverd by one hop node
@@ -327,7 +352,7 @@ MPRFlooding::set_mpr_vector(const String &in_s, Vector<EtherAddress> *ea_vector)
   ea_vector->clear();
 
   EtherAddress ea;
-  
+
   for ( int i = 0; i < ea_vector->size(); i++ ) {
      cp_ethernet_address(args[i], &ea);
      ea_vector->push_back(ea);
@@ -339,13 +364,16 @@ MPRFlooding::set_mpr_vector(const String &in_s, Vector<EtherAddress> *ea_vector)
 int
 MPRFlooding::set_mpr_forwarder(const String &in_s)
 {
-  return set_mpr_vector(in_s, &mpr_forwarder);
+  int result = set_mpr_vector(in_s, &_mpr_forwarder);
+  _fix_mpr = (_mpr_forwarder.size() != 0);
+
+  return result;
 }
 
 int
 MPRFlooding::set_mpr_destination(const String &in_s)
 {
-  return set_mpr_vector(in_s, &mpr_unicast);
+  return set_mpr_vector(in_s, &_mpr_unicast);
 }
 
 /*******************************************************************************************/
@@ -359,9 +387,9 @@ MPRFlooding::flooding_info(void)
   
   sa << "<mprflooding node=\"" << _me->getMasterAddress()->unparse().c_str() << "\" >\n";
   
-  sa << "\t<mprset size=\"" << mpr_forwarder.size() << "\" >\n";
-  for( int i = 0; i < mpr_forwarder.size(); i++ ) {
-    sa << "\t\t<mpr node=\"" << mpr_forwarder[i].unparse().c_str() << "\" />\n";
+  sa << "\t<mprset size=\"" << _mpr_forwarder.size() << "\" >\n";
+  for( int i = 0; i < _mpr_forwarder.size(); i++ ) {
+    sa << "\t\t<mpr node=\"" << _mpr_forwarder[i].unparse().c_str() << "\" />\n";
   }
   sa << "\t</mprset>\n";
 
