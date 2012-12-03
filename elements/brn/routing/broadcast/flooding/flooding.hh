@@ -180,7 +180,7 @@ class Flooding : public BRNElement {
           if ((_bcast_fwd_list[index]&FLOODING_FWD_DONE) == 0)
             return _bcast_fwd_list[index]&FLOODING_FWD_TRY;
           else
-            return (_bcast_fwd_list[index]&FLOODING_FWD_DONE) > FLOODING_FWD_DONE_SHIFT;
+            return (_bcast_fwd_list[index]&FLOODING_FWD_DONE) >> FLOODING_FWD_DONE_SHIFT;
         }
         return 0;
       }
