@@ -148,23 +148,26 @@ Flooding::push( int port, Packet *packet )
     Timestamp now = packet->timestamp_anno();
 
     bcast_header = (struct click_brn_bcast *)(packet->data());
-    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast)]));
-
-    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
 
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
     uint8_t flags = bcast_header->flags;
+    uint32_t rxdatasize =  bcast_header->extra_data_size;
+    
+    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + rxdatasize]));
+
+    BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
 
     uint32_t c_fwds;
     bool is_known = have_id(&src, p_bcast_id, &now, &c_fwds);
     ttl--;
 
+    BRN_ERROR("Fwds: %d",c_fwds);
+    
     uint8_t dev_id = BRNPacketAnno::devicenumber_anno(packet);
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
 
-    uint32_t rxdatasize =  bcast_header->extra_data_size;
     uint8_t *rxdata = NULL;
 
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]);
@@ -282,7 +285,10 @@ Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *coun
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
-  if ( bcn == NULL ) return false;
+  if ( bcn == NULL ) {
+    *count_forwards = 0;
+    return false;
+  }
 
   *count_forwards = bcn->forward_attempts(id);
 

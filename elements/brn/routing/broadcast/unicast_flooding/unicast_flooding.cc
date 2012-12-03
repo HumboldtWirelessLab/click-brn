@@ -224,16 +224,7 @@ UnicastFlooding::push(int port, Packet *p_in)
   }
  }
 
-  /*
-  if ( port == 1 ) { // received from other brn node; rewrite from unicast to broadcast
-    // rewrite address
-    memcpy(ether->ether_dhost, EtherAddress::make_broadcast().data() , 6);
-    BRN_DEBUG("* UnicastFlooding: Destination address rewrote to bcast");
-    output(1).push(p_in);
-  }
-  */
-
-  return;
+ return;
 }
 
 
