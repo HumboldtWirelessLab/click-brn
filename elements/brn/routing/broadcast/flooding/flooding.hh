@@ -73,6 +73,7 @@ class Flooding : public BRNElement {
 
 #define FLOODING_FWD_TRY  1
 #define FLOODING_FWD_DONE 2
+#define FLOODING_FWD_DONE_SHIFT 1
 
      public:
       EtherAddress  _src;
@@ -173,6 +174,17 @@ class Flooding : public BRNElement {
         if (_bcast_id_list[index] == id) _bcast_fwd_list[index] |= FLOODING_FWD_DONE;
       }
 
+      inline uint32_t forward_attempts(uint32_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] == id) {
+          if ((_bcast_fwd_list[index]&FLOODING_FWD_DONE) == 0)
+            return _bcast_fwd_list[index]&FLOODING_FWD_TRY;
+          else
+            return (_bcast_fwd_list[index]&FLOODING_FWD_DONE) > FLOODING_FWD_DONE_SHIFT;
+        }
+        return 0;
+      }
+
 #ifdef FLOODING_EXTRA_STATS
       inline void add_last_node(uint32_t id, EtherAddress *node, bool forwarded) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
@@ -225,7 +237,7 @@ class Flooding : public BRNElement {
   void add_handlers();
 
   void add_id(EtherAddress *src, uint32_t id, Timestamp *now);
-  bool have_id(EtherAddress *src, uint32_t id, Timestamp *now);
+  bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
   void forward_done(EtherAddress *src, uint32_t id);
   void forward_try(EtherAddress *src, uint32_t id);
 #ifdef FLOODING_EXTRA_STATS

@@ -16,7 +16,8 @@
 CLICK_DECLS
 
 MPRFlooding::MPRFlooding():
-  _update_interval(MPR_DEFAULT_UPDATE_INTERVAL)
+  _update_interval(MPR_DEFAULT_UPDATE_INTERVAL),
+  _fix_mpr(false)
 {
   BRNElement::init();
 }
@@ -76,20 +77,20 @@ MPRFlooding::init_broadcast(EtherAddress *, uint32_t, uint32_t *tx_data_size, ui
   } else {
     for ( int a = 0, index = 0 ; a < _mpr_forwarder.size(); a++, index+=6 )
       memcpy(&(txdata[index]), _mpr_forwarder[a].data(), 6);
-    
+
     *tx_data_size = 6 * _mpr_forwarder.size();
   }
 }
 
 bool
-MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool is_known,
+MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const EtherAddress */*rcv*/, uint32_t /*id*/, bool /*is_known*/, uint32_t forward_count,
                         uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                         Vector<EtherAddress> */*unicast_dst*/, Vector<EtherAddress> */*passiveack*/)
 {
   EtherAddress ea;
   uint32_t i;
 
-  if ( is_known ) return false;
+  if ( forward_count > 0 ) return false;
 
   for(i = 0; i < rx_data_size; i +=6) {
     ea = EtherAddress(&(rxdata[i]));
@@ -110,10 +111,10 @@ MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const Ethe
     } else {
       for ( int a = 0, index = 0 ; a < _mpr_forwarder.size(); a++, index+=6 )
         memcpy(&(txdata[index]), _mpr_forwarder[a].data(), 6);
-      
+
       *tx_data_size = 6 * _mpr_forwarder.size();
     }
-    
+
     return true;
   }
 
@@ -291,9 +292,9 @@ MPRFlooding::set_mpr()
     for( int m = 0; m < _mpr_forwarder.size(); m++ ) {
       BRN_DEBUG("MPR: %s", _mpr_forwarder[m].unparse().c_str());
     }
+
     //check for one hop nodes which covers most of 2 hop nbbs
-//    int unc_s = uncovered.size();
-    int unc_s = 2;
+    int unc_s = uncovered.size();
     while ( unc_s != 0 ) {
       EtherAddress max_ea = EtherAddress::make_broadcast();
       uint16_t max_count = 0;
