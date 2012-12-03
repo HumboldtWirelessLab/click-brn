@@ -18,7 +18,7 @@ class FloodingPolicy : public BRNElement
     ~FloodingPolicy();
 
     virtual const char *floodingpolicy_name() const = 0;
-    virtual bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known,
+    virtual bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known, uint32_t forward_count,
                              uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                              Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack) = 0;
 
