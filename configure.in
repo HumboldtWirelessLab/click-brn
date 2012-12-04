@@ -1489,6 +1489,16 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 	AC_DEFINE([HAVE_LINUX_SKB_SHINFO_IP6_FRAG_ID], [1], [Define if 'struct skb_shared_info' has an 'ip6_frag_id' member.])
     fi
 
+    AC_CACHE_CHECK([whether skb_shinfo has tx_flags defining SKBTX_DEV_ZEROCOPY], [ac_cv_linuxmodule_skb_shinfo_tx_flags_skbtx_dev_zerocopy],
+	[AC_LANG_C
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>]],
+[[extern struct sk_buff *s; skb_shinfo(s)->tx_flags = SKBTX_DEV_ZEROCOPY;]])],
+	[ac_cv_linuxmodule_skb_shinfo_tx_flags_skbtx_dev_zerocopy=yes], [ac_cv_linuxmodule_skb_shinfo_tx_flags_skbtx_dev_zerocopy=no])])
+    if test $ac_cv_linuxmodule_skb_shinfo_tx_flags_skbtx_dev_zerocopy = yes; then
+	AC_DEFINE([HAVE_LINUX_SKB_SHINFO_TX_FLAGS_SKBTX_DEV_ZEROCOPY], [1], [Define if 'struct skb_shared_info' has an 'tx_flags' member defining 'SKBTX_DEV_ZEROCOPY'.])
+    fi
+
     AC_CACHE_CHECK([for device polling kernel extension], [ac_cv_linuxmodule_net_device_polling],
 	[AC_LANG_C
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
@@ -1499,17 +1509,32 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 	AC_DEFINE([HAVE_LINUX_POLLING], [1], [Define if your Linux kernel has polling extensions.])
     fi
 
-    AC_CHECK_DECL(skb_dst_drop, [ac_cv_skb_dst_drop=yes], [ac_cv_skb_dst_drop=no], [CLICK_LINUXMODULE_PROLOGUE()[
+    AC_CHECK_DECL([skb_dst_drop], [ac_cv_skb_dst_drop=yes], [ac_cv_skb_dst_drop=no], [CLICK_LINUXMODULE_PROLOGUE()[
 #include <net/dst.h>]])
     if test $ac_cv_skb_dst_drop = yes; then
 	AC_DEFINE([HAVE_SKB_DST_DROP], [1], [Define if you have the skb_dst_drop function.])
     fi
 
-    AC_CHECK_DECL(skb_recycle, [ac_cv_skb_recycle=yes], [ac_cv_skb_recycle=no], [CLICK_LINUXMODULE_PROLOGUE()[
+    AC_CHECK_DECL([skb_recycle], [ac_cv_skb_recycle=yes], [ac_cv_skb_recycle=no], [CLICK_LINUXMODULE_PROLOGUE()[
 #include <linux/skbuff.h>]])
     if test $ac_cv_skb_recycle = yes; then
 	AC_DEFINE([HAVE_SKB_RECYCLE], [1], [Define if you have the skb_recycle function.])
     fi
+
+save_cflags="$CFLAGS"
+CFLAGS="$save_cflags -Werror-implicit-function-declaration"
+
+    AC_CACHE_CHECK([whether skb_recycle returns an sk_buff], [ac_cv_linuxmodule_click_skb_recycle],
+	[AC_LANG_C
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
+#include <linux/skbuff.h>]],
+[[extern struct sk_buff *b; b = skb_recycle(b);]])],
+	[ac_cv_linuxmodule_click_skb_recycle=yes], [ac_cv_linuxmodule_click_skb_recycle=no])])
+    if test $ac_cv_linuxmodule_click_skb_recycle = yes; then
+	AC_DEFINE([HAVE_CLICK_SKB_RECYCLE], [1], [Define if your Linux kernel has Click skb_recycle.])
+    fi
+
+CFLAGS="$save_cflags"
 
     AC_CHECK_DECL(skb_linearize, [ac_cv_skb_linearize=yes], [ac_cv_skb_linearize=no], [CLICK_LINUXMODULE_PROLOGUE()[
 #include <linux/skbuff.h>]])
@@ -1568,6 +1593,12 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
 #include <linux/netdevice.h>]])
     if test $ac_cv_netdev_uses_trailer_tags = yes; then
 	AC_DEFINE([HAVE_NETDEV_USES_TRAILER_TAGS], [1], [Define if you have the netdev_uses_trailer_tags function.])
+    fi
+
+    AC_CHECK_DECL(atomic_cmpxchg, [ac_cv_linux_atomic_cmpxchg=yes], [ac_cv_linux_atomic_cmpxchg=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <asm/atomic.h>]])
+    if test $ac_cv_linux_atomic_cmpxchg = yes; then
+	AC_DEFINE([HAVE_LINUX_ATOMIC_CMPXCHG], [1], [Define if you have the atomic_cmpxchg function.])
     fi
 
     AC_CACHE_CHECK(for netdev_rx_handler_register kernel symbol, ac_cv_linux_netdev_rx_handler_register,

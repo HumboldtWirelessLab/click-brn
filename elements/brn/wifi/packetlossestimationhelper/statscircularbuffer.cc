@@ -11,7 +11,17 @@ StatsCircularBuffer::~StatsCircularBuffer()
 {
 }
 
+void StatsCircularBuffer::insert_values_wo_time(PacketParameter &packet_parameter, PacketLossInformation &pli)
+{
+	insert_values(packet_parameter, pli, false);
+}
+
 void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, PacketLossInformation &pli)
+{
+	insert_values(packet_parameter, pli, true);
+}
+
+void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, PacketLossInformation &pli, bool set_timestamp)
 {
     if(&packet_parameter == NULL || &pli == NULL)
     {
@@ -34,13 +44,23 @@ void StatsCircularBuffer::insert_values(PacketParameter &packet_parameter, Packe
     const uint8_t ws_fraction = pli_graph->reason_get(PacketLossReason::WEAK_SIGNAL)->getFraction();
 
     PacketLossStatistics pls;
-    pls.set_time_stamp(Timestamp::now().sec());
+    Vector<PacketLossStatistics> pls_temp_vector = ether_address_time_map.find(ea);
+
+    if (set_timestamp)
+    {
+    	pls.set_time_stamp(Timestamp::now().sec());
+    } else if (! pls_temp_vector.empty())	// set the old time stamp
+    {
+    	pls.set_time_stamp(pls_temp_vector.front().get_time_stamp());
+    } else
+    {
+    	pls.set_time_stamp(0);
+    }
+
     pls.set_hidden_node_probability(hn_fraction);
     pls.set_inrange_probability(ir_fraction);
     pls.set_non_wifi_probability(nw_fraction);
     pls.set_weak_signal_probability(ws_fraction);
-
-    Vector<PacketLossStatistics> pls_temp_vector = ether_address_time_map.find(ea);
 
     if(pls_temp_vector.empty())
     {
