@@ -50,36 +50,42 @@ class HiddenNodeDetection : public BRNElement {
         class NodeInfo {
         public:
         
-            Timestamp _last_notice;
-            bool _neighbour;
+            Timestamp _last_notice_active;
+	    Timestamp _last_notice_passive;
+            
+	    bool _neighbour;
+	    bool _visible; //TODO: better solution
+	    
 
             NodeInfoTable _links_to;
             HashMap<EtherAddress, Timestamp> _links_usage;
 
-            NodeInfo(): _neighbour(false) {
-                
-                _last_notice = Timestamp::now();
+            NodeInfo(): _neighbour(false),_visible(true) {
+                _last_notice_passive = _last_notice_active = Timestamp::now();
             }
 
-            inline void add_link(EtherAddress ea, NodeInfo *ni) {
-                
+            inline void add_link(EtherAddress ea, NodeInfo *ni, Timestamp *ts) {
                 if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
-                
-                _links_usage.insert(ea,Timestamp::now());
+		ni->_visible = true;
+		_visible = true;
+                _links_usage.insert(ea,*ts);
             }
 
-            inline void update() {
-                
-                _last_notice = Timestamp::now();
+            inline void update_active() {
+		_visible = true;
+                _last_notice_active = Timestamp::now();
+            }
+
+            inline void update_passive() {
+		_visible = true;
+                _last_notice_passive = Timestamp::now();
             }
             
             inline HashMap<EtherAddress, NodeInfo*> get_links_to() {
-                
                 return _links_to;
             }
             
             inline HashMap<EtherAddress, Timestamp> get_links_usage() {
-                
                 return _links_usage;
             }
         };
