@@ -1,3 +1,4 @@
+
 #include <click/config.h>
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
@@ -53,23 +54,31 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 ProbabilityFlooding::initialize(ErrorHandler *)
 {
+  click_srandom(_me->getMasterAddress()->hashcode());
   return 0;
 }
 
 bool
-ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known,
-                                uint32_t, uint8_t *, uint32_t *, uint8_t *,
+ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t, uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *,
                                 Vector<EtherAddress> *, Vector<EtherAddress> *)
 {
-  click_random_srandom();
+  click_chatter("do");
+  *tx_data_size = 0;
 
   const EtherAddress *me = _me->getMasterAddress();
   Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
   get_filtered_neighbors(*me, nb_neighbors);
-
-  if ( nb_neighbors.size() <= _min_no_neighbors ) return !is_known;
   
-  return !is_known & ((click_random() % 100) < _fwd_probability);
+  BRN_DEBUG("NBs: %d min: %d",nb_neighbors.size(),(int32_t)_min_no_neighbors);
+  
+  if ( nb_neighbors.size() <= (int32_t)_min_no_neighbors ) return !is_known;
+  
+  
+  uint32_t r = (click_random() % 100);
+  
+  BRN_DEBUG("Known: %d prob: %d",(is_known?(int)1:(int)0),r);
+  
+  return !is_known && (r < _fwd_probability);
 }
 
 int

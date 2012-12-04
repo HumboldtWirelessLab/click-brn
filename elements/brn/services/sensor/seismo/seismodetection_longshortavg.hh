@@ -36,6 +36,8 @@
 #define DEFAULT_RATIO_THRESHOLD 2147483647
 #define DEFAULT_NORMALIZE 10000
 
+#define DEFAULT_ALARM_DIST_MS 500
+
 //TODO: rename to LTA_STA
 
 CLICK_DECLS
@@ -159,9 +161,9 @@ class SlidingWindow {
     _raw[_history_index] = value;
 
     int64_t corr_value = (int64_t)value - (int64_t)_history_current_mean;
-    
+
     //click_chatter("Value: %d Corr: %lli Mean: %lli", value, (int64_t)corr_value, (int64_t)_history_current_mean);
-    
+
     _fixed_value[_history_index] = corr_value;
     _history_cum_vals += corr_value;
     _window_cum_vals += corr_value;
@@ -280,8 +282,16 @@ class SeismoAlarmLTASTAInfo {
     int32_t _sq_avg_long;
     int32_t _sq_avg_short;
 
+    int32_t _down_stdev_long;
+    int32_t _down_stdev_short;
+    int32_t _down_avg_long;
+    int32_t _down_avg_short;
+    int32_t _down_sq_avg_long;
+    int32_t _down_sq_avg_short;
+    int32_t _down_ratio;
+
     uint32_t _insert; //number of data (start of alarm)
-    
+
     bool _mode;
 
     SeismoAlarmLTASTAInfo(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
@@ -294,6 +304,14 @@ class SeismoAlarmLTASTAInfo {
       _sq_avg_long = sq_avg_long;
       _sq_avg_short = sq_avg_short;
       _insert = insert;
+      /*_down_stdev_long;
+      _down_stdev_short;
+      _down_avg_long;
+      _down_avg_short;
+      _down_sq_avg_long;
+      _down_sq_avg_short;
+      _down_ratio;
+      */
     }
 
     void update(int32_t stdev_long, int32_t stdev_short, int32_t avg_long,
@@ -333,7 +351,9 @@ class SeismoDetectionLongShortAvg : public BRNElement, public SeismoDetectionAlg
   void add_handlers();
 
   void update(SrcInfo *si, uint32_t next_new_block);
-  SeismoAlarmList *get_alarm() { return NULL; };
+  SeismoAlarmList *get_alarm() { return &sal; };
+
+  String stats();
 
   uint32_t _long_avg_count;
   uint32_t _short_avg_count;
@@ -346,9 +366,13 @@ class SeismoDetectionLongShortAvg : public BRNElement, public SeismoDetectionAlg
 
   SlidingWindow swin;
   SeismoAlarmList sal;
-  
+
   bool _print_alarm;
   bool _init_swin;
+
+  uint16_t _alarm_id;
+
+  uint16_t _alarm_dist;
 
 };
 

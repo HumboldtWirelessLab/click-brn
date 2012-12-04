@@ -11,6 +11,7 @@
 #else
 # include <string.h>
 #endif
+#define CLICK_CONSTANT_CSTR(cstr) ((cstr) && __builtin_constant_p(strlen((cstr))))
 CLICK_DECLS
 class StringAccum;
 
@@ -22,15 +23,17 @@ class String { public:
     typedef int (String::*unspecified_bool_type)() const;
 
 #if HAVE_INT64_TYPES && (!HAVE_LONG_LONG || SIZEOF_LONG_LONG <= 8)
-    typedef int64_t int_large_t;
-    typedef uint64_t uint_large_t;
+    typedef int64_t intmax_t;
+    typedef uint64_t uintmax_t;
 #elif HAVE_LONG_LONG
-    typedef long long int_large_t;
-    typedef unsigned long long uint_large_t;
+    typedef long long intmax_t;
+    typedef unsigned long long uintmax_t;
 #else
-    typedef long int_large_t;
-    typedef unsigned long uint_large_t;
+    typedef long intmax_t;
+    typedef unsigned long uintmax_t;
 #endif
+    typedef intmax_t int_large_t;
+    typedef uintmax_t uint_large_t;
 
     inline String();
     inline String(const String &x);
@@ -68,8 +71,8 @@ class String { public:
     static inline String make_stable(const char *cstr);
     static inline String make_stable(const char *s, int len);
     static inline String make_stable(const char *first, const char *last);
-    static String make_numeric(int_large_t x, int base = 10, bool uppercase = true);
-    static String make_numeric(uint_large_t x, int base = 10, bool uppercase = true);
+    static String make_numeric(intmax_t x, int base = 10, bool uppercase = true);
+    static String make_numeric(uintmax_t x, int base = 10, bool uppercase = true);
 
     inline const char *data() const;
     inline int length() const;
@@ -335,8 +338,8 @@ inline String::String(String &&x)
     @return A String containing the characters of @a cstr, up to but not
     including the terminating null character. */
 inline String::String(const char *cstr) {
-    if (__builtin_constant_p(strlen(cstr)))
-	assign(cstr, strlen(cstr), false);
+    if (CLICK_CONSTANT_CSTR(cstr))
+	assign_memo(cstr, strlen(cstr), 0);
     else
 	assign(cstr, -1, false);
 }
@@ -423,7 +426,7 @@ inline String String::make_garbage(int len) {
     @warning The String implementation may access @a cstr's terminating null
     character. */
 inline String String::make_stable(const char *cstr) {
-    if (__builtin_constant_p(strlen(cstr)))
+    if (CLICK_CONSTANT_CSTR(cstr))
 	return String(cstr, strlen(cstr), 0);
     else
 	return hard_make_stable(cstr, -1);
@@ -671,16 +674,19 @@ inline String &String::operator=(const String &x) {
 #if HAVE_CXX_RVALUE_REFERENCES
 /** @brief Move-assign this string to @a x. */
 inline String &String::operator=(String &&x) {
-    swap(x);
+    deref();
+    _r = x._r;
+    x._r.memo = 0;
     return *this;
 }
 #endif
 
 /** @brief Assign this string to the C string @a cstr. */
 inline String &String::operator=(const char *cstr) {
-    if (__builtin_constant_p(strlen(cstr)))
-	assign(cstr, strlen(cstr), true);
-    else
+    if (CLICK_CONSTANT_CSTR(cstr)) {
+	deref();
+	assign_memo(cstr, strlen(cstr), 0);
+    } else
 	assign(cstr, -1, true);
     return *this;
 }
@@ -700,7 +706,7 @@ inline void String::append(const String &x) {
 /** @brief Append the null-terminated C string @a cstr to this string.
     @param cstr data to append */
 inline void String::append(const char *cstr) {
-    if (__builtin_constant_p(strlen(cstr)))
+    if (CLICK_CONSTANT_CSTR(cstr))
 	append(cstr, strlen(cstr), absent_memo());
     else
 	append(cstr, -1, absent_memo());
@@ -856,7 +862,7 @@ inline bool operator==(const String &a, const String &b) {
 
 /** @relates String */
 inline bool operator==(const char *a, const String &b) {
-    if (__builtin_constant_p(strlen(a)))
+    if (CLICK_CONSTANT_CSTR(a))
 	return b.equals(a, strlen(a));
     else
 	return b.equals(a, -1);
@@ -864,7 +870,7 @@ inline bool operator==(const char *a, const String &b) {
 
 /** @relates String */
 inline bool operator==(const String &a, const char *b) {
-    if (__builtin_constant_p(strlen(b)))
+    if (CLICK_CONSTANT_CSTR(b))
 	return a.equals(b, strlen(b));
     else
 	return a.equals(b, -1);
