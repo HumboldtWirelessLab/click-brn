@@ -92,6 +92,13 @@ HiddenNodeDetection::run_timer(Timer *)
 
   _hn_del_timer.reschedule_after_msec(_hd_del_interval);
 }
+
+void
+HiddenNodeDetection::remove_link(EtherAddress */*sea*/, EtherAddress */*dea*/)
+{
+  
+}
+
 /*********************************************/
 /************* RX BASED STATS ****************/
 /*********************************************/
@@ -167,9 +174,9 @@ HiddenNodeDetection::push(int port, Packet *p)
           if (dst_ni) {
             BRN_DEBUG("Dst");
 
-	    Timestamp ts = Timestamp(0,0)
+	    Timestamp ts = Timestamp(0,0);
 //            dst_ni->add_link(src, src_ni, &ts);
-	    ts = Timestamp::now()
+	    ts = Timestamp::now();
             src_ni->add_link(dst, dst_ni, &ts);
           }
 
