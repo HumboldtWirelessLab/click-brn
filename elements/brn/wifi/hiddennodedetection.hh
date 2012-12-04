@@ -110,7 +110,6 @@ class HiddenNodeDetection : public BRNElement {
     String stats_handler(int mode);
     
     inline HashMap<EtherAddress, NodeInfo*> get_nodeinfo_table() {
-        
         return _nodeinfo_tab;
     }
     
@@ -123,6 +122,8 @@ class HiddenNodeDetection : public BRNElement {
         }
     }
     
+    void remove_link(EtherAddress *sea, EtherAddress *dea);
+
   private:
 
     BRN2Device *_device;
