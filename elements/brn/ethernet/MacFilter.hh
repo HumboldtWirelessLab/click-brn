@@ -1,13 +1,14 @@
 /*
- * mac_filter.hh
+ * MacFilter.hh
  *
  *  Created on: 04.12.2012
  *      Author: kuehne@informatik.hu-berlin.de
  *
- *  Purpose:	Mac-Filter with black of white listing
- *  Handler:	add <mac>, delete <mac>, reset
+ *  Purpose:	Mac-Filter using blacklisting
+ *  Handler:	add <mac>, del <mac>
  *
- *  How:		Using ... as storage for mac-filter list.
+ *  Input0:		Receive from device.
+ *  Output0:	Pass through.
  */
 
 #ifndef MAC_FILTER_HH_
