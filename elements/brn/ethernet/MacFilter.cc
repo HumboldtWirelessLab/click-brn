@@ -1,5 +1,5 @@
 /*
- * mac_filter.cc
+ * MacFilter.cc
  *
  *  Created on: 04.12.2012
  *      Author: kuehne@informatik.hu-berlin.de
@@ -12,6 +12,9 @@
  *  			If blacklisted, than discard packet.
  *  			Else, forward packet.
  *  			The blacklist will be controlled by a handler.
+ *
+ *  Input0:		Receive from device.
+ *  Output0:	Pass through.
  *
  */
 
