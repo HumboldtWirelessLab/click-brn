@@ -1,5 +1,5 @@
 /*
- * MacFilter.hh
+ * macfilter.hh
  *
  *  Created on: 04.12.2012
  *      Author: kuehne@informatik.hu-berlin.de
@@ -44,7 +44,6 @@ public:
 	bool del(EtherAddress addr);
 
 private:
-	int _debug;
 
 	HashMap<EtherAddress, EtherAddress> macFilterList;
 
