@@ -22,6 +22,7 @@
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
+#include <clicknet/wifi.h>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
@@ -29,12 +30,11 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
-#include "MacFilter.hh"
+#include "macfilter.hh"
 
 CLICK_DECLS
 
 MacFilter::MacFilter()
-	: _debug(false)
 {
 	BRNElement::init();
 }
@@ -63,7 +63,10 @@ void MacFilter::push(int port, Packet *p) {
 		return;
 	}
 
-	EtherAddress src_addr = BRNPacketAnno::src_ether_anno(p);
+  //EtherAddress src_addr = BRNPacketAnno::src_ether_anno(p);
+
+  struct click_wifi *w = (struct click_wifi *) p->data();
+  EtherAddress src_addr = EtherAddress(w->i_addr2);
 
 	if (macFilterList.findp(src_addr) != NULL) {
 		BRN_DEBUG("filtering mac");
@@ -99,7 +102,7 @@ bool MacFilter::del(EtherAddress addr) {
 	return macFilterList.erase(addr);
 }
 
-enum {H_add_mac, H_del_mac};
+enum {H_ADD_MAC, H_DEL_MAC};
 
 /*
 static String MacFilter_read_param(Element *e, void *thunk) {
@@ -128,10 +131,10 @@ static int MacFilter_write_param(const String &in_s, Element *e, void *vparam, E
 	}
 
 	switch((intptr_t)vparam) {
-	case H_add_mac:
+   case H_ADD_MAC:
 		mf->add(mac);
 		break;
-	case H_del_mac:
+   case H_DEL_MAC:
 		mf->del(mac);
 		break;
 	default:
@@ -146,8 +149,8 @@ void MacFilter::add_handlers() {
 
 	BRNElement::add_handlers();
 
-	add_write_handler("add", MacFilter_write_param, (void *)H_add_mac);
-	add_write_handler("del", MacFilter_write_param, (void *)H_del_mac);
+  add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
+  add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
 }
 
 CLICK_ENDDECLS
