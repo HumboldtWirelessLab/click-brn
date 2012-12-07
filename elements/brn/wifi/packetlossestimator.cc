@@ -482,7 +482,7 @@ void PacketLossEstimator::estimateInrange()
             {
             	//tofo
                 //temp *= (double(backoffsize) - double(i)) / double(backoffsize);
-            	if (temp_b > 184467440737095)
+            	if (temp_b > 429496)
             	{
             		temp_a /= 1000;
             		temp_b /= 1000;
