@@ -283,7 +283,7 @@ void PacketLossEstimator::estimateHiddenNode()
 					BRN_INFO("Own address has no neighbours");
 				}
         	}
-            uint8_t hnProp = 0;
+            uint64_t hnProp = 0;
             bool coopst = false;
 
             EtherAddress hn_address = *_packet_parameter->get_src_address();
@@ -363,7 +363,9 @@ void PacketLossEstimator::estimateHiddenNode()
 
                         if(duration != 0)
                         {
-                            hnProp = ((double)duration/1048576.0)*100.0;
+                        	hnProp = (duration * 100) / 1048576;
+                        	//click_chatter("HNnew/old: %d/%f", hnProp, ((double)duration/1048576.0)*100.0);
+                            //hnProp = ((double)duration/1048576.0)*100.0;
                             coopst = true;
                         }
                     } else
@@ -393,12 +395,12 @@ void PacketLossEstimator::estimateHiddenNode()
 
                                 //hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12 / 10; // 12 ms per packet / 1000 ms * 100
                                 //hnProp += get_acks_by_node(*_packet_parameter->get_dst_address()) * 12.5 / 10;
-                                hnProp += get_acks_by_node(tmpAdd) * 12.5 / 10;
+                                hnProp += get_acks_by_node(tmpAdd) * 12500 / 10; //ns
                             } else if(!_stats_buffer.get_values(tmpAdd, 1).empty() && ((Timestamp::now().sec() - _stats_buffer.get_values(tmpAdd, 1).front().get_time_stamp() ) > 9)
                             			&& get_acks_by_node(tmpAdd) > 0)
                             {
                             	BRN_INFO("%s seems to be gone, but is still there, i've seen %d acks!", tmpAdd.unparse().c_str(), get_acks_by_node(tmpAdd));
-                            	hnProp += get_acks_by_node(tmpAdd) * 12.5 / 10;
+                            	hnProp += get_acks_by_node(tmpAdd) * 12500 / 10;
                             } else
                             {
                             	BRN_INFO("%s is a direct neighbour", tmpAdd.unparse().c_str());
@@ -408,6 +410,7 @@ void PacketLossEstimator::estimateHiddenNode()
                             	}
                             }
                         }
+                        hnProp /= 1000;
                     }
 
                     BRN_INFO("%d Acks received for %s", get_acks_by_node(*_packet_parameter->get_dst_address()),
@@ -460,7 +463,9 @@ void PacketLossEstimator::estimateInrange()
     if(_dev != NULL)
     {
         uint16_t backoffsize = _dev->get_cwmax()[0];
-        double temp = 1.0;
+        //double temp = 1.0;
+        uint64_t temp_a = 1;
+        uint64_t temp_b = 1;
 
         if(backoffsize == 0)
         {
@@ -475,9 +480,21 @@ void PacketLossEstimator::estimateInrange()
         {
             for(int i = 1; i < neighbours; i++)
             {
-                temp *= (double(backoffsize) - double(i)) / double(backoffsize);
+            	//tofo
+                //temp *= (double(backoffsize) - double(i)) / double(backoffsize);
+            	if (temp_b > 184467440737095)
+            	{
+            		temp_a /= 1000;
+            		temp_b /= 1000;
+            	}
+
+                temp_a *= backoffsize - i;
+                temp_b *= backoffsize;
             }
-            irProp = (1 - temp) * 100;
+
+//            click_chatter("BOFF: %d/%d", temp_a, temp_b);
+            irProp = (100 - (temp_a * 100 /temp_b));
+            //click_chatter("BOFF: %d/%d", temp_a * 100, temp_b);
         }
 
         if(_pli != NULL)
