@@ -363,7 +363,7 @@ void PacketLossEstimator::estimateHiddenNode()
 
                         if(duration != 0)
                         {
-                            hnProp = 1048576 / duration;
+                            hnProp = ((double)duration/1048576.0)*100.0;
                             coopst = true;
                         }
                     } else
@@ -445,15 +445,6 @@ void PacketLossEstimator::estimateInrange()
 
     for(HiddenNodeDetection::NodeInfoTableIter i = neighbour_nodes.begin(); i != neighbour_nodes_end; i++)
     {
-
-    	if (i.value()->_neighbour)
-    	{
-    	 	click_chatter("Inrange-Neighbour: %s is a Neighbour", i.key().unparse().c_str() );
-    	} else
-    	{
-    		click_chatter("Inrange-Neighbour: %s is not a Neighbour", i.key().unparse().c_str() );
-    	}
-
     	if (_hnd->get_nodeinfo_table().find(i.key())->_neighbour)	// if entry is not a direct neighbour it should not be counted for inrange
     	{
 			if(neighbours >= 255)
@@ -485,7 +476,6 @@ void PacketLossEstimator::estimateInrange()
             for(int i = 1; i < neighbours; i++)
             {
                 temp *= (double(backoffsize) - double(i)) / double(backoffsize);
-                //click_chatter("backoffsize: %d neighbour: %d", backoffsize, i);
             }
             irProp = (1 - temp) * 100;
         }
@@ -866,7 +856,6 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
             for(HashMap<EtherAddress, struct neighbour_airtime_stats*>::iterator nats_map_iter = nats_map.begin(); nats_map_iter.live(); ++nats_map_iter)
             {
                 const EtherAddress ea = nats_map_iter.key();
-                click_chatter("ea = %s", ea.unparse().c_str());
 
                 if(*_dev->getEtherAddress() == ea)
                 {
@@ -893,7 +882,6 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
 
                 for(HiddenNodeDetection::NodeInfoTableIter itt = hnd_info_tab.find(ea)->_links_to.begin(); itt != hnd_info_tab.find(ea)->_links_to.end(); itt++)
                 {
-                	click_chatter("ea = %s", itt.key().unparse().c_str());
                     if(!hnd_info_tab.find(itt.key())->_neighbour)
                     {
                         if(!hnds)
@@ -1009,7 +997,6 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
             }
         } else
         {
-            click_chatter("hiddennode_sum/iter_count: %d/%d", temp_hidden_node, iteration_count);
             hidden_node_sa << "\t\t\t<hidden_neighbours available=\"false\" />\n";
         }
 
@@ -1267,7 +1254,6 @@ void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &
 
     for(Vector<EtherAddress>::iterator ea_iter = _received_adrs.begin(); ea_iter != _received_adrs.end(); ea_iter++)
     {
-        click_chatter("INSERT %s", ea_iter->unparse().c_str());
         PacketParameter pm;
         pm.put_params_(*ea_iter, *ea_iter, *ea_iter, 0, 0);
 
@@ -1279,16 +1265,12 @@ void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &
     Vector<EtherAddress> etheraddresses = _stats_buffer.get_stored_addresses();
     for(Vector<EtherAddress>::iterator ea_iter = etheraddresses.begin(); ea_iter != etheraddresses.end(); ea_iter++)
     {
-        click_chatter("EA: %s", ea_iter->unparse().c_str());
-
         if(now.sec() - _stats_buffer.get_values(*ea_iter, 1).front().get_time_stamp() > 60)
         {
-            click_chatter("RM");
             _stats_buffer.remove_stored_address(*ea_iter);
 
         } else if(now.sec() - _stats_buffer.get_values(*ea_iter, 1).front().get_time_stamp() > 1)
-            {
-            click_chatter("ADAPT");
+		{
             PacketParameter pm;
             _pli.graph_get(*ea_iter)->reason_get(PacketLossReason::WEAK_SIGNAL)->setFraction(100);
             _pli.graph_get(*ea_iter)->reason_get(PacketLossReason::IN_RANGE)->setFraction(0);
@@ -1298,9 +1280,6 @@ void PacketLossEstimator::update_statistics(HiddenNodeDetection::NodeInfoTable &
             pm.put_params_(*ea_iter, *ea_iter, *ea_iter, 0, 0);
 
             _stats_buffer.insert_values_wo_time(pm, _pli);
-        } else
-        {
-        	click_chatter("Now: %d, ln: %d", (int)now.sec(), _stats_buffer.get_values(*ea_iter, 1).front().get_time_stamp());
         }
     }
 }
