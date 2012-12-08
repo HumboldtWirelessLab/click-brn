@@ -611,9 +611,9 @@ uint8_t PacketLossEstimator::calc_weak_signal_percentage(ChannelStats::SrcInfo *
      float variance = 0.0;
      float std_deviation = 0.0;*/
     int32_t norm_histogram[256];
-    int32_t expected_value = 0.0;
-    int32_t variance = 0.0;
-    int32_t std_deviation = 0.0;
+    int32_t expected_value = 0;
+    int32_t variance = 0;
+    int32_t std_deviation = 0;
 
     memset(histogram, 0, sizeof(histogram));
     memset(norm_histogram, 0, sizeof(norm_histogram));
