@@ -31,6 +31,7 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "macfilter.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
 
@@ -44,9 +45,50 @@ MacFilter::~MacFilter() {
 
 int MacFilter::configure(Vector<String> &conf, ErrorHandler *errh) {
 if (cp_va_kparse(conf, this, errh,
+		"DEVICE", cpkP+cpkM, cpElement, &_device,
+		"USE_FRAME", cpkP, cpString, &_use_frame,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
+
+	/*
+	 * Decide from which frame type to get EtherAddress.
+	 * If _use_frame is defined explicitly, then use it.
+	 * Else use _device to figure out, which frame to get the address.
+	 * Or else use a default, which is to take out the address from packet anno.
+	 */
+	if(_use_frame == "anno") {
+		use_frame = 1;
+	} else if(_use_frame == "wifi") {
+		use_frame = 2;
+	} else if(_use_frame == "ether") {
+		use_frame = 3;
+	} else if(!_use_frame) {
+		if(_device != NULL) {
+
+			BRN2Device *device = (BRN2Device *) _device;
+			uint32_t type = device->getDeviceType();
+
+			switch(type) {
+			case DEVICETYPE_WIRED:
+				use_frame = 3;
+				break;
+			case DEVICETYPE_WIRELESS:
+				use_frame = 2;
+				break;
+			case DEVICETYPE_VIRTUAL:
+			case DEVICETYPE_UNKNOWN:
+			default:
+				use_frame = 0;
+				break;
+			}
+
+		} else { //default
+			use_frame = 0;
+		}
+	}
+
+
 
 	return 0;
 }
@@ -63,10 +105,24 @@ void MacFilter::push(int port, Packet *p) {
 		return;
 	}
 
-  //EtherAddress src_addr = BRNPacketAnno::src_ether_anno(p);
+	EtherAddress src_addr;
+	struct click_wifi *w;
 
-  struct click_wifi *w = (struct click_wifi *) p->data();
-  EtherAddress src_addr = EtherAddress(w->i_addr2);
+	switch(use_frame) {
+	case 1:
+		// Get data from Packet Anno
+		src_addr = BRNPacketAnno::src_ether_anno(p);
+		break;
+	case 2:
+		// Get data from wifi frame
+		w = (struct click_wifi *) p->data();
+		src_addr = EtherAddress(w->i_addr2);
+		break;
+	default:
+		// Get data from Packet Anno
+		src_addr = BRNPacketAnno::src_ether_anno(p);
+		break;
+	}
 
 	if (macFilterList.findp(src_addr) != NULL) {
 		BRN_DEBUG("filtering mac");
@@ -149,8 +205,8 @@ void MacFilter::add_handlers() {
 
 	BRNElement::add_handlers();
 
-  add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
-  add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
+	add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
+	add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
 }
 
 CLICK_ENDDECLS
