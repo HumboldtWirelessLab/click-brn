@@ -126,6 +126,11 @@ void MacFilter::push(int port, Packet *p) {
 
 	if (macFilterList.findp(src_addr) != NULL) {
 		BRN_DEBUG("filtering mac");
+
+		// Refresh or insert EtherAddr and packet count
+		int cnt = macFilterList.find(src_addr);
+		macFilterList.insert(src_addr, ++cnt);
+
 		p->kill();
 		return;
 	} else {
@@ -139,7 +144,7 @@ bool MacFilter::add(EtherAddress addr) {
 
 	// Check for uniqueness
 	if (macFilterList.findp(addr) == NULL) {
-		if (macFilterList.insert(addr,addr)) {
+		if (macFilterList.insert(addr,0)) {
 			BRN_DEBUG("new mac filter entry");
 			return true;
 		} else {
@@ -158,20 +163,27 @@ bool MacFilter::del(EtherAddress addr) {
 	return macFilterList.erase(addr);
 }
 
-enum {H_ADD_MAC, H_DEL_MAC};
+enum {H_ADD_MAC, H_DEL_MAC, H_FILTER_STAT};
 
-/*
+
 static String MacFilter_read_param(Element *e, void *thunk) {
 	MacFilter *mf = (MacFilter *)e;
 
+	StringAccum sa;
+
 	switch((uintptr_t) thunk) {
+	case H_FILTER_STAT:
+		for(HashMap<EtherAddress, int>::iterator it = mf->macFilterList.begin(); it.live(); it++) {
+			sa << "<filter mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\">\n";
+		}
+		break;
 	default:
 		break;
 	}
 
-	return String();
+	return sa.take_string();
 }
-*/
+
 
 static int MacFilter_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *) {
 
@@ -207,6 +219,8 @@ void MacFilter::add_handlers() {
 
 	add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
 	add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
+	add_read_handler("filter_stat", MacFilter_read_param, (void *)H_FILTER_STAT);
+
 }
 
 CLICK_ENDDECLS
