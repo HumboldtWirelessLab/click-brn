@@ -44,6 +44,10 @@ public:
 	bool del(EtherAddress addr);
 
 private:
+	Element *_device;
+
+	String _use_frame;
+	int use_frame;
 
 	HashMap<EtherAddress, EtherAddress> macFilterList;
 
