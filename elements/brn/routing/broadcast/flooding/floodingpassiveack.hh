@@ -70,9 +70,13 @@ class FloodingPassiveAck : public BRNElement {
   //
   //member
   //
+
+   
   BRN2NodeIdentity *_me;
 
  public:
+
+   //int packet_enqueue(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 
 };
 
