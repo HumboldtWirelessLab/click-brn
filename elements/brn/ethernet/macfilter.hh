@@ -43,9 +43,13 @@ public:
 	bool add(EtherAddress addr);
 	bool del(EtherAddress addr);
 
-private:
+	HashMap<EtherAddress, int> macFilterList;
 
-	HashMap<EtherAddress, EtherAddress> macFilterList;
+private:
+	Element *_device;
+
+	String _use_frame;
+	int use_frame;
 
 	void add_handlers();
 };
