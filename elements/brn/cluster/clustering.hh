@@ -9,6 +9,17 @@ CLICK_DECLS
 
 class Clustering : public BRNElement
 {
+  class Cluster {
+
+    uint32_t _cluster_id;
+    EtherAddress _clusterhead;
+    Vector<EtherAddress> _member;
+
+  };
+
+  typedef Vector<Cluster*> ClusterList;
+  typedef ClusterList::const_iterator ClusterListIter;
+
   public:
 
     Clustering();
@@ -24,7 +35,10 @@ class Clustering : public BRNElement
 
     virtual String clustering_info();
 
-    EtherAddress _clusterhead;
+    EtherAddress _clusterhead; //TODO: remove, it's old stuff
+
+    Cluster _own_cluster;
+    ClusterList _known_clusters;
 };
 
 CLICK_ENDDECLS
