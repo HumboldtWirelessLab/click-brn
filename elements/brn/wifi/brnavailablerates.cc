@@ -21,7 +21,9 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+
 #include "brnavailablerates.hh"
+
 CLICK_DECLS
 
 BrnAvailableRates::BrnAvailableRates()
@@ -119,7 +121,7 @@ BrnAvailableRates::configure(Vector<String> &conf, ErrorHandler *errh)
   int res = 0;
   for (int x = 0; x < conf.size(); x++) {
     res = parse_and_insert(conf[x], errh);
-    if (res != 0) 
+    if (res != 0)
     {
         return res;
     }
@@ -201,7 +203,11 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
     sa << "<available_rates>\n\t<default rates=\"";
     if (td->_default_rates.size()) {
       for (int x = 0; x < td->_default_rates.size(); x++) {
-        if ( x != 0 ) sa << " ";
+        if ( x != 0 )
+            sa << ",";
+        if (x % 20 == 0)
+            sa << "\n\t\t\t";
+
         sa << td->_default_rates[x]._data_rate;
       }
       sa << "\" />\n\t<destination>\n";

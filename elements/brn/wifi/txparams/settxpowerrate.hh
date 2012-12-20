@@ -24,7 +24,9 @@ CLICK_DECLS
  * 2 : received packets
  */
 
-class SetTXPowerRate : public BRNElement { public:
+class SetTXPowerRate : public BRNElement {
+
+public:
 
   SetTXPowerRate();
   ~SetTXPowerRate();
@@ -49,7 +51,7 @@ class SetTXPowerRate : public BRNElement { public:
 
   String getInfo();
 
- private:
+private:
 
   NeighbourRateInfo* getDstInfo(EtherAddress ea);
 
