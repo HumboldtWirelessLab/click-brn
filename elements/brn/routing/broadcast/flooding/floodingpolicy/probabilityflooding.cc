@@ -62,7 +62,6 @@ bool
 ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t, uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *,
                                 Vector<EtherAddress> *, Vector<EtherAddress> *)
 {
-  click_chatter("do");
   *tx_data_size = 0;
 
   const EtherAddress *me = _me->getMasterAddress();

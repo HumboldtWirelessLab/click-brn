@@ -52,7 +52,14 @@ struct click_brn_bcast {
  * =c
  * Flooding()
  * =s
- *
+ * Input 0  : Packets to route
+ * Input 1  : BRNFlooding-Packets
+ * Input 2  : TXFeedback failure
+ * Input 3  : TXFeedback success
+ * Input 4  : Passive (Foreign)
+ * 
+ * Output 0 : Packets to local
+ * Output 1 : BRNBroadcastRouting-Packets
  * =d
  */
 
@@ -226,7 +233,7 @@ class Flooding : public BRNElement {
   const char *class_name() const  { return "Flooding"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "2-4/2"; }
+  const char *port_count() const  { return "2-5/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -266,7 +273,11 @@ class Flooding : public BRNElement {
  public:
 
   uint32_t _flooding_src;
+  uint32_t _flooding_rx;
+  uint32_t _flooding_sent;
   uint32_t _flooding_fwd;
+  uint32_t _flooding_passive;
+  
 };
 
 CLICK_ENDDECLS

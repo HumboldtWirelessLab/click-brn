@@ -27,7 +27,7 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/etheraddress.hh>
-
+#include <clicknet/wifi.h>
 
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
@@ -36,13 +36,17 @@
 
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
+#include "../../identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
 Flooding::Flooding()
   : _bcast_id(1),
     _flooding_src(0),
-    _flooding_fwd(0)
+    _flooding_rx(0),
+    _flooding_sent(0),
+    _flooding_fwd(0),
+    _flooding_passive(0)
 {
   BRNElement::init();
 }
@@ -112,7 +116,7 @@ Flooding::push( int port, Packet *packet )
 
     if ( extra_data_size == 256 ) extra_data_size = 0;
 
-    BRN_ERROR("Extra Data Init: %d",extra_data_size);
+    BRN_DEBUG("Extra Data Init: %d",extra_data_size);
 
     packet->pull(6);                                                           //remove mac Broadcast-Address
 
@@ -140,9 +144,11 @@ Flooding::push( int port, Packet *packet )
 
   } else if ( port == 1 ) {                                   // kommt von brn
 
+    _flooding_rx++;
+    
     click_ether *ether = (click_ether *)packet->ether_header();
     EtherAddress fwd = EtherAddress(ether->ether_shost);
-
+    
     BRN_DEBUG("Flooding: PUSH von BRN\n");
 
     Timestamp now = packet->timestamp_anno();
@@ -161,7 +167,7 @@ Flooding::push( int port, Packet *packet )
     bool is_known = have_id(&src, p_bcast_id, &now, &c_fwds);
     ttl--;
 
-    BRN_ERROR("Fwds: %d",c_fwds);
+    BRN_DEBUG("Fwds: %d",c_fwds);
     
     uint8_t dev_id = BRNPacketAnno::devicenumber_anno(packet);
 
@@ -181,7 +187,7 @@ Flooding::push( int port, Packet *packet )
 
     if ( extra_data_size == 256 ) extra_data_size = 0;
 
-    BRN_ERROR("Extra Data Forward: %d in %d out Forward %d", 
+    BRN_DEBUG("Extra Data Forward: %d in %d out Forward %d", 
               rxdatasize, extra_data_size, (int)(forward?(1):(0)));
 
     if ( ! is_known ) {   //note and send to client only if this is the first time
@@ -194,8 +200,12 @@ Flooding::push( int port, Packet *packet )
       else
         p_client = packet;
 
-      p_client->pull(sizeof(struct click_brn_bcast) + rxdatasize - 6);         //remove bcast_header+extradata, but leave space for target addr
-
+      if ( sizeof(struct click_brn_bcast) + rxdatasize >= 6 ) {
+        p_client->pull((sizeof(struct click_brn_bcast) + rxdatasize) - 6);           //remove bcast_header+extradata, but leave space for target addr
+      } else {
+        p_client = p_client->push(6 - (sizeof(struct click_brn_bcast) + rxdatasize));//remove bcast_header+extradata, but leave space for target addr
+      }
+      
       memcpy((void*)p_client->data(), (void*)brn_ethernet_broadcast, 6);//set dest to bcast
 
       if ( BRNProtocol::is_brn_etherframe(p_client) )
@@ -239,20 +249,40 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
       if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
-  } else if ( port == 2 ) { //txfeedback failure
-    BRN_DEBUG("Flooding: TXFeedback failure\n");
+  } else if ( ( port == 2 ) || ( port == 3 ) ) { //txfeedback failure or success
+    uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);
+
+    if ( _me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS ) {
+      struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+      _flooding_sent += ceh->max_tries;
+    } else {
+      _flooding_sent++;  
+    }
+
+    if ( port == 2 ) { //txfeedback failure
+    
+      BRN_DEBUG("Flooding: TXFeedback failure\n");
+
+    } else {           //txfeedback success
+      BRN_DEBUG("Flooding: TXFeedback success\n");
+  
+      bcast_header = (struct click_brn_bcast *)(packet->data());
+      src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+
+      BRN_DEBUG("Src: %s",src.unparse().c_str());
+
+      uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+      forward_done(&src, p_bcast_id);
+    }
+    
     packet->kill();
-  } else if ( port == 3 ) { //txfeedback success
-    BRN_DEBUG("Flooding: TXFeedback success\n");
-
-    bcast_header = (struct click_brn_bcast *)(packet->data());
-    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
-
-    BRN_DEBUG("Src: %s",src.unparse().c_str());
-
-    uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
-    forward_done(&src, p_bcast_id);
-    packet->kill();
+      
+  } else if ( port == 4 ) { //txfeedback success
+    BRN_DEBUG("Flooding: Passive Overhear\n");
+    
+    _flooding_passive++;
+    
+    push(1,  packet);
   }
 }
 
@@ -341,7 +371,10 @@ Flooding::stats()
 
   sa << "<flooding node=\"" << BRN_NODE_NAME << "\" policy=\"" <<  _flooding_policy->floodingpolicy_name();
   sa << "\" >\n\t<source count=\"" << _flooding_src << "\" />\n";
-  sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n</flooding>\n";
+  sa << "\t<received count=\"" << _flooding_rx << "\" />\n";
+  sa << "\t<sent count=\"" << _flooding_sent << "\" />\n";
+  sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n";
+  sa << "\t<passive count=\"" << _flooding_passive << "\" />\n</flooding>\n";
 
   return sa.take_string();
 }
