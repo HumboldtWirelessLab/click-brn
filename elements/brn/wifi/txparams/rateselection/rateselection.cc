@@ -4,7 +4,7 @@
 CLICK_DECLS
 
 extern "C" {
-  static int mcs_data_rate_sorter(const void *va, const void *vb, void */*thunk*/) {
+  static int mcs_data_rate_sorter(const void *va, const void *vb, void * /*thunk*/) {
     MCS *a = ((MCS *)va), *b = ((MCS *)vb);
 
     if ( a->_data_rate > b->_data_rate ) return 1;
