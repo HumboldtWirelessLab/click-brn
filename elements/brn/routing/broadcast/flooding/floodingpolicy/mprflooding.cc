@@ -104,8 +104,9 @@ MPRFlooding::do_forward(EtherAddress */*src*/, EtherAddress */*fwd*/, const Ethe
        set_mpr();
     }
 
-    if ( *tx_data_size < (uint32_t)(6 * _mpr_forwarder.size()) ) {  //i have more mprs than expected 
-      BRN_ERROR("MPRHeader: no space left");
+    //i have more mprs than expected or none
+    if ( (*tx_data_size < (uint32_t)(6 * _mpr_forwarder.size())) || (_mpr_forwarder.size() == 0)) { 
+      BRN_ERROR("MPRHeader: no space left(%d) or no forwarder (%d)",(6 * _mpr_forwarder.size()),_mpr_forwarder.size());
       memcpy(txdata, brn_ethernet_broadcast, 6);         //every neighbour should forward
       *tx_data_size = 6;
     } else {
