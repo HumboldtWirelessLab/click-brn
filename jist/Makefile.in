@@ -76,7 +76,7 @@ STD_ELEMENT_OBJS = addressinfo.o alignmentinfo.o \
 OBJS = $(ELEMENT_OBJS) $(ELEMENTSCONF).o jistclick.o clickadapter.o java_array.o java_base_class.o
 
 # TODO: get it from configure!
-J2SDK = /usr/lib/jvm/java-6-sun
+J2SDK = /usr/lib/jvm/java
 OSNAME = linux
 
 CPPFLAGS = @CPPFLAGS@ -DCLICK_NS -DCLICK_JIST
