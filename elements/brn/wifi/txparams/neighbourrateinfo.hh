@@ -20,15 +20,16 @@ class NeighbourRateInfo {
 
     void *_rs_data;
 
+
     NeighbourRateInfo();
     ~NeighbourRateInfo();
 
-    NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power ) {
-      _eth = eth;
-      _rates = rates;
+    NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power) {
+      _eth       = eth;
+      _rates     = rates;
       _max_power = max_power;
-      _power = max_power;
-      _rs_data = NULL;
+      _power     = max_power;
+      _rs_data   = NULL;
     }
 
     int rate_index(MCS rate) {
@@ -63,6 +64,7 @@ class NeighbourRateInfo {
       }
       return _rates[0];
     }
+
 };
 
 typedef HashMap<EtherAddress, NeighbourRateInfo*> NeighborTable;

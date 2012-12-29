@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #ifndef BRNELEMENT_H_
@@ -27,12 +27,12 @@
 
 #include "elements/brn/standard/packetpool.hh"
 
-#define PACKET_POOL_CAPACITY 10
-#define PACKET_POOL_SIZE_STEPS 200
-#define PACKET_POOL_MIN_SIZE   180
+#define PACKET_POOL_CAPACITY     10
+#define PACKET_POOL_SIZE_STEPS  200
+#define PACKET_POOL_MIN_SIZE    180
 #define PACKET_POOL_MAX_SIZE   1600
-#define DEFAULT_HEADROOM 128
-#define DEFAULT_TAILROOM 32
+#define DEFAULT_HEADROOM        128
+#define DEFAULT_TAILROOM         32
 
 CLICK_DECLS
 

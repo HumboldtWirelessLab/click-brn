@@ -39,7 +39,9 @@
 
 CLICK_DECLS
 
-FloodingPassiveAck::FloodingPassiveAck()
+FloodingPassiveAck::FloodingPassiveAck():
+  _retries(0),
+  _retransmit_broadcast(NULL)
 {
   BRNElement::init();
 }
@@ -53,6 +55,7 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+      "RETRIES", cpkP, cpInteger, &_retries,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -71,6 +74,13 @@ FloodingPassiveAck::push( int /*port*/, Packet */*packet*/ )
 {
 
 }
+
+int
+FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
+{
+  return 0;
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler

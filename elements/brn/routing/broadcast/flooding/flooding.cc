@@ -41,7 +41,8 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _bcast_id(1),
+  : _flooding_passiveack(NULL),
+    _bcast_id(1),
     _flooding_src(0),
     _flooding_rx(0),
     _flooding_sent(0),
@@ -61,7 +62,8 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-      "FLOODINGPOLICY", cpkP+cpkM , cpElement, &_flooding_policy,
+      "FLOODINGPOLICY", cpkP+cpkM, cpElement, &_flooding_policy,
+      "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -69,9 +71,18 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
+static int
+static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id)
+{
+  return ((Flooding*)e)->retransmit_broadcast(p, src, fwd, bcast_id);
+}
+
 int
 Flooding::initialize(ErrorHandler *)
 {
+  if (_flooding_passiveack != NULL ) {
+    _flooding_passiveack->set_retransmit_bcast(this, static_retransmit_broadcast);
+  }
   return 0;
 }
 
@@ -158,7 +169,7 @@ Flooding::push( int port, Packet *packet )
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
     uint8_t flags = bcast_header->flags;
     uint32_t rxdatasize =  bcast_header->extra_data_size;
-    
+
     src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + rxdatasize]));
 
     BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
@@ -344,6 +355,13 @@ Flooding::forward_done(EtherAddress *src, uint32_t id)
 
   return bcn->forward_done(id);
 }
+
+int
+Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id)
+{
+  return 0;
+}
+
 
 void
 Flooding::reset()
