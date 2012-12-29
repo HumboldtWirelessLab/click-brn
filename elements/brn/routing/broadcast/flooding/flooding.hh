@@ -33,6 +33,8 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "floodingpolicy/floodingpolicy.hh"
+#include "floodingpassiveack.hh"
+
 
 CLICK_DECLS
 
@@ -251,6 +253,8 @@ class Flooding : public BRNElement {
   void add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
 #endif
 
+  int retransmit_broadcast(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id);
+
   String stats();
   String table();
   void reset();
@@ -262,6 +266,7 @@ class Flooding : public BRNElement {
   BRN2NodeIdentity *_me;
 
   FloodingPolicy *_flooding_policy;
+  FloodingPassiveAck *_flooding_passiveack;
 
   uint16_t _bcast_id;
 

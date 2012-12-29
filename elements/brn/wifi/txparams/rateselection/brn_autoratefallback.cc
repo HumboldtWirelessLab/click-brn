@@ -169,7 +169,7 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
 {
   StringAccum sa;
 
-  DstInfo *nfo = (DstInfo*)nri->_rs_data;
+  DstInfo *nfo = (DstInfo*) nri->_rs_data;
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
 
@@ -186,11 +186,15 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
   sa << "\t<rates>";
 
   for ( int i = 0; i < nri->_rates.size(); i++) {
-    if ( i > 0 ) sa << ",";
+    if (i > 0)
+        sa << ",";
+    if (i % 20 == 0)
+        sa << "\n\t\t\t\t";
+
     sa << nri->_rates[i]._data_rate;
   }
 
-  sa << "</rates>\n";
+  sa << "\n\t\t\t</rates>\n";
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
   sa << "</neighbour>\n";

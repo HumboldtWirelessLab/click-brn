@@ -286,33 +286,12 @@ read_stats_param(Element *e, void *)
   return dc->get_info();
 }
 
-static String
-read_debug_param(Element *e, void *)
-{
-  DCluster *fl = (DCluster *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  DCluster *fl = (DCluster *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 DCluster::add_handlers()
 {
   Clustering::add_handlers();
 
-  add_read_handler("debug", read_debug_param, 0);
   add_read_handler("stats", read_stats_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
 }
 
 CLICK_ENDDECLS

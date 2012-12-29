@@ -70,9 +70,22 @@ class FloodingPassiveAck : public BRNElement {
   //
   //member
   //
+
   BRN2NodeIdentity *_me;
 
+  uint16_t _retries;
+
  public:
+
+  BRNElement *_retransmit_element;
+  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t);
+
+  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t)) {
+    _retransmit_element = e;
+    _retransmit_broadcast = retransmit_bcast;
+  }
+
+  int packet_enqueue(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 
 };
 

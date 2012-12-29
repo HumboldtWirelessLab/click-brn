@@ -6,6 +6,7 @@
 #include <clicknet/wifi.h>
 #include <click/packet_anno.hh>
 #include <clicknet/llc.h>
+
 #include "settxpowerrate.hh"
 
 CLICK_DECLS
@@ -63,7 +64,7 @@ SetTXPowerRate::run_timer(Timer *)
 }
 
 Packet *
-SetTXPowerRate::handle_packet( int port, Packet *p )
+SetTXPowerRate::handle_packet(int port, Packet *p)
 {
   if ( p == NULL ) return NULL;
 
@@ -72,7 +73,7 @@ SetTXPowerRate::handle_packet( int port, Packet *p )
 
   NeighbourRateInfo *dsti;
 
-  switch ( port) {
+  switch (port) {
     case 0:                                       //Got packet from upper layer
         {
           dsti = getDstInfo(EtherAddress(wh->i_addr1));
@@ -103,7 +104,7 @@ SetTXPowerRate::handle_packet( int port, Packet *p )
 }
 
 void
-SetTXPowerRate::push( int port, Packet *p )
+SetTXPowerRate::push(int port, Packet *p)
 {
   output(port).push(handle_packet(port,p));
 }
@@ -131,17 +132,21 @@ String
 SetTXPowerRate::getInfo()
 {
   StringAccum sa;
-
   String rs;
 
-  if ( _rate_selection == NULL ) rs = "n/a";
-  else rs = _rate_selection->name();
+  if ( _rate_selection == NULL )
+    rs = "n/a";
+  else
+    rs = _rate_selection->name();
+
   sa << "<ratecontrol rateselection=\"" << rs << "\" >\n";
   sa << "\t<neighbours count=\"" << _neighbors.size() << "\" >\n";
+
   for (NIter iter = _neighbors.begin(); iter.live(); iter++) {
     NeighbourRateInfo *nri = iter.value();
-    sa << _rate_selection->print_neighbour_info(nri,2);
+    sa << _rate_selection->print_neighbour_info(nri, 2);
   }
+
   sa << "\t</neighbours>\n</ratecontrol>\n";
 
   return sa.take_string();
