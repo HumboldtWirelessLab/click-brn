@@ -106,7 +106,7 @@ ChannelStats::initialize(ErrorHandler *)
     //INIT: clear current stats
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[_current_small_stats].clear();
-    
+
     //INIT: clear "last" stats
     memset(&(_small_stats[SMALL_STATS_SIZE-1]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[SMALL_STATS_SIZE-1].clear();
@@ -133,7 +133,7 @@ ChannelStats::run_timer(Timer *)
 
     _current_small_stats = (_current_small_stats + 1) % SMALL_STATS_SIZE;
 
-    //TODO: don't clear. take info (e.g. last seq numebr) for next round
+    //TODO: don't clear. take info (e.g. last seq number) for next round
     memset(&(_small_stats[_current_small_stats]),0,sizeof(struct airtime_stats));
     _small_stats_src_tab[_current_small_stats].clear();
 
@@ -181,6 +181,7 @@ ChannelStats::push(int port, Packet *p)
       break;
     case WIFI_FC0_TYPE_CTL:
       src = brn_etheraddress_broadcast;
+      seq = 0;
       break;
     case WIFI_FC0_TYPE_DATA:
       src = EtherAddress(w->i_addr2);
@@ -256,7 +257,7 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_channel = _channel;
         new_pi->_rx = false;
         new_pi->_rate = rate;
-	new_pi->_seq = seq;
+        new_pi->_seq = seq;
 
         new_pi->_is_ht_rate = (rate_is_ht == 1);
 
