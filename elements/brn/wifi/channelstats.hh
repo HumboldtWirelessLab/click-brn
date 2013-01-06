@@ -233,7 +233,7 @@ class ChannelStats : public BRNElement {
 
       int16_t _last_seq;
       uint32_t _missed_seq;
-      
+
       SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0), _duration(0),
                  _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false),
                  _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false),
@@ -262,8 +262,8 @@ class ChannelStats : public BRNElement {
 
         _duration = duration;
         _nav = nav;
-	
-	_last_seq = seq;
+
+        _last_seq = seq;
       }
 
       void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq) {
@@ -288,10 +288,10 @@ class ChannelStats : public BRNElement {
 
        _duration += duration;
        _nav += nav;
-       
-       if ( seq < _last_seq ) _missed_seq += ((4096 - _last_seq) + seq) - 1;
-       else _missed_seq += seq - _last_seq - 1;
-   
+
+       if ( seq > _last_seq ) _missed_seq += seq - _last_seq - 1;
+       else if ( seq < _last_seq ) _missed_seq += ((4096 - _last_seq) + seq) - 1;
+
        _last_seq = seq;
      }
 
