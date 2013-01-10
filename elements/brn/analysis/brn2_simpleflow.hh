@@ -11,6 +11,8 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnelement.hh"
 
+#include "elements/brn/routing/routing_peek.hh"
+
 
 CLICK_DECLS
 
@@ -185,6 +187,8 @@ class BRN2SimpleFlow : public BRNElement
                    uint32_t rate, uint32_t size, uint32_t mode,
                    uint32_t duration, bool active );
 
+    bool handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port);
+
     void reset();
 
     FlowMap _rx_flowMap;
@@ -203,8 +207,15 @@ class BRN2SimpleFlow : public BRNElement
 
     bool _start_active;
 
+    RoutingPeek *_routing_peek;
+
     uint32_t _flow_id;
 };
+
+static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
+{
+  return ((BRN2SimpleFlow *)e)->handle_routing_peek(p, src, dst, brn_port);
+}
 
 CLICK_ENDDECLS
 #endif

@@ -58,6 +58,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "ACTIVE", cpkP, cpBool, &_start_active,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
       "HEADROOM", cpkP, cpInteger, &_headroom,
+      "ROUTINGPEEK", cpkP+cpkM, cpElement, &_routing_peek,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -78,6 +79,8 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   _timer.initialize(this);
 
   if (_start_active) set_active(&dst_of_flow,_start_active);
+
+  _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_DHTROUTING );
 
   return 0;
 }
@@ -379,6 +382,16 @@ BRN2SimpleFlow::reset()
   _tx_flowMap.clear();
 }
 
+bool
+BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
+{
+
+    // Here be dragons...
+
+  return false;
+}
+
+
 /****************************************************************************/
 /********************** H A N D L E R   *************************************/
 /****************************************************************************/
@@ -505,6 +518,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
   }
   return 0;
 }
+
 
 void BRN2SimpleFlow::add_handlers()
 {
