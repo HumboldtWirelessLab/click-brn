@@ -79,6 +79,7 @@ private:
 
 	int key_timeout; // session time
 
+	bool BACKBONE_AVAIL;
 
 	void store_crypto_info();
 };

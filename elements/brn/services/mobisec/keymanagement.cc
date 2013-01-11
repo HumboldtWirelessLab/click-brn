@@ -48,6 +48,8 @@ int keymanagement::initialization() {
 
 	seed = NULL;
 
+	BACKBONE_AVAIL = false;
+
 	return 0;
 }
 
@@ -249,7 +251,18 @@ bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	// Yet another reasonability check
 	if (time_now - time_keylist > ctrl_data.cardinality*key_timeout) {
 		click_chatter("INFO: crypto material not existent or expired");
+
+		if (BACKBONE_AVAIL) {
+				BACKBONE_AVAIL = false;
+				click_chatter("%d BACKBONE:0", time_now);
+		}
+
 		return false;
+	}
+
+	if (!BACKBONE_AVAIL) {
+			BACKBONE_AVAIL = true;
+			click_chatter("%d BACKBONE:1", time_now);
 	}
 
 	// Note: The implicit int-type handling causes automatically a round down
@@ -279,6 +292,7 @@ bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 
 	return (success1==0 && success2==0)? true : false;
 }
+
 
 
 CLICK_ENDDECLS
