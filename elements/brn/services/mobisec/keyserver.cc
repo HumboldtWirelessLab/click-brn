@@ -69,6 +69,7 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 }
 
 int KEYSERVER::initialize(ErrorHandler *) {
+	// Needed for bootstrapping of prepare_new_epoch
 	start_flag = true;
 
 	// Configuration determines some crypto parameters
@@ -89,6 +90,10 @@ int KEYSERVER::initialize(ErrorHandler *) {
 	 *
 	 * BUF_keyman = keyman;
 	 */
+
+	// Set statistical variables
+	bb_join_cnt = 0;
+	key_inst_cnt = 0;
 
 	prepare_new_epoch();
 	epoch_timer.initialize(this);	// Set timer to coordinate epoch keylists
@@ -116,10 +121,12 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
-	p->kill();
 
 	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
 	if(req->req_id < 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
+
+	// For now, no further use for *p and *req.
+	p->kill();
 
 	int keylist_livetime = _key_timeout*keyman.get_cardinality();
 	int now = Timestamp::now().msecval();
@@ -165,7 +172,9 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
 
-	// After KDP execution server side shutdown finishes communication
+	// After KDP execution server side shutdown finishes communication.
+	// Todo: This is cross layer action, and with this handler we have no control
+	// about current connection! It would be better to shutdown by etheraddress.
 	HandlerCall::call_read(_tls, "shutdown", NULL);
 
 	free(keylist_string);
@@ -178,7 +187,9 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
  */
 void KEYSERVER::jmp_next_session() {
 	BRN_DEBUG("Installing new keys: ");
-	keyman.install_key_on_phy(_wepencap, _wepdecap);
+	if (keyman.install_key_on_phy(_wepencap, _wepdecap)) {
+			key_inst_cnt++;
+	}
 
 	// Find out session we are in since keylist timestamp. Every session has the length of _key_timeout.
 	// (Note: Round down is done implicitly through integer arithmetic.
@@ -198,12 +209,11 @@ void KEYSERVER::jmp_next_epoch() {
 
 		keyman.install_keylist( BUF_keyman.get_keylist() );
 
+		bb_join_cnt++;
 		BRN_DEBUG("Switched to new epoch");
 	} else {
 		BRN_DEBUG("Jump to next epoch failed due to wrong control data.");
 	}
-
-	BRN_DEBUG("Switched to new epoch");
 
 	prepare_new_epoch();
 
@@ -214,12 +224,10 @@ void KEYSERVER::jmp_next_epoch() {
 }
 
 /*
- * This function allows asynchronous handling of "jumping to the next epoch"
- * and preparing the data for the NEXT epoch. This idea reflects the inticacies
- * of network communication, where on the one hand everybody operates
- * with the same data, on the other hand every node has to think of his future
- * communication and therefore assure that the data for the next epoch is
- * present in time.
+ * This is a central key server function. In order to provide the security items
+ * (time stamp, key list, seed) for the whole network the server not only has to
+ * generate the security items but to keep them ready early enough. In this
+ * implementation the key server does this right after entering the current epoch.
  */
 void KEYSERVER::prepare_new_epoch() {
 	// First induction step is a little bit tricky. Some arrangements have to be done manually.
@@ -237,6 +245,39 @@ void KEYSERVER::prepare_new_epoch() {
 
 	BRN_DEBUG("Prepared next epoch");
 }
+
+String KEYSERVER::stats() {
+	  StringAccum sa;
+
+	  sa << "<mobisec node=\"" << BRN_NODE_NAME
+			  << "\" bb_join_cnt=\"" << bb_join_cnt
+			  << "\" key_inst_cnt=\"" << key_inst_cnt << "\" />";
+
+	  return sa.take_string();
+}
+
+
+enum { H_STATS};
+
+static String keyserver_read_param(Element *e, void *thunk) {
+	KEYSERVER *bn = (KEYSERVER *)e;
+
+	switch ((uintptr_t) thunk) {
+	case H_STATS: {
+		return bn->stats();
+	}
+	default:
+		return String();
+	}
+}
+
+void KEYSERVER::add_handlers() {
+	BRNElement::add_handlers();
+
+	add_read_handler("stats", keyserver_read_param, (void *)H_STATS);
+}
+
+
 
 
 CLICK_ENDDECLS

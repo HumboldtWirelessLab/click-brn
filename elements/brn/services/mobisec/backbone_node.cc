@@ -53,11 +53,14 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
 		"NODEID", cpkP+cpkM, cpElement, &_me,
+
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
 		"START", cpkP+cpkM, cpInteger, &_start_time,
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
+
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+
 		"TLS", cpkP+cpkM, cpElement, &_tls,
 
 		// BEGIN elements to control network stack
@@ -115,7 +118,8 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 
 	epoch_timer.initialize(this);
 
-	switch_dev(dev_client);
+	//switch_dev(dev_client);
+	switch_dev(dev_ap);
 
 	// Set statistical variables
 	bb_join_cnt = 0;
@@ -123,6 +127,9 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	key_inst_cnt = 0;
 
 	BRN_DEBUG("Backbone node initialized");
+
+	snd_kdp_req();
+
 	return 0;
 }
 
@@ -145,14 +152,13 @@ void BACKBONE_NODE::push(int port, Packet *p) {
 void BACKBONE_NODE::snd_kdp_req() {
 	/*
 	 * Switch to client_dev (fall back), if we can't receive a kdp-reply.
-	 * Reason: Packets might be wep-encrypted wrong due to
-	 * missing or wrong keys. Therefore we switch back to client_dev
+	 * A missing tcp layer can be the reason for this.
 	 */
 	if (retry_cnt_down <= 0) {
 		BRN_DEBUG("Retry kdp process...");
 		kdp_retry_cnt++;
 
-		switch_dev(dev_client);
+		//switch_dev(dev_client);
 
 		HandlerCall::call_read(_tls, "shutdown", NULL);
 	} else {
@@ -191,7 +197,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
 
 	// We got some key material, switch to backbone network
-	switch_dev(dev_ap);
+	//switch_dev(dev_ap);
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
@@ -205,10 +211,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 		BUF_keyman.install_keylist_srv_driv(keylist_string);
 	}
 
-	if(BUF_keyman.get_keylist().size() == BUF_keyman.get_cardinality()) {
-		BRN_DEBUG("READY TO JOIN BACKBONE");
-		bb_join_cnt++;
-	} else {
+	if(BUF_keyman.get_keylist().size() != BUF_keyman.get_cardinality()) {
 		BRN_ERROR("KEYLIST ERROR");
 	}
 
@@ -228,6 +231,8 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 
 	// Todo: Need reliable transport
 	// Shutdown SSL because shutdown alert is sent over unreliable transport
+	// Todo: This is cross layer action, and with this handler we have no control
+	// about current connection! It would be better to shutdown by etheraddress.
 	HandlerCall::call_read(_tls, "shutdown", NULL);
 }
 
@@ -254,6 +259,7 @@ void BACKBONE_NODE::jmp_next_epoch() {
 
 	if ( keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() ) ) {
 		keyman.install_keylist( BUF_keyman.get_keylist() );
+		bb_join_cnt++;
 		BRN_DEBUG("Switched to new epoch");
 	} else {
 		BRN_DEBUG("Jump to next epoch failed due to wrong control data.");
@@ -300,10 +306,12 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		HandlerCall::call_write(_client_q, "reset", network_stack_nr, NULL);
 	}
 
+	/*
 	if (network_stack_nr == "1") {
 		BRN_DEBUG("Sending disassoc to abandon client status");
 		HandlerCall::call_write(_wifidev_client, "disassoc", NULL);
 	}
+	*/
 
 	// Tell the Click-Switch to switch and thus let the packet flow go through the
 	// other device.
@@ -311,10 +319,12 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	HandlerCall::call_write(_dev_control_down, "switch", network_stack_nr, NULL);
 	HandlerCall::call_write(_dev_control_down2, "switch", network_stack_nr, NULL);
 
+	/*
 	if (network_stack_nr == "0") {
 		BRN_DEBUG("Sending assoc to next ap");
 		HandlerCall::call_write(_wifidev_client, "do_assoc", NULL);
 	}
+	*/
 
 	BRN_DEBUG("Switching completed.");
 }
