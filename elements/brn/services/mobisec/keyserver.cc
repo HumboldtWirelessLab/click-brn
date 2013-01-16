@@ -92,8 +92,11 @@ int KEYSERVER::initialize(ErrorHandler *) {
 	 */
 
 	// Set statistical variables
+	bb_status = false;
 	bb_join_cnt = 0;
 	key_inst_cnt = 0;
+	cnt_bb_entrypoints = 0;
+	cnt_bb_exitpoints = 0;
 
 	prepare_new_epoch();
 	epoch_timer.initialize(this);	// Set timer to coordinate epoch keylists
@@ -101,7 +104,7 @@ int KEYSERVER::initialize(ErrorHandler *) {
 
 	// Set timer to coordinate session keys
 	session_timer.initialize(this);
-	session_timer.schedule_at(Timestamp::make_msec(_start_time));
+	jmp_next_session();
 
 	BRN_DEBUG("Key server initialized");
 	return 0;
@@ -167,7 +170,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	}
 
 	WritablePacket *reply;
-	reply = kdp::kdp_reply_msg(hdr, payload);
+	reply = kdp::kdp_reply_msg(_protocol_type, hdr, payload);
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
@@ -209,9 +212,17 @@ void KEYSERVER::jmp_next_epoch() {
 
 		keyman.install_keylist( BUF_keyman.get_keylist() );
 
+		if(!bb_status) {
+			cnt_bb_entrypoints++;
+			bb_status = true;
+		}
 		bb_join_cnt++;
 		BRN_DEBUG("Switched to new epoch");
 	} else {
+		if(bb_status) {
+			cnt_bb_exitpoints++;
+			bb_status = false;
+		}
 		BRN_DEBUG("Jump to next epoch failed due to wrong control data.");
 	}
 
@@ -250,6 +261,10 @@ String KEYSERVER::stats() {
 	  StringAccum sa;
 
 	  sa << "<mobisec node=\"" << BRN_NODE_NAME
+			  << "\" node=\"sk1"
+			  << "\" time=\"" << Timestamp::now().msecval()
+			  << "\" bb_entrypoints=\"" << cnt_bb_entrypoints
+			  << "\" bb_exitpoints=\"" << cnt_bb_exitpoints
 			  << "\" bb_join_cnt=\"" << bb_join_cnt
 			  << "\" key_inst_cnt=\"" << key_inst_cnt << "\" />";
 
