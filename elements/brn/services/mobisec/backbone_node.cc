@@ -92,9 +92,7 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 int BACKBONE_NODE::initialize(ErrorHandler *) {
 	// Pseudo randomness as creepy solution for simulation in
 	// order to get asynchronous packet transmission
-	long randnum = (long)this;
-	click_srandom((int)randnum);
-	randnum = randnum%1337;
+	int randnum = ((int)_me->getServiceAddress()->data()[5])*200;
 	BRN_DEBUG("random number: %i", randnum);
 
 	req_id = 0;
@@ -110,25 +108,35 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	// Configuration determines some crypto parameters
 	keyman.set_key_timeout(_key_timeout);
 
-	// Set timer to send first kdp-request
-	kdp_timer.initialize(this);
-
-	session_timer.initialize(this);
-	session_timer.schedule_at(Timestamp::make_msec(_start_time));
-
-	epoch_timer.initialize(this);
-
-	//switch_dev(dev_client);
-	switch_dev(dev_ap);
-
 	// Set statistical variables
+	bb_status = false;
 	bb_join_cnt = 0;
 	kdp_retry_cnt = 0;
 	key_inst_cnt = 0;
+	cnt_bb_entrypoints = 0;
+	cnt_bb_exitpoints = 0;
+
+	//Wenn dev_client verwendet, dann brauch er hier nicht umgeswitcht zu werden
+	//switch_dev(dev_client);
+	//Wenn dev_ap,
+	//switch_dev(dev_ap);
+	// client:0, ap:1
+	String network_stack_nr = "1";
+	HandlerCall::call_write(_dev_control_up, "switch", network_stack_nr, NULL);
+	HandlerCall::call_write(_dev_control_down, "switch", network_stack_nr, NULL);
+	HandlerCall::call_write(_dev_control_down2, "switch", network_stack_nr, NULL);
+
+	epoch_timer.initialize(this);
+	jmp_next_epoch();
+
+	session_timer.initialize(this);
+	jmp_next_session();
+
+	// Set timer to send first kdp-request
+	kdp_timer.initialize(this);
+	kdp_timer.schedule_after_msec(_start_time + randnum);
 
 	BRN_DEBUG("Backbone node initialized");
-
-	snd_kdp_req();
 
 	return 0;
 }
@@ -187,12 +195,15 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	// Make a scummy check for packet repetition
 	if (hdr->timestamp == BUF_keyman.get_validity_start_time()) {
 		BRN_DEBUG("kdp-reply already received");
+		p->kill();
 		return;
 	}
 
 	// Buffer crypto control data
-	if (!BUF_keyman.set_ctrl_data(hdr))
+	if (!BUF_keyman.set_ctrl_data(hdr)) {
+		p->kill();
 		return;
+	}
 
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
 
@@ -212,7 +223,9 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	}
 
 	if(BUF_keyman.get_keylist().size() != BUF_keyman.get_cardinality()) {
-		BRN_ERROR("KEYLIST ERROR");
+		BRN_ERROR("KEYLIST ERROR %d != %d", BUF_keyman.get_keylist().size(), BUF_keyman.get_cardinality());
+		p->kill();
+		return;
 	}
 
 	// Set timer to jump right into the coming epoch. If a kdp request was received successfully on
@@ -245,6 +258,16 @@ void BACKBONE_NODE::jmp_next_session() {
 	BRN_DEBUG("Installing new keys: ");
 	if (keyman.install_key_on_phy(_wepencap, _wepdecap)) {
 		key_inst_cnt++;
+
+		if(!bb_status) {
+			cnt_bb_entrypoints++;
+			bb_status = true;
+		}
+	} else {
+		if(bb_status) {
+			cnt_bb_exitpoints++;
+			bb_status = false;
+		}
 	}
 
 	// Find out session we are in since keylist timestamp. Every session has the length of _key_timeout.
@@ -290,12 +313,12 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		return;
 	}
 
+
 	// Use one of the "dev_contol"s to checkout the state of the whole switch mechanism
 	String curr_stack_nr = HandlerCall::call_read(_dev_control_up, "switch", NULL);
 
 	if(curr_stack_nr == network_stack_nr) {
 		BRN_DEBUG("Using same dev: %s", type_str.c_str());
-		return;
 	} else {
 		BRN_DEBUG("Switching device to %s", type_str.c_str());
 
@@ -306,12 +329,12 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		HandlerCall::call_write(_client_q, "reset", network_stack_nr, NULL);
 	}
 
-	/*
+
 	if (network_stack_nr == "1") {
 		BRN_DEBUG("Sending disassoc to abandon client status");
 		HandlerCall::call_write(_wifidev_client, "disassoc", NULL);
 	}
-	*/
+
 
 	// Tell the Click-Switch to switch and thus let the packet flow go through the
 	// other device.
@@ -319,12 +342,12 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 	HandlerCall::call_write(_dev_control_down, "switch", network_stack_nr, NULL);
 	HandlerCall::call_write(_dev_control_down2, "switch", network_stack_nr, NULL);
 
-	/*
+
 	if (network_stack_nr == "0") {
 		BRN_DEBUG("Sending assoc to next ap");
 		HandlerCall::call_write(_wifidev_client, "do_assoc", NULL);
 	}
-	*/
+
 
 	BRN_DEBUG("Switching completed.");
 }
@@ -333,7 +356,11 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 String BACKBONE_NODE::stats() {
 	  StringAccum sa;
 
-	  sa << "<mobisec node=\"" << BRN_NODE_NAME
+	  sa << "<mobisec mac=\"" << BRN_NODE_NAME
+			  << "\" node=\"" << _me->getNodeName()
+			  << "\" time=\"" << Timestamp::now().msecval()
+			  << "\" bb_entrypoints=\"" << cnt_bb_entrypoints
+			  << "\" bb_exitpoints=\"" << cnt_bb_exitpoints
 			  << "\" bb_join_cnt=\"" << bb_join_cnt
 			  << "\" key_inst_cnt=\"" << key_inst_cnt
 			  << "\" kdp_retry_cnt=\"" << kdp_retry_cnt << "\" />";
