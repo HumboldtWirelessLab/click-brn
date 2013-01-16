@@ -75,9 +75,12 @@ private:
 	int _key_timeout;
 
 	// Variables to collect statistical information
+	bool bb_status;					// true=backbone_node, false=not_in_backbone
 	int bb_join_cnt;				// backbone join counter
 	int kdp_retry_cnt;
 	int key_inst_cnt;				// key installation counter
+	int cnt_bb_entrypoints;
+	int cnt_bb_exitpoints;
 
 	void handle_kdp_req(Packet *p);
 
