@@ -49,9 +49,9 @@ WritablePacket * kdp::kdp_request_msg() {
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg(crypto_ctrl_data *hdr, const unsigned char *payload) {
+WritablePacket *kdp::kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, const unsigned char *payload) {
 
-	int data_len = (hdr->seed_len > 0) ? hdr->seed_len : (hdr->key_len*hdr->cardinality);
+	int data_len = (type == CLIENT_DRIVEN) ? hdr->seed_len : (hdr->key_len*hdr->cardinality);
 
 	WritablePacket *p = Packet::make(128, NULL, sizeof(crypto_ctrl_data)+data_len, 32);
 
