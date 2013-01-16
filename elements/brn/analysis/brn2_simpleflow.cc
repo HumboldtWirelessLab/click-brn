@@ -80,9 +80,9 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
 
   if (_start_active) set_active(&dst_of_flow,_start_active);
 
-  if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ) ) {
-	  BRN_ERROR("Could not add routing_peek_func()");
-	  return -1;
+  if (_routing_peek) {
+	  if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ))
+		  BRN_ERROR("Failed adding routing_peek_func()");
   }
 
   return 0;
