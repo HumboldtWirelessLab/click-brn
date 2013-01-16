@@ -58,7 +58,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "ACTIVE", cpkP, cpBool, &_start_active,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
       "HEADROOM", cpkP, cpInteger, &_headroom,
-      "ROUTINGPEEK", cpkP+cpkM, cpElement, &_routing_peek,
+      "ROUTINGPEEK", cpkP, cpElement, &_routing_peek,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -80,7 +80,10 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
 
   if (_start_active) set_active(&dst_of_flow,_start_active);
 
-  _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_DHTROUTING );
+  if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ) ) {
+	  BRN_ERROR("Could not add routing_peek_func()");
+	  return -1;
+  }
 
   return 0;
 }
@@ -387,6 +390,8 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *
 {
 
     // Here be dragons...
+
+	BRN_DEBUG("call of handle_routing_peek()");
 
   return false;
 }
