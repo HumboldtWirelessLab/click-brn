@@ -44,7 +44,11 @@ keymanagement::~keymanagement() {
 }
 
 int keymanagement::initialization() {
-	//crypto_ctrl_data ctrl_data = {0 , 0, 0, 0};
+
+	ctrl_data.cardinality = 0;
+	ctrl_data.key_len = 0;
+	ctrl_data.seed_len = 0;
+	ctrl_data.timestamp = 0;
 
 	seed = NULL;
 
@@ -202,6 +206,8 @@ void keymanagement::gen_keylist() {
 
 		String s((const char*)ith_key, ctrl_data.key_len);
 
+		// click_chatter("KEYSERVER GENERATE %dth key: %s",i, s.quoted_hex().c_str());
+
 		// Build the keylist of type vector
 		keylist.push_back(s);
 	}
@@ -214,11 +220,11 @@ void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
 	keylist.clear();
 
 	for(int i=0; i<ctrl_data.cardinality; i++) {
-		for(int j=0; j<ctrl_data.key_len; j++) {
-			int index = i*ctrl_data.key_len + j;
+		//for(int j=0; j<ctrl_data.key_len; j++) {
+			int index = i*ctrl_data.key_len;
 			String ith_key((const char*)(&(_keylist[index])), ctrl_data.key_len);
 			keylist.push_back(ith_key);
-		}
+		//}
 	}
 }
 
@@ -249,7 +255,7 @@ bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	int32_t time_keylist = ctrl_data.timestamp;
 
 	// Yet another reasonability check
-	if (time_now - time_keylist > ctrl_data.cardinality*key_timeout) {
+	if (ctrl_data.timestamp == 0 || time_now >= time_keylist + ctrl_data.cardinality*key_timeout) {
 		click_chatter("INFO: crypto material not existent or expired");
 
 		if (BACKBONE_AVAIL) {
