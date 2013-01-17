@@ -22,6 +22,7 @@ BRN2SimpleFlow::BRN2SimpleFlow()
     _clear_packet(false),
     _headroom(128),
     _start_active(false),
+    _routing_peek(NULL),
     _flow_id(0)
 {
   BRNElement::init();
