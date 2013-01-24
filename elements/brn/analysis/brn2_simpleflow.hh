@@ -10,6 +10,7 @@
 
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 #include "elements/brn/routing/routing_peek.hh"
 
@@ -21,7 +22,8 @@ class BRN2SimpleFlow : public BRNElement
   CLICK_SIZE_PACKED_STRUCTURE(
   struct flowPacketHeader {,
     uint16_t crc;
-    uint16_t reserved;
+    uint8_t  flags;
+    uint8_t reserved;
 
     uint8_t src[6];
     uint8_t dst[6];
@@ -37,6 +39,19 @@ class BRN2SimpleFlow : public BRNElement
 
     uint32_t tv_sec;   /* seconds since 1.1.1970 */ //previous: unsigned long
     uint32_t tv_usec;  /* und microseconds */       //previous: long
+  });
+
+#define SIMPLEFLOW_FLAGS_INCL_ROUTE (uint8_t)((uint8_t)1 << 0)
+
+  CLICK_SIZE_PACKED_STRUCTURE(
+  struct flowPacketRoute {,
+    uint16_t hops;
+  });
+
+  CLICK_SIZE_PACKED_STRUCTURE(
+  struct flowPacketHop {,
+    uint16_t metric;
+    uint8_t  ea[6];
   });
 
 #define SIMPLEFLOW_MAXHOPCOUNT   100
@@ -85,6 +100,9 @@ class BRN2SimpleFlow : public BRNElement
 
       uint32_t _max_packet_id;
       uint32_t _rx_out_of_order;
+
+      Vector<EtherAddress> route;
+      Vector<uint16_t> metric;
 
       Flow(): _type(TYPE_NO_ACK), _active(false) {}
 
@@ -197,7 +215,6 @@ class BRN2SimpleFlow : public BRNElement
     EtherAddress dst_of_flow;
 
     String xml_stats();
-
   private:
 
     WritablePacket*  nextPacketforFlow(Flow *f);
@@ -210,12 +227,10 @@ class BRN2SimpleFlow : public BRNElement
     RoutingPeek *_routing_peek;
 
     uint32_t _flow_id;
-};
 
-static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
-{
-  return ((BRN2SimpleFlow *)e)->handle_routing_peek(p, src, dst, brn_port);
-}
+    Brn2LinkTable *_link_table;
+
+};
 
 CLICK_ENDDECLS
 #endif
