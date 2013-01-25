@@ -277,7 +277,7 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
 
     BRN_DEBUG("Route:");
     struct flowPacketHop *pfh = (struct flowPacketHop *)&rh[1];
-    for ( uint16_t i = 0; i < hops; i++) {
+    for ( uint16_t i = 0; i <= hops; i++) {
       EtherAddress ea = EtherAddress(pfh[i].ea);
       f->route.push_back(ea);
       f->metric.push_back(ntohs(pfh[i].metric));
@@ -288,13 +288,15 @@ BRN2SimpleFlow::push( int /*port*/, Packet *packet )
     const click_ether *ether = (const click_ether *)packet->ether_header();
     EtherAddress psrc = EtherAddress(ether->ether_shost);
     EtherAddress pdst = EtherAddress(ether->ether_dhost);
-    f->route.push_back(pdst);
-    if ( _link_table != NULL ) {
-      f->metric.push_back(_link_table->get_link_metric(EtherAddress(pfh[hops-1].ea), pdst));
-      BRN_DEBUG("\tHop %d: %s (%d)", hops, pdst.unparse().c_str(), _link_table->get_link_metric(EtherAddress(pfh[hops-1].ea), pdst));
-    } else {
-      f->metric.push_back(0);
-      BRN_DEBUG("\tHop %d: %s (0)", hops, pdst.unparse().c_str());
+    if ( ! ( pdst == (EtherAddress(pfh[hops].ea)))) {
+      f->route.push_back(pdst);
+      if ( _link_table != NULL ) {
+        f->metric.push_back(_link_table->get_link_metric(EtherAddress(pfh[hops-1].ea), pdst));
+        BRN_DEBUG("\tHop %d: %s (%d)", hops, pdst.unparse().c_str(), _link_table->get_link_metric(EtherAddress(pfh[hops-1].ea), pdst));
+      } else {
+        f->metric.push_back(0);
+        BRN_DEBUG("\tHop %d: %s (0)", hops, pdst.unparse().c_str());
+      }
     }
   }
 
@@ -402,17 +404,9 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 
   BRN_DEBUG("Mode: %d",(int)f->_type);
 
-#if HAVE_FAST_CHECKSUM
-  checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))) >> 2 );
-#else
-  checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))));
-#endif
-  BRN_INFO("Outsum: %d",checksum);
-
-  header->crc = htons(checksum);
   header->reserved = 0;
 
-  if ( size >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute)) ) {
+  if ( size >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute))) {
     BRN_DEBUG("Packet is big. Add route");
     header->flags |= SIMPLEFLOW_FLAGS_INCL_ROUTE;
 
@@ -426,6 +420,15 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
       memcpy(pfh[0].ea, f->_src.data(),6);
     }
   }
+
+#if HAVE_FAST_CHECKSUM
+  checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))) >> 2 );
+#else
+  checksum = click_in_cksum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))));
+#endif
+  BRN_INFO("Outsum: %d",checksum);
+
+  header->crc = htons(checksum);
 
   BRNPacketAnno::set_ether_anno(p, f->_src, f->_dst, ETHERTYPE_BRN );
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT, DEFAULT_TOS);
@@ -441,7 +444,7 @@ BRN2SimpleFlow::reset()
 }
 
 bool
-BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port)
+BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddress */*dst*/, int /*brn_port*/)
 {
   uint16_t checksum;
 
