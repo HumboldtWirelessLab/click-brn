@@ -62,6 +62,7 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
 
 		"TLS", cpkP+cpkM, cpElement, &_tls,
+		"KEYSERVER", cpkP+cpkM, cpEthernetAddress, &_ks_addr,
 
 		// BEGIN elements to control network stack
 		"DEV_CLIENT", cpkP+cpkM, cpElement, &_wifidev_client,
@@ -136,6 +137,7 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	kdp_timer.initialize(this);
 	kdp_timer.schedule_after_msec(_start_time + randnum);
 
+	BRN_DEBUG("Registered key server: %s", _ks_addr.unparse().c_str());
 	BRN_DEBUG("Backbone node initialized");
 
 	return 0;
@@ -175,6 +177,9 @@ void BACKBONE_NODE::snd_kdp_req() {
 
 	WritablePacket *p = kdp::kdp_request_msg();
 
+	// Set ethernet address of keyserver
+	BRNPacketAnno::set_ether_anno(p, *(_me->getServiceAddress()), _ks_addr, ETHERTYPE_BRN);
+
 	// Enrich packet with information.
 	kdp_req *req = (kdp_req *)p->data();
 	req->node_id = *(_me->getServiceAddress());
@@ -189,6 +194,8 @@ void BACKBONE_NODE::snd_kdp_req() {
 }
 
 void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
+	HandlerCall::call_read(_tls, "traffic_cnt", NULL);
+
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
 	const unsigned char *payload = &(p->data()[sizeof(crypto_ctrl_data)]);
 
@@ -208,7 +215,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
 
 	// We got some key material, switch to backbone network
-	//switch_dev(dev_ap);
+	// switch_dev(dev_ap);
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
@@ -312,7 +319,6 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		BRN_ERROR("Received wrong arg in switch_dev()");
 		return;
 	}
-
 
 	// Use one of the "dev_contol"s to checkout the state of the whole switch mechanism
 	String curr_stack_nr = HandlerCall::call_read(_dev_control_up, "switch", NULL);
