@@ -19,6 +19,7 @@
 #include <click/confparse.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/wifi/wepencap.hh"
 #include "elements/wifi/wepdecap.hh"
 
@@ -54,7 +55,8 @@ public:
 
 private:
 	int _debug;
-	EtherAddress _me;
+
+	BRN2NodeIdentity *_me;
 	Element *_wepencap;
 	Element *_wepdecap;
 	Element *_tls;

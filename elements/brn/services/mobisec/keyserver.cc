@@ -45,13 +45,19 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
+		"NODEID", cpkP+cpkM, cpElement, &_me,
+
 		"PROTOCOL_TYPE", cpkP+cpkM, cpString, &_protocol_type_str,
 		"KEY_LIST_CARDINALITY", cpkP+cpkM, cpInteger, &_key_list_cardinality,
 		"KEY_TIMEOUT", cpkP+cpkM, cpInteger, &_key_timeout,
+
 		"START", cpkP+cpkM, cpInteger, &_start_time,
+
 		"WEPENCAP", cpkP+cpkM, cpElement, &_wepencap,
 		"WEPDECAP", cpkP+cpkM, cpElement, &_wepdecap,
+
 		"TLS", cpkP+cpkM, cpElement, &_tls,
+
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
 		return -1;
@@ -120,13 +126,13 @@ void KEYSERVER::push(int port, Packet *p) {
 }
 
 void KEYSERVER::handle_kdp_req(Packet *p) {
-	// Todo: Future Work: protocol checks; here good place to control replay attacks
-
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 
 	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
 	if(req->req_id < 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
+
+	EtherAddress dst_addr = (req->node_id);
 
 	// For now, no further use for *p and *req.
 	p->kill();
@@ -171,6 +177,9 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 
 	WritablePacket *reply;
 	reply = kdp::kdp_reply_msg(_protocol_type, hdr, payload);
+
+	// Set ethernet address of client
+	BRNPacketAnno::set_ether_anno(reply, *(_me->getServiceAddress()), dst_addr, ETHERTYPE_BRN);
 
 	BRN_DEBUG("sending kdp reply");
 	output(0).push(reply);
