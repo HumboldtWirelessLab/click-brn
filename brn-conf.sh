@@ -85,7 +85,13 @@ for op in $@; do
 	    CONFOPTION="$CONFOPTION --enable-linuxmodule --with-linux=$KERNELPATH --with-linux-map=$SYSTEMMAP --disable-userlevel"
 	    ;;
 	"jist")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
+	    if [ "x$JAVA_HOME" = "x" ]; then
+	      JAVA_HOME=`ant -diagnostics | grep java.home | sed "s#jre##g" | awk '{print $3}'`
+	    fi
+	
+	    JAVAINCLUDE="$JAVA_HOME/include"
+	
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
 	    ;;
 	"ns2")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-userlevel --enable-nsclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
@@ -97,7 +103,13 @@ for op in $@; do
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    ;;
 	"sim_userlevel")
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
+	    if [ "x$JAVA_HOME" = "x" ]; then
+	      JAVA_HOME=`ant -diagnostics | grep java.home | sed "s#jre##g" | awk '{print $3}'`
+	    fi
+	
+	    JAVAINCLUDE="$JAVA_HOME/include"
+	
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
 	    ;;
 	"tools")
 	    #( cd elements/brn/tools/tinyxml; make clean; rm -f *.o; CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )
