@@ -40,7 +40,7 @@ public:
 
 	static WritablePacket *kdp_request_msg();
 
-	static WritablePacket *kdp_reply_msg(crypto_ctrl_data *hdr, const unsigned char *payload);
+	static WritablePacket *kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, const unsigned char *payload);
 private:
 };
 

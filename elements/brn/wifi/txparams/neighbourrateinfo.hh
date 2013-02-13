@@ -4,7 +4,10 @@
 #include <click/etheraddress.hh>
 #include <clicknet/ether.h>
 
+#include <click/timestamp.hh>
+
 #include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/txparams/neighbourratestats.hh"
 
 CLICK_DECLS
 
@@ -13,62 +16,54 @@ class NeighbourRateInfo {
 
     EtherAddress _eth;
 
-    Vector<MCS> _rates;
+    Vector<MCS> _rates;     // contains rates already devided by 10
 
     uint8_t _max_power;
     uint8_t _power;
 
     void *_rs_data;
 
+    static int _debug;
+
+    Timestamp init_stamp;    // initial time stamp at the time of paket creation
+    int curr_timeslot;
+    int time_intervall;
+
+    NeighbourRateStats *timeslots;
+
 
     NeighbourRateInfo();
     ~NeighbourRateInfo();
 
-    NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power) {
-      _eth       = eth;
-      _rates     = rates;
-      _max_power = max_power;
-      _power     = max_power;
-      _rs_data   = NULL;
-    }
+    NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power);
 
-    int rate_index(MCS rate) {
-      int ndx = 0;
-      for (int x = 0; x < _rates.size(); x++) {
-        if (rate.equals(_rates[x])) {
-          ndx = x;
-          break;
-        }
-      }
-      return (ndx == _rates.size()) ? -1 : ndx;
-    }
+    int rate_index(MCS rate);
+    int rate_index(uint32_t rate);
 
-    int rate_index(uint32_t rate) {
-      int ndx = 0;
-      for (int x = 0; x < _rates.size(); x++) {
-        if ((!_rates[x]._is_ht) && (_rates[x]._rate == rate)) {
-          ndx = x;
-          break;
-        }
-      }
-      return (ndx == _rates.size()) ? -1 : ndx;
-    }
+    MCS pick_rate(uint32_t index);
 
-    MCS pick_rate(uint32_t index) {
-      if (_rates.size() == 0) {
-        return MCS(2);
-      }
+    int get_current_timeslot();
 
-      if (index > 0 && index < (uint32_t)_rates.size()) {
-        return _rates[index];
-      }
-      return _rates[0];
-    }
+    bool is_ht(uint32_t rate);
+
+
+
+    /* helper + debug */
+    int get_rate_index(uint32_t rate);
+
+    void print_rates_tries(click_wifi_extra *ceh);
+
+    void print_mcs_vector();
+
+    void test_print();
+
+
 
 };
 
 typedef HashMap<EtherAddress, NeighbourRateInfo*> NeighborTable;
 typedef NeighborTable::const_iterator NIter;
+
 
 CLICK_ENDDECLS
 #endif
