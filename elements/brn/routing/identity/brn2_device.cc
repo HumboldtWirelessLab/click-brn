@@ -61,6 +61,8 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
         ( device_type_string != STRING_VIRTUAL ) )
     return errh->error("Unsupported devicetype");
 
+  device_type = getTypeIntByString(device_type_string);
+  
   if( EtherAddress() != me ) {
     device_etheraddress = me;
   } else {
@@ -233,9 +235,9 @@ BRN2Device::set_routable(bool routable)
 uint32_t
 BRN2Device::getTypeIntByString(String type)
 {
-  if ( type.compare(STRING_WIRED, strlen(STRING_WIRED)) ) return DEVICETYPE_WIRED;
-  if ( type.compare(STRING_WIRELESS, strlen(STRING_WIRELESS)) ) return DEVICETYPE_WIRELESS;
-  if ( type.compare(STRING_VIRTUAL, strlen(STRING_VIRTUAL)) ) return DEVICETYPE_VIRTUAL;
+  if ( type.compare(STRING_WIRED, strlen(STRING_WIRED)) == 0 ) return DEVICETYPE_WIRED;
+  if ( type.compare(STRING_WIRELESS, strlen(STRING_WIRELESS)) == 0 ) return DEVICETYPE_WIRELESS;
+  if ( type.compare(STRING_VIRTUAL, strlen(STRING_VIRTUAL)) == 0 ) return DEVICETYPE_VIRTUAL;
 
   return DEVICETYPE_UNKNOWN;
 }
