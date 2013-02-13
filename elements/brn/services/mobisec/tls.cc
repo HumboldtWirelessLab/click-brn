@@ -152,6 +152,11 @@ int TLS::initialize(ErrorHandler *) {
 		return -1;
 	}
 
+	// I dont know if TLS is already doing this, but I need mutual authentication. Maybe it's
+	// default by providing a client-cert to openssl.
+	// Todo: Needs some testing with fake certificate and cert-chain on client
+	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER & SSL_VERIFY_CLIENT_ONCE, NULL);
+
 	// Create SSL object (Server does this reactive on incomming ssl request)
 	if (role == CLIENT) {
 		curr = new com_obj(ctx, role);

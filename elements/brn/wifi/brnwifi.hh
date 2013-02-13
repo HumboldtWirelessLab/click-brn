@@ -9,7 +9,7 @@
 CLICK_DECLS
 
 enum {
-  //TODO: compress error types (there will never be received a combination of them 
+  //TODO: compress error types (there will never be received a combination of them
   WIFI_EXTRA_RX_CRC_ERR      = (1<<31), /* failed crc check */
   WIFI_EXTRA_RX_PHY_ERR      = (1<<30), /* failed phy check */
   WIFI_EXTRA_RX_FIFO_ERR     = (1<<29), /* failed fifo check */
@@ -109,7 +109,7 @@ struct wifi_n_ht_control {
 
 
 /* QOS-Field 1
-  | RESERVER (Bit7) | ACK_Policy (Bit 5-6) | EOSP (Bit 4) | TID (Bit 0-3) | 
+  | RESERVER (Bit7) | ACK_Policy (Bit 5-6) | EOSP (Bit 4) | TID (Bit 0-3) |
 
 TID
   0 Besteffort
@@ -316,6 +316,40 @@ class BrnWifi
     else
       ceh->flags &= ~(uint32_t)WIFI_EXTRA_JAMMER_MESSAGE;
   }
+
+
+  /* returns whether rate (0), rate1, .., rate3 has been used */
+  static inline int get_rate_rank(struct click_wifi_extra *ceh) {
+
+    int try_cnt;
+
+    if (ceh == NULL)
+      click_chatter("BRNWifi::get_rate_rank: given pointer was NULL");
+
+
+    try_cnt = ceh->max_tries;
+    if (try_cnt >= ceh->retries)
+      return 0;
+
+
+    try_cnt = try_cnt + ceh->max_tries1;
+    if (try_cnt >= ceh->retries)
+      return 1;
+
+
+    try_cnt = try_cnt + ceh->max_tries2;
+    if (try_cnt >= ceh->retries)
+      return 2;
+
+
+    try_cnt = try_cnt + ceh->max_tries3;
+    if (try_cnt >= ceh->retries)
+      return 3;
+
+
+    return -1;
+  }
+
 
 };
 
