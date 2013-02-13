@@ -763,7 +763,10 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << " frag: " << (int) frag;
     }
     sa << " ";
+  } else {
+    sa << "seq: 65565";
   }
+    
 
   sa << "[";
   if (ceh->flags & WIFI_EXTRA_TX) {
