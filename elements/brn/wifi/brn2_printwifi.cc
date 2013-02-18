@@ -703,7 +703,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_PS_POLL:    sa << "psp  "; break;
     case WIFI_FC0_SUBTYPE_RTS:        sa << "rts  "; break;
     case WIFI_FC0_SUBTYPE_CTS:	      sa << "cts  "; break;
-    case WIFI_FC0_SUBTYPE_ACK:	      sa << "ack  " << duration << " "; break;
+    case WIFI_FC0_SUBTYPE_ACK:	      sa << "ack  " /*<< duration << " "*/; break;
     case WIFI_FC0_SUBTYPE_CF_END:     sa << "cfe  "; break;
     case WIFI_FC0_SUBTYPE_CF_END_ACK: sa << "cfea "; break;
     default:
@@ -764,7 +764,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     }
     sa << " ";
   } else {
-    sa << "seq: 65565";
+    sa << "seq: 65565 ";
   }
     
 
