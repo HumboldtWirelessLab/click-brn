@@ -60,6 +60,12 @@ BRNElement::init(void)
   _debug = BrnLogger::DEFAULT;
 }
 
+String
+BRNElement::get_node_name()
+{
+  return BRN_NODE_NAME;
+}  
+
 void
 BRNElement::packet_kill(Packet *p)
 {

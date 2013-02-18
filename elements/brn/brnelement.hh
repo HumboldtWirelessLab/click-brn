@@ -43,6 +43,8 @@ class BRNElement : public Element {
   virtual void add_handlers();
 
   void init(void);
+  
+  String get_node_name();
 
   int _debug;
 
