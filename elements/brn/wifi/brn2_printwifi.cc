@@ -657,7 +657,7 @@ BRN2PrintWifi::simple_action(Packet *p)
       }
       sa << " ";
 
-      sa << reason_string(reason) << " ";
+      //sa << reason_string(reason) << " ";
       break;
     }
     case WIFI_FC0_SUBTYPE_AUTH: {
