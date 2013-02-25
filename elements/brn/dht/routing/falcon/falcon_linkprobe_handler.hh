@@ -76,6 +76,7 @@ class FalconLinkProbeHandler : public BRNElement
 
   bool _active;
   uint32_t _delay;
+  bool _onlyfingertab;
 
  public:
   void setHawkRoutingTable(HawkRoutingtable *t) { _rfrt = t; }

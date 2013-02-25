@@ -46,7 +46,8 @@ FalconLinkProbeHandler::FalconLinkProbeHandler():
     _no_nodes_per_lp(FALCON_DEFAULT_NO_NODES_PER_LINKPROBE),
     _rfrt(NULL),
     _active(false),
-    _delay(0)
+    _delay(0),
+    _onlyfingertab(false)
 {
   BRNElement::init();
 }
@@ -63,6 +64,7 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
       "NODESPERLP", cpkN, cpInteger, &_no_nodes_per_lp,
+      "ONLYFINGERTAB", cpkP, cpBool, &_onlyfingertab,
       "DELAY", cpkN, cpInteger, &_delay,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
@@ -130,11 +132,20 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 
   DHTnodelist nodes;
 
-  send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
+  if ( _onlyfingertab ) {
+    send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
-  for (int32_t i = 0; i < send_nodes; i++ ) {
-    _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
-    nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
+    for (int32_t i = 0; i < send_nodes; i++ ) {
+      _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_fingertable.size();
+      nodes.add_dhtnode(_frt->_fingertable.get_dhtnode(_all_nodes_index));
+    }
+  } else {
+    send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
+
+    for (int32_t i = 0; i < send_nodes; i++ ) {
+      _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
+      nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
+    }
   }
 
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
@@ -178,13 +189,17 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_nei
     _frt->add_node(&first);
   }
 
-  _frt->add_nodes(&nodes);
-
-  nodes.del();
+  if ( (_rfrt == NULL) || (is_neighbour) ) {  //disable if hawk is used and first is not a neighbour to avoid unreachable successor
+    _frt->add_nodes(&nodes);
+  }
 
   //Add Neighbour (src of lp)
-  if ( (_rfrt != NULL) && (is_neighbour) )
+  if ( (_rfrt != NULL) && (is_neighbour) ) {
+    //add first as next phy hop for set "nodes"
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
+  }
+
+  nodes.del();
 
   return 0;
 }
