@@ -191,91 +191,89 @@ int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p)
 {
     unsigned int fraction  = 0;
     int number_of_neighbours = 0;
-        	struct click_wifi *wh = (struct click_wifi *) p->data();
-        	EtherAddress src;
-        	EtherAddress dst;
-            EtherAddress bssid;
-            switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
-          		case WIFI_FC1_DIR_NODS:
-    	    		dst = EtherAddress(wh->i_addr1);
-    		    	src = EtherAddress(wh->i_addr2);
-    		    	bssid = EtherAddress(wh->i_addr3);
-        		break;
-                case WIFI_FC1_DIR_TODS:
-                        bssid = EtherAddress(wh->i_addr1);
-                        src = EtherAddress(wh->i_addr2);
-                        dst = EtherAddress(wh->i_addr3);
-                    break;
-                case WIFI_FC1_DIR_FROMDS:
-                        dst = EtherAddress(wh->i_addr1);
-                        bssid = EtherAddress(wh->i_addr2);
-                        src = EtherAddress(wh->i_addr3);
-                    break;
-                case WIFI_FC1_DIR_DSTODS:
-                        dst = EtherAddress(wh->i_addr1);
-                        src = EtherAddress(wh->i_addr2);
-                        bssid = EtherAddress(wh->i_addr3);
-                    break;
-                default:
-                BRN_DEBUG("Packet-Mode is unknown");
-            }
-        	if(NULL != pli) {
-                BRN_DEBUG("Before pli_graph");
-                PacketLossInformation_Graph *pli_graph = pli->graph_get(dst);
-                BRN_DEBUG("AFTER pli_graph");
-                if(NULL != pli_graph) {
-                    BRN_DEBUG("There is not a Graph available for the DST-Adress: %s", dst.unparse().c_str());
-                    PacketLossReason* pli_reason = pli_graph->reason_get("in_range");
-                    fraction = pli_reason->getFraction();                    
-                    BRN_DEBUG("In-Range-FRACTIOn := %d", fraction);
-                }
-            }
-            if ( _cst != NULL ) {
-					struct airtime_stats *as;
-					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
-                    number_of_neighbours = as->no_sources;
-					BRN_DEBUG("Number of Neighbours %d",number_of_neighbours);  
-			}
-            int index = -1;
-            int packet_loss_index_max = 10;
-            for (int i = 0; i<= packet_loss_index_max; i++){
-                if(fraction <= _backoff_packet_loss[i]) index = i;
-            }
-            if (index == -1) index = packet_loss_index_max;
-
-            if(number_of_neighbours > 40) number_of_neighbours = 40;
-            unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
-            int opt_queue = 0; 
-            for (int i = 0; i <= no_queues_get();i++) {
-				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
-				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
-                if(cwmax_get(i) <= backoff_value){
-                    opt_queue = i;
-                    break;
-                }
-            }
-            return opt_queue;
-
-     /*       unsigned int backoff_value = 0; 
-/            unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
-			BRN_DEBUG("optimale queue:= %d",opt_queue);
-			for (int i = 0; i <= no_queues_get();i++) {
-				BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
-				BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
-                if(cwmax_get(i) <= backoff_value){
-                    opt_queue = i;
-                    break;
-                }
-				//BRN_DEBUG("queue_usage[%d] := %d",i,queue_usage_get(i));
-				///if( NULL != pli) BRN_DEBUG("PLI is not Null\n\r");
-				if ( _cst != NULL ) {
-					struct airtime_stats *as;
-					as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
-					BRN_DEBUG("Number of Neighbours %d",as->no_sources);  
-				
-			}*/
-
+    int packet_loss_index_max = 10;
+    int number_of_neighbours_max = 40;
+    // Get Destination Address from the current packet
+    struct click_wifi *wh = (struct click_wifi *) p->data();
+    EtherAddress src;
+    EtherAddress dst;
+    EtherAddress bssid;
+    switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
+        case WIFI_FC1_DIR_NODS:
+    	    dst = EtherAddress(wh->i_addr1);
+    		src = EtherAddress(wh->i_addr2);
+    		bssid = EtherAddress(wh->i_addr3);
+        	break;
+        case WIFI_FC1_DIR_TODS:
+            bssid = EtherAddress(wh->i_addr1);
+            src = EtherAddress(wh->i_addr2);
+            dst = EtherAddress(wh->i_addr3);
+            break;
+        case WIFI_FC1_DIR_FROMDS:
+            dst = EtherAddress(wh->i_addr1);
+            bssid = EtherAddress(wh->i_addr2);
+            src = EtherAddress(wh->i_addr3);
+            break;
+        case WIFI_FC1_DIR_DSTODS:
+            dst = EtherAddress(wh->i_addr1);
+            src = EtherAddress(wh->i_addr2);
+            bssid = EtherAddress(wh->i_addr3);
+            break;
+        default:
+            BRN_DEBUG("Packet-Mode is unknown");
+    }
+    // Get Fraction for inrange collisions for the current Destination Address
+    if(NULL != pli) {
+        BRN_DEBUG("Before pli_graph");
+        PacketLossInformation_Graph *pli_graph = pli->graph_get(dst);
+        BRN_DEBUG("AFTER pli_graph");
+        if(NULL != pli_graph) {
+            BRN_DEBUG("There is not a Graph available for the DST-Address: %s", dst.unparse().c_str());
+            PacketLossReason* pli_reason = pli_graph->reason_get("in_range");
+            fraction = pli_reason->getFraction();                    
+            BRN_DEBUG("In-Range-Fraction := %d", fraction);
+        }
+        else {
+            fraction = _backoff_packet_loss[packet_loss_index_max];
+        }
+    }
+    else {
+            fraction = _backoff_packet_loss[packet_loss_index_max];
+    }
+    //Get Number of Neighbours from the Channelstats-Element (_cst)
+    if ( NULL != _cst ) {
+	    struct airtime_stats *as;
+		as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
+        number_of_neighbours = as->no_sources;
+		BRN_DEBUG("Number of Neighbours %d",number_of_neighbours);  
+	}
+    else {
+        number_of_neighbours = number_of_neighbours_max;
+    }
+    // Evaluate Statistics and elect a Queue
+    int index = -1;
+    // Get from the Backoff-Packet-Loss-Table the supported fractions
+    for (int i = 0; i<= packet_loss_index_max; i++){
+        if(fraction <= _backoff_packet_loss[i]) index = i;
+    }
+    if (index == -1) index = packet_loss_index_max;
+    if(number_of_neighbours > number_of_neighbours_max) number_of_neighbours = number_of_neighbours_max;
+    // Get from Backoff-Matrix-Table for the current Fraction and the current number of neighbours the backoff-value
+    unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
+    //Search with the calculated backoff-value the queue for the packet  
+    int opt_queue = no_queues_get(); //init with the worst case queue 
+    for (int i = 0; i <= no_queues_get();i++) {
+	    BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
+		BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+        // Take the first queue, whose cw-interval is in the range of the backoff-value
+        if(cwmax_get(i) <= backoff_value){
+            opt_queue = i;
+            break;
+        }
+    }
+    return opt_queue;
 }
+
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {

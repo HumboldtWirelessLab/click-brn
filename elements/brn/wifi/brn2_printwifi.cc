@@ -165,6 +165,9 @@ BRN2PrintWifi::unparse_beacon(Packet *p) {
     ssid = String((char *) ssid_l + 2, WIFI_MIN((int)ssid_l[1], WIFI_NWID_MAXSIZE));
   }
 
+  //TODO: fix me, just to fix layout
+  sa << " seq: 65535 ";
+
   if (ssid == "") {
     sa << "ssid: (none)";
   } else {
@@ -618,7 +621,8 @@ BRN2PrintWifi::simple_action(Packet *p)
 
       Vector<int> rates = get_rates(ptr);
       String rates_s = rates_string(rates);
-      if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
+      //TODO: enable again
+   /*   if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
         sa << "ssid: (empty)";
       else {
         if ( valid_ssid(&ssid) )
@@ -627,17 +631,19 @@ BRN2PrintWifi::simple_action(Packet *p)
           sa << "ssid: (invalid_ssid)";
       }
 
-      sa << " " << rates_s << " ";
+      sa << " " << rates_s << " ";*/
       break;
 
     }
     case WIFI_FC0_SUBTYPE_PROBE_RESP:
       sa << "probe_resp ";
       sa << unparse_beacon(p);
+      sa << "seq: 65565 "; //TODO: just to fit layout
       goto done;
     case WIFI_FC0_SUBTYPE_BEACON:
       sa << "beacon ";
       sa << unparse_beacon(p);
+      sa << "seq: 65565 "; //TODO: just to fit layout
       goto done;
     case WIFI_FC0_SUBTYPE_ATIM:           sa << "atim "; break;
     case WIFI_FC0_SUBTYPE_DISASSOC:       {
@@ -657,7 +663,8 @@ BRN2PrintWifi::simple_action(Packet *p)
       }
       sa << " ";
 
-      sa << reason_string(reason) << " ";
+      //TODO: enable again
+      //sa << reason_string(reason) << " ";
       break;
     }
     case WIFI_FC0_SUBTYPE_AUTH: {
@@ -685,9 +692,10 @@ BRN2PrintWifi::simple_action(Packet *p)
 
       uint16_t status =le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
-      sa << "alg " << (int)  algo;
+      //TODO: enable again
+/*      sa << "alg " << (int)  algo;
       sa << " auth_seq: " << (int) seq;
-      sa << " status " << status_string(status) << " ";
+      sa << " status " << status_string(status) << " ";*/
       break;
 
     }
@@ -703,7 +711,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     case WIFI_FC0_SUBTYPE_PS_POLL:    sa << "psp  "; break;
     case WIFI_FC0_SUBTYPE_RTS:        sa << "rts  "; break;
     case WIFI_FC0_SUBTYPE_CTS:	      sa << "cts  "; break;
-    case WIFI_FC0_SUBTYPE_ACK:	      sa << "ack  " << duration << " "; break;
+    case WIFI_FC0_SUBTYPE_ACK:	      sa << "ack  " /*<< duration << " "*/; break;
     case WIFI_FC0_SUBTYPE_CF_END:     sa << "cfe  "; break;
     case WIFI_FC0_SUBTYPE_CF_END_ACK: sa << "cfea "; break;
     default:
@@ -763,7 +771,10 @@ BRN2PrintWifi::simple_action(Packet *p)
       sa << " frag: " << (int) frag;
     }
     sa << " ";
+  } else {
+    sa << "seq: 65565 ";
   }
+    
 
   sa << "[";
   if (ceh->flags & WIFI_EXTRA_TX) {
