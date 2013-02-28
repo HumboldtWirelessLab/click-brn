@@ -58,6 +58,8 @@ private:
 	BRN2NodeIdentity *_me;
 
 	Element *_tls;
+	EtherAddress _ks_addr;
+
 	Element *_wifidev_client;
 	Element *_ap_q;
 	Element *_client_q;
