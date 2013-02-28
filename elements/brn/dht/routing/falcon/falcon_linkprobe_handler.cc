@@ -63,8 +63,8 @@ FalconLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
       "FRT", cpkP+cpkM, cpElement, &_frt,
       "LINKSTAT", cpkP+cpkM, cpElement, &_linkstat,
       "REGISTERHANDLER", cpkP, cpBool, &_register_handler,
-      "NODESPERLP", cpkN, cpInteger, &_no_nodes_per_lp,
       "ONLYFINGERTAB", cpkP, cpBool, &_onlyfingertab,
+      "NODESPERLP", cpkN, cpInteger, &_no_nodes_per_lp,
       "DELAY", cpkN, cpInteger, &_delay,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
