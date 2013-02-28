@@ -53,7 +53,7 @@ class HawkForwarder : public Element {
   ~HawkForwarder();
 
   const char *class_name() const  { return "HawkForwarder"; }
-  const char *port_count() const  { return "1/2"; }
+  const char *port_count() const  { return "2/2"; }
   const char *processing() const  { return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
