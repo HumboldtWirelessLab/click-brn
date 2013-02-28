@@ -79,7 +79,7 @@ HawkForwarder::uninitialize()
 }
 
 void
-HawkForwarder::push(int /*port*/, Packet *p_in)
+HawkForwarder::push(int port, Packet *p_in)
 {
   BRN_DEBUG("push(): %d",p_in->length());
 
@@ -118,7 +118,9 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
     _rt->addEntry(&(src_addr), header->_src_nodeid, 16, &(last_addr));
   }
 
-  uint8_t ttl = BRNPacketAnno::ttl_anno(p_in) - 1;
+  uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+
+  if (port == 0) ttl--;
 
   if ( _me->isIdentical(&dst_addr) ) {
     BRN_DEBUG("Is for me");
