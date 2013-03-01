@@ -13,16 +13,16 @@
 CLICK_DECLS
 
 struct dht_nodeid_entry {
-  int _id_length;
+  uint16_t _id_length;
   uint8_t _nodeid[MAX_NODEID_LENTGH];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct dart_routing_header {
+  uint16_t _dst_nodeid_length;
   uint8_t _dst_nodeid[MAX_NODEID_LENTGH];
-  int _dst_nodeid_length;
 
+  uint16_t _src_nodeid_length;
   uint8_t _src_nodeid[MAX_NODEID_LENTGH];
-  int _src_nodeid_length;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 

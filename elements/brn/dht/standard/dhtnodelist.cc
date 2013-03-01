@@ -68,6 +68,9 @@ DHTnodelist::swap_dhtnode(DHTnode *_node, int i)
   if ( ( _node != NULL ) && ( i >= 0 ) && ( i < _nodelist.size() ) ) {
     old = _nodelist[i];
     _nodelist[i] = _node;
+    //Update Hashmap (remove old and add new)
+    _nodemap_ea.erase(old->_ether_addr);
+    _nodemap_ea.insert(_node->_ether_addr,_node);
   }
 
   return old;

@@ -79,7 +79,7 @@ HawkForwarder::uninitialize()
 }
 
 void
-HawkForwarder::push(int /*port*/, Packet *p_in)
+HawkForwarder::push(int port, Packet *p_in)
 {
   BRN_DEBUG("push(): %d",p_in->length());
 
@@ -99,6 +99,15 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
                                                        dst_addr.unparse().c_str(),
                                                        last_addr.unparse().c_str(),
                                                        next.unparse().c_str());
+  BRN_DEBUG("entries=%i",_rt->_rt.size() );
+
+  HawkRoutingtable::RTEntry *entry;
+  for(int i = 0; i < _rt->_rt.size(); i++) {
+    entry = _rt->_rt[i];
+
+    BRN_DEBUG("entry node=%s, next_hop=%s", entry->_dst.unparse().c_str(),entry->_next_phy_hop.unparse().c_str());
+    BRN_DEBUG(" next_overlay=%s",entry->_next_hop.unparse().c_str());
+  }
 
   /*
    * Here we are sure than the packet comes from the source over last hop,
@@ -109,11 +118,21 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
     _rt->addEntry(&(src_addr), header->_src_nodeid, 16, &(last_addr));
   }
 
+  uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+
+  if (port == 0) ttl--;
+
   if ( _me->isIdentical(&dst_addr) ) {
     BRN_DEBUG("Is for me");
+
     HawkProtocol::strip_route_header(p_in);
+
+    if ( BRNProtocol::is_brn_etherframe(p_in) )
+      BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl;
+
     output(1).push(p_in);
   } else {
+
     if ( _me->isIdentical(&next) ) { //i'm next overlay hop
       HawkProtocol::clear_next_hop(p_in);
     }
@@ -137,6 +156,7 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
       DHTnode *n = NULL;
 
       if ( n == NULL ) {
+        //n = _falconrouting->get_responsibly_node_for_key(header->_next_etheraddress, &(_rt->_known_hosts));
         n = _falconrouting->get_responsibly_node_for_key(header->_dst_nodeid, &(_rt->_known_hosts));
       }
 
@@ -145,15 +165,20 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
       if ( n->equalsEtherAddress(_falconrouting->_me) ) { //for clients, which have the
                                                           //same id but different
                                                           // ethereaddress
+        //n = _falconrouting->get_responsibly_node_for_key(header->_dst_nodeid, &(_rt->_known_hosts));
         HawkProtocol::strip_route_header(p_in);           //TODO: use other output port
                                                           //      for client
+        if ( BRNProtocol::is_brn_etherframe(p_in) )
+          BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl;
+
         output(1).push(p_in);
         return;
       } else {
         //Since next hop in the overlay is not necessarily my neighbour
         //i use the hawk table to get the real next hop
         next_phy_hop = _rt->getNextHop(&(n->_ether_addr));
-
+        //der alte overlay-hop muss gelöscht werden damit der neue gesetzt werden kann.
+        HawkProtocol::clear_next_hop(p_in);
         if ( next_phy_hop == NULL ) {
           BRN_ERROR("No next hop for ovelay dst. Kill packet.");
           BRN_ERROR("RT: %s",_rt->routingtable().c_str());
@@ -165,8 +190,9 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
     }
 
     BRN_DEBUG("Next hop: %s", next_phy_hop->unparse().c_str());
-
-    if ( _rt->isNeighbour(next_phy_hop) ) {
+    //es muss der next-Knoten beibehalten werden bis dieser erreicht wurde, denn eventuell weiß nur der overlayhop wie es weitergeht,
+    //und die Zwischenknoten dorthin kennen keinen Weg zum Endziel 
+    if ( _rt->isNeighbour(next_phy_hop) && ! HawkProtocol::has_next_hop(p_in) ) {
       BRN_INFO("Nexthop is a neighbour");
       HawkProtocol::set_next_hop(p_in,next_phy_hop);
     } else {
@@ -178,7 +204,7 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
       while ( ( next_phy_hop != NULL ) && (! _rt->isNeighbour(next_phy_hop)) ) {
         next_phy_hop = _rt->getNextHop(next_phy_hop);
         loop_counter++;
-        if ( loop_counter > 10 ) next_phy_hop = NULL;
+        if ( loop_counter > 10 ) next_phy_hop = NULL; //TODO: why 10??
       }
 
       if ( next_phy_hop == NULL ) {
@@ -188,7 +214,7 @@ HawkForwarder::push(int /*port*/, Packet *p_in)
       }
     }
 
-    Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_HAWK, BRN_PORT_HAWK,   255, BRNPacketAnno::tos_anno(p_in));
+    Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_HAWK, BRN_PORT_HAWK, ttl, BRNPacketAnno::tos_anno(p_in));
 
     BRNPacketAnno::set_src_ether_anno(brn_p,_falconrouting->_me->_ether_addr);  //TODO: take address from anywhere else
     BRNPacketAnno::set_dst_ether_anno(brn_p,*next_phy_hop);
