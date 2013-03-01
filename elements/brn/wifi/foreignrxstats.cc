@@ -117,9 +117,9 @@ void
 ForeignRxStats::send_outstanding_packet(bool failed)
 {
   if ( last_packet != NULL ) {
-    if ( failed ) {
+    if ( ! failed ) {
      struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(last_packet);
-     ceh->flags |= WIFI_EXTRA_TX_FAIL;
+     ceh->flags |= WIFI_EXTRA_FOREIGN_TX_SUCC;
     }
     output(0).push(last_packet);
     last_packet = NULL;
