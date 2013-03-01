@@ -33,6 +33,7 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
@@ -267,14 +268,14 @@ Flooding::push( int port, Packet *packet )
     click_ether *ether = (click_ether *)packet->ether_header();
     EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
     
-    BRN_ERROR("RX: %s %d %d", rx_node.unparse().c_str(),_me->getDeviceByNumber(devicenr)->getDeviceType(), devicenr );
+    //BRN_ERROR("RX: %s %d %d", rx_node.unparse().c_str(),_me->getDeviceByNumber(devicenr)->getDeviceType(), devicenr );
     
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
       _flooding_sent += (((int)ceh->retries) + 1);
-      BRN_ERROR("Unicast");
+      BRN_DEBUG("Unicast");
     } else {
-      _flooding_sent++;  
+      _flooding_sent++;
     }
     
     bcast_header = (struct click_brn_bcast *)(packet->data());
@@ -300,6 +301,26 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Flooding: Passive Overhear\n");
     
     _flooding_passive++;
+
+#ifdef FLOODING_EXTRA_STATS
+    uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);
+    click_ether *ether = (click_ether *)packet->ether_header();
+    EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
+    
+    //TODO: what if it not wireless. Packet transmission always successful ?
+    if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
+      bcast_header = (struct click_brn_bcast *)(packet->data());
+      uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+      src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+ 
+      struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+      BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
+      BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
+      if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
+        add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
+      }
+#endif
+    }
     
     push(1,  packet);
   }
