@@ -82,7 +82,7 @@ DartForwarder::uninitialize()
 }
 
 void
-DartForwarder::push(int /*port*/, Packet *p_in)
+DartForwarder::push(int port, Packet *p_in)
 {
   BRN_DEBUG("push()");
 
@@ -92,28 +92,31 @@ DartForwarder::push(int /*port*/, Packet *p_in)
   EtherAddress dst_addr(ether->ether_dhost);
   EtherAddress src_addr(ether->ether_shost);
 
-  BRN_DEBUG("Src: %s (%s) Dst: %s (%s)", src_addr.unparse().c_str(),
+  uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+
+  BRN_DEBUG("Src: %s (%s) Dst: %s (%s) TTL: %d Port: %d", src_addr.unparse().c_str(),
                                  DartFunctions::print_id(header->_src_nodeid, ntohl(header->_src_nodeid_length)).c_str(),
-                                         dst_addr.unparse().c_str(),
-                                 DartFunctions::print_id(header->_dst_nodeid, ntohl(header->_dst_nodeid_length)).c_str());
+                                                          dst_addr.unparse().c_str(),
+                                 DartFunctions::print_id(header->_dst_nodeid, ntohl(header->_dst_nodeid_length)).c_str(),
+                                                          (int)ttl,port);
 
   if ( _idcache->getEntry(&dst_addr) == NULL ) _idcache->addEntry(&dst_addr, header->_dst_nodeid, ntohl(header->_dst_nodeid_length));
   if ( _idcache->getEntry(&src_addr) == NULL ) _idcache->addEntry(&src_addr, header->_src_nodeid, ntohl(header->_src_nodeid_length));
 
+  if ( port == 0 ) ttl--;
+
   if ( memcmp(dst_addr.data(),_dartrouting->_me->_ether_addr.data(),6) == 0 ) {
     BRN_DEBUG("Is for me");
-    uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
 
     DartProtocol::strip_route_header(p_in);
 
     if ( BRNProtocol::is_brn_etherframe(p_in) )
-      BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl-1;
+      BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl;
 
     output(1).push(p_in);
   } else {
 
     DHTnode *n = _drt->get_neighbour(&dst_addr);  //check whether destination is a neighbouring node
-    uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
 
     if ( n == NULL )
       n = _dartrouting->get_responsibly_node(header->_dst_nodeid);
@@ -124,16 +127,15 @@ DartForwarder::push(int /*port*/, Packet *p_in)
       DartProtocol::strip_route_header(p_in);                 //TODO: use other output port for client
 
       if ( BRNProtocol::is_brn_etherframe(p_in) )
-        BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl-1;
+        BRNProtocol::get_brnheader_in_etherframe(p_in)->ttl = ttl;
 
       output(1).push(p_in);
     } else {
-      uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+
       if ( ttl == 0 ) {
         BRN_WARN("TTL is 0. Kill the packet.");
         p_in->kill();
       } else {
-        ttl--;
 
         Packet *brn_p = BRNProtocol::add_brn_header(p_in, BRN_PORT_DART, BRN_PORT_DART, ttl, BRNPacketAnno::tos_anno(p_in));
 
