@@ -13,6 +13,12 @@
 CLICK_DECLS
 
 struct hawk_routing_header {
+#define HAWK_FLAGS_ROUTE_FIXED 1
+
+  uint8_t _flags;
+
+  uint8_t _hops;
+
   uint8_t _next_etheraddress[6];
 
   uint8_t _next_nodeid[MAX_NODEID_LENTGH];

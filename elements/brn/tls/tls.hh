@@ -2,7 +2,7 @@
  * tls.hh
  *
  *  Created on: 18.04.2012
- *      Author: aureliano
+ *      Author: kuehne@informatik.hu-berlin.de
  */
 
 #ifndef TLS_HH_
@@ -38,6 +38,7 @@ public:
 	com_obj(SSL_CTX *_ctx, enum role_t _role) {
 		role = _role;
 		ctx = _ctx;
+		traffic_cnt = 0;
 
 		conn = SSL_new(ctx);
 		if (!conn) {throw std::bad_alloc();}
@@ -86,6 +87,8 @@ public:
 	EtherAddress dst_addr;			// This will be the other destination address of the p2p-TLS connection
 
 	queue<Packet *> pkt_storage;	// FiFo-Queue to buffer packets until TLS connection is established
+
+	unsigned int traffic_cnt;
 };
 
 
@@ -107,6 +110,8 @@ public:
 	bool is_shutdown(); // Ask TLS, if shutdown is done
 
 	void add_handlers();
+
+	unsigned int get_traffic_cnt();
 
 private:
 	int _debug;

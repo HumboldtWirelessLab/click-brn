@@ -89,11 +89,11 @@ void Brn2_SetRTSCTS::rts_cts_decision(unsigned int value)
 
 Packet* Brn2_SetRTSCTS::dest_test(Packet *p)
 {
+    // Get destination mac-address
 	struct click_wifi *wh = (struct click_wifi *) p->data();
   	EtherAddress src;
   	EtherAddress dst;
  	EtherAddress bssid;
-
  	switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
   		case WIFI_FC1_DIR_NODS:
     			dst = EtherAddress(wh->i_addr1);
@@ -132,8 +132,10 @@ Packet* Brn2_SetRTSCTS::dest_test(Packet *p)
 	 		BRN_DEBUG("There is a Graph available for the DST-Adress: %s", dst.unparse().c_str());
 			PacketLossReason *pli_reason =	pli_graph->reason_get("hidden_node");
 			unsigned int frac = pli_reason->getFraction();
-			BRN_DEBUG("HIDDEN-NODE-FRACTIOn := %d", frac);
+			BRN_DEBUG("HIDDEN-NODE-FRACTION := %d", frac);
+            // decide if RTS/CTS is on or off
 			rts_cts_decision(frac);
+            // Do something for the Statistic-Element 
 			PNEIGHBOUR_STATISTICS ptr_neighbour_stats = neighbours_statistic_get(dst);
 			if(NULL == ptr_neighbour_stats) {
 				neighbours_statistic_insert(dst);

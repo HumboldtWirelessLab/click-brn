@@ -2,12 +2,14 @@
  * tls.cc
  *
  *  Created on: 18.04.2012
- *      Author: aureliano
+ *      Author: kuehne@informatik.hu-berlin.de
  *
  * TLS with "quiete shutdown" (due to poor reliability of network connection,
  * even unidirectional shutdown is not really possible) and session resumption (ticketing).
  *
  * Session resumption explained in HP paper on openssl setup.
+ * This module does session resumption. Thus the client saves session
+ * and restores it.
  *
  * For the SSL operations this click module is non-blocking, because
  * it uses non-blocking BIOs. To encrypt data the BIO we proactively
@@ -71,7 +73,7 @@ int TLS::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 	if (cp_va_kparse(conf, this, errh,
 		"ETHERADDRESS", cpkP, cpEthernetAddress, &_me,
-		"KEYSERVER", cpkP, cpEthernetAddress, &_ks_addr,
+		/*"KEYSERVER", cpkP, cpEthernetAddress, &_ks_addr,*/ // obsolete,
 		"ROLE", cpkP, cpString, &_role,
 		"KEYDIR", cpkP, cpString, &keydir,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
@@ -157,12 +159,6 @@ int TLS::initialize(ErrorHandler *) {
 	// Todo: Needs some testing with fake certificate and cert-chain on client
 	SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER & SSL_VERIFY_CLIENT_ONCE, NULL);
 
-	// Create SSL object (Server does this reactive on incomming ssl request)
-	if (role == CLIENT) {
-		curr = new com_obj(ctx, role);
-		curr->dst_addr = _ks_addr;
-	}
-
 	BRN_INFO("initialized");
 
 	return 0;
@@ -170,15 +166,73 @@ int TLS::initialize(ErrorHandler *) {
 
 void TLS::push(int port, Packet *p) {
 
-	if (port == 0) { // data from network
+	// For statistical use
+	if (curr) {
+		curr->traffic_cnt += p->length();
+	}
+
+	com_obj *tmp;
+	EtherAddress dst_addr;
+	switch(port) {
+	case 0: /*data from network*/	dst_addr = BRNPacketAnno::src_ether_anno(p); break;
+	case 1: /*data to encrypt*/		dst_addr = BRNPacketAnno::dst_ether_anno(p); break;
+	default: break;
+	}
+
+	// **************** Dynamic SSL-object selection ******************
+	// ****************************************************************
+	tmp = com_table.find(dst_addr);
+	switch(role) {
+	case SERVER:
+		if(tmp) {
+			curr = tmp;
+			if (is_shutdown()) {
+				BRN_DEBUG("connection is shutdown before handshake! ===> refresh ssl and try session resumption");
+				curr->refresh();
+				print_err();
+				print_state();
+			} else {
+				BRN_DEBUG("is not shutdown");
+			}
+		} else {
+			curr = new com_obj(ctx, role);
+			curr->dst_addr = dst_addr;
+			com_table.insert(dst_addr, curr);
+		}
+		break;
+	case CLIENT:
+		if(tmp) {
+			curr = tmp;
+		} else {
+			curr = new com_obj(ctx, role);
+			curr->dst_addr = dst_addr;
+			com_table.insert(dst_addr, curr);
+		}
+		break;
+	default:
+		BRN_ERROR("Handle tls-packet with undefined role");
+		break;
+	}
+	// ****************************************************************
+	// ****************************************************************
+
+	switch(port){
+	case 0: // data from network
+		BRN_DEBUG("Communicating with %s", dst_addr.unparse().c_str());
 		BRN_DEBUG("port %d: rcv ssl-record (%d bytes) <<<", port, p->length());
 		rcv_data(p);
-	} else if (port == 1) { // data to encrypt
+		break;
+	case 1: // data to encrypt
 		BRN_DEBUG("port %d: encrypting %d bytes >>>", port, p->length());
+
+		//if(role == CLIENT) start_ssl(); // todo: nach testen wegnehmen, wenn möglich
+
 		encrypt(p);
-	} else {
+		break;
+	default:
 		BRN_DEBUG("port %d: oops !!", port, p->length());
 		p->kill();
+		break;
 	}
 }
 
@@ -217,7 +271,7 @@ bool TLS::do_handshake() {
 			break;
 		case SSL_ERROR_WANT_WRITE:
 			BRN_DEBUG("HANDSHAKE WANT_WRITE");
-			//snd_data(); // already done because the BIO needs a babysitter
+			//snd_data(); // already done because we use a memory BIO which we have to check frequently
 			break;
 		case SSL_ERROR_SSL:
 			BRN_DEBUG("SSL_ERROR_SSL");
@@ -252,11 +306,6 @@ void TLS::encrypt(Packet *p) {
 		BRN_ERROR("SSL_write with bufsize=0 is undefined.");
 		print_err();
 		return;
-	}
-
-	if (role == CLIENT) {
-		// We got a new application pkt. Check for a ssl connection.
-		start_ssl();
 	}
 
 	int ret = SSL_write(curr->conn,p->data(),p->length());
@@ -324,32 +373,6 @@ void TLS::snd_stored_data() {
 }
 
 void TLS::rcv_data(Packet *p) {
-	EtherAddress dst_addr = BRNPacketAnno::src_ether_anno(p);
-	BRN_DEBUG("Communicating with %s", dst_addr.unparse().c_str());
-
-	/*
-	 * Dynamic SSL-object selection here:
-	 * Server needs to adapt the connection, depending on whom he is communicating with
-	 */
-	if (role == SERVER) {
-		com_obj *tmp = com_table.find(dst_addr);
-		if(tmp) {
-			curr = tmp;
-			if (is_shutdown()) {
-				BRN_DEBUG("connection is shutdown before handshake! ===> refresh ssl and try session resumption");
-				curr->refresh();
-				print_err();
-				print_state();
-			} else {
-				BRN_DEBUG("is not shutdown");
-			}
-		} else {
-			curr = new com_obj(ctx, role);
-			curr->dst_addr = dst_addr;
-			com_table.insert(dst_addr, curr);
-		}
-	}
-
 	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
 
@@ -459,6 +482,11 @@ void TLS::shutdown_tls() {
 	print_state();
 }
 
+unsigned int TLS::get_traffic_cnt() {
+
+	return curr->traffic_cnt;
+}
+
 int pem_passwd_cb(char *buf, int size, int , void *password) {
 	strncpy(buf, (char *)(password), size);
 	buf[size - 1] = '\0';
@@ -481,6 +509,12 @@ static String handler_triggered_shutdown(Element *e, void *) {
 static String handler_triggered_is_shutdown(Element *e, void *) {
 	TLS *tls = (TLS *)e;
 	tls->is_shutdown();
+	return String();
+}
+
+static String handler_get_traffic_cnt(Element *e, void *) {
+	TLS *tls = (TLS *)e;
+	click_chatter("traffic_cnt: %d", tls->get_traffic_cnt());
 	return String();
 }
 
@@ -507,6 +541,7 @@ void TLS::add_handlers()
   add_read_handler("is_shutdown", handler_triggered_is_shutdown, 0);
   add_read_handler("shutdown", handler_triggered_shutdown, 0);
   add_read_handler("handshake", handler_triggered_handshake, 0);
+  add_read_handler("traffic_cnt", handler_get_traffic_cnt, 0);
 }
 
 CLICK_ENDDECLS
