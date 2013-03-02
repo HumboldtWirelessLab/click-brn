@@ -739,6 +739,7 @@ OPENSSL_LIBS
 linux_makeargs
 LINUX_FIXINCLUDES_PROGRAM
 CLICKLINUX_FIXINCLUDES_PROGRAM
+LINUX_DEBUG_FLAGS
 INSTALL_PROGRAM
 INSTALL_SCRIPT
 INSTALL_DATA
@@ -10256,7 +10257,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 10259 "configure"
+#line 10260 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -18611,14 +18612,16 @@ if test $ac_have_linux_kernel = y; then
     fi
 
 
-        if test -n "$LINUX_CFLAGS"; then
+        LINUX_DEBUG_FLAGS=
+    if test -n "$LINUX_CFLAGS"; then
 	:
     elif test $LINUXMODULE_2_6 = 1; then
 	{ echo "$as_me:$LINENO: checking for Linux 2.6 compilation flags" >&5
 echo $ECHO_N "checking for Linux 2.6 compilation flags... $ECHO_C" >&6; }
-	make -C $linux_builddir M="`pwd`" $linux_makeargs --no-print-directory -p nonexistent.o >conftest.dat 2>&1
-	for v in KBUILD_CPPFLAGS KBUILD_CFLAGS CPPFLAGS CFLAGS LINUXINCLUDE; do
-	    eval l$v='"'"`grep ^$v' *:*=' conftest.dat | sed s/^$v' *:*= *//'`"'"'
+	echo >conftest.c
+	make -C $linux_builddir M="`pwd`" $linux_makeargs --no-print-directory -p conftest.o >conftest.dat 2>&1
+	for v in KBUILD_CPPFLAGS KBUILD_CFLAGS CPPFLAGS CFLAGS LINUXINCLUDE debug_flags; do
+	    eval l$v="'""`grep ^$v' *:*=' conftest.dat | sed s/^$v' *:*= *//'`""'"
 	done
 	if test -z "$lKBUILD_CPPFLAGS$lKBUILD_CFLAGS$lCPPFLAGS$lCFLAGS$lLINUXINCLUDE"; then
 	    { echo "$as_me:$LINENO: result: not found" >&5
@@ -18652,6 +18655,7 @@ Can't find Linux 2.6 compilation flags.
 	    -e 's,-W^ *,,g' <conftest.dat`"
 	{ echo "$as_me:$LINENO: result: $LINUX_CFLAGS" >&5
 echo "${ECHO_T}$LINUX_CFLAGS" >&6; }
+	LINUX_DEBUG_FLAGS="$ldebug_flags"
     fi
 
     LINUX_FIXINCLUDES_PROGRAM=
@@ -18680,6 +18684,7 @@ fixincludes.pl execution failed.
 	LINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat`"
 	CLICKLINUX_FIXINCLUDES_PROGRAM="| sed `tail -n 1 conftest.dat | sed -e "s	$mydir	$clickbuild_includedir/click-linuxmodule	g"`"
     fi
+
 
 
 
@@ -22721,6 +22726,7 @@ OPENSSL_LIBS!$OPENSSL_LIBS$ac_delim
 linux_makeargs!$linux_makeargs$ac_delim
 LINUX_FIXINCLUDES_PROGRAM!$LINUX_FIXINCLUDES_PROGRAM$ac_delim
 CLICKLINUX_FIXINCLUDES_PROGRAM!$CLICKLINUX_FIXINCLUDES_PROGRAM$ac_delim
+LINUX_DEBUG_FLAGS!$LINUX_DEBUG_FLAGS$ac_delim
 INSTALL_PROGRAM!$INSTALL_PROGRAM$ac_delim
 INSTALL_SCRIPT!$INSTALL_SCRIPT$ac_delim
 INSTALL_DATA!$INSTALL_DATA$ac_delim
@@ -22755,7 +22761,7 @@ provisions!$provisions$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 61; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 62; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
