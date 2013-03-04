@@ -93,6 +93,7 @@ DartForwarder::push(int port, Packet *p_in)
   EtherAddress src_addr(ether->ether_shost);
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
+  if ( port == 0 ) ttl--;
 
   BRN_DEBUG("Src: %s (%s) Dst: %s (%s) TTL: %d Port: %d", src_addr.unparse().c_str(),
                                  DartFunctions::print_id(header->_src_nodeid, ntohl(header->_src_nodeid_length)).c_str(),
@@ -103,7 +104,6 @@ DartForwarder::push(int port, Packet *p_in)
   if ( _idcache->getEntry(&dst_addr) == NULL ) _idcache->addEntry(&dst_addr, header->_dst_nodeid, ntohl(header->_dst_nodeid_length));
   if ( _idcache->getEntry(&src_addr) == NULL ) _idcache->addEntry(&src_addr, header->_src_nodeid, ntohl(header->_src_nodeid_length));
 
-  if ( port == 0 ) ttl--;
 
   if ( memcmp(dst_addr.data(),_dartrouting->_me->_ether_addr.data(),6) == 0 ) {
     BRN_DEBUG("Is for me");
