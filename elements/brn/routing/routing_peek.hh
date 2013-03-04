@@ -34,8 +34,21 @@ class RoutingPeek : public BRNElement
 
     void init();
 
+    const char *processing() const  { return PUSH; }
+
+    const char *port_count() const  { return "1/1"; }
+
+    int configure(Vector<String> &, ErrorHandler *);
+    bool can_live_reconfigure() const  { return false; }
+
+    int initialize(ErrorHandler *);
+
+    void push( int port, Packet *packet );
+
+    void add_handlers();
+
     virtual const char *routing_name() const = 0; //const : function doesn't change the object (members).
-                                                  //virtual: sp�te Bindung
+                                                   //virtual: sp�te Bindung
 
 
     int add_routing_peek(bool (*peek_func)(void*, Packet*, EtherAddress *, EtherAddress *, int), void *peek_obj, int brn_port)
@@ -61,7 +74,7 @@ class RoutingPeek : public BRNElement
       return true;
     }
 
-    virtual void add_handlers();
+    virtual uint32_t get_all_header_len(Packet *packet) = 0;
 
 };
 
