@@ -26,14 +26,9 @@ struct alarming_node {
   uint8_t id;
 } __attribute__ ((packed));
 
-class AlarmingProtocol : public Element {
+class AlarmingProtocol {
 
  public:
-
-  AlarmingProtocol();
-  ~AlarmingProtocol();
-
-  const char *class_name() const { return "AlarmingProtocol"; }
 
   static WritablePacket *new_alarming_packet(int type);
 

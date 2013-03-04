@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-AlarmingProtocol::AlarmingProtocol()
-{
-}
-
-AlarmingProtocol::~AlarmingProtocol()
-{
-}
-
 WritablePacket *
 AlarmingProtocol::new_alarming_packet(int type)
 {
@@ -94,4 +86,4 @@ AlarmingProtocol::remove_node_with_high_ttl(Packet *p, uint8_t ttl)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(AlarmingProtocol)
+ELEMENT_PROVIDES(AlarmingProtocol)
