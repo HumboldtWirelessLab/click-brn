@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-DSRProtocol::DSRProtocol()
-{
-}
-
-DSRProtocol::~DSRProtocol()
-{
-}
-
 int
 DSRProtocol::header_length(Packet *p) {
   click_brn_dsr *dsr_header = (click_brn_dsr *)(p->data());
@@ -44,5 +36,5 @@ DSRProtocol::extend_hops(WritablePacket *p, int count) {
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DSRProtocol)
+ELEMENT_PROVIDES(DSRProtocol)
 

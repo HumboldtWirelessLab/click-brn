@@ -69,12 +69,8 @@ CLICK_DECLS
 #define OPERATION_SET_CHANNEL_AFTER_PACKET   2
 
 
-class BRNPacketAnno : public Element { public:
-
-  BRNPacketAnno();
-  ~BRNPacketAnno();
-
-  const char *class_name() const	{ return "BRNPacketAnno"; }
+class BRNPacketAnno {
+ public:
 
   static inline void clean_brn_wifi_extra_extention_anno(const Packet *p) {
     memset(((uint8_t*)(p->anno_u8()) + BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET),0,BRN_WIFI_EXTRA_EXTENTION_ANNO_SIZE);
