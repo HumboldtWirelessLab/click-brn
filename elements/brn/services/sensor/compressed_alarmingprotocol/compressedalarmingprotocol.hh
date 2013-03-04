@@ -26,14 +26,9 @@ struct compressed_alarming_node {
   uint8_t id;
 } __attribute__ ((packed));
 
-class CompressedAlarmingProtocol : public Element {
+class CompressedAlarmingProtocol {
 
  public:
-
-  CompressedAlarmingProtocol();
-  ~CompressedAlarmingProtocol();
-
-  const char *class_name() const { return "CompressedAlarmingProtocol"; }
 
   static WritablePacket *new_alarming_packet(int type);
 
