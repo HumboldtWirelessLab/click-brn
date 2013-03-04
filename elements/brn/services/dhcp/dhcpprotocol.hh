@@ -1,10 +1,9 @@
 #ifndef CLICK_BRNDHCPPROTOCOL_HH
 #define CLICK_BRNDHCPPROTOCOL_HH
-#include <click/element.hh>
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
-//#include "elements/brn/brn.h"
+
 #include "dhcp.h"
 
 CLICK_DECLS
@@ -14,12 +13,8 @@ CLICK_DECLS
 
 #define BRN_HEADER_SIZE sizeof(click_brn)
 
-class DHCPProtocol : public Element { public:
-
-  DHCPProtocol();
-  ~DHCPProtocol();
-
-  const char *class_name() const  { return "DHCPProtocol"; }
+class DHCPProtocol  {
+ public:
 
   static WritablePacket *new_dhcp_packet(void);
 

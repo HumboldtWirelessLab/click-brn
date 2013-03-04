@@ -62,13 +62,8 @@ struct dcluster_routing_header {
 }__attribute__ ((packed));
 
 
-class DClusterProtocol : public Element { public:
-
-  DClusterProtocol();
-  ~DClusterProtocol();
-
-  const char *class_name() const { return "DClusterProtocol"; }
-
+class DClusterProtocol {
+ public:
   static int pack(struct dcluster_info *info, char *packet, int p_len);
   static int unpack(struct dcluster_info *info, char *packet, int p_len);
 

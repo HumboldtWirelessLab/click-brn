@@ -6,13 +6,6 @@
 
 CLICK_DECLS
 
-DHCPProtocol::DHCPProtocol()
-{
-}
-
-DHCPProtocol::~DHCPProtocol()
-{
-}
 WritablePacket *
 DHCPProtocol::new_dhcp_packet(void)
 {
@@ -231,5 +224,5 @@ DHCPProtocol::retrieve_dhcptype(Packet *p_in)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DHCPProtocol)
+ELEMENT_PROVIDES(DHCPProtocol)
 
