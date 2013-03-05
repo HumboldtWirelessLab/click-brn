@@ -51,12 +51,12 @@ class Tos2QueueMapper : public BRNElement {
 
 	const char *class_name() const  { return "Tos2QueueMapper"; }
 	const char *port_count() const  { return "1/1"; }
-
-	int configure(Vector<String> &, ErrorHandler *);
-
+    const char *processing() const  { return AGNOSTIC;}
+	
+    int configure(Vector<String> &, ErrorHandler *);
 	void add_handlers();
+	Packet *simple_action(Packet *);//Function for the Agnostic Port
 
-	Packet *simple_action(Packet *);
 	void no_queues_set(uint8_t number);
 	uint8_t no_queues_get();
 	void queue_usage_set(uint8_t position, uint32_t value);
@@ -70,10 +70,10 @@ class Tos2QueueMapper : public BRNElement {
 	int find_queue(int cwmin);
 	void reset_queue_usage() {
 		memset(_queue_usage, 0, sizeof(uint32_t) * no_queues);
-	  }
+	}
 	void backoff_strategy_set(uint16_t value);
 	uint16_t backoff_strategy_get();
-    int backoff_strategy_neighbours_pli_aware(Packet *p);
+    int backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos);
 
   private:
 	ChannelStats *_cst; //Channel-Statistics-Element (see: ../channelstats.hh)

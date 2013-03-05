@@ -22,15 +22,14 @@ public:
 	Brn2_SetRTSCTS();
 	~Brn2_SetRTSCTS();
 
-	const char *class_name() const		{ return "Brn2_SetRTSCTS"; }
-	const char *port_count() const		{ return PORTS_1_1; }
-	const char *processing() const		{ return AGNOSTIC; }
+	const char *class_name() const	{ return "Brn2_SetRTSCTS"; }
+	const char *port_count() const	{ return PORTS_1_1; }
+	const char *processing() const	{ return AGNOSTIC;}
 	
 
 	int configure(Vector<String> &, ErrorHandler *);
 	int initialize(ErrorHandler *);
-
-	Packet *simple_action(Packet *);
+	Packet *simple_action(Packet *);//Function for the Agnostic Port
 
 	void add_handlers();
 	String  print();
