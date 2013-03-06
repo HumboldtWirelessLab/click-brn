@@ -187,7 +187,7 @@ uint16_t Tos2QueueMapper::backoff_strategy_get()
 	return _bqs_strategy;
 }
 
-int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p)
+int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos)
 {
     unsigned int fraction  = 0;
     int number_of_neighbours = 0;
@@ -271,12 +271,17 @@ int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p)
             break;
         }
     }
+    //note the tos-value from the user, to get more packetlosses, but a higher throughput and priority
+    if ((tos > opt_queue) && (opt_queue < no_queues_get())) { // if tos-value is higher than opt_queue then modify opt_queue
+        opt_queue = opt_queue + 1;
+    }
     return opt_queue;
 }
 
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
+    //TOS-Value from an application or user
   	uint8_t tos = BRNPacketAnno::tos_anno(p);
   	int opt_queue = tos;
 
@@ -284,7 +289,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 		case BACKOFF_STRATEGY_ALWAYS_OFF:
 		break;
 		case BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE: 
-        opt_queue = backoff_strategy_neighbours_pli_aware(p);
+        opt_queue = backoff_strategy_neighbours_pli_aware(p,tos);
 
         break;
 		case  BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE: 
