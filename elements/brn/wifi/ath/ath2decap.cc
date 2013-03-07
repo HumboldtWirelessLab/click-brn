@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 /*
@@ -179,7 +179,7 @@ Ath2Decap::simple_action(Packet *p)
     if ( (_cst != NULL) && ((uint8_t)ath2_h->anno.tx.ts_channel_utility != CHANNEL_UTILITY_INVALID) )
       _cst->addHWStat(&(p->timestamp_anno()), ath2_h->anno.tx.ts_channel_utility, 0, 0);
 
-    BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel); 
+    BRNPacketAnno::set_channel_anno(q, ath2_h->anno.tx.ts_channel);
   }
   else                                                                      //RX
   {
@@ -213,6 +213,11 @@ Ath2Decap::simple_action(Packet *p)
       case 16: //MIC
           {
             eh->flags |= WIFI_EXTRA_RX_MIC_ERR;
+            break;
+          }
+      case 32: //PHANTOM
+          {
+            eh->flags |= WIFI_EXTRA_RX_PHANTOM_ERR;
             break;
           }
       default:
