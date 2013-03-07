@@ -20,7 +20,8 @@ WifiErrorClassifier::WifiErrorClassifier()
     _p_decrypt(0),
     _p_mic(0),
     _p_zerorate(0),
-    _p_unknown(0)
+    _p_unknown(0),
+    _p_phantom(0)
 {
   BRNElement::init();
 }
@@ -38,6 +39,16 @@ WifiErrorClassifier::simple_action(Packet *p)
 
   if ( (ceha->magic == WIFI_EXTRA_MAGIC && ceha->flags & WIFI_EXTRA_RX_ERR) )
   {
+    if ( (ceha->flags & WIFI_EXTRA_RX_PHANTOM_ERR) == WIFI_EXTRA_RX_PHANTOM_ERR )
+    {
+      _p_phantom++;
+      if ( noutputs() > 7 )
+        output(7).push(p);
+      else
+        p->kill();
+
+      return 0;
+    }
 
     if ( ceha->flags & WIFI_EXTRA_RX_ZERORATE_ERR )
     {
@@ -104,10 +115,20 @@ WifiErrorClassifier::simple_action(Packet *p)
 
       return 0;
     }
+    if ( ceha->flags & WIFI_EXTRA_RX_MIC_ERR )
+    {
+      _p_mic++;
+      if ( noutputs() > 5 )
+        output(5).push(p);
+      else
+        p->kill();
+
+      return 0;
+    }
 
     _p_unknown++;
-    if ( noutputs() > 7 )
-      output(7).push(p);
+    if ( noutputs() > 8 )
+      output(8).push(p);
     else {
       BRN_DEBUG("Discard unknown error");
       p->kill();
@@ -129,7 +150,7 @@ WifiErrorClassifier::print_stats()
 
   sa << "<wifierrorclassifier packets=\"" << _p_all << "\" ok=\"" << _p_ok << "\" crc=\"" << _p_crc;
   sa << "\" phy=\"" << _p_phy << "\" fifo=\"" << _p_fifo << "\" decrypt=\"" << _p_decrypt;
-  sa << "\" mic=\"" << _p_mic << "\" zerorate=\"" << _p_zerorate << "\" unknown=\"" << _p_unknown << "\" />\n";
+  sa << "\" mic=\"" << _p_mic << "\" zerorate=\"" << _p_zerorate << "\"phantom=\"" << _p_phantom << "\" unknown=\"" << _p_unknown << "\" />\n";
 
   return sa.take_string();
 }
@@ -163,7 +184,7 @@ WifiErrorClassifier_read_param(Element *e, void *thunk)
 {
   WifiErrorClassifier *td = (WifiErrorClassifier *)e;
   switch ((uintptr_t) thunk) {
-  case H_OK: 
+  case H_OK:
     return String(td->_p_ok) + "\n";
   case H_CRC:
     return String(td->_p_crc) + "\n";
