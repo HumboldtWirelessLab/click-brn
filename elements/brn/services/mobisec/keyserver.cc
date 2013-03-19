@@ -187,7 +187,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	// After KDP execution server side shutdown finishes communication.
 	// Todo: This is cross layer action, and with this handler we have no control
 	// about current connection! It would be better to shutdown by etheraddress.
-	HandlerCall::call_read(_tls, "shutdown", NULL);
+	// HandlerCall::call_read(_tls, "shutdown", NULL);
 
 	free(keylist_string);
 }

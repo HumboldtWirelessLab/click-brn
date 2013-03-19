@@ -15,6 +15,7 @@
  *
  *      The kdp provides the backbone node with kdp network packets.
  */
+
 #include <click/config.h>
 #include <click/element.hh>
 #include <click/confparse.hh>
@@ -99,11 +100,11 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	req_id = 0;
 
 	// As mentioned in the MobiSEC-Paper, but defined by myself
-	tolerance = _key_timeout * 1.5 + randnum;
+	tolerance = randnum;
 
 	// Time between retries of kdp request transmission (Todo: Find a reasonable
 	// time for backoff, NOT defined by MobiSEC-paper)
-	backoff = _key_timeout * 0.5;
+	backoff = _key_timeout * 0.2 + tolerance;
 	retry_cnt_down = RETRY_CNT_DOWN;
 
 	// Configuration determines some crypto parameters
@@ -122,7 +123,7 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	//Wenn dev_ap,
 	//switch_dev(dev_ap);
 	// client:0, ap:1
-	String network_stack_nr = "1";
+	String network_stack_nr = "0";
 	HandlerCall::call_write(_dev_control_up, "switch", network_stack_nr, NULL);
 	HandlerCall::call_write(_dev_control_down, "switch", network_stack_nr, NULL);
 	HandlerCall::call_write(_dev_control_down2, "switch", network_stack_nr, NULL);
@@ -165,12 +166,17 @@ void BACKBONE_NODE::snd_kdp_req() {
 	 * A missing tcp layer can be the reason for this.
 	 */
 	if (retry_cnt_down <= 0) {
-		BRN_DEBUG("Retry kdp process...");
 		kdp_retry_cnt++;
+		BRN_DEBUG("Restart MobiSEC process...");
 
-		//switch_dev(dev_client);
+		switch_dev(dev_client);
 
 		HandlerCall::call_read(_tls, "shutdown", NULL);
+
+		// Wait 5 secs for assoc with AP
+		kdp_timer.schedule_after_msec(5000);
+		retry_cnt_down = RETRY_CNT_DOWN;
+		return;
 	} else {
 		retry_cnt_down--;
 	}
@@ -185,12 +191,12 @@ void BACKBONE_NODE::snd_kdp_req() {
 	req->node_id = *(_me->getServiceAddress());
 	req->req_id = req_id++;
 
-	BRN_DEBUG("Sending KDP-Request...");
+	BRN_DEBUG("Sending KDP-Request... (try %d)", (RETRY_CNT_DOWN - retry_cnt_down));
 	output(0).push(p);
 
 	// Begin of "resend mechanism" in case of no response.
 	// This loop will terminate, if we receive our kdp reply (see handle_kdp_reply).
-	kdp_timer.schedule_after_msec(backoff + tolerance);
+	kdp_timer.schedule_after_msec(backoff);
 }
 
 void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
@@ -215,7 +221,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	BRN_INFO("card: %d; key_len: %d", BUF_keyman.get_ctrl_data()->cardinality, BUF_keyman.get_ctrl_data()->key_len);
 
 	// We got some key material, switch to backbone network
-	// switch_dev(dev_ap);
+	switch_dev(dev_ap);
 
 	// Buffer crypto material
 	if (_protocol_type == CLIENT_DRIVEN) {
@@ -253,7 +259,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
 	// Shutdown SSL because shutdown alert is sent over unreliable transport
 	// Todo: This is cross layer action, and with this handler we have no control
 	// about current connection! It would be better to shutdown by etheraddress.
-	HandlerCall::call_read(_tls, "shutdown", NULL);
+	// HandlerCall::call_read(_tls, "shutdown", NULL);
 }
 
 /*
@@ -327,20 +333,18 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 		BRN_DEBUG("Using same dev: %s", type_str.c_str());
 	} else {
 		BRN_DEBUG("Switching device to %s", type_str.c_str());
-
-		// Both devices are functioning although the flow only runs through one device.
-		// So when switching the device its queue is possibly overflowed. Thus we
-		// have to reset the queues to get a clean start.
-		HandlerCall::call_write(_ap_q, "reset", network_stack_nr, NULL);
-		HandlerCall::call_write(_client_q, "reset", network_stack_nr, NULL);
 	}
 
+	// Both devices are functioning although the flow only runs through one device.
+	// So when switching the device its queue is possibly overflowed. Thus we
+	// have to reset the queues to get a clean start.
+	HandlerCall::call_write(_ap_q, "reset", network_stack_nr, NULL);
+	HandlerCall::call_write(_client_q, "reset", network_stack_nr, NULL);
 
 	if (network_stack_nr == "1") {
 		BRN_DEBUG("Sending disassoc to abandon client status");
-		HandlerCall::call_write(_wifidev_client, "disassoc", NULL);
+		HandlerCall::call_write(_wifidev_client, "send_disassoc", NULL);
 	}
-
 
 	// Tell the Click-Switch to switch and thus let the packet flow go through the
 	// other device.
@@ -350,10 +354,11 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 
 
 	if (network_stack_nr == "0") {
-		BRN_DEBUG("Sending assoc to next ap");
+		// Do disassoc because we could be associated with old and unavailable AP
+		HandlerCall::call_write(_wifidev_client, "send_disassoc", NULL);
+		BRN_DEBUG("Search for AP and try to associate...");
 		HandlerCall::call_write(_wifidev_client, "do_assoc", NULL);
 	}
-
 
 	BRN_DEBUG("Switching completed.");
 }
