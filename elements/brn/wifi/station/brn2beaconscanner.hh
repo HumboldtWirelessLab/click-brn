@@ -2,6 +2,8 @@
 #define CLICK_BRN2BEACONSCANNER_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+#include <click/timer.hh>
+
 #include <click/etheraddress.hh>
 #include <click/hashmap.hh>
 #include <elements/wifi/wirelessinfo.hh>
@@ -61,6 +63,7 @@ class BRN2BeaconScanner : public Element { public:
   const char *processing() const	{ return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
+  int initialize (ErrorHandler *);
   bool can_live_reconfigure() const	{ return true; }
 
   Packet *simple_action(Packet *);
@@ -73,10 +76,13 @@ class BRN2BeaconScanner : public Element { public:
   String scan_string();
   String scan_string2();
 
- private:
- public:
+  void run_timer(Timer *);
+  void chk_beacon_timeout();
 
-  /**Virtual are identify by the ssid*/
+  Timer _timer;
+
+
+  /* Virtual APs are identify by the ssid*/
   class vap {
   public:
     EtherAddress _eth;
@@ -97,7 +103,7 @@ class BRN2BeaconScanner : public Element { public:
   typedef HashMap<String, vap> VAPTable;
   typedef VAPTable::const_iterator VAPIter;
 
-  /**physical APs are identify dy the bssid (MAC)*/
+  /* Physical APs are identify by the bssid (MAC)*/
   class pap {
     public:
       EtherAddress _eth;
@@ -112,8 +118,8 @@ class BRN2BeaconScanner : public Element { public:
   typedef HashMap<EtherAddress, vap> APTable;
   typedef APTable::const_iterator APIter;
 
-  APTable _aps;
-  PAPTable _paps;
+  APTable _aps;   // table with virtual APs
+  PAPTable _paps;   // table with physical APs
 
   BrnAvailableRates *_rtable;
   WirelessInfo *_winfo;
