@@ -107,6 +107,8 @@ BeaconSource::send_beacon(EtherAddress dst, bool probe)
   if (p == 0)
     return;
 
+  //##################### FILL click_wifi DATA #########################
+
   struct click_wifi *w = (struct click_wifi *) p->data();
 
   w->i_fc[0] = WIFI_FC0_VERSION_0 | WIFI_FC0_TYPE_MGT;
@@ -125,22 +127,26 @@ BeaconSource::send_beacon(EtherAddress dst, bool probe)
   w->i_dur = 0;
   w->i_seq = 0;
 
+  //##################### FILL AFTER click_wifi #########################
+
   uint8_t *ptr;
 
   ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
   int actual_length = sizeof (struct click_wifi);
 
 
-  /* timestamp is set in the hal. ??? */
-  memset(ptr, 0, 8);
+  /* timestamp */
+  memset(ptr, 0, 8); /* timestamp is set in the hal. ??? */
   ptr += 8;
   actual_length += 8;
 
+  /* beacon interval */
   uint16_t beacon_int = (uint16_t) _winfo->_interval;
   *(uint16_t *)ptr = cpu_to_le16(beacon_int);
   ptr += 2;
   actual_length += 2;
 
+  /* capability */
   uint16_t cap_info = 0;
   cap_info |= WIFI_CAPINFO_ESS;
   *(uint16_t *)ptr = cpu_to_le16(cap_info);
