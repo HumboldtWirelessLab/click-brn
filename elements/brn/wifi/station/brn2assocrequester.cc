@@ -52,6 +52,8 @@ CLICK_DECLS
 BRN2AssocRequester::BRN2AssocRequester() :
   _debug(BrnLogger::DEFAULT), _bssid()
 {
+	_debug = false;
+	_associated = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,8 +67,6 @@ BRN2AssocRequester::~BRN2AssocRequester()
 int
 BRN2AssocRequester::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  _debug = false;
-  _associated = false;
   if (cp_va_kparse(conf, this, errh,
       /* not required */
       //cpKeywords,
@@ -78,7 +78,7 @@ BRN2AssocRequester::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   if (_debug >= BrnLogger::INFO)
-    AssociationRequester::_debug=true;
+    AssociationRequester::_debug = true;
 
   if (!_rtable || _rtable->cast("BrnAvailableRates") == 0) 
     return errh->error("BrnAvailableRates element is not provided or not a BrnAvailableRates");
@@ -112,33 +112,32 @@ BRN2AssocRequester::push(int, Packet *p)
   type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
   subtype = w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
 
+  /*
+   * Handle tx-feedback packets. This is a good
+   * way to get at least a hint, what went
+   * wrong with the packet sent by the assocrequester.
+   */
   if (type != WIFI_FC0_TYPE_MGT) {
-    BRN_WARN("received non-management packet.");
-    p->kill();
-    return ;
+	  BRN_WARN("received non-management packet.");
+  } else {
+	  switch(subtype) {
+	  case WIFI_FC0_SUBTYPE_ASSOC_RESP:
+		  process_response(p);
+		  break;
+	  case WIFI_FC0_SUBTYPE_REASSOC_RESP:
+		  process_reassoc_resp(p);
+		  break;
+	  case WIFI_FC0_SUBTYPE_DISASSOC:
+		  process_disassociation(p);
+		  break;
+	  default:
+		  BRN_DEBUG("received non-assoc response packet.");
+		  break;
+	  }
   }
 
-  if (subtype == WIFI_FC0_SUBTYPE_ASSOC_RESP) {
-    process_response(p);
-    p->kill();
-    return;
-  }
-
-  if (subtype == WIFI_FC0_SUBTYPE_REASSOC_RESP) {
-    process_reassoc_resp(p);
-    p->kill();
-    return;
-  }
-
-  if (subtype == WIFI_FC0_SUBTYPE_DISASSOC) {
-    process_disassociation(p);
-    p->kill();
-    return;
-  }
-
-  BRN_DEBUG("received non-assoc response packet.");
   p->kill();
-  return ;
+  return;
 }
 
 
@@ -146,7 +145,7 @@ BRN2AssocRequester::push(int, Packet *p)
 void
 BRN2AssocRequester::send_disassoc_req()
 {
-  //click_chatter("%{element}: Sending disassoc req");
+  click_chatter("%{element}: Sending disassoc req");
 
   EtherAddress bssid = _winfo ? _winfo->_bssid : EtherAddress();
   String ssid = _winfo ? _winfo->_ssid : "";
