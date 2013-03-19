@@ -165,12 +165,6 @@ int TLS::initialize(ErrorHandler *) {
 }
 
 void TLS::push(int port, Packet *p) {
-
-	// For statistical use
-	if (curr) {
-		curr->traffic_cnt += p->length();
-	}
-
 	com_obj *tmp;
 	EtherAddress dst_addr;
 	switch(port) {
@@ -225,7 +219,7 @@ void TLS::push(int port, Packet *p) {
 	case 1: // data to encrypt
 		BRN_DEBUG("port %d: encrypting %d bytes >>>", port, p->length());
 
-		//if(role == CLIENT) start_ssl(); // todo: nach testen wegnehmen, wenn möglich
+		if(role == CLIENT) start_ssl(); // todo: stupid workaround...
 
 		encrypt(p);
 		break;
@@ -373,6 +367,14 @@ void TLS::snd_stored_data() {
 }
 
 void TLS::rcv_data(Packet *p) {
+
+	// Server must not start connection, if he does, ignore.
+	// Todo: If reliable transport, check this again, if necessary..
+	if(role == CLIENT && is_shutdown()) {
+		p->kill();
+		return;
+	}
+
 	BIO_write(curr->bioIn,p->data(),p->length());
 	p->kill();
 
@@ -462,7 +464,7 @@ void TLS::start_ssl() {
 void TLS::shutdown_tls() {
 
 	if (role == CLIENT) {
-		if (! (session = SSL_get1_session(curr->conn)) ) {
+		if (! (session = SSL_get1_session(curr->conn))) {
 			BRN_DEBUG("no ssl session available");
 		} else {
 			BRN_DEBUG("ssl session saved");
