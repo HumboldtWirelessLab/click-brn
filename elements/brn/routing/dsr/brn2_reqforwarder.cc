@@ -221,8 +221,8 @@ BRN2RequestForwarder::push(int, Packet *p_in)
   if ( (_me->isIdentical(&src_addr)) ||
        (_link_table->is_associated(src_addr)) ||
        (findOwnIdentity(request_route) != -1) ) {
-    BRN_DEBUG("* I (=%s) sourced this RREQ or already listed; ignore., #ID %d", device_addr->unparse().c_str(),
-                                                                                ntohs(brn_dsr->dsr_id));
+    BRN_DEBUG("* I (=%s) sourced this RREQ or already listed; ignore., #ID %d, is_associated %s, findOwnIdentity %d", device_addr->unparse().c_str(),
+                                                                                ntohs(brn_dsr->dsr_id), (_link_table->is_associated(src_addr))?"true":"false", findOwnIdentity(request_route));
 
     if ( _passive_ack_interval != 0 ) {
       BRN_DEBUG("Check passive");
