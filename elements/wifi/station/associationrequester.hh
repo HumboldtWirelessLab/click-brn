@@ -58,9 +58,10 @@ class AssociationRequester : public Element { public:
 
   void process_response(Packet *p);
   void process_disassociation(Packet *p);
+
+  String get_wifi_reason_string(uint16_t code);
+
   bool _debug;
-
-
   bool _associated;
   EtherAddress _eth;
   class AvailableRates *_rtable;

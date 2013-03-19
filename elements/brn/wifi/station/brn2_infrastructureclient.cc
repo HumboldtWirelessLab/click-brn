@@ -222,17 +222,17 @@ BRN2InfrastructureClient::find_best_ap()
     for (BRN2BeaconScanner::VAPIter iter = pap._vaps.begin(); iter.live(); iter++) {
       BRN2BeaconScanner::vap ap = iter.value();
 
-      if ( _debug == BrnLogger::INFO ) {
+      if ( _debug >= BrnLogger::INFO ) {
         click_chatter("Next AP");
         StringAccum sa;
 
         sa << "WirelessInfo:";
-
-        sa << "AP-SSID: " << ap._ssid << " -> ";
-        sa << "MY-SSID: " << _wireless_info->_ssid;
-        sa << "AP-CHANNEL: " << ap._channel << " -> ";
-        sa << "MY-CHANNEL: " << _wireless_info->_channel;
-        sa << "AP-RSSI: " << ap._rssi << " -> ";
+        sa << "AP-Ether:" << ap._eth << " | ";
+        sa << "AP-SSID: " << ap._ssid << " | ";
+        sa << "MY-SSID: " << _wireless_info->_ssid << " | ";
+        sa << "AP-CHANNEL: " << ap._channel << " | ";
+        sa << "MY-CHANNEL: " << _wireless_info->_channel << " | ";
+        sa << "AP-RSSI: " << ap._rssi << " | ";
         sa << "BEST-RSSI: " << rssi;
 
         click_chatter("%s",sa.c_str());
@@ -299,14 +299,15 @@ BRN2InfrastructureClient::send_assoc_to_ap()
 int
 BRN2InfrastructureClient::send_disassoc_to_ap()
 {
+
   BRN_DEBUG("Try Disassoc");
-  
+
   if ( _assocreq->_associated ) {
     BRN_DEBUG("Send Disassoc");
     _assocreq->send_disassoc_req();
     _auth = false;
   } else {
-    BRN_DEBUG("Assoc is false");
+    BRN_DEBUG("Assoc is false, already disassociated");
   }
 
   return(0);
@@ -472,7 +473,7 @@ BRN2InfrastructureClient::add_handlers()
   add_write_handler("send_probe", send_probe_handler, 0);
   add_write_handler("send_auth", send_auth_handler, 0);
   add_write_handler("send_assoc", send_assoc_handler, 0);
-  add_write_handler("disassoc", send_disassoc_handler, 0);
+  add_write_handler("send_disassoc", send_disassoc_handler, 0);
   add_write_handler("do_assoc", do_assoc_handler, 0);
   add_write_handler("debug", write_debug_param, 0);
 }

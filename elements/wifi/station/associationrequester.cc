@@ -268,19 +268,37 @@ AssociationRequester::process_disassociation(Packet *p)
   ptr += 2;
 
   if (_winfo && _winfo->_bssid == bssid) {
-    click_chatter("%p{element} disassociation from %s reason %d\n",
+    click_chatter("%p{element} disassociation from %s reason %s (code: %d)\n",
 		  this,
 		  bssid.unparse().c_str(),
+		  get_wifi_reason_string(reason).c_str(),
 		  reason);
     _associated = false;
   } else {
-    click_chatter("%p{element} BAD disassociation from %s reason %d\n",
+    click_chatter("%p{element} BAD disassociation from %s reason %s (code: %d)\n",
 		  this,
 		  bssid.unparse().c_str(),
+		  get_wifi_reason_string(reason).c_str(),
 		  reason);
   }
   return;
 }
+
+String
+AssociationRequester::get_wifi_reason_string(uint16_t code) {
+	String reason_string[] = {	"WIFI_REASON_UNSPECIFIED",
+								"WIFI_REASON_AUTH_EXPIRE",
+								"WIFI_REASON_AUTH_LEAVE",
+								"WIFI_REASON_ASSOC_EXPIRE",
+								"WIFI_REASON_ASSOC_TOOMANY",
+								"WIFI_REASON_NOT_AUTHED",
+								"WIFI_REASON_NOT_ASSOCED",
+								"WIFI_REASON_ASSOC_LEAVE",
+								"WIFI_REASON_ASSOC_NOT_AUTHED"};
+
+	return reason_string[code-1];
+}
+
 void
 AssociationRequester::push(int, Packet *p)
 {
