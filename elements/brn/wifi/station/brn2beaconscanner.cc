@@ -24,6 +24,7 @@
 #include <clicknet/llc.h>
 #include <click/straccum.hh>
 #include <click/vector.hh>
+#include <click/timer.hh>
 #include <click/hashmap.hh>
 #include <click/packet_anno.hh>
 #include <elements/wifi/wirelessinfo.hh>
@@ -38,7 +39,8 @@
 CLICK_DECLS
 
 BRN2BeaconScanner::BRN2BeaconScanner()
-  : _debug(BrnLogger::DEFAULT),
+  : _timer(this),
+    _debug(BrnLogger::DEFAULT),
     _rtable(0),
     _winfo(0)
 {
@@ -64,6 +66,39 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
     return errh->error("BrnAvailableRates element is not a BrnAvailableRates");
 
   return 0;
+}
+
+int
+BRN2BeaconScanner::initialize(ErrorHandler *) {
+	_timer.initialize(this);
+	_timer.schedule_after_msec(100);
+	return 0;
+}
+
+void
+BRN2BeaconScanner::run_timer(Timer *)
+{
+  chk_beacon_timeout();
+  _timer.schedule_after_msec(100);
+}
+
+void
+BRN2BeaconScanner::chk_beacon_timeout() {
+	/* Check all APs in table if they have timed out.
+	 * We do this by means of the beacon interval
+	 * and the time now.
+	 */
+
+	for (APIter iter = _aps.begin(); iter.live(); iter++) {
+		vap ap = iter.value();
+
+		//BRN_DEBUG("INFO bi: %d last_rx: %d ts: %d", (uint32_t)ap._beacon_int, ap._last_rx.msecval(), Timestamp::now().msecval());
+
+		if ((uint32_t)ap._beacon_int + ap._last_rx.msecval() < Timestamp::now().msecval()) {
+			_aps.remove(ap._eth);
+			_paps.remove(ap._eth);
+		}
+	}
 }
 
 Packet *
@@ -94,11 +129,13 @@ BRN2BeaconScanner::simple_action(Packet *p)
     return p;
   }
 
+  //################### READ INFO DATA FROM BEACON ##########################
+
   uint8_t *ptr;
 
   ptr = (uint8_t *) p->data() + sizeof(struct click_wifi);
 
-  //uint8_t *ts = ptr;
+  //uint32_t timestamp = (uint32_t)*ptr;
   ptr += 8;
 
   uint16_t beacon_int = le16_to_cpu(*(uint16_t *) ptr);
@@ -199,7 +236,8 @@ BRN2BeaconScanner::simple_action(Packet *p)
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
-//###########################################################################
+  //######################## REGISTER AP ###############################
+
   ap->_eth = bssid;
   if (ssid != "") {
     /* don't overwrite blank ssids */
@@ -235,7 +273,9 @@ BRN2BeaconScanner::simple_action(Packet *p)
     ap->_recv_channel.push_back(recv_channel);
   }
 
-//###########################################################################
+
+  //########################### RATES #########################################
+
   ac_pap->_last_rx = Timestamp::now();
 
   ap->_basic_rates.clear();
