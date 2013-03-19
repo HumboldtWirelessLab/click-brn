@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-DClusterProtocol::DClusterProtocol()
-{
-}
-
-DClusterProtocol::~DClusterProtocol()
-{
-}
-
 int
 DClusterProtocol::pack(struct dcluster_info *info, char *packet, int p_len)
 {
@@ -32,5 +24,5 @@ DClusterProtocol::unpack(struct dcluster_info *info, char *packet, int p_len) {
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DClusterProtocol)
+ELEMENT_PROVIDES(DClusterProtocol)
 

@@ -101,5 +101,5 @@ BRNProtocol::get_brnheader_in_etherframe(Packet *p)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRNProtocol)
+ELEMENT_PROVIDES(BRNProtocol)
 

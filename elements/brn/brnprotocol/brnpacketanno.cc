@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-BRNPacketAnno::BRNPacketAnno()
-{
-}
-
-BRNPacketAnno::~BRNPacketAnno()
-{
-}
-
 EtherAddress
 BRNPacketAnno::dst_ether_anno(Packet *p)
 {
@@ -208,5 +200,5 @@ BRNPacketAnno::set_channel_anno(Packet *p, uint8_t channel)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BRNPacketAnno)
+ELEMENT_PROVIDES(BRNPacketAnno)
 

@@ -190,12 +190,8 @@ struct click_brn_dsr {
 #define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
 #define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
 
-class DSRProtocol : public Element { public:
-
-  DSRProtocol();
-  ~DSRProtocol();
-
-  const char *class_name() const	{ return "DSRProtocol"; }
+class DSRProtocol {
+ public:
 
   static int header_length(Packet *p);
   static int header_length(click_brn_dsr *brn_dsr);

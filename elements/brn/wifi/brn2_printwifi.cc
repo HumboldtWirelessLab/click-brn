@@ -526,6 +526,7 @@ BRN2PrintWifi::simple_action(Packet *p)
 
     switch (subtype) {
     case WIFI_FC0_SUBTYPE_ASSOC_REQ: {
+      
       uint16_t capability = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
@@ -550,14 +551,14 @@ BRN2PrintWifi::simple_action(Packet *p)
       }
       sa << " ";
 
-      if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) //if crc-error then print empty ssid
-        sa << " ssid: (empty)";
-      else
-      {
+      if ( (ceh->magic == WIFI_EXTRA_MAGIC && ceh->flags & WIFI_EXTRA_RX_ERR)) { //if crc-error then print empty ssid
+        sa << "seq: 65525 "; //TODO: fix
+        sa << " ssid: (empty) ";
+      } else {
         if ( valid_ssid(&ssid) )
           sa << " ssid: " << ssid;
         else
-          sa << " ssid: (invalid_ssid)";
+          sa << " ssid: (invalid_ssid) ";
       }
 
       sa << "listen_int: " << l_int << " ";
@@ -591,7 +592,7 @@ BRN2PrintWifi::simple_action(Packet *p)
         sa << " 00-00-00-00-00-00";
       }
       sa << " ";
-
+      sa << "seq: 65565 "; //TODO: fix
       sa << capability_string(capability);
       sa << " status " << (int) status << " " << status_string(status);
       sa << " associd " << associd << " ";

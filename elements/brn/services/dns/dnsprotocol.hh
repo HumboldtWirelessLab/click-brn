@@ -22,13 +22,8 @@ struct dns_header {
 
 #define DNS_HEADER_SIZE sizeof(dns_header)
 
-class DNSProtocol : public Element {
+class DNSProtocol {
  public:
-
-  DNSProtocol();
-  ~DNSProtocol();
-
-  const char *class_name() const	{ return "DNSProtocol"; }
 
   static int set_dns_header(Packet *p, uint16_t _id, uint16_t flags, uint16_t qdcount,
                                        uint16_t ancount, uint16_t nscount, uint16_t arcount);
@@ -43,7 +38,6 @@ class DNSProtocol : public Element {
   static bool isInDomain(String name, String domain );
 
   static const unsigned char *get_rddata(Packet *p, uint16_t *rdlength);
-
 
 };
 

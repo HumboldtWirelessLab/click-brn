@@ -7,26 +7,26 @@
 #include <click/timer.hh>
 #include <clicknet/ether.h>
 
-#include "hawk_protocol.hh"
-#include "hawk_routingpeek.hh"
+#include "dart_protocol.hh"
+#include "dart_routingpeek.hh"
 
 CLICK_DECLS
 
-HawkRoutingPeek::HawkRoutingPeek()
+DartRoutingPeek::DartRoutingPeek()
 {
   RoutingPeek::init();
 }
 
-HawkRoutingPeek::~HawkRoutingPeek()
+DartRoutingPeek::~DartRoutingPeek()
 {
 }
 
 uint32_t
-HawkRoutingPeek::get_all_header_len(Packet *)
+DartRoutingPeek::get_all_header_len(Packet *)
 {
-  return (sizeof(click_brn) + sizeof(struct hawk_routing_header));
+  return (sizeof(click_brn) + sizeof(struct dart_routing_header));
 }
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(RoutingPeek)
-EXPORT_ELEMENT(HawkRoutingPeek)
+EXPORT_ELEMENT(DartRoutingPeek)
