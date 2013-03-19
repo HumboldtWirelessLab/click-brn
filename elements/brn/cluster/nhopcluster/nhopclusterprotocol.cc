@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-NHopClusterProtocol::NHopClusterProtocol()
-{
-}
-
-NHopClusterProtocol::~NHopClusterProtocol()
-{
-}
-
 int
 NHopClusterProtocol::get_type(Packet *p, int offset) {
   struct nhopcluster_packet_header *h;
@@ -126,5 +118,5 @@ NHopClusterProtocol::unpack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data, i
 
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(NHopClusterProtocol)
+ELEMENT_PROVIDES(NHopClusterProtocol)
 

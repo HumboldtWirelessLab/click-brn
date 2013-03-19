@@ -2,7 +2,7 @@
 #include <click/etheraddress.hh>
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
-#include "brnprotocol.hh"
+#include "brntools.hh"
 
 CLICK_DECLS
 
@@ -36,5 +36,5 @@ BRNTools::getBitposition(uint32_t x)
 }
 
 CLICK_ENDDECLS
-PROVIDES_ELEMENT(BRNTools)
+ELEMENT_PROVIDES(BRNTools)
 

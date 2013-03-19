@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-DNSProtocol::DNSProtocol()
-{
-}
-
-DNSProtocol::~DNSProtocol()
-{
-}
-
 int
 DNSProtocol::set_dns_header(Packet *p, uint16_t _id, uint16_t flags, uint16_t qdcount,
                             uint16_t ancount, uint16_t nscount, uint16_t arcount)
@@ -153,5 +145,5 @@ DNSProtocol::isInDomain(String name, String domain )
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(DNSProtocol)
+ELEMENT_PROVIDES(DNSProtocol)
 

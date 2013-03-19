@@ -51,12 +51,8 @@ struct nhopcluster_lp_info {
 }__attribute__ ((packed));
 
 
-class NHopClusterProtocol : public Element { public:
-
-  NHopClusterProtocol();
-  ~NHopClusterProtocol();
-
-  const char *class_name() const { return "NHopClusterProtocol"; }
+class NHopClusterProtocol {
+ public:
 
   static int pack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data, int max_size);
   static int unpack_lp(struct nhopcluster_lp_info *lpi, uint8_t *data, int size);

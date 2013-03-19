@@ -16,7 +16,7 @@ class WifiErrorClassifier : public BRNElement {
   ~WifiErrorClassifier();
 
   const char *class_name() const  { return "WifiErrorClassifier"; }
-  const char *port_count() const  { return "1/1-8"; }
+  const char *port_count() const  { return "1/1-9"; }
   const char *processing() const  { return PROCESSING_A_AH; }
 
   void add_handlers();
@@ -34,6 +34,7 @@ class WifiErrorClassifier : public BRNElement {
   uint32_t _p_mic;
   uint32_t _p_zerorate;
   uint32_t _p_unknown;
+  uint32_t _p_phantom;
 };
 
 CLICK_ENDDECLS

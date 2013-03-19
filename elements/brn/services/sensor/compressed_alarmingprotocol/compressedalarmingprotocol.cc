@@ -6,14 +6,6 @@
 
 CLICK_DECLS
 
-CompressedAlarmingProtocol::CompressedAlarmingProtocol()
-{
-}
-
-CompressedAlarmingProtocol::~CompressedAlarmingProtocol()
-{
-}
-
 WritablePacket *
 CompressedAlarmingProtocol::new_alarming_packet(int type)
 {
@@ -94,4 +86,4 @@ CompressedAlarmingProtocol::remove_node_with_high_ttl(Packet *p, uint8_t ttl)
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(CompressedAlarmingProtocol)
+ELEMENT_PROVIDES(CompressedAlarmingProtocol)
