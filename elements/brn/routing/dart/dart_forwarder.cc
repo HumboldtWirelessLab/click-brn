@@ -42,7 +42,9 @@ CLICK_DECLS
 
 DartForwarder::DartForwarder()
   : _debug(BrnLogger::DEFAULT),
+    _opt(0),
     _me()
+    
 {
 
 }
@@ -60,6 +62,7 @@ DartForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
       "DARTROUTING", cpkP+cpkM, cpElement, &_dartrouting,
       "DRT", cpkP+cpkM, cpElement, &_drt,
       "DEBUG", cpkN, cpInteger, &_debug,
+      "OPT", cpkN, cpInteger, &_opt,
       cpEnd) < 0)
     return -1;
 
@@ -94,7 +97,7 @@ DartForwarder::push(int port, Packet *p_in)
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
   if ( port == 0 ) ttl--;
-
+BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(header->_dst_nodeid).c_str());
   BRN_DEBUG("Src: %s (%s) Dst: %s (%s) TTL: %d Port: %d", src_addr.unparse().c_str(),
                                  DartFunctions::print_id(header->_src_nodeid, ntohl(header->_src_nodeid_length)).c_str(),
                                                           dst_addr.unparse().c_str(),
@@ -118,9 +121,12 @@ DartForwarder::push(int port, Packet *p_in)
 
     DHTnode *n = _drt->get_neighbour(&dst_addr);  //check whether destination is a neighbouring node
 
-    if ( n == NULL )
+    if ( n == NULL ){
+     if (_opt == 1)
+      n = _dartrouting->get_responsibly_node_opt(header->_dst_nodeid);
+     else
       n = _dartrouting->get_responsibly_node(header->_dst_nodeid);
-
+}
     BRN_DEBUG("Responsible is %s",n->_ether_addr.unparse().c_str());
 
     if ( n->equalsEtherAddress(_dartrouting->_me) ) {         //for clients, which have the same id but different ethereaddress
