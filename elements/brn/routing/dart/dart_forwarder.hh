@@ -45,6 +45,7 @@ class DartForwarder : public Element {
   //member
   //
   int _debug;
+  int _opt;
 
   //
   //methods

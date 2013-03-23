@@ -80,7 +80,7 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   BRN_DEBUG("Successor maintenance timer");
-
+BRN_DEBUG("Successor is fix: %s",String(_frt->isFixSuccessor()).c_str());
   //TODO: check age of succ and set him fix if the information is not too old
   if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE ) && ( _frt->successor ) ) {
     BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(),
@@ -177,7 +177,6 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   BRN_DEBUG("handle_request_succ");
 
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
-
   _frt->add_node(&src);
 
 
@@ -232,7 +231,6 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
                             _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
         BRN_DEBUG("------2-------: I've better succ than my pre.  Succ: %s  Pre: %s",
                          best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
-        BRN_DEBUG("%s",_frt->routing_info().c_str());
       }
       /*end of debug stuff*/
 

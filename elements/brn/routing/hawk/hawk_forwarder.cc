@@ -102,12 +102,12 @@ HawkForwarder::push(int port, Packet *p_in)
   BRN_DEBUG("entries=%i",_rt->_rt.size() );
 
   HawkRoutingtable::RTEntry *entry;
-  for(int i = 0; i < _rt->_rt.size(); i++) {
+/*  for(int i = 0; i < _rt->_rt.size(); i++) {
     entry = _rt->_rt[i];
 
     BRN_DEBUG("entry node=%s, next_hop=%s", entry->_dst.unparse().c_str(),entry->_next_phy_hop.unparse().c_str());
     BRN_DEBUG(" next_overlay=%s",entry->_next_hop.unparse().c_str());
-  }
+  }*/
 
   /*
    * Here we are sure than the packet comes from the source over last hop,
@@ -159,7 +159,13 @@ HawkForwarder::push(int port, Packet *p_in)
         //n = _falconrouting->get_responsibly_node_for_key(header->_next_etheraddress, &(_rt->_known_hosts));
         n = _falconrouting->get_responsibly_node_for_key(header->_dst_nodeid, &(_rt->_known_hosts));
       }
+ BRN_DEBUG("fingertable size=%d" , _falconrouting->_frt->_fingertable.size() );
+  for( int i = 0; i < _falconrouting->_frt->_fingertable.size(); i++ )
+  {
+    DHTnode* node = _falconrouting->_frt->_fingertable.get_dhtnode(i);
 
+    BRN_DEBUG("addr=%s",node->_ether_addr.unparse().c_str());
+}
       BRN_DEBUG("Responsible is %s",n->_ether_addr.unparse().c_str());
 
       if ( n->equalsEtherAddress(_falconrouting->_me) ) { //for clients, which have the
@@ -203,8 +209,8 @@ HawkForwarder::push(int port, Packet *p_in)
       int loop_counter = 0;
       while ( ( next_phy_hop != NULL ) && (! _rt->isNeighbour(next_phy_hop)) ) {
         next_phy_hop = _rt->getNextHop(next_phy_hop);
-        loop_counter++;
-        if ( loop_counter > 10 ) next_phy_hop = NULL; //TODO: why 10??
+        //loop_counter++;
+        //if ( loop_counter > 10 ) next_phy_hop = NULL; //TODO: why 10??
       }
 
       if ( next_phy_hop == NULL ) {

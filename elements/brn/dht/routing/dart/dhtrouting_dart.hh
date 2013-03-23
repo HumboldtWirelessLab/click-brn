@@ -42,9 +42,10 @@ class DHTRoutingDart : public DHTRouting
 
   private:
     DHTnode *get_responsibly_node_for_key(md5_byte_t *key);
-
+    DHTnode *get_responsibly_node_for_key_opt(md5_byte_t *key);
   public:
     DHTnode *get_responsibly_node(md5_byte_t *key, int replica_number = 0);
+    DHTnode *get_responsibly_node_opt(md5_byte_t *key, int replica_number = 0);
 
     bool range_query_support() { return false; }
     void range_query_min_max_id(uint8_t */*min*/, uint8_t */*max*/) {}
