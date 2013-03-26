@@ -123,6 +123,8 @@ class BRN2BeaconScanner : public Element { public:
 
   BrnAvailableRates *_rtable;
   WirelessInfo *_winfo;
+  
+  uint32_t _timeout;
 
 };
 
