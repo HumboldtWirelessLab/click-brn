@@ -125,8 +125,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   BRN_DEBUG("handle_request_pos");
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &position);
-
-  _frt->add_node(&src);
+   _frt->add_node(&src);
 
   find_node = _frt->find_node(&src);
 
@@ -148,7 +147,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
     if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
-                      &(srcEther));
+                      &(srcEther),false);
 
   }
   /** End Hawk stuff */
@@ -156,6 +155,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   /** Check for and handle error in Routingtable of the source of the request. If he think that i'm his succ
       but he is not my Pred. then send him a notice, that he is wrong and what his succ in my opinion */
+//TODO: check fingers for being a better succ and tell this my pre
   if ( ( position == 0 ) && ( ! src.equals(_frt->predecessor) ) ) {
     BRN_WARN("Node (%s) ask for my position 0 (for him i'm his successor) but is not my predecessor",
                                                                    src._ether_addr.unparse().c_str());
@@ -171,7 +171,6 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
                 _frt->_me->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str(),
                 best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
 
-      BRN_DEBUG("%s",_frt->routing_info().c_str());
     }
 
     WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,

@@ -47,6 +47,7 @@ class DartFunctions {
 
     static int diff_bit(DHTnode *a, md5_byte_t *key);
     static int position_last_1(DHTnode *a);
+    static int position_first_0(DHTnode *a);
     static int sibling_position(DHTnode *a, DHTnode *b);
 
 

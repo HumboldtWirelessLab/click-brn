@@ -108,8 +108,12 @@ for op in $@; do
 	    fi
 	
 	    JAVAINCLUDE="$JAVA_HOME/include"
-	
-	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
+	    
+	    if [ ! -e $JAVAINCLUDE ]; then
+		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
+	    else
+		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
+	    fi
 	    ;;
 	"tools")
 	    #( cd elements/brn/tools/tinyxml; make clean; rm -f *.o; CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" make libtinyxml.a ; rm -f *.o;CROSS_COMPILE="$GCCPREFIX" CC="$GCCPREFIX\gcc" CXX="$GCCPREFIX\g++" LD="$GCCPREFIX\g++" EXTRA_CXXFLAGS="-fPIC" make libtinyxml.so; make install )

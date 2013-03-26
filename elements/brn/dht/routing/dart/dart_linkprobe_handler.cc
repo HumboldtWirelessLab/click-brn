@@ -41,6 +41,8 @@ CLICK_DECLS
 DartLinkProbeHandler::DartLinkProbeHandler():
     _drt(NULL),
     _linkstat(NULL),
+    _neighbour_nodes_index(0),
+    _no_nodes_per_lp(DART_DEFAULT_NO_NODES_PER_LINKPROBE),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -67,17 +69,17 @@ DartLinkProbeHandler::configure(Vector<String> &conf, ErrorHandler *errh)
  */
 
 static int
-tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int size)
+tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t size)
 {
   DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
   return dhtd->lpSendHandler(buffer, size);
 }
 
 static int
-rx_handler(void *element, EtherAddress */*src*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size,bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
   DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
-  return dhtd->lpReceiveHandler(buffer, size);
+  return dhtd->lpReceiveHandler(buffer, size,is_neighbour);
 }
 int
 DartLinkProbeHandler::initialize(ErrorHandler *)
@@ -87,20 +89,30 @@ DartLinkProbeHandler::initialize(ErrorHandler *)
 }
 
 int
-DartLinkProbeHandler::lpSendHandler(char *buffer, int size)
+DartLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 {
   int len;
+DHTnodelist nodes;
+int send_nodes;
 
   if ( ! _drt->_validID ) return -1;  //return -1 to signal that we have no information
 
   BRN_DEBUG("Pack Linkprobe data.");
 
-  len = DHTProtocolDart::pack_lp((uint8_t*)buffer, size, _drt->_me, NULL);
+    send_nodes = MIN(MIN(_no_nodes_per_lp, _drt->_neighbours.size()),
+/*DHTProtocolDart::max_no_nodes_in_lp(size)*/ 5);
+
+    for (int32_t i = 0; i < send_nodes; i++ ) {
+      _neighbour_nodes_index = ( _neighbour_nodes_index + 1 ) % _drt->_neighbours.size();
+      nodes.add_dhtnode(_drt->_neighbours.get_dhtnode(_neighbour_nodes_index));
+    }
+
+  len = DHTProtocolDart::pack_lp((uint8_t*)buffer, size, _drt->_me, &nodes);
   return len;
 }
 
 int
-DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
+DartLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighbour)
 {
 //  int len;
   DHTnode first;
@@ -108,7 +120,7 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
   BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
   /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
-
+BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
   _drt->add_neighbour(&first);
   _drt->add_nodes(&nodes);
   /* Just add. No other element need to be informed. So don't cal drt->update here.*/

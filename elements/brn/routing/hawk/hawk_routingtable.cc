@@ -8,7 +8,6 @@
 #include "elements/brn/dht/routing/falcon/falcon_linkprobe_handler.hh"
 #include "elements/brn/dht/routing/falcon/falcon_successor_maintenance.hh"
 #include "elements/brn/dht/routing/falcon/falcon_routingtable_maintenance.hh"
-
 #include "hawk_routingtable.hh"
 
 CLICK_DECLS
@@ -57,7 +56,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
   BRN_DEBUG("Add Entry.");
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
-
+bool is_neighbour = false;
   if ( *ea == *next_phy ) {
     BRN_DEBUG("Add neighbour. Check first");
 #pragma message "Use var instead of fix value"
@@ -65,6 +64,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
       BRN_DEBUG("Kill bad neighbour");
       return NULL;
     }
+    else is_neighbour = true;
   }
 
   for(int i = 0; i < _rt.size(); i++) {                         //search
@@ -72,10 +72,12 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
       memcpy(_rt[i]->_dst_id, id, MAX_NODEID_LENTGH);           //update id
       _rt[i]->_dst_id_length = id_len;
       _rt[i]->_time = Timestamp::now();
-
-      if ( ! _rt[i]->nextHopIsNeighbour() ) {
+      if ( ! _rt[i]->nextHopIsNeighbour()  || 
+		is_neighbour  ||
+           _rt[i]->_is_direct == false) {
         _rt[i]->updateNextHop(next_phy);
         _rt[i]->updateNextPhyHop(next_phy);
+        _rt[i]->_is_direct = true;
       }
 
       return _rt[i];
@@ -88,7 +90,8 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
 
   BRN_DEBUG("Entry is new: Dst: %s Next: %s", ea->unparse().c_str(),
                                               next_phy->unparse().c_str());
-  HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next_phy, next_phy);
+  bool is_direct = true;
+  HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next_phy, next_phy,is_direct);
   _rt.push_back(n);
 
   return n;
@@ -117,6 +120,13 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
     * reach next we will use next overlay");
     */
   BRN_INFO("Add overlay link. Next Phy can differ from next.");
+  BRN_INFO("Test");
+  if (ea != NULL)
+    BRN_INFO("DST:%s",ea->unparse().c_str());
+  if (next != NULL)
+    BRN_INFO("next:%s",next->unparse().c_str());
+  if  (next_phy != NULL)
+    BRN_INFO("NEXT_phy:%s",next_phy->unparse().c_str());
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s NEXT: %s", ea->unparse().c_str(),
                                                     next_phy->unparse().c_str(),
                                                     next->unparse().c_str());
@@ -141,7 +151,8 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
 
   BRN_DEBUG("Entry is new: Dst: %s NextPhy: %s Next: %s", ea->unparse().c_str(),
                             next_phy->unparse().c_str(),next->unparse().c_str());
-  HawkRoutingtable::RTEntry *n = new RTEntry(ea, id, id_len, next_phy, next);
+bool is_direct = false;
+  HawkRoutingtable::RTEntry *n = new RTEntry(ea, id, id_len, next_phy, next,is_direct);
   _rt.push_back(n);
 
   return n;

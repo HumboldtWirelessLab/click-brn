@@ -146,6 +146,14 @@ DartFunctions::position_last_1(DHTnode *a)
 }
 
 int
+DartFunctions::position_first_0(DHTnode *a)
+{
+  for ( int i = 0; i <= (a->_digest_length  - 1); i++ )
+    if ( (a->_md5_digest[i/8] & ( 1 << (i%8))) == 0 ) return i;
+  return a->_digest_length;
+}
+
+int
 DartFunctions::sibling_position(DHTnode *a, DHTnode *b)
 {
   int minlen,i;
