@@ -204,6 +204,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       BRN_DEBUG("I'm his successor !");           //just send reply
       BRN_DEBUG("Src: %s Dst: %s Node: %s", src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),
                                             succ._ether_addr.unparse().c_str());
+
       WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR,
                                                                     _frt->_me, FALCON_RT_POSITION_SUCCESSOR, packet);
       output(0).push(p);

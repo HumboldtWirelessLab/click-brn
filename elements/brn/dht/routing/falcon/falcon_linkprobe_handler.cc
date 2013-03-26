@@ -165,6 +165,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_nei
   int32_t len;
   DHTnode first;
   DHTnodelist nodes;
+  DHTnode *add_node;
 
   if ( ! _active ) {
     BRN_DEBUG("Not active. Time since start: %d. delay: %d", (Timestamp::now() - _start).msecval(),_delay);
@@ -197,6 +198,12 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_nei
   if ( (_rfrt != NULL) && (is_neighbour) ) {
     //add first as next phy hop for set "nodes"
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
+
+    /* TODO: Knoten nur hinzufügen, wenn sie noch gar nicht bekannt sind
+    for (int32_t i = 0; i < nodes.size(); i++ ) {
+      add_node = nodes.get_dhtnode(i);
+      _rfrt->addEntry(&(add_node->_ether_addr), add_node->_md5_digest, add_node->_digest_length, &(first._ether_addr));
+    }*/
   }
 
   nodes.del();
