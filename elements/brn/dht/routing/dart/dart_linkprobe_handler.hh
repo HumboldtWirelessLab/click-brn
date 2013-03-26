@@ -28,6 +28,8 @@
 
 CLICK_DECLS
 
+#define DART_DEFAULT_NO_NODES_PER_LINKPROBE 5
+
 class DartLinkProbeHandler : public Element
 {
 
@@ -46,13 +48,14 @@ class DartLinkProbeHandler : public Element
 
   bool can_live_reconfigure() const  { return false; }
 
-  int lpSendHandler(char *buffer, int size);
-  int lpReceiveHandler(char *buffer, int size);
+  int lpSendHandler(char *buffer, int32_t size);
+  int lpReceiveHandler(char *buffer, int32_t size,bool is_neighbour);
 
  private:
   DartRoutingTable *_drt;
   BRN2LinkStat *_linkstat;
-
+  int _neighbour_nodes_index;
+int _no_nodes_per_lp;
   int _debug;
 };
 

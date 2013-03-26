@@ -66,9 +66,9 @@ class DHTProtocolDart {
 
  public:
 
-  static int pack_lp(uint8_t *buffer, int buffer_len, DHTnode *me, DHTnodelist *nodes);
-  static int unpack_lp(uint8_t *buffer, int buffer_len, DHTnode *first, DHTnodelist *nodes);
-
+  static int pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes);
+  static int unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes);
+  static int32_t max_no_nodes_in_lp(int32_t buffer_len);
   static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status);
   static void get_info(Packet *p, DHTnode *src, uint8_t *status);
   static WritablePacket *new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p);

@@ -93,12 +93,12 @@ tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t siz
 }
 
 static int32_t
-rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size, bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size,bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
   FalconLinkProbeHandler *dhtf = (FalconLinkProbeHandler*)element;
   if ( dhtf == NULL ) return 0;
 
-  return dhtf->lpReceiveHandler(buffer, size, is_neighbour);
+  return dhtf->lpReceiveHandler(buffer, size , is_neighbour);
 }
 
 int
@@ -160,7 +160,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 }
 
 int32_t
-FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_neighbour)
+FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighbour)
 {
   int32_t len;
   DHTnode first;
@@ -187,23 +187,25 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size, bool is_nei
   if ( is_neighbour) {
     _frt->add_neighbour(&first);
   } else {
-    _frt->add_node(&first);
+  if(_rfrt == NULL)//the route to first has to be known for hawk,but in this case it isnt 
+	_frt->add_node(&first);
   }
-
-  if ( (_rfrt == NULL) || (is_neighbour) ) {  //disable if hawk is used and first is not a neighbour to avoid unreachable successor
+  if ( (_rfrt == NULL) || is_neighbour  ) {  //disable if hawk is used and first is not a neighbour to avoid unreachable successor
     _frt->add_nodes(&nodes);
   }
 
   //Add Neighbour (src of lp)
   if ( (_rfrt != NULL) && (is_neighbour) ) {
     //add first as next phy hop for set "nodes"
+    //but only for the nodes i dont know yet
+    //therefore i dont get a route that is from me and it will end in a circle
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
 
-    /* TODO: Knoten nur hinzufügen, wenn sie noch gar nicht bekannt sind
-    for (int32_t i = 0; i < nodes.size(); i++ ) {
-      add_node = nodes.get_dhtnode(i);
-      _rfrt->addEntry(&(add_node->_ether_addr), add_node->_md5_digest, add_node->_digest_length, &(first._ether_addr));
-    }*/
+	for(int i = 0;i<nodes.size();i++){
+	DHTnode* next = nodes.get_dhtnode(i);
+        if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL)
+	_rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr));
+	}
   }
 
   nodes.del();

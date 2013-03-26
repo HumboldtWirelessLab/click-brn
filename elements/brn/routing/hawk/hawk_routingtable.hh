@@ -26,18 +26,20 @@ class HawkRoutingtable : public BRNElement {
 
       EtherAddress _next_phy_hop;
       EtherAddress _next_hop;
+      bool _is_direct;
 
 
       Timestamp _time;
 
       RTEntry( EtherAddress *ea, uint8_t *id, int id_len,
-               EtherAddress *next_phy, EtherAddress *next) {
+               EtherAddress *next_phy, EtherAddress *next,bool is_direct) {
         _dst_id_length = id_len;
         memcpy(_dst_id, id, MAX_NODEID_LENTGH);
         _dst = EtherAddress(ea->data());
         _next_hop = EtherAddress(next->data());
         _next_phy_hop = EtherAddress(next_phy->data());
         _time = Timestamp::now();
+        _is_direct = is_direct;
       }
 
       ~RTEntry() {};
@@ -81,7 +83,7 @@ class HawkRoutingtable : public BRNElement {
   HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
                                       EtherAddress *next_phy);
 
-  HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
+ HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
                                       EtherAddress *next_phy, EtherAddress *next);
 
 //  HawkRoutingtable::RTEntry *addLink(EtherAddress *dst, uint8_t *dst_id, int dst_len,
