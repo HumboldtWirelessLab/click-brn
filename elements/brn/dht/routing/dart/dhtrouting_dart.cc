@@ -135,6 +135,61 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
   return best_node;
 }
 
+
+DHTnode *
+DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
+{
+//  int diffbit;
+  DHTnode *best_node = NULL;
+  int position_best_node;
+  DHTnode *acnode;
+  int position_ac_node;
+  int diffbit_ac_node;
+  int diffbit_best_node;
+
+  BRN_DEBUG("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+
+  if ( DartFunctions::equals(_drt->_me, key) ) {
+    BRN_DEBUG("It's me");
+    return _drt->_me;
+  }
+
+  /*diffbit =*/ DartFunctions::diff_bit(_drt->_me, key);
+
+  for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
+    acnode = _drt->_neighbours.get_dhtnode(n);
+    if ( DartFunctions::equals(acnode, key) ) {
+      BRN_DEBUG("have full node");
+      return acnode;
+    }
+diffbit_ac_node = DartFunctions::diff_bit(acnode, key);
+    if ( (best_node == NULL) || (diffbit_best_node < diffbit_ac_node)  ) {
+      position_best_node = position_ac_node,
+      best_node = acnode;
+    }
+    else{
+	if (diffbit_best_node == diffbit_ac_node){
+     	  position_ac_node = DartFunctions::position_first_0(acnode);
+     	  position_best_node = DartFunctions::position_first_0(best_node);
+     	  if (position_ac_node < position_best_node){
+	 	position_best_node = position_ac_node;
+	 	best_node = acnode;
+	  }
+        }
+     }
+  }
+
+
+  //TODO: this should never happen so check it dispensable
+  if ( best_node == NULL ) {
+    BRN_WARN("No node for id found. So use default.");
+    best_node = _drt->_me;
+  }
+
+  return best_node;
+}
+
+
 DHTnode *
 DHTRoutingDart::get_responsibly_node(md5_byte_t *key, int replica_number)
 {
@@ -151,6 +206,23 @@ DHTRoutingDart::get_responsibly_node(md5_byte_t *key, int replica_number)
   replica_key[0] ^= r_swap;
 
   return get_responsibly_node_for_key(replica_key);
+}
+DHTnode*
+DHTRoutingDart::get_responsibly_node_opt(md5_byte_t *key, int replica_number)
+{
+  if ( replica_number == 0 ) return get_responsibly_node_for_key_opt(key);
+
+  uint8_t r,r_swap;
+  md5_byte_t replica_key[MAX_NODEID_LENTGH];
+
+  memcpy(replica_key, key, MAX_NODEID_LENTGH);
+  r = replica_number;
+  r_swap = 0;
+
+  for( int i = 0; i < 8; i++ ) r_swap |= ((r >> i) & 1) << (7 - i);
+  replica_key[0] ^= r_swap;
+
+  return get_responsibly_node_for_key_opt(replica_key);
 }
 
 /****************************************************************************************

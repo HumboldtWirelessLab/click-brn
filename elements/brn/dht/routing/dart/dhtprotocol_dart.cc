@@ -29,20 +29,42 @@
 
 CLICK_DECLS
 
-int
-DHTProtocolDart::pack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *me, DHTnodelist */*nodes*/)
+int32_t
+DHTProtocolDart::max_no_nodes_in_lp(int32_t buffer_len)
 {
+  return (buffer_len/sizeof(struct dht_dart_lp_node_entry))-1;
+}
+
+int
+DHTProtocolDart::pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes)
+{
+
+if ( (unsigned)buffer_len < sizeof(struct dht_dart_lp_node_entry) ) return 0;
+
   struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
   ne->status = me->_status;
   ne->id_size = me->_digest_length;
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
   memcpy(ne->id, me->_md5_digest, MAX_NODEID_LENTGH);
 
-  return sizeof(dht_dart_lp_node_entry);
+  int32_t buffer_left = buffer_len - sizeof(struct dht_dart_lp_node_entry);
+  int32_t node_index = 0;
+
+  if ( nodes != NULL ) {
+    while ( (buffer_left >= (int)sizeof(struct dht_dart_lp_node_entry)) && ( node_index < nodes->size()) ) {
+      DHTnode *ac_node = nodes->get_dhtnode(node_index);
+      node_index++;
+      ne[node_index].status = ac_node->_status;
+      memcpy(ne[node_index].etheraddr, ac_node->_ether_addr.data(), 6);
+      memcpy(ne[node_index].id, ac_node->_md5_digest, sizeof(ne->id));
+      buffer_left -= sizeof(struct dht_dart_lp_node_entry);
+    }
+  }
+return sizeof(dht_dart_lp_node_entry) * (node_index + 1);
 }
 
 int
-DHTProtocolDart::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, DHTnodelist */*nodes*/)
+DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes)
 {
   struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
 
@@ -51,6 +73,20 @@ DHTProtocolDart::unpack_lp(uint8_t *buffer, int /*buffer_len*/, DHTnode *first, 
   first->set_update_addr(ne->etheraddr);
   first->set_nodeid(ne->id, ne->id_size);
 
+
+  int32_t buffer_left = sizeof(struct dht_dart_lp_node_entry);
+  int32_t node_index = 0;
+
+  if ( nodes != NULL ) {
+    while ( buffer_left < buffer_len ) {
+      node_index++;
+      DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].id);
+      ac_node->_age = Timestamp::now();
+      ac_node->_status = ne[node_index].status;
+      nodes->add_dhtnode(ac_node);
+      buffer_left += sizeof(struct dht_dart_lp_node_entry);
+    }
+  }
   return 0;
 }
 
