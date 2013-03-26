@@ -162,7 +162,13 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     BRN_WARN("me: %s, mypre: %s , node. %s", _frt->_me->_ether_addr.unparse().c_str(),
                                              _frt->predecessor->_ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
-    DHTnode *best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/);
+    DHTnode *best_succ;
+
+    if ( _rfrt != NULL ) {
+      best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/, &(_rfrt->_known_hosts)); //TODO: use params
+    } else {
+      best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); //TODO: use params
+    }
 
     if ( best_succ->equals(_frt->predecessor) ) {
       BRN_DEBUG("RoutingTable :------1-------: My pre is his succ");
