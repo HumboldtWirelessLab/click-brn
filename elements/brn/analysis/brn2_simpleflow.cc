@@ -218,8 +218,13 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
  * @param packet 
  */
 void
-BRN2SimpleFlow::push( int /*port*/, Packet *packet )
+BRN2SimpleFlow::push( int port, Packet *packet )
 {
+  if ( port == 1 ) {
+    handle_reuse(packet);
+    return;
+  }
+
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
   Timestamp send_time;
   send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
@@ -366,7 +371,7 @@ BRN2SimpleFlow::sendAck(Packet *p, Flow *f)
 }
 */
 WritablePacket*
-BRN2SimpleFlow::nextPacketforFlow(Flow *f)
+BRN2SimpleFlow::nextPacketforFlow(Flow *f, Packet */*packet*/)
 {
   WritablePacket *p;
   WritablePacket *p_brn;
@@ -434,6 +439,19 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_FLOW, BRN_PORT_FLOW, SIMPLEFLOW_MAXHOPCOUNT, DEFAULT_TOS);
 
   return p_brn;
+}
+
+void
+BRN2SimpleFlow::handle_reuse(Packet *packet)
+{
+  struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
+  EtherAddress dst_ea = EtherAddress(header->dst);
+  Flow *f_tx = _tx_flowMap.find(dst_ea);
+
+  if ( f_tx->_rate == 0 ) {
+    WritablePacket *p = nextPacketforFlow(f_tx, packet);
+    output(0).push(p);
+  }
 }
 
 void
