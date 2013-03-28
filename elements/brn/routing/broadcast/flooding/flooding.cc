@@ -315,13 +315,11 @@ Flooding::push( int port, Packet *packet )
  
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
       BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
-      BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
         add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
       }
-#endif
     }
-    
+#endif  
     push(1,  packet);
   }
 }
