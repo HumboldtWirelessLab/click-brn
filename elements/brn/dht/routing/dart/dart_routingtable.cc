@@ -59,11 +59,15 @@ DartRoutingTable::add_node(DHTnode *node)
 
   if ( n == NULL ) {
     n = node->clone();
-    _allnodes.add_dhtnode(n);
-    if ( n->_neighbor ) _neighbours.add_dhtnode(n);
+    if ( (node->_digest_length != 0) || (node->_neighbor)) { 
+      _allnodes.add_dhtnode(n);
+      if ( n->_neighbor ) _neighbours.add_dhtnode(n);
+    }
   } else {
-    DartFunctions::copy_id(n,node);
-    //TODO: update rest of node
+    if ( n->_digest_length < node->_digest_length ) {
+      DartFunctions::copy_id(n,node);
+      //TODO: update rest of node
+    }
   }
 
   return 0;

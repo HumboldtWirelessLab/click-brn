@@ -43,7 +43,7 @@ class DHTnode
   public:
 
     md5_byte_t _md5_digest[MAX_NODEID_LENTGH];
-    int _digest_length;                        //number of used BITS of _md5_digest
+    uint16_t _digest_length;                        //number of used BITS of _md5_digest
     uint32_t *_md5_digest32;                   //TODO: use this for faster compare of nodeids
 
     EtherAddress _ether_addr;
@@ -66,14 +66,14 @@ class DHTnode
 
     DHTnode(EtherAddress addr);
     DHTnode(EtherAddress addr, md5_byte_t *nodeid);
-    DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length);
+    DHTnode(EtherAddress addr, md5_byte_t *nodeid, uint16_t digest_length);
 
     void reset();                       //TODO: check need
 
     void set_update_addr(uint8_t *ea);  //Takes and sets etheraddr and calculates node_id (md5) TODO: finds better name
     void set_etheraddress(uint8_t *ea); //only sets node_id
     void set_nodeid(md5_byte_t *nodeid);//only sets node_id; len = max_len
-    void set_nodeid(md5_byte_t *nodeid, int digest_length);
+    void set_nodeid(md5_byte_t *nodeid, uint16_t digest_length);
 
     void get_nodeid(md5_byte_t *nodeid, uint8_t *digest_length);
 

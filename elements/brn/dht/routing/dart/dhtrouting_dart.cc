@@ -154,7 +154,7 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
     return _drt->_me;
   }
 
-  /*diffbit =*/ DartFunctions::diff_bit(_drt->_me, key);
+  diffbit_best_node = DartFunctions::diff_bit(_drt->_me, key);
 
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours.get_dhtnode(n);
@@ -162,7 +162,7 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
       BRN_DEBUG("have full node");
       return acnode;
     }
-diffbit_ac_node = DartFunctions::diff_bit(acnode, key);
+    diffbit_ac_node = DartFunctions::diff_bit(acnode, key);
     if ( (best_node == NULL) || (diffbit_best_node < diffbit_ac_node)  ) {
       position_best_node = position_ac_node,
       best_node = acnode;

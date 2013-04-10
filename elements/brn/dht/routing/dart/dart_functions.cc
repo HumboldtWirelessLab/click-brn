@@ -21,6 +21,7 @@
 #include <click/etheraddress.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/standard/brn_md5.hh"
 #include "elements/brn/dht/standard/dhtnode.hh"
 #include "elements/brn/dht/standard/dhtnodelist.hh"
@@ -29,12 +30,14 @@
 CLICK_DECLS
 
 String
-DartFunctions::print_id(md5_byte_t *digest, int len)
+DartFunctions::print_id(md5_byte_t *digest, uint16_t len)
 {
   StringAccum sa;
 
   sa << "->";
 
+  len = MIN(MAX_NODEID_LENTGH,len);
+  
   for ( int i = 0; i < len; i++ )
     sa << ( ( digest[ i / 8 ] >> ( i % 8 ) ) & 1 );
 
@@ -50,10 +53,12 @@ DartFunctions::print_id(DHTnode* n)
 }
 
 String
-DartFunctions::print_raw_id(md5_byte_t *digest, int len)
+DartFunctions::print_raw_id(md5_byte_t *digest, uint16_t len)
 {
   StringAccum sa;
-
+  
+  len = MIN(MAX_NODEID_LENTGH,len);
+  
   for ( int i = 0; i < len; i++ ) sa << ( ( digest[ i / 8 ] >> ( i % 8 ) ) & 1 );
 
   return sa.take_string();
@@ -80,7 +85,7 @@ DartFunctions::copy_id(DHTnode *dst, DHTnode *src)
 }
 
 void
-DartFunctions::append_id_bit(DHTnode *node, int bit)
+DartFunctions::append_id_bit(DHTnode *node, uint16_t bit)
 {
   if ( node->_digest_length == MAX_DIGEST_LENGTH )
     click_chatter("No space left in nodeid !");
@@ -91,7 +96,7 @@ DartFunctions::append_id_bit(DHTnode *node, int bit)
 }
 
 bool
-DartFunctions::equals(md5_byte_t *a, md5_byte_t *b, int len)
+DartFunctions::equals(md5_byte_t *a, md5_byte_t *b, uint16_t len)
 {
   for ( int i = 0; i < (len / 8); i++ ) if ( a[i] != b[i] ) return false;
   for ( int i = 0; i < (len % 8); i++ ) if ( (a[len/8] & (1 << i)) != (b[len/8] & (1 << i)) ) return false;
@@ -106,14 +111,14 @@ DartFunctions::equals(DHTnode *node, md5_byte_t *key)
 }
 
 bool
-DartFunctions::equals(DHTnode *node, md5_byte_t *key, int len)
+DartFunctions::equals(DHTnode *node, md5_byte_t *key, uint16_t len)
 {
   return equals(node->_md5_digest, key, len);
 }
 
 
 bool
-DartFunctions::equals(DHTnode *a, DHTnode *b, int len)
+DartFunctions::equals(DHTnode *a, DHTnode *b, uint16_t len)
 {
   if ( (a->_digest_length < len) || (b->_digest_length < len) ) return false;
 
@@ -121,7 +126,7 @@ DartFunctions::equals(DHTnode *a, DHTnode *b, int len)
 }
 
 bool
-DartFunctions::equalBit(DHTnode *a, DHTnode *b, int len)
+DartFunctions::equalBit(DHTnode *a, DHTnode *b, uint16_t len)
 {
   if ( (a->_digest_length < len) && (b->_digest_length < len) ) return false;
   return ((a->_md5_digest[len/8] & (1 << (len%8))) == (b->_md5_digest[len/8] & (1 << (len%8))));
@@ -156,7 +161,7 @@ DartFunctions::position_first_0(DHTnode *a)
 int
 DartFunctions::sibling_position(DHTnode *a, DHTnode *b)
 {
-  int minlen,i;
+  uint16_t minlen,i;
 
   if ( a->_digest_length < b->_digest_length ) minlen = a->_digest_length;
   else minlen = b->_digest_length;

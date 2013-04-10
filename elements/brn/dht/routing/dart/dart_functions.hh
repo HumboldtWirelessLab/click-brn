@@ -32,18 +32,18 @@ class DartFunctions {
   public:
 
     static String print_id(DHTnode* n);
-    static String print_id(md5_byte_t *digest, int len);
+    static String print_id(md5_byte_t *digest, uint16_t len);
     static String print_raw_id(DHTnode* n);
-    static String print_raw_id(md5_byte_t *digest, int len);
+    static String print_raw_id(md5_byte_t *digest, uint16_t len);
     static bool has_max_id_length(DHTnode *n);
     static void copy_id(DHTnode *dst, DHTnode *src);
-    static void append_id_bit(DHTnode *node, int bit);
+    static void append_id_bit(DHTnode *node, uint16_t bit);
 
-    static bool equals(md5_byte_t *a, md5_byte_t *b, int len);
+    static bool equals(md5_byte_t *a, md5_byte_t *b, uint16_t len);
     static bool equals(DHTnode *node, md5_byte_t *key);
-    static bool equals(DHTnode *node, md5_byte_t *key, int len);
-    static bool equals(DHTnode *a, DHTnode *b, int len);
-    static bool equalBit(DHTnode *a, DHTnode *b, int len);
+    static bool equals(DHTnode *node, md5_byte_t *key, uint16_t len);
+    static bool equals(DHTnode *a, DHTnode *b, uint16_t len);
+    static bool equalBit(DHTnode *a, DHTnode *b, uint16_t len);
 
     static int diff_bit(DHTnode *a, md5_byte_t *key);
     static int position_last_1(DHTnode *a);
