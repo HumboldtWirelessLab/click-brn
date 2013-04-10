@@ -19,7 +19,7 @@ CLICK_DECLS
 
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
-    _clear_packet(false),
+    _clear_packet(true),
     _headroom(128),
     _start_active(false),
     _routing_peek(NULL),
@@ -384,6 +384,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f, Packet */*packet*/)
   p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
   if ( _clear_packet ) memset(p->data(),0,size);
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
+  
+  p->set_timestamp_anno(Timestamp::now());
 
   memcpy(header->src, f->_src.data(),6);
   memcpy(header->dst, f->_dst.data(),6);
