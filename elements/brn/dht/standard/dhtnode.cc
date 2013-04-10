@@ -54,7 +54,7 @@ DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid):
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
 
-DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, int digest_length):
+DHTnode::DHTnode(EtherAddress addr, md5_byte_t *nodeid, uint16_t digest_length):
   _status(STATUS_UNKNOWN),
   _last_ping(Timestamp(0)),
   _failed_ping(0),
@@ -117,7 +117,7 @@ DHTnode::set_nodeid(md5_byte_t *nodeid)
 }
 
 void
-DHTnode::set_nodeid(md5_byte_t *nodeid, int digest_length)
+DHTnode::set_nodeid(md5_byte_t *nodeid, uint16_t digest_length)
 {
   memset(_md5_digest, 0, sizeof(_md5_digest));
   _digest_length = digest_length;

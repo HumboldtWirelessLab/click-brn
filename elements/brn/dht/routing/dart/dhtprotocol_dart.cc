@@ -80,7 +80,7 @@ DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, 
   if ( nodes != NULL ) {
     while ( buffer_left < buffer_len ) {
       node_index++;
-      DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].id);
+      DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].id, ne[node_index].id_size);
       ac_node->_age = Timestamp::now();
       ac_node->_status = ne[node_index].status;
       nodes->add_dhtnode(ac_node);
