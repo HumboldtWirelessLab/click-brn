@@ -86,7 +86,7 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
 {
 //  int diffbit;
   DHTnode *best_node = NULL;
-  int position_best_node;
+  int position_best_node = 0;
   DHTnode *acnode;
   int position_ac_node;
 
@@ -113,9 +113,8 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
     }
   }
 
-
   if ( best_node == NULL ) {
-    //click_chatter("Search for shortest");
+    BRN_DEBUG("Search for shortest");
     for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
       acnode = _drt->_neighbours.get_dhtnode(n);
       position_ac_node = DartFunctions::position_last_1(acnode);
@@ -124,6 +123,8 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
         best_node = acnode;
       }
     }
+  } else {
+    BRN_DEBUG("Found longest prefix");
   }
 
   //TODO: this should never happen so check it dispensable
@@ -132,6 +133,7 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
     best_node = _drt->_me;
   }
 
+  BRN_DEBUG("Have Node: %s (me: %s)",DartFunctions::print_id(best_node).c_str(),DartFunctions::print_id(_drt->_me).c_str());
   return best_node;
 }
 
@@ -147,7 +149,7 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
   int diffbit_ac_node;
   int diffbit_best_node;
 
-  BRN_DEBUG("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+  BRN_DEBUG("Search(opt) for ID: %s",DartFunctions::print_id(key, 128).c_str());
 
   if ( DartFunctions::equals(_drt->_me, key) ) {
     BRN_DEBUG("It's me");

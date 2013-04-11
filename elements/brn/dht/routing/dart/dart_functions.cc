@@ -36,7 +36,7 @@ DartFunctions::print_id(md5_byte_t *digest, uint16_t len)
 
   sa << "->";
 
-  len = MIN(MAX_NODEID_LENTGH,len);
+  len = MIN(MAX_DIGEST_LENGTH,len);
   
   for ( int i = 0; i < len; i++ )
     sa << ( ( digest[ i / 8 ] >> ( i % 8 ) ) & 1 );

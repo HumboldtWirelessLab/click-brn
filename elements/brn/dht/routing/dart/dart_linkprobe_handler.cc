@@ -76,10 +76,11 @@ tx_handler(void *element, const EtherAddress */*src*/, char *buffer, int32_t siz
 }
 
 static int
-rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size,bool is_neighbour, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+rx_handler(void *element, EtherAddress */*src*/, char *buffer, int32_t size, bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate)
 {
   DartLinkProbeHandler *dhtd = (DartLinkProbeHandler*)element;
-  return dhtd->lpReceiveHandler(buffer, size,is_neighbour);
+  if ( (fwd_rate < 10) || (rev_rate < 10) ) is_neighbour = false;
+  return dhtd->lpReceiveHandler(buffer, size, is_neighbour);
 }
 int
 DartLinkProbeHandler::initialize(ErrorHandler *)
@@ -120,7 +121,8 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighb
 
   BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
   /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
-BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
+  
+  BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
   _drt->add_neighbour(&first);
   _drt->add_nodes(&nodes);
   /* Just add. No other element need to be informed. So don't cal drt->update here.*/
