@@ -103,7 +103,7 @@ DartRoutingTableMaintenance::getBestNeighbour()
 void
 DartRoutingTableMaintenance::table_maintenance()
 {
-  BRN_DEBUG("table maintenance");
+  BRN_INFO("table maintenance");
 
   if ( ( _activestart ) && ( ! _drt->_validID ) && ( _drt->_neighbours.size() == 0 ) )  {
     //I'm active, have no valid ID and no neighbour to ask for an ID
