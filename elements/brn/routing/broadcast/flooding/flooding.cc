@@ -48,7 +48,8 @@ Flooding::Flooding()
     _flooding_rx(0),
     _flooding_sent(0),
     _flooding_fwd(0),
-    _flooding_passive(0)
+    _flooding_passive(0),
+    _flooding_last_node_due_to_passive(0)
 {
   BRNElement::init();
 }
@@ -257,7 +258,6 @@ Flooding::push( int port, Packet *packet )
 
       output(1).push(out_packet);
 
-      
     } else {
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
       if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
@@ -314,8 +314,12 @@ Flooding::push( int port, Packet *packet )
       src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
  
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
-      BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
+        BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
+	if ( get_last_node(&src,(int32_t)p_bcast_id, &rx_node) == NULL ) {
+	  BRN_ERROR("Add new node to last node due to passive unicast...");
+	  _flooding_last_node_due_to_passive++;
+	}
         add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
       }
     }
@@ -410,15 +414,28 @@ Flooding::reset()
   }
 }
 
-int
+struct Flooding::BroadcastNode::flooding_last_node*
 Flooding::get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last)
 {
 #ifdef FLOODING_EXTRA_STATS
   BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn == NULL ) return -1;
+  if ( bcn == NULL ) return NULL;
   return bcn->get_last_node(id, last);
 #else
-  return -1
+  return NULL;
+#endif
+}
+
+struct Flooding::BroadcastNode::flooding_last_node*
+Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+{
+  *size = 0;
+#ifdef FLOODING_EXTRA_STATS
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn == NULL ) return NULL;
+  return bcn->get_last_nodes(id, size);
+#else
+  return NULL;
 #endif
 }
 
@@ -432,7 +449,8 @@ Flooding::stats()
   sa << "\t<received count=\"" << _flooding_rx << "\" />\n";
   sa << "\t<sent count=\"" << _flooding_sent << "\" />\n";
   sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n";
-  sa << "\t<passive count=\"" << _flooding_passive << "\" />\n</flooding>\n";
+  sa << "\t<passive count=\"" << _flooding_passive << "\" />\n";
+  sa << "\t<last_node_passive count=\"" << _flooding_last_node_due_to_passive << "\" />\n</flooding>\n";
 
   return sa.take_string();
 }
