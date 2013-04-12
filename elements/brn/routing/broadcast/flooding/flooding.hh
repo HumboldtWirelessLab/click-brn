@@ -237,15 +237,28 @@ class Flooding : public BRNElement {
         _last_node_list_size[index]++;
       }
 
-      inline int get_last_node(uint32_t id, EtherAddress *node) {
+      inline struct flooding_last_node* get_last_node(uint32_t id, EtherAddress *last) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
-        if (_last_node_list[index] == NULL) return -1;
-        else {
-          struct flooding_last_node *fln = _last_node_list[index];
-          *node = EtherAddress(fln[0].etheraddr);
-        }
-        return 1;
+        if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
+	
+	struct flooding_last_node *fln = _last_node_list[index];
+	int fln_i = _last_node_list_size[index];
+
+        //search for node
+        for ( int i = 0; i < fln_i; i++ )
+          if ( memcmp(last->data(), fln[i].etheraddr, 6) == 0 ) return &fln[i];
+
+	return NULL;
+      }
+      
+      inline struct flooding_last_node* get_last_nodes(uint32_t id, uint32_t *size) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+
+	*size = 0;
+        if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
+	*size = (uint32_t)( _last_node_list_size[index]);
+        return _last_node_list[index];
       }
 #endif
 
@@ -284,7 +297,8 @@ class Flooding : public BRNElement {
   String table();
   void reset();
 
-  int get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
   
  private:
   //
@@ -309,6 +323,7 @@ class Flooding : public BRNElement {
   uint32_t _flooding_sent;
   uint32_t _flooding_fwd;
   uint32_t _flooding_passive;
+  uint32_t _flooding_last_node_due_to_passive;
   
 };
 

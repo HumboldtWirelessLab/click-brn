@@ -34,13 +34,13 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
-#include "flooding.hh"
 #include "floodingpassiveack.hh"
 
 CLICK_DECLS
 
 FloodingPassiveAck::FloodingPassiveAck():
-  _retries(0),
+  _dfl_retries(0),
+  _dfl_timeout(0),
   _retransmit_broadcast(NULL)
 {
   BRNElement::init();
@@ -54,8 +54,8 @@ int
 FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-      "RETRIES", cpkP, cpInteger, &_retries,
+      "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
+      "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -69,15 +69,10 @@ FloodingPassiveAck::initialize(ErrorHandler *)
   return 0;
 }
 
-void
-FloodingPassiveAck::push( int /*port*/, Packet */*packet*/ )
-{
-
-}
-
 int
-FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
+FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
 {
+  
   return 0;
 }
 

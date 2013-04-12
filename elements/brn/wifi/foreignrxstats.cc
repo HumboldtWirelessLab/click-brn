@@ -83,8 +83,10 @@ ForeignRxStats::simple_action(Packet *p)
       return p;
     }
   
-    if ((type ==  WIFI_FC0_TYPE_CTL) && ((wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) == WIFI_FC0_SUBTYPE_ACK)) {
+    if ((type ==  WIFI_FC0_TYPE_CTL) && ((wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) == WIFI_FC0_SUBTYPE_ACK) && (last_packet != NULL)) {
       BRN_DEBUG("Ack: %d",(p->timestamp_anno() - last_packet->timestamp_anno()).msecval() );
+      BRN_DEBUG("Last: %d (%s, %s)  P: %d (%s, %s) Timeout: %d",last_packet->length(), last_packet->timestamp_anno().unparse().c_str(), last_packet_src.unparse().c_str(),
+		                                                p->length(), p->timestamp_anno().unparse().c_str(), dst.unparse().c_str(), ack_timeout);
       
       if ((last_packet != NULL) && (p->length() >= 10) && (last_packet_src == dst) &&
 	  ((p->timestamp_anno() - last_packet->timestamp_anno()).msecval() <= ack_timeout)) {

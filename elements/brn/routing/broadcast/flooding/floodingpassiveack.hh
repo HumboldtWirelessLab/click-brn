@@ -33,6 +33,8 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
+//#include "flooding.hh"
+
 CLICK_DECLS
 
 /*
@@ -42,11 +44,47 @@ CLICK_DECLS
  *
  * =d
  */
-
+ 
+ /*
+  * Flooding (oder ein andere element) 
+  * 
+  * 
+  * 
+  * 
+  * 
+  */
+ 
 class FloodingPassiveAck : public BRNElement {
 
  public:
-
+  class PassiveAckPacket
+   {
+     public:
+      Packet *_p;
+      EtherAddress _src;
+      uint16_t _bcast_id;
+      Vector<EtherAddress> _passiveack;
+      
+      int16_t _max_retries;
+      uint16_t _retries;
+      
+      Timestamp _enqueue_time;
+      
+      uint32_t _timeout;
+      Timestamp _next_timeout;
+      
+      PassiveAckPacket(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> &passiveack, int16_t retries, uint32_t timeout)
+      {
+        _p = p;
+	_src = EtherAddress(src->data());
+	_bcast_id = bcast_id;
+	//if ( passiveack != NULL )
+	 // for ( int i = 0; i < passiveack.length(); i++) _passiveack.push_back(passiveack[i]);
+      }
+   };
+   
+   typedef Vector<PassiveAckPacket*> PAckPacketVector;
+   typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
   //
   //methods
   //
@@ -56,12 +94,10 @@ class FloodingPassiveAck : public BRNElement {
   const char *class_name() const  { return "FloodingPassiveAck"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "0/1"; }
+  const char *port_count() const  { return "0/0"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
-
-  void push( int port, Packet *packet );
 
   int initialize(ErrorHandler *);
   void add_handlers();
@@ -71,21 +107,26 @@ class FloodingPassiveAck : public BRNElement {
   //member
   //
 
-  BRN2NodeIdentity *_me;
-
-  uint16_t _retries;
+  uint32_t _dfl_retries;
+  uint32_t _dfl_timeout;
+  
+  BRNElement *_retransmit_element;  
+  //Flooding *_flooding;
 
  public:
+  
+  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
-  BRNElement *_retransmit_element;
-  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t);
-
-  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t)) {
+  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t)) {
     _retransmit_element = e;
     _retransmit_broadcast = retransmit_bcast;
   }
 
-  int packet_enqueue(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
+ // void set_flooding(Flooding *flooding) { _flooding = flooding; }
+  
+  int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
+
+  void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
 
 };
 
