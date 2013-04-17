@@ -115,16 +115,6 @@ WifiErrorClassifier::simple_action(Packet *p)
 
       return 0;
     }
-    if ( ceha->flags & WIFI_EXTRA_RX_MIC_ERR )
-    {
-      _p_mic++;
-      if ( noutputs() > 5 )
-        output(5).push(p);
-      else
-        p->kill();
-
-      return 0;
-    }
 
     _p_unknown++;
     if ( noutputs() > 8 )
