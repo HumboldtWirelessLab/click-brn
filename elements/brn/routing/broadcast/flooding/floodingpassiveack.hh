@@ -32,8 +32,8 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-
-//#include "flooding.hh"
+#include "../../../../../include/click/timestamp.hh"
+#include "../../../../grid/locfromfile.hh"
 
 CLICK_DECLS
 
@@ -53,12 +53,15 @@ CLICK_DECLS
   * 
   * 
   */
+
+class Flooding;
  
 class FloodingPassiveAck : public BRNElement {
 
  public:
   class PassiveAckPacket
-   {
+  {
+#define PASSIVE_ACK_DFL_MAX_RETRIES 10
      public:
       Packet *_p;
       EtherAddress _src;
@@ -71,16 +74,52 @@ class FloodingPassiveAck : public BRNElement {
       Timestamp _enqueue_time;
       
       uint32_t _timeout;
+      Timestamp _last_timeout;
       Timestamp _next_timeout;
       
-      PassiveAckPacket(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> &passiveack, int16_t retries, uint32_t timeout)
+      PassiveAckPacket(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries, uint32_t timeout)
       {
         _p = p;
 	_src = EtherAddress(src->data());
 	_bcast_id = bcast_id;
-	//if ( passiveack != NULL )
-	 // for ( int i = 0; i < passiveack.length(); i++) _passiveack.push_back(passiveack[i]);
+	if ( passiveack != NULL )
+	  for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
+	 
+        _max_retries = PASSIVE_ACK_DFL_MAX_RETRIES;
+	
+	_last_timeout = _enqueue_time = Timestamp::now();
+	set_retries(retries);
+	set_timeout(timeout);
+	set_next_retry();
+
+	_retries = 0;
+	
+	
       }
+
+      void set_timeout(uint32_t timeout) {
+      	_timeout = timeout;
+	_next_timeout = _last_timeout + Timestamp::make_msec(timeout);
+      }
+
+      void set_retries(uint32_t retries) {
+	_retries = retries;
+      }
+
+      void set_next_retry() {
+	_retries++;
+	_last_timeout = _next_timeout;
+	_next_timeout = _last_timeout + Timestamp::make_msec(_timeout);
+      }
+      
+      inline int32_t time_left(Timestamp now) {
+	return (_next_timeout - now).msecval();
+      }
+      
+      inline uint32_t retries_left() {
+	return _max_retries - _retries;
+      }
+
    };
    
    typedef Vector<PassiveAckPacket*> PAckPacketVector;
@@ -111,22 +150,28 @@ class FloodingPassiveAck : public BRNElement {
   uint32_t _dfl_timeout;
   
   BRNElement *_retransmit_element;  
-  //Flooding *_flooding;
+  Flooding *_flooding;
+
+  PAckPacketVector p_queue;
+
+  PassiveAckPacket *get_next_packet();
 
  public:
   
-  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t);
+  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
-  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t)) {
+  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t)) {
     _retransmit_element = e;
     _retransmit_broadcast = retransmit_bcast;
   }
 
- // void set_flooding(Flooding *flooding) { _flooding = flooding; }
+  void set_flooding(Flooding *flooding) { _flooding = flooding; }
   
   int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 
   void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
+    
+  String stats();
 
 };
 
