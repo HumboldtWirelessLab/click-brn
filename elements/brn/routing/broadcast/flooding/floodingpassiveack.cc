@@ -133,10 +133,18 @@ String
 FloodingPassiveAck::stats()
 {
   StringAccum sa;
+  Timestamp now = Timestamp::now();
 
-  sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (_flooding)?(int)1:(int)0;
+  sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (int)((_flooding!=NULL)?1:0);
   sa << "\" >\n\t<packetqueue count=\"" << p_queue.size() << "\" />\n";
-  
+
+  for ( int i = 0; i < p_queue.size(); i++ ) {
+    PassiveAckPacket *p_next = p_queue[i];
+    
+    sa << "\t\t<packet src=\"" << p_next->_src.unparse() << "\" bcast_id=\"" << (uint32_t)p_next->_bcast_id;
+    sa << "\" enque_time=\"" << p_next->_enqueue_time.unparse() << "\" time_left=\"" << p_next->time_left(now);
+    sa << "\" />\n";
+  }
   
   sa << "</floodingpassiveack>\n";
 
