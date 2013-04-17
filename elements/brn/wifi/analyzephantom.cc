@@ -17,13 +17,13 @@ AnalyzePhantom::AnalyzePhantom()
 {
   int i;
 
-  for (i = 0; i < QUEUE_LEN; i++) {
+ /* for (i = 0; i < QUEUE_LEN; i++) {
 
     pkt_q[i].p        = NULL;
     pkt_q[i].err_type = INIT;
     //pkt_q[i].ts       = NULL;
   }
-
+*/
 
   BRNElement::init();
 }
@@ -49,6 +49,8 @@ Packet *
 AnalyzePhantom::simple_action(Packet *p)
 {
   //BRN_DEBUG("Analyze Phantom");
+
+  if (1) { return p; }
 
   struct click_wifi_extra *ceha = WIFI_EXTRA_ANNO(p);
   struct pkt_q_entry pkt;
