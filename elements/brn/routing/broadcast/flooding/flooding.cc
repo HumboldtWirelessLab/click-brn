@@ -74,9 +74,9 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 static int
-static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id)
+static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
-  return ((Flooding*)e)->retransmit_broadcast(p, src, fwd, bcast_id);
+  return ((Flooding*)e)->retransmit_broadcast(p, src, bcast_id);
 }
 
 int
@@ -390,7 +390,7 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success)
 }
 
 int
-Flooding::retransmit_broadcast(Packet */*p*/, EtherAddress */*src*/, EtherAddress */*fwd*/, uint16_t /*bcast_id*/)
+Flooding::retransmit_broadcast(Packet */*p*/, EtherAddress */*src*/, uint16_t /*bcast_id*/)
 {
   return 0;
 }
@@ -427,16 +427,18 @@ Flooding::get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last)
 }
 
 struct Flooding::BroadcastNode::flooding_last_node*
+#ifdef FLOODING_EXTRA_STATS
 Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+#else
+Flooding::get_last_nodes(EtherAddress *, uint32_t, uint32_t *size)
+#endif
 {
   *size = 0;
 #ifdef FLOODING_EXTRA_STATS
   BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn == NULL ) return NULL;
-  return bcn->get_last_nodes(id, size);
-#else
-  return NULL;
+  if ( bcn != NULL ) return bcn->get_last_nodes(id, size);
 #endif
+  return NULL;
 }
 
 String

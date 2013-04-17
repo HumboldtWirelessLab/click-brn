@@ -41,6 +41,8 @@ CLICK_DECLS
 FloodingPassiveAck::FloodingPassiveAck():
   _dfl_retries(0),
   _dfl_timeout(0),
+  _retransmit_element(NULL),
+  _flooding(NULL),
   _retransmit_broadcast(NULL)
 {
   BRNElement::init();
@@ -48,6 +50,13 @@ FloodingPassiveAck::FloodingPassiveAck():
 
 FloodingPassiveAck::~FloodingPassiveAck()
 {
+  for ( int i = 0; i < p_queue.size(); i++ ) {
+    PassiveAckPacket *p_next = p_queue[i];
+    p_next->_p->kill();
+    delete p_next;
+  }
+  
+  p_queue.clear();
 }
 
 int
@@ -72,19 +81,81 @@ FloodingPassiveAck::initialize(ErrorHandler *)
 int
 FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
 {
+  if ( retries < 0 ) retries = _dfl_retries;
+
+  PassiveAckPacket *pap = new PassiveAckPacket(p, src, bcast_id, passiveack, retries, _dfl_timeout);
   
+  p_queue.push_back(pap);
+    
   return 0;
 }
 
+void
+FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
+{
+  for ( int i = 0; i < p_queue.size(); i++ ) {
+    PassiveAckPacket *p_next = p_queue[i];
+    if ((p_next->_bcast_id == bcast_id) && (p_next->_src == *src)) {
+      p_next->_p->kill();
+      delete p_next;
+      p_queue.erase(p_queue.begin() + i);
+      break;
+    }   
+  }
+}
+
+FloodingPassiveAck::PassiveAckPacket *
+FloodingPassiveAck::get_next_packet()
+{
+  Timestamp now = Timestamp::now();
+  
+  if ( p_queue.size() == 0 ) return NULL;
+
+  PassiveAckPacket *pap = p_queue[0];
+  int32_t next_time  = pap->time_left(now);
+  
+  for ( int i = 1; i < p_queue.size(); i++ ) {
+    PassiveAckPacket *p_next = p_queue[i];
+    if ( p_next->time_left(now) < next_time ) {
+      next_time = p_next->time_left(now);
+      pap = p_next;
+    }
+  }
+  
+  return pap;
+}
 
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
 
+String
+FloodingPassiveAck::stats()
+{
+  StringAccum sa;
+
+  sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (_flooding)?(int)1:(int)0;
+  sa << "\" >\n\t<packetqueue count=\"" << p_queue.size() << "\" />\n";
+  
+  
+  sa << "</floodingpassiveack>\n";
+
+  return sa.take_string();
+}
+
+static String
+read_stats_param(Element *e, void *)
+{
+  return ((FloodingPassiveAck *)e)->stats();
+}
+
 void
 FloodingPassiveAck::add_handlers()
 {
   BRNElement::add_handlers();
+
+  add_read_handler("stats", read_stats_param, 0);
+
 }
 
 CLICK_ENDDECLS
