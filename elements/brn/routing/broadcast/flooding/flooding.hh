@@ -291,7 +291,7 @@ class Flooding : public BRNElement {
   void add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
 #endif
 
-  int retransmit_broadcast(Packet *p, EtherAddress *src, EtherAddress *fwd, uint16_t bcast_id);
+  int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
   String stats();
   String table();
