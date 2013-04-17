@@ -61,7 +61,7 @@ AnalyzePhantom::simple_action(Packet *p)
 
     //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
 
-    insert(pkt);
+    insert_pkt(pkt);
     analyze();
 
   } else if ( (ceha->flags & WIFI_EXTRA_RX_CRC_ERR) == WIFI_EXTRA_RX_CRC_ERR ) {
@@ -71,7 +71,7 @@ AnalyzePhantom::simple_action(Packet *p)
 
     //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
 
-    insert(pkt);
+    insert_pkt(pkt);
     analyze();
 
   } else if ( (ceha->flags & WIFI_EXTRA_RX_PHY_ERR) ==  WIFI_EXTRA_RX_PHY_ERR ) {
@@ -81,7 +81,7 @@ AnalyzePhantom::simple_action(Packet *p)
 
     //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
 
-    insert(pkt);
+    insert_pkt(pkt);
     analyze();
 
   } else {
@@ -114,7 +114,6 @@ AnalyzePhantom::insert_pkt(struct pkt_q_entry pkt)
 void
 AnalyzePhantom::analyze()
 {
-
 }
 
 

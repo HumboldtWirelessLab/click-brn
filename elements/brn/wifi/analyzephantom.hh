@@ -47,7 +47,7 @@ public:
 
 
 private:
-  void insert_pkt(Packet *p, u_int32_t err_type);
+  void insert_pkt(struct pkt_q_entry pkt);
   void analyze();
 
 };
