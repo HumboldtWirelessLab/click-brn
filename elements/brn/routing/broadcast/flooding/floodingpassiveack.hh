@@ -158,9 +158,9 @@ class FloodingPassiveAck : public BRNElement {
 
  public:
   
-  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t);
+  int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
-  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, EtherAddress *, uint16_t)) {
+  void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t)) {
     _retransmit_element = e;
     _retransmit_broadcast = retransmit_bcast;
   }
