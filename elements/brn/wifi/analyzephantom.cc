@@ -1,3 +1,12 @@
+#include <click/config.h>
+#include <click/error.hh>
+#include <click/confparse.hh>
+#include <click/packet_anno.hh>
+#include <click/straccum.hh>
+#include <clicknet/wifi.h>
+#include <click/packet.hh>
+#include <click/timestamp.hh>
+
 #include "analyzephantom.hh"
 
 
@@ -12,7 +21,7 @@ AnalyzePhantom::AnalyzePhantom()
 
     pkt_q[i].p        = NULL;
     pkt_q[i].err_type = INIT;
-    pkt_q[i].ts       = INIT;
+    //pkt_q[i].ts       = NULL;
   }
 
 
@@ -48,39 +57,43 @@ AnalyzePhantom::simple_action(Packet *p)
   if ( (ceha->flags & WIFI_EXTRA_RX_PHANTOM_ERR) == WIFI_EXTRA_RX_PHANTOM_ERR ) {
     pkt.p        = p;
     pkt.err_type = WIFI_EXTRA_RX_PHANTOM_ERR;
-    pkt.ts       = timestamp_anno():
+    pkt.ts       = p->timestamp_anno();
 
-    //insert(pkt);
+    //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
+
+    insert(pkt);
     analyze();
 
   } else if ( (ceha->flags & WIFI_EXTRA_RX_CRC_ERR) == WIFI_EXTRA_RX_CRC_ERR ) {
     pkt.p        = p;
     pkt.err_type = WIFI_EXTRA_RX_CRC_ERR;
-    pkt.ts       = timestamp_anno():
+    pkt.ts       = p->timestamp_anno();
 
-    //insert(pkt);
+    //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
+
+    insert(pkt);
     analyze();
 
   } else if ( (ceha->flags & WIFI_EXTRA_RX_PHY_ERR) ==  WIFI_EXTRA_RX_PHY_ERR ) {
     pkt.p        = p;
     pkt.err_type = WIFI_EXTRA_RX_PHY_ERR;
-    pkt.ts       = timestamp_anno():
+    pkt.ts       = p->timestamp_anno();
 
-    //insert(pkt);
+    //BRN_DEBUG("%s\n", pkt.ts.unparse().c_str());
+
+    insert(pkt);
     analyze();
 
   } else {
     /* TODO? */
   }
 
-  BRN_DEBUG("%s\n", pkt.ts.unparse());
-
   return p;
 }
 
 
 void
-AnalyzePhantom::insert_pkt(Paket *p, u_int32_t err_type)
+AnalyzePhantom::insert_pkt(struct pkt_q_entry pkt)
 {
   int i;
 
@@ -94,6 +107,7 @@ AnalyzePhantom::insert_pkt(Paket *p, u_int32_t err_type)
     }
   }
 
+  pkt_q[0] = pkt;
 }
 
 

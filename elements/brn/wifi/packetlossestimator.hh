@@ -1,16 +1,13 @@
 #ifndef CLICK_PACKETLOSSESTIMATOR_HH
 #define CLICK_PACKETLOSSESTIMATOR_HH
 
-#include <math.h>
 #include <click/config.h>
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <click/args.hh>
 #include <click/ip6address.hh>
 #include <click/packet_anno.hh>
-#if CLICK_NS
-	#include <click/router.hh>
-#endif
+#include <click/router.hh>
 
 #include "elements/analysis/timesortedsched.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"

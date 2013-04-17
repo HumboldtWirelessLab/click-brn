@@ -47,7 +47,7 @@ public:
 
 
 private:
-  void insert_pkt(Paket *p, u_int32_t err_type);
+  void insert_pkt(Packet *p, u_int32_t err_type);
   void analyze();
 
 };
