@@ -92,7 +92,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-      "FLOODINGINFO", cpkP+cpkM, cpElement, &_flooding,
+      "FLOODING", cpkP+cpkM, cpElement, &_flooding,
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
       "CANDSELECTIONSTRATEGY", cpkP, cpInteger, &_cand_selection_strategy,

@@ -25,15 +25,11 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timestamp.hh>
-#include <click/bighashmap.hh>
-#include <click/hashmap.hh>
-#include <click/timestamp.hh>
+#include <click/timer.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "../../../../../include/click/timestamp.hh"
-#include "../../../../grid/locfromfile.hh"
 
 CLICK_DECLS
 
@@ -139,6 +135,8 @@ class FloodingPassiveAck : public BRNElement {
   bool can_live_reconfigure() const  { return false; }
 
   int initialize(ErrorHandler *);
+  void run_timer(Timer *);
+  
   void add_handlers();
 
  private:
@@ -153,11 +151,19 @@ class FloodingPassiveAck : public BRNElement {
   Flooding *_flooding;
 
   PAckPacketVector p_queue;
+  
+  bool _enable;
 
   PassiveAckPacket *get_next_packet();
+  void set_next_schedule();
+  void scan_packet_queue(int32_t time_tolerance);
+  
+  Timer _retransmit_timer;
 
  public:
   
+  void enable(bool e) { _enable = e; };
+
   int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
   void set_retransmit_bcast(BRNElement *e, int (*retransmit_bcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t)) {
