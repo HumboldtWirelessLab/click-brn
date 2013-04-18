@@ -15,7 +15,7 @@ CLICK_DECLS
 
 AnalyzePhantom::AnalyzePhantom()
 {
-  int i;
+  //int i;
 
  /* for (i = 0; i < QUEUE_LEN; i++) {
 
@@ -66,7 +66,7 @@ AnalyzePhantom::simple_action(Packet *p)
     insert_pkt(pkt);
     analyze();
 
-  } else if ( (ceha->flags & WIFI_EXTRA_RX_CRC_ERR) == WIFI_EXTRA_RX_CRC_ERR ) {
+  } else if ( (ceha->flags & WIFI_EXTRA_RX_CRC_ERR) == (uint32_t)WIFI_EXTRA_RX_CRC_ERR ) {
     pkt.p        = p;
     pkt.err_type = WIFI_EXTRA_RX_CRC_ERR;
     pkt.ts       = p->timestamp_anno();
