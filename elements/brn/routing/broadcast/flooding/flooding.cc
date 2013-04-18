@@ -43,7 +43,7 @@ CLICK_DECLS
 
 Flooding::Flooding()
   : _flooding_passiveack(NULL),
-    _bcast_id(1),
+    _bcast_id(0),
     _flooding_src(0),
     _flooding_rx(0),
     _flooding_sent(0),
@@ -84,6 +84,7 @@ Flooding::initialize(ErrorHandler *)
 {
   if (_flooding_passiveack != NULL ) {
     _flooding_passiveack->set_retransmit_bcast(this, static_retransmit_broadcast);
+    _flooding_passiveack->set_flooding((Flooding*)this);
   }
   return 0;
 }
@@ -113,6 +114,11 @@ Flooding::push( int port, Packet *packet )
     click_ether *ether = (click_ether *)packet->data();
     src = EtherAddress(ether->ether_shost);
 
+    _bcast_id++;
+    if ( _bcast_id == 0 ) _bcast_id = 1;
+    
+    _flooding_src++;                                                           //i was src of a flooding
+    
     add_id(&src,(uint32_t)_bcast_id, &now);
     forward_attempt(&src, _bcast_id);
 #ifdef FLOODING_EXTRA_STATS
@@ -142,16 +148,15 @@ Flooding::push( int port, Packet *packet )
 
     if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size);
 
-    _flooding_src++;                                                           //i was src of a flooding
-
-    _bcast_id++;
-    if ( _bcast_id == 0 ) _bcast_id = 1;
-
     if ( ttl == 0 ) ttl = DEFAULT_TTL;
 
     WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING,
                                                                          ttl, DEFAULT_TOS);
     BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
+    
+    if ( _flooding_passiveack != NULL ) {
+      _flooding_passiveack->packet_enqueue(out_packet, &src, _bcast_id, &passiveack, -1);
+    }
 
     output(1).push(out_packet);
 
@@ -255,6 +260,10 @@ Flooding::push( int port, Packet *packet )
 
       WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
       BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
+
+      if ( _flooding_passiveack != NULL ) {
+        _flooding_passiveack->packet_enqueue(out_packet, &src, _bcast_id, &passiveack, -1);
+      }
 
       output(1).push(out_packet);
 
@@ -390,11 +399,15 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success)
 }
 
 int
-Flooding::retransmit_broadcast(Packet */*p*/, EtherAddress */*src*/, uint16_t /*bcast_id*/)
+Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
-  return 0;
+  _flooding_fwd++;
+  forward_attempt(src, bcast_id);
+  
+  output(1).push(p);
 }
-
+  
+      
 
 void
 Flooding::reset()
