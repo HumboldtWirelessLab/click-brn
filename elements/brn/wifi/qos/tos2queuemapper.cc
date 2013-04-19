@@ -42,16 +42,9 @@ CLICK_DECLS
 
 //TODO: wie kommen die Werte zustande?
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
-/* Backoff-Matrix is  generated with the help of the birthday paradoxon with the following values (see matlab/backoff/script_backoff_nachbarn_aprox.m; "matrix_merken"
-   neighbours_min = 0
-   neighbours_max = 40
-   packet_loss = [0.1,0.15,0.2,0.25, 0.30,0.35,0.4,0.45,0.50,0.55]
 
-   _backoff_matrix[packet_loss][neighbours]
-*/
-
-static const uint32_t _backoff_packet_loss[10] = { 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 };
-static const uint32_t _backoff_matrix[10][40]={
+static const uint32_t _backoff_packet_loss_classic1[10] = { 10, 15, 20, 25, 30, 35, 40, 45, 50, 55 };
+static const uint32_t _backoff_matrix_classic1[10][40]={
   {0,1,10,30,59,97,145,202,269,345,431,526,631,745,869,1002,1145,1297,1459,1630,1810,2001,2200,2409,2628,2856,3094,3341,3597,3863,4139,4424,4719,5023,5336,5659,5992,6334,6685,7046},
     {0,1,7,20,39,64,95,132,175,225,281,342,410,485,565,651,744,843,948,1059,1176,1300,1429,1565,1707,1855,2009,2169,2336,2508,2687,2872,3063,3260,3464,3673,3889,4111,4339,4573}, 
     {0,1,5,15,29,47,70,97,129,165,205,251,300,354,413,476,543,615,692,773,858,948,1043,1142,1245,1353,1465,1582,1704,1829,1960,2095,2234,2378,2526,2678,2836,2997,3163,3334},
@@ -63,6 +56,12 @@ static const uint32_t _backoff_matrix[10][40]={
     {0,1,3,6,10,17,24,33,43,55,69,83,100,117,136,157,179,202,227,253,281,310,341,373,407,442,478,516,555,596,638,682,727,773,821,870,921,974,1027,1082}, 
     {0,1,2,5,9,15,21,29,38,49,60,73,87,102,119,137,156,176,198,221,245,270,297,325,354,384,416,449,483,519,555,593,632,673,714,757,801,847,893,941}};
 
+static const uint32_t _backoff_matrix_birthday_problem_intuitv[5][25]={{50,99,148,198,247,297,346,396,445,495,544,594,643,693,742,792,841,891,940,990,1039,1089,1138,1188,1237},{20,39,58,78,97,117,136,156,175,195,214,234,253,273,292,312,331,351,370,390,409,429,448,468,487},{9,19,28,38,47,57,66,76,85,95,104,114,123,133,142,152,161,171,180,190,199,209,218,228,237},{4,9,13,18,22,27,31,36,40,45,49,54,58,63,67,72,76,81,85,90,94,99,103,108,112},{3,6,8,11,14,17,20,22,25,28,31,34,36,39,42,45,48,50,53,56,59,62,64,67,70}};
+
+static const uint32_t _backoff_matrix_birthday_problem_classic[5][25]={{50,149,298,496,744,1041,1388,1784,2230,2725,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000,3000},{20,59,118,196,294,411,548,704,880,1075,1290,1524,1778,2051,2344,2656,2988,3000,3000,3000,3000,3000,3000,3000,3000},{9,29,58,96,144,201,268,344,430,525,630,744,868,1001,1144,1296,1458,1629,1809,2000,2199,2408,2627,2855,3000},{4,14,28,46,69,96,128,164,204,250,299,353,412,475,542,614,691,772,857,947,1042,1141,1244,1352,1464},{3,9,18,29,43,61,81,103,129,157,188,222,259,299,341,386,434,485,539,595,654,716,781,849,919}};
+
+
+static const uint32_t _backoff_packet_loss[5]={2,5,10,20,30};
 
 Tos2QueueMapper::Tos2QueueMapper():
     _cst(NULL),//Channelstats-Element
@@ -259,7 +258,7 @@ int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos
     if (index == -1) index = packet_loss_index_max;
     if(number_of_neighbours > number_of_neighbours_max) number_of_neighbours = number_of_neighbours_max;
     // Get from Backoff-Matrix-Table for the current Fraction and the current number of neighbours the backoff-value
-    unsigned int backoff_value = _backoff_matrix[fraction][number_of_neighbours];
+    unsigned int backoff_value = _backoff_matrix_birthday_problem_intuitv[fraction][number_of_neighbours];
     //Search with the calculated backoff-value the queue for the packet  
     int opt_queue = no_queues_get(); //init with the worst case queue 
     for (int i = 0; i <= no_queues_get();i++) {
