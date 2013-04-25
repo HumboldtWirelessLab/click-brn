@@ -37,22 +37,24 @@ CLICK_DECLS
 
 */
 
+#define BACKOFF_STRATEGY_OFF                             0 /* default */
+#define BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE            1 /* PLI:=PacketLossInformation */
+#define BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE   2
+#define BACKOFF_STRATEGY_NEIGHBOURS_MAX_THROUGHPUT       3
+
 class Tos2QueueMapper : public BRNElement {
 
  public:
-	#define BACKOFF_STRATEGY_ALWAYS_OFF 0 //default
-	#define BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE 2
-	#define BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE 1  //PLI:=PacketLossInformation
 
 
-	Tos2QueueMapper();
-	~Tos2QueueMapper();
+    Tos2QueueMapper();
+    ~Tos2QueueMapper();
 
 
-	const char *class_name() const  { return "Tos2QueueMapper"; }
-	const char *port_count() const  { return "1/1"; }
+    const char *class_name() const  { return "Tos2QueueMapper"; }
+    const char *port_count() const  { return "1/1"; }
     const char *processing() const  { return AGNOSTIC;}
-	
+
     int configure(Vector<String> &, ErrorHandler *);
 	void add_handlers();
 	Packet *simple_action(Packet *);//Function for the Agnostic Port
@@ -68,12 +70,15 @@ class Tos2QueueMapper : public BRNElement {
 	void cwmin_set(uint8_t position, uint32_t value);
 	int get_cwmin(int busy, int nodes);
 	int find_queue(int cwmin);
-	void reset_queue_usage() {
-		memset(_queue_usage, 0, sizeof(uint32_t) * no_queues);
-	}
-	void backoff_strategy_set(uint16_t value);
-	uint16_t backoff_strategy_get();
-    int backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos);
+	
+	void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
+	
+	void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
+	uint16_t get_backoff_strategy() { return _bqs_strategy; }
+	
+        int backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos);
+
+		uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
 
   private:
 	ChannelStats *_cst; //Channel-Statistics-Element (see: ../channelstats.hh)
@@ -84,8 +89,15 @@ class Tos2QueueMapper : public BRNElement {
 	uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
 	uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
 	uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
-	uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
 	uint32_t *_queue_usage;//frequency of the used queues
+
+        int32_t _likelihood_collison;
+        int32_t _rate;
+	int32_t _msdu_size;
+	int32_t _index_packet_loss_max;
+	int32_t _index_number_of_neighbours_max;
+	int32_t _index_msdu_size_max;
+	int32_t _index_rates_max;
 
 };
 

@@ -38,15 +38,6 @@
 
 CLICK_DECLS
 
-
-int32_t _likelihood_collison = -1;
-int32_t _rate = -1;
-int32_t _msdu_size = -1;
-int32_t _index_packet_loss_max = 5;
-int32_t _index_number_of_neighbours_max = 25;
-int32_t _index_msdu_size_max = 4;
-int32_t _index_rates_max = 4;
-
 //TODO: wie kommen die Werte zustande?
 static uint32_t tos2frac[] = { 63, 70, 77, 85 };
 
@@ -57,20 +48,24 @@ static const int32_t _backoff_matrix_birthday_problem_intuitv[5][25]={{50,99,148
 
 static const int32_t _backoff_packet_loss[5]={2,5,10,20,30};
 
-static const int32_t _backoff_80211e_cwmin[4]={3,7,15,15}; // see IEEE 802.11e-Standard
-
-static const int32_t _backoff_80211e_cwmax[4]={7,15,1023,1023}; // see IEEE 802.11e-Standard
-
 static const int32_t vector_msdu_sizes[4] = {500, 1500, 3000, 8000};
 static const int32_t vector_rates_data[4] = {1,6,24,54};
 static const int32_t vector_no_neighbours[25] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25};
 
 Tos2QueueMapper::Tos2QueueMapper():
-    _cst(NULL),//Channelstats-Element
-    _colinf(NULL),//Collission-Information-Element
-    pli(NULL)//PacketLossInformation-Element
+    _cst(NULL),    //Channelstats-Element
+    _colinf(NULL), //Collission-Information-Element
+    pli(NULL),      //PacketLossInformation-Element
+    _bqs_strategy(BACKOFF_STRATEGY_OFF)
 {
-	_bqs_strategy = BACKOFF_STRATEGY_ALWAYS_OFF;
+  BRNElement::init();
+  _likelihood_collison = -1;
+  _rate = -1;
+  _msdu_size = -1;
+  _index_packet_loss_max = 5;
+  _index_number_of_neighbours_max = 25;
+  _index_msdu_size_max = 4;
+  _index_rates_max = 4;
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
@@ -92,10 +87,11 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	      	"CHANNELSTATS", cpkP, cpElement, &_cst,
 	      	"COLLISIONINFO", cpkP, cpElement, &_colinf,
 	      	"PLI", cpkP, cpElement, &pli,
+                "LIKELIHOODCOLLISON", cpkP, cpInteger, &_likelihood_collison,
+                "RATE", cpkP, cpInteger, &_rate,
+                "MSDUSIZE", cpkP, cpInteger, &_msdu_size,
+		"STRATEGY", cpkP, cpInteger, &_bqs_strategy,
 	      	"DEBUG", cpkP, cpInteger, &_debug,
-            "LIKELIHOODCOLLISON", cpkP, cpInteger, &_likelihood_collison,
-            "RATE", cpkP, cpInteger, &_rate,
-            "MSDUSIZE", cpkP, cpInteger, &_msdu_size,
 	      	cpEnd) < 0) return -1;
 
 
@@ -107,7 +103,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	    	_cwmax = new uint16_t[no_queues];
 	    	_aifs = new uint16_t[no_queues];
 
-	#pragma message "TODO: Better check for params. Better Error handling."
+#pragma message "TODO: Better check for params. Better Error handling."
 	    	for( int i = 0; i < no_queues; i++ ) {
 	      		cp_integer(args[i], &v);
 	      		_cwmin[i] = v;
@@ -130,25 +126,19 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 	}
   	_queue_usage = new uint32_t[no_queues];
 	reset_queue_usage();
+	
+	
+	
+	for ( int i = 0; i < 25; i++) {
+	  BRN_ERROR("N: %d backoff: %d",i,_backoff_matrix_tmt_backoff_3D[0 /*rate 1*/][1/*msdu 1500*/][i]);
+	}
   	return 0;
 }
-
-void Tos2QueueMapper::no_queues_set(uint8_t number)
-{
-	no_queues = number;
-}
-
 
 uint8_t Tos2QueueMapper::no_queues_get()
 {
 	return	no_queues;
 }
-
-void Tos2QueueMapper::queue_usage_set(uint8_t position, uint32_t value)
-{
-	if (position < no_queues) _queue_usage[position] = value;
-}
-
 
 uint32_t Tos2QueueMapper::queue_usage_get(uint8_t position)
 {
@@ -156,40 +146,16 @@ uint32_t Tos2QueueMapper::queue_usage_get(uint8_t position)
 	return	_queue_usage[position];
 }
 
-void Tos2QueueMapper::cwmin_set(uint8_t position, uint32_t value)
-{
-	if (position < no_queues) _cwmin[position] = value;
-}
-
-
 uint32_t Tos2QueueMapper::cwmin_get(uint8_t position)
 {
 	if (position >= no_queues) position = no_queues -1;
 	return	_cwmin[position];
 }
 
-void Tos2QueueMapper::cwmax_set(uint8_t position, uint32_t value)
-{
-	if (position <= no_queues) _cwmax[position] = value;
-}
-
-
 uint32_t Tos2QueueMapper::cwmax_get(uint8_t position)
 {
 	if (position >= no_queues) position = no_queues - 1;
 	return	_cwmax[position];
-}
-
-
-void Tos2QueueMapper::backoff_strategy_set(uint16_t value)
-{
-	_bqs_strategy = value;
-}
-
-
-uint16_t Tos2QueueMapper::backoff_strategy_get()
-{
-	return _bqs_strategy;
 }
 
 int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos)
@@ -289,26 +255,17 @@ int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos
     // Tests what is known
     if ( index_search_rate >= 0 && index_search_msdu_size >= 0 && index_search_likelihood_collision >= 0 && index_no_neighbours >= 0 && first_time == 0) {
        backoff_window_size_2 = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
-        if (backoff_window_size_2 > -1){
-            first_time = 1;
-            backoff_window_size = backoff_window_size_2;
-        }
+    } else if ( index_search_rate >= 0 && index_search_msdu_size >= 0 && index_no_neighbours >= 0 ) {
+        //max Throughput
+        //BRN_WARN("Search max tp");
+        backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
+    } else if ( index_search_likelihood_collision >= 0 && index_no_neighbours >= 0 ) {
+      backoff_window_size = _backoff_matrix_birthday_problem_intuitv[index_search_likelihood_collision][index_no_neighbours];
     }
 
-     if ( index_search_rate >= 0 && index_search_msdu_size >= 0 && index_no_neighbours >= 0 && first_time == 0) {
-        backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
-        //if (backoff_window_size > -1){
-         //   first_time = 1;
-        //}
-    }   
-    if ( index_search_likelihood_collision >= 0 && index_no_neighbours >= 0 && first_time == 0) {
-        backoff_window_size = _backoff_matrix_birthday_problem_intuitv[index_search_likelihood_collision][index_no_neighbours];
-        //if (backoff_window_size > -1){
-         //   first_time = 1;
-        //}
-    }
-        
-    if (first_time == 1){
+    if (backoff_window_size_2 > -1) backoff_window_size = backoff_window_size_2;
+
+    if ( backoff_window_size != 0 ) {
         // Evaluate Statistics and elect a Queue
         //int index = -1; veraltet
         // Get from the Backoff-Packet-Loss-Table the supported fractions
@@ -320,23 +277,23 @@ int Tos2QueueMapper::backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos
         // Get from Backoff-Matrix-Table for the current Fraction and the current number of neighbours the backoff-value
         //unsigned int backoff_value = _backoff_matrix_birthday_problem_intuitv[fraction][number_of_neighbours];//veraltet
         //Search with the calculated backoff-value the queue for the packet  
-        opt_queue = no_queues_get(); //init with the worst case queue 
-        for (int i = 0; i <= no_queues_get();i++) {
+        opt_queue = no_queues_get()-1; //init with the worst case queue 
+        for (int i = 0; i <= no_queues_get()-1;i++) {
 	        BRN_DEBUG("cwmin[%d] := %d",i,cwmin_get(i));
-		    BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
+		BRN_DEBUG("cwmax[%d] := %d",i,cwmax_get(i));
             // Take the first queue, whose cw-interval is in the range of the backoff-value
-            if(backoff_window_size >= cwmin_get(i) && backoff_window_size <= cwmax_get(i)){
-                opt_queue = i;
+            if (backoff_window_size >= cwmin_get(i) && backoff_window_size < cwmin_get(i+1)){
+                opt_queue = i+1;
                 break;
             }
         }
         // note the tos-value from the user, to get more packetlosses, but a higher throughput and priority
         // if tos-value is higher than opt_queue then modify opt_queue
-        if ((tos > opt_queue) && (opt_queue < no_queues_get())) { 
+        /*if ((tos > opt_queue) && (opt_queue < no_queues_get())) { 
             opt_queue = opt_queue + 1;
-        }
-    }
-    else if ( first_time == 0) {
+        }*/
+        BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, opt_queue);
+    } else {
         if (tos > 0){
             if (tos == 1) {
                 opt_queue = 0;
@@ -362,11 +319,11 @@ Tos2QueueMapper::simple_action(Packet *p)
   	uint8_t tos = BRNPacketAnno::tos_anno(p);
   	int opt_queue = tos;
 
-	switch (backoff_strategy_get()) {
-		case BACKOFF_STRATEGY_ALWAYS_OFF:
-		break;
+	switch (_bqs_strategy) {
+		case BACKOFF_STRATEGY_OFF:
+		  return p;
 		case BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE: 
-        opt_queue = backoff_strategy_neighbours_pli_aware(p,tos);
+		  opt_queue = backoff_strategy_neighbours_pli_aware(p,tos);
 
         break;
 		case  BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE: 
@@ -379,7 +336,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 						if (ofq == -1) {
 							BRN_DEBUG("Foo");
 							BRN_DEBUG("%p",_colinf->_global_rs);
-							BRN_DEBUG("queu: %d",_colinf->_global_rs->get_frac(i));
+							BRN_DEBUG("queue: %d",_colinf->_global_rs->get_frac(i));
 							//int foo = _colinf->_global_rs->get_frac(i);
 							if (_colinf->_global_rs->get_frac(i) >= target_frac) {
 								if ( i == 0 ) {
@@ -411,12 +368,15 @@ Tos2QueueMapper::simple_action(Packet *p)
 				int diff_q = (no_queues / 2) - tos - 1;
 				opt_queue -= diff_q;
 
+			
 				if ( opt_queue < 0 ) opt_queue = 0;
 				else if ( opt_queue > no_queues ) opt_queue = no_queues;
 			}
 		break;
 	
-  	}	
+  	}
+  	
+  	
   	//trunc overflow
   	if ( opt_queue >= no_queues ) opt_queue = no_queues - 1;
 
@@ -442,7 +402,7 @@ Tos2QueueMapper::find_queue(int cwmin) {
   return no_queues - 1;
 }
 
-enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_ALWAYS_OFF,H_TOS2QUEUEMAPPER_ALWAYS_NCSA, H_TOS2QUEUEMAPPER_PLIA};
+enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY};
 
 static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 {
@@ -450,7 +410,7 @@ static String Tos2QueueMapper_read_param(Element *e, void *thunk)
   	switch ((uintptr_t) thunk) {
     	case H_TOS2QUEUEMAPPER_STATS:
       		StringAccum sa;
-      		sa << "<queueusage queues=\"" << (uint32_t)td->no_queues_get() << "\" >\n";
+      		sa << "<queueusage strategy=\"" << td->_bqs_strategy << "\" queues=\"" << (uint32_t)td->no_queues_get() << "\" >\n";
       		for ( int i = 0; i < td->no_queues_get(); i++) {
         		sa << "\t<queue index=\"" << i << "\" usage=\"" << td->queue_usage_get(i) << "\" />\n";
       		}
@@ -461,23 +421,22 @@ static String Tos2QueueMapper_read_param(Element *e, void *thunk)
   return String();
 }
 
-static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler*)
+static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
   	Tos2QueueMapper *f = (Tos2QueueMapper *)e;
   	String s = cp_uncomment(in_s);
+	Vector<String> args;
+	cp_spacevec(s, args);
+
  	switch((intptr_t)vparam) {
     		case H_TOS2QUEUEMAPPER_RESET: 
       			f->reset_queue_usage();
-      		break;
-    		case H_TOS2QUEUEMAPPER_ALWAYS_OFF: 
-			f->backoff_strategy_set(BACKOFF_STRATEGY_ALWAYS_OFF);
-		break;
-    		case H_TOS2QUEUEMAPPER_ALWAYS_NCSA: 
-			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE);
-		break;
-    		case H_TOS2QUEUEMAPPER_PLIA: 
-			f->backoff_strategy_set(BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE);
-		break;
+      		        break;
+    		case H_TOS2QUEUEMAPPER_STRATEGY: 
+		        int st;
+		        if (!cp_integer(args[0],&st)) return errh->error("strategy parameter must be integer");
+			f->set_backoff_strategy(st);
+		        break;
       	}
 	return 0;
 }
@@ -489,9 +448,7 @@ void Tos2QueueMapper::add_handlers()
   add_read_handler("queue_usage", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
 
   add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
-  add_write_handler("backoff_strategy_always_off",Tos2QueueMapper_write_param,H_TOS2QUEUEMAPPER_ALWAYS_OFF);
-  add_write_handler("backoff_strategy_ncsa",Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_ALWAYS_NCSA);// ncsa:=BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE
-  add_write_handler("backoff_strategy_plia", Tos2QueueMapper_write_param, H_TOS2QUEUEMAPPER_PLIA);//plia:=BACKOFF_STRATEGY_NEIGHBOURS_PacketLossInformation_AWARE
+  add_write_handler("strategy",Tos2QueueMapper_write_param, (void *)H_TOS2QUEUEMAPPER_STRATEGY);
 }
 
 CLICK_ENDDECLS
