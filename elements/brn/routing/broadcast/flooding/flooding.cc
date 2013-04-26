@@ -262,7 +262,7 @@ Flooding::push( int port, Packet *packet )
       BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
 
       if ( _flooding_passiveack != NULL ) {
-        _flooding_passiveack->packet_enqueue(out_packet, &src, _bcast_id, &passiveack, -1);
+        _flooding_passiveack->packet_enqueue(out_packet, &src, p_bcast_id, &passiveack, -1);
       }
 
       output(1).push(out_packet);
@@ -405,6 +405,8 @@ Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
   forward_attempt(src, bcast_id);
   
   output(1).push(p);
+  
+  return 0;
 }
   
       

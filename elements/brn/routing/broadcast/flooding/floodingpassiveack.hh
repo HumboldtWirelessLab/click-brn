@@ -27,6 +27,7 @@
 #include <click/timestamp.hh>
 #include <click/timer.hh>
 
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
@@ -81,25 +82,16 @@ class FloodingPassiveAck : public BRNElement {
 	if ( passiveack != NULL )
 	  for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
 	 
-        _max_retries = PASSIVE_ACK_DFL_MAX_RETRIES;
+        _max_retries = retries;
 	
 	_last_timeout = _enqueue_time = Timestamp::now();
-	set_retries(retries);
-	set_timeout(timeout);
-	set_next_retry();
-
 	_retries = 0;
-	
-	
+	set_timeout(timeout);
       }
 
       void set_timeout(uint32_t timeout) {
       	_timeout = timeout;
 	_next_timeout = _last_timeout + Timestamp::make_msec(timeout);
-      }
-
-      void set_retries(uint32_t retries) {
-	_retries = retries;
       }
 
       void set_next_retry() {
@@ -143,22 +135,32 @@ class FloodingPassiveAck : public BRNElement {
   //
   //member
   //
-
-  uint32_t _dfl_retries;
-  uint32_t _dfl_timeout;
-  
+  BRN2NodeIdentity *_me;
   BRNElement *_retransmit_element;  
   Flooding *_flooding;
+  FloodingHelper *_fhelper;
 
   PAckPacketVector p_queue;
   
+  uint32_t _dfl_retries;
+  uint32_t _dfl_timeout;
+
   bool _enable;
 
   PassiveAckPacket *get_next_packet();
   void set_next_schedule();
   void scan_packet_queue(int32_t time_tolerance);
+  bool packet_is_finished(PassiveAckPacket *pap);
   
   Timer _retransmit_timer;
+  bool _timer_is_scheduled;
+  Timestamp _time_next_schedule;
+  
+  uint32_t _queued_pkts;
+  uint32_t _dequeued_pkts;
+  uint32_t _retransmissions;
+  uint32_t _pre_removed_pkts;
+  
 
  public:
   
