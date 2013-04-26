@@ -31,6 +31,7 @@
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 
 
 CLICK_DECLS
@@ -48,23 +49,6 @@ CLICK_DECLS
 #define UNICAST_FLOODING_NO_REWRITE 0
 #define UNICAST_FLOODING_STATIC_REWRITE 5
 #define UNICAST_FLOODING_ALL_UNICAST 6
-
-
-class NeighbourMetric {
-  public:
-    EtherAddress _ea;
-    uint16_t     _metric;
-    uint8_t      _flags;
-  
-    NeighbourMetric(EtherAddress ea, uint16_t metric ) {
-      _ea = ea;
-      _metric = metric;
-      _flags = 0;
-    }
-};
-
-typedef Vector<NeighbourMetric> NeighbourMetricList;
-typedef NeighbourMetricList::const_iterator NeighbourMetricListIter;
 
 class UnicastFlooding : public BRNElement {
 
@@ -88,15 +72,15 @@ class UnicastFlooding : public BRNElement {
   void uninitialize();
   void add_handlers();
 
-public: 
+ public: 
   //
   //member
   //
   BRN2NodeIdentity *_me;
   Flooding *_flooding;
-  Brn2LinkTable *_link_table;
-
-private:
+  FloodingHelper *_fhelper;
+  
+ private:
   int _max_metric_to_neighbor; // max. metric towards a neighbor
   int _cand_selection_strategy; // the way we choose the candidate for unicast forwarding
   EtherAddress static_dst_mac;
@@ -104,15 +88,6 @@ private:
   bool algorithm_1(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
   bool algorithm_2(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
   bool algorithm_3(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
-
-  // helper
-  void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
-  int subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2);
-  void addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &inout);
-
-  int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
-  void filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
-  void filter_known_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
   
  public:
 
