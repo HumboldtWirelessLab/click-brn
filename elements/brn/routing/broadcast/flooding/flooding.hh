@@ -89,6 +89,9 @@ class Flooding : public BRNElement {
       uint8_t _bcast_fwd_done_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no fwd done paket (fwd-fwd_done=no_queued_packets
       uint8_t _bcast_fwd_succ_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no packet recv by at least on node
       uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retires for unicast)
+      uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
+
+#define FLOODING_FLAGS_ME_SRC 1
 
       Timestamp _last_id_time;
 
@@ -116,13 +119,6 @@ class Flooding : public BRNElement {
         init();
       }
 
-      BroadcastNode( EtherAddress *src, uint32_t id )
-      {
-        _src = *src;
-        init();
-        add_id(id, Timestamp::now());
-      }
-
       ~BroadcastNode()
       {}
 
@@ -140,6 +136,7 @@ class Flooding : public BRNElement {
         memset(_bcast_fwd_done_list, 0, sizeof(_bcast_fwd_done_list));
         memset(_bcast_fwd_succ_list, 0, sizeof(_bcast_fwd_succ_list));
         memset(_bcast_snd_list, 0, sizeof(_bcast_snd_list));
+        memset(_bcast_flags_list, 0, sizeof(_bcast_flags_list));
 
 	memset(_last_node_list_size,0,sizeof(_last_node_list_size));  //all entries are invalid
       }
@@ -157,7 +154,7 @@ class Flooding : public BRNElement {
         return have_id(id);
       }
 
-      inline void add_id(uint32_t id, Timestamp now) {
+      inline void add_id(uint32_t id, Timestamp now, bool me_src) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
         if (_bcast_id_list[index] != id) {
@@ -166,6 +163,7 @@ class Flooding : public BRNElement {
           _bcast_fwd_done_list[index] = 0;
           _bcast_fwd_succ_list[index] = 0;
 	  _bcast_snd_list[index] = 0;
+	  _bcast_flags_list[index] = (me_src)?1:0;
 	  
 	  _last_node_list_size[index] = 0;
         }
@@ -174,6 +172,13 @@ class Flooding : public BRNElement {
 
       inline bool is_outdated(Timestamp now) {
         return ((now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT);
+      }
+
+      inline bool me_src(uint32_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] == id) 
+	  return ((_bcast_flags_list[index]&FLOODING_FLAGS_ME_SRC) == FLOODING_FLAGS_ME_SRC);
+	return false;
       }
 
       inline void forward_attempt(uint32_t id) {
@@ -226,7 +231,9 @@ class Flooding : public BRNElement {
           if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) return;
 
         memcpy(fln[fln_i].etheraddr, node->data(),6);
-        if ( forwarded) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
+	fln[fln_i].received_cnt = fln[fln_i].flags = 0;
+        
+	if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
         _last_node_list_size[index]++;
       }
 
@@ -253,6 +260,12 @@ class Flooding : public BRNElement {
 	*size = (uint32_t)( _last_node_list_size[index]);
         return _last_node_list[index];
       }
+      
+      inline void add_recv_last_node(uint32_t id, EtherAddress *last) {
+        struct flooding_last_node *fln = get_last_node(id, last);
+	if ( fln != NULL ) fln->received_cnt++;
+      }
+      
     };
 
   //
@@ -274,12 +287,14 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void add_id(EtherAddress *src, uint32_t id, Timestamp *now);
+  void add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src = false);
+  void inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
   void forward_done(EtherAddress *src, uint32_t id, bool success);
   void forward_attempt(EtherAddress *src, uint32_t id);  
   void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
   void add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
+  bool me_src(EtherAddress *src, uint32_t id);
 
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
@@ -314,6 +329,7 @@ class Flooding : public BRNElement {
   uint32_t _flooding_fwd;
   uint32_t _flooding_passive;
   uint32_t _flooding_last_node_due_to_passive;
+  uint32_t _flooding_last_node_due_to_ack;
   
 };
 

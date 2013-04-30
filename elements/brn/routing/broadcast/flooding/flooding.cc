@@ -49,7 +49,8 @@ Flooding::Flooding()
     _flooding_sent(0),
     _flooding_fwd(0),
     _flooding_passive(0),
-    _flooding_last_node_due_to_passive(0)
+    _flooding_last_node_due_to_passive(0),
+    _flooding_last_node_due_to_ack(0)
 {
   BRNElement::init();
 }
@@ -119,9 +120,9 @@ Flooding::push( int port, Packet *packet )
     
     _flooding_src++;                                                           //i was src of a flooding
     
-    add_id(&src,(uint32_t)_bcast_id, &now);
-    forward_attempt(&src, _bcast_id);
-    add_last_node(&src,(int32_t)_bcast_id, &src, true);
+    add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
+    forward_attempt(&src, _bcast_id);                                          //try forward 
+    add_last_node(&src,(int32_t)_bcast_id, &src, true);                        //add src as last hop for src
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
@@ -231,6 +232,7 @@ Flooding::push( int port, Packet *packet )
     }
 
     add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward);
+    inc_received(&src,(uint32_t)p_bcast_id, &fwd);
 
     if (forward)
     {
@@ -281,7 +283,8 @@ Flooding::push( int port, Packet *packet )
 
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
      
-    forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()));   
+    forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()));
+    
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
       _flooding_sent += (((int)ceh->retries) + 1);
@@ -313,18 +316,26 @@ Flooding::push( int port, Packet *packet )
     
     //TODO: what if it not wireless. Packet transmission always successful ?
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
-      bcast_header = (struct click_brn_bcast *)(packet->data());
-      uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
-      src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
- 
+
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
+
+        bcast_header = (struct click_brn_bcast *)(packet->data());
+        uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+        src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+
         BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
+
 	if ( get_last_node(&src,(int32_t)p_bcast_id, &rx_node) == NULL ) {
 	  BRN_ERROR("Add new node to last node due to passive unicast...");
+
+	  Timestamp now = packet->timestamp_anno();
+          add_id(&src,(int32_t)p_bcast_id, &now);
+
 	  _flooding_last_node_due_to_passive++;
+	  add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
 	}
-        add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
       }
     }
 
@@ -333,12 +344,16 @@ Flooding::push( int port, Packet *packet )
 }
 
 void
-Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now)
+Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
-  if ( bcn == NULL ) _bcast_map.insert(*src, new BroadcastNode(src, id));
-  else bcn->add_id(id,*now);
+  if ( bcn == NULL ) {
+    bcn = new BroadcastNode(src);
+    _bcast_map.insert(*src, bcn);
+  }
+  
+  bcn->add_id(id, *now, me_src);
 }
 
 void
@@ -355,7 +370,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
 }
 
 void
-Flooding::add_received(EtherAddress *src, uint32_t id, EtherAddress *last_node, uint32_t revc)
+Flooding::inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -364,7 +379,7 @@ Flooding::add_received(EtherAddress *src, uint32_t id, EtherAddress *last_node, 
     return;
   }
 
-  bcn->add_last_node(id, last_node, forwarded);
+  bcn->add_recv_last_node(id, last_node);
 }
 
 bool
@@ -400,6 +415,7 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success)
   if ( bcn == NULL ) return;
   
   bcn->forward_done(id, success);
+  if (success) _flooding_last_node_due_to_ack++;
 }
 
 void
@@ -408,14 +424,27 @@ Flooding::sent(EtherAddress *src, uint32_t id, uint32_t no_transmission)
   BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return;
-  
+
   bcn->sent(id, no_transmission);
 }
+
+bool
+Flooding::me_src(EtherAddress *src, uint32_t id)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) return false;
+  
+  return bcn->me_src(id);
+}
+
 
 int
 Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
-  _flooding_fwd++;
+  if (me_src(src, bcast_id)) _flooding_src++;
+  else _flooding_fwd++;
+  
   forward_attempt(src, bcast_id);
   
   output(1).push(p);
@@ -469,7 +498,8 @@ Flooding::stats()
   sa << "\t<sent count=\"" << _flooding_sent << "\" />\n";
   sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n";
   sa << "\t<passive count=\"" << _flooding_passive << "\" />\n";
-  sa << "\t<last_node_passive count=\"" << _flooding_last_node_due_to_passive << "\" />\n</flooding>\n";
+  sa << "\t<last_node_passive count=\"" << _flooding_last_node_due_to_passive << "\" />\n";
+  sa << "\t<last_node_ack count=\"" << _flooding_last_node_due_to_ack << "\" />\n</flooding>\n";
 
   return sa.take_string();
 }
@@ -500,7 +530,8 @@ Flooding::table()
 
 	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
 	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-	  sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" />\n";
+	  sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
+	  sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
 	}  
 
         sa << "\t\t</id>\n";

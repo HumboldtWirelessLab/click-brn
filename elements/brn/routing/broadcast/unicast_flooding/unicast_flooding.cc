@@ -41,7 +41,8 @@ UnicastFlooding::UnicastFlooding():
   _flooding(NULL),
   _fhelper(NULL),
   _cand_selection_strategy(0),
-  no_rewrites(0)
+  _cnt_rewrites(0),
+  _cnt_bcasts(0)
 {
   BRNElement::init();
 }
@@ -155,8 +156,9 @@ UnicastFlooding::push(int port, Packet *p_in)
         break;
       case 3:                           // algo 3 - choose the neighbor not covered by any other neighbor
         rewrite = algorithm_3(next_hop, neighbors);
-        if ( ! rewrite )
+        if ( ! rewrite ) {
           rewrite = algorithm_1(next_hop, neighbors);
+	}
         break;
       case 4: {                         // algo 4 - choose worst neighbor (metric)
         int worst_n = _fhelper->findWorst(*me, neighbors);
@@ -170,21 +172,31 @@ UnicastFlooding::push(int port, Packet *p_in)
         rewrite = true;
         next_hop = static_dst_mac;
         break;
-      case UNICAST_FLOODING_ALL_UNICAST: // static rewriting
+      case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
         BRN_DEBUG("Send unicast to all neighbours");
+	
+	for ( int i = 0; i < neighbors.size()-1; i++) {
+	  Packet *p_copy = p_in->clone();
+	  click_ether *c_ether = (click_ether *)p_copy->data();
+	  memcpy(c_ether->ether_dhost, neighbors[i].data(), 6);
+	  output(0).push(p_copy);
+	}
         rewrite = true;
-        next_hop = static_dst_mac;
+        next_hop = neighbors[neighbors.size()-1];
         break;
       default:
         BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
     }
     
     if ( rewrite ) {
-      memcpy(ether->ether_dhost, next_hop.data() , 6);
+      memcpy(ether->ether_dhost, next_hop.data(), 6);
       last_unicast_used = next_hop;
       BRN_DEBUG("* UnicastFlooding: Destination address rewrote to %s", next_hop.unparse().c_str());
-      no_rewrites++;
+      _cnt_rewrites++;
+    } else {
+      _cnt_bcasts++;
     }
+      
     output(0).push(p_in);
   }
 
@@ -348,7 +360,7 @@ read_param(Element *e, void *thunk)
     {
       sa << "<unicast_rewriter node=\"" << rewriter->get_node_name() << "\" strategy=\"" << rewriter->get_strategy() << "\" static_mac=\"";
       sa << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
-      sa << "\" no_rewrites=\"" << rewriter->no_rewrites << "\" >\n</unicast_rewriter>\n";
+      sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts <<"\" >\n</unicast_rewriter>\n";
       break;
     }
     case H_REWRITE_STRATEGY :
