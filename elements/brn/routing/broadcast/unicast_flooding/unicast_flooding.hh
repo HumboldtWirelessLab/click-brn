@@ -98,7 +98,9 @@ class UnicastFlooding : public BRNElement {
   EtherAddress *get_static_mac() { return &static_dst_mac; }
   
   EtherAddress last_unicast_used;
-  uint32_t no_rewrites;
+  uint32_t _cnt_rewrites;
+  uint32_t _cnt_bcasts;
+  
 };
 
 CLICK_ENDDECLS

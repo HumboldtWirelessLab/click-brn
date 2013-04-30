@@ -282,7 +282,8 @@ FloodingPassiveAck::stats()
   Timestamp now = Timestamp::now();
 
   sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (int)((_flooding!=NULL)?1:0);
-  sa << "\" enabled=\"" << (int)((_enable)?1:0) << "\" >\n\t<packetqueue count=\"" << p_queue.size();
+  sa << "\" enabled=\"" << (int)((_enable)?1:0) << "\" retries=\"" << _dfl_retries << "\" timeout=\"";
+  sa << _dfl_timeout << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _queued_pkts << "\" deletes=\"" << _dequeued_pkts << "\" retransmissions=\"";
   sa << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts << "\" >\n";
 
