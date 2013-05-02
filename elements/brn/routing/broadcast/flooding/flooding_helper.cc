@@ -205,69 +205,59 @@ FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<Et
   BRN_ERROR("Neighborsize after filter: %d", filtered_neighbors.size());
 }
 
+
+/*
+ * Check all one hop neighbours and get shortest path to every node of them
+ * remove all neighbour nodes which have a better two hop route than single link
+ * 
+ */
+
+
 void
-FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
+FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &/*filtered_neighbors*/)
 {
   BRN_ERROR("Neighborsize before filter: %d", neighbors.size());
   
   NeighbourMetricList neighboursMetric;
+  NeighbourMetricMap neighboursMetricMap;
   
-  if (_link_table) {
+  if (!_link_table) {
 
     for( int n_i = neighbors.size()-1; n_i >= 0; n_i--) {
       int metric_nb_node = metric2pdr(_link_table->get_link_metric(node, neighbors[n_i]));
       
       neighboursMetric.push_back(NeighbourMetric(neighbors[n_i],metric_nb_node));
+      neighboursMetricMap.insert(neighbors[n_i],&(neighboursMetric[neighboursMetric.size()-1]));
     }
     
-    click_qsort(neighboursMetric.begin(), neighboursMetric.size(), sizeof(NeighbourMetric), link_metric_sorter);
-
-    /*for( int n_i = 0; n_i < neighboursMetric.size(); n_i++) {
-        BRN_ERROR("%d.Neighbour: %d",n_i,neighboursMetric[n_i]._metric);
-    }*/
-   
     for( int n_i = neighboursMetric.size()-1; n_i >= 0; n_i--) {
-      if ( neighboursMetric[n_i]._flags == 0 ) {                               //not fixed
-        int metric_nb_node = neighboursMetric[n_i]._metric;
-     
-	int best_metric = metric_nb_node;
-	int best_neighbour = 0;
-	
-        for( int n_j = 0; n_j < neighboursMetric.size(); n_j++) {
- 	  if ( n_j == n_i ) continue;
-
-          int metric_nb_nb = (neighboursMetric[n_j]._metric *
-                             metric2pdr(_link_table->get_link_metric(neighboursMetric[n_j]._ea, neighboursMetric[n_i]._ea))) / 100;
-         //BRN_ERROR("%d.Neighbour compare (%d) %d <-> %d",n_i,n_j,metric_nb_node, metric_nb_nb );
-  
+      Vector<EtherAddress> nn_list;                                                 //neighbours of neighbour
+      get_filtered_neighbors(neighboursMetric[n_i]._ea, nn_list);                   // get n of n
       
-        //TODO: use PER/PDR
-          if ( metric_nb_nb >= best_metric ) {
-	    best_neighbour = n_j;
-	    best_metric = metric_nb_nb;
-	  }
-        }
-
-        if ( best_metric >= metric_nb_node ) {
-            neighboursMetric[best_neighbour]._flags = 1;           //fix
-            neighboursMetric.erase(neighboursMetric.begin() + n_i);
-	} 
+      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {                        //check all n of n 
+	if ( neighboursMetricMap.findp(nn_list[nn_i]) == NULL ) {                   // if not in list
+          neighboursMetric.push_back(NeighbourMetric(nn_list[nn_i],0));             // add 
+          neighboursMetricMap.insert(nn_list[nn_i],&(neighboursMetric[neighboursMetric.size()-1]));
+	}
       }
     }
+    
   }
-  
-  for( int n_i = 0; n_i < neighboursMetric.size(); n_i++) {
-    //BRN_ERROR("%d.Neighbour: %d %d",n_i,neighboursMetric[n_i]._metric,neighboursMetric[n_i]._flags);
-    filtered_neighbors.push_back(neighboursMetric[n_i]._ea);
-  }
-  
-  BRN_ERROR("Neighborsize after filter: %d", filtered_neighbors.size());
+    
 }
 
 void
-FloodingHelper::filter_known_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
+FloodingHelper::filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors)
 {
+  HashMap<EtherAddress, EtherAddress> node_hm;
   
+  for( int i = 0; i < known_neighbors.size(); i++) node_hm.insert(known_neighbors[i],known_neighbors[i]);  //known nodes to hashmap (faster access)
+
+  for( int i = 0; i < neighbors.size(); i++)                                                               //check each neighbour wheter he is known or not
+    if ( node_hm.findp(neighbors[i]) == NULL )
+      filtered_neighbors.push_back(neighbors[i]);                                                          //add only unknown
+    
+  node_hm.clear();
 }
 
 
