@@ -42,7 +42,15 @@ void
 RoutingPeek::push( int port, Packet *packet )
 {
   if ( ( port == 0 ) && ( packet != NULL ) ) {
+    //EtherAddress link_src;
+    //EtherAddress link_dst;
+    //EtherAddress src;
+    //EtherAddress dst;
+    //uint16_t ethertype;
+    
     uint32_t header_len = get_all_header_len(packet);
+    
+    //get_addresses(&link_src, &link_dst, &src, &dst, &ethertype);
 
     BRN_DEBUG("P-len: %d  header_len: %d",packet->length(), header_len);
 

@@ -46,9 +46,11 @@ CLICK_DECLS
  * Restrictions: works only together with ETX metric
  */
 
-#define UNICAST_FLOODING_NO_REWRITE 0
-#define UNICAST_FLOODING_STATIC_REWRITE 5
-#define UNICAST_FLOODING_ALL_UNICAST 6
+#define UNICAST_FLOODING_NO_REWRITE     0
+#define UNICAST_FLOODING_STATIC_REWRITE 1
+#define UNICAST_FLOODING_ALL_UNICAST    2
+#define UNICAST_FLOODING_TAKE_WORST     3
+
 
 class UnicastFlooding : public BRNElement {
 
@@ -93,6 +95,7 @@ class UnicastFlooding : public BRNElement {
 
   void set_strategy(int s) { _cand_selection_strategy = s; }
   int get_strategy() { return _cand_selection_strategy; }
+  String get_strategy_string(uint32_t id);
 
   void set_static_mac(EtherAddress *mac) { static_dst_mac = *mac; }
   EtherAddress *get_static_mac() { return &static_dst_mac; }
