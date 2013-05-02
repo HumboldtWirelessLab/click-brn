@@ -117,6 +117,10 @@ FloodingHelper::uninitialize()
 // Helper methods
 //-----------------------------------------------------------------------------
 
+/*
+ * Neighbours with linkmetrik higher than given threshold
+ * 
+ */
 void
 FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
 {
@@ -130,13 +134,17 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
 			int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
 
 			// skip to bad neighbors
-			if (metric_nb_node > _max_metric_to_neighbor) {
-				continue;
-			}
+			if (metric_nb_node > _max_metric_to_neighbor) continue;
 			out.push_back(neighbors_tmp[n_i]);
 		}
 	}
 }
+
+/*
+ * Check all one hop neighbours and get shortest path to every node of them
+ * remove all neighbour nodes which have a better two hop route than single link
+ * IMPORTANT: only use one hop neighbours 
+ */
 
 void
 FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
@@ -198,9 +206,9 @@ FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<Et
 }
 
 void
-FloodingHelper::filter_known_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
+FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
 {
-  BRN_ERROR("Known Neighborsize before filter: %d", neighbors.size());
+  BRN_ERROR("Neighborsize before filter: %d", neighbors.size());
   
   NeighbourMetricList neighboursMetric;
   
@@ -254,6 +262,12 @@ FloodingHelper::filter_known_one_hop_neighbors(const EtherAddress &node, Vector<
   }
   
   BRN_ERROR("Neighborsize after filter: %d", filtered_neighbors.size());
+}
+
+void
+FloodingHelper::filter_known_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
+{
+  
 }
 
 

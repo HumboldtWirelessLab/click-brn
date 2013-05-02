@@ -14,11 +14,11 @@ class RoutingPeek : public BRNElement
     class PeekFunction {
 
       public:
-        bool (*_peek_func)(void *, Packet*, EtherAddress *src, EtherAddress *dst, int);  //Packet, brn_port //TODO: add src and dst etheraddress
+        bool (*_peek_func)(void *, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port);  //Packet, brn_port //TODO: add src and dst etheraddress
         void *_peek_obj;
         int _brn_port;
 
-        PeekFunction( bool (*peek_func)(void *, Packet* p, EtherAddress *src, EtherAddress *dst, int brn_port), void *peek_obj, int brn_port ) {
+        PeekFunction( bool (*peek_func)(void *, Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port), void *peek_obj, int brn_port ) {
           _peek_func = peek_func;
           _peek_obj = peek_obj;
           _brn_port = brn_port;

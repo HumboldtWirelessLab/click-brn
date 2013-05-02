@@ -33,6 +33,7 @@
 #include "elements/brn/brn2.h"
 
 #include "unicast_flooding.hh"
+#include "../../../../userlevel/socket.hh"
 
 CLICK_DECLS
 
@@ -45,6 +46,7 @@ UnicastFlooding::UnicastFlooding():
   _cnt_bcasts(0)
 {
   BRNElement::init();
+  static_dst_mac = brn_etheraddress_broadcast;
 }
 
 UnicastFlooding::~UnicastFlooding()
@@ -146,26 +148,7 @@ UnicastFlooding::push(int port, Packet *p_in)
     bool rewrite = false;	
 
     switch (_cand_selection_strategy) {
-      case UNICAST_FLOODING_NO_REWRITE: // no rewriting; keep as broadcast
-        break;
-      case 1:                           // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
-        rewrite = algorithm_1(next_hop, neighbors);
-        break;
-      case 2:                           // algo 2 - choose the neighbor with the highest number of neighbors not covered by any other neighbor of the other neighbors
-        rewrite = algorithm_2(next_hop, neighbors);
-        break;
-      case 3:                           // algo 3 - choose the neighbor not covered by any other neighbor
-        rewrite = algorithm_3(next_hop, neighbors);
-        if ( ! rewrite ) {
-          rewrite = algorithm_1(next_hop, neighbors);
-	}
-        break;
-      case 4: {                         // algo 4 - choose worst neighbor (metric)
-        int worst_n = _fhelper->findWorst(*me, neighbors);
-        if ( worst_n != -1 ) {
-          rewrite = true;  
-          next_hop = neighbors[worst_n];
-        }}
+      case UNICAST_FLOODING_NO_REWRITE:     // no rewriting; keep as broadcast
         break;
       case UNICAST_FLOODING_STATIC_REWRITE: // static rewriting
         BRN_DEBUG("Rewrite to static mac");
@@ -183,6 +166,26 @@ UnicastFlooding::push(int port, Packet *p_in)
 	}
         rewrite = true;
         next_hop = neighbors[neighbors.size()-1];
+        break;
+	
+      case UNICAST_FLOODING_TAKE_WORST: {  // take node with lowest link quality
+        int worst_n = _fhelper->findWorst(*me, neighbors);
+        if ( worst_n != -1 ) {
+          rewrite = true;  
+          next_hop = neighbors[worst_n];
+        } }
+        break;
+      case 4:                           // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
+        rewrite = algorithm_1(next_hop, neighbors);
+        break;
+      case 5:                           // algo 2 - choose the neighbor with the highest number of neighbors not covered by any other neighbor of the other neighbors
+        rewrite = algorithm_2(next_hop, neighbors);
+        break;
+      case 6:                           // algo 3 - choose the neighbor not covered by any other neighbor
+        rewrite = algorithm_3(next_hop, neighbors);
+        if ( ! rewrite ) {
+          rewrite = algorithm_1(next_hop, neighbors);
+	}
         break;
       default:
         BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
@@ -342,6 +345,21 @@ UnicastFlooding::algorithm_3(EtherAddress &next_hop, Vector<EtherAddress> &neigh
   return rewrite;
 }
 
+
+String
+UnicastFlooding::get_strategy_string(uint32_t id)
+{
+  switch (id) {
+    case UNICAST_FLOODING_NO_REWRITE: return "no_rewrite";
+    case UNICAST_FLOODING_STATIC_REWRITE: return "static rewrite";
+    case UNICAST_FLOODING_ALL_UNICAST: return "all_unicast";
+    case UNICAST_FLOODING_TAKE_WORST: return "take_worst";
+  }
+
+    return "unknown"; 
+}
+
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------
@@ -358,7 +376,8 @@ read_param(Element *e, void *thunk)
   {
     case H_REWRITE_STATS :
     {
-      sa << "<unicast_rewriter node=\"" << rewriter->get_node_name() << "\" strategy=\"" << rewriter->get_strategy() << "\" static_mac=\"";
+      sa << "<unicast_rewriter node=\"" << rewriter->get_node_name() << "\" strategy=\"" << rewriter->get_strategy();
+      sa << "\" strategy_string=\"" << rewriter->get_strategy_string(rewriter->get_strategy()) << "\" static_mac=\"";
       sa << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts <<"\" >\n</unicast_rewriter>\n";
       break;
