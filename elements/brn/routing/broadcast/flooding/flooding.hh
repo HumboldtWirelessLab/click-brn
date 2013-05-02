@@ -265,7 +265,6 @@ class Flooding : public BRNElement {
         struct flooding_last_node *fln = get_last_node(id, last);
 	if ( fln != NULL ) fln->received_cnt++;
       }
-      
     };
 
   //
@@ -320,6 +319,10 @@ class Flooding : public BRNElement {
   typedef BcastNodeMap::const_iterator BcastNodeMapIter;
 
   BcastNodeMap _bcast_map;
+
+  typedef HashMap<EtherAddress, uint32_t> RecvCntMap;
+  typedef RecvCntMap::const_iterator RecvCntMapIter;
+  RecvCntMap _recv_cnt;
 
  public:
 

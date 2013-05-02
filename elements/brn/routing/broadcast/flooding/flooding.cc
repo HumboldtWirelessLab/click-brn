@@ -38,6 +38,7 @@
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
 #include "../../identity/brn2_nodeidentity.hh"
+#include "../../../brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
 
@@ -372,6 +373,10 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
 void
 Flooding::inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node)
 {
+  uint32_t *cnt = _recv_cnt.findp(*last_node);
+  if ( cnt == NULL ) _recv_cnt.insert(*last_node,1);
+  else (*cnt)++;
+
   BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) {
@@ -493,13 +498,20 @@ Flooding::stats()
   StringAccum sa;
 
   sa << "<flooding node=\"" << BRN_NODE_NAME << "\" policy=\"" <<  _flooding_policy->floodingpolicy_name();
-  sa << "\" >\n\t<source count=\"" << _flooding_src << "\" />\n";
-  sa << "\t<received count=\"" << _flooding_rx << "\" />\n";
-  sa << "\t<sent count=\"" << _flooding_sent << "\" />\n";
-  sa << "\t<forward count=\"" << _flooding_fwd << "\" />\n";
-  sa << "\t<passive count=\"" << _flooding_passive << "\" />\n";
-  sa << "\t<last_node_passive count=\"" << _flooding_last_node_due_to_passive << "\" />\n";
-  sa << "\t<last_node_ack count=\"" << _flooding_last_node_due_to_ack << "\" />\n</flooding>\n";
+  sa << "\" >\n\t<localstats source=\"" << _flooding_src << "\" received=\"" << _flooding_rx;
+  sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
+  sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
+  sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" />\n";
+  sa << "\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
+  
+   for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {
+    uint32_t cnt = rcm.value();
+    EtherAddress addr = rcm.key();
+        
+    sa << "\t\t<node addr=\"" << addr.unparse() << "\" rcv_cnt=\"" << cnt << "\" />\n";
+  }
+  
+  sa << "\t</neighbours>\n</flooding>\n";
 
   return sa.take_string();
 }
