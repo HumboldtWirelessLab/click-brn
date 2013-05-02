@@ -235,6 +235,15 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
   BRN_INFO("Scan done");
 }
 
+
+/*bool
+FloodingPassiveAck::has_packet_in_queue(PassiveAckPacket *pap)
+{
+  _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
+  
+  return false;  
+}*/
+
 bool
 FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
 {
@@ -268,6 +277,8 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   
   return false;
 }
+
+
 
 
 

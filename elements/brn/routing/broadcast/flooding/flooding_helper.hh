@@ -57,6 +57,9 @@ class NeighbourMetric {
 typedef Vector<NeighbourMetric> NeighbourMetricList;
 typedef NeighbourMetricList::const_iterator NeighbourMetricListIter;
 
+typedef HashMap<EtherAddress, NeighbourMetric*> NeighbourMetricMap;
+typedef NeighbourMetricMap::const_iterator NeighbourMetricMapIter;
+
 class FloodingHelper : public BRNElement {
 
  public:
@@ -97,8 +100,8 @@ public:
 
   int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   void filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
-  void filter_known_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
   void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
+  void filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
 };
 
 CLICK_ENDDECLS
