@@ -89,7 +89,7 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
 {
 //  int diffbit;
   DHTnode *best_node = NULL;
-  int position_best_node;
+  int position_best_node = 0;
   DHTnode *acnode;
   int position_ac_node;
 
@@ -138,7 +138,7 @@ BRN_DEBUG("ID of me: %s",DartFunctions::print_id(_drt->_me->_md5_digest,128).c_s
 
 }
   if ( best_node == NULL ) {
-    //click_chatter("Search for shortest");
+    BRN_DEBUG("Search for shortest");
     for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
       acnode = _drt->_neighbours[n]->neighbour;//.get_dhtnode(n);
       position_ac_node = DartFunctions::position_last_1(acnode);
@@ -147,6 +147,8 @@ BRN_DEBUG("ID of me: %s",DartFunctions::print_id(_drt->_me->_md5_digest,128).c_s
         best_node = acnode;
       }
     }
+  } else {
+    BRN_DEBUG("Found longest prefix");
   }
 
   //TODO: this should never happen so check it dispensable
@@ -155,6 +157,7 @@ BRN_DEBUG("ID of me: %s",DartFunctions::print_id(_drt->_me->_md5_digest,128).c_s
     best_node = _drt->_me;
   }
 
+  BRN_DEBUG("Have Node: %s (me: %s)",DartFunctions::print_id(best_node).c_str(),DartFunctions::print_id(_drt->_me).c_str());
   return best_node;
 }
 
@@ -170,14 +173,14 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
   int diffbit_ac_node;
   int diffbit_best_node;
 
-  BRN_DEBUG("Search for ID: %s",DartFunctions::print_id(key, 128).c_str());
+  BRN_DEBUG("Search(opt) for ID: %s",DartFunctions::print_id(key, 128).c_str());
 
   if ( DartFunctions::equals(_drt->_me, key) ) {
     BRN_DEBUG("It's me");
     return _drt->_me;
   }
 
-  /*diffbit =*/ DartFunctions::diff_bit(_drt->_me, key);
+  diffbit_best_node = DartFunctions::diff_bit(_drt->_me, key);
 
   for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
     acnode = _drt->_neighbours[n]->neighbour;//.get_dhtnode(n);
@@ -187,7 +190,6 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
       return acnode;
     }
     diffbit_ac_node = DartFunctions::diff_bit(acnode, key);
-    BRN_DEBUG("diffbit: %d",diffbit_ac_node);
     if ( (best_node == NULL) || (diffbit_best_node < diffbit_ac_node)  ) {
       diffbit_best_node = diffbit_ac_node,
       best_node = acnode;

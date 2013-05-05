@@ -149,7 +149,7 @@ BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(hea
         BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
         BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
         BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
-
+         BRN_DEBUG("Send Packet to: %s",n->_ether_addr.unparse().c_str());
         output(0).push(brn_p);
       }
     }

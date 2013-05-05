@@ -180,6 +180,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   int32_t len;
   DHTnode first;
   DHTnodelist nodes;
+  DHTnode *add_node;
 
   if ( ! _active ) {
     BRN_DEBUG("Not active. Time since start: %d. delay: %d", (Timestamp::now() - _start).msecval(),_delay);
@@ -213,6 +214,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
     //but only for the nodes i dont know yet
     //therefore i dont get a route that is from me and it will end in a circle
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
+
 	for(int i = 0;i<nodes.size();i++){
 	DHTnode* next = nodes.get_dhtnode(i);
         if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL)

@@ -31,7 +31,7 @@ class ForeignRxStats : public BRNElement {
  public:
   class RxStats {
     public:
-#define LIST_SIZE 32     
+#define LIST_SIZE 32
 #define RXSTATS_FLAGS_RECEIVED       1
 #define RXSTATS_FLAGS_RECEIVED_SHIFT 0
 #define RXSTATS_FLAGS_OK             2
@@ -39,19 +39,20 @@ class ForeignRxStats : public BRNElement {
 #define RXSTATS_FLAGS_ACKED    4
 #define RXSTATS_FLAGS_RETRY    8
       EtherAddress _ea;
-   
+
       uint16_t _seq[LIST_SIZE];
       uint8_t _flags[LIST_SIZE];
 
       Timestamp _last_index_inc;
+      uint16_t  _last_seq;
 
       RxStats(EtherAddress ea) {
         _ea = ea;
-		
         memset(_seq, 0, sizeof(_seq));
         memset(_flags, 0, sizeof(_flags));
 
         _last_index_inc = Timestamp::now();
+        _last_seq = 0;
       }
 
       ~RxStats() {
@@ -59,15 +60,20 @@ class ForeignRxStats : public BRNElement {
 
 
       inline void add_seq(Timestamp */*ts*/, uint16_t seq, uint8_t ok, uint8_t retry ) {
-	uint16_t index = seq % LIST_SIZE;
-	_seq[index] = seq;
-	_flags[index] = RXSTATS_FLAGS_RECEIVED | (ok << 1) | (retry << 3);
+        uint16_t index = seq % LIST_SIZE;
+        _seq[index] = seq;
+        _last_seq = seq;
+        _flags[index] = RXSTATS_FLAGS_RECEIVED | (ok << 1) | (retry << 3);
       }
 
-      inline void add_ack(Timestamp */*ts*/, uint16_t /*seq*/) {
+      inline void add_ack(Timestamp *ts, uint16_t seq) {
+        uint16_t index = seq % LIST_SIZE;
+        if ( _seq[index] != seq ) add_seq(ts, seq, 1, 0);
+        _flags[index] |= RXSTATS_FLAGS_ACKED;
       }
 
-      inline void is_acked(Timestamp */*ts*/, uint16_t /*seq*/) {
+      inline void is_acked(uint16_t /*seq*/) {
+        
       }
 
   };
@@ -95,12 +101,13 @@ class ForeignRxStats : public BRNElement {
   BRN2Device* _device;
   Packet *last_packet;
   EtherAddress last_packet_src;
-  
+  uint16_t seq;
+
   Timer fwd_timer;
   uint16_t ack_timeout;
-  
+
   String stats_handler();
-  
+
   RxStatsTable rxs_tab;
 };
 

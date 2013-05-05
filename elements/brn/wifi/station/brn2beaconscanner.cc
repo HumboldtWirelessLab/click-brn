@@ -39,10 +39,11 @@
 CLICK_DECLS
 
 BRN2BeaconScanner::BRN2BeaconScanner()
-  : _timer(this),
-    _debug(BrnLogger::DEFAULT),
+  : _debug(BrnLogger::DEFAULT),
+    _timer(this),
     _rtable(0),
-    _winfo(0)
+    _winfo(0),
+    _timeout(500)
 {
 }
 
@@ -58,6 +59,7 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
        "WIRELESS_INFO", cpkP, cpElement, &_winfo,
        "RT", cpkP, cpElement, &_rtable,
+       "TIMEOUT", cpkP, cpInteger, &_timeout,
        "DEBUG", cpkP, cpInteger, &_debug,
        cpEnd) < 0)
     return -1;
@@ -65,13 +67,15 @@ BRN2BeaconScanner::configure(Vector<String> &conf, ErrorHandler *errh)
   if (_rtable && _rtable->cast("BrnAvailableRates") == 0) 
     return errh->error("BrnAvailableRates element is not a BrnAvailableRates");
 
+  _aps.clear();
+
   return 0;
 }
 
 int
 BRN2BeaconScanner::initialize(ErrorHandler *) {
 	_timer.initialize(this);
-	_timer.schedule_after_msec(100);
+	_timer.schedule_after_msec(_timeout);
 	return 0;
 }
 
@@ -79,7 +83,7 @@ void
 BRN2BeaconScanner::run_timer(Timer *)
 {
   chk_beacon_timeout();
-  _timer.schedule_after_msec(100);
+  _timer.schedule_after_msec(_timeout);
 }
 
 void
@@ -88,13 +92,14 @@ BRN2BeaconScanner::chk_beacon_timeout() {
 	 * We do this by means of the beacon interval
 	 * and the time now.
 	 */
+	uint32_t timenow_msec = Timestamp::now().msecval();
 
 	for (APIter iter = _aps.begin(); iter.live(); iter++) {
 		vap ap = iter.value();
 
 		//BRN_DEBUG("INFO bi: %d last_rx: %d ts: %d", (uint32_t)ap._beacon_int, ap._last_rx.msecval(), Timestamp::now().msecval());
 
-		if ((uint32_t)ap._beacon_int + ap._last_rx.msecval() < Timestamp::now().msecval()) {
+		if ((ap._last_rx.msecval() + _timeout) < timenow_msec) {
 			_aps.remove(ap._eth);
 			_paps.remove(ap._eth);
 		}

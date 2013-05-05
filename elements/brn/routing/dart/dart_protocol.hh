@@ -33,7 +33,7 @@ class DartProtocol {
   DartProtocol();
   ~DartProtocol();
 
-  static WritablePacket *add_route_header(uint8_t *dst_nodeid, int dst_nodeid_length, uint8_t *src_nodeid, int src_nodeid_length, Packet *p);
+  static WritablePacket *add_route_header(uint8_t *dst_nodeid, uint16_t dst_nodeid_length, uint8_t *src_nodeid, uint16_t src_nodeid_length, Packet *p);
   static struct dart_routing_header *get_route_header(Packet *p);
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);
