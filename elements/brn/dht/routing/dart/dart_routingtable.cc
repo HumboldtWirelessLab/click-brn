@@ -98,14 +98,15 @@ DartRoutingTable::add_node(DHTnode *node)
   if ( n == NULL ) {
     n = node->clone();
     _allnodes.add_dhtnode(n);
-    if ( n->_neighbor )// _neighbours.add_dhtnode(n);
+ if ( n->_neighbor )// _neighbours.add_dhtnode(n);
  add_neighbour_entry(n);
-} else {
-if(n->_age <= node->_age){
-    DartFunctions::copy_id(n,node);
+  } else {
+    	if(n->_age <= node->_age){
+     DartFunctions::copy_id(n,node);
      n->_age = node->_age;
     }
-   //TODO: update rest of node
+
+      //TODO: update rest of node
   }
 
   return 0;

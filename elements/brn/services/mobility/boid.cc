@@ -224,6 +224,7 @@ Boid::compute_behavior()
     Gravitation g = _glist[i];
     Vector3D dist = own_pos->vector3D();
     dist.sub(g._position);
+    dist.mul(-1);
     double dist_len = dist.length();
     BRN_DEBUG("Grav Dist: %s",dist.unparse().c_str());
     if (dist_len > 0) {

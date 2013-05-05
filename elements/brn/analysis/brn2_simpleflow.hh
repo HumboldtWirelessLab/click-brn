@@ -217,7 +217,9 @@ class BRN2SimpleFlow : public BRNElement
     String xml_stats();
   private:
 
-    WritablePacket*  nextPacketforFlow(Flow *f);
+    WritablePacket*  nextPacketforFlow(Flow *f, Packet *packet = NULL);
+    void handle_reuse(Packet *packet);
+
 
     bool _clear_packet;
     int _headroom;

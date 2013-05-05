@@ -132,6 +132,7 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK(IntArg().parse("-0", i32) == true && i32 == 0);
     CHECK(IntArg().parse("-5", i32) == true && i32 == -5);
     CHECK(u32 == 97);
+    CHECK_ERR(IntArg().parse("aoeu", u32, args) == false && u32 == 97, "invalid number");
     CHECK(IntArg().parse("0", u32) == true && u32 == 0);
     CHECK(IntArg().parse("-0", u32) == false);
     CHECK(IntArg().parse("4294967294", u32) == true && u32 == 4294967294U);
@@ -174,6 +175,7 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK_ERR(BoundedIntArg(0U, 100U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
     CHECK_ERR(BoundedIntArg(0U, 100U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
     CHECK_ERR(BoundedIntArg(0U, ~0U).parse("-1", i32, args) == false && i32 == 10, "out of range, bound 0");
+    CHECK_ERR(BoundedIntArg(-1, 9).parse("aoeu", i32, args) == false && i32 == 10, "invalid number");
 
     bool b; (void) b;
     CHECK(FixedPointArg(1).parse("0.5", i32) == true && i32 == 1);
@@ -355,6 +357,9 @@ ConfParseTest::initialize(ErrorHandler *errh)
     CHECK((-t).msecval() == -999);
     CHECK((-t).usecval() == -999000);
     CHECK((-t).nsecval() == -999000000);
+    t = Timestamp(0, 0) - Timestamp::make_msec(10000001);
+    CHECK(t.sec() == -10001 && t.usec() == 999000);
+    CHECK(t.subsec() == 999 * Timestamp::subsec_per_msec);
 
     CHECK(Timestamp(Timestamp::make_nsec(0, 999).timeval()) == Timestamp::make_usec(0, 0));
 #if TIMESTAMP_NANOSEC
