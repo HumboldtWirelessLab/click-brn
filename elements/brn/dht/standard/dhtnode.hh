@@ -49,7 +49,7 @@ class DHTnode
     EtherAddress _ether_addr;
 
     uint8_t _status;
-    Timestamp _age;
+    Timestamp _age; 
     Timestamp _last_neighbouring_rx_msg;       //last time a direct msg (as neighbour) from this node is received
     Timestamp _last_ping;
 

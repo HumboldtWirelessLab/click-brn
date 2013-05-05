@@ -162,6 +162,40 @@ FalconRoutingTable::findBestSuccessor(DHTnode *node, int max_age, HashMap<EtherA
   return best;
 }
 
+DHTnode*
+FalconRoutingTable::findBetterSuccessor(DHTnode *node,DHTnode *dst, int max_age, HashMap<EtherAddress,EtherAddress> *used_eas)
+{
+  Timestamp now = Timestamp::now();
+  DHTnode *best = dst;
+  DHTnode *n;
+
+  if ( node->equals(_me) ) best = successor;
+  if ( FalconFunctions::is_in_between( node, best, _me) ) 
+      best = _me;
+
+  for ( int i = 0; i < _allnodes.size(); i++ ) {
+    n = _allnodes.get_dhtnode(i);
+
+    // if nodes are limited due to the hashmap, check whether we can use this node (is it in the hashmap ??)
+    if ( used_eas != NULL ) {
+      if ( used_eas->findp(n->_ether_addr) == NULL ) continue;
+    }
+
+    //BRN_DEBUG("Max age: %d  Current Age: %d", max_age, n->get_age_s() );
+    //BRN_DEBUG("Is %s between %s and %s ?", n->_ether_addr.unparse().c_str(), node->_ether_addr.unparse().c_str(),
+    //                                       best->_ether_addr.unparse().c_str());
+    if ( ( n->get_age_s(&now) <= max_age ) && (FalconFunctions::is_in_between( node, best, n) ) ) {
+    //  BRN_DEBUG("YES");
+      best = n;
+    }/* else {
+      BRN_DEBUG("NO");
+    }*/
+  }
+
+  return best;
+}
+
+
 /*************************************************************************************************/
 /************************** A D D   N O D E   F U N C T I O N S **********************************/
 /*************************************************************************************************/
@@ -192,7 +226,7 @@ FalconRoutingTable::add_node(DHTnode *node)
   }
 
   if ( isBetterSuccessor(n) ) {
-
+     BRN_DEBUG("UPDATE SUCC/PRE");
     if ( predecessor == NULL ) {
       predecessor = n;
       update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
@@ -207,7 +241,7 @@ FalconRoutingTable::add_node(DHTnode *node)
                                                //      called by complex function, so it can result in problems
 
   } else if ( isBetterPredecessor(n) ) {
-
+    BRN_DEBUG("UPDATE SUCC/PRE");
     predecessor = n;
     update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
                                              //      called by complex function, so it can result in problems
@@ -247,7 +281,7 @@ FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
 {
   int table;
   DHTnode *fn;
-
+BRN_DEBUG("UPDATE FINGER");
   if ( isSuccessor(node) && (position != 0) ) {
     BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
     return 0;
