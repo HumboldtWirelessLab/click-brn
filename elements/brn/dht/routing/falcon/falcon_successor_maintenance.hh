@@ -14,7 +14,8 @@ CLICK_DECLS
 #define FALCON_DEFAULT_SUCCESSOR_START_TIME      10000
 
 #define FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC 1
-
+#define FALCON_OPT_SUCC_HINT 2
+#define FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT 3
 class FalconSuccessorMaintenance : public Element
 {
   public:

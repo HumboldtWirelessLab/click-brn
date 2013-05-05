@@ -53,6 +53,8 @@ class DHTRoutingDart : public DHTRouting
     int update_node(EtherAddress *ea, md5_byte_t *key, int keylen);
 
     DartRoutingTable *_drt;
+    
+    bool _expand_neighbourhood; //OPTIMIZATION
 
     static void routingtable_callback_func(void *e, int status);
 

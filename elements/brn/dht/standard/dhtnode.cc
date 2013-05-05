@@ -17,7 +17,6 @@ DHTnode::DHTnode():
   _extra(NULL)
 {
   _ether_addr = EtherAddress();
-
   memset(_md5_digest, 0, sizeof(_md5_digest));
   _digest_length = DEFAULT_DIGEST_LENGTH;
 }
