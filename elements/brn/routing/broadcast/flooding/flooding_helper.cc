@@ -215,44 +215,72 @@ FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<Et
 
 
 /*
+ * Dijkstra helper
+ */
+void
+FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap, uint32_t hop_count)
+{
+  Vector<EtherAddress> nn_list;                                              //neighbourlist
+
+  neighboursMetric.clear();
+  neighboursMetricMap.clear();
+  nn_list.clear();
+  
+  neighboursMetric.push_back(NeighbourMetric(start_node, 0, 0));
+  neighboursMetricMap.insert(start_node,&(neighboursMetric[neighboursMetric.size()-1]));
+  
+  uint32_t new_nodes_start = 0;
+  uint32_t new_nodes_end = 1;
+  
+  for ( uint32_t h = 1; h <= hop_count; h++ ) {    
+    for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
+      get_filtered_neighbors(neighboursMetric[n]._ea, nn_list);                   // get n of n
+
+      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {                      //check all n of n 
+	if ( neighboursMetricMap.findp(nn_list[nn_i]) == NULL ) {                 // if not in list
+          neighboursMetric.push_back(NeighbourMetric(nn_list[nn_i], 0, h));       // add 
+          neighboursMetricMap.insert(nn_list[nn_i],&(neighboursMetric[neighboursMetric.size()-1]));
+	}
+      }
+    }
+    new_nodes_start = new_nodes_end;
+    new_nodes_end = neighboursMetric.size();
+    nn_list.clear();
+  }
+}
+
+
+
+/*
  * Check all one hop neighbours and get shortest path to every node of them
  * remove all neighbour nodes which have a better two hop route than single link
  * 
+ * Local Dijkstra
  */
 
 void
-FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &/*filtered_neighbors*/)
+FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &/*filtered_neighbors*/)
 {
-  BRN_ERROR("Neighborsize before filter: %d", neighbors.size());
+  uint32_t no_nodes;
   
   NeighbourMetricList neighboursMetric;
   NeighbourMetricMap neighboursMetricMap;
   
   if (!_link_table) {
+    //get all n-hop nodes
+    get_graph(node, neighboursMetric, neighboursMetricMap, 2 ); //2 hops
 
-    for( int n_i = neighbors.size()-1; n_i >= 0; n_i--) {
-      int metric_nb_node = metric2pdr(_link_table->get_link_metric(node, neighbors[n_i]));
-      
-      neighboursMetric.push_back(NeighbourMetric(neighbors[n_i],metric_nb_node));
-      neighboursMetricMap.insert(neighbors[n_i],&(neighboursMetric[neighboursMetric.size()-1]));
-    }
     
-    for( int n_i = neighboursMetric.size()-1; n_i >= 0; n_i--) {
-      Vector<EtherAddress> nn_list;                                                 //neighbours of neighbour
-      get_filtered_neighbors(neighboursMetric[n_i]._ea, nn_list);                   // get n of n
-      
-      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {                        //check all n of n 
-	if ( neighboursMetricMap.findp(nn_list[nn_i]) == NULL ) {                   // if not in list
-          neighboursMetric.push_back(NeighbourMetric(nn_list[nn_i],0));             // add 
-          neighboursMetricMap.insert(nn_list[nn_i],&(neighboursMetric[neighboursMetric.size()-1]));
-	}
-      }
-    }
-    
+    no_nodes = neighboursMetric.size();
+    uint32_t *metric_map = new uint32_t[no_nodes*no_nodes];
+    metric_map[0] = 0;
   }
     
 }
-
+/*
+ * remove nose of set "neighbors" which are in "known_neighbors". Result: filtered_neighbors
+ * 
+ */
 void
 FloodingHelper::filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors)
 {
@@ -267,7 +295,10 @@ FloodingHelper::filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, 
   node_hm.clear();
 }
 
-
+/*
+ * count node which are member of set 1 but not in set 2
+ * 
+ */
 int
 FloodingHelper::subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2)
 {
@@ -288,7 +319,10 @@ FloodingHelper::subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<Et
 	return diff_cnt;
 }
 
-// add all elements from newS to all
+/*
+ *  add all from elements from newS to all
+ *
+ */ 
 void
 FloodingHelper::addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &all)
 {
@@ -306,6 +340,10 @@ FloodingHelper::addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &a
 	}
 }
 
+/*
+ *  find node in the set with worst link
+ *
+ */ 
 int
 FloodingHelper::findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors)
 {
@@ -325,6 +363,10 @@ FloodingHelper::findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbo
   
   return w_ind;
 }
+
+//-----------------------------------------------------------------------------
+// Handler
+//-----------------------------------------------------------------------------
 
 void
 FloodingHelper::add_handlers()

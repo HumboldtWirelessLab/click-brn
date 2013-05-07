@@ -354,6 +354,8 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_STATIC_REWRITE: return "static rewrite";
     case UNICAST_FLOODING_ALL_UNICAST: return "all_unicast";
     case UNICAST_FLOODING_TAKE_WORST: return "take_worst";
+    case UNICAST_FLOODING_MOST_NEIGHBOURS: return "most_neighbours";
+    case UNICAST_FLOODING_OWN_RESPONSIBILITY: return "own_responsibility";
   }
 
     return "unknown"; 
