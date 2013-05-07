@@ -340,7 +340,7 @@ Flooding::push( int port, Packet *packet )
       }
     }
 
-    push(1,  packet);
+    push(1, packet);
   }
 }
 
@@ -423,6 +423,16 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success)
   if (success) _flooding_last_node_due_to_ack++;
 }
 
+uint32_t
+Flooding::unfinished_forward_attempts(EtherAddress *src, uint32_t id)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  
+  if ( bcn == NULL ) return 0;
+  
+  return bcn->unfinished_forward_attempts(id);
+}
+ 
 void
 Flooding::sent(EtherAddress *src, uint32_t id, uint32_t no_transmission)
 {
