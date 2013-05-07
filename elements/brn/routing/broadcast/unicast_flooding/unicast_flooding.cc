@@ -307,10 +307,10 @@ UnicastFlooding::algorithm_3(EtherAddress &next_hop, Vector<EtherAddress> &neigh
 
   if ( *(_me->getMasterAddress()) == EtherAddress(e) ) {
     click_chatter("Neigh");
-    FloodingHelper::print_vector(neighbors);
+    _fhelper->print_vector(neighbors);
     
     click_chatter("Union");
-    FloodingHelper::print_vector(nbnbUnion);
+    _fhelper->print_vector(nbnbUnion);
   }
   
   // search in my 1-hop neighborhood

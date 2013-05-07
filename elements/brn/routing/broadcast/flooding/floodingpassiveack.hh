@@ -94,10 +94,14 @@ class FloodingPassiveAck : public BRNElement {
 	_next_timeout = _last_timeout + Timestamp::make_msec(timeout);
       }
 
-      void set_next_retry() {
-	_retries++;
+      void set_next_timeout() {
 	_last_timeout = _next_timeout;
 	_next_timeout = _last_timeout + Timestamp::make_msec(_timeout);
+      }
+
+      void set_next_retry() {
+	_retries++;
+	set_next_timeout();
       }
       
       inline int32_t time_left(Timestamp now) {
@@ -146,10 +150,13 @@ class FloodingPassiveAck : public BRNElement {
   uint32_t _dfl_timeout;
 
   bool _enable;
+  bool _queue_check;
+  uint32_t _time_tolerance;
 
   PassiveAckPacket *get_next_packet();
   void set_next_schedule();
   void scan_packet_queue(int32_t time_tolerance);
+  bool has_packet_in_queue(PassiveAckPacket *pap);
   bool packet_is_finished(PassiveAckPacket *pap);
   
   Timer _retransmit_timer;
@@ -160,7 +167,7 @@ class FloodingPassiveAck : public BRNElement {
   uint32_t _dequeued_pkts;
   uint32_t _retransmissions;
   uint32_t _pre_removed_pkts;
-  
+  uint32_t _already_queued_pkts;
 
  public:
   

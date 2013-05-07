@@ -90,8 +90,9 @@ public:
  public:
   int _max_metric_to_neighbor; // max. metric towards a neighbor
 
-  void static print_vector(Vector<EtherAddress> &eas);
-  uint32_t static metric2pdr(uint32_t metric);
+  void print_vector(Vector<EtherAddress> &eas);
+  void print_vector(NeighbourMetricList &nodes);
+  uint32_t metric2pdr(uint32_t metric);
 
   // helper
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);

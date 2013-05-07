@@ -64,7 +64,15 @@ void
 FloodingHelper::print_vector(Vector<EtherAddress> &eas)
 {
   for( int n_i = 0; n_i < eas.size(); n_i++) { // iterate over all my neighbors
-    click_chatter("Addr %d : %s", n_i, eas[n_i].unparse().c_str());
+    BRN_DEBUG("Addr %d : %s", n_i, eas[n_i].unparse().c_str());
+  }
+}
+
+void 
+FloodingHelper::print_vector(NeighbourMetricList &nodes)
+{
+  for( int n_i = 0; n_i < nodes.size(); n_i++) { // iterate over all my neighbors
+    BRN_DEBUG("Addr %d : %s (%d, %d)", n_i, nodes[n_i]._ea.unparse().c_str(), nodes[n_i]._metric, nodes[n_i]._flags);
   }
 }
 
@@ -211,7 +219,6 @@ FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<Et
  * remove all neighbour nodes which have a better two hop route than single link
  * 
  */
-
 
 void
 FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &/*filtered_neighbors*/)
