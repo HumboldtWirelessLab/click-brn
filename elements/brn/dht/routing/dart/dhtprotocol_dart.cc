@@ -19,7 +19,6 @@
  */
 #include <click/config.h>
 #include <click/etheraddress.hh>
-
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "elements/brn/dht/standard/dhtnode.hh"
@@ -44,6 +43,7 @@ if ( (unsigned)buffer_len < sizeof(struct dht_dart_lp_node_entry) ) return 0;
   struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
   ne->status = me->_status;
   ne->id_size = me->_digest_length;
+  ne->time = me->_age;
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
   memcpy(ne->id, me->_md5_digest, MAX_NODEID_LENTGH);
 
@@ -55,8 +55,10 @@ if ( (unsigned)buffer_len < sizeof(struct dht_dart_lp_node_entry) ) return 0;
       DHTnode *ac_node = nodes->get_dhtnode(node_index);
       node_index++;
       ne[node_index].status = ac_node->_status;
+      ne[node_index].time = ac_node->_age;
       memcpy(ne[node_index].etheraddr, ac_node->_ether_addr.data(), 6);
-      memcpy(ne[node_index].id, ac_node->_md5_digest, sizeof(ne->id));
+      ne[node_index].id_size = ac_node->_digest_length;
+      memcpy(ne[node_index].id, ac_node->_md5_digest, MAX_NODEID_LENTGH);
       buffer_left -= sizeof(struct dht_dart_lp_node_entry);
     }
   }
@@ -68,7 +70,7 @@ DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, 
 {
   struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
 
-  first->_age = Timestamp::now();
+  first->_age = ne->time;
   first->_status = ne->status;
   first->set_update_addr(ne->etheraddr);
   first->set_nodeid(ne->id, ne->id_size);
@@ -83,6 +85,8 @@ DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, 
       DHTnode *ac_node = new DHTnode(EtherAddress(ne[node_index].etheraddr),ne[node_index].id, ne[node_index].id_size);
       ac_node->_age = Timestamp::now();
       ac_node->_status = ne[node_index].status;
+      ac_node->set_update_addr(ne[node_index].etheraddr);
+      ac_node->set_nodeid(ne[node_index].id,ne[node_index].id_size);
       nodes->add_dhtnode(ac_node);
       buffer_left += sizeof(struct dht_dart_lp_node_entry);
     }

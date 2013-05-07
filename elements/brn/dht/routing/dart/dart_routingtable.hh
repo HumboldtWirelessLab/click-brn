@@ -11,8 +11,6 @@ CLICK_DECLS
 
 class DartRoutingTable : public Element
 {
-  public:
-
     class CallbackFunction {
 
       public:
@@ -30,6 +28,17 @@ class DartRoutingTable : public Element
   public:
     DartRoutingTable();
     ~DartRoutingTable();
+
+   class DRTneighbour {
+
+        public:
+          DHTnode* neighbour;
+          DHTnodelist* neighbours_neighbour;
+          DRTneighbour(DHTnode* a){
+           neighbour = a;
+           neighbours_neighbour = new DHTnodelist();
+          }
+        };
 
 /*ELEMENT*/
     const char *class_name() const  { return "DartRoutingTable"; }
@@ -56,6 +65,8 @@ class DartRoutingTable : public Element
 
     DHTnode *get_node(EtherAddress *ea);
     DHTnode *get_neighbour(EtherAddress *ea);
+    DartRoutingTable::DRTneighbour* add_neighbour_entry(DHTnode* n);
+    DHTnode* add_neighbours_neighbour(DHTnode* neighbour,DHTnodelist* neighbours);
 
     int add_update_callback(void (*info_func)(void*,int), void *info_obj);
     void update_callback(int status);                                       //TODO: _me is updated externaly by dart_routingtable-maintenace. change it
@@ -75,7 +86,9 @@ class DartRoutingTable : public Element
 
     DHTnodelist _allnodes;
 
-    DHTnodelist _neighbours;
+    //DHTnodelist _neighbours;
+ 
+    Vector<DRTneighbour*> _neighbours;
 
     int _debug;
 };

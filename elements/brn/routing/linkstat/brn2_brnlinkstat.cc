@@ -630,10 +630,11 @@ BRN2LinkStat::simple_action(Packet *p)
       ptr += 2;
 
       for ( int h = 0; h < _reg_handler.size(); h++ ) {
-        if ( proto == _reg_handler[h]._protocol )
+        if ( proto == _reg_handler[h]._protocol ){
+           BRN_DEBUG("quality fwd:%d,quality rev:%d",best_fwd,best_rev);
           /*int res =*/ _reg_handler[h]._rx_handler(_reg_handler[h]._element, &src_ea, (char*)ptr, s,
            /*is_neighbour*/(best_fwd > 80) && (best_rev > 80), /*fwd_rate*/best_fwd , /*rev_rate*/best_rev);
-      }
+      }}
 
       ptr += s;
     }
