@@ -97,6 +97,8 @@ DartForwarder::push(int port, Packet *p_in)
 
   uint8_t ttl = BRNPacketAnno::ttl_anno(p_in);
   if ( port == 0 ) ttl--;
+BRN_DEBUG("Src-ID-len:%d",ntohl(header->_src_nodeid_length));
+BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(header->_dst_nodeid).c_str());
   BRN_DEBUG("Src: %s (%s) Dst: %s (%s) TTL: %d Port: %d", src_addr.unparse().c_str(),
                                  DartFunctions::print_id(header->_src_nodeid, ntohl(header->_src_nodeid_length)).c_str(),
                                                           dst_addr.unparse().c_str(),
@@ -147,7 +149,7 @@ DartForwarder::push(int port, Packet *p_in)
         BRNPacketAnno::set_src_ether_anno(brn_p,_dartrouting->_me->_ether_addr);  //TODO: take address from anywhere else
         BRNPacketAnno::set_dst_ether_anno(brn_p,n->_ether_addr);
         BRNPacketAnno::set_ethertype_anno(brn_p,ETHERTYPE_BRN);
-
+         BRN_DEBUG("Send Packet to: %s",n->_ether_addr.unparse().c_str());
         output(0).push(brn_p);
       }
     }

@@ -57,7 +57,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
 bool is_neighbour = false;
-  if ( *ea == *next_phy ) {
+ /* if ( *ea == *next_phy ) {
     BRN_DEBUG("Add neighbour. Check first");
 #pragma message "Use var instead of fix value"
     if ( _link_table->get_host_metric_to_me(*next_phy) > 300 ) {
@@ -65,7 +65,7 @@ bool is_neighbour = false;
       return NULL;
     }
     else is_neighbour = true;
-  }
+  }*/
 
   for(int i = 0; i < _rt.size(); i++) {                         //search
     if ( memcmp( ea->data(), _rt[i]->_dst.data(), 6 ) == 0 ) {  //if found
@@ -73,7 +73,7 @@ bool is_neighbour = false;
       _rt[i]->_dst_id_length = id_len;
       _rt[i]->_time = Timestamp::now();
       if ( ! _rt[i]->nextHopIsNeighbour()  || 
-		is_neighbour  ||
+//		is_neighbour  ||
            _rt[i]->_is_direct == false) {
         _rt[i]->updateNextHop(next_phy);
         _rt[i]->updateNextPhyHop(next_phy);
@@ -244,6 +244,18 @@ HawkRoutingtable::getNextHop(EtherAddress *dst)
   }
   return NULL;
 }
+
+EtherAddress *
+HawkRoutingtable::getDirectNextHop(EtherAddress *dst)
+{
+  for(int i = 0; i < _rt.size(); i++) {                         //search
+    if ( memcmp( dst->data(), _rt[i]->_dst.data(), 6 ) == 0 && _rt[i]->_is_direct ) {  //if found
+      return &(_rt[i]->_next_hop);
+    }
+  }
+  return NULL;
+}
+
 
 bool
 HawkRoutingtable::hasNextPhyHop(EtherAddress *dst)

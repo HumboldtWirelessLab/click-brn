@@ -24,7 +24,7 @@
 #define DHT_PROTOCOL_DART_HH
 
 #include <click/element.hh>
-
+#include <click/timer.hh>
 #include "elements/brn/dht/standard/dhtnode.hh"
 #include "elements/brn/dht/standard/dhtnodelist.hh"
 
@@ -45,7 +45,7 @@ CLICK_DECLS
 struct dht_dart_lp_node_entry {
   uint8_t  status;
   uint8_t  id_size;
-
+  Timestamp time;
   uint8_t  etheraddr[6];
   uint8_t  id[MD5_DIGEST_LENGTH];
 
