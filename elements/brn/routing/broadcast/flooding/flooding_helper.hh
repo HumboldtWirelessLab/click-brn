@@ -47,6 +47,7 @@ class NeighbourMetric {
   uint16_t     _metric;
   uint8_t      _flags;
   uint8_t      _hops;
+  NeighbourMetric *_predecessor;
 
   NeighbourMetric(EtherAddress ea, uint16_t metric ) {
     init(ea, metric, 0, 0);
@@ -61,6 +62,7 @@ class NeighbourMetric {
     _metric = metric;
     _flags = flags;
     _hops = hops;
+    _predecessor = NULL;
   }
 };
 
@@ -113,7 +115,7 @@ public:
 
   int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   void filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
-  void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &filtered_neighbors);
+  void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
   void filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
 };
 
