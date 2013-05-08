@@ -259,23 +259,44 @@ FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &n
  */
 
 void
-FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &/*filtered_neighbors*/)
+FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &/*filtered_neighbors*/)
 {
   uint32_t no_nodes;
   
   NeighbourMetricList neighboursMetric;
   NeighbourMetricMap neighboursMetricMap;
   
-  if (!_link_table) {
-    //get all n-hop nodes
-    get_graph(node, neighboursMetric, neighboursMetricMap, 2 ); //2 hops
-
-    
-    no_nodes = neighboursMetric.size();
-    uint32_t *metric_map = new uint32_t[no_nodes*no_nodes];
-    metric_map[0] = 0;
+  bool metric_changed;
+  
+  if (!_link_table) return;
+  
+  //get all n-hop nodes
+  get_graph(node, neighboursMetric, neighboursMetricMap, 2 ); //2 hops
+  
+  no_nodes = neighboursMetric.size();
+  
+  // metric_map[a * no_nodes + b] = metric2pdr(_link_table->get_link_metric(neighboursMetric[a]._ea, neighboursMetric[b]._ea));
+  
+  //set metric to known nodes to 100
+  neighboursMetric[0]._predecessor = &neighboursMetric[0];
+  
+  for ( int i = 0; i < known_neighbors.size(); i++ ) {
+    NeighbourMetric *nm = neighboursMetricMap.find(known_neighbors[i]);
+    nm->_metric = 100;
+    nm->_hops = 0;
+    nm->_predecessor = &neighboursMetric[0];
   }
+      
+  do {
+    metric_changed = false;
     
+    
+    
+    for ( uint32_t marked = 0; marked < no_nodes; marked++);
+    
+  } while ( metric_changed );
+    
+  //delete metric_map;
 }
 /*
  * remove nose of set "neighbors" which are in "known_neighbors". Result: filtered_neighbors
