@@ -307,10 +307,10 @@ UnicastFlooding::algorithm_3(EtherAddress &next_hop, Vector<EtherAddress> &neigh
 
   if ( *(_me->getMasterAddress()) == EtherAddress(e) ) {
     click_chatter("Neigh");
-    FloodingHelper::print_vector(neighbors);
+    _fhelper->print_vector(neighbors);
     
     click_chatter("Union");
-    FloodingHelper::print_vector(nbnbUnion);
+    _fhelper->print_vector(nbnbUnion);
   }
   
   // search in my 1-hop neighborhood
@@ -354,6 +354,8 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_STATIC_REWRITE: return "static rewrite";
     case UNICAST_FLOODING_ALL_UNICAST: return "all_unicast";
     case UNICAST_FLOODING_TAKE_WORST: return "take_worst";
+    case UNICAST_FLOODING_MOST_NEIGHBOURS: return "most_neighbours";
+    case UNICAST_FLOODING_OWN_RESPONSIBILITY: return "own_responsibility";
   }
 
     return "unknown"; 

@@ -48,12 +48,15 @@ FloodingPassiveAck::FloodingPassiveAck():
   _dfl_retries(1),
   _dfl_timeout(25),
   _enable(true),
+  _queue_check(true),
+  _time_tolerance(10),
   _retransmit_timer(this),
   _timer_is_scheduled(false),
   _queued_pkts(0),
   _dequeued_pkts(0),
   _retransmissions(0),
   _pre_removed_pkts(0),
+  _already_queued_pkts(0),
   _retransmit_broadcast(NULL)
 {
   BRNElement::init();
@@ -79,6 +82,8 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
       "ENABLE", cpkP, cpBool, &_enable,
+      "QUEUECHECK", cpkP, cpBool, &_queue_check,
+      "TIMETOLERANCE", cpkP, cpInteger, &_time_tolerance,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -97,11 +102,11 @@ void
 FloodingPassiveAck::run_timer(Timer *)
 {
   _timer_is_scheduled = false;
-  BRN_INFO("Scan queue");
-  scan_packet_queue(10);
-  BRN_INFO("Set schedule");
+  //BRN_INFO("Scan queue");
+  scan_packet_queue(_time_tolerance);
+  //BRN_INFO("Set schedule");
   set_next_schedule();
-  BRN_INFO("run_timer done");
+  //BRN_INFO("run_timer done");
 }
 
 int
@@ -111,7 +116,7 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
   
   if ( retries < 0 ) retries = _dfl_retries;
   
-  BRN_FATAL("Set Retries: %d, Bcast: %d",retries,bcast_id);
+  //BRN_FATAL("Set Retries: %d, Bcast: %d",retries,bcast_id);
 
   PassiveAckPacket *pap = new PassiveAckPacket(p->clone(), src, bcast_id, passiveack, retries, _dfl_timeout);
   
@@ -178,11 +183,11 @@ FloodingPassiveAck::set_next_schedule()
     
     next_time = MAX(next_time,10); //time to next schedule at least 10 ms
     
-    BRN_FATAL("Next schedule in %d ms",next_time);
+    //BRN_DEBUG("Next schedule in %d ms",next_time);
     if ( _timer_is_scheduled ) {
       if ( (_time_next_schedule - now).msecval() <= next_time ) return;
       
-      BRN_INFO("Unschedule Timer");
+      //BRN_DEBUG("Unschedule Timer");
       _retransmit_timer.unschedule();
     }
     
@@ -201,6 +206,12 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
 
   for ( int i = p_queue.size() - 1; i >= 0; i-- ) {
     PassiveAckPacket *p_next = p_queue[i];
+    if ( _queue_check && has_packet_in_queue(p_next) ) {
+      //BRN_DEBUG("Packet is already in queue. Delay next retry");
+      _already_queued_pkts++;
+      p_next->set_next_timeout();
+      continue; 
+    }
     
     if ( p_next->time_left(now) <  time_tolerance) {
       bool pif = packet_is_finished(p_next);
@@ -208,7 +219,7 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
       if ( ! pif ) {
 	Packet *p = p_next->_p;
 
-	BRN_INFO("Packet %d Retries %d",i,p_next->retries_left());
+	//BRN_DEBUG("Packet %d Retries %d",i,p_next->retries_left());
 	p_next->set_next_retry();
 	
 	if ( p_next->retries_left() != 0 ) p = p->clone();
@@ -217,14 +228,14 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
 	_retransmit_broadcast(_retransmit_element, p, &p_next->_src, p_next->_bcast_id );
 	_retransmissions++;
 	
-	BRN_INFO("Late: Packet %d Retries %d",i,p_next->retries_left());
+	//BRN_DEBUG("Late: Packet %d Retries %d",i,p_next->retries_left());
       } else {
 	p_next->_p->kill();
 	_pre_removed_pkts++;
       }
       
       if ((p_next->retries_left()==0) || (pif)) {
-	BRN_INFO("Clear packet");
+	//BRN_INFO("Clear packet");
 	p_next->_p = NULL; //packet was used for the last retry
         delete p_next;
         p_queue.erase(p_queue.begin() + i);
@@ -235,14 +246,11 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
   BRN_INFO("Scan done");
 }
 
-
-/*bool
+bool
 FloodingPassiveAck::has_packet_in_queue(PassiveAckPacket *pap)
 {
-  _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
-  
-  return false;  
-}*/
+  return _flooding->unfinished_forward_attempts(&pap->_src, pap->_bcast_id) != 0;
+}
 
 bool
 FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
@@ -253,34 +261,32 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   /*check neighbours*/
   Vector<EtherAddress> neighbors;
   _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()), neighbors);
+  
   struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
   uint32_t last_nodes_size;
-  
   last_nodes = _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
+  
   BRN_DEBUG("For %s:%d i have %d neighbours",pap->_src.unparse().c_str(),pap->_bcast_id,last_nodes_size);
   
-  for ( uint32_t j = 0; j < last_nodes_size; j++ ) {
-    for ( int32_t i = neighbors.size()-1; i >= 0; i--) {
-      if ( neighbors[i] == EtherAddress(last_nodes[j].etheraddr) ) {
-        BRN_DEBUG("Delete Src %s", neighbors[i].unparse().c_str());
-        neighbors.erase(neighbors.begin() + i);
-      }
-    }
-  }  
+  Vector<EtherAddress> known_neighbors;
+  for ( uint32_t j = 0; j < last_nodes_size; j++ ) known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+  
+  Vector<EtherAddress> missed_neighbors;
+  _fhelper->filter_known_one_hop_neighbors(neighbors, known_neighbors, missed_neighbors);
+    
+  BRN_DEBUG("Neighbours: %d Lasthop: %d",missed_neighbors.size(),last_nodes_size);
 
-  BRN_DEBUG("Neighbours: %d Lasthop: %d",neighbors.size(),last_nodes_size);
-
-  if (neighbors.size() == 0) {
+  neighbors.clear();
+  known_neighbors.clear();
+  
+  if (missed_neighbors.size() == 0) {
     BRN_DEBUG("* FloodingPassiveAck: No Neighbour left!");
     return true;
   }
   
+  missed_neighbors.clear();
   return false;
 }
-
-
-
-
 
 //-----------------------------------------------------------------------------
 // Handler
@@ -296,7 +302,8 @@ FloodingPassiveAck::stats()
   sa << "\" enabled=\"" << (int)((_enable)?1:0) << "\" retries=\"" << _dfl_retries << "\" timeout=\"";
   sa << _dfl_timeout << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _queued_pkts << "\" deletes=\"" << _dequeued_pkts << "\" retransmissions=\"";
-  sa << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts << "\" >\n";
+  sa << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts;
+  sa << "\" already_queued=\"" << _already_queued_pkts << "\" >\n";
 
   for ( int i = 0; i < p_queue.size(); i++ ) {
     PassiveAckPacket *p_next = p_queue[i];

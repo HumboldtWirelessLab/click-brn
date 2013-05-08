@@ -25,9 +25,13 @@
 #include <click/element.hh>
 
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-
+#include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "elements/brn/dht/routing/falcon/dhtrouting_falcon.hh"
+#include "elements/brn/dht/routing/falcon/dhtprotocol_falcon.hh"
+#include "elements/brn/dht/routing/falcon/falcon_functions.hh"
 #include "hawk_routingtable.hh"
+#include "elements/brn/dht/routing/falcon/falcon_routingtable.hh"
+
 
 CLICK_DECLS
 
@@ -45,7 +49,11 @@ class HawkForwarder : public Element {
   //member
   //
   int _debug;
+  //OPTIMIZATION-FLAGS
 
+  bool _opt_first_dst;
+  bool _opt_better_finger;
+  bool _opt_successor_forward;
   //
   //methods
   //
@@ -72,6 +80,7 @@ class HawkForwarder : public Element {
   BRN2NodeIdentity *_me;
   DHTRoutingFalcon *_falconrouting;
   HawkRoutingtable *_rt;
+  FalconRoutingTable *_frt;
 
 };
 

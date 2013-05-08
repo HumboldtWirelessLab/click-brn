@@ -87,10 +87,10 @@ DartRoutingTableMaintenance::getBestNeighbour()
 
   if ( _drt->_neighbours.size() == 0 ) return NULL;
 
-  best = _drt->_neighbours.get_dhtnode(0);
-
+//  best = _drt->_neighbours.get_dhtnode(0);
+best = _drt->_neighbours[0]->neighbour;
   for ( int n = 1; n < _drt->_neighbours.size(); n++ ) {
-    next = _drt->_neighbours.get_dhtnode(n);
+    next = _drt->_neighbours[n]->neighbour;//.get_dhtnode(n);
     if ( next->_digest_length < best->_digest_length ) {
       //TODO: better metric (linkquality, age,.....
       best = next;
@@ -103,20 +103,20 @@ DartRoutingTableMaintenance::getBestNeighbour()
 void
 DartRoutingTableMaintenance::table_maintenance()
 {
-  BRN_INFO("table maintenance");
-
+  BRN_DEBUG("table maintenance");
+BRN_DEBUG("active:%s, validID:%s,neighbours:%d",String(_activestart).c_str(),String(_drt->_validID).c_str(),_drt->_neighbours.size());
   if ( ( _activestart ) && ( ! _drt->_validID ) && ( _drt->_neighbours.size() == 0 ) )  {
     //I'm active, have no valid ID and no neighbour to ask for an ID
     _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
     _drt->_validID = true;
-
+    BRN_DEBUG("Set my ID to 0");
     _drt->update_callback(DART_UPDATE_ID);      //update my own id
 
   } else if ( _drt->_neighbours.size() > 0 ) {  //I've neighbours, so check
     if ( ! _drt->_validID ) {                   //i've no ID, so ask best neighbour for ID(-Sharing)
       DHTnode *bestneighbour = getBestNeighbour();
 
-      BRN_DEBUG("Best Neighbour of %d : %s",_drt->_neighbours.size(),bestneighbour->_ether_addr.unparse().c_str());
+      BRN_DEBUG("Ask for an ID cause I dont have one - Best Neighbour of %d : %s",_drt->_neighbours.size(),bestneighbour->_ether_addr.unparse().c_str());
 
       WritablePacket *p = DHTProtocolDart::new_nodeid_request_packet( _drt->_me, bestneighbour );
       output(0).push(p);
@@ -173,9 +173,10 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
     rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet); //reply, so change src and dst
 
     src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
+
     _drt->update_node(&src);      //update the new node (add if not exists)
 
-//  BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
+  BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
     output(0).push(rep);
 
@@ -200,7 +201,7 @@ DartRoutingTableMaintenance::handle_assign(Packet *packet)
   DHTProtocolDart::get_info(packet, &src, &dst, &status);
   DartFunctions::copy_id(_drt->_me, &dst);
   _drt->_validID = true;
-
+BRN_DEBUG("My new ID: %s ",DartFunctions::print_id(_drt->_me->_md5_digest,_drt->_me->_digest_length).c_str());
   _drt->update_node(&src);                //update src, which has a new id
   _drt->update_callback(DART_UPDATE_ID);  //Test: update my own address
 
