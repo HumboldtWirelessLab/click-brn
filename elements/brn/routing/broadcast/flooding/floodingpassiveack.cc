@@ -210,6 +210,7 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
       //BRN_DEBUG("Packet is already in queue. Delay next retry");
       _already_queued_pkts++;
       p_next->set_next_timeout();
+      p_next->_already_queued_cnt++;
       continue; 
     }
     
@@ -243,7 +244,7 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
       }
     }
   }
-  BRN_INFO("Scan done");
+  //BRN_INFO("Scan done");
 }
 
 bool
@@ -311,7 +312,7 @@ FloodingPassiveAck::stats()
     sa << "\t\t<packet src=\"" << p_next->_src.unparse() << "\" bcast_id=\"" << (uint32_t)p_next->_bcast_id;
     sa << "\" enque_time=\"" << p_next->_enqueue_time.unparse() << "\" time_left=\"" << p_next->time_left(now);
     sa << "\" time_out=\"" << p_next->_timeout << "\" retries=\"" << p_next->_retries;    
-    sa << "\" />\n";
+    sa << "\" already_queued=\"" << p_next->_already_queued_cnt << "\" />\n";
   }
   
   sa << "\t</packetqueue>\n</floodingpassiveack>\n";

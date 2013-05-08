@@ -73,6 +73,7 @@ class FloodingPassiveAck : public BRNElement {
       uint32_t _timeout;
       Timestamp _last_timeout;
       Timestamp _next_timeout;
+      uint32_t _already_queued_cnt;
       
       PassiveAckPacket(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries, uint32_t timeout)
       {
@@ -85,7 +86,7 @@ class FloodingPassiveAck : public BRNElement {
         _max_retries = retries;
 	
 	_last_timeout = _enqueue_time = Timestamp::now();
-	_retries = 0;
+	_already_queued_cnt = _retries = 0;
 	set_timeout(timeout);
       }
 
