@@ -68,7 +68,9 @@ else
 fi
 
 if [ "x$1" = "x" ]; then
-  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" $CXXFLAGS -g $XCFLAGS\""
+  #CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/../../local CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" $CXXFLAGS -g $XCFLAGS\""
+  CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/../../local CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\" $CXXFLAGS -g $XCFLAGS\""
+
 fi
 
 if [ ! "x$WALL" = "x0" ]; then
@@ -88,9 +90,9 @@ for op in $@; do
 	    if [ "x$JAVA_HOME" = "x" ]; then
 	      JAVA_HOME=`ant -diagnostics | grep java.home | sed "s#jre##g" | awk '{print $3}'`
 	    fi
-	
+
 	    JAVAINCLUDE="$JAVA_HOME/include"
-	
+
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --disable-userlevel --enable-jistclick --disable-threads --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
 	    ;;
 	"ns2")
@@ -106,9 +108,9 @@ for op in $@; do
 	    if [ "x$JAVA_HOME" = "x" ]; then
 	      JAVA_HOME=`ant -diagnostics | grep java.home | sed "s#jre##g" | awk '{print $3}'`
 	    fi
-	
+
 	    JAVAINCLUDE="$JAVA_HOME/include"
-	    
+
 	    if [ ! -e $JAVAINCLUDE ]; then
 		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    else
