@@ -131,20 +131,35 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
   BRN_DEBUG("Send");
 
   DHTnodelist nodes;
-
+DHTnode* next;
+HawkRoutingtable::RTEntry* entry;
   if ( _onlyfingertab ) {
+    BRN_DEBUG("USE only fingertab");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
-
     for (int32_t i = 0; i < send_nodes; i++ ) {
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_fingertable.size();
-      nodes.add_dhtnode(_frt->_fingertable.get_dhtnode(_all_nodes_index));
+      next = _frt->_fingertable.get_dhtnode(_all_nodes_index);
+      //WHEN using hawk a route to the finger has to be known before sending it
+      if (_rfrt != NULL){
+	if(_rfrt->getEntry(&(next->_ether_addr)) != NULL)
+          nodes.add_dhtnode(next);	
+	}else
+      nodes.add_dhtnode(next);
     }
   } else {
+    BRN_DEBUG("use all nodes");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
 
     for (int32_t i = 0; i < send_nodes; i++ ) {
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
-      nodes.add_dhtnode(_frt->_allnodes.get_dhtnode(_all_nodes_index));
+      next = _frt->_allnodes.get_dhtnode(_all_nodes_index);
+      //WHEN using hawk a route to the finger has to be known before sending it
+      if (_rfrt != NULL){
+        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL)
+          nodes.add_dhtnode(next);
+        }else
+      nodes.add_dhtnode(next);
+
     }
   }
 
@@ -174,12 +189,11 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   }
 
   BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
-
   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
+  BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
   if ( len == -1 ) {
     BRN_WARN("Error on linkprobe unpack");
   }
-
 
   BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
   BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );

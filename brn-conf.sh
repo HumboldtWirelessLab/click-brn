@@ -114,7 +114,16 @@ for op in $@; do
 	    if [ ! -e $JAVAINCLUDE ]; then
 		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    else
-		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE\""
+if [ -e $JAVAINCLUDE/linux ]; then
+  JAVAEXTRAINCLUDE=$JAVAINCLUDE/linux
+else
+  if [ -e $JAVAINCLUDE/windows ]; then
+  JAVAEXTRAINCLUDE=$JAVAINCLUDE/windows
+else
+  JAVAEXTRAINCLUDE=$JAVAINCLUDE
+fi
+fi
+		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE -I$JAVAEXTRAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE -I$JAVAEXTRAINCLUDE\""
 	    fi
 	    ;;
 	"tools")

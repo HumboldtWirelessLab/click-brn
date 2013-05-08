@@ -46,7 +46,7 @@ class HawkProtocol {
   static struct hawk_routing_header *get_route_header(Packet *p);
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);
-  static void set_next_hop(Packet *p, EtherAddress *next);
+  static void set_next_hop(Packet *p, EtherAddress *next,uint8_t* next_nodeid);
   static bool has_next_hop(Packet *p);
   static void clear_next_hop(Packet *p);
 };

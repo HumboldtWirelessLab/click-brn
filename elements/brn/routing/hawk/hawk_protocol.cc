@@ -53,10 +53,11 @@ HawkProtocol::strip_route_header(Packet *p)
 }
 
 void
-HawkProtocol::set_next_hop(Packet *p, EtherAddress *next)
+HawkProtocol::set_next_hop(Packet *p, EtherAddress *next,uint8_t* next_nodeid)
 {
   struct hawk_routing_header *rh = (struct hawk_routing_header *)p->data();
   memcpy( rh->_next_etheraddress, next->data(), 6);
+  memcpy( rh->_next_nodeid, next_nodeid, MAX_NODEID_LENTGH);
 }
 
 bool

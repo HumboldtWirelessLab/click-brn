@@ -46,11 +46,21 @@ class NeighbourMetric {
   EtherAddress _ea;
   uint16_t     _metric;
   uint8_t      _flags;
+  uint8_t      _hops;
 
   NeighbourMetric(EtherAddress ea, uint16_t metric ) {
+    init(ea, metric, 0, 0);
+  }
+
+  NeighbourMetric(EtherAddress ea, uint16_t metric, uint8_t hops ) {
+    init(ea, metric, 0, hops);
+  }
+  
+  void init(EtherAddress ea, uint16_t metric, uint8_t flags, uint8_t hops) {
     _ea = ea;
     _metric = metric;
-    _flags = 0;
+    _flags = flags;
+    _hops = hops;
   }
 };
 
@@ -90,17 +100,20 @@ public:
  public:
   int _max_metric_to_neighbor; // max. metric towards a neighbor
 
-  void static print_vector(Vector<EtherAddress> &eas);
-  uint32_t static metric2pdr(uint32_t metric);
+  void print_vector(Vector<EtherAddress> &eas);
+  void print_vector(NeighbourMetricList &nodes);
+  uint32_t metric2pdr(uint32_t metric);
 
   // helper
+  void get_graph(const EtherAddress &start_node, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap, uint32_t hop_count);
+  
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
   int subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2);
   void addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &inout);
 
   int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   void filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
-  void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
+  void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &filtered_neighbors);
   void filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
 };
 

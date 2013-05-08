@@ -7,6 +7,7 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/standard/brn_md5.hh"
 #include "dart_functions.hh"
 #include "dart_routingtable.hh"
@@ -50,6 +51,43 @@ DartRoutingTable::initialize(ErrorHandler *)
 /****************************************************************************************
 ********************* N O D E T A B L E O P E R A T I O N *******************************
 ****************************************************************************************/
+
+DHTnode*
+DartRoutingTable::add_neighbours_neighbour(DHTnode* neighbour,DHTnodelist* neighbours){
+
+DHTnode* node;
+DHTnode* new_node;
+
+DHTnodelist* neighbourlist;
+for(int i= 0;i<_neighbours.size();i++){
+  if (memcmp(_neighbours[i]->neighbour->_ether_addr.data(),neighbour->_ether_addr.data(),6) == 0)
+   {
+     BRN_DEBUG("found neihgbour: %s, add his neighbours",_neighbours[i]->neighbour->_ether_addr.unparse().c_str());
+     neighbourlist = _neighbours[i]->neighbours_neighbour;
+     for(int n = 0;n<neighbours->size();n++){
+	 node = neighbours->get_dhtnode(n);
+	 if (neighbourlist->get_dhtnode(&(node->_ether_addr)) == NULL){
+          //get the reference from _allnodes 
+          new_node = _allnodes.get_dhtnode(&(node->_ether_addr));
+	  neighbourlist->add_dhtnode(new_node);
+     }
+    }
+
+  return _neighbours[i]->neighbour;
+  }  
+ 
+}
+
+return NULL;
+}
+DartRoutingTable::DRTneighbour*
+DartRoutingTable::add_neighbour_entry(DHTnode* new_neighbour){
+ 
+  DartRoutingTable::DRTneighbour *n = new DRTneighbour(new_neighbour);
+  _neighbours.push_back(n);
+  return n;
+}
+
 int
 DartRoutingTable::add_node(DHTnode *node)
 {
@@ -59,15 +97,16 @@ DartRoutingTable::add_node(DHTnode *node)
 
   if ( n == NULL ) {
     n = node->clone();
-    if ( (node->_digest_length != 0) || (node->_neighbor)) { 
-      _allnodes.add_dhtnode(n);
-      if ( n->_neighbor ) _neighbours.add_dhtnode(n);
-    }
+    _allnodes.add_dhtnode(n);
+ if ( n->_neighbor )// _neighbours.add_dhtnode(n);
+ add_neighbour_entry(n);
   } else {
-    if ( n->_digest_length < node->_digest_length ) {
-      DartFunctions::copy_id(n,node);
-      //TODO: update rest of node
+    	if(n->_age <= node->_age){
+     DartFunctions::copy_id(n,node);
+     n->_age = node->_age;
     }
+
+      //TODO: update rest of node
   }
 
   return 0;
@@ -108,12 +147,19 @@ DartRoutingTable::get_node(EtherAddress *ea)
 DHTnode *
 DartRoutingTable::get_neighbour(EtherAddress *ea)
 {
-  return _neighbours.get_dhtnode(ea);
+ for(int i= 0;i<_neighbours.size();i++){
+  if (memcmp(_neighbours[i]->neighbour->_ether_addr.data(),ea->data(),6) == 0)
+    return _neighbours[i]->neighbour;
+}
+return NULL;
+ 
+//return _neighbours.get_dhtnode(ea);
 }
 
 int
 DartRoutingTable::update_node(DHTnode *node)
 {
+  node->_age = Timestamp::now();
   return add_node(node);
 }
 
@@ -152,12 +198,20 @@ DartRoutingTable::routing_info(void)
   sa << "\" id_len=\"" << _me->_digest_length << "\" valid_id=\"" << String(_validID) << "\" >\n\t<neighbours count=\"";
   sa << _neighbours.size() << "\" >\n";
   for ( int n = 0; n < _neighbours.size(); n++ ) {
-    DHTnode *node = _neighbours.get_dhtnode(n);
+    DHTnode *node = _neighbours[n]->neighbour;
     sa << "\t\t<neighbour addr=\"" << node->_ether_addr.unparse() << "\" id=\"";
     sa << DartFunctions::print_raw_id(node) << "\" id_len=\"" << node->_digest_length << "\" />\n";
+ sa << "\t\t\t<neighbours_neighbour count=\"";
+  sa << _neighbours[n]->neighbours_neighbour->size() << "\" >\n";
+    for (int i = 0 ; i <_neighbours[n]->neighbours_neighbour->size();i++){
+	DHTnode *neighb = _neighbours[n]->neighbours_neighbour->get_dhtnode(i);
+	sa << "\t\t\t\t<neighbour addr=\"" << neighb->_ether_addr.unparse() << "\" id=\"";
+        sa << DartFunctions::print_raw_id(neighb) << "\" id_len=\"" << neighb->_digest_length << "\" />\n";	
+     }
+   sa << "\t\t\t</neighbours_neighbour>\n";
   }
 
-  sa << "\t</neighbours>\n\t<allnodes count=\"" << _allnodes.size() << "\" >\n";
+sa << "\t</neighbours>\n\t<allnodes count=\"" << _allnodes.size() << "\" >\n";
   for ( int n = 0; n < _allnodes.size(); n++ ) {
     DHTnode *node = _allnodes.get_dhtnode(n);
     sa << "\t\t<node addr=\"" << node->_ether_addr.unparse() << "\" id=\"";
