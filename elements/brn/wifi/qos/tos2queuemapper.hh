@@ -56,34 +56,33 @@ class Tos2QueueMapper : public BRNElement {
     const char *processing() const  { return AGNOSTIC;}
 
     int configure(Vector<String> &, ErrorHandler *);
-	void add_handlers();
-	Packet *simple_action(Packet *);//Function for the Agnostic Port
+    void add_handlers();
+    Packet *simple_action(Packet *);//Function for the Agnostic Port
 
-	void no_queues_set(uint8_t number);
-	uint8_t no_queues_get();
-	void queue_usage_set(uint8_t position, uint32_t value);
-	uint32_t queue_usage_get(uint8_t position);
-	uint32_t cwmax_get(uint8_t position);
-	void cwmax_set(uint8_t position, uint32_t value);
+    inline uint8_t no_queues_get() { return no_queues; }
+    uint32_t queue_usage_get(uint8_t position);
 
-	uint32_t cwmin_get(uint8_t position);
-	void cwmin_set(uint8_t position, uint32_t value);
-	int get_cwmin(int busy, int nodes);
-	int find_queue(int cwmin);
-	
-	void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
-	
-	void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
-	uint16_t get_backoff_strategy() { return _bqs_strategy; }
-	
-        int backoff_strategy_neighbours_pli_aware(Packet *p,uint8_t tos);
+    uint32_t cwmax_get(uint8_t position);
 
-		uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
+    uint32_t cwmin_get(uint8_t position);
+    int get_cwmin(int busy, int nodes);
+
+    int find_queue(int cwmin);
+
+    void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
+    void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
+    uint16_t get_backoff_strategy() { return _bqs_strategy; }
+
+    int backoff_strategy_neighbours_pli_aware(Packet *p, uint8_t tos);
+
+    uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
 
   private:
-	ChannelStats *_cst; //Channel-Statistics-Element (see: ../channelstats.hh)
-	CollisionInfo *_colinf;//Collision-Information-Element (see: ../collisioninfo.hh)
-	PacketLossInformation *pli;//PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
+    uint32_t set_backoff();
+    uint32_t get_backoff();
+	ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
+	CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
+	PacketLossInformation *pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 
 	uint8_t no_queues;//number of queues
 	uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)

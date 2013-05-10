@@ -110,10 +110,12 @@ int simclick_gettimeofday(struct timeval* tv);
 #define SIMCLICK_GET_RANDOM_INT		14 // uint32_t *result, uint32_t max
 #define SIMCLICK_GET_DEFINES		15 // char *buf, size_t *size
 
-#define SIMCLICK_GET_NODE_POSITION      20 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_GET_NODE_POSITION       20 // int *pos (4 int: x,y,z,speed)
 #define SIMCLICK_GET_PERFORMANCE_COUNTER 21 // int ifid, int *performance_counter
 #define SIMCLICK_CCA_OPERATION           22 // int ifid, int cca_operation, int cca_value
-#define SIMCLICK_SET_NODE_POSITION      23 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_SET_NODE_POSITION       23 // int *pos (4 int: x,y,z,speed)
+#define SIMCLICK_WIFI_SET_BACKOFF        24 // int (no queues) + int *cwmin + int *cwmax
+#define SIMCLICK_WIFI_GET_BACKOFF        25 // int (no queues) + int *cwmin + int *cwmax
 
 int simclick_sim_command(simclick_node_t *sim, int cmd, ...);
 int simclick_click_command(simclick_node_t *sim, int cmd, ...);
