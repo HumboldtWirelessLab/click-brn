@@ -388,15 +388,8 @@ Brn2LinkTable::clear_stale()
 void
 Brn2LinkTable::get_neighbors(EtherAddress ether, Vector<EtherAddress> &neighbors)
 {
-  typedef HashMap<EtherAddress, bool> EtherMap;
-  EtherMap ether_addrs;
-
   for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
-    ether_addrs.insert(iter.value()._ether, true);
-  }
-
-  for (EtherMap::const_iterator i = ether_addrs.begin(); i.live(); i++) {
-    BrnHostInfo *neighbor = _hosts.findp(i.key());
+    BrnHostInfo *neighbor = _hosts.findp(iter.value()._ether);
     assert(neighbor);
     if (ether != neighbor->_ether) {
       BrnLinkInfo *lnfo = _links.findp(EthernetPair(ether, neighbor->_ether));
