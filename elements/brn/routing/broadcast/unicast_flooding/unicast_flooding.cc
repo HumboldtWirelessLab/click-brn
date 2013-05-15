@@ -113,31 +113,45 @@ UnicastFlooding::push(int port, Packet *p_in)
 
     if ( (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE) &&
          (_cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE) ) {
-      
+
+      //src mac
       me = _me->getMasterAddress();
-      _fhelper->get_filtered_neighbors(*me, neighbors);
-      _fhelper->filter_bad_one_hop_neighbors(*me, neighbors, filtered_neighbors);
 
       //filter packet src
       struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)&(p_in->data()[sizeof(struct click_ether) + sizeof(struct click_brn)]);
       EtherAddress src = EtherAddress((uint8_t*)&(p_in->data()[sizeof(click_ether) + sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + bcast_header->extra_data_size])); //src follows header
 
       BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), ntohs(bcast_header->bcast_id));
-  
+
+      //get all known nodes
       struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
       uint32_t last_nodes_size;
-      
       last_nodes = _flooding->get_last_nodes(&src, ntohs(bcast_header->bcast_id), &last_nodes_size);
       
+      Vector<EtherAddress> known_neighbors;
+  
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {
+	if ( memcmp(last_nodes[j].etheraddr,me->data(),6) != 0 ) {
+          known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+	}
+      }
+     
+      NeighbourMetricList neighboursMetric;
+      NeighbourMetricMap neighboursMetricMap;
+     
+      _fhelper->get_local_graph(*me, known_neighbors, neighboursMetric, neighboursMetricMap);
+  
+      for ( int32_t j = 0; j < known_neighbors.size(); j++ ) {
         for ( int32_t i = neighbors.size()-1; i >= 0; i--) {
-          if ( neighbors[i] == EtherAddress(last_nodes[j].etheraddr) ) {
+          if ( neighbors[i] == known_neighbors[j] ) {
             BRN_DEBUG("Delete Src %s", neighbors[i].unparse().c_str());
             neighbors.erase(neighbors.begin() + i);
           }
 	}
       }
 
+      known_neighbors.clear();
+ 
       if (neighbors.size() == 0) {
 	BRN_DEBUG("* UnicastFlooding: We have only weak or no neighbors; keep broadcast!");
 	output(0).push(p_in);
@@ -176,6 +190,7 @@ UnicastFlooding::push(int port, Packet *p_in)
         } }
         break;
       case 4:                           // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
+      _fhelper->print_vector(neighbors);
         rewrite = algorithm_1(next_hop, neighbors);
         break;
       case 5:                           // algo 2 - choose the neighbor with the highest number of neighbors not covered by any other neighbor of the other neighbors
@@ -218,9 +233,11 @@ UnicastFlooding::algorithm_1(EtherAddress &next_hop, Vector<EtherAddress> &neigh
   // search for the best nb
   int best_new_nb_cnt = -1;
   EtherAddress best_nb;
+
   for( int n_i = 0; n_i < neighbors.size(); n_i++) {
     // estimate neighborhood of this neighbor
     Vector<EtherAddress> nb_neighbors;
+    nb_neighbors.clear();
     _fhelper->get_filtered_neighbors(neighbors[n_i], nb_neighbors);
 
     // subtract from nb_neighbors all nbs already covered by myself and estimate cardinality of this set

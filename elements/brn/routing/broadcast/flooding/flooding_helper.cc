@@ -37,9 +37,10 @@
 
 CLICK_DECLS
 
+#if 0
 extern "C" {
   static int link_metric_sorter(const void *va, const void *vb, void */*thunk*/) {
-      NeighbourMetric *a = (NeighbourMetric*) va, *b = (NeighbourMetric*)vb;
+      NeighbourMetric *a = *((NeighbourMetric**)va), *b = *((NeighbourMetric**)vb);
 
       if ( a->_metric < b->_metric ) return -1;
       if ( a->_metric > b->_metric ) return 1;
@@ -47,7 +48,6 @@ extern "C" {
   }
 }
 
-#if 0
 extern "C" {
   static int link_pdr_sorter(const void *va, const void *vb, void */*thunk*/) {
       NeighbourMetric *a = (NeighbourMetric*)va, *b = (NeighbourMetric *)vb;
@@ -72,7 +72,7 @@ void
 FloodingHelper::print_vector(NeighbourMetricList &nodes)
 {
   for( int n_i = 0; n_i < nodes.size(); n_i++) { // iterate over all my neighbors
-    BRN_DEBUG("Addr %d : %s (%d, %d)", n_i, nodes[n_i]._ea.unparse().c_str(), nodes[n_i]._metric, nodes[n_i]._flags);
+    BRN_DEBUG("Addr %d : %s (%d, %d)", n_i, nodes[n_i]->_ea.unparse().c_str(), nodes[n_i]->_metric, nodes[n_i]->_flags);
   }
 }
 
@@ -132,13 +132,19 @@ FloodingHelper::uninitialize()
 void
 FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
 {
-	if (_link_table) {
+  if ( out.size() != 0 ) {
+    BRN_ERROR("get_filtered_neighbors: out size not 0. Call clear!");
+    out.clear();
+  }
+
+  if (_link_table) {
 		Vector<EtherAddress> neighbors_tmp;
 
    		_link_table->get_neighbors(node, neighbors_tmp);
 	
       		for( int n_i = 0; n_i < neighbors_tmp.size(); n_i++) {
 		  	// calc metric between this neighbor and node to make sure that we are well-connected
+		  	//BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
 			int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
 
 			// skip to bad neighbors
@@ -146,71 +152,7 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
 			out.push_back(neighbors_tmp[n_i]);
 		}
 	}
-}
-
-/*
- * Check all one hop neighbours and get shortest path to every node of them
- * remove all neighbour nodes which have a better two hop route than single link
- * IMPORTANT: only use one hop neighbours 
- */
-
-void
-FloodingHelper::filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors)
-{
-  BRN_ERROR("Neighborsize before filter: %d", neighbors.size());
-  
-  NeighbourMetricList neighboursMetric;
-  
-  if (_link_table) {
-
-    for( int n_i = neighbors.size()-1; n_i >= 0; n_i--) {
-      int metric_nb_node = metric2pdr(_link_table->get_link_metric(node, neighbors[n_i]));
-      
-      neighboursMetric.push_back(NeighbourMetric(neighbors[n_i],metric_nb_node));
-    }
-    
-    click_qsort(neighboursMetric.begin(), neighboursMetric.size(), sizeof(NeighbourMetric), link_metric_sorter);
-
-    /*for( int n_i = 0; n_i < neighboursMetric.size(); n_i++) {
-        BRN_ERROR("%d.Neighbour: %d",n_i,neighboursMetric[n_i]._metric);
-    }*/
-   
-    for( int n_i = neighboursMetric.size()-1; n_i >= 0; n_i--) {
-      if ( neighboursMetric[n_i]._flags == 0 ) {                               //not fixed
-        int metric_nb_node = neighboursMetric[n_i]._metric;
-     
-	int best_metric = metric_nb_node;
-	int best_neighbour = 0;
-	
-        for( int n_j = 0; n_j < neighboursMetric.size(); n_j++) {
- 	  if ( n_j == n_i ) continue;
-
-          int metric_nb_nb = (neighboursMetric[n_j]._metric *
-                             metric2pdr(_link_table->get_link_metric(neighboursMetric[n_j]._ea, neighboursMetric[n_i]._ea))) / 100;
-         //BRN_ERROR("%d.Neighbour compare (%d) %d <-> %d",n_i,n_j,metric_nb_node, metric_nb_nb );
-  
-      
-        //TODO: use PER/PDR
-          if ( metric_nb_nb >= best_metric ) {
-	    best_neighbour = n_j;
-	    best_metric = metric_nb_nb;
-	  }
-        }
-
-        if ( best_metric >= metric_nb_node ) {
-            neighboursMetric[best_neighbour]._flags = 1;           //fix
-            neighboursMetric.erase(neighboursMetric.begin() + n_i);
-	} 
-      }
-    }
-  }
-  
-  for( int n_i = 0; n_i < neighboursMetric.size(); n_i++) {
-    //BRN_ERROR("%d.Neighbour: %d %d",n_i,neighboursMetric[n_i]._metric,neighboursMetric[n_i]._flags);
-    filtered_neighbors.push_back(neighboursMetric[n_i]._ea);
-  }
-  
-  BRN_ERROR("Neighborsize after filter: %d", filtered_neighbors.size());
+   BRN_DEBUG("filter finished: %d",out.size());	
 }
 
 
@@ -226,30 +168,41 @@ FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &n
   neighboursMetricMap.clear();
   nn_list.clear();
   
-  neighboursMetric.push_back(NeighbourMetric(start_node, 0, 0));
-  neighboursMetricMap.insert(start_node,&(neighboursMetric[neighboursMetric.size()-1]));
+  neighboursMetric.push_back(new NeighbourMetric(start_node, 110, 0));
+  neighboursMetricMap.insert(start_node,neighboursMetric[neighboursMetric.size()-1]);
   
   uint32_t new_nodes_start = 0;
   uint32_t new_nodes_end = 1;
   
   for ( uint32_t h = 1; h <= hop_count; h++ ) {    
     for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
-      get_filtered_neighbors(neighboursMetric[n]._ea, nn_list);                   // get n of n
+      get_filtered_neighbors(neighboursMetric[n]->_ea, nn_list);                   // get n of n
 
       for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {                      //check all n of n 
 	if ( neighboursMetricMap.findp(nn_list[nn_i]) == NULL ) {                 // if not in list
-          neighboursMetric.push_back(NeighbourMetric(nn_list[nn_i], 0, h));       // add 
-          neighboursMetricMap.insert(nn_list[nn_i],&(neighboursMetric[neighboursMetric.size()-1]));
+          neighboursMetric.push_back(new NeighbourMetric(nn_list[nn_i], 0, h));       // add 
+          neighboursMetricMap.insert(nn_list[nn_i],neighboursMetric[neighboursMetric.size()-1]);
 	}
       }
+      nn_list.clear();
     }
     new_nodes_start = new_nodes_end;
     new_nodes_end = neighboursMetric.size();
-    nn_list.clear();
   }
 }
 
-
+/*
+ * clear graph
+ */
+void
+FloodingHelper::clear_graph(NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap)
+{
+  for ( int i = 0; i < neighboursMetric.size(); i++ )
+    delete neighboursMetric[i];
+  
+  neighboursMetric.clear();
+  neighboursMetricMap.clear();
+}
 
 /*
  * Check all one hop neighbours and get shortest path to every node of them
@@ -257,46 +210,96 @@ FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &n
  * 
  * Local Dijkstra
  */
-
 void
-FloodingHelper::filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &/*filtered_neighbors*/)
+FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors,
+								  NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap)
 {
+  BRN_DEBUG("filter_bad_one_hop_neighbors_with_all_known_nodes");
   uint32_t no_nodes;
-  
-  NeighbourMetricList neighboursMetric;
-  NeighbourMetricMap neighboursMetricMap;
   
   bool metric_changed;
   
   if (!_link_table) return;
-  
-  //get all n-hop nodes
+    
+  //get all n-hop nodes with minimum metric
   get_graph(node, neighboursMetric, neighboursMetricMap, 2 ); //2 hops
+
+  //add known nodes if they are not included
+  for ( int i = 0; i < known_neighbors.size(); i++ ) {
+    if ( neighboursMetricMap.findp(known_neighbors[i]) == NULL) {
+      neighboursMetric.push_back(new NeighbourMetric(known_neighbors[i], 0, 0));       // add 
+      neighboursMetricMap.insert(known_neighbors[i],neighboursMetric[neighboursMetric.size()-1]);
+    }
+  }
   
+  //store size of neighbours
   no_nodes = neighboursMetric.size();
-  
-  // metric_map[a * no_nodes + b] = metric2pdr(_link_table->get_link_metric(neighboursMetric[a]._ea, neighboursMetric[b]._ea));
+ 
+  BRN_DEBUG("NeighbourSize: %d KnownNeighbours: %d",no_nodes,known_neighbors.size());
   
   //set metric to known nodes to 100
-  neighboursMetric[0]._predecessor = &neighboursMetric[0];
-  
+  neighboursMetric[0]->_predecessor = neighboursMetric[0];
+  neighboursMetric[0]->set_first_root_follower_flag();
+
   for ( int i = 0; i < known_neighbors.size(); i++ ) {
+    if ( neighboursMetricMap.findp(known_neighbors[i]) == NULL ) {
+      BRN_FATAL("No Metric for neighbour %s",known_neighbors[i].unparse().c_str());
+      continue;
+    }
     NeighbourMetric *nm = neighboursMetricMap.find(known_neighbors[i]);
     nm->_metric = 100;
     nm->_hops = 0;
-    nm->_predecessor = &neighboursMetric[0];
+    nm->_predecessor = nm;
   }
-      
+
+  int best_metric, best_metric_src, best_metric_dst;
+  
   do {
     metric_changed = false;
+  
+    best_metric = best_metric_src = best_metric_dst = -1;
+    int new_best_metric;
+
+    for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
+      for ( uint32_t dst_node = 1; dst_node < no_nodes; dst_node++) {
+	if ((dst_node == src_node) ||
+	    (neighboursMetric[dst_node]->_predecessor != NULL) ||
+	    (neighboursMetric[src_node]->_predecessor == NULL)) continue;
+	
+	new_best_metric = (neighboursMetric[src_node]->_metric *
+	                   metric2pdr(_link_table->get_link_metric(neighboursMetric[src_node]->_ea, neighboursMetric[dst_node]->_ea))) / 100;
+  
+        if (new_best_metric >= best_metric) {
+	  best_metric = new_best_metric;
+	  best_metric_dst = dst_node;
+	  best_metric_src = src_node;
+	}
+      }
+    }
     
-    
-    
-    for ( uint32_t marked = 0; marked < no_nodes; marked++);
-    
+    if ( best_metric_dst != best_metric_src ) {
+      metric_changed = true;
+      neighboursMetric[best_metric_dst]->_metric = best_metric;
+      neighboursMetric[best_metric_dst]->_predecessor = neighboursMetric[best_metric_src];
+      neighboursMetric[best_metric_dst]->_hops = neighboursMetric[best_metric_dst]->_predecessor->_hops + 1;
+      neighboursMetric[best_metric_dst]->copy_root_follower_flag(neighboursMetric[best_metric_dst]->_predecessor);
+    }
+
   } while ( metric_changed );
-    
-  //delete metric_map;
+
+  for ( uint32_t node = 0; node < no_nodes; node++) {
+    if ( neighboursMetric[node]->_predecessor != NULL ) {
+      BRN_DEBUG("Node: %s Pre: %s Metric: %d Hops: %d Flags: %d", neighboursMetric[node]->_ea.unparse().c_str(),
+	  	                                   neighboursMetric[node]->_predecessor->_ea.unparse().c_str(),
+		                                   neighboursMetric[node]->_metric, neighboursMetric[node]->_hops,
+		                                   neighboursMetric[node]->_flags);
+    } else {
+      BRN_FATAL("Node with no predecessor");
+    }
+  }
+  
+  BRN_DEBUG("filter_bad_one_hop_neighbors_with_all_known_nodes: end");
+
 }
 /*
  * remove nose of set "neighbors" which are in "known_neighbors". Result: filtered_neighbors
