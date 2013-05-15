@@ -235,8 +235,7 @@ Flooding::push( int port, Packet *packet )
     add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward);
     inc_received(&src,(uint32_t)p_bcast_id, &fwd);
 
-    if (forward)
-    {
+    if (forward) {
       _flooding_fwd++;
 
       forward_attempt(&src, p_bcast_id);
@@ -268,7 +267,7 @@ Flooding::push( int port, Packet *packet )
 
     } else {
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
-      if ( is_known ) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
+      if (is_known) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
   } else if ( ( port == 2 ) || ( port == 3 ) ) { //txfeedback failure or success
     uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);

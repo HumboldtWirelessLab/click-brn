@@ -49,6 +49,8 @@ class NeighbourMetric {
   uint8_t      _hops;
   NeighbourMetric *_predecessor;
 
+#define NEIGHBOUR_METRIC_ROOT_FOLLOWER 1
+  
   NeighbourMetric(EtherAddress ea, uint16_t metric ) {
     init(ea, metric, 0, 0);
   }
@@ -64,9 +66,21 @@ class NeighbourMetric {
     _hops = hops;
     _predecessor = NULL;
   }
+  
+  inline void set_first_root_follower_flag() {
+    _flags |= NEIGHBOUR_METRIC_ROOT_FOLLOWER; 
+  }
+  
+  inline bool is_root_follower() {
+    return ( _flags & NEIGHBOUR_METRIC_ROOT_FOLLOWER ) != 0;
+  }
+  
+  inline void copy_root_follower_flag(NeighbourMetric *src) {
+    _flags |= (src->_flags & NEIGHBOUR_METRIC_ROOT_FOLLOWER);
+  }
 };
 
-typedef Vector<NeighbourMetric> NeighbourMetricList;
+typedef Vector<NeighbourMetric*> NeighbourMetricList;
 typedef NeighbourMetricList::const_iterator NeighbourMetricListIter;
 
 typedef HashMap<EtherAddress, NeighbourMetric*> NeighbourMetricMap;
@@ -108,14 +122,15 @@ public:
 
   // helper
   void get_graph(const EtherAddress &start_node, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap, uint32_t hop_count);
+  void clear_graph(NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap);
   
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
   int subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2);
   void addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &inout);
 
   int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
-  void filter_bad_one_hop_neighbors(const EtherAddress &node, Vector<EtherAddress> &neighbors, Vector<EtherAddress> &filtered_neighbors);
-  void filter_bad_one_hop_neighbors_with_all_known_nodes(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
+  
+  void get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap);
   void filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
 };
 

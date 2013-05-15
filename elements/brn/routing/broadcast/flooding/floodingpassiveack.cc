@@ -258,6 +258,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
 {
   /*check retries*/
   if ( pap->retries_left() == 0 ) return true;
+  else return false;
   
   /*check neighbours*/
   Vector<EtherAddress> neighbors;
