@@ -169,6 +169,9 @@ Ath2Decap::simple_action(Packet *p)
 
   ath2_h = (struct ath2_header*)(q->data());
 
+  /* save hosttime from decap */
+  BrnWifi::set_host_time(ath2_h->anno.rx.rs_hosttime, eh);
+
   if ( ( eh->magic == WIFI_EXTRA_MAGIC ) && ( eh->flags & WIFI_EXTRA_TX ) ) //TXFEEDBACK
   {
     eh->silence = ath2_h->anno.tx.ts_noise;
