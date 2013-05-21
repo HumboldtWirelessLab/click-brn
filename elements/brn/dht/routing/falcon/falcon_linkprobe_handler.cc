@@ -161,8 +161,6 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
       }
     }
   }
-
-  if ( nodes.size() == 0 ) return len; //no nodes so len = 0
   
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
 
@@ -190,11 +188,12 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   }
 
   BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
+  
   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
-  BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
-  if ( len == -1 ) {
-    BRN_WARN("Error on linkprobe unpack");
-  }
+  if ( len == -1 ) BRN_WARN("Error on linkprobe unpack");
+  
+  if ( _rfrt != NULL )
+    BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
 
   BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
   BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );
