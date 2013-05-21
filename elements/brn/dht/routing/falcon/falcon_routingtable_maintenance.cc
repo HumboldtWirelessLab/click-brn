@@ -251,7 +251,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
       if ( _rounds_to_passive_monitoring > 0 ) _current_round2pm++;
     } else {
       _frt->incLastUpdatedPosition();       //TODO: add this in add_node_in_FT (??). is that better ??
-}
+    }
   } else {                             //---> Node is backlog
     _frt->backlog = nc;
     _frt->setLastUpdatedPosition(0);

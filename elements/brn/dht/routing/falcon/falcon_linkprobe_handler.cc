@@ -131,8 +131,8 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
   BRN_DEBUG("Send");
 
   DHTnodelist nodes;
-DHTnode* next;
-HawkRoutingtable::RTEntry* entry;
+  DHTnode* next;
+  HawkRoutingtable::RTEntry* entry;
   if ( _onlyfingertab ) {
     BRN_DEBUG("USE only fingertab");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
@@ -140,11 +140,11 @@ HawkRoutingtable::RTEntry* entry;
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_fingertable.size();
       next = _frt->_fingertable.get_dhtnode(_all_nodes_index);
       //WHEN using hawk a route to the finger has to be known before sending it
-      if (_rfrt != NULL){
-	if(_rfrt->getEntry(&(next->_ether_addr)) != NULL)
-          nodes.add_dhtnode(next);	
-	}else
-      nodes.add_dhtnode(next);
+      if (_rfrt != NULL) {
+        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL) nodes.add_dhtnode(next);	
+      } else {
+        nodes.add_dhtnode(next);
+      }
     }
   } else {
     BRN_DEBUG("use all nodes");
@@ -154,15 +154,16 @@ HawkRoutingtable::RTEntry* entry;
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
       next = _frt->_allnodes.get_dhtnode(_all_nodes_index);
       //WHEN using hawk a route to the finger has to be known before sending it
-      if (_rfrt != NULL){
-        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL)
-          nodes.add_dhtnode(next);
-        }else
-      nodes.add_dhtnode(next);
-
+      if (_rfrt != NULL) {
+        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL) nodes.add_dhtnode(next);
+      } else {
+        nodes.add_dhtnode(next);
+      }
     }
   }
 
+  if ( nodes.size() == 0 ) return len; //no nodes so len = 0
+  
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
 
   BRN_DEBUG("Send nodes: %d Size: %d Len: %d nodes_per_lp: %d Max_nodes_per_lp: %d",
@@ -201,8 +202,8 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   if ( is_neighbour) {
     _frt->add_neighbour(&first);
   } else {
-  if(_rfrt == NULL)//the route to first has to be known for hawk,but in this case it isnt 
-	_frt->add_node(&first);
+    if(_rfrt == NULL)                         //the route to first has to be known for hawk,but in this case it isnt 
+      _frt->add_node(&first);
   }
   if ( (_rfrt == NULL) || is_neighbour  ) {  //disable if hawk is used and first is not a neighbour to avoid unreachable successor
     _frt->add_nodes(&nodes);
@@ -215,11 +216,11 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
     //therefore i dont get a route that is from me and it will end in a circle
     _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
 
-	for(int i = 0;i<nodes.size();i++){
-	DHTnode* next = nodes.get_dhtnode(i);
-        if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL)
-	_rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr));
-	}
+    for(int i = 0; i < nodes.size(); i++) {
+      DHTnode* next = nodes.get_dhtnode(i);
+      if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL)
+        _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr));
+    }
   }
 
   nodes.del();

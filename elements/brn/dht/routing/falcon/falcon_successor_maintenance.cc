@@ -24,7 +24,7 @@ FalconSuccessorMaintenance::FalconSuccessorMaintenance():
   _min_successor_ping(FALCON_DEFAULT_SUCCESSOR_MIN_PING),
   _debug(BrnLogger::DEFAULT),
   _rfrt(NULL),
-  _opti(FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC)
+  _opti(FALCON_OPTIMAZATION_NONE)
 {
 }
 
@@ -80,14 +80,14 @@ void
 FalconSuccessorMaintenance::successor_maintenance()
 {
   BRN_DEBUG("Successor maintenance timer");
-BRN_DEBUG("Successor is fix: %s",String(_frt->isFixSuccessor()).c_str());
+  BRN_DEBUG("Successor is fix: %s",String(_frt->isFixSuccessor()).c_str());
   //TODO: check age of succ and set him fix if the information is not too old
   if ( (! _frt->isFixSuccessor()) && ( _frt->_me->_status != STATUS_LEAVE ) && ( _frt->successor ) ) {
     BRN_DEBUG("%s: Check for successor: %s.", _frt->_me->_ether_addr.unparse().c_str(),
                                               _frt->successor->_ether_addr.unparse().c_str() );
 
     _frt->successor->set_last_ping_now();
-   WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor,
+    WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, _frt->successor,
                                                 FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
     output(0).push(p);
   }
@@ -132,8 +132,8 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
   BRN_DEBUG("ME: %s Src: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str());
-if (_frt->successor != NULL)  
-BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
+  if (_frt->successor != NULL)  
+    BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
 
   if ( ! isUpdate ) {  // if it's not an update, it's a normal reply so inc the counter and
                        // check if we have enough, so that succ can be set to be fix
@@ -148,8 +148,7 @@ BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(
   _frt->add_node(&succ);
 
   /* Update HAWK RoutingTable used for dht-based routing */
- if ((_opti != FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) && (_opti != FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) &&
-   _rfrt != NULL ) {
+  if ( (_rfrt != NULL) && (_opti != FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) && (_opti != FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)) {
     if ( memcmp(succ._ether_addr.data(), src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Add neighbourhop.");
     } else {
@@ -181,7 +180,6 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
 
-
   /** Hawk-Routing stuff. TODO: this should move to extra funtion */
   if ( _rfrt != NULL ) {
     click_ether *annotated_ether = (click_ether *)packet->ether_header();
@@ -193,37 +191,36 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
     EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
-  _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
+   _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
                     &(srcEther));
   }
   /** End Hawk stuff */
 
-if ((_opti == FALCON_OPT_SUCC_HINT) ||
-	(_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)){
-           DHTnode* old_pre = NULL;
-        if(_frt->predecessor != NULL)
-           old_pre = new DHTnode(_frt->predecessor->_ether_addr);
-        _frt->add_node(&src);
-        //if predecessor changed tell it old predecessor
-        if(old_pre != NULL && memcmp(old_pre->_ether_addr.data(),_frt->predecessor->_ether_addr.data(),6) != 0 ){
-          BRN_DEBUG("i got new predecessor: %s, tell ist old one: %s",_frt->predecessor->_ether_addr.unparse().c_str(), old_pre->_ether_addr.unparse().c_str());
-        //with fwd optimization send a succ request instead of the old predecesosr to be faster
-	if(_opti ==  FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT
-){
- 	 WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(old_pre, _frt->predecessor,
+  if ((_opti == FALCON_OPT_SUCC_HINT) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)) {
+    DHTnode* old_pre = NULL;
+    if(_frt->predecessor != NULL) old_pre = new DHTnode(_frt->predecessor->_ether_addr);
+       
+    _frt->add_node(&src);
+    //if predecessor changed tell it old predecessor
+    if (old_pre != NULL && memcmp(old_pre->_ether_addr.data(),_frt->predecessor->_ether_addr.data(),6) != 0 ) {
+      
+      BRN_DEBUG("i got new predecessor: %s, tell ist old one: %s",_frt->predecessor->_ether_addr.unparse().c_str(), old_pre->_ether_addr.unparse().c_str());
+      //with fwd optimization send a succ request instead of the old predecesosr to be faster
+      if (_opti ==  FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) {
+        WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(old_pre, _frt->predecessor,
+                                                                        FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
+      output(0).push(p);
 
-                                                FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
-    output(0).push(p);
-     }
-	else{
-            Packet* dummy = NULL;
-          WritablePacket*    q = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, old_pre,  FALCON_MINOR_REPLY_SUCCESSOR,
-                                                      _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR,dummy);
-output(0).push(q);
+      } else {
 
-          }
-        }
-}else _frt->add_node(&src);
+        Packet* dummy = NULL;
+        WritablePacket *q = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, old_pre,  FALCON_MINOR_REPLY_SUCCESSOR,
+                                                                      _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR,dummy);
+        output(0).push(q);
+
+      }
+    }
+  } else _frt->add_node(&src);
 
   if ( succ.equals(_frt->_me) ) {                  //request really for me ??
     //Wenn ich er mich f�r seinen Nachfolger h�lt, teste ob er mein Vorg�nger ist oder mein Vorg�nger
