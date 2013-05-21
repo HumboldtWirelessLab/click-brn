@@ -5,6 +5,7 @@
 #include <clicknet/wifi.h>
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
@@ -26,6 +27,11 @@ enum {
   WIFI_EXTRA_TX_QUEUE_LOW    = (1<<18),
   WIFI_EXTRA_JAMMER_MESSAGE  = (1<<17),
   WIFI_EXTRA_FOREIGN_TX_SUCC = (1<<16),
+
+  WIFI_EXTRA_RX_ACI          = (1<<15),
+  WIFI_EXTRA_RX_INRANGE      = (1<<14),
+  WIFI_EXTRA_RX_HN           = (1<<13),
+  WIFI_EXTRA_RX_NOWIFI       = (1<<12),
 
   WIFI_EXTRA_RX_PHANTOM_ERR  = (WIFI_EXTRA_RX_ZERORATE_ERR | WIFI_EXTRA_RX_PHY_ERR)
 };
@@ -144,6 +150,8 @@ struct wifi_n_msdu_header {
   uint16_t len;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
+
+#define EXTRA_HEADER_OFFSET 14
 
 class BrnWifi
 {
@@ -320,7 +328,6 @@ class BrnWifi
       ceh->flags &= ~(uint32_t)WIFI_EXTRA_JAMMER_MESSAGE;
   }
 
-
   /* returns whether rate (0), rate1, .., rate3 has been used */
   static inline int get_rate_rank(struct click_wifi_extra *ceh) {
 
@@ -351,6 +358,21 @@ class BrnWifi
 
 
     return -1;
+  }
+
+
+  static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh)
+  {
+    memcpy(((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, &hosttime, sizeof(hosttime));
+  }
+
+
+  static inline u_int64_t get_host_time(click_wifi_extra *eh)
+  {
+    u_int64_t hosttime;
+    memcpy(&hosttime, ((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, sizeof(hosttime));
+
+    return hosttime;
   }
 
 
