@@ -104,7 +104,7 @@ void
 DartRoutingTableMaintenance::table_maintenance()
 {
   BRN_DEBUG("table maintenance");
-BRN_DEBUG("active:%s, validID:%s,neighbours:%d",String(_activestart).c_str(),String(_drt->_validID).c_str(),_drt->_neighbours.size());
+  BRN_DEBUG("active:%s, validID:%s,neighbours:%d",String(_activestart).c_str(),String(_drt->_validID).c_str(),_drt->_neighbours.size());
   if ( ( _activestart ) && ( ! _drt->_validID ) && ( _drt->_neighbours.size() == 0 ) )  {
     //I'm active, have no valid ID and no neighbour to ask for an ID
     _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
