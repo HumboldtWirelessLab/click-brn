@@ -67,7 +67,7 @@ class NeighbourMetric {
     _predecessor = NULL;
   }
   
-  inline void set_first_root_follower_flag() {
+  inline void set_root_follower_flag() {
     _flags |= NEIGHBOUR_METRIC_ROOT_FOLLOWER; 
   }
   
@@ -85,6 +85,31 @@ typedef NeighbourMetricList::const_iterator NeighbourMetricListIter;
 
 typedef HashMap<EtherAddress, NeighbourMetric*> NeighbourMetricMap;
 typedef NeighbourMetricMap::const_iterator NeighbourMetricMapIter;
+
+class NetworkGraph {
+ public:
+  NeighbourMetricList nml;
+  NeighbourMetricMap nmm;
+  
+  void add_node(EtherAddress ea, uint16_t metric, uint8_t hops) {
+    nml.push_back(new NeighbourMetric(ea, metric, hops));
+    nmm.insert(ea, nml[nml.size()-1]);
+  }
+  
+  void remove_node(EtherAddress node) {
+    if ( nmm.findp(node) == NULL ) return;
+    for ( int i = 0; i < nml.size(); i++ ) {
+      if ( nml[i]->_ea == node ) {
+        delete nml[i];
+        nml.erase(nml.begin() + i);
+        nmm.remove(node);
+        return;
+      }
+    }
+  }
+
+  int size() { return nml.size(); }
+};
 
 class FloodingHelper : public BRNElement {
 
@@ -121,17 +146,35 @@ public:
   uint32_t metric2pdr(uint32_t metric);
 
   // helper
-  void get_graph(const EtherAddress &start_node, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap, uint32_t hop_count);
-  void clear_graph(NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap);
-  
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
-  int subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2);
-  void addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &inout);
 
-  int findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
+  void init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric);
+  void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric);
+  void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric, HashMap<EtherAddress,EtherAddress> &blacklist);
   
-  void get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap);
-  void filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors);
+  void clear_graph(NetworkGraph &net_graph);
+  void remove_node(EtherAddress &node, NetworkGraph &ng);
+  
+  void get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, NetworkGraph &net_graph, int hops, int src_metric);
+  void get_local_childs(const EtherAddress &node, NetworkGraph &net_graph, int hops);
+
+  void get_candidate_set(NetworkGraph &net_graph, Vector<EtherAddress> &candidate_set);
+
+  int graph_diff_size(NetworkGraph &ng, NetworkGraph &ng2);
+  int graph_diff_size(Vector<EtherAddress> &ng, Vector<EtherAddress> &ng2);
+  int graph_diff_size(Vector<EtherAddress> &ng, NetworkGraph &ng2);
+
+  int graph_cut_size(Vector<EtherAddress> &ng, NetworkGraph &ng2);
+  int graph_cut_size(Vector<EtherAddress> &ng, Vector<EtherAddress> &ng2);
+  
+  bool graph_overlapping(NetworkGraph &ng, NetworkGraph &ng_2);
+  void graph_add(NetworkGraph &ng, NetworkGraph &ng2);
+#define graph_union graph_add
+  void graph_diff(NetworkGraph &ng, NetworkGraph &ng2);
+  void graph_cut(NetworkGraph &ng, NetworkGraph &ng2);
+
+  int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
+
 };
 
 CLICK_ENDDECLS

@@ -282,7 +282,16 @@ class Flooding : public BRNElement {
   const char *class_name() const  { return "Flooding"; }
   const char *processing() const  { return PUSH; }
 
-  const char *port_count() const  { return "2-5/2"; }
+/**
+ * 0: broadcast
+ * 1: brn
+ * 2: txfeedback failure
+ * 3: txfeedback success
+ * 4: passive overhear
+ * 5: low layer reject
+ **/
+
+  const char *port_count() const  { return "2-6/2"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -340,6 +349,7 @@ class Flooding : public BRNElement {
   uint32_t _flooding_passive;
   uint32_t _flooding_last_node_due_to_passive;
   uint32_t _flooding_last_node_due_to_ack;
+  uint32_t _flooding_lower_layer_reject;
   
 };
 

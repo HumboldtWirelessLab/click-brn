@@ -37,28 +37,6 @@
 
 CLICK_DECLS
 
-#if 0
-extern "C" {
-  static int link_metric_sorter(const void *va, const void *vb, void */*thunk*/) {
-      NeighbourMetric *a = *((NeighbourMetric**)va), *b = *((NeighbourMetric**)vb);
-
-      if ( a->_metric < b->_metric ) return -1;
-      if ( a->_metric > b->_metric ) return 1;
-      return 0;
-  }
-}
-
-extern "C" {
-  static int link_pdr_sorter(const void *va, const void *vb, void */*thunk*/) {
-      NeighbourMetric *a = (NeighbourMetric*)va, *b = (NeighbourMetric *)vb;
-
-      if ( a->_metric > b->_metric ) return -1;
-      if ( a->_metric < b->_metric ) return 1;
-      return 0;
-  }
-}
-#endif
-
 //TODO: refactor: move to brntools
 void 
 FloodingHelper::print_vector(Vector<EtherAddress> &eas)
@@ -71,8 +49,17 @@ FloodingHelper::print_vector(Vector<EtherAddress> &eas)
 void 
 FloodingHelper::print_vector(NeighbourMetricList &nodes)
 {
-  for( int n_i = 0; n_i < nodes.size(); n_i++) { // iterate over all my neighbors
-    BRN_DEBUG("Addr %d : %s (%d, %d)", n_i, nodes[n_i]->_ea.unparse().c_str(), nodes[n_i]->_metric, nodes[n_i]->_flags);
+  for( int node = 0; node < nodes.size(); node++) { // iterate over all my neighbors
+   if ( nodes[node]->_predecessor != NULL ) {
+      BRN_DEBUG("Node: %s Pre: %s Metric: %d Hops: %d Flags: %d", nodes[node]->_ea.unparse().c_str(),
+	  	                                   nodes[node]->_predecessor->_ea.unparse().c_str(),
+		                                   nodes[node]->_metric, nodes[node]->_hops,
+		                                   nodes[node]->_flags);
+    } else {
+      BRN_DEBUG("Node: %s Pre: NULL Metric: %d Hops: %d Flags: %d", nodes[node]->_ea.unparse().c_str(),
+		                                   nodes[node]->_metric, nodes[node]->_hops,
+		                                   nodes[node]->_flags);
+    }
   }
 }
 
@@ -151,8 +138,17 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
 			if (metric_nb_node > _max_metric_to_neighbor) continue;
 			out.push_back(neighbors_tmp[n_i]);
 		}
-	}
-   BRN_DEBUG("filter finished: %d",out.size());	
+  }
+   //BRN_DEBUG("filter finished: %d",out.size());	
+}
+
+void
+FloodingHelper::init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric)
+{
+  clear_graph(ng);
+  
+  ng.nml.push_back(new NeighbourMetric(start_node, src_metric, 0));
+  ng.nmm.insert(start_node,ng.nml[ng.nml.size()-1]);
 }
 
 
@@ -160,34 +156,56 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
  * Dijkstra helper
  */
 void
-FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap, uint32_t hop_count)
+FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric*/)
 {
   Vector<EtherAddress> nn_list;                                              //neighbourlist
-
-  neighboursMetric.clear();
-  neighboursMetricMap.clear();
-  nn_list.clear();
+ 
+  uint32_t new_nodes_start = 0;
+  uint32_t new_nodes_end = 1;
   
-  neighboursMetric.push_back(new NeighbourMetric(start_node, 110, 0));
-  neighboursMetricMap.insert(start_node,neighboursMetric[neighboursMetric.size()-1]);
+  for ( uint32_t h = 1; h <= hop_count; h++ ) {    
+    for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
+      get_filtered_neighbors(ng.nml[n]->_ea, nn_list);                   // get n of n
+
+      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {             //check all n of n 
+	if ( ng.nmm.findp(nn_list[nn_i]) == NULL ) {                     // if not in list
+          ng.nml.push_back(new NeighbourMetric(nn_list[nn_i], 0, h));    // add 
+          ng.nmm.insert(nn_list[nn_i],ng.nml[ng.nml.size()-1]);
+	}
+      }
+      nn_list.clear();
+    }
+    new_nodes_start = new_nodes_end;
+    new_nodes_end = ng.nml.size();
+  }
+}
+
+/*
+ * get graph with blacklist
+ */
+void
+FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric*/, HashMap<EtherAddress,EtherAddress> &blacklist)
+{
+  Vector<EtherAddress> nn_list;                                              //neighbourlist
   
   uint32_t new_nodes_start = 0;
   uint32_t new_nodes_end = 1;
   
   for ( uint32_t h = 1; h <= hop_count; h++ ) {    
     for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
-      get_filtered_neighbors(neighboursMetric[n]->_ea, nn_list);                   // get n of n
+      get_filtered_neighbors(ng.nml[n]->_ea, nn_list);                   // get n of n
 
-      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {                      //check all n of n 
-	if ( neighboursMetricMap.findp(nn_list[nn_i]) == NULL ) {                 // if not in list
-          neighboursMetric.push_back(new NeighbourMetric(nn_list[nn_i], 0, h));       // add 
-          neighboursMetricMap.insert(nn_list[nn_i],neighboursMetric[neighboursMetric.size()-1]);
+      for( int nn_i = nn_list.size()-1; nn_i >= 0; nn_i--) {             //check all n of n 
+	if ((ng.nmm.findp(nn_list[nn_i]) == NULL) && 
+	    (blacklist.findp(nn_list[nn_i]) == NULL)) {                  // if not in list and not in blacklist
+          ng.nml.push_back(new NeighbourMetric(nn_list[nn_i], 0, h));    // add 
+          ng.nmm.insert(nn_list[nn_i],ng.nml[ng.nml.size()-1]);
 	}
       }
       nn_list.clear();
     }
     new_nodes_start = new_nodes_end;
-    new_nodes_end = neighboursMetric.size();
+    new_nodes_end = ng.nml.size();
   }
 }
 
@@ -195,13 +213,22 @@ FloodingHelper::get_graph(const EtherAddress &start_node, NeighbourMetricList &n
  * clear graph
  */
 void
-FloodingHelper::clear_graph(NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap)
+FloodingHelper::clear_graph(NetworkGraph &ng)
 {
-  for ( int i = 0; i < neighboursMetric.size(); i++ )
-    delete neighboursMetric[i];
+  for ( int i = 0; i < ng.nml.size(); i++ )
+    delete ng.nml[i];
   
-  neighboursMetric.clear();
-  neighboursMetricMap.clear();
+  ng.nml.clear();
+  ng.nmm.clear();
+}
+
+/*
+ * remove nodes
+ */
+void
+FloodingHelper::remove_node(EtherAddress &node, NetworkGraph &ng)
+{
+  ng.remove_node(node);
 }
 
 /*
@@ -211,8 +238,7 @@ FloodingHelper::clear_graph(NeighbourMetricList &neighboursMetric, NeighbourMetr
  * Local Dijkstra
  */
 void
-FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors,
-								  NeighbourMetricList &neighboursMetric, NeighbourMetricMap &neighboursMetricMap)
+FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, NetworkGraph &ng, int hops, int src_metric)
 {
   BRN_DEBUG("filter_bad_one_hop_neighbors_with_all_known_nodes");
   uint32_t no_nodes;
@@ -222,31 +248,32 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
   if (!_link_table) return;
     
   //get all n-hop nodes with minimum metric
-  get_graph(node, neighboursMetric, neighboursMetricMap, 2 ); //2 hops
+  init_graph(node, ng, src_metric);
+  get_graph(ng, hops, src_metric);
 
   //add known nodes if they are not included
   for ( int i = 0; i < known_neighbors.size(); i++ ) {
-    if ( neighboursMetricMap.findp(known_neighbors[i]) == NULL) {
-      neighboursMetric.push_back(new NeighbourMetric(known_neighbors[i], 0, 0));       // add 
-      neighboursMetricMap.insert(known_neighbors[i],neighboursMetric[neighboursMetric.size()-1]);
+    if ( ng.nmm.findp(known_neighbors[i]) == NULL) {
+      ng.nml.push_back(new NeighbourMetric(known_neighbors[i], 0, 0));       // add 
+      ng.nmm.insert(known_neighbors[i],ng.nml[ng.nml.size()-1]);
     }
   }
   
   //store size of neighbours
-  no_nodes = neighboursMetric.size();
+  no_nodes = ng.nml.size();
  
   BRN_DEBUG("NeighbourSize: %d KnownNeighbours: %d",no_nodes,known_neighbors.size());
   
   //set metric to known nodes to 100
-  neighboursMetric[0]->_predecessor = neighboursMetric[0];
-  neighboursMetric[0]->set_first_root_follower_flag();
+  ng.nml[0]->_predecessor = ng.nml[0];
+  ng.nml[0]->set_root_follower_flag();
 
   for ( int i = 0; i < known_neighbors.size(); i++ ) {
-    if ( neighboursMetricMap.findp(known_neighbors[i]) == NULL ) {
+    if ( ng.nmm.findp(known_neighbors[i]) == NULL ) {
       BRN_FATAL("No Metric for neighbour %s",known_neighbors[i].unparse().c_str());
       continue;
     }
-    NeighbourMetric *nm = neighboursMetricMap.find(known_neighbors[i]);
+    NeighbourMetric *nm = ng.nmm.find(known_neighbors[i]);
     nm->_metric = 100;
     nm->_hops = 0;
     nm->_predecessor = nm;
@@ -263,11 +290,11 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
     for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
       for ( uint32_t dst_node = 1; dst_node < no_nodes; dst_node++) {
 	if ((dst_node == src_node) ||
-	    (neighboursMetric[dst_node]->_predecessor != NULL) ||
-	    (neighboursMetric[src_node]->_predecessor == NULL)) continue;
+	    (ng.nml[dst_node]->_predecessor != NULL) ||
+	    (ng.nml[src_node]->_predecessor == NULL)) continue;
 	
-	new_best_metric = (neighboursMetric[src_node]->_metric *
-	                   metric2pdr(_link_table->get_link_metric(neighboursMetric[src_node]->_ea, neighboursMetric[dst_node]->_ea))) / 100;
+	new_best_metric = (ng.nml[src_node]->_metric *
+	                   metric2pdr(_link_table->get_link_metric(ng.nml[src_node]->_ea, ng.nml[dst_node]->_ea))) / 100;
   
         if (new_best_metric >= best_metric) {
 	  best_metric = new_best_metric;
@@ -279,44 +306,100 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
     
     if ( best_metric_dst != best_metric_src ) {
       metric_changed = true;
-      neighboursMetric[best_metric_dst]->_metric = best_metric;
-      neighboursMetric[best_metric_dst]->_predecessor = neighboursMetric[best_metric_src];
-      neighboursMetric[best_metric_dst]->_hops = neighboursMetric[best_metric_dst]->_predecessor->_hops + 1;
-      neighboursMetric[best_metric_dst]->copy_root_follower_flag(neighboursMetric[best_metric_dst]->_predecessor);
+      ng.nml[best_metric_dst]->_metric = best_metric;
+      ng.nml[best_metric_dst]->_predecessor = ng.nml[best_metric_src];
+      ng.nml[best_metric_dst]->_hops = ng.nml[best_metric_dst]->_predecessor->_hops + 1;
+      ng.nml[best_metric_dst]->copy_root_follower_flag(ng.nml[best_metric_dst]->_predecessor);
     }
 
   } while ( metric_changed );
 
-  for ( uint32_t node = 0; node < no_nodes; node++) {
-    if ( neighboursMetric[node]->_predecessor != NULL ) {
-      BRN_DEBUG("Node: %s Pre: %s Metric: %d Hops: %d Flags: %d", neighboursMetric[node]->_ea.unparse().c_str(),
-	  	                                   neighboursMetric[node]->_predecessor->_ea.unparse().c_str(),
-		                                   neighboursMetric[node]->_metric, neighboursMetric[node]->_hops,
-		                                   neighboursMetric[node]->_flags);
-    } else {
-      BRN_FATAL("Node with no predecessor");
-    }
-  }
+  print_vector(ng.nml);
   
   BRN_DEBUG("filter_bad_one_hop_neighbors_with_all_known_nodes: end");
 
 }
-/*
- * remove nose of set "neighbors" which are in "known_neighbors". Result: filtered_neighbors
- * 
- */
-void
-FloodingHelper::filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, Vector<EtherAddress> &known_neighbors, Vector<EtherAddress> &filtered_neighbors)
-{
-  HashMap<EtherAddress, EtherAddress> node_hm;
-  
-  for( int i = 0; i < known_neighbors.size(); i++) node_hm.insert(known_neighbors[i],known_neighbors[i]);  //known nodes to hashmap (faster access)
 
-  for( int i = 0; i < neighbors.size(); i++)                                                               //check each neighbour wheter he is known or not
-    if ( node_hm.findp(neighbors[i]) == NULL )
-      filtered_neighbors.push_back(neighbors[i]);                                                          //add only unknown
+void
+FloodingHelper::get_local_childs(const EtherAddress &node, NetworkGraph &ng, int hops)
+{
+  BRN_DEBUG("get local_childs");
+      
+  if (!_link_table) return;
+  
+  //start node is blacklist node
+  HashMap<EtherAddress, EtherAddress> blacklist;
+  blacklist.insert(node, node);
+  
+  //get neighbours
+  Vector<EtherAddress> neighbours;
+  get_filtered_neighbors(node, neighbours);
+  
+  NetworkGraph *ng_list = new NetworkGraph[neighbours.size()];
+  int *ng_ids = new int[neighbours.size()];
     
-  node_hm.clear();
+  //get neighbours of neighbours  without start node
+  for ( int i = 0; i < neighbours.size(); i++ ) {
+    init_graph(neighbours[i], ng_list[i], 100);
+    get_graph(ng_list[i], hops, 100, blacklist);
+    ng_ids[i] = i;
+  }
+  
+  //merge graphs
+  int s,b;
+  for ( int g1 = 0; g1 < neighbours.size()-1; g1++ ) {
+    for ( int g2 = g1+1; g2 < neighbours.size(); g2++ ) {
+      if ( ng_ids[g1] == ng_ids[g2] ) continue;
+      if ( graph_overlapping(ng_list[g1],ng_list[g2]) ) {
+        if ( ng_ids[g1] < ng_ids[g2] ) {
+          s = ng_ids[g1];
+          b = ng_ids[g2];
+        } else {
+          s = ng_ids[g1];
+          b = ng_ids[g2];
+        }
+
+        for ( int i = 0; i < neighbours.size(); i++)
+          if (ng_ids[i] == b) ng_ids[i] = s;
+      }
+    }
+  }
+  
+  //search single graphs
+  for ( int g1 = 0; g1 < neighbours.size(); g1++ ) {
+    if ( ng_ids[g1] >= g1 ) { 
+      int g2;
+      for ( g2 = g1+1; g2 < neighbours.size(); g2++ ) 
+        if ( ng_ids[g1] == g1 ) break;
+      
+      if ( g2 == neighbours.size() ) {
+        //node has non-overlapping graph
+        ng.add_node(neighbours[g1], 100, 1);
+	ng.nml[ng.size()-1]->set_root_follower_flag(); //set rot_follower: is neighbour and this is necessary for get_candidate_set
+      }
+    }
+     
+    clear_graph(ng_list[g1]);
+  }
+  
+  neighbours.clear();
+  delete[] ng_list;
+  delete[] ng_ids;
+}
+
+void
+FloodingHelper::get_candidate_set(NetworkGraph &ng, Vector<EtherAddress> &candidate_set)
+{
+  if ( candidate_set.size() != 0 ) {
+    BRN_ERROR("Candidate set is not empty! Clear.");
+    candidate_set.clear();
+  }
+  
+  for( int node = 0; node < ng.nml.size(); node++) { 
+     if ( ng.nml[node]->is_root_follower() && (ng.nml[node]->_hops == 1) ) {
+       candidate_set.push_back(ng.nml[node]->_ea);
+     }
+  }  
 }
 
 /*
@@ -324,23 +407,86 @@ FloodingHelper::filter_known_one_hop_neighbors(Vector<EtherAddress> &neighbors, 
  * 
  */
 int
-FloodingHelper::subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<EtherAddress> &s2)
+FloodingHelper::graph_diff_size(NetworkGraph &ng, NetworkGraph &ng2)
 {
-	int diff_cnt = 0;
+        int diff_cnt = 0;
       	
-	for( int s1_i = 0; s1_i < s1.size(); s1_i++) { // loop over s1
-		bool found = false;
-		for( int s2_i = 0; s2_i < s2.size(); s2_i++) { // loop over s2
-			if (s1[s1_i] == s2[s2_i]) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			diff_cnt = diff_cnt + 1;
-		}
+	for( int s1_i = 0; s1_i < ng.size(); s1_i++) { // loop over s1
+	  if ( ng2.nmm.findp(ng.nml[s1_i]->_ea) == NULL ) diff_cnt++;
 	}
 	return diff_cnt;
+}
+
+int
+FloodingHelper::graph_diff_size(Vector<EtherAddress> &ng, Vector<EtherAddress> &ng2)
+{
+	int diff_cnt = 0;
+	HashMap<EtherAddress,bool> lookup;
+	
+	for( int i = 0; i < ng2.size(); i++) lookup.insert(ng2[i], true);
+
+	for( int s1_i = 0; s1_i < ng.size(); s1_i++) { // loop over s1
+	  if ( lookup.findp(ng[s1_i]) == NULL ) diff_cnt++;
+	}
+	
+	lookup.clear();
+
+	return diff_cnt;
+}
+
+int
+FloodingHelper::graph_diff_size(Vector<EtherAddress> &ng, NetworkGraph &ng2)
+{
+        int diff_cnt = 0;
+
+        for( int s1_i = 0; s1_i < ng.size(); s1_i++) { // loop over s1
+          if ( ng2.nmm.findp(ng[s1_i]) == NULL ) diff_cnt++;
+        }
+        return diff_cnt;
+}
+
+
+int
+FloodingHelper::graph_cut_size(Vector<EtherAddress> &ng, NetworkGraph &ng2)
+{
+  int cut_cnt = 0;
+
+  for( int s1_i = 0; s1_i < ng.size(); s1_i++) { // loop over s1
+    if ( ng2.nmm.findp(ng[s1_i]) != NULL ) cut_cnt++;
+  }
+    
+  return cut_cnt;
+}
+
+int
+FloodingHelper::graph_cut_size(Vector<EtherAddress> &ng, Vector<EtherAddress> &ng2)
+{
+  int cut_cnt = 0;
+
+  HashMap<EtherAddress,bool> lookup;
+  for( int i = 0; i < ng2.size(); i++) lookup.insert(ng2[i], true);
+
+  for( int s1_i = 0; s1_i < ng.size(); s1_i++) { // loop over s1
+    if ( lookup.findp(ng[s1_i]) != NULL ) cut_cnt++;
+  }
+  
+  lookup.clear();
+   
+  return cut_cnt;
+  
+}
+
+bool
+FloodingHelper::graph_overlapping(NetworkGraph &ng, NetworkGraph &ng_2)
+{
+  if ( ng.size() < ng_2.size() ) {
+    for( int i = 0; i < ng.size(); i++)   // loop over s
+      if ( ng_2.nmm.findp(ng.nml[i]->_ea) != NULL ) return true;
+  } else {
+    for( int i = 0; i < ng_2.size(); i++) // loop over s
+      if ( ng.nmm.findp(ng_2.nml[i]->_ea) != NULL ) return true;
+  }
+  return false;  
 }
 
 /*
@@ -348,20 +494,29 @@ FloodingHelper::subtract_and_cnt(const Vector<EtherAddress> &s1, const Vector<Et
  *
  */ 
 void
-FloodingHelper::addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &all)
+FloodingHelper::graph_add(NetworkGraph &ng, NetworkGraph &ng_add)
 {
-	for( int s1_i = 0; s1_i < newS.size(); s1_i++) { // loop over newS
-		bool found = false;
-		for( int s2_i = 0; s2_i < all.size(); s2_i++) { // loop over all
-			if (newS[s1_i] == all[s2_i]) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			all.push_back(newS[s1_i]);
-		}
-	}
+  for( int s1_i = 0; s1_i < ng_add.nml.size(); s1_i++) { // loop over ng
+    if ( ng.nmm.findp(ng_add.nml[s1_i]->_ea) == NULL ) {
+      ng.add_node(ng_add.nml[s1_i]->_ea,ng_add.nml[s1_i]->_metric, ng_add.nml[s1_i]->_hops);
+    }
+  }
+}
+
+void
+FloodingHelper::graph_diff(NetworkGraph &ng, NetworkGraph &ng2)
+{
+  for( int i = 0; i < ng2.nml.size(); i++)
+    ng.remove_node(ng2.nml[i]->_ea);
+}
+  
+
+void
+FloodingHelper::graph_cut(NetworkGraph &ng, NetworkGraph &ng2)
+{
+  for( int i = ng.nml.size()-1; i >= 0; i--)
+    if ( ng2.nmm.findp(ng.nml[i]->_ea) == NULL )
+      ng.remove_node(ng.nml[i]->_ea);  
 }
 
 /*
@@ -369,7 +524,7 @@ FloodingHelper::addAll(const Vector<EtherAddress> &newS, Vector<EtherAddress> &a
  *
  */ 
 int
-FloodingHelper::findWorst(const EtherAddress &src, Vector<EtherAddress> &neighbors)
+FloodingHelper::find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors)
 {
   if ( (!_link_table) || (neighbors.size() == 0) ) return -1;
   
