@@ -269,24 +269,24 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   last_nodes = _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
   
   BRN_DEBUG("For %s:%d i have %d neighbours",pap->_src.unparse().c_str(),pap->_bcast_id,last_nodes_size);
-  
-  Vector<EtherAddress> known_neighbors;
-  for ( uint32_t j = 0; j < last_nodes_size; j++ ) known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
-  
-  Vector<EtherAddress> missed_neighbors;
-  _fhelper->filter_known_one_hop_neighbors(neighbors, known_neighbors, missed_neighbors);
+        
+  for ( int i = neighbors.size()-1; i >= 0; i--) {
+    for ( int j = 0; j < last_nodes_size; j++) {
+      if ( memcmp(neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
+        neighbors.erase(neighbors.begin() + i);
+        break;
+      }
+    }  
+  }
     
-  BRN_DEBUG("Neighbours: %d Lasthop: %d",missed_neighbors.size(),last_nodes_size);
-
-  neighbors.clear();
-  known_neighbors.clear();
+  BRN_DEBUG("Neighbours: %d Lasthop: %d",neighbors.size(),last_nodes_size);
   
-  if (missed_neighbors.size() == 0) {
+  if (neighbors.size() == 0) {
     BRN_DEBUG("* FloodingPassiveAck: No Neighbour left!");
     return true;
   }
-  
-  missed_neighbors.clear();
+
+  neighbors.clear();
   return false;
 }
 

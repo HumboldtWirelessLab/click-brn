@@ -51,7 +51,8 @@ Flooding::Flooding()
     _flooding_fwd(0),
     _flooding_passive(0),
     _flooding_last_node_due_to_passive(0),
-    _flooding_last_node_due_to_ack(0)
+    _flooding_last_node_due_to_ack(0),
+    _flooding_lower_layer_reject(0)
 {
   BRNElement::init();
 }
@@ -340,6 +341,19 @@ Flooding::push( int port, Packet *packet )
     }
 
     push(1, packet);
+
+  } else if ( port == 5 ) {  //low layer reject (e.g. unicast reject transmission)        
+    bcast_header = (struct click_brn_bcast *)(packet->data());
+    src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+    uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+
+    BRN_DEBUG("Reject: Src: %s",src.unparse().c_str());
+     
+    forward_done(&src, p_bcast_id, false);
+    
+    _flooding_lower_layer_reject++;
+   
+    packet->kill();
   }
 }
 
@@ -510,8 +524,8 @@ Flooding::stats()
   sa << "\" >\n\t<localstats source=\"" << _flooding_src << "\" received=\"" << _flooding_rx;
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
-  sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" />\n";
-  sa << "\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
+  sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
+  sa << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
   
    for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {
     uint32_t cnt = rcm.value();

@@ -46,12 +46,15 @@ CLICK_DECLS
  * Restrictions: works only together with ETX metric
  */
 
+#define UNICAST_FLOODING_PRESELECTION_ALL_NODES         0
+#define UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED  1
+#define UNICAST_FLOODING_PRESELECTION_CHILD_ONLY        2
+
 #define UNICAST_FLOODING_NO_REWRITE         0
 #define UNICAST_FLOODING_STATIC_REWRITE     1
 #define UNICAST_FLOODING_ALL_UNICAST        2
 #define UNICAST_FLOODING_TAKE_WORST         3
 #define UNICAST_FLOODING_MOST_NEIGHBOURS    4
-#define UNICAST_FLOODING_OWN_RESPONSIBILITY 5
 
 class UnicastFlooding : public BRNElement {
 
@@ -63,7 +66,11 @@ class UnicastFlooding : public BRNElement {
   ~UnicastFlooding();
 
   const char *class_name() const  { return "UnicastFlooding"; }
-  const char *port_count() const  { return "1/1"; }
+  /**
+   * 0: output
+   * 1: reject
+   **/
+  const char *port_count() const  { return "1/2"; }
   const char *processing() const  { return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
@@ -84,13 +91,14 @@ class UnicastFlooding : public BRNElement {
   FloodingHelper *_fhelper;
   
  private:
-  int _max_metric_to_neighbor; // max. metric towards a neighbor
-  int _cand_selection_strategy; // the way we choose the candidate for unicast forwarding
+  int _max_metric_to_neighbor;         // max. metric towards a neighbor
+  int _cand_selection_strategy;        // the way we choose the candidate for unicast forwarding
+  uint32_t _pre_selection_mode;
+  uint32_t _ucast_peer_metric;
+  bool _reject_on_empty_cs;
   EtherAddress static_dst_mac;
 
-  bool algorithm_1(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
-  bool algorithm_2(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
-  bool algorithm_3(EtherAddress &next_hop, Vector<EtherAddress> &neighbors);
+  bool algorithm_most_neighbours(EtherAddress &next_hop, Vector<EtherAddress> &neighbors, int hops);
   
  public:
 
@@ -98,12 +106,20 @@ class UnicastFlooding : public BRNElement {
   int get_strategy() { return _cand_selection_strategy; }
   String get_strategy_string(uint32_t id);
 
+  void set_preselection(uint32_t p) { _pre_selection_mode = p; }
+  int get_preselection() { return _pre_selection_mode; }
+  String get_preselection_string(uint32_t id);
+  int get_ucast_peer_metric() { return _ucast_peer_metric; }
+  String get_reject_on_empty_cs() { return String(_reject_on_empty_cs); }
+
   void set_static_mac(EtherAddress *mac) { static_dst_mac = *mac; }
   EtherAddress *get_static_mac() { return &static_dst_mac; }
   
   EtherAddress last_unicast_used;
   uint32_t _cnt_rewrites;
   uint32_t _cnt_bcasts;
+  uint32_t _cnt_bcasts_empty_cs;
+  uint32_t _cnt_reject_on_empty_cs;
   
 };
 
