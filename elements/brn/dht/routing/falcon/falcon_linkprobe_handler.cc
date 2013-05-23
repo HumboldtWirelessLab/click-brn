@@ -132,7 +132,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 
   DHTnodelist nodes;
   DHTnode* next;
-  HawkRoutingtable::RTEntry* entry;
+
   if ( _onlyfingertab ) {
     BRN_DEBUG("USE only fingertab");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
@@ -179,8 +179,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   int32_t len;
   DHTnode first;
   DHTnodelist nodes;
-  DHTnode *add_node;
-
+  
   if ( ! _active ) {
     BRN_DEBUG("Not active. Time since start: %d. delay: %d", (Timestamp::now() - _start).msecval(),_delay);
     if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;

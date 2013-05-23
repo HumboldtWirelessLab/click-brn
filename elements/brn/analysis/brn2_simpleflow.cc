@@ -291,7 +291,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
     }
 
     const click_ether *ether = (const click_ether *)packet->ether_header();
-    EtherAddress psrc = EtherAddress(ether->ether_shost);
+    //EtherAddress psrc = EtherAddress(ether->ether_shost);
     EtherAddress pdst = EtherAddress(ether->ether_dhost);
     if ( ! ( pdst == (EtherAddress(pfh[hops].ea)))) {
       f->route.push_back(pdst);

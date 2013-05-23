@@ -46,10 +46,8 @@ class Tos2QueueMapper : public BRNElement {
 
  public:
 
-
     Tos2QueueMapper();
     ~Tos2QueueMapper();
-
 
     const char *class_name() const  { return "Tos2QueueMapper"; }
     const char *port_count() const  { return "1/1"; }

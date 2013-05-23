@@ -56,7 +56,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
   BRN_DEBUG("Add Entry.");
   BRN_INFO("NEW ROUTE: DST: %s NEXTPHY: %s", ea->unparse().c_str(),
                                              next_phy->unparse().c_str());
-bool is_neighbour = false;
+  //bool is_neighbour = false;
  /* if ( *ea == *next_phy ) {
     BRN_DEBUG("Add neighbour. Check first");
 #pragma message "Use var instead of fix value"

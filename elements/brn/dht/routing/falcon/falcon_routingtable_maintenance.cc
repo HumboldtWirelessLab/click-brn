@@ -147,7 +147,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
     if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
-                      &(srcEther),false);
+                      &(srcEther));
 
   }
   /** End Hawk stuff */

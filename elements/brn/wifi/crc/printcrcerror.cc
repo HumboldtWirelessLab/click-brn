@@ -70,7 +70,7 @@ PrintCRCError::simple_action(Packet *p_in)
     crc_count = 0;
     bit_pos = 0;
 
-    int i;
+    uint32_t i;
     for ( i = _offset; i < p_in->length(); i++)
     {
       //OMG: This code is pretty ugly.

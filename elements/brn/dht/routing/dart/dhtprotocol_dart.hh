@@ -45,10 +45,9 @@ CLICK_DECLS
 struct dht_dart_lp_node_entry {
   uint8_t  status;
   uint8_t  id_size;
-  Timestamp time;
   uint8_t  etheraddr[6];
   uint8_t  id[MD5_DIGEST_LENGTH];
-
+  uint32_t time;   /* seconds since 1.1.1970 */ //previous: unsigned long
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 struct dht_dart_routing {
