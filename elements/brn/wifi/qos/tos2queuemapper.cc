@@ -32,7 +32,7 @@
 #include <clicknet/wifi.h>
 
 #if CLICK_NS 
-#include <click/router.hh> 
+#include <click/router.hh>
 #endif 
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"

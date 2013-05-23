@@ -378,7 +378,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
   int subtype = wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK;
-  int duration = cpu_to_le16(wh->i_dur);
+  //int duration = cpu_to_le16(wh->i_dur);
   EtherAddress src;
   EtherAddress dst;
   EtherAddress bssid;
@@ -648,7 +648,7 @@ BRN2PrintWifi::simple_action(Packet *p)
       goto done;
     case WIFI_FC0_SUBTYPE_ATIM:           sa << "atim "; break;
     case WIFI_FC0_SUBTYPE_DISASSOC:       {
-      uint16_t reason = le16_to_cpu(*(uint16_t *) ptr);
+      //uint16_t reason = le16_to_cpu(*(uint16_t *) ptr);
       sa << "disassoc " ;
 
       sa << EtherAddress(wh->i_addr1);
@@ -685,13 +685,13 @@ BRN2PrintWifi::simple_action(Packet *p)
 
       sa << " ";
 
-      uint16_t algo = le16_to_cpu(*(uint16_t *) ptr);
+      //uint16_t algo = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
-      uint16_t seq = le16_to_cpu(*(uint16_t *) ptr);
+      //uint16_t seq = le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
 
-      uint16_t status =le16_to_cpu(*(uint16_t *) ptr);
+      //uint16_t status =le16_to_cpu(*(uint16_t *) ptr);
       ptr += 2;
       //TODO: enable again
 /*      sa << "alg " << (int)  algo;

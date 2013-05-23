@@ -107,8 +107,9 @@ HawkForwarder::push(int port, Packet *p_in)
                                                        next.unparse().c_str());
   BRN_DEBUG("entries=%i",_rt->_rt.size() );
 
+  /*
   HawkRoutingtable::RTEntry *entry;
-/*  for(int i = 0; i < _rt->_rt.size(); i++) {
+  for(int i = 0; i < _rt->_rt.size(); i++) {
     entry = _rt->_rt[i];
 
     BRN_DEBUG("entry node=%s, next_hop=%s", entry->_dst.unparse().c_str(),entry->_next_phy_hop.unparse().c_str());
@@ -165,8 +166,8 @@ HawkForwarder::push(int port, Packet *p_in)
 
     output(1).push(p_in);
   } else {
-    bool found_better_succ = false;
-    bool best_succ_is_me = false;
+    //bool found_better_succ = false;
+    //bool best_succ_is_me = false;
 
     if ( _me->isIdentical(&next) ) { //i'm next overlay hop
       HawkProtocol::clear_next_hop(p_in);
@@ -279,7 +280,7 @@ BRN_DEBUG("old finger ID: %s", digest2);
 
       if ( ! HawkProtocol::has_next_hop(p_in) ) HawkProtocol::set_next_hop(p_in,next_phy_hop,phy_hop_node._md5_digest);
 
-      int loop_counter = 0;
+      //int loop_counter = 0;
       while ( ( next_phy_hop != NULL ) && (! _rt->isNeighbour(next_phy_hop)) ) {
         next_phy_hop = _rt->getNextHop(next_phy_hop);
         //loop_counter++;

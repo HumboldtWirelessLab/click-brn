@@ -81,7 +81,7 @@ HiddenNodeDetection::run_timer(Timer *)
 
   for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
     NodeInfo *node = iter.value();
-    EtherAddress ea = iter.key();
+    //EtherAddress ea = iter.key();
     if ( (now - node->_last_notice_active).msecval() > _hd_del_interval ) {
       node->_neighbour = false;
       if ( (now - node->_last_notice_passive).msecval() > _hd_del_interval ) {
