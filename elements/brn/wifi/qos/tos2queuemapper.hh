@@ -38,31 +38,31 @@ CLICK_DECLS
 */
 
 #define BACKOFF_STRATEGY_OFF                             0 /* default */
-#define BACKOFF_STRATEGY_NEIGHBOURS_PLI_AWARE            1 /* PLI:=PacketLossInformation */
-#define BACKOFF_STRATEGY_NEIGHBOURS_CHANNEL_LOAD_AWARE   2
-#define BACKOFF_STRATEGY_NEIGHBOURS_MAX_THROUGHPUT       3
+#define BACKOFF_STRATEGY_MAX_THROUGHPUT                  1
+#define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              2
+#define BACKOFF_STRATEGY_TARGET_PACKET_LOSS              3
 
 class Tos2QueueMapper : public BRNElement {
 
- public:
+  public:
 
     Tos2QueueMapper();
     ~Tos2QueueMapper();
 
     const char *class_name() const  { return "Tos2QueueMapper"; }
-    const char *port_count() const  { return "1/1"; }
+    const char *port_count() const  { return "1-2/1-2"; }
     const char *processing() const  { return AGNOSTIC;}
 
     int configure(Vector<String> &, ErrorHandler *);
     void add_handlers();
     Packet *simple_action(Packet *);//Function for the Agnostic Port
 
-    inline uint8_t no_queues_get() { return no_queues; }
-    uint32_t queue_usage_get(uint8_t position);
+    inline uint8_t get_no_queues() { return no_queues; }
+    uint32_t get_queue_usage(uint8_t position);
 
-    uint32_t cwmax_get(uint8_t position);
+    uint32_t get_cwmax(uint8_t position);
 
-    uint32_t cwmin_get(uint8_t position);
+    uint32_t get_cwmin(uint8_t position);
     int get_cwmin(int busy, int nodes);
 
     int find_queue(int cwmin);
@@ -72,29 +72,34 @@ class Tos2QueueMapper : public BRNElement {
     uint16_t get_backoff_strategy() { return _bqs_strategy; }
 
     int backoff_strategy_neighbours_pli_aware(Packet *p, uint8_t tos);
+    int backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/);
+    int backoff_strategy_neighbours_aware(Packet *p, uint8_t tos);
+
+
 
     uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
+
+    int find_closest_size_index(int size);
+    int find_closest_rate_index(int rate);
+    int find_closest_no_neighbour_index(int no_neighbours);
+    int find_closest_per_index(int per);
 
   private:
     uint32_t set_backoff();
     uint32_t get_backoff();
-	ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
-	CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
-	PacketLossInformation *pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
+    ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
+    CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
+    PacketLossInformation *pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 
-	uint8_t no_queues;//number of queues
-	uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
-	uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
-	uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
-	uint32_t *_queue_usage;//frequency of the used queues
+    uint8_t no_queues;          //number of queues
+    uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
+    uint16_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
+    uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+    uint32_t *_queue_usage;     //frequency of the used queues
 
-        int32_t _likelihood_collison;
-        int32_t _rate;
-	int32_t _msdu_size;
-	int32_t _index_packet_loss_max;
-	int32_t _index_number_of_neighbours_max;
-	int32_t _index_msdu_size_max;
-	int32_t _index_rates_max;
+    int32_t _likelihood_collison;
+    int32_t _rate;
+    int32_t _msdu_size;
 
 };
 
