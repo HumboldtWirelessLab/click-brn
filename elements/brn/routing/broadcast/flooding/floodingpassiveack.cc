@@ -271,7 +271,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   BRN_DEBUG("For %s:%d i have %d neighbours",pap->_src.unparse().c_str(),pap->_bcast_id,last_nodes_size);
         
   for ( int i = neighbors.size()-1; i >= 0; i--) {
-    for ( int j = 0; j < last_nodes_size; j++) {
+    for ( uint32_t j = 0; j < last_nodes_size; j++) {
       if ( memcmp(neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
         neighbors.erase(neighbors.begin() + i);
         break;
