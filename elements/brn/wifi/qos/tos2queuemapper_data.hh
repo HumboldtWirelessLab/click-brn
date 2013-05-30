@@ -45,16 +45,17 @@ static const int32_t _backoff_matrix_tmt_backoff_3D[T2QM_MAX_INDEX_RATES][T2QM_M
     {15,28,40,49,63,68,95,94,106,117,137,155,163,160,167,195,197,213,220,250,232,255,274,293,310},
     {26,36,60,79,86,119,122,150,173,183,203,211,234,252,252,275,339,348,330,375,352,414,432,443,473}}};
 
-static const int32_t _backoff_matrix_birthday_problem_intuitv[T2QM_MAX_INDEX_PACKET_LOSS][T2QM_MAX_INDEX_NO_NEIGHBORS]=
+/*static const int32_t _backoff_matrix_birthday_problem_intuitv[T2QM_MAX_INDEX_PACKET_LOSS][T2QM_MAX_INDEX_NO_NEIGHBORS]=
    {{50,99,148,198,247,297,346,396,445,495,544,594,643,693,742,792,841,891,940,990,1039,1089,1138,1188,1237},
     {20,39,58,78,97,117,136,156,175,195,214,234,253,273,292,312,331,351,370,390,409,429,448,468,487},
     {9,19,28,38,47,57,66,76,85,95,104,114,123,133,142,152,161,171,180,190,199,209,218,228,237},
     {4,9,13,18,22,27,31,36,40,45,49,54,58,63,67,72,76,81,85,90,94,99,103,108,112},
     {3,6,8,11,14,17,20,22,25,28,31,34,36,39,42,45,48,50,53,56,59,62,64,67,70}};
+*/
 
 static const int32_t _backoff_packet_loss[T2QM_MAX_INDEX_PACKET_LOSS]={2,5,10,20,30};
 
 static const int32_t vector_msdu_sizes[T2QM_MAX_INDEX_MSDU_SIZE] = {500, 1500, 3000, 8000};
-static const int32_t vector_rates_data[T2QM_MAX_INDEX_RATES] = {1,6,24,54};
+static const int32_t vector_rates_data[T2QM_MAX_INDEX_RATES] = {2,12,48, 108}; //double rate
 static const int32_t vector_no_neighbours[T2QM_MAX_INDEX_NO_NEIGHBORS] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25};
 #endif
