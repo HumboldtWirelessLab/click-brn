@@ -52,7 +52,9 @@ Flooding::Flooding()
     _flooding_passive(0),
     _flooding_last_node_due_to_passive(0),
     _flooding_last_node_due_to_ack(0),
-    _flooding_lower_layer_reject(0)
+    _flooding_lower_layer_reject(0),
+    _flooding_rx_new_id(0),
+    _flooding_fwd_new_id(0)
 {
   BRNElement::init();
 }
@@ -212,6 +214,8 @@ Flooding::push( int port, Packet *packet )
     if ( ! is_known ) {   //note and send to client only if this is the first time
       Packet *p_client;
 
+      _flooding_rx_new_id++;
+      
       add_id(&src,(int32_t)p_bcast_id, &now);
 
       if ( forward )
@@ -283,8 +287,10 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Src: %s",src.unparse().c_str());
 
     uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
-     
-    forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()));
+    
+    //TODO: maybe last node is already known due to other ....whatever
+    
+    forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()), get_last_node(&src, p_bcast_id, &rx_node) == NULL);
     
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
@@ -426,14 +432,15 @@ Flooding::forward_attempt(EtherAddress *src, uint32_t id)
 }
 
 void
-Flooding::forward_done(EtherAddress *src, uint32_t id, bool success)
+Flooding::forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return;
+  if ( bcn->forward_done_cnt(id) == 0 ) _flooding_fwd_new_id++;
   
   bcn->forward_done(id, success);
-  if (success) _flooding_last_node_due_to_ack++;
+  if (success && new_node) _flooding_last_node_due_to_ack++;
 }
 
 uint32_t
@@ -525,6 +532,7 @@ Flooding::stats()
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
   sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
+  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
   sa << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
   
    for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {
