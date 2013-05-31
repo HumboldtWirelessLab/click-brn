@@ -83,7 +83,9 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  if ( ( _bqs_strategy != BACKOFF_STRATEGY_OFF )  && ( _cst == NULL ) ) {
+  if ( ( _bqs_strategy != BACKOFF_STRATEGY_OFF ) &&
+       ( _bqs_strategy != BACKOFF_STRATEGY_DIRECT ) &&
+       ( _cst == NULL ) ) {
     BRN_WARN("Channelstats is NULL! Turn of TOS2QM-Strategy.");
     _bqs_strategy = BACKOFF_STRATEGY_OFF;
   }
@@ -145,63 +147,41 @@ Tos2QueueMapper::simple_action(Packet *p)
   struct click_wifi *w = (struct click_wifi *) p->data();
   if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) return p;
  
-  /*  if ( port == 1 ) {
-    
-    handle_feedback(p);
-    return p;
-  }
-*/  
+  /*if ( port == 1 ) {    
+      handle_feedback(p);
+      return p;
+    }*/
+  
   //TOS-Value from an application or user
   uint8_t tos = BRNPacketAnno::tos_anno(p);
-  int opt_queue = tos;
+  int opt_queue = tos;                       //default
 
   switch (_bqs_strategy) {
     case BACKOFF_STRATEGY_OFF:
-        return p;
-/*    case BACKOFF_STRATEGY_MAX_THROUGHPUT: 
-        opt_queue = backoff_strategy_max_throughput(p, tos);
-        break;*/
-    case  BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE: 
-        if ( _colinf != NULL ) {
-          if ( _colinf->_global_rs != NULL ) {
-        
-            uint32_t target_frac = tos2frac[tos];
-        
-            //find queue with min. frac of target_frac
-            int ofq = -1;
-            for ( int i = 0; i < no_queues; i++ ) {
-              if (ofq == -1) {
-                BRN_DEBUG("%p",_colinf->_global_rs);
-                BRN_DEBUG("queue: %d",_colinf->_global_rs->get_frac(i));
-
-                if (_colinf->_global_rs->get_frac(i) >= target_frac) {
-                  if ( i == 0 ) ofq = i;
-                  else if ( _colinf->_global_rs->get_frac(i-1) == 0 )  ofq = i - 1;  //TODO: ERROR-RETURN-VALUE = -1 is missing
-                  else ofq = i;
-                } else {
-                  if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
-                    if ( i < (no_queues - 2) ) ofq = 1 + 1;
-                  }
-                }
-              }
-            }
-
-            if ( ofq == -1 ) opt_queue = no_queues - 1;
-            else opt_queue = ofq;
-          }
-        } else if ( _cst != NULL ) {
-          struct airtime_stats as;
-          _cst->get_stats(&as,0);
-
-          int opt_cwmin = backoff_strategy_channelload_aware(as.frac_mac_busy, as.no_sources);
-          opt_queue = find_queue(opt_cwmin);
-
-          int diff_q = (no_queues / 2) - tos - 1;
-          opt_queue -= diff_q;
-
-          if ( opt_queue < 0 ) opt_queue = 0;
-          else if ( opt_queue > no_queues ) opt_queue = no_queues;
+        switch (tos) {
+          case 0: opt_queue = 1; break;
+          case 1: opt_queue = 0; break;
+          case 2: opt_queue = 2; break;
+          case 3: opt_queue = 3; break;
+          default: opt_queue = 1;
         }
+        break;
+    case BACKOFF_STRATEGY_DIRECT:
+        return p;
+    case BACKOFF_STRATEGY_MAX_THROUGHPUT: 
+        opt_queue = backoff_strategy_max_throughput(p);
+        break;
+    case  BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
+    {
+        struct airtime_stats as;
+        _cst->get_stats(&as,0);
+
+        int opt_cwmin = backoff_strategy_channelload_aware(as.frac_mac_busy, as.no_sources);
+        opt_queue = find_queue(opt_cwmin);
+        break;
+    }
+    case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
+        opt_queue = backoff_strategy_packetloss_aware(p);
         break;
     case BACKOFF_STRATEGY_LEARNING:
         opt_queue = find_queue(_learning_current_bo);
@@ -221,7 +201,8 @@ Tos2QueueMapper::simple_action(Packet *p)
   return p;
 }
 
-/*void
+/*
+void
 Tos2QueueMapper::push(int port, Packet *p)
 {
   if (Packet *q = smaction(p, port)) {
@@ -239,6 +220,7 @@ Tos2QueueMapper::pull(int port)
   }
 }
 */
+
 void
 Tos2QueueMapper::handle_feedback(Packet *p)
 {
@@ -277,72 +259,64 @@ Tos2QueueMapper::handle_feedback(Packet *p)
 }
 
 int
-Tos2QueueMapper::backoff_strategy_neighbours_aware(Packet *p, uint8_t tos)
+Tos2QueueMapper::backoff_strategy_packetloss_aware(Packet *p)
 {
-    int32_t number_of_neighbours = 1;
-    int32_t  index_search_rate = -1;
-    int32_t  index_search_msdu_size = -1;
-    int32_t  index_search_likelihood_collision = -1;
-    int32_t  index_no_neighbours = -1;
-    uint32_t  backoff_window_size = 0;
-    int backoff_window_size_2 = -1;
-    int opt_queue = -1;
+  int32_t number_of_neighbours = 1;
+  int32_t index_search_rate = -1;
+  int32_t index_search_msdu_size = -1;
+  int32_t index_search_likelihood_collision = -1;
+  int32_t index_no_neighbours = -1;
+  uint32_t backoff_window_size = 0;
 
-    // Get Destination Address from the current packet
-    struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  // Get Destination Address from the current packet
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
-    //Get Number of Neighbours from the Channelstats-Element (_cst)
-    if ( NULL != _cst ) {
-        struct airtime_stats *as;
-	as = _cst->get_latest_stats(); // _cst->get_stats(&as,0);//get airtime statisics
-        number_of_neighbours = as->no_sources;
-        BRN_DEBUG("Number of Neighbours %d", number_of_neighbours);  
-    }
+  //Get Number of Neighbours from the Channelstats-Element (_cst)
+  struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
+  number_of_neighbours = as->no_sources;
+  BRN_DEBUG("Number of Neighbours %d", number_of_neighbours);
 
-    index_search_rate = find_closest_rate_index(ceh->rate);
-    index_search_msdu_size = find_closest_size_index(p->length());
-    index_search_likelihood_collision = find_closest_per_index(_likelihood_collison);
-    index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
+  index_search_rate = find_closest_rate_index(ceh->rate);
+  index_search_msdu_size = find_closest_size_index(p->length());
+  index_search_likelihood_collision = find_closest_per_index(_likelihood_collison);
+  index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
 
-    // Tests what is known
-    if ( index_search_rate >= 0 && index_search_msdu_size >= 0 && index_search_likelihood_collision >= 0 && index_no_neighbours >= 0 ) {
-       backoff_window_size_2 = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
-    } else if ( index_search_rate >= 0 && index_search_msdu_size >= 0 && index_no_neighbours >= 0 ) {
-        //max Throughput
-        //BRN_WARN("Search max tp");
-        backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
-    }
+  // Tests what is known
+  backoff_window_size = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
 
-    if (backoff_window_size_2 > -1) backoff_window_size = backoff_window_size_2;
-
-    if ( backoff_window_size != 0 ) {
-        opt_queue = get_no_queues()-1; //init with the worst case queue 
-        for (int i = 0; i <= get_no_queues()-1;i++) {
-	        BRN_DEBUG("cwmin[%d] := %d",i,get_cwmin(i));
-		BRN_DEBUG("cwmax[%d] := %d",i,get_cwmax(i));
-            // Take the first queue, whose cw-interval is in the range of the backoff-value
-            if (backoff_window_size >= get_cwmin(i) && backoff_window_size < get_cwmin(i+1)){
-                opt_queue = i+1;
-                break;
-            }
-        }
-        // note the tos-value from the user, to get more packetlosses, but a higher throughput and priority
-        // if tos-value is higher than opt_queue then modify opt_queue
-        /*if ((tos > opt_queue) && (opt_queue < no_queues_get())) { 
-            opt_queue = opt_queue + 1;
-        }*/
-        BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, opt_queue);
-  } else {
-    switch (tos) {
-      case 0: opt_queue = 1; break;
-      case 1: opt_queue = 0; break;
-      case 2: opt_queue = 2; break;
-      case 3: opt_queue = 3; break;
-      default: opt_queue = 1;
-    }
-  }
+  BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, find_queue(backoff_window_size));
   
-  return opt_queue;
+  return find_queue(backoff_window_size);;
+}
+
+int
+Tos2QueueMapper::backoff_strategy_max_throughput(Packet *p)
+{
+  int32_t number_of_neighbours = 1;
+  int32_t index_search_rate = -1;
+  int32_t index_search_msdu_size = -1;
+  int32_t index_no_neighbours = -1;
+  uint32_t backoff_window_size = 0;
+
+  // Get Destination Address from the current packet
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+
+  //Get Number of Neighbours from the Channelstats-Element (_cst)
+  struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
+  number_of_neighbours = as->no_sources;
+  BRN_DEBUG("Number of Neighbours %d", number_of_neighbours);
+
+  index_search_rate = find_closest_rate_index(ceh->rate);
+  index_search_msdu_size = find_closest_size_index(p->length());
+  index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
+
+  //max Throughput
+  //BRN_WARN("Search max tp");
+  backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
+
+  BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, find_queue(backoff_window_size));
+  
+  return find_queue(backoff_window_size);;
 }
 
 int
@@ -351,7 +325,36 @@ Tos2QueueMapper::backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/)
   return 10;
 }
 
+/*
+  if ( _colinf != NULL ) {
+    if ( _colinf->_global_rs != NULL ) {
+  
+      uint32_t target_frac = tos2frac[tos];
+  
+      //find queue with min. frac of target_frac
+      int ofq = -1;
+      for ( int i = 0; i < no_queues; i++ ) {
+        if (ofq == -1) {
+          BRN_DEBUG("%p",_colinf->_global_rs);
+          BRN_DEBUG("queue: %d",_colinf->_global_rs->get_frac(i));
 
+          if (_colinf->_global_rs->get_frac(i) >= target_frac) {
+            if ( i == 0 ) ofq = i;
+            else if ( _colinf->_global_rs->get_frac(i-1) == 0 )  ofq = i - 1;  //TODO: ERROR-RETURN-VALUE = -1 is missing
+            else ofq = i;
+          } else {
+            if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
+              if ( i < (no_queues - 2) ) ofq = 1 + 1;
+            }
+          }
+        }
+      }
+
+      if ( ofq == -1 ) opt_queue = no_queues - 1;
+      else opt_queue = ofq;
+    }
+  } 
+*/
 /**
  *   H E L P E R   F U N C T I O N S 
  */
@@ -389,11 +392,15 @@ Tos2QueueMapper::find_closest_per_index(int per) {
 }
 
 int
-Tos2QueueMapper::find_queue(int cwmin) {
-  for ( int i = 0; i < no_queues; i++ )
-    if ( _cwmin[i] > cwmin ) return i;
-  
-  return no_queues - 1;
+Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
+{
+  if ( backoff_window_size <= _cwmin[0] ) return 0;
+
+  // Take the first queue, whose cw-interval is in the range of the backoff-value
+  for (int i = 0; i <= no_queues-1; i++)
+    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
+
+  return no_queues-1;
 }
 
 uint32_t
@@ -401,20 +408,6 @@ Tos2QueueMapper::get_queue_usage(uint8_t position)
 {
   if (position >= no_queues) position = no_queues - 1;
   return _queue_usage[position];
-}
-
-uint32_t
-Tos2QueueMapper::get_cwmin(uint8_t position)
-{
-  if (position >= no_queues) position = no_queues -1;
-  return _cwmin[position];
-}
-
-uint32_t
-Tos2QueueMapper::get_cwmax(uint8_t position)
-{
-  if (position >= no_queues) position = no_queues - 1;
-  return _cwmax[position];
 }
 
 uint32_t

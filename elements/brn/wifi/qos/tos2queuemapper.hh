@@ -38,10 +38,12 @@ CLICK_DECLS
 */
 
 #define BACKOFF_STRATEGY_OFF                             0 /* default */
-#define BACKOFF_STRATEGY_MAX_THROUGHPUT                  1
-#define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              2
-#define BACKOFF_STRATEGY_TARGET_PACKET_LOSS              3
-#define BACKOFF_STRATEGY_LEARNING                        4
+#define BACKOFF_STRATEGY_DIRECT                          1
+#define BACKOFF_STRATEGY_MAX_THROUGHPUT                  2
+#define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              3
+#define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
+#define BACKOFF_STRATEGY_LEARNING                        5
+
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       16
 
@@ -64,22 +66,18 @@ class Tos2QueueMapper : public BRNElement {
 //    Packet *pull(int);
     Packet *simple_action(Packet *p);
 
-  
     void handle_feedback(Packet *);
     
     void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
     uint16_t get_backoff_strategy() { return _bqs_strategy; }
     uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
 
-    int backoff_strategy_neighbours_pli_aware(Packet *p, uint8_t tos);
     int backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/);
-    int backoff_strategy_neighbours_aware(Packet *p, uint8_t tos);
+    int backoff_strategy_packetloss_aware(Packet *p);
+    int backoff_strategy_max_throughput(Packet *p);
 
     inline uint8_t get_no_queues() { return no_queues; }
     uint32_t get_queue_usage(uint8_t position);
-
-    uint32_t get_cwmax(uint8_t position);
-    uint32_t get_cwmin(uint8_t position);
 
     uint32_t get_learning_current_bo() { return _learning_current_bo; }
     uint32_t get_learning_count_up() { return _learning_count_up; }
@@ -89,7 +87,7 @@ class Tos2QueueMapper : public BRNElement {
     int find_closest_rate_index(int rate);
     int find_closest_no_neighbour_index(int no_neighbours);
     int find_closest_per_index(int per);
-    int find_queue(int cwmin);
+    int find_queue(uint16_t cwmin);
 
     void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
 
