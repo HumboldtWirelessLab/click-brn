@@ -128,8 +128,8 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   _queue_usage = new uint32_t[no_queues];
   reset_queue_usage();
 
-  for ( int i = 0; i < no_queues; i++ )
-    click_chatter("Queue: %d Min: %d Max: %d",i ,_cwmin[i], _cwmax[i]); 
+  //for ( int i = 0; i < no_queues; i++ )
+  //  click_chatter("Queue: %d Min: %d Max: %d",i ,_cwmin[i], _cwmax[i]); 
   //for ( int i = 0; i < 25; i++) {
   //  BRN_ERROR("N: %d backoff: %d",i,_backoff_matrix_tmt_backoff_3D[0 /*rate 1*/][1/*msdu 1500*/][i]);//
   //}
