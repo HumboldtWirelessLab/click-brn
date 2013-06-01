@@ -43,9 +43,13 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              3
 #define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
 #define BACKOFF_STRATEGY_LEARNING                        5
+#define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
 
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       16
+#define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
+#define TOS2QM_DEFAULT_TARGET_CHANNELLOAD                90
+#define TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY             5
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -66,15 +70,18 @@ class Tos2QueueMapper : public BRNElement {
 //    Packet *pull(int);
     Packet *simple_action(Packet *p);
 
+    String stats();
+    
     void handle_feedback(Packet *);
     
     void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
     uint16_t get_backoff_strategy() { return _bqs_strategy; }
     uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
 
-    int backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/);
     int backoff_strategy_packetloss_aware(Packet *p);
     int backoff_strategy_max_throughput(Packet *p);
+    int backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/);
+    int backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/);
 
     inline uint8_t get_no_queues() { return no_queues; }
     uint32_t get_queue_usage(uint8_t position);
@@ -82,6 +89,8 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t get_learning_current_bo() { return _learning_current_bo; }
     uint32_t get_learning_count_up() { return _learning_count_up; }
     uint32_t get_learning_count_down() { return _learning_count_down; }
+    uint32_t get_bo_target_cl() { return _bo_for_target_channelload; }
+    uint32_t get_target_channelload() { return _target_channelload; }
     
     int find_closest_size_index(int size);
     int find_closest_rate_index(int rate);
@@ -102,18 +111,26 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t _learning_count_up;
     uint32_t _learning_count_down;
     uint32_t _learning_max_bo;
-   
+     
+  private:
     uint8_t no_queues;          //number of queues
     uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
     uint16_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
     uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
     uint32_t *_queue_usage;     //frequency of the used queues
 
-    int32_t _likelihood_collison;
+    uint32_t _ac_stats_id;
+
+    uint32_t _target_packetloss;
+    uint32_t _target_channelload;
+    uint32_t _bo_for_target_channelload;
 
   public:
+    uint32_t _target_diff_rxtx_busy;
+    
     uint32_t _feedback_cnt;
     uint32_t _tx_cnt;
+    int32_t _pkt_in_q;
 
 };
 

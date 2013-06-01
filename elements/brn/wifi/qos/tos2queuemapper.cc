@@ -52,12 +52,16 @@ Tos2QueueMapper::Tos2QueueMapper():
     _learning_count_up(0),
     _learning_count_down(0),
     _learning_max_bo(0),
+    _ac_stats_id(0),
+    _target_packetloss(TOS2QM_DEFAULT_TARGET_PACKET_LOSS),
+    _target_channelload(TOS2QM_DEFAULT_TARGET_CHANNELLOAD),
+    _bo_for_target_channelload(TOS2QM_DEFAULT_LEARNING_BO),
+    _target_diff_rxtx_busy(TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY),
     _feedback_cnt(0),
-    _tx_cnt(0)
-
+    _tx_cnt(0),
+    _pkt_in_q(0)
 {
   BRNElement::init();
-  _likelihood_collison = -1;
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
@@ -79,7 +83,9 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
       "COLLISIONINFO", cpkP, cpElement, &_colinf,
-      "LIKELIHOODCOLLISON", cpkP, cpInteger, &_likelihood_collison,
+      "TARGETPER", cpkP, cpInteger, &_target_packetloss,
+      "TARGETCHANNELLOAD", cpkP, cpInteger, &_target_channelload,
+      "TARGETRXTXBUSYDIFF", cpkP, cpInteger, &_target_diff_rxtx_busy,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -145,8 +151,10 @@ Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
   struct click_wifi *w = (struct click_wifi *) p->data();
-  if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) return p;
- 
+  if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) {
+    _pkt_in_q++;
+    return p;
+  }
   /*if ( port == 1 ) {    
       handle_feedback(p);
       return p;
@@ -167,25 +175,35 @@ Tos2QueueMapper::simple_action(Packet *p)
         }
         break;
     case BACKOFF_STRATEGY_DIRECT:
+        _pkt_in_q++;
         return p;
     case BACKOFF_STRATEGY_MAX_THROUGHPUT: 
         opt_queue = backoff_strategy_max_throughput(p);
         break;
-    case  BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
-    {
-        struct airtime_stats as;
-        _cst->get_stats(&as,0);
-
-        int opt_cwmin = backoff_strategy_channelload_aware(as.frac_mac_busy, as.no_sources);
-        opt_queue = find_queue(opt_cwmin);
-        break;
-    }
     case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
         opt_queue = backoff_strategy_packetloss_aware(p);
         break;
     case BACKOFF_STRATEGY_LEARNING:
         opt_queue = find_queue(_learning_current_bo);
         break;  
+    case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
+    case  BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
+    {
+        struct airtime_stats *as = _cst->get_latest_stats();
+
+        int opt_cwmin = _bo_for_target_channelload; //also used for diff_rxtx_busy
+        if ( _ac_stats_id != as->stats_id ) {
+          if ( _bqs_strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE ) {
+            opt_cwmin = backoff_strategy_channelload_aware(as->hw_busy, as->no_sources);
+          } else {
+            opt_cwmin = backoff_strategy_rxtx_busy_diff_aware(as->hw_rx, as->hw_tx, as->hw_busy, as->no_sources);
+          }
+          _ac_stats_id = as->stats_id;
+        }
+        opt_queue = find_queue(opt_cwmin);
+        break;
+    }
+      
   }
 
   //trunc overflow
@@ -198,6 +216,7 @@ Tos2QueueMapper::simple_action(Packet *p)
   //add stats
   _queue_usage[opt_queue]++;
  
+  _pkt_in_q++;
   return p;
 }
 
@@ -227,6 +246,8 @@ Tos2QueueMapper::handle_feedback(Packet *p)
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
   if ( ceh->flags & WIFI_EXTRA_TX ) {
+
+    _pkt_in_q--;
    
     struct click_wifi *w = (struct click_wifi *) p->data();
     if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) return;
@@ -278,7 +299,7 @@ Tos2QueueMapper::backoff_strategy_packetloss_aware(Packet *p)
 
   index_search_rate = find_closest_rate_index(ceh->rate);
   index_search_msdu_size = find_closest_size_index(p->length());
-  index_search_likelihood_collision = find_closest_per_index(_likelihood_collison);
+  index_search_likelihood_collision = find_closest_per_index(_target_packetloss);
   index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
 
   // Tests what is known
@@ -320,10 +341,37 @@ Tos2QueueMapper::backoff_strategy_max_throughput(Packet *p)
 }
 
 int
-Tos2QueueMapper::backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/)
+Tos2QueueMapper::backoff_strategy_channelload_aware(int busy, int /*nodes*/)
 {
-  return 10;
+  BRN_WARN("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
+  if ( (busy < (_target_channelload - 5)) && ( _bo_for_target_channelload > 1 ) ) {
+    _bo_for_target_channelload = _bo_for_target_channelload >> 1;
+  } else if ( (busy > (_target_channelload + 5)) && (_bo_for_target_channelload < _learning_max_bo)) {
+    _bo_for_target_channelload = _bo_for_target_channelload << 1;
+  }
+  
+  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  
+  return _bo_for_target_channelload;
 }
+
+int
+Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/)
+{
+  int diff = busy-(tx+rx);
+  BRN_WARN("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
+  
+  if ( (diff < (_target_diff_rxtx_busy - 3)) && ( _bo_for_target_channelload > 1 ) ) {
+    _bo_for_target_channelload = _bo_for_target_channelload >> 1;
+  } else if ( (diff > (_target_diff_rxtx_busy + 3)) && (_bo_for_target_channelload < _learning_max_bo)) {
+    _bo_for_target_channelload = _bo_for_target_channelload << 1;
+  }
+  
+  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  
+  return _bo_for_target_channelload;
+}
+
 
 /*
   if ( _colinf != NULL ) {
@@ -456,24 +504,32 @@ Tos2QueueMapper::get_backoff()
 
 enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY};
 
+String
+Tos2QueueMapper::stats()
+{
+  StringAccum sa;
+  sa << "<tos2queuemapper node=\"" << BRN_NODE_NAME << "\" strategy=\"" << _bqs_strategy << "\" queues=\"";
+  sa << (uint32_t)no_queues << "\" learning_current_bo=\"" << _learning_current_bo;
+  sa << "\" bo_up=\"" << _learning_count_up << "\" bo_down=\"" << _learning_count_down;
+  sa << "\" bo_tcl=\"" << _bo_for_target_channelload << "\" tar_cl=\"" << _target_channelload;
+  sa << "\" feedback_cnt=\"" << _feedback_cnt << "\" tx_cnt=\"" << _tx_cnt;
+  sa << "\" packets_in_queue=\"" << _pkt_in_q << "\" >\n";
+  sa << "\t<queueusage>\n";
+  for ( int i = 0; i < no_queues; i++) {
+    sa << "\t\t<queue index=\"" << i << "\" usage=\"" << _queue_usage[i] << "\" />\n";
+  }
+  sa << "\t</queueusage>\n</tos2queuemapper>\n";
+  return sa.take_string();
+}
+
 static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 {
-  	Tos2QueueMapper *td = (Tos2QueueMapper *)e;
-  	switch ((uintptr_t) thunk) {
-    	case H_TOS2QUEUEMAPPER_STATS:
-      		StringAccum sa;
-                sa << "<tos2queuemapper strategy=\"" << td->_bqs_strategy << "\" queues=\"" << (uint32_t)td->get_no_queues();
-                sa << "\" learning_current_bo=\"" << td->get_learning_current_bo();
-                sa << "\" bo_up=\"" << td->get_learning_count_up() << "\" bo_down=\"" << td->get_learning_count_down();
-                sa << "\" feedback_cnt=\"" << td->_feedback_cnt << "\" tx_cnt=\"" << td->_tx_cnt << "\" >\n";
-      		sa << "\t<queueusage>\n";
-      		for ( int i = 0; i < td->get_no_queues(); i++) {
-        		sa << "\t\t<queue index=\"" << i << "\" usage=\"" << td->get_queue_usage(i) << "\" />\n";
-      		}
-      		sa << "\t</queueusage>\n</tos2queuemapper>\n";
-      		return sa.take_string();
-      	break;
-  	}
+  Tos2QueueMapper *td = (Tos2QueueMapper *)e;
+  switch ((uintptr_t) thunk) {
+    case H_TOS2QUEUEMAPPER_STATS:
+      return td->stats();
+      break;
+  }
   return String();
 }
 
