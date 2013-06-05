@@ -97,6 +97,8 @@ class Tos2QueueMapper : public BRNElement {
     int find_closest_no_neighbour_index(int no_neighbours);
     int find_closest_per_index(int per);
     int find_queue(uint16_t cwmin);
+    uint32_t find_closest_backoff(uint32_t bo);
+    uint32_t find_closest_backoff_exp(uint32_t bo);
 
     void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
 
@@ -104,6 +106,7 @@ class Tos2QueueMapper : public BRNElement {
   private:
     uint32_t set_backoff();
     uint32_t get_backoff();
+    uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
     ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
     CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
 
@@ -119,6 +122,10 @@ class Tos2QueueMapper : public BRNElement {
     uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
     uint32_t *_queue_usage;     //frequency of the used queues
 
+    uint16_t *_bo_exp;           //exponent for backoff in queue
+    uint32_t *_bo_usage_usage;   //frequency of the used backoff
+    uint32_t _bo_usage_max_no;   //max bo
+    
     uint32_t _ac_stats_id;
 
     uint32_t _target_packetloss;
@@ -131,6 +138,8 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t _feedback_cnt;
     uint32_t _tx_cnt;
     int32_t _pkt_in_q;
+    
+    uint32_t _call_set_backoff;
 
 };
 
