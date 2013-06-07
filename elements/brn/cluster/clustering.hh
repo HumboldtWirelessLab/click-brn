@@ -4,23 +4,29 @@
 #include <click/etheraddress.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
 
 class Clustering : public BRNElement
 {
-  class Cluster {
-
+  struct Cluster {
     uint32_t _cluster_id;
     EtherAddress _clusterhead;
     Vector<EtherAddress> _member;
-
   };
 
   typedef Vector<Cluster*> ClusterList;
   typedef ClusterList::const_iterator ClusterListIter;
 
-  public:
+ protected:
+  	  //
+  	  //member
+  	  //
+  	  BRN2LinkStat *_linkstat;
+  	  BRN2NodeIdentity *_node_identity;
+
+ public:
 
     Clustering();
     ~Clustering();
@@ -30,12 +36,11 @@ class Clustering : public BRNElement
     void init();
     virtual void add_handlers();
 
-    virtual EtherAddress *get_clusterhead() { return &_clusterhead; }
+    virtual EtherAddress *get_clusterhead() { return &_own_cluster._clusterhead; }
     virtual bool clusterhead_is_me() = 0;
 
     virtual String clustering_info();
-
-    EtherAddress _clusterhead; //TODO: remove, it's old stuff
+    virtual void clustering_process() = 0;
 
     Cluster _own_cluster;
     ClusterList _known_clusters;

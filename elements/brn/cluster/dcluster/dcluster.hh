@@ -6,8 +6,6 @@
 #include <click/vector.hh>
 #include <click/timer.hh>
 
-#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
-
 #include "elements/brn/cluster/clustering.hh"
 #include "dclusterprotocol.hh"
 
@@ -87,23 +85,15 @@ class DCluster : public Clustering {
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
+  void clustering_process();
 
-  bool clusterhead_is_me() { return _my_info._ether_addr == _clusterhead; }
-
+  bool clusterhead_is_me() { return _my_info._ether_addr == _cluster_head->_ether_addr; }
   String get_info();
   DCluster::ClusterNodeInfo* selectClusterHead();
   DCluster::ClusterNodeInfo* getClusterHead() { return _cluster_head;}
   void informClusterHead(DCluster::ClusterNodeInfo*);
 
   void init_cluster_node_info();
-
- private:
-  //
-  //member
-  //
-
-  BRN2LinkStat *_linkstat;
-  BRN2NodeIdentity *_node_identity;
 
  public:
 

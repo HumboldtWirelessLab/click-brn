@@ -28,7 +28,6 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn/standard/compression/lzw.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
@@ -110,7 +109,6 @@ NHopCluster::lpSendHandler(char *buffer, int size)
     _cluster_head.getInfo(&info);                                       //put info of current clusterhead into struct
     return NHopClusterProtocol::pack_lp(&info, (uint8_t*)buffer, size); //put struct into linkprobe
   }
-
   return -1;  //NO info. TODO: check linkstat for returning 0 instead of -1
 }
 
@@ -136,6 +134,8 @@ NHopCluster::lpReceiveHandler(EtherAddress *src, char *buffer, int size)
   } else {
     BRN_WARN("ERROR while unpack linkprobeinfo");
   }
+
+  // Protokollieren in welchem Cluster sich der Knoten befindet
 
   return len;
 }
@@ -372,6 +372,11 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
     return errh->error("debug parameter must be an integer value between 0 and 4");
   fl->_debug = debug;
   return 0;
+}
+
+void NHopCluster::clustering_process() {
+	_own_cluster._cluster_id = 0;
+	_own_cluster._clusterhead = _cluster_head._ether_addr;
 }
 
 void

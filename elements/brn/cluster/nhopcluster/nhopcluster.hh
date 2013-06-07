@@ -107,12 +107,13 @@ class NHopCluster : public Clustering {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _clusterhead; }
+  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _own_cluster._clusterhead; }
 
   void push(int, Packet *);
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(EtherAddress *src, char *buffer, int size);
+  void clustering_process();
 
   static void static_nhop_timer_hook(Timer *t, void *f);
   void timer_hook();
@@ -120,13 +121,6 @@ class NHopCluster : public Clustering {
   String get_info();
 
  private:
-  //
-  //member
-  //
-
-  BRN2LinkStat *_linkstat;
-  BRN2NodeIdentity *_node_identity;
-
   Timer _nhop_timer;
   int _mode;
 

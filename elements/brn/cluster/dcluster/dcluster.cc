@@ -186,13 +186,13 @@ DCluster::lpReceiveHandler(char *buffer, int size)
             ((ntohl(info.max.id) == _max_round[info.max.round]._id ) &&              //o equal but lower hop count
             ((uint32_t)(info.max.hops + 1) < _max_round[info.max.round]._distance )))))) {
 
-    _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
+	  _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
 
-    /* Increase number of max round if a info with higher max round is received */
-    if ( _max_no_max_rounds == (info.max.round + 1) ) {
-      BRN_WARN("Increase number of rounds");
-      _max_no_max_rounds++;
-    }
+	  /* Increase number of max round if a info with higher max round is received */
+	  if ( _max_no_max_rounds == (info.max.round + 1) ) {
+		  BRN_WARN("Increase number of rounds");
+		  _max_no_max_rounds++;
+	  }
   }
 
   if ((( info.min.round < _max_distance ) && ( info.min.round != DCLUSTER_INVALID_ROUND ) ) &&
@@ -207,7 +207,11 @@ DCluster::lpReceiveHandler(char *buffer, int size)
     }
   }
 
-  if ( _max_no_min_rounds == _max_distance ) _cluster_head = selectClusterHead();
+  if ( _max_no_min_rounds == _max_distance ) {
+	  _cluster_head = selectClusterHead();
+  }
+
+  // Protokollieren in welchem Cluster sich der Knoten befindet
 
   return len;
 }
@@ -284,6 +288,11 @@ read_stats_param(Element *e, void *)
   DCluster *dc = (DCluster *)e;
 
   return dc->get_info();
+}
+
+void DCluster::clustering_process() {
+  _own_cluster._clusterhead = _cluster_head->_ether_addr;
+  _own_cluster._cluster_id = _cluster_head->_id;
 }
 
 void
