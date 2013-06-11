@@ -59,10 +59,8 @@ BrnIappRoamingFilter::configure(Vector<String> &conf, ErrorHandler *errh)
   UNREFERENCED_PARAMETER(errh);
   
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-      //cpKeywords,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
       "ASSOCLIST", cpkP+cpkM, cpElement,/* "AssocList",*/ &_assoc_list,
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
   

@@ -62,14 +62,12 @@ int
 BrnIappDataHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-      //cpKeywords,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement, /*"BrnIapp encap element",*/ &_encap,
       "ROUTEHDL", cpkP+cpkM, cpElement, /*"RouteUpdateHandler element",*/ &_route_handler,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "OPTIMIZE", cpkP, cpBool, /*"Optimize",*/ &_optimize,
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
 

@@ -79,21 +79,21 @@ BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   int stale_period = 120;
   if (cp_va_kparse(conf, this, errh,
-      "DEBUG", cpkP+cpkM, cpInteger, &_debug, /*"Debug"*/
       "STALE", cpkP+cpkM, cpUnsigned, &stale_period, /*"Stale info timeout"*/
-      "OPTIMIZE", cpkP+cpkM, cpBool, &_optimize, /*"Optimize"*/
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "NOTIFYHDL", cpkP+cpkM, cpElement, /*"NotifyHandler element",*/ &_notify_handler,
       "DATAHDL", cpkP+cpkM, cpElement,/* "DataHandler element",*/ &_data_handler,
       "ASSOC_RESP", cpkP+cpkM, cpElement, /*"AssocResponder element",*/ &_assoc_responder,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "OPTIMIZE", cpkP, cpBool, &_optimize, /*"Optimize"*/
+      "DEBUG", cpkP, cpInteger, &_debug, /*"Debug"*/
       //"SIG_ASSOC", cpElement, "SignalAssoc element", &_sig_assoc,
       cpEnd) < 0)
     return -1;
 
-  if (!_assoc_list || !_assoc_list->cast("AssocList")) 
-    return errh->error("AssocList not specified");
+  if (!_assoc_list || !_assoc_list->cast("BRN2AssocList")) 
+    return errh->error("BRN2AssocList not specified");
 
   if (!_notify_handler || !_notify_handler->cast("BrnIappNotifyHandler")) 
     return errh->error("NotifyHandler not specified");
@@ -101,8 +101,8 @@ BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_data_handler || !_data_handler->cast("BrnIappDataHandler")) 
     return errh->error("DataHandler not specified");
 
-  if (!_assoc_responder || !_assoc_responder->cast("BRNAssocResponder")) 
-    return errh->error("AssocResponder not specified");
+  if (!_assoc_responder || !_assoc_responder->cast("BRN2AssocResponder")) 
+    return errh->error("BRN2AssocResponder not specified");
 
   /*
   if (!_sig_assoc || !_sig_assoc->cast("Signal") 
@@ -121,8 +121,8 @@ BrnIappStationTracker::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BrnIappStationTracker::initialize(ErrorHandler *errh)
 {
-  if (!_id || !_id->cast("NodeIdentity")) 
-    return errh->error("NodeIdentity not specified");
+  if (!_id || !_id->cast("BRN2NodeIdentity")) 
+    return errh->error("BRN2NodeIdentity not specified");
 
   if (!_link_table || !_link_table->cast("Brn2LinkTable")) 
     return errh->error("BRN2LinkTable not specified");
