@@ -36,20 +36,19 @@ class NHopCluster : public Clustering {
    public:
     uint32_t _distance;
 
-    EtherAddress _ether_addr;
     EtherAddress _best_next_hop; //TODO: List of next hops
 
     ClusterHead() {
     }
 
     ClusterHead(const EtherAddress *ea, uint32_t id, uint32_t distance) {
-      _ether_addr = EtherAddress(ea->data());
+      _clusterhead = EtherAddress(ea->data());
       _cluster_id = id;
       _distance = distance;
     }
 
     void setInfo(uint8_t *addr, uint32_t id, uint32_t distance) {
-      _ether_addr = EtherAddress(addr);
+      _clusterhead = EtherAddress(addr);
       _cluster_id = id;
       _distance = distance;
     }
@@ -61,19 +60,20 @@ class NHopCluster : public Clustering {
     void setInfo(struct nhopcluster_lp_info *lpi) {
       _distance = lpi->hops;
       _cluster_id = ntohl(lpi->id);
-      _ether_addr = EtherAddress(lpi->clusterhead);
+      _clusterhead = EtherAddress(lpi->clusterhead);
     }
 
     void setInfo(struct nhopcluster_managment *nhcm) {
       _distance = nhcm->hops;
       _cluster_id = ntohl(nhcm->id);
-      _ether_addr = EtherAddress(nhcm->clusterhead);
+      _clusterhead = EtherAddress(nhcm->clusterhead);
     }
 
     void getInfo(struct nhopcluster_lp_info *lpi) {
       lpi->hops = _distance;
       lpi->id = htonl(_cluster_id);
-      memcpy(lpi->clusterhead, _ether_addr.data(), 6);
+      memcpy( lpi->clusterhead, _clusterhead.data(), 6);
+
     }
 
     void setBestNextHop(EtherAddress *nh) {
@@ -105,13 +105,12 @@ class NHopCluster : public Clustering {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _cluster_head._ether_addr; }
+  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _cluster_head->_clusterhead; }
 
   void push(int, Packet *);
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(EtherAddress *src, char *buffer, int size);
-  void clustering_process();
 
   static void static_nhop_timer_hook(Timer *t, void *f);
   void timer_hook();
@@ -136,7 +135,7 @@ class NHopCluster : public Clustering {
 
   int _max_distance;
 
-  ClusterHead _cluster_head;
+  ClusterHead* _cluster_head;
   bool _cluster_head_selected;
 
   int _delay;

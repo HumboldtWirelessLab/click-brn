@@ -25,8 +25,6 @@ Clustering::init()
 String
 Clustering::clustering_info()
 {
-  this->clustering_process();
-
   StringAccum sa;
 
   if(_own_cluster!=NULL) {

@@ -102,6 +102,7 @@ DCluster::init_cluster_node_info()
   BRN_INFO("Init Clusterhead: %u",_node_identity->getNodeID32());
   _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
   _cluster_head = &_my_info;
+  _own_cluster = _cluster_head;
 }
 
 int
@@ -211,6 +212,7 @@ DCluster::lpReceiveHandler(char *buffer, int size)
 
   if ( _max_no_min_rounds == _max_distance ) {
 	  _cluster_head = selectClusterHead();
+	  _own_cluster = _cluster_head;
   }
 
   // Protokollieren in welchem Cluster sich der Knoten befindet
@@ -269,16 +271,16 @@ DCluster::get_info()
   int r;
 
   sa << "Node: " << _node_identity->getNodeName() << " ID: " << _my_info._cluster_id;
-  sa << " Clusterhead: " << getClusterHead()->_ether_addr.unparse() << " CH-ID: " << getClusterHead()->_cluster_id << "\n";
+  sa << " Clusterhead: " << getClusterHead()->_clusterhead.unparse() << " CH-ID: " << getClusterHead()->_cluster_id << "\n";
 
   sa << "Mode\tRound\tAddress\t\t\tDist\tHighest ID\n";
 
   for( r = 0; r < _max_distance; r++ ) {
-    sa << "MAX\t" << r << "\t" << _max_round[r]._ether_addr.unparse() << "\t" << _max_round[r]._distance << "\t" << _max_round[r]._cluster_id << "\n";
+    sa << "MAX\t" << r << "\t" << _max_round[r]._clusterhead.unparse() << "\t" << _max_round[r]._distance << "\t" << _max_round[r]._cluster_id << "\n";
   }
 
   for( r = 0; r < _max_distance; r++ ) {
-    sa << "MIN\t" << r <<  "\t" << _min_round[r]._ether_addr.unparse() << "\t" << _min_round[r]._distance << "\t" << _min_round[r]._cluster_id << "\n";
+    sa << "MIN\t" << r <<  "\t" << _min_round[r]._clusterhead.unparse() << "\t" << _min_round[r]._distance << "\t" << _min_round[r]._cluster_id << "\n";
   }
 
   return sa.take_string();
@@ -290,11 +292,6 @@ read_stats_param(Element *e, void *)
   DCluster *dc = (DCluster *)e;
 
   return dc->get_info();
-}
-
-void DCluster::clustering_process() {
- // _own_cluster->_clusterhead = _cluster_head->_ether_addr;
- // _own_cluster->_cluster_id = _cluster_head->_cluster_id;
 }
 
 void
