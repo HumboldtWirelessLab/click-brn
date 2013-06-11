@@ -53,6 +53,7 @@ Flooding::Flooding()
     _flooding_last_node_due_to_passive(0),
     _flooding_last_node_due_to_ack(0),
     _flooding_lower_layer_reject(0),
+    _flooding_src_new_id(0),
     _flooding_rx_new_id(0),
     _flooding_fwd_new_id(0)
 {
@@ -123,6 +124,7 @@ Flooding::push( int port, Packet *packet )
     if ( _bcast_id == 0 ) _bcast_id = 1;
     
     _flooding_src++;                                                           //i was src of a flooding
+    _flooding_src_new_id++;   
     
     add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
     forward_attempt(&src, _bcast_id);                                          //try forward 
@@ -437,7 +439,7 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success, bool new_no
   BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return;
-  if ( bcn->forward_done_cnt(id) == 0 ) _flooding_fwd_new_id++;
+  if (( bcn->forward_done_cnt(id) == 0 ) && (!me_src(src, id))) _flooding_fwd_new_id++;
   
   bcn->forward_done(id, success);
   if (success && new_node) _flooding_last_node_due_to_ack++;
@@ -532,8 +534,8 @@ Flooding::stats()
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
   sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
-  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
-  sa << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
+  sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
+  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
   
    for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {
     uint32_t cnt = rcm.value();

@@ -356,7 +356,8 @@ class Flooding : public BRNElement {
   uint32_t _flooding_last_node_due_to_passive;
   uint32_t _flooding_last_node_due_to_ack;
   uint32_t _flooding_lower_layer_reject;
-  
+    
+  uint32_t _flooding_src_new_id;
   uint32_t _flooding_rx_new_id;
   uint32_t _flooding_fwd_new_id;
   
