@@ -21,29 +21,28 @@ class DCluster : public Clustering {
 
  public:
 
-  class ClusterNodeInfo {
+  class ClusterNodeInfo: public Clustering::Cluster {
    public:
-    uint32_t _id;
     uint32_t _distance;
 
     EtherAddress _ether_addr;
 
     EtherAddress _info_src;
 
-    ClusterNodeInfo(const EtherAddress *ea, uint32_t id, uint32_t distance) {
+    ClusterNodeInfo(const EtherAddress *ea, uint32_t id, uint32_t distance): Cluster() {
       _ether_addr = EtherAddress(ea->data());
-      _id = id;
+      _cluster_id = id;
       _distance = distance;
     }
 
     ClusterNodeInfo() {
-      _id = 0;
+      _cluster_id = 0;
       _distance = DCLUSTER_INVALID_ROUND;
     }
 
     void setInfo(uint8_t *addr, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(addr);
-      _id = id;
+      _cluster_id = id;
       _distance = distance;
     }
 
@@ -52,11 +51,11 @@ class DCluster : public Clustering {
     }
 
     void setInfo(ClusterNodeInfo info) {
-      setInfo(info._ether_addr.data(), info._id, info._distance);
+      setInfo(info._ether_addr.data(), info._cluster_id, info._distance);
     }
 
     void storeStruct(struct dcluster_node_info *node_info) {
-      node_info->id = htonl(_id);
+      node_info->id = htonl(_cluster_id);
       memcpy(node_info->etheraddr, _ether_addr.data(), 6);
       node_info->hops = _distance;
     }

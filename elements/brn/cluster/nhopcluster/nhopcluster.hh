@@ -32,13 +32,11 @@ class NHopCluster : public Clustering {
 
  public:
 
-  class ClusterHead {
+  class ClusterHead: public Cluster {
    public:
     uint32_t _distance;
 
-    uint32_t _id;
     EtherAddress _ether_addr;
-
     EtherAddress _best_next_hop; //TODO: List of next hops
 
     ClusterHead() {
@@ -46,13 +44,13 @@ class NHopCluster : public Clustering {
 
     ClusterHead(const EtherAddress *ea, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(ea->data());
-      _id = id;
+      _cluster_id = id;
       _distance = distance;
     }
 
     void setInfo(uint8_t *addr, uint32_t id, uint32_t distance) {
       _ether_addr = EtherAddress(addr);
-      _id = id;
+      _cluster_id = id;
       _distance = distance;
     }
 
@@ -62,19 +60,19 @@ class NHopCluster : public Clustering {
 
     void setInfo(struct nhopcluster_lp_info *lpi) {
       _distance = lpi->hops;
-      _id = ntohl(lpi->id);
+      _cluster_id = ntohl(lpi->id);
       _ether_addr = EtherAddress(lpi->clusterhead);
     }
 
     void setInfo(struct nhopcluster_managment *nhcm) {
       _distance = nhcm->hops;
-      _id = ntohl(nhcm->id);
+      _cluster_id = ntohl(nhcm->id);
       _ether_addr = EtherAddress(nhcm->clusterhead);
     }
 
     void getInfo(struct nhopcluster_lp_info *lpi) {
       lpi->hops = _distance;
-      lpi->id = htonl(_id);
+      lpi->id = htonl(_cluster_id);
       memcpy(lpi->clusterhead, _ether_addr.data(), 6);
     }
 
@@ -107,7 +105,7 @@ class NHopCluster : public Clustering {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _own_cluster._clusterhead; }
+  bool clusterhead_is_me() { return *(_node_identity->getMasterAddress()) == _cluster_head._ether_addr; }
 
   void push(int, Packet *);
 

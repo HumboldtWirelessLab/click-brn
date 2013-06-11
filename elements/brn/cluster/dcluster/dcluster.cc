@@ -49,6 +49,8 @@ DCluster::DCluster()
 
 DCluster::~DCluster()
 {
+	delete[] _max_round;
+	delete[] _min_round;
 }
 
 int
@@ -182,8 +184,8 @@ DCluster::lpReceiveHandler(char *buffer, int size)
   if ( (info.max.hops < _max_distance) &&
        ( (_max_round[info.max.round]._distance == DCLUSTER_INVALID_ROUND) ||          //there is no valid entry, or
         ((_max_round[info.max.round]._distance != DCLUSTER_INVALID_ROUND) &&          //entry is valid and
-           (( ntohl(info.max.id) > _max_round[info.max.round]._id ) ||               //new id bigger
-            ((ntohl(info.max.id) == _max_round[info.max.round]._id ) &&              //o equal but lower hop count
+           (( ntohl(info.max.id) > _max_round[info.max.round]._cluster_id ) ||               //new id bigger
+            ((ntohl(info.max.id) == _max_round[info.max.round]._cluster_id ) &&              //o equal but lower hop count
             ((uint32_t)(info.max.hops + 1) < _max_round[info.max.round]._distance )))))) {
 
 	  _max_round[info.max.round].setInfo(info.max.etheraddr, ntohl(info.max.id), info.max.hops + 1);
@@ -197,8 +199,8 @@ DCluster::lpReceiveHandler(char *buffer, int size)
 
   if ((( info.min.round < _max_distance ) && ( info.min.round != DCLUSTER_INVALID_ROUND ) ) &&
       (( _min_round[info.min.round]._distance == DCLUSTER_INVALID_ROUND ) ||
-       ( ntohl(info.min.id) < _min_round[info.min.round]._id ) ||
-        (( ntohl(info.min.id) == _min_round[info.min.round]._id ) &&
+       ( ntohl(info.min.id) < _min_round[info.min.round]._cluster_id ) ||
+        (( ntohl(info.min.id) == _min_round[info.min.round]._cluster_id ) &&
          ((uint32_t)(info.min.hops + 1) < _min_round[info.min.round]._distance )))) {
     BRN_INFO("Got Min. Round: %d ID: %u",info.min.round, ntohl(info.min.id));
     _min_round[info.min.round].setInfo(info.min.etheraddr, ntohl(info.min.id), info.min.hops + 1);
@@ -221,16 +223,16 @@ DCluster::selectClusterHead() {
   int i,j;
   //Rule 1.
   for ( i = 0; i < _max_distance; i++ )
-    if ( _my_info._id == _min_round[i]._id ) return &_my_info;
+    if ( _my_info._cluster_id == _min_round[i]._cluster_id ) return &_my_info;
 
   ClusterNodeInfo* minpair = NULL;
   uint32_t min = UINT_MAX; //4,294,967,295
   //Rule 2.
   for ( i = 0; i < _max_distance; i++ ) {
     for ( j = 0; j < _max_distance; j++ ) {
-      if ( ( _min_round[i]._id == _max_round[j]._id ) && ( _min_round[i]._id < min ) ) {
+      if ( ( _min_round[i]._cluster_id == _max_round[j]._cluster_id ) && ( _min_round[i]._cluster_id < min ) ) {
         minpair = &_min_round[i];
-        min = _min_round[i]._id;
+        min = _min_round[i]._cluster_id;
       }
     }
   }
@@ -241,7 +243,7 @@ DCluster::selectClusterHead() {
   ClusterNodeInfo* maxnode = &_max_round[0];
 
   for ( i = 1; i < _max_distance; i++ )
-    if ( _max_round[i]._id > maxnode->_id )
+    if ( _max_round[i]._cluster_id > maxnode->_cluster_id )
         maxnode = &_max_round[i];
 
   return maxnode;
@@ -266,17 +268,17 @@ DCluster::get_info()
   StringAccum sa;
   int r;
 
-  sa << "Node: " << _node_identity->getNodeName() << " ID: " << _my_info._id;
-  sa << " Clusterhead: " << getClusterHead()->_ether_addr.unparse() << " CH-ID: " << getClusterHead()->_id << "\n";
+  sa << "Node: " << _node_identity->getNodeName() << " ID: " << _my_info._cluster_id;
+  sa << " Clusterhead: " << getClusterHead()->_ether_addr.unparse() << " CH-ID: " << getClusterHead()->_cluster_id << "\n";
 
   sa << "Mode\tRound\tAddress\t\t\tDist\tHighest ID\n";
 
   for( r = 0; r < _max_distance; r++ ) {
-    sa << "MAX\t" << r << "\t" << _max_round[r]._ether_addr.unparse() << "\t" << _max_round[r]._distance << "\t" << _max_round[r]._id << "\n";
+    sa << "MAX\t" << r << "\t" << _max_round[r]._ether_addr.unparse() << "\t" << _max_round[r]._distance << "\t" << _max_round[r]._cluster_id << "\n";
   }
 
   for( r = 0; r < _max_distance; r++ ) {
-    sa << "MIN\t" << r <<  "\t" << _min_round[r]._ether_addr.unparse() << "\t" << _min_round[r]._distance << "\t" << _min_round[r]._id << "\n";
+    sa << "MIN\t" << r <<  "\t" << _min_round[r]._ether_addr.unparse() << "\t" << _min_round[r]._distance << "\t" << _min_round[r]._cluster_id << "\n";
   }
 
   return sa.take_string();
@@ -291,8 +293,8 @@ read_stats_param(Element *e, void *)
 }
 
 void DCluster::clustering_process() {
-  _own_cluster._clusterhead = _cluster_head->_ether_addr;
-  _own_cluster._cluster_id = _cluster_head->_id;
+ // _own_cluster->_clusterhead = _cluster_head->_ether_addr;
+ // _own_cluster->_cluster_id = _cluster_head->_cluster_id;
 }
 
 void

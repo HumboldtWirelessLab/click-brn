@@ -10,7 +10,12 @@ CLICK_DECLS
 
 class Clustering : public BRNElement
 {
-  struct Cluster {
+public:
+  class Cluster {
+  public:
+	  Cluster():_cluster_id(0), _clusterhead(), _member() {}
+
+  public:
     uint32_t _cluster_id;
     EtherAddress _clusterhead;
     Vector<EtherAddress> _member;
@@ -36,13 +41,13 @@ class Clustering : public BRNElement
     void init();
     virtual void add_handlers();
 
-    virtual EtherAddress *get_clusterhead() { return &_own_cluster._clusterhead; }
+    virtual EtherAddress *get_clusterhead() { return &_own_cluster->_clusterhead; }
     virtual bool clusterhead_is_me() = 0;
 
     virtual String clustering_info();
     virtual void clustering_process() = 0;
 
-    Cluster _own_cluster;
+    Cluster *_own_cluster;
     ClusterList _known_clusters;
 };
 

@@ -375,8 +375,8 @@ write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
 }
 
 void NHopCluster::clustering_process() {
-	_own_cluster._cluster_id = 0;
-	_own_cluster._clusterhead = _cluster_head._ether_addr;
+//	_own_cluster->_cluster_id = 0;
+//	_own_cluster->_clusterhead = _cluster_head._ether_addr;
 }
 
 void
