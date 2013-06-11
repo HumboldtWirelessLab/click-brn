@@ -71,27 +71,27 @@ BrnIappHelloHandler::configure(Vector<String> &conf, ErrorHandler *errh)
   _hello_trigger_interval_ms = 0;
 
   if (cp_va_kparse(conf, this, errh,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "OPTIMIZE", cpkP+cpkM, cpBool, /*"Optimize",*/ &_optimize,
       "STALE", cpkP+cpkM, cpUnsigned, /*"Stale info timeout (ms)",*/ &_hello_trigger_interval_ms,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement,/* "BrnIapp encap element",*/ &_encap,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "OPTIMIZE", cpkP, cpBool, /*"Optimize",*/ &_optimize,
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
 
-  if (!_assoc_list || !_assoc_list->cast("AssocList")) 
-    return errh->error("AssocList not specified");
+  if (!_assoc_list || !_assoc_list->cast("BRN2AssocList")) 
+    return errh->error("BRN2AssocList not specified");
 
   if (!_encap || !_encap->cast("BrnIappEncap")) 
     return errh->error("BrnIappEncap not specified");
 
-  if (!_id || !_id->cast("NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
+  if (!_id || !_id->cast("BRN2NodeIdentity"))
+    return errh->error("BRN2NodeIdentity not specified");
 
-  if (!_link_table || !_link_table->cast("BrnLinkTable"))
-    return errh->error("BRNLinkTable not specified");
+  if (!_link_table || !_link_table->cast("Brn2LinkTable"))
+    return errh->error("Brn2LinkTable not specified");
 
   return 0;
 }

@@ -61,8 +61,6 @@ BrnIappEncap::configure(Vector<String> &conf, ErrorHandler *errh)
   UNREFERENCED_PARAMETER(errh);
   
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-      //cpKeywords,
       "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;

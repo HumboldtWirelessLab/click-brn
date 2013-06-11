@@ -70,20 +70,18 @@ int
 BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      /* not required */
-   //   cpKeywords,
       "RESEND_NOTIFY", cpkP+cpkM, cpUnsigned, /*"resend notify (ms)",*/ &_notify_ms,
       "NUM_RESEND", cpkP+cpkM, cpInteger, /*"number to resend",*/ &_num_resend,
-      "DEBUG", cpkP+cpkM, cpInteger,/* "Debug", &_debug,*/
       "ASSOCLIST", cpkP+cpkM, cpElement,/* "AssocList element",*/ &_assoc_list,
       "ENCAP", cpkP+cpkM, cpElement, /*"BrnIappNotifyHandler encap element",*/ &_encap,
       "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "DEBUG", cpkP, cpInteger,/* "Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
 
-  if (!_assoc_list || !_assoc_list->cast("AssocList")) 
-    return errh->error("AssocList not specified");
+  if (!_assoc_list || !_assoc_list->cast("BRN2AssocList")) 
+    return errh->error("BRN2AssocList not specified");
 
   if (!_encap || !_encap->cast("BrnIappEncap")) 
     return errh->error("BrnIappEncap not specified");
@@ -91,8 +89,8 @@ BrnIappNotifyHandler::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_sta_tracker || !_sta_tracker->cast("BrnIappStationTracker")) 
     return errh->error("StationTracker not specified");
 
-  if (!_id || !_id->cast("NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
+  if (!_id || !_id->cast("BRN2NodeIdentity"))
+    return errh->error("BRN2NodeIdentity not specified");
 
   return 0;
 }
