@@ -197,7 +197,8 @@ Tos2QueueMapper::simple_action(Packet *p)
         }        
         BrnWifi::setTxQueue(ceh, opt_queue);
     case BACKOFF_STRATEGY_DIRECT:            //parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
-        _queue_usage[opt_queue]++;
+        _queue_usage[opt_queue]++; 
+        _bo_usage_usage[_bo_exp[opt_queue]]++;
         _pkt_in_q++;
         return p;
     case BACKOFF_STRATEGY_MAX_THROUGHPUT: 
@@ -210,7 +211,7 @@ Tos2QueueMapper::simple_action(Packet *p)
         opt_cwmin = find_queue(_learning_current_bo);
         break;  
     case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
-    case  BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
+    case BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
     {
         struct airtime_stats *as = _cst->get_latest_stats();
 
@@ -298,7 +299,7 @@ Tos2QueueMapper::handle_feedback(Packet *p)
     } else if ( ceh->retries == _learning_bo_limit ) {
       //_learning_count_down++;
       //_learning_current_bo = _learning_current_bo >> 1;
-      _learning_current_bo = _learning_current_bo; //keep
+      _learning_current_bo = _learning_current_bo;       //keep
     } else if ( ceh->retries > _learning_bo_limit && _learning_current_bo < _learning_bo_max ) {
       _learning_count_up += 1;
       _learning_current_bo = _learning_current_bo << 1;
@@ -372,14 +373,15 @@ Tos2QueueMapper::backoff_strategy_max_throughput(Packet *p)
 int
 Tos2QueueMapper::backoff_strategy_channelload_aware(int busy, int /*nodes*/)
 {
-  BRN_WARN("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
+  BRN_DEBUG("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
+  
   if ( (busy < (_target_channelload - 5)) && ( _bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
   } else if ( (busy > (_target_channelload + 5)) && (_bo_for_target_channelload < _learning_max_bo)) {
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
-  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
   
   return _bo_for_target_channelload;
 }
@@ -388,7 +390,7 @@ int
 Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/)
 {
   int diff = busy-(tx+rx);
-  BRN_WARN("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
+  BRN_DEBUG("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
   
   if ( (diff < (_target_diff_rxtx_busy - 3)) && ( _bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
@@ -401,37 +403,6 @@ Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy,
   return _bo_for_target_channelload;
 }
 
-
-/*
-  if ( _colinf != NULL ) {
-    if ( _colinf->_global_rs != NULL ) {
-  
-      uint32_t target_frac = tos2frac[tos];
-  
-      //find queue with min. frac of target_frac
-      int ofq = -1;
-      for ( int i = 0; i < no_queues; i++ ) {
-        if (ofq == -1) {
-          BRN_DEBUG("%p",_colinf->_global_rs);
-          BRN_DEBUG("queue: %d",_colinf->_global_rs->get_frac(i));
-
-          if (_colinf->_global_rs->get_frac(i) >= target_frac) {
-            if ( i == 0 ) ofq = i;
-            else if ( _colinf->_global_rs->get_frac(i-1) == 0 )  ofq = i - 1;  //TODO: ERROR-RETURN-VALUE = -1 is missing
-            else ofq = i;
-          } else {
-            if ( _colinf->_global_rs->get_frac(i) >=  ( (9 * target_frac) / 10 ) ) {
-              if ( i < (no_queues - 2) ) ofq = 1 + 1;
-            }
-          }
-        }
-      }
-
-      if ( ofq == -1 ) opt_queue = no_queues - 1;
-      else opt_queue = ofq;
-    }
-  } 
-*/
 /**
  *   H E L P E R   F U N C T I O N S 
  */
@@ -468,6 +439,16 @@ Tos2QueueMapper::find_closest_per_index(int per) {
   return T2QM_MAX_INDEX_PACKET_LOSS - 1;
 }
 
+
+/* TODO: use gravitaion approach:
+ *       -calc dist to both neighbouring backoffs
+ *       -calc gravitaion (f = C/d*d)
+ *       -get random r between 0 & (f1+f2) 
+ *       -choose 1 if 0 < r < f1
+ *       -choose 2 if f1 < r < (f1+f2)
+ * 
+ * Use also for find_closest_backoff(_exp) ?
+ */
 int
 Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
 {
@@ -476,6 +457,27 @@ Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
   // Take the first queue, whose cw-interval is in the range of the backoff-value
   for (int i = 0; i <= no_queues-1; i++)
     if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
+
+  return no_queues-1;
+}
+
+int
+Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
+{
+  if ( backoff_window_size <= _cwmin[0] ) return 0;
+
+  // Take the first queue, whose cw-interval is in the range of the backoff-value
+  for (int i = 0; i <= no_queues-1; i++)
+    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) {
+      if (backoff_window_size <= _cwmin[i+1]) return i+1;
+
+      int dist_lower_queue = 1000000000 / ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
+      int dist_upper_queue = 1000000000 / ((uint32_t)_cwmin[i+1] - (uint32_t)backoff_window_size);
+
+      if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < dist_lower_queue ) return i;
+      
+      return i+1;
+    }
 
   return no_queues-1;
 }

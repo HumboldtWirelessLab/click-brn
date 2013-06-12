@@ -97,6 +97,7 @@ class Tos2QueueMapper : public BRNElement {
     int find_closest_no_neighbour_index(int no_neighbours);
     int find_closest_per_index(int per);
     int find_queue(uint16_t cwmin);
+    int find_queue_prob(uint16_t backoff_window_size);
     uint32_t find_closest_backoff(uint32_t bo);
     uint32_t find_closest_backoff_exp(uint32_t bo);
 
