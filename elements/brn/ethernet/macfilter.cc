@@ -35,7 +35,8 @@
 
 CLICK_DECLS
 
-MacFilter::MacFilter()
+MacFilter::MacFilter():
+  _device(NULL)
 {
 	BRNElement::init();
 }
@@ -43,9 +44,11 @@ MacFilter::MacFilter()
 MacFilter::~MacFilter() {
 }
 
-int MacFilter::configure(Vector<String> &conf, ErrorHandler *errh) {
-if (cp_va_kparse(conf, this, errh,
-		"DEVICE", cpkP+cpkM, cpElement, &_device,
+int
+MacFilter::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+        if (cp_va_kparse(conf, this, errh,
+		"DEVICE", cpkP, cpElement, &_device,
 		"USE_FRAME", cpkP, cpString, &_use_frame,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
@@ -105,19 +108,22 @@ void MacFilter::push(int port, Packet *p) {
 		return;
 	}
 
-	EtherAddress src_addr;
 	struct click_wifi *w;
+        click_ether *ether;
+	EtherAddress src_addr;
 
 	switch(use_frame) {
-	case 1:
-		// Get data from Packet Anno
-		src_addr = BRNPacketAnno::src_ether_anno(p);
-		break;
 	case 2:
 		// Get data from wifi frame
-		w = (struct click_wifi *) p->data();
+		w = (struct click_wifi *)p->data();
 		src_addr = EtherAddress(w->i_addr2);
 		break;
+        case 3:
+                // Get data from ether frame
+                ether = (click_ether *)p->data();
+                src_addr = EtherAddress(ether->ether_shost);
+                break;
+        case 1: //is like default
 	default:
 		// Get data from Packet Anno
 		src_addr = BRNPacketAnno::src_ether_anno(p);
@@ -132,7 +138,6 @@ void MacFilter::push(int port, Packet *p) {
 		macFilterList.insert(src_addr, ++cnt);
 
 		p->kill();
-		return;
 	} else {
 		// Pass through
 		output(0).push(p);

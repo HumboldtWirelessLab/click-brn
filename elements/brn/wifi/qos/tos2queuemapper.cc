@@ -372,14 +372,14 @@ Tos2QueueMapper::backoff_strategy_max_throughput(Packet *p)
 int
 Tos2QueueMapper::backoff_strategy_channelload_aware(int busy, int /*nodes*/)
 {
-  BRN_WARN("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
+  BRN_DEBUG("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
   if ( (busy < (_target_channelload - 5)) && ( _bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
   } else if ( (busy > (_target_channelload + 5)) && (_bo_for_target_channelload < _learning_max_bo)) {
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
-  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
   
   return _bo_for_target_channelload;
 }
@@ -388,7 +388,7 @@ int
 Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/)
 {
   int diff = busy-(tx+rx);
-  BRN_WARN("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
+  BRN_DEBUG("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
   
   if ( (diff < (_target_diff_rxtx_busy - 3)) && ( _bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
@@ -396,7 +396,7 @@ Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy,
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
-  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
   
   return _bo_for_target_channelload;
 }
@@ -516,7 +516,7 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t 
     _cwmin[i] = cwmin - 1;
     _cwmax[i] = (cwmin << 6) - 1;
     _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
-    BRN_ERROR("Queue %d: %d %d",i,_cwmin[i],_cwmax[i]); 
+    BRN_DEBUG("Queue %d: %d %d",i,_cwmin[i],_cwmax[i]); 
   }
 #endif
   return 0;

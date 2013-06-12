@@ -286,5 +286,5 @@ LPRProtocol::unpack2(unsigned char *packet, int p_len) {
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(LPRProtocol)
+ELEMENT_PROVIDES(LPRProtocol)
 
