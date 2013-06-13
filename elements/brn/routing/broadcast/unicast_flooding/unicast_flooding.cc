@@ -114,9 +114,9 @@ UnicastFlooding::push(int port, Packet *p_in)
     EtherAddress next_hop(ether->ether_dhost);
     assert(next_hop.is_broadcast());
     
-    
-    Vector<EtherAddress> candidate_set;
     const EtherAddress *me;
+    Vector<EtherAddress> candidate_set;
+    candidate_set.clear();
 
     if ( (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE) &&
          (_cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE) ) {
@@ -241,15 +241,6 @@ UnicastFlooding::push(int port, Packet *p_in)
 
     if ( candidate_set.size() > 1 ) { 
       switch (_cand_selection_strategy) {
-      
-        case UNICAST_FLOODING_NO_REWRITE:     // no rewriting; keep as broadcast
-          break;
-
-        case UNICAST_FLOODING_STATIC_REWRITE: // static rewriting
-          BRN_DEBUG("Rewrite to static mac");
-          rewrite = true;
-          next_hop = static_dst_mac;
-          break;
 
         case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
    
@@ -289,9 +280,29 @@ UnicastFlooding::push(int port, Packet *p_in)
         default:
           BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
       }
-    } else {
+    } else if ( candidate_set.size() == 1 ) {
       rewrite = true;
       next_hop = candidate_set[0];       
+    } else { //candidate_set.size() == 0 -> no candidate
+      switch (_cand_selection_strategy) {
+        case UNICAST_FLOODING_NO_REWRITE:     // no rewriting; keep as broadcast
+          break;
+        case UNICAST_FLOODING_STATIC_REWRITE: // static rewriting
+          BRN_DEBUG("Rewrite to static mac");
+          rewrite = true;
+          next_hop = static_dst_mac;
+          break;
+        default: //TODO: empty cs should never happended if neither UNICAST_FLOODING_NO_REWRITE nor UNICAST_FLOODING_STATIC_REWRITE is used
+          if ( _reject_on_empty_cs ) {
+            BRN_DEBUG("We have only weak or no neighbors. Reject!");
+            _cnt_reject_on_empty_cs++;
+            output(1).push(p_in);
+          } else {
+            BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
+            _cnt_bcasts_empty_cs++;
+            output(0).push(p_in);
+          }
+      }
     }
     
     if ( rewrite ) {
