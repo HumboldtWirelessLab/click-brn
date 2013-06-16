@@ -203,7 +203,7 @@ UnicastFlooding::push(int port, Packet *p_in)
             if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
               break;
             } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
-	      BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
+              BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
               final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
             } 
           }
@@ -214,19 +214,19 @@ UnicastFlooding::push(int port, Packet *p_in)
         known_neighbors.clear();
  
         _fhelper->print_vector(candidate_set);
-
-        if (candidate_set.size() == 0) {
-          if ( _reject_on_empty_cs ) {
-            BRN_DEBUG("We have only weak or no neighbors. Reject!");
-            _cnt_reject_on_empty_cs++;
-            output(1).push(p_in);
-          } else {
-            BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
-            _cnt_bcasts_empty_cs++;
-            output(0).push(p_in);
-          }
-          return;
+      }
+       
+      if (candidate_set.size() == 0) {
+        if ( _reject_on_empty_cs ) {
+          BRN_DEBUG("We have only weak or no neighbors. Reject!");
+          _cnt_reject_on_empty_cs++;
+          output(1).push(p_in);
+        } else {
+          BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
+          _cnt_bcasts_empty_cs++;
+          output(0).push(p_in);
         }
+        return;
       }
     } // end preselection strong connected
     
@@ -293,15 +293,10 @@ UnicastFlooding::push(int port, Packet *p_in)
           next_hop = static_dst_mac;
           break;
         default: //TODO: empty cs should never happended if neither UNICAST_FLOODING_NO_REWRITE nor UNICAST_FLOODING_STATIC_REWRITE is used
-          if ( _reject_on_empty_cs ) {
-            BRN_DEBUG("We have only weak or no neighbors. Reject!");
-            _cnt_reject_on_empty_cs++;
-            output(1).push(p_in);
-          } else {
-            BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
-            _cnt_bcasts_empty_cs++;
-            output(0).push(p_in);
-          }
+          BRN_WARN("Empty CS but neither NOREWRITE nor STATIC_REWRITE is used! Reject!");
+          _cnt_reject_on_empty_cs++;
+          output(1).push(p_in);
+          return;
       }
     }
     
