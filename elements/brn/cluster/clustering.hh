@@ -45,6 +45,7 @@ public:
     virtual bool clusterhead_is_me() = 0;
 
     virtual String clustering_info();
+    void readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cnode );
 
     Cluster *_own_cluster;
     ClusterList _known_clusters;

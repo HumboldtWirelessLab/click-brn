@@ -59,6 +59,10 @@ Clustering::clustering_info()
   return sa.take_string();
 }
 
+void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cnode ) {
+
+}
+
 static String
 read_clustering_info(Element *e, void */*thunk*/)
 {

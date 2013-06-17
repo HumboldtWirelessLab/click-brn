@@ -171,6 +171,8 @@ DCluster::lpSendHandler(char *buffer, int size)
     _delay++;
   }
 
+  // TODO: Source Address remove.
+  memcpy(info.src_etheraddr, _node_identity->getMasterAddress()->data(), 6);
   return DClusterProtocol::pack(&info, buffer, size);
 }
 
@@ -215,7 +217,7 @@ DCluster::lpReceiveHandler(char *buffer, int size)
 	  _own_cluster = _cluster_head;
   }
 
-  // Protokollieren in welchem Cluster sich der Knoten befindet
+  readClusterInfo( EtherAddress( info.src_etheraddr), info.me.id, EtherAddress( info.me.etheraddr ) );
 
   return len;
 }

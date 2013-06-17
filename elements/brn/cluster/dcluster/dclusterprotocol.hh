@@ -31,6 +31,7 @@ struct dcluster_node_info {
 }__attribute__ ((packed));
 
 struct dcluster_info {
+  uint8_t src_etheraddr[6];
   struct dcluster_node_info me;
   struct dcluster_node_info min;
   struct dcluster_node_info max;
