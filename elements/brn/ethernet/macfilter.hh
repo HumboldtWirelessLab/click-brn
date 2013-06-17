@@ -44,6 +44,8 @@ public:
 	bool del(EtherAddress addr);
 
 	HashMap<EtherAddress, int> macFilterList;
+        
+        String stats();
 
 private:
 	Element *_device;
