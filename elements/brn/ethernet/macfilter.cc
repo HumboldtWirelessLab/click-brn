@@ -31,6 +31,7 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "macfilter.hh"
+#include "../../../include/click/string.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
@@ -168,6 +169,20 @@ bool MacFilter::del(EtherAddress addr) {
 	return macFilterList.erase(addr);
 }
 
+String
+MacFilter::stats()
+{
+  StringAccum sa;
+
+  sa << "<macfilter node=\"" << BRN_NODE_NAME << "\" filtersize=\"" << macFilterList.size() << "\" >\n";
+  for(HashMap<EtherAddress, int>::iterator it = macFilterList.begin(); it.live(); it++) {
+    sa << "\t<filteredmac mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\" >\n";
+  }
+  sa << "</macfilter>\n";
+
+  return sa.take_string();
+}
+
 enum {H_ADD_MAC, H_DEL_MAC, H_FILTER_STAT};
 
 
@@ -178,9 +193,7 @@ static String MacFilter_read_param(Element *e, void *thunk) {
 
 	switch((uintptr_t) thunk) {
 	case H_FILTER_STAT:
-		for(HashMap<EtherAddress, int>::iterator it = mf->macFilterList.begin(); it.live(); it++) {
-			sa << "<filter mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\">\n";
-		}
+                return mf->stats();
 		break;
 	default:
 		break;
@@ -224,7 +237,7 @@ void MacFilter::add_handlers() {
 
 	add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
 	add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
-	add_read_handler("filter_stat", MacFilter_read_param, (void *)H_FILTER_STAT);
+	add_read_handler("stats", MacFilter_read_param, (void *)H_FILTER_STAT);
 
 }
 
