@@ -1,5 +1,5 @@
-#ifndef CLICK_ANALYZE_PHANTOM_HH
-#define CLICK_ANALYZE_PHANTOM_HH
+#ifndef CLICK_ANALYZEPHANTOM_HH
+#define CLICK_ANALYZEPHANTOM_HH
 
 #include <click/element.hh>
 #include <click/config.h>
@@ -12,8 +12,8 @@
 #include "elements/brn/wifi/brnwifi.hh"
 #include "elements/brn/brnelement.hh"
 
-#define INIT      -1
-#define QUEUE_LEN  1
+#define ANALYZEPHANTIM_INIT -1
+#define QUEUE_LEN 1
 
 #define STATE_RX      1
 #define STATE_SILENCE 2
@@ -91,4 +91,4 @@ struct add_phantom_data {
 
 CLICK_ENDDECLS
 
-#endif /* CLICK_ANALYZE_PHANTOM_HH */
+#endif /* CLICK_ANALYZEPHANTOM_HH */
