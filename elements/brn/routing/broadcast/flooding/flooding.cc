@@ -522,12 +522,14 @@ Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
 }
 
 int
-Flooding::bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes )
+Flooding::bcast_header_add_last_nodes(EtherAddress */*src*/, uint32_t /*id*/, uint8_t */*buffer*/, uint32_t /*buffer_size*/, uint32_t /*max_last_nodes*/ )
 {
-  *size = 0;
+ /* uint32_t last_node_cnt = 0;
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) return bcn->get_last_nodes(id, size);
-  return NULL;
+*/
+//  uint32_t cnt = MIN(,MIN((buffer_size-2)/6,max_last_nodes));
+  return 0;
 }
 
 String
