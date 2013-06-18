@@ -135,7 +135,10 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
 			int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
 
 			// skip to bad neighbors
-			if (metric_nb_node > _max_metric_to_neighbor) continue;
+			if (metric_nb_node > _max_metric_to_neighbor) {
+                          BRN_DEBUG("Skip bad neighbor %s (%d)", neighbors_tmp[n_i].unparse().c_str(),metric_nb_node);
+                          continue;
+                        }
 			out.push_back(neighbors_tmp[n_i]);
 		}
   }

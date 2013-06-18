@@ -132,8 +132,7 @@ Flooding::push( int port, Packet *packet )
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
-    uint8_t extra_data[256];
-    uint32_t extra_data_size = 256;
+    extra_data_size = 256;
 
     _flooding_policy->init_broadcast(&src,(uint32_t)_bcast_id, 
                                      &extra_data_size, extra_data, &forwarder, &passiveack);
@@ -201,8 +200,6 @@ Flooding::push( int port, Packet *packet )
 
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]);
 
-    uint8_t extra_data[256];
-    uint32_t extra_data_size = 256;
 
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
                                                              rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
@@ -517,6 +514,15 @@ Flooding::get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last)
 
 struct Flooding::BroadcastNode::flooding_last_node*
 Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+{
+  *size = 0;
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) return bcn->get_last_nodes(id, size);
+  return NULL;
+}
+
+int
+Flooding::bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes )
 {
   *size = 0;
   BroadcastNode *bcn = _bcast_map.find(*src);
