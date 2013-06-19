@@ -398,7 +398,7 @@ Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy,
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
-  BRN_WARN("bo: %d", _bo_for_target_channelload);
+  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
   
   return _bo_for_target_channelload;
 }
@@ -518,7 +518,7 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t 
     _cwmin[i] = cwmin - 1;
     _cwmax[i] = (cwmin << 6) - 1;
     _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
-    BRN_ERROR("Queue %d: %d %d",i,_cwmin[i],_cwmax[i]); 
+    BRN_DEBUG("Queue %d: %d %d",i,_cwmin[i],_cwmax[i]); 
   }
 #else
   BRN_DEBUG("Try to set queues BO: %d TOS: %d STEP: %d",backoff ,tos, step); 
