@@ -287,10 +287,10 @@ EtherAddress get_sender_addr(struct click_wifi *wh)
   return src;
 }
 
-bool hst_buf_has_pkt(HostTimeBuf *hst_buf, u_int32_t packet_handle)
+bool hst_buf_has_pkt(HostTimeBuf */*hst_buf*/, u_int32_t /*packet_handle*/)
 {
   for (int i = 0; i < HST_BUF_SIZE; i++) {
-    if ()
+    //if ()
   }
 
   return true;

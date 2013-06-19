@@ -272,6 +272,14 @@ class Flooding : public BRNElement {
 	*size = (uint32_t)( _last_node_list_size[index]);
         return _last_node_list[index];
       }
+
+      inline uint32_t get_last_nodes_count(uint32_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+
+        if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return 0;
+        return (uint32_t)( _last_node_list_size[index]);
+      }
+      
       
       inline void add_recv_last_node(uint32_t id, EtherAddress *last) {
         struct flooding_last_node *fln = get_last_node(id, last);
@@ -325,6 +333,7 @@ class Flooding : public BRNElement {
 
   struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
+  int bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes );
   
  private:
   //
@@ -345,6 +354,10 @@ class Flooding : public BRNElement {
   typedef HashMap<EtherAddress, uint32_t> RecvCntMap;
   typedef RecvCntMap::const_iterator RecvCntMapIter;
   RecvCntMap _recv_cnt;
+
+  
+  uint8_t extra_data[256];
+  uint32_t extra_data_size;
 
  public:
 
