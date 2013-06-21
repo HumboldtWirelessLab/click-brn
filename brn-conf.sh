@@ -104,6 +104,9 @@ for op in $@; do
 	"ns2_userlevel")
 	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    ;;
+	"ns2_profile")
+	    CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g -pg $XCFLAGS\" CXXFLAGS=\"-g -pg $XCFLAGS\""
+	    ;;
 	"sim_userlevel")
 	    if [ "x$JAVA_HOME" = "x" ]; then
 	      JAVA_HOME=`ant -diagnostics | grep java.home | sed "s#jre##g" | awk '{print $3}'`
@@ -114,15 +117,15 @@ for op in $@; do
 	    if [ ! -e $JAVAINCLUDE ]; then
 		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS\" CXXFLAGS=\"-g $XCFLAGS\""
 	    else
-if [ -e $JAVAINCLUDE/linux ]; then
-  JAVAEXTRAINCLUDE=$JAVAINCLUDE/linux
-else
-  if [ -e $JAVAINCLUDE/windows ]; then
-  JAVAEXTRAINCLUDE=$JAVAINCLUDE/windows
-else
-  JAVAEXTRAINCLUDE=$JAVAINCLUDE
-fi
-fi
+		if [ -e $JAVAINCLUDE/linux ]; then
+		    JAVAEXTRAINCLUDE=$JAVAINCLUDE/linux
+		else
+		    if [ -e $JAVAINCLUDE/windows ]; then
+			JAVAEXTRAINCLUDE=$JAVAINCLUDE/windows
+		    else
+			JAVAEXTRAINCLUDE=$JAVAINCLUDE
+		    fi
+		fi
 		CONFOPTION="$CONFOPTION --disable-linuxmodule --enable-dmalloc --disable-threads --enable-userlevel --enable-nsclick --enable-jistclick --prefix=`pwd`/click_install CFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE -I$JAVAEXTRAINCLUDE\" CXXFLAGS=\"-g $XCFLAGS -I$JAVAINCLUDE -I$JAVAEXTRAINCLUDE\""
 	    fi
 	    ;;
