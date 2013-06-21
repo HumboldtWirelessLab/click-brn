@@ -118,6 +118,10 @@ UnicastFlooding::push(int port, Packet *p_in)
     Vector<EtherAddress> candidate_set;
     candidate_set.clear();
 
+    //filter packet src
+    struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)&(p_in->data()[sizeof(struct click_ether) + sizeof(struct click_brn)]);
+    EtherAddress src = EtherAddress((uint8_t*)&(p_in->data()[sizeof(click_ether) + sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + bcast_header->extra_data_size])); //src follows header
+
     if ( (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE) &&
          (_cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE) ) {
 
@@ -137,9 +141,6 @@ UnicastFlooding::push(int port, Packet *p_in)
       me = _me->getMasterAddress();
 
       //filter packet src
-      struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)&(p_in->data()[sizeof(struct click_ether) + sizeof(struct click_brn)]);
-      EtherAddress src = EtherAddress((uint8_t*)&(p_in->data()[sizeof(click_ether) + sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + bcast_header->extra_data_size])); //src follows header
-
       BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), ntohs(bcast_header->bcast_id));
 
       //get all known nodes
@@ -224,6 +225,7 @@ UnicastFlooding::push(int port, Packet *p_in)
         } else {
           BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
           _cnt_bcasts_empty_cs++;
+          add_rewrite(&src, ntohs(bcast_header->bcast_id), &next_hop);
           output(0).push(p_in);
         }
         return;
@@ -259,6 +261,7 @@ UnicastFlooding::push(int port, Packet *p_in)
   
             _flooding->forward_attempt(&src, ntohs(bcast_header->bcast_id));
  
+            add_rewrite(&src, ntohs(bcast_header->bcast_id), &next_hop);
             output(0).push(p_copy);
           }
           rewrite = true;
@@ -309,6 +312,7 @@ UnicastFlooding::push(int port, Packet *p_in)
       _cnt_bcasts++;
     }
       
+    add_rewrite(&src, ntohs(bcast_header->bcast_id), &next_hop);
     output(0).push(p_in);
   }
 
@@ -426,6 +430,18 @@ UnicastFlooding::algorithm_most_neighbours(EtherAddress &next_hop, Vector<EtherA
   return false;
 }
 
+void
+UnicastFlooding::add_rewrite(EtherAddress */*src*/, uint16_t /*id*/, EtherAddress *target)
+{
+  uint32_t *cnt;
+  if ( (cnt = rewrite_cnt_map.findp(*target)) == NULL ) {
+    rewrite_cnt_map.insert(*target,1);
+  } else {
+    *cnt = *cnt + 1;
+  }
+}
+
+
 String
 UnicastFlooding::get_strategy_string(uint32_t id)
 {
@@ -474,7 +490,20 @@ read_param(Element *e, void *thunk)
       sa << "\" static_mac=\"" << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;
-      sa << "\" empty_cs_bcast=\"" << rewriter->_cnt_bcasts_empty_cs << "\" >\n</unicast_rewriter>\n";
+      sa << "\" empty_cs_bcast=\"" << rewriter->_cnt_bcasts_empty_cs << "\" >\n";
+      
+      sa << "\t<rewrite_cnt targets=\"" << rewriter->rewrite_cnt_map.size() << "\" >\n";
+      
+      for ( UnicastFlooding::TargetRewriteCntMapIter trcm = rewriter->rewrite_cnt_map.begin(); trcm.live(); ++trcm) {
+        uint32_t cnt = trcm.value();
+        EtherAddress addr = trcm.key();
+        
+        sa << "\t\t<rewrite_cnt_node node=\"" << addr.unparse() << "\" cnt=\"" << cnt << "\" />\n";
+      }
+
+      sa << "\t</rewrite_cnt>\n";
+      
+      sa << "</unicast_rewriter>\n";
       break;
     }
     case H_REWRITE_STRATEGY :
