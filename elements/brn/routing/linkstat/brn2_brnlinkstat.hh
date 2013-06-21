@@ -120,7 +120,7 @@ public:
     uint8_t _num_probes;   // number of probes monitored by this node
     uint8_t _num_links;    // number of wifi_link_entry entries following
 
-    link_probe() { memset(this, 0x0, sizeof(this)); }
+    link_probe() { memset(this, 0x0, sizeof(struct link_probe)); }
   } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   struct link_entry {
