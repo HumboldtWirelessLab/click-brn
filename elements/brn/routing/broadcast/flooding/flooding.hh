@@ -296,15 +296,14 @@ class Flooding : public BRNElement {
       inline void assign_id(uint32_t id, bool assign) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
         if (_bcast_id_list[index] == id) return;
-        if ( assign ) _bcast_id_list[index] |= FLOODING_FLAGS_IS_ASSIGNED;
-        else _bcast_id_list[index] &= !(FLOODING_FLAGS_IS_ASSIGNED);
+        if ( assign ) _bcast_flags_list[index] |= FLOODING_FLAGS_IS_ASSIGNED;
+        else _bcast_flags_list[index] &= !(FLOODING_FLAGS_IS_ASSIGNED);
       }
       
       inline bool is_assigned(uint32_t id) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
         if (_bcast_id_list[index] == id) return false;
-        if ( assign ) _bcast_id_list[index] |= FLOODING_FLAGS_IS_ASSIGNED;
-        else _bcast_id_list[index] &= !(FLOODING_FLAGS_IS_ASSIGNED);
+        return _bcast_flags_list[index] &= FLOODING_FLAGS_IS_ASSIGNED;
       }
       
     };
