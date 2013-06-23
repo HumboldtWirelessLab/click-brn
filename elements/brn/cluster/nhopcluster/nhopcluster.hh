@@ -41,15 +41,12 @@ class NHopCluster : public Clustering {
     ClusterHead() {
     }
 
-    ClusterHead(const EtherAddress *ea, uint32_t id, uint32_t distance) {
-      _clusterhead = EtherAddress(ea->data());
-      _cluster_id = id;
+    ClusterHead(const EtherAddress *ea, uint32_t id, uint32_t distance): Cluster(*ea, id) {
       _distance = distance;
     }
 
     void setInfo(uint8_t *addr, uint32_t id, uint32_t distance) {
-      _clusterhead = EtherAddress(addr);
-      _cluster_id = id;
+      Cluster::setInfo( EtherAddress(addr), id);
       _distance = distance;
     }
 
@@ -58,15 +55,13 @@ class NHopCluster : public Clustering {
     }
 
     void setInfo(struct nhopcluster_lp_info *lpi) {
+      Cluster::setInfo( EtherAddress(lpi->clusterhead), ntohl(lpi->id));
       _distance = lpi->hops;
-      _cluster_id = ntohl(lpi->id);
-      _clusterhead = EtherAddress(lpi->clusterhead);
     }
 
     void setInfo(struct nhopcluster_managment *nhcm) {
+      Cluster::setInfo( EtherAddress(nhcm->clusterhead), ntohl(nhcm->id));
       _distance = nhcm->hops;
-      _cluster_id = ntohl(nhcm->id);
-      _clusterhead = EtherAddress(nhcm->clusterhead);
     }
 
     void getInfo(struct nhopcluster_lp_info *lpi) {

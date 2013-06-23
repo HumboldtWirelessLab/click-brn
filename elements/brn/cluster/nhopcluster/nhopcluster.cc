@@ -93,6 +93,8 @@ NHopCluster::initialize(ErrorHandler *)
   _cluster_head = new ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
   _own_cluster = _cluster_head;
 
+  readClusterInfo( _cluster_head->_clusterhead, _cluster_head->_cluster_id, _cluster_head->_clusterhead);
+
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_NHPCLUSTER, &tx_handler, &rx_handler);
 
   _nhop_timer.initialize(this);
@@ -130,13 +132,16 @@ NHopCluster::lpReceiveHandler(EtherAddress *src, char *buffer, int size)
         _cluster_head->setBestNextHop(src);
         _cluster_head->_distance = info.hops + 1;
         _cluster_head_selected = true;
+
+        readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
       }
     }
+
+    // Protokollieren in welchem Cluster sich der Knoten befindet
+    readClusterInfo( *src, ntohl(info.id), EtherAddress( info.clusterhead ) );
   } else {
     BRN_WARN("ERROR while unpack linkprobeinfo");
   }
-
-  // Protokollieren in welchem Cluster sich der Knoten befindet
 
   return len;
 }
@@ -161,6 +166,7 @@ NHopCluster::timer_hook()
        delete _cluster_head;
        _cluster_head = new ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
        _own_cluster = _cluster_head;
+       readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
 
       _mode = NHOP_MODE_NOTIFY;
       _cluster_head_selected = true;
@@ -232,7 +238,7 @@ NHopCluster::send_notify()
 {
   WritablePacket *p_brn, *p;
 
-  p = NHopClusterProtocol::new_notify(&_cluster_head->_clusterhead, 1, 0, _cluster_head->_cluster_id);
+  p = NHopClusterProtocol::new_notify(&_cluster_head->_clusterhead, 1, 0, _cluster_head->_cluster_id );
   p_brn = BRNProtocol::add_brn_header(p, BRN_PORT_NHOPCLUSTER, BRN_PORT_NHOPCLUSTER, _max_distance, 0);
   BRNPacketAnno::set_ether_anno(p_brn, _node_identity->getMasterAddress()->data(), brn_ethernet_broadcast, ETHERTYPE_BRN );
   output(1).push(p_brn);
@@ -271,10 +277,13 @@ NHopCluster::handle_reply(Packet *p)
       _cluster_head->setInfo(mgt);              //TODO: seperated all to extra config function ( setClusterHead() )
       _mode = NHOP_MODE_CONFIGURED;
       _cluster_head_selected = true;
+
+      readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
     }
 
     if ( ( _mode == NHOP_MODE_CONFIGURED ) && ( mgt->hops < _cluster_head->_distance ) ) {
       _cluster_head->setInfo(mgt);
+      readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
     }
   }
 }
@@ -292,10 +301,12 @@ NHopCluster::handle_notification(Packet *p)
       _cluster_head->setInfo(mgt);              //TODO: seperated all to extra config function ( setClusterHead() )
       _mode = NHOP_MODE_CONFIGURED;
       _cluster_head_selected = true;
+      readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
     }
     if ( ( _mode == NHOP_MODE_CONFIGURED ) && ( mgt->hops < _cluster_head->_distance ) ) {
       click_chatter("Distance: %d -> %d",_cluster_head->_distance,mgt->hops);
       _cluster_head->setInfo(mgt);
+      readClusterInfo( *_node_identity->getMasterAddress(), _cluster_head->_cluster_id, _cluster_head->_clusterhead);
     }
 
     if ( mgt->hops < _max_distance ) {

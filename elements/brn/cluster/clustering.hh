@@ -15,6 +15,17 @@ public:
   public:
 	  Cluster():_cluster_id(0), _clusterhead(), _member() {}
 
+	  Cluster(EtherAddress ea, uint32_t id) {
+		  _cluster_id = id;
+		  _clusterhead = ea;
+		  _member = Vector<EtherAddress>();
+	  }
+
+	  void setInfo(EtherAddress ea, uint32_t id) {
+		 _clusterhead = EtherAddress(ea);
+		 _cluster_id = id;
+	  }
+
   public:
     uint32_t _cluster_id;
     EtherAddress _clusterhead;
@@ -45,7 +56,7 @@ public:
     virtual bool clusterhead_is_me() = 0;
 
     virtual String clustering_info();
-    void readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cnode );
+    void readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cHead=EtherAddress() );
 
     Cluster *_own_cluster;
     ClusterList _known_clusters;

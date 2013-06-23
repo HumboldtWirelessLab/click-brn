@@ -24,7 +24,6 @@ class DCluster : public Clustering {
   class ClusterNodeInfo: public Clustering::Cluster {
    public:
     uint32_t _distance;
-    EtherAddress _info_src;
 
     ClusterNodeInfo(const EtherAddress *ea, uint32_t id, uint32_t distance): Cluster() {
       _clusterhead = EtherAddress(ea->data());
@@ -81,7 +80,7 @@ class DCluster : public Clustering {
   void add_handlers();
 
   int lpSendHandler(char *buffer, int size);
-  int lpReceiveHandler(char *buffer, int size);
+  int lpReceiveHandler(EtherAddress *ea, char *buffer, int size);
 
   bool clusterhead_is_me() { return _my_info._clusterhead == _cluster_head->_clusterhead; }
   String get_info();

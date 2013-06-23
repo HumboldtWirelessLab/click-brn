@@ -76,7 +76,7 @@ NHopClusterProtocol::new_notify(EtherAddress *ch, int max_hops, int code, int id
     m->hops = max_hops;
     m->code = code;
 
-    m->id = id;
+    m->id = htonl(id);
     memcpy(m->clusterhead,ch->data(),6);
   }
 

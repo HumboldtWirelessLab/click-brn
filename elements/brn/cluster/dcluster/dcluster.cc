@@ -77,10 +77,10 @@ tx_handler(void *element, const EtherAddress */*ea*/, char *buffer, int size)
 }
 
 static int
-rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
+rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
 {
   DCluster *dcl = (DCluster*)element;
-  return dcl->lpReceiveHandler(buffer, size);
+  return dcl->lpReceiveHandler(ea, buffer, size);
 }
 
 int
@@ -101,8 +101,11 @@ DCluster::init_cluster_node_info()
 {
   BRN_INFO("Init Clusterhead: %u",_node_identity->getNodeID32());
   _my_info = ClusterNodeInfo(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
+
   _cluster_head = &_my_info;
   _own_cluster = _cluster_head;
+
+  readClusterInfo( _my_info._clusterhead, _my_info._cluster_id, _my_info._clusterhead );
 }
 
 int
@@ -113,7 +116,8 @@ DCluster::lpSendHandler(char *buffer, int size)
   BRN_INFO("Linkprobe-Send: Min: %d Max: %d",_ac_min_round,_ac_max_round);
 
   //store myself
-  _my_info.storeStruct(&info.me);
+  // _my_info.storeStruct(&info.me);
+  _cluster_head->storeStruct( &info.me );
   info.me.round=0;
 
   /*
@@ -171,18 +175,17 @@ DCluster::lpSendHandler(char *buffer, int size)
     _delay++;
   }
 
-  // TODO: Source Address remove.
-  memcpy(info.src_etheraddr, _node_identity->getMasterAddress()->data(), 6);
   return DClusterProtocol::pack(&info, buffer, size);
 }
 
 int
-DCluster::lpReceiveHandler(char *buffer, int size)
+DCluster::lpReceiveHandler(EtherAddress *src, char *buffer, int size)
 {
   int len;
   struct dcluster_info info;
 
   len = DClusterProtocol::unpack(&info, buffer, size);
+  if(len<=0) return len;
 
   if ( (info.max.hops < _max_distance) &&
        ( (_max_round[info.max.round]._distance == DCLUSTER_INVALID_ROUND) ||          //there is no valid entry, or
@@ -215,9 +218,14 @@ DCluster::lpReceiveHandler(char *buffer, int size)
   if ( _max_no_min_rounds == _max_distance ) {
 	  _cluster_head = selectClusterHead();
 	  _own_cluster = _cluster_head;
+	  readClusterInfo( _my_info._clusterhead, _cluster_head->_cluster_id, _cluster_head->_clusterhead );
   }
 
-  readClusterInfo( EtherAddress( info.src_etheraddr), info.me.id, EtherAddress( info.me.etheraddr ) );
+  StringAccum sa;
+  	sa << "Time (" << len << "): " << Timestamp::now() << ",  Node: " << EtherAddress(info.me.etheraddr) << ", cID: " << info.me.id;
+  	click_chatter("INPUT: %s", sa.c_str() );
+
+  readClusterInfo( *src, ntohl(info.me.id), EtherAddress( info.me.etheraddr ) );
 
   return len;
 }
@@ -254,7 +262,7 @@ DCluster::selectClusterHead() {
 
 }
 
-
+// TODO: remove it
 void
 DCluster::informClusterHead(DCluster::ClusterNodeInfo*) {
 

@@ -6,7 +6,7 @@
 
 CLICK_DECLS
 
-Clustering::Clustering(): _own_cluster(NULL)
+Clustering::Clustering(): _own_cluster(NULL), _known_clusters()
 {
 
 }
@@ -32,35 +32,103 @@ Clustering::clustering_info()
 		 << "\n\t<KNODE>"
 		 << "\n\t\t<NAME>" << _node_identity->getNodeName() << "</NAME>"
 		 << "\n\t\t<ETHERADDRESS>" << _node_identity->getMasterAddress()->unparse() << "</ETHERADDRESS>"
-		 << "\n\t</KNODE>"
-		 << "\n\t<CLUSTER>"
+		 << "\n\t</KNODE>";
+/*
+	  sa << "\n\t<CLUSTER>"
 		 << "\n\t\t<ID>" << _own_cluster->_cluster_id << "</ID>"
 		 << "\n\t\t<CLUSTERHEAD>" << _own_cluster->_clusterhead.unparse() << "</CLUSTERHEAD>"
 		 << "\n\t\t<MEMBER>";
-		  for(Vector<EtherAddress>::iterator i=_own_cluster->_member.begin(); i!= _own_cluster->_member.end(); i++) {
-			  sa << "\n\t\t\t<ETHERADDRESS>" << (*i).unparse() << "\n\t\t\t</ETHERADDRESS>";
+		 for(Vector<EtherAddress>::iterator j=_own_cluster->_member.begin(); j!= _own_cluster->_member.end(); j++) {
+			  sa << "\n\t\t\t<ETHERADDRESS>" << (*j).unparse() << "</ETHERADDRESS>";
 		  }
-	  sa << "\n\t\t</MEMBER>"
+		  sa << "\n\t\t</MEMBER>"
 		 << "\n\t</CLUSTER>";
-		  for(ClusterListIter cli=_known_clusters.begin(); cli!= _known_clusters.end(); cli++) {
+*/
+
+	  for(ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++) {
+		  if((*i)->_cluster_id==_own_cluster->_cluster_id ) {
+			  sa << "\n\t<CLUSTER>"
+				 << "\n\t\t<ID>" << (*i)->_cluster_id << "</ID>"
+				 << "\n\t\t<CLUSTERHEAD>" << (*i)->_clusterhead.unparse() << "</CLUSTERHEAD>"
+				 << "\n\t\t<MEMBER>";
+				  for(Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!= (*i)->_member.end(); j++) {
+					  sa << "\n\t\t\t<ETHERADDRESS>" << (*j).unparse() << "</ETHERADDRESS>";
+				  }
+			  sa << "\n\t\t</MEMBER>"
+				 << "\n\t</CLUSTER>";
+		  }
+	  }
+
+	  for(ClusterListIter cli=_known_clusters.begin(); cli!= _known_clusters.end(); cli++) {
+		  if((*cli)->_cluster_id!=_own_cluster->_cluster_id ) {
 			  sa << "\n\t<OTHERCLUSTER>"
 				 << "\n\t\t<ID>" << (*cli)->_cluster_id << "</ID>"
 				 << "\n\t\t<CLUSTERHEAD>" << (*cli)->_clusterhead.unparse() << "</CLUSTERHEAD>"
 				 << "\n\t\t<MEMBER>";
 				  for(Vector<EtherAddress>::iterator i=(*cli)->_member.begin(); i!= (*cli)->_member.end(); i++) {
-					  sa << "\n\t\t\t<ETHERADDRESS>" << (*i).unparse() << "\n\t\t\t</ETHERADDRESS>";
+					  sa << "\n\t\t\t<ETHERADDRESS>" << (*i).unparse() << "</ETHERADDRESS>";
 				  }
 			  sa << "\n\t\t</MEMBER>"
 				 << "\n\t</OTHERCLUSTER>";
 		  }
+	  }
 	  sa <<	"\n</CLUSTERING_INFO>";
   }
 
   return sa.take_string();
 }
 
-void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cnode ) {
+void Clustering::readClusterInfo( EtherAddress node, uint32_t cID, EtherAddress cHead ) {
+	// remove old info
+	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
+		for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); j++ ) {
+			if( (*j).hashcode()==node.hashcode() ) {
+				if( (*i)->_cluster_id != cID ) {
+					(*i)->_member.erase( j );
+					break;
+				}
+			}
+		}
+	}
 
+	// insert new info
+	bool inserted = false;
+
+	for( ClusterListIter i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
+		if( (*i)->_cluster_id == cID ) {
+			bool found = false;
+
+			for( Vector<EtherAddress>::iterator j=(*i)->_member.begin(); j!=(*i)->_member.end(); j++ ) {
+				StringAccum st;
+
+				if( (*j).hashcode()==node.hashcode() ) {
+					found = true;
+					inserted=true;
+				}
+			}
+			if(!found) {
+				(*i)->_member.push_back( node );
+				inserted=true;
+				break;
+			}
+		}
+	}
+
+	if(!inserted) {
+		Cluster *tmp = new Cluster();
+		tmp->_cluster_id = cID;
+		tmp->_clusterhead = cHead;
+		tmp->_member.push_back( node );
+		_known_clusters.push_back( tmp );
+	}
+
+	// TODO: delete empty cluster
+	for( ClusterList::iterator i=_known_clusters.begin(); i!=_known_clusters.end(); i++ ) {
+		if( (*i)->_member.size()==0 ) {
+			i = _known_clusters.erase( i );
+			i--;
+		}
+	}
 }
 
 static String
