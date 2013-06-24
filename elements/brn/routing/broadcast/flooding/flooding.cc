@@ -770,24 +770,24 @@ Flooding::table()
        if ( bcn->_bcast_id_list[i] != 0 ) id_c++;
  
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
-      for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-        if ( bcn->_bcast_id_list[i] == 0 ) continue;
-        struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
-        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
-        sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
+    for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
+      if ( bcn->_bcast_id_list[i] == 0 ) continue;
+      struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
+      sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
+      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
 
-	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
-	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-	  sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
-	  sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
-	}  
+      for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
+        sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
+        sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
+        sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
+      }  
 
-        sa << "\t\t</id>\n";
-	
-      }
+      sa << "\t\t</id>\n";
+
+    }
     sa << "\t</src>\n";
     iter++;
   }
@@ -815,12 +815,10 @@ read_table_param(Element *e, void *)
 static int 
 write_reset_param(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
-  Flooding *fl = (Flooding *)e;
-  fl->reset();
+  ((Flooding *)e)->reset();
 
   return 0;
 }
-
 
 void
 Flooding::add_handlers()
