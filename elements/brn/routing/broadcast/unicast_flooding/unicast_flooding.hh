@@ -105,12 +105,15 @@ class UnicastFlooding : public BRNElement {
    * 1: reject
    **/
   const char *port_count() const  { return "1/2"; }
-  const char *processing() const  { return PUSH; }
+  const char *processing() const  { return "a/ah"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const { return false; }
 
   void push(int, Packet *);
+  Packet *pull(int);
+  Packet *smaction(Packet *p_in, bool is_push);
+
 
   int initialize(ErrorHandler *);
   void uninitialize();
@@ -158,6 +161,8 @@ class UnicastFlooding : public BRNElement {
   uint32_t _cnt_reject_on_empty_cs;
   
   TargetRewriteCntMap rewrite_cnt_map;
+  
+  Vector<Packet*> all_unicast_pkt_queue;
   
 };
 
