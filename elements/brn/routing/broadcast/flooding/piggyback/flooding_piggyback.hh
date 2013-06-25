@@ -23,6 +23,7 @@
 #include <click/element.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding.hh"
 
 CLICK_DECLS
 
@@ -52,8 +53,10 @@ class FloodingPiggyback : public BRNElement {
 
   Packet *simple_action(Packet *);
   
-  int bcast_header_add_last_nodes(EtherAddress */*src*/, uint32_t /*id*/, uint8_t */*buffer*/, uint32_t /*buffer_size*/, uint32_t /*max_last_nodes*/ );
-  int bcast_header_get_last_nodes(EtherAddress */*src*/, uint32_t /*id*/, uint8_t */*rxdata*/, uint32_t /*rx_data_size*/ );
+  static int bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes );
+  static int bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size );
+
+  Flooding *_flooding;
 };
 
 CLICK_ENDDECLS
