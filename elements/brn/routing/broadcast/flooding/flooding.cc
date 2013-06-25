@@ -348,11 +348,12 @@ Flooding::push( int port, Packet *packet )
       uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
       src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
 
-      Timestamp now = packet->timestamp_anno();
-      add_id(&src,(int32_t)p_bcast_id, &now);
 
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
         BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
+
+        Timestamp now = packet->timestamp_anno();
+        add_id(&src,(int32_t)p_bcast_id, &now);
 
         if ( add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false) > 0 ) {
           BRN_ERROR("Add new node to last node due to passive unicast...");
