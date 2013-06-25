@@ -375,9 +375,9 @@ Tos2QueueMapper::backoff_strategy_channelload_aware(int busy, int /*nodes*/)
 {
   BRN_DEBUG("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
   
-  if ( (busy < (_target_channelload - 5)) && ( _bo_for_target_channelload > 1 ) ) {
+  if ( (busy < ((int32_t)_target_channelload - 5)) && ( (int32_t)_bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
-  } else if ( (busy > (_target_channelload + 5)) && (_bo_for_target_channelload < _learning_max_bo)) {
+  } else if ( (busy > ((int32_t)_target_channelload + 5)) && ((int32_t)_bo_for_target_channelload < (int32_t)_learning_max_bo)) {
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
@@ -392,9 +392,9 @@ Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy,
   int diff = busy-(tx+rx);
   BRN_DEBUG("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
   
-  if ( (diff < (_target_diff_rxtx_busy - 3)) && ( _bo_for_target_channelload > 1 ) ) {
+  if ( (diff < ((int32_t)_target_diff_rxtx_busy - 3)) && ( (int32_t)_bo_for_target_channelload > 1 ) ) {
     _bo_for_target_channelload = _bo_for_target_channelload >> 1;
-  } else if ( (diff > (_target_diff_rxtx_busy + 3)) && (_bo_for_target_channelload < _learning_max_bo)) {
+  } else if ( (diff > ((int32_t)_target_diff_rxtx_busy + 3)) && ((int32_t)_bo_for_target_channelload < (int32_t)_learning_max_bo)) {
     _bo_for_target_channelload = _bo_for_target_channelload << 1;
   }
   
@@ -474,7 +474,7 @@ Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
       int dist_lower_queue = 1000000000 / ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
       int dist_upper_queue = 1000000000 / ((uint32_t)_cwmin[i+1] - (uint32_t)backoff_window_size);
 
-      if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < dist_lower_queue ) return i;
+      if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < (int32_t)dist_lower_queue ) return i;
       
       return i+1;
     }
@@ -496,7 +496,7 @@ Tos2QueueMapper::find_closest_backoff_exp(uint32_t bo)
 {
   uint32_t c_bo_exp = 1;
   
-  while ( (1 << c_bo_exp) < bo ) c_bo_exp++;
+  while ( (uint32_t)(1 << c_bo_exp) < bo ) c_bo_exp++;
   return c_bo_exp;
 }
 

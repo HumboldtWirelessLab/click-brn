@@ -361,7 +361,7 @@ Flooding::push( int port, Packet *packet )
       } else { //packet was not successfully transmitted (we can not be sure)
         if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) { //node is not a last node yet so add as assigned
           BRN_ERROR("Assign new node...");
-          assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
+          //assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
         }
       }
     }
@@ -641,7 +641,7 @@ Flooding::bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *b
   if ( bcn == NULL ) return 0;
   
   struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
-  uint32_t cnt = MIN(last_node_cnt,MIN((buffer_size-2)/6,max_last_nodes));
+  uint32_t cnt = MIN(last_node_cnt,(int32_t)MIN((buffer_size-2)/6,max_last_nodes));
   
   if ( cnt == 0 ) return 0;
   
