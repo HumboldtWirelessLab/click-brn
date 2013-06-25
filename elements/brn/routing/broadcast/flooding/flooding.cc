@@ -320,8 +320,7 @@ Flooding::push( int port, Packet *packet )
       _flooding_sent++;
       sent(&src, p_bcast_id, 1);
     }
- 
-    
+
     if ( port == 2 ) { //txfeedback failure  
       BRN_DEBUG("Flooding: TXFeedback failure\n");
     } else {           //txfeedback success
@@ -345,23 +344,26 @@ Flooding::push( int port, Packet *packet )
 
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
 
+      bcast_header = (struct click_brn_bcast *)(packet->data());
+      uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+      src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+
+
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
+        BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
 
-        bcast_header = (struct click_brn_bcast *)(packet->data());
-        uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
-        src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+        Timestamp now = packet->timestamp_anno();
+        add_id(&src,(int32_t)p_bcast_id, &now);
 
-        BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str() );
-
-	if ( get_last_node(&src,(int32_t)p_bcast_id, &rx_node) == NULL ) {
-	  BRN_ERROR("Add new node to last node due to passive unicast...");
-
-	  Timestamp now = packet->timestamp_anno();
-          add_id(&src,(int32_t)p_bcast_id, &now);
-
-	  _flooding_last_node_due_to_passive++;
-	  add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
-	}
+        if ( add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false) > 0 ) {
+          BRN_ERROR("Add new node to last node due to passive unicast...");
+          _flooding_last_node_due_to_passive++;
+        }
+      } else { //packet was not successfully transmitted (we can not be sure)
+        if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) { //node is not a last node yet so add as assigned
+          BRN_ERROR("Assign new node...");
+          //assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
+        }
       }
     }
 
@@ -402,7 +404,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
 
   if ( bcn == NULL ) {
     BRN_ERROR("BCastNode is unknown. Discard info.");
-    return 0;
+    return -1;
   }
 
   return bcn->add_last_node(id, last_node, forwarded);
@@ -640,7 +642,7 @@ Flooding::bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *b
   if ( bcn == NULL ) return 0;
   
   struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
-  uint32_t cnt = MIN(last_node_cnt,MIN((buffer_size-2)/6,max_last_nodes));
+  uint32_t cnt = MIN(last_node_cnt,(int32_t)MIN((buffer_size-2)/6,max_last_nodes));
   
   if ( cnt == 0 ) return 0;
   
@@ -708,6 +710,26 @@ Flooding::bcast_header_get_last_nodes(EtherAddress *src, uint32_t id, uint8_t *r
   return 0;
 }
 
+void
+Flooding::assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  
+  if ( bcn == NULL ) return;
+
+  bcn->assign_node(id, last_node);
+}
+
+struct Flooding::BroadcastNode::flooding_last_node*
+Flooding::get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+{
+  *size = 0;
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) return bcn->get_assigned_nodes(id, size);
+  return NULL;
+}
+
+
 String
 Flooding::stats()
 {
@@ -749,24 +771,24 @@ Flooding::table()
        if ( bcn->_bcast_id_list[i] != 0 ) id_c++;
  
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
-      for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-        if ( bcn->_bcast_id_list[i] == 0 ) continue;
-        struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
-        sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
-	sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
-        sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
+    for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
+      if ( bcn->_bcast_id_list[i] == 0 ) continue;
+      struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
+      sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
+      sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
+      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
 
-	for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
-	  sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-	  sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
-	  sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
-	}  
+      for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
+        sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
+        sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
+        sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
+      }  
 
-        sa << "\t\t</id>\n";
-	
-      }
+      sa << "\t\t</id>\n";
+
+    }
     sa << "\t</src>\n";
     iter++;
   }
@@ -794,12 +816,10 @@ read_table_param(Element *e, void *)
 static int 
 write_reset_param(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
 {
-  Flooding *fl = (Flooding *)e;
-  fl->reset();
+  ((Flooding *)e)->reset();
 
   return 0;
 }
-
 
 void
 Flooding::add_handlers()
