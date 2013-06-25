@@ -30,6 +30,7 @@
 #include <click/straccum.hh>
 
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
 
 #include "flooding_piggyback.hh"
 
@@ -45,8 +46,14 @@ FloodingPiggyback::~FloodingPiggyback()
 }
 
 int
-FloodingPiggyback::configure(Vector<String> &, ErrorHandler *)
+FloodingPiggyback::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  if (cp_va_kparse(conf, this, errh,
+      "FLOODING", cpkP+cpkM, cpElement, &_flooding,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0)
+    return -1;
+
   return 0;
 }
 
@@ -58,10 +65,10 @@ FloodingPiggyback::simple_action(Packet *p)
 }
 
 int
-FloodingPiggyback::bcast_header_add_last_nodes(EtherAddress */*src*/, uint32_t /*id*/, uint8_t */*buffer*/, uint32_t /*buffer_size*/, uint32_t /*max_last_nodes*/ )
+FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes )
 {
-/*  int32_t last_node_cnt = 0;
-  BroadcastNode *bcn = _bcast_map.find(*src);
+  int32_t last_node_cnt = 0;
+  Flooding::BroadcastNode *bcn = fl->get_broadcast_node(src);
   if ( bcn == NULL ) return 0;
   
   struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
@@ -76,8 +83,8 @@ FloodingPiggyback::bcast_header_add_last_nodes(EtherAddress */*src*/, uint32_t /
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
-    if ( (add_node != *src) && (!_me->isIdentical(&add_node)) ) {
-      BRN_DEBUG("Add lastnode: %s",add_node.unparse().c_str());
+    if ( (add_node != *src) && (!fl->is_local_addr(&add_node)) ) {
+      click_chatter("Add lastnode: %s",add_node.unparse().c_str());
       memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
       buf_idx = buf_idx + 6;
       i++;
@@ -90,18 +97,18 @@ FloodingPiggyback::bcast_header_add_last_nodes(EtherAddress */*src*/, uint32_t /
   extdat->size = buf_idx;
   extdat->type = BCAST_EXTRA_DATA_LASTNODE;
  
-  return buf_idx;*/
+  return buf_idx;
   return 0;
 }
 
 int
-FloodingPiggyback::bcast_header_get_last_nodes(EtherAddress */*src*/, uint32_t /*id*/, uint8_t */*rxdata*/, uint32_t /*rx_data_size*/ )
+FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size )
 {
-/*  EtherAddress ea;
+  EtherAddress ea;
 
-  BroadcastNode *bcn = _bcast_map.find(*src);
+  Flooding::BroadcastNode *bcn = fl->get_broadcast_node(src);
   if ( bcn == NULL ) {
-    BRN_ERROR("BCastNode is unknown. Discard extra info (bcastheader).");
+    click_chatter("BCastNode is unknown. Discard extra info (bcastheader).");
     return 0;
   }
 
@@ -109,10 +116,10 @@ FloodingPiggyback::bcast_header_get_last_nodes(EtherAddress */*src*/, uint32_t /
     
     struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)&(rxdata[i]);
 
-    BRN_DEBUG("i: %d Type: %d Size: %d FullSize: %d",i, (uint32_t)extdat->type, (uint32_t)extdat->size,rx_data_size);
+    click_chatter("i: %d Type: %d Size: %d FullSize: %d",i, (uint32_t)extdat->type, (uint32_t)extdat->size,rx_data_size);
     
     if ( extdat->type == BCAST_EXTRA_DATA_LASTNODE ) {
-      BRN_DEBUG("Found Lastnode stuff: Size: %d",extdat->size);
+      click_chatter("Found Lastnode stuff: Size: %d",extdat->size);
   
       uint32_t rxdata_idx = i + sizeof(struct click_brn_bcast_extra_data);
       uint32_t last_node_data_idx = sizeof(struct click_brn_bcast_extra_data);
@@ -120,17 +127,17 @@ FloodingPiggyback::bcast_header_get_last_nodes(EtherAddress */*src*/, uint32_t /
       int new_last_node = 0;
       
       for(;last_node_data_idx < extdat->size; last_node_data_idx += 6, rxdata_idx += 6 ) {
-        BRN_DEBUG("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
+        click_chatter("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
         ea = EtherAddress(&(rxdata[rxdata_idx]));
-        if (!_me->isIdentical(&ea)) {              //do not insert myself as lastnode
+        if (!fl->is_local_addr(&ea)) {              //do not insert myself as lastnode
           if ( bcn->add_last_node(id, &ea, false) != 0 )
-            _flooding_last_node_due_to_piggyback++;
+            fl->_flooding_last_node_due_to_piggyback++;
         }
       }
       return new_last_node;
     } else i += extdat->size;
   }
- */
+
   return 0;
 }
 

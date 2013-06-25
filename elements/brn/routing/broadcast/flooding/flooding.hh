@@ -35,7 +35,6 @@
 #include "floodingpolicy/floodingpolicy.hh"
 #include "floodingpassiveack.hh"
 
-
 CLICK_DECLS
 
 /*
@@ -393,6 +392,7 @@ class Flooding : public BRNElement {
 
   void assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   struct Flooding::BroadcastNode::flooding_last_node* get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
+  BroadcastNode *get_broadcast_node(EtherAddress *src);
 
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
@@ -402,8 +402,6 @@ class Flooding : public BRNElement {
 
   struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
-  int bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes);
-  int bcast_header_get_last_nodes(EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size);
 
  private:
   //
@@ -431,6 +429,8 @@ class Flooding : public BRNElement {
   uint32_t _max_last_nodes_per_pkt;
 
  public:
+
+  bool is_local_addr(EtherAddress *src) { return _me->isIdentical(src);}
 
   uint32_t _flooding_src;
   uint32_t _flooding_rx;

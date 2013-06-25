@@ -39,6 +39,7 @@
 #include "floodingpolicy/floodingpolicy.hh"
 #include "../../identity/brn2_nodeidentity.hh"
 #include "../../../brnprotocol/brnprotocol.hh"
+#include "piggyback/flooding_piggyback.hh"
 
 CLICK_DECLS
 
@@ -205,7 +206,7 @@ Flooding::push( int port, Packet *packet )
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
 
     if ( _max_last_nodes_per_pkt > 0 )
-      bcast_header_get_last_nodes(&src, p_bcast_id, rxdata, rxdatasize);
+      FloodingPiggyback::bcast_header_get_last_nodes(this, &src, p_bcast_id, rxdata, rxdatasize);
     
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
                                                              rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
@@ -259,8 +260,8 @@ Flooding::push( int port, Packet *packet )
 
       if ( (_max_last_nodes_per_pkt > 0) && (extra_data_size < BCAST_MAX_EXTRA_DATA_SIZE) ) {
         BRN_DEBUG("Space left for more info");
-        extra_data_size += bcast_header_add_last_nodes(&src, p_bcast_id, &(extra_data[extra_data_size]),
-                                                     BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt );
+        extra_data_size += FloodingPiggyback::bcast_header_add_last_nodes(this, &src, p_bcast_id, &(extra_data[extra_data_size]),
+                                                                          BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt );
         BRN_DEBUG("New size: %d",extra_data_size);
       }
       
@@ -494,6 +495,11 @@ Flooding::me_src(EtherAddress *src, uint32_t id)
   return bcn->me_src(id);
 }
 
+Flooding::BroadcastNode *
+Flooding::get_broadcast_node(EtherAddress *src)
+{
+  return _bcast_map.find(*src);
+}
 
 int
 Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
@@ -550,8 +556,8 @@ Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
       }
     }
       
-    uint32_t new_data_size = bcast_header_add_last_nodes(src, bcast_id, &(extra_data[extra_data_size]),
-                                                         BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt);
+    uint32_t new_data_size = FloodingPiggyback::bcast_header_add_last_nodes(this, src, bcast_id, &(extra_data[extra_data_size]),
+                                                                            BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt);
     
     BRN_DEBUG("Old: size: %d last node: %d New: last node: %d size: %d",bcast_header->extra_data_size, (uint32_t)last_node_data_size,
                                                                         new_data_size, extra_data_size + new_data_size);
@@ -634,82 +640,6 @@ Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
   return NULL;
 }
 
-int
-Flooding::bcast_header_add_last_nodes(EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes )
-{
-  int32_t last_node_cnt = 0;
-  BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn == NULL ) return 0;
-  
-  struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
-  uint32_t cnt = MIN(last_node_cnt,(int32_t)MIN((buffer_size-2)/6,max_last_nodes));
-  
-  if ( cnt == 0 ) return 0;
-  
-  last_node_cnt--; //from count to index
-
-  //take new nodes from the end of the lastnode list
-  uint32_t buf_idx = sizeof(struct click_brn_bcast_extra_data);
-
-  for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
-    EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
-    if ( (add_node != *src) && (!_me->isIdentical(&add_node)) ) {
-      BRN_DEBUG("Add lastnode: %s",add_node.unparse().c_str());
-      memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
-      buf_idx = buf_idx + 6;
-      i++;
-    }
-  }
-  
-  if ( buf_idx == sizeof(struct click_brn_bcast_extra_data) ) return 0;
-  
-  struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)buffer;
-  extdat->size = buf_idx;
-  extdat->type = BCAST_EXTRA_DATA_LASTNODE;
- 
-  return buf_idx;
-}
-
-int
-Flooding::bcast_header_get_last_nodes(EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size )
-{
-  EtherAddress ea;
-
-  BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn == NULL ) {
-    BRN_ERROR("BCastNode is unknown. Discard extra info (bcastheader).");
-    return 0;
-  }
-
-  for(uint32_t i = 0; (i < rx_data_size);) {
-    
-    struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)&(rxdata[i]);
-
-    BRN_DEBUG("i: %d Type: %d Size: %d FullSize: %d",i, (uint32_t)extdat->type, (uint32_t)extdat->size,rx_data_size);
-    
-    if ( extdat->type == BCAST_EXTRA_DATA_LASTNODE ) {
-      BRN_DEBUG("Found Lastnode stuff: Size: %d",extdat->size);
-  
-      uint32_t rxdata_idx = i + sizeof(struct click_brn_bcast_extra_data);
-      uint32_t last_node_data_idx = sizeof(struct click_brn_bcast_extra_data);
-      
-      int new_last_node = 0;
-      
-      for(;last_node_data_idx < extdat->size; last_node_data_idx += 6, rxdata_idx += 6 ) {
-        BRN_DEBUG("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
-        ea = EtherAddress(&(rxdata[rxdata_idx]));
-        if (!_me->isIdentical(&ea)) {              //do not insert myself as lastnode
-          if ( bcn->add_last_node(id, &ea, false) != 0 )
-            _flooding_last_node_due_to_piggyback++;
-        }
-      }
-      return new_last_node;
-    } else i += extdat->size;
-  }
- 
-  return 0;
-}
-
 void
 Flooding::assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node)
 {
@@ -728,7 +658,6 @@ Flooding::get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
   if ( bcn != NULL ) return bcn->get_assigned_nodes(id, size);
   return NULL;
 }
-
 
 String
 Flooding::stats()
