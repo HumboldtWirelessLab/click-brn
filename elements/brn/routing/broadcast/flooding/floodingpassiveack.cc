@@ -181,7 +181,7 @@ FloodingPassiveAck::set_next_schedule()
       BRN_FATAL("Failure: flux capacitor! Back to the Future!: %d", next_time);
     }
     
-    next_time = MAX(next_time,_time_tolerance); //time to next schedule at least 10 ms
+    next_time = MAX(next_time, (int32_t)_time_tolerance); //time to next schedule at least 10 ms
     
     //BRN_DEBUG("Next schedule in %d ms",next_time);
     if ( _timer_is_scheduled ) {
