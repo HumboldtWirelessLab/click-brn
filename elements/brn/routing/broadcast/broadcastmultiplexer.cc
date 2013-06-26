@@ -81,13 +81,17 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
   const EtherAddress *ea;
 
   EtherAddress src;
+  EtherAddress dst;
 
-  if ( _use_anno )
+  if ( _use_anno ) {
     src = EtherAddress(BRNPacketAnno::src_ether_anno(p_in));
-  else
+    dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p_in));
+  } else {
     src = EtherAddress(((click_ether *)p_in->data())->ether_shost);
+    dst = EtherAddress(((click_ether *)p_in->data())->ether_dhost);
+  }
 
-  if ( ! src.is_broadcast() ) {  //src address looks valid, so no need to send it on all devices
+  if ( (!src.is_broadcast()) || (!dst.is_broadcast()) ) {  //src address looks valid, so no need to send it on all devices
     output(0).push(p_in);
   } else {                       //forward packet using all devices which allow broadcast
     int f;
