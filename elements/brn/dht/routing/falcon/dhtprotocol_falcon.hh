@@ -58,6 +58,7 @@ struct dht_falcon_node_entry {
   uint8_t  etheraddr[6];
   uint8_t  age_sec;
   uint8_t  status;
+  uint8_t metric;
   md5_byte_t node_id[MAX_NODEID_LENTGH];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
@@ -67,7 +68,8 @@ struct dht_falcon_node_entry {
 struct falcon_routing_packet {
   uint8_t node_status;
   uint8_t src_status;
-
+  uint8_t metric;				    //metric to last overlay 
+  uint8_t init_metric;		           //metric to packet initilialiser 
   uint16_t table_position;
   uint8_t  etheraddr[6];                      //Etheraddress of the node on position "table_position" in the table
   md5_byte_t node_id[MAX_NODEID_LENTGH];      //Node-id of the node on position "table_position" in the table
@@ -120,16 +122,21 @@ class DHTProtocolFalcon {
 
     static int32_t max_no_nodes_in_lp(int32_t buffer_len);
     static int32_t pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes);
+    static int32_t pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes, Vector<uint8_t> *mlist);  
     static int32_t unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes);
+    static int32_t unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes, Vector<uint8_t> *mlist);
 
     static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position);
     static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position, Packet *p_recycle = NULL);
-    static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p);
+    static WritablePacket *new_route_request_packet(DHTnode *src, DHTnode *dst, uint8_t operation, int request_position,uint8_t metric);
+    static WritablePacket *new_route_reply_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position,uint8_t metric, Packet *p_recycle = NULL);
 
+    static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, Packet *p);
+    static WritablePacket *fwd_route_request_packet(DHTnode *src, DHTnode *new_dst, DHTnode *fwd, uint8_t metric, Packet *p);
     static WritablePacket *new_route_leave_packet(DHTnode *src, DHTnode *dst, uint8_t operation, DHTnode *node, int request_position);
 
     static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint16_t *pos);
-
+    static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint16_t *pos,uint8_t* metric);
     static WritablePacket *new_nws_packet(DHTnode *src, DHTnode *dst, uint32_t size);
     static WritablePacket *fwd_nws_packet(DHTnode *src, DHTnode *next, uint32_t size, Packet *p);
     static void get_nws_info(Packet *p, DHTnode *src, uint32_t *size);

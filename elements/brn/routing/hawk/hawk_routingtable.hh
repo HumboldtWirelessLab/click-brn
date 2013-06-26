@@ -23,7 +23,7 @@ class HawkRoutingtable : public BRNElement {
       int _dst_id_length;
       uint8_t _dst_id[MAX_NODEID_LENTGH];
       EtherAddress _dst;
-
+      uint32_t _metric;
       EtherAddress _next_phy_hop;
       EtherAddress _next_hop;
       bool _is_direct;
@@ -81,10 +81,10 @@ class HawkRoutingtable : public BRNElement {
   Brn2LinkTable *_link_table;
 
   HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
-                                      EtherAddress *next_phy);
+                                      EtherAddress *next_phy, uint8_t metric);
 
  HawkRoutingtable::RTEntry *addEntry(EtherAddress *ea, uint8_t *id, int id_len,
-                                      EtherAddress *next_phy, EtherAddress *next);
+                                      EtherAddress *next_phy, EtherAddress *next, uint8_t metric);
 
 //  HawkRoutingtable::RTEntry *addLink(EtherAddress *dst, uint8_t *dst_id, int dst_len,
 //                                     EtherAddress *src);
@@ -111,6 +111,7 @@ class HawkRoutingtable : public BRNElement {
   void *_lprh;
   void *_succ_maint;
   void *_rt_maint;
+  bool _use_metric;
 
 };
 

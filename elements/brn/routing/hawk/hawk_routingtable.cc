@@ -15,7 +15,8 @@ CLICK_DECLS
 HawkRoutingtable::HawkRoutingtable():
   _lprh(NULL),
   _succ_maint(NULL),
-  _rt_maint(NULL)
+  _rt_maint(NULL),
+  _use_metric(false)
 {
 }
 
@@ -32,6 +33,7 @@ HawkRoutingtable::configure(Vector<String> &conf, ErrorHandler *errh)
        "SUCCM", cpkP+cpkM, cpElement, &_succ_maint,
        "RTM", cpkP+cpkM, cpElement, &_rt_maint,
        "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+       "USE_METRIC", cpkP, cpBool, &_use_metric,
        "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -45,11 +47,11 @@ HawkRoutingtable::initialize(ErrorHandler *)
   ((FalconLinkProbeHandler*)_lprh)->setHawkRoutingTable(this);
   ((FalconSuccessorMaintenance*)_succ_maint)->setHawkRoutingTable(this);
   ((FalconRoutingTableMaintenance*)_rt_maint)->setHawkRoutingTable(this);
+
   return 0;
 }
-
 HawkRoutingtable::RTEntry *
-HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next_phy)
+HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddress *next_phy, uint8_t metric)
 {
   BRN_INFO("Add direct known link. Next Phy is also next Overlay Hop.");
 
@@ -73,13 +75,21 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
       _rt[i]->_dst_id_length = id_len;
       _rt[i]->_time = Timestamp::now();
       if ( ! _rt[i]->nextHopIsNeighbour()  || 
-//		is_neighbour  ||
-           _rt[i]->_is_direct == false) {
+           _rt[i]->_is_direct == false ||
+              (_use_metric && _rt[i]->_metric > metric) ) {
+	 BRN_DEBUG("CHANGE next hop, new metric:%d, old was:%d",metric,_rt[i]->_metric);
         _rt[i]->updateNextHop(next_phy);
         _rt[i]->updateNextPhyHop(next_phy);
         _rt[i]->_is_direct = true;
-      }
-
+    	 _rt[i]->_metric = metric;
+      }else{
+          //update metric, if the entry changed not
+	  if ((memcmp(_rt[i]->_next_hop.data(),next_phy->data(),6) == 0 ) && 
+              (memcmp(_rt[i]->_next_phy_hop.data(),next_phy->data(),6) == 0 )){
+  		 BRN_DEBUG("update my metric:%d, old was:%d",metric,_rt[i]->_metric);
+	 	_rt[i]->_metric = metric;  
+	   }
+	}
       return _rt[i];
     }
   }
@@ -92,6 +102,8 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
                                               next_phy->unparse().c_str());
   bool is_direct = true;
   HawkRoutingtable::RTEntry *n = new RTEntry(ea,id,id_len,next_phy, next_phy,is_direct);
+  BRN_DEBUG("add new with metric:%d",metric);
+  n->_metric = metric;
   _rt.push_back(n);
 
   return n;
@@ -99,7 +111,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
 
 HawkRoutingtable::RTEntry *
 HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
-                           EtherAddress *_next_phy, EtherAddress *next)
+                           EtherAddress *_next_phy, EtherAddress *next, uint8_t metric)
 {
   EtherAddress *next_phy;
 
@@ -140,19 +152,34 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
       /* update only if we don't know whether next_phy_hop knows the route
        * (incl. next hop)
        */
-      if ( ! _rt[i]->nextHopIsNeighbour() ) {
+      if ( ! _rt[i]->nextHopIsNeighbour() 
+           || ( _use_metric && _rt[i]->_metric > metric) ) {
+ 	BRN_DEBUG("CHANGE next hop, new metric:%d, old was:%d",metric,_rt[i]->_metric);
         _rt[i]->updateNextHop(next);
         _rt[i]->updateNextPhyHop(next_phy);
-      }
+  	 _rt[i]->_metric = metric;
+      }else{
+	    //update metric, if the entry changed not
+          if ((memcmp(_rt[i]->_next_hop.data(),next->data(),6) == 0 ) &&
+              (memcmp(_rt[i]->_next_phy_hop.data(),next_phy->data(),6) == 0 )){
+                BRN_DEBUG("update my metric:%d, old was:%d",metric,_rt[i]->_metric);
+		 _rt[i]->_metric = metric;
+	  }
+ 	}
 
       return _rt[i];
     }
   }
+ if ( _known_hosts.findp(*ea) == NULL ) {
+    _known_hosts.insert(*ea,*ea);
+  }
 
   BRN_DEBUG("Entry is new: Dst: %s NextPhy: %s Next: %s", ea->unparse().c_str(),
                             next_phy->unparse().c_str(),next->unparse().c_str());
-bool is_direct = false;
+  bool is_direct = false;
   HawkRoutingtable::RTEntry *n = new RTEntry(ea, id, id_len, next_phy, next,is_direct);
+  BRN_DEBUG("add new with metric:%d",metric);
+  n->_metric = metric;
   _rt.push_back(n);
 
   return n;

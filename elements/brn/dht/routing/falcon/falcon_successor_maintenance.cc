@@ -126,15 +126,23 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
 
   DHTnode succ;
   DHTnode src;
-
+  uint8_t metric;
   BRN_DEBUG("handle_reply_succ");
 
+	if (_rfrt != NULL)
+  DHTProtocolFalcon::get_info(packet, &src, &succ, &position,&metric);
+else
   DHTProtocolFalcon::get_info(packet, &src, &succ, &position);
-
   BRN_DEBUG("ME: %s Src: %s",_frt->_me->_ether_addr.unparse().c_str(),src._ether_addr.unparse().c_str());
   if (_frt->successor != NULL)  
     BRN_DEBUG("Curr Succ: %s SucS: %s",_frt->successor->_ether_addr.unparse().c_str(),succ._ether_addr.unparse().c_str());
 
+  if ( _min_successor_ping == _frt->get_successor_counter()){
+	//when i get a reply and my successor is fix then i should check my succ from the beginning
+	_frt->fixSuccessor(false); 
+     // additionally stop passive monitoring when its on
+	if (_frt->is_passive_monitoring()) _frt->set_passive_monitoring(false);
+  }
   if ( ! isUpdate ) {  // if it's not an update, it's a normal reply so inc the counter and
                        // check if we have enough, so that succ can be set to be fix
     _frt->inc_successor_counter();
@@ -148,7 +156,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
   _frt->add_node(&succ);
 
   /* Update HAWK RoutingTable used for dht-based routing */
-  if ( (_rfrt != NULL) && (_opti != FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) && (_opti != FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)) {
+  if ( (_rfrt != NULL) /*&& (_opti != FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) && (_opti != FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT)*/) {
     if ( memcmp(succ._ether_addr.data(), src._ether_addr.data(),6) == 0 ) {
       BRN_INFO("Add neighbourhop.");
     } else {
@@ -161,7 +169,7 @@ FalconSuccessorMaintenance::handle_reply_succ(Packet *packet, bool isUpdate)
     BRN_DEBUG("Dest %s Next Phy Hop: %s",succ._ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
     _rfrt->addEntry(&(succ._ether_addr), succ._md5_digest, succ._digest_length,
-                    &srcEther, &(src._ether_addr));
+                   /*&srcEther*/ NULL, &(src._ether_addr),metric + (_rfrt->getEntry(&(src._ether_addr)))->_metric);
     
   }
 }
@@ -191,8 +199,8 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
 
     EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
-   _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
-                    &(srcEther));
+  // _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
+  //                  &(srcEther));
   }
   /** End Hawk stuff */
 
@@ -214,7 +222,14 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       } else {
 
         Packet* dummy = NULL;
-        WritablePacket *q = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, old_pre,  FALCON_MINOR_REPLY_SUCCESSOR,
+	 WritablePacket *q = NULL;
+	//fill dht-header with metric to succ
+	 if (_rfrt != NULL)
+		 q = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, old_pre,  FALCON_MINOR_REPLY_SUCCESSOR,
+                                                                      _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR,
+										(_rfrt->getEntry(&(_frt->predecessor->_ether_addr)))->_metric,dummy);
+	else
+        q = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, old_pre,  FALCON_MINOR_REPLY_SUCCESSOR,
                                                                       _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR,dummy);
         output(0).push(q);
 
@@ -223,14 +238,19 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
   } else _frt->add_node(&src);
 
   if ( succ.equals(_frt->_me) ) {                  //request really for me ??
-    //Wenn ich er mich f�r seinen Nachfolger h�lt, teste ob er mein Vorg�nger ist oder mein Vorg�nger
-    //f�r ihn ein besserer Nachfolger ist.
+    //Wenn er mich fuer seinen Nachfolger haelt, teste ob er mein Vorgaenger ist oder mein Vorgaenger
+    //fuer ihn ein besserer Nachfolger ist.
     if ( src.equals(_frt->predecessor) ) {        //src is my pre, so everything is good
       BRN_DEBUG("I'm his successor !");           //just send reply
       BRN_DEBUG("Src: %s Dst: %s Node: %s", src._ether_addr.unparse().c_str(), _frt->_me->_ether_addr.unparse().c_str(),
                                             succ._ether_addr.unparse().c_str());
-
-      WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR,
+WritablePacket *p = NULL;
+	 if (_rfrt != NULL)
+		 p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR,
+                                                                    _frt->_me, FALCON_RT_POSITION_SUCCESSOR,
+										(_rfrt->getEntry(&(_frt->predecessor->_ether_addr)))->_metric,packet);
+        else
+      p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_SUCCESSOR,
                                                                     _frt->_me, FALCON_RT_POSITION_SUCCESSOR, packet);
       output(0).push(p);
     } else {                                     //he is NOT my pre, i try to give a better one
@@ -260,15 +280,29 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
                          best_succ->_ether_addr.unparse().c_str(), _frt->predecessor->_ether_addr.unparse().c_str() );
       }
       /*end of debug stuff*/
+/*	BRN_DEBUG("finger.size:%d",_frt->_fingertable.size());
+	 for( int i = 0; i < _frt->_fingertable.size(); i++ )
+   	 {
+    		DHTnode* fnode = _frt->_fingertable.get_dhtnode(i);
+	       BRN_DEBUG(" %d: %s",i,fnode->_ether_addr.unparse().c_str());
+   	 }*/
+
 
       //if you want optimization and you are not using hawk for routing then fwd the packet
       WritablePacket *p;
       if (/* (_rfrt == NULL) && */ (_opti == FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) ) {
         BRN_INFO("Fwd request");
+	if (_rfrt != NULL)
+	 p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me,(_rfrt->getEntry(&(src._ether_addr)))->_metric, packet);  //recyl. packet
+	else
         p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, packet);  //recyl. packet
       } else {  //otherwise send a reply with the better information
         BRN_INFO("Send reply");
-        p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src,  FALCON_MINOR_REPLY_SUCCESSOR,
+	 if ( _rfrt != NULL)
+          p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src,  FALCON_MINOR_REPLY_SUCCESSOR,
+                                                      best_succ, FALCON_RT_POSITION_SUCCESSOR,(_rfrt->getEntry(&(best_succ->_ether_addr)))->_metric,packet);
+	 else
+	   p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src,  FALCON_MINOR_REPLY_SUCCESSOR,
                                                       best_succ, FALCON_RT_POSITION_SUCCESSOR,packet);
       }
       output(0).push(p);

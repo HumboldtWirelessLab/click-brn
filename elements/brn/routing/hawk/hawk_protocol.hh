@@ -17,7 +17,7 @@ struct hawk_routing_header {
 
   uint8_t _flags;
 
-  uint8_t _hops;
+  uint8_t _metric;
 
   uint8_t _next_etheraddress[6];
 
@@ -46,6 +46,7 @@ class HawkProtocol {
   static struct hawk_routing_header *get_route_header(Packet *p);
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);
+  static void add_metric(Packet *p,uint8_t metric);
   static void set_next_hop(Packet *p, EtherAddress *next,uint8_t* next_nodeid);
   static bool has_next_hop(Packet *p);
   static void clear_next_hop(Packet *p);
