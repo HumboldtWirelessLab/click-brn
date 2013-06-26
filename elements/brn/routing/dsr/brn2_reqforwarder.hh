@@ -154,7 +154,7 @@ class BRN2RequestForwarder : public BRNElement {
 
     Packet* get_packet(bool clone) {
       if ( clone ) {
-        Packet *r = _p->clone();
+        Packet *r = _p->clone()->uniqueify();
         return r;
       }
 

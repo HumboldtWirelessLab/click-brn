@@ -57,8 +57,6 @@ struct click_brn_bcast_extra_data {
 #define BCAST_EXTRA_DATA_MPR                    1
 #define BCAST_EXTRA_DATA_LASTNODE               2
 
-#define BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES 0
-
 /*
  * =c
  * Flooding()
@@ -380,28 +378,32 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
+  void add_broadcast_node(EtherAddress *src);
+  BroadcastNode *get_broadcast_node(EtherAddress *src);
+
   void add_id(EtherAddress* src, uint32_t id, Timestamp* now, bool = false);
   void inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
+  
   void forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node = false);
   void forward_attempt(EtherAddress *src, uint32_t id);  
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);  
   void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
+  
   int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
+
   bool me_src(EtherAddress *src, uint32_t id);
 
   void assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   struct Flooding::BroadcastNode::flooding_last_node* get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
-  BroadcastNode *get_broadcast_node(EtherAddress *src);
 
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
   String stats();
   String table();
   void reset();
-
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
 
  private:
   //
@@ -423,10 +425,8 @@ class Flooding : public BRNElement {
   typedef RecvCntMap::const_iterator RecvCntMapIter;
   RecvCntMap _recv_cnt;
 
-  
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
-  uint32_t _max_last_nodes_per_pkt;
 
  public:
 

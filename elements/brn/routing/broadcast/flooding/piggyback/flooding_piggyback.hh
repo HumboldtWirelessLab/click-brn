@@ -33,6 +33,8 @@ CLICK_DECLS
  *=s encapsulation, Ethernet
  *encapsulates packets in Ethernet header (information used from Packet::ether_header())
 */
+#define BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES 0
+
 class FloodingPiggyback : public BRNElement {
 
  public:
@@ -57,6 +59,11 @@ class FloodingPiggyback : public BRNElement {
   static int bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size );
 
   Flooding *_flooding;
+  
+  uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
+  uint32_t extra_data_size;
+  uint32_t _max_last_nodes_per_pkt;
+
 };
 
 CLICK_ENDDECLS
