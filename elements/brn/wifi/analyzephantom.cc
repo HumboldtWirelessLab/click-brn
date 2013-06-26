@@ -77,7 +77,8 @@ AnalyzePhantom::simple_action(Packet *p)
     return p;
 }
 
-void AnalyzePhantom::delay_packet(Packet *p) {
+void AnalyzePhantom::delay_packet(Packet *p)
+{
   last_packet = p;
   analyze_last();
   delay_timer.reschedule_after_msec(delay);
@@ -171,7 +172,8 @@ AnalyzePhantom::analyze_new(Packet *p)
 
 
   /* check for PHY directly followed by RX-OK */
-  if (((cwe_last->flags & WIFI_EXTRA_RX_PHY_ERR) ==  WIFI_EXTRA_RX_PHY_ERR) && (cwe_new->flags == RX_OK)) {
+  if (((cwe_last->flags & WIFI_EXTRA_RX_PHY_ERR) ==  WIFI_EXTRA_RX_PHY_ERR) &&
+       (cwe_new->flags == RX_OK)) {
     u_int64_t packet_gap = get_packet_gap_via_hosttime(p);
 
     if (packet_gap <= MAX_GAP) {

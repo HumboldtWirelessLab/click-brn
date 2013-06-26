@@ -1,13 +1,10 @@
-#ifndef CLICK_ANALYZE_PHANTOM_HH
-#define CLICK_ANALYZE_PHANTOM_HH
+#ifndef CLICK_ANALYZEPHANTOM_HH
+#define CLICK_ANALYZEPHANTOM_HH
 
 #include <click/element.hh>
-#include <click/etheraddress.hh>
 #include <click/config.h>
-#include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
-#include <click/straccum.hh>
 #include <click/packet.hh>
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
@@ -15,8 +12,8 @@
 #include "elements/brn/wifi/brnwifi.hh"
 #include "elements/brn/brnelement.hh"
 
-#define INIT      -1
-#define QUEUE_LEN  1
+#define ANALYZEPHANTIM_INIT -1
+#define QUEUE_LEN 1
 
 #define STATE_RX      1
 #define STATE_SILENCE 2
@@ -36,6 +33,37 @@
 
 
 CLICK_DECLS
+
+class AnalyzePhantom : public BRNElement {
+
+public:
+  AnalyzePhantom();
+  ~AnalyzePhantom();
+
+  const char *class_name() const { return "AnalyzePhantom"; }
+  const char *port_count() const { return PORTS_1_1; }
+  const char *processing() const { return AGNOSTIC; }
+
+  int configure(Vector<String> &conf, ErrorHandler* errh);
+  int initialize(ErrorHandler *);
+  Packet *simple_action(Packet *p);
+
+  void run_timer(Timer *);
+
+  void analyze_last();
+  int analyze_new(Packet *p);
+
+  void delay_packet(Packet *p);
+  void send_last_packet();
+
+  u_int64_t get_packet_gap_via_timestamp(Packet *p); /* pkt gap in usec */
+  u_int64_t get_packet_gap_via_hosttime(Packet *p);  /* pkt gap in usec */
+
+  Packet *last_packet;
+  Timer delay_timer;
+  u_int16_t delay;
+};
+
 
 struct ph_state_buf_entry {
   u_int32_t prev_state;
@@ -61,39 +89,6 @@ struct add_phantom_data {
 } __attribute__((packed));
 
 
-class AnalyzePhantom : public BRNElement {
-
-public:
-  AnalyzePhantom();
-  ~AnalyzePhantom();
-
-  const char *class_name() const { return "AnalyzePhantom"; }
-  const char *port_count() const { return PORTS_1_1; }
-  const char *processing() const { return AGNOSTIC; }
-
-  int configure(Vector<String> &conf, ErrorHandler* errh);
-  int initialize(ErrorHandler *);
-  Packet *simple_action(Packet *p);
-
-  void run_timer(Timer *);
-
-  void analyze_last();
-  int analyze_new(Packet *p);
-
-  void delay_packet(Packet *p);
-  void send_last_packet();
-
-  u_int64_t get_packet_gap_via_timestamp(Packet *p); /* pkt gap in usec, based on timestamp */
-  u_int64_t get_packet_gap_via_hosttime(Packet *p); /* pkt gap in usec, based on hosttime (k_time) */
-
-  Packet *last_packet;
-  Timer delay_timer;
-  u_int16_t delay;
-
-
-};
-
-
 CLICK_ENDDECLS
 
-#endif /* CLICK_ANALYZE_PHANTOM_HH */
+#endif /* CLICK_ANALYZEPHANTOM_HH */

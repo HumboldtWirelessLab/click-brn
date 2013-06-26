@@ -293,7 +293,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
     const click_ether *ether = (const click_ether *)packet->ether_header();
     //EtherAddress psrc = EtherAddress(ether->ether_shost);
     EtherAddress pdst = EtherAddress(ether->ether_dhost);
-    if ( ! ( pdst == (EtherAddress(pfh[hops].ea)))) {
+    if ( ! (( pdst == (EtherAddress(pfh[hops].ea))) || pdst.is_broadcast())) {
       f->route.push_back(pdst);
       if ( _link_table != NULL ) {
         f->metric.push_back(_link_table->get_link_metric(EtherAddress(pfh[hops-1].ea), pdst));
@@ -475,7 +475,14 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   const click_ether *ether = (const click_ether *)p->ether_header();
   EtherAddress psrc = EtherAddress(ether->ether_shost);
   EtherAddress pdst = EtherAddress(ether->ether_dhost);
-
+  
+  if ( (_link_table != NULL) && (_link_table->_node_identity != NULL) ) {
+    if (pdst.is_broadcast()) pdst = *(_link_table->_node_identity->getMasterAddress());
+    BRN_DEBUG("New Dst: %s", pdst.unparse().c_str());
+  } else {
+    BRN_DEBUG("Peek: keep bcast");
+  }
+  
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
   uint16_t size = p->length();
 

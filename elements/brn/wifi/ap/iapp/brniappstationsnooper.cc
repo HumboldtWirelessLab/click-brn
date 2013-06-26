@@ -71,19 +71,19 @@ int
 BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "DEBUG", cpkP+cpkM, cpInteger, /*"Debug",*/ &_debug,
-      "OPTIMIZE", cpkP+cpkM, cpBool,/* "Optimize",*/ &_optimize,
       "ASSOCLIST", cpkP+cpkM, cpElement, /*"AssocList element",*/ &_assoc_list,
       "STATRACK", cpkP+cpkM, cpElement, /*"StationTracker element",*/ &_sta_tracker,
       "HELLOHDL", cpkP+cpkM, cpElement, /*"HelloHandler element",*/ &_hello_handler,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_id,
+      "OPTIMIZE", cpkP, cpBool,/* "Optimize",*/ &_optimize,
+      "DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
       cpEnd) < 0)
     return -1;
 
   BRN_INFO("optimization turned %s", (_optimize ? "on" : "off"));
 
-  if (!_assoc_list || !_assoc_list->cast("AssocList")) 
-    return errh->error("AssocList not specified");
+  if (!_assoc_list || !_assoc_list->cast("BRN2AssocList")) 
+    return errh->error("BRN2AssocList not specified");
 
   if (!_sta_tracker || !_sta_tracker->cast("BrnIappStationTracker")) 
     return errh->error("StationTracker not specified");
@@ -91,8 +91,8 @@ BrnIappStationSnooper::configure(Vector<String> &conf, ErrorHandler *errh)
   if (!_hello_handler || !_hello_handler->cast("BrnIappHelloHandler")) 
     return errh->error("BrnIappHelloHandler not specified");
 
-  if (!_id || !_id->cast("NodeIdentity"))
-    return errh->error("NodeIdentity not specified");
+  if (!_id || !_id->cast("BRN2NodeIdentity"))
+    return errh->error("BRN2NodeIdentity not specified");
 
   return 0;
 }

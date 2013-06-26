@@ -56,7 +56,41 @@ CLICK_DECLS
 #define UNICAST_FLOODING_TAKE_WORST         3
 #define UNICAST_FLOODING_MOST_NEIGHBOURS    4
 
+#define UNICAST_FLOODING_STATS_TARGET_SIZE 16
+
 class UnicastFlooding : public BRNElement {
+ public:
+
+  class UnicastRewrite {
+    struct rewrite_target {
+      uint8_t  ea[6];
+      uint16_t count;
+    };
+
+    uint16_t *id_list;
+    struct rewrite_target **target_list;
+    uint16_t *target_list_size;
+    uint16_t *target_list_max_size;
+    
+    UnicastRewrite() {
+      id_list = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      target_list = new struct rewrite_target*[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      target_list_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      target_list_max_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      
+
+      memset(id_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
+      memset(target_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(struct rewrite_target));
+      memset(target_list_size,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
+      memset(target_list_max_size,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
+    }
+  };
+    
+  typedef HashMap<EtherAddress, uint32_t> TargetRewriteCntMap;
+  typedef TargetRewriteCntMap::const_iterator TargetRewriteCntMapIter;
+
+  typedef HashMap<EtherAddress, UnicastRewrite*> TargetRewriteMap;
+  typedef TargetRewriteMap::const_iterator TargetRewriteMapIter;
 
  public:
   //
@@ -71,12 +105,15 @@ class UnicastFlooding : public BRNElement {
    * 1: reject
    **/
   const char *port_count() const  { return "1/2"; }
-  const char *processing() const  { return PUSH; }
+  const char *processing() const  { return "a/ah"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const { return false; }
 
   void push(int, Packet *);
+  Packet *pull(int);
+  Packet *smaction(Packet *p_in, bool is_push);
+
 
   int initialize(ErrorHandler *);
   void uninitialize();
@@ -102,6 +139,8 @@ class UnicastFlooding : public BRNElement {
   
  public:
 
+  void add_rewrite(EtherAddress *src, uint16_t id, EtherAddress *target);
+
   void set_strategy(int s) { _cand_selection_strategy = s; }
   int get_strategy() { return _cand_selection_strategy; }
   String get_strategy_string(uint32_t id);
@@ -120,6 +159,10 @@ class UnicastFlooding : public BRNElement {
   uint32_t _cnt_bcasts;
   uint32_t _cnt_bcasts_empty_cs;
   uint32_t _cnt_reject_on_empty_cs;
+  
+  TargetRewriteCntMap rewrite_cnt_map;
+  
+  Vector<Packet*> all_unicast_pkt_queue;
   
 };
 

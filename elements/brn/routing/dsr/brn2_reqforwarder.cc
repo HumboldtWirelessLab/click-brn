@@ -606,7 +606,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
     int old_index = retransmission_index(&(rri->_src), rreq_id);
 
     if ( old_index == -1 ) { //if this request id doesn't exists
-      rreq_retr_i = new RReqRetransmitInfo(p->clone(), &(rri->_src), rreq_id);
+      rreq_retr_i = new RReqRetransmitInfo(p->clone()->uniqueify(), &(rri->_src), rreq_id);
       _rreq_retransmit_list.push_back(rreq_retr_i);
       just_update = false;
       _stats_del_passive_ack_inserts++;
@@ -619,7 +619,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
         rreq_retr_i->_p->kill();
       }
       _stats_del_passive_ack_reinserts++;
-      rreq_retr_i->_p = p->clone();
+      rreq_retr_i->_p = p->clone()->uniqueify();
     }
 
     rri->reset_passive_ack(rreq_id,
@@ -758,7 +758,7 @@ BRN2RequestForwarder::rreq_retransmit_timer_hook()
       _stats_del_passive_ack_reason_full_retries++;
       _stats_del_passive_ack_retransmissioninfo++;
     } else {
-      p = rreq_retr_i->_p->clone();
+      p = rreq_retr_i->_p->clone()->uniqueify();
     }
 
     BRN_DEBUG("Retransmit rreq");

@@ -193,7 +193,7 @@ FlowControlInfo::get_packet_with_max_age(int32_t age)
       if ((now - _packet_times[i]).msecval() > age) {
         //click_chatter("Age: %d I: %d p: %p",(now - _packet_times[i]).msecval(),i,_packet_window[i]);
         _packet_times[i] = now;
-        return _packet_window[i]->clone();
+        return _packet_window[i]->clone()->uniqueify();
       }
     }
   }
