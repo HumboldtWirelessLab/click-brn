@@ -105,7 +105,7 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 
         ea = _me->getDeviceByIndex(i)->getEtherAddress();
 
-        Packet *p_copy = p_in->clone();
+        Packet *p_copy = p_in->clone()->uniqueify();
 
         if ( _use_anno ) {
           BRNPacketAnno::set_src_ether_anno(p_copy, *ea);

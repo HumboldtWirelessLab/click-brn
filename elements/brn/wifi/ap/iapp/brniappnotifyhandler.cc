@@ -281,7 +281,7 @@ BrnIappNotifyHandler::run_timer(Timer *t) {
         BRN_INFO("Resending every %ums and alltogether %u times.", _notify_ms, _num_resend);
         timer->inc_num_notifies();
         // make a copy of the packet, because it may get killed and we haven't received the reply yet
-        Packet *q = p->clone();
+        Packet *q = p->clone()->uniqueify();
         output(0).push(p);
         timer->set_packet(q);
         t->reschedule_after_msec(_notify_ms);

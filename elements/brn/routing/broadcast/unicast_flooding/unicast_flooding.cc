@@ -268,7 +268,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         BRN_DEBUG("Send unicast to all neighbours");
 
         for ( int i = 0; i < candidate_set.size()-1; i++) {
-          Packet *p_copy = p_in->clone();
+          Packet *p_copy = p_in->clone()->uniqueify();
 
           BRNPacketAnno::set_dst_ether_anno(p_copy, candidate_set[i]);
   

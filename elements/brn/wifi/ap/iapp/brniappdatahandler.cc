@@ -313,7 +313,7 @@ BrnIappDataHandler::handle_handover_data(
       if (!_optimize)
       {
         BRN_DEBUG("optimization turned off, generating route error");
-        Packet* p2 = p->clone();
+        Packet* p2 = p->clone()->uniqueify();
  //       p2->set_dst_ether_anno(EtherAddress(ether->ether_dhost));
         output(1).push(p2);
       }

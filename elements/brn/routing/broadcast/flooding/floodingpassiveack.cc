@@ -116,9 +116,13 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
   
   if ( retries < 0 ) retries = _dfl_retries;
   
-  //BRN_FATAL("Set Retries: %d, Bcast: %d",retries,bcast_id);
+  BRN_FATAL("Set Retries: %d, Bcast: %d Packetsize: %d Start: %d Pointer: %x", retries, bcast_id, p->length(), (uint32_t)p->data()[0], p);
 
-  PassiveAckPacket *pap = new PassiveAckPacket(p->clone(), src, bcast_id, passiveack, retries, _dfl_timeout);
+  PassiveAckPacket *pap = new PassiveAckPacket(p->clone()->uniqueify(), src, bcast_id, passiveack, retries, _dfl_timeout);
+  
+  BRN_FATAL("Clone start: %d Pointer: %x", (uint32_t)pap->_p->data()[0], pap->_p);
+  
+  BRN_DEBUG("Org: %x Clone: %x", pap->_p->data(), p->data()); 
   
   p_queue.push_back(pap);
   _queued_pkts++;
@@ -223,8 +227,12 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
 	//BRN_DEBUG("Packet %d Retries %d",i,p_next->retries_left());
 	p_next->set_next_retry();
 	
-	if ( p_next->retries_left() != 0 ) p = p->clone();
+        BRN_DEBUG("Retrans Packet: %x",p);
+        
+	if ( p_next->retries_left() != 0 ) p = p_next->_p->clone()->uniqueify();
 	
+        BRN_DEBUG("Packetstart: Org: %d Copy: %d retries: %d",p_next->_p->data()[0],p->data()[0], p_next->retries_left() );
+        
 	/*int result = */
 	_retransmit_broadcast(_retransmit_element, p, &p_next->_src, p_next->_bcast_id );
 	_retransmissions++;
