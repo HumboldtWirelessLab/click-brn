@@ -31,11 +31,13 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "macfilter.hh"
+#include "../../../include/click/string.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
 
-MacFilter::MacFilter()
+MacFilter::MacFilter():
+  _device(NULL)
 {
 	BRNElement::init();
 }
@@ -43,9 +45,11 @@ MacFilter::MacFilter()
 MacFilter::~MacFilter() {
 }
 
-int MacFilter::configure(Vector<String> &conf, ErrorHandler *errh) {
-if (cp_va_kparse(conf, this, errh,
-		"DEVICE", cpkP+cpkM, cpElement, &_device,
+int
+MacFilter::configure(Vector<String> &conf, ErrorHandler *errh)
+{
+        if (cp_va_kparse(conf, this, errh,
+		"DEVICE", cpkP, cpElement, &_device,
 		"USE_FRAME", cpkP, cpString, &_use_frame,
 		"DEBUG", cpkP, cpInteger, /*"Debug",*/ &_debug,
 		cpEnd) < 0)
@@ -105,19 +109,22 @@ void MacFilter::push(int port, Packet *p) {
 		return;
 	}
 
-	EtherAddress src_addr;
 	struct click_wifi *w;
+        click_ether *ether;
+	EtherAddress src_addr;
 
 	switch(use_frame) {
-	case 1:
-		// Get data from Packet Anno
-		src_addr = BRNPacketAnno::src_ether_anno(p);
-		break;
 	case 2:
 		// Get data from wifi frame
-		w = (struct click_wifi *) p->data();
+		w = (struct click_wifi *)p->data();
 		src_addr = EtherAddress(w->i_addr2);
 		break;
+        case 3:
+                // Get data from ether frame
+                ether = (click_ether *)p->data();
+                src_addr = EtherAddress(ether->ether_shost);
+                break;
+        case 1: //is like default
 	default:
 		// Get data from Packet Anno
 		src_addr = BRNPacketAnno::src_ether_anno(p);
@@ -132,7 +139,6 @@ void MacFilter::push(int port, Packet *p) {
 		macFilterList.insert(src_addr, ++cnt);
 
 		p->kill();
-		return;
 	} else {
 		// Pass through
 		output(0).push(p);
@@ -163,6 +169,20 @@ bool MacFilter::del(EtherAddress addr) {
 	return macFilterList.erase(addr);
 }
 
+String
+MacFilter::stats()
+{
+  StringAccum sa;
+
+  sa << "<macfilter node=\"" << BRN_NODE_NAME << "\" filtersize=\"" << macFilterList.size() << "\" >\n";
+  for(HashMap<EtherAddress, int>::iterator it = macFilterList.begin(); it.live(); it++) {
+    sa << "\t<filteredmac mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\" >\n";
+  }
+  sa << "</macfilter>\n";
+
+  return sa.take_string();
+}
+
 enum {H_ADD_MAC, H_DEL_MAC, H_FILTER_STAT};
 
 
@@ -173,9 +193,7 @@ static String MacFilter_read_param(Element *e, void *thunk) {
 
 	switch((uintptr_t) thunk) {
 	case H_FILTER_STAT:
-		for(HashMap<EtherAddress, int>::iterator it = mf->macFilterList.begin(); it.live(); it++) {
-			sa << "<filter mac=\"" << it.key() << "\" filtered_pkts=\"" << it.value() <<  "\">\n";
-		}
+                return mf->stats();
 		break;
 	default:
 		break;
@@ -219,7 +237,7 @@ void MacFilter::add_handlers() {
 
 	add_write_handler("add", MacFilter_write_param, (void *)H_ADD_MAC);
 	add_write_handler("del", MacFilter_write_param, (void *)H_DEL_MAC);
-	add_read_handler("filter_stat", MacFilter_read_param, (void *)H_FILTER_STAT);
+	add_read_handler("stats", MacFilter_read_param, (void *)H_FILTER_STAT);
 
 }
 

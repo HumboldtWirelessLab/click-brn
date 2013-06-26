@@ -116,9 +116,13 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
   
   if ( retries < 0 ) retries = _dfl_retries;
   
-  //BRN_FATAL("Set Retries: %d, Bcast: %d",retries,bcast_id);
+  BRN_FATAL("Set Retries: %d, Bcast: %d Packetsize: %d Start: %d Pointer: %x", retries, bcast_id, p->length(), (uint32_t)p->data()[0], p);
 
-  PassiveAckPacket *pap = new PassiveAckPacket(p->clone(), src, bcast_id, passiveack, retries, _dfl_timeout);
+  PassiveAckPacket *pap = new PassiveAckPacket(p->clone()->uniqueify(), src, bcast_id, passiveack, retries, _dfl_timeout);
+  
+  BRN_FATAL("Clone start: %d Pointer: %x", (uint32_t)pap->_p->data()[0], pap->_p);
+  
+  BRN_DEBUG("Org: %x Clone: %x", pap->_p->data(), p->data()); 
   
   p_queue.push_back(pap);
   _queued_pkts++;
@@ -177,11 +181,11 @@ FloodingPassiveAck::set_next_schedule()
     
     int32_t next_time  = pap->time_left(now);
     
-    if ( next_time <= 0 ) {
-      BRN_FATAL("Failure: flux capacitor! Back to the Future!");
+    if ( next_time < 0 ) {  //TODO: what if this is zero?
+      BRN_FATAL("Failure: flux capacitor! Back to the Future!: %d", next_time);
     }
     
-    next_time = MAX(next_time,10); //time to next schedule at least 10 ms
+    next_time = MAX(next_time, (int32_t)_time_tolerance); //time to next schedule at least 10 ms
     
     //BRN_DEBUG("Next schedule in %d ms",next_time);
     if ( _timer_is_scheduled ) {
@@ -223,8 +227,12 @@ FloodingPassiveAck::scan_packet_queue(int32_t time_tolerance)
 	//BRN_DEBUG("Packet %d Retries %d",i,p_next->retries_left());
 	p_next->set_next_retry();
 	
-	if ( p_next->retries_left() != 0 ) p = p->clone();
+        BRN_DEBUG("Retrans Packet: %x",p);
+        
+	if ( p_next->retries_left() != 0 ) p = p_next->_p->clone()->uniqueify();
 	
+        BRN_DEBUG("Packetstart: Org: %d Copy: %d retries: %d",p_next->_p->data()[0],p->data()[0], p_next->retries_left() );
+        
 	/*int result = */
 	_retransmit_broadcast(_retransmit_element, p, &p_next->_src, p_next->_bcast_id );
 	_retransmissions++;
@@ -271,7 +279,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   BRN_DEBUG("For %s:%d i have %d neighbours",pap->_src.unparse().c_str(),pap->_bcast_id,last_nodes_size);
         
   for ( int i = neighbors.size()-1; i >= 0; i--) {
-    for ( int j = 0; j < last_nodes_size; j++) {
+    for ( uint32_t j = 0; j < last_nodes_size; j++) {
       if ( memcmp(neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
         neighbors.erase(neighbors.begin() + i);
         break;

@@ -35,7 +35,6 @@
 #include "floodingpolicy/floodingpolicy.hh"
 #include "floodingpassiveack.hh"
 
-
 CLICK_DECLS
 
 /*
@@ -47,6 +46,16 @@ struct click_brn_bcast {
   uint8_t       flags;
   uint8_t       extra_data_size;
 } CLICK_SIZE_PACKED_ATTRIBUTE ;
+
+#define BCAST_MAX_EXTRA_DATA_SIZE 255
+
+struct click_brn_bcast_extra_data {
+  uint8_t size;
+  uint8_t type;
+} CLICK_SIZE_PACKED_ATTRIBUTE ;
+
+#define BCAST_EXTRA_DATA_MPR                    1
+#define BCAST_EXTRA_DATA_LASTNODE               2
 
 /*
  * =c
@@ -78,8 +87,8 @@ class Flooding : public BRNElement {
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE (1 << DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS)
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK (DEFAULT_MAX_BCAST_ID_QUEUE_SIZE - 1)
 
-#define DEFAULT_MAX_BCAST_ID_TIMEOUT    10000
-#define FLOODING_LAST_NODE_LIST_DFLT_SIZE 16
+#define DEFAULT_MAX_BCAST_ID_TIMEOUT       10000
+#define FLOODING_LAST_NODE_LIST_DFLT_SIZE     16
 
      public:
       EtherAddress  _src;
@@ -88,10 +97,10 @@ class Flooding : public BRNElement {
       uint8_t _bcast_fwd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no fwd paket
       uint8_t _bcast_fwd_done_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no fwd done paket (fwd-fwd_done=no_queued_packets
       uint8_t _bcast_fwd_succ_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no packet recv by at least on node
-      uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retires for unicast)
+      uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retries for unicast)
       uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
 
-#define FLOODING_FLAGS_ME_SRC 1
+#define FLOODING_FLAGS_ME_SRC        1
 
       Timestamp _last_id_time;
 
@@ -106,6 +115,10 @@ class Flooding : public BRNElement {
       struct flooding_last_node *_last_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       uint8_t _last_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       uint8_t _last_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+
+      struct flooding_last_node *_assigned_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      uint8_t _assigned_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+      uint8_t _assigned_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
 
       BroadcastNode()
       {
@@ -128,6 +141,8 @@ class Flooding : public BRNElement {
 	
 	memset(_last_node_list,0,sizeof(_last_node_list));
         memset(_last_node_list_maxsize,0,sizeof(_last_node_list_maxsize));
+        memset(_assigned_node_list,0,sizeof(_assigned_node_list));
+        memset(_assigned_node_list_maxsize,0,sizeof(_assigned_node_list_maxsize));
       }
 
       void reset_queue() {
@@ -138,7 +153,8 @@ class Flooding : public BRNElement {
         memset(_bcast_snd_list, 0, sizeof(_bcast_snd_list));
         memset(_bcast_flags_list, 0, sizeof(_bcast_flags_list));
 
-	memset(_last_node_list_size,0,sizeof(_last_node_list_size));  //all entries are invalid
+        memset(_last_node_list_size,0,sizeof(_last_node_list_size));          //all entries are invalid
+	memset(_assigned_node_list_size,0,sizeof(_assigned_node_list_size));  //all entries are invalid
       }
 
       inline bool have_id(uint32_t id) {
@@ -154,7 +170,7 @@ class Flooding : public BRNElement {
         return have_id(id);
       }
 
-      inline void add_id(uint32_t id, Timestamp now, bool me_src) {
+      void add_id(uint32_t id, Timestamp now, bool me_src) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
         if (_bcast_id_list[index] != id) {
@@ -166,6 +182,7 @@ class Flooding : public BRNElement {
 	  _bcast_flags_list[index] = (me_src)?1:0;
 	  
 	  _last_node_list_size[index] = 0;
+          _assigned_node_list_size[index] = 0;
         }
         _last_id_time = now;
       }
@@ -194,7 +211,13 @@ class Flooding : public BRNElement {
 	  if (success) _bcast_fwd_succ_list[index]++;
 	}
       }
-
+      
+      inline int forward_done_cnt(uint32_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] == id) return _bcast_fwd_done_list[index];
+        return -1;
+      }
+      
       inline uint32_t forward_attempts(uint32_t id) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
         if (_bcast_id_list[index] == id) return _bcast_fwd_list[index];
@@ -212,8 +235,9 @@ class Flooding : public BRNElement {
         if (_bcast_id_list[index] == id) _bcast_snd_list[index] += no_transmissions;
       }
 
-      inline void add_last_node(uint32_t id, EtherAddress *node, bool forwarded) {
+      int add_last_node(uint32_t id, EtherAddress *node, bool forwarded) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] != id) return -1;
 
         if (_last_node_list[index] == NULL) {
           _last_node_list[index] = new struct flooding_last_node[FLOODING_LAST_NODE_LIST_DFLT_SIZE];
@@ -234,16 +258,18 @@ class Flooding : public BRNElement {
 
         //search for node
         for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) return;
+          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) return 0;
 
         memcpy(fln[fln_i].etheraddr, node->data(),6);
 	fln[fln_i].received_cnt = fln[fln_i].flags = 0;
         
 	if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
         _last_node_list_size[index]++;
+        
+        return _last_node_list_size[index];
       }
 
-      inline struct flooding_last_node* get_last_node(uint32_t id, EtherAddress *last) {
+      struct flooding_last_node* get_last_node(uint32_t id, EtherAddress *last) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
         if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
@@ -258,7 +284,7 @@ class Flooding : public BRNElement {
 	return NULL;
       }
       
-      inline struct flooding_last_node* get_last_nodes(uint32_t id, uint32_t *size) {
+      struct flooding_last_node* get_last_nodes(uint32_t id, uint32_t *size) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
 	*size = 0;
@@ -266,11 +292,62 @@ class Flooding : public BRNElement {
 	*size = (uint32_t)( _last_node_list_size[index]);
         return _last_node_list[index];
       }
-      
+    
       inline void add_recv_last_node(uint32_t id, EtherAddress *last) {
         struct flooding_last_node *fln = get_last_node(id, last);
 	if ( fln != NULL ) fln->received_cnt++;
       }
+
+      /** ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node */ 
+      
+      int assign_node(uint32_t id, EtherAddress *node) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] != id) return -1;
+        
+        if (_assigned_node_list[index] == NULL) {
+          _assigned_node_list[index] = new struct flooding_last_node[FLOODING_LAST_NODE_LIST_DFLT_SIZE];
+          _assigned_node_list_size[index] = 0;
+          _assigned_node_list_maxsize[index] = FLOODING_LAST_NODE_LIST_DFLT_SIZE;
+        } else {
+          if ( _assigned_node_list_size[index] == _assigned_node_list_maxsize[index] ) {
+            _assigned_node_list_maxsize[index] *= 2; //double
+            struct flooding_last_node *new_list = new struct flooding_last_node[_assigned_node_list_maxsize[index]]; //new list
+            memcpy(new_list,_assigned_node_list[index], _assigned_node_list_size[index] * sizeof(struct flooding_last_node)); //copy
+            delete[] _assigned_node_list[index]; //delete old
+            _assigned_node_list[index] = new_list; //set new
+          }
+        }
+
+        struct flooding_last_node *fln = _assigned_node_list[index];
+        int fln_i = _assigned_node_list_size[index];
+
+        //search for node
+        for ( int i = 0; i < fln_i; i++ )
+          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) return 0;
+
+        memcpy(fln[fln_i].etheraddr, node->data(),6);
+        fln[fln_i].received_cnt = fln[fln_i].flags = 0;
+       
+        _last_node_list_size[index]++;
+        
+        return _last_node_list_size[index];
+      }
+
+      struct flooding_last_node* get_assigned_nodes(uint32_t id, uint32_t *size) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+
+        *size = 0;
+        if ((_assigned_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
+        *size = (uint32_t)( _assigned_node_list_size[index]);
+        return _assigned_node_list[index];
+      }
+     
+      void clear_assigned_nodes(uint32_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] == id)
+          _assigned_node_list_size[index] = 0;
+      }
+
     };
 
   //
@@ -301,15 +378,26 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src = false);
+  void add_broadcast_node(EtherAddress *src);
+  BroadcastNode *get_broadcast_node(EtherAddress *src);
+
+  void add_id(EtherAddress* src, uint32_t id, Timestamp* now, bool = false);
   void inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
-  void forward_done(EtherAddress *src, uint32_t id, bool success);
+  
+  void forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node = false);
   void forward_attempt(EtherAddress *src, uint32_t id);  
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);  
   void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
-  void add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
+  
+  int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
+  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
+
   bool me_src(EtherAddress *src, uint32_t id);
+
+  void assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node);
+  struct Flooding::BroadcastNode::flooding_last_node* get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
 
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
@@ -317,9 +405,6 @@ class Flooding : public BRNElement {
   String table();
   void reset();
 
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
-  
  private:
   //
   //member
@@ -340,7 +425,12 @@ class Flooding : public BRNElement {
   typedef RecvCntMap::const_iterator RecvCntMapIter;
   RecvCntMap _recv_cnt;
 
+  uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
+  uint32_t extra_data_size;
+
  public:
+
+  bool is_local_addr(EtherAddress *src) { return _me->isIdentical(src);}
 
   uint32_t _flooding_src;
   uint32_t _flooding_rx;
@@ -349,8 +439,13 @@ class Flooding : public BRNElement {
   uint32_t _flooding_passive;
   uint32_t _flooding_last_node_due_to_passive;
   uint32_t _flooding_last_node_due_to_ack;
+  uint32_t _flooding_last_node_due_to_piggyback;
   uint32_t _flooding_lower_layer_reject;
-  
+    
+  uint32_t _flooding_src_new_id;
+  uint32_t _flooding_rx_new_id;
+  uint32_t _flooding_fwd_new_id;
+
 };
 
 CLICK_ENDDECLS

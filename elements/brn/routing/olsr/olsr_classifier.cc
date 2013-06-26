@@ -63,7 +63,7 @@ OLSRClassifier::push(int, Packet *packet)
   packet->pull(sizeof(olsr_pkt_hdr));
  
   do{
-    Packet *p = packet->clone();  
+    Packet *p = packet->clone()->uniqueify();  
 
     if (msg_info.ttl <= 0 ){
 //     click_chatter("Discarding message, ttl == 0");
