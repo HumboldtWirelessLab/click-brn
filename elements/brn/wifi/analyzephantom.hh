@@ -2,12 +2,9 @@
 #define CLICK_ANALYZEPHANTOM_HH
 
 #include <click/element.hh>
-#include <click/etheraddress.hh>
 #include <click/config.h>
-#include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/packet_anno.hh>
-#include <click/straccum.hh>
 #include <click/packet.hh>
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
@@ -37,30 +34,6 @@
 
 CLICK_DECLS
 
-struct ph_state_buf_entry {
-  u_int32_t prev_state;
-  u_int32_t curr_state;
-
-  u_int64_t change_time;
-} __attribute__((packed));
-
-
-/* additional phantom data which is supposed to be put into a phantom pkt */
-struct add_phantom_data {
-  u_int32_t endianness;
-  u_int32_t version;
-  u_int32_t rb_size;    /* both, flag and size. if 0 -> no ring buffer */
-
-  struct ph_state_buf_entry ph_rb[PH_BUF_SIZE];  /* ph state ringbuffer */
-  u_int32_t ph_rb_index;
-
-  u_int64_t ph_start;   /* start and end time of a phantom pkt in 'k_time' */
-  u_int64_t ph_stop;
-  u_int64_t ph_len;     /* packet length/duration in ns */
-  u_int32_t next_state; /* state after ph pkt push */
-} __attribute__((packed));
-
-
 class AnalyzePhantom : public BRNElement {
 
 public:
@@ -83,15 +56,37 @@ public:
   void delay_packet(Packet *p);
   void send_last_packet();
 
-  u_int64_t get_packet_gap_via_timestamp(Packet *p); /* pkt gap in usec, based on timestamp */
-  u_int64_t get_packet_gap_via_hosttime(Packet *p); /* pkt gap in usec, based on hosttime (k_time) */
+  u_int64_t get_packet_gap_via_timestamp(Packet *p); /* pkt gap in usec */
+  u_int64_t get_packet_gap_via_hosttime(Packet *p);  /* pkt gap in usec */
 
   Packet *last_packet;
   Timer delay_timer;
   u_int16_t delay;
-
-
 };
+
+
+struct ph_state_buf_entry {
+  u_int32_t prev_state;
+  u_int32_t curr_state;
+
+  u_int64_t change_time;
+} __attribute__((packed));
+
+
+/* additional phantom data which is supposed to be put into a phantom pkt */
+struct add_phantom_data {
+  u_int32_t endianness;
+  u_int32_t version;
+  u_int32_t rb_size;    /* both, flag and size. if 0 -> no ring buffer */
+
+  struct ph_state_buf_entry ph_rb[PH_BUF_SIZE];  /* ph state ringbuffer */
+  u_int32_t ph_rb_index;
+
+  u_int64_t ph_start;   /* start and end time of a phantom pkt in 'k_time' */
+  u_int64_t ph_stop;
+  u_int64_t ph_len;     /* packet length/duration in ns */
+  u_int32_t next_state; /* state after ph pkt push */
+} __attribute__((packed));
 
 
 CLICK_ENDDECLS
