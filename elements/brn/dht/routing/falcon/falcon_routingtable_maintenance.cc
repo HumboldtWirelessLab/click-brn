@@ -10,6 +10,7 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "dhtprotocol_falcon.hh"
 #include "falcon_functions.hh"
@@ -24,6 +25,7 @@ FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
   _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
   _debug(BrnLogger::DEFAULT),
   _rounds_to_passive_monitoring(0),
+  _opti(FALCON_OPTIMAZATION_NONE),
   _rfrt(NULL)
 {
 }
@@ -39,6 +41,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
       "STARTTIME", cpkP+cpkM, cpInteger, &_start,
       "UPDATEINT", cpkP, cpInteger, &_update_interval,
       "PMROUNDS", cpkP, cpInteger, &_rounds_to_passive_monitoring,
+      "OPTIMIZATION", cpkP, cpInteger, &_opti,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -82,6 +85,7 @@ FalconRoutingTableMaintenance::table_maintenance()
                                              //      lastUpdatedPosition. Please solve the problem.
     assert(! _frt->_me->equals(nextToAsk));  //TODO: There was an error, while setup the Routing-Table. I fixed it, but
                                              //      if there is an error again please save this output (Routing Table)
+    BRN_DEBUG("Ask for position %d",_frt->_lastUpdatedPosition);
 
     nextToAsk->set_last_ping_now();
     WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(_frt->_me, nextToAsk, FALCON_MINOR_REQUEST_POSITION,
@@ -126,7 +130,7 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
   DHTProtocolFalcon::get_info(packet, &src, &node, &position);
    _frt->add_node(&src);
-
+  BRN_DEBUG("Got REQ for position %d",position);
   find_node = _frt->find_node(&src);
 
   //TODO: chack whether reverse node for position changes.
@@ -141,13 +145,13 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
       BRN_INFO("Is neighbourhop. Not added to table.");
     } else {
       BRN_INFO("Add foreign hop");
-     _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
-                    &(srcEther));
+   //  _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
+   //                 &(srcEther));
     }
 
-    if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
-      _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
-                      &(srcEther));
+   //  if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 )
+   //   _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
+   //                  &(srcEther),99999999);
 
   }
   /** End Hawk stuff */
@@ -165,9 +169,9 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
     DHTnode *best_succ;
 
     if ( _rfrt != NULL ) {
-      best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/, &(_rfrt->_known_hosts)); //TODO: use params
+      best_succ = _frt->findBestSuccessor(&src, 30/* max age 20 s*/, &(_rfrt->_known_hosts)); //TODO: use params
     } else {
-      best_succ = _frt->findBestSuccessor(&src, 20/* max age 20 s*/); //TODO: use params
+      best_succ = _frt->findBestSuccessor(&src, 30/* max age 20 s*/); //TODO: use params
     }
 
     if ( best_succ->equals(_frt->predecessor) ) {
@@ -179,7 +183,32 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
 
     }
 
-    WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
+
+    WritablePacket *p = NULL;
+
+ if (_rfrt != NULL){
+if (best_succ->equals(_frt->_me))
+ p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
+                                                                  best_succ, FALCON_RT_POSITION_SUCCESSOR,
+									   0, packet);
+else {
+
+	if ((_opti == FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) ) {
+        	BRN_INFO("Fwd request");
+	 	WritablePacket* pack = DHTProtocolFalcon::new_route_request_packet(&src, _frt->_me,
+                                                FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
+			pack->pull(sizeof(struct click_brn) + sizeof(click_ether));
+	 	p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me,(_rfrt->getEntry(&(src._ether_addr)))->_metric, pack);  //recyl. packet
+	}
+	else
+ 		p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
+                                                                  best_succ, FALCON_RT_POSITION_SUCCESSOR,
+									   (_rfrt->getEntry(&(best_succ->_ether_addr)))->_metric, packet);
+}
+
+}
+else
+ p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
                                                                   best_succ, FALCON_RT_POSITION_SUCCESSOR, packet);
     output(0).push(p);
     return;
@@ -193,7 +222,11 @@ FalconRoutingTableMaintenance::handle_request_pos(Packet *packet)
   if ( posnode != NULL ) {
     BRN_DEBUG("Node: %s ask me (%s) for pos: %d . Ans: %s",src._ether_addr.unparse().c_str(),
                                _frt->_me->_ether_addr.unparse().c_str(), position, posnode->_ether_addr.unparse().c_str());
-    p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position, packet);
+	if (_rfrt != NULL)
+    	 p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position,
+								(_rfrt->getEntry(&(posnode->_ether_addr)))->_metric, packet);	
+	else
+ 	 p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position, packet);
   } else {
     BRN_DEBUG("HE wants to know a node that i didn't know. Send negative reply.");
     node._status = STATUS_NONEXISTENT; //i don't have such node
@@ -207,14 +240,15 @@ void
 FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 {
   uint16_t position;
-
+  uint8_t metric;
   DHTnode node, src;
   DHTnode *nc, *preposnode;
 
   BRN_DEBUG("handle_reply_pos");
-
-  DHTProtocolFalcon::get_info(packet, &src, &node, &position);
-
+if (_rfrt != NULL)
+  DHTProtocolFalcon::get_info(packet, &src, &node, &position,&metric);
+else
+ DHTProtocolFalcon::get_info(packet, &src, &node, &position);
   _frt->add_node(&src);
 
   if ( node._status == STATUS_NONEXISTENT ) {
@@ -260,7 +294,7 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
 
   if ( ( _rounds_to_passive_monitoring > 0 ) &&
        ( _current_round2pm == _rounds_to_passive_monitoring ) ) {
-     _rounds_to_passive_monitoring = 0;  //reset for nextToAsk
+     _current_round2pm = 0;  //reset for nextToAsk
      _frt->set_passive_monitoring(true); //enable pm, this will
                                          //be disabled by passiv monitoring (and rt ??)
   }
@@ -273,11 +307,11 @@ FalconRoutingTableMaintenance::handle_reply_pos(Packet *packet)
     //don't add route to myself
     if ( memcmp(_frt->_me->_ether_addr.data(), node._ether_addr.data(), 6) != 0 ) {
        //TODO: whats with annos
-//      click_ether *annotated_ether = (click_ether *)packet->ether_header();
-//      EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+      click_ether *annotated_ether = (click_ether *)packet->ether_header();
+      EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
       _rfrt->addEntry(&(node._ether_addr), node._md5_digest, node._digest_length,
-                      NULL, &(src._ether_addr));
+                      NULL, &(src._ether_addr),metric + (_rfrt->getEntry(&(src._ether_addr)))->_metric);
     }
   }
   /** End Hawk stuff */

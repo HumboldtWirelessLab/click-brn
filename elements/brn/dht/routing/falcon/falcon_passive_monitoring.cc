@@ -76,20 +76,24 @@ FalconPassiveMonitoring::check_monitoring()
 
           _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
 
-          output(0).push(p);
+         // output(0).push(p);
+	  break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_REQUESTING:
         {
           //check for timeout
+	   break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_ACTIVATED:
         {
           //everything perfect just check
+	   break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_SIGNOFF:
         {
           // reset from signoff
           _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
+         break;
         }
       default:
         {
@@ -101,18 +105,22 @@ FalconPassiveMonitoring::check_monitoring()
       case FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED:
         {
           //everything perfect just check
+	   break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_REQUESTING:
         {
           // roll-back from request -> signoff
+	  break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_ACTIVATED:
         {
           // roll-back from request -> signoff
+	   break;
         }
       case FALCON_PASSIVE_MONITORING_MODE_SIGNOFF:
         {
           //check for timeout
+	   break;
         }
       default:
         {

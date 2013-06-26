@@ -13,6 +13,12 @@ CLICK_DECLS
 #define FALCON_DEFAULT_UPDATE_INTERVAL  2000
 #define FALCON_DEFAULT_START_TIME      10000
 
+#define FALCON_OPTIMAZATION_NONE               0
+#define FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC 1
+#define FALCON_OPT_SUCC_HINT 2
+#define FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT 3
+
+
 class FalconRoutingTableMaintenance : public Element
 {
   public:
@@ -52,7 +58,7 @@ class FalconRoutingTableMaintenance : public Element
 
     int _rounds_to_passive_monitoring;
     int _current_round2pm;
-
+    int _opti;
     HawkRoutingtable *_rfrt;
 
   public:

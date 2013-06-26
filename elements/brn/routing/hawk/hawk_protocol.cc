@@ -6,7 +6,6 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 CLICK_DECLS
 
-
 WritablePacket *
 HawkProtocol::add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid, Packet *p)
 {
@@ -25,6 +24,7 @@ HawkProtocol::add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid,
   memcpy( header->_dst_nodeid, dst_nodeid, MAX_NODEID_LENTGH);
   memcpy( header->_src_nodeid, src_nodeid, MAX_NODEID_LENTGH);
   memcpy( header->_next_nodeid, next_nodeid, MAX_NODEID_LENTGH);
+  header->_metric = 0;
   if (_next != NULL)
     memcpy(header->_next_etheraddress, _next->data(), 6);
   else
@@ -74,7 +74,12 @@ HawkProtocol::clear_next_hop(Packet *p)
   struct hawk_routing_header *rh = (struct hawk_routing_header *)p->data();
   memset( rh->_next_etheraddress, 0, 6 );
 }
-
+void
+HawkProtocol::add_metric(Packet *p,uint8_t metric)
+{
+  struct hawk_routing_header *rh = (struct hawk_routing_header *)p->data();
+  rh->_metric += metric;
+}
 
 
 CLICK_ENDDECLS

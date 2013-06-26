@@ -132,7 +132,9 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 
   DHTnodelist nodes;
   DHTnode* next;
-
+  HawkRoutingtable::RTEntry* entry;
+  Vector <uint8_t> mlist;
+  
   if ( _onlyfingertab ) {
     BRN_DEBUG("USE only fingertab");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
@@ -140,12 +142,16 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_fingertable.size();
       next = _frt->_fingertable.get_dhtnode(_all_nodes_index);
       //WHEN using hawk a route to the finger has to be known before sending it
-      if (_rfrt != NULL) {
-        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL) nodes.add_dhtnode(next);	
-      } else {
-        nodes.add_dhtnode(next);
-      }
-    }
+      if (_rfrt != NULL){
+ 	  entry = NULL;
+	if((entry = _rfrt->getEntry(&(next->_ether_addr))) != NULL){
+          nodes.add_dhtnode(next);	
+	  mlist.push_back(entry->_metric );
+     		BRN_DEBUG("Send metric %d", mlist.at(mlist.size() - 1));
+	    }
+        }else
+      nodes.add_dhtnode(next);
+    }    
   } else {
     BRN_DEBUG("use all nodes");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
@@ -154,14 +160,21 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
       next = _frt->_allnodes.get_dhtnode(_all_nodes_index);
       //WHEN using hawk a route to the finger has to be known before sending it
-      if (_rfrt != NULL) {
-        if(_rfrt->getEntry(&(next->_ether_addr)) != NULL) nodes.add_dhtnode(next);
-      } else {
-        nodes.add_dhtnode(next);
-      }
+  if (_rfrt != NULL){
+	 entry = NULL;
+	if((entry = _rfrt->getEntry(&(next->_ether_addr))) != NULL){
+          nodes.add_dhtnode(next);
+	  mlist.push_back(entry->_metric);
+		BRN_DEBUG("Send metric %d", mlist.at(mlist.size() - 1));
+         }
+        }else
+      nodes.add_dhtnode(next);
+    
     }
   }
-  
+  if (_rfrt != NULL)
+   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me,&nodes, &mlist);
+  else
   len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me, &nodes);
 
   BRN_DEBUG("Send nodes: %d Size: %d Len: %d nodes_per_lp: %d Max_nodes_per_lp: %d",
@@ -179,7 +192,8 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   int32_t len;
   DHTnode first;
   DHTnodelist nodes;
-  
+  Vector<uint8_t> mlist;
+
   if ( ! _active ) {
     BRN_DEBUG("Not active. Time since start: %d. delay: %d", (Timestamp::now() - _start).msecval(),_delay);
     if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;
@@ -188,12 +202,16 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
 
   BRN_DEBUG("Receive. Neighbour: %s", String(is_neighbour).c_str());
   
-  len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
-  if ( len == -1 ) BRN_WARN("Error on linkprobe unpack");
-  
-  if ( _rfrt != NULL )
-    BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
 
+
+  
+  if (_rfrt != NULL){
+   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes,&mlist);
+   BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
+  }else
+   len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
+
+  if ( len == -1 ) BRN_WARN("Error on linkprobe unpack");
   BRN_DEBUG("Address: %s",first._ether_addr.unparse().c_str());
   BRN_DEBUG("Linkprobe: %d node in the linkprobe.", nodes.size() + 1 );
 
@@ -206,18 +224,27 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   if ( (_rfrt == NULL) || is_neighbour  ) {  //disable if hawk is used and first is not a neighbour to avoid unreachable successor
     _frt->add_nodes(&nodes);
   }
-
+  HawkRoutingtable::RTEntry* entry = NULL;
+  
   //Add Neighbour (src of lp)
-  if ( (_rfrt != NULL) && (is_neighbour) ) {
+  if ( (_rfrt != NULL) && (is_neighbour || ( entry = _rfrt->getEntry(&(first._ether_addr))) != NULL /*&& (Timestamp::now() - entry->_time).sec() < 20)*/ ) ) {
     //add first as next phy hop for set "nodes"
     //but only for the nodes i dont know yet
     //therefore i dont get a route that is from me and it will end in a circle
-    _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr));
+    if (is_neighbour)
+    _rfrt->addEntry(&(first._ether_addr), first._md5_digest, first._digest_length, &(first._ether_addr), 1
+			 /*_rfrt->_link_table->get_host_metric_to_me(first._ether_addr)*/);
 
     for(int i = 0; i < nodes.size(); i++) {
       DHTnode* next = nodes.get_dhtnode(i);
-      if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL)
-        _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr));
+      if(! next->equalsEtherAddress(_frt->_me) && _rfrt->getEntry(&(next->_ether_addr)) == NULL){
+        if (is_neighbour)
+        _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr),
+			   mlist.at(i) + 1 /*_rfrt->_link_table->get_host_metric_to_me(first._ether_addr)*/ );
+	//if I know a route to first I can build a route to next over it 
+         else _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(entry->_next_phy_hop),
+			   mlist.at(i) + entry->_metric /*_rfrt->_link_table->get_host_metric_to_me(first._ether_addr)*/ );
+      }
     }
   }
 
