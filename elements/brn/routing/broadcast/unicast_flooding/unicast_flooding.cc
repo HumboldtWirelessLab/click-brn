@@ -114,10 +114,9 @@ UnicastFlooding::pull(int)
   if ( all_unicast_pkt_queue.size() > 0 ) {                          //first take packets from packet queue
     p = all_unicast_pkt_queue[0];                                    //take first
     all_unicast_pkt_queue.erase(all_unicast_pkt_queue.begin());      //clear
-    return p;
-  } else if (Packet *p = input(0).pull()) return smaction(p, false); //new packet
+  } else if ((p = input(0).pull()) != NULL) p = smaction(p, false); //new packet
 
-  return NULL;
+  return p;
 }
 
 /* 

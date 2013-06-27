@@ -47,7 +47,9 @@ struct click_brn_bcast {
   uint8_t       extra_data_size;
 } CLICK_SIZE_PACKED_ATTRIBUTE ;
 
-#define BCAST_MAX_EXTRA_DATA_SIZE 255
+#define BCAST_HEADER_FLAGS_FORCE_DST    1 /* src is responsible for target */
+
+#define BCAST_MAX_EXTRA_DATA_SIZE     255
 
 struct click_brn_bcast_extra_data {
   uint8_t size;
@@ -81,7 +83,7 @@ class Flooding : public BRNElement {
 #if CLICK_NS
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS 16
 #else
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS 8
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS  8
 #endif
 
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE (1 << DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS)
@@ -170,6 +172,13 @@ class Flooding : public BRNElement {
         return have_id(id);
       }
 
+      inline bool is_outdated(Timestamp now) {
+        return ((now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT);
+      }
+
+      /**
+       * TODO: timeout for ids
+       **/
       void add_id(uint32_t id, Timestamp now, bool me_src) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
@@ -185,10 +194,6 @@ class Flooding : public BRNElement {
           _assigned_node_list_size[index] = 0;
         }
         _last_id_time = now;
-      }
-
-      inline bool is_outdated(Timestamp now) {
-        return ((now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT);
       }
 
       inline bool me_src(uint32_t id) {
@@ -428,6 +433,10 @@ class Flooding : public BRNElement {
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
 
+  uint16_t _passive_id;
+  bool _passive_last_node_new;
+  bool _passive_last_node_assign;
+
  public:
 
   bool is_local_addr(EtherAddress *src) { return _me->isIdentical(src);}
@@ -437,11 +446,12 @@ class Flooding : public BRNElement {
   uint32_t _flooding_sent;
   uint32_t _flooding_fwd;
   uint32_t _flooding_passive;
+  uint32_t _flooding_passive_not_acked_dst;
   uint32_t _flooding_last_node_due_to_passive;
   uint32_t _flooding_last_node_due_to_ack;
   uint32_t _flooding_last_node_due_to_piggyback;
+  uint32_t _flooding_last_node_due_to_force_bit;
   uint32_t _flooding_lower_layer_reject;
-    
   uint32_t _flooding_src_new_id;
   uint32_t _flooding_rx_new_id;
   uint32_t _flooding_fwd_new_id;
