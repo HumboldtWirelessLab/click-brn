@@ -163,8 +163,8 @@ else
       BRN_INFO("Add foreign hop");
     }
 
-    click_ether *annotated_ether = (click_ether *)packet->ether_header();
-    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+    //click_ether *annotated_ether = (click_ether *)packet->ether_header();
+    //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
     BRN_DEBUG("Dest %s Next Phy Hop: %s",succ._ether_addr.unparse().c_str(), src._ether_addr.unparse().c_str());
 
@@ -197,7 +197,7 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       BRN_INFO("Add foreign hop");
     }
 
-    EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
+    //EtherAddress srcEther = EtherAddress(annotated_ether->ether_shost);
 
   // _rfrt->addEntry(&(src._ether_addr), src._md5_digest, src._digest_length,
   //                  &(srcEther));
