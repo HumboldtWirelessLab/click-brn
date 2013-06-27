@@ -65,6 +65,8 @@ BroadcastMultiplexer::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BroadcastMultiplexer::initialize(ErrorHandler *)
 {
+  pkt_multiplex_queue.clear();
+
   return 0;
 }
 
@@ -74,9 +76,30 @@ BroadcastMultiplexer::uninitialize()
   //cleanup
 }
 
-/* Processes an incoming (brn-)packet. */
 void
-BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
+BroadcastMultiplexer::push(int, Packet *p)
+{
+  //port 0: transmit to other brn nodes; rewrite from broadcast to unicast
+  if (Packet *q = smaction(p, true)) output(0).push(q);
+}
+
+Packet *
+BroadcastMultiplexer::pull(int)
+{
+  Packet *p = NULL;
+
+  if ( pkt_multiplex_queue.size() > 0 ) {                        //first take packets from packet queue
+    p = pkt_multiplex_queue[0];                                  //take first
+    pkt_multiplex_queue.erase(pkt_multiplex_queue.begin());      //clear
+  } else if ((p = input(0).pull()) != NULL) p = smaction(p, false);        //new packet
+
+  return p;
+}
+
+
+/* Processes an incoming (brn-)packet. */
+Packet *
+BroadcastMultiplexer::smaction(Packet *p_in, bool is_push)
 {
   const EtherAddress *ea;
 
@@ -92,7 +115,7 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
   }
 
   if ( (!src.is_broadcast()) || (!dst.is_broadcast()) ) {  //src address looks valid, so no need to send it on all devices
-    output(0).push(p_in);
+    return p_in;
   } else {                       //forward packet using all devices which allow broadcast
     int f;
     BRN2Device *first_device = NULL;
@@ -118,7 +141,9 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 
           memcpy(ether->ether_shost,ea->data(),6);
         }
-        output(0).push(p_copy);
+
+        if ( is_push ) output(0).push(p_copy);      //push element: push all packets
+        else pkt_multiplex_queue.push_back(p_copy); //pull element: store packets for next pull
       }
     }
 
@@ -132,9 +157,11 @@ BroadcastMultiplexer::push(int /*port*/, Packet *p_in)
 
         memcpy(ether->ether_shost,ea->data(),6);
       }
-
-      output(0).push(p_in);
+    } else {
+      return NULL;
     }
+
+      return p_in;
   }
 }
 

@@ -42,12 +42,14 @@ class BroadcastMultiplexer : public BRNElement {
 
   const char *class_name() const  { return "BroadcastMultiplexer"; }
   const char *port_count() const  { return "1/1"; }
-  const char *processing() const  { return PUSH; }
+  const char *processing() const  { return AGNOSTIC; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const { return false; }
 
   void push(int, Packet *);
+  Packet *pull(int);
+  Packet *smaction(Packet *p_in, bool is_push);
 
   int initialize(ErrorHandler *);
   void uninitialize();
@@ -60,6 +62,9 @@ class BroadcastMultiplexer : public BRNElement {
   //
   BRN2NodeIdentity *_me;
   bool _use_anno;
+
+  Vector<Packet*> pkt_multiplex_queue;
+
 };
 
 CLICK_ENDDECLS
