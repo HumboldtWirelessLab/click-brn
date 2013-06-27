@@ -68,12 +68,12 @@ FalconPassiveMonitoring::check_monitoring()
       case FALCON_PASSIVE_MONITORING_MODE_DEACTIVATED:
         {
           // start passive monitoringthis
-          click_chatter("Switch to passive mode");
+          BRN_DEBUG("Switch to passive mode");
 
-          EtherAddress dst = EtherAddress(brn_ethernet_broadcast);
+          /*EtherAddress dst = EtherAddress(brn_ethernet_broadcast);
           WritablePacket *p = DHTProtocolFalcon::new_passive_monitor_active_packet(_frt->_me, &dst,
                                                                                 &(_frt->_reverse_fingertable));
-
+          */
           _passive_monitoring_mode = FALCON_PASSIVE_MONITORING_MODE_REQUESTING;
 
          // output(0).push(p);
