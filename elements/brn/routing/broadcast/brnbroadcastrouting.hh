@@ -58,7 +58,7 @@ class BrnBroadcastRouting : public BRNElement {
   ~BrnBroadcastRouting();
 
   const char *class_name() const  { return "BrnBroadcastRouting"; }
-  const char *processing() const  { return AGNOSTIC; }
+  const char *processing() const  { return PUSH; }
 
   const char *port_count() const  { return "2/2"; }
 
