@@ -46,14 +46,19 @@ CLICK_DECLS
 Flooding::Flooding()
   : _flooding_passiveack(NULL),
     _bcast_id(0),
+    _passive_id(0),
+    _passive_last_node_new(false),
+    _passive_last_node_assign(false),
     _flooding_src(0),
     _flooding_rx(0),
     _flooding_sent(0),
     _flooding_fwd(0),
     _flooding_passive(0),
+    _flooding_passive_not_acked_dst(0),
     _flooding_last_node_due_to_passive(0),
     _flooding_last_node_due_to_ack(0),
     _flooding_last_node_due_to_piggyback(0),
+    _flooding_last_node_due_to_force_bit(0),
     _flooding_lower_layer_reject(0),
     _flooding_src_new_id(0),
     _flooding_rx_new_id(0),
@@ -173,6 +178,7 @@ Flooding::push( int port, Packet *packet )
     
     click_ether *ether = (click_ether *)packet->ether_header();
     EtherAddress fwd = EtherAddress(ether->ether_shost);
+    EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
     
     BRN_DEBUG("Flooding: PUSH von BRN\n");
 
@@ -246,7 +252,15 @@ Flooding::push( int port, Packet *packet )
     //add last hop as last node
     add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward);
     inc_received(&src,(uint32_t)p_bcast_id, &fwd);
-    
+
+    if ( _passive_last_node_assign ) {
+      assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
+      _passive_last_node_assign = false;
+    } else if ( _passive_last_node_new ) {
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
+      _passive_last_node_new = false;
+    }
+
     //add src of bcast as last node
     if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false) != 0 ) {
       BRN_DEBUG("Add src as last node");
@@ -332,7 +346,7 @@ Flooding::push( int port, Packet *packet )
     uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);
     click_ether *ether = (click_ether *)packet->ether_header();
     EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
-    
+
     //TODO: what if it not wireless. Packet transmission always successful ?
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
 
@@ -342,21 +356,16 @@ Flooding::push( int port, Packet *packet )
       uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
       src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
 
-
-      if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0 ) {
-        BRN_ERROR("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
-
-        Timestamp now = packet->timestamp_anno();
-        add_id(&src,(int32_t)p_bcast_id, &now);
-
-        if ( add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false) > 0 ) {
-          BRN_ERROR("Add new node to last node due to passive unicast...");
+      if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) {
+        if ( ((ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) || (bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) ) {
+          BRN_DEBUG("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
+          BRN_DEBUG("New node to last node due to passive unicast...");
           _flooding_last_node_due_to_passive++;
-        }
-      } else { //packet was not successfully transmitted (we can not be sure)
-        if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) { //node is not a last node yet so add as assigned
-          BRN_ERROR("Assign new node...");
-          //assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
+          _passive_last_node_new = true;
+        } else { //packet was not successfully transmitted (we can not be sure) or is not forced         
+          BRN_DEBUG("Assign new node...");
+          _flooding_passive_not_acked_dst++;
+          _passive_last_node_assign = true;
         }
       }
     }
@@ -585,8 +594,8 @@ Flooding::stats()
   sa << "\" >\n\t<localstats source=\"" << _flooding_src << "\" received=\"" << _flooding_rx;
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
-  sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback;
-  sa << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
+  sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" passive_no_ack=\"" << _flooding_passive_not_acked_dst;
+  sa << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
   sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
   sa << "\" received_new=\"" << _flooding_rx_new_id << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
   
