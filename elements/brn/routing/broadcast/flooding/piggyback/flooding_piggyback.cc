@@ -214,7 +214,7 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
         //click_chatter("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
         ea = EtherAddress(&(rxdata[rxdata_idx]));
         if (!fl->is_local_addr(&ea)) {              //do not insert myself as lastnode
-          if ( bcn->add_last_node(id, &ea, false) != 0 )
+          if ( bcn->add_last_node(id, &ea, false, false) != 0 )
             fl->_flooding_last_node_due_to_piggyback++;
         }
       }

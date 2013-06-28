@@ -124,25 +124,24 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
     out.clear();
   }
 
-  if (_link_table) {
-		Vector<EtherAddress> neighbors_tmp;
+  Vector<EtherAddress> neighbors_tmp;
 
-   		_link_table->get_neighbors(node, neighbors_tmp);
-	
-      		for( int n_i = 0; n_i < neighbors_tmp.size(); n_i++) {
-		  	// calc metric between this neighbor and node to make sure that we are well-connected
-		  	//BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
-			int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
+  _link_table->get_neighbors(node, neighbors_tmp);
 
-			// skip to bad neighbors
-			if (metric_nb_node > _max_metric_to_neighbor) {
-                          BRN_DEBUG("Skip bad neighbor %s (%d)", neighbors_tmp[n_i].unparse().c_str(),metric_nb_node);
-                          continue;
-                        }
-			out.push_back(neighbors_tmp[n_i]);
-		}
+  for( int n_i = 0; n_i < neighbors_tmp.size(); n_i++) {
+    // calc metric between this neighbor and node to make sure that we are well-connected
+    //BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
+    int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
+
+    // skip to bad neighbors
+    if (metric_nb_node > _max_metric_to_neighbor) {
+      BRN_DEBUG("Skip bad neighbor %s (%d)", neighbors_tmp[n_i].unparse().c_str(),metric_nb_node);
+      continue;
+    }
+
+    out.push_back(neighbors_tmp[n_i]);
   }
-   //BRN_DEBUG("filter finished: %d",out.size());	
+  //BRN_DEBUG("filter finished: %d",out.size());	
 }
 
 void
@@ -529,7 +528,7 @@ FloodingHelper::graph_cut(NetworkGraph &ng, NetworkGraph &ng2)
 int
 FloodingHelper::find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors)
 {
-  if ( (!_link_table) || (neighbors.size() == 0) ) return -1;
+  if (neighbors.size() == 0) return -1;
   
   int w_met = _link_table->get_link_metric(src, neighbors[0]);
   int w_ind = 0;
