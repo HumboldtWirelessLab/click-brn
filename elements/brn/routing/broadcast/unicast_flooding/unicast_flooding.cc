@@ -329,11 +329,15 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       case UNICAST_FLOODING_MOST_NEIGHBOURS:                           // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
         next_hop = algorithm_most_neighbours(candidate_set, 2);
         break;
-
+     
+      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing
+        break;
+     
       default:
         BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
     }
-  } else if ( candidate_set.size() == 1 ) next_hop = candidate_set[0];       
+  } else if ((candidate_set.size() == 1) && (_cand_selection_strategy != UNICAST_FLOODING_BCAST_WITH_PRECHECK))
+           next_hop = candidate_set[0];       
 
   if ( next_hop.is_broadcast() ) {
     _cnt_bcasts++;
@@ -352,6 +356,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   add_rewrite(&src, bcast_id, &next_hop);
 
   _flooding->clear_assigned_nodes(&src, bcast_id);
+  
+  candidate_set.clear();
   
   return p_in;
 }
@@ -484,6 +490,7 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_ALL_UNICAST: return "all_unicast";
     case UNICAST_FLOODING_TAKE_WORST: return "take_worst";
     case UNICAST_FLOODING_MOST_NEIGHBOURS: return "most_neighbours";
+    case UNICAST_FLOODING_BCAST_WITH_PRECHECK: return "bcast_with_precheck";
   }
 
   return "unknown"; 
