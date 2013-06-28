@@ -134,8 +134,10 @@ class UnicastFlooding : public BRNElement {
   uint32_t _ucast_peer_metric;
   bool _reject_on_empty_cs;
   EtherAddress static_dst_mac;
+  bool _force_responsibility;
+  bool _use_assign_info;
 
-  bool algorithm_most_neighbours(EtherAddress &next_hop, Vector<EtherAddress> &neighbors, int hops);
+  EtherAddress algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int hops);
   
  public:
 

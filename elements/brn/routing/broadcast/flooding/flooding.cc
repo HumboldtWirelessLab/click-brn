@@ -136,7 +136,7 @@ Flooding::push( int port, Packet *packet )
     add_broadcast_node(&src);
     add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
     forward_attempt(&src, _bcast_id);                                          //try forward 
-    add_last_node(&src,(int32_t)_bcast_id, &src, true);                        //add src as last hop for src
+    add_last_node(&src,(int32_t)_bcast_id, &src, true, false);                 //add src as last hop for src
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
@@ -250,19 +250,25 @@ Flooding::push( int port, Packet *packet )
     }
 
     //add last hop as last node
-    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward);
+    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true);
     inc_received(&src,(uint32_t)p_bcast_id, &fwd);
-
-    if ( _passive_last_node_assign ) {
+ 
+    /**
+     * handle target of packet
+     * insert to new, assign or foreign_responsible
+     */ 
+    if ( ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0 ) ||
+         ( _passive_last_node_new ) ) {
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_new ); //clear resp flag if we are sure, that dst
+      _passive_last_node_new = _passive_last_node_assign = false;                        //received the pkt
+    } else if ( _passive_last_node_assign ) {
+      BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
       _passive_last_node_assign = false;
-    } else if ( _passive_last_node_new ) {
-      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
-      _passive_last_node_new = false;
     }
 
     //add src of bcast as last node
-    if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false) != 0 ) {
+    if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true) != 0 ) {
       BRN_DEBUG("Add src as last node");
       _flooding_last_node_due_to_piggyback++;
     }
@@ -306,7 +312,7 @@ Flooding::push( int port, Packet *packet )
     
     click_ether *ether = (click_ether *)packet->ether_header();
     EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
-    
+
     //BRN_ERROR("RX: %s %d %d", rx_node.unparse().c_str(),_me->getDeviceByNumber(devicenr)->getDeviceType(), devicenr );
        
     bcast_header = (struct click_brn_bcast *)(packet->data());
@@ -333,7 +339,7 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Flooding: TXFeedback failure\n");
     } else {           //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
-      if (!rx_node.is_broadcast()) add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false);
+      if (!rx_node.is_broadcast()) add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, true);
     }
     
     packet->kill();
@@ -357,7 +363,7 @@ Flooding::push( int port, Packet *packet )
       src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
 
       if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) {
-        if ( ((ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) || (bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) ) {
+        if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {
           BRN_DEBUG("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
           BRN_DEBUG("New node to last node due to passive unicast...");
           _flooding_last_node_due_to_passive++;
@@ -419,7 +425,7 @@ Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
 }
 
 int
-Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded)
+Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool clear_responsibility)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -428,7 +434,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
     return -1;
   }
 
-  return bcn->add_last_node(id, last_node, forwarded);
+  return bcn->add_last_node(id, last_node, forwarded, clear_responsibility);
 }
 
 void
@@ -573,7 +579,8 @@ Flooding::assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_no
   
   if ( bcn == NULL ) return;
 
-  bcn->assign_node(id, last_node);
+  int res = bcn->assign_node(id, last_node);
+  BRN_DEBUG("Finished assign node: %s %d",last_node->unparse().c_str(),res);
 }
 
 struct Flooding::BroadcastNode::flooding_last_node*
@@ -583,6 +590,28 @@ Flooding::get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) return bcn->get_assigned_nodes(id, size);
   return NULL;
+}
+
+void
+Flooding::clear_assigned_nodes(EtherAddress *src, uint32_t id)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) return bcn->clear_assigned_nodes(id);  
+}
+
+void
+Flooding::set_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) bcn->set_responsibility_target(id, target);
+}
+
+bool
+Flooding::is_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) return bcn->is_responsibility_target(id, target);
+  return false;
 }
 
 String
