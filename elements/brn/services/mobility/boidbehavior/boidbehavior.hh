@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef BOIDELEMENT_HH
-#define BOIDELEMENT_HH
+#ifndef BOIDBEHAVIORELEMENT_HH
+#define BOIDBEHAVIORELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
@@ -27,81 +27,41 @@
 #include <click/timer.hh>
 
 #include <elements/brn/brnelement.hh>
-#include <elements/brn/standard/fixpointnumber.hh>
 
 #include "elements/brn/services/sensor/gps/gps.hh"
 #include <elements/brn/services/sensor/gps/gps_position.hh>
 #include <elements/brn/services/sensor/gps/gps_map.hh>
 
-#include "boid_helper.hh"
-#include "boidbehavior/boidbehavior.hh"
-#include "mobility.hh"
+#include <elements/brn/standard/fixpointnumber.hh>
+
+#include <elements/brn/services/mobility/boid_helper.hh>
 
 CLICK_DECLS
 /*
  * =c
- * Boid()
+ * BoidBehavior()
  * =s
  * =d
  *
  */
 
-#define BOID_DEFAULT_INTERVAL 1000
-
-class Boid : public BRNElement {
+class BoidBehavior : public BRNElement {
 
  public:
 
   //
   //methods
   //
-  Boid();
-  ~Boid();
+  BoidBehavior();
+  ~BoidBehavior();
 
-  const char *class_name() const  { return "Boid"; }
-  const char *processing() const  { return AGNOSTIC; }
-
-  const char *port_count() const  { return "0/0"; }
-
-  int configure(Vector<String> &, ErrorHandler *);
-  bool can_live_reconfigure() const  { return false; }
-
-  int initialize(ErrorHandler *);
   void add_handlers();
 
-  void run_timer(Timer *);
+  virtual const char *behavior_name() const = 0; //const : function doesn't change the object (members).
+                                                //virtual: late binding
 
-  int find_gravitation(int x, int y, int z, int m);
-  void add_gravitation(int x, int y, int z, int m);
-  void del_gravitation(int x, int y, int z, int m);
+  virtual BoidMove* compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, GravitationList &glist, PredatorList &plist) = 0;
 
-  int find_predator(int x, int y, int z, int m);
-  void add_predator(int x, int y, int z, int m);
-  void del_predator(int x, int y, int z, int m);
-
-  Timer _boid_timer;
-
-  Mobility *_mob;
-  GPS *_gps;
-  GPSMap *_gpsmap;
-
-  BoidBehavior *_behavior;
-  
-  int _interval;
-
-  bool _active;
-
-  void set_active(bool active) { _active = active; };
-
-  int _radius;
-  double _cohesion;
-  double _gravitation;
-  double _steerlimit;
-  double _seperation;
-  int _speed;
-
-  GravitationList _glist;
-  PredatorList _plist;
 };
 
 CLICK_ENDDECLS

@@ -18,50 +18,52 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef BOIDELEMENT_HH
-#define BOIDELEMENT_HH
+#ifndef BOIDBEHAVIORSIMPLEELEMENT_HH
+#define BOIDBEHAVIORSIMPLEELEMENT_HH
 
 #include <click/etheraddress.hh>
 #include <click/vector.hh>
 #include <click/ipaddress.hh>
 #include <click/timer.hh>
 
-#include <elements/brn/brnelement.hh>
+#include "boidbehavior.hh"
 #include <elements/brn/standard/fixpointnumber.hh>
 
 #include "elements/brn/services/sensor/gps/gps.hh"
+
 #include <elements/brn/services/sensor/gps/gps_position.hh>
 #include <elements/brn/services/sensor/gps/gps_map.hh>
 
-#include "boid_helper.hh"
-#include "boidbehavior/boidbehavior.hh"
-#include "mobility.hh"
+#include "elements/brn/wifi/channelstats.hh"
+
 
 CLICK_DECLS
 /*
  * =c
- * Boid()
+ * BoidBehaviorSimple()
  * =s
  * =d
  *
  */
 
-#define BOID_DEFAULT_INTERVAL 1000
+#define BOID_DEFAULT_RADIUS 80
+#define BOID_DEFAULT_STEERLIMIT 0.1
+#define BOID_DEFAULT_GRAVITATION 10.0
+#define BOID_DEFAULT_COHESION 10.0
+#define BOID_DEFAULT_SEPERATION 10.0
+#define BOID_DEFAULT_SPEED 10
 
-class Boid : public BRNElement {
+class BoidBehaviorSimple : public BoidBehavior {
 
  public:
-
   //
   //methods
   //
-  Boid();
-  ~Boid();
+  BoidBehaviorSimple();
+  ~BoidBehaviorSimple();
 
-  const char *class_name() const  { return "Boid"; }
-  const char *processing() const  { return AGNOSTIC; }
-
-  const char *port_count() const  { return "0/0"; }
+  const char *class_name() const { return "BoidBehaviorSimple"; }
+  const char *behavior_name() const { return "BoidBehaviorSimple"; }
 
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const  { return false; }
@@ -69,29 +71,13 @@ class Boid : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void run_timer(Timer *);
+  BoidMove* compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, GravitationList &glist, PredatorList &plist);
 
-  int find_gravitation(int x, int y, int z, int m);
-  void add_gravitation(int x, int y, int z, int m);
-  void del_gravitation(int x, int y, int z, int m);
+  ChannelStats *_cs;
 
-  int find_predator(int x, int y, int z, int m);
-  void add_predator(int x, int y, int z, int m);
-  void del_predator(int x, int y, int z, int m);
+  BoidMove boidmove;
 
-  Timer _boid_timer;
-
-  Mobility *_mob;
-  GPS *_gps;
-  GPSMap *_gpsmap;
-
-  BoidBehavior *_behavior;
-  
   int _interval;
-
-  bool _active;
-
-  void set_active(bool active) { _active = active; };
 
   int _radius;
   double _cohesion;
@@ -99,9 +85,6 @@ class Boid : public BRNElement {
   double _steerlimit;
   double _seperation;
   int _speed;
-
-  GravitationList _glist;
-  PredatorList _plist;
 };
 
 CLICK_ENDDECLS
