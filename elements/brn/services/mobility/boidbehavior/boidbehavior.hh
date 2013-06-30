@@ -59,7 +59,16 @@ class BoidBehavior : public BRNElement {
 
   virtual const char *behavior_name() const = 0; //const : function doesn't change the object (members).
                                                 //virtual: late binding
-
+  /**
+   * boid_helper.hh
+   *
+   * class BoidMove {
+   *  public:
+   *   Vector3D _direction;
+   *   int      _speed;
+   *   int      _move_type;
+   * };
+  **/
   virtual BoidMove* compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, GravitationList &glist, PredatorList &plist) = 0;
 
 };
