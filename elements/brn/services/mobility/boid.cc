@@ -36,18 +36,14 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "boid.hh"
+#include "boidbehavior/boidbehavior.hh"
 
 CLICK_DECLS
 
 Boid::Boid():
   _boid_timer(this),
   _interval(BOID_DEFAULT_INTERVAL),
-  _active(false),
-  _radius(BOID_DEFAULT_RADIUS),
-  _cohesion(BOID_DEFAULT_COHESION),
-  _steerlimit(BOID_DEFAULT_STEERLIMIT),
-  _seperation(BOID_DEFAULT_SEPERATION),
-  _speed(BOID_DEFAULT_SPEED)
+  _active(false)
 {
   BRNElement::init();
 }
@@ -61,31 +57,16 @@ Boid::~Boid()
 int
 Boid::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  int steerlim = 0;
-  int cohesion = 0;
-  int gravitation = 0;
-  int seperation = 0;
 
   if (cp_va_kparse(conf, this, errh,
+      "BEHAVIOR", cpkM+cpkP, cpElement, &_behavior,
       "GPS", cpkM+cpkP, cpElement, &_gps,
       "GPSMAP", cpkM+cpkP, cpElement, &_gpsmap,
       "MOBILITY", cpkM+cpkP, cpElement, &_mob,
-      "CHANNELSTATS", cpkM+cpkP, cpElement, &_cs,
-      "RADIUS", cpkP, cpInteger, &_radius,
-      "SEPERATIONSFACTOR", cpkP, cpInteger, &seperation,
-      "COHESIONFACTOR", cpkP, cpInteger, &cohesion,
-      "STEERLIMIT", cpkP, cpInteger, &steerlim,
-      "GRAVITATIONFACTOR", cpkP, cpInteger, &gravitation,
-      "SPEED", cpkP, cpInteger, &_speed,
       "INTERVAL", cpkP, cpInteger, &_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
-
-  if ( steerlim != 0 ) _steerlimit = steerlim / 1000.0;
-  if ( cohesion != 0 ) _cohesion = cohesion / 1000.0;
-  if ( gravitation != 0 ) _gravitation = gravitation / 1000.0;
-  if ( seperation != 0 ) _seperation = seperation / 1000.0;
 
   return 0;
 }
@@ -104,186 +85,14 @@ Boid::initialize(ErrorHandler *)
 
 void
 Boid::run_timer(Timer *) {
+
   _boid_timer.reschedule_after_msec(_interval);
 
   if ( _active ) {
-    compute_behavior();
+    GPSPosition *own_pos = _gps->getPosition();
+    BoidMove *bm = _behavior->compute_behavior(own_pos, _gpsmap, _glist, _plist);
+    _mob->move(bm->_direction._x, bm->_direction._y, bm->_direction._z, bm->_speed, bm->_move_type);
   }
-}
-
-static Vector3D gps_dist(GPSPosition *pos1, GPSPosition *pos2)
-{
-  return Vector3D(pos1->_x - pos2->_x, pos1->_y - pos2->_y, pos1->_z - pos2->_z);
-}
-
-void
-Boid::compute_behavior()
-{
-  GPSPosition *own_pos = _gps->getPosition();
-
-  Vector3D velo;
-  Vector3D possum;
-
-  /**********************************************************/
-  /*                     1. Separation                      */
-  /**********************************************************/
-  ChannelStats::SrcInfoTable *src_tab = _cs->get_latest_stats_neighbours();
-
-  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
-    //ChannelStats::SrcInfo src = iter.value();
-    EtherAddress ea = iter.key();
-
-    GPSPosition *pos = _gpsmap->lookup(ea);
-
-    if ( pos != NULL ) {
-      Vector3D dist = gps_dist(own_pos, pos);
-      double dist_len = dist.length();
-
-      BRN_DEBUG("Dist: %s",dist.unparse().c_str());
-
-      if ((dist_len > 0) && (dist_len < _radius)) {
-        dist.normalize();                 //repulse.normalize();
-        BRN_DEBUG("Dist_vec_norm: %s", dist.unparse().c_str());
-        //dist.div(dist_len);            //repulse.div(dist);
-        possum.add(dist);              //posSum.add(repulse);
-      }
-    } else {
-      BRN_WARN("No GPS-Position for %s.",ea.unparse().c_str());
-    }
-  }
-
-  possum.mul(_seperation);
-  velo.add(possum);
-
-  BRN_DEBUG("Sep: %s", velo.unparse().c_str());
-
-  /**********************************************************/
-  /*                     2. Cohesion                        */
-  /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
-  int count = 0;
-
-  //for(SwarmObject neighbor :swarmCluster.get(clus)) {
-  for (ChannelStats::SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
-
-    //ChannelStats::SrcInfo src = iter.value();
-    EtherAddress ea = iter.key();
-
-    GPSPosition *pos = _gpsmap->lookup(ea);
-
-    if ( pos != NULL ) {
-      Vector3D dist = gps_dist(own_pos,pos);     //float dist = swObj.getDistance(neighbor);
-
-      if ((dist.length() > 0) && (dist.length() < _radius)) { //if ((dist > 0) && (dist < parent.getZoneRadius())) {
-        Vector3D gps_vec = pos->vector3D();
-        possum.add(gps_vec);             // posSum.add(neighbor.getPosition())
-        count++;
-      }
-    } else {
-      BRN_WARN("No GPS-Position for %s.",ea.unparse().c_str());
-    }
-  }
-
-  if (count > 0) possum.div(count);
-
-  Vector3D own_gps_vec = own_pos->vector3D();
-  possum.sub(own_gps_vec);      // PVector steer = PVector.sub(posSum, swObj.getPosition());
-  possum.limit(_steerlimit);    //steer.limit(0.1f);
-  possum.mul(_cohesion);        //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
-  velo.add(possum);
-
-  BRN_DEBUG("Coh: %s", velo.unparse().c_str());
-
-  /**********************************************************/
-  /*                     3. Alignment                       */
-  /**********************************************************/
-
-/*  posSum = new PVector(0,0,0);
-  count = 0;
-  for (SwarmObject neighbor : swarmCluster.get(clus)) {
-    float dist = swObj.getDistance(neighbor);
-    if ((dist > 0) && (dist < parent.getZoneRadius())) {
-      posSum.add(neighbor.getVelocity());
-      count++;
-    }
-  }
-  if (count > 0) {
-    posSum.div((float)count);
-    posSum.limit(0.1f);
-  }
-  swObj.getAcceleration().add(PVector.mult(posSum, parent.getAlignmentFactor()));
-
-*/
-  /**********************************************************/
-  /*        4. Pull to Center with Gravitation              */
-  /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
-  count = 0;
-
-  for (int i = 0; i < _glist.size(); i++) {
-    Gravitation g = _glist[i];
-    Vector3D dist = own_pos->vector3D();
-    dist.sub(g._position);
-    dist.mul(-1);
-    double dist_len = dist.length();
-    BRN_DEBUG("Grav Dist: %s",dist.unparse().c_str());
-    if (dist_len > 0) {
-      dist.normalize();            //repulse.normalize();
-      BRN_DEBUG("Grav Dist_vec_norm: %s", dist.unparse().c_str());
-      dist.div(dist_len);        //repulse.div(dist);
-      possum.add(dist);          //posSum.add(repulse);
-      count++;
-    }
-  }
-
-  if (count > 0) {
-    possum.div(count);
-
-    Vector3D own_gps_vec = own_pos->vector3D();
-    possum.limit(_steerlimit);    //steer.limit(0.1f);
-    possum.mul(_gravitation);
-    velo.add(possum);             //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
-  }
-
-  BRN_DEBUG("grav: %s", velo.unparse().c_str());
-
-  /**********************************************************/
-  /*              5. Move away from Predators               */
-  /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
-  count = 0;
-
-  for (int i = 0; i < _plist.size(); i++) {
-    Predator p = _plist[i];
-    Vector3D dist = own_pos->vector3D();
-    Vector3D p_pos = p._position;
-    dist.sub(p_pos);
-    double dist_len = dist.length();
-    BRN_DEBUG("Dist: %s",dist.unparse().c_str());
-    if (dist_len > 0) {
-      dist.normalize();            //repulse.normalize();
-      BRN_DEBUG("Dist_vec_norm: %s", dist.unparse().c_str());
-      if ( dist_len != 0 ) {
-        dist.div(dist_len);        //repulse.div(dist);
-        possum.add(dist);          //posSum.add(repulse);
-        count++;
-      }
-    }
-  }
-
-  if (count > 0) {
-    possum.div(count);
-
-    own_gps_vec = own_pos->vector3D();
-    possum.limit(_steerlimit);    //steer.limit(0.1f);
-    velo.add(possum);             //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
-  }
-
-  BRN_DEBUG("pred: %s", velo.unparse().c_str());
-
-
-  velo.mul(_speed);
-  _mob->move(round(velo._x), round(velo._y), 0, _speed, MOVE_TYPE_RELATIVE);
 }
 
 int
@@ -379,7 +188,7 @@ Boid_read_param(Element *e, void *thunk)
       StringAccum sa;
       sa << "<boid_gravitation count=\"" << b->_glist.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
       for (int i = 0; i < b->_glist.size(); i++) {
-        Boid::Gravitation g = b->_glist[i];
+        Gravitation g = b->_glist[i];
         sa << "\t<gravitation index=\"" << i << "\" x=\"" << g._position._x << "\" y=\"" << g._position._y;
         sa << "\" z=\"" << g._position._z << "\" mass=\"" << g._mass << "\" />\n";
       }
@@ -391,7 +200,7 @@ Boid_read_param(Element *e, void *thunk)
       StringAccum sa;
       sa << "<boid_predator count=\"" << b->_plist.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
       for (int i = 0; i < b->_plist.size(); i++) {
-        Boid::Predator p = b->_plist[i];
+        Predator p = b->_plist[i];
         sa << "\t<predator index=\"" << i << "\" x=\"" << p._position._x << "\" y=\"" << p._position._y;
         sa << "\" z=\"" << p._position._z << "\" power=\"" << p._power << "\" />\n";
       }
