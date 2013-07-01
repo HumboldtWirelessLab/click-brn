@@ -223,31 +223,12 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Extra Data Forward: %d in %d out Forward %d", 
               rxdatasize, extra_data_size, (int)(forward?(1):(0)));
     
-    if ( ! is_known ) {   //note and send to client only if this is the first time
-      Packet *p_client;
-
+    if ( ! is_known ) {   //note only if this is the first time
       _flooding_rx_new_id++;
-      
       add_id(&src,(int32_t)p_bcast_id, &now);
-
-      if ( forward )
-        p_client = packet->clone()->uniqueify();                           //packet for client
-      else
-        p_client = packet;
-
-      if ( sizeof(struct click_brn_bcast) + rxdatasize >= 6 ) {
-        p_client->pull((sizeof(struct click_brn_bcast) + rxdatasize) - 6);           //remove bcast_header+extradata, but leave space for target addr
-      } else {
-        p_client = p_client->push(6 - (sizeof(struct click_brn_bcast) + rxdatasize));//remove bcast_header+extradata, but leave space for target addr
-      }
-      
-      memcpy((void*)p_client->data(), (void*)brn_ethernet_broadcast, 6);//set dest to bcast
-
-      if ( BRNProtocol::is_brn_etherframe(p_client) )
-        BRNProtocol::get_brnheader_in_etherframe(p_client)->ttl = ttl;
-
-      output(0).push(p_client);                           // to clients (arp,...)
     }
+        
+    BRN_DEBUG("Src: %s fwd: %s rxnode: %s Header: %d", src.unparse().c_str(), fwd.unparse().c_str(), rx_node.unparse().c_str(), (uint32_t)(bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST));
 
     //add last hop as last node
     add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true);
@@ -272,7 +253,30 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Add src as last node");
       _flooding_last_node_due_to_piggyback++;
     }
+
     
+    if ( ! is_known ) {   //send to client only if this is the first time
+      Packet *p_client;
+
+      if ( forward )
+        p_client = packet->clone()->uniqueify();                           //packet for client
+      else
+        p_client = packet;
+
+      if ( sizeof(struct click_brn_bcast) + rxdatasize >= 6 ) {
+        p_client->pull((sizeof(struct click_brn_bcast) + rxdatasize) - 6);           //remove bcast_header+extradata, but leave space for target addr
+      } else {
+        p_client = p_client->push(6 - (sizeof(struct click_brn_bcast) + rxdatasize));//remove bcast_header+extradata, but leave space for target addr
+      }
+      
+      memcpy((void*)p_client->data(), (void*)brn_ethernet_broadcast, 6);//set dest to bcast
+
+      if ( BRNProtocol::is_brn_etherframe(p_client) )
+        BRNProtocol::get_brnheader_in_etherframe(p_client)->ttl = ttl;
+
+      output(0).push(p_client);                           // to clients (arp,...)
+    }
+
     if (forward) {
       _flooding_fwd++;
 
