@@ -148,6 +148,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   EtherAddress src = EtherAddress((uint8_t*)&(p_in->data()[sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + bcast_header->extra_data_size])); //src follows header
 
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
+  //clear responseflag for the case that broadcast is used
+  bcast_header->flags &= !BCAST_HEADER_FLAGS_FORCE_DST;
   
   if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
 
