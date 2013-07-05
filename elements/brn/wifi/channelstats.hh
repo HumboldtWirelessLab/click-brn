@@ -289,8 +289,9 @@ class ChannelStats : public BRNElement {
        _duration += duration;
        _nav += nav;
 
-       if ( seq > _last_seq ) _missed_seq += seq - _last_seq - 1;
-       else if ( seq < _last_seq ) _missed_seq += ((4096 - _last_seq) + seq) - 1;
+       _missed_seq += (4095 + seq - _last_seq) & 4095;
+       //if ( seq > _last_seq ) _missed_seq += seq - _last_seq - 1;
+       //else if ( seq < _last_seq ) _missed_seq += ((4096 - _last_seq) + seq) - 1;
 
        _last_seq = seq;
      }
