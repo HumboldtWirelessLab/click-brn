@@ -91,22 +91,19 @@ inline unsigned hashcode(EthernetPair p) {
 class BrnHostInfo {
   public:
     EtherAddress _ether;
-    IPAddress _ip;
 
     bool _is_associated;
 
-    BrnHostInfo(EtherAddress p, IPAddress ip) {
+    BrnHostInfo(EtherAddress p) {
       _ether = p;
-      _ip = ip;
       _is_associated = false;
     }
 
-    BrnHostInfo() : _ether(), _ip() {
+    BrnHostInfo() : _ether() {
     }
 
     BrnHostInfo(const BrnHostInfo &p) :
       _ether(p._ether),
-      _ip(p._ip),
       _is_associated(p._is_associated)
       { }
 };
@@ -218,29 +215,19 @@ class Brn2LinkTable: public BRNElement {
 
   bool update_link(EtherAddress from, EtherAddress to,
                    uint32_t seq, uint32_t age, uint32_t metric,
-                   uint8_t link_update_mode, bool permanent=false) {
-    return update_link(from, IPAddress(), to, IPAddress(), seq, age, metric, link_update_mode, permanent);
-  }
-
-  bool update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
-                   IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric,
                    uint8_t link_update_mode, bool permanent=false);
+
 
   bool update_both_links(EtherAddress a, EtherAddress b, uint32_t seq, uint32_t age,
                          uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
-    return update_both_links(a, IPAddress(), b, IPAddress(), seq, age, metric, link_update_mode, permanent);
-  }
-
-  bool update_both_links(EtherAddress a, IPAddress a_ip, EtherAddress b, IPAddress b_ip,
-                         uint32_t seq, uint32_t age, uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
-    if (update_link(a, a_ip, b, b_ip, seq, age, metric, link_update_mode, permanent)) {
-      return update_link(b, b_ip, a, a_ip, seq, age, metric, link_update_mode, permanent);
-    }
-    return false;
+    if (update_link(a, b, seq, age, metric, link_update_mode, permanent))
+      return update_link(b, a, seq, age, metric, link_update_mode, permanent);
+    
+    return false;      
   }
 
   /* other public functions */
-  inline BrnHostInfo *add_node(const EtherAddress& node, IPAddress ip);
+  inline BrnHostInfo *add_node(const EtherAddress& node);
 
   /**
    * Removes all links containing the specified node

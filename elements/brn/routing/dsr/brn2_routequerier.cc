@@ -1034,17 +1034,14 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
       }
     }
 
-    IPAddress ip1 = route[i].ip();
-    IPAddress ip2 = route[i+1].ip();
-
     //don't learn links from or to me from someone else
     if ( !(_me->isIdentical(&ether1) || _me->isIdentical(&ether2)) ) {
-      bool ret = _link_table->update_both_links(ether1, ip1, ether2, ip2, 0, 0, metric, LINK_UPDATE_REMOTE);
+      bool ret = _link_table->update_both_links(ether1, ether2, 0, 0, metric, LINK_UPDATE_REMOTE);
 
       if (ret) {
-        BRN_DEBUG(" _link_table->update_link %s (%s) %s (%s) %d",
-          route[i].ether().unparse().c_str(), route[i].ip().unparse().c_str(),
-          route[i+1].ether().unparse().c_str(), route[i+1].ip().unparse().c_str(), metric);
+        BRN_DEBUG(" _link_table->update_link %s %s %d",
+          route[i].ether().unparse().c_str(),
+          route[i+1].ether().unparse().c_str(), metric);
       }
     }
   }

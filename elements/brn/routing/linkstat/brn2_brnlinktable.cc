@@ -106,7 +106,7 @@ Brn2LinkTable::initialize (ErrorHandler *)
   for ( int d = 0; d < _node_identity->countDevices(); d++ ) {
     BRN2Device *dev = _node_identity->getDeviceByIndex(d);
 
-    if ( dev->is_routable() ) add_node(*dev->getEtherAddress(), IPAddress(0));
+    if ( dev->is_routable() ) add_node(*dev->getEtherAddress());
   }
 
   _timer.initialize(this);
@@ -136,8 +136,8 @@ Brn2LinkTable::clear()
 }
 
 bool 
-Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to,
-                           IPAddress to_ip, uint32_t seq, uint32_t age, uint32_t metric,
+Brn2LinkTable::update_link(EtherAddress from, EtherAddress to,
+                           uint32_t seq, uint32_t age, uint32_t metric,
                            uint8_t link_update_mode, bool permanent)
 {
   /* Don't update the linktable if it should be fix (e.g. for measurement and debug) */
@@ -156,15 +156,14 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
     return false;
   }
 
-  if (_stale_timeout.tv_sec < (int) age
-      && false == permanent ) {
+  if (_stale_timeout.tv_sec < (int) age && false == permanent ) {
     BRN_WARN(" * not inserting to old link %s -> %s.", from.unparse().c_str(), to.unparse().c_str());
     return true;
   }
 
   /* make sure both the hosts exist */
-  BrnHostInfo *nfrom = add_node(from, from_ip);
-  BrnHostInfo *nto = add_node(to, to_ip);
+  BrnHostInfo *nfrom = add_node(from);
+  BrnHostInfo *nto = add_node(to);
 
   assert(nfrom);
   assert(nto);
@@ -190,6 +189,7 @@ Brn2LinkTable::update_link(EtherAddress from, IPAddress from_ip, EtherAddress to
     }
   }
 
+  //linktable change info
   for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->update_link(lnfo);
 
   return true;
@@ -245,12 +245,12 @@ Brn2LinkTable::remove_node(const EtherAddress& node)
 }
 
 BrnHostInfo *
-Brn2LinkTable::add_node(const EtherAddress& node, IPAddress ip)
+Brn2LinkTable::add_node(const EtherAddress& node)
 {
   if (!node) return NULL;
   BrnHostInfo *bhi = _hosts.findp(node);
   if ( bhi != NULL ) return bhi;
-  _hosts.insert(node, BrnHostInfo( node, ip));
+  _hosts.insert(node, BrnHostInfo(node));
   bhi = _hosts.findp(node);
   for ( int i = 0; i < ltci.size(); i++ ) ltci[i]->add_node(bhi);
   return bhi;
@@ -353,10 +353,10 @@ void
 Brn2LinkTable::get_inodes(Vector<EtherAddress> &ether_addrs)
 {
   for (HTIter iter = _hosts.begin(); iter.live(); iter++) {
-    if (iter.value()._ip == IPAddress()) {
+    if (! iter.value()._is_associated ) {
       ether_addrs.push_back(iter.key());
     } else {
-      BRN_DEBUG(" * skip client node: %s (%s)", iter.key().unparse().c_str(), iter.value()._ip.unparse().c_str());
+      BRN_DEBUG(" * skip client node: %s", iter.key().unparse().c_str());
     }
   }
 }

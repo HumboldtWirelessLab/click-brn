@@ -79,15 +79,13 @@ class Dijkstra: public RoutingAlgorithm {
   class DijkstraNodeInfo {
     public:
       EtherAddress _ether;
-      IPAddress _ip;
 
       uint32_t _metric[DIJKSTRA_MAX_GRAPHS];
       DijkstraNodeInfo *_next[DIJKSTRA_MAX_GRAPHS];
       bool _marked[DIJKSTRA_MAX_GRAPHS];
 
-      DijkstraNodeInfo(EtherAddress p, IPAddress ip) {
+      DijkstraNodeInfo(EtherAddress p) {
         _ether = p;
-        _ip = ip;
         memset(_metric, 0, DIJKSTRA_MAX_GRAPHS * sizeof(uint32_t));
         memset(_next, 0, DIJKSTRA_MAX_GRAPHS * sizeof(DijkstraNodeInfo *));
         memset(_marked, 0, DIJKSTRA_MAX_GRAPHS * sizeof(bool));

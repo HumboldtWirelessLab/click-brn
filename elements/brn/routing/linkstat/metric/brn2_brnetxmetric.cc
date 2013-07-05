@@ -75,26 +75,23 @@ BRN2ETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BRN2ETXMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize>,
-                           Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq,
+BRN2ETXMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &,
+                           Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                            uint8_t update_mode)
 {
   int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
-  if (fwd.size() && rev.size() &&
-      fwd[0] && rev[0]) {
+  if (fwd.size() && rev.size() && fwd[0] && rev[0]) {
     metric = /*100 * 100 * 100*/ 1000000 / (fwd[0] * rev[0]);
   }
 
   /* update linktable */
-  if (metric &&
-      _link_table &&
-      !_link_table->update_link(from, to, seq, 0, metric, update_mode)) {
-    BRN_WARN(" couldn't update link %s > %d > %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
-  }
-  if (metric && 
-      _link_table && 
-      !_link_table->update_link(to, from, seq, 0, metric, update_mode)){
-    BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
+  if ( metric ) {
+    if ( !_link_table->update_link(from, to, seq, 0, metric, update_mode) ) {
+      BRN_WARN(" couldn't update link %s > %d > %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
+    }
+    if (!_link_table->update_link(to, from, seq, 0, metric, update_mode)){
+      BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
+    }
   }
 }
 
