@@ -392,7 +392,7 @@ void
 Dijkstra::add_node(BrnHostInfo *bhi)
 {
   if ( _dni_table.findp(bhi->_ether) == NULL ) {
-    _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether, bhi->_ip));
+    _dni_table.insert(bhi->_ether, new DijkstraNodeInfo(bhi->_ether));
     for ( int i = 0; i < DIJKSTRA_MAX_GRAPHS; i++ ) {
       _dgi_list[i]._last_used = Timestamp(0,0);
     }

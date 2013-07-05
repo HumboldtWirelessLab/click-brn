@@ -70,14 +70,14 @@ BRNETTMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 
 
 int 
-BRNETTMetric::get_tx_rate(EtherAddress) 
+BRNETTMetric::get_tx_rate(EtherAddress &) 
 {
   return 2;
 }
 
 void
-BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
-                          Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq,
+BRNETTMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
+                          Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                           uint8_t update_mode)
 {
 
@@ -149,7 +149,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
   }
 
   /* update linktable */
-  if (fwd_metric && _link_table) {
+  if (fwd_metric) {
     if (!_link_table->update_link(from, to, seq, 0, fwd_metric, update_mode)) {
       click_chatter("%{element} couldn't update link %s > %d > %s\n",
                     this, from.unparse().c_str(), fwd_metric, to.unparse().c_str());
@@ -158,7 +158,7 @@ BRNETTMetric::update_link(EtherAddress from, EtherAddress to, Vector<BrnRateSize
       //              this, from.unparse().c_str(), fwd_metric, to.unparse().c_str());
     }
   }
-  if (rev_metric && _link_table) {
+  if (rev_metric) {
     if (rev_metric > 0) {
       //click_chatter("%d", rev_metric);
       //exit(-1);
