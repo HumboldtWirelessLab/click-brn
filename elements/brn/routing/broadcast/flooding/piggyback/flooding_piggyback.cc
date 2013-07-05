@@ -34,28 +34,40 @@
 #include "elements/brn/brn2.h"
 
 #include "flooding_piggyback.hh"
+#include "../../../../../../include/click/timestamp.hh"
 
 CLICK_DECLS
 
-FloodingPiggyback::FloodingPiggyback()
-  :  _max_last_nodes_per_pkt(BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES)
+FloodingPiggyback::FloodingPiggyback():
+  _me(NULL),
+  _flooding(NULL),
+  _fhelper(NULL),
+  _max_last_nodes_per_pkt(BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES),
+  _update_interval(BCAST_EXTRA_DATA_NEIGHBOURS_UPDATE_INTERVAL)
 {
   BRNElement::init();
 }
 
 FloodingPiggyback::~FloodingPiggyback()
 {
+  _fhelper->clear_graph(_net_graph);
 }
 
 int
 FloodingPiggyback::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
+      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODING", cpkP+cpkM, cpElement, &_flooding,
+      "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
       "LASTNODESPERPKT", cpkP, cpInteger, &_max_last_nodes_per_pkt,
+      "NEIGHBOURSUPDATEINTERVAL", cpkP, cpInteger, &_update_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _last_update = Timestamp::now();
+  _fhelper->clear_graph(_net_graph);
 
   return 0;
 }
@@ -64,6 +76,13 @@ Packet *
 FloodingPiggyback::simple_action(Packet *p)
 {
   if ( _max_last_nodes_per_pkt > 0 ) {
+    
+    if ( (p->timestamp_anno() - _last_update).msecval() > _update_interval ) {
+      _last_update = p->timestamp_anno();
+      _fhelper->clear_graph(_net_graph);
+      _fhelper->init_graph(*(_me->getMasterAddress()), _net_graph, 100);
+      _fhelper->get_graph(_net_graph, 2, 100);
+    }
 
     struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)&(p->data()[sizeof(struct click_brn)]);
     uint16_t bcast_id = ntohs(bcast_header->bcast_id);
@@ -113,7 +132,8 @@ FloodingPiggyback::simple_action(Packet *p)
     }
 
     uint32_t new_data_size = FloodingPiggyback::bcast_header_add_last_nodes(_flooding, &src, bcast_id, &(extra_data[extra_data_size]),
-                                                                            BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt);
+                                                                            BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt,
+                                                                            _net_graph);
 
     if ( new_data_size > 0 ) {
       extra_data_size += new_data_size;
@@ -149,7 +169,7 @@ FloodingPiggyback::simple_action(Packet *p)
 }
 
 int
-FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes )
+FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes, NetworkGraph &net_graph)
 {
   int32_t last_node_cnt = 0;
   Flooding::BroadcastNode *bcn = fl->get_broadcast_node(src);
@@ -167,7 +187,7 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
-    if ( (add_node != *src) && (!fl->is_local_addr(&add_node)) ) {
+    if ( (add_node != *src) && (!fl->is_local_addr(&add_node)) && (net_graph.nmm.findp(add_node) != NULL) ) {
       //click_chatter("Add lastnode: %s",add_node.unparse().c_str());
       memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
       buf_idx = buf_idx + 6;

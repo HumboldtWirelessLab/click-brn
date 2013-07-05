@@ -246,8 +246,6 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
   uint32_t no_nodes;
   
   bool metric_changed;
-  
-  if (!_link_table) return;
     
   //get all n-hop nodes with minimum metric
   init_graph(node, ng, src_metric);
@@ -326,8 +324,6 @@ void
 FloodingHelper::get_local_childs(const EtherAddress &node, NetworkGraph &ng, int hops)
 {
   BRN_DEBUG("get local_childs");
-      
-  if (!_link_table) return;
   
   //start node is blacklist node
   HashMap<EtherAddress, EtherAddress> blacklist;
