@@ -173,19 +173,16 @@ ChannelStats::push(int port, Packet *p)
   //click_chatter("Duration: %d", w->i_dur);
   int type = w->i_fc[0] & WIFI_FC0_TYPE_MASK;
   uint16_t seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
+  uint32_t p_length = p->length();
 
   EtherAddress src;
   switch (type) {
-    case WIFI_FC0_TYPE_MGT:
-      src = EtherAddress(w->i_addr2);
-      break;
     case WIFI_FC0_TYPE_CTL:
       src = brn_etheraddress_broadcast;
       seq = 0;
       break;
     case WIFI_FC0_TYPE_DATA:
-      src = EtherAddress(w->i_addr2);
-      break;
+    case WIFI_FC0_TYPE_MGT:
     default:
       src = EtherAddress(w->i_addr2);
       break;
@@ -252,7 +249,7 @@ ChannelStats::push(int port, Packet *p)
         new_pi->_src = src;
         new_pi->_dst = dst;
         new_pi->_rx_time = p->timestamp_anno();
-        new_pi->_length = p->length()+4;
+        new_pi->_length = p_length+4;
         new_pi->_foreign = false;
         new_pi->_channel = _channel;
         new_pi->_rx = false;
@@ -263,9 +260,9 @@ ChannelStats::push(int port, Packet *p)
 
         if (rate != 0) {
           if ( rate_is_ht )
-            new_pi->_duration = BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+            new_pi->_duration = BrnWifi::pkt_duration(p_length + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
           else
-            new_pi->_duration = calc_transmit_time(rate, p->length() + 4 /*crc*/); //TODO: check CRC ??
+            new_pi->_duration = calc_transmit_time(rate, p_length + 4 /*crc*/); //TODO: check CRC ??
 
           new_pi->_retry = (i > 0);
           new_pi->_unicast = !dst.is_broadcast();
@@ -284,12 +281,12 @@ ChannelStats::push(int port, Packet *p)
             if ( i > 0 ) small_stats->tx_retry_packets++;
           }
           if ( rate_is_ht )
-            small_stats->duration_tx += BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+            small_stats->duration_tx += BrnWifi::pkt_duration(p_length + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
           else
-            small_stats->duration_tx += calc_transmit_time(rate, p->length() + 4 /*crc*/); // update duration counter TODO: check CRC ??
+            small_stats->duration_tx += calc_transmit_time(rate, p_length + 4 /*crc*/); // update duration counter TODO: check CRC ??
 
           small_stats->txpackets++;
-          small_stats->tx_bytes += p->length() + 4;
+          small_stats->tx_bytes += p_length + 4;
         } else {
           small_stats->zero_rate_packets++;
         }
@@ -298,29 +295,30 @@ ChannelStats::push(int port, Packet *p)
   } else {   /* Handle Rx Packets */
 
     PacketInfo *new_pi;
+    bool is_ht_rate = (BrnWifi::getMCS(ceh,0) == 1);
 
     if ( _enable_full_stats ) {
       new_pi = new PacketInfo();
       new_pi->_rx_time = p->timestamp_anno();
-      new_pi->_length = p->length() + 4;
+      new_pi->_length = p_length + 4;
       new_pi->_foreign = true;
       new_pi->_channel = _channel;
       new_pi->_rx = true;
       new_pi->_rate = ceh->rate;
-      new_pi->_is_ht_rate = (BrnWifi::getMCS(ceh,0) == 1);
+      new_pi->_is_ht_rate = is_ht_rate;
       new_pi->_seq = seq;
     }
 
-    if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
+    if ( (ceh->rate != 0) || is_ht_rate ) { //has valid rate
 
       uint32_t duration;
 
-      if ( BrnWifi::getMCS(ceh,0) == 1) {
+      if (is_ht_rate) {
         uint8_t  rate_index, rate_bw, rate_sgi;
         BrnWifi::toMCS(&rate_index, &rate_bw, &rate_sgi, ceh->rate);
-        duration = BrnWifi::pkt_duration(p->length() + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+        duration = BrnWifi::pkt_duration(p_length + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
       } else
-        duration = calc_transmit_time(ceh->rate, p->length() + 4 /*crc*/); //calc duration TODO: check CRC ??
+        duration = calc_transmit_time(ceh->rate, p_length + 4 /*crc*/); //calc duration TODO: check CRC ??
 
       uint8_t state = STATE_UNKNOWN;
 
@@ -355,7 +353,7 @@ ChannelStats::push(int port, Packet *p)
         // update duration counter
         small_stats->duration_rx += duration;
         small_stats->rxpackets++;
-        small_stats->rx_bytes += p->length() + 4;
+        small_stats->rx_bytes += p_length + 4;
 
         int silence = (signed char)ceh->silence;
         small_stats->avg_noise += silence;
@@ -365,17 +363,20 @@ ChannelStats::push(int port, Packet *p)
         small_stats->avg_rssi += rssi;
         small_stats->std_rssi += (rssi * rssi);
 
-        _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,BrnWifi::getMCS(ceh,0) == 1,rssi);
+        _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,is_ht_rate,rssi);
 
-        if ( BrnWifi::hasExtRxStatus(ceh) ) {
-          struct brn_click_wifi_extra_rx_status *rx_status = (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
-          small_stats->avg_ctl_rssi[0] += rx_status->rssi_ctl[0];
-          small_stats->avg_ctl_rssi[1] += rx_status->rssi_ctl[1];
-          small_stats->avg_ctl_rssi[2] += rx_status->rssi_ctl[2];
+        bool has_ext_rx_status = BrnWifi::hasExtRxStatus(ceh);
+        struct brn_click_wifi_extra_rx_status *ext_rx_status;
 
-          small_stats->avg_ext_rssi[0] += rx_status->rssi_ext[0];
-          small_stats->avg_ext_rssi[1] += rx_status->rssi_ext[1];
-          small_stats->avg_ext_rssi[2] += rx_status->rssi_ext[2];
+        if ( has_ext_rx_status ) {
+          ext_rx_status = (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
+          small_stats->avg_ctl_rssi[0] += ext_rx_status->rssi_ctl[0];
+          small_stats->avg_ctl_rssi[1] += ext_rx_status->rssi_ctl[1];
+          small_stats->avg_ctl_rssi[2] += ext_rx_status->rssi_ctl[2];
+
+          small_stats->avg_ext_rssi[0] += ext_rx_status->rssi_ext[0];
+          small_stats->avg_ext_rssi[1] += ext_rx_status->rssi_ext[1];
+          small_stats->avg_ext_rssi[2] += ext_rx_status->rssi_ext[2];
         }
 
         switch (state) {
@@ -409,15 +410,13 @@ ChannelStats::push(int port, Packet *p)
             SrcInfo *src_info;
             if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {
               //inser new ( rssi value is set via constructor)
-              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p->length() + 4, duration, w->i_dur, seq));
+              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p_length + 4, duration, w->i_dur, seq));
               src_info = _small_stats_src_tab[_current_small_stats].findp(src);
             } else {
-              src_info->add_packet_info(rssi,p->length() + 4, duration, w->i_dur, seq);
+              src_info->add_packet_info(rssi,p_length + 4, duration, w->i_dur, seq);
             }
 
-            if (BrnWifi::hasExtRxStatus(ceh))
-              src_info->add_ctl_ext_rssi((struct brn_click_wifi_extra_rx_status *)
-                                          BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p));
+            if (has_ext_rx_status) src_info->add_ctl_ext_rssi(ext_rx_status);
           }
         }
       }
