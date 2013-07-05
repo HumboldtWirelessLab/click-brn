@@ -46,6 +46,7 @@ BRN2LinkStat::BRN2LinkStat()
     _tau(10000),
     _period(1000),
     _seq(0),
+    _metrics_size(0),
     _next_neighbor_to_add(0),
     _timer(static_send_hook,this),
     _stale_timer(this),
@@ -54,7 +55,6 @@ BRN2LinkStat::BRN2LinkStat()
     _stale(LINKSTAT_DEFAULT_STALE)
 {
   BRNElement::init();
-  _metrics.clear();
 }
 
 BRN2LinkStat::~BRN2LinkStat()
@@ -66,6 +66,9 @@ BRN2LinkStat::~BRN2LinkStat()
   _neighbors.clear();
   _ads_rs.clear();
   _bad_table.clear();
+
+  delete[] _metrics;
+  //_metrics.clear();
 }
 
 int
@@ -106,13 +109,18 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
   Vector<String> metric_vec;
   cp_spacevec(_metric_str, metric_vec);
 
+  _metrics = new BRN2GenericMetric*[metric_vec.size()];
+  _metrics_size = 0;
+  
   for (int i = 0; i < metric_vec.size(); i++) {
     Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
       //click_chatter("El-Name: %s", new_element->class_name());
       BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
       if ( gm != NULL ) {
-        _metrics.push_back(gm);
+        _metrics[_metrics_size] = gm;
+        _metrics_size++;
+        //_metrics.push_back(gm);
       }
     }
   }
@@ -181,9 +189,9 @@ BRN2LinkStat::take_state(Element *e, ErrorHandler *errh)
 }
 
 void
-BRN2LinkStat::update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs, Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq, uint8_t update_mode)
+BRN2LinkStat::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs, Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq, uint8_t update_mode)
 {
-  for (int i = 0; i < _metrics.size(); i++) {
+  for (int i = 0; i < _metrics_size; i++) {
     _metrics[i]->update_link(from, to, rs, fwd, rev, seq, update_mode);
   }
 }
@@ -535,23 +543,27 @@ BRN2LinkStat::simple_action(Packet *p)
   uint8_t *ptr =  (uint8_t *) (lp + 1);
   uint8_t *end  = (uint8_t *) p->data() + p->length();
 
-  BRN_DEBUG("Start: %x End: %x",ptr,end);
+  //BRN_DEBUG("Start: %x End: %x",ptr,end);
 
   if (lp->_flags & PROBE_AVAILABLE_RATES) { // available rates where transmitted
     int num_rates = ptr[0];
-    Vector<MCS> rates;
     ptr++;
-    int x = 0;
-    while (ptr < end && x < num_rates) {
-      MCS rate;
-      rate.set_packed_8(ptr[x]);
-      rates.push_back(rate);
-      x++;
-    }
-    ptr += num_rates;
+
     if(_rtable) { // store neighbor node's available rates
-      _rtable->insert(EtherAddress(eh->ether_shost), rates);
+      if ( ! _rtable->includes_node(EtherAddress(eh->ether_shost)) ) {
+        Vector<MCS> rates;
+        int x = 0;
+        while (ptr < end && x < num_rates) {
+          MCS rate;
+          rate.set_packed_8(ptr[x]);
+          rates.push_back(rate);
+          x++;
+        }
+        _rtable->insert(EtherAddress(eh->ether_shost), rates);
+      }
     }
+    
+    ptr += num_rates;
   }
 
   if (lp->_flags & PROBE_REV_FWD_INFO) { // linkprobe info where transmitted
