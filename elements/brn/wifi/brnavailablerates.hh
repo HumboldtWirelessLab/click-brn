@@ -227,6 +227,7 @@ class BrnAvailableRates : public BRNElement { public:
 
   Vector<MCS> lookup(EtherAddress eth);
   int insert(EtherAddress eth, Vector<MCS>);
+  bool includes_node(EtherAddress eth) { return _rtable.findp(eth) != NULL; };
 
   int parse_and_insert(String s, ErrorHandler *errh);
 

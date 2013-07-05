@@ -281,7 +281,9 @@ public:
   uint32_t _period;    // msecs (time between 2 linkprobes
   uint32_t _seq;       // sequence number
 
-  Vector<BRN2GenericMetric *> _metrics;
+  //Vector<BRN2GenericMetric *> _metrics;
+  BRN2GenericMetric **_metrics;
+  int _metrics_size;
   /* just for metrics during configure/initialize*/
   String _metric_str;
 
@@ -301,8 +303,8 @@ public:
   ProbeMap _bcast_stats;
   void add_bcast_stat(EtherAddress, const link_probe &);
 
-  void update_link(const EtherAddress from, EtherAddress to, Vector<BrnRateSize> rs,
-                         Vector<uint8_t> fwd, Vector<uint8_t> rev, uint32_t seq,
+  void update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
+                         Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                          uint8_t update_mode);
 
   void send_probe_hook();
