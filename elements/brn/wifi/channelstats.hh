@@ -197,7 +197,6 @@ class ChannelStats : public BRNElement {
     class SrcInfo {
      public:
 
-      uint16_t _reserved;
       uint32_t _rssi;
       uint32_t _sum_sq_rssi;
       uint32_t _pkt_count;
@@ -234,21 +233,21 @@ class ChannelStats : public BRNElement {
       int16_t _last_seq;
       uint32_t _missed_seq;
 
-      SrcInfo(): _rssi(0), _sum_sq_rssi(0), _pkt_count(0), _byte_count(0), _duration(0),
-                 _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false),
-                 _rssi_hist_index(0), _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false),
-                 _last_seq(-1), _missed_seq(0)
-      {  //TODO: better start value for min_rssi (replace 1000)
-        memset(_avg_ctl_rssi,0, sizeof(_avg_ctl_rssi));
-        memset(_avg_ext_rssi,0, sizeof(_avg_ext_rssi));
+      SrcInfo() {
+        reset();
       }
 
-      SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq):
-          _rssi(0), _sum_sq_rssi(0), _pkt_count(1), _byte_count(packet_size), _duration(0),
-          _nav(0), _min_rssi(1000), _max_rssi(0), _calc_finished(false), _rssi_hist_index(0),
-          _rssi_hist_size(CS_DEFAULT_RSSI_HIST_SIZE), _rssi_hist_overflow(false),
-          _last_seq(-1), _missed_seq(0)
+      SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq)
+      { 
+        reset();
+        set(rssi, packet_size, duration, nav, seq);
+      }
+
+      void set(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq)
       {
+        _pkt_count = 1;
+        _byte_count = packet_size;
+        
         if ( rssi != 0 ) {
           _rssi = rssi;
           _sum_sq_rssi = rssi * rssi;
@@ -257,16 +256,22 @@ class ChannelStats : public BRNElement {
         _min_rssi = _max_rssi = rssi;
         _rssi_hist[_rssi_hist_index++] = rssi;
 
-        memset(_avg_ctl_rssi, 0, sizeof(_avg_ctl_rssi));
-        memset(_avg_ext_rssi, 0, sizeof(_avg_ext_rssi));
-
         _duration = duration;
         _nav = nav;
 
         _last_seq = seq;
       }
 
-      void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq) {
+      void reset() {
+        memset(this,0, sizeof(SrcInfo));
+        _min_rssi = 1000;
+        _calc_finished = false;
+        _rssi_hist_size = CS_DEFAULT_RSSI_HIST_SIZE;
+        _rssi_hist_overflow = false;
+        _last_seq = -1;
+      }
+      
+      inline void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq) {
        if ( rssi > 0 ) {
          _rssi += rssi;
          _sum_sq_rssi += rssi * rssi;
@@ -383,7 +388,7 @@ class ChannelStats : public BRNElement {
     typedef Vector<PacketInfoHW*> PacketListHW;
     typedef PacketListHW::const_iterator PacketListHWIter;
 
-    typedef HashMap<EtherAddress, SrcInfo> SrcInfoTable;
+    typedef HashMap<EtherAddress, SrcInfo*> SrcInfoTable;
     typedef SrcInfoTable::const_iterator SrcInfoTableIter;
 
   public:
@@ -444,10 +449,12 @@ class ChannelStats : public BRNElement {
 
     struct airtime_stats _full_stats;
     SrcInfoTable         _full_stats_srcinfo_tab;
+    SrcInfoTable         _full_stats_srcinfo_tab_pool;
     RSSIInfo             _full_stats_rssiinfo;
 
     struct airtime_stats _small_stats[SMALL_STATS_SIZE];
     SrcInfoTable _small_stats_src_tab[SMALL_STATS_SIZE];
+    SrcInfoTable _small_stats_src_tab_pool[SMALL_STATS_SIZE];
     RSSIInfo _small_stats_rssiinfo[SMALL_STATS_SIZE];
     uint8_t _current_small_stats;
 

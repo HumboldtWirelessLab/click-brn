@@ -44,8 +44,8 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
             if(_cst != NULL)
             {
                 struct airtime_stats *stats = _cst->get_latest_stats();
-                HashMap<EtherAddress, ChannelStats::SrcInfo> *src_tab = _cst->get_latest_stats_neighbours();
-                ChannelStats::SrcInfo *src_info = src_tab->findp(*_packet_parameter->get_src_address());
+                HashMap<EtherAddress, ChannelStats::SrcInfo*> *src_tab = _cst->get_latest_stats_neighbours();
+                ChannelStats::SrcInfo *src_info = src_tab->find(*_packet_parameter->get_src_address());
                 ChannelStats::RSSIInfo *rssi_info = _cst->get_latest_rssi_info();
 
                 estimateWeakSignal(src_info, *rssi_info);
@@ -1121,7 +1121,7 @@ StringAccum PacketLossEstimator::stats_get_weak_signal(HiddenNodeDetection::Node
 
         if(_cst->get_latest_stats_neighbours()->findp(ea) != NULL)
         {
-            weak_signal_sa << "\t\t\t<last_avg_rssi>" << _cst->get_latest_stats_neighbours()->findp(ea)->_avg_rssi << "</last_avg_rssi>\n";
+            weak_signal_sa << "\t\t\t<last_avg_rssi>" << _cst->get_latest_stats_neighbours()->find(ea)->_avg_rssi << "</last_avg_rssi>\n";
         } else
         {
             weak_signal_sa << "\t\t\t<last_avg_rssi>0</last_avg_rssi>\n";

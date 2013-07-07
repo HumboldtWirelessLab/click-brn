@@ -237,6 +237,8 @@ BRN2LinkStat::send_probe()
     return;
   }
 
+  EtherAddress dev_address = *(_dev->getEtherAddress());
+  
   uint16_t size = _ads_rs[_ads_rs_index]._size;   // size of the probe packet (e.g. 1000 byte)
   uint16_t rate = _ads_rs[_ads_rs_index]._rate;   // probe packet's transmission rate
   uint32_t seq = ++_seq;
@@ -247,8 +249,7 @@ BRN2LinkStat::send_probe()
   }
 
   // construct probe packet
-  //WritablePacket *p = Packet::make(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
-  WritablePacket *p = BRNElement::packet_new(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
+  WritablePacket *p = Packet::make(128 /*headroom*/,NULL /* *data*/, size + 2, 32); //alignment
   if (p == 0) {
     BRN_ERROR(" cannot make packet!");
     return;
@@ -256,7 +257,10 @@ BRN2LinkStat::send_probe()
 
   ASSERT_ALIGNED(p->data());
   p->pull(2);
-  memset(p->data(), 0, p->length());
+
+  uint8_t *p_data = p->data();
+  uint32_t p_length = p->length();
+  memset(p_data, 0, p->length());
 
   // each probe packet is annotated with a timestamp
   struct timeval now = Timestamp::now().timeval();
@@ -265,13 +269,13 @@ BRN2LinkStat::send_probe()
   /*
    * fill brn header header // think about this; probe packets only available for one hop
    */
-  BRNProtocol::set_brn_header(p->data(), BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p->length(), 1, BRN_TOS_BE );
+  BRNProtocol::set_brn_header(p_data, BRN_PORT_LINK_PROBE, BRN_PORT_LINK_PROBE, p_length, 1, BRN_TOS_BE );
   BRNPacketAnno::set_tos_anno(p, BRN_TOS_BE);
 
   /*
    * Fill linkprobe header
    */
-  link_probe *lp = (struct link_probe *) (p->data() + sizeof(click_brn));
+  link_probe *lp = (struct link_probe *) (p_data + sizeof(click_brn));
   lp->_version = LINKPROBE_VERSION;
   lp->_flags = 0;
 
@@ -287,7 +291,7 @@ BRN2LinkStat::send_probe()
   lp->_num_probes = (uint8_t)_ads_rs.size(); // number of probes monitored by this node (e.g. 2 in case of (2 60, 22 1400))
 
   uint8_t *ptr =  (uint8_t *)(lp + 1); // points to the start of the payload area (array of wifi_link_entry entries)
-  uint8_t *end = (uint8_t *)p->data() + p->length(); // indicates end of payload area; neccessary to preserve max packet size
+  uint8_t *end = (uint8_t *)p_data + p_length; // indicates end of payload area; neccessary to preserve max packet size
 
   BRN_DEBUG("Pack: Start: %x End: %x",ptr,end);
 
@@ -296,7 +300,7 @@ BRN2LinkStat::send_probe()
    */
   if (_rtable) {
     // my wireless device is capable to transmit packets at rates (e.g. 2 4 11 12 18 22 24 36 48 72 96 108)
-    Vector<MCS> rates = _rtable->lookup(*(_dev->getEtherAddress()));
+    Vector<MCS> rates = _rtable->lookup(dev_address);
 
     if (rates.size() && 1 + ptr + rates.size() < end) { // put my available rates into the packet
       ptr[0] = rates.size(); // available rates count
@@ -355,7 +359,7 @@ BRN2LinkStat::send_probe()
         rev.push_back(lnfo->_rev);
       }
       // update my own link table
-      update_link(*(_dev->getEtherAddress()), probe->_ether, rates, fwd, rev, probe->_seq, METRIC_UPDATE_PASSIVE );
+      update_link(dev_address, probe->_ether, rates, fwd, rev, probe->_seq, METRIC_UPDATE_PASSIVE );
 
       ptr += probe->_probe_types.size() * sizeof(link_info);
     }
@@ -372,7 +376,7 @@ BRN2LinkStat::send_probe()
     lp->_flags |= PROBE_HANDLER_PAYLOAD; // indicate that handler_info are available
 
     for ( int h = 0; h < _reg_handler.size(); h++ ) {
-      int32_t res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, _dev->getEtherAddress(), (char*)&(ptr[3]), (space_left-4));
+      int32_t res = _reg_handler[h]._tx_handler(_reg_handler[h]._element, &dev_address, (char*)&(ptr[3]), (space_left-4));
       if ( res > (space_left-4) ) {
         BRN_WARN("Handler %d want %d but %d was left",_reg_handler[h]._protocol,res,space_left-4);
         res = 0;
@@ -392,7 +396,7 @@ BRN2LinkStat::send_probe()
 
   BRN_DEBUG("Handler post Ptr: %x End: %x Value: %d",ptr,end,*ptr);
 
-  lp->_cksum = click_in_cksum((unsigned char *)lp, p->length() - sizeof(click_brn));
+  lp->_cksum = click_in_cksum((unsigned char *)lp, p_length - sizeof(click_brn));
 
   /*
    * WIFI Stuff

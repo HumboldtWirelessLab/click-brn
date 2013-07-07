@@ -408,12 +408,20 @@ ChannelStats::push(int port, Packet *p)
         if ( _neighbour_stats ) {
           if ( state == STATE_OK ) {
             SrcInfo *src_info;
-            if ( (src_info = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {
-              //inser new ( rssi value is set via constructor)
-              _small_stats_src_tab[_current_small_stats].insert(src, SrcInfo(rssi,p_length + 4, duration, w->i_dur, seq));
-              src_info = _small_stats_src_tab[_current_small_stats].findp(src);
+            SrcInfo **src_info_p;
+            if ( (src_info_p = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {       //search in tab
+              if ( (src_info_p = _small_stats_src_tab_pool[_current_small_stats].findp(src)) == NULL ) {//search in pool
+              //insert new ( rssi value is set via constructor)
+                src_info = new SrcInfo(rssi,p_length + 4, duration, w->i_dur, seq);     //create new 
+                _small_stats_src_tab_pool[_current_small_stats].insert(src, src_info);  //insert pool
+              } else {
+                src_info = *src_info_p;
+                src_info->reset();                                                      //clear found
+                src_info->set(rssi,p_length + 4, duration, w->i_dur, seq);              //set
+              }
+              _small_stats_src_tab[_current_small_stats].insert(src, src_info);         //insert tab
             } else {
-              src_info->add_packet_info(rssi,p_length + 4, duration, w->i_dur, seq);
+                (*src_info_p)->add_packet_info(rssi,p_length + 4, duration, w->i_dur, seq);
             }
 
             if (has_ext_rx_status) src_info->add_ctl_ext_rssi(ext_rx_status);
@@ -578,7 +586,11 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab, RS
 
   if ( diff.usecval() <= _min_update_time * 1000 ) return;
 
-  if ( src_tab ) src_tab->clear();
+  if ( src_tab ) {
+    BRN_ERROR("Clear SRCTAB");
+    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) delete iter.value();
+    src_tab->clear();
+  }
   if ( rssi_tab ) rssi_tab->reset();
 
   memset(cstats, 0, sizeof(struct airtime_stats));
@@ -641,11 +653,11 @@ ChannelStats::calc_stats(struct airtime_stats *cstats, SrcInfoTable *src_tab, RS
           if ( sources.findp(pi->_src) == NULL ) sources.insert(pi->_src,pi->_src);
 
           if ( src_tab != NULL ) {
-            SrcInfo *src_i;
+            SrcInfo **src_i;
             if ( (src_i = src_tab->findp(pi->_src)) == NULL ) {
-              src_tab->insert(pi->_src, SrcInfo((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq));
+              src_tab->insert(pi->_src, new SrcInfo((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq));
             } else {
-              src_i->add_packet_info((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq);
+              (*src_i)->add_packet_info((uint32_t)pi->_rssi,(uint32_t)pi->_length, pi->_duration, pi->_nav, pi->_seq);
             }
           }
         }
@@ -791,13 +803,12 @@ ChannelStats::calc_stats_final(struct airtime_stats *small_stats, SrcInfoTable *
   }
 
   if ( src_tab ) {
+
     small_stats->no_sources = src_tab->size();
 
-    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
-      EtherAddress ea = iter.key();
-      SrcInfo *src = src_tab->findp(ea);
-      src->calc_values();
-    }
+    for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++)
+      iter.value()->calc_values();
+
   }
 }
 
@@ -888,21 +899,21 @@ ChannelStats::stats_handler(int mode)
 
       sa << "\" />\n\t<neighbourstats>\n";
       for (SrcInfoTableIter iter = src_tab->begin(); iter.live(); iter++) {
-        SrcInfo src = iter.value();
+        SrcInfo *src = iter.value();
         EtherAddress ea = iter.key();
-        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src._avg_rssi << "\" std_rssi=\"";
-        sa  << src._std_rssi << "\" min_rssi=\"" << src._min_rssi << "\" max_rssi=\"" << src._max_rssi;
-        sa << "\" pkt_cnt=\"" << src._pkt_count << "\" rx_bytes=\"" << src._byte_count;
-        sa << "\" duration=\"" << src._duration << "\" nav=\"" << src._nav << "\" last_seq=\"" << src._last_seq;
-	sa << "\" missed_seq=\"" << src._missed_seq << "\" >\n";
-        sa << "\t\t\t<rssi_extended>\n\t\t\t\t<ctl rssi0=\"" << src._avg_ctl_rssi[0];
-        sa << "\" rssi1=\"" << src._avg_ctl_rssi[1] << "\" rssi2=\"" << src._avg_ctl_rssi[2] << "\" />\n\t\t\t\t<ext rssi0=\"";
-        sa << src._avg_ext_rssi[0] << "\" rssi1=\"" << src._avg_ext_rssi[1] << "\" rssi2=\"" << src._avg_ext_rssi[2] << "\" />\n";
-        sa << "\t\t\t</rssi_extended>\n\t\t\t<rssi_hist size=\"" << src._rssi_hist_index << "\" max_size=\"" << src._rssi_hist_size;
-        sa << "\" overflow=\"" << src._rssi_hist_overflow << "\" values=\"";
-        for ( uint32_t rssi_i = 0; rssi_i < src._rssi_hist_index; rssi_i++) {
+        sa << "\t\t<nb addr=\"" << ea.unparse() << "\" rssi=\"" << src->_avg_rssi << "\" std_rssi=\"";
+        sa  << src->_std_rssi << "\" min_rssi=\"" << src->_min_rssi << "\" max_rssi=\"" << src->_max_rssi;
+        sa << "\" pkt_cnt=\"" << src->_pkt_count << "\" rx_bytes=\"" << src->_byte_count;
+        sa << "\" duration=\"" << src->_duration << "\" nav=\"" << src->_nav << "\" last_seq=\"" << src->_last_seq;
+	sa << "\" missed_seq=\"" << src->_missed_seq << "\" >\n";
+        sa << "\t\t\t<rssi_extended>\n\t\t\t\t<ctl rssi0=\"" << src->_avg_ctl_rssi[0];
+        sa << "\" rssi1=\"" << src->_avg_ctl_rssi[1] << "\" rssi2=\"" << src->_avg_ctl_rssi[2] << "\" />\n\t\t\t\t<ext rssi0=\"";
+        sa << src->_avg_ext_rssi[0] << "\" rssi1=\"" << src->_avg_ext_rssi[1] << "\" rssi2=\"" << src->_avg_ext_rssi[2] << "\" />\n";
+        sa << "\t\t\t</rssi_extended>\n\t\t\t<rssi_hist size=\"" << src->_rssi_hist_index << "\" max_size=\"" << src->_rssi_hist_size;
+        sa << "\" overflow=\"" << src->_rssi_hist_overflow << "\" values=\"";
+        for ( uint32_t rssi_i = 0; rssi_i < src->_rssi_hist_index; rssi_i++) {
           if ( rssi_i > 0 ) sa << ",";
-          sa << (uint32_t)(src._rssi_hist[rssi_i]);
+          sa << (uint32_t)(src->_rssi_hist[rssi_i]);
         }
         sa << "\" />\n\t\t</nb>\n";
       }

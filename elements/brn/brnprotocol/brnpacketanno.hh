@@ -146,7 +146,7 @@ class BRNPacketAnno {
   static uint8_t ttl_anno(Packet *p);
   static void set_ttl_anno(Packet *p, uint8_t ttl);
 
-  static uint8_t channel_anno(Packet *p);
+  static inline uint8_t channel_anno(Packet *p) { return p->anno_u8()[CHANNEL_ANNO_OFFSET]; }
   static uint8_t operation_anno(Packet *p);
 
   static void set_channel_anno(Packet *p, uint8_t channel, uint8_t operation);

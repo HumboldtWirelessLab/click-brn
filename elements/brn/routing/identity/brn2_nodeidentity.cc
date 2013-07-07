@@ -13,7 +13,8 @@
 CLICK_DECLS
 
 BRN2NodeIdentity::BRN2NodeIdentity()
-  : _node_id_32(0),
+  : _node_devices_size(0),
+    _node_id_32(0),
     _master_device_id(-1),
     _service_device_id(-1)
 {
@@ -22,7 +23,8 @@ BRN2NodeIdentity::BRN2NodeIdentity()
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
 {
-  _node_devices.clear();
+  //_node_devices.clear();
+  delete[] _node_devices;
 }
 
 int
@@ -43,6 +45,9 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   String dev_string_uncomment = cp_uncomment(dev_string);
   cp_spacevec(dev_string_uncomment, devices);
 
+  _node_devices_size = 0;
+  _node_devices = new BRN2Device*[devices.size()];
+  
   for (int slot = 0; slot < devices.size(); slot++) {
     Element *e = cp_element(devices[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -50,11 +55,13 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     } else {
       brn_device->setDeviceNumber(no_dev++);
-      _node_devices.push_back(brn_device);
+      //_node_devices.push_back(brn_device);
+      _node_devices[_node_devices_size] = brn_device;
+      _node_devices_size++;
     }
   }
 
-  if ( _node_devices.size() > 0 ) {
+  if ( _node_devices_size > 0 ) {
     _master_device = _node_devices[0];
   }
 
@@ -66,7 +73,7 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
 {
   BRN2Device *brn_device;
 
-  for ( int i = 0; i < _node_devices.size(); i++ ) {
+  for ( uint32_t i = 0; i < _node_devices_size; i++ ) {
     brn_device = _node_devices[i];
 
     if ( brn_device->is_master_device() ) {
@@ -114,12 +121,24 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
 bool
 BRN2NodeIdentity::isIdentical(EtherAddress *e)
 {
-  return ( getDeviceNumber(e) != -1 );
+  for ( uint32_t i = 0; i < _node_devices_size; i++ )
+    if ( memcmp(e->data(), _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
+   
+  return false;
+}
+
+bool
+BRN2NodeIdentity::isIdentical(uint8_t *data)
+{
+  for ( uint32_t i = 0; i < _node_devices_size; i++ )
+    if ( memcmp(data, _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
+   
+  return false;
 }
 
 int
 BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
-  for ( int i = 0; i < _node_devices.size(); i++ )
+  for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( *e == *(_node_devices[i]->getEtherAddress()) ) return _node_devices[i]->getDeviceNumber();
 
   return -1;
@@ -127,7 +146,7 @@ BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
 
 BRN2Device *
 BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
-  for ( int i = 0; i < _node_devices.size(); i++ )
+  for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( num == _node_devices[i]->getDeviceNumber() ) return _node_devices[i];
 
   return NULL;
@@ -135,7 +154,7 @@ BRN2NodeIdentity::getDeviceByNumber(uint8_t num) {
 
 BRN2Device *
 BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
-  if ( index < _node_devices.size() ) return _node_devices[index];
+  if ( index < _node_devices_size ) return _node_devices[index];
 
   return NULL;
 }
@@ -167,7 +186,7 @@ read_devinfo_param(Element *e, void *)
   BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
 
   sa << "<nodeidentity name=\"" << id->_nodename << "\">\n";
-  for ( int i = 0; i < id->_node_devices.size(); i++ ) {
+  for ( uint32_t i = 0; i < id->_node_devices_size; i++ ) {
     dev = id->_node_devices[i];
     sa << "\t<device index=\"" << i << "\" name=\"" << dev->getDeviceName().c_str();
     sa << "\" ethernet_address=\"" << dev->getEtherAddress()->unparse().c_str();

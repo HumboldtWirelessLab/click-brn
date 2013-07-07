@@ -31,6 +31,7 @@
 #include <clicknet/ether.h>
 
 
+#include "elements/brn/brn2.h"
 #include "brn2_tothisnode.hh"
 
 CLICK_DECLS
@@ -68,7 +69,10 @@ BRN2ToThisNode::configure(Vector<String> &conf, ErrorHandler* errh)
     _mode = MODE_ID;
   }
 
-  if ( _addr != EtherAddress() ) _mode |= MODE_ADDR;
+  if ( _addr != EtherAddress() ) {
+    _addr_data = _addr.data();
+    _mode |= MODE_ADDR;
+  }
 
   return 0;
 }
@@ -96,28 +100,28 @@ BRN2ToThisNode::push(int, Packet *p_in)
   }
 
   // get dst mac
-  EtherAddress dst_addr(ether->ether_dhost);
+  //EtherAddress dst_addr(ether->ether_dhost);
 
-  if ( dst_addr.is_broadcast() ) {
+  if ( memcmp(ether->ether_dhost, brn_ethernet_broadcast, 6) == 0 ) {
     output(1).push(p_in);
     return;
   }
 
   switch (_mode) {
     case MODE_ID:
-      if (_id->isIdentical(&dst_addr)) {
+      if (_id->isIdentical(ether->ether_dhost)) {
         output(0).push(p_in);
         return;
       }
       break;
     case MODE_ADDR:
-      if (_addr == dst_addr) {
+      if (memcmp(_addr_data, ether->ether_dhost, 6) == 0) {
         output(0).push(p_in);
         return;
       }
       break;
     case MODE_BOTH:
-      if ((_addr == dst_addr) || (_id->isIdentical(&dst_addr))) {
+      if ((memcmp(_addr_data, ether->ether_dhost, 6) == 0) || (_id->isIdentical(ether->ether_dhost))) {
         output(0).push(p_in);
         return;
       }

@@ -63,9 +63,11 @@ class MCS {
     uint8_t _ht40;
 
     uint8_t _ridx;
+    
+    uint8_t _packed8;
+    uint16_t _packed16;
 
     MCS() : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
-      BrnWifi::fromMCS(_ridx, _ht40, _sgi, &_rate);
     }
 
     MCS(uint8_t rate) : _data_rate(10), _rate(2), _is_ht(false), _sgi(0), _ht40(0), _ridx(INVALID_RIDX) {
@@ -233,6 +235,7 @@ class BrnAvailableRates : public BRNElement { public:
 
   RTable _rtable;
   Vector<MCS> _default_rates;
+  //HashMap<MCS> _default_rates_map;
 
 };
 
