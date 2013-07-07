@@ -107,10 +107,10 @@ void CooperativeChannelStats::send_message()
 
         for(ChannelStats::SrcInfoTableIter iter = sit->begin(); iter.live(); iter++)
         {
-            ChannelStats::SrcInfo src = iter.value();
+            ChannelStats::SrcInfo *src = iter.value();
             EtherAddress ea = iter.key();
             struct neighbour_airtime_stats nats;
-            src.get_airtime_stats(&ea, &nats);
+            src->get_airtime_stats(&ea, &nats);
             nats_arr[non++] = nats;
         }
     }

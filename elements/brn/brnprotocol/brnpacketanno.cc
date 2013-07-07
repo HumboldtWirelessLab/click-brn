@@ -171,13 +171,6 @@ BRNPacketAnno::set_ttl_anno(Packet *p, uint8_t ttl)
 }
 
 uint8_t
-BRNPacketAnno::channel_anno(Packet *p)
-{
-  uint8_t* channel = ((uint8_t*)(p->anno_u8()) + CHANNEL_ANNO_OFFSET);
-  return (channel[0]);
-}
-
-uint8_t
 BRNPacketAnno::operation_anno(Packet *p)
 {
   uint8_t* op = ((uint8_t*)(p->anno_u8()) + OPERATION_ANNO_OFFSET);

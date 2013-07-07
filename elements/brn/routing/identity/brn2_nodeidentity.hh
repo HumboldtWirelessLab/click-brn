@@ -58,9 +58,10 @@ class BRN2NodeIdentity : public BRNElement {
 
   //returns true if the given ethernet address belongs to this node (e.g. wlan-dev)
   bool isIdentical(EtherAddress *);
+  bool isIdentical(uint8_t *data);
 
   int getDeviceNumber(EtherAddress *);
-  int countDevices() { return _node_devices.size(); }
+  int countDevices() { return _node_devices_size; }
   BRN2Device *getDeviceByNumber(uint8_t);
   BRN2Device *getDeviceByIndex(uint8_t);
 
@@ -79,7 +80,9 @@ class BRN2NodeIdentity : public BRNElement {
   md5_byte_t *getNodeID() { return _node_id; };
   uint32_t getNodeID32() { return _node_id_32; };
 
-  Vector<BRN2Device*> _node_devices;   //TODO: should be private
+  //Vector<BRN2Device*> _node_devices;   //TODO: should be private
+  BRN2Device **_node_devices;
+  uint32_t _node_devices_size;
 
  private:
   //
