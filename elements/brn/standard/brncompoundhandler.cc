@@ -95,11 +95,38 @@ BrnCompoundHandler::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BrnCompoundHandler::initialize(ErrorHandler *errh)
 {
+  String element_name = router()->ename(this->eindex());
+  int last_slash = element_name.find_right('/',element_name.length());
+  if ( last_slash > 0 ) _element_class_prefix = element_name.substring(0,last_slash+1);
+  
+  BRN_DEBUG("PRefix: %s",_element_class_prefix.c_str());
+  
   _lzw_buffer = new unsigned char[_lzw_buffer_size];
   _base64_buffer = new unsigned char[_base64_buffer_size];
 
+  Vector<String> vec_handlers_tmp;
+
   BRN_DEBUG(" * BrnCompoundHandler: processing handler %s.", _handler.c_str() );
-  cp_spacevec(_handler, _vec_handlers);
+  cp_spacevec(_handler, vec_handlers_tmp);
+  
+  for( int i = 0; i < vec_handlers_tmp.size(); i++) {
+    int handler_point = vec_handlers_tmp[i].find_right('.',vec_handlers_tmp[i].length());
+    if ( handler_point > 0 ) {
+      element_name = vec_handlers_tmp[i].substring(0,handler_point);
+      String handler_name = vec_handlers_tmp[i].substring(handler_point+1,vec_handlers_tmp[i].length()-1);
+      
+      BRN_DEBUG("Check Handler: %s . %s", element_name.c_str(), handler_name.c_str());
+    
+      Element* s_element = router()->find(element_name);
+      if ( s_element != NULL ) _vec_handlers.push_back(vec_handlers_tmp[i]);
+      else {
+        s_element = router()->find(_element_class_prefix + element_name);
+        if ( s_element != NULL ) _vec_handlers.push_back(_element_class_prefix + vec_handlers_tmp[i]);
+      } 
+    }
+  }
+  
+  vec_handlers_tmp.clear();
 
   // Build vector of class names
   Vector<String> vecClasses;
@@ -231,9 +258,9 @@ BrnCompoundHandler::read_handler()
     for ( int j = 0; j < _vec_handlers.size(); j++) {
       if ( _update_mode == UPDATEMODE_SEND_ALL ) {
         sa << "\t<handler name=\"" << _vec_handlers[j] << "\">\n";
-        sa << "\t<![CDATA[" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
+        sa << "\t\t<![CDATA[" << HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
                                             ErrorHandler::default_handler()).c_str();
-        sa << "]]>\t";
+        sa << "]]>\n";
       } else if (( _update_mode == UPDATEMODE_SEND_INFO ) ||
                  ( _update_mode == UPDATEMODE_SEND_UPDATE_ONLY )) {
         String new_value = HandlerCall::call_read(_vec_handlers[j], router()->root_element(),
@@ -246,10 +273,10 @@ BrnCompoundHandler::read_handler()
         } else {
           _last_handler_value.insert(_vec_handlers[j],new_value);
           sa << "\" update=\"true\" >\n<![CDATA[";
-          sa << new_value.c_str() << "]]>\t";
+          sa << new_value.c_str() << "]]>\n";
         }
       }
-      sa << "</handler>\n";
+      sa << "\t</handler>\n";
     }
   } else { // show samples
     for (HandlerRecordMapIter iter = _record_handler.begin(); iter.live(); iter++) {
