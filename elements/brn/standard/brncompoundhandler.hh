@@ -169,6 +169,7 @@ class BrnCompoundHandler : public BRNElement
 
  private:
 
+  String _element_class_prefix;
   String _handler;
   String _classes;
   String _classes_handler;
