@@ -23,7 +23,6 @@ BRN2NodeIdentity::BRN2NodeIdentity()
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
 {
-  //_node_devices.clear();
   delete[] _node_devices;
 }
 
@@ -55,7 +54,6 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
       return errh->error("element is not an BRN2Device");
     } else {
       brn_device->setDeviceNumber(no_dev++);
-      //_node_devices.push_back(brn_device);
       _node_devices[_node_devices_size] = brn_device;
       _node_devices_size++;
     }
@@ -139,7 +137,7 @@ BRN2NodeIdentity::isIdentical(uint8_t *data)
 int
 BRN2NodeIdentity::getDeviceNumber(EtherAddress *e) {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
-    if ( *e == *(_node_devices[i]->getEtherAddress()) ) return _node_devices[i]->getDeviceNumber();
+    if ( memcmp(e->data(), _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return _node_devices[i]->getDeviceNumber();
 
   return -1;
 }

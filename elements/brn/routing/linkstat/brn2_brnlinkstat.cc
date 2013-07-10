@@ -68,7 +68,6 @@ BRN2LinkStat::~BRN2LinkStat()
   _bad_table.clear();
 
   delete[] _metrics;
-  //_metrics.clear();
 }
 
 int
@@ -120,7 +119,6 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
       if ( gm != NULL ) {
         _metrics[_metrics_size] = gm;
         _metrics_size++;
-        //_metrics.push_back(gm);
       }
     }
   }
