@@ -114,7 +114,7 @@ BroadcastMultiplexer::smaction(Packet *p_in, bool is_push)
     dst = EtherAddress(((click_ether *)p_in->data())->ether_dhost);
   }
 
-  if ( (!src.is_broadcast()) || (!dst.is_broadcast()) ) {  //src address looks valid, so no need to send it on all devices
+  if ( (!src.is_broadcast()) /*|| (!dst.is_broadcast())*/) {  //src address looks valid, so no need to send it on all devices
     return p_in;
   } else {                       //forward packet using all devices which allow broadcast
     int f;

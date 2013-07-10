@@ -122,14 +122,14 @@ Flooding::push( int port, Packet *packet )
     Timestamp now = Timestamp::now();
     BRN_DEBUG("Flooding: PUSH vom Client\n");
 
-    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),_bcast_id);
-
     click_ether *ether = (click_ether *)packet->data();
     src = EtherAddress(ether->ether_shost);
 
     _bcast_id++;
     if ( _bcast_id == 0 ) _bcast_id = 1;
-    
+
+    BRN_DEBUG("New Broadcast from %s. ID: %d",src.unparse().c_str(),_bcast_id);
+
     _flooding_src++;                                                           //i was src of a flooding
     _flooding_src_new_id++;   
     
