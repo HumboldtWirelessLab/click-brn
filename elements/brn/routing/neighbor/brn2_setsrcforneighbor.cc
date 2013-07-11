@@ -24,15 +24,19 @@
  */
 
 #include <click/config.h>
-
-#include "brn2_setsrcforneighbor.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "brn2_setsrcforneighbor.hh"
+
 CLICK_DECLS
 
-BRN2SetSrcForNeighbor::BRN2SetSrcForNeighbor()
+BRN2SetSrcForNeighbor::BRN2SetSrcForNeighbor():
+  _link_table(NULL),
+  _nblist(NULL),
+  _use_anno(false)
 {
 }
 
@@ -44,12 +48,15 @@ int
 BRN2SetSrcForNeighbor::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NBLIST", cpkP+cpkM, cpElement, &_nblist,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "NBLIST", cpkP, cpElement, &_nblist,
+      //"ETHERADDRESS", cpkP, cpEtherAddress, &_etheraddr,
+      "USEANNO", cpkP, cpBool, &_use_anno,
       cpEnd) < 0)
     return -1;
 
-  if (!_nblist || !_nblist->cast("BRN2NBList"))
-    return errh->error("BRN2NBList not specified");
+  if ( _nblist && !_nblist->cast("BRN2NBList"))
+    return errh->error("NBLIST is not type of BRN2NBList");
 
   return 0;
 }
@@ -66,28 +73,53 @@ BRN2SetSrcForNeighbor::uninitialize()
   //cleanup
 }
 
-/* Processes an incoming (brn-)packet. */
 void
-BRN2SetSrcForNeighbor::push(int /*port*/, Packet *p_in)
+BRN2SetSrcForNeighbor::push(int, Packet *p)
 {
-  EtherAddress ea;
-  const EtherAddress *src;
-  //int outputport = -1;
+  if (Packet *q = smaction(p)) output(0).push(q);
+}
 
-  click_ether *ether = (click_ether *) p_in->data();
+Packet *
+BRN2SetSrcForNeighbor::pull(int)
+{
+  Packet *p = NULL;
+  
+  if ((p = input(0).pull()) != NULL) p = smaction(p); //new packet
 
-  ea = EtherAddress(ether->ether_dhost);
+  return p;
+}
 
-  if ( _nblist->isContained(&ea) ) {
-    src = _nblist->getDeviceAddressForNeighbor(&ea);
-    if ( src != NULL ) {
-      memcpy(ether->ether_shost, src->data(), 6);
-      output(0).push(p_in);
-      return;
-    }
+/* Processes an incoming (brn-)packet. */
+Packet *
+BRN2SetSrcForNeighbor::smaction(Packet *p_in)
+{
+  EtherAddress dst;
+  click_ether *ether = NULL;
+
+  if ( _use_anno ) dst = BRNPacketAnno::src_ether_anno(p_in);
+  else {
+    ether = (click_ether *)p_in->data();
+    dst = EtherAddress(ether->ether_dhost);
   }
 
-  output(1).push(p_in);
+  if ( ! dst.is_broadcast() ) {
+
+    const EtherAddress *src = NULL;
+
+    if ( _nblist ) src = _nblist->getDeviceAddressForNeighbor(&dst);
+    else src = _link_table->get_neighbor(dst);  //return the local src addr for the (best) link
+
+    if ( src == NULL ) {
+      output(1).push(p_in);
+      p_in = NULL;          
+    } else {
+      if ( _use_anno ) BRNPacketAnno::set_src_ether_anno(p_in, *src);
+      else memcpy(ether->ether_shost, src->data(), 6);
+    }
+  }
+ 
+  return p_in;
+ 
 }
 
 //-----------------------------------------------------------------------------
