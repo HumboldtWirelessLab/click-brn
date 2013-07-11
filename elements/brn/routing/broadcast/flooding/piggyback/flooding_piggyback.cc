@@ -187,7 +187,7 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
-    if ( (add_node != *src) && (!fl->is_local_addr(&add_node)) && (net_graph.nmm.findp(add_node) != NULL) ) {
+    if ( (net_graph.nmm.findp(add_node) != NULL) && (add_node != *src) && (!fl->is_local_addr(&add_node))) {
       //click_chatter("Add lastnode: %s",add_node.unparse().c_str());
       memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
       buf_idx = buf_idx + 6;
