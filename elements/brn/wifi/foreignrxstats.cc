@@ -90,10 +90,8 @@ ForeignRxStats::simple_action(Packet *p)
       
       if ((last_packet != NULL) && (p->length() >= 10) && (last_packet_src == dst) &&
 	  ((p->timestamp_anno() - last_packet->timestamp_anno()).msecval() <= ack_timeout)) {
-	BRN_ERROR("Data was acked");
         send_outstanding_packet(false);    
       } else {
-	BRN_ERROR("Ack but no data");
         send_outstanding_packet(true);
       }
       

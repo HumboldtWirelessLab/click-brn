@@ -138,7 +138,7 @@ FloodingPiggyback::simple_action(Packet *p)
     if ( new_data_size > 0 ) {
       extra_data_size += new_data_size;
     } else if ( bcast_header->extra_data_size == 0 ) { //no new data & no old data,so send org packet
-      BRN_WARN("No old an dno new data. Take old one.");
+      BRN_DEBUG("No old and no new data. Take old one.");
       return p;
     }
 
