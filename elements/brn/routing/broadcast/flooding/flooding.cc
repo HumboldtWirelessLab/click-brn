@@ -38,7 +38,6 @@
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
 #include "../../identity/brn2_nodeidentity.hh"
-#include "../../../brnprotocol/brnprotocol.hh"
 #include "piggyback/flooding_piggyback.hh"
 
 CLICK_DECLS
