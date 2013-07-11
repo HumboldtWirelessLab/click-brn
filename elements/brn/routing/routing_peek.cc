@@ -41,39 +41,37 @@ RoutingPeek::initialize(ErrorHandler *)
 void
 RoutingPeek::push( int port, Packet *packet )
 {
-  if ( ( port == 0 ) && ( packet != NULL ) ) {
-    //EtherAddress link_src;
-    //EtherAddress link_dst;
-    //EtherAddress src;
-    //EtherAddress dst;
-    //uint16_t ethertype;
+  //EtherAddress link_src;
+  //EtherAddress link_dst;
+  //EtherAddress src;
+  //EtherAddress dst;
+  //uint16_t ethertype;
     
-    uint32_t header_len = get_all_header_len(packet);
+  uint32_t header_len = get_all_header_len(packet);
     
-    //get_addresses(&link_src, &link_dst, &src, &dst, &ethertype);
+  //get_addresses(&link_src, &link_dst, &src, &dst, &ethertype);
 
-    BRN_DEBUG("P-len: %d  header_len: %d",packet->length(), header_len);
+  BRN_DEBUG("P-len: %d  header_len: %d",packet->length(), header_len);
 
-    if ( packet->length() > header_len ) {
-      click_ether *ether = (click_ether *)&((const uint8_t*)packet->data())[header_len];
-      uint16_t ethertype = ntohs(ether->ether_type);
-      EtherAddress src = EtherAddress(ether->ether_shost);
-      EtherAddress dst = EtherAddress(ether->ether_dhost);
+  if ( packet->length() > header_len ) {
+    click_ether *ether = (click_ether *)&((const uint8_t*)packet->data())[header_len];
+    uint16_t ethertype = ntohs(ether->ether_type);
+    EtherAddress src = EtherAddress(ether->ether_shost);
+    EtherAddress dst = EtherAddress(ether->ether_dhost);
 
-      BRN_DEBUG("Got Ethertype: %X",ethertype);
+    BRN_DEBUG("Got Ethertype: %X",ethertype);
 
-      if ( ethertype == ETHERTYPE_BRN ) {
-        packet->pull(header_len + 14);
-        struct click_brn *brnh = (struct click_brn *)packet->data();
-        if ( call_routing_peek(packet, &src, &dst, brnh->dst_port) ) {
-          WritablePacket *p_out = packet->push(header_len + 14);
-          output(0).push(p_out);
-        }
-        return;
+    if ( ethertype == ETHERTYPE_BRN ) {
+      packet->pull(header_len + 14);
+      struct click_brn *brnh = (struct click_brn *)packet->data();
+      if ( call_routing_peek(packet, &src, &dst, brnh->dst_port) ) {
+        WritablePacket *p_out = packet->push(header_len + 14);
+        output(0).push(p_out);
       }
+      return;
     }
-    output(0).push(packet);
   }
+  output(port).push(packet);
 }
 
 static String

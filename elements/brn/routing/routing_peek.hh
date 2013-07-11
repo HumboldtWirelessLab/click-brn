@@ -36,7 +36,7 @@ class RoutingPeek : public BRNElement
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "1/1"; }
+    const char *port_count() const  { return "1-/1-"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
