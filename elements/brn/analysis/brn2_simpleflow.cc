@@ -477,7 +477,7 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   EtherAddress pdst = EtherAddress(ether->ether_dhost);
   
   if ( (_link_table != NULL) && (_link_table->_node_identity != NULL) ) {
-    if (pdst.is_broadcast()) pdst = *(_link_table->_node_identity->getMasterAddress());
+    if (pdst.is_broadcast() || !_link_table->_node_identity->isIdentical((uint8_t*)ether->ether_dhost)) pdst = *(_link_table->_node_identity->getMasterAddress());
     BRN_DEBUG("New Dst: %s", pdst.unparse().c_str());
   } else {
     BRN_DEBUG("Peek: keep bcast");
