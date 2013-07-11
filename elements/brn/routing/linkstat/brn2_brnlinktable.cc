@@ -410,15 +410,13 @@ Brn2LinkTable::get_local_neighbors(Vector<EtherAddress> &neighbors) {
 }
 
 //check for device used for this neighbour (ether)
+//TODO: check for best link
 const EtherAddress *
-Brn2LinkTable::get_neighbor(EtherAddress ether)
+Brn2LinkTable::get_neighbor(EtherAddress &ether)
 {
   for ( int i = _node_identity->countDevices() - 1; i >= 0; i-- ) {
-    BrnLinkInfo *lnfo = _links.findp(EthernetPair(ether, *(_node_identity->getDeviceByIndex(i)->getEtherAddress())));
-    //TODO: check for device/etheraddr with best metric
-    if (lnfo) {
-      return _node_identity->getDeviceByIndex(i)->getEtherAddress();
-    }
+    const EtherAddress *src = _node_identity->getDeviceByIndex(i)->getEtherAddress();
+    if ( _links.findp(EthernetPair(ether, *src)) ) return src;
   }
 
   return NULL;
