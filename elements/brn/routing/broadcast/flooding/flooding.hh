@@ -483,7 +483,7 @@ class Flooding : public BRNElement {
 
  public:
 
-  bool is_local_addr(EtherAddress *src) { return _me->isIdentical(src);}
+  bool is_local_addr(EtherAddress *ea) { return _me->isIdentical(ea);}
 
   uint32_t _flooding_src;
   uint32_t _flooding_rx;
