@@ -135,7 +135,9 @@ Flooding::push( int port, Packet *packet )
     add_broadcast_node(&src);
     add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
     forward_attempt(&src, _bcast_id);                                          //try forward 
-    add_last_node(&src,(int32_t)_bcast_id, &src, true, false);                 //add src as last hop for src
+    
+    if ( ! is_local_addr(&src) )
+      add_last_node(&src,(int32_t)_bcast_id, &src, true, false);               //add src as last hop for src
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
@@ -237,24 +239,22 @@ Flooding::push( int port, Packet *packet )
      * handle target of packet
      * insert to new, assign or foreign_responsible
      */ 
-    if ( ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0 ) ||
-         ( _passive_last_node_new ) ) {
+    if ( _passive_last_node_new ) {
       add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_new ); //clear resp flag if we are sure, that dst
-      _passive_last_node_new = _passive_last_node_assign = false;                        //received the pkt
-    } else if ( _passive_last_node_assign ) {
+      _passive_last_node_new = false;                        //received the pkt
+    } else if ( _passive_last_node_assign ) {  
       BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
       _passive_last_node_assign = false;
     }
-
-    //add src of bcast as last node
-    if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true) != 0 ) {
-      BRN_DEBUG("Add src as last node");
-      _flooding_last_node_due_to_piggyback++;
-    }
-
     
     if ( ! is_known ) {   //send to client only if this is the first time
+      //add src of bcast as last node
+      if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true) != 0 ) {
+        BRN_DEBUG("Add src as last node");
+        _flooding_last_node_due_to_piggyback++;
+      }
+
       Packet *p_client;
 
       if ( forward )
@@ -374,7 +374,8 @@ Flooding::push( int port, Packet *packet )
         } else { //packet was not successfully transmitted (we can not be sure) or is not forced         
           BRN_DEBUG("Assign new node...");
           _flooding_passive_not_acked_dst++;
-          _passive_last_node_assign = true;
+          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) _passive_last_node_new = true;
+          else _passive_last_node_assign = true;
         }
       }
     }
