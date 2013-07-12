@@ -407,11 +407,12 @@ Flooding::add_broadcast_node(EtherAddress *src)
 Flooding::BroadcastNode*
 Flooding::get_broadcast_node(EtherAddress *src)
 {
-  if ( _bcast_map.findp(*src) == NULL ) {
+  Flooding::BroadcastNode** bnp = _bcast_map.findp(*src);
+  if ( bnp == NULL ) {
     BRN_DEBUG("Couldn't find %s",src->unparse().c_str());
     return NULL;
   }
-  return _bcast_map.find(*src);
+  return *bnp;
 }
 
 void

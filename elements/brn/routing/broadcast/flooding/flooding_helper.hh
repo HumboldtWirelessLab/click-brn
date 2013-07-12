@@ -200,16 +200,16 @@ public:
   //member
   //
   Brn2LinkTable *_link_table;
+
   CachedNeighborsMetricListMap _cnmlmap;
+  int _max_metric_to_neighbor; // max. metric towards a neighbor
+#define FLOODINGHELPER_DEFAULTTIMEOUT 10000
+  int _cache_timeout;
+
   uint32_t *_pdr_cache;
 #define FLOODINGHELPER_PDR_CACHE_SHIFT 4
   uint32_t _pdr_cache_shift; 
   uint32_t _pdr_cache_size;
-
- public:
-  int _max_metric_to_neighbor; // max. metric towards a neighbor
-#define FLOODINGHELPER_DEFAULTTIMEOUT 10000
-  int _cache_timeout;
 
   void print_vector(Vector<EtherAddress> &eas);
   void print_vector(NeighbourMetricList &nodes);
