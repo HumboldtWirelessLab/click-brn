@@ -168,9 +168,9 @@ EtherAddress::s() const
 inline bool
 operator==(const EtherAddress &a, const EtherAddress &b)
 {
-    return (a.sdata()[0] == b.sdata()[0]
+    return (a.sdata()[2] == b.sdata()[2]
 	    && a.sdata()[1] == b.sdata()[1]
-	    && a.sdata()[2] == b.sdata()[2]);
+	    && a.sdata()[0] == b.sdata()[0]);
 }
 
 /** @relates EtherAddress
