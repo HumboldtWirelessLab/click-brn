@@ -34,7 +34,7 @@ CLICK_DECLS
  *encapsulates packets in Ethernet header (information used from Packet::ether_header())
 */
 #define BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES        0
-#define BCAST_EXTRA_DATA_NEIGHBOURS_UPDATE_INTERVAL 5000
+#define BCAST_EXTRA_DATA_NEIGHBOURS_UPDATE_INTERVAL 10000
 
 class FloodingPiggyback : public BRNElement {
 

@@ -29,7 +29,6 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
-
 CLICK_DECLS
 
 /*
@@ -111,6 +110,70 @@ class NetworkGraph {
   int size() { return nml.size(); }
 };
 
+class CachedNeighborsMetricList {
+ public:
+  EtherAddress _node;
+  int _max_metric_to_neighbor;    
+
+  Vector<EtherAddress> _neighbors;
+  int *_metrics;
+  
+  Timestamp _last_update;
+  
+  CachedNeighborsMetricList(EtherAddress ea, int metric) {
+    _node = ea;
+    _neighbors.clear();
+    _metrics = NULL;
+    _max_metric_to_neighbor = metric;
+  }
+  
+  ~CachedNeighborsMetricList() {
+    _neighbors.clear();
+    if ( _metrics != NULL ) {
+      delete[] _metrics;
+      _metrics = NULL;
+    }
+  }
+  
+  void update(Brn2LinkTable *lt) {
+    _neighbors.clear();
+    if ( _metrics != NULL ) {
+      delete[] _metrics;
+      _metrics = NULL;
+    }
+
+    lt->get_neighbors(_node, _neighbors);
+
+    int c_neighbors = _neighbors.size();
+    _metrics = new int[c_neighbors];
+  
+    for( int n_i = 0; n_i < c_neighbors;) {
+      //calc metric between this neighbor and node to make sure that we are well-connected
+      //BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
+      int metric_nb_node = lt->get_link_metric(_node, _neighbors[n_i]);
+
+      // skip to bad neighbors
+      if (metric_nb_node > _max_metric_to_neighbor) {
+        click_chatter("Skip bad neighbor %s (%d)", _neighbors[n_i].unparse().c_str(),metric_nb_node);
+      
+        c_neighbors--;
+        _neighbors.erase(_neighbors.begin() + n_i);
+      } else {
+        _metrics[n_i] = metric_nb_node;
+        n_i++;
+      }
+    }  
+    
+    _last_update = Timestamp::now();
+  }
+  
+  inline int age() { return (Timestamp::now() - _last_update).msecval(); }
+
+};
+
+typedef HashMap<EtherAddress, CachedNeighborsMetricList*> CachedNeighborsMetricListMap;
+typedef CachedNeighborsMetricListMap::const_iterator CachedNeighborsMetricListMapIter;
+
 class FloodingHelper : public BRNElement {
 
  public:
@@ -137,9 +200,16 @@ public:
   //member
   //
   Brn2LinkTable *_link_table;
+  CachedNeighborsMetricListMap _cnmlmap;
+  uint32_t *_pdr_cache;
+#define FLOODINGHELPER_PDR_CACHE_SHIFT 4
+  uint32_t _pdr_cache_shift; 
+  uint32_t _pdr_cache_size;
 
  public:
   int _max_metric_to_neighbor; // max. metric towards a neighbor
+#define FLOODINGHELPER_DEFAULTTIMEOUT 10000
+  int _cache_timeout;
 
   void print_vector(Vector<EtherAddress> &eas);
   void print_vector(NeighbourMetricList &nodes);
@@ -147,7 +217,8 @@ public:
 
   // helper
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
-
+  CachedNeighborsMetricList* get_filtered_neighbors(const EtherAddress &node, int max_metric = -1);
+  
   void init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric);
   void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric);
   void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric, HashMap<EtherAddress,EtherAddress> &blacklist);
@@ -174,6 +245,7 @@ public:
   void graph_cut(NetworkGraph &ng, NetworkGraph &ng2);
 
   int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
+    void neighbours();
 
 };
 
