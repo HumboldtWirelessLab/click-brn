@@ -55,15 +55,17 @@ class EthernetPair {
     //
     EtherAddress _to;
     EtherAddress _from;
+    size_t _hashcode;
 
     //
     //methods
     //
-    EthernetPair() : _to(), _from() { }
+    EthernetPair() : _to(), _from(), _hashcode(0) { }
 
     EthernetPair(EtherAddress from, EtherAddress to) {
       _to = to;
       _from = from;
+      _hashcode = (((uint32_t)from.sdata()[2]) << 16) + ((uint32_t)to.sdata()[2]);
     }
 
     bool contains(EtherAddress foo) {
@@ -72,12 +74,13 @@ class EthernetPair {
     bool other(EtherAddress foo) { return ((_to == foo) ? _from : _to); }
 
     inline bool operator==(EthernetPair other) {
+      if ( _hashcode != other._hashcode ) return false;
       return (other._to == _to && other._from == _from);
     }
 };
 
 inline unsigned hashcode(EthernetPair p) {
-  return hashcode(p._to) + hashcode(p._from);
+  return p._hashcode;
 }
 
 
