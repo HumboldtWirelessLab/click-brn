@@ -33,8 +33,6 @@
 #include "elements/brn/brn2.h"
 
 #include "flooding_helper.hh"
-#include "../../../../ethernet/ip6ndadvertiser.hh"
-
 
 CLICK_DECLS
 
@@ -80,10 +78,10 @@ FloodingHelper::metric2pdr(uint32_t metric)
 
 FloodingHelper::FloodingHelper():
   _link_table(NULL),
+  _cache_timeout(FLOODINGHELPER_DEFAULTTIMEOUT),
   _pdr_cache(NULL),
   _pdr_cache_shift(FLOODINGHELPER_PDR_CACHE_SHIFT),
-  _pdr_cache_size(1<<FLOODINGHELPER_PDR_CACHE_SHIFT),
-  _cache_timeout(FLOODINGHELPER_DEFAULTTIMEOUT)
+  _pdr_cache_size(1<<FLOODINGHELPER_PDR_CACHE_SHIFT)
 {
   BRNElement::init();
 }
@@ -169,7 +167,6 @@ FloodingHelper::init_graph(const EtherAddress &start_node, NetworkGraph &ng, int
   ng.nml.push_back(new NeighbourMetric(start_node, src_metric, 0));
   ng.nmm.insert(start_node,ng.nml[ng.nml.size()-1]);
 }
-
 
 /*
  * Dijkstra helper
