@@ -259,33 +259,26 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   else return false;
   
   /*check neighbours*/
-  Vector<EtherAddress> neighbors;
-  _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()), neighbors);
+  CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()));
   
   struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
   uint32_t last_nodes_size;
   last_nodes = _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
   
   BRN_DEBUG("For %s:%d i have %d neighbours", pap->_src.unparse().c_str(), pap->_bcast_id, last_nodes_size);
-        
-  for ( int i = neighbors.size()-1; i >= 0; i--) {
+  
+  int unfinished_neighbors = cnml->_neighbors.size();
+  
+  for ( int i = unfinished_neighbors-1; i >= 0; i--) {    //!! unfinished_neighbors will decreased in loop !!
     for ( uint32_t j = 0; j < last_nodes_size; j++) {
-      if ( memcmp(neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
-        neighbors.erase(neighbors.begin() + i);
+      if ( memcmp(cnml->_neighbors.data(), last_nodes[j].etheraddr, 6) == 0) {
+        unfinished_neighbors--;
         break;
       }
     }  
   }
-    
-  BRN_DEBUG("Neighbours: %d Lasthop: %d", neighbors.size(), last_nodes_size);
   
-  if (neighbors.size() == 0) {
-    BRN_DEBUG("* FloodingPassiveAck: No Neighbour left!");
-    return true;
-  }
-
-  neighbors.clear();
-  return false;
+  return (unfinished_neighbors == 0);
 }
 
 //-----------------------------------------------------------------------------
