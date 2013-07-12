@@ -178,13 +178,11 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     
     Vector<EtherAddress> known_neighbors;
 
-    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                //add node to known_nodes if
-      if (memcmp(last_nodes[j].etheraddr,me->data(),6) != 0) {                        //1. its not me
-        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) {    //2. i'm not responsible
-          known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
-        } else {
-          candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
-        }
+    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                               //add node to known_nodes if
+      if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) {    //2. i'm not responsible
+        known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+      } else {
+        candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
       }
     }
     
