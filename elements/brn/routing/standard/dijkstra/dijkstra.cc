@@ -43,6 +43,8 @@ static const char* dijkstra_graph_mode_strings[] = { "Unused", "FromNode", "ToNo
 
 Dijkstra::Dijkstra()
   : _node_identity(),
+    _dni_array(NULL),
+    _dni_array_max_size(0),
     _max_graph_age(0)
 {
   RoutingAlgorithm::init();
@@ -247,7 +249,7 @@ Dijkstra::dijkstra(int graph_index)
   if ( BRN_DEBUG_LEVEL_DEBUG ) {
     BRN_LOG(BrnLogger::LOG,"Graph index: %d",graph_index);
     BRN_LOG(BrnLogger::LOG,"Node: %s Mode: %s Last used: %s",dgi->_node.unparse().c_str(), dijkstra_graph_mode_strings[dgi->_mode],
-                                                  dgi->_last_used.unparse().c_str());
+                                                             dgi->_last_used.unparse().c_str());
   }
 
   if (!_dni_table.find(dgi->_node)) {
@@ -257,10 +259,23 @@ Dijkstra::dijkstra(int graph_index)
 
   Timestamp start = Timestamp::now();
 
+  uint32_t dni_array_size = _dni_table.size();
+  
+  if ( dni_array_size > _dni_array_max_size ) {
+    _dni_array_max_size = 2 * dni_array_size;
+    
+    if ( _dni_array != NULL ) delete[] _dni_array;
+    
+    _dni_array = new DijkstraNodeInfo*[_dni_array_max_size];
+  }
+
+  uint32_t dni_array_i = 0;
+
   for (DNITIter i = _dni_table.begin(); i.live(); i++) {
     /* clear them all initially */
     DijkstraNodeInfo *dni = i.value();
     dni->clear(graph_index);
+    _dni_array[dni_array_i++] = dni;
   }
 
   DijkstraNodeInfo *root_info = _dni_table.find(dgi->_node);
@@ -271,28 +286,27 @@ Dijkstra::dijkstra(int graph_index)
   root_info->_metric[graph_index] = 0;
 
   EtherAddress current_min_ether = root_info->_ether;
+  DijkstraNodeInfo *current_min = root_info;
 
   while (current_min_ether) {
-    DijkstraNodeInfo *current_min = _dni_table.find(current_min_ether);
     assert(current_min);
 
     current_min->_marked[graph_index] = true;
 
-    for (DNITIter i = _dni_table.begin(); i.live(); i++) {
-      DijkstraNodeInfo *neighbor = i.value();
-
+    for ( dni_array_i = 0; dni_array_i < dni_array_size; dni_array_i++) {
+      DijkstraNodeInfo *neighbor = _dni_array[dni_array_i];
       assert(neighbor);
 
       if (neighbor->_marked[graph_index]) continue;
 
       EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
 
-      if (_dgi_list[graph_index]._mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) {
+      if (dgi->_mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) {
         pair = EthernetPair(current_min_ether, neighbor->_ether);
       }
 
       BrnLinkInfo *lnfo = _lt->_links.findp(pair);
-      if (NULL == lnfo || 0 == lnfo->_metric || BRN_LT_INVALID_LINK_METRIC <= lnfo->_metric) {
+      if ( NULL == lnfo || (BRN_LT_INVALID_LINK_METRIC <= lnfo->_metric) || 0 == lnfo->_metric ) {
         continue;
       }
 
@@ -303,27 +317,22 @@ Dijkstra::dijkstra(int graph_index)
 
       if (!neighbor_metric || adjusted_metric < neighbor_metric) {
         neighbor->_metric[graph_index] = adjusted_metric;
-        if ( _dni_table.findp(current_min_ether) == NULL ) {
-          BRN_ERROR("Node not found %s",current_min_ether.unparse().c_str());
-          click_chatter("%s",_lt->print_links().c_str());
-          click_chatter("%s",_lt->print_hosts().c_str());
-        }
-        neighbor->_next[graph_index] = _dni_table.find(current_min_ether);
+        neighbor->_next[graph_index] = current_min;
       }
     }
 
     current_min_ether = EtherAddress();
     uint32_t  min_metric = ~0;
 
-    for (DNITIter i = _dni_table.begin(); i.live(); i++) {
-      DijkstraNodeInfo *dni = i.value();
-      assert(dni);
+    for ( dni_array_i = 0; dni_array_i < dni_array_size; dni_array_i++) {
+      DijkstraNodeInfo *dni = _dni_array[dni_array_i];
 
       uint32_t metric = dni->_metric[graph_index];
       bool marked = dni->_marked[graph_index];
 
       if (!marked && metric && metric < min_metric) {
         current_min_ether = dni->_ether;
+        current_min = dni;
         min_metric = metric;
       }
     }

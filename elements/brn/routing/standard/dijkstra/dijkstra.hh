@@ -145,7 +145,10 @@ class Dijkstra: public RoutingAlgorithm {
   Brn2LinkTable *_lt;
 
   DNITable _dni_table;
-
+  
+  DijkstraNodeInfo **_dni_array;
+  uint32_t _dni_array_max_size;
+  
   DijkstraGraphInfo _dgi_list[DIJKSTRA_MAX_GRAPHS];
 
   uint32_t _max_graph_age;
