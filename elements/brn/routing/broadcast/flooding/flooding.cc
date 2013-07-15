@@ -54,10 +54,10 @@ Flooding::Flooding()
     _flooding_fwd(0),
     _flooding_passive(0),
     _flooding_passive_not_acked_dst(0),
+    _flooding_passive_not_acked_force_dst(0),
     _flooding_last_node_due_to_passive(0),
     _flooding_last_node_due_to_ack(0),
     _flooding_last_node_due_to_piggyback(0),
-    _flooding_last_node_due_to_force_bit(0),
     _flooding_lower_layer_reject(0),
     _flooding_src_new_id(0),
     _flooding_rx_new_id(0),
@@ -374,8 +374,10 @@ Flooding::push( int port, Packet *packet )
         } else { //packet was not successfully transmitted (we can not be sure) or is not forced         
           BRN_DEBUG("Assign new node...");
           _flooding_passive_not_acked_dst++;
-          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) _passive_last_node_new = true;
-          else _passive_last_node_assign = true;
+          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
+            _passive_last_node_new = true;
+            _flooding_passive_not_acked_force_dst++;
+          } else _passive_last_node_assign = true;
         }
       }
     }
@@ -629,6 +631,7 @@ Flooding::stats()
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
   sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" passive_no_ack=\"" << _flooding_passive_not_acked_dst;
+  sa << "\" passive_no_ack_force_dst=\"" << _flooding_passive_not_acked_force_dst;
   sa << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
   sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
   sa << "\" received_new=\"" << _flooding_rx_new_id << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
