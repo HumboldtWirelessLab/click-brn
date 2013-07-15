@@ -39,6 +39,7 @@ CLICK_DECLS
 
 FloodingPrenegotiation::FloodingPrenegotiation()
 {
+  BRNElement::init();
 }
 
 FloodingPrenegotiation::~FloodingPrenegotiation()
@@ -75,7 +76,6 @@ rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*i
 int
 FloodingPrenegotiation::initialize(ErrorHandler *errh)
 {
-//  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_LPR,&tx_handler,&rx_handler);
   return 0;
 }
 
@@ -95,31 +95,10 @@ FloodingPrenegotiation::lpReceiveHandler(char *buffer, int size)
 // Handler
 //-----------------------------------------------------------------------------
 
-static String
-read_debug_param(Element *e, void *)
-{
-  FloodingPrenegotiation *fl = (FloodingPrenegotiation *)e;
-  return String(fl->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
-{
-  FloodingPrenegotiation *fl = (FloodingPrenegotiation *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  fl->_debug = debug;
-  return 0;
-}
-
 void
 FloodingPrenegotiation::add_handlers()
 {
-  add_read_handler("debug", read_debug_param, 0);
-
-  add_write_handler("debug", write_debug_param, 0);
+  BRNElement::add_handlers();  
 }
 
 CLICK_ENDDECLS

@@ -5,12 +5,13 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timer.hh>
+
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
-#include "elements/brn/routing/linkstat/metric/brn2_brnetxmetric.hh"
 
 CLICK_DECLS
 
-class FloodingPrenegotiation : public Element {
+class FloodingPrenegotiation : public BRNElement {
 
  public:
   //
@@ -32,8 +33,6 @@ class FloodingPrenegotiation : public Element {
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
-
-  bool _debug;
 };
 
 CLICK_ENDDECLS
