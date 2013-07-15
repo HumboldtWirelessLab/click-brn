@@ -66,7 +66,7 @@ RoutingPeek::push( int port, Packet *packet )
       struct click_brn *brnh = (struct click_brn *)packet->data();
       if ( call_routing_peek(packet, &src, &dst, brnh->dst_port) ) {
         WritablePacket *p_out = packet->push(header_len + 14);
-        output(0).push(p_out);
+        output(port).push(p_out);
       }
       return;
     }
