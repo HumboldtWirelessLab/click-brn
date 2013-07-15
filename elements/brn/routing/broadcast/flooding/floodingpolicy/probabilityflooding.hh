@@ -2,7 +2,7 @@
 #define PROBABILITYFLOODING_HH
 #include <click/timer.hh>
 
-#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -43,14 +43,11 @@ class ProbabilityFlooding : public FloodingPolicy
   private:
 
     BRN2NodeIdentity *_me;
-    Brn2LinkTable *_link_table;
+    FloodingHelper *_fhelper;
 
     uint32_t _min_no_neighbors;
     uint32_t _fwd_probability;
     int _max_metric_to_neighbor;
-
-    void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
-
 };
 
 CLICK_ENDDECLS
