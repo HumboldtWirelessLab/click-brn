@@ -299,10 +299,12 @@ Dijkstra::dijkstra(int graph_index)
 
       if (neighbor->_marked[graph_index]) continue;
 
-      EthernetPair pair = EthernetPair(neighbor->_ether, current_min_ether);
+      EthernetPair pair;
 
       if (dgi->_mode == DIJKSTRA_GRAPH_MODE_FR0M_NODE) {
         pair = EthernetPair(current_min_ether, neighbor->_ether);
+      } else {
+        pair = EthernetPair(neighbor->_ether, current_min_ether);
       }
 
       BrnLinkInfo *lnfo = _lt->_links.findp(pair);
