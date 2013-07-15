@@ -154,8 +154,7 @@ class CachedNeighborsMetricList {
 
       // skip to bad neighbors
       if (metric_nb_node > _max_metric_to_neighbor) {
-        click_chatter("Skip bad neighbor %s (%d)", _neighbors[n_i].unparse().c_str(),metric_nb_node);
-      
+        //click_chatter("Skip bad neighbor %s (%d)", _neighbors[n_i].unparse().c_str(),metric_nb_node);
         c_neighbors--;
         _neighbors.erase(_neighbors.begin() + n_i);
       } else {
