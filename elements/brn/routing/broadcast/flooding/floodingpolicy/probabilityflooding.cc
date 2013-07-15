@@ -40,7 +40,7 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-    "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+    "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
     "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
     "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
@@ -65,14 +65,12 @@ ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddre
   *tx_data_size = 0;
 
   const EtherAddress *me = _me->getMasterAddress();
-  Vector<EtherAddress> nb_neighbors;                    // the neighbors of my neighbors
-  get_filtered_neighbors(*me, nb_neighbors);
+  CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*me);
   
-  BRN_DEBUG("NBs: %d min: %d",nb_neighbors.size(),(int32_t)_min_no_neighbors);
+  BRN_DEBUG("NBs: %d min: %d",cnml->_neighbors.size(),(int32_t)_min_no_neighbors);
   
-  if ( nb_neighbors.size() <= (int32_t)_min_no_neighbors ) return !is_known;
-  
-  
+  if ( cnml->_neighbors.size() <= (int32_t)_min_no_neighbors ) return !is_known;
+
   uint32_t r = (click_random() % 100);
   
   BRN_DEBUG("Known: %d prob: %d",(is_known?(int)1:(int)0),r);
@@ -84,28 +82,6 @@ int
 ProbabilityFlooding::policy_id()
 {
   return POLICY_ID_PROBABILITY;
-}
-
-
-void
-ProbabilityFlooding::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
-{
-  if (_link_table) {
-    Vector<EtherAddress> neighbors_tmp;
-
-    _link_table->get_neighbors(node, neighbors_tmp);
-
-    for( int n_i = 0; n_i < neighbors_tmp.size(); n_i++) {
-        // calc metric between this neighbor and node to make sure that we are well-connected
-      int metric_nb_node = _link_table->get_link_metric(node, neighbors_tmp[n_i]);
-
-      // skip to bad neighbors
-      if (metric_nb_node > _max_metric_to_neighbor) {
-        continue;
-      }
-      out.push_back(neighbors_tmp[n_i]);
-    }
-  }
 }
 
 /*******************************************************************************************/
