@@ -186,6 +186,8 @@ class FloodingPassiveAck : public BRNElement {
   int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 
   void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
+  
+  void handle_rejected_packet(Packet *p, EtherAddress *src, uint16_t bcast_id);
     
   String stats();
 

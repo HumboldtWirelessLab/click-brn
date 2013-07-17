@@ -150,7 +150,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
   //clear responseflag for the case that broadcast is used
   bcast_header->flags &= !BCAST_HEADER_FLAGS_FORCE_DST;
-  
+
+  uint16_t assigned_nodes = 0;
+      
   if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
 
     /**
@@ -185,7 +187,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
       }
     }
-    
+
     if ( _use_assign_info ) {
       last_nodes = _flooding->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
@@ -193,6 +195,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN) == 0) { //1. it is assigned and this is not revoked
           BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+          assigned_nodes++;
         }
       }
     } 
@@ -275,6 +278,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         BRN_DEBUG("We have only weak or no neighbors. Reject!");
         _cnt_reject_on_empty_cs++;
         _flooding->clear_assigned_nodes(&src, bcast_id);
+        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;
+        if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN;
         output(1).push(p_in);
         return NULL;
       }

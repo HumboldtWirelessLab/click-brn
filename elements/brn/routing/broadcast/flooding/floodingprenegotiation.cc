@@ -37,7 +37,9 @@
 
 CLICK_DECLS
 
-FloodingPrenegotiation::FloodingPrenegotiation()
+FloodingPrenegotiation::FloodingPrenegotiation():
+  _start_time(FLOODING_PRENEGOTIATION_STARTTIME),
+  _active(false)
 {
   BRNElement::init();
 }
@@ -76,12 +78,18 @@ rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*i
 int
 FloodingPrenegotiation::initialize(ErrorHandler *errh)
 {
+  _start_ts = Timestamp::now();
   return 0;
 }
 
 int
 FloodingPrenegotiation::lpSendHandler(char *buffer, int size)
 {
+  if ( !_active ) {
+    _active = ((Timestamp::now() - _start_ts).msecval() > _start_time);
+    return 0;
+  }
+
   return 0;
 }
 

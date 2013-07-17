@@ -11,6 +11,7 @@
 
 CLICK_DECLS
 
+#define FLOODING_PRENEGOTIATION_STARTTIME 100000 /*ms (100s)*/
 class FloodingPrenegotiation : public BRNElement {
 
  public:
@@ -33,6 +34,10 @@ class FloodingPrenegotiation : public BRNElement {
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
+  
+  uint32_t _start_time;
+  Timestamp _start_ts;
+  bool _active;
 };
 
 CLICK_ENDDECLS
