@@ -61,7 +61,8 @@ Flooding::Flooding()
     _flooding_lower_layer_reject(0),
     _flooding_src_new_id(0),
     _flooding_rx_new_id(0),
-    _flooding_fwd_new_id(0)
+    _flooding_fwd_new_id(0),
+    _flooding_rx_ack(0)
 {
   BRNElement::init();
 }
@@ -137,7 +138,7 @@ Flooding::push( int port, Packet *packet )
     forward_attempt(&src, _bcast_id);                                          //try forward 
     
     if ( ! is_local_addr(&src) )
-      add_last_node(&src,(int32_t)_bcast_id, &src, true, false);               //add src as last hop for src
+      add_last_node(&src,(int32_t)_bcast_id, &src, true, true);                //add src as last hop for src
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
@@ -240,8 +241,8 @@ Flooding::push( int port, Packet *packet )
      * insert to new, assign or foreign_responsible
      */ 
     if ( _passive_last_node_new ) {
-      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_new ); //clear resp flag if we are sure, that dst
-      _passive_last_node_new = false;                        //received the pkt
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked ); //clear resp flag if we are sure, that dst
+      _passive_last_node_new = false;                                                         //received the pkt
     } else if ( _passive_last_node_assign ) {  
       BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
@@ -252,7 +253,6 @@ Flooding::push( int port, Packet *packet )
       //add src of bcast as last node
       if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true) != 0 ) {
         BRN_DEBUG("Add src as last node");
-        _flooding_last_node_due_to_piggyback++;
       }
 
       Packet *p_client;
@@ -342,6 +342,7 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Flooding: TXFeedback failure\n");
     } else {           //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
+      _flooding_rx_ack++;
       if (!rx_node.is_broadcast()) add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, true);
     }
     
@@ -371,9 +372,11 @@ Flooding::push( int port, Packet *packet )
           BRN_DEBUG("New node to last node due to passive unicast...");
           _flooding_last_node_due_to_passive++;
           _passive_last_node_new = true;
+          _passive_last_node_rx_acked = true;
         } else { //packet was not successfully transmitted (we can not be sure) or is not forced         
           BRN_DEBUG("Assign new node...");
           _flooding_passive_not_acked_dst++;
+          _passive_last_node_rx_acked = false;
           if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
             _passive_last_node_new = true;
             _flooding_passive_not_acked_force_dst++;
@@ -394,7 +397,11 @@ Flooding::push( int port, Packet *packet )
     forward_done(&src, p_bcast_id, false);
     
     _flooding_lower_layer_reject++;
-   
+
+    if ( _flooding_passiveack != NULL ) {
+      _flooding_passiveack->handle_rejected_packet(packet, &src, p_bcast_id);
+    }
+
     packet->kill();
   }
 }
@@ -432,7 +439,7 @@ Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
 }
 
 int
-Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool clear_responsibility)
+Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -441,7 +448,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
     return -1;
   }
 
-  return bcn->add_last_node(id, last_node, forwarded, clear_responsibility);
+  return bcn->add_last_node(id, last_node, forwarded, rx_acked);
 }
 
 void
@@ -548,7 +555,8 @@ Flooding::reset()
   _flooding_src = _flooding_fwd = _bcast_id = _flooding_rx = _flooding_sent = _flooding_passive = 0;
   _flooding_last_node_due_to_passive = _flooding_last_node_due_to_ack = _flooding_last_node_due_to_piggyback = 0;
   _flooding_lower_layer_reject = _flooding_src_new_id = _flooding_rx_new_id = _flooding_fwd_new_id = 0;
-
+  _flooding_rx_ack = 0;
+  
   if ( _bcast_map.size() > 0 ) {
     BcastNodeMapIter iter = _bcast_map.begin();
     while (iter != _bcast_map.end())
@@ -631,7 +639,7 @@ Flooding::stats()
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
   sa << "\" last_node_ack=\"" << _flooding_last_node_due_to_ack << "\" passive_no_ack=\"" << _flooding_passive_not_acked_dst;
-  sa << "\" passive_no_ack_force_dst=\"" << _flooding_passive_not_acked_force_dst;
+  sa << "\" passive_no_ack_force_dst=\"" << _flooding_passive_not_acked_force_dst << "\" rx_ack=\"" << _flooding_rx_ack;
   sa << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
   sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
   sa << "\" received_new=\"" << _flooding_rx_new_id << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
@@ -674,7 +682,9 @@ Flooding::table()
 
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-        sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" rcv_cnt=\"";
+        sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)?0:1) << "\" rcv_cnt=\"";
         sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
       }  
 

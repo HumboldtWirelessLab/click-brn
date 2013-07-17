@@ -136,7 +136,17 @@ FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
       delete p_next;
       p_queue.erase(p_queue.begin() + i);
       break;
-    }   
+    }
+  }
+}
+
+void
+FloodingPassiveAck::handle_rejected_packet(Packet *p, EtherAddress *src, uint16_t bcast_id)
+{
+  struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)(p->data());
+  
+  if ( (bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) != 0 ) {
+    packet_dequeue(src, bcast_id); 
   }
 }
 
