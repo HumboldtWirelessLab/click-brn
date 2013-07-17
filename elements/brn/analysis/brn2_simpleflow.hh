@@ -46,6 +46,8 @@ class BRN2SimpleFlow : public BRNElement
   CLICK_SIZE_PACKED_STRUCTURE(
   struct flowPacketRoute {,
     uint16_t hops;
+    uint16_t incl_hops;
+    uint32_t metric_sum;
   });
 
   CLICK_SIZE_PACKED_STRUCTURE(
@@ -103,6 +105,9 @@ class BRN2SimpleFlow : public BRNElement
 
       Vector<EtherAddress> route;
       Vector<uint16_t> metric;
+
+      uint32_t metric_sum;
+      uint16_t route_hops;
 
       Flow(): _type(TYPE_NO_ACK), _active(false) {}
 
