@@ -89,6 +89,11 @@ class FloodingPassiveAck : public BRNElement {
 	_already_queued_cnt = _retries = 0;
 	set_timeout(timeout);
       }
+      
+      ~PassiveAckPacket() {
+        if ( _p != NULL ) _p->kill();
+        _passiveack.clear();
+      }
 
       void set_timeout(uint32_t timeout) {
       	_timeout = timeout;
@@ -150,8 +155,6 @@ class FloodingPassiveAck : public BRNElement {
   uint32_t _dfl_retries;
   uint32_t _dfl_timeout;
 
-  bool _enable;
-  bool _queue_check;
   uint32_t _time_tolerance;
 
   PassiveAckPacket *get_next_packet();
@@ -171,8 +174,6 @@ class FloodingPassiveAck : public BRNElement {
   uint32_t _already_queued_pkts;
 
  public:
-  
-  void enable(bool e) { _enable = e; };
 
   int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
@@ -187,7 +188,7 @@ class FloodingPassiveAck : public BRNElement {
 
   void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
   
-  void handle_rejected_packet(Packet *p, EtherAddress *src, uint16_t bcast_id);
+  void handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected);
     
   String stats();
 
