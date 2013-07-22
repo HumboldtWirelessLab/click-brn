@@ -346,6 +346,8 @@ DistTimeSync::lpReceiveHandler(char *buf, int size, EtherAddress probe_src)
   return len;
 }
 
+static uint32_t get_abs(int n);
+
 String DistTimeSync::stats_handler()
 {
   BRN_INFO("");
@@ -355,11 +357,10 @@ String DistTimeSync::stats_handler()
   EtherAddress neighbor;
 
   double drift;
-  uint64_t x1, x2;
-  uint64_t y1, y2;
-  uint64_t delta_x, delta_y;
-
   int32_t offset;
+
+  uint64_t now;
+  uint64_t last_update;
 
   for (TBTIter iter = tbt.begin(); iter.live(); ++iter) {
     neighbor = iter.key();
@@ -373,23 +374,19 @@ String DistTimeSync::stats_handler()
       continue;
     }
 
-    x1 = hst_buf->hst_tpls[0].hst_me;
-    x2 = hst_buf->hst_tpls[hst_buf->entries - 1].hst_me;
+    now = Timestamp::now().usecval();
+    last_update = hst_buf->di.ts;
 
-    y1 = hst_buf->hst_tpls[0].hst_nb;
-    y2 = hst_buf->hst_tpls[hst_buf->entries - 1].hst_nb;
+    if ((get_abs(now - last_update)) < DTS_TD_CACHE_DURATION) {
+      drift  = hst_buf->di.drift;
+      offset = hst_buf->di.offset;
+    } else {
+      drift  = hst_buf->get_timedrift();
+      offset = hst_buf->get_offset();
+      hst_buf->di.ts = now;
+    }
 
-    delta_x = x2 - x1;
-    delta_y = y2 - y1;
-
-    if (delta_x != 0)
-      drift = (double) delta_y / (double) delta_x;
-    else
-      drift = -1;
-
-    offset = y1 - x1;
-
-    sa << "td: " << drift << "\n";
+    sa << "td:  " << drift  << "\n";
     sa << "off: " << offset << "\n";
     sa << "\n";
   }
@@ -417,6 +414,10 @@ HostTimeBuf::HostTimeBuf() :
     hst_tpls[i].hst_nb = 0;
     hst_tpls[i].pkt_handle = 0;
   }
+
+  di.drift  = 0;
+  di.offset = 0;
+  di.ts     = 0;
 }
 
 HostTimeBuf::~HostTimeBuf()
@@ -535,12 +536,22 @@ static uint64_t apply_drift(uint64_t hst, int32_t off, int32_t td)
 
 static String DistTimeSync_read_stats(Element *e, void *thunk)
 {
+  static int i = 0;
+  ++i;
+  click_chatter("\nreadstats: %d\n\n", i);
+
   /* unused parameter */
   (void) thunk;
 
   DistTimeSync *dstTs = (DistTimeSync *) e;
   return dstTs->stats_handler();
 }
+
+static uint32_t get_abs(int n)
+{
+  return (n < 0) ? -(unsigned)n : n;
+}
+
 
 CLICK_ENDDECLS
 

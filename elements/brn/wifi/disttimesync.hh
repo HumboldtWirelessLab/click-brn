@@ -28,6 +28,8 @@
 #define DTS_MAX_OFFSET 100   /* max. artificial offset when simulating */
 #define DTS_MAX_TIMEDRIFT 20 /* max. artificial timedrift when simulating */
 
+#define DTS_TD_CACHE_DURATION 1000000 /* usec  = 1000 ms = 1 s */
+
 CLICK_DECLS
 
 struct PacketSyncInfo {
@@ -45,6 +47,7 @@ struct HostTimeTuple {
 struct DriftInfo {
   double drift;
   int64_t offset;
+  uint64_t ts;
 };
 
 class HostTimeBuf {
@@ -52,6 +55,8 @@ public:
   struct HostTimeTuple *hst_tpls;
   uint32_t hst_idx;
   uint32_t entries;
+
+  struct DriftInfo di; /* most recent timedrift and offset + timestamp */
 
   HostTimeBuf();
   ~HostTimeBuf();
