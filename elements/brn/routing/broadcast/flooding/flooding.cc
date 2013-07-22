@@ -160,15 +160,12 @@ Flooding::push( int port, Packet *packet )
 
     if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size);
 
-    if ( ttl == 0 ) ttl = DEFAULT_TTL;
+    if ( ttl == 0 ) BRNPacketAnno::set_ttl_anno(packet,DEFAULT_TTL);
 
-    WritablePacket *out_packet = BRNProtocol::add_brn_header(new_packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING,
-                                                                         ttl, DEFAULT_TOS);
-    
     if ( _flooding_passiveack != NULL )                       //passiveack will also handle first transmit
-      _flooding_passiveack->packet_enqueue(out_packet, &src, _bcast_id, &passiveack, -1);
+      _flooding_passiveack->packet_enqueue(packet, &src, _bcast_id, &passiveack, -1);
     else 
-     retransmit_broadcast(out_packet, &src, _bcast_id);      //send packet
+     retransmit_broadcast(packet, &src, _bcast_id);      //send packet
     
   } else if ( port == 1 ) {                                  // kommt von brn
 
@@ -197,6 +194,7 @@ Flooding::push( int port, Packet *packet )
     uint32_t c_fwds;
     bool is_known = have_id(&src, p_bcast_id, &now, &c_fwds);
     ttl--;
+    BRNPacketAnno::set_ttl_anno(packet,ttl);
 
     BRN_DEBUG("Fwds: %d",c_fwds);
     
@@ -290,12 +288,10 @@ Flooding::push( int port, Packet *packet )
 
       if ( extra_data_size > 0 ) memcpy((uint8_t*)&(bcast_header[1]), extra_data, extra_data_size); 
 
-      WritablePacket *out_packet = BRNProtocol::add_brn_header(packet, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
-
       if ( _flooding_passiveack != NULL )
-        _flooding_passiveack->packet_enqueue(out_packet, &src, p_bcast_id, &passiveack, -1);
+        _flooding_passiveack->packet_enqueue(packet, &src, p_bcast_id, &passiveack, -1);
       else 
-        retransmit_broadcast(out_packet, &src, _bcast_id);      //send packet
+        retransmit_broadcast(packet, &src, _bcast_id);      //send packet
 
     } else {
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
@@ -531,15 +527,20 @@ Flooding::me_src(EtherAddress *src, uint32_t id)
 int
 Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
-  BRN_FATAL("Retransmit: %s %d (%d) %d ",src->unparse().c_str(),bcast_id,p->length(), (uint32_t)p->data()[0]);
+  BRN_DEBUG("Retransmit: %s %d (%d) %d ",src->unparse().c_str(),bcast_id,p->length(), (uint32_t)p->data()[0]);
+
   if (me_src(src, bcast_id)) _flooding_src++;
   else _flooding_fwd++;
 
   forward_attempt(src, bcast_id);
 
-  BRNPacketAnno::set_ether_anno(p, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
+  uint8_t ttl = BRNPacketAnno::ttl_anno(p);
 
-  output(1).push(p);
+  WritablePacket *out_packet = BRNProtocol::add_brn_header(p, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
+
+  BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
+
+  output(1).push(out_packet);
   
   return 0;
 }
