@@ -52,7 +52,7 @@ CLICK_DECLS
   */
 
 class Flooding;
- 
+
 class FloodingPassiveAck : public BRNElement {
 
  public:
@@ -60,61 +60,52 @@ class FloodingPassiveAck : public BRNElement {
   {
 #define PASSIVE_ACK_DFL_MAX_RETRIES 10
      public:
-      Packet *_p;
       EtherAddress _src;
       uint16_t _bcast_id;
       Vector<EtherAddress> _passiveack;
-      
+
       int16_t _max_retries;
       uint16_t _retries;
-      
+
       Timestamp _enqueue_time;
-      
-      uint32_t _timeout;
-      Timestamp _last_timeout;
-      Timestamp _next_timeout;
-      uint32_t _already_queued_cnt;
-      
-      PassiveAckPacket(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries, uint32_t timeout)
+      Timestamp _last_tx;
+
+      PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
       {
-        _p = p;
 	_src = EtherAddress(src->data());
 	_bcast_id = bcast_id;
 	if ( passiveack != NULL )
 	  for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
-	 
+
         _max_retries = retries;
 	
-	_last_timeout = _enqueue_time = Timestamp::now();
-	_already_queued_cnt = _retries = 0;
-	set_timeout(timeout);
+	_last_tx = _enqueue_time = Timestamp::now();
+	_retries = 0;
       }
 
-      void set_timeout(uint32_t timeout) {
-      	_timeout = timeout;
-	_next_timeout = _last_timeout + Timestamp::make_msec(timeout);
+      ~PassiveAckPacket() {
+        _passiveack.clear();
       }
 
-      void set_next_timeout() {
-	_last_timeout = _next_timeout;
-	_next_timeout = _last_timeout + Timestamp::make_msec(_timeout);
+      void set_tx(Timestamp tx_time) {
+        _last_tx = tx_time;
       }
 
-      void set_next_retry() {
-	_retries++;
-	set_next_timeout();
+      void set_next_retry(Timestamp tx_time) {
+        _retries++;
+        _last_tx = tx_time;
       }
-      
-      inline int32_t time_left(Timestamp now) {
-	return (_next_timeout - now).msecval();
+
+      inline int32_t tx_duration(Timestamp now) {
+	return (now - _last_tx).msecval();
       }
-      
+
       inline uint32_t retries_left() {
 	return _max_retries - _retries;
       }
 
    };
-   
+
    typedef Vector<PassiveAckPacket*> PAckPacketVector;
    typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
   //
@@ -132,8 +123,7 @@ class FloodingPassiveAck : public BRNElement {
   bool can_live_reconfigure() const  { return false; }
 
   int initialize(ErrorHandler *);
-  void run_timer(Timer *);
-  
+
   void add_handlers();
 
  private:
@@ -146,33 +136,17 @@ class FloodingPassiveAck : public BRNElement {
   FloodingHelper *_fhelper;
 
   PAckPacketVector p_queue;
-  
+
   uint32_t _dfl_retries;
   uint32_t _dfl_timeout;
 
-  bool _enable;
-  bool _queue_check;
-  uint32_t _time_tolerance;
-
-  PassiveAckPacket *get_next_packet();
-  void set_next_schedule();
-  void scan_packet_queue(int32_t time_tolerance);
-  bool has_packet_in_queue(PassiveAckPacket *pap);
   bool packet_is_finished(PassiveAckPacket *pap);
-  
-  Timer _retransmit_timer;
-  bool _timer_is_scheduled;
-  Timestamp _time_next_schedule;
-  
-  uint32_t _queued_pkts;
-  uint32_t _dequeued_pkts;
-  uint32_t _retransmissions;
-  uint32_t _pre_removed_pkts;
-  uint32_t _already_queued_pkts;
+
+  uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
+
+  int count_unfinished_neighbors(PassiveAckPacket *pap);
 
  public:
-  
-  void enable(bool e) { _enable = e; };
 
   int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
 
@@ -182,13 +156,15 @@ class FloodingPassiveAck : public BRNElement {
   }
 
   void set_flooding(Flooding *flooding) { _flooding = flooding; }
-  
+
   int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 
   void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
-  
-  void handle_rejected_packet(Packet *p, EtherAddress *src, uint16_t bcast_id);
-    
+
+  void handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected);
+
+  int tx_delay(PassiveAckPacket *pap);
+
   String stats();
 
 };
