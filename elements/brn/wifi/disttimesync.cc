@@ -23,15 +23,13 @@ DistTimeSync::DistTimeSync() :
   _time_drift(DISTTIMESYNC_INIT),
   _pkt_buf_size(PKT_BUF_SIZE),
   _pkt_buf_idx(DISTTIMESYNC_INIT),
-  pkt_buf(NULL)
+  node_id(-1)
 {
   BRNElement::init();
 }
 
 DistTimeSync::~DistTimeSync()
 {
-  if (pkt_buf != NULL)
-    delete pkt_buf;
 }
 
 int
@@ -40,58 +38,53 @@ DistTimeSync::configure(Vector<String> &conf, ErrorHandler* errh)
   int ret = cp_va_kparse(conf, this, errh,
                      "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
                      "TIMEDRIFT", cpkP, cpInteger, &_time_drift,
-                     "PKT_BUF", cpkP, cpInteger, &_pkt_buf_size,
+                     "OFFSET", cpkP, cpInteger, &_offset,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
-  if (_pkt_buf_size <= 0) {
-    click_chatter("Error @ DistTimeSync::configure():\n");
-    click_chatter("Given packet buffer size was <= 0\n");
-  }
-
-  pkt_buf = new struct PacketSyncInfo[_pkt_buf_size];
-
-  for (u_int32_t i = 0; i < _pkt_buf_size; i++) {
+  for (uint32_t i = 0; i < PKT_BUF_SIZE; ++i) {
     pkt_buf[i].seq_no    = DISTTIMESYNC_INIT;
     pkt_buf[i].host_time = DISTTIMESYNC_INIT;
 
-    for (int j = 0; j < ETHER_ADDR_SIZE; j++)
+    for (int j = 0; j < ETHER_ADDR_SIZE; ++j)
       pkt_buf[i].src[j] = 0;
   }
 
-/* TODO: set artificial time drift when simulating
-  if (_time_drift == TD_RANDOM) {
-    ...
-  }
-*/
+#if CLICK_NS
+  click_srandom(_linkstat->_dev->getEtherAddress()->hashcode());
+
+  if (_time_drift < 0)
+    _time_drift = click_random(1, 20);
+
+  if (_offset < 0)
+    _offset = click_random() % DTS_MAX_OFFSET;
+#endif /* CLICK_NS */
+
+  static int id = 1;
+  click_chatter("node %2d: td: %d off: %d\n", id, _time_drift, _offset);
+  node_id = id;
+  ++id;
 
   return ret;
 }
 
-static int
-tx_handler(void *element, const EtherAddress * /*ea*/, char *buffer, int size)
-{
-  click_chatter("tx\n");
-  DistTimeSync *dts = (DistTimeSync *) element;
-  return dts->lpSendHandler(buffer, size);
-}
+static int tx_handler(void *element, const EtherAddress * ea, char *buffer,
+                                                                     int size);
 
-static int
-rx_handler(void *element, EtherAddress * /*ea*/, char *buffer, int size,
-            bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
-{
-  click_chatter("rx\n");
-  DistTimeSync *dts = (DistTimeSync *) element;
-  return dts->lpReceiveHandler(buffer, size);
-}
+static int rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
+                        bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate);
 
-int DistTimeSync::initialize(ErrorHandler *)
+int
+DistTimeSync::initialize(ErrorHandler *)
 {
-  BRN_DEBUG("init");
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_TIMESYNC,
                                                     &tx_handler, &rx_handler);
   return 0;
 }
+
+
+static EtherAddress get_sender_addr(struct click_wifi *wh);
+static uint64_t apply_drift(uint64_t hst, int32_t off, int32_t td);
 
 Packet *
 DistTimeSync::simple_action(Packet *p)
@@ -108,46 +101,47 @@ DistTimeSync::simple_action(Packet *p)
   }
 
   /* Use packet anno time stamp, if no driver timestamp is available. */
-#ifdef NS_CLICK
-  u_int64_t host_time = p->timestamp_anno().usecval();
+#ifdef CLICK_NS
+  uint64_t host_time = p->timestamp_anno().usecval();
 #else
-  u_int64_t host_time = BrnWifi::get_host_time(ceh);
-#endif
+  uint64_t host_time = BrnWifi::get_host_time(ceh);
 
-  if (!host_time)
+  if (host_time == 0)
     host_time = p->timestamp_anno().usecval();
+#endif /* CLICK_NS */
+
+  if (_time_drift != 0 || _offset != 0)
+    host_time = apply_drift(host_time, _offset, _time_drift);
 
   EtherAddress src = get_sender_addr(wh);
   u_int16_t seq_no = wh->i_seq;
 
-  /* Get the handle of the current packet buffer slot.If empty -> handle = 0 */
-  u_int32_t current_handle;
-  current_handle = create_packet_handle(pkt_buf[_pkt_buf_idx].seq_no,
+  /*
+   * Get the handle of the current packet buffer slot. This slot will be
+   * overwritten by the current packet. So create the packet handle of this
+   * slot to erase it from the packet index table (PIT).
+   */
+  uint32_t current_handle;
+  current_handle = create_pkt_handle(pkt_buf[_pkt_buf_idx].seq_no,
                                         pkt_buf[_pkt_buf_idx].src);
 
-  /*
-   * If a ring buffer entry is to be overwritten, delete the entry
-   * from the packet handle hash table.
-   */
   if (current_handle != 0)
     pit.erase(current_handle);
 
-  /* write to packet buffer */
+  /*
+   * Write this packet to the packet buffer, create a new packet for this
+   * packet and insert both, packet handle and buffer index into the PIT.
+   */
   memcpy(pkt_buf[_pkt_buf_idx].src, src.data(), ETHER_ADDR_SIZE);
   pkt_buf[_pkt_buf_idx].seq_no = seq_no;
   pkt_buf[_pkt_buf_idx].host_time = host_time;
 
-  /* create new packet handle: [seq_no (16) + last 2 bytes MAC] = 32 bit */
-  u_int32_t packet_handle;
-  packet_handle = create_packet_handle(seq_no, pkt_buf[_pkt_buf_idx].src);
+  uint32_t packet_handle;
+  packet_handle = create_pkt_handle(seq_no, pkt_buf[_pkt_buf_idx].src);
 
-  /* insert into packet index hash table */
   pit.insert(packet_handle, _pkt_buf_idx);
 
-  //BRN_DEBUG("sa: seqno: %d hst: %lu src %s at idx %d\n",
-  //seq_no, host_time, src.unparse().c_str(), _pkt_buf_idx);
-
-  _pkt_buf_idx = (_pkt_buf_idx + 1) & (_pkt_buf_size - 1);
+  _pkt_buf_idx = (_pkt_buf_idx + 1) % PKT_BUF_SIZE;
 
   return p;
 }
@@ -155,12 +149,13 @@ DistTimeSync::simple_action(Packet *p)
 /*
  * Creates a unique packet identifier consisting the sequence number and
  * the last 2 bytes of the sender MAC address thus creating a 4 byte handle:
- * [0 seq no 15 | last 2 bytes MAC 31]
+ * [seq no | last 2 bytes MAC]
+ * 0       15                31
  */
-u_int32_t
-DistTimeSync::create_packet_handle(u_int16_t seq_no, u_int8_t *src_addr)
+uint32_t
+DistTimeSync::create_pkt_handle(u_int16_t seq_no, u_int8_t *src_addr)
 {
-  u_int32_t packet_handle = 0;
+  uint32_t packet_handle = 0;
   mempcpy(mempcpy(&packet_handle, &seq_no, sizeof(u_int16_t)),
           src_addr + 4, sizeof(u_int16_t));
 
@@ -176,11 +171,15 @@ DistTimeSync::lpSendHandler(char *buf, int size)
 {
   struct PacketSyncInfo *bundle = (struct PacketSyncInfo *) buf;
 
-  u_int32_t max_pkts; /* max num of pkts that fit into buf. */
+  uint32_t max_pkts; /* max num of pkts that fit into buf. */
 
   max_pkts = size / sizeof(struct PacketSyncInfo);
   if (max_pkts > BUNDLE_SIZE)
     max_pkts = BUNDLE_SIZE;
+  else if (max_pkts < BUNDLE_SIZE) {
+    BRN_DEBUG("txh: buffer too small!");
+    return 0;
+  }
 
   BRN_DEBUG("txh: size=%d max_pkts=%d\n", size, max_pkts);
 
@@ -192,8 +191,8 @@ DistTimeSync::lpSendHandler(char *buf, int size)
 
   BRN_DEBUG("idx: %d buf_idx: %d\n", idx, _pkt_buf_idx);
 
-  u_int32_t current_handle;
-  u_int32_t p; /* packet indicator for manouvering in bundle/buf */
+  uint32_t current_handle;
+  uint32_t p; /* packet indicator for manouvering in bundle/buf */
 
   p = 0;
   while (idx != ((int32_t) _pkt_buf_idx)) {
@@ -201,15 +200,16 @@ DistTimeSync::lpSendHandler(char *buf, int size)
     if (max_pkts == 0)
       break;
 
-    current_handle = create_packet_handle(pkt_buf[idx].seq_no,pkt_buf[idx].src);
+    current_handle = create_pkt_handle(pkt_buf[idx].seq_no,pkt_buf[idx].src);
     BRN_DEBUG("txh: idx=%d, pkt_h=%d\n", idx, current_handle);
+    BRN_DEBUG("txh: copy pkt with hst %lu to buf\n", pkt_buf[idx].host_time);
 
     if (current_handle != 0) { /* valid entry */
       memcpy(bundle + p, pkt_buf + idx, sizeof(struct PacketSyncInfo));
       ++p;
       --max_pkts;
     }
-    idx = (idx + 1) & (PKT_BUF_SIZE - 1);
+    idx = (idx + 1) % PKT_BUF_SIZE;
   }
 
   BRN_DEBUG("txh: size: %d idx: %d pkt_idx: %d p: %d\n", size, idx,
@@ -224,12 +224,15 @@ DistTimeSync::lpSendHandler(char *buf, int size)
  * packet and saves this diff into a host time diff buffer.
  */
 int
-DistTimeSync::lpReceiveHandler(char *buf, int size)
+DistTimeSync::lpReceiveHandler(char *buf, int size, EtherAddress probe_src)
 {
+  BRN_DEBUG("rxh: now: %lu\n", Timestamp::now().usecval());
+  BRN_DEBUG("FROM: %s\n", probe_src.unparse().c_str());
+
   struct PacketSyncInfo *bundle = (struct PacketSyncInfo *) buf;
 
-  u_int32_t len;     /* max. bytes we will from the received buffer */
-  u_int32_t rx_pkts; /* complete packets contained in the received buffer */
+  uint32_t len;     /* max. bytes we will read from the received buffer */
+  uint32_t rx_pkts; /* complete packets contained in the received buffer */
 
   rx_pkts = size / sizeof(struct PacketSyncInfo);
 
@@ -240,91 +243,162 @@ DistTimeSync::lpReceiveHandler(char *buf, int size)
     len = rx_pkts * sizeof(struct PacketSyncInfo);
   }
 
-  u_int32_t packet_handle;
-  u_int32_t idx;
+  BRN_DEBUG("rxh: bundle content:\n");
+  for (u_int8_t i = 0; i < rx_pkts; i++) {
+    BRN_DEBUG("\trxh: src: %s seqno: %d hst: %lu\n",
+        EtherAddress(bundle[i].src).unparse().c_str(),
+        bundle[i].seq_no,
+        bundle[i].host_time
+    );
+  }
+
+  uint32_t packet_handle;
+  uint32_t idx;
 
   for (u_int8_t i = 0; i < rx_pkts; i++) { /* for each received packet */
-    packet_handle = create_packet_handle(bundle[i].seq_no, bundle[i].src);
-    BRN_DEBUG("rxh: pkt_h: %d node: %s\n", packet_handle,
-                                EtherAddress(bundle[i].src).unparse().c_str());
+    packet_handle  = create_pkt_handle(bundle[i].seq_no, bundle[i].src);
+
+    BRN_DEBUG("rxh: rx'd pkt info:");
+    BRN_DEBUG("rxh:\tsrc: %s seqno: %d hst: %lu\n",
+        EtherAddress(bundle[i].src).unparse().c_str(),
+        bundle[i].seq_no,
+        bundle[i].host_time
+    );
 
     if (!packet_handle) /* no valid packet */
       continue;
 
     if (pit.findp(packet_handle)) { /* valid packet + buffered */
-      EtherAddress src(bundle[i].src);
       idx = pit.find(packet_handle);
       BRN_DEBUG("rxh: buffered at index %d\n", idx);
 
-      if (tdt.findp(src)) { /* there is a hst_diff buf for this node */
-        HostTimeBuf *hst_buf = tdt.find(src);
-        BRN_DEBUG("rxh: Diff Buffer found for %s", src.unparse().c_str());
+      if (tbt.findp(probe_src)) { /* there's a tpl buf for the probing node */
+        HostTimeBuf *hst_buf = tbt.find(probe_src);
+        BRN_DEBUG("rxh: tuple buf found for %s", probe_src.unparse().c_str());
 
-        /* No diff for this pkt -> create one.
-         * Otherwise do nothing, since we already got a diff */
+        /* No tuple for this pkt -> create one.
+         * Otherwise do nothing, since we already got a tuple */
         if (hst_buf->has_pkt(packet_handle) < 0) {
-          BRN_DEBUG("rxh: diff buf doesn't have pkt");
-          struct HostTimeDiff *diff = &(hst_buf->hst_diffs[hst_buf->hst_idx]);
+          BRN_DEBUG("rxh: tuple buf doesn't have pkt");
+          struct HostTimeTuple *tpl = &(hst_buf->hst_tpls[hst_buf->hst_idx]);
 
-          diff->hst_diff = pkt_buf[idx].host_time - bundle[i].host_time;
-          if (diff->hst_diff < 0)
-            diff->hst_diff *= -1;
+          tpl->hst_me = pkt_buf[idx].host_time;
+          tpl->hst_nb = bundle[i].host_time;
+          tpl->pkt_handle = packet_handle;
 
-          diff->pkt_handle = packet_handle;
-          diff->ts = Timestamp::now();
+          BRN_DEBUG("rxh: tuple for this new pkt: (%lu, %lu) at idx %d\n",
+                    tpl->hst_me,
+                    tpl->hst_nb,
+                    hst_buf->hst_idx
+          );
 
-          hst_buf->hst_idx = (hst_buf->hst_idx + 1) & (HST_BUF_SIZE - 1);
-          BRN_DEBUG("rxh: diff buf entry used, hst_idx now at %d\n",
-                                                            hst_buf->hst_idx);
+          hst_buf->hst_idx = (hst_buf->hst_idx + 1) % HST_BUF_SIZE;
+          BRN_DEBUG("rxh: new idx at %d\n", hst_buf->hst_idx);
+
+          if (hst_buf->entries < HST_BUF_SIZE)
+            ++(hst_buf->entries);
+
+        } else { /* already got a tuple */
+          BRN_DEBUG("rxh: hst tuple for this pkt already buff'd");
+          BRN_DEBUG("rxh: tuple is (%lu, %lu)\n",
+            hst_buf->hst_tpls[i].hst_me,
+            hst_buf->hst_tpls[i].hst_nb
+          );
         }
 
-       /* No hst_diff for this node yet.
-        * Create a new tdt entry for this node */
+       /* No hst_buf for this node yet.
+        * Create a new tbt entry for this node */
       } else {
         BRN_DEBUG("rxh: no diff buf");
         HostTimeBuf *hst_buf = new HostTimeBuf();
-        struct HostTimeDiff *diff = &(hst_buf->hst_diffs[hst_buf->hst_idx]);
+        struct HostTimeTuple *tpl = &(hst_buf->hst_tpls[hst_buf->hst_idx]);
 
-        BRN_DEBUG("rxh: hst from buf: %lu hst from pkt: %lu\n",
-                                  pkt_buf[idx].host_time, bundle[i].host_time);
+        tpl->hst_me = pkt_buf[idx].host_time;
+        tpl->hst_nb = bundle[i].host_time;
+        tpl->pkt_handle = packet_handle;
 
-        diff->hst_diff = pkt_buf[idx].host_time - bundle[i].host_time;
-        if (diff->hst_diff < 0)
-          diff->hst_diff *= -1;
+        BRN_DEBUG("rxh: new tuple (%lu, %lu)\n",
+          pkt_buf[idx].host_time,
+          bundle[i].host_time
+        );
 
-        diff->pkt_handle = packet_handle;
-        diff->ts = Timestamp::now();
-        BRN_DEBUG("rxh: new buf allocated. diff %d at idx %d inserted",
-                                            diff->hst_diff, hst_buf->hst_idx);
+        BRN_DEBUG("rxh: new buf allocated. new tuple at idx %d inserted",
+          hst_buf->hst_idx
+        );
 
-        hst_buf->hst_idx = (hst_buf->hst_idx + 1) & (HST_BUF_SIZE - 1);
+        hst_buf->hst_idx = (hst_buf->hst_idx + 1) % HST_BUF_SIZE;
 
-        BRN_DEBUG("rxh: insert hst buf for node %s\n", src.unparse().c_str());
-        tdt.insert(src, hst_buf);
+        if (hst_buf->entries < HST_BUF_SIZE)
+          ++(hst_buf->entries);
+
+        BRN_DEBUG("rxh: insert hst buf for node %s\n",
+          probe_src.unparse().c_str()
+        );
+        tbt.insert(probe_src, hst_buf);
       }
     } else {
       BRN_DEBUG("rxh: not buffered");
     }
-
   }
 
-  BRN_DEBUG("rxh: len: %d - size: %d\n", len, size);
+  BRN_DEBUG("rxh: len: %d - size: %d\n\n", len, size);
+
   return len;
 }
 
 String DistTimeSync::stats_handler()
 {
+  BRN_INFO("");
   StringAccum sa;
-  sa << "hi\n";
+
+  HostTimeBuf *hst_buf;
+  EtherAddress neighbor;
+
+  double drift;
+  uint64_t x1, x2;
+  uint64_t y1, y2;
+  uint64_t delta_x, delta_y;
+
+  int32_t offset;
+
+  for (TBTIter iter = tbt.begin(); iter.live(); ++iter) {
+    neighbor = iter.key();
+    hst_buf  = iter.value();
+
+    sa << "Nb: " << neighbor.unparse().c_str() << "\n";
+
+    if (hst_buf->entries < 2) {
+      sa << "not enough hst tuples\n";
+      sa << "\n";
+      continue;
+    }
+
+    x1 = hst_buf->hst_tpls[0].hst_me;
+    x2 = hst_buf->hst_tpls[hst_buf->entries - 1].hst_me;
+
+    y1 = hst_buf->hst_tpls[0].hst_nb;
+    y2 = hst_buf->hst_tpls[hst_buf->entries - 1].hst_nb;
+
+    delta_x = x2 - x1;
+    delta_y = y2 - y1;
+
+    if (delta_x != 0)
+      drift = (double) delta_y / (double) delta_x;
+    else
+      drift = -1;
+
+    offset = y1 - x1;
+
+    sa << "td: " << drift << "\n";
+    sa << "off: " << offset << "\n";
+    sa << "\n";
+  }
+  sa << "\n\n";
 
   return sa.take_string();
 }
 
-static String DistTimeSync_read_stats(Element *e, void *)
-{
-  DistTimeSync *dstTs = (DistTimeSync *) e;
-  return dstTs->stats_handler();
-}
+static String DistTimeSync_read_stats(Element *e, void *thunk);
 
 void DistTimeSync::add_handlers()
 {
@@ -333,33 +407,91 @@ void DistTimeSync::add_handlers()
 }
 
 HostTimeBuf::HostTimeBuf() :
-  hst_idx(0)
+  hst_idx(0),
+  entries(0)
 {
-  hst_diffs = new HostTimeDiff[HST_BUF_SIZE];
+  hst_tpls = new HostTimeTuple[HST_BUF_SIZE];
 
   for (int i = 0; i < HST_BUF_SIZE; i++) {
-    hst_diffs[i].hst_diff = 0;
-    hst_diffs[i].ts = Timestamp();
-    hst_diffs[i].pkt_handle = 0;
+    hst_tpls[i].hst_me = 0;
+    hst_tpls[i].hst_nb = 0;
+    hst_tpls[i].pkt_handle = 0;
   }
 }
 
 HostTimeBuf::~HostTimeBuf()
 {
-  delete hst_diffs;
+  delete hst_tpls;
 }
 
-int HostTimeBuf::has_pkt(u_int32_t packet_handle)
+int HostTimeBuf::has_pkt(uint32_t packet_handle)
 {
   for (int i = 0; i < HST_BUF_SIZE; i++) {
-    if (hst_diffs[i].pkt_handle == packet_handle)
+    if (hst_tpls[i].pkt_handle == packet_handle)
       return i;
   }
 
   return -1;
 }
 
-EtherAddress get_sender_addr(struct click_wifi *wh)
+/*
+ * Calculates the time drift, which is essentially the slope of a
+ * straight line, based on the first and last host time tuple buffered in the
+ * host time tuple buffer.
+ */
+double HostTimeBuf::get_timedrift()
+{
+  if (entries < 2) /* 2 points on a line are needed to calculate the slope. */
+    return -1;
+
+  double drift;
+  uint64_t delta_x;
+  uint64_t delta_y;
+
+  delta_x = hst_tpls[entries - 1].hst_me - hst_tpls[0].hst_me;
+  delta_y = hst_tpls[entries - 1].hst_nb - hst_tpls[0].hst_nb;
+
+  if (delta_x != 0)
+    drift = (double) delta_y / (double) delta_x;
+  else
+    drift = -1;
+
+  return drift;
+}
+
+int64_t HostTimeBuf::get_offset()
+{
+  if (hst_idx == 0)
+    return -1;
+
+  return hst_tpls[0].hst_nb - hst_tpls[0].hst_me;
+}
+
+
+static int
+tx_handler(void *element, const EtherAddress * ea, char *buffer, int size)
+{
+  /* unused parameter */
+  (void) ea;
+
+  DistTimeSync *dts = (DistTimeSync *) element;
+  return dts->lpSendHandler(buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
+            bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate)
+{
+  /* unused parameter */
+  (void) is_neighbour;
+  (void) fwd_rate;
+  (void) rev_rate;
+
+  DistTimeSync *dts = (DistTimeSync *) element;
+  return dts->lpReceiveHandler(buffer, size, *ea);
+}
+
+static EtherAddress get_sender_addr(struct click_wifi *wh)
 {
   EtherAddress src;
 
@@ -392,7 +524,23 @@ EtherAddress get_sender_addr(struct click_wifi *wh)
   return src;
 }
 
+static uint64_t apply_drift(uint64_t hst, int32_t off, int32_t td)
+{
+  if (td > 0)
+    hst *= td;
+  hst += off;
 
+  return hst;
+}
+
+static String DistTimeSync_read_stats(Element *e, void *thunk)
+{
+  /* unused parameter */
+  (void) thunk;
+
+  DistTimeSync *dstTs = (DistTimeSync *) e;
+  return dstTs->stats_handler();
+}
 
 CLICK_ENDDECLS
 
