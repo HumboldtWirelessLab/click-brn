@@ -168,6 +168,7 @@ class CachedNeighborsMetricList {
   
   inline int age() { return (Timestamp::now() - _last_update).msecval(); }
 
+  inline int size() { return _neighbors.size(); }
 };
 
 typedef HashMap<EtherAddress, CachedNeighborsMetricList*> CachedNeighborsMetricListMap;
@@ -244,7 +245,7 @@ public:
   void graph_cut(NetworkGraph &ng, NetworkGraph &ng2);
 
   int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
-    void neighbours();
+  void neighbours();
 
 };
 

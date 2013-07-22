@@ -64,22 +64,26 @@ RandomDelayQueue::static_lookup_timer_hook(Timer *, void *f)
 void
 RandomDelayQueue::queue_timer_hook()
 {
-  struct timeval curr_time;
-  curr_time = Timestamp::now().timeval();
-
   int nextTime = packetBuffer.getTimeToNext();
+  //click_chatter("Random: %d",nextTime);
 
-  while ( (nextTime == 1) || (nextTime == 0) )
+  while ((nextTime == 0) || (nextTime == 1))
   {
     Packet *out_packet = packetBuffer.getNextPacket();
 
     if ( out_packet != NULL ) output(0).push(out_packet);
     nextTime = packetBuffer.getTimeToNext();
+    //click_chatter("Random: %d",nextTime);
   }
 
-  if ( nextTime < 0 ) nextTime = 1000;
+  if (nextTime < 0) return;
+  
+  if (nextTime < _min_diff_delay) nextTime = _min_diff_delay;
 
-  _sendbuffer_timer.schedule_after_msec(nextTime);
+  if ( _sendbuffer_timer.scheduled() )
+    _sendbuffer_timer.reschedule_after_msec(nextTime);
+  else  
+    _sendbuffer_timer.schedule_after_msec(nextTime);
 }
 
 void
@@ -90,15 +94,23 @@ RandomDelayQueue::push( int /*port*/, Packet *packet )
 
   if ( _usetsanno ) {
     delay = (packet->timestamp_anno() - now).msecval();
-    if ( delay < 0 ) delay = _min_diff_delay;
+    if ( delay <= 0 ) {
+      output(0).push(packet);
+      return;
+    }
   } else {
-    delay = (unsigned int )_min_diff_delay + ( click_random() % _delay );
+    delay = (unsigned int )_min_delay + ( click_random() % _delay );
   }
 
   packetBuffer.addPacket_ms(packet, delay, 0);
-  int next_p = packetBuffer.getTimeToNext();
 
-  _sendbuffer_timer.schedule_after_msec( next_p );
+  int nextTime = packetBuffer.getTimeToNext();
+  if (nextTime < _min_diff_delay) nextTime = _min_diff_delay;
+
+  if ( _sendbuffer_timer.scheduled() )
+    _sendbuffer_timer.reschedule_after_msec(nextTime);
+  else  
+    _sendbuffer_timer.schedule_after_msec(nextTime);
 }
 
 Packet*

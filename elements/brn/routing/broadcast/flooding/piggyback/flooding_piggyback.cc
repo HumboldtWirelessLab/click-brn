@@ -89,6 +89,7 @@ FloodingPiggyback::simple_action(Packet *p)
     uint32_t rxdatasize =  bcast_header->extra_data_size;
 
     EtherAddress src = EtherAddress((uint8_t*)&(p->data()[sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + rxdatasize]));
+    BRN_DEBUG("SRC: %s",src.unparse().c_str());
 
     //Copy Header
     uint8_t header_cpy[sizeof(struct click_brn) + sizeof(struct click_brn_bcast)];

@@ -52,7 +52,7 @@ PacketSendBuffer::getTimeToNext()
 
     next_jitter = diff_in_ms(_next_send, _time_now);
 
-    if ( next_jitter <= 1 ) return(1);
+    if ( next_jitter <= 1 ) return(1); //TODO: why 1 ?
     else return( next_jitter );
   }
 }
