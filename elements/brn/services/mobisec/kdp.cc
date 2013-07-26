@@ -1,5 +1,5 @@
 /*
- * kdp.cc
+ * KDP.cc
  *
  *  Created on: 27.04.2012
  *      Author: aureliano
@@ -24,12 +24,12 @@
 
 CLICK_DECLS
 
-kdp::kdp()
+KDP::KDP()
 {
 	BRNElement::init();
 }
 
-kdp::~kdp() {
+KDP::~KDP() {
 }
 
 /*
@@ -38,8 +38,8 @@ kdp::~kdp() {
  * *******************************************************
  */
 
-// This function used for both server and client driven kdp
-WritablePacket * kdp::kdp_request_msg() {
+// This function used for both server and client driven KDP
+WritablePacket * KDP::kdp_request_msg() {
 	WritablePacket *p = Packet::make(128, NULL, sizeof(kdp_req), 32);
 
 	kdp_req req;
@@ -49,7 +49,7 @@ WritablePacket * kdp::kdp_request_msg() {
 	return p;
 }
 
-WritablePacket *kdp::kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, const unsigned char *payload) {
+WritablePacket *KDP::kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, const unsigned char *payload) {
 
 	int data_len = (type == CLIENT_DRIVEN) ? hdr->seed_len : (hdr->key_len*hdr->cardinality);
 
@@ -64,4 +64,4 @@ WritablePacket *kdp::kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, 
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(kdp)
+ELEMENT_PROVIDES(KDP)

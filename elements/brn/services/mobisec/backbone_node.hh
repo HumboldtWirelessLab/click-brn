@@ -5,8 +5,8 @@
  *      Author: aureliano
  */
 
-#ifndef BACKBONE_NODE_HH_
-#define BACKBONE_NODE_HH_
+#ifndef BackboneNode_HH_
+#define BackboneNode_HH_
 
 
 #include <string>
@@ -26,12 +26,12 @@
 
 CLICK_DECLS
 
-class BACKBONE_NODE : public BRNElement {
+class BackboneNode : public BRNElement {
 public:
-	BACKBONE_NODE();
-	~BACKBONE_NODE();
+	BackboneNode();
+	~BackboneNode();
 
-	const char *class_name() const { return "BACKBONE_NODE"; }
+	const char *class_name() const { return "BackboneNode"; }
 	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
@@ -43,12 +43,12 @@ public:
 	void snd_kdp_req();
 
 	void jmp_next_session();
-	static void session_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((BackboneNode *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((BackboneNode *)element)->jmp_next_epoch(); }
 
-	static void kdp_trigger(Timer *, void *element) { ((BACKBONE_NODE *)element)->snd_kdp_req(); }
+	static void kdp_trigger(Timer *, void *element) { ((BackboneNode *)element)->snd_kdp_req(); }
 
 	void reset_key_material();
 
@@ -89,8 +89,8 @@ private:
 
 	int req_id;
 
-	keymanagement keyman;
-	keymanagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
+	KeyManagement keyman;
+	KeyManagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;
@@ -114,4 +114,4 @@ private:
 
 
 CLICK_ENDDECLS
-#endif /* BACKBONE_NODE_HH_ */
+#endif /* BackboneNode_HH_ */

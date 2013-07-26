@@ -9,8 +9,8 @@
  * Todo: Dieses Modul muss auch die Aufgabe übernehmen, Replay-Angriffe zu bewältigen
  */
 
-#ifndef KEYSERVER_HH_
-#define KEYSERVER_HH_
+#ifndef KeyServer_HH_
+#define KeyServer_HH_
 
 
 #include <string>
@@ -29,12 +29,12 @@
 
 CLICK_DECLS
 
-class KEYSERVER : public BRNElement {
+class KeyServer : public BRNElement {
 public:
-	KEYSERVER();
-	~KEYSERVER();
+	KeyServer();
+	~KeyServer();
 
-	const char *class_name() const { return "KEYSERVER"; }
+	const char *class_name() const { return "KeyServer"; }
 	const char *port_count() const { return "1/1"; }
 	const char *processing() const { return PUSH; }
 	void push(int port, Packet *p);
@@ -44,10 +44,10 @@ public:
 	int initialize(ErrorHandler* errh);
 
 	void jmp_next_session();
-	static void session_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_session(); }
+	static void session_trigger(Timer *, void *element) { ((KeyServer *)element)->jmp_next_session(); }
 
 	void jmp_next_epoch();
-	static void epoch_trigger(Timer *, void *element) { ((KEYSERVER *)element)->jmp_next_epoch(); }
+	static void epoch_trigger(Timer *, void *element) { ((KeyServer *)element)->jmp_next_epoch(); }
 
 	void prepare_new_epoch();
 
@@ -68,8 +68,8 @@ private:
 
 	bool start_flag;
 
-	keymanagement keyman;
-	keymanagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
+	KeyManagement keyman;
+	KeyManagement BUF_keyman;	// a change between two subsequent epochs need a buffering structure
 
 	// Parameter to define the security level
 	enum proto_type _protocol_type;
@@ -90,4 +90,4 @@ private:
 };
 
 CLICK_ENDDECLS
-#endif /* KEYSERVER_HH_ */
+#endif /* KeyServer_HH_ */
