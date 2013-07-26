@@ -20,8 +20,8 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
-#include "ShamirServer.hh"
-#include "Shamir.hh"
+#include "shamirserver.hh"
+#include "shamir.hh"
 
 #include <openssl/opensslv.h>
 #include <openssl/ssl.h>

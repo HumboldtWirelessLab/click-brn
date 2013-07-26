@@ -1,5 +1,5 @@
 /*
- * kdp.hh -- Key Distribution Protocol
+ * KDP.hh -- Key Distribution Protocol
  *
  *  Created on: 27.04.2012
  *      Author: aureliano
@@ -31,12 +31,12 @@ struct kdp_req {
 	EtherAddress node_id;
 };
 
-class kdp : public BRNElement {
+class KDP : public BRNElement {
 public:
-	kdp();
-	~kdp();
+	KDP();
+	~KDP();
 
-	const char *class_name() const { return "kdp"; }
+	const char *class_name() const { return "KDP"; }
 
 	static WritablePacket *kdp_request_msg();
 

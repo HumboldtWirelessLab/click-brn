@@ -35,7 +35,7 @@
 
 CLICK_DECLS
 
-BACKBONE_NODE::BACKBONE_NODE()
+BackboneNode::BackboneNode()
 	: _debug(false),
 	  session_timer(session_trigger, this),
 	  epoch_timer(epoch_trigger, this),
@@ -46,10 +46,10 @@ BACKBONE_NODE::BACKBONE_NODE()
 	BRNElement::init();
 }
 
-BACKBONE_NODE::~BACKBONE_NODE() {
+BackboneNode::~BackboneNode() {
 }
 
-int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
+int BackboneNode::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
@@ -91,7 +91,7 @@ int BACKBONE_NODE::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
-int BACKBONE_NODE::initialize(ErrorHandler *) {
+int BackboneNode::initialize(ErrorHandler *) {
 	// Pseudo randomness as creepy solution for simulation in
 	// order to get asynchronous packet transmission
 	int randnum = ((int)_me->getServiceAddress()->data()[5])*200;
@@ -144,7 +144,7 @@ int BACKBONE_NODE::initialize(ErrorHandler *) {
 	return 0;
 }
 
-void BACKBONE_NODE::push(int port, Packet *p) {
+void BackboneNode::push(int port, Packet *p) {
 	if(port == 0) {
 		BRN_DEBUG("kdp reply received");
 		handle_kdp_reply(p);
@@ -160,7 +160,7 @@ void BACKBONE_NODE::push(int port, Packet *p) {
  * The timers are responsible for the correct time-dependent execution, while
  * handle_kdp_reply() might reschedule snd_kdp_req().
  */
-void BACKBONE_NODE::snd_kdp_req() {
+void BackboneNode::snd_kdp_req() {
 	/*
 	 * Switch to client_dev (fall back), if we can't receive a kdp-reply.
 	 * A missing tcp layer can be the reason for this.
@@ -181,7 +181,7 @@ void BACKBONE_NODE::snd_kdp_req() {
 		retry_cnt_down--;
 	}
 
-	WritablePacket *p = kdp::kdp_request_msg();
+	WritablePacket *p = KDP::kdp_request_msg();
 
 	// Set ethernet address of keyserver
 	BRNPacketAnno::set_ether_anno(p, *(_me->getServiceAddress()), _ks_addr, ETHERTYPE_BRN);
@@ -199,7 +199,7 @@ void BACKBONE_NODE::snd_kdp_req() {
 	kdp_timer.schedule_after_msec(backoff);
 }
 
-void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
+void BackboneNode::handle_kdp_reply(Packet *p) {
 	HandlerCall::call_read(_tls, "traffic_cnt", NULL);
 
 	crypto_ctrl_data *hdr = (crypto_ctrl_data *)p->data();
@@ -267,7 +267,7 @@ void BACKBONE_NODE::handle_kdp_reply(Packet *p) {
  *         Time-dependent tasks
  * *******************************************************
  */
-void BACKBONE_NODE::jmp_next_session() {
+void BackboneNode::jmp_next_session() {
 	BRN_DEBUG("Installing new keys: ");
 	if (keyman.install_key_on_phy(_wepencap, _wepdecap)) {
 		key_inst_cnt++;
@@ -290,7 +290,7 @@ void BACKBONE_NODE::jmp_next_session() {
 	session_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + offset));
 }
 
-void BACKBONE_NODE::jmp_next_epoch() {
+void BackboneNode::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
 
 	if ( keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() ) ) {
@@ -308,7 +308,7 @@ void BACKBONE_NODE::jmp_next_epoch() {
  * *******************************************************
  */
 
-void BACKBONE_NODE::switch_dev(enum dev_type type) {
+void BackboneNode::switch_dev(enum dev_type type) {
 	String type_str;
 	String network_stack_nr;
 
@@ -364,7 +364,7 @@ void BACKBONE_NODE::switch_dev(enum dev_type type) {
 }
 
 
-String BACKBONE_NODE::stats() {
+String BackboneNode::stats() {
 	  StringAccum sa;
 
 	  sa << "<mobisec mac=\"" << BRN_NODE_NAME
@@ -379,7 +379,7 @@ String BACKBONE_NODE::stats() {
 	  return sa.take_string();
 }
 
-void BACKBONE_NODE::reset_key_material() {
+void BackboneNode::reset_key_material() {
 	// Set the validity start time of keys to 0 in order to make them expire.
 	keyman.set_validity_start_time(0);
 	BRN_DEBUG("reset key material");
@@ -390,7 +390,7 @@ void BACKBONE_NODE::reset_key_material() {
 enum {H_SND_KDP_REQ, H_STATS, H_RST_KEYS};
 
 static String backbone_read_param(Element *e, void *thunk) {
-	BACKBONE_NODE *bn = (BACKBONE_NODE *)e;
+	BackboneNode *bn = (BackboneNode *)e;
 
 	switch ((uintptr_t) thunk) {
 	case H_SND_KDP_REQ: {
@@ -409,7 +409,7 @@ static String backbone_read_param(Element *e, void *thunk) {
 	}
 }
 
-void BACKBONE_NODE::add_handlers() {
+void BackboneNode::add_handlers() {
 	BRNElement::add_handlers();
 
 	add_read_handler("snd_kdp_request", backbone_read_param, (void *)H_SND_KDP_REQ);
@@ -421,4 +421,4 @@ void BACKBONE_NODE::add_handlers() {
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(BACKBONE_NODE)
+EXPORT_ELEMENT(BackboneNode)

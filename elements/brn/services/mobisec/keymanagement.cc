@@ -1,5 +1,5 @@
 /*
- * keymanagement.cc -- Key Managament
+ * KeyManagement.cc -- Key Managament
  *
  *  Created on: 06.05.2012
  *      Author: aureliano
@@ -32,18 +32,18 @@
 
 CLICK_DECLS
 
-keymanagement::keymanagement()
+KeyManagement::KeyManagement()
 	: _debug(false)
 {
 	BRNElement::init();
 }
 
-keymanagement::~keymanagement() {
+KeyManagement::~KeyManagement() {
 	free(seed);
 	keylist.clear();
 }
 
-int keymanagement::initialization() {
+int KeyManagement::initialization() {
 
 	ctrl_data.cardinality = 0;
 	ctrl_data.key_len = 0;
@@ -62,39 +62,39 @@ int keymanagement::initialization() {
  *         		useful getter & setter functions
  * *******************************************************
  */
-int32_t keymanagement::get_validity_start_time(){
+int32_t KeyManagement::get_validity_start_time(){
 	return ctrl_data.timestamp;
 }
 
-void keymanagement::set_validity_start_time(int32_t time) {
+void KeyManagement::set_validity_start_time(int32_t time) {
 	ctrl_data.timestamp = time;
 }
 
-void keymanagement::set_cardinality(int card) {
+void KeyManagement::set_cardinality(int card) {
 	ctrl_data.cardinality = card;
 }
 
-int keymanagement::get_cardinality() {
+int KeyManagement::get_cardinality() {
 	return ctrl_data.cardinality;
 }
 
-void keymanagement::set_keylen(int len) {
+void KeyManagement::set_keylen(int len) {
 	ctrl_data.key_len = (MIN_KEYLEN<=len && len<=MAX_KEYLEN)? len : 5;
 }
 
-void keymanagement::set_seedlen(int len) {
+void KeyManagement::set_seedlen(int len) {
 	ctrl_data.seed_len = len;
 }
 
-int keymanagement::get_keylen() {
+int KeyManagement::get_keylen() {
 	return ctrl_data.key_len;
 }
 
-void keymanagement::set_key_timeout(int timeout) {
+void KeyManagement::set_key_timeout(int timeout) {
 	key_timeout = timeout;
 }
 
-void keymanagement::set_seed(const unsigned char *data) {
+void KeyManagement::set_seed(const unsigned char *data) {
 	if (!data) {
 		click_chatter("seed is null");
 		return;
@@ -108,11 +108,11 @@ void keymanagement::set_seed(const unsigned char *data) {
 	}
 }
 
-data_t *keymanagement::get_seed() {
+data_t *KeyManagement::get_seed() {
 	return seed;
 }
 
-bool keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
+bool KeyManagement::set_ctrl_data(crypto_ctrl_data *data) {
 	// Plausibility check
 	if (data &&
 		data->cardinality > 0 &&
@@ -126,15 +126,15 @@ bool keymanagement::set_ctrl_data(crypto_ctrl_data *data) {
 		return false;
 	}
 }
-crypto_ctrl_data *keymanagement::get_ctrl_data() {
+crypto_ctrl_data *KeyManagement::get_ctrl_data() {
 	return &ctrl_data;
 }
 
-Vector<String> keymanagement::get_keylist() {
+Vector<String> KeyManagement::get_keylist() {
 	return keylist;
 }
 
-data_t *keymanagement::get_keylist_string() {
+data_t *KeyManagement::get_keylist_string() {
 	data_t *keylist_string = (unsigned char*)malloc(ctrl_data.cardinality * ctrl_data.key_len);
 	if(!keylist_string) { click_chatter("NO MEM FOR keylist_string");}
 
@@ -153,7 +153,7 @@ data_t *keymanagement::get_keylist_string() {
  */
 
 /* This function should only used by the keyserver */
-void keymanagement::gen_seeded_keylist() {
+void KeyManagement::gen_seeded_keylist() {
 	// Todo: check if all information are available for generation
 
 	RAND_seed("Wir möchten gerne, dass der Computer das tut, was wir wollen; doch er tut nur das, was wir schreiben. Ich weiß auch nicht warum -- W.", 80);
@@ -171,7 +171,7 @@ void keymanagement::gen_seeded_keylist() {
 }
 
 /* for backbone node and keyserver */
-void keymanagement::install_keylist_cli_driv(data_t *_seed) {
+void KeyManagement::install_keylist_cli_driv(data_t *_seed) {
 	keylist.clear();
 
 	data_t *curr_key = (data_t *)_seed;
@@ -194,7 +194,7 @@ void keymanagement::install_keylist_cli_driv(data_t *_seed) {
  */
 
 /* This function should only used by the keyserver */
-void keymanagement::gen_keylist() {
+void KeyManagement::gen_keylist() {
 	unsigned char *ith_key = (unsigned char *)malloc(ctrl_data.key_len);
 
 	RAND_seed("Wer nichts als Informatik versteht, versteht auch die nicht recht -- L1cht3nb3r9", 80);
@@ -216,7 +216,7 @@ void keymanagement::gen_keylist() {
 }
 
 /* for backbone node and keyserver */
-void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
+void KeyManagement::install_keylist_srv_driv(data_t *_keylist) {
 	keylist.clear();
 
 	for(int i=0; i<ctrl_data.cardinality; i++) {
@@ -235,7 +235,7 @@ void keymanagement::install_keylist_srv_driv(data_t *_keylist) {
  */
 
 /* for backbone node and keyserver */
-void keymanagement::install_keylist(Vector<String> _keylist) {
+void KeyManagement::install_keylist(Vector<String> _keylist) {
 	keylist.clear();
 
 	for(int i=0; i<_keylist.size();i++) {
@@ -250,7 +250,7 @@ void keymanagement::install_keylist(Vector<String> _keylist) {
  */
 
 // This method uses the list to set the adequate key
-bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
+bool KeyManagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 	int32_t time_now = Timestamp::now().msecval();
 	int32_t time_keylist = ctrl_data.timestamp;
 
@@ -303,4 +303,4 @@ bool keymanagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(keymanagement)
+ELEMENT_PROVIDES(KeyManagement)

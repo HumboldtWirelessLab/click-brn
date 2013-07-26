@@ -28,7 +28,7 @@
 
 CLICK_DECLS
 
-KEYSERVER::KEYSERVER()
+KeyServer::KeyServer()
 	: _debug(false),
 	  session_timer(session_trigger, this),
 	  epoch_timer(epoch_trigger, this),
@@ -38,10 +38,10 @@ KEYSERVER::KEYSERVER()
 	BRNElement::init();
 }
 
-KEYSERVER::~KEYSERVER() {
+KeyServer::~KeyServer() {
 }
 
-int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
+int KeyServer::configure(Vector<String> &conf, ErrorHandler *errh) {
 	String _protocol_type_str;
 
 	if (cp_va_kparse(conf, this, errh,
@@ -74,7 +74,7 @@ int KEYSERVER::configure(Vector<String> &conf, ErrorHandler *errh) {
 	return 0;
 }
 
-int KEYSERVER::initialize(ErrorHandler *) {
+int KeyServer::initialize(ErrorHandler *) {
 	// Needed for bootstrapping of prepare_new_epoch
 	start_flag = true;
 
@@ -116,7 +116,7 @@ int KEYSERVER::initialize(ErrorHandler *) {
 	return 0;
 }
 
-void KEYSERVER::push(int port, Packet *p) {
+void KeyServer::push(int port, Packet *p) {
 	if(port==0) {
 		handle_kdp_req(p);
 	} else {
@@ -125,7 +125,7 @@ void KEYSERVER::push(int port, Packet *p) {
 	}
 }
 
-void KEYSERVER::handle_kdp_req(Packet *p) {
+void KeyServer::handle_kdp_req(Packet *p) {
 	kdp_req *req = (kdp_req *)p->data();
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 
@@ -148,7 +148,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	 * 1. We are in the current epoch, thus a client gets the CURRENT key material.
 	 * 2. We are on the edge to a new epoch, thus the client gets the BRAND NEW key material.
 	 */
-	keymanagement *curr_keyman;
+	KeyManagement *curr_keyman;
 	if (epoch_begin < now && now <= thrashold) {
 		curr_keyman = &keyman;
 	} else if (thrashold < now && now <= epoch_end+keylist_livetime) {
@@ -176,7 +176,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
 	}
 
 	WritablePacket *reply;
-	reply = kdp::kdp_reply_msg(_protocol_type, hdr, payload);
+	reply = KDP::kdp_reply_msg(_protocol_type, hdr, payload);
 
 	// Set ethernet address of client
 	BRNPacketAnno::set_ether_anno(reply, *(_me->getServiceAddress()), dst_addr, ETHERTYPE_BRN);
@@ -197,7 +197,7 @@ void KEYSERVER::handle_kdp_req(Packet *p) {
  *         Time-dependent tasks
  * *******************************************************
  */
-void KEYSERVER::jmp_next_session() {
+void KeyServer::jmp_next_session() {
 	BRN_DEBUG("Installing new keys: ");
 	if (keyman.install_key_on_phy(_wepencap, _wepdecap)) {
 			key_inst_cnt++;
@@ -210,7 +210,7 @@ void KEYSERVER::jmp_next_session() {
 	session_timer.schedule_at(Timestamp::make_msec(keyman.get_validity_start_time() + offset));
 }
 
-void KEYSERVER::jmp_next_epoch() {
+void KeyServer::jmp_next_epoch() {
 	// Switch to new epoch (copy new epoch data from BUF_keyman to keyman)
 	if ( keyman.set_ctrl_data( BUF_keyman.get_ctrl_data() ) ) {
 
@@ -249,7 +249,7 @@ void KEYSERVER::jmp_next_epoch() {
  * generate the security items but to keep them ready early enough. In this
  * implementation the key server does this right after entering the current epoch.
  */
-void KEYSERVER::prepare_new_epoch() {
+void KeyServer::prepare_new_epoch() {
 	// First induction step is a little bit tricky. Some arrangements have to be done manually.
 	if(start_flag) {
 		start_flag = false;
@@ -266,7 +266,7 @@ void KEYSERVER::prepare_new_epoch() {
 	BRN_DEBUG("Prepared next epoch");
 }
 
-String KEYSERVER::stats() {
+String KeyServer::stats() {
 	  StringAccum sa;
 
 	  sa << "<mobisec node=\"" << BRN_NODE_NAME
@@ -284,7 +284,7 @@ String KEYSERVER::stats() {
 enum { H_STATS};
 
 static String keyserver_read_param(Element *e, void *thunk) {
-	KEYSERVER *bn = (KEYSERVER *)e;
+	KeyServer *bn = (KeyServer *)e;
 
 	switch ((uintptr_t) thunk) {
 	case H_STATS: {
@@ -295,7 +295,7 @@ static String keyserver_read_param(Element *e, void *thunk) {
 	}
 }
 
-void KEYSERVER::add_handlers() {
+void KeyServer::add_handlers() {
 	BRNElement::add_handlers();
 
 	add_read_handler("stats", keyserver_read_param, (void *)H_STATS);
@@ -306,4 +306,4 @@ void KEYSERVER::add_handlers() {
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
-EXPORT_ELEMENT(KEYSERVER)
+EXPORT_ELEMENT(KeyServer)

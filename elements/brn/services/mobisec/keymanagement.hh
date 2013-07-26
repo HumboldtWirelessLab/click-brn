@@ -1,5 +1,5 @@
 /*
- * keymanagement.hh -- Key Managament
+ * KeyManagement.hh -- Key Managament
  *
  *  Created on: 28.04.2012
  *      Author: aureliano
@@ -27,12 +27,12 @@ struct crypto_ctrl_data {
 	int seed_len;
 };
 
-class keymanagement : public BRNElement {
+class KeyManagement : public BRNElement {
 public:
-	keymanagement();
-	~keymanagement();
+	KeyManagement();
+	~KeyManagement();
 
-	const char *class_name() const { return "keymanagement"; }
+	const char *class_name() const { return "KeyManagement"; }
 	int initialization();
 
 	void set_validity_start_time(int32_t time);
