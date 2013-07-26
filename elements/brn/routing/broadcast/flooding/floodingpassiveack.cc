@@ -199,9 +199,11 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 
   /* depends on neighbours and last node*/
   int n = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()))->size();
-  int un = count_unfinished_neighbors(pap);
+  if ( n == 0 ) return (click_random() % _dfl_timeout);
 
+  int un = count_unfinished_neighbors(pap);
   if ( n == un ) return (click_random() % _dfl_timeout);
+
   return ( click_random() % ((_dfl_timeout * (n-un))/n) );
 
   /* depends on nothing. Just like backoff */
