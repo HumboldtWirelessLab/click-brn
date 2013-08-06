@@ -38,6 +38,8 @@ class FloodingPrenegotiation : public BRNElement {
   uint32_t _start_time;
   Timestamp _start_ts;
   bool _active;
+
+  BRN2LinkStat *_linkstat;
 };
 
 CLICK_ENDDECLS

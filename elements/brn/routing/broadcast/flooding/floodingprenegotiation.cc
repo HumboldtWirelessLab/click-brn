@@ -76,14 +76,17 @@ rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*i
 }
 
 int
-FloodingPrenegotiation::initialize(ErrorHandler *errh)
+FloodingPrenegotiation::initialize(ErrorHandler */*errh*/)
 {
   _start_ts = Timestamp::now();
+
+  _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_BROADCAST,&tx_handler,&rx_handler);
+
   return 0;
 }
 
 int
-FloodingPrenegotiation::lpSendHandler(char *buffer, int size)
+FloodingPrenegotiation::lpSendHandler(char */*buffer*/, int /*size*/)
 {
   if ( !_active ) {
     _active = ((Timestamp::now() - _start_ts).msecval() > _start_time);
@@ -94,7 +97,7 @@ FloodingPrenegotiation::lpSendHandler(char *buffer, int size)
 }
 
 int
-FloodingPrenegotiation::lpReceiveHandler(char *buffer, int size)
+FloodingPrenegotiation::lpReceiveHandler(char */*buffer*/, int /*size*/)
 {
   return 0;
 }
