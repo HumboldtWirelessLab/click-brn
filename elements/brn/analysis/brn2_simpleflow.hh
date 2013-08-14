@@ -109,7 +109,9 @@ class BRN2SimpleFlow : public BRNElement
       uint32_t metric_sum;
       uint16_t route_hops;
 
-      Flow(): _type(TYPE_NO_ACK), _active(false) {}
+      Packet *_buffered_p;
+
+      Flow(): _type(TYPE_NO_ACK), _active(false), _buffered_p(NULL) {}
 
       Flow(EtherAddress src, EtherAddress dst, int id, FlowType type, int rate, int size, int duration) {
         _src = src;
@@ -128,6 +130,7 @@ class BRN2SimpleFlow : public BRNElement
         _min_hops = _max_hops = _sum_sq_hops = 0;
         _min_rt_time = _max_rt_time = _sum_sq_rt_time = 0;
         _max_packet_id = _rx_out_of_order = 0;
+        _buffered_p = NULL;
       }
 
       ~Flow() {}
@@ -222,7 +225,7 @@ class BRN2SimpleFlow : public BRNElement
     String xml_stats();
   private:
 
-    WritablePacket*  nextPacketforFlow(Flow *f, Packet *packet = NULL);
+    WritablePacket*  nextPacketforFlow(Flow *f);
     void handle_reuse(Packet *packet);
 
 

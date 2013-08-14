@@ -89,8 +89,8 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   if (_start_active) set_active(&dst_of_flow,_start_active);
 
   if (_routing_peek) {
-	  if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ))
-		  BRN_ERROR("Failed adding routing_peek_func()");
+    if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ))
+      BRN_ERROR("Failed adding routing_peek_func()");
   }
 
   return 0;
@@ -138,7 +138,12 @@ BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
       BRN_DEBUG("flow actived");
       txFlow->_active = active;
       txFlow->_start_time = Timestamp::now();
-      schedule_next(dst);
+      if ( txFlow->_rate == 0 ) {
+        Packet *packet_out = nextPacketforFlow(txFlow);
+        output(0).push(packet_out);
+      } else {
+        schedule_next(dst);
+      }
     }
   } else {
     if ( is_active(dst)  ) {
@@ -375,7 +380,7 @@ BRN2SimpleFlow::sendAck(Packet *p, Flow *f)
 }
 */
 WritablePacket*
-BRN2SimpleFlow::nextPacketforFlow(Flow *f, Packet */*packet*/)
+BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 {
   WritablePacket *p;
   WritablePacket *p_brn;
@@ -385,7 +390,12 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f, Packet */*packet*/)
   if ( size < MINIMUM_FLOW_PACKET_SIZE )  //TODO: warn that we extend the packet
     size = MINIMUM_FLOW_PACKET_SIZE;
 
-  p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
+  if ( f->_buffered_p != NULL ) {
+    p = f->_buffered_p->uniqueify();
+    f->_buffered_p = NULL;
+  } else { 
+    p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
+  }
   if ( _clear_packet ) memset(p->data(),0,size);
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
   
@@ -457,8 +467,13 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
   EtherAddress dst_ea = EtherAddress(header->dst);
   Flow *f_tx = _tx_flowMap.find(dst_ea);
 
+  if ( f_tx->_buffered_p == NULL ) f_tx->_buffered_p = packet;
+  else packet->kill();
+
   if ( f_tx->_rate == 0 ) {
-    WritablePacket *p = nextPacketforFlow(f_tx, packet);
+    BRN_DEBUG("Rate is zero. Full pull");
+    WritablePacket *p = nextPacketforFlow(f_tx);
+    BRN_DEBUG("Use packet: %d", (f_tx->_buffered_p==NULL)?1:0);
     output(0).push(p);
   }
 }
@@ -482,16 +497,20 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   const click_ether *ether = (const click_ether *)p->ether_header();
   EtherAddress psrc = EtherAddress(ether->ether_shost);
   EtherAddress pdst = EtherAddress(ether->ether_dhost);
-  
+
   if ( (_link_table != NULL) && (_link_table->_node_identity != NULL) ) {
-    if (pdst.is_broadcast() || !_link_table->_node_identity->isIdentical((uint8_t*)ether->ether_dhost)) pdst = *(_link_table->_node_identity->getMasterAddress());
+    if (pdst.is_broadcast() || !_link_table->_node_identity->isIdentical((uint8_t*)ether->ether_dhost))
+      pdst = *(_link_table->_node_identity->getMasterAddress());
+
     BRN_DEBUG("New Dst: %s", pdst.unparse().c_str());
   } else {
     BRN_DEBUG("Peek: keep bcast");
   }
-  
+
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
   uint16_t size = p->length();
+
+  BRN_DEBUG("RoutingPeek: FlowID %d Packet: %d", ntohl(header->flowID), ntohl(header->packetID));
 
   BRN_DEBUG("call of handle_routing_peek(): %d %d %d",(uint32_t)header->flags,header->reply,size);
   BRN_DEBUG("last hop: %s %s",psrc.unparse().c_str(),pdst.unparse().c_str());
