@@ -41,6 +41,19 @@ CLICK_DECLS
  * forwards dsr source routed packets
  * =d
  */
+
+/* PORTS
+ * Input:
+ * 0 local
+ * 1 from other nodes to this nodes
+ * 2 from other nodes (overhear)
+ * 
+ * Output:
+ * 0 local
+ * 1 for next brn node
+ * 2 route error
+ * 
+ */
 class BRN2SrcForwarder : public BRNElement {
 
  public:
@@ -51,7 +64,7 @@ class BRN2SrcForwarder : public BRNElement {
   ~BRN2SrcForwarder();
 
   const char *class_name() const  { return "BRN2SrcForwarder"; }
-  const char *port_count() const  { return "2/3"; }
+  const char *port_count() const  { return "2-3/3"; }
   const char *processing() const  { return PUSH; }
 
   int configure(Vector<String> &, ErrorHandler *);
@@ -78,8 +91,10 @@ class BRN2SrcForwarder : public BRNElement {
   //methods
   //
   void forward_data(Packet *p_in);
-  Packet *strip_all_headers(Packet *p_in);
   Packet *skipInMemoryHops(Packet *p_in);
+
+ public:
+  static Packet *strip_all_headers(Packet *p_in);
 };
 
 CLICK_ENDDECLS
