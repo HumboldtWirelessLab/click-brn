@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #ifndef CLICK_CHANNELSTATS_HH
@@ -238,7 +238,7 @@ class ChannelStats : public BRNElement {
       }
 
       SrcInfo(uint32_t rssi, uint32_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq)
-      { 
+      {
         reset();
         set(rssi, packet_size, duration, nav, seq);
       }
@@ -247,7 +247,7 @@ class ChannelStats : public BRNElement {
       {
         _pkt_count = 1;
         _byte_count = packet_size;
-        
+
         if ( rssi != 0 ) {
           _rssi = rssi;
           _sum_sq_rssi = rssi * rssi;
@@ -270,7 +270,7 @@ class ChannelStats : public BRNElement {
         _rssi_hist_overflow = false;
         _last_seq = -1;
       }
-      
+
       inline void add_packet_info(uint16_t rssi, uint16_t packet_size, uint32_t duration, uint16_t nav, uint16_t seq) {
        if ( rssi > 0 ) {
          _rssi += rssi;
@@ -360,8 +360,8 @@ class ChannelStats : public BRNElement {
 
     class RSSIInfo {
      public:
-      uint8_t min_rssi_per_rate[255];
-      uint8_t min_rssi_per_rate_ht[255];
+      uint8_t min_rssi_per_rate[256];
+      uint8_t min_rssi_per_rate_ht[256];
       uint8_t min_rssi;
 
       RSSIInfo()
