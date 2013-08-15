@@ -324,7 +324,7 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
 
     //TODO: ether type cannot be set here.
     p->pull(sizeof(click_ether));
-    BRN_DEBUG("PUSH Etherheader");
+    //BRN_DEBUG("PUSH Etherheader");
   }
 
   ether_anno = (click_ether*)p->data();
@@ -333,8 +333,8 @@ BRN2SrcForwarder::strip_all_headers(Packet *p_in)
   memcpy( ether_anno->ether_shost, src.data(), 6 );
   memcpy( ether_anno->ether_dhost, dst.data(), 6 );
 
-  BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
-  BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
+  //BRN_DEBUG(" * stripping headers; removed %d bytes", brn_dsr_len);
+  //BRN_DEBUG("SRC: %s DST: %s",src.unparse().c_str(),dst.unparse().c_str());
 
   if ( BRNProtocol::is_brn_etherframe(p) ) { //set ttl if payload is brn_packet
     struct click_brn *brnh = BRNProtocol::get_brnheader_in_etherframe(p);
