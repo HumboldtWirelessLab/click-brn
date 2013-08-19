@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #include <click/config.h>
@@ -30,9 +30,9 @@
 #include <click/timer.hh>
 #include <clicknet/wifi.h>
 
-#if CLICK_NS 
-#include <click/router.hh> 
-#endif 
+#if CLICK_NS
+#include <click/router.hh>
+#endif
 
 #include <elements/brn/brn2.h>
 #include <elements/wifi/bitrate.hh>
@@ -412,7 +412,7 @@ ChannelStats::push(int port, Packet *p)
             if ( (src_info_p = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {       //search in tab
               if ( (src_info_p = _small_stats_src_tab_pool[_current_small_stats].findp(src)) == NULL ) {//search in pool
               //insert new ( rssi value is set via constructor)
-                src_info = new SrcInfo(rssi,p_length + 4, duration, w->i_dur, seq);     //create new 
+                src_info = new SrcInfo(rssi,p_length + 4, duration, w->i_dur, seq);     //create new
                 _small_stats_src_tab_pool[_current_small_stats].insert(src, src_info);  //insert pool
               } else {
                 src_info = *src_info_p;

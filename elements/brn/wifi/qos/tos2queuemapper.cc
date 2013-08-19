@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 /*
@@ -31,9 +31,9 @@
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
 
-#if CLICK_NS 
+#if CLICK_NS
 #include <click/router.hh>
-#endif 
+#endif
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
@@ -127,7 +127,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       _cwmax[i] = v;
     }
 
-    args.clear(); 
+    args.clear();
     cp_spacevec(s_aifs, args);
     if ( args.size() < no_queues ) no_queues = args.size();
     for( int i = 0; i < no_queues; i++ ) {
@@ -138,7 +138,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
     args.clear();
   }
 
-#if CLICK_NS  
+#if CLICK_NS
   get_backoff();
 #endif
 
@@ -149,15 +149,19 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   _bo_usage_usage = new uint32_t[_bo_usage_max_no];
 
   for ( int i = 0; i < no_queues; i++ )
-    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);    
+    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
   memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
 
   //for ( int i = 0; i < no_queues; i++ )
-  //  click_chatter("Queue: %d Min: %d Max: %d",i ,_cwmin[i], _cwmax[i]); 
+  //  click_chatter("Queue: %d Min: %d Max: %d",i ,_cwmin[i], _cwmax[i]);
   //for ( int i = 0; i < 25; i++) {
   //  BRN_ERROR("N: %d backoff: %d",i,_backoff_matrix_tmt_backoff_3D[0 /*rate 1*/][1/*msdu 1500*/][i]);//
   //}
+
+  BRN_DEBUG("");
+  for (int i = 0; i < no_queues; i++)
+    BRN_DEBUG("CONFIGURE: Queue %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
 
   return 0;
 }
@@ -176,15 +180,15 @@ Tos2QueueMapper::simple_action(Packet *p)
     return p;
   }
 
-/*if ( port == 1 ) {    
+/*if ( port == 1 ) {
       handle_feedback(p);
       return p;
-    }*/
+  }*/
 
-  //TOS-Value from an application or user
+  // TOS-Value from an application or user
   uint8_t tos = BRNPacketAnno::tos_anno(p);
-  int opt_cwmin = 15;                      //default
-  int opt_queue = 0;
+  int opt_cwmin = 15; //default
+  int opt_queue = tos;
 
   switch (_bqs_strategy) {
     case BACKOFF_STRATEGY_OFF:
@@ -194,28 +198,28 @@ Tos2QueueMapper::simple_action(Packet *p)
           case 2: opt_queue = 2; break;
           case 3: opt_queue = 3; break;
           default: opt_queue = 1;
-        }        
+        }
         BrnWifi::setTxQueue(ceh, opt_queue);
-    case BACKOFF_STRATEGY_DIRECT:            //parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
-        _queue_usage[opt_queue]++; 
+    case BACKOFF_STRATEGY_DIRECT:            // parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
+        _queue_usage[opt_queue]++;
         _bo_usage_usage[_bo_exp[opt_queue]]++;
         _pkt_in_q++;
         return p;
-    case BACKOFF_STRATEGY_MAX_THROUGHPUT: 
+    case BACKOFF_STRATEGY_MAX_THROUGHPUT:
         opt_cwmin = backoff_strategy_max_throughput(p);
         break;
     case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
         opt_cwmin = backoff_strategy_packetloss_aware(p);
         break;
     case BACKOFF_STRATEGY_LEARNING:
-        opt_cwmin = find_queue(_learning_current_bo);
-        break;  
+        opt_cwmin = _learning_current_bo;
+        break;
     case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
     case BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
     {
         struct airtime_stats *as = _cst->get_latest_stats();
 
-        opt_cwmin = _bo_for_target_channelload; //also used for diff_rxtx_busy
+        opt_cwmin = _bo_for_target_channelload; // also used for diff_rxtx_busy
         if ( _ac_stats_id != as->stats_id ) {
           if ( _bqs_strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE ) {
             opt_cwmin = backoff_strategy_channelload_aware(as->hw_busy, as->no_sources);
@@ -231,13 +235,24 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   opt_queue = find_queue(opt_cwmin);
 
-  //trunc overflow
+  BRN_DEBUG("SA: opt_cwmin: %d  opt_q: %d  learning_curr_bo: %d\n",
+    opt_cwmin,
+    opt_queue,
+    _learning_current_bo
+  );
+
+
+  // handle trunc overflow
   if ( opt_queue == (no_queues-1) || opt_queue == 0 ) {
-    recalc_backoff_queues(find_closest_backoff(opt_cwmin), 1 /*tos*/, 1/*step*/);
+    uint32_t closest_bo = find_closest_backoff(opt_cwmin);
+    recalc_backoff_queues(closest_bo, 1, 1);
     set_backoff();
+    opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+    BRN_DEBUG("SA: final opt_q: %d\n\n", opt_queue);
   }
 
-  //Apply tos;
+  // Apply tos;
+  // TODO ...
 
   //set queue
   BrnWifi::setTxQueue(ceh, opt_queue);
@@ -273,10 +288,12 @@ Tos2QueueMapper::pull(int port)
 void
 Tos2QueueMapper::handle_feedback(Packet *p)
 {
+
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
   if ( ceh->flags & WIFI_EXTRA_TX ) {
-
+    BRN_DEBUG("\n");
+    BRN_DEBUG("HNDL_FB: retries: %d\n", ceh->retries);
     _pkt_in_q--;
 
     struct click_wifi *w = (struct click_wifi *) p->data();
@@ -288,24 +305,39 @@ Tos2QueueMapper::handle_feedback(Packet *p)
     _tx_cnt += ceh->retries + 1;
 
     uint32_t _learning_bo_limit = 1;
-
     uint32_t _learning_bo_min = _cwmin[0];           //1
     uint32_t _learning_bo_max = _cwmin[no_queues-1]; //_learning_max_bo
 
-    if ( ceh->retries < _learning_bo_limit && _learning_current_bo > _learning_bo_min ) { //no retries: reduces bo
+    BRN_DEBUG("HNDL-FB: old bo: %d\n", _learning_current_bo);
+
+    // no retries: reduces bo
+    if ( ceh->retries < _learning_bo_limit && _learning_current_bo > _learning_bo_min ) {
       _learning_count_down++;
       _learning_current_bo = _learning_current_bo >> 1;
+
+    // 1 retry: don't change cwmin yet
     } else if ( ceh->retries == _learning_bo_limit ) {
       //_learning_count_down++;
       //_learning_current_bo = _learning_current_bo >> 1;
       _learning_current_bo = _learning_current_bo;       //keep
+
+    // many retries but still not cwmax: double cwmin
     } else if ( ceh->retries > _learning_bo_limit && _learning_current_bo < _learning_bo_max ) {
-      _learning_count_up += 1;
-      _learning_current_bo = _learning_current_bo << 1;
-      //_learning_count_up += (ceh->retries - _learning_bo_limit);
-      //_learning_current_bo = _learning_current_bo << (ceh->retries - _learning_bo_limit);
+      //_learning_count_up += 1;
+      //_learning_current_bo = _learning_current_bo << 1;
+
+      _learning_count_up += (ceh->retries - _learning_bo_limit);
+      _learning_current_bo = _learning_current_bo << (ceh->retries - _learning_bo_limit);
     }
+
+  if (_learning_current_bo < TOS2QM_LEARNING_MIN_CWMIN)
+    _learning_current_bo = TOS2QM_LEARNING_MIN_CWMIN;
+  else if (_learning_current_bo > TOS2QM_LEARNING_MAX_CWMIN)
+    _learning_current_bo = TOS2QM_LEARNING_MAX_CWMIN;
+
+  BRN_DEBUG("HNDL-FB: new bo: %d\n\n", _learning_current_bo);
   }
+
 }
 
 int
@@ -403,7 +435,7 @@ Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy,
 }
 
 /**
- *   H E L P E R   F U N C T I O N S 
+ *   H E L P E R   F U N C T I O N S
  */
 
 int
@@ -442,10 +474,10 @@ Tos2QueueMapper::find_closest_per_index(int per) {
 /* TODO: use gravitaion approach:
  *       -calc dist to both neighbouring backoffs
  *       -calc gravitaion (f = C/d*d)
- *       -get random r between 0 & (f1+f2) 
+ *       -get random r between 0 & (f1+f2)
  *       -choose 1 if 0 < r < f1
  *       -choose 2 if f1 < r < (f1+f2)
- * 
+ *
  * Use also for find_closest_backoff(_exp) ?
  */
 int
@@ -510,17 +542,17 @@ uint32_t
 Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step)
 {
 #if CLICK_NS
-  uint32_t cwmin = backoff << (tos*step);
+  uint32_t cwmin = backoff >> (tos*step);
   if ( cwmin <= 1 ) cwmin = 2;
 
   for ( uint32_t i = 0; i < no_queues; i++, cwmin = cwmin << step) {
     _cwmin[i] = cwmin - 1;
     _cwmax[i] = (cwmin << 6) - 1;
     _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
-    BRN_DEBUG("Queue %d: %d %d",i,_cwmin[i],_cwmax[i]); 
   }
+
 #else
-  BRN_DEBUG("Try to set queues BO: %d TOS: %d STEP: %d",backoff ,tos, step); 
+  BRN_DEBUG("Try to set queues BO: %d TOS: %d STEP: %d",backoff ,tos, step);
 #endif
   return 0;
 }
@@ -618,10 +650,10 @@ static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vpa
 	cp_spacevec(s, args);
 
  	switch((intptr_t)vparam) {
-    		case H_TOS2QUEUEMAPPER_RESET: 
+    		case H_TOS2QUEUEMAPPER_RESET:
       			f->reset_queue_usage();
       		        break;
-    		case H_TOS2QUEUEMAPPER_STRATEGY: 
+    		case H_TOS2QUEUEMAPPER_STRATEGY:
 		        int st;
 		        if (!cp_integer(args[0],&st)) return errh->error("strategy parameter must be integer");
 			f->set_backoff_strategy(st);
