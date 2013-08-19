@@ -158,7 +158,7 @@ FibonacciHeap& FibonacciHeap::operator=(const FibonacciHeap& FH){
 FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
   
   FibonacciNode node;
-  FibonacciNode tmp[m_heapSize]; // help array to save old heap
+  Vector<FibonacciNode> tmp; // help array to save old heap
   int i;
   int left;        // left of minimum node in old heap
   int leftFH;      // left of minimum node in added heap
@@ -169,7 +169,7 @@ FibonacciHeap& FibonacciHeap::operator+=(const FibonacciHeap& FH){
   if ( this != &FH ) {
     // save old heap
     for (i=0; i<m_heapSize; i++) {
-	    tmp[i] = m_nodeList[i];
+	    tmp.push_back(m_nodeList[i]);
 	}
     
     // generate new heap
@@ -574,13 +574,13 @@ void FibonacciHeap::removeFromList(int nodeId){
 //
 void FibonacciHeap::addNodesToHeap(unsigned int numberOfNodesToAdd)
 {
-  FibonacciNode tmp[m_heapSize];
+  Vector<FibonacciNode> tmp;
   int i;
   int newSize;
 
   // save old heap
   for (i=0; i<m_heapSize; i++) {
-    tmp[i] = m_nodeList[i];
+    tmp.push_back(m_nodeList[i]);
   }
 
   delete[] m_nodeList;

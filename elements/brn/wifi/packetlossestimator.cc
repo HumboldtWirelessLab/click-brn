@@ -838,17 +838,12 @@ StringAccum PacketLossEstimator::stats_get_hidden_node(HiddenNodeDetection::Node
     reset_acks();
     StringAccum hidden_node_sa;
     const int neighbour_no = hnd_info_tab.size();
-    EtherAddress neighbours[neighbour_no];
+    Vector<EtherAddress> neighbours;
     int cou = 0;
 
-    for(HiddenNodeDetection::NodeInfoTableIter i = hnd_info_tab.begin(); i != hnd_info_tab.end(); i++)
+    for(HiddenNodeDetection::NodeInfoTableIter i = hnd_info_tab.begin(); i != hnd_info_tab.end() && cou < neighbour_no; i++, cou++)
     {
-        if(cou >= neighbour_no)
-        {
-            break;
-        }
-
-        neighbours[cou++] = i.key();
+        neighbours.push_back(i.key());
     }
 
     hidden_node_sa << "\t<hiddennodes observation_period=\"short\">\n";
