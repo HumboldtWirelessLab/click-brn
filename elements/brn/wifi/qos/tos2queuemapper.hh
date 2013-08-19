@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #ifndef TOS2QUEUEMAPPERELEMENT_HH
@@ -46,10 +46,13 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
 
 
-#define TOS2QM_DEFAULT_LEARNING_BO                       16
+#define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
 #define TOS2QM_DEFAULT_TARGET_CHANNELLOAD                90
 #define TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY             5
+
+#define TOS2QM_LEARNING_MIN_CWMIN                        31
+#define TOS2QM_LEARNING_MAX_CWMIN                        255
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -64,16 +67,16 @@ class Tos2QueueMapper : public BRNElement {
 
     int configure(Vector<String> &, ErrorHandler *);
     void add_handlers();
-    
+
 //    Packet * smaction(Packet *p, int port);
 //    void push(int, Packet *);
 //    Packet *pull(int);
     Packet *simple_action(Packet *p);
 
     String stats();
-    
+
     void handle_feedback(Packet *);
-    
+
     void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
     uint16_t get_backoff_strategy() { return _bqs_strategy; }
     uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
@@ -91,7 +94,7 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t get_learning_count_down() { return _learning_count_down; }
     uint32_t get_bo_target_cl() { return _bo_for_target_channelload; }
     uint32_t get_target_channelload() { return _target_channelload; }
-    
+
     int find_closest_size_index(int size);
     int find_closest_rate_index(int rate);
     int find_closest_no_neighbour_index(int no_neighbours);
@@ -103,7 +106,7 @@ class Tos2QueueMapper : public BRNElement {
 
     void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
 
-    
+
   private:
     uint32_t set_backoff();
     uint32_t get_backoff();
@@ -115,7 +118,7 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t _learning_count_up;
     uint32_t _learning_count_down;
     uint32_t _learning_max_bo;
-     
+
   private:
     uint8_t no_queues;          //number of queues
     uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
@@ -126,7 +129,7 @@ class Tos2QueueMapper : public BRNElement {
     uint16_t *_bo_exp;           //exponent for backoff in queue
     uint32_t *_bo_usage_usage;   //frequency of the used backoff
     uint32_t _bo_usage_max_no;   //max bo
-    
+
     uint32_t _ac_stats_id;
 
     uint32_t _target_packetloss;
@@ -135,11 +138,11 @@ class Tos2QueueMapper : public BRNElement {
 
   public:
     uint32_t _target_diff_rxtx_busy;
-    
+
     uint32_t _feedback_cnt;
     uint32_t _tx_cnt;
     int32_t _pkt_in_q;
-    
+
     uint32_t _call_set_backoff;
 
 };
