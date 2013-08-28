@@ -141,13 +141,21 @@ for op in $@; do
 
 done
 
-echo "./configure $CONFOPTION"
+case "x$TARGET" in
+"xmips" | "xarm")
+	echo "eval ARCH=$TARGET ./configure $CONFOPTION"
+	eval ARCH=$TARGET ./configure $CONFOPTION
+	;;
+"xx86")
+	echo "CXX=clang++ CC=clang ./configure $CONFOPTION"
+	eval CXX=clang++ CC=clang  ./configure $CONFOPTION
+	;;
+*)
+	echo "./configure $CONFOPTION"
+	eval ./configure $CONFOPTION
+	;;
+esac
 
-if [ "x$TARGET" = "xmips" ] || [ "x$TARGET" = "xarm" ]; then
-  eval ARCH=$TARGET ./configure $CONFOPTION
-else
-  eval ./configure $CONFOPTION
-fi
 
 exit 0
 
