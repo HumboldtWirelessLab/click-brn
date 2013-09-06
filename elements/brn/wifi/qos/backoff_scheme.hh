@@ -16,6 +16,8 @@ struct bo_scheme_utils {
 
 class BackoffScheme {
 public:
+  BackoffScheme() {}
+
   BackoffScheme(struct bo_scheme_utils scheme_utils) :
     _no_queues(scheme_utils.no_queues),
     _cwmin(scheme_utils.cwmin),
