@@ -16,14 +16,15 @@ struct bo_scheme_utils {
 
 class BackoffScheme {
 public:
-  BackoffScheme() {}
-
   BackoffScheme(struct bo_scheme_utils scheme_utils) :
     _no_queues(scheme_utils.no_queues),
     _cwmin(scheme_utils.cwmin),
     _cwmax(scheme_utils.cwmax),
     _aifs(scheme_utils.aifs)
   {}
+
+  BackoffScheme() {}
+  virtual ~BackoffScheme() {}
 
   virtual int get_cwmin() = 0;
   virtual void handle_feedback(Packet *p) = 0;

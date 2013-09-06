@@ -27,17 +27,11 @@ class BoLearning : public BRNElement, public BackoffScheme {
 
 public: /* derived */
   const char *class_name() const  { return "BoLearning"; }
-  const char *port_count() const  { return "1/1"; }
-  const char *processing() const  { return "a"; }
-
-//  int configure(Vector<String> &, ErrorHandler *);
-//  void add_handlers();
-//  Packet *simple_action(Packet *p);
 
   int get_cwmin();
   void handle_feedback(Packet *p);
 
-/* own */
+public: /* own */
   BoLearning(struct bo_scheme_utils scheme_utils);
   BoLearning();
   ~BoLearning();

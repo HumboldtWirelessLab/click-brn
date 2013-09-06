@@ -20,7 +20,6 @@ BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
   BackoffScheme(scheme_utils),
   _current_bo(BOLEARNING_STARTING_BO)
 {
-  //click_chatter("BoL: Constructor! _debug = %d\n", _debug);
   BRNElement::init();
 }
 
