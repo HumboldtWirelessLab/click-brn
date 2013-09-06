@@ -42,8 +42,6 @@
 #include "tos2queuemapper_data.hh"
 #include "bo_learning.hh"
 
-#include "test_elem.hh"
-
 CLICK_DECLS
 
 
@@ -79,6 +77,8 @@ Tos2QueueMapper::~Tos2QueueMapper()
 
   delete[] _bo_exp;
   delete[] _bo_usage_usage;
+
+  delete[] _bo_scheme;
 }
 
 int
@@ -267,7 +267,6 @@ Tos2QueueMapper::simple_action(Packet *p)
 */
   if (_bo_scheme)
     opt_cwmin = _bo_scheme->get_cwmin();
-
 
   opt_queue = find_queue(opt_cwmin);
 
