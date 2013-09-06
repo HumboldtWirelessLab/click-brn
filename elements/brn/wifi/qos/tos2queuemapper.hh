@@ -26,6 +26,8 @@
 #include <elements/brn/wifi/channelstats.hh>
 #include <elements/brn/wifi/collisioninfo.hh>
 
+#include "backoff_scheme.hh"
+
 
 CLICK_DECLS
 
@@ -44,15 +46,22 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
 #define BACKOFF_STRATEGY_LEARNING                        5
 #define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
+#define BACKOFF_STRATEGY_EXPONENTIAL_LINEAR              7 /* PLEB */
+
+#define BACKOFF_STRATEGY_REFACTOR                        99
 
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
 #define TOS2QM_DEFAULT_TARGET_CHANNELLOAD                90
 #define TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY             5
+#define TOS2QM_DEFAULT_EXPONENTIAL_LINEAR                31
 
 #define TOS2QM_LEARNING_MIN_CWMIN                        31
 #define TOS2QM_LEARNING_MAX_CWMIN                        255
+
+#define TOS2QM_PLEB_MIN_CWMIN                            7
+#define TOS2QM_PLEB_MAX_CWMIN                            127
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -75,7 +84,8 @@ class Tos2QueueMapper : public BRNElement {
 
     String stats();
 
-    void handle_feedback(Packet *);
+    void handle_feedback_learning(Packet *);
+    void handle_feedback_pleb(Packet *);
 
     void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
     uint16_t get_backoff_strategy() { return _bqs_strategy; }
@@ -119,6 +129,11 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t _learning_count_down;
     uint32_t _learning_max_bo;
 
+    /* pleb algorithm vars */
+    uint32_t _pleb_bo;
+    uint32_t _pleb_expcap; // no of retries using exp. bo before switching to linear
+    uint32_t _pleb_bo_cnt;
+
   private:
     uint8_t no_queues;          //number of queues
     uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
@@ -145,6 +160,7 @@ class Tos2QueueMapper : public BRNElement {
 
     uint32_t _call_set_backoff;
 
+    BackoffScheme *_bo_scheme;
 };
 
 CLICK_ENDDECLS

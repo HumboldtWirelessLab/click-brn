@@ -61,8 +61,14 @@ Tos2QueueMapperTXFeedback::configure(Vector<String> &conf, ErrorHandler* errh)
 Packet *
 Tos2QueueMapperTXFeedback::simple_action(Packet *p)
 {
-    _tos2qm->handle_feedback(p);
-    return p;
+  if (_tos2qm->_bo_scheme)
+    _tos2qm->_bo_scheme->handle_feedback(p);
+  else
+    BRN_DEBUG("TXFeedback: no bo scheme!");
+
+  //_tos2qm->handle_feedback_learning(p);
+  //_tos2qm->handle_feedback_pleb(p);
+  return p;
 }
 
 void

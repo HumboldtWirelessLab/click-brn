@@ -12,10 +12,10 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
  *
- * For additional licensing options, consult http://www.BerlinRoofNet.de 
- * or contact brn@informatik.hu-berlin.de. 
+ * For additional licensing options, consult http://www.BerlinRoofNet.de
+ * or contact brn@informatik.hu-berlin.de.
  */
 
 #ifndef TOS2QUEUEMAPPERTXFEEDBACKELEMENT_HH
@@ -48,9 +48,9 @@ class Tos2QueueMapperTXFeedback : public BRNElement {
 
     int configure(Vector<String> &, ErrorHandler *);
     void add_handlers();
-    
+
     Packet *simple_action(Packet *p);
-    
+
     Tos2QueueMapper *_tos2qm;
 };
 
