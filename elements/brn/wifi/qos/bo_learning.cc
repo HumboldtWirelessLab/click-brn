@@ -6,13 +6,11 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
-#include <click/packet_anno.hh>
 
-#include "elements/brn/brn2.h"
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/brn2.h"
 
-#include "bo_scheme.hh"
+#include "backoff_scheme.hh"
 #include "bo_learning.hh"
 
 CLICK_DECLS
@@ -22,7 +20,20 @@ BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
   BackoffScheme(scheme_utils),
   _current_bo(BOLEARNING_STARTING_BO)
 {
+  //click_chatter("BoL: Constructor! _debug = %d\n", _debug);
   BRNElement::init();
+}
+
+
+BoLearning::BoLearning() :
+  BackoffScheme()
+{
+  BRNElement::init();
+}
+
+
+BoLearning::~BoLearning()
+{
 }
 
 
@@ -31,7 +42,6 @@ int BoLearning::get_cwmin()
   return _current_bo;
 }
 
-BoLearning::simple_action(Packet *p) { return p; }
 
 void BoLearning::handle_feedback(Packet *p)
 {
@@ -52,7 +62,7 @@ void BoLearning::handle_feedback(Packet *p)
   uint32_t retry_limit = 1;
   uint8_t retries = ceh->retries;
 
-  click_chatter("\nBoLearning.handle_feedback():");
+  click_chatter("\nBoL.handle_feedback():");
   click_chatter("\tretries: %d\n", retries);
   click_chatter("\tcurrent bo: %d\n", _current_bo);
 
@@ -65,7 +75,7 @@ void BoLearning::handle_feedback(Packet *p)
   } else if (retries == retry_limit) {
     //_bo_cnt_down++;
     //_current_bo = _learning_current_bo >> 1;
-    _current_bo = _current_bo;       //keep
+    //_current_bo = _current_bo;       //keep
 
   // many retries but still not cwmax: double cwmin
   } else if (retries > retry_limit && _current_bo < max_cwmin) {

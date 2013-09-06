@@ -171,7 +171,6 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   if (_bqs_strategy == BACKOFF_STRATEGY_OFF)
     return 0;;
 
-/*
   struct bo_scheme_utils scheme_utils;
   scheme_utils.no_queues = no_queues;
   scheme_utils.cwmin     = _cwmin;
@@ -183,12 +182,13 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
     _bo_scheme = new BoLearning(scheme_utils);
     break;
   }
-*/
 
+
+
+/*
   TestElem foo;
   foo.test();
-
-
+*/
 
   return 0;
 }
@@ -267,6 +267,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 */
   if (_bo_scheme)
     opt_cwmin = _bo_scheme->get_cwmin();
+
 
   opt_queue = find_queue(opt_cwmin);
 

@@ -30,13 +30,18 @@ public: /* derived */
   const char *port_count() const  { return "1/1"; }
   const char *processing() const  { return "a"; }
 
-  Packet *simple_action(Packet *p);
+//  int configure(Vector<String> &, ErrorHandler *);
+//  void add_handlers();
+//  Packet *simple_action(Packet *p);
 
   int get_cwmin();
   void handle_feedback(Packet *p);
 
 /* own */
   BoLearning(struct bo_scheme_utils scheme_utils);
+  BoLearning();
+  ~BoLearning();
+
   struct bos_learning_stats get_stats();
 
 private:
