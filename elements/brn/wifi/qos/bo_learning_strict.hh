@@ -1,5 +1,5 @@
-#ifndef BO_LEARNING_HH
-#define BO_LEARNING_HH
+#ifndef BO_LEARNING_STRICT_HH
+#define BO_LEARNING_STRICT_HH
 
 #include <click/element.hh>
 #include <elements/brn/brnelement.hh>
@@ -12,7 +12,7 @@ CLICK_DECLS
 
 
 
-struct bos_learning_stats {
+struct bos_learningstrict_stats {
   uint32_t feedback_cnt;
   uint32_t tx_cnt;
   uint32_t bo_cnt_up;
@@ -20,10 +20,10 @@ struct bos_learning_stats {
 };
 
 
-class BoLearning : public BRNElement, public BackoffScheme {
+class BoLearningStrict : public BRNElement, public BackoffScheme {
 public:
   /* Element */
-  const char *class_name() const  { return "BoLearning"; }
+  const char *class_name() const  { return "BoLearningStrict"; }
 
   /* BackoffScheme */
   int get_cwmin();
@@ -31,14 +31,14 @@ public:
 
 
 public:
-  BoLearning(struct bo_scheme_utils scheme_utils);
-  BoLearning();
-  ~BoLearning();
+  BoLearningStrict(struct bo_scheme_utils scheme_utils);
+  BoLearningStrict();
+  ~BoLearningStrict();
 
-  struct bos_learning_stats get_stats() const;
+  struct bos_learningstrict_stats get_stats();
 
 private:
-  void increase_cw();
+  void increase_cw(uint8_t retries);
   void decrease_cw();
   void keep_cw();
 
@@ -62,4 +62,4 @@ private:
 
 CLICK_ENDDECLS
 
-#endif /* BO_LEARNING_HH */
+#endif /* BO_LEARNING_STRICT_HH */

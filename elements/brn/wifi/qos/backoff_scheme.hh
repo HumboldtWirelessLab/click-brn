@@ -23,7 +23,13 @@ public:
     _aifs(scheme_utils.aifs)
   {}
 
-  BackoffScheme() {}
+  BackoffScheme() :
+  _no_queues(0),
+  _cwmin(NULL),
+  _cwmax(NULL),
+  _aifs(NULL)
+  {}
+
   virtual ~BackoffScheme() {}
 
   virtual int get_cwmin() = 0;
