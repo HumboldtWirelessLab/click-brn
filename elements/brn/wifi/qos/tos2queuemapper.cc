@@ -41,6 +41,7 @@
 #include "tos2queuemapper.hh"
 #include "tos2queuemapper_data.hh"
 #include "bo_learning.hh"
+#include "bo_learning_strict.hh"
 
 CLICK_DECLS
 
@@ -178,8 +179,11 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   scheme_utils.aifs      = _aifs;
 
   switch(_bqs_strategy) {
-  case BACKOFF_STRATEGY_REFACTOR:
+  case BACKOFF_STRATEGY_LEARNING:
     _bo_scheme = new BoLearning(scheme_utils);
+    break;
+  case BACKOFF_STRATEGY_LEARNING_STRICT:
+    _bo_scheme = new BoLearningStrict(scheme_utils);
     break;
   }
 

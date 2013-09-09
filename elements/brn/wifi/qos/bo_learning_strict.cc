@@ -11,14 +11,14 @@
 #include "elements/brn/brn2.h"
 
 #include "backoff_scheme.hh"
-#include "bo_learning.hh"
+#include "bo_learning_strict.hh"
 
 
 CLICK_DECLS
 
 
 
-BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
+BoLearningStrict::BoLearningStrict(struct bo_scheme_utils scheme_utils) :
   BackoffScheme(scheme_utils),
   _current_bo(_bo_start),
   _pkt_in_q(0),
@@ -31,7 +31,7 @@ BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
 }
 
 
-BoLearning::BoLearning() :
+BoLearningStrict::BoLearningStrict() :
   BackoffScheme(),
   _current_bo(_bo_start),
   _pkt_in_q(0),
@@ -44,18 +44,18 @@ BoLearning::BoLearning() :
 }
 
 
-BoLearning::~BoLearning()
+BoLearningStrict::~BoLearningStrict()
 {
 }
 
 
-int BoLearning::get_cwmin()
+int BoLearningStrict::get_cwmin()
 {
   return _current_bo;
 }
 
 
-void BoLearning::handle_feedback(Packet *p)
+void BoLearningStrict::handle_feedback(Packet *p)
 {
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
   if (!(ceh->flags & WIFI_EXTRA_TX))
@@ -83,7 +83,7 @@ void BoLearning::handle_feedback(Packet *p)
   else if (retries == _retry_threshold)
     keep_cw();
   else if (retries > _retry_threshold && _current_bo < max_cwmin)
-    increase_cw();
+    increase_cw(retries);
 
   if (_current_bo < _min_cwmin)
     _current_bo = _min_cwmin;
@@ -94,9 +94,9 @@ void BoLearning::handle_feedback(Packet *p)
 }
 
 
-struct bos_learning_stats BoLearning::get_stats() const
+struct bos_learningstrict_stats BoLearningStrict::get_stats()
 {
-  struct bos_learning_stats learning_stats;
+  struct bos_learningstrict_stats learning_stats;
   learning_stats.feedback_cnt = _feedback_cnt;
   learning_stats.tx_cnt       = _tx_cnt;
   learning_stats.bo_cnt_up    = _bo_cnt_up;
@@ -106,25 +106,26 @@ struct bos_learning_stats BoLearning::get_stats() const
 }
 
 
-void BoLearning::increase_cw()
+void BoLearningStrict::increase_cw(uint8_t retries)
 {
-  _bo_cnt_up++;
-  _current_bo = _current_bo << 1;
+  _bo_cnt_up += (retries - _retry_threshold);
+  _current_bo = _current_bo << (retries - _retry_threshold);
 }
 
 
-void BoLearning::decrease_cw()
+void BoLearningStrict::decrease_cw()
 {
   _bo_cnt_down++;
   _current_bo = _current_bo >> 1;
 }
 
-void BoLearning::keep_cw()
+
+void BoLearningStrict::keep_cw()
 {
 }
 
 
 CLICK_ENDDECLS
 
-EXPORT_ELEMENT(BoLearning)
-ELEMENT_MT_SAFE(BoLearning)
+EXPORT_ELEMENT(BoLearningStrict)
+ELEMENT_MT_SAFE(BoLearningStrict)
