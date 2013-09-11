@@ -146,13 +146,14 @@ case "x$TARGET" in
 	echo "eval ARCH=$TARGET ./configure $CONFOPTION"
 	eval ARCH=$TARGET ./configure $CONFOPTION
 	;;
-"xx86")
-	echo "CXX=clang++ CC=clang ./configure $CONFOPTION"
-	eval CXX=clang++ CC=clang  ./configure $CONFOPTION
-	;;
 *)
-	echo "./configure $CONFOPTION"
-	eval ./configure $CONFOPTION
+	if [ "x$CLANG" = "x1" ]; then
+		echo "CXX=clang++ CC=clang ./configure $CONFOPTION"
+		eval CXX=clang++ CC=clang  ./configure $CONFOPTION
+	else 
+		echo "./configure $CONFOPTION"
+		eval ./configure $CONFOPTION
+	fi
 	;;
 esac
 
