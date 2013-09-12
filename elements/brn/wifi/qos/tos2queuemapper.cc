@@ -39,10 +39,11 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "tos2queuemapper.hh"
+#include "tos2queuemapper_data.hh"
+#include "bo_learning.hh"
 
 CLICK_DECLS
 
-#include "tos2queuemapper_data.hh"
 
 Tos2QueueMapper::Tos2QueueMapper():
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
@@ -61,7 +62,8 @@ Tos2QueueMapper::Tos2QueueMapper():
     _feedback_cnt(0),
     _tx_cnt(0),
     _pkt_in_q(0),
-    _call_set_backoff(0)
+    _call_set_backoff(0),
+    _bo_scheme(0)
 {
   BRNElement::init();
 }
@@ -75,6 +77,8 @@ Tos2QueueMapper::~Tos2QueueMapper()
 
   delete[] _bo_exp;
   delete[] _bo_usage_usage;
+
+  delete[] _bo_scheme;
 }
 
 int
@@ -163,6 +167,29 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   for (int i = 0; i < no_queues; i++)
     BRN_DEBUG("CONFIGURE: Queue %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
 
+  /* stop here, if you're rx */
+  if (_bqs_strategy == BACKOFF_STRATEGY_OFF)
+    return 0;;
+
+  struct bo_scheme_utils scheme_utils;
+  scheme_utils.no_queues = no_queues;
+  scheme_utils.cwmin     = _cwmin;
+  scheme_utils.cwmax     = _cwmax;
+  scheme_utils.aifs      = _aifs;
+
+  switch(_bqs_strategy) {
+  case BACKOFF_STRATEGY_REFACTOR:
+    _bo_scheme = new BoLearning(scheme_utils);
+    break;
+  }
+
+
+
+/*
+  TestElem foo;
+  foo.test();
+*/
+
   return 0;
 }
 
@@ -187,9 +214,10 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   // TOS-Value from an application or user
   uint8_t tos = BRNPacketAnno::tos_anno(p);
-  int opt_cwmin = 15; //default
+  int opt_cwmin = 31; //default
   int opt_queue = tos;
 
+/*
   switch (_bqs_strategy) {
     case BACKOFF_STRATEGY_OFF:
         switch (tos) {
@@ -204,7 +232,10 @@ Tos2QueueMapper::simple_action(Packet *p)
         _queue_usage[opt_queue]++;
         _bo_usage_usage[_bo_exp[opt_queue]]++;
         _pkt_in_q++;
+
+        BRN_DEBUG("SA: q: %d\n", opt_queue);
         return p;
+
     case BACKOFF_STRATEGY_MAX_THROUGHPUT:
         opt_cwmin = backoff_strategy_max_throughput(p);
         break;
@@ -230,17 +261,14 @@ Tos2QueueMapper::simple_action(Packet *p)
         }
         break;
     }
-
+    case BACKOFF_STRATEGY_EXPONENTIAL_LINEAR:
+      opt_cwmin = _pleb_bo;
   }
+*/
+  if (_bo_scheme)
+    opt_cwmin = _bo_scheme->get_cwmin();
 
   opt_queue = find_queue(opt_cwmin);
-
-  BRN_DEBUG("SA: opt_cwmin: %d  opt_q: %d  learning_curr_bo: %d\n",
-    opt_cwmin,
-    opt_queue,
-    _learning_current_bo
-  );
-
 
   // handle trunc overflow
   if ( opt_queue == (no_queues-1) || opt_queue == 0 ) {
@@ -248,7 +276,6 @@ Tos2QueueMapper::simple_action(Packet *p)
     recalc_backoff_queues(closest_bo, 1, 1);
     set_backoff();
     opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
-    BRN_DEBUG("SA: final opt_q: %d\n\n", opt_queue);
   }
 
   // Apply tos;
@@ -286,7 +313,7 @@ Tos2QueueMapper::pull(int port)
 */
 
 void
-Tos2QueueMapper::handle_feedback(Packet *p)
+Tos2QueueMapper::handle_feedback_learning(Packet *p)
 {
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
@@ -319,7 +346,7 @@ Tos2QueueMapper::handle_feedback(Packet *p)
     } else if ( ceh->retries == _learning_bo_limit ) {
       //_learning_count_down++;
       //_learning_current_bo = _learning_current_bo >> 1;
-      _learning_current_bo = _learning_current_bo;       //keep
+      //_learning_current_bo = _learning_current_bo;       //keep
 
     // many retries but still not cwmax: double cwmin
     } else if ( ceh->retries > _learning_bo_limit && _learning_current_bo < _learning_bo_max ) {
@@ -339,6 +366,22 @@ Tos2QueueMapper::handle_feedback(Packet *p)
   }
 
 }
+
+void
+Tos2QueueMapper::handle_feedback_pleb(Packet *p)
+{
+  /* ignore non-tx packets */
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  if (!ceh->flags == WIFI_EXTRA_TX)
+    return;
+
+  /* ignore broadcast packets */
+  struct click_wifi *w = (struct click_wifi *) p->data();
+  if (EtherAddress(w->i_addr1) == brn_etheraddress_broadcast)
+    return;
+}
+
+
 
 int
 Tos2QueueMapper::backoff_strategy_packetloss_aware(Packet *p)
