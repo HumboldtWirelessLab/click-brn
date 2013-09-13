@@ -4,6 +4,7 @@
 #include <click/ipaddress.hh>
 #include <click/etheraddress.hh>
 #include <click/hashmap.hh>
+#include <click/timer.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/vector/vector3d.hh"
@@ -11,6 +12,8 @@
 #include "gps_position.hh"
 
 CLICK_DECLS
+
+#define GPSMAP_DEFAULT_TIMEOUT 1000 /* 1 second */
 
 class GPSMap : public BRNElement {
 
@@ -21,6 +24,9 @@ class GPSMap : public BRNElement {
   const char* class_name() const { return "GPSMap"; }
   void* cast(const char*);
   int configure( Vector<String> &conf, ErrorHandler *errh );
+  int initialize(ErrorHandler *);
+
+  void run_timer(Timer*);
 
   GPSPosition* lookup(EtherAddress eth);
 
@@ -37,8 +43,16 @@ class GPSMap : public BRNElement {
 
   EtherSpeedMap _speed_map;
 
+  typedef HashMap<EtherAddress, Timestamp> TimestampMap;
+  typedef TimestampMap::const_iterator TimestampMapIter;
+
+  TimestampMap _time_map;
+
   static String read_handler(Element *e, void *thunk);
   void add_handlers();
+
+  uint32_t _timeout;
+  Timer _timeout_timer;
 
 };
 

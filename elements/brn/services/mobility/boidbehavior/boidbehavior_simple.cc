@@ -100,7 +100,25 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
 {
   Vector3D velo;
   Vector3D possum;
+  
+  Vector3D grav;
+  Vector3D sep;
+  Vector3D coh;
+  Vector3D pred;
 
+  grav.zero();
+  sep.zero();
+  coh.zero();
+  pred.zero();
+
+  int _minradius = _radius;
+  
+  int sepfac = 1;
+  int cohfac = 1;
+  int gravfac = 1;
+  int predfac = 1;
+  
+  
   /**********************************************************/
   /*                     1. Separation                      */
   /**********************************************************/
@@ -117,27 +135,32 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
       double dist_len = dist.length();
 
       BRN_DEBUG("Dist: %s",dist.unparse().c_str());
-
+		
+	  if(dist_len < _minradius){
+		cohfac = 0;
+		gravfac = 0;
+		predfac = 0;
+	  }
+		
       if ((dist_len > 0) && (dist_len < _radius)) {
         dist.normalize();                 //repulse.normalize();
         BRN_DEBUG("Dist_vec_norm: %s", dist.unparse().c_str());
         //dist.div(dist_len);            //repulse.div(dist);
-        possum.add(dist);              //posSum.add(repulse);
+        sep.add(dist);              //posSum.add(repulse);
       }
     } else {
       BRN_WARN("No GPS-Position for %s.",ea.unparse().c_str());
     }
   }
 
-  possum.mul(_seperation);
-  velo.add(possum);
+  sep.mul(_seperation);
 
   BRN_DEBUG("Sep: %s", velo.unparse().c_str());
 
   /**********************************************************/
   /*                     2. Cohesion                        */
   /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
+ 
   int count = 0;
 
   //for(SwarmObject neighbor :swarmCluster.get(clus)) {
@@ -153,7 +176,7 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
 
       if ((dist.length() > 0) && (dist.length() < _radius)) { //if ((dist > 0) && (dist < parent.getZoneRadius())) {
         Vector3D gps_vec = pos->vector3D();
-        possum.add(gps_vec);             // posSum.add(neighbor.getPosition())
+        coh.add(gps_vec);             // posSum.add(neighbor.getPosition())
         count++;
       }
     } else {
@@ -161,13 +184,12 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
     }
   }
 
-  if (count > 0) possum.div(count);
+  if (count > 0) coh.div(count);
 
   Vector3D own_gps_vec = own_pos->vector3D();
-  possum.sub(own_gps_vec);      // PVector steer = PVector.sub(posSum, swObj.getPosition());
-  possum.limit(_steerlimit);    //steer.limit(0.1f);
-  possum.mul(_cohesion);        //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
-  velo.add(possum);
+  coh.sub(own_gps_vec);      // PVector steer = PVector.sub(posSum, swObj.getPosition());
+  coh.limit(_steerlimit);    //steer.limit(0.1f);
+  coh.mul(_cohesion);        //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
 
   BRN_DEBUG("Coh: %s", velo.unparse().c_str());
 
@@ -194,7 +216,7 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
   /**********************************************************/
   /*        4. Pull to Center with Gravitation              */
   /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
+
   count = 0;
 
   for (int i = 0; i < glist.size(); i++) {
@@ -208,18 +230,18 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
       dist.normalize();            //repulse.normalize();
       BRN_DEBUG("Grav Dist_vec_norm: %s", dist.unparse().c_str());
       dist.div(dist_len);        //repulse.div(dist);
-      possum.add(dist);          //posSum.add(repulse);
+      grav.add(dist);          //posSum.add(repulse);
       count++;
     }
   }
 
   if (count > 0) {
-    possum.div(count);
+    grav.div(count);
 
     Vector3D own_gps_vec = own_pos->vector3D();
-    possum.limit(_steerlimit);    //steer.limit(0.1f);
-    possum.mul(_gravitation);
-    velo.add(possum);             //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
+    grav.limit(_steerlimit);    //steer.limit(0.1f);
+    grav.mul(_gravitation);
+
   }
 
   BRN_DEBUG("grav: %s", velo.unparse().c_str());
@@ -227,7 +249,6 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
   /**********************************************************/
   /*              5. Move away from Predators               */
   /**********************************************************/
-  possum.zero();                        //  posSum = new PVector(0,0,0);
   count = 0;
 
   for (int i = 0; i < plist.size(); i++) {
@@ -242,22 +263,31 @@ BoidBehaviorSimple::compute_behavior(GPSPosition *own_pos, GPSMap *gpsmap, Gravi
       BRN_DEBUG("Dist_vec_norm: %s", dist.unparse().c_str());
       if ( dist_len != 0 ) {
         dist.div(dist_len);        //repulse.div(dist);
-        possum.add(dist);          //posSum.add(repulse);
+        pred.add(dist);          //posSum.add(repulse);
         count++;
       }
     }
   }
 
   if (count > 0) {
-    possum.div(count);
+    pred.div(count);
 
     own_gps_vec = own_pos->vector3D();
-    possum.limit(_steerlimit);    //steer.limit(0.1f);
-    velo.add(possum);             //swObj.getAcceleration().add(PVector.mult(steer, parent.getCohesionFactor()));
+    pred.limit(_steerlimit);    //steer.limit(0.1f);
   }
 
   BRN_DEBUG("pred: %s", velo.unparse().c_str());
 
+  sep.mul(sepfac);
+  coh.mul(cohfac);
+  grav.mul(gravfac);
+  pred.mul(predfac);
+  
+  velo.add(sep);
+  velo.add(coh);
+  velo.add(grav);
+  velo.add(pred);
+    
   velo.mul(_speed);
   
   boidmove._direction._x = round(velo._x);
