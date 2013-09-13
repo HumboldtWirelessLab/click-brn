@@ -6,6 +6,11 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
+#include <click/packet_anno.hh>
+
+#if CLICK_NS
+#include <click/router.hh>
+#endif
 
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/brn2.h"
@@ -18,25 +23,8 @@ CLICK_DECLS
 
 
 
-BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
-  BackoffScheme(scheme_utils),
-  _current_bo(_bo_start),
-  _pkt_in_q(0),
-  _feedback_cnt(0),
-  _tx_cnt(0),
-  _bo_cnt_up(0),
-  _bo_cnt_down(0)
-{
-  BRNElement::init();
-}
-
-
 BoLearning::BoLearning() :
-  BackoffScheme(),
   _current_bo(_bo_start),
-  _pkt_in_q(0),
-  _feedback_cnt(0),
-  _tx_cnt(0),
   _bo_cnt_up(0),
   _bo_cnt_down(0)
 {
@@ -49,40 +37,50 @@ BoLearning::~BoLearning()
 }
 
 
+int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
+{
+
+  if (cp_va_kparse(conf, this, errh,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0) return -1;
+
+  return 0;
+}
+
+
+void BoLearning::add_handlers()
+{
+}
+
+
+void * BoLearning::cast(const char *name)
+{
+  if (strcmp(name, "BoLearning") == 0)
+    return (BoLearning *) this;
+  else if (strcmp(name, "BackoffScheme") == 0)
+         return (BackoffScheme *) this;
+       else
+         return NULL;
+}
+
+
 int BoLearning::get_cwmin()
 {
   return _current_bo;
 }
 
 
-void BoLearning::handle_feedback(Packet *p)
+void BoLearning::handle_feedback(uint8_t retries)
 {
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  if (!(ceh->flags & WIFI_EXTRA_TX))
-    return;
+  BRN_DEBUG("\nBoL.handle_feedback():");
+  BRN_DEBUG("\tretries: %d\n", retries);
+  BRN_DEBUG("\tcurrent bo: %d\n", _current_bo);
 
-  struct click_wifi *wh = (struct click_wifi *) p->data();
-  if (EtherAddress(wh->i_addr1) == brn_etheraddress_broadcast)
-    return;
-
-  _pkt_in_q--;
-  _feedback_cnt++;
-  _tx_cnt += ceh->retries + 1;
-
-  uint32_t min_cwmin = _cwmin[0];
-  uint32_t max_cwmin = _cwmin[_no_queues-1];
-
-  uint8_t retries = ceh->retries;
-
-  click_chatter("\nBoL.handle_feedback():");
-  click_chatter("\tretries: %d\n", retries);
-  click_chatter("\tcurrent bo: %d\n", _current_bo);
-
-  if (retries < _retry_threshold && _current_bo > min_cwmin)
+  if (retries < _retry_threshold && _current_bo > _min_cwmin)
     decrease_cw();
   else if (retries == _retry_threshold)
     keep_cw();
-  else if (retries > _retry_threshold && _current_bo < max_cwmin)
+  else if (retries > _retry_threshold && _current_bo < _max_cwmin)
     increase_cw();
 
   if (_current_bo < _min_cwmin)
@@ -90,20 +88,9 @@ void BoLearning::handle_feedback(Packet *p)
   else if (_current_bo > _max_cwmin)
     _current_bo = _max_cwmin;
 
-  click_chatter("\tnew bo: %d\n\n", _current_bo);
+  BRN_DEBUG("\tnew bo: %d\n\n", _current_bo);
 }
 
-
-struct bos_learning_stats BoLearning::get_stats() const
-{
-  struct bos_learning_stats learning_stats;
-  learning_stats.feedback_cnt = _feedback_cnt;
-  learning_stats.tx_cnt       = _tx_cnt;
-  learning_stats.bo_cnt_up    = _bo_cnt_up;
-  learning_stats.bo_cnt_down  = _bo_cnt_down;
-
-  return learning_stats;
-}
 
 
 void BoLearning::increase_cw()
@@ -122,6 +109,7 @@ void BoLearning::decrease_cw()
 void BoLearning::keep_cw()
 {
 }
+
 
 
 CLICK_ENDDECLS

@@ -41,7 +41,8 @@
 #include "tos2queuemapper.hh"
 #include "tos2queuemapper_data.hh"
 #include "bo_learning.hh"
-#include "bo_learning_strict.hh"
+//#include "bo_learning_strict.hh"
+//#include "bo_channelloadaware.hh"
 
 CLICK_DECLS
 
@@ -64,22 +65,17 @@ Tos2QueueMapper::Tos2QueueMapper():
     _tx_cnt(0),
     _pkt_in_q(0),
     _call_set_backoff(0),
-    _bo_scheme(0)
+    _current_scheme(0),
+    _bo_schemes(0),
+    _no_schemes(0),
+    _scheme_id(-1)
 {
   BRNElement::init();
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
 {
-  delete[] _cwmin;
-  delete[] _cwmax;
-  delete[] _aifs;
-  delete[] _queue_usage;
-
-  delete[] _bo_exp;
-  delete[] _bo_usage_usage;
-
-  delete[] _bo_scheme;
+  delete[] _bo_schemes;
 }
 
 int
@@ -88,7 +84,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   String s_cwmin = "";
   String s_cwmax = "";
   String s_aifs = "";
-  uint32_t v;
+  String s_schemes = "";
 
   if (cp_va_kparse(conf, this, errh,
       "CWMIN", cpkP, cpString, &s_cwmin,
@@ -100,6 +96,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "TARGETPER", cpkP, cpInteger, &_target_packetloss,
       "TARGETCHANNELLOAD", cpkP, cpInteger, &_target_channelload,
       "TARGETRXTXBUSYDIFF", cpkP, cpInteger, &_target_diff_rxtx_busy,
+      "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -110,9 +107,26 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
     _bqs_strategy = BACKOFF_STRATEGY_OFF;
   }
 
+  parse_queues(s_cwmin, s_cwmax, s_aifs);
+
+  /* stop here, if you're rx */
+  if (_bqs_strategy == BACKOFF_STRATEGY_OFF)
+    return 0;
+
+  parse_bo_schemes(s_schemes, errh);
+
+  return 0;
+}
+
+void
+Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
+{
+  uint32_t v;
   Vector<String> args;
+
   cp_spacevec(s_cwmin, args);
   no_queues = args.size();
+
   if ( no_queues > 0 ) {
     _cwmin = new uint16_t[no_queues];
     _cwmax = new uint16_t[no_queues];
@@ -123,23 +137,24 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       _cwmin[i] = v;
       if ( v > _learning_max_bo ) _learning_max_bo = v;
     }
-
     args.clear();
+
     cp_spacevec(s_cwmax, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
+    if ( args.size() < no_queues )
+      no_queues = args.size();
     for( int i = 0; i < no_queues; i++ ) {
       cp_integer(args[i], &v);
       _cwmax[i] = v;
     }
-
     args.clear();
+
     cp_spacevec(s_aifs, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
+    if ( args.size() < no_queues )
+      no_queues = args.size();
     for( int i = 0; i < no_queues; i++ ) {
       cp_integer(args[i], &v);
       _aifs[i] = v;
     }
-
     args.clear();
   }
 
@@ -147,59 +162,51 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   get_backoff();
 #endif
 
-  _queue_usage = new uint32_t[no_queues];
-  reset_queue_usage();
-
-  _bo_exp = new uint16_t[no_queues];
-  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
-
-  for ( int i = 0; i < no_queues; i++ )
-    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
-
-  memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
-
-  //for ( int i = 0; i < no_queues; i++ )
-  //  click_chatter("Queue: %d Min: %d Max: %d",i ,_cwmin[i], _cwmax[i]);
-  //for ( int i = 0; i < 25; i++) {
-  //  BRN_ERROR("N: %d backoff: %d",i,_backoff_matrix_tmt_backoff_3D[0 /*rate 1*/][1/*msdu 1500*/][i]);//
-  //}
-
   BRN_DEBUG("");
   for (int i = 0; i < no_queues; i++)
-    BRN_DEBUG("CONFIGURE: Queue %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
+    BRN_DEBUG("Tos2QM.parse_qs: Queue %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
 
-  /* stop here, if you're rx */
-  if (_bqs_strategy == BACKOFF_STRATEGY_OFF)
-    return 0;;
+}
 
-  struct bo_scheme_utils scheme_utils;
-  scheme_utils.no_queues = no_queues;
-  scheme_utils.cwmin     = _cwmin;
-  scheme_utils.cwmax     = _cwmax;
-  scheme_utils.aifs      = _aifs;
+int
+Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
+{
+  uint32_t v;
+  Vector<String> schemes;
 
-  switch(_bqs_strategy) {
-  case BACKOFF_STRATEGY_LEARNING:
-    _bo_scheme = new BoLearning(scheme_utils);
-    break;
-  case BACKOFF_STRATEGY_LEARNING_STRICT:
-    _bo_scheme = new BoLearningStrict(scheme_utils);
-    break;
+  String s_schemes_uncomment = cp_uncomment(s_schemes);
+  cp_spacevec(s_schemes_uncomment, schemes);
+
+  _no_schemes = schemes.size();
+
+  if (_no_schemes == 0) {
+    BRN_DEBUG("Tos2QM.configure(): No backoff schemes were given!");
+    return -1;
   }
 
+  _bo_schemes = new BackoffScheme*[_no_schemes];
 
+  for (int i = 0; i < _no_schemes; i++) {
+    Element *e = cp_element(schemes[i], this, errh);
+    BackoffScheme *bo_scheme = (BackoffScheme *) e->cast("BackoffScheme");
 
-/*
-  TestElem foo;
-  foo.test();
-*/
+    if (!bo_scheme) {
+      return errh->error("Element is not a 'BackoffScheme'");
+    } else {
+      bo_scheme->set_scheme_id(i);
+      _bo_schemes[i] = bo_scheme;
+    }
+  }
+
+  if ((_bqs_strategy > 0) && (_bqs_strategy < _no_schemes))
+    _current_scheme = _bo_schemes[_bqs_strategy];
+  else
+    _current_scheme = _bo_schemes[0];
 
   return 0;
 }
 
-/*Packet *
-Tos2QueueMapper::smaction(Packet *p, int port)
-*/
+
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
@@ -269,8 +276,11 @@ Tos2QueueMapper::simple_action(Packet *p)
       opt_cwmin = _pleb_bo;
   }
 */
-  if (_bo_scheme)
-    opt_cwmin = _bo_scheme->get_cwmin();
+  if (_current_scheme)
+    opt_cwmin = _current_scheme->get_cwmin();
+  else
+    BRN_DEBUG("Tos2QM.sa(): no current scheme!");
+
 
   opt_queue = find_queue(opt_cwmin);
 
@@ -317,58 +327,22 @@ Tos2QueueMapper::pull(int port)
 */
 
 void
-Tos2QueueMapper::handle_feedback_learning(Packet *p)
+Tos2QueueMapper::handle_feedback(Packet *p)
 {
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  if (!(ceh->flags & WIFI_EXTRA_TX))
+    return;
 
-  if ( ceh->flags & WIFI_EXTRA_TX ) {
-    BRN_DEBUG("\n");
-    BRN_DEBUG("HNDL_FB: retries: %d\n", ceh->retries);
-    _pkt_in_q--;
+  struct click_wifi *wh = (struct click_wifi *) p->data();
+  if (EtherAddress(wh->i_addr1) == brn_etheraddress_broadcast)
+    return;
 
-    struct click_wifi *w = (struct click_wifi *) p->data();
-    if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) return;
+  _pkt_in_q--;
+  _feedback_cnt++;
+  _tx_cnt += ceh->retries + 1;
 
-    //BRN_FATAL("Feedback: %d Dst: %s", ceh->retries, EtherAddress(w->i_addr1).unparse().c_str());
-
-    _feedback_cnt++;
-    _tx_cnt += ceh->retries + 1;
-
-    uint32_t _learning_bo_limit = 1;
-    uint32_t _learning_bo_min = _cwmin[0];           //1
-    uint32_t _learning_bo_max = _cwmin[no_queues-1]; //_learning_max_bo
-
-    BRN_DEBUG("HNDL-FB: old bo: %d\n", _learning_current_bo);
-
-    // no retries: reduces bo
-    if ( ceh->retries < _learning_bo_limit && _learning_current_bo > _learning_bo_min ) {
-      _learning_count_down++;
-      _learning_current_bo = _learning_current_bo >> 1;
-
-    // 1 retry: don't change cwmin yet
-    } else if ( ceh->retries == _learning_bo_limit ) {
-      //_learning_count_down++;
-      //_learning_current_bo = _learning_current_bo >> 1;
-      //_learning_current_bo = _learning_current_bo;       //keep
-
-    // many retries but still not cwmax: double cwmin
-    } else if ( ceh->retries > _learning_bo_limit && _learning_current_bo < _learning_bo_max ) {
-      //_learning_count_up += 1;
-      //_learning_current_bo = _learning_current_bo << 1;
-
-      _learning_count_up += (ceh->retries - _learning_bo_limit);
-      _learning_current_bo = _learning_current_bo << (ceh->retries - _learning_bo_limit);
-    }
-
-  if (_learning_current_bo < TOS2QM_LEARNING_MIN_CWMIN)
-    _learning_current_bo = TOS2QM_LEARNING_MIN_CWMIN;
-  else if (_learning_current_bo > TOS2QM_LEARNING_MAX_CWMIN)
-    _learning_current_bo = TOS2QM_LEARNING_MAX_CWMIN;
-
-  BRN_DEBUG("HNDL-FB: new bo: %d\n\n", _learning_current_bo);
-  }
-
+  _current_scheme->handle_feedback(ceh->retries);
 }
 
 void
