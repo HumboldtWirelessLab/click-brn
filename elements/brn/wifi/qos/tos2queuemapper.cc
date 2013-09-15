@@ -91,31 +91,43 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "CWMAX", cpkP, cpString, &s_cwmax,
       "AIFS", cpkP, cpString, &s_aifs,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
-      "CHANNELSTATS", cpkP, cpElement, &_cst,
       "COLLISIONINFO", cpkP, cpElement, &_colinf,
       "TARGETPER", cpkP, cpInteger, &_target_packetloss,
-      "TARGETCHANNELLOAD", cpkP, cpInteger, &_target_channelload,
       "TARGETRXTXBUSYDIFF", cpkP, cpInteger, &_target_diff_rxtx_busy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  if ( ( _bqs_strategy != BACKOFF_STRATEGY_OFF ) &&
-       ( _bqs_strategy != BACKOFF_STRATEGY_DIRECT ) &&
-       ( _cst == NULL ) ) {
-    BRN_WARN("Channelstats is NULL! Turn of TOS2QM-Strategy.");
-    _bqs_strategy = BACKOFF_STRATEGY_OFF;
-  }
-
   parse_queues(s_cwmin, s_cwmax, s_aifs);
 
-  /* stop here, if you're rx */
-  if (_bqs_strategy == BACKOFF_STRATEGY_OFF)
-    return 0;
+  init_stats();
+
+  BRN_DEBUG("");
+  for (int i = 0; i < no_queues; i++)
+    BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
+
+#if CLICK_NS
+  get_backoff();
+#endif
 
   parse_bo_schemes(s_schemes, errh);
 
   return 0;
+}
+
+void
+Tos2QueueMapper::init_stats()
+{
+  _queue_usage = new uint32_t[no_queues];
+  reset_queue_usage();
+
+  _bo_exp = new uint16_t[no_queues];
+  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
+
+  for ( int i = 0; i < no_queues; i++ )
+    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
+
+  memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
 }
 
 void
@@ -162,10 +174,16 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
   get_backoff();
 #endif
 
-  BRN_DEBUG("");
-  for (int i = 0; i < no_queues; i++)
-    BRN_DEBUG("Tos2QM.parse_qs: Queue %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
+  _queue_usage = new uint32_t[no_queues];
+  reset_queue_usage();
 
+  _bo_exp = new uint16_t[no_queues];
+  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
+
+  for ( int i = 0; i < no_queues; i++ )
+    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
+
+  memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
 }
 
 int
@@ -193,17 +211,30 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
     if (!bo_scheme) {
       return errh->error("Element is not a 'BackoffScheme'");
     } else {
-      bo_scheme->set_scheme_id(i);
       _bo_schemes[i] = bo_scheme;
+      _bo_schemes[i]->set_conf(_cwmin[0], _cwmin[no_queues - 1]);
     }
   }
 
-  if ((_bqs_strategy > 0) && (_bqs_strategy < _no_schemes))
-    _current_scheme = _bo_schemes[_bqs_strategy];
-  else
-    _current_scheme = _bo_schemes[0];
+  BRN_DEBUG("Tos2QM.parse_bo_schemes(): STRATEGY = %d\n", _bqs_strategy);
+  if (_bqs_strategy >= 0) {
+    _current_scheme = get_bo_scheme(_bqs_strategy);
+  } else {
+    _current_scheme = NULL;
+  }
 
   return 0;
+}
+
+BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
+{
+  for (int i = 0; i < _no_schemes; i++) {
+    if (_bo_schemes[i]->get_id() == strategy) {
+      return _bo_schemes[i];
+    }
+  }
+
+  return NULL;
 }
 
 
@@ -228,59 +259,55 @@ Tos2QueueMapper::simple_action(Packet *p)
   int opt_cwmin = 31; //default
   int opt_queue = tos;
 
-/*
-  switch (_bqs_strategy) {
-    case BACKOFF_STRATEGY_OFF:
-        switch (tos) {
-          case 0: opt_queue = 1; break;
-          case 1: opt_queue = 0; break;
-          case 2: opt_queue = 2; break;
-          case 3: opt_queue = 3; break;
-          default: opt_queue = 1;
-        }
-        BrnWifi::setTxQueue(ceh, opt_queue);
-    case BACKOFF_STRATEGY_DIRECT:            // parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
-        _queue_usage[opt_queue]++;
-        _bo_usage_usage[_bo_exp[opt_queue]]++;
-        _pkt_in_q++;
+  if (_current_scheme) {
+    opt_cwmin = _current_scheme->get_cwmin(p, tos);
+  } else {
+    BRN_DEBUG("Tos2QM.sa(): no curr scheme! STRAT = %d\n", _bqs_strategy);
 
-        BRN_DEBUG("SA: q: %d\n", opt_queue);
-        return p;
-
-    case BACKOFF_STRATEGY_MAX_THROUGHPUT:
-        opt_cwmin = backoff_strategy_max_throughput(p);
-        break;
-    case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
-        opt_cwmin = backoff_strategy_packetloss_aware(p);
-        break;
-    case BACKOFF_STRATEGY_LEARNING:
-        opt_cwmin = _learning_current_bo;
-        break;
-    case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
-    case BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
-    {
-        struct airtime_stats *as = _cst->get_latest_stats();
-
-        opt_cwmin = _bo_for_target_channelload; // also used for diff_rxtx_busy
-        if ( _ac_stats_id != as->stats_id ) {
-          if ( _bqs_strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE ) {
-            opt_cwmin = backoff_strategy_channelload_aware(as->hw_busy, as->no_sources);
-          } else {
-            opt_cwmin = backoff_strategy_rxtx_busy_diff_aware(as->hw_rx, as->hw_tx, as->hw_busy, as->no_sources);
+    switch (_bqs_strategy) {
+      case BACKOFF_STRATEGY_OFF:
+          switch (tos) {
+            case 0: opt_queue  = 1; break;
+            case 1: opt_queue  = 0; break;
+            case 2: opt_queue  = 2; break;
+            case 3: opt_queue  = 3; break;
+            default: opt_queue = 1;
           }
-          _ac_stats_id = as->stats_id;
-        }
-        break;
-    }
-    case BACKOFF_STRATEGY_EXPONENTIAL_LINEAR:
-      opt_cwmin = _pleb_bo;
-  }
-*/
-  if (_current_scheme)
-    opt_cwmin = _current_scheme->get_cwmin();
-  else
-    BRN_DEBUG("Tos2QM.sa(): no current scheme!");
+          BrnWifi::setTxQueue(ceh, opt_queue);
+      case BACKOFF_STRATEGY_DIRECT:            // parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
+          _queue_usage[opt_queue]++;
+          _bo_usage_usage[_bo_exp[opt_queue]]++;
+          _pkt_in_q++;
 
+          BRN_DEBUG("SA: q: %d\n", opt_queue);
+          return p;
+
+      case BACKOFF_STRATEGY_MAX_THROUGHPUT:
+          opt_cwmin = backoff_strategy_max_throughput(p);
+          break;
+      case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
+          opt_cwmin = backoff_strategy_packetloss_aware(p);
+          break;
+      case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
+      case BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
+      {
+          struct airtime_stats *as = _cst->get_latest_stats();
+
+          opt_cwmin = _bo_for_target_channelload; // also used for diff_rxtx_busy
+          if ( _ac_stats_id != as->stats_id ) {
+            if ( _bqs_strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE ) {
+              opt_cwmin = backoff_strategy_channelload_aware(as->hw_busy, as->no_sources);
+            } else {
+              opt_cwmin = backoff_strategy_rxtx_busy_diff_aware(as->hw_rx, as->hw_tx, as->hw_busy, as->no_sources);
+            }
+            _ac_stats_id = as->stats_id;
+          }
+          break;
+      }
+      case BACKOFF_STRATEGY_EXPONENTIAL_LINEAR:
+        opt_cwmin = _pleb_bo;
+    }
+  }
 
   opt_queue = find_queue(opt_cwmin);
 

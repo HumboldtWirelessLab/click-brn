@@ -15,16 +15,15 @@ public:
   BackoffScheme();
   virtual ~BackoffScheme();
 
-  virtual int get_cwmin() = 0;
+  virtual uint16_t get_id() = 0;
+  virtual int get_cwmin(Packet *p, uint8_t tos) = 0;
   virtual void handle_feedback(uint8_t retries) = 0;
 
-  void set_scheme_id(uint16_t id);
-
+  virtual void set_conf(uint32_t min, uint32_t max);
 
 protected:
-  uint16_t _id;
-
-
+  uint32_t _min_cwmin;
+  uint32_t _max_cwmin;
 };
 
 
