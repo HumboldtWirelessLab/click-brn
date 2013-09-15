@@ -12,6 +12,8 @@ CLICK_DECLS
 
 
 class BoLearning : public BackoffScheme {
+
+/* Derived Functions */
 public:
   /* Element */
   const char *class_name() const  { return "BoLearning"; }
@@ -23,25 +25,31 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  int get_cwmin();
+  uint16_t get_id();
+  int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
+  void set_conf(uint32_t min, uint32_t max);
 
-
+/* Own Functions */
 public:
   BoLearning();
   ~BoLearning();
 
 private:
   void increase_cw();
+  void increase_cw_strict(uint8_t retries);
   void decrease_cw();
   void keep_cw();
 
 
+/* Own Variables */
 private:
-  static const uint8_t  _retry_threshold = 1;
-  static const uint16_t _min_cwmin       = 31;  // cwmin lower bound
-  static const uint16_t _max_cwmin       = 255; // cwmin upper bound
-  static const uint16_t _bo_start        = 63;  // initial bo
+  static const uint16_t _id              = 5;   // unique bo scheme identifier
+  static const uint16_t _bo_start        = 63;  // initial backoff
+  static const uint8_t  _retry_threshold = 1;   // 1 retry == no change
+
+  /* scheme flavour: strict */
+  uint8_t _strict;
 
   /* learning bo */
   uint32_t _current_bo;

@@ -51,7 +51,6 @@ CLICK_DECLS
 
 #define BACKOFF_STRATEGY_REFACTOR                        99
 
-
 #define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
 #define TOS2QM_DEFAULT_TARGET_CHANNELLOAD                90
@@ -124,6 +123,8 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
     void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
     int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
+    void init_stats();
+    BackoffScheme *get_bo_scheme(uint16_t strategy);
 
     ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
     CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
