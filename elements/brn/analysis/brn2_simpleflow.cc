@@ -8,6 +8,8 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 #include <click/packet.hh>
+#include <clicknet/wifi.h>
+#include <clicknet/llc.h>
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
@@ -19,11 +21,13 @@ CLICK_DECLS
 
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
-    _clear_packet(true),
-    _headroom(128),
     _start_active(false),
-    _routing_peek(NULL),
+    _clear_packet(true),
+    _headersize(-1),
+    _headroom(128),
     _flow_id(0),
+    _simpleflow_element_id(0),
+    _routing_peek(NULL),
     _link_table(NULL)
 {
   BRNElement::init();
@@ -31,34 +35,32 @@ BRN2SimpleFlow::BRN2SimpleFlow()
 
 BRN2SimpleFlow::~BRN2SimpleFlow()
 {
-  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
-    BRN2SimpleFlow::Flow *fl = fm.value();
-    delete fl;
-  }
-  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
-    BRN2SimpleFlow::Flow *fl = fm.value();
-    delete fl;
-  }
+  reset();
 }
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   EtherAddress _src = EtherAddress::make_broadcast();
-  dst_of_flow = EtherAddress::make_broadcast();
-  uint32_t     _rate;
-  uint32_t     _mode;
-  uint32_t     _size;
-  uint32_t     _duration;
+  EtherAddress _dst = EtherAddress::make_broadcast();
+  uint32_t     _interval, _rate, _mode, _size, _duration, _burst;
+
+  _extra_data = "";
+  _burst = 1;
 
   if (cp_va_kparse(conf, this, errh,
       "SRCADDRESS", cpkP , cpEtherAddress, &_src,
-      "DSTADDRESS", cpkP, cpEtherAddress, &dst_of_flow,
-      "RATE", cpkP, cpInteger, &_rate,
+      "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
+      "INTERVAL", cpkP, cpInteger, &_interval,
+      "DATARATE", cpkP, cpInteger, &_rate,
       "SIZE", cpkP, cpInteger, &_size,
       "MODE", cpkP, cpInteger, &_mode,
       "DURATION", cpkP, cpInteger, &_duration,
+      "BURST", cpkP, cpInteger, &_burst,
       "ACTIVE", cpkP, cpBool, &_start_active,
+      "ELEMENTID", cpkP, cpInteger, &_simpleflow_element_id,
+      "EXTRADATA", cpkP, cpString, &_extra_data,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
+      "HEADERSIZE", cpkP, cpInteger, &_headersize,
       "HEADROOM", cpkP, cpInteger, &_headroom,
       "ROUTINGPEEK", cpkP, cpElement, &_routing_peek,
       "LT", cpkP, cpElement, &_link_table,
@@ -67,7 +69,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   if ( ! _src.is_broadcast() )
-    add_flow( _src, dst_of_flow, _rate, _size, _mode, _duration, false);
+    add_flow( _src, _dst, _size, _mode, _interval, _burst, _duration, false, 0);
   else
     _start_active = false;
 
@@ -86,7 +88,7 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   //seg, fault, while calling BRN_DEBUG in set_active
   _timer.initialize(this);
 
-  if (_start_active) set_active(&dst_of_flow,_start_active);
+  if (_start_active) set_active( _tx_flowMap.begin().value(), true);
 
   if (_routing_peek) {
     if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ))
@@ -101,63 +103,65 @@ BRN2SimpleFlow::run_timer(Timer *t)
 {
   BRN_DEBUG("Run timer.");
 
-  if ( t == NULL ) click_chatter("Timer is NULL");
+  if ( t == NULL ) BRN_ERROR("Timer is NULL");
 
-  if ( is_active(&dst_of_flow) ) {
+  Timestamp now = Timestamp::now();
+  int active_flows = 0;
 
-    BRN_DEBUG("Is active");
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
 
-    Flow *txFlow = _tx_flowMap.find(dst_of_flow);
-    if ( txFlow) {
-      Packet *packet_out;
+    BRN_DEBUG("Flow: Start: %s End: %s Active: %d",fl->_start_time.unparse().c_str(), fl->_end_time.unparse().c_str(), fl->_active?1:0);
 
-      BRN_DEBUG("Send Next");
-      Timestamp now = Timestamp::now();
-      if ( (txFlow->_duration != 0) &&
-         (((now - txFlow->_start_time).msecval()+txFlow->_rate) >= txFlow->_duration)) {
-        BRN_DEBUG("Last Packet");
-        txFlow->_active = false;  //last packet for limited flow
-      }
+    BRN_DEBUG("Flow: Time to start: %d", (fl->_start_time-now).msecval());
+    BRN_DEBUG("Flow: Time to end: %d", (fl->_end_time-now).msecval());
 
-      packet_out = nextPacketforFlow(txFlow);
-
-      output(0).push(packet_out);
+    if ( (fl->_end_time-now).msecval() <= 0 ) {
+      BRN_DEBUG("deactive flow");
+      fl->_active = false;                      //TODO: check earlier
+      continue;                                 //finished flow. so take next!!
     }
 
-    schedule_next(&dst_of_flow);
+    if ( !fl->_active ) {
+      if ( (fl->_start_time - now).msecval() <= 0 ) fl->_active = true; //start is in the past: flow is active
+    } else {
+      if ( fl->_interval == 0 ) continue;                    //interval = 0 -> packet send on feedback
+    }
+
+    active_flows++;
+
+    send_packets_for_flow(fl);
   }
+
+  if ( active_flows != 0 ) schedule_next();
+
 }
 
 void
-BRN2SimpleFlow::set_active(EtherAddress *dst, bool active)
+BRN2SimpleFlow::set_active(Flow *txFlow, bool active)
 {
   BRN_DEBUG("set_active");
-  Flow *txFlow = _tx_flowMap.find(*dst);
-  if ( active ) {
-    if ( ! is_active(dst)  ) {
-      BRN_DEBUG("flow actived");
-      txFlow->_active = active;
-      txFlow->_start_time = Timestamp::now();
-      if ( txFlow->_rate == 0 ) {
-        Packet *packet_out = nextPacketforFlow(txFlow);
-        output(0).push(packet_out);
-      } else {
-        schedule_next(dst);
-      }
-    }
-  } else {
-    if ( is_active(dst)  ) {
-      BRN_DEBUG("flow deactived");
-      _timer.clear();
-      txFlow->_active = active;
-    }
+
+  if (active && (!is_active(txFlow))) {
+    BRN_DEBUG("flow actived");
+    txFlow->_active = true;
+    txFlow->_start_time = Timestamp::now();
+    txFlow->_next_time = Timestamp::now();
+
+    send_packets_for_flow(txFlow);
+
+    if ( txFlow->_interval != 0 ) schedule_next();
+
+  } else if ((!active) && is_active(txFlow)) {
+    BRN_DEBUG("flow deactived");
+    _timer.clear();
+    txFlow->_active = active;
   }
 }
 
 bool
-BRN2SimpleFlow::is_active(EtherAddress *dst)
+BRN2SimpleFlow::is_active(Flow *txFlow)
 {
-  Flow *txFlow = _tx_flowMap.find(*dst);
   if ( txFlow ) {
     Timestamp now = Timestamp::now();
     if ( txFlow->_active ) {
@@ -174,72 +178,121 @@ BRN2SimpleFlow::is_active(EtherAddress *dst)
 }
 
 void
-BRN2SimpleFlow::schedule_next(EtherAddress *dst)
+BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
 {
-  Flow *txFlow = _tx_flowMap.find(*dst);
+  if ( is_active(fl) ) {
+    BRN_DEBUG("Flow (active): Src: %s Dst: %s ID: %d interval: %d burst: %d",
+               fl->_src.unparse().c_str(), fl->_dst.unparse().c_str(), fl->_id, fl->_interval, fl->_burst);
 
-  if ( txFlow ) {
-    if ( txFlow->_active && txFlow->_rate > 0 ) {
-      BRN_DEBUG("Rate: %d Timestamp: %s",txFlow->_rate,
-                Timestamp::make_msec(txFlow->_rate).unparse().c_str());
-      BRN_DEBUG("run timer in %d ms", txFlow->_rate);
-
-      _timer.schedule_after_msec(txFlow->_rate);
-    } else {
-      BRN_DEBUG("Flow not active. (Rate : %d)", txFlow->_rate);
+    for( uint32_t i = 0; i < fl->_burst; i++ ) {
+      BRN_DEBUG("Send Next");
+      Packet *packet_out = nextPacketforFlow(fl);
+      output(0).push(packet_out);
     }
-  } else {
-    BRN_DEBUG("No flow.");
+
+    fl->_next_time = fl->_next_time + Timestamp::make_msec(fl->_interval/1000, fl->_interval%1000);
+  }
+}
+
+void
+BRN2SimpleFlow::schedule_next()
+{
+  int shortest_next_time = -1;
+  Timestamp now = Timestamp::now();
+
+  int next_time;
+
+  BRN_DEBUG("NO. Flows: %d", _tx_flowMap.size());
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
+
+    next_time = (fl->_start_time - now).msecval();
+
+    BRN_DEBUG("Next start schedule: %d", next_time);
+    if ( next_time > 0 ) {        //next action for flow is to start it
+     BRN_DEBUG("Start for flow: %s (in %d ms)", fl->_start_time.unparse().c_str(), next_time);
+    } else {
+      BRN_DEBUG("Start is done. Active: %d",fl->_active?1:0);
+      if ( ! fl->_active ) continue; //flow is not active
+      if (fl->_interval == 0) {      //interval == 0 -> packet send by feedback reuse
+        continue;
+      }
+
+      next_time = (fl->_next_time - now).msecval();
+      BRN_DEBUG("Next Time: %d", next_time);
+    }
+
+    if ( (shortest_next_time == -1) || ( next_time < shortest_next_time ) ) {
+      shortest_next_time = next_time;
+    }
   }
 
-  if (_timer.scheduled()) {
-    BRN_DEBUG("Timer is scheduled at %s",_timer.expiry().unparse().c_str());
-  } else {
-    if ( txFlow->_active )
-      BRN_WARN("Timer is not scheduled");
+  if ( shortest_next_time != -1 ) {
+    BRN_DEBUG("Next schedule in %d msecs",shortest_next_time);
+    if (_timer.scheduled() ) {
+      BRN_ERROR("Timer is already scheduled");
+      BRN_DEBUG("Timer is scheduled at %s",_timer.expiry().unparse().c_str());
+      _timer.reschedule_after_msec(shortest_next_time);
+    } else {
+      _timer.schedule_after_msec(shortest_next_time);
+    }
+
+    BRN_DEBUG("Timer is new scheduled at %s",_timer.expiry().unparse().c_str());
   }
 }
 
 void
 BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
-                          uint32_t rate, uint32_t size, uint32_t mode,
-                          uint32_t duration, bool active )
+                          uint32_t size, uint32_t mode,
+                          uint32_t interval, uint32_t burst,
+                          uint32_t duration, bool active, uint32_t start_delay )
 {
-  Flow *txFlow = _tx_flowMap.find(dst);
+  Flow *txFlow = new Flow(src, dst, _flow_id, (FlowType)mode, size, interval, burst, duration);
 
-  if ( txFlow != NULL ) {
-    if ( active ) txFlow->reset();
-  } else {
-    _tx_flowMap.insert(dst, new Flow(src, dst, _flow_id++, (FlowType)mode, rate, size, duration));
-  }
+  txFlow->_start_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
+  txFlow->_next_time = txFlow->_start_time;
+  txFlow->_end_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
 
-  dst_of_flow = dst;
-  set_active(&dst_of_flow, active);
+  txFlow->_extra_data = _extra_data;
+
+  _tx_flowMap.insert(FlowID(src,_flow_id), txFlow);
+
+  _flow_id++;
+
+  if ( start_delay == 0 ) set_active(txFlow, active);
+  else schedule_next();
+
 }
 
 /**
- * 
- * @param  
- * @param packet 
+ *
+ * @param
+ * @param packet
  */
 void
 BRN2SimpleFlow::push( int port, Packet *packet )
 {
+  struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
+
+  uint32_t flow_id = ntohl(header->flowID);
+  uint32_t packet_id = ntohl(header->packetID);
+  EtherAddress src_ea = EtherAddress(header->src);
+  FlowID fid = FlowID(src_ea, flow_id);
+
   if ( port == 1 ) {
-    handle_reuse(packet);
+    if ( (header->flags & SIMPLEFLOW_FLAGS_IS_REPLY) != 0 ) packet->kill();
+    else handle_reuse(packet);
     return;
   }
 
-  struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
   Timestamp send_time;
   send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
 
   uint16_t checksum;
 
   /*Handle Reply*/
-  if ( header->reply == 1 ) {
-    EtherAddress dst_ea = EtherAddress(header->dst);
-    Flow *f_tx = _tx_flowMap.find(dst_ea);
+  if ( (header->flags & SIMPLEFLOW_FLAGS_IS_REPLY) != 0 ) {
+    Flow *f_tx = _tx_flowMap.find(fid);
     if ( f_tx ) {
       BRN_DEBUG("Got reply");
 
@@ -252,14 +305,12 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   }
 
   /*Handle Packet*/
-  EtherAddress src_ea = EtherAddress(header->src);
-  Flow *f = _rx_flowMap.find(src_ea);
-  uint32_t packet_id = ntohl(header->packetID);
+  Flow *f = _rx_flowMap.find(fid);
 
   if ( f == NULL ) {  //TODO: shorten this
-    _rx_flowMap.insert(src_ea, new Flow(src_ea, EtherAddress(header->dst),ntohl(header->flowID),
-                       (flowType)header->mode, ntohl(header->rate), ntohs(header->size), 0) );
-    f = _rx_flowMap.find(src_ea);
+    _rx_flowMap.insert(fid, new Flow(src_ea, EtherAddress(header->dst), ntohl(header->flowID),
+                       (flowType)header->mode, ntohs(header->size), ntohs(header->interval), ntohs(header->burst), 10000) );
+    f = _rx_flowMap.find(fid);
   }
 
   f->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
@@ -276,10 +327,14 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   if ( packet_id < f->_max_packet_id ) f->_rx_out_of_order++;
   else f->_max_packet_id = packet_id;
 
-  if ( (header->flags & SIMPLEFLOW_FLAGS_INCL_ROUTE) &&
-       (packet->length() >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute))) ) {
+  if ( header->extra_data_size != 0 ) {
+    f->_extra_data = String((uint8_t*)&header[1], header->extra_data_size);
+  }
 
-    struct flowPacketRoute *rh = (struct flowPacketRoute *)&header[1];
+  if ( (header->flags & SIMPLEFLOW_FLAGS_INCL_ROUTE) &&
+       (packet->length() >= (MINIMUM_FLOW_PACKET_SIZE + header->extra_data_size + sizeof(struct flowPacketRoute))) ) {
+
+    struct flowPacketRoute *rh = (struct flowPacketRoute *)&((uint8_t*)&header[1])[header->extra_data_size];
     uint16_t incl_hops = ntohs(rh->incl_hops);
 
     f->route.clear();
@@ -315,7 +370,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   }
 
   if ( f->_type == TYPE_FULL_ACK ) {
-    header->reply = 1;
+    header->flags |= SIMPLEFLOW_FLAGS_IS_REPLY;
 #if HAVE_FAST_CHECKSUM
     checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
                              (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -340,7 +395,7 @@ BRN2SimpleFlow::push( int port, Packet *packet )
 
   if ( f->_type == TYPE_SMALL_ACK ) {
     packet->take(packet->length() - sizeof(struct flowPacketHeader));
-    header->reply = 1;
+    header->flags |= SIMPLEFLOW_FLAGS_IS_REPLY;
 #if HAVE_FAST_CHECKSUM
     checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)),
                              (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -364,21 +419,6 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   packet->kill();
 }
 
-/*WritablePacket*
-BRN2SimpleFlow::sendFullAck(Packet *p, Flow *f)
-{
-}
-
-WritablePacket*
-BRN2SimpleFlow::sendSmallAck(Packet *p, Flow *f)
-{
-}
-
-WritablePacket*
-BRN2SimpleFlow::sendAck(Packet *p, Flow *f)
-{
-}
-*/
 WritablePacket*
 BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 {
@@ -393,19 +433,60 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   if ( f->_buffered_p != NULL ) {
     p = f->_buffered_p->uniqueify();
     f->_buffered_p = NULL;
-  } else { 
+  } else {
     p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
+    if ( _clear_packet ) memset(p->data(), 0, size);
   }
-  if ( _clear_packet ) memset(p->data(),0,size);
-  struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
-  
-  p->set_timestamp_anno(Timestamp::now());
 
-  memcpy(header->src, f->_src.data(),6);
-  memcpy(header->dst, f->_dst.data(),6);
+  struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
+
+  memcpy(header->src, f->_src.data(), 6);
+  memcpy(header->dst, f->_dst.data(), 6);
+
+  BRN_DEBUG("Mode: %d",(int)f->_type);
 
   header->flowID = htonl(f->_id);
+  header->size = htons(f->_size);
+
+  header->interval = htons(f->_interval);
+  header->burst = htons(f->_burst);
+
+  header->mode = f->_type;
+  header->flags = 0;
+
+  header->simpleflow_id = _simpleflow_element_id;
+
+  header->extra_data_size = _extra_data.length();
+
+  memcpy((uint8_t*)&header[1], _extra_data.data(), _extra_data.length());
+
+  if ( size >= (MINIMUM_FLOW_PACKET_SIZE + _extra_data.length() + sizeof(struct flowPacketRoute))) {
+    BRN_DEBUG("Packet is big. Add route");
+    header->flags |= SIMPLEFLOW_FLAGS_INCL_ROUTE;
+
+    struct flowPacketRoute *rh = (struct flowPacketRoute *)&(((uint8_t *)&header[1])[_extra_data.length()]);
+    rh->hops = 0;
+    rh->metric_sum = 0;
+    rh->incl_hops = 0;
+
+    BRN_DEBUG("Header: %d",(uint32_t)header->flags);
+
+    if ( size >= (MINIMUM_FLOW_PACKET_SIZE + _extra_data.length() + sizeof(struct flowPacketRoute) + sizeof(struct flowPacketHop))) {
+      struct flowPacketHop *pfh = (struct flowPacketHop *)&rh[1];
+      pfh[0].metric = 0;
+      memcpy(pfh[0].ea, f->_src.data(),6);
+    }
+  }
+
+  Timestamp ts = Timestamp::now();
+
+  p->set_timestamp_anno(ts);
+
+  header->tv_sec = htonl(ts.sec());
+  header->tv_usec = htonl(ts.nsec());
+
   header->packetID = htonl(f->_txPackets);
+
   if ( f->_txPackets == 0 ) {
     BRNPacketAnno::set_flow_ctrl_flags_anno(p, FLOW_CTRL_FLOW_START);
   } else if ( ! f->_active ) { //stop the flow
@@ -413,37 +494,6 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   }
 
   f->_txPackets++;
-
-  header->rate = htonl(f->_rate);
-  header->size = htons(f->_size);
-  header->mode = f->_type;
-  header->reply = 0;
-
-  Timestamp ts = Timestamp::now();
-  header->tv_sec = htonl(ts.sec());
-  header->tv_usec = htonl(ts.nsec());
-
-  BRN_DEBUG("Mode: %d",(int)f->_type);
-
-  header->reserved = 0;
-
-  if ( size >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute))) {
-    BRN_DEBUG("Packet is big. Add route");
-    header->flags |= SIMPLEFLOW_FLAGS_INCL_ROUTE;
-
-    struct flowPacketRoute *rh = (struct flowPacketRoute *)&header[1];
-    rh->hops = 0;
-    rh->metric_sum = 0;
-    rh->incl_hops = 0;
-
-    BRN_DEBUG("Header: %d",(uint32_t)header->flags);
-
-    if ( size >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute) + sizeof(struct flowPacketHop))) {
-      struct flowPacketHop *pfh = (struct flowPacketHop *)&rh[1];
-      pfh[0].metric = 0;
-      memcpy(pfh[0].ea, f->_src.data(),6);
-    }
-  }
 
 #if HAVE_FAST_CHECKSUM
   checksum = ip_fast_csum((unsigned char *)p->data() + (2 * sizeof(uint16_t)), (p->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -461,29 +511,68 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
 }
 
 void
+BRN2SimpleFlow::reset()
+{
+  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
+    delete fl;
+  }
+  _tx_flowMap.clear();
+
+  for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
+    BRN2SimpleFlow::Flow *fl = fm.value();
+    delete fl;
+  }
+  _rx_flowMap.clear();
+}
+
+/****************************************************************/
+/********************** R E U S E *******************************/
+/****************************************************************/
+
+void
 BRN2SimpleFlow::handle_reuse(Packet *packet)
 {
   struct flowPacketHeader *header = (struct flowPacketHeader *)packet->data();
-  EtherAddress dst_ea = EtherAddress(header->dst);
-  Flow *f_tx = _tx_flowMap.find(dst_ea);
+  uint32_t flow_id = ntohl(header->flowID);
+  EtherAddress src_ea = EtherAddress(header->src);
+
+  Flow *f_tx = _tx_flowMap.find(FlowID(src_ea, flow_id));
+
+  if ( (f_tx == NULL) || (!f_tx->_active) ) {
+    if (f_tx == NULL) BRN_ERROR("Flow is NULL: %s:%d",src_ea.unparse().c_str(),flow_id);
+    packet->kill();
+    return;
+  }
+
+  if ( f_tx->_header_size == -1 ) {
+    if ( _headersize != -1 ) f_tx->_header_size = _headersize;
+    else {
+      struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+      f_tx->_header_size = sizeof(struct click_brn);
+      if ( (ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC) ) f_tx->_header_size += sizeof(struct click_llc) + sizeof(struct click_wifi);
+      else f_tx->_header_size += sizeof(struct click_ether);
+      BRN_ERROR("ExtraSize: %d",f_tx->_header_size);
+    }
+  }
+
+  if ( f_tx->_tx_packets_feedback == 0 ) f_tx->_first_feedback_time = Timestamp::now();
+  f_tx->_last_feedback_time = Timestamp::now();
+
+  f_tx->_tx_packets_feedback++;
 
   if ( f_tx->_buffered_p == NULL ) f_tx->_buffered_p = packet;
   else packet->kill();
 
-  if ( f_tx->_rate == 0 ) {
-    BRN_DEBUG("Rate is zero. Full pull");
+  if ( (f_tx->_interval == 0) && ( is_active(f_tx)) ) {
     WritablePacket *p = nextPacketforFlow(f_tx);
-    BRN_DEBUG("Use packet: %d", (f_tx->_buffered_p==NULL)?1:0);
-    output(0).push(p);
+    if ( p != NULL ) output(0).push(p);
   }
 }
 
-void
-BRN2SimpleFlow::reset()
-{
-  _rx_flowMap.clear();
-  _tx_flowMap.clear();
-}
+/****************************************************************************/
+/********************** R O U T I N G P E E K *******************************/
+/****************************************************************************/
 
 bool
 BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddress */*dst*/, int /*brn_port*/)
@@ -512,13 +601,16 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
 
   BRN_DEBUG("RoutingPeek: FlowID %d Packet: %d", ntohl(header->flowID), ntohl(header->packetID));
 
-  BRN_DEBUG("call of handle_routing_peek(): %d %d %d",(uint32_t)header->flags,header->reply,size);
+  BRN_DEBUG("call of handle_routing_peek(): %d %d %d",(uint32_t)header->flags,
+                                                      (header->flags|SIMPLEFLOW_FLAGS_IS_REPLY)?1:0
+                                                      ,size);
+
   BRN_DEBUG("last hop: %s %s",psrc.unparse().c_str(),pdst.unparse().c_str());
 
   if ( (((uint32_t)header->flags & (uint32_t)SIMPLEFLOW_FLAGS_INCL_ROUTE) != 0) &&
-       (header->reply != 1 ) &&
-       (size >= (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute))) ) {
-    struct flowPacketRoute *rh = (struct flowPacketRoute *)&header[1];
+       ((header->flags | SIMPLEFLOW_FLAGS_IS_REPLY) == 0) &&                        // no reply
+       (size >= (MINIMUM_FLOW_PACKET_SIZE + header->extra_data_size + sizeof(struct flowPacketRoute))) ) {
+    struct flowPacketRoute *rh = (struct flowPacketRoute *)&(((uint8_t*)&header[1])[header->extra_data_size]);
 
     BRN_DEBUG("Incl route");
 
@@ -527,7 +619,7 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
     if ( _link_table != NULL ) metric = _link_table->get_link_metric(psrc, pdst);
 
     if ( size >=
-         (MINIMUM_FLOW_PACKET_SIZE + sizeof(struct flowPacketRoute) + (hops+1)*sizeof(struct flowPacketHop))) {
+         (MINIMUM_FLOW_PACKET_SIZE + header->extra_data_size + sizeof(struct flowPacketRoute) + (hops+1)*sizeof(struct flowPacketHop))) {
 
       BRN_DEBUG("Add hop: %d", metric);
 
@@ -555,7 +647,6 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   return true;
 }
 
-
 /****************************************************************************/
 /********************** H A N D L E R   *************************************/
 /****************************************************************************/
@@ -564,25 +655,30 @@ String
 BRN2SimpleFlow::xml_stats()
 {
   StringAccum sa;
+  Timestamp now = Timestamp::now();
 
-  sa << "<flowstats node=\"" << BRN_NODE_NAME << "\">\n";
+  sa << "<flowstats node=\"" << BRN_NODE_NAME << "\" time=\"" << now.unparse() << "\" sf_elem_id=\"" << _simpleflow_element_id << "\" >\n";
   for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
-    sa << "\t<txflow";
-    sa << " src=\"" << fl->_src.unparse().c_str() << "\"";
-    sa << " dst=\"" << fl->_dst.unparse().c_str() << "\" flowid=\"" << fl->_id << "\"";
-    sa << " packet_count=\"" << fl->_txPackets << "\"";
-    sa << " packet_size=\"" << fl->_size << "\"";
-    sa << " replies=\"" << fl->_rxPackets << "\"";
+    sa << "\t<txflow src=\"" << fl->_src.unparse().c_str();
+    sa << "\" dst=\"" << fl->_dst.unparse().c_str() << "\" flowid=\"" << fl->_id;
+    sa << "\" packet_count=\"" << fl->_txPackets << "\" packet_size=\"" << fl->_size;
+    sa << "\" replies=\"" << fl->_rxPackets << "\" tx_feedbacks=\"" << fl->_tx_packets_feedback;
+    sa << "\" tx_rate=\"" << fl->get_txfeedback_rate() << "\" tx_rate_unit=\"bits/s\" start_time=\"";
+    sa << fl->_start_time.unparse() << "\" end_time=\"" << fl->_end_time.unparse() << "\"";
+
     if ( fl->_rxPackets > 0 ) {
       sa << " min_hops=\"" << fl->_min_hops << "\" max_hops=\"" << fl->_max_hops;
       sa << "\" avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" std_hops=\"" << fl->std_hops();
       sa << "\" min_time=\"" << fl->_min_rt_time  << "\" max_time=\"" << fl->_max_rt_time;
-      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\" />\n";
+      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\"";
     } else {
       sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" std_hops=\"0\"";
-      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" />\n";
+      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\"";
     }
+
+    sa << " interval=\"" << fl->_interval << "\" burst=\"" << fl->_burst;
+    sa << "\" extra_data=\"" << fl->_extra_data << "\" >\n";
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
@@ -597,11 +693,13 @@ BRN2SimpleFlow::xml_stats()
       sa << " min_hops=\"" << fl->_min_hops << "\" max_hops=\"" << fl->_max_hops;
       sa << "\" avg_hops=\"" << fl->_cum_sum_hops/fl->_rxPackets << "\" std_hops=\"" << fl->std_hops();
       sa << "\" min_time=\"" << fl->_min_rt_time  << "\" max_time=\"" << fl->_max_rt_time;
-      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\" >\n";
+      sa << "\" time=\"" << fl->_cum_sum_rt_time/fl->_rxPackets << "\" std_time=\"" << fl->std_time() << "\"";
     } else {
       sa << " min_hops=\"0\" max_hops=\"0\" avg_hops=\"0\" std_hops=\"0\"";
-      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\" >\n";
+      sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\"";
     };
+
+    sa << " extra_data=\"" << fl->_extra_data << "\" >\n";
 
     if ( fl->route.size() != 0 ) {
       uint16_t sum_metric = 0;
@@ -624,7 +722,6 @@ BRN2SimpleFlow::xml_stats()
 
 enum {
   H_FLOW_STATS,
-  H_FLOW_ACTIVE,
   H_ADD_FLOW,
   H_DEL_FLOW,
   H_RESET
@@ -654,44 +751,56 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       sf->reset();
       break;
     }
-    case H_FLOW_ACTIVE: {
-      Vector<String> args;
-      cp_spacevec(s, args);
-
-      bool active;
-      cp_bool(args[0], &active);
-
-      sf->set_active(&(sf->dst_of_flow), active);
-      break;
-    }
     case H_ADD_FLOW: {
       Vector<String> args;
       cp_spacevec(s, args);
 
       if ( args.size() < 7 ) {
-        click_chatter("Use: Src Dst rate size mode duration active");
+        click_chatter("Use: Src Dst interval size mode duration active");
         click_chatter("You send. %s",in_s.c_str());
       }
       EtherAddress src;
       EtherAddress dst;
 
-      uint32_t rate;
+      uint32_t interval;
       uint32_t size;
       uint32_t mode;
       uint32_t duration;
       bool active;
 
+      uint32_t burst = 1;
+      int32_t start_time = -1;
+
       //click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
       cp_ethernet_address(args[0], &src);
       cp_ethernet_address(args[1], &dst);
-      cp_integer(args[2], &rate);
+      cp_integer(args[2], &interval);
       cp_integer(args[3], &size);
       cp_integer(args[4], &mode);
       cp_integer(args[5], &duration);
       cp_bool(args[6], &active);
 
+      if ( args.size() > 7 ) cp_integer(args[7], &burst);
+      if ( args.size() > 8 ) cp_integer(args[8], &start_time);
+
       /** TODO: some valid checks */
-      sf->add_flow( src, dst, rate, size, mode, duration, active);
+      if ( start_time == 0 ) active = true;
+
+      sf->add_flow( src, dst, size, mode, interval, burst, duration, active, start_time);
+/*
+      if (cp_va_kparse(conf, this, errh,
+        "SRCADDRESS", cpkP , cpEtherAddress, &_src,
+        "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
+        "INTERVAL", cpkP, cpInteger, &_interval,
+        "DATARATE", cpkP, cpInteger, &_rate,
+        "SIZE", cpkP, cpInteger, &_size,
+        "MODE", cpkP, cpInteger, &_mode,
+        "DURATION", cpkP, cpInteger, &_duration,
+        "BURST", cpkP, cpInteger, &_burst,
+        "ACTIVE", cpkP, cpBool, &_start_active,
+      cpEnd) < 0)
+    return -1;
+*/
       break;
     }
   }
@@ -706,7 +815,6 @@ void BRN2SimpleFlow::add_handlers()
   add_read_handler("stats", BRN2SimpleFlow_read_param, (void *)H_FLOW_STATS);
 
   add_write_handler("reset", BRN2SimpleFlow_write_param, (void *)H_RESET);
-  add_write_handler("active", BRN2SimpleFlow_write_param, (void *)H_FLOW_ACTIVE);
   add_write_handler("add_flow", BRN2SimpleFlow_write_param, (void *)H_ADD_FLOW);
   add_write_handler("del_flow", BRN2SimpleFlow_write_param, (void *)H_DEL_FLOW);
 }
