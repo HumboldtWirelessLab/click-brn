@@ -34,7 +34,7 @@ MSTFlooding::cast(const char *name)
 int
 MSTFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  
+
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "CIRCLEPATH", cpkP+cpkM, cpString, &_circle_path,
@@ -68,7 +68,7 @@ MSTFlooding::policy_id()
   return POLICY_ID_MST;
 }
 
-void get_neighbours(String path) {
+void MSTFlooding::get_neighbours(String path) {
   /*Dateiformat:
    * Jeder Kreis eine Zeile
    * Zeilen terminiert durch -1

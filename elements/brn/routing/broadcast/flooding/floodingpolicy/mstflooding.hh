@@ -2,6 +2,7 @@
 #define MSTFLOODING_HH
 #include <click/timer.hh>
 
+#include <elements/brn/routing/identity/brn2_nodeidentity.hh>
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -38,11 +39,12 @@ class MSTFlooding : public FloodingPolicy
     int policy_id();
 
     String flooding_info(void);
-    
+
   private:
-    vector<int> followers;
+    Vector<int> followers;
     String _circle_path;
     void get_neighbours(String path);
+    BRN2NodeIdentity *_me;
 
 };
 
