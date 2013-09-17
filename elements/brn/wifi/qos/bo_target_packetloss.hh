@@ -30,8 +30,6 @@ public:
 
 public:
   BoTargetPacketloss();
-  ~BoTargetPacketloss();
-
 
 private:
   static const uint16_t _id               = 4;  // unique bo scheme identifier
