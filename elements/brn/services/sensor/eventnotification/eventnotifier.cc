@@ -87,6 +87,31 @@ void
 EventNotifier::push( int /*port*/, Packet *packet )
 {
   _push_packet_events++;
+
+  if ( packet->length() > sizeof(uint32_t) ) { //try to get event_data
+    uint32_t marker = ntohl(*((uint32_t*)packet->data()));
+    if ( marker == EVENT_DATA_MARKER ) {
+      uint p_index = sizeof(uint32_t);
+
+      String _data_string;
+      //int _data_int;
+      //Timestamp _data_timestamp = packet->timestamp_anno();
+
+      while( p_index < packet->length() ) {
+        struct event_data *ed = (struct event_data *)&(packet->data()[p_index]);
+        if ( ed->_event_data_type == EVENT_DATA_TYPE_STRING ) {
+          p_index += sizeof(struct event_data);
+          _data_string = String((uint8_t*)&ed[1]);
+          _event_data_list.push_back(EventData(_data_string));
+          if ( _event_data_list.size() > 1000 ) _event_data_list.erase(_event_data_list.begin());
+          break;
+        } else {
+          p_index += (sizeof(struct event_data) + ed->_event_data_size);
+        }
+      }
+    }
+  }
+
   trigger_event(0);
   checked_output_push(0, packet);
 }
@@ -200,7 +225,12 @@ read_stats_param(Element *e, void *)
   sa << "\nPush Packets: " << en->_push_packet_events;
   sa << "\nPull Packets: " << en->_pull_packet_events;
   sa << "\nHandler Events: " << en->_handler_events;
-  sa << "\n";
+  sa << "<eventdata>\n";
+  for ( int i = 0; i < en->_event_data_list.size(); i++) {
+    sa << "\t<data time='" << en->_event_data_list[i]._time.unparse() << "' value='" << en->_event_data_list[i]._data << "' />\n";
+  }
+  sa << "</eventdata>\n";
+
   return sa.take_string();
 }
 

@@ -28,6 +28,9 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
+//For EventData
+#include "eventnotifier.hh"
+
 CLICK_DECLS
 /*
  * =c
@@ -53,10 +56,16 @@ class EventHandler : public BRNElement {
     int _id;
     int _distance;
 
+    EventData _event_data;
+
     DetectedEvent(EtherAddress src, int id, int distance = 0) {
       _src = src;
       _id = id;
       _distance = distance;
+    }
+
+    void setEventData(String data) {
+      _event_data = EventData(data);
     }
   };
 
