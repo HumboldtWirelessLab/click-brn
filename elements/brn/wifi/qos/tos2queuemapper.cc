@@ -40,9 +40,7 @@
 
 #include "tos2queuemapper.hh"
 #include "tos2queuemapper_data.hh"
-#include "bo_learning.hh"
-//#include "bo_learning_strict.hh"
-//#include "bo_channelloadaware.hh"
+
 
 CLICK_DECLS
 
@@ -92,8 +90,6 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "AIFS", cpkP, cpString, &s_aifs,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "COLLISIONINFO", cpkP, cpElement, &_colinf,
-      "TARGETPER", cpkP, cpInteger, &_target_packetloss,
-      "TARGETRXTXBUSYDIFF", cpkP, cpInteger, &_target_diff_rxtx_busy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
@@ -142,7 +138,7 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
   if ( no_queues > 0 ) {
     _cwmin = new uint16_t[no_queues];
     _cwmax = new uint16_t[no_queues];
-    _aifs = new uint16_t[no_queues];
+    _aifs  = new uint16_t[no_queues];
 
     for( int i = 0; i < no_queues; i++ ) {
       cp_integer(args[i], &v);
@@ -279,33 +275,7 @@ Tos2QueueMapper::simple_action(Packet *p)
           _bo_usage_usage[_bo_exp[opt_queue]]++;
           _pkt_in_q++;
 
-          BRN_DEBUG("SA: q: %d\n", opt_queue);
           return p;
-
-      case BACKOFF_STRATEGY_MAX_THROUGHPUT:
-          opt_cwmin = backoff_strategy_max_throughput(p);
-          break;
-      case BACKOFF_STRATEGY_TARGET_PACKETLOSS:
-          opt_cwmin = backoff_strategy_packetloss_aware(p);
-          break;
-      case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY:
-      case BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE:
-      {
-          struct airtime_stats *as = _cst->get_latest_stats();
-
-          opt_cwmin = _bo_for_target_channelload; // also used for diff_rxtx_busy
-          if ( _ac_stats_id != as->stats_id ) {
-            if ( _bqs_strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE ) {
-              opt_cwmin = backoff_strategy_channelload_aware(as->hw_busy, as->no_sources);
-            } else {
-              opt_cwmin = backoff_strategy_rxtx_busy_diff_aware(as->hw_rx, as->hw_tx, as->hw_busy, as->no_sources);
-            }
-            _ac_stats_id = as->stats_id;
-          }
-          break;
-      }
-      case BACKOFF_STRATEGY_EXPONENTIAL_LINEAR:
-        opt_cwmin = _pleb_bo;
     }
   }
 
