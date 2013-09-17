@@ -21,6 +21,9 @@ public:
 
   virtual void set_conf(uint32_t min, uint32_t max);
 
+
+
+
 protected:
   uint32_t _min_cwmin;
   uint32_t _max_cwmin;
