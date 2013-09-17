@@ -614,6 +614,8 @@ Tos2QueueMapper::set_backoff()
   simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_SET_BACKOFF, queueinfo);
 
   delete[] queueinfo;
+
+  _call_set_backoff++;
 #endif
   return 0;
 }
@@ -636,8 +638,6 @@ Tos2QueueMapper::get_backoff()
   }
 
   delete[] queueinfo;
-
-  _call_set_backoff++;
 #endif
   return 0;
 }
