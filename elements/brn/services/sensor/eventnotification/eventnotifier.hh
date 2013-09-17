@@ -43,6 +43,23 @@ CLICK_DECLS
  * broadcast-flooding, which is an extra element
  */
 
+class EventData {
+  public:
+    Timestamp _time;
+    String _data;
+
+    EventData() {
+      _data = NULL;
+    }
+
+    EventData(String data) {
+      _data = data;
+      _time = Timestamp::now();
+    }
+};
+
+typedef Vector<EventData> EventDataList;
+
 class EventNotifier : public BRNElement {
 
  public:
@@ -80,6 +97,7 @@ class EventNotifier : public BRNElement {
   int _payload_size;
 
  public:
+  EventDataList _event_data_list;
 
   void set_payload_size(int payload_size) { _payload_size = payload_size; }
 
