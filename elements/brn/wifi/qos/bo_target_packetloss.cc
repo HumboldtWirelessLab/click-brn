@@ -20,14 +20,11 @@ CLICK_DECLS
 
 BoTargetPacketloss::BoTargetPacketloss()
   : _cst(NULL),
-    _target_packetloss
+    _target_packetloss(0)
 {
   BRNElement::init();
 }
 
-BoTargetPacketloss::~BoTargetPacketloss()
-{
-}
 
 void * BoTargetPacketloss::cast(const char *name)
 {
