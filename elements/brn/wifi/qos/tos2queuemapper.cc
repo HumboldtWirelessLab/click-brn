@@ -39,7 +39,7 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "tos2queuemapper.hh"
-#include "tos2queuemapper_data.hh"
+#include "tos2qm_data.hh"
 
 
 CLICK_DECLS

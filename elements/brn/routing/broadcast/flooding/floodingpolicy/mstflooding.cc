@@ -4,8 +4,7 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 #include <click/straccum.hh>
-#include <string>
-#include <cstdio>
+#include <click/userutils.hh>
 
 #include "floodingpolicy.hh"
 #include "mstflooding.hh"
@@ -76,29 +75,38 @@ void MSTFlooding::get_neighbours(String path) {
    * 1 2 3 -1
    * 2 4 5 6 7 -1
    */
+
+  String _data = file_string(path);
+  Vector<String> _data_vec;
+  cp_spacevec(_data, _data_vec);
+
   int node_id=1; //Hier muss noch die Richtige gefunden werden
   int first=-1;
-  FILE * data = fopen(path,"r");
   int akt;
   bool next=false;
-  while (!feof(data)) {
-    fscanf(data,"%d",&akt);
+  int i = 0;
+
+  while (i < _data_vec.size()) {
+    cp_integer(_data_vec[i],&akt);
+
     if (first==-1) first=akt;
+
     if (next==true) {
       if (akt==-1) {
-	followers.push_back(first);
+        followers.push_back(first);
       } else {
-	followers.push_back(akt);
+        followers.push_back(akt);
       }
     }
+
     if (akt==node_id) {
       next=true;
     }
+
     if (akt==-1) {
       first=-1;
     }
   }
-  fclose(data);
 }
 
 /*******************************************************************************************/
