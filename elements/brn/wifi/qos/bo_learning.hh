@@ -5,49 +5,64 @@
 #include <elements/brn/brnelement.hh>
 
 #include "backoff_scheme.hh"
-#include "tos2queuemapper.hh"
 
-#define BOLEARNING_STRICT 0
-#define BOLEARNING_MIN_CWMIN 31
-#define BOLEARNING_MAX_CWMIN 255
-#define BOLEARNING_STARTING_BO 63
 
 CLICK_DECLS
 
 
-struct bos_learning_stats {
-  uint32_t feedback_cnt;
-  uint32_t tx_cnt;
-  uint32_t bo_cnt_up;
-  uint32_t bo_cnt_down;
-};
 
+class BoLearning : public BackoffScheme {
 
-class BoLearning : public BRNElement, public BackoffScheme {
-
-public: /* derived */
+/* Derived Functions */
+public:
+  /* Element */
   const char *class_name() const  { return "BoLearning"; }
+  const char *processing() const  { return AGNOSTIC; }
+  const char *port_count() const  { return "0/0"; }
+  void *cast(const char *name);
 
-  int get_cwmin();
-  void handle_feedback(Packet *p);
+  int configure(Vector<String> &, ErrorHandler *);
+  void add_handlers();
 
-public: /* own */
-  BoLearning(struct bo_scheme_utils scheme_utils);
+  /* BackoffScheme */
+  uint16_t get_id();
+  int get_cwmin(Packet *p, uint8_t tos);
+  void handle_feedback(uint8_t retries);
+  void set_conf(uint32_t min, uint32_t max);
+
+/* Own Functions */
+public:
   BoLearning();
   ~BoLearning();
 
-  struct bos_learning_stats get_stats();
-
 private:
+  void increase_cw();
+  void increase_cw_strict(uint8_t retries);
+  void decrease_cw();
+  void keep_cw();
+
+
+/* Own Variables */
+private:
+  static const uint16_t _id              = 5;   // unique bo scheme identifier
+  static const uint16_t _bo_start        = 63;  // initial backoff
+  static const uint8_t  _retry_threshold = 1;   // 1 retry == no change
+
+  /* scheme flavour: strict */
+  uint8_t _strict;
+
+  /* learning bo */
   uint32_t _current_bo;
 
+  /* packet stats */
   uint32_t _feedback_cnt;
   uint32_t _tx_cnt;
+
+  /* bo stats */
   uint32_t _bo_cnt_up;
   uint32_t _bo_cnt_down;
-
-  int32_t _pkt_in_q;
 };
+
 
 
 CLICK_ENDDECLS
