@@ -45,11 +45,11 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              3
 #define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
 #define BACKOFF_STRATEGY_LEARNING                        5
-#define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
-#define BACKOFF_STRATEGY_EXPONENTIAL_LINEAR              7 /* PLEB */
+#define BACKOFF_STRATEGY_LEARNING_STRICT                 6
+#define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           7
+#define BACKOFF_STRATEGY_EXPONENTIAL_LINEAR              8 /* PLEB */
 
 #define BACKOFF_STRATEGY_REFACTOR                        99
-
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
@@ -84,7 +84,7 @@ class Tos2QueueMapper : public BRNElement {
 
     String stats();
 
-    void handle_feedback_learning(Packet *);
+    void handle_feedback(Packet *);
     void handle_feedback_pleb(Packet *);
 
     void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
@@ -121,6 +121,11 @@ class Tos2QueueMapper : public BRNElement {
     uint32_t set_backoff();
     uint32_t get_backoff();
     uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
+    void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
+    int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
+    void init_stats();
+    BackoffScheme *get_bo_scheme(uint16_t strategy);
+
     ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
     CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
 
@@ -160,7 +165,13 @@ class Tos2QueueMapper : public BRNElement {
 
     uint32_t _call_set_backoff;
 
-    BackoffScheme *_bo_scheme;
+
+    BackoffScheme *_current_scheme;
+    BackoffScheme **_bo_schemes;
+
+    uint32_t _no_schemes;
+    uint16_t _scheme_id;
+
 };
 
 CLICK_ENDDECLS

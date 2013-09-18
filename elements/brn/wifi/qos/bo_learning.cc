@@ -6,6 +6,11 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
+#include <click/packet_anno.hh>
+
+#if CLICK_NS
+#include <click/router.hh>
+#endif
 
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/brn2.h"
@@ -13,19 +18,16 @@
 #include "backoff_scheme.hh"
 #include "bo_learning.hh"
 
+
 CLICK_DECLS
 
 
-BoLearning::BoLearning(struct bo_scheme_utils scheme_utils) :
-  BackoffScheme(scheme_utils),
-  _current_bo(BOLEARNING_STARTING_BO)
-{
-  BRNElement::init();
-}
-
 
 BoLearning::BoLearning() :
-  BackoffScheme()
+  _current_bo(_bo_start),
+  _bo_cnt_up(0),
+  _bo_cnt_down(0),
+  _strict(0)
 {
   BRNElement::init();
 }
@@ -36,78 +38,112 @@ BoLearning::~BoLearning()
 }
 
 
-int BoLearning::get_cwmin()
+void * BoLearning::cast(const char *name)
+{
+  if (strcmp(name, "BoLearning") == 0)
+    return (BoLearning *) this;
+  else if (strcmp(name, "BackoffScheme") == 0)
+         return (BackoffScheme *) this;
+       else
+         return NULL;
+}
+
+
+int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
+{
+  uint32_t min_cwmin = -1;
+  uint32_t max_cwmin = -1;
+
+  if (cp_va_kparse(conf, this, errh,
+      "MIN_CWMIN", cpkP, cpInteger, &min_cwmin,
+      "MAX_CWMIN", cpkP, cpInteger, &max_cwmin,
+      "STRICT", cpkP, cpInteger, &_strict,
+      "DEBUG", cpkP, cpInteger, &_debug,
+      cpEnd) < 0) return -1;
+
+  if ((min_cwmin > 0) && (max_cwmin) > 0)
+    set_conf(min_cwmin, max_cwmin);
+
+  return 0;
+}
+
+
+void BoLearning::add_handlers()
+{
+}
+
+
+uint16_t BoLearning::get_id()
+{
+  return _id;
+}
+
+
+int BoLearning::get_cwmin(Packet *p, uint8_t tos)
 {
   return _current_bo;
 }
 
 
-void BoLearning::handle_feedback(Packet *p)
+void BoLearning::handle_feedback(uint8_t retries)
 {
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  if (!(ceh->flags & WIFI_EXTRA_TX))
-    return;
+  BRN_DEBUG("BoL.handle_feedback():");
+  BRN_DEBUG("    retries: %d\n", retries);
+  BRN_DEBUG("    current bo: %d\n", _current_bo);
 
-  struct click_wifi *wh = (struct click_wifi *) p->data();
-  if (EtherAddress(wh->i_addr1) == brn_etheraddress_broadcast)
-    return;
-
-  _pkt_in_q--;
-  _feedback_cnt++;
-  _tx_cnt += ceh->retries + 1;
-
-  uint32_t min_cwmin = _cwmin[0];           //1
-  uint32_t max_cwmin = _cwmin[_no_queues-1];
-  uint32_t retry_limit = 1;
-  uint8_t retries = ceh->retries;
-
-  click_chatter("\nBoL.handle_feedback():");
-  click_chatter("\tretries: %d\n", retries);
-  click_chatter("\tcurrent bo: %d\n", _current_bo);
-
-  // no retries: reduces bo
-  if (retries < retry_limit && _current_bo > min_cwmin) {
-    _bo_cnt_down++;
-    _current_bo = _current_bo >> 1;
-
-  // 1 retry: don't change cwmin yet
-  } else if (retries == retry_limit) {
-    //_bo_cnt_down++;
-    //_current_bo = _learning_current_bo >> 1;
-    //_current_bo = _current_bo;       //keep
-
-  // many retries but still not cwmax: double cwmin
-  } else if (retries > retry_limit && _current_bo < max_cwmin) {
-    if (BOLEARNING_STRICT) {
-      _bo_cnt_up += (retries - retry_limit);
-      _current_bo = _current_bo << (retries - retry_limit);
-    } else {
-      _bo_cnt_up++;
-      _current_bo = _current_bo << 1;
-    }
+  if (retries < _retry_threshold && _current_bo > _min_cwmin)
+    decrease_cw();
+  else if (retries == _retry_threshold)
+    keep_cw();
+  else if (retries > _retry_threshold && _current_bo < _max_cwmin) {
+    if (_strict)
+      increase_cw_strict(retries);
+    else
+      increase_cw();
   }
 
-  if (_current_bo < BOLEARNING_MIN_CWMIN)
-    _current_bo = BOLEARNING_MIN_CWMIN;
-  else if (_current_bo > BOLEARNING_MAX_CWMIN)
-    _current_bo = BOLEARNING_MAX_CWMIN;
+  if (_current_bo < _min_cwmin)
+    _current_bo = _min_cwmin;
+  else if (_current_bo > _max_cwmin)
+    _current_bo = _max_cwmin;
 
-  click_chatter("\tnew bo: %d\n\n", _current_bo);
+  BRN_DEBUG("    new bo: %d\n\n", _current_bo);
 }
 
 
-struct bos_learning_stats BoLearning::get_stats()
+void BoLearning::set_conf(uint32_t min, uint32_t max)
 {
-  struct bos_learning_stats learning_stats;
-  learning_stats.feedback_cnt = _feedback_cnt;
-  learning_stats.tx_cnt       = _tx_cnt;
-  learning_stats.bo_cnt_up    = _bo_cnt_up;
-  learning_stats.bo_cnt_down  = _bo_cnt_down;
+  _min_cwmin = min;
+  _max_cwmin = max;
+}
 
-  return learning_stats;
+
+void BoLearning::increase_cw()
+{
+  _bo_cnt_up++;
+  _current_bo = _current_bo << 1;
+}
+
+
+void BoLearning::increase_cw_strict(uint8_t retries)
+{
+  _bo_cnt_up += (retries - _retry_threshold);
+  _current_bo = _current_bo << (retries - _retry_threshold);
+}
+
+
+void BoLearning::decrease_cw()
+{
+  _bo_cnt_down++;
+  _current_bo = _current_bo >> 1;
+}
+
+void BoLearning::keep_cw()
+{
 }
 
 
 CLICK_ENDDECLS
+
 EXPORT_ELEMENT(BoLearning)
 ELEMENT_MT_SAFE(BoLearning)

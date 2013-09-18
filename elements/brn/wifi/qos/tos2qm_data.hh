@@ -1,10 +1,15 @@
-#ifndef TQMDATA
-#define TQMDATA
+#ifndef TOS2QM_DATA_HH
+#define TOS2QM_DATA_HH
+
+#include <click/element.hh>
 
 #define T2QM_MAX_INDEX_PACKET_LOSS   5
 #define T2QM_MAX_INDEX_NO_NEIGHBORS 25
 #define T2QM_MAX_INDEX_MSDU_SIZE     4
 #define T2QM_MAX_INDEX_RATES         4
+
+CLICK_DECLS
+
 
 static const int32_t _backoff_matrix_tmt_backoff_4D[T2QM_MAX_INDEX_RATES][T2QM_MAX_INDEX_MSDU_SIZE][T2QM_MAX_INDEX_NO_NEIGHBORS][T2QM_MAX_INDEX_PACKET_LOSS]=
     {{{{113,38,18,8,4},{358,120,59,27,15},{707,257,118,52,30},{1189,442,199,90,50},{1815,685,307,131,78},{2502,931,435,189,109},{2992,1229,587,249,148},{0,1607,765,328,186},{0,2053,964,410,241},{0,2487,1128,507,287},{0,2999,1376,605,354},{0,3000,1694,730,416},{0,0,1917,818,481},{0,0,2187,975,555},{0,0,2561,1100,652},{0,0,2856,1255,730},{0,0,3000,1415,807},{0,0,0,1620,906},{0,0,0,1746,1008},{0,0,0,1924,1118},{0,0,0,2116,1225},{0,0,0,2326,1347},{0,0,0,2562,1467},{0,0,0,2764,1628},{0,0,0,2982,1743}},
@@ -56,4 +61,25 @@ static const int32_t _backoff_packet_loss[T2QM_MAX_INDEX_PACKET_LOSS]={2,5,10,20
 static const int32_t vector_msdu_sizes[T2QM_MAX_INDEX_MSDU_SIZE] = {500, 1500, 3000, 8000};
 static const int32_t vector_rates_data[T2QM_MAX_INDEX_RATES] = {2, 12, 48, 108}; //double rate
 static const int32_t vector_no_neighbours[T2QM_MAX_INDEX_NO_NEIGHBORS] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25};
-#endif
+
+
+class Tos2QmData : public Element {
+/* Derived Functions */
+public: /* Element */
+  const char *class_name() const  { return "Tos2QmData"; }
+
+/* Own Functions */
+public:
+  Tos2QmData();
+  ~Tos2QmData();
+
+  static int find_closest_size_index(int size);
+  static int find_closest_rate_index(int rate);
+  static int find_closest_no_neighbour_index(int no_neighbours);
+  static int find_closest_per_index(int per);
+};
+
+
+CLICK_ENDDECLS
+
+#endif /* TOS2QM_DATA_HH */
