@@ -722,6 +722,7 @@ BRN2SimpleFlow::xml_stats()
 
 enum {
   H_FLOW_STATS,
+  H_ADD,
   H_ADD_FLOW,
   H_DEL_FLOW,
   H_RESET
@@ -751,6 +752,23 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       sf->reset();
       break;
     }
+    case H_ADD: {
+/*
+      if (cp_va_kparse(conf, this, errh,
+        "SRCADDRESS", cpkP , cpEtherAddress, &_src,
+        "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
+        "INTERVAL", cpkP, cpInteger, &_interval,
+        "DATARATE", cpkP, cpInteger, &_rate,
+        "SIZE", cpkP, cpInteger, &_size,
+        "MODE", cpkP, cpInteger, &_mode,
+        "DURATION", cpkP, cpInteger, &_duration,
+        "BURST", cpkP, cpInteger, &_burst,
+        "ACTIVE", cpkP, cpBool, &_start_active,
+      cpEnd) < 0)
+    return -1;
+*/
+      break;
+    }
     case H_ADD_FLOW: {
       Vector<String> args;
       cp_spacevec(s, args);
@@ -769,7 +787,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       bool active;
 
       uint32_t burst = 1;
-      int32_t start_time = -1;
+      int32_t  start_delay = 0;
 
       //click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
       cp_ethernet_address(args[0], &src);
@@ -781,26 +799,13 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       cp_bool(args[6], &active);
 
       if ( args.size() > 7 ) cp_integer(args[7], &burst);
-      if ( args.size() > 8 ) cp_integer(args[8], &start_time);
+      if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
 
-      /** TODO: some valid checks */
-      if ( start_time == 0 ) active = true;
+      sf->add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
 
-      sf->add_flow( src, dst, size, mode, interval, burst, duration, active, start_time);
-/*
-      if (cp_va_kparse(conf, this, errh,
-        "SRCADDRESS", cpkP , cpEtherAddress, &_src,
-        "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
-        "INTERVAL", cpkP, cpInteger, &_interval,
-        "DATARATE", cpkP, cpInteger, &_rate,
-        "SIZE", cpkP, cpInteger, &_size,
-        "MODE", cpkP, cpInteger, &_mode,
-        "DURATION", cpkP, cpInteger, &_duration,
-        "BURST", cpkP, cpInteger, &_burst,
-        "ACTIVE", cpkP, cpBool, &_start_active,
-      cpEnd) < 0)
-    return -1;
-*/
+      break;
+    }
+    case H_DEL_FLOW: {
       break;
     }
   }
