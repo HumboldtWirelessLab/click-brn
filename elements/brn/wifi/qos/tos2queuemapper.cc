@@ -258,7 +258,6 @@ Tos2QueueMapper::simple_action(Packet *p)
   if (_current_scheme) {
     opt_cwmin = _current_scheme->get_cwmin(p, tos);
   } else {
-    BRN_DEBUG("Tos2QM.sa(): no curr scheme! STRAT = %d\n", _bqs_strategy);
 
     switch (_bqs_strategy) {
       case BACKOFF_STRATEGY_OFF:
@@ -339,155 +338,9 @@ Tos2QueueMapper::handle_feedback(Packet *p)
   _feedback_cnt++;
   _tx_cnt += ceh->retries + 1;
 
-  _current_scheme->handle_feedback(ceh->retries);
+  if (_current_scheme)
+    _current_scheme->handle_feedback(ceh->retries);
 }
-
-void
-Tos2QueueMapper::handle_feedback_pleb(Packet *p)
-{
-  /* ignore non-tx packets */
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  if (!ceh->flags == WIFI_EXTRA_TX)
-    return;
-
-  /* ignore broadcast packets */
-  struct click_wifi *w = (struct click_wifi *) p->data();
-  if (EtherAddress(w->i_addr1) == brn_etheraddress_broadcast)
-    return;
-}
-
-
-
-int
-Tos2QueueMapper::backoff_strategy_packetloss_aware(Packet *p)
-{
-  int32_t number_of_neighbours = 1;
-  int32_t index_search_rate = -1;
-  int32_t index_search_msdu_size = -1;
-  int32_t index_search_likelihood_collision = -1;
-  int32_t index_no_neighbours = -1;
-  uint32_t backoff_window_size = 0;
-
-  // Get Destination Address from the current packet
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-
-  //Get Number of Neighbours from the Channelstats-Element (_cst)
-  struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
-  number_of_neighbours = as->no_sources;
-  BRN_DEBUG("Number of Neighbours %d", number_of_neighbours);
-
-  index_search_rate = find_closest_rate_index(ceh->rate);
-  index_search_msdu_size = find_closest_size_index(p->length());
-  index_search_likelihood_collision = find_closest_per_index(_target_packetloss);
-  index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
-
-  // Tests what is known
-  backoff_window_size = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
-
-  BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, find_queue(backoff_window_size));
-
-  return backoff_window_size;
-}
-
-int
-Tos2QueueMapper::backoff_strategy_max_throughput(Packet *p)
-{
-  int32_t number_of_neighbours = 1;
-  int32_t index_search_rate = -1;
-  int32_t index_search_msdu_size = -1;
-  int32_t index_no_neighbours = -1;
-  uint32_t backoff_window_size = 0;
-
-  // Get Destination Address from the current packet
-  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-
-  //Get Number of Neighbours from the Channelstats-Element (_cst)
-  struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
-  number_of_neighbours = as->no_sources;
-  BRN_DEBUG("Number of Neighbours %d", number_of_neighbours);
-
-  index_search_rate = find_closest_rate_index(ceh->rate);
-  index_search_msdu_size = find_closest_size_index(p->length());
-  index_no_neighbours = find_closest_no_neighbour_index(number_of_neighbours);
-
-  //max Throughput
-  //BRN_WARN("Search max tp");
-  backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
-
-  BRN_DEBUG("backoffwin: %d  Queue: %d", backoff_window_size, find_queue(backoff_window_size));
-
-  return backoff_window_size;
-}
-
-int
-Tos2QueueMapper::backoff_strategy_channelload_aware(int busy, int /*nodes*/)
-{
-  BRN_DEBUG("BUSY: %d _traget_channel: %d bo: %d", busy, _target_channelload,_bo_for_target_channelload);
-
-  if ( (busy < ((int32_t)_target_channelload - 5)) && ( (int32_t)_bo_for_target_channelload > 1 ) ) {
-    _bo_for_target_channelload = _bo_for_target_channelload >> 1;
-  } else if ( (busy > ((int32_t)_target_channelload + 5)) && ((int32_t)_bo_for_target_channelload < (int32_t)_learning_max_bo)) {
-    _bo_for_target_channelload = _bo_for_target_channelload << 1;
-  }
-
-  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
-
-  return _bo_for_target_channelload;
-}
-
-int
-Tos2QueueMapper::backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/)
-{
-  int diff = busy-(tx+rx);
-  BRN_DEBUG("REG: %d %d %d -> %d _traget_diff: %d bo: %d",rx, tx, busy, diff, _target_diff_rxtx_busy,_bo_for_target_channelload);
-
-  if ( (diff < ((int32_t)_target_diff_rxtx_busy - 3)) && ( (int32_t)_bo_for_target_channelload > 1 ) ) {
-    _bo_for_target_channelload = _bo_for_target_channelload >> 1;
-  } else if ( (diff > ((int32_t)_target_diff_rxtx_busy + 3)) && ((int32_t)_bo_for_target_channelload < (int32_t)_learning_max_bo)) {
-    _bo_for_target_channelload = _bo_for_target_channelload << 1;
-  }
-
-  BRN_DEBUG("bo: %d", _bo_for_target_channelload);
-
-  return _bo_for_target_channelload;
-}
-
-/**
- *   H E L P E R   F U N C T I O N S
- */
-
-int
-Tos2QueueMapper::find_closest_size_index(int size)
-{
-  for ( int i = 0; i < T2QM_MAX_INDEX_MSDU_SIZE; i++ )
-    if ( vector_msdu_sizes[i] >= size ) return i;
-
-  return T2QM_MAX_INDEX_MSDU_SIZE - 1;
-}
-
-int
-Tos2QueueMapper::find_closest_rate_index(int rate)
-{
-  for ( int i = 0; i < T2QM_MAX_INDEX_RATES; i++ )
-    if ( vector_rates_data[i] >= rate ) return i;
-
-  return T2QM_MAX_INDEX_RATES - 1;
-}
-
-int
-Tos2QueueMapper::find_closest_no_neighbour_index(int no_neighbours) {
-  if ( no_neighbours > T2QM_MAX_INDEX_NO_NEIGHBORS ) return T2QM_MAX_INDEX_NO_NEIGHBORS-1;
-  return no_neighbours - 1;
-}
-
-int
-Tos2QueueMapper::find_closest_per_index(int per) {
-  for ( int i = 0; i < T2QM_MAX_INDEX_PACKET_LOSS; i++ )
-    if ( _backoff_packet_loss[i] >= per ) return i;
-
-  return T2QM_MAX_INDEX_PACKET_LOSS - 1;
-}
-
 
 /* TODO: use gravitaion approach:
  *       -calc dist to both neighbouring backoffs
