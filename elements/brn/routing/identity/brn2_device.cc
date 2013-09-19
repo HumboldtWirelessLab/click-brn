@@ -92,6 +92,11 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 
   device_etheraddress_fix = device_etheraddress;
 
+  if ((s_cwmin == "") && (s_cwmax == "") && (s_aifs == ""))
+    get_backoff();
+  else
+    parse_queues(s_cwmin, s_cwmax, s_aifs);
+
   return 0;
 }
 
@@ -416,6 +421,82 @@ BRN2Device::device_info()
 
   return sa.take_string();
 }
+
+/*****************************************************************************/
+/***************** D E V I C E   C O N F I G *********************************/
+/*****************************************************************************/
+void
+BRN2Device::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
+{
+  uint32_t v;
+  Vector<String> args;
+
+  cp_spacevec(s_cwmin, args);
+  no_queues = args.size();
+
+  if ( no_queues > 0 ) {
+    _cwmin = new uint16_t[no_queues];
+    _cwmax = new uint16_t[no_queues];
+    _aifs  = new uint16_t[no_queues];
+
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmin[i] = v;
+      if ( v > _learning_max_bo ) _learning_max_bo = v;
+    }
+    args.clear();
+
+    cp_spacevec(s_cwmax, args);
+    if ( args.size() < no_queues )
+      no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _cwmax[i] = v;
+    }
+    args.clear();
+
+    cp_spacevec(s_aifs, args);
+    if ( args.size() < no_queues )
+      no_queues = args.size();
+    for( int i = 0; i < no_queues; i++ ) {
+      cp_integer(args[i], &v);
+      _aifs[i] = v;
+    }
+    args.clear();
+  }
+}
+
+
+uint32_t
+Tos2QueueMapper::get_backoff()
+{
+#if CLICK_NS
+  //How many queues ?
+  int tmp_no_queue = 1;
+  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
+  queueinfo[0] = no_queues;
+
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
+
+#if CLICK_NS
+  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
+  queueinfo[0] = no_queues;
+
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
+
+  int max_q = no_queues;
+  if ( queueinfo[0] < no_queues ) max_q = queueinfo[0];
+
+  for ( int q = 0; q < max_q; q++ ) {
+    _cwmin[q] = queueinfo[1 + q];
+    _cwmax[q] = queueinfo[1 + max_q + q];
+  }
+
+  delete[] queueinfo;
+#endif
+  return 0;
+}
+
 
 //-----------------------------------------------------------------------------
 // Handler
