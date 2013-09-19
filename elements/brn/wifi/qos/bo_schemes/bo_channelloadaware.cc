@@ -76,6 +76,9 @@ uint16_t BoChannelLoadAware::get_id()
 
 int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 {
+  (void) p;
+  (void) tos;
+
   struct airtime_stats *as = _cst->get_latest_stats();
   uint32_t busy = as->hw_busy;
   int32_t nodes = as->no_sources;
