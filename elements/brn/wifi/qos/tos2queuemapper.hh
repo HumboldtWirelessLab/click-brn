@@ -26,7 +26,7 @@
 #include <elements/brn/wifi/channelstats.hh>
 #include <elements/brn/wifi/collisioninfo.hh>
 
-#include "backoff_scheme.hh"
+#include "bo_schemes/backoff_scheme.hh"
 
 
 CLICK_DECLS
@@ -65,112 +65,89 @@ CLICK_DECLS
 
 class Tos2QueueMapper : public BRNElement {
 
-  public:
+public:
+  Tos2QueueMapper();
+  ~Tos2QueueMapper();
 
-    Tos2QueueMapper();
-    ~Tos2QueueMapper();
+  const char *class_name() const  { return "Tos2QueueMapper"; }
+  const char *port_count() const  { return "1/1"; }
+  const char *processing() const  { return "a"; }
 
-    const char *class_name() const  { return "Tos2QueueMapper"; }
-    const char *port_count() const  { return "1/1"; }
-    const char *processing() const  { return "a"; }
+  int configure(Vector<String> &, ErrorHandler *);
+  void add_handlers();
 
-    int configure(Vector<String> &, ErrorHandler *);
-    void add_handlers();
+  //    Packet * smaction(Packet *p, int port);
+  //    void push(int, Packet *);
+  //    Packet *pull(int);
+  Packet *simple_action(Packet *p);
 
-//    Packet * smaction(Packet *p, int port);
-//    void push(int, Packet *);
-//    Packet *pull(int);
-    Packet *simple_action(Packet *p);
+  String stats();
 
-    String stats();
+  void handle_feedback(Packet *);
 
-    void handle_feedback(Packet *);
-    void handle_feedback_pleb(Packet *);
+  uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
+  void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
+  uint16_t get_backoff_strategy() { return _bqs_strategy; }
 
-    void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
-    uint16_t get_backoff_strategy() { return _bqs_strategy; }
-    uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
+  inline uint8_t get_no_queues() { return no_queues; }
+  uint32_t get_queue_usage(uint8_t position);
 
-    int backoff_strategy_packetloss_aware(Packet *p);
-    int backoff_strategy_max_throughput(Packet *p);
-    int backoff_strategy_channelload_aware(int /*busy*/, int /*nodes*/);
-    int backoff_strategy_rxtx_busy_diff_aware(int rx, int tx, int busy, int /*nodes*/);
+  int find_queue(uint16_t cwmin);
+  int find_queue_prob(uint16_t backoff_window_size);
+  uint32_t find_closest_backoff(uint32_t bo);
+  uint32_t find_closest_backoff_exp(uint32_t bo);
 
-    inline uint8_t get_no_queues() { return no_queues; }
-    uint32_t get_queue_usage(uint8_t position);
+  void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
 
-    uint32_t get_learning_current_bo() { return _learning_current_bo; }
-    uint32_t get_learning_count_up() { return _learning_count_up; }
-    uint32_t get_learning_count_down() { return _learning_count_down; }
-    uint32_t get_bo_target_cl() { return _bo_for_target_channelload; }
-    uint32_t get_target_channelload() { return _target_channelload; }
+private:
+  uint32_t set_backoff();
+  uint32_t get_backoff();
+  uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
+  void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
+  int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
+  void init_stats();
+  BackoffScheme *get_bo_scheme(uint16_t strategy);
 
-    int find_closest_size_index(int size);
-    int find_closest_rate_index(int rate);
-    int find_closest_no_neighbour_index(int no_neighbours);
-    int find_closest_per_index(int per);
-    int find_queue(uint16_t cwmin);
-    int find_queue_prob(uint16_t backoff_window_size);
-    uint32_t find_closest_backoff(uint32_t bo);
-    uint32_t find_closest_backoff_exp(uint32_t bo);
+  ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
+  CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
 
-    void reset_queue_usage() { memset(_queue_usage, 0, sizeof(uint32_t) * no_queues); }
+  uint32_t _learning_current_bo;
+  uint32_t _learning_count_up;
+  uint32_t _learning_count_down;
+  uint32_t _learning_max_bo;
 
+private:
+  uint8_t no_queues;          //number of queues
+  uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
+  uint16_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
+  uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+  uint32_t *_queue_usage;     //frequency of the used queues
 
-  private:
-    uint32_t set_backoff();
-    uint32_t get_backoff();
-    uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
-    void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
-    int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
-    void init_stats();
-    BackoffScheme *get_bo_scheme(uint16_t strategy);
+  uint16_t *_bo_exp;           //exponent for backoff in queue
+  uint32_t *_bo_usage_usage;   //frequency of the used backoff
+  uint32_t _bo_usage_max_no;   //max bo
 
-    ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
-    CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
+  uint32_t _ac_stats_id;
 
-    uint32_t _learning_current_bo;
-    uint32_t _learning_count_up;
-    uint32_t _learning_count_down;
-    uint32_t _learning_max_bo;
+  uint32_t _target_packetloss;
+  uint32_t _target_channelload;
+  uint32_t _bo_for_target_channelload;
 
-    /* pleb algorithm vars */
-    uint32_t _pleb_bo;
-    uint32_t _pleb_expcap; // no of retries using exp. bo before switching to linear
-    uint32_t _pleb_bo_cnt;
+public:
+  uint32_t _target_diff_rxtx_busy;
 
-  private:
-    uint8_t no_queues;          //number of queues
-    uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
-    uint16_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
-    uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
-    uint32_t *_queue_usage;     //frequency of the used queues
+  uint32_t _feedback_cnt;
+  uint32_t _tx_cnt;
+  int32_t _pkt_in_q;
 
-    uint16_t *_bo_exp;           //exponent for backoff in queue
-    uint32_t *_bo_usage_usage;   //frequency of the used backoff
-    uint32_t _bo_usage_max_no;   //max bo
-
-    uint32_t _ac_stats_id;
-
-    uint32_t _target_packetloss;
-    uint32_t _target_channelload;
-    uint32_t _bo_for_target_channelload;
-
-  public:
-    uint32_t _target_diff_rxtx_busy;
-
-    uint32_t _feedback_cnt;
-    uint32_t _tx_cnt;
-    int32_t _pkt_in_q;
-
-    uint32_t _call_set_backoff;
+  uint32_t _call_set_backoff;
 
 
-    BackoffScheme *_current_scheme;
-    BackoffScheme **_bo_schemes;
+  BackoffScheme *_current_scheme;
+  BackoffScheme **_bo_schemes;
 
-    uint32_t _no_schemes;
-    uint16_t _scheme_id;
+  uint32_t _no_schemes;
+  uint16_t _scheme_id;
 
 };
 
