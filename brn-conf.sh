@@ -148,8 +148,8 @@ case "x$TARGET" in
 	;;
 *)
 	if [ "x$CLANG" = "x1" ]; then
-		echo "CXX=clang++ CC=clang ./configure $CONFOPTION"
-		eval CXX=clang++ CC=clang  ./configure $CONFOPTION
+		echo "CXX=clang++ CC=clang ./configure -Qunused-arguments $CONFOPTION"
+		eval CXX=clang++ CC=clang  ./configure -Qunused-arguments $CONFOPTION
 	else 
 		echo "./configure $CONFOPTION"
 		eval ./configure $CONFOPTION
