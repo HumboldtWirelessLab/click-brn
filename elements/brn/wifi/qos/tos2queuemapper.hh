@@ -146,7 +146,7 @@ public:
   BackoffScheme *_current_scheme;
   BackoffScheme **_bo_schemes;
 
-  uint32_t _no_schemes;
+  uint16_t _no_schemes;
   uint16_t _scheme_id;
 
 };
