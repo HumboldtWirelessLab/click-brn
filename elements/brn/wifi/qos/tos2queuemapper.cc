@@ -99,7 +99,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
   init_stats();
 
   BRN_DEBUG("");
-  for (int i = 0; i < no_queues; i++)
+  for (uint8_t i = 0; i < no_queues; i++)
     BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
 
 #if CLICK_NS
@@ -140,7 +140,7 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
     _cwmax = new uint16_t[no_queues];
     _aifs  = new uint16_t[no_queues];
 
-    for( int i = 0; i < no_queues; i++ ) {
+    for( uint8_t i = 0; i < no_queues; i++ ) {
       cp_integer(args[i], &v);
       _cwmin[i] = v;
       if ( v > _learning_max_bo ) _learning_max_bo = v;
@@ -176,7 +176,7 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
   _bo_exp = new uint16_t[no_queues];
   _bo_usage_usage = new uint32_t[_bo_usage_max_no];
 
-  for ( int i = 0; i < no_queues; i++ )
+  for ( uint8_t i = 0; i < no_queues; i++ )
     _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
   memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
@@ -185,7 +185,6 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
 int
 Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 {
-  uint32_t v;
   Vector<String> schemes;
 
   String s_schemes_uncomment = cp_uncomment(s_schemes);
@@ -200,7 +199,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 
   _bo_schemes = new BackoffScheme*[_no_schemes];
 
-  for (int i = 0; i < _no_schemes; i++) {
+  for (uint16_t i = 0; i < _no_schemes; i++) {
     Element *e = cp_element(schemes[i], this, errh);
     BackoffScheme *bo_scheme = (BackoffScheme *) e->cast("BackoffScheme");
 
@@ -213,7 +212,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
   }
 
   BRN_DEBUG("Tos2QM.parse_bo_schemes(): STRATEGY = %d\n", _bqs_strategy);
-  if (_bqs_strategy >= 0) {
+  if (_bqs_strategy < _no_schemes) {
     _current_scheme = get_bo_scheme(_bqs_strategy);
   } else {
     _current_scheme = NULL;
@@ -224,7 +223,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 
 BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
 {
-  for (int i = 0; i < _no_schemes; i++) {
+  for (uint16_t i = 0; i < _no_schemes; i++) {
     if (_bo_schemes[i]->get_id() == strategy) {
       return _bo_schemes[i];
     }

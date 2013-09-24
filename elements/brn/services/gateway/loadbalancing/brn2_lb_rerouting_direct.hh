@@ -20,27 +20,27 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-#ifndef LB_REROUTING_MINFLOW_HH
-#define LB_REROUTING_MINFLOW_HH
+#ifndef LB_REROUTING_DIRECT_HH
+#define LB_REROUTING_DIRECT_HH
 
 #include <click/element.hh>
-#include "elements/brn/hotspot/loadbalancing/brn2_lb_rerouting.hh"
+#include "brn2_lb_rerouting.hh"
 
 CLICK_DECLS
 
-class LoadbalancingReroutingMinFlow : public LoadbalancingRerouting {
+class LoadbalancingReroutingDirect : public LoadbalancingRerouting {
   public:
-    LoadbalancingReroutingMinFlow();
-    ~LoadbalancingReroutingMinFlow();
+    LoadbalancingReroutingDirect();
+    ~LoadbalancingReroutingDirect();
 
-    const char *class_name() const  { return "LoadbalancingReroutingMinFlow"; }
+    const char *class_name() const  { return "LoadbalancingReroutingDirect"; }
 
     void *cast(const char *name);
 
     int configure(Vector<String> &, ErrorHandler *);
     int initialize(ErrorHandler *);
 
-    const char *lb_routing_name() const { return "LoadbalancingReroutingMinFlow"; }
+    const char *lb_routing_name() const { return "LoadbalancingReroutingDirect"; }
 
     EtherAddress *getBestNodeForFlow();
 

@@ -20,29 +20,29 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-#ifndef NHOPNEIGHBOURING_COMPRESSED_PROTOCOL_HH
-#define NHOPNEIGHBOURING_COMPRESSED_PROTOCOL_HH
+#ifndef LB_REROUTING_MINFLOW_HH
+#define LB_REROUTING_MINFLOW_HH
 
 #include <click/element.hh>
-
-#include "elements/brn/topology/nhopneighbouring/nhopneighbouring_info.hh"
+#include "brn2_lb_rerouting.hh"
 
 CLICK_DECLS
 
-CLICK_SIZE_PACKED_STRUCTURE(
-struct compressed_nhopn_header {,
-  uint16_t no_neighbours;
-  uint8_t hop_limit;
-});
+class LoadbalancingReroutingMinFlow : public LoadbalancingRerouting {
+  public:
+    LoadbalancingReroutingMinFlow();
+    ~LoadbalancingReroutingMinFlow();
 
-class NHopNeighbouringCompressedProtocol {
+    const char *class_name() const  { return "LoadbalancingReroutingMinFlow"; }
 
- public:
+    void *cast(const char *name);
 
-  static WritablePacket *new_ping(const EtherAddress *src, uint8_t hop_limit, NHopNeighbouringInfo *nhopi);
+    int configure(Vector<String> &, ErrorHandler *);
+    int initialize(ErrorHandler *);
 
-  static void unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit);
-  static void unpack_nhop(Packet *p, EtherAddress *src, uint8_t *hop_limit, NHopNeighbouringInfo *nhopi);
+    const char *lb_routing_name() const { return "LoadbalancingReroutingMinFlow"; }
+
+    EtherAddress *getBestNodeForFlow();
 
 };
 
