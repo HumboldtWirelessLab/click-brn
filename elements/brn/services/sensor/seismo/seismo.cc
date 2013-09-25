@@ -95,7 +95,7 @@ Seismo::initialize(ErrorHandler */*errh*/)
 void
 Seismo::run_timer(Timer *)
 {
-  BRN_DEBUG("Run timer");
+  BRN_INFO("Run timer");
 
   _data_file_timer.schedule_after_msec(_data_file_interval);
 
@@ -106,7 +106,7 @@ Seismo::run_timer(Timer *)
 void
 Seismo::data_file_read()
 {
-  BRN_DEBUG("READ FILE");
+  BRN_INFO("READ FILE");
 
   String _data_file_final = _data_file + String(_data_file_index);
   String _data = file_string(_data_file_final);
@@ -114,7 +114,7 @@ Seismo::data_file_read()
   cp_spacevec(_data, _data_vec);
 
   BRN_DEBUG("Vector: %d File. %s",_data_vec.size(), _data_file_final.c_str());
-  
+
   EtherAddress src_node_id = EtherAddress();
 
   if ( _data_file_index == 0 ) {
@@ -124,9 +124,9 @@ Seismo::data_file_read()
   SrcInfo *src_i = _node_stats_tab.find(src_node_id);
   _local_info = src_i;
   SeismoInfoBlock *sib = src_i->get_last_block();
-   
+
   for ( int32_t i = 0; i < _data_vec.size(); i += 6) {
- 
+
     uint64_t t;
     int32_t value[4];
 
@@ -153,7 +153,7 @@ Seismo::data_file_read()
       sib->insert(t, t, 4, value, false);
     }
   }
-  
+
 }
 
 void

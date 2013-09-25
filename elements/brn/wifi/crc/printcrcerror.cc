@@ -33,8 +33,8 @@ PrintCRCError::configure(Vector<String> &conf, ErrorHandler* errh)
       "RATE", cpkP+cpkM, cpInteger, &_rate,
       "OFFSET", cpkP, cpInteger, &_offset,
       "ANALYSE", cpkP, cpBool, &_analyse,
-      "BITS", cpkP, cpInteger, &_bits, 
-      "PAD", cpkP, cpInteger, &_pad, 
+      "BITS", cpkP, cpInteger, &_bits,
+      "PAD", cpkP, cpInteger, &_pad,
       cpEnd) < 0)
        return -1;
   return 0;
@@ -58,8 +58,7 @@ PrintCRCError::simple_action(Packet *p_in)
   struct click_wifi_extra *ceh = (struct click_wifi_extra *)WIFI_EXTRA_ANNO(p_in);
 
   if ( (ceh->flags & WIFI_EXTRA_RX_CRC_ERR) && ((_rate == 0) || ( _rate == ceh->rate)) ) {
-    
-    
+
     if ( _label != "" ) {
       memcpy(&seq_num, &(packet_data[2]), sizeof(seq_num));
       seq_num=ntohl(seq_num);
@@ -90,9 +89,9 @@ PrintCRCError::simple_action(Packet *p_in)
           bit_pos++;
         }
       }
-      
+
     }
-    
+
     if ( _pad != 0 )
       for ( ; i < _pad; i++) sa << " 9";
 
