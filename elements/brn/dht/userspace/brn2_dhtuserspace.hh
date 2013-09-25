@@ -120,9 +120,6 @@ class DHTUserspace : public Element {
 
  private:
 
-  IPAddress _dht_ip;
-  uint16_t _dht_port;
-
   DHTStorage *_dht_storage;
 };
 
