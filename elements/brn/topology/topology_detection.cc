@@ -304,7 +304,7 @@ write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
     case H_START_DETECTION: {    //debug
       int start;
       if (!cp_integer(s, &start))
-        return errh->error("start parameter must be boolean");
+        return errh->error("start parameter must be Integer");
       f->start_detection();
       break;
     }
