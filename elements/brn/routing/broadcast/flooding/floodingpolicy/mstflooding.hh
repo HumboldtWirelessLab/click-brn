@@ -44,6 +44,7 @@ class MSTFlooding : public FloodingPolicy
     Vector<int> followers;
     String _circle_path;
     void get_neighbours(String path);
+    EtherAddress ID_to_MAC (int id);
     BRN2NodeIdentity *_me;
 
 };
