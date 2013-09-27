@@ -87,12 +87,14 @@ void MSTFlooding::get_neighbours(String path) {
   cp_spacevec(_data, _data_vec);
   
   int node_id=0;
-  while (!((*_me).isIdentical(&ID_to_MAC(node_id)))) {
+  EtherAddress _tmp=ID_to_MAC(node_id);
+  while (!((*_me).isIdentical(&_tmp))) {
     node_id++;
     if (node_id>200) {
       BRN_DEBUG("ID not found");
       break;
     }
+    _tmp=ID_to_MAC(node_id);
   }
   BRN_DEBUG("ID found (%d)",node_id);
   int first=-1;
