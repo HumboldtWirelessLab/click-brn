@@ -116,7 +116,12 @@ class BRN2Device : public BRNElement {
 
     bool _allow_broadcast;
 
-    /* wireless device */
+    /**
+     * WIRELESS DEVICES
+     *
+     */
+
+    /** QueueCtrl */
     uint8_t _channel;
 
     uint8_t no_queues;//number of queues
@@ -130,6 +135,9 @@ class BRN2Device : public BRNElement {
     uint16_t *get_cwmin() { return _cwmin; }
     uint16_t *get_cwmax() { return _cwmax; }
     uint16_t *get_aifs() { return _aifs; }
+
+    /** TX CONTROL **/
+    void abort_transmission(EtherAddress &dst);
 
 };
 

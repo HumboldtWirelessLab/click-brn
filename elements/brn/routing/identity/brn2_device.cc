@@ -5,6 +5,12 @@
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
+#if CLICK_NS
+#include <click/router.hh>
+#include <click/simclick.h>
+#include "txcontrol.h"
+#endif
+
 #include "brn2_device.hh"
 
 CLICK_DECLS
@@ -62,7 +68,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
     return errh->error("Unsupported devicetype");
 
   device_type = getTypeIntByString(device_type_string);
-  
+
   if( EtherAddress() != me ) {
     device_etheraddress = me;
   } else {
@@ -230,6 +236,27 @@ void
 BRN2Device::set_routable(bool routable)
 {
   _routable = routable;
+}
+
+#if CLICK_NS
+void
+BRN2Device::abort_transmission(EtherAddress &dst)
+{
+  struct tx_control_header txch;
+
+  txch.operation = TX_ABORT;
+  txch.flags = 0;
+  memcpy(txch.dst_ea, dst.data(), 6);
+
+  BRN_ERROR("Abort tx: %s", dst.unparse().c_str());
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
+
+  if ( txch.flags != 0 ) BRN_ERROR("TXCtrl-Error");
+#else
+void
+BRN2Device::abort_transmission(EtherAddress &)
+{
+#endif
 }
 
 uint32_t
