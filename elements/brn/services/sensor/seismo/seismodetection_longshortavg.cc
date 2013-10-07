@@ -103,8 +103,8 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
       for ( int i = 0; i < 1 /*si->_channels*/; i++ ) {
         swin = SlidingWindow(_short_avg_count, _long_avg_count);
         swin._debug = _debug;
-	swin._samplerate = si->_sampling_rate;
-	_init_swin = true;
+        swin._samplerate = si->_sampling_rate;
+        _init_swin = true;
       }
     }
 
@@ -149,6 +149,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
                          swin._history_sq_avg, swin._window_sq_avg,
                          swin._inserts);
 
+              sa_info->_sampletime = sib->_time[_index_in_block]/1000000; //sampletime is ns but we want sec
               sa_info->_mode = ALARM_MODE_START;
               sal[sal.size()-1]->_detection_info = (void*)sa_info;
               sal[sal.size()-1]->_id = _alarm_id++;
@@ -178,7 +179,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
         click_chatter("lsa: %d %d %d", sib->_channel_values[_index_in_block][0],
                                        sib->_channel_values[_index_in_block][1],
                                        sib->_channel_values[_index_in_block][2]);
-       */        
+       */
       }
 
       ac_block_id++;
@@ -231,7 +232,8 @@ SeismoDetectionLongShortAvg::stats()
 
     sa << "\t\t<alarm start=\"" << salarm->_start.unparse() << "\" end=\"" << salarm->_end.unparse();
     sa << "\" avg_long=\"" << sainfo->_avg_long << "\" av_short=\"" << sainfo->_avg_short;
-    sa << "\" ratio=\"" << short_long_ratio << "\" insert=\"" << sainfo->_insert << "\" />\n";
+    sa << "\" ratio=\"" << short_long_ratio << "\" insert=\"" << sainfo->_insert;
+    sa << "\" sampletime=\"" << sainfo->_sampletime << "\" />\n";
   }
 
   sa << "\t</alarmlist>\n</seismodetection_stalta>\n";

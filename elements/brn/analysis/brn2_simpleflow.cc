@@ -678,7 +678,7 @@ BRN2SimpleFlow::xml_stats()
     }
 
     sa << " interval=\"" << fl->_interval << "\" burst=\"" << fl->_burst;
-    sa << "\" extra_data=\"" << fl->_extra_data << "\" >\n";
+    sa << "\" extra_data=\"" << fl->_extra_data << "\" />\n";
   }
   for (BRN2SimpleFlow::FMIter fm = _rx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();

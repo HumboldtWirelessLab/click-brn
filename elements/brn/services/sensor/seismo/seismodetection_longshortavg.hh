@@ -291,6 +291,7 @@ class SeismoAlarmLTASTAInfo {
     int32_t _down_ratio;
 
     uint32_t _insert; //number of data (start of alarm)
+    uint64_t _sampletime;
 
     bool _mode;
 
