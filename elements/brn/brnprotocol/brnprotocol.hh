@@ -56,8 +56,7 @@ union addr {
 #define BRN_PORT_GATEWAY                   3 /*0x03*/
 #define BRN_PORT_EVENTHANDLER              4 /*0x04*/
 #define BRN_PORT_ALARMINGPROTOCOL          5 /*0x05*/
-#define BRN_PORT_COMP_ALARMINGPROTOCOL     6 /*0x06*/
-#define BRN_PORT_EEWSPROTOCOL              7 /*0x07*/
+
 /*Routing*/
 #define BRN_PORT_DSR                      10 /*0x0a*/
 #define BRN_PORT_BCASTROUTING             11 /*0x0b*/
@@ -74,7 +73,6 @@ union addr {
 /*Topology*/
 #define BRN_PORT_TOPOLOGY_DETECTION       35 /*0x23*/
 #define BRN_PORT_NHOPNEIGHBOURING         36 /*0x24*/
-#define BRN_PORT_COMP_NHOPNEIGHBOURING    37 /*0x25*/
 /*P2P*/
 #define BRN_PORT_DHTROUTING               40 /*0x28*/
 #define BRN_PORT_DHTSTORAGE               41 /*0x29*/

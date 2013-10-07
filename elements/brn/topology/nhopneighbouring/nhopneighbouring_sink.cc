@@ -89,6 +89,7 @@ NHopNeighbouringSink::push( int /*port*/, Packet *packet )
     if (_link_table->get_host_metric_from_me(src) < 200) {
       click_chatter("Link-metric is %d",_link_table->get_host_metric_from_me(src));
       nhop_info->update_neighbour(&src, hops, hop_limit, no_neighbours);
+      //NHopNeighbouringCompressedProtocol::unpack_nhop(packet, &src, &hop_limit, nhop_info); //compressed
     }
   }
 }

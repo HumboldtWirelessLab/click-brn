@@ -54,10 +54,16 @@ MSTFlooding::initialize(ErrorHandler *)
 
 bool
 MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
-                           uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, Vector<EtherAddress> *, Vector<EtherAddress> *)
+                           uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, 
+			    Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
+  BRN_DEBUG("do_forward reached");
   *tx_data_size = 0;
-
+  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) {
+    (*unicast_dst).push_back(ID_to_MAC(*i));
+    (*passiveack).push_back(ID_to_MAC(*i));
+  }
+  BRN_DEBUG("NEIGHBOURS %d *unicast_dst.size() %d",followers.size(),(*unicast_dst).size());
   return ! is_known;
 }
 
@@ -75,28 +81,43 @@ void MSTFlooding::get_neighbours(String path) {
    * 1 2 3 -1
    * 2 4 5 6 7 -1
    */
-
+  
   String _data = file_string(path);
   Vector<String> _data_vec;
   cp_spacevec(_data, _data_vec);
-
-  int node_id=1; //Hier muss noch die Richtige gefunden werden
+  
+  int node_id=0;
+  EtherAddress _tmp=ID_to_MAC(node_id);
+  while (!((*_me).isIdentical(&_tmp))) {
+    node_id++;
+    if (node_id>200) {
+      BRN_DEBUG("ID not found");
+      break;
+    }
+    _tmp=ID_to_MAC(node_id);
+  }
+  BRN_DEBUG("ID found (%d)",node_id);
   int first=-1;
   int akt;
   bool next=false;
   int i = 0;
 
+  //BRN_DEBUG("_data_vec.size(): %d",_data_vec.size());
   while (i < _data_vec.size()) {
     cp_integer(_data_vec[i],&akt);
-
+    ++i;
+    
     if (first==-1) first=akt;
 
-    if (next==true) {
+    if (next) {
       if (akt==-1) {
         followers.push_back(first);
+	BRN_DEBUG("Added node: %d",first);
       } else {
         followers.push_back(akt);
+	BRN_DEBUG("Added node: %d",akt);
       }
+      next=false;
     }
 
     if (akt==node_id) {
@@ -107,6 +128,16 @@ void MSTFlooding::get_neighbours(String path) {
       first=-1;
     }
   }
+  
+  BRN_DEBUG("Neighbours: %d",followers.size());
+  
+}
+
+
+EtherAddress MSTFlooding::ID_to_MAC (int id) {
+  unsigned char data[]={0,0,0,0,0,0};
+  data[5]=id;
+  return EtherAddress(data);
 }
 
 /*******************************************************************************************/

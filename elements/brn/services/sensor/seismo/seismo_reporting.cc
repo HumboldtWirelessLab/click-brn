@@ -108,6 +108,7 @@ SeismoReporting::seismo_evaluation()
       if ( local_si->get_block(_next_block_id)->is_complete() ) {
         BRN_DEBUG("is comp");
 
+        //update each algorithm
         for ( int a = 0; a < _sdal.size(); a++ ) {
           BRN_DEBUG("Update Algo");
           _sdal[a]->update(local_si, _next_block_id);

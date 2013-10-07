@@ -46,10 +46,43 @@ DistTimeSync::configure(Vector<String> &conf, ErrorHandler* errh)
     pkt_buf[i].seq_no    = DISTTIMESYNC_INIT;
     pkt_buf[i].host_time = DISTTIMESYNC_INIT;
 
-    for (int j = 0; j < ETHER_ADDR_SIZE; ++j)
-      pkt_buf[i].src[j] = 0;
+    memset(pkt_buf[i].src,0,ETHER_ADDR_SIZE);
   }
 
+  static int id = 1;
+  //click_chatter("node %2d: td: %d off: %d\n", id, _time_drift, _offset);
+  node_id = id;
+  ++id;
+
+  return ret;
+}
+
+static int
+tx_handler(void *element, const EtherAddress * ea, char *buffer, int size)
+{
+  /* unused parameter */
+  (void) ea;
+
+  DistTimeSync *dts = (DistTimeSync *) element;
+  return dts->lpSendHandler(buffer, size);
+}
+
+static int
+rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
+            bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate)
+{
+  /* unused parameter */
+  (void) is_neighbour;
+  (void) fwd_rate;
+  (void) rev_rate;
+
+  DistTimeSync *dts = (DistTimeSync *) element;
+  return dts->lpReceiveHandler(buffer, size, *ea);
+}
+
+int
+DistTimeSync::initialize(ErrorHandler *)
+{
 #if CLICK_NS
   click_srandom(_linkstat->_dev->getEtherAddress()->hashcode());
 
@@ -60,28 +93,10 @@ DistTimeSync::configure(Vector<String> &conf, ErrorHandler* errh)
     _offset = click_random() % DTS_MAX_OFFSET;
 #endif /* CLICK_NS */
 
-  static int id = 1;
-  click_chatter("node %2d: td: %d off: %d\n", id, _time_drift, _offset);
-  node_id = id;
-  ++id;
-
-  return ret;
-}
-
-static int tx_handler(void *element, const EtherAddress * ea, char *buffer,
-                                                                     int size);
-
-static int rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
-                        bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate);
-
-int
-DistTimeSync::initialize(ErrorHandler *)
-{
   _linkstat->registerHandler(this, BRN2_LINKSTAT_MINOR_TYPE_TIMESYNC,
                                                     &tx_handler, &rx_handler);
   return 0;
 }
-
 
 static EtherAddress get_sender_addr(struct click_wifi *wh);
 static uint64_t apply_drift(uint64_t hst, int32_t off, int32_t td);
@@ -468,54 +483,18 @@ int64_t HostTimeBuf::get_offset()
   return hst_tpls[0].hst_nb - hst_tpls[0].hst_me;
 }
 
-
-static int
-tx_handler(void *element, const EtherAddress * ea, char *buffer, int size)
-{
-  /* unused parameter */
-  (void) ea;
-
-  DistTimeSync *dts = (DistTimeSync *) element;
-  return dts->lpSendHandler(buffer, size);
-}
-
-static int
-rx_handler(void *element, EtherAddress *ea, char *buffer, int size,
-            bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate)
-{
-  /* unused parameter */
-  (void) is_neighbour;
-  (void) fwd_rate;
-  (void) rev_rate;
-
-  DistTimeSync *dts = (DistTimeSync *) element;
-  return dts->lpReceiveHandler(buffer, size, *ea);
-}
-
 static EtherAddress get_sender_addr(struct click_wifi *wh)
 {
   EtherAddress src;
 
   switch (wh->i_fc[1] & WIFI_FC1_DIR_MASK) {
   case WIFI_FC1_DIR_NODS:
-    //dst = EtherAddress(wh->i_addr1);
-    src = EtherAddress(wh->i_addr2);
-    //bssid = EtherAddress(wh->i_addr3);
-    break;
   case WIFI_FC1_DIR_TODS:
-    //bssid = EtherAddress(wh->i_addr1);
+  case WIFI_FC1_DIR_DSTODS:
     src = EtherAddress(wh->i_addr2);
-    //dst = EtherAddress(wh->i_addr3);
     break;
   case WIFI_FC1_DIR_FROMDS:
-    //dst = EtherAddress(wh->i_addr1);
-    //bssid = EtherAddress(wh->i_addr2);
     src = EtherAddress(wh->i_addr3);
-    break;
-  case WIFI_FC1_DIR_DSTODS:
-    //dst = EtherAddress(wh->i_addr1);
-    src = EtherAddress(wh->i_addr2);
-    //bssid = EtherAddress(wh->i_addr3);
     break;
   default:
     click_chatter("Error @ DistTimeSync::get_sender_addr():\n");
