@@ -8,7 +8,6 @@
 #include <string.h>
 
 #include "tcc.hh"
-#include "tcc_static.hh"
 
 CLICK_DECLS
 
@@ -175,19 +174,19 @@ void TCC::add_handlers() {
   add_read_handler("code", TCC_read_param, (void *)H_CODE);
 }
 
-void *tcc_packet_resize(void *p, int /*h*/, int /*t*/) {
+void *TCC::tcc_packet_resize(void *p, int /*h*/, int /*t*/) {
   return p;
 }
 
-int tcc_packet_size(void *p) {
+int TCC::tcc_packet_size(void *p) {
   return ((Packet*)p)->length();
 }
 
-const uint8_t *tcc_packet_data(void *p) {
+const uint8_t *TCC::tcc_packet_data(void *p) {
   return ((Packet*)p)->data();
 }
 
-void tcc_packet_kill(void *p) {
+void TCC::tcc_packet_kill(void *p) {
   return ((Packet*)p)->kill();
 }
 
