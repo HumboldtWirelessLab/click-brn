@@ -27,6 +27,11 @@ public:
   void add_code(String code);
   String stats();
 
+  static void *tcc_packet_resize(void *, int, int);
+  static int tcc_packet_size(void *);
+  static const uint8_t *tcc_packet_data(void *);
+  static void tcc_packet_kill(void *);
+
  private:
 
    TCCState *_tcc_s;
