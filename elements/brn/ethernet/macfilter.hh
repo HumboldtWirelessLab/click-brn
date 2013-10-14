@@ -14,9 +14,6 @@
 #ifndef MAC_FILTER_HH_
 #define MAC_FILTER_HH_
 
-
-#include <string>
-
 #include <click/vector.hh>
 #include <click/element.hh>
 #include <click/confparse.hh>
