@@ -1270,6 +1270,57 @@ fi
 AC_SUBST(OPENSSL_INCLUDES)
 AC_SUBST(OPENSSL_LIBS)
 
+dnl tcc library
+
+explicit_tcc=no
+AC_ARG_WITH(tcc, [[  --with-tcc[=PREFIX]   locate tcc library (optional)]],
+  [tccprefix=$withval; if test -z "$withval" -o "$withval" = yes; then tccprefix=; fi],
+  tccprefix=; explicit_tcc=no)
+
+if test "$tccprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$tccprefix" && CPPFLAGS="$CPPFLAGS -I$tccprefix/include"
+    AC_CHECK_HEADER(libtcc.h, have_tcc_h=yes, have_tcc_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    tccsavelibs="$LIBS"
+    LIBS="$LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -L$tccprefix/lib"
+    AC_CHECK_LIB(tcc, tcc_new, have_libtcc=yes, have_libtcc=no)
+    LDFLAGS="$saveflags"
+    LIBS="$tccsavelibs"
+
+    if test $have_tcc_h = yes -a $have_libtcc = yes; then
+	AC_DEFINE(HAVE_TCC)
+	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
+	TCC_LIBS="$TCC_LIBS -ltcc -ldl"
+        AC_DEFINE([HAVE_TCC], [1], [Define if you have -ltcc and libtcc.h.])
+	LIBS="$LIBS $TCC_LIBS"
+    else
+      if test $explicit_tcc = yes; then
+	TCC_INCLUDES= TCC_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-tcc, but the tcc headers and/or libraries
+are not where you said they would be.  Run again supplying --without-tcc
+or --with-tcc=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,TCC"
+      else
+        FINDELEMFLAGS="-x TCC"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(TCC_INCLUDES)
+AC_SUBST(TCC_LIBS)
+
 
 dnl check linuxmodule for Linux
 
