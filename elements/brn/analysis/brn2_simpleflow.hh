@@ -284,11 +284,13 @@ class BRN2SimpleFlow : public BRNElement
     bool is_active(Flow *f);
     void schedule_next();
 
-    void add_flow( EtherAddress src, EtherAddress dst,
-                   uint32_t size, uint32_t mode,
-                   uint32_t interval, uint32_t burst,
-                   uint32_t duration, bool active,
-                   uint32_t start_delay);
+    void add_flow(EtherAddress src, EtherAddress dst,
+                  uint32_t size, uint32_t mode,
+                  uint32_t interval, uint32_t burst,
+                  uint32_t duration, bool active,
+                  uint32_t start_delay);
+
+    void add_flow(String flow_conf);
 
     bool handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port);
 
@@ -296,8 +298,6 @@ class BRN2SimpleFlow : public BRNElement
 
     FlowMap _rx_flowMap;
     FlowMap _tx_flowMap;
-
-    bool _start_active;
 
     String xml_stats();
 
@@ -320,6 +320,9 @@ class BRN2SimpleFlow : public BRNElement
 
     Timestamp _next_schedule;
 
+    //void abort_transmission(EtherAddress &dst);
+
+    String _init_flow;
 };
 
 CLICK_ENDDECLS

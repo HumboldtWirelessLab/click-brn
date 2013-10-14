@@ -7,6 +7,7 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
+#include <click/nameinfo.hh>
 #include <click/packet.hh>
 #include <clicknet/wifi.h>
 #include <clicknet/llc.h>
@@ -17,11 +18,34 @@
 
 #include "brn2_simpleflow.hh"
 
-CLICK_DECLS
+/*#if CLICK_NS
+#include <click/router.hh>
+#include <click/simclick.h>
+#include "elements/brn/routing/identity/txcontrol.h"
+#endif
+*/
 
+CLICK_DECLS
+/*
+#if CLICK_NS
+void
+BRN2SimpleFlow::abort_transmission(EtherAddress &dst)
+{
+  struct tx_control_header txch;
+
+  txch.operation = TX_ABORT;
+  txch.flags = 0;
+  memcpy(txch.dst_ea, dst.data(), 6);
+
+  click_chatter("Abort tx: %s", dst.unparse().c_str());
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
+
+  if ( txch.flags != 0 ) click_chatter("TXCtrl-Error");
+}
+#endif
+*/
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
-    _start_active(false),
     _clear_packet(true),
     _headersize(-1),
     _headroom(128),
@@ -40,23 +64,11 @@ BRN2SimpleFlow::~BRN2SimpleFlow()
 
 int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  EtherAddress _src = EtherAddress::make_broadcast();
-  EtherAddress _dst = EtherAddress::make_broadcast();
-  uint32_t     _interval, _rate, _mode, _size, _duration, _burst;
-
+  _init_flow = "";
   _extra_data = "";
-  _burst = 1;
 
   if (cp_va_kparse(conf, this, errh,
-      "SRCADDRESS", cpkP , cpEtherAddress, &_src,
-      "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
-      "INTERVAL", cpkP, cpInteger, &_interval,
-      "DATARATE", cpkP, cpInteger, &_rate,
-      "SIZE", cpkP, cpInteger, &_size,
-      "MODE", cpkP, cpInteger, &_mode,
-      "DURATION", cpkP, cpInteger, &_duration,
-      "BURST", cpkP, cpInteger, &_burst,
-      "ACTIVE", cpkP, cpBool, &_start_active,
+      "FLOW", cpkP, cpString, &_init_flow,
       "ELEMENTID", cpkP, cpInteger, &_simpleflow_element_id,
       "EXTRADATA", cpkP, cpString, &_extra_data,
       "CLEARPACKET", cpkP, cpBool, &_clear_packet,
@@ -67,11 +79,6 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
-
-  if ( ! _src.is_broadcast() )
-    add_flow( _src, _dst, _size, _mode, _interval, _burst, _duration, false, 0);
-  else
-    _start_active = false;
 
   return 0;
 }
@@ -88,12 +95,12 @@ int BRN2SimpleFlow::initialize(ErrorHandler *)
   //seg, fault, while calling BRN_DEBUG in set_active
   _timer.initialize(this);
 
-  if (_start_active) set_active( _tx_flowMap.begin().value(), true);
-
   if (_routing_peek) {
     if (-1 == _routing_peek->add_routing_peek(routing_peek_func, (void*)this, BRN_PORT_FLOW ))
       BRN_ERROR("Failed adding routing_peek_func()");
   }
+
+  if ( _init_flow != "" ) add_flow(_init_flow);
 
   return 0;
 }
@@ -284,7 +291,11 @@ BRN2SimpleFlow::push( int port, Packet *packet )
     else handle_reuse(packet);
     return;
   }
-
+/*
+#if CLICK_NS
+  abort_transmission(src_ea);
+#endif
+*/
   Timestamp send_time;
   send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
 
@@ -545,10 +556,17 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
     return;
   }
 
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+
+/*  if ((ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC)) {
+    if ((ceh->flags & WIFI_EXTRA_TX_FAIL) ) {
+      BRN_ERROR("Failure: Retries: %d Max retries: %d",(int)ceh->retries,(int)ceh->max_tries);
+    }
+  }
+*/
   if ( f_tx->_header_size == -1 ) {
     if ( _headersize != -1 ) f_tx->_header_size = _headersize;
     else {
-      struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
       f_tx->_header_size = sizeof(struct click_brn);
       if ( (ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC) ) f_tx->_header_size += sizeof(struct click_llc) + sizeof(struct click_wifi);
       else f_tx->_header_size += sizeof(struct click_ether);
@@ -559,7 +577,11 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
   if ( f_tx->_tx_packets_feedback == 0 ) f_tx->_first_feedback_time = Timestamp::now();
   f_tx->_last_feedback_time = Timestamp::now();
 
-  f_tx->_tx_packets_feedback++;
+  if ((ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC)) {
+    if (!(ceh->flags & WIFI_EXTRA_TX_FAIL) ) {
+      f_tx->_tx_packets_feedback++;
+    }
+  }
 
   if ( f_tx->_buffered_p == NULL ) f_tx->_buffered_p = packet;
   else packet->kill();
@@ -645,6 +667,58 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   p = p->push(sizeof(struct click_brn));
 
   return true;
+}
+
+void 
+BRN2SimpleFlow::add_flow(String conf)
+{
+  Vector<String> args;
+
+  String s = cp_uncomment(conf);
+  cp_spacevec(s, args);
+
+  if ( args.size() < 7 ) {
+    BRN_WARN("Use: Src Dst interval size mode duration active");
+    BRN_WARN("You send. %s",conf.c_str());
+  }
+
+  EtherAddress src;
+  EtherAddress dst;
+
+  uint32_t interval;
+  uint32_t size;
+  uint32_t mode;
+  uint32_t duration;
+  bool active;
+
+  uint32_t burst = 1;
+  int32_t  start_delay = 0;
+
+  BRN_ERROR("ARGS: %s %s",args[0].c_str(), args[1].c_str());
+
+  if ( !cp_ethernet_address(args[0], &src)) {
+    BRN_ERROR("Error. Use nameinfo");
+    if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, args[0], &src, 6))
+      BRN_ERROR("Found address!");
+  }
+
+  if ( !cp_ethernet_address(args[1], &dst)) {
+    BRN_ERROR("Error. Use nameinfo");
+    if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, args[1], &dst, 6))
+      BRN_ERROR("Found address!");
+  }
+
+  cp_integer(args[2], &interval);
+  cp_integer(args[3], &size);
+  cp_integer(args[4], &mode);
+  cp_integer(args[5], &duration);
+  cp_bool(args[6], &active);
+
+  if ( args.size() > 7 ) cp_integer(args[7], &burst);
+  if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
+
+  add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
+
 }
 
 /****************************************************************************/
@@ -742,7 +816,7 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
   }
 }
 
-static int 
+static int
 BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
   BRN2SimpleFlow *sf = static_cast<BRN2SimpleFlow *>(e);
@@ -770,39 +844,7 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
       break;
     }
     case H_ADD_FLOW: {
-      Vector<String> args;
-      cp_spacevec(s, args);
-
-      if ( args.size() < 7 ) {
-        click_chatter("Use: Src Dst interval size mode duration active");
-        click_chatter("You send. %s",in_s.c_str());
-      }
-      EtherAddress src;
-      EtherAddress dst;
-
-      uint32_t interval;
-      uint32_t size;
-      uint32_t mode;
-      uint32_t duration;
-      bool active;
-
-      uint32_t burst = 1;
-      int32_t  start_delay = 0;
-
-      //click_chatter("ARGS: %s %s",args[0].c_str(), args[1].c_str());
-      cp_ethernet_address(args[0], &src);
-      cp_ethernet_address(args[1], &dst);
-      cp_integer(args[2], &interval);
-      cp_integer(args[3], &size);
-      cp_integer(args[4], &mode);
-      cp_integer(args[5], &duration);
-      cp_bool(args[6], &active);
-
-      if ( args.size() > 7 ) cp_integer(args[7], &burst);
-      if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
-
-      sf->add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
-
+      sf->add_flow(s);
       break;
     }
     case H_DEL_FLOW: {
