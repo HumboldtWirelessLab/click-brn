@@ -40,7 +40,7 @@ private:
 
 
 private:
-  static const uint16_t _id               = 7;  // unique bo scheme identifier
+  static const uint16_t _id               = 6;  // unique bo scheme identifier
   static const uint16_t _bo_start         = 63; // initial backoff
   static const uint8_t _targetdiff_param  = 3;
 
