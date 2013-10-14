@@ -269,6 +269,7 @@ class BRN2SimpleFlow : public BRNElement
 
     const char *port_count() const  { return "1-2/1"; }
 
+    int configure_phase() const { return CONFIGURE_PHASE_LAST; }
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
 
