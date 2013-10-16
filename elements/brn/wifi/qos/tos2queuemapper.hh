@@ -46,9 +46,8 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
 #define BACKOFF_STRATEGY_LEARNING                        5
 #define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
+#define BACKOFF_STRATEGY_NEIGHBOURS                      7
 #define BACKOFF_STRATEGY_EXPONENTIAL_LINEAR              8 /* PLEB */
-
-#define BACKOFF_STRATEGY_REFACTOR                        99
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
