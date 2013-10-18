@@ -59,12 +59,28 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
 {
   BRN_DEBUG("do_forward reached");
   *tx_data_size = 0;
-  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) {
+  (*unicast_dst).clear();
+  (*passiveack).clear();
+  //Gibt nur den nächsten Nachbarn zurück
+  if (akt_foll==followers.end()) {
+	  BRN_DEBUG("no more neighbours");
+	  return false;
+  }
+  (*unicast_dst).push_back(ID_to_MAC(*akt_foll));
+  (*passiveack).push_back(ID_to_MAC(*akt_foll));
+  ++akt_foll;
+  return true;
+  /* Gibt alle Nachbarn zurück
+  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) { //Achtung, ist jetzt auch global definiert --> Headerfile
     (*unicast_dst).push_back(ID_to_MAC(*i));
     (*passiveack).push_back(ID_to_MAC(*i));
   }
   BRN_DEBUG("NEIGHBOURS %d *unicast_dst.size() %d",followers.size(),(*unicast_dst).size());
-  return ! is_known;
+  
+  //return ! is_known;
+  if ((*unicast_dst).size()==0) return false;
+  return true;
+  */
 }
 
 int
@@ -81,7 +97,6 @@ void MSTFlooding::get_neighbours(String path) {
    * 1 2 3 -1
    * 2 4 5 6 7 -1
    */
-  
   String _data = file_string(path);
   Vector<String> _data_vec;
   cp_spacevec(_data, _data_vec);
@@ -90,7 +105,7 @@ void MSTFlooding::get_neighbours(String path) {
   EtherAddress _tmp=ID_to_MAC(node_id);
   while (!((*_me).isIdentical(&_tmp))) {
     node_id++;
-    if (node_id>200) {
+    if (node_id>400) {
       BRN_DEBUG("ID not found");
       break;
     }
@@ -130,7 +145,7 @@ void MSTFlooding::get_neighbours(String path) {
   }
   
   BRN_DEBUG("Neighbours: %d",followers.size());
-  
+  akt_foll=followers.begin();
 }
 
 
