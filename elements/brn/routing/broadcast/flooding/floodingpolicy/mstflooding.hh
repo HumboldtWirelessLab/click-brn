@@ -42,6 +42,7 @@ class MSTFlooding : public FloodingPolicy
 
   private:
     Vector<int> followers;
+    Vector<int>::iterator akt_foll;
     String _circle_path;
     void get_neighbours(String path);
     EtherAddress ID_to_MAC (int id);
