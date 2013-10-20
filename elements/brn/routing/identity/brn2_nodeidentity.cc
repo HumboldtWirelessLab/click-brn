@@ -16,7 +16,10 @@ BRN2NodeIdentity::BRN2NodeIdentity()
   : _node_devices_size(0),
     _node_id_32(0),
     _master_device_id(-1),
-    _service_device_id(-1)
+    _service_device_id(-1),
+    _instance_id("n/a"),
+    _instance_owner("n/a"),
+    _instance_group("n/a")
 {
   BRNElement::init();
 }
@@ -226,6 +229,8 @@ read_version_param(Element *e, void *)
 #endif
   sa << " md5_id=\"" << click_binary_digest << "\" git_version=\"" << BRN_GIT_VERSION << "\" />\n";
   sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
+  sa << "\t<instance id=\"" << id->_instance_id << "\"  owner=\"" << id->_instance_owner << "\" group=\"";
+  sa << id->_instance_group << "\" />\n";
   sa << "</version>\n";
 
   return sa.take_string();
@@ -243,6 +248,22 @@ write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
   return 0;
 }
 
+static int
+write_instance_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+{
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  if ( args.size() >= 3 ) {
+    id->_instance_id = args[0];
+    id->_instance_owner = args[1];
+    id->_instance_group = args[2];
+  }
+
+  return 0;
+}
 static int
 write_version_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
@@ -267,6 +288,7 @@ BRN2NodeIdentity::add_handlers()
 
   add_read_handler("info", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
+  add_write_handler("instance", write_instance_param, 0);
 
   add_read_handler("version", read_version_param, 0);
   add_write_handler("version", write_version_param, 0);
