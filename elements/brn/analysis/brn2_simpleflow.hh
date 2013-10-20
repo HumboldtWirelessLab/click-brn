@@ -20,6 +20,8 @@
 
 CLICK_DECLS
 
+//#define SF_TX_ABORT
+
 class FlowID {
 
   public:
@@ -321,7 +323,9 @@ class BRN2SimpleFlow : public BRNElement
 
     Timestamp _next_schedule;
 
-    //void abort_transmission(EtherAddress &dst);
+#ifdef SF_TX_ABORT
+    void abort_transmission(EtherAddress &dst);
+#endif
 
     String _init_flow;
 };
