@@ -80,9 +80,8 @@ int BoTargetDiffRxTxBusy::get_cwmin(Packet *p, uint8_t tos)
   uint32_t busy = as->hw_busy;
   uint32_t rx   = as->hw_rx;
   uint32_t tx   = as->hw_tx;
-  int32_t nodes = as->no_sources;
 
-  int32_t diff = busy-(tx+rx);
+  int32_t diff = busy - (tx + rx);
 
   BRN_DEBUG("BoTargetDiff.get_cwmin():\n");
   BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _target_diff: %d\n", rx, tx, busy, diff, _targetdiff);

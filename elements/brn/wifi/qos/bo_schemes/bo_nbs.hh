@@ -1,5 +1,5 @@
-#ifndef BO_TARGETDIFF_RXTXBUSY
-#define BO_TARGETDIFF_RXTXBUSY
+#ifndef BO_NEIGHBOURS_HH
+#define BO_NEIGHBOURS_HH
 
 #include <click/element.hh>
 
@@ -7,15 +7,16 @@
 #include "elements/brn/wifi/channelstats.hh"
 #include "backoff_scheme.hh"
 
+
 CLICK_DECLS
 
 
 
-class BoTargetDiffRxTxBusy : public BackoffScheme {
+class BoNeighbours : public BackoffScheme {
 /* Derived Functions */
 public:
   /* Element */
-  const char *class_name() const  { return "BoTargetDiffRxTxBusy"; }
+  const char *class_name() const  { return "BoNeighbours"; }
   const char *processing() const  { return AGNOSTIC; }
   const char *port_count() const  { return "0/0"; }
   void *cast(const char *name);
@@ -31,28 +32,20 @@ public:
 
 
 public:
-  BoTargetDiffRxTxBusy();
-  ~BoTargetDiffRxTxBusy();
+  BoNeighbours();
+  ~BoNeighbours();
 
 private:
-  void increase_cw();
-  void decrease_cw();
+  static const uint16_t _id  = 7;  // unique bo scheme identifier
 
-
-private:
-  static const uint16_t _id               = 6;  // unique bo scheme identifier
-  static const uint16_t _bo_start         = 63; // initial backoff
-  static const uint8_t _targetdiff_param  = 3;
+  static const uint8_t alpha = 85;
+  static const uint8_t beta  = 50;
 
   ChannelStats *_cst;
-  uint32_t _targetdiff;
-  uint32_t _bo_for_targetdiff;
-  uint32_t _tdiff_lwm;
-  uint32_t _tdiff_hwm;
 };
 
 
 
 CLICK_ENDDECLS
 
-#endif /* BO_TARGETDIFF_RXTXBUSY */
+#endif /* BO_NEIGHBOURS_HH */
