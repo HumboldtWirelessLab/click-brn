@@ -18,15 +18,17 @@
 
 #include "brn2_simpleflow.hh"
 
-/*#if CLICK_NS
+#ifdef SF_TX_ABORT
+#if CLICK_NS
 #include <click/router.hh>
 #include <click/simclick.h>
 #include "elements/brn/routing/identity/txcontrol.h"
 #endif
-*/
+#endif
 
 CLICK_DECLS
-/*
+
+#ifdef SF_TX_ABORT
 #if CLICK_NS
 void
 BRN2SimpleFlow::abort_transmission(EtherAddress &dst)
@@ -37,13 +39,14 @@ BRN2SimpleFlow::abort_transmission(EtherAddress &dst)
   txch.flags = 0;
   memcpy(txch.dst_ea, dst.data(), 6);
 
-  click_chatter("Abort tx: %s", dst.unparse().c_str());
+  BRN_ERROR("Abort tx: %s", dst.unparse().c_str());
   simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
 
-  if ( txch.flags != 0 ) click_chatter("TXCtrl-Error");
+  if ( txch.flags != 0 ) BRN_ERROR("TXCtrl-Error");
 }
 #endif
-*/
+#endif
+
 BRN2SimpleFlow::BRN2SimpleFlow()
   : _timer(this),
     _clear_packet(true),
@@ -291,11 +294,14 @@ BRN2SimpleFlow::push( int port, Packet *packet )
     else handle_reuse(packet);
     return;
   }
-/*
+
+#ifdef SF_TX_ABORT
 #if CLICK_NS
-  abort_transmission(src_ea);
+  EtherAddress dst_ea = EtherAddress(header->dst);
+  abort_transmission(dst_ea);
 #endif
-*/
+#endif
+
   Timestamp send_time;
   send_time.assign(ntohl(header->tv_sec), ntohl(header->tv_usec));
 
@@ -558,12 +564,14 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
 
-/*  if ((ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC)) {
+#ifdef SF_TX_ABORT
+  if ((ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC)) {
     if ((ceh->flags & WIFI_EXTRA_TX_FAIL) ) {
       BRN_ERROR("Failure: Retries: %d Max retries: %d",(int)ceh->retries,(int)ceh->max_tries);
     }
   }
-*/
+#endif
+
   if ( f_tx->_header_size == -1 ) {
     if ( _headersize != -1 ) f_tx->_header_size = _headersize;
     else {
@@ -584,7 +592,10 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
   }
 
   if ( f_tx->_buffered_p == NULL ) {
-    if ( ceh != NULL ) memset(ceh, 0, sizeof(struct click_wifi_extra));
+    if ( ceh != NULL ) {
+      memset(ceh, 0, sizeof(struct click_wifi_extra));
+      ceh->magic = WIFI_EXTRA_MAGIC;
+    }
     f_tx->_buffered_p = packet;
   } else packet->kill();
 
