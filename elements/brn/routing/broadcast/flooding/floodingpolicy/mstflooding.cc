@@ -61,7 +61,7 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
   *tx_data_size = 0;
   (*unicast_dst).clear();
   (*passiveack).clear();
-  //Gibt nur den nächsten Nachbarn zurück
+  /*Gibt nur den nächsten Nachbarn zurück
   if (akt_foll==followers.end()) {
 	  BRN_DEBUG("no more neighbours");
 	  return false;
@@ -69,9 +69,9 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
   (*unicast_dst).push_back(ID_to_MAC(*akt_foll));
   (*passiveack).push_back(ID_to_MAC(*akt_foll));
   ++akt_foll;
-  return true;
-  /* Gibt alle Nachbarn zurück
-  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) { //Achtung, ist jetzt auch global definiert --> Headerfile
+  return true;*/
+  /* Gibt alle Nachbarn zurück */
+  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) {
     (*unicast_dst).push_back(ID_to_MAC(*i));
     (*passiveack).push_back(ID_to_MAC(*i));
   }
@@ -80,7 +80,6 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
   //return ! is_known;
   if ((*unicast_dst).size()==0) return false;
   return true;
-  */
 }
 
 int
