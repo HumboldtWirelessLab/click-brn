@@ -76,7 +76,7 @@ Packet *
 FloodingPiggyback::simple_action(Packet *p)
 {
   if ( _max_last_nodes_per_pkt > 0 ) {
-    
+
     if ( (p->timestamp_anno() - _last_update).msecval() > _update_interval ) {
       _last_update = p->timestamp_anno();
       _fhelper->clear_graph(_net_graph);
@@ -189,7 +189,7 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
   uint32_t buf_idx = sizeof(struct click_brn_bcast_extra_data);
   uint8_t *src_data = src->data();
   uint32_t rx_acked_flags = 0;
-  
+
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
     if ( (net_graph.nmm.findp(add_node) != NULL) && ( memcmp(src_data,lnl[last_node_cnt].etheraddr,6) != 0 ) ) {
@@ -223,7 +223,7 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
     //click_chatter("BCastNode %s is unknown. Discard extra info (bcastheader).",src->unparse().c_str());
     return 0;
   }
-  
+
   for(uint32_t i = 0; (i < rx_data_size);) {
 
     struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)&(rxdata[i]);
@@ -247,9 +247,17 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
         //click_chatter("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
         ea = EtherAddress(&(rxdata[rxdata_idx]));
         if (!fl->is_local_addr(&ea)) {              //do not insert myself as lastnode
-          if ( bcn->add_last_node(id, &ea, false, ((rx_acked_flags & (1<<cnt_node)) != 0 )) != 0 ) {
+          bool last_node_was_acked = ((rx_acked_flags & (1<<cnt_node)) != 0 );
+
+          if ( bcn->add_last_node(id, &ea, false, last_node_was_acked) != 0 ) {
             fl->_flooding_last_node_due_to_piggyback++;
             new_last_node++;
+          }
+
+          /* if last not is acked (we are sure that node has the packet), abort current trqansmission if node is the target*/
+          if ( last_node_was_acked && (fl->is_last_tx(ea, *src, (uint16_t)id)) ) {
+            click_chatter("Piggybag abort: %s %s %d",ea.unparse().c_str(), src->unparse().c_str(), id);
+            fl->abort_last_tx(ea);
           }
         }
         cnt_node++;
