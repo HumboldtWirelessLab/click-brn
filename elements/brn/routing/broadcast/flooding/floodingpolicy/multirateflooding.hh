@@ -31,7 +31,7 @@ class MultirateFlooding : public FloodingPolicy
     void add_handlers();
 
     const char *floodingpolicy_name() const { return "MultirateFlooding"; }
-    const int floodingpolicy_id() const { return POLICY_ID_MULTIRATE; }
+    int floodingpolicy_id() const { return POLICY_ID_MULTIRATE; }
 
     bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known, uint32_t forward_count,
                     uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,

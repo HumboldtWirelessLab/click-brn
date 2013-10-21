@@ -33,7 +33,7 @@ class MPRFlooding : public FloodingPolicy
     void add_handlers();
 
     const char *floodingpolicy_name() const { return "MPRFlooding"; }
-    const int floodingpolicy_id() const { return POLICY_ID_MPR; };
+    int floodingpolicy_id() const { return POLICY_ID_MPR; };
 
     void set_mpr_header(uint32_t *tx_data_size, uint8_t *txdata);
 

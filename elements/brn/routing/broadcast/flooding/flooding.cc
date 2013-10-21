@@ -135,7 +135,8 @@ Flooding::push( int port, Packet *packet )
 
     _flooding_src_new_id++;
 
-    add_broadcast_node(&src);
+    BroadcastNode *new_bcn;
+    new_bcn = add_broadcast_node(&src);
     add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
 
     if ( ! is_local_addr(&src) )
@@ -147,6 +148,14 @@ Flooding::push( int port, Packet *packet )
 
     _flooding_policy->init_broadcast(&src,(uint32_t)_bcast_id, 
                                      &extra_data_size, extra_data, &forwarder, &passiveack);
+
+    if ( !forwarder.empty() ) {
+      new_bcn->_fix_target_set = true;
+      for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end() ; ++i) {
+        add_last_node(&src, _bcast_id, i, false, false);
+        set_responsibility_target(&src, _bcast_id, i);
+      }
+    }
 
     if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
 
@@ -192,7 +201,8 @@ Flooding::push( int port, Packet *packet )
 
     BRN_DEBUG("Src: %s Fwd: %s",src.unparse().c_str(), fwd.unparse().c_str());
 
-    add_broadcast_node(&src);
+    BroadcastNode *new_bcn;
+    new_bcn = add_broadcast_node(&src);
 
     uint32_t c_fwds;
     bool is_known = have_id(&src, p_bcast_id, &now, &c_fwds);
@@ -216,6 +226,14 @@ Flooding::push( int port, Packet *packet )
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
                                                              rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
                                                              &forwarder, &passiveack);
+    if ( !forwarder.empty() ) {
+      new_bcn->_fix_target_set = true;
+      for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
+        add_last_node(&src, _bcast_id, i, false, false);
+        set_responsibility_target(&src, _bcast_id, i);
+      }
+    }
+
 
     if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
 
@@ -426,11 +444,16 @@ Flooding::push( int port, Packet *packet )
   }
 }
 
-void
+Flooding::BroadcastNode*
 Flooding::add_broadcast_node(EtherAddress *src)
 {
-  if ( _bcast_map.findp(*src) == NULL )
-    _bcast_map.insert(*src, new BroadcastNode(src));
+  Flooding::BroadcastNode* bcn = _bcast_map.find(*src);
+  if ( bcn == NULL ) {
+    bcn = new BroadcastNode(src);
+    _bcast_map.insert(*src, bcn);
+  }
+
+  return bcn;
 }
 
 Flooding::BroadcastNode*
