@@ -127,7 +127,7 @@ class UnicastFlooding : public BRNElement {
   BRN2NodeIdentity *_me;
   Flooding *_flooding;
   FloodingHelper *_fhelper;
-  
+
  private:
   int _max_metric_to_neighbor;         // max. metric towards a neighbor
   int _cand_selection_strategy;        // the way we choose the candidate for unicast forwarding
@@ -139,7 +139,7 @@ class UnicastFlooding : public BRNElement {
   bool _use_assign_info;
 
   EtherAddress algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int hops);
-  
+
  public:
 
   void add_rewrite(EtherAddress *src, uint16_t id, EtherAddress *target);
@@ -156,17 +156,21 @@ class UnicastFlooding : public BRNElement {
 
   void set_static_mac(EtherAddress *mac) { static_dst_mac = *mac; }
   EtherAddress *get_static_mac() { return &static_dst_mac; }
-  
+
   EtherAddress last_unicast_used;
   uint32_t _cnt_rewrites;
   uint32_t _cnt_bcasts;
   uint32_t _cnt_bcasts_empty_cs;
   uint32_t _cnt_reject_on_empty_cs;
-  
+
   TargetRewriteCntMap rewrite_cnt_map;
-  
+
   Vector<Packet*> all_unicast_pkt_queue;
-  
+
+  EtherAddress _last_tx_dst_ea;
+  EtherAddress _last_tx_src_ea;
+  uint16_t _last_tx_bcast_id;
+
 };
 
 CLICK_ENDDECLS
