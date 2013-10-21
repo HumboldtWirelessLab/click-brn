@@ -589,12 +589,13 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
     if (!(ceh->flags & WIFI_EXTRA_TX_FAIL) ) {
       f_tx->_tx_packets_feedback++;
     }
-    memset(ceh, 0, sizeof(struct click_wifi_extra));
-    ceh->magic = WIFI_EXTRA_MAGIC;
   }
 
   if ( f_tx->_buffered_p == NULL ) {
-    if ( ceh != NULL ) memset(ceh, 0, sizeof(struct click_wifi_extra));
+    if ( ceh != NULL ) {
+      memset(ceh, 0, sizeof(struct click_wifi_extra));
+      ceh->magic = WIFI_EXTRA_MAGIC;
+    }
     f_tx->_buffered_p = packet;
   } else packet->kill();
 
