@@ -593,8 +593,10 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
     ceh->magic = WIFI_EXTRA_MAGIC;
   }
 
-  if ( f_tx->_buffered_p == NULL ) f_tx->_buffered_p = packet;
-  else packet->kill();
+  if ( f_tx->_buffered_p == NULL ) {
+    if ( ceh != NULL ) memset(ceh, 0, sizeof(struct click_wifi_extra));
+    f_tx->_buffered_p = packet;
+  } else packet->kill();
 
   if ( (f_tx->_interval == 0) && ( is_active(f_tx)) ) {
     WritablePacket *p = nextPacketforFlow(f_tx);
@@ -679,7 +681,7 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
   return true;
 }
 
-void 
+void
 BRN2SimpleFlow::add_flow(String conf)
 {
   Vector<String> args;

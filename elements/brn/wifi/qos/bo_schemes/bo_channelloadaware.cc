@@ -48,7 +48,6 @@ void * BoChannelLoadAware::cast(const char *name)
 
 int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "TARGETLOAD", cpkP+cpkM, cpInteger, &_target_channelload,
@@ -81,7 +80,6 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
   struct airtime_stats *as = _cst->get_latest_stats();
   uint32_t busy = as->hw_busy;
-  int32_t nodes = as->no_sources;
 
   BRN_DEBUG("BoChannelLoadAware.get_cwmin():\n");
   BRN_DEBUG("    busy: %d _target_channel: %d\n", busy, _target_channelload);
