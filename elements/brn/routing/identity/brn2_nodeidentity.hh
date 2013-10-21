@@ -102,6 +102,10 @@ class BRN2NodeIdentity : public BRNElement {
   md5_byte_t _click_binary_id[16];  //md5 sum of click_binary
   md5_byte_t _click_script_id[16];  //md5 sum of click_script
 
+  String _instance_id;
+  String _instance_owner;
+  String _instance_group;
+
 };
 
 CLICK_ENDDECLS
