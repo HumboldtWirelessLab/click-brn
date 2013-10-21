@@ -166,6 +166,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t assigned_nodes = 0;
 
+  Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(&src);
+
   if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
 
     /**
@@ -193,8 +195,13 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
     Vector<EtherAddress> known_neighbors;
 
-    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                               //add node to known_nodes if
-      if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) {    //2. i'm not responsible
+    /**
+     * First, check for responsible nodes
+     */
+
+    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                 //add node to known_nodes if
+      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) ||   //1. i'm not responsible
+           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ) { //2. node has the packet_id
         known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
       } else {
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
@@ -211,74 +218,76 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
           assigned_nodes++;
         }
       }
-    } 
+    }
 
     /**
      * all_nodes get all_nodes except last_nodes
      */
-    if ( (_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_ALL_NODES) ||
-         (_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) || 
-         ( candidate_set.size() != 0) ) {
-
-      if ( candidate_set.size() == 0 ) {
-        if (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE)
-          _fhelper->get_filtered_neighbors(*me, candidate_set);
-        else 
-          candidate_set.push_back(static_dst_mac);
-      }
-
-      for ( int i = candidate_set.size()-1; i >= 0; i--) {
-        for ( int j = 0; j < known_neighbors.size(); j++) {
-          if ( candidate_set[i] == known_neighbors[j] ) {
-            candidate_set.erase(candidate_set.begin() + i);
-            break;
-          }
-        }
-      }
-
-    } else {
-
-      //get local graph info
-      NetworkGraph net_graph;
-
-      uint32_t final_pre_selection_mode = _pre_selection_mode;
-
-      do {
-        if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
-          _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, 110);
-        } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
-          _fhelper->get_local_childs(*me, net_graph, 3);
-
-          for ( int i = 0; i < known_neighbors.size(); i++) {
-            _fhelper->remove_node(known_neighbors[i], net_graph);
-          }
-
-          BRN_DEBUG("NET_GRAPH size: %d",net_graph.size());
-          _fhelper->print_vector(net_graph.nml);
-
-        }
-
-        //get candidateset
-        _fhelper->get_candidate_set(net_graph, candidate_set);
-        BRN_DEBUG("Candset size: %d",candidate_set.size());
-
-        //clear unused stuff
-        _fhelper->clear_graph(net_graph);
+    if ( ! bcn->_fix_target_set ) {
+      if ( (_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_ALL_NODES) ||
+           (_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) ||
+           ( candidate_set.size() != 0) ) {
 
         if ( candidate_set.size() == 0 ) {
-          if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
-            break;
-          } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
-            BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
-            final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
-          } 
+          if (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE)
+            _fhelper->get_filtered_neighbors(*me, candidate_set);
+          else
+            candidate_set.push_back(static_dst_mac);
         }
 
-      } while ( candidate_set.size() == 0 );
+        for ( int i = candidate_set.size()-1; i >= 0; i--) {
+          for ( int j = 0; j < known_neighbors.size(); j++) {
+            if ( candidate_set[i] == known_neighbors[j] ) {
+              candidate_set.erase(candidate_set.begin() + i);
+              break;
+            }
+          }
+        }
 
-      _fhelper->print_vector(candidate_set);
+      } else {
+
+        //get local graph info
+        NetworkGraph net_graph;
+
+        uint32_t final_pre_selection_mode = _pre_selection_mode;
+
+        do {
+          if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
+            _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, 110);
+          } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
+            _fhelper->get_local_childs(*me, net_graph, 3);
+
+            for ( int i = 0; i < known_neighbors.size(); i++) {
+              _fhelper->remove_node(known_neighbors[i], net_graph);
+            }
+
+            BRN_DEBUG("NET_GRAPH size: %d",net_graph.size());
+            _fhelper->print_vector(net_graph.nml);
+
+          }
+
+          //get candidateset
+          _fhelper->get_candidate_set(net_graph, candidate_set);
+          BRN_DEBUG("Candset size: %d",candidate_set.size());
+
+          //clear unused stuff
+          _fhelper->clear_graph(net_graph);
+
+          if ( candidate_set.size() == 0 ) {
+            if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
+              break;
+            } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
+              BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
+              final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
+            }
+          }
+
+        } while ( candidate_set.size() == 0 );
+
+        _fhelper->print_vector(candidate_set);
+      }
+
     }
-
     //clear known neighbours1
     known_neighbors.clear();
 

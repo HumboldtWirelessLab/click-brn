@@ -129,6 +129,8 @@ class Flooding : public BRNElement {
       uint8_t _assigned_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       uint8_t _assigned_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
 
+      bool _fix_target_set;
+
       BroadcastNode()
       {
         _src = EtherAddress::make_broadcast();
@@ -152,6 +154,7 @@ class Flooding : public BRNElement {
         memset(_last_node_list_maxsize,0,sizeof(_last_node_list_maxsize));
         memset(_assigned_node_list,0,sizeof(_assigned_node_list));
         memset(_assigned_node_list_maxsize,0,sizeof(_assigned_node_list_maxsize));
+        _fix_target_set = false;
       }
 
       void reset_queue() {
@@ -164,6 +167,7 @@ class Flooding : public BRNElement {
 
         memset(_last_node_list_size,0,sizeof(_last_node_list_size));          //all entries are invalid
         memset(_assigned_node_list_size,0,sizeof(_assigned_node_list_size));  //all entries are invalid
+        _fix_target_set = false;
       }
 
       inline bool have_id(uint32_t id) {
@@ -435,18 +439,18 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void add_broadcast_node(EtherAddress *src);
+  BroadcastNode *add_broadcast_node(EtherAddress *src);
   BroadcastNode *get_broadcast_node(EtherAddress *src);
 
   void add_id(EtherAddress* src, uint32_t id, Timestamp* now, bool = false);
   void inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node);
   bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
-  
+
   void forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node = false);
   void forward_attempt(EtherAddress *src, uint32_t id);  
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);  
   void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
-  
+
   int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
