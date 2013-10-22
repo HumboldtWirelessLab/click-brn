@@ -120,7 +120,7 @@ void CooperativeChannelStats::send_message()
 
     WritablePacket *p = create_new_packet(ccsh, nats_arr);
 
-#pragma message "check stettings of brn_headers"
+//TODO "check stettings of brn_headers"
     p = BRNProtocol::add_brn_header(p, BRN_PORT_CHANNELSTATSINFO, BRN_PORT_CHANNELSTATSINFO, 255, 0);
     BRN_INFO("Send Packet-Length: %d", p->length());
 
