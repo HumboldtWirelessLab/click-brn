@@ -619,7 +619,7 @@ BRN2LinkStat::simple_action(Packet *p)
       int seq = ntohl(entry->_seq);
 
 #ifdef LINKSTAT_EXTRA_DEBUG
-#pragma message "Enable Extra Linkstat debug"
+//TODO "Enable Extra Linkstat debug"
       uint8_t zero_mac[] = { 0,0,0,0,0,0 }; 
          if ( (memcmp(src_ea.data(), zero_mac, 6) == 0) || (memcmp(neighbor.data(), zero_mac, 6) == 0) ) {
         BRN_WARN("Found zero mac");
