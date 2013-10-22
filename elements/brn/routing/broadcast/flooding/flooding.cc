@@ -263,8 +263,8 @@ Flooding::push( int port, Packet *packet )
      * insert to new, assign or foreign_responsible
      */
     if ( _passive_last_node_new ) {
-      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked ); //clear resp flag if we are sure, that dst
-      _passive_last_node_new = false;                                                         //received the pkt
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked );
+      _passive_last_node_new = false;
     } else if ( _passive_last_node_assign ) {  
       BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);

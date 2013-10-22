@@ -274,10 +274,9 @@ class Flooding : public BRNElement {
 
         //search for node
         for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {
-            if ( rx_acked ) {
-              fln[i].flags &= !((uint8_t)FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY);
-              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
+          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {  //found node
+            if ( rx_acked ) {                                      //is acked ?
+              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;   //mark it
             }
             return 0;
           }
@@ -293,7 +292,7 @@ class Flooding : public BRNElement {
 
         _last_node_list_size[index]++;
 
-        /* revoke assignment */
+        /* revoke assignment since node is new */
         revoke_assigned_node(id, node);
 
         return _last_node_list_size[index];
