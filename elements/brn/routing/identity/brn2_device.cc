@@ -89,7 +89,7 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
     _cwmax = new uint16_t[no_queues];
     _aifs = new uint16_t[no_queues];
 
-#pragma message "TODO: Better check for params. Better Error handling."
+//TODO: Better check for params. Better Error handling."
     for( int i = 0; i < no_queues; i++ ) {
       cp_integer(args[i], &v);
       _cwmin[i] = v;
