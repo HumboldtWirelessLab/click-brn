@@ -97,8 +97,7 @@ MacFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	return 0;
 }
 
-int MacFilter::initialize() {
-
+int MacFilter::initialize(ErrorHandler *) {
 	return 0;
 }
 
