@@ -59,6 +59,8 @@ uint16_t BoTargetPacketloss::get_id()
 
 int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 {
+  (void) tos;
+
   int32_t number_of_neighbours = 1;
   int32_t index_search_rate = -1;
   int32_t index_search_msdu_size = -1;
@@ -92,6 +94,7 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 
 void BoTargetPacketloss::handle_feedback(uint8_t retries)
 {
+  (void) retries;
 }
 
 

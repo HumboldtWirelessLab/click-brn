@@ -60,6 +60,8 @@ uint16_t BoMaxThroughput::get_id()
 
 int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 {
+  (void) tos;
+
   int32_t number_of_neighbours = 1;
   int32_t index_search_rate = -1;
   int32_t index_search_msdu_size = -1;
@@ -92,6 +94,7 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 
 void BoMaxThroughput::handle_feedback(uint8_t retries)
 {
+  (void) retries;
 }
 
 
