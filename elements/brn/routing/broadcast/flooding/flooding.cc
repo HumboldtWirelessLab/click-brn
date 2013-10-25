@@ -357,15 +357,22 @@ Flooding::push( int port, Packet *packet )
 
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
-      _flooding_sent += (((int)ceh->retries) + 1);
       BRN_DEBUG("Unicast");
-      sent(&src, p_bcast_id, (((int)ceh->retries) + 1));
+      if ( (port == 2) && (ceh->retries != (ceh->max_tries + ceh->max_tries1 + ceh->max_tries2 + ceh->max_tries3)) ) {
+        BRN_ERROR("Looks like abort");
+        _flooding_sent += (((int)ceh->retries));
+        sent(&src, p_bcast_id, (((int)ceh->retries)));
+      } else {
+        _flooding_sent += (((int)ceh->retries) + 1);
+        sent(&src, p_bcast_id, (((int)ceh->retries) + 1));
+      }
     } else {
+      //TODO: correct due to tx abort
       _flooding_sent++;
       sent(&src, p_bcast_id, 1);
     }
 
-    if ( port == 2 ) { //txfeedback failure  
+    if ( port == 2 ) { //txfeedback failure
       BRN_DEBUG("Flooding: TXFeedback failure\n");
     } else {           //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
