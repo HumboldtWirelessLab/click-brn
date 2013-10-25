@@ -110,7 +110,15 @@ void
 UnicastFlooding::push(int, Packet *p)
 {
   //port 0: transmit to other brn nodes; rewrite from broadcast to unicast
-  if (Packet *q = smaction(p, true)) output(0).push(q);
+  if (Packet *q = smaction(p, true)) {
+
+    if ( q != NULL ) {
+      BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
+      _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
+    }
+
+    output(0).push(q);
+  }
 }
 
 Packet *
@@ -129,6 +137,7 @@ UnicastFlooding::pull(int)
   }
 
   if ( p != NULL ) {
+    BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
     _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
   }
 
@@ -530,7 +539,7 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_BCAST_WITH_PRECHECK: return "bcast_with_precheck";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 
 String
@@ -542,7 +551,7 @@ UnicastFlooding::get_preselection_string(uint32_t id)
     case UNICAST_FLOODING_PRESELECTION_CHILD_ONLY: return "child_only";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 //-----------------------------------------------------------------------------
 // Handler
@@ -568,18 +577,18 @@ read_param(Element *e, void *thunk)
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;
       sa << "\" empty_cs_bcast=\"" << rewriter->_cnt_bcasts_empty_cs << "\" >\n";
-      
+
       sa << "\t<rewrite_cnt targets=\"" << rewriter->rewrite_cnt_map.size() << "\" >\n";
-      
+
       for ( UnicastFlooding::TargetRewriteCntMapIter trcm = rewriter->rewrite_cnt_map.begin(); trcm.live(); ++trcm) {
         uint32_t cnt = trcm.value();
         EtherAddress addr = trcm.key();
-        
+
         sa << "\t\t<rewrite_cnt_node node=\"" << addr.unparse() << "\" cnt=\"" << cnt << "\" />\n";
       }
 
       sa << "\t</rewrite_cnt>\n";
-      
+
       sa << "</unicast_rewriter>\n";
       break;
     }

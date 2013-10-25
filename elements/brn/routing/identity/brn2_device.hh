@@ -137,7 +137,7 @@ class BRN2Device : public BRNElement {
     uint16_t *get_aifs() { return _aifs; }
 
     /** TX CONTROL **/
-    void abort_transmission(EtherAddress &dst);
+    int abort_transmission(EtherAddress &dst);
 
 };
 
