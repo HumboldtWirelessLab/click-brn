@@ -346,7 +346,9 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("lasttx match feedback. Succ: %d",(port==3)?1:0);
       reset_last_tx(); //reset current tx since it is finished now
     } else {
-      BRN_ERROR("Wrong feedback. doesn't match last_tx");
+      BRN_ERROR("Wrong feedback. doesn't match last_tx: %s %s %d vs %s %s %d",rx_node.unparse().c_str(), src.unparse().c_str(), p_bcast_id,
+                                                                              _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(),
+                                                                              _last_tx_bcast_id);
     }
 
     //TODO: maybe last node is already known due to other ....whatever
@@ -605,7 +607,7 @@ Flooding::reset()
   _flooding_src = _flooding_fwd = _bcast_id = _flooding_rx = _flooding_sent = _flooding_passive = 0;
   _flooding_last_node_due_to_passive = _flooding_last_node_due_to_ack = _flooding_last_node_due_to_piggyback = 0;
   _flooding_lower_layer_reject = _flooding_src_new_id = _flooding_rx_new_id = _flooding_fwd_new_id = 0;
-  _flooding_rx_ack = _tx_aborts = 0;
+  _flooding_rx_ack = _tx_aborts = _tx_aborts_errors = 0;
 
   if ( _bcast_map.size() > 0 ) {
     BcastNodeMapIter iter = _bcast_map.begin();
@@ -693,7 +695,7 @@ Flooding::stats()
   sa << "\" passive_no_ack_force_dst=\"" << _flooding_passive_not_acked_force_dst << "\" rx_ack=\"" << _flooding_rx_ack;
   sa << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
   sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
-  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" txaborts=\"" << _tx_aborts;
+  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" txaborts=\"" << _tx_aborts << "\" tx_aborts_errors=\"" << _tx_aborts_errors;
   sa << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
 
   for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {

@@ -521,6 +521,7 @@ class Flooding : public BRNElement {
   /* Members and functions for tx abort */
   bool _enable_abort_tx;
   uint32_t _tx_aborts;
+  uint32_t _tx_aborts_errors;
 
   EtherAddress _last_tx_dst_ea;
   EtherAddress _last_tx_src_ea;
@@ -539,8 +540,15 @@ class Flooding : public BRNElement {
   }
 
   void abort_last_tx(EtherAddress &dst) {
+    BRN_DEBUG("Abort last TX");
     if ( (!_enable_abort_tx) || dst.is_broadcast() ) return;
-    for ( int devs = 0; devs < _me->countDevices(); devs++) _me->getDeviceByIndex(devs)->abort_transmission(dst);
+
+    bool failure = false;
+    for (int devs = 0; devs < _me->countDevices(); devs++)
+      failure |= (_me->getDeviceByIndex(devs)->abort_transmission(dst) != 0);
+
+    if ( failure ) _tx_aborts_errors++;
+    else _tx_aborts++;
   }
 
 };

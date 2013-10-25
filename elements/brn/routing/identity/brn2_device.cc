@@ -239,7 +239,7 @@ BRN2Device::set_routable(bool routable)
 }
 
 #if CLICK_NS
-void
+int
 BRN2Device::abort_transmission(EtherAddress &dst)
 {
   struct tx_control_header txch;
@@ -248,15 +248,19 @@ BRN2Device::abort_transmission(EtherAddress &dst)
   txch.flags = 0;
   memcpy(txch.dst_ea, dst.data(), 6);
 
-  BRN_ERROR("Abort tx: %s", dst.unparse().c_str());
+  BRN_DEBUG("Abort tx: %s", dst.unparse().c_str());
   simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
 
-  if ( txch.flags != 0 ) BRN_ERROR("TXCtrl-Error");
+  if ( txch.flags != 0 ) {
+    BRN_ERROR("TXCtrl-Error");
+    return 1;
+  }
 #else
-void
+int
 BRN2Device::abort_transmission(EtherAddress &)
 {
 #endif
+  return 0;
 }
 
 uint32_t

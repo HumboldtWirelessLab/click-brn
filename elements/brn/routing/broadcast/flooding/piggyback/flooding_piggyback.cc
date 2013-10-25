@@ -254,9 +254,9 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
             new_last_node++;
           }
 
-          /* if last not is acked (we are sure that node has the packet), abort current trqansmission if node is the target*/
+          /* if last node is acked (we are sure that node has the packet), abort current transmission if node is the target*/
+          /* TODO: What if not acked ? */
           if ( last_node_was_acked && (fl->is_last_tx(ea, *src, (uint16_t)id)) ) {
-            click_chatter("Piggybag abort: %s %s %d",ea.unparse().c_str(), src->unparse().c_str(), id);
             fl->abort_last_tx(ea);
           }
         }
