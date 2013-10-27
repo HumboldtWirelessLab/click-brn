@@ -199,8 +199,10 @@ ChannelStats::push(int port, Packet *p)
 
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
+    int tx_count = (int) ceh->retries;
+    if ( ceh->flags & WIFI_EXTRA_TX_ABORT ) tx_count--;
 
-    for ( int i = 0; i <= (int) ceh->retries; i++ ) {
+    for ( int i = 0; i <= tx_count; i++ ) {
       int t0,t1,t2,t3;
       uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
       t0 = ceh->max_tries + 1;

@@ -358,7 +358,7 @@ Flooding::push( int port, Packet *packet )
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
       BRN_DEBUG("Unicast");
-      if ( (port == 2) && (ceh->retries != (ceh->max_tries + ceh->max_tries1 + ceh->max_tries2 + ceh->max_tries3)) ) {
+      if ( (port == 2) && (ceh->flags & WIFI_EXTRA_TX_ABORT)) {
         BRN_ERROR("Looks like abort");
         _flooding_sent += (((int)ceh->retries));
         sent(&src, p_bcast_id, (((int)ceh->retries)));
