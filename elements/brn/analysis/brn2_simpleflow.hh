@@ -20,7 +20,7 @@
 
 CLICK_DECLS
 
-//#define SF_TX_ABORT
+#define SF_TX_ABORT
 
 class FlowID {
 
