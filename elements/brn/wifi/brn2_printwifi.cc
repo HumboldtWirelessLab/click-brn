@@ -775,14 +775,17 @@ BRN2PrintWifi::simple_action(Packet *p)
   } else {
     sa << "seq: 65565 ";
   }
-    
 
   sa << "[";
   if (ceh->flags & WIFI_EXTRA_TX) {
     sa << " tx";
   }
   if (ceh->flags & WIFI_EXTRA_TX_FAIL) {
-    sa << " fail";
+    if (ceh->flags & WIFI_EXTRA_TX_ABORT) {
+      sa << " abort";
+    } else {
+      sa << " fail";
+    }
   }
   if (ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE) {
     sa << " alt_rate";

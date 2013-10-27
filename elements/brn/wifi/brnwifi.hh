@@ -4,8 +4,8 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
+#include "click/../../elements/brn/brnprotocol/brnpacketanno.hh"
+#include "click/../../elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
@@ -31,9 +31,11 @@ enum {
   WIFI_EXTRA_RX_ACI          = (1<<15),
   WIFI_EXTRA_RX_INRANGE      = (1<<14),
   WIFI_EXTRA_RX_HN           = (1<<13),
-  WIFI_EXTRA_RX_NOWIFI       = (1<<12),
+  WIFI_EXTRA_RX_NONWIFI      = (1<<12),
 
-  WIFI_EXTRA_RX_PHANTOM_ERR  = (WIFI_EXTRA_RX_ZERORATE_ERR | WIFI_EXTRA_RX_PHY_ERR)
+  WIFI_EXTRA_RX_PHANTOM_ERR  = (WIFI_EXTRA_RX_ZERORATE_ERR | WIFI_EXTRA_RX_PHY_ERR),
+
+  WIFI_EXTRA_TX_ABORT        = (1<<11),
 };
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21

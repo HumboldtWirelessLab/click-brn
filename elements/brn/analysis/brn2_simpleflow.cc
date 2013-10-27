@@ -35,6 +35,8 @@ BRN2SimpleFlow::abort_transmission(EtherAddress &dst)
 {
   struct tx_control_header txch;
 
+  if ( (click_random() % 10) > 5 ) return;
+
   txch.operation = TX_ABORT;
   txch.flags = 0;
   memcpy(txch.dst_ea, dst.data(), 6);
