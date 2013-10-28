@@ -63,7 +63,7 @@ Flooding::Flooding()
     _flooding_rx_new_id(0),
     _flooding_fwd_new_id(0),
     _flooding_rx_ack(0),
-    _enable_abort_tx(false)
+    _abort_tx_mode(0)
 {
   BRNElement::init();
   reset_last_tx();
@@ -81,7 +81,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGPOLICY", cpkP+cpkM, cpElement, &_flooding_policy,
       "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
-      "ENABLEABORTTX", cpkP, cpBool, &_enable_abort_tx,
+      "ABORTTX", cpkP, cpInteger, &_abort_tx_mode,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -429,6 +429,11 @@ Flooding::push( int port, Packet *packet )
             _passive_last_node_new = true;
             _flooding_passive_not_acked_force_dst++;
           } else _passive_last_node_assign = true;
+
+          if (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0 ) && (is_last_tx(rx_node, src, p_bcast_id))) {
+            BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
+            abort_last_tx(rx_node);
+          }
         }
       }
     }
@@ -694,7 +699,7 @@ Flooding::stats()
   StringAccum sa;
 
   sa << "<flooding node=\"" << BRN_NODE_NAME << "\" policy=\"" <<  _flooding_policy->floodingpolicy_name();
-  sa << "\" policy_id=\"" << _flooding_policy->floodingpolicy_id() << "\" enable_tx_abort=\"" << (int)(_enable_abort_tx?1:0);
+  sa << "\" policy_id=\"" << _flooding_policy->floodingpolicy_id() << "\" tx_abort_mode=\"" << (int)_abort_tx_mode;
   sa << "\" >\n\t<localstats source=\"" << _flooding_src << "\" received=\"" << _flooding_rx;
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;

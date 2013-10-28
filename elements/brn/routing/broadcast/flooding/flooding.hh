@@ -154,7 +154,6 @@ class Flooding : public BRNElement {
         memset(_last_node_list_maxsize,0,sizeof(_last_node_list_maxsize));
         memset(_assigned_node_list,0,sizeof(_assigned_node_list));
         memset(_assigned_node_list_maxsize,0,sizeof(_assigned_node_list_maxsize));
-        _fix_target_set = false;
       }
 
       void reset_queue() {
@@ -251,6 +250,10 @@ class Flooding : public BRNElement {
         if (_bcast_id_list[index] == id) _bcast_snd_list[index] += no_transmissions;
       }
 
+      /**
+       * Last node (known nodes)
+       */
+
       int add_last_node(uint32_t id, EtherAddress *node, bool forwarded, bool rx_acked) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
         if (_bcast_id_list[index] != id) return -1;
@@ -275,9 +278,8 @@ class Flooding : public BRNElement {
         //search for node
         for ( int i = 0; i < fln_i; i++ )
           if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {  //found node
-            if ( rx_acked ) {                                      //is acked ?
-              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;   //mark it
-            }
+            if ( rx_acked ) fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;  //is acked ? so mark it
+            if ( forwarded ) fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
             return 0;
           }
 
@@ -287,8 +289,8 @@ class Flooding : public BRNElement {
         memcpy(fln[fln_i].etheraddr, node->data(),6);
         fln[fln_i].received_cnt = fln[fln_i].flags = 0;
 
-        if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
         if ( rx_acked ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
+        if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
 
         _last_node_list_size[index]++;
 
@@ -327,7 +329,9 @@ class Flooding : public BRNElement {
         if ( fln != NULL ) fln->received_cnt++;
       }
 
-      /** ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node */ 
+      /**
+       * ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node
+       */
 
       int assign_node(uint32_t id, EtherAddress *node) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
@@ -519,7 +523,11 @@ class Flooding : public BRNElement {
 
 
   /* Members and functions for tx abort */
-  bool _enable_abort_tx;
+#define FLOODING_TXABORT_MODE_NONE     0
+#define FLOODING_TXABORT_MODE_ACKED    1
+#define FLOODING_TXABORT_MODE_ASSIGNED 2
+
+  uint32_t _abort_tx_mode;
   uint32_t _tx_aborts;
   uint32_t _tx_aborts_errors;
 
@@ -541,7 +549,7 @@ class Flooding : public BRNElement {
 
   void abort_last_tx(EtherAddress &dst) {
     BRN_DEBUG("Abort last TX");
-    if ( (!_enable_abort_tx) || dst.is_broadcast() ) return;
+    if ( (_abort_tx_mode == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast() ) return;
 
     bool failure = false;
     for (int devs = 0; devs < _me->countDevices(); devs++)
