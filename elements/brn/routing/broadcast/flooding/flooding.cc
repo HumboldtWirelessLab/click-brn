@@ -176,8 +176,8 @@ Flooding::push( int port, Packet *packet )
 
     if ( _flooding_passiveack != NULL )                       //passiveack will also handle first transmit
       _flooding_passiveack->packet_enqueue(packet, &src, _bcast_id, &passiveack, -1);
-    else 
-     retransmit_broadcast(packet, &src, _bcast_id);      //send packet
+    else
+      retransmit_broadcast(packet, &src, _bcast_id);      //send packet
 
   } else if ( port == 1 ) {                                  // kommt von brn
 
@@ -355,22 +355,27 @@ Flooding::push( int port, Packet *packet )
 
     forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()), get_last_node(&src, p_bcast_id, &rx_node) == NULL);
 
+    bool packet_is_tx_abort = false;
+    int no_transmissions = 1;       //in the case of wired or broadcast
+
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
+
       BRN_DEBUG("Unicast");
+
       if ( (port == 2) && (ceh->flags & WIFI_EXTRA_TX_ABORT)) {
+
         BRN_ERROR("Looks like abort");
-        _flooding_sent += (((int)ceh->retries));
-        sent(&src, p_bcast_id, (((int)ceh->retries)));
+        no_transmissions = (int)ceh->retries;
+        packet_is_tx_abort = true;
+
       } else {
-        _flooding_sent += (((int)ceh->retries) + 1);
-        sent(&src, p_bcast_id, (((int)ceh->retries) + 1));
+        no_transmissions = (int)ceh->retries + 1;
       }
-    } else {
-      //TODO: correct due to tx abort
-      _flooding_sent++;
-      sent(&src, p_bcast_id, 1);
-    }
+    } //TODO: correct due to tx abort in the case of wired and/or broadcast (now assume 1 transmission)
+
+    _flooding_sent += no_transmissions;
+    sent(&src, p_bcast_id, no_transmissions);
 
     if ( port == 2 ) { //txfeedback failure
       BRN_DEBUG("Flooding: TXFeedback failure\n");
@@ -381,7 +386,7 @@ Flooding::push( int port, Packet *packet )
     }
 
     if ( _flooding_passiveack != NULL )
-      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, false);
+      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, false, packet_is_tx_abort, no_transmissions);
     else
       packet->kill();
 
@@ -452,7 +457,7 @@ Flooding::push( int port, Packet *packet )
     _flooding_lower_layer_reject++;
 
     if ( _flooding_passiveack != NULL )
-      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, true);
+      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, true, false, 0); //reject is not abort and is not transmitted
     else
       packet->kill();
   }

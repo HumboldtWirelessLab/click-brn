@@ -35,6 +35,8 @@
 
 
 CLICK_DECLS
+/**
+ * TODO: check wehther assined nodes can be real acked_nodes (should never happend)
 
 /*
  * =c
@@ -72,13 +74,12 @@ class UnicastFlooding : public BRNElement {
     struct rewrite_target **target_list;
     uint16_t *target_list_size;
     uint16_t *target_list_max_size;
-    
+
     UnicastRewrite() {
       id_list = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       target_list = new struct rewrite_target*[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       target_list_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
       target_list_max_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      
 
       memset(id_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
       memset(target_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(struct rewrite_target));
@@ -86,7 +87,7 @@ class UnicastFlooding : public BRNElement {
       memset(target_list_max_size,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
     }
   };
-    
+
   typedef HashMap<EtherAddress, uint32_t> TargetRewriteCntMap;
   typedef TargetRewriteCntMap::const_iterator TargetRewriteCntMapIter;
 
