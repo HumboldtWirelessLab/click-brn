@@ -41,7 +41,7 @@ CLICK_DECLS
  *
  * =d
  */
- 
+
  /*
   * Flooding (oder ein andere element) 
   * 
@@ -72,15 +72,15 @@ class FloodingPassiveAck : public BRNElement {
 
       PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
       {
-	_src = EtherAddress(src->data());
-	_bcast_id = bcast_id;
-	if ( passiveack != NULL )
-	  for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
+        _src = EtherAddress(src->data());
+        _bcast_id = bcast_id;
+        if ( passiveack != NULL )
+        for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
 
         _max_retries = retries;
-	
-	_last_tx = _enqueue_time = Timestamp::now();
-	_retries = 0;
+
+        _last_tx = _enqueue_time = Timestamp::now();
+        _retries = 0;
       }
 
       ~PassiveAckPacket() {
@@ -91,17 +91,19 @@ class FloodingPassiveAck : public BRNElement {
         _last_tx = tx_time;
       }
 
+      inline void inc_max_retries() { _max_retries++; }; //use for tx_abort (is an net_layer transmission but maybe no mac-layer tx)
+
       void set_next_retry(Timestamp tx_time) {
         _retries++;
         _last_tx = tx_time;
       }
 
       inline int32_t tx_duration(Timestamp now) {
-	return (now - _last_tx).msecval();
+        return (now - _last_tx).msecval();
       }
 
       inline uint32_t retries_left() {
-	return _max_retries - _retries;
+        return _max_retries - _retries;
       }
 
    };
@@ -161,7 +163,7 @@ class FloodingPassiveAck : public BRNElement {
 
   void packet_dequeue(EtherAddress *src, uint16_t bcast_id);
 
-  void handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected);
+  void handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t no_transmissions);
 
   int tx_delay(PassiveAckPacket *pap);
 
