@@ -709,18 +709,18 @@ BRN2SimpleFlow::add_flow(String conf)
   uint32_t burst = 1;
   int32_t  start_delay = 0;
 
-  BRN_ERROR("ARGS: %s %s",args[0].c_str(), args[1].c_str());
+  BRN_DEBUG("ARGS: %s %s",args[0].c_str(), args[1].c_str());
 
   if ( !cp_ethernet_address(args[0], &src)) {
-    BRN_ERROR("Error. Use nameinfo");
+    BRN_DEBUG("Error. Use nameinfo");
     if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, args[0], &src, 6))
-      BRN_ERROR("Found address!");
+      BRN_DEBUG("Found address!");
   }
 
   if ( !cp_ethernet_address(args[1], &dst)) {
-    BRN_ERROR("Error. Use nameinfo");
+    BRN_DEBUG("Error. Use nameinfo");
     if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, args[1], &dst, 6))
-      BRN_ERROR("Found address!");
+      BRN_DEBUG("Found address!");
   }
 
   cp_integer(args[2], &interval);
