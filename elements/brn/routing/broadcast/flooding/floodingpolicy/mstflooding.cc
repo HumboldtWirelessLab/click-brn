@@ -52,12 +52,21 @@ MSTFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
+void 
+MSTFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, uint8_t *,
+                        Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
+{
+	BRN_DEBUG("init_broadcast reached");
+	do_forward(0,0,0,0,false,0,0,0,tx_data_size,0,unicast_dst,passiveack);
+}
+
 bool
 MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
                            uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, 
 			    Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
   BRN_DEBUG("do_forward reached");
+  (void) is_known;
   *tx_data_size = 0;
   (*unicast_dst).clear();
   (*passiveack).clear();
