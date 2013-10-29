@@ -37,6 +37,7 @@
 CLICK_DECLS
 /**
  * TODO: check wehther assined nodes can be real acked_nodes (should never happend)
+ */
 
 /*
  * =c

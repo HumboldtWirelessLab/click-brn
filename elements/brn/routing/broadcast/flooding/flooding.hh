@@ -113,12 +113,16 @@ class Flooding : public BRNElement {
         uint8_t etheraddr[6];
         uint8_t received_cnt;
         uint8_t flags;
-#define FLOODING_LAST_NODE_FLAGS_FORWARDED       1
-#define FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY  2
+#define FLOODING_LAST_NODE_FLAGS_FORWARDED                  1
+#define FLOODING_LAST_NODE_FLAGS_RX_ACKED                   2
+#define FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY             4
+#define FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY     8
 
-#define FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN   4
+#define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_ME            (FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
+#define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN       (FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
 
-#define FLOODING_LAST_NODE_FLAGS_RX_ACKED        8
+#define FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN            128
+
       };
 
       struct flooding_last_node *_last_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
@@ -254,7 +258,9 @@ class Flooding : public BRNElement {
        * Last node (known nodes)
        */
 
-      int add_last_node(uint32_t id, EtherAddress *node, bool forwarded, bool rx_acked) {
+      int add_last_node(uint32_t id, EtherAddress *node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility) {
+        assert(forwarded || rx_acked || responsibility || foreign_responsibility );
+
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
         if (_bcast_id_list[index] != id) return -1;
 
@@ -276,21 +282,34 @@ class Flooding : public BRNElement {
         int fln_i = _last_node_list_size[index];
 
         //search for node
-        for ( int i = 0; i < fln_i; i++ )
+        for ( int i = 0; i < fln_i; i++ ) {
           if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {  //found node
-            if ( rx_acked ) fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;  //is acked ? so mark it
+
             if ( forwarded ) fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
+            if ( rx_acked ) {
+              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;                //is acked ? so mark it
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;         //clear responsibility
+            } else if ( responsibility ) {
+              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;          //set responsibility
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+            } else if (foreign_responsibility && ((fln[i].flags & FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN) == 0)) {
+                fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
+            }
+
             return 0;
           }
-
+        }
         /*
          * Node not found, so add new_list
          */
         memcpy(fln[fln_i].etheraddr, node->data(),6);
         fln[fln_i].received_cnt = fln[fln_i].flags = 0;
 
-        if ( rx_acked ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
         if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
+        if ( rx_acked )  fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
+        else if ( responsibility ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
+        else if ( foreign_responsibility ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
 
         _last_node_list_size[index]++;
 
@@ -392,7 +411,7 @@ class Flooding : public BRNElement {
         //search for node
         for ( int i = 0; i < fln_i; i++ )
           if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {
-            fln[i].flags &= !((uint8_t)FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN);
+            fln[i].flags &= ~((uint8_t)FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN);
             break;
           }
       }
@@ -403,7 +422,10 @@ class Flooding : public BRNElement {
 
       void set_responsibility_target(uint32_t id, EtherAddress *target) {
         struct flooding_last_node* ln = get_last_node(id, target);
-        if ( ln != NULL ) ln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
+        if ( ln != NULL ) {
+          ln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
+          ln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+        }
       }
 
       bool is_responsibility_target(uint32_t id, EtherAddress *target) {
@@ -450,11 +472,11 @@ class Flooding : public BRNElement {
   bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
 
   void forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node = false);
-  void forward_attempt(EtherAddress *src, uint32_t id);  
-  uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);  
+  void forward_attempt(EtherAddress *src, uint32_t id);
+  uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);
   void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
 
-  int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked);
+  int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
 
@@ -496,10 +518,10 @@ class Flooding : public BRNElement {
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
 
-  uint16_t _passive_id;
   bool _passive_last_node_new;
   bool _passive_last_node_rx_acked;
   bool _passive_last_node_assign;
+  bool _passive_last_node_foreign_responsibility;
 
  public:
 

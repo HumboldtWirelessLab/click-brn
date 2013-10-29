@@ -177,9 +177,9 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
   if ( bcn == NULL ) return 0;
 
   struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
-  uint32_t cnt = MIN((uint32_t)last_node_cnt,
-                     MIN((buffer_size-(sizeof(struct click_brn_bcast_extra_data)+sizeof(uint32_t)))/6,
-                         max_last_nodes));
+  uint32_t cnt = MIN((uint32_t)last_node_cnt,                                                                           //limit: what we have
+                     MIN((buffer_size-(sizeof(struct click_brn_bcast_extra_data)+sizeof(uint32_t)+sizeof(uint32_t)))/6, //limit: pkt-space
+                         MIN(max_last_nodes,32)));                                                                      //limit: flag-space
 
   if ( cnt == 0 ) return 0;
 
@@ -189,12 +189,15 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
   uint32_t buf_idx = sizeof(struct click_brn_bcast_extra_data);
   uint8_t *src_data = src->data();
   uint32_t rx_acked_flags = 0;
+  uint32_t foreign_response_flags = 0;
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
     if ( (net_graph.nmm.findp(add_node) != NULL) && ( memcmp(src_data,lnl[last_node_cnt].etheraddr,6) != 0 ) ) {
       memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
       if (lnl[last_node_cnt].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) rx_acked_flags |= 1 << i;
+      if ((lnl[last_node_cnt].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) ||
+          (lnl[last_node_cnt].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY))  foreign_response_flags |= 1 << i;
       buf_idx = buf_idx + 6;
       i++;
     }
@@ -204,6 +207,10 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
 
   rx_acked_flags = htonl(rx_acked_flags);
   memcpy(&(buffer[buf_idx]),(uint8_t*)&rx_acked_flags,sizeof(uint32_t));
+  buf_idx += sizeof(uint32_t);
+
+  foreign_response_flags = htonl(foreign_response_flags);
+  memcpy(&(buffer[buf_idx]),(uint8_t*)&foreign_response_flags,sizeof(uint32_t));
   buf_idx += sizeof(uint32_t);
 
   struct click_brn_bcast_extra_data *extdat = (struct click_brn_bcast_extra_data *)buffer;
@@ -234,11 +241,15 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
       //click_chatter("Found Lastnode stuff: Size: %d",extdat->size);
 
       uint32_t rxdata_idx = i + sizeof(struct click_brn_bcast_extra_data);
-      uint32_t last_node_data_idx_end = i + extdat->size - sizeof(uint32_t);
+      uint32_t last_node_data_idx_end = i + extdat->size - (sizeof(uint32_t) + sizeof(uint32_t)) ; //serach for last two int (acked & respons)
 
       uint32_t rx_acked_flags = 0;
-      memcpy((uint8_t*)&rx_acked_flags,&(rxdata[i+extdat->size-sizeof(uint32_t)]),sizeof(uint32_t));
+      memcpy((uint8_t*)&rx_acked_flags,&(rxdata[last_node_data_idx_end]),sizeof(uint32_t));
       rx_acked_flags = ntohl(rx_acked_flags);
+
+      uint32_t foreign_response_flags = 0;
+      memcpy((uint8_t*)&foreign_response_flags,&(rxdata[last_node_data_idx_end + sizeof(uint32_t)]),sizeof(uint32_t));
+      foreign_response_flags = ntohl(foreign_response_flags);
 
       int new_last_node = 0;
       int cnt_node = 0;
@@ -248,15 +259,17 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
         ea = EtherAddress(&(rxdata[rxdata_idx]));
         if (!fl->is_local_addr(&ea)) {              //do not insert myself as lastnode
           bool last_node_was_acked = ((rx_acked_flags & (1<<cnt_node)) != 0 );
+          bool last_node_foreign_responsibility = ((foreign_response_flags & (1<<cnt_node)) != 0 );
 
-          if ( bcn->add_last_node(id, &ea, false, last_node_was_acked) != 0 ) {
+          if ( bcn->add_last_node(id, &ea, false, last_node_was_acked, false, last_node_foreign_responsibility) != 0 ) {
             fl->_flooding_last_node_due_to_piggyback++;
             new_last_node++;
           }
 
           /* if last node is acked (we are sure that node has the packet), abort current transmission if node is the target*/
           /* TODO: What if not acked ? */
-          if ( last_node_was_acked && (fl->is_last_tx(ea, *src, (uint16_t)id)) ) {
+          if ((fl->is_last_tx(ea, *src, (uint16_t)id)) &&
+              (last_node_was_acked || (last_node_foreign_responsibility && (!bcn->is_responsibility_target(id, &ea))))) {
             fl->abort_last_tx(ea);
           }
         }
