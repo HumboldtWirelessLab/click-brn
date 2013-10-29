@@ -61,7 +61,7 @@ MSTFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, u
 }
 
 bool
-MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool /*is_known*/, uint32_t,
+MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
                            uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, 
 			    Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
