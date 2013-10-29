@@ -171,7 +171,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
   //clear responseflag for the case that broadcast is used
-  bcast_header->flags &= !BCAST_HEADER_FLAGS_FORCE_DST;
+  bcast_header->flags &= ~BCAST_HEADER_FLAGS_FORCE_DST;
 
   uint16_t assigned_nodes = 0;
 
@@ -209,12 +209,14 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
      * If we have such nodes than we already have a candidate set
      */
 
-    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                 //add node to candidate set if
-      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&  //1. i'm responsible (due unicast before or fix set)
-           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0) ) {       //2. node has not acked the packet_id
+    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                       //add node to candidate set if
+      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&         //1. i'm responsible (due unicast before or fix set)
+           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) {               //2. is not acked
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
       } else {
-        known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+        if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ||             //1. is known as acked
+             ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) //2. foreign respons
+          known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
       }
     }
 
@@ -226,6 +228,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
         if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN) == 0) { //1. it is assigned and this is not revoked
+          //TODO: Debug: check whether node is already in known_neighbours
           BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
           assigned_nodes++;

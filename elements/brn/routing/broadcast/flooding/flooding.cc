@@ -45,9 +45,10 @@ CLICK_DECLS
 Flooding::Flooding()
   : _flooding_passiveack(NULL),
     _bcast_id(0),
-    _passive_id(0),
     _passive_last_node_new(false),
+    _passive_last_node_rx_acked(false),
     _passive_last_node_assign(false),
+    _passive_last_node_foreign_responsibility(false),
     _flooding_src(0),
     _flooding_rx(0),
     _flooding_sent(0),
@@ -140,7 +141,7 @@ Flooding::push( int port, Packet *packet )
     add_id(&src,(uint32_t)_bcast_id, &now, true);                              //add id for src and i'm src
 
     if ( ! is_local_addr(&src) )
-      add_last_node(&src,(int32_t)_bcast_id, &src, true, true);                //add src as last hop for src
+      add_last_node(&src,(int32_t)_bcast_id, &src, true, true, false, false);         //add src as last hop for src
 
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
@@ -152,8 +153,7 @@ Flooding::push( int port, Packet *packet )
     if ( !forwarder.empty() ) {
       new_bcn->_fix_target_set = true;
       for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end() ; ++i) {
-        add_last_node(&src, _bcast_id, i, false, false);
-        set_responsibility_target(&src, _bcast_id, i);
+        add_last_node(&src, _bcast_id, i, false, false, true, false);
       }
     }
 
@@ -229,8 +229,7 @@ Flooding::push( int port, Packet *packet )
     if ( !forwarder.empty() ) {
       new_bcn->_fix_target_set = true;
       for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
-        add_last_node(&src, _bcast_id, i, false, false);
-        set_responsibility_target(&src, _bcast_id, i);
+        add_last_node(&src, _bcast_id, i, false, false, true, false);
       }
     }
 
@@ -255,25 +254,29 @@ Flooding::push( int port, Packet *packet )
     BRN_DEBUG("Src: %s fwd: %s rxnode: %s Header: %d", src.unparse().c_str(), fwd.unparse().c_str(), rx_node.unparse().c_str(), (uint32_t)(bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST));
 
     //add last hop as last node
-    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true);
+    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true, false, false);
     inc_received(&src,(uint32_t)p_bcast_id, &fwd);
 
     /**
+     * Handle                         P A S S I V
+     *
      * handle target of packet
      * insert to new, assign or foreign_responsible
      */
-    if ( _passive_last_node_new ) {
-      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked );
-      _passive_last_node_new = false;
-    } else if ( _passive_last_node_assign ) {  
-      BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
+    if (_passive_last_node_rx_acked || _passive_last_node_foreign_responsibility) {
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked, false, _passive_last_node_foreign_responsibility );
+    } else if (_passive_last_node_assign) {
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
-      _passive_last_node_assign = false;
     }
+
+     _passive_last_node_new = _passive_last_node_assign = _passive_last_node_rx_acked = _passive_last_node_foreign_responsibility = false;
+
+
+    /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
 
     if ( ! is_known ) {   //send to client only if this is the first time
       //add src of bcast as last node
-      if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true) != 0 ) {
+      if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true, false, false) != 0 ) {
         BRN_DEBUG("Add src as last node");
       }
 
@@ -364,11 +367,8 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("Unicast");
 
       if ( (port == 2) && (ceh->flags & WIFI_EXTRA_TX_ABORT)) {
-
-        BRN_ERROR("Looks like abort");
         no_transmissions = (int)ceh->retries;
         packet_is_tx_abort = true;
-
       } else {
         no_transmissions = (int)ceh->retries + 1;
       }
@@ -382,7 +382,7 @@ Flooding::push( int port, Packet *packet )
     } else {           //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
       _flooding_rx_ack++;
-      if (!rx_node.is_broadcast()) add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, true);
+      if (!rx_node.is_broadcast()) add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, true, false, false);
     }
 
     if ( _flooding_passiveack != NULL )
@@ -408,37 +408,49 @@ Flooding::push( int port, Packet *packet )
       uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
       src = EtherAddress((uint8_t*)&(packet->data()[sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
 
-      if ( get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL ) {
-        if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {
-          BRN_DEBUG("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
-          BRN_DEBUG("New node to last node due to passive unicast...");
-          _flooding_last_node_due_to_passive++;
-          _passive_last_node_new = true;
-          _passive_last_node_rx_acked = true;
+      /**
+       * Abort transmission if possible
+       */
 
-          /**
-           * check dst and compare with current own tx
-           */
-          BRN_DEBUG("RX: %s %s %d",rx_node.unparse().c_str(), src.unparse().c_str(),p_bcast_id);
-          BRN_DEBUG("TX: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(),_last_tx_bcast_id);
-
-          if (is_last_tx(rx_node, src, p_bcast_id)) {
-            BRN_DEBUG("lasttx match dst of foreign");
-            abort_last_tx(rx_node);
-          }
-        } else { //packet was not successfully transmitted (we can not be sure) or is not forced
-          BRN_DEBUG("Assign new node...");
-          _flooding_passive_not_acked_dst++;
-          _passive_last_node_rx_acked = false;
-          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
-            _passive_last_node_new = true;
-            _flooding_passive_not_acked_force_dst++;
-          } else _passive_last_node_assign = true;
-
-          if (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0 ) && (is_last_tx(rx_node, src, p_bcast_id))) {
+      if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {                                 //successful transmission ? Yes,...
+        if (is_last_tx(rx_node, src, p_bcast_id)) {                                          //abort
+          BRN_DEBUG("lasttx match dst of foreign");
+          abort_last_tx(rx_node);
+        }
+      } else {                                                                               //not successfurl but...
+        if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                      //i'm not responsible
+            if ((is_last_tx(rx_node, src, p_bcast_id)) &&
+                (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0) || ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0)) ) {
             BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
             abort_last_tx(rx_node);
           }
+        }
+      }
+
+      /**
+       * Add new node (passive)
+       */
+
+      _passive_last_node_new = (get_last_node(&src, (int32_t)p_bcast_id, &rx_node) == NULL); //rx_node is known ???
+
+      if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {                                 //successful transmission ? Yes,...
+        BRN_DEBUG("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
+        BRN_DEBUG("New node to last node due to passive unicast...");
+
+        if (_passive_last_node_new) _flooding_last_node_due_to_passive++;
+
+        _passive_last_node_rx_acked = true;
+
+      } else {                                                     //packet was not successfully transmitted (we can not be sure) or is not forced
+        BRN_DEBUG("Assign new node...");
+        if (_passive_last_node_new) _flooding_passive_not_acked_dst++;
+
+        if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
+          if (_passive_last_node_new) _flooding_passive_not_acked_force_dst++;
+          _passive_last_node_foreign_responsibility = true;
+        } else {
+          //TODO: assign node only if it is not acked and there is no foreign respon
+          _passive_last_node_assign = true;
         }
       }
     }
@@ -501,7 +513,7 @@ Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
 }
 
 int
-Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked)
+Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -510,7 +522,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
     return -1;
   }
 
-  return bcn->add_last_node(id, last_node, forwarded, rx_acked);
+  return bcn->add_last_node(id, last_node, forwarded, rx_acked, responsibility, foreign_responsibility);
 }
 
 void
@@ -754,7 +766,8 @@ Flooding::table()
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
         sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)?0:1) << "\" rcv_cnt=\"";
         sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
       }

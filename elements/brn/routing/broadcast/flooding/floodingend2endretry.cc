@@ -88,10 +88,10 @@ FloodingEnd2EndRetry::run_timer(Timer *)
   BRN_DEBUG("Timer");
 
   Timestamp now = Timestamp::now();
-  
+
   int next_timeout_qi = -1;
   int next_time_left = _dfl_timeout << 1;
-  
+
   for( int i =  p_queue.size()-1; i >= 0; i--) {
     int time_left = p_queue[i]->time_left(now);
     if ( time_left < (int32_t)_time_tolerance ) {
@@ -130,15 +130,15 @@ FloodingEnd2EndRetry::push(int, Packet *packet )
     BRN_DEBUG("Enqueu: %d %d",_dfl_retries, _dfl_timeout);
     RetryPacket *rp = new RetryPacket(packet->clone()->uniqueify(), _dfl_retries, _dfl_timeout);
     p_queue.push_back(rp);
-    
+
     _queued_pkts++;
-  
+
     if ( p_queue.size() == 1 ) {
       BRN_DEBUG("Time after %d",p_queue[0]->time_left(Timestamp::now()));
       _retransmit_timer.schedule_after_msec(p_queue[0]->time_left(Timestamp::now()));
     }
   }
-  
+
   output(0).push(packet);
 }
 
