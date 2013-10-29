@@ -297,6 +297,8 @@ class Flooding : public BRNElement {
                 fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
             }
 
+            assert(fln[i].flags != 0);
+
             return 0;
           }
         }
@@ -315,6 +317,8 @@ class Flooding : public BRNElement {
 
         /* revoke assignment since node is new */
         revoke_assigned_node(id, node);
+
+        assert(fln[fln_i].flags != 0 );
 
         return _last_node_list_size[index];
       }
@@ -425,6 +429,18 @@ class Flooding : public BRNElement {
         if ( ln != NULL ) {
           ln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
           ln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+        } else {
+          add_last_node(id, target, false, false, true, false);
+        }
+      }
+
+      void set_foreign_responsibility_target(uint32_t id, EtherAddress *target) {
+        struct flooding_last_node* ln = get_last_node(id, target);
+        if ( ln != NULL ) {
+          ln->flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
+          ln->flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //set foreign_responsibility
+        } else {
+          add_last_node(id, target, false, false, false, true);
         }
       }
 
@@ -487,6 +503,7 @@ class Flooding : public BRNElement {
   void clear_assigned_nodes(EtherAddress *src, uint32_t id);
 
   void set_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target);
+  void set_foreign_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target);
   bool is_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target);
 
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);

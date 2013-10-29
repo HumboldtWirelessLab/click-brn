@@ -171,7 +171,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
   //clear responseflag for the case that broadcast is used
-  bcast_header->flags &= ~BCAST_HEADER_FLAGS_FORCE_DST;
+  bcast_header->flags &= ~(BCAST_HEADER_FLAGS_FORCE_DST & BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN);
 
   uint16_t assigned_nodes = 0;
 
