@@ -76,12 +76,15 @@ uint16_t BoTargetDiffRxTxBusy::get_id()
 
 int BoTargetDiffRxTxBusy::get_cwmin(Packet *p, uint8_t tos)
 {
+  (void) p;
+  (void) tos;
+
   struct airtime_stats *as = _cst->get_latest_stats();
   uint32_t busy = as->hw_busy;
   uint32_t rx   = as->hw_rx;
   uint32_t tx   = as->hw_tx;
 
-  int32_t diff = busy - (tx + rx);
+  uint32_t diff = busy - (tx + rx);
 
   BRN_DEBUG("BoTargetDiff.get_cwmin():\n");
   BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _target_diff: %d\n", rx, tx, busy, diff, _targetdiff);
@@ -89,7 +92,7 @@ int BoTargetDiffRxTxBusy::get_cwmin(Packet *p, uint8_t tos)
 
   if ((diff < _tdiff_lwm) && ((int32_t)_bo_for_targetdiff > 1))
     decrease_cw();
-  else if ((diff > _tdiff_hwm) && ((int32_t)_bo_for_targetdiff < _max_cwmin))
+  else if ((diff > _tdiff_hwm) && (_bo_for_targetdiff < _max_cwmin))
     increase_cw();
 
   if (_bo_for_targetdiff < _min_cwmin)
@@ -105,6 +108,7 @@ int BoTargetDiffRxTxBusy::get_cwmin(Packet *p, uint8_t tos)
 
 void BoTargetDiffRxTxBusy::handle_feedback(uint8_t retries)
 {
+  (void) retries;
 }
 
 

@@ -63,7 +63,7 @@ Flooding::Flooding()
     _flooding_rx_new_id(0),
     _flooding_fwd_new_id(0),
     _flooding_rx_ack(0),
-    _enable_abort_tx(false)
+    _abort_tx_mode(0)
 {
   BRNElement::init();
   reset_last_tx();
@@ -81,7 +81,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGPOLICY", cpkP+cpkM, cpElement, &_flooding_policy,
       "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
-      "ENABLEABORTTX", cpkP, cpBool, &_enable_abort_tx,
+      "ABORTTX", cpkP, cpInteger, &_abort_tx_mode,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -176,8 +176,8 @@ Flooding::push( int port, Packet *packet )
 
     if ( _flooding_passiveack != NULL )                       //passiveack will also handle first transmit
       _flooding_passiveack->packet_enqueue(packet, &src, _bcast_id, &passiveack, -1);
-    else 
-     retransmit_broadcast(packet, &src, _bcast_id);      //send packet
+    else
+      retransmit_broadcast(packet, &src, _bcast_id);      //send packet
 
   } else if ( port == 1 ) {                                  // kommt von brn
 
@@ -263,8 +263,8 @@ Flooding::push( int port, Packet *packet )
      * insert to new, assign or foreign_responsible
      */
     if ( _passive_last_node_new ) {
-      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked ); //clear resp flag if we are sure, that dst
-      _passive_last_node_new = false;                                                         //received the pkt
+      add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, _passive_last_node_rx_acked );
+      _passive_last_node_new = false;
     } else if ( _passive_last_node_assign ) {  
       BRN_DEBUG("Assign node: %s", rx_node.unparse().c_str());
       assign_last_node(&src, (uint32_t)p_bcast_id, &rx_node);
@@ -346,24 +346,38 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("lasttx match feedback. Succ: %d",(port==3)?1:0);
       reset_last_tx(); //reset current tx since it is finished now
     } else {
-      BRN_ERROR("Wrong feedback. doesn't match last_tx");
+      BRN_ERROR("Wrong feedback. doesn't match last_tx: %s %s %d vs %s %s %d",rx_node.unparse().c_str(), src.unparse().c_str(), p_bcast_id,
+                                                                              _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(),
+                                                                              _last_tx_bcast_id);
     }
 
     //TODO: maybe last node is already known due to other ....whatever
 
     forward_done(&src, p_bcast_id, (port == 3) && (!rx_node.is_broadcast()), get_last_node(&src, p_bcast_id, &rx_node) == NULL);
 
+    bool packet_is_tx_abort = false;
+    int no_transmissions = 1;       //in the case of wired or broadcast
+
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
-      _flooding_sent += (((int)ceh->retries) + 1);
-      BRN_DEBUG("Unicast");
-      sent(&src, p_bcast_id, (((int)ceh->retries) + 1));
-    } else {
-      _flooding_sent++;
-      sent(&src, p_bcast_id, 1);
-    }
 
-    if ( port == 2 ) { //txfeedback failure  
+      BRN_DEBUG("Unicast");
+
+      if ( (port == 2) && (ceh->flags & WIFI_EXTRA_TX_ABORT)) {
+
+        BRN_ERROR("Looks like abort");
+        no_transmissions = (int)ceh->retries;
+        packet_is_tx_abort = true;
+
+      } else {
+        no_transmissions = (int)ceh->retries + 1;
+      }
+    } //TODO: correct due to tx abort in the case of wired and/or broadcast (now assume 1 transmission)
+
+    _flooding_sent += no_transmissions;
+    sent(&src, p_bcast_id, no_transmissions);
+
+    if ( port == 2 ) { //txfeedback failure
       BRN_DEBUG("Flooding: TXFeedback failure\n");
     } else {           //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
@@ -372,7 +386,7 @@ Flooding::push( int port, Packet *packet )
     }
 
     if ( _flooding_passiveack != NULL )
-      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, false);
+      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, false, packet_is_tx_abort, no_transmissions);
     else
       packet->kill();
 
@@ -420,6 +434,11 @@ Flooding::push( int port, Packet *packet )
             _passive_last_node_new = true;
             _flooding_passive_not_acked_force_dst++;
           } else _passive_last_node_assign = true;
+
+          if (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0 ) && (is_last_tx(rx_node, src, p_bcast_id))) {
+            BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
+            abort_last_tx(rx_node);
+          }
         }
       }
     }
@@ -438,7 +457,7 @@ Flooding::push( int port, Packet *packet )
     _flooding_lower_layer_reject++;
 
     if ( _flooding_passiveack != NULL )
-      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, true);
+      _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, true, false, 0); //reject is not abort and is not transmitted
     else
       packet->kill();
   }
@@ -605,7 +624,7 @@ Flooding::reset()
   _flooding_src = _flooding_fwd = _bcast_id = _flooding_rx = _flooding_sent = _flooding_passive = 0;
   _flooding_last_node_due_to_passive = _flooding_last_node_due_to_ack = _flooding_last_node_due_to_piggyback = 0;
   _flooding_lower_layer_reject = _flooding_src_new_id = _flooding_rx_new_id = _flooding_fwd_new_id = 0;
-  _flooding_rx_ack = _tx_aborts = 0;
+  _flooding_rx_ack = _tx_aborts = _tx_aborts_errors = 0;
 
   if ( _bcast_map.size() > 0 ) {
     BcastNodeMapIter iter = _bcast_map.begin();
@@ -685,7 +704,7 @@ Flooding::stats()
   StringAccum sa;
 
   sa << "<flooding node=\"" << BRN_NODE_NAME << "\" policy=\"" <<  _flooding_policy->floodingpolicy_name();
-  sa << "\" policy_id=\"" << _flooding_policy->floodingpolicy_id() << "\" enable_tx_abort=\"" << (int)(_enable_abort_tx?1:0);
+  sa << "\" policy_id=\"" << _flooding_policy->floodingpolicy_id() << "\" tx_abort_mode=\"" << (int)_abort_tx_mode;
   sa << "\" >\n\t<localstats source=\"" << _flooding_src << "\" received=\"" << _flooding_rx;
   sa << "\" sent=\"" << _flooding_sent << "\" forward=\"" << _flooding_fwd;
   sa << "\" passive=\"" << _flooding_passive << "\" last_node_passive=\"" << _flooding_last_node_due_to_passive;
@@ -693,7 +712,7 @@ Flooding::stats()
   sa << "\" passive_no_ack_force_dst=\"" << _flooding_passive_not_acked_force_dst << "\" rx_ack=\"" << _flooding_rx_ack;
   sa << "\" last_node_piggyback=\"" << _flooding_last_node_due_to_piggyback << "\" low_layer_reject=\"" << _flooding_lower_layer_reject;
   sa << "\" source_new=\"" << _flooding_src_new_id << "\" forward_new=\"" << _flooding_fwd_new_id;
-  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" txaborts=\"" << _tx_aborts;
+  sa << "\" received_new=\"" << _flooding_rx_new_id << "\" txaborts=\"" << _tx_aborts << "\" tx_aborts_errors=\"" << _tx_aborts_errors;
   sa << "\" />\n\t<neighbours count=\"" << _recv_cnt.size() << "\" >\n";
 
   for (RecvCntMapIter rcm = _recv_cnt.begin(); rcm.live(); ++rcm) {

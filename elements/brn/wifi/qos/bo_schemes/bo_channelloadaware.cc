@@ -92,7 +92,7 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
    */
   if ((busy < _tcl_lwm) && ((int32_t)_bo_for_target_channelload > 1))
     decrease_cw();
-  else if ((busy > _tcl_hwm) && ((int32_t)_bo_for_target_channelload < _max_cwmin))
+  else if ((busy > _tcl_hwm) && (_bo_for_target_channelload < _max_cwmin))
     increase_cw();
 
   if (_bo_for_target_channelload < _min_cwmin)
@@ -108,6 +108,7 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
 void BoChannelLoadAware::handle_feedback(uint8_t retries)
 {
+  (void) retries;
 }
 
 
