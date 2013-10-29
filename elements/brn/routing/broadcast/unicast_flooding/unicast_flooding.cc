@@ -110,7 +110,15 @@ void
 UnicastFlooding::push(int, Packet *p)
 {
   //port 0: transmit to other brn nodes; rewrite from broadcast to unicast
-  if (Packet *q = smaction(p, true)) output(0).push(q);
+  if (Packet *q = smaction(p, true)) {
+
+    if ( q != NULL ) {
+      BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
+      _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
+    }
+
+    output(0).push(q);
+  }
 }
 
 Packet *
@@ -129,6 +137,7 @@ UnicastFlooding::pull(int)
   }
 
   if ( p != NULL ) {
+    BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
     _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
   }
 
@@ -197,18 +206,22 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
     /**
      * First, check for responsible nodes
+     * If we have such nodes than we already have a candidate set
      */
 
-    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                 //add node to known_nodes if
-      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) ||   //1. i'm not responsible
-           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ) { //2. node has the packet_id
-        known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
-      } else {
+    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                 //add node to candidate set if
+      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&  //1. i'm responsible (due unicast before or fix set)
+           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0) ) {       //2. node has not acked the packet_id
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
+      } else {
+        known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
       }
     }
 
     if ( _use_assign_info ) {
+      /**
+       * a nother node try to reach the node
+       */
       last_nodes = _flooding->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
@@ -228,6 +241,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
            (_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) ||
            ( candidate_set.size() != 0) ) {
 
+        /* if we hav no cands take fix addr or use all neighbors */
         if ( candidate_set.size() == 0 ) {
           if (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE)
             _fhelper->get_filtered_neighbors(*me, candidate_set);
@@ -235,6 +249,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
             candidate_set.push_back(static_dst_mac);
         }
 
+        /* delete all known neighbours */
         for ( int i = candidate_set.size()-1; i >= 0; i--) {
           for ( int j = 0; j < known_neighbors.size(); j++) {
             if ( candidate_set[i] == known_neighbors[j] ) {
@@ -299,9 +314,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       if ( _reject_on_empty_cs ) {
         BRN_DEBUG("We have only weak or no neighbors. Reject!");
         _cnt_reject_on_empty_cs++;
-        _flooding->clear_assigned_nodes(&src, bcast_id);
-        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;
-        if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN;
+        _flooding->clear_assigned_nodes(&src, bcast_id);                                        //clear all assignment (temporaly mark as "the node has the paket"
+        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;                           //reject and assign nodes are part of decision
+        if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN; 
         output(1).push(p_in);
         return NULL;
       }
@@ -357,7 +372,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         next_hop = algorithm_most_neighbours(candidate_set, 2);
         break;
 
-      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing
+      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
         break;
 
       default:
@@ -409,17 +424,17 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
 
   Vector<EtherAddress> local_neighbours;
   _fhelper->get_filtered_neighbors(*me, local_neighbours);
-  
+
   // search for the best nb
   int32_t best_new_metric = -1;
   EtherAddress best_nb;
- 
+
   //start node is blacklist node
   HashMap<EtherAddress, EtherAddress> blacklist;
   blacklist.insert(*me, *me);
 
   NetworkGraph *ng_list = new NetworkGraph[neighbors.size()];
-    
+
   /**
    * get neighbours of neighbours without start node
    * x 2-hop neighbourhood
@@ -434,7 +449,7 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
 
   for( int x = 0; x < neighbors.size(); x++) {
     //Estimate size etc...
-    
+
     /**
      * B1.1. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | nb(c) n nb(x) |
      * B1.2. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | (nb(nb(c)) u nb(c)) n nb(x) |
@@ -445,22 +460,22 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
      * B2.3. | nb(c) \ nb(x) |
      * 
      **/
-   
+
     /** nb(c) \ (nb(nb(x)\{c}) U nb(x)) **/
     uint32_t foreign_exclusive_nb_hood = _fhelper->graph_diff_size(local_neighbours, ng_list[x]);
-    
+
     /** nb(c) \ nb(x) **/
     Vector<EtherAddress> x_neighbours;
     _fhelper->get_filtered_neighbors(neighbors[x], x_neighbours); //nb(x)
 
     uint32_t foreign_exclusive_nb = _fhelper->graph_diff_size(local_neighbours, x_neighbours);
-    
+
     /** nb(c) n nb(x)  **/
     uint32_t cut_nb_c_nb_x = _fhelper->graph_cut_size(x_neighbours, local_neighbours);
-    
+
     /** (nb(nb(c)) u nb(c)) n nb(x) **/
     uint32_t cut_local_graph_nb_x = _fhelper->graph_cut_size(x_neighbours, local_graph);
- 
+
     int32_t new_metric = 0;
 
     switch (_ucast_peer_metric) {
@@ -483,7 +498,7 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
       best_new_metric = new_metric;
       best_nb = neighbors[x];
     }
-        
+
     x_neighbours.clear();
     _fhelper->clear_graph(ng_list[x]);
   }
@@ -492,7 +507,7 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
   local_neighbours.clear();
   _fhelper->clear_graph(local_graph);
   delete[] ng_list;
-  
+
   BRN_DEBUG("Best: %s Metric: %d",best_nb.unparse().c_str(), best_new_metric);
 
   // check if we found a candidate and rewrite packet
@@ -524,7 +539,7 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_BCAST_WITH_PRECHECK: return "bcast_with_precheck";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 
 String
@@ -536,7 +551,7 @@ UnicastFlooding::get_preselection_string(uint32_t id)
     case UNICAST_FLOODING_PRESELECTION_CHILD_ONLY: return "child_only";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 //-----------------------------------------------------------------------------
 // Handler
@@ -562,18 +577,18 @@ read_param(Element *e, void *thunk)
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;
       sa << "\" empty_cs_bcast=\"" << rewriter->_cnt_bcasts_empty_cs << "\" >\n";
-      
+
       sa << "\t<rewrite_cnt targets=\"" << rewriter->rewrite_cnt_map.size() << "\" >\n";
-      
+
       for ( UnicastFlooding::TargetRewriteCntMapIter trcm = rewriter->rewrite_cnt_map.begin(); trcm.live(); ++trcm) {
         uint32_t cnt = trcm.value();
         EtherAddress addr = trcm.key();
-        
+
         sa << "\t\t<rewrite_cnt_node node=\"" << addr.unparse() << "\" cnt=\"" << cnt << "\" />\n";
       }
 
       sa << "\t</rewrite_cnt>\n";
-      
+
       sa << "</unicast_rewriter>\n";
       break;
     }

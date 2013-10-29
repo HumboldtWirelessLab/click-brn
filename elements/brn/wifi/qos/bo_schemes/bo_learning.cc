@@ -24,10 +24,10 @@ CLICK_DECLS
 
 
 BoLearning::BoLearning() :
+  _strict(0),
   _current_bo(_bo_start),
   _bo_cnt_up(0),
-  _bo_cnt_down(0),
-  _strict(0)
+  _bo_cnt_down(0)
 {
   BRNElement::init();
 }
@@ -81,6 +81,9 @@ uint16_t BoLearning::get_id()
 
 int BoLearning::get_cwmin(Packet *p, uint8_t tos)
 {
+  (void) p;
+  (void) tos;
+
   return _current_bo;
 }
 

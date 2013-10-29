@@ -63,7 +63,7 @@ FloodingPassiveAck::~FloodingPassiveAck()
     PassiveAckPacket *p_next = p_queue[i];
     delete p_next;
   }
-  
+
   p_queue.clear();
 }
 
@@ -125,9 +125,10 @@ FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
 }
 
 void
-FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected)
+FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t 
+no_transmissions)
 {
-  BRN_DEBUG("Feedback: %s %d",src->unparse().c_str(), bcast_id);
+  BRN_DEBUG("Feedback/Abort: %s %d",src->unparse().c_str(), bcast_id);
 
   struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)(p->data());
   FloodingPassiveAck::PassiveAckPacket *pap = NULL;
@@ -139,9 +140,10 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
 
   assert(pap != NULL);
 
-  if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) != 0 )) ||
-       ( pap->retries_left() == 0 ) ||
-       packet_is_finished(pap)) {
+  if (abort && (no_transmissions == 0)) pap->inc_max_retries();
+
+  if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
+        packet_is_finished(pap)) {
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
     _queued_pkts--;
     p->kill();
