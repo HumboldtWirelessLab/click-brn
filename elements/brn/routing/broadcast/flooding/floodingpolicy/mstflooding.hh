@@ -37,7 +37,7 @@ class MSTFlooding : public FloodingPolicy
                     uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                     Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack);
     void init_broadcast(EtherAddress *, uint32_t, uint32_t *, uint8_t *,
-                        Vector<EtherAddress> *, Vector<EtherAddress> *) {};
+                        Vector<EtherAddress> *, Vector<EtherAddress> *);
     int policy_id();
 
     String flooding_info(void);
