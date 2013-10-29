@@ -175,6 +175,10 @@ FloodingPassiveAck::count_unfinished_neighbors(PassiveAckPacket *pap)
 
   for ( int i = unfinished_neighbors-1; i >= 0; i--) {    //!! unfinished_neighbors will decreased in loop !!
     for ( uint32_t j = 0; j < last_nodes_size; j++) {
+      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&
+           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0) ) continue;  //i'm responsible and it's  not acked
+      //TODO: second test (acked) is not nötig, since responsible only as long as not acked
+
       if ( memcmp(cnml->_neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
         unfinished_neighbors--;
         break;

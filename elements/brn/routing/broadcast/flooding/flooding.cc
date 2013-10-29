@@ -418,13 +418,17 @@ Flooding::push( int port, Packet *packet )
           abort_last_tx(rx_node);
         }
       } else {                                                                               //not successfurl but...
-        if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                      //i'm not responsible
+        //if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                      //i'm not responsible
             if ((is_last_tx(rx_node, src, p_bcast_id)) &&
                 (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0) || ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0)) ) {
             BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
             abort_last_tx(rx_node);
+            //since other node do this, we are not responible anymore
+            if ( (bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
+              set_foreign_responsibility_target(&src, p_bcast_id, &rx_node);
+            }
           }
-        }
+        //}
       }
 
       /**
@@ -700,6 +704,13 @@ Flooding::set_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) bcn->set_responsibility_target(id, target);
+}
+
+void
+Flooding::set_foreign_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  if ( bcn != NULL ) bcn->set_foreign_responsibility_target(id, target);
 }
 
 bool
