@@ -31,7 +31,7 @@ int
 ForeignRxStats::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   int ret;
-  
+
   ret = cp_va_kparse(conf, this, errh,
 		     "DEVICE", cpkP+cpkM, cpElement, &_device,
 		     "TIMEOUT", cpkP, cpInteger, &ack_timeout,
@@ -48,66 +48,72 @@ ForeignRxStats::initialize(ErrorHandler *)
   fwd_timer.initialize(this);
   return 0;
 }
-  
+
 void
 ForeignRxStats::run_timer(Timer *)
 {
   send_outstanding_packet(true); 
 }
-  
+
 Packet *
 ForeignRxStats::simple_action(Packet *p)
 {
 
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  
-  if ( ceh->flags & WIFI_EXTRA_TX ) {
-    send_outstanding_packet(true);
+
+  if (ceh->flags & WIFI_EXTRA_TX) {
+    //Abort packet are feedback after the data pkt and before the corresponding ack, therefore....wait for ack and keep packet
+    if ((ceh->flags & WIFI_EXTRA_TX_ABORT) == 0) send_outstanding_packet(true);
     return p;
-  } else { 
- 
+  } else {
+
     struct click_wifi *wh = (struct click_wifi *) p->data();
 
     EtherAddress dst = EtherAddress(wh->i_addr1);
+
+    //RxStats* rxs = rxs_tab.find(
 
     if ( dst.is_broadcast() || (dst == *_device->getEtherAddress()) ) {
       send_outstanding_packet(true);
       return p;
     }
-    
+
     int type = wh->i_fc[0] & WIFI_FC0_TYPE_MASK;
-    
+
     //Don't handle managment frames
     if ( type == WIFI_FC0_TYPE_MGT ) {
       send_outstanding_packet(true);
       return p;
     }
-  
+
     if ((type ==  WIFI_FC0_TYPE_CTL) && ((wh->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) == WIFI_FC0_SUBTYPE_ACK) && (last_packet != NULL)) {
       BRN_DEBUG("Ack: %d",(p->timestamp_anno() - last_packet->timestamp_anno()).msecval() );
-      BRN_DEBUG("Last: %d (%s, %s)  P: %d (%s, %s) Timeout: %d",last_packet->length(), last_packet->timestamp_anno().unparse().c_str(), last_packet_src.unparse().c_str(),
-		                                                p->length(), p->timestamp_anno().unparse().c_str(), dst.unparse().c_str(), ack_timeout);
-      
+      BRN_DEBUG("Last: %d (%s, %s)  P: %d (%s, %s) Timeout: %d",last_packet->length(), last_packet->timestamp_anno().unparse().c_str(), 
+                last_packet_src.unparse().c_str(), p->length(), p->timestamp_anno().unparse().c_str(), dst.unparse().c_str(), ack_timeout);
+
       if ((last_packet != NULL) && (p->length() >= 10) && (last_packet_src == dst) &&
-	  ((p->timestamp_anno() - last_packet->timestamp_anno()).msecval() <= ack_timeout)) {
-        send_outstanding_packet(false);    
+          ((p->timestamp_anno() - last_packet->timestamp_anno()).msecval() <= ack_timeout)) {
+        send_outstanding_packet(false);
       } else {
+        if ( last_packet == NULL ) {
+          click_chatter("Unhandle ack");
+        }
         send_outstanding_packet(true);
       }
-      
+
       return p;
-      
+
     } else if (type ==  WIFI_FC0_TYPE_DATA) {
       last_packet_src = EtherAddress(wh->i_addr2);
       send_outstanding_packet(true);
-      last_packet = p;      
-        
+      last_packet = p;
+
       fwd_timer.reschedule_after_msec(ack_timeout);
 
     } else {
       send_outstanding_packet(true);
-      return p;    
-    }       
+      return p;
+    }
   }
 
   return NULL;

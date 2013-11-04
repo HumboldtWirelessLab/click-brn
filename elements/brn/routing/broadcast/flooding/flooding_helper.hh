@@ -218,14 +218,14 @@ public:
   // helper
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
   CachedNeighborsMetricList* get_filtered_neighbors(const EtherAddress &node, int max_metric = -1);
-  
+
   void init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric);
   void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric);
   void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric, HashMap<EtherAddress,EtherAddress> &blacklist);
-  
+
   void clear_graph(NetworkGraph &net_graph);
   void remove_node(EtherAddress &node, NetworkGraph &ng);
-  
+
   void get_local_graph(const EtherAddress &node, Vector<EtherAddress> &known_neighbors, NetworkGraph &net_graph, int hops, int src_metric);
   void get_local_childs(const EtherAddress &node, NetworkGraph &net_graph, int hops);
 
@@ -237,7 +237,7 @@ public:
 
   int graph_cut_size(Vector<EtherAddress> &ng, NetworkGraph &ng2);
   int graph_cut_size(Vector<EtherAddress> &ng, Vector<EtherAddress> &ng2);
-  
+
   bool graph_overlapping(NetworkGraph &ng, NetworkGraph &ng_2);
   void graph_add(NetworkGraph &ng, NetworkGraph &ng2);
 #define graph_union graph_add
@@ -245,6 +245,7 @@ public:
   void graph_cut(NetworkGraph &ng, NetworkGraph &ng2);
 
   int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
+  int find_best(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   void neighbours();
 
 };

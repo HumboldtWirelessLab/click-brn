@@ -570,9 +570,14 @@ class Flooding : public BRNElement {
   uint32_t _tx_aborts;
   uint32_t _tx_aborts_errors;
 
+ private:
+
   EtherAddress _last_tx_dst_ea;
   EtherAddress _last_tx_src_ea;
   uint16_t _last_tx_bcast_id;
+  bool _last_tx_abort;
+
+ public:
 
   void set_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
     _last_tx_dst_ea = dst;
@@ -580,13 +585,24 @@ class Flooding : public BRNElement {
     _last_tx_bcast_id = id;
   };
 
-  void reset_last_tx() { set_last_tx(EtherAddress(), EtherAddress(), 0); }
+  void reset_last_tx() { set_last_tx(EtherAddress(), EtherAddress(), 0); _last_tx_abort = false; }
 
   bool is_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
     return (_last_tx_dst_ea == dst) && (_last_tx_src_ea == src) && (_last_tx_bcast_id == id);
   }
 
+  bool is_last_tx_id(EtherAddress src, uint16_t id) {
+    return (_last_tx_src_ea == src) && (_last_tx_bcast_id == id);
+  }
+
   void abort_last_tx(EtherAddress &dst) {
+    click_chatter("pi: %s %s %d (%s)", _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id, dst.unparse().c_str() );
+    if (_last_tx_abort ) {
+      click_chatter("Abort already running");
+      return;
+    }
+
+    _last_tx_abort = true;
     BRN_DEBUG("Abort last TX");
     if ( (_abort_tx_mode == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast() ) return;
 
@@ -596,6 +612,10 @@ class Flooding : public BRNElement {
 
     if ( failure ) _tx_aborts_errors++;
     else _tx_aborts++;
+  }
+
+  void abort_last_tx() {
+    abort_last_tx(_last_tx_dst_ea);
   }
 
 };
