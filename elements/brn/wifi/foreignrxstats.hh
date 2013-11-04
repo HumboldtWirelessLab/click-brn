@@ -73,11 +73,11 @@ class ForeignRxStats : public BRNElement {
       }
 
       inline void is_acked(uint16_t /*seq*/) {
-        
+
       }
 
   };
-  
+
  public:
   typedef HashMap<EtherAddress, RxStats*> RxStatsTable;
   typedef RxStatsTable::const_iterator RxStatsTableIter;
@@ -109,6 +109,14 @@ class ForeignRxStats : public BRNElement {
   String stats_handler();
 
   RxStatsTable rxs_tab;
+
+  uint32_t rfx_last_packet_was_abort;
+
+  uint32_t frx_stats_ack_without_uc_data;
+  uint32_t frx_stats_uc_data_with_ack;
+  uint32_t frx_stats_uc_data_with_ack_and_abort;
+  uint32_t frx_stats_uc_data_without_ack;
+
 };
 
 CLICK_ENDDECLS

@@ -125,8 +125,7 @@ FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
 }
 
 void
-FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t 
-no_transmissions)
+FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t no_transmissions)
 {
   BRN_DEBUG("Feedback/Abort: %s %d",src->unparse().c_str(), bcast_id);
 
@@ -140,7 +139,8 @@ no_transmissions)
 
   assert(pap != NULL);
 
-  if (abort && (no_transmissions == 0)) pap->inc_max_retries();
+  //TODO: is it a net retries if i sent the packet one time or little bit more ??
+  if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
   if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
         packet_is_finished(pap)) {

@@ -177,18 +177,21 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(&src);
 
-  if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
+  if ( _cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE ) {
+    candidate_set.push_back(static_dst_mac);
+  } else if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
 
     /**
-      * 
+      *
       * PRE SELECTION
-      * 
+      *
       * Candidate Selection
-      * 1. All neighbours                                                        (All nodes)
-      * 2. Neighbour (best set) which covers all n-hop neighbours (use dijkstra) (Strong connected)
-      * 
+      * 0. All neighbours                                                        (All nodes)
+      * 1. Neighbour (best set) which covers all n-hop neighbours (use dijkstra) (Strong connected)
+      * 2. Child only: nodes, which covers other (2-n)-hop nodes alone. There is no other node in my neighbourhood
+      *
       * In all cases all nodes which have already the message are removed.
-      * 
+      *
       * */
 
     //src mac
@@ -240,17 +243,13 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
      * all_nodes get all_nodes except last_nodes
      */
     if ( ! bcn->_fix_target_set ) {
+
+      /** we use all nodes (neighbors) or we have a candidate set (due responsibility) */
       if ( (_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_ALL_NODES) ||
-           (_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) ||
            ( candidate_set.size() != 0) ) {
 
-        /* if we hav no cands take fix addr or use all neighbors */
-        if ( candidate_set.size() == 0 ) {
-          if (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE)
-            _fhelper->get_filtered_neighbors(*me, candidate_set);
-          else
-            candidate_set.push_back(static_dst_mac);
-        }
+        /* if we have no cands take all neighbors */
+        if ( candidate_set.size() == 0 ) _fhelper->get_filtered_neighbors(*me, candidate_set);
 
         /* delete all known neighbours */
         for ( int i = candidate_set.size()-1; i >= 0; i--) {
@@ -295,6 +294,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
             if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
               break;
             } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
+              /* We have to switch to avoid, that no node sends a packet in e.g. a full connected network */
               BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
               final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
             }
@@ -305,7 +305,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         _fhelper->print_vector(candidate_set);
       }
 
-    }
+    }  //end fix_target
+
     //clear known neighbours1
     known_neighbors.clear();
 
@@ -317,8 +318,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       if ( _reject_on_empty_cs ) {
         BRN_DEBUG("We have only weak or no neighbors. Reject!");
         _cnt_reject_on_empty_cs++;
-        _flooding->clear_assigned_nodes(&src, bcast_id);                                        //clear all assignment (temporaly mark as "the node has the paket"
-        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;                           //reject and assign nodes are part of decision
+        _flooding->clear_assigned_nodes(&src, bcast_id);                     //clear all assignment (temporaly mark as "the node has the paket"
+        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;        //reject and assign nodes are part of decision
         if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN; 
         output(1).push(p_in);
         return NULL;
@@ -327,7 +328,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
       _cnt_bcasts_empty_cs++;
     }
-  } // end preselection strong connected
+  } // end of !"no rewrite"
 
 
   /**
@@ -336,7 +337,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     *
     * */
 
-  if ( candidate_set.size() > 1 ) { 
+  if ( candidate_set.size() > 1 ) {
     switch (_cand_selection_strategy) {
 
       case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
@@ -376,6 +377,10 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         break;
 
       case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
+        break;
+
+      case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
+        next_hop = candidate_set[_fhelper->find_best(*me, candidate_set)];
         break;
 
       default:

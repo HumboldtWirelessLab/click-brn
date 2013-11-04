@@ -585,6 +585,30 @@ FloodingHelper::find_worst(const EtherAddress &src, Vector<EtherAddress> &neighb
   return w_ind;
 }
 
+/*
+ *  find node in the set with best link
+ *
+ */
+int
+FloodingHelper::find_best(const EtherAddress &src, Vector<EtherAddress> &neighbors)
+{
+  if (neighbors.size() == 0) return -1;
+
+  int b_met = _link_table->get_link_metric(src, neighbors[0]);
+  int b_ind = 0;
+
+  for( int i = 1; i < neighbors.size(); i++) { // loop over neighbors
+    int m = _link_table->get_link_metric(src, neighbors[i]);
+
+    if ( m < b_met ) {
+      b_met = m;
+      b_ind = i;
+    }
+  }
+
+  return b_ind;
+}
+
 //-----------------------------------------------------------------------------
 // Handler
 //-----------------------------------------------------------------------------

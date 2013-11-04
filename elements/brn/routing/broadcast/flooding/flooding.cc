@@ -441,16 +441,22 @@ Flooding::push( int port, Packet *packet )
         BRN_DEBUG("Unicast: %s has successfully receive ID: %d from %s.",rx_node.unparse().c_str(), p_bcast_id, src.unparse().c_str());
         BRN_DEBUG("New node to last node due to passive unicast...");
 
-        if (_passive_last_node_new) _flooding_last_node_due_to_passive++;
+        if (_passive_last_node_new) {
+          _flooding_last_node_due_to_passive++;
+          _flooding_last_node_due_to_ack++;
+        }
 
         _passive_last_node_rx_acked = true;
 
       } else {                                                     //packet was not successfully transmitted (we can not be sure) or is not forced
         BRN_DEBUG("Assign new node...");
-        if (_passive_last_node_new) _flooding_passive_not_acked_dst++;
+        _flooding_passive_not_acked_dst++;
 
         if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
-          if (_passive_last_node_new) _flooding_passive_not_acked_force_dst++;
+          if (_passive_last_node_new) {
+            _flooding_last_node_due_to_passive++;
+            _flooding_passive_not_acked_force_dst++;
+          }
           _passive_last_node_foreign_responsibility = true;
         } else {
           //TODO: assign node only if it is not acked and there is no foreign respon
@@ -628,6 +634,12 @@ Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
   WritablePacket *out_packet = BRNProtocol::add_brn_header(p, BRN_PORT_FLOODING, BRN_PORT_FLOODING, ttl, DEFAULT_TOS);
 
   BRNPacketAnno::set_ether_anno(out_packet, brn_ethernet_broadcast, brn_ethernet_broadcast, ETHERTYPE_BRN);
+
+  struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  if ((ceh != NULL) && (ceh->magic == WIFI_EXTRA_MAGIC)) {
+    memset(ceh, 0, sizeof(struct click_wifi_extra));
+    ceh->magic = WIFI_EXTRA_MAGIC;
+  }
 
   output(1).push(out_packet);
 
