@@ -176,7 +176,8 @@ MSTFlooding::flooding_info(void)
 }
 
 enum {
-  H_FLOODING_INFO
+  H_FLOODING_INFO,
+  H_DEBUG
 };
 
 static String
@@ -191,9 +192,17 @@ read_param(Element *e, void *thunk)
   }
 }
 
+static int add_follower (const String &data, Element *element, void *thunk, ErrorHandler *errh) {
+	int address=atoi(data.c_str());
+	MSTFlooding *sfl = (MSTFlooding *)element;
+	(*sfl).followers.push_back(address);
+	return 0;
+}
+
 void MSTFlooding::add_handlers()
 {
   add_read_handler("flooding_info", read_param , (void *)H_FLOODING_INFO);
+  add_write_handler("add_follower", add_follower , (void *) H_DEBUG);
 }
 
 CLICK_ENDDECLS
