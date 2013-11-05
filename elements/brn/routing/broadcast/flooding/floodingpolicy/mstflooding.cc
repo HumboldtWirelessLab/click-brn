@@ -62,11 +62,11 @@ MSTFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, u
 
 bool
 MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
-                           uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, 
-			    Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
+                           uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
   BRN_DEBUG("do_forward reached");
-  (void) is_known;
+  if ( is_known ) return false;
+
   *tx_data_size = 0;
   (*unicast_dst).clear();
   (*passiveack).clear();
@@ -129,7 +129,7 @@ void MSTFlooding::get_neighbours(String path) {
   while (i < _data_vec.size()) {
     cp_integer(_data_vec[i],&akt);
     ++i;
-    
+
     if (first==-1) first=akt;
 
     if (next) {
@@ -151,7 +151,7 @@ void MSTFlooding::get_neighbours(String path) {
       first=-1;
     }
   }
-  
+
   BRN_DEBUG("Neighbours: %d",followers.size());
   akt_foll=followers.begin();
 }

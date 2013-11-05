@@ -226,13 +226,6 @@ Flooding::push( int port, Packet *packet )
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
                                                              rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
                                                              &forwarder, &passiveack);
-    if ( !forwarder.empty() ) {
-      new_bcn->_fix_target_set = true;
-      for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
-        add_last_node(&src, _bcast_id, i, false, false, true, false);
-      }
-    }
-
 
     if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
 
@@ -302,8 +295,17 @@ Flooding::push( int port, Packet *packet )
     }
 
     if (forward) {
-
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
+
+      BRN_ERROR("FWDSIZE: %d", forwarder.size());
+      if ( !forwarder.empty() ) {
+        new_bcn->_fix_target_set = true;
+        for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
+          BRN_ERROR("Add node %s %d %s", i->unparse().c_str(), p_bcast_id, src.unparse().c_str());
+          int u = add_last_node(&src, p_bcast_id, i, false, false, true, false);
+          BRN_ERROR("Number: %d", u);
+        }
+      }
 
       if ( rxdatasize > 0 ) packet->pull(rxdatasize);           //remove rx data
 
@@ -789,7 +791,8 @@ Flooding::table()
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
         sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" finished_responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)?0:1) << "\" rcv_cnt=\"";
         sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";

@@ -121,6 +121,8 @@ class Flooding : public BRNElement {
 #define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_ME            (FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
 #define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN       (FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
 
+#define FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY   16
+
 #define FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN            128
 
       };
@@ -283,16 +285,18 @@ class Flooding : public BRNElement {
 
         //search for node
         for ( int i = 0; i < fln_i; i++ ) {
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {  //found node
+          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {                //found node
 
             if ( forwarded ) fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
             if ( rx_acked ) {
-              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;                //is acked ? so mark it
-              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
-              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;         //clear responsibility
+              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;                  //is acked ? so mark it
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
+              if ( fln[i].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY )       //i was resp? 
+                fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY; //then mark it
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;           //clear responsibility
             } else if ( responsibility ) {
-              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;          //set responsibility
-              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;            //set responsibility
+              fln[i].flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
             } else if (foreign_responsibility && ((fln[i].flags & FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN) == 0)) {
                 fln[i].flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
             }
