@@ -210,7 +210,10 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
   int un = count_unfinished_neighbors(pap);
   if ( n == un ) return (click_random() % _dfl_timeout);
 
-  int mod_time = (_dfl_timeout * (n-un))/n;
+  //int mod_time = (_dfl_timeout * (n-un))/n;
+  int mod_time = isqrt32((_dfl_timeout * _dfl_timeout * (n-un))/n);
+  //int mod_time = (_dfl_timeout * (n-un) * (n-un))/(n*n);
+
   if (mod_time == 0) return (click_random() % _dfl_timeout);
 
   return (click_random() % mod_time);

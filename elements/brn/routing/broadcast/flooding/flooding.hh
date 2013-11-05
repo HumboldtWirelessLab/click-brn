@@ -606,9 +606,10 @@ class Flooding : public BRNElement {
       return;
     }
 
+    if ( (_abort_tx_mode == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast() ) return;
+
     _last_tx_abort = true;
     BRN_DEBUG("Abort last TX");
-    if ( (_abort_tx_mode == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast() ) return;
 
     bool failure = false;
     for (int devs = 0; devs < _me->countDevices(); devs++)
