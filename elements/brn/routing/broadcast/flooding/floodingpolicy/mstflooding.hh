@@ -41,9 +41,9 @@ class MSTFlooding : public FloodingPolicy
     int policy_id();
 
     String flooding_info(void);
-
-  private:
     Vector<int> followers;
+    
+  private:
     Vector<int>::iterator akt_foll;
     String _circle_path;
     void get_neighbours(String path);
