@@ -47,7 +47,7 @@ UnicastFlooding::UnicastFlooding():
   _reject_on_empty_cs(true),
   _force_responsibility(false),
   _use_assign_info(false),
-  _fix_candidate_set(true),
+  _fix_candidate_set(false),
   _cnt_rewrites(0),
   _cnt_bcasts(0),
   _cnt_bcasts_empty_cs(0),
