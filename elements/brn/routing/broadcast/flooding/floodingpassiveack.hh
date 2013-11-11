@@ -135,8 +135,9 @@ class FloodingPassiveAck : public BRNElement {
   BRN2NodeIdentity *_me;
   BRNElement *_retransmit_element;  
   Flooding *_flooding;
+public:
   FloodingHelper *_fhelper;
-
+private:
   PAckPacketVector p_queue;
 
   uint32_t _dfl_retries;

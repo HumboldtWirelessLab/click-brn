@@ -125,11 +125,11 @@ FloodingHelper::uninitialize()
  * 
  */
 void
-FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out)
+FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int max_metric)
 {
   assert( out.size() == 0 );
 
-  CachedNeighborsMetricList* cnml = get_filtered_neighbors(node);
+  CachedNeighborsMetricList* cnml = get_filtered_neighbors(node, max_metric);
 
   for( int n_i = 0; n_i < cnml->_neighbors.size(); n_i++) out.push_back(cnml->_neighbors[n_i]);
 }
@@ -607,6 +607,16 @@ FloodingHelper::find_best(const EtherAddress &src, Vector<EtherAddress> &neighbo
   }
 
   return b_ind;
+}
+
+/** FUNCTION TO DECIDE WHETHER OTHER NODE IS BETTER **/
+bool
+FloodingHelper::is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst)
+{
+  int m1 = _link_table->get_link_metric(src, dst);
+  int m2 = _link_table->get_link_metric(src2, dst);
+
+  return (m2 < m1);
 }
 
 //-----------------------------------------------------------------------------

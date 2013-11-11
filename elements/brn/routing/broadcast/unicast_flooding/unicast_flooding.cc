@@ -47,6 +47,7 @@ UnicastFlooding::UnicastFlooding():
   _reject_on_empty_cs(true),
   _force_responsibility(false),
   _use_assign_info(false),
+  _fix_candidate_set(true),
   _cnt_rewrites(0),
   _cnt_bcasts(0),
   _cnt_bcasts_empty_cs(0),
@@ -74,6 +75,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "FORCERESPONSIBILITY", cpkP, cpBool, &_force_responsibility,
       "USEASSIGNINFO", cpkP, cpBool, &_use_assign_info,
       "STATIC_DST", cpkP, cpEtherAddress, &static_dst_mac,
+      "FIXCS", cpkP, cpBool, &_fix_candidate_set,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -300,8 +302,18 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
             }
           }
 
-        } while ( candidate_set.size() == 0 );
+        } while (candidate_set.empty());
 
+
+        /* We have a candidate set. We fix it now*/
+        if ( _fix_candidate_set && (!candidate_set.empty()) ) {
+          for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
+            BRN_ERROR("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
+            _flooding->add_last_node(&src, bcast_id, i, false, false, true, false);
+          }
+        }
+
+        /* print result */
         _fhelper->print_vector(candidate_set);
       }
 
