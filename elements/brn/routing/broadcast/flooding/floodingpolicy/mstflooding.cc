@@ -52,6 +52,11 @@ MSTFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
+EtherAddress ID_to_MAC (int id) {
+  unsigned char data[]={0,0,0,0,0,id};
+  return EtherAddress(data);
+}
+
 void 
 MSTFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, uint8_t *,
                         Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
@@ -68,8 +73,8 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
   if ( is_known ) return false;
 
   *tx_data_size = 0;
-  (*unicast_dst).clear();
-  (*passiveack).clear();
+  unicast_dst->clear();
+  passiveack->clear();
   /*Gibt nur den nächsten Nachbarn zurück
   if (akt_foll==followers.end()) {
 	  BRN_DEBUG("no more neighbours");
@@ -80,14 +85,14 @@ MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, ui
   ++akt_foll;
   return true;*/
   /* Gibt alle Nachbarn zurück */
-  for (Vector<int>::iterator i=followers.begin();i!=followers.end();++i) {
-    (*unicast_dst).push_back(ID_to_MAC(*i));
-    (*passiveack).push_back(ID_to_MAC(*i));
+  for (Vector<EtherAddress>::iterator i = followers.begin(); i!=followers.end(); ++i) {
+    unicast_dst->push_back(*i);
+    passiveack->push_back(*i);
   }
-  BRN_DEBUG("NEIGHBOURS %d *unicast_dst.size() %d",followers.size(),(*unicast_dst).size());
-  
+  BRN_DEBUG("NEIGHBOURS %d *unicast_dst.size() %d", followers.size(), (*unicast_dst).size());
+
   //return ! is_known;
-  if ((*unicast_dst).size()==0) return false;
+  if (unicast_dst->empty()) return false;
   return true;
 }
 
@@ -108,12 +113,13 @@ void MSTFlooding::get_neighbours(String path) {
   String _data = file_string(path);
   Vector<String> _data_vec;
   cp_spacevec(_data, _data_vec);
-  
+
   int node_id=0;
   EtherAddress _tmp=ID_to_MAC(node_id);
-  while (!((*_me).isIdentical(&_tmp))) {
+
+  while (!(_me->isIdentical(&_tmp))) {
     node_id++;
-    if (node_id>400) {
+    if (node_id > 400) {
       BRN_DEBUG("ID not found");
       break;
     }
@@ -134,33 +140,26 @@ void MSTFlooding::get_neighbours(String path) {
 
     if (next) {
       if (akt==-1) {
-        followers.push_back(first);
-	BRN_DEBUG("Added node: %d",first);
+        followers.push_back(ID_to_MAC(first));
+        BRN_DEBUG("Added node: %d",first);
       } else {
-        followers.push_back(akt);
-	BRN_DEBUG("Added node: %d",akt);
+        followers.push_back(ID_to_MAC(akt));
+        BRN_DEBUG("Added node: %d",akt);
       }
       next=false;
     }
 
-    if (akt==node_id) {
-      next=true;
+    if (akt == node_id) {
+      next = true;
     }
 
-    if (akt==-1) {
-      first=-1;
+    if (akt == -1) {
+      first = -1;
     }
   }
 
   BRN_DEBUG("Neighbours: %d",followers.size());
-  akt_foll=followers.begin();
-}
-
-
-EtherAddress MSTFlooding::ID_to_MAC (int id) {
-  unsigned char data[]={0,0,0,0,0,0};
-  data[5]=id;
-  return EtherAddress(data);
+  //akt_foll=followers.begin();
 }
 
 /*******************************************************************************************/
@@ -192,11 +191,21 @@ read_param(Element *e, void *thunk)
   }
 }
 
-static int add_follower (const String &data, Element *element, void *thunk, ErrorHandler *errh) {
-	int address=atoi(data.c_str());
-	MSTFlooding *sfl = (MSTFlooding *)element;
-	(*sfl).followers.push_back(address);
-	return 0;
+static int add_follower (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
+{
+  MSTFlooding *mstfl = (MSTFlooding *)element;
+
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  EtherAddress address;
+
+  if ( !cp_ethernet_address(args[0], &address) ) {
+    mstfl->followers.push_back(ID_to_MAC(atoi(args[0].c_str())));
+  }
+
+  return 0;
 }
 
 void MSTFlooding::add_handlers()

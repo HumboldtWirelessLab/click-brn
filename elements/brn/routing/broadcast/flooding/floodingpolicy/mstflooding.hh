@@ -41,14 +41,16 @@ class MSTFlooding : public FloodingPolicy
     int policy_id();
 
     String flooding_info(void);
-    Vector<int> followers;
-    
+    Vector<EtherAddress> followers;
+
   private:
-    Vector<int>::iterator akt_foll;
+
+    BRN2NodeIdentity *_me;
+
+    //Vector<EtherAddress>::iterator akt_foll;
+
     String _circle_path;
     void get_neighbours(String path);
-    EtherAddress ID_to_MAC (int id);
-    BRN2NodeIdentity *_me;
 
 };
 
