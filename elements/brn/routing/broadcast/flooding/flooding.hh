@@ -37,6 +37,9 @@
 
 CLICK_DECLS
 
+/**  TODO:
+ * forward a known packet again? ask   policy if the packet is known ?
+ */
 /*
  * !!! BROADCAST ID -> 0 is never used !!! Don't use 0 as bcastid !!
  */
@@ -566,9 +569,10 @@ class Flooding : public BRNElement {
 
 
   /* Members and functions for tx abort */
-#define FLOODING_TXABORT_MODE_NONE     0
-#define FLOODING_TXABORT_MODE_ACKED    1
-#define FLOODING_TXABORT_MODE_ASSIGNED 2
+#define FLOODING_TXABORT_MODE_NONE        0
+#define FLOODING_TXABORT_MODE_ACKED       1
+#define FLOODING_TXABORT_MODE_ASSIGNED    2
+#define FLOODING_TXABORT_MODE_BETTER_LINK 4
 
   uint32_t _abort_tx_mode;
   uint32_t _tx_aborts;
