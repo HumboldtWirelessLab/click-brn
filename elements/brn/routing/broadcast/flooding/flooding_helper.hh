@@ -49,7 +49,7 @@ class NeighbourMetric {
   NeighbourMetric *_predecessor;
 
 #define NEIGHBOUR_METRIC_ROOT_FOLLOWER 1
-  
+
   NeighbourMetric(EtherAddress ea, uint16_t metric ) {
     init(ea, metric, 0, 0);
   }
@@ -57,7 +57,7 @@ class NeighbourMetric {
   NeighbourMetric(EtherAddress ea, uint16_t metric, uint8_t hops ) {
     init(ea, metric, 0, hops);
   }
-  
+
   void init(EtherAddress ea, uint16_t metric, uint8_t flags, uint8_t hops) {
     _ea = ea;
     _metric = metric;
@@ -65,15 +65,15 @@ class NeighbourMetric {
     _hops = hops;
     _predecessor = NULL;
   }
-  
+
   inline void set_root_follower_flag() {
     _flags |= NEIGHBOUR_METRIC_ROOT_FOLLOWER; 
   }
-  
+
   inline bool is_root_follower() {
     return ( _flags & NEIGHBOUR_METRIC_ROOT_FOLLOWER ) != 0;
   }
-  
+
   inline void copy_root_follower_flag(NeighbourMetric *src) {
     _flags |= (src->_flags & NEIGHBOUR_METRIC_ROOT_FOLLOWER);
   }
@@ -89,12 +89,12 @@ class NetworkGraph {
  public:
   NeighbourMetricList nml;
   NeighbourMetricMap nmm;
-  
+
   void add_node(EtherAddress ea, uint16_t metric, uint8_t hops) {
     nml.push_back(new NeighbourMetric(ea, metric, hops));
     nmm.insert(ea, nml[nml.size()-1]);
   }
-  
+
   void remove_node(EtherAddress node) {
     if ( nmm.findp(node) == NULL ) return;
     for ( int i = 0; i < nml.size(); i++ ) {
@@ -117,16 +117,16 @@ class CachedNeighborsMetricList {
 
   Vector<EtherAddress> _neighbors;
   int *_metrics;
-  
+
   Timestamp _last_update;
-  
+
   CachedNeighborsMetricList(EtherAddress ea, int metric) {
     _node = ea;
     _neighbors.clear();
     _metrics = NULL;
     _max_metric_to_neighbor = metric;
   }
-  
+
   ~CachedNeighborsMetricList() {
     _neighbors.clear();
     if ( _metrics != NULL ) {
@@ -134,7 +134,7 @@ class CachedNeighborsMetricList {
       _metrics = NULL;
     }
   }
-  
+
   void update(Brn2LinkTable *lt) {
     _neighbors.clear();
     if ( _metrics != NULL ) {
@@ -146,7 +146,7 @@ class CachedNeighborsMetricList {
 
     int c_neighbors = _neighbors.size();
     _metrics = new int[c_neighbors];
-  
+
     for( int n_i = 0; n_i < c_neighbors;) {
       //calc metric between this neighbor and node to make sure that we are well-connected
       //BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
@@ -161,8 +161,8 @@ class CachedNeighborsMetricList {
         _metrics[n_i] = metric_nb_node;
         n_i++;
       }
-    }  
-    
+    }
+
     _last_update = Timestamp::now();
   }
   
@@ -216,7 +216,7 @@ public:
   uint32_t metric2pdr(uint32_t metric);
 
   // helper
-  void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out);
+  void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int max_metric = -1);
   CachedNeighborsMetricList* get_filtered_neighbors(const EtherAddress &node, int max_metric = -1);
 
   void init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric);
@@ -246,7 +246,8 @@ public:
 
   int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   int find_best(const EtherAddress &src, Vector<EtherAddress> &neighbors);
-  void neighbours();
+
+  bool is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst);
 
 };
 

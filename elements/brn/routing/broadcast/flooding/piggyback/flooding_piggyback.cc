@@ -82,7 +82,7 @@ FloodingPiggyback::simple_action(Packet *p)
       _last_update = p->timestamp_anno();
       _fhelper->clear_graph(_net_graph);
       _fhelper->init_graph(*(_me->getMasterAddress()), _net_graph, 100);
-      _fhelper->get_graph(_net_graph, 2, 100);
+      _fhelper->get_graph(_net_graph, 3, 100);
     }
 
     struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)&(p->data()[sizeof(struct click_brn)]);
@@ -272,6 +272,7 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
             new_last_node++;
 
             /* ABORT due to new information */
+            /* just abort to put new Information to the packet (piggyback) */
             /* TODO: check for more details if node is not new. Maybe state (acked etc. changed */
             if ((fl->is_last_tx_id(*src, (uint16_t)id)) && (last_node_was_acked || (last_node_foreign_responsibility ))) {
               abort = true;
@@ -289,9 +290,9 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
       }
 
       /* Abort once */
-      if (abort) {
+      /*if (abort) {
         fl->abort_last_tx();
-      }
+      }*/
 
       return new_last_node;
     } else i += extdat->size;
