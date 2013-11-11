@@ -103,6 +103,9 @@ Flooding::initialize(ErrorHandler *)
     _flooding_passiveack->set_retransmit_bcast(this, static_retransmit_broadcast);
     _flooding_passiveack->set_flooding((Flooding*)this);
   }
+
+  _flooding_policy->set_flooding((Flooding*)this);
+
   return 0;
 }
 
@@ -221,33 +224,50 @@ Flooding::push( int port, Packet *packet )
     uint8_t *rxdata = NULL;
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
 
+    /**
+     *            P I G G Y B A C K
+     * 
+     * TODO: push to piggybackelement
+     */
+
     FloodingPiggyback::bcast_header_get_last_nodes(this, &src, p_bcast_id, rxdata, rxdatasize);
 
-    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
-                                                             rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
-                                                             &forwarder, &passiveack);
-
-    if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
-
-    BRN_DEBUG("Extra Data Forward: %d in %d out Forward %d", 
-              rxdatasize, extra_data_size, (int)(forward?(1):(0)));
+    /**
+     *            A D D   D A T A
+     *
+     * -add id & src & fwd
+     * -inc received
+     */
 
     if ( ! is_known ) {   //note only if this is the first time
       _flooding_rx_new_id++;
       add_id(&src,(int32_t)p_bcast_id, &now);
+
+      //add src of bcast as last node
+      if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true, false, false) != 0 ) {
+        BRN_DEBUG("Add src as last node");
+      }
+
     } else {
+      /**  A B O R T **/
       BRN_INFO("Port 1\nRX: %s %s %d (%s)\nTX: %s %s %d",fwd.unparse().c_str(), src.unparse().c_str(), p_bcast_id, rx_node.unparse().c_str(),
                                                           _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(),_last_tx_bcast_id);
-      if ( is_last_tx(fwd, src, p_bcast_id) ) {
-        BRN_DEBUG("current RX node already has the packet");
-        abort_last_tx(fwd);
+
+      if ( is_last_tx_id(src, p_bcast_id)) {
+        if ( is_last_tx(fwd, src, p_bcast_id) ) {             //my current target is src
+          BRN_DEBUG("current RX node already has the packet");
+          abort_last_tx(fwd);
+        } else if (_flooding_passiveack->_fhelper->is_better_fwd(*(_me->getMasterAddress()), fwd, _last_tx_dst_ea)) {
+          BRN_ERROR("fwd has better link to current target");
+          abort_last_tx();
+        }
       }
     }
 
     BRN_DEBUG("Src: %s fwd: %s rxnode: %s Header: %d", src.unparse().c_str(), fwd.unparse().c_str(), rx_node.unparse().c_str(), (uint32_t)(bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST));
 
     //add last hop as last node
-    add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true, false, false);
+    add_last_node(&src,(int32_t)p_bcast_id, &fwd, false, true, false, false);
     inc_received(&src,(uint32_t)p_bcast_id, &fwd);
 
     /**
@@ -264,14 +284,27 @@ Flooding::push( int port, Packet *packet )
 
      _passive_last_node_new = _passive_last_node_assign = _passive_last_node_rx_acked = _passive_last_node_foreign_responsibility = false;
 
+    /**
+     *            F O R W A R D ??
+     */
+    bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
+                                                             rxdatasize/*rx*/, rxdata /*rx*/, &extra_data_size, extra_data,
+                                                             &forwarder, &passiveack);
+
+    if (forward) add_last_node(&src,(int32_t)p_bcast_id, &fwd, forward, true, false, false); //set forward flag
+
+    if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
+
+    BRN_DEBUG("Extra Data Forward: %d in %d out Forward %d", 
+              rxdatasize, extra_data_size, (int)(forward?(1):(0)));
 
     /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
 
+    /**
+     * Handle                         C L I E N T
+     */
+
     if ( ! is_known ) {   //send to client only if this is the first time
-      //add src of bcast as last node
-      if ( add_last_node(&src,(int32_t)p_bcast_id, &src, false, true, false, false) != 0 ) {
-        BRN_DEBUG("Add src as last node");
-      }
 
       Packet *p_client;
 
@@ -293,6 +326,14 @@ Flooding::push( int port, Packet *packet )
 
       output(0).push(p_client);                           // to clients (arp,...)
     }
+
+    /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
+
+    /**
+     *                   F O R W A R D     or   kill
+     *
+     * TODO: forward a known ( and maybe already forwarded) packet again ?
+     */
 
     if (forward) {
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
@@ -330,6 +371,9 @@ Flooding::push( int port, Packet *packet )
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
       if (is_known) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
     }
+
+    /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
+
   } else if ( ( port == 2 ) || ( port == 3 ) ) { //txfeedback failure or success
     uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);
 
