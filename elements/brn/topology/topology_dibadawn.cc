@@ -17,7 +17,12 @@
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
  * or contact brn@informatik.hu-berlin.de. 
  */
+#include <click/config.h>
+#include <click/etheraddress.hh>
 
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn.hh"
 
 CLICK_DECLS
@@ -49,10 +54,10 @@ uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
   return(data);
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element) 
+DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, EtherAddress creator) 
 {
   this->brn_click_element = brn_click_element;
-  this->search_id = DibadawnSearchId(Timestamp::now(), brn_click_element->EtherAddress);
+  this->search_id = DibadawnSearchId(Timestamp::now(), creator);
 }
 
 String DibadawnSearch::AsString()
@@ -61,4 +66,4 @@ String DibadawnSearch::AsString()
 }
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnSearch)
+ELEMENT_PROVIDES(TopologyDibadawn)
