@@ -20,26 +20,24 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-
-#ifndef TOPOLOGY_DIBADAWN_HH
-#define TOPOLOGY_DIBADAWN_HH
+#ifndef TOPOLOGY_DIBADAWN_SEARCHID_HH
+#define TOPOLOGY_DIBADAWN_SEARCHID_HH
 
 #include <click/element.hh>
 
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "topology_dibadawn_searchid.hh"
 #include "topology_info.hh"
 
 CLICK_DECLS;
 
-class DibadawnSearch {
-  DibadawnSearchId search_id;
-  BRNElement *brn_click_element;
-  BRN2NodeIdentity *node_id;
-  
+class DibadawnSearchId {
 public:
-  DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
+  DibadawnSearchId(Timestamp t, const EtherAddress *creator);
+  DibadawnSearchId();
   String AsString();
+  uint8_t* PointerTo10BytesOfData();
+
+private:
+  uint8_t data[10];
 };
 
 CLICK_ENDDECLS

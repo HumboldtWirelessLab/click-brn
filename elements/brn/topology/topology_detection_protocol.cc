@@ -39,6 +39,7 @@ TopologyDetectionProtocol::new_detection_packet(const EtherAddress *src, uint32_
   memcpy(tdh->src,src->data(),6);
   tdh->entries = 0;
   tdh->ttl = ttl;
+  tdh->type = 3;
 
   WritablePacket *brn_p = BRNProtocol::add_brn_header(td_packet, BRN_PORT_TOPOLOGY_DETECTION,
                                                                  BRN_PORT_TOPOLOGY_DETECTION, 128, 0);
@@ -71,7 +72,7 @@ TopologyDetectionProtocol::fwd_packet(Packet *p, const EtherAddress *src, EtherA
 }
 
 uint8_t*
-TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl)
+TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl, uint8_t *type)
 {
   struct td_header *tdh;
 
@@ -80,6 +81,7 @@ TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, 
   *n_entries = tdh->entries;
   *src = EtherAddress(tdh->src);
   *ttl = tdh->ttl;
+  *type = tdh->type;
 
   return (uint8_t*)&tdh[1];
 }

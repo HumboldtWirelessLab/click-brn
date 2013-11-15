@@ -26,10 +26,9 @@
 #include <clicknet/ether.h>
 
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
-
 #include "elements/brn/brnelement.hh"
-
 #include "topology_info.hh"
+#include "topology_dibadawn.hh"
 
 CLICK_DECLS
 
@@ -166,9 +165,7 @@ class TopologyDetection : public BRNElement {
   TDFIList tdfi_list;
 
  private:
-  //
-  //member
-  //
+  Vector<DibadawnSearch*> searches; 
 
   uint32_t detection_id;
 
