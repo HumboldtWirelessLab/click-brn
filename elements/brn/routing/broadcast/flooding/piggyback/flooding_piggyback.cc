@@ -258,7 +258,7 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
       int new_last_node = 0;
       int cnt_node = 0;
 
-      bool abort = false;
+      int abort_reason = FLOODING_TXABORT_REASON_NONE;
 
       for(;rxdata_idx < last_node_data_idx_end; rxdata_idx += 6 ) {
         //click_chatter("get lastnode: %s",EtherAddress(&(rxdata[rxdata_idx])).unparse().c_str());
@@ -267,32 +267,36 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, 
           bool last_node_was_acked = ((rx_acked_flags & (1<<cnt_node)) != 0 );
           bool last_node_foreign_responsibility = ((foreign_response_flags & (1<<cnt_node)) != 0 );
 
-          if ( bcn->add_last_node(id, &ea, false, last_node_was_acked, false, last_node_foreign_responsibility) != 0 ) {
+          if ( bcn->add_last_node(id, &ea, false, last_node_was_acked, false, last_node_foreign_responsibility) != 0 ) { //last node is new
             fl->_flooding_last_node_due_to_piggyback++;
             new_last_node++;
 
             /* ABORT due to new information */
             /* just abort to put new Information to the packet (piggyback) */
             /* TODO: check for more details if node is not new. Maybe state (acked etc. changed */
-            if ((fl->is_last_tx_id(*src, (uint16_t)id)) && (last_node_was_acked || (last_node_foreign_responsibility ))) {
-              abort = true;
+            if (fl->is_last_tx_id(*src, (uint16_t)id)) {
+              //its new information (i didn't know the node before. Abort transmission to add these information
+              abort_reason |= FLOODING_TXABORT_REASON_NEW_INFO;
+              if (last_node_was_acked) abort_reason |= FLOODING_TXABORT_REASON_ACKED;
+              else if (last_node_foreign_responsibility) abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
             }
-          }
-
-          /* if last node is acked (we are sure that node has the packet), abort current transmission if node is the target*/
-          /* abort if one node is responsible and i'm not responsible */
-          if ((fl->is_last_tx(ea, *src, (uint16_t)id)) &&
-              (last_node_was_acked || (last_node_foreign_responsibility && (!bcn->is_responsibility_target(id, &ea))))) {
-            abort = true;
+          } else {  // I know the node
+            /* if last node is acked (we are sure that node has the packet), abort current transmission if node is the target*/
+            /* abort if one node is responsible and i'm not responsible */
+            if (fl->is_last_tx(ea, *src, (uint16_t)id)) {
+              if (last_node_was_acked) abort_reason |= FLOODING_TXABORT_REASON_ACKED;
+              else if (last_node_foreign_responsibility && (!bcn->is_responsibility_target(id, &ea)))
+                     abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
+            }
           }
         }
         cnt_node++;
       }
 
       /* Abort once */
-      /*if (abort) {
-        fl->abort_last_tx();
-      }*/
+      if (abort_reason != FLOODING_TXABORT_REASON_NONE) {
+        fl->abort_last_tx(abort_reason);
+      }
 
       return new_last_node;
     } else i += extdat->size;

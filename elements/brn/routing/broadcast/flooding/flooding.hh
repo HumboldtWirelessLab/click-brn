@@ -573,6 +573,15 @@ class Flooding : public BRNElement {
 #define FLOODING_TXABORT_MODE_ACKED       1
 #define FLOODING_TXABORT_MODE_ASSIGNED    2
 #define FLOODING_TXABORT_MODE_BETTER_LINK 4
+#define FLOODING_TXABORT_MODE_NEW_INFO    8
+
+#define FLOODING_TXABORT_REASON_NONE                    FLOODING_TXABORT_MODE_NONE
+#define FLOODING_TXABORT_REASON_ACKED                   FLOODING_TXABORT_MODE_ACKED
+#define FLOODING_TXABORT_REASON_ASSIGNED                FLOODING_TXABORT_MODE_ASSIGNED
+#define FLOODING_TXABORT_REASON_BETTER_LINK             FLOODING_TXABORT_MODE_BETTER_LINK
+#define FLOODING_TXABORT_REASON_NEW_INFO                FLOODING_TXABORT_MODE_NEW_INFO
+#define FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY  FLOODING_TXABORT_MODE_ACKED       /* Take foreign resp. as acked */
+
 
   uint32_t _abort_tx_mode;
   uint32_t _tx_aborts;
@@ -587,7 +596,7 @@ class Flooding : public BRNElement {
 
  public:
 
-  void set_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
+  inline void set_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
     _last_tx_dst_ea = dst;
     _last_tx_src_ea = src;
     _last_tx_bcast_id = id;
@@ -595,36 +604,41 @@ class Flooding : public BRNElement {
 
   void reset_last_tx() { set_last_tx(EtherAddress(), EtherAddress(), 0); _last_tx_abort = false; }
 
-  bool is_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
-    return (_last_tx_dst_ea == dst) && (_last_tx_src_ea == src) && (_last_tx_bcast_id == id);
-  }
-
-  bool is_last_tx_id(EtherAddress src, uint16_t id) {
+  inline bool is_last_tx_id(EtherAddress &src, uint16_t id) {
     return (_last_tx_src_ea == src) && (_last_tx_bcast_id == id);
   }
 
-  void abort_last_tx(EtherAddress &dst) {
-    click_chatter("pi: %s %s %d (%s)", _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id, dst.unparse().c_str() );
+  bool is_last_tx(EtherAddress &dst, EtherAddress &src, uint16_t id) {
+    return ((_last_tx_dst_ea == dst) && is_last_tx_id(src, id));
+  }
+
+  void abort_last_tx(EtherAddress &dst, uint32_t abort_reason) {
+    if (((_abort_tx_mode & abort_reason) == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast()) return;
+
+    BRN_DEBUG("Abort: %s %s %d (%s)", _last_tx_dst_ea.unparse().c_str(),
+                                      _last_tx_src_ea.unparse().c_str(),
+                                      _last_tx_bcast_id, dst.unparse().c_str());
+
     if (_last_tx_abort ) {
-      click_chatter("Abort already running");
+      BRN_WARN("Abort already running");
       return;
     }
-
-    if ( (_abort_tx_mode == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast() ) return;
-
-    _last_tx_abort = true;
-    BRN_DEBUG("Abort last TX");
 
     bool failure = false;
     for (int devs = 0; devs < _me->countDevices(); devs++)
       failure |= (_me->getDeviceByIndex(devs)->abort_transmission(dst) != 0);
 
-    if ( failure ) _tx_aborts_errors++;
-    else _tx_aborts++;
+    if ( failure ) {
+      _tx_aborts_errors++;
+    } else {
+      BRN_DEBUG("Abort last TX");
+      _tx_aborts++;
+      _last_tx_abort = true;
+    }
   }
 
-  void abort_last_tx() {
-    abort_last_tx(_last_tx_dst_ea);
+  inline void abort_last_tx(uint32_t abort_reason) {
+    abort_last_tx(_last_tx_dst_ea, abort_reason);
   }
 
 };
