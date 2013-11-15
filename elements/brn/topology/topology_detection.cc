@@ -74,14 +74,17 @@ TopologyDetection::initialize(ErrorHandler *)
   return 0;
 }
 
-
 void
 TopologyDetection::push( int /*port*/, Packet *packet )
 {
-  click_ether *ether_h = (click_ether *)packet->ether_header();
+  StringAccum sa;
+  String node = _node_identity->getMainAddress()->unparse();
+  sa << "\n<topo_detect node=\"" << node << "\">\n";
 
-  BRN_DEBUG("Etherheader: Src: %s Dst: %s", EtherAddress(ether_h->ether_shost).unparse().c_str(),
-                                            EtherAddress(ether_h->ether_dhost).unparse().c_str());
+  click_ether *ether_h = (click_ether *)packet->ether_header();
+  String source = EtherAddress(ether_h->ether_shost).unparse().c_str();
+  String destination = EtherAddress(ether_h->ether_dhost).unparse().c_str();
+  sa << "\t<etherheader src=\"" << source << "\" des=\"" << destination << "\" \\>\n";
 
   if ( memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0 ) {
     handle_detection_forward(packet);
@@ -90,10 +93,13 @@ TopologyDetection::push( int /*port*/, Packet *packet )
     if ( _node_identity->isIdentical(&dst) ) {
       handle_detection_backward(packet);
     } else {
-      BRN_DEBUG("Destination is neither me nor broadcast.");
+      sa << "\t<!-- Destination is neither me nor broadcast. -->\n";
       packet->kill();
     }
   }
+  
+  sa << "</topo_detect>\n";
+  BRN_INFO(sa.take_string().c_str());
 }
 
 void
@@ -103,16 +109,22 @@ TopologyDetection::handle_detection_forward(Packet *packet)
   uint8_t entries;
   uint8_t ttl;
   uint8_t *path;
+  uint8_t type;
   EtherAddress src;
   click_ether *ether_h = (click_ether *)packet->ether_header();
   bool new_td = false;
 
-  path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl);
+  path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl, &type);
 
   TopologyDetectionForwardInfo *tdi = get_forward_info(&src, id);
 
   if ( tdi == NULL ) {
-    BRN_DEBUG("Unknown topology detection request. Src: %s Id: %d Entries: %d TTL: %d",src.unparse().c_str(),id,entries,ttl);
+    BRN_DEBUG("Unknown topology detection request. Src: %s Id: %d Entries: %d TTL: %d Type: %d",
+            src.unparse().c_str(),
+            id,
+            entries,
+            ttl,
+            type);
     tdfi_list.push_back(new TopologyDetectionForwardInfo(&src, id, (ttl-1)));
     tdi = get_forward_info(&src, id);
     new_td = true;
@@ -194,7 +206,12 @@ TopologyDetection::start_detection()
   _detection_timer.schedule_after_msec( /*click_random() % */100 );  //wait for descendant
 
   output(0).push(p);
-
+  
+  DibadawnSearch *search = new DibadawnSearch(this, _node_identity);
+  this->searches.push_back(search);
+  String search_name = search->AsString();
+  BRN_INFO("<!-- started search %s-->", search_name.c_str());
+ 
 }
 
 void
@@ -298,14 +315,14 @@ enum { H_START_DETECTION, H_TOPOLOGY_INFO };
 static int
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 {
-  TopologyDetection *f = (TopologyDetection *)e;
+  TopologyDetection *topo = (TopologyDetection *)e;
   String s = cp_uncomment(in_s);
   switch((intptr_t)vparam) {
     case H_START_DETECTION: {    //debug
       int start;
       if (!cp_integer(s, &start))
         return errh->error("start parameter must be Integer");
-      f->start_detection();
+      topo->start_detection();
       break;
     }
   }
@@ -315,11 +332,12 @@ write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
 static String
 read_param(Element *e, void *thunk)
 {
-  TopologyDetection *t_detect = (TopologyDetection *)e;
+  TopologyDetection *topo = (TopologyDetection *)e;
 
   switch ((uintptr_t) thunk)
   {
-    case H_TOPOLOGY_INFO : return ( t_detect->local_topology_info() );
+    case H_TOPOLOGY_INFO : 
+      return ( topo->local_topology_info() );
     default: return String();
   }
 }
