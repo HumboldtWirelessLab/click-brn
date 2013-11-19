@@ -140,11 +140,12 @@ class UnicastFlooding : public BRNElement {
   EtherAddress static_dst_mac;
   bool _force_responsibility;
   bool _use_assign_info;
-  bool _fix_candidate_set;
 
   EtherAddress algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int hops);
 
  public:
+
+  bool _fix_candidate_set;
 
   void add_rewrite(EtherAddress *src, uint16_t id, EtherAddress *target);
 
