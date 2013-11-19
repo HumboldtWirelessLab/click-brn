@@ -72,6 +72,7 @@ FloodingHelper::metric2pdr(uint32_t metric)
 {
   if ( metric == 0 ) return 100;
   if ( metric == BRN_LT_INVALID_LINK_METRIC ) return 0;
+  if ( metric > BRN_LT_INVALID_LINK_METRIC ) return 0;
 
   return (1000 / isqrt32(metric));
 }
