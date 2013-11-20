@@ -46,12 +46,20 @@ private:
 
   static const uint8_t _target_load_param = 5;  // target load wiggle room
 
+  static const uint16_t _tcl_min_cwmin    = 31;
+  static const uint16_t _tcl_max_cwmin    = 1023;
 
   ChannelStats *_cst;
+
   uint32_t _target_channelload;
   uint32_t _bo_for_target_channelload;
+
+  /* target channel load low and high water marks */
   uint32_t _tcl_lwm;
   uint32_t _tcl_hwm;
+
+  /* activate bo cap at lower/upper bound */
+  uint8_t _cap;
 };
 
 
