@@ -125,7 +125,7 @@ FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
 }
 
 void
-FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t no_transmissions)
+FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t /*no_transmissions*/)
 {
   BRN_DEBUG("Feedback/Abort: %s %d",src->unparse().c_str(), bcast_id);
 

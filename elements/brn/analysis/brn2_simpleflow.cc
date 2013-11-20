@@ -57,7 +57,8 @@ BRN2SimpleFlow::BRN2SimpleFlow()
     _flow_id(0),
     _simpleflow_element_id(0),
     _routing_peek(NULL),
-    _link_table(NULL)
+    _link_table(NULL),
+    _flow_start_rand(0)
 {
   BRNElement::init();
 }
@@ -81,6 +82,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "HEADROOM", cpkP, cpInteger, &_headroom,
       "ROUTINGPEEK", cpkP, cpElement, &_routing_peek,
       "LT", cpkP, cpElement, &_link_table,
+      "FLOWSTARTRANDOM", cpkP, cpInteger, &_flow_start_rand,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -260,6 +262,8 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
                           uint32_t duration, bool active, uint32_t start_delay )
 {
   Flow *txFlow = new Flow(src, dst, _flow_id, (FlowType)mode, size, interval, burst, duration);
+
+  if ( _flow_start_rand != 0 ) start_delay += click_random() % _flow_start_rand;
 
   txFlow->_start_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
   txFlow->_next_time = txFlow->_start_time;
@@ -811,7 +815,6 @@ BRN2SimpleFlow::xml_stats()
 
 enum {
   H_FLOW_STATS,
-  H_ADD,
   H_ADD_FLOW,
   H_DEL_FLOW,
   H_RESET
@@ -839,23 +842,6 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
   switch((long)vparam) {
     case H_RESET: {
       sf->reset();
-      break;
-    }
-    case H_ADD: {
-/*
-      if (cp_va_kparse(conf, this, errh,
-        "SRCADDRESS", cpkP , cpEtherAddress, &_src,
-        "DSTADDRESS", cpkP, cpEtherAddress, &_dst,
-        "INTERVAL", cpkP, cpInteger, &_interval,
-        "DATARATE", cpkP, cpInteger, &_rate,
-        "SIZE", cpkP, cpInteger, &_size,
-        "MODE", cpkP, cpInteger, &_mode,
-        "DURATION", cpkP, cpInteger, &_duration,
-        "BURST", cpkP, cpInteger, &_burst,
-        "ACTIVE", cpkP, cpBool, &_start_active,
-      cpEnd) < 0)
-    return -1;
-*/
       break;
     }
     case H_ADD_FLOW: {
