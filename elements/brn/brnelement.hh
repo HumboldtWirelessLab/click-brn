@@ -34,7 +34,7 @@
 #define DEFAULT_HEADROOM        128
 #define DEFAULT_TAILROOM         32
 
-CLICK_DECLS
+CLICK_DECLS;
 
 class BRNElement : public Element {
  public:
