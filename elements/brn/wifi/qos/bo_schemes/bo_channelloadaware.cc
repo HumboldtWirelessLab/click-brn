@@ -51,6 +51,7 @@ int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "TARGETLOAD", cpkP+cpkM, cpInteger, &_target_channelload,
+      "CAP", cpkP, cpInteger, &_cap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -92,13 +93,15 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
    */
   if ((busy < _tcl_lwm) && ((int32_t)_bo_for_target_channelload > 1))
     decrease_cw();
-  else if ((busy > _tcl_hwm) && (_bo_for_target_channelload < _max_cwmin))
+  else if (busy > _tcl_hwm)
     increase_cw();
 
-  if (_bo_for_target_channelload < _min_cwmin)
-    _bo_for_target_channelload = _min_cwmin;
-  else if (_bo_for_target_channelload > _max_cwmin)
-    _bo_for_target_channelload = _max_cwmin;
+  if (_cap) {
+    if (_bo_for_target_channelload < _tcl_min_cwmin)
+      _bo_for_target_channelload = _tcl_min_cwmin;
+    else if (_bo_for_target_channelload > _tcl_max_cwmin)
+      _bo_for_target_channelload = _tcl_max_cwmin;
+  }
 
   BRN_DEBUG("    new bo: %d\n\n", _bo_for_target_channelload);
 
