@@ -593,6 +593,7 @@ read_param(Element *e, void *thunk)
       sa << "\" strategy_string=\"" << rewriter->get_strategy_string(rewriter->get_strategy()) << "\" preselection=\"";
       sa << rewriter->get_preselection() << "\" preselection_string=\"" << rewriter->get_preselection_string(rewriter->get_preselection()); 
       sa << "\" ucast_peer_metric=\"" << rewriter->get_ucast_peer_metric() << "\" reject_on_empty_cs=\"" << rewriter->get_reject_on_empty_cs();
+      sa << "\" fix_cs=\"" << (int)(rewriter->_fix_candidate_set?1:0);
       sa << "\" static_mac=\"" << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;

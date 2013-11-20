@@ -256,10 +256,10 @@ Flooding::push( int port, Packet *packet )
       if ( is_last_tx_id(src, p_bcast_id)) {
         if ( is_last_tx(fwd, src, p_bcast_id) ) {             //my current target is src
           BRN_DEBUG("current RX node already has the packet");
-          abort_last_tx(fwd);
+          abort_last_tx(fwd, FLOODING_TXABORT_REASON_ACKED);
         } else if (_flooding_passiveack->_fhelper->is_better_fwd(*(_me->getMasterAddress()), fwd, _last_tx_dst_ea)) {
           BRN_ERROR("fwd has better link to current target");
-          abort_last_tx();
+          abort_last_tx(FLOODING_TXABORT_REASON_BETTER_LINK);
         }
       }
     }
@@ -461,20 +461,22 @@ Flooding::push( int port, Packet *packet )
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {                                 //successful transmission ? Yes,...
         if (is_last_tx(rx_node, src, p_bcast_id)) {                                          //abort
           BRN_DEBUG("lasttx match dst of foreign");
-          abort_last_tx(rx_node);
+          abort_last_tx(rx_node, FLOODING_TXABORT_REASON_ACKED);
         }
       } else {                                                                               //not successfurl but...
-        //if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                      //i'm not responsible
-            if ((is_last_tx(rx_node, src, p_bcast_id)) &&
-                (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0) || ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0)) ) {
-            BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
-            abort_last_tx(rx_node);
+        if (is_last_tx(rx_node, src, p_bcast_id)) {
+          BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
+
+          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {                   //src forces target
+            abort_last_tx(rx_node, FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY);
+            //if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                //i'm not responsible
             //since other node do this, we are not responible anymore
-            if ( (bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
-              set_foreign_responsibility_target(&src, p_bcast_id, &rx_node);
-            }
+            set_foreign_responsibility_target(&src, p_bcast_id, &rx_node);
+            //}
+          } else {
+            abort_last_tx(rx_node, FLOODING_TXABORT_REASON_ASSIGNED);
           }
-        //}
+        }
       }
 
       /**
