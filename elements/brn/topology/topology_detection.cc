@@ -35,6 +35,7 @@
 
 #include "topology_detection.hh"
 #include "topology_detection_protocol.hh"
+#include "topology_dibadawn_packet.hh"
 
 CLICK_DECLS
 
@@ -111,6 +112,57 @@ TopologyDetection::handle_detection_forward(Packet *packet)
   uint8_t *path;
   uint8_t type;
   EtherAddress src;
+
+  path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl, &type);
+  
+  uint8_t typ = ((unsigned char*)packet->data())[0];
+  
+  switch(typ)
+  {
+      case 3:
+          BRN_INFO("<!-- hu hu, das ist eine alte MSG -->");
+          handle_detection_forward_as_before(packet);
+          break;
+          
+      default:
+          handle_detection_forward_by_me(packet);
+          break;
+  }
+}
+
+void
+TopologyDetection::handle_detection_forward_by_me(Packet *packet)
+{
+    BRN_INFO("<!-- hu hu, das ist meine MSG -->");
+    
+    if(!DibadawnPacket::isValid(packet))
+    {
+        BRN_INFO("<!-- MSG invalid -->");
+        return;
+    }
+    else
+      BRN_INFO("<!-- MSG is valid -->");
+    
+    DibadawnSearch *search;
+    for(int i=0; i<searches.size(); i++)
+    {
+        /*
+        search = searches.at(i);
+        if(search.isResponsableFor(packet))
+            search.receive(packet);
+         */
+    }
+        }
+
+void
+TopologyDetection::handle_detection_forward_as_before(Packet *packet)
+{
+  uint32_t id;
+  uint8_t entries;
+  uint8_t ttl;
+  uint8_t *path;
+  uint8_t type;
+  EtherAddress src;
   click_ether *ether_h = (click_ether *)packet->ether_header();
   bool new_td = false;
 
@@ -158,7 +210,6 @@ TopologyDetection::handle_detection_forward(Packet *packet)
     packet->kill();
   }
 }
-
 bool
 TopologyDetection::path_include_node(uint8_t *path, uint32_t path_len, const EtherAddress *node )
 {
@@ -199,6 +250,7 @@ TopologyDetection::handle_detection_backward(Packet *packet)
 void
 TopologyDetection::start_detection()
 {
+  // TODO: Delete...
   detection_id++;
   WritablePacket *p = TopologyDetectionProtocol::new_detection_packet(_node_identity->getMasterAddress(), detection_id, 128);
 
@@ -207,11 +259,12 @@ TopologyDetection::start_detection()
 
   output(0).push(p);
   
+  // New...
   DibadawnSearch *search = new DibadawnSearch(this, _node_identity);
   this->searches.push_back(search);
+  search->start_search();
   String search_name = search->AsString();
   BRN_INFO("<!-- started search %s-->", search_name.c_str());
- 
 }
 
 void

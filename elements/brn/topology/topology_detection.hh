@@ -175,6 +175,8 @@ class TopologyDetection : public BRNElement {
 
   void handle_detection_backward(Packet *packet);
   void handle_detection_forward(Packet *packet);
+  void handle_detection_forward_as_before(Packet *packet);
+  void handle_detection_forward_by_me(Packet *packet);
 
   void handle_detection_timeout(void);
   void handle_response_timeout(void);

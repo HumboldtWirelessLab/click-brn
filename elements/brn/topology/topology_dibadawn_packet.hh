@@ -20,28 +20,39 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-
-#ifndef TOPOLOGY_DIBADAWN_HH
-#define TOPOLOGY_DIBADAWN_HH
+#ifndef TOPOLOGY_DIBADAWN_PACKET_HH
+#define TOPOLOGY_DIBADAWN_PACKET_HH
 
 #include <click/element.hh>
+#include <click/packet.hh>
 
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_searchid.hh"
-#include "topology_info.hh"
 
 CLICK_DECLS;
 
-class DibadawnSearch {
-  DibadawnSearchId search_id;
-  BRNElement *brn_click_element;
-  BRN2NodeIdentity *node_id;
-  
+class DibadawnPacket {
 public:
-  DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
-  String AsString();
-  void receive(Packet *packet);
-  void start_search();
+  DibadawnPacket();
+  DibadawnPacket(const Packet *packet);
+  DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_addr, bool is_forward);
+  
+  void setVersion();
+  void setSearchId(DibadawnSearchId *id);
+  void setTreeParent(const EtherAddress* sender_addr);
+  void setForwaredBy(const EtherAddress* sender_addr);
+  WritablePacket* getBrnPacket();
+  static bool isValid(const Packet *packet);
+  
+  uint32_t version; 
+  DibadawnSearchId searchId;
+  static const size_t LengthOfTreeParrent = 6;
+  uint8_t treeParrent[LengthOfTreeParrent];
+  static const size_t LengthOfForwardedBy = 6;
+  uint8_t forwardedBy[LengthOfForwardedBy];
+  bool isForward;
+  
+private:
+
 };
 
 CLICK_ENDDECLS

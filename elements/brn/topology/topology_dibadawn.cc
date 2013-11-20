@@ -27,70 +27,32 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn.hh"
+#include "topology_dibadawn_packet.hh"
+
+#define LOG BrnLogger(__FILE__, __LINE__, NULL).info
 
 CLICK_DECLS;
 
-#pragma push()
-#pragma pack(1)
-struct dibadawn_packet { 
-  // TODO Optimize by size  
-  uint8_t type;
-  uint32_t id;
-  uint8_t src[6];
-  uint8_t ttl;
-  uint8_t entries;
-};
-#pragma pop();
 
 DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id)
 {
   this->brn_click_element = brn_click_element;
-  this->node_id = node_id;
+  this->node_id = this_node_id;
   this->search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
-  BrnLogger(__FILE__, __LINE__, NULL).info("<!-- huhu -->");
-  
-  
-  const EtherAddress* sender = this_node_id->getMasterAddress();
-  
-  const uint8_t *sender_bytes = sender->data();
-  
-  
-  dibadawn_packet content;
-  content.type = 0;
-  content.id = htonl(88);
-  memcpy(content.src, sender_bytes, 6);
-  content.entries = 0;
-  content.ttl = 87; // Does this makes sense?
-
-  uint32_t sizeof_head = 128;
-  uint32_t sizeof_data = sizeof(content);
-  uint32_t sizeof_tail = 32;
-  WritablePacket *packet = WritablePacket::make( 
-        sizeof_head,
-        &content, sizeof_data, 
-        sizeof_tail);
-  
-  WritablePacket *brn_packet = BRNProtocol::add_brn_header(
-          packet, 
-          BRN_PORT_TOPOLOGY_DETECTION,
-          BRN_PORT_TOPOLOGY_DETECTION, 
-          128, 
-          0);
-
-  BRNPacketAnno::set_ether_anno(
-        brn_packet, 
-        sender_bytes, 
-        brn_ethernet_broadcast, 
-        ETHERTYPE_BRN);
-
-  BrnLogger(__FILE__, __LINE__, NULL).info("<!-- huhu2 -->");
-  //brn_click_element->push(0, brn_packet);
-  brn_click_element->output(0).push(brn_packet);
 }
 
 String DibadawnSearch::AsString()
 {
   return(this->search_id.AsString());
+}
+
+void DibadawnSearch::start_search()
+{
+  const EtherAddress* sender = node_id->getMasterAddress();
+  bool is_forward = true;
+  DibadawnPacket packet(&search_id, sender, is_forward);
+  WritablePacket *brn_packet = packet.getBrnPacket();
+  brn_click_element->output(0).push(brn_packet);
 }
 
 CLICK_ENDDECLS

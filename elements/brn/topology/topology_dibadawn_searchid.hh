@@ -31,13 +31,16 @@ CLICK_DECLS;
 
 class DibadawnSearchId {
 public:
+  static const size_t length=10;  
+    
   DibadawnSearchId(Timestamp t, const EtherAddress *creator);
   DibadawnSearchId();
   String AsString();
   uint8_t* PointerTo10BytesOfData();
+  DibadawnSearchId & operator = (const DibadawnSearchId &id);
 
 private:
-  uint8_t data[10];
+  uint8_t data[length];
 };
 
 CLICK_ENDDECLS
