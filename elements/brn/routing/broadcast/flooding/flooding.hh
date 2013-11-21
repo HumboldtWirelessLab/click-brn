@@ -106,10 +106,11 @@ class Flooding : public BRNElement {
       uint8_t _bcast_fwd_succ_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no packet recv by at least on node
       uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retries for unicast)
       uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
+      Timestamp _bcast_time_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];   //time
 
 #define FLOODING_FLAGS_ME_SRC           1
 
-      Timestamp _last_id_time;
+      Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
       //stats for last node of one packet
       struct flooding_last_node {
@@ -179,6 +180,7 @@ class Flooding : public BRNElement {
       }
 
       inline bool have_id(uint32_t id) {
+        //TODO: test for timeout ? its imortant but slow (it can remove global time (_last_id_time))
         return (_bcast_id_list[id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK] == id );
       }
 
@@ -208,6 +210,7 @@ class Flooding : public BRNElement {
           _bcast_fwd_succ_list[index] = 0;
           _bcast_snd_list[index] = 0;
           _bcast_flags_list[index] = (me_src)?1:0;
+          _bcast_time_list[index] = now;
 
           _last_node_list_size[index] = 0;
           _assigned_node_list_size[index] = 0;

@@ -51,7 +51,7 @@ CLICK_DECLS
 #define BRN_LT_STATION_METRIC            100  ///< metric for assoc'd stations
 #define BRN_LT_ROAMED_STATION_METRIC    5000  ///< metric for roamed stations
 #define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
-#define BRN_LT_INVALID_ROUTE_METRIC    65534  ///< metric for invalid/broken routes
+#define BRN_LT_INVALID_ROUTE_METRIC    65535  ///< metric for invalid/broken routes
 
 #define BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE    4000  ///< metric for invalid/broken routes
 
