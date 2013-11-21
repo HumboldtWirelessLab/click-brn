@@ -20,11 +20,11 @@ class BRN2RouteQuerierHop
     IPAddress ip_address;
     uint16_t _metric;
 
-#define BRN_DSR_INVALID_HOP_METRIC     9999
-#define BRN_DSR_INVALID_ROUTE_METRIC 0xFFFF
+#define BRN_DSR_INVALID_HOP_METRIC    BRN_LT_INVALID_LINK_METRIC
+#define BRN_DSR_INVALID_ROUTE_METRIC BRN_LT_INVALID_ROUTE_METRIC
 
-#define BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD          4000
-#define BRN_DSR_DEFAULT_MIN_LINK_METRIC_WITHIN_ROUTE 4000
+#define BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD          BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE
+#define BRN_DSR_DEFAULT_MIN_LINK_METRIC_WITHIN_ROUTE BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE
 
     BRN2RouteQuerierHop(EtherAddress ether, uint16_t c) : ether_address(ether), ip_address(), _metric(c) {}
     BRN2RouteQuerierHop(EtherAddress ether, IPAddress ip, uint16_t c) : ether_address(ether), ip_address(ip), _metric(c) {}
@@ -183,12 +183,12 @@ struct click_brn_dsr {
 /*
  * Common structures, classes, etc.
  */
-#define BRN_DSR_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
-#define BRN_DSR_WIRED_MEDIUM_METRIC        10     // static metric for wired links
-#define BRN_DSR_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
+#define BRN_DSR_MEMORY_MEDIUM_METRIC       BRN_LT_MEMORY_MEDIUM_METRIC     // static metric for in memory links
+#define BRN_DSR_WIRED_MEDIUM_METRIC         BRN_LT_WIRED_MEDIUM_METRIC     // static metric for wired links
+#define BRN_DSR_WIRELESS_MEDIUM_METRIC   BRN_LT_WIRELESS_MEDIUM_METRIC     // static metric for wireless links
 
-#define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
-#define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
+#define BRN_DSR_STATION_METRIC                   BRN_LT_STATION_METRIC     ///< metric for assoc'd stations
+#define BRN_DSR_ROAMED_STATION_METRIC     BRN_LT_ROAMED_STATION_METRIC     ///< metric for assoc'd stations
 
 class DSRProtocol {
  public:

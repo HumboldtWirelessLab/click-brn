@@ -832,7 +832,8 @@ Flooding::table()
       sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
       sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
       sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
-      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
+      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" time=\"";
+      sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
 
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";

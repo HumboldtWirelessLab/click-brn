@@ -48,6 +48,7 @@ UnicastFlooding::UnicastFlooding():
   _force_responsibility(false),
   _use_assign_info(false),
   _fix_candidate_set(false),
+  _self_pdr(UNICAST_FLOODING_DIJKSTRA_PDR),
   _cnt_rewrites(0),
   _cnt_bcasts(0),
   _cnt_bcasts_empty_cs(0),
@@ -76,6 +77,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "USEASSIGNINFO", cpkP, cpBool, &_use_assign_info,
       "STATIC_DST", cpkP, cpEtherAddress, &static_dst_mac,
       "FIXCS", cpkP, cpBool, &_fix_candidate_set,
+      "SELFPDR", cpkP, cpInteger, &_self_pdr,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -272,7 +274,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
         do {
           if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
-            _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, 110);
+            _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, _self_pdr);
           } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
             _fhelper->get_local_childs(*me, net_graph, 3);
 
@@ -415,6 +417,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     }
   }
 
+  //BRN_ERROR("Me: %s Dst: %s CSS: %d id: %d m: %d cm: %d", me->unparse().c_str(), next_hop.unparse().c_str(),candidate_set.size(),bcast_id,
+  //                                           _fhelper->_link_table->get_link_metric(*me,next_hop),
+  //                                           _fhelper->_cnmlmap.find(*me)->get_metric(next_hop));
   add_rewrite(&src, bcast_id, &next_hop);
 
   _flooding->clear_assigned_nodes(&src, bcast_id);
@@ -482,6 +487,7 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
      **/
 
     /** nb(c) \ (nb(nb(x)\{c}) U nb(x)) **/
+    /* Neighbours only coverd by c */
     uint32_t foreign_exclusive_nb_hood = _fhelper->graph_diff_size(local_neighbours, ng_list[x]);
 
     /** nb(c) \ nb(x) **/
@@ -592,8 +598,9 @@ read_param(Element *e, void *thunk)
       sa << "<unicast_rewriter node=\"" << rewriter->get_node_name() << "\" strategy=\"" << rewriter->get_strategy();
       sa << "\" strategy_string=\"" << rewriter->get_strategy_string(rewriter->get_strategy()) << "\" preselection=\"";
       sa << rewriter->get_preselection() << "\" preselection_string=\"" << rewriter->get_preselection_string(rewriter->get_preselection()); 
-      sa << "\" ucast_peer_metric=\"" << rewriter->get_ucast_peer_metric() << "\" reject_on_empty_cs=\"" << rewriter->get_reject_on_empty_cs();
-      sa << "\" fix_cs=\"" << (int)(rewriter->_fix_candidate_set?1:0);
+      sa << "\" ucast_peer_metric=\"" << rewriter->get_ucast_peer_metric() << "\" reject_on_empty_cs=\"" << (int)(rewriter->get_reject_on_empty_cs()?1:0);
+      sa << "\" fix_cs=\"" << (int)(rewriter->_fix_candidate_set?1:0) << "\" force_response=\"" << (int)(rewriter->_force_responsibility?1:0);
+      sa << "\" use_assign=\"" << (int)(rewriter->_use_assign_info?1:0);
       sa << "\" static_mac=\"" << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;

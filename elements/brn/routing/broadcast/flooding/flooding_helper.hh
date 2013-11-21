@@ -113,7 +113,7 @@ class NetworkGraph {
 class CachedNeighborsMetricList {
  public:
   EtherAddress _node;
-  int _max_metric_to_neighbor;    
+  int _max_metric_to_neighbor;
 
   Vector<EtherAddress> _neighbors;
   int *_metrics;
@@ -169,6 +169,12 @@ class CachedNeighborsMetricList {
   inline int age() { return (Timestamp::now() - _last_update).msecval(); }
 
   inline int size() { return _neighbors.size(); }
+
+  int get_metric(EtherAddress &ea) {
+    for( int i = 0; i < _neighbors.size();i++ )
+      if ( _neighbors[i] == ea ) return _metrics[i];
+    return -1;
+  }
 };
 
 typedef HashMap<EtherAddress, CachedNeighborsMetricList*> CachedNeighborsMetricListMap;
