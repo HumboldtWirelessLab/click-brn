@@ -6,6 +6,8 @@
 #include <click/packet_anno.hh>
 #include <click/bighashmap.hh>
 #include <click/hashmap.hh>
+
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
