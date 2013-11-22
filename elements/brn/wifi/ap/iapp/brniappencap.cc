@@ -151,7 +151,7 @@ BrnIappEncap::create_handover_notify(
   pBrn->dst_port      = BRN_PORT_IAPP;
   pBrn->src_port      = BRN_PORT_IAPP;
   pBrn->body_length   = htons(sizeof(click_brn_iapp));
-  pBrn->ttl           = BRN_DSR_MAX_HOP_COUNT;
+  pBrn->ttl           = BRN_ROUTING_MAX_HOP_COUNT;
   pBrn->tos           = BRN_TOS_BE;
   
   // Fill ether header
@@ -195,7 +195,7 @@ BrnIappEncap::create_handover_reply(
   pBrn->dst_port      = BRN_PORT_IAPP;
   pBrn->src_port      = BRN_PORT_IAPP;
   pBrn->body_length   = htons(sizeof(click_brn_iapp));
-  pBrn->ttl           = BRN_DSR_MAX_HOP_COUNT;
+  pBrn->ttl           = BRN_ROUTING_MAX_HOP_COUNT;
   pBrn->tos           = BRN_TOS_BE;
   
   // Fill ether header
@@ -246,7 +246,7 @@ BrnIappEncap::create_handover_data(
   pBrn->dst_port      = BRN_PORT_IAPP;
   pBrn->src_port      = BRN_PORT_IAPP;
   pBrn->body_length   = htons(sizeof(click_brn_iapp) + payload_len);
-  pBrn->ttl           = BRN_DSR_MAX_HOP_COUNT;
+  pBrn->ttl           = BRN_ROUTING_MAX_HOP_COUNT;
   pBrn->tos           = BRN_TOS_BE;
   
   // Fill ether header
@@ -293,7 +293,7 @@ BrnIappEncap::create_handover_routeupdate(
   pBrn->dst_port      = BRN_PORT_IAPP;
   pBrn->src_port      = BRN_PORT_IAPP;
   pBrn->body_length   = htons(sizeof(click_brn_iapp));
-  pBrn->ttl           = BRN_DSR_MAX_HOP_COUNT;
+  pBrn->ttl           = BRN_ROUTING_MAX_HOP_COUNT;
   pBrn->tos           = BRN_TOS_BE;
   
   // Fill ether header
@@ -340,7 +340,7 @@ BrnIappEncap::create_iapp_hello(
   pBrn->dst_port      = BRN_PORT_IAPP;
   pBrn->src_port      = BRN_PORT_IAPP;
   pBrn->body_length   = htons(sizeof(click_brn_iapp));
-  pBrn->ttl           = BRN_DSR_MAX_HOP_COUNT;
+  pBrn->ttl           = BRN_ROUTING_MAX_HOP_COUNT;
   pBrn->tos           = BRN_TOS_BE;
   
   // Fill ether header
