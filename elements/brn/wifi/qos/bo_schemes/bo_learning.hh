@@ -26,7 +26,7 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  uint16_t get_id();
+  bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min, uint32_t max);
@@ -37,6 +37,8 @@ public:
   ~BoLearning();
 
 private:
+  void set_strategy(uint32_t strategy);
+
   void increase_cw();
   void increase_cw_strict(uint8_t retries);
   void decrease_cw();
@@ -50,8 +52,7 @@ private:
   static const uint8_t  _retry_threshold = 1;   // 1 retry == no change
 
 
-  ChannelStats *_cst;
-
+  uint32_t _strategy;
 
   /* scheme flavour: strict */
   uint8_t _strict;

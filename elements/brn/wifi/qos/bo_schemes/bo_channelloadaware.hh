@@ -25,7 +25,7 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  bool handle_strategy(uint32_t strategy) { return strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE; }
+  bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
@@ -35,27 +35,35 @@ public:
   ~BoChannelLoadAware();
 
 private:
+  void set_strategy(uint32_t strategy);
+
   void increase_cw();
   void decrease_cw();
 
 
 private:
-  static const uint16_t _id               = 3;  // unique bo scheme identifier
-  static const uint16_t _bo_start         = 63; // initial backoff
+  static const uint16_t _bo_start = 63; // initial backoff
 
-  static const uint8_t _target_load_param = 5;  // target load wiggle room
+  static const uint8_t _busy_param  = 5;  // busy strategy wiggle room
+  static const uint8_t _tdiff_param = 3;  // target diff strategy wiggle room
 
-  static const uint16_t _tcl_min_cwmin    = 31;
-  static const uint16_t _tcl_max_cwmin    = 1023;
+  static const uint16_t _cla_min_cwmin = 31;
+  static const uint16_t _cla_max_cwmin = 1023;
 
   ChannelStats *_cst;
 
-  uint32_t _target_channelload;
-  uint32_t _bo_for_target_channelload;
+  uint32_t _strategy;
+  uint32_t _current_bo;
 
-  /* target channel load low and high water marks */
-  uint32_t _tcl_lwm;
-  uint32_t _tcl_hwm;
+  /* busy strategy */
+  uint32_t _target_busy;
+  uint32_t _busy_lwm;
+  uint32_t _busy_hwm;
+
+  /* target diff strategy */
+  uint32_t _target_diff;
+  uint32_t _tdiff_lwm;
+  uint32_t _tdiff_hwm;
 
   /* activate bo cap at lower/upper bound */
   uint8_t _cap;

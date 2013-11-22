@@ -58,9 +58,9 @@ void BoNeighbours::add_handlers()
 }
 
 
-uint16_t BoNeighbours::get_id()
+bool BoNeighbours::handle_strategy(uint32_t strategy)
 {
-  return _id;
+  return (strategy == BACKOFF_STRATEGY_NEIGHBOURS) ? true : false;
 }
 
 
@@ -99,7 +99,10 @@ void BoNeighbours::set_conf(uint32_t min, uint32_t max)
   _max_cwmin = max;
 }
 
-
+void BoNeighbours::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
+}
 
 CLICK_ENDDECLS
 

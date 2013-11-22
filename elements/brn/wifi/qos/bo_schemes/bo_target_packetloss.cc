@@ -20,7 +20,8 @@ CLICK_DECLS
 
 BoTargetPacketloss::BoTargetPacketloss()
   : _cst(NULL),
-    _target_packetloss(0)
+    _target_packetloss(0),
+    _strategy(0)
 {
   BRNElement::init();
 }
@@ -52,9 +53,9 @@ void BoTargetPacketloss::add_handlers()
 {
 }
 
-uint16_t BoTargetPacketloss::get_id()
+bool BoTargetPacketloss::handle_strategy(uint32_t strategy)
 {
-  return _id;
+  return (strategy == BACKOFF_STRATEGY_TARGET_PACKETLOSS) ? true : false;
 }
 
 int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
@@ -108,6 +109,11 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 void BoTargetPacketloss::handle_feedback(uint8_t retries)
 {
   (void) retries;
+}
+
+void BoTargetPacketloss::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
 }
 
 

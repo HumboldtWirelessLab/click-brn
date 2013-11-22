@@ -19,7 +19,8 @@
 CLICK_DECLS
 
 BoMaxThroughput::BoMaxThroughput()
-  : _cst(NULL)
+  : _cst(NULL),
+    _strategy(0)
 {
   BRNElement::init();
 }
@@ -53,10 +54,11 @@ void BoMaxThroughput::add_handlers()
 {
 }
 
-uint16_t BoMaxThroughput::get_id()
+bool BoMaxThroughput::handle_strategy(uint32_t strategy)
 {
-  return _id;
+  return (strategy == BACKOFF_STRATEGY_MAX_THROUGHPUT) ? true : false;
 }
+
 
 int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -96,6 +98,12 @@ void BoMaxThroughput::handle_feedback(uint8_t retries)
 {
   (void) retries;
 }
+
+void BoMaxThroughput::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
+}
+
 
 
 CLICK_ENDDECLS
