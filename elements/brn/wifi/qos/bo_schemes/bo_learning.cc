@@ -24,6 +24,7 @@ CLICK_DECLS
 
 
 BoLearning::BoLearning() :
+  _strategy(0),
   _strict(0),
   _current_bo(_bo_start),
   _bo_cnt_up(0),
@@ -75,9 +76,9 @@ void BoLearning::add_handlers()
 }
 
 
-uint16_t BoLearning::get_id()
+bool BoLearning::handle_strategy(uint32_t strategy)
 {
-  return _id;
+  return (strategy == BACKOFF_STRATEGY_LEARNING) ? true : false;
 }
 
 
@@ -145,6 +146,11 @@ void BoLearning::decrease_cw()
 
 void BoLearning::keep_cw()
 {
+}
+
+void BoLearning::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
 }
 
 
