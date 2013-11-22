@@ -25,11 +25,10 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  uint16_t get_id();
+  bool handle_strategy(uint32_t strategy) { return strategy == BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE; }
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
-
 
 public:
   BoChannelLoadAware();

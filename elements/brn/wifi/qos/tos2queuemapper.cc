@@ -216,6 +216,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
   BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
 
   _current_scheme = get_bo_scheme(_bqs_strategy);
+  _current_scheme->set_strategy(_bqs_strategy);   //set final strategy
 
   return 0;
 }
@@ -223,7 +224,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
 {
   for (uint16_t i = 0; i < _no_schemes; i++) {
-    if (_bo_schemes[i]->get_id() == strategy) {
+    if (_bo_schemes[i]->handle_strategy(strategy)) {
       return _bo_schemes[i];
     }
   }
