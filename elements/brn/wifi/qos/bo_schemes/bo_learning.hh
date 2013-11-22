@@ -3,6 +3,7 @@
 
 #include <click/element.hh>
 #include <elements/brn/brnelement.hh>
+#include <elements/brn/wifi/channelstats.hh>
 
 #include "backoff_scheme.hh"
 
@@ -48,6 +49,10 @@ private:
   static const uint16_t _bo_start        = 63;  // initial backoff
   static const uint8_t  _retry_threshold = 1;   // 1 retry == no change
 
+
+  ChannelStats *_cst;
+
+
   /* scheme flavour: strict */
   uint8_t _strict;
 
@@ -61,6 +66,10 @@ private:
   /* bo stats */
   uint32_t _bo_cnt_up;
   uint32_t _bo_cnt_down;
+
+  // override min/max for cwmin normally determined by starting queues
+  uint32_t _learning_min_cwmin;
+  uint32_t _learning_max_cwmin;
 };
 
 

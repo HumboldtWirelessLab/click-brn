@@ -27,7 +27,9 @@ BoLearning::BoLearning() :
   _strict(0),
   _current_bo(_bo_start),
   _bo_cnt_up(0),
-  _bo_cnt_down(0)
+  _bo_cnt_down(0),
+  _learning_min_cwmin(31),
+  _learning_max_cwmin(255)
 {
   BRNElement::init();
 }
@@ -61,7 +63,7 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  if ((min_cwmin > 0) && (max_cwmin) > 0)
+  if ((min_cwmin > 0) && (max_cwmin > 0))
     set_conf(min_cwmin, max_cwmin);
 
   return 0;

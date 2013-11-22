@@ -74,14 +74,27 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
   //Get Number of Neighbours from the Channelstats-Element (_cst)
   struct airtime_stats *as = _cst->get_latest_stats(); //get airtime statisics
   number_of_neighbours = as->no_sources;
+  uint32_t busy = as->hw_busy;
 
   BRN_DEBUG("BoTargetPL.get_cwmin():\n");
-  BRN_DEBUG("    no. of nbs: %d", number_of_neighbours);
+  BRN_DEBUG("    busy: %d\n", busy);
+
+  BRN_DEBUG("    rate: %d\n", ceh->rate);
+  BRN_DEBUG("    msdu size: %d\n", p->length());
+  BRN_DEBUG("    target pkt loss: %d\n", _target_packetloss);
+  BRN_DEBUG("    no. of nbs: %d\n", number_of_neighbours);
 
   index_search_rate = Tos2QmData::find_closest_rate_index(ceh->rate);
-  index_search_msdu_size = Tos2QmData::find_closest_size_index(p->length());
+  index_search_msdu_size = Tos2QmData::find_closest_size_index(p->length() - 38); // msdu size = 1538, tos2qm_data checks for 1500 ...
   index_search_likelihood_collision = Tos2QmData::find_closest_per_index(_target_packetloss);
   index_no_neighbours = Tos2QmData::find_closest_no_neighbour_index(number_of_neighbours);
+
+  BRN_DEBUG("");
+  BRN_DEBUG("    idx rate: %d\n", index_search_rate);
+  BRN_DEBUG("    idx msdu_size: %d\n",index_search_msdu_size);
+  BRN_DEBUG("    idx likelihood: %d\n", index_search_likelihood_collision);
+  BRN_DEBUG("    idx nbs: %d\n", index_no_neighbours);
+
 
   // Tests what is known
   backoff_window_size = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
