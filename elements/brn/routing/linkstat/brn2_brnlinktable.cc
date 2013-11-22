@@ -291,18 +291,18 @@ uint32_t
 Brn2LinkTable::get_link_metric(EtherAddress from, EtherAddress to)
 {
   if (!from || !to) {
-    return BRN_DSR_INVALID_ROUTE_METRIC;
+    return BRN_LT_INVALID_LINK_METRIC;
   }
-  
+
   if (from == to) return 0;
-    
+
   if (_blacklist.findp(from) || _blacklist.findp(to)) {
-    return BRN_DSR_INVALID_ROUTE_METRIC;
+    return BRN_LT_INVALID_LINK_METRIC;
   }
   EthernetPair p = EthernetPair(from, to);
   BrnLinkInfo *nfo = _links.findp(p);
   if (!nfo) {
-    return BRN_DSR_INVALID_ROUTE_METRIC;
+    return BRN_LT_INVALID_LINK_METRIC;
   }
   return nfo->_metric;
 }
@@ -313,9 +313,9 @@ Brn2LinkTable::get_link_seq(EtherAddress from, EtherAddress to)
   if (!from || !to) {
     return 0;
   }
-  
+
   if (from == to) return 0;
-  
+
   if (_blacklist.findp(from) || _blacklist.findp(to)) {
     return 0;
   }
