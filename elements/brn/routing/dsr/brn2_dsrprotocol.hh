@@ -108,7 +108,7 @@ struct click_dsr_hop {
   uint16_t metric;
 };
 
-#define BRN_DSR_MAX_HOP_COUNT  100
+#define BRN_DSR_MAX_HOP_COUNT  BRN_ROUTING_MAX_HOP_COUNT
 
 /* DSR Route Request */
 struct click_brn_dsr_rreq {
@@ -142,8 +142,6 @@ struct click_brn_dsr_src {
 #define BRN_DSR_ROUTE_TYPE_SRCROUTE         1
 #define BRN_DSR_ROUTE_TYPE_IDROUTE          2
 #define BRN_DSR_ROUTE_TYPE_SRCROUTE_SETID   3
-
-#define BRN_MAX_ETHER_LENGTH 1500
 }; /* data */
 
 /* Common DSR Structure */
@@ -164,9 +162,6 @@ struct click_brn_dsr {
   /* in case of clients use their IPs */
   struct in_addr  dsr_ip_dst;
   struct in_addr  dsr_ip_src;
-
-#define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
-#define BRN_INTERNAL_NODE_IP "254.1.1.1"
 
   union {
     click_brn_dsr_rreq rreq;
