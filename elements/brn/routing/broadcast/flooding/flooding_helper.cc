@@ -36,6 +36,10 @@
 
 CLICK_DECLS
 
+
+/**
+ *  H E L P E R
+ **/
 //TODO: refactor: move to brntools
 void 
 FloodingHelper::print_vector(Vector<EtherAddress> &eas)
@@ -70,12 +74,14 @@ FloodingHelper::print_vector(NeighbourMetricList &nodes)
 uint32_t
 FloodingHelper::metric2pdr(uint32_t metric)
 {
+  assert( metric <= BRN_LT_INVALID_LINK_METRIC );
   if ( metric == 0 ) return 100;
   if ( metric == BRN_LT_INVALID_LINK_METRIC ) return 0;
-  if ( metric > BRN_LT_INVALID_LINK_METRIC ) return 0;
 
   return (1000 / isqrt32(metric));
 }
+
+/** --------------------------------------------------------------------------------------- **/
 
 FloodingHelper::FloodingHelper():
   _link_table(NULL),
@@ -154,7 +160,7 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, int max_metric)
   if ( cnml != NULL ) {
     if ( cnml->age() > _cache_timeout ) cnml->update(_link_table);
   } else {
-    cnml = new CachedNeighborsMetricList(node,max_metric);
+    cnml = new CachedNeighborsMetricList(node, max_metric);
     cnml->update(_link_table);
     _cnmlmap.insert(node,cnml);
   }
@@ -440,7 +446,10 @@ FloodingHelper::get_candidate_set(NetworkGraph &ng, Vector<EtherAddress> &candid
     candidate_set.clear();
   }
 
-  for( int node = 0; node < ng.nml.size(); node++) { 
+  //BRN_ERROR("CAND");
+  //print_vector(ng.nml);
+
+  for( int node = 0; node < ng.nml.size(); node++) {
      if ( ng.nml[node]->is_root_follower() && (ng.nml[node]->_hops == 1) ) {
        candidate_set.push_back(ng.nml[node]->_ea);
      }
