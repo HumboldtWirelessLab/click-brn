@@ -216,7 +216,9 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
   BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
 
   _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
-  _current_scheme->set_strategy(_bqs_strategy);   // set final strategy on that scheme
+  if ( _current_scheme != NULL ) {
+    _current_scheme->set_strategy(_bqs_strategy); // set final strategy on that scheme
+  }
 
   return 0;
 }

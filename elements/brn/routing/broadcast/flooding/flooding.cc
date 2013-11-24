@@ -258,7 +258,7 @@ Flooding::push( int port, Packet *packet )
           BRN_DEBUG("current RX node already has the packet");
           abort_last_tx(fwd, FLOODING_TXABORT_REASON_ACKED);
         } else if (_flooding_passiveack->_fhelper->is_better_fwd(*(_me->getMasterAddress()), fwd, _last_tx_dst_ea)) {
-          BRN_ERROR("fwd has better link to current target");
+          BRN_DEBUG("fwd has better link to current target");
           abort_last_tx(FLOODING_TXABORT_REASON_BETTER_LINK);
         }
       }
@@ -338,13 +338,12 @@ Flooding::push( int port, Packet *packet )
     if (forward) {
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
 
-      BRN_ERROR("FWDSIZE: %d", forwarder.size());
+      //BRN_ERROR("FWDSIZE: %d", forwarder.size());
       if ( !forwarder.empty() ) {
         new_bcn->_fix_target_set = true;
         for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
-          BRN_ERROR("Add node %s %d %s", i->unparse().c_str(), p_bcast_id, src.unparse().c_str());
-          int u = add_last_node(&src, p_bcast_id, i, false, false, true, false);
-          BRN_ERROR("Number: %d", u);
+          BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), p_bcast_id, src.unparse().c_str());
+          /*int u = */add_last_node(&src, p_bcast_id, i, false, false, true, false);
         }
       }
 
@@ -826,7 +825,7 @@ Flooding::table()
 
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
     for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn->_bcast_id_list[i] == 0 ) continue;
+      if ( bcn->_bcast_id_list[i] == 0 ) continue; //unused id-entry
       struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
       sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
       sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
