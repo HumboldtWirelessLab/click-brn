@@ -310,7 +310,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         /* We have a candidate set. We fix it now*/
         if ( _fix_candidate_set && (!candidate_set.empty()) ) {
           for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
-            BRN_ERROR("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
+            BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
             _flooding->add_last_node(&src, bcast_id, i, false, false, true, false);
           }
         }
