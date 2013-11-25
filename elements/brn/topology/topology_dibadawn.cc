@@ -41,9 +41,9 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
   search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
 {
-  brn_click_element = brn_click_element;
+  brn_click_element = click_element;
   ownNodeId = this_node_id;
   search_id = packet.searchId;
 }
@@ -74,6 +74,7 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &packet)
 {
+  packet.log();
   if(packet.isForward)
   {
     receiveForwardMessage(packet);
