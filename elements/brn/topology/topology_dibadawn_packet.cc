@@ -62,6 +62,7 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   ttl = packet->ttl;
   isForward = (packet->type & 0x03) != 0;
   searchId.setByPointerTo10BytesOfData(packet->id);
+  version = packet->version;
 }
 
 DibadawnPacket::DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_addr, bool is_forward)
