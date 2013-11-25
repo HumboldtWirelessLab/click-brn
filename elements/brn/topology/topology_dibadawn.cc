@@ -34,9 +34,9 @@
 CLICK_DECLS;
 
 
-DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id)
 {
-  brn_click_element = brn_click_element;
+  brn_click_element = click_element;
   ownNodeId = this_node_id;
   search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
 }
