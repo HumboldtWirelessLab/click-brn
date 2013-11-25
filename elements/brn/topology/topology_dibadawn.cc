@@ -36,9 +36,16 @@ CLICK_DECLS;
 
 DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id)
 {
-  this->brn_click_element = brn_click_element;
-  this->ownNodeId = this_node_id;
-  this->search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
+  brn_click_element = brn_click_element;
+  ownNodeId = this_node_id;
+  search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
+}
+
+DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
+{
+  brn_click_element = brn_click_element;
+  ownNodeId = this_node_id;
+  search_id = packet.searchId;
 }
 
 String DibadawnSearch::AsString()
@@ -60,10 +67,16 @@ void DibadawnSearch::start_search()
   LOG("<--! start_search 5 -->");
 }
 
+bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
+{
+  return(search_id.isEqualTo(packet.searchId));
+}
+
 void DibadawnSearch::receive(DibadawnPacket &packet)
 {
   LOG("<--! Not Implemented yet -->");
 }
+
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns)
