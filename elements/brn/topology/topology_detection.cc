@@ -134,9 +134,6 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
     for (int i = 0; i < searches.size(); i++)
     {
       search = searches.at(i);
-      BRN_INFO("<!-- compare %s and %s-->",
-          packet.searchId.AsString().c_str(),
-          search->search_id.AsString().c_str());
       if (search->isResponsableFor(packet))
       {
         BRN_INFO("<!-- MATCH -->");
