@@ -133,11 +133,11 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
     DibadawnSearch *search;
     for (int i = 0; i < searches.size(); i++)
     {
-      //search = searches.at(i);
-      //BRN_INFO("<!-- compare %s and %s-->",
-      //    packet.searchId.AsString().c_str(),
-      //    search->search_id.AsString().c_str());
-      //if (search->isResponsableFor(packet))
+      search = searches.at(i);
+      BRN_INFO("<!-- compare %s and %s-->",
+          packet.searchId.AsString().c_str(),
+          search->search_id.AsString().c_str());
+      if (search->isResponsableFor(packet))
       {
         BRN_INFO("<!-- MATCH -->");
         found = true;
@@ -147,11 +147,12 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
 
     if (!found)
     {
-      //search = new DibadawnSearch(this, _node_identity, packet);
-      //searches.push_back(search);
+      BRN_INFO("<!-- Received new search -->");
+      search = new DibadawnSearch(this, _node_identity, packet);
+      searches.push_back(search);
     }
     
-    //search->receive(packet);
+    search->receive(packet);
   }
   else
     BRN_INFO("<!-- MSG invalid -->");
