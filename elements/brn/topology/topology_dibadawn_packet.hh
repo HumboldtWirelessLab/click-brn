@@ -37,7 +37,6 @@ public:
   DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_addr, bool is_forward);
   
   void setVersion();
-  void setSearchId(DibadawnSearchId *id);
   void setTreeParent(const EtherAddress* sender_addr);
   void setForwaredBy(const EtherAddress* sender_addr);
   WritablePacket* getBrnPacket();
@@ -45,11 +44,11 @@ public:
   
   uint32_t version; 
   DibadawnSearchId searchId;
-  static const size_t LengthOfTreeParrent = 6;
-  uint8_t treeParrent[LengthOfTreeParrent];
-  static const size_t LengthOfForwardedBy = 6;
-  uint8_t forwardedBy[LengthOfForwardedBy];
+  static const size_t LengthOfAddr = 6;
+  uint8_t treeParrent[LengthOfAddr];
+  uint8_t forwardedBy[LengthOfAddr];
   bool isForward;
+  uint8_t ttl;
   
 private:
 
