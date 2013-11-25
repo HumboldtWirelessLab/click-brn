@@ -74,7 +74,21 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &packet)
 {
-  LOG("<--! Not Implemented yet -->");
+  if(packet.isForward)
+  {
+    receiveForwardMessage(packet);
+  }
+  else
+    LOG("<--! Not Implemented yet -->");
+}
+
+void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
+{
+  packet.setForwaredBy(ownNodeId->getMasterAddress());
+  WritablePacket *brn_packet = packet.getBrnPacket();
+  LOG("<--! receiveForwardMessage 4 -->  0x%X", brn_packet);
+  brn_click_element->output(0).push(brn_packet->clone());
+  LOG("<--! receiveForwardMessage 5 -->");
 }
 
 

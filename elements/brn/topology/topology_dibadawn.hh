@@ -44,6 +44,7 @@ public:
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet);
   String AsString();
   void receive(DibadawnPacket &packet);
+  void receiveForwardMessage(DibadawnPacket &packet);
   void start_search();
   bool isResponsableFor(DibadawnPacket &packet);
 };
