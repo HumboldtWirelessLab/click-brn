@@ -31,48 +31,59 @@
 CLICK_DECLS
 
 
-DibadawnSearchId::DibadawnSearchId() 
+DibadawnSearchId::DibadawnSearchId()
 {
-  memset(data, 0, sizeof(data));
+  memset(data, 0, sizeof (data));
 }
 
-DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress *creator) 
+DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress *creator)
 {
   uint32_t time = t.usec();
-  const uint8_t *pmac = reinterpret_cast<const uint8_t *>(creator->data());
-  
+  const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator->data());
+
   memcpy(this->data, pmac, 6);
-  memcpy(this->data+6, &time, sizeof(time));
+  memcpy(this->data + 6, &time, sizeof (time));
 }
-    
-String DibadawnSearchId::AsString() 
+
+String DibadawnSearchId::AsString()
 {
   String str = String::make_uninitialized(27);
   char *x = str.mutable_c_str();
-  assert (x != NULL);
+  assert(x != NULL);
 
-  uint8_t *mac = (uint8_t*)&data[0];
-  uint32_t *time = (uint32_t*)&data[6];
+  uint8_t *mac = (uint8_t*) & data[0];
+  uint32_t *time = (uint32_t*) & data[6];
   sprintf(x, "%02X-%02X-%02X-%02X-%02X-%02X-%08X",
-    mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-    *time);
+      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+      *time);
 
-  return(str);
+  return (str);
 }
 
-uint8_t* DibadawnSearchId::PointerTo10BytesOfData() 
+uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
 {
-  return(data);
+  return (data);
 }
 
-DibadawnSearchId & DibadawnSearchId::operator = (const DibadawnSearchId &id)
+void DibadawnSearchId::setByPointerTo10BytesOfData(uint8_t *value)
 {
-  if(this != &id)
-    memcpy(this->data, id.data, sizeof(this->data));
+  memcpy(data, value, sizeof(data));
+}
+
+DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
+{
+  if (this != &id)
+    memcpy(this->data, id.data, sizeof (this->data));
 
   return *this;
 }
 
+bool DibadawnSearchId::isEqualTo(DibadawnSearchId &id)
+{
+  return(memcmp(data, id.data, sizeof(data)) != 0);
+}
+
+
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns)
+ELEMENT_REQUIRES(userlevel | ns)
 ELEMENT_PROVIDES(DibadawnSearchId)
