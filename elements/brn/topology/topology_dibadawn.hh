@@ -29,19 +29,23 @@
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_searchid.hh"
 #include "topology_info.hh"
+#include "topology_dibadawn_packet.hh"
 
 CLICK_DECLS;
 
 class DibadawnSearch {
-  DibadawnSearchId search_id;
   BRNElement *brn_click_element;
-  BRN2NodeIdentity *node_id;
+  BRN2NodeIdentity *ownNodeId;
   
 public:
+  DibadawnSearchId search_id;
+  
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
+  DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet);
   String AsString();
-  void receive(Packet *packet);
+  void receive(DibadawnPacket &packet);
   void start_search();
+  bool isResponsableFor(DibadawnPacket &packet);
 };
 
 CLICK_ENDDECLS
