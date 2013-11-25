@@ -37,7 +37,7 @@ CLICK_DECLS;
 DibadawnSearch::DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id)
 {
   this->brn_click_element = brn_click_element;
-  this->node_id = this_node_id;
+  this->ownNodeId = this_node_id;
   this->search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
 }
 
@@ -48,11 +48,21 @@ String DibadawnSearch::AsString()
 
 void DibadawnSearch::start_search()
 {
-  const EtherAddress* sender = node_id->getMasterAddress();
+  LOG("<--! start_search 1 -->");
+  const EtherAddress* sender = ownNodeId->getMasterAddress();
+  LOG("<--! start_search 2 -->");
   bool is_forward = true;
   DibadawnPacket packet(&search_id, sender, is_forward);
+  LOG("<--! start_search 3 -->");
   WritablePacket *brn_packet = packet.getBrnPacket();
-  brn_click_element->output(0).push(brn_packet);
+  LOG("<--! start_search 4 -->  0x%X", brn_packet);
+  brn_click_element->output(0).push(brn_packet->clone());
+  LOG("<--! start_search 5 -->");
+}
+
+void DibadawnSearch::receive(DibadawnPacket &packet)
+{
+  LOG("<--! Not Implemented yet -->");
 }
 
 CLICK_ENDDECLS
