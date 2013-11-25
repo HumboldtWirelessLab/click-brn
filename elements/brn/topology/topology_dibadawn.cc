@@ -39,6 +39,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
   brn_click_element = click_element;
   ownNodeId = this_node_id;
   search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
+  isForwared = false;
 }
 
 DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
@@ -46,6 +47,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
   brn_click_element = click_element;
   ownNodeId = this_node_id;
   search_id = packet.searchId;
+  isForwared = false;
 }
 
 String DibadawnSearch::AsString()
@@ -85,11 +87,17 @@ void DibadawnSearch::receive(DibadawnPacket &packet)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
 {
-  packet.setForwaredBy(ownNodeId->getMasterAddress());
-  WritablePacket *brn_packet = packet.getBrnPacket();
-  LOG("<--! receiveForwardMessage 4 -->  0x%X", brn_packet);
-  brn_click_element->output(0).push(brn_packet->clone());
-  LOG("<--! receiveForwardMessage 5 -->");
+  if (isForwared)
+  {
+    LOG("<--! Already forwared, TODO: ... -->");
+  }
+  else
+  {
+    packet.setForwaredBy(ownNodeId->getMasterAddress());
+    WritablePacket *brn_packet = packet.getBrnPacket();
+    brn_click_element->output(0).push(brn_packet->clone());
+    isForwared = true;
+  }
 }
 
 

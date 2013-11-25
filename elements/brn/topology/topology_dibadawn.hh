@@ -36,6 +36,7 @@ CLICK_DECLS;
 class DibadawnSearch {
   BRNElement *brn_click_element;
   BRN2NodeIdentity *ownNodeId;
+  bool isForwared;
   
 public:
   DibadawnSearchId search_id;
