@@ -116,9 +116,10 @@ WritablePacket* DibadawnPacket::getBrnPacket()
 {
   DibadawnPacketStruct content;
   content.version = version & 0x0F;
-  content.type = isForward ? 0 : 1;
+  content.type = isForward ? 1 : 0;
   memcpy(content.id, searchId.PointerTo10BytesOfData(), sizeof (content.id));
   memcpy(content.forwaredBy, forwardedBy, sizeof (content.forwaredBy));
+  memcpy(content.treeParent, treeParrent, sizeof (content.treeParent));
   content.ttl = ttl; 
 
   LOG("Sizeof(DibadawnPacketStruct) %d", sizeof(DibadawnPacketStruct));
@@ -146,6 +147,24 @@ WritablePacket* DibadawnPacket::getBrnPacket()
 
   return (brn_packet);
 }
+
+void DibadawnPacket::log()
+{
+  EtherAddress forwaredByAsEtherAddress(forwardedBy);
+  String forwaredByAsText = forwaredByAsEtherAddress.unparse_dash();
+      
+  EtherAddress treeParrentAsEtherAddress(treeParrent);
+  String treeParrentAsText = treeParrentAsEtherAddress.unparse_dash();
+  
+  LOG("<DibadawnPacket version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s'> </DibadawnPacket>", 
+      version, 
+      isForward,
+      ttl,
+      searchId.AsString().c_str(),
+      forwaredByAsText.c_str(),
+      treeParrentAsText.c_str());
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel | ns)
