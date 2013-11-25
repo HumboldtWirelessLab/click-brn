@@ -37,6 +37,8 @@ public:
   DibadawnSearchId();
   String AsString();
   uint8_t* PointerTo10BytesOfData();
+  void setByPointerTo10BytesOfData(uint8_t *value);
+  bool isEqualTo(DibadawnSearchId &id);
   DibadawnSearchId & operator = (const DibadawnSearchId &id);
 
 private:
