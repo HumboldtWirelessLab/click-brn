@@ -28,6 +28,8 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn_searchid.hh"
 
+#define LOG BrnLogger(__FILE__, __LINE__, NULL).info
+
 CLICK_DECLS
 
 
@@ -80,7 +82,7 @@ DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
 
 bool DibadawnSearchId::isEqualTo(DibadawnSearchId &id)
 {
-  return(memcmp(data, id.data, sizeof(data)) != 0);
+   return(memcmp(data, id.data, sizeof(data)) == 0);
 }
 
 
