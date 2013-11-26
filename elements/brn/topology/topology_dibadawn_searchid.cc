@@ -87,5 +87,4 @@ bool DibadawnSearchId::isEqualTo(DibadawnSearchId &id)
 
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel | ns)
 ELEMENT_PROVIDES(DibadawnSearchId)

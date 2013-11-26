@@ -168,5 +168,4 @@ void DibadawnPacket::log()
 
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel | ns)
 ELEMENT_PROVIDES(DibadawnPacket)

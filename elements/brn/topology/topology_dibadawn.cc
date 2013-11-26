@@ -102,5 +102,4 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
 
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns)
 ELEMENT_PROVIDES(DibadawnSearch)
