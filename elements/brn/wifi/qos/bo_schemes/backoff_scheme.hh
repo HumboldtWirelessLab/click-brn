@@ -12,12 +12,13 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_OFF                             0 /* default */
 #define BACKOFF_STRATEGY_DIRECT                          1
 #define BACKOFF_STRATEGY_MAX_THROUGHPUT                  2
-#define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              3
+#define BACKOFF_STRATEGY_BUSY_AWARE                      3
 #define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
 #define BACKOFF_STRATEGY_LEARNING                        5
 #define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
 #define BACKOFF_STRATEGY_NEIGHBOURS                      7
 #define BACKOFF_STRATEGY_CONSTANT                        8
+#define BACKOFF_STRATEGY_TX_AWARE                        9
 
 class BackoffScheme: public BRNElement {
 public:
