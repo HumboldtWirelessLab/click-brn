@@ -157,7 +157,7 @@ void DibadawnPacket::log()
   EtherAddress treeParrentAsEtherAddress(treeParrent);
   String treeParrentAsText = treeParrentAsEtherAddress.unparse_dash();
   
-  LOG("<DibadawnPacket version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s'> </DibadawnPacket>", 
+  LOG("<DibadawnPacket version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
       version, 
       isForward,
       ttl,
