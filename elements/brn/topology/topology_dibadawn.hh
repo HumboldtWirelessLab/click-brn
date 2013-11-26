@@ -34,17 +34,15 @@
 
 CLICK_DECLS;
 
-class DibadawnSearch : public Element 
+class DibadawnSearch 
 {
   BRNElement *brn_click_element;
-  BRN2NodeIdentity *ownNodeId;
+  const EtherAddress *nodeAddr;
   bool isForwared;
   Timer *forwardTimer;
-  
-  void run_timer(Timer *timer);
 
 public:
-  DibadawnSearchId search_id;
+  DibadawnSearchId searchId;
   
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet);
