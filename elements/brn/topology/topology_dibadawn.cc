@@ -37,8 +37,8 @@ CLICK_DECLS;
 DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id)
 {
   brn_click_element = click_element;
-  ownNodeId = this_node_id;
-  search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
+  nodeAddr = this_node_id->getMasterAddress();
+  searchId = DibadawnSearchId(Timestamp::now(), nodeAddr);
   isForwared = false;
   initTimer();
 }
@@ -46,8 +46,8 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
 DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
 {
   brn_click_element = click_element;
-  ownNodeId = this_node_id;
-  search_id = packet.searchId;
+  nodeAddr = this_node_id->getMasterAddress();
+  searchId = packet.searchId;
   isForwared = false;
   initTimer();
 }
@@ -74,16 +74,14 @@ void DibadawnSearch::activateTimer()
 
 String DibadawnSearch::AsString()
 {
-  return(this->search_id.AsString());
+  return(this->searchId.AsString());
 }
 
 void DibadawnSearch::start_search()
 {
-  LOG("<--! start_search 1 -->");
-  const EtherAddress* sender = ownNodeId->getMasterAddress();
   LOG("<--! start_search 2 -->");
   bool is_forward = true;
-  DibadawnPacket packet(&search_id, sender, is_forward);
+  DibadawnPacket packet(&searchId, nodeAddr, is_forward);
   LOG("<--! start_search 3 -->");
   WritablePacket *brn_packet = packet.getBrnPacket();
   LOG("<--! start_search 4 -->  0x%X", brn_packet);
@@ -94,7 +92,7 @@ void DibadawnSearch::start_search()
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 {
-  return(search_id.isEqualTo(packet.searchId));
+  return(searchId.isEqualTo(packet.searchId));
 }
 
 void DibadawnSearch::receive(DibadawnPacket &packet)
@@ -116,7 +114,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
   }
   else
   {
-    packet.setForwaredBy(ownNodeId->getMasterAddress());
+    packet.setForwaredBy(nodeAddr);
     WritablePacket *brn_packet = packet.getBrnPacket();
     brn_click_element->output(0).push(brn_packet->clone());
     isForwared = true;
@@ -124,16 +122,11 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
   }
 }
 
-void DibadawnSearch::run_timer(Timer* timer)
-{
-  forwardTimeout();
-}
-
 void DibadawnSearch::forwardTimeout()
 {
   LOG("<ForwardTimeout searchId='%s' node='%s' />",
-      search_id.AsString().c_str(),
-      ownNodeId->getMasterAddress()->unparse_dash().c_str());
+      searchId.AsString().c_str(),
+      nodeAddr->unparse_dash().c_str());
 }
 
 
