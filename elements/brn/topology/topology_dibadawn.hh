@@ -25,6 +25,7 @@
 #define TOPOLOGY_DIBADAWN_HH
 
 #include <click/element.hh>
+#include <click/timer.hh>
 
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_searchid.hh"
@@ -33,11 +34,15 @@
 
 CLICK_DECLS;
 
-class DibadawnSearch {
+class DibadawnSearch : public Element 
+{
   BRNElement *brn_click_element;
   BRN2NodeIdentity *ownNodeId;
   bool isForwared;
+  Timer *forwardTimer;
   
+  void run_timer(Timer *timer);
+
 public:
   DibadawnSearchId search_id;
   
@@ -48,6 +53,9 @@ public:
   void receiveForwardMessage(DibadawnPacket &packet);
   void start_search();
   bool isResponsableFor(DibadawnPacket &packet);
+  void forwardTimeout();
+  void initTimer();
+  void activateTimer();
 };
 
 CLICK_ENDDECLS

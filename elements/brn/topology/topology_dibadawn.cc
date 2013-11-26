@@ -40,6 +40,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
   ownNodeId = this_node_id;
   search_id = DibadawnSearchId(Timestamp::now(), this_node_id->getMasterAddress());
   isForwared = false;
+  initTimer();
 }
 
 DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
@@ -48,6 +49,27 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
   ownNodeId = this_node_id;
   search_id = packet.searchId;
   isForwared = false;
+  initTimer();
+}
+
+void forwardTimerCallback(Timer *timer, void *search)
+{
+  DibadawnSearch* s = (DibadawnSearch*) search;
+  assert(s != NULL);
+  s->forwardTimeout();
+}
+
+void DibadawnSearch::initTimer()
+{
+  forwardTimer = new Timer(forwardTimerCallback, this);
+}
+
+void DibadawnSearch::activateTimer()
+{
+  forwardTimer->initialize(this->brn_click_element, false);
+
+  /* TODO Change this value */
+  forwardTimer->schedule_after_msec(100);
 }
 
 String DibadawnSearch::AsString()
@@ -67,6 +89,7 @@ void DibadawnSearch::start_search()
   LOG("<--! start_search 4 -->  0x%X", brn_packet);
   brn_click_element->output(0).push(brn_packet->clone());
   LOG("<--! start_search 5 -->");
+  activateTimer();
 }
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
@@ -97,7 +120,20 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
     WritablePacket *brn_packet = packet.getBrnPacket();
     brn_click_element->output(0).push(brn_packet->clone());
     isForwared = true;
+    activateTimer();
   }
+}
+
+void DibadawnSearch::run_timer(Timer* timer)
+{
+  forwardTimeout();
+}
+
+void DibadawnSearch::forwardTimeout()
+{
+  LOG("<ForwardTimeout searchId='%s' node='%s' />",
+      search_id.AsString().c_str(),
+      ownNodeId->getMasterAddress()->unparse_dash().c_str());
 }
 
 
