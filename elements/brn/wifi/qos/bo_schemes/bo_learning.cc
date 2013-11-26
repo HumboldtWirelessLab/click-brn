@@ -30,7 +30,8 @@ BoLearning::BoLearning() :
   _bo_cnt_up(0),
   _bo_cnt_down(0),
   _learning_min_cwmin(31),
-  _learning_max_cwmin(255)
+  _learning_max_cwmin(255),
+  _cap(0)
 {
   BRNElement::init();
 }
@@ -61,6 +62,7 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
       "MIN_CWMIN", cpkP, cpInteger, &min_cwmin,
       "MAX_CWMIN", cpkP, cpInteger, &max_cwmin,
       "STRICT", cpkP, cpInteger, &_strict,
+      "CAP", cpkP, cpInteger, &_cap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -97,21 +99,24 @@ void BoLearning::handle_feedback(uint8_t retries)
   BRN_DEBUG("    retries: %d\n", retries);
   BRN_DEBUG("    current bo: %d\n", _current_bo);
 
-  if (retries < _retry_threshold && _current_bo > _min_cwmin)
+  if (retries < _retry_threshold && _current_bo > 1)
     decrease_cw();
   else if (retries == _retry_threshold)
     keep_cw();
-  else if (retries > _retry_threshold && _current_bo < _max_cwmin) {
+    //increase_cw();
+  else if (retries > _retry_threshold) {
     if (_strict)
       increase_cw_strict(retries);
     else
       increase_cw();
   }
 
-  if (_current_bo < _min_cwmin)
-    _current_bo = _min_cwmin;
-  else if (_current_bo > _max_cwmin)
-    _current_bo = _max_cwmin;
+  if (_cap) {
+    if (_current_bo < _min_cwmin)
+      _current_bo = _min_cwmin;
+    else if (_current_bo > _max_cwmin)
+      _current_bo = _max_cwmin;
+  }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
 }
