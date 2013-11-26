@@ -49,8 +49,6 @@ CLICK_DECLS
 #define TOS2QM_LEARNING_MIN_CWMIN                        31
 #define TOS2QM_LEARNING_MAX_CWMIN                        255
 
-#define TOS2QM_PLEB_MIN_CWMIN                            7
-#define TOS2QM_PLEB_MAX_CWMIN                            127
 
 class Tos2QueueMapper : public BRNElement {
 

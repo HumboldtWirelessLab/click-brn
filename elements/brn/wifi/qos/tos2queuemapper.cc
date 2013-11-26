@@ -74,6 +74,12 @@ Tos2QueueMapper::Tos2QueueMapper():
 Tos2QueueMapper::~Tos2QueueMapper()
 {
   delete[] _bo_schemes;
+  delete[] _bo_exp;
+  delete[] _bo_usage_usage;
+  delete[] _queue_usage;
+  delete[] _cwmin;
+  delete[] _cwmax;
+  delete[] _aifs;
 }
 
 int
@@ -216,7 +222,11 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
   BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
 
   _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
-  _current_scheme->set_strategy(_bqs_strategy);   // set final strategy on that scheme
+
+  if (_current_scheme)
+    _current_scheme->set_strategy(_bqs_strategy);   // set final strategy on that scheme
+  else
+    BRN_DEBUG("Tos2QM.parse_bo_schemes(): couldn't get bo scheme");
 
   return 0;
 }
