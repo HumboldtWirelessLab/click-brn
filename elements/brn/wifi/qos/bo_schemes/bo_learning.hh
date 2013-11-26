@@ -47,9 +47,8 @@ private:
 
 /* Own Variables */
 private:
-  static const uint16_t _id              = 5;   // unique bo scheme identifier
-  static const uint16_t _bo_start        = 63;  // initial backoff
-  static const uint8_t  _retry_threshold = 1;   // 1 retry == no change
+  static const uint16_t _bo_start        = 63; // initial backoff
+  static const uint8_t  _retry_threshold = 1;    // 1 retry == no change
 
 
   uint32_t _strategy;
@@ -71,6 +70,8 @@ private:
   // override min/max for cwmin normally determined by starting queues
   uint32_t _learning_min_cwmin;
   uint32_t _learning_max_cwmin;
+
+  uint8_t _cap;
 };
 
 
