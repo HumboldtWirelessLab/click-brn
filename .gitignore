@@ -43,7 +43,6 @@ elements/brnold
 elements/brn/version.h
 linuxmodule/elements.csmk
 bsdmodule/elements.csmk
-*kdev4
 nbproject
 jist/elements.csmk
 userlevel/elements-good.mk
