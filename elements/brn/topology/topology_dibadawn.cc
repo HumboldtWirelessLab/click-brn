@@ -34,33 +34,33 @@
 CLICK_DECLS;
 
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, EtherAddress *addrOfThisNode)
 {
   brn_click_element = click_element;
-  nodeAddr = this_node_id->getMasterAddress();
+  thisNode = *addrOfThisNode;
   
-  searchId = DibadawnSearchId(Timestamp::now(), nodeAddr);
-  isForwardingPhase = true;
+  ideaOfPacket.searchId = DibadawnSearchId(Timestamp::now(), thisNode);
+  ideaOfPacket.forwardedBy = thisNode;
+  ideaOfPacket.isForward = true;
+  ideaOfPacket.ttl = 255;  // TODO: Does this makes sense?
   isForwared = false;
-  ttl = 255;  // TODO: Does this makes sense?
   
   initTimer();
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, EtherAddress *addrOfThisNode, DibadawnPacket &packet)
 {
   brn_click_element = click_element;
-  nodeAddr = this_node_id->getMasterAddress();
+  thisNode = *addrOfThisNode;
   
-  searchId = packet.searchId;
-  isForwardingPhase = packet.isForward;
+  ideaOfPacket = packet;
+  ideaOfPacket.forwardedBy = thisNode;
   isForwared = false;
-  ttl = packet.ttl;
   
   initTimer();
 }
 
-void forwardTimerCallback(Timer *timer, void *search)
+void forwardTimerCallback(Timer*, void *search)
 {
   DibadawnSearch* s = (DibadawnSearch*) search;
   assert(s != NULL);
@@ -82,21 +82,19 @@ void DibadawnSearch::activateForwardTimer()
 
 String DibadawnSearch::asString()
 {
-  return(this->searchId.AsString());
+  return(ideaOfPacket.searchId.AsString());
 }
 
 void DibadawnSearch::start_search()
 {
   sendPerBroadcastWithTimeout();
+  isForwared = true;
 }
 
 void DibadawnSearch::sendPerBroadcastWithTimeout()
 {
-  DibadawnPacket packet(&searchId, nodeAddr, isForwardingPhase);
-  packet.ttl = ttl;
-  packet.setForwaredBy(nodeAddr);
-  packet.log("DibadawnPacketSend");
-  WritablePacket *brn_packet = packet.getBrnPacket();
+  ideaOfPacket.log("DibadawnPacketTx");
+  WritablePacket *brn_packet = ideaOfPacket.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
   
   activateForwardTimer();
@@ -104,21 +102,21 @@ void DibadawnSearch::sendPerBroadcastWithTimeout()
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 {
-  return(searchId.isEqualTo(packet.searchId));
+  return(packet.searchId.isEqualTo(packet.searchId));
 }
 
-void DibadawnSearch::receive(DibadawnPacket &packet)
+void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 {
-  packet.log("DibadawnPacketReceived");
-  if(packet.isForward)
+  receivedPacket.log("DibadawnPacketRx");
+  if(receivedPacket.isForward)
   {
-    receiveForwardMessage(packet);
+    receiveForwardMessage(receivedPacket);
   }
   else
     LOG("<--! Not Implemented yet -->");
 }
 
-void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
+void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
 {
   if (isForwared)
   {
@@ -126,7 +124,8 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
   }
   else
   {
-    ttl--;
+    ideaOfPacket.ttl = receivedPacket.ttl - 1;
+    ideaOfPacket.treeParent = receivedPacket.forwardedBy;
     sendPerBroadcastWithTimeout();
     isForwared = true;
   }
@@ -135,8 +134,8 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
 void DibadawnSearch::forwardTimeout()
 {
   LOG("<ForwardTimeout searchId='%s' node='%s' />",
-      searchId.AsString().c_str(),
-      nodeAddr->unparse_dash().c_str());
+      ideaOfPacket.searchId.AsString().c_str(),
+      thisNode.unparse_dash().c_str());
 }
 
 

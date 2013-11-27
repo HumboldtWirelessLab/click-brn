@@ -145,7 +145,7 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
     if (!found)
     {
       BRN_INFO("<!-- Received new search -->");
-      search = new DibadawnSearch(this, _node_identity, packet);
+      search = new DibadawnSearch(this, _node_identity->getMasterAddress(), packet);
       searches.push_back(search);
     }
     
@@ -263,7 +263,7 @@ void TopologyDetection::start_detection()
   output(0).push(p);
 
   // New...
-  DibadawnSearch *search = new DibadawnSearch(this, _node_identity);
+  DibadawnSearch *search = new DibadawnSearch(this, _node_identity->getMasterAddress());
   searches.push_back(search);
   search->start_search();
   String search_name = search->asString();

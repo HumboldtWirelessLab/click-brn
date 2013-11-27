@@ -38,12 +38,12 @@ DibadawnSearchId::DibadawnSearchId()
   memset(data, 0, sizeof (data));
 }
 
-DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress *creator)
+DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress &creator)
 {
-  uint32_t time = t.usec();
-  const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator->data());
-
+  const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator.data());
   memcpy(this->data, pmac, 6);
+  
+  uint32_t time = t.usec();
   memcpy(this->data + 6, &time, sizeof (time));
 }
 
