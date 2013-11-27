@@ -64,7 +64,7 @@ void DibadawnSearch::initTimer()
   forwardTimer = new Timer(forwardTimerCallback, this);
 }
 
-void DibadawnSearch::activateTimer()
+void DibadawnSearch::activateForwardTimer()
 {
   forwardTimer->initialize(this->brn_click_element, false);
 
@@ -72,7 +72,7 @@ void DibadawnSearch::activateTimer()
   forwardTimer->schedule_after_msec(100);
 }
 
-String DibadawnSearch::AsString()
+String DibadawnSearch::asString()
 {
   return(this->searchId.AsString());
 }
@@ -87,7 +87,7 @@ void DibadawnSearch::start_search()
   LOG("<--! start_search 4 -->  0x%X", brn_packet);
   brn_click_element->output(0).push(brn_packet->clone());
   LOG("<--! start_search 5 -->");
-  activateTimer();
+  activateForwardTimer();
 }
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
@@ -118,7 +118,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
     WritablePacket *brn_packet = packet.getBrnPacket();
     brn_click_element->output(0).push(brn_packet->clone());
     isForwared = true;
-    activateTimer();
+    activateForwardTimer();
   }
 }
 
