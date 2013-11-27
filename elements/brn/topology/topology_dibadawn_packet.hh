@@ -34,7 +34,7 @@ class DibadawnPacket {
 public:
   DibadawnPacket();
   DibadawnPacket(const Packet *packet);
-  DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_addr, bool is_forward);
+  DibadawnPacket(DibadawnSearchId *id, const EtherAddress &sender_addr, bool is_forward);
   
   void setVersion();
   void setTreeParent(const EtherAddress* sender_addr);
@@ -45,9 +45,8 @@ public:
   
   uint32_t version; 
   DibadawnSearchId searchId;
-  static const size_t LengthOfAddr = 6;
-  uint8_t treeParrent[LengthOfAddr];
-  uint8_t forwardedBy[LengthOfAddr];
+  EtherAddress forwardedBy;
+  EtherAddress treeParent;
   bool isForward;
   uint8_t ttl;
   

@@ -42,8 +42,8 @@ struct DibadawnPacketStruct
   uint8_t type : 2;
 
   uint8_t id[DibadawnSearchId::length];
-  uint8_t forwaredBy[DibadawnPacket::LengthOfAddr];
-  uint8_t treeParent[DibadawnPacket::LengthOfAddr];
+  uint8_t forwaredBy[6];
+  uint8_t treeParent[6];
   uint8_t ttl;
 };
 
@@ -57,20 +57,19 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   DibadawnPacketStruct *packet;
   packet = (struct DibadawnPacketStruct *) brn_packet->data();
   
-  memcpy(forwardedBy, packet->forwaredBy, sizeof (forwardedBy));
-  memcpy(treeParrent, packet->treeParent, sizeof (treeParrent));
+  forwardedBy = EtherAddress(packet->forwaredBy);
+  treeParent = EtherAddress(packet->treeParent);
   ttl = packet->ttl;
   isForward = (packet->type & 0x03) != 0;
   searchId.setByPointerTo10BytesOfData(packet->id);
   version = packet->version;
 }
 
-DibadawnPacket::DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_addr, bool is_forward)
+DibadawnPacket::DibadawnPacket(DibadawnSearchId *id, const EtherAddress &sender_addr, bool is_forward)
 {
   setVersion();
   searchId = *id;
-  setTreeParent(NULL);
-  setForwaredBy(sender_addr);
+  forwardedBy = sender_addr;
   isForward = is_forward;
   ttl = 255;
 }
@@ -89,28 +88,12 @@ void DibadawnPacket::setVersion()
 
 void DibadawnPacket::setForwaredBy(const EtherAddress* sender_addr)
 {
-  if (sender_addr == NULL)
-  {
-    memset(forwardedBy, 0x00, sizeof (forwardedBy));
-  }
-  else
-  {
-    const uint8_t *bytes = sender_addr->data();
-    memcpy(forwardedBy, bytes, sizeof (forwardedBy));
-  }
+  forwardedBy = *sender_addr;
 }
 
 void DibadawnPacket::setTreeParent(const EtherAddress* sender_addr)
 {
-  if (sender_addr == NULL)
-  {
-    memset(treeParrent, 0x00, sizeof (treeParrent));
-  }
-  else
-  {
-    const uint8_t *bytes = sender_addr->data();
-    memcpy(treeParrent, bytes, sizeof (treeParrent));
-  }
+  treeParent = *sender_addr;
 }
 
 WritablePacket* DibadawnPacket::getBrnPacket()
@@ -119,12 +102,10 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   content.version = version & 0x0F;
   content.type = isForward ? 1 : 0;
   memcpy(content.id, searchId.PointerTo10BytesOfData(), sizeof (content.id));
-  memcpy(content.forwaredBy, forwardedBy, sizeof (content.forwaredBy));
-  memcpy(content.treeParent, treeParrent, sizeof (content.treeParent));
+  memcpy(content.forwaredBy, forwardedBy.data(), sizeof (content.forwaredBy));
+  memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
   content.ttl = ttl; 
 
-  LOG("Sizeof(DibadawnPacketStruct) %d", sizeof(DibadawnPacketStruct));
-  
   uint32_t sizeof_head = 128;
   uint32_t sizeof_tail = 32;
   WritablePacket *packet = WritablePacket::make(
@@ -142,7 +123,7 @@ WritablePacket* DibadawnPacket::getBrnPacket()
 
   BRNPacketAnno::set_ether_anno(
       brn_packet,
-      forwardedBy,
+      forwardedBy.data(),
       brn_ethernet_broadcast,
       ETHERTYPE_BRN);
 
@@ -151,11 +132,8 @@ WritablePacket* DibadawnPacket::getBrnPacket()
 
 void DibadawnPacket::log(String tag)
 {
-  EtherAddress forwaredByAsEtherAddress(forwardedBy);
-  String forwaredByAsText = forwaredByAsEtherAddress.unparse_dash();
-      
-  EtherAddress treeParrentAsEtherAddress(treeParrent);
-  String treeParrentAsText = treeParrentAsEtherAddress.unparse_dash();
+  String forwaredByAsText = forwardedBy.unparse_dash();
+  String treeParrentAsText = treeParent.unparse_dash();
   
   LOG("<%s version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
       tag.c_str(),

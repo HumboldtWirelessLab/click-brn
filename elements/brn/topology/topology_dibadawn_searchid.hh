@@ -33,7 +33,7 @@ class DibadawnSearchId {
 public:
   static const size_t length=10;  
     
-  DibadawnSearchId(Timestamp t, const EtherAddress *creator);
+  DibadawnSearchId(Timestamp t, const EtherAddress &creator);
   DibadawnSearchId();
   String AsString();
   uint8_t* PointerTo10BytesOfData();

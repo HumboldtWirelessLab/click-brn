@@ -38,22 +38,19 @@ CLICK_DECLS;
 class DibadawnSearch 
 {
   BRNElement *brn_click_element;
-  const EtherAddress *nodeAddr;
+  EtherAddress thisNode;
+  DibadawnPacket ideaOfPacket;
   bool isForwared;
-  bool isForwardingPhase;
   Timer *forwardTimer;
-  uint8_t ttl;
-
+  
   void sendPerBroadcastWithTimeout();
   void initTimer();
   void activateForwardTimer();
   void receiveForwardMessage(DibadawnPacket &packet);
   
 public:
-  DibadawnSearchId searchId;
-  
-  DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
-  DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet);
+  DibadawnSearch(BRNElement *brn_click_element, EtherAddress *addrOfThisNode);
+  DibadawnSearch(BRNElement *brn_click_element, EtherAddress *addrOfThisNode, DibadawnPacket &packet);
   
   String asString();
   void receive(DibadawnPacket &packet);
