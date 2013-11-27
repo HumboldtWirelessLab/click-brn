@@ -40,21 +40,26 @@ class DibadawnSearch
   BRNElement *brn_click_element;
   const EtherAddress *nodeAddr;
   bool isForwared;
+  bool isForwardingPhase;
   Timer *forwardTimer;
+  uint8_t ttl;
 
+  void sendPerBroadcastWithTimeout();
+  void initTimer();
+  void activateForwardTimer();
+  void receiveForwardMessage(DibadawnPacket &packet);
+  
 public:
   DibadawnSearchId searchId;
   
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *id);
   DibadawnSearch(BRNElement *brn_click_element, BRN2NodeIdentity *this_node_id, DibadawnPacket &packet);
+  
   String asString();
   void receive(DibadawnPacket &packet);
-  void receiveForwardMessage(DibadawnPacket &packet);
   void start_search();
   bool isResponsableFor(DibadawnPacket &packet);
-  void forwardTimeout();
-  void initTimer();
-  void activateForwardTimer();
+  void forwardTimeout(); 
 };
 
 CLICK_ENDDECLS

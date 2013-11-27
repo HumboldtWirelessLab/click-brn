@@ -72,7 +72,7 @@ DibadawnPacket::DibadawnPacket(DibadawnSearchId *id, const EtherAddress* sender_
   setTreeParent(NULL);
   setForwaredBy(sender_addr);
   isForward = is_forward;
-  ttl = 255; // TODO: Does this makes sense?
+  ttl = 255;
 }
 
 bool DibadawnPacket::isValid(const Packet *brn_packet)
@@ -149,7 +149,7 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   return (brn_packet);
 }
 
-void DibadawnPacket::log()
+void DibadawnPacket::log(String tag)
 {
   EtherAddress forwaredByAsEtherAddress(forwardedBy);
   String forwaredByAsText = forwaredByAsEtherAddress.unparse_dash();
@@ -157,7 +157,8 @@ void DibadawnPacket::log()
   EtherAddress treeParrentAsEtherAddress(treeParrent);
   String treeParrentAsText = treeParrentAsEtherAddress.unparse_dash();
   
-  LOG("<DibadawnPacket version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+  LOG("<%s version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+      tag.c_str(),
       version, 
       isForward,
       ttl,

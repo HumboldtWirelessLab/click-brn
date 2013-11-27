@@ -38,8 +38,12 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
 {
   brn_click_element = click_element;
   nodeAddr = this_node_id->getMasterAddress();
+  
   searchId = DibadawnSearchId(Timestamp::now(), nodeAddr);
+  isForwardingPhase = true;
   isForwared = false;
+  ttl = 255;  // TODO: Does this makes sense?
+  
   initTimer();
 }
 
@@ -47,8 +51,12 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, BRN2NodeIdentity *this
 {
   brn_click_element = click_element;
   nodeAddr = this_node_id->getMasterAddress();
+  
   searchId = packet.searchId;
+  isForwardingPhase = packet.isForward;
   isForwared = false;
+  ttl = packet.ttl;
+  
   initTimer();
 }
 
@@ -79,14 +87,18 @@ String DibadawnSearch::asString()
 
 void DibadawnSearch::start_search()
 {
-  LOG("<--! start_search 2 -->");
-  bool is_forward = true;
-  DibadawnPacket packet(&searchId, nodeAddr, is_forward);
-  LOG("<--! start_search 3 -->");
+  sendPerBroadcastWithTimeout();
+}
+
+void DibadawnSearch::sendPerBroadcastWithTimeout()
+{
+  DibadawnPacket packet(&searchId, nodeAddr, isForwardingPhase);
+  packet.ttl = ttl;
+  packet.setForwaredBy(nodeAddr);
+  packet.log("DibadawnPacketSend");
   WritablePacket *brn_packet = packet.getBrnPacket();
-  LOG("<--! start_search 4 -->  0x%X", brn_packet);
-  brn_click_element->output(0).push(brn_packet->clone());
-  LOG("<--! start_search 5 -->");
+  brn_click_element->output(0).push(brn_packet);
+  
   activateForwardTimer();
 }
 
@@ -97,7 +109,7 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &packet)
 {
-  packet.log();
+  packet.log("DibadawnPacketReceived");
   if(packet.isForward)
   {
     receiveForwardMessage(packet);
@@ -114,11 +126,9 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &packet)
   }
   else
   {
-    packet.setForwaredBy(nodeAddr);
-    WritablePacket *brn_packet = packet.getBrnPacket();
-    brn_click_element->output(0).push(brn_packet->clone());
+    ttl--;
+    sendPerBroadcastWithTimeout();
     isForwared = true;
-    activateForwardTimer();
   }
 }
 
