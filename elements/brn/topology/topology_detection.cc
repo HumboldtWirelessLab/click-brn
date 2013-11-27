@@ -266,7 +266,7 @@ void TopologyDetection::start_detection()
   DibadawnSearch *search = new DibadawnSearch(this, _node_identity);
   searches.push_back(search);
   search->start_search();
-  String search_name = search->AsString();
+  String search_name = search->asString();
   BRN_INFO("<!-- started search %s-->", search_name.c_str());
 }
 
