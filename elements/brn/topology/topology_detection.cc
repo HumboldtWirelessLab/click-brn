@@ -76,7 +76,7 @@ int TopologyDetection::initialize(ErrorHandler *)
 void TopologyDetection::push(int /*port*/, Packet *packet)
 {
   StringAccum sa;
-  String node = _node_identity->getMainAddress()->unparse();
+  String node = _node_identity->getMasterAddress()->unparse();
   sa << "\n<topo_detect node=\"" << node << "\">\n";
 
   click_ether *ether_h = (click_ether *) packet->ether_header();
@@ -145,7 +145,8 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
     if (!found)
     {
       BRN_INFO("<!-- Received new search -->");
-      search = new DibadawnSearch(this, _node_identity->getMasterAddress(), packet);
+      const EtherAddress* addrOfThisNode = _node_identity->getMasterAddress();
+      search = new DibadawnSearch(this, *addrOfThisNode, packet);
       searches.push_back(search);
     }
     
@@ -263,7 +264,8 @@ void TopologyDetection::start_detection()
   output(0).push(p);
 
   // New...
-  DibadawnSearch *search = new DibadawnSearch(this, _node_identity->getMasterAddress());
+  const EtherAddress* addrOfThisNode = _node_identity->getMasterAddress();
+  DibadawnSearch *search = new DibadawnSearch(this, *addrOfThisNode);
   searches.push_back(search);
   search->start_search();
   String search_name = search->asString();

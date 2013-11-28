@@ -34,10 +34,10 @@
 CLICK_DECLS;
 
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, EtherAddress *addrOfThisNode)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode)
 {
   brn_click_element = click_element;
-  thisNode = *addrOfThisNode;
+  thisNode = addrOfThisNode;
   
   ideaOfPacket.searchId = DibadawnSearchId(Timestamp::now(), thisNode);
   ideaOfPacket.forwardedBy = thisNode;
@@ -48,10 +48,10 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, EtherAddress *addrOfTh
   initTimer();
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, EtherAddress *addrOfThisNode, DibadawnPacket &packet)
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet)
 {
   brn_click_element = click_element;
-  thisNode = *addrOfThisNode;
+  thisNode = addrOfThisNode;
   
   ideaOfPacket = packet;
   ideaOfPacket.forwardedBy = thisNode;
