@@ -49,8 +49,8 @@ class DibadawnSearch
   void receiveForwardMessage(DibadawnPacket &packet);
   
 public:
-  DibadawnSearch(BRNElement *brn_click_element, EtherAddress *addrOfThisNode);
-  DibadawnSearch(BRNElement *brn_click_element, EtherAddress *addrOfThisNode, DibadawnPacket &packet);
+  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
+  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet);
   
   String asString();
   void receive(DibadawnPacket &packet);
