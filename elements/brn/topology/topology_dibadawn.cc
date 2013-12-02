@@ -93,7 +93,7 @@ void DibadawnSearch::start_search()
 
 void DibadawnSearch::sendPerBroadcastWithTimeout()
 {
-  ideaOfPacket.log("DibadawnPacketTx");
+  ideaOfPacket.log("DibadawnPacketTx", thisNode);
   WritablePacket *brn_packet = ideaOfPacket.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
   
@@ -107,7 +107,7 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 {
-  receivedPacket.log("DibadawnPacketRx");
+  receivedPacket.log("DibadawnPacketRx", thisNode);
   if(receivedPacket.isForward)
   {
     receiveForwardMessage(receivedPacket);
@@ -118,9 +118,9 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
 {
-  if (isForwared)
+  if(receivedPacket.treeParent == thisNode)
   {
-    LOG("<--! Already forwared, TODO: ... -->");
+    LOG("<--! Ignore re-forward -->");
   }
   else
   {
