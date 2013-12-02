@@ -181,6 +181,8 @@ TopologyDetection::handle_detection_backward(Packet *packet)
 
     path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl);
 
+    BRN_DEBUG("Path: %s", path);
+
     tdi->add_last_hop(&last_hop, ttl, true);
     tdi->set_descendant(&last_hop,true);
     tdi->_num_descendant++;
@@ -303,7 +305,7 @@ TopologyDetection::i_am_articulation_point()
 }
 
 void
-TopologyDetection::get_bridge_links(Vector<EtherAddress> *_bridge_links)
+TopologyDetection::get_bridge_links(Vector<EtherAddress> */*_bridge_links*/)
 {
   return;
 }
