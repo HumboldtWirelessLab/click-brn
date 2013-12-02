@@ -64,6 +64,10 @@ MPRFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
+/**
+ *
+ * @bcast_id: negatvive value means: filter known neighbours
+ */
 void
 MPRFlooding::set_mpr_header(uint32_t *tx_data_size, uint8_t *txdata, EtherAddress *src, int bcast_id)
 {
