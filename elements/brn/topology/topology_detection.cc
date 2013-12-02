@@ -37,7 +37,9 @@
 #include "topology_detection_protocol.hh"
 #include "topology_dibadawn_packet.hh"
 
+
 CLICK_DECLS
+
 
 TopologyDetection::TopologyDetection() :
 _detection_timer(static_detection_timer_hook, this),
