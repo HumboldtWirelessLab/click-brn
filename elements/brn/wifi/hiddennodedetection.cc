@@ -96,7 +96,7 @@ HiddenNodeDetection::run_timer(Timer *)
 void
 HiddenNodeDetection::remove_link(EtherAddress */*sea*/, EtherAddress */*dea*/)
 {
-  
+
 }
 
 /*********************************************/

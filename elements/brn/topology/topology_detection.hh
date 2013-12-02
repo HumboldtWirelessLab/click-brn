@@ -99,7 +99,7 @@ class TopologyDetection : public BRNElement {
       /* since each node forward each message only one time, this function
          doesn't have to check, whether node is already in list */
       void add_last_hop(EtherAddress *lh, uint32_t ttl, bool over_me) {
-        _last_hops.push_back(TopologyDetectionReceivedInfo(lh,ttl,over_me));
+        _last_hops.push_back(TopologyDetectionReceivedInfo(lh,ttl,over_me,false));
       }
 
       bool include_last_hop(EtherAddress *lh) {
