@@ -39,13 +39,13 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   inactive = true;
-  
+
   ideaOfPacket.searchId = DibadawnSearchId(Timestamp::now(), thisNode);
   ideaOfPacket.forwardedBy = thisNode;
   ideaOfPacket.isForward = true;
-  ideaOfPacket.ttl = 255;  // TODO: Does this makes sense?
+  ideaOfPacket.ttl = 255; // TODO: Does this makes sense?
   firstProcessedPacket = true;
-  
+
   initTimer();
 }
 
@@ -55,11 +55,11 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   inactive = false;
-  
+
   ideaOfPacket = packet;
   ideaOfPacket.forwardedBy = thisNode;
   firstProcessedPacket = true;
-  
+
   initTimer();
 }
 
@@ -83,7 +83,7 @@ void DibadawnSearch::activateForwardTimer()
 
 String DibadawnSearch::asString()
 {
-  return(ideaOfPacket.searchId.AsString());
+  return (ideaOfPacket.searchId.AsString());
 }
 
 void DibadawnSearch::start_search()
@@ -97,19 +97,19 @@ void DibadawnSearch::sendPerBroadcastWithTimeout()
   ideaOfPacket.log("DibadawnPacketTx", thisNode);
   WritablePacket *brn_packet = ideaOfPacket.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
-  
+
   activateForwardTimer();
 }
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 {
-  return(packet.searchId.isEqualTo(packet.searchId));
+  return (packet.searchId.isEqualTo(packet.searchId));
 }
 
 void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 {
   receivedPacket.log("DibadawnPacketRx", thisNode);
-  if(receivedPacket.isForward)
+  if (receivedPacket.isForward)
   {
     receiveForwardMessage(receivedPacket);
   }
@@ -122,41 +122,49 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
 {
-  
-  if(firstProcessedPacket)
+  if (firstProcessedPacket)
   {
-    if(receivedPacket.ttl > 0)
+    if (receivedPacket.ttl > 0)
     {
-    ideaOfPacket.ttl = receivedPacket.ttl - 1;
-    ideaOfPacket.treeParent = receivedPacket.forwardedBy;
-    sendPerBroadcastWithTimeout();
-    firstProcessedPacket = false;
-    inactive = false;
+      ideaOfPacket.ttl = receivedPacket.ttl - 1;
+      ideaOfPacket.treeParent = receivedPacket.forwardedBy;
+      sendPerBroadcastWithTimeout();
+      firstProcessedPacket = false;
+      inactive = false;
     }
     else
     {
       click_chatter("<IgnorePacket node='%s' reason='lowTtl' />",
-        thisNode.unparse_dash().c_str());
+          thisNode.unparse_dash().c_str());
     }
   }
-  else if(receivedPacket.treeParent == thisNode)
+  else if (receivedPacket.treeParent == thisNode)
   {
     click_chatter("<IgnorePacket node='%s' reason='reForward' />",
         thisNode.unparse_dash().c_str());
   }
   else
   {
-    click_chatter("<CrossEdgeDetected  node='%s' />",
-        thisNode.unparse_dash().c_str());
+    EtherAddress neighbor = receivedPacket.forwardedBy;
+
+    const char *neighborText = neighbor.unparse_dash().c_str();
+    const char *thisNodeText = thisNode.unparse_dash().c_str();
+    click_chatter("<CrossEdgeDetected  node='%s' neigbor='%s'/>",
+        thisNodeText,
+        neighborText);
+
+    crossEdges.push_back(neighbor);
   }
 }
 
 void DibadawnSearch::forwardTimeout()
 {
+  const char *searchText = ideaOfPacket.searchId.AsString().c_str();
+  const char *thisNodeText = thisNode.unparse_dash().c_str();
   click_chatter("<ForwardTimeout searchId='%s' node='%s' />",
-      ideaOfPacket.searchId.AsString().c_str(),
-      thisNode.unparse_dash().c_str());
-  
+      searchText,
+      thisNodeText);
+
   inactive = true;
 }
 

@@ -44,6 +44,7 @@ class DibadawnSearch
   Timer *forwardTimer;
   uint32_t maxTraversalTimeMs;
   bool inactive;
+  Vector<EtherAddress> crossEdges;
   
   void sendPerBroadcastWithTimeout();
   void initTimer();
