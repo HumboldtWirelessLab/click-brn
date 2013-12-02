@@ -20,47 +20,25 @@
 
 /* Sender-/Receivernumbers */
 /* field: sender,receiver */
-
-#ifndef TOPOLOGY_DIBADAWN_HH
-#define TOPOLOGY_DIBADAWN_HH
+#ifndef TOPOLOGY_DIBADAWN_CYCLE_HH
+#define TOPOLOGY_DIBADAWN_CYCLE_HH
 
 #include <click/element.hh>
-#include <click/timer.hh>
 
-#include "elements/brn/brnelement.hh"
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_searchid.hh"
-#include "topology_info.hh"
-#include "topology_dibadawn_packet.hh"
+
 
 CLICK_DECLS;
 
-class DibadawnSearch 
-{
-  BRNElement *brn_click_element;
-  EtherAddress thisNode;
-  DibadawnPacket ideaOfPacket;
-  bool firstProcessedPacket;
-  Timer *forwardTimer;
-  uint32_t maxTraversalTimeMs;
-  bool inactive;
-  Vector<EtherAddress> crossEdges;
-  
-  void sendPerBroadcastWithTimeout();
-  void initTimer();
-  void activateForwardTimer();
-  void receiveForwardMessage(DibadawnPacket &packet);
-  void detectCycles();
-  
+class DibadawnCycle {
 public:
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet);
-  
-  String asString();
-  void receive(DibadawnPacket &packet);
-  void start_search();
-  bool isResponsableFor(DibadawnPacket &packet);
-  void forwardTimeout(); 
+    static const size_t length = 10 + 6 + 6;
+    String AsString();
+
+    DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
+
+private:
+    uint8_t data[length];
 };
 
 CLICK_ENDDECLS
