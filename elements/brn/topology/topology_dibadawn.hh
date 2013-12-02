@@ -42,6 +42,8 @@ class DibadawnSearch
   DibadawnPacket ideaOfPacket;
   bool firstProcessedPacket;
   Timer *forwardTimer;
+  uint32_t maxTraversalTimeMs;
+  bool inactive;
   
   void sendPerBroadcastWithTimeout();
   void initTimer();
