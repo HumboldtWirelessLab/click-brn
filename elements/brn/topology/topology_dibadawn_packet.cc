@@ -130,13 +130,15 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   return (brn_packet);
 }
 
-void DibadawnPacket::log(String tag)
+void DibadawnPacket::log(String tag, EtherAddress &thisNode)
 {
   String forwaredByAsText = forwardedBy.unparse_dash();
   String treeParrentAsText = treeParent.unparse_dash();
+  String thisNodeAsText = thisNode.unparse_dash();
   
-  LOG("<%s version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+  LOG("<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
       tag.c_str(),
+      thisNodeAsText.c_str(),
       version, 
       isForward,
       ttl,

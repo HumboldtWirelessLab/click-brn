@@ -41,7 +41,7 @@ public:
   void setForwaredBy(const EtherAddress* sender_addr);
   WritablePacket* getBrnPacket();
   static bool isValid(const Packet *packet);
-  void log(String tag);
+  void log(String tag, EtherAddress &thisNode);
   
   uint32_t version; 
   DibadawnSearchId searchId;
