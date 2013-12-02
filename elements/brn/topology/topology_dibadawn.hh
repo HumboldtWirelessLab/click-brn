@@ -40,7 +40,7 @@ class DibadawnSearch
   BRNElement *brn_click_element;
   EtherAddress thisNode;
   DibadawnPacket ideaOfPacket;
-  bool isForwared;
+  bool firstProcessedPacket;
   Timer *forwardTimer;
   
   void sendPerBroadcastWithTimeout();
