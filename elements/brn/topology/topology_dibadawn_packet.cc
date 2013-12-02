@@ -136,7 +136,7 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
   
-  LOG("<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+  LOG("\n<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
       tag.c_str(),
       thisNodeAsText.c_str(),
       version, 

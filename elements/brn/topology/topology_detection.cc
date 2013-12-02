@@ -77,12 +77,12 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 {
   StringAccum sa;
   String node = _node_identity->getMasterAddress()->unparse();
-  sa << "\n<topo_detect node=\"" << node << "\">\n";
+  sa << "\n<topo_detect node=\"" << node << "\">";
 
   click_ether *ether_h = (click_ether *) packet->ether_header();
   String source = EtherAddress(ether_h->ether_shost).unparse().c_str();
   String destination = EtherAddress(ether_h->ether_dhost).unparse().c_str();
-  sa << "\t<etherheader src=\"" << source << "\" des=\"" << destination << "\" \\>\n";
+  sa << "\t<etherheader src=\"" << source << "\" des=\"" << destination << "\" />";
 
   if (memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0)
   {

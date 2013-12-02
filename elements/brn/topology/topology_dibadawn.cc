@@ -113,7 +113,7 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
     receiveForwardMessage(receivedPacket);
   }
   else
-    LOG("<--! Not Implemented yet -->");
+    LOG("<NotImplemented />");
 }
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
@@ -128,11 +128,11 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
   }
   else if(receivedPacket.treeParent == thisNode)
   {
-    LOG("<--! Ignore re-forward -->");
+    LOG("<IgnorePacket />");
   }
   else
   {
-    LOG("<--! Discovered a cross-edge -->");
+    LOG("<CrossEdgeDetected />");
   }
 }
 
