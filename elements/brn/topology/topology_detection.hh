@@ -47,13 +47,15 @@ class TopologyDetection : public BRNElement {
      EtherAddress _addr;
      uint32_t _ttl;
      bool _over_me;
-     bool _descendant;
+     bool _descendant;  //he is a "Nachkomme"
+     bool _parent;      //he is a parent, send infos back to him
 
-     TopologyDetectionReceivedInfo(EtherAddress *addr, uint32_t ttl, bool over_me) {
+     TopologyDetectionReceivedInfo(EtherAddress *addr, uint32_t ttl, bool over_me, bool parent) {
        _addr = EtherAddress(addr->data());
        _ttl = ttl;
        _over_me = over_me;
        _descendant = false;
+       _parent = parent;
      }
    };
 
@@ -97,7 +99,7 @@ class TopologyDetection : public BRNElement {
       /* since each node forward each message only one time, this function
          doesn't have to check, whether node is already in list */
       void add_last_hop(EtherAddress *lh, uint32_t ttl, bool over_me) {
-        _last_hops.push_back(TopologyDetectionReceivedInfo(lh,ttl,over_me));
+        _last_hops.push_back(TopologyDetectionReceivedInfo(lh,ttl,over_me,false));
       }
 
       bool include_last_hop(EtherAddress *lh) {
@@ -135,6 +137,7 @@ class TopologyDetection : public BRNElement {
   };
 
   typedef Vector<TopologyDetectionForwardInfo*> TDFIList;
+  Vector<TopologyInfo::Bridge*> _local_bridges;
 
  public:
   //
@@ -164,6 +167,10 @@ class TopologyDetection : public BRNElement {
   Timer _response_timer;
 
   TDFIList tdfi_list;
+
+  void evaluate_local_knowledge();
+  bool i_am_articulation_point();
+  void get_bridge_links(Vector<EtherAddress> *_bridge_links);
 
  private:
   //
