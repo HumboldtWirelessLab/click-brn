@@ -28,6 +28,7 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn.hh"
 #include "topology_dibadawn_packet.hh"
+#include "topology_dibadawn_cycle.hh"
 
 
 CLICK_DECLS;
@@ -79,6 +80,19 @@ void DibadawnSearch::activateForwardTimer()
 {
   forwardTimer->initialize(this->brn_click_element, false);
   forwardTimer->schedule_after_msec(maxTraversalTimeMs * ideaOfPacket.ttl);
+}
+
+void DibadawnSearch::forwardTimeout()
+{
+  const char *searchText = ideaOfPacket.searchId.AsString().c_str();
+  const char *thisNodeText = thisNode.unparse_dash().c_str();
+  click_chatter("<ForwardTimeout searchId='%s' node='%s' />",
+      searchText,
+      thisNodeText);
+
+  detectCycles();
+  
+  inactive = true;
 }
 
 String DibadawnSearch::asString()
@@ -147,27 +161,26 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
   {
     EtherAddress neighbor = receivedPacket.forwardedBy;
 
-    const char *neighborText = neighbor.unparse_dash().c_str();
-    const char *thisNodeText = thisNode.unparse_dash().c_str();
     click_chatter("<CrossEdgeDetected  node='%s' neigbor='%s'/>",
-        thisNodeText,
-        neighborText);
+        thisNode.unparse_dash().c_str(),
+        neighbor.unparse_dash().c_str());
 
     crossEdges.push_back(neighbor);
   }
 }
 
-void DibadawnSearch::forwardTimeout()
+void DibadawnSearch::detectCycles()
 {
-  const char *searchText = ideaOfPacket.searchId.AsString().c_str();
-  const char *thisNodeText = thisNode.unparse_dash().c_str();
-  click_chatter("<ForwardTimeout searchId='%s' node='%s' />",
-      searchText,
-      thisNodeText);
-
-  inactive = true;
+  // hier gehts weiter
+  for(int i = 0; i < crossEdges.size(); i++)
+  {
+    EtherAddress addr = crossEdges.at(i);
+    
+    DibadawnCycle c(ideaOfPacket.searchId, thisNode, addr);
+    click_chatter("<Cycle id='%s' />",
+        c.AsString().c_str());
+  }
 }
-
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnSearch)
