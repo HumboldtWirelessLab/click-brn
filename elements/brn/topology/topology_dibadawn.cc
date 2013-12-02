@@ -29,7 +29,6 @@
 #include "topology_dibadawn.hh"
 #include "topology_dibadawn_packet.hh"
 
-#define LOG BrnLogger(__FILE__, __LINE__, NULL).info
 
 CLICK_DECLS;
 
@@ -113,7 +112,10 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
     receiveForwardMessage(receivedPacket);
   }
   else
-    LOG("<NotImplemented />");
+  {
+    click_chatter("<NotImplemented  node='%s' />",
+        thisNode.unparse_dash().c_str());
+  }
 }
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
@@ -128,17 +130,19 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
   }
   else if(receivedPacket.treeParent == thisNode)
   {
-    LOG("<IgnorePacket />");
+    click_chatter("<IgnorePacket node='%s' />",
+        thisNode.unparse_dash().c_str());
   }
   else
   {
-    LOG("<CrossEdgeDetected />");
+    click_chatter("<CrossEdgeDetected  node='%s' />",
+        thisNode.unparse_dash().c_str());
   }
 }
 
 void DibadawnSearch::forwardTimeout()
 {
-  LOG("<ForwardTimeout searchId='%s' node='%s' />",
+  click_chatter("<ForwardTimeout searchId='%s' node='%s' />",
       ideaOfPacket.searchId.AsString().c_str(),
       thisNode.unparse_dash().c_str());
 }

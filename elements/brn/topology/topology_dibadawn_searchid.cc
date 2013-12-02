@@ -28,7 +28,6 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn_searchid.hh"
 
-#define LOG BrnLogger(__FILE__, __LINE__, NULL).info
 
 CLICK_DECLS
 

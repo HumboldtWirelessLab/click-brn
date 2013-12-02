@@ -29,7 +29,6 @@
 #include "topology_dibadawn_packet.hh"
 #include "topology_dibadawn_searchid.hh"
 
-#define LOG BrnLogger(__FILE__, __LINE__, NULL).info
 
 CLICK_DECLS
 
@@ -136,7 +135,7 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
   
-  LOG("\n<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+  click_chatter("\n<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
       tag.c_str(),
       thisNodeAsText.c_str(),
       version, 
