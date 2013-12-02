@@ -43,7 +43,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   ideaOfPacket.forwardedBy = thisNode;
   ideaOfPacket.isForward = true;
   ideaOfPacket.ttl = 255;  // TODO: Does this makes sense?
-  isForwared = false;
+  firstProcessedPacket = true;
   
   initTimer();
 }
@@ -55,7 +55,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   
   ideaOfPacket = packet;
   ideaOfPacket.forwardedBy = thisNode;
-  isForwared = false;
+  firstProcessedPacket = true;
   
   initTimer();
 }
@@ -88,7 +88,7 @@ String DibadawnSearch::asString()
 void DibadawnSearch::start_search()
 {
   sendPerBroadcastWithTimeout();
-  isForwared = true;
+  firstProcessedPacket = false;
 }
 
 void DibadawnSearch::sendPerBroadcastWithTimeout()
@@ -118,16 +118,21 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
 {
-  if(receivedPacket.treeParent == thisNode)
+  
+  if(firstProcessedPacket)
+  {
+    ideaOfPacket.ttl = receivedPacket.ttl - 1;
+    ideaOfPacket.treeParent = receivedPacket.forwardedBy;
+    sendPerBroadcastWithTimeout();
+    firstProcessedPacket = false;
+  }
+  else if(receivedPacket.treeParent == thisNode)
   {
     LOG("<--! Ignore re-forward -->");
   }
   else
   {
-    ideaOfPacket.ttl = receivedPacket.ttl - 1;
-    ideaOfPacket.treeParent = receivedPacket.forwardedBy;
-    sendPerBroadcastWithTimeout();
-    isForwared = true;
+    LOG("<--! Discovered a cross-edge -->");
   }
 }
 
