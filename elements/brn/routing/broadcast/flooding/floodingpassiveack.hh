@@ -152,6 +152,8 @@ private:
   uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
 
+  bool _abort_on_finished;
+
   bool packet_is_finished(PassiveAckPacket *pap);
 
   uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
