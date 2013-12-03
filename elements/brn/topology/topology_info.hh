@@ -34,11 +34,41 @@ class TopologyInfo : public BRNElement
      public:
       EtherAddress node_a;
       EtherAddress node_b;
+      uint32_t countDetection;
+
+      Bridge(EtherAddress *a, EtherAddress *b) {
+        node_a = EtherAddress(a->data());
+        node_b = EtherAddress(b->data());
+        countDetection = 1;
+      }
+
+      void incDetection() {
+        countDetection++;
+      }
+
+      bool equals(EtherAddress *a, EtherAddress *b) {
+        return (((memcmp(node_a.data(), a->data(),6) == 0) && (memcmp(node_b.data(), b->data(),6) == 0)) ||
+                ((memcmp(node_a.data(), b->data(),6) == 0) && (memcmp(node_b.data(), a->data(),6) == 0)));
+      }
     };
 
     class ArticulationPoint {
      public:
       EtherAddress node;
+      uint32_t countDetection;
+
+      ArticulationPoint(EtherAddress *n) {
+        node = EtherAddress(n->data());
+        countDetection = 1;
+      }
+
+      void incDetection() {
+        countDetection++;
+      }
+
+      bool equals(EtherAddress *a) {
+        return memcmp(node.data(), a->data(),6);
+      }
     };
 
  public:
@@ -58,8 +88,16 @@ class TopologyInfo : public BRNElement
  private:
   Vector<Bridge*> _bridges;
   Vector<ArticulationPoint*> _artpoints;
+  int number_of_detections;
 
  public:
+
+  void incNoDetection() { number_of_detections++; }
+  void addBridge(EtherAddress *a, EtherAddress *b);
+  void addArticulationPoint(EtherAddress *a);
+
+  Bridge* getBridge(EtherAddress *a, EtherAddress *b);
+  ArticulationPoint *getArticulationPoint(EtherAddress *a);
 
   String topology_info(void);
 
