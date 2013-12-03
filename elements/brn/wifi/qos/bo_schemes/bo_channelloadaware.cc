@@ -25,11 +25,8 @@ BoChannelLoadAware::BoChannelLoadAware()
     _strategy(0),
     _current_bo(_bo_start),
     _target_busy(0),
-    _busy_lwm(0),
-    _busy_hwm(0),
     _target_diff(0),
-    _tdiff_lwm(0),
-    _tdiff_hwm(0),
+    _last_diff(0),
     _cap(0),
     _cst_sync(0),
     _last_id(9999)
@@ -61,13 +58,6 @@ int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
       "CST_SYNC", cpkP, cpInteger, &_cst_sync,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
-
-  /* low & high water marks */
-  _busy_lwm = (int32_t) _target_busy - _busy_param;
-  _busy_hwm = (int32_t) _target_busy + _busy_param;
-
-  _tdiff_lwm = (int32_t) _target_busy - _tdiff_param;
-  _tdiff_hwm = (int32_t) _target_busy + _tdiff_param;
 
   return 0;
 }
@@ -115,13 +105,33 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     break;
 
   } case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY: {
-    uint32_t diff = as->hw_busy - (as->hw_tx + as->hw_rx);
-    BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _target_diff: %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _target_diff);
-    if ((diff < _tdiff_lwm) && ((int32_t)_current_bo > 1))
+    int32_t diff = as->hw_busy - (as->hw_tx + as->hw_rx);
+    if (diff < 0)
+      diff = 0;
+
+    uint32_t wiggle_room = 0; // no. nbs?
+
+    //BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d _target_diff: %d wm param %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff, _target_diff, wiggle_room);
+    BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff);
+
+    if ((diff == 0) && (_last_diff == 0))
       decrease_cw();
-    else if (diff > _tdiff_hwm)
+    else if ((diff == 0) && (_last_diff != 0))
+      _current_bo = _current_bo;
+    else if (diff < (int)(_last_diff - wiggle_room))
+      decrease_cw();
+    else if (diff > (int)(_last_diff + wiggle_room))
+      increase_cw();
+
+    _last_diff = diff;
+    break;
+/*
+    if ((diff < (int)(_target_diff - wiggle_room)) && ((int32_t)_current_bo > 1))
+      decrease_cw();
+    else if (diff > (int)(_target_diff + wiggle_room))
       increase_cw();
     break;
+*/
 
   } case BACKOFF_STRATEGY_TX_AWARE: {
     BRN_DEBUG("    tx: %d nbs = %d\n", as->hw_tx, as->no_sources);
