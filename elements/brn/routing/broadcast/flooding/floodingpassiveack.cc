@@ -48,6 +48,7 @@ FloodingPassiveAck::FloodingPassiveAck():
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
   _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
   _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
+  _abort_on_finished(true),
   _enqueued_pkts(0),
   _queued_pkts(0),
   _dequeued_pkts(0),
@@ -77,6 +78,7 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
       "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
+      "ABORTONFINISHED", cpkP, cpBool, &_abort_on_finished,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -147,7 +149,7 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
   if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
-        packet_is_finished(pap) ||
+        (packet_is_finished(pap) && _abort_on_finished) ||
         pap->tx_timeout(now, _dfl_timeout)) {
 
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
@@ -156,7 +158,6 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
 
     p->kill();
     packet_dequeue(src, bcast_id);
-
 
   } else {
 
@@ -205,7 +206,6 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   /*check retries*/
   if ( pap->retries_left() == 0 ) return true;
 
-  
   return (count_unfinished_neighbors(pap) == 0);
 }
 
