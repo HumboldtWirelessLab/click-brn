@@ -111,6 +111,8 @@ FloodingEnd2EndRetry::run_timer(Timer *)
 
         output(0).push(p_queue[i]->_p);
 
+        delete p_queue[i];
+
         p_queue.erase(p_queue.begin() + i);
         next_timeout_qi--;
       }
