@@ -18,8 +18,6 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-/* Sender-/Receivernumbers */
-/* field: sender,receiver */
 #ifndef TOPOLOGY_DIBADAWN_PACKET_HH
 #define TOPOLOGY_DIBADAWN_PACKET_HH
 
