@@ -179,6 +179,13 @@ void DibadawnSearch::detectCycles()
     DibadawnCycle c(ideaOfPacket.searchId, thisNode, addr);
     click_chatter("<Cycle id='%s' />",
         c.AsString().c_str());
+    
+    DibadawnEdgeMarking marking = DibadawnEdgeMarking(
+        0 /*TODO*/, 
+        ideaOfPacket.searchId,
+        true,
+        thisNode,
+        addr);
   }
 }
 
