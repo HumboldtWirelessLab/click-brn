@@ -86,7 +86,7 @@ class Flooding : public BRNElement {
    class BroadcastNode
    {
 #if CLICK_NS
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS  8
+#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS  8 
 #else
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS  8
 #endif
