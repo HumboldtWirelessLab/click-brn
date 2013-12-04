@@ -29,6 +29,8 @@
 #include "topology_dibadawn_searchid.hh"
 #include "topology_info.hh"
 #include "topology_dibadawn_packet.hh"
+#include "topology_dibadawn_edgemarking.hh"
+
 
 CLICK_DECLS;
 
