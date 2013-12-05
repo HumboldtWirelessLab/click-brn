@@ -49,6 +49,7 @@ struct DibadawnPacketStruct
 DibadawnPacket::DibadawnPacket()
 {
   setVersion();
+  containsPayload = false;
 }
 
 DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
