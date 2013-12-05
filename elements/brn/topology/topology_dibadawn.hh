@@ -42,6 +42,7 @@ class DibadawnSearch
   DibadawnPacket outgoingPacket;
   bool visited;
   Timer *forwardTimer;
+  DibadawnSearchId searchId;
   Vector<EtherAddress> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
@@ -51,6 +52,7 @@ class DibadawnSearch
   BRNElement *brn_click_element;
   
   void sendPerBroadcastWithTimeout();
+  void sendPerBroadcastWithoutTimeout();
   void initTimer();
   void activateForwardTimer();
   void receiveForwardMessage(DibadawnPacket &packet);
