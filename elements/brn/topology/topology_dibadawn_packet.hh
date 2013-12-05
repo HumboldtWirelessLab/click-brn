@@ -25,6 +25,7 @@
 #include <click/packet.hh>
 
 #include "topology_dibadawn_searchid.hh"
+#include "topology_dibadawn_cycle.hh"
 
 CLICK_DECLS;
 
@@ -47,6 +48,11 @@ public:
   EtherAddress treeParent;
   bool isForward;
   uint8_t ttl;
+  
+  // Only used in backward messages.
+  bool containsPayload;
+  bool isPayloadBridge;
+  DibadawnCycle payload;
   
 private:
 
