@@ -28,31 +28,30 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn_cycle.hh"
 
-
 CLICK_DECLS
 
 
 DibadawnCycle::DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2)
 {
   memcpy(this->data, id.PointerTo10BytesOfData(), 10);
-  
-  if(addr1.hashcode() >= addr2.hashcode())
+
+  if (addr1.hashcode() >= addr2.hashcode())
   {
-  const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
-  memcpy(this->data + 10, pmac1, 6);
-  
-  const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
-  memcpy(this->data + 10 + 6, pmac2, 6);
+    const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
+    memcpy(this->data + 10, pmac1, 6);
+
+    const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
+    memcpy(this->data + 10 + 6, pmac2, 6);
   }
   else
   {
-  const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
-  memcpy(this->data + 10, pmac2, 6);
-  
-  const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
-  memcpy(this->data + 10 + 6, pmac1, 6);
+    const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
+    memcpy(this->data + 10, pmac2, 6);
+
+    const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
+    memcpy(this->data + 10 + 6, pmac1, 6);
   }
-    
+
 }
 
 String DibadawnCycle::AsString()
@@ -76,4 +75,4 @@ String DibadawnCycle::AsString()
 
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnSearchId)
+ELEMENT_PROVIDES(DibadawnCycle)
