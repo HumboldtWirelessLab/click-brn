@@ -42,8 +42,6 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   maxTtl = 255; // TODO: Does this makes sense?
   inactive = true;
 
-  
-
   initTimer();
 }
 
@@ -89,8 +87,47 @@ void DibadawnSearch::forwardTimeout()
       thisNodeText);
 
   detectCycles();
+  forwardMessages();
+  detectAccessPoints();
+  voteForAccessPointsAndBridges();
   
   inactive = true;
+}
+
+void DibadawnSearch::detectCycles()
+{
+  for(int i = 0; i < crossEdges.size(); i++)
+  {
+    EtherAddress addr = crossEdges.at(i);
+    
+    DibadawnEdgeMarking marking = DibadawnEdgeMarking(
+        Timestamp::now(), 
+        outgoingPacket.searchId,
+        true,
+        thisNode,
+        addr);
+    edgeMarkings.push_back(marking);
+
+    DibadawnCycle c(outgoingPacket.searchId, thisNode, addr);
+    click_chatter("<Cycle id='%s' />",
+        c.AsString().c_str());
+    bufferBackwardMessage(addr, c);
+  }
+}
+
+void DibadawnSearch::forwardMessages()
+{
+  click_chatter("<NotImplemented method='forwardMessages' />");
+}
+
+void DibadawnSearch::detectAccessPoints()
+{
+  click_chatter("<NotImplemented method='detectAccessPoints' />");
+}
+
+void DibadawnSearch::voteForAccessPointsAndBridges()
+{
+  click_chatter("<NotImplemented method='voteForAccessPointsAndBridges' />");
 }
 
 String DibadawnSearch::asString()
@@ -177,25 +214,18 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
   }
 }
 
-void DibadawnSearch::detectCycles()
+void DibadawnSearch::bufferBackwardMessage(EtherAddress& parent  /*wozu?*/, DibadawnCycle &cycleId)
 {
-  // hier gehts weiter
-  for(int i = 0; i < crossEdges.size(); i++)
-  {
-    EtherAddress addr = crossEdges.at(i);
-    
-    DibadawnCycle c(outgoingPacket.searchId, thisNode, addr);
-    click_chatter("<Cycle id='%s' />",
-        c.AsString().c_str());
-    
-    DibadawnEdgeMarking marking = DibadawnEdgeMarking(
-        Timestamp::now(), 
-        outgoingPacket.searchId,
-        true,
-        thisNode,
-        addr);
-    edgeMarkings.push_back(marking);
-  }
+  DibadawnPacket packet;
+  packet.isForward = false;
+  packet.forwardedBy = thisNode;
+  packet.treeParent = parent;
+  packet.ttl = maxTtl;
+  packet.containsPayload = true;
+  packet.isPayloadBridge = false;
+  packet.payload = cycleId;
+  
+  messageBuffer.push_back(packet);
 }
 
 CLICK_ENDDECLS
