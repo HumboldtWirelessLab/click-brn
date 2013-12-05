@@ -32,7 +32,7 @@ CLICK_DECLS
 
 
 DibadawnEdgeMarking::DibadawnEdgeMarking(
-    const uint32_t &time,
+    const Timestamp &time,
     const DibadawnSearchId &id,
     const bool &isBridge, 
     const EtherAddress &addr1,

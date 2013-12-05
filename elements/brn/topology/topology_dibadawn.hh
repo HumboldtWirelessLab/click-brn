@@ -36,14 +36,19 @@ CLICK_DECLS;
 
 class DibadawnSearch 
 {
-  BRNElement *brn_click_element;
   EtherAddress thisNode;
-  DibadawnPacket ideaOfPacket;
-  bool firstProcessedPacket;
+  EtherAddress parent;
+  DibadawnPacket outgoingPacket;
+  bool visited;
   Timer *forwardTimer;
-  uint32_t maxTraversalTimeMs;
-  bool inactive;
+  bool inactive; // useless?
   Vector<EtherAddress> crossEdges;
+  Vector<DibadawnEdgeMarking> edgeMarkings;
+  Vector<DibadawnPacket> messageBuffer;
+  
+  uint32_t maxTraversalTimeMs;
+  uint8_t maxTtl;
+  BRNElement *brn_click_element;
   
   void sendPerBroadcastWithTimeout();
   void initTimer();
