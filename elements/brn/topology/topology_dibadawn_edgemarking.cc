@@ -31,20 +31,5 @@
 CLICK_DECLS
 
 
-DibadawnEdgeMarking::DibadawnEdgeMarking(
-    const Timestamp &time,
-    const DibadawnSearchId &id,
-    const bool &isBridge, 
-    const EtherAddress &addr1,
-    const EtherAddress &addr2)
-{
-  this->time = time;
-  this->id = id;
-  this->isBridge = isBridge;
-  this->nodeA = addr1;
-  this->nodeB = addr2;
-}
-
-
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnEdgeMarking)

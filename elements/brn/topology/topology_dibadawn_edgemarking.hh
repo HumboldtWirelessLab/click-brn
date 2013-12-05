@@ -36,13 +36,6 @@ public:
     EtherAddress nodeA;
     EtherAddress nodeB;
 
-    DibadawnEdgeMarking(
-            const Timestamp &time, 
-            const DibadawnSearchId &id, 
-            const bool &isBridge, 
-            const EtherAddress &addr1, 
-            const EtherAddress &addr2);
-
 private:
 };
 
