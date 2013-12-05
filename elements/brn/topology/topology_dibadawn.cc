@@ -40,7 +40,6 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
-  inactive = true;
 
   initTimer();
 }
@@ -51,7 +50,6 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
-  inactive = false;
 
   outgoingPacket = packet;
   outgoingPacket.forwardedBy = thisNode;
@@ -90,8 +88,6 @@ void DibadawnSearch::forwardTimeout()
   forwardMessages();
   detectAccessPoints();
   voteForAccessPointsAndBridges();
-  
-  inactive = true;
 }
 
 void DibadawnSearch::detectCycles()
@@ -188,8 +184,6 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
       visited = true;
       
       sendPerBroadcastWithTimeout();
-      
-      inactive = false;
     }
     else
     {

@@ -42,7 +42,6 @@ class DibadawnSearch
   DibadawnPacket outgoingPacket;
   bool visited;
   Timer *forwardTimer;
-  bool inactive; // useless?
   Vector<EtherAddress> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
