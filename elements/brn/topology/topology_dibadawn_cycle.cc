@@ -31,25 +31,30 @@
 CLICK_DECLS
 
 
+DibadawnCycle::DibadawnCycle()
+{
+  memset(contentAsBytes, '\0', sizeof(contentAsBytes));
+}
+
 DibadawnCycle::DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2)
 {
-  memcpy(this->data, id.PointerTo10BytesOfData(), 10);
+  memcpy(contentAsBytes, id.PointerTo10BytesOfData(), 10);
 
   if (addr1.hashcode() >= addr2.hashcode())
   {
     const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
-    memcpy(this->data + 10, pmac1, 6);
+    memcpy(contentAsBytes + 10, pmac1, 6);
 
     const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
-    memcpy(this->data + 10 + 6, pmac2, 6);
+    memcpy(contentAsBytes + 10 + 6, pmac2, 6);
   }
   else
   {
     const uint8_t *pmac2 = reinterpret_cast<const uint8_t *> (addr2.data());
-    memcpy(this->data + 10, pmac2, 6);
+    memcpy(contentAsBytes + 10, pmac2, 6);
 
     const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
-    memcpy(this->data + 10 + 6, pmac1, 6);
+    memcpy(contentAsBytes + 10 + 6, pmac1, 6);
   }
 
 }
@@ -60,10 +65,10 @@ String DibadawnCycle::AsString()
   char *x = str.mutable_c_str();
   assert(x != NULL);
 
-  uint8_t *mac0 = (uint8_t*) & data[0];
-  uint32_t *time = (uint32_t*) & data[6];
-  uint8_t *mac1 = (uint8_t*) & data[10];
-  uint8_t *mac2 = (uint8_t*) & data[16];
+  uint8_t *mac0 = (uint8_t*) & contentAsBytes[0];
+  uint32_t *time = (uint32_t*) & contentAsBytes[6];
+  uint8_t *mac1 = (uint8_t*) & contentAsBytes[10];
+  uint8_t *mac2 = (uint8_t*) & contentAsBytes[16];
   sprintf(x, "%02X-%02X-%02X-%02X-%02X-%02X-%08X--%02X-%02X-%02X-%02X-%02X-%02X--%02X-%02X-%02X-%02X-%02X-%02X",
       mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5],
       *time,
