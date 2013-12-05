@@ -30,6 +30,7 @@
 #include "topology_info.hh"
 #include "topology_dibadawn_packet.hh"
 #include "topology_dibadawn_edgemarking.hh"
+#include "topology_dibadawn_cycle.hh"
 
 
 CLICK_DECLS;
@@ -55,6 +56,10 @@ class DibadawnSearch
   void activateForwardTimer();
   void receiveForwardMessage(DibadawnPacket &packet);
   void detectCycles();
+  void bufferBackwardMessage(EtherAddress &parent, DibadawnCycle &cycleId);
+  void forwardMessages();
+  void detectAccessPoints();
+  void voteForAccessPointsAndBridges();
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
