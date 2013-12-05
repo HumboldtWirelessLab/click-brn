@@ -46,6 +46,5 @@ DibadawnEdgeMarking::DibadawnEdgeMarking(
 }
 
 
-
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnSearchId)
+ELEMENT_PROVIDES(DibadawnEdgeMarking)
