@@ -30,14 +30,14 @@ CLICK_DECLS;
 
 class DibadawnEdgeMarking {
 public:
-    uint32_t time;
+    Timestamp time;
     DibadawnSearchId id;
     bool isBridge;
     EtherAddress nodeA;
     EtherAddress nodeB;
 
     DibadawnEdgeMarking(
-            const uint32_t &time, 
+            const Timestamp &time, 
             const DibadawnSearchId &id, 
             const bool &isBridge, 
             const EtherAddress &addr1, 

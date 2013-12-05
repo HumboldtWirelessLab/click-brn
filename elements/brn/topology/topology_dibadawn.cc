@@ -39,13 +39,10 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   brn_click_element = click_element;
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
+  maxTtl = 255; // TODO: Does this makes sense?
   inactive = true;
 
-  ideaOfPacket.searchId = DibadawnSearchId(Timestamp::now(), thisNode);
-  ideaOfPacket.forwardedBy = thisNode;
-  ideaOfPacket.isForward = true;
-  ideaOfPacket.ttl = 255; // TODO: Does this makes sense?
-  firstProcessedPacket = true;
+  
 
   initTimer();
 }
@@ -55,11 +52,12 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   brn_click_element = click_element;
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
+  maxTtl = 255; // TODO: Does this makes sense?
   inactive = false;
 
-  ideaOfPacket = packet;
-  ideaOfPacket.forwardedBy = thisNode;
-  firstProcessedPacket = true;
+  outgoingPacket = packet;
+  outgoingPacket.forwardedBy = thisNode;
+  visited = false;
 
   initTimer();
 }
@@ -79,12 +77,12 @@ void DibadawnSearch::initTimer()
 void DibadawnSearch::activateForwardTimer()
 {
   forwardTimer->initialize(this->brn_click_element, false);
-  forwardTimer->schedule_after_msec(maxTraversalTimeMs * ideaOfPacket.ttl);
+  forwardTimer->schedule_after_msec(maxTraversalTimeMs * outgoingPacket.ttl);
 }
 
 void DibadawnSearch::forwardTimeout()
 {
-  const char *searchText = ideaOfPacket.searchId.AsString().c_str();
+  const char *searchText = outgoingPacket.searchId.AsString().c_str();
   const char *thisNodeText = thisNode.unparse_dash().c_str();
   click_chatter("<ForwardTimeout searchId='%s' node='%s' />",
       searchText,
@@ -97,19 +95,25 @@ void DibadawnSearch::forwardTimeout()
 
 String DibadawnSearch::asString()
 {
-  return (ideaOfPacket.searchId.AsString());
+  return (outgoingPacket.searchId.AsString());
 }
 
 void DibadawnSearch::start_search()
 {
+  outgoingPacket.searchId = DibadawnSearchId(Timestamp::now(), thisNode);
+  outgoingPacket.forwardedBy = thisNode;
+  outgoingPacket.treeParent = parent;
+  outgoingPacket.isForward = true;
+  outgoingPacket.ttl = maxTtl; 
+  visited = true;
+  
   sendPerBroadcastWithTimeout();
-  firstProcessedPacket = false;
 }
 
 void DibadawnSearch::sendPerBroadcastWithTimeout()
 {
-  ideaOfPacket.log("DibadawnPacketTx", thisNode);
-  WritablePacket *brn_packet = ideaOfPacket.getBrnPacket();
+  outgoingPacket.log("DibadawnPacketTx", thisNode);
+  WritablePacket *brn_packet = outgoingPacket.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
 
   activateForwardTimer();
@@ -136,14 +140,18 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
 {
-  if (firstProcessedPacket)
+  if (!visited)
   {
     if (receivedPacket.ttl > 0)
     {
-      ideaOfPacket.ttl = receivedPacket.ttl - 1;
-      ideaOfPacket.treeParent = receivedPacket.forwardedBy;
+      outgoingPacket = receivedPacket;
+      outgoingPacket.ttl--;
+      outgoingPacket.forwardedBy = thisNode;
+      outgoingPacket.treeParent = receivedPacket.forwardedBy;
+      visited = true;
+      
       sendPerBroadcastWithTimeout();
-      firstProcessedPacket = false;
+      
       inactive = false;
     }
     else
@@ -176,16 +184,17 @@ void DibadawnSearch::detectCycles()
   {
     EtherAddress addr = crossEdges.at(i);
     
-    DibadawnCycle c(ideaOfPacket.searchId, thisNode, addr);
+    DibadawnCycle c(outgoingPacket.searchId, thisNode, addr);
     click_chatter("<Cycle id='%s' />",
         c.AsString().c_str());
     
     DibadawnEdgeMarking marking = DibadawnEdgeMarking(
-        0 /*TODO*/, 
-        ideaOfPacket.searchId,
+        Timestamp::now(), 
+        outgoingPacket.searchId,
         true,
         thisNode,
         addr);
+    edgeMarkings.push_back(marking);
   }
 }
 
