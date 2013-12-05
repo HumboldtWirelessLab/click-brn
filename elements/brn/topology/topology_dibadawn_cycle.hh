@@ -33,10 +33,11 @@ public:
     static const size_t length = 10 + 6 + 6;
     String AsString();
 
+    DibadawnCycle();
     DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
 
 private:
-    uint8_t data[length];
+    uint8_t contentAsBytes[length];
 };
 
 CLICK_ENDDECLS
