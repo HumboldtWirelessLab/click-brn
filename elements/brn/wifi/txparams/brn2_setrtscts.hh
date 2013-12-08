@@ -11,13 +11,18 @@
 
 CLICK_DECLS
 
+#define RTS_CTS_STRATEGY_ALWAYS_OFF 0 /* default */
+#define RTS_CTS_STRATEGY_UNICAST_ON 1 /* unicast only */
+#define RTS_CTS_STRATEGY_ALWAYS_ON  2 /* unicast & bcast */
+#define RTS_CTS_STRATEGY_SIZE_LIMIT 3 /* unicast only */
+#define RTS_CTS_STRATEGY_RANDOM     4 /* unicast only */
+#define RTS_CTS_STRATEGY_PLI        5 /* unicast only */
+#define RTS_CTS_STRATEGY_HIDDENNODE 6 /* unicast only */
+
+
 class Brn2_SetRTSCTS : public BRNElement { 
 
 public:
-	#define RTS_CTS_STRATEGY_ALWAYS_OFF 0 //default
-	#define RTS_CTS_STRATEGY_ALWAYS_ON 1
-	#define RTS_CTS_STRATEGY_RANDOM 2
-
 
 	Brn2_SetRTSCTS();
 	~Brn2_SetRTSCTS();
@@ -40,10 +45,11 @@ public:
 private:	
 	bool _rts;//true:= rts on; false:=rts_off
 	uint16_t _rts_cts_strategy;//RTS-CTS Strategy
+
 	//total number of packets who got through this element
 	unsigned int pkt_total;	
 	struct _neighbour_statistics {
-        	 uint32_t pkt_total;
+     uint32_t pkt_total;
 		 uint32_t rts_on;
 	};
 
