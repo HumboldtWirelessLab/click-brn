@@ -46,6 +46,9 @@ class DibadawnSearch
   Vector<EtherAddress> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
+  Vector<DibadawnPacket> msg;
+  Vector<EtherAddress> adj;
+  bool isArticulationPoint;
   
   uint32_t maxTraversalTimeMs;
   uint8_t maxTtl;
@@ -61,6 +64,8 @@ class DibadawnSearch
   void forwardMessages();
   void detectAccessPoints();
   void voteForAccessPointsAndBridges();
+  void AccessPointDetection();
+  void initMatrixWithFalse(bool &m[][], const size_t l, const size_t c);
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
