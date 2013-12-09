@@ -57,7 +57,7 @@ class DibadawnSearch
   void activateForwardTimer();
   void receiveForwardMessage(DibadawnPacket &packet);
   void detectCycles();
-  void bufferBackwardMessage(EtherAddress &parent, DibadawnCycle &cycleId);
+  void bufferBackwardMessage(DibadawnCycle &cycleId);
   void forwardMessages();
   void detectAccessPoints();
   void voteForAccessPointsAndBridges();

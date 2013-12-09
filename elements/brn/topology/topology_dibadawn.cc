@@ -105,7 +105,7 @@ void DibadawnSearch::detectCycles()
     DibadawnCycle c(searchId, thisNode, addr);
     click_chatter("<Cycle id='%s' />",
         c.AsString().c_str());
-    bufferBackwardMessage(parent, c);
+    bufferBackwardMessage(c);
   }
 }
 
@@ -255,7 +255,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
   }
 }
 
-void DibadawnSearch::bufferBackwardMessage(EtherAddress& parent /*wozu?*/, DibadawnCycle &cycleId)
+void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
 {
   DibadawnPacket packet;
   packet.isForward = false;
