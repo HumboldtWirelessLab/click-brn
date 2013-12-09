@@ -39,6 +39,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
+  isArticulationPoint = false;
 
   initTimer();
 }
@@ -49,6 +50,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   thisNode = addrOfThisNode;
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
+  isArticulationPoint = false;
 
   searchId = packet.searchId;
   visited = false;
@@ -206,7 +208,9 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 {
+  msg.push_back(receivedPacket);
   receivedPacket.log("DibadawnPacketRx", thisNode);
+  
   if (receivedPacket.isForward)
   {
     receiveForwardMessage(receivedPacket);
@@ -268,6 +272,28 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
 
   messageBuffer.push_back(packet);
 }
+
+void DibadawnSearch::AccessPointDetection()
+{
+  size_t n = adj.size();
+  if(n < 1)
+    return;
+  
+  bool closure[n][n];
+  initMatrixWithFalse(closure, n, n);
+}
+
+void DibadawnSearch::initMatrixWithFalse(bool& m[][], const size_t l, const size_t c)
+{
+  for(size_t i = 0; i < l; i++)
+  {
+    for(size_t j = 0; j < c; j++)
+    {
+      m[i][j] = false;
+    }
+  }
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnSearch)
