@@ -29,7 +29,6 @@
 #include "topology_dibadawn_packet.hh"
 #include "topology_dibadawn_searchid.hh"
 
-
 CLICK_DECLS
 
 
@@ -49,14 +48,13 @@ struct DibadawnPacketStruct
 DibadawnPacket::DibadawnPacket()
 {
   setVersion();
-  containsPayload = false;
 }
 
 DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
 {
   DibadawnPacketStruct *packet;
   packet = (struct DibadawnPacketStruct *) brn_packet->data();
-  
+
   forwardedBy = EtherAddress(packet->forwaredBy);
   treeParent = EtherAddress(packet->treeParent);
   ttl = packet->ttl;
@@ -104,14 +102,14 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   memcpy(content.id, searchId.PointerTo10BytesOfData(), sizeof (content.id));
   memcpy(content.forwaredBy, forwardedBy.data(), sizeof (content.forwaredBy));
   memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
-  content.ttl = ttl; 
+  content.ttl = ttl;
 
   uint32_t sizeof_head = 128;
   uint32_t sizeof_tail = 32;
   WritablePacket *packet = WritablePacket::make(
       sizeof_head,
-      &content, 
-      sizeof(content),
+      &content,
+      sizeof (content),
       sizeof_tail);
 
   WritablePacket *brn_packet = BRNProtocol::add_brn_header(
@@ -135,17 +133,59 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
   String forwaredByAsText = forwardedBy.unparse_dash();
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
-  
-  click_chatter("\n<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />", 
+
+  click_chatter("\n<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' />",
       tag.c_str(),
       thisNodeAsText.c_str(),
-      version, 
+      version,
       isForward,
       ttl,
       searchId.AsString().c_str(),
       forwaredByAsText.c_str(),
       treeParrentAsText.c_str());
 }
+
+bool DibadawnPacket::hasNonEmptyIntersection(DibadawnPacket& other)
+{
+  return (hasSameElement(*this, other));
+}
+
+bool DibadawnPacket::hasSameElement(DibadawnPacket& a, DibadawnPacket& b)
+{
+  for (int i = 0; i < a.payload.size(); i++)
+  {
+    DibadawnPayloadElement& e1 = a.payload.at(i);
+    if (e1.isBridge)
+      continue;
+    
+    for (int j = 0; j < b.payload.size(); j++)
+    {
+      DibadawnPayloadElement& e2 = b.payload.at(j);
+      if (e2.isBridge)
+        continue;
+
+      if (e1.cycle == e2.cycle)
+        return(true);
+    }
+  }
+  return(false);
+}
+
+void DibadawnPacket::addBridgeAsPayload()
+{
+  DibadawnPayloadElement element;
+  element.isBridge = true;
+  payload.push_back(element);
+}
+
+void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
+{
+  DibadawnPayloadElement element;
+  element.isBridge = false;
+  payload.push_back(element);
+
+}
+
 
 
 CLICK_ENDDECLS

@@ -26,6 +26,7 @@
 
 #include "topology_dibadawn_searchid.hh"
 #include "topology_dibadawn_cycle.hh"
+#include "topology_dibadawn_packet_payloadelement.hh"
 
 CLICK_DECLS;
 
@@ -41,6 +42,10 @@ public:
   WritablePacket* getBrnPacket();
   static bool isValid(const Packet *packet);
   void log(String tag, EtherAddress &thisNode);
+  bool hasNonEmptyIntersection(DibadawnPacket& other);
+  bool hasSameElement(DibadawnPacket& a, DibadawnPacket& other);
+  void addBridgeAsPayload();
+  void addNoBridgeAsPayload(DibadawnCycle& cycle);
   
   uint32_t version; 
   DibadawnSearchId searchId;
@@ -50,9 +55,7 @@ public:
   uint8_t ttl;
   
   // Only used in backward messages.
-  bool containsPayload;
-  bool isPayloadBridge;
-  DibadawnCycle payload;
+  Vector<DibadawnPayloadElement> payload;
   
 private:
 
