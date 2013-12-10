@@ -31,6 +31,7 @@
 #include "topology_dibadawn_packet.hh"
 #include "topology_dibadawn_edgemarking.hh"
 #include "topology_dibadawn_cycle.hh"
+#include "topology_dibadawn_neighbor_container.hh"
 
 
 CLICK_DECLS;
@@ -46,8 +47,7 @@ class DibadawnSearch
   Vector<EtherAddress> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
-  Vector<DibadawnPacket> msg;
-  Vector<EtherAddress> adj;
+  DibadawnNeighborContainer adjacents;
   bool isArticulationPoint;
   
   uint32_t maxTraversalTimeMs;
@@ -65,7 +65,6 @@ class DibadawnSearch
   void detectAccessPoints();
   void voteForAccessPointsAndBridges();
   void AccessPointDetection();
-  void initMatrixWithFalse(bool &m[][], const size_t l, const size_t c);
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);

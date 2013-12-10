@@ -23,15 +23,88 @@
 #include <click/glue.hh>
 #include <click/type_traits.hh>
 
+#include "topology_dibadawn.hh"
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn.hh"
-#include "topology_dibadawn_packet.hh"
-#include "topology_dibadawn_cycle.hh"
+#include "topology_dibadawn_neighbor_container.hh"
 
 
 CLICK_DECLS;
+
+class BinaryMatrix
+{
+  bool *matrix;
+  size_t dimension;
+  bool printDebug;
+
+public:
+
+  BinaryMatrix(size_t n)
+  {
+    dimension = n;
+    printDebug = false;
+    matrix = new bool[dimension];
+  }
+
+  ~BinaryMatrix()
+  {
+    delete[](matrix);
+  }
+
+  void setTrue(size_t row, size_t col)
+  {
+    matrix[row * dimension + col] = true;
+  }
+
+  void runMarshallAlgo()
+  {
+    for (size_t col = 0; col < dimension; col++)
+    {
+      for (size_t row = 0; row < dimension; row++)
+      {
+        if (matrix[row * dimension + col] == true)
+        {
+          for (size_t j = 0; j < dimension; j++)
+          {
+            matrix[row * dimension + j] =
+                matrix[row * dimension + j] || matrix[col * dimension + j];
+          }
+        }
+      }
+      if (printDebug)
+        print();
+    }
+  }
+
+  void print()
+  {
+    click_chatter("</Matrix>\n");
+    for (size_t i = 0; i < dimension; i++)
+    {
+      click_chatter("<MatrixRow num='%d'>", i);
+      for (size_t k = 0; k < dimension; k++)
+      {
+        click_chatter("%d ", matrix[i * dimension + k]);
+      }
+      click_chatter("</MatrixRow>\n");
+    }
+    click_chatter("</Matrix>\n");
+  }
+
+  bool isOneMatrix()
+  {
+    for (size_t col = 0; col < dimension; col++)
+    {
+      for (size_t row = 0; row < dimension; row++)
+      {
+        if (matrix[row * dimension + col] == false)
+          return (false);
+      }
+    }
+    return (true);
+  }
+};
 
 DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode)
 {
@@ -128,8 +201,7 @@ void DibadawnSearch::forwardMessages()
     outgoingPacket.treeParent = parent;
     outgoingPacket.isForward = false;
     outgoingPacket.ttl = maxTtl;
-    outgoingPacket.containsPayload = true;
-    outgoingPacket.isPayloadBridge = true;
+    outgoingPacket.addBridgeAsPayload();
     sendPerBroadcastWithoutTimeout();
   }
   else
@@ -208,9 +280,10 @@ bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
 {
-  msg.push_back(receivedPacket);
+  DibadawnNeighbor &neighbor = adjacents.getNeighbor(receivedPacket.forwardedBy);
+  neighbor.messages.push_back(receivedPacket);
   receivedPacket.log("DibadawnPacketRx", thisNode);
-  
+
   if (receivedPacket.isForward)
   {
     receiveForwardMessage(receivedPacket);
@@ -266,33 +339,37 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
   packet.forwardedBy = thisNode;
   packet.treeParent = parent;
   packet.ttl = maxTtl;
-  packet.containsPayload = true;
-  packet.isPayloadBridge = false;
-  packet.payload = cycleId;
+  packet.addNoBridgeAsPayload(cycleId);
 
   messageBuffer.push_back(packet);
 }
 
 void DibadawnSearch::AccessPointDetection()
 {
-  size_t n = adj.size();
-  if(n < 1)
+  size_t n = adjacents.numOfNeighbors();
+  if (n < 1)
     return;
-  
-  bool closure[n][n];
-  initMatrixWithFalse(closure, n, n);
-}
 
-void DibadawnSearch::initMatrixWithFalse(bool& m[][], const size_t l, const size_t c)
-{
-  for(size_t i = 0; i < l; i++)
+  BinaryMatrix m(n);
+  for (size_t i=0; i<n; i++)
   {
-    for(size_t j = 0; j < c; j++)
+    for(size_t j=i; j<n; j++)
     {
-      m[i][j] = false;
+      DibadawnNeighbor& n1 = adjacents.getNeighbor(i);
+      DibadawnNeighbor& n2 = adjacents.getNeighbor(j);
+      
+      if(n1.hasNonEmptyIntersection(n2))
+      {
+        m.setTrue(j,i);
+        m.setTrue(i,j);
+      }
     }
   }
+  m.runMarshallAlgo();
+  isArticulationPoint = !m.isOneMatrix();
 }
+
+
 
 
 CLICK_ENDDECLS
