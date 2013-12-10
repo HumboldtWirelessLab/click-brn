@@ -79,5 +79,10 @@ String DibadawnCycle::AsString()
 }
 
 
+bool DibadawnCycle::operator== (DibadawnCycle &other)
+{
+    return (0 == memcmp(contentAsBytes, other.contentAsBytes, sizeof(contentAsBytes)));
+}
+
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnCycle)
