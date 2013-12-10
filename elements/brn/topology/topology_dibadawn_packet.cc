@@ -145,22 +145,17 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
       treeParrentAsText.c_str());
 }
 
-bool DibadawnPacket::hasNonEmptyIntersection(DibadawnPacket& other)
+bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)
 {
-  return (hasSameElement(*this, other));
-}
-
-bool DibadawnPacket::hasSameElement(DibadawnPacket& a, DibadawnPacket& b)
-{
-  for (int i = 0; i < a.payload.size(); i++)
+  for (int i = 0; i < payload.size(); i++)
   {
-    DibadawnPayloadElement& e1 = a.payload.at(i);
+    DibadawnPayloadElement& e1 = payload.at(i);
     if (e1.isBridge)
       continue;
     
-    for (int j = 0; j < b.payload.size(); j++)
+    for (int j = 0; j < other.payload.size(); j++)
     {
-      DibadawnPayloadElement& e2 = b.payload.at(j);
+      DibadawnPayloadElement& e2 = other.payload.at(j);
       if (e2.isBridge)
         continue;
 
@@ -182,6 +177,7 @@ void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
 {
   DibadawnPayloadElement element;
   element.isBridge = false;
+  element.cycle = cycle;
   payload.push_back(element);
 
 }

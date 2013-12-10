@@ -46,7 +46,7 @@ bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
       DibadawnPacket& m1 = messages.at(i);
       DibadawnPacket& m2 = other.messages.at(j);
       
-      if(m1.hasNonEmptyIntersection(m2))
+      if(m1.hasSameCycle(m2))
         return(true);
     }
   }
