@@ -42,8 +42,7 @@ public:
   WritablePacket* getBrnPacket();
   static bool isValid(const Packet *packet);
   void log(String tag, EtherAddress &thisNode);
-  bool hasNonEmptyIntersection(DibadawnPacket& other);
-  bool hasSameElement(DibadawnPacket& a, DibadawnPacket& other);
+  bool hasSameCycle(DibadawnPacket& other);
   void addBridgeAsPayload();
   void addNoBridgeAsPayload(DibadawnCycle& cycle);
   
