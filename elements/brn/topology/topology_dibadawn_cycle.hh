@@ -35,6 +35,7 @@ public:
 
     DibadawnCycle();
     DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
+    bool operator== (DibadawnCycle &b);
 
 private:
     uint8_t contentAsBytes[length];
