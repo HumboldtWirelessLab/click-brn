@@ -32,8 +32,22 @@
 
 CLICK_DECLS
 
+DibadawnPayloadElement::DibadawnPayloadElement()
+{
+}
 
+DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)
+{
+  isBridge = *p == 1;
+  cycle.setData(p + 1);
+}
 
+uint8_t* DibadawnPayloadElement::getData()
+{
+  mayInconsistentlyData[0] = isBridge;
+  memcpy(mayInconsistentlyData+1, cycle.getData(), length-1);
+  return(mayInconsistentlyData);
+}
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnPacketPayloadElement)

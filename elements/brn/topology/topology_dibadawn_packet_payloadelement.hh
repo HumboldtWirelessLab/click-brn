@@ -31,8 +31,17 @@ CLICK_DECLS;
 class DibadawnPayloadElement {
 public:
     bool isBridge;
+    static const size_t length = 
+        DibadawnCycle::length + 1/* one byte for isBrigde */;
     DibadawnCycle cycle;
- 
+    
+    DibadawnPayloadElement();
+    DibadawnPayloadElement(const uint8_t *pBinaryData);
+    uint8_t* getData();
+
+private:
+    uint8_t mayInconsistentlyData[length];
+
 };
 
 CLICK_ENDDECLS

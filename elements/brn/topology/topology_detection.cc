@@ -155,7 +155,8 @@ void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
     search->receive(packet);
   }
   else
-    BRN_INFO("<!-- MSG invalid -->");
+    BRN_INFO("\n<InvalidPacketRx node='%s' />", 
+        _node_identity->getMasterAddress()->unparse_dash().c_str());
 }
 
 void TopologyDetection::handle_detection_forward_as_before(Packet *packet)
