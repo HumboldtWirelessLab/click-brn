@@ -28,13 +28,14 @@
 
 CLICK_DECLS;
 
-class DibadawnNeighborContainer {
-  Vector<DibadawnNeighbor> neighbors;
+class DibadawnNeighborContainer
+{
+    Vector<DibadawnNeighbor> neighbors;
 public:
     size_t numOfNeighbors();
     DibadawnNeighbor& getNeighbor(EtherAddress &addr);
     DibadawnNeighbor& getNeighbor(int num);
-    
+
 };
 
 CLICK_ENDDECLS
