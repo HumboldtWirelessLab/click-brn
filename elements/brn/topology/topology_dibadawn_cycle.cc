@@ -27,6 +27,7 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn_cycle.hh"
+#include "elements/grid/ackresponder.hh"
 
 CLICK_DECLS
 
@@ -56,7 +57,6 @@ DibadawnCycle::DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAdd
     const uint8_t *pmac1 = reinterpret_cast<const uint8_t *> (addr1.data());
     memcpy(contentAsBytes + 10 + 6, pmac1, 6);
   }
-
 }
 
 String DibadawnCycle::AsString()
@@ -78,11 +78,21 @@ String DibadawnCycle::AsString()
   return (str);
 }
 
-
 bool DibadawnCycle::operator== (DibadawnCycle &other)
 {
     return (0 == memcmp(contentAsBytes, other.contentAsBytes, sizeof(contentAsBytes)));
 }
+
+void DibadawnCycle::setData(const uint8_t* p)
+{
+  memcpy(contentAsBytes, p, sizeof(contentAsBytes)); 
+}
+
+uint8_t* DibadawnCycle::getData()
+{
+  return (contentAsBytes);
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnCycle)
