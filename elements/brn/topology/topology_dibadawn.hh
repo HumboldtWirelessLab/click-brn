@@ -38,26 +38,36 @@ CLICK_DECLS;
 
 class DibadawnSearch 
 {
+public:
+  struct ForwardSendTimerParam
+  {
+      DibadawnSearch *search;
+      DibadawnPacket packet;
+  };  
+  
+private:
   EtherAddress thisNode;
   EtherAddress parent;
   DibadawnPacket outgoingPacket;
   bool visited;
-  Timer *forwardTimer;
+  Timer *forwardTimeoutTimer;
+  Timer *forwardSendTimer;
   DibadawnSearchId searchId;
   Vector<EtherAddress> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
   DibadawnNeighborContainer adjacents;
   bool isArticulationPoint;
+  uint32_t numOfConcurrentSenders;
   
   uint32_t maxTraversalTimeMs;
   uint8_t maxTtl;
   BRNElement *brn_click_element;
   
-  void sendPerBroadcastWithTimeout();
-  void sendPerBroadcastWithoutTimeout();
+  
   void initTimer();
-  void activateForwardTimer();
+  void activateForwardTimer(DibadawnPacket &packet);
+  void activateForwardSendTimer(DibadawnPacket &packet);
   void receiveForwardMessage(DibadawnPacket &packet);
   void detectCycles();
   void bufferBackwardMessage(DibadawnCycle &cycleId);
@@ -70,6 +80,9 @@ public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet);
   
+  void sendBroadcastWithTimeout(DibadawnPacket &packet);
+  void sendBroadcastWithoutTimeout(DibadawnPacket &packet);
+  void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
   String asString();
   void receive(DibadawnPacket &packet);
   void start_search();
