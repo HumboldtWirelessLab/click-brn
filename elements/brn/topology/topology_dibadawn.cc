@@ -113,6 +113,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
   isArticulationPoint = false;
+  numOfConcurrentSenders = 10;
 
   initTimer();
 }
@@ -124,6 +125,7 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   maxTraversalTimeMs = 40;
   maxTtl = 255; // TODO: Does this makes sense?
   isArticulationPoint = false;
+  numOfConcurrentSenders = 10;
 
   searchId = packet.searchId;
   visited = false;
@@ -131,22 +133,27 @@ DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &ad
   initTimer();
 }
 
-void forwardTimerCallback(Timer*, void *search)
+void forwardSendTimerCallback(Timer*, void* p)
+{
+  DibadawnSearch::ForwardSendTimerParam *param = (DibadawnSearch::ForwardSendTimerParam *)p;
+  assert(param != NULL);
+  
+  param->search->sendBroadcastWithTimeout(param->packet);
+  delete(param);
+}
+
+void forwardTimeoutCallback(Timer*, void *search)
 {
   DibadawnSearch* s = (DibadawnSearch*) search;
   assert(s != NULL);
   s->forwardTimeout();
 }
 
+// TODO: write as initializer list
 void DibadawnSearch::initTimer()
 {
-  forwardTimer = new Timer(forwardTimerCallback, this);
-}
-
-void DibadawnSearch::activateForwardTimer()
-{
-  forwardTimer->initialize(this->brn_click_element, false);
-  forwardTimer->schedule_after_msec(maxTraversalTimeMs * outgoingPacket.ttl);
+  forwardTimeoutTimer = new Timer(forwardTimeoutCallback, this);
+  forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
 }
 
 void DibadawnSearch::forwardTimeout()
@@ -202,7 +209,7 @@ void DibadawnSearch::forwardMessages()
     outgoingPacket.isForward = false;
     outgoingPacket.ttl = maxTtl;
     outgoingPacket.addBridgeAsPayload();
-    sendPerBroadcastWithoutTimeout();
+    sendBroadcastWithoutTimeout(outgoingPacket);
   }
   else
   {
@@ -212,7 +219,7 @@ void DibadawnSearch::forwardMessages()
       outgoingPacket.ttl--;
       outgoingPacket.treeParent = outgoingPacket.forwardedBy;
       outgoingPacket.forwardedBy = thisNode;
-      sendPerBroadcastWithoutTimeout();
+      sendBroadcastWithoutTimeout(outgoingPacket);
 
       // TODO votes
 
@@ -254,23 +261,45 @@ void DibadawnSearch::start_search()
   outgoingPacket.ttl = maxTtl;
   visited = true;
 
-  sendPerBroadcastWithTimeout();
+  sendBroadcastWithTimeout(outgoingPacket);
 }
 
-void DibadawnSearch::sendPerBroadcastWithTimeout()
+void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 {
-  outgoingPacket.log("DibadawnPacketTx", thisNode);
-  WritablePacket *brn_packet = outgoingPacket.getBrnPacket();
+  packet.log("DibadawnPacketTx", thisNode);
+  WritablePacket *brn_packet = packet.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
 
-  activateForwardTimer();
+  activateForwardTimer(packet);
 }
 
-void DibadawnSearch::sendPerBroadcastWithoutTimeout()
+void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
 {
-  outgoingPacket.log("DibadawnPacketTx", thisNode);
-  WritablePacket *brn_packet = outgoingPacket.getBrnPacket();
+  forwardTimeoutTimer->initialize(this->brn_click_element, false);
+  forwardTimeoutTimer->schedule_after_msec(maxTraversalTimeMs * packet.ttl);
+}
+
+void DibadawnSearch::sendBroadcastWithoutTimeout(DibadawnPacket &packet)
+{
+  packet.log("DibadawnPacketTx", thisNode);
+  WritablePacket *brn_packet = packet.getBrnPacket();
   brn_click_element->output(0).push(brn_packet);
+}
+
+void DibadawnSearch::sendDelayedBroadcastWithTimeout(DibadawnPacket &packet)
+{
+  activateForwardSendTimer(packet);
+}
+
+void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
+{
+  ForwardSendTimerParam *param = new ForwardSendTimerParam;
+  param->packet = packet;
+  param->search = this;
+  
+  forwardSendTimer->assign(forwardSendTimerCallback, (void*)param);
+  forwardSendTimer->initialize(this->brn_click_element, false);
+  forwardSendTimer->schedule_after_msec((click_random() % numOfConcurrentSenders) * maxTraversalTimeMs);
 }
 
 bool DibadawnSearch::isResponsableFor(DibadawnPacket &packet)
@@ -307,7 +336,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
       outgoingPacket.treeParent = receivedPacket.forwardedBy;
       visited = true;
 
-      sendPerBroadcastWithTimeout();
+      sendDelayedBroadcastWithTimeout(outgoingPacket);
     }
     else
     {
@@ -368,8 +397,6 @@ void DibadawnSearch::AccessPointDetection()
   m.runMarshallAlgo();
   isArticulationPoint = !m.isOneMatrix();
 }
-
-
 
 
 CLICK_ENDDECLS
