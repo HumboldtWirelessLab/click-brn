@@ -106,33 +106,6 @@ public:
   }
 };
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode)
-{
-  brn_click_element = click_element;
-  thisNode = addrOfThisNode;
-  maxTraversalTimeMs = 40;
-  maxTtl = 255; // TODO: Does this makes sense?
-  isArticulationPoint = false;
-  numOfConcurrentSenders = 10;
-
-  initTimer();
-}
-
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet)
-{
-  brn_click_element = click_element;
-  thisNode = addrOfThisNode;
-  maxTraversalTimeMs = 40;
-  maxTtl = 255; // TODO: Does this makes sense?
-  isArticulationPoint = false;
-  numOfConcurrentSenders = 10;
-
-  searchId = packet.searchId;
-  visited = false;
-
-  initTimer();
-}
-
 void forwardSendTimerCallback(Timer*, void* p)
 {
   DibadawnSearch::ForwardSendTimerParam *param = (DibadawnSearch::ForwardSendTimerParam *)p;
@@ -149,9 +122,28 @@ void forwardTimeoutCallback(Timer*, void *search)
   s->forwardTimeout();
 }
 
-// TODO: write as initializer list
-void DibadawnSearch::initTimer()
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode)
 {
+  initCommon(click_element, addrOfThisNode);
+}
+
+DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet)
+{
+  initCommon(click_element, addrOfThisNode);
+
+  searchId = packet.searchId;
+  visited = false;
+}
+
+void DibadawnSearch::initCommon(BRNElement *click_element, const EtherAddress &addrOfThisNode)
+{
+  brn_click_element = click_element;
+  thisNode = addrOfThisNode;
+  maxTraversalTimeMs = 40;
+  maxTtl = 255; // TODO: Does this makes sense?
+  isArticulationPoint = false;
+  numOfConcurrentSenders = 10;
+  
   forwardTimeoutTimer = new Timer(forwardTimeoutCallback, this);
   forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
 }

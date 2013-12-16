@@ -65,7 +65,7 @@ private:
   BRNElement *brn_click_element;
   
   
-  void initTimer();
+  void initCommon(BRNElement *click_element, const EtherAddress &addrOfThisNode);
   void activateForwardTimer(DibadawnPacket &packet);
   void activateForwardSendTimer(DibadawnPacket &packet);
   void receiveForwardMessage(DibadawnPacket &packet);
