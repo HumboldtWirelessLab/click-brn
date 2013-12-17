@@ -37,6 +37,7 @@ MSTFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "CIRCLEPATH", cpkP+cpkM, cpString, &_circle_path,
+    "BIDIRECTIONAL", cpkP+cpkM, cpBool, &_bidirectional,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -53,7 +54,7 @@ MSTFlooding::initialize(ErrorHandler *)
 }
 
 EtherAddress ID_to_MAC (int id) {
-  unsigned char data[]={0,0,0,0,0,id};
+  unsigned char data[]={0,0,0,0,id/256,id%256};
   return EtherAddress(data);
 }
 
@@ -157,7 +158,39 @@ void MSTFlooding::get_neighbours(String path) {
       first = -1;
     }
   }
+	
+  if (_bidirectional) {
+	first=-1;
+    next=false;
+    i = _data_vec.size()-2;
+	while (i >= -1) {
+		if (i==-1) akt=-1;
+		if (i!=-1) cp_integer(_data_vec[i],&akt);
+		--i;
 
+		if (first==-1) first=akt;
+
+		if (next) {
+			if (akt==-1) {
+				followers.push_back(ID_to_MAC(first));
+				BRN_DEBUG("Added node: %d",first);
+			} else {
+				followers.push_back(ID_to_MAC(akt));
+				BRN_DEBUG("Added node: %d",akt);
+			}
+			next=false;
+		}
+
+		if (akt == node_id) {
+			next = true;
+		}
+
+		if (akt == -1) {
+			first = -1;
+		}
+	}
+  }
+	
   BRN_DEBUG("Neighbours: %d",followers.size());
   //akt_foll=followers.begin();
 }
