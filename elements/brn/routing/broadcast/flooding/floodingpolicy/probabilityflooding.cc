@@ -86,7 +86,7 @@ ProbabilityFlooding::do_forward(EtherAddress *src, EtherAddress *, const EtherAd
 
       if ( no_rx_nodes >= _cntbased_min_neighbors_for_abort ) {
         //stop it
-        struct Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(src);
+        Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(src);
         if ( bcn != NULL ) {
           bcn->set_stopped(bcast_id,true);
         }
