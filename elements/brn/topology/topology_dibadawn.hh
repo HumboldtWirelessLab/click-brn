@@ -23,71 +23,31 @@
 
 #include <click/element.hh>
 #include <click/timer.hh>
+#include <click/vector.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "topology_dibadawn_searchid.hh"
-#include "topology_info.hh"
+#include "topology_dibadawn_search.hh"
 #include "topology_dibadawn_packet.hh"
-#include "topology_dibadawn_edgemarking.hh"
-#include "topology_dibadawn_cycle.hh"
-#include "topology_dibadawn_neighbor_container.hh"
 
 
 CLICK_DECLS;
 
-class DibadawnSearch 
+class DibadawnAlgorithm
 {
 public:
-  struct ForwardSendTimerParam
-  {
-      DibadawnSearch *search;
-      DibadawnPacket packet;
-  };  
-  
-private:
-  EtherAddress thisNode;
-  EtherAddress parent;
-  DibadawnPacket outgoingPacket;
-  bool visited;
-  Timer *forwardTimeoutTimer;
-  Timer *forwardSendTimer;
-  DibadawnSearchId searchId;
-  Vector<EtherAddress> crossEdges;
-  Vector<DibadawnEdgeMarking> edgeMarkings;
-  Vector<DibadawnPacket> messageBuffer;
-  DibadawnNeighborContainer adjacents;
-  bool isArticulationPoint;
-  uint32_t numOfConcurrentSenders;
-  
-  uint32_t maxTraversalTimeMs;
-  uint8_t maxTtl;
-  BRNElement *brn_click_element;
-  
-  
-  void initCommon(BRNElement *click_element, const EtherAddress &addrOfThisNode);
-  void activateForwardTimer(DibadawnPacket &packet);
-  void activateForwardSendTimer(DibadawnPacket &packet);
-  void receiveForwardMessage(DibadawnPacket &packet);
-  void detectCycles();
-  void bufferBackwardMessage(DibadawnCycle &cycleId);
-  void forwardMessages();
-  void detectAccessPoints();
-  void voteForAccessPointsAndBridges();
-  void AccessPointDetection();
-  
+    EtherAddress thisNode;
+    BRNElement *brn_click_element;
+    Vector<DibadawnSearch*> searches; 
+    
+    DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
+    
 public:
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnPacket &packet);
-  
-  void sendBroadcastWithTimeout(DibadawnPacket &packet);
-  void sendBroadcastWithoutTimeout(DibadawnPacket &packet);
-  void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
-  String asString();
-  void receive(DibadawnPacket &packet);
-  void start_search();
-  bool isResponsableFor(DibadawnPacket &packet);
-  void forwardTimeout(); 
+    DibadawnAlgorithm();
+    DibadawnAlgorithm(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
+    void receive(DibadawnPacket &packet);
+    void startNewSearch();
+    
 };
 
 CLICK_ENDDECLS

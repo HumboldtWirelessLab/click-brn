@@ -47,6 +47,8 @@ _response_timer(static_response_timer_hook, this),
 detection_id(0)
 {
   BRNElement::init();
+  
+  //dibadawnAlgo = DibadawnAlgorithm(this, *_node_identity->getMasterAddress());
 }
 
 TopologyDetection::~TopologyDetection()
@@ -55,6 +57,7 @@ TopologyDetection::~TopologyDetection()
 
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  
   if (cp_va_kparse(conf, this, errh,
       "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoi,
       "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
@@ -63,6 +66,8 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
 
+  dibadawnAlgo = DibadawnAlgorithm(this, *_node_identity->getMasterAddress());
+  
   return 0;
 }
 
@@ -108,116 +113,10 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
   BRN_INFO(sa.take_string().c_str());
 }
 
-void TopologyDetection::handle_detection_forward(Packet *packet)
+void TopologyDetection::handle_detection_forward(Packet *brn_packet)
 {
-  uint8_t typ = ((unsigned char*) packet->data())[0];
-
-  switch (typ) {
-  case 3:
-    BRN_INFO("<!-- hu hu, das ist eine alte MSG -->");
-    handle_detection_forward_as_before(packet);
-    break;
-
-  default:
-    handle_detection_forward_by_me(packet);
-    break;
-  }
-}
-
-void TopologyDetection::handle_detection_forward_by_me(Packet *brn_packet)
-{
-  BRN_INFO("<!-- hu hu, das ist meine MSG -->");
-
-  bool found = false;
-  if (DibadawnPacket::isValid(brn_packet))
-  {
-    DibadawnPacket packet(brn_packet);
-    DibadawnSearch *search;
-    for (int i = 0; i < searches.size(); i++)
-    {
-      search = searches.at(i);
-      if (search->isResponsableFor(packet))
-      {
-        BRN_INFO("<!-- MATCH -->");
-        found = true;
-        break;
-      }
-    }
-
-    if (!found)
-    {
-      BRN_INFO("<!-- Received new search -->");
-      const EtherAddress* addrOfThisNode = _node_identity->getMasterAddress();
-      search = new DibadawnSearch(this, *addrOfThisNode, packet);
-      searches.push_back(search);
-    }
-    
-    search->receive(packet);
-  }
-  else
-    BRN_INFO("\n<InvalidPacketRx node='%s' />", 
-        _node_identity->getMasterAddress()->unparse_dash().c_str());
-}
-
-void TopologyDetection::handle_detection_forward_as_before(Packet *packet)
-{
-  uint32_t id;
-  uint8_t entries;
-  uint8_t ttl;
-  uint8_t *path;
-  uint8_t type;
-  EtherAddress src;
-  click_ether *ether_h = (click_ether *) packet->ether_header();
-  bool new_td = false;
-
-  path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl, &type);
-
-  TopologyDetectionForwardInfo *tdi = get_forward_info(&src, id);
-
-  if (tdi == NULL)
-  {
-    BRN_DEBUG("Unknown topology detection request. Src: %s Id: %d Entries: %d TTL: %d Type: %d",
-        src.unparse().c_str(),
-        id,
-        entries,
-        ttl,
-        type);
-    tdfi_list.push_back(new TopologyDetectionForwardInfo(&src, id, (ttl - 1)));
-    tdi = get_forward_info(&src, id);
-    new_td = true;
-  }
-
-  EtherAddress last_hop = EtherAddress(ether_h->ether_shost);
-
-  bool incl_me = path_include_node(path, entries, _node_identity->getMasterAddress());
-
-  tdi->add_last_hop(&last_hop, ttl, incl_me);
-
-  if (new_td)
-  {
-    WritablePacket *fwd_p = TopologyDetectionProtocol::fwd_packet(packet, _node_identity->getMasterAddress(), &last_hop);
-
-    _detection_timer.schedule_after_msec(/*click_random() %*/ 100); //wait for forward of an descendant
-
-    output(0).push(fwd_p);
-
-  }
-  else
-  {
-    BRN_DEBUG("I know the request. Discard Packet.");
-
-    if (((tdi->_ttl - 1) == ttl) && incl_me)
-    { //is my descendants (nachkomme)
-      BRN_DEBUG("It's my descendants.");
-      tdi->set_descendant(&last_hop, true);
-      tdi->_num_descendant++;
-      _detection_timer.unschedule();
-      _response_timer.unschedule();
-      _response_timer.schedule_after_msec(/*click_random() %*/ (tdi->_ttl * tdi->_ttl));
-    }
-
-    packet->kill();
-  }
+  DibadawnPacket packet(brn_packet);
+  dibadawnAlgo.receive(packet);
 }
 
 bool TopologyDetection::path_include_node(uint8_t *path, uint32_t path_len, const EtherAddress *node)
@@ -257,22 +156,7 @@ void TopologyDetection::handle_detection_backward(Packet *packet)
 
 void TopologyDetection::start_detection()
 {
-  // TODO: Delete...
-  detection_id++;
-  WritablePacket *p = TopologyDetectionProtocol::new_detection_packet(_node_identity->getMasterAddress(), detection_id, 128);
-
-  tdfi_list.push_back(new TopologyDetectionForwardInfo(_node_identity->getMasterAddress(), detection_id, 128));
-  _detection_timer.schedule_after_msec(/*click_random() % */100); //wait for descendant
-
-  output(0).push(p);
-
-  // New...
-  const EtherAddress* addrOfThisNode = _node_identity->getMasterAddress();
-  DibadawnSearch *search = new DibadawnSearch(this, *addrOfThisNode);
-  searches.push_back(search);
-  search->start_search();
-  String search_name = search->asString();
-  BRN_INFO("<!-- started search %s-->", search_name.c_str());
+  dibadawnAlgo.startNewSearch();
 }
 
 void TopologyDetection::static_detection_timer_hook(Timer *t, void *f)
