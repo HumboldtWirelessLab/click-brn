@@ -41,6 +41,7 @@ public:
   void setForwaredBy(const EtherAddress* sender_addr);
   WritablePacket* getBrnPacket();
   static bool isValid(const Packet *packet);
+  bool isInvalid();
   void log(String tag, EtherAddress &thisNode);
   bool hasSameCycle(DibadawnPacket& other);
   void addBridgeAsPayload();
@@ -52,11 +53,10 @@ public:
   EtherAddress treeParent;
   bool isForward;
   uint8_t ttl;
+  bool createdByInvalidPacket;
   
   // Only used in backward messages.
   Vector<DibadawnPayloadElement> payload;
-  
-private:
 
 };
 

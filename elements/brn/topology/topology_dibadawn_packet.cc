@@ -43,17 +43,25 @@ struct DibadawnPacketStruct
   uint8_t forwaredBy[6];
   uint8_t treeParent[6];
   uint8_t ttl;
-  
-  uint8_t numPayloads; 
+
+  uint8_t numPayloads;
 };
 
 DibadawnPacket::DibadawnPacket()
 {
   setVersion();
+  createdByInvalidPacket = false;
 }
 
 DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
 {
+  if (!isValid(brn_packet))
+  {
+    createdByInvalidPacket = true;
+    return;
+  }
+  createdByInvalidPacket = false;
+
   DibadawnPacketStruct *packet;
   packet = (struct DibadawnPacketStruct *) brn_packet->data();
 
@@ -63,9 +71,9 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   isForward = (packet->type & 0x03) != 0;
   searchId.setByPointerTo10BytesOfData(packet->id);
   version = packet->version;
-  
-  const uint8_t* data = brn_packet->data() + sizeof(DibadawnPacketStruct);
-  for(int i=0; i<packet->numPayloads; i++)
+
+  const uint8_t* data = brn_packet->data() + sizeof (DibadawnPacketStruct);
+  for (int i = 0; i < packet->numPayloads; i++)
   {
     payload.push_back(DibadawnPayloadElement(data));
     data += DibadawnPayloadElement::length;
@@ -86,6 +94,11 @@ bool DibadawnPacket::isValid(const Packet *brn_packet)
   DibadawnPacketStruct *packet;
   packet = (struct DibadawnPacketStruct *) brn_packet->data();
   return (packet->version == 1);
+}
+
+bool DibadawnPacket::isInvalid()
+{
+  return (createdByInvalidPacket);
 }
 
 void DibadawnPacket::setVersion()
@@ -113,17 +126,17 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
   content.ttl = ttl;
   content.numPayloads = payload.size();
-  
-  size_t dibadawnPacketSize = sizeof(content) + payload.size() * DibadawnPayloadElement::length;
-  uint8_t* dibadawnPacket = (uint8_t*)malloc(dibadawnPacketSize);
-  memcpy(dibadawnPacket, &content, sizeof(content));
-  for(int i=0; i<content.numPayloads; i++)
+
+  size_t dibadawnPacketSize = sizeof (content) + payload.size() * DibadawnPayloadElement::length;
+  uint8_t* dibadawnPacket = (uint8_t*) malloc(dibadawnPacketSize);
+  memcpy(dibadawnPacket, &content, sizeof (content));
+  for (int i = 0; i < content.numPayloads; i++)
   {
-    memcpy(dibadawnPacket+sizeof(content) + i*DibadawnPayloadElement::length,
+    memcpy(dibadawnPacket + sizeof (content) + i * DibadawnPayloadElement::length,
         payload.at(i).getData(),
         DibadawnPayloadElement::length);
   }
-  
+
   uint32_t sizeof_head = 128;
   uint32_t sizeof_tail = 32;
   WritablePacket *packet = WritablePacket::make(
@@ -144,7 +157,7 @@ WritablePacket* DibadawnPacket::getBrnPacket()
       forwardedBy.data(),
       brn_ethernet_broadcast,
       ETHERTYPE_BRN);
-  
+
   free(dibadawnPacket);
 
   return (brn_packet);
@@ -156,24 +169,28 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
 
-  click_chatter("<%s node='%s' version='%d' type='%d' ttl='%d' searchId='%s' forwardedBy='%s' treeParent='%s' nPayload='%d'>",
-      tag.c_str(),
-      thisNodeAsText.c_str(),
-      version,
-      isForward,
-      ttl,
-      searchId.AsString().c_str(),
-      forwaredByAsText.c_str(),
-      treeParrentAsText.c_str(),
-      payload.size());
-  
-  for(int i=0; i<payload.size(); i++)
+  click_chatter("<%s node='%s' >", tag.c_str(), thisNodeAsText.c_str());
+
+  click_chatter("  <version>%d</version>", version);
+  click_chatter("  <type>%d</type>", isForward);
+  click_chatter("  <ttl>%d</ttl>", ttl);
+  click_chatter("  <searchId>%s</searchId>", searchId.AsString().c_str());
+  click_chatter("  <forwardedBy>%s</forwardedBy>", forwaredByAsText.c_str());
+  click_chatter("  <treeParent>%s</treeParent>", treeParrentAsText.c_str());
+  click_chatter("  <numPayload>%d</numPayload>", payload.size());
+
+  if (payload.size() > 0)
   {
-    click_chatter("  <PayloadElem isBridge='%d' cycleId='%s' />",
-        payload.at(i).isBridge,
-        payload.at(i).cycle.AsString().c_str());
+    click_chatter("  <Payload>");
+    for (int i = 0; i < payload.size(); i++)
+    {
+      click_chatter("    <PayloadElem isBridge='%d' cycleId='%s' />",
+          payload.at(i).isBridge,
+          payload.at(i).cycle.AsString().c_str());
+    }
+    click_chatter("  </Payload>");
   }
-  
+
   click_chatter("</%s>", tag.c_str());
 }
 
@@ -184,7 +201,7 @@ bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)
     DibadawnPayloadElement& e1 = payload.at(i);
     if (e1.isBridge)
       continue;
-    
+
     for (int j = 0; j < other.payload.size(); j++)
     {
       DibadawnPayloadElement& e2 = other.payload.at(j);
@@ -192,10 +209,10 @@ bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)
         continue;
 
       if (e1.cycle == e2.cycle)
-        return(true);
+        return (true);
     }
   }
-  return(false);
+  return (false);
 }
 
 void DibadawnPacket::addBridgeAsPayload()
@@ -213,7 +230,6 @@ void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
   payload.push_back(element);
 
 }
-
 
 
 CLICK_ENDDECLS
