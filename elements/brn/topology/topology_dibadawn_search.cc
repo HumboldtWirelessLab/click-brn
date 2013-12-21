@@ -268,7 +268,7 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
 {
   forwardTimeoutTimer->initialize(this->brn_click_element, false);
-  forwardTimeoutTimer->schedule_after_msec(maxTraversalTimeMs * packet.ttl);
+  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * maxTraversalTimeMs * packet.ttl);
 }
 
 void DibadawnSearch::sendBroadcastWithoutTimeout(DibadawnPacket &packet)
