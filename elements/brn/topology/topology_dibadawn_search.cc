@@ -229,12 +229,14 @@ void DibadawnSearch::forwardMessages()
 
 void DibadawnSearch::detectAccessPoints()
 {
-  click_chatter("<NotImplemented method='detectAccessPoints' />");
+  click_chatter("<NotImplemented node='%s' method='detectAccessPoints' />",
+      thisNode.unparse_dash().c_str());
 }
 
 void DibadawnSearch::voteForAccessPointsAndBridges()
 {
-  click_chatter("<NotImplemented method='voteForAccessPointsAndBridges' />");
+  click_chatter("<NotImplemented node='%s' method='voteForAccessPointsAndBridges' />",
+      thisNode.unparse_dash().c_str());
 }
 
 String DibadawnSearch::asString()
@@ -311,7 +313,7 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
   }
   else
   {
-    click_chatter("<NotImplemented  node='%s' />",
+    click_chatter("<NotImplemented node='%s' method='receice(packet.isForward=false)' />",
         thisNode.unparse_dash().c_str());
   }
 }
