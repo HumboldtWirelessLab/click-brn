@@ -166,19 +166,21 @@ void DibadawnSearch::detectCycles()
 {
   for (int i = 0; i < crossEdges.size(); i++)
   {
-    EtherAddress addr = crossEdges.at(i);
+    DibadawnPacket &relevantPacket = *crossEdges.at(i);
 
     DibadawnEdgeMarking marking;
     marking.time = Timestamp::now();
     marking.id = searchId;
-    marking.isBridge = true;
+    marking.isBridge = false;
     marking.nodeA = thisNode;
-    marking.nodeB = addr;
+    marking.nodeB = relevantPacket.forwardedBy;
     edgeMarkings.push_back(marking);
 
-    DibadawnCycle c(searchId, thisNode, addr);
-    click_chatter("<Cycle id='%s' />",
-        c.AsString().c_str());
+    DibadawnCycle c(searchId, thisNode, relevantPacket.forwardedBy);
+    click_chatter("<Cycle id='%s' />", c.AsString().c_str());
+    DibadawnPayloadElement payload;
+    payload.cycle = c;
+    relevantPacket.payload.push_back(payload);
     bufferBackwardMessage(c);
   }
 }
@@ -301,16 +303,15 @@ bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
   return (packet.searchId.isEqualTo(packet.searchId));
 }
 
-void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
+void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 {
-  DibadawnNeighbor &neighbor = adjacents.getNeighbor(receivedPacket.forwardedBy);
-  neighbor.messages.push_back(receivedPacket);
-  receivedPacket.log("DibadawnPacketRx", thisNode);
+  DibadawnNeighbor &neighbor = adjacents.getNeighbor(rxPacket.forwardedBy);
+  neighbor.messages.push_back(rxPacket);
+  DibadawnPacket &rxPacketCopy = neighbor.messages.back();
+  rxPacketCopy.log("DibadawnPacketRx", thisNode);
 
-  if (receivedPacket.isForward)
-  {
-    receiveForwardMessage(receivedPacket);
-  }
+  if (rxPacketCopy.isForward)
+    receiveForwardMessage(rxPacketCopy);
   else
   {
     click_chatter("<NotImplemented node='%s' method='receice(packet.isForward=false)' />",
@@ -318,16 +319,16 @@ void DibadawnSearch::receive(DibadawnPacket &receivedPacket)
   }
 }
 
-void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
+void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 {
   if (!visited)
   {
-    if (receivedPacket.ttl > 0)
+    if (rxPacket.ttl > 0)
     {
-      outgoingPacket = receivedPacket;
+      outgoingPacket = rxPacket;
       outgoingPacket.ttl--;
       outgoingPacket.forwardedBy = thisNode;
-      outgoingPacket.treeParent = receivedPacket.forwardedBy;
+      outgoingPacket.treeParent = rxPacket.forwardedBy;
       visited = true;
 
       sendDelayedBroadcastWithTimeout(outgoingPacket);
@@ -338,20 +339,20 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &receivedPacket)
           thisNode.unparse_dash().c_str());
     }
   }
-  else if (receivedPacket.treeParent == thisNode)
+  else if (rxPacket.treeParent == thisNode)
   {
     click_chatter("<IgnorePacket node='%s' reason='reForward' />",
         thisNode.unparse_dash().c_str());
   }
   else
   {
-    EtherAddress neighbor = receivedPacket.forwardedBy;
+    EtherAddress neighbor = rxPacket.forwardedBy;
 
-    click_chatter("<CrossEdgeDetected  node='%s' neigbor='%s'/>",
+    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s'/>",
         thisNode.unparse_dash().c_str(),
         neighbor.unparse_dash().c_str());
 
-    crossEdges.push_back(neighbor);
+    crossEdges.push_back(&rxPacket);
   }
 }
 
