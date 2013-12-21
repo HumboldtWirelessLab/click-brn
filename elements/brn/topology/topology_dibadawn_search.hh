@@ -53,7 +53,7 @@ private:
   Timer *forwardTimeoutTimer;
   Timer *forwardSendTimer;
   DibadawnSearchId searchId;
-  Vector<EtherAddress> crossEdges;
+  Vector<DibadawnPacket*> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
   Vector<DibadawnPacket> messageBuffer;
   DibadawnNeighborContainer adjacents;
