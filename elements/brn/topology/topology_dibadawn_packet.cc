@@ -116,7 +116,18 @@ void DibadawnPacket::setTreeParent(const EtherAddress* sender_addr)
   treeParent = *sender_addr;
 }
 
-WritablePacket* DibadawnPacket::getBrnPacket()
+WritablePacket* DibadawnPacket::getBrnBroadcastPacket()
+{
+  EtherAddress a = getBroadcastAddress();
+  return (getBrnPacket(a));
+}
+
+EtherAddress DibadawnPacket::getBroadcastAddress()
+{
+  return(EtherAddress(brn_ethernet_broadcast));
+}
+
+WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
 {
   DibadawnPacketStruct content;
   content.version = version & 0x0F;
@@ -154,8 +165,8 @@ WritablePacket* DibadawnPacket::getBrnPacket()
 
   BRNPacketAnno::set_ether_anno(
       brn_packet,
-      forwardedBy.data(),
-      brn_ethernet_broadcast,
+      forwardedBy,
+      dest,
       ETHERTYPE_BRN);
 
   free(dibadawnPacket);
@@ -163,16 +174,31 @@ WritablePacket* DibadawnPacket::getBrnPacket()
   return (brn_packet);
 }
 
-void DibadawnPacket::log(String tag, EtherAddress &thisNode)
+void DibadawnPacket::logTx(EtherAddress &thisNode, EtherAddress to)
+{
+  String attr = "dest='" + to.unparse_dash() + "'";
+  
+  log("DibadawnPacketTx", thisNode, attr);
+}
+
+void DibadawnPacket::logRx(EtherAddress &thisNode)
+{
+  log("DibadawnPacketRx", thisNode, "");
+}
+
+void DibadawnPacket::log(String tag, EtherAddress &thisNode, String attr)
 {
   String forwaredByAsText = forwardedBy.unparse_dash();
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
 
-  click_chatter("<%s node='%s' >", tag.c_str(), thisNodeAsText.c_str());
+  click_chatter("<%s node='%s' %s >", 
+      tag.c_str(), 
+      thisNodeAsText.c_str(),
+      attr.c_str());
 
   click_chatter("  <version>%d</version>", version);
-  click_chatter("  <type>%d</type>", isForward);
+  click_chatter("  <type>%d(%s)</type>", isForward, isForward?"ForwardMsg":"BackMsg");
   click_chatter("  <ttl>%d</ttl>", ttl);
   click_chatter("  <searchId>%s</searchId>", searchId.AsString().c_str());
   click_chatter("  <forwardedBy>%s</forwardedBy>", forwaredByAsText.c_str());
@@ -196,23 +222,45 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode)
 
 bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)
 {
-  for (int i = 0; i < payload.size(); i++)
+  for (int i = 0; i < other.payload.size(); i++)
   {
-    DibadawnPayloadElement& e1 = payload.at(i);
-    if (e1.isBridge)
+    DibadawnPayloadElement& elem = other.payload.at(i);
+    if (elem.isBridge)
       continue;
 
-    for (int j = 0; j < other.payload.size(); j++)
-    {
-      DibadawnPayloadElement& e2 = other.payload.at(j);
-      if (e2.isBridge)
-        continue;
-
-      if (e1.cycle == e2.cycle)
-        return (true);
-    }
+    hasSameCycle(elem);    
   }
   return (false);
+}
+
+bool DibadawnPacket::hasSameCycle(DibadawnPayloadElement& elem)
+{
+  for (int i = 0; i < payload.size(); i++)
+  {
+    DibadawnPayloadElement& elem2 = payload.at(i);
+    if (elem2.isBridge)
+      continue;
+
+    if (elem.cycle == elem2.cycle)
+      return (true);
+  }
+  return(false);
+}
+
+void DibadawnPacket::removeCycle(DibadawnPayloadElement &elem)
+{
+  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); it++)
+  {
+    DibadawnPayloadElement& elem2 = *it;
+    if (elem2.isBridge)
+      continue;
+
+    if (elem.cycle == elem2.cycle)
+    {
+      payload.erase(it);
+      return;
+    }
+  }
 }
 
 void DibadawnPacket::addBridgeAsPayload()

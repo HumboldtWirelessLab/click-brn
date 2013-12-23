@@ -37,15 +37,26 @@ public:
   DibadawnPacket(DibadawnSearchId *id, const EtherAddress &sender_addr, bool is_forward);
   
   void setVersion();
-  void setTreeParent(const EtherAddress* sender_addr);
-  void setForwaredBy(const EtherAddress* sender_addr);
-  WritablePacket* getBrnPacket();
+  void setTreeParent(const EtherAddress *sender_addr);
+  void setForwaredBy(const EtherAddress *sender_addr);
+  
+  WritablePacket* getBrnPacket(EtherAddress &dest);
+  WritablePacket* getBrnBroadcastPacket();
+  EtherAddress getBroadcastAddress();
+  
   static bool isValid(const Packet *packet);
   bool isInvalid();
-  void log(String tag, EtherAddress &thisNode);
-  bool hasSameCycle(DibadawnPacket& other);
+  
+  void logTx(EtherAddress &thisNode, EtherAddress destination);
+  void logRx(EtherAddress &thisNode);
+  void log(String tag, EtherAddress &thisNode, String attr);
+  
+  bool hasSameCycle(DibadawnPacket &other);
+  bool hasSameCycle(DibadawnPayloadElement &payload);
+  void removeCycle(DibadawnPayloadElement &payload);
   void addBridgeAsPayload();
-  void addNoBridgeAsPayload(DibadawnCycle& cycle);
+  void addNoBridgeAsPayload(DibadawnCycle &cycle);
+  
   
   uint32_t version; 
   DibadawnSearchId searchId;

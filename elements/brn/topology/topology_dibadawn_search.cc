@@ -178,8 +178,8 @@ void DibadawnSearch::detectCycles()
 
     DibadawnCycle c(searchId, thisNode, relevantPacket.forwardedBy);
     click_chatter("<Cycle id='%s' />", c.AsString().c_str());
-    DibadawnPayloadElement payload;
-    payload.cycle = c;
+    
+    DibadawnPayloadElement payload(c);
     relevantPacket.payload.push_back(payload);
     bufferBackwardMessage(c);
   }
@@ -203,7 +203,7 @@ void DibadawnSearch::forwardMessages()
     outgoingPacket.isForward = false;
     outgoingPacket.ttl = maxTtl;
     outgoingPacket.addBridgeAsPayload();
-    sendBroadcastWithoutTimeout(outgoingPacket);
+    sendTo(outgoingPacket, parent);
   }
   else
   {
@@ -213,7 +213,7 @@ void DibadawnSearch::forwardMessages()
       outgoingPacket.ttl--;
       outgoingPacket.treeParent = outgoingPacket.forwardedBy;
       outgoingPacket.forwardedBy = thisNode;
-      sendBroadcastWithoutTimeout(outgoingPacket);
+      sendTo(outgoingPacket, parent);
 
       // TODO votes
 
@@ -262,8 +262,8 @@ void DibadawnSearch::start_search()
 
 void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 {
-  packet.log("DibadawnPacketTx", thisNode);
-  WritablePacket *brn_packet = packet.getBrnPacket();
+  packet.logTx(thisNode, packet.getBroadcastAddress());
+  WritablePacket *brn_packet = packet.getBrnBroadcastPacket();
   brn_click_element->output(0).push(brn_packet);
 
   activateForwardTimer(packet);
@@ -275,10 +275,10 @@ void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
   forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * maxTraversalTimeMs * packet.ttl);
 }
 
-void DibadawnSearch::sendBroadcastWithoutTimeout(DibadawnPacket &packet)
+void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
 {
-  packet.log("DibadawnPacketTx", thisNode);
-  WritablePacket *brn_packet = packet.getBrnPacket();
+  packet.logTx(thisNode, dest);
+  WritablePacket *brn_packet = packet.getBrnPacket(dest);
   brn_click_element->output(0).push(brn_packet);
 }
 
@@ -307,16 +307,13 @@ void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 {
   DibadawnNeighbor &neighbor = adjacents.getNeighbor(rxPacket.forwardedBy);
   neighbor.messages.push_back(rxPacket);
-  DibadawnPacket &rxPacketCopy = neighbor.messages.back();
-  rxPacketCopy.log("DibadawnPacketRx", thisNode);
+  DibadawnPacket &storedRxPacket = neighbor.messages.back();
+  storedRxPacket.logRx(thisNode);
 
-  if (rxPacketCopy.isForward)
-    receiveForwardMessage(rxPacketCopy);
+  if (storedRxPacket.isForward)
+    receiveForwardMessage(storedRxPacket);
   else
-  {
-    click_chatter("<NotImplemented node='%s' method='receice(packet.isForward=false)' />",
-        thisNode.unparse_dash().c_str());
-  }
+    receiveBackMessage(storedRxPacket);
 }
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
@@ -325,6 +322,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
   {
     if (rxPacket.ttl > 0)
     {
+      parent = rxPacket.forwardedBy;
       outgoingPacket = rxPacket;
       outgoingPacket.ttl--;
       outgoingPacket.forwardedBy = thisNode;
@@ -354,6 +352,78 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 
     crossEdges.push_back(&rxPacket);
   }
+}
+
+void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
+{
+  if(packet.payload.size() < 1)
+  {
+    click_chatter("<Error node='%s' methode='receiveBackMessage' msg='no payload data at back-msg' />",
+        thisNode.unparse_dash().c_str());
+    return;
+  }
+  
+  for (int i = 0; i < packet.payload.size(); i++)
+  {
+    DibadawnPayloadElement &e = packet.payload.at(i);
+    if (e.isBridge)
+    {
+      DibadawnEdgeMarking marking;
+      marking.time = Timestamp::now();
+      marking.id = packet.searchId;
+      marking.isBridge = true;
+      marking.nodeA = thisNode;
+      marking.nodeB = packet.forwardedBy;
+      edgeMarkings.push_back(marking);
+      
+      DibadawnPayloadElement bridge;
+      packet.payload.push_back(bridge);
+      
+      click_chatter("<Bridge node='%s' neighbor='%s'>",
+          thisNode.unparse_dash().c_str(),
+          packet.forwardedBy);
+    }
+    else
+    {
+      DibadawnPacket *pairedPacket = messageBufferContains(e);
+      if (pairedPacket != NULL)
+      { 
+        DibadawnEdgeMarking marking;
+        marking.time = Timestamp::now();
+        marking.id = packet.searchId;
+        marking.isBridge = false;
+        marking.nodeA = thisNode;
+        marking.nodeB = packet.forwardedBy;
+        edgeMarkings.push_back(marking);
+        
+        marking.time = Timestamp::now();
+        marking.id = packet.searchId;
+        marking.isBridge = false;
+        marking.nodeA = thisNode;
+        marking.nodeB = pairedPacket->forwardedBy;
+        edgeMarkings.push_back(marking);
+        
+        pairedPacket->removeCycle(e);
+        click_chatter("<PairedCycle node='%s' cycle='%s'/>",
+            thisNode.unparse_dash().c_str(),
+            e.cycle.AsString().c_str());
+      }
+    }
+  }
+  
+  messageBuffer.push_back(packet);
+}
+
+DibadawnPacket* DibadawnSearch::messageBufferContains(DibadawnPayloadElement& payload)
+{
+  for(int i=0; i<messageBuffer.size(); i++)
+  {
+    DibadawnPacket &m = messageBuffer.at(i);    
+    if(m.hasSameCycle(payload))
+      return(&m);
+  }
+  
+  return(NULL);
 }
 
 void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
