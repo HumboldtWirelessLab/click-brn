@@ -36,6 +36,7 @@ public:
     DibadawnCycle cycle;
     
     DibadawnPayloadElement();
+    DibadawnPayloadElement(DibadawnCycle &cycle);
     DibadawnPayloadElement(const uint8_t *pBinaryData);
     uint8_t* getData();
 

@@ -93,14 +93,14 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 
   if (memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0)
   {
-    handle_detection_forward(packet);
+    handle_detection(packet);
   }
   else
   {
     EtherAddress dst = EtherAddress(ether_h->ether_dhost);
     if (_node_identity->isIdentical(&dst))
     {
-      handle_detection_backward(packet);
+        handle_detection(packet);
     }
     else
     {
@@ -113,7 +113,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
   BRN_INFO(sa.take_string().c_str());
 }
 
-void TopologyDetection::handle_detection_forward(Packet *brn_packet)
+void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(brn_packet);
   dibadawnAlgo.receive(packet);

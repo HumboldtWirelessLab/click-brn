@@ -34,6 +34,13 @@ CLICK_DECLS
 
 DibadawnPayloadElement::DibadawnPayloadElement()
 {
+  isBridge = true;
+}
+
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle):
+cycle(cycle)
+{
+  isBridge = false;
 }
 
 DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)

@@ -48,7 +48,7 @@ public:
 private:
   EtherAddress thisNode;
   EtherAddress parent;
-  DibadawnPacket outgoingPacket;
+  DibadawnPacket outgoingPacket;  // TODO remove this
   bool visited;
   Timer *forwardTimeoutTimer;
   Timer *forwardSendTimer;
@@ -69,19 +69,21 @@ private:
   void activateForwardTimer(DibadawnPacket &packet);
   void activateForwardSendTimer(DibadawnPacket &packet);
   void receiveForwardMessage(DibadawnPacket &packet);
+  void receiveBackMessage(DibadawnPacket &packet);
   void detectCycles();
   void bufferBackwardMessage(DibadawnCycle &cycleId);
   void forwardMessages();
   void detectAccessPoints();
   void voteForAccessPointsAndBridges();
   void AccessPointDetection();
+  DibadawnPacket* messageBufferContains(DibadawnPayloadElement &payload);
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
   
   void sendBroadcastWithTimeout(DibadawnPacket &packet);
-  void sendBroadcastWithoutTimeout(DibadawnPacket &packet);
+  void sendTo(DibadawnPacket &packet, EtherAddress &dest);
   void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
   String asString();
   void receive(DibadawnPacket &packet);
