@@ -381,7 +381,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
       
       click_chatter("<Bridge node='%s' neighbor='%s'>",
           thisNode.unparse_dash().c_str(),
-          packet.forwardedBy);
+          packet.forwardedBy.unparse_dash().c_str());
     }
     else
     {
