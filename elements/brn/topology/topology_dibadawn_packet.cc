@@ -276,9 +276,17 @@ void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
   element.isBridge = false;
   element.cycle = cycle;
   payload.push_back(element);
-
 }
 
+void DibadawnPacket::copyPayloadIfNecessary(DibadawnPacket& src)
+{
+  for(int i =0; i < src.payload.size();i++)
+  {
+    DibadawnPayloadElement &elem = src.payload.at(i);
+    if(!hasSameCycle(elem))
+        payload.push_back(elem);
+  }
+}
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnPacket)

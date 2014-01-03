@@ -56,7 +56,7 @@ public:
   void removeCycle(DibadawnPayloadElement &payload);
   void addBridgeAsPayload();
   void addNoBridgeAsPayload(DibadawnCycle &cycle);
-  
+  void copyPayloadIfNecessary(DibadawnPacket &src);  
   
   uint32_t version; 
   DibadawnSearchId searchId;

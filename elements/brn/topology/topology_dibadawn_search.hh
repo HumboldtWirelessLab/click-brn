@@ -46,7 +46,7 @@ public:
   };  
   
 private:
-  EtherAddress thisNode;
+  EtherAddress addrOfThisNode;
   EtherAddress parent;
   DibadawnPacket outgoingPacket;  // TODO remove this
   bool visited;
