@@ -396,7 +396,7 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   marking.nodeB = nodeB;
   edgeMarkings.push_back(marking);
 
-  click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s'>",
+  click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' />",
       this->addrOfThisNode.unparse_dash().c_str(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str());
