@@ -77,6 +77,8 @@ private:
   void voteForAccessPointsAndBridges();
   void AccessPointDetection();
   DibadawnPacket* messageBufferContains(DibadawnPayloadElement &payload);
+  void setParentNull();
+  bool isParentNull();
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
