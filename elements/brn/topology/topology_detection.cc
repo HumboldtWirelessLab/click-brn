@@ -35,7 +35,7 @@
 
 #include "topology_detection.hh"
 #include "topology_detection_protocol.hh"
-#include "topology_dibadawn_packet.hh"
+#include "dibadawn/topology_dibadawn_packet.hh"
 
 
 CLICK_DECLS
