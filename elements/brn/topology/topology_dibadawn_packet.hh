@@ -33,8 +33,8 @@ CLICK_DECLS;
 class DibadawnPacket {
 public:
   DibadawnPacket();
-  DibadawnPacket(const Packet *packet);
-  DibadawnPacket(DibadawnSearchId *id, const EtherAddress &sender_addr, bool is_forward);
+  DibadawnPacket(const Packet &packet);
+  DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward);
   
   void setVersion();
   void setTreeParent(const EtherAddress *sender_addr);
@@ -44,7 +44,7 @@ public:
   WritablePacket* getBrnBroadcastPacket();
   EtherAddress getBroadcastAddress();
   
-  static bool isValid(const Packet *packet);
+  static bool isValid(const Packet &packet);
   bool isInvalid();
   
   void logTx(EtherAddress &thisNode, EtherAddress destination);
@@ -56,7 +56,8 @@ public:
   void removeCycle(DibadawnPayloadElement &payload);
   void addBridgeAsPayload();
   void addNoBridgeAsPayload(DibadawnCycle &cycle);
-  void copyPayloadIfNecessary(DibadawnPacket &src);  
+  bool hasBridgePayload();
+  void copyPayloadIfNecessary(DibadawnPayloadElement &src);  
   
   uint32_t version; 
   DibadawnSearchId searchId;

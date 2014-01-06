@@ -53,7 +53,7 @@ DibadawnPacket::DibadawnPacket()
   createdByInvalidPacket = false;
 }
 
-DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
+DibadawnPacket::DibadawnPacket(const Packet &brn_packet)
 {
   if (!isValid(brn_packet))
   {
@@ -63,7 +63,7 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   createdByInvalidPacket = false;
 
   DibadawnPacketStruct *packet;
-  packet = (struct DibadawnPacketStruct *) brn_packet->data();
+  packet = (struct DibadawnPacketStruct *) brn_packet.data();
 
   forwardedBy = EtherAddress(packet->forwaredBy);
   treeParent = EtherAddress(packet->treeParent);
@@ -72,7 +72,7 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   searchId.setByPointerTo10BytesOfData(packet->id);
   version = packet->version;
 
-  const uint8_t* data = brn_packet->data() + sizeof (DibadawnPacketStruct);
+  const uint8_t* data = brn_packet.data() + sizeof (DibadawnPacketStruct);
   for (int i = 0; i < packet->numPayloads; i++)
   {
     payload.push_back(DibadawnPayloadElement(data));
@@ -80,19 +80,19 @@ DibadawnPacket::DibadawnPacket(const Packet *brn_packet)
   }
 }
 
-DibadawnPacket::DibadawnPacket(DibadawnSearchId *id, const EtherAddress &sender_addr, bool is_forward)
+DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward)
 {
   setVersion();
-  searchId = *id;
+  searchId = id;
   forwardedBy = sender_addr;
   isForward = is_forward;
   ttl = 255;
 }
 
-bool DibadawnPacket::isValid(const Packet *brn_packet)
+bool DibadawnPacket::isValid(const Packet &brn_packet)
 {
   DibadawnPacketStruct *packet;
-  packet = (struct DibadawnPacketStruct *) brn_packet->data();
+  packet = (struct DibadawnPacketStruct *) brn_packet.data();
   return (packet->version == 1);
 }
 
@@ -278,14 +278,21 @@ void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
   payload.push_back(element);
 }
 
-void DibadawnPacket::copyPayloadIfNecessary(DibadawnPacket& src)
+bool DibadawnPacket::hasBridgePayload()
 {
-  for(int i =0; i < src.payload.size();i++)
+  for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); it++)
   {
-    DibadawnPayloadElement &elem = src.payload.at(i);
-    if(!hasSameCycle(elem))
-        payload.push_back(elem);
+    DibadawnPayloadElement& elem = *it;
+    if (elem.isBridge)
+      return(true);
   }
+  return(false);
+}
+
+void DibadawnPacket::copyPayloadIfNecessary(DibadawnPayloadElement& src)
+{
+  if (!hasSameCycle(src))
+    payload.push_back(src);
 }
 
 CLICK_ENDDECLS
