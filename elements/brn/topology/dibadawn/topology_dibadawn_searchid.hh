@@ -23,8 +23,6 @@
 
 #include <click/element.hh>
 
-#include "topology_info.hh"
-
 CLICK_DECLS;
 
 class DibadawnSearchId {

@@ -27,7 +27,6 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_searchid.hh"
-#include "topology_info.hh"
 #include "topology_dibadawn_packet.hh"
 #include "topology_dibadawn_packet_payloadelement.hh"
 #include "topology_dibadawn_edgemarking.hh"
