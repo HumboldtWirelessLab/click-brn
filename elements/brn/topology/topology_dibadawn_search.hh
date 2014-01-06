@@ -79,6 +79,7 @@ private:
   DibadawnPacket* messageBufferContains(DibadawnPayloadElement &payload);
   void setParentNull();
   bool isParentNull();
+  void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB);
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);

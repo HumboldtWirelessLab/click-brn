@@ -193,13 +193,7 @@ void DibadawnSearch::forwardMessages()
   
   if (messageBuffer.size() == 0)
   {
-    DibadawnEdgeMarking marking;
-    marking.time = Timestamp::now();
-    marking.id = searchId;
-    marking.isBridge = true;
-    marking.nodeA = addrOfThisNode;
-    marking.nodeB = parent;
-    edgeMarkings.push_back(marking);
+    addBridgeEdgeMarking(addrOfThisNode, parent);
 
     outgoingPacket.searchId = searchId;
     outgoingPacket.forwardedBy = addrOfThisNode;
@@ -380,25 +374,13 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
     return;
   }
   
+  
   for (int i = 0; i < packet.payload.size(); i++)
   {
     DibadawnPayloadElement &e = packet.payload.at(i);
     if (e.isBridge)
     {
-      DibadawnEdgeMarking marking;
-      marking.time = Timestamp::now();
-      marking.id = packet.searchId;
-      marking.isBridge = true;
-      marking.nodeA = addrOfThisNode;
-      marking.nodeB = packet.forwardedBy;
-      edgeMarkings.push_back(marking);
-      
-      DibadawnPayloadElement bridge;
-      packet.payload.push_back(bridge);
-      
-      click_chatter("<Bridge node='%s' neighbor='%s'>",
-          addrOfThisNode.unparse_dash().c_str(),
-          packet.forwardedBy.unparse_dash().c_str());
+      addBridgeEdgeMarking(addrOfThisNode, packet.forwardedBy);
     }
     else
     {
@@ -429,6 +411,22 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   }
   
   messageBuffer.push_back(packet);
+}
+
+void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB)
+{
+  DibadawnEdgeMarking marking;
+  marking.time = Timestamp::now();
+  marking.id = searchId;
+  marking.isBridge = true;
+  marking.nodeA = nodeA;
+  marking.nodeB = nodeB;
+  edgeMarkings.push_back(marking);
+
+  click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s'>",
+      this->addrOfThisNode.unparse_dash().c_str(),
+      nodeA.unparse_dash().c_str(),
+      nodeB.unparse_dash().c_str());
 }
 
 DibadawnPacket* DibadawnSearch::messageBufferContains(DibadawnPayloadElement& payload)
