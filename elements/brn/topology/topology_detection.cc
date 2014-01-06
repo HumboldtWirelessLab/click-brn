@@ -115,7 +115,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
-  DibadawnPacket packet(brn_packet);
+  DibadawnPacket packet(*brn_packet);
   dibadawnAlgo.receive(packet);
 }
 

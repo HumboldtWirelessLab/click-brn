@@ -29,6 +29,7 @@
 #include "topology_dibadawn_searchid.hh"
 #include "topology_info.hh"
 #include "topology_dibadawn_packet.hh"
+#include "topology_dibadawn_packet_payloadelement.hh"
 #include "topology_dibadawn_edgemarking.hh"
 #include "topology_dibadawn_cycle.hh"
 #include "topology_dibadawn_neighbor_container.hh"
@@ -55,7 +56,7 @@ private:
   DibadawnSearchId searchId;
   Vector<DibadawnPacket*> crossEdges;
   Vector<DibadawnEdgeMarking> edgeMarkings;
-  Vector<DibadawnPacket> messageBuffer;
+  Vector<DibadawnPayloadElement> messageBuffer;
   DibadawnNeighborContainer adjacents;
   bool isArticulationPoint;
   uint32_t numOfConcurrentSenders;
@@ -76,10 +77,12 @@ private:
   void detectAccessPoints();
   void voteForAccessPointsAndBridges();
   void AccessPointDetection();
-  DibadawnPacket* messageBufferContains(DibadawnPayloadElement &payload);
+  bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
   void setParentNull();
   bool isParentNull();
   void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB);
+  void pairCyclesIfPossible(DibadawnPacket &packet);
+  void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
   
 public:
   DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
