@@ -185,6 +185,12 @@ void DibadawnSearch::detectCycles()
 
 void DibadawnSearch::forwardMessages()
 {
+  if(isParentNull())
+  {
+    click_chatter("<Finished />");
+    return;
+  }
+  
   if (messageBuffer.size() == 0)
   {
     DibadawnEdgeMarking marking;
@@ -229,6 +235,11 @@ void DibadawnSearch::forwardMessages()
   }
 }
 
+bool DibadawnSearch::isParentNull()
+{
+  return(parent == EtherAddress());
+}
+
 void DibadawnSearch::detectAccessPoints()
 {
   click_chatter("<NotImplemented node='%s' method='detectAccessPoints' />",
@@ -248,6 +259,7 @@ String DibadawnSearch::asString()
 
 void DibadawnSearch::start_search()
 {
+  setParentNull();
 
   searchId = DibadawnSearchId(Timestamp::now(), addrOfThisNode);
   outgoingPacket.searchId = searchId;
@@ -258,6 +270,11 @@ void DibadawnSearch::start_search()
   visited = true;
 
   sendBroadcastWithTimeout(outgoingPacket);
+}
+
+void DibadawnSearch::setParentNull()
+{
+  parent = EtherAddress();
 }
 
 void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
