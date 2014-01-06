@@ -382,9 +382,8 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   else
   {
     pairCyclesIfPossible(packet);
+    addPayloadElementsToMessagePuffer(packet);
   }
-  
-  addPayloadElementsToMessagePuffer(packet);
 }
 
 void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB)
@@ -455,7 +454,6 @@ void DibadawnSearch::addPayloadElementsToMessagePuffer(DibadawnPacket& packet)
     messageBuffer.push_back(elem);
   }
 }
-
 
 bool DibadawnSearch::tryToPairPayloadElement(DibadawnPayloadElement& payload1)
 {
