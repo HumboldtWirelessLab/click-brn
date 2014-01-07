@@ -195,13 +195,11 @@ void DibadawnSearch::forwardMessages()
   {
     addBridgeEdgeMarking(addrOfThisNode, parent);
 
-    outgoingPacket.searchId = searchId;
-    outgoingPacket.forwardedBy = addrOfThisNode;
-    outgoingPacket.treeParent = parent;
-    outgoingPacket.isForward = false;
-    outgoingPacket.ttl = maxTtl;
-    outgoingPacket.addBridgeAsPayload();
-    sendTo(outgoingPacket, parent);
+    DibadawnPacket packet(searchId, addrOfThisNode, false);
+    packet.treeParent = parent;
+    packet.ttl = maxTtl;
+    packet.addBridgeAsPayload();
+    sendTo(packet, parent);
   }
   else
   {
@@ -257,14 +255,12 @@ void DibadawnSearch::start_search()
   setParentNull();
 
   searchId = DibadawnSearchId(Timestamp::now(), addrOfThisNode);
-  outgoingPacket.searchId = searchId;
-  outgoingPacket.forwardedBy = addrOfThisNode;
-  outgoingPacket.treeParent = parent;
-  outgoingPacket.isForward = true;
-  outgoingPacket.ttl = maxTtl;
+  DibadawnPacket packet(searchId, addrOfThisNode, true);
+  packet.treeParent = parent;
+  packet.ttl = maxTtl;
   visited = true;
 
-  sendBroadcastWithTimeout(outgoingPacket);
+  sendBroadcastWithTimeout(packet);
 }
 
 void DibadawnSearch::setParentNull()
@@ -335,13 +331,14 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     if (rxPacket.ttl > 0)
     {
       parent = rxPacket.forwardedBy;
-      outgoingPacket = rxPacket;
-      outgoingPacket.ttl--;
-      outgoingPacket.forwardedBy = addrOfThisNode;
-      outgoingPacket.treeParent = rxPacket.forwardedBy;
       visited = true;
 
-      sendDelayedBroadcastWithTimeout(outgoingPacket);
+      DibadawnPacket txPacket = rxPacket;
+      txPacket.ttl--;
+      txPacket.forwardedBy = addrOfThisNode;
+      txPacket.treeParent = rxPacket.forwardedBy;
+      
+      sendDelayedBroadcastWithTimeout(txPacket);
     }
     else
     {
