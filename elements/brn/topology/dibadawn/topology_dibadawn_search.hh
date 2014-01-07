@@ -48,7 +48,6 @@ public:
 private:
   EtherAddress addrOfThisNode;
   EtherAddress parent;
-  DibadawnPacket outgoingPacket;  // TODO remove this
   bool visited;
   Timer *forwardTimeoutTimer;
   Timer *forwardSendTimer;
