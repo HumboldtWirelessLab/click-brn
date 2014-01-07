@@ -3,7 +3,6 @@
 
 #include <click/element.hh>
 #include <elements/brn/brnelement.hh>
-#include <elements/brn/wifi/channelstats.hh>
 
 #include "backoff_scheme.hh"
 

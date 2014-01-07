@@ -11,13 +11,13 @@
 
 #include "elements/analysis/timesortedsched.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
-#include "elements/brn/wifi/channelstats.hh"
-#include "elements/brn/wifi/collisioninfo.hh"
-#include "elements/brn/wifi/hiddennodedetection.hh"
-#include "elements/brn/wifi/cooperativechannelstats.hh"
-#include "elements/brn/wifi/packetlossinformation/packetlossinformation.hh"
-#include "elements/brn/wifi/packetlossestimationhelper/statscircularbuffer.hh"
-#include "elements/brn/wifi/packetlossestimationhelper/packetparameter.hh"
+#include "elements/brn/wifi/rxinfo/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/collisioninfo.hh"
+#include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
+#include "elements/brn/wifi/rxinfo/cooperativechannelstats.hh"
+#include "packetlossinformation/packetlossinformation.hh"
+#include "packetlossestimationhelper/statscircularbuffer.hh"
+#include "packetlossestimationhelper/packetparameter.hh"
 
 CLICK_DECLS
 
@@ -45,7 +45,7 @@ private:
     /// Addresses packets received from
     static Vector<EtherAddress> _received_adrs;
     /// ACKS received from other nodes last period (mostly 1 s)
-//    static HashMap<EtherAddress, uint32_t> _last_acks_by_node;
+    // static HashMap<EtherAddress, uint32_t> _last_acks_by_node;
     /// Buffer for mid and long term statistics
     static StatsCircularBuffer _stats_buffer;
     ///

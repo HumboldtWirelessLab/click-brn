@@ -23,8 +23,6 @@
 #include <click/element.hh>
 
 #include <elements/brn/brnelement.hh>
-#include <elements/brn/wifi/channelstats.hh>
-#include <elements/brn/wifi/collisioninfo.hh>
 
 #include "bo_schemes/backoff_scheme.hh"
 
@@ -94,9 +92,6 @@ private:
   int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
   void init_stats();
   BackoffScheme *get_bo_scheme(uint16_t strategy);
-
-  ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
-  CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
 
   uint32_t _learning_current_bo;
   uint32_t _learning_count_up;
