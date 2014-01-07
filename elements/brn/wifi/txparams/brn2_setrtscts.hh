@@ -7,7 +7,7 @@
 #include <click/string.hh>
 #include <click/hashtable.hh>
 #include <click/etheraddress.hh>
-#include <elements/brn/wifi/packetlossinformation/packetlossinformation.hh>
+#include <elements/brn/wifi/rxinfo/packetlossestimator/packetlossinformation/packetlossinformation.hh>
 
 CLICK_DECLS
 
@@ -20,7 +20,7 @@ CLICK_DECLS
 #define RTS_CTS_STRATEGY_HIDDENNODE 6 /* unicast only */
 
 
-class Brn2_SetRTSCTS : public BRNElement { 
+class Brn2_SetRTSCTS : public BRNElement {
 
 public:
 

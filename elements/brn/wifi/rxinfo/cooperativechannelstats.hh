@@ -38,8 +38,8 @@
 #include "elements/brn/routing/identity/brn2_device.hh"
 #include "elements/brn/brnelement.hh"
 #include "channelstats.hh"
-#include "packetlossestimationhelper/cooperativestatscircularbuffer.hh"
-#include "packetlossestimationhelper/nodechannelstats.hh"
+#include "packetlossestimator/packetlossestimationhelper/cooperativestatscircularbuffer.hh"
+#include "packetlossestimator/packetlossestimationhelper/nodechannelstats.hh"
 
 CLICK_DECLS
 
@@ -55,24 +55,20 @@ CLICK_DECLS
 
 #define INCLUDES_NEIGHBOURS 1
 
-struct cooperative_channel_stats_header
-{
+struct cooperative_channel_stats_header {
     uint16_t endianess;      // endianess-test
     uint8_t flags;          // flags
     uint8_t no_neighbours;  // number of neighbours
 };
 
-struct cooperative_message_body
-{
+struct cooperative_message_body {
     struct cooperative_channel_stats_header ccsh;
     struct neighbour_airtime_stats *nats_arr;
 };
 
 class CooperativeChannelStats : public BRNElement
 {
-public:
-
-    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+  public:
 
     CooperativeChannelStats();
     ~CooperativeChannelStats();
@@ -93,22 +89,27 @@ public:
 
     void send_message();
 
+    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
+
     HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
 
-private:
+  private:
+
     typedef HashMap<EtherAddress, struct neighbour_airtime_stats*> NeighbourStatsTable;
     typedef NeighbourStatsTable::const_iterator NeighbourStatsTableIter;
+
     typedef HashMap<EtherAddress, NodeChannelStats*> NodeChannelStatsTable;
     typedef NodeChannelStatsTable::const_iterator NodeChannelStatsTableIter;
 
-    static CooperativeStatsCircularBuffer _coop_stats_buffer;
+    CooperativeStatsCircularBuffer _coop_stats_buffer;
+    NodeChannelStatsTable _ncst;
     ChannelStats *_cst;
+
     Timer _msg_timer;
     uint32_t _interval;
-    NodeChannelStatsTable _ncst;
     bool _add_neighbours;
 
-    WritablePacket *create_new_packet(struct cooperative_channel_stats_header, struct neighbour_airtime_stats[]);
+    WritablePacket *create_new_packet(struct cooperative_channel_stats_header*, struct neighbour_airtime_stats[]);
 };
 
 CLICK_ENDDECLS
