@@ -24,7 +24,7 @@
 #include <click/element.hh>
 #include <click/packet.hh>
 
-#include "topology_dibadawn_packet.hh"
+#include "topology_dibadawn_packet_payloadelement.hh"
 
 CLICK_DECLS;
 
@@ -32,11 +32,13 @@ class DibadawnNeighbor
 {
 public:
     EtherAddress address;
-    Vector<DibadawnPacket> messages;
-    
+    Vector<DibadawnPayloadElement> messages;
+
     DibadawnNeighbor(EtherAddress &addr);
-    
+
     bool hasNonEmptyIntersection(DibadawnNeighbor& other);
+    void copyPayloadIfNecessary(DibadawnPayloadElement& src);
+    bool hasSameCycle(DibadawnPayloadElement& elem);
 };
 
 CLICK_ENDDECLS

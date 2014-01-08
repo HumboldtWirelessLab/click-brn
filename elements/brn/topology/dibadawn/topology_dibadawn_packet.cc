@@ -124,7 +124,7 @@ WritablePacket* DibadawnPacket::getBrnBroadcastPacket()
 
 EtherAddress DibadawnPacket::getBroadcastAddress()
 {
-  return(EtherAddress(brn_ethernet_broadcast));
+  return (EtherAddress(brn_ethernet_broadcast));
 }
 
 WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
@@ -177,7 +177,7 @@ WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
 void DibadawnPacket::logTx(EtherAddress &thisNode, EtherAddress to)
 {
   String attr = "dest='" + to.unparse_dash() + "'";
-  
+
   log("DibadawnPacketTx", thisNode, attr);
 }
 
@@ -192,13 +192,13 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String attr)
   String treeParrentAsText = treeParent.unparse_dash();
   String thisNodeAsText = thisNode.unparse_dash();
 
-  click_chatter("<%s node='%s' %s >", 
-      tag.c_str(), 
+  click_chatter("<%s node='%s' %s >",
+      tag.c_str(),
       thisNodeAsText.c_str(),
       attr.c_str());
 
   click_chatter("  <version>%d</version>", version);
-  click_chatter("  <type>%d(%s)</type>", isForward, isForward?"ForwardMsg":"BackMsg");
+  click_chatter("  <type>%d(%s)</type>", isForward, isForward ? "ForwardMsg" : "BackMsg");
   click_chatter("  <ttl>%d</ttl>", ttl);
   click_chatter("  <searchId>%s</searchId>", searchId.AsString().c_str());
   click_chatter("  <forwardedBy>%s</forwardedBy>", forwaredByAsText.c_str());
@@ -228,7 +228,7 @@ bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)
     if (elem.isBridge)
       continue;
 
-    hasSameCycle(elem);    
+    hasSameCycle(elem);
   }
   return (false);
 }
@@ -244,7 +244,7 @@ bool DibadawnPacket::hasSameCycle(DibadawnPayloadElement& elem)
     if (elem.cycle == elem2.cycle)
       return (true);
   }
-  return(false);
+  return (false);
 }
 
 void DibadawnPacket::removeCycle(DibadawnPayloadElement &elem)
@@ -263,30 +263,15 @@ void DibadawnPacket::removeCycle(DibadawnPayloadElement &elem)
   }
 }
 
-void DibadawnPacket::addBridgeAsPayload()
-{
-  DibadawnPayloadElement element;
-  element.isBridge = true;
-  payload.push_back(element);
-}
-
-void DibadawnPacket::addNoBridgeAsPayload(DibadawnCycle& cycle)
-{
-  DibadawnPayloadElement element;
-  element.isBridge = false;
-  element.cycle = cycle;
-  payload.push_back(element);
-}
-
 bool DibadawnPacket::hasBridgePayload()
 {
   for (Vector<DibadawnPayloadElement>::iterator it = payload.begin(); it != payload.end(); it++)
   {
     DibadawnPayloadElement& elem = *it;
     if (elem.isBridge)
-      return(true);
+      return (true);
   }
-  return(false);
+  return (false);
 }
 
 void DibadawnPacket::copyPayloadIfNecessary(DibadawnPayloadElement& src)

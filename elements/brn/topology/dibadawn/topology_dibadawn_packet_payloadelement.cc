@@ -28,17 +28,18 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "topology_dibadawn_packet_payloadelement.hh"
 #include "topology_dibadawn_searchid.hh"
-
+#include "topology_dibadawn_neighbor.hh"
 
 CLICK_DECLS
 
-DibadawnPayloadElement::DibadawnPayloadElement()
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge)
+: cycle(id, nodeA, nodeB)
 {
-  isBridge = true;
+  this->isBridge = isBridge;
 }
 
-DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle):
-cycle(cycle)
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle)
+: cycle(cycle)
 {
   isBridge = false;
 }
@@ -52,8 +53,15 @@ DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)
 uint8_t* DibadawnPayloadElement::getData()
 {
   mayInconsistentlyData[0] = isBridge;
-  memcpy(mayInconsistentlyData+1, cycle.getData(), length-1);
-  return(mayInconsistentlyData);
+  memcpy(mayInconsistentlyData + 1, cycle.getData(), length - 1);
+  return (mayInconsistentlyData);
+}
+
+bool DibadawnPayloadElement::operator==(DibadawnPayloadElement &b)
+{
+  return (
+      isBridge == b.isBridge &&
+      cycle == b.cycle);
 }
 
 CLICK_ENDDECLS

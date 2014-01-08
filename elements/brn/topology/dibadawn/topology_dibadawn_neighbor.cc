@@ -29,7 +29,6 @@
 #include "topology_dibadawn_neighbor.hh"
 #include "topology_dibadawn_packet.hh"
 
-
 CLICK_DECLS
 
 DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
@@ -39,19 +38,40 @@ DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
 
 bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
 {
-  for(int i=0; i<messages.size(); i++)
+  for (int i = 0; i < messages.size(); i++)
   {
-    for(int j=0; j<other.messages.size(); j++)
+    DibadawnPayloadElement& p1 = messages.at(i);
+    for (int j = 0; j < other.messages.size(); j++)
     {
-      DibadawnPacket& m1 = messages.at(i);
-      DibadawnPacket& m2 = other.messages.at(j);
-      
-      if(m1.hasSameCycle(m2))
-        return(true);
+      DibadawnPayloadElement& p2 = other.messages.at(j);
+
+      if (p1 == p2)
+        return (true);
     }
   }
-  return(false);
+  return (false);
 }
+
+void DibadawnNeighbor::copyPayloadIfNecessary(DibadawnPayloadElement& src)
+{
+  if (!hasSameCycle(src))
+    messages.push_back(src);
+}
+
+bool DibadawnNeighbor::hasSameCycle(DibadawnPayloadElement& elem)
+{
+  for (int i = 0; i < messages.size(); i++)
+  {
+    DibadawnPayloadElement& elem2 = messages.at(i);
+    if (elem2.isBridge)
+      continue;
+
+    if (elem.cycle == elem2.cycle)
+      return (true);
+  }
+  return (false);
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnNeighbor)

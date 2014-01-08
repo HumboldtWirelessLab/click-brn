@@ -30,45 +30,44 @@
 
 CLICK_DECLS;
 
-class DibadawnPacket {
+class DibadawnPacket
+{
 public:
-  DibadawnPacket();
-  DibadawnPacket(const Packet &packet);
-  DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward);
-  
-  void setVersion();
-  void setTreeParent(const EtherAddress *sender_addr);
-  void setForwaredBy(const EtherAddress *sender_addr);
-  
-  WritablePacket* getBrnPacket(EtherAddress &dest);
-  WritablePacket* getBrnBroadcastPacket();
-  EtherAddress getBroadcastAddress();
-  
-  static bool isValid(const Packet &packet);
-  bool isInvalid();
-  
-  void logTx(EtherAddress &thisNode, EtherAddress destination);
-  void logRx(EtherAddress &thisNode);
-  void log(String tag, EtherAddress &thisNode, String attr);
-  
-  bool hasSameCycle(DibadawnPacket &other);
-  bool hasSameCycle(DibadawnPayloadElement &payload);
-  void removeCycle(DibadawnPayloadElement &payload);
-  void addBridgeAsPayload();
-  void addNoBridgeAsPayload(DibadawnCycle &cycle);
-  bool hasBridgePayload();
-  void copyPayloadIfNecessary(DibadawnPayloadElement &src);  
-  
-  uint32_t version; 
-  DibadawnSearchId searchId;
-  EtherAddress forwardedBy;
-  EtherAddress treeParent;
-  bool isForward;
-  uint8_t ttl;
-  bool createdByInvalidPacket;
-  
-  // Only used in backward messages.
-  Vector<DibadawnPayloadElement> payload;
+    DibadawnPacket();
+    DibadawnPacket(const Packet &packet);
+    DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward);
+
+    void setVersion();
+    void setTreeParent(const EtherAddress *sender_addr);
+    void setForwaredBy(const EtherAddress *sender_addr);
+
+    WritablePacket* getBrnPacket(EtherAddress &dest);
+    WritablePacket* getBrnBroadcastPacket();
+    EtherAddress getBroadcastAddress();
+
+    static bool isValid(const Packet &packet);
+    bool isInvalid();
+
+    void logTx(EtherAddress &thisNode, EtherAddress destination);
+    void logRx(EtherAddress &thisNode);
+    void log(String tag, EtherAddress &thisNode, String attr);
+
+    bool hasSameCycle(DibadawnPacket &other);
+    bool hasSameCycle(DibadawnPayloadElement &payload);
+    void removeCycle(DibadawnPayloadElement &payload);
+    bool hasBridgePayload();
+    void copyPayloadIfNecessary(DibadawnPayloadElement &src);
+
+    uint32_t version;
+    DibadawnSearchId searchId;
+    EtherAddress forwardedBy;
+    EtherAddress treeParent;
+    bool isForward;
+    uint8_t ttl;
+    bool createdByInvalidPacket;
+
+    // Only used in backward messages.
+    Vector<DibadawnPayloadElement> payload;
 
 };
 
