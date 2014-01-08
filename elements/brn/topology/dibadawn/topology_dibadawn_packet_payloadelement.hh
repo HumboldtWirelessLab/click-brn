@@ -24,21 +24,24 @@
 #include <click/element.hh>
 #include <click/packet.hh>
 
+#include "topology_dibadawn_searchid.hh"
 #include "topology_dibadawn_cycle.hh"
 
 CLICK_DECLS;
 
-class DibadawnPayloadElement {
+class DibadawnPayloadElement
+{
 public:
     bool isBridge;
-    static const size_t length = 
-        DibadawnCycle::length + 1/* one byte for isBrigde */;
+    static const size_t length =
+            DibadawnCycle::length + 1/* one byte for isBrigde */;
     DibadawnCycle cycle;
-    
-    DibadawnPayloadElement();
+
+    DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge);
     DibadawnPayloadElement(DibadawnCycle &cycle);
     DibadawnPayloadElement(const uint8_t *pBinaryData);
     uint8_t* getData();
+    bool operator==(DibadawnPayloadElement &b);
 
 private:
     uint8_t mayInconsistentlyData[length];

@@ -73,23 +73,25 @@ public:
         }
       }
       if (printDebug)
-        print();
+        print("");
     }
   }
 
-  void print()
+  void print(const char *nodeAddr)
   {
-    click_chatter("</Matrix>\n");
+    click_chatter("<Matrix node='%s' >", nodeAddr);
     for (size_t i = 0; i < dimension; i++)
     {
-      click_chatter("<MatrixRow num='%d'>", i);
+      String row_text = "";
       for (size_t k = 0; k < dimension; k++)
       {
-        click_chatter("%d ", matrix[i * dimension + k]);
+        if (k > 0)
+          row_text += ", ";
+        row_text += matrix[i * dimension + k] ? "1" : "0";
       }
-      click_chatter("</MatrixRow>\n");
+      click_chatter("  <MatrixRow num='%d'>%s</MatrixRow>", i, row_text.c_str());
     }
-    click_chatter("</Matrix>\n");
+    click_chatter("</Matrix>");
   }
 
   bool isOneMatrix()
@@ -110,7 +112,7 @@ void forwardSendTimerCallback(Timer*, void* p)
 {
   DibadawnSearch::ForwardSendTimerParam *param = (DibadawnSearch::ForwardSendTimerParam *)p;
   assert(param != NULL);
-  
+
   param->search->sendBroadcastWithTimeout(param->packet);
   delete(param);
 }
@@ -143,7 +145,7 @@ void DibadawnSearch::initCommon(BRNElement *click_element, const EtherAddress &t
   maxTtl = 255; // TODO: Does this makes sense?
   isArticulationPoint = false;
   numOfConcurrentSenders = 10;
-  
+
   forwardTimeoutTimer = new Timer(forwardTimeoutCallback, this);
   forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
 }
@@ -164,41 +166,44 @@ void DibadawnSearch::detectCycles()
 {
   for (int i = 0; i < crossEdges.size(); i++)
   {
-    DibadawnPacket &relevantPacket = *crossEdges.at(i);
+    DibadawnPacket &crossEdgePacket = *crossEdges.at(i);
 
     DibadawnEdgeMarking marking;
     marking.time = Timestamp::now();
     marking.id = searchId;
     marking.isBridge = false;
     marking.nodeA = addrOfThisNode;
-    marking.nodeB = relevantPacket.forwardedBy;
+    marking.nodeB = crossEdgePacket.forwardedBy;
     edgeMarkings.push_back(marking);
 
-    DibadawnCycle c(searchId, addrOfThisNode, relevantPacket.forwardedBy);
-    click_chatter("<Cycle id='%s' />", c.AsString().c_str());
-    
-    DibadawnPayloadElement payload(c);
-    relevantPacket.payload.push_back(payload);
-    bufferBackwardMessage(c);
+    DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
+    click_chatter("<Cycle id='%s' />", cycle.AsString().c_str());
+
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(crossEdgePacket.forwardedBy);
+    DibadawnPayloadElement payload(cycle);
+    neighbor.messages.push_back(cycle);
+
+    bufferBackwardMessage(cycle);
   }
 }
 
 void DibadawnSearch::forwardMessages()
 {
-  if(isParentNull())
+  if (isParentNull())
   {
     click_chatter("<Finished />");
     return;
   }
-  
+
   if (messageBuffer.size() == 0)
   {
     addBridgeEdgeMarking(addrOfThisNode, parent);
 
+    DibadawnPayloadElement bridge(searchId, addrOfThisNode, parent, true);
     DibadawnPacket packet(searchId, addrOfThisNode, false);
     packet.treeParent = parent;
     packet.ttl = maxTtl;
-    packet.addBridgeAsPayload();
+    packet.payload.push_back(bridge);
     sendTo(packet, parent);
   }
   else
@@ -207,11 +212,14 @@ void DibadawnSearch::forwardMessages()
     packet.ttl = maxTtl;
     packet.treeParent = parent;
     packet.forwardedBy = addrOfThisNode;
-    
+
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parent);
     for (int i = 0; i < messageBuffer.size(); i++)
     {
-      packet.copyPayloadIfNecessary(messageBuffer.at(i));
-      
+      DibadawnPayloadElement &payload = messageBuffer.at(i);
+      packet.copyPayloadIfNecessary(payload);
+      neighbor.copyPayloadIfNecessary(payload);
+
       // TODO votes
 
       DibadawnEdgeMarking marking;
@@ -222,7 +230,7 @@ void DibadawnSearch::forwardMessages()
       marking.nodeB = parent;
       edgeMarkings.push_back(marking);
     }
-      
+
     messageBuffer.clear();
     sendTo(packet, parent);
   }
@@ -230,13 +238,35 @@ void DibadawnSearch::forwardMessages()
 
 bool DibadawnSearch::isParentNull()
 {
-  return(parent == EtherAddress());
+  return (parent == EtherAddress());
 }
 
 void DibadawnSearch::detectAccessPoints()
 {
-  click_chatter("<NotImplemented node='%s' method='detectAccessPoints' />",
-      addrOfThisNode.unparse_dash().c_str());
+  size_t num = adjacents.numOfNeighbors();
+  BinaryMatrix closure(num);
+
+  for (size_t row = 0; row < num; row++)
+  {
+    DibadawnNeighbor &nodeA = adjacents.getNeighbor(row);
+    for (size_t col = 0; col < num; col++)
+    {
+      DibadawnNeighbor &nodeB = adjacents.getNeighbor(col);
+
+      if (nodeA.hasNonEmptyIntersection(nodeB))
+        closure.setTrue(row, col);
+    }
+  }
+
+  closure.print(addrOfThisNode.unparse().c_str());
+  closure.runMarshallAlgo();
+  closure.print(addrOfThisNode.unparse().c_str());
+
+  if (!closure.isOneMatrix())
+  {
+    click_chatter("<ArticulatinPoint node='%s'/>",
+        addrOfThisNode.unparse_dash().c_str());
+  }
 }
 
 void DibadawnSearch::voteForAccessPointsAndBridges()
@@ -300,8 +330,8 @@ void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
   ForwardSendTimerParam *param = new ForwardSendTimerParam;
   param->packet = packet;
   param->search = this;
-  
-  forwardSendTimer->assign(forwardSendTimerCallback, (void*)param);
+
+  forwardSendTimer->assign(forwardSendTimerCallback, (void*) param);
   forwardSendTimer->initialize(this->brn_click_element, false);
   forwardSendTimer->schedule_after_msec((click_random() % numOfConcurrentSenders) * maxTraversalTimeMs);
 }
@@ -313,15 +343,12 @@ bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 {
-  DibadawnNeighbor &neighbor = adjacents.getNeighbor(rxPacket.forwardedBy);
-  neighbor.messages.push_back(rxPacket);
-  DibadawnPacket &storedRxPacket = neighbor.messages.back();
-  storedRxPacket.logRx(addrOfThisNode);
+  rxPacket.logRx(addrOfThisNode);
 
-  if (storedRxPacket.isForward)
-    receiveForwardMessage(storedRxPacket);
+  if (rxPacket.isForward)
+    receiveForwardMessage(rxPacket);
   else
-    receiveBackMessage(storedRxPacket);
+    receiveBackMessage(rxPacket);
 }
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
@@ -332,12 +359,13 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     {
       parent = rxPacket.forwardedBy;
       visited = true;
+      adjacents.getNeighbor(parent);
 
       DibadawnPacket txPacket = rxPacket;
       txPacket.ttl--;
       txPacket.forwardedBy = addrOfThisNode;
       txPacket.treeParent = rxPacket.forwardedBy;
-      
+
       sendDelayedBroadcastWithTimeout(txPacket);
     }
     else
@@ -365,16 +393,20 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 
 void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
 {
-  if(packet.payload.size() < 1)
+  if (packet.payload.size() < 1)
   {
     click_chatter("<Error node='%s' methode='receiveBackMessage' msg='no payload data at back-msg' />",
         addrOfThisNode.unparse_dash().c_str());
     return;
   }
-  
-  if(packet.hasBridgePayload())
+
+  if (packet.hasBridgePayload())
   {
     addBridgeEdgeMarking(addrOfThisNode, packet.forwardedBy);
+
+    DibadawnPayloadElement bridge(searchId, addrOfThisNode, packet.forwardedBy, true);
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(packet.forwardedBy);
+    neighbor.messages.push_back(bridge);
   }
   else
   {
@@ -445,7 +477,7 @@ void DibadawnSearch::pairCyclesIfPossible(DibadawnPacket& packet)
 
 void DibadawnSearch::addPayloadElementsToMessagePuffer(DibadawnPacket& packet)
 {
-  for(int i = 0; i < packet.payload.size(); i++)
+  for (int i = 0; i < packet.payload.size(); i++)
   {
     DibadawnPayloadElement &elem = packet.payload.at(i);
     messageBuffer.push_back(elem);
@@ -484,17 +516,17 @@ void DibadawnSearch::AccessPointDetection()
     return;
 
   BinaryMatrix m(n);
-  for (size_t i=0; i<n; i++)
+  for (size_t i = 0; i < n; i++)
   {
-    for(size_t j=i; j<n; j++)
+    for (size_t j = i; j < n; j++)
     {
       DibadawnNeighbor& n1 = adjacents.getNeighbor(i);
       DibadawnNeighbor& n2 = adjacents.getNeighbor(j);
-      
-      if(n1.hasNonEmptyIntersection(n2))
+
+      if (n1.hasNonEmptyIntersection(n2))
       {
-        m.setTrue(j,i);
-        m.setTrue(i,j);
+        m.setTrue(j, i);
+        m.setTrue(i, j);
       }
     }
   }
