@@ -158,7 +158,7 @@ void DibadawnSearch::forwardTimeout()
 
   detectCycles();
   forwardMessages();
-  detectAccessPoints();
+  detectArticulationPoints();
   voteForAccessPointsAndBridges();
 }
 
@@ -241,7 +241,7 @@ bool DibadawnSearch::isParentNull()
   return (parent == EtherAddress());
 }
 
-void DibadawnSearch::detectAccessPoints()
+void DibadawnSearch::detectArticulationPoints()
 {
   size_t num = adjacents.numOfNeighbors();
   BinaryMatrix closure(num);
@@ -264,7 +264,7 @@ void DibadawnSearch::detectAccessPoints()
 
   if (!closure.isOneMatrix())
   {
-    click_chatter("<ArticulatinPoint node='%s'/>",
+    click_chatter("<ArticulationPoint node='%s'/>",
         addrOfThisNode.unparse_dash().c_str());
   }
 }
