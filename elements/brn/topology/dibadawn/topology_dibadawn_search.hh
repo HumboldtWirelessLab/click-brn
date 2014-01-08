@@ -72,7 +72,7 @@ private:
   void detectCycles();
   void bufferBackwardMessage(DibadawnCycle &cycleId);
   void forwardMessages();
-  void detectAccessPoints();
+  void detectArticulationPoints();
   void voteForAccessPointsAndBridges();
   void AccessPointDetection();
   bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
