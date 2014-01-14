@@ -49,6 +49,8 @@ CLICK_DECLS
 #define TOS2QM_LEARNING_MIN_CWMIN                        31
 #define TOS2QM_LEARNING_MAX_CWMIN                        255
 
+#define TOS2QM_ALL_BOS_STATS                             1
+#define TOS2QM_BOBUF_SIZE                                4096
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -69,6 +71,7 @@ public:
   Packet *simple_action(Packet *p);
 
   String stats();
+  String bos();
 
   void handle_feedback(Packet *);
 
@@ -113,6 +116,9 @@ private:
   uint16_t *_bo_exp;           //exponent for backoff in queue
   uint32_t *_bo_usage_usage;   //frequency of the used backoff
   uint32_t _bo_usage_max_no;   //max bo
+  Timestamp *_last_bo_usage;
+  int16_t *_all_bos;
+  uint16_t _all_bos_idx;
 
   uint32_t _ac_stats_id;
 

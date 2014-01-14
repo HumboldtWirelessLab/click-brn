@@ -42,11 +42,11 @@ private:
 
 
 private:
-  static const uint16_t _bo_start = 255; // initial backoff
+  static const uint16_t _bo_start = 32; // initial backoff
   static const uint8_t _tdiff_param = 3;  // target diff strategy wiggle room
 
-  static const uint16_t _cla_min_cwmin = 31;
-  static const uint16_t _cla_max_cwmin = 255;
+  static const uint16_t _cla_min_cwmin = 16;
+  static const uint16_t _cla_max_cwmin = 1024;
 
   ChannelStats *_cst;
 
