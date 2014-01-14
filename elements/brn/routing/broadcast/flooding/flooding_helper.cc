@@ -628,8 +628,8 @@ FloodingHelper::is_better_fwd(const EtherAddress &src, const EtherAddress &src2,
   int m1 = _link_table->get_link_metric(src, dst);  //default
   int m2 = _link_table->get_link_metric(src2, dst); //competitor
 
-  if ( min_ratio != 100 ) return (((m2 * min_ratio)/100) < m1);
-  if ( _better_link_min_ratio != 100 ) return (((m2 * _better_link_min_ratio)/100) < m1);
+  if ( min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)min_ratio)/100) < m1);
+  if ( _better_link_min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)_better_link_min_ratio)/100) < m1);
 
   return (m2 < m1);
 }

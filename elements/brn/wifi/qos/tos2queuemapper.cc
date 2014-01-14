@@ -35,8 +35,10 @@
 #include <click/router.hh>
 #endif
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 #include "tos2queuemapper.hh"
 #include "bo_schemes/tos2qm_data.hh"
@@ -47,8 +49,6 @@ CLICK_DECLS
 
 Tos2QueueMapper::Tos2QueueMapper():
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
-    _cst(NULL),     //Channelstats-Element
-    _colinf(NULL),  //Collission-Information-Element
     _learning_current_bo(TOS2QM_DEFAULT_LEARNING_BO),
     _learning_count_up(0),
     _learning_count_down(0),
@@ -100,7 +100,6 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "CWMAX", cpkP, cpString, &s_cwmax,
       "AIFS", cpkP, cpString, &s_aifs,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
-      "COLLISIONINFO", cpkP, cpElement, &_colinf,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;

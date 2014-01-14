@@ -13,9 +13,9 @@ CLICK_DECLS
 class SetJammer : public BRNElement {
 
 public:
-	#define RTS_CTS_STRATEGY_ALWAYS_OFF 0 //default
-	#define RTS_CTS_STRATEGY_ALWAYS_ON 1
-	#define RTS_CTS_STRATEGY_RANDOM 2
+	#define JAMMER_STRATEGY_ALWAYS_OFF 0
+	#define JAMMER_STRATEGY_ALWAYS_ON  1 /*default*/
+	#define JAMMER_STRATEGY_RANDOM     2
 
 
 	SetJammer();

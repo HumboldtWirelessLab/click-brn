@@ -53,6 +53,7 @@ struct click_brn_bcast {
 #define BCAST_HEADER_FLAGS_FORCE_DST           1 /* src is responsible for target */
 #define BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS  2 /* reason for reject was empty cs */
 #define BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN  4 /* reason for reject was empty cs with assigned nodes*/
+#define BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED  8 /* reason for reject was the stopped transmission*/
 
 #define BCAST_MAX_EXTRA_DATA_SIZE            255
 
@@ -109,6 +110,8 @@ class Flooding : public BRNElement {
       Timestamp _bcast_time_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];   //time
 
 #define FLOODING_FLAGS_ME_SRC           1
+#define FLOODING_FLAGS_TX_ABORT         2
+
 
       Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
@@ -209,7 +212,7 @@ class Flooding : public BRNElement {
           _bcast_fwd_done_list[index] = 0;
           _bcast_fwd_succ_list[index] = 0;
           _bcast_snd_list[index] = 0;
-          _bcast_flags_list[index] = (me_src)?1:0;
+          _bcast_flags_list[index] = (me_src)?FLOODING_FLAGS_ME_SRC:0;
           _bcast_time_list[index] = now;
 
           _last_node_list_size[index] = 0;
@@ -460,6 +463,21 @@ class Flooding : public BRNElement {
 
         return ((ln->flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0);
       }
+
+      void set_stopped(uint16_t id, bool stop) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] != id) return;
+
+        if (stop) _bcast_flags_list[index] |= FLOODING_FLAGS_TX_ABORT;
+        else _bcast_flags_list[index] &= (uint8_t)~FLOODING_FLAGS_TX_ABORT;
+      }
+
+      bool is_stopped(uint16_t id) {
+        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+        if (_bcast_id_list[index] != id) return false;
+
+        return ((_bcast_flags_list[index]&FLOODING_FLAGS_TX_ABORT) == FLOODING_FLAGS_TX_ABORT);
+      }
     };
 
   //
@@ -572,11 +590,12 @@ class Flooding : public BRNElement {
 
 
   /* Members and functions for tx abort */
-#define FLOODING_TXABORT_MODE_NONE        0
-#define FLOODING_TXABORT_MODE_ACKED       1
-#define FLOODING_TXABORT_MODE_ASSIGNED    2
-#define FLOODING_TXABORT_MODE_BETTER_LINK 4
-#define FLOODING_TXABORT_MODE_NEW_INFO    8
+#define FLOODING_TXABORT_MODE_NONE         0
+#define FLOODING_TXABORT_MODE_ACKED        1
+#define FLOODING_TXABORT_MODE_ASSIGNED     2
+#define FLOODING_TXABORT_MODE_BETTER_LINK  4
+#define FLOODING_TXABORT_MODE_NEW_INFO     8
+#define FLOODING_TXABORT_MODE_FINISHED    16
 
 #define FLOODING_TXABORT_REASON_NONE                    FLOODING_TXABORT_MODE_NONE
 #define FLOODING_TXABORT_REASON_ACKED                   FLOODING_TXABORT_MODE_ACKED
@@ -584,7 +603,7 @@ class Flooding : public BRNElement {
 #define FLOODING_TXABORT_REASON_BETTER_LINK             FLOODING_TXABORT_MODE_BETTER_LINK
 #define FLOODING_TXABORT_REASON_NEW_INFO                FLOODING_TXABORT_MODE_NEW_INFO
 #define FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY  FLOODING_TXABORT_MODE_ACKED       /* Take foreign resp. as acked */
-
+#define FLOODING_TXABORT_REASON_FINISHED                FLOODING_TXABORT_MODE_FINISHED    /* Can be used by other elements e.g. Policies */
 
   uint32_t _abort_tx_mode;
   uint32_t _tx_aborts;
