@@ -30,7 +30,7 @@ BoLearning::BoLearning() :
   _bo_cnt_up(0),
   _bo_cnt_down(0),
   _learning_min_cwmin(31),
-  _learning_max_cwmin(511),
+  _learning_max_cwmin(1023),
   _cap(0)
 {
   BRNElement::init();
@@ -84,7 +84,7 @@ int BoLearning::get_cwmin(Packet *p, uint8_t tos)
   (void) p;
   (void) tos;
 
-  return _current_bo;
+  return _current_bo - 1;
 }
 
 
