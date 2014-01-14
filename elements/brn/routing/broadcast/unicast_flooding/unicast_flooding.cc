@@ -175,11 +175,18 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
   //clear responseflag for the case that broadcast is used
-  bcast_header->flags &= ~(BCAST_HEADER_FLAGS_FORCE_DST & BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN);
+  bcast_header->flags &= ~(BCAST_HEADER_FLAGS_FORCE_DST & BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS &
+                           BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN & BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED);
 
   uint16_t assigned_nodes = 0;
 
   Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(&src);
+
+  if ( bcn->is_stopped(bcast_id) ) {
+    bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED;
+    output(1).push(p_in);
+    return NULL;
+  }
 
   if ( _cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE ) {
     candidate_set.push_back(static_dst_mac);

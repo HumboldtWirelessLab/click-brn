@@ -149,7 +149,7 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
   if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
-        (packet_is_finished(pap) && _abort_on_finished) ||
+        packet_is_finished(pap) ||
         pap->tx_timeout(now, _dfl_timeout)) {
 
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
@@ -206,7 +206,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   /*check retries*/
   if ( pap->retries_left() == 0 ) return true;
 
-  return (count_unfinished_neighbors(pap) == 0);
+  return ((count_unfinished_neighbors(pap) == 0) && _abort_on_finished);
 }
 
 int
