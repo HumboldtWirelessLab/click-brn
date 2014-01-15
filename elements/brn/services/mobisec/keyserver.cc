@@ -160,7 +160,7 @@ void KeyServer::handle_kdp_req(Packet *p) {
 
 	crypto_ctrl_data *hdr = curr_keyman->get_ctrl_data();
 
-	const unsigned char *payload;
+	const unsigned char *payload = NULL;
 	data_t *keylist_string = NULL;
 
 	if(_protocol_type == CLIENT_DRIVEN) {

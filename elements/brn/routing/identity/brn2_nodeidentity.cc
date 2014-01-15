@@ -103,7 +103,7 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
   }
 
   if ( _nodename == "" )
-    _nodename = brn_device->getEtherAddress()->unparse();
+    _nodename = _master_device->getEtherAddress()->unparse();
 
   BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
 

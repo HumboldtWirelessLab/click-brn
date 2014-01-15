@@ -74,7 +74,7 @@ PacketCompression::initialize(ErrorHandler *)
 void
 PacketCompression::push( int /*port*/, Packet *packet )
 {
-  int resultsize;
+  int resultsize = 0;
   int oldlen;
   unsigned char *data;
   struct compression_header *ch;

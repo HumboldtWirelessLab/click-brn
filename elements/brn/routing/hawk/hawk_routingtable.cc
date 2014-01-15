@@ -297,7 +297,7 @@ HawkRoutingtable::getNextPhyHop(EtherAddress *dst)
   RTEntry *entry = getEntry(dst);
 
   while ( ( entry != NULL ) && (! isNeighbour(&(entry->_next_phy_hop))) ) {
-    EtherAddress *next_phy_hop = getNextHop(next_phy_hop);
+    EtherAddress *next_phy_hop = getNextHop(&(entry->_next_phy_hop)); //TODO: was "getNextHop(_next_phy_hop)" which makes no sense
     entry = getEntry(next_phy_hop);
   }
 

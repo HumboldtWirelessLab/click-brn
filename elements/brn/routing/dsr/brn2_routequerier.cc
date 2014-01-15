@@ -1009,7 +1009,7 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 
     ea_route.push_back(ether1);
 
-    uint16_t metric;
+    uint16_t metric = BRN_DSR_INVALID_HOP_METRIC;
 
     switch ( dsr_element ) {
       case DSR_ELEMENT_REQ_FORWARDER: {
