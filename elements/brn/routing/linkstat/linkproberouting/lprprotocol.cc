@@ -142,7 +142,7 @@ LPRProtocol::pack2(struct packed_link_info *info, unsigned char *packet, int p_l
   int overallLink;
 
   LZW lzw;
-  int lzwsize;
+  int lzwsize = 0;
 
   Bitfield bitfield(packet,p_len);
 
