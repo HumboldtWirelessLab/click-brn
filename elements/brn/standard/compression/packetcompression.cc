@@ -155,7 +155,7 @@ PacketCompression::push( int /*port*/, Packet *packet )
 uint16_t
 PacketCompression::compress(Packet *p, uint16_t offset, uint16_t compression_type)
 {
-  int resultsize;
+  int resultsize = 0;
   int oldlen = p->length() - offset;
 
   switch ( compression_type ) {
