@@ -52,7 +52,7 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
     search = new DibadawnSearch(brn_click_element, CommonEdgeMarkings, thisNode, packet.searchId);
     searches.push_back(search);
   }
-  
+
   search->receive(packet);
 }
 

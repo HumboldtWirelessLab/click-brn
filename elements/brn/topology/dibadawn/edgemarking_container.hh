@@ -31,7 +31,8 @@
 
 CLICK_DECLS;
 
-class DibadawnEdgeMarkingContainer {
+class DibadawnEdgeMarkingContainer
+{
 public:
     void add(DibadawnEdgeMarking &marking);
 

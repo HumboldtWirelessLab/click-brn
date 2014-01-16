@@ -28,7 +28,6 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "searchid.hh"
 
-
 CLICK_DECLS
 
 
@@ -41,7 +40,7 @@ DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress &creator)
 {
   const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator.data());
   memcpy(this->data, pmac, 6);
-  
+
   uint32_t time = t.usec();
   memcpy(this->data + 6, &time, sizeof (time));
 }
@@ -68,7 +67,7 @@ uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
 
 void DibadawnSearchId::setByPointerTo10BytesOfData(uint8_t *value)
 {
-  memcpy(data, value, sizeof(data));
+  memcpy(data, value, sizeof (data));
 }
 
 DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
@@ -81,7 +80,7 @@ DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
 
 bool DibadawnSearchId::isEqualTo(DibadawnSearchId &id)
 {
-   return(memcmp(data, id.data, sizeof(data)) == 0);
+  return (memcmp(data, id.data, sizeof (data)) == 0);
 }
 
 

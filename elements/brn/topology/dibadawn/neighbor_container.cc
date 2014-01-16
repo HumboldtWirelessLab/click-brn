@@ -28,31 +28,30 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "neighbor_container.hh"
 
-
 CLICK_DECLS
 
 size_t DibadawnNeighborContainer::numOfNeighbors()
 {
-  return(neighbors.size());
+  return (neighbors.size());
 }
 
 DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(EtherAddress& addr)
 {
-  for(int i=0; i<neighbors.size(); i++)
+  for (int i = 0; i < neighbors.size(); i++)
   {
     DibadawnNeighbor &neighbor = neighbors.at(i);
-    if(addr == neighbor.address)
-      return(neighbor);
+    if (addr == neighbor.address)
+      return (neighbor);
   }
-  
+
   int idx = neighbors.size();
   neighbors.push_back(DibadawnNeighbor(addr));
-  return(neighbors.at(idx));
+  return (neighbors.at(idx));
 }
 
 DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(int num)
 {
-  return(neighbors.at(num));
+  return (neighbors.at(num));
 }
 
 CLICK_ENDDECLS

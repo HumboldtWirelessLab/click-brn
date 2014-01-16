@@ -39,18 +39,18 @@ class DibadawnAlgorithm
 public:
     EtherAddress thisNode;
     BRNElement *brn_click_element;
-    Vector<DibadawnSearch*> searches; 
-    
+    Vector<DibadawnSearch*> searches;
+
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
-    
+
 public:
     DibadawnEdgeMarkingContainer CommonEdgeMarkings;
-    
+
     DibadawnAlgorithm();
     DibadawnAlgorithm(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
     void receive(DibadawnPacket &packet);
     void startNewSearch();
-    
+
 };
 
 CLICK_ENDDECLS

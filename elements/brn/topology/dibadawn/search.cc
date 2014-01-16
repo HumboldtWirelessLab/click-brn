@@ -123,8 +123,8 @@ void forwardTimeoutCallback(Timer*, void *search)
 }
 
 DibadawnSearch::DibadawnSearch(
-    BRNElement *click_element, 
-    DibadawnEdgeMarkingContainer &edgeMarkings, 
+    BRNElement *click_element,
+    DibadawnEdgeMarkingContainer &edgeMarkings,
     const EtherAddress &addrOfThisNode)
 {
   initCommon(click_element, edgeMarkings, addrOfThisNode);
@@ -133,7 +133,7 @@ DibadawnSearch::DibadawnSearch(
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnEdgeMarkingContainer &edgeMarkings,
-    const EtherAddress &addrOfThisNode, 
+    const EtherAddress &addrOfThisNode,
     DibadawnSearchId &id)
 {
   initCommon(click_element, edgeMarkings, addrOfThisNode);
@@ -143,8 +143,8 @@ DibadawnSearch::DibadawnSearch(
 }
 
 void DibadawnSearch::initCommon(
-    BRNElement *click_element, 
-    DibadawnEdgeMarkingContainer &edgeMarkings, 
+    BRNElement *click_element,
+    DibadawnEdgeMarkingContainer &edgeMarkings,
     const EtherAddress &thisNode)
 {
   commonEdgeMarkings = &edgeMarkings;
