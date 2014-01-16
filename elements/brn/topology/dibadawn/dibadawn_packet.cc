@@ -26,8 +26,8 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_packet.hh"
-#include "topology_dibadawn_searchid.hh"
+#include "dibadawn_packet.hh"
+#include "searchid.hh"
 
 CLICK_DECLS
 
@@ -53,7 +53,7 @@ DibadawnPacket::DibadawnPacket()
   createdByInvalidPacket = false;
 }
 
-DibadawnPacket::DibadawnPacket(const Packet &brn_packet)
+DibadawnPacket::DibadawnPacket(Packet &brn_packet)
 {
   if (!isValid(brn_packet))
   {
@@ -80,7 +80,7 @@ DibadawnPacket::DibadawnPacket(const Packet &brn_packet)
   }
 }
 
-DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward)
+DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward)
 {
   setVersion();
   searchId = id;
@@ -89,7 +89,7 @@ DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_
   ttl = 255;
 }
 
-bool DibadawnPacket::isValid(const Packet &brn_packet)
+bool DibadawnPacket::isValid(Packet &brn_packet)
 {
   DibadawnPacketStruct *packet;
   packet = (struct DibadawnPacketStruct *) brn_packet.data();
@@ -106,12 +106,12 @@ void DibadawnPacket::setVersion()
   this->version = 1;
 }
 
-void DibadawnPacket::setForwaredBy(const EtherAddress* sender_addr)
+void DibadawnPacket::setForwaredBy(EtherAddress* sender_addr)
 {
   forwardedBy = *sender_addr;
 }
 
-void DibadawnPacket::setTreeParent(const EtherAddress* sender_addr)
+void DibadawnPacket::setTreeParent(EtherAddress* sender_addr)
 {
   treeParent = *sender_addr;
 }

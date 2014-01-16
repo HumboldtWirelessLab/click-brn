@@ -26,7 +26,7 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_cycle.hh"
+#include "cycle.hh"
 #include "elements/grid/ackresponder.hh"
 
 CLICK_DECLS

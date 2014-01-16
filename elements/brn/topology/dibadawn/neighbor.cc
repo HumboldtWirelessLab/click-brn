@@ -26,10 +26,52 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_edgemarking.hh"
+#include "neighbor.hh"
+#include "dibadawn_packet.hh"
 
 CLICK_DECLS
 
+DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
+{
+  address = addr;
+}
+
+bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
+{
+  for (int i = 0; i < messages.size(); i++)
+  {
+    DibadawnPayloadElement& p1 = messages.at(i);
+    for (int j = 0; j < other.messages.size(); j++)
+    {
+      DibadawnPayloadElement& p2 = other.messages.at(j);
+
+      if (p1 == p2)
+        return (true);
+    }
+  }
+  return (false);
+}
+
+void DibadawnNeighbor::copyPayloadIfNecessary(DibadawnPayloadElement& src)
+{
+  if (!hasSameCycle(src))
+    messages.push_back(src);
+}
+
+bool DibadawnNeighbor::hasSameCycle(DibadawnPayloadElement& elem)
+{
+  for (int i = 0; i < messages.size(); i++)
+  {
+    DibadawnPayloadElement& elem2 = messages.at(i);
+    if (elem2.isBridge)
+      continue;
+
+    if (elem.cycle == elem2.cycle)
+      return (true);
+  }
+  return (false);
+}
+
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnEdgeMarking)
+ELEMENT_PROVIDES(DibadawnNeighbor)

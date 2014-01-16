@@ -23,7 +23,7 @@
 #include <click/glue.hh>
 #include <click/type_traits.hh>
 
-#include "topology_dibadawn.hh"
+#include "dibadawn.hh"
 
 
 CLICK_DECLS;

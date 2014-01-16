@@ -18,29 +18,27 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_CYCLE_HH
-#define TOPOLOGY_DIBADAWN_CYCLE_HH
+#ifndef TOPOLOGY_DIBADAWN_NEIGHBOR_HH
+#define TOPOLOGY_DIBADAWN_NEIGHBOR_HH
 
 #include <click/element.hh>
+#include <click/packet.hh>
 
-#include "topology_dibadawn_searchid.hh"
-
+#include "payloadelement.hh"
 
 CLICK_DECLS;
 
-class DibadawnCycle {
+class DibadawnNeighbor
+{
 public:
-    static const size_t length = 10 + 6 + 6;
-    String AsString();
+    EtherAddress address;
+    Vector<DibadawnPayloadElement> messages;
 
-    DibadawnCycle();
-    DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
-    bool operator== (DibadawnCycle &b);
-    void setData(const uint8_t *p);
-    uint8_t* getData();
-    
-private:
-    uint8_t contentAsBytes[length];
+    DibadawnNeighbor(EtherAddress &addr);
+
+    bool hasNonEmptyIntersection(DibadawnNeighbor& other);
+    void copyPayloadIfNecessary(DibadawnPayloadElement& src);
+    bool hasSameCycle(DibadawnPayloadElement& elem);
 };
 
 CLICK_ENDDECLS

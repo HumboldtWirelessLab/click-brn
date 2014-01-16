@@ -23,11 +23,11 @@
 #include <click/glue.hh>
 #include <click/type_traits.hh>
 
-#include "topology_dibadawn.hh"
+#include "dibadawn.hh"
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_neighbor_container.hh"
+#include "neighbor_container.hh"
 
 
 CLICK_DECLS;

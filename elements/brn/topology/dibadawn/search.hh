@@ -26,13 +26,13 @@
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "topology_dibadawn_searchid.hh"
-#include "topology_dibadawn_packet.hh"
-#include "topology_dibadawn_packet_payloadelement.hh"
-#include "topology_dibadawn_edgemarking.hh"
-#include "topology_dibadawn_cycle.hh"
-#include "topology_dibadawn_neighbor_container.hh"
-#include "topology_dibadawn_edgemarking_container.hh"
+#include "searchid.hh"
+#include "dibadawn_packet.hh"
+#include "payloadelement.hh"
+#include "edgemarking.hh"
+#include "cycle.hh"
+#include "neighbor_container.hh"
+#include "edgemarking_container.hh"
 
 
 CLICK_DECLS;

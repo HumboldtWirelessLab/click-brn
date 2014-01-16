@@ -24,7 +24,7 @@
 #include <click/element.hh>
 #include <click/etheraddress.hh>
 
-#include "topology_dibadawn_searchid.hh"
+#include "searchid.hh"
 
 
 CLICK_DECLS;
