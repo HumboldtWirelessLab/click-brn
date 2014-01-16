@@ -32,6 +32,7 @@
 #include "topology_dibadawn_edgemarking.hh"
 #include "topology_dibadawn_cycle.hh"
 #include "topology_dibadawn_neighbor_container.hh"
+#include "topology_dibadawn_edgemarking_container.hh"
 
 
 CLICK_DECLS;
@@ -53,7 +54,7 @@ private:
   Timer *forwardSendTimer;
   DibadawnSearchId searchId;
   Vector<DibadawnPacket*> crossEdges;
-  Vector<DibadawnEdgeMarking> edgeMarkings;
+  DibadawnEdgeMarkingContainer *commonEdgeMarkings;
   Vector<DibadawnPayloadElement> messageBuffer;
   DibadawnNeighborContainer adjacents;
   bool isArticulationPoint;
@@ -63,8 +64,7 @@ private:
   uint8_t maxTtl;
   BRNElement *brn_click_element;
   
-  
-  void initCommon(BRNElement *click_element, const EtherAddress &addrOfThisNode);
+  void initCommon(BRNElement *click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
   void activateForwardTimer(DibadawnPacket &packet);
   void activateForwardSendTimer(DibadawnPacket &packet);
   void receiveForwardMessage(DibadawnPacket &packet);
@@ -83,8 +83,8 @@ private:
   void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
   
 public:
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
-  DibadawnSearch(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
+  DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
+  DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
   
   void sendBroadcastWithTimeout(DibadawnPacket &packet);
   void sendTo(DibadawnPacket &packet, EtherAddress &dest);

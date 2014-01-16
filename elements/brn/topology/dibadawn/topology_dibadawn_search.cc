@@ -72,8 +72,6 @@ public:
           }
         }
       }
-      if (printDebug)
-        print("");
     }
   }
 
@@ -124,21 +122,32 @@ void forwardTimeoutCallback(Timer*, void *search)
   s->forwardTimeout();
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode)
+DibadawnSearch::DibadawnSearch(
+    BRNElement *click_element, 
+    DibadawnEdgeMarkingContainer &edgeMarkings, 
+    const EtherAddress &addrOfThisNode)
 {
-  initCommon(click_element, addrOfThisNode);
+  initCommon(click_element, edgeMarkings, addrOfThisNode);
 }
 
-DibadawnSearch::DibadawnSearch(BRNElement *click_element, const EtherAddress &addrOfThisNode, DibadawnSearchId &id)
+DibadawnSearch::DibadawnSearch(
+    BRNElement *click_element,
+    DibadawnEdgeMarkingContainer &edgeMarkings,
+    const EtherAddress &addrOfThisNode, 
+    DibadawnSearchId &id)
 {
-  initCommon(click_element, addrOfThisNode);
+  initCommon(click_element, edgeMarkings, addrOfThisNode);
 
   searchId = id;
   visited = false;
 }
 
-void DibadawnSearch::initCommon(BRNElement *click_element, const EtherAddress &thisNode)
+void DibadawnSearch::initCommon(
+    BRNElement *click_element, 
+    DibadawnEdgeMarkingContainer &edgeMarkings, 
+    const EtherAddress &thisNode)
 {
+  commonEdgeMarkings = &edgeMarkings;
   brn_click_element = click_element;
   addrOfThisNode = thisNode;
   maxTraversalTimeMs = 40;
@@ -174,7 +183,7 @@ void DibadawnSearch::detectCycles()
     marking.isBridge = false;
     marking.nodeA = addrOfThisNode;
     marking.nodeB = crossEdgePacket.forwardedBy;
-    edgeMarkings.push_back(marking);
+    commonEdgeMarkings->add(marking);
 
     DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
     click_chatter("<Cycle id='%s' />", cycle.AsString().c_str());
@@ -228,7 +237,7 @@ void DibadawnSearch::forwardMessages()
       marking.isBridge = false;
       marking.nodeA = addrOfThisNode;
       marking.nodeB = parent;
-      edgeMarkings.push_back(marking);
+      commonEdgeMarkings->add(marking);
     }
 
     messageBuffer.clear();
@@ -423,7 +432,7 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   marking.isBridge = true;
   marking.nodeA = nodeA;
   marking.nodeB = nodeB;
-  edgeMarkings.push_back(marking);
+  commonEdgeMarkings->add(marking);
 
   click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' />",
       this->addrOfThisNode.unparse_dash().c_str(),
@@ -453,14 +462,14 @@ void DibadawnSearch::pairCyclesIfPossible(DibadawnPacket& packet)
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        edgeMarkings.push_back(marking);
+        commonEdgeMarkings->add(marking);
 
         marking.time = Timestamp::now();
         marking.id = packet.searchId;
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        edgeMarkings.push_back(marking);
+        commonEdgeMarkings->add(marking);
 
         packet.removeCycle(e);
         continue;

@@ -29,6 +29,7 @@
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "topology_dibadawn_search.hh"
 #include "topology_dibadawn_packet.hh"
+#include "topology_dibadawn_edgemarking_container.hh"
 
 
 CLICK_DECLS;
@@ -43,6 +44,8 @@ public:
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
     
 public:
+    DibadawnEdgeMarkingContainer CommonEdgeMarkings;
+    
     DibadawnAlgorithm();
     DibadawnAlgorithm(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
     void receive(DibadawnPacket &packet);

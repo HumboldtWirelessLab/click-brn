@@ -18,26 +18,26 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_EDGEMARKING_HH
-#define TOPOLOGY_DIBADAWN_EDGEMARKING_HH
+#ifndef TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
+#define TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
 
-#include <click/element.hh>
-#include <click/etheraddress.hh>
 
-#include "topology_dibadawn_searchid.hh"
+
+#include <click/config.h>
+#include <click/sync.hh>
+
+#include "topology_dibadawn_edgemarking.hh"
 
 
 CLICK_DECLS;
 
-class DibadawnEdgeMarking {
+class DibadawnEdgeMarkingContainer {
 public:
-    Timestamp time;
-    DibadawnSearchId id;
-    bool isBridge;
-    EtherAddress nodeA;
-    EtherAddress nodeB;
+    void add(DibadawnEdgeMarking &marking);
 
 private:
+    Spinlock lock;
+    Vector<DibadawnEdgeMarking> edgeMarkings;
 };
 
 CLICK_ENDDECLS
