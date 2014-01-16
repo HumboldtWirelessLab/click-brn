@@ -37,63 +37,64 @@
 
 CLICK_DECLS;
 
-class DibadawnSearch 
+class DibadawnSearch
 {
 public:
-  struct ForwardSendTimerParam
-  {
-      DibadawnSearch *search;
-      DibadawnPacket packet;
-  };  
-  
+
+    struct ForwardSendTimerParam
+    {
+        DibadawnSearch *search;
+        DibadawnPacket packet;
+    };
+
 private:
-  EtherAddress addrOfThisNode;
-  EtherAddress parent;
-  bool visited;
-  Timer *forwardTimeoutTimer;
-  Timer *forwardSendTimer;
-  DibadawnSearchId searchId;
-  Vector<DibadawnPacket*> crossEdges;
-  DibadawnEdgeMarkingContainer *commonEdgeMarkings;
-  Vector<DibadawnPayloadElement> messageBuffer;
-  DibadawnNeighborContainer adjacents;
-  bool isArticulationPoint;
-  uint32_t numOfConcurrentSenders;
-  
-  uint32_t maxTraversalTimeMs;
-  uint8_t maxTtl;
-  BRNElement *brn_click_element;
-  
-  void initCommon(BRNElement *click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
-  void activateForwardTimer(DibadawnPacket &packet);
-  void activateForwardSendTimer(DibadawnPacket &packet);
-  void receiveForwardMessage(DibadawnPacket &packet);
-  void receiveBackMessage(DibadawnPacket &packet);
-  void detectCycles();
-  void bufferBackwardMessage(DibadawnCycle &cycleId);
-  void forwardMessages();
-  void detectArticulationPoints();
-  void voteForAccessPointsAndBridges();
-  void AccessPointDetection();
-  bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
-  void setParentNull();
-  bool isParentNull();
-  void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB);
-  void pairCyclesIfPossible(DibadawnPacket &packet);
-  void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
-  
+    EtherAddress addrOfThisNode;
+    EtherAddress parent;
+    bool visited;
+    Timer *forwardTimeoutTimer;
+    Timer *forwardSendTimer;
+    DibadawnSearchId searchId;
+    Vector<DibadawnPacket*> crossEdges;
+    DibadawnEdgeMarkingContainer *commonEdgeMarkings;
+    Vector<DibadawnPayloadElement> messageBuffer;
+    DibadawnNeighborContainer adjacents;
+    bool isArticulationPoint;
+    uint32_t numOfConcurrentSenders;
+
+    uint32_t maxTraversalTimeMs;
+    uint8_t maxTtl;
+    BRNElement *brn_click_element;
+
+    void initCommon(BRNElement *click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
+    void activateForwardTimer(DibadawnPacket &packet);
+    void activateForwardSendTimer(DibadawnPacket &packet);
+    void receiveForwardMessage(DibadawnPacket &packet);
+    void receiveBackMessage(DibadawnPacket &packet);
+    void detectCycles();
+    void bufferBackwardMessage(DibadawnCycle &cycleId);
+    void forwardMessages();
+    void detectArticulationPoints();
+    void voteForAccessPointsAndBridges();
+    void AccessPointDetection();
+    bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
+    void setParentNull();
+    bool isParentNull();
+    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB);
+    void pairCyclesIfPossible(DibadawnPacket &packet);
+    void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
+
 public:
-  DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
-  DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
-  
-  void sendBroadcastWithTimeout(DibadawnPacket &packet);
-  void sendTo(DibadawnPacket &packet, EtherAddress &dest);
-  void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
-  String asString();
-  void receive(DibadawnPacket &packet);
-  void start_search();
-  bool isResponsibleFor(DibadawnPacket &packet);
-  void forwardTimeout(); 
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
+
+    void sendBroadcastWithTimeout(DibadawnPacket &packet);
+    void sendTo(DibadawnPacket &packet, EtherAddress &dest);
+    void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
+    String asString();
+    void receive(DibadawnPacket &packet);
+    void start_search();
+    bool isResponsibleFor(DibadawnPacket &packet);
+    void forwardTimeout();
 };
 
 CLICK_ENDDECLS

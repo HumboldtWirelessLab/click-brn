@@ -28,17 +28,18 @@
 
 CLICK_DECLS;
 
-class DibadawnCycle {
+class DibadawnCycle
+{
 public:
     static const size_t length = 10 + 6 + 6;
     String AsString();
 
     DibadawnCycle();
     DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
-    bool operator== (DibadawnCycle &b);
+    bool operator==(DibadawnCycle &b);
     void setData(const uint8_t *p);
     uint8_t* getData();
-    
+
 private:
     uint8_t contentAsBytes[length];
 };

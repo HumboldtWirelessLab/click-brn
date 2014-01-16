@@ -25,20 +25,21 @@
 
 CLICK_DECLS;
 
-class DibadawnSearchId {
+class DibadawnSearchId
+{
 public:
-  static const size_t length=10;  
-    
-  DibadawnSearchId(Timestamp t, const EtherAddress &creator);
-  DibadawnSearchId();
-  String AsString();
-  uint8_t* PointerTo10BytesOfData();
-  void setByPointerTo10BytesOfData(uint8_t *value);
-  bool isEqualTo(DibadawnSearchId &id);
-  DibadawnSearchId & operator = (const DibadawnSearchId &id);
+    static const size_t length = 10;
+
+    DibadawnSearchId(Timestamp t, const EtherAddress &creator);
+    DibadawnSearchId();
+    String AsString();
+    uint8_t* PointerTo10BytesOfData();
+    void setByPointerTo10BytesOfData(uint8_t *value);
+    bool isEqualTo(DibadawnSearchId &id);
+    DibadawnSearchId & operator =(const DibadawnSearchId &id);
 
 private:
-  uint8_t data[length];
+    uint8_t data[length];
 };
 
 CLICK_ENDDECLS

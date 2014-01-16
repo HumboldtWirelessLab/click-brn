@@ -34,7 +34,7 @@ CLICK_DECLS
 
 DibadawnCycle::DibadawnCycle()
 {
-  memset(contentAsBytes, '\0', sizeof(contentAsBytes));
+  memset(contentAsBytes, '\0', sizeof (contentAsBytes));
 }
 
 DibadawnCycle::DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2)
@@ -78,14 +78,14 @@ String DibadawnCycle::AsString()
   return (str);
 }
 
-bool DibadawnCycle::operator== (DibadawnCycle &other)
+bool DibadawnCycle::operator==(DibadawnCycle &other)
 {
-    return (0 == memcmp(contentAsBytes, other.contentAsBytes, sizeof(contentAsBytes)));
+  return (0 == memcmp(contentAsBytes, other.contentAsBytes, sizeof (contentAsBytes)));
 }
 
 void DibadawnCycle::setData(const uint8_t* p)
 {
-  memcpy(contentAsBytes, p, sizeof(contentAsBytes)); 
+  memcpy(contentAsBytes, p, sizeof (contentAsBytes));
 }
 
 uint8_t* DibadawnCycle::getData()

@@ -26,9 +26,9 @@ CLICK_DECLS
 void DibadawnEdgeMarkingContainer::add(DibadawnEdgeMarking &marking)
 {
   lock.acquire();
-  
+
   edgeMarkings.push_back(marking);
-  
+
   lock.release();
 }
 

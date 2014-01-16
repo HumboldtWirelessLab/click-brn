@@ -29,7 +29,8 @@
 
 CLICK_DECLS;
 
-class DibadawnEdgeMarking {
+class DibadawnEdgeMarking
+{
 public:
     Timestamp time;
     DibadawnSearchId id;
