@@ -18,19 +18,30 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
+#ifndef TOPOLOGY_DIBADAWN_CYCLE_HH
+#define TOPOLOGY_DIBADAWN_CYCLE_HH
 
-#include "topology_dibadawn_edgemarking_container.hh"
+#include <click/element.hh>
 
-CLICK_DECLS
+#include "searchid.hh"
 
-void DibadawnEdgeMarkingContainer::add(DibadawnEdgeMarking &marking)
-{
-  lock.acquire();
-  
-  edgeMarkings.push_back(marking);
-  
-  lock.release();
-}
+
+CLICK_DECLS;
+
+class DibadawnCycle {
+public:
+    static const size_t length = 10 + 6 + 6;
+    String AsString();
+
+    DibadawnCycle();
+    DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
+    bool operator== (DibadawnCycle &b);
+    void setData(const uint8_t *p);
+    uint8_t* getData();
+    
+private:
+    uint8_t contentAsBytes[length];
+};
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnEdgeMarkingContainer)
+#endif

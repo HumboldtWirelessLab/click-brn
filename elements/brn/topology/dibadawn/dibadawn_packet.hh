@@ -24,9 +24,9 @@
 #include <click/element.hh>
 #include <click/packet.hh>
 
-#include "topology_dibadawn_searchid.hh"
-#include "topology_dibadawn_cycle.hh"
-#include "topology_dibadawn_packet_payloadelement.hh"
+#include "searchid.hh"
+#include "cycle.hh"
+#include "payloadelement.hh"
 
 CLICK_DECLS;
 
@@ -34,18 +34,18 @@ class DibadawnPacket
 {
 public:
     DibadawnPacket();
-    DibadawnPacket(const Packet &packet);
-    DibadawnPacket(DibadawnSearchId &id, const EtherAddress &sender_addr, bool is_forward);
+    DibadawnPacket(Packet &packet);
+    DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward);
 
     void setVersion();
-    void setTreeParent(const EtherAddress *sender_addr);
-    void setForwaredBy(const EtherAddress *sender_addr);
+    void setTreeParent(EtherAddress *sender_addr);
+    void setForwaredBy(EtherAddress *sender_addr);
 
     WritablePacket* getBrnPacket(EtherAddress &dest);
     WritablePacket* getBrnBroadcastPacket();
     EtherAddress getBroadcastAddress();
 
-    static bool isValid(const Packet &packet);
+    static bool isValid(Packet &packet);
     bool isInvalid();
 
     void logTx(EtherAddress &thisNode, EtherAddress destination);

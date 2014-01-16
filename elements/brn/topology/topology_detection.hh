@@ -28,7 +28,7 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "topology_info.hh"
-#include "dibadawn/topology_dibadawn.hh"
+#include "dibadawn/dibadawn.hh"
 
 CLICK_DECLS
 

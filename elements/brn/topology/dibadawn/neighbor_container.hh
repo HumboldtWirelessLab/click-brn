@@ -18,26 +18,24 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
-#define TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
+#ifndef TOPOLOGY_DIBADAWN_NEIGHBOR_CONTAINER_HH
+#define TOPOLOGY_DIBADAWN_NEIGHBOR_CONTAINER_HH
 
+#include <click/element.hh>
+#include <click/packet.hh>
 
-
-#include <click/config.h>
-#include <click/sync.hh>
-
-#include "topology_dibadawn_edgemarking.hh"
-
+#include "neighbor.hh"
 
 CLICK_DECLS;
 
-class DibadawnEdgeMarkingContainer {
+class DibadawnNeighborContainer
+{
+    Vector<DibadawnNeighbor> neighbors;
 public:
-    void add(DibadawnEdgeMarking &marking);
+    size_t numOfNeighbors();
+    DibadawnNeighbor& getNeighbor(EtherAddress &addr);
+    DibadawnNeighbor& getNeighbor(int num);
 
-private:
-    Spinlock lock;
-    Vector<DibadawnEdgeMarking> edgeMarkings;
 };
 
 CLICK_ENDDECLS

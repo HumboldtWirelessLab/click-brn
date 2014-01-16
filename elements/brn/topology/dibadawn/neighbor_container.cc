@@ -26,52 +26,34 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_neighbor.hh"
-#include "topology_dibadawn_packet.hh"
+#include "neighbor_container.hh"
+
 
 CLICK_DECLS
 
-DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
+size_t DibadawnNeighborContainer::numOfNeighbors()
 {
-  address = addr;
+  return(neighbors.size());
 }
 
-bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
+DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(EtherAddress& addr)
 {
-  for (int i = 0; i < messages.size(); i++)
+  for(int i=0; i<neighbors.size(); i++)
   {
-    DibadawnPayloadElement& p1 = messages.at(i);
-    for (int j = 0; j < other.messages.size(); j++)
-    {
-      DibadawnPayloadElement& p2 = other.messages.at(j);
-
-      if (p1 == p2)
-        return (true);
-    }
+    DibadawnNeighbor &neighbor = neighbors.at(i);
+    if(addr == neighbor.address)
+      return(neighbor);
   }
-  return (false);
+  
+  int idx = neighbors.size();
+  neighbors.push_back(DibadawnNeighbor(addr));
+  return(neighbors.at(idx));
 }
 
-void DibadawnNeighbor::copyPayloadIfNecessary(DibadawnPayloadElement& src)
+DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(int num)
 {
-  if (!hasSameCycle(src))
-    messages.push_back(src);
+  return(neighbors.at(num));
 }
-
-bool DibadawnNeighbor::hasSameCycle(DibadawnPayloadElement& elem)
-{
-  for (int i = 0; i < messages.size(); i++)
-  {
-    DibadawnPayloadElement& elem2 = messages.at(i);
-    if (elem2.isBridge)
-      continue;
-
-    if (elem.cycle == elem2.cycle)
-      return (true);
-  }
-  return (false);
-}
-
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnNeighbor)
+ELEMENT_PROVIDES(DibadawnNeighborContainer)

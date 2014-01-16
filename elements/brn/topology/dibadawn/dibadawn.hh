@@ -18,34 +18,39 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_PACKET_PAYLOADELEMET_HH
-#define TOPOLOGY_DIBADAWN_PACKET_PAYLOADELEMET_HH
+#ifndef TOPOLOGY_DIBADAWN_HH
+#define TOPOLOGY_DIBADAWN_HH
 
 #include <click/element.hh>
-#include <click/packet.hh>
+#include <click/timer.hh>
+#include <click/vector.hh>
 
-#include "topology_dibadawn_searchid.hh"
-#include "topology_dibadawn_cycle.hh"
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "search.hh"
+#include "dibadawn_packet.hh"
+#include "edgemarking_container.hh"
+
 
 CLICK_DECLS;
 
-class DibadawnPayloadElement
+class DibadawnAlgorithm
 {
 public:
-    bool isBridge;
-    static const size_t length =
-            DibadawnCycle::length + 1/* one byte for isBrigde */;
-    DibadawnCycle cycle;
-
-    DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge);
-    DibadawnPayloadElement(DibadawnCycle &cycle);
-    DibadawnPayloadElement(const uint8_t *pBinaryData);
-    uint8_t* getData();
-    bool operator==(DibadawnPayloadElement &b);
-
-private:
-    uint8_t mayInconsistentlyData[length];
-
+    EtherAddress thisNode;
+    BRNElement *brn_click_element;
+    Vector<DibadawnSearch*> searches; 
+    
+    DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
+    
+public:
+    DibadawnEdgeMarkingContainer CommonEdgeMarkings;
+    
+    DibadawnAlgorithm();
+    DibadawnAlgorithm(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);
+    void receive(DibadawnPacket &packet);
+    void startNewSearch();
+    
 };
 
 CLICK_ENDDECLS

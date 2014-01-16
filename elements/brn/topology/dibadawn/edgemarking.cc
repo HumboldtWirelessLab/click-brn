@@ -17,26 +17,19 @@
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
  * or contact brn@informatik.hu-berlin.de. 
  */
+#include <click/config.h>
+#include <click/etheraddress.hh>
+#include <click/string.hh>
+#include <click/glue.hh>
+#include <click/type_traits.hh>
 
-#ifndef TOPOLOGY_DIBADAWN_NEIGHBOR_CONTAINER_HH
-#define TOPOLOGY_DIBADAWN_NEIGHBOR_CONTAINER_HH
+#include "elements/brn/brn2.h"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "edgemarking.hh"
 
-#include <click/element.hh>
-#include <click/packet.hh>
+CLICK_DECLS
 
-#include "topology_dibadawn_neighbor.hh"
-
-CLICK_DECLS;
-
-class DibadawnNeighborContainer
-{
-    Vector<DibadawnNeighbor> neighbors;
-public:
-    size_t numOfNeighbors();
-    DibadawnNeighbor& getNeighbor(EtherAddress &addr);
-    DibadawnNeighbor& getNeighbor(int num);
-
-};
 
 CLICK_ENDDECLS
-#endif
+ELEMENT_PROVIDES(DibadawnEdgeMarking)

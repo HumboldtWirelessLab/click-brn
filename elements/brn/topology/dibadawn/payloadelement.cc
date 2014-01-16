@@ -26,34 +26,43 @@
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "topology_dibadawn_neighbor_container.hh"
-
+#include "payloadelement.hh"
+#include "searchid.hh"
+#include "neighbor.hh"
 
 CLICK_DECLS
 
-size_t DibadawnNeighborContainer::numOfNeighbors()
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge)
+: cycle(id, nodeA, nodeB)
 {
-  return(neighbors.size());
+  this->isBridge = isBridge;
 }
 
-DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(EtherAddress& addr)
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle)
+: cycle(cycle)
 {
-  for(int i=0; i<neighbors.size(); i++)
-  {
-    DibadawnNeighbor &neighbor = neighbors.at(i);
-    if(addr == neighbor.address)
-      return(neighbor);
-  }
-  
-  int idx = neighbors.size();
-  neighbors.push_back(DibadawnNeighbor(addr));
-  return(neighbors.at(idx));
+  isBridge = false;
 }
 
-DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(int num)
+DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)
 {
-  return(neighbors.at(num));
+  isBridge = *p == 1;
+  cycle.setData(p + 1);
+}
+
+uint8_t* DibadawnPayloadElement::getData()
+{
+  mayInconsistentlyData[0] = isBridge;
+  memcpy(mayInconsistentlyData + 1, cycle.getData(), length - 1);
+  return (mayInconsistentlyData);
+}
+
+bool DibadawnPayloadElement::operator==(DibadawnPayloadElement &b)
+{
+  return (
+      isBridge == b.isBridge &&
+      cycle == b.cycle);
 }
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnNeighborContainer)
+ELEMENT_PROVIDES(DibadawnPacketPayloadElement)

@@ -18,28 +18,19 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_NEIGHBOR_HH
-#define TOPOLOGY_DIBADAWN_NEIGHBOR_HH
 
-#include <click/element.hh>
-#include <click/packet.hh>
+#include "edgemarking_container.hh"
 
-#include "topology_dibadawn_packet_payloadelement.hh"
+CLICK_DECLS
 
-CLICK_DECLS;
-
-class DibadawnNeighbor
+void DibadawnEdgeMarkingContainer::add(DibadawnEdgeMarking &marking)
 {
-public:
-    EtherAddress address;
-    Vector<DibadawnPayloadElement> messages;
-
-    DibadawnNeighbor(EtherAddress &addr);
-
-    bool hasNonEmptyIntersection(DibadawnNeighbor& other);
-    void copyPayloadIfNecessary(DibadawnPayloadElement& src);
-    bool hasSameCycle(DibadawnPayloadElement& elem);
-};
+  lock.acquire();
+  
+  edgeMarkings.push_back(marking);
+  
+  lock.release();
+}
 
 CLICK_ENDDECLS
-#endif
+ELEMENT_PROVIDES(DibadawnEdgeMarkingContainer)
