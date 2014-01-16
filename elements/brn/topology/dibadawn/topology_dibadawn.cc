@@ -49,7 +49,7 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
   DibadawnSearch *search = getResponsibleSearch(packet);
   if (search == NULL)
   {
-    search = new DibadawnSearch(brn_click_element, thisNode, packet.searchId);
+    search = new DibadawnSearch(brn_click_element, CommonEdgeMarkings, thisNode, packet.searchId);
     searches.push_back(search);
   }
   
@@ -70,7 +70,7 @@ DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 
 void DibadawnAlgorithm::startNewSearch()
 {
-  DibadawnSearch *search = new DibadawnSearch(brn_click_element, thisNode);
+  DibadawnSearch *search = new DibadawnSearch(brn_click_element, CommonEdgeMarkings, thisNode);
   searches.push_back(search);
   search->start_search();
 }
