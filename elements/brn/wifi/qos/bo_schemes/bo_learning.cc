@@ -29,7 +29,7 @@ BoLearning::BoLearning() :
   _bo_cnt_up(0),
   _bo_cnt_down(0),
   _learning_min_cwmin(31),
-  _learning_max_cwmin(255),
+  _learning_max_cwmin(1023),
   _cap(0)
 {
   BRNElement::init();
@@ -54,19 +54,14 @@ void * BoLearning::cast(const char *name)
 
 int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  uint32_t min_cwmin = -1;
-  uint32_t max_cwmin = -1;
-
   if (cp_va_kparse(conf, this, errh,
-      "MIN_CWMIN", cpkP, cpInteger, &min_cwmin,
-      "MAX_CWMIN", cpkP, cpInteger, &max_cwmin,
+      "MIN_CWMIN", cpkP, cpInteger, &_learning_min_cwmin,
+      "MAX_CWMIN", cpkP, cpInteger, &_learning_max_cwmin,
       "STRICT", cpkP, cpInteger, &_strict,
       "CAP", cpkP, cpInteger, &_cap,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  if ((min_cwmin > 0) && (max_cwmin > 0))
-    set_conf(min_cwmin, max_cwmin);
 
   return 0;
 }
@@ -88,7 +83,7 @@ int BoLearning::get_cwmin(Packet *p, uint8_t tos)
   (void) p;
   (void) tos;
 
-  return _current_bo;
+  return _current_bo - 1;
 }
 
 
@@ -101,8 +96,8 @@ void BoLearning::handle_feedback(uint8_t retries)
   if (retries < _retry_threshold && _current_bo > 1)
     decrease_cw();
   else if (retries == _retry_threshold)
-    keep_cw();
-    //increase_cw();
+    //keep_cw();
+    increase_cw();
   else if (retries > _retry_threshold) {
     if (_strict)
       increase_cw_strict(retries);
@@ -111,10 +106,10 @@ void BoLearning::handle_feedback(uint8_t retries)
   }
 
   if (_cap) {
-    if (_current_bo < _min_cwmin)
-      _current_bo = _min_cwmin;
-    else if (_current_bo > _max_cwmin)
-      _current_bo = _max_cwmin;
+    if (_current_bo < _learning_min_cwmin) {
+      _current_bo = _learning_min_cwmin;
+    } else if (_current_bo > _learning_max_cwmin)
+      _current_bo = _learning_max_cwmin;
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
@@ -138,7 +133,7 @@ void BoLearning::increase_cw()
 void BoLearning::increase_cw_strict(uint8_t retries)
 {
   _bo_cnt_up += (retries - _retry_threshold);
-  _current_bo = _current_bo << (retries - _retry_threshold);
+  _current_bo = _current_bo << retries;
 }
 
 

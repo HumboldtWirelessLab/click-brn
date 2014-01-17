@@ -117,10 +117,12 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
   _lt->get_local_neighbors(neighbors);
 
   if ( neighbors.size() > 0 ) {
+    //find the first neighbour
     int i = 0;
     for (;i < neighbors.size(); i++) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
         gpspos = _gps_map->lookup(neighbors[i]);
+        if ( gpspos == NULL ) continue;
         best = i;
         min_dist = finpos.getDistance(gpspos);
         BRN_INFO("Check distance to %s: %d",neighbors[0].unparse().c_str(),min_dist);
@@ -133,6 +135,7 @@ GeorTable::getClosestNeighbour(struct gps_position *pos, EtherAddress *ea)
     for( ; i < neighbors.size(); i++ ) {
       if ( _lt->get_host_metric_from_me(neighbors[i]) < 700 ) {
         gpspos = _gps_map->lookup(neighbors[i]);
+        if ( gpspos == NULL ) continue;
         BRN_INFO("Check distance to %s: %d",neighbors[i].unparse().c_str(),finpos.getDistance(gpspos));
         if ( finpos.getDistance(gpspos) < min_dist ) {
           best = i;

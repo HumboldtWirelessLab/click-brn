@@ -42,14 +42,11 @@ private:
 
 
 private:
-  static const uint16_t _bo_start = 1023; // initial backoff
-
-  static const uint8_t _busy_param  = 5;  // busy strategy wiggle room
+  static const uint16_t _bo_start = 32; // initial backoff
   static const uint8_t _tdiff_param = 3;  // target diff strategy wiggle room
-  //static const uint8_t _tx_param    = 5;
 
-  static const uint16_t _cla_min_cwmin = 31;
-  static const uint16_t _cla_max_cwmin = 255;
+  static const uint16_t _cla_min_cwmin = 16;
+  static const uint16_t _cla_max_cwmin = 1024;
 
   ChannelStats *_cst;
 
@@ -58,13 +55,10 @@ private:
 
   /* busy aware */
   uint32_t _target_busy;
-  uint32_t _busy_lwm;
-  uint32_t _busy_hwm;
 
   /* target diff strategy */
   uint32_t _target_diff;
-  uint32_t _tdiff_lwm;
-  uint32_t _tdiff_hwm;
+  uint32_t _last_diff;
 
   /* activate bo cap at lower/upper bound */
   uint8_t _cap;

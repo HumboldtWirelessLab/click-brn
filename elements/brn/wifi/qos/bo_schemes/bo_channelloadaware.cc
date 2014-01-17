@@ -23,14 +23,11 @@ BoChannelLoadAware::BoChannelLoadAware()
     _strategy(0),
     _current_bo(_bo_start),
     _target_busy(0),
-    _busy_lwm(0),
-    _busy_hwm(0),
     _target_diff(0),
-    _tdiff_lwm(0),
-    _tdiff_hwm(0),
+    _last_diff(0),
     _cap(0),
     _cst_sync(0),
-    _last_id(9999)
+    _last_id(998)
 {
   BRNElement::init();
 }
@@ -60,13 +57,6 @@ int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  /* low & high water marks */
-  _busy_lwm = (int32_t) _target_busy - _busy_param;
-  _busy_hwm = (int32_t) _target_busy + _busy_param;
-
-  _tdiff_lwm = (int32_t) _target_busy - _tdiff_param;
-  _tdiff_hwm = (int32_t) _target_busy + _tdiff_param;
-
   return 0;
 }
 
@@ -84,6 +74,16 @@ bool BoChannelLoadAware::handle_strategy(uint32_t strategy)
   default:
     return false;
   }
+}
+
+static uint32_t find_closest_backoff(uint32_t bo)
+{
+  uint32_t c_bo = 1;
+
+  while (c_bo < bo)
+    c_bo = c_bo << 1;
+
+  return c_bo;
 }
 
 int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
@@ -104,21 +104,42 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
   switch(_strategy) {
   case BACKOFF_STRATEGY_BUSY_AWARE: {
-    uint32_t wiggle_room = _target_busy / 10;
+    uint32_t wiggle_room = _target_busy / 20; // 5%
+
     BRN_DEBUG("    busy: %d _target_channel: %d wm param %d\n", as->hw_busy, _target_busy, wiggle_room);
+    //BRN_DEBUG("    nbs = %d\n", as->no_sources);
+
+    if (as->no_sources == 0)
+      break;
+
     if ((as->hw_busy < (_target_busy - wiggle_room)) && ((int32_t)_current_bo > 1))
+    //if ((as->hw_busy < _target_busy) && ((int32_t)_current_bo > 1))
       decrease_cw();
-    else if (as->hw_busy > (_target_busy + wiggle_room))
+    //else if (as->hw_busy > (_target_busy + wiggle_room))
+    else if (as->hw_busy > _target_busy)
       increase_cw();
     break;
 
   } case BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY: {
-    uint32_t diff = as->hw_busy - (as->hw_tx + as->hw_rx);
-    BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _target_diff: %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _target_diff);
-    if ((diff < _tdiff_lwm) && ((int32_t)_current_bo > 1))
+    int32_t diff = as->hw_busy - (as->hw_tx + as->hw_rx);
+    if (diff < 0)
+      diff = 0;
+
+    uint32_t wiggle_room = 0; // no. nbs?
+
+    //BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d _target_diff: %d wm param %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff, _target_diff, wiggle_room);
+    BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff);
+
+    if ((diff == 0) && (_last_diff == 0))
       decrease_cw();
-    else if (diff > _tdiff_hwm)
+    else if ((diff == 0) && (_last_diff != 0))
+      _current_bo = _current_bo;
+    else if (diff < (int)(_last_diff - wiggle_room))
+      decrease_cw();
+    else if (diff > (int)(_last_diff + wiggle_room))
       increase_cw();
+
+    _last_diff = diff;
     break;
 
   } case BACKOFF_STRATEGY_TX_AWARE: {
@@ -133,8 +154,8 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     BRN_DEBUG("    tx: %d target tx: %d wm param: %d\n", as->hw_tx, target_tx, wiggle_room);
     if (as->hw_tx < (target_tx - wiggle_room))
       decrease_cw();
-    else if (as->hw_tx > (target_tx + wiggle_room))
-      increase_cw();
+    else if (as->hw_tx > target_tx)
+        increase_cw();
     break;
 
   } default:
@@ -142,15 +163,21 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
   }
 
   if (_cap) {
-    if (_current_bo < _cla_min_cwmin)
-      _current_bo = _cla_min_cwmin;
-    else if (_current_bo > _cla_max_cwmin)
-      _current_bo = _cla_max_cwmin;
+    uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
+    //BRN_DEBUG("    lower bound: %d current_bo: %d\n", lower_bound, _current_bo);
+
+    if ((int) _current_bo < lower_bound)
+      _current_bo = lower_bound;
+
+//    if (_current_bo < _cla_min_cwmin)
+//     _current_bo = _cla_min_cwmin;
+//   else if (_current_bo > _cla_max_cwmin)
+//      _current_bo = _cla_max_cwmin;
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
 
-  return _current_bo;
+  return _current_bo - 1;
 }
 
 void BoChannelLoadAware::handle_feedback(uint8_t retries)
@@ -178,7 +205,6 @@ void BoChannelLoadAware::decrease_cw()
 {
   _current_bo = _current_bo >> 1;
 }
-
 
 
 CLICK_ENDDECLS

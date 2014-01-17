@@ -201,6 +201,8 @@ TopologyDetection::handle_detection_backward(Packet *packet)
     _response_timer.unschedule();
     _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
   }
+
+  packet->kill();
 }
 
 void
