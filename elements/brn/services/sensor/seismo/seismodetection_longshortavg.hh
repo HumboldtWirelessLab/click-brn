@@ -112,6 +112,12 @@ class SlidingWindow {
   SlidingWindow() {
     SlidingWindow(SEISMO_REPORT_DEFAULT_SHORT_INTERVAL,SEISMO_REPORT_DEFAULT_LONG_INTERVAL);
   }
+  
+  ~SlidingWindow() {
+    delete[] _raw;
+    delete[] _fixed_value;
+    _raw = _fixed_value = NULL;
+  }
 
   inline int32_t add_data(int32_t value) {
     //Set flags to mark that new data is available and stats need to be recalculate
