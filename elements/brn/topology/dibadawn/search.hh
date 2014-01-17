@@ -55,7 +55,7 @@ private:
     Timer *forwardSendTimer;
     DibadawnSearchId searchId;
     Vector<DibadawnPacket*> crossEdges;
-    DibadawnEdgeMarkingContainer *commonEdgeMarkings;
+    DibadawnStatistic *commonStatistic;
     Vector<DibadawnPayloadElement> messageBuffer;
     DibadawnNeighborContainer adjacents;
     bool isArticulationPoint;
@@ -65,7 +65,7 @@ private:
     uint8_t maxTtl;
     BRNElement *brn_click_element;
 
-    void initCommon(BRNElement *click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
+    void initCommon(BRNElement *click_element, DibadawnStatistic &edgeMarkings, const EtherAddress &addrOfThisNode);
     void activateForwardTimer(DibadawnPacket &packet);
     void activateForwardSendTimer(DibadawnPacket &packet);
     void receiveForwardMessage(DibadawnPacket &packet);
@@ -75,7 +75,6 @@ private:
     void forwardMessages();
     void detectArticulationPoints();
     void voteForAccessPointsAndBridges();
-    void AccessPointDetection();
     bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
     void setParentNull();
     bool isParentNull();
@@ -84,8 +83,8 @@ private:
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
 
 public:
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode);
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnEdgeMarkingContainer &edgeMarkings, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnStatistic &edgeMarkings, const EtherAddress &addrOfThisNode);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnStatistic &edgeMarkings, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
 
     void sendBroadcastWithTimeout(DibadawnPacket &packet);
     void sendTo(DibadawnPacket &packet, EtherAddress &dest);

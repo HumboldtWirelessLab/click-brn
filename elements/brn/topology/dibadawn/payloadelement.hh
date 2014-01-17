@@ -42,6 +42,7 @@ public:
     DibadawnPayloadElement(const uint8_t *pBinaryData);
     uint8_t* getData();
     bool operator==(DibadawnPayloadElement &b);
+    void print(String pre);
 
 private:
     uint8_t mayInconsistentlyData[length];

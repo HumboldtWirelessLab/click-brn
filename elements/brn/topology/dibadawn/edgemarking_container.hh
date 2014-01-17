@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
-#define TOPOLOGY_DIBADAWN_EDGEMARKING_CONTAINER_HH
+#ifndef TOPOLOGY_DIBADAWN_STATISTIC_HH
+#define TOPOLOGY_DIBADAWN_STATISTIC_HH
 
 
 
@@ -31,14 +31,16 @@
 
 CLICK_DECLS;
 
-class DibadawnEdgeMarkingContainer
+class DibadawnStatistic
 {
 public:
-    void add(DibadawnEdgeMarking &marking);
+    void updateEdgeMarking(DibadawnEdgeMarking &marking);
+    DibadawnStatistic();
 
 private:
     Spinlock lock;
     Vector<DibadawnEdgeMarking> edgeMarkings;
+    int maxMarkings;
 };
 
 CLICK_ENDDECLS

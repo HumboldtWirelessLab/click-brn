@@ -40,16 +40,38 @@ bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
 {
   for (int i = 0; i < messages.size(); i++)
   {
-    DibadawnPayloadElement& p1 = messages.at(i);
+    DibadawnPayloadElement& elemA = messages.at(i);
     for (int j = 0; j < other.messages.size(); j++)
     {
-      DibadawnPayloadElement& p2 = other.messages.at(j);
+      DibadawnPayloadElement& elemB = other.messages.at(j);
 
-      if (p1 == p2)
+      if (elemA == elemB)
         return (true);
     }
   }
   return (false);
+}
+
+void DibadawnNeighbor::printIntersection(EtherAddress &thisNode, DibadawnNeighbor& other)
+{
+  click_chatter("<Intersection node='%s' nodeA='%s' nodeB='%s' >",
+      thisNode.unparse().c_str(),
+      address.unparse().c_str(),
+      other.address.unparse().c_str());
+
+  for (int i = 0; i < messages.size(); i++)
+  {
+    DibadawnPayloadElement& elemA = messages.at(i);
+    for (int j = 0; j < other.messages.size(); j++)
+    {
+      DibadawnPayloadElement& elemB = other.messages.at(j);
+
+      if (elemA == elemB)
+        elemA.print("  ");
+    }
+  }
+
+  click_chatter("</Intersection>");
 }
 
 void DibadawnNeighbor::copyPayloadIfNecessary(DibadawnPayloadElement& src)

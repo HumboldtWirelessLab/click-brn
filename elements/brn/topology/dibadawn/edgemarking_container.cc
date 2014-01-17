@@ -23,14 +23,23 @@
 
 CLICK_DECLS
 
-void DibadawnEdgeMarkingContainer::add(DibadawnEdgeMarking &marking)
+
+DibadawnStatistic::DibadawnStatistic()
+{
+  maxMarkings = 3;
+}
+
+void DibadawnStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
 {
   lock.acquire();
 
   edgeMarkings.push_back(marking);
+  if (edgeMarkings.size() > maxMarkings)
+    edgeMarkings.pop_front();
 
   lock.release();
 }
 
+
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnEdgeMarkingContainer)
+ELEMENT_PROVIDES(DibadawnStatistic)
