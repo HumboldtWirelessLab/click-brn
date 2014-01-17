@@ -36,15 +36,14 @@ class BinaryMatrix
 {
   bool *matrix;
   size_t dimension;
-  bool printDebug;
-
+  
 public:
 
   BinaryMatrix(size_t n)
   {
     dimension = n;
-    printDebug = false;
     matrix = new bool[dimension];
+    setZeroMatrix();
   }
 
   ~BinaryMatrix()
@@ -55,6 +54,13 @@ public:
   void setTrue(size_t row, size_t col)
   {
     matrix[row * dimension + col] = true;
+  }
+
+  void setZeroMatrix()
+  {
+    for (size_t col = 0; col < dimension; col++)
+      for (size_t row = 0; row < dimension; row++)
+        matrix[row * dimension + col] = 0;
   }
 
   void runMarshallAlgo()
@@ -124,19 +130,19 @@ void forwardTimeoutCallback(Timer*, void *search)
 
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
-    DibadawnEdgeMarkingContainer &edgeMarkings,
+    DibadawnStatistic &statistic,
     const EtherAddress &addrOfThisNode)
 {
-  initCommon(click_element, edgeMarkings, addrOfThisNode);
+  initCommon(click_element, statistic, addrOfThisNode);
 }
 
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
-    DibadawnEdgeMarkingContainer &edgeMarkings,
+    DibadawnStatistic &statistic,
     const EtherAddress &addrOfThisNode,
     DibadawnSearchId &id)
 {
-  initCommon(click_element, edgeMarkings, addrOfThisNode);
+  initCommon(click_element, statistic, addrOfThisNode);
 
   searchId = id;
   visited = false;
@@ -144,10 +150,10 @@ DibadawnSearch::DibadawnSearch(
 
 void DibadawnSearch::initCommon(
     BRNElement *click_element,
-    DibadawnEdgeMarkingContainer &edgeMarkings,
+    DibadawnStatistic &statistic,
     const EtherAddress &thisNode)
 {
-  commonEdgeMarkings = &edgeMarkings;
+  commonStatistic = &statistic;
   brn_click_element = click_element;
   addrOfThisNode = thisNode;
   maxTraversalTimeMs = 40;
@@ -183,7 +189,7 @@ void DibadawnSearch::detectCycles()
     marking.isBridge = false;
     marking.nodeA = addrOfThisNode;
     marking.nodeB = crossEdgePacket.forwardedBy;
-    commonEdgeMarkings->add(marking);
+    commonStatistic->updateEdgeMarking(marking);
 
     DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
     click_chatter("<Cycle id='%s' />", cycle.AsString().c_str());
@@ -209,11 +215,15 @@ void DibadawnSearch::forwardMessages()
     addBridgeEdgeMarking(addrOfThisNode, parent);
 
     DibadawnPayloadElement bridge(searchId, addrOfThisNode, parent, true);
+    
     DibadawnPacket packet(searchId, addrOfThisNode, false);
     packet.treeParent = parent;
     packet.ttl = maxTtl;
     packet.payload.push_back(bridge);
     sendTo(packet, parent);
+    
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parent);
+    neighbor.messages.push_back(bridge);
   }
   else
   {
@@ -237,7 +247,7 @@ void DibadawnSearch::forwardMessages()
       marking.isBridge = false;
       marking.nodeA = addrOfThisNode;
       marking.nodeB = parent;
-      commonEdgeMarkings->add(marking);
+      commonStatistic->updateEdgeMarking(marking);
     }
 
     messageBuffer.clear();
@@ -263,7 +273,10 @@ void DibadawnSearch::detectArticulationPoints()
       DibadawnNeighbor &nodeB = adjacents.getNeighbor(col);
 
       if (nodeA.hasNonEmptyIntersection(nodeB))
+      {
+        nodeA.printIntersection(addrOfThisNode, nodeB);
         closure.setTrue(row, col);
+      }
     }
   }
 
@@ -432,7 +445,7 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   marking.isBridge = true;
   marking.nodeA = nodeA;
   marking.nodeB = nodeB;
-  commonEdgeMarkings->add(marking);
+  commonStatistic->updateEdgeMarking(marking);
 
   click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' />",
       this->addrOfThisNode.unparse_dash().c_str(),
@@ -462,14 +475,14 @@ void DibadawnSearch::pairCyclesIfPossible(DibadawnPacket& packet)
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        commonEdgeMarkings->add(marking);
+        commonStatistic->updateEdgeMarking(marking);
 
         marking.time = Timestamp::now();
         marking.id = packet.searchId;
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        commonEdgeMarkings->add(marking);
+        commonStatistic->updateEdgeMarking(marking);
 
         packet.removeCycle(e);
         continue;
@@ -516,31 +529,6 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
 {
   DibadawnPayloadElement elem(cycleId);
   messageBuffer.push_back(elem);
-}
-
-void DibadawnSearch::AccessPointDetection()
-{
-  size_t n = adjacents.numOfNeighbors();
-  if (n < 1)
-    return;
-
-  BinaryMatrix m(n);
-  for (size_t i = 0; i < n; i++)
-  {
-    for (size_t j = i; j < n; j++)
-    {
-      DibadawnNeighbor& n1 = adjacents.getNeighbor(i);
-      DibadawnNeighbor& n2 = adjacents.getNeighbor(j);
-
-      if (n1.hasNonEmptyIntersection(n2))
-      {
-        m.setTrue(j, i);
-        m.setTrue(i, j);
-      }
-    }
-  }
-  m.runMarshallAlgo();
-  isArticulationPoint = !m.isOneMatrix();
 }
 
 

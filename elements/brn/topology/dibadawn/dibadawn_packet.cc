@@ -210,9 +210,8 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String attr)
     click_chatter("  <Payload>");
     for (int i = 0; i < payload.size(); i++)
     {
-      click_chatter("    <PayloadElem isBridge='%d' cycleId='%s' />",
-          payload.at(i).isBridge,
-          payload.at(i).cycle.AsString().c_str());
+      DibadawnPayloadElement &elem = payload.at(i);
+      elem.print("    ");
     }
     click_chatter("  </Payload>");
   }

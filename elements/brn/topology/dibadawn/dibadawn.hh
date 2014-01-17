@@ -44,7 +44,7 @@ public:
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
 
 public:
-    DibadawnEdgeMarkingContainer CommonEdgeMarkings;
+    DibadawnStatistic commonStatistic;
 
     DibadawnAlgorithm();
     DibadawnAlgorithm(BRNElement *brn_click_element, const EtherAddress &addrOfThisNode);

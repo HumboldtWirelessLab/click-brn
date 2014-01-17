@@ -37,6 +37,7 @@ public:
     DibadawnNeighbor(EtherAddress &addr);
 
     bool hasNonEmptyIntersection(DibadawnNeighbor& other);
+    void printIntersection(EtherAddress &thisNode, DibadawnNeighbor& other);
     void copyPayloadIfNecessary(DibadawnPayloadElement& src);
     bool hasSameCycle(DibadawnPayloadElement& elem);
 };

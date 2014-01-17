@@ -29,6 +29,7 @@
 #include "payloadelement.hh"
 #include "searchid.hh"
 #include "neighbor.hh"
+#include "dibadawn_packet.hh"
 
 CLICK_DECLS
 
@@ -62,6 +63,14 @@ bool DibadawnPayloadElement::operator==(DibadawnPayloadElement &b)
   return (
       isBridge == b.isBridge &&
       cycle == b.cycle);
+}
+
+void DibadawnPayloadElement::print(String pre)
+{
+   click_chatter("%s<PayloadElem isBridge='%d' cycleId='%s' />",
+       pre.c_str(),   
+       isBridge,
+       cycle.AsString().c_str());
 }
 
 CLICK_ENDDECLS
