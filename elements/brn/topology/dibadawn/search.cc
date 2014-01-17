@@ -28,89 +28,10 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "neighbor_container.hh"
+#include "binarymatrix.hh"
 
 
 CLICK_DECLS;
-
-class BinaryMatrix
-{
-  bool *matrix;
-  size_t dimension;
-  
-public:
-
-  BinaryMatrix(size_t n)
-  {
-    dimension = n;
-    matrix = new bool[dimension];
-    setZeroMatrix();
-  }
-
-  ~BinaryMatrix()
-  {
-    delete[](matrix);
-  }
-
-  void setTrue(size_t row, size_t col)
-  {
-    matrix[row * dimension + col] = true;
-  }
-
-  void setZeroMatrix()
-  {
-    for (size_t col = 0; col < dimension; col++)
-      for (size_t row = 0; row < dimension; row++)
-        matrix[row * dimension + col] = 0;
-  }
-
-  void runMarshallAlgo()
-  {
-    for (size_t col = 0; col < dimension; col++)
-    {
-      for (size_t row = 0; row < dimension; row++)
-      {
-        if (matrix[row * dimension + col] == true)
-        {
-          for (size_t j = 0; j < dimension; j++)
-          {
-            matrix[row * dimension + j] =
-                matrix[row * dimension + j] || matrix[col * dimension + j];
-          }
-        }
-      }
-    }
-  }
-
-  void print(const char *nodeAddr)
-  {
-    click_chatter("<Matrix node='%s' >", nodeAddr);
-    for (size_t i = 0; i < dimension; i++)
-    {
-      String row_text = "";
-      for (size_t k = 0; k < dimension; k++)
-      {
-        if (k > 0)
-          row_text += ", ";
-        row_text += matrix[i * dimension + k] ? "1" : "0";
-      }
-      click_chatter("  <MatrixRow num='%d'>%s</MatrixRow>", i, row_text.c_str());
-    }
-    click_chatter("</Matrix>");
-  }
-
-  bool isOneMatrix()
-  {
-    for (size_t col = 0; col < dimension; col++)
-    {
-      for (size_t row = 0; row < dimension; row++)
-      {
-        if (matrix[row * dimension + col] == false)
-          return (false);
-      }
-    }
-    return (true);
-  }
-};
 
 void forwardSendTimerCallback(Timer*, void* p)
 {
