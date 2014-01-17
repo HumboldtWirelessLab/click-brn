@@ -139,6 +139,7 @@ int TLS::initialize(ErrorHandler *) {
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert2.pem" );
 		if (!SSL_CTX_load_verify_locations(ctx, dir,NULL)) {
 			print_err();
+                       delete[] dir;
 			return -1;
 		}
 	} else if(role==SERVER) {
@@ -151,6 +152,7 @@ int TLS::initialize(ErrorHandler *) {
 	if(!SSL_CTX_check_private_key(ctx)) {
 		BRN_ERROR("Gooong... Interesting, instead of a private key you found a chinese instrument ;)");
 		print_err();
+               delete[] dir;
 		return -1;
 	}
 
@@ -161,6 +163,7 @@ int TLS::initialize(ErrorHandler *) {
 
 	BRN_INFO("initialized");
 
+        delete[] dir;
 	return 0;
 }
 
