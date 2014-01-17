@@ -30,7 +30,7 @@ DHTOperationHandler::~DHTOperationHandler()
 int
 DHTOperationHandler::handle_dht_operation(DHTOperation *op)
 {
-  int result;
+  int result = 0;
 
   CLASS_BRN_DEBUG("DHTOperationHandler: Handle DHT-Operation: %d",op->header.operation);
   //TODO: use switch-case and test for all possible combinations -> more readable ?? possible with lock ??
