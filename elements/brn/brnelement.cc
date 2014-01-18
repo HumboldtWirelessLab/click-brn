@@ -26,30 +26,18 @@
 
 CLICK_DECLS
 
-PacketPool *BRNElement::_packet_pool = NULL;
 int BRNElement::_ref_counter = 0;
 
 BRNElement::BRNElement() :
   _debug(BrnLogger::DEFAULT)
 {
-  if ( _packet_pool == NULL ) {
-    _ref_counter = 1;
-    _packet_pool = new PacketPool(PACKET_POOL_CAPACITY, PACKET_POOL_SIZE_STEPS,
-                                  PACKET_POOL_MIN_SIZE, PACKET_POOL_MAX_SIZE, DEFAULT_HEADROOM, DEFAULT_TAILROOM);
-  } else {
-    _ref_counter++;
-  }
+  _ref_counter++;
 }
 
 BRNElement::~BRNElement()
 {
   _ref_counter--;
   if ( _ref_counter == 0 ) {
-    if ( _packet_pool ) {
-      delete _packet_pool;
-      _packet_pool = NULL;
-    }
-
     BrnLogger::destroy();
   }
 }
@@ -64,29 +52,9 @@ String
 BRNElement::get_node_name()
 {
   return BRN_NODE_NAME;
-}  
-
-void
-BRNElement::packet_kill(Packet *p)
-{
-  if ( BRNElement::_packet_pool ) {
-    BRNElement::_packet_pool->insert(p);
-  } else {
-    p->kill();
-  }
 }
 
-WritablePacket *
-BRNElement::packet_new(uint32_t headroom, uint8_t *data, uint32_t size, uint32_t tailroom)
-{
-  if ( BRNElement::_packet_pool ) {
-    return BRNElement::_packet_pool->get(headroom, data, size, tailroom);
-  } else {
-    return WritablePacket::make(headroom, data, size, tailroom);
-  }
-}
-
-enum {H_DEBUG, H_PACKETPOOL};
+enum {H_DEBUG};
 
 static String
 read_brnelement(Element *e, void *thunk)
@@ -95,12 +63,6 @@ read_brnelement(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
   case H_DEBUG:
     return String(td->_debug) + "\n";
-  case H_PACKETPOOL:
-    if ( BRNElement::_packet_pool ) {
-      return BRNElement::_packet_pool->stats();
-    } else {
-      return String();
-    }
   default:
     return String();
   }
@@ -130,7 +92,6 @@ void
 BRNElement::add_handlers()
 {
   add_read_handler("debug", read_brnelement, (void *) H_DEBUG);
-  add_read_handler("packetpool", read_brnelement, (void *) H_PACKETPOOL);
 
   add_write_handler("debug", write_brnelement, (void *) H_DEBUG);
 }
