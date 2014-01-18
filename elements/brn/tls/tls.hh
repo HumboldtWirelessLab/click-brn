@@ -73,7 +73,7 @@ public:
 	}
 
 	void refresh() {
-               if ( conn != NULL ) SSL_free(conn);
+    //if ( conn != NULL ) SSL_free(conn);
 		conn = SSL_new(ctx);
 		SSL_set_bio(conn,bioIn,bioOut);
 		SSL_set_read_ahead(conn, 1);
@@ -117,7 +117,6 @@ public:
 	unsigned int get_traffic_cnt();
 
 private:
-	int _debug;
 	EtherAddress _me;
 	EtherAddress _ks_addr;
 
