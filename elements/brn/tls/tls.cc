@@ -53,7 +53,6 @@
 CLICK_DECLS
 
 TLS::TLS()
-	: _debug(false)
 {
 	BRNElement::init();
 }
@@ -302,13 +301,22 @@ void TLS::encrypt(Packet *p) {
 	if(p->length() <= 0){
 		BRN_ERROR("SSL_write with bufsize=0 is undefined.");
 		print_err();
+    p->kill();
 		return;
 	}
 
-	int ret = SSL_write(curr->conn,p->data(),p->length());
+	int ret = 0;
+
+  if (curr->conn == NULL ) {
+    BRN_ERROR("No SSL-Conn");
+  } else {
+	  ret = SSL_write(curr->conn,p->data(),p->length());
+  }
+
 	if(ret>0) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
 		snd_data();
+    p->kill();
 	} else {
 
 		BRN_DEBUG("SSL not ready... storing data while trying to ssl-connect");
