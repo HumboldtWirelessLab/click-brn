@@ -74,7 +74,7 @@ NHopNeighbouringPing::initialize(ErrorHandler *)
 
   _timer.initialize(this);
 
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _timer.schedule_after_msec( _interval + ( click_random() % _interval ));
 

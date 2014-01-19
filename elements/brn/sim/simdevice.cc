@@ -99,6 +99,8 @@ static char abg_mode[] = { 'b', 'b', 'b', 'b', 'g', 'g', 'g', 'g', 'g', 'g', 'g'
 int
 SimDevice::initialize(ErrorHandler *errh)
 {
+  click_brn_srandom();
+
   for ( _rx_range_size = 0; rx_range[_rx_range_size] != -1; _rx_range_size++);
 
   if (!_ifname)

@@ -22,11 +22,16 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 
+#if CLICK_NS
+#include <click/router.hh>
+#endif
+
 #include "brnelement.hh"
 
 CLICK_DECLS
 
 int BRNElement::_ref_counter = 0;
+bool BRNElement::_init_rand = false;
 
 BRNElement::BRNElement() :
   _debug(BrnLogger::DEFAULT)
@@ -46,6 +51,23 @@ void
 BRNElement::init(void)
 {
   _debug = BrnLogger::DEFAULT;
+}
+
+void
+BRNElement::click_brn_srandom(void)
+{
+  if (!_init_rand) {
+#if CLICK_NS
+    uint32_t init_seed = 0;
+    simclick_sim_command(router()->simnode(), SIMCLICK_GET_RANDOM_INT, &init_seed, (uint32_t)0x9FFFFFFF);
+    click_srandom(init_seed);
+    srand(init_seed);
+    click_chatter("Init seed: %d", init_seed);
+#else
+    click_random_srandom();
+#endif
+    _init_rand = true;
+  }
 }
 
 String

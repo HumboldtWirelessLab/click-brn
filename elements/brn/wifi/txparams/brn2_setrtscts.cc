@@ -40,6 +40,7 @@ void Brn2_SetRTSCTS::address_broadcast_insert()
 }
 
 int Brn2_SetRTSCTS::initialize(ErrorHandler *) {
+  click_brn_srandom();
 	address_broadcast_insert();
 	return 0;
 }

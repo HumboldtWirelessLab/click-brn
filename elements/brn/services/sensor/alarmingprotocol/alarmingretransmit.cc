@@ -66,7 +66,7 @@ AlarmingRetransmit::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 AlarmingRetransmit::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   _timer.initialize(this);
   return 0;

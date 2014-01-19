@@ -64,6 +64,8 @@ BatmanRoutingTable::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BatmanRoutingTable::initialize(ErrorHandler *)
 {
+  click_brn_srandom();
+
   return 0;
 }
 

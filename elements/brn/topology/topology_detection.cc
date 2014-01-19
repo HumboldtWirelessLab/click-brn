@@ -67,7 +67,7 @@ TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 TopologyDetection::initialize(ErrorHandler *)
 {
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _detection_timer.initialize(this);
   _response_timer.initialize(this);

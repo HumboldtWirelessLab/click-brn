@@ -2,7 +2,9 @@
 #define FALCON_SUCCESSOR_MAINTENANCE_HH
 #include <click/element.hh>
 
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/packetsendbuffer.hh"
+
 #include "falcon_routingtable.hh"
 
 #include "elements/brn/routing/hawk/hawk_routingtable.hh"
@@ -18,7 +20,7 @@ CLICK_DECLS
 #define FALCON_OPT_SUCC_HINT 2
 #define FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT 3
 
-class FalconSuccessorMaintenance : public Element
+class FalconSuccessorMaintenance : public BRNElement
 {
   public:
     FalconSuccessorMaintenance();
