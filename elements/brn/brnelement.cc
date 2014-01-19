@@ -62,7 +62,6 @@ BRNElement::click_brn_srandom(void)
     simclick_sim_command(router()->simnode(), SIMCLICK_GET_RANDOM_INT, &init_seed, (uint32_t)0x9FFFFFFF);
     click_srandom(init_seed);
     srand(init_seed);
-    click_chatter("Init seed: %d", init_seed);
 #else
     click_random_srandom();
 #endif
