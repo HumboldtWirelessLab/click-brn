@@ -77,7 +77,7 @@ int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
 
 int DHTStorageTest::initialize(ErrorHandler *)
 {
-  click_srandom(_dht_storage->_dht_routing->_me->_ether_addr.hashcode());
+  click_brn_srandom();
 
   _request_timer.initialize(this);
 

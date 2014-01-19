@@ -57,7 +57,7 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 ProbabilityFlooding::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
   return 0;
 }
 

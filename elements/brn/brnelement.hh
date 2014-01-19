@@ -39,10 +39,12 @@ class BRNElement : public Element {
   void init(void);
 
   String get_node_name();
+  void click_brn_srandom(void);
 
   int _debug;
 
   static int _ref_counter;
+  static bool _init_rand;
 
 };
 

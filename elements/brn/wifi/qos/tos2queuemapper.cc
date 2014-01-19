@@ -230,6 +230,13 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
   return 0;
 }
 
+int
+Tos2QueueMapper::initialize (ErrorHandler *)
+{
+  click_brn_srandom();
+  return 0;
+}
+
 BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
 {
   for (uint16_t i = 0; i < _no_schemes; i++) {

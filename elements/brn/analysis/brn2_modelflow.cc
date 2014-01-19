@@ -18,6 +18,7 @@ CLICK_DECLS
 BRN2ModelFlow::BRN2ModelFlow()
   : _timer(this)
 {
+  BRNElement::init();
 }
 
 BRN2ModelFlow::~BRN2ModelFlow()
@@ -107,7 +108,7 @@ int BRN2ModelFlow::configure(Vector<String> &conf, ErrorHandler *errh)
 
 int BRN2ModelFlow::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   _timer.initialize(this);
   _timer.schedule_after_msec( getNextPacketTime() );

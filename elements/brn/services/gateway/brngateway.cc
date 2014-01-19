@@ -49,6 +49,7 @@ BRNGateway::BRNGateway() :
   _timer_update_dht(this),
   _update_dht_interval(DEFAULT_UPDATE_DHT_INTERVAL)
 {
+  BRNElement::init();
 }
 
 BRNGateway::~BRNGateway() {}
@@ -86,7 +87,7 @@ BRNGateway::configure(Vector<String> &conf, ErrorHandler *errh) {
 
 int
 BRNGateway::initialize(ErrorHandler *errh) {
-  click_srandom(_my_eth_addr.hashcode());
+  click_brn_srandom();
   (void) (errh);
 
   _timer_update_dht.initialize(this);

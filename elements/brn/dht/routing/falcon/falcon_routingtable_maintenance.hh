@@ -2,8 +2,8 @@
 #define FALCON_ROUTINGTABLE_MAINTENANCE_HH
 #include <click/element.hh>
 
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/packetsendbuffer.hh"
-
 #include "elements/brn/routing/hawk/hawk_routingtable.hh"
 
 #include "falcon_routingtable.hh"
@@ -19,7 +19,7 @@ CLICK_DECLS
 #define FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT 3
 
 
-class FalconRoutingTableMaintenance : public Element
+class FalconRoutingTableMaintenance : public BRNElement
 {
   public:
     FalconRoutingTableMaintenance();

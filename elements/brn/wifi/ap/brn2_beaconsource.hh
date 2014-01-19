@@ -4,6 +4,7 @@
 #include <clicknet/ether.h>
 #include <click/timer.hh>
 
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/wifi/brn2_wirelessinfolist.hh"
 #include "elements/brn/wifi/txparams/brn2_setchannel.hh"
 
@@ -44,7 +45,7 @@ How often beacon packets are sent, in milliseconds.
 
 #define WIFI_ELEMID_CSA  37
 
-class BRN2BeaconSource : public Element { public:
+class BRN2BeaconSource : public BRNElement { public:
 
   BRN2BeaconSource();
   ~BRN2BeaconSource();

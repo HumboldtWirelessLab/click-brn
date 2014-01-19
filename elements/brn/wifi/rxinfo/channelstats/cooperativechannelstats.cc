@@ -52,7 +52,8 @@ int CooperativeChannelStats::configure(Vector<String> &conf, ErrorHandler* errh)
 int CooperativeChannelStats::initialize(ErrorHandler */*errh*/)
 {
     BRN_DEBUG("init");
-    click_srandom((int)this);
+
+    click_brn_srandom();
 
     _msg_timer.initialize(this);
 

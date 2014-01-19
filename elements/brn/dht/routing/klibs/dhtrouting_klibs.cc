@@ -116,7 +116,7 @@ rx_handler(void *element, EtherAddress */*src*/, char */*buffer*/, int /*size*/,
 int
 DHTRoutingKlibs::initialize(ErrorHandler *)
 {
-  click_srandom(_me->_ether_addr.hashcode());
+  click_brn_srandom();
 
   if ( _linkstat )
     _linkstat->registerHandler(this,0,&tx_handler,&rx_handler);

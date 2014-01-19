@@ -84,7 +84,7 @@ int
 DistTimeSync::initialize(ErrorHandler *)
 {
 #if CLICK_NS
-  click_srandom(_linkstat->_dev->getEtherAddress()->hashcode());
+  click_brn_srandom();
 
   if (_time_drift < 0)
     _time_drift = click_random(1, 20);

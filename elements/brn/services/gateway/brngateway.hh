@@ -21,10 +21,10 @@
 #ifndef BRNGATEWAY_HH
 #define BRNGATEWAY_HH
 
-
-//#include <elements/brn/brnelement.hh>
 #include <click/bighashmap.hh>
 #include <click/router.hh>
+
+#include "elements/brn/brnelement.hh"
 
 #include "elements/brn/dht/storage/dhtoperation.hh"
 #include "elements/brn/dht/storage/dhtstorage.hh"
@@ -200,7 +200,7 @@ typedef HashMap<EtherAddress, BRNGatewayEntry> BRNGatewayList;
 
 /* ===================================================================================== */
 
-class BRNGateway : public Element {
+class BRNGateway : public BRNElement {
   public:
 
     class RequestInfo {

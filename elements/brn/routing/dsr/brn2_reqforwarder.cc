@@ -106,7 +106,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _sendbuffer_timer.initialize(this);
 
