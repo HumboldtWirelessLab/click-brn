@@ -78,7 +78,10 @@ class SlidingWindow {
 
  public:
 
-  SlidingWindow(uint32_t window_size, int32_t history_size)  {
+  void init(uint32_t window_size, int32_t history_size) {
+    if (_raw) delete[] _raw;
+    if (_fixed_value) delete[] _fixed_value;
+
     _history_size = history_size;
     _history_index = -1;  //point to the last val. at the beginning it is -1
     _history_complete = false;
@@ -109,13 +112,17 @@ class SlidingWindow {
 
   }
 
-  SlidingWindow() {
-    SlidingWindow(SEISMO_REPORT_DEFAULT_SHORT_INTERVAL,SEISMO_REPORT_DEFAULT_LONG_INTERVAL);
+  SlidingWindow(uint32_t window_size, int32_t history_size): _raw(NULL), _fixed_value(NULL) {
+    init(window_size, history_size);
   }
-  
+
+  SlidingWindow(): _raw(NULL), _fixed_value(NULL) {
+    init(SEISMO_REPORT_DEFAULT_SHORT_INTERVAL,SEISMO_REPORT_DEFAULT_LONG_INTERVAL);
+  }
+
   ~SlidingWindow() {
-    delete[] _raw;
-    delete[] _fixed_value;
+    if (_raw) delete[] _raw;
+    if (_fixed_value) delete[] _fixed_value;
     _raw = _fixed_value = NULL;
   }
 
