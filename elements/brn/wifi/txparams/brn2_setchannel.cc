@@ -6,6 +6,10 @@
 #include <click/userutils.hh>
 #include <unistd.h>
 
+#if CLICK_NS
+#include <click/router.hh>
+#endif
+
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "brn2_setchannel.hh"
 
@@ -62,7 +66,13 @@ BRN2SetChannel::simple_action(Packet *p_in)
 int
 BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHandler *errh)
 {
+#if CLICK_NS
+  (void)devname;
+  (void)errh;
+  simclick_sim_command(router()->simnode(), SIMCLICK_CHANGE_CHANNEL, 1, channel);
+#else
 #if CLICK_USERLEVEL
+  click_chatter("b");
   StringAccum cmda;
   if (access("/sbin/iwconfig", X_OK) == 0)
     cmda << "/sbin/iwconfig";
@@ -89,6 +99,7 @@ BRN2SetChannel::set_channel_iwconfig(const String &devname, int channel, ErrorHa
   String out = shell_command_output_string(cmd, "", errh);
   if (out)
     BRN_ERROR("%s: %s", cmd.c_str(), out.c_str());
+#endif
 #endif
 
   if (_device) _device->setChannel(channel);
@@ -134,6 +145,7 @@ setchannel_write_param(const String &in_s, Element *e, void */*vparam*/, ErrorHa
 
   if (!cp_integer(args[channel_index], &channel))
     return errh->error("channel parameter must be integer");
+
   sc->set_channel(channel);
 
   sc->set_channel_iwconfig(dev, channel, errh);
