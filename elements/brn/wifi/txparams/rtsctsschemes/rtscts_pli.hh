@@ -16,6 +16,8 @@ class RtsCtsPLI: public RtsCtsScheme {
   RtsCtsPLI();
   ~RtsCtsPLI();
 
+  const char *class_name() const { return "RtsCtsPLI"; }
+
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);

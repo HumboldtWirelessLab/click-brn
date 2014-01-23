@@ -21,7 +21,7 @@ RtsCtsPLI::~RtsCtsPLI()
 }
 
 int
-RtsCtsPLI::configure(Vector<String> &conf, ErrorHandler* errh) 
+RtsCtsPLI::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
     "PLI", cpkP, cpElement, &_pli,
@@ -62,5 +62,5 @@ RtsCtsPLI::set_rtscts(EtherAddress &dst, uint32_t /*size*/)
 }
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(RtsCtsPLI)
+EXPORT_ELEMENT(RtsCtsPLI)
 

@@ -37,5 +37,5 @@ RtsCtsPacketSize::set_rtscts(EtherAddress &/*dst*/, uint32_t size)
 }
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(RtsCtsPacketSize)
+EXPORT_ELEMENT(RtsCtsPacketSize)
 
