@@ -14,6 +14,8 @@ class RtsCtsRandom: public RtsCtsScheme {
   RtsCtsRandom();
   ~RtsCtsRandom();
 
+  const char *class_name() const { return "RtsCtsRandom"; }
+
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);

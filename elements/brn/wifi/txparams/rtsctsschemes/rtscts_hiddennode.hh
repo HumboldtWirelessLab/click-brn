@@ -17,6 +17,8 @@ class RtsCtsHiddenNode: public RtsCtsScheme {
   RtsCtsHiddenNode();
   ~RtsCtsHiddenNode();
 
+  const char *class_name() const { return "RtsCtsHiddenNode"; }
+
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);

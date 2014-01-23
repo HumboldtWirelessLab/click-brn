@@ -40,5 +40,5 @@ RtsCtsHiddenNode::set_rtscts(EtherAddress &/*dst*/, uint32_t /*size*/)
 }
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(RtsCtsHiddenNode)
+EXPORT_ELEMENT(RtsCtsHiddenNode)
 
