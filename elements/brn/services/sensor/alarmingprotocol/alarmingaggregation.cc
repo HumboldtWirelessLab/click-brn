@@ -79,7 +79,7 @@ AlarmingAggregation::pull(int /*port*/)
   Packet *p, *p_agg;
   Packet *p_out = NULL;
 
-  int p_out_ttl, p_agg_ttl;
+  int p_out_ttl = 0, p_agg_ttl = 0;
 
   do {
     p = input(0).pull();

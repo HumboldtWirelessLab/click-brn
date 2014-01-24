@@ -97,6 +97,7 @@ static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddres
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
+  click_brn_srandom();
   //don't move this to configure, since BRNNodeIdenty is not configured
   //completely while configure this element, so set_active can cause
   //seg, fault, while calling BRN_DEBUG in set_active

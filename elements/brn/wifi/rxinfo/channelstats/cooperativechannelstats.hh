@@ -33,13 +33,15 @@
 #include <click/timer.hh>
 
 #include "elements/brn/brn2.h"
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
-#include "elements/brn/brnelement.hh"
+
 #include "channelstats.hh"
-#include "packetlossestimator/packetlossestimationhelper/cooperativestatscircularbuffer.hh"
-#include "packetlossestimator/packetlossestimationhelper/nodechannelstats.hh"
+#include "cooperativechannelstats_protocol.hh"
+#include "nodechannelstats.hh"
+
 
 CLICK_DECLS
 
@@ -52,19 +54,6 @@ CLICK_DECLS
  =a
 
  */
-
-#define INCLUDES_NEIGHBOURS 1
-
-struct cooperative_channel_stats_header {
-    uint16_t endianess;      // endianess-test
-    uint8_t flags;          // flags
-    uint8_t no_neighbours;  // number of neighbours
-};
-
-struct cooperative_message_body {
-    struct cooperative_channel_stats_header ccsh;
-    struct neighbour_airtime_stats *nats_arr;
-};
 
 class CooperativeChannelStats : public BRNElement
 {
@@ -85,31 +74,21 @@ class CooperativeChannelStats : public BRNElement
 
     void push(int, Packet *p);
 
-    String stats_handler(int mode);
+    void send_message();  /* called by run_timer (creates msg and send it. */
 
-    void send_message();
+    String stats_handler(int mode); /* print info */
 
-    HashMap<EtherAddress, CooperativeStatsCircularBuffer*> neighbours_airtime_stats_history;
-
-    HashMap<EtherAddress, struct neighbour_airtime_stats*> get_stats(EtherAddress *);
+    NodeChannelStats *get_stats(EtherAddress *);
 
   private:
 
-    typedef HashMap<EtherAddress, struct neighbour_airtime_stats*> NeighbourStatsTable;
-    typedef NeighbourStatsTable::const_iterator NeighbourStatsTableIter;
+    NodeChannelStatsMap _ncst; /* stats of neighbouring node */
 
-    typedef HashMap<EtherAddress, NodeChannelStats*> NodeChannelStatsTable;
-    typedef NodeChannelStatsTable::const_iterator NodeChannelStatsTableIter;
-
-    CooperativeStatsCircularBuffer _coop_stats_buffer;
-    NodeChannelStatsTable _ncst;
-    ChannelStats *_cst;
+    ChannelStats *_cst;         /* own stats. use to send info */
 
     Timer _msg_timer;
     uint32_t _interval;
     bool _add_neighbours;
-
-    WritablePacket *create_new_packet(struct cooperative_channel_stats_header*, struct neighbour_airtime_stats[]);
 };
 
 CLICK_ENDDECLS

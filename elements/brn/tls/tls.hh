@@ -39,6 +39,7 @@ public:
 		role = _role;
 		ctx = _ctx;
 		traffic_cnt = 0;
+               conn = NULL;
 
 		conn = SSL_new(ctx);
 		if (!conn) {throw std::bad_alloc();}
@@ -63,6 +64,7 @@ public:
 
 	~com_obj() {
 		SSL_free(conn); // frees also BIOs, cipher lists, SSL_SESSION
+               conn = NULL;
 		BIO_free(bio_err);
 
 		while (!pkt_storage.empty()) {
@@ -71,6 +73,7 @@ public:
 	}
 
 	void refresh() {
+    //if ( conn != NULL ) SSL_free(conn);
 		conn = SSL_new(ctx);
 		SSL_set_bio(conn,bioIn,bioOut);
 		SSL_set_read_ahead(conn, 1);
@@ -114,7 +117,6 @@ public:
 	unsigned int get_traffic_cnt();
 
 private:
-	int _debug;
 	EtherAddress _me;
 	EtherAddress _ks_addr;
 

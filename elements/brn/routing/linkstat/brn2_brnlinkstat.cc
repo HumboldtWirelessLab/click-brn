@@ -110,7 +110,7 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
 
   _metrics = new BRN2GenericMetric*[metric_vec.size()];
   _metrics_size = 0;
-  
+
   for (int i = 0; i < metric_vec.size(); i++) {
     Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
     if ( new_element != NULL ) {
@@ -126,7 +126,7 @@ BRN2LinkStat::initialize(ErrorHandler *errh)
   if (noutputs() > 0) {
     if (!_dev) return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
 
-    click_srandom(_dev->getEtherAddress()->hashcode());
+    click_brn_srandom();
 
     _timer.initialize(this);
 

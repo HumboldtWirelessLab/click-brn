@@ -137,7 +137,7 @@ Ath2Print::simple_action(Packet *p)
   StringAccum sa_ath1;
   StringAccum sa_ath2;
 
-  bool tx;
+  bool tx = false; //mostly packets are received
 
   /*Check the length*/
   if ( ( _includeath && ( p->length() < ( ATHDESC_HEADER_SIZE + sizeof(struct ath2_header) ) ) ) ||

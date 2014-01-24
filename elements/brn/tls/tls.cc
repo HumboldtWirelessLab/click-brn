@@ -53,7 +53,6 @@
 CLICK_DECLS
 
 TLS::TLS()
-	: _debug(false)
 {
 	BRNElement::init();
 }
@@ -139,6 +138,7 @@ int TLS::initialize(ErrorHandler *) {
 		sprintf( dir, "%s%s", keydir.c_str(), "certs/demoCA/cacert2.pem" );
 		if (!SSL_CTX_load_verify_locations(ctx, dir,NULL)) {
 			print_err();
+                       delete[] dir;
 			return -1;
 		}
 	} else if(role==SERVER) {
@@ -151,6 +151,7 @@ int TLS::initialize(ErrorHandler *) {
 	if(!SSL_CTX_check_private_key(ctx)) {
 		BRN_ERROR("Gooong... Interesting, instead of a private key you found a chinese instrument ;)");
 		print_err();
+               delete[] dir;
 		return -1;
 	}
 
@@ -161,6 +162,7 @@ int TLS::initialize(ErrorHandler *) {
 
 	BRN_INFO("initialized");
 
+        delete[] dir;
 	return 0;
 }
 
@@ -299,13 +301,22 @@ void TLS::encrypt(Packet *p) {
 	if(p->length() <= 0){
 		BRN_ERROR("SSL_write with bufsize=0 is undefined.");
 		print_err();
+    p->kill();
 		return;
 	}
 
-	int ret = SSL_write(curr->conn,p->data(),p->length());
+	int ret = 0;
+
+  if (curr->conn == NULL ) {
+    BRN_ERROR("No SSL-Conn");
+  } else {
+	  ret = SSL_write(curr->conn,p->data(),p->length());
+  }
+
 	if(ret>0) {
 		BRN_DEBUG("SSL ready... sending encrypted data");
 		snd_data();
+    p->kill();
 	} else {
 
 		BRN_DEBUG("SSL not ready... storing data while trying to ssl-connect");

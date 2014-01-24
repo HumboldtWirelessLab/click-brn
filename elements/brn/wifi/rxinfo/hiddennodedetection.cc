@@ -112,31 +112,34 @@ HiddenNodeDetection::push(int port, Packet *p)
 
   EtherAddress src;
   switch (type) {
-    case WIFI_FC0_TYPE_MGT:
-      src = EtherAddress(w->i_addr2);
-      break;
     case WIFI_FC0_TYPE_CTL:
       src = brn_etheraddress_broadcast;
       break;
-    case WIFI_FC0_TYPE_DATA:
-      src = EtherAddress(w->i_addr2);
-      break;
-    default:
+    default: //MGT & DATA
       src = EtherAddress(w->i_addr2);
       break;
   }
-  EtherAddress dst = EtherAddress(w->i_addr1);
 
-  /* General stuff */
-  uint8_t _channel = BRNPacketAnno::channel_anno(p);
-  if ( _device != NULL && _channel != 0 ) _device->setChannel(_channel);
+  EtherAddress dst = EtherAddress(w->i_addr1);
 
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
-
+    //TODO: success ? then add dst as neighbour
     //(int) ceh->retries
 
   } else {   /* Handle Rx Packets */
+
+    NodeInfo *src_ni = _nodeinfo_tab.find(src);
+
+    if ( ! src_ni ) {
+      BRN_DEBUG("New Src");
+
+      src_ni = new NodeInfo();
+      _nodeinfo_tab.insert(src, src_ni);
+    }
+
+    src_ni->update_active();
+    src_ni->_neighbour = true;
 
     BRN_DEBUG("RX");
     NodeInfo *dst_ni = NULL;
@@ -160,31 +163,21 @@ HiddenNodeDetection::push(int port, Packet *p)
           _last_data_seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
           BRN_DEBUG("DATA");
-          NodeInfo *src_ni = _nodeinfo_tab.find(src);
-          if ( ! src_ni ) {
-            BRN_DEBUG("New Src");
-
-            src_ni = new NodeInfo();
-            _nodeinfo_tab.insert(src,src_ni);
-          }
-
-          src_ni->update_active();
-          src_ni->_neighbour = true;
 
           if (dst_ni) {
             BRN_DEBUG("Dst");
 
-	    Timestamp ts = Timestamp(0,0);
-//            dst_ni->add_link(src, src_ni, &ts);
-	    ts = Timestamp::now();
+            Timestamp ts = Timestamp(0,0);
+            //dst_ni->add_link(src, src_ni, &ts);
+            ts = Timestamp::now();
             src_ni->add_link(dst, dst_ni, &ts);
           }
 
           break;
-//        case WIFI_FC0_TYPE_CTL:
-//          break;
+        case WIFI_FC0_TYPE_CTL:
+          break;
       }
-            
+
       BRN_DEBUG("Fin");
 
     } else { //RX with rate = 0
@@ -228,7 +221,7 @@ HiddenNodeDetection::stats_handler(int mode)
             NodeInfo *l_node = link_iter.value();
             EtherAddress l_ea = link_iter.key();
             if ( ! l_node->_neighbour && l_node->_visible ) {
-              Timestamp *ts = node->_links_usage.findp(l_ea);
+              Timestamp *ts = node->_last_link_usage.findp(l_ea);
               sa << "\t\t\t<hidden_node addr=\"" << l_ea.unparse() << "\" last_packet=\"" << ts->unparse() << "\" />\n";
             }
           }
@@ -276,4 +269,3 @@ HiddenNodeDetection::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(HiddenNodeDetection)
-ELEMENT_MT_SAFE(HiddenNodeDetection)

@@ -9,22 +9,34 @@
 #include <click/packet_anno.hh>
 #include <click/router.hh>
 
-#include "elements/analysis/timesortedsched.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
-#include "elements/brn/wifi/rxinfo/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats.hh"
+
 #include "elements/brn/wifi/rxinfo/collisioninfo.hh"
 #include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
-#include "elements/brn/wifi/rxinfo/cooperativechannelstats.hh"
+
 #include "packetlossinformation/packetlossinformation.hh"
-#include "packetlossestimationhelper/statscircularbuffer.hh"
-#include "packetlossestimationhelper/packetparameter.hh"
 
 CLICK_DECLS
 
 class PacketLossEstimator: public BRNElement
 {
 
-public:
+  public:
+
+    class PacketLossStatistics {
+     public:
+      int timestamp;
+      uint8_t inrange_prob;
+      uint8_t hidden_node_prob;
+      uint8_t weak_signal_prob;
+      uint8_t non_wifi_prob;
+    };
+
+    typedef HashMap<EtherAddress, Vector<PacketLossStatistics>*> PacketLossStatisticsMap;
+    typedef PacketLossStatisticsMap::const_iterator PacketLossStatisticsMapIter;
+
 
     PacketLossEstimator();
     ~PacketLossEstimator();
@@ -34,64 +46,59 @@ public:
     const char *processing() const { return AGNOSTIC; }
 
     int configure(Vector<String> &, ErrorHandler *);
+
     Packet *simple_action(Packet *);
     void add_handlers();
+
     String stats_handler(int);
-    static uint8_t _max_weak_signal_value;
+
+    uint8_t _max_weak_signal_value;
 
 private:
-    /// ACKS received from other nodes
-    static HashMap<EtherAddress, uint32_t> _acks_by_node;
-    /// Addresses packets received from
-    static Vector<EtherAddress> _received_adrs;
-    /// ACKS received from other nodes last period (mostly 1 s)
-    // static HashMap<EtherAddress, uint32_t> _last_acks_by_node;
-    /// Buffer for mid and long term statistics
-    static StatsCircularBuffer _stats_buffer;
-    ///
-    static HashMap<uint8_t, HashMap<uint8_t, uint64_t> > _rssi_histogram;
+
+    /// Device pointer
+    BRN2Device *_dev;
     /// Collected Channel Stats
     ChannelStats *_cst;
+    /// Statistics from cooperating nodes
+    CooperativeChannelStats *_cocst;
     /// Collected Collision Infos
     CollisionInfo *_cinfo;
     /// Collected Hidden Node Detection Stats
     HiddenNodeDetection *_hnd;
+
     /// Class for storing statistical data about lost packets
     PacketLossInformation *_pli;
-    /// Statistics from cooperating nodes
-    CooperativeChannelStats *_cocst;
-    /// Device pointer
-    BRN2Device *_dev;
+
+    /// Addresses packets received from
+    HashMap<EtherAddress,Timestamp> _received_adrs;
+
+    ///
+    HashMap<uint8_t, HashMap<uint8_t, uint64_t> > _rssi_histogram;
+
+    PacketLossStatisticsMap _stats_buffer;
+
     /// switch if pessimistic hidden node prediction is used
     bool _pessimistic_hn_detection;
-    /// Structure for gathering information about current packet
-    PacketParameter *_packet_parameter;
 
     ///< Estimate probability of channel error because of hidden nodes
-    void estimateHiddenNode();
+    void estimateHiddenNode(EtherAddress &src, EtherAddress &dst);
     ///< Estimate probability of channel error because of inrange collisions
-    void estimateInrange();
+    void estimateInrange(EtherAddress &src, EtherAddress &dst);
     ///< Estimate probability of channel error because non-wifi-signals
-    void estimateNonWifi(struct airtime_stats &);
+    void estimateNonWifi(EtherAddress &src, EtherAddress &dst, struct airtime_stats *);
     ///< Estimate probability of channel error because of weak signal
-    void estimateWeakSignal(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
-    ///< Put all necessary information about the current packet into one structure
-    void gather_packet_infos_(const Packet &);
-    ///< Add received ACK-Packet to _acks_by_node-Hashmap
-    void add_ack(const EtherAddress &);
-    ///< Get number of received ACK-Packets for an ether address
-    uint32_t get_acks_by_node(const EtherAddress &);
-    ///<
-    void reset_acks();
-    ///<
-    uint8_t calc_weak_signal_percentage(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo &);
-    ///<
-    void update_statistics(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
+    void estimateWeakSignal(EtherAddress &src, EtherAddress &dst, ChannelStats::SrcInfo *, ChannelStats::RSSIInfo *);
 
-    StringAccum stats_get_hidden_node(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
-    StringAccum stats_get_inrange(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
-    StringAccum stats_get_weak_signal(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
-    StringAccum stats_get_non_wifi(HiddenNodeDetection::NodeInfoTable &, PacketLossInformation &);
+    ///<
+    uint8_t calc_weak_signal_percentage(ChannelStats::SrcInfo *, ChannelStats::RSSIInfo *);
+    ///<
+    void update_statistics(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+
+    StringAccum stats_get_hidden_node(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_inrange(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_weak_signal(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
+    StringAccum stats_get_non_wifi(HiddenNodeDetection::NodeInfoTable *, PacketLossInformation *);
 };
 
 CLICK_ENDDECLS

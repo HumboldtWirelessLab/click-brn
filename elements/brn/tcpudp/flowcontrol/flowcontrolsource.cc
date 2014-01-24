@@ -167,10 +167,12 @@ FlowControlSource::push( int port, Packet *packet)
 
     BRNPacketAnno::set_ether_anno(out_packet, src, dst, ETHERTYPE_BRN);
 
-    int32_t res = fci->insert_packet(out_packet->clone()->uniqueify());
+    WritablePacket *p_clone = out_packet->clone()->uniqueify();
+    int32_t res = fci->insert_packet(p_clone);
     if ( res < 0 ) {
       BRN_ERROR("Error while insert next packet (%d). Drop it",res);
       out_packet->kill();
+      p_clone->kill();
       //TODO: should never happen. Stop the flow or wait for next free seq
       return;
     }

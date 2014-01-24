@@ -395,6 +395,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   sa.adjust_length(len);
 
   uint8_t mcs_index, bandwidth, guard_interval;
+  mcs_index = bandwidth = guard_interval = 0;
 
   if ( (ceh->flags & WIFI_EXTRA_TX) && _print_used_rate ) {
     uint8_t used_rate = ceh->rate;

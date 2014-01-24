@@ -71,8 +71,9 @@ BrnAvailableRates::parse_and_insert(String s, ErrorHandler *errh)
      return errh->error("error param %s: must start with ethernet address", s.c_str());
   }
 
+  int r = 0;
+
   for (int x = 1; x < args.size(); x++) {
-    int r;
     if (args[x] == "HT20") {
       ht_rate = RATE_HT20;
       sgi = false;
