@@ -32,7 +32,8 @@
 
 CLICK_DECLS
 
-TopologyInfo::TopologyInfo()
+TopologyInfo::TopologyInfo():
+  number_of_detections(0)
 {
   BRNElement::init();
 }
@@ -58,6 +59,37 @@ TopologyInfo::initialize(ErrorHandler *)
   return 0;
 }
 
+void
+TopologyInfo::addBridge(EtherAddress *a, EtherAddress *b)
+{
+  if ( getBridge(a,b) == NULL ) _bridges.push_back(new Bridge(a,b));
+}
+
+void
+TopologyInfo::addArticulationPoint(EtherAddress *a)
+{
+  if ( getArticulationPoint(a) == NULL ) _artpoints.push_back(new ArticulationPoint(a));
+}
+
+TopologyInfo::Bridge*
+TopologyInfo::getBridge(EtherAddress *a, EtherAddress *b)
+{
+  for( int i = 0; i < _bridges.size(); i++ )
+    if ( _bridges[i]->equals(a,b) ) return _bridges[i];
+
+  return NULL;
+}
+
+TopologyInfo::ArticulationPoint *
+TopologyInfo::getArticulationPoint(EtherAddress *a)
+{
+  for( int i = 0; i < _artpoints.size(); i++ )
+    if ( _artpoints[i]->equals(a) ) return _artpoints[i];
+
+  return NULL;
+}
+
+
 /*************************************************************************************************/
 /***************************************** H A N D L E R *****************************************/
 /*************************************************************************************************/
@@ -70,26 +102,30 @@ TopologyInfo::topology_info(void)
   Bridge *br;
   ArticulationPoint *fp;
 
-  sa << "Bridges (" << _bridges.size() << ") :\n";
+  sa << "<topology_info node=\"" << BRN_NODE_NAME << "\" >\n";
+  sa << "\t<bridges count=\"" << _bridges.size() << "\" >\n";
   for( int i = 0; i < _bridges.size(); i++ )
   {
     br = _bridges[i];
-    sa << i <<  "\t" << br->node_a << " <-> " << br->node_b << "\n";
+    sa << "\t\t<bridge id=\"" << (i+1) << "\" node_a=\"" << br->node_a << "\" node_b=\"" << br->node_b << "\" />\n";
   }
+  sa << "\t</bridges>\n";
 
-  sa << "\nArticulationPoint:\n";
+  sa << "\t<articulationpoints count=\"" << _artpoints.size() << "\" >\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     fp = _artpoints[i];
-    sa << i <<  "\t" << fp->node << " <-> " << fp->node << "\n";
+    sa << "\t\t<articulationpoint id=\"" << (i+1) <<  "\" node=\"" << fp->node << "\" />\n";
   }
-  sa << "\n";
+  sa << "\t</articulationpoints>\n</topology_info>\n";
 
   return sa.take_string();
 }
 
 enum {
-  H_TOPOLOGY_INFO
+  H_TOPOLOGY_INFO,
+  H_ARTICULATION_POINT,
+  H_BRIDGE
 };
 
 static String
@@ -104,12 +140,50 @@ read_param(Element *e, void *thunk)
   }
 }
 
+static int
+write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
+{
+  TopologyInfo *f = (TopologyInfo *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  //int result = -1;
+
+  switch((intptr_t)vparam) {
+    case H_ARTICULATION_POINT: {
+      EtherAddress ap;
+      cp_ethernet_address(args[0], &ap);
+
+      f->addArticulationPoint(&ap);
+      break;
+    }
+    case H_BRIDGE: {
+      EtherAddress a,b;
+
+      cp_ethernet_address(args[0], &a);
+      cp_ethernet_address(args[1], &b);
+
+      f->addBridge(&a, &b);
+      break;
+    }
+  }
+
+//  click_chatter("Result: %d",result);
+
+  return 0;
+}
+
 void
 TopologyInfo::add_handlers()
 {
   BRNElement::add_handlers();
 
   add_read_handler("topology_info", read_param , (void *)H_TOPOLOGY_INFO);
+
+  add_write_handler("articulation_point", write_param, (void *) H_ARTICULATION_POINT);
+  add_write_handler("bridge", write_param, (void *) H_BRIDGE);
+
 }
 
 CLICK_ENDDECLS
