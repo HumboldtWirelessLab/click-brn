@@ -34,8 +34,17 @@ CLICK_DECLS;
 class DibadawnStatistic
 {
 public:
-    void updateEdgeMarking(DibadawnEdgeMarking &marking);
     DibadawnStatistic();
+    
+    void updateEdgeMarking(DibadawnEdgeMarking &marking);
+    bool isBridgeByUnanimous();
+    bool isBridgeByMajority();
+    bool isBridgeBySingleFor();
+    bool isBridgeByIntelligentMajority();
+    bool isBridgeByTrustedNoBridge();
+    bool isBridgeByWeightedRule();
+    double competenceByUsedHops(size_t hops);
+    double weightByCompetence(double competence);
 
 private:
     Spinlock lock;

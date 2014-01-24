@@ -32,7 +32,7 @@
 #include "edgemarking.hh"
 #include "cycle.hh"
 #include "neighbor_container.hh"
-#include "edgemarking_container.hh"
+#include "statistic.hh"
 
 
 CLICK_DECLS;

@@ -29,7 +29,7 @@
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "search.hh"
 #include "dibadawn_packet.hh"
-#include "edgemarking_container.hh"
+#include "statistic.hh"
 
 
 CLICK_DECLS;
