@@ -67,7 +67,7 @@ TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 TopologyDetection::initialize(ErrorHandler *)
 {
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _detection_timer.initialize(this);
   _response_timer.initialize(this);
@@ -201,6 +201,8 @@ TopologyDetection::handle_detection_backward(Packet *packet)
     _response_timer.unschedule();
     _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
   }
+
+  packet->kill();
 }
 
 void

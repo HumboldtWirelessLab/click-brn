@@ -107,7 +107,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _rreq_id = click_random() % 0xffff;
 
@@ -1009,7 +1009,7 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 
     ea_route.push_back(ether1);
 
-    uint16_t metric;
+    uint16_t metric = BRN_DSR_INVALID_HOP_METRIC;
 
     switch ( dsr_element ) {
       case DSR_ELEMENT_REQ_FORWARDER: {

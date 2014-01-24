@@ -2,11 +2,12 @@
 #define RANDOMDELAYQUEUE_HH
 #include <click/timer.hh>
 
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/packetsendbuffer.hh"
 
 CLICK_DECLS
 
-class RandomDelayQueue : public Element
+class RandomDelayQueue : public BRNElement
 {
   public:
     RandomDelayQueue();

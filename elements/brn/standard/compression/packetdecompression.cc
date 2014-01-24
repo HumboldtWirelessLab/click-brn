@@ -72,7 +72,7 @@ PacketDecompression::initialize(ErrorHandler *)
 void
 PacketDecompression::push( int /*port*/, Packet *packet )
 {
-  int resultsize;
+  int resultsize = 0;
   WritablePacket *p = packet->uniqueify();
 
   switch (cmode) {

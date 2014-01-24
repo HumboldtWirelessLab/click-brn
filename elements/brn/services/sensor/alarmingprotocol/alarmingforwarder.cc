@@ -66,7 +66,7 @@ AlarmingForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 AlarmingForwarder::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   return 0;
 }

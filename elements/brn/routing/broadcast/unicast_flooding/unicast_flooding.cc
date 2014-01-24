@@ -94,7 +94,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 UnicastFlooding::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   last_unicast_used = EtherAddress::make_broadcast();
 

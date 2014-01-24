@@ -39,58 +39,60 @@ HiddenNodeDetection()
 =a
 */
 
+/**
+ * TODO: add ack stats (incl. rssi hist)
+ *       channelstats is may be a better place for that
+ **/
+
 class HiddenNodeDetection : public BRNElement {
-    
-    public:
-        
-        class NodeInfo;
-        typedef HashMap<EtherAddress, NodeInfo*> NodeInfoTable;
-        typedef NodeInfoTable::const_iterator NodeInfoTableIter;
-        
-        class NodeInfo {
-        public:
-        
-            Timestamp _last_notice_active;
-	    Timestamp _last_notice_passive;
-            
-	    bool _neighbour;
-	    bool _visible; //TODO: better solution
-	    
 
-            NodeInfoTable _links_to;
-            HashMap<EtherAddress, Timestamp> _links_usage;
+  public:
 
-            NodeInfo(): _neighbour(false),_visible(true) {
-                _last_notice_passive = _last_notice_active = Timestamp::now();
-            }
+    class NodeInfo;
+    typedef HashMap<EtherAddress, NodeInfo*> NodeInfoTable;
+    typedef NodeInfoTable::const_iterator NodeInfoTableIter;
 
-            inline void add_link(EtherAddress ea, NodeInfo *ni, Timestamp *ts) {
-                if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
-		ni->_visible = true;
-		_visible = true;
-                _links_usage.insert(ea,*ts);
-            }
+    class NodeInfo {
+      public:
 
-            inline void update_active() {
-		_visible = true;
-                _last_notice_active = Timestamp::now();
-            }
+        Timestamp _last_notice_active;
+        Timestamp _last_notice_passive;
 
-            inline void update_passive() {
-		_visible = true;
-                _last_notice_passive = Timestamp::now();
-            }
-            
-            inline HashMap<EtherAddress, NodeInfo*> get_links_to() {
-                return _links_to;
-            }
-            
-            inline HashMap<EtherAddress, Timestamp> get_links_usage() {
-                return _links_usage;
-            }
-        };
+        bool _neighbour;
+        bool _visible; //TODO: better solution
 
-  
+        NodeInfoTable _links_to;
+        HashMap<EtherAddress, Timestamp> _last_link_usage;
+
+        NodeInfo(): _neighbour(false),_visible(true) {
+          _last_notice_passive = _last_notice_active = Timestamp::now();
+        }
+
+        inline void add_link(EtherAddress ea, NodeInfo *ni, Timestamp *ts) {
+          if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
+          ni->_visible = true;
+          _visible = true;
+          _last_link_usage.insert(ea,*ts);
+        }
+
+        inline void update_active() {
+            _visible = true;
+            _last_notice_active = Timestamp::now();
+        }
+
+        inline void update_passive() {
+          _visible = true;
+          _last_notice_passive = Timestamp::now();
+        }
+
+        inline HashMap<EtherAddress, NodeInfo*>* get_links_to() {
+          return &_links_to;
+        }
+
+        inline HashMap<EtherAddress, Timestamp>* get_links_usage() {
+            return &_last_link_usage;
+        }
+    };
 
     HiddenNodeDetection();
     ~HiddenNodeDetection();
@@ -108,20 +110,18 @@ class HiddenNodeDetection : public BRNElement {
     void run_timer(Timer *);
 
     String stats_handler(int mode);
-    
-    inline HashMap<EtherAddress, NodeInfo*> get_nodeinfo_table() {
-        return _nodeinfo_tab;
+
+    inline HashMap<EtherAddress, NodeInfo*>* get_nodeinfo_table() {
+        return &_nodeinfo_tab;
     }
-    
+
     inline bool has_neighbours(EtherAddress address) {
-        
-        if (_nodeinfo_tab.find(address) != NULL) {
-            return _nodeinfo_tab.find(address)->_neighbour;
-        } else {
-            return false;   
-        }
+      if (_nodeinfo_tab.find(address) != NULL)
+        return _nodeinfo_tab.find(address)->_neighbour;
+
+      return false;
     }
-    
+
     void remove_link(EtherAddress *sea, EtherAddress *dea);
 
   private:

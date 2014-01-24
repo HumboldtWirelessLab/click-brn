@@ -56,7 +56,7 @@ BrnRoutingTable::~BrnRoutingTable()
 int 
 BrnRoutingTable::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   m_tRouteAging.initialize(this);
 

@@ -106,7 +106,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _sendbuffer_timer.initialize(this);
 
@@ -257,7 +257,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
   //Route improvements
   EtherAddress *detour_nb = NULL;
-  int detour_metric_last_nb;
+  int detour_metric_last_nb = BRN_DSR_INVALID_ROUTE_METRIC; //start with worst metric
 
   /* Route Optimization */
   if ( _enable_last_hop_optimization && (brn->ttl > 1) ) {

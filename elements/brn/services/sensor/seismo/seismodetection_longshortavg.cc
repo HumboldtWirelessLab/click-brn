@@ -101,7 +101,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
 
     if ( ! _init_swin ) {
       for ( int i = 0; i < 1 /*si->_channels*/; i++ ) {
-        swin = SlidingWindow(_short_avg_count, _long_avg_count);
+        swin.init(_short_avg_count, _long_avg_count);
         swin._debug = _debug;
         swin._samplerate = si->_sampling_rate;
         _init_swin = true;
@@ -113,7 +113,7 @@ SeismoDetectionLongShortAvg::update(SrcInfo *si, uint32_t next_new_block)
       if ( ! sib->is_complete() ) break;
 
       for ( _index_in_block = 0; _index_in_block < sib->_next_value_index; _index_in_block++ ) {
-        if ( swin.add_data(sib->_channel_values[_index_in_block][0]) == 0 ) {
+        if ( swin.add_data(sib->_channel_values[_index_in_block][0]) == 0 ) { //only channel 1 (0)
           /* check for alarm */
           swin.calc_stats(false);
 
