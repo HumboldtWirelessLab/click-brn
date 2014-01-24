@@ -37,6 +37,7 @@ public:
     bool isBridge;
     EtherAddress nodeA;
     EtherAddress nodeB;
+    bool isTrusted;
 
 private:
 };
