@@ -104,13 +104,14 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
     }
     else
     {
-      sa << "\t<!-- Destination is neither me nor broadcast. -->\n";
-      packet->kill();
+      sa << "\t<!-- Destination is neither me nor broadcast. TODO: use information (overhear) -->\n";
     }
   }
 
   sa << "</topo_detect>\n";
   BRN_INFO(sa.take_string().c_str());
+
+  packet->kill();
 }
 
 void TopologyDetection::handle_detection(Packet *brn_packet)
@@ -126,32 +127,6 @@ bool TopologyDetection::path_include_node(uint8_t *path, uint32_t path_len, cons
   for (uint32_t i = 0, pindex = 0; i < path_len; i++, pindex += 6)
     if (memcmp(&(lpath[pindex]), node->data(), 6) == 0) return true;
   return false;
-}
-
-void TopologyDetection::handle_detection_backward(Packet *packet)
-{
-  BRN_DEBUG("Handle backward");
-
-  click_ether *ether_h = (click_ether *) packet->ether_header();
-
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-  tdi->_get_backward++;
-
-  BRN_DEBUG("Src: %s Back: %d of %d", EtherAddress(ether_h->ether_shost).unparse().c_str(), tdi->_get_backward, tdi->_num_descendant);
-
-  if (tdi->_get_backward == tdi->_num_descendant)
-  {
-    BRN_DEBUG("Got infos off all descendant");
-    _response_timer.unschedule();
-    _response_timer.schedule_after_msec(/*click_random() % */100); //wait only small time for additional response
-  }
-
-  if (tdi->_get_backward > tdi->_num_descendant)
-  {
-    BRN_ERROR("Got more back than wanted");
-    _response_timer.unschedule();
-    _response_timer.schedule_after_msec(/*click_random() % */100); //wait only small time for additional response
-  }
 }
 
 void TopologyDetection::start_detection()
@@ -176,7 +151,14 @@ void TopologyDetection::handle_detection_timeout(void)
   BRN_DEBUG("Detection Timeout. No descendant.");
   TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
 
-  if (tdi->_src != *(_node_identity->getMasterAddress()))
+  BRN_DEBUG("Finished waiting for response. Now check for bridges.");
+  if ( (tdi->_src != *(_node_identity->getMasterAddress())) && (tdi->pendant_node()) )
+    BRN_DEBUG("link between me and parent is bridge ??");
+
+  if ( (tdi->_last_hops.size() <= 1) && (tdi->_num_descendant == 0) )
+    BRN_DEBUG("I'm a lief.");
+
+  if ( tdi->_src != *(_node_identity->getMasterAddress()) )
     send_response();
   else
     BRN_DEBUG("Source of request. Detection timeout");
@@ -189,10 +171,13 @@ void TopologyDetection::handle_response_timeout(void)
   if (tdi->_get_backward < tdi->_num_descendant)
     BRN_DEBUG("Missing response from descendant ( %d of %d ).", tdi->_get_backward, tdi->_num_descendant);
 
-  BRN_DEBUG("Test of src is me");
-  //  TODO: the next test failed (looks like that)
-  if (tdi->_src != *(_node_identity->getMasterAddress())) //i'm the source of the request. Time to check the result
-    send_response(); //send response
+  BRN_DEBUG("Finished waiting for response. Now check for bridges.");
+  if ( tdi->pendant_node() )
+    BRN_DEBUG("link between me and parent is bridge ??");
+
+//TODO: the next test failed (looks like that)
+  if ( tdi->_src != *(_node_identity->getMasterAddress()) ) //i'm the source of the request. Time to check the result
+    send_response();                                        //send response
   else
     BRN_DEBUG("Source of request. Response timeout");
 
@@ -205,6 +190,7 @@ void TopologyDetection::send_response(void)
 
   BRN_DEBUG("Send Response to %s.", tdri->_addr.unparse().c_str());
 
+  //TODO:ttl
   WritablePacket *p = TopologyDetectionProtocol::new_backwd_packet(&(tdi->_src), tdi->_id, _node_identity->getMasterAddress(), &(tdri->_addr), NULL);
   output(0).push(p);
 }
@@ -220,6 +206,25 @@ TopologyDetection::get_forward_info(EtherAddress *src, uint32_t id)
   return NULL;
 }
 
+void
+TopologyDetection::evaluate_local_knowledge()
+{
+
+}
+
+bool
+TopologyDetection::i_am_articulation_point()
+{
+  return false;
+}
+
+void
+TopologyDetection::get_bridge_links(Vector<EtherAddress> */*_bridge_links*/)
+{
+  return;
+}
+
+
 /*************************************************************************************************/
 /***************************************** H A N D L E R *****************************************/
 
@@ -231,22 +236,24 @@ String TopologyDetection::local_topology_info(void)
   TopologyDetection::TopologyDetectionForwardInfo *tdfi;
   TopologyDetectionReceivedInfo *tdri;
 
-  sa << "Node: " << _node_identity->getMasterAddress()->unparse() << "\n";
+  sa << "<topology_detection node=\"" << _node_identity->getMasterAddress()->unparse() << "\" >\n";
+  sa << "\t<forward_info_list size=\"" << tdfi_list.size() << "\" >\n";
 
   for (int i = 0; i < tdfi_list.size(); i++)
   {
     tdfi = tdfi_list[i];
-    sa << i << "\t" << tdfi->_src.unparse() << " - " << tdfi->_id << " Send-TTL: " << (uint32_t) tdfi->_ttl << "\n";
-    sa << "\tLast Hops:\n";
-    for (int j = 0; j < tdfi->_last_hops.size(); j++)
-    {
-      tdri = &(tdfi->_last_hops[j]);
-      sa << "\t\t" << tdri->_addr.unparse() << " TTL: " << tdri->_ttl << " Over Me: " << tdri->_over_me;
-      sa << " Descendant: " << tdri->_descendant << "\n";
-    }
-  }
 
-  sa << "\n";
+    sa << "\t\t<forward_info number=\"" << i <<  "\" src=\"" << tdfi->_src.unparse() << "\" id=\"" << tdfi->_id << "\" ";
+    sa << "ttl=\"" << (uint32_t)tdfi->_ttl << "\" >\n";
+    sa << "\t\t\t<last_hops size=\"" << tdfi->_last_hops.size() << "\" >\n";
+    for( int j = 0; j < tdfi->_last_hops.size(); j++ ) {
+      tdri = &(tdfi->_last_hops[j]);
+      sa << "\t\t\t\t<hop addr=\"" << tdri->_addr.unparse() << "\" ttl=\"" << tdri->_ttl << "\" ";
+      sa << "over_me=\"" << tdri->_over_me << "\" descendant=\"" << tdri->_descendant << "\" />\n";
+    }
+    sa << "\t\t\t</last_hops>\n\t\t</forward_info>\n";
+  }
+  sa << "\t</forward_info_list>\n</topology_detection>\n";
 
   return sa.take_string();
 }
