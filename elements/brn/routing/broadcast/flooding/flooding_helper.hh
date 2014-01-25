@@ -113,7 +113,7 @@ class NetworkGraph {
 class CachedNeighborsMetricList {
  public:
   EtherAddress _node;
-  int _max_metric_to_neighbor;    
+  int _max_metric_to_neighbor;
 
   Vector<EtherAddress> _neighbors;
   int *_metrics;
@@ -165,10 +165,16 @@ class CachedNeighborsMetricList {
 
     _last_update = Timestamp::now();
   }
-  
+
   inline int age() { return (Timestamp::now() - _last_update).msecval(); }
 
   inline int size() { return _neighbors.size(); }
+
+  int get_metric(EtherAddress &ea) {
+    for( int i = 0; i < _neighbors.size();i++ )
+      if ( _neighbors[i] == ea ) return _metrics[i];
+    return -1;
+  }
 };
 
 typedef HashMap<EtherAddress, CachedNeighborsMetricList*> CachedNeighborsMetricListMap;
@@ -177,7 +183,7 @@ typedef CachedNeighborsMetricListMap::const_iterator CachedNeighborsMetricListMa
 class FloodingHelper : public BRNElement {
 
  public:
-  
+
   //
   //methods
   //
@@ -187,7 +193,7 @@ class FloodingHelper : public BRNElement {
   const char *class_name() const  { return "FloodingHelper"; }
   const char *port_count() const  { return "0/0"; }
   const char *processing() const { return AGNOSTIC; }
-  
+
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const { return false; }
 
@@ -195,7 +201,7 @@ class FloodingHelper : public BRNElement {
   void uninitialize();
   void add_handlers();
 
-public: 
+public:
   //
   //member
   //
@@ -214,6 +220,8 @@ public:
   void print_vector(Vector<EtherAddress> &eas);
   void print_vector(NeighbourMetricList &nodes);
   uint32_t metric2pdr(uint32_t metric);
+
+  uint32_t _better_link_min_ratio;
 
   // helper
   void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int max_metric = -1);
@@ -247,7 +255,7 @@ public:
   int find_worst(const EtherAddress &src, Vector<EtherAddress> &neighbors);
   int find_best(const EtherAddress &src, Vector<EtherAddress> &neighbors);
 
-  bool is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst);
+  bool is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst, uint32_t min_ratio = 100);
 
 };
 

@@ -205,6 +205,8 @@ ChannelStats::push(int port, Packet *p)
     for ( int i = 0; i <= tx_count; i++ ) {
       int t0,t1,t2,t3;
       uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
+      rate_is_ht = rate_index = rate_bw = rate_sgi = 0;
+
       t0 = ceh->max_tries + 1;
       t1 = t0 + ceh->max_tries1;
       t2 = t1 + ceh->max_tries2;
@@ -296,7 +298,7 @@ ChannelStats::push(int port, Packet *p)
     }
   } else {   /* Handle Rx Packets */
 
-    PacketInfo *new_pi;
+    PacketInfo *new_pi = NULL;
     bool is_ht_rate = (BrnWifi::getMCS(ceh,0) == 1);
 
     if ( _enable_full_stats ) {
@@ -409,7 +411,7 @@ ChannelStats::push(int port, Packet *p)
 
         if ( _neighbour_stats ) {
           if ( state == STATE_OK ) {
-            SrcInfo *src_info;
+            SrcInfo *src_info = NULL;
             SrcInfo **src_info_p;
             if ( (src_info_p = _small_stats_src_tab[_current_small_stats].findp(src)) == NULL ) {       //search in tab
               if ( (src_info_p = _small_stats_src_tab_pool[_current_small_stats].findp(src)) == NULL ) {//search in pool

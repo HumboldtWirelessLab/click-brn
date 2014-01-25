@@ -34,7 +34,7 @@
 #include <elements/brn/services/sensor/gps/gps_position.hh>
 #include <elements/brn/services/sensor/gps/gps_map.hh>
 
-#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats.hh"
 
 
 CLICK_DECLS

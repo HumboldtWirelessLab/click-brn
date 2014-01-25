@@ -18,9 +18,10 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include "elements/brn/brnelement.hh"
+
+#include "elements/brn/wifi/rxinfo/packetlossestimator/packetlossinformation/packetlossinformation.hh"
 #include "packetparameter.hh"
 #include "packetlossstatistics.hh"
-#include "elements/brn/wifi/packetlossinformation/packetlossinformation.hh"
 
 CLICK_DECLS
 

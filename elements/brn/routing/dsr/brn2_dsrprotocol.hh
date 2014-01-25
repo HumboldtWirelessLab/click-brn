@@ -6,6 +6,8 @@
 #include <click/packet_anno.hh>
 #include <click/bighashmap.hh>
 #include <click/hashmap.hh>
+
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 CLICK_DECLS
@@ -20,11 +22,11 @@ class BRN2RouteQuerierHop
     IPAddress ip_address;
     uint16_t _metric;
 
-#define BRN_DSR_INVALID_HOP_METRIC     9999
-#define BRN_DSR_INVALID_ROUTE_METRIC 0xFFFF
+#define BRN_DSR_INVALID_HOP_METRIC    BRN_LT_INVALID_LINK_METRIC
+#define BRN_DSR_INVALID_ROUTE_METRIC BRN_LT_INVALID_ROUTE_METRIC
 
-#define BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD          4000
-#define BRN_DSR_DEFAULT_MIN_LINK_METRIC_WITHIN_ROUTE 4000
+#define BRN_DSR_DEFAULT_MIN_METRIC_RREQ_FWD          BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE
+#define BRN_DSR_DEFAULT_MIN_LINK_METRIC_WITHIN_ROUTE BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE
 
     BRN2RouteQuerierHop(EtherAddress ether, uint16_t c) : ether_address(ether), ip_address(), _metric(c) {}
     BRN2RouteQuerierHop(EtherAddress ether, IPAddress ip, uint16_t c) : ether_address(ether), ip_address(ip), _metric(c) {}
@@ -106,7 +108,7 @@ struct click_dsr_hop {
   uint16_t metric;
 };
 
-#define BRN_DSR_MAX_HOP_COUNT  100
+#define BRN_DSR_MAX_HOP_COUNT  BRN_ROUTING_MAX_HOP_COUNT
 
 /* DSR Route Request */
 struct click_brn_dsr_rreq {
@@ -140,8 +142,6 @@ struct click_brn_dsr_src {
 #define BRN_DSR_ROUTE_TYPE_SRCROUTE         1
 #define BRN_DSR_ROUTE_TYPE_IDROUTE          2
 #define BRN_DSR_ROUTE_TYPE_SRCROUTE_SETID   3
-
-#define BRN_MAX_ETHER_LENGTH 1500
 }; /* data */
 
 /* Common DSR Structure */
@@ -163,9 +163,6 @@ struct click_brn_dsr {
   struct in_addr  dsr_ip_dst;
   struct in_addr  dsr_ip_src;
 
-#define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
-#define BRN_INTERNAL_NODE_IP "254.1.1.1"
-
   union {
     click_brn_dsr_rreq rreq;
     click_brn_dsr_rrep rrep;
@@ -183,12 +180,12 @@ struct click_brn_dsr {
 /*
  * Common structures, classes, etc.
  */
-#define BRN_DSR_MEMORY_MEDIUM_METRIC        1     // static metric for in memory links
-#define BRN_DSR_WIRED_MEDIUM_METRIC        10     // static metric for wired links
-#define BRN_DSR_WIRELESS_MEDIUM_METRIC    100     // static metric for wireless links
+#define BRN_DSR_MEMORY_MEDIUM_METRIC       BRN_LT_MEMORY_MEDIUM_METRIC     // static metric for in memory links
+#define BRN_DSR_WIRED_MEDIUM_METRIC         BRN_LT_WIRED_MEDIUM_METRIC     // static metric for wired links
+#define BRN_DSR_WIRELESS_MEDIUM_METRIC   BRN_LT_WIRELESS_MEDIUM_METRIC     // static metric for wireless links
 
-#define BRN_DSR_STATION_METRIC            100  ///< metric for assoc'd stations
-#define BRN_DSR_ROAMED_STATION_METRIC    5000  ///< metric for assoc'd stations
+#define BRN_DSR_STATION_METRIC                   BRN_LT_STATION_METRIC     ///< metric for assoc'd stations
+#define BRN_DSR_ROAMED_STATION_METRIC     BRN_LT_ROAMED_STATION_METRIC     ///< metric for assoc'd stations
 
 class DSRProtocol {
  public:

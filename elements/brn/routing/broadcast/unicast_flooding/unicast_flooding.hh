@@ -63,6 +63,8 @@ CLICK_DECLS
 
 #define UNICAST_FLOODING_STATS_TARGET_SIZE 16
 
+#define UNICAST_FLOODING_DIJKSTRA_PDR          111
+
 class UnicastFlooding : public BRNElement {
  public:
 
@@ -138,13 +140,15 @@ class UnicastFlooding : public BRNElement {
   uint32_t _ucast_peer_metric;
   bool _reject_on_empty_cs;
   EtherAddress static_dst_mac;
-  bool _force_responsibility;
-  bool _use_assign_info;
-  bool _fix_candidate_set;
 
   EtherAddress algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int hops);
 
  public:
+  bool _force_responsibility;
+  bool _use_assign_info;
+  bool _fix_candidate_set;
+
+  uint32_t _self_pdr;
 
   void add_rewrite(EtherAddress *src, uint16_t id, EtherAddress *target);
 

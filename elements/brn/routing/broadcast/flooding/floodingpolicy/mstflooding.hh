@@ -50,6 +50,7 @@ class MSTFlooding : public FloodingPolicy
     //Vector<EtherAddress>::iterator akt_foll;
 
     String _circle_path;
+    bool _bidirectional;
     void get_neighbours(String path);
 
 };

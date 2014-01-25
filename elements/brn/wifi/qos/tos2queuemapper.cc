@@ -35,8 +35,10 @@
 #include <click/router.hh>
 #endif
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+#include "elements/brn/wifi/brnwifi.hh"
 
 #include "tos2queuemapper.hh"
 #include "bo_schemes/tos2qm_data.hh"
@@ -47,13 +49,14 @@ CLICK_DECLS
 
 Tos2QueueMapper::Tos2QueueMapper():
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
-    _cst(NULL),     //Channelstats-Element
-    _colinf(NULL),  //Collission-Information-Element
     _learning_current_bo(TOS2QM_DEFAULT_LEARNING_BO),
     _learning_count_up(0),
     _learning_count_down(0),
     _learning_max_bo(0),
     _bo_usage_max_no(16),
+    _last_bo_usage(NULL),
+    _all_bos(NULL),
+    _all_bos_idx(0),
     _ac_stats_id(0),
     _target_packetloss(TOS2QM_DEFAULT_TARGET_PACKET_LOSS),
     _target_channelload(TOS2QM_DEFAULT_TARGET_CHANNELLOAD),
@@ -74,6 +77,14 @@ Tos2QueueMapper::Tos2QueueMapper():
 Tos2QueueMapper::~Tos2QueueMapper()
 {
   delete[] _bo_schemes;
+  delete[] _bo_exp;
+  delete[] _bo_usage_usage;
+  delete[] _last_bo_usage;
+  delete[] _queue_usage;
+  delete[] _cwmin;
+  delete[] _cwmax;
+  delete[] _aifs;
+  delete[] _all_bos;
 }
 
 int
@@ -89,13 +100,11 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "CWMAX", cpkP, cpString, &s_cwmax,
       "AIFS", cpkP, cpString, &s_aifs,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
-      "COLLISIONINFO", cpkP, cpElement, &_colinf,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
   parse_queues(s_cwmin, s_cwmax, s_aifs);
-
   init_stats();
 
   BRN_DEBUG("");
@@ -119,12 +128,20 @@ Tos2QueueMapper::init_stats()
   reset_queue_usage();
 
   _bo_exp = new uint16_t[no_queues];
-  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
 
   for ( int i = 0; i < no_queues; i++ )
     _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
+  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
   memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
+
+  _last_bo_usage = new Timestamp[_bo_usage_max_no];
+  memset(_last_bo_usage, 0, _bo_usage_max_no * sizeof(Timestamp));
+
+  if (TOS2QM_ALL_BOS_STATS) {
+    _all_bos = new int16_t[TOS2QM_BOBUF_SIZE];
+    memset(_all_bos, -1, TOS2QM_BOBUF_SIZE * sizeof(uint16_t));
+  }
 }
 
 void
@@ -170,17 +187,6 @@ Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
 #if CLICK_NS
   get_backoff();
 #endif
-
-  _queue_usage = new uint32_t[no_queues];
-  reset_queue_usage();
-
-  _bo_exp = new uint16_t[no_queues];
-  _bo_usage_usage = new uint32_t[_bo_usage_max_no];
-
-  for ( uint8_t i = 0; i < no_queues; i++ )
-    _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
-
-  memset(_bo_usage_usage, 0, _bo_usage_max_no * sizeof(uint32_t));
 }
 
 int
@@ -215,7 +221,11 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 
   BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
 
-  _current_scheme = get_bo_scheme(_bqs_strategy);
+  _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
+
+  if ( _current_scheme != NULL ) {
+    _current_scheme->set_strategy(_bqs_strategy); // set final strategy on that scheme
+  }
 
   return 0;
 }
@@ -223,7 +233,7 @@ Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
 BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
 {
   for (uint16_t i = 0; i < _no_schemes; i++) {
-    if (_bo_schemes[i]->get_id() == strategy) {
+    if (_bo_schemes[i]->handle_strategy(strategy)) {
       return _bo_schemes[i];
     }
   }
@@ -271,9 +281,14 @@ Tos2QueueMapper::simple_action(Packet *p)
           _bo_usage_usage[_bo_exp[opt_queue]]++;
           _pkt_in_q++;
 
+          _all_bos[_all_bos_idx] = opt_cwmin;
+          _all_bos_idx++;
+
           return p;
     }
   }
+
+
 
   opt_queue = find_queue(opt_cwmin);
 
@@ -294,6 +309,12 @@ Tos2QueueMapper::simple_action(Packet *p)
   //add stats
   _queue_usage[opt_queue]++;
   _bo_usage_usage[_bo_exp[opt_queue]]++;
+  _last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
+
+  if (TOS2QM_ALL_BOS_STATS) {
+    _all_bos[_all_bos_idx] = opt_cwmin;
+    _all_bos_idx++;
+  }
 
   _pkt_in_q++;
   return p;
@@ -471,7 +492,7 @@ Tos2QueueMapper::get_backoff()
 /*********************************** H A N D L E R **************************************************************/
 /****************************************************************************************************************/
 
-enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY};
+enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY, H_TOS2QUEUEMAPPER_BOS};
 
 String
 Tos2QueueMapper::stats()
@@ -493,9 +514,35 @@ Tos2QueueMapper::stats()
   sa << "\t<backoffusage>\n";
   for ( uint32_t i = 0; i < _bo_usage_max_no; i++) {
     sa << "\t\t<backoff value=\"" << (uint32_t)((uint32_t)1 << i)-1  << "\" usage=\"" << _bo_usage_usage[i];
-    sa << "\" exp=\"" << i << "\" />\n";
+    sa << "\" exp=\"" << i;
+    sa << "\" last_usage=\"" << _last_bo_usage[i].sec() << "\" />\n";
   }
   sa << "\t</backoffusage>\n</tos2queuemapper>\n";
+  return sa.take_string();
+}
+
+String
+Tos2QueueMapper::bos()
+{
+  StringAccum sa;
+
+  if (!TOS2QM_ALL_BOS_STATS) {
+    sa << "error:  stats flag wasn't set\n";
+    return sa.take_string();
+  }
+
+  sa << "<tos2queuemapper node=\"" << BRN_NODE_NAME << "\" >\n";
+  sa << "\t<all_bos>\n";
+  sa << "\t\t<bos values=\"";
+  for (uint32_t i = 0; i < TOS2QM_BOBUF_SIZE; i++) {
+    if (i > 0)
+      sa << ",";
+    sa << _all_bos[i];
+  }
+  sa << "\" />\n";
+  sa << "\t</all_bos>\n";
+  sa << "</tos2queuemapper>\n";
+
   return sa.take_string();
 }
 
@@ -505,6 +552,9 @@ static String Tos2QueueMapper_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_TOS2QUEUEMAPPER_STATS:
       return td->stats();
+      break;
+    case H_TOS2QUEUEMAPPER_BOS:
+      return td->bos();
       break;
   }
   return String();
@@ -535,6 +585,7 @@ void Tos2QueueMapper::add_handlers()
   BRNElement::add_handlers();//for Debug-Handlers
 
   add_read_handler("stats", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
+  add_read_handler("BOs", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_BOS);
 
   add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
   add_write_handler("strategy",Tos2QueueMapper_write_param, (void *)H_TOS2QUEUEMAPPER_STRATEGY);

@@ -11,24 +11,26 @@
 #include <clicknet/ether.h>
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
+
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "brn2_setrtscts.hh"
 
 
 
 CLICK_DECLS
 	
-Brn2_SetRTSCTS::Brn2_SetRTSCTS() : pli(NULL)  {
+Brn2_SetRTSCTS::Brn2_SetRTSCTS():
+  _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
+  pli(NULL)
+{
 	_rts = false;
 	pkt_total = 0;
 	
 }
 
-
 Brn2_SetRTSCTS::~Brn2_SetRTSCTS() {
-
 }
 
-  
 void Brn2_SetRTSCTS::address_broadcast_insert()
 {
 	EtherAddress broadcast_address = EtherAddress();
@@ -45,6 +47,7 @@ int Brn2_SetRTSCTS::initialize(ErrorHandler *) {
 int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) 
 {
 	if (cp_va_kparse(conf, this, errh,
+    "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
 		"PLI", cpkP, cpElement, &pli,
 		"DEBUG", cpkP, cpInteger, &_debug,
 	      cpEnd) < 0) return -1;
@@ -53,17 +56,36 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
 
 Packet *Brn2_SetRTSCTS::simple_action(Packet *p)
 {
-	if (p){
-		dest_test(p);
-		struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-		ceh->magic = WIFI_EXTRA_MAGIC;
-		if (rts_get()) {
-			ceh->flags |= WIFI_EXTRA_DO_RTS_CTS;
-		} else {
-			ceh->flags &= ~WIFI_EXTRA_DO_RTS_CTS;
-		}
-	}
-	return p;
+  if (p) {
+    bool set_rtscts = false;
+    EtherAddress dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
+
+    switch ( _rts_cts_strategy ) {
+      case RTS_CTS_STRATEGY_UNICAST_ON:
+        if (!dst.is_broadcast()) set_rtscts = true;
+        break;
+      case RTS_CTS_STRATEGY_ALWAYS_ON:
+        set_rtscts = true;
+        break;
+      case RTS_CTS_STRATEGY_SIZE_LIMIT:
+        break;
+      case RTS_CTS_STRATEGY_RANDOM:
+        break;
+      case RTS_CTS_STRATEGY_PLI:
+        dest_test(p);
+      case RTS_CTS_STRATEGY_HIDDENNODE:
+      case RTS_CTS_STRATEGY_ALWAYS_OFF:
+      default:
+        break;
+    }
+
+    struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+    ceh->magic = WIFI_EXTRA_MAGIC;
+    if (set_rtscts) ceh->flags |= WIFI_EXTRA_DO_RTS_CTS;
+    else 	ceh->flags &= ~WIFI_EXTRA_DO_RTS_CTS;
+  }
+
+  return p;
 }
 
 bool Brn2_SetRTSCTS::is_number_in_random_range(unsigned int value)

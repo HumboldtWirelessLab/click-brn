@@ -25,9 +25,17 @@ PacketLossEstimator::~PacketLossEstimator()
 int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh)
 {
     BRN_DEBUG("int PacketLossEstimator::configure(Vector<String> &conf, ErrorHandler* errh)");
-    int ret = cp_va_kparse(conf, this, errh, "CHANNELSTATS", cpkP, cpElement, &_cst, "COLLISIONINFO", cpkP, cpElement, &_cinfo, "HIDDENNODE", cpkP, cpElement,
-            &_hnd, "COOPCHANNELSTATS", cpkP, cpElement, &_cocst, "PLI", cpkP, cpElement, &_pli, "DEVICE", cpkP, cpElement, &_dev, "HNWORST", cpkP, cpBool,
-            &_pessimistic_hn_detection, "DEBUG", cpkP, cpInteger, &_debug, cpEnd );
+
+    int ret = cp_va_kparse(conf, this, errh,
+                           "CHANNELSTATS", cpkP, cpElement, &_cst,
+                           "COLLISIONINFO", cpkP, cpElement, &_cinfo,
+                           "HIDDENNODE", cpkP, cpElement, &_hnd,
+                           "COOPCHANNELSTATS", cpkP, cpElement, &_cocst,
+                           "PLI", cpkP, cpElement, &_pli,
+                           "DEVICE", cpkP, cpElement, &_dev,
+                           "HNWORST", cpkP, cpBool, &_pessimistic_hn_detection,
+                           "DEBUG", cpkP, cpInteger, &_debug,
+                           cpEnd );
 
     return ret;
 }

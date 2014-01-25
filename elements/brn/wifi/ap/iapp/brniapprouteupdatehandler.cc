@@ -162,13 +162,13 @@ BrnIappRouteUpdateHandler::recv_handover_routeupdate(
   // Check if the link update really proceeded
   if (_debug >= BrnLogger::INFO) {
 
-    BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(ap_new, sta) 
-      || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(sta, ap_new),
+    BRN_CHECK_EXPR(BRN_LT_STATION_METRIC < _link_table->get_link_metric(ap_new, sta) 
+      || BRN_LT_STATION_METRIC < _link_table->get_link_metric(sta, ap_new),
         ("corrupted link table, missing link from sta %s to new ap %s",
           sta.unparse().c_str(), ap_new.unparse().c_str()));
 
-    BRN_CHECK_EXPR(BRN_DSR_ROAMED_STATION_METRIC > _link_table->get_link_metric(ap_old, sta) 
-      || BRN_DSR_INVALID_ROUTE_METRIC > _link_table->get_link_metric(sta, ap_old),
+    BRN_CHECK_EXPR(BRN_LT_ROAMED_STATION_METRIC > _link_table->get_link_metric(ap_old, sta) 
+      || BRN_LT_INVALID_ROUTE_METRIC > _link_table->get_link_metric(sta, ap_old),
         ("corrupted link table, link from sta %s to old ap %s still exists",
           sta.unparse().c_str(), ap_old.unparse().c_str()));
   }
