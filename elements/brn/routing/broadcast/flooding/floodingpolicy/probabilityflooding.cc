@@ -6,6 +6,7 @@
 #include <click/error.hh>
 #include <click/straccum.hh>
 
+#include "../flooding.hh"
 #include "floodingpolicy.hh"
 #include "probabilityflooding.hh"
 
@@ -14,7 +15,8 @@ CLICK_DECLS
 ProbabilityFlooding::ProbabilityFlooding():
   _min_no_neighbors(0),
   _fwd_probability(100),
-  _max_metric_to_neighbor(5000)
+  _max_metric_to_neighbor(5000),
+  _cntbased_min_neighbors_for_abort(0)
 {
   BRNElement::init();
 }
@@ -44,6 +46,7 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
     "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
     "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
+    "CNTNB2ABORT", cpkP+cpkM, cpInteger, &_cntbased_min_neighbors_for_abort,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -59,23 +62,61 @@ ProbabilityFlooding::initialize(ErrorHandler *)
 }
 
 bool
-ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t, uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *,
+ProbabilityFlooding::do_forward(EtherAddress *src, EtherAddress *, const EtherAddress *, uint32_t bcast_id, bool is_known, uint32_t fwd_cnt, uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *,
                                 Vector<EtherAddress> *, Vector<EtherAddress> *)
 {
   *tx_data_size = 0;
 
+  if (is_known) {
+    /** node is already known;
+     * Did we fwd the msg ?
+     */
+    if ((fwd_cnt > 0) && (_cntbased_min_neighbors_for_abort > 0)) { //we forward the msg; should we abort?
+
+      struct Flooding::BroadcastNode::flooding_last_node *last_nodes; //get all nodes which has potential received the msg
+      uint32_t last_nodes_size;
+
+      last_nodes = _flooding->get_last_nodes(src, bcast_id, &last_nodes_size);
+
+      uint32_t no_rx_nodes = 0; //count nodes from which we received the packet
+
+      for( uint32_t i = 0; i < last_nodes_size; i++ ) {
+        if ( last_nodes[i].received_cnt > 0 ) no_rx_nodes++; //inc no_rx_nodes if we received the msg from this node
+      }
+
+      if ( no_rx_nodes >= _cntbased_min_neighbors_for_abort ) {
+        //stop it
+        Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(src);
+        if ( bcn != NULL ) {
+          bcn->set_stopped(bcast_id,true);
+        }
+
+        if (_flooding->is_last_tx_id(*src, bcast_id)) _flooding->abort_last_tx(FLOODING_TXABORT_REASON_FINISHED);
+      }
+    }
+
+    return false;
+  }
+
+  /**  ----------  Probability stuff -----------
+   *
+   * Check no. neighbours (NON)
+   * if NON > threshhold ) send with P()
+   * else send;
+   *
+   */
   const EtherAddress *me = _me->getMasterAddress();
   CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*me);
-  
+
   BRN_DEBUG("NBs: %d min: %d",cnml->_neighbors.size(),(int32_t)_min_no_neighbors);
-  
-  if ( cnml->_neighbors.size() <= (int32_t)_min_no_neighbors ) return !is_known;
+
+  if ( cnml->_neighbors.size() <= (int32_t)_min_no_neighbors ) return true;;
 
   uint32_t r = (click_random() % 100);
-  
+
   BRN_DEBUG("Known: %d prob: %d",(is_known?(int)1:(int)0),r);
-  
-  return !is_known && (r < _fwd_probability);
+
+  return (r < _fwd_probability);
 }
 
 int

@@ -23,8 +23,6 @@
 #include <click/element.hh>
 
 #include <elements/brn/brnelement.hh>
-#include <elements/brn/wifi/channelstats.hh>
-#include <elements/brn/wifi/collisioninfo.hh>
 
 #include "bo_schemes/backoff_scheme.hh"
 
@@ -39,15 +37,6 @@ CLICK_DECLS
 
 */
 
-#define BACKOFF_STRATEGY_OFF                             0 /* default */
-#define BACKOFF_STRATEGY_DIRECT                          1
-#define BACKOFF_STRATEGY_MAX_THROUGHPUT                  2
-#define BACKOFF_STRATEGY_CHANNEL_LOAD_AWARE              3
-#define BACKOFF_STRATEGY_TARGET_PACKETLOSS               4
-#define BACKOFF_STRATEGY_LEARNING                        5
-#define BACKOFF_STRATEGY_TARGET_DIFF_RXTX_BUSY           6
-#define BACKOFF_STRATEGY_NEIGHBOURS                      7
-#define BACKOFF_STRATEGY_EXPONENTIAL_LINEAR              8 /* PLEB */
 
 #define TOS2QM_DEFAULT_LEARNING_BO                       63
 #define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
@@ -58,8 +47,8 @@ CLICK_DECLS
 #define TOS2QM_LEARNING_MIN_CWMIN                        31
 #define TOS2QM_LEARNING_MAX_CWMIN                        255
 
-#define TOS2QM_PLEB_MIN_CWMIN                            7
-#define TOS2QM_PLEB_MAX_CWMIN                            127
+#define TOS2QM_ALL_BOS_STATS                             1
+#define TOS2QM_BOBUF_SIZE                                4096
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -80,6 +69,7 @@ public:
   Packet *simple_action(Packet *p);
 
   String stats();
+  String bos();
 
   void handle_feedback(Packet *);
 
@@ -106,9 +96,6 @@ private:
   void init_stats();
   BackoffScheme *get_bo_scheme(uint16_t strategy);
 
-  ChannelStats *_cst;         //Channel-Statistics-Element (see: ../channelstats.hh)
-  CollisionInfo *_colinf;     //Collision-Information-Element (see: ../collisioninfo.hh)
-
   uint32_t _learning_current_bo;
   uint32_t _learning_count_up;
   uint32_t _learning_count_down;
@@ -124,6 +111,9 @@ private:
   uint16_t *_bo_exp;           //exponent for backoff in queue
   uint32_t *_bo_usage_usage;   //frequency of the used backoff
   uint32_t _bo_usage_max_no;   //max bo
+  Timestamp *_last_bo_usage;
+  int16_t *_all_bos;
+  uint16_t _all_bos_idx;
 
   uint32_t _ac_stats_id;
 

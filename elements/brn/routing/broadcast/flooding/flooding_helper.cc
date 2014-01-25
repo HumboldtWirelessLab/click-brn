@@ -36,6 +36,10 @@
 
 CLICK_DECLS
 
+
+/**
+ *  H E L P E R
+ **/
 //TODO: refactor: move to brntools
 void 
 FloodingHelper::print_vector(Vector<EtherAddress> &eas)
@@ -70,18 +74,22 @@ FloodingHelper::print_vector(NeighbourMetricList &nodes)
 uint32_t
 FloodingHelper::metric2pdr(uint32_t metric)
 {
+  assert( metric <= BRN_LT_INVALID_LINK_METRIC );
   if ( metric == 0 ) return 100;
   if ( metric == BRN_LT_INVALID_LINK_METRIC ) return 0;
 
   return (1000 / isqrt32(metric));
 }
 
+/** --------------------------------------------------------------------------------------- **/
+
 FloodingHelper::FloodingHelper():
   _link_table(NULL),
   _cache_timeout(FLOODINGHELPER_DEFAULTTIMEOUT),
   _pdr_cache(NULL),
   _pdr_cache_shift(FLOODINGHELPER_PDR_CACHE_SHIFT),
-  _pdr_cache_size(1<<FLOODINGHELPER_PDR_CACHE_SHIFT)
+  _pdr_cache_size(1<<FLOODINGHELPER_PDR_CACHE_SHIFT),
+  _better_link_min_ratio(100)
 {
   BRNElement::init();
 }
@@ -97,6 +105,7 @@ FloodingHelper::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
       "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
       "CACHETIMEOUT", cpkP+cpkM, cpInteger, &_cache_timeout,
+      "MINRATIOBETTERLINK", cpkP, cpInteger, &_better_link_min_ratio,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -151,7 +160,7 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, int max_metric)
   if ( cnml != NULL ) {
     if ( cnml->age() > _cache_timeout ) cnml->update(_link_table);
   } else {
-    cnml = new CachedNeighborsMetricList(node,max_metric);
+    cnml = new CachedNeighborsMetricList(node, max_metric);
     cnml->update(_link_table);
     _cnmlmap.insert(node,cnml);
   }
@@ -437,7 +446,10 @@ FloodingHelper::get_candidate_set(NetworkGraph &ng, Vector<EtherAddress> &candid
     candidate_set.clear();
   }
 
-  for( int node = 0; node < ng.nml.size(); node++) { 
+  //BRN_ERROR("CAND");
+  //print_vector(ng.nml);
+
+  for( int node = 0; node < ng.nml.size(); node++) {
      if ( ng.nml[node]->is_root_follower() && (ng.nml[node]->_hops == 1) ) {
        candidate_set.push_back(ng.nml[node]->_ea);
      }
@@ -611,10 +623,13 @@ FloodingHelper::find_best(const EtherAddress &src, Vector<EtherAddress> &neighbo
 
 /** FUNCTION TO DECIDE WHETHER OTHER NODE IS BETTER **/
 bool
-FloodingHelper::is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst)
+FloodingHelper::is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst, uint32_t min_ratio)
 {
-  int m1 = _link_table->get_link_metric(src, dst);
-  int m2 = _link_table->get_link_metric(src2, dst);
+  int m1 = _link_table->get_link_metric(src, dst);  //default
+  int m2 = _link_table->get_link_metric(src2, dst); //competitor
+
+  if ( min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)min_ratio)/100) < m1);
+  if ( _better_link_min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)_better_link_min_ratio)/100) < m1);
 
   return (m2 < m1);
 }

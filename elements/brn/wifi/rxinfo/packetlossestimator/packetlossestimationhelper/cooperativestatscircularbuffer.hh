@@ -12,13 +12,15 @@
 #include <click/straccum.hh>
 #include <click/error.hh>
 #include <click/args.hh>
+#include <click/hashmap.hh>
+
 #if CLICK_NS
 #include <click/router.hh>
 #endif
-#include <click/hashmap.hh>
+
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/channelstats.hh"
-#include "elements/brn/wifi/packetlossestimationhelper/nodechannelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/packetlossestimator/packetlossestimationhelper/nodechannelstats.hh"
 
 CLICK_DECLS
 

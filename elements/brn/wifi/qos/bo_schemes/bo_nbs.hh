@@ -4,7 +4,7 @@
 #include <click/element.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats.hh"
 #include "backoff_scheme.hh"
 
 
@@ -25,7 +25,7 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  uint16_t get_id();
+  bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
@@ -36,12 +36,18 @@ public:
   ~BoNeighbours();
 
 private:
-  static const uint16_t _id  = 7;  // unique bo scheme identifier
+  void set_strategy(uint32_t strategy);
 
+private:
+  static const uint32_t _bo_start = 31;
   static const uint8_t alpha = 85;
   static const uint8_t beta  = 50;
 
   ChannelStats *_cst;
+  uint8_t _cst_sync;
+  uint32_t _strategy;
+  uint32_t _last_id;
+  int32_t _current_bo;
 };
 
 

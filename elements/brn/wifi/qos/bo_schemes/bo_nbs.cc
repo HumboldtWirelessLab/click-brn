@@ -9,10 +9,8 @@
 #include <click/packet_anno.hh>
 
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
-#include "elements/brn/wifi/channelstats.hh"
 #include "elements/brn/brn2.h"
 
-#include "backoff_scheme.hh"
 #include "bo_nbs.hh"
 
 
@@ -21,7 +19,11 @@ CLICK_DECLS
 
 
 BoNeighbours::BoNeighbours()
-  : _cst(NULL)
+  : _cst(NULL),
+    _cst_sync(0),
+    _strategy(0),
+    _last_id(9999),
+    _current_bo(_bo_start)
 {
   BRNElement::init();
 }
@@ -46,6 +48,7 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
+      "CST_SYNC", cpkP, cpInteger, &_cst_sync,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -58,9 +61,9 @@ void BoNeighbours::add_handlers()
 }
 
 
-uint16_t BoNeighbours::get_id()
+bool BoNeighbours::handle_strategy(uint32_t strategy)
 {
-  return _id;
+  return (strategy == BACKOFF_STRATEGY_NEIGHBOURS) ? true : false;
 }
 
 
@@ -70,20 +73,28 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   (void) tos;
 
   struct airtime_stats *as = _cst->get_latest_stats();
+  BRN_DEBUG("stats_id: %d\n", as->stats_id);
+
+
+  if (_cst_sync && (as->stats_id == _last_id))
+    return _current_bo;
+
+  _last_id = as->stats_id;
   int32_t nbs = as->no_sources;
 
-  int curr_cwmin = ((alpha * nbs) - beta) / 10;
+  _current_bo = ((alpha * nbs) - beta) / 10;
+  BRN_DEBUG("formular bo: %d\n", _current_bo);
 
-  if (curr_cwmin < (int)_min_cwmin)
-    curr_cwmin = _min_cwmin;
-  else if (curr_cwmin > (int)_max_cwmin)
-    curr_cwmin = _max_cwmin;
+  if (_current_bo < (int)_min_cwmin)
+    _current_bo = _min_cwmin;
+  else if (_current_bo > (int)_max_cwmin)
+    _current_bo = _max_cwmin;
 
   BRN_DEBUG("BoNeighbours.get_cwmin():");
   BRN_DEBUG("    nbs: %d\n", nbs);
-  BRN_DEBUG("    cwmin: %d\n", curr_cwmin);
+  BRN_DEBUG("    cwmin: %d\n", _current_bo);
 
-  return curr_cwmin;
+  return _current_bo;
 }
 
 
@@ -99,7 +110,10 @@ void BoNeighbours::set_conf(uint32_t min, uint32_t max)
   _max_cwmin = max;
 }
 
-
+void BoNeighbours::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
+}
 
 CLICK_ENDDECLS
 

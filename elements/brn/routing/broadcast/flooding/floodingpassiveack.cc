@@ -45,8 +45,10 @@ FloodingPassiveAck::FloodingPassiveAck():
   _retransmit_element(NULL),
   _flooding(NULL),
   _fhelper(NULL),
-  _dfl_retries(1),
-  _dfl_timeout(25),
+  _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
+  _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
+  _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
+  _abort_on_finished(true),
   _enqueued_pkts(0),
   _queued_pkts(0),
   _dequeued_pkts(0),
@@ -74,7 +76,9 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
+      "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
+      "ABORTONFINISHED", cpkP, cpBool, &_abort_on_finished,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -125,7 +129,7 @@ FloodingPassiveAck::packet_dequeue(EtherAddress *src, uint16_t bcast_id)
 }
 
 void
-FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t no_transmissions)
+FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t /*no_transmissions*/)
 {
   BRN_DEBUG("Feedback/Abort: %s %d",src->unparse().c_str(), bcast_id);
 
@@ -139,18 +143,25 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
 
   assert(pap != NULL);
 
+  Timestamp now = Timestamp::now();
+
   //TODO: is it a net retries if i sent the packet one time or little bit more ??
   if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
   if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
-        packet_is_finished(pap)) {
+        packet_is_finished(pap) ||
+        pap->tx_timeout(now, _dfl_timeout)) {
+
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
+
     _queued_pkts--;
+
     p->kill();
     packet_dequeue(src, bcast_id);
+
   } else {
 
-    Timestamp next_tx = Timestamp::now() + Timestamp::make_msec(0, tx_delay(pap));
+    Timestamp next_tx = now + Timestamp::make_msec(0, tx_delay(pap));
     pap->set_next_retry(next_tx);
     p->set_timestamp_anno(next_tx);
 
@@ -195,7 +206,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   /*check retries*/
   if ( pap->retries_left() == 0 ) return true;
 
-  return (count_unfinished_neighbors(pap) == 0);
+  return ((count_unfinished_neighbors(pap) == 0) && _abort_on_finished);
 }
 
 int
@@ -205,21 +216,21 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 
   /* depends on neighbours and last node*/
   int n = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()))->size();
-  if ( n == 0 ) return (click_random() % _dfl_timeout);
+  if ( n == 0 ) return (click_random() % _dfl_interval);
 
   int un = count_unfinished_neighbors(pap);
-  if ( n == un ) return (click_random() % _dfl_timeout);
+  if ( n == un ) return (click_random() % _dfl_interval);
 
-  //int mod_time = (_dfl_timeout * (n-un))/n;
-  int mod_time = isqrt32((_dfl_timeout * _dfl_timeout * (n-un))/n);
-  //int mod_time = (_dfl_timeout * (n-un) * (n-un))/(n*n);
+  //int mod_time = (_dfl_interval * (n-un))/n;
+  int mod_time = isqrt32((_dfl_interval * _dfl_interval * (n-un))/n);
+  //int mod_time = (_dfl_interval * (n-un) * (n-un))/(n*n);
 
-  if (mod_time == 0) return (click_random() % _dfl_timeout);
+  if (mod_time == 0) return (click_random() % _dfl_interval);
 
   return (click_random() % mod_time);
 
   /* depends on nothing. Just like backoff */
-  //return (click_random() % _dfl_timeout);
+  //return (click_random() % _dfl_interval);
 }
 
 //-----------------------------------------------------------------------------
@@ -233,7 +244,7 @@ FloodingPassiveAck::stats()
 
   sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (int)((_flooding!=NULL)?1:0);
   sa << "\" retries=\"" << _dfl_retries << "\" timeout=\"";
-  sa << _dfl_timeout << "\" >\n\t<packetqueue count=\"" << p_queue.size();
+  sa << _dfl_interval << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _enqueued_pkts << "\" deletes=\"" << _dequeued_pkts;
   sa << "\" queued=\"" << _queued_pkts;
   sa << "\" retransmissions=\"" << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts << "\" >\n";

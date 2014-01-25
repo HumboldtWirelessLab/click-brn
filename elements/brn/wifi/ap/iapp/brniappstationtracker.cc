@@ -252,13 +252,13 @@ BrnIappStationTracker::push(int, Packet* p)
 
     // Check if the link update really proceeded
     if (_debug >= BrnLogger::INFO) {
-      BRN_CHECK_EXPR(BRN_DSR_STATION_METRIC < _link_table->get_link_metric(apNew, client) 
-        || BRN_DSR_STATION_METRIC < _link_table->get_link_metric(client, apNew),
+      BRN_CHECK_EXPR(BRN_LT_STATION_METRIC < _link_table->get_link_metric(apNew, client) 
+        || BRN_LT_STATION_METRIC < _link_table->get_link_metric(client, apNew),
         ("corrupted link table, missing link from sta %s to new ap %s",
           client.unparse().c_str(), apNew.unparse().c_str()));
 
-      BRN_CHECK_EXPR(BRN_DSR_ROAMED_STATION_METRIC > _link_table->get_link_metric(apOld, client) 
-        || BRN_DSR_INVALID_ROUTE_METRIC > _link_table->get_link_metric(client, apOld),
+      BRN_CHECK_EXPR(BRN_LT_ROAMED_STATION_METRIC > _link_table->get_link_metric(apOld, client) 
+        || BRN_LT_INVALID_ROUTE_METRIC > _link_table->get_link_metric(client, apOld),
         ("corrupted link table, link from sta %s to old ap %s still exists",
           client.unparse().c_str(), apOld.unparse().c_str()));
     }
@@ -488,29 +488,29 @@ BrnIappStationTracker::update_linktable(
 
   if (ap_new) {
     // TODO prevent loops and relaying of stations (inspect ap_old?)
-    ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
+    ret &= _link_table->update_link(sta, ap_new, 0, 0, BRN_LT_STATION_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+        sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_LT_INVALID_ROUTE_METRIC);
 
-    ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
+    ret &= _link_table->update_link(ap_new, sta, 0, 0, BRN_LT_STATION_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_STATION_METRIC, LINK_UPDATE_REMOTE);
+        ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_LT_STATION_METRIC, LINK_UPDATE_REMOTE);
   }
 
   if (ap_old) {
-    ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC, LINK_UPDATE_REMOTE);
+    ret &= _link_table->update_link(sta, ap_old, 0, 0, BRN_LT_INVALID_ROUTE_METRIC, LINK_UPDATE_REMOTE);
     if (ret)
       BRN_DEBUG("_link_table->update_link %s %s %d\n",
-        sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+        sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_LT_INVALID_ROUTE_METRIC);
 
     // if not optimizing or the sta has no new ap, discart from route table
-    int linkmetric_old_to_sta = BRN_DSR_ROAMED_STATION_METRIC;
+    int linkmetric_old_to_sta = BRN_LT_ROAMED_STATION_METRIC;
     if (!_optimize || !ap_new)
     {
       BRN_DEBUG("optimization turned off, invalidating link old ap -> sta.");
-      linkmetric_old_to_sta = BRN_DSR_INVALID_ROUTE_METRIC;
+      linkmetric_old_to_sta = BRN_LT_INVALID_ROUTE_METRIC;
     }
 
     ret &= _link_table->update_link(ap_old, sta, 0, 0, linkmetric_old_to_sta, LINK_UPDATE_REMOTE);
@@ -521,25 +521,25 @@ BrnIappStationTracker::update_linktable(
 
   return (ret);
 
-//  bool ret = _link_table->update_link(sta, ap_old, 0, 0, BRN_DSR_ROAMED_STATION_METRIC);
+//  bool ret = _link_table->update_link(sta, ap_old, 0, 0, BRN_LT_ROAMED_STATION_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_DSR_ROAMED_STATION_METRIC);
+//      sta.unparse().c_str(), ap_old.unparse().c_str(), BRN_LT_ROAMED_STATION_METRIC);
 //
-//  ret = _link_table->update_link(ap_old, sta, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
+//  ret = _link_table->update_link(ap_old, sta, 0, 0, BRN_LT_INVALID_ROUTE_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      ap_old.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+//      ap_old.unparse().c_str(), sta.unparse().c_str(), BRN_LT_INVALID_ROUTE_METRIC);
 //
-//  ret = _link_table->update_link(sta, ap_new, 0, 0, BRN_DSR_STATION_METRIC);
+//  ret = _link_table->update_link(sta, ap_new, 0, 0, BRN_LT_STATION_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_DSR_STATION_METRIC);
+//      sta.unparse().c_str(), ap_new.unparse().c_str(), BRN_LT_STATION_METRIC);
 //
-//  ret = _link_table->update_link(ap_new, sta, 0, 0, BRN_DSR_INVALID_ROUTE_METRIC);
+//  ret = _link_table->update_link(ap_new, sta, 0, 0, BRN_LT_INVALID_ROUTE_METRIC);
 //  if (ret)
 //    BRN_DEBUG("_link_table->update_link %s %s %d\n",
-//      ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_DSR_INVALID_ROUTE_METRIC);
+//      ap_new.unparse().c_str(), sta.unparse().c_str(), BRN_LT_INVALID_ROUTE_METRIC);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

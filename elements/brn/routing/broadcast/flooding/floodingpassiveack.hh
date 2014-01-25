@@ -31,6 +31,7 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "../../../../local/chuckcheck.hh"
 
 CLICK_DECLS
 
@@ -58,7 +59,10 @@ class FloodingPassiveAck : public BRNElement {
  public:
   class PassiveAckPacket
   {
-#define PASSIVE_ACK_DFL_MAX_RETRIES 10
+#define PASSIVE_ACK_DFL_MAX_RETRIES  1
+#define PASSIVE_ACK_DFL_INTERVAL    25
+#define PASSIVE_ACK_DFL_TIMEOUT   2000
+
      public:
       EtherAddress _src;
       uint16_t _bcast_id;
@@ -106,6 +110,10 @@ class FloodingPassiveAck : public BRNElement {
         return _max_retries - _retries;
       }
 
+      bool tx_timeout(Timestamp &now, int timeout ) {
+        return ((now - _enqueue_time).msecval() > timeout );
+      }
+
    };
 
    typedef Vector<PassiveAckPacket*> PAckPacketVector;
@@ -141,7 +149,10 @@ private:
   PAckPacketVector p_queue;
 
   uint32_t _dfl_retries;
+  uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
+
+  bool _abort_on_finished;
 
   bool packet_is_finished(PassiveAckPacket *pap);
 

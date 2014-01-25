@@ -321,6 +321,8 @@ class BRN2SimpleFlow : public BRNElement
     RoutingPeek *_routing_peek;
     Brn2LinkTable *_link_table;
 
+    uint32_t _flow_start_rand;
+
     Timestamp _next_schedule;
 
 #ifdef SF_TX_ABORT

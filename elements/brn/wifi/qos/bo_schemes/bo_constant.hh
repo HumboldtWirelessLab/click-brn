@@ -1,21 +1,22 @@
-#ifndef BO_TARGETDIFF_RXTXBUSY
-#define BO_TARGETDIFF_RXTXBUSY
+#ifndef BO_CONSTANT_HH
+#define BO_CONSTANT_HH
 
 #include <click/element.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats.hh"
 #include "backoff_scheme.hh"
+
 
 CLICK_DECLS
 
 
 
-class BoTargetDiffRxTxBusy : public BackoffScheme {
+class BoConstant : public BackoffScheme {
 /* Derived Functions */
 public:
   /* Element */
-  const char *class_name() const  { return "BoTargetDiffRxTxBusy"; }
+  const char *class_name() const  { return "BoConstant"; }
   const char *processing() const  { return AGNOSTIC; }
   const char *port_count() const  { return "0/0"; }
   void *cast(const char *name);
@@ -24,35 +25,34 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  uint16_t get_id();
+  bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
 
 
 public:
-  BoTargetDiffRxTxBusy();
-  ~BoTargetDiffRxTxBusy();
+  BoConstant();
+  ~BoConstant();
 
 private:
+  void set_strategy(uint32_t strategy);
+
   void increase_cw();
   void decrease_cw();
 
 
 private:
-  static const uint16_t _id               = 6;  // unique bo scheme identifier
-  static const uint16_t _bo_start         = 63; // initial backoff
-  static const uint8_t _targetdiff_param  = 3;
+  static const uint16_t _id               = 8;  // unique bo scheme identifier
 
   ChannelStats *_cst;
-  uint32_t _targetdiff;
-  uint32_t _bo_for_targetdiff;
-  uint32_t _tdiff_lwm;
-  uint32_t _tdiff_hwm;
+
+  uint32_t _strategy;
+  uint16_t _const_bo;
 };
 
 
 
 CLICK_ENDDECLS
 
-#endif /* BO_TARGETDIFF_RXTXBUSY */
+#endif /* BO_CHANNELLOADAWARE_HH */

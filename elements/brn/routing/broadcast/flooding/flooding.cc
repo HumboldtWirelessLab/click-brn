@@ -256,10 +256,10 @@ Flooding::push( int port, Packet *packet )
       if ( is_last_tx_id(src, p_bcast_id)) {
         if ( is_last_tx(fwd, src, p_bcast_id) ) {             //my current target is src
           BRN_DEBUG("current RX node already has the packet");
-          abort_last_tx(fwd);
+          abort_last_tx(fwd, FLOODING_TXABORT_REASON_ACKED);
         } else if (_flooding_passiveack->_fhelper->is_better_fwd(*(_me->getMasterAddress()), fwd, _last_tx_dst_ea)) {
-          BRN_ERROR("fwd has better link to current target");
-          abort_last_tx();
+          BRN_DEBUG("fwd has better link to current target");
+          abort_last_tx(FLOODING_TXABORT_REASON_BETTER_LINK);
         }
       }
     }
@@ -338,13 +338,12 @@ Flooding::push( int port, Packet *packet )
     if (forward) {
       BRN_DEBUG("Forward: %s ID:%d", src.unparse().c_str(), p_bcast_id);
 
-      BRN_ERROR("FWDSIZE: %d", forwarder.size());
+      //BRN_ERROR("FWDSIZE: %d", forwarder.size());
       if ( !forwarder.empty() ) {
         new_bcn->_fix_target_set = true;
         for (Vector<EtherAddress>::iterator i = forwarder.begin(); i != forwarder.end(); ++i) {
-          BRN_ERROR("Add node %s %d %s", i->unparse().c_str(), p_bcast_id, src.unparse().c_str());
-          int u = add_last_node(&src, p_bcast_id, i, false, false, true, false);
-          BRN_ERROR("Number: %d", u);
+          BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), p_bcast_id, src.unparse().c_str());
+          /*int u = */add_last_node(&src, p_bcast_id, i, false, false, true, false);
         }
       }
 
@@ -461,20 +460,22 @@ Flooding::push( int port, Packet *packet )
       if ( (ceh->flags & WIFI_EXTRA_FOREIGN_TX_SUCC) != 0) {                                 //successful transmission ? Yes,...
         if (is_last_tx(rx_node, src, p_bcast_id)) {                                          //abort
           BRN_DEBUG("lasttx match dst of foreign");
-          abort_last_tx(rx_node);
+          abort_last_tx(rx_node, FLOODING_TXABORT_REASON_ACKED);
         }
       } else {                                                                               //not successfurl but...
-        //if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                      //i'm not responsible
-            if ((is_last_tx(rx_node, src, p_bcast_id)) &&
-                (((_abort_tx_mode & FLOODING_TXABORT_MODE_ASSIGNED) != 0) || ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0)) ) {
-            BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
-            abort_last_tx(rx_node);
+        if (is_last_tx(rx_node, src, p_bcast_id)) {
+          BRN_DEBUG("lasttx match dst of foreign (unsuccessful)");
+
+          if ((bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {                   //src forces target
+            abort_last_tx(rx_node, FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY);
+            //if ( ! is_responsibility_target(&src, p_bcast_id, &rx_node) ) {                //i'm not responsible
             //since other node do this, we are not responible anymore
-            if ( (bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST) != 0) {
-              set_foreign_responsibility_target(&src, p_bcast_id, &rx_node);
-            }
+            set_foreign_responsibility_target(&src, p_bcast_id, &rx_node);
+            //}
+          } else {
+            abort_last_tx(rx_node, FLOODING_TXABORT_REASON_ASSIGNED);
           }
-        //}
+        }
       }
 
       /**
@@ -555,7 +556,7 @@ Flooding::get_broadcast_node(EtherAddress *src)
 }
 
 void
-Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
+Flooding::add_id(EtherAddress *src, uint16_t id, Timestamp *now, bool me_src)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -569,7 +570,7 @@ Flooding::add_id(EtherAddress *src, uint32_t id, Timestamp *now, bool me_src)
 }
 
 int
-Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility)
+Flooding::add_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -582,7 +583,7 @@ Flooding::add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node,
 }
 
 void
-Flooding::inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node)
+Flooding::inc_received(EtherAddress *src, uint16_t id, EtherAddress *last_node)
 {
   uint32_t *cnt = _recv_cnt.findp(*last_node);
   if ( cnt == NULL ) _recv_cnt.insert(*last_node,1);
@@ -599,7 +600,7 @@ Flooding::inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node)
 }
 
 bool
-Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *count_forwards)
+Flooding::have_id(EtherAddress *src, uint16_t id, Timestamp *now, uint32_t *count_forwards)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -614,7 +615,7 @@ Flooding::have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *coun
 }
 
 void
-Flooding::forward_attempt(EtherAddress *src, uint32_t id)
+Flooding::forward_attempt(EtherAddress *src, uint16_t id)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -624,7 +625,7 @@ Flooding::forward_attempt(EtherAddress *src, uint32_t id)
 }
 
 void
-Flooding::forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node)
+Flooding::forward_done(EtherAddress *src, uint16_t id, bool success, bool new_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -636,7 +637,7 @@ Flooding::forward_done(EtherAddress *src, uint32_t id, bool success, bool new_no
 }
 
 uint32_t
-Flooding::unfinished_forward_attempts(EtherAddress *src, uint32_t id)
+Flooding::unfinished_forward_attempts(EtherAddress *src, uint16_t id)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -646,7 +647,7 @@ Flooding::unfinished_forward_attempts(EtherAddress *src, uint32_t id)
 }
 
 void
-Flooding::sent(EtherAddress *src, uint32_t id, uint32_t no_transmission)
+Flooding::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -656,7 +657,7 @@ Flooding::sent(EtherAddress *src, uint32_t id, uint32_t no_transmission)
 }
 
 bool
-Flooding::me_src(EtherAddress *src, uint32_t id)
+Flooding::me_src(EtherAddress *src, uint16_t id)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -714,7 +715,7 @@ Flooding::reset()
 }
 
 struct Flooding::BroadcastNode::flooding_last_node*
-Flooding::get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last)
+Flooding::get_last_node(EtherAddress *src, uint16_t id, EtherAddress *last)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn == NULL ) return NULL;
@@ -722,7 +723,7 @@ Flooding::get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last)
 }
 
 struct Flooding::BroadcastNode::flooding_last_node*
-Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+Flooding::get_last_nodes(EtherAddress *src, uint16_t id, uint32_t *size)
 {
   *size = 0;
   BroadcastNode *bcn = _bcast_map.find(*src);
@@ -731,7 +732,7 @@ Flooding::get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
 }
 
 void
-Flooding::assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node)
+Flooding::assign_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -742,7 +743,7 @@ Flooding::assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_no
 }
 
 struct Flooding::BroadcastNode::flooding_last_node*
-Flooding::get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
+Flooding::get_assigned_nodes(EtherAddress *src, uint16_t id, uint32_t *size)
 {
   *size = 0;
   BroadcastNode *bcn = _bcast_map.find(*src);
@@ -751,28 +752,28 @@ Flooding::get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size)
 }
 
 void
-Flooding::clear_assigned_nodes(EtherAddress *src, uint32_t id)
+Flooding::clear_assigned_nodes(EtherAddress *src, uint16_t id)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) return bcn->clear_assigned_nodes(id);  
 }
 
 void
-Flooding::set_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+Flooding::set_responsibility_target(EtherAddress *src, uint16_t id, EtherAddress *target)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) bcn->set_responsibility_target(id, target);
 }
 
 void
-Flooding::set_foreign_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+Flooding::set_foreign_responsibility_target(EtherAddress *src, uint16_t id, EtherAddress *target)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) bcn->set_foreign_responsibility_target(id, target);
 }
 
 bool
-Flooding::is_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target)
+Flooding::is_responsibility_target(EtherAddress *src, uint16_t id, EtherAddress *target)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn != NULL ) return bcn->is_responsibility_target(id, target);
@@ -824,13 +825,14 @@ Flooding::table()
 
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
     for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
-      if ( bcn->_bcast_id_list[i] == 0 ) continue;
+      if ( bcn->_bcast_id_list[i] == 0 ) continue; //unused id-entry
       struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
       sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
       sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
       sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
       sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
-      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" >\n";
+      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" time=\"";
+      sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
 
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
