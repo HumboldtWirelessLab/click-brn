@@ -23,7 +23,7 @@
 #include <click/glue.hh>
 #include <click/type_traits.hh>
 
-#include "dibadawn.hh"
+#include "search.hh"
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
@@ -53,8 +53,9 @@ DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnStatistic &statistic,
     const EtherAddress &addrOfThisNode)
+:   commonStatistic(statistic)
 {
-  initCommon(click_element, statistic, addrOfThisNode);
+  initCommon(click_element, addrOfThisNode);
 }
 
 DibadawnSearch::DibadawnSearch(
@@ -62,8 +63,9 @@ DibadawnSearch::DibadawnSearch(
     DibadawnStatistic &statistic,
     const EtherAddress &addrOfThisNode,
     DibadawnSearchId &id)
+:   commonStatistic(statistic)
 {
-  initCommon(click_element, statistic, addrOfThisNode);
+  initCommon(click_element, addrOfThisNode);
 
   searchId = id;
   visited = false;
@@ -71,10 +73,8 @@ DibadawnSearch::DibadawnSearch(
 
 void DibadawnSearch::initCommon(
     BRNElement *click_element,
-    DibadawnStatistic &statistic,
     const EtherAddress &thisNode)
 {
-  commonStatistic = &statistic;
   brn_click_element = click_element;
   addrOfThisNode = thisNode;
   maxTraversalTimeMs = 40;
@@ -110,7 +110,7 @@ void DibadawnSearch::detectCycles()
     marking.isBridge = false;
     marking.nodeA = addrOfThisNode;
     marking.nodeB = crossEdgePacket.forwardedBy;
-    commonStatistic->updateEdgeMarking(marking);
+    commonStatistic.updateEdgeMarking(marking);
 
     DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
     click_chatter("<Cycle id='%s' />", cycle.AsString().c_str());
@@ -168,7 +168,7 @@ void DibadawnSearch::forwardMessages()
       marking.isBridge = false;
       marking.nodeA = addrOfThisNode;
       marking.nodeB = parent;
-      commonStatistic->updateEdgeMarking(marking);
+      commonStatistic.updateEdgeMarking(marking);
     }
 
     messageBuffer.clear();
@@ -366,7 +366,7 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   marking.isBridge = true;
   marking.nodeA = nodeA;
   marking.nodeB = nodeB;
-  commonStatistic->updateEdgeMarking(marking);
+  commonStatistic.updateEdgeMarking(marking);
 
   click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' />",
       this->addrOfThisNode.unparse_dash().c_str(),
@@ -396,14 +396,14 @@ void DibadawnSearch::pairCyclesIfPossible(DibadawnPacket& packet)
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        commonStatistic->updateEdgeMarking(marking);
+        commonStatistic.updateEdgeMarking(marking);
 
         marking.time = Timestamp::now();
         marking.id = packet.searchId;
         marking.isBridge = false;
         marking.nodeA = addrOfThisNode;
         marking.nodeB = packet.forwardedBy;
-        commonStatistic->updateEdgeMarking(marking);
+        commonStatistic.updateEdgeMarking(marking);
 
         packet.removeCycle(e);
         continue;
