@@ -29,72 +29,94 @@ CLICK_DECLS
 
 class TopologyInfo : public BRNElement
 {
- private:
-  Vector<Bridge*> _bridges;
-  Vector<ArticulationPoint*> _artpoints;
-  int number_of_detections;
+public:
+    class Bridge
+    {
+    public:
+        EtherAddress node_a;
+        EtherAddress node_b;
+        uint32_t countDetection;
 
- public:
-  TopologyInfo();
-  ~TopologyInfo();
+        Bridge(EtherAddress *a, EtherAddress *b)
+        {
+            node_a = EtherAddress(a->data());
+            node_b = EtherAddress(b->data());
+            countDetection = 1;
+        }
 
-  const char *class_name() const  { return "TopologyInfo"; }
-  const char *processing() const  { return AGNOSTIC; }
-  const char *port_count() const  { return "0/0"; }
+        void incDetection()
+        {
+            countDetection++;
+        }
 
-  int configure(Vector<String> &, ErrorHandler *);
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
-  void incNoDetection() { number_of_detections++; }
-  void addBridge(EtherAddress *a, EtherAddress *b);
-  void addArticulationPoint(EtherAddress *a);
-
-  Bridge* getBridge(EtherAddress *a, EtherAddress *b);
-  ArticulationPoint *getArticulationPoint(EtherAddress *a);
-
-  String topology_info(void);
-  
-  class Bridge {
-     public:
-      EtherAddress node_a;
-      EtherAddress node_b;
-      uint32_t countDetection;
-
-      Bridge(EtherAddress *a, EtherAddress *b) {
-        node_a = EtherAddress(a->data());
-        node_b = EtherAddress(b->data());
-        countDetection = 1;
-      }
-
-      void incDetection() {
-        countDetection++;
-      }
-
-      bool equals(EtherAddress *a, EtherAddress *b) {
-        return (((memcmp(node_a.data(), a->data(),6) == 0) && (memcmp(node_b.data(), b->data(),6) == 0)) ||
-                ((memcmp(node_a.data(), b->data(),6) == 0) && (memcmp(node_b.data(), a->data(),6) == 0)));
-      }
+        bool equals(EtherAddress *a, EtherAddress *b)
+        {
+            return (((memcmp(node_a.data(), a->data(), 6) == 0) && (memcmp(node_b.data(), b->data(), 6) == 0)) ||
+                    ((memcmp(node_a.data(), b->data(), 6) == 0) && (memcmp(node_b.data(), a->data(), 6) == 0)));
+        }
     };
 
-    class ArticulationPoint {
-     public:
-      EtherAddress node;
-      uint32_t countDetection;
+    class ArticulationPoint
+    {
+    public:
+        EtherAddress node;
+        uint32_t countDetection;
 
-      ArticulationPoint(EtherAddress *n) {
-        node = EtherAddress(n->data());
-        countDetection = 1;
-      }
+        ArticulationPoint(EtherAddress *n)
+        {
+            node = EtherAddress(n->data());
+            countDetection = 1;
+        }
 
-      void incDetection() {
-        countDetection++;
-      }
+        void incDetection()
+        {
+            countDetection++;
+        }
 
-      bool equals(EtherAddress *a) {
-        return memcmp(node.data(), a->data(),6);
-      }
+        bool equals(EtherAddress *a)
+        {
+            return memcmp(node.data(), a->data(), 6);
+        }
     };
+    
+    int configure(Vector<String> &, ErrorHandler *);
+    int initialize(ErrorHandler *);
+    void add_handlers();
+    
+    TopologyInfo();
+    ~TopologyInfo();
+
+    const char *class_name() const
+    {
+        return "TopologyInfo";
+    }
+
+    const char *processing() const
+    {
+        return AGNOSTIC;
+    }
+
+    const char *port_count() const
+    {
+        return "0/0";
+    }
+
+    void incNoDetection()
+    {
+        number_of_detections++;
+    }
+    
+    void addBridge(EtherAddress *a, EtherAddress *b);
+    void addArticulationPoint(EtherAddress *a);
+    Bridge* getBridge(EtherAddress *a, EtherAddress *b);
+    ArticulationPoint *getArticulationPoint(EtherAddress *a);
+
+    String topology_info(void);
+
+private:
+    Vector<Bridge*> _bridges;
+    Vector<ArticulationPoint*> _artpoints;
+    int number_of_detections;
 };
 
 CLICK_ENDDECLS
