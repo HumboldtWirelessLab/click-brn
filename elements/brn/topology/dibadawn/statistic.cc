@@ -158,7 +158,7 @@ bool DibadawnStatistic::isBridgeByWeightedRule()
  * empirically derived values, used by bratislav milic.
  * 
  */
-double DibadawnStatistic::competenceByUsedHops(size_t hops)
+double DibadawnStatistic::competenceByUsedHops(uint8_t hops)
 {
   double result;
   
