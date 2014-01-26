@@ -28,15 +28,17 @@
 
 CLICK_DECLS;
 
-DibadawnAlgorithm::DibadawnAlgorithm()
-{
-}
-
-DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element, const EtherAddress &addrOfThisNode)
+DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element)
+:   commonStatistic(DibadawnStatistic::getInstance())
 {
   brn_click_element = click_element;
+}
+
+void DibadawnAlgorithm::setAddrOfThisNode(const EtherAddress& addrOfThisNode)
+{
   thisNode = addrOfThisNode;
 }
+
 
 void DibadawnAlgorithm::receive(DibadawnPacket& packet)
 {
@@ -49,7 +51,7 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
   DibadawnSearch *search = getResponsibleSearch(packet);
   if (search == NULL)
   {
-    search = new DibadawnSearch(brn_click_element, commonStatistic, thisNode, packet.searchId);
+    search = new DibadawnSearch(brn_click_element, thisNode, packet.searchId);
     searches.push_back(search);
   }
 
@@ -70,7 +72,7 @@ DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 
 void DibadawnAlgorithm::startNewSearch()
 {
-  DibadawnSearch *search = new DibadawnSearch(brn_click_element, commonStatistic, thisNode);
+  DibadawnSearch *search = new DibadawnSearch(brn_click_element, thisNode);
   searches.push_back(search);
   search->start_search();
 }

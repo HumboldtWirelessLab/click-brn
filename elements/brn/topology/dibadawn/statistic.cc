@@ -24,6 +24,11 @@
 
 CLICK_DECLS
 
+DibadawnStatistic& DibadawnStatistic::getInstance()
+{
+  static DibadawnStatistic singleInstance;
+  return(singleInstance);
+}
 
 DibadawnStatistic::DibadawnStatistic()
 {

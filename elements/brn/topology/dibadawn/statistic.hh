@@ -35,7 +35,7 @@ CLICK_DECLS;
 class DibadawnStatistic
 {
 public:
-    DibadawnStatistic();
+    static DibadawnStatistic& getInstance();
 
     void updateEdgeMarking(DibadawnEdgeMarking &marking);
     bool isBridgeByUnanimous();
@@ -51,6 +51,8 @@ private:
     Spinlock lock;
     Vector<DibadawnEdgeMarking> edgeMarkings;
     int maxMarkings;
+    
+    DibadawnStatistic();
 };
 
 CLICK_ENDDECLS
