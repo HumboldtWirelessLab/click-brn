@@ -38,8 +38,11 @@ public:
     EtherAddress nodeA;
     EtherAddress nodeB;
     bool isTrusted;
+    double competence;
 
-private:
+    DibadawnEdgeMarking();
+    DibadawnEdgeMarking(DibadawnSearchId &id, bool isBridge, EtherAddress &nodeA, EtherAddress &nodeB, bool isTrusted);
+    DibadawnEdgeMarking(DibadawnSearchId &id, bool isBridge, EtherAddress &nodeA, EtherAddress &nodeB, double competence);
 };
 
 CLICK_ENDDECLS

@@ -78,9 +78,10 @@ private:
     bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
     void setParentNull();
     bool isParentNull();
-    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB);
+    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence);
     void pairCyclesIfPossible(DibadawnPacket &packet);
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
+    uint8_t getUsedHops(uint8_t ttl);
 
 public:
     DibadawnSearch(BRNElement *brn_click_element, DibadawnStatistic &stat, const EtherAddress &addrOfThisNode);

@@ -22,7 +22,6 @@
 #define TOPOLOGY_DIBADAWN_STATISTIC_HH
 
 
-
 #include <click/config.h>
 #include <click/sync.hh>
 
@@ -31,11 +30,13 @@
 
 CLICK_DECLS;
 
+// TODO: Change to singleton
+
 class DibadawnStatistic
 {
 public:
     DibadawnStatistic();
-    
+
     void updateEdgeMarking(DibadawnEdgeMarking &marking);
     bool isBridgeByUnanimous();
     bool isBridgeByMajority();
@@ -43,7 +44,7 @@ public:
     bool isBridgeByIntelligentMajority();
     bool isBridgeByTrustedNoBridge();
     bool isBridgeByWeightedRule();
-    double competenceByUsedHops(size_t hops);
+    double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
 
 private:

@@ -30,6 +30,35 @@
 
 CLICK_DECLS
 
+DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& id, bool isBridge, EtherAddress& nodeA, EtherAddress& nodeB, bool isTrusted)
+{
+  this->id = id;
+  this->isBridge = isBridge;
+  this->nodeA = nodeA;
+  this->nodeB = nodeB;
+  this->isTrusted = isTrusted;
+      
+  this->time = Timestamp::now();
+  this->competence = 1.0;
+}
+
+DibadawnEdgeMarking::DibadawnEdgeMarking(DibadawnSearchId& id, bool isBridge, EtherAddress& nodeA, EtherAddress& nodeB, double competence)
+{
+  this->id = id;
+  this->isBridge = isBridge;
+  this->nodeA = nodeA;
+  this->nodeB = nodeB;
+  this->competence = competence;
+  
+  this->isTrusted = false;
+  this->time = Timestamp::now();
+}
+
+
+DibadawnEdgeMarking::DibadawnEdgeMarking()
+{
+  isTrusted = false;
+}
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnEdgeMarking)
