@@ -29,8 +29,33 @@ CLICK_DECLS
 
 class TopologyInfo : public BRNElement
 {
+ private:
+  Vector<Bridge*> _bridges;
+  Vector<ArticulationPoint*> _artpoints;
+  int number_of_detections;
+
  public:
-    class Bridge {
+  TopologyInfo();
+  ~TopologyInfo();
+
+  const char *class_name() const  { return "TopologyInfo"; }
+  const char *processing() const  { return AGNOSTIC; }
+  const char *port_count() const  { return "0/0"; }
+
+  int configure(Vector<String> &, ErrorHandler *);
+  int initialize(ErrorHandler *);
+  void add_handlers();
+
+  void incNoDetection() { number_of_detections++; }
+  void addBridge(EtherAddress *a, EtherAddress *b);
+  void addArticulationPoint(EtherAddress *a);
+
+  Bridge* getBridge(EtherAddress *a, EtherAddress *b);
+  ArticulationPoint *getArticulationPoint(EtherAddress *a);
+
+  String topology_info(void);
+  
+  class Bridge {
      public:
       EtherAddress node_a;
       EtherAddress node_b;
@@ -70,37 +95,6 @@ class TopologyInfo : public BRNElement
         return memcmp(node.data(), a->data(),6);
       }
     };
-
- public:
-  TopologyInfo();
-  ~TopologyInfo();
-
-  const char *class_name() const  { return "TopologyInfo"; }
-
-  const char *processing() const  { return AGNOSTIC; }
-
-  const char *port_count() const  { return "0/0"; }
-
-  int configure(Vector<String> &, ErrorHandler *);
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
- private:
-  Vector<Bridge*> _bridges;
-  Vector<ArticulationPoint*> _artpoints;
-  int number_of_detections;
-
- public:
-
-  void incNoDetection() { number_of_detections++; }
-  void addBridge(EtherAddress *a, EtherAddress *b);
-  void addArticulationPoint(EtherAddress *a);
-
-  Bridge* getBridge(EtherAddress *a, EtherAddress *b);
-  ArticulationPoint *getArticulationPoint(EtherAddress *a);
-
-  String topology_info(void);
-
 };
 
 CLICK_ENDDECLS
