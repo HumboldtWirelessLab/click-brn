@@ -37,18 +37,16 @@
 #include "topology_detection_protocol.hh"
 #include "dibadawn/dibadawn_packet.hh"
 
-
 CLICK_DECLS
 
 
 TopologyDetection::TopologyDetection() :
 _detection_timer(static_detection_timer_hook, this),
 _response_timer(static_response_timer_hook, this),
-detection_id(0)
+detection_id(0),
+dibadawnAlgo(this)
 {
   BRNElement::init();
-  
-  //dibadawnAlgo = DibadawnAlgorithm(this, *_node_identity->getMasterAddress());
 }
 
 TopologyDetection::~TopologyDetection()
@@ -57,7 +55,7 @@ TopologyDetection::~TopologyDetection()
 
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  
+
   if (cp_va_kparse(conf, this, errh,
       "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoi,
       "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
@@ -66,8 +64,8 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
 
-  dibadawnAlgo = DibadawnAlgorithm(this, *_node_identity->getMasterAddress());
-  
+  dibadawnAlgo.setAddrOfThisNode(*_node_identity->getMasterAddress());
+
   return 0;
 }
 
@@ -100,7 +98,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
     EtherAddress dst = EtherAddress(ether_h->ether_dhost);
     if (_node_identity->isIdentical(&dst))
     {
-        handle_detection(packet);
+      handle_detection(packet);
     }
     else
     {
@@ -152,13 +150,13 @@ void TopologyDetection::handle_detection_timeout(void)
   TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
 
   BRN_DEBUG("Finished waiting for response. Now check for bridges.");
-  if ( (tdi->_src != *(_node_identity->getMasterAddress())) && (tdi->pendant_node()) )
+  if ((tdi->_src != *(_node_identity->getMasterAddress())) && (tdi->pendant_node()))
     BRN_DEBUG("link between me and parent is bridge ??");
 
-  if ( (tdi->_last_hops.size() <= 1) && (tdi->_num_descendant == 0) )
+  if ((tdi->_last_hops.size() <= 1) && (tdi->_num_descendant == 0))
     BRN_DEBUG("I'm a lief.");
 
-  if ( tdi->_src != *(_node_identity->getMasterAddress()) )
+  if (tdi->_src != *(_node_identity->getMasterAddress()))
     send_response();
   else
     BRN_DEBUG("Source of request. Detection timeout");
@@ -172,12 +170,12 @@ void TopologyDetection::handle_response_timeout(void)
     BRN_DEBUG("Missing response from descendant ( %d of %d ).", tdi->_get_backward, tdi->_num_descendant);
 
   BRN_DEBUG("Finished waiting for response. Now check for bridges.");
-  if ( tdi->pendant_node() )
+  if (tdi->pendant_node())
     BRN_DEBUG("link between me and parent is bridge ??");
 
-//TODO: the next test failed (looks like that)
-  if ( tdi->_src != *(_node_identity->getMasterAddress()) ) //i'm the source of the request. Time to check the result
-    send_response();                                        //send response
+  //TODO: the next test failed (looks like that)
+  if (tdi->_src != *(_node_identity->getMasterAddress())) //i'm the source of the request. Time to check the result
+    send_response(); //send response
   else
     BRN_DEBUG("Source of request. Response timeout");
 
@@ -243,10 +241,11 @@ String TopologyDetection::local_topology_info(void)
   {
     tdfi = tdfi_list[i];
 
-    sa << "\t\t<forward_info number=\"" << i <<  "\" src=\"" << tdfi->_src.unparse() << "\" id=\"" << tdfi->_id << "\" ";
-    sa << "ttl=\"" << (uint32_t)tdfi->_ttl << "\" >\n";
+    sa << "\t\t<forward_info number=\"" << i << "\" src=\"" << tdfi->_src.unparse() << "\" id=\"" << tdfi->_id << "\" ";
+    sa << "ttl=\"" << (uint32_t) tdfi->_ttl << "\" >\n";
     sa << "\t\t\t<last_hops size=\"" << tdfi->_last_hops.size() << "\" >\n";
-    for( int j = 0; j < tdfi->_last_hops.size(); j++ ) {
+    for (int j = 0; j < tdfi->_last_hops.size(); j++)
+    {
       tdri = &(tdfi->_last_hops[j]);
       sa << "\t\t\t\t<hop addr=\"" << tdri->_addr.unparse() << "\" ttl=\"" << tdri->_ttl << "\" ";
       sa << "over_me=\"" << tdri->_over_me << "\" descendant=\"" << tdri->_descendant << "\" />\n";
