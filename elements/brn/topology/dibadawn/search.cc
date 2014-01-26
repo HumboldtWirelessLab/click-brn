@@ -76,7 +76,7 @@ void DibadawnSearch::initCommon(
   brn_click_element = click_element;
   addrOfThisNode = thisNode;
   maxTraversalTimeMs = 40;
-  maxTtl = 255; // TODO: Does this makes sense?
+  maxTtl = 255; // TODO: Use config instead
   isArticulationPoint = false;
   numOfConcurrentSenders = 10;
 

@@ -39,7 +39,6 @@ void DibadawnAlgorithm::setAddrOfThisNode(const EtherAddress& addrOfThisNode)
   thisNode = addrOfThisNode;
 }
 
-
 void DibadawnAlgorithm::receive(DibadawnPacket& packet)
 {
   if (packet.isInvalid())

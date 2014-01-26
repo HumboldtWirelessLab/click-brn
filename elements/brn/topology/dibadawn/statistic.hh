@@ -30,8 +30,6 @@
 
 CLICK_DECLS;
 
-// TODO: Change to singleton
-
 class DibadawnStatistic
 {
 public:
