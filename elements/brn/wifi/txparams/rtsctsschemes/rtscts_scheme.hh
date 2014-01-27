@@ -22,7 +22,7 @@ public:
   virtual ~RtsCtsScheme();
 
   virtual bool set_rtscts(EtherAddress &dst, uint32_t size) = 0;
-  virtual uint32_t get_id() = 0;
+  virtual bool handle_strategy(uint32_t strategy) = 0;
 
   virtual void handle_feedback();
 
@@ -32,8 +32,6 @@ public:
 protected:
   uint32_t _strategy;
 };
-
-
 
 CLICK_ENDDECLS
 

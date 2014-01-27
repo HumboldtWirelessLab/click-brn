@@ -18,6 +18,18 @@ RtsCtsHiddenNode::RtsCtsHiddenNode():
 {
 }
 
+void *
+RtsCtsHiddenNode::cast(const char *name)
+{
+  if (strcmp(name, "RtsCtsHiddenNode") == 0)
+    return (RtsCtsHiddenNode *) this;
+  else if (strcmp(name, "RtsCtsScheme") == 0)
+    return (RtsCtsScheme *) this;
+  else
+    return NULL;
+}
+
+
 RtsCtsHiddenNode::~RtsCtsHiddenNode()
 {
 }

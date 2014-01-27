@@ -18,11 +18,12 @@ class RtsCtsHiddenNode: public RtsCtsScheme {
   ~RtsCtsHiddenNode();
 
   const char *class_name() const { return "RtsCtsHiddenNode"; }
+  void *cast(const char *name);
 
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);
-  uint32_t get_id() { return RTS_CTS_STRATEGY_HIDDENNODE;}
+  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_HIDDENNODE);}
 
   HiddenNodeDetection *_hnd;
   CooperativeChannelStats *_cocst;

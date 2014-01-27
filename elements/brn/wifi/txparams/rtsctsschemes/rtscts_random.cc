@@ -16,6 +16,17 @@ RtsCtsRandom::RtsCtsRandom()
 {
 }
 
+void *
+RtsCtsRandom::cast(const char *name)
+{
+  if (strcmp(name, "RtsCtsRandom") == 0)
+    return (RtsCtsRandom *) this;
+  else if (strcmp(name, "RtsCtsScheme") == 0)
+    return (RtsCtsScheme *) this;
+  else
+    return NULL;
+}
+
 RtsCtsRandom::~RtsCtsRandom()
 {
 }
