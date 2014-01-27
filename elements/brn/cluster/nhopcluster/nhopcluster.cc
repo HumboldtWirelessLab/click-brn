@@ -89,7 +89,7 @@ rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_ne
 int
 NHopCluster::initialize(ErrorHandler *)
 {
-  click_srandom(_node_identity->getNodeID32());
+  click_brn_srandom();
 
   _cluster_head = ClusterHead(_node_identity->getMasterAddress(), _node_identity->getNodeID32(), 0);
 

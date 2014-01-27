@@ -107,7 +107,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _rreq_id = click_random() % 0xffff;
 

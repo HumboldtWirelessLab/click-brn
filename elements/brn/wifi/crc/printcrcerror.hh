@@ -38,9 +38,7 @@ class PrintCRCError : public Element {
   //member
   //
   String _label;
-  uint32_t _rate;
   uint32_t _offset;
-  bool _analyse;     //analyse content instead of comparing with zero
   uint32_t _bits;    //sum several bits for printing
   uint32_t _pad;
 };

@@ -85,7 +85,7 @@ class GPSPosition {
   }
 
   int getDistance(GPSPosition *pos) {
-    return isrqt(((pos->_x - _x) * (pos->_x - _x)) + ((pos->_y - _y) * (pos->_y - _y)) + ((pos->_z - _z) * (pos->_z - _z)));
+    return (pos)?isrqt(((pos->_x - _x) * (pos->_x - _x)) + ((pos->_y - _y) * (pos->_y - _y)) + ((pos->_z - _z) * (pos->_z - _z))):-1;
   }
 
   void getPosition(struct gps_position *pos)

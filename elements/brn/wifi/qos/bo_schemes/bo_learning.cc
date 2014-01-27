@@ -86,7 +86,6 @@ int BoLearning::get_cwmin(Packet *p, uint8_t tos)
   return _current_bo - 1;
 }
 
-
 void BoLearning::handle_feedback(uint8_t retries)
 {
   BRN_DEBUG("BoL.handle_feedback():");

@@ -28,6 +28,7 @@ FalconRoutingTableMaintenance::FalconRoutingTableMaintenance():
   _opti(FALCON_OPTIMAZATION_NONE),
   _rfrt(NULL)
 {
+  BRNElement::init();
 }
 
 FalconRoutingTableMaintenance::~FalconRoutingTableMaintenance()
@@ -51,7 +52,7 @@ int FalconRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler 
 
 int FalconRoutingTableMaintenance::initialize(ErrorHandler *)
 {
-  click_srandom(_frt->_me->_ether_addr.hashcode());
+  click_brn_srandom();
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
 

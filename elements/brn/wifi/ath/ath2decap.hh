@@ -22,7 +22,7 @@
 #define CLICK_ATH2DECAP_HH
 #include <click/element.hh>
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/rxinfo/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 
 CLICK_DECLS
 

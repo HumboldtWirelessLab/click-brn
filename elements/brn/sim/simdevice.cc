@@ -99,6 +99,8 @@ static char abg_mode[] = { 'b', 'b', 'b', 'b', 'g', 'g', 'g', 'g', 'g', 'g', 'g'
 int
 SimDevice::initialize(ErrorHandler *errh)
 {
+  click_brn_srandom();
+
   for ( _rx_range_size = 0; rx_range[_rx_range_size] != -1; _rx_range_size++);
 
   if (!_ifname)
@@ -314,7 +316,7 @@ SimDevice::print_psr()
 {
   StringAccum sa;
 
-  sa << "<simdev>\n\t<psr>\n\t\t<htrates>\n";
+  sa << "<simdev>\n\t<rates>\n\t\t<htrates>\n";
 
 /*for ( int i = 0; i < NO_HT_RATES; i++ ) {
     sa << "\t\t\t<htrate index=\"" << i << "\" psr=\"" << empirical_psr_ht[i] << "\" />\n";
@@ -326,7 +328,7 @@ SimDevice::print_psr()
       for ( int rate_index = 0; rate_index < 16; rate_index++ ) {
         uint32_t rate = BrnWifi::getMCSRate(rate_index, rate_bw, rate_sgi);
         uint32_t psr = empirical_psr_ht[( 4 * (int)rate_index + 2 * (int)rate_bw + (int)rate_sgi )];
-        sa << "\t\t\t\t<htrate mcs_index=\"" << rate_index << "\" rate=\"" << rate << "\" psr=\"" << psr;
+        sa << "\t\t\t\t<rate mcs_index=\"" << rate_index << "\" rate=\"" << rate << "\" psr=\"" << psr;
         sa << "\" achivable_rate=\"" << (rate * psr)  << "\" />\n";
       }
       sa << "\t\t\t</htrate>\n";
@@ -337,11 +339,11 @@ SimDevice::print_psr()
 
   for ( int i = 0; i < NO_NON_HT_RATES; i++ ) {
     uint32_t psr = empirical_psr_non_ht[i];
-    sa << "\t\t\t<rate mode=\"" << abg_mode[i] << "\" rate=\"" << abg_rates[i] << "\" psr=\"";
-    sa << psr << "\" achivable_rate=\"" << (abg_rates[i] * psr) << "\" />\n";
+    sa << "\t\t\t<rate mode=\"" << abg_mode[i] << "\" ht40=\"0\" sgi=\"0\" mcs_index=\"0\" rate=\"";
+    sa << abg_rates[i] << "\" psr=\"" << psr << "\" achivable_rate=\"" << (abg_rates[i] * psr) << "\" />\n";
   }
 
-  sa << "\t\t</nonhtrates>\n\n\t</psr>\n</simdev>\n";
+  sa << "\t\t</nonhtrates>\n\n\t</rates>\n</simdev>\n";
 
   return sa.take_string();
 }

@@ -46,9 +46,8 @@ private:
 
 /* Own Variables */
 private:
-  static const uint16_t _bo_start        = 32; // initial backoff
+  static const uint16_t _bo_start        = 32;   // initial backoff
   static const uint8_t  _retry_threshold = 1;    // 1 retry == no change
-
 
   uint32_t _strategy;
 
