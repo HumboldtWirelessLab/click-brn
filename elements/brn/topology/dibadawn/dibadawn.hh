@@ -44,13 +44,13 @@ public:
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
 
 public:
-    DibadawnStatistic &commonStatistic;
+    DibadawnStatistic nodeStatistic;
 
     DibadawnAlgorithm(BRNElement *brn_click_element);
     void setAddrOfThisNode(const EtherAddress &addrOfThisNode);
     void receive(DibadawnPacket &packet);
     void startNewSearch();
-
+    void setTopologyInfo(TopologyInfo *topoInfo);
 };
 
 CLICK_ENDDECLS

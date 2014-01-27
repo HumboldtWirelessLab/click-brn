@@ -29,7 +29,6 @@
 CLICK_DECLS;
 
 DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element)
-:   commonStatistic(DibadawnStatistic::getInstance())
 {
   brn_click_element = click_element;
 }
@@ -50,7 +49,7 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
   DibadawnSearch *search = getResponsibleSearch(packet);
   if (search == NULL)
   {
-    search = new DibadawnSearch(brn_click_element, thisNode, packet.searchId);
+    search = new DibadawnSearch(brn_click_element, nodeStatistic, thisNode, packet.searchId);
     searches.push_back(search);
   }
 
@@ -71,10 +70,16 @@ DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 
 void DibadawnAlgorithm::startNewSearch()
 {
-  DibadawnSearch *search = new DibadawnSearch(brn_click_element, thisNode);
+  DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, thisNode);
   searches.push_back(search);
   search->start_search();
 }
+
+void DibadawnAlgorithm::setTopologyInfo(TopologyInfo* topoInfo)
+{
+  nodeStatistic.setTopologyInfo(topoInfo);
+}
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnAlgorithm)
