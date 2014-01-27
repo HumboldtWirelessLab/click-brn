@@ -137,25 +137,7 @@ struct airtime_stats {//,
 
 }/*)*/;
 
-CLICK_SIZE_PACKED_STRUCTURE(,
-struct neighbour_airtime_stats {
-  uint8_t _etheraddr[6];
-  uint16_t _reserved;
-
-  uint32_t _pkt_count;
-  uint32_t _byte_count;
-
-  uint32_t _avg_rssi;
-  uint32_t _std_rssi;
-
-  uint32_t _min_rssi;
-  uint32_t _max_rssi;
-
-  uint32_t _duration;
-});
-
 class ChannelStats : public BRNElement {
-  friend class CooperativeChannelStats;
 
   public:
     class PacketInfo {
@@ -335,21 +317,6 @@ class ChannelStats : public BRNElement {
         }
 
         _calc_finished = true;
-      }
-
-      void get_airtime_stats(EtherAddress *ea, struct neighbour_airtime_stats *stats) {
-
-        if ( ! _calc_finished ) calc_values();
-
-        memcpy(stats->_etheraddr, ea->data(), 6);
-        stats->_reserved = 0;
-        stats->_pkt_count = _pkt_count;
-        stats->_byte_count = _byte_count;
-        stats->_avg_rssi = _avg_rssi;
-        stats->_std_rssi = _std_rssi;
-        stats->_min_rssi = _min_rssi;
-        stats->_max_rssi = _max_rssi;
-        stats->_duration = _duration;
       }
     };
 

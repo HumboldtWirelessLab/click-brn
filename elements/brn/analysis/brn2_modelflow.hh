@@ -7,9 +7,11 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn/brnelement.hh"
+
 CLICK_DECLS
 
-class BRN2ModelFlow : public Element
+class BRN2ModelFlow : public BRNElement
 {
   public:
 

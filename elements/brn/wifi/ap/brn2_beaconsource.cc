@@ -48,6 +48,7 @@ BRN2BeaconSource::BRN2BeaconSource()
     _rtable(0),
     _headroom(32)
 {
+  BRNElement::init();
   _bcast = EtherAddress();
   memset(_bcast.data(), 0xff, 6);
 }
@@ -93,7 +94,7 @@ BRN2BeaconSource::initialize (ErrorHandler *)
   unsigned int _min_jitter  = 0 /* ms */;
   unsigned int _jitter      = _winfo->_interval;
 
-  click_srandom(_winfo->_bssid.hashcode());
+  click_brn_srandom();
 
   unsigned int j = (unsigned int) ( _min_jitter +( click_random() % ( _jitter ) ) );
 

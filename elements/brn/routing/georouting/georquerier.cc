@@ -80,29 +80,40 @@ GeorQuerier::push( int port, Packet *packet )
     GPSPosition *spos = _rt->getLocalPosition();
 
     EtherAddress nextHop;
-    //GPSPosition *nhpos;
+    GPSPosition *nhpos;
 
     if ( dpos ) {
       BRN_INFO("Routequerier Position: %s to %s",spos->unparse_coord().c_str(),dpos->unparse_coord().c_str());
-      uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
-      if ( ttl == 0 ) ttl = GEOR_DAFAULT_MAX_HOP_COUNT;
 
-      BRN_INFO("Set ttl %d",(int)ttl);
+      nhpos = _rt->getClosestNeighbour(dpos, &nextHop);
 
-      packet->pull(12);                           //strip etheradress
-      WritablePacket *pout = GeorProtocol::addRoutingHeader(packet,&sea, spos, &dea, dpos);
+      if (nhpos) {
+        uint8_t ttl = BRNPacketAnno::ttl_anno(packet);
+        if ( ttl == 0 ) ttl = GEOR_DAFAULT_MAX_HOP_COUNT;
 
-      /*nhpos =*/ _rt->getClosestNeighbour(dpos, &nextHop);
+        BRN_INFO("Set ttl %d",(int)ttl);
 
-      WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING,
-                                                               ttl, DEFAULT_TOS);
-      BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, ETHERTYPE_BRN);
+        packet->pull(12);                           //strip etheradress
+        WritablePacket *pout = GeorProtocol::addRoutingHeader(packet,&sea, spos, &dea, dpos);
 
-      output(0).push(out_packet);
+        WritablePacket *out_packet = BRNProtocol::add_brn_header(pout, BRN_PORT_GEOROUTING, BRN_PORT_GEOROUTING,
+                                                                 ttl, DEFAULT_TOS);
+        BRNPacketAnno::set_ether_anno(out_packet, sea, nextHop, ETHERTYPE_BRN);
+
+        output(0).push(out_packet);
+      } else {
+        BRN_ERROR("No next hop. Discard packet.");
+        packet->kill();
+      }
     } else {
+      BRN_ERROR("No Dst-GPS");
       BRN_INFO("Perform route request !");
+      packet->kill();
     }
   } else if ( port == 1 ) {                      //routereply
+      packet->kill();
+  } else {
+      packet->kill();
   }
 }
 

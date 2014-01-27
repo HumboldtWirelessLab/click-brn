@@ -22,6 +22,7 @@ RandomDelayQueue::RandomDelayQueue():
   _sendbuffer_timer(static_lookup_timer_hook,(void*)this),
   _usetsanno(false)
 {
+  BRNElement::init();
 }
 
 RandomDelayQueue::~RandomDelayQueue()
@@ -49,7 +50,7 @@ RandomDelayQueue::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 RandomDelayQueue::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   _sendbuffer_timer.initialize(this);
   return 0;

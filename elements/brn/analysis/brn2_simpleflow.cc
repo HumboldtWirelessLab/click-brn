@@ -87,6 +87,8 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return -1;
 
+  _headroom += sizeof(struct click_brn);  // space for header
+
   return 0;
 }
 
@@ -97,6 +99,7 @@ static bool routing_peek_func(void *e, Packet *p, EtherAddress *src, EtherAddres
 
 int BRN2SimpleFlow::initialize(ErrorHandler *)
 {
+  click_brn_srandom();
   //don't move this to configure, since BRNNodeIdenty is not configured
   //completely while configure this element, so set_active can cause
   //seg, fault, while calling BRN_DEBUG in set_active
@@ -457,8 +460,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
     p = f->_buffered_p->uniqueify();
     f->_buffered_p = NULL;
   } else {
-    p = WritablePacket::make(_headroom ,NULL /* *data*/, size, 32);
-    if ( _clear_packet ) memset(p->data(), 0, size);
+    p = WritablePacket::make(_headroom ,NULL /* *data*/, size - sizeof(struct click_brn), 32);
+    if ( _clear_packet ) memset(p->data(), 0, size - sizeof(struct click_brn));
   }
 
   struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();

@@ -6,7 +6,7 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/wifi/brnavailablerates.hh"
 
-#include "elements/brn/wifi/rxinfo/channelstats.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 #include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
 
 #include "rateselection/rateselection.hh"

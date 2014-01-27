@@ -130,7 +130,11 @@ void KeyServer::handle_kdp_req(Packet *p) {
 	BRN_DEBUG("Received kdp req %d from %s", (req->req_id), (req->node_id).unparse().c_str());
 
 	// Todo: check restrictions, limits, constrains: Is it possible to be out of a epoch range?
-	if(req->req_id < 0) {BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str()); return;}
+	if(req->req_id < 0) {
+    BRN_ERROR("req_id %d seams not correct (from %s)",(req->req_id), (req->node_id).unparse().c_str());
+    p->kill();
+    return;
+  }
 
 	EtherAddress dst_addr = (req->node_id);
 

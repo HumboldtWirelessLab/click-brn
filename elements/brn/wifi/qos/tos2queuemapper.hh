@@ -60,6 +60,7 @@ public:
   const char *port_count() const  { return "1/1"; }
   const char *processing() const  { return "a"; }
 
+  int initialize(ErrorHandler *);
   int configure(Vector<String> &, ErrorHandler *);
   void add_handlers();
 
