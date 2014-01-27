@@ -41,6 +41,7 @@ class Brn2_SetRTSCTS : public BRNElement {
  private:
 
   RtsCtsScheme *_scheme;
+  Vector<RtsCtsScheme *> _schemes;
   uint16_t _rts_cts_strategy;//RTS-CTS Strategy
 
   //total number of packets who got through this element
