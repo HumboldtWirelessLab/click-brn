@@ -19,19 +19,19 @@
  */
 
 #include <math.h>
-#include "statistic.hh"
+#include "nodestatistic.hh"
 #include "elements/brn/services/dhcp/dhcp.h"
 
 
 CLICK_DECLS
 
-DibadawnStatistic::DibadawnStatistic()
+DibadawnNodeStatistic::DibadawnNodeStatistic()
 {
   maxMarkings = 3;
   topologyInfo = NULL;
 }
 
-void DibadawnStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
+void DibadawnNodeStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
 {
   lock.acquire();
 
@@ -47,7 +47,7 @@ void DibadawnStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
   lock.release();
 }
 
-bool DibadawnStatistic::isBridgeByUnanimous()
+bool DibadawnNodeStatistic::isBridgeByUnanimous()
 {
   bool result = true;
 
@@ -68,7 +68,7 @@ bool DibadawnStatistic::isBridgeByUnanimous()
   return (result);
 }
 
-bool DibadawnStatistic::isBridgeByMajority()
+bool DibadawnNodeStatistic::isBridgeByMajority()
 {
   size_t numBridges = 0;
   size_t numNoBrigdes = 0;
@@ -89,7 +89,7 @@ bool DibadawnStatistic::isBridgeByMajority()
   return (numBridges > numNoBrigdes);
 }
 
-bool DibadawnStatistic::isBridgeBySingleFor()
+bool DibadawnNodeStatistic::isBridgeBySingleFor()
 {
   bool result = false;
 
@@ -110,7 +110,7 @@ bool DibadawnStatistic::isBridgeBySingleFor()
   return (result);
 }
 
-bool DibadawnStatistic::isBridgeByIntelligentMajority()
+bool DibadawnNodeStatistic::isBridgeByIntelligentMajority()
 {
   size_t numBridges = 0;
   size_t numNoBrigdes = 0;
@@ -136,7 +136,7 @@ bool DibadawnStatistic::isBridgeByIntelligentMajority()
   return (result);
 }
 
-bool DibadawnStatistic::isBridgeByTrustedNoBridge()
+bool DibadawnNodeStatistic::isBridgeByTrustedNoBridge()
 {
   bool result = true;
 
@@ -154,7 +154,7 @@ bool DibadawnStatistic::isBridgeByTrustedNoBridge()
   return (result);
 }
 
-bool DibadawnStatistic::isBridgeByWeightedRule()
+bool DibadawnNodeStatistic::isBridgeByWeightedRule()
 {
   return(false);
 }
@@ -164,7 +164,7 @@ bool DibadawnStatistic::isBridgeByWeightedRule()
  * empirically derived values, used by bratislav milic.
  * 
  */
-double DibadawnStatistic::competenceByUsedHops(uint8_t hops)
+double DibadawnNodeStatistic::competenceByUsedHops(uint8_t hops)
 {
   double result;
   
@@ -215,16 +215,16 @@ double DibadawnStatistic::competenceByUsedHops(uint8_t hops)
   return (result);
 }
 
-double DibadawnStatistic::weightByCompetence(double competence)
+double DibadawnNodeStatistic::weightByCompetence(double competence)
 {
   return( log(competence / (1-competence)) );
 }
 
-void DibadawnStatistic::setTopologyInfo(TopologyInfo* topoInfo)
+void DibadawnNodeStatistic::setTopologyInfo(TopologyInfo* topoInfo)
 {
   topologyInfo = topoInfo;
 }
 
 
 CLICK_ENDDECLS
-ELEMENT_PROVIDES(DibadawnStatistic)
+ELEMENT_PROVIDES(DibadawnNodeStatistic)

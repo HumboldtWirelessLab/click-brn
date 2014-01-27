@@ -31,10 +31,10 @@
 
 CLICK_DECLS;
 
-class DibadawnStatistic
+class DibadawnNodeStatistic
 {
 public:
-    DibadawnStatistic();
+    DibadawnNodeStatistic();
 
     void updateEdgeMarking(DibadawnEdgeMarking &marking);
     bool isBridgeByUnanimous();
