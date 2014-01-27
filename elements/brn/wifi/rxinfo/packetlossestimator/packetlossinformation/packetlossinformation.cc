@@ -121,7 +121,7 @@ String  PacketLossInformation::print()
 {
 
 	StringAccum sa;
-	sa << "<brnelement name=\"PacketLossInformation\" myaddress=\""<< BRN_NODE_NAME << "\">\n";
+	sa << "<packetlossinformation addr=\""<< BRN_NODE_NAME << "\">\n";
 	for (NeighboursAddressesIterator it =  node_neighbours_vector.begin();it!=node_neighbours_vector.end(); ++it) {
 		sa << "\t<neighbour address=\"" << (*it).unparse().c_str() <<"\">\n";
 		PacketLossInformation_Graph* ptr_graph = graph_get(*it);
