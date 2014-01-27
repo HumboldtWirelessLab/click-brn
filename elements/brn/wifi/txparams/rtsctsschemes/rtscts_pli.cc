@@ -16,6 +16,17 @@ RtsCtsPLI::RtsCtsPLI()
 {
 }
 
+void *
+RtsCtsPLI::cast(const char *name)
+{
+  if (strcmp(name, "RtsCtsPLI") == 0)
+    return (RtsCtsPLI *) this;
+  else if (strcmp(name, "RtsCtsScheme") == 0)
+    return (RtsCtsScheme *) this;
+  else
+    return NULL;
+}
+
 RtsCtsPLI::~RtsCtsPLI()
 {
 }

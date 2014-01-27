@@ -15,11 +15,12 @@ class RtsCtsPacketSize: public RtsCtsScheme {
   ~RtsCtsPacketSize();
 
   const char *class_name() const { return "RtsCtsPacketSize"; }
+  void *cast(const char *name);
 
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);
-  uint32_t get_id() { return RTS_CTS_STRATEGY_SIZE_LIMIT;}
+  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_SIZE_LIMIT);}
 
   uint32_t _psize;
 

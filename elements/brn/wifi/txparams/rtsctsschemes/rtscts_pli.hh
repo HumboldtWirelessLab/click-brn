@@ -17,11 +17,12 @@ class RtsCtsPLI: public RtsCtsScheme {
   ~RtsCtsPLI();
 
   const char *class_name() const { return "RtsCtsPLI"; }
+  void *cast(const char *name);
 
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(EtherAddress &dst, uint32_t size);
-  uint32_t get_id() { return RTS_CTS_STRATEGY_PLI;}
+  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_PLI);}
 
   PacketLossInformation *_pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 

@@ -16,6 +16,17 @@ RtsCtsPacketSize::RtsCtsPacketSize()
 {
 }
 
+void *
+RtsCtsPacketSize::cast(const char *name)
+{
+  if (strcmp(name, "RtsCtsPacketSize") == 0)
+    return (RtsCtsPacketSize *) this;
+  else if (strcmp(name, "RtsCtsScheme") == 0)
+    return (RtsCtsScheme *) this;
+  else
+    return NULL;
+}
+
 RtsCtsPacketSize::~RtsCtsPacketSize()
 {
 }
@@ -33,6 +44,7 @@ RtsCtsPacketSize::configure(Vector<String> &conf, ErrorHandler* errh)
 bool
 RtsCtsPacketSize::set_rtscts(EtherAddress &/*dst*/, uint32_t size)
 {
+  //BRN_WARN("Size: %d",size);
   return (size >= _psize);
 }
 

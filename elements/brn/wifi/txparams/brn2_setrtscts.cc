@@ -17,8 +17,6 @@
 
 #include "brn2_setrtscts.hh"
 
-
-
 CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
@@ -43,11 +41,24 @@ int Brn2_SetRTSCTS::initialize(ErrorHandler *) {
 
 int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) 
 {
+  String scheme_string;
+
   if (cp_va_kparse(conf, this, errh,
+    "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &scheme_string,
     "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
-    "RTSCTS_SCHEMES", cpkP, cpElement, &_scheme,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
+
+
+  parse_schemes(scheme_string, errh);
+
+  if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
+    _scheme = get_rtscts_scheme(_rts_cts_strategy);
+    _scheme->set_strategy(_rts_cts_strategy);
+  } else {
+    _scheme = NULL;
+  }
+
   return 0;
 }
 
@@ -56,42 +67,34 @@ Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
 {
   Vector<String> schemes;
 
-  String s_schemes_uncomment = cp_uncomment(s_schemes);
-  cp_spacevec(s_schemes_uncomment, schemes);
+  cp_spacevec(cp_uncomment(s_schemes), schemes);
 
-  _no_schemes = schemes.size();
-
-  if (_no_schemes == 0) {
-    BRN_DEBUG("parse_schemes(): No schemes were given! STRAT = %d\n", _rts_cts_strategy);
-    _scheme = NULL;
-    return 0;
-  }
-
-  for (uint16_t i = 0; i < _no_schemes; i++) {
+  for (uint16_t i = 0; i < schemes.size(); i++) {
     Element *e = cp_element(schemes[i], this, errh);
-    BackoffScheme *bo_scheme = (BackoffScheme *)e->cast("");
+    RtsCtsScheme *rtscts_scheme = (RtsCtsScheme *)e->cast("RtsCtsScheme");
 
-    if (!bo_scheme) {
-      return errh->error("Element is not a 'BackoffScheme'");
+    if (!rtscts_scheme) {
+      return errh->error("Element %s is not a 'RtsCtsScheme'",schemes[i].c_str());
     } else {
-      _bo_schemes[i] = bo_scheme;
-      _bo_schemes[i]->set_conf(_cwmin[0], _cwmin[no_queues - 1]);
+      _schemes.push_back(rtscts_scheme);
     }
-  }
-
-  BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
-
-  _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
-
-  if ( _current_scheme != NULL ) {
-    _current_scheme->set_strategy(_bqs_strategy); // set final strategy on that scheme
   }
 
   return 0;
 }
 
+RtsCtsScheme *
+Brn2_SetRTSCTS::get_rtscts_scheme(int rts_cts_strategy)
+{
+  for( int i = 0; i < _schemes.size(); i++)
+    if ( _schemes[i]->handle_strategy(rts_cts_strategy) )
+      return _schemes[i];
 
-Packet *Brn2_SetRTSCTS::simple_action(Packet *p)
+  return NULL;
+}
+
+Packet *
+Brn2_SetRTSCTS::simple_action(Packet *p)
 {
   if (p) {
     bool set_rtscts = false;
@@ -140,6 +143,12 @@ Brn2_SetRTSCTS::stats()
 {
   StringAccum sa;
   sa << "<setrtscts node=\""<< BRN_NODE_NAME << "\" strategy=\"" << _rts_cts_strategy << "\" >\n";
+
+  sa << "\t<schemes>\n";
+  for (uint16_t i = 0; i < _schemes.size(); i++) {
+    sa << "\t\t<scheme name=\"" << _schemes[i]->class_name() << "\"\n>";
+  }
+  sa << "\t</schemes>\n";
 
   for (HashMap<EtherAddress,struct rtscts_neighbour_statistics>::const_iterator it = rtscts_neighbours.begin(); it.live(); ++it) {
     EtherAddress ea = it.key();
