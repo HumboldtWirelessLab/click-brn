@@ -51,6 +51,46 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
+int
+Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
+{
+  Vector<String> schemes;
+
+  String s_schemes_uncomment = cp_uncomment(s_schemes);
+  cp_spacevec(s_schemes_uncomment, schemes);
+
+  _no_schemes = schemes.size();
+
+  if (_no_schemes == 0) {
+    BRN_DEBUG("parse_schemes(): No schemes were given! STRAT = %d\n", _rts_cts_strategy);
+    _scheme = NULL;
+    return 0;
+  }
+
+  for (uint16_t i = 0; i < _no_schemes; i++) {
+    Element *e = cp_element(schemes[i], this, errh);
+    BackoffScheme *bo_scheme = (BackoffScheme *)e->cast("");
+
+    if (!bo_scheme) {
+      return errh->error("Element is not a 'BackoffScheme'");
+    } else {
+      _bo_schemes[i] = bo_scheme;
+      _bo_schemes[i]->set_conf(_cwmin[0], _cwmin[no_queues - 1]);
+    }
+  }
+
+  BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
+
+  _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
+
+  if ( _current_scheme != NULL ) {
+    _current_scheme->set_strategy(_bqs_strategy); // set final strategy on that scheme
+  }
+
+  return 0;
+}
+
+
 Packet *Brn2_SetRTSCTS::simple_action(Packet *p)
 {
   if (p) {
@@ -59,9 +99,6 @@ Packet *Brn2_SetRTSCTS::simple_action(Packet *p)
 
     switch ( _rts_cts_strategy ) {
       case RTS_CTS_STRATEGY_ALWAYS_OFF:
-        break;
-      case RTS_CTS_STRATEGY_UNICAST_ON:
-        if (!dst.is_broadcast()) set_rtscts = true;
         break;
       case RTS_CTS_STRATEGY_ALWAYS_ON:
         set_rtscts = true;
