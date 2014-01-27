@@ -295,6 +295,10 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       parent = rxPacket.forwardedBy;
       visited = true;
       adjacents.getNeighbor(parent);
+      
+      click_chatter("<SearchTree node='%s' parent='%s' />",
+          addrOfThisNode.unparse().c_str(),
+          parent.unparse().c_str());
 
       DibadawnPacket txPacket = rxPacket;
       txPacket.ttl--;
