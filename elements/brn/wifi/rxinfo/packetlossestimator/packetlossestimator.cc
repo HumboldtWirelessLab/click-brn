@@ -82,26 +82,28 @@ Packet *PacketLossEstimator::simple_action(Packet *packet)
   ChannelStats::SrcInfo *src_info = src_tab->find(src);
   ChannelStats::RSSIInfo *rssi_info = _cst->get_latest_rssi_info();
 
-  estimateWeakSignal(src, dst, src_info, rssi_info);
-  estimateNonWifi(src, dst, stats);
+  if ( src != *my_addr ) {
+    estimateWeakSignal(src, dst, src_info, rssi_info);
+    estimateNonWifi(src, dst, stats);
 
-  if ((_cinfo != NULL) && !src.is_broadcast()) {
+    if ((_cinfo != NULL) && !src.is_broadcast()) {
 
-    //CollisionInfo::RetryStatsTable rs_tab = _cinfo->rs_tab;
-    //CollisionInfo::RetryStats *rs = rs_tab.find(src);
+      //CollisionInfo::RetryStatsTable rs_tab = _cinfo->rs_tab;
+      //CollisionInfo::RetryStats *rs = rs_tab.find(src);
 
-    // Backoff-Fraction
-    // just output of fraction per queue (rs->get_frac(0))
-  }
+      // Backoff-Fraction
+      // just output of fraction per queue (rs->get_frac(0))
+    }
 
-  if (_hnd != NULL) {
-    //src has maybe neighbours, so update hidden node
-    estimateHiddenNode(src, dst);
-    if (!src.is_broadcast()) estimateInrange(src, dst);
-  }
+    if (_hnd != NULL) {
+      //src has maybe neighbours, so update hidden node
+      estimateHiddenNode(src, dst);
+      if (!src.is_broadcast()) estimateInrange(src, dst);
+    }
 
-  if (!src.is_broadcast() && (src != *_dev->getEtherAddress())) {
-    if ( _received_adrs.findp(src) == NULL ) _received_adrs.insert(src,Timestamp::now());
+    if (!src.is_broadcast() && (src != *my_addr)) {
+      if ( _received_adrs.findp(src) == NULL ) _received_adrs.insert(src,Timestamp::now());
+    }
   }
 
   return packet;
@@ -286,8 +288,12 @@ void PacketLossEstimator::estimateNonWifi(EtherAddress &src, EtherAddress &/*dst
         non_wifi = ats->hw_busy - ats->frac_mac_busy;
     }
 
-    _pli->graph_get(src)->reason_get(PacketLossReason::NON_WIFI)->setFraction(non_wifi);
-    BRN_INFO("hw busy/mac busy/Non-Wifi: %d/%d/%d", ats->hw_busy, ats->frac_mac_busy, non_wifi);
+    if (_pli->graph_get(src)) {
+      _pli->graph_get(src)->reason_get(PacketLossReason::NON_WIFI)->setFraction(non_wifi);
+      BRN_INFO("hw busy/mac busy/Non-Wifi: %d/%d/%d", ats->hw_busy, ats->frac_mac_busy, non_wifi);
+    } else {
+      BRN_WARN("No graph for src: %s",src.unparse().c_str());
+    }
 }
 
 void PacketLossEstimator::estimateWeakSignal(EtherAddress &src, EtherAddress &/*dst*/, ChannelStats::SrcInfo *src_info, ChannelStats::RSSIInfo *rssi_info)
