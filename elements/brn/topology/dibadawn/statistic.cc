@@ -22,17 +22,13 @@
 #include "statistic.hh"
 #include "elements/brn/services/dhcp/dhcp.h"
 
-CLICK_DECLS
 
-DibadawnStatistic& DibadawnStatistic::getInstance()
-{
-  static DibadawnStatistic singleInstance;
-  return(singleInstance);
-}
+CLICK_DECLS
 
 DibadawnStatistic::DibadawnStatistic()
 {
   maxMarkings = 3;
+  topologyInfo = NULL;
 }
 
 void DibadawnStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
@@ -43,6 +39,11 @@ void DibadawnStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
   if (edgeMarkings.size() > maxMarkings)
     edgeMarkings.pop_back();
 
+  click_chatter("<DEBUG  objectAddr='%d' />", this);
+  
+  if(topologyInfo != NULL)
+    topologyInfo->addBridge(&marking.nodeA, &marking.nodeB);
+  
   lock.release();
 }
 
@@ -217,6 +218,11 @@ double DibadawnStatistic::competenceByUsedHops(uint8_t hops)
 double DibadawnStatistic::weightByCompetence(double competence)
 {
   return( log(competence / (1-competence)) );
+}
+
+void DibadawnStatistic::setTopologyInfo(TopologyInfo* topoInfo)
+{
+  topologyInfo = topoInfo;
 }
 
 

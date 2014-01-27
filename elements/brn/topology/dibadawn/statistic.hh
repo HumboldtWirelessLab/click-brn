@@ -26,6 +26,7 @@
 #include <click/sync.hh>
 
 #include "edgemarking.hh"
+#include "../topology_info.hh"
 
 
 CLICK_DECLS;
@@ -33,7 +34,7 @@ CLICK_DECLS;
 class DibadawnStatistic
 {
 public:
-    static DibadawnStatistic& getInstance();
+    DibadawnStatistic();
 
     void updateEdgeMarking(DibadawnEdgeMarking &marking);
     bool isBridgeByUnanimous();
@@ -44,13 +45,13 @@ public:
     bool isBridgeByWeightedRule();
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
+    void setTopologyInfo(TopologyInfo *topoInfo);
 
 private:
     Spinlock lock;
     Vector<DibadawnEdgeMarking> edgeMarkings;
     int maxMarkings;
-    
-    DibadawnStatistic();
+    TopologyInfo *topologyInfo;
 };
 
 CLICK_ENDDECLS
