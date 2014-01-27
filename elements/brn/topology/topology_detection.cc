@@ -36,6 +36,7 @@
 #include "topology_detection.hh"
 #include "topology_detection_protocol.hh"
 #include "dibadawn/dibadawn_packet.hh"
+#include "dibadawn/nodestatistic.hh"
 
 CLICK_DECLS
 
@@ -57,7 +58,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
 
   if (cp_va_kparse(conf, this, errh,
-      "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoi,
+      "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoInfo,
       "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -65,6 +66,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   dibadawnAlgo.setAddrOfThisNode(*_node_identity->getMasterAddress());
+  dibadawnAlgo.setTopologyInfo(_topoInfo);
 
   return 0;
 }

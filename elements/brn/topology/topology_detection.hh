@@ -149,7 +149,7 @@ public:
     };
 
     typedef Vector<TopologyDetectionForwardInfo*> TDFIList;
-    Vector<TopologyInfo::Bridge*> _local_bridges;
+
 
 public:
     //
@@ -205,7 +205,7 @@ private:
 
     Brn2LinkTable *_lt;
     BRN2NodeIdentity *_node_identity;
-    TopologyInfo *_topoi;
+    TopologyInfo *_topoInfo;
 
     void handle_detection_backward(Packet *packet);
     void handle_detection(Packet *packet);

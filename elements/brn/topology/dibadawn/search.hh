@@ -54,7 +54,7 @@ private:
     Timer *forwardTimeoutTimer;
     Timer *forwardSendTimer;
     DibadawnSearchId searchId;
-    Vector<DibadawnPacket*> crossEdges;
+    Vector<DibadawnPacket> crossEdges;
     DibadawnNodeStatistic &commonStatistic;
     Vector<DibadawnPayloadElement> messageBuffer;
     DibadawnNeighborContainer adjacents;

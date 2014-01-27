@@ -102,7 +102,7 @@ void DibadawnSearch::detectCycles()
 {
   for (int i = 0; i < crossEdges.size(); i++)
   {
-    DibadawnPacket &crossEdgePacket = *crossEdges.at(i);
+    DibadawnPacket &crossEdgePacket = crossEdges.at(i);
 
     DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, crossEdgePacket.forwardedBy, true);
     commonStatistic.updateEdgeMarking(marking);
@@ -322,7 +322,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
         addrOfThisNode.unparse_dash().c_str(),
         neighbor.unparse_dash().c_str());
 
-    crossEdges.push_back(&rxPacket);
+    crossEdges.push_back(rxPacket);
   }
 }
 
