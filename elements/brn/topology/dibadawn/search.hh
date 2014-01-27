@@ -32,7 +32,7 @@
 #include "edgemarking.hh"
 #include "cycle.hh"
 #include "neighbor_container.hh"
-#include "statistic.hh"
+#include "nodestatistic.hh"
 
 
 CLICK_DECLS;
@@ -55,7 +55,7 @@ private:
     Timer *forwardSendTimer;
     DibadawnSearchId searchId;
     Vector<DibadawnPacket*> crossEdges;
-    DibadawnStatistic &commonStatistic;
+    DibadawnNodeStatistic &commonStatistic;
     Vector<DibadawnPayloadElement> messageBuffer;
     DibadawnNeighborContainer adjacents;
     bool isArticulationPoint;
@@ -84,8 +84,8 @@ private:
     uint8_t getUsedHops(uint8_t ttl);
 
 public:
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnStatistic &stat, const EtherAddress &addrOfThisNode);
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnStatistic &stat, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, const EtherAddress &addrOfThisNode);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
 
     void sendBroadcastWithTimeout(DibadawnPacket &packet);
     void sendTo(DibadawnPacket &packet, EtherAddress &dest);

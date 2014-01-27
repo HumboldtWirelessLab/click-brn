@@ -51,7 +51,7 @@ void forwardTimeoutCallback(Timer*, void *search)
 
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
-    DibadawnStatistic &stat, 
+    DibadawnNodeStatistic &stat, 
     const EtherAddress &addrOfThisNode)
 :   commonStatistic(stat)
 {
@@ -60,7 +60,7 @@ DibadawnSearch::DibadawnSearch(
 
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
-    DibadawnStatistic &stat, 
+    DibadawnNodeStatistic &stat, 
     const EtherAddress &addrOfThisNode,
     DibadawnSearchId &id)
 :   commonStatistic(stat)

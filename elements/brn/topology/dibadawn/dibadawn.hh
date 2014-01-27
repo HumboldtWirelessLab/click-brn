@@ -29,7 +29,7 @@
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "search.hh"
 #include "dibadawn_packet.hh"
-#include "statistic.hh"
+#include "nodestatistic.hh"
 
 
 CLICK_DECLS;
@@ -44,7 +44,7 @@ public:
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
 
 public:
-    DibadawnStatistic nodeStatistic;
+    DibadawnNodeStatistic nodeStatistic;
 
     DibadawnAlgorithm(BRNElement *brn_click_element);
     void setAddrOfThisNode(const EtherAddress &addrOfThisNode);
