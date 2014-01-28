@@ -20,7 +20,7 @@ public:
 
   int configure(Vector<String> &conf, ErrorHandler *errh);
   bool can_live_reconfigure() const { return false; }
-  int initialize();
+  int initialize(ErrorHandler *);
   void add_handlers();
 
   Packet* simple_action(Packet *p);

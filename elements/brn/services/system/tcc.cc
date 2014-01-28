@@ -33,7 +33,7 @@ TCC::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-int TCC::initialize() {
+int TCC::initialize(ErrorHandler *) {
 
   return 0;
 }

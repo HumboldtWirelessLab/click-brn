@@ -107,7 +107,6 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     uint32_t wiggle_room = _target_busy / 20; // 5%
 
     BRN_DEBUG("    busy: %d _target_channel: %d wm param %d\n", as->hw_busy, _target_busy, wiggle_room);
-    //BRN_DEBUG("    nbs = %d\n", as->no_sources);
 
     if (as->no_sources == 0)
       break;
@@ -127,7 +126,6 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
     uint32_t wiggle_room = 0; // no. nbs?
 
-    //BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d _target_diff: %d wm param %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff, _target_diff, wiggle_room);
     BRN_DEBUG("    rxtxbusy: %d %d %d -> diff: %d _last diff %d\n", as->hw_rx, as->hw_tx, as->hw_busy, diff, _last_diff);
 
     if ((diff == 0) && (_last_diff == 0))
@@ -164,15 +162,9 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
   if (_cap) {
     uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
-    //BRN_DEBUG("    lower bound: %d current_bo: %d\n", lower_bound, _current_bo);
 
     if ((int) _current_bo < lower_bound)
       _current_bo = lower_bound;
-
-//    if (_current_bo < _cla_min_cwmin)
-//     _current_bo = _cla_min_cwmin;
-//   else if (_current_bo > _cla_max_cwmin)
-//      _current_bo = _cla_max_cwmin;
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
