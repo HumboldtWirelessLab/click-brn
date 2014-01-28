@@ -86,15 +86,8 @@ public:
     TopologyInfo();
     ~TopologyInfo();
 
-    const char *class_name() const
-    {
-        return "TopologyInfo";
-    }
-
-    const char *processing() const
-    {
-        return AGNOSTIC;
-    }
+    const char *class_name() const { return "TopologyInfo";}
+    const char *processing() const { return AGNOSTIC;}
 
     const char *port_count() const
     {
