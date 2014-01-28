@@ -40,9 +40,13 @@ class Brn2_SetRTSCTS : public BRNElement {
 
  private:
 
+  RtsCtsScheme *_pre_scheme;
   RtsCtsScheme *_scheme;
+  
   Vector<RtsCtsScheme *> _schemes;
-  uint16_t _rts_cts_strategy;//RTS-CTS Strategy
+
+  uint16_t _rts_cts_pre_strategy; //RTS-CTS Strategy
+  uint16_t _rts_cts_strategy;     //RTS-CTS Strategy
 
   RtsCtsScheme *get_rtscts_scheme(int rts_cts_strategy);
 
