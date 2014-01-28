@@ -20,7 +20,9 @@
 CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
+  _pre_scheme(NULL),
   _scheme(NULL),
+  _rts_cts_pre_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
   _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
   pkt_total(0),
   rts_on(0)
@@ -46,6 +48,7 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
     "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &scheme_string,
     "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
+    "PRESTRATEGY", cpkP, cpInteger, &_rts_cts_pre_strategy,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
 
@@ -54,7 +57,9 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
     _scheme = get_rtscts_scheme(_rts_cts_strategy);
-    _scheme->set_strategy(_rts_cts_strategy);
+    if (_scheme) _scheme->set_strategy(_rts_cts_strategy);
+    _pre_scheme = get_rtscts_scheme(_rts_cts_pre_strategy);
+    if (_pre_scheme) _pre_scheme->set_strategy(_rts_cts_pre_strategy); 
   } else {
     _scheme = NULL;
   }
