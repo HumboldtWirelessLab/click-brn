@@ -158,20 +158,10 @@ public:
     TopologyDetection();
     ~TopologyDetection();
 
-    const char *class_name() const
-    {
-        return "TopologyDetection";
-    }
+    const char *class_name() const  { return "TopologyDetection"; }
+    const char *port_count() const  { return "1/1"; }
+    const char *processing() const  { return AGNOSTIC; }
 
-    const char *port_count() const
-    {
-        return "1/1";
-    }
-
-    const char *processing() const
-    {
-        return AGNOSTIC;
-    }
 
     int configure(Vector<String> &, ErrorHandler *);
 

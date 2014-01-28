@@ -40,7 +40,6 @@
 
 CLICK_DECLS
 
-
 TopologyDetection::TopologyDetection() :
 _detection_timer(static_detection_timer_hook, this),
 _response_timer(static_response_timer_hook, this),
