@@ -10881,8 +10881,8 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
     tccsavelibs="$LIBS"
-    LIBS="$LIBS -ldl"
-    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -L$tccprefix/lib"
+    LIBS="-ldl $LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -ldl -L$tccprefix/lib"
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tcc_new in -ltcc" >&5
 $as_echo_n "checking for tcc_new in -ltcc... " >&6; }
 if ${ac_cv_lib_tcc_tcc_new+:} false; then :
@@ -10932,7 +10932,7 @@ fi
 	$as_echo "#define HAVE_TCC 1" >>confdefs.h
 
 	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
-	TCC_LIBS="$TCC_LIBS -ltcc -ldl"
+	TCC_LIBS="$TCC_LIBS -ldl -ltcc -ldl"
 
 $as_echo "#define HAVE_TCC 1" >>confdefs.h
 

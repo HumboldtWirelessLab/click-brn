@@ -95,7 +95,7 @@ class BRN2SimpleFlow : public BRNElement
   });
 
 #define SIMPLEFLOW_MAXHOPCOUNT   100
-#define MINIMUM_FLOW_PACKET_SIZE sizeof(struct flowPacketHeader)
+#define MINIMUM_FLOW_PACKET_SIZE (sizeof(struct flowPacketHeader)+sizeof(struct click_brn))
 
   typedef enum flowType
   {

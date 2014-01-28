@@ -1284,8 +1284,8 @@ if test "$tccprefix" != no; then
 
     AC_LANG_C
     tccsavelibs="$LIBS"
-    LIBS="$LIBS -ldl"
-    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -L$tccprefix/lib"
+    LIBS="-ldl $LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -ldl -L$tccprefix/lib"
     AC_CHECK_LIB(tcc, tcc_new, have_libtcc=yes, have_libtcc=no)
     LDFLAGS="$saveflags"
     LIBS="$tccsavelibs"
@@ -1293,7 +1293,7 @@ if test "$tccprefix" != no; then
     if test $have_tcc_h = yes -a $have_libtcc = yes; then
 	AC_DEFINE(HAVE_TCC)
 	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
-	TCC_LIBS="$TCC_LIBS -ltcc -ldl"
+	TCC_LIBS="$TCC_LIBS -ldl -ltcc -ldl"
         AC_DEFINE([HAVE_TCC], [1], [Define if you have -ltcc and libtcc.h.])
 	LIBS="$LIBS $TCC_LIBS"
     else
