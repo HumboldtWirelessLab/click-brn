@@ -82,7 +82,7 @@ class CooperativeChannelStats : public BRNElement
 
   private:
 
-    NodeChannelStatsMap _ncst; /* stats of neighbouring node */
+    NodeChannelStatsMap _ncst;  /* stats of neighbouring node */
 
     ChannelStats *_cst;         /* own stats. use to send info */
 

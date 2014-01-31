@@ -28,6 +28,8 @@ class RtsCtsHiddenNode: public RtsCtsScheme {
   HiddenNodeDetection *_hnd;
   CooperativeChannelStats *_cocst;
 
+  bool _pessimistic;
+
 };
 
 CLICK_ENDDECLS
