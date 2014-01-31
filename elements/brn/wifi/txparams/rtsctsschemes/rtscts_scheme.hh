@@ -9,12 +9,13 @@
 
 CLICK_DECLS
 
-#define RTS_CTS_STRATEGY_ALWAYS_OFF 0 /* default */
-#define RTS_CTS_STRATEGY_ALWAYS_ON  1 /* */
-#define RTS_CTS_STRATEGY_SIZE_LIMIT 2 /* unicast only */
-#define RTS_CTS_STRATEGY_RANDOM     3 /* unicast only */
-#define RTS_CTS_STRATEGY_PLI        4 /* unicast only */
-#define RTS_CTS_STRATEGY_HIDDENNODE 5 /* unicast only */
+#define RTS_CTS_STRATEGY_NONE       0 /* default */
+#define RTS_CTS_STRATEGY_ALWAYS_OFF 1 /* */
+#define RTS_CTS_STRATEGY_ALWAYS_ON  2 /* */
+#define RTS_CTS_STRATEGY_SIZE_LIMIT 3 /* unicast only */
+#define RTS_CTS_STRATEGY_RANDOM     4 /* unicast only */
+#define RTS_CTS_STRATEGY_PLI        5 /* unicast only */
+#define RTS_CTS_STRATEGY_HIDDENNODE 6 /* unicast only */
 
 class RtsCtsScheme: public BRNElement {
 public:

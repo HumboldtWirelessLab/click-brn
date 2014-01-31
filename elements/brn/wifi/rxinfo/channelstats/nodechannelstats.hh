@@ -27,11 +27,13 @@ typedef NeighbourStatsMap::const_iterator NeighbourStatsMapIter;
 class NodeChannelStats
 {
   private:
+    Timestamp _last_update;
     uint32_t _buffer_size;
     uint32_t _index;
 
-    Packet **_packet_buffer;
-    NeighbourStatsMap *_nstats_buffer;
+    Packet **_packet_buffer;                 //packet from the neighbours
+    NeighbourStatsMap *_nstats_buffer;       //infos, about the neighbours (list of maps). size of list is time backwards.
+    EtherTimestampMap _last_neighbor_update; //time, when the node notice the neighbor last time
 
   public:
     uint32_t _used;
@@ -58,6 +60,8 @@ class NodeChannelStats
     }
 
     bool insert(Packet *p) {
+      Timestamp now = Timestamp::now();
+
       struct local_airtime_stats *ls = get_last_stats();
       struct cooperative_channel_stats_header *header = (struct cooperative_channel_stats_header*)p->data();
       struct local_airtime_stats *new_ls = &header->local_stats;
@@ -79,13 +83,27 @@ class NodeChannelStats
       struct neighbour_airtime_stats *nas = &(body->neighbour_stats);
 
       for ( uint8_t n = 0; n < header->no_neighbours; n++ ) {
-        _nstats_buffer[_index].insert(EtherAddress(nas[n]._etheraddr), &nas[n]);
+        EtherAddress ea = EtherAddress(nas[n]._etheraddr);
+        _nstats_buffer[_index].insert(ea, &nas[n]);
+        _last_neighbor_update.insert(ea, now);
       }
 
       _index = (_index + 1) % _buffer_size;
       if ( _used < _buffer_size ) _used++;
 
       return true;
+    }
+
+    int get_neighbours_with_max_age(int age, Vector<EtherAddress> *ea_vec) {
+      int no_neighbours = 0;
+      Timestamp now = Timestamp::now();
+      for ( EtherTimestampMapIter nt_iter = _last_neighbor_update.begin(); nt_iter != ni->_last_neighbor_update.end(); nt_iter++ ) {
+        if ( (now - nt_iter.value()).msec_val() < age ) {
+          ea_vec->push(nt_iter.key());
+          no_neighbours++;
+        }
+      }
+      return no_neighbours;
     }
 };
 
