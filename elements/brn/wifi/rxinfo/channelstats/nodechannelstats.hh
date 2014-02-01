@@ -97,9 +97,9 @@ class NodeChannelStats
     int get_neighbours_with_max_age(int age, Vector<EtherAddress> *ea_vec) {
       int no_neighbours = 0;
       Timestamp now = Timestamp::now();
-      for ( EtherTimestampMapIter nt_iter = _last_neighbor_update.begin(); nt_iter != ni->_last_neighbor_update.end(); nt_iter++ ) {
-        if ( (now - nt_iter.value()).msec_val() < age ) {
-          ea_vec->push(nt_iter.key());
+      for ( EtherTimestampMapIter nt_iter = _last_neighbor_update.begin(); nt_iter != _last_neighbor_update.end(); nt_iter++ ) {
+        if ( (now - nt_iter.value()).msecval() < age ) {
+          ea_vec->push_back(nt_iter.key());
           no_neighbours++;
         }
       }
