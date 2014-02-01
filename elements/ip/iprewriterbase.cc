@@ -446,7 +446,8 @@ IPRewriterBase::pattern_write_handler(const String &str, Element *e, void *user_
 void
 IPRewriterBase::add_rewriter_handlers(bool writable_patterns)
 {
-    add_read_handler("nmappings", read_handler, h_nmappings);
+    add_read_handler("table_size", read_handler, h_nmappings);
+    add_read_handler("nmappings", read_handler, h_nmappings, Handler::h_deprecated);
     add_read_handler("mapping_failures", read_handler, h_mapping_failures);
     add_read_handler("patterns", read_handler, h_patterns);
     add_read_handler("size", read_handler, h_size);
@@ -457,7 +458,7 @@ IPRewriterBase::add_rewriter_handlers(bool writable_patterns)
 	String name = "pattern" + String(i);
 	add_read_handler(name, read_handler, i);
 	if (writable_patterns)
-	    add_write_handler(name, pattern_write_handler, i, Handler::EXCLUSIVE);
+	    add_write_handler(name, pattern_write_handler, i);
     }
 }
 
