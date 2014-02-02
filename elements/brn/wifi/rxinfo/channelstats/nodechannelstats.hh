@@ -13,6 +13,7 @@
 #include <click/hashmap.hh>
 #include <click/bighashmap.hh>
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats_protocol.hh"
 
 #define ENDIANESS_TEST 0x1234;
