@@ -225,6 +225,15 @@ void DibadawnNodeStatistic::setTopologyInfo(TopologyInfo* topoInfo)
   topologyInfo = topoInfo;
 }
 
+void DibadawnNodeStatistic::upateArticulationPoint(const EtherAddress &node, bool isArticulationPoint)
+{
+  if(isArticulationPoint)
+     topologyInfo->addArticulationPoint(&node);
+  else
+    topologyInfo->removeArticulationPoint(&node);
+}
+
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnNodeStatistic)

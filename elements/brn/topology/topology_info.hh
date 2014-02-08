@@ -101,6 +101,7 @@ public:
     
     void addBridge(EtherAddress *a, EtherAddress *b);
     void addArticulationPoint(EtherAddress *a);
+    void removeArticulationPoint(EtherAddress *a);
     Bridge* getBridge(EtherAddress *a, EtherAddress *b);
     ArticulationPoint *getArticulationPoint(EtherAddress *a);
 

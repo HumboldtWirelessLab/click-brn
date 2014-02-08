@@ -197,11 +197,14 @@ void DibadawnSearch::detectArticulationPoints()
   closure.runMarshallAlgo();
   closure.print(addrOfThisNode.unparse().c_str());
 
-  if (!closure.isOneMatrix())
+  bool isArticulationPoint = !closure.isOneMatrix();
+  if (isArticulationPoint)
   {
     click_chatter("<ArticulationPoint node='%s'/>",
         addrOfThisNode.unparse_dash().c_str());
+    
   }
+  commonStatistic.upateArticulationPoint(addrOfThisNode, isArticulationPoint);
 }
 
 void DibadawnSearch::voteForAccessPointsAndBridges()

@@ -71,6 +71,18 @@ TopologyInfo::addArticulationPoint(EtherAddress *a)
   if ( getArticulationPoint(a) == NULL ) _artpoints.push_back(new ArticulationPoint(a));
 }
 
+void 
+TopologyInfo::removeArticulationPoint(EtherAddress* a)
+{
+  for ( Vector<ArticulationPoint*>::iterator it = _artpoints.begin(); it != _artpoints.end(); it++ )
+  {
+    ArticulationPoint* elem = *it;
+    if(elem->equals(a))
+      _artpoints.erase(it);
+  }
+}
+
+
 TopologyInfo::Bridge*
 TopologyInfo::getBridge(EtherAddress *a, EtherAddress *b)
 {
