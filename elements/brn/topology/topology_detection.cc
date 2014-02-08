@@ -41,8 +41,6 @@
 CLICK_DECLS
 
 TopologyDetection::TopologyDetection() :
-_detection_timer(static_detection_timer_hook, this),
-_response_timer(static_response_timer_hook, this),
 detection_id(0),
 dibadawnAlgo(this)
 {
@@ -73,9 +71,6 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 int TopologyDetection::initialize(ErrorHandler *)
 {
   click_srandom(_node_identity->getMasterAddress()->hashcode());
-
-  _detection_timer.initialize(this);
-  _response_timer.initialize(this);
   return 0;
 }
 
@@ -119,108 +114,9 @@ void TopologyDetection::handle_detection(Packet *brn_packet)
   dibadawnAlgo.receive(packet);
 }
 
-bool TopologyDetection::path_include_node(uint8_t *path, uint32_t path_len, const EtherAddress *node)
-{
-  uint8_t *lpath = path;
-
-  for (uint32_t i = 0, pindex = 0; i < path_len; i++, pindex += 6)
-    if (memcmp(&(lpath[pindex]), node->data(), 6) == 0) return true;
-  return false;
-}
-
 void TopologyDetection::start_detection()
 {
   dibadawnAlgo.startNewSearch();
-}
-
-void TopologyDetection::static_detection_timer_hook(Timer *t, void *f)
-{
-  if (t == NULL) click_chatter("Time is NULL");
-  ((TopologyDetection*) f)->handle_detection_timeout();
-}
-
-void TopologyDetection::static_response_timer_hook(Timer *t, void *f)
-{
-  if (t == NULL) click_chatter("Time is NULL");
-  ((TopologyDetection*) f)->handle_response_timeout();
-}
-
-void TopologyDetection::handle_detection_timeout(void)
-{
-  BRN_DEBUG("Detection Timeout. No descendant.");
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-
-  BRN_DEBUG("Finished waiting for response. Now check for bridges.");
-  if ((tdi->_src != *(_node_identity->getMasterAddress())) && (tdi->pendant_node()))
-    BRN_DEBUG("link between me and parent is bridge ??");
-
-  if ((tdi->_last_hops.size() <= 1) && (tdi->_num_descendant == 0))
-    BRN_DEBUG("I'm a lief.");
-
-  if (tdi->_src != *(_node_identity->getMasterAddress()))
-    send_response();
-  else
-    BRN_DEBUG("Source of request. Detection timeout");
-}
-
-void TopologyDetection::handle_response_timeout(void)
-{
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-
-  if (tdi->_get_backward < tdi->_num_descendant)
-    BRN_DEBUG("Missing response from descendant ( %d of %d ).", tdi->_get_backward, tdi->_num_descendant);
-
-  BRN_DEBUG("Finished waiting for response. Now check for bridges.");
-  if (tdi->pendant_node())
-    BRN_DEBUG("link between me and parent is bridge ??");
-
-  //TODO: the next test failed (looks like that)
-  if (tdi->_src != *(_node_identity->getMasterAddress())) //i'm the source of the request. Time to check the result
-    send_response(); //send response
-  else
-    BRN_DEBUG("Source of request. Response timeout");
-
-}
-
-void TopologyDetection::send_response(void)
-{
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-  TopologyDetection::TopologyDetectionReceivedInfo *tdri = &(tdi->_last_hops[0]);
-
-  BRN_DEBUG("Send Response to %s.", tdri->_addr.unparse().c_str());
-
-  //TODO:ttl
-  WritablePacket *p = TopologyDetectionProtocol::new_backwd_packet(&(tdi->_src), tdi->_id, _node_identity->getMasterAddress(), &(tdri->_addr), NULL);
-  output(0).push(p);
-}
-
-TopologyDetection::TopologyDetectionForwardInfo *
-TopologyDetection::get_forward_info(EtherAddress *src, uint32_t id)
-{
-  for (int i = 0; i < tdfi_list.size(); i++)
-  {
-    if (tdfi_list[i]->equals(src, id)) return tdfi_list[i];
-  }
-
-  return NULL;
-}
-
-void
-TopologyDetection::evaluate_local_knowledge()
-{
-
-}
-
-bool
-TopologyDetection::i_am_articulation_point()
-{
-  return false;
-}
-
-void
-TopologyDetection::get_bridge_links(Vector<EtherAddress> */*_bridge_links*/)
-{
-  return;
 }
 
 
