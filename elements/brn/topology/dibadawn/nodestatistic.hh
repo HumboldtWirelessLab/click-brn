@@ -46,6 +46,8 @@ public:
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
     void setTopologyInfo(TopologyInfo *topoInfo);
+    
+    void upateArticulationPoint(const EtherAddress &node,  bool isArticulationPoint);
 
 private:
     Spinlock lock;

@@ -231,31 +231,7 @@ TopologyDetection::get_bridge_links(Vector<EtherAddress> */*_bridge_links*/)
 
 String TopologyDetection::local_topology_info(void)
 {
-  StringAccum sa;
-  TopologyDetection::TopologyDetectionForwardInfo *tdfi;
-  TopologyDetectionReceivedInfo *tdri;
-
-  sa << "<topology_detection node=\"" << _node_identity->getMasterAddress()->unparse() << "\" >\n";
-  sa << "\t<forward_info_list size=\"" << tdfi_list.size() << "\" >\n";
-
-  for (int i = 0; i < tdfi_list.size(); i++)
-  {
-    tdfi = tdfi_list[i];
-
-    sa << "\t\t<forward_info number=\"" << i << "\" src=\"" << tdfi->_src.unparse() << "\" id=\"" << tdfi->_id << "\" ";
-    sa << "ttl=\"" << (uint32_t) tdfi->_ttl << "\" >\n";
-    sa << "\t\t\t<last_hops size=\"" << tdfi->_last_hops.size() << "\" >\n";
-    for (int j = 0; j < tdfi->_last_hops.size(); j++)
-    {
-      tdri = &(tdfi->_last_hops[j]);
-      sa << "\t\t\t\t<hop addr=\"" << tdri->_addr.unparse() << "\" ttl=\"" << tdri->_ttl << "\" ";
-      sa << "over_me=\"" << tdri->_over_me << "\" descendant=\"" << tdri->_descendant << "\" />\n";
-    }
-    sa << "\t\t\t</last_hops>\n\t\t</forward_info>\n";
-  }
-  sa << "\t</forward_info_list>\n</topology_detection>\n";
-
-  return sa.take_string();
+  return(_topoInfo->topology_info());
 }
 
 enum
