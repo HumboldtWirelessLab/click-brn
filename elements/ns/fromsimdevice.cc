@@ -126,7 +126,7 @@ FromSimDevice::uninitialize()
 void
 FromSimDevice::set_annotations(Packet *p,int ptype)
 {
-  static char bcast_addr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  static char bcast_addr[] = { (char)0xff, (char)0xff, (char)0xff, (char)0xff, (char)0xff, (char)0xff };
 
   if (SIMCLICK_PTYPE_ETHER == ptype) {
     // check if multicast
