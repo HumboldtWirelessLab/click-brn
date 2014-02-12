@@ -88,9 +88,9 @@ void DibadawnSearch::initCommon(
 
 void DibadawnSearch::forwardTimeout()
 {
-  const char *searchText = searchId.AsString().c_str();
-  const char *thisNodeText = addrOfThisNode.unparse_dash().c_str();
-  click_chatter("<ForwardTimeout node='%s' searchId='%s' />", thisNodeText, searchText);
+  click_chatter("<ForwardTimeout node='%s' searchId='%s' />", 
+      addrOfThisNode.unparse_dash().c_str(), 
+      searchId.AsString().c_str());
 
   detectCycles();
   forwardMessages();

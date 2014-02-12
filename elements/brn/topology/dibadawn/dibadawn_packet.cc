@@ -188,21 +188,17 @@ void DibadawnPacket::logRx(EtherAddress &thisNode)
 
 void DibadawnPacket::log(String tag, EtherAddress &thisNode, String attr)
 {
-  String forwaredByAsText = forwardedBy.unparse_dash();
-  String treeParrentAsText = treeParent.unparse_dash();
-  String thisNodeAsText = thisNode.unparse_dash();
-
   click_chatter("<%s node='%s' %s >",
       tag.c_str(),
-      thisNodeAsText.c_str(),
+      thisNode.unparse_dash().c_str(),
       attr.c_str());
 
   click_chatter("  <version>%d</version>", version);
   click_chatter("  <type>%d(%s)</type>", isForward, isForward ? "ForwardMsg" : "BackMsg");
   click_chatter("  <ttl>%d</ttl>", ttl);
   click_chatter("  <searchId>%s</searchId>", searchId.AsString().c_str());
-  click_chatter("  <forwardedBy>%s</forwardedBy>", forwaredByAsText.c_str());
-  click_chatter("  <treeParent>%s</treeParent>", treeParrentAsText.c_str());
+  click_chatter("  <forwardedBy>%s</forwardedBy>", forwardedBy.unparse_dash().c_str());
+  click_chatter("  <treeParent>%s</treeParent>", treeParent.unparse_dash().c_str());
   click_chatter("  <numPayload>%d</numPayload>", payload.size());
 
   if (payload.size() > 0)
