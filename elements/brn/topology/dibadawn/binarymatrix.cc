@@ -30,7 +30,7 @@ CLICK_DECLS;
 BinaryMatrix::BinaryMatrix(size_t n)
 {
   dimension = n;
-  matrix = new bool[dimension];
+  matrix = new bool[dimension * dimension];
   setZeroMatrix();
 }
 
