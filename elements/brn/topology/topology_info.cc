@@ -66,12 +66,12 @@ TopologyInfo::addBridge(EtherAddress *a, EtherAddress *b)
 }
 
 void 
-TopologyInfo::removeBridge(EtherAddress* a)
+TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
 {
   for ( Vector<Bridge*>::iterator it = _bridges.begin(); it != _bridges.end(); it++ )
   {
     Bridge* elem = *it;
-    if(elem->equals(a))
+    if(elem->equals(a, b))
       _bridges.erase(it);
   }
 }
