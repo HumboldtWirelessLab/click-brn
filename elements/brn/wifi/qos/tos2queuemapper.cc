@@ -289,7 +289,7 @@ Tos2QueueMapper::simple_action(Packet *p)
           _pkt_in_q++;
 
           _all_bos[_all_bos_idx] = opt_cwmin;
-          _all_bos_idx++;
+          _all_bos_idx=(_all_bos_idx+1)%TOS2QM_BOBUF_SIZE;
 
           return p;
     }
@@ -320,7 +320,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   if (TOS2QM_ALL_BOS_STATS) {
     _all_bos[_all_bos_idx] = opt_cwmin;
-    _all_bos_idx++;
+    _all_bos_idx=(_all_bos_idx+1)%TOS2QM_BOBUF_SIZE;
   }
 
   _pkt_in_q++;
