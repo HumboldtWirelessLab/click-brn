@@ -96,7 +96,7 @@ TCC::add_code(String code)
     tcc_add_symbol(_tcc_s, "tcc_packet_kill",(void*)tcc_packet_kill);
 
     /* relocate the code */
-    if (tcc_relocate(_tcc_s /*, 0TCC_RELOCATE_AUTO*/) < 0)
+    if (tcc_relocate(_tcc_s, TCC_RELOCATE_AUTO) < 0)
         return;
 
     /* get entry symbol */
