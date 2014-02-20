@@ -62,7 +62,7 @@ class HiddenNodeDetection : public BRNElement {
         bool _visible; //TODO: better solution
 
         NodeInfoTable _links_to;
-        HashMap<EtherAddress, Timestamp> _last_link_usage;
+        EtherTimestampMap _last_link_usage;
 
         NodeInfo(): _neighbour(false),_visible(true) {
           _last_notice_passive = _last_notice_active = Timestamp::now();
@@ -123,6 +123,9 @@ class HiddenNodeDetection : public BRNElement {
     }
 
     void remove_link(EtherAddress *sea, EtherAddress *dea);
+
+    int count_hidden_neighbours(const EtherAddress &);
+    int get_hidden_neighbours(const EtherAddress &, Vector<EtherAddress> *);
 
   private:
 

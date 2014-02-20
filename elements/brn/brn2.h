@@ -164,6 +164,14 @@ const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadc
 #define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
 #define BRN_INTERNAL_NODE_IP "254.1.1.1"
 
+/**
+ * BRN Typedefs
+ */
+
+typedef HashMap<EtherAddress, Timestamp> EtherTimestampMap;
+typedef EtherTimestampMap::const_iterator EtherTimestampMapIter;
+
+
 CLICK_ENDDECLS
 
 #endif

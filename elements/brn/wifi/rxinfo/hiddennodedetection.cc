@@ -84,9 +84,7 @@ HiddenNodeDetection::run_timer(Timer *)
     //EtherAddress ea = iter.key();
     if ( (now - node->_last_notice_active).msecval() > _hd_del_interval ) {
       node->_neighbour = false;
-      if ( (now - node->_last_notice_passive).msecval() > _hd_del_interval ) {
-        node->_visible = false;
-      }
+      node->_visible = false;
     }
   }
 
@@ -113,7 +111,14 @@ HiddenNodeDetection::push(int port, Packet *p)
   EtherAddress src;
   switch (type) {
     case WIFI_FC0_TYPE_CTL:
-      src = brn_etheraddress_broadcast;
+      BRN_ERROR("CTRL");
+      switch (w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {
+        case WIFI_FC0_SUBTYPE_RTS:
+          src = EtherAddress(w->i_addr2);
+          break;
+        default:
+          src = brn_etheraddress_broadcast;
+      }
       break;
     default: //MGT & DATA
       src = EtherAddress(w->i_addr2);
@@ -141,10 +146,11 @@ HiddenNodeDetection::push(int port, Packet *p)
     src_ni->update_active();
     src_ni->_neighbour = true;
 
-    BRN_DEBUG("RX");
+    BRN_ERROR("RX: %s -> %s",src.unparse().c_str(), dst.unparse().c_str());
     NodeInfo *dst_ni = NULL;
 
     if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
+
       if ( (dst != brn_etheraddress_broadcast) && (*_device->getEtherAddress() != dst) ) {
         BRN_DEBUG("No broadcast");
         dst_ni = _nodeinfo_tab.find(dst);
@@ -156,9 +162,11 @@ HiddenNodeDetection::push(int port, Packet *p)
         }
         dst_ni->update_passive();
       }
+
       switch (type) {
         case WIFI_FC0_TYPE_MGT:
         case WIFI_FC0_TYPE_DATA:
+        case WIFI_FC0_TYPE_CTL:
           _last_data_dst = dst;
           _last_data_seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
@@ -167,14 +175,11 @@ HiddenNodeDetection::push(int port, Packet *p)
           if (dst_ni) {
             BRN_DEBUG("Dst");
 
-            Timestamp ts = Timestamp(0,0);
-            //dst_ni->add_link(src, src_ni, &ts);
-            ts = Timestamp::now();
-            src_ni->add_link(dst, dst_ni, &ts);
+            Timestamp ts = Timestamp::now();
+            dst_ni->add_link(src, src_ni, &ts);
+            if ( dst != brn_etheraddress_broadcast ) src_ni->add_link(dst, dst_ni, &ts);
           }
 
-          break;
-        case WIFI_FC0_TYPE_CTL:
           break;
       }
 
@@ -186,6 +191,40 @@ HiddenNodeDetection::push(int port, Packet *p)
   }
 
   output(port).push(p);
+}
+
+/**************************************************************************************************************/
+/********************************************* F U N C T I O N S **********************************************/
+/**************************************************************************************************************/
+
+int
+HiddenNodeDetection::count_hidden_neighbours(const EtherAddress &ea)
+{
+  if ( _nodeinfo_tab.findp(ea) == NULL ) return 0;
+
+  int count_hn = 0;
+
+  NodeInfo* ni = _nodeinfo_tab.find(ea);
+
+  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ )
+    if (!(_nodeinfo_tab.find(nt_iter.key())->_neighbour)) count_hn++;
+
+  return count_hn;
+}
+
+int
+HiddenNodeDetection::get_hidden_neighbours(const EtherAddress &ea, Vector<EtherAddress> *hns)
+{
+  hns->clear();
+
+  if ( _nodeinfo_tab.findp(ea) == NULL ) return 0;
+
+  NodeInfo* ni = _nodeinfo_tab.find(ea);
+
+  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ )
+    if (!(_nodeinfo_tab.find(nt_iter.key())->_neighbour)) hns->push_back(nt_iter.key());
+
+  return hns->size();
 }
 
 
@@ -203,7 +242,7 @@ HiddenNodeDetection::stats_handler(int mode)
   switch (mode) {
     case H_STATS:
 
-      sa << "<channelerrordetection node=\"";
+      sa << "<hiddennodedetection node=\"";
 
       if ( _device )
         sa << _device->getEtherAddress()->unparse();
@@ -239,7 +278,7 @@ HiddenNodeDetection::stats_handler(int mode)
         }
       }
 
-      sa << "\t</hidden_nodes>\n</channelerrordetection>\n";
+      sa << "\t</hidden_nodes>\n</hiddennodedetection>\n";
 
   }
   return sa.take_string();

@@ -20,7 +20,9 @@
 CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
+  _pre_scheme(NULL),
   _scheme(NULL),
+  _rts_cts_pre_strategy(RTS_CTS_STRATEGY_NONE),
   _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
   pkt_total(0),
   rts_on(0)
@@ -46,6 +48,7 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
     "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &scheme_string,
     "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
+    "PRESTRATEGY", cpkP, cpInteger, &_rts_cts_pre_strategy,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
 
@@ -54,7 +57,9 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
 
   if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
     _scheme = get_rtscts_scheme(_rts_cts_strategy);
-    _scheme->set_strategy(_rts_cts_strategy);
+    if (_scheme) _scheme->set_strategy(_rts_cts_strategy);
+    _pre_scheme = get_rtscts_scheme(_rts_cts_pre_strategy);
+    if (_pre_scheme) _pre_scheme->set_strategy(_rts_cts_pre_strategy); 
   } else {
     _scheme = NULL;
   }
@@ -98,17 +103,38 @@ Brn2_SetRTSCTS::simple_action(Packet *p)
 {
   if (p) {
     bool set_rtscts = false;
-    EtherAddress dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
+    //EtherAddress dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
+    //EtherAddress dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
+    EtherAddress dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
 
-    switch ( _rts_cts_strategy ) {
+    //Idea: the pre scheme can be something like Paketsize. If this scheme requests the rts/cts (packet is big) than the 2. scheme 
+    //make the final decission
+    //TODO: combine more than 2 schemes. Allow to combine them using log. operation (and/or/xor)
+    switch ( _rts_cts_pre_strategy ) {
       case RTS_CTS_STRATEGY_ALWAYS_OFF:
         break;
+      case RTS_CTS_STRATEGY_NONE:
       case RTS_CTS_STRATEGY_ALWAYS_ON:
         set_rtscts = true;
         break;
       default:
-        set_rtscts = _scheme->set_rtscts(dst, p->length());
+        set_rtscts = _pre_scheme->set_rtscts(dst, p->length());
         break;
+    }
+
+    if ( set_rtscts ) {
+      switch ( _rts_cts_strategy ) {
+        case RTS_CTS_STRATEGY_NONE:
+        case RTS_CTS_STRATEGY_ALWAYS_OFF:
+          set_rtscts = false;
+          break;
+        case RTS_CTS_STRATEGY_ALWAYS_ON:
+          set_rtscts = true;
+          break;
+        default:
+          set_rtscts = _scheme->set_rtscts(dst, p->length());
+          break;
+      }
     }
 
     struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
@@ -145,20 +171,24 @@ Brn2_SetRTSCTS::stats()
   sa << "<setrtscts node=\""<< BRN_NODE_NAME << "\" strategy=\"" << _rts_cts_strategy << "\" >\n";
 
   sa << "\t<schemes>\n";
+  sa << "\t\t<scheme name=\"RtsCtsNone\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_NONE)?1:0) << "\" />\n";
+  sa << "\t\t<scheme name=\"RtsCtsAllwaysOff\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_OFF)?1:0) << "\" />\n";
+  sa << "\t\t<scheme name=\"RtsCtsAllwaysOn\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_ON)?1:0) << "\" />\n";
   for (uint16_t i = 0; i < _schemes.size(); i++) {
-    sa << "\t\t<scheme name=\"" << _schemes[i]->class_name() << "\"\n>";
+    sa << "\t\t<scheme name=\"" << _schemes[i]->class_name() << "\" active=\"" << (int)(_schemes[i]->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
   }
   sa << "\t</schemes>\n";
 
+  sa << "\t<neighbours>\n";
   for (HashMap<EtherAddress,struct rtscts_neighbour_statistics>::const_iterator it = rtscts_neighbours.begin(); it.live(); ++it) {
     EtherAddress ea = it.key();
     struct rtscts_neighbour_statistics* nstats = rtscts_neighbours.findp(ea);
 
-    sa << "\t<neighbour address=\"" << ea.unparse().c_str() <<"\" packets_total=\"" << nstats->pkt_total;
-    sa << "\" rts_on=\"" << nstats->rts_on << "\" rts_off=\"" << (nstats->pkt_total - nstats->rts_on) <<"\"/>\n";
+    sa << "\t\t<neighbour address=\"" << ea.unparse().c_str() << "\" packets_total=\"" << (int)(nstats->pkt_total);
+    sa << "\" rts_on=\"" << (int)(nstats->rts_on) << "\" rts_off=\"" << (int)(nstats->pkt_total - nstats->rts_on) <<"\"/>\n";
   }
 
-  sa.append("</setrtscts>\n");
+  sa.append("\t</neighbours>\n</setrtscts>\n");
 
   return sa.take_string();
 }
