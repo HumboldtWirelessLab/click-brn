@@ -42,6 +42,7 @@ class MSTFlooding : public FloodingPolicy
 
     String flooding_info(void);
     Vector<EtherAddress> followers;
+    Vector<EtherAddress> pre;
 
   private:
 
@@ -50,7 +51,8 @@ class MSTFlooding : public FloodingPolicy
     //Vector<EtherAddress>::iterator akt_foll;
 
     String _circle_path;
-    bool _bidirectional;
+    bool _bidirectional; //Send in both directions of the circle
+    bool _pre_only; //Retransmit only if packet came from a predecessor
     void get_neighbours(String path);
 
 };
