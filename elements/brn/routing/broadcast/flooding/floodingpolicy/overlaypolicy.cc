@@ -59,11 +59,23 @@ OverlayPolicy::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size,
 }
 
 bool
-OverlayPolicy::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
-                           uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
+OverlayPolicy::do_forward(EtherAddress *, EtherAddress * fwd, const EtherAddress *, uint32_t, bool is_known, uint32_t forward_count,
+                           uint32_t, uint8_t *, uint32_t* /*tx_data_size*/, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
   //BRN_DEBUG("do_forward reached");
-  if (is_known) return false;
+  if (_ovl->_pre&&fwd!=0) {
+	if (forward_count>0)
+		return false;
+	Vector<EtherAddress> * parents=_ovl->getOwnParents();
+	bool is_pre=false;
+	for (Vector<EtherAddress>::iterator i=parents->begin();i!=parents->end();++i) {
+		if ((*i)==(*fwd)) is_pre=true;
+	}
+	if (!is_pre)
+		return false;
+  } else {
+	if (is_known) return false;
+  }
   Vector<EtherAddress> * children=_ovl->getOwnChildren();
   if (children->empty())
 	return false;

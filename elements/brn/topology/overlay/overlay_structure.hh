@@ -53,6 +53,8 @@ class OverlayStructure : public BRNElement {
   HashMap <EtherAddress, Vector <EtherAddress> > n_parents; // Parents of neighbouring nodes
   HashMap <EtherAddress, Vector <EtherAddress> > n_children; // Children of neighbouring nodes
   
+  bool _pre;
+  
   void addOwnParent (EtherAddress* add); //add - EtherAdress of new parent
   void addOwnChild (EtherAddress* add); //add - EtherAdress of new Child
   void addParent (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of new parent, node - EtherAdress of node to get new parent
@@ -69,6 +71,7 @@ class OverlayStructure : public BRNElement {
   String printChildren(const EtherAddress* add, const Vector<EtherAddress> *par);
   String printAllParents();
   String printAllChildren();
+  String printPre();
 
  private:
 
