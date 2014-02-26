@@ -97,6 +97,7 @@ void OverlayStructure::addParent (EtherAddress* node, EtherAddress* add) {
 }
 
 void OverlayStructure::addChild (EtherAddress* node, EtherAddress* add) {
+	BRN_DEBUG("Added Child");
 	if (_me->isIdentical(node)) {
 		addOwnChild(add);
 		return;
@@ -215,7 +216,7 @@ static int add_own_parent (const String &in_s, Element *element, void */*thunk*/
 
   EtherAddress address;
 
-  if ( !cp_ethernet_address(args[0], &address) ) {
+  if ( cp_ethernet_address(args[0], &address) ) {
     ovl->addOwnParent(&address);
   }
 
@@ -229,10 +230,12 @@ static int add_own_child (const String &in_s, Element *element, void */*thunk*/,
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
+  click_chatter("Adding Child with data: %s",s.c_str());
 
   EtherAddress address;
 
-  if ( !cp_ethernet_address(args[0], &address) ) {
+  if ( cp_ethernet_address(args[0], &address) ) {
+    click_chatter("Adding Child... %s",address.unparse().c_str());
     ovl->addOwnChild(&address);
   }
 
@@ -250,7 +253,7 @@ static int add_parent (const String &in_s, Element *element, void */*thunk*/, Er
 
   EtherAddress node, address;
 
-  if ( !cp_ethernet_address(args[0], &node) && !cp_ethernet_address(args[1], &address)) {
+  if ( cp_ethernet_address(args[0], &node) && cp_ethernet_address(args[1], &address)) {
     ovl->addParent(&node,&address);
   }
 
@@ -268,7 +271,7 @@ static int add_child (const String &in_s, Element *element, void */*thunk*/, Err
 
   EtherAddress node, address;
 
-  if ( !cp_ethernet_address(args[0], &node) && !cp_ethernet_address(args[1], &address)) {
+  if ( cp_ethernet_address(args[0], &node) && cp_ethernet_address(args[1], &address)) {
     ovl->addChild(&node,&address);
   }
 

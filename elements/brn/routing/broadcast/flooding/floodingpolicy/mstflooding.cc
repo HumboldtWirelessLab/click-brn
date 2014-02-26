@@ -54,12 +54,12 @@ MSTFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
-EtherAddress ID_to_MAC (int id) {
+EtherAddress MSTFlooding::ID_to_MAC (int id) {
   unsigned char data[]={0,0,0,0,id/256,id%256};
   return EtherAddress(data);
 }
 
-int MAC_to_ID(EtherAddress *add) {
+int MSTFlooding::MAC_to_ID(EtherAddress *add) {
   const unsigned char *p = add->data();
   return p[5]+256*p[4];
 }
@@ -251,7 +251,7 @@ static int add_follower (const String &in_s, Element *element, void */*thunk*/, 
   EtherAddress address;
 
   if ( !cp_ethernet_address(args[0], &address) ) {
-    mstfl->followers.push_back(ID_to_MAC(atoi(args[0].c_str())));
+    mstfl->followers.push_back(mstfl->ID_to_MAC(atoi(args[0].c_str())));
   }
 
   return 0;

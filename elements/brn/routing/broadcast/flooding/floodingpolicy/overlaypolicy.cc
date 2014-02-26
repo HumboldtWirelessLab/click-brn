@@ -33,7 +33,6 @@ OverlayPolicy::cast(const char *name)
 int
 OverlayPolicy::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "OVERLAY_STRUCTURE", cpkP+cpkM, cpElement, &_ovl,
@@ -41,7 +40,6 @@ OverlayPolicy::configure(Vector<String> &conf, ErrorHandler *errh)
     cpEnd) < 0)
       return -1;
 
-  get_neighbours(_circle_path);
   return 0;
 }
 
@@ -56,7 +54,7 @@ void
 OverlayPolicy::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, uint8_t *,
                         Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
-	BRN_DEBUG("init_broadcast reached");
+	//BRN_DEBUG("init_broadcast reached");
 	do_forward(0,0,0,0,false,0,0,0,tx_data_size,0,unicast_dst,passiveack);
 }
 
@@ -64,30 +62,15 @@ bool
 OverlayPolicy::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
                            uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
-  BRN_DEBUG("do_forward reached");
-  if ( is_known ) return false;
-
-  *tx_data_size = 0;
-  unicast_dst->clear();
-  passiveack->clear();
-  /*Gibt nur den nächsten Nachbarn zurück
-  if (akt_foll==followers.end()) {
-	  BRN_DEBUG("no more neighbours");
-	  return false;
+  //BRN_DEBUG("do_forward reached");
+  if (is_known) return false;
+  Vector<EtherAddress> * children=_ovl->getOwnChildren();
+  if (children->empty())
+	return false;
+  for (Vector<EtherAddress>::iterator i=children->begin();i!=children->end();++i) {
+	 unicast_dst->push_back(*i);
+     passiveack->push_back(*i);
   }
-  (*unicast_dst).push_back(ID_to_MAC(*akt_foll));
-  (*passiveack).push_back(ID_to_MAC(*akt_foll));
-  ++akt_foll;
-  return true;*/
-  /* Gibt alle Nachbarn zurück */
-  for (Vector<EtherAddress>::iterator i = followers.begin(); i!=followers.end(); ++i) {
-    unicast_dst->push_back(*i);
-    passiveack->push_back(*i);
-  }
-  BRN_DEBUG("NEIGHBOURS %d *unicast_dst.size() %d", followers.size(), (*unicast_dst).size());
-
-  //return ! is_known;
-  if (unicast_dst->empty()) return false;
   return true;
 }
 
