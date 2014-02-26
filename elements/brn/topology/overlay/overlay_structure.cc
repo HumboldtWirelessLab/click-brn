@@ -53,6 +53,7 @@ OverlayStructure::configure(Vector<String> &conf, ErrorHandler *errh)
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+  _pre=false;
 
   return 0;
 }
@@ -197,6 +198,12 @@ String OverlayStructure::printAllChildren() {
 	return sa.take_string();
 }
 
+String OverlayStructure::printPre() {
+	StringAccum sa;
+	sa << "<pre node=\"" << BRN_NODE_NAME << "\" value=\""<<_pre<<"\"></pre>\n";
+	return sa.take_string();
+}
+
 /*************************************************************************************************/
 /***************************************** H A N D L E R *****************************************/
 /*************************************************************************************************/
@@ -278,6 +285,25 @@ static int add_child (const String &in_s, Element *element, void */*thunk*/, Err
   return 0;
 }
 
+static int set_pre (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
+	//click_chatter("set_pre0");
+	OverlayStructure *ovl = (OverlayStructure *)element;
+	
+    String s = cp_uncomment(in_s);
+    //click_chatter("set_pre1: %s",s.c_str());
+    Vector<String> args;
+    cp_spacevec(s, args);
+    
+    bool new_pre=false; 
+	//click_chatter("set_pre2: %s",s.c_str());
+	
+	if (cp_bool(args[0],&new_pre))
+		ovl->_pre=new_pre;
+	
+	return 0;
+}
+
+
 static String
 read_own_parents(Element *e, void */*thunk*/)
 {
@@ -306,16 +332,25 @@ read_all_children(Element *e, void */*thunk*/)
   return ovl->printAllChildren();
 }
 
+static String
+read_pre(Element *e, void */*thunk*/)
+{
+	OverlayStructure *ovl = (OverlayStructure *)e;
+	return ovl->printPre();
+}
+
 void OverlayStructure::add_handlers()
 {
   add_write_handler("add_own_parent", add_own_parent , (void *) H_DEBUG);
   add_write_handler("add_own_child", add_own_child , (void *) H_DEBUG);
   add_write_handler("add_parent", add_parent , (void *) H_DEBUG);
   add_write_handler("add_child", add_child , (void *) H_DEBUG);
+  add_write_handler("set_pre", set_pre , (void *) H_DEBUG);
   add_read_handler("read_own_parents", read_own_parents , (void *)H_INFO);
   add_read_handler("read_own_children", read_own_children , (void *)H_INFO);
   add_read_handler("read_all_parents", read_all_parents , (void *)H_INFO);
   add_read_handler("read_all_children", read_all_children , (void *)H_INFO);
+  add_read_handler("read_pre",read_pre, (void *)H_INFO);
 }
 
 CLICK_ENDDECLS
