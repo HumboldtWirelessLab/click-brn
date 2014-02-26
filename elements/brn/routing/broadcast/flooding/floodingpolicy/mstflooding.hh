@@ -43,6 +43,9 @@ class MSTFlooding : public FloodingPolicy
     String flooding_info(void);
     Vector<EtherAddress> followers;
     Vector<EtherAddress> pre;
+    
+	EtherAddress ID_to_MAC (int id);
+	int MAC_to_ID(EtherAddress *add);
 
   private:
 

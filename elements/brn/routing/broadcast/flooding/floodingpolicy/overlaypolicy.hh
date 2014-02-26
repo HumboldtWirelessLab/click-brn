@@ -1,9 +1,9 @@
-#ifndef MSTFLOODING_HH
-#define MSTFLOODING_HH
+#ifndef OVERLAY_POLICY_HH
+#define OVERLAY_POLICY_HH
 #include <click/timer.hh>
 
 #include <elements/brn/routing/identity/brn2_nodeidentity.hh>
-#include <elements/topology/overlay/overlay_structure.hh>
+#include <elements/brn/topology/overlay/overlay_structure.hh>
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -47,7 +47,7 @@ class OverlayPolicy : public FloodingPolicy
   private:
 
     BRN2NodeIdentity *_me;
-    overlay_structure *_ovl;
+    OverlayStructure *_ovl;
 
 };
 
