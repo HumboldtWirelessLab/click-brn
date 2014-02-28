@@ -63,13 +63,13 @@ CircleOverlay::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 EtherAddress CircleOverlay::ID_to_MAC (int id) {
-  unsigned char data[]={0,0,0,0,id/256,id%256};
+ uint8_t data[] = {0,0,0,0,(uint8_t)(id/256),(uint8_t)(id%256)};
   return EtherAddress(data);
 }
 
 int CircleOverlay::MAC_to_ID(EtherAddress *add) {
   const unsigned char *p = add->data();
-  return p[5]+256*p[4];
+  return (int)p[5]+256*(int)p[4];
 }
 
 int

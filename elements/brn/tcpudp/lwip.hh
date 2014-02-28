@@ -16,6 +16,7 @@
 #undef IP_DF
 #undef IP_MF
 #undef IP_OFFMASK
+#undef TF_NODELAY
 
 #include "lwip/init.h"
 #include "lwip/opt.h"
