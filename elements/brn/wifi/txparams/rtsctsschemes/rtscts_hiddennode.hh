@@ -8,7 +8,6 @@
 #include "rtscts_scheme.hh"
 
 #include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
-#include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats.hh"
 
 CLICK_DECLS
 
@@ -22,12 +21,11 @@ class RtsCtsHiddenNode: public RtsCtsScheme {
 
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
-  bool set_rtscts(EtherAddress &dst, uint32_t size);
+  bool set_rtscts(PacketInfo *pinfo);
   bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_HIDDENNODE);}
+  uint32_t get_max_strategy() { return RTS_CTS_STRATEGY_HIDDENNODE;}
 
   HiddenNodeDetection *_hnd;
-  CooperativeChannelStats *_cocst;
-
   bool _pessimistic;
 
 };
