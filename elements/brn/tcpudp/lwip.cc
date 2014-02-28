@@ -71,21 +71,16 @@ int LwIP::initialize(ErrorHandler *errh)
     BRN_DEBUG("New Server Socket %p",this);
     int netif_id = new_netif(IPAddress("192.168.0.2"), IPAddress("192.168.0.1"), IPAddress("255.255.255.0"));
     int socket_id = new_socket(_netifs[netif_id], 12345);
+    if ( socket_id < 0 ) {
+      BRN_ERROR("New socket failed");
+    }
   }
 
   return 0;
 }
 
-static err_t
-click_lw_ip_tcp_sent(void *arg, struct tcp_pcb *tpcb, u16_t len)
-{
-  click_chatter("Sent %d Bytes", len);
-  return ERR_OK;
-}
-
-
 void
-LwIP::run_timer(Timer *t)
+LwIP::run_timer(Timer */*t*/)
 {
   BRN_DEBUG("Run timer.");
   _timer.reschedule_after_msec(TCP_TMR_INTERVAL);
@@ -95,7 +90,9 @@ LwIP::run_timer(Timer *t)
       BRN_DEBUG("New client Socket %p",this);
       int netif_id = new_netif(IPAddress("192.168.0.3"), IPAddress("192.168.0.1"), IPAddress("255.255.255.0"));
       int socket_id = new_connection(_netifs[netif_id], IPAddress("192.168.0.2"), 12345);
-      tcp_sent(_sockets[0]->_tcp_pcb, click_lw_ip_tcp_sent);
+      if ( socket_id < 0 ) {
+        BRN_ERROR("New connection failed");
+      }
     } else {
       u16_t buf_size = tcp_sndbuf(_sockets[0]->_tcp_pcb);
       click_chatter("Buffersize: %d", buf_size);
@@ -216,25 +213,44 @@ click_lw_ip_if_init(struct netif *netif)
 }
 
 err_t
-click_lw_ip_tcp_connected(void *arg, struct tcp_pcb *tpcb, err_t err)
+click_lw_ip_tcp_connected(void */*arg*/, struct tcp_pcb */*tpcb*/, err_t /*err*/)
 {
   click_chatter("Connected");
   return ERR_OK;
 }
 
-err_t
-click_lw_ip_recv(void *arg, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+static err_t
+click_lw_ip_tcp_sent(void */*arg*/, struct tcp_pcb */*tpcb*/, u16_t len)
 {
-  LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
+  click_chatter("Sent %d Bytes", len);
+  return ERR_OK;
+}
+
+err_t
+click_lw_ip_recv(void */*arg*/, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+{
+  //LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
   click_chatter("received");
 
-  tcp_recved(pcb, p->len);
+  if (err == ERR_OK && p != NULL) {
+    tcp_recved(pcb, p->tot_len);
+    pbuf_free(p);
+  } else {
+    pbuf_free(p);
+  }
+
+  if (err == ERR_OK && p == NULL) {
+    tcp_arg(pcb, NULL);
+    tcp_sent(pcb, NULL);
+    tcp_recv(pcb, NULL);
+    tcp_close(pcb);
+  }
 
   return ERR_OK;
 }
 
 err_t
-click_lw_ip_accept(void *arg, struct tcp_pcb *new_tpcb, err_t err)
+click_lw_ip_accept(void *arg, struct tcp_pcb *new_tpcb, err_t /*err*/)
 {
   LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
 
@@ -300,6 +316,9 @@ LwIP::new_socket(LwIPNetIf *netif, uint16_t port)
   _sockets.push_back(new_socket);
 
   err_t res = tcp_bind(new_socket->_tcp_pcb, &(new_socket->_lw_addr), port);
+  if ( res != ERR_OK ) {
+    BRN_ERROR("Bind failed");
+  }
   new_socket->_listen_tcp_pcb = tcp_listen(new_socket->_tcp_pcb);
 
   tcp_accept(new_socket->_listen_tcp_pcb, click_lw_ip_accept);
@@ -317,6 +336,7 @@ LwIP::new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port)
   ip_addr lw_dst_addr;
   lw_dst_addr.addr = dst_addr.addr();
   err_t res = tcp_connect( new_socket->_tcp_pcb , &lw_dst_addr, (u16_t)dst_port, click_lw_ip_tcp_connected);
+  tcp_sent(new_socket->_tcp_pcb, click_lw_ip_tcp_sent);
 
   if ( res == ERR_OK ) _sockets.push_back(new_socket);
 
