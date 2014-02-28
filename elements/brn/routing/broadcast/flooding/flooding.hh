@@ -663,6 +663,11 @@ class Flooding : public BRNElement {
     abort_last_tx(_last_tx_dst_ea, abort_reason);
   }
 
+  inline EtherAddress *get_last_tx(uint16_t *id) {
+    *id = _last_tx_bcast_id;
+    return &_last_tx_src_ea;
+  }
+
 };
 
 CLICK_ENDDECLS
