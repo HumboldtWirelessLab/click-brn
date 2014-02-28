@@ -42,25 +42,25 @@ RtsCtsPLI::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 bool
-RtsCtsPLI::set_rtscts(EtherAddress &dst, uint32_t /*size*/)
+RtsCtsPLI::set_rtscts(PacketInfo *pinfo)
 {
   bool setrtscts = false;
 
-  BRN_DEBUG("In Dest-Test: Destination: %s; ", dst.unparse().c_str());//, src.unparse().c_str());
+  BRN_DEBUG("In Dest-Test: Destination: %s; ", pinfo->_dst.unparse().c_str());//, src.unparse().c_str());
   if(NULL != _pli) {
 
     BRN_DEBUG("Before pli_graph");
-    PacketLossInformation_Graph *pli_graph = _pli->graph_get(dst);
+    PacketLossInformation_Graph *pli_graph = _pli->graph_get(pinfo->_dst);
     BRN_DEBUG("AFTER pli_graph");
 
     if (NULL == pli_graph) {
-      BRN_DEBUG("There is not a Graph available for the DST-Adress: %s", dst.unparse().c_str());
-      _pli->graph_insert(dst);
+      BRN_DEBUG("There is not a Graph available for the DST-Adress: %s", pinfo->_dst.unparse().c_str());
+      _pli->graph_insert(pinfo->_dst);
       BRN_DEBUG("Destination-Adress was inserted ");
-      pli_graph = _pli->graph_get(dst);
+      pli_graph = _pli->graph_get(pinfo->_dst);
     }
 
-    BRN_DEBUG("There is a Graph available for the DST-Adress: %s", dst.unparse().c_str());
+    BRN_DEBUG("There is a Graph available for the DST-Adress: %s", pinfo->_dst.unparse().c_str());
     PacketLossReason *pli_reason =  pli_graph->reason_get("hidden_node");
     unsigned int frac = pli_reason->getFraction();
     BRN_DEBUG("HIDDEN-NODE-FRACTION := %d", frac);

@@ -42,7 +42,7 @@ RtsCtsRandom::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 bool
-RtsCtsRandom::set_rtscts(EtherAddress &/*dst*/, uint32_t /*size*/)
+RtsCtsRandom::set_rtscts(PacketInfo */*pinfo*/)
 {
   if (_prob == 0) return false;
 

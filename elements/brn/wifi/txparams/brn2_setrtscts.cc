@@ -1,7 +1,3 @@
-/*
- *  
- */
-
 #include <click/config.h>//have to be always the first include
 #include <click/confparse.hh>
 #include <click/args.hh>
@@ -20,48 +16,59 @@
 CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
-  _pre_scheme(NULL),
   _scheme(NULL),
-  _rts_cts_pre_strategy(RTS_CTS_STRATEGY_NONE),
+  _scheme_array(NULL),
+  _rts_cts_mixed_strategy(RTS_CTS_MIXED_STRATEGY_NONE),
   _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
+  _header(HEADER_WIFI),
   pkt_total(0),
   rts_on(0)
 {
   memset(&nstats_dummy,0,sizeof(struct rtscts_neighbour_statistics));
 }
 
-Brn2_SetRTSCTS::~Brn2_SetRTSCTS() {
-}
-
-int Brn2_SetRTSCTS::initialize(ErrorHandler *) {
-  click_brn_srandom();
-
-  rtscts_neighbours.insert(ETHERADDRESS_BROADCAST, nstats_dummy);
-
-  return 0;
+Brn2_SetRTSCTS::~Brn2_SetRTSCTS()
+{
+  if ( _scheme_array != NULL ) delete[] _scheme_array;
+  _scheme_array = NULL;
 }
 
 int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) 
 {
-  String scheme_string;
-
   if (cp_va_kparse(conf, this, errh,
-    "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &scheme_string,
+    "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &_scheme_string,
     "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
-    "PRESTRATEGY", cpkP, cpInteger, &_rts_cts_pre_strategy,
+    "MIXEDSTRATEGY", cpkP, cpInteger, &_rts_cts_mixed_strategy,
+    "HEADER", cpkP, cpInteger, &_header,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
 
+  return 0;
+}
 
-  parse_schemes(scheme_string, errh);
+int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
+{
+
+  click_brn_srandom();
+
+  reset();
+
+  parse_schemes(_scheme_string, errh);
 
   if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
     _scheme = get_rtscts_scheme(_rts_cts_strategy);
     if (_scheme) _scheme->set_strategy(_rts_cts_strategy);
-    _pre_scheme = get_rtscts_scheme(_rts_cts_pre_strategy);
-    if (_pre_scheme) _pre_scheme->set_strategy(_rts_cts_pre_strategy); 
+    else _rts_cts_strategy = RTS_CTS_STRATEGY_NONE;
   } else {
     _scheme = NULL;
+  }
+
+  if ( _rts_cts_mixed_strategy != RTS_CTS_MIXED_STRATEGY_NONE ) {
+    if ( (_scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT] == NULL) || (_scheme_array[RTS_CTS_STRATEGY_HIDDENNODE] == NULL) ||
+         ((_rts_cts_mixed_strategy == RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM) && (_scheme_array[RTS_CTS_STRATEGY_RANDOM] == NULL))) {
+      BRN_WARN("Mixed RTS/CTS-Scheme requieres PacketSize-, HiddenNode- and (if random is used) the Random-Scheme");
+      _rts_cts_mixed_strategy = RTS_CTS_MIXED_STRATEGY_NONE;
+    }
   }
 
   return 0;
@@ -71,8 +78,18 @@ int
 Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
 {
   Vector<String> schemes;
+  String s = cp_uncomment(s_schemes);
 
-  cp_spacevec(cp_uncomment(s_schemes), schemes);
+  cp_spacevec(s, schemes);
+
+  _max_scheme_id = 0;
+
+  if ( schemes.size() == 0 ) {
+    if ( _scheme_array != NULL ) delete[] _scheme_array;
+    _scheme_array = NULL;
+
+    return 0;
+  }
 
   for (uint16_t i = 0; i < schemes.size(); i++) {
     Element *e = cp_element(schemes[i], this, errh);
@@ -82,6 +99,21 @@ Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
       return errh->error("Element %s is not a 'RtsCtsScheme'",schemes[i].c_str());
     } else {
       _schemes.push_back(rtscts_scheme);
+      if ( _max_scheme_id < rtscts_scheme->get_max_strategy())
+        _max_scheme_id = rtscts_scheme->get_max_strategy();
+    }
+  }
+
+  if ( _scheme_array != NULL ) delete[] _scheme_array;
+  _scheme_array = new RtsCtsScheme*[_max_scheme_id + 1];
+
+  for ( uint32_t i = 0; i <= _max_scheme_id; i++ ) {
+    _scheme_array[i] = NULL; //Default
+    for ( uint32_t s = 0; s < (uint32_t)_schemes.size(); s++ ) {
+      if ( _schemes[s]->handle_strategy(i) ) {
+        _scheme_array[i] = _schemes[s];
+        break;
+      }
     }
   }
 
@@ -89,13 +121,10 @@ Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
 }
 
 RtsCtsScheme *
-Brn2_SetRTSCTS::get_rtscts_scheme(int rts_cts_strategy)
+Brn2_SetRTSCTS::get_rtscts_scheme(uint32_t rts_cts_strategy)
 {
-  for( int i = 0; i < _schemes.size(); i++)
-    if ( _schemes[i]->handle_strategy(rts_cts_strategy) )
-      return _schemes[i];
-
-  return NULL;
+  if ( rts_cts_strategy > _max_scheme_id ) return NULL;
+  return _scheme_array[rts_cts_strategy];
 }
 
 Packet *
@@ -103,60 +132,74 @@ Brn2_SetRTSCTS::simple_action(Packet *p)
 {
   if (p) {
     bool set_rtscts = false;
-    //EtherAddress dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
-    //EtherAddress dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
-    EtherAddress dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
-
-    //Idea: the pre scheme can be something like Paketsize. If this scheme requests the rts/cts (packet is big) than the 2. scheme 
-    //make the final decission
-    //TODO: combine more than 2 schemes. Allow to combine them using log. operation (and/or/xor)
-    switch ( _rts_cts_pre_strategy ) {
-      case RTS_CTS_STRATEGY_ALWAYS_OFF:
+    switch (_header) {
+      case HEADER_ETHER:
+        _pinfo._dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
         break;
-      case RTS_CTS_STRATEGY_NONE:
-      case RTS_CTS_STRATEGY_ALWAYS_ON:
-        set_rtscts = true;
+      case HEADER_ANNO:
+        _pinfo._dst = EtherAddress(BRNPacketAnno::dst_ether_anno(p));
         break;
+      case HEADER_AUTO:
+      case HEADER_WIFI:
       default:
-        set_rtscts = _pre_scheme->set_rtscts(dst, p->length());
+        _pinfo._dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
         break;
     }
 
-    if ( set_rtscts ) {
+    _pinfo._p_size = p->length();
+    _pinfo._ceh = WIFI_EXTRA_ANNO(p);
+    _pinfo._ceh->flags &= ~WIFI_EXTRA_DO_RTS_CTS;
+
+    if ( _pinfo._dst.is_broadcast() ) {
+      _bcast_nstats->pkt_total++;
+      return p;
+    } else if ( _rts_cts_mixed_strategy != RTS_CTS_MIXED_STRATEGY_NONE ) {
+      switch ( _rts_cts_mixed_strategy ) {
+        case RTS_CTS_MIXED_PS_AND_HN:
+          set_rtscts = _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) &&
+                       _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo);
+          break;
+        case RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM:
+          set_rtscts = _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) &&
+                       ( _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) ||
+                         _scheme_array[RTS_CTS_STRATEGY_RANDOM]->set_rtscts(&_pinfo));
+          break;
+        default:
+          BRN_WARN("Unknown CombinedRTSCTS Scheme!");
+          set_rtscts = false;
+          break;
+      }
+    } else {
       switch ( _rts_cts_strategy ) {
         case RTS_CTS_STRATEGY_NONE:
         case RTS_CTS_STRATEGY_ALWAYS_OFF:
-          set_rtscts = false;
           break;
         case RTS_CTS_STRATEGY_ALWAYS_ON:
           set_rtscts = true;
           break;
         default:
-          set_rtscts = _scheme->set_rtscts(dst, p->length());
+          set_rtscts = _scheme->set_rtscts(&_pinfo);
           break;
       }
     }
 
-    struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-    ceh->magic = WIFI_EXTRA_MAGIC;
+    _pinfo._ceh->magic = WIFI_EXTRA_MAGIC;
 
     pkt_total++;
 
-    struct rtscts_neighbour_statistics *nstats = rtscts_neighbours.findp(dst);
+    struct rtscts_neighbour_statistics *nstats = rtscts_neighbours.findp(_pinfo._dst);
     if (NULL == nstats) {
-      rtscts_neighbours.insert(dst, nstats_dummy);
-      nstats = rtscts_neighbours.findp(dst);
+      rtscts_neighbours.insert(_pinfo._dst, nstats_dummy);
+      nstats = rtscts_neighbours.findp(_pinfo._dst);
     }
 
     nstats->pkt_total++;
 
     if (set_rtscts) {
-      ceh->flags |= WIFI_EXTRA_DO_RTS_CTS;
+      _pinfo._ceh->flags |= WIFI_EXTRA_DO_RTS_CTS;
 
       rts_on++;
       nstats->rts_on++;
-    } else {
-      ceh->flags &= ~WIFI_EXTRA_DO_RTS_CTS;
     }
   }
 
@@ -168,7 +211,7 @@ String
 Brn2_SetRTSCTS::stats()
 {
   StringAccum sa;
-  sa << "<setrtscts node=\""<< BRN_NODE_NAME << "\" strategy=\"" << _rts_cts_strategy << "\" >\n";
+  sa << "<setrtscts node=\""<< BRN_NODE_NAME << "\" strategy=\"" << _rts_cts_strategy << "\" mixed_strategy=\"" << _rts_cts_mixed_strategy << "\" >\n";
 
   sa << "\t<schemes>\n";
   sa << "\t\t<scheme name=\"RtsCtsNone\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_NONE)?1:0) << "\" />\n";
@@ -196,8 +239,8 @@ Brn2_SetRTSCTS::stats()
 void Brn2_SetRTSCTS::reset()
 {
   rtscts_neighbours.clear();
-  EtherAddress broadcast_address = broadcast_address.make_broadcast();
-  rtscts_neighbours.insert(broadcast_address,nstats_dummy); 
+  rtscts_neighbours.insert(ETHERADDRESS_BROADCAST, nstats_dummy);
+  _bcast_nstats = rtscts_neighbours.findp(ETHERADDRESS_BROADCAST);
 }
 
 enum {H_RTSCTS_STATS, H_RTSCTS_RESET, H_RTSCTS_STRATEGY};
@@ -227,7 +270,7 @@ static int SetRTSCTS_write_param(const String &in_s, Element *e, void *vparam, E
         break;
      case H_RTSCTS_STRATEGY:
         unsigned strategy;
-        if (!IntArg().parse(s, strategy)) f->set_strategy(strategy);
+        if (IntArg().parse(s, strategy)) f->set_strategy(strategy);
         break;
   }
 
@@ -245,7 +288,6 @@ void Brn2_SetRTSCTS::add_handlers()
   add_write_handler("reset",SetRTSCTS_write_param,H_RTSCTS_RESET, Handler::h_button);//see include/click/handler.hh 
   add_write_handler("strategy", SetRTSCTS_write_param,H_RTSCTS_STRATEGY);
 }
-
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(Brn2_SetRTSCTS)

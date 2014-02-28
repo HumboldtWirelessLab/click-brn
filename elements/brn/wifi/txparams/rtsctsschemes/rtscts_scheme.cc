@@ -11,7 +11,7 @@ RtsCtsScheme::~RtsCtsScheme()
 {
 }
 
-void RtsCtsScheme::handle_feedback()
+void RtsCtsScheme::handle_feedback(PacketInfo */*pinfo*/)
 {
 }
 

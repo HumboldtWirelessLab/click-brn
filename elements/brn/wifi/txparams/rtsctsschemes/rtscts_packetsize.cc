@@ -8,11 +8,15 @@
 #include <click/etheraddress.hh>
 #include <clicknet/wifi.h>
 
+#include <elements/wifi/bitrate.hh>
+#include <elements/brn/wifi/brnwifi.hh>
 #include "rtscts_packetsize.hh"
 
 CLICK_DECLS
 
-RtsCtsPacketSize::RtsCtsPacketSize()
+RtsCtsPacketSize::RtsCtsPacketSize():
+  _psize(0),
+  _pduration(0)
 {
 }
 
@@ -36,17 +40,76 @@ RtsCtsPacketSize::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
     "PACKETSIZE", cpkP, cpInteger, &_psize,
+    "PACKETDURATION", cpkP, cpInteger, &_pduration,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
   return 0;
 }
 
 bool
-RtsCtsPacketSize::set_rtscts(EtherAddress &/*dst*/, uint32_t size)
+RtsCtsPacketSize::set_rtscts(PacketInfo *pinfo)
 {
-  //BRN_WARN("Size: %d",size);
-  return (size >= _psize);
+  uint32_t duration;
+
+  if ( _pduration != 0 ) {
+    //if ( pinfo->_ceh _is_ht )
+    //  duration = BrnWifi::pkt_duration(pinfo->_p_size + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
+    //else
+    duration = calc_transmit_time(pinfo->_ceh->rate, pinfo->_p_size + 4 /*crc*/); //TODO: check CRC ??
+    //BRN_WARN("Size: %d",size);
+    return ( duration > _pduration );
+  }
+
+  return (_psize <= pinfo->_p_size);
 }
+
+enum {H_THRESHOLD_PACKETSIZE, H_THRESHOLD_PACKETDURATION};
+
+static String RtsCtsPacketSize_read_param(Element *e, void *thunk)
+{
+  RtsCtsPacketSize *f = (RtsCtsPacketSize *)e;
+  switch ((uintptr_t) thunk) {
+    case H_THRESHOLD_PACKETSIZE:
+      return String(f->_psize);
+    case H_THRESHOLD_PACKETDURATION:
+      return String(f->_pduration);
+    default:
+      return String();
+  }
+}
+
+
+static int RtsCtsPacketSize_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+{
+  RtsCtsPacketSize *f = (RtsCtsPacketSize *)e;
+  String s = cp_uncomment(in_s);
+  int value;
+  if (!cp_integer(s, &value)) return errh->error("rtscts_packetsize parameter must be integer");
+
+  switch((intptr_t)vparam) {
+    case H_THRESHOLD_PACKETSIZE:
+      f->_psize = value;
+      break;
+    case H_THRESHOLD_PACKETDURATION:
+      f->_pduration = value;
+      break;
+  }
+  return 0;
+}
+
+
+void
+RtsCtsPacketSize::add_handlers()
+{
+  BRNElement::add_handlers();//for Debug-Handlers
+
+  add_write_handler("packetsize", RtsCtsPacketSize_write_param, H_THRESHOLD_PACKETSIZE);
+  add_write_handler("packetduration", RtsCtsPacketSize_write_param, H_THRESHOLD_PACKETDURATION);
+
+  add_read_handler("packetsize", RtsCtsPacketSize_read_param, H_THRESHOLD_PACKETSIZE);
+  add_read_handler("packetduration", RtsCtsPacketSize_read_param, H_THRESHOLD_PACKETDURATION);
+}
+
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(RtsCtsPacketSize)
