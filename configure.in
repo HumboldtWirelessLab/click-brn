@@ -1298,6 +1298,58 @@ fi
 AC_SUBST(TCC_INCLUDES)
 AC_SUBST(TCC_LIBS)
 
+dnl lwip library
+
+explicit_lwip=no
+AC_ARG_WITH(lwip, [[  --with-lwip[=PREFIX]   locate lwip library (optional)]],
+  [lwipprefix=$withval; if test -z "$withval" -o "$withval" = yes; then lwipprefix=; fi],
+  lwipprefix=; explicit_lwip=no)
+
+if test "$lwipprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$lwipprefix" && CPPFLAGS="$CPPFLAGS -I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include"
+    AC_CHECK_HEADER(lwip/init.h, have_lwip_h=yes, have_lwip_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    lwipsavelibs="$LIBS"
+    saveflags="$LDFLAGS"; test -n "$lwipprefix" && LDFLAGS="$LDFLAGS -L$lwipprefix/lib"
+    AC_CHECK_LIB(lwip, lwip_init, have_liblwip=yes, have_liblwip=no)
+    LDFLAGS="$saveflags"
+    LIBS="$lwipsavelibs"
+
+    if test $have_lwip_h = yes -a $have_liblwip = yes; then
+	AC_DEFINE(HAVE_lwip)
+	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
+	LWIP_LIBS="$LWIP_LIBS -llwip"
+        AC_DEFINE([HAVE_LWIP], [1], [Define if you have -llwip and lwip/init.h.])
+	LIBS="$LIBS $LWIP_LIBS -llwip"
+	CPPFLAGS="$CPPFLAGS $LWIP_INCLUDES"
+	LDFLAGS="$LDFLAGS $LWIP_LIBS"
+    else
+      if test $explicit_lwip = yes; then
+	LWIP_INCLUDES= LWIP_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-lwip, but the lwip headers and/or libraries
+are not where you said they would be.  Run again supplying --without-lwip
+or --with-lwip=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,LwIP"
+      else
+        FINDELEMFLAGS="-x LwIP"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LWIP_INCLUDES)
+AC_SUBST(LWIP_LIBS)
+
 
 dnl check linuxmodule for Linux
 

@@ -656,6 +656,8 @@ LINUX_DEBUG_FLAGS
 CLICKLINUX_FIXINCLUDES_PROGRAM
 LINUX_FIXINCLUDES_PROGRAM
 linux_makeargs
+LWIP_LIBS
+LWIP_INCLUDES
 TCC_LIBS
 TCC_INCLUDES
 OPENSSL_LIBS
@@ -846,6 +848,7 @@ with_proper
 with_expat
 with_openssl
 with_tcc
+with_lwip
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1546,6 +1549,7 @@ Optional Packages:
   --with-expat[=PREFIX]   locate expat XML library (optional)
   --with-openssl[=PREFIX]   locate openssl library (optional)
   --with-tcc[=PREFIX]   locate tcc library (optional)
+  --with-lwip[=PREFIX]   locate lwip library (optional)
 
 Some influential environment variables:
   CC          C compiler command
@@ -7608,7 +7612,7 @@ else
 
 	    	    ac_cv_endian=0
 	    cat > conftest.$ac_ext <<EOF
-#line 7611 "configure"
+#line 7615 "configure"
 #include "confdefs.h"
 #include <$endian_hdr>
 #ifdef __BYTE_ORDER
@@ -10926,6 +10930,118 @@ or --with-tcc=PREFIX.
         FINDELEMFLAGS="$FINDELEMFLAGS,TCC"
       else
         FINDELEMFLAGS="-x TCC"
+      fi
+
+
+    fi
+fi
+
+
+
+
+explicit_lwip=no
+
+# Check whether --with-lwip was given.
+if test "${with_lwip+set}" = set; then :
+  withval=$with_lwip; lwipprefix=$withval; if test -z "$withval" -o "$withval" = yes; then lwipprefix=; fi
+else
+  lwipprefix=; explicit_lwip=no
+fi
+
+
+if test "$lwipprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$lwipprefix" && CPPFLAGS="$CPPFLAGS -I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include"
+    ac_fn_c_check_header_mongrel "$LINENO" "lwip/init.h" "ac_cv_header_lwip_init_h" "$ac_includes_default"
+if test "x$ac_cv_header_lwip_init_h" = xyes; then :
+  have_lwip_h=yes
+else
+  have_lwip_h=no
+fi
+
+
+    CPPFLAGS="$saveflags"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    lwipsavelibs="$LIBS"
+    saveflags="$LDFLAGS"; test -n "$lwipprefix" && LDFLAGS="$LDFLAGS -L$lwipprefix/lib"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for lwip_init in -llwip" >&5
+$as_echo_n "checking for lwip_init in -llwip... " >&6; }
+if ${ac_cv_lib_lwip_lwip_init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-llwip  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char lwip_init ();
+int
+main ()
+{
+return lwip_init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_lwip_lwip_init=yes
+else
+  ac_cv_lib_lwip_lwip_init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_lwip_lwip_init" >&5
+$as_echo "$ac_cv_lib_lwip_lwip_init" >&6; }
+if test "x$ac_cv_lib_lwip_lwip_init" = xyes; then :
+  have_liblwip=yes
+else
+  have_liblwip=no
+fi
+
+    LDFLAGS="$saveflags"
+    LIBS="$lwipsavelibs"
+
+    if test $have_lwip_h = yes -a $have_liblwip = yes; then
+	$as_echo "#define HAVE_lwip 1" >>confdefs.h
+
+	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
+	LWIP_LIBS="$LWIP_LIBS -llwip"
+
+$as_echo "#define HAVE_LWIP 1" >>confdefs.h
+
+	LIBS="$LIBS $LWIP_LIBS -llwip"
+	CPPFLAGS="$CPPFLAGS $LWIP_INCLUDES"
+	LDFLAGS="$LDFLAGS $LWIP_LIBS"
+    else
+      if test $explicit_lwip = yes; then
+	LWIP_INCLUDES= LWIP_LIBS=
+	as_fn_error $? "
+=========================================
+
+You explicitly specified --with-lwip, but the lwip headers and/or libraries
+are not where you said they would be.  Run again supplying --without-lwip
+or --with-lwip=PREFIX.
+
+=========================================" "$LINENO" 5
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,LwIP"
+      else
+        FINDELEMFLAGS="-x LwIP"
       fi
 
 
