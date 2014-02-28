@@ -13,10 +13,6 @@
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 #include "elements/brn/routing/routing_peek.hh"
-#include <sys/types.h>
-#include "../sim/guiconnector.hh"
-#include "../../local/copyflowid.hh"
-
 
 CLICK_DECLS
 
