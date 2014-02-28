@@ -261,7 +261,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         /* if we have no cands take all neighbors */
         if ( candidate_set.size() == 0 ) _fhelper->get_filtered_neighbors(*me, candidate_set);
 
-        /* delete all known neighbours */
+        /* delete all known neighbours */ /* could improve performance if necessary: sort both vectors before and create new array instead of using erase */
         for ( int i = candidate_set.size()-1; i >= 0; i--) {
           for ( int j = 0; j < known_neighbors.size(); j++) {
             if ( candidate_set[i] == known_neighbors[j] ) {

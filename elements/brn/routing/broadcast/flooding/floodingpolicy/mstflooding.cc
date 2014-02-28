@@ -38,6 +38,7 @@ MSTFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "CIRCLEPATH", cpkP+cpkM, cpString, &_circle_path,
     "BIDIRECTIONAL", cpkP+cpkM, cpBool, &_bidirectional,
+    "ONLY_PRE", cpkP+cpkM, cpBool, &_pre_only,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -53,9 +54,14 @@ MSTFlooding::initialize(ErrorHandler *)
   return 0;
 }
 
-EtherAddress ID_to_MAC (int id) {
+EtherAddress MSTFlooding::ID_to_MAC (int id) {
   unsigned char data[]={0,0,0,0,id/256,id%256};
   return EtherAddress(data);
+}
+
+int MSTFlooding::MAC_to_ID(EtherAddress *add) {
+  const unsigned char *p = add->data();
+  return p[5]+256*p[4];
 }
 
 void 
@@ -67,12 +73,14 @@ MSTFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, u
 }
 
 bool
-MSTFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddress *, uint32_t, bool is_known, uint32_t,
+MSTFlooding::do_forward(EtherAddress *, EtherAddress *fwd, const EtherAddress *, uint32_t, bool is_known, uint32_t,
                            uint32_t, uint8_t *, uint32_t *tx_data_size, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
   BRN_DEBUG("do_forward reached");
-  if ( is_known ) return false;
-
+  if (!_pre_only&&is_known ) return false;
+  if (_pre_only&&fwd!=0&&find(pre.begin(),pre.end(),*fwd)==pre.end())
+	return false;
+	
   *tx_data_size = 0;
   unicast_dst->clear();
   passiveack->clear();
@@ -142,9 +150,13 @@ void MSTFlooding::get_neighbours(String path) {
     if (next) {
       if (akt==-1) {
         followers.push_back(ID_to_MAC(first));
+        if (_bidirectional)
+			pre.push_back(ID_to_MAC(first));
         BRN_DEBUG("Added node: %d",first);
       } else {
         followers.push_back(ID_to_MAC(akt));
+        if (_bidirectional)
+			pre.push_back(ID_to_MAC(first));
         BRN_DEBUG("Added node: %d",akt);
       }
       next=false;
@@ -159,7 +171,7 @@ void MSTFlooding::get_neighbours(String path) {
     }
   }
 	
-  if (_bidirectional) {
+  //if (_bidirectional) {
 	first=-1;
     next=false;
     i = _data_vec.size()-2;
@@ -172,10 +184,14 @@ void MSTFlooding::get_neighbours(String path) {
 
 		if (next) {
 			if (akt==-1) {
-				followers.push_back(ID_to_MAC(first));
+				pre.push_back(ID_to_MAC(first));
+				if (_bidirectional)
+					followers.push_back(ID_to_MAC(first));
 				BRN_DEBUG("Added node: %d",first);
 			} else {
-				followers.push_back(ID_to_MAC(akt));
+				pre.push_back(ID_to_MAC(first));
+				if (_bidirectional)
+					followers.push_back(ID_to_MAC(akt));
 				BRN_DEBUG("Added node: %d",akt);
 			}
 			next=false;
@@ -189,7 +205,7 @@ void MSTFlooding::get_neighbours(String path) {
 			first = -1;
 		}
 	}
-  }
+  //}
 	
   BRN_DEBUG("Neighbours: %d",followers.size());
   //akt_foll=followers.begin();
@@ -235,7 +251,7 @@ static int add_follower (const String &in_s, Element *element, void */*thunk*/, 
   EtherAddress address;
 
   if ( !cp_ethernet_address(args[0], &address) ) {
-    mstfl->followers.push_back(ID_to_MAC(atoi(args[0].c_str())));
+    mstfl->followers.push_back(mstfl->ID_to_MAC(atoi(args[0].c_str())));
   }
 
   return 0;

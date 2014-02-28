@@ -2445,12 +2445,16 @@ Router::sim_get_ifid(const char* ifname) {
 
 Vector<int> *
 Router::sim_listenvec(int ifid) {
+	//click_chatter("listenvec_start: %d   size: %d",ifid,_listenvecs.size());
   for (int i = 0; i < _listenvecs.size(); i++)
-    if (_listenvecs[i]->at(0) == ifid)
+    if (_listenvecs[i]->at(0) == ifid) {
+	  //click_chatter("listenvec_end_1");
       return _listenvecs[i];
+	}
   Vector<int> *new_vec = new Vector<int>(1, ifid);
   if (new_vec)
     _listenvecs.push_back(new_vec);
+  //click_chatter("listenvec_end_2");
   return new_vec;
 }
 
