@@ -10,8 +10,9 @@ CLICK_DECLS
 #define POLICY_ID_PROBABILITY 2
 #define POLICY_ID_MPR         3
 #define POLICY_ID_MULTIRATE   4
-#define POLICY_ID_MST         5
+#define POLICY_ID_MST         5 //Deprecated - Use POLICY_OVERLAY
 #define POLICY_ID_SPAN_TREE   6 /* read tree from DART, NHOPClustering or elsewhere */ /* Merge with MST ?*/
+#define POLICY_ID_OVERLAY	  7 
 
 
 /** TODO: add extra element for FloodingInfd (like db)
