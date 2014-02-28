@@ -33,7 +33,6 @@
 #include "elements/brn/brn2.h"
 
 #include "unicast_flooding.hh"
-#include "../../../../userlevel/socket.hh"
 
 CLICK_DECLS
 

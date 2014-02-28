@@ -17,6 +17,5 @@ FakeOpenSSL::~FakeOpenSSL() {
 CLICK_ENDDECLS
 ELEMENT_REQUIRES(userlevel|ns)
 ELEMENT_PROVIDES(FakeOpenSSL)
-ELEMENT_LIBS(-lssl -lcrypto)
 
 #endif
