@@ -363,14 +363,12 @@ class BrnWifi
   }
 
 
-  static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh)
-  {
+  static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh) {
     memcpy(((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, &hosttime, sizeof(hosttime));
   }
 
 
-  static inline u_int64_t get_host_time(click_wifi_extra *eh)
-  {
+  static inline u_int64_t get_host_time(click_wifi_extra *eh) {
     u_int64_t hosttime;
     memcpy(&hosttime, ((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, sizeof(hosttime));
 

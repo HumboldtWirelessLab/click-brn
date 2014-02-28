@@ -63,7 +63,7 @@ class MCS {
     uint8_t _ht40;
 
     uint8_t _ridx;
-    
+
     uint8_t _packed8;
     uint16_t _packed16;
 
