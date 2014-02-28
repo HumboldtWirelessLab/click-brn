@@ -78,7 +78,10 @@ class CooperativeChannelStats : public BRNElement
 
     String stats_handler(int mode); /* print info */
 
+    NodeChannelStatsMap *get_stats_map() { return &_ncst; }
     NodeChannelStats *get_stats(EtherAddress *);
+
+    int get_neighbours_with_max_age(int age, Vector<EtherAddress> *ea_vec);
 
   private:
 
@@ -88,7 +91,7 @@ class CooperativeChannelStats : public BRNElement
 
     Timer _msg_timer;
     uint32_t _interval;
-    bool _add_neighbours;
+    bool _add_neighbours; //add neighbours to packet?
 };
 
 CLICK_ENDDECLS

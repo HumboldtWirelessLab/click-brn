@@ -27,16 +27,17 @@ typedef NeighbourStatsMap::const_iterator NeighbourStatsMapIter;
 
 class NodeChannelStats
 {
-  private:
+  public:
     Timestamp _last_update;
+  private:
     uint32_t _buffer_size;
     uint32_t _index;
 
     Packet **_packet_buffer;                 //packet from the neighbours
     NeighbourStatsMap *_nstats_buffer;       //infos, about the neighbours (list of maps). size of list is time backwards.
-    EtherTimestampMap _last_neighbor_update; //time, when the node notice the neighbor last time
 
   public:
+    EtherTimestampMap _last_neighbor_update; //time, when the node notice the neighbor last time
     uint32_t _used;
 
     NodeChannelStats(uint32_t size) {
@@ -61,7 +62,7 @@ class NodeChannelStats
     }
 
     bool insert(Packet *p) {
-      Timestamp now = Timestamp::now();
+      _last_update = p->timestamp_anno();
 
       struct local_airtime_stats *ls = get_last_stats();
       struct cooperative_channel_stats_header *header = (struct cooperative_channel_stats_header*)p->data();
@@ -86,7 +87,7 @@ class NodeChannelStats
       for ( uint8_t n = 0; n < header->no_neighbours; n++ ) {
         EtherAddress ea = EtherAddress(nas[n]._etheraddr);
         _nstats_buffer[_index].insert(ea, &nas[n]);
-        _last_neighbor_update.insert(ea, now);
+        _last_neighbor_update.insert(ea, _last_update);
       }
 
       _index = (_index + 1) % _buffer_size;
