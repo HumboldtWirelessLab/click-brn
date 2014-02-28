@@ -160,6 +160,8 @@ private:
 
   int count_unfinished_neighbors(PassiveAckPacket *pap);
 
+  PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id);
+
  public:
 
   int (*_retransmit_broadcast)(BRNElement *e, Packet *, EtherAddress *, uint16_t);
