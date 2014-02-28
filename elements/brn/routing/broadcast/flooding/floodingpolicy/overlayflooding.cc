@@ -7,23 +7,23 @@
 #include <click/userutils.hh>
 
 #include "floodingpolicy.hh"
-#include "overlaypolicy.hh"
+#include "overlayflooding.hh"
 
 CLICK_DECLS
 
-OverlayPolicy::OverlayPolicy()
+OverlayFlooding::OverlayFlooding()
 {
 }
 
-OverlayPolicy::~OverlayPolicy()
+OverlayFlooding::~OverlayFlooding()
 {
 }
 
 void *
-OverlayPolicy::cast(const char *name)
+OverlayFlooding::cast(const char *name)
 {
-  if (strcmp(name, "OverlayPolicy") == 0)
-    return (OverlayPolicy *) this;
+  if (strcmp(name, "OverlayFlooding") == 0)
+    return (OverlayFlooding *) this;
   else if (strcmp(name, "FloodingPolicy") == 0)
          return (FloodingPolicy *) this;
        else
@@ -31,7 +31,7 @@ OverlayPolicy::cast(const char *name)
 }
 
 int
-OverlayPolicy::configure(Vector<String> &conf, ErrorHandler *errh)
+OverlayFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
@@ -44,14 +44,14 @@ OverlayPolicy::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 int
-OverlayPolicy::initialize(ErrorHandler *)
+OverlayFlooding::initialize(ErrorHandler *)
 {
 
   return 0;
 }
 
 void 
-OverlayPolicy::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, uint8_t *,
+OverlayFlooding::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size, uint8_t *,
                         Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
 	//BRN_DEBUG("init_broadcast reached");
@@ -59,7 +59,7 @@ OverlayPolicy::init_broadcast(EtherAddress * , uint32_t, uint32_t *tx_data_size,
 }
 
 bool
-OverlayPolicy::do_forward(EtherAddress *, EtherAddress * fwd, const EtherAddress *, uint32_t, bool is_known, uint32_t forward_count,
+OverlayFlooding::do_forward(EtherAddress *, EtherAddress * fwd, const EtherAddress *, uint32_t, bool is_known, uint32_t forward_count,
                            uint32_t, uint8_t *, uint32_t* /*tx_data_size*/, uint8_t *, Vector<EtherAddress> * unicast_dst, Vector<EtherAddress> * passiveack)
 {
   //BRN_DEBUG("do_forward reached");
@@ -87,7 +87,7 @@ OverlayPolicy::do_forward(EtherAddress *, EtherAddress * fwd, const EtherAddress
 }
 
 int
-OverlayPolicy::policy_id()
+OverlayFlooding::policy_id()
 {
   return POLICY_ID_OVERLAY;
 }
@@ -97,10 +97,10 @@ OverlayPolicy::policy_id()
 /*******************************************************************************************/
 
 
-void OverlayPolicy::add_handlers()
+void OverlayFlooding::add_handlers()
 {
 	
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(OverlayPolicy)
+EXPORT_ELEMENT(OverlayFlooding)
