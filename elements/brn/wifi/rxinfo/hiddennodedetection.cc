@@ -41,6 +41,7 @@ CLICK_DECLS
 
 HiddenNodeDetection::HiddenNodeDetection():
     _device(NULL),
+    _cocst(NULL),
     _hn_del_timer(this),
     _hd_del_interval(1000)
 {
@@ -54,9 +55,13 @@ HiddenNodeDetection::~HiddenNodeDetection()
 int
 HiddenNodeDetection::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  _cocst_string = String("");
+
   int ret = cp_va_kparse(conf, this, errh,
                      "DEVICE", cpkP, cpElement, &_device,
+                     "COOPCHANNELSTATS", cpkP, cpElement, &_cocst,
                      "TIMEOUT", cpkP, cpInteger, &_hd_del_interval,
+                     "COOPCHANNELSTATSPATH", cpkP, cpString, &_cocst_string,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
 
@@ -64,12 +69,19 @@ HiddenNodeDetection::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 int
-HiddenNodeDetection::initialize(ErrorHandler *)
+HiddenNodeDetection::initialize(ErrorHandler *errh)
 {
+  _nodeinfo_tab.clear();
+
   _last_data_dst = brn_etheraddress_broadcast;
 
   _hn_del_timer.initialize(this);
   _hn_del_timer.schedule_after_msec(_hd_del_interval);
+
+  if ((_cocst == NULL) && (_cocst_string != "")) {
+    Element *e = cp_element(_cocst_string, this, errh);
+    _cocst = (CooperativeChannelStats*)e;
+  }
 
   return 0;
 }
@@ -78,6 +90,8 @@ void
 HiddenNodeDetection::run_timer(Timer *)
 {
   Timestamp now = Timestamp::now();
+
+  _hn_del_timer.reschedule_after_msec(_hd_del_interval); //reschedule first, so that long computation time has no impact on interval length
 
   for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
     NodeInfo *node = iter.value();
@@ -88,7 +102,8 @@ HiddenNodeDetection::run_timer(Timer *)
     }
   }
 
-  _hn_del_timer.reschedule_after_msec(_hd_del_interval);
+  if ( _cocst != NULL ) handle_coop_channelstats();
+
 }
 
 void
@@ -111,7 +126,6 @@ HiddenNodeDetection::push(int port, Packet *p)
   EtherAddress src;
   switch (type) {
     case WIFI_FC0_TYPE_CTL:
-      BRN_ERROR("CTRL");
       switch (w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) {
         case WIFI_FC0_SUBTYPE_RTS:
           src = EtherAddress(w->i_addr2);
@@ -146,7 +160,7 @@ HiddenNodeDetection::push(int port, Packet *p)
     src_ni->update_active();
     src_ni->_neighbour = true;
 
-    BRN_ERROR("RX: %s -> %s",src.unparse().c_str(), dst.unparse().c_str());
+    //BRN_ERROR("RX: %s -> %s",src.unparse().c_str(), dst.unparse().c_str());
     NodeInfo *dst_ni = NULL;
 
     if ( (ceh->rate != 0) || (BrnWifi::getMCS(ceh,0) == 1)) { //has valid rate
@@ -194,6 +208,57 @@ HiddenNodeDetection::push(int port, Packet *p)
 }
 
 /**************************************************************************************************************/
+/************** H I D D E N N O D E D E T E C T I O N   W I T H   C O O P E R A T I O N C S T *****************/
+/**************************************************************************************************************/
+void
+HiddenNodeDetection::handle_coop_channelstats()
+{
+  if ( _cocst != NULL ) {
+    BRN_DEBUG("Use CoopCst");
+    Timestamp now = Timestamp::now();
+    NodeChannelStatsMap *nodeCstMap = _cocst->get_stats_map();
+    Vector<EtherAddress> nb_ea_vec;
+
+    _cocst->get_neighbours_with_max_age(_hd_del_interval, &nb_ea_vec);
+    BRN_DEBUG("Handle %d nbs",nb_ea_vec.size());
+
+    for (Vector<EtherAddress>::const_iterator ea_iter = nb_ea_vec.begin(); ea_iter != nb_ea_vec.end(); ea_iter++) {
+      BRN_DEBUG("Handle %s",ea_iter->unparse().c_str());
+
+      EtherAddress src = *ea_iter;
+      NodeChannelStats *nb_cst = nodeCstMap->find(src);
+      NodeInfo *src_ni = _nodeinfo_tab.find(src);
+
+      BRN_DEBUG("NB has %d nbs",nb_cst->_last_neighbor_update.size());
+      for ( EtherTimestampMapIter nb_time_iter = nb_cst->_last_neighbor_update.begin(); nb_time_iter.live(); nb_time_iter++ ) {
+
+        BRN_DEBUG("NB-nb: %s age %d",nb_time_iter.key().unparse().c_str(), (now-nb_time_iter.value()).msecval());
+        if ((now-nb_time_iter.value()).msecval() < _hd_del_interval) {
+
+          EtherAddress dst = nb_time_iter.key();
+
+          if (*_device->getEtherAddress() != dst) {
+            NodeInfo *dst_ni = _nodeinfo_tab.find(dst);
+            if ( ! dst_ni ) {
+              BRN_DEBUG("New Dst");
+
+              dst_ni = new NodeInfo();
+              _nodeinfo_tab.insert(dst,dst_ni);
+            }
+
+            dst_ni->update_passive();
+            dst_ni->add_link(src, src_ni, &now);
+            if ( dst != brn_etheraddress_broadcast ) src_ni->add_link(dst, dst_ni, &now);
+          }
+        }
+      }
+    }
+
+    nb_ea_vec.clear();
+  }
+}
+
+/**************************************************************************************************************/
 /********************************************* F U N C T I O N S **********************************************/
 /**************************************************************************************************************/
 
@@ -206,6 +271,7 @@ HiddenNodeDetection::count_hidden_neighbours(const EtherAddress &ea)
 
   NodeInfo* ni = _nodeinfo_tab.find(ea);
 
+  //TODO: use neighbour flag
   for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ )
     if (!(_nodeinfo_tab.find(nt_iter.key())->_neighbour)) count_hn++;
 
@@ -279,8 +345,8 @@ HiddenNodeDetection::stats_handler(int mode)
       }
 
       sa << "\t</hidden_nodes>\n</hiddennodedetection>\n";
-
   }
+
   return sa.take_string();
 }
 

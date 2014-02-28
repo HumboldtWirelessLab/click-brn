@@ -172,6 +172,22 @@ CooperativeChannelStats::get_stats(EtherAddress *ea)
 
   return _ncst.find(*ea);
 }
+
+int
+CooperativeChannelStats::get_neighbours_with_max_age(int age, Vector<EtherAddress> *ea_vec)
+{
+  int no_neighbours = 0;
+  Timestamp now = Timestamp::now();
+
+  for ( NodeChannelStatsMapIter nt_iter = _ncst.begin(); nt_iter != _ncst.end(); nt_iter++ ) {
+    if ( (now - nt_iter.value()->_last_update).msecval() < age ) {
+      ea_vec->push_back(nt_iter.key());
+      no_neighbours++;
+    }
+  }
+  return no_neighbours;
+}
+
 /**************************************************************************************************************/
 /********************************************** H A N D L E R *************************************************/
 /**************************************************************************************************************/
