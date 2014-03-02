@@ -9,54 +9,66 @@
 
 CLICK_DECLS
 
-#define DATATYPE_UNKNOWN  0
-#define DATATYPE_VOID     1
-#define DATATYPE_UINT8    2
-#define DATATYPE_UINT16   3
-#define DATATYPE_UINT32   4
+#define DATATYPE_UNKNOWN      0
+#define DATATYPE_VOID         1
+#define DATATYPE_CHAR         2
+#define DATATYPE_INT          3
+#define DATATYPE_VOID_POINTER 4
 
 typedef struct datatype {
-  uint8_t type;
+  char type;
   union {
-    uint8_t _uint8_t;
-    uint16_t _uint16_t;
-    uint32_t _uint32_t;
+    char _char;
+    int  _int;
+    void* _voidp;
   } data;
 } DataType;
 
+typedef void (*WrapperFunction)(DataType *, DataType *);
+
 static uint8_t string_to_datatype(String _string_type) {
   if ( _string_type == "void" ) return DATATYPE_VOID;
-  if ( _string_type == "uint8_t" ) return DATATYPE_UINT8;
-  if ( _string_type == "uint16_t" ) return DATATYPE_UINT16;
-  if ( _string_type == "uint32_t" ) return DATATYPE_UINT32;
+  if ( _string_type == "char" ) return DATATYPE_CHAR;
+  if ( _string_type == "int" ) return DATATYPE_INT;
+  if ( _string_type == "voidp" ) return DATATYPE_VOID_POINTER;
   return DATATYPE_UNKNOWN;
 }
+
+static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*" };
+static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp" };
 
 class TCC : public BRNElement {
  public:
 
   class TccFunction {
+   public:
     String _name;
     DataType _result;
     Vector<DataType> _args;
 
-    TCCState *tcc_s;
+    String _c_wrapper_code;
+    String _c_code;
 
-    TccFunction(String name, String result, String args) {
+    TCCState *_tcc_wrapper_s;
+    TCCState *_tcc_s;
+
+    WrapperFunction _wrapper_func;
+
+    TccFunction(String name, String result, Vector<String> args) {
       String sresult = cp_uncomment(result);
-
-      String sargs = cp_uncomment(args);
-      Vector<String> vargs;
-      cp_spacevec(sargs, vargs);
 
       _name = name;
       _result.type = string_to_datatype(sresult);
 
-      for ( int i = 0; i < vargs.size(); i++ ) {
+      for ( int i = 0; i < args.size(); i++ ) {
         DataType dt;
-        dt.type = string_to_datatype(vargs[i]);
+        dt.type = string_to_datatype(args[i]);
         _args.push_back(dt);
       }
+
+      _tcc_s = NULL;
+      _tcc_wrapper_s = NULL;
+
     }
   };
 
@@ -76,7 +88,7 @@ class TCC : public BRNElement {
   void add_handlers();
 
   Packet* simple_action(Packet *p);
-  void add_code(String code);
+  void set_simple_action_code(String code);
   String stats();
 
   static void *tcc_packet_resize(void *, int, int);
@@ -86,11 +98,26 @@ class TCC : public BRNElement {
 
  private:
 
-   TCCState *_tcc_s;
+  TCCState *_tcc_s;
 
-   Packet *(*click_tcc_simple_action)(Packet *p);
+  Packet *(*click_tcc_simple_action)(Packet *p);
 
-  
+  /*************************************************************/
+  /************ O T H E R   P R O C E D U R E S ****************/
+  /*************************************************************/
+
+  int compile_code(TCCState *tcc_s, String code);
+
+ public:
+
+  TccFunctionMap _func_map;
+  String _last_function;
+
+  int add_function(String name, String result, Vector<String> args);
+  int del_function(String function);
+  int add_code(String function, String code);
+  int call_function(String function, Vector<String> args);
+
 };
 
 CLICK_ENDDECLS
