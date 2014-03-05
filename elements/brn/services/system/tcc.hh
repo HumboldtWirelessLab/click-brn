@@ -14,14 +14,16 @@ CLICK_DECLS
 #define DATATYPE_CHAR         2
 #define DATATYPE_INT          3
 #define DATATYPE_VOID_POINTER 4
+#define DATATYPE_CHAR_POINTER 5
 
 typedef struct datatype {
-  char type;
+  int type;
   union {
     char _char;
     int  _int;
     void* _voidp;
-  } data;
+    char* _charp;
+  };
 } DataType;
 
 typedef void (*WrapperFunction)(DataType *, DataType *);
@@ -30,12 +32,13 @@ static uint8_t string_to_datatype(String _string_type) {
   if ( _string_type == "void" ) return DATATYPE_VOID;
   if ( _string_type == "char" ) return DATATYPE_CHAR;
   if ( _string_type == "int" ) return DATATYPE_INT;
-  if ( _string_type == "voidp" ) return DATATYPE_VOID_POINTER;
+  if ( _string_type == "void*" ) return DATATYPE_VOID_POINTER;
+  if ( _string_type == "char*" ) return DATATYPE_CHAR_POINTER;
   return DATATYPE_UNKNOWN;
 }
 
-static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*" };
-static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp" };
+static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
+static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp" };
 
 class TCC : public BRNElement {
  public:
@@ -54,6 +57,8 @@ class TCC : public BRNElement {
 
     WrapperFunction _wrapper_func;
 
+    uint32_t _no_calls;
+
     TccFunction(String name, String result, Vector<String> args) {
       String sresult = cp_uncomment(result);
 
@@ -69,6 +74,7 @@ class TCC : public BRNElement {
       _tcc_s = NULL;
       _tcc_wrapper_s = NULL;
 
+      _no_calls = 0;
     }
   };
 
@@ -112,6 +118,7 @@ class TCC : public BRNElement {
 
   TccFunctionMap _func_map;
   String _last_function;
+  String _last_result;
 
   int add_function(String name, String result, Vector<String> args);
   int del_function(String function);

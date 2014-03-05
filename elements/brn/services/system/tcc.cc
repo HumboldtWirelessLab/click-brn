@@ -33,8 +33,8 @@ TCC::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-int TCC::initialize(ErrorHandler *) {
-
+int TCC::initialize(ErrorHandler *)
+{
   return 0;
 }
 
@@ -94,7 +94,7 @@ TCC::set_simple_action_code(String code)
 }
 
 int
-TCC::compile_code(TCCState *tcc_s, String code)
+TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_tab
 {
   /* if tcclib.h and libtcc1.a are not installed, where can we find them */
   // if (argc == 2 && !memcmp(argv[1], "lib_path=",9))
@@ -108,15 +108,13 @@ TCC::compile_code(TCCState *tcc_s, String code)
     if ( str_d[i] == '@' ) str_d[i] = ',';
   }
 
-  BRN_ERROR("Code:\n%s",code.c_str());
+  BRN_DEBUG("Code:\n%s",code.c_str());
 
-  click_chatter("pre com");
-
-  if (tcc_compile_string(tcc_s, code.data()) == -1) {
+  if (tcc_compile_string(tcc_s, code.c_str()) == -1) {
     BRN_ERROR("compile error");
     return -1;
   }
-  click_chatter("post com");
+
   /* as a test, we add a symbol that the compiled program can use.
      You may also open a dll with tcc_add_dll() and use symbols from that */
   //tcc_add_symbol(_tcc_s, "add", add);
@@ -125,10 +123,8 @@ TCC::compile_code(TCCState *tcc_s, String code)
   tcc_add_symbol(tcc_s, "tcc_packet_data",(void*)tcc_packet_data);
   tcc_add_symbol(tcc_s, "tcc_packet_kill",(void*)tcc_packet_kill);
 
-  click_chatter("pre rel");
   /* relocate the code */
   if (tcc_relocate(tcc_s, TCC_RELOCATE_AUTO) < 0) return -1;
-  click_chatter("post rel");
 
   return 0;
 }
@@ -147,10 +143,10 @@ TCC::add_function(String name, String result, Vector<String> args)
   /** ------------ DataType typedef ---------------- */
   wrapper_code << "typedef struct datatype {\n  char type;\n  union {\n";
 
-  for ( int i = 2; i < 5; i++)
+  for ( int i = 2; i < 6; i++)
     wrapper_code << "    " << datatype_to_string[i] << " " << datatype_to_name[i] << ";\n";
 
-  wrapper_code << "  } data;\n} DataType;\n\n";
+  wrapper_code << "  };\n} DataType;\n\n";
 
   /** ------------ function def ---------------- */
 
@@ -165,12 +161,12 @@ TCC::add_function(String name, String result, Vector<String> args)
 
   wrapper_code <<  "void " << name << "_wrapper(DataType *result, DataType *args) {\n\t"; //header;
   if ( tccf->_result.type != DATATYPE_VOID ) {
-    wrapper_code << "result->data." << String(datatype_to_name[tccf->_result.type]) << " = ";
+    wrapper_code << "result->" << String(datatype_to_name[tccf->_result.type]) << " = ";
   }
-  wrapper_code << name << "( ";
+  wrapper_code << name << "(";
   for ( int i = 0; i < tccf->_args.size(); i++ ) {
     if ( i > 0 ) wrapper_code << ", ";
-    wrapper_code << "args[" << i << "].data." << String(datatype_to_name[tccf->_args[i].type]);
+    wrapper_code << "args[" << i << "]." << String(datatype_to_name[tccf->_args[i].type]);
   }
   wrapper_code << ");\n}";
 
@@ -183,7 +179,16 @@ TCC::add_function(String name, String result, Vector<String> args)
 int
 TCC::del_function(String function)
 {
-  BRN_ERROR("Del %s", function.c_str());
+  BRN_DEBUG("Del %s", function.c_str());
+
+  if ( _func_map.findp(function) == NULL ) return 0;
+
+  TccFunction *tccf = _func_map.find(function);
+
+  delete tccf;
+
+  _func_map.erase(function);
+
   return 0;
 }
 
@@ -194,35 +199,25 @@ TCC::add_code(String function, String code)
 
   TccFunction *tccf = _func_map.find(function);
 
-  click_chatter("1");
-
   if ( tccf->_tcc_s == NULL ) tccf->_tcc_s = tcc_new();
 
   tccf->_c_code = code;
 
-  click_chatter("Function:\n%s",tccf->_c_code.c_str());
-  click_chatter("wrapper:\n%s",tccf->_c_wrapper_code.c_str());
-  click_chatter("-------------------------------------");
-
   if (compile_code(tccf->_tcc_s, tccf->_c_code) == 0) {
     void* func = (void*)tcc_get_symbol(tccf->_tcc_s, function.c_str());
-    click_chatter("2");
 
     if ( tccf->_tcc_wrapper_s == NULL ) tccf->_tcc_wrapper_s = tcc_new();
     tcc_add_symbol(tccf->_tcc_wrapper_s, function.c_str(), func);
 
     if (compile_code(tccf->_tcc_wrapper_s, tccf->_c_wrapper_code) == 0) {
-      click_chatter("3");
       tccf->_wrapper_func = (WrapperFunction)tcc_get_symbol(tccf->_tcc_wrapper_s, (function + String("_wrapper")).c_str());
-      click_chatter("4");
     } else {
-      BRN_ERROR("wrapper error");
+      BRN_ERROR("Wrapper error");
     }
   } else {
     BRN_ERROR("Compile error");
   }
 
-  BRN_ERROR("Done");
   return 0;
 }
 
@@ -240,14 +235,39 @@ TCC::call_function(String function, Vector<String> args)
   for ( int i = 0; i < tccf->_args.size(); i++ ) {
     switch (tccf->_args[i].type) {
       case DATATYPE_INT:
-        cp_integer(args[i], &(vargs[i].data._int));
-        click_chatter("add arg %d",vargs[i].data._int);
+        cp_integer(args[i], &(vargs[i]._int));
+        BRN_DEBUG("add arg %d",vargs[i]._int);
+        break;
+      case DATATYPE_CHAR:
+        cp_integer(args[i], &(vargs[i]._int));
+        vargs[i]._char = vargs[i]._int;
+        BRN_DEBUG("add arg %c",vargs[i]._char);
+        break;
+      case DATATYPE_CHAR_POINTER:
+        vargs[i]._charp = new char[args[i].length()+1];
+        memcpy(vargs[i]._charp, args[i].c_str(), args[i].length()+1);
+        BRN_DEBUG("add arg %s",vargs[i]._charp);
         break;
     }
   }
+
   tccf->_wrapper_func(&result, vargs);
 
-  click_chatter("Result %d",result.data._int);
+  switch (tccf->_result.type) {
+    case DATATYPE_INT:
+        _last_result = String(result._int);
+        break;
+    case DATATYPE_CHAR:
+        _last_result = String(result._char);
+        break;
+    case DATATYPE_CHAR_POINTER:
+        _last_result = String(result._charp);
+        break;
+  }
+
+  for ( int i = 0; i < tccf->_args.size(); i++ ) {
+    if (tccf->_args[i].type == DATATYPE_CHAR_POINTER) delete vargs[i]._charp;
+  }
 
   delete[] vargs;
   return 0;
@@ -264,18 +284,15 @@ TCC::stats()
   return sa.take_string();
 }
 
-enum {H_CODE, H_ADD_PROCEDURE, H_DEL_PROCEDURE, H_COMPILE_PROCEDURE, H_CALL_PROCEDURE};
+enum {H_CODE, H_ADD_PROCEDURE, H_DEL_PROCEDURE, H_COMPILE_PROCEDURE, H_CALL_PROCEDURE, H_RESULT};
 
 static String TCC_read_param(Element *e, void *thunk) {
   StringAccum sa;
   TCC *tcc = (TCC *)e;
 
   switch((uintptr_t) thunk) {
-    case H_CODE:
-      return tcc->stats();
-    break;
-  default:
-    break;
+    case H_CODE:   return tcc->stats();
+    case H_RESULT: return tcc->_last_result;
   }
 
   return sa.take_string();
@@ -328,6 +345,8 @@ void TCC::add_handlers() {
 
   BRNElement::add_handlers();
 
+  add_read_handler("stats", TCC_read_param, (void *)H_CODE);
+
   add_read_handler("code", TCC_read_param, (void *)H_CODE);
   add_write_handler("code", TCC_write_param, (void *)H_CODE);
 
@@ -335,6 +354,8 @@ void TCC::add_handlers() {
   add_write_handler("del", TCC_write_param, (void *)H_DEL_PROCEDURE);
   add_write_handler("compile", TCC_write_param, (void *)H_COMPILE_PROCEDURE);
   add_write_handler("call", TCC_write_param, (void *)H_CALL_PROCEDURE);
+
+  add_read_handler("result", TCC_read_param, (void *)H_RESULT);
 
 }
 
