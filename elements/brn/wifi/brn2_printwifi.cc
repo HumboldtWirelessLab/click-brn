@@ -808,6 +808,9 @@ BRN2PrintWifi::simple_action(Packet *p)
   if (ceh->flags & WIFI_EXTRA_TX) {
     sa << " retries " << (int) ceh->retries;
   }
+  if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
+    sa << " rts/data " << (int)(ceh->pad >> 4) << "/" << (int)(ceh->pad & 15);
+  }
 
  done:
   if ( _nowrap )
