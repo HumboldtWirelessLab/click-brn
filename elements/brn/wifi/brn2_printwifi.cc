@@ -809,7 +809,7 @@ BRN2PrintWifi::simple_action(Packet *p)
     sa << " retries " << (int) ceh->retries;
   }
   if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
-    sa << " rts/data " << (int)(ceh->pad >> 4) << "/" << (int)(ceh->pad & 15);
+    sa << " rts/data " << (int)(ceh->virt_col >> 4) << "/" << (int)(ceh->virt_col & 15) << " " << (int)ceh->virt_col;
   }
 
  done:
