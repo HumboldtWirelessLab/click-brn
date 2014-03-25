@@ -11,6 +11,8 @@
 
 CLICK_DECLS
 
+static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
+static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp" };
 
 TCC::TCC():
   _tcc_s(NULL),

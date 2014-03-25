@@ -1,22 +1,22 @@
 #include <click/config.h>
-#include <click/etheraddress.hh>
-#include <click/confparse.hh>
+#include <click/args.hh>
 #include <click/error.hh>
 #include <click/glue.hh>
-#include <clicknet/wifi.h>
 #include <click/packet_anno.hh>
-#include <clicknet/llc.h>
+#include <click/straccum.hh>
+#include <clicknet/ether.h>
+#include <clicknet/wifi.h>
+#include <elements/wifi/availablerates.hh>
 
-#include "elements/brn/wifi/brnwifi.hh"
-
-#include "settxrates.hh"
-
+#include "elements/brn/brn2.h"
+#include "rateselection.hh"
+#include "brn_fixrate.hh"
+#include "../../../../bsdmodule/fastudpsrc.hh"
 
 CLICK_DECLS
 
-
-SetTXRates::SetTXRates():
-    _rate0(2), _rate1(0), _rate2(0), _rate3(0),
+BrnFixRate::BrnFixRate():
+    _rate0(0xFF), _rate1(0), _rate2(0), _rate3(0),
     _tries0(1), _tries1(0), _tries2(0), _tries3(0),
     _mcs0(false), _mcs1(false), _mcs2(false), _mcs3(false),
     _bw0(IEEE80211_MCS_BW_20), _bw1(IEEE80211_MCS_BW_20), _bw2(IEEE80211_MCS_BW_20), _bw3(IEEE80211_MCS_BW_20),
@@ -25,21 +25,31 @@ SetTXRates::SetTXRates():
     _fec0(IEEE80211_FEC_BCC), _fec1(IEEE80211_FEC_BCC), _fec2(IEEE80211_FEC_BCC), _fec3(IEEE80211_FEC_BCC),
     _sp0(false), _sp1(false), _sp2(false), _sp3(false),
     _stbc0(false), _stbc1(false), _stbc2(false), _stbc3(false),
-    _wifi_extra_flags(0)
+    _wifi_extra_flags(0),
+    _power(0xFFFF)
 {
+  _default_strategy = RATESELECTION_FIXRATE;
 }
 
-SetTXRates::~SetTXRates()
+void *
+BrnFixRate::cast(const char *name)
+{
+  if (strcmp(name, "BrnFixRate") == 0)
+    return (BrnFixRate *) this;
+  else if (strcmp(name, "RateSelection") == 0)
+    return (RateSelection *) this;
+  else
+    return NULL;
+}
+
+BrnFixRate::~BrnFixRate()
 {
 }
 
 int
-SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
+BrnFixRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
-  _debug = false;
-
-  if (cp_va_kparse(conf, this, errh,
+    if (cp_va_kparse(conf, this, errh,
       "RATE0", cpkN, cpByte, &_rate0,
       "RATE1", cpkN, cpByte, &_rate1,
       "RATE2", cpkN, cpByte, &_rate2,
@@ -85,9 +95,12 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
       "STBC2", cpkN, cpBool, &_stbc2,
       "STBC3", cpkN, cpBool, &_stbc3,
 
-      "DEBUG", 0, cpBool, &_debug,
+      "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _set_rates = (_rate0 != 0xFF);
+  _set_power = (_power != 0xFFFF);
 
   if (!_mcs0 && (_rate0 == 0) ) _rate0 = 2; //TODO: check, whether 0 isn't valid. maybe 0 can be used to detect base rate
   if ( _tries0 == 0 ) _tries0 = 1;
@@ -145,68 +158,74 @@ SetTXRates::configure(Vector<String> &conf, ErrorHandler *errh)
   return 0;
 }
 
-Packet *
-SetTXRates::simple_action(Packet *p)
+
+/************************************************************************************/
+/*********************************** M A I N ****************************************/
+/************************************************************************************/
+
+void
+BrnFixRate::process_feedback(click_wifi_extra */*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
 {
-  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-  ceh->magic = WIFI_EXTRA_MAGIC;
-
-  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
-
-  ceh->rate = _rate0;
-  ceh->rate1 = _rate1;
-  ceh->rate2 = _rate2;
-  ceh->rate3 = _rate3;
-
-  ceh->max_tries = _tries0;
-  ceh->max_tries1 = _tries1;
-  ceh->max_tries2 = _tries2;
-  ceh->max_tries3 = _tries3;
-
-  ceh->flags |= _wifi_extra_flags;
-  memcpy(wee, &_mcs_flags, sizeof(struct brn_click_wifi_extra_extention));
-
-  return p;
-}
-
-
-enum {H_DEBUG};
-
-static String
-SetTXRates_read_param(Element *e, void *thunk)
-{
-  SetTXRates *td = (SetTXRates *)e;
-    switch ((uintptr_t) thunk) {
-      case H_DEBUG:
-        return String(td->_debug) + "\n";
-      default:
-        return String();
-    }
-}
-
-static int
-SetTXRates_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
-{
-  SetTXRates *f = (SetTXRates *)e;
-  String s = cp_uncomment(in_s);
-  switch((intptr_t)vparam) {
-  case H_DEBUG: {    //debug
-    bool debug;
-    if (!cp_bool(s, &debug)) 
-      return errh->error("debug parameter must be boolean");
-    f->_debug = debug;
-    break;
-  }
-  }
-  return 0;
 }
 
 void
-SetTXRates::add_handlers()
+BrnFixRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *wee, NeighbourRateInfo * /*nri*/)
 {
-  add_read_handler("debug", SetTXRates_read_param, (void *) H_DEBUG);
-  add_write_handler("debug", SetTXRates_write_param, (void *) H_DEBUG);
+  if ( _set_power ) ceh->power = _power;
+
+  if ( _set_rates ) {
+    ceh->rate = _rate0;
+    ceh->rate1 = _rate1;
+    ceh->rate2 = _rate2;
+    ceh->rate3 = _rate3;
+
+    ceh->max_tries = _tries0;
+    ceh->max_tries1 = _tries1;
+    ceh->max_tries2 = _tries2;
+    ceh->max_tries3 = _tries3;
+
+    ceh->flags |= _wifi_extra_flags;
+
+    memcpy(wee, &_mcs_flags, sizeof(struct brn_click_wifi_extra_extention));
+
+  }
+
+  return;
+}
+
+String
+BrnFixRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
+{
+  return String();
+}
+
+/*******************************************************************************************/
+/************************************* H A N D L E R ***************************************/
+/*******************************************************************************************/
+
+enum { H_STATS};
+
+
+static String
+BrnFixRate_read_param(Element */*e*/, void *thunk)
+{
+  //BrnFixRate *td = (BrnFixRate *)e;
+  switch ((uintptr_t) thunk) {
+    case H_STATS:
+      return String();
+    default:
+      return String();
+  }
+}
+
+void
+BrnFixRate::add_handlers()
+{
+  RateSelection::add_handlers();
+
+  add_read_handler("stats", BrnFixRate_read_param, (void *) H_STATS);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(SetTXRates)
+EXPORT_ELEMENT(BrnFixRate)
+

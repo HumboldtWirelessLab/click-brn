@@ -106,6 +106,7 @@ class Flooding : public BRNElement {
       uint8_t _bcast_fwd_done_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no fwd done paket (fwd-fwd_done=no_queued_packets
       uint8_t _bcast_fwd_succ_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no packet recv by at least on node
       uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retries for unicast)
+      uint8_t _bcast_rts_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];  //no transmission (incl. retries for unicast)
       uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
       Timestamp _bcast_time_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];   //time
 
@@ -175,6 +176,7 @@ class Flooding : public BRNElement {
         memset(_bcast_fwd_done_list, 0, sizeof(_bcast_fwd_done_list));
         memset(_bcast_fwd_succ_list, 0, sizeof(_bcast_fwd_succ_list));
         memset(_bcast_snd_list, 0, sizeof(_bcast_snd_list));
+        memset(_bcast_rts_snd_list, 0, sizeof(_bcast_rts_snd_list));
         memset(_bcast_flags_list, 0, sizeof(_bcast_flags_list));
 
         memset(_last_node_list_size,0,sizeof(_last_node_list_size));          //all entries are invalid
@@ -212,6 +214,7 @@ class Flooding : public BRNElement {
           _bcast_fwd_done_list[index] = 0;
           _bcast_fwd_succ_list[index] = 0;
           _bcast_snd_list[index] = 0;
+          _bcast_rts_snd_list[index] = 0;
           _bcast_flags_list[index] = (me_src)?FLOODING_FLAGS_ME_SRC:0;
           _bcast_time_list[index] = now;
 
@@ -260,9 +263,12 @@ class Flooding : public BRNElement {
         return 0;
       }
 
-      inline void sent(uint16_t id, uint32_t no_transmissions) {
+      inline void sent(uint16_t id, uint32_t no_transmissions, uint32_t no_rts_transmissions) {
         uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) _bcast_snd_list[index] += no_transmissions;
+        if (_bcast_id_list[index] == id) {
+          _bcast_snd_list[index] += no_transmissions;
+          _bcast_rts_snd_list[index] += no_rts_transmissions;
+        }
       }
 
       /**
@@ -518,7 +524,7 @@ class Flooding : public BRNElement {
   void forward_done(EtherAddress *src, uint16_t id, bool success, bool new_node = false);
   void forward_attempt(EtherAddress *src, uint16_t id);
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint16_t id);
-  void sent(EtherAddress *src, uint16_t id, uint32_t no_transmission);
+  void sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint32_t no_rts_transmission);
 
   int add_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
   struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint16_t id, uint32_t *size);
@@ -667,6 +673,15 @@ class Flooding : public BRNElement {
     *id = _last_tx_bcast_id;
     return &_last_tx_src_ea;
   }
+
+  Vector<FloodingPolicy *> _schemes;
+  FloodingPolicy **_scheme_array;
+  uint32_t _max_scheme_id;
+  String _scheme_string;
+  uint32_t _flooding_strategy;
+
+  int parse_schemes(String s_schemes, ErrorHandler* errh);
+  FloodingPolicy *get_flooding_scheme(uint32_t flooding_strategy);
 
 };
 

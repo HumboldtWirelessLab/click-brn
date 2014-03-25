@@ -33,7 +33,7 @@ public:
   ~SetTXPowerRate();
 
   const char *class_name() const  { return "SetTXPowerRate"; }
-  const char *port_count() const  { return "2-3/2-3"; }
+  const char *port_count() const  { return "1-3/1-3"; }
 
   const char *processing() const  { return AGNOSTIC; }
 
@@ -54,20 +54,28 @@ public:
 
 private:
 
+  int parse_schemes(String s_schemes, ErrorHandler* errh);
+  RateSelection *get_rateselection(uint32_t rateselection_strategy);
+
   NeighbourRateInfo* getDstInfo(EtherAddress ea);
 
   BrnAvailableRates *_rtable;
   RateSelection *_rate_selection;
 
-  int _max_power;
+  String _rate_selection_string;
+  int _rate_selection_strategy;
+
+  Vector<RateSelection *> _schemes;
+  RateSelection **_scheme_array;
+  uint32_t _max_scheme_id;
+  String _scheme_string;
 
   ChannelStats *_cst;
 
   NeighborTable _neighbors;
+  int _max_power;
 
   Timer _timer;
-
-  unsigned _packet_size_threshold;
 
   int _offset;
 

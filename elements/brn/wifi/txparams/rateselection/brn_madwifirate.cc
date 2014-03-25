@@ -22,6 +22,7 @@ BrnMadwifiRate::BrnMadwifiRate()
     _stepdown(0)
 {
   mcs_zero = MCS(0);
+  _default_strategy = RATESELECTION_MADWIFI;
 }
 
 void *
@@ -127,7 +128,7 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 }
 
 void
-BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
 {
   bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
@@ -157,7 +158,7 @@ BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
 }
 
 void
-BrnMadwifiRate::assign_rate(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMadwifiRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
 {
   if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {

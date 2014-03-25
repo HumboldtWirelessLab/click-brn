@@ -37,9 +37,6 @@ static uint8_t string_to_datatype(String _string_type) {
   return DATATYPE_UNKNOWN;
 }
 
-static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
-static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp" };
-
 class TCC : public BRNElement {
  public:
 

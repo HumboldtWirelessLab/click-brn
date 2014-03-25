@@ -84,6 +84,10 @@ class BRN2Device : public BRNElement {
     inline uint8_t getChannel() { return _channel; }
     inline void setChannel(uint8_t c) { _channel = c; }
 
+    int set_power_iwconfig(int power, ErrorHandler *errh);
+
+    inline uint16_t get_power() { return _power;}
+
     String device_info();
 
   private:
@@ -128,6 +132,8 @@ class BRN2Device : public BRNElement {
     uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
     uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
     uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+
+    uint16_t _power;
 
   public:
 

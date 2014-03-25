@@ -13,10 +13,12 @@ CLICK_DECLS
 
 
 SetTXPowerRate::SetTXPowerRate():
+  _rtable(NULL),
   _rate_selection(NULL),
+  _rate_selection_strategy(RATESELECTION_NONE),
+  _scheme_array(NULL),
   _cst(NULL),
   _timer(this),
-  _packet_size_threshold(0),
   _offset(0)
 {
   BRNElement::init();
@@ -30,11 +32,10 @@ int
 SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "RT", cpkM+cpkP, cpElement, &_rtable,
-      "MAXPOWER", cpkM+cpkP, cpInteger, &_max_power,
+      "RATESELECTIONS", cpkM+cpkP, cpString, &_rate_selection_string,
+      "STRATEGY", cpkP, cpInteger, &_rate_selection_strategy,
+      "RT", cpkP, cpElement, &_rtable,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
-      "RATESELECTION", cpkP, cpElement, &_rate_selection,
-      "THRESHOLD", cpkP, cpInteger, &_packet_size_threshold,
       "OFFSET", cpkP, cpInteger, &_offset,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
@@ -44,15 +45,23 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 
 
 int
-SetTXPowerRate::initialize(ErrorHandler *)
+SetTXPowerRate::initialize(ErrorHandler *errh)
 {
-  _rate_selection->init(_rtable);
-
   _timer.initialize(this);
 
-  if ( _rate_selection->get_adjust_period() > 0 ) {
-    _timer.schedule_now();
+  parse_schemes(_rate_selection_string, errh);
+
+  //TODO: use extra function for next steps
+  _rate_selection = get_rateselection(_rate_selection_strategy);
+
+  if ( _rate_selection ) {
+    if ( _rate_selection->get_adjust_period() > 0 ) {
+      _timer.schedule_now();
+    }
   }
+
+  if ( _rtable != NULL ) _rate_selection->init(_rtable);
+
   return 0;
 }
 
@@ -69,6 +78,8 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
   if ( p == NULL ) return NULL;
 
   struct click_wifi *wh = (struct click_wifi *) (p->data() + _offset);
+  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
+
   click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
   NeighbourRateInfo *dsti;
@@ -77,25 +88,24 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
     case 0:                                       //Got packet from upper layer
         {
           dsti = getDstInfo(EtherAddress(wh->i_addr1));
-          _rate_selection->assign_rate(ceh, dsti);
+          _rate_selection->assign_rate(ceh, wee, dsti);
           break;
         }
    case 1:                                        // TXFEEDBACK
         {
           EtherAddress dst = EtherAddress(wh->i_addr1);
-          bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
 
-          if (!(dst.is_group() || !ceh->rate || (success && p->length() < _packet_size_threshold))) {
+          if (!dst.is_group()) {
             dsti = getDstInfo(dst);  //dst of packet is other node (txfeedback)
 
-            _rate_selection->process_feedback(ceh, dsti);
+            _rate_selection->process_feedback(ceh, wee, dsti);
           }
           break;
         }
   case 2:                                         //received for other nodes
         {
           dsti = getDstInfo(EtherAddress(wh->i_addr2));  //src of packet is other node
-          _rate_selection->process_foreign(ceh, dsti);
+          _rate_selection->process_foreign(ceh, wee, dsti);
           break;
         }
   }
@@ -151,6 +161,67 @@ SetTXPowerRate::getInfo()
 
   return sa.take_string();
 }
+
+/************************************************************************************************************/
+/**************************************** S C H E M E P A R S E R *******************************************/
+/************************************************************************************************************/
+
+int
+SetTXPowerRate::parse_schemes(String s_schemes, ErrorHandler* errh)
+{
+  Vector<String> schemes;
+  String s = cp_uncomment(s_schemes);
+
+  cp_spacevec(s, schemes);
+
+  _max_scheme_id = 0;
+
+  if ( schemes.size() == 0 ) {
+    if ( _scheme_array != NULL ) delete[] _scheme_array;
+    _scheme_array = NULL;
+
+    return 0;
+  }
+
+  for (uint16_t i = 0; i < schemes.size(); i++) {
+    Element *e = cp_element(schemes[i], this, errh);
+    RateSelection *rateselection = (RateSelection *)e->cast("RateSelection");
+
+    if (!rateselection) {
+      return errh->error("Element %s is not a 'RateSelection'",schemes[i].c_str());
+    } else {
+      _schemes.push_back(rateselection);
+      if ( _max_scheme_id < rateselection->get_strategy())
+        _max_scheme_id = rateselection->get_strategy();
+    }
+  }
+
+  if ( _scheme_array != NULL ) delete[] _scheme_array;
+  _scheme_array = new RateSelection*[_max_scheme_id + 1];
+
+  for ( uint32_t i = 0; i <= _max_scheme_id; i++ ) {
+    _scheme_array[i] = NULL; //Default
+    for ( uint32_t s = 0; s < (uint32_t)_schemes.size(); s++ ) {
+      if ( _schemes[s]->handle_strategy(i) ) {
+        _scheme_array[i] = _schemes[s];
+        break;
+      }
+    }
+  }
+
+  return 0;
+}
+
+RateSelection *
+SetTXPowerRate::get_rateselection(uint32_t rateselection_strategy)
+{
+  if ( rateselection_strategy > _max_scheme_id ) return NULL;
+  return _scheme_array[rateselection_strategy];
+}
+
+/************************************************************************************************************/
+/**************************************** H A N D L E R *****************************************************/
+/************************************************************************************************************/
 
 enum {H_INFO};
 

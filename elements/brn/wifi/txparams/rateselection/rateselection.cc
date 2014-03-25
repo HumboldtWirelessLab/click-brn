@@ -23,6 +23,24 @@ RateSelection::~RateSelection()
 }
 
 void
+RateSelection::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
+}
+
+bool
+RateSelection::handle_strategy(uint32_t strategy)
+{
+  return (strategy == _default_strategy);
+}
+
+uint32_t
+RateSelection::get_strategy()
+{
+  return _default_strategy;
+}
+
+void
 RateSelection::sort_rates_by_data_rate(NeighbourRateInfo *nri)
 {
   click_qsort(nri->_rates.begin(), nri->_rates.size(), sizeof(MCS), mcs_data_rate_sorter);
