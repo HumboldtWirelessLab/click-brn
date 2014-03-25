@@ -20,6 +20,7 @@ CLICK_DECLS
 BrnMinstrelRate::BrnMinstrelRate()
 {
   mcs_zero = MCS(0);
+  _default_strategy = RATESELECTION_MINSTREL;
 }
 
 void *
@@ -580,7 +581,7 @@ BrnMinstrelRate::adjust(NeighborTable * /*neighbors*/, EtherAddress /*dst*/)
 }
 
 void
-BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, NeighbourRateInfo * /*nri*/)
+BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
 {
 //  bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
 //  bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
@@ -597,7 +598,7 @@ BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, NeighbourRateInfo 
 }
 
 void
-BrnMinstrelRate::assign_rate(click_wifi_extra * /*ceh*/, NeighbourRateInfo * /*nri*/)
+BrnMinstrelRate::assign_rate(click_wifi_extra * /*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
 {
   /*if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {

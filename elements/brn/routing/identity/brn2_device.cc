@@ -2,6 +2,9 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include <click/userutils.hh>
+#include <unistd.h>
+
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
@@ -285,12 +288,49 @@ BRN2Device::getTypeStringByInt(uint32_t type)
   return String(STRING_UNKNOWN, strlen(STRING_UNKNOWN));
 }
 
+/********************************************************************************************/
+/********************************************************************************************/
+/********************************************************************************************/
+
+int
+BRN2Device::set_power_iwconfig(int power, ErrorHandler *errh)
+{
+#if CLICK_USERLEVEL
+  StringAccum cmda;
+  if (access("/sbin/iwconfig", X_OK) == 0)
+    cmda << "/sbin/iwconfig";
+  else if (access("/usr/sbin/iwconfig", X_OK) == 0)
+    cmda << "/usr/sbin/iwconfig";
+  else
+    return 0;
+
+  cmda << " " << device_name;
+  cmda << " txpower " << power;
+  String cmd = cmda.take_string();
+
+  click_chatter("SetPower command: %s",cmd.c_str());
+
+  String out = shell_command_output_string(cmd, "", errh);
+  if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
+#else
+#if CLICK_NS
+
+#endif
+#endif
+
+  _power = power;
+
+  return 0;
+}
+
+
 String
 BRN2Device::device_info()
 {
   StringAccum sa;
   sa << "<device node=\"" << BRN_NODE_NAME << "\" name=\"" << getDeviceName() << "\" address=\"" << getEtherAddress()->unparse();
   sa << "\" fix_address=\"" << getEtherAddressFix()->unparse() << "\" type=\"" << getDeviceTypeString() << "\" >\n";
+  sa << "\t<config power=\"" << _power << "\" />\n";
   sa << "\t<queues count=\"" << (uint32_t)no_queues << "\" >\n";
 
   for ( uint32_t i = 0; i < no_queues; i++ )
@@ -342,6 +382,28 @@ write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*
   return 0;
 }
 
+static int
+write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  BRN2Device *f = (BRN2Device *)e;
+  String s = cp_uncomment(in_s);
+  uint32_t power;
+
+  if (!cp_integer(s, &power))
+   return errh->error("channel parameter must be integer");
+
+  f->set_power_iwconfig(power, errh);
+
+  return 0;
+}
+
+static String
+read_power(Element *e, void */*thunk*/)
+{
+  BRN2Device *dev = (BRN2Device *)e;
+  return String(dev->get_power());
+}
+
 void
 BRN2Device::add_handlers()
 {
@@ -349,9 +411,11 @@ BRN2Device::add_handlers()
 
   add_read_handler("deviceinfo", read_device_info, 0);
   add_read_handler("address", read_device_address, 0);
+  add_read_handler("power", read_power, 0);
 
   add_write_handler("reset_address", write_reset_address, 0);
   add_write_handler("address", write_address, 0);
+  add_write_handler("power", write_power, 0);
 }
 
 CLICK_ENDDECLS

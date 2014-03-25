@@ -1,20 +1,22 @@
-#ifndef BRNMADWIFIRATE_HH
-#define BRNMADWIFIRATE_HH
+#ifndef BRNFLOODINGRATE_HH
+#define BRNFLOODINGRATE_HH
 #include <click/timer.hh>
 
 #include "rateselection.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 
 CLICK_DECLS
 
-class BrnMadwifiRate : public RateSelection
+class BrnFloodingRate : public RateSelection
 {
   public:
-    BrnMadwifiRate();
-    ~BrnMadwifiRate();
+    BrnFloodingRate();
+    ~BrnFloodingRate();
 
 /*ELEMENT*/
-    const char *class_name() const  { return "BrnMadwifiRate"; }
-    const char *name() const { return "BrnMadwifiRate"; }
+    const char *class_name() const  { return "BrnFloodingRate"; }
+    const char *name() const { return "BrnFloodingRate"; }
     void *cast(const char *name);
 
     const char *processing() const  { return AGNOSTIC; }
@@ -35,24 +37,10 @@ class BrnMadwifiRate : public RateSelection
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
-    int get_adjust_period() { return _period; }
+    int get_adjust_period() { return -1; }
 
-    struct DstInfo {
-      public:
-        int _credits;
-
-        int _current_index;
-
-        int _successes;
-        int _failures;
-        int _retries;
-    };
-
-    int _stepup;
-    int _stepdown;
-
-    bool _alt_rate;
-    int _period;
+    Flooding *_flooding;
+    FloodingHelper *_fhelper;
 
     MCS mcs_zero;
 };
