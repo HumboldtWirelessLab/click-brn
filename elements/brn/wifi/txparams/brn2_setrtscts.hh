@@ -43,23 +43,18 @@ class Brn2_SetRTSCTS : public BRNElement {
 
   void reset();
 
-  void set_strategy(uint16_t value) { _rts_cts_strategy = value; }
-  uint16_t get_strategy() { return _rts_cts_strategy; }
-  int parse_schemes(String s_schemes, ErrorHandler* errh);
+  uint32_t get_strategy() { return _rts_cts_strategy; }
+  void set_strategy(uint32_t strategy) { _rts_cts_strategy = strategy; _scheme = get_rtscts_scheme(strategy); }
 
  private:
 
   RtsCtsScheme *_scheme;
-
-  Vector<RtsCtsScheme *> _schemes;
-  RtsCtsScheme **_scheme_array;
-  uint32_t _max_scheme_id;
-  String _scheme_string;
+  RtsCtsScheme *get_rtscts_scheme(uint32_t rts_cts_strategy);
 
   uint16_t _rts_cts_mixed_strategy; //use combination of different RTS-CTS Strategies
   uint16_t _rts_cts_strategy;       //RTS-CTS Strategy
 
-  RtsCtsScheme *get_rtscts_scheme(uint32_t rts_cts_strategy);
+  SchemeList _scheme_list;
 
   uint32_t _header;
 

@@ -5,8 +5,9 @@
 #include <click/packet.hh>
 #include <click/etheraddress.hh>
 
-#include "elements/brn/wifi/brnavailablerates.hh"
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/schemelist.hh"
+#include "elements/brn/wifi/brnavailablerates.hh"
 
 CLICK_DECLS
 
@@ -30,21 +31,17 @@ class PacketInfo {
 #define RTS_CTS_STRATEGY_HIDDENNODE 6 /* unicast only */
 #define RTS_CTS_STRATEGY_FLOODING   7
 
-class RtsCtsScheme: public BRNElement {
+class RtsCtsScheme: public BRNElement, public Scheme {
 public:
   RtsCtsScheme();
   virtual ~RtsCtsScheme();
 
-  virtual bool handle_strategy(uint32_t strategy) = 0;
-  virtual uint32_t get_max_strategy() = 0;
-  virtual void set_strategy(uint32_t strategy);
+  void *cast(const char *name);
 
   virtual void set_conf();
   virtual bool set_rtscts(PacketInfo *pinfo) = 0;
   virtual void handle_feedback(PacketInfo *pinfo);
 
-protected:
-  uint32_t _strategy;
 };
 
 CLICK_ENDDECLS

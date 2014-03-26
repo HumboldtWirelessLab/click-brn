@@ -18,6 +18,7 @@ RtsCtsPacketSize::RtsCtsPacketSize():
   _psize(0),
   _pduration(0)
 {
+  _default_strategy = RTS_CTS_STRATEGY_SIZE_LIMIT;
 }
 
 void *
@@ -25,10 +26,8 @@ RtsCtsPacketSize::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsPacketSize") == 0)
     return (RtsCtsPacketSize *) this;
-  else if (strcmp(name, "RtsCtsScheme") == 0)
-    return (RtsCtsScheme *) this;
-  else
-    return NULL;
+
+  return RtsCtsScheme::cast(name);
 }
 
 RtsCtsPacketSize::~RtsCtsPacketSize()

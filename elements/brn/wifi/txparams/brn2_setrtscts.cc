@@ -17,7 +17,6 @@ CLICK_DECLS
 
 Brn2_SetRTSCTS::Brn2_SetRTSCTS():
   _scheme(NULL),
-  _scheme_array(NULL),
   _rts_cts_mixed_strategy(RTS_CTS_MIXED_STRATEGY_NONE),
   _rts_cts_strategy(RTS_CTS_STRATEGY_ALWAYS_OFF),
   _header(HEADER_WIFI),
@@ -25,35 +24,37 @@ Brn2_SetRTSCTS::Brn2_SetRTSCTS():
   rts_on(0)
 {
   memset(&nstats_dummy,0,sizeof(struct rtscts_neighbour_statistics));
+  _scheme_list = SchemeList(String("RtsCtsScheme"));
 }
 
 Brn2_SetRTSCTS::~Brn2_SetRTSCTS()
 {
-  if ( _scheme_array != NULL ) delete[] _scheme_array;
-  _scheme_array = NULL;
 }
 
 int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh) 
 {
+  String scheme_string;
+
   if (cp_va_kparse(conf, this, errh,
-    "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &_scheme_string,
+    "RTSCTS_SCHEMES", cpkP+cpkM, cpString, &scheme_string,
     "STRATEGY", cpkP, cpInteger, &_rts_cts_strategy,
     "MIXEDSTRATEGY", cpkP, cpInteger, &_rts_cts_mixed_strategy,
     "HEADER", cpkP, cpInteger, &_header,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
 
+  _scheme_list.set_scheme_string(scheme_string);
+
   return 0;
 }
 
 int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
 {
-
   click_brn_srandom();
 
   reset();
 
-  parse_schemes(_scheme_string, errh);
+  _scheme_list.parse_schemes(this, errh);
 
   if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
     _scheme = get_rtscts_scheme(_rts_cts_strategy);
@@ -64,56 +65,10 @@ int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
   }
 
   if ( _rts_cts_mixed_strategy != RTS_CTS_MIXED_STRATEGY_NONE ) {
-    if ( (_scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT] == NULL) || (_scheme_array[RTS_CTS_STRATEGY_HIDDENNODE] == NULL) ||
-         ((_rts_cts_mixed_strategy == RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM) && (_scheme_array[RTS_CTS_STRATEGY_RANDOM] == NULL))) {
+    if ( (get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT) == NULL) || (get_rtscts_scheme(RTS_CTS_STRATEGY_HIDDENNODE) == NULL) ||
+         ((_rts_cts_mixed_strategy == RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM) && (get_rtscts_scheme(RTS_CTS_STRATEGY_RANDOM) == NULL))) {
       BRN_WARN("Mixed RTS/CTS-Scheme requieres PacketSize-, HiddenNode- and (if random is used) the Random-Scheme");
       _rts_cts_mixed_strategy = RTS_CTS_MIXED_STRATEGY_NONE;
-    }
-  }
-
-  return 0;
-}
-
-int
-Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
-{
-  Vector<String> schemes;
-  String s = cp_uncomment(s_schemes);
-
-  cp_spacevec(s, schemes);
-
-  _max_scheme_id = 0;
-
-  if ( schemes.size() == 0 ) {
-    if ( _scheme_array != NULL ) delete[] _scheme_array;
-    _scheme_array = NULL;
-
-    return 0;
-  }
-
-  for (uint16_t i = 0; i < schemes.size(); i++) {
-    Element *e = cp_element(schemes[i], this, errh);
-    RtsCtsScheme *rtscts_scheme = (RtsCtsScheme *)e->cast("RtsCtsScheme");
-
-    if (!rtscts_scheme) {
-      return errh->error("Element %s is not a 'RtsCtsScheme'",schemes[i].c_str());
-    } else {
-      _schemes.push_back(rtscts_scheme);
-      if ( _max_scheme_id < rtscts_scheme->get_max_strategy())
-        _max_scheme_id = rtscts_scheme->get_max_strategy();
-    }
-  }
-
-  if ( _scheme_array != NULL ) delete[] _scheme_array;
-  _scheme_array = new RtsCtsScheme*[_max_scheme_id + 1];
-
-  for ( uint32_t i = 0; i <= _max_scheme_id; i++ ) {
-    _scheme_array[i] = NULL; //Default
-    for ( uint32_t s = 0; s < (uint32_t)_schemes.size(); s++ ) {
-      if ( _schemes[s]->handle_strategy(i) ) {
-        _scheme_array[i] = _schemes[s];
-        break;
-      }
     }
   }
 
@@ -123,8 +78,7 @@ Brn2_SetRTSCTS::parse_schemes(String s_schemes, ErrorHandler* errh)
 RtsCtsScheme *
 Brn2_SetRTSCTS::get_rtscts_scheme(uint32_t rts_cts_strategy)
 {
-  if ( rts_cts_strategy > _max_scheme_id ) return NULL;
-  return _scheme_array[rts_cts_strategy];
+  return (RtsCtsScheme *)_scheme_list.get_scheme(rts_cts_strategy);
 }
 
 Packet *
@@ -156,13 +110,13 @@ Brn2_SetRTSCTS::simple_action(Packet *p)
     } else if ( _rts_cts_mixed_strategy != RTS_CTS_MIXED_STRATEGY_NONE ) {
       switch ( _rts_cts_mixed_strategy ) {
         case RTS_CTS_MIXED_PS_AND_HN:
-          set_rtscts = _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) &&
-                       _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo);
+          set_rtscts = get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) &&
+                       get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo);
           break;
         case RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM:
-          set_rtscts = _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) &&
-                       ( _scheme_array[RTS_CTS_STRATEGY_SIZE_LIMIT]->set_rtscts(&_pinfo) ||
-                         _scheme_array[RTS_CTS_STRATEGY_RANDOM]->set_rtscts(&_pinfo));
+          set_rtscts = get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) &&
+                       ( get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) ||
+                         get_rtscts_scheme(RTS_CTS_STRATEGY_RANDOM)->set_rtscts(&_pinfo));
           break;
         default:
           BRN_WARN("Unknown CombinedRTSCTS Scheme!");
@@ -217,8 +171,11 @@ Brn2_SetRTSCTS::stats()
   sa << "\t\t<scheme name=\"RtsCtsNone\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_NONE)?1:0) << "\" />\n";
   sa << "\t\t<scheme name=\"RtsCtsAllwaysOff\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_OFF)?1:0) << "\" />\n";
   sa << "\t\t<scheme name=\"RtsCtsAllwaysOn\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_ON)?1:0) << "\" />\n";
-  for (uint16_t i = 0; i < _schemes.size(); i++) {
-    sa << "\t\t<scheme name=\"" << _schemes[i]->class_name() << "\" active=\"" << (int)(_schemes[i]->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
+  for (uint16_t i = 0; i <= _scheme_list._max_scheme_id; i++) {
+    Element *e = (Element *)_scheme_list.get_scheme(i);
+    if ( e == NULL ) continue;
+    sa << "\t\t<scheme name=\"" << e->class_name();
+    sa << "\" active=\"" << (int)(((Scheme *)e->cast("Scheme"))->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
   }
   sa << "\t</schemes>\n";
 

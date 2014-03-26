@@ -16,6 +16,7 @@ RtsCtsHiddenNode::RtsCtsHiddenNode():
   _hnd(NULL),
   _pessimistic(false)
 {
+  _default_strategy = RTS_CTS_STRATEGY_HIDDENNODE;
 }
 
 void *
@@ -23,10 +24,8 @@ RtsCtsHiddenNode::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsHiddenNode") == 0)
     return (RtsCtsHiddenNode *) this;
-  else if (strcmp(name, "RtsCtsScheme") == 0)
-    return (RtsCtsScheme *) this;
-  else
-    return NULL;
+
+  return RtsCtsScheme::cast(name);
 }
 
 
