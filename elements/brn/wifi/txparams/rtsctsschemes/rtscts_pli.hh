@@ -22,8 +22,6 @@ class RtsCtsPLI: public RtsCtsScheme {
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
   bool set_rtscts(PacketInfo *pinfo);
-  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_PLI);}
-  uint32_t get_max_strategy() { return RTS_CTS_STRATEGY_PLI;}
 
   PacketLossInformation *_pli; //PacketLossInformation-Element (see:../packetlossinformation/packetlossinformation.hh)
 

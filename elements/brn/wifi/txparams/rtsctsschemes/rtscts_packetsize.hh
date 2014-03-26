@@ -22,8 +22,6 @@ class RtsCtsPacketSize: public RtsCtsScheme {
   void add_handlers();
 
   bool set_rtscts(PacketInfo *pinfo);
-  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_SIZE_LIMIT);}
-  uint32_t get_max_strategy() { return RTS_CTS_STRATEGY_SIZE_LIMIT;}
 
   uint32_t _psize;
   uint32_t _pduration;

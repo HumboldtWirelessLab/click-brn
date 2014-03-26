@@ -14,6 +14,7 @@ CLICK_DECLS
 
 RtsCtsRandom::RtsCtsRandom()
 {
+  _default_strategy = RTS_CTS_STRATEGY_RANDOM;
 }
 
 void *
@@ -21,10 +22,8 @@ RtsCtsRandom::cast(const char *name)
 {
   if (strcmp(name, "RtsCtsRandom") == 0)
     return (RtsCtsRandom *) this;
-  else if (strcmp(name, "RtsCtsScheme") == 0)
-    return (RtsCtsScheme *) this;
-  else
-    return NULL;
+
+  return RtsCtsScheme::cast(name);
 }
 
 RtsCtsRandom::~RtsCtsRandom()
