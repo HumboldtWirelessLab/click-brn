@@ -3,6 +3,7 @@
 #include <click/element.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/schemelist.hh"
 #include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
 
 CLICK_DECLS
@@ -14,13 +15,15 @@ CLICK_DECLS
 #define RATESELECTION_AUTORATEFALLBACK  4 /* */
 #define RATESELECTION_FLOODING          5 /* */
 
-class RateSelection : public BRNElement
+class RateSelection : public BRNElement, public Scheme
 {
   public:
     RateSelection();
     ~RateSelection();
 
     void add_handlers();
+
+    void *cast(const char *name);
 
     virtual const char *name() const = 0;
 

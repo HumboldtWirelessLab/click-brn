@@ -30,10 +30,8 @@ BrnMadwifiRate::cast(const char *name)
 {
   if (strcmp(name, "BrnMadwifiRate") == 0)
     return (BrnMadwifiRate *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 BrnMadwifiRate::~BrnMadwifiRate()

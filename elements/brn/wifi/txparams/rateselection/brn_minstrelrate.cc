@@ -28,10 +28,8 @@ BrnMinstrelRate::cast(const char *name)
 {
   if (strcmp(name, "BrnMinstrelRate") == 0)
     return (BrnMinstrelRate *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 BrnMinstrelRate::~BrnMinstrelRate()

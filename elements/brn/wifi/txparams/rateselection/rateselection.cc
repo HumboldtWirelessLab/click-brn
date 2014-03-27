@@ -22,6 +22,17 @@ RateSelection::~RateSelection()
 {
 }
 
+void *
+RateSelection::cast(const char *name)
+{
+  if (strcmp(name, "RateSelection") == 0)
+    return (RateSelection *) this;
+  else if (strcmp(name, "Scheme") == 0)
+    return (Scheme *) this;
+  else
+    return NULL;
+}
+
 void
 RateSelection::set_strategy(uint32_t strategy)
 {
