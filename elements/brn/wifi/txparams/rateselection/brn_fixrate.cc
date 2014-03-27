@@ -36,10 +36,8 @@ BrnFixRate::cast(const char *name)
 {
   if (strcmp(name, "BrnFixRate") == 0)
     return (BrnFixRate *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 BrnFixRate::~BrnFixRate()

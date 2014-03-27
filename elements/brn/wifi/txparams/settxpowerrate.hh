@@ -54,21 +54,15 @@ public:
 
 private:
 
-  int parse_schemes(String s_schemes, ErrorHandler* errh);
-  RateSelection *get_rateselection(uint32_t rateselection_strategy);
-
   NeighbourRateInfo* getDstInfo(EtherAddress ea);
 
   BrnAvailableRates *_rtable;
-  RateSelection *_rate_selection;
 
-  String _rate_selection_string;
+  RateSelection *_rate_selection;
+  RateSelection *get_rateselection(uint32_t rateselection_strategy);
   int _rate_selection_strategy;
 
-  Vector<RateSelection *> _schemes;
-  RateSelection **_scheme_array;
-  uint32_t _max_scheme_id;
-  String _scheme_string;
+  SchemeList _scheme_list;
 
   ChannelStats *_cst;
 

@@ -11,17 +11,16 @@
 
 CLICK_DECLS
 
-
 SetTXPowerRate::SetTXPowerRate():
   _rtable(NULL),
   _rate_selection(NULL),
   _rate_selection_strategy(RATESELECTION_NONE),
-  _scheme_array(NULL),
   _cst(NULL),
   _timer(this),
   _offset(0)
 {
   BRNElement::init();
+  _scheme_list = SchemeList(String("RateSelection"));
 }
 
 SetTXPowerRate::~SetTXPowerRate()
@@ -31,8 +30,10 @@ SetTXPowerRate::~SetTXPowerRate()
 int
 SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  String rate_selection_string;
+
   if (cp_va_kparse(conf, this, errh,
-      "RATESELECTIONS", cpkM+cpkP, cpString, &_rate_selection_string,
+      "RATESELECTIONS", cpkM+cpkP, cpString, &rate_selection_string,
       "STRATEGY", cpkP, cpInteger, &_rate_selection_strategy,
       "RT", cpkP, cpElement, &_rtable,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
@@ -40,6 +41,9 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _scheme_list.set_scheme_string(rate_selection_string);
+
   return 0;
 }
 
@@ -49,7 +53,7 @@ SetTXPowerRate::initialize(ErrorHandler *errh)
 {
   _timer.initialize(this);
 
-  parse_schemes(_rate_selection_string, errh);
+  _scheme_list.parse_schemes(this, errh);
 
   //TODO: use extra function for next steps
   _rate_selection = get_rateselection(_rate_selection_strategy);
@@ -162,61 +166,10 @@ SetTXPowerRate::getInfo()
   return sa.take_string();
 }
 
-/************************************************************************************************************/
-/**************************************** S C H E M E P A R S E R *******************************************/
-/************************************************************************************************************/
-
-int
-SetTXPowerRate::parse_schemes(String s_schemes, ErrorHandler* errh)
-{
-  Vector<String> schemes;
-  String s = cp_uncomment(s_schemes);
-
-  cp_spacevec(s, schemes);
-
-  _max_scheme_id = 0;
-
-  if ( schemes.size() == 0 ) {
-    if ( _scheme_array != NULL ) delete[] _scheme_array;
-    _scheme_array = NULL;
-
-    return 0;
-  }
-
-  for (uint16_t i = 0; i < schemes.size(); i++) {
-    Element *e = cp_element(schemes[i], this, errh);
-    RateSelection *rateselection = (RateSelection *)e->cast("RateSelection");
-
-    if (!rateselection) {
-      return errh->error("Element %s is not a 'RateSelection'",schemes[i].c_str());
-    } else {
-      _schemes.push_back(rateselection);
-      if ( _max_scheme_id < rateselection->get_strategy())
-        _max_scheme_id = rateselection->get_strategy();
-    }
-  }
-
-  if ( _scheme_array != NULL ) delete[] _scheme_array;
-  _scheme_array = new RateSelection*[_max_scheme_id + 1];
-
-  for ( uint32_t i = 0; i <= _max_scheme_id; i++ ) {
-    _scheme_array[i] = NULL; //Default
-    for ( uint32_t s = 0; s < (uint32_t)_schemes.size(); s++ ) {
-      if ( _schemes[s]->handle_strategy(i) ) {
-        _scheme_array[i] = _schemes[s];
-        break;
-      }
-    }
-  }
-
-  return 0;
-}
-
 RateSelection *
 SetTXPowerRate::get_rateselection(uint32_t rateselection_strategy)
 {
-  if ( rateselection_strategy > _max_scheme_id ) return NULL;
-  return _scheme_array[rateselection_strategy];
+  return (RateSelection *)_scheme_list.get_scheme(rateselection_strategy);
 }
 
 /************************************************************************************************************/

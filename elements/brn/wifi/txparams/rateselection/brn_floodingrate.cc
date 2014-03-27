@@ -27,10 +27,8 @@ BrnFloodingRate::cast(const char *name)
 {
   if (strcmp(name, "BrnFloodingRate") == 0)
     return (BrnFloodingRate *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 BrnFloodingRate::~BrnFloodingRate()
@@ -40,12 +38,13 @@ BrnFloodingRate::~BrnFloodingRate()
 int
 BrnFloodingRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  int ret = Args(conf, this, errh)
-      //.read("FLOODING", &_flooding
-      //.read("FLOODINGHELPER", &_fhelper)
-      .read("DEBUG", _debug)
-      .complete();
-  return ret;
+  if (cp_va_kparse(conf, this, errh,
+    "FLOODING", cpkP+cpkM, cpElement, &_flooding,
+    "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "DEBUG", cpkP, cpInteger, &_debug,
+  cpEnd) < 0) return -1;
+
+  return 0;
 }
 
 
