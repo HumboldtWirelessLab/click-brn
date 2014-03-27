@@ -204,10 +204,10 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
     sa << "<available_rates>\n\t<default rates=\"";
     if (td->_default_rates.size()) {
       for (int x = 0; x < td->_default_rates.size(); x++) {
-        if ( x != 0 )
-            sa << ",";
-        if (x % 20 == 0)
-            sa << "\n\t\t\t";
+        if ( x != 0 ) {
+          sa << ",";
+          if (x % 20 == 0) sa << "\n\t\t\t";
+        }
 
         sa << td->_default_rates[x]._data_rate;
       }
