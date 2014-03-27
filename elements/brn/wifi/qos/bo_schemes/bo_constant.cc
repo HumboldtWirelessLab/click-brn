@@ -19,10 +19,10 @@ CLICK_DECLS
 
 
 BoConstant::BoConstant()
-  : _strategy(0),
-    _const_bo(0)
+  : _const_bo(0)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_CONSTANT;
 }
 
 
@@ -34,10 +34,8 @@ void * BoConstant::cast(const char *name)
 {
   if (strcmp(name, "BoConstant") == 0)
     return (BoConstant *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 
@@ -56,13 +54,6 @@ int BoConstant::configure(Vector<String> &conf, ErrorHandler* errh)
 void BoConstant::add_handlers()
 {
 }
-
-
-bool BoConstant::handle_strategy(uint32_t strategy)
-{
-  return (strategy == BACKOFF_STRATEGY_CONSTANT) ? true : false;
-}
-
 
 int BoConstant::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -91,11 +82,6 @@ void BoConstant::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;
   _max_cwmin = max;
-}
-
-void BoConstant::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
 }
 
 

@@ -14,6 +14,7 @@ class Scheme {
   Scheme(): _default_strategy(0) {}
 
   uint32_t _default_strategy;
+  uint32_t _strategy;
 
   virtual bool handle_strategy(uint32_t strategy);
   virtual uint32_t get_strategy();
