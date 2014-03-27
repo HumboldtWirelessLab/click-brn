@@ -44,10 +44,6 @@ class RateSelection : public BRNElement, public Scheme
     void process_foreign(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *) {}
 
     void sort_rates_by_data_rate(NeighbourRateInfo *);
-
-  protected:
-    uint32_t _strategy;
-    uint32_t _default_strategy;
 };
 
 CLICK_ENDDECLS

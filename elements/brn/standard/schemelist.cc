@@ -16,7 +16,7 @@ uint32_t
 Scheme::get_strategy() { return _default_strategy; }
 
 void
-Scheme::set_strategy(uint32_t strategy) { _default_strategy = strategy;}
+Scheme::set_strategy(uint32_t strategy) { _strategy = strategy;}
 
 int
 SchemeList::parse_schemes(String s_schemes, Element *element, ErrorHandler* errh)

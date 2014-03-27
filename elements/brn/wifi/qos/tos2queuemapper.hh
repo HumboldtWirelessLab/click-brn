@@ -72,11 +72,13 @@ public:
   String stats();
   String bos();
 
-  void handle_feedback(Packet *);
+  uint32_t _bqs_strategy;                             //Backoff-Queue Selection Strategy(see above define declarations)
+  BackoffScheme *get_bo_scheme(uint32_t strategy);
+  SchemeList _scheme_list;
+  BackoffScheme *_current_scheme;
+  void set_backoff_strategy(uint32_t strategy);
 
-  uint16_t _bqs_strategy;//Backoff-Queue Selection Strategy(see above define declarations)
-  void set_backoff_strategy(uint16_t value) { _bqs_strategy = value; }
-  uint16_t get_backoff_strategy() { return _bqs_strategy; }
+  void handle_feedback(Packet *);
 
   inline uint8_t get_no_queues() { return no_queues; }
   uint32_t get_queue_usage(uint8_t position);
@@ -93,9 +95,8 @@ private:
   uint32_t get_backoff();
   uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
   void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
-  int parse_bo_schemes(String s_schemes, ErrorHandler* errh);
+
   void init_stats();
-  BackoffScheme *get_bo_scheme(uint16_t strategy);
 
   uint32_t _learning_current_bo;
   uint32_t _learning_count_up;
@@ -130,13 +131,6 @@ public:
   int32_t _pkt_in_q;
 
   uint32_t _call_set_backoff;
-
-
-  BackoffScheme *_current_scheme;
-  BackoffScheme **_bo_schemes;
-
-  uint16_t _no_schemes;
-  uint16_t _scheme_id;
 
 };
 
