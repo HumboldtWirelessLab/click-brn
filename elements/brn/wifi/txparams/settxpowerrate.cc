@@ -16,8 +16,10 @@ SetTXPowerRate::SetTXPowerRate():
   _rate_selection(NULL),
   _rate_selection_strategy(RATESELECTION_NONE),
   _cst(NULL),
+  _max_power(0),
   _timer(this),
-  _offset(0)
+  _offset(0),
+  _has_wifi_header(0)
 {
   BRNElement::init();
   _scheme_list = SchemeList(String("RateSelection"));
@@ -36,6 +38,7 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
       "RATESELECTIONS", cpkM+cpkP, cpString, &rate_selection_string,
       "STRATEGY", cpkP, cpInteger, &_rate_selection_strategy,
       "RT", cpkP, cpElement, &_rtable,
+      "POWER", cpkP, cpInteger, &_max_power,
       "CHANNELSTATS", cpkP, cpElement, &_cst,
       "OFFSET", cpkP, cpInteger, &_offset,
       "DEBUG", 0, cpInteger, &_debug,
@@ -43,6 +46,7 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
     return -1;
 
   _scheme_list.set_scheme_string(rate_selection_string);
+  _has_wifi_header = ( _offset >= 0 );
 
   return 0;
 }
@@ -81,9 +85,18 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
 {
   if ( p == NULL ) return NULL;
 
-  struct click_wifi *wh = (struct click_wifi *) (p->data() + _offset);
-  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
+  EtherAddress dst;
+  EtherAddress src;
 
+  if ( _has_wifi_header ) {
+    dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
+    src = EtherAddress(((struct click_wifi *) p->data())->i_addr2);
+  } else {
+    dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
+    src = EtherAddress(((click_ether*)p->data())->ether_shost);
+  }
+
+  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
   click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
   NeighbourRateInfo *dsti;
@@ -91,14 +104,12 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
   switch (port) {
     case 0:                                       //Got packet from upper layer
         {
-          dsti = getDstInfo(EtherAddress(wh->i_addr1));
+          dsti = getDstInfo(dst);
           _rate_selection->assign_rate(ceh, wee, dsti);
           break;
         }
    case 1:                                        // TXFEEDBACK
         {
-          EtherAddress dst = EtherAddress(wh->i_addr1);
-
           if (!dst.is_group()) {
             dsti = getDstInfo(dst);  //dst of packet is other node (txfeedback)
 
@@ -108,7 +119,7 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
         }
   case 2:                                         //received for other nodes
         {
-          dsti = getDstInfo(EtherAddress(wh->i_addr2));  //src of packet is other node
+          dsti = getDstInfo(src);  //src of packet is other node
           _rate_selection->process_foreign(ceh, wee, dsti);
           break;
         }

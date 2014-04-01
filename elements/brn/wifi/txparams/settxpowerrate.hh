@@ -67,11 +67,12 @@ private:
   ChannelStats *_cst;
 
   NeighborTable _neighbors;
-  int _max_power;
+  uint32_t _max_power;
 
   Timer _timer;
 
   int _offset;
+  bool _has_wifi_header;
 
 };
 
