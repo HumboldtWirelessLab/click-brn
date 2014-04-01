@@ -5,8 +5,17 @@
 #include "rateselection.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
 CLICK_DECLS
+
+#define FLOODINGRATE_DEFAULT_VALUES          0
+#define FLOODINGRATE_SINGLE_MAXRATE          1
+#define FLOODINGRATE_SINGLE_MINPOWER         2
+#define FLOODINGRATE_SINGLE_BEST_POWER_RATE  3
+#define FLOODINGRATE_GROUP_MAXRATE           4
+#define FLOODINGRATE_GROUP_MINPOWER          5
+#define FLOODINGRATE_GROUP_BEST_POWER_RATE   6
 
 class BrnFloodingRate : public RateSelection
 {
@@ -39,10 +48,19 @@ class BrnFloodingRate : public RateSelection
 
     int get_adjust_period() { return -1; }
 
+    /** internal functions **/
+    int get_best_rate(EtherAddress &ether, MCS *best_rate);
+    int get_min_power(EtherAddress &ether);
+
     Flooding *_flooding;
     FloodingHelper *_fhelper;
+    BRN2LinkStat *_linkstat;
+
+    uint32_t _fl_rate_strategy;
 
     MCS mcs_zero;
+
+    uint32_t _dflt_retries;
 };
 
 CLICK_ENDDECLS
