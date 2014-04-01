@@ -151,11 +151,10 @@ BrnFloodingRate::get_best_rate(EtherAddress &ether, MCS *best_rate)
   if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) return -1;
 
   for (int x = 0; x < pl->_probe_types.size(); x++) {
-
-    BRN_DEBUG("Check Rate: %s (%d)",rate.to_string().c_str(), rate._data_rate);
-
     rate.set_packed_16(pl->_probe_types[x]._rate);
     uint32_t effective_rate = rate._data_rate * (uint32_t)pl->_fwd_rates[x];
+
+    BRN_DEBUG("Check Rate: %s (%d)",rate.to_string().c_str(), rate._data_rate);
 
     if ( effective_rate > max_effective_rate ) {
       max_effective_rate_index = x;
@@ -169,9 +168,28 @@ BrnFloodingRate::get_best_rate(EtherAddress &ether, MCS *best_rate)
   return 0;
 }
 
-int get_min_power(EtherAddress& ether)
+int
+BrnFloodingRate::get_min_power(EtherAddress& ether)
 {
+  uint32_t min_power_pdr = 0;
+  uint32_t min_power = 255;
+  int min_power_pdr_index = -1;
 
+  BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(ether);
+
+  if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) return -1;
+
+  for (int x = 0; x < pl->_probe_types.size(); x++) {
+    if (((uint32_t)pl->_fwd_rates[x] >= min_power_pdr) && ((uint32_t)pl->_min_rx_powers[x] < min_power )) {
+      min_power_pdr_index = x;
+      min_power_pdr = (uint32_t)pl->_fwd_rates[x];
+      min_power = (uint32_t)pl->_probe_types[x]._power;
+    }
+  }
+
+  if ( min_power_pdr_index == -1 ) return -1;
+
+  return min_power;
 }
 
 String
