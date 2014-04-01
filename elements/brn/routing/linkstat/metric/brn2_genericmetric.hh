@@ -34,14 +34,26 @@ class BrnRateSize {
   public:
     uint16_t _rate; //Rate of Linkprobe //for n use packed_16
     uint16_t _size; //Size of Linkprobe
-    BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
+    uint8_t _power;
+
+    size_t _hashcode;
+
+    BrnRateSize(): _rate(0), _size(0), _power(0), _hashcode(0) {};
+
+    BrnRateSize(uint16_t r, uint16_t s, uint16_t p): _rate(r), _size(s), _power(p) {
+      _hashcode = (((uint32_t)_rate) << 16) + (((uint32_t)_size) << 2) + _power;
+    };
 
     inline bool operator==(BrnRateSize other)
     {
-      return (other._rate == _rate && other._size == _size);
+      if ( _hashcode != other._hashcode ) return false;
+      return (other._rate == _rate && other._size == _size && other._power == _power);
     }
 };
 
+inline unsigned hashcode(BrnRateSize brn_rs) {
+  return brn_rs._hashcode;
+}
 #define METRIC_UPDATE_ACTIVE  LINK_UPDATE_LOCAL_ACTIVE
 #define METRIC_UPDATE_PASSIVE LINK_UPDATE_LOCAL_PASSIVE
 

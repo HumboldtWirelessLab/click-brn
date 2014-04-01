@@ -227,7 +227,7 @@ LPRLinkProbeHandler::lpReceiveHandler(char *buffer, int size)
 
   bool changes = false;
   Vector<BrnRateSize> brs;
-  brs.push_back(BrnRateSize(2,1500)); //TODO: got real use value (linkstat)
+  brs.push_back(BrnRateSize(2,1500,24)); //TODO: got real use value (linkstat)
   Vector<uint8_t> fwd;
   Vector<uint8_t> rev;
 
