@@ -158,20 +158,10 @@ NeighbourRateInfo::get_rate_index(uint32_t rate)
 void
 NeighbourRateInfo::print_mcs_vector()
 {
-
-  for (int i = 0; i < _rates.size(); i++) {
-    click_chatter("%d", _rates[i]._data_rate);
-    click_chatter("%d", _rates[i]._is_ht);
-    click_chatter("%d", i);
-    click_chatter("\n");
-  }
+  click_chatter("Index\tRate\tHT");
+  for (int i = 0; i < _rates.size(); i++)
+    click_chatter("%d\t%d\t%d", i, _rates[i]._data_rate, _rates[i]._is_ht);
 }
-
-
-
-
-
-
 
 ELEMENT_PROVIDES(NeighbourRateInfo)
 ELEMENT_REQUIRES(NeighbourRateStats)
