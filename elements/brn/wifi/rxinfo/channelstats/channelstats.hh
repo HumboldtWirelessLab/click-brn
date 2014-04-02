@@ -425,6 +425,8 @@ class ChannelStats : public BRNElement {
     RSSIInfo _small_stats_rssiinfo[SMALL_STATS_SIZE];
     uint8_t _current_small_stats;
 
+    RSSIInfo _rssiinfo_sum;
+
     Timer _stats_timer;
     Timer _proc_timer;
 
@@ -450,6 +452,10 @@ class ChannelStats : public BRNElement {
     RSSIInfo *get_latest_rssi_info() {
       if ( _enable_full_stats ) return NULL;
       return &(_small_stats_rssiinfo[(_current_small_stats + SMALL_STATS_SIZE - 1) % SMALL_STATS_SIZE]);
+    }
+
+    RSSIInfo *get_rssi_summary() {
+      return &_rssiinfo_sum;
     }
 
 };

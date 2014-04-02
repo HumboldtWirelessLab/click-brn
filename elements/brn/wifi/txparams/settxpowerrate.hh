@@ -2,11 +2,11 @@
 #define CLICK_SETTXPOWERRATE_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+#include <click/timer.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/wifi/brnavailablerates.hh"
 
-#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 #include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
 
 #include "rateselection/rateselection.hh"
@@ -63,8 +63,6 @@ private:
   int _rate_selection_strategy;
 
   SchemeList _scheme_list;
-
-  ChannelStats *_cst;
 
   NeighborTable _neighbors;
   uint32_t _max_power;
