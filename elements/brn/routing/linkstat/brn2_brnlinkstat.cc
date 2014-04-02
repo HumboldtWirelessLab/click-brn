@@ -549,7 +549,8 @@ BRN2LinkStat::simple_action(Packet *p)
     l->_probe_types_map.insert(rs, l->_probe_types.size());
     l->_probe_types.push_back(rs);
     l->_fwd_rates.push_back(0);
-    l->_min_rx_powers.push_back(0);
+    l->_fwd_min_rx_powers.push_back(0);
+    l->_fwd_sum_rates.push_back(0);
   }
 
   l->_period = new_period;
@@ -632,7 +633,7 @@ BRN2LinkStat::simple_action(Packet *p)
           for (int x = 0; x < l->_probe_types.size(); x++) {
             if (rs == l->_probe_types[x]) {
               l->_fwd_rates[x] = nfo->_rev;
-              l->_min_rx_powers[x] = nfo->_min_power;
+              l->_fwd_min_rx_powers[x] = nfo->_min_power;
               break;
             }
           }
@@ -735,7 +736,7 @@ BRN2LinkStat::read_bcast_stats()
       int rev_rate = pl->rev_rate(_start, pl->_probe_types[x]._rate, pl->_probe_types[x]._size, pl->_probe_types[x]._power);
       sa << " fwd='" << (uint32_t)pl->_fwd_rates[x] << "'";
       sa << " rev='" << (uint32_t)rev_rate << "'";
-      sa << " fwd_min_rssi='" << (uint32_t)pl->_min_rx_powers[x] << "'";
+      sa << " fwd_min_rssi='" << (uint32_t)pl->_fwd_min_rx_powers[x] << "'";
       sa << " rev_min_rssi='" << (uint32_t)pl->get_min_rx_power(pl->_probe_types[x]._rate, pl->_probe_types[x]._size, pl->_probe_types[x]._power) << "'";
       sa << "/>\n";
     }
