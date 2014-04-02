@@ -332,6 +332,14 @@ BRN2LinkStat::send_probe()
    */
   uint8_t num_entries = 0;   // iterate over my neighbor list and append link information to packet
 
+  Vector<BrnRateSize> rates;
+  Vector<uint8_t> fwd;
+  Vector<uint8_t> rev;
+
+  rates.reserve(_ads_rs.size());
+  fwd.reserve(_ads_rs.size());
+  rev.reserve(_ads_rs.size());
+
   while (ptr < end && num_entries < _neighbors.size()) {
 
     _next_neighbor_to_add = (_next_neighbor_to_add + 1) % _neighbors.size();
@@ -354,9 +362,9 @@ BRN2LinkStat::send_probe()
 
       ptr += sizeof(link_entry);
 
-      Vector<BrnRateSize> rates;
-      Vector<uint8_t> fwd;
-      Vector<uint8_t> rev;
+      rates.resize(probe->_probe_types.size());
+      fwd.resize(probe->_probe_types.size());
+      rev.resize(probe->_probe_types.size());
 
       for (int x = 0; x < probe->_probe_types.size(); x++) {      // append link info
         BrnRateSize rs = probe->_probe_types[x];
@@ -366,9 +374,9 @@ BRN2LinkStat::send_probe()
         lnfo->_rev = probe->rev_rate(_start, rs); // reverse delivery ratio
         lnfo->_min_power = probe->get_min_rx_power(rs._rate, rs._size, rs._power);                        // rev_rate calcs min rx power
 
-        rates.push_back(rs);
-        fwd.push_back(lnfo->_fwd);
-        rev.push_back(lnfo->_rev);
+        rates[x] = rs;
+        fwd[x] = lnfo->_fwd;
+        rev[x] = lnfo->_rev;
       }
       // update my own link table
       update_link(dev_address, probe->_ether, rates, fwd, rev, probe->_seq, METRIC_UPDATE_PASSIVE );
@@ -575,11 +583,13 @@ BRN2LinkStat::simple_action(Packet *p)
     if(_rtable) { // store neighbor node's available rates
       if ( ! _rtable->includes_node(src_ea) ) {
         Vector<MCS> rates;
+        rates.resize(num_rates);
+
         int x = 0;
         while (ptr < end && x < num_rates) {
           MCS rate;
           rate.set_packed_8(ptr[x]);
-          rates.push_back(rate);
+          rates[x] = rate;
           x++;
         }
         _rtable->insert(src_ea, rates);
@@ -588,7 +598,11 @@ BRN2LinkStat::simple_action(Packet *p)
 
     ptr += num_rates;
   }
-
+    
+  Vector<BrnRateSize> rates;
+  Vector<uint8_t> fwd;
+  Vector<uint8_t> rev;
+      
   if (lp->_flags & PROBE_REV_FWD_INFO) { // linkprobe info where transmitted
     uint8_t link_number = 0;
     // fetch link entries
@@ -602,9 +616,10 @@ BRN2LinkStat::simple_action(Packet *p)
         link_number, lp->_num_links, neighbor.unparse().c_str(), num_rates);
 
       ptr += sizeof(struct link_entry);
-      Vector<BrnRateSize> rates;
-      Vector<uint8_t> fwd;
-      Vector<uint8_t> rev;
+
+      rates.resize(num_rates);
+      fwd.resize(num_rates);
+      rev.resize(num_rates);
 
       for (int x = 0; x < num_rates; x++) {
         struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
@@ -615,36 +630,34 @@ BRN2LinkStat::simple_action(Packet *p)
 
         BrnRateSize rs = BrnRateSize(nfo_pp->_rate, nfo_pp->_size, nfo_pp->_power);
         // update other link stuff
-        rates.push_back(rs);
+        rates[x] = rs;
 
-        fwd.push_back(nfo->_fwd); // forward delivery ratio
+        fwd[x] = nfo->_fwd; // forward delivery ratio
 
         if (neighbor == *(_dev->getEtherAddress())) { // reverse delivery ratio is available -> use it.
           if ( nfo->_fwd > best_fwd ) best_fwd = nfo->_fwd; //just used to determinate whether node is a neighbour or not
           uint8_t rev_rate = l->rev_rate(_start, rs);
           if ( rev_rate > best_rev ) best_rev = rev_rate;  //just used to determinate whether node is a neighbour or not
-          rev.push_back(rev_rate);
+          rev[x] = rev_rate;
         } else {
-          rev.push_back(nfo->_rev);
+          rev[x] = nfo->_rev;
         }
 
         if (neighbor == *(_dev->getEtherAddress())) {
           // set the fwd rate
-          for (int x = 0; x < l->_probe_types.size(); x++) {
-            if (rs == l->_probe_types[x]) {
-              l->_fwd_rates[x] = nfo->_rev;
-              l->_fwd_min_rx_powers[x] = nfo->_min_power;
-              break;
-            }
+          int *rs_index = l->_probe_types_map.findp(rs);
+          if ( rs_index != NULL ) {
+            l->_fwd_rates[*rs_index] = nfo->_rev;
+            l->_fwd_min_rx_powers[*rs_index] = nfo->_min_power;
           }
         }
       }
       int seq = ntohl(entry->_seq);
 
 #ifdef LINKSTAT_EXTRA_DEBUG
-//TODO "Enable Extra Linkstat debug"
+      //TODO "Enable Extra Linkstat debug"
       uint8_t zero_mac[] = { 0,0,0,0,0,0 }; 
-         if ( (memcmp(src_ea.data(), zero_mac, 6) == 0) || (memcmp(neighbor.data(), zero_mac, 6) == 0) ) {
+      if ( (memcmp(src_ea.data(), zero_mac, 6) == 0) || (memcmp(neighbor.data(), zero_mac, 6) == 0) ) {
         BRN_WARN("Found zero mac");
         checked_output_push(1, p);
         return 0;
