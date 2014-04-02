@@ -17,6 +17,8 @@ CLICK_DECLS
 BrnFloodingRate::BrnFloodingRate()
  : _flooding(NULL),
    _fhelper(NULL),
+   _linkstat(NULL),
+   _cst(NULL),
    _fl_rate_strategy(FLOODINGRATE_SINGLE_MAXRATE),
    _dflt_retries(7)
 {
@@ -44,6 +46,7 @@ BrnFloodingRate::configure(Vector<String> &conf, ErrorHandler *errh)
     "FLOODING", cpkP+cpkM, cpElement, &_flooding,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
     "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+    "CHANNELSTATS", cpkP , cpElement, &_cst,
     "STRATEGY", cpkP, cpInteger, &_fl_rate_strategy,
     "DEFAULTRETRIES", cpkP, cpInteger, &_dflt_retries,
     "DEBUG", cpkP, cpInteger, &_debug,
@@ -175,12 +178,14 @@ BrnFloodingRate::get_min_power(EtherAddress& ether)
   uint32_t min_power = 255;
   int min_power_pdr_index = -1;
 
+  BrnRateSize basic_rate = _linkstat->_ads_rs[0];
   BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(ether);
 
   if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) return -1;
 
   for (int x = 0; x < pl->_probe_types.size(); x++) {
-    if (((uint32_t)pl->_fwd_rates[x] >= min_power_pdr) && ((uint32_t)pl->_min_rx_powers[x] < min_power )) {
+    if ( pl->_probe_types[x]._rate != basic_rate._rate ) continue;
+    if (((uint32_t)pl->_fwd_rates[x] >= min_power_pdr) && ((uint32_t)pl->_fwd_min_rx_powers[x] < min_power )) {
       min_power_pdr_index = x;
       min_power_pdr = (uint32_t)pl->_fwd_rates[x];
       min_power = (uint32_t)pl->_probe_types[x]._power;

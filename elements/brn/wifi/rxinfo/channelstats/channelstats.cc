@@ -368,6 +368,7 @@ ChannelStats::push(int port, Packet *p)
         small_stats->std_rssi += (rssi * rssi);
 
         _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,is_ht_rate,rssi);
+        _rssiinfo_sum.add(ceh->rate,is_ht_rate,rssi);
 
         bool has_ext_rx_status = BrnWifi::hasExtRxStatus(ceh);
         struct brn_click_wifi_extra_rx_status *ext_rx_status;
@@ -735,6 +736,7 @@ ChannelStats::reset()
 {
   _packet_list.clear();
   _packet_list_hw.clear();
+  _rssiinfo_sum.reset();
 }
 
 /**************************************************************************************************************/
@@ -929,7 +931,15 @@ ChannelStats::stats_handler(int mode)
         }
       }
 
-      sa << "\t</rssi_stats>\n</channelstats>\n";
+      sa << "\t</rssi_stats>\n\t<rssi_stats_global min_rssi=\"" << (uint32_t)_rssiinfo_sum.min_rssi << "\" >\n";
+
+      for ( int i = 0; i <= 255; i++ ) {
+        if ( _rssiinfo_sum.min_rssi_per_rate[i] != 255 ) {
+          sa << "\t\t<rssi_for_rate rate=\"" << i << "\" min_rssi=\"" << (uint32_t)_rssiinfo_sum.min_rssi_per_rate[i] << "\" />\n";
+        }
+      }
+
+      sa << "\t</rssi_stats_global>\n</channelstats>\n";
 
   }
   return sa.take_string();

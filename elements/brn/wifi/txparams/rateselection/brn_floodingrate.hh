@@ -6,6 +6,7 @@
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 
 CLICK_DECLS
 
@@ -55,6 +56,7 @@ class BrnFloodingRate : public RateSelection
     Flooding *_flooding;
     FloodingHelper *_fhelper;
     BRN2LinkStat *_linkstat;
+    ChannelStats *_cst;
 
     uint32_t _fl_rate_strategy;
 

@@ -15,7 +15,6 @@ SetTXPowerRate::SetTXPowerRate():
   _rtable(NULL),
   _rate_selection(NULL),
   _rate_selection_strategy(RATESELECTION_NONE),
-  _cst(NULL),
   _max_power(0),
   _timer(this),
   _offset(0),
@@ -39,7 +38,6 @@ SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
       "STRATEGY", cpkP, cpInteger, &_rate_selection_strategy,
       "RT", cpkP, cpElement, &_rtable,
       "POWER", cpkP, cpInteger, &_max_power,
-      "CHANNELSTATS", cpkP, cpElement, &_cst,
       "OFFSET", cpkP, cpInteger, &_offset,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
