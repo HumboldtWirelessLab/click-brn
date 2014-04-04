@@ -57,6 +57,8 @@ class FromSimDevice : public SimDevice {
   unsigned _headroom;
   unsigned _tailroom;
 
+  bool _zero_copy;
+
   static void set_annotations(Packet *,int ptype);
   // set appropriate annotations, i.e. MAC packet type.
   // modifies the packet.
