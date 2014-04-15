@@ -53,6 +53,8 @@ jist: Makefile click-buildtool stamp-h brn-version
 	@cd jist && $(MAKE) all
 userlevel: Makefile click-buildtool click-compile stamp-h brn-version
 	@cd userlevel && $(MAKE) all
+minios: Makefile click-buildtool click-compile stamp-h
+	@cd minios && $(MAKE) all
 tools: Makefile stamp-h
 	@cd tools && $(MAKE) all
 
@@ -79,6 +81,8 @@ clean-jist:
 	@cd jist && $(MAKE) clean
 clean-userlevel:
 	@cd userlevel && $(MAKE) clean
+clean-minios:
+	@cd minios && $(MAKE) clean
 clean-tools:
 	@cd tools && $(MAKE) clean
 
@@ -173,7 +177,7 @@ Makefile: config.status $(srcdir)/Makefile.in
 	cd $(top_builddir) && \
 	  CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 config.h: stamp-h
-stamp-h: $(srcdir)/config.h.in $(srcdir)/config-bsdmodule.h.in $(srcdir)/config-linuxmodule.h.in $(srcdir)/config-ns.h.in $(srcdir)/config-userlevel.h.in config.status
+stamp-h: $(srcdir)/config.h.in $(srcdir)/config-bsdmodule.h.in $(srcdir)/config-linuxmodule.h.in $(srcdir)/config-ns.h.in $(srcdir)/config-userlevel.h.in $(srcdir)/config-minios.h.in config.status
 	cd $(top_builddir) \
 	  && CONFIG_FILES= $(SHELL) ./config.status
 	echo > stamp-h
@@ -263,7 +267,7 @@ distdir: $(srcdir)/configure
 
 
 .PHONY: all always elemlist elemlists \
-	bsdmodule linuxmodule ns jist userlevel tools \
+	bsdmodule linuxmodule ns jist userlevel minios tools \
 	install install-doc install-lib install-man install-local install-include install-local-include $(INSTALL_TARGETS) \
 	clean clean-doc clean-local $(CLEAN_TARGETS) distclean \
 	uninstall uninstall-local uninstall-local-include \
