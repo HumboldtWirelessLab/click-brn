@@ -52,6 +52,11 @@ class BrnFloodingRate : public RateSelection
     /** internal functions **/
     int get_best_rate(EtherAddress &ether, MCS *best_rate);
     int get_min_power(EtherAddress &ether);
+    int get_best_rate_min_power(EtherAddress &ether, MCS *best_rate);
+
+    int metric_space_bits_per_second(MCS &rate, uint32_t tx_power);
+
+    String print_stats(int /*tabs*/);
 
     Flooding *_flooding;
     FloodingHelper *_fhelper;
@@ -63,6 +68,10 @@ class BrnFloodingRate : public RateSelection
     MCS mcs_zero;
 
     uint32_t _dflt_retries;
+
+    /* stats */
+    uint32_t _no_pkts;
+    uint32_t _saved_power_sum;
 };
 
 CLICK_ENDDECLS
