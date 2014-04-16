@@ -44,7 +44,7 @@ FixPointNumber::fromString(String n) {
 }
 
 String
-FixPointNumber::unparse() {
+FixPointNumber::unparse() const {
   StringAccum sa;
 
   sa << number / PREFACTOR << ".";
