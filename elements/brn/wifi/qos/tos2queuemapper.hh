@@ -23,6 +23,7 @@
 #include <click/element.hh>
 
 #include <elements/brn/brnelement.hh>
+#include "elements/brn/routing/identity/brn2_device.hh"
 
 #include "bo_schemes/backoff_scheme.hh"
 
@@ -72,6 +73,8 @@ public:
   String stats();
   String bos();
 
+  BRN2Device *_device;
+
   uint32_t _bqs_strategy;                             //Backoff-Queue Selection Strategy(see above define declarations)
   BackoffScheme *get_bo_scheme(uint32_t strategy);
   SchemeList _scheme_list;
@@ -94,7 +97,6 @@ private:
   uint32_t set_backoff();
   uint32_t get_backoff();
   uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
-  void parse_queues(String s_cwmin, String s_cwmax, String s_aifs);
 
   void init_stats();
 
@@ -104,10 +106,12 @@ private:
   uint32_t _learning_max_bo;
 
 private:
+
   uint8_t no_queues;          //number of queues
-  uint16_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
-  uint16_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
-  uint16_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+  uint32_t *_cwmin;           //Contention Window Minimum; Array (see: monitor)
+  uint32_t *_cwmax;           //Contention Window Maximum; Array (see:monitor)
+  uint32_t *_aifs;            //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+
   uint32_t *_queue_usage;     //frequency of the used queues
 
   uint16_t *_bo_exp;           //exponent for backoff in queue

@@ -78,39 +78,20 @@ Tos2QueueMapper::~Tos2QueueMapper()
   delete[] _bo_usage_usage;
   delete[] _last_bo_usage;
   delete[] _queue_usage;
-  delete[] _cwmin;
-  delete[] _cwmax;
-  delete[] _aifs;
   delete[] _all_bos;
 }
 
 int
 Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  String s_cwmin = "";
-  String s_cwmax = "";
-  String s_aifs = "";
   String s_schemes = "";
 
   if (cp_va_kparse(conf, this, errh,
-      "CWMIN", cpkP, cpString, &s_cwmin,
-      "CWMAX", cpkP, cpString, &s_cwmax,
-      "AIFS", cpkP, cpString, &s_aifs,
+      "DEVICE", cpkP+cpkM, cpElement, &_device,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
-
-  parse_queues(s_cwmin, s_cwmax, s_aifs);
-  init_stats();
-
-  BRN_DEBUG("");
-  for (uint8_t i = 0; i < no_queues; i++)
-    BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
-
-#if CLICK_NS
-  get_backoff();
-#endif
 
   _scheme_list.set_scheme_string(s_schemes);
 
@@ -140,51 +121,6 @@ Tos2QueueMapper::init_stats()
   }
 }
 
-void
-Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
-{
-  uint32_t v;
-  Vector<String> args;
-
-  cp_spacevec(s_cwmin, args);
-  no_queues = args.size();
-
-  if ( no_queues > 0 ) {
-    _cwmin = new uint16_t[no_queues];
-    _cwmax = new uint16_t[no_queues];
-    _aifs  = new uint16_t[no_queues];
-
-    for( uint8_t i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmin[i] = v;
-      if ( v > _learning_max_bo ) _learning_max_bo = v;
-    }
-    args.clear();
-
-    cp_spacevec(s_cwmax, args);
-    if ( args.size() < no_queues )
-      no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmax[i] = v;
-    }
-    args.clear();
-
-    cp_spacevec(s_aifs, args);
-    if ( args.size() < no_queues )
-      no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _aifs[i] = v;
-    }
-    args.clear();
-  }
-
-#if CLICK_NS
-  get_backoff();
-#endif
-}
-
 int
 Tos2QueueMapper::initialize (ErrorHandler *errh)
 {
@@ -192,6 +128,10 @@ Tos2QueueMapper::initialize (ErrorHandler *errh)
 
   _scheme_list.parse_schemes(this, errh);
   set_backoff_strategy(_bqs_strategy);
+
+  get_backoff();
+
+  init_stats();
 
   return 0;
 }
@@ -244,8 +184,6 @@ Tos2QueueMapper::simple_action(Packet *p)
           return p;
     }
   }
-
-
 
   opt_queue = find_queue(opt_cwmin);
 
@@ -366,7 +304,6 @@ Tos2QueueMapper::get_queue_usage(uint8_t position)
 uint32_t
 Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step)
 {
-#if CLICK_NS
   uint32_t cwmin = backoff >> (tos*step);
   if ( cwmin <= 1 ) cwmin = 2;
 
@@ -376,51 +313,38 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t 
     _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
   }
 
-#else
-  BRN_DEBUG("Try to set queues BO: %d TOS: %d STEP: %d",backoff ,tos, step);
-#endif
   return 0;
 }
 
 uint32_t
 Tos2QueueMapper::set_backoff()
 {
-#if CLICK_NS
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
-  for ( int q = 0; q < no_queues; q++ ) {
-    queueinfo[1 + q] = _cwmin[q];
-    queueinfo[1 + no_queues + q] = _cwmax[q];
-  }
-
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_SET_BACKOFF, queueinfo);
-
-  delete[] queueinfo;
-
   _call_set_backoff++;
-#endif
+
+  _device->set_backoff();
+
   return 0;
 }
 
 uint32_t
 Tos2QueueMapper::get_backoff()
 {
-#if CLICK_NS
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
+  /* Init queue stuff */
+  _device->get_backoff();
 
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
+  no_queues = _device->get_no_queues();
 
-  int max_q = no_queues;
-  if ( queueinfo[0] < no_queues ) max_q = queueinfo[0];
-
-  for ( int q = 0; q < max_q; q++ ) {
-    _cwmin[q] = queueinfo[1 + q];
-    _cwmax[q] = queueinfo[1 + max_q + q];
+  if ( no_queues > 0 ) {
+    _cwmin = _device->get_cwmin();
+    _cwmax = _device->get_cwmax();
   }
 
-  delete[] queueinfo;
-#endif
+  _aifs  = NULL;
+
+  BRN_DEBUG("");
+  for (uint8_t i = 0; i < no_queues; i++)
+    BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
+
   return 0;
 }
 
