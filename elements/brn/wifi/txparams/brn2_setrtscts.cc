@@ -44,12 +44,15 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
         cpEnd) < 0) return -1;
 
   _scheme_list.set_scheme_string(scheme_string);
+  click_chatter("conf Scheme: %d",_rts_cts_strategy);
 
   return 0;
 }
 
 int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
 {
+  BRN_WARN("Init Scheme: %d",_rts_cts_strategy);
+
   click_brn_srandom();
 
   reset();
@@ -59,7 +62,10 @@ int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
   if (_rts_cts_strategy > RTS_CTS_STRATEGY_ALWAYS_ON) {
     _scheme = get_rtscts_scheme(_rts_cts_strategy);
     if (_scheme) _scheme->set_strategy(_rts_cts_strategy);
-    else _rts_cts_strategy = RTS_CTS_STRATEGY_NONE;
+    else {
+      _rts_cts_strategy = RTS_CTS_STRATEGY_NONE;
+      BRN_WARN("Scheme(%d) is NULL. Use strategy NONE.",_rts_cts_strategy);
+    }
   } else {
     _scheme = NULL;
   }
@@ -111,12 +117,16 @@ Brn2_SetRTSCTS::simple_action(Packet *p)
       switch ( _rts_cts_mixed_strategy ) {
         case RTS_CTS_MIXED_PS_AND_HN:
           set_rtscts = get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) &&
-                       get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo);
+                       get_rtscts_scheme(RTS_CTS_STRATEGY_HIDDENNODE)->set_rtscts(&_pinfo);
           break;
         case RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM:
           set_rtscts = get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) &&
-                       ( get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) ||
+                       ( get_rtscts_scheme(RTS_CTS_STRATEGY_HIDDENNODE)->set_rtscts(&_pinfo) ||
                          get_rtscts_scheme(RTS_CTS_STRATEGY_RANDOM)->set_rtscts(&_pinfo));
+          break;
+        case RTS_CTS_MIXED_PS_AND_FLOODING:
+          set_rtscts = get_rtscts_scheme(RTS_CTS_STRATEGY_SIZE_LIMIT)->set_rtscts(&_pinfo) &&
+                       get_rtscts_scheme(RTS_CTS_STRATEGY_FLOODING)->set_rtscts(&_pinfo);
           break;
         default:
           BRN_WARN("Unknown CombinedRTSCTS Scheme!");
@@ -168,13 +178,16 @@ Brn2_SetRTSCTS::stats()
   sa << "<setrtscts node=\""<< BRN_NODE_NAME << "\" strategy=\"" << _rts_cts_strategy << "\" mixed_strategy=\"" << _rts_cts_mixed_strategy << "\" >\n";
 
   sa << "\t<schemes>\n";
-  sa << "\t\t<scheme name=\"RtsCtsNone\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_NONE)?1:0) << "\" />\n";
-  sa << "\t\t<scheme name=\"RtsCtsAllwaysOff\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_OFF)?1:0) << "\" />\n";
-  sa << "\t\t<scheme name=\"RtsCtsAllwaysOn\" active=\"" << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_ON)?1:0) << "\" />\n";
+  sa << "\t\t<scheme name=\"RtsCtsNone\" id=\"" << (int)RTS_CTS_STRATEGY_NONE << "\" active=\"";
+  sa << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_NONE)?1:0) << "\" />\n";
+  sa << "\t\t<scheme name=\"RtsCtsAllwaysOff\" id=\"" << (int)RTS_CTS_STRATEGY_ALWAYS_OFF << "\" active=\"";
+  sa << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_OFF)?1:0) << "\" />\n";
+  sa << "\t\t<scheme name=\"RtsCtsAllwaysOn\" id=\"" << (int)RTS_CTS_STRATEGY_ALWAYS_ON << "\" active=\"";
+  sa << (int)((_rts_cts_strategy==RTS_CTS_STRATEGY_ALWAYS_ON)?1:0) << "\" />\n";
   for (uint16_t i = 0; i <= _scheme_list._max_scheme_id; i++) {
     Element *e = (Element *)_scheme_list.get_scheme(i);
     if ( e == NULL ) continue;
-    sa << "\t\t<scheme name=\"" << e->class_name();
+    sa << "\t\t<scheme name=\"" << e->class_name() << "\" id=\"" << i;
     sa << "\" active=\"" << (int)(((Scheme *)e->cast("Scheme"))->handle_strategy(_rts_cts_strategy)?1:0) << "\" />\n";
   }
   sa << "\t</schemes>\n";
