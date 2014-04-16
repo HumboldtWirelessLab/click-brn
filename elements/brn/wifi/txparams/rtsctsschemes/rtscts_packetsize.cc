@@ -42,6 +42,11 @@ RtsCtsPacketSize::configure(Vector<String> &conf, ErrorHandler* errh)
     "PACKETDURATION", cpkP, cpInteger, &_pduration,
     "DEBUG", cpkP, cpInteger, &_debug,
         cpEnd) < 0) return -1;
+
+  if ( _pduration == -1 ) {
+    _pduration = calc_transmit_time(2, 16/*RTS*/ + 10 /*CTS*/);
+  }
+
   return 0;
 }
 
@@ -55,7 +60,7 @@ RtsCtsPacketSize::set_rtscts(PacketInfo *pinfo)
     //  duration = BrnWifi::pkt_duration(pinfo->_p_size + 4 /*crc*/, rate_index, rate_bw, rate_sgi);
     //else
     duration = calc_transmit_time(pinfo->_ceh->rate, pinfo->_p_size + 4 /*crc*/); //TODO: check CRC ??
-    //BRN_WARN("Size: %d",size);
+    BRN_WARN("Duration limit: %d cdur: %d", _pduration, duration);
     return ( duration > _pduration );
   }
 

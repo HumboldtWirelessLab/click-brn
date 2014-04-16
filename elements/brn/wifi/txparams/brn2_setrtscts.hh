@@ -15,6 +15,7 @@ CLICK_DECLS
 #define RTS_CTS_MIXED_STRATEGY_NONE        0 /* default */
 #define RTS_CTS_MIXED_PS_AND_HN            1 /* combine packet size and hidden node */
 #define RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM 2 /* combine packet size and hidden node and random */
+#define RTS_CTS_MIXED_PS_AND_FLOODING      3 /* combine packet size and flooding */
 
 #define HEADER_AUTO  0
 #define HEADER_WIFI  1
@@ -51,8 +52,8 @@ class Brn2_SetRTSCTS : public BRNElement {
   RtsCtsScheme *_scheme;
   RtsCtsScheme *get_rtscts_scheme(uint32_t rts_cts_strategy);
 
-  uint16_t _rts_cts_mixed_strategy; //use combination of different RTS-CTS Strategies
-  uint16_t _rts_cts_strategy;       //RTS-CTS Strategy
+  uint32_t _rts_cts_mixed_strategy; //use combination of different RTS-CTS Strategies
+  uint32_t _rts_cts_strategy;       //RTS-CTS Strategy
 
   SchemeList _scheme_list;
 
