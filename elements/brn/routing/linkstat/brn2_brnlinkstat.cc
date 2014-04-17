@@ -332,13 +332,9 @@ BRN2LinkStat::send_probe()
    */
   uint8_t num_entries = 0;   // iterate over my neighbor list and append link information to packet
 
-  Vector<BrnRateSize> rates;
-  Vector<uint8_t> fwd;
-  Vector<uint8_t> rev;
-
-  rates.reserve(_ads_rs.size());
-  fwd.reserve(_ads_rs.size());
-  rev.reserve(_ads_rs.size());
+  _rates_v.reserve(_ads_rs.size());
+  _fwd_v.reserve(_ads_rs.size());
+  _rev_v.reserve(_ads_rs.size());
 
   while (ptr < end && num_entries < _neighbors.size()) {
 
@@ -362,9 +358,9 @@ BRN2LinkStat::send_probe()
 
       ptr += sizeof(link_entry);
 
-      rates.resize(probe->_probe_types.size());
-      fwd.resize(probe->_probe_types.size());
-      rev.resize(probe->_probe_types.size());
+      _rates_v.resize(probe->_probe_types.size());
+      _fwd_v.resize(probe->_probe_types.size());
+      _rev_v.resize(probe->_probe_types.size());
 
       for (int x = 0; x < probe->_probe_types.size(); x++) {      // append link info
         BrnRateSize rs = probe->_probe_types[x];
@@ -374,12 +370,12 @@ BRN2LinkStat::send_probe()
         lnfo->_rev = probe->rev_rate(_start, rs); // reverse delivery ratio
         lnfo->_min_power = probe->get_min_rx_power(rs._rate, rs._size, rs._power);                        // rev_rate calcs min rx power
 
-        rates[x] = rs;
-        fwd[x] = lnfo->_fwd;
-        rev[x] = lnfo->_rev;
+        _rates_v[x] = rs;
+        _fwd_v[x] = lnfo->_fwd;
+        _rev_v[x] = lnfo->_rev;
       }
       // update my own link table
-      update_link(dev_address, probe->_ether, rates, fwd, rev, probe->_seq, METRIC_UPDATE_PASSIVE );
+      update_link(dev_address, probe->_ether, _rates_v, _fwd_v, _rev_v, probe->_seq, METRIC_UPDATE_PASSIVE );
 
       ptr += probe->_probe_types.size() * sizeof(link_info);
     }
@@ -558,7 +554,9 @@ BRN2LinkStat::simple_action(Packet *p)
     l->_probe_types.push_back(rs);
     l->_fwd_rates.push_back(0);
     l->_fwd_min_rx_powers.push_back(0);
-    l->_fwd_sum_rates.push_back(0);
+    l->_rev_no_probes.push_back(0);
+    l->_rev_min_rssi.push_back(0);
+    l->_rev_min_rssi_index.push_back(-1);
   }
 
   l->_period = new_period;
@@ -598,11 +596,7 @@ BRN2LinkStat::simple_action(Packet *p)
 
     ptr += num_rates;
   }
-    
-  Vector<BrnRateSize> rates;
-  Vector<uint8_t> fwd;
-  Vector<uint8_t> rev;
-      
+
   if (lp->_flags & PROBE_REV_FWD_INFO) { // linkprobe info where transmitted
     uint8_t link_number = 0;
     // fetch link entries
@@ -617,9 +611,9 @@ BRN2LinkStat::simple_action(Packet *p)
 
       ptr += sizeof(struct link_entry);
 
-      rates.resize(num_rates);
-      fwd.resize(num_rates);
-      rev.resize(num_rates);
+      _rates_v.resize(num_rates);
+      _fwd_v.resize(num_rates);
+      _rev_v.resize(num_rates);
 
       for (int x = 0; x < num_rates; x++) {
         struct link_info *nfo = (struct link_info *) (ptr + x * (sizeof(struct link_info)));
@@ -630,17 +624,17 @@ BRN2LinkStat::simple_action(Packet *p)
 
         BrnRateSize rs = BrnRateSize(nfo_pp->_rate, nfo_pp->_size, nfo_pp->_power);
         // update other link stuff
-        rates[x] = rs;
+        _rates_v[x] = rs;
 
-        fwd[x] = nfo->_fwd; // forward delivery ratio
+        _fwd_v[x] = nfo->_fwd; // forward delivery ratio
 
         if (neighbor == *(_dev->getEtherAddress())) { // reverse delivery ratio is available -> use it.
           if ( nfo->_fwd > best_fwd ) best_fwd = nfo->_fwd; //just used to determinate whether node is a neighbour or not
           uint8_t rev_rate = l->rev_rate(_start, rs);
           if ( rev_rate > best_rev ) best_rev = rev_rate;  //just used to determinate whether node is a neighbour or not
-          rev[x] = rev_rate;
+          _rev_v[x] = rev_rate;
         } else {
-          rev[x] = nfo->_rev;
+          _rev_v[x] = nfo->_rev;
         }
 
         if (neighbor == *(_dev->getEtherAddress())) {
@@ -664,7 +658,7 @@ BRN2LinkStat::simple_action(Packet *p)
       }
 #endif
 
-      update_link(src_ea, neighbor, rates, fwd, rev, seq, METRIC_UPDATE_ACTIVE);
+      update_link(src_ea, neighbor, _rates_v, _fwd_v, _rev_v, seq, METRIC_UPDATE_ACTIVE);
       ptr += num_rates * sizeof(struct link_info);
     }
   }
