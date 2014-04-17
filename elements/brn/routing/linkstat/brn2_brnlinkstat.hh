@@ -191,7 +191,10 @@ public:
 
     Vector<uint8_t> _fwd_rates;          //psr (packet success rate)
     Vector<uint8_t> _fwd_min_rx_powers;  //min rssi
-    Vector<uint32_t> _fwd_sum_rates;     //psr (packet success rate)
+
+    Vector<uint16_t> _rev_no_probes;     //psr (packet success rate)
+    Vector<uint16_t> _rev_min_rssi;
+    Vector<int16_t> _rev_min_rssi_index;
 
     Timestamp _last_rx;
     Deque<probe_t> _probes;          // most recently received probes
@@ -212,9 +215,17 @@ public:
 
     inline void remove_old_probes(Timestamp &earliest) {
       // keep stats for at least the averaging period; kick old probes
+      int no_rm_probes = 0;
       while ((unsigned)_probes.size() && (_probes[0]._when < earliest)) {
-        _fwd_sum_rates[_probes[0]._brn_rate_size_index]--;
+        _rev_no_probes[_probes[0]._brn_rate_size_index]--;
         _probes.pop_front();
+        no_rm_probes++;
+      }
+
+      if ( no_rm_probes != 0 ) {
+        for ( int i = _rev_min_rssi_index.size()-1; i >= 0; i--)
+          if ( _rev_min_rssi_index[i] >= 0 )
+            _rev_min_rssi_index[i] -= no_rm_probes;
       }
     }
 
@@ -238,7 +249,7 @@ public:
        * for (int i = _probes.size() - 1; i >= 0; i--)
        *   if ( _probes[i]._brn_rate_size_index == rs_index ) num++;
        *
-       * click_chatter("calc: %d sum: %d diff: %d", num, _fwd_sum_rates[rs_index], (num==_fwd_sum_rates[rs_index])?(uint32_t)0:(uint32_t)1);
+       * click_chatter("calc: %d sum: %d diff: %d", num, _rev_no_probes[rs_index], (num==_rev_no_probes[rs_index])?(uint32_t)0:(uint32_t)1);
        */
 
       Timestamp since_start = now - start;
@@ -248,7 +259,7 @@ public:
       assert(_probe_types.size());
       uint32_t num_expected = MAX(1,MIN((fake_tau / _period),(_seq / _num_probes)));
 
-      return (uint8_t)(MIN(100, (100 * _fwd_sum_rates[rs_index]/*num*/) / num_expected));
+      return (uint8_t)(MIN(100, (100 * _rev_no_probes[rs_index]/*num*/) / num_expected));
     }
 
     uint8_t rev_rate(Timestamp start, int rate, int size, int power) {
@@ -261,17 +272,24 @@ public:
       if (i_p == NULL) return 0;
       uint8_t rs_index = (uint8_t)*i_p;
 
-      Timestamp now = Timestamp::now();
-      Timestamp earliest = now - _tau_ts;
+      if ( _rev_min_rssi_index[rs_index] >= 0 ) return _rev_min_rssi[rs_index];
+
+      Timestamp earliest = Timestamp::now() - _tau_ts;
 
       remove_old_probes(earliest);
 
       uint32_t min_rx_power = 255;
+      uint16_t min_rx_power_index = -1;
       for (int i = _probes.size() - 1; i >= 0; i--)
-        if ((_probes[i]._brn_rate_size_index == rs_index) && (_probes[i]._rx_power < min_rx_power))
+        if ((_probes[i]._brn_rate_size_index == rs_index) && (_probes[i]._rx_power < min_rx_power)) {
           min_rx_power = _probes[i]._rx_power;
+          min_rx_power_index = i;
+        }
 
       if ( min_rx_power == 255 ) return 0;
+
+      _rev_min_rssi[rs_index] = min_rx_power;
+      _rev_min_rssi_index[rs_index] = min_rx_power_index;
 
       return min_rx_power;
     }
@@ -285,9 +303,14 @@ public:
       assert(_probe_types_map.findp(rs) != NULL);
       probe_t probe(now, s, rs._rate, rs._size, rs._power, rx_p);
       probe._brn_rate_size_index = _probe_types_map.find(rs);
-      _probes.push_back(probe);
 
-      _fwd_sum_rates[probe._brn_rate_size_index]++; //new probe
+      if ( (rx_p <= _rev_min_rssi[probe._brn_rate_size_index]) || (_rev_min_rssi_index[probe._brn_rate_size_index] < 0) ) {
+        _rev_min_rssi[probe._brn_rate_size_index] = rx_p;
+        _rev_min_rssi_index[probe._brn_rate_size_index] = _probes.size();
+      }
+
+      _probes.push_back(probe);
+      _rev_no_probes[probe._brn_rate_size_index]++; //new probe
 
       Timestamp earliest = now - _tau_ts;
       remove_old_probes(earliest);
@@ -423,6 +446,12 @@ public:
   uint32_t _stale;
   void reset();
   void clear_stale();
+
+ private:
+  Vector<BrnRateSize> _rates_v;
+  Vector<uint8_t> _fwd_v;
+  Vector<uint8_t> _rev_v;
+
 
 };
 
