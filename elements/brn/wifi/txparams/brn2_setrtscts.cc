@@ -51,7 +51,7 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
 
 int Brn2_SetRTSCTS::initialize(ErrorHandler *errh)
 {
-  BRN_WARN("Init Scheme: %d",_rts_cts_strategy);
+  BRN_DEBUG("Init Scheme: %d",_rts_cts_strategy);
 
   click_brn_srandom();
 
