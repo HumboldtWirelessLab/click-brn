@@ -47,7 +47,7 @@ void DibadawnNodeStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
   lock.release();
 }
 
-bool DibadawnNodeStatistic::isBridgeByUnanimous()
+bool DibadawnNodeStatistic::isBridgeByUnanimousRule()
 {
   bool result = true;
 
@@ -68,7 +68,7 @@ bool DibadawnNodeStatistic::isBridgeByUnanimous()
   return (result);
 }
 
-bool DibadawnNodeStatistic::isBridgeByMajority()
+bool DibadawnNodeStatistic::isBridgeByMajorityRule()
 {
   size_t numBridges = 0;
   size_t numNoBrigdes = 0;
@@ -89,7 +89,7 @@ bool DibadawnNodeStatistic::isBridgeByMajority()
   return (numBridges > numNoBrigdes);
 }
 
-bool DibadawnNodeStatistic::isBridgeBySingleFor()
+bool DibadawnNodeStatistic::isBridgeBySingleForRule()
 {
   bool result = false;
 
@@ -110,7 +110,7 @@ bool DibadawnNodeStatistic::isBridgeBySingleFor()
   return (result);
 }
 
-bool DibadawnNodeStatistic::isBridgeByIntelligentMajority()
+bool DibadawnNodeStatistic::isBridgeByIntelligentMajorityRule()
 {
   size_t numBridges = 0;
   size_t numNoBrigdes = 0;
@@ -136,7 +136,7 @@ bool DibadawnNodeStatistic::isBridgeByIntelligentMajority()
   return (result);
 }
 
-bool DibadawnNodeStatistic::isBridgeByTrustedNoBridge()
+bool DibadawnNodeStatistic::isBridgeByTrustedNoBridgeRule()
 {
   bool result = true;
 
