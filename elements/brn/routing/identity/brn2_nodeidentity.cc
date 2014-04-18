@@ -1,14 +1,18 @@
 #include <click/config.h>
-
-#include "brn2_nodeidentity.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#if CLICK_NS
+#include <click/router.hh>
+#endif
 
 #include <elements/brn/brn2.h>
 #include <elements/brn/version.h>
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+
+#include "brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
@@ -36,11 +40,15 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   String dev_string;
   Vector<String> devices;
 
-  _nodename="";
+  _nodename="auto";
 
   if (cp_va_kparse(conf, this, errh,
-      "NAME", cpkP+cpkM, cpString, &_nodename,
       "DEVICES", cpkP+cpkM, cpString, &dev_string,
+#if CLICK_NS
+      "NAME", cpkP, cpString, &_nodename,
+#else
+      "NAME", cpkP+cpkM, cpString, &_nodename,
+#endif
       cpEnd) < 0)
     return -1;
 
@@ -49,7 +57,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 
   _node_devices_size = 0;
   _node_devices = new BRN2Device*[devices.size()];
-  
+
   for (int slot = 0; slot < devices.size(); slot++) {
     Element *e = cp_element(devices[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -102,8 +110,16 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     BRN_DEBUG("No service device: use 0 for service");
   }
 
-  if ( _nodename == "" )
+  if ( (_nodename == "") || (_nodename == "auto") ) {
+#if CLICK_NS
+#define NAME_BUFFER_LEN 256
+    char buf[NAME_BUFFER_LEN];
+    simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_NAME, &buf, NAME_BUFFER_LEN );
+    _nodename = String(buf);
+#else
     _nodename = _master_device->getEtherAddress()->unparse();
+#endif
+  }
 
   BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
 
@@ -124,7 +140,7 @@ BRN2NodeIdentity::isIdentical(EtherAddress *e)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(e->data(), _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
-   
+
   return false;
 }
 
@@ -133,7 +149,7 @@ BRN2NodeIdentity::isIdentical(uint8_t *data)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(data, _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
-   
+
   return false;
 }
 

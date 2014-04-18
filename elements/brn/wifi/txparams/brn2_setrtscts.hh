@@ -12,6 +12,16 @@
 
 CLICK_DECLS
 
+#define RTS_CTS_MIXED_STRATEGY_NONE        0 /* default */
+#define RTS_CTS_MIXED_PS_AND_HN            1 /* combine packet size and hidden node */
+#define RTS_CTS_MIXED_PS_AND_HN_AND_RANDOM 2 /* combine packet size and hidden node and random */
+#define RTS_CTS_MIXED_PS_AND_FLOODING      3 /* combine packet size and flooding */
+
+#define HEADER_AUTO  0
+#define HEADER_WIFI  1
+#define HEADER_ETHER 2
+#define HEADER_ANNO  3
+
 
 class Brn2_SetRTSCTS : public BRNElement {
 
@@ -34,31 +44,37 @@ class Brn2_SetRTSCTS : public BRNElement {
 
   void reset();
 
-  void set_strategy(uint16_t value) { _rts_cts_strategy = value; }
-  uint16_t get_strategy() { return _rts_cts_strategy; }
-  int parse_schemes(String s_schemes, ErrorHandler* errh);
+  uint32_t get_strategy() { return _rts_cts_strategy; }
+  void set_strategy(uint32_t strategy) { _rts_cts_strategy = strategy; _scheme = get_rtscts_scheme(strategy); }
 
  private:
 
   RtsCtsScheme *_scheme;
-  Vector<RtsCtsScheme *> _schemes;
-  uint16_t _rts_cts_strategy;//RTS-CTS Strategy
+  RtsCtsScheme *get_rtscts_scheme(uint32_t rts_cts_strategy);
 
-  RtsCtsScheme *get_rtscts_scheme(int rts_cts_strategy);
+  uint32_t _rts_cts_mixed_strategy; //use combination of different RTS-CTS Strategies
+  uint32_t _rts_cts_strategy;       //RTS-CTS Strategy
+
+  SchemeList _scheme_list;
+
+  uint32_t _header;
 
   //total number of packets who got through this element
   uint32_t pkt_total;
   uint32_t rts_on;
 
+  /** stats stuff */
   struct rtscts_neighbour_statistics {
      uint32_t pkt_total;
      uint32_t rts_on;
   };
 
   struct rtscts_neighbour_statistics nstats_dummy;
+  struct rtscts_neighbour_statistics* _bcast_nstats;
 
   HashMap<EtherAddress, struct rtscts_neighbour_statistics> rtscts_neighbours;
 
+  PacketInfo _pinfo;
 };
 
 CLICK_ENDDECLS

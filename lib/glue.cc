@@ -146,12 +146,12 @@ click_chatter(const char *fmt, ...)
     static char buf[NR_CPUS][512];	// XXX
     click_processor_t cpu = click_get_processor();
     int i = vsnprintf(buf[cpu], 512, fmt, val);
-    printk("<1>%.*s\n", i, buf[cpu]);
+    printk(KERN_ALERT "%.*s\n", i, buf[cpu]);
     click_put_processor();
 # else
     static char buf[512];		// XXX
     int i = vsnprintf(buf, 512, fmt, val);
-    printk("<1>%.*s\n", i, buf);
+    printk(KERN_ALERT "%.*s\n", i, buf);
 # endif
 #elif CLICK_BSDMODULE
     vprintf(fmt, val);
@@ -489,7 +489,7 @@ click_random(uint32_t low, uint32_t high)
     } else {
 	uint32_t count = ((uint32_t) CLICK_RAND_MAX + 1) / (high - low + 1);
 	uint32_t max = count * (high - low + 1);
-	while ((r = click_random()) > max)
+	while ((r = click_random()) >= max)
 	    /* try again */;
 	return (r / count) + low;
     }

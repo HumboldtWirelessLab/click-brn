@@ -9,12 +9,30 @@ CLICK_DECLS
 #define POLICY_ID_SIMPLE      1
 #define POLICY_ID_PROBABILITY 2
 #define POLICY_ID_MPR         3
-#define POLICY_ID_MULTIRATE   4
+#define POLICY_ID_OVERLAY     4
 #define POLICY_ID_MST         5
+
 
 /** TODO: add extra element for FloodingInfd (like db)
  */
 class Flooding;
+
+struct flooding_policy_rx_info {
+   uint32_t rx_data_size;
+   uint8_t *rxdata;
+
+   bool is_known;
+   uint32_t forward_count;
+};
+
+struct flooding_policy_tx_info {
+  uint32_t *tx_data_size;
+  uint8_t *txdata;
+
+  Vector<EtherAddress> *unicast_dst; //which nodes must be target for unicast
+  Vector<EtherAddress> *passiveack;  //which nodes should have the msg
+  Vector<int> *net_retry_timing;
+};
 
 class FloodingPolicy : public BRNElement
 {

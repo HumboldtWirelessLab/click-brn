@@ -29,6 +29,7 @@ CLICK_DECLS
 BrnAvailableRates::BrnAvailableRates()
 {
   BRNElement::init();
+  _settime = Timestamp::now();
 }
 
 BrnAvailableRates::~BrnAvailableRates()
@@ -110,7 +111,10 @@ BrnAvailableRates::parse_and_insert(String s, ErrorHandler *errh)
     DstInfo d = DstInfo(e);
     d._rates = rates;
     d._eth = e;
+    d._settime = Timestamp::now();
     _rtable.insert(e, d);
+  } else {
+    _settime = Timestamp::now();
   }
 
   return 0;
@@ -161,6 +165,17 @@ BrnAvailableRates::lookup(EtherAddress eth)
   return Vector<MCS>();
 }
 
+Timestamp
+BrnAvailableRates::get_timestamp(EtherAddress eth)
+{
+  if (eth) {
+    DstInfo *dst = _rtable.findp(eth);
+    if (dst) return dst->_settime;
+  }
+
+  return _settime;
+}
+
 int
 BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
 {
@@ -175,6 +190,8 @@ BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
     dst = _rtable.findp(eth);
   }
   dst->_eth = eth;
+  dst->_settime = Timestamp::now();
+  
   dst->_rates.clear();
   if (_default_rates.size()) {
     /* only add rates that are in the default rates */
@@ -204,10 +221,10 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
     sa << "<available_rates>\n\t<default rates=\"";
     if (td->_default_rates.size()) {
       for (int x = 0; x < td->_default_rates.size(); x++) {
-        if ( x != 0 )
-            sa << ",";
-        if (x % 20 == 0)
-            sa << "\n\t\t\t";
+        if ( x != 0 ) {
+          sa << ",";
+          if (x % 20 == 0) sa << "\n\t\t\t";
+        }
 
         sa << td->_default_rates[x]._data_rate;
       }

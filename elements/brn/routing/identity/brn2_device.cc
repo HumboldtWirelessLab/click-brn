@@ -2,6 +2,9 @@
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+#include <click/userutils.hh>
+#include <unistd.h>
+
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
@@ -22,27 +25,27 @@ BRN2Device::BRN2Device()
     _routable(true),
     _allow_broadcast(true),
     _channel(0),
-    no_queues(0),
+    _no_queues(0),
     _cwmin(NULL),
     _cwmax(NULL),
-    _aifs(NULL)
+    _aifs(NULL),
+    _queue_info(NULL)
 {
   BRNElement::init();
 }
 
 BRN2Device::~BRN2Device()
 {
+  if ( _queue_info != NULL ) {
+    delete[] _queue_info;
+    _queue_info = NULL;
+  }
 }
 
 int
 BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   EtherAddress me;
-
-  String s_cwmin = "";
-  String s_cwmax = "";
-  String s_aifs = "";
-  int v;
 
   if (cp_va_kparse(conf, this, errh,
       "DEVICENAME", cpkP+cpkM, cpString, &device_name,
@@ -53,9 +56,6 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
       "ROUTABLE", cpkP, cpBool, &_routable,
       "ALLOW_BROADCAST", cpkP, cpBool, &_allow_broadcast,
-      "CWMIN", cpkP, cpString, &s_cwmin,
-      "CWMAX", cpkP, cpString, &s_cwmax,
-      "AIFS", cpkP, cpString, &s_aifs,
       cpEnd) < 0)
     return -1;
 
@@ -81,41 +81,14 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 
   device_etheraddress_fix = device_etheraddress;
 
-  Vector<String> args;
-  cp_spacevec(s_cwmin, args);
-  no_queues = args.size();
-  if ( no_queues > 0 ) {
-    _cwmin = new uint16_t[no_queues];
-    _cwmax = new uint16_t[no_queues];
-    _aifs = new uint16_t[no_queues];
-
-//TODO: Better check for params. Better Error handling."
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmin[i] = v;
-    }
-    args.clear();
-    cp_spacevec(s_cwmax, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmax[i] = v;
-    }
-    args.clear();
-    cp_spacevec(s_aifs, args);
-    if ( args.size() < no_queues ) no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _aifs[i] = v;
-    }
-    args.clear();
-  }
   return 0;
 }
 
 int
 BRN2Device::initialize(ErrorHandler *)
 {
+  get_cca();
+
   return 0;
 }
 
@@ -285,18 +258,132 @@ BRN2Device::getTypeStringByInt(uint32_t type)
   return String(STRING_UNKNOWN, strlen(STRING_UNKNOWN));
 }
 
+/********************************************************************************************/
+/********************************************************************************************/
+/********************************************************************************************/
+
+void
+BRN2Device::get_cca()
+{
+  int cca[4];
+  cca[0] = 0; //command read
+  cca[1] = 0;
+  cca[2] = 0;
+  cca[3] = 0;
+
+#if CLICK_NS
+  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &cca);
+#endif
+
+  _rx_threshold = cca[1];
+  _cs_threshold = cca[2];
+  _cp_threshold = cca[3];
+}
+
+void
+BRN2Device::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
+{
+
+  if ( cs_threshold != 0 ) _cs_threshold = cs_threshold;
+  if ( rx_threshold != 0 ) _rx_threshold = rx_threshold;
+  if ( cp_threshold != 0 ) _cp_threshold = cp_threshold;
+
+#if CLICK_NS
+  int cca[4];
+  cca[0] = 1; //command set
+  cca[1] = _cs_threshold;
+  cca[2] = _rx_threshold;
+  cca[3] = _cp_threshold;
+
+  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &cca);
+#else
+  (void)cs_threshold;
+  (void)rx_threshold;
+  (void)cp_threshold;
+#endif
+}
+
+uint32_t
+BRN2Device::set_backoff()
+{
+#if CLICK_NS
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_SET_BACKOFF, _queue_info);
+#endif
+
+  return 0;
+}
+
+uint32_t
+BRN2Device::get_backoff()
+{
+#if CLICK_NS
+  if ( _no_queues == 0 ) {
+    int boq_info[2];
+    boq_info[0] = 0;
+    simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, boq_info);
+    _no_queues = boq_info[1];
+    if ( _no_queues > 0 ) {
+      _queue_info = new uint32_t[2 + 3 * _no_queues];
+      memset(_queue_info,0, (2 + 3 * _no_queues)*sizeof(uint32_t));
+      _cwmin = &_queue_info[2];
+      _cwmax = &_queue_info[2+_no_queues];
+      _aifs = &_queue_info[2 + (2 * _no_queues)];
+    }
+  }
+
+  _queue_info[0] = _no_queues;
+  _queue_info[1] = 0;
+
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, _queue_info);
+#endif
+  return 0;
+}
+
+int
+BRN2Device::set_power_iwconfig(int power, ErrorHandler *errh)
+{
+#if CLICK_USERLEVEL
+  StringAccum cmda;
+  if (access("/sbin/iwconfig", X_OK) == 0)
+    cmda << "/sbin/iwconfig";
+  else if (access("/usr/sbin/iwconfig", X_OK) == 0)
+    cmda << "/usr/sbin/iwconfig";
+  else
+    return 0;
+
+  cmda << " " << device_name;
+  cmda << " txpower " << power;
+  String cmd = cmda.take_string();
+
+  click_chatter("SetPower command: %s",cmd.c_str());
+
+  String out = shell_command_output_string(cmd, "", errh);
+  if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
+#else
+#if CLICK_NS
+
+#endif
+#endif
+
+  _power = power;
+
+  return 0;
+}
+
+
 String
 BRN2Device::device_info()
 {
   StringAccum sa;
   sa << "<device node=\"" << BRN_NODE_NAME << "\" name=\"" << getDeviceName() << "\" address=\"" << getEtherAddress()->unparse();
   sa << "\" fix_address=\"" << getEtherAddressFix()->unparse() << "\" type=\"" << getDeviceTypeString() << "\" >\n";
-  sa << "\t<queues count=\"" << (uint32_t)no_queues << "\" >\n";
+  sa << "\t<config power=\"" << _power << "\" >\n";
+  sa << "\t\t<queues count=\"" << (uint32_t)_no_queues << "\" >\n";
 
-  for ( uint32_t i = 0; i < no_queues; i++ )
-    sa << "\t\t<queue index=\"" << i << "\" cwmin=\"" << (uint32_t)_cwmin[i] << "\" cwmax=\"" << (uint32_t)_cwmax[i] << "\" aifs=\"" << (uint32_t)_aifs[i] << "\" />\n";
+  for ( uint32_t i = 0; i < _no_queues; i++ )
+    sa << "\t\t\t<queue index=\"" << i << "\" cwmin=\"" << (uint32_t)_cwmin[i] << "\" cwmax=\"" << (uint32_t)_cwmax[i] << "\" aifs=\"" << (uint32_t)_aifs[i] << "\" />\n";
 
-  sa << "\t</queues>\n</device>\n";
+  sa << "\t\t</queues>\n\t\t<cca rxthreshold=\"" << _rx_threshold << "\" csthreshold=\"" << _cs_threshold << "\" capture=\"" << _cp_threshold << "\"/>\n\t</config>\n</device>\n";
 
   return sa.take_string();
 }
@@ -342,6 +429,46 @@ write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*
   return 0;
 }
 
+static int
+write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  BRN2Device *f = (BRN2Device *)e;
+  String s = cp_uncomment(in_s);
+  uint32_t power;
+
+  if (!cp_integer(s, &power))
+   return errh->error("channel parameter must be integer");
+
+  f->set_power_iwconfig(power, errh);
+
+  return 0;
+}
+
+static String
+read_power(Element *e, void */*thunk*/)
+{
+  BRN2Device *dev = (BRN2Device *)e;
+  return String(dev->get_power());
+}
+
+static int
+write_cca(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  BRN2Device *f = (BRN2Device *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  int cs,rx,cp;
+  if (!cp_integer(args[0], &cs)) return errh->error("cs parameter must be integer");
+  if (!cp_integer(args[1], &rx)) return errh->error("rx parameter must be integer");
+  if (!cp_integer(args[2], &cp)) return errh->error("cp parameter must be integer");
+
+  f->set_cca(cs,rx,cp);
+
+  return 0;
+}
+
 void
 BRN2Device::add_handlers()
 {
@@ -349,9 +476,12 @@ BRN2Device::add_handlers()
 
   add_read_handler("deviceinfo", read_device_info, 0);
   add_read_handler("address", read_device_address, 0);
+  add_read_handler("power", read_power, 0);
 
   add_write_handler("reset_address", write_reset_address, 0);
   add_write_handler("address", write_address, 0);
+  add_write_handler("power", write_power, 0);
+  add_write_handler("cca", write_cca, 0);
 }
 
 CLICK_ENDDECLS

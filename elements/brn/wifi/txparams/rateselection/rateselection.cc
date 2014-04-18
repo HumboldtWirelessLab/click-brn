@@ -22,6 +22,35 @@ RateSelection::~RateSelection()
 {
 }
 
+void *
+RateSelection::cast(const char *name)
+{
+  if (strcmp(name, "RateSelection") == 0)
+    return (RateSelection *) this;
+  else if (strcmp(name, "Scheme") == 0)
+    return (Scheme *) this;
+  else
+    return NULL;
+}
+
+void
+RateSelection::set_strategy(uint32_t strategy)
+{
+  _strategy = strategy;
+}
+
+bool
+RateSelection::handle_strategy(uint32_t strategy)
+{
+  return (strategy == _default_strategy);
+}
+
+uint32_t
+RateSelection::get_strategy()
+{
+  return _default_strategy;
+}
+
 void
 RateSelection::sort_rates_by_data_rate(NeighbourRateInfo *nri)
 {

@@ -182,8 +182,8 @@ BRN2SimpleFlow::is_active(Flow *txFlow)
   if ( txFlow ) {
     Timestamp now = Timestamp::now();
     if ( txFlow->_active ) {
-      if ( ((now - txFlow->_start_time).msecval() <= txFlow->_duration) ||
-            (txFlow->_duration == 0)/*endless*/ ) {
+      BRN_DEBUG("%s %s %d %d",now.unparse().c_str(), txFlow->_start_time.unparse().c_str(),(now - txFlow->_start_time).msecval(), txFlow->_duration);
+      if ( (now <= txFlow->_end_time) || (txFlow->_duration == 0)/*endless*/ ) {
         return true;
       } else {
         txFlow->_active = false;
@@ -565,7 +565,7 @@ BRN2SimpleFlow::handle_reuse(Packet *packet)
 
   Flow *f_tx = _tx_flowMap.find(FlowID(src_ea, flow_id));
 
-  if ( (f_tx == NULL) || (!f_tx->_active) ) {
+  if (!is_active(f_tx)) {
     if (f_tx == NULL) BRN_ERROR("Flow is NULL: %s:%d",src_ea.unparse().c_str(),flow_id);
     packet->kill();
     return;

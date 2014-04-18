@@ -84,6 +84,10 @@ class BRN2Device : public BRNElement {
     inline uint8_t getChannel() { return _channel; }
     inline void setChannel(uint8_t c) { _channel = c; }
 
+    int set_power_iwconfig(int power, ErrorHandler *errh);
+
+    inline uint16_t get_power() { return _power;}
+
     String device_info();
 
   private:
@@ -124,21 +128,33 @@ class BRN2Device : public BRNElement {
     /** QueueCtrl */
     uint8_t _channel;
 
-    uint8_t no_queues;//number of queues
-    uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
-    uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
-    uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+    uint8_t _no_queues; //number of queues
+    uint32_t *_cwmin;   //Contention Window Minimum; Array (see: monitor)
+    uint32_t *_cwmax;   //Contention Window Maximum; Array (see:monitor)
+    uint32_t *_aifs;    //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+    uint32_t *_queue_info;
+
+    uint16_t _power;
+
+    /** CCA */
+    int _rx_threshold;
+    int _cs_threshold;
+    int _cp_threshold;
 
   public:
 
-    uint8_t get_no_queues() { return no_queues; }
-    uint16_t *get_cwmin() { return _cwmin; }
-    uint16_t *get_cwmax() { return _cwmax; }
-    uint16_t *get_aifs() { return _aifs; }
+    uint32_t set_backoff();
+    uint32_t get_backoff();
+    uint8_t get_no_queues() { return _no_queues; }
+    uint32_t *get_cwmin() { return _cwmin; }
+    uint32_t *get_cwmax() { return _cwmax; }
+    uint32_t *get_aifs() { return _aifs; }
 
     /** TX CONTROL **/
     int abort_transmission(EtherAddress &dst);
 
+    void set_cca(int cs_threshold, int rx_threshold, int cp_threshold);
+    void get_cca();
 };
 
 CLICK_ENDDECLS

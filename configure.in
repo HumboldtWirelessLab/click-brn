@@ -726,6 +726,15 @@ if test "$linux_version.$linux_patchlevel" = 2.6 -o "$linux_version" = 3; then
     LINUXMODULE_2_6=1
     AC_DEFINE([HAVE_LINUXMODULE_2_6], [1], [Define if the Click linuxmodule is compiled for a 2.6 or later kernel.])
 fi
+if test "$LINUXMODULE_2_6" = 0; then
+    AC_MSG_ERROR([
+=========================================
+
+Click no longer supports in-kernel compilation on Linux 2.4 kernels.
+Try an older version of Click.
+
+=========================================])
+fi
 AC_SUBST(LINUXMODULE_2_6)
 
 AC_CACHE_CHECK(for Click Linux kernel extensions, ac_cv_click_kernel,
@@ -830,38 +839,6 @@ AC_CACHE_CHECK(for <linux/ktime.h>, ac_cv_linux_ktime_h,
 else ac_cv_linux_ktime_h=no; fi])
 if test $ac_cv_linux_ktime_h = yes; then
     AC_DEFINE(HAVE_LINUX_KTIME_H)
-fi
-
-AC_CACHE_CHECK(for atomic_set_mask, ac_cv_linux_atomic_set_mask,
-[if grep atomic_set_mask `find_linuxpath include/asm/atomic.h` >/dev/null 2>&1; then
-  ac_cv_linux_atomic_set_mask=yes
-else ac_cv_linux_atomic_set_mask=no; fi])
-if test $ac_cv_linux_atomic_set_mask = yes; then
-    AC_DEFINE(HAVE_LINUX_ATOMIC_SET_MASK)
-fi
-
-AC_CACHE_CHECK(for atomic_add_return, ac_cv_linux_atomic_add_return,
-[if grep atomic_add_return `find_linuxpath include/asm/atomic.h` >/dev/null 2>&1; then
-  ac_cv_linux_atomic_add_return=yes
-else ac_cv_linux_atomic_add_return=no; fi])
-if test $ac_cv_linux_atomic_add_return = yes; then
-    AC_DEFINE(HAVE_LINUX_ATOMIC_ADD_RETURN)
-fi
-
-AC_CACHE_CHECK(for <asm/alternative.h>, ac_cv_linux_asm_alternative_h,
-[if test -r `find_linuxpath include/asm/alternative.h` >/dev/null 2>&1; then
-  ac_cv_linux_asm_alternative_h=yes
-else ac_cv_linux_asm_alternative_h=no; fi])
-if test $ac_cv_linux_asm_alternative_h = yes; then
-    AC_DEFINE(HAVE_LINUX_ASM_ALTERNATIVE_H)
-fi
-
-AC_CACHE_CHECK(for <asm/system.h>, ac_cv_linux_asm_system_h,
-[if test -r `find_linuxpath include/asm/system.h` >/dev/null 2>&1; then
-  ac_cv_linux_asm_system_h=yes
-else ac_cv_linux_asm_system_h=no; fi])
-if test $ac_cv_linux_asm_system_h = yes; then
-    AC_DEFINE(HAVE_LINUX_ASM_SYSTEM_H)
 fi
 
 fi
@@ -1284,8 +1261,8 @@ if test "$tccprefix" != no; then
 
     AC_LANG_C
     tccsavelibs="$LIBS"
-    LIBS="$LIBS -ldl"
-    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -L$tccprefix/lib"
+    LIBS="-ldl $LIBS -ldl"
+    saveflags="$LDFLAGS"; test -n "$tccprefix" && LDFLAGS="$LDFLAGS -ldl -L$tccprefix/lib"
     AC_CHECK_LIB(tcc, tcc_new, have_libtcc=yes, have_libtcc=no)
     LDFLAGS="$saveflags"
     LIBS="$tccsavelibs"
@@ -1293,7 +1270,7 @@ if test "$tccprefix" != no; then
     if test $have_tcc_h = yes -a $have_libtcc = yes; then
 	AC_DEFINE(HAVE_TCC)
 	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
-	TCC_LIBS="$TCC_LIBS -ltcc -ldl"
+	TCC_LIBS="$TCC_LIBS -ldl -ltcc -ldl"
         AC_DEFINE([HAVE_TCC], [1], [Define if you have -ltcc and libtcc.h.])
 	LIBS="$LIBS $TCC_LIBS"
     else
@@ -1320,6 +1297,58 @@ or --with-tcc=PREFIX.
 fi
 AC_SUBST(TCC_INCLUDES)
 AC_SUBST(TCC_LIBS)
+
+dnl lwip library
+
+explicit_lwip=no
+AC_ARG_WITH(lwip, [[  --with-lwip[=PREFIX]   locate lwip library (optional)]],
+  [lwipprefix=$withval; if test -z "$withval" -o "$withval" = yes; then lwipprefix=; fi],
+  lwipprefix=; explicit_lwip=no)
+
+if test "$lwipprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$lwipprefix" && CPPFLAGS="$CPPFLAGS -I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include"
+    AC_CHECK_HEADER(lwip/init.h, have_lwip_h=yes, have_lwip_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    lwipsavelibs="$LIBS"
+    saveflags="$LDFLAGS"; test -n "$lwipprefix" && LDFLAGS="$LDFLAGS -L$lwipprefix/lib"
+    AC_CHECK_LIB(lwip, lwip_init, have_liblwip=yes, have_liblwip=no)
+    LDFLAGS="$saveflags"
+    LIBS="$lwipsavelibs"
+
+    if test $have_lwip_h = yes -a $have_liblwip = yes; then
+	AC_DEFINE(HAVE_lwip)
+	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
+	LWIP_LIBS="$LWIP_LIBS -llwip"
+        AC_DEFINE([HAVE_LWIP], [1], [Define if you have -llwip and lwip/init.h.])
+	LIBS="$LIBS $LWIP_LIBS -llwip"
+	CPPFLAGS="$CPPFLAGS $LWIP_INCLUDES"
+	LDFLAGS="$LDFLAGS $LWIP_LIBS"
+    else
+      if test $explicit_lwip = yes; then
+	LWIP_INCLUDES= LWIP_LIBS=
+	AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-lwip, but the lwip headers and/or libraries
+are not where you said they would be.  Run again supplying --without-lwip
+or --with-lwip=PREFIX.
+
+=========================================])
+      fi
+
+      if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
+        FINDELEMFLAGS="$FINDELEMFLAGS,LwIP"
+      else
+        FINDELEMFLAGS="-x LwIP"
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LWIP_INCLUDES)
+AC_SUBST(LWIP_LIBS)
 
 
 dnl check linuxmodule for Linux
@@ -1409,7 +1438,8 @@ fixincludes.pl execution failed.
     AC_SUBST([LINUX_DEBUG_FLAGS])
 
 
-    CPPFLAGS="$save_cppflags $LINUX_CFLAGS"
+    # -w inhibits warning messages to make debugging actual errors easier
+    CPPFLAGS="$save_cppflags $LINUX_CFLAGS -w"
 
 
     # CLICK_LINUXMODULE_PROLOGUE()
@@ -1421,11 +1451,9 @@ fixincludes.pl execution failed.
 #endif
 "
     fi
-    AC_DEFUN([CLICK_LINUXMODULE_PROLOGUE], [[#if HAVE_LINUXMODULE_2_6
-# define KBUILD_STR(s)		#s
-# define KBUILD_BASENAME	KBUILD_STR(click)
-# define KBUILD_MODNAME		KBUILD_STR(click)
-#endif
+    AC_DEFUN([CLICK_LINUXMODULE_PROLOGUE], [[#define KBUILD_STR(s) #s
+#define KBUILD_BASENAME KBUILD_STR(click)
+#define KBUILD_MODNAME KBUILD_STR(click)
 #define new linux_new
 #define this linux_this
 #define delete linux_delete
@@ -1447,7 +1475,8 @@ $linux_autoconf_include
 	[AC_LANG_CPLUSPLUS
 	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
 #include <linux/signal.h>
-#include <linux/skbuff.h>]], [[return 0]])], ac_cv_cxx_aware_system=yes, ac_cv_cxx_aware_system=no)
+#include <linux/skbuff.h>
+#include <linux/sched.h>]], [[return 0]])], ac_cv_cxx_aware_system=yes, ac_cv_cxx_aware_system=no)
 	])
 
     if test $ac_cv_cxx_aware_system = yes; then
@@ -1486,6 +1515,9 @@ file for more information on the error.
 
 =========================================])
     fi
+
+    # remove -w
+    CPPFLAGS="$save_cppflags $LINUX_CFLAGS"
 
     if test $ac_cv_cxx_aware_system = yes; then
 
@@ -1528,7 +1560,39 @@ void f1(int64_t) { // will fail if long long and int64_t are the same type
     AC_CHECK_DECL(atomic_cmpxchg, [ac_cv_linux_atomic_cmpxchg=yes], [ac_cv_linux_atomic_cmpxchg=no], [CLICK_LINUXMODULE_PROLOGUE()[
 #include <asm/atomic.h>]])
     if test $ac_cv_linux_atomic_cmpxchg = yes; then
-	AC_DEFINE([HAVE_LINUX_ATOMIC_CMPXCHG], [1], [Define if you have the atomic_cmpxchg function.])
+	AC_DEFINE([HAVE_LINUX_ATOMIC_CMPXCHG], [1], [Define if your Linux kernel architecture defines atomic_cmpxchg.])
+    fi
+
+    AC_CHECK_DECL(atomic_set_mask, [ac_cv_linux_atomic_set_mask=yes], [ac_cv_linux_atomic_set_mask=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <asm/atomic.h>]])
+    if test $ac_cv_linux_atomic_set_mask = yes; then
+        AC_DEFINE([HAVE_LINUX_ATOMIC_SET_MASK], [1], [Define if your Linux kernel architecture defines atomic_set_mask.])
+    fi
+
+    AC_CHECK_DECL(atomic_add_return, [ac_cv_linux_atomic_add_return=yes], [ac_cv_linux_atomic_add_return=no], [CLICK_LINUXMODULE_PROLOGUE()[
+#include <asm/atomic.h>]])
+    if test $ac_cv_linux_atomic_add_return = yes; then
+        AC_DEFINE([HAVE_LINUX_ATOMIC_ADD_RETURN], [1], [Define if your Linux kernel architecture defines atomic_add_return.])
+    fi
+
+    AC_CACHE_CHECK([for <asm/alternative.h>], [ac_cv_linux_asm_alternative_h],
+	[AC_LANG_C
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
+#include <asm/alternative.h>]],
+[[]])],
+	[ac_cv_linux_asm_alternative_h=yes], [ac_cv_linux_asm_alternative_h=no])])
+    if test $ac_cv_linux_asm_alternative_h = yes; then
+	AC_DEFINE([HAVE_LINUX_ASM_ALTERNATIVE_H], [1], [Define if you have the <asm/alternative.h> header file.])
+    fi
+
+    AC_CACHE_CHECK([for <asm/system.h>], [ac_cv_linux_asm_system_h],
+	[AC_LANG_C
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([CLICK_LINUXMODULE_PROLOGUE()[
+#include <asm/system.h>]],
+[[]])],
+	[ac_cv_linux_asm_system_h=yes], [ac_cv_linux_asm_system_h=no])])
+    if test $ac_cv_linux_asm_system_h = yes; then
+	AC_DEFINE([HAVE_LINUX_ASM_SYSTEM_H], [1], [Define if you have the <asm/system.h> header file.])
     fi
 
 
@@ -1960,13 +2024,11 @@ fi
 
 dnl add provision for linux kernel version
 if test $ac_have_linux_kernel = y; then
-    linux_version_h=`find_linuxpath include/linux/version.h`
-    ac_linux_version_code=`grep LINUX_VERSION_CODE $linux_version_h | sed 's/^.*CODE //'`
-    if test $ac_linux_version_code -ge 131584 -a $ac_linux_version_code -lt 131840; then
+    if test $linux_version_code -ge 131584 -a $linux_version_code -lt 131840; then
 	provisions="$provisions linux_2_2"
-    elif test $ac_linux_version_code -ge 132096 -a $ac_linux_version_code -lt 132352; then
+    elif test $linux_version_code -ge 132096 -a $linux_version_code -lt 132352; then
 	provisions="$provisions linux_2_4"
-    elif test $ac_linux_version_code -ge 132608 -a $ac_linux_version_code -lt 132864; then
+    elif test $linux_version_code -ge 132608 -a $linux_version_code -lt 132864; then
 	provisions="$provisions linux_2_6"
     fi
 fi

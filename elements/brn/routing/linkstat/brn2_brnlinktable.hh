@@ -74,8 +74,12 @@ class EthernetPair {
     bool other(EtherAddress foo) { return ((_to == foo) ? _from : _to); }
 
     inline bool operator==(EthernetPair other) {
+#if CLICK_NS
+      return _hashcode == other._hashcode;
+#else
       if ( _hashcode != other._hashcode ) return false;
       return (other._to == _to && other._from == _from);
+#endif
     }
 };
 

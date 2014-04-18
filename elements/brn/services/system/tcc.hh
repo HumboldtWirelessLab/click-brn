@@ -9,22 +9,89 @@
 
 CLICK_DECLS
 
+#define DATATYPE_UNKNOWN      0
+#define DATATYPE_VOID         1
+#define DATATYPE_CHAR         2
+#define DATATYPE_INT          3
+#define DATATYPE_VOID_POINTER 4
+#define DATATYPE_CHAR_POINTER 5
+
+typedef struct datatype {
+  int type;
+  union {
+    char _char;
+    int  _int;
+    void* _voidp;
+    char* _charp;
+  };
+} DataType;
+
+typedef void (*WrapperFunction)(DataType *, DataType *);
+
+static uint8_t string_to_datatype(String _string_type) {
+  if ( _string_type == "void" ) return DATATYPE_VOID;
+  if ( _string_type == "char" ) return DATATYPE_CHAR;
+  if ( _string_type == "int" ) return DATATYPE_INT;
+  if ( _string_type == "void*" ) return DATATYPE_VOID_POINTER;
+  if ( _string_type == "char*" ) return DATATYPE_CHAR_POINTER;
+  return DATATYPE_UNKNOWN;
+}
+
 class TCC : public BRNElement {
-public:
+ public:
+
+  class TccFunction {
+   public:
+    String _name;
+    DataType _result;
+    Vector<DataType> _args;
+
+    String _c_wrapper_code;
+    String _c_code;
+
+    TCCState *_tcc_wrapper_s;
+    TCCState *_tcc_s;
+
+    WrapperFunction _wrapper_func;
+
+    uint32_t _no_calls;
+
+    TccFunction(String name, String result, Vector<String> args) {
+      String sresult = cp_uncomment(result);
+
+      _name = name;
+      _result.type = string_to_datatype(sresult);
+
+      for ( int i = 0; i < args.size(); i++ ) {
+        DataType dt;
+        dt.type = string_to_datatype(args[i]);
+        _args.push_back(dt);
+      }
+
+      _tcc_s = NULL;
+      _tcc_wrapper_s = NULL;
+
+      _no_calls = 0;
+    }
+  };
+
+  typedef HashMap<String, TccFunction*> TccFunctionMap;
+  typedef TccFunctionMap::const_iterator TccFunctionMapIter;
+
   TCC();
   ~TCC();
 
   const char *class_name() const { return "TCC"; }
-  const char *port_count() const { return "1/1"; }
+  const char *port_count() const { return "0-1/0-1"; }
   const char *processing() const { return AGNOSTIC; }
 
   int configure(Vector<String> &conf, ErrorHandler *errh);
   bool can_live_reconfigure() const { return false; }
-  int initialize();
+  int initialize(ErrorHandler *);
   void add_handlers();
 
   Packet* simple_action(Packet *p);
-  void add_code(String code);
+  void set_simple_action_code(String code);
   String stats();
 
   static void *tcc_packet_resize(void *, int, int);
@@ -34,9 +101,27 @@ public:
 
  private:
 
-   TCCState *_tcc_s;
+  TCCState *_tcc_s;
 
-   Packet *(*click_tcc_simple_action)(Packet *p);
+  Packet *(*click_tcc_simple_action)(Packet *p);
+
+  /*************************************************************/
+  /************ O T H E R   P R O C E D U R E S ****************/
+  /*************************************************************/
+
+  int compile_code(TCCState *tcc_s, String code);
+
+ public:
+
+  TccFunctionMap _func_map;
+  String _last_function;
+  String _last_result;
+
+  int add_function(String name, String result, Vector<String> args);
+  int del_function(String function);
+  int add_code(String function, String code);
+  int call_function(String function, Vector<String> args);
+
 };
 
 CLICK_ENDDECLS

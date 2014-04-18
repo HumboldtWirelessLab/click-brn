@@ -47,7 +47,7 @@
 CLICK_DECLS
 
 FromSimDevice::FromSimDevice()
-  : _packetbuf_size(0),_packetbuf(0)
+  : _packetbuf_size(0),_packetbuf(0),_zero_copy(false)
 {
 
 }
@@ -70,6 +70,7 @@ FromSimDevice::configure(Vector<String> &conf, ErrorHandler *errh)
       .read_p("SNAPLEN", _packetbuf_size)
       .read_p("HEADROOM", _headroom)
       .read_p("TAILROOM", _tailroom)
+      .read_p("ZEROCOPY", _zero_copy)
       .complete() < 0)
     return -1;
   if (_packetbuf_size > 8192 || _packetbuf_size < 128)
@@ -126,7 +127,7 @@ FromSimDevice::uninitialize()
 void
 FromSimDevice::set_annotations(Packet *p,int ptype)
 {
-  static char bcast_addr[] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+  static char bcast_addr[] = { (char)0xff, (char)0xff, (char)0xff, (char)0xff, (char)0xff, (char)0xff };
 
   if (SIMCLICK_PTYPE_ETHER == ptype) {
     // check if multicast
@@ -150,7 +151,14 @@ FromSimDevice::incoming_packet(int ifid,int ptype,const unsigned char* data,
   int result = 0;
   (void) ifid;
 
-  Packet *p = Packet::make(_headroom, data, len, _tailroom);
+  Packet *p = NULL;
+  if ( _zero_copy && (pinfo->zero_copy == 1)) {
+    p = Packet::make((unsigned char* )data, len, NULL);
+  } else {
+    p = Packet::make(_headroom, data, len, _tailroom);
+    pinfo->zero_copy = 0;
+  }
+
   set_annotations(p,ptype);
   p->set_sim_packetinfo(pinfo);
   output(0).push(p);

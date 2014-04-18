@@ -49,6 +49,7 @@ CLICK_DECLS
 
 Tos2QueueMapper::Tos2QueueMapper():
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
+    _current_scheme(0),
     _learning_current_bo(TOS2QM_DEFAULT_LEARNING_BO),
     _learning_count_up(0),
     _learning_count_down(0),
@@ -65,58 +66,34 @@ Tos2QueueMapper::Tos2QueueMapper():
     _feedback_cnt(0),
     _tx_cnt(0),
     _pkt_in_q(0),
-    _call_set_backoff(0),
-    _current_scheme(0),
-    _bo_schemes(0),
-    _no_schemes(0),
-    _scheme_id(-1)
+    _call_set_backoff(0)
 {
   BRNElement::init();
+  _scheme_list = SchemeList("BackoffScheme");
 }
 
 Tos2QueueMapper::~Tos2QueueMapper()
 {
-  delete[] _bo_schemes;
   delete[] _bo_exp;
   delete[] _bo_usage_usage;
   delete[] _last_bo_usage;
   delete[] _queue_usage;
-  delete[] _cwmin;
-  delete[] _cwmax;
-  delete[] _aifs;
   delete[] _all_bos;
 }
 
 int
 Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-  String s_cwmin = "";
-  String s_cwmax = "";
-  String s_aifs = "";
   String s_schemes = "";
 
   if (cp_va_kparse(conf, this, errh,
-      "CWMIN", cpkP, cpString, &s_cwmin,
-      "CWMAX", cpkP, cpString, &s_cwmax,
-      "AIFS", cpkP, cpString, &s_aifs,
+      "DEVICE", cpkP+cpkM, cpElement, &_device,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
-  parse_queues(s_cwmin, s_cwmax, s_aifs);
-  init_stats();
-
-  BRN_DEBUG("");
-  for (uint8_t i = 0; i < no_queues; i++)
-    BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
-
-#if CLICK_NS
-  get_backoff();
-#endif
-
-  if (s_schemes != "")
-    parse_bo_schemes(s_schemes, errh);
+  _scheme_list.set_scheme_string(s_schemes);
 
   return 0;
 }
@@ -144,126 +121,39 @@ Tos2QueueMapper::init_stats()
   }
 }
 
-void
-Tos2QueueMapper::parse_queues(String s_cwmin, String s_cwmax, String s_aifs)
-{
-  uint32_t v;
-  Vector<String> args;
-
-  cp_spacevec(s_cwmin, args);
-  no_queues = args.size();
-
-  if ( no_queues > 0 ) {
-    _cwmin = new uint16_t[no_queues];
-    _cwmax = new uint16_t[no_queues];
-    _aifs  = new uint16_t[no_queues];
-
-    for( uint8_t i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmin[i] = v;
-      if ( v > _learning_max_bo ) _learning_max_bo = v;
-    }
-    args.clear();
-
-    cp_spacevec(s_cwmax, args);
-    if ( args.size() < no_queues )
-      no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _cwmax[i] = v;
-    }
-    args.clear();
-
-    cp_spacevec(s_aifs, args);
-    if ( args.size() < no_queues )
-      no_queues = args.size();
-    for( int i = 0; i < no_queues; i++ ) {
-      cp_integer(args[i], &v);
-      _aifs[i] = v;
-    }
-    args.clear();
-  }
-
-#if CLICK_NS
-  get_backoff();
-#endif
-}
-
 int
-Tos2QueueMapper::parse_bo_schemes(String s_schemes, ErrorHandler* errh)
-{
-  Vector<String> schemes;
-
-  String s_schemes_uncomment = cp_uncomment(s_schemes);
-  cp_spacevec(s_schemes_uncomment, schemes);
-
-  _no_schemes = schemes.size();
-
-  if (_no_schemes == 0) {
-    BRN_DEBUG("Tos2QM.parse_bo_schemes(): No backoff schemes were given! STRAT = %d\n", _bqs_strategy);
-    _current_scheme = NULL;
-    return 0;
-  }
-
-  _bo_schemes = new BackoffScheme*[_no_schemes];
-
-  for (uint16_t i = 0; i < _no_schemes; i++) {
-    Element *e = cp_element(schemes[i], this, errh);
-    BackoffScheme *bo_scheme = (BackoffScheme *) e->cast("BackoffScheme");
-
-    if (!bo_scheme) {
-      return errh->error("Element is not a 'BackoffScheme'");
-    } else {
-      _bo_schemes[i] = bo_scheme;
-      _bo_schemes[i]->set_conf(_cwmin[0], _cwmin[no_queues - 1]);
-    }
-  }
-
-  BRN_DEBUG("Tos2QM.parse_bo_schemes(): strat %d no_schemes %d\n", _bqs_strategy, _no_schemes);
-
-  _current_scheme = get_bo_scheme(_bqs_strategy); // get responsible scheme
-
-  if ( _current_scheme != NULL ) {
-    _current_scheme->set_strategy(_bqs_strategy); // set final strategy on that scheme
-  }
-
-  return 0;
-}
-
-int
-Tos2QueueMapper::initialize (ErrorHandler *)
+Tos2QueueMapper::initialize (ErrorHandler *errh)
 {
   click_brn_srandom();
+
+  _scheme_list.parse_schemes(this, errh);
+  set_backoff_strategy(_bqs_strategy);
+
+  get_backoff();
+
+  init_stats();
+
   return 0;
 }
 
-BackoffScheme *Tos2QueueMapper::get_bo_scheme(uint16_t strategy)
+BackoffScheme *
+Tos2QueueMapper::get_bo_scheme(uint32_t strategy)
 {
-  for (uint16_t i = 0; i < _no_schemes; i++) {
-    if (_bo_schemes[i]->handle_strategy(strategy)) {
-      return _bo_schemes[i];
-    }
-  }
-
-  return NULL;
+  return (BackoffScheme *)_scheme_list.get_scheme(strategy);
 }
 
+void
+Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
+{
+  _bqs_strategy = strategy;
+  _current_scheme = get_bo_scheme(_bqs_strategy);
+  if ( _current_scheme ) _current_scheme->set_strategy(_bqs_strategy);
+}
 
 Packet *
 Tos2QueueMapper::simple_action(Packet *p)
 {
-  struct click_wifi *w = (struct click_wifi *) p->data();
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
-
-  if ( EtherAddress(w->i_addr1) == brn_etheraddress_broadcast ) {
-    _pkt_in_q++;
-    return p;
-  }
-
-/*if ( port == 1 ) {
-      handle_feedback(p);
-      return p;
-  }*/
 
   // TOS-Value from an application or user
   uint8_t tos = BRNPacketAnno::tos_anno(p);
@@ -289,13 +179,11 @@ Tos2QueueMapper::simple_action(Packet *p)
           _pkt_in_q++;
 
           _all_bos[_all_bos_idx] = opt_cwmin;
-          _all_bos_idx++;
+          _all_bos_idx=(_all_bos_idx+1)%TOS2QM_BOBUF_SIZE;
 
           return p;
     }
   }
-
-
 
   opt_queue = find_queue(opt_cwmin);
 
@@ -320,32 +208,12 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   if (TOS2QM_ALL_BOS_STATS) {
     _all_bos[_all_bos_idx] = opt_cwmin;
-    _all_bos_idx++;
+    _all_bos_idx=(_all_bos_idx+1)%TOS2QM_BOBUF_SIZE;
   }
 
   _pkt_in_q++;
   return p;
 }
-
-/*
-void
-Tos2QueueMapper::push(int port, Packet *p)
-{
-  if (Packet *q = smaction(p, port)) {
-    output(port).push(q);
-  }
-}
-
-Packet *
-Tos2QueueMapper::pull(int port)
-{
-  if (Packet *p = input(port).pull()) {
-    return smaction(p, port);
-  } else {
-    return 0;
-  }
-}
-*/
 
 void
 Tos2QueueMapper::handle_feedback(Packet *p)
@@ -394,8 +262,7 @@ Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
-  for (int i = 0; i <= no_queues-1; i++)
-    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) {
+  for (int i = 0; i <= no_queues-1; i++)    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) {
       if (backoff_window_size <= _cwmin[i+1]) return i+1;
 
       int dist_lower_queue = 1000000000 / ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
@@ -437,7 +304,6 @@ Tos2QueueMapper::get_queue_usage(uint8_t position)
 uint32_t
 Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step)
 {
-#if CLICK_NS
   uint32_t cwmin = backoff >> (tos*step);
   if ( cwmin <= 1 ) cwmin = 2;
 
@@ -447,51 +313,38 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t 
     _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
   }
 
-#else
-  BRN_DEBUG("Try to set queues BO: %d TOS: %d STEP: %d",backoff ,tos, step);
-#endif
   return 0;
 }
 
 uint32_t
 Tos2QueueMapper::set_backoff()
 {
-#if CLICK_NS
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
-  for ( int q = 0; q < no_queues; q++ ) {
-    queueinfo[1 + q] = _cwmin[q];
-    queueinfo[1 + no_queues + q] = _cwmax[q];
-  }
-
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_SET_BACKOFF, queueinfo);
-
-  delete[] queueinfo;
-
   _call_set_backoff++;
-#endif
+
+  _device->set_backoff();
+
   return 0;
 }
 
 uint32_t
 Tos2QueueMapper::get_backoff()
 {
-#if CLICK_NS
-  uint32_t *queueinfo = new uint32_t[1 + 2 * no_queues];
-  queueinfo[0] = no_queues;
+  /* Init queue stuff */
+  _device->get_backoff();
 
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, queueinfo);
+  no_queues = _device->get_no_queues();
 
-  int max_q = no_queues;
-  if ( queueinfo[0] < no_queues ) max_q = queueinfo[0];
-
-  for ( int q = 0; q < max_q; q++ ) {
-    _cwmin[q] = queueinfo[1 + q];
-    _cwmax[q] = queueinfo[1 + max_q + q];
+  if ( no_queues > 0 ) {
+    _cwmin = _device->get_cwmin();
+    _cwmax = _device->get_cwmax();
   }
 
-  delete[] queueinfo;
-#endif
+  _aifs  = NULL;
+
+  BRN_DEBUG("");
+  for (uint8_t i = 0; i < no_queues; i++)
+    BRN_DEBUG("Tos2QM.configure(): Q %d: %d %d\n", i, _cwmin[i], _cwmax[i]);
+
   return 0;
 }
 
@@ -524,7 +377,18 @@ Tos2QueueMapper::stats()
     sa << "\" exp=\"" << i;
     sa << "\" last_usage=\"" << _last_bo_usage[i].sec() << "\" />\n";
   }
-  sa << "\t</backoffusage>\n</tos2queuemapper>\n";
+  sa << "\t</backoffusage>\n";
+
+  sa << "\t<strategies>\n";
+    sa << "\t\t<strategy name=\"BoOff\" id=\"0\" active=\"" << (int)(_bqs_strategy==0?1:0) << "\" />\n";
+    sa << "\t\t<strategy name=\"BoDirect\" id=\"1\" active=\"" << (int)(_bqs_strategy==1?1:0) << "\" />\n";
+  for ( uint32_t i = 2; i <= _scheme_list._max_scheme_id; i++) {
+    Element *e = (Element *)_scheme_list.get_scheme(i);
+    if ( e == NULL ) continue;
+    sa << "\t\t<strategy name=\"" << e->class_name() << "\" id=\"" << i;
+    sa << "\" active=\"" << (int)(i==_bqs_strategy?1:0) << "\" />\n";
+  }
+  sa << "\t</strategies>\n</tos2queuemapper>\n";
   return sa.take_string();
 }
 
@@ -538,17 +402,17 @@ Tos2QueueMapper::bos()
     return sa.take_string();
   }
 
-  sa << "<tos2queuemapper node=\"" << BRN_NODE_NAME << "\" >\n";
+  sa << "<tos2queuemapper_bos node=\"" << BRN_NODE_NAME << "\" >\n";
   sa << "\t<all_bos>\n";
   sa << "\t\t<bos values=\"";
   for (uint32_t i = 0; i < TOS2QM_BOBUF_SIZE; i++) {
-    if (i > 0)
-      sa << ",";
+    if ( _all_bos[i] < 0 ) break;
+    if (i > 0) sa << ",";
     sa << _all_bos[i];
   }
   sa << "\" />\n";
   sa << "\t</all_bos>\n";
-  sa << "</tos2queuemapper>\n";
+  sa << "</tos2queuemapper_bos>\n";
 
   return sa.take_string();
 }
