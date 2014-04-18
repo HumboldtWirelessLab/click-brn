@@ -5,6 +5,7 @@
 #include <click/packet.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "elements/brn/standard/schemelist.hh"
 
 CLICK_DECLS
 
@@ -20,12 +21,13 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_CONSTANT                        8
 #define BACKOFF_STRATEGY_TX_AWARE                        9
 
-class BackoffScheme: public BRNElement {
+class BackoffScheme: public BRNElement, public Scheme {
 public:
   BackoffScheme();
   virtual ~BackoffScheme();
 
-  virtual bool handle_strategy(uint32_t strategy) = 0;
+  void *cast(const char *name);
+
   virtual int get_cwmin(Packet *p, uint8_t tos) = 0;
   virtual void handle_feedback(uint8_t retries) = 0;
 
@@ -35,7 +37,6 @@ public:
 protected:
   uint32_t _min_cwmin;
   uint32_t _max_cwmin;
-  uint32_t _strategy;
 };
 
 

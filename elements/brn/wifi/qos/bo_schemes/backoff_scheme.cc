@@ -13,6 +13,17 @@ BackoffScheme::~BackoffScheme()
 {
 }
 
+void *
+BackoffScheme::cast(const char *name)
+{
+  if (strcmp(name, "BackoffScheme") == 0)
+    return (BackoffScheme *) this;
+  else if (strcmp(name, "Scheme") == 0)
+    return (Scheme *) this;
+  else
+    return NULL;
+}
+
 void BackoffScheme::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;

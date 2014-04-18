@@ -70,6 +70,9 @@ ProbabilityFlooding::do_forward(EtherAddress *src, EtherAddress *, const EtherAd
   if (is_known) {
     /** node is already known;
      * Did we fwd the msg ?
+     *
+     * We maybe already forward the msg. If so, check wether enough neighbour have the msg and if we didn't send the msg yet->abort!
+     *
      */
     if ((fwd_cnt > 0) && (_cntbased_min_neighbors_for_abort > 0)) { //we forward the msg; should we abort?
 

@@ -103,9 +103,10 @@ ClickIno::true_prepare(Router *r, uint32_t generation)
 
     // exit early if router is empty
     if (nelem == 1) {
-	_generation = generation;
 	_router = r;
 	_x[0].flags = 0;
+        click_write_fence();
+	_generation = generation;
 	return 0;
     }
 
@@ -167,8 +168,9 @@ ClickIno::true_prepare(Router *r, uint32_t generation)
 
     // done
     _nentries = n;
-    _generation = generation;
     _router = r;
+    click_write_fence();
+    _generation = generation;
     return 0;
 }
 
@@ -327,7 +329,7 @@ check_handler_name(const String &hname)
 }
 
 int
-ClickIno::readdir(ino_t ino, uint32_t &f_pos, filldir_t filldir, void *thunk)
+ClickIno::readdir(ino_t ino, loff_t &f_pos, filldir_t filldir, void *thunk)
 {
     // File positions:
     // 0x000000           ..

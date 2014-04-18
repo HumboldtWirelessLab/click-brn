@@ -20,7 +20,6 @@ CLICK_DECLS
 
 BoChannelLoadAware::BoChannelLoadAware()
   : _cst(NULL),
-    _strategy(0),
     _current_bo(_bo_start),
     _target_busy(0),
     _target_diff(0),
@@ -30,6 +29,7 @@ BoChannelLoadAware::BoChannelLoadAware()
     _last_id(998)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_TX_AWARE;
 }
 
 BoChannelLoadAware::~BoChannelLoadAware()
@@ -40,10 +40,8 @@ void * BoChannelLoadAware::cast(const char *name)
 {
   if (strcmp(name, "BoChannelLoadAware") == 0)
     return (BoChannelLoadAware *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 int BoChannelLoadAware::configure(Vector<String> &conf, ErrorHandler* errh)
@@ -181,11 +179,6 @@ void BoChannelLoadAware::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;
   _max_cwmin = max;
-}
-
-void BoChannelLoadAware::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
 }
 
 void BoChannelLoadAware::increase_cw()

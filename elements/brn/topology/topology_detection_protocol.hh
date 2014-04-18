@@ -67,7 +67,7 @@ class TopologyDetectionLink {
       memcpy(tdl->src,_a.data(),6);
       memcpy(tdl->dst,_b.data(),6);
       if ( _is_bridge ) tdl->flags = tdl->flags | TD_LINK_FLAG_IS_BRIGDE;
-      else tdl->flags = tdl->flags & (!TD_LINK_FLAG_IS_BRIGDE);
+      else tdl->flags = tdl->flags & (~TD_LINK_FLAG_IS_BRIGDE);
     }
 
     void unserialize(struct td_link *tdl) {

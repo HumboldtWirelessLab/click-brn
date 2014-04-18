@@ -59,6 +59,7 @@ struct neighbour_airtime_stats {
   uint8_t _avg_rssi;
   uint8_t _std_rssi;
 
+  //TODO: relative values (percent) is better?
   uint32_t _duration;
 });
 

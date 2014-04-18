@@ -2129,7 +2129,7 @@ TCPSpeaker::add_handlers()
 {
     add_read_handler("num_connections", read_num_connections, (void *)0);
     add_read_handler("verb", read_verb, (void *)0);
-    add_write_handler("verb", write_verb, (void *)0, Handler::NONEXCLUSIVE);
+    add_write_handler("verb", write_verb, (void *)0, Handler::h_nonexclusive);
 }
 
 

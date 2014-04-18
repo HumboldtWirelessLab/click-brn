@@ -92,8 +92,12 @@ class EtherAddress { public:
 
     /** @brief Hash function. */
     inline size_t hashcode() const {
+#if CLICK_NS
+  return _data[2] << 8;
+#else
 	return (_data[2] | ((size_t) _data[1] << 16))
 	    ^ ((size_t) _data[0] << 9);
+#endif
     }
 
     // bool operator==(EtherAddress, EtherAddress);
@@ -168,9 +172,13 @@ EtherAddress::s() const
 inline bool
 operator==(const EtherAddress &a, const EtherAddress &b)
 {
+#if CLICK_NS
+    return (a.sdata()[2] == b.sdata()[2]);
+#else
     return (a.sdata()[2] == b.sdata()[2]
 	    && a.sdata()[1] == b.sdata()[1]
 	    && a.sdata()[0] == b.sdata()[0]);
+#endif
 }
 
 /** @relates EtherAddress

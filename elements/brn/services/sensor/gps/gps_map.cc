@@ -55,7 +55,7 @@ GPSMap::run_timer(Timer*)
   Timestamp now = Timestamp::now();
 
   for (TimestampMapIter iter = _time_map.begin(); iter.live(); iter++) {
-    BRN_ERROR("remove due to timeout: %s",iter.key().unparse().c_str());
+    BRN_DEBUG("remove due to timeout: %s",iter.key().unparse().c_str());
     if ( (now-iter.value()).msecval() > _timeout ) remove(iter.key());
   }
 }

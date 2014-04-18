@@ -19,8 +19,7 @@ class RtsCtsRandom: public RtsCtsScheme {
 
   int configure(Vector<String> &conf, ErrorHandler* errh);
 
-  bool set_rtscts(EtherAddress &dst, uint32_t size);
-  bool handle_strategy(uint32_t strategy) { return (strategy == RTS_CTS_STRATEGY_PLI);}
+  bool set_rtscts(PacketInfo *pinfo);
 
   uint32_t _prob;
 

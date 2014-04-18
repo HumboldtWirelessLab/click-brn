@@ -22,6 +22,10 @@ CLICK_BUILDTOOL = $(clickbuild_bindir)/click-buildtool
 CLICK_BUILDTOOL_FLAGS = -C $(clickbuild_prefix)
 CLICK_ELEM2PACKAGE = $(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) elem2package $(ELEM2PACKAGE_INCLUDES)
 
+ifdef MINDRIVER
+package := $(MINDRIVER)
+endif
+
 ifeq ($(CLICK_PACKAGE_MAKING),userlevel)
 include $(clickbuild_datadir)/pkg-userlevel.mk
 endif
@@ -82,7 +86,7 @@ elemlist:
 	for i in $(DRIVERS); do $(MAKE) CLICK_PACKAGE_MAKING=$$i elemlist; done
 
 elementmap-$(package).xml: $(clickbuild_bindir)/click-mkelemmap always
-	r="$(DRIVERS) $(package)"; echo $(srcdir) | $(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) findelem -r "$$r" -P | $(clickbuild_bindir)/click-mkelemmap -r "$(package)" -t "$(DRIVERS)" -s `cd $(srcdir) && pwd` > elementmap-$(package).xml
+	r="$(DRIVERS) $(package)"; echo $(srcdir) | $(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) findelem -r "$$r" -P $(CLICKFINDELEMFLAGS) | $(clickbuild_bindir)/click-mkelemmap -r "$(package)" -t "$(DRIVERS)" -s `cd $(srcdir) && pwd` > elementmap-$(package).xml
 
 install: install-obj install-man elementmap-$(package).xml always
 	$(mkinstalldirs) $(DESTDIR)$(clickdatadir)
@@ -92,15 +96,14 @@ install-obj: $(TARGETS) always
 	for i in $(TARGETS); do $(INSTALL_DATA) $$i $(DESTDIR)$(libdir)/$$i; done
 install-man: always elementmap-$(package).xml
 	$(mkinstalldirs) $(DESTDIR)$(mandir)
-	$(mkinstalldirs) $(DESTDIR)$(mandir)/mann
-	$(clickbuild_bindir)/click-elem2man -L -d $(DESTDIR)$(mandir)/mann -P $(package) -e $(clickbuild_datadir)/elementmap.xml elementmap-$(package).xml
+	$(clickbuild_bindir)/click-elem2man -L -m $(DESTDIR)$(mandir) -P $(package) -e $(clickbuild_datadir)/elementmap.xml elementmap-$(package).xml
 
 uninstall: uninstall-obj uninstall-man always
 	/bin/rm -f $(DESTDIR)$(clickdatadir)/elementmap-$(package).xml
 uninstall-obj: always
 	for i in $(TARGETS); do /bin/rm -f $(DESTDIR)$(libdir)/$$i; done
 uninstall-man: always elementmap-$(package).xml
-	$(clickbuild_bindir)/click-elem2man -L -d $(DESTDIR)$(mandir)/mann -P $(package) -e $(clickbuild_datadir)/elementmap.xml -u elementmap-$(package).xml
+	$(clickbuild_bindir)/click-elem2man -L -m $(DESTDIR)$(mandir) -P $(package) -e $(clickbuild_datadir)/elementmap.xml -u elementmap-$(package).xml
 
 clean: always
 	@for i in $(DRIVERS); do $(MAKE) CLICK_PACKAGE_MAKING=$$i clean; done

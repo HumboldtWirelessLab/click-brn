@@ -17,10 +17,10 @@
 CLICK_DECLS
 
 BoMaxThroughput::BoMaxThroughput()
-  : _cst(NULL),
-    _strategy(0)
+  : _cst(NULL)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_MAX_THROUGHPUT;
 }
 
 BoMaxThroughput::~BoMaxThroughput()
@@ -31,10 +31,8 @@ void * BoMaxThroughput::cast(const char *name)
 {
   if (strcmp(name, "BoMaxThroughput") == 0)
     return (BoMaxThroughput *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 int BoMaxThroughput::configure(Vector<String> &conf, ErrorHandler* errh)
@@ -50,11 +48,6 @@ int BoMaxThroughput::configure(Vector<String> &conf, ErrorHandler* errh)
 
 void BoMaxThroughput::add_handlers()
 {
-}
-
-bool BoMaxThroughput::handle_strategy(uint32_t strategy)
-{
-  return (strategy == BACKOFF_STRATEGY_MAX_THROUGHPUT) ? true : false;
 }
 
 
@@ -96,13 +89,6 @@ void BoMaxThroughput::handle_feedback(uint8_t retries)
 {
   (void) retries;
 }
-
-void BoMaxThroughput::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
-}
-
-
 
 CLICK_ENDDECLS
 

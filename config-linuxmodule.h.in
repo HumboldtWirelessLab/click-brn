@@ -43,7 +43,7 @@
 /* Define if your Linux kernel architecture defines atomic_set_mask. */
 #undef HAVE_LINUX_ATOMIC_SET_MASK
 
-/* Define if your Linux kernel architecture defines atomic_cmpxchg */
+/* Define if your Linux kernel architecture defines atomic_cmpxchg. */
 #undef HAVE_LINUX_ATOMIC_CMPXCHG
 
 /* Define if your Linux kernel has files_lock. */
@@ -216,7 +216,7 @@ typedef unsigned long uintptr_t;
 #endif
 
 /* Define KBUILD symbols. */
-#if !defined(KBUILD_STR) && HAVE_LINUXMODULE_2_6
+#if !defined(KBUILD_STR)
 # define KBUILD_STR(s)		#s
 # define KBUILD_BASENAME	KBUILD_STR(click)
 # define KBUILD_MODNAME		KBUILD_STR(click)

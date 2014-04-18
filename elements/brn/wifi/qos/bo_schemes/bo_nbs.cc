@@ -21,11 +21,11 @@ CLICK_DECLS
 BoNeighbours::BoNeighbours()
   : _cst(NULL),
     _cst_sync(0),
-    _strategy(0),
     _last_id(9999),
     _current_bo(_bo_start)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
 }
 
 
@@ -37,10 +37,8 @@ void * BoNeighbours::cast(const char *name)
 {
   if (strcmp(name, "BoNeighbours") == 0)
     return (BoNeighbours *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 
@@ -59,13 +57,6 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
 void BoNeighbours::add_handlers()
 {
 }
-
-
-bool BoNeighbours::handle_strategy(uint32_t strategy)
-{
-  return (strategy == BACKOFF_STRATEGY_NEIGHBOURS) ? true : false;
-}
-
 
 int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -108,11 +99,6 @@ void BoNeighbours::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;
   _max_cwmin = max;
-}
-
-void BoNeighbours::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
 }
 
 CLICK_ENDDECLS

@@ -18,10 +18,10 @@ CLICK_DECLS
 
 BoTargetPacketloss::BoTargetPacketloss()
   : _cst(NULL),
-    _target_packetloss(0),
-    _strategy(0)
+    _target_packetloss(0)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_TARGET_PACKETLOSS;
 }
 
 
@@ -29,15 +29,12 @@ void * BoTargetPacketloss::cast(const char *name)
 {
   if (strcmp(name, "BoTargetPacketloss") == 0)
     return (BoTargetPacketloss *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 int BoTargetPacketloss::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "TARGETPL", cpkP, cpInteger, &_target_packetloss,
@@ -49,11 +46,6 @@ int BoTargetPacketloss::configure(Vector<String> &conf, ErrorHandler* errh)
 
 void BoTargetPacketloss::add_handlers()
 {
-}
-
-bool BoTargetPacketloss::handle_strategy(uint32_t strategy)
-{
-  return (strategy == BACKOFF_STRATEGY_TARGET_PACKETLOSS) ? true : false;
 }
 
 int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
@@ -108,12 +100,6 @@ void BoTargetPacketloss::handle_feedback(uint8_t retries)
 {
   (void) retries;
 }
-
-void BoTargetPacketloss::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
-}
-
 
 CLICK_ENDDECLS
 

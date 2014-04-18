@@ -1,8 +1,9 @@
 # pkg-userlevel.mk -- build tools for Click
 # Eddie Kohler
 #
+# Copyright (c) 2006-2013 Eddie Kohler
 # Copyright (c) 2006-2007 Regents of the University of California
-# Copyright (c) 2011 Eddie Kohler
+# Copyright (c) 2013 President and Fellows of Harvard College
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
 # copy of this software and associated documentation files (the "Software"),
@@ -34,9 +35,14 @@ INCLUDES ?= $(CLICKINCLUDES)
 LDFLAGS ?= $(CLICKLDMODULEFLAGS)
 
 packagesrcdir ?= $(srcdir)
-PACKAGE_OBJS ?= upackage.uo
+PACKAGE_OBJS ?= $(package)-umain.u.o
 PACKAGE_LIBS ?=
 PACKAGE_DEPS ?=
+
+PACKAGE_CLEANFILES ?= $(package)-uelem.mk $(package)-umain.cc
+ifndef MINDRIVER
+PACKAGE_CLEANFILES += $(package)-uelem.conf
+endif
 
 STRIP_UPACKAGE ?= true
 
@@ -46,7 +52,7 @@ CXXLINK = $(CXXLD) $(CXXFLAGS) $(LDFLAGS) -o $@
 COMPILE = $(CC) $(CPPFLAGS) $(CFLAGS) $(PACKAGE_CFLAGS) $(DEFS) $(INCLUDES)
 CCLD = $(CC)
 LINK = $(CCLD) $(CFLAGS) $(LDFLAGS) -o $@
-FIXDEP = @-sed 's/\.o:/\.uo:/' < $*.d > $*.ud; /bin/rm -f $*.d
+FIXDEP = @-sed 's/\.o:/.u.o:/' < $*.d > $*.u.d; /bin/rm -f $*.d
 
 ifeq ($(V),1)
 ccompile = $(COMPILE) $(DEPCFLAGS) $(1)
@@ -61,19 +67,18 @@ cxxcompile_nodep = @/bin/echo ' ' $(2) $< && $(CXXCOMPILE) $(1)
 endif
 
 .SUFFIXES:
-.SUFFIXES: .c .cc .uo .uii
 
-.c.uo:
+%.u.o: %.c
 	$(call ccompile,-c $< -o $@,CC)
 	$(FIXDEP)
-.cc.uo:
+%.u.o: %.cc
 	$(call cxxcompile,-c $< -o $@,CXX)
 	$(FIXDEP)
-.cc.uii:
+%.u.ii: %.cc
 	$(call cxxcompile_nodep,-E $< > $@,CXXCPP)
 
 ifneq ($(MAKECMDGOALS),clean)
--include uelements.mk
+-include $(package)-uelem.mk
 endif
 
 OBJS = $(ELEMENT_OBJS) $(PACKAGE_OBJS)
@@ -82,20 +87,25 @@ $(package).uo: $(clickbuild_datadir)/pkg-userlevel.mk $(OBJS) $(PACKAGE_DEPS)
 	$(CXXLINK) -o $(package).uo $(OBJS) $(ELEMENT_LIBS) $(PACKAGE_LIBS)
 	$(STRIP_UPACKAGE) $(package).uo
 
-elemlist uelements.conf: $(CLICK_BUILDTOOL)
-	echo $(packagesrcdir) | $(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) findelem -r userlevel -r $(package) -P $(CLICKFINDELEMFLAGS) > uelements.conf
-uelements.mk: uelements.conf $(CLICK_BUILDTOOL)
-	$(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) elem2make -t userlevel < uelements.conf > uelements.mk
-upackage.cc: uelements.conf $(CLICK_BUILDTOOL)
-	$(CLICK_ELEM2PACKAGE) $(package) < uelements.conf > upackage.cc
-	@rm -f upackage.ud
+ifdef MINDRIVER
+elemlist:
+	@:
+else
+elemlist $(package)-uelem.conf: $(CLICK_BUILDTOOL)
+	echo $(packagesrcdir) | $(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) findelem -r userlevel -r $(package) -P $(CLICKFINDELEMFLAGS) > $(package)-uelem.conf
+endif
+$(package)-uelem.mk: $(package)-uelem.conf $(CLICK_BUILDTOOL)
+	$(CLICK_BUILDTOOL) $(CLICK_BUILDTOOL_FLAGS) elem2make -t userlevel < $(package)-uelem.conf > $(package)-uelem.mk
+$(package)-umain.cc: $(package)-uelem.conf $(CLICK_BUILDTOOL)
+	$(CLICK_ELEM2PACKAGE) $(package) < $(package)-uelem.conf > $(package)-umain.cc
+	@rm -f $(package)-umain.u.d
 
-DEPFILES := $(wildcard *.ud)
+DEPFILES := $(wildcard *.u.d)
 ifneq ($(DEPFILES),)
 include $(DEPFILES)
 endif
 
 clean:
-	-rm -f *.ud *.uo uelements.conf uelements.mk upackage.cc $(package).uo
+	-rm -f $(package).uo *.u.d *.u.o $(PACKAGE_CLEANFILES)
 
 .PHONY: clean elemlist

@@ -27,6 +27,8 @@
 #include <elements/brn/brn2.h>
 #include "elements/brn/wifi/brnwifi.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
+#include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats.hh"
+
 
 CLICK_DECLS
 
@@ -62,7 +64,7 @@ class HiddenNodeDetection : public BRNElement {
         bool _visible; //TODO: better solution
 
         NodeInfoTable _links_to;
-        HashMap<EtherAddress, Timestamp> _last_link_usage;
+        EtherTimestampMap _last_link_usage;
 
         NodeInfo(): _neighbour(false),_visible(true) {
           _last_notice_passive = _last_notice_active = Timestamp::now();
@@ -109,6 +111,8 @@ class HiddenNodeDetection : public BRNElement {
     void push(int, Packet *p);
     void run_timer(Timer *);
 
+    void handle_coop_channelstats();
+
     String stats_handler(int mode);
 
     inline HashMap<EtherAddress, NodeInfo*>* get_nodeinfo_table() {
@@ -124,9 +128,14 @@ class HiddenNodeDetection : public BRNElement {
 
     void remove_link(EtherAddress *sea, EtherAddress *dea);
 
+    int count_hidden_neighbours(const EtherAddress &);
+    int get_hidden_neighbours(const EtherAddress &, Vector<EtherAddress> *);
+
   private:
 
     BRN2Device *_device;
+
+    CooperativeChannelStats *_cocst;
 
     Timer _hn_del_timer;
     uint32_t _hd_del_interval;
@@ -136,6 +145,7 @@ class HiddenNodeDetection : public BRNElement {
     EtherAddress _last_data_dst;
     uint16_t _last_data_seq;
 
+    String _cocst_string;
 };
 
 CLICK_ENDDECLS

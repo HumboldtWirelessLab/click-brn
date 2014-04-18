@@ -25,7 +25,6 @@ public:
   void add_handlers();
 
   /* BackoffScheme */
-  bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
@@ -36,7 +35,6 @@ public:
   ~BoConstant();
 
 private:
-  void set_strategy(uint32_t strategy);
 
   void increase_cw();
   void decrease_cw();
@@ -47,7 +45,6 @@ private:
 
   ChannelStats *_cst;
 
-  uint32_t _strategy;
   uint16_t _const_bo;
 };
 

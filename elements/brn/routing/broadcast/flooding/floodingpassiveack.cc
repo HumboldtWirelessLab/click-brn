@@ -99,6 +99,9 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
 {
   if ( retries < 0 ) retries = _dfl_retries;
 
+  //check whether paket i enqued again:this would indicate an error in flooding or flooding policy
+  assert(NULL == get_pap(src, bcast_id));
+
   PassiveAckPacket *pap = new PassiveAckPacket(src, bcast_id, passiveack, retries);
 
   p_queue.push_back(pap);
@@ -231,6 +234,18 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 
   /* depends on nothing. Just like backoff */
   //return (click_random() % _dfl_interval);
+}
+
+FloodingPassiveAck::PassiveAckPacket*
+FloodingPassiveAck::get_pap(EtherAddress *src, uint16_t bcast_id)
+{
+  FloodingPassiveAck::PassiveAckPacket *pap = NULL;
+
+  for ( int i = 0; i < p_queue.size(); i++ ) {
+     pap = p_queue[i];
+     if ((pap->_bcast_id == bcast_id) && (pap->_src == *src)) return pap;
+  }
+  return NULL;
 }
 
 //-----------------------------------------------------------------------------

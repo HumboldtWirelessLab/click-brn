@@ -11,17 +11,23 @@ RtsCtsScheme::~RtsCtsScheme()
 {
 }
 
-void RtsCtsScheme::handle_feedback()
+void *
+RtsCtsScheme::cast(const char *name)
+{
+  if (strcmp(name, "RtsCtsScheme") == 0)
+    return (RtsCtsScheme *) this;
+  else if (strcmp(name, "Scheme") == 0)
+    return (Scheme *) this;
+  else
+    return NULL;
+}
+
+void RtsCtsScheme::handle_feedback(PacketInfo */*pinfo*/)
 {
 }
 
 void RtsCtsScheme::set_conf()
 {
-}
-
-void RtsCtsScheme::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
 }
 
 CLICK_ENDDECLS

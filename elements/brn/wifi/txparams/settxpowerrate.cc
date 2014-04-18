@@ -11,15 +11,17 @@
 
 CLICK_DECLS
 
-
 SetTXPowerRate::SetTXPowerRate():
+  _rtable(NULL),
   _rate_selection(NULL),
-  _cst(NULL),
+  _rate_selection_strategy(RATESELECTION_NONE),
+  _max_power(0),
   _timer(this),
-  _packet_size_threshold(0),
-  _offset(0)
+  _offset(0),
+  _has_wifi_header(0)
 {
   BRNElement::init();
+  _scheme_list = SchemeList(String("RateSelection"));
 }
 
 SetTXPowerRate::~SetTXPowerRate()
@@ -29,30 +31,43 @@ SetTXPowerRate::~SetTXPowerRate()
 int
 SetTXPowerRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  String rate_selection_string;
+
   if (cp_va_kparse(conf, this, errh,
-      "RT", cpkM+cpkP, cpElement, &_rtable,
-      "MAXPOWER", cpkM+cpkP, cpInteger, &_max_power,
-      "CHANNELSTATS", cpkP, cpElement, &_cst,
-      "RATESELECTION", cpkP, cpElement, &_rate_selection,
-      "THRESHOLD", cpkP, cpInteger, &_packet_size_threshold,
+      "RATESELECTIONS", cpkM+cpkP, cpString, &rate_selection_string,
+      "STRATEGY", cpkP, cpInteger, &_rate_selection_strategy,
+      "RT", cpkP, cpElement, &_rtable,
+      "POWER", cpkP, cpInteger, &_max_power,
       "OFFSET", cpkP, cpInteger, &_offset,
       "DEBUG", 0, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _scheme_list.set_scheme_string(rate_selection_string);
+  _has_wifi_header = ( _offset >= 0 );
+
   return 0;
 }
 
 
 int
-SetTXPowerRate::initialize(ErrorHandler *)
+SetTXPowerRate::initialize(ErrorHandler *errh)
 {
-  _rate_selection->init(_rtable);
-
   _timer.initialize(this);
 
-  if ( _rate_selection->get_adjust_period() > 0 ) {
-    _timer.schedule_now();
+  _scheme_list.parse_schemes(this, errh);
+
+  //TODO: use extra function for next steps
+  _rate_selection = get_rateselection(_rate_selection_strategy);
+
+  if ( _rate_selection ) {
+    if ( _rate_selection->get_adjust_period() > 0 ) {
+      _timer.schedule_now();
+    }
   }
+
+  if ( _rtable != NULL ) _rate_selection->init(_rtable);
+
   return 0;
 }
 
@@ -68,7 +83,18 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
 {
   if ( p == NULL ) return NULL;
 
-  struct click_wifi *wh = (struct click_wifi *) (p->data() + _offset);
+  EtherAddress dst;
+  EtherAddress src;
+
+  if ( _has_wifi_header ) {
+    dst = EtherAddress(((struct click_wifi *) p->data())->i_addr1);
+    src = EtherAddress(((struct click_wifi *) p->data())->i_addr2);
+  } else {
+    dst = EtherAddress(((click_ether*)p->data())->ether_dhost);
+    src = EtherAddress(((click_ether*)p->data())->ether_shost);
+  }
+
+  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
   click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
 
   NeighbourRateInfo *dsti;
@@ -76,26 +102,23 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
   switch (port) {
     case 0:                                       //Got packet from upper layer
         {
-          dsti = getDstInfo(EtherAddress(wh->i_addr1));
-          _rate_selection->assign_rate(ceh, dsti);
+          dsti = getDstInfo(dst);
+          _rate_selection->assign_rate(ceh, wee, dsti);
           break;
         }
    case 1:                                        // TXFEEDBACK
         {
-          EtherAddress dst = EtherAddress(wh->i_addr1);
-          bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
-
-          if (!(dst.is_group() || !ceh->rate || (success && p->length() < _packet_size_threshold))) {
+          if (!dst.is_group()) {
             dsti = getDstInfo(dst);  //dst of packet is other node (txfeedback)
 
-            _rate_selection->process_feedback(ceh, dsti);
+            _rate_selection->process_feedback(ceh, wee, dsti);
           }
           break;
         }
   case 2:                                         //received for other nodes
         {
-          dsti = getDstInfo(EtherAddress(wh->i_addr2));  //src of packet is other node
-          _rate_selection->process_foreign(ceh, dsti);
+          dsti = getDstInfo(src);  //src of packet is other node
+          _rate_selection->process_foreign(ceh, wee, dsti);
           break;
         }
   }
@@ -151,6 +174,16 @@ SetTXPowerRate::getInfo()
 
   return sa.take_string();
 }
+
+RateSelection *
+SetTXPowerRate::get_rateselection(uint32_t rateselection_strategy)
+{
+  return (RateSelection *)_scheme_list.get_scheme(rateselection_strategy);
+}
+
+/************************************************************************************************************/
+/**************************************** H A N D L E R *****************************************************/
+/************************************************************************************************************/
 
 enum {H_INFO};
 

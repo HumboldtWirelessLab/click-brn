@@ -35,7 +35,6 @@ public:
   ~BoChannelLoadAware();
 
 private:
-  void set_strategy(uint32_t strategy);
 
   void increase_cw();
   void decrease_cw();
@@ -50,7 +49,6 @@ private:
 
   ChannelStats *_cst;
 
-  uint32_t _strategy;
   uint32_t _current_bo;
 
   /* busy aware */

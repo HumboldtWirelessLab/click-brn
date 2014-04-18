@@ -23,7 +23,6 @@ CLICK_DECLS
 
 
 BoLearning::BoLearning() :
-  _strategy(0),
   _strict(0),
   _current_bo(_bo_start),
   _bo_cnt_up(0),
@@ -33,6 +32,7 @@ BoLearning::BoLearning() :
   _cap(0)
 {
   BRNElement::init();
+  _default_strategy = BACKOFF_STRATEGY_LEARNING;
 }
 
 
@@ -45,10 +45,8 @@ void * BoLearning::cast(const char *name)
 {
   if (strcmp(name, "BoLearning") == 0)
     return (BoLearning *) this;
-  else if (strcmp(name, "BackoffScheme") == 0)
-         return (BackoffScheme *) this;
-       else
-         return NULL;
+
+  return BackoffScheme::cast(name);
 }
 
 
@@ -69,12 +67,6 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
 
 void BoLearning::add_handlers()
 {
-}
-
-
-bool BoLearning::handle_strategy(uint32_t strategy)
-{
-  return (strategy == BACKOFF_STRATEGY_LEARNING) ? true : false;
 }
 
 
@@ -145,12 +137,6 @@ void BoLearning::decrease_cw()
 void BoLearning::keep_cw()
 {
 }
-
-void BoLearning::set_strategy(uint32_t strategy)
-{
-  _strategy = strategy;
-}
-
 
 CLICK_ENDDECLS
 

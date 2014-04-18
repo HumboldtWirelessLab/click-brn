@@ -37,7 +37,6 @@
 
 #include "flooding.hh"
 #include "floodingpolicy/floodingpolicy.hh"
-#include "../../identity/brn2_nodeidentity.hh"
 #include "piggyback/flooding_piggyback.hh"
 
 CLICK_DECLS
@@ -64,7 +63,8 @@ Flooding::Flooding()
     _flooding_rx_new_id(0),
     _flooding_fwd_new_id(0),
     _flooding_rx_ack(0),
-    _abort_tx_mode(0)
+    _abort_tx_mode(0),
+    _scheme_array(NULL)
 {
   BRNElement::init();
   reset_last_tx();
@@ -80,7 +80,8 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
-      "FLOODINGPOLICY", cpkP+cpkM, cpElement, &_flooding_policy,
+      "FLOODINGPOLICIES", cpkP+cpkM, cpString, &_scheme_string,
+      "FLOODINGSTRATEGY", cpkP+cpkM, cpInteger, &_flooding_strategy,
       "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
       "ABORTTX", cpkP, cpInteger, &_abort_tx_mode,
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -97,12 +98,15 @@ static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, uint16_
 }
 
 int
-Flooding::initialize(ErrorHandler *)
+Flooding::initialize(ErrorHandler *errh)
 {
   if (_flooding_passiveack != NULL ) {
     _flooding_passiveack->set_retransmit_bcast(this, static_retransmit_broadcast);
     _flooding_passiveack->set_flooding((Flooding*)this);
   }
+
+  parse_schemes(_scheme_string, errh);
+  _flooding_policy = get_flooding_scheme(_flooding_strategy);
 
   _flooding_policy->set_flooding((Flooding*)this);
 
@@ -405,6 +409,7 @@ Flooding::push( int port, Packet *packet )
 
     bool packet_is_tx_abort = false;
     int no_transmissions = 1;       //in the case of wired or broadcast
+    int no_rts_transmissions = 0;
 
     if ((!rx_node.is_broadcast()) && (_me->getDeviceByNumber(devicenr)->getDeviceType() == DEVICETYPE_WIRELESS)) {
       struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(packet);
@@ -417,10 +422,21 @@ Flooding::push( int port, Packet *packet )
       } else {
         no_transmissions = (int)ceh->retries + 1;
       }
+
+      if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
+        no_rts_transmissions = (int)(ceh->virt_col >> 4);
+        if (no_transmissions != (int)(ceh->virt_col & 15)) {
+          BRN_ERROR("notx: %d tx: %d rts: %d Pad: %d (Port: %d Abort: %d)", no_transmissions,(int)((int)ceh->virt_col & (int)15),
+                                                                            no_rts_transmissions, (int)ceh->virt_col,
+                                                                            port, (int)((ceh->flags & WIFI_EXTRA_TX_ABORT)?1:0));
+        }
+        //assert(no_transmissions == (int)(ceh->virt_col & 15));
+        no_transmissions = (int)(ceh->virt_col & 15);
+      }
     } //TODO: correct due to tx abort in the case of wired and/or broadcast (now assume 1 transmission)
 
     _flooding_sent += no_transmissions;
-    sent(&src, p_bcast_id, no_transmissions);
+    sent(&src, p_bcast_id, no_transmissions, no_rts_transmissions);
 
     if ( port == 2 ) { //txfeedback failure
       BRN_DEBUG("Flooding: TXFeedback failure\n");
@@ -647,13 +663,13 @@ Flooding::unfinished_forward_attempts(EtherAddress *src, uint16_t id)
 }
 
 void
-Flooding::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission)
+Flooding::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint32_t no_rts_transmissions)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
   if ( bcn == NULL ) return;
 
-  bcn->sent(id, no_transmission);
+  bcn->sent(id, no_transmission, no_rts_transmissions);
 }
 
 bool
@@ -780,6 +796,67 @@ Flooding::is_responsibility_target(EtherAddress *src, uint16_t id, EtherAddress 
   return false;
 }
 
+//-----------------------------------------------------------------------------
+// Schemes
+//-----------------------------------------------------------------------------
+
+int
+Flooding::parse_schemes(String s_schemes, ErrorHandler* errh)
+{
+  Vector<String> schemes;
+  String s = cp_uncomment(s_schemes);
+
+  cp_spacevec(s, schemes);
+
+  _max_scheme_id = 0;
+
+  if ( schemes.size() == 0 ) {
+    if ( _scheme_array != NULL ) delete[] _scheme_array;
+    _scheme_array = NULL;
+
+    return 0;
+  }
+
+  for (uint16_t i = 0; i < schemes.size(); i++) {
+    Element *e = cp_element(schemes[i], this, errh);
+    FloodingPolicy *flooding_scheme = (FloodingPolicy *)e->cast("FloodingPolicy");
+
+    if (!flooding_scheme) {
+      return errh->error("Element %s is not a 'FloodingPolicy'",schemes[i].c_str());
+    } else {
+      _schemes.push_back(flooding_scheme);
+      if ( _max_scheme_id < (uint32_t)flooding_scheme->floodingpolicy_id())
+        _max_scheme_id = flooding_scheme->floodingpolicy_id();
+    }
+  }
+
+  if ( _scheme_array != NULL ) delete[] _scheme_array;
+  _scheme_array = new FloodingPolicy*[_max_scheme_id + 1];
+
+  for ( uint32_t i = 0; i <= _max_scheme_id; i++ ) {
+    _scheme_array[i] = NULL; //Default
+    for ( uint32_t s = 0; s < (uint32_t)_schemes.size(); s++ ) {
+      if ( i == (uint32_t)_schemes[s]->floodingpolicy_id() ) {
+        _scheme_array[i] = _schemes[s];
+        break;
+      }
+    }
+  }
+
+  return 0;
+}
+
+FloodingPolicy *
+Flooding::get_flooding_scheme(uint32_t flooding_strategy)
+{
+  if ( flooding_strategy > _max_scheme_id ) return NULL;
+  return _scheme_array[flooding_strategy];
+}
+
+//-----------------------------------------------------------------------------
+// Stats
+//-----------------------------------------------------------------------------
+
 String
 Flooding::stats()
 {
@@ -831,7 +908,8 @@ Flooding::table()
       sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
       sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
       sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
-      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" time=\"";
+      sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" rts_sent=\"";
+      sa << (uint32_t)bcn->_bcast_rts_snd_list[i] << "\" time=\"";
       sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
 
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
