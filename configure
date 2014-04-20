@@ -10929,7 +10929,7 @@ or --with-tcc=PREFIX.
       if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
         FINDELEMFLAGS="$FINDELEMFLAGS,TCC"
       else
-        FINDELEMFLAGS="-x TCC"
+        FINDELEMFLAGS="$FINDELEMFLAGS -x TCC"
       fi
 
 
@@ -11041,7 +11041,7 @@ or --with-lwip=PREFIX.
       if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
         FINDELEMFLAGS="$FINDELEMFLAGS,LwIP"
       else
-        FINDELEMFLAGS="-x LwIP"
+        FINDELEMFLAGS="$FINDELEMFLAGS -x LwIP"
       fi
 
 
