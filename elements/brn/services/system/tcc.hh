@@ -5,6 +5,8 @@
 
 #include "elements/brn/brnelement.hh"
 
+#if HAVE_TCC
+
 #include "libtcc.h"
 
 CLICK_DECLS
@@ -125,4 +127,5 @@ class TCC : public BRNElement {
 };
 
 CLICK_ENDDECLS
+#endif
 #endif
