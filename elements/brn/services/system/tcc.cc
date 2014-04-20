@@ -7,6 +7,8 @@
 #include <strings.h>
 #include <string.h>
 
+#if defined(HAVE_TCC)
+ 
 #include "tcc.hh"
 
 CLICK_DECLS
@@ -379,3 +381,5 @@ void TCC::tcc_packet_kill(void *p) {
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(TCC)
+
+#endif
