@@ -302,5 +302,5 @@ bool KeyManagement::install_key_on_phy(Element *_wepencap, Element *_wepdecap) {
 
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
+ELEMENT_REQUIRES(userlevel|ns TLS)
 ELEMENT_PROVIDES(KeyManagement)
