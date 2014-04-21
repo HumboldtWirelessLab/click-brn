@@ -1217,7 +1217,6 @@ if test "$opensslprefix" != no; then
     LDFLAGS="$saveflags"
 
     if test $have_openssl_h = yes -a $have_libopenssl = yes; then
-	AC_DEFINE(HAVE_OPENSSL)
 	test -n "$opensslprefix" && OPENSSL_INCLUDES="-I$opensslprefix/include" && OPENSSL_LIBS="-L$opensslprefix/lib"
 	OPENSSL_LIBS="$OPENSSL_LIBS -lssl -lcrypto"
         AC_DEFINE([HAVE_OPENSSL], [1], [Define if you have -lssl, -lcrypto and openssl/opensslconf.h.])
@@ -1236,9 +1235,9 @@ or --with-openssl=PREFIX.
       fi
 
       if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
-        FINDELEMFLAGS="$FINDELEMFLAGS,FakeOpenSSL"
+        FINDELEMFLAGS="$FINDELEMFLAGS,TLS"
       else
-        FINDELEMFLAGS="$FINDELEMFLAGS -x FakeOpenSSL"
+        FINDELEMFLAGS="$FINDELEMFLAGS -x TLS"
       fi
 
       AC_SUBST([FINDELEMFLAGS])
@@ -1268,7 +1267,6 @@ if test "$tccprefix" != no; then
     LIBS="$tccsavelibs"
 
     if test $have_tcc_h = yes -a $have_libtcc = yes; then
-	AC_DEFINE(HAVE_TCC)
 	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
 	TCC_LIBS="$TCC_LIBS -ldl -ltcc -ldl"
         AC_DEFINE([HAVE_TCC], [1], [Define if you have -ltcc and libtcc.h.])
@@ -1318,7 +1316,6 @@ if test "$lwipprefix" != no; then
     LIBS="$lwipsavelibs"
 
     if test $have_lwip_h = yes -a $have_liblwip = yes; then
-	AC_DEFINE(HAVE_LWIP)
 	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
 	LWIP_LIBS="$LWIP_LIBS -llwip"
         AC_DEFINE([HAVE_LWIP], [1], [Define if you have -llwip and lwip/init.h.])
