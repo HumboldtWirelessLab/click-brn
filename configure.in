@@ -1238,7 +1238,7 @@ or --with-openssl=PREFIX.
       if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
         FINDELEMFLAGS="$FINDELEMFLAGS,FakeOpenSSL"
       else
-        FINDELEMFLAGS="-x FakeOpenSSL"
+        FINDELEMFLAGS="$FINDELEMFLAGS -x FakeOpenSSL"
       fi
 
       AC_SUBST([FINDELEMFLAGS])
@@ -1318,7 +1318,7 @@ if test "$lwipprefix" != no; then
     LIBS="$lwipsavelibs"
 
     if test $have_lwip_h = yes -a $have_liblwip = yes; then
-	AC_DEFINE(HAVE_lwip)
+	AC_DEFINE(HAVE_LWIP)
 	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
 	LWIP_LIBS="$LWIP_LIBS -llwip"
         AC_DEFINE([HAVE_LWIP], [1], [Define if you have -llwip and lwip/init.h.])
