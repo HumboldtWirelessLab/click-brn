@@ -213,15 +213,15 @@ BrnFloodingRate::get_min_power(EtherAddress& ether)
 
   if ( min_power_pdr_index == -1 ) return -1;
 
-  click_chatter("Min Power: %d (Basic rate: %d)",min_power, pl->_probe_types[min_power_pdr_index]._rate);
+  BRN_DEBUG("Min Power: %d (Basic rate: %d)",min_power, pl->_probe_types[min_power_pdr_index]._rate);
 
-  click_chatter("Further improvements:");
+  BRN_DEBUG("Further improvements:");
 
   ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
   uint32_t min_rssi = rssi_info->min_rssi_per_rate[pl->_probe_types[min_power_pdr_index]._rate];
   int down_steps_db = ((int)min_rx_power-(int)min_rssi);
 
-  click_chatter("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
+  BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
                                                                basic_rate._rate, min_rssi, down_steps_db);
 
   min_power -= down_steps_db;
@@ -263,13 +263,13 @@ BrnFloodingRate::get_best_rate_min_power(EtherAddress &ether, MCS *best_rate)
     }
   }
 
-  click_chatter("Eff Rate: %d", rate._data_rate);
+  BRN_DEBUG("Eff Rate: %d", rate._data_rate);
 
   ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
   uint32_t min_rssi = rssi_info->min_rssi_per_rate[rate._rate];
   int down_steps_db = ((int)min_rx_power-(int)min_rssi);
 
-  click_chatter("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
+  BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
                                                                basic_rate._rate, min_rssi, down_steps_db);
 
   min_power -= down_steps_db;
