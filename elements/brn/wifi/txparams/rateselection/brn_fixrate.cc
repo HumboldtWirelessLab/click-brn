@@ -11,7 +11,6 @@
 #include "elements/brn/brn2.h"
 #include "rateselection.hh"
 #include "brn_fixrate.hh"
-#include "../../../../bsdmodule/fastudpsrc.hh"
 
 CLICK_DECLS
 
