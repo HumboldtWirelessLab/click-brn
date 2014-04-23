@@ -329,7 +329,7 @@ SimDevice::print_psr()
         uint32_t rate = BrnWifi::getMCSRate(rate_index, rate_bw, rate_sgi);
         uint32_t psr = empirical_psr_ht[( 4 * (int)rate_index + 2 * (int)rate_bw + (int)rate_sgi )];
         sa << "\t\t\t\t<rate mcs_index=\"" << rate_index << "\" rate=\"" << rate << "\" psr=\"" << psr;
-        sa << "\" achivable_rate=\"" << (rate * psr)  << "\" />\n";
+        sa << "\" achievable_rate=\"" << (rate * psr)  << "\" unit=\"kbit/s\" />\n";
       }
       sa << "\t\t\t</htrate>\n";
     }
@@ -340,7 +340,7 @@ SimDevice::print_psr()
   for ( int i = 0; i < NO_NON_HT_RATES; i++ ) {
     uint32_t psr = empirical_psr_non_ht[i];
     sa << "\t\t\t<rate mode=\"" << abg_mode[i] << "\" ht40=\"0\" sgi=\"0\" mcs_index=\"0\" rate=\"";
-    sa << abg_rates[i] << "\" psr=\"" << psr << "\" achivable_rate=\"" << (abg_rates[i] * psr) << "\" />\n";
+    sa << abg_rates[i] << "\" psr=\"" << psr << "\" achievable_rate=\"" << (abg_rates[i] * psr) << "\" unit=\"kbit/s\" />\n";
   }
 
   sa << "\t\t</nonhtrates>\n\n\t</rates>\n</simdev>\n";
