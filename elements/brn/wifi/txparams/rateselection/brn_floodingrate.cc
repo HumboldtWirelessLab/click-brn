@@ -62,20 +62,11 @@ BrnFloodingRate::configure(Vector<String> &conf, ErrorHandler *errh)
 /************************************************************************************/
 /*********************************** M A I N ****************************************/
 /************************************************************************************/
-
 void
-BrnFloodingRate::adjust_all(NeighborTable * /*neighbors*/)
+BrnFloodingRate::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo * /*nri*/)
 {
-}
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
 
-void
-BrnFloodingRate::adjust(NeighborTable * /*neighbors*/, EtherAddress /*dst*/)
-{
-}
-
-void
-BrnFloodingRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
-{
   int no_transmissions = 1;
   int no_rts_transmissions = 0;
 
@@ -91,8 +82,10 @@ BrnFloodingRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_e
 }
 
 void
-BrnFloodingRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnFloodingRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   /* stats */
   _no_pkts++;
 
@@ -148,6 +141,20 @@ BrnFloodingRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_
       }
       break;
     case FLOODINGRATE_GROUP_MAXRATE:
+      uint16_t bcast_id;
+      EtherAddress *bcast_src = _flooding->get_last_tx(&bcast_id);
+      struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+      uint32_t last_nodes_size;
+      last_nodes = _flooding->get_last_nodes(&bcast_src, bcast_id, &last_nodes_size);
+
+      Vector<EtherAddress> known_neighbors;
+
+      for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                       //add node to candidate set if
+        if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&         //1. i'm responsible (due unicast before or fix set)
+           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) {               //2. is not acked
+        candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
+      } else {
+ */
       break;
     case FLOODINGRATE_GROUP_MINPOWER:
       break;
@@ -282,6 +289,8 @@ BrnFloodingRate::get_best_rate_min_power(EtherAddress &ether, MCS *best_rate)
 
   return 0;
 }
+
+
 
 /**
  * METRIC: Space Bits per Second

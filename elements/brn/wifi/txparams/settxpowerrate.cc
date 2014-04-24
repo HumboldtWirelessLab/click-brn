@@ -94,8 +94,12 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
     src = EtherAddress(((click_ether*)p->data())->ether_shost);
   }
 
-  struct brn_click_wifi_extra_extention *wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
-  click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+  struct rateselection_packet_info rs_pkt_info;
+
+  rs_pkt_info.wee = BrnWifi::get_brn_click_wifi_extra_extention(p);
+  rs_pkt_info.ceh = WIFI_EXTRA_ANNO(p);
+  rs_pkt_info.p = p;
+  rs_pkt_info.has_wifi_header = _has_wifi_header;
 
   NeighbourRateInfo *dsti;
 
@@ -103,7 +107,7 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
     case 0:                                       //Got packet from upper layer
         {
           dsti = getDstInfo(dst);
-          _rate_selection->assign_rate(ceh, wee, dsti);
+          _rate_selection->assign_rate(&rs_pkt_info, dsti);
           break;
         }
    case 1:                                        // TXFEEDBACK
@@ -111,14 +115,14 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
           if (!dst.is_group()) {
             dsti = getDstInfo(dst);  //dst of packet is other node (txfeedback)
 
-            _rate_selection->process_feedback(ceh, wee, dsti);
+            _rate_selection->process_feedback(&rs_pkt_info, dsti);
           }
           break;
         }
   case 2:                                         //received for other nodes
         {
           dsti = getDstInfo(src);  //src of packet is other node
-          _rate_selection->process_foreign(ceh, wee, dsti);
+          _rate_selection->process_foreign(&rs_pkt_info, dsti);
           break;
         }
   }

@@ -52,8 +52,10 @@ BrnAutoRateFallback::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BrnAutoRateFallback::process_feedback(click_wifi_extra *eh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnAutoRateFallback::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *eh = rs_pkt_info->ceh;
+
   bool success = !(eh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = (eh->flags & WIFI_EXTRA_TX_USED_ALT_RATE);
 
@@ -116,8 +118,10 @@ BrnAutoRateFallback::process_feedback(click_wifi_extra *eh, struct brn_click_wif
 }
 
 void
-BrnAutoRateFallback::assign_rate(click_wifi_extra *eh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnAutoRateFallback::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *eh = rs_pkt_info->ceh;
+
   if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {
       nri->_rates[0].setWifiRate(eh,0);
