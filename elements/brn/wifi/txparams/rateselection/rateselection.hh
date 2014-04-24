@@ -15,6 +15,13 @@ CLICK_DECLS
 #define RATESELECTION_AUTORATEFALLBACK  4 /* */
 #define RATESELECTION_FLOODING          5 /* */
 
+struct rateselection_packet_info {
+  click_wifi_extra *ceh;
+  struct brn_click_wifi_extra_extention *wee;
+  Packet *p;
+  bool has_wifi_header;
+};
+
 class RateSelection : public BRNElement, public Scheme
 {
   public:
@@ -31,8 +38,8 @@ class RateSelection : public BRNElement, public Scheme
     virtual uint32_t get_strategy();
     virtual void set_strategy(uint32_t strategy);
 
-    virtual void assign_rate(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *) = 0;
-    virtual void process_feedback(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *) = 0;
+    virtual void assign_rate(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
+    virtual void process_feedback(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
 
     virtual int get_adjust_period() { return 0;}
     virtual void adjust_all(NeighborTable *) {};
@@ -41,7 +48,7 @@ class RateSelection : public BRNElement, public Scheme
 
     virtual String print_neighbour_info(NeighbourRateInfo *, int tabs = 0) = 0;
 
-    void process_foreign(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *) {}
+    void process_foreign(struct rateselection_packet_info *, NeighbourRateInfo *) {}
 
     void sort_rates_by_data_rate(NeighbourRateInfo *);
 };
