@@ -121,6 +121,7 @@ class TCC : public BRNElement {
   int del_function(String function);
   int add_code(String function, String code);
   int call_function(String function, Vector<String> args);
+  bool have_function(String function);
 
 };
 

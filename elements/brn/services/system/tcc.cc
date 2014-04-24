@@ -277,6 +277,12 @@ TCC::call_function(String function, Vector<String> args)
   return 0;
 }
 
+bool
+TCC::have_function(String function)
+{
+  return (_func_map.findp(function) != NULL);
+}
+
 String
 TCC::stats()
 {
