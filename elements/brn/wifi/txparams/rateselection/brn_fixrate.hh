@@ -31,6 +31,7 @@ class BrnFixRate : public RateSelection
     void add_handlers();
 
     void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
+    void process_feedback(struct rateselection_packet_info *, NeighbourRateInfo *) {};
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
