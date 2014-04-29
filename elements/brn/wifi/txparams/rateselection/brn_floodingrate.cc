@@ -358,7 +358,6 @@ BrnFloodingRate::get_group_info(int mode, Vector<EtherAddress> &group, MCS *best
     BRN_DEBUG("Size: %d",erate_map.size());
 
     for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live(); i++) {
-      BRN_DEBUG("Index: %d",i);
       BrnRateSize brs = i.key();
       int effective_rate = i.value();
       int count = rate_counter.find(brs);
