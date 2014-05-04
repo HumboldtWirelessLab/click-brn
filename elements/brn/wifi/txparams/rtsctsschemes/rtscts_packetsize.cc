@@ -53,7 +53,7 @@ RtsCtsPacketSize::configure(Vector<String> &conf, ErrorHandler* errh)
 bool
 RtsCtsPacketSize::set_rtscts(PacketInfo *pinfo)
 {
-  uint32_t duration;
+  int32_t duration;
 
   if ( _pduration != 0 ) {
     //if ( pinfo->_ceh _is_ht )

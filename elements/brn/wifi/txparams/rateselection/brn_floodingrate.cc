@@ -504,7 +504,8 @@ BrnFloodingRate::print_stats(int /*tabs*/)
 {
   StringAccum sa;
 
-  FPN s = FPN(_saved_power_sum)/FPN(_no_pkts);
+  FPN s = FPN(0);
+  if ( _no_pkts > 0 ) s = FPN(_saved_power_sum)/FPN(_no_pkts);
 
   sa << "<floodingrateselection node=\"" << BRN_NODE_NAME << "\" no_pkts=\"" << _no_pkts;
   sa << "\" sum_saved_dbm=\""  << _saved_power_sum << "\" avg_saved_dbm=\""  << s << "\" >\n";
