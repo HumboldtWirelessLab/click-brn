@@ -243,7 +243,11 @@ class Handler { public:
 	USER_FLAG_SHIFT = h_user_flag_shift,
 	USER_FLAG_0 = h_user_flag_0
     };
-    enum CLICK_DEPRECATED DeprecatedEnums {
+#if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ == 1)
+    enum {
+#else
+    enum CLICK_DEPRECATED {
+#endif
 	EXCLUSIVE = h_exclusive,
 	NONEXCLUSIVE = h_nonexclusive
     };
