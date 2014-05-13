@@ -180,6 +180,8 @@ typedef LTable::const_iterator LTIter;
 
 class BrnLinkTableChangeInformant {
  public:
+  virtual ~BrnLinkTableChangeInformant() {};
+
   virtual void add_node(BrnHostInfo *) = 0;
   virtual void remove_node(BrnHostInfo *) = 0;
   //virtual void update_node(BrnHostInfo *) const = 0;
