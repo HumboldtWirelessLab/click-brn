@@ -18,6 +18,7 @@ String AODVPacketAnalyzer::getTypeString(int message_type){
 		case AODV_RREP_ACK_MESSAGE: return AODV_RREP_ACK_STRING;
 		default: assert(false);
 	}
+	return 0;
 }
 
 String AODVPacketAnalyzer::getMessageString(Packet *packet){
@@ -52,7 +53,10 @@ int AODVPacketAnalyzer::getMessageType(const String & type){
 	else if (type == AODV_RERR_STRING) return AODV_RERR_MESSAGE;
 	else if (type == AODV_RREP_ACK_STRING) return AODV_RREP_ACK_MESSAGE;
 	else if (type == AODV_DATA_STRING) return AODV_DATA_MESSAGE;
-	else assert(false); // unknown type
+
+  assert(false); // unknown type
+
+  return 0;
 }
 
 CLICK_ENDDECLS
