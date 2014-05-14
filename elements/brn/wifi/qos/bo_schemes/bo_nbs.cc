@@ -22,7 +22,7 @@ BoNeighbours::BoNeighbours()
   : _cst(NULL),
     _cst_sync(0),
     _last_id(9999),
-    _current_bo(_bo_start)
+    _current_bo(BO_NEIGHBOURS_START_BO)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
@@ -73,7 +73,7 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   _last_id = as->stats_id;
   int32_t nbs = as->no_sources;
 
-  _current_bo = ((alpha * nbs) - beta) / 10;
+  _current_bo = ((BO_NEIGHBOURS_ALPHA * nbs) - BO_NEIGHBOURS_BETA) / 10;
   BRN_DEBUG("formular bo: %d\n", _current_bo);
 
   if (_current_bo < (int)_min_cwmin)

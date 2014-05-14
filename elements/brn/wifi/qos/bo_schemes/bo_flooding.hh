@@ -1,18 +1,17 @@
 #ifndef BO_FLOODING_HH
 #define BO_FLOODING_HH
 
-#include <click/element.hh>
-#include <elements/brn/brnelement.hh>
+#include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 
 #include "backoff_scheme.hh"
 
 CLICK_DECLS
 
-
-
 class BoFlooding : public BackoffScheme {
-/* Derived Functions */
-public:
+ /* Derived Functions */
+ public:
   /* Element */
   const char *class_name() const  { return "BoFlooding"; }
   const char *processing() const  { return AGNOSTIC; }
@@ -26,17 +25,16 @@ public:
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
 
-public:
+ public:
   BoFlooding();
   ~BoFlooding();
 
-private:
-  static const uint16_t _bo_start  = 63; // initial backoff
+ private:
+  Flooding *_flooding;
+  FloodingHelper *_fhelper;
 
 };
 
-
-
 CLICK_ENDDECLS
 
-#endif /* BO_MAX_THROUGHPUT_HH */
+#endif /* BO_FLOODING_HH */
