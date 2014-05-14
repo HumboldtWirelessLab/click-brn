@@ -20,7 +20,7 @@ CLICK_DECLS
 
 BoChannelLoadAware::BoChannelLoadAware()
   : _cst(NULL),
-    _current_bo(_bo_start),
+    _current_bo(BO_CHANNELLOADAWARE_START_BO),
     _target_busy(0),
     _target_diff(0),
     _last_diff(0),
