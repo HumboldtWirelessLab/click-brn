@@ -554,6 +554,7 @@ AC_ARG_ENABLE([int64],
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(size_t)
+AC_CHECK_SIZEOF(ptrdiff_t)
 AC_CHECK_SIZEOF([void *])
 CLICK_CHECK_INTEGER_TYPES
 AC_ARG_ENABLE(ialign, [  --enable-ialign         whether target-maschine is indifferent to alignment], :, enable_ialign=no)
