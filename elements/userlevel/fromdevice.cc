@@ -84,6 +84,7 @@ int
 FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     bool promisc = false, outbound = false, sniffer = true, timestamp = true;
+    _protocol = 0;
     _snaplen = default_snaplen;
     _headroom = Packet::default_headroom;
     _tailroom = 0;
@@ -100,6 +101,7 @@ FromDevice::configure(Vector<String> &conf, ErrorHandler *errh)
 	.read("METHOD", WordArg(), capture)
 	.read("CAPTURE", WordArg(), capture) // deprecated
 	.read("BPF_FILTER", bpf_filter)
+	.read("PROTOCOL", _protocol)
 	.read("OUTBOUND", outbound)
 	.read("HEADROOM", _headroom)
   .read("TAILROOM", _tailroom)
@@ -500,7 +502,7 @@ FromDevice::selected(int, int)
 	socklen_t fromlen = sizeof(sa);
 	WritablePacket *p = Packet::make(_headroom, 0, _snaplen, _tailroom);
 	int len = recvfrom(_fd, p->data(), p->length(), MSG_TRUNC, (sockaddr *)&sa, &fromlen);
-	if (len > 0 && (sa.sll_pkttype != PACKET_OUTGOING || _outbound)) {
+	if (len > 0 && (sa.sll_pkttype != PACKET_OUTGOING || _outbound) && (ntohs(sa.sll_protocol) == _protocol || _protocol == 0)) {
 	    if (len > _snaplen) {
 		assert(p->length() == (uint32_t)_snaplen);
 		SET_EXTRA_LENGTH_ANNO(p, len - _snaplen);
