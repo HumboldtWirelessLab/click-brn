@@ -42,7 +42,12 @@ void DibadawnNodeStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
   click_chatter("<DEBUG  objectAddr='%d' />", this);
   
   if(topologyInfo != NULL)
-    topologyInfo->addBridge(&marking.nodeA, &marking.nodeB);
+  {
+    if(marking.isBridge)
+      topologyInfo->addBridge(&marking.nodeA, &marking.nodeB);
+    else
+      topologyInfo->removeBridge(&marking.nodeA, &marking.nodeB);
+  }
   
   lock.release();
 }
@@ -227,10 +232,13 @@ void DibadawnNodeStatistic::setTopologyInfo(TopologyInfo* topoInfo)
 
 void DibadawnNodeStatistic::upateArticulationPoint(const EtherAddress &node, bool isArticulationPoint)
 {
-  if(isArticulationPoint)
-     topologyInfo->addArticulationPoint(&node);
-  else
-    topologyInfo->removeArticulationPoint(&node);
+  if(topologyInfo != NULL)
+  {
+    if(isArticulationPoint)
+       topologyInfo->addArticulationPoint(&node);
+    else
+      topologyInfo->removeArticulationPoint(&node);
+  }
 }
 
 

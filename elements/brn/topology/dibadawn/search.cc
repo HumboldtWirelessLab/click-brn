@@ -95,7 +95,7 @@ void DibadawnSearch::forwardTimeout()
   detectCycles();
   forwardMessages();
   detectArticulationPoints();
-  voteForAccessPointsAndBridges();
+  voteForArticulaionPointsAndBridges();
 }
 
 void DibadawnSearch::detectCycles()
@@ -160,7 +160,7 @@ void DibadawnSearch::forwardMessages()
       // TODO votes
 
       DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, parent, false);
-       commonStatistic.updateEdgeMarking(marking);
+      commonStatistic.updateEdgeMarking(marking);
     }
 
     messageBuffer.clear();
@@ -184,8 +184,7 @@ void DibadawnSearch::detectArticulationPoints()
     for (size_t col = 0; col < num; col++)
     {
       DibadawnNeighbor &nodeB = adjacents.getNeighbor(col);
-
-      if (nodeA.hasNonEmptyIntersection(nodeB))
+      if (nodeA.hasNonEmptyPairIntersection(nodeB))
       {
         nodeA.printIntersection(addrOfThisNode, nodeB);
         closure.setTrue(row, col);
@@ -207,9 +206,9 @@ void DibadawnSearch::detectArticulationPoints()
   commonStatistic.upateArticulationPoint(addrOfThisNode, isArticulationPoint);
 }
 
-void DibadawnSearch::voteForAccessPointsAndBridges()
+void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
-  click_chatter("<NotImplemented node='%s' method='voteForAccessPointsAndBridges' />",
+  click_chatter("<NotImplemented node='%s' method='voteForArticulaionPointsAndBridges' />",
       addrOfThisNode.unparse_dash().c_str());
 }
 

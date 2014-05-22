@@ -125,20 +125,20 @@ TopologyInfo::topology_info(void)
   Bridge *br;
   ArticulationPoint *fp;
 
-  sa << "<topology_info node=\"" << BRN_NODE_NAME << "\" >\n";
-  sa << "\t<bridges count=\"" << _bridges.size() << "\" >\n";
+  sa << "<topology_info node='" << BRN_NODE_NAME << "' >\n";
+  sa << "\t<bridges count='" << _bridges.size() << "' >\n";
   for( int i = 0; i < _bridges.size(); i++ )
   {
     br = _bridges[i];
-    sa << "\t\t<bridge id=\"" << (i+1) << "\" node_a=\"" << br->node_a << "\" node_b=\"" << br->node_b << "\" />\n";
+    sa << "\t\t<bridge id='" << (i+1) << "' node_a='" << br->node_a << "' node_b='" << br->node_b << "' />\n";
   }
   sa << "\t</bridges>\n";
 
-  sa << "\t<articulationpoints count=\"" << _artpoints.size() << "\" >\n";
+  sa << "\t<articulationpoints count='" << _artpoints.size() << "' >\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     fp = _artpoints[i];
-    sa << "\t\t<articulationpoint id=\"" << (i+1) <<  "\" node=\"" << fp->node << "\" />\n";
+    sa << "\t\t<articulationpoint id='" << (i+1) <<  "' node='" << fp->node << "' />\n";
   }
   sa << "\t</articulationpoints>\n</topology_info>\n";
 
@@ -166,33 +166,29 @@ read_param(Element *e, void *thunk)
 static int
 write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
-  TopologyInfo *f = (TopologyInfo *)e;
+  TopologyInfo *topoInfo = (TopologyInfo *)e;
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
-
-  //int result = -1;
 
   switch((intptr_t)vparam) {
     case H_ARTICULATION_POINT: {
       EtherAddress ap;
       cp_ethernet_address(args[0], &ap);
 
-      f->addArticulationPoint(&ap);
+      topoInfo->addArticulationPoint(&ap);
       break;
     }
     case H_BRIDGE: {
-      EtherAddress a,b;
+      EtherAddress etherA, etherB;
 
-      cp_ethernet_address(args[0], &a);
-      cp_ethernet_address(args[1], &b);
+      cp_ethernet_address(args[0], &etherA);
+      cp_ethernet_address(args[1], &etherB);
 
-      f->addBridge(&a, &b);
+      topoInfo->addBridge(&etherA, &etherB);
       break;
     }
   }
-
-//  click_chatter("Result: %d",result);
 
   return 0;
 }
