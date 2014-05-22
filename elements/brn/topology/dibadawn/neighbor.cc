@@ -36,7 +36,7 @@ DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
   address = addr;
 }
 
-bool DibadawnNeighbor::hasNonEmptyIntersection(DibadawnNeighbor& other)
+bool DibadawnNeighbor::hasNonEmptyPairIntersection(DibadawnNeighbor& other)
 {
   for (int i = 0; i < messages.size(); i++)
   {

@@ -36,7 +36,6 @@ CLICK_DECLS;
 
 class DibadawnAlgorithm
 {
-public:
     EtherAddress thisNode;
     BRNElement *brn_click_element;
     Vector<DibadawnSearch*> searches;
