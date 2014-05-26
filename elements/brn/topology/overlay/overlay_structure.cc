@@ -65,6 +65,13 @@ OverlayStructure::initialize(ErrorHandler *)
   return 0;
 }
 
+void OverlayStructure::reset() {
+	parents.clear();
+	children.clear();
+	n_parents.clear();
+	n_children.clear();
+}	
+
 void OverlayStructure::addOwnParent (EtherAddress* add) {
 	for (Vector<EtherAddress>::iterator i=parents.begin();i!=parents.end();++i) {
 		if ((*i)==(*add)) return;
@@ -113,6 +120,64 @@ void OverlayStructure::addChild (EtherAddress* node, EtherAddress* add) {
 			if ((*i)==(*add)) return;
 		}
 		v->push_back(*add);
+	}
+}
+
+void OverlayStructure::removeOwnParent (EtherAddress* add) {
+	for (Vector<EtherAddress>::iterator i=parents.begin();i!=parents.end();++i) {
+		if ((*i)==(*add)) {
+			parents.erase(i);
+			return;
+		}
+	}
+}
+
+void OverlayStructure::removeOwnChild (EtherAddress* add) {
+	for (Vector<EtherAddress>::iterator i=children.begin();i!=children.end();++i) {
+		if ((*i)==(*add)) {
+			children.erase(i);
+			return;
+		}
+	}
+}
+
+void OverlayStructure::removeParent (EtherAddress* node, EtherAddress* add) {
+	if (_me->isIdentical(node)) {
+		removeOwnParent(add);
+		return;
+	}
+	Vector<EtherAddress>* v=n_parents.findp(*node);
+	if (v==0) {
+		Vector<EtherAddress> newadd;
+		newadd.push_back(*add);
+		n_parents.insert(*node,newadd);
+	} else {
+		for (Vector<EtherAddress>::iterator i=v->begin();i!=v->end();++i) {
+			if ((*i)==(*add)) {
+				v->erase(i);
+				return;
+			}
+		}
+	}
+}
+
+void OverlayStructure::removeChild (EtherAddress* node, EtherAddress* add) {
+	if (_me->isIdentical(node)) {
+		removeOwnChild(add);
+		return;
+	}
+	Vector<EtherAddress>* v=n_children.findp(*node);
+	if (v==0) {
+		Vector<EtherAddress> newadd;
+		newadd.push_back(*add);
+		n_children.insert(*node,newadd);
+	} else {
+		for (Vector<EtherAddress>::iterator i=v->begin();i!=v->end();++i) {
+			if ((*i)==(*add)) {
+				v->erase(i);
+				return;
+			}
+		}
 	}
 }
 
@@ -237,12 +302,12 @@ static int add_own_child (const String &in_s, Element *element, void */*thunk*/,
   String s = cp_uncomment(in_s);
   Vector<String> args;
   cp_spacevec(s, args);
-  click_chatter("Adding Child with data: %s",s.c_str());
+  //click_chatter("Adding Child with data: %s",s.c_str());
 
   EtherAddress address;
 
   if ( cp_ethernet_address(args[0], &address) ) {
-    click_chatter("Adding Child... %s",address.unparse().c_str());
+    //click_chatter("Adding Child... %s",address.unparse().c_str());
     ovl->addOwnChild(&address);
   }
 
@@ -285,6 +350,76 @@ static int add_child (const String &in_s, Element *element, void */*thunk*/, Err
   return 0;
 }
 
+static int remove_own_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
+{
+  OverlayStructure *ovl = (OverlayStructure *)element;
+
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  EtherAddress address;
+
+  if ( cp_ethernet_address(args[0], &address) ) {
+    ovl->removeOwnParent(&address);
+  }
+
+  return 0;
+}
+
+static int remove_own_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
+{
+  OverlayStructure *ovl = (OverlayStructure *)element;
+
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  EtherAddress address;
+
+  if ( cp_ethernet_address(args[0], &address) ) {
+    ovl->removeOwnChild(&address);
+  }
+
+  return 0;
+}
+
+static int remove_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
+{
+  //Notice that this only makes the node believe, that some node has a new parent, but it's not added to its parent list
+  OverlayStructure *ovl = (OverlayStructure *)element;
+
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  EtherAddress node, address;
+
+  if ( cp_ethernet_address(args[0], &node) && cp_ethernet_address(args[1], &address)) {
+    ovl->removeParent(&node,&address);
+  }
+
+  return 0;
+}
+
+static int remove_child (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
+{
+  //Notice that this only makes the node believe, that some node has a new child, but it's not added to its child list
+  OverlayStructure *ovl = (OverlayStructure *)element;
+
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  EtherAddress node, address;
+
+  if ( cp_ethernet_address(args[0], &node) && cp_ethernet_address(args[1], &address)) {
+    ovl->removeChild(&node,&address);
+  }
+
+  return 0;
+}
+
 static int set_pre (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
 	//click_chatter("set_pre0");
 	OverlayStructure *ovl = (OverlayStructure *)element;
@@ -303,6 +438,13 @@ static int set_pre (const String &in_s, Element *element, void */*thunk*/, Error
 	return 0;
 }
 
+static int reset_all (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
+	OverlayStructure *ovl = (OverlayStructure *)element;
+	
+    ovl->reset();
+	
+	return 0;
+}
 
 static String
 read_own_parents(Element *e, void */*thunk*/)
@@ -345,7 +487,12 @@ void OverlayStructure::add_handlers()
   add_write_handler("add_own_child", add_own_child , (void *) H_DEBUG);
   add_write_handler("add_parent", add_parent , (void *) H_DEBUG);
   add_write_handler("add_child", add_child , (void *) H_DEBUG);
+  add_write_handler("remove_own_parent", remove_own_parent , (void *) H_DEBUG);
+  add_write_handler("remove_own_child", remove_own_child , (void *) H_DEBUG);
+  add_write_handler("remove_parent", remove_parent , (void *) H_DEBUG);
+  add_write_handler("remove_child", remove_child , (void *) H_DEBUG);
   add_write_handler("set_pre", set_pre , (void *) H_DEBUG);
+  add_write_handler("reset", reset_all , (void *) H_DEBUG);
   add_read_handler("read_own_parents", read_own_parents , (void *)H_INFO);
   add_read_handler("read_own_children", read_own_children , (void *)H_INFO);
   add_read_handler("read_all_parents", read_all_parents , (void *)H_INFO);
