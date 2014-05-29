@@ -262,7 +262,8 @@ void
 BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
                           uint32_t size, uint32_t mode,
                           uint32_t interval, uint32_t burst,
-                          uint32_t duration, bool active, uint32_t start_delay )
+                          uint32_t duration, bool active, 
+                          uint32_t start_delay, String extra_data )
 {
   Flow *txFlow = new Flow(src, dst, _flow_id, (FlowType)mode, size, interval, burst, duration);
 
@@ -272,7 +273,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   txFlow->_next_time = txFlow->_start_time;
   txFlow->_end_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
 
-  txFlow->_extra_data = _extra_data;
+  txFlow->_extra_data = extra_data;
 
   _tx_flowMap.insert(FlowID(src,_flow_id), txFlow);
 
@@ -280,7 +281,16 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
 
   if ( start_delay == 0 ) set_active(txFlow, active);
   else schedule_next();
+}
 
+void
+BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
+                          uint32_t size, uint32_t mode,
+                          uint32_t interval, uint32_t burst,
+                          uint32_t duration, bool active, uint32_t start_delay )
+{
+  add_flow(src, dst, size, mode, interval, burst, 
+      duration, active, start_delay, _extra_data);
 }
 
 /**
@@ -700,7 +710,7 @@ BRN2SimpleFlow::add_flow(String conf)
   cp_spacevec(s, args);
 
   if ( args.size() < 7 ) {
-    BRN_WARN("Use: Src Dst interval size mode duration active");
+    BRN_WARN("Use: Src Dst interval size mode duration active is_burst start_delay extra_data");
     BRN_WARN("You send. %s",conf.c_str());
   }
 
@@ -712,9 +722,9 @@ BRN2SimpleFlow::add_flow(String conf)
   uint32_t mode;
   uint32_t duration;
   bool active;
-
   uint32_t burst = 1;
   int32_t  start_delay = 0;
+  String extra_data = "";
 
   BRN_DEBUG("ARGS: %s %s",args[0].c_str(), args[1].c_str());
 
@@ -738,8 +748,10 @@ BRN2SimpleFlow::add_flow(String conf)
 
   if ( args.size() > 7 ) cp_integer(args[7], &burst);
   if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
+  if ( args.size() > 9 ) extra_data = String(args[9]);
 
-  add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
+  add_flow( src, dst, size, mode, interval, burst, 
+      duration, active, start_delay, extra_data);
 
 }
 
