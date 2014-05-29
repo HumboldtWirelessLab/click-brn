@@ -288,6 +288,11 @@ class BRN2SimpleFlow : public BRNElement
                   uint32_t interval, uint32_t burst,
                   uint32_t duration, bool active,
                   uint32_t start_delay);
+    void add_flow(EtherAddress src, EtherAddress dst,
+                  uint32_t size, uint32_t mode,
+                  uint32_t interval, uint32_t burst,
+                  uint32_t duration, bool active,
+                  uint32_t start_delay, String extra_data);
 
     void add_flow(String flow_conf);
 
