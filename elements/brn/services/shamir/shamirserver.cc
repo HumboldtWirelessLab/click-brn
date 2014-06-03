@@ -211,5 +211,5 @@ void ShamirServer::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
+ELEMENT_REQUIRES(userlevel|ns TLS)
 EXPORT_ELEMENT(ShamirServer)

@@ -558,5 +558,5 @@ void TLS::add_handlers()
 }
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
+ELEMENT_REQUIRES(userlevel|ns)
 EXPORT_ELEMENT(TLS)

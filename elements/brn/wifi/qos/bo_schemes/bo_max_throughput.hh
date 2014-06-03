@@ -32,7 +32,6 @@ public:
   ~BoMaxThroughput();
 
 private:
-  static const uint16_t _bo_start  = 63; // initial backoff
 
   ChannelStats *_cst;
 };

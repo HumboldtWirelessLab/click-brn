@@ -91,7 +91,7 @@ Boid::run_timer(Timer *) {
   if ( _active ) {
     GPSPosition *own_pos = _gps->getPosition();
     BoidMove *bm = _behavior->compute_behavior(own_pos, _gpsmap, _glist, _plist);
-    _mob->move(bm->_direction._x, bm->_direction._y, bm->_direction._z, bm->_speed, bm->_move_type);
+    _mob->move((int)bm->_direction._x, (int)bm->_direction._y, (int)bm->_direction._z, (int)bm->_speed, bm->_move_type);
   }
 }
 

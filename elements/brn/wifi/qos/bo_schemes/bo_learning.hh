@@ -6,10 +6,10 @@
 
 #include "backoff_scheme.hh"
 
-
 CLICK_DECLS
 
-
+#define BO_LEARNING_START_BO 32
+#define BO_LEARNING_RETRY_THRESHOLD 1
 
 class BoLearning : public BackoffScheme {
 
@@ -43,9 +43,6 @@ private:
 
 /* Own Variables */
 private:
-  static const uint16_t _bo_start        = 32;   // initial backoff
-  static const uint8_t  _retry_threshold = 1;    // 1 retry == no change
-
   /* scheme flavour: strict */
   uint8_t _strict;
 

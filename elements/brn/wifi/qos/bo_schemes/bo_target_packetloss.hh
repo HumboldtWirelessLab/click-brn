@@ -9,7 +9,6 @@
 
 CLICK_DECLS
 
-
 class BoTargetPacketloss : public BackoffScheme {
 /* Derived Functions */
 public:
@@ -30,13 +29,10 @@ public:
   BoTargetPacketloss();
 
 private:
-  static const uint16_t _bo_start         = 63; // initial backoff
 
   ChannelStats *_cst;
   uint32_t _target_packetloss;
 };
-
-
 
 CLICK_ENDDECLS
 
