@@ -126,8 +126,10 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 }
 
 void
-BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnMadwifiRate::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
 
@@ -156,8 +158,10 @@ BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_ex
 }
 
 void
-BrnMadwifiRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnMadwifiRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {
       nri->_rates[0].setWifiRate(ceh,0);

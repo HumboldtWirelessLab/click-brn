@@ -20,6 +20,7 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_NEIGHBOURS                      7
 #define BACKOFF_STRATEGY_CONSTANT                        8
 #define BACKOFF_STRATEGY_TX_AWARE                        9
+#define BACKOFF_STRATEGY_FLOODING                       10
 
 class BackoffScheme: public BRNElement, public Scheme {
 public:

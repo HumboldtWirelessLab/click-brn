@@ -5,8 +5,6 @@
 
 #include "elements/brn/brnelement.hh"
 
-#if HAVE_TCC
-
 #include "libtcc.h"
 
 CLICK_DECLS
@@ -123,9 +121,9 @@ class TCC : public BRNElement {
   int del_function(String function);
   int add_code(String function, String code);
   int call_function(String function, Vector<String> args);
+  bool have_function(String function);
 
 };
 
 CLICK_ENDDECLS
-#endif
 #endif

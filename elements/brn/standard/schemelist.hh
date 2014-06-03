@@ -12,6 +12,7 @@ class Scheme {
  public:
 
   Scheme(): _default_strategy(0) {}
+  virtual ~Scheme() {}
 
   uint32_t _default_strategy;
   uint32_t _strategy;

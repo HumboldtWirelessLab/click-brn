@@ -29,9 +29,9 @@ class BrnMinstrelRate : public RateSelection
 
     void add_handlers();
 
-    void assign_rate(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *);
+    void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
-    void process_feedback(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *);
+    void process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 

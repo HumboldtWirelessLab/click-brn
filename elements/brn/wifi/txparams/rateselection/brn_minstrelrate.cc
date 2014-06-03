@@ -579,7 +579,7 @@ BrnMinstrelRate::adjust(NeighborTable * /*neighbors*/, EtherAddress /*dst*/)
 }
 
 void
-BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
+BrnMinstrelRate::process_feedback(struct rateselection_packet_info */*rs_pkt_info*/, NeighbourRateInfo * /*nri*/)
 {
 //  bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
 //  bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
@@ -596,7 +596,7 @@ BrnMinstrelRate::process_feedback(click_wifi_extra * /*ceh*/, struct brn_click_w
 }
 
 void
-BrnMinstrelRate::assign_rate(click_wifi_extra * /*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
+BrnMinstrelRate::assign_rate(struct rateselection_packet_info */*rs_pkt_info*/, NeighbourRateInfo * /*nri*/)
 {
   /*if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {

@@ -21,6 +21,14 @@ CLICK_DECLS
 class BrnFloodingRate : public RateSelection
 {
   public:
+    typedef HashMap<BrnRateSize, int> BrnRateSize2EffectiveRate;
+    typedef BrnRateSize2EffectiveRate::const_iterator BrnRateSize2EffectiveRateIter;
+
+    typedef HashMap<BrnRateSize, int> BrnRateSize2RSSI;
+    typedef BrnRateSize2RSSI::const_iterator BrnRateSize2RSSIIter;
+
+    typedef HashMap<BrnRateSize, int> BrnRateSize2Count;
+
     BrnFloodingRate();
     ~BrnFloodingRate();
 
@@ -38,12 +46,9 @@ class BrnFloodingRate : public RateSelection
 
     void add_handlers();
 
-    void adjust_all(NeighborTable *nt);
-    void adjust(NeighborTable *nt, EtherAddress);
+    void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
-    void assign_rate(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *);
-
-    void process_feedback(click_wifi_extra *, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *);
+    void process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
@@ -54,7 +59,14 @@ class BrnFloodingRate : public RateSelection
     int get_min_power(EtherAddress &ether);
     int get_best_rate_min_power(EtherAddress &ether, MCS *best_rate);
 
+    int get_best_rate_group(Vector<EtherAddress> &group, MCS *best_rate);
+    int get_min_power_group(Vector<EtherAddress> &group);
+    int get_best_rate_min_power_group(Vector<EtherAddress> &group, MCS *best_rate);
+
+    int get_group_info(int mode, Vector<EtherAddress> &group, MCS *best_rate);
+
     int metric_space_bits_per_second(MCS &rate, uint32_t tx_power);
+    void get_group(Vector<EtherAddress> *group);
 
     String print_stats(int /*tabs*/);
 
