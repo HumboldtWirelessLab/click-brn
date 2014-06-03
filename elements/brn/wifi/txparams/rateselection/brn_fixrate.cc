@@ -11,7 +11,6 @@
 #include "elements/brn/brn2.h"
 #include "rateselection.hh"
 #include "brn_fixrate.hh"
-#include "../../../../bsdmodule/fastudpsrc.hh"
 
 CLICK_DECLS
 
@@ -160,15 +159,11 @@ BrnFixRate::configure(Vector<String> &conf, ErrorHandler *errh)
 /************************************************************************************/
 /*********************************** M A I N ****************************************/
 /************************************************************************************/
-
 void
-BrnFixRate::process_feedback(click_wifi_extra */*ceh*/, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
+BrnFixRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo * /*nri*/)
 {
-}
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
 
-void
-BrnFixRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *wee, NeighbourRateInfo * /*nri*/)
-{
   if ( _set_power ) ceh->power = _power;
 
   if ( _set_rates ) {
@@ -184,7 +179,7 @@ BrnFixRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_exten
 
     ceh->flags |= _wifi_extra_flags;
 
-    memcpy(wee, &_mcs_flags, sizeof(struct brn_click_wifi_extra_extention));
+    memcpy(rs_pkt_info->wee, &_mcs_flags, sizeof(struct brn_click_wifi_extra_extention));
 
   }
 

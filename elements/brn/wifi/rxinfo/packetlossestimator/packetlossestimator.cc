@@ -180,8 +180,6 @@ void PacketLossEstimator::estimateHiddenNode(EtherAddress &src, EtherAddress &ds
               if (duration != 0) {
                   //TODO: fix Duration is Time (ms?)
                   hnProp = (duration * 100) / 1048576; /* 1024 * 1024 = 1Megab*/
-                  click_chatter("HNnew/old: %d/%f", hnProp, ((double)duration/1048576.0)*100.0);
-                  hnProp = ((double)duration/1048576.0)*100.0;
                   coopst = true;
               }
           }
@@ -245,7 +243,6 @@ void PacketLossEstimator::estimateInrange(EtherAddress &src, EtherAddress &)
     }
 
     uint16_t backoffsize = _dev->get_cwmax()[0];
-    //double temp = 1.0;
     uint64_t temp_a = 1;
     uint64_t temp_b = 1;
 
@@ -258,8 +255,7 @@ void PacketLossEstimator::estimateInrange(EtherAddress &src, EtherAddress &)
         irProp = 100;
     } else {
         for(int i = 1; i < neighbours; i++) {
-            //tofo
-            //temp *= (double(backoffsize) - double(i)) / double(backoffsize);
+            //temp *= (backoffsize - i) / backoffsize;
             if (temp_b > 429496) { //TODO: 429496 ???
                 temp_a /= 1000;
                 temp_b /= 1000;

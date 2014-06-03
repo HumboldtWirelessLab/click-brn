@@ -14,7 +14,7 @@ CLICK_DECLS
 
 class BoConstant : public BackoffScheme {
 /* Derived Functions */
-public:
+ public:
   /* Element */
   const char *class_name() const  { return "BoConstant"; }
   const char *processing() const  { return AGNOSTIC; }
@@ -29,20 +29,18 @@ public:
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
 
+ public:
 
-public:
   BoConstant();
   ~BoConstant();
 
-private:
+ private:
 
   void increase_cw();
   void decrease_cw();
 
 
 private:
-  static const uint16_t _id               = 8;  // unique bo scheme identifier
-
   ChannelStats *_cst;
 
   uint16_t _const_bo;

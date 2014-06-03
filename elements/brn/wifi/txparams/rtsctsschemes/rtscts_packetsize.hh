@@ -24,7 +24,7 @@ class RtsCtsPacketSize: public RtsCtsScheme {
   bool set_rtscts(PacketInfo *pinfo);
 
   uint32_t _psize;
-  uint32_t _pduration;
+  int32_t _pduration;
 
 };
 

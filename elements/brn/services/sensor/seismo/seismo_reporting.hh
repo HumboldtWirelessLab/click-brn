@@ -56,6 +56,8 @@ typedef SeismoAlarmList::const_iterator SeismoAlarmListIter;
 
 class SeismoDetectionAlgorithm {
  public:
+  virtual ~SeismoDetectionAlgorithm() {};
+
   virtual void update(SrcInfo *sibl, uint32_t next_new_block) = 0;
   virtual SeismoAlarmList *get_alarm() = 0;
 };

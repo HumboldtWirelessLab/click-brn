@@ -939,7 +939,23 @@ ChannelStats::stats_handler(int mode)
         }
       }
 
-      sa << "\t</rssi_stats_global>\n</channelstats>\n";
+      sa << "\t</rssi_stats_global>\n";
+
+#ifdef CLICK_NS
+      struct rx_tx_stats rxtxstats;
+      simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_RXTXSTATS, &rxtxstats);
+
+      sa << "\t<sim_stats>\n\t\t<txstats rts=\"" << rxtxstats.tx_no_rts_ << "\" cts=\"" << rxtxstats.tx_no_cts_;
+      sa << "\" data=\"" << rxtxstats.tx_no_data_ << "\" broadcast=\"" << rxtxstats.tx_no_bcast_;
+      sa << "\" unicast=\"" << rxtxstats.tx_no_unic_ << "\" ack=\"" << rxtxstats.tx_no_ack_ << "\" />\n";
+      sa << "\t\t<rxstats rts=\"" << rxtxstats.rx_no_rts_ << "\" cts=\"" << rxtxstats.rx_no_cts_;
+      sa << "\" data=\"" << rxtxstats.rx_no_data_ << "\" broadcast=\"" << rxtxstats.rx_no_bcast_;
+      sa << "\" unicast=\"" << rxtxstats.rx_no_unic_ << "\" ack=\"" << rxtxstats.rx_no_ack_ << "\" />\n";
+      sa << "\t\t<packetloss nodecol=\"" << rxtxstats.no_nodes_col_ << "\" packetcol=\"";
+      sa << rxtxstats.no_packets_col_ << "\" capture=\"" << rxtxstats.no_cap_ << "\" />\n\t</sim_stats>\n";
+#endif
+
+      sa << "</channelstats>\n";
 
   }
   return sa.take_string();
