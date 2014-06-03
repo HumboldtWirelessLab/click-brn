@@ -153,7 +153,6 @@ struct wifi_n_msdu_header {
   uint16_t len;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
-
 #define EXTRA_HEADER_OFFSET 14
 
 class BrnWifi
@@ -380,5 +379,29 @@ class BrnWifi
 };
 
 CLICK_ENDDECLS
+
+#ifdef CLICK_NS
+
+struct rx_tx_stats {
+  int tx_no_rts_;
+  int tx_no_cts_;
+  int tx_no_data_;
+  int tx_no_unic_;
+  int tx_no_bcast_;
+  int tx_no_ack_;
+
+  int rx_no_rts_;
+  int rx_no_cts_;
+  int rx_no_data_;
+  int rx_no_unic_;
+  int rx_no_bcast_;
+  int rx_no_ack_;
+
+  int no_nodes_col_;
+  int no_packets_col_;
+  int no_cap_;
+};
+
+#endif
 
 #endif /* !_BRNWIFI_H_ */

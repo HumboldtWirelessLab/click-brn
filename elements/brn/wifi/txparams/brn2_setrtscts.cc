@@ -44,7 +44,6 @@ int Brn2_SetRTSCTS::configure(Vector<String> &conf, ErrorHandler* errh)
         cpEnd) < 0) return -1;
 
   _scheme_list.set_scheme_string(scheme_string);
-  click_chatter("conf Scheme: %d",_rts_cts_strategy);
 
   return 0;
 }

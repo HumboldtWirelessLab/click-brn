@@ -62,20 +62,11 @@ BrnFloodingRate::configure(Vector<String> &conf, ErrorHandler *errh)
 /************************************************************************************/
 /*********************************** M A I N ****************************************/
 /************************************************************************************/
-
 void
-BrnFloodingRate::adjust_all(NeighborTable * /*neighbors*/)
+BrnFloodingRate::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo * /*nri*/)
 {
-}
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
 
-void
-BrnFloodingRate::adjust(NeighborTable * /*neighbors*/, EtherAddress /*dst*/)
-{
-}
-
-void
-BrnFloodingRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo * /*nri*/)
-{
   int no_transmissions = 1;
   int no_rts_transmissions = 0;
 
@@ -91,8 +82,10 @@ BrnFloodingRate::process_feedback(click_wifi_extra *ceh, struct brn_click_wifi_e
 }
 
 void
-BrnFloodingRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_extention *, NeighbourRateInfo *nri)
+BrnFloodingRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   /* stats */
   _no_pkts++;
 
@@ -126,10 +119,13 @@ BrnFloodingRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_
     case FLOODINGRATE_SINGLE_MINPOWER:
       nri->_rates[0].setWifiRate(ceh, 0);
 
-      if ( nri->_eth.is_group() ) ceh->max_tries = 1;
-      else ceh->max_tries = _dflt_retries;
-
-      ceh->power = get_min_power(nri->_eth);
+      if ( nri->_eth.is_group() ) {
+        ceh->max_tries = 1;
+        ceh->power = nri->_max_power;
+      } else {
+        ceh->max_tries = _dflt_retries;
+        ceh->power = get_min_power(nri->_eth);
+      }
 
       break;
     case FLOODINGRATE_SINGLE_BEST_POWER_RATE:
@@ -147,13 +143,47 @@ BrnFloodingRate::assign_rate(click_wifi_extra *ceh, struct brn_click_wifi_extra_
         mcs.setWifiRate(ceh, 0);
       }
       break;
-    case FLOODINGRATE_GROUP_MAXRATE:
-      break;
-    case FLOODINGRATE_GROUP_MINPOWER:
-      break;
-    case FLOODINGRATE_GROUP_BEST_POWER_RATE:
-      //TODO: Idea: power sinkt mit abstand^2, mit doppeltem abstand 
+    case FLOODINGRATE_GROUP_MAXRATE: {
+        Vector<EtherAddress> target_group;
+        MCS mcs;
 
+        get_group(&target_group);
+
+        if ( get_best_rate_group(target_group, &mcs) == -1 ) {
+          BRN_WARN("Error while getting best rate for %s",nri->_eth.unparse().c_str());
+        }
+
+        mcs.setWifiRate(ceh, 0);
+        ceh->power = nri->_max_power;
+
+        if ( nri->_eth.is_group() ) ceh->max_tries = 1;
+        else ceh->max_tries = _dflt_retries;
+      }
+      break;
+    case FLOODINGRATE_GROUP_MINPOWER: {
+        if ( nri->_eth.is_group() ) ceh->max_tries = 1;
+        else ceh->max_tries = _dflt_retries;
+
+        nri->_rates[0].setWifiRate(ceh, 0);
+
+        Vector<EtherAddress> target_group;
+        get_group(&target_group);
+        ceh->power = get_min_power_group(target_group);
+      }
+      break;
+    case FLOODINGRATE_GROUP_BEST_POWER_RATE: {
+        //TODO: Idea: power sinkt mit abstand^2, mit doppeltem abstand 
+        if ( nri->_eth.is_group() ) ceh->max_tries = 1;
+        else ceh->max_tries = _dflt_retries;
+
+        Vector<EtherAddress> target_group;
+        get_group(&target_group);
+
+        MCS mcs;
+
+        ceh->power = get_best_rate_min_power_group(target_group, &mcs);
+        mcs.setWifiRate(ceh, 0);
+      }
       break;
   }
   return;
@@ -213,15 +243,15 @@ BrnFloodingRate::get_min_power(EtherAddress& ether)
 
   if ( min_power_pdr_index == -1 ) return -1;
 
-  click_chatter("Min Power: %d (Basic rate: %d)",min_power, pl->_probe_types[min_power_pdr_index]._rate);
+  BRN_DEBUG("Min Power: %d (Basic rate: %d)",min_power, pl->_probe_types[min_power_pdr_index]._rate);
 
-  click_chatter("Further improvements:");
+  BRN_DEBUG("Further improvements:");
 
   ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
   uint32_t min_rssi = rssi_info->min_rssi_per_rate[pl->_probe_types[min_power_pdr_index]._rate];
-  int down_steps_db = ((int)min_rx_power-(int)min_rssi);
+  int down_steps_db =  MAX(0,((int)min_rx_power-(int)min_rssi));
 
-  click_chatter("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
+  BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
                                                                basic_rate._rate, min_rssi, down_steps_db);
 
   min_power -= down_steps_db;
@@ -235,16 +265,13 @@ BrnFloodingRate::get_min_power(EtherAddress& ether)
 int
 BrnFloodingRate::get_best_rate_min_power(EtherAddress &ether, MCS *best_rate)
 {
-  uint32_t min_power_pdr = 0;
   uint32_t min_power = 255;
-  int min_power_pdr_index = -1;
   uint32_t min_rx_power = 255;
 
   MCS rate;
   uint32_t max_effective_rate = 0;
   int max_effective_rate_index = -1;
 
-  BrnRateSize basic_rate = _linkstat->_ads_rs[0];
   BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(ether);
 
   if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) return -1;
@@ -263,14 +290,14 @@ BrnFloodingRate::get_best_rate_min_power(EtherAddress &ether, MCS *best_rate)
     }
   }
 
-  click_chatter("Eff Rate: %d", rate._data_rate);
+  BRN_DEBUG("Eff Rate: %d", rate._data_rate);
 
   ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
   uint32_t min_rssi = rssi_info->min_rssi_per_rate[rate._rate];
   int down_steps_db = ((int)min_rx_power-(int)min_rssi);
 
-  click_chatter("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
-                                                               basic_rate._rate, min_rssi, down_steps_db);
+  BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", min_power, min_rx_power,
+                                                               rate._rate, min_rssi, down_steps_db);
 
   min_power -= down_steps_db;
 
@@ -280,24 +307,187 @@ BrnFloodingRate::get_best_rate_min_power(EtherAddress &ether, MCS *best_rate)
   /* stats */
   _saved_power_sum += down_steps_db;
 
+  return min_power;
+}
+
+int
+BrnFloodingRate::get_group_info(int mode, Vector<EtherAddress> &group, MCS *best_rate)
+{
+  BrnRateSize2EffectiveRate erate_map;
+  BrnRateSize2RSSI power_map;
+  BrnRateSize2Count rate_counter;
+
+  int *curr_erate_p;
+
+  MCS rate;
+
+  BRN_DEBUG("Group: %d",group.size());
+
+  for (int group_i = 0; group_i < group.size(); group_i++) {
+
+    BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(group[group_i]);
+
+    if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) continue;
+
+    for (int x = 0; x < pl->_probe_types.size(); x++) {
+      BrnRateSize brs = BrnRateSize(pl->_probe_types[x]._rate, pl->_probe_types[x]._size, pl->_probe_types[x]._power);
+
+      uint16_t probe_rate16 = pl->_probe_types[x]._rate;
+      rate.set_packed_16(probe_rate16);
+
+      uint32_t effective_rate = rate._data_rate * (uint32_t)pl->_fwd_rates[x];
+
+      BRN_DEBUG("Check Rate: %s (%d)",rate.to_string().c_str(), rate._data_rate);
+
+      if ( (curr_erate_p = erate_map.findp(brs)) == NULL ) {
+        erate_map.insert(brs, effective_rate);
+        power_map.insert(brs, (uint32_t)pl->_fwd_min_rx_powers[x]);
+        rate_counter.insert(brs,1);
+      } else {
+        erate_map.insert(brs, MIN(*curr_erate_p,(int)effective_rate));                               //insert Minrate for group
+        power_map.insert(brs, MIN(power_map.find(brs),(int)pl->_fwd_min_rx_powers[x]));
+        *(rate_counter.findp(brs)) += 1;
+      }
+    }
+  }
+
+  if ( mode == FLOODINGRATE_GROUP_MAXRATE ) {
+    uint32_t max_effective_rate = 0;
+    uint16_t max_effective_rate_mcs16 = 0;
+
+    BRN_DEBUG("Size: %d",erate_map.size());
+
+    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live(); i++) {
+      BrnRateSize brs = i.key();
+      int effective_rate = i.value();
+      int count = rate_counter.find(brs);
+
+      BRN_DEBUG("%d %d %d",(uint32_t)brs._rate, effective_rate, count);
+
+      if ((count == group.size()) && (effective_rate >= (int)max_effective_rate)) {
+        max_effective_rate = effective_rate;
+        max_effective_rate_mcs16 = brs._rate;
+      }
+    }
+
+    if ( max_effective_rate == 0 ) {
+      BRN_DEBUG("No rate for group");
+      return 0;
+    }
+
+    best_rate->set_packed_16(max_effective_rate_mcs16);
+
+    BRN_DEBUG("Group (%d) Rate: %s (%d)",group.size(),rate.to_string().c_str(), rate._data_rate);
+
+  } else if ( mode == FLOODINGRATE_GROUP_MINPOWER ) {
+    BrnRateSize basic_rate = _linkstat->_ads_rs[0];
+
+    ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
+    uint32_t min_rssi = rssi_info->min_rssi_per_rate[basic_rate._rate];
+    int down_steps_db = MAX(0,((int)power_map.find(basic_rate)-(int)min_rssi));
+
+    BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", (int)basic_rate._power, (int)power_map.find(basic_rate),
+                                                              basic_rate._rate, min_rssi, down_steps_db);
+
+    /* stats */
+    _saved_power_sum += down_steps_db;
+
+    return ((int)basic_rate._power - down_steps_db);
+  } else if ( mode == FLOODINGRATE_GROUP_BEST_POWER_RATE ) {
+    uint32_t max_effective_rate = 0;
+    uint16_t max_effective_rate_mcs16 = 0;
+
+    BRN_DEBUG("Size: %d",erate_map.size());
+
+    for (BrnRateSize2EffectiveRateIter i = erate_map.begin(); i.live(); i++) {
+      BrnRateSize brs = i.key();
+      int effective_rate = i.value();
+      int count = rate_counter.find(brs);
+
+      BRN_DEBUG("%d %d %d",(uint32_t)brs._rate, effective_rate, count);
+
+      if ((count == group.size()) && (effective_rate >= (int)max_effective_rate)) {
+        max_effective_rate = effective_rate;
+        max_effective_rate_mcs16 = brs._rate;
+      }
+    }
+
+    if ( max_effective_rate == 0 ) {
+      BRN_DEBUG("No rate for group");
+      return 0;
+    }
+
+    best_rate->set_packed_16(max_effective_rate_mcs16);
+
+    BRN_DEBUG("Group (%d) Rate: %s (%d)",group.size(),rate.to_string().c_str(), rate._data_rate);
+    BrnRateSize basic_rate = _linkstat->_ads_rs[0];
+
+    ChannelStats::RSSIInfo *rssi_info = _cst->get_rssi_summary();
+    uint32_t min_rssi = rssi_info->min_rssi_per_rate[max_effective_rate_mcs16];
+    int down_steps_db = MAX(0,((int)power_map.find(basic_rate)-(int)min_rssi));
+
+    BRN_DEBUG("TX: %d RX: %d For %d we need %d. so save %d", (int)basic_rate._power, (int)power_map.find(basic_rate),
+                                                              basic_rate._rate, min_rssi, down_steps_db);
+
+    /* stats */
+    _saved_power_sum += down_steps_db;
+
+    return ((int)basic_rate._power - down_steps_db);
+  }
   return 0;
 }
 
-/**
- * METRIC: Space Bits per Second
- *
- *  m =  (power
- *
+int
+BrnFloodingRate::get_best_rate_group(Vector<EtherAddress> &group, MCS *best_rate)
+{
+  return get_group_info(FLOODINGRATE_GROUP_MAXRATE, group, best_rate);
+}
+
+int
+BrnFloodingRate::get_min_power_group(Vector<EtherAddress> &group)
+{
+  return get_group_info(FLOODINGRATE_GROUP_MINPOWER, group, NULL);
+}
+
+int
+BrnFloodingRate::get_best_rate_min_power_group(Vector<EtherAddress> &group, MCS *best_rate)
+{
+  return get_group_info(FLOODINGRATE_GROUP_BEST_POWER_RATE, group, best_rate);
+}
+
+/*
  *  d ~ power^0.5  //d nimm mit wurzel(power) ab, weil A von Kugel ~ d^2
  *  A ~ d^2
  *  -> A ~ d^2 ~ (power^0.5)^2 ~ power
  *
  */
 int
-BrnFloodingRate::metric_space_bits_per_second(MCS &rate, uint32_t tx_power)
+BrnFloodingRate::metric_space_bits_per_second(MCS &/*rate*/, uint32_t /*tx_power*/)
 {
-  
+  return 0;
 }
+
+void
+BrnFloodingRate::get_group(Vector<EtherAddress> *group)
+{
+  uint16_t bcast_id;
+  EtherAddress *bcast_src = _flooding->get_last_tx(&bcast_id);
+
+  struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+  uint32_t last_nodes_size;
+  last_nodes = _flooding->get_last_nodes(bcast_src, bcast_id, &last_nodes_size);
+
+  Vector<EtherAddress> target_group;
+
+  for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                               //add node to candidate set if
+    if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) && //1. i'm responsible (due unicast before or fix set)
+        ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) {         //2. is not acked
+      group->push_back(EtherAddress(last_nodes[j].etheraddr));
+    }
+  }
+}
+
+
 
 String
 BrnFloodingRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
@@ -314,7 +504,8 @@ BrnFloodingRate::print_stats(int /*tabs*/)
 {
   StringAccum sa;
 
-  FPN s = FPN(_saved_power_sum)/FPN(_no_pkts);
+  FPN s = FPN(0);
+  if ( _no_pkts > 0 ) s = FPN(_saved_power_sum)/FPN(_no_pkts);
 
   sa << "<floodingrateselection node=\"" << BRN_NODE_NAME << "\" no_pkts=\"" << _no_pkts;
   sa << "\" sum_saved_dbm=\""  << _saved_power_sum << "\" avg_saved_dbm=\""  << s << "\" >\n";

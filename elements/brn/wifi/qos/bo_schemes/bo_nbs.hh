@@ -7,10 +7,11 @@
 #include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 #include "backoff_scheme.hh"
 
-
 CLICK_DECLS
 
-
+#define BO_NEIGHBOURS_START_BO 31
+#define BO_NEIGHBOURS_ALPHA 85
+#define BO_NEIGHBOURS_BETA 50
 
 class BoNeighbours : public BackoffScheme {
 /* Derived Functions */
@@ -29,22 +30,17 @@ public:
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
 
-
 public:
   BoNeighbours();
   ~BoNeighbours();
 
 private:
-  static const uint32_t _bo_start = 31;
-  static const uint8_t alpha = 85;
-  static const uint8_t beta  = 50;
 
   ChannelStats *_cst;
   uint8_t _cst_sync;
   uint32_t _last_id;
   int32_t _current_bo;
 };
-
 
 
 CLICK_ENDDECLS

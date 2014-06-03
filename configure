@@ -10794,8 +10794,6 @@ fi
     LDFLAGS="$saveflags"
 
     if test $have_openssl_h = yes -a $have_libopenssl = yes; then
-	$as_echo "#define HAVE_OPENSSL 1" >>confdefs.h
-
 	test -n "$opensslprefix" && OPENSSL_INCLUDES="-I$opensslprefix/include" && OPENSSL_LIBS="-L$opensslprefix/lib"
 	OPENSSL_LIBS="$OPENSSL_LIBS -lssl -lcrypto"
 
@@ -10816,9 +10814,9 @@ or --with-openssl=PREFIX.
       fi
 
       if test "x$enable_skip_elements" != xno -a "x$enable_skip_elements" != xyes; then
-        FINDELEMFLAGS="$FINDELEMFLAGS,FakeOpenSSL"
+        FINDELEMFLAGS="$FINDELEMFLAGS,TLS"
       else
-        FINDELEMFLAGS="-x FakeOpenSSL"
+        FINDELEMFLAGS="$FINDELEMFLAGS -x TLS"
       fi
 
 
@@ -10905,8 +10903,6 @@ fi
     LIBS="$tccsavelibs"
 
     if test $have_tcc_h = yes -a $have_libtcc = yes; then
-	$as_echo "#define HAVE_TCC 1" >>confdefs.h
-
 	test -n "$tccprefix" && TCC_INCLUDES="-I$tccprefix/include" && TCC_LIBS="-L$tccprefix/lib"
 	TCC_LIBS="$TCC_LIBS -ldl -ltcc -ldl"
 
@@ -11015,8 +11011,6 @@ fi
     LIBS="$lwipsavelibs"
 
     if test $have_lwip_h = yes -a $have_liblwip = yes; then
-	$as_echo "#define HAVE_lwip 1" >>confdefs.h
-
 	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
 	LWIP_LIBS="$LWIP_LIBS -llwip"
 

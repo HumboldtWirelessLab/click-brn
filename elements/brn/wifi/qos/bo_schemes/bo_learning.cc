@@ -24,7 +24,7 @@ CLICK_DECLS
 
 BoLearning::BoLearning() :
   _strict(0),
-  _current_bo(_bo_start),
+  _current_bo(BO_LEARNING_START_BO),
   _bo_cnt_up(0),
   _bo_cnt_down(0),
   _learning_min_cwmin(31),
@@ -84,12 +84,12 @@ void BoLearning::handle_feedback(uint8_t retries)
   BRN_DEBUG("    retries: %d\n", retries);
   BRN_DEBUG("    current bo: %d\n", _current_bo);
 
-  if (retries < _retry_threshold && _current_bo > 1)
+  if (retries < BO_LEARNING_RETRY_THRESHOLD && _current_bo > 1)
     decrease_cw();
-  else if (retries == _retry_threshold)
+  else if (retries == BO_LEARNING_RETRY_THRESHOLD)
     //keep_cw();
     increase_cw();
-  else if (retries > _retry_threshold) {
+  else if (retries > BO_LEARNING_RETRY_THRESHOLD) {
     if (_strict)
       increase_cw_strict(retries);
     else
@@ -123,7 +123,7 @@ void BoLearning::increase_cw()
 
 void BoLearning::increase_cw_strict(uint8_t retries)
 {
-  _bo_cnt_up += (retries - _retry_threshold);
+  _bo_cnt_up += (retries - BO_LEARNING_RETRY_THRESHOLD);
   _current_bo = _current_bo << retries;
 }
 

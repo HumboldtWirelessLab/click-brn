@@ -252,7 +252,8 @@ BrnCompoundHandler::read_handler()
 {
   StringAccum sa;
 
-  sa << "<compoundhandler time=\"" << Timestamp::now().unparse().c_str() << "\" recordmode=\"" << _record_mode << "\" updatemode=\"" << _update_mode << "\" >\n";
+  sa << "<compoundhandler node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse().c_str();
+  sa << "\" recordmode=\"" << _record_mode << "\" updatemode=\"" << _update_mode << "\" >\n";
 
   if ( _record_mode == RECORDMODE_LAST_ONLY ) {
     for ( int j = 0; j < _vec_handlers.size(); j++) {

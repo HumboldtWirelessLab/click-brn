@@ -147,6 +147,12 @@
 /* Define if you have -lssl and opensslconf.h. */
 #undef HAVE_OPENSSL
 
+/* Define if you have -ltcc */
+#undef HAVE_TCC
+
+/* Define if you have -llwip */
+#undef HAVE_LWIP
+
 /* Define if you have a non-emulated <poll.h> header file. */
 #undef HAVE_POLL_H
 
