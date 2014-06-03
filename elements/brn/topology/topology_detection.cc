@@ -135,19 +135,14 @@ enum
   H_START_DETECTION, H_TOPOLOGY_INFO
 };
 
-static int write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+static int write_param(const String &click_script_parameter, Element *e, void *vparam, ErrorHandler *errh)
 {
   TopologyDetection *topo = (TopologyDetection *) e;
-  String s = cp_uncomment(in_s);
+  String s = cp_uncomment(click_script_parameter);
   switch ((intptr_t) vparam) {
   case H_START_DETECTION:
-  { //debug
-    int start;
-    if (!cp_integer(s, &start))
-      return errh->error("start parameter must be Integer");
     topo->start_detection();
     break;
-  }
   }
   return 0;
 }
