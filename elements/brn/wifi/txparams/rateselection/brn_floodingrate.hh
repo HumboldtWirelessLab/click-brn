@@ -52,7 +52,7 @@ class BrnFloodingRate : public RateSelection
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
-    int get_adjust_period() { return -1; }
+    int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_NONE; }
 
     /** internal functions **/
     int get_best_rate(EtherAddress &ether, MCS *best_rate);
