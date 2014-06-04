@@ -97,7 +97,7 @@ SetTXPowerRate::run_timer(Timer *t)
     }
 
     if ( _rate_selection->get_adjust_period() == RATESELECTION_ADJUST_PERIOD_ON_STATS_UPDATE ) {
-      click_chatter("%s",getInfo().c_str());
+      if (_debug >= BrnLogger::DEBUG) click_chatter("%s",getInfo().c_str());
       _rate_selection->adjust_all(&_neighbors);
     }
   } else {
