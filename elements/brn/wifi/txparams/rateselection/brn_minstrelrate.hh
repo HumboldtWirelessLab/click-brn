@@ -15,11 +15,17 @@ class BrnMinstrelRate : public RateSelection
     class MinstrelNodeInfo {
      public:
       MCS best_eff_tp;
-      MCS second_eff_tp;
-      MCS best_psr;
-      MCS lowest_rate;
+      uint32_t best_eff_tp_raw;
+      uint32_t best_eff_tp_psr;
 
-      uint16_t best_eff_tp_index;
+      MCS second_eff_tp;
+
+      MCS best_psr;
+
+      MCS lowest_rate;
+      MCS second_lowest_rate;
+
+      //uint16_t best_eff_tp_index;
 
       MinstrelNodeInfo() {
       }
