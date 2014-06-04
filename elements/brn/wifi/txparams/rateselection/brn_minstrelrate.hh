@@ -6,9 +6,25 @@
 
 CLICK_DECLS
 
+#define RS_MINSTREL_DEFAULT_ALPHA 25
+
 class BrnMinstrelRate : public RateSelection
 {
   public:
+
+    class MinstrelNodeInfo {
+     public:
+      MCS best_eff_tp;
+      MCS second_eff_tp;
+      MCS best_psr;
+      MCS lowest_rate;
+
+      uint16_t best_eff_tp_index;
+
+      MinstrelNodeInfo() {
+      }
+    };
+
     BrnMinstrelRate();
     ~BrnMinstrelRate();
 
@@ -25,7 +41,6 @@ class BrnMinstrelRate : public RateSelection
     bool can_live_reconfigure() const  { return false; }
 
     void adjust_all(NeighborTable *nt);
-    void adjust(NeighborTable *nt, EtherAddress);
 
     void add_handlers();
 
@@ -35,10 +50,18 @@ class BrnMinstrelRate : public RateSelection
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
-    int get_adjust_period() { return _period; }
+    int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_ON_STATS_UPDATE; }
 
-    int _period;
+    void setMinstrelInfo(NeighbourRateInfo *nri);
 
+    int alpha;
+
+};
+
+CLICK_ENDDECLS
+#endif
+
+#ifdef LUNIXSTUFF
 /* Source: rc80211_minstrel.h of mac80211 (linux-wireless) */
 
     struct minstrel_rate {
@@ -108,8 +131,4 @@ class BrnMinstrelRate : public RateSelection
       uint32_t lookaround_rate_mrr;
     };
 
-    MCS mcs_zero;
-};
-
-CLICK_ENDDECLS
 #endif

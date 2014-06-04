@@ -25,6 +25,8 @@ CLICK_DECLS
  * 2 : received packets
  */
 
+#define SETTXPOWERRATE_DEFAULT_STATS_TIMER_INTERVAL 1000
+
 class SetTXPowerRate : public BRNElement {
 
 public:
@@ -52,8 +54,9 @@ public:
 
   String getInfo();
 
-private:
+ private:
 
+  void update_stats(struct rateselection_packet_info *rs_pi, NeighbourRateInfo *dsti);
   NeighbourRateInfo* getDstInfo(EtherAddress ea);
 
   BrnAvailableRates *_rtable;
@@ -68,6 +71,9 @@ private:
   uint32_t _max_power;
 
   Timer _timer;
+  Timer _stats_timer;
+
+  uint32_t _stats_timer_interval;
 
   int _offset;
   bool _has_wifi_header;
