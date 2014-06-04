@@ -180,13 +180,13 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
   uint32_t rate_l = rate % 10;
   uint32_t rate_h = rate / 10;
 
-  sa << "<neighbour addr=\"" << nri->_eth.unparse() << "\" rate=\"" << rate_h << "." << rate_l;
+  sa << "<rsinfo rs=\"autoratefallback\" rate=\"" << rate_h << "." << rate_l;
   sa << "\" successes=\"" << (int)nfo->_successes << "\" stepup=\"" << (int)nfo->_stepup;
-  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" >\n";
+  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" />\n";
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
 
-  sa << "\t<rates>";
+  sa << "<rates>";
 
   for ( int i = 0; i < nri->_rates.size(); i++) {
     if (i > 0)
@@ -197,10 +197,9 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
     sa << nri->_rates[i]._data_rate;
   }
 
-  sa << "\n\t\t\t</rates>\n";
-
+  sa << "\n";
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
-  sa << "</neighbour>\n";
+  sa << "</rates>\n";
 
   return sa.take_string();
 }

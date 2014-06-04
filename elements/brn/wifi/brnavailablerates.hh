@@ -131,7 +131,7 @@ class MCS {
       }
     }
 
-    bool equals(MCS mcs) {
+    inline bool equals(MCS mcs) {
       return ((mcs._is_ht == _is_ht) && (mcs._rate == _rate));
     }
 
@@ -187,7 +187,15 @@ class MCS {
       return sa.take_string();
     }
 
+    inline bool operator==(MCS mcs) {
+       return equals(mcs);
+    }
+
 };
+
+inline unsigned hashcode(MCS mcs){
+  return (unsigned)mcs.get_packed_16();
+}
 
 class BrnAvailableRates : public BRNElement { public:
 
@@ -229,7 +237,7 @@ class BrnAvailableRates : public BRNElement { public:
 
   Vector<MCS> lookup(EtherAddress eth);
   Timestamp get_timestamp(EtherAddress eth);
-  
+
   int insert(EtherAddress eth, Vector<MCS>);
   bool includes_node(EtherAddress eth) { return _rtable.findp(eth) != NULL; };
 
@@ -238,7 +246,7 @@ class BrnAvailableRates : public BRNElement { public:
   RTable _rtable;
   Vector<MCS> _default_rates;
   Timestamp _settime;
-  
+
   //HashMap<MCS> _default_rates_map;
 
 };
