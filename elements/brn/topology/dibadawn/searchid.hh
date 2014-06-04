@@ -32,15 +32,21 @@ public:
 
     DibadawnSearchId(Timestamp t, const EtherAddress &creator);
     DibadawnSearchId();
-    String AsString();
     uint8_t* PointerTo10BytesOfData();
     void setByPointerTo10BytesOfData(uint8_t *value);
+    void set(DibadawnSearchId &id);
+    void set(Timestamp t, const EtherAddress &creator);
     bool isEqualTo(DibadawnSearchId &id);
+    String asString();
     DibadawnSearchId & operator =(const DibadawnSearchId &id);
-
+    friend StringAccum& operator << (StringAccum &output, const DibadawnSearchId &id);
+    
 private:
     uint8_t data[length];
 };
+
+StringAccum& operator << (StringAccum &output, const DibadawnSearchId &id);
+
 
 CLICK_ENDDECLS
 #endif

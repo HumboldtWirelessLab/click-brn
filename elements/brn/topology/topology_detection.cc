@@ -76,15 +76,7 @@ int TopologyDetection::initialize(ErrorHandler *)
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
 {
-  StringAccum sa;
-  String node = _node_identity->getMasterAddress()->unparse();
-  sa << "\n<topo_detect node=\"" << node << "\">";
-
   click_ether *ether_h = (click_ether *) packet->ether_header();
-  String source = EtherAddress(ether_h->ether_shost).unparse().c_str();
-  String destination = EtherAddress(ether_h->ether_dhost).unparse().c_str();
-  sa << "\t<etherheader src=\"" << source << "\" des=\"" << destination << "\" />";
-
   if (memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0)
   {
     handle_detection(packet);
@@ -96,14 +88,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
     {
       handle_detection(packet);
     }
-    else
-    {
-      sa << "\t<!-- Destination is neither me nor broadcast. TODO: use information (overhear) -->\n";
-    }
   }
-
-  sa << "</topo_detect>\n";
-  BRN_INFO(sa.take_string().c_str());
 
   packet->kill();
 }
@@ -135,11 +120,11 @@ enum
   H_START_DETECTION, H_TOPOLOGY_INFO
 };
 
-static int write_param(const String &click_script_parameter, Element *e, void *vparam, ErrorHandler *errh)
+static int write_param(const String& /*click_script_parameter*/, Element *element, void *vparam, ErrorHandler* /*errh*/)
 {
-  TopologyDetection *topo = (TopologyDetection *) e;
-  String s = cp_uncomment(click_script_parameter);
-  switch ((intptr_t) vparam) {
+  TopologyDetection *topo = (TopologyDetection *) element;
+  switch ((intptr_t) vparam)
+  {
   case H_START_DETECTION:
     topo->start_detection();
     break;

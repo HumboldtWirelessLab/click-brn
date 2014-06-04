@@ -25,6 +25,7 @@
 #include <click/packet.hh>
 
 #include "payloadelement.hh"
+#include "searchid.hh"
 
 CLICK_DECLS;
 
@@ -32,9 +33,10 @@ class DibadawnNeighbor
 {
 public:
     EtherAddress address;
+    DibadawnSearchId &searchId;
     Vector<DibadawnPayloadElement> messages;
 
-    DibadawnNeighbor(EtherAddress &addr);
+    DibadawnNeighbor(EtherAddress &addr, DibadawnSearchId &id);
 
     bool hasNonEmptyPairIntersection(DibadawnNeighbor& other);
     void printIntersection(EtherAddress &thisNode, DibadawnNeighbor& other);

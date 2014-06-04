@@ -186,33 +186,40 @@ void DibadawnPacket::logRx(EtherAddress &thisNode)
   log("DibadawnPacketRx", thisNode, "");
 }
 
-void DibadawnPacket::log(String tag, EtherAddress &thisNode, String attr)
+void DibadawnPacket::log(String tag, EtherAddress &thisNode, String parent_src_attr)
 {
-  click_chatter("<%s node='%s' %s >",
-      tag.c_str(),
-      thisNode.unparse_dash().c_str(),
-      attr.c_str());
-
-  click_chatter("  <version>%d</version>", version);
-  click_chatter("  <type>%d(%s)</type>", isForward, isForward ? "ForwardMsg" : "BackMsg");
-  click_chatter("  <ttl>%d</ttl>", ttl);
-  click_chatter("  <searchId>%s</searchId>", searchId.AsString().c_str());
-  click_chatter("  <forwardedBy>%s</forwardedBy>", forwardedBy.unparse_dash().c_str());
-  click_chatter("  <treeParent>%s</treeParent>", treeParent.unparse_dash().c_str());
-  click_chatter("  <numPayload>%d</numPayload>", payload.size());
-
+  StringAccum sa;
+  sa << "<" << tag << " ";
+  sa << "node='" << thisNode.unparse_dash() << "' ";
+  sa << parent_src_attr << " ";
+  sa << "time='" << Timestamp::now().unparse() << "' ";
+  sa << "searchId='" << searchId << "' ";
+  sa << "version='" << version << "' ";
+  sa << "type='" << isForward << "' ";
+  sa << "type_descr='" << (isForward ? "ForwardMsg" : "BackMsg") << "' ";
+  sa << "ttl='" << int(ttl) << "' ";
+  sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
+  sa << "treeParent='" << treeParent.unparse_dash() << "' ";
+  sa << "numPayload='" << payload.size() << "' ";
+  
   if (payload.size() > 0)
   {
-    click_chatter("  <Payload>");
+    sa << ">\n";
+    sa << "  <Payload>\n";
     for (int i = 0; i < payload.size(); i++)
     {
       DibadawnPayloadElement &elem = payload.at(i);
-      elem.print("    ");
+      sa << "    " << elem << "\n";
     }
-    click_chatter("  </Payload>");
+    sa << "  </Payload>\n";
+    sa << "</" << tag << ">";
+  }
+  else
+  {
+    sa << "/>";
   }
 
-  click_chatter("</%s>", tag.c_str());
+  click_chatter(sa.take_string().c_str());
 }
 
 bool DibadawnPacket::hasSameCycle(DibadawnPacket& other)

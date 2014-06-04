@@ -31,7 +31,8 @@
 
 CLICK_DECLS
 
-DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr)
+DibadawnNeighbor::DibadawnNeighbor(EtherAddress& addr, DibadawnSearchId &id)
+: searchId(id)
 {
   address = addr;
 }
@@ -54,11 +55,15 @@ bool DibadawnNeighbor::hasNonEmptyPairIntersection(DibadawnNeighbor& other)
 
 void DibadawnNeighbor::printIntersection(EtherAddress &thisNode, DibadawnNeighbor& other)
 {
-  click_chatter("<Intersection node='%s' nodeA='%s' nodeB='%s' >",
-      thisNode.unparse().c_str(),
-      address.unparse().c_str(),
-      other.address.unparse().c_str());
-
+  StringAccum sa;
+  sa << "<Intersection ";
+  sa << "node='" << thisNode.unparse_dash() << "' ";
+  sa << "time='" << Timestamp::now().unparse() << "' ";
+  sa << "searchId='" << searchId << "' ";
+  sa << "nodeA='" << address.unparse() << "' ";
+  sa << "nodeB='" << other.address.unparse() << "' ";
+  sa << ">\n";
+  
   for (int i = 0; i < messages.size(); i++)
   {
     DibadawnPayloadElement& elemA = messages.at(i);
@@ -67,11 +72,14 @@ void DibadawnNeighbor::printIntersection(EtherAddress &thisNode, DibadawnNeighbo
       DibadawnPayloadElement& elemB = other.messages.at(j);
 
       if (elemA == elemB)
-        elemA.print("  ");
+      {
+        sa << "  " << elemA << "\n";
+      }
     }
   }
 
-  click_chatter("</Intersection>");
+  sa << "</Intersection>";
+  click_chatter(sa.take_string().c_str());
 }
 
 void DibadawnNeighbor::copyPayloadIfNecessary(DibadawnPayloadElement& src)

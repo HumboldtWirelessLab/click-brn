@@ -53,7 +53,7 @@ DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnNodeStatistic &stat, 
     const EtherAddress &addrOfThisNode)
-:   commonStatistic(stat)
+:   commonStatistic(stat), adjacents(searchId)
 {
   initCommon(click_element, addrOfThisNode);
 }
@@ -63,11 +63,11 @@ DibadawnSearch::DibadawnSearch(
     DibadawnNodeStatistic &stat, 
     const EtherAddress &addrOfThisNode,
     DibadawnSearchId &id)
-:   commonStatistic(stat)
+:   commonStatistic(stat), adjacents(searchId)
 {
   initCommon(click_element, addrOfThisNode);
 
-  searchId = id;
+  searchId.set(id);
   visited = false;
 }
 
@@ -88,9 +88,10 @@ void DibadawnSearch::initCommon(
 
 void DibadawnSearch::forwardTimeout()
 {
+  
   click_chatter("<ForwardTimeout node='%s' searchId='%s' />", 
       addrOfThisNode.unparse_dash().c_str(), 
-      searchId.AsString().c_str());
+      searchId.asString().c_str());
 
   detectCycles();
   forwardMessages();
@@ -108,7 +109,7 @@ void DibadawnSearch::detectCycles()
     commonStatistic.updateEdgeMarking(marking);
 
     DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
-    click_chatter("<Cycle id='%s' />", cycle.AsString().c_str());
+    click_chatter("<Cycle id='%s' />", cycle.asString().c_str());
 
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(crossEdgePacket.forwardedBy);
     DibadawnPayloadElement payload(cycle);
@@ -212,16 +213,11 @@ void DibadawnSearch::voteForArticulaionPointsAndBridges()
       addrOfThisNode.unparse_dash().c_str());
 }
 
-String DibadawnSearch::asString()
-{
-  return (searchId.AsString());
-}
-
 void DibadawnSearch::start_search()
 {
   setParentNull();
 
-  searchId = DibadawnSearchId(Timestamp::now(), addrOfThisNode);
+  searchId.set(Timestamp::now(), addrOfThisNode);
   DibadawnPacket packet(searchId, addrOfThisNode, true);
   packet.treeParent = parent;
   packet.ttl = maxTtl;
@@ -270,7 +266,10 @@ void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
 
   forwardSendTimer->assign(forwardSendTimerCallback, (void*) param);
   forwardSendTimer->initialize(this->brn_click_element, false);
-  forwardSendTimer->schedule_after_msec((click_random() % numOfConcurrentSenders) * maxTraversalTimeMs);
+  uint32_t random_number = click_random();
+  uint32_t delay = (random_number % numOfConcurrentSenders) * maxTraversalTimeMs;
+  click_chatter("<DEBUG node='%s' random='%d' txDelay='%d' />", addrOfThisNode.unparse().c_str(), random_number, delay);
+  forwardSendTimer->schedule_after_msec(delay);
 }
 
 bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
@@ -298,9 +297,11 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       visited = true;
       adjacents.getNeighbor(parent);
       
-      click_chatter("<SearchTree node='%s' parent='%s' />",
+      click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
           addrOfThisNode.unparse().c_str(),
-          parent.unparse().c_str());
+          parent.unparse().c_str(),
+          Timestamp::now().unparse().c_str(),
+          searchId.asString().c_str());
 
       DibadawnPacket txPacket = rxPacket;
       txPacket.ttl--;
@@ -311,22 +312,28 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     }
     else
     {
-      click_chatter("<IgnorePacket node='%s' reason='lowTtl' />",
-          addrOfThisNode.unparse_dash().c_str());
+      click_chatter("<IgnorePacket node='%s' reason='lowTtl' time='%s' searchId='%s' />",
+          addrOfThisNode.unparse_dash().c_str(),
+          Timestamp::now().unparse().c_str(),
+          searchId.asString().c_str());
     }
   }
   else if (rxPacket.treeParent == addrOfThisNode)
   {
-    click_chatter("<IgnorePacket node='%s' reason='reForward' />",
-        addrOfThisNode.unparse_dash().c_str());
+    click_chatter("<IgnorePacket node='%s' reason='reForward' time='%s' searchId='%s' />",
+        addrOfThisNode.unparse_dash().c_str(),
+        Timestamp::now().unparse().c_str(),
+        searchId.asString().c_str());
   }
   else
   {
     EtherAddress neighbor = rxPacket.forwardedBy;
 
-    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s'/>",
+    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' />",
         addrOfThisNode.unparse_dash().c_str(),
-        neighbor.unparse_dash().c_str());
+        neighbor.unparse_dash().c_str(),
+        Timestamp::now().unparse().c_str(),
+        searchId.asString().c_str());
 
     crossEdges.push_back(rxPacket);
   }
@@ -434,7 +441,7 @@ bool DibadawnSearch::tryToPairPayloadElement(DibadawnPayloadElement& payload1)
     {
       click_chatter("<PairedCycle node='%s' cycle='%s'/>",
           addrOfThisNode.unparse_dash().c_str(),
-          payload1.cycle.AsString().c_str());
+          payload1.cycle.asString().c_str());
 
       messageBuffer.erase(it);
       return (true);

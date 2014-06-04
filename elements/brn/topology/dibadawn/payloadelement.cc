@@ -65,13 +65,16 @@ bool DibadawnPayloadElement::operator==(DibadawnPayloadElement &b)
       cycle == b.cycle);
 }
 
-void DibadawnPayloadElement::print(String pre)
+StringAccum& operator <<(StringAccum &output, const DibadawnPayloadElement &payload)
 {
-   click_chatter("%s<PayloadElem isBridge='%d' cycleId='%s' />",
-       pre.c_str(),   
-       isBridge,
-       cycle.AsString().c_str());
+  output << "<PayloadElem ";
+  output << "isBridge='" << payload.isBridge << "' ";
+  output << "cycleId='" << payload.cycle << "' ";
+  output << "/>";
+  
+  return(output);
 }
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnPacketPayloadElement)

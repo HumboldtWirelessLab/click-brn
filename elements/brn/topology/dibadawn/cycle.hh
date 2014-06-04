@@ -32,17 +32,20 @@ class DibadawnCycle
 {
 public:
     static const size_t length = 10 + 6 + 6;
-    String AsString();
-
+    
     DibadawnCycle();
     DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAddress &addr2);
     bool operator==(DibadawnCycle &b);
+    friend StringAccum& operator << (StringAccum &output, const DibadawnCycle &cycle);
     void setData(const uint8_t *p);
     uint8_t* getData();
+    String asString();
 
 private:
     uint8_t contentAsBytes[length];
 };
+
+StringAccum& operator << (StringAccum &output, const DibadawnCycle &cycle);
 
 CLICK_ENDDECLS
 #endif

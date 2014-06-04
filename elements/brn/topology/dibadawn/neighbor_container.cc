@@ -30,6 +30,10 @@
 
 CLICK_DECLS
 
+DibadawnNeighborContainer::DibadawnNeighborContainer(DibadawnSearchId &id)
+:searchId(id)
+{}
+
 size_t DibadawnNeighborContainer::numOfNeighbors()
 {
   return (neighbors.size());
@@ -45,7 +49,7 @@ DibadawnNeighbor& DibadawnNeighborContainer::getNeighbor(EtherAddress& addr)
   }
 
   int idx = neighbors.size();
-  neighbors.push_back(DibadawnNeighbor(addr));
+  neighbors.push_back(DibadawnNeighbor(addr, searchId));
   return (neighbors.at(idx));
 }
 
