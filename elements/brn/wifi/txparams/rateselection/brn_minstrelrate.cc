@@ -90,7 +90,9 @@ BrnMinstrelRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neig
       sample_mcs = nri->_rates[click_random()%nri->_rates.size()];
     } while ((sample_mcs == mni->best_eff_tp) || (sample_mcs == mni->second_eff_tp) || (sample_mcs == mni->best_psr) || (sample_mcs == mni->lowest_rate));
 
-    if ( sample_mcs._data_rate > mni->best_eff_tp._data_rate ) {
+    //click_chatter("%d %d %d", mni->best_eff_tp._data_rate, mni->best_eff_tp_raw, mni->best_eff_tp_psr );
+
+    if ( sample_mcs._data_rate > mni->best_eff_tp_raw/*mni->best_eff_tp._data_rate*/ ) { //compare best eff tp with possible tp of sampling rate (=MCS-rate)
       sample_mcs.setWifiRate(eh,0);
       mni->best_eff_tp.setWifiRate(eh,1);
     } else {
@@ -122,8 +124,16 @@ BrnMinstrelRate::setMinstrelInfo(NeighbourRateInfo *nri)
 
   if (nri->stats._ratestatsmap.size() == 0) {
     mni->best_eff_tp = nri->_rates[0];
+    mni->best_eff_tp_raw = 0;
+    mni->best_eff_tp_psr = 0;
+
+    mni->second_eff_tp = nri->_rates[0];
+
     mni->best_psr = nri->_rates[0];
+
     mni->lowest_rate = nri->_rates[0];
+    mni->second_lowest_rate = nri->_rates[1];
+
     BRN_DEBUG("no rate TP: %d PSR: %d LR: %d", mni->best_eff_tp._data_rate, mni->best_psr._data_rate, mni->lowest_rate._data_rate);
     return;
   }
@@ -169,6 +179,8 @@ BrnMinstrelRate::setMinstrelInfo(NeighbourRateInfo *nri)
       second_tp_mcs = best_tp_mcs;
       best_tp = tp;
       best_tp_mcs = mcs;
+      mni->best_eff_tp_raw = tp / 100000;
+      mni->best_eff_tp_psr = psr / 1000;
     } else {
       if ( tp > second_tp ) {
         second_tp = tp;
