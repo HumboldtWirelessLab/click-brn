@@ -129,29 +129,29 @@ void DibadawnSearch::forwardMessages()
 
   if (messageBuffer.size() == 0)
   {
-    DibadawnPayloadElement bridge(searchId, addrOfThisNode, parent, true);
+    DibadawnPayloadElement bridge(searchId, addrOfThisNode, parentNode, true);
     
     DibadawnPacket packet(searchId, addrOfThisNode, false);
-    packet.treeParent = parent;
+    packet.treeParent = parentNode;
     packet.ttl = maxTtl;
     packet.payload.push_back(bridge);
-    sendTo(packet, parent);
+    sendTo(packet, parentNode);
     
     uint8_t hops = getUsedHops(packet.ttl);
     double competence = commonStatistic.competenceByUsedHops(hops);
-    addBridgeEdgeMarking(addrOfThisNode, parent, competence);
+    addBridgeEdgeMarking(addrOfThisNode, parentNode, competence);
     
-    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parent);
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
     neighbor.messages.push_back(bridge);
   }
   else
   {
     DibadawnPacket packet(searchId, addrOfThisNode, false);
     packet.ttl = maxTtl;
-    packet.treeParent = parent;
+    packet.treeParent = parentNode;
     packet.forwardedBy = addrOfThisNode;
 
-    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parent);
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
     for (int i = 0; i < messageBuffer.size(); i++)
     {
       DibadawnPayloadElement &payload = messageBuffer.at(i);
@@ -160,18 +160,18 @@ void DibadawnSearch::forwardMessages()
 
       // TODO votes
 
-      DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, parent, false);
+      DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, parentNode, false);
       commonStatistic.updateEdgeMarking(marking);
     }
 
     messageBuffer.clear();
-    sendTo(packet, parent);
+    sendTo(packet, parentNode);
   }
 }
 
 bool DibadawnSearch::isParentNull()
 {
-  return (parent == EtherAddress());
+  return (parentNode == EtherAddress());
 }
 
 void DibadawnSearch::detectArticulationPoints()
@@ -219,7 +219,7 @@ void DibadawnSearch::start_search()
 
   searchId.set(Timestamp::now(), addrOfThisNode);
   DibadawnPacket packet(searchId, addrOfThisNode, true);
-  packet.treeParent = parent;
+  packet.treeParent = parentNode;
   packet.ttl = maxTtl;
   visited = true;
 
@@ -228,7 +228,7 @@ void DibadawnSearch::start_search()
 
 void DibadawnSearch::setParentNull()
 {
-  parent = EtherAddress();
+  parentNode = EtherAddress();
 }
 
 void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
@@ -293,13 +293,13 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
   {
     if (rxPacket.ttl > 0)
     {
-      parent = rxPacket.forwardedBy;
+      parentNode = rxPacket.forwardedBy;
       visited = true;
-      adjacents.getNeighbor(parent);
+      adjacents.getNeighbor(parentNode);
       
       click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
           addrOfThisNode.unparse().c_str(),
-          parent.unparse().c_str(),
+          parentNode.unparse().c_str(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
 
@@ -360,11 +360,27 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   }
   else
   {
-    pairCyclesIfPossible(packet);
-    addPayloadElementsToMessagePuffer(packet);
-    
-    DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, packet.forwardedBy, true);
-    commonStatistic.updateEdgeMarking(marking);
+    for (int i = 0; i < packet.payload.size(); i++)
+    {
+      DibadawnPayloadElement &payloadA = packet.payload.at(i);
+      DibadawnPayloadElement *payloadB = tryToFindPair(payloadA);
+      if(payloadB != NULL)
+      {
+        click_chatter("<PairedCycle node='%s' time='%s' searchId='%s' cycle='%s'/>",
+            addrOfThisNode.unparse_dash().c_str(),
+            Timestamp::now().unparse().c_str(),
+            searchId.asString().c_str(),
+            payloadA.cycle.asString().c_str());
+
+        setNonBrigdeByPayload(payloadA);
+
+        removePayloadFromMessageBuffer(payloadA);
+      }
+      else
+      {
+        messageBuffer.push_back(payloadA);
+      } 
+    }
   }
 }
 
@@ -379,48 +395,51 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
       nodeB.unparse_dash().c_str());
 }
 
-void DibadawnSearch::pairCyclesIfPossible(DibadawnPacket& packet)
+DibadawnPayloadElement* DibadawnSearch::tryToFindPair(DibadawnPayloadElement& payloadA)
 {
-  int i = 0;
-  while (i < packet.payload.size())
+  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
   {
-    DibadawnPayloadElement &e = packet.payload.at(i);
-    if (e.isBridge)
+    DibadawnPayloadElement& paylaodB = *it;
+    if (payloadA.cycle == paylaodB.cycle)
     {
-      click_chatter("<Error node='%s' methode='pairCyclesIfPossible' msg='Payload contains bridge mixed with nobridge-info' />",
-          addrOfThisNode.unparse_dash().c_str());
+      return(&paylaodB);
     }
-    else
-    {
-      bool rc = tryToPairPayloadElement(e);
-      if (rc)
-      {
-        DibadawnEdgeMarking marking;
-        marking.time = Timestamp::now();
-        marking.id = packet.searchId;
-        marking.isBridge = false;
-        marking.nodeA = addrOfThisNode;
-        marking.nodeB = packet.forwardedBy;
-        commonStatistic.updateEdgeMarking(marking);
-
-        marking.time = Timestamp::now();
-        marking.id = packet.searchId;
-        marking.isBridge = false;
-        marking.nodeA = addrOfThisNode;
-        marking.nodeB = packet.forwardedBy;
-        commonStatistic.updateEdgeMarking(marking);
-
-        packet.removeCycle(e);
-        continue;
-      }
-      else
-      {
-        messageBuffer.push_back(e);
-      }
-    }
-
-    i++;
   }
+  return(NULL);
+}
+
+void DibadawnSearch::setNonBrigdeByPayload(DibadawnPayloadElement& payload)
+{
+  for(size_t i = 0; i < adjacents.numOfNeighbors(); i++)
+  {
+    DibadawnNeighbor & neighbor = adjacents.getNeighbor(i);
+    if(neighbor.hasSameCycle(payload))
+    {
+      DibadawnEdgeMarking marking;
+      marking.time = Timestamp::now();
+      marking.id = searchId;
+      marking.isBridge = false;
+      marking.nodeA = addrOfThisNode;
+      marking.nodeB = neighbor.address;
+      
+      commonStatistic.updateEdgeMarking(marking);
+    }
+  }
+}
+
+void DibadawnSearch::removePayloadFromMessageBuffer(DibadawnPayloadElement& payloadA)
+{
+  click_chatter("<DEBUG where='here'/>");
+  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
+  {
+    DibadawnPayloadElement& paylaodB = *it;
+    if (payloadA.cycle == paylaodB.cycle)
+    {
+      messageBuffer.erase(it);
+      break;
+    }
+  }
+  click_chatter("<DEBUG where='here2'/>");
 }
 
 void DibadawnSearch::addPayloadElementsToMessagePuffer(DibadawnPacket& packet)
@@ -430,25 +449,6 @@ void DibadawnSearch::addPayloadElementsToMessagePuffer(DibadawnPacket& packet)
     DibadawnPayloadElement &elem = packet.payload.at(i);
     messageBuffer.push_back(elem);
   }
-}
-
-bool DibadawnSearch::tryToPairPayloadElement(DibadawnPayloadElement& payload1)
-{
-  for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
-  {
-    DibadawnPayloadElement& paylaod2 = *it;
-    if (payload1.cycle == paylaod2.cycle)
-    {
-      click_chatter("<PairedCycle node='%s' cycle='%s'/>",
-          addrOfThisNode.unparse_dash().c_str(),
-          payload1.cycle.asString().c_str());
-
-      messageBuffer.erase(it);
-      return (true);
-    }
-  }
-
-  return (false);
 }
 
 void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
