@@ -25,13 +25,16 @@
 #include <click/packet.hh>
 
 #include "neighbor.hh"
+#include "searchid.hh"
 
 CLICK_DECLS;
 
 class DibadawnNeighborContainer
 {
     Vector<DibadawnNeighbor> neighbors;
+    DibadawnSearchId &searchId;
 public:
+    DibadawnNeighborContainer(DibadawnSearchId &id);
     size_t numOfNeighbors();
     DibadawnNeighbor& getNeighbor(EtherAddress &addr);
     DibadawnNeighbor& getNeighbor(int num);

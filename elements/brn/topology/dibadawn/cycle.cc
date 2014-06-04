@@ -59,25 +59,6 @@ DibadawnCycle::DibadawnCycle(DibadawnSearchId &id, EtherAddress &addr1, EtherAdd
   }
 }
 
-String DibadawnCycle::AsString()
-{
-  String str = String::make_uninitialized(26 + 2 + 17 + 2 + 17 + 1);
-  char *x = str.mutable_c_str();
-  assert(x != NULL);
-
-  uint8_t *mac0 = (uint8_t*) & contentAsBytes[0];
-  uint32_t *time = (uint32_t*) & contentAsBytes[6];
-  uint8_t *mac1 = (uint8_t*) & contentAsBytes[10];
-  uint8_t *mac2 = (uint8_t*) & contentAsBytes[16];
-  sprintf(x, "%02X-%02X-%02X-%02X-%02X-%02X-%08X--%02X-%02X-%02X-%02X-%02X-%02X--%02X-%02X-%02X-%02X-%02X-%02X",
-      mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5],
-      *time,
-      mac1[0], mac1[1], mac1[2], mac1[3], mac1[4], mac1[5],
-      mac2[0], mac2[1], mac2[2], mac2[3], mac2[4], mac2[5]);
-
-  return (str);
-}
-
 bool DibadawnCycle::operator==(DibadawnCycle &other)
 {
   return (0 == memcmp(contentAsBytes, other.contentAsBytes, sizeof (contentAsBytes)));
@@ -93,6 +74,28 @@ uint8_t* DibadawnCycle::getData()
   return (contentAsBytes);
 }
 
+String DibadawnCycle::asString()
+{
+  StringAccum as;
+  as << *this;
+  return(as.take_string());
+}
+
+
+StringAccum& operator <<(StringAccum &output, const DibadawnCycle &cycle)
+{
+  uint8_t *mac0 = (uint8_t*) & cycle.contentAsBytes[0];
+  uint32_t *time = (uint32_t*) & cycle.contentAsBytes[6];
+  uint8_t *mac1 = (uint8_t*) & cycle.contentAsBytes[10];
+  uint8_t *mac2 = (uint8_t*) & cycle.contentAsBytes[16];
+  output.snprintf(26 + 2 + 17 + 2 + 17 + 1 + 10, "%02X-%02X-%02X-%02X-%02X-%02X-%08X--%02X-%02X-%02X-%02X-%02X-%02X--%02X-%02X-%02X-%02X-%02X-%02X",
+       mac0[0], mac0[1], mac0[2], mac0[3], mac0[4], mac0[5],
+      *time,
+      mac1[0], mac1[1], mac1[2], mac1[3], mac1[4], mac1[5],
+      mac2[0], mac2[1], mac2[2], mac2[3], mac2[4], mac2[5]);
+  
+  return(output);
+}
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnCycle)

@@ -90,7 +90,6 @@ public:
     void sendBroadcastWithTimeout(DibadawnPacket &packet);
     void sendTo(DibadawnPacket &packet, EtherAddress &dest);
     void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
-    String asString();
     void receive(DibadawnPacket &packet);
     void start_search();
     bool isResponsibleFor(DibadawnPacket &packet);

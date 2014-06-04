@@ -38,26 +38,7 @@ DibadawnSearchId::DibadawnSearchId()
 
 DibadawnSearchId::DibadawnSearchId(Timestamp t, const EtherAddress &creator)
 {
-  const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator.data());
-  memcpy(this->data, pmac, 6);
-
-  uint32_t time = t.usec();
-  memcpy(this->data + 6, &time, sizeof (time));
-}
-
-String DibadawnSearchId::AsString()
-{
-  String str = String::make_uninitialized(27);
-  char *x = str.mutable_c_str();
-  assert(x != NULL);
-
-  uint8_t *mac = (uint8_t*) & data[0];
-  uint32_t *time = (uint32_t*) & data[6];
-  sprintf(x, "%02X-%02X-%02X-%02X-%02X-%02X-%08X",
-      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
-      *time);
-
-  return (str);
+  set(t, creator);
 }
 
 uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
@@ -68,6 +49,20 @@ uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
 void DibadawnSearchId::setByPointerTo10BytesOfData(uint8_t *value)
 {
   memcpy(data, value, sizeof (data));
+}
+
+void DibadawnSearchId::set(DibadawnSearchId &id)
+{
+  memcpy(data, id.data, sizeof(data));
+}
+
+void DibadawnSearchId::set(Timestamp t, const EtherAddress& creator)
+{
+  const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator.data());
+  memcpy(this->data, pmac, 6);
+
+  uint32_t time = t.usec();
+  memcpy(this->data + 6, &time, sizeof (time));
 }
 
 DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
@@ -81,6 +76,25 @@ DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
 bool DibadawnSearchId::isEqualTo(DibadawnSearchId &id)
 {
   return (memcmp(data, id.data, sizeof (data)) == 0);
+}
+
+String DibadawnSearchId::asString()
+{
+  StringAccum as;
+  as << *this;
+  return(as.take_string());
+}
+
+
+StringAccum& operator <<(StringAccum &output, const DibadawnSearchId &id)
+{
+  uint8_t *mac = (uint8_t*) & id.data[0];
+  uint32_t *time = (uint32_t*) & id.data[6];
+  output.snprintf(27, "%02X-%02X-%02X-%02X-%02X-%02X-%08X",
+      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5],
+      *time);
+  
+  return(output);
 }
 
 
