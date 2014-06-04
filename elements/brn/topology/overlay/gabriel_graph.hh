@@ -27,6 +27,7 @@
 
 #include "elements/brn/brnelement.hh"
 #include <elements/brn/routing/identity/brn2_nodeidentity.hh>
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 CLICK_DECLS
 
@@ -45,16 +46,19 @@ class GabrielGraph : public BRNElement {
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
   int initialize(ErrorHandler *);
-
+  
   void add_handlers();
   
-  EtherAddress ID_to_MAC (int id);
-  int MAC_to_ID(EtherAddress *add);
+  void calc_neighbors();
+  uint32_t metric2dist(uint32_t metric);
 
  private:
 
   BRN2NodeIdentity *_me;
   OverlayStructure *_ovl;
+  Brn2LinkTable *_link_table;
+  int _update_intervall;
+  Vector<EtherAddress> _neighbors;
 
 };
 

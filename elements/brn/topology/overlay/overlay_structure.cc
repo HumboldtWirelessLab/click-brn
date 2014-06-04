@@ -148,9 +148,7 @@ void OverlayStructure::removeParent (EtherAddress* node, EtherAddress* add) {
 	}
 	Vector<EtherAddress>* v=n_parents.findp(*node);
 	if (v==0) {
-		Vector<EtherAddress> newadd;
-		newadd.push_back(*add);
-		n_parents.insert(*node,newadd);
+		return;
 	} else {
 		for (Vector<EtherAddress>::iterator i=v->begin();i!=v->end();++i) {
 			if ((*i)==(*add)) {
@@ -168,9 +166,7 @@ void OverlayStructure::removeChild (EtherAddress* node, EtherAddress* add) {
 	}
 	Vector<EtherAddress>* v=n_children.findp(*node);
 	if (v==0) {
-		Vector<EtherAddress> newadd;
-		newadd.push_back(*add);
-		n_children.insert(*node,newadd);
+		return;
 	} else {
 		for (Vector<EtherAddress>::iterator i=v->begin();i!=v->end();++i) {
 			if ((*i)==(*add)) {
