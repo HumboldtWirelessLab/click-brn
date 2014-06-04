@@ -55,11 +55,33 @@ GabrielGraph::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "OVERLAY_STRUCTURE", cpkP+cpkM, cpElement, &_ovl,
+      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "UPDATE_INTERVALL", cpkP+cpkM, cpInteger, &_update_intervall,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
 
   return 0;
+}
+
+uint32_t
+GabrielGraph::metric2dist(uint32_t metric)
+{
+  /**TODO*/
+  
+  return 0;
+}
+
+void
+GabrielGraph::calc_neighbors() {
+	EtherAddress _my_ether_add=*(_me->getMasterAddress());
+	_link_table->get_neighbors(_my_ether_add, _neighbors);
+	for (Vector<EtherAddress>::iterator i=_neighbors.begin();i!=_neighbors.end();++i) {
+		for (Vector<EtherAddress>::iterator k=_neighbors.begin();k!=_neighbors.end();++k) {
+			if (*i==*k) continue;
+			/**GO ON HERE*/
+		}
+	}
 }
 
 int
