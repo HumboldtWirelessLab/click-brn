@@ -49,7 +49,7 @@ public:
 
 private:
     EtherAddress addrOfThisNode;
-    EtherAddress parent;
+    EtherAddress parentNode;
     bool visited;
     Timer *forwardTimeoutTimer;
     Timer *forwardSendTimer;
@@ -75,7 +75,9 @@ private:
     void forwardMessages();
     void detectArticulationPoints();
     void voteForArticulaionPointsAndBridges();
-    bool tryToPairPayloadElement(DibadawnPayloadElement &payload);
+    DibadawnPayloadElement* tryToFindPair(DibadawnPayloadElement &payloadA);
+    void removePayloadFromMessageBuffer(DibadawnPayloadElement &payloadA);
+    void setNonBrigdeByPayload(DibadawnPayloadElement &payload);
     void setParentNull();
     bool isParentNull();
     void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence);
