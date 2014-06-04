@@ -1,4 +1,3 @@
-//Last modified: 04/04/11 12:34:52(CEST) by Fabian Holler
 #include <click/config.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -7,8 +6,6 @@
 #include <strings.h>
 #include <string.h>
 
-#if defined(HAVE_TCC)
- 
 #include "tcc.hh"
 
 CLICK_DECLS
@@ -388,4 +385,3 @@ void TCC::tcc_packet_kill(void *p) {
 CLICK_ENDDECLS
 EXPORT_ELEMENT(TCC)
 
-#endif
