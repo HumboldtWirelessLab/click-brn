@@ -262,8 +262,7 @@ void
 BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
                           uint32_t size, uint32_t mode,
                           uint32_t interval, uint32_t burst,
-                          uint32_t duration, bool active, 
-                          uint32_t start_delay, String extra_data )
+                          uint32_t duration, bool active, uint32_t start_delay )
 {
   Flow *txFlow = new Flow(src, dst, _flow_id, (FlowType)mode, size, interval, burst, duration);
 
@@ -272,8 +271,7 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
   txFlow->_start_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
   txFlow->_next_time = txFlow->_start_time;
   txFlow->_end_time += Timestamp::make_msec(start_delay/1000, start_delay%1000);
-
-  txFlow->_extra_data = extra_data;
+  txFlow->_extra_data = _extra_data;
 
   _tx_flowMap.insert(FlowID(src,_flow_id), txFlow);
 
@@ -281,16 +279,6 @@ BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
 
   if ( start_delay == 0 ) set_active(txFlow, active);
   else schedule_next();
-}
-
-void
-BRN2SimpleFlow::add_flow( EtherAddress src, EtherAddress dst,
-                          uint32_t size, uint32_t mode,
-                          uint32_t interval, uint32_t burst,
-                          uint32_t duration, bool active, uint32_t start_delay )
-{
-  add_flow(src, dst, size, mode, interval, burst, 
-      duration, active, start_delay, _extra_data);
 }
 
 /**
@@ -710,7 +698,7 @@ BRN2SimpleFlow::add_flow(String conf)
   cp_spacevec(s, args);
 
   if ( args.size() < 7 ) {
-    BRN_WARN("Use: Src Dst interval size mode duration active is_burst start_delay extra_data");
+    BRN_WARN("Use: Src Dst interval size mode duration active is_burst start_delay");
     BRN_WARN("You send. %s",conf.c_str());
   }
 
@@ -724,7 +712,6 @@ BRN2SimpleFlow::add_flow(String conf)
   bool active;
   uint32_t burst = 1;
   int32_t  start_delay = 0;
-  String extra_data = "";
 
   BRN_DEBUG("ARGS: %s %s",args[0].c_str(), args[1].c_str());
 
@@ -748,12 +735,16 @@ BRN2SimpleFlow::add_flow(String conf)
 
   if ( args.size() > 7 ) cp_integer(args[7], &burst);
   if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
-  if ( args.size() > 9 ) extra_data = String(args[9]);
 
   add_flow( src, dst, size, mode, interval, burst, 
-      duration, active, start_delay, extra_data);
-
+      duration, active, start_delay);
 }
+
+void BRN2SimpleFlow::set_extra_data(String new_extra_data_content)
+{
+  _extra_data = new_extra_data_content;
+}
+
 
 /****************************************************************************/
 /********************** H A N D L E R   *************************************/
@@ -832,7 +823,8 @@ enum {
   H_FLOW_STATS,
   H_ADD_FLOW,
   H_DEL_FLOW,
-  H_RESET
+  H_RESET,
+  H_EXTRA_DATA
 };
 
 static String
@@ -850,20 +842,24 @@ BRN2SimpleFlow_read_param(Element *e, void *thunk)
 }
 
 static int
-BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
+BRN2SimpleFlow_write_param(const String &raw_params, Element *e, void *vparam, ErrorHandler */*errh*/)
 {
   BRN2SimpleFlow *sf = static_cast<BRN2SimpleFlow *>(e);
-  String s = cp_uncomment(in_s);
+  String params = cp_uncomment(raw_params);
   switch((long)vparam) {
     case H_RESET: {
       sf->reset();
       break;
     }
     case H_ADD_FLOW: {
-      sf->add_flow(s);
+      sf->add_flow(params);
       break;
     }
     case H_DEL_FLOW: {
+      break;
+    }
+    case H_EXTRA_DATA: {
+      sf->set_extra_data(params);
       break;
     }
   }
@@ -880,6 +876,7 @@ void BRN2SimpleFlow::add_handlers()
   add_write_handler("reset", BRN2SimpleFlow_write_param, (void *)H_RESET);
   add_write_handler("add_flow", BRN2SimpleFlow_write_param, (void *)H_ADD_FLOW);
   add_write_handler("del_flow", BRN2SimpleFlow_write_param, (void *)H_DEL_FLOW);
+  add_write_handler("extra_data", BRN2SimpleFlow_write_param, (void *)H_EXTRA_DATA);
 }
 
 EXPORT_ELEMENT(BRN2SimpleFlow)
