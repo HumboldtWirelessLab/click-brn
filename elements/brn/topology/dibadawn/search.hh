@@ -75,6 +75,7 @@ private:
     void forwardMessages();
     void detectArticulationPoints();
     void voteForArticulaionPointsAndBridges();
+    void updateAdjacent(DibadawnPacket &packet);
     DibadawnPayloadElement* tryToFindPair(DibadawnPayloadElement &payloadA);
     void removePayloadFromMessageBuffer(DibadawnPayloadElement &payloadA);
     void setNonBrigdeByPayload(DibadawnPayloadElement &payload);
