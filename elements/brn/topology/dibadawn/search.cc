@@ -88,9 +88,8 @@ void DibadawnSearch::initCommon(
 
 void DibadawnSearch::forwardTimeout()
 {
-  
-  click_chatter("<ForwardTimeout node='%s' searchId='%s' />", 
-      addrOfThisNode.unparse_dash().c_str(), 
+  click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
+      addrOfThisNode.unparse_dash().c_str(),
       searchId.asString().c_str());
 
   detectCycles();
@@ -123,7 +122,10 @@ void DibadawnSearch::forwardMessages()
 {
   if (isParentNull())
   {
-    click_chatter("<Finished />");
+    click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
+            addrOfThisNode.unparse_dash().c_str(),
+            Timestamp::now().unparse().c_str(),
+            searchId.asString().c_str());
     return;
   }
 
@@ -360,6 +362,8 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   }
   else
   {
+    updateAdjacent(packet);
+    
     for (int i = 0; i < packet.payload.size(); i++)
     {
       DibadawnPayloadElement &payloadA = packet.payload.at(i);
@@ -393,6 +397,15 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
       this->addrOfThisNode.unparse_dash().c_str(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str());
+}
+
+void DibadawnSearch::updateAdjacent(DibadawnPacket& packet)
+{
+  for (int i = 0; i < packet.payload.size(); i++)
+  {
+    DibadawnNeighbor &neighbor = adjacents.getNeighbor(packet.forwardedBy);
+    neighbor.messages.push_back(packet.payload.at(i));
+  }
 }
 
 DibadawnPayloadElement* DibadawnSearch::tryToFindPair(DibadawnPayloadElement& payloadA)
