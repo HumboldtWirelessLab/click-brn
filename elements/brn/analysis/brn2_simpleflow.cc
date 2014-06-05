@@ -247,9 +247,11 @@ BRN2SimpleFlow::schedule_next()
   if ( shortest_next_time != -1 ) {
     BRN_DEBUG("Next schedule in %d msecs",shortest_next_time);
     if (_timer.scheduled() ) {
-      BRN_ERROR("Timer is already scheduled");
+      BRN_WARN("Timer is already scheduled");
       BRN_DEBUG("Timer is scheduled at %s",_timer.expiry().unparse().c_str());
-      _timer.reschedule_after_msec(shortest_next_time);
+      _timer.unschedule();
+      _timer.schedule_after_msec(shortest_next_time);
+      //_timer.reschedule_after_msec(shortest_next_time);
     } else {
       _timer.schedule_after_msec(shortest_next_time);
     }
@@ -724,12 +726,6 @@ BRN2SimpleFlow::add_flow(String conf)
       BRN_DEBUG("Found address!");
   }
 
-  if ( !cp_ethernet_address(args[1], &dst)) {
-    BRN_DEBUG("Error. Use nameinfo");
-    if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, args[1], &dst, 6))
-      BRN_DEBUG("Found address!");
-  }
-
   cp_integer(args[2], &interval);
   cp_integer(args[3], &size);
   cp_integer(args[4], &mode);
@@ -739,8 +735,23 @@ BRN2SimpleFlow::add_flow(String conf)
   if ( args.size() > 7 ) cp_integer(args[7], &burst);
   if ( args.size() > 8 ) cp_integer(args[8], &start_delay);
 
-  add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
+  BRN_DEBUG("Group?");
+  Vector<String> group;
 
+  String group_string = args[1].unshared();
+  str_replace(group_string, ',', ' ');
+  str_replace(group_string, '+', ' ');
+  cp_spacevec(group_string, group);
+
+  for ( int i = 0; i < group.size(); i++ ) {
+    if ( !cp_ethernet_address(group[i], &dst)) {
+      BRN_DEBUG("Error. Use nameinfo");
+      if (NameInfo::query(NameInfo::T_ETHERNET_ADDR, this, group[i], &dst, 6))
+        BRN_DEBUG("Found address!");
+    }
+
+    add_flow( src, dst, size, mode, interval, burst, duration, active, start_delay);
+  }
 }
 
 /****************************************************************************/
@@ -820,7 +831,8 @@ enum {
   H_FLOW_STATS,
   H_ADD_FLOW,
   H_DEL_FLOW,
-  H_RESET
+  H_RESET,
+  H_SET_GROUP
 };
 
 static String
@@ -854,6 +866,9 @@ BRN2SimpleFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHa
     case H_DEL_FLOW: {
       break;
     }
+    case H_SET_GROUP: {
+      break;
+    }
   }
   return 0;
 }
@@ -868,6 +883,7 @@ void BRN2SimpleFlow::add_handlers()
   add_write_handler("reset", BRN2SimpleFlow_write_param, (void *)H_RESET);
   add_write_handler("add_flow", BRN2SimpleFlow_write_param, (void *)H_ADD_FLOW);
   add_write_handler("del_flow", BRN2SimpleFlow_write_param, (void *)H_DEL_FLOW);
+  add_write_handler("set_group", BRN2SimpleFlow_write_param, (void *)H_SET_GROUP);
 }
 
 EXPORT_ELEMENT(BRN2SimpleFlow)
