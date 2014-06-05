@@ -429,7 +429,6 @@ void DibadawnSearch::setNonBrigdeByPayload(DibadawnPayloadElement& payload)
 
 void DibadawnSearch::removePayloadFromMessageBuffer(DibadawnPayloadElement& payloadA)
 {
-  click_chatter("<DEBUG where='here'/>");
   for (Vector<DibadawnPayloadElement>::iterator it = messageBuffer.begin(); it != messageBuffer.end(); it++)
   {
     DibadawnPayloadElement& paylaodB = *it;
@@ -439,7 +438,6 @@ void DibadawnSearch::removePayloadFromMessageBuffer(DibadawnPayloadElement& payl
       break;
     }
   }
-  click_chatter("<DEBUG where='here2'/>");
 }
 
 void DibadawnSearch::addPayloadElementsToMessagePuffer(DibadawnPacket& packet)
