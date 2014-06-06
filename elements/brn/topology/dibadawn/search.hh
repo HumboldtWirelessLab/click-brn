@@ -59,8 +59,9 @@ private:
     Vector<DibadawnPayloadElement> messageBuffer;
     DibadawnNeighborContainer adjacents;
     bool isArticulationPoint;
+    DibadawnPacket sentForwardPacket;
+    
     uint32_t numOfConcurrentSenders;
-
     uint32_t maxTraversalTimeMs;
     uint8_t maxTtl;
     BRNElement *brn_click_element;
@@ -69,6 +70,7 @@ private:
     void activateForwardTimer(DibadawnPacket &packet);
     void activateForwardSendTimer(DibadawnPacket &packet);
     void receiveForwardMessage(DibadawnPacket &packet);
+    bool isValidCrossEdge(DibadawnPacket &rxPacket);
     void receiveBackMessage(DibadawnPacket &packet);
     void detectCycles();
     void bufferBackwardMessage(DibadawnCycle &cycleId);

@@ -204,7 +204,6 @@ void DibadawnSearch::detectArticulationPoints()
   {
     click_chatter("<ArticulationPoint node='%s'/>",
         addrOfThisNode.unparse_dash().c_str());
-    
   }
   commonStatistic.upateArticulationPoint(addrOfThisNode, isArticulationPoint);
 }
@@ -309,6 +308,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       txPacket.ttl--;
       txPacket.forwardedBy = addrOfThisNode;
       txPacket.treeParent = rxPacket.forwardedBy;
+      sentForwardPacket = rxPacket;
 
       sendDelayedBroadcastWithTimeout(txPacket);
     }
@@ -329,17 +329,26 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
   }
   else
   {
+    bool isValid = isValidCrossEdge(rxPacket);
     EtherAddress neighbor = rxPacket.forwardedBy;
-
-    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' />",
+    
+    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' valid='%d' />",
         addrOfThisNode.unparse_dash().c_str(),
         neighbor.unparse_dash().c_str(),
         Timestamp::now().unparse().c_str(),
-        searchId.asString().c_str());
-
-    crossEdges.push_back(rxPacket);
+        searchId.asString().c_str(),
+        isValid);
+    
+    if(isValid)
+      crossEdges.push_back(rxPacket);
   }
 }
+
+bool DibadawnSearch::isValidCrossEdge(DibadawnPacket& rxPacket)
+{
+  return(abs(sentForwardPacket.ttl - rxPacket.ttl) <= 1);
+}
+
 
 void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
 {
