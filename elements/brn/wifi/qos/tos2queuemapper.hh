@@ -83,7 +83,7 @@ public:
 
   int find_queue(uint16_t cwmin);
   int find_queue_next_bigger(uint16_t backoff_window_size);
-  int find_queue_prob(uint16_t backoff_window_size);
+  int find_queue_prob(uint16_t backoff_window_size, bool quadratic_distance);
   uint32_t find_closest_backoff(uint32_t bo);
   uint32_t find_closest_backoff_exp(uint32_t bo);
 

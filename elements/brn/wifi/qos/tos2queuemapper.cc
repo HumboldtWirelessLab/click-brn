@@ -241,7 +241,8 @@ Tos2QueueMapper::handle_feedback(Packet *p)
 int
 Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
 {
-  if ( _queue_mapping == QUEUEMAPPING_PROBABILISTIC ) return find_queue_prob(backoff_window_size);
+  if ( _queue_mapping == QUEUEMAPPING_PROBABILISTIC ) return find_queue_prob(backoff_window_size, false);
+  if ( _queue_mapping == QUEUEMAPPING_GRAVITATION ) return find_queue_prob(backoff_window_size, true);
 
   return find_queue_next_bigger(backoff_window_size);
 }
@@ -259,7 +260,7 @@ Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
 }
 
 int
-Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
+Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size, bool quadratic_distance)
 {
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
@@ -269,9 +270,14 @@ Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
       int dist_lower_queue = ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
       int dist_upper_queue = ((uint32_t)_cwmin[i+1] - (uint32_t)backoff_window_size);
 
-      if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < (uint32_t)dist_lower_queue ) return i;
+      if ( quadratic_distance ) {
+        dist_lower_queue *= dist_lower_queue;
+        dist_upper_queue *= dist_upper_queue;
+      }
 
-      return i+1;
+      if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < (uint32_t)dist_lower_queue ) return i+1;
+
+      return i;
     }
   }
 
