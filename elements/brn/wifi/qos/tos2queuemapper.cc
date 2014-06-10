@@ -50,23 +50,16 @@ CLICK_DECLS
 Tos2QueueMapper::Tos2QueueMapper():
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
     _current_scheme(0),
-    _learning_current_bo(TOS2QM_DEFAULT_LEARNING_BO),
-    _learning_count_up(0),
-    _learning_count_down(0),
-    _learning_max_bo(0),
     _bo_usage_max_no(16),
     _last_bo_usage(NULL),
     _all_bos(NULL),
     _all_bos_idx(0),
     _ac_stats_id(0),
-    _target_packetloss(TOS2QM_DEFAULT_TARGET_PACKET_LOSS),
-    _target_channelload(TOS2QM_DEFAULT_TARGET_CHANNELLOAD),
-    _bo_for_target_channelload(TOS2QM_DEFAULT_LEARNING_BO),
-    _target_diff_rxtx_busy(TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY),
     _feedback_cnt(0),
     _tx_cnt(0),
     _pkt_in_q(0),
-    _call_set_backoff(0)
+    _call_set_backoff(0),
+    _queue_mapping(QUEUEMAPPING_NEXT_BIGGER)
 {
   BRNElement::init();
   _scheme_list = SchemeList("BackoffScheme");
@@ -90,6 +83,7 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICE", cpkP+cpkM, cpElement, &_device,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
+      "QUEUEMAPPING", cpkP, cpInteger, &_queue_mapping,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -247,6 +241,14 @@ Tos2QueueMapper::handle_feedback(Packet *p)
 int
 Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
 {
+  if ( _queue_mapping == QUEUEMAPPING_PROBABILISTIC ) return find_queue_prob(backoff_window_size);
+
+  return find_queue_next_bigger(backoff_window_size);
+}
+
+int
+Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
+{
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
@@ -262,16 +264,16 @@ Tos2QueueMapper::find_queue_prob(uint16_t backoff_window_size)
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
-  for (int i = 0; i <= no_queues-1; i++)    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) {
-      if (backoff_window_size <= _cwmin[i+1]) return i+1;
-
-      int dist_lower_queue = 1000000000 / ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
-      int dist_upper_queue = 1000000000 / ((uint32_t)_cwmin[i+1] - (uint32_t)backoff_window_size);
+  for (int i = 0; i <= no_queues-1; i++) {
+    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) {
+      int dist_lower_queue = ((uint32_t)backoff_window_size - (uint32_t)_cwmin[i]);
+      int dist_upper_queue = ((uint32_t)_cwmin[i+1] - (uint32_t)backoff_window_size);
 
       if ( (click_random() % (dist_lower_queue + dist_upper_queue)) < (uint32_t)dist_lower_queue ) return i;
 
       return i+1;
     }
+  }
 
   return no_queues-1;
 }
@@ -359,12 +361,9 @@ Tos2QueueMapper::stats()
 {
   StringAccum sa;
   sa << "<tos2queuemapper node=\"" << BRN_NODE_NAME << "\" strategy=\"" << _bqs_strategy << "\" queues=\"";
-  sa << (uint32_t)no_queues << "\" learning_current_bo=\"" << _learning_current_bo;
-  sa << "\" bo_up=\"" << _learning_count_up << "\" bo_down=\"" << _learning_count_down;
-  sa << "\" bo_tcl=\"" << _bo_for_target_channelload << "\" tar_cl=\"" << _target_channelload;
-  sa << "\" feedback_cnt=\"" << _feedback_cnt << "\" tx_cnt=\"" << _tx_cnt;
-  sa << "\" packets_in_queue=\"" << _pkt_in_q << "\" calls_set_backoff=\"" << _call_set_backoff << "\" >\n";
-  sa << "\t<queueusage>\n";
+  sa << (uint32_t)no_queues << "\" queue_mapping=\"" << _queue_mapping << "\" feedback_cnt=\"";
+  sa << _feedback_cnt << "\" tx_cnt=\"" << _tx_cnt << "\" packets_in_queue=\"" << _pkt_in_q;
+  sa << "\" calls_set_backoff=\"" << _call_set_backoff << "\" >\n\t<queueusage>\n";
   for ( int i = 0; i < no_queues; i++) {
     sa << "\t\t<queue index=\"" << i << "\" usage=\"" << _queue_usage[i];
     sa << "\" cwmin=\"" << _cwmin[i] << "\" cwmax=\"" << _cwmax[i];
