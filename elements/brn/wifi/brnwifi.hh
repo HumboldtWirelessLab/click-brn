@@ -4,8 +4,8 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 
-#include "click/../../elements/brn/brnprotocol/brnpacketanno.hh"
-#include "click/../../elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
