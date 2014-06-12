@@ -61,6 +61,8 @@ class LinuxRTCtrl : public BRNElement {
     int del_route(IPAddress &ip, IPAddress &mask, IPAddress &gw);
     int add_default_gateway(IPAddress &default_gw);
     int del_default_gateway(IPAddress &default_gw);
+
+    uint32_t uid;
 };
 
 CLICK_ENDDECLS
