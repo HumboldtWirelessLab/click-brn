@@ -42,6 +42,7 @@ FloodingPiggyback::FloodingPiggyback():
   _me(NULL),
   _flooding(NULL),
   _fhelper(NULL),
+  _flooding_db(NULL),
   _max_last_nodes_per_pkt(BCAST_EXTRA_DATA_LASTNODE_DFL_MAX_NODES),
   _update_interval(BCAST_EXTRA_DATA_NEIGHBOURS_UPDATE_INTERVAL)
 {
@@ -60,6 +61,7 @@ FloodingPiggyback::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODING", cpkP+cpkM, cpElement, &_flooding,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+      "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "LASTNODESPERPKT", cpkP, cpInteger, &_max_last_nodes_per_pkt,
       "NEIGHBOURSUPDATEINTERVAL", cpkP, cpInteger, &_update_interval,
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -135,7 +137,7 @@ FloodingPiggyback::simple_action(Packet *p)
       }
     }
 
-    uint32_t new_data_size = FloodingPiggyback::bcast_header_add_last_nodes(_flooding, &src, bcast_id, &(extra_data[extra_data_size]),
+    uint32_t new_data_size = FloodingPiggyback::bcast_header_add_last_nodes(_flooding, _flooding_db, &src, bcast_id, &(extra_data[extra_data_size]),
                                                                             BCAST_MAX_EXTRA_DATA_SIZE-extra_data_size, _max_last_nodes_per_pkt,
                                                                             _net_graph, next_hop);
 
@@ -173,14 +175,14 @@ FloodingPiggyback::simple_action(Packet *p)
 }
 
 int
-FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes, NetworkGraph &net_graph,
-                                               EtherAddress &blacklist)
+FloodingPiggyback::bcast_header_add_last_nodes(Flooding */*fl*/, FloodingDB *fl_db, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes,
+                                               NetworkGraph &net_graph, EtherAddress &blacklist)
 {
   int32_t last_node_cnt = 0;
-  Flooding::BroadcastNode *bcn = fl->get_broadcast_node(src);
+  BroadcastNode *bcn = fl_db->get_broadcast_node(src);
   if ( bcn == NULL ) return 0;
 
-  struct Flooding::BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
+  struct BroadcastNode::flooding_last_node* lnl = bcn->get_last_nodes(id, (uint32_t*)&last_node_cnt);
   uint32_t cnt = MIN((uint32_t)last_node_cnt,                                                                           //limit: what we have
                      MIN((buffer_size-(sizeof(struct click_brn_bcast_extra_data)+sizeof(uint32_t)+sizeof(uint32_t)))/6, //limit: pkt-space
                          MIN(max_last_nodes,32)));                                                                      //limit: flag-space
@@ -225,11 +227,11 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, 
 }
 
 int
-FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size )
+FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, FloodingDB *fl_db, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size )
 {
   EtherAddress ea;
 
-  Flooding::BroadcastNode *bcn = fl->get_broadcast_node(src);
+  BroadcastNode *bcn = fl_db->get_broadcast_node(src);
   if ( bcn == NULL ) {
     //click_chatter("BCastNode %s is unknown. Discard extra info (bcastheader).",src->unparse().c_str());
     return 0;

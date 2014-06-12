@@ -9,6 +9,7 @@
 
 #include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 
 CLICK_DECLS
@@ -28,6 +29,7 @@ class RtsCtsFlooding: public RtsCtsScheme {
   BRN2NodeIdentity *_me;
   Flooding *_flooding;
   FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
 
   HiddenNodeDetection *_hnd;
   bool _pessimistic;

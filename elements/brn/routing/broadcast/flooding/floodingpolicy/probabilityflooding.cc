@@ -43,6 +43,7 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
     "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
@@ -76,10 +77,10 @@ ProbabilityFlooding::do_forward(EtherAddress *src, EtherAddress *, const EtherAd
      */
     if ((fwd_cnt > 0) && (_cntbased_min_neighbors_for_abort > 0)) { //we forward the msg; should we abort?
 
-      struct Flooding::BroadcastNode::flooding_last_node *last_nodes; //get all nodes which has potential received the msg
+      struct BroadcastNode::flooding_last_node *last_nodes; //get all nodes which has potential received the msg
       uint32_t last_nodes_size;
 
-      last_nodes = _flooding->get_last_nodes(src, bcast_id, &last_nodes_size);
+      last_nodes = _flooding_db->get_last_nodes(src, bcast_id, &last_nodes_size);
 
       uint32_t no_rx_nodes = 0; //count nodes from which we received the packet
 
@@ -89,7 +90,7 @@ ProbabilityFlooding::do_forward(EtherAddress *src, EtherAddress *, const EtherAd
 
       if ( no_rx_nodes >= _cntbased_min_neighbors_for_abort ) {
         //stop it
-        Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(src);
+        BroadcastNode *bcn = _flooding_db->get_broadcast_node(src);
         if ( bcn != NULL ) {
           bcn->set_stopped(bcast_id,true);
         }
