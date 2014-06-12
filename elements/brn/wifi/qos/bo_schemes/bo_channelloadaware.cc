@@ -148,10 +148,13 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     uint32_t wiggle_room = target_tx / 10;
 
     BRN_DEBUG("    tx: %d target tx: %d wm param: %d\n", as->hw_tx, target_tx, wiggle_room);
-    if (as->hw_tx < (target_tx - wiggle_room))
+    if (as->hw_tx < (target_tx - wiggle_room)) {
+      BRN_DEBUG("decrease");
       decrease_cw();
-    else if (as->hw_tx > target_tx)
+    } else if (as->hw_tx > target_tx) {
+        BRN_DEBUG("increase");
         increase_cw();
+    }
     break;
 
   } default:
@@ -159,10 +162,13 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
   }
 
   if (_cap) {
-    uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
+    //uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
+    uint16_t lower_bound = 32;
 
-    if ((int) _current_bo < lower_bound)
+    if ((int) _current_bo < lower_bound) {
       _current_bo = lower_bound;
+      BRN_DEBUG("capping to lower bound\n");
+    }
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
