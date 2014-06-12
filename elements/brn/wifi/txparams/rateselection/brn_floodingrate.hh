@@ -3,7 +3,9 @@
 #include <click/timer.hh>
 
 #include "rateselection.hh"
+
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
@@ -72,6 +74,7 @@ class BrnFloodingRate : public RateSelection
 
     Flooding *_flooding;
     FloodingHelper *_fhelper;
+    FloodingDB *_flooding_db;
     BRN2LinkStat *_linkstat;
     ChannelStats *_cst;
 

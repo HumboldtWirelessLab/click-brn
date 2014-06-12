@@ -2,7 +2,9 @@
 #define PROBABILITYFLOODING_HH
 #include <click/timer.hh>
 
-#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "../flooding_helper.hh"
+#include "../flooding_db.hh"
+
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -46,6 +48,7 @@ class ProbabilityFlooding : public FloodingPolicy
 
     BRN2NodeIdentity *_me;
     FloodingHelper *_fhelper;
+    FloodingDB *_flooding_db;
 
     uint32_t _min_no_neighbors;
     uint32_t _fwd_probability;

@@ -43,8 +43,8 @@ CLICK_DECLS
 FloodingPassiveAck::FloodingPassiveAck():
   _me(NULL),
   _retransmit_element(NULL),
-  _flooding(NULL),
   _fhelper(NULL),
+  _flooding_db(NULL),
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
   _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
   _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
@@ -75,6 +75,7 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+      "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
       "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
@@ -179,9 +180,9 @@ FloodingPassiveAck::count_unfinished_neighbors(PassiveAckPacket *pap)
   /*check neighbours*/
   CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()));
 
-  struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+  struct BroadcastNode::flooding_last_node *last_nodes;
   uint32_t last_nodes_size;
-  last_nodes = _flooding->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
+  last_nodes = _flooding_db->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
 
   BRN_DEBUG("For %s:%d i have %d neighbours", pap->_src.unparse().c_str(), pap->_bcast_id, last_nodes_size);
 
@@ -215,7 +216,7 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
 int
 FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 {
-  if ( _flooding->me_src(&(pap->_src), pap->_bcast_id) && (pap->_retries == 0) ) return 0; //first
+  if ( _flooding_db->me_src(&(pap->_src), pap->_bcast_id) && (pap->_retries == 0) ) return 0; //first
 
   /* depends on neighbours and last node*/
   int n = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()))->size();
@@ -257,7 +258,7 @@ FloodingPassiveAck::stats()
 {
   StringAccum sa;
 
-  sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding=\"" << (int)((_flooding!=NULL)?1:0);
+  sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding_db=\"" << (int)((_flooding_db!=NULL)?1:0);
   sa << "\" retries=\"" << _dfl_retries << "\" timeout=\"";
   sa << _dfl_interval << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _enqueued_pkts << "\" deletes=\"" << _dequeued_pkts;
