@@ -700,7 +700,7 @@ BRN2SimpleFlow::add_flow(String conf)
   cp_spacevec(s, args);
 
   if ( args.size() < 7 ) {
-    BRN_WARN("Use: src dst interval size mode duration active [num_of_burst_pck [start_delay]]");
+    BRN_WARN("Use: src dst interval_ms size mode duration active [num_of_burst_pck [start_delay_ms]]");
     BRN_WARN("You send. %s",conf.c_str());
   }
 
