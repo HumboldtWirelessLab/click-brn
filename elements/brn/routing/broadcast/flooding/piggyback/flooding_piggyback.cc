@@ -198,6 +198,7 @@ FloodingPiggyback::bcast_header_add_last_nodes(Flooding */*fl*/, FloodingDB *fl_
   uint32_t foreign_response_flags = 0;
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
+    if ( !(lnl[last_node_cnt].flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE) ) continue; //not a last node, so continue
     EtherAddress add_node = EtherAddress(lnl[last_node_cnt].etheraddr);
     if ( (net_graph.nmm.findp(add_node) != NULL) && ( memcmp(src_data,lnl[last_node_cnt].etheraddr,6) != 0 ) && (add_node != blacklist)) {
       memcpy(&(buffer[buf_idx]), lnl[last_node_cnt].etheraddr, 6);
@@ -247,7 +248,7 @@ FloodingPiggyback::bcast_header_get_last_nodes(Flooding *fl, FloodingDB *fl_db, 
       //click_chatter("Found Lastnode stuff: Size: %d",extdat->size);
 
       uint32_t rxdata_idx = i + sizeof(struct click_brn_bcast_extra_data);
-      uint32_t last_node_data_idx_end = i + extdat->size - (sizeof(uint32_t) + sizeof(uint32_t)) ; //serach for last two int (acked & respons)
+      uint32_t last_node_data_idx_end = i + extdat->size - (sizeof(uint32_t) + sizeof(uint32_t)) ; //search for last two int (acked & response)
 
       uint32_t rx_acked_flags = 0;
       memcpy((uint8_t*)&rx_acked_flags,&(rxdata[last_node_data_idx_end]),sizeof(uint32_t));

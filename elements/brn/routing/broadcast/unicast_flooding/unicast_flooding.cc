@@ -242,7 +242,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       last_nodes = _flooding_db->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
-        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN) == 0) { //1. it is assigned and this is not revoked
+        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE) != 0) { //1. it is assigned and this is not revoked
           //TODO: Debug: check whether node is already in known_neighbours
           BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
