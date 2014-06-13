@@ -715,6 +715,7 @@ Flooding::table()
       sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
 
       for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
+        if (!(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE)) continue; //node must be last node
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
         sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" responsible=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" finished_responsible=\"";
