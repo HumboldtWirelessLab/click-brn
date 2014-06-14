@@ -230,19 +230,11 @@ Flooding::push( int port, Packet *packet )
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
 
     /**
-     *            P I G G Y B A C K
-     * 
-     * TODO: push to piggybackelement
-     */
-
-    FloodingPiggyback::bcast_header_get_last_nodes(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
-
-    /**
-     *            A D D   D A T A
+     *      Add unknown nodes
      *
      * -add id & src & fwd
-     * -inc received
-     */
+     *
+     **/
 
     if ( ! is_known ) {   //note only if this is the first time
       _flooding_rx_new_id++;
@@ -252,8 +244,23 @@ Flooding::push( int port, Packet *packet )
       if ( _flooding_db->add_last_node(&src,(int32_t)p_bcast_id, &src, false, true, false, false) != 0 ) {
         BRN_DEBUG("Add src as last node");
       }
+    }
 
-    } else {
+    /**
+     *            P I G G Y B A C K
+     *
+     * TODO: push to piggybackelement
+     */
+
+    FloodingPiggyback::bcast_header_get_last_nodes(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
+
+    /**
+     *            A D D   D A T A
+     *
+     * -inc received
+     */
+
+    if ( is_known ) {
       /**  A B O R T **/
       BRN_INFO("Port 1\nRX: %s %s %d (%s)\nTX: %s %s %d",fwd.unparse().c_str(), src.unparse().c_str(), p_bcast_id, rx_node.unparse().c_str(),
                                                           _last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(),_last_tx_bcast_id);
