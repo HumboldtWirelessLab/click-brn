@@ -231,7 +231,7 @@ class BroadcastNode
   struct flooding_last_node *add_last_node(uint16_t id, EtherAddress *node, bool *is_new)
   {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-    if (_bcast_id_list[index] != id) return NULL;
+    assert(_bcast_id_list[index] == id);
 
     /* create or extend the queue */
     if (_last_node_list[index] == NULL) {
@@ -280,7 +280,7 @@ class BroadcastNode
     assert(forwarded || rx_acked || responsibility || foreign_responsibility );
 
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-    if (_bcast_id_list[index] != id) return -1;
+    assert(_bcast_id_list[index] == id);
 
     /* create or extend the queue */
     if (_last_node_list[index] == NULL) {
