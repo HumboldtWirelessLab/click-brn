@@ -228,6 +228,10 @@ class BroadcastNode
     }
   }
 
+  /**
+    * Last node (known nodes)
+    */
+
   struct flooding_last_node *add_last_node(uint16_t id, EtherAddress *node, int *new_index)
   {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
@@ -272,10 +276,6 @@ class BroadcastNode
 
   }
 
-  /**
-    * Last node (known nodes)
-    */
-
   int add_last_node(uint16_t id, EtherAddress *node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility) {
     assert(forwarded || rx_acked || responsibility || foreign_responsibility );
 
@@ -298,6 +298,9 @@ class BroadcastNode
           fln->flags |= FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY; //then mark it as finished
           fln->flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;         //clear responsibility
         }
+
+        fln->rx_probability = 100;
+
       } else if ( responsibility ) {
         fln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;            //set responsibility
         fln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
@@ -313,8 +316,10 @@ class BroadcastNode
 
       if ( forwarded ) fln->flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
 
-      if ( rx_acked ) fln->flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
-      else if ( responsibility ) fln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
+      if ( rx_acked ) {
+        fln->flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
+        fln->rx_probability = 100;
+      } else if ( responsibility ) fln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
       else if ( foreign_responsibility ) fln->flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
     }
 
@@ -439,6 +444,10 @@ class BroadcastNode
     return ((ln->flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0);
   }
 
+  /**
+    * TX-Abort
+    */
+
   void set_stopped(uint16_t id, bool stop) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     if (_bcast_id_list[index] != id) return;
@@ -452,6 +461,27 @@ class BroadcastNode
     if (_bcast_id_list[index] != id) return false;
 
     return ((_bcast_flags_list[index]&FLOODING_FLAGS_TX_ABORT) == FLOODING_FLAGS_TX_ABORT);
+  }
+
+  /**
+   * Probability
+   */
+
+  void add_probability(uint16_t id, EtherAddress *node, uint32_t probability, uint32_t no_transmission) {
+    int new_index = 0;
+    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+
+    for ( uint32_t i = 0; i < no_transmission; i++ ) //MIN to avoid overflow (prob > 100)
+      fln->rx_probability = MIN(100, (uint32_t)fln->rx_probability + ((((uint32_t)100 - (uint32_t)fln->rx_probability) * probability) / (uint32_t)100));
+
+    //TODO: use 1-pow(1-probability,no_transmission) as final succ transmission probability
+  }
+
+  int get_probability(uint16_t id, EtherAddress *node) {
+    int new_index = 0;
+    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+
+    return fln->rx_probability;
   }
 };
 

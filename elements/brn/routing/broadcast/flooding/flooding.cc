@@ -42,7 +42,8 @@
 CLICK_DECLS
 
 Flooding::Flooding()
-  : _flooding_db(NULL),
+  : _fhelper(NULL),
+    _flooding_db(NULL),
     _flooding_passiveack(NULL),
     _bcast_id(0),
     _passive_last_node_new(false),
@@ -82,6 +83,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGPOLICIES", cpkP+cpkM, cpString, &_scheme_string,
+      "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
       "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "FLOODINGSTRATEGY", cpkP+cpkM, cpInteger, &_flooding_strategy,
       "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
@@ -187,7 +189,7 @@ Flooding::push( int port, Packet *packet )
     else
       retransmit_broadcast(packet, &src, _bcast_id);      //send packet
 
-  } else if ( port == 1 ) {                                  // kommt von brn
+  } else if ( port == 1 ) {                               // kommt von brn
 
     _flooding_rx++;
 
@@ -297,6 +299,13 @@ Flooding::push( int port, Packet *packet )
      _passive_last_node_new = _passive_last_node_assign = _passive_last_node_rx_acked = _passive_last_node_foreign_responsibility = false;
 
     /**
+     * Add Probability
+     *
+     */
+    // pakcet was sent by fwd, Source was src with p_bcast_id. just 1 try was received
+    add_rx_probability(fwd, src, (int32_t)p_bcast_id, 1);
+
+    /**
      *            F O R W A R D ??
      */
     bool forward = (ttl > 0) && _flooding_policy->do_forward(&src, &fwd, _me->getDeviceByNumber(dev_id)->getEtherAddress(), p_bcast_id, is_known, c_fwds,
@@ -389,6 +398,7 @@ Flooding::push( int port, Packet *packet )
     uint8_t devicenr = BRNPacketAnno::devicenumber_anno(packet);
 
     click_ether *ether = (click_ether *)packet->ether_header();
+    EtherAddress fwd = EtherAddress(ether->ether_shost);
     EtherAddress rx_node = EtherAddress(ether->ether_dhost);  //target of unicast has the packet
 
     bcast_header = (struct click_brn_bcast *)(packet->data());
@@ -465,6 +475,16 @@ Flooding::push( int port, Packet *packet )
       if (!rx_node.is_broadcast()) _flooding_db->add_last_node(&src,(int32_t)p_bcast_id, &rx_node, false, true, false, false);
     }
 
+    /**
+     * Add Probability
+     *
+     */
+    // pakcet was sent by fwd, Source was src with p_bcast_id.
+    add_rx_probability(fwd, src, (int32_t)p_bcast_id, no_transmissions);
+
+    /**
+     * passive ack
+     */
     if ( _flooding_passiveack != NULL )
       _flooding_passiveack->handle_feedback_packet(packet, &src, p_bcast_id, false, packet_is_tx_abort, no_transmissions);
     else
@@ -592,6 +612,19 @@ Flooding::retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id)
   output(1).push(out_packet);
 
   return 0;
+}
+
+void
+Flooding::add_rx_probability(EtherAddress &fwd, EtherAddress &src, uint16_t id, uint32_t no_transmissions)
+{
+  BroadcastNode *bcn = _flooding_db->get_broadcast_node(&src);
+
+  CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(fwd);
+
+  for( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
+    int metric = cnml->get_metric(cnml->_neighbors[n_i]);
+    bcn->add_probability(id, &(cnml->_neighbors[n_i]), _fhelper->metric2pdr(metric), no_transmissions);
+  }
 }
 
 void
@@ -729,7 +762,7 @@ Flooding::table()
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
         sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)?0:1) << "\" rcv_cnt=\"";
-        sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
+        sa << (uint32_t)(flnl[j].received_cnt) <<"\" rx_prob=\"" << (uint32_t)flnl[j].rx_probability << "\" />\n";
       }
 
       sa << "\t\t</id>\n";
