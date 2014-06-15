@@ -29,10 +29,12 @@
 #include <click/hashmap.hh>
 #include <click/timestamp.hh>
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
+#include "flooding_helper.hh"
 #include "flooding_db.hh"
 #include "floodingpolicy/floodingpolicy.hh"
 #include "floodingpassiveack.hh"
@@ -126,6 +128,7 @@ class Flooding : public BRNElement {
   //
   BRN2NodeIdentity *_me;
 
+  FloodingHelper *_fhelper;
   FloodingDB *_flooding_db;
   FloodingPolicy *_flooding_policy;
   FloodingPassiveAck *_flooding_passiveack;
@@ -239,6 +242,8 @@ class Flooding : public BRNElement {
     *id = _last_tx_bcast_id;
     return &_last_tx_src_ea;
   }
+
+  void add_rx_probability(EtherAddress &fwd, EtherAddress &src, uint16_t id, uint32_t no_transmissions);
 
   Vector<FloodingPolicy *> _schemes;
   FloodingPolicy **_scheme_array;
