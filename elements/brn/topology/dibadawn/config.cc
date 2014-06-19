@@ -55,9 +55,9 @@ String DibadawnConfig::asString()
   sa << "\t<NODEIDENTITY value='" << thisNode.unparse() << "' >\n";
   sa << "\t<DEBUG value='" << debugLevel << "' />\n";
   sa << "\t<ORIGINDELAY value='" << useOriginForwardDelay << "' />\n";
-  sa << "\t<maxTraversalTimeMs value='" << maxTraversalTimeMs << "' />\n";
-  sa << "\t<maxTtl value='" << maxHops << "' />\n";
-  sa << "\t<votingRule value='" << votingRule << "' />\n";
+  sa << "\t<MAXTRAVERSALTIMEMS value='" << maxTraversalTimeMs << "' />\n";
+  sa << "\t<MAXHOPS value='" << maxHops << "' />\n";
+  sa << "\t<VOTINGRULE value='" << votingRule << "' />\n";
   sa << "\t<votingRules>\n";
   sa << "\t\t<rule number='0' name='Unanimous' />\n";
   sa << "\t\t<rule number='1' name='Plain majority' />\n";
