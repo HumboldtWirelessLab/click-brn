@@ -33,6 +33,7 @@
 #include "cycle.hh"
 #include "neighbor_container.hh"
 #include "nodestatistic.hh"
+#include "config.hh"
 
 
 CLICK_DECLS;
@@ -48,7 +49,6 @@ public:
     };
 
 private:
-    EtherAddress addrOfThisNode;
     EtherAddress parentNode;
     bool visited;
     Timer *forwardTimeoutTimer;
@@ -58,15 +58,14 @@ private:
     DibadawnNodeStatistic &commonStatistic;
     Vector<DibadawnPayloadElement> messageBuffer;
     DibadawnNeighborContainer adjacents;
+    DibadawnConfig &config;
     bool isArticulationPoint;
     DibadawnPacket sentForwardPacket;
     
     uint32_t numOfConcurrentSenders;
-    uint32_t maxTraversalTimeMs;
-    uint8_t maxTtl;
     BRNElement *brn_click_element;
 
-    void initCommon(BRNElement *click_element, const EtherAddress &addrOfThisNode);
+    void initCommon(BRNElement *click_element);
     void activateForwardTimer(DibadawnPacket &packet);
     void activateForwardSendTimer(DibadawnPacket &packet);
     void receiveForwardMessage(DibadawnPacket &packet);
@@ -89,8 +88,8 @@ private:
     uint8_t getUsedHops(uint8_t ttl);
 
 public:
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, const EtherAddress &addrOfThisNode);
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, const EtherAddress &addrOfThisNode, DibadawnSearchId &packet);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnSearchId &packet);
 
     void sendBroadcastWithTimeout(DibadawnPacket &packet);
     void sendTo(DibadawnPacket &packet, EtherAddress &dest);

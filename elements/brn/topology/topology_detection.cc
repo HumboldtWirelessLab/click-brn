@@ -53,20 +53,46 @@ TopologyDetection::~TopologyDetection()
 
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
       "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoInfo,
       "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
-    return -1;
+    return(-1);
 
-  dibadawnAlgo.setAddrOfThisNode(*_node_identity->getMasterAddress());
+  dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
+  dibadawnAlgo.config.debugLevel = _debug;
   dibadawnAlgo.setTopologyInfo(_topoInfo);
 
-  return 0;
+  return(0);
 }
+
+int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
+{
+  bool is_topologyinfo_configured;
+  bool is_nodeidentity_configured;
+  bool is_debug_configured;
+  
+  if (cp_va_kparse(conf, this, errh,
+      "TOPOLOGYINFO", cpkC, &is_topologyinfo_configured, cpElement, &_topoInfo,
+      "NODEIDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
+      "LINKTABLE", 0, cpElement, &_lt,
+      "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
+      "ORIGINDELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      cpEnd) < 0)
+    return(-1);
+
+  if(is_topologyinfo_configured)
+    dibadawnAlgo.setTopologyInfo(_topoInfo);
+  if(is_nodeidentity_configured)
+    dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
+  if(is_debug_configured)
+    dibadawnAlgo.config.debugLevel = _debug;
+  
+  return(0);
+}
+
 
 int TopologyDetection::initialize(ErrorHandler *)
 {
@@ -115,18 +141,29 @@ String TopologyDetection::local_topology_info(void)
   return(_topoInfo->topology_info());
 }
 
+String TopologyDetection::config()
+{
+  return(dibadawnAlgo.config.asString());
+}
+
+
 enum
 {
-  H_START_DETECTION, H_TOPOLOGY_INFO
+  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG
 };
 
-static int write_param(const String& /*click_script_parameter*/, Element *element, void *vparam, ErrorHandler* /*errh*/)
+static int write_param(const String& click_script_parameter, Element *element, void *vparam, ErrorHandler* errh)
 {
   TopologyDetection *topo = (TopologyDetection *) element;
   switch ((intptr_t) vparam)
   {
   case H_START_DETECTION:
     topo->start_detection();
+    break;
+    
+  case H_CONFIG:
+    String s = cp_uncomment(click_script_parameter);
+    topo->reconfigure(s, errh);
     break;
   }
   return 0;
@@ -139,6 +176,12 @@ static String read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
   case H_TOPOLOGY_INFO:
     return ( topo->local_topology_info());
+    break;
+  
+  case H_CONFIG:
+    return(topo->config());
+    break;
+    
   default: return String();
   }
 }
@@ -148,8 +191,10 @@ void TopologyDetection::add_handlers()
   BRNElement::add_handlers();
 
   add_write_handler("detect", write_param, (void *) H_START_DETECTION);
+  add_write_handler("config", write_param, (void *) H_CONFIG);
 
   add_read_handler("local_topo_info", read_param, (void *) H_TOPOLOGY_INFO);
+  add_read_handler("config", read_param, (void *) H_CONFIG);
 }
 
 CLICK_ENDDECLS

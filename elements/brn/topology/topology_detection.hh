@@ -50,11 +50,14 @@ public:
     bool can_live_reconfigure() const  { return false; }
     
     int configure(Vector<String> &, ErrorHandler *);
+    int reconfigure(String &, ErrorHandler *);
+    
     int initialize(ErrorHandler *);
     void add_handlers();
     void push(int port, Packet *packet);
     void start_detection();
     String local_topology_info(void);
+    String config();
 
 private:
     uint32_t detection_id;

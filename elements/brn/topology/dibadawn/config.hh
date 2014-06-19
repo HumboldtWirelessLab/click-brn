@@ -18,38 +18,30 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_HH
-#define TOPOLOGY_DIBADAWN_HH
+#ifndef TOPOLOGY_DIBADAWN_CONFIG_HH
+#define TOPOLOGY_DIBADAWN_CONFIG_HH
 
 #include <click/element.hh>
-#include <click/timer.hh>
-#include <click/vector.hh>
 
-#include "elements/brn/brnelement.hh"
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "search.hh"
-#include "dibadawn_packet.hh"
-#include "nodestatistic.hh"
-#include "config.hh"
+#include "searchid.hh"
 
 
 CLICK_DECLS;
 
-class DibadawnAlgorithm
+class DibadawnConfig
 {
-    BRNElement *brn_click_element;
-    Vector<DibadawnSearch*> searches;
-
-    DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
-
 public:
-    DibadawnNodeStatistic nodeStatistic;
-    DibadawnConfig config;
-
-    DibadawnAlgorithm(BRNElement *brn_click_element);
-    void receive(DibadawnPacket &packet);
-    void startNewSearch();
-    void setTopologyInfo(TopologyInfo *topoInfo);
+    EtherAddress thisNode;
+    int debugLevel;
+    bool useOriginForwardDelay;
+    uint32_t maxTraversalTimeMs;
+    uint32_t maxTtl;
+    uint32_t votingRule;
+    
+    
+    DibadawnConfig();
+    const char* thisNodeAsCstr();
+    String asString();
 };
 
 CLICK_ENDDECLS
