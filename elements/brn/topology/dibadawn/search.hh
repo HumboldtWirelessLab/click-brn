@@ -85,7 +85,6 @@ private:
     void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence);
     void pairCyclesIfPossible(DibadawnPacket &packet);
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
-    uint8_t getUsedHops(uint8_t ttl);
 
 public:
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg);

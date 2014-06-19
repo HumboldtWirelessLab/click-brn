@@ -67,7 +67,7 @@ DibadawnPacket::DibadawnPacket(Packet &brn_packet)
 
   forwardedBy = EtherAddress(packet->forwaredBy);
   treeParent = EtherAddress(packet->treeParent);
-  ttl = packet->ttl;
+  hops = packet->ttl;
   isForward = (packet->type & 0x03) != 0;
   searchId.setByPointerTo10BytesOfData(packet->id);
   version = packet->version;
@@ -86,7 +86,7 @@ DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, 
   searchId = id;
   forwardedBy = sender_addr;
   isForward = is_forward;
-  ttl = 255;
+  hops = 255;
 }
 
 bool DibadawnPacket::isValid(Packet &brn_packet)
@@ -135,7 +135,7 @@ WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
   memcpy(content.id, searchId.PointerTo10BytesOfData(), sizeof (content.id));
   memcpy(content.forwaredBy, forwardedBy.data(), sizeof (content.forwaredBy));
   memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
-  content.ttl = ttl;
+  content.ttl = hops;
   content.numPayloads = payload.size();
 
   size_t dibadawnPacketSize = sizeof (content) + payload.size() * DibadawnPayloadElement::length;
@@ -197,7 +197,7 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String parent_src_a
   sa << "version='" << version << "' ";
   sa << "type='" << isForward << "' ";
   sa << "type_descr='" << (isForward ? "ForwardMsg" : "BackMsg") << "' ";
-  sa << "ttl='" << int(ttl) << "' ";
+  sa << "hop='" << int(hops) << "' ";
   sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
   sa << "treeParent='" << treeParent.unparse_dash() << "' ";
   sa << "numPayload='" << payload.size() << "' ";
