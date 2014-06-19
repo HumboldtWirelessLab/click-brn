@@ -39,7 +39,7 @@ DibadawnConfig::DibadawnConfig()
 {
   votingRule = 0;
   useOriginForwardDelay = true;
-  maxTtl = 255;
+  maxHops = 255;
 }
 
 const char* DibadawnConfig::thisNodeAsCstr()
@@ -56,7 +56,7 @@ String DibadawnConfig::asString()
   sa << "\t<DEBUG value='" << debugLevel << "' />\n";
   sa << "\t<ORIGINDELAY value='" << useOriginForwardDelay << "' />\n";
   sa << "\t<maxTraversalTimeMs value='" << maxTraversalTimeMs << "' />\n";
-  sa << "\t<maxTtl value='" << maxTtl << "' />\n";
+  sa << "\t<maxTtl value='" << maxHops << "' />\n";
   sa << "\t<votingRule value='" << votingRule << "' />\n";
   sa << "\t<votingRules>\n";
   sa << "\t\t<rule number='0' name='Unanimous' />\n";

@@ -63,7 +63,7 @@ public:
     EtherAddress forwardedBy;
     EtherAddress treeParent;
     bool isForward;
-    uint8_t ttl;
+    uint8_t hops;
     bool createdByInvalidPacket;
 
     // Only used in backward messages.

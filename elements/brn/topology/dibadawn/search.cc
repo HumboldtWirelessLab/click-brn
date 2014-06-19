@@ -131,12 +131,11 @@ void DibadawnSearch::forwardMessages()
     
     DibadawnPacket packet(searchId, config.thisNode, false);
     packet.treeParent = parentNode;
-    packet.ttl = config.maxTtl;
+    packet.hops = 1;
     packet.payload.push_back(bridge);
     sendTo(packet, parentNode);
     
-    uint8_t hops = getUsedHops(packet.ttl);
-    double competence = commonStatistic.competenceByUsedHops(hops);
+    double competence = commonStatistic.competenceByUsedHops(packet.hops);
     addBridgeEdgeMarking(config.thisNode, parentNode, competence);
     
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
@@ -145,7 +144,7 @@ void DibadawnSearch::forwardMessages()
   else
   {
     DibadawnPacket packet(searchId, config.thisNode, false);
-    packet.ttl = config.maxTtl;
+    packet.hops = 1;
     packet.treeParent = parentNode;
     packet.forwardedBy = config.thisNode;
 
@@ -217,7 +216,7 @@ void DibadawnSearch::start_search()
   searchId.set(Timestamp::now(), config.thisNode);
   DibadawnPacket packet(searchId, config.thisNode, true);
   packet.treeParent = parentNode;
-  packet.ttl = config.maxTtl;
+  packet.hops = 1;
   visited = true;
 
   sendBroadcastWithTimeout(packet);
@@ -240,7 +239,7 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
 {
   forwardTimeoutTimer->initialize(this->brn_click_element, false);
-  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * config.maxTraversalTimeMs * packet.ttl);
+  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * config.maxTraversalTimeMs * packet.hops);
 }
 
 void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
@@ -289,7 +288,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 {
   if (!visited)
   {
-    if (rxPacket.ttl > 0)
+    if (rxPacket.hops < config.maxHops)
     {
       parentNode = rxPacket.forwardedBy;
       visited = true;
@@ -302,7 +301,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
           searchId.asString().c_str());
 
       DibadawnPacket txPacket = rxPacket;
-      txPacket.ttl--;
+      txPacket.hops++;
       txPacket.forwardedBy = config.thisNode;
       txPacket.treeParent = rxPacket.forwardedBy;
       sentForwardPacket = rxPacket;
@@ -343,7 +342,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 
 bool DibadawnSearch::isValidCrossEdge(DibadawnPacket& rxPacket)
 {
-  return(abs(sentForwardPacket.ttl - rxPacket.ttl) <= 1);
+  return(abs(sentForwardPacket.hops - rxPacket.hops) <= 1);
 }
 
 
@@ -358,8 +357,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
 
   if (packet.hasBridgePayload())
   {
-    uint8_t hops = getUsedHops(packet.ttl);
-    double competence = commonStatistic.competenceByUsedHops(hops);
+    double competence = commonStatistic.competenceByUsedHops(packet.hops);
     addBridgeEdgeMarking(config.thisNode, packet.forwardedBy, competence);
 
     DibadawnPayloadElement bridge(searchId, config.thisNode, packet.forwardedBy, true);
@@ -472,11 +470,6 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
 {
   DibadawnPayloadElement elem(cycleId);
   messageBuffer.push_back(elem);
-}
-
-uint8_t DibadawnSearch::getUsedHops(uint8_t ttl)
-{
-  return(config.maxTtl - ttl);
 }
 
 

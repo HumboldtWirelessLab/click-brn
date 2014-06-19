@@ -35,7 +35,7 @@ public:
     int debugLevel;
     bool useOriginForwardDelay;
     uint32_t maxTraversalTimeMs;
-    uint32_t maxTtl;
+    uint32_t maxHops;
     uint32_t votingRule;
     
     
