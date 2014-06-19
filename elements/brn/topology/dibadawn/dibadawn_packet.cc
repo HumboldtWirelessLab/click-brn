@@ -43,6 +43,7 @@ struct DibadawnPacketStruct
   uint8_t forwaredBy[6];
   uint8_t treeParent[6];
   uint8_t ttl;
+  uint16_t sumForwardDelay;
 
   uint8_t numPayloads;
 };
@@ -50,6 +51,7 @@ struct DibadawnPacketStruct
 DibadawnPacket::DibadawnPacket()
 {
   setVersion();
+  sumForwardDelay = 0;
   createdByInvalidPacket = false;
 }
 
@@ -71,6 +73,7 @@ DibadawnPacket::DibadawnPacket(Packet &brn_packet)
   isForward = (packet->type & 0x03) != 0;
   searchId.setByPointerTo10BytesOfData(packet->id);
   version = packet->version;
+  sumForwardDelay = packet->sumForwardDelay;
 
   const uint8_t* data = brn_packet.data() + sizeof (DibadawnPacketStruct);
   for (int i = 0; i < packet->numPayloads; i++)
@@ -136,6 +139,7 @@ WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
   memcpy(content.forwaredBy, forwardedBy.data(), sizeof (content.forwaredBy));
   memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
   content.ttl = hops;
+  content.sumForwardDelay = sumForwardDelay;
   content.numPayloads = payload.size();
 
   size_t dibadawnPacketSize = sizeof (content) + payload.size() * DibadawnPayloadElement::length;
@@ -200,6 +204,7 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String parent_src_a
   sa << "hop='" << int(hops) << "' ";
   sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
   sa << "treeParent='" << treeParent.unparse_dash() << "' ";
+  sa << "sumForwardDelay='" << sumForwardDelay << "' ";
   sa << "numPayload='" << payload.size() << "' ";
   
   if (payload.size() > 0)

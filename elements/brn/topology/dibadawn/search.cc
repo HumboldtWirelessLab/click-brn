@@ -29,6 +29,7 @@
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
 #include "neighbor_container.hh"
 #include "binarymatrix.hh"
+#include "elements/standard/randomerror.hh"
 
 
 CLICK_DECLS;
@@ -84,7 +85,8 @@ void DibadawnSearch::initCommon(
 
 void DibadawnSearch::forwardTimeout()
 {
-  click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
+  if(config.debugLevel > 0)
+    click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
       config.thisNodeAsCstr(),
       searchId.asString().c_str());
 
@@ -104,7 +106,8 @@ void DibadawnSearch::detectCycles()
     commonStatistic.updateEdgeMarking(marking);
 
     DibadawnCycle cycle(searchId, config.thisNode, crossEdgePacket.forwardedBy);
-    click_chatter("<Cycle id='%s' />", cycle.asString().c_str());
+    if(config.debugLevel > 0)
+      click_chatter("<Cycle id='%s' />", cycle.asString().c_str());
 
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(crossEdgePacket.forwardedBy);
     DibadawnPayloadElement payload(cycle);
@@ -118,7 +121,8 @@ void DibadawnSearch::forwardMessages()
 {
   if (isParentNull())
   {
-    click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
+    if(config.debugLevel > 0)
+      click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
             config.thisNodeAsCstr(),
             Timestamp::now().unparse().c_str(),
             searchId.asString().c_str());
@@ -190,9 +194,11 @@ void DibadawnSearch::detectArticulationPoints()
     }
   }
 
-  closure.print(config.thisNodeAsCstr());
+  if(config.debugLevel > 1)
+    closure.print(config.thisNodeAsCstr());
   closure.runMarshallAlgo();
-  closure.print(config.thisNodeAsCstr());
+  if(config.debugLevel > 1)
+    closure.print(config.thisNodeAsCstr());
 
   bool isArticulationPoint = !closure.isOneMatrix();
   if (isArticulationPoint)
@@ -256,18 +262,41 @@ void DibadawnSearch::sendDelayedBroadcastWithTimeout(DibadawnPacket &packet)
 
 void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
 {
+  uint16_t delay = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
+  packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
+  
+  
   ForwardSendTimerParam *param = new ForwardSendTimerParam;
   param->packet = packet;
   param->search = this;
 
   forwardSendTimer->assign(forwardSendTimerCallback, (void*) param);
   forwardSendTimer->initialize(this->brn_click_element, false);
-  uint32_t random_number = click_random();
-  uint32_t delay = (random_number % numOfConcurrentSenders) * config.maxTraversalTimeMs;
+  
   if(config.debugLevel > 1)
-    click_chatter("<DEBUG node='%s' random='%d' txDelay='%d' />", config.thisNodeAsCstr(), random_number, delay);
+    click_chatter("<DEBUG node='%s' txDelay='%d' />", config.thisNodeAsCstr(), delay);
   forwardSendTimer->schedule_after_msec(delay);
 }
+
+uint16_t DibadawnSearch::calcForwardDelay()
+{
+  uint16_t randomNumber = click_random();
+  uint16_t delay = (randomNumber % numOfConcurrentSenders) * config.maxTraversalTimeMs;
+  return(delay);
+}
+
+uint16_t DibadawnSearch::calcForwardDelayImproved(DibadawnPacket &packet)
+{
+  int hops = packet.hops - 1 /* ignore first hop (delayed with 0ms) */;
+  uint16_t randomNumber = click_random();
+  uint16_t currentMax = 2 * ((hops * config.maxTraversalTimeMs/2) - packet.sumForwardDelay);
+  
+  if(config.debugLevel > 2)
+    click_chatter("<DEBUG node='%s' rand_min='0' rand_max='%d' />", config.thisNodeAsCstr(), currentMax);
+  
+  return(randomNumber % currentMax);
+}
+
 
 bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
 {
@@ -276,7 +305,8 @@ bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 {
-  rxPacket.logRx(config.thisNode);
+  if(config.debugLevel > 0)
+    rxPacket.logRx(config.thisNode);
 
   if (rxPacket.isForward)
     receiveForwardMessage(rxPacket);
@@ -294,7 +324,8 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       visited = true;
       adjacents.getNeighbor(parentNode);
       
-      click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
+      if(config.debugLevel > 0)
+        click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
           config.thisNodeAsCstr(),
           parentNode.unparse().c_str(),
           Timestamp::now().unparse().c_str(),
@@ -304,13 +335,14 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       txPacket.hops++;
       txPacket.forwardedBy = config.thisNode;
       txPacket.treeParent = rxPacket.forwardedBy;
-      sentForwardPacket = rxPacket;
+      sentForwardPacket = txPacket;
 
       sendDelayedBroadcastWithTimeout(txPacket);
     }
     else
     {
-      click_chatter("<IgnorePacket node='%s' reason='lowTtl' time='%s' searchId='%s' />",
+      if(config.debugLevel > 0)
+        click_chatter("<IgnorePacket node='%s' reason='lowTtl' time='%s' searchId='%s' />",
           config.thisNodeAsCstr(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
@@ -318,7 +350,8 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
   }
   else if (rxPacket.treeParent == config.thisNode)
   {
-    click_chatter("<IgnorePacket node='%s' reason='reForward' time='%s' searchId='%s' />",
+    if(config.debugLevel > 0)
+      click_chatter("<IgnorePacket node='%s' reason='reForward' time='%s' searchId='%s' />",
         config.thisNodeAsCstr(),
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
@@ -328,7 +361,8 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     bool isValid = isValidCrossEdge(rxPacket);
     EtherAddress neighbor = rxPacket.forwardedBy;
     
-    click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' valid='%d' />",
+    if(config.debugLevel > 0)
+      click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' valid='%d' />",
         config.thisNodeAsCstr(),
         neighbor.unparse_dash().c_str(),
         Timestamp::now().unparse().c_str(),
