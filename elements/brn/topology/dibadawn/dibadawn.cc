@@ -33,23 +33,18 @@ DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element)
   brn_click_element = click_element;
 }
 
-void DibadawnAlgorithm::setAddrOfThisNode(const EtherAddress& addrOfThisNode)
-{
-  thisNode = addrOfThisNode;
-}
-
 void DibadawnAlgorithm::receive(DibadawnPacket& packet)
 {
   if (packet.isInvalid())
   {
-    click_chatter("<InvalidPacketRx node='%s' />", thisNode.unparse_dash().c_str());
+    click_chatter("<InvalidPacketRx node='%s' />", config.thisNodeAsCstr());
     return;
   }
 
   DibadawnSearch *search = getResponsibleSearch(packet);
   if (search == NULL)
   {
-    search = new DibadawnSearch(brn_click_element, nodeStatistic, thisNode, packet.searchId);
+    search = new DibadawnSearch(brn_click_element, nodeStatistic, config, packet.searchId);
     searches.push_back(search);
   }
 
@@ -70,7 +65,7 @@ DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 
 void DibadawnAlgorithm::startNewSearch()
 {
-  DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, thisNode);
+  DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, config);
   searches.push_back(search);
   search->start_search();
 }

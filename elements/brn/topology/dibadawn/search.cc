@@ -52,33 +52,29 @@ void forwardTimeoutCallback(Timer*, void *search)
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnNodeStatistic &stat, 
-    const EtherAddress &addrOfThisNode)
-:   commonStatistic(stat), adjacents(searchId)
+    DibadawnConfig &cfg)
+:   commonStatistic(stat), adjacents(searchId), config(cfg)
 {
-  initCommon(click_element, addrOfThisNode);
+  initCommon(click_element);
 }
 
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnNodeStatistic &stat, 
-    const EtherAddress &addrOfThisNode,
+    DibadawnConfig &cfg,
     DibadawnSearchId &id)
-:   commonStatistic(stat), adjacents(searchId)
+:   commonStatistic(stat), adjacents(searchId), config(cfg)
 {
-  initCommon(click_element, addrOfThisNode);
+  initCommon(click_element);
 
   searchId.set(id);
   visited = false;
 }
 
 void DibadawnSearch::initCommon(
-    BRNElement *click_element,
-    const EtherAddress &thisNode)
+    BRNElement *click_element)
 {
   brn_click_element = click_element;
-  addrOfThisNode = thisNode;
-  maxTraversalTimeMs = 40;
-  maxTtl = 255; // TODO: Use config instead
   isArticulationPoint = false;
   numOfConcurrentSenders = 10;
 
@@ -89,7 +85,7 @@ void DibadawnSearch::initCommon(
 void DibadawnSearch::forwardTimeout()
 {
   click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
-      addrOfThisNode.unparse_dash().c_str(),
+      config.thisNodeAsCstr(),
       searchId.asString().c_str());
 
   detectCycles();
@@ -104,10 +100,10 @@ void DibadawnSearch::detectCycles()
   {
     DibadawnPacket &crossEdgePacket = crossEdges.at(i);
 
-    DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, crossEdgePacket.forwardedBy, true);
+    DibadawnEdgeMarking marking(searchId, false, config.thisNode, crossEdgePacket.forwardedBy, true);
     commonStatistic.updateEdgeMarking(marking);
 
-    DibadawnCycle cycle(searchId, addrOfThisNode, crossEdgePacket.forwardedBy);
+    DibadawnCycle cycle(searchId, config.thisNode, crossEdgePacket.forwardedBy);
     click_chatter("<Cycle id='%s' />", cycle.asString().c_str());
 
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(crossEdgePacket.forwardedBy);
@@ -123,7 +119,7 @@ void DibadawnSearch::forwardMessages()
   if (isParentNull())
   {
     click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
-            addrOfThisNode.unparse_dash().c_str(),
+            config.thisNodeAsCstr(),
             Timestamp::now().unparse().c_str(),
             searchId.asString().c_str());
     return;
@@ -131,27 +127,27 @@ void DibadawnSearch::forwardMessages()
 
   if (messageBuffer.size() == 0)
   {
-    DibadawnPayloadElement bridge(searchId, addrOfThisNode, parentNode, true);
+    DibadawnPayloadElement bridge(searchId, config.thisNode, parentNode, true);
     
-    DibadawnPacket packet(searchId, addrOfThisNode, false);
+    DibadawnPacket packet(searchId, config.thisNode, false);
     packet.treeParent = parentNode;
-    packet.ttl = maxTtl;
+    packet.ttl = config.maxTtl;
     packet.payload.push_back(bridge);
     sendTo(packet, parentNode);
     
     uint8_t hops = getUsedHops(packet.ttl);
     double competence = commonStatistic.competenceByUsedHops(hops);
-    addBridgeEdgeMarking(addrOfThisNode, parentNode, competence);
+    addBridgeEdgeMarking(config.thisNode, parentNode, competence);
     
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
     neighbor.messages.push_back(bridge);
   }
   else
   {
-    DibadawnPacket packet(searchId, addrOfThisNode, false);
-    packet.ttl = maxTtl;
+    DibadawnPacket packet(searchId, config.thisNode, false);
+    packet.ttl = config.maxTtl;
     packet.treeParent = parentNode;
-    packet.forwardedBy = addrOfThisNode;
+    packet.forwardedBy = config.thisNode;
 
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
     for (int i = 0; i < messageBuffer.size(); i++)
@@ -162,7 +158,7 @@ void DibadawnSearch::forwardMessages()
 
       // TODO votes
 
-      DibadawnEdgeMarking marking(searchId, false, addrOfThisNode, parentNode, false);
+      DibadawnEdgeMarking marking(searchId, false, config.thisNode, parentNode, false);
       commonStatistic.updateEdgeMarking(marking);
     }
 
@@ -189,39 +185,39 @@ void DibadawnSearch::detectArticulationPoints()
       DibadawnNeighbor &nodeB = adjacents.getNeighbor(col);
       if (nodeA.hasNonEmptyPairIntersection(nodeB))
       {
-        nodeA.printIntersection(addrOfThisNode, nodeB);
+        nodeA.printIntersection(config.thisNode, nodeB);
         closure.setTrue(row, col);
       }
     }
   }
 
-  closure.print(addrOfThisNode.unparse().c_str());
+  closure.print(config.thisNodeAsCstr());
   closure.runMarshallAlgo();
-  closure.print(addrOfThisNode.unparse().c_str());
+  closure.print(config.thisNodeAsCstr());
 
   bool isArticulationPoint = !closure.isOneMatrix();
   if (isArticulationPoint)
   {
     click_chatter("<ArticulationPoint node='%s'/>",
-        addrOfThisNode.unparse_dash().c_str());
+        config.thisNodeAsCstr());
   }
-  commonStatistic.upateArticulationPoint(addrOfThisNode, isArticulationPoint);
+  commonStatistic.upateArticulationPoint(config.thisNode, isArticulationPoint);
 }
 
 void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
   click_chatter("<NotImplemented node='%s' method='voteForArticulaionPointsAndBridges' />",
-      addrOfThisNode.unparse_dash().c_str());
+      config.thisNodeAsCstr());
 }
 
 void DibadawnSearch::start_search()
 {
   setParentNull();
 
-  searchId.set(Timestamp::now(), addrOfThisNode);
-  DibadawnPacket packet(searchId, addrOfThisNode, true);
+  searchId.set(Timestamp::now(), config.thisNode);
+  DibadawnPacket packet(searchId, config.thisNode, true);
   packet.treeParent = parentNode;
-  packet.ttl = maxTtl;
+  packet.ttl = config.maxTtl;
   visited = true;
 
   sendBroadcastWithTimeout(packet);
@@ -234,7 +230,7 @@ void DibadawnSearch::setParentNull()
 
 void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 {
-  packet.logTx(addrOfThisNode, packet.getBroadcastAddress());
+  packet.logTx(config.thisNode, packet.getBroadcastAddress());
   WritablePacket *brn_packet = packet.getBrnBroadcastPacket();
   brn_click_element->output(0).push(brn_packet);
 
@@ -244,12 +240,12 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
 {
   forwardTimeoutTimer->initialize(this->brn_click_element, false);
-  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * maxTraversalTimeMs * packet.ttl);
+  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * config.maxTraversalTimeMs * packet.ttl);
 }
 
 void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
 {
-  packet.logTx(addrOfThisNode, dest);
+  packet.logTx(config.thisNode, dest);
   WritablePacket *brn_packet = packet.getBrnPacket(dest);
   brn_click_element->output(0).push(brn_packet);
 }
@@ -268,8 +264,9 @@ void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
   forwardSendTimer->assign(forwardSendTimerCallback, (void*) param);
   forwardSendTimer->initialize(this->brn_click_element, false);
   uint32_t random_number = click_random();
-  uint32_t delay = (random_number % numOfConcurrentSenders) * maxTraversalTimeMs;
-  click_chatter("<DEBUG node='%s' random='%d' txDelay='%d' />", addrOfThisNode.unparse().c_str(), random_number, delay);
+  uint32_t delay = (random_number % numOfConcurrentSenders) * config.maxTraversalTimeMs;
+  if(config.debugLevel > 1)
+    click_chatter("<DEBUG node='%s' random='%d' txDelay='%d' />", config.thisNodeAsCstr(), random_number, delay);
   forwardSendTimer->schedule_after_msec(delay);
 }
 
@@ -280,7 +277,7 @@ bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
 
 void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 {
-  rxPacket.logRx(addrOfThisNode);
+  rxPacket.logRx(config.thisNode);
 
   if (rxPacket.isForward)
     receiveForwardMessage(rxPacket);
@@ -299,14 +296,14 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       adjacents.getNeighbor(parentNode);
       
       click_chatter("<SearchTree node='%s' parent='%s' time='%s' searchId='%s' />",
-          addrOfThisNode.unparse().c_str(),
+          config.thisNodeAsCstr(),
           parentNode.unparse().c_str(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
 
       DibadawnPacket txPacket = rxPacket;
       txPacket.ttl--;
-      txPacket.forwardedBy = addrOfThisNode;
+      txPacket.forwardedBy = config.thisNode;
       txPacket.treeParent = rxPacket.forwardedBy;
       sentForwardPacket = rxPacket;
 
@@ -315,15 +312,15 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     else
     {
       click_chatter("<IgnorePacket node='%s' reason='lowTtl' time='%s' searchId='%s' />",
-          addrOfThisNode.unparse_dash().c_str(),
+          config.thisNodeAsCstr(),
           Timestamp::now().unparse().c_str(),
           searchId.asString().c_str());
     }
   }
-  else if (rxPacket.treeParent == addrOfThisNode)
+  else if (rxPacket.treeParent == config.thisNode)
   {
     click_chatter("<IgnorePacket node='%s' reason='reForward' time='%s' searchId='%s' />",
-        addrOfThisNode.unparse_dash().c_str(),
+        config.thisNodeAsCstr(),
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
   }
@@ -333,7 +330,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
     EtherAddress neighbor = rxPacket.forwardedBy;
     
     click_chatter("<CrossEdgeDetected  node='%s' neighbor='%s' time='%s' searchId='%s' valid='%d' />",
-        addrOfThisNode.unparse_dash().c_str(),
+        config.thisNodeAsCstr(),
         neighbor.unparse_dash().c_str(),
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str(),
@@ -355,7 +352,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   if (packet.payload.size() < 1)
   {
     click_chatter("<Error node='%s' methode='receiveBackMessage' msg='no payload data at back-msg' />",
-        addrOfThisNode.unparse_dash().c_str());
+        config.thisNodeAsCstr());
     return;
   }
 
@@ -363,9 +360,9 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   {
     uint8_t hops = getUsedHops(packet.ttl);
     double competence = commonStatistic.competenceByUsedHops(hops);
-    addBridgeEdgeMarking(addrOfThisNode, packet.forwardedBy, competence);
+    addBridgeEdgeMarking(config.thisNode, packet.forwardedBy, competence);
 
-    DibadawnPayloadElement bridge(searchId, addrOfThisNode, packet.forwardedBy, true);
+    DibadawnPayloadElement bridge(searchId, config.thisNode, packet.forwardedBy, true);
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(packet.forwardedBy);
     neighbor.messages.push_back(bridge);
   }
@@ -380,7 +377,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
       if(payloadB != NULL)
       {
         click_chatter("<PairedCycle node='%s' time='%s' searchId='%s' cycle='%s'/>",
-            addrOfThisNode.unparse_dash().c_str(),
+            config.thisNodeAsCstr(),
             Timestamp::now().unparse().c_str(),
             searchId.asString().c_str(),
             payloadA.cycle.asString().c_str());
@@ -403,7 +400,7 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   commonStatistic.updateEdgeMarking(marking);
 
   click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' />",
-      this->addrOfThisNode.unparse_dash().c_str(),
+      config.thisNodeAsCstr(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str());
 }
@@ -441,7 +438,7 @@ void DibadawnSearch::setNonBrigdeByPayload(DibadawnPayloadElement& payload)
       marking.time = Timestamp::now();
       marking.id = searchId;
       marking.isBridge = false;
-      marking.nodeA = addrOfThisNode;
+      marking.nodeA = config.thisNode;
       marking.nodeB = neighbor.address;
       
       commonStatistic.updateEdgeMarking(marking);
@@ -479,7 +476,7 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
 
 uint8_t DibadawnSearch::getUsedHops(uint8_t ttl)
 {
-  return(maxTtl - ttl);
+  return(config.maxTtl - ttl);
 }
 
 
