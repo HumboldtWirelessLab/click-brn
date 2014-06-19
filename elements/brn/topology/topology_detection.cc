@@ -58,6 +58,10 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
+      "ORIGINDELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTINGRULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAXHOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAXTRAVERSALTIMEMS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       cpEnd) < 0)
     return(-1);
 
@@ -80,6 +84,9 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "LINKTABLE", 0, cpElement, &_lt,
       "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
       "ORIGINDELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTINGRULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAXHOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAXTRAVERSALTIMEMS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       cpEnd) < 0)
     return(-1);
 
