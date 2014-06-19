@@ -65,6 +65,7 @@ public:
     bool isForward;
     uint8_t hops;
     bool createdByInvalidPacket;
+    uint16_t sumForwardDelay;
 
     // Only used in backward messages.
     Vector<DibadawnPayloadElement> payload;

@@ -85,6 +85,8 @@ private:
     void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence);
     void pairCyclesIfPossible(DibadawnPacket &packet);
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
+    uint16_t calcForwardDelay();
+    uint16_t calcForwardDelayImproved(DibadawnPacket &packet);
 
 public:
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg);
