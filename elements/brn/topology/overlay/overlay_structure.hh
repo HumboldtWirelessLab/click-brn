@@ -55,10 +55,16 @@ class OverlayStructure : public BRNElement {
   
   bool _pre;
   
+  void reset(); //Resets the Overlay Structure
   void addOwnParent (EtherAddress* add); //add - EtherAdress of new parent
-  void addOwnChild (EtherAddress* add); //add - EtherAdress of new Child
+  void addOwnChild (EtherAddress* add); //add - EtherAdress of new child
   void addParent (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of new parent, node - EtherAdress of node to get new parent
   void addChild (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of new child, node - EtherAdress of node to get new child
+  
+  void removeOwnParent (EtherAddress* add); //add - EtherAdress of parent to delete
+  void removeOwnChild (EtherAddress* add); //add - EtherAdress of child to delete
+  void removeParent (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of parent to delete, node - EtherAdress of node to remove parent from
+  void removeChild (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of child to delete, node - EtherAdress of node to remove child from
 
   Vector <EtherAddress>* getOwnParents(); //returns parents of the node
   Vector <EtherAddress>* getOwnChildren(); //returns children of the node

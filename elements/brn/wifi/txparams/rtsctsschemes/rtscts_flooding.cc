@@ -15,6 +15,7 @@ CLICK_DECLS
 RtsCtsFlooding::RtsCtsFlooding():
   _flooding(NULL),
   _fhelper(NULL),
+  _flooding_db(NULL),
   _hnd(NULL),
   _pessimistic(false)
 {
@@ -41,6 +42,7 @@ RtsCtsFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
     "FLOODING", cpkP+cpkM, cpElement, &_flooding,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "HIDDENNODE", cpkP+cpkM, cpElement, &_hnd,
     "PESSIMISTIC", cpkP, cpBool, &_pessimistic,
     "DEBUG", cpkP, cpInteger, &_debug,
@@ -60,9 +62,9 @@ RtsCtsFlooding::set_rtscts(PacketInfo *pinfo)
   EtherAddress *bcast_src = _flooding->get_last_tx(&bcast_id);
 
   //get all known nodes
-  struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+  struct BroadcastNode::flooding_last_node *last_nodes;
   uint32_t last_nodes_size;
-  last_nodes = _flooding->get_last_nodes(bcast_src, bcast_id, &last_nodes_size);
+  last_nodes = _flooding_db->get_last_nodes(bcast_src, bcast_id, &last_nodes_size);
 
   for (Vector<EtherAddress>::const_iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ea_iter++) {
     BRN_DEBUG("HN: %s", ea_iter->unparse().c_str());
@@ -77,12 +79,12 @@ RtsCtsFlooding::set_rtscts(PacketInfo *pinfo)
   for (Vector<EtherAddress>::iterator ea_iter = hiddennodes.begin(); ea_iter != hiddennodes.end(); ea_iter++) {
     uint32_t j = 0;
     for (; j < last_nodes_size; j++ ) {
-      if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0) {
+      if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0) { // node doesn't have the packet
         BRN_DEBUG("comp: %s %s %d", EtherAddress(last_nodes[j].etheraddr).unparse().c_str(), ea_iter->unparse().c_str(), eff_hn);
         if (EtherAddress(last_nodes[j].etheraddr) == *ea_iter) break;
       }
     }
-    if (j == last_nodes_size) eff_hn--;
+    if (j == last_nodes_size) eff_hn--; //we search in all last nodes for the hidden node, but we didn't find it
   }
 
   BRN_DEBUG("EFF HN: %d",eff_hn);

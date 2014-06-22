@@ -27,7 +27,6 @@
 
 #include "bo_schemes/backoff_scheme.hh"
 
-
 CLICK_DECLS
 
 /*
@@ -39,17 +38,13 @@ CLICK_DECLS
 */
 
 
-#define TOS2QM_DEFAULT_LEARNING_BO                       63
-#define TOS2QM_DEFAULT_TARGET_PACKET_LOSS                10
-#define TOS2QM_DEFAULT_TARGET_CHANNELLOAD                90
-#define TOS2QM_DEFAULT_TARGET_DIFF_RXTX_BUSY             5
-#define TOS2QM_DEFAULT_EXPONENTIAL_LINEAR                31
-
-#define TOS2QM_LEARNING_MIN_CWMIN                        31
-#define TOS2QM_LEARNING_MAX_CWMIN                        255
-
 #define TOS2QM_ALL_BOS_STATS                             1
 #define TOS2QM_BOBUF_SIZE                                4096
+
+#define QUEUEMAPPING_NEXT_BIGGER   0
+#define QUEUEMAPPING_PROBABILISTIC 1
+#define QUEUEMAPPING_GRAVITATION   2
+
 
 class Tos2QueueMapper : public BRNElement {
 
@@ -87,7 +82,8 @@ public:
   uint32_t get_queue_usage(uint8_t position);
 
   int find_queue(uint16_t cwmin);
-  int find_queue_prob(uint16_t backoff_window_size);
+  int find_queue_next_bigger(uint16_t backoff_window_size);
+  int find_queue_prob(uint16_t backoff_window_size, bool quadratic_distance);
   uint32_t find_closest_backoff(uint32_t bo);
   uint32_t find_closest_backoff_exp(uint32_t bo);
 
@@ -99,11 +95,6 @@ private:
   uint32_t recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step);
 
   void init_stats();
-
-  uint32_t _learning_current_bo;
-  uint32_t _learning_count_up;
-  uint32_t _learning_count_down;
-  uint32_t _learning_max_bo;
 
 private:
 
@@ -123,12 +114,7 @@ private:
 
   uint32_t _ac_stats_id;
 
-  uint32_t _target_packetloss;
-  uint32_t _target_channelload;
-  uint32_t _bo_for_target_channelload;
-
 public:
-  uint32_t _target_diff_rxtx_busy;
 
   uint32_t _feedback_cnt;
   uint32_t _tx_cnt;
@@ -136,6 +122,7 @@ public:
 
   uint32_t _call_set_backoff;
 
+  uint32_t _queue_mapping;
 };
 
 CLICK_ENDDECLS

@@ -41,9 +41,11 @@ CLICK_DECLS
 
 HiddenNodeDetection::HiddenNodeDetection():
     _device(NULL),
+    _lt(NULL),
     _cocst(NULL),
     _hn_del_timer(this),
-    _hd_del_interval(1000)
+    _hnd_del_interval(1000),
+    _hn_link_del_interval(0)
 {
   BRNElement::init();
 }
@@ -56,14 +58,20 @@ int
 HiddenNodeDetection::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   _cocst_string = String("");
+  _lt_string = String("");
 
   int ret = cp_va_kparse(conf, this, errh,
                      "DEVICE", cpkP, cpElement, &_device,
+                     "TIMEOUT", cpkP, cpInteger, &_hnd_del_interval,
+                     "LINKTIMEOUT", cpkP, cpInteger, &_hn_link_del_interval,
+                     "LINKTABLE", cpkP, cpElement, &_lt,
+                     "LINKTABLEPATH", cpkP, cpString, &_lt_string,
                      "COOPCHANNELSTATS", cpkP, cpElement, &_cocst,
-                     "TIMEOUT", cpkP, cpInteger, &_hd_del_interval,
                      "COOPCHANNELSTATSPATH", cpkP, cpString, &_cocst_string,
                      "DEBUG", cpkP, cpInteger, &_debug,
                      cpEnd);
+
+  if (_hn_link_del_interval < _hnd_del_interval) _hn_link_del_interval = _hnd_del_interval;
 
   return ret;
 }
@@ -76,11 +84,16 @@ HiddenNodeDetection::initialize(ErrorHandler *errh)
   _last_data_dst = brn_etheraddress_broadcast;
 
   _hn_del_timer.initialize(this);
-  _hn_del_timer.schedule_after_msec(_hd_del_interval);
+  _hn_del_timer.schedule_after_msec(_hnd_del_interval);
 
   if ((_cocst == NULL) && (_cocst_string != "")) {
     Element *e = cp_element(_cocst_string, this, errh);
     _cocst = (CooperativeChannelStats*)e;
+  }
+
+  if ((_lt == NULL) && (_lt_string != "")) {
+    Element *e = cp_element(_lt_string, this, errh);
+    _lt = (Brn2LinkTable*)e;
   }
 
   return 0;
@@ -91,24 +104,35 @@ HiddenNodeDetection::run_timer(Timer *)
 {
   Timestamp now = Timestamp::now();
 
-  _hn_del_timer.reschedule_after_msec(_hd_del_interval); //reschedule first, so that long computation time has no impact on interval length
+  _hn_del_timer.reschedule_after_msec(_hnd_del_interval); //reschedule first, so that long computation time has no impact on interval length
+
+  if ( _cocst != NULL ) handle_coop_channelstats();
+  if ( _lt != NULL ) handle_linktable();
 
   for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
     NodeInfo *node = iter.value();
-    //EtherAddress ea = iter.key();
-    if ( (now - node->_last_notice_active).msecval() > _hd_del_interval ) {
+    EtherAddress node_ea = iter.key();
+
+    /* check age of node! Is neighbour? does it still exists? */
+    if ( (now - node->_last_notice_active).msecval() > _hnd_del_interval ) {
       node->_neighbour = false;
-      node->_visible = false;
+      if ( (now - node->_last_notice_passive).msecval() > _hnd_del_interval )
+        node->_exists = false;
+    }
+
+    /* check links of existing nodes. Remove if too old!  */
+    if ( node->_exists == true ) {
+      for ( EtherTimestampMapIter nt_iter = node->_last_link_usage.begin(); nt_iter != node->_last_link_usage.end(); nt_iter++ ) {
+        Timestamp last_use = nt_iter.value();
+        EtherAddress neighbour_node_ea = nt_iter.key();
+        if ( (now - last_use).msecval() > _hn_link_del_interval ) {         //link is to old, remove rev and fwd
+          NodeInfo *neighbour_node = _nodeinfo_tab.find(neighbour_node_ea); //get nodeinfo from rev_node
+          neighbour_node->_last_link_usage.remove(node_ea);                 //remove rev
+          node->_last_link_usage.remove(neighbour_node_ea);                 //remove fwd
+        }
+      }
     }
   }
-
-  if ( _cocst != NULL ) handle_coop_channelstats();
-
-}
-
-void
-HiddenNodeDetection::remove_link(EtherAddress */*sea*/, EtherAddress */*dea*/)
-{
 
 }
 
@@ -219,7 +243,7 @@ HiddenNodeDetection::handle_coop_channelstats()
     NodeChannelStatsMap *nodeCstMap = _cocst->get_stats_map();
     Vector<EtherAddress> nb_ea_vec;
 
-    _cocst->get_neighbours_with_max_age(_hd_del_interval, &nb_ea_vec);
+    _cocst->get_neighbours_with_max_age(_hnd_del_interval, &nb_ea_vec);
     BRN_DEBUG("Handle %d nbs",nb_ea_vec.size());
 
     for (Vector<EtherAddress>::const_iterator ea_iter = nb_ea_vec.begin(); ea_iter != nb_ea_vec.end(); ea_iter++) {
@@ -228,12 +252,14 @@ HiddenNodeDetection::handle_coop_channelstats()
       EtherAddress src = *ea_iter;
       NodeChannelStats *nb_cst = nodeCstMap->find(src);
       NodeInfo *src_ni = _nodeinfo_tab.find(src);
+      src_ni->update_active();
+      src_ni->_neighbour = true;
 
       BRN_DEBUG("NB has %d nbs",nb_cst->_last_neighbor_update.size());
       for ( EtherTimestampMapIter nb_time_iter = nb_cst->_last_neighbor_update.begin(); nb_time_iter.live(); nb_time_iter++ ) {
 
         BRN_DEBUG("NB-nb: %s age %d",nb_time_iter.key().unparse().c_str(), (now-nb_time_iter.value()).msecval());
-        if ((now-nb_time_iter.value()).msecval() < _hd_del_interval) {
+        if ((now-nb_time_iter.value()).msecval() < _hnd_del_interval) {
 
           EtherAddress dst = nb_time_iter.key();
 
@@ -259,6 +285,71 @@ HiddenNodeDetection::handle_coop_channelstats()
 }
 
 /**************************************************************************************************************/
+/*************** H I D D E N N O D E D E T E C T I O N   W I T H   L I N K T A B L E **************************/
+/**************************************************************************************************************/
+void
+HiddenNodeDetection::handle_linktable()
+{
+  Timestamp now = Timestamp::now();
+
+  Vector<EtherAddress> l_neighbors;
+  Vector<EtherAddress> n_neighbors;
+
+  _lt->get_local_neighbors(l_neighbors);
+
+  /* Add one-hop-neighbours */
+  for (Vector<EtherAddress>::const_iterator ea_iter = l_neighbors.begin(); ea_iter != l_neighbors.end(); ea_iter++) {
+      BRN_DEBUG("Handle %s",ea_iter->unparse().c_str());
+
+      EtherAddress src = *ea_iter;
+
+      NodeInfo *src_ni = _nodeinfo_tab.find(src);
+      if ( ! src_ni ) {
+        BRN_DEBUG("New src");
+
+        src_ni = new NodeInfo();
+        _nodeinfo_tab.insert(src,src_ni);
+      }
+
+      src_ni->update_active();
+      src_ni->_neighbour = true;
+  }
+
+  /* add neighbours of neighbours if they are not my neighbours */
+  n_neighbors.clear();
+
+  for (Vector<EtherAddress>::const_iterator ea_iter = l_neighbors.begin(); ea_iter != l_neighbors.end(); ea_iter++) {
+    BRN_DEBUG("Handle %s",ea_iter->unparse().c_str());
+
+    EtherAddress src = *ea_iter;
+    NodeInfo *src_ni = _nodeinfo_tab.find(src);
+
+    _lt->get_neighbors(src, n_neighbors);
+
+    for (Vector<EtherAddress>::const_iterator n_ea_iter = n_neighbors.begin(); n_ea_iter != n_neighbors.end(); n_ea_iter++) {
+      BRN_DEBUG("Handle %s",n_ea_iter->unparse().c_str());
+
+      EtherAddress dst = *n_ea_iter;
+
+      if (*_device->getEtherAddress() != dst) {
+            NodeInfo *dst_ni = _nodeinfo_tab.find(dst);
+            if ( ! dst_ni ) {
+              BRN_DEBUG("New Dst");
+
+              dst_ni = new NodeInfo();
+              _nodeinfo_tab.insert(dst,dst_ni);
+            }
+
+            dst_ni->update_passive();
+            dst_ni->add_link(src, src_ni, &now);
+            if ( dst != brn_etheraddress_broadcast ) src_ni->add_link(dst, dst_ni, &now);
+      }
+    }
+    n_neighbors.clear();
+  }
+}
+
+/**************************************************************************************************************/
 /********************************************* F U N C T I O N S **********************************************/
 /**************************************************************************************************************/
 
@@ -272,8 +363,10 @@ HiddenNodeDetection::count_hidden_neighbours(const EtherAddress &ea)
   NodeInfo* ni = _nodeinfo_tab.find(ea);
 
   //TODO: use neighbour flag
-  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ )
-    if (!(_nodeinfo_tab.find(nt_iter.key())->_neighbour)) count_hn++;
+  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ ) {
+    NodeInfo *node = _nodeinfo_tab.find(nt_iter.key());
+    if (!(node->_neighbour) && node->_exists) count_hn++;
+  }
 
   return count_hn;
 }
@@ -287,8 +380,10 @@ HiddenNodeDetection::get_hidden_neighbours(const EtherAddress &ea, Vector<EtherA
 
   NodeInfo* ni = _nodeinfo_tab.find(ea);
 
-  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ )
-    if (!(_nodeinfo_tab.find(nt_iter.key())->_neighbour)) hns->push_back(nt_iter.key());
+  for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ ) {
+    NodeInfo *node = _nodeinfo_tab.find(nt_iter.key());
+    if (!(node->_neighbour) && node->_exists) hns->push_back(nt_iter.key());
+  }
 
   return hns->size();
 }
@@ -321,13 +416,14 @@ HiddenNodeDetection::stats_handler(int mode)
         NodeInfo *node = iter.value();
         EtherAddress ea = iter.key();
         if ( node->_neighbour ) {
-          sa << "\t\t<node addr=\"" << ea.unparse() << "\" last_packet=\"" << node->_last_notice_active.unparse() << "\" hidden_nodes=\"" << node->_links_to.size() << "\" >\n";
+          sa << "\t\t<node addr=\"" << ea.unparse() << "\" last_packet=\"" << node->_last_notice_active.unparse();
+          sa << "\" hidden_nodes=\"" << count_hidden_neighbours(ea) << "\" >\n";
           for (NodeInfoTableIter link_iter = node->_links_to.begin(); link_iter.live(); link_iter++) {
             NodeInfo *l_node = link_iter.value();
             EtherAddress l_ea = link_iter.key();
-            if ( ! l_node->_neighbour && l_node->_visible ) {
+            if ( ! l_node->_neighbour && l_node->_exists ) {
               Timestamp *ts = node->_last_link_usage.findp(l_ea);
-              sa << "\t\t\t<hidden_node addr=\"" << l_ea.unparse() << "\" last_packet=\"" << ts->unparse() << "\" />\n";
+              sa << "\t\t\t<hidden_node addr=\"" << l_ea.unparse() << "\" last_link_usage=\"" << ts->unparse() << "\" />\n";
             }
           }
           sa << "\t\t</node>\n";
@@ -339,8 +435,9 @@ HiddenNodeDetection::stats_handler(int mode)
       for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
         NodeInfo *node = iter.value();
         EtherAddress ea = iter.key();
-        if ( ! node->_neighbour && node->_visible ) {
-          sa << "\t\t<node addr=\"" << ea.unparse() << "\" last_packet=\"" << node->_last_notice_passive.unparse() << "\" last_active=\"" << node->_last_notice_active.unparse() << "\" />\n";
+        if ( ! node->_neighbour && node->_exists ) {
+          sa << "\t\t<node addr=\"" << ea.unparse() << "\" last_passive=\"" << node->_last_notice_passive.unparse();
+          sa << "\" last_active=\"" << node->_last_notice_active.unparse() << "\" />\n";
         }
       }
 

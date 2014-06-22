@@ -27,11 +27,12 @@
 #include <click/timestamp.hh>
 #include <click/timer.hh>
 
-#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "../../../../local/chuckcheck.hh"
+
+#include "flooding_db.hh"
+#include "flooding_helper.hh"
 
 CLICK_DECLS
 
@@ -141,10 +142,12 @@ class FloodingPassiveAck : public BRNElement {
   //member
   //
   BRN2NodeIdentity *_me;
-  BRNElement *_retransmit_element;  
-  Flooding *_flooding;
+  BRNElement *_retransmit_element;
+
 public:
   FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
+
 private:
   PAckPacketVector p_queue;
 
@@ -170,8 +173,6 @@ private:
     _retransmit_element = e;
     _retransmit_broadcast = retransmit_bcast;
   }
-
-  void set_flooding(Flooding *flooding) { _flooding = flooding; }
 
   int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 

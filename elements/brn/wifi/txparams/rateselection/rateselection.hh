@@ -15,6 +15,9 @@ CLICK_DECLS
 #define RATESELECTION_AUTORATEFALLBACK  4 /* */
 #define RATESELECTION_FLOODING          5 /* */
 
+#define RATESELECTION_ADJUST_PERIOD_NONE             0
+#define RATESELECTION_ADJUST_PERIOD_ON_STATS_UPDATE -1
+
 struct rateselection_packet_info {
   click_wifi_extra *ceh;
   struct brn_click_wifi_extra_extention *wee;
@@ -41,7 +44,7 @@ class RateSelection : public BRNElement, public Scheme
     virtual void assign_rate(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
     virtual void process_feedback(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
 
-    virtual int get_adjust_period() { return 0;}
+    virtual int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_NONE;}
     virtual void adjust_all(NeighborTable *) {};
 
     virtual void init(BrnAvailableRates *) {};
