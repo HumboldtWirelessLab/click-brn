@@ -47,6 +47,7 @@ MPRFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "MPRUPDATEINTERVAL",cpkP, cpInteger, &_update_interval,
     "DEBUG", cpkP, cpInteger, &_debug,
@@ -66,7 +67,7 @@ MPRFlooding::initialize(ErrorHandler *)
 
 /**
  *
- * @bcast_id: negatvive value means: filter known neighbours
+ * @bcast_id: negatvive value means: don't filter known neighbours
  */
 void
 MPRFlooding::set_mpr_header(uint32_t *tx_data_size, uint8_t *txdata, EtherAddress *src, int bcast_id)
@@ -80,10 +81,10 @@ MPRFlooding::set_mpr_header(uint32_t *tx_data_size, uint8_t *txdata, EtherAddres
   } else {
     HashMap<EtherAddress,EtherAddress> known_nodes;
 
-    struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+    struct BroadcastNode::flooding_last_node *last_nodes;
 
     uint32_t last_nodes_size;
-    last_nodes = _flooding->get_last_nodes(src, bcast_id, &last_nodes_size);
+    last_nodes = _flooding_db->get_last_nodes(src, bcast_id, &last_nodes_size);
 
     for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                     //add node to candidate set if
       if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ||             //1. is known as acked

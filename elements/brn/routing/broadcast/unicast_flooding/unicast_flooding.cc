@@ -40,6 +40,7 @@ UnicastFlooding::UnicastFlooding():
   _me(NULL),
   _flooding(NULL),
   _fhelper(NULL),
+  _flooding_db(NULL),
   _cand_selection_strategy(0),
   _pre_selection_mode(UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED),
   _ucast_peer_metric(0),
@@ -68,6 +69,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODING", cpkP+cpkM, cpElement, &_flooding,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+      "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "PRESELECTIONSTRATEGY", cpkP, cpInteger, &_pre_selection_mode,
       "REJECTONEMPTYCS", cpkP, cpBool, &_reject_on_empty_cs,
       "CANDSELECTIONSTRATEGY", cpkP, cpInteger, &_cand_selection_strategy,
@@ -179,7 +181,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t assigned_nodes = 0;
 
-  Flooding::BroadcastNode *bcn = _flooding->get_broadcast_node(&src);
+  BroadcastNode *bcn = _flooding_db->get_broadcast_node(&src);
 
   if ( bcn->is_stopped(bcast_id) ) {
     bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED;
@@ -211,9 +213,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), bcast_id);
 
     //get all known nodes
-    struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+    struct BroadcastNode::flooding_last_node *last_nodes;
     uint32_t last_nodes_size;
-    last_nodes = _flooding->get_last_nodes(&src, bcast_id, &last_nodes_size);
+    last_nodes = _flooding_db->get_last_nodes(&src, bcast_id, &last_nodes_size);
 
     Vector<EtherAddress> known_neighbors;
 
@@ -237,10 +239,10 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       /**
        * a nother node try to reach the node
        */
-      last_nodes = _flooding->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
+      last_nodes = _flooding_db->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
-        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN) == 0) { //1. it is assigned and this is not revoked
+        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE) != 0) { //1. it is assigned and this is not revoked
           //TODO: Debug: check whether node is already in known_neighbours
           BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
@@ -317,7 +319,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         if ( _fix_candidate_set && (!candidate_set.empty()) ) {
           for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
             BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
-            _flooding->add_last_node(&src, bcast_id, i, false, false, true, false);
+            _flooding_db->add_last_node(&src, bcast_id, i, false, false, true, false);
           }
         }
 
@@ -338,7 +340,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       if ( _reject_on_empty_cs ) {
         BRN_DEBUG("We have only weak or no neighbors. Reject!");
         _cnt_reject_on_empty_cs++;
-        _flooding->clear_assigned_nodes(&src, bcast_id);                     //clear all assignment (temporaly mark as "the node has the paket"
+        _flooding_db->clear_assigned_nodes(&src, bcast_id);                     //clear all assignment (temporaly mark as "the node has the paket"
         bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;        //reject and assign nodes are part of decision
         if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN; 
         output(1).push(p_in);
@@ -375,11 +377,11 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
           if ( src != *me ) _flooding->_flooding_fwd++;
           //TODO: inc src_fwd if i'm src of packet? 
 
-          _flooding->forward_attempt(&src, bcast_id);
+          _flooding_db->forward_attempt(&src, bcast_id);
 
           add_rewrite(&src, bcast_id, &candidate_set[i]);
 
-          if (_force_responsibility) _flooding->set_responsibility_target(&src, bcast_id, &candidate_set[i]);
+          if (_force_responsibility) _flooding_db->set_responsibility_target(&src, bcast_id, &candidate_set[i]);
 
           if (is_push) output(0).push(p_copy);           //push element: push all packets
           else all_unicast_pkt_queue.push_back(p_copy);  //pull element: store packets for next pull
@@ -418,7 +420,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     _cnt_rewrites++;
 
     if (_force_responsibility) {
-      _flooding->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop); 
+      _flooding_db->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop); 
       bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
     }
   }
@@ -428,7 +430,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   //                                           _fhelper->_cnmlmap.find(*me)->get_metric(next_hop));
   add_rewrite(&src, bcast_id, &next_hop);
 
-  _flooding->clear_assigned_nodes(&src, bcast_id);
+  _flooding_db->clear_assigned_nodes(&src, bcast_id);
 
   _last_tx_dst_ea = next_hop;
   _last_tx_src_ea = src;

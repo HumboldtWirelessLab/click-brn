@@ -56,13 +56,14 @@ class FloodingPiggyback : public BRNElement {
 
   Packet *simple_action(Packet *);
 
-  static int bcast_header_add_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes, NetworkGraph &net_graph,
-                                         EtherAddress &blicklist); /*TODO: make blackLIST(!!) */
-  static int bcast_header_get_last_nodes(Flooding *fl, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size );
+  static int bcast_header_add_last_nodes(Flooding *fl, FloodingDB *fl_db, EtherAddress *src, uint32_t id, uint8_t *buffer, uint32_t buffer_size, uint32_t max_last_nodes, NetworkGraph &net_graph,
+                                         EtherAddress &blacklist); /*TODO: make blackLIST(!!) */
+  static int bcast_header_get_last_nodes(Flooding *fl, FloodingDB *fl_db, EtherAddress *src, uint32_t id, uint8_t *rxdata, uint32_t rx_data_size );
 
   BRN2NodeIdentity *_me;
   Flooding *_flooding;
   FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
 
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
@@ -71,6 +72,7 @@ class FloodingPiggyback : public BRNElement {
 
   Timestamp _last_update;
   NetworkGraph _net_graph;
+
 };
 
 CLICK_ENDDECLS

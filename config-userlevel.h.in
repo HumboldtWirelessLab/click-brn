@@ -148,7 +148,7 @@
 #undef HAVE_OPENSSL
 
 /* Define if you have -ltcc */
-#undef HAVE_TCC
+/* #undef HAVE_TCC */
 
 /* Define if you have -llwip */
 #undef HAVE_LWIP

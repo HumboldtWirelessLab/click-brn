@@ -291,6 +291,8 @@ class BRN2SimpleFlow : public BRNElement
 
     void add_flow(String flow_conf);
 
+    void set_extra_data(String flow_conf);
+
     bool handle_routing_peek(Packet *p, EtherAddress *src, EtherAddress *dst, int brn_port);
 
     void reset();

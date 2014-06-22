@@ -231,8 +231,8 @@ class Brn2LinkTable: public BRNElement {
                          uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
     if (update_link(a, b, seq, age, metric, link_update_mode, permanent))
       return update_link(b, a, seq, age, metric, link_update_mode, permanent);
-    
-    return false;      
+
+    return false;
   }
 
   /* other public functions */
