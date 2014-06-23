@@ -82,7 +82,7 @@ private:
     void setNonBrigdeByPayload(DibadawnPayloadElement &payload);
     void setParentNull();
     bool isParentNull();
-    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence);
+    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence, const char *src);
     void pairCyclesIfPossible(DibadawnPacket &packet);
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
     uint16_t calcForwardDelay();
