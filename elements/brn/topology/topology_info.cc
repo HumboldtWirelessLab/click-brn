@@ -72,7 +72,10 @@ TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
   {
     Bridge* elem = *it;
     if(elem->equals(a, b))
+    {
       _bridges.erase(it);
+      break;  // After erasing an element, the iterator could not be used
+    }
   }
 }
 
@@ -89,7 +92,10 @@ TopologyInfo::removeArticulationPoint(EtherAddress* a)
   {
     ArticulationPoint* elem = *it;
     if(elem->equals(a))
+    {
       _artpoints.erase(it);
+      break;  // After erasing an element, the iterator could not be used
+    }
   }
 }
 
