@@ -20,6 +20,7 @@
 
 #ifndef TOPOLOGY_DETECTION_HH
 #define TOPOLOGY_DETECTION_HH
+
 #include <click/element.hh>
 #include <click/timer.hh>
 #include <click/vector.hh>
@@ -58,6 +59,8 @@ public:
     void start_detection();
     String local_topology_info(void);
     String config();
+    void run_timer(Timer *t);
+    void stop_periodically_detection_after_next_run();
 
 private:
     uint32_t detection_id;
@@ -66,8 +69,16 @@ private:
     Brn2LinkTable *_lt;
     BRN2NodeIdentity *_node_identity;
     TopologyInfo *_topoInfo;
+    bool _is_detect_periodically;
+    uint32_t _interval_ms;
+    uint32_t _start_rand;
+    
+    Timestamp _start_time;
+    Timestamp _next_time;
+    Timer _timer;
 
     void handle_detection(Packet *brn_packet);
+    void update_periodically_detection_setup();
 };
 
 CLICK_ENDDECLS

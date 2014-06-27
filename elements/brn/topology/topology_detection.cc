@@ -42,7 +42,11 @@ CLICK_DECLS
 
 TopologyDetection::TopologyDetection() :
 detection_id(0),
-dibadawnAlgo(this)
+dibadawnAlgo(this),
+_is_detect_periodically(false),
+_interval_ms(5 * 1000),
+_start_rand(1000),
+_timer(this)
 {
   BRNElement::init();
 }
@@ -51,24 +55,42 @@ TopologyDetection::~TopologyDetection()
 {
 }
 
+
+int TopologyDetection::initialize(ErrorHandler *)
+{
+  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  
+  //don't move this to configure, since BRNNodeIdenty is not configured
+  //completely while configure this element, so set_active can cause
+  //seg, fault, while calling BRN_DEBUG in set_active
+  _timer.initialize(this);
+  update_periodically_detection_setup();
+  
+  return 0;
+}
+
+
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoInfo,
-      "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
-      "LINKTABLE", cpkP, cpElement, &_lt,
+      "TOPOLOGY_INFO", cpkP + cpkM, cpElement, &_topoInfo,
+      "NODE_IDENTITY", cpkP + cpkM, cpElement, &_node_identity,
+      "LINK_TABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
-      "ORIGINDELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      "VOTINGRULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      "MAXHOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      "MAXTRAVERSALTIMEMS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
+      "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
+      "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       cpEnd) < 0)
     return(-1);
 
   dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
   dibadawnAlgo.config.debugLevel = _debug;
   dibadawnAlgo.setTopologyInfo(_topoInfo);
-
+  
   return(0);
 }
 
@@ -77,16 +99,21 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
   bool is_topologyinfo_configured;
   bool is_nodeidentity_configured;
   bool is_debug_configured;
+  bool is_periodicallyexec_configured;
+  bool is_interval_configured;
   
   if (cp_va_kparse(conf, this, errh,
-      "TOPOLOGYINFO", cpkC, &is_topologyinfo_configured, cpElement, &_topoInfo,
-      "NODEIDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
-      "LINKTABLE", 0, cpElement, &_lt,
+      "TOPOLOGY_INFO", cpkC, &is_topologyinfo_configured, cpElement, &_topoInfo,
+      "NODE_IDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
+      "LINK_TABLE", 0, cpElement, &_lt,
       "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
-      "ORIGINDELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      "VOTINGRULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      "MAXHOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      "MAXTRAVERSALTIMEMS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
+      "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
+      "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       cpEnd) < 0)
     return(-1);
 
@@ -96,16 +123,25 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
     dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
   if(is_debug_configured)
     dibadawnAlgo.config.debugLevel = _debug;
+  if(is_periodicallyexec_configured || is_interval_configured)
+    update_periodically_detection_setup();
   
   return(0);
 }
 
 
-int TopologyDetection::initialize(ErrorHandler *)
+void TopologyDetection::update_periodically_detection_setup()
 {
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
-  return 0;
+  _timer.unschedule();
+  
+  if(! _is_detect_periodically)
+    return;
+  
+  uint32_t start_delay = _start_rand > 0 ? click_random() % _start_rand : 0;
+  _timer.schedule_after_msec(start_delay);
+  BRN_DEBUG("Timer is new scheduled at %s", _timer.expiry().unparse().c_str());
 }
+
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
 {
@@ -126,15 +162,39 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
   packet->kill();
 }
 
+
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
   dibadawnAlgo.receive(packet);
 }
 
+
 void TopologyDetection::start_detection()
 {
   dibadawnAlgo.startNewSearch();
+}
+
+
+void
+TopologyDetection::run_timer(Timer *t)
+{
+  BRN_DEBUG("Run timer.");
+  if (t == NULL)
+    BRN_ERROR("Timer is NULL");
+
+  dibadawnAlgo.startNewSearch();
+
+  if (_is_detect_periodically)
+    _timer.schedule_after_msec(_interval_ms);
+}
+
+
+
+void TopologyDetection::stop_periodically_detection_after_next_run()
+{
+  _is_detect_periodically = false;
+  BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer.expiry().unparse().c_str());
 }
 
 
@@ -156,7 +216,7 @@ String TopologyDetection::config()
 
 enum
 {
-  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG
+  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG, H_STOP_SMOOTHLY
 };
 
 static int write_param(const String& click_script_parameter, Element *element, void *vparam, ErrorHandler* errh)
@@ -169,8 +229,14 @@ static int write_param(const String& click_script_parameter, Element *element, v
     break;
     
   case H_CONFIG:
+  {
     String s = cp_uncomment(click_script_parameter);
     topo->reconfigure(s, errh);
+    break;
+  }
+    
+  case H_STOP_SMOOTHLY:
+    topo->stop_periodically_detection_after_next_run();
     break;
   }
   return 0;
@@ -198,10 +264,13 @@ void TopologyDetection::add_handlers()
   BRNElement::add_handlers();
 
   add_write_handler("detect", write_param, (void *) H_START_DETECTION);
+  
   add_write_handler("config", write_param, (void *) H_CONFIG);
-
-  add_read_handler("local_topo_info", read_param, (void *) H_TOPOLOGY_INFO);
   add_read_handler("config", read_param, (void *) H_CONFIG);
+  
+  add_read_handler("local_topo_info", read_param, (void *) H_TOPOLOGY_INFO);
+  
+  add_write_handler("stop_periotically_detection_smoothly", write_param, (void *) H_STOP_SMOOTHLY);
 }
 
 CLICK_ENDDECLS
