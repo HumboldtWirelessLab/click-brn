@@ -104,7 +104,7 @@ FloodingDB::add_id(EtherAddress *src, uint16_t id, Timestamp *now, bool me_src)
 }
 
 int
-FloodingDB::add_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility)
+FloodingDB::add_node_info(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
 
@@ -113,7 +113,20 @@ FloodingDB::add_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_nod
     return -1;
   }
 
-  return bcn->add_last_node(id, last_node, forwarded, rx_acked, responsibility, foreign_responsibility);
+  return bcn->add_node_info(id, last_node, forwarded, rx_acked, responsibility, foreign_responsibility);
+}
+
+int
+FloodingDB::add_responsible_node(EtherAddress *src, uint16_t id, EtherAddress *responsible_node)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) {
+    BRN_ERROR("BCastNode is unknown. Discard info.");
+    return -1;
+  }
+
+  return bcn->add_responsible_node(id, responsible_node);
 }
 
 void
@@ -214,20 +227,20 @@ FloodingDB::reset()
   }
 }
 
-struct BroadcastNode::flooding_last_node*
-FloodingDB::get_last_node(EtherAddress *src, uint16_t id, EtherAddress *last)
+struct BroadcastNode::flooding_node_info*
+FloodingDB::get_node_info(EtherAddress *src, uint16_t id, EtherAddress *last)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
   if ( bcn == NULL ) return NULL;
-  return bcn->get_last_node(id, last);
+  return bcn->get_node_info(id, last);
 }
 
-struct BroadcastNode::flooding_last_node*
-FloodingDB::get_last_nodes(EtherAddress *src, uint16_t id, uint32_t *size)
+struct BroadcastNode::flooding_node_info*
+FloodingDB::get_node_infos(EtherAddress *src, uint16_t id, uint32_t *size)
 {
   *size = 0;
   BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn != NULL ) return bcn->get_last_nodes(id, size);
+  if ( bcn != NULL ) return bcn->get_node_infos(id, size);
   return NULL;
 }
 
@@ -240,15 +253,6 @@ FloodingDB::assign_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_
 
   int res = bcn->assign_node(id, last_node);
   BRN_DEBUG("Finished assign node: %s %d",last_node->unparse().c_str(),res);
-}
-
-struct BroadcastNode::flooding_last_node*
-FloodingDB::get_assigned_nodes(EtherAddress *src, uint16_t id, uint32_t *size)
-{
-  *size = 0;
-  BroadcastNode *bcn = _bcast_map.find(*src);
-  if ( bcn != NULL ) return bcn->get_assigned_nodes(id, size);
-  return NULL;
 }
 
 void
@@ -297,7 +301,7 @@ FloodingDB::table()
     sa << "\t<src node=\"" << bcn->_src.unparse() << "\" id_count=\"" << id_c << "\">\n";
     for( uint32_t i = 0; i < DEFAULT_MAX_BCAST_ID_QUEUE_SIZE; i++ ) {
       if ( bcn->_bcast_id_list[i] == 0 ) continue; //unused id-entry
-      struct BroadcastNode::flooding_last_node *flnl = bcn->_last_node_list[i];
+      struct BroadcastNode::flooding_node_info *flnl = bcn->_flooding_node_info_list[i];
       sa << "\t\t<id value=\"" << bcn->_bcast_id_list[i] << "\" fwd=\"";
       sa << (uint32_t)bcn->_bcast_fwd_list[i] << "\" fwd_done=\"";
       sa << (uint32_t)bcn->_bcast_fwd_done_list[i] << "\" fwd_succ=\"";
@@ -306,14 +310,13 @@ FloodingDB::table()
       sa << (uint32_t)bcn->_bcast_rts_snd_list[i] << "\" time=\"";
       sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
 
-      for ( int j = 0; j < bcn->_last_node_list_size[i]; j++ ) {
-        if (!(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE)) continue; //node must be last node
+      for ( int j = 0; j < bcn->_flooding_node_info_list_size[i]; j++ ) {
         sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-        sa << (uint32_t)(flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FORWARDED) << "\" responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" finished_responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)?0:1) << "\" rcv_cnt=\"";
+        sa << (uint32_t)(flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FORWARDED) << "\" responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" finished_responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
+        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)?0:1) << "\" rcv_cnt=\"";
         sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
       }
 
