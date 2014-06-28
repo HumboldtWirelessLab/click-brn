@@ -434,7 +434,7 @@ static int set_pre (const String &in_s, Element *element, void */*thunk*/, Error
 	return 0;
 }
 
-static int reset_all (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
+static int reset_all (const String &/*in_s*/, Element *element, void */*thunk*/, ErrorHandler */*errh*/) {
 	OverlayStructure *ovl = (OverlayStructure *)element;
 	
     ovl->reset();
