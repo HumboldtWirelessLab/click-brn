@@ -68,7 +68,8 @@ uint32_t
 GabrielGraph::metric2dist(uint32_t metric)
 {
   /**TODO*/
-  
+  (void)metric;
+
   return 0;
 }
 
