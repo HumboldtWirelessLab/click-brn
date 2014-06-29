@@ -243,8 +243,6 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
   packet.logTx(config.thisNode, packet.getBroadcastAddress());
   WritablePacket *brn_packet = packet.getBrnBroadcastPacket();
   brn_click_element->output(0).push(brn_packet);
-
-  activateForwardTimer(packet);
 }
 
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
@@ -341,6 +339,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       txPacket.treeParent = rxPacket.forwardedBy;
       sentForwardPacket = txPacket;
 
+      activateForwardTimer(txPacket);
       sendDelayedBroadcastWithTimeout(txPacket);
     }
     else
