@@ -34,10 +34,10 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
-#include "flooding_helper.hh"
-#include "flooding_db.hh"
-#include "floodingpolicy/floodingpolicy.hh"
-#include "floodingpassiveack.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "elements/brn/routing/broadcast/flooding/floodingpolicy/floodingpolicy.hh"
+#include "elements/brn/routing/broadcast/flooding/passiveack/floodingpassiveack.hh"
 
 CLICK_DECLS
 

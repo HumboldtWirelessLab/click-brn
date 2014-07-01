@@ -36,7 +36,6 @@
 #include "elements/brn/wifi/brnwifi.hh"
 
 #include "flooding.hh"
-#include "floodingpolicy/floodingpolicy.hh"
 #include "piggyback/flooding_piggyback.hh"
 
 CLICK_DECLS

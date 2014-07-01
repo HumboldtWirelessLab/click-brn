@@ -31,8 +31,11 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 
-#include "flooding_db.hh"
-#include "flooding_helper.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+
+#include "elements/brn/routing/broadcast/flooding/passiveack/passiveackpacketinfo.hh"
+#include "elements/brn/routing/broadcast/flooding/passiveack/floodingtxscheduling.hh"
 
 CLICK_DECLS
 
@@ -58,80 +61,13 @@ class Flooding;
 class FloodingPassiveAck : public BRNElement {
 
  public:
-  class PassiveAckPacket
-  {
+
 #define PASSIVE_ACK_DFL_MAX_RETRIES  1
 #define PASSIVE_ACK_DFL_INTERVAL    25
 #define PASSIVE_ACK_DFL_TIMEOUT   2000
 
-     public:
-      EtherAddress _src;
-      uint16_t _bcast_id;
-      Vector<EtherAddress> _passiveack;
-
-      int16_t _max_retries;
-      uint16_t _retries;
-
-      uint16_t _cnt_finished_passiveack_nodes;
-
-      Timestamp _enqueue_time;
-      Timestamp _last_tx;
-
-      /* Some stats, which can be used, whether a small ack (floodingacknowledgment) is better than the full paket.
-       *
-       */
-      Vector<EtherAddress> _unfinished_neighbors;
-      Vector<int> _unfinished_neighbors_rx_prob;
-
-      PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
-      {
-        _src = EtherAddress(src->data());
-        _bcast_id = bcast_id;
-        if ( passiveack != NULL )
-        for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
-
-        _max_retries = retries;
-
-        _last_tx = _enqueue_time = Timestamp::now();
-        _retries = _cnt_finished_passiveack_nodes = 0;
-
-        _unfinished_neighbors.clear();
-        _unfinished_neighbors_rx_prob.clear();
-      }
-
-      ~PassiveAckPacket() {
-        _passiveack.clear();
-        _unfinished_neighbors.clear();
-        _unfinished_neighbors_rx_prob.clear();
-      }
-
-      void set_tx(Timestamp tx_time) {
-        _last_tx = tx_time;
-      }
-
-      inline void inc_max_retries() { _max_retries++; }; //use for tx_abort (is an net_layer transmission but maybe no mac-layer tx)
-
-      void set_next_retry(Timestamp tx_time) {
-        _retries++;
-        _last_tx = tx_time;
-      }
-
-      inline int32_t tx_duration(Timestamp now) {
-        return (now - _last_tx).msecval();
-      }
-
-      inline uint32_t retries_left() {
-        return _max_retries - _retries;
-      }
-
-      bool tx_timeout(Timestamp &now, int timeout ) {
-        return ((now - _enqueue_time).msecval() > timeout );
-      }
-
-   };
-
-   typedef Vector<PassiveAckPacket*> PAckPacketVector;
-   typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
+  typedef Vector<PassiveAckPacket*> PAckPacketVector;
+  typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
   //
   //methods
   //
@@ -160,12 +96,12 @@ class FloodingPassiveAck : public BRNElement {
 public:
   FloodingHelper *_fhelper;
   FloodingDB *_flooding_db;
+  FloodingTxScheduling *_flooding_scheduling;
 
 private:
   PAckPacketVector p_queue;
 
   uint32_t _dfl_retries;
-  uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
 
   uint32_t _cntbased_min_neighbors_for_abort;
