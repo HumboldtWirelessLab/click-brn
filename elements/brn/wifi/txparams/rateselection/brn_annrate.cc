@@ -10,7 +10,7 @@
 
 #include "elements/brn/brn2.h"
 #include "rateselection.hh"
-#include "brn_fixrate.hh"
+#include "brn_annrate.hh"
 
 CLICK_DECLS
 
