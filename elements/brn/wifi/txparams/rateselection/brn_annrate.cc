@@ -93,7 +93,6 @@ BrnAnnRate::configure(Vector<String> &conf, ErrorHandler *errh)
       "STBC3", cpkN, cpBool, &_stbc3,
 
       "DEBUG", 0, cpInteger, &_debug,
-
       cpEnd) < 0)
     return -1;
 
