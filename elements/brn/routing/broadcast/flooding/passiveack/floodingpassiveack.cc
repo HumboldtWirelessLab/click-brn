@@ -46,7 +46,6 @@ FloodingPassiveAck::FloodingPassiveAck():
   _fhelper(NULL),
   _flooding_db(NULL),
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
-  _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
   _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
   _cntbased_min_neighbors_for_abort(0),
   _abort_on_finished(true),
@@ -77,8 +76,8 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
       "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
+      "FLOODINGSCHEDULING", cpkP+cpkM, cpElement, &_flooding_scheduling,
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
-      "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
       "CNTNB2ABORT", cpkP, cpInteger, &_cntbased_min_neighbors_for_abort,
       "ABORTONFINISHED", cpkP, cpBool, &_abort_on_finished,
@@ -146,7 +145,7 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   BRN_DEBUG("Feedback/Abort: %s %d",src->unparse().c_str(), bcast_id);
 
   struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)(p->data());
-  FloodingPassiveAck::PassiveAckPacket *pap = NULL;
+  PassiveAckPacket *pap = NULL;
 
   for ( int i = 0; i < p_queue.size(); i++ ) {
      pap = p_queue[i];
@@ -253,29 +252,13 @@ FloodingPassiveAck::tx_delay(PassiveAckPacket *pap)
 {
   if ( _flooding_db->me_src(&(pap->_src), pap->_bcast_id) && (pap->_retries == 0) ) return 0; //first
 
-  /* depends on neighbours and last node*/
-  int n = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()))->size();
-  if ( n == 0 ) return (click_random() % _dfl_interval);
-
-  int un = count_unfinished_neighbors(pap);
-  if ( n == un ) return (click_random() % _dfl_interval);
-
-  //int mod_time = (_dfl_interval * (n-un))/n;
-  int mod_time = isqrt32((_dfl_interval * _dfl_interval * (n-un))/n);
-  //int mod_time = (_dfl_interval * (n-un) * (n-un))/(n*n);
-
-  if (mod_time == 0) return (click_random() % _dfl_interval);
-
-  return (click_random() % mod_time);
-
-  /* depends on nothing. Just like backoff */
-  //return (click_random() % _dfl_interval);
+  return _flooding_scheduling->tx_delay(pap);
 }
 
-FloodingPassiveAck::PassiveAckPacket*
+PassiveAckPacket*
 FloodingPassiveAck::get_pap(EtherAddress *src, uint16_t bcast_id)
 {
-  FloodingPassiveAck::PassiveAckPacket *pap = NULL;
+  PassiveAckPacket *pap = NULL;
 
   for ( int i = 0; i < p_queue.size(); i++ ) {
      pap = p_queue[i];
@@ -294,8 +277,7 @@ FloodingPassiveAck::stats()
   StringAccum sa;
 
   sa << "<floodingpassiveack node=\"" << BRN_NODE_NAME << "\" flooding_db=\"" << (int)((_flooding_db!=NULL)?1:0);
-  sa << "\" retries=\"" << _dfl_retries << "\" timeout=\"";
-  sa << _dfl_interval << "\" >\n\t<packetqueue count=\"" << p_queue.size();
+  sa << "\" retries=\"" << _dfl_retries << "\" >\n\t<packetqueue count=\"" << p_queue.size();
   sa << "\" inserts=\"" << _enqueued_pkts << "\" deletes=\"" << _dequeued_pkts;
   sa << "\" queued=\"" << _queued_pkts;
   sa << "\" retransmissions=\"" << _retransmissions << "\" pre_deletes=\"" << _pre_removed_pkts << "\" >\n";
