@@ -1,5 +1,5 @@
-#ifndef BRNFIXRATE_HH
-#define BRNFIXRATE_HH
+#ifndef BRNANNRATE_HH
+#define BRNANNRATE_HH
 #include <click/timer.hh>
 
 #include "rateselection.hh"
@@ -13,8 +13,8 @@ CLICK_DECLS
 class BrnAnnRate : public RateSelection
 {
   public:
-    BrnFixRate();
-    ~BrnFixRate();
+    BrnAnnRate();
+    ~BrnAnnRate();
 
 /*ELEMENT*/
     const char *class_name() const  { return "BrnAnnRate"; }

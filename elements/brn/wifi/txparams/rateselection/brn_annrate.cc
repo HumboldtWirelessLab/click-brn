@@ -14,7 +14,7 @@
 
 CLICK_DECLS
 
-BrnFixRate::BrnFixRate():
+BrnAnnRate::BrnAnnRate():
     _rate0(0xFF), _rate1(0), _rate2(0), _rate3(0),
     _tries0(1), _tries1(0), _tries2(0), _tries3(0),
     _mcs0(false), _mcs1(false), _mcs2(false), _mcs3(false),
@@ -31,20 +31,20 @@ BrnFixRate::BrnFixRate():
 }
 
 void *
-BrnFixRate::cast(const char *name)
+BrnAnnRate::cast(const char *name)
 {
   if (strcmp(name, "BrnAnnRate") == 0)
-    return (BrnFixRate *) this;
+    return (BrnAnnRate *) this;
 
   return RateSelection::cast(name);
 }
 
-BrnFixRate::~BrnFixRate()
+BrnAnnRate::~BrnAnnRate()
 {
 }
 
 int
-BrnFixRate::configure(Vector<String> &conf, ErrorHandler *errh)
+BrnAnnRate::configure(Vector<String> &conf, ErrorHandler *errh)
 {
     if (cp_va_kparse(conf, this, errh,
       "RATE0", cpkN, cpByte, &_rate0,
@@ -160,7 +160,7 @@ BrnFixRate::configure(Vector<String> &conf, ErrorHandler *errh)
 /*********************************** M A I N ****************************************/
 /************************************************************************************/
 void
-BrnFixRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo * /*nri*/)
+BrnAnnRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo * /*nri*/)
 {
   click_wifi_extra *ceh = rs_pkt_info->ceh;
 
@@ -187,7 +187,7 @@ BrnFixRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neighbour
 }
 
 String
-BrnFixRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
+BrnAnnRate::print_neighbour_info(NeighbourRateInfo * /*nri*/, int /*tabs*/)
 {
   return String();
 }
@@ -200,9 +200,9 @@ enum { H_STATS};
 
 
 static String
-BrnFixRate_read_param(Element */*e*/, void *thunk)
+BrnAnnRate_read_param(Element */*e*/, void *thunk)
 {
-  //BrnFixRate *td = (BrnFixRate *)e;
+  //BrnAnnRate *td = (BrnAnnRate *)e;
   switch ((uintptr_t) thunk) {
     case H_STATS:
       return String();
@@ -212,13 +212,13 @@ BrnFixRate_read_param(Element */*e*/, void *thunk)
 }
 
 void
-BrnFixRate::add_handlers()
+BrnAnnRate::add_handlers()
 {
   RateSelection::add_handlers();
 
-  add_read_handler("stats", BrnFixRate_read_param, (void *) H_STATS);
+  add_read_handler("stats", BrnAnnRate_read_param, (void *) H_STATS);
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(BrnFixRate)
+EXPORT_ELEMENT(BrnAnnRate)
 
