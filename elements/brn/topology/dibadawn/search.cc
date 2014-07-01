@@ -302,7 +302,7 @@ uint16_t DibadawnSearch::calcForwardDelayImproved(DibadawnPacket &packet)
 
 bool DibadawnSearch::isResponsibleFor(DibadawnPacket &packet)
 {
-  return (packet.searchId.isEqualTo(packet.searchId));
+  return (searchId.isEqualTo(packet.searchId));
 }
 
 void DibadawnSearch::receive(DibadawnPacket &rxPacket)
