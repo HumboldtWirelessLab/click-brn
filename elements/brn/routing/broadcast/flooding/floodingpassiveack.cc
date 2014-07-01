@@ -48,6 +48,7 @@ FloodingPassiveAck::FloodingPassiveAck():
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
   _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
   _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
+  _cntbased_min_neighbors_for_abort(0),
   _abort_on_finished(true),
   _enqueued_pkts(0),
   _queued_pkts(0),
@@ -79,6 +80,7 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEFAULTRETRIES", cpkP, cpInteger, &_dfl_retries,
       "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
+      "CNTNB2ABORT", cpkP, cpInteger, &_cntbased_min_neighbors_for_abort,
       "ABORTONFINISHED", cpkP, cpBool, &_abort_on_finished,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
@@ -102,6 +104,12 @@ FloodingPassiveAck::packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_
 
   //check whether paket i enqued again:this would indicate an error in flooding or flooding policy
   assert(NULL == get_pap(src, bcast_id));
+
+  //no passiv ack nodes are given so take (filtered) neighbours
+  if ( passiveack->size() == 0 ) {
+    CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()));
+    passiveack = &(cnml->_neighbors);
+  }
 
   PassiveAckPacket *pap = new PassiveAckPacket(src, bcast_id, passiveack, retries);
 
@@ -150,12 +158,16 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   Timestamp now = Timestamp::now();
 
   //TODO: is it a net retries if i sent the packet one time or little bit more ??
+  // if abort, then inc max retries to have one more retry (abort once)
   if (abort /*&& (no_transmissions == 0)*/) pap->inc_max_retries();
 
-  if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
-        packet_is_finished(pap) ||
-        pap->tx_timeout(now, _dfl_timeout)) {
+  set_unfinished_neighbors(pap);
 
+  if ( (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 )) ||  //low layer said: "it's done!!"
+        packet_is_finished(pap) ||                                                             //or packet is finished (all passiv ack nodes or cnt based
+        pap->tx_timeout(now, _dfl_timeout)) {                                                  //or timeout
+
+    BRN_DEBUG("Finished with %d retries left! Reson: %d %d %d",pap->retries_left(),(rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 ))?1:0, packet_is_finished(pap)?1:0,pap->tx_timeout(now, _dfl_timeout)?1:0);
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
 
     _queued_pkts--;
@@ -175,34 +187,52 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
 }
 
 int
-FloodingPassiveAck::count_unfinished_neighbors(PassiveAckPacket *pap)
+FloodingPassiveAck::set_unfinished_neighbors(PassiveAckPacket *pap)
 {
-  /*check neighbours*/
-  CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*(_me->getMasterAddress()));
-
-  struct BroadcastNode::flooding_last_node *last_nodes;
-  uint32_t last_nodes_size;
-  last_nodes = _flooding_db->get_last_nodes(&pap->_src, pap->_bcast_id, &last_nodes_size);
+  struct BroadcastNode::flooding_node_info *last_nodes;
+  uint32_t last_nodes_size, j;
+  last_nodes = _flooding_db->get_node_infos(&pap->_src, pap->_bcast_id, &last_nodes_size);
 
   BRN_DEBUG("For %s:%d i have %d nodes", pap->_src.unparse().c_str(), pap->_bcast_id, last_nodes_size);
 
-  int unfinished_neighbors = cnml->_neighbors.size();
+  pap->_unfinished_neighbors.clear();
+  pap->_unfinished_neighbors_rx_prob.clear();
 
-  for ( int i = unfinished_neighbors-1; i >= 0; i--) {    //!! unfinished_neighbors will decreased in loop !!
-    for ( uint32_t j = 0; j < last_nodes_size; j++) {
-      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE) == 0) ||
-           (((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&
-           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) ) continue;  //i'm responsible and it's not acked
-      //TODO: second test (acked) is not nötig, since responsible only as long as not acked
+  BroadcastNode *bcn = _flooding_db->get_broadcast_node(&(pap->_src));
 
-      if ( memcmp(cnml->_neighbors[i].data(), last_nodes[j].etheraddr, 6) == 0) {
-        unfinished_neighbors--;
+  uint32_t no_rx_nodes = 0;
+
+  for ( int i = pap->_passiveack.size()-1; i >= 0; i--) {    //!! unfinished_neighbors will decreased in loop !!
+    for ( j = 0; j < last_nodes_size; j++) {
+      if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0) &&
+           ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) ) continue; //i'm responsible and it's not acked
+
+      //we not resp for node or it's finished! now check whether it is the right node
+      //break if node is found
+      if ( memcmp(pap->_passiveack[i].data(), last_nodes[j].etheraddr, 6) == 0) {
+
+        //node is finished (?) and a passiveack node
+        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) no_rx_nodes++;
+
         break;
       }
     }
+    if ( j == last_nodes_size ) { //passiv_ack_node not found in last node, so its unfinished
+      pap->_unfinished_neighbors.push_back(pap->_passiveack[i]);
+      pap->_unfinished_neighbors_rx_prob.push_back(bcn->get_probability(pap->_bcast_id, &(pap->_passiveack[i])));
+    }
   }
 
-  return unfinished_neighbors;
+  pap->_cnt_finished_passiveack_nodes = no_rx_nodes;
+
+  return pap->_unfinished_neighbors.size();
+}
+
+
+int
+FloodingPassiveAck::count_unfinished_neighbors(PassiveAckPacket *pap)
+{
+  return pap->_unfinished_neighbors.size();
 }
 
 bool
@@ -211,7 +241,11 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
   /*check retries*/
   if ( pap->retries_left() == 0 ) return true;
 
-  return ((count_unfinished_neighbors(pap) == 0) && _abort_on_finished);
+  bool cnt_based_abort = ((_cntbased_min_neighbors_for_abort > 0) && (_cntbased_min_neighbors_for_abort <= pap->_cnt_finished_passiveack_nodes ));
+
+  BRN_DEBUG("Finished?: %d %d %d %d",pap->retries_left(),cnt_based_abort?1:0,_abort_on_finished,count_unfinished_neighbors(pap));
+
+  return (_abort_on_finished && ((count_unfinished_neighbors(pap) == 0) || cnt_based_abort));
 }
 
 int

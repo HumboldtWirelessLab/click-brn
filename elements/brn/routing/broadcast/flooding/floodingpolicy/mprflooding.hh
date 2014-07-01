@@ -72,6 +72,9 @@ class MPRFlooding : public FloodingPolicy
 
     Vector<EtherAddress> _mpr_forwarder;
     Vector<EtherAddress> _neighbours;
+    int _last_bcast_id;
+
+    bool _remove_finished_nodes;
 };
 
 CLICK_ENDDECLS

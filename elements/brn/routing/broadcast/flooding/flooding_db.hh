@@ -56,7 +56,7 @@ class BroadcastNode
 #define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK (DEFAULT_MAX_BCAST_ID_QUEUE_SIZE - 1)
 
 #define DEFAULT_MAX_BCAST_ID_TIMEOUT       20000
-#define FLOODING_LAST_NODE_LIST_DFLT_SIZE     16
+#define FLOODING_NODE_INFO_LIST_DFLT_SIZE     16
 
   public:
   EtherAddress  _src;
@@ -77,7 +77,7 @@ class BroadcastNode
   Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
   //stats for last node of one packet
-  struct flooding_last_node {
+  struct flooding_node_info {
     uint8_t etheraddr[6];
 
     uint8_t rx_probability;
@@ -85,24 +85,28 @@ class BroadcastNode
 
     uint16_t flags;
 
-#define FLOODING_LAST_NODE_FLAGS_FORWARDED                  1
-#define FLOODING_LAST_NODE_FLAGS_RX_ACKED                   2
-#define FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY             4
-#define FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY     8
+#define FLOODING_NODE_INFO_FLAGS_FORWARDED                  1
+#define FLOODING_NODE_INFO_FLAGS_FINISHED                   2
+#define FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY             4
+#define FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY     8
 
-#define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_ME            (FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
-#define FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN       (FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY | FLOODING_LAST_NODE_FLAGS_RX_ACKED)
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME            (FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN       (FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
 
-#define FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY   16
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY   16
 
-#define FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE              64
-#define FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE         128
-
+#define FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE          32
   };
 
-  struct flooding_last_node *_last_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-  uint8_t _last_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-  uint8_t _last_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+
+#define FLOODING_NODE_INFO_RESULT_IS_NEW                         1
+#define FLOODING_NODE_INFO_RESULT_IS_NEW_FINISHED                2
+#define FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY  4
+
+
+  struct flooding_node_info *_flooding_node_info_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+  uint8_t _flooding_node_info_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
+  uint8_t _flooding_node_info_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
 
   bool _fix_target_set;
 
@@ -125,8 +129,8 @@ class BroadcastNode
     _last_id_time = Timestamp::now();
     reset_queue();
 
-    memset(_last_node_list,0,sizeof(_last_node_list));
-    memset(_last_node_list_maxsize,0,sizeof(_last_node_list_maxsize));
+    memset(_flooding_node_info_list,0,sizeof(_flooding_node_info_list));
+    memset(_flooding_node_info_list_maxsize,0,sizeof(_flooding_node_info_list_maxsize));
   }
 
   void reset_queue() {
@@ -138,7 +142,7 @@ class BroadcastNode
     memset(_bcast_rts_snd_list, 0, sizeof(_bcast_rts_snd_list));
     memset(_bcast_flags_list, 0, sizeof(_bcast_flags_list));
 
-    memset(_last_node_list_size,0,sizeof(_last_node_list_size));                      //all entries are invalid
+    memset(_flooding_node_info_list_size,0,sizeof(_flooding_node_info_list_size));                      //all entries are invalid
     _fix_target_set = false;
   }
 
@@ -176,7 +180,7 @@ class BroadcastNode
       _bcast_flags_list[index] = (me_src)?FLOODING_FLAGS_ME_SRC:0;
       _bcast_time_list[index] = now;
 
-      _last_node_list_size[index] = 0;
+      _flooding_node_info_list_size[index] = 0;
     }
     _last_id_time = now;
   }
@@ -190,8 +194,7 @@ class BroadcastNode
 
   inline void forward_attempt(uint16_t id) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-    if (_bcast_id_list[index] == id)
-    _bcast_fwd_list[index]++;
+    if (_bcast_id_list[index] == id) _bcast_fwd_list[index]++;
   }
 
   inline void forward_done(uint16_t id, bool success) {
@@ -229,186 +232,206 @@ class BroadcastNode
   }
 
   /**
-    * Last node (known nodes)
+    * Known nodes (node info)
+    * 
+    * 
     */
 
-  struct flooding_last_node *add_last_node(uint16_t id, EtherAddress *node, int *new_index)
+  struct flooding_node_info *add_node_info(uint16_t id, EtherAddress *node, int *new_index)
   {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     assert(_bcast_id_list[index] == id);
 
-    /* create or extend the queue */
-    if (_last_node_list[index] == NULL) {
-      _last_node_list[index] = new struct flooding_last_node[FLOODING_LAST_NODE_LIST_DFLT_SIZE];
-      _last_node_list_size[index] = 0;
-      _last_node_list_maxsize[index] = FLOODING_LAST_NODE_LIST_DFLT_SIZE;
+    /* create or extend the queue of nodes*/
+    if (_flooding_node_info_list[index] == NULL) {
+      _flooding_node_info_list[index] = new struct flooding_node_info[FLOODING_NODE_INFO_LIST_DFLT_SIZE];
+      _flooding_node_info_list_size[index] = 0;
+      _flooding_node_info_list_maxsize[index] = FLOODING_NODE_INFO_LIST_DFLT_SIZE;
     } else {
-      if ( _last_node_list_size[index] == _last_node_list_maxsize[index] ) {
-        _last_node_list_maxsize[index] *= 2; //double
-        struct flooding_last_node *new_list = new struct flooding_last_node[_last_node_list_maxsize[index]]; //new list
-        memcpy(new_list,_last_node_list[index], _last_node_list_size[index] * sizeof(struct flooding_last_node)); //copy
-        delete[] _last_node_list[index]; //delete old
-        _last_node_list[index] = new_list; //set new
+      if ( _flooding_node_info_list_size[index] == _flooding_node_info_list_maxsize[index] ) {
+        _flooding_node_info_list_maxsize[index] *= 2; //double
+        struct flooding_node_info *new_list = new struct flooding_node_info[_flooding_node_info_list_maxsize[index]]; //new list
+        memcpy(new_list,_flooding_node_info_list[index], _flooding_node_info_list_size[index] * sizeof(struct flooding_node_info)); //copy
+        delete[] _flooding_node_info_list[index]; //delete old
+        _flooding_node_info_list[index] = new_list; //set new
       }
     }
 
     /* add the node or update */
-    struct flooding_last_node *fln = _last_node_list[index];
-    int fln_i = _last_node_list_size[index];
+    struct flooding_node_info *flni = _flooding_node_info_list[index];
+    int flni_s = _flooding_node_info_list_size[index];
 
-    for ( int i = 0; i < fln_i; i++ ) {
-      if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {                //found node
-         *new_index = 0;
-         return &(fln[i]);
+    for ( int i = 0; i < flni_s; i++ ) {
+      if ( memcmp(node->data(), flni[i].etheraddr, 6) == 0 ) {               //found node
+         *new_index = 0;                                                     //found node, so new index is 0
+         return &(flni[i]);
       }
     }
 
     /*
      * Node not found, so add new_list
      */
-    memcpy(fln[fln_i].etheraddr, node->data(),6);
-    fln[fln_i].received_cnt = fln[fln_i].rx_probability = fln[fln_i].flags = 0;
+    memcpy(flni[flni_s].etheraddr, node->data(),6);
+    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].flags = 0;
 
-    _last_node_list_size[index]++;
-    *new_index = _last_node_list_size[index];
+    _flooding_node_info_list_size[index]++;
+    *new_index = _flooding_node_info_list_size[index]; //after inc to avoid return of 0 for the first node
 
-    return &(fln[fln_i]);
+    return &(flni[flni_s]);
 
   }
 
-  int add_last_node(uint16_t id, EtherAddress *node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility) {
-    assert(forwarded || rx_acked || responsibility || foreign_responsibility );
+  int add_node_info(uint16_t id, EtherAddress *node, bool forwarded, bool finished, bool responsibility, bool foreign_responsibility) {
+    int result = 0;
 
-    int new_index = 0;
+    struct flooding_node_info *fln = add_node_info(id, node, &result);
 
-    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+    if ( result == 0 ) {                                                    //found node
+      if ( forwarded ) fln->flags |= FLOODING_NODE_INFO_FLAGS_FORWARDED;
+      if ( finished ) {
+        if ( ! (fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) ) {         //is not finished yet
 
-    if ( new_index == 0 ) {                                                  //found node
-    //search for node
-      if (!(fln->flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE)) {           //node is new last node it is not assigned anymore
-        fln->flags &= ~((uint8_t)FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE);
-        fln->flags |= FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE;                //mark as last node (maybe it was just assigned or stats
-      }
+          result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FINISHED;
 
-      if ( forwarded ) fln->flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
-      if ( rx_acked ) {
-        fln->flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;                  //is acked ? so mark it
-        fln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
-        if ( fln->flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY ) {     //i was resp?
-          fln->flags |= FLOODING_LAST_NODE_FLAGS_FINISHED_RESPONSIBILITY; //then mark it as finished
-          fln->flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;         //clear responsibility
+          fln->flags |= FLOODING_NODE_INFO_FLAGS_FINISHED;                  //is acked ? so mark it
+          if ( fln->flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY ) {     //i was resp?
+            fln->flags |= FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY; //then mark it as finished
+          }
+
+          fln->flags &= ~(FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE);
+
+          fln->rx_probability = 100;
         }
+      } else {                                                              //this node is already know
+        if ( responsibility ) {
+          assert((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0);    //if i set responsible it should not finished yet
+          fln->flags |= FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY;            //set responsibility
+          fln->flags &= ~FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
+        } else if (foreign_responsibility &&
+                   ((fln->flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0) &&
+                   ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN) == 0)) {
 
-        fln->rx_probability = 100;
-
-      } else if ( responsibility ) {
-        fln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;            //set responsibility
-        fln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
-      } else if (foreign_responsibility && ((fln->flags & FLOODING_LAST_NODE_FLAGS_FINISHED_FOR_FOREIGN) == 0)) {
-          fln->flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
+                  fln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;
+                  result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY;
+        }
       }
     } else {
 
       /*
       * Node not found, so add new_list
       */
-      fln->flags = FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE;
+      result = FLOODING_NODE_INFO_RESULT_IS_NEW;                          //this node is new
 
-      if ( forwarded ) fln->flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
+      if ( forwarded ) fln->flags |= FLOODING_NODE_INFO_FLAGS_FORWARDED;
 
-      if ( rx_acked ) {
-        fln->flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
+      if ( finished ) {
+
+        result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FINISHED;
+
+        fln->flags |= FLOODING_NODE_INFO_FLAGS_FINISHED;
         fln->rx_probability = 100;
-      } else if ( responsibility ) fln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
-      else if ( foreign_responsibility ) fln->flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY;
+      } else if ( responsibility ) fln->flags |= FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY;
+        else if ( foreign_responsibility ) {
+          fln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;
+          result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY;
+        }
     }
 
-    assert(fln->flags != 0 );
-
-    return new_index;
+    return result;
   }
 
-  struct flooding_last_node* get_last_node(uint16_t id, EtherAddress *last) {
+  struct flooding_node_info* get_node_info(uint16_t id, EtherAddress *last) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
-    if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
+    if ((_flooding_node_info_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
 
-    struct flooding_last_node *fln = _last_node_list[index];
-    int fln_i = _last_node_list_size[index];
+    struct flooding_node_info *fln = _flooding_node_info_list[index];
+    int fln_i = _flooding_node_info_list_size[index];
 
     //search for node
     for ( int i = 0; i < fln_i; i++ ) {
-      if ( memcmp(last->data(), fln[i].etheraddr, 6) == 0 ) {
-        if ( fln[i].flags & FLOODING_LAST_NODE_FLAGS_IS_LAST_NODE ) return &fln[i];
-        else return NULL;
-      }
+      if ( memcmp(last->data(), fln[i].etheraddr, 6) == 0 ) return &fln[i];
     }
 
     return NULL;
   }
 
-  struct flooding_last_node* get_last_nodes(uint16_t id, uint32_t *size) {
+  struct flooding_node_info* get_node_infos(uint16_t id, uint32_t *size) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
 
     *size = 0;
-    if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
-    *size = (uint32_t)( _last_node_list_size[index]);
-    return _last_node_list[index];
+    if ((_flooding_node_info_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
+    *size = (uint32_t)( _flooding_node_info_list_size[index]);
+    return _flooding_node_info_list[index];
   }
 
   inline void add_recv_last_node(uint16_t id, EtherAddress *last) {
-    struct flooding_last_node *fln = get_last_node(id, last);
+    struct flooding_node_info *fln = get_node_info(id, last);
     if ( fln != NULL ) fln->received_cnt++;
   }
 
+  inline int add_responsible_node(uint16_t id, EtherAddress *node) {
+    int new_index = 0;
+
+    struct flooding_node_info *fln = add_node_info(id, node, &new_index);
+    fln->flags |= FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY;               //set responsibility
+
+    if ( new_index ) return FLOODING_NODE_INFO_RESULT_IS_NEW;
+    return 0;
+  }
+
+  /*
+  inline bool is_finished(uint16_t id, EtherAddress *node) {
+     struct flooding_node_info *fln = get_node_info(id, last);
+     return ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) != 0);
+  }
+
+  inline bool is_finished_for_me(uint16_t id, EtherAddress *node) {
+     struct flooding_node_info *fln = get_node_info(id, last);
+     return ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME) != 0);
+  }
+  */
   /**
     * ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node
     */
 
   int assign_node(uint16_t id, EtherAddress *node) {
     int new_index = 0;
-    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+    struct flooding_node_info *fln = add_node_info(id, node, &new_index);
 
-    fln->flags |= FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE;
+    assert((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0);
+
+    fln->flags |= FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE;
 
     return new_index;
-  }
-
-  struct flooding_last_node* get_assigned_nodes(uint16_t id, uint32_t *size) {
-    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-
-    *size = 0;
-    if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
-    *size = (uint32_t)( _last_node_list_size[index]);
-    return _last_node_list[index];
   }
 
   /* clear all assign nodes */
   void clear_assigned_nodes(uint16_t id) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     if (_bcast_id_list[index] == id) {
-      struct flooding_last_node *fln = _last_node_list[index];
-      int fln_i = _last_node_list_size[index];
+      struct flooding_node_info *fln = _flooding_node_info_list[index];
+      int fln_i = _flooding_node_info_list_size[index];
 
       //search for node
       for ( int i = 0; i < fln_i; i++ )
-        fln[i].flags &= ~((uint8_t)FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE);
+        fln[i].flags &= ~((uint8_t)FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE);
     }
   }
 
   /* clear single assign nodes */
   void revoke_assigned_node(uint16_t id, EtherAddress *node) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-    struct flooding_last_node *fln = _last_node_list[index];
+    struct flooding_node_info *fln = _flooding_node_info_list[index];
 
     if ((fln == NULL) || (_bcast_id_list[index] != id)) return;
 
-    int fln_i = _last_node_list_size[index];
+    int fln_i = _flooding_node_info_list_size[index];
 
     //search for node
     for ( int i = 0; i < fln_i; i++ )
       if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {
-        fln[i].flags &= ~((uint8_t)FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE);
+        fln[i].flags &= ~((uint8_t)FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE);
         break;
       }
   }
@@ -418,30 +441,29 @@ class BroadcastNode
     */
 
   void set_responsibility_target(uint16_t id, EtherAddress *target) {
-    struct flooding_last_node* ln = get_last_node(id, target);
+    struct flooding_node_info* ln = get_node_info(id, target);
     if ( ln != NULL ) {
-      ln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
-      ln->flags &= ~FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
+      ln->flags |= FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY;
+      ln->flags &= ~FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY; //clear foreign_responsibility
     } else {
-      add_last_node(id, target, false, false, true, false);
+      add_node_info(id, target, false, false, true, false);
     }
   }
 
   void set_foreign_responsibility_target(uint16_t id, EtherAddress *target) {
-    struct flooding_last_node* ln = get_last_node(id, target);
+    struct flooding_node_info* ln = get_node_info(id, target);
     if ( ln != NULL ) {
-      ln->flags &= ~FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
-      ln->flags |= FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY; //set foreign_responsibility
+      ln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY; //set foreign_responsibility
     } else {
-      add_last_node(id, target, false, false, false, true);
+      add_node_info(id, target, false, false, false, true);
     }
   }
 
   bool is_responsibility_target(uint16_t id, EtherAddress *target) {
-    struct flooding_last_node* ln = get_last_node(id, target);
+    struct flooding_node_info* ln = get_node_info(id, target);
     if ( ln == NULL ) return false;
 
-    return ((ln->flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0);
+    return ((ln->flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0);
   }
 
   /**
@@ -469,7 +491,7 @@ class BroadcastNode
 
   void add_probability(uint16_t id, EtherAddress *node, uint32_t probability, uint32_t no_transmission) {
     int new_index = 0;
-    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+    struct flooding_node_info *fln = add_node_info(id, node, &new_index);
 
     for ( uint32_t i = 0; i < no_transmission; i++ ) //MIN to avoid overflow (prob > 100)
       fln->rx_probability = MIN(100, (uint32_t)fln->rx_probability + ((((uint32_t)100 - (uint32_t)fln->rx_probability) * probability) / (uint32_t)100));
@@ -479,7 +501,7 @@ class BroadcastNode
 
   int get_probability(uint16_t id, EtherAddress *node) {
     int new_index = 0;
-    struct flooding_last_node *fln = add_last_node(id, node, &new_index);
+    struct flooding_node_info *fln = add_node_info(id, node, &new_index);
 
     return fln->rx_probability;
   }
@@ -524,14 +546,15 @@ class FloodingDB : public BRNElement {
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint16_t id);
   void sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint32_t no_rts_transmission);
 
-  int add_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
-  struct BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint16_t id, uint32_t *size);
-  struct BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint16_t id, EtherAddress *last);
+  int add_node_info(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
+  int add_responsible_node(EtherAddress *src, uint16_t id, EtherAddress *last_node);
+
+  struct BroadcastNode::flooding_node_info* get_node_infos(EtherAddress *src, uint16_t id, uint32_t *size);
+  struct BroadcastNode::flooding_node_info* get_node_info(EtherAddress *src, uint16_t id, EtherAddress *last);
 
   bool me_src(EtherAddress *src, uint16_t id);
 
   void assign_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node);
-  struct BroadcastNode::flooding_last_node* get_assigned_nodes(EtherAddress *src, uint16_t id, uint32_t *size);
   void clear_assigned_nodes(EtherAddress *src, uint16_t id);
 
   void set_responsibility_target(EtherAddress *src, uint16_t id, EtherAddress *target);
