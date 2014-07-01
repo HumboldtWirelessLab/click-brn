@@ -213,9 +213,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), bcast_id);
 
     //get all known nodes
-    struct BroadcastNode::flooding_last_node *last_nodes;
+    struct BroadcastNode::flooding_node_info *last_nodes;
     uint32_t last_nodes_size;
-    last_nodes = _flooding_db->get_last_nodes(&src, bcast_id, &last_nodes_size);
+    last_nodes = _flooding_db->get_node_infos(&src, bcast_id, &last_nodes_size);
 
     Vector<EtherAddress> known_neighbors;
 
@@ -225,12 +225,11 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
      */
 
     for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                       //add node to candidate set if
-      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) &&         //1. i'm responsible (due unicast before or fix set)
-           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) {               //2. is not acked
+      if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0) &&         //1. i'm responsible (due unicast before or fix set)
+           ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)) {               //2. is not acked
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
       } else {
-        if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ||             //1. is known as acked
-             ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) //2. foreign respons
+        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME) != 0)           //is known as acked or foreign response
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
       }
     }
@@ -239,10 +238,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       /**
        * a nother node try to reach the node
        */
-      last_nodes = _flooding_db->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
-        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_IS_ASSIGNED_NODE) != 0) { //1. it is assigned and this is not revoked
+        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE) != 0) { //1. it is assigned
           //TODO: Debug: check whether node is already in known_neighbours
           BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
@@ -319,7 +317,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         if ( _fix_candidate_set && (!candidate_set.empty()) ) {
           for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
             BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
-            _flooding_db->add_last_node(&src, bcast_id, i, false, false, true, false);
+            _flooding_db->add_node_info(&src, bcast_id, i, false, false, true, false);
           }
         }
 
@@ -342,7 +340,7 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         _cnt_reject_on_empty_cs++;
         _flooding_db->clear_assigned_nodes(&src, bcast_id);                     //clear all assignment (temporaly mark as "the node has the paket"
         bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;        //reject and assign nodes are part of decision
-        if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN; 
+        if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN;
         output(1).push(p_in);
         return NULL;
       }

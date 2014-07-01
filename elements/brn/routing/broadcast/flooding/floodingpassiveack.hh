@@ -72,8 +72,16 @@ class FloodingPassiveAck : public BRNElement {
       int16_t _max_retries;
       uint16_t _retries;
 
+      uint16_t _cnt_finished_passiveack_nodes;
+
       Timestamp _enqueue_time;
       Timestamp _last_tx;
+
+      /* Some stats, which can be used, whether a small ack (floodingacknowledgment) is better than the full paket.
+       *
+       */
+      Vector<EtherAddress> _unfinished_neighbors;
+      Vector<int> _unfinished_neighbors_rx_prob;
 
       PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
       {
@@ -85,11 +93,16 @@ class FloodingPassiveAck : public BRNElement {
         _max_retries = retries;
 
         _last_tx = _enqueue_time = Timestamp::now();
-        _retries = 0;
+        _retries = _cnt_finished_passiveack_nodes = 0;
+
+        _unfinished_neighbors.clear();
+        _unfinished_neighbors_rx_prob.clear();
       }
 
       ~PassiveAckPacket() {
         _passiveack.clear();
+        _unfinished_neighbors.clear();
+        _unfinished_neighbors_rx_prob.clear();
       }
 
       void set_tx(Timestamp tx_time) {
@@ -155,15 +168,18 @@ private:
   uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
 
+  uint32_t _cntbased_min_neighbors_for_abort;
   bool _abort_on_finished;
 
   bool packet_is_finished(PassiveAckPacket *pap);
 
   uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
 
-  int count_unfinished_neighbors(PassiveAckPacket *pap);
-
   PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id);
+
+  Vector<EtherAddress>* get_passive_ack_neighbors(PassiveAckPacket *pap);
+  int set_unfinished_neighbors(PassiveAckPacket *pap);
+  int count_unfinished_neighbors(PassiveAckPacket *pap);
 
  public:
 

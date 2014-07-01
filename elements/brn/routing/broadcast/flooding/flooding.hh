@@ -67,7 +67,7 @@ struct click_brn_bcast_extra_data {
 } CLICK_SIZE_PACKED_ATTRIBUTE ;
 
 #define BCAST_EXTRA_DATA_MPR                    1
-#define BCAST_EXTRA_DATA_LASTNODE               2
+#define BCAST_EXTRA_DATA_NODEINFO               2
 
 /*
  * =c
@@ -154,9 +154,9 @@ class Flooding : public BRNElement {
   uint32_t _flooding_passive;
   uint32_t _flooding_passive_not_acked_dst;
   uint32_t _flooding_passive_not_acked_force_dst;
-  uint32_t _flooding_last_node_due_to_passive;
-  uint32_t _flooding_last_node_due_to_ack;
-  uint32_t _flooding_last_node_due_to_piggyback;
+  uint32_t _flooding_node_info_due_to_passive;
+  uint32_t _flooding_node_info_new_finished;
+  uint32_t _flooding_node_info_due_to_piggyback;
   uint32_t _flooding_lower_layer_reject;
   uint32_t _flooding_src_new_id;
   uint32_t _flooding_rx_new_id;
