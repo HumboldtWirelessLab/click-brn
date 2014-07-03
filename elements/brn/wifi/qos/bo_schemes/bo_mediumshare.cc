@@ -115,6 +115,23 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
     struct local_airtime_stats *nb_cst = ncst->get_last_stats();
 
+    NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
+
+    uint32_t duration_sum = 0;
+    for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); iter_m++) {
+      struct neighbour_airtime_stats *n_nas = iter_m.value();
+      duration_sum += (uint32_t)n_nas->_duration;
+    }
+
+    for( NeighbourStatsMapIter iter_m = nsm->begin(); iter_m.live(); iter_m++) {
+      EtherAddress n_ea = iter_m.key();
+      struct neighbour_airtime_stats *n_nas = iter_m.value();
+      double duration_percent = (double)n_nas->_duration / 1000000;
+      // / duration_sum;
+
+      BRN_DEBUG("OLI: 2hop duration_percent for %s is now : %f\n", n_ea.unparse().c_str(), duration_percent);
+    }
+
     if (nb_cst->hw_tx == 0)
       return _current_bo;
 
