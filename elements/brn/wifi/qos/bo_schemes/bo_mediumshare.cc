@@ -22,7 +22,10 @@ BoMediumShare::BoMediumShare()
   : _cocst(NULL),
     _cocst_string(""),
     _current_bo(0),
-    _last_id(-1)
+    _last_tx(0),
+    _last_id_cw(-1),
+    _last_id_hf(-1),
+    _retry_sum(0)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_MEDIUMSHARE;
@@ -77,12 +80,6 @@ void BoMediumShare::add_handlers()
   BRNElement::add_handlers();
 }
 
-static bool is_new(Timestamp stats, Timestamp now) {
-  Timestamp diff = now - stats;
-
-  return diff.msecval() > 1000;
-}
-
 int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) p;
@@ -90,10 +87,13 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
   struct airtime_stats *as = _cst->get_latest_stats();
 
-  if (as->stats_id == _last_id)
+  if (as->stats_id == _last_id_cw)
     return _current_bo;
 
-  _last_id = as->stats_id;
+  _last_id_cw = as->stats_id;
+
+  if (_last_id_cw < 2)
+    return _current_bo;
 
   BRN_DEBUG("BoMediumShare::get_cwmin():\n");
 
@@ -115,8 +115,12 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
     struct local_airtime_stats *nb_cst = ncst->get_last_stats();
 
+/*
     if (nb_cst->hw_tx == 0)
       return _current_bo;
+*/
+    if (nb_cst->hw_tx < 5)
+      continue;
 
 
     BRN_DEBUG("  Nb: %s tx: %d\n", nb, nb_cst->hw_tx);
@@ -149,14 +153,31 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
 void BoMediumShare::handle_feedback(uint8_t retries)
 {
-  if (retries > 0) {
+  struct airtime_stats *as = _cst->get_latest_stats();
+
+  if (as->stats_id < 2)
+    return;
+
+  _retry_sum += retries;
+
+  if (as->stats_id == _last_id_hf)
+    return;
+
+  _last_id_hf = as->stats_id;
+
+  if (_retry_sum > 0) {
     BRN_DEBUG("BoMediumShare::handle_feedback():");
-    BRN_DEBUG("  retries: %d current bo: %d - increase - new bo: %d\n", retries, _current_bo, _current_bo * 2);
+    BRN_DEBUG("  retry sum: %d current bo: %d - increase - new bo: %d\n", _retry_sum, _current_bo, _current_bo * 2);
+
     if (_debug >= BrnLogger::DEBUG)
       click_chatter("\n");
 
     increase_cw();
   }
+
+  _retry_sum = 0;
+
+  return;
 }
 
 void BoMediumShare::set_conf(uint32_t min, uint32_t max)
