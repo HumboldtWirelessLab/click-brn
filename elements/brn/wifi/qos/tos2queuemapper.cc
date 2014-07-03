@@ -212,8 +212,8 @@ Tos2QueueMapper::simple_action(Packet *p)
 void
 Tos2QueueMapper::handle_feedback(Packet *p)
 {
-
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+
   if (!(ceh->flags & WIFI_EXTRA_TX))
     return;
 
@@ -225,8 +225,39 @@ Tos2QueueMapper::handle_feedback(Packet *p)
   _feedback_cnt++;
   _tx_cnt += ceh->retries + 1;
 
+  BRN_DEBUG("Tos2QM::handle_feedback()");
+
+  if (_bqs_strategy == BACKOFF_STRATEGY_MEDIUMSHARE) {
+
+    int no_transmissions     = 1; /* for wired */
+    int no_rts_transmissions = 0;
+
+    if (ceh->flags & WIFI_EXTRA_TX_ABORT)
+      no_transmissions = (int)ceh->retries;
+    else
+      no_transmissions = (int)ceh->retries + 1;
+
+    if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
+      no_rts_transmissions = (int)(ceh->virt_col >> 4);
+      //assert(no_transmissions == (int)(ceh->virt_col & 15));
+      no_transmissions = (int)(ceh->virt_col & 15);
+    }
+
+
+    BRN_DEBUG("  #trans: %d #RTS trans: %d\n", no_transmissions, no_rts_transmissions);
+
+    if (_current_scheme)
+      _current_scheme->handle_feedback(no_rts_transmissions);
+
+    return;
+  }
+
+  BRN_DEBUG("  retries: %d\n", ceh->retries);
+
   if (_current_scheme)
     _current_scheme->handle_feedback(ceh->retries);
+
+  return;
 }
 
 /* TODO: use gravitaion approach:

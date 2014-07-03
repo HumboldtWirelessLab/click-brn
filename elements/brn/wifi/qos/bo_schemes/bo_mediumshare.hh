@@ -67,8 +67,11 @@ private:
   String _cocst_string;
 
   uint16_t _current_bo;
-  uint32_t _last_id;
+
   uint32_t _last_tx;
+  uint32_t _last_id_cw;
+  uint32_t _last_id_hf;
+  uint32_t _retry_sum;
 
   struct ms_info_s _ms_info;
   MsTable _ms_table;
