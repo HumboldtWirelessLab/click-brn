@@ -96,6 +96,8 @@ class BroadcastNode
 #define FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY   16
 
 #define FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE          32
+
+#define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY  64
   };
 
 
@@ -231,6 +233,11 @@ class BroadcastNode
     }
   }
 
+  inline int get_sent(uint16_t id) {
+    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+    return (_bcast_id_list[index] == id)?_bcast_snd_list[index]:0;
+  }
+
   /**
     * Known nodes (node info)
     * 
@@ -307,12 +314,15 @@ class BroadcastNode
           assert((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0);    //if i set responsible it should not finished yet
           fln->flags |= FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY;            //set responsibility
           fln->flags &= ~FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;   //clear foreign_responsibility
-        } else if (foreign_responsibility &&
-                   ((fln->flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0) &&
-                   ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN) == 0)) {
+        } else if (foreign_responsibility &&                                //set foreign_responsibility only if ...
+                   ((fln->flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) { //not set yet
 
-                  fln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;
+                if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN) == 0) {  //or i'm not respo and its not finished so
+                  fln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;          //set flag
                   result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY;
+                } else if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) {       //its finished for foreign but not finished
+                  fln->flags |= FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY;    //set guess foreign resp
+                }
         }
       }
     } else {
@@ -380,17 +390,6 @@ class BroadcastNode
     return 0;
   }
 
-  /*
-  inline bool is_finished(uint16_t id, EtherAddress *node) {
-     struct flooding_node_info *fln = get_node_info(id, last);
-     return ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) != 0);
-  }
-
-  inline bool is_finished_for_me(uint16_t id, EtherAddress *node) {
-     struct flooding_node_info *fln = get_node_info(id, last);
-     return ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME) != 0);
-  }
-  */
   /**
     * ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node
     */
@@ -466,6 +465,26 @@ class BroadcastNode
     return ((ln->flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0);
   }
 
+  bool is_foreign_responsibility_target(uint16_t id, EtherAddress *target) {
+    struct flooding_node_info* ln = get_node_info(id, target);
+    if ( ln == NULL ) return false;
+
+    return ((ln->flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0);
+  }
+
+  bool guess_foreign_responsibility_target(uint16_t id, EtherAddress *target) {
+    struct flooding_node_info* ln = get_node_info(id, target);
+    if ( ln == NULL ) return false;
+
+    return ((ln->flags & FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY) != 0);
+  }
+
+  void clear_responsibility_target(uint16_t id, EtherAddress *target) {
+    struct flooding_node_info* ln = get_node_info(id, target);
+    if ( ln != NULL ) {
+      ln->flags &= ~FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY; //clear responsibility
+    }
+  }
   /**
     * TX-Abort
     */

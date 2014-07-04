@@ -277,25 +277,23 @@ FloodingPiggyback::bcast_header_get_node_infos(Flooding *fl, FloodingDB *fl_db, 
 
           int result = bcn->add_node_info(id, &ea, false, last_node_was_acked, false, last_node_foreign_responsibility);
           if ( result & FLOODING_NODE_INFO_RESULT_IS_NEW_FINISHED ) { //node is new
-            fl->_flooding_node_info_due_to_piggyback++;
             new_last_node++;
 
-            /* ABORT due to new information */
-            /* just abort to put new Information to the packet (piggyback) */
-            /* TODO: check for more details if node is not new. Maybe state (acked etc. changed */
+            fl->_flooding_node_info_new_finished_piggyback++;
+            fl->_flooding_node_info_new_finished++;
+
             if (fl->is_last_tx_id(*src, (uint16_t)id)) {
-              //its new information (i didn't know the node before. Abort transmission to add these information
               abort_reason |= FLOODING_TXABORT_REASON_NEW_INFO;
-              if (last_node_was_acked) abort_reason |= FLOODING_TXABORT_REASON_ACKED;
-              else if (last_node_foreign_responsibility) abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
+              abort_reason |= FLOODING_TXABORT_REASON_ACKED;
             }
-          } else {  // I know the node
-            /* if last node is acked (we are sure that node has the packet), abort current transmission if node is the target*/
-            /* abort if one node is responsible and i'm not responsible */
-            if (fl->is_last_tx(ea, *src, (uint16_t)id)) {
-              if (last_node_was_acked) abort_reason |= FLOODING_TXABORT_REASON_ACKED;
-              else if (last_node_foreign_responsibility && (!bcn->is_responsibility_target(id, &ea)))
-                     abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
+          } else if ( result & FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY ) {
+            new_last_node++;
+
+            fl->_flooding_node_info_new_finished_piggyback_resp++;
+
+            if (fl->is_last_tx_id(*src, (uint16_t)id)) {
+              abort_reason |= FLOODING_TXABORT_REASON_NEW_INFO;
+              abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
             }
           }
         }

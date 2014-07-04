@@ -119,7 +119,6 @@ class Flooding : public BRNElement {
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
   String stats();
-  String table();
   void reset();
 
  private:
@@ -138,7 +137,8 @@ class Flooding : public BRNElement {
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
 
-  bool _passive_last_node_new;
+  /** infos about passive packet (port 4) which will be handled by port 1 (like rx) mostly **/
+  bool _passive_last_node;
   bool _passive_last_node_rx_acked;
   bool _passive_last_node_assign;
   bool _passive_last_node_foreign_responsibility;
@@ -147,23 +147,32 @@ class Flooding : public BRNElement {
 
   bool is_local_addr(EtherAddress *ea) { return _me->isIdentical(ea);}
 
-  uint32_t _flooding_src;
-  uint32_t _flooding_rx;
-  uint32_t _flooding_sent;
-  uint32_t _flooding_fwd;
-  uint32_t _flooding_passive;
-  uint32_t _flooding_passive_not_acked_dst;
-  uint32_t _flooding_passive_not_acked_force_dst;
-  uint32_t _flooding_node_info_due_to_passive;
-  uint32_t _flooding_node_info_new_finished;
-  uint32_t _flooding_node_info_due_to_piggyback;
-  uint32_t _flooding_lower_layer_reject;
+  /** stats **/
+  uint32_t _flooding_src;                                  // node was src of paket (including retransmit)
+  uint32_t _flooding_rx;                                   // node receives a broadcast (includes passive packets)
+  uint32_t _flooding_sent;                                 // node sents a packet (MAC-layer)
+  uint32_t _flooding_fwd;                                  // node forwards a paket (net layer)
+  uint32_t _flooding_passive;                              // node receives passive a packet
+  uint32_t _flooding_passive_acked_dst;                    // dst of passive was acked
+  uint32_t _flooding_passive_not_acked_dst;                // dst of passive was not acked (incl forced dst)
+  uint32_t _flooding_passive_not_acked_force_dst;          // dst of passive was not acked but forced
+  uint32_t _flooding_node_info_new_finished;               // new fin node
+  uint32_t _flooding_node_info_new_finished_src;           // new fin node (src of rx packet)
+  uint32_t _flooding_node_info_new_finished_dst;           // new fin node (dst of tx packet)
+  uint32_t _flooding_node_info_new_finished_piggyback;     // new fin node (piggyback)
+  uint32_t _flooding_node_info_new_finished_piggyback_resp;// new fin node (piggyback)
+  uint32_t _flooding_node_info_new_finished_passive_src;   // new fin node (src of passive)
+  uint32_t _flooding_node_info_new_finished_passive_dst;   // new fin node (dst of passive)
+
   uint32_t _flooding_src_new_id;
   uint32_t _flooding_rx_new_id;
   uint32_t _flooding_fwd_new_id;
-  uint32_t _flooding_rx_ack;
 
+  uint32_t _flooding_rx_ack;                             // receive an ack for tx-packet (MAC-Layer)
 
+  uint32_t _flooding_lower_layer_reject;
+
+  /** Abort stats **/
   /* Members and functions for tx abort */
 #define FLOODING_TXABORT_MODE_NONE         0
 #define FLOODING_TXABORT_MODE_ACKED        1
