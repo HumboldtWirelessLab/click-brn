@@ -37,6 +37,7 @@ public:
     uint32_t maxTraversalTimeMs;
     uint32_t maxHops;
     uint32_t votingRule;
+    bool useLinkStatistic;
     
     
     DibadawnConfig();

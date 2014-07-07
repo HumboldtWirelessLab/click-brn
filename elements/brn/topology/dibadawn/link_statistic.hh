@@ -18,43 +18,45 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef TOPOLOGY_DIBADAWN_HH
-#define TOPOLOGY_DIBADAWN_HH
+#ifndef TOPOLOGY_DIBADAWN_LINK_STATISTIC_HH
+#define TOPOLOGY_DIBADAWN_LINK_STATISTIC_HH
 
 #include <click/element.hh>
-#include <click/timer.hh>
-#include <click/vector.hh>
 
-#include "elements/brn/brnelement.hh"
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "search.hh"
-#include "dibadawn_packet.hh"
-#include "nodestatistic.hh"
+#include "searchid.hh"
 #include "config.hh"
-#include "link_statistic.hh"
 
 
 CLICK_DECLS;
 
-class DibadawnAlgorithm
+class DibadawnLinkStatistic
 {
-    BRNElement *brn_click_element;
-    Vector<DibadawnSearch*> searches;
+    struct NeighborLink
+    {
+        NeighborLink(EtherAddress addr)
+        {
+            this->addr = addr;
+            numRx = 0;
+        }
+        
+        EtherAddress addr;
+        uint32_t numRx;
+    };
+    
+    uint32_t numTx;
+    Vector<NeighborLink*> links;
 
-    DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
-
+    NeighborLink* getNeiborEntry(EtherAddress &addr);
+    
 public:
-    DibadawnNodeStatistic nodeStatistic;
-    DibadawnLinkStatistic link_stat;
-    DibadawnConfig config;
-
-    DibadawnAlgorithm(BRNElement *brn_click_element);
-    void receive(DibadawnPacket &packet);
-    void startNewSearch();
-    void setTopologyInfo(TopologyInfo *topoInfo);
-    void resetLinkStat();
-    String getLinkStat();
+    DibadawnLinkStatistic();
+    
+    void logRx(EtherAddress &addr);
+    void logTx();
+    void reset();
+    String asString();
 };
+
 
 CLICK_ENDDECLS
 #endif

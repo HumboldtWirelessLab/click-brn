@@ -35,7 +35,8 @@ CLICK_DECLS
 DibadawnConfig::DibadawnConfig()
 :   debugLevel(0), 
     maxTraversalTimeMs(40), 
-    votingRule(0)
+    votingRule(0),
+    useLinkStatistic(false)
 {
   votingRule = 0;
   useOriginForwardDelay = true;

@@ -34,6 +34,7 @@
 #include "neighbor_container.hh"
 #include "nodestatistic.hh"
 #include "config.hh"
+#include "link_statistic.hh"
 
 
 CLICK_DECLS;
@@ -61,6 +62,7 @@ private:
     DibadawnConfig &config;
     bool isArticulationPoint;
     DibadawnPacket sentForwardPacket;
+    DibadawnLinkStatistic &linkStat;
     
     uint32_t numOfConcurrentSenders;
     BRNElement *brn_click_element;
@@ -89,8 +91,8 @@ private:
     uint16_t calcForwardDelayImproved(DibadawnPacket &packet);
 
 public:
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg);
-    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnSearchId &packet);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat);
+    DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat, DibadawnSearchId &packet);
 
     void sendBroadcastWithTimeout(DibadawnPacket &packet);
     void sendTo(DibadawnPacket &packet, EtherAddress &dest);

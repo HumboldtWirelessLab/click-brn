@@ -53,8 +53,9 @@ void forwardTimeoutCallback(Timer*, void *search)
 DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnNodeStatistic &stat, 
-    DibadawnConfig &cfg)
-:   commonStatistic(stat), adjacents(searchId), config(cfg)
+    DibadawnConfig &cfg,
+    DibadawnLinkStatistic &linkStat)
+:   commonStatistic(stat), adjacents(searchId), config(cfg), linkStat(linkStat)
 {
   initCommon(click_element);
 }
@@ -63,8 +64,9 @@ DibadawnSearch::DibadawnSearch(
     BRNElement *click_element,
     DibadawnNodeStatistic &stat, 
     DibadawnConfig &cfg,
+    DibadawnLinkStatistic &linkStat,
     DibadawnSearchId &id)
-:   commonStatistic(stat), adjacents(searchId), config(cfg)
+:   commonStatistic(stat), adjacents(searchId), config(cfg), linkStat(linkStat)
 {
   initCommon(click_element);
 
@@ -243,6 +245,9 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
   packet.logTx(config.thisNode, packet.getBroadcastAddress());
   WritablePacket *brn_packet = packet.getBrnBroadcastPacket();
   brn_click_element->output(0).push(brn_packet);
+  
+  if(config.useLinkStatistic)
+    linkStat.logTx();
 }
 
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
@@ -318,6 +323,9 @@ void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 {
+  if(config.useLinkStatistic)
+    linkStat.logRx(rxPacket.forwardedBy);
+  
   if (!visited)
   {
     if (rxPacket.hops < config.maxHops)
