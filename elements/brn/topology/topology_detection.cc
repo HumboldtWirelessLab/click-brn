@@ -84,6 +84,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
       cpEnd) < 0)
     return(-1);
 
@@ -114,6 +115,7 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
       cpEnd) < 0)
     return(-1);
 
@@ -190,11 +192,29 @@ TopologyDetection::run_timer(Timer *t)
 }
 
 
-
 void TopologyDetection::stop_periodically_detection_after_next_run()
 {
   _is_detect_periodically = false;
   BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer.expiry().unparse().c_str());
+}
+
+
+void TopologyDetection::reset_link_stat()
+{
+  dibadawnAlgo.link_stat.reset();
+}
+
+String TopologyDetection::xml_link_stat()
+{
+  if(!dibadawnAlgo.config.useLinkStatistic)
+    return("Warning: Please configure 'USE_LINK_STAT' with 'true'");
+  
+  StringAccum sa;
+  sa << "<DibadawnLinkStat node='" << BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' >\n";
+  sa << dibadawnAlgo.link_stat.asString();
+  sa << "</DibadawnLinkStat>\n";
+  
+  return(sa.take_string());
 }
 
 
@@ -216,7 +236,7 @@ String TopologyDetection::config()
 
 enum
 {
-  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG, H_STOP_SMOOTHLY
+  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG, H_STOP_SMOOTHLY, H_STAT
 };
 
 static int write_param(const String& click_script_parameter, Element *element, void *vparam, ErrorHandler* errh)
@@ -238,6 +258,10 @@ static int write_param(const String& click_script_parameter, Element *element, v
   case H_STOP_SMOOTHLY:
     topo->stop_periodically_detection_after_next_run();
     break;
+    
+  case H_STAT:
+    topo->reset_link_stat();
+    break;
   }
   return 0;
 }
@@ -253,6 +277,10 @@ static String read_param(Element *e, void *thunk)
   
   case H_CONFIG:
     return(topo->config());
+    break;
+    
+  case H_STAT:
+    return(topo->xml_link_stat());
     break;
     
   default: return String();
@@ -271,6 +299,9 @@ void TopologyDetection::add_handlers()
   add_read_handler("local_topo_info", read_param, (void *) H_TOPOLOGY_INFO);
   
   add_write_handler("stop_periotically_detection_smoothly", write_param, (void *) H_STOP_SMOOTHLY);
+  
+  add_read_handler("link_stat", read_param, (void *) H_STAT);
+  add_write_handler("reset_link_stat", write_param, (void *) H_STAT);
 }
 
 CLICK_ENDDECLS

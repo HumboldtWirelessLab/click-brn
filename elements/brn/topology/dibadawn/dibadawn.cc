@@ -40,11 +40,11 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
     click_chatter("<InvalidPacketRx node='%s' />", config.thisNodeAsCstr());
     return;
   }
-
+  
   DibadawnSearch *search = getResponsibleSearch(packet);
   if (search == NULL)
   {
-    search = new DibadawnSearch(brn_click_element, nodeStatistic, config, packet.searchId);
+    search = new DibadawnSearch(brn_click_element, nodeStatistic, config, link_stat, packet.searchId);
     searches.push_back(search);
   }
 
@@ -66,7 +66,7 @@ DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 
 void DibadawnAlgorithm::startNewSearch()
 {
-  DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, config);
+  DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, config, link_stat);
   searches.push_back(search);
   search->start_search();
 }
@@ -75,6 +75,29 @@ void DibadawnAlgorithm::setTopologyInfo(TopologyInfo* topoInfo)
 {
   nodeStatistic.setTopologyInfo(topoInfo);
 }
+
+void DibadawnAlgorithm::resetLinkStat()
+{
+  link_stat.reset();
+}
+
+String DibadawnAlgorithm::getLinkStat()
+{
+  if(!config.useLinkStatistic)
+    return(String("Link statistics of DIBADAWN isn't enabled by param USE_LINK_STAT"));
+  
+  StringAccum sa;
+  sa << "<DibadawnLinkStat " ;
+  sa << "node='" << config.thisNode.unparse_dash() << "' ";
+  sa << "time='" << Timestamp::now().unparse() << "' >\n";
+  
+  sa << link_stat.asString();
+  
+  sa << "</DibadawnLinkStat>";
+  
+  return(sa.take_string());
+}
+
 
 
 CLICK_ENDDECLS

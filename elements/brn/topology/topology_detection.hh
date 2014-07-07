@@ -61,6 +61,8 @@ public:
     String config();
     void run_timer(Timer *t);
     void stop_periodically_detection_after_next_run();
+    String xml_link_stat();
+    void reset_link_stat();
 
 private:
     uint32_t detection_id;
