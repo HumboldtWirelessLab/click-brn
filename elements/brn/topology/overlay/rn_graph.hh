@@ -18,8 +18,8 @@
  * or contact brn@informatik.hu-berlin.de. 
  */
 
-#ifndef GABRIEL_GRAPH_HH
-#define GABRIEL_GRAPH_HH
+#ifndef RN_GRAPH_HH
+#define RN_GRAPH_HH
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/hashmap.hh>
@@ -33,15 +33,15 @@
 
 CLICK_DECLS
 
-class GabrielGraph : public BRNElement {
+class RNGraph : public BRNElement {
 
    
 
  public:
-  GabrielGraph();
-  ~GabrielGraph();
+  RNGraph();
+  ~RNGraph();
 
-  const char *class_name() const  { return "GabrielGraph"; }
+  const char *class_name() const  { return "RNGraph"; }
   const char *port_count() const  { return "0/0"; }
   const char *processing() const  { return AGNOSTIC; }
 
@@ -54,7 +54,7 @@ class GabrielGraph : public BRNElement {
   void calc_neighbors();
   uint32_t metric2dist_sqr(uint32_t metric);
 
-  static void static_calc_neighbors(Timer *, void *e) { ((GabrielGraph *) e)->calc_neighbors(); }
+  static void static_calc_neighbors(Timer *, void *e) { ((RNGraph *) e)->calc_neighbors(); }
 
   Timer _timer;
 
