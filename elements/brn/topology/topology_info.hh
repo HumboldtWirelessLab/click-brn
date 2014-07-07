@@ -75,7 +75,7 @@ public:
 
         bool equals(EtherAddress *a)
         {
-            return memcmp(node.data(), a->data(), 6);
+            return (*a == node);
         }
     };
     
