@@ -113,7 +113,10 @@ TopologyInfo::ArticulationPoint *
 TopologyInfo::getArticulationPoint(EtherAddress *a)
 {
   for( int i = 0; i < _artpoints.size(); i++ )
-    if ( _artpoints[i]->equals(a) ) return _artpoints[i];
+  {
+    if ( _artpoints[i]->equals(a) ) 
+      return _artpoints[i];
+  }
 
   return NULL;
 }
@@ -129,7 +132,7 @@ TopologyInfo::topology_info(void)
   StringAccum sa;
 
   Bridge *br;
-  ArticulationPoint *fp;
+  ArticulationPoint *ap;
 
   sa << "<topology_info node='" << BRN_NODE_NAME << "' >\n";
   sa << "\t<bridges count='" << _bridges.size() << "' >\n";
@@ -143,8 +146,8 @@ TopologyInfo::topology_info(void)
   sa << "\t<articulationpoints count='" << _artpoints.size() << "' >\n";
   for( int i = 0; i < _artpoints.size(); i++ )
   {
-    fp = _artpoints[i];
-    sa << "\t\t<articulationpoint id='" << (i+1) <<  "' node='" << fp->node << "' />\n";
+    ap = _artpoints[i];
+    sa << "\t\t<articulationpoint id='" << (i+1) <<  "' node='" << ap->node << "' />\n";
   }
   sa << "\t</articulationpoints>\n</topology_info>\n";
 

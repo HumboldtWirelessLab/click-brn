@@ -39,8 +39,6 @@ void DibadawnNodeStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
   if (edgeMarkings.size() > maxMarkings)
     edgeMarkings.pop_back();
 
-  click_chatter("<DEBUG  objectAddr='%d' />", this);
-  
   if(topologyInfo != NULL)
   {
     if(marking.isBridge)
