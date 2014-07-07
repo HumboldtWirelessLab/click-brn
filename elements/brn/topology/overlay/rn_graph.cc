@@ -19,7 +19,7 @@
  */
 
 /*
- * gabriel_graph.{cc,hh} -- computes gabriel graph on the network
+ * rn_graph.{cc,hh} -- computes relative neighbourhood graph on the network
  * 
  * WARNING: complexity quadratic in terms of number of neighbours
  */
@@ -36,23 +36,23 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "overlay_structure.hh"
-#include "gabriel_graph.hh"
+#include "rn_graph.hh"
 
 CLICK_DECLS
 
-GabrielGraph::GabrielGraph() :
+RNGraph::RNGraph() :
 	_timer(static_calc_neighbors,this)
 {
   BRNElement::init();
 }
 
-GabrielGraph::~GabrielGraph()
+RNGraph::~RNGraph()
 {
 	_timer.unschedule();
 }
 
 int
-GabrielGraph::configure(Vector<String> &conf, ErrorHandler *errh)
+RNGraph::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
@@ -68,14 +68,14 @@ GabrielGraph::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 uint32_t
-GabrielGraph::metric2dist_sqr(uint32_t metric)
+RNGraph::metric2dist_sqr(uint32_t metric)
 {
   /*assume ETX-Metrik proportional to distance*/
   return metric;
 }
 
 void
-GabrielGraph::calc_neighbors() {
+RNGraph::calc_neighbors() {
 	_timer.unschedule();
 	_neighbors.clear();
 	EtherAddress _my_ether_add=*(_me->getMasterAddress());
@@ -87,7 +87,7 @@ GabrielGraph::calc_neighbors() {
 			uint32_t d_mei=metric2dist_sqr(_link_table->get_link_metric(_my_ether_add,*i));
 			uint32_t d_mek=metric2dist_sqr(_link_table->get_link_metric(_my_ether_add,*k));
 			uint32_t d_ki=metric2dist_sqr(_link_table->get_link_metric(*k,*i));
-			if (d_mei>d_mek+d_ki) {
+			if (d_mei>d_mek&&d_mei>d_ki) {
 				useable=false;
 				break;
 			}
@@ -101,7 +101,7 @@ GabrielGraph::calc_neighbors() {
 }
 
 int
-GabrielGraph::initialize(ErrorHandler *)
+RNGraph::initialize(ErrorHandler *)
 {
   _timer.initialize(this);
   Timestamp _next = Timestamp::now() + Timestamp::make_msec(_update_intervall);
@@ -115,10 +115,10 @@ GabrielGraph::initialize(ErrorHandler *)
 /*************************************************************************************************/
 
 
-void GabrielGraph::add_handlers()
+void RNGraph::add_handlers()
 {
 
 }
 
 CLICK_ENDDECLS
-EXPORT_ELEMENT(GabrielGraph)
+EXPORT_ELEMENT(RNGraph)
