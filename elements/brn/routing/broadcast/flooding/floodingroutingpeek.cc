@@ -10,7 +10,6 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "flooding.hh"
 #include "floodingroutingpeek.hh"
-#include "../../../../standard/drr.hh"
 
 CLICK_DECLS
 

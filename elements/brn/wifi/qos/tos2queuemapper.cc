@@ -179,18 +179,25 @@ Tos2QueueMapper::simple_action(Packet *p)
     }
   }
 
-  opt_queue = find_queue(opt_cwmin);
-
   // handle trunc overflow
-  if ( opt_queue == (no_queues-1) || opt_queue == 0 ) {
+  if ( ((int)_cwmin[0] >= opt_cwmin) || ((int)_cwmin[no_queues-1] <= opt_cwmin)) {
     uint32_t closest_bo = find_closest_backoff(opt_cwmin);
     recalc_backoff_queues(closest_bo, 1, 1);
     set_backoff();
-    opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
   }
 
-  // Apply tos;
-  // TODO ...
+  opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+
+  /**
+   * Apply tos;
+   */
+
+  switch (tos) {
+    case 1: opt_queue--;    break;
+    case 2: opt_queue++;    break;
+    case 3: opt_queue +=2 ; break;
+  }
+  opt_queue = MAX(0,MIN(opt_queue,no_queues-1));
 
   //set queue
   BrnWifi::setTxQueue(ceh, opt_queue);
@@ -253,7 +260,7 @@ Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
-  for (int i = 0; i <= no_queues-1; i++)
+  for (int i = 0; i < no_queues-1; i++)
     if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
 
   return no_queues-1;
