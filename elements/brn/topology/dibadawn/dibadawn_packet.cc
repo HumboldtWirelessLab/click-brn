@@ -198,11 +198,11 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String parent_src_a
   sa << parent_src_attr << " ";
   sa << "time='" << Timestamp::now().unparse() << "' ";
   sa << "searchId='" << searchId << "' ";
+  sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
   sa << "version='" << version << "' ";
   sa << "type='" << isForward << "' ";
   sa << "type_descr='" << (isForward ? "ForwardMsg" : "BackMsg") << "' ";
   sa << "hop='" << int(hops) << "' ";
-  sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
   sa << "treeParent='" << treeParent.unparse_dash() << "' ";
   sa << "sumForwardDelay='" << sumForwardDelay << "' ";
   sa << "numPayload='" << payload.size() << "' ";

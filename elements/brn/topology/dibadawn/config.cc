@@ -34,13 +34,14 @@ CLICK_DECLS
 
 DibadawnConfig::DibadawnConfig()
 :   debugLevel(0), 
-    maxTraversalTimeMs(40), 
     votingRule(0),
     useLinkStatistic(false)
 {
   votingRule = 0;
   useOriginForwardDelay = true;
   maxHops = 255;
+  maxTraversalTimeMs = 40, 
+  maxJitter = maxTraversalTimeMs / 4;
 }
 
 const char* DibadawnConfig::thisNodeAsCstr()
@@ -53,11 +54,12 @@ String DibadawnConfig::asString()
   StringAccum sa;
   sa << "<dibadawn_config time='" << Timestamp::now() << "' >\n";
   
-  sa << "\t<NODEIDENTITY value='" << thisNode.unparse() << "' >\n";
+  sa << "\t<NODEIDENTITY value='" << thisNode.unparse() << "' />\n";
   sa << "\t<DEBUG value='" << debugLevel << "' />\n";
   sa << "\t<ORIGINDELAY value='" << useOriginForwardDelay << "' />\n";
   sa << "\t<MAXTRAVERSALTIMEMS value='" << maxTraversalTimeMs << "' />\n";
   sa << "\t<MAXHOPS value='" << maxHops << "' />\n";
+  sa << "\t<MAXJITTERMS value='" << maxJitter << "' />\n";
   sa << "\t<VOTINGRULE value='" << votingRule << "' />\n";
   sa << "\t<votingRules>\n";
   sa << "\t\t<rule number='0' name='Unanimous' />\n";

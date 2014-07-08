@@ -38,6 +38,7 @@ public:
     uint32_t maxHops;
     uint32_t votingRule;
     bool useLinkStatistic;
+    uint32_t maxJitter;
     
     
     DibadawnConfig();
