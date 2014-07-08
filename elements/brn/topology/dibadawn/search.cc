@@ -55,7 +55,11 @@ DibadawnSearch::DibadawnSearch(
     DibadawnNodeStatistic &stat, 
     DibadawnConfig &cfg,
     DibadawnLinkStatistic &linkStat)
-:   commonStatistic(stat), adjacents(searchId), config(cfg), linkStat(linkStat)
+:   commonStatistic(stat), 
+    adjacents(searchId), 
+    config(cfg), 
+    linkStat(linkStat),
+    isRunFinished(false)
 {
   initCommon(click_element);
 }
@@ -66,7 +70,11 @@ DibadawnSearch::DibadawnSearch(
     DibadawnConfig &cfg,
     DibadawnLinkStatistic &linkStat,
     DibadawnSearchId &id)
-:   commonStatistic(stat), adjacents(searchId), config(cfg), linkStat(linkStat)
+:   commonStatistic(stat), 
+    adjacents(searchId), 
+    config(cfg), 
+    linkStat(linkStat),
+    isRunFinished(false)
 {
   initCommon(click_element);
 
@@ -95,6 +103,13 @@ void DibadawnSearch::forwardTimeout()
   forwardMessages();
   detectArticulationPoints();
   voteForArticulaionPointsAndBridges();
+  
+  if(config.debugLevel > 0)
+      click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
+            config.thisNodeAsCstr(),
+            Timestamp::now().unparse().c_str(),
+            searchId.asString().c_str());
+  isRunFinished = true; 
 }
 
 void DibadawnSearch::detectCycles()
@@ -121,14 +136,7 @@ void DibadawnSearch::detectCycles()
 void DibadawnSearch::forwardMessages()
 {
   if (isParentNull())
-  {
-    if(config.debugLevel > 0)
-      click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
-            config.thisNodeAsCstr(),
-            Timestamp::now().unparse().c_str(),
-            searchId.asString().c_str());
     return;
-  }
 
   if (messageBuffer.size() == 0)
   {

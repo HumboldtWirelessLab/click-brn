@@ -63,8 +63,6 @@ private:
     bool isArticulationPoint;
     DibadawnPacket sentForwardPacket;
     DibadawnLinkStatistic &linkStat;
-    
-    uint32_t numOfConcurrentSenders;
     BRNElement *brn_click_element;
 
     void initCommon(BRNElement *click_element);
@@ -91,6 +89,8 @@ private:
     uint16_t calcForwardDelayImproved(DibadawnPacket &packet);
 
 public:
+    bool isRunFinished;
+     
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat);
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat, DibadawnSearchId &packet);
 
