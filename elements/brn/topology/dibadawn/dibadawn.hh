@@ -54,6 +54,7 @@ public:
     void setTopologyInfo(TopologyInfo *topoInfo);
     void resetLinkStat();
     String getLinkStat();
+    void clearFinischedSearches();
 };
 
 CLICK_ENDDECLS

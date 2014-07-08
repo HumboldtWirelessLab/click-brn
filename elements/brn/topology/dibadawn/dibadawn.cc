@@ -46,6 +46,7 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
   {
     search = new DibadawnSearch(brn_click_element, nodeStatistic, config, link_stat, packet.searchId);
     searches.push_back(search);
+    clearFinischedSearches();
   }
 
   search->receive(packet);
@@ -67,6 +68,7 @@ void DibadawnAlgorithm::startNewSearch()
 {
   DibadawnSearch *search = new DibadawnSearch(brn_click_element, nodeStatistic, config, link_stat);
   searches.push_back(search);
+  clearFinischedSearches();
   search->start_search();
 }
 
@@ -95,6 +97,25 @@ String DibadawnAlgorithm::getLinkStat()
   sa << "</DibadawnLinkStat>";
   
   return(sa.take_string());
+}
+
+void DibadawnAlgorithm::clearFinischedSearches()
+{
+  bool isOneSearchRemoved;
+  do // Lists should be very short, so it will be ok, but its not the best solution
+  {
+    isOneSearchRemoved = false;
+    for (Vector<DibadawnSearch*>::iterator i = searches.begin(); i != searches.end(); i++)
+    {
+      DibadawnSearch *s = *i;
+      if (s->isRunFinished)
+      {
+        searches.erase(i);
+        delete(s);
+        isOneSearchRemoved = true;
+      }
+    }
+  }while (isOneSearchRemoved);
 }
 
 
