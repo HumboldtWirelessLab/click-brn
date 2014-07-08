@@ -79,7 +79,6 @@ void DibadawnSearch::initCommon(
 {
   brn_click_element = click_element;
   isArticulationPoint = false;
-  numOfConcurrentSenders = 10;
 
   forwardTimeoutTimer = new Timer(forwardTimeoutCallback, this);
   forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
@@ -253,7 +252,7 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
 void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
 {
   forwardTimeoutTimer->initialize(this->brn_click_element, false);
-  forwardTimeoutTimer->schedule_after_msec(numOfConcurrentSenders * config.maxTraversalTimeMs * (config.maxHops - packet.hops));
+  forwardTimeoutTimer->schedule_after_msec(config.maxTraversalTimeMs * (config.maxHops - packet.hops) + (config.maxHops * config.maxJitter));
 }
 
 void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
@@ -289,7 +288,7 @@ void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
 uint16_t DibadawnSearch::calcForwardDelay()
 {
   uint16_t randomNumber = click_random();
-  uint16_t delay = (randomNumber % numOfConcurrentSenders) * config.maxTraversalTimeMs;
+  uint16_t delay = (randomNumber % config.maxJitter);
   return(delay);
 }
 
