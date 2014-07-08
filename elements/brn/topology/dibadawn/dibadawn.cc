@@ -53,7 +53,6 @@ void DibadawnAlgorithm::receive(DibadawnPacket& packet)
 
 DibadawnSearch* DibadawnAlgorithm::getResponsibleSearch(DibadawnPacket& packet)
 {
-  // todo replace with iterator
   for (Vector<DibadawnSearch*>::iterator i = searches.begin(); i != searches.end(); i++)
   {
     DibadawnSearch *s = *i;
