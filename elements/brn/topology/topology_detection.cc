@@ -55,7 +55,6 @@ TopologyDetection::~TopologyDetection()
 {
 }
 
-
 int TopologyDetection::initialize(ErrorHandler *)
 {
   click_srandom(_node_identity->getMasterAddress()->hashcode());
@@ -68,7 +67,6 @@ int TopologyDetection::initialize(ErrorHandler *)
   
   return 0;
 }
-
 
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
@@ -85,6 +83,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
@@ -116,6 +115,7 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
@@ -131,7 +131,6 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
   return(0);
 }
 
-
 void TopologyDetection::update_periodically_detection_setup()
 {
   _timer.unschedule();
@@ -143,7 +142,6 @@ void TopologyDetection::update_periodically_detection_setup()
   _timer.schedule_after_msec(start_delay);
   BRN_DEBUG("Timer is new scheduled at %s", _timer.expiry().unparse().c_str());
 }
-
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
 {
@@ -164,22 +162,13 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
   packet->kill();
 }
 
-
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
   dibadawnAlgo.receive(packet);
 }
 
-
-void TopologyDetection::start_detection()
-{
-  dibadawnAlgo.startNewSearch();
-}
-
-
-void
-TopologyDetection::run_timer(Timer *t)
+void TopologyDetection::run_timer(Timer *t)
 {
   BRN_DEBUG("Run timer.");
   if (t == NULL)
@@ -191,13 +180,19 @@ TopologyDetection::run_timer(Timer *t)
     _timer.schedule_after_msec(_interval_ms);
 }
 
+/*************************************************************************************************/
+/***************************************** H A N D L E R *****************************************/
+/*************************************************************************************************/
+void TopologyDetection::start_detection()
+{
+  dibadawnAlgo.startNewSearch();
+}
 
 void TopologyDetection::stop_periodically_detection_after_next_run()
 {
   _is_detect_periodically = false;
   BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer.expiry().unparse().c_str());
 }
-
 
 void TopologyDetection::reset_link_stat()
 {
@@ -217,12 +212,6 @@ String TopologyDetection::xml_link_stat()
   return(sa.take_string());
 }
 
-
-/*************************************************************************************************/
-/***************************************** H A N D L E R *****************************************/
-
-/*************************************************************************************************/
-
 String TopologyDetection::local_topology_info(void)
 {
   return(_topoInfo->topology_info());
@@ -232,7 +221,6 @@ String TopologyDetection::config()
 {
   return(dibadawnAlgo.config.asString());
 }
-
 
 enum
 {

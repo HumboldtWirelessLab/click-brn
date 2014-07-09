@@ -37,7 +37,7 @@ public:
     DibadawnNodeStatistic();
 
     void updateEdgeMarking(DibadawnEdgeMarking &marking);
-    void upateArticulationPoint(const EtherAddress &node,  bool isArticulationPoint);
+    void upateArticulationPoint(EtherAddress &node,  bool isArticulationPoint);
     
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
@@ -49,6 +49,8 @@ public:
     bool isBridgeByIntelligentMajorityRule();
     bool isBridgeByTrustedNoBridgeRule();
     bool isBridgeByWeightedRule();
+    void print(String extra_data);
+    String get(String extra_data);
     
 private:
     Spinlock lock;

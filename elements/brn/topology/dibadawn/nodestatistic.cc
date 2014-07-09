@@ -228,7 +228,7 @@ void DibadawnNodeStatistic::setTopologyInfo(TopologyInfo* topoInfo)
   topologyInfo = topoInfo;
 }
 
-void DibadawnNodeStatistic::upateArticulationPoint(const EtherAddress &node, bool isArticulationPoint)
+void DibadawnNodeStatistic::upateArticulationPoint(EtherAddress &node, bool isArticulationPoint)
 {
   if(topologyInfo != NULL)
   {
@@ -239,6 +239,21 @@ void DibadawnNodeStatistic::upateArticulationPoint(const EtherAddress &node, boo
   }
 }
 
+void DibadawnNodeStatistic::print(String extra_data)
+{
+  if(topologyInfo != NULL)
+    click_chatter(this->get(extra_data).c_str());
+}
+
+String DibadawnNodeStatistic::get(String extra_data)
+{
+  StringAccum sa;
+  
+  if(topologyInfo != NULL)
+    sa << topologyInfo->topology_info(extra_data);
+  
+  return(sa.take_string());
+}
 
 
 CLICK_ENDDECLS

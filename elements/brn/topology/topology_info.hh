@@ -107,6 +107,7 @@ public:
     ArticulationPoint *getArticulationPoint(EtherAddress *a);
 
     String topology_info(void);
+    String topology_info(String extra_data);
 
 private:
     Vector<Bridge*> _bridges;
