@@ -22,10 +22,19 @@
 #define BRNANNRATENET_HH
 
 #include <click/element.hh>
+#include <OpenANN/Net.h>
+#include <OpenANN/io/Logger.h>
+#include <OpenANN/io/DirectStorageDataSet.h>
+#include <OpenANN/util/Random.h>
+#include <Eigen/Core>
 
 CLICK_DECLS
 
-class BrnAnnRateNet {
+
+class BrnAnnRateNet 
+{
+  
+  OpenANN::Net net;
 
   public:
       BrnAnnRateNet(String &net);
