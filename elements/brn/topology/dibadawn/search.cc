@@ -225,8 +225,7 @@ void DibadawnSearch::detectArticulationPoints()
 
 void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
-  click_chatter("<NotImplemented node='%s' method='voteForArticulaionPointsAndBridges' />",
-      config.thisNodeAsCstr());
+
 }
 
 void DibadawnSearch::start_search()
@@ -240,8 +239,9 @@ void DibadawnSearch::start_search()
   visited = true;
 
   if(config.debugLevel > 0)
-    click_chatter("<DibadawnStartSearch node='%s'/>",
-        config.thisNodeAsCstr());
+    click_chatter("<DibadawnStartSearch node='%s' time='%s' />",
+        config.thisNodeAsCstr(),
+        Timestamp::now().unparse().c_str());
   
   sendBroadcastWithTimeout(packet);
 }
