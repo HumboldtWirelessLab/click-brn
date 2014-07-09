@@ -199,10 +199,11 @@ ChannelStats::push(int port, Packet *p)
 
   /* Handle TXFeedback */
   if ( ceh->flags & WIFI_EXTRA_TX ) {
-    int tx_count = (int) ceh->retries;
-    if ( ceh->flags & WIFI_EXTRA_TX_ABORT ) tx_count--;
+    int tx_count = BrnWifi::get_data_sent_count(ceh);
 
-    for ( int i = 0; i <= tx_count; i++ ) {
+    BRN_ERROR("TxCount: %d",tx_count);
+
+    for ( int i = 0; i < tx_count; i++ ) {
       int t0,t1,t2,t3;
       uint8_t rate_is_ht, rate_index, rate_bw, rate_sgi;
       rate_is_ht = rate_index = rate_bw = rate_sgi = 0;
@@ -293,6 +294,42 @@ ChannelStats::push(int port, Packet *p)
           small_stats->tx_bytes += p_length + 4;
         } else {
           small_stats->zero_rate_packets++;
+        }
+      }
+    }
+
+    /** add rts */
+    /** TODO: what is the basic rate ?? */
+    if ( (!dst.is_broadcast()) && ((ceh->flags & WIFI_EXTRA_DO_RTS_CTS) != 0)) {
+      int rts_count = BrnWifi::get_rts_sent_count(ceh);
+
+      for (int i = 0; i < rts_count; i++) {
+        if (_enable_full_stats) {
+
+          PacketInfo *new_pi = new PacketInfo();
+          new_pi->_src = dst;
+          new_pi->_dst = src;
+          new_pi->_rx_time = p->timestamp_anno();
+          new_pi->_length = 10;
+          new_pi->_foreign = false;
+          new_pi->_channel = _channel;
+          new_pi->_rx = false;
+          new_pi->_rate = 2; //TODO: what is the basic rate
+          new_pi->_seq = seq;
+
+          new_pi->_is_ht_rate = false;
+
+          new_pi->_duration = calc_transmit_time(2, 10);
+
+          new_pi->_retry = false;
+          new_pi->_unicast = true;
+
+          _packet_list.push_back(new_pi);
+        } else {
+          small_stats->tx_ucast_packets++;
+          small_stats->duration_tx += calc_transmit_time(2, 10);
+          small_stats->txpackets++;
+          small_stats->tx_bytes += 10;
         }
       }
     }
@@ -444,6 +481,36 @@ ChannelStats::push(int port, Packet *p)
       clear_old();
       _packet_list.push_back(new_pi);
     }
+
+    if ( (type == WIFI_FC0_TYPE_DATA) && (dst == *(_device->getEtherAddress())) ) {
+      if (_enable_full_stats) {
+        PacketInfo *new_pi = new PacketInfo();
+        new_pi->_src = dst;
+        new_pi->_dst = src;
+        new_pi->_rx_time = p->timestamp_anno();
+        new_pi->_length = 10;
+        new_pi->_foreign = false;
+        new_pi->_channel = _channel;
+        new_pi->_rx = false;
+        new_pi->_rate = 2; //TODO: what is the basic rate
+        new_pi->_seq = seq;
+
+        new_pi->_is_ht_rate = false;
+
+        new_pi->_duration = calc_transmit_time(2, 10);
+
+        new_pi->_retry = false;
+        new_pi->_unicast = true;
+
+        _packet_list.push_back(new_pi);
+      } else {
+        small_stats->tx_ucast_packets++;
+        small_stats->duration_tx += calc_transmit_time(2, 10);
+        small_stats->txpackets++;
+        small_stats->tx_bytes += 10;
+      }
+    }
+
   }
 
   output(port).push(p);
