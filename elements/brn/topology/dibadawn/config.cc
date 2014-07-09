@@ -42,6 +42,7 @@ DibadawnConfig::DibadawnConfig()
   maxHops = 255;
   maxTraversalTimeMs = 40, 
   maxJitter = maxTraversalTimeMs / 4;
+  isPrintResults = false;
 }
 
 const char* DibadawnConfig::thisNodeAsCstr()

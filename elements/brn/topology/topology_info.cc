@@ -129,12 +129,18 @@ TopologyInfo::getArticulationPoint(EtherAddress *a)
 String
 TopologyInfo::topology_info(void)
 {
+  return(topology_info(""));
+}
+
+String
+TopologyInfo::topology_info(String extra_data)
+{
   StringAccum sa;
 
   Bridge *br;
   ArticulationPoint *ap;
 
-  sa << "<topology_info node='" << BRN_NODE_NAME << "' >\n";
+  sa << "<topology_info node='" << BRN_NODE_NAME << "' time='" << Timestamp::now() << "' extra_data='" << extra_data << "' >\n";
   sa << "\t<bridges count='" << _bridges.size() << "' >\n";
   for( int i = 0; i < _bridges.size(); i++ )
   {
