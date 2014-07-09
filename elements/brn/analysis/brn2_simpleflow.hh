@@ -211,6 +211,11 @@ class BRN2SimpleFlow : public BRNElement
         _sum_sq_hops += (hops*hops);
       }
 
+      void update_duration() {
+        _end_time = Timestamp::now();
+        _duration = (_end_time - _start_time).msecval();
+      }
+
       uint32_t std_time() {
         if ( _rxPackets == 0 ) return 0;
         int32_t q = _cum_sum_rt_time/_rxPackets;
