@@ -47,7 +47,7 @@ CLICK_DECLS
 
 ToSimDevice::ToSimDevice()
   : _packets_in_sim_queue(0), _fd(-1), _my_fd(false), _task(this), _encap_type(SIMCLICK_PTYPE_ETHER),
-    _polling(true), _txfeedback_anno(false)
+    _polling(true), _txfeedback_anno(false), _last_pull_null(false), _pull_null_duration(0)
 {
 }
 
@@ -169,9 +169,18 @@ ToSimDevice::run_task(Task *)
     //fprintf(stderr,"Hey!!! Pulling ready!!!\n");
     if (Packet *p = input(0).pull()) {
       //fprintf(stderr,"Hey!!! Sending a packet!!!\n");
+      if (_last_pull_null) {
+        _pull_null_duration += (Timestamp::now() - _ts_last_pull_null).msecval();
+        _last_pull_null = false;
+      }
       _packets_in_sim_queue++;
       send_packet(p);
       active = true;
+    } else {
+      if ( !_last_pull_null) {
+        _last_pull_null = true;
+        _ts_last_pull_null = Timestamp::now();
+      }
     }
   }
 
@@ -183,11 +192,27 @@ ToSimDevice::run_task(Task *)
   return active;
 }
 
+static String
+idle_time(Element *e, void */*thunk*/)
+{
+  return String(((ToSimDevice*)e)->_pull_null_duration);
+}
+
+static int
+reset_idle_time(const String &/*in_s*/, Element *e, void */*vparam*/, ErrorHandler */*errh*/)
+{
+  ((ToSimDevice*)e)->_pull_null_duration = 0;
+  return 0;
+}
+
 void
 ToSimDevice::add_handlers()
 {
   if (input_is_pull(0))
     add_task_handlers(&_task);
+
+  add_read_handler("idletime", idle_time, (void*)0);
+  add_write_handler("reset", reset_idle_time, (void *)0, Handler::BUTTON);
 }
 
 CLICK_ENDDECLS
