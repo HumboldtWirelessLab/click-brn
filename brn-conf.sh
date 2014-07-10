@@ -81,7 +81,7 @@ if [ "x$CLANG" = "x1" ]; then
   XCFLAGS="$XCFLAGS -Qunused-arguments"
 fi
 
-XCFLAGS="$XCFLAGS -L$BRN_TOOLS_PATH/click-brn-lib/lib -I$BRN_TOOLS_PATH/click-brn-lib/include"
+XCFLAGS="$XCFLAGS -L$BRN_TOOLS_PATH/click-brn-libs/lib -I$BRN_TOOLS_PATH/click-brn-libs/include"
 
 for op in $@; do
 
