@@ -27,19 +27,23 @@
 #include <OpenANN/io/DirectStorageDataSet.h>
 #include <OpenANN/util/Random.h>
 #include <Eigen/Core>
+#include <string>
+
 
 CLICK_DECLS
 
 
 class BrnAnnRateNet 
 {
-  
-  OpenANN::Net net;
+  OpenANN::Net ann;
 
+  uint8_t classify(double);
+  std::string replaceNewLineSequenes(String);
+  
   public:
       BrnAnnRateNet(String &net);
-      
       uint8_t getRate(uint32_t num_neighbors, uint32_t num_nidden_nodes, uint8_t rssi);
+      String test();
 };
 
 CLICK_ENDDECLS

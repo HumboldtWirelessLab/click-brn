@@ -212,7 +212,7 @@ BrnAnnRate_read_param(Element */*e*/, void *thunk)
     {
       String ann = "input 3 1 1 fully_connected 4 0 0.05 1 fully_connected 4 0 0.05 1 fully_connected 2 0 0.05 1 output 1 0 0.05 1 error_function 1 parameters    16.3458\n-0.0754721\n  -6.22471\n    3.1956\n   37.9858\n-0.0419361\n   -11.659\n   7.67339\n 0.0375283\n-0.0707572\n  -2.02023\n 0.0065733\n    5.5004\n 0.0135251\n  -2.96058\n   1.12907\n0.00184868\n   48.0301\n  0.229655\n0.00405547\n  -48.1953\n   3.91757\n  -66.7874\n -0.294909\n  0.221874\n -0.195333\n   1.20757\n   9.90241\n  0.225474\n   1.14452\n  -4.40303\n   4.19181\n  -16.3558\n  0.169871\n  -1.07266\n   5.39329\n   39.3853\n   -38.892\n  -11.8951\n   23.9987\n  -6.54092\n   45.6367\n  -45.0305\n  -13.9749\n   27.6089\n    -7.291\n  -52.5025\n  -62.0485\n   48.0301";
       BrnAnnRateNet rateNet(ann);
-      return(String("<Test where='BrnAnnRate_read_param' result='ok' />"));
+      return(rateNet.test());
     }
     
     default:
@@ -231,3 +231,4 @@ BrnAnnRate::add_handlers()
 
 CLICK_ENDDECLS
 EXPORT_ELEMENT(BrnAnnRate)
+ELEMENT_LIBS(-lopenann)
