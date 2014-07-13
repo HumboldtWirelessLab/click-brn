@@ -22,6 +22,7 @@
 #include <click/string.hh>
 #include <click/glue.hh>
 #include <click/type_traits.hh>
+#include <click/timestamp.hh>
 
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
@@ -61,7 +62,7 @@ void DibadawnSearchId::set(Timestamp t, const EtherAddress& creator)
   const uint8_t *pmac = reinterpret_cast<const uint8_t *> (creator.data());
   memcpy(this->data, pmac, 6);
 
-  uint32_t time = t.usec();
+  uint32_t time = t.sec();
   memcpy(this->data + 6, &time, sizeof (time));
 }
 
