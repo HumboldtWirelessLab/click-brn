@@ -109,7 +109,7 @@ LinuxRTCtrl::set_rt_entry(struct rtentry *rm, IPAddress &ip, IPAddress &mask, IP
 int
 LinuxRTCtrl::set_rt_entry_metric(struct rtentry *rm, int metric)
 {
-  rm->rt_metric = metric;
+  rm->rt_metric = metric + 1;
   return 0;
 }
 
