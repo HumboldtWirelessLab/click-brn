@@ -193,7 +193,6 @@ VAServer::select_ap(IPAddress client)
       if ( best_csi == NULL ) return NULL;
       break;
     }
-<<<<<<< HEAD
     case VIRTUAL_ANTENNA_STRATEGY_MAX_THROUGHPUT: {
 	//
 	// search the AP which offers the highest throughput
@@ -234,7 +233,7 @@ VAServer::select_ap(IPAddress client)
 	     	if (csi->_eff_snrs[i][effSnrBin] > mcs_to_snr_threshold[t]) { // the eff. SNR is larger than the threshold
 
 		    // calc data rate		    
-		    int data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
+		    uint32_t data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
 
 		    // valid MCS (above threshold)
 		    if (data_rate > max_data_rate_all) { // total best

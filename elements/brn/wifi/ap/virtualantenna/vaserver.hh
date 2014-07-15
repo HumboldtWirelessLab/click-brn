@@ -33,8 +33,8 @@ MCS Index      Data rate               SNR Threshold
 7  64-QAM 5/6    65                      24
 */
 
-static const int32_t mcs_to_snr_threshold[8] = { 5000, 7000, 9000, 12000, 15000, 20000, 22000, 24000 };
-static const int32_t mcs_to_data_rate_kbps[8] = { 6500, 13000, 19500, 26000, 39000, 52000, 58500, 65000 };
+static const uint32_t mcs_to_snr_threshold[8] = { 5000, 7000, 9000, 12000, 15000, 20000, 22000, 24000 };
+static const uint32_t mcs_to_data_rate_kbps[8] = { 6500, 13000, 19500, 26000, 39000, 52000, 58500, 65000 };
 
 /*
  * AP-Selection
