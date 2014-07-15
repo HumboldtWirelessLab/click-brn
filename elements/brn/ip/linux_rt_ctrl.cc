@@ -53,7 +53,7 @@ LinuxRTCtrl::initialize(ErrorHandler *)
 
   uid = getuid();
 
-  if (!uid) {
+  if (uid != 0) {
     BRN_WARN("Click is not running with root privilege. You will not be able to change routes!");
   }
 

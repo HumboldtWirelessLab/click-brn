@@ -48,7 +48,7 @@ VAServer::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 VAServer::initialize(ErrorHandler *)
 {
-  _rt_update_timer.initialize(this);  
+  _rt_update_timer.initialize(this);
 
   if (_rt_update_interval > 0 )
     _rt_update_timer.schedule_after_msec(_rt_update_interval);
