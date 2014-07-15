@@ -116,6 +116,8 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
   VAClientInfo **vaci_p = va_cl_info_map.findp(client);
   VAClientInfo *vaci = NULL;
 
+  bool client_is_new = false;
+
   if (vaai_p == NULL) {
     vaai = new VAAntennaInfo(csi_node);
     va_ant_info_map.insert(csi_node, vaai);
@@ -128,6 +130,7 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     vaci = new VAClientInfo(client);
     vaci->set_mask(mask);
     va_cl_info_map.insert(client, vaci);
+    client_is_new = true;
   } else {
     vaci = *vaci_p;
   }
@@ -140,7 +143,7 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     vaci->csi_map.insert(csi_node, csi);
 #ifdef METRIC_ROUTING
     vaci->set_gateway(vaai);
-    LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),1);
+    LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),(client_is_new?0:1000));
     _rtctrl->add_rt_entry(&(vaci->routing_entry));
 #endif
   } else {
@@ -191,12 +194,11 @@ VAServer::select_ap(IPAddress client)
         //}
       }
 
-      if ( best_csi == NULL ) return NULL;
       break;
     }
     case VIRTUAL_ANTENNA_STRATEGY_MAX_THROUGHPUT: {
-	//
-	// search the AP which offers the highest throughput
+      //
+      // search the AP which offers the highest throughput
 
       uint32_t max_data_rate_all = 0; // best data rate among all APs
 
@@ -204,63 +206,43 @@ VAServer::select_ap(IPAddress client)
         CSI *csi = iter.value();
 
         CSI *best_csi_ap = NULL;
-	uint32_t max_data_rate = 0; // best data rate for a given AP
+        uint32_t max_data_rate = 0; // best data rate for a given AP
 
         for ( int i = 0; i < MAX_NUM_RATES; i++) { // for each available MODE: 3x SISO, 2x MIMO_2, 1x MIMO_3
 
-	  // calc spatial multiplexing gain
-          int sm_gain = 1;
-	  if (i <= 2) {
-	     sm_gain = 1;
-	  } else if (i >= 3 && i <= 5) {
-	     sm_gain = 2;
-	  } else {
-	     sm_gain = 3;
-	  }
+          // calc spatial multiplexing gain
+          int sm_gain = sm_gain_lookup_table[i];
 
-	  for ( int t = 0; t < 8; t++) { // for each available MCS
-		// eff. SNR depends on the MCS; select the proper bin
-		int effSnrBin = 0;
-		if (t == 0) {
-		   effSnrBin = 0; // BPSK
-		} else if (t >= 1 && t <= 2) {
-		   effSnrBin = 1; // QPSK
-		} else if (t >= 3 && t <= 4) {
-		   effSnrBin = 2; // 16QAM
-		} else {
-		   effSnrBin = 3; // 64QAM
-		}
+          for ( int t = 0; t < 8; t++) { // for each available MCS
+            // eff. SNR depends on the MCS; select the proper bin
+            int effSnrBin = eff_snr_bin_lookup_table[t];
 
-	     	if (csi->_eff_snrs[i][effSnrBin] > mcs_to_snr_threshold[t]) { // the eff. SNR is larger than the threshold
+            if (csi->_eff_snrs[i][effSnrBin] > mcs_to_snr_threshold[t]) { // the eff. SNR is larger than the threshold
 
-		    // calc data rate		    
-		    uint32_t data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
+              // calc data rate
+              uint32_t data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
 
-		    // valid MCS (above threshold)
-		    if (data_rate > max_data_rate_all) { // total best
-		       best_csi = csi;
-		       max_data_rate_all = data_rate;
-		    }		
-		    if (data_rate > max_data_rate) { // best solution for each AP
-		       best_csi_ap = csi;
-		       max_data_rate = data_rate;
-		    }		
-	        }
-	  }
+              // valid MCS (above threshold)
+              if (data_rate > max_data_rate_all) { // total best
+                best_csi = csi;
+                max_data_rate_all = data_rate;
+              }
+              if (data_rate > max_data_rate) { // best solution for each AP
+                best_csi_ap = csi;
+                max_data_rate = data_rate;
+              }
+            }
+          }
         }
-	// print best solution for a given AP
-	if ( BRN_DEBUG_LEVEL_DEBUG && (best_csi_ap != NULL) ) {
-	  click_chatter("%d max data rate towards AP %s is %d", timenow_ms, best_csi_ap->_to.unparse().c_str(), max_data_rate);
-	}
+
+        // print best solution for a given AP
+        if ( BRN_DEBUG_LEVEL_DEBUG && (best_csi_ap != NULL) ) {
+          click_chatter("%d max data rate towards AP %s is %d", timenow_ms, best_csi_ap->_to.unparse().c_str(), max_data_rate);
+        }
 
       }
-
-      if ( best_csi == NULL ) return NULL;
       break;
-	//
-	//
     }
-
     default: {
       BRN_ERROR("Unknown strategy!");
     }
@@ -305,11 +287,13 @@ VAServer::set_ap(IPAddress &client, IPAddress &ap)
     _rtctrl->add_rt_entry(new_routing_entry);
 
     _rtctrl->del_rt_entry(old_routing_entry);
-    LinuxRTCtrl::set_rt_entry_metric(old_routing_entry,1);
+    LinuxRTCtrl::set_rt_entry_metric(old_routing_entry,1000);
     _rtctrl->add_rt_entry(old_routing_entry);
 
-    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,1);
+    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,1000);
     _rtctrl->del_rt_entry(new_routing_entry);
+
+    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,0);
 #else
     _rtctrl->add_rt_entry(new_routing_entry);
     _rtctrl->del_rt_entry(old_routing_entry);
