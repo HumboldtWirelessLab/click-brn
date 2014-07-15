@@ -105,10 +105,6 @@ class ToSimDevice : public SimDevice { public:
     bool _polling;
     bool _txfeedback_anno;
 
-  public:
-    bool _last_pull_null;
-    Timestamp _ts_last_pull_null;
-    uint32_t _pull_null_duration;
 };
 
 CLICK_ENDDECLS
