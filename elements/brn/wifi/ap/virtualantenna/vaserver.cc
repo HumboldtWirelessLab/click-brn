@@ -393,3 +393,4 @@ VAServer::add_handlers()
 }
 
 CLICK_ENDDECLS
+EXPORT_ELEMENT(VAServer)
