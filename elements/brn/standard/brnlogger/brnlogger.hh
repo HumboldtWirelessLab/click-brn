@@ -88,6 +88,11 @@ CLICK_DECLS
 #define BRN_DEBUG_LEVEL_DEBUG (_debug >= BrnLogger::DEBUG)
 #define BRN_DEBUG   if (_debug >= BrnLogger::DEBUG) BrnLogger(__FILE__,__LINE__,this).debug
 
+/**
+ * Print out a log message.
+ */
+#define BRN_DEBUG_LEVEL_LOG (_debug >= BrnLogger::LOG)
+
 
 #define BRN_NODE_NAME BrnLogger(__FILE__,__LINE__,this).get_name()
 #define BRN_NODE_ADDRESS BrnLogger(__FILE__,__LINE__,this).get_address()

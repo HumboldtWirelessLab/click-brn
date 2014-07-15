@@ -154,6 +154,8 @@ class VAServer : public BRNElement {
 
     Timer _rt_update_timer;
     uint32_t _rt_update_interval;
+
+    bool _verbose;
 };
 
 CLICK_ENDDECLS
