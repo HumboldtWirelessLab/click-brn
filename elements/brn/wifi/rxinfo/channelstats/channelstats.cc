@@ -310,7 +310,7 @@ ChannelStats::push(int port, Packet *p)
           new_pi->_src = dst;
           new_pi->_dst = src;
           new_pi->_rx_time = p->timestamp_anno();
-          new_pi->_length = 10;
+          new_pi->_length = 16;
           new_pi->_foreign = false;
           new_pi->_channel = _channel;
           new_pi->_rx = false;
@@ -319,7 +319,7 @@ ChannelStats::push(int port, Packet *p)
 
           new_pi->_is_ht_rate = false;
 
-          new_pi->_duration = calc_transmit_time(2, 10);
+          new_pi->_duration = calc_transmit_time(2, 16);
 
           new_pi->_retry = false;
           new_pi->_unicast = true;
@@ -327,9 +327,9 @@ ChannelStats::push(int port, Packet *p)
           _packet_list.push_back(new_pi);
         } else {
           small_stats->tx_ucast_packets++;
-          small_stats->duration_tx += calc_transmit_time(2, 10);
+          small_stats->duration_tx += calc_transmit_time(2, 16);
           small_stats->txpackets++;
-          small_stats->tx_bytes += 10;
+          small_stats->tx_bytes += 16;
         }
       }
     }
@@ -482,7 +482,9 @@ ChannelStats::push(int port, Packet *p)
       _packet_list.push_back(new_pi);
     }
 
-    if ( (type == WIFI_FC0_TYPE_DATA) && (dst == *(_device->getEtherAddress())) ) {
+    if ( ((type == WIFI_FC0_TYPE_DATA) ||
+         ((type == WIFI_FC0_TYPE_CTL) && ((w->i_fc[0] & WIFI_FC0_SUBTYPE_MASK) == WIFI_FC0_SUBTYPE_RTS ))) &&
+         (dst == *(_device->getEtherAddress())) ) {
       if (_enable_full_stats) {
         PacketInfo *new_pi = new PacketInfo();
         new_pi->_src = dst;
