@@ -129,6 +129,7 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     vaci->set_mask(mask);
     va_cl_info_map.insert(client, vaci);
 #ifdef METRIC_ROUTING
+    vaci->set_gateway(vaai);
     LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),1);
     _rtctrl->add_rt_entry(&(vaci->routing_entry));
 #endif
