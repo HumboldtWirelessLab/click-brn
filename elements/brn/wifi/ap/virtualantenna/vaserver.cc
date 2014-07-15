@@ -14,11 +14,14 @@
 
 CLICK_DECLS
 
+#define METRIC_ROUTING
+
 VAServer::VAServer():
   _strategy(VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI),
   _rtctrl(NULL),
   _rt_update_timer(this),
-  _rt_update_interval(0)
+  _rt_update_interval(0),
+  _verbose(false)
 {
   BRNElement::init();
 }
@@ -34,6 +37,7 @@ VAServer::configure(Vector<String> &conf, ErrorHandler* errh)
       "RTCTRL", cpkP+cpkM, cpElement, &_rtctrl,
       "STRATEGY", cpkP, cpInteger, &_strategy,
       "INTERVAL", cpkP, cpInteger, &_rt_update_interval,
+      "VERBOSE", cpkP, cpBool, &_verbose,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -75,10 +79,20 @@ VAServer::push( int /*port*/, Packet *packet )
   IPAddress csi_node = IPAddress(csi_p->node.csi_node_addr);
   IPAddress tx_node = IPAddress(csi_p->node.tx_node_addr);
 
-  click_chatter("Eff. SNRS (%s -> %s):",tx_node.unparse().c_str(), csi_node.unparse().c_str());
-  for ( int i = 0; i < MAX_NUM_RATES; i++) {
-    click_chatter("%d %d %d %d", csi_p->eff_snrs_int[i][0], csi_p->eff_snrs_int[i][1],
-                                 csi_p->eff_snrs_int[i][2], csi_p->eff_snrs_int[i][3]);
+  if ( BRN_DEBUG_LEVEL_LOG ) {
+    click_chatter("Eff. SNRS (%s -> %s):",tx_node.unparse().c_str(), csi_node.unparse().c_str());
+    for ( int i = 0; i < MAX_NUM_RATES; i++) {
+      click_chatter("%d %d %d %d", csi_p->eff_snrs_int[i][0], csi_p->eff_snrs_int[i][1],
+                                   csi_p->eff_snrs_int[i][2], csi_p->eff_snrs_int[i][3]);
+    }
+  }
+
+  if ( _verbose ) {
+    click_chatter("CSI,%s,%s,%d,%d,%d,%d,%d,%d,%d", Timestamp::now().unparse().c_str(), csi_node.unparse().c_str(),
+                                                    csi_p->eff_snrs_int[0][0], csi_p->eff_snrs_int[1][0],
+                                                    csi_p->eff_snrs_int[2][0], csi_p->eff_snrs_int[3][0],
+                                                    csi_p->eff_snrs_int[4][0], csi_p->eff_snrs_int[7][0],
+                                                    csi_p->eff_snrs_int[6][0]);
   }
 
   add_csi(csi_node, tx_node, csi_p->eff_snrs_int);
@@ -114,6 +128,10 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     vaci = new VAClientInfo(client);
     vaci->set_mask(mask);
     va_cl_info_map.insert(client, vaci);
+#ifdef METRIC_ROUTING
+    LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),1);
+    _rtctrl->add_rt_entry(&(vaci->routing_entry));
+#endif
   } else {
     vaci = *vaci_p;
   }
@@ -173,6 +191,15 @@ VAServer::select_ap(IPAddress client)
       if ( best_csi == NULL ) return NULL;
       break;
     }
+    /** TODO: new strategy
+    1.spalter
+      max von jeweils siso, Mimo(2/3) -> werte log(1+snr) !! snr in db must linear ??? für alle mit
+      2. Kpapazität nach shaonno * #Ströme
+      3. max/min von siso/mimo/mino
+      4. max über alle aps
+      5 sdtastr
+      6 debug
+      **/
     default: {
       BRN_ERROR("Unknown strategy!");
     }
@@ -205,11 +232,34 @@ VAServer::set_ap(IPAddress &client, IPAddress &ap)
   vaci = *vaci_p;
   vaai = *vaai_p;
 
-  _rtctrl->del_rt_entry(&(vaci->routing_entry));
+  struct rtentry *old_routing_entry, *new_routing_entry;
 
+  old_routing_entry = &(vaci->routing_entry);
   vaci->set_gateway(vaai);
+  new_routing_entry = &(vaci->routing_entry);
 
-  _rtctrl->add_rt_entry(&(vaci->routing_entry));
+  if ( old_routing_entry != new_routing_entry ) {
+#ifdef METRIC_ROUTING
+    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,0);
+    _rtctrl->add_rt_entry(new_routing_entry);
+
+    _rtctrl->del_rt_entry(old_routing_entry);
+    LinuxRTCtrl::set_rt_entry_metric(old_routing_entry,1);
+    _rtctrl->add_rt_entry(old_routing_entry);
+
+    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,1);
+    _rtctrl->del_rt_entry(new_routing_entry);
+#else
+    _rtctrl->add_rt_entry(new_routing_entry);
+    _rtctrl->del_rt_entry(old_routing_entry);
+#endif
+  }
+
+  if ( _verbose ) {
+    click_chatter("RT,%s,%s,%s,0,0,0,0,0,0", Timestamp::now().unparse().c_str(), vaci->_ip.unparse().c_str(),
+                                                    vaai->_ip.unparse().c_str());
+  }
+
 }
 
 String
