@@ -35,6 +35,8 @@ MCS Index      Data rate               SNR Threshold
 
 static const uint32_t mcs_to_snr_threshold[8] = { 5000, 7000, 9000, 12000, 15000, 20000, 22000, 24000 };
 static const uint32_t mcs_to_data_rate_kbps[8] = { 6500, 13000, 19500, 26000, 39000, 52000, 58500, 65000 };
+static const uint32_t eff_snr_bin_lookup_table[8] = { 0, 1, 1, 2, 2, 3, 3, 3 };
+static const uint32_t sm_gain_lookup_table[MAX_NUM_RATES] = { 1, 1, 1, 2, 2, 2, 3 };
 
 /*
  * AP-Selection
@@ -57,7 +59,9 @@ class VAServer : public BRNElement {
 
     uint32_t _eff_snrs[MAX_NUM_RATES][4];
 
-    CSI(IPAddress &from, IPAddress &to, uint32_t eff_snrs[MAX_NUM_RATES][4]): _from(from), _to(to) {
+    uint32_t _data_rate;
+
+    CSI(IPAddress &from, IPAddress &to, uint32_t eff_snrs[MAX_NUM_RATES][4]): _from(from), _to(to), _data_rate(0) {
       update_csi(eff_snrs);
     }
 
