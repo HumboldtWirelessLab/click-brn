@@ -105,6 +105,14 @@ LinuxRTCtrl::set_rt_entry(struct rtentry *rm, IPAddress &ip, IPAddress &mask, IP
   return 0;
 }
 
+
+int
+LinuxRTCtrl::set_rt_entry_metric(struct rtentry *rm, int metric)
+{
+  rm->rt_metric = metric;
+  return 0;
+}
+
 int
 LinuxRTCtrl::add_rt_entry(struct rtentry *rm)
 {
@@ -143,6 +151,34 @@ LinuxRTCtrl::del_rt_entry(struct rtentry *rm)
   if ((err = ioctl(rt_sockfd, SIOCDELRT, rm)) < 0) {
     BRN_ERROR("SIOCDELRT failed , ret->%d\n",err);
         switch (errno) {
+      case EEXIST:
+        BRN_ERROR("EXIST");
+        break;
+      case ENETUNREACH:
+        BRN_ERROR("ENETUNREACH");
+        break;
+      case EPERM:
+        BRN_ERROR("EPERM");
+        break;
+      default:
+        BRN_ERROR("UNKNOWN");
+    }
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+LinuxRTCtrl::update_rt_entry(struct rtentry *rm)
+{
+  int err;
+
+  if ( uid != 0 ) return 0;
+
+  if ((err = ioctl(rt_sockfd, SIOCADDRT, rm)) < 0) {
+    BRN_ERROR("SIOCADDRT failed , ret->%d %d\n",err, errno);
+    switch (errno) {
       case EEXIST:
         BRN_ERROR("EXIST");
         break;
