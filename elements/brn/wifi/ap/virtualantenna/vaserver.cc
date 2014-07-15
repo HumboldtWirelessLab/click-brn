@@ -145,6 +145,8 @@ VAServer::select_ap(IPAddress client)
 
   vaci = *vaci_p;
 
+  uint32_t timenow_ms = Timestamp::now().msecval();
+
   switch (_strategy) {
     case VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
       uint32_t min_snr = 0;
@@ -173,12 +175,83 @@ VAServer::select_ap(IPAddress client)
       if ( best_csi == NULL ) return NULL;
       break;
     }
+    case VIRTUAL_ANTENNA_STRATEGY_MAX_THROUGHPUT: {
+	//
+	// search the AP which offers the highest throughput
+
+      uint32_t max_data_rate_all = 0; // best data rate among all APs
+
+      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); iter++) { // for each available AP
+        CSI *csi = iter.value();
+
+        CSI *best_csi_ap = NULL;
+	uint32_t max_data_rate = 0; // best data rate for a given AP
+
+        for ( int i = 0; i < MAX_NUM_RATES; i++) { // for each available MODE: 3x SISO, 2x MIMO_2, 1x MIMO_3
+
+	  // calc spatial multiplexing gain
+          int sm_gain = 1;
+	  if (i <= 2) {
+	     sm_gain = 1;
+	  } else if (i >= 3 && i <= 5) {
+	     sm_gain = 2;
+	  } else {
+	     sm_gain = 3;
+	  }
+
+	  for ( int t = 0; t < 8; t++) { // for each available MCS
+		// eff. SNR depends on the MCS; select the proper bin
+		int effSnrBin = 0;
+		if (t == 0) {
+		   effSnrBin = 0; // BPSK
+		} else if (t >= 1 && t <= 2) {
+		   effSnrBin = 1; // QPSK
+		} else if (t >= 3 && t <= 4) {
+		   effSnrBin = 2; // 16QAM
+		} else {
+		   effSnrBin = 3; // 64QAM
+		}
+
+	     	if (csi->_eff_snrs[i][effSnrBin] > mcs_to_snr_threshold[t]) { // the eff. SNR is larger than the threshold
+
+		    // calc data rate		    
+		    int data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
+
+		    // valid MCS (above threshold)
+		    if (data_rate > max_data_rate_all) { // total best
+		       best_csi = csi;
+		       max_data_rate_all = data_rate;
+		    }		
+		    if (data_rate > max_data_rate) { // best solution for each AP
+		       best_csi_ap = csi;
+		       max_data_rate = data_rate;
+		    }		
+	        }
+	  }
+        }
+	// print best solution for a given AP
+	if ( _debug > 0 && best_csi_ap != NULL ) {
+	  click_chatter("%d max data rate towards AP %s is %d", timenow_ms, best_csi_ap->_to.unparse().c_str(), max_data_rate);
+	}
+
+      }
+
+      if ( best_csi == NULL ) return NULL;
+      break;
+	//
+	//
+    }
+
     default: {
       BRN_ERROR("Unknown strategy!");
     }
   }
 
   if ( best_csi == NULL ) return NULL;
+
+  if (_debug > 0) {
+    click_chatter("%d best AP for %s is %s", timenow_ms, best_csi->_from.unparse().c_str(), best_csi->_to.unparse().c_str());
+  }
 
   return &(best_csi->_to);
 }
