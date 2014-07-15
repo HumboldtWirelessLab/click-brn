@@ -17,7 +17,7 @@ CLICK_DECLS
 #define METRIC_ROUTING
 
 VAServer::VAServer():
-  _strategy(VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI),
+  _strategy(VIRTUAL_ANTENNA_STRATEGY_MAX_MIN_RSSI),
   _rtctrl(NULL),
   _rt_update_timer(this),
   _rt_update_interval(0),
@@ -166,7 +166,7 @@ VAServer::select_ap(IPAddress client)
   uint32_t timenow_ms = Timestamp::now().msecval();
 
   switch (_strategy) {
-    case VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
+    case VIRTUAL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
       uint32_t min_snr = 0;
       uint32_t max_min_snr_overall = 0;
 
@@ -248,7 +248,7 @@ VAServer::select_ap(IPAddress client)
 	  }
         }
 	// print best solution for a given AP
-	if ( _debug > 0 && best_csi_ap != NULL ) {
+	if ( BRN_DEBUG_LEVEL_DEBUG && (best_csi_ap != NULL) ) {
 	  click_chatter("%d max data rate towards AP %s is %d", timenow_ms, best_csi_ap->_to.unparse().c_str(), max_data_rate);
 	}
 
@@ -266,10 +266,6 @@ VAServer::select_ap(IPAddress client)
   }
 
   if ( best_csi == NULL ) return NULL;
-
-  if (_debug > 0) {
-    click_chatter("%d best AP for %s is %s", timenow_ms, best_csi->_from.unparse().c_str(), best_csi->_to.unparse().c_str());
-  }
 
   return &(best_csi->_to);
 }
