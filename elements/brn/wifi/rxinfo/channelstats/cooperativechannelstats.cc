@@ -228,7 +228,7 @@ String CooperativeChannelStats::stats_handler(int /*mode*/)
         struct neighbour_airtime_stats *n_nas = iter_m.value();
         uint32_t duration_percent = (uint32_t)n_nas->_duration * (uint32_t)100 / duration_sum;
 
-        sa << "\t\t\t<2hop_neighbour addr=\"" << n_ea.unparse() << "\" rx_pkt=\"" << n_nas->_rx_pkt_count;
+        sa << "\t\t\t<two_hop_neighbour addr=\"" << n_ea.unparse() << "\" rx_pkt=\"" << n_nas->_rx_pkt_count;
         sa << "\" rx_bytes=\"" << n_nas->_rx_byte_count << "\" min_rssi=\"" << (uint32_t)n_nas->_min_rssi;
         sa << "\" max_rssi=\"" << (uint32_t)n_nas->_max_rssi << "\" avg_rssi=\"" << (uint32_t)n_nas->_avg_rssi;
         sa << "\" std_rssi=\"" << (uint32_t)n_nas->_std_rssi << "\" duration=\"" << (uint32_t)n_nas->_duration << "\" duration_percent=\"" << duration_percent << "\" />\n";

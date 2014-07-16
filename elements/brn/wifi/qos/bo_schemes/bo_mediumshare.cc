@@ -29,8 +29,6 @@ BoMediumShare::BoMediumShare()
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_MEDIUMSHARE;
-
-  memset(&_ms_info, 0, sizeof(struct ms_info_s));
 }
 
 BoMediumShare::~BoMediumShare()
@@ -43,13 +41,6 @@ void * BoMediumShare::cast(const char *name)
 
   return BackoffScheme::cast(name);
 }
-
-static int
-tx_handler(void *element, const EtherAddress *ea, char *buffer, int size);
-
-static int
-rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/);
-
 
 int BoMediumShare::initialize(ErrorHandler *errh)
 {
@@ -93,20 +84,22 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
   struct airtime_stats *as = _cst->get_latest_stats();
 
+  if (as->stats_id < 2)
+    return _current_bo;
+
   if (as->stats_id == _last_id_cw)
     return _current_bo;
 
   _last_id_cw = as->stats_id;
-
-  if (_last_id_cw < 2)
-    return _current_bo;
+  _last_id_hf = as->stats_id;
 
   BRN_DEBUG("BoMediumShare::get_cwmin():\n");
 
   int own_tx = as->hw_tx;
+  int own_rx = as->hw_rx;
 
   BRN_DEBUG("  current bo: %d\n", _current_bo);
-  BRN_DEBUG("  own tx: %d\n", own_tx);
+  BRN_DEBUG("  own tx: %d own rx: %d\n", own_tx, own_rx);
 
   NodeChannelStatsMap *ncstm = _cocst->get_stats_map();
   NodeChannelStatsMapIter ncstm_iter = ncstm->begin();
@@ -114,12 +107,10 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
   int tx_sum = own_tx;
   int no_nbs = 1;
 
+  /* for every neighbour: get register content */
   for (; ncstm_iter != ncstm->end(); ++ncstm_iter) {
 
     const char* nb = ncstm_iter.key().unparse().c_str();
-    NodeChannelStats *ncst = ncstm_iter.value();
-
-    struct local_airtime_stats *nb_cst = ncst->get_last_stats();
 
     NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
 
@@ -138,35 +129,94 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
       BRN_DEBUG("OLI: 2hop duration_percent for %s is now : %f\n", n_ea.unparse().c_str(), duration_percent);
     }
 /*
-    if (nb_cst->hw_tx == 0)
-      return _current_bo;
+    // for SCD only (exclude the receiver cuz he's got 0 tx all the time
+    if (!strcmp(nb, "00-00-00-00-00-01"))
+      continue;
 */
-    if (nb_cst->hw_tx < 5)
+
+    if (!strcmp(nb, "00-00-00-00-00-02"))
       continue;
 
+    NodeChannelStats *ncst = ncstm_iter.value();
 
-    BRN_DEBUG("  Nb: %s tx: %d\n", nb, nb_cst->hw_tx);
+    struct local_airtime_stats *nb_cst = ncst->get_last_stats();
+    BRN_DEBUG("  Nb: %s tx: %d  \trx: %d\n", nb, nb_cst->hw_tx, nb_cst->hw_rx);
 
     tx_sum += nb_cst->hw_tx;
     no_nbs++;
+
+
+/* HIDDEN NODE: for every neighbours neighbour calc tx % based on
+   tx duration in usec */
+
+    struct click_wifi *w = (struct click_wifi *) p->data();
+    EtherAddress my_ea = EtherAddress(w->i_addr2);
+
+    NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
+    NeighbourStatsMapIter nsm_iter = nsm->begin();
+
+    for (; nsm_iter != nsm->end(); ++nsm_iter) {
+        EtherAddress n_ea = nsm_iter.key();
+        struct neighbour_airtime_stats *nas = nsm_iter.value();
+
+        double dur_percent = nas->_duration / 1000000.0;
+        dur_percent *= 100;
+        dur_percent = (int) dur_percent;
+
+        if (n_ea == my_ea)
+          continue;
+
+        if (n_ea == brn_etheraddress_broadcast)
+          continue;
+
+        BRN_DEBUG("    2hop Nb: %s tx: %d\n", n_ea.unparse().c_str(), (int) dur_percent);
+
+        tx_sum += dur_percent;
+        no_nbs++;
+    }
+
   }
 
   int mean_tx = tx_sum / no_nbs;
 
-  BRN_DEBUG("  tx sum: %d no nbs: %d mean tx: %d\n", tx_sum, no_nbs, mean_tx);
+  BRN_DEBUG("  own_tx: %d mean tx: %d  (tx sum: %d no nbs: %d)\n", own_tx, mean_tx, tx_sum, no_nbs);
 
-  if (own_tx < mean_tx) {
-    BRN_DEBUG("  decrease");
+
+  if (tx_sum > 100) {
+    BRN_DEBUG("  >> own decision: increase (sum > 100)");
+    _bo_decision++;
+    BRN_DEBUG("  current bo_decision: %d\n", _bo_decision);
+  } else if (own_tx < mean_tx) {
+    BRN_DEBUG("  >> own decision: decrease");
+    _bo_decision--;
+    BRN_DEBUG("  current bo_decision: %d\n", _bo_decision);
+  } else  if (own_tx > mean_tx) {
+    BRN_DEBUG("  >> own decision: increase");
+    _bo_decision++;
+    BRN_DEBUG("  current bo_decision: %d\n", _bo_decision);
+  } else if (own_tx == mean_tx) {
+    BRN_DEBUG("  >> own decision: no change");
+    BRN_DEBUG("     current bo_decision: %d\n", _bo_decision);
+  }
+
+  if (_bo_decision < 0) {
+    BRN_DEBUG("  decrease\n");
     decrease_cw();
-  } else if (own_tx > mean_tx) {
-    BRN_DEBUG("  increase");
+  } else if (_bo_decision == 0) {
+    BRN_DEBUG("  no change. current bo: %d\n", _current_bo);
+  } else if (_bo_decision > 0) {
+    BRN_DEBUG("  increase\n");
     increase_cw();
   }
 
   if (_current_bo < 32)
     _current_bo = 32;
 
-  BRN_DEBUG("new bo: %d\n", _current_bo);
+  if (_current_bo > 8096)
+    _current_bo = 8096;
+
+  BRN_DEBUG("  new bo: %d\n", _current_bo);
+
   if (_debug >= BrnLogger::DEBUG)
     click_chatter("\n");
 
@@ -187,17 +237,24 @@ void BoMediumShare::handle_feedback(uint8_t retries)
 
   _last_id_hf = as->stats_id;
 
-  if (_retry_sum > 0) {
-    BRN_DEBUG("BoMediumShare::handle_feedback():");
-    BRN_DEBUG("  retry sum: %d current bo: %d - increase - new bo: %d\n", _retry_sum, _current_bo, _current_bo * 2);
+  _bo_decision = -1; /* Gravitation */
 
-    if (_debug >= BrnLogger::DEBUG)
-      click_chatter("\n");
+  BRN_DEBUG("BoMediumShare::handle_feedback():");
+  BRN_DEBUG("  retry sum: %d\n", _retry_sum);
 
-    increase_cw();
+  if (_retry_sum > 20) {
+    BRN_DEBUG("  >> own decision: increase");
+    _bo_decision++;
+  } else {
+    BRN_DEBUG("  >> own decision: no change");
   }
 
+  BRN_DEBUG("  current bo_decision: %d\n", _bo_decision);
+
   _retry_sum = 0;
+
+  if (_debug >= BrnLogger::DEBUG)
+    click_chatter("\n");
 
   return;
 }
@@ -206,42 +263,6 @@ void BoMediumShare::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;
   _max_cwmin = max;
-}
-
-int BoMediumShare::lpSendHandler(char *buffer, int size, const EtherAddress *ea)
-{
-  (void) ea;
-
-  BRN_DEBUG("BoMediumShare::lpSendHandler()\n");
-
-  struct ms_info_s *ms_info = (struct ms_info_s *) buffer;
-
-  if (size < (int)sizeof(struct ms_info_s)) {
-    BRN_WARN("BoMediumShare.lpSendHandler():\n");
-    BRN_WARN("No Space for ms_info struct  in Linkprobe\n");
-    return 0;
-  }
-
-  BRN_DEBUG("  sending medium share info\n");
-
-  ms_info->last_tx = _last_tx;
-
-  return sizeof(struct ms_info_s);
-}
-
-int BoMediumShare::lpReceiveHandler(char *buffer, int size, EtherAddress *ea)
-{
-  (void) size;
-
-  BRN_DEBUG("BoMediumShare::lpReceiveHandler()");
-
-  struct ms_info_s *ms_info = (struct ms_info_s *) buffer;
-
-  BRN_DEBUG("  received tx: %d from %s\n", ms_info->last_tx, ea->unparse().c_str());
-
-
-
-  return sizeof(struct ms_info_s);
 }
 
 void BoMediumShare::increase_cw()
@@ -257,21 +278,6 @@ void BoMediumShare::increase_cw_strict(uint8_t retries)
 void BoMediumShare::decrease_cw()
 {
   _current_bo = _current_bo >> 1;
-}
-
-
-static int
-tx_handler(void *element, const EtherAddress *ea, char *buffer, int size)
-{
-  BoMediumShare *bo_ms = (BoMediumShare *) element;
-  return bo_ms->lpSendHandler(buffer, size, ea);
-}
-
-static int
-rx_handler(void *element, EtherAddress *ea, char *buffer, int size, bool /*is_neighbour*/, uint8_t /*fwd_rate*/, uint8_t /*rev_rate*/)
-{
-  BoMediumShare *bo_ms = (BoMediumShare *) element;
-  return bo_ms->lpReceiveHandler(buffer, size, ea);
 }
 
 
