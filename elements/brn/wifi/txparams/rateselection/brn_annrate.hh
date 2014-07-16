@@ -46,7 +46,7 @@ class BrnAnnRate : public RateSelection
 
     int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_ON_STATS_UPDATE; }
     
-    int rate_to_index(uint8_t rate_mbits):
+    int rate_to_index(uint8_t rate_mbits);
 
 };
 
