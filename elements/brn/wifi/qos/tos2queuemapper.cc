@@ -198,7 +198,7 @@ Tos2QueueMapper::simple_action(Packet *p)
   //add stats
   _queue_usage[opt_queue]++;
   _bo_usage_usage[_bo_exp[opt_queue]]++;
-  _last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
+  //_last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
 
   if (TOS2QM_ALL_BOS_STATS) {
     _all_bos[_all_bos_idx] = opt_cwmin;

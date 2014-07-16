@@ -10,24 +10,12 @@
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
 #include "backoff_scheme.hh"
-
-
 #include "elements/brn/wifi/brnwifi.hh"
-
-
 
 CLICK_DECLS
 
+
 #define BO_MEDIUMSHARE_RETRY_TRESHOLD 1
-
-typedef HashMap<EtherAddress, uint32_t> MsTable;
-typedef MsTable::const_iterator MsTableIter;
-
-
-struct ms_info_s {
-  uint32_t last_tx;
-};
-
 
 class BoMediumShare : public BackoffScheme {
 /* Derived Functions */
@@ -46,10 +34,6 @@ class BoMediumShare : public BackoffScheme {
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
   void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
-
-  /* Link Probe Handler */
-  int lpSendHandler(char *buffer, int size, const EtherAddress *ea);
-  int lpReceiveHandler(char *buffer, int size, EtherAddress *ea);
 
  public:
   BoMediumShare();
@@ -73,8 +57,7 @@ private:
   uint32_t _last_id_hf;
   uint32_t _retry_sum;
 
-  struct ms_info_s _ms_info;
-  MsTable _ms_table;
+  int _bo_decision;
 };
 
 
