@@ -142,9 +142,18 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     csi = new CSI(client, csi_node, eff_snrs_int);
     vaci->csi_map.insert(csi_node, csi);
 #ifdef METRIC_ROUTING
-    vaci->set_gateway(vaai);
-    LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),(client_is_new?0:1000));
-    _rtctrl->add_rt_entry(&(vaci->routing_entry));
+    if ( client_is_new ) {
+      vaci->set_gateway(vaai);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),0);
+      _rtctrl->add_rt_entry(&(vaci->routing_entry));
+    } else {
+      LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(vaci->routing_entry.rt_gateway), csi_node);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),1000);
+      _rtctrl->add_rt_entry(&(vaci->routing_entry));
+
+      LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(vaci->routing_entry.rt_gateway), vaci->current_antenna->_ip);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),0);
+    }
 #endif
   } else {
     csi = *csi_p;
