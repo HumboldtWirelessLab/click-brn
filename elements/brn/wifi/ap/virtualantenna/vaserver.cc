@@ -259,46 +259,49 @@ VAServer::set_ap(IPAddress &client, IPAddress &ap)
   VAClientInfo **vaci_p = va_cl_info_map.findp(client);
   VAClientInfo *vaci = NULL;
 
-  VAAntennaInfo **vaai_p = va_ant_info_map.findp(ap);
-  VAAntennaInfo *vaai = NULL;
-
   if (vaci_p == NULL) {
     BRN_ERROR("Client %s not found");
     return;
   }
+
+  vaci = *vaci_p;
+
+  //We already set this ap as va?
+  if ( vaci->current_antenna->_ip == ap ) return;
+
+  VAAntennaInfo **vaai_p = va_ant_info_map.findp(ap);
+  VAAntennaInfo *vaai = NULL;
 
   if (vaai_p == NULL) {
     BRN_ERROR("AP %s not found");
     return;
   }
 
-  vaci = *vaci_p;
   vaai = *vaai_p;
 
-  struct rtentry *old_routing_entry, *new_routing_entry;
+  struct rtentry *routing_entry = &(vaci->routing_entry);
 
-  old_routing_entry = &(vaci->routing_entry);
-  vaci->set_gateway(vaai);
-  new_routing_entry = &(vaci->routing_entry);
-
-  if ( old_routing_entry != new_routing_entry ) {
 #ifdef METRIC_ROUTING
-    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,0);
-    _rtctrl->add_rt_entry(new_routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->add_rt_entry(routing_entry);
 
-    _rtctrl->del_rt_entry(old_routing_entry);
-    LinuxRTCtrl::set_rt_entry_metric(old_routing_entry,1000);
-    _rtctrl->add_rt_entry(old_routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), vaci->current_antenna->_ip); //set old ap (temporarily) (just for del)
+  _rtctrl->del_rt_entry(routing_entry);
+  LinuxRTCtrl::set_rt_entry_metric(routing_entry,1000);
+  _rtctrl->add_rt_entry(routing_entry);
 
-    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,1000);
-    _rtctrl->del_rt_entry(new_routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->del_rt_entry(routing_entry);
 
-    LinuxRTCtrl::set_rt_entry_metric(new_routing_entry,0);
+  LinuxRTCtrl::set_rt_entry_metric(routing_entry,0);
 #else
-    _rtctrl->add_rt_entry(new_routing_entry);
-    _rtctrl->del_rt_entry(old_routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->add_rt_entry(routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), vaci->current_antenna->_ip); //set old ap (temporarily) (just for del)
+  _rtctrl->del_rt_entry(routing_entry);
 #endif
-  }
+
+  vaci->set_gateway(vaai); //set final
 
   if ( _verbose ) {
     click_chatter("RT,%s,%s,%s,0,0,0,0,0,0", Timestamp::now().unparse().c_str(), vaci->_ip.unparse().c_str(),
