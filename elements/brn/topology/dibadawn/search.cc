@@ -462,11 +462,12 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   commonStatistic.updateEdgeMarking(marking);
 
   if(IS_VERBOSE_ENABLED(config))
-    click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' src='%s' />",
+    click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' src='%s' searchId='%s' />",
       config.thisNodeAsCstr(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str(),
-      src);
+      src,
+      searchId.asString().c_str());
 }
 
 void DibadawnSearch::updateAdjacent(DibadawnPacket& packet)
