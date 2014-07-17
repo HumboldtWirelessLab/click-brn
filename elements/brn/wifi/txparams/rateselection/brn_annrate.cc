@@ -30,7 +30,7 @@ CLICK_DECLS
 
 BrnAnnRate::BrnAnnRate()
 {
-  _default_strategy = RATESELECTION_FIXRATE;
+  _default_strategy = RATESELECTION_ANN;
   String s(ANN_SPEC);
   _ann = new BrnAnnRateNet(s);
 }
@@ -69,7 +69,7 @@ BrnAnnRate::configure(Vector<String> &conf, ErrorHandler *errh)
 /************************************************************************************/
 /********************************** H E L P E R *************************************/
 /************************************************************************************/
-const int rates[] = {6, 9, 12, 18, 24, 36, 48, 54};
+const int rates[] = {1, 2, 5, 6, 9, 11, 12, 18, 24, 36, 48, 54};
 
 int
 BrnAnnRate::rate_to_index(uint8_t rate_mbits)
@@ -89,13 +89,13 @@ BrnAnnRate::rate_to_index(uint8_t rate_mbits)
 void
 BrnAnnRate::adjust_all(NeighborTable *neighbors)
 {
-  for (NIter iter = neighbors->begin(); iter.live(); iter++) {
-    /* 
+  /*for (NIter iter = neighbors->begin(); iter.live(); iter++) {
+     
     NeighbourRateInfo *nri = iter.value();
     setMinstrelInfo(nri);
      *  todo replace this lines
-     */
-  }
+     
+  }*/
 }
 
 void
