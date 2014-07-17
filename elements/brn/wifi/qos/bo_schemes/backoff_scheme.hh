@@ -6,6 +6,7 @@
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/schemelist.hh"
+#include "elements/brn/routing/identity/rxtxcontrol.h"
 
 CLICK_DECLS
 
