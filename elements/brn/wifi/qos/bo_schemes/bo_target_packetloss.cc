@@ -88,7 +88,7 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 
 
   // Tests what is known
-  backoff_window_size = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
+  backoff_window_size = _backoff_matrix_tmt_backoff_collision_probability[index_no_neighbours][index_search_likelihood_collision];
 
   BRN_DEBUG("    backoffwin: %d\n\n", backoff_window_size);
 
