@@ -22,7 +22,7 @@
 #if CLICK_NS
 #include <click/router.hh>
 #include <click/simclick.h>
-#include "elements/brn/routing/identity/txcontrol.h"
+#include "elements/brn/routing/identity/rxtxcontrol.h"
 #endif
 #endif
 
