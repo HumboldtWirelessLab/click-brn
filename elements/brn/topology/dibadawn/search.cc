@@ -47,11 +47,11 @@ void forwardSendTimerCallback(Timer*, void* p)
   delete(param);
 }
 
-void forwardTimeoutCallback(Timer*, void *search)
+void forwardPhaseEndCallback(Timer*, void *search)
 {
   DibadawnSearch* s = (DibadawnSearch*) search;
   assert(s != NULL);
-  s->forwardTimeout();
+  s->beginBackwardPhase();
 }
 
 DibadawnSearch::DibadawnSearch(
@@ -92,11 +92,11 @@ void DibadawnSearch::initCommon(
   brn_click_element = click_element;
   isArticulationPoint = false;
 
-  forwardTimeoutTimer = new Timer(forwardTimeoutCallback, this);
+  forwardPhaseEndTimer = new Timer(forwardPhaseEndCallback, this);
   forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
 }
 
-void DibadawnSearch::forwardTimeout()
+void DibadawnSearch::beginBackwardPhase()
 {
   if(IS_VERBOSE_ENABLED(config))
     click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
@@ -107,9 +107,6 @@ void DibadawnSearch::forwardTimeout()
   forwardMessages();
   detectArticulationPoints();
   voteForArticulaionPointsAndBridges();
-  
-  if(config.isPrintResults)
-    commonStatistic.print(searchId.asString());
 
   if(IS_VERBOSE_ENABLED(config))
     click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
@@ -229,7 +226,8 @@ void DibadawnSearch::detectArticulationPoints()
 
 void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
-
+  if(config.isPrintResults)
+    commonStatistic.print(searchId.asString());
 }
 
 void DibadawnSearch::start_search()
@@ -248,6 +246,7 @@ void DibadawnSearch::start_search()
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
   
+  activateForwardPhaseEndTimer(packet);
   sendBroadcastWithTimeout(packet);
 }
 
@@ -267,10 +266,10 @@ void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
     linkStat.logTx();
 }
 
-void DibadawnSearch::activateForwardTimer(DibadawnPacket &packet)
+void DibadawnSearch::activateForwardPhaseEndTimer(DibadawnPacket &packet)
 {
-  forwardTimeoutTimer->initialize(this->brn_click_element, false);
-  forwardTimeoutTimer->schedule_after_msec(config.maxTraversalTimeMs * (config.maxHops - packet.hops) + (config.maxHops * config.maxJitter));
+  forwardPhaseEndTimer->initialize(this->brn_click_element, false);
+  forwardPhaseEndTimer->schedule_after_msec(config.maxTraversalTimeMs * (config.maxHops - packet.hops) + (config.maxHops * config.maxJitter));
 }
 
 void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
@@ -365,7 +364,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       txPacket.treeParent = rxPacket.forwardedBy;
       sentForwardPacket = txPacket;
 
-      activateForwardTimer(txPacket);
+      activateForwardPhaseEndTimer(txPacket);
       sendDelayedBroadcastWithTimeout(txPacket);
     }
     else
