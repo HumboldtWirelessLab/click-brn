@@ -52,7 +52,7 @@ public:
 private:
     EtherAddress parentNode;
     bool visited;
-    Timer *forwardTimeoutTimer;
+    Timer *forwardPhaseEndTimer;
     Timer *forwardSendTimer;
     DibadawnSearchId searchId;
     Vector<DibadawnPacket> crossEdges;
@@ -66,7 +66,7 @@ private:
     BRNElement *brn_click_element;
 
     void initCommon(BRNElement *click_element);
-    void activateForwardTimer(DibadawnPacket &packet);
+    void activateForwardPhaseEndTimer(DibadawnPacket &packet);
     void activateForwardSendTimer(DibadawnPacket &packet);
     void receiveForwardMessage(DibadawnPacket &packet);
     bool isValidCrossEdge(DibadawnPacket &rxPacket);
@@ -100,7 +100,7 @@ public:
     void receive(DibadawnPacket &packet);
     void start_search();
     bool isResponsibleFor(DibadawnPacket &packet);
-    void forwardTimeout();
+    void beginBackwardPhase();
 };
 
 CLICK_ENDDECLS
