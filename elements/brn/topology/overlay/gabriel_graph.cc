@@ -80,6 +80,7 @@ GabrielGraph::calc_neighbors() {
 	_neighbors.clear();
 	EtherAddress _my_ether_add=*(_me->getMasterAddress());
 	_link_table->get_neighbors(_my_ether_add, _neighbors);
+	_ovl->reset();
 	for (Vector<EtherAddress>::iterator i=_neighbors.begin();i!=_neighbors.end();++i) {
 		bool useable=true;
 		for (Vector<EtherAddress>::iterator k=_neighbors.begin();k!=_neighbors.end();++k) {
@@ -87,13 +88,15 @@ GabrielGraph::calc_neighbors() {
 			uint32_t d_mei=metric2dist_sqr(_link_table->get_link_metric(_my_ether_add,*i));
 			uint32_t d_mek=metric2dist_sqr(_link_table->get_link_metric(_my_ether_add,*k));
 			uint32_t d_ki=metric2dist_sqr(_link_table->get_link_metric(*k,*i));
-			if (d_mei>d_mek+d_ki) {
+			if (d_mei>d_mek+d_ki+_threshold) {
 				useable=false;
 				break;
 			}
 		}
 		if (useable) {
-			_neighbors.push_back(*i);
+			//_neighbors.push_back(*i);
+			_ovl->addOwnChild(i);
+			_ovl->addParent(i,&_my_ether_add);
 		}
 	}
     Timestamp _next = Timestamp::now() + Timestamp::make_msec(_update_intervall);
