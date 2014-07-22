@@ -81,6 +81,7 @@ GabrielGraph::calc_neighbors() {
 	EtherAddress _my_ether_add=*(_me->getMasterAddress());
 	_link_table->get_neighbors(_my_ether_add, _neighbors);
 	_ovl->reset();
+	int size=0;
 	for (Vector<EtherAddress>::iterator i=_neighbors.begin();i!=_neighbors.end();++i) {
 		bool useable=true;
 		for (Vector<EtherAddress>::iterator k=_neighbors.begin();k!=_neighbors.end();++k) {
@@ -97,10 +98,12 @@ GabrielGraph::calc_neighbors() {
 			//_neighbors.push_back(*i);
 			_ovl->addOwnChild(i);
 			_ovl->addParent(i,&_my_ether_add);
+			size++;
 		}
 	}
     Timestamp _next = Timestamp::now() + Timestamp::make_msec(_update_intervall);
     _timer.schedule_at(_next);
+	//BRN_DEBUG("GG: Recalculated neighborhood. Size: %d",size);
 }
 
 int
