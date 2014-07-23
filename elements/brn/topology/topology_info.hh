@@ -22,6 +22,7 @@
 
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/timestamp.hh>
 
 #include "elements/brn/brnelement.hh"
 
@@ -36,8 +37,10 @@ public:
         EtherAddress node_a;
         EtherAddress node_b;
         uint32_t countDetection;
+        Timestamp time_of_last_detection;
 
         Bridge(EtherAddress *a, EtherAddress *b)
+        :       time_of_last_detection(Timestamp::now())
         {
             node_a = EtherAddress(a->data());
             node_b = EtherAddress(b->data());
@@ -47,6 +50,7 @@ public:
         void incDetection()
         {
             countDetection++;
+            time_of_last_detection = Timestamp::now();
         }
 
         bool equals(EtherAddress *a, EtherAddress *b)
@@ -61,8 +65,10 @@ public:
     public:
         EtherAddress node;
         uint32_t countDetection;
+        Timestamp time_of_last_detection;
 
         ArticulationPoint(EtherAddress *n)
+        :        time_of_last_detection(Timestamp::now())
         {
             node = EtherAddress(n->data());
             countDetection = 1;
@@ -71,6 +77,7 @@ public:
         void incDetection()
         {
             countDetection++;
+            time_of_last_detection = Timestamp::now();
         }
 
         bool equals(EtherAddress *a)
