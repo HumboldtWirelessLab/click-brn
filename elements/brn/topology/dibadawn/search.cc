@@ -217,9 +217,10 @@ void DibadawnSearch::detectArticulationPoints()
   bool isArticulationPoint = !closure.isOneMatrix();
   if (isArticulationPoint)
   {
-    if(IS_DEBUG_ENABLED(config))
-      click_chatter("<ArticulationPoint node='%s'/>",
-        config.thisNodeAsCstr());
+    if(IS_EVAL_ENABLED(config))
+      click_chatter("<ArticulationPoint node='%s' time='%s'/>",
+        config.thisNodeAsCstr(),
+        Timestamp::now().unparse().c_str());
   }
   commonStatistic.upateArticulationPoint(config.thisNode, isArticulationPoint);
 }
@@ -460,9 +461,10 @@ void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nod
   DibadawnEdgeMarking marking(searchId, true, nodeA, nodeB, competence);
   commonStatistic.updateEdgeMarking(marking);
 
-  if(IS_VERBOSE_ENABLED(config))
-    click_chatter("<Bridge node='%s' nodeA='%s' nodeB='%s' src='%s' searchId='%s' />",
+  if(IS_EVAL_ENABLED(config))
+    click_chatter("<Bridge node='%s' time='%s' nodeA='%s' nodeB='%s' src='%s' searchId='%s' />",
       config.thisNodeAsCstr(),
+      Timestamp::now().unparse().c_str(),
       nodeA.unparse_dash().c_str(),
       nodeB.unparse_dash().c_str(),
       src,

@@ -62,7 +62,11 @@ TopologyInfo::initialize(ErrorHandler *)
 void
 TopologyInfo::addBridge(EtherAddress *a, EtherAddress *b)
 {
-  if ( getBridge(a,b) == NULL ) _bridges.push_back(new Bridge(a,b));
+  TopologyInfo::Bridge *br = getBridge(a,b);
+  if ( br == NULL ) 
+    _bridges.push_back(new Bridge(a,b));
+  else
+    br->incDetection();
 }
 
 void 
@@ -82,7 +86,12 @@ TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
 void
 TopologyInfo::addArticulationPoint(EtherAddress *a)
 {
-  if ( getArticulationPoint(a) == NULL ) _artpoints.push_back(new ArticulationPoint(a));
+  TopologyInfo::ArticulationPoint *ap = getArticulationPoint(a);
+  if ( ap == NULL ) 
+    _artpoints.push_back(new ArticulationPoint(a));
+  else
+    ap->incDetection();
+  
 }
 
 void 
@@ -145,7 +154,12 @@ TopologyInfo::topology_info(String extra_data)
   for( int i = 0; i < _bridges.size(); i++ )
   {
     br = _bridges[i];
-    sa << "\t\t<bridge id='" << (i+1) << "' node_a='" << br->node_a << "' node_b='" << br->node_b << "' />\n";
+    sa << "\t\t<bridge ";
+    sa << "id='" << (i+1) << "' ";
+    sa << "time='" << br->time_of_last_detection.unparse() << "' ";
+    sa << "node_a='" << br->node_a << "' ";
+    sa << "node_b='" << br->node_b << "' ";
+    sa << "/>\n";
   }
   sa << "\t</bridges>\n";
 
@@ -153,7 +167,11 @@ TopologyInfo::topology_info(String extra_data)
   for( int i = 0; i < _artpoints.size(); i++ )
   {
     ap = _artpoints[i];
-    sa << "\t\t<articulationpoint id='" << (i+1) <<  "' node='" << ap->node << "' />\n";
+    sa << "\t\t<articulationpoint ";
+    sa << "id='" << (i+1) <<  "' ";
+    sa << "time='" << br->time_of_last_detection.unparse() << "' ";
+    sa << "node='" << ap->node << "' ";
+    sa << "/>\n";
   }
   sa << "\t</articulationpoints>\n</topology_info>\n";
 
