@@ -219,6 +219,8 @@ String OverlayStructure::printOwnChildren() {
 	return sa.take_string();
 }
 
+
+//Does not print own parents
 String OverlayStructure::printParents(const EtherAddress* add,const Vector<EtherAddress> *par) {
 	StringAccum sa;
 	sa << "<parents node=\"" << add->unparse() << "\">\n";
@@ -229,6 +231,7 @@ String OverlayStructure::printParents(const EtherAddress* add,const Vector<Ether
 	return sa.take_string();
 }
 
+//Does not print own children
 String OverlayStructure::printChildren(const EtherAddress* add,const Vector<EtherAddress> *par) {
 	StringAccum sa;
 	sa << "<children node=\"" << add->unparse() << "\">\n";
