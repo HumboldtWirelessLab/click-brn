@@ -51,7 +51,11 @@ static const int32_t vector_msdu_sizes[T2QM_MAX_INDEX_MSDU_SIZE] = {500, 1500, 3
 static const int32_t vector_rates_data[T2QM_MAX_INDEX_RATES] = {2, 12, 48, 108}; //double rate
 static const int32_t vector_no_neighbours[T2QM_MAX_INDEX_NO_NEIGHBORS] = {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25};
 
-static const uint32_t fibonacci_numbers[22] = {0,1,1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,2584,4181,6765,10946};
+#define FIBONACCI_VECTOR_SIZE 20
+#define MAX_FIBONACCI_INDEX   19
+
+static const uint32_t fibonacci_numbers[FIBONACCI_VECTOR_SIZE] =
+                         {1,2,3,5,8,13,21,34,55,89,144,233,377,610,987,1597,2584,4181,6765,10946};
 
 class Tos2QmData : public Element {
 /* Derived Functions */
