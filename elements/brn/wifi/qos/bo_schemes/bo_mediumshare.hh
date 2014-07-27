@@ -43,7 +43,10 @@ class BoMediumShare : public BackoffScheme {
   void increase_cw();
   void increase_cw_strict(uint8_t retries);
   void decrease_cw();
-
+  void kohaesion(uint32_t mean_tx, uint32_t own_tx);
+  void gravitation(uint32_t own_tx);
+  void seperation(uint32_t own_tx, uint32_t retries);
+  void calc_new_bo();
 
 private:
   ChannelStats *_cst;
@@ -56,6 +59,12 @@ private:
   uint32_t _last_id_cw;
   uint32_t _last_id_hf;
   uint32_t _retry_sum;
+  float _kohaesion_value;
+  float _gravity_value;
+  float _seperation_value;
+  uint32_t _alpha;
+  uint32_t _beta;
+  uint32_t _gamma;
 
   int _bo_decision;
 };
