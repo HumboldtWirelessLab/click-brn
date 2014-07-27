@@ -111,6 +111,9 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
   for (; ncstm_iter != ncstm->end(); ++ncstm_iter) {
 
     const char* nb = ncstm_iter.key().unparse().c_str();
+    NodeChannelStats *ncst = ncstm_iter.value();
+
+    struct local_airtime_stats *nb_cst = ncst->get_last_stats();
 
     NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
 
@@ -137,9 +140,6 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
     if (!strcmp(nb, "00-00-00-00-00-02"))
       continue;
 
-    NodeChannelStats *ncst = ncstm_iter.value();
-
-    struct local_airtime_stats *nb_cst = ncst->get_last_stats();
     BRN_DEBUG("  Nb: %s tx: %d  \trx: %d\n", nb, nb_cst->hw_tx, nb_cst->hw_rx);
 
     tx_sum += nb_cst->hw_tx;
@@ -152,7 +152,6 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
     struct click_wifi *w = (struct click_wifi *) p->data();
     EtherAddress my_ea = EtherAddress(w->i_addr2);
 
-    NeighbourStatsMap *nsm = ncst->get_last_neighbour_map();
     NeighbourStatsMapIter nsm_iter = nsm->begin();
 
     for (; nsm_iter != nsm->end(); ++nsm_iter) {
@@ -280,6 +279,34 @@ void BoMediumShare::decrease_cw()
   _current_bo = _current_bo >> 1;
 }
 
+void BoMediumShare::kohaesion(uint32_t mean_tx, uint32_t own_tx)
+{
+  _kohaesion_value = 1 - (mean_tx - own_tx) / 100;
+  if (_kohaesion_value < 0)
+    _kohaesion_value *= -1;
+}
+
+void BoMediumShare::gravitation(uint32_t own_tx)
+{
+  _gravity_value = 1 - (100 - own_tx) / 100;
+}
+
+void BoMediumShare::seperation(uint32_t own_tx, uint32_t retries)
+{
+  // SCD!!
+  _seperation_value = ((_retry_sum * own_tx) - (retries * own_tx)) / (_retry_sum * own_tx);
+  // HN!! TODO!!!
+  //_seperation_value = (( _retry_sum * own_tx) - (retries * own_tx)) / (_retry_sum * own_tx);
+}
+
+void BoMediumShare::calc_new_bo()
+{
+  float y = ( _alpha * _kohaesion_value + _beta * _gravity_value + _gamma * _seperation_value ) / 3;
+  if (y < 0.5)
+    increase_cw();
+  else
+    decrease_cw();
+}
 
 CLICK_ENDDECLS
 
