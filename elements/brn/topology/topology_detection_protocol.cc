@@ -87,7 +87,7 @@ TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, 
 }
 
 WritablePacket *
-TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfo::Bridge> */*brigdes*/)
+TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfoEdge> */*brigdes*/)
 {
   struct td_header *tdh;
   WritablePacket *td_packet = WritablePacket::make( 128, NULL, sizeof(struct td_header), 32);
@@ -107,7 +107,7 @@ TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_i
 }
 
 void
-TopologyDetectionProtocol::get_info_backwd_packet(Packet */*p*/, Vector<TopologyInfo::Bridge> */*brigdes*/)
+TopologyDetectionProtocol::get_info_backwd_packet(Packet */*p*/, Vector<TopologyInfoEdge> */*brigdes*/)
 {
 
 }

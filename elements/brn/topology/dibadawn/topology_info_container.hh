@@ -17,63 +17,44 @@
  * For additional licensing options, consult http://www.BerlinRoofNet.de 
  * or contact brn@informatik.hu-berlin.de. 
  */
-#ifndef TOPOLOGY_INFO_HH
-#define TOPOLOGY_INFO_HH
+#ifndef DIBADAWN_TOPOLOGY_INFO_HH
+#define DIBADAWN_TOPOLOGY_INFO_HH
 
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timestamp.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "topology_info_edge.hh"
-#include "topology_info_node.hh"
+#include "../topology_info_edge.hh"
+#include "../topology_info_node.hh"
 
 CLICK_DECLS
 
-class TopologyInfo :  public BRNElement
+class DibadawnTopologyInfoContainer
 {
-public:   
-    TopologyInfo();
-    ~TopologyInfo();
+public:    
+    DibadawnTopologyInfoContainer();
+    DibadawnTopologyInfoContainer(const DibadawnTopologyInfoContainer &src);
+    ~DibadawnTopologyInfoContainer();
     
-    int configure(Vector<String> &, ErrorHandler *);
-    int initialize(ErrorHandler *);
-    void add_handlers();
-    
-    const char *class_name() const { return "TopologyInfo";}
-    const char *processing() const { return AGNOSTIC;}
-    
-    const char *port_count() const
-    {
-        return "0/0";
-    }
-
-    void incNoDetection();
-    
-    void addBridge(const TopologyInfoEdge &bridge);
     void addBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
     void removeBridge(EtherAddress *a, EtherAddress *b);
-    void setBridges(Vector<TopologyInfoEdge*> &new_bridges);
-    
+    void addNonBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
+    void removeNonBridge(EtherAddress *a, EtherAddress *b);
     void addArticulationPoint(EtherAddress *a, float probability=0.0);
-    void addArticulationPoint(const TopologyInfoNode &ap);
     void removeArticulationPoint(EtherAddress *a);
-    void setArticulationPoints(Vector<TopologyInfoNode*> &new_artpoints);
-    
-    void reset();
+    void addNonArticulationPoint(EtherAddress *a, float probability=0.0);
+    void removeNonArticulationPoint(EtherAddress *a);
     
     TopologyInfoEdge* getBridge(EtherAddress *a, EtherAddress *b);
+    TopologyInfoEdge* getNonBridge(EtherAddress *a, EtherAddress *b);
     TopologyInfoNode *getArticulationPoint(EtherAddress *a);
-    
-    String topology_info(void);
-    String topology_info(String extra_data);
+    TopologyInfoNode *getNonArticulationPoint(EtherAddress *a);
 
-protected:
     Vector<TopologyInfoEdge*> _bridges;
     Vector<TopologyInfoNode*> _artpoints;
     Vector<TopologyInfoEdge*> _non_bridges;
     Vector<TopologyInfoNode*> _non_artpoints;
-    int number_of_detections;
 };
 
 CLICK_ENDDECLS

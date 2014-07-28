@@ -26,6 +26,7 @@
 #include <click/sync.hh>
 
 #include "edgemarking.hh"
+#include "topology_info_container.hh"
 #include "../topology_info.hh"
 
 
@@ -35,9 +36,6 @@ class DibadawnNodeStatistic
 {
 public:
     DibadawnNodeStatistic();
-
-    void updateEdgeMarking(DibadawnEdgeMarking &marking);
-    void upateArticulationPoint(EtherAddress &node,  bool isArticulationPoint);
     
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
@@ -51,11 +49,17 @@ public:
     bool isBridgeByWeightedRule();
     void print(String extra_data);
     String get(String extra_data);
+    void appendSearchResult(DibadawnTopologyInfoContainer &result);
+    void updateTopologyInfoByVoting();
     
 private:
     Spinlock lock;
     Vector<DibadawnEdgeMarking> edgeMarkings;
     int maxMarkings;
+    
+    Vector<DibadawnTopologyInfoContainer*> searchResults;
+    int maxSearchResults;
+    
     TopologyInfo *topologyInfo;
 };
 
