@@ -23,6 +23,7 @@
 #include <click/element.hh>
 #include <click/vector.hh>
 #include <click/timestamp.hh>
+#include <click/sync.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "topology_info_edge.hh"
@@ -32,6 +33,10 @@ CLICK_DECLS
 
 class TopologyInfo :  public BRNElement
 {
+private:
+    void nonthreadsafe_addBridge(const TopologyInfoEdge &bridge);
+    void nonthreadsafe_addArticulationPoint(const TopologyInfoNode &ap);
+    
 public:   
     TopologyInfo();
     ~TopologyInfo();
@@ -50,13 +55,11 @@ public:
 
     void incNoDetection();
     
-    void addBridge(const TopologyInfoEdge &bridge);
     void addBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
     void removeBridge(EtherAddress *a, EtherAddress *b);
     void setBridges(Vector<TopologyInfoEdge*> &new_bridges);
     
     void addArticulationPoint(EtherAddress *a, float probability=0.0);
-    void addArticulationPoint(const TopologyInfoNode &ap);
     void removeArticulationPoint(EtherAddress *a);
     void setArticulationPoints(Vector<TopologyInfoNode*> &new_artpoints);
     
@@ -74,6 +77,8 @@ protected:
     Vector<TopologyInfoEdge*> _non_bridges;
     Vector<TopologyInfoNode*> _non_artpoints;
     int number_of_detections;
+    
+    Spinlock lock;
 };
 
 CLICK_ENDDECLS
