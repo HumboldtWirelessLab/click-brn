@@ -35,6 +35,7 @@
 #include "nodestatistic.hh"
 #include "config.hh"
 #include "link_statistic.hh"
+#include "topology_info_container.hh"
 
 
 CLICK_DECLS;
@@ -64,6 +65,7 @@ private:
     DibadawnPacket sentForwardPacket;
     DibadawnLinkStatistic &linkStat;
     BRNElement *brn_click_element;
+    DibadawnTopologyInfoContainer searchResult;
 
     void initCommon(BRNElement *click_element);
     void activateForwardPhaseEndTimer(DibadawnPacket &packet);
@@ -82,7 +84,7 @@ private:
     void setNonBrigdeByPayload(DibadawnPayloadElement &payload);
     void setParentNull();
     bool isParentNull();
-    void addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence, const char *src);
+    void rememberEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, float competence, const char *src);
     void pairCyclesIfPossible(DibadawnPacket &packet);
     void addPayloadElementsToMessagePuffer(DibadawnPacket &packet);
     uint16_t calcForwardDelay();

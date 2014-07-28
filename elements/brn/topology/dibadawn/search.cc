@@ -122,8 +122,7 @@ void DibadawnSearch::detectCycles()
   {
     DibadawnPacket &crossEdgePacket = crossEdges.at(i);
 
-    DibadawnEdgeMarking marking(searchId, false, config.thisNode, crossEdgePacket.forwardedBy, true);
-    commonStatistic.updateEdgeMarking(marking);
+    searchResult.addNonBridge(&config.thisNode, &crossEdgePacket.forwardedBy, 1.0);
 
     DibadawnCycle cycle(searchId, config.thisNode, crossEdgePacket.forwardedBy);
     if(IS_VERBOSE_ENABLED(config))
@@ -153,7 +152,7 @@ void DibadawnSearch::forwardMessages()
     sendTo(packet, parentNode);
     
     double competence = commonStatistic.competenceByUsedHops(packet.hops);
-    addBridgeEdgeMarking(config.thisNode, parentNode, competence, "self");
+    rememberEdgeMarking(config.thisNode, parentNode, competence, "self");
     
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
     neighbor.messages.push_back(bridge);
@@ -172,10 +171,9 @@ void DibadawnSearch::forwardMessages()
       packet.copyPayloadIfNecessary(payload);
       neighbor.copyPayloadIfNecessary(payload);
 
-      // TODO votes
+      // TODO votes; vote-branch
 
-      DibadawnEdgeMarking marking(searchId, false, config.thisNode, parentNode, false);
-      commonStatistic.updateEdgeMarking(marking);
+      searchResult.addNonBridge(&config.thisNode, &parentNode, 1.0);
     }
 
     messageBuffer.clear();
@@ -221,12 +219,16 @@ void DibadawnSearch::detectArticulationPoints()
       click_chatter("<ArticulationPoint node='%s' time='%s'/>",
         config.thisNodeAsCstr(),
         Timestamp::now().unparse().c_str());
+    searchResult.addArticulationPoint(&config.thisNode, 1.0);
   }
-  commonStatistic.upateArticulationPoint(config.thisNode, isArticulationPoint);
+  else
+    searchResult.addNonArticulationPoint(&config.thisNode, 1.0);
 }
 
 void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
+  commonStatistic.appendSearchResult(searchResult);
+  commonStatistic.updateTopologyInfoByVoting();
   if(config.isPrintResults)
     commonStatistic.print(searchId.asString());
 }
@@ -421,7 +423,7 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   if (packet.hasBridgePayload())
   {
     double competence = commonStatistic.competenceByUsedHops(packet.hops);
-    addBridgeEdgeMarking(packet.forwardedBy, config.thisNode, competence, "adjacent");
+    rememberEdgeMarking(packet.forwardedBy, config.thisNode, competence, "adjacent");
 
     DibadawnPayloadElement bridge(searchId, config.thisNode, packet.forwardedBy, true);
     DibadawnNeighbor &neighbor = adjacents.getNeighbor(packet.forwardedBy);
@@ -456,10 +458,9 @@ void DibadawnSearch::receiveBackMessage(DibadawnPacket& packet)
   }
 }
 
-void DibadawnSearch::addBridgeEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, double competence, const char *src)
+void DibadawnSearch::rememberEdgeMarking(EtherAddress &nodeA, EtherAddress &nodeB, float competence, const char *src)
 {
-  DibadawnEdgeMarking marking(searchId, true, nodeA, nodeB, competence);
-  commonStatistic.updateEdgeMarking(marking);
+  searchResult.addBridge(&nodeA, &nodeB, competence);
 
   if(IS_EVAL_ENABLED(config))
     click_chatter("<Bridge node='%s' time='%s' nodeA='%s' nodeB='%s' src='%s' searchId='%s' />",
@@ -500,14 +501,7 @@ void DibadawnSearch::setNonBrigdeByPayload(DibadawnPayloadElement& payload)
     DibadawnNeighbor & neighbor = adjacents.getNeighbor(i);
     if(neighbor.hasSameCycle(payload))
     {
-      DibadawnEdgeMarking marking;
-      marking.time = Timestamp::now();
-      marking.id = searchId;
-      marking.isBridge = false;
-      marking.nodeA = config.thisNode;
-      marking.nodeB = neighbor.address;
-      
-      commonStatistic.updateEdgeMarking(marking);
+      searchResult.addNonBridge(&config.thisNode, &neighbor.address, 1.0);
     }
   }
 }

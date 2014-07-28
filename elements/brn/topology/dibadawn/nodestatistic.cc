@@ -29,25 +29,7 @@ DibadawnNodeStatistic::DibadawnNodeStatistic()
 {
   maxMarkings = 3;
   topologyInfo = NULL;
-}
-
-void DibadawnNodeStatistic::updateEdgeMarking(DibadawnEdgeMarking &marking)
-{
-  lock.acquire();
-
-  edgeMarkings.push_front(marking);
-  if (edgeMarkings.size() > maxMarkings)
-    edgeMarkings.pop_back();
-
-  if(topologyInfo != NULL)
-  {
-    if(marking.isBridge)
-      topologyInfo->addBridge(&marking.nodeA, &marking.nodeB);
-    else
-      topologyInfo->removeBridge(&marking.nodeA, &marking.nodeB);
-  }
-  
-  lock.release();
+  maxSearchResults = 3; // todo: use config
 }
 
 bool DibadawnNodeStatistic::isBridgeByUnanimousRule()
@@ -228,17 +210,6 @@ void DibadawnNodeStatistic::setTopologyInfo(TopologyInfo* topoInfo)
   topologyInfo = topoInfo;
 }
 
-void DibadawnNodeStatistic::upateArticulationPoint(EtherAddress &node, bool isArticulationPoint)
-{
-  if(topologyInfo != NULL)
-  {
-    if(isArticulationPoint)
-       topologyInfo->addArticulationPoint(&node);
-    else
-      topologyInfo->removeArticulationPoint(&node);
-  }
-}
-
 void DibadawnNodeStatistic::print(String extra_data)
 {
   if(topologyInfo != NULL)
@@ -254,6 +225,41 @@ String DibadawnNodeStatistic::get(String extra_data)
   
   return(sa.take_string());
 }
+
+void DibadawnNodeStatistic::appendSearchResult(DibadawnTopologyInfoContainer& result)
+{
+  lock.acquire();
+  
+  if(searchResults.size() >= maxSearchResults)
+  {
+    DibadawnTopologyInfoContainer *ti = *searchResults.begin();
+    searchResults.pop_front();
+    delete(ti);
+  }
+  
+  DibadawnTopologyInfoContainer *container = new DibadawnTopologyInfoContainer(result);
+  searchResults.push_back(container);
+  
+  lock.release();
+}
+
+//todo put the whole vector to tpinfo
+void DibadawnNodeStatistic::updateTopologyInfoByVoting()
+{
+  lock.acquire();
+  
+  if (searchResults.size() > 0)
+  {
+    DibadawnTopologyInfoContainer *container = searchResults.back();
+    
+    topologyInfo->reset();
+    topologyInfo->setBridges(container->_bridges);
+    topologyInfo->setArticulationPoints(container->_artpoints);
+  }
+  
+  lock.release();
+}
+
 
 
 CLICK_ENDDECLS

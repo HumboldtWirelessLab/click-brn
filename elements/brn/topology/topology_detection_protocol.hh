@@ -86,8 +86,8 @@ class TopologyDetectionProtocol {
     static WritablePacket *fwd_packet(Packet *p, const EtherAddress *src, EtherAddress *new_node);
     static uint8_t* get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl, uint8_t *type);
 
-    static WritablePacket *new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfo::Bridge> *brigdes);
-    static void get_info_backwd_packet(Packet *p, Vector<TopologyInfo::Bridge> *brigdes);
+    static WritablePacket *new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfoEdge> *brigdes);
+    static void get_info_backwd_packet(Packet *p, Vector<TopologyInfoEdge> *brigdes);
 
 };
 
