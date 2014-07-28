@@ -45,6 +45,8 @@ TopologyInfo::~TopologyInfo()
 
 void TopologyInfo::reset()
 {
+  lock.acquire();
+  
   for (Vector<TopologyInfoEdge*>::const_iterator it = _bridges.begin(); it != _bridges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
@@ -58,6 +60,8 @@ void TopologyInfo::reset()
     delete(elem);
   }
   _artpoints.clear();
+  
+  lock.release();
 }
 
 int
@@ -86,15 +90,19 @@ TopologyInfo::incNoDetection()
 void
 TopologyInfo::addBridge(EtherAddress *a, EtherAddress *b, float probability)
 {
+  lock.acquire();
+      
   TopologyInfoEdge *br = getBridge(a, b);
   if (br == NULL)
     _bridges.push_back(new TopologyInfoEdge(a, b, probability));
   else
     br->incDetection();
+  
+  lock.release();
 }
 
 void
-TopologyInfo::addBridge(const TopologyInfoEdge &bridge)
+TopologyInfo::nonthreadsafe_addBridge(const TopologyInfoEdge &bridge)
 {
   _bridges.push_back(new TopologyInfoEdge(bridge));
 }
@@ -102,16 +110,22 @@ TopologyInfo::addBridge(const TopologyInfoEdge &bridge)
 void 
 TopologyInfo::setBridges(Vector<TopologyInfoEdge*>& new_bridges)
 {
+  lock.acquire();
+  
   for (Vector<TopologyInfoEdge*>::const_iterator it = new_bridges.begin(); it != new_bridges.end(); it++)
   {
     TopologyInfoEdge *br = *it;
-    addBridge(*br);
+    nonthreadsafe_addBridge(*br);
   }
+  
+  lock.release();
 }
 
 void
 TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
 {
+  lock.acquire();
+  
   for (Vector<TopologyInfoEdge*>::iterator it = _bridges.begin(); it != _bridges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
@@ -121,30 +135,45 @@ TopologyInfo::removeBridge(EtherAddress* a, EtherAddress* b)
       break; // After erasing an element, the iterator could not be used
     }
   }
+  
+  lock.release();
 }
 
 TopologyInfoEdge*
 TopologyInfo::getBridge(EtherAddress *a, EtherAddress *b)
 {
+  lock.acquire();
+  
+  TopologyInfoEdge* result = NULL;
   for (int i = 0; i < _bridges.size(); i++)
+  {
     if (_bridges[i]->equals(a, b)) 
-      return _bridges[i];
-
-  return NULL;
+    {
+      result = _bridges[i];
+      break;
+    }
+  }
+  
+  lock.release();
+  
+  return result;
 }
 
 void
 TopologyInfo::addArticulationPoint(EtherAddress *a, float probability)
 {
+  lock.acquire();
   TopologyInfoNode *ap = getArticulationPoint(a);
   if (ap == NULL)
     _artpoints.push_back(new TopologyInfoNode(a, probability));
   else
     ap->incDetection();
+  
+  lock.release();
 }
 
 void
-TopologyInfo::addArticulationPoint(const TopologyInfoNode &ap)
+TopologyInfo::nonthreadsafe_addArticulationPoint(const TopologyInfoNode &ap)
 {
   _artpoints.push_back(new TopologyInfoNode(ap));
 }
@@ -152,17 +181,23 @@ TopologyInfo::addArticulationPoint(const TopologyInfoNode &ap)
 void 
 TopologyInfo::setArticulationPoints(Vector<TopologyInfoNode*>& new_artpoints)
 {
+  lock.acquire();
+  
   for (Vector<TopologyInfoNode*>::const_iterator it = new_artpoints.begin(); it != new_artpoints.end(); it++)
   {
     TopologyInfoNode *ap = *it;
-    addArticulationPoint(*ap);
+    nonthreadsafe_addArticulationPoint(*ap);
   }
+  
+  lock.release();
 }
 
 
 void
 TopologyInfo::removeArticulationPoint(EtherAddress* a)
 {
+  lock.acquire();
+  
   for (Vector<TopologyInfoNode*>::iterator it = _artpoints.begin(); it != _artpoints.end(); it++)
   {
     TopologyInfoNode* elem = *it;
@@ -172,18 +207,28 @@ TopologyInfo::removeArticulationPoint(EtherAddress* a)
       break; // After erasing an element, the iterator could not be used
     }
   }
+  
+  lock.release();
 }
 
 TopologyInfoNode*
 TopologyInfo::getArticulationPoint(EtherAddress *a)
 {
+  lock.acquire();
+  
+  TopologyInfoNode *result = NULL;
   for (int i = 0; i < _artpoints.size(); i++)
   {
     if (_artpoints[i]->equals(a))
-      return _artpoints[i];
+    {
+      result = _artpoints[i];
+      break;
+    }
   }
 
-  return NULL;
+  lock.release();
+  
+  return result;
 }
 
 /*************************************************************************************************/
