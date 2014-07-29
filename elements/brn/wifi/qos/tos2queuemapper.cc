@@ -191,6 +191,7 @@ Tos2QueueMapper::simple_action(Packet *p)
     }
   }
 
+  BRN_DEBUG("optCW: %d",opt_cwmin);
   // handle trunc overflow
   if (need_recalc(opt_cwmin, tos)) {
     recalc_backoff_queues(opt_cwmin);
@@ -199,6 +200,7 @@ Tos2QueueMapper::simple_action(Packet *p)
   }
 
   opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+  BRN_DEBUG("optQueue: %d",opt_queue);
 
   /**
    * Apply tos;
@@ -345,6 +347,8 @@ Tos2QueueMapper::get_queue_usage(uint8_t position)
 bool
 Tos2QueueMapper::need_recalc(uint32_t bo, uint32_t /*tos*/)
 {
+  if ( _queue_mapping == QUEUEMAPPING_DIRECT ) return _cwmin[1] != bo;
+
   return (((uint32_t)_cwmin[0] >= bo) || ((uint32_t)_cwmin[no_queues-1] <= bo));
 }
 
@@ -554,7 +558,7 @@ void
 Tos2QueueMapper::print_queues()
 {
   for ( int q = 0; q < no_queues; q++) {
-    click_chatter("Queue: %d cwmin: %d cwmax: %d", q+1, _cwmin[q], _cwmax[q]);
+    click_chatter("Queue: %d cwmin: %d cwmax: %d", q, _cwmin[q], _cwmax[q]);
   }
 }
 
