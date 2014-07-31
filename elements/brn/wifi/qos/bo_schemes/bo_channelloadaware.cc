@@ -92,7 +92,7 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
   struct airtime_stats *as = _cst->get_latest_stats();
 
   if (_cst_sync && (as->stats_id == _last_id))
-    return _current_bo;
+    return _current_bo - 1;
 
   _last_id = as->stats_id;
 
@@ -159,10 +159,10 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
   }
 
   if (_cap) {
-    uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
+    //uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
 
-    if ((int) _current_bo < lower_bound)
-      _current_bo = lower_bound;
+    if ((int) _current_bo < _min_cwmin)
+      _current_bo = _min_cwmin;
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
