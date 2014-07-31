@@ -201,7 +201,7 @@ ChannelStats::push(int port, Packet *p)
   if ( ceh->flags & WIFI_EXTRA_TX ) {
     int tx_count = BrnWifi::get_data_sent_count(ceh);
 
-    BRN_ERROR("TxCount: %d",tx_count);
+    //BRN_Info("TxCount: %d",tx_count);
 
     for ( int i = 0; i < tx_count; i++ ) {
       int t0,t1,t2,t3;
