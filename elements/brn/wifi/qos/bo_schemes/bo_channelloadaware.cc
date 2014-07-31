@@ -175,12 +175,6 @@ void BoChannelLoadAware::handle_feedback(uint8_t retries)
   (void) retries;
 }
 
-void BoChannelLoadAware::set_conf(uint32_t min, uint32_t max)
-{
-  _min_cwmin = min;
-  _max_cwmin = max;
-}
-
 void BoChannelLoadAware::increase_cw()
 {
   _current_bo = _current_bo << 1;
