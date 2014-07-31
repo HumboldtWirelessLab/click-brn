@@ -110,6 +110,7 @@ Tos2QueueMapper::init_stats()
 
   _bo_exp = new uint16_t[no_queues];
 
+  /* "translates" queue to exponent, e.g. cwmin[0] = 32 -> _bo_exp[0] = 6 since 2⁶ = 32 */ 
   for ( int i = 0; i < no_queues; i++ )
     _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
@@ -152,8 +153,13 @@ void
 Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
 {
   _bqs_strategy = strategy;
+  
   _current_scheme = get_bo_scheme(_bqs_strategy);
-  if ( _current_scheme ) _current_scheme->set_strategy(_bqs_strategy);
+  
+  if ( _current_scheme ) {
+    _current_scheme->set_conf(BACKOFF_SCHEME_MIN_CWMIN, BACKOFF_SCHEME_MAX_CWMAX);
+    _current_scheme->set_strategy(_bqs_strategy);
+  }
 }
 
 Packet *
@@ -277,7 +283,7 @@ Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
   for (int i = 0; i < no_queues-1; i++)
-    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
+    if ( (_cwmin[i] < backoff_window_size) && (backoff_window_size <= _cwmin[i+1]) ) return i+1;
 
   return no_queues-1;
 }
@@ -289,7 +295,7 @@ Tos2QueueMapper::find_queue_next_smaller(uint16_t backoff_window_size)
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
   for (int i = 0; i < no_queues-1; i++)
-    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i;
+    if ((_cwmin[i] <= backoff_window_size) && (backoff_window_size < _cwmin[i+1])) return i;
 
   return no_queues-1;
 }
@@ -365,18 +371,18 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff)
 
   /* get tos 0 */
   switch (_qm_diff_queue_mode) {
-    case QUEUEMAPPING_DIFF_MINMAXCW_EXP:
+    case QUEUEMAPPING_DIFFQUEUE_EXP:
       cwmin_tos_0 = (cwmin_tos_1 - 1) >> _qm_diff_queue_val;
       if (cwmin_tos_0 < 1) cwmin_tos_0 = 1;
       break;
-    case QUEUEMAPPING_DIFF_MINMAXCW_MUL:
+    case QUEUEMAPPING_DIFFQUEUE_MUL:
       if ( _qm_diff_queue_val > 0 ) cwmin_tos_0 = cwmin_tos_1/_qm_diff_queue_val;
       else cwmin_tos_0 = cwmin_tos_1;
       break;
-    case QUEUEMAPPING_DIFF_MINMAXCW_ADD:
+    case QUEUEMAPPING_DIFFQUEUE_ADD:
       cwmin_tos_0 = cwmin_tos_1 - _qm_diff_queue_val;
       break;
-    case QUEUEMAPPING_DIFF_MINMAXCW_FIB:
+    case QUEUEMAPPING_DIFFQUEUE_FIB:
       for ( fib_0 = 0; fib_0 < FIBONACCI_VECTOR_SIZE; fib_0++ )
         if ( fibonacci_numbers[fib_0] >= backoff ) break;
 
@@ -415,16 +421,16 @@ Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff)
     }
 
     switch (_qm_diff_queue_mode) {
-      case QUEUEMAPPING_DIFF_MINMAXCW_EXP:
+      case QUEUEMAPPING_DIFFQUEUE_EXP:
         cwmin = ((cwmin+1) << _qm_diff_queue_val) - 1;
         break;
-      case QUEUEMAPPING_DIFF_MINMAXCW_MUL:
+      case QUEUEMAPPING_DIFFQUEUE_MUL:
         cwmin = (cwmin * _qm_diff_queue_val);
         break;
-      case QUEUEMAPPING_DIFF_MINMAXCW_ADD:
+      case QUEUEMAPPING_DIFFQUEUE_ADD:
         cwmin = (cwmin + _qm_diff_queue_val);
         break;
-      case QUEUEMAPPING_DIFF_MINMAXCW_FIB:
+      case QUEUEMAPPING_DIFFQUEUE_FIB:
         fib_0 = MIN(fib_0 + _qm_diff_queue_val,MAX_FIBONACCI_INDEX);
         cwmin = fibonacci_numbers[fib_0];
         break;

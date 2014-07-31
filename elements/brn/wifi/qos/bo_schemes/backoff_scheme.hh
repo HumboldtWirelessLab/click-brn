@@ -23,6 +23,10 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_TX_AWARE                        9
 #define BACKOFF_STRATEGY_FLOODING                       10
 
+
+#define BACKOFF_SCHEME_MIN_CWMIN                         1
+#define BACKOFF_SCHEME_MAX_CWMAX                     65535
+
 class BackoffScheme: public BRNElement, public Scheme {
 public:
   BackoffScheme();
