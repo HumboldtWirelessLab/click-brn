@@ -7,7 +7,7 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 #include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats.hh"
-#include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/wifi/rxinfo/hiddennodedetection.hh"
 
 #include "backoff_scheme.hh"
 #include "elements/brn/wifi/brnwifi.hh"
@@ -48,10 +48,23 @@ class BoMediumShare : public BackoffScheme {
   void seperation(uint32_t own_tx, uint32_t retries);
   void calc_new_bo();
 
+  // Helper
+  bool stats_are_new(struct airtime_stats *);
+  void print_reg_info(struct airtime_stats *);
+  void print_2hop_tx_dur(NodeChannelStats *ncst);
+  EtherAddress get_src_etheraddr(Packet *p);
+  EtherAddress get_dst_etheraddr(Packet *p);
+  void limit_bo(int lower, int upper);
+  void cohesion_decision(int, int, int);
+  void gravitation_decision(void);
+  void seperation_decision(void);
+  void eval_all_rules(void);
+
 private:
   ChannelStats *_cst;
   CooperativeChannelStats *_cocst;
   String _cocst_string;
+  HiddenNodeDetection *_hnd;
 
   uint16_t _current_bo;
 
