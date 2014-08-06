@@ -13,10 +13,7 @@
 
 #include "bo_nbs.hh"
 
-
 CLICK_DECLS
-
-
 
 BoNeighbours::BoNeighbours()
   : _cst(NULL),
@@ -27,7 +24,6 @@ BoNeighbours::BoNeighbours()
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
 }
-
 
 BoNeighbours::~BoNeighbours()
 {
@@ -41,7 +37,6 @@ void * BoNeighbours::cast(const char *name)
   return BackoffScheme::cast(name);
 }
 
-
 int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
@@ -53,11 +48,6 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-
-void BoNeighbours::add_handlers()
-{
-}
-
 int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) p;
@@ -65,7 +55,6 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
 
   struct airtime_stats *as = _cst->get_latest_stats();
   BRN_DEBUG("stats_id: %d\n", as->stats_id);
-
 
   if (_cst_sync && (as->stats_id == _last_id))
     return _current_bo;
@@ -87,13 +76,6 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
 
   return _current_bo;
 }
-
-
-void BoNeighbours::handle_feedback(uint8_t retries)
-{
-  (void) retries;
-}
-
 
 CLICK_ENDDECLS
 

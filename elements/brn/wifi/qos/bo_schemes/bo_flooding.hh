@@ -19,11 +19,9 @@ class BoFlooding : public BackoffScheme {
   void *cast(const char *name);
 
   int configure(Vector<String> &, ErrorHandler *);
-  void add_handlers();
 
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
-  void handle_feedback(uint8_t retries);
 
  public:
   BoFlooding();
