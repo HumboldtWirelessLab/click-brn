@@ -89,13 +89,6 @@ BrnAnnRate::rate_to_index(uint8_t rate_mbits)
 void
 BrnAnnRate::adjust_all(NeighborTable *neighbors)
 {
-  /*for (NIter iter = neighbors->begin(); iter.live(); iter++) {
-     
-    NeighbourRateInfo *nri = iter.value();
-    setMinstrelInfo(nri);
-     *  todo replace this lines
-     
-  }*/
 }
 
 void
@@ -112,7 +105,7 @@ BrnAnnRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neighbour
   // get RSSI 
   int min_power_pdr_index = -1;
   uint8_t min_rx_power = 255;
-  BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(nri->_eth); // nri->_eth?
+  BRN2LinkStat::probe_list_t *pl = _linkstat->_bcast_stats.findp(nri->_eth);
 
   if ( (pl == NULL) || (pl->_probe_types.size() == 0) ) 
   {
@@ -121,7 +114,7 @@ BrnAnnRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, Neighbour
   }
 
   for (int x = 0; x < pl->_probe_types.size(); x++) {
-    if (((uint32_t)pl->_fwd_min_rx_powers[x] < min_rx_power )) {
+    if (((uint32_t)pl->_fwd_min_rx_powers[x] < min_rx_power )) {  // TODO: pl->probe_types[x]._fwd_min_rx_powers
       min_power_pdr_index = x;
       min_rx_power = (uint32_t)pl->_fwd_min_rx_powers[x];
     }
