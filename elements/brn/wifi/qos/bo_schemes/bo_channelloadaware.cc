@@ -17,7 +17,6 @@
 CLICK_DECLS
 
 
-
 BoChannelLoadAware::BoChannelLoadAware()
   : _cst(NULL),
     _current_bo(BO_CHANNELLOADAWARE_START_BO),
@@ -26,7 +25,7 @@ BoChannelLoadAware::BoChannelLoadAware()
     _last_diff(0),
     _cap(0),
     _cst_sync(0),
-    _last_id(998)
+    _last_id(999)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_TX_AWARE;
@@ -74,7 +73,7 @@ bool BoChannelLoadAware::handle_strategy(uint32_t strategy)
   }
 }
 
-static uint32_t find_closest_backoff(uint32_t bo)
+/*static uint32_t find_closest_backoff(uint32_t bo)
 {
   uint32_t c_bo = 1;
 
@@ -82,7 +81,7 @@ static uint32_t find_closest_backoff(uint32_t bo)
     c_bo = c_bo << 1;
 
   return c_bo;
-}
+}*/
 
 int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -138,20 +137,19 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     _last_diff = diff;
     break;
 
-  } case BACKOFF_STRATEGY_TX_AWARE: {
-    BRN_DEBUG("    tx: %d nbs = %d\n", as->hw_tx, as->no_sources);
+  } case BACKOFF_STRATEGY_TX_AWARE: {    
+    BRN_DEBUG("    tx: %d nbs = %d\n", as->frac_mac_tx, as->no_sources);
 
-    if (as->no_sources == 0)
-      break;
+    if (as->no_sources == 0) break;
 
-    uint32_t target_tx = 100 / as->no_sources;
+    uint32_t hw_tx = 1000 * as->frac_mac_tx;
+    uint32_t target_tx = 100000 / as->no_sources;
     uint32_t wiggle_room = target_tx / 10;
 
-    BRN_DEBUG("    tx: %d target tx: %d wm param: %d\n", as->hw_tx, target_tx, wiggle_room);
-    if (as->hw_tx < (target_tx - wiggle_room))
-      decrease_cw();
-    else if (as->hw_tx > target_tx)
-        increase_cw();
+    BRN_DEBUG("    tx: %d target tx: %d wm param: %d\n", hw_tx, target_tx, wiggle_room);
+
+    if (hw_tx < (target_tx - wiggle_room)) decrease_cw();
+    else if (hw_tx > target_tx)            increase_cw();
     break;
 
   } default:
@@ -161,8 +159,8 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
   if (_cap) {
     //uint16_t lower_bound = find_closest_backoff(2 * as->no_sources);
 
-    if ((int) _current_bo < _min_cwmin)
-      _current_bo = _min_cwmin;
+    if ((int) _current_bo < 32)
+      _current_bo = 32;
   }
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
