@@ -302,7 +302,7 @@ void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
   forwardSendTimer->initialize(this->brn_click_element, false);
   
   if(IS_DEBUG_ENABLED(config))
-    click_chatter("<DEBUG node='%s' txDelay='%d' />", config.thisNodeAsCstr(), delay);
+    click_chatter("<DEBUG node='%s' txDelayMs='%d' />", config.thisNodeAsCstr(), delay);
   forwardSendTimer->schedule_after_msec(delay);
 }
 
