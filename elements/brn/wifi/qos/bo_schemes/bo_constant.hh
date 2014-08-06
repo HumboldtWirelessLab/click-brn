@@ -4,13 +4,9 @@
 #include <click/element.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
 #include "backoff_scheme.hh"
 
-
 CLICK_DECLS
-
-
 
 class BoConstant : public BackoffScheme {
 /* Derived Functions */
@@ -26,7 +22,6 @@ class BoConstant : public BackoffScheme {
 
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
-  void handle_feedback(uint8_t retries);
 
  public:
 
@@ -39,9 +34,7 @@ class BoConstant : public BackoffScheme {
   void decrease_cw();
 
 
-private:
-  ChannelStats *_cst;
-
+ private:
   uint16_t _const_bo;
 };
 

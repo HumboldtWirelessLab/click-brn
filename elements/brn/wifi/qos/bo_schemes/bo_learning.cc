@@ -64,12 +64,6 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-
-void BoLearning::add_handlers()
-{
-}
-
-
 int BoLearning::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) p;

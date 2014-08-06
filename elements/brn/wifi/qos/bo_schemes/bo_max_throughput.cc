@@ -37,7 +37,6 @@ void * BoMaxThroughput::cast(const char *name)
 
 int BoMaxThroughput::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "DEBUG", cpkP, cpInteger, &_debug,
@@ -45,11 +44,6 @@ int BoMaxThroughput::configure(Vector<String> &conf, ErrorHandler* errh)
 
   return 0;
 }
-
-void BoMaxThroughput::add_handlers()
-{
-}
-
 
 int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -82,12 +76,6 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
   BRN_DEBUG("    backoffwin: %d\n\n", backoff_window_size);
 
   return backoff_window_size;
-}
-
-
-void BoMaxThroughput::handle_feedback(uint8_t retries)
-{
-  (void) retries;
 }
 
 CLICK_ENDDECLS

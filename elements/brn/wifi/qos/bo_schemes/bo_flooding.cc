@@ -46,22 +46,11 @@ int BoFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-void BoFlooding::add_handlers()
-{
-}
-
-
 int BoFlooding::get_cwmin(Packet */*p*/, uint8_t tos)
 {
   (void) tos;
 
   return 32;
-}
-
-
-void BoFlooding::handle_feedback(uint8_t retries)
-{
-  (void) retries;
 }
 
 CLICK_ENDDECLS

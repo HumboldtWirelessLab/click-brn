@@ -9,8 +9,6 @@
 
 CLICK_DECLS
 
-
-
 class BoMaxThroughput : public BackoffScheme {
 /* Derived Functions */
 public:
@@ -21,11 +19,9 @@ public:
   void *cast(const char *name);
 
   int configure(Vector<String> &, ErrorHandler *);
-  void add_handlers();
 
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
-  void handle_feedback(uint8_t retries);
 
 public:
   BoMaxThroughput();
@@ -35,8 +31,6 @@ private:
 
   ChannelStats *_cst;
 };
-
-
 
 CLICK_ENDDECLS
 
