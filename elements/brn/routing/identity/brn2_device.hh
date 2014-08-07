@@ -145,6 +145,8 @@ class BRN2Device : public BRNElement {
 
     uint32_t set_backoff();
     uint32_t get_backoff();
+    int set_backoff_scheme(uint32_t scheme);
+
     uint8_t get_no_queues() { return _no_queues; }
     uint32_t *get_cwmin() { return _cwmin; }
     uint32_t *get_cwmax() { return _cwmax; }

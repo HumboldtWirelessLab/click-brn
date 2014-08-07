@@ -55,8 +55,11 @@ class LinuxRTCtrl : public BRNElement {
   public:
     static int set_sockaddr(struct sockaddr_in *sockaddr, IPAddress &ip);
     static int set_rt_entry(struct rtentry *rm, IPAddress &ip, IPAddress &mask, IPAddress &gw);
+    static int set_rt_entry_metric(struct rtentry *rm, int metric);
+
     int add_rt_entry(struct rtentry *rm);
     int del_rt_entry(struct rtentry *rm);
+    int update_rt_entry(struct rtentry *rm);
     int add_route(IPAddress &ip, IPAddress &mask, IPAddress &gw);
     int del_route(IPAddress &ip, IPAddress &mask, IPAddress &gw);
     int add_default_gateway(IPAddress &default_gw);

@@ -77,14 +77,6 @@ void BoConstant::handle_feedback(uint8_t retries)
   (void) retries;
 }
 
-
-void BoConstant::set_conf(uint32_t min, uint32_t max)
-{
-  _min_cwmin = min;
-  _max_cwmin = max;
-}
-
-
 CLICK_ENDDECLS
 
 EXPORT_ELEMENT(BoConstant)
