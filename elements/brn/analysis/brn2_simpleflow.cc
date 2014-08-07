@@ -22,7 +22,7 @@
 #if CLICK_NS
 #include <click/router.hh>
 #include <click/simclick.h>
-#include "elements/brn/routing/identity/txcontrol.h"
+#include "elements/brn/routing/identity/rxtxcontrol.h"
 #endif
 #endif
 
@@ -335,12 +335,14 @@ BRN2SimpleFlow::push( int port, Packet *packet )
 
   if ( f == NULL ) {  //TODO: shorten this
     _rx_flowMap.insert(fid, new Flow(src_ea, EtherAddress(header->dst), ntohl(header->flowID),
-                       (flowType)header->mode, ntohs(header->size), ntohs(header->interval), ntohs(header->burst), 10000) );
+                       (flowType)header->mode, ntohs(header->size), ntohs(header->interval), ntohs(header->burst), 1000) );
     f = _rx_flowMap.find(fid);
   }
 
   f->add_rx_stats((uint32_t)(Timestamp::now() - send_time).msecval(),
                   (uint32_t)(SIMPLEFLOW_MAXHOPCOUNT - BRNPacketAnno::ttl_anno(packet)));
+
+  f->update_duration();
 
 #if HAVE_FAST_CHECKSUM
   checksum = ip_fast_csum((unsigned char *)packet->data() + (2 * sizeof(uint16_t)), (packet->length() - (2 * sizeof(uint16_t))) >> 2 );
@@ -809,7 +811,13 @@ BRN2SimpleFlow::xml_stats()
       sa << " min_time=\"0\" max_time=\"0\" time=\"0\" std_time=\"0\"";
     };
 
-    sa << " extra_data=\"" << fl->_extra_data << "\" >\n";
+    if ( fl->_rxPackets > 1 ) {
+      sa << " rx_rate=\"" << fl->get_rx_rate();
+    } else {
+      sa << " rx_rate=\"0";
+    }
+
+    sa << "\" tx_rate_unit=\"bits/s\" extra_data=\"" << fl->_extra_data << "\" >\n";
 
     if ( fl->route.size() != 0 ) {
       uint16_t sum_metric = 0;

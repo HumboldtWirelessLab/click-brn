@@ -14,11 +14,14 @@
 
 CLICK_DECLS
 
+#define METRIC_ROUTING
+
 VAServer::VAServer():
-  _strategy(VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI),
+  _strategy(VIRTUAL_ANTENNA_STRATEGY_MAX_MIN_RSSI),
   _rtctrl(NULL),
   _rt_update_timer(this),
-  _rt_update_interval(0)
+  _rt_update_interval(0),
+  _verbose(false)
 {
   BRNElement::init();
 }
@@ -34,6 +37,7 @@ VAServer::configure(Vector<String> &conf, ErrorHandler* errh)
       "RTCTRL", cpkP+cpkM, cpElement, &_rtctrl,
       "STRATEGY", cpkP, cpInteger, &_strategy,
       "INTERVAL", cpkP, cpInteger, &_rt_update_interval,
+      "VERBOSE", cpkP, cpBool, &_verbose,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -44,7 +48,7 @@ VAServer::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 VAServer::initialize(ErrorHandler *)
 {
-  _rt_update_timer.initialize(this);  
+  _rt_update_timer.initialize(this);
 
   if (_rt_update_interval > 0 )
     _rt_update_timer.schedule_after_msec(_rt_update_interval);
@@ -75,10 +79,20 @@ VAServer::push( int /*port*/, Packet *packet )
   IPAddress csi_node = IPAddress(csi_p->node.csi_node_addr);
   IPAddress tx_node = IPAddress(csi_p->node.tx_node_addr);
 
-  click_chatter("Eff. SNRS (%s -> %s):",tx_node.unparse().c_str(), csi_node.unparse().c_str());
-  for ( int i = 0; i < MAX_NUM_RATES; i++) {
-    click_chatter("%d %d %d %d", csi_p->eff_snrs_int[i][0], csi_p->eff_snrs_int[i][1],
-                                 csi_p->eff_snrs_int[i][2], csi_p->eff_snrs_int[i][3]);
+  if ( BRN_DEBUG_LEVEL_LOG ) {
+    click_chatter("Eff. SNRS (%s -> %s):",tx_node.unparse().c_str(), csi_node.unparse().c_str());
+    for ( int i = 0; i < MAX_NUM_RATES; i++) {
+      click_chatter("%d %d %d %d", csi_p->eff_snrs_int[i][0], csi_p->eff_snrs_int[i][1],
+                                   csi_p->eff_snrs_int[i][2], csi_p->eff_snrs_int[i][3]);
+    }
+  }
+
+  if ( _verbose ) {
+    click_chatter("CSI,%s,%s,%d,%d,%d,%d,%d,%d,%d", Timestamp::now().unparse().c_str(), csi_node.unparse().c_str(),
+                                                    csi_p->eff_snrs_int[0][0], csi_p->eff_snrs_int[1][0],
+                                                    csi_p->eff_snrs_int[2][0], csi_p->eff_snrs_int[3][0],
+                                                    csi_p->eff_snrs_int[4][0], csi_p->eff_snrs_int[7][0],
+                                                    csi_p->eff_snrs_int[6][0]);
   }
 
   add_csi(csi_node, tx_node, csi_p->eff_snrs_int);
@@ -102,6 +116,8 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
   VAClientInfo **vaci_p = va_cl_info_map.findp(client);
   VAClientInfo *vaci = NULL;
 
+  bool client_is_new = false;
+
   if (vaai_p == NULL) {
     vaai = new VAAntennaInfo(csi_node);
     va_ant_info_map.insert(csi_node, vaai);
@@ -114,6 +130,7 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
     vaci = new VAClientInfo(client);
     vaci->set_mask(mask);
     va_cl_info_map.insert(client, vaci);
+    client_is_new = true;
   } else {
     vaci = *vaci_p;
   }
@@ -124,6 +141,20 @@ VAServer::add_csi(IPAddress csi_node, IPAddress client, uint32_t eff_snrs_int[MA
   if (csi_p == NULL) {
     csi = new CSI(client, csi_node, eff_snrs_int);
     vaci->csi_map.insert(csi_node, csi);
+#ifdef METRIC_ROUTING
+    if ( client_is_new ) {
+      vaci->set_gateway(vaai);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),0);
+      _rtctrl->add_rt_entry(&(vaci->routing_entry));
+    } else {
+      LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(vaci->routing_entry.rt_gateway), csi_node);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),1000);
+      _rtctrl->add_rt_entry(&(vaci->routing_entry));
+
+      LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(vaci->routing_entry.rt_gateway), vaci->current_antenna->_ip);
+      LinuxRTCtrl::set_rt_entry_metric(&(vaci->routing_entry),0);
+    }
+#endif
   } else {
     csi = *csi_p;
     csi->update_csi(eff_snrs_int);
@@ -145,8 +176,10 @@ VAServer::select_ap(IPAddress client)
 
   vaci = *vaci_p;
 
+  uint32_t timenow_ms = Timestamp::now().msecval();
+
   switch (_strategy) {
-    case VIRTUEL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
+    case VIRTUAL_ANTENNA_STRATEGY_MAX_MIN_RSSI: {
       uint32_t min_snr = 0;
       uint32_t max_min_snr_overall = 0;
 
@@ -170,7 +203,53 @@ VAServer::select_ap(IPAddress client)
         //}
       }
 
-      if ( best_csi == NULL ) return NULL;
+      break;
+    }
+    case VIRTUAL_ANTENNA_STRATEGY_MAX_THROUGHPUT: {
+      //
+      // search the AP which offers the highest throughput
+
+      uint32_t max_data_rate_all = 0; // best data rate among all APs
+
+      for (CSIMapIter iter = vaci->csi_map.begin(); iter.live(); iter++) { // for each available AP
+        CSI *csi = iter.value();
+
+        CSI *best_csi_ap = NULL;
+        uint32_t max_data_rate = 0; // best data rate for a given AP
+
+        for ( int i = 0; i < MAX_NUM_RATES; i++) { // for each available MODE: 3x SISO, 2x MIMO_2, 1x MIMO_3
+
+          // calc spatial multiplexing gain
+          int sm_gain = sm_gain_lookup_table[i];
+
+          for ( int t = 0; t < 8; t++) { // for each available MCS
+            // eff. SNR depends on the MCS; select the proper bin
+            int effSnrBin = eff_snr_bin_lookup_table[t];
+
+            if (csi->_eff_snrs[i][effSnrBin] > mcs_to_snr_threshold[t]) { // the eff. SNR is larger than the threshold
+
+              // calc data rate
+              uint32_t data_rate = mcs_to_data_rate_kbps[t] * sm_gain; // we have parallel streams
+
+              // valid MCS (above threshold)
+              if (data_rate > max_data_rate_all) { // total best
+                best_csi = csi;
+                max_data_rate_all = data_rate;
+              }
+              if (data_rate > max_data_rate) { // best solution for each AP
+                best_csi_ap = csi;
+                max_data_rate = data_rate;
+              }
+            }
+          }
+        }
+
+        // print best solution for a given AP
+        if ( BRN_DEBUG_LEVEL_DEBUG && (best_csi_ap != NULL) ) {
+          click_chatter("%d max data rate towards AP %s is %d", timenow_ms, best_csi_ap->_to.unparse().c_str(), max_data_rate);
+        }
+
+      }
       break;
     }
     default: {
@@ -189,27 +268,55 @@ VAServer::set_ap(IPAddress &client, IPAddress &ap)
   VAClientInfo **vaci_p = va_cl_info_map.findp(client);
   VAClientInfo *vaci = NULL;
 
-  VAAntennaInfo **vaai_p = va_ant_info_map.findp(ap);
-  VAAntennaInfo *vaai = NULL;
-
   if (vaci_p == NULL) {
     BRN_ERROR("Client %s not found");
     return;
   }
+
+  vaci = *vaci_p;
+
+  //We already set this ap as va?
+  if ( vaci->current_antenna->_ip == ap ) return;
+
+  VAAntennaInfo **vaai_p = va_ant_info_map.findp(ap);
+  VAAntennaInfo *vaai = NULL;
 
   if (vaai_p == NULL) {
     BRN_ERROR("AP %s not found");
     return;
   }
 
-  vaci = *vaci_p;
   vaai = *vaai_p;
 
-  _rtctrl->del_rt_entry(&(vaci->routing_entry));
+  struct rtentry *routing_entry = &(vaci->routing_entry);
 
-  vaci->set_gateway(vaai);
+#ifdef METRIC_ROUTING
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->add_rt_entry(routing_entry);
 
-  _rtctrl->add_rt_entry(&(vaci->routing_entry));
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), vaci->current_antenna->_ip); //set old ap (temporarily) (just for del)
+  _rtctrl->del_rt_entry(routing_entry);
+  LinuxRTCtrl::set_rt_entry_metric(routing_entry,1000);
+  _rtctrl->add_rt_entry(routing_entry);
+
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->del_rt_entry(routing_entry);
+
+  LinuxRTCtrl::set_rt_entry_metric(routing_entry,0);
+#else
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), ap); //set new ap (temporarily)
+  _rtctrl->add_rt_entry(routing_entry);
+  LinuxRTCtrl::set_sockaddr((struct sockaddr_in*)&(routing_entry->rt_gateway), vaci->current_antenna->_ip); //set old ap (temporarily) (just for del)
+  _rtctrl->del_rt_entry(routing_entry);
+#endif
+
+  vaci->set_gateway(vaai); //set final
+
+  if ( _verbose ) {
+    click_chatter("RT,%s,%s,%s,0,0,0,0,0,0", Timestamp::now().unparse().c_str(), vaci->_ip.unparse().c_str(),
+                                                    vaai->_ip.unparse().c_str());
+  }
+
 }
 
 String

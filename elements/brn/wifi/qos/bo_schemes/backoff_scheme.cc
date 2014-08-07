@@ -4,8 +4,8 @@
 CLICK_DECLS
 
 BackoffScheme::BackoffScheme()
-  : _min_cwmin(0),
-    _max_cwmin(0)
+  : _min_cwmin(BACKOFF_SCHEME_MIN_CWMIN),
+    _max_cwmin(BACKOFF_SCHEME_MAX_CWMAX)
 {
 }
 

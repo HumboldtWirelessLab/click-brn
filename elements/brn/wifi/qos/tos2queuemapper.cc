@@ -48,8 +48,14 @@ CLICK_DECLS
 
 
 Tos2QueueMapper::Tos2QueueMapper():
+    _current_scheme(NULL),
     _bqs_strategy(BACKOFF_STRATEGY_OFF),
-    _current_scheme(0),
+    _mac_bo_scheme(MAC_BACKOFF_SCHEME_DEFAULT),
+    _queue_mapping(QUEUEMAPPING_DEFAULT),
+    _qm_diff_queue_mode(QUEUEMAPPING_DIFFQUEUE_DEFAULT),
+    _qm_diff_queue_val(1),
+    _qm_diff_minmaxcw_mode(QUEUEMAPPING_DIFF_MINMAXCW_DEFAULT),
+    _qm_diff_minmaxcw_val(1),
     _bo_usage_max_no(16),
     _last_bo_usage(NULL),
     _all_bos(NULL),
@@ -58,8 +64,7 @@ Tos2QueueMapper::Tos2QueueMapper():
     _feedback_cnt(0),
     _tx_cnt(0),
     _pkt_in_q(0),
-    _call_set_backoff(0),
-    _queue_mapping(QUEUEMAPPING_NEXT_BIGGER)
+    _call_set_backoff(0)
 {
   BRNElement::init();
   _scheme_list = SchemeList("BackoffScheme");
@@ -83,7 +88,12 @@ Tos2QueueMapper::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEVICE", cpkP+cpkM, cpElement, &_device,
       "STRATEGY", cpkP, cpInteger, &_bqs_strategy,
       "BO_SCHEMES", cpkP, cpString, &s_schemes,
+      "MAC_BO_SCHEME", cpkP, cpInteger, &_mac_bo_scheme,
       "QUEUEMAPPING", cpkP, cpInteger, &_queue_mapping,
+      "QUEUEMODE", cpkP, cpInteger, &_qm_diff_queue_mode,
+      "QUEUEVAL", cpkP, cpInteger, &_qm_diff_queue_val,
+      "CWMINMAXMODE", cpkP, cpInteger, &_qm_diff_minmaxcw_mode,
+      "CWMINMAXVAL", cpkP, cpInteger, &_qm_diff_minmaxcw_val,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -100,6 +110,7 @@ Tos2QueueMapper::init_stats()
 
   _bo_exp = new uint16_t[no_queues];
 
+  /* "translates" queue to exponent, e.g. cwmin[0] = 32 -> _bo_exp[0] = 6 since 2⁶ = 32 */ 
   for ( int i = 0; i < no_queues; i++ )
     _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
@@ -122,8 +133,10 @@ Tos2QueueMapper::initialize (ErrorHandler *errh)
 
   _scheme_list.parse_schemes(this, errh);
   set_backoff_strategy(_bqs_strategy);
+  set_mac_backoff_scheme(_mac_bo_scheme);
 
   get_backoff();
+  if (BRN_DEBUG_LEVEL_DEBUG) print_queues();
 
   init_stats();
 
@@ -140,8 +153,13 @@ void
 Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
 {
   _bqs_strategy = strategy;
+  
   _current_scheme = get_bo_scheme(_bqs_strategy);
-  if ( _current_scheme ) _current_scheme->set_strategy(_bqs_strategy);
+  
+  if ( _current_scheme ) {
+    _current_scheme->set_conf(BACKOFF_SCHEME_MIN_CWMIN, BACKOFF_SCHEME_MAX_CWMAX);
+    _current_scheme->set_strategy(_bqs_strategy);
+  }
 }
 
 Packet *
@@ -179,14 +197,16 @@ Tos2QueueMapper::simple_action(Packet *p)
     }
   }
 
+  BRN_DEBUG("optCW: %d",opt_cwmin);
   // handle trunc overflow
-  if ( ((int)_cwmin[0] >= opt_cwmin) || ((int)_cwmin[no_queues-1] <= opt_cwmin)) {
-    uint32_t closest_bo = find_closest_backoff(opt_cwmin);
-    recalc_backoff_queues(closest_bo, 1, 1);
+  if (need_recalc(opt_cwmin, tos)) {
+    recalc_backoff_queues(opt_cwmin);
     set_backoff();
+    if (BRN_DEBUG_LEVEL_DEBUG) print_queues();
   }
 
   opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+  BRN_DEBUG("optQueue: %d",opt_queue);
 
   /**
    * Apply tos;
@@ -248,8 +268,10 @@ Tos2QueueMapper::handle_feedback(Packet *p)
 int
 Tos2QueueMapper::find_queue(uint16_t backoff_window_size)
 {
+  if ( _queue_mapping == QUEUEMAPPING_NEXT_SMALLER ) return find_queue_next_smaller(backoff_window_size);
   if ( _queue_mapping == QUEUEMAPPING_PROBABILISTIC ) return find_queue_prob(backoff_window_size, false);
   if ( _queue_mapping == QUEUEMAPPING_GRAVITATION ) return find_queue_prob(backoff_window_size, true);
+  if ( _queue_mapping == QUEUEMAPPING_DIRECT ) return find_queue_next_smaller(backoff_window_size);
 
   return find_queue_next_bigger(backoff_window_size);
 }
@@ -261,7 +283,19 @@ Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
   for (int i = 0; i < no_queues-1; i++)
-    if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
+    if ( (_cwmin[i] < backoff_window_size) && (backoff_window_size <= _cwmin[i+1]) ) return i+1;
+
+  return no_queues-1;
+}
+
+int
+Tos2QueueMapper::find_queue_next_smaller(uint16_t backoff_window_size)
+{
+  if ( backoff_window_size <= _cwmin[0] ) return 0;
+
+  // Take the first queue, whose cw-interval is in the range of the backoff-value
+  for (int i = 0; i < no_queues-1; i++)
+    if ((_cwmin[i] <= backoff_window_size) && (backoff_window_size < _cwmin[i+1])) return i;
 
   return no_queues-1;
 }
@@ -316,16 +350,95 @@ Tos2QueueMapper::get_queue_usage(uint8_t position)
   return _queue_usage[position];
 }
 
-uint32_t
-Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff, uint32_t tos, uint32_t step)
+bool
+Tos2QueueMapper::need_recalc(uint32_t bo, uint32_t /*tos*/)
 {
-  uint32_t cwmin = backoff >> (tos*step);
-  if ( cwmin <= 1 ) cwmin = 2;
+  if ( _queue_mapping == QUEUEMAPPING_DIRECT ) return _cwmin[1] != bo;
 
-  for ( uint32_t i = 0; i < no_queues; i++, cwmin = cwmin << step) {
-    _cwmin[i] = cwmin - 1;
-    _cwmax[i] = (cwmin << 6) - 1;
-    _bo_exp[i] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[i]));
+  return (((uint32_t)_cwmin[0] >= bo) || ((uint32_t)_cwmin[no_queues-1] <= bo));
+}
+
+uint32_t
+Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff)
+{
+  int cwmin_tos_0;
+  int cwmin_tos_1 = (backoff>0)?backoff:1;
+  uint32_t fib_0 = 0;
+
+  if ( _queue_mapping != QUEUEMAPPING_DIRECT) {
+    cwmin_tos_1 = find_closest_backoff(cwmin_tos_1);
+  }
+
+  /* get tos 0 */
+  switch (_qm_diff_queue_mode) {
+    case QUEUEMAPPING_DIFFQUEUE_EXP:
+      cwmin_tos_0 = (cwmin_tos_1 - 1) >> _qm_diff_queue_val;
+      if (cwmin_tos_0 < 1) cwmin_tos_0 = 1;
+      break;
+    case QUEUEMAPPING_DIFFQUEUE_MUL:
+      if ( _qm_diff_queue_val > 0 ) cwmin_tos_0 = cwmin_tos_1/_qm_diff_queue_val;
+      else cwmin_tos_0 = cwmin_tos_1;
+      break;
+    case QUEUEMAPPING_DIFFQUEUE_ADD:
+      cwmin_tos_0 = cwmin_tos_1 - _qm_diff_queue_val;
+      break;
+    case QUEUEMAPPING_DIFFQUEUE_FIB:
+      for ( fib_0 = 0; fib_0 < FIBONACCI_VECTOR_SIZE; fib_0++ )
+        if ( fibonacci_numbers[fib_0] >= backoff ) break;
+
+      if ( fib_0 == FIBONACCI_VECTOR_SIZE ) fib_0 = MAX_FIBONACCI_INDEX;
+      else fib_0 = (fib_0>=_qm_diff_queue_val)?(fib_0-_qm_diff_queue_val):0;
+
+      cwmin_tos_0 = fibonacci_numbers[fib_0];
+
+      break;
+    default:
+      BRN_ERROR("Unknown diff_queue_mode");
+  }
+
+  if (cwmin_tos_0 < 1) cwmin_tos_0 = 1;
+
+  int cwmin = cwmin_tos_0;
+
+  for ( int q = 0; q < no_queues; q++) {
+    _cwmin[q] = cwmin;
+
+    switch (_qm_diff_minmaxcw_mode) {
+      case QUEUEMAPPING_DIFF_MINMAXCW_EXP:
+        _cwmax[q] = ((cwmin+1) << _qm_diff_minmaxcw_val) - 1;
+        break;
+      case QUEUEMAPPING_DIFF_MINMAXCW_MUL:
+        _cwmax[q] = (cwmin * _qm_diff_minmaxcw_val);
+        break;
+      case QUEUEMAPPING_DIFF_MINMAXCW_ADD:
+        _cwmax[q] = (cwmin + _qm_diff_minmaxcw_val);
+        break;
+      case QUEUEMAPPING_DIFF_MINMAXCW_FIB:
+        _cwmax[q] = fibonacci_numbers[MIN(fib_0 + _qm_diff_minmaxcw_val,MAX_FIBONACCI_INDEX)];
+        break;
+      default:
+        BRN_ERROR("Unknown diff_minmax_mode");
+    }
+
+    switch (_qm_diff_queue_mode) {
+      case QUEUEMAPPING_DIFFQUEUE_EXP:
+        cwmin = ((cwmin+1) << _qm_diff_queue_val) - 1;
+        break;
+      case QUEUEMAPPING_DIFFQUEUE_MUL:
+        cwmin = (cwmin * _qm_diff_queue_val);
+        break;
+      case QUEUEMAPPING_DIFFQUEUE_ADD:
+        cwmin = (cwmin + _qm_diff_queue_val);
+        break;
+      case QUEUEMAPPING_DIFFQUEUE_FIB:
+        fib_0 = MIN(fib_0 + _qm_diff_queue_val,MAX_FIBONACCI_INDEX);
+        cwmin = fibonacci_numbers[fib_0];
+        break;
+      default:
+        BRN_ERROR("Unknown diff_queue_mode");
+    }
+
+    _bo_exp[q] = MIN(_bo_usage_max_no-1, find_closest_backoff_exp(_cwmin[q]));
   }
 
   return 0;
@@ -363,11 +476,19 @@ Tos2QueueMapper::get_backoff()
   return 0;
 }
 
+uint32_t
+Tos2QueueMapper::set_mac_backoff_scheme(uint32_t scheme)
+{
+  _device->set_backoff_scheme(scheme);
+  return 0;
+}
+
 /****************************************************************************************************************/
 /*********************************** H A N D L E R **************************************************************/
 /****************************************************************************************************************/
 
-enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY, H_TOS2QUEUEMAPPER_BOS};
+enum {H_TOS2QUEUEMAPPER_STATS, H_TOS2QUEUEMAPPER_RESET, H_TOS2QUEUEMAPPER_STRATEGY,
+      H_TOS2QUEUEMAPPER_BOS, H_TOS2QUEUEMAPPER_TEST, H_TOS2QUEUEMAPPER_CONFIG};
 
 String
 Tos2QueueMapper::stats()
@@ -429,6 +550,56 @@ Tos2QueueMapper::bos()
   return sa.take_string();
 }
 
+void
+Tos2QueueMapper::set_params(uint32_t q_map, uint32_t q_mode, uint32_t q_val, uint32_t cw_mode, uint32_t cw_val)
+{
+  _queue_mapping = q_map;
+  _qm_diff_queue_mode = q_mode;
+  _qm_diff_minmaxcw_mode = cw_mode;
+  _qm_diff_queue_val = q_val;
+  _qm_diff_minmaxcw_val = cw_val;
+}
+
+void
+Tos2QueueMapper::print_queues()
+{
+  for ( int q = 0; q < no_queues; q++) {
+    click_chatter("Queue: %d cwmin: %d cwmax: %d", q, _cwmin[q], _cwmax[q]);
+  }
+}
+
+void
+Tos2QueueMapper::test_params(uint32_t q_map, uint32_t q_mode, uint32_t q_val, uint32_t cw_mode, uint32_t cw_val, uint32_t tos)
+{
+  set_params(q_map, q_mode, q_val, cw_mode, cw_val);
+
+  click_chatter("\nTest: QMAP: %d QMODE: %d QVAL: %d CW_MODE: %d CW_VAL: %d TOS: %d",
+                                             q_map, q_mode, q_val, cw_mode, cw_val, tos);
+  recalc_backoff_queues(tos);
+  print_queues();
+
+  click_chatter("\n");
+
+}
+
+void
+Tos2QueueMapper::test()
+{
+  test_params(QUEUEMAPPING_NEXT_BIGGER,QUEUEMAPPING_DIFFQUEUE_EXP,1,QUEUEMAPPING_DIFF_MINMAXCW_EXP,1,16);
+  test_params(QUEUEMAPPING_NEXT_BIGGER,QUEUEMAPPING_DIFFQUEUE_EXP,1,QUEUEMAPPING_DIFF_MINMAXCW_EXP,1,15);
+
+  test_params(QUEUEMAPPING_NEXT_BIGGER,QUEUEMAPPING_DIFFQUEUE_EXP,2,QUEUEMAPPING_DIFF_MINMAXCW_EXP,2,16);
+
+  test_params(QUEUEMAPPING_NEXT_BIGGER,QUEUEMAPPING_DIFFQUEUE_FIB,1,QUEUEMAPPING_DIFF_MINMAXCW_FIB,1,16);
+  test_params(QUEUEMAPPING_NEXT_BIGGER,QUEUEMAPPING_DIFFQUEUE_FIB,3,QUEUEMAPPING_DIFF_MINMAXCW_FIB,3,16);
+
+  test_params(QUEUEMAPPING_DIRECT,QUEUEMAPPING_DIFFQUEUE_ADD,0,QUEUEMAPPING_DIFF_MINMAXCW_ADD,0,12);
+
+  test_params(QUEUEMAPPING_DIRECT,QUEUEMAPPING_DIFFQUEUE_ADD,2,QUEUEMAPPING_DIFF_MINMAXCW_ADD,3,12);
+
+  test_params(QUEUEMAPPING_DIRECT,QUEUEMAPPING_DIFFQUEUE_MUL,2,QUEUEMAPPING_DIFF_MINMAXCW_MUL,4,10);
+}
+
 static String Tos2QueueMapper_read_param(Element *e, void *thunk)
 {
   Tos2QueueMapper *td = (Tos2QueueMapper *)e;
@@ -447,20 +618,23 @@ static int Tos2QueueMapper_write_param(const String &in_s, Element *e, void *vpa
 {
   	Tos2QueueMapper *f = (Tos2QueueMapper *)e;
   	String s = cp_uncomment(in_s);
-	Vector<String> args;
-	cp_spacevec(s, args);
+  Vector<String> args;
+  cp_spacevec(s, args);
 
- 	switch((intptr_t)vparam) {
-    		case H_TOS2QUEUEMAPPER_RESET:
-      			f->reset_queue_usage();
-      		        break;
-    		case H_TOS2QUEUEMAPPER_STRATEGY:
-		        int st;
-		        if (!cp_integer(args[0],&st)) return errh->error("strategy parameter must be integer");
-			f->set_backoff_strategy(st);
-		        break;
-      	}
-	return 0;
+  switch((intptr_t)vparam) {
+    case H_TOS2QUEUEMAPPER_RESET:
+      f->reset_queue_usage();
+      break;
+    case H_TOS2QUEUEMAPPER_STRATEGY:
+      int st;
+      if (!cp_integer(args[0],&st)) return errh->error("strategy parameter must be integer");
+      f->set_backoff_strategy(st);
+      break;
+    case H_TOS2QUEUEMAPPER_TEST:
+      f->test();
+      break;
+  }
+  return 0;
 }
 
 void Tos2QueueMapper::add_handlers()
@@ -468,10 +642,13 @@ void Tos2QueueMapper::add_handlers()
   BRNElement::add_handlers();//for Debug-Handlers
 
   add_read_handler("stats", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_STATS);//STATS:=statistics
-  add_read_handler("BOs", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_BOS);
+  add_read_handler("bos", Tos2QueueMapper_read_param, (void *) H_TOS2QUEUEMAPPER_BOS);
 
+  add_write_handler("queueconf", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_CONFIG);
   add_write_handler("reset", Tos2QueueMapper_write_param, (void *) H_TOS2QUEUEMAPPER_RESET, Handler::h_button);
   add_write_handler("strategy",Tos2QueueMapper_write_param, (void *)H_TOS2QUEUEMAPPER_STRATEGY);
+
+  add_write_handler("test",Tos2QueueMapper_write_param, (void *)H_TOS2QUEUEMAPPER_TEST);
 }
 
 CLICK_ENDDECLS

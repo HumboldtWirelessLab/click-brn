@@ -27,7 +27,6 @@ class BoConstant : public BackoffScheme {
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
-  void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
 
  public:
 

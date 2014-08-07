@@ -27,14 +27,13 @@ public:
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
   void handle_feedback(uint8_t retries);
-  void set_conf(uint32_t min, uint32_t max);
 
-/* Own Functions */
-public:
+  /* Own Functions */
+ public:
   BoLearning();
   ~BoLearning();
 
-private:
+ private:
   void increase_cw();
   void increase_cw_strict(uint8_t retries);
   void decrease_cw();

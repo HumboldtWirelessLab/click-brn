@@ -97,6 +97,11 @@ TCC::set_simple_action_code(String code)
 int
 TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_tab
 {
+#ifndef TCC_RELOCATE_AUTO
+  int size;
+  void *mem;
+#endif
+
   /* if tcclib.h and libtcc1.a are not installed, where can we find them */
   // if (argc == 2 && !memcmp(argv[1], "lib_path=",9))
   //   tcc_set_lib_path(_tcc_s, argv[1]+9);
@@ -125,7 +130,17 @@ TCC::compile_code(TCCState *tcc_s, String code) //Vector<<Funcname, func*>> sym_
   tcc_add_symbol(tcc_s, "tcc_packet_kill",(void*)tcc_packet_kill);
 
   /* relocate the code */
+#ifdef TCC_RELOCATE_AUTO
   if (tcc_relocate(tcc_s, TCC_RELOCATE_AUTO) < 0) return -1;
+#else
+  /* get needed size of the code */
+  size = tcc_relocate(s, NULL);
+  if (size == -1) return 1;
+
+  /* allocate memory and copy the code into it */
+   mem = malloc(size); //TODO: memleak!!! use TCCFUNCTION to hold pointer
+   tcc_relocate(tcc_s, mem);
+#endif
 
   return 0;
 }
