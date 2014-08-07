@@ -156,6 +156,8 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   if (_current_scheme) {
     opt_cwmin = _current_scheme->get_cwmin(p, tos);
+    BRN_DEBUG("TosQM: opt_cwmin: %d\n", opt_cwmin);
+
   } else {
     switch (_bqs_strategy) {
       case BACKOFF_STRATEGY_OFF:
@@ -180,6 +182,8 @@ Tos2QueueMapper::simple_action(Packet *p)
   }
 
   opt_queue = find_queue(opt_cwmin);
+  BRN_DEBUG("optQ: %d\n", opt_queue);
+
 
   // handle trunc overflow
   if ( opt_queue == (no_queues-1) || opt_queue == 0 ) {
@@ -187,6 +191,7 @@ Tos2QueueMapper::simple_action(Packet *p)
     recalc_backoff_queues(closest_bo, 1, 1);
     set_backoff();
     opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+    BRN_DEBUG("optQ recalc: %d closest bo: %d\n", opt_queue, closest_bo);
   }
 
   // Apply tos;
@@ -243,19 +248,14 @@ Tos2QueueMapper::handle_feedback(Packet *p)
       no_transmissions = (int)(ceh->virt_col & 15);
     }
 
+    //BRN_DEBUG("  #trans: %d #RTS trans: %d\n", no_transmissions, no_rts_transmissions);
 
-    BRN_DEBUG("  #trans: %d #RTS trans: %d\n", no_transmissions, no_rts_transmissions);
+    if (no_rts_transmissions == 0)
+      _current_scheme->handle_feedback(no_transmissions);
 
-    if (_current_scheme)
+    if (no_rts_transmissions >= 0)
       _current_scheme->handle_feedback(no_rts_transmissions);
-
-    return;
   }
-
-  BRN_DEBUG("  retries: %d\n", ceh->retries);
-
-  if (_current_scheme)
-    _current_scheme->handle_feedback(ceh->retries);
 
   return;
 }
@@ -284,7 +284,7 @@ Tos2QueueMapper::find_queue_next_bigger(uint16_t backoff_window_size)
   if ( backoff_window_size <= _cwmin[0] ) return 0;
 
   // Take the first queue, whose cw-interval is in the range of the backoff-value
-  for (int i = 0; i <= no_queues-1; i++)
+  for (int i = 0; i < no_queues-1; i++)
     if ( backoff_window_size > _cwmin[i] && backoff_window_size <= _cwmin[i+1] ) return i+1;
 
   return no_queues-1;

@@ -43,10 +43,11 @@ class BoMediumShare : public BackoffScheme {
   void increase_cw();
   void increase_cw_strict(uint8_t retries);
   void decrease_cw();
-  void kohaesion(uint32_t mean_tx, uint32_t own_tx);
+  void cohesion(uint32_t mean_tx, uint32_t own_tx, uint32_t sum_tx);
   void gravitation(uint32_t own_tx);
-  void seperation(uint32_t own_tx, uint32_t retries);
+  void seperation(uint32_t retries, int pkt_cnt);
   void calc_new_bo();
+  void reset_counts();
 
   // Helper
   bool stats_are_new(struct airtime_stats *);
@@ -65,6 +66,8 @@ private:
   CooperativeChannelStats *_cocst;
   String _cocst_string;
   HiddenNodeDetection *_hnd;
+  bool _hn_detected;
+  uint16_t _retry_threshold;
 
   uint16_t _current_bo;
 
@@ -72,14 +75,16 @@ private:
   uint32_t _last_id_cw;
   uint32_t _last_id_hf;
   uint32_t _retry_sum;
-  float _kohaesion_value;
-  float _gravity_value;
-  float _seperation_value;
+  double _cohesion_value;
+  double _gravity_value;
+  double _seperation_value;
   uint32_t _alpha;
   uint32_t _beta;
   uint32_t _gamma;
 
   int _bo_decision;
+
+  int _pkt_cnt;
 };
 
 

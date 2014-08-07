@@ -19,14 +19,25 @@ CLICK_DECLS
 
 
 BoMediumShare::BoMediumShare()
-  : _cocst(NULL),
+  : _cst(NULL),
+    _cocst(NULL),
     _cocst_string(""),
     _hnd(NULL),
+    _hn_detected(false),
+    _retry_threshold(1),
     _current_bo(0),
     _last_tx(0),
     _last_id_cw(-1),
     _last_id_hf(-1),
-    _retry_sum(0)
+    _retry_sum(0),
+    _cohesion_value(0),
+    _gravity_value(0),
+    _seperation_value(0),
+    _alpha(1),
+    _beta(1),
+    _gamma(1),
+    _bo_decision(0),
+    _pkt_cnt(0)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_MEDIUMSHARE;
@@ -201,7 +212,12 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
   EtherAddress my_ea = get_src_etheraddr(p);
   EtherAddress dst_ea = get_dst_etheraddr(p);
 
-  int hns_detected = _hnd->count_hidden_neighbours(dst_ea);
+  if (_hnd->count_hidden_neighbours(dst_ea))
+    _hn_detected = true;
+  else
+    _hn_detected = false;
+
+  BRN_DEBUG("  HNs: %d\n", _hnd->count_hidden_neighbours(dst_ea));
 
   /* for every nb: sum tx register and if HN also sum tx dur of 2hops */
   NodeChannelStatsMap *nb_cst_map = _cocst->get_stats_map();
@@ -216,13 +232,13 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
     struct local_airtime_stats *nb_las = node_cst->get_last_stats();
 
     if (strcmp(nb, "00-00-00-00-00-01")) {  /* ignore receiver */
-      BRN_DEBUG("  Nb: %s tx: %d  \trx: %d\n", nb, nb_las->hw_tx, nb_las->hw_rx);
+      BRN_DEBUG("  Nb: %s tx: %d\n", nb, nb_las->hw_tx);
 
       tx_sum += nb_las->hw_tx;
       num_contenders++;
     }
 
-    if (hns_detected) {
+    if (_hn_detected) {
       NeighbourStatsMap *nb_stats_map = node_cst->get_last_neighbour_map();
       NeighbourStatsMapIter nb_stats_map_iter = nb_stats_map->begin();
 
@@ -253,11 +269,22 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
   BRN_DEBUG("  mean tx: %d  (tx sum: %d no contenders: %d)\n", mean_tx, tx_sum, num_contenders);
 
-  cohesion_decision(tx_sum, own_tx, mean_tx);
-  eval_all_rules();
-  limit_bo(32, 8096);
+ // cohesion_decision(tx_sum, own_tx, mean_tx);
 
-  BRN_DEBUG("  new bo: %d\n", _current_bo);
+  gravitation(as->hw_busy);
+  cohesion(mean_tx, own_tx, tx_sum);
+
+
+  //eval_all_rules();
+  calc_new_bo();
+
+  limit_bo(32, 8192);
+  //limit_bo(8, 8096);
+
+  BRN_DEBUG("  new bo: %d pkt_cnt: %d\n", _current_bo, _pkt_cnt);
+
+  reset_counts();
+
 
   if (_debug >= BrnLogger::DEBUG)
     click_chatter("\n");
@@ -273,6 +300,9 @@ void BoMediumShare::handle_feedback(uint8_t retries)
     return;
 
   _retry_sum += retries;
+  _pkt_cnt++;
+
+  BRN_DEBUG("pkt cnt: %d curr bo: %d\n", _pkt_cnt, _current_bo);
 
   if (as->stats_id == _last_id_hf)
     return;
@@ -283,15 +313,11 @@ void BoMediumShare::handle_feedback(uint8_t retries)
 
   BRN_DEBUG("BoMediumShare::handle_feedback():");
   BRN_DEBUG("  retry sum: %d\n", _retry_sum);
+  BRN_DEBUG("  pkt count: %d\n", _pkt_cnt);
 
-  if (_retry_sum > 20) {
-    BRN_DEBUG("  >> own decision: increase");
-    _bo_decision++;
-  } else {
-    BRN_DEBUG("  >> own decision: no change");
-  }
+  seperation(_retry_sum, _pkt_cnt);
+  BRN_DEBUG("seperation: %f\n", _seperation_value);
 
-  BRN_DEBUG("  current bo_decision: %d\n", _bo_decision);
 
   _retry_sum = 0;
 
@@ -322,33 +348,158 @@ void BoMediumShare::decrease_cw()
   _current_bo = _current_bo >> 1;
 }
 
-void BoMediumShare::kohaesion(uint32_t mean_tx, uint32_t own_tx)
+void BoMediumShare::cohesion(uint32_t mean_tx, uint32_t own_tx, uint32_t sum_tx)
 {
-  _kohaesion_value = 1 - (mean_tx - own_tx) / 100;
-  if (_kohaesion_value < 0)
-    _kohaesion_value *= -1;
+  _cohesion_value = (double) own_tx / (double) mean_tx;
+
+  BRN_DEBUG("coh():");
+  BRN_DEBUG("  own tx: %d mean_tx: %d coh val: %f\n", own_tx, mean_tx, _cohesion_value);
+
+  if ((sum_tx > 100) && (own_tx > mean_tx)) {
+    BRN_DEBUG("sum > 100: disable sep & grav");
+    _beta = 0.0;
+    _gamma = 0.0;
+    _cohesion_value = -0.3;
+    return;
+  }
+
+  if (_cohesion_value == 1.0) {
+    _cohesion_value = 0.0;
+    return;
+  }
+
+  if (_cohesion_value > 1) {
+    _cohesion_value = (1 / _cohesion_value) - 1;
+    return;
+  }
+
+  if (_cohesion_value < 1)
+    _cohesion_value = 1 - _cohesion_value;
+
+  return;
 }
 
-void BoMediumShare::gravitation(uint32_t own_tx)
+void BoMediumShare::gravitation(uint32_t busy)
 {
-  _gravity_value = 1 - (100 - own_tx) / 100;
+  BRN_DEBUG("gravi():");
+  BRN_DEBUG("  busy: %d\n", busy);
+
+  if (busy > 90) {
+    BRN_DEBUG("  busy > 90: disable gravitation");
+    _beta = 0;
+    return;
+  }
+
+  BRN_DEBUG("  busy / 90: %f\n", busy / 90.0);
+
+  _gravity_value = 1.0 - (busy / 90.0);
+  BRN_DEBUG("  gravi val: %f\n", _gravity_value);
+
+  return;
 }
 
-void BoMediumShare::seperation(uint32_t own_tx, uint32_t retries)
+void BoMediumShare::seperation(uint32_t retries, int pkt_cnt)
 {
-  // SCD!!
-  _seperation_value = ((_retry_sum * own_tx) - (retries * own_tx)) / (_retry_sum * own_tx);
-  // HN!! TODO!!!
-  //_seperation_value = (( _retry_sum * own_tx) - (retries * own_tx)) / (_retry_sum * own_tx);
+  if (_hn_detected)
+    _retry_threshold = 20;
+  else
+    _retry_threshold = 1;
+
+  double thresh = -0.8;
+  int transmissions = pkt_cnt + retries;
+
+  BRN_DEBUG("sep():");
+  BRN_DEBUG("  pkt cnt: %d\n", pkt_cnt);
+  BRN_DEBUG("  retry sum: %d\n", retries);
+  BRN_DEBUG("  transmissions: %d\n", transmissions);
+  BRN_DEBUG("  thresh: %f\n", thresh);
+
+  if (transmissions < 2) {
+    BRN_DEBUG("  too few transmission: disable sep");
+    _gamma = 0.0;
+    return;
+  }
+
+  _seperation_value = (1 - ((double) pkt_cnt / transmissions)) * -1;
+
+  if (_seperation_value < thresh) {
+    BRN_DEBUG("sep < -0.8: disable sep");
+    _gamma = 0.0;
+    return;
+  }
+
+/*
+  int thresh = pkt_cnt / 2;
+
+  BRN_DEBUG("sep():");
+  BRN_DEBUG("  pkt cnt: %d\n", pkt_cnt);
+  BRN_DEBUG("  thresh: %d\n", thresh);
+  BRN_DEBUG("  retry sum: %d\n", retries);
+
+  if (pkt_cnt < 2) {
+    BRN_DEBUG("  pkt cnt too small: disabling seperation");
+    _gamma = 0;
+    return;
+  }
+
+  if ((int)retries < thresh) {
+    BRN_DEBUG("  retries < threshold: disable seperation");
+    _gamma = 0;
+    return;
+  }
+
+  BRN_DEBUG("  thresh/retries: %f\n", thresh/(double)retries);
+  BRN_DEBUG("  1.0 - that: %f\n", 1.0 - thresh/(double)retries);
+
+  _seperation_value = (1.0 - (thresh / (double)retries)) * -1;
+
+  int max_retries = pkt_cnt * 2;
+  BRN_DEBUG("  pkts: %d max.Ret: %d\n", pkt_cnt , max_retries);
+  _seperation_value = (retries / (double) max_retries) * -1;
+*/
+
+  return;
 }
 
 void BoMediumShare::calc_new_bo()
 {
-  float y = ( _alpha * _kohaesion_value + _beta * _gravity_value + _gamma * _seperation_value ) / 3;
-  if (y < 0.5)
+  double y = ((_alpha * _cohesion_value) + (_beta * _gravity_value) + (_gamma * _seperation_value));
+
+  BRN_DEBUG("calc_new_bo():");
+  BRN_DEBUG("  alpha: %d coh: %f beta: %d grav: %f gamma: %d sep %f\n", _alpha, _cohesion_value, _beta, _gravity_value, _gamma, _seperation_value);
+  BRN_DEBUG("  y: %f\n", y);
+
+  if (y < -0.2) {
+    BRN_DEBUG("inc 1");
     increase_cw();
-  else
+  }
+
+  if (y < -0.8) {
+    BRN_DEBUG("inc 2");
+    increase_cw();
+  }
+
+  if (y > 0.2) {
+    BRN_DEBUG("dec 1");
     decrease_cw();
+  }
+
+  if (y > 0.8) {
+    BRN_DEBUG("dec 2");
+    decrease_cw();
+  }
+
+}
+
+void BoMediumShare::reset_counts()
+{
+  BRN_DEBUG("resetting");
+
+  _alpha = 1;
+  _beta  = 1;
+  _gamma = 1;
+
+  _pkt_cnt = 0;
 }
 
 CLICK_ENDDECLS
