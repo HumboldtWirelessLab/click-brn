@@ -130,7 +130,7 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
 
     break;
 
-  } case BACKOFF_STRATEGY_TX_AWARE: {    
+  } case BACKOFF_STRATEGY_TX_AWARE: {
     BRN_DEBUG("    tx: %d nbs = %d\n", as->frac_mac_tx, as->no_sources);
 
     if (as->no_sources == 0) break;
@@ -139,10 +139,12 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     uint32_t target_tx = 100000 / (as->no_sources + 1);
     uint32_t wiggle_room = target_tx / 10;
 
+
     BRN_DEBUG("    tx: %d target tx: %d wm param: %d\n", hw_tx, target_tx, wiggle_room);
 
     if (hw_tx < (target_tx - wiggle_room)) decrease_cw();
     else if (hw_tx > target_tx)            increase_cw();
+
     break;
 
   } case BACKOFF_STRATEGY_BUSY_TX_AWARE: {

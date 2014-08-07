@@ -25,7 +25,7 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_BUSY_TX_AWARE                  11
 #define BACKOFF_STRATEGY_DIFF_RXTX_BUSY_TX_AWARE        12
 #define BACKOFF_STRATEGY_MINSTREL                       13
-
+#define BACKOFF_STRATEGY_MEDIUMSHARE                    14
 
 #define BACKOFF_SCHEME_MIN_CWMIN                         1
 #define BACKOFF_SCHEME_MAX_CWMAX                     65535
