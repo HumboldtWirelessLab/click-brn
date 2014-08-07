@@ -37,6 +37,14 @@
 
 CLICK_DECLS
 
+#define FLOODING_TXSCHEDULING_DEFAULT         0
+#define FLOODING_TXSCHEDULING_NEIGHBOURS_CNT  1
+#define FLOODING_TXSCHEDULING_MAX_DELAY       2
+#define FLOODING_TXSCHEDULING_PRIO            3
+
+#define FLOODING_TXSCHEDULING_LAST            3
+
+
 /*
  * =c
  * FloodingTxScheduling()
@@ -53,7 +61,6 @@ CLICK_DECLS
   * 
   * 
   */
-
 
 class FloodingTxScheduling : public BRNElement {
 
@@ -87,6 +94,8 @@ public:
   uint32_t _dfl_retries;
   uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
+
+  uint32_t _tx_scheduling;
 
   int tx_delay(PassiveAckPacket *pap);
   int tx_delay_prio(PassiveAckPacket *pap);
