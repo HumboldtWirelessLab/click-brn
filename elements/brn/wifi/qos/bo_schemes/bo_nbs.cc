@@ -26,6 +26,8 @@ BoNeighbours::BoNeighbours()
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
+
+  set_conf(32, 1024);
 }
 
 
@@ -66,7 +68,6 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   struct airtime_stats *as = _cst->get_latest_stats();
   BRN_DEBUG("stats_id: %d\n", as->stats_id);
 
-
   if (_cst_sync && (as->stats_id == _last_id))
     return _current_bo;
 
@@ -74,16 +75,22 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   int32_t nbs = as->no_sources;
 
   _current_bo = ((BO_NEIGHBOURS_ALPHA * nbs) - BO_NEIGHBOURS_BETA) / 10;
-  BRN_DEBUG("formular bo: %d\n", _current_bo);
-
-  if (_current_bo < (int)_min_cwmin)
-    _current_bo = _min_cwmin;
-  else if (_current_bo > (int)_max_cwmin)
-    _current_bo = _max_cwmin;
 
   BRN_DEBUG("BoNeighbours.get_cwmin():");
-  BRN_DEBUG("    nbs: %d\n", nbs);
-  BRN_DEBUG("    cwmin: %d\n", _current_bo);
+  BRN_DEBUG("  formular bo: %d\n", _current_bo);
+  BRN_DEBUG("  nbs: %d\n", nbs);
+
+/*
+  if (_current_bo < (int)_min_cwmin)
+    _current_bo = _min_cwmin;
+  else if (_current_bo >(int) _max_cwmin)
+    _current_bo = _max_cwmin;
+*/
+
+  if (_current_bo < 0)
+    _current_bo = 32;
+
+  BRN_DEBUG("  cwmin: %d\n", _current_bo);
 
   return _current_bo;
 }
