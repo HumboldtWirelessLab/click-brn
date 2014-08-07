@@ -153,9 +153,9 @@ void
 Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
 {
   _bqs_strategy = strategy;
-  
+
   _current_scheme = get_bo_scheme(_bqs_strategy);
-  
+
   if ( _current_scheme ) {
     _current_scheme->set_conf(BACKOFF_SCHEME_MIN_CWMIN, BACKOFF_SCHEME_MAX_CWMAX);
     _current_scheme->set_strategy(_bqs_strategy);
@@ -215,11 +215,12 @@ Tos2QueueMapper::simple_action(Packet *p)
    */
 
   switch (tos) {
+    case 0: break;
     case 1: opt_queue--;    break;
     case 2: opt_queue++;    break;
-    case 3: opt_queue +=2 ; break;
+    case 3: opt_queue +=2;  break;
     default: {
-      BRN_ERROR("TOS value too big");
+      BRN_ERROR("TOS value too big: %d",tos);
       opt_queue += 2;
     }
   }
