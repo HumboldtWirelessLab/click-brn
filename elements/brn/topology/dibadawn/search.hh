@@ -48,13 +48,15 @@ public:
     {
         DibadawnSearch *search;
         DibadawnPacket packet;
+        EtherAddress destination;
+        bool setFinishedTrue;
     };
 
 private:
     EtherAddress parentNode;
     bool visited;
     Timer *forwardPhaseEndTimer;
-    Timer *forwardSendTimer;
+    Timer *txDelayTimer;
     DibadawnSearchId searchId;
     Vector<DibadawnPacket> crossEdges;
     DibadawnNodeStatistic &commonStatistic;
@@ -69,7 +71,6 @@ private:
 
     void initCommon(BRNElement *click_element);
     void activateForwardPhaseEndTimer(DibadawnPacket &packet);
-    void activateForwardSendTimer(DibadawnPacket &packet);
     void receiveForwardMessage(DibadawnPacket &packet);
     bool isValidCrossEdge(DibadawnPacket &rxPacket);
     void receiveBackMessage(DibadawnPacket &packet);
@@ -96,13 +97,13 @@ public:
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat);
     DibadawnSearch(BRNElement *brn_click_element, DibadawnNodeStatistic &stat, DibadawnConfig &cfg, DibadawnLinkStatistic &linkStat, DibadawnSearchId &packet);
 
-    void sendBroadcastWithTimeout(DibadawnPacket &packet);
-    void sendTo(DibadawnPacket &packet, EtherAddress &dest);
-    void sendDelayedBroadcastWithTimeout(DibadawnPacket &packet);
+    void send(DibadawnPacket &packet, EtherAddress dest);
+    void sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool setFinishedTrue = false);
     void receive(DibadawnPacket &packet);
     void start_search();
     bool isResponsibleFor(DibadawnPacket &packet);
-    void beginBackwardPhase();
+    void onForwardPhaseTimeout();
+    void markSearchAsFinished();
 };
 
 CLICK_ENDDECLS

@@ -51,8 +51,8 @@ class DibadawnLinkStatistic
 public:
     DibadawnLinkStatistic();
     
-    void logRx(EtherAddress &addr);
-    void logTx();
+    void increaseRxCounter(EtherAddress &addr);
+    void increaseTxCounter();
     void reset();
     String asString();
 };
