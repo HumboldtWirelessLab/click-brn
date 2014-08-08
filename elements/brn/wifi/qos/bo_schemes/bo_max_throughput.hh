@@ -30,6 +30,7 @@ public:
 private:
 
   ChannelStats *_cst;
+  int32_t _backoff_offset;
 };
 
 CLICK_ENDDECLS
