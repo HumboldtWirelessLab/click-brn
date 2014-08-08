@@ -37,12 +37,12 @@ DibadawnLinkStatistic::DibadawnLinkStatistic()
 {
 }
 
-void DibadawnLinkStatistic::logTx()
+void DibadawnLinkStatistic::increaseTxCounter()
 {
   numTx++;
 }
 
-void DibadawnLinkStatistic::logRx(EtherAddress& addr)
+void DibadawnLinkStatistic::increaseRxCounter(EtherAddress& addr)
 {
   NeighborLink *link = getNeiborEntry(addr);
   link->numRx++;

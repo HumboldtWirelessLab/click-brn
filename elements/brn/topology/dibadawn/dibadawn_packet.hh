@@ -43,7 +43,7 @@ public:
 
     WritablePacket* getBrnPacket(EtherAddress &dest);
     WritablePacket* getBrnBroadcastPacket();
-    EtherAddress getBroadcastAddress();
+    static EtherAddress getBroadcastAddress();
 
     static bool isValid(Packet &packet);
     bool isInvalid();

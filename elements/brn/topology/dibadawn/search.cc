@@ -30,6 +30,7 @@
 #include "neighbor_container.hh"
 #include "binarymatrix.hh"
 #include "elements/standard/randomerror.hh"
+#include "elements/brn/routing/linkstat/linkproberouting/lprprotocol.hh"
 
 #define IS_EVAL_ENABLED(cfg) (cfg).debugLevel > 0
 #define IS_VERBOSE_ENABLED(cfg) (cfg).debugLevel > 1
@@ -38,12 +39,15 @@
 CLICK_DECLS;
 
 
-void forwardSendTimerCallback(Timer*, void* p)
+void txDelayCallback(Timer*, void* p)
 {
   DibadawnSearch::ForwardSendTimerParam *param = (DibadawnSearch::ForwardSendTimerParam *)p;
   assert(param != NULL);
 
-  param->search->sendBroadcastWithTimeout(param->packet);
+  param->search->send(param->packet, param->destination);
+  if(param->setFinishedTrue)
+    param->search->markSearchAsFinished();
+    
   delete(param);
 }
 
@@ -51,7 +55,7 @@ void forwardPhaseEndCallback(Timer*, void *search)
 {
   DibadawnSearch* s = (DibadawnSearch*) search;
   assert(s != NULL);
-  s->beginBackwardPhase();
+  s->onForwardPhaseTimeout();
 }
 
 DibadawnSearch::DibadawnSearch(
@@ -93,27 +97,21 @@ void DibadawnSearch::initCommon(
   isArticulationPoint = false;
 
   forwardPhaseEndTimer = new Timer(forwardPhaseEndCallback, this);
-  forwardSendTimer = new Timer(forwardSendTimerCallback, NULL);
+  txDelayTimer = new Timer(txDelayCallback, NULL);
 }
 
-void DibadawnSearch::beginBackwardPhase()
+void DibadawnSearch::onForwardPhaseTimeout()
 {
   if(IS_VERBOSE_ENABLED(config))
-    click_chatter("<ForwardTimeout node='%s' searchId='%s' />",
+    click_chatter("<ForwardTimeout node='%s' time='%s' searchId='%s' />",
       config.thisNodeAsCstr(),
+      Timestamp::now().unparse().c_str(),
       searchId.asString().c_str());
 
   detectCycles();
   forwardMessages();
   detectArticulationPoints();
   voteForArticulaionPointsAndBridges();
-
-  if(IS_VERBOSE_ENABLED(config))
-    click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
-            config.thisNodeAsCstr(),
-            Timestamp::now().unparse().c_str(),
-            searchId.asString().c_str());
-  isRunFinished = true; 
 }
 
 void DibadawnSearch::detectCycles()
@@ -141,25 +139,23 @@ void DibadawnSearch::forwardMessages()
   if (isParentNull())
     return;
 
+  DibadawnPacket packet(searchId, config.thisNode, false);
   if (messageBuffer.size() == 0)
   {
     DibadawnPayloadElement bridge(searchId, config.thisNode, parentNode, true);
     
-    DibadawnPacket packet(searchId, config.thisNode, false);
     packet.treeParent = parentNode;
     packet.hops = 1;
     packet.payload.push_back(bridge);
-    sendTo(packet, parentNode);
     
     double competence = commonStatistic.competenceByUsedHops(packet.hops);
     rememberEdgeMarking(config.thisNode, parentNode, competence, "self");
     
-    DibadawnNeighbor &neighbor = adjacents.getNeighbor(parentNode);
-    neighbor.messages.push_back(bridge);
+    DibadawnNeighbor &parent = adjacents.getNeighbor(parentNode);
+    parent.messages.push_back(bridge);
   }
   else
   {
-    DibadawnPacket packet(searchId, config.thisNode, false);
     packet.hops = 1;
     packet.treeParent = parentNode;
     packet.forwardedBy = config.thisNode;
@@ -177,8 +173,9 @@ void DibadawnSearch::forwardMessages()
     }
 
     messageBuffer.clear();
-    sendTo(packet, parentNode);
   }
+  
+  sendDelayed(packet, parentNode, true);
 }
 
 bool DibadawnSearch::isParentNull()
@@ -250,23 +247,12 @@ void DibadawnSearch::start_search()
         searchId.asString().c_str());
   
   activateForwardPhaseEndTimer(packet);
-  sendBroadcastWithTimeout(packet);
+  send(packet, packet.getBroadcastAddress());
 }
 
 void DibadawnSearch::setParentNull()
 {
   parentNode = EtherAddress();
-}
-
-void DibadawnSearch::sendBroadcastWithTimeout(DibadawnPacket &packet)
-{
-  if(IS_DEBUG_ENABLED(config))
-    packet.logTx(config.thisNode, packet.getBroadcastAddress());
-  WritablePacket *brn_packet = packet.getBrnBroadcastPacket();
-  brn_click_element->output(0).push(brn_packet);
-  
-  if(config.useLinkStatistic)
-    linkStat.logTx();
 }
 
 void DibadawnSearch::activateForwardPhaseEndTimer(DibadawnPacket &packet)
@@ -275,35 +261,41 @@ void DibadawnSearch::activateForwardPhaseEndTimer(DibadawnPacket &packet)
   forwardPhaseEndTimer->schedule_after_msec(config.maxTraversalTimeMs * (config.maxHops - packet.hops) + (config.maxHops * config.maxJitter));
 }
 
-void DibadawnSearch::sendTo(DibadawnPacket &packet, EtherAddress &dest)
+void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
 {
   if(IS_VERBOSE_ENABLED(config))
     packet.logTx(config.thisNode, dest);
-  WritablePacket *brn_packet = packet.getBrnPacket(dest);
+  
+  WritablePacket *brn_packet;
+  if(dest == DibadawnPacket::getBroadcastAddress())
+  {
+    if(config.useLinkStatistic)
+      linkStat.increaseTxCounter();
+    
+    brn_packet = packet.getBrnBroadcastPacket();
+  }
+  else
+    brn_packet = packet.getBrnPacket(dest);
+  
   brn_click_element->output(0).push(brn_packet);
 }
 
-void DibadawnSearch::sendDelayedBroadcastWithTimeout(DibadawnPacket &packet)
+void DibadawnSearch::sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool markSearchAsFinished)
 {
-  activateForwardSendTimer(packet);
-}
-
-void DibadawnSearch::activateForwardSendTimer(DibadawnPacket &packet)
-{
-  uint16_t delay = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
-  packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
-  
-  
   ForwardSendTimerParam *param = new ForwardSendTimerParam;
   param->packet = packet;
   param->search = this;
+  param->destination = dest;
+  param->setFinishedTrue = markSearchAsFinished;
 
-  forwardSendTimer->assign(forwardSendTimerCallback, (void*) param);
-  forwardSendTimer->initialize(this->brn_click_element, false);
-  
+  uint16_t delay = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
+  packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
   if(IS_DEBUG_ENABLED(config))
     click_chatter("<DEBUG node='%s' txDelayMs='%d' />", config.thisNodeAsCstr(), delay);
-  forwardSendTimer->schedule_after_msec(delay);
+  
+  txDelayTimer->assign(txDelayCallback, (void*) param);
+  txDelayTimer->initialize(this->brn_click_element, false);
+  txDelayTimer->schedule_after_msec(delay);
 }
 
 uint16_t DibadawnSearch::calcForwardDelay()
@@ -344,7 +336,7 @@ void DibadawnSearch::receive(DibadawnPacket &rxPacket)
 void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
 {
   if(config.useLinkStatistic)
-    linkStat.logRx(rxPacket.forwardedBy);
+    linkStat.increaseRxCounter(rxPacket.forwardedBy);
   
   if (!visited)
   {
@@ -368,7 +360,7 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       sentForwardPacket = txPacket;
 
       activateForwardPhaseEndTimer(txPacket);
-      sendDelayedBroadcastWithTimeout(txPacket);
+      sendDelayed(txPacket, txPacket.getBroadcastAddress(), false);
     }
     else
     {
@@ -533,6 +525,17 @@ void DibadawnSearch::bufferBackwardMessage(DibadawnCycle &cycleId)
   DibadawnPayloadElement elem(cycleId);
   messageBuffer.push_back(elem);
 }
+
+void DibadawnSearch::markSearchAsFinished()
+{
+   if(IS_VERBOSE_ENABLED(config))
+      click_chatter("<Finished node='%s' time='%s' searchId='%s' />",
+            config.thisNodeAsCstr(),
+            Timestamp::now().unparse().c_str(),
+            searchId.asString().c_str());
+    isRunFinished = true; 
+}
+
 
 
 CLICK_ENDDECLS
