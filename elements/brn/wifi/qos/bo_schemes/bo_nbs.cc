@@ -13,10 +13,7 @@
 
 #include "bo_nbs.hh"
 
-
 CLICK_DECLS
-
-
 
 BoNeighbours::BoNeighbours()
   : _cst(NULL),
@@ -30,7 +27,6 @@ BoNeighbours::BoNeighbours()
   set_conf(32, 1024);
 }
 
-
 BoNeighbours::~BoNeighbours()
 {
 }
@@ -43,7 +39,6 @@ void * BoNeighbours::cast(const char *name)
   return BackoffScheme::cast(name);
 }
 
-
 int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
@@ -53,11 +48,6 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0) return -1;
 
   return 0;
-}
-
-
-void BoNeighbours::add_handlers()
-{
 }
 
 int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
@@ -94,13 +84,6 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
 
   return _current_bo;
 }
-
-
-void BoNeighbours::handle_feedback(uint8_t retries)
-{
-  (void) retries;
-}
-
 
 CLICK_ENDDECLS
 

@@ -11,7 +11,7 @@ CLICK_DECLS
 
 class BoTargetPacketloss : public BackoffScheme {
 /* Derived Functions */
-public:
+ public:
   /* Element */
   const char *class_name() const  { return "BoTargetPacketloss"; }
   const char *processing() const  { return AGNOSTIC; }
@@ -19,16 +19,14 @@ public:
   void *cast(const char *name);
 
   int configure(Vector<String> &, ErrorHandler *);
-  void add_handlers();
 
   /* BackoffScheme */
   int get_cwmin(Packet *p, uint8_t tos);
-  void handle_feedback(uint8_t retries);
 
-public:
+ public:
   BoTargetPacketloss();
 
-private:
+ private:
 
   ChannelStats *_cst;
   uint32_t _target_packetloss;

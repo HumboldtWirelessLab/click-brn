@@ -22,8 +22,10 @@ CLICK_DECLS
 #define BACKOFF_STRATEGY_CONSTANT                        8
 #define BACKOFF_STRATEGY_TX_AWARE                        9
 #define BACKOFF_STRATEGY_FLOODING                       10
-#define BACKOFF_STRATEGY_MEDIUMSHARE                    11
-
+#define BACKOFF_STRATEGY_BUSY_TX_AWARE                  11
+#define BACKOFF_STRATEGY_DIFF_RXTX_BUSY_TX_AWARE        12
+#define BACKOFF_STRATEGY_MINSTREL                       13
+#define BACKOFF_STRATEGY_MEDIUMSHARE                    14
 
 #define BACKOFF_SCHEME_MIN_CWMIN                         1
 #define BACKOFF_SCHEME_MAX_CWMAX                     65535
@@ -36,7 +38,7 @@ public:
   void *cast(const char *name);
 
   virtual int get_cwmin(Packet *p, uint8_t tos) = 0;
-  virtual void handle_feedback(uint8_t retries) = 0;
+  virtual void handle_feedback(uint8_t retries);
 
   virtual void set_conf(uint32_t min, uint32_t max);
   virtual void set_strategy(uint32_t strategy);

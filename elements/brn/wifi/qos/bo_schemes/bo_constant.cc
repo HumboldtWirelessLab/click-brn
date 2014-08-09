@@ -13,10 +13,7 @@
 
 #include "bo_constant.hh"
 
-
 CLICK_DECLS
-
-
 
 BoConstant::BoConstant()
   : _const_bo(0)
@@ -38,18 +35,15 @@ void * BoConstant::cast(const char *name)
   return BackoffScheme::cast(name);
 }
 
-
 int BoConstant::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "BO", cpkP+cpkM, cpInteger, &_const_bo,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
   return 0;
 }
-
 
 void BoConstant::add_handlers()
 {
@@ -60,21 +54,7 @@ int BoConstant::get_cwmin(Packet *p, uint8_t tos)
   (void) p;
   (void) tos;
 
-  struct airtime_stats *as = _cst->get_latest_stats();
-  uint32_t busy = as->hw_busy;
-
-  BRN_DEBUG("BoConst.get_cwmin():\n");
-  BRN_DEBUG("      busy: %d\n", busy);
-  BRN_DEBUG("    old bo: %d\n", _const_bo);
-  BRN_DEBUG("    new bo: %d\n\n", _const_bo);
-
   return _const_bo;
-}
-
-
-void BoConstant::handle_feedback(uint8_t retries)
-{
-  (void) retries;
 }
 
 CLICK_ENDDECLS

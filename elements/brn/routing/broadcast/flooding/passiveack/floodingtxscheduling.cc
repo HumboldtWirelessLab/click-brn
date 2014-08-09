@@ -44,7 +44,8 @@ FloodingTxScheduling::FloodingTxScheduling():
   _flooding_db(NULL),
   _dfl_retries(PASSIVE_ACK_DFL_MAX_RETRIES),
   _dfl_interval(PASSIVE_ACK_DFL_INTERVAL),
-  _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT)
+  _dfl_timeout(PASSIVE_ACK_DFL_TIMEOUT),
+  _tx_scheduling(FLOODING_TXSCHEDULING_DEFAULT)
 {
   BRNElement::init();
 }
@@ -61,9 +62,15 @@ FloodingTxScheduling::configure(Vector<String> &conf, ErrorHandler* errh)
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
       "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "DEFAULTINTERVAL", cpkP, cpInteger, &_dfl_interval,
+      "SCHEDULING", cpkP, cpInteger, &_tx_scheduling,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
+
+  if (FLOODING_TXSCHEDULING_LAST < _tx_scheduling) {
+    BRN_ERROR("Unknown tx-scheduling! Use default.");
+    _tx_scheduling = FLOODING_TXSCHEDULING_DEFAULT;
+  }
 
   return 0;
 }
@@ -79,7 +86,22 @@ FloodingTxScheduling::initialize(ErrorHandler *)
 int
 FloodingTxScheduling::tx_delay(PassiveAckPacket *pap)
 {
-  return tx_delay_cnt_neighbors_delay(pap);
+  int delay = 0;
+
+  switch (_tx_scheduling) {
+    case FLOODING_TXSCHEDULING_DEFAULT:
+    case FLOODING_TXSCHEDULING_NEIGHBOURS_CNT:
+      delay = tx_delay_cnt_neighbors_delay(pap);
+      break;
+    case FLOODING_TXSCHEDULING_MAX_DELAY:
+      delay = tx_delay_max_delay(pap);
+      break;
+    case FLOODING_TXSCHEDULING_PRIO:
+      delay = tx_delay_prio(pap);
+      break;
+  }
+
+  return delay;
 }
 
 int
@@ -92,11 +114,54 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
    * 4. set priority depanding on the benefit and tx_probability (Metric?) : F(benefit,prob) = Prio
    * 5. Get time for prio depending on packetsize
    * */
-  Vector<EtherAddress> neighbours;
+  BroadcastNode *bcn = _flooding_db->get_broadcast_node(&(pap->_src));
+  EtherAddress me = *_me->getMasterAddress();
+  HashMap<EtherAddress, int> benefit_map;
+  Vector<int> benefits;
 
-  (void)pap;
+  //get all neighbors
+  CachedNeighborsMetricList* own_cnml = _fhelper->get_filtered_neighbors(me);
 
-  return 0;
+  int own_benefit = 0;
+  int benefit = 0;
+
+  int higher_prio = 0; //0 -> highest prio ..... bigger -> lower prio
+  int same_prio = 0;
+
+  BRN_ERROR("Neighbours: %d",own_cnml->_neighbors.size());
+  //get benefit
+  if ( own_cnml->_neighbors.size() > 0 ) {
+    for ( int x = own_cnml->_neighbors.size()-1; x >= 0; x-- ) {
+      int neighbors_prob = bcn->get_probability(pap->_bcast_id, &(own_cnml->_neighbors[x]));
+
+      own_benefit += own_cnml->get_metric(own_cnml->_neighbors[x]) * (100-neighbors_prob);
+
+      CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(own_cnml->_neighbors[x]);
+      benefit = 0;
+
+      for ( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
+        benefit += (neighbors_prob * cnml->get_metric(cnml->_neighbors[n_i])) * // P(tx neighbour to his n is successfull)
+                  (100 - bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
+      }
+
+      BRN_ERROR("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(),benefit);
+      benefit_map.insert(own_cnml->_neighbors[x],benefit);
+      benefits.push_back(benefit);
+    }
+
+    BRN_ERROR("Own benefit: %d",own_benefit);
+    for ( int x = 0; x < benefits.size(); x++ ) {
+      if ( benefits[x] > own_benefit ) higher_prio++; //node with more benefit, so my prio is less
+      else if ( benefits[x] == own_benefit ) same_prio++; //node with same benefit
+    }
+  }
+
+  int delay = (higher_prio * 5) + (click_random() % (same_prio+1));
+
+  benefits.clear();
+  benefit_map.clear();
+
+  return delay;
 }
 
 int
@@ -137,7 +202,6 @@ void
 FloodingTxScheduling::add_handlers()
 {
   BRNElement::add_handlers();
-
 }
 
 CLICK_ENDDECLS
