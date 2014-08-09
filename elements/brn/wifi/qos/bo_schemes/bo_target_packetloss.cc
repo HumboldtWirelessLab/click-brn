@@ -44,10 +44,6 @@ int BoTargetPacketloss::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-void BoTargetPacketloss::add_handlers()
-{
-}
-
 int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) tos;
@@ -93,12 +89,6 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
   BRN_DEBUG("    backoffwin: %d\n\n", backoff_window_size);
 
   return backoff_window_size;
-}
-
-
-void BoTargetPacketloss::handle_feedback(uint8_t retries)
-{
-  (void) retries;
 }
 
 CLICK_ENDDECLS

@@ -24,12 +24,17 @@ BackoffScheme::cast(const char *name)
     return NULL;
 }
 
+void
+BackoffScheme::handle_feedback(uint8_t retries)
+{
+  (void)retries;
+}
+
 void BackoffScheme::set_conf(uint32_t min, uint32_t max)
 {
   _min_cwmin = min;
   _max_cwmin = max;
 }
-
 
 void BackoffScheme::set_strategy(uint32_t strategy)
 {

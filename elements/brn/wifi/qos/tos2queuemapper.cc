@@ -210,6 +210,8 @@ Tos2QueueMapper::simple_action(Packet *p)
   }
 
   opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+
+  assert((0 <= opt_queue) && (opt_queue < no_queues));
   BRN_DEBUG("optQueue: %d",opt_queue);
 
   /**
@@ -217,9 +219,14 @@ Tos2QueueMapper::simple_action(Packet *p)
    */
 
   switch (tos) {
+    case 0: break;
     case 1: opt_queue--;    break;
     case 2: opt_queue++;    break;
-    case 3: opt_queue +=2 ; break;
+    case 3: opt_queue +=2;  break;
+    default: {
+      BRN_ERROR("TOS value too big: %d",tos);
+      opt_queue += 2;
+    }
   }
   opt_queue = MAX(0,MIN(opt_queue,no_queues-1));
 
@@ -228,6 +235,8 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   //add stats
   _queue_usage[opt_queue]++;
+
+  assert(_bo_exp[opt_queue] < _bo_usage_max_no);
   _bo_usage_usage[_bo_exp[opt_queue]]++;
   //_last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
 
@@ -361,7 +370,7 @@ Tos2QueueMapper::find_closest_backoff(uint32_t bo)
   uint32_t c_bo = 1;
 
   while ( c_bo < bo ) c_bo = c_bo << 1;
-  return c_bo;
+  return MIN(c_bo, (uint32_t)(1 << _bo_usage_max_no));
 }
 
 uint32_t
@@ -370,13 +379,13 @@ Tos2QueueMapper::find_closest_backoff_exp(uint32_t bo)
   uint32_t c_bo_exp = 1;
 
   while ( (uint32_t)(1 << c_bo_exp) < bo ) c_bo_exp++;
-  return c_bo_exp;
+  return MIN(c_bo_exp, _bo_usage_max_no);
 }
 
 uint32_t
 Tos2QueueMapper::get_queue_usage(uint8_t position)
 {
-  if (position >= no_queues) position = no_queues - 1;
+  assert(position < no_queues);
   return _queue_usage[position];
 }
 
