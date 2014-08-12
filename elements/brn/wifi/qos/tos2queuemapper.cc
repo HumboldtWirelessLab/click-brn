@@ -156,10 +156,16 @@ Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
 
   _current_scheme = get_bo_scheme(_bqs_strategy);
 
+  if (!_current_scheme) {
+    BRN_DEBUG("T2QM.set_bo_strat():");
+    BRN_DEBUG("  no scheme for strat: %d\n", _bqs_strategy);
+  }
+
   if ( _current_scheme ) {
     _current_scheme->set_conf(BACKOFF_SCHEME_MIN_CWMIN, BACKOFF_SCHEME_MAX_CWMAX);
     _current_scheme->set_strategy(_bqs_strategy);
   }
+
 }
 
 Packet *
@@ -284,6 +290,12 @@ Tos2QueueMapper::handle_feedback(Packet *p)
     }
 
     //BRN_DEBUG("  #trans: %d #RTS trans: %d\n", no_transmissions, no_rts_transmissions);
+
+    if (!_current_scheme) {
+      BRN_DEBUG("  no scheme!");
+    } else {
+      BRN_DEBUG("  there is a scheme");
+    }
 
     if (no_rts_transmissions == 0)
       _current_scheme->handle_feedback(no_transmissions);
