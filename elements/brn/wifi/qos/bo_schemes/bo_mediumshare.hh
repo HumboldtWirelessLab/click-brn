@@ -83,7 +83,6 @@ private:
   uint32_t _gamma;
 
   int _bo_decision;
-
   int _pkt_cnt;
 };
 

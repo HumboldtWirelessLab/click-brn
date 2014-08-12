@@ -231,6 +231,14 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
     NodeChannelStats *node_cst = nb_cst_map_iter.value();
     struct local_airtime_stats *nb_las = node_cst->get_last_stats();
 
+    int nb_stats_id = (int) nb_las->stats_id;
+    BRN_DEBUG("  Nb stats ID: %d\n", nb_stats_id);
+
+    if (nb_stats_id < 2) {
+      BRN_DEBUG("  stats id too small, skipping");
+      continue;
+    }
+
     if (strcmp(nb, "00-00-00-00-00-01")) {  /* ignore receiver */
       BRN_DEBUG("  Nb: %s tx: %d\n", nb, nb_las->hw_tx);
 
@@ -279,12 +287,9 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
   calc_new_bo();
 
   limit_bo(32, 8192);
-  //limit_bo(8, 8096);
-
-  BRN_DEBUG("  new bo: %d pkt_cnt: %d\n", _current_bo, _pkt_cnt);
 
   reset_counts();
-
+  BRN_DEBUG("  new bo: %d\n", _current_bo);
 
   if (_debug >= BrnLogger::DEBUG)
     click_chatter("\n");
@@ -302,14 +307,13 @@ void BoMediumShare::handle_feedback(uint8_t retries)
   _retry_sum += retries;
   _pkt_cnt++;
 
-  BRN_DEBUG("pkt cnt: %d curr bo: %d\n", _pkt_cnt, _current_bo);
-
   if (as->stats_id == _last_id_hf)
     return;
 
   _last_id_hf = as->stats_id;
 
   _bo_decision = -1; /* Gravitation */
+
 
   BRN_DEBUG("BoMediumShare::handle_feedback():");
   BRN_DEBUG("  retry sum: %d\n", _retry_sum);
@@ -350,10 +354,15 @@ void BoMediumShare::decrease_cw()
 
 void BoMediumShare::cohesion(uint32_t mean_tx, uint32_t own_tx, uint32_t sum_tx)
 {
+  BRN_DEBUG("coh():");
+  BRN_DEBUG("  own tx: %d mean_tx: %d\n", own_tx, mean_tx);
+
+  if (mean_tx == 0)
+    return;
+
   _cohesion_value = (double) own_tx / (double) mean_tx;
 
-  BRN_DEBUG("coh():");
-  BRN_DEBUG("  own tx: %d mean_tx: %d coh val: %f\n", own_tx, mean_tx, _cohesion_value);
+  BRN_DEBUG("  coh val: %f\n", _cohesion_value);
 
   if ((sum_tx > 100) && (own_tx > mean_tx)) {
     BRN_DEBUG("sum > 100: disable sep & grav");
@@ -405,7 +414,7 @@ void BoMediumShare::seperation(uint32_t retries, int pkt_cnt)
   else
     _retry_threshold = 1;
 
-  double thresh = -0.8;
+  double thresh = -0.4;
   int transmissions = pkt_cnt + retries;
 
   BRN_DEBUG("sep():");
@@ -414,7 +423,7 @@ void BoMediumShare::seperation(uint32_t retries, int pkt_cnt)
   BRN_DEBUG("  transmissions: %d\n", transmissions);
   BRN_DEBUG("  thresh: %f\n", thresh);
 
-  if (transmissions < 2) {
+  if (transmissions < 3) {
     BRN_DEBUG("  too few transmission: disable sep");
     _gamma = 0.0;
     return;
@@ -422,8 +431,8 @@ void BoMediumShare::seperation(uint32_t retries, int pkt_cnt)
 
   _seperation_value = (1 - ((double) pkt_cnt / transmissions)) * -1;
 
-  if (_seperation_value < thresh) {
-    BRN_DEBUG("sep < -0.8: disable sep");
+  if (_seperation_value > thresh) {
+    BRN_DEBUG("sep > -0.4: disable sep");
     _gamma = 0.0;
     return;
   }
