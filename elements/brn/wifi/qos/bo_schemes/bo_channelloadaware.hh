@@ -27,14 +27,12 @@ public:
   /* BackoffScheme */
   bool handle_strategy(uint32_t strategy);
   int get_cwmin(Packet *p, uint8_t tos);
-  void handle_feedback(uint8_t retries);
-  void set_conf(uint32_t min_cwmin, uint32_t max_cwmin);
 
-public:
+ public:
   BoChannelLoadAware();
   ~BoChannelLoadAware();
 
-private:
+ private:
 
   void increase_cw();
   void decrease_cw();

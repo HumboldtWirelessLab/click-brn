@@ -3,7 +3,9 @@
 #include <click/timer.hh>
 
 #include "rateselection.hh"
+
 #include "elements/brn/routing/broadcast/flooding/flooding.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 #include "elements/brn/wifi/rxinfo/channelstats/channelstats.hh"
@@ -52,7 +54,7 @@ class BrnFloodingRate : public RateSelection
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
-    int get_adjust_period() { return -1; }
+    int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_NONE; }
 
     /** internal functions **/
     int get_best_rate(EtherAddress &ether, MCS *best_rate);
@@ -72,6 +74,7 @@ class BrnFloodingRate : public RateSelection
 
     Flooding *_flooding;
     FloodingHelper *_fhelper;
+    FloodingDB *_flooding_db;
     BRN2LinkStat *_linkstat;
     ChannelStats *_cst;
 

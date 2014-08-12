@@ -157,12 +157,12 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, int max_metric)
 
   if ( max_metric == -1 ) max_metric = _max_metric_to_neighbor;
 
-  if ( cnml != NULL ) {
-    if ( cnml->age() > _cache_timeout ) cnml->update(_link_table);
-  } else {
-    cnml = new CachedNeighborsMetricList(node, max_metric);
+  if (( cnml == NULL ) || ( cnml->age() > _cache_timeout )) {
+    if ( cnml == NULL ) {
+      cnml = new CachedNeighborsMetricList(node, max_metric);
+      _cnmlmap.insert(node,cnml);
+    }
     cnml->update(_link_table);
-    _cnmlmap.insert(node,cnml);
   }
 
   return cnml;

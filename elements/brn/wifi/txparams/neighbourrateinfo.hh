@@ -21,32 +21,28 @@ class NeighbourRateInfo {
     uint8_t _max_power;
     uint8_t _power;
 
-    void *_rs_data;
+    void *_rs_data;         // pointer which can be used for the rateselection
 
     static int _debug;
 
     Timestamp init_stamp;    // initial time stamp at the time of paket creation
-    int curr_timeslot;
-    int time_intervall;
+    int stats_duration;
 
-    NeighbourRateStats *timeslots;
-
+    NeighbourRateStats stats;
+    Timestamp last_stats;
 
     NeighbourRateInfo();
     ~NeighbourRateInfo();
 
     NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power);
 
+    /* H E L P E R */
     int rate_index(MCS rate);
     int rate_index(uint32_t rate);
 
     MCS pick_rate(uint32_t index);
 
-    int get_current_timeslot();
-
     bool is_ht(uint32_t rate);
-
-
 
     /* helper + debug */
     int get_rate_index(uint32_t rate);
@@ -56,8 +52,6 @@ class NeighbourRateInfo {
     void print_mcs_vector();
 
     void test_print();
-
-
 
 };
 

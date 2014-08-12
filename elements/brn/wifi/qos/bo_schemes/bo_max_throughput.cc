@@ -17,7 +17,8 @@
 CLICK_DECLS
 
 BoMaxThroughput::BoMaxThroughput()
-  : _cst(NULL)
+  : _cst(NULL),
+    _backoff_offset(0)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_MAX_THROUGHPUT;
@@ -37,19 +38,14 @@ void * BoMaxThroughput::cast(const char *name)
 
 int BoMaxThroughput::configure(Vector<String> &conf, ErrorHandler* errh)
 {
-
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
+      "OFFSET", cpkP, cpInteger, &_backoff_offset,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
   return 0;
 }
-
-void BoMaxThroughput::add_handlers()
-{
-}
-
 
 int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 {
@@ -79,15 +75,9 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
   //BRN_WARN("Search max tp");
   backoff_window_size = _backoff_matrix_tmt_backoff_3D[index_search_rate][index_search_msdu_size][index_no_neighbours];
 
-  BRN_DEBUG("    backoffwin: %d\n\n", backoff_window_size);
+  BRN_DEBUG("    backoffwin: %d offset: %d result: %d\n\n", backoff_window_size, _backoff_offset, backoff_window_size+_backoff_offset);
 
-  return backoff_window_size;
-}
-
-
-void BoMaxThroughput::handle_feedback(uint8_t retries)
-{
-  (void) retries;
+  return backoff_window_size+_backoff_offset;
 }
 
 CLICK_ENDDECLS

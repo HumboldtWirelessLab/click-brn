@@ -11,7 +11,7 @@
 #if CLICK_NS
 #include <click/router.hh>
 #include <click/simclick.h>
-#include "txcontrol.h"
+#include "rxtxcontrol.h"
 #endif
 
 #include "brn2_device.hh"
@@ -186,7 +186,6 @@ BRN2Device::getDeviceNumber()
   return device_number;
 }
 
-
 bool
 BRN2Device::is_service_device()
 {
@@ -209,31 +208,6 @@ void
 BRN2Device::set_routable(bool routable)
 {
   _routable = routable;
-}
-
-#if CLICK_NS
-int
-BRN2Device::abort_transmission(EtherAddress &dst)
-{
-  struct tx_control_header txch;
-
-  txch.operation = TX_ABORT;
-  txch.flags = 0;
-  memcpy(txch.dst_ea, dst.data(), 6);
-
-  BRN_DEBUG("Abort tx: %s", dst.unparse().c_str());
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
-
-  if ( txch.flags != 0 ) {
-    BRN_ERROR("TXCtrl-Error");
-    return 1;
-  }
-#else
-int
-BRN2Device::abort_transmission(EtherAddress &)
-{
-#endif
-  return 0;
 }
 
 uint32_t
@@ -340,6 +314,52 @@ BRN2Device::get_backoff()
 }
 
 int
+BRN2Device::set_backoff_scheme(uint32_t scheme)
+{
+#if CLICK_NS
+  struct tx_control_header txch;
+
+  txch.operation = SET_BACKOFFSCHEME;
+  txch.flags = 0;
+  txch.bo_scheme = scheme;
+
+  BRN_DEBUG("Set backoff scheme: %d", scheme);
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
+
+  if ( txch.flags != 0 ) {
+    BRN_ERROR("TXCtrl-Error");
+    return 1;
+  }
+#else
+  (void)scheme;
+#endif
+  return 0;
+}
+
+int
+BRN2Device::abort_transmission(EtherAddress &dst)
+{
+#if CLICK_NS
+  struct tx_control_header txch;
+
+  txch.operation = TX_ABORT;
+  txch.flags = 0;
+  memcpy(txch.dst_ea, dst.data(), 6);
+
+  BRN_DEBUG("Abort tx: %s", dst.unparse().c_str());
+  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_TX_CONTROL, &txch);
+
+  if ( txch.flags != 0 ) {
+    BRN_ERROR("TXCtrl-Error");
+    return 1;
+  }
+#else
+  (void)dst;
+#endif
+  return 0;
+}
+
+int
 BRN2Device::set_power_iwconfig(int power, ErrorHandler *errh)
 {
 #if CLICK_USERLEVEL
@@ -369,7 +389,6 @@ BRN2Device::set_power_iwconfig(int power, ErrorHandler *errh)
 
   return 0;
 }
-
 
 String
 BRN2Device::device_info()

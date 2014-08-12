@@ -20,7 +20,9 @@ CLICK_DECLS
 MPRFlooding::MPRFlooding():
   _max_metric_to_neighbor(MPR_DEFAULT_NB_METRIC),
   _update_interval(MPR_DEFAULT_UPDATE_INTERVAL),
-  _fix_mpr(false)
+  _fix_mpr(false),
+  _last_bcast_id(-1),
+  _remove_finished_nodes(false)
 {
   BRNElement::init();
 }
@@ -47,8 +49,10 @@ MPRFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "MPRUPDATEINTERVAL",cpkP, cpInteger, &_update_interval,
+    "REMOVEFINISHEDNODES",cpkP, cpBool, &_remove_finished_nodes,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -66,34 +70,37 @@ MPRFlooding::initialize(ErrorHandler *)
 
 /**
  *
- * @bcast_id: negatvive value means: filter known neighbours
+ * @bcast_id: negatvive value means: don't filter known neighbours
  */
 void
 MPRFlooding::set_mpr_header(uint32_t *tx_data_size, uint8_t *txdata, EtherAddress *src, int bcast_id)
 {
   if ( bcast_id == -1 ) {
-    if ((_mpr_forwarder.size() == 0) || //if we have now mpr
+    if ((_mpr_forwarder.size() == 0) || //if we have no mpr
         ((!_fix_mpr) &&                 //or we dont use fixed mprs & need update
-         (Timestamp::now() - _last_set_mpr_call).msecval() > _update_interval)) {
+         (Timestamp::now() - _last_set_mpr_call).msecval() > _update_interval) ||
+         (_last_bcast_id != -1)) {
         set_mpr(NULL);
     }
   } else {
     HashMap<EtherAddress,EtherAddress> known_nodes;
 
-    struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+    struct BroadcastNode::flooding_node_info *last_nodes;
 
     uint32_t last_nodes_size;
-    last_nodes = _flooding->get_last_nodes(src, bcast_id, &last_nodes_size);
+    last_nodes = _flooding_db->get_node_infos(src, bcast_id, &last_nodes_size);
 
     for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                     //add node to candidate set if
-      if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) != 0) ||             //1. is known as acked
-           ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) //2. foreign respons
+      if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) != 0) ||             //1. is known as acked
+           ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) //2. foreign respons
           known_nodes.insert(EtherAddress(last_nodes[j].etheraddr),EtherAddress(last_nodes[j].etheraddr));
     }
 
     set_mpr(&known_nodes);
     known_nodes.clear();
   }
+
+  _last_bcast_id = bcast_id;
 
   if ( (*tx_data_size < (uint32_t)(sizeof(struct click_brn_bcast_extra_data) + (6 * _mpr_forwarder.size()))) || (_mpr_forwarder.size() == 0)) { 
     BRN_ERROR("MPRHeader: no space left");
@@ -172,7 +179,7 @@ MPRFlooding::do_forward(EtherAddress *src, EtherAddress */*fwd*/, const EtherAdd
   }
 
   if (fwd) { //i'm a mpr
-    set_mpr_header(tx_data_size, txdata, src, id /*-1*/);
+    set_mpr_header(tx_data_size, txdata, src, (_remove_finished_nodes?id:-1));
 
     for (Vector<EtherAddress>::iterator i = _mpr_forwarder.begin(); i!=_mpr_forwarder.end(); ++i) {
       unicast_dst->push_back(*i);

@@ -10946,7 +10946,7 @@ fi
 
 
 if test "$lwipprefix" != no; then
-    saveflags="$CPPFLAGS"; test -n "$lwipprefix" && CPPFLAGS="$CPPFLAGS -I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include"
+    saveflags="$CPPFLAGS"; test -n "$lwipprefix" && CPPFLAGS="$CPPFLAGS -I$lwipprefix/lib -I$lwipprefix/include -I$lwipprefix/include/ipv4 -I$lwipprefix/include/ipv6"
     ac_fn_c_check_header_mongrel "$LINENO" "lwip/init.h" "ac_cv_header_lwip_init_h" "$ac_includes_default"
 if test "x$ac_cv_header_lwip_init_h" = xyes; then :
   have_lwip_h=yes
@@ -11011,7 +11011,7 @@ fi
     LIBS="$lwipsavelibs"
 
     if test $have_lwip_h = yes -a $have_liblwip = yes; then
-	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/brn-lwip/src/include -I$lwipprefix/brn-lwip/src/include/ipv4 -I$lwipprefix/brn-lwip/src/include/ipv6 -I$lwipprefix/brn-lwip-contrib/ports/unix/include" && LWIP_LIBS="-L$lwipprefix/lib"
+	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/include -I$lwipprefix/include/ipv4 -I$lwipprefix/include/ipv6 -I$lwipprefix/include" && LWIP_LIBS="-L$lwipprefix/lib"
 	LWIP_LIBS="$LWIP_LIBS -llwip"
 
 $as_echo "#define HAVE_LWIP 1" >>confdefs.h

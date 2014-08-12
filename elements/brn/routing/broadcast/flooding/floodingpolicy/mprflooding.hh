@@ -2,7 +2,9 @@
 #define MPRFLOODING_HH
 #include <click/timer.hh>
 
-#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "../flooding_helper.hh"
+#include "../flooding_db.hh"
+
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -60,6 +62,8 @@ class MPRFlooding : public FloodingPolicy
 
     BRN2NodeIdentity *_me;
     FloodingHelper *_fhelper;
+    FloodingDB *_flooding_db;
+
     int _max_metric_to_neighbor;
 
     Timestamp _last_set_mpr_call;
@@ -68,6 +72,9 @@ class MPRFlooding : public FloodingPolicy
 
     Vector<EtherAddress> _mpr_forwarder;
     Vector<EtherAddress> _neighbours;
+    int _last_bcast_id;
+
+    bool _remove_finished_nodes;
 };
 
 CLICK_ENDDECLS

@@ -18,6 +18,7 @@ CLICK_DECLS
 BrnFloodingRate::BrnFloodingRate()
  : _flooding(NULL),
    _fhelper(NULL),
+   _flooding_db(NULL),
    _linkstat(NULL),
    _cst(NULL),
    _fl_rate_strategy(FLOODINGRATE_SINGLE_MAXRATE),
@@ -48,6 +49,7 @@ BrnFloodingRate::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "FLOODING", cpkP+cpkM, cpElement, &_flooding,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
     "CHANNELSTATS", cpkP , cpElement, &_cst,
     "STRATEGY", cpkP, cpInteger, &_fl_rate_strategy,
@@ -473,15 +475,15 @@ BrnFloodingRate::get_group(Vector<EtherAddress> *group)
   uint16_t bcast_id;
   EtherAddress *bcast_src = _flooding->get_last_tx(&bcast_id);
 
-  struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+  struct BroadcastNode::flooding_node_info *last_nodes;
   uint32_t last_nodes_size;
-  last_nodes = _flooding->get_last_nodes(bcast_src, bcast_id, &last_nodes_size);
+  last_nodes = _flooding_db->get_node_infos(bcast_src, bcast_id, &last_nodes_size);
 
   Vector<EtherAddress> target_group;
 
   for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                               //add node to candidate set if
-    if ( ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0) && //1. i'm responsible (due unicast before or fix set)
-        ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RX_ACKED) == 0)) {         //2. is not acked
+    if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0) && //1. i'm responsible (due unicast before or fix set)
+        ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)) {         //2. is not acked
       group->push_back(EtherAddress(last_nodes[j].etheraddr));
     }
   }
