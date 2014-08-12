@@ -35,7 +35,7 @@ class BrnFixRate : public RateSelection
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 
-    int get_adjust_period() { return -1; }
+    int get_adjust_period() { return RATESELECTION_ADJUST_PERIOD_NONE; }
 
     bool _set_rates;
     bool _set_power;

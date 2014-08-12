@@ -27,11 +27,15 @@
 #include <click/timestamp.hh>
 #include <click/timer.hh>
 
-#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "../../../../local/chuckcheck.hh"
+
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+
+#include "elements/brn/routing/broadcast/flooding/passiveack/passiveackpacketinfo.hh"
+#include "elements/brn/routing/broadcast/flooding/passiveack/floodingtxscheduling.hh"
 
 CLICK_DECLS
 
@@ -57,67 +61,13 @@ class Flooding;
 class FloodingPassiveAck : public BRNElement {
 
  public:
-  class PassiveAckPacket
-  {
+
 #define PASSIVE_ACK_DFL_MAX_RETRIES  1
 #define PASSIVE_ACK_DFL_INTERVAL    25
 #define PASSIVE_ACK_DFL_TIMEOUT   2000
 
-     public:
-      EtherAddress _src;
-      uint16_t _bcast_id;
-      Vector<EtherAddress> _passiveack;
-
-      int16_t _max_retries;
-      uint16_t _retries;
-
-      Timestamp _enqueue_time;
-      Timestamp _last_tx;
-
-      PassiveAckPacket(EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries)
-      {
-        _src = EtherAddress(src->data());
-        _bcast_id = bcast_id;
-        if ( passiveack != NULL )
-        for ( int i = 0; i < passiveack->size(); i++) _passiveack.push_back((*passiveack)[i]);
-
-        _max_retries = retries;
-
-        _last_tx = _enqueue_time = Timestamp::now();
-        _retries = 0;
-      }
-
-      ~PassiveAckPacket() {
-        _passiveack.clear();
-      }
-
-      void set_tx(Timestamp tx_time) {
-        _last_tx = tx_time;
-      }
-
-      inline void inc_max_retries() { _max_retries++; }; //use for tx_abort (is an net_layer transmission but maybe no mac-layer tx)
-
-      void set_next_retry(Timestamp tx_time) {
-        _retries++;
-        _last_tx = tx_time;
-      }
-
-      inline int32_t tx_duration(Timestamp now) {
-        return (now - _last_tx).msecval();
-      }
-
-      inline uint32_t retries_left() {
-        return _max_retries - _retries;
-      }
-
-      bool tx_timeout(Timestamp &now, int timeout ) {
-        return ((now - _enqueue_time).msecval() > timeout );
-      }
-
-   };
-
-   typedef Vector<PassiveAckPacket*> PAckPacketVector;
-   typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
+  typedef Vector<PassiveAckPacket*> PAckPacketVector;
+  typedef PAckPacketVector::const_iterator PAckPacketVectorIter;
   //
   //methods
   //
@@ -141,26 +91,31 @@ class FloodingPassiveAck : public BRNElement {
   //member
   //
   BRN2NodeIdentity *_me;
-  BRNElement *_retransmit_element;  
-  Flooding *_flooding;
+  BRNElement *_retransmit_element;
+
 public:
   FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
+  FloodingTxScheduling *_flooding_scheduling;
+
 private:
   PAckPacketVector p_queue;
 
   uint32_t _dfl_retries;
-  uint32_t _dfl_interval;
   uint32_t _dfl_timeout;
 
+  uint32_t _cntbased_min_neighbors_for_abort;
   bool _abort_on_finished;
 
   bool packet_is_finished(PassiveAckPacket *pap);
 
   uint32_t _enqueued_pkts, _queued_pkts, _dequeued_pkts, _retransmissions, _pre_removed_pkts;
 
-  int count_unfinished_neighbors(PassiveAckPacket *pap);
-
   PassiveAckPacket *get_pap(EtherAddress *src, uint16_t bcast_id);
+
+  Vector<EtherAddress>* get_passive_ack_neighbors(PassiveAckPacket *pap);
+  int set_unfinished_neighbors(PassiveAckPacket *pap);
+  int count_unfinished_neighbors(PassiveAckPacket *pap);
 
  public:
 
@@ -170,8 +125,6 @@ private:
     _retransmit_element = e;
     _retransmit_broadcast = retransmit_bcast;
   }
-
-  void set_flooding(Flooding *flooding) { _flooding = flooding; }
 
   int packet_enqueue(Packet *p, EtherAddress *src, uint16_t bcast_id, Vector<EtherAddress> *passiveack, int16_t retries);
 

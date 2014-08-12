@@ -64,12 +64,6 @@ int BoLearning::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-
-void BoLearning::add_handlers()
-{
-}
-
-
 int BoLearning::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) p;
@@ -105,14 +99,6 @@ void BoLearning::handle_feedback(uint8_t retries)
 
   BRN_DEBUG("    new bo: %d\n\n", _current_bo);
 }
-
-
-void BoLearning::set_conf(uint32_t min, uint32_t max)
-{
-  _min_cwmin = min;
-  _max_cwmin = max;
-}
-
 
 void BoLearning::increase_cw()
 {

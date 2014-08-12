@@ -28,6 +28,7 @@
 #include "elements/brn/wifi/brnwifi.hh"
 #include "elements/brn/routing/identity/brn2_device.hh"
 #include "elements/brn/wifi/rxinfo/channelstats/cooperativechannelstats.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 
 CLICK_DECLS
@@ -61,29 +62,28 @@ class HiddenNodeDetection : public BRNElement {
         Timestamp _last_notice_passive;
 
         bool _neighbour;
-        bool _visible; //TODO: better solution
+        bool _exists;
 
         NodeInfoTable _links_to;
         EtherTimestampMap _last_link_usage;
 
-        NodeInfo(): _neighbour(false),_visible(true) {
-          _last_notice_passive = _last_notice_active = Timestamp::now();
+        NodeInfo(): _neighbour(false),_exists(true) {
+          _last_notice_passive = _last_notice_active = Timestamp(0);
         }
 
         inline void add_link(EtherAddress ea, NodeInfo *ni, Timestamp *ts) {
           if ( ! _links_to.findp(ea) ) _links_to.insert(ea,ni);
-          ni->_visible = true;
-          _visible = true;
+          ni->_exists = _exists = true;
           _last_link_usage.insert(ea,*ts);
         }
 
         inline void update_active() {
-            _visible = true;
+            _exists = true;
             _last_notice_active = Timestamp::now();
         }
 
         inline void update_passive() {
-          _visible = true;
+          _exists = true;
           _last_notice_passive = Timestamp::now();
         }
 
@@ -112,6 +112,7 @@ class HiddenNodeDetection : public BRNElement {
     void run_timer(Timer *);
 
     void handle_coop_channelstats();
+    void handle_linktable();
 
     String stats_handler(int mode);
 
@@ -126,19 +127,18 @@ class HiddenNodeDetection : public BRNElement {
       return false;
     }
 
-    void remove_link(EtherAddress *sea, EtherAddress *dea);
-
     int count_hidden_neighbours(const EtherAddress &);
     int get_hidden_neighbours(const EtherAddress &, Vector<EtherAddress> *);
 
   private:
 
     BRN2Device *_device;
-
+    Brn2LinkTable *_lt;
     CooperativeChannelStats *_cocst;
 
     Timer _hn_del_timer;
-    uint32_t _hd_del_interval;
+    uint32_t _hnd_del_interval;
+    uint32_t _hn_link_del_interval;
 
     NodeInfoTable _nodeinfo_tab;
 
@@ -146,6 +146,7 @@ class HiddenNodeDetection : public BRNElement {
     uint16_t _last_data_seq;
 
     String _cocst_string;
+    String _lt_string;
 };
 
 CLICK_ENDDECLS

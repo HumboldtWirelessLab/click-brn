@@ -4,8 +4,8 @@
 #include <click/config.h>
 #include <clicknet/wifi.h>
 
-#include "click/../../elements/brn/brnprotocol/brnpacketanno.hh"
-#include "click/../../elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
+#include "elements/brn/brnprotocol/brnpacketanno.hh"
+#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
@@ -362,6 +362,16 @@ class BrnWifi
     return -1;
   }
 
+
+  static inline int get_rts_sent_count(click_wifi_extra *ceh) {
+    if ( (ceh->flags & WIFI_EXTRA_DO_RTS_CTS) == 0 ) return 0;
+    if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) return (int)(ceh->virt_col >> 4);
+    return 0;
+  }
+
+  static inline int get_data_sent_count(click_wifi_extra *ceh) {
+    return (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO)?(int)(ceh->virt_col & 15):((int)ceh->retries + ((ceh->flags & WIFI_EXTRA_TX_ABORT)?0:1));
+  }
 
   static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh) {
     memcpy(((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, &hosttime, sizeof(hosttime));

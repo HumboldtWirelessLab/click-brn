@@ -40,6 +40,7 @@ Tos2QmData::find_closest_rate_index(int rate)
 
 int
 Tos2QmData::find_closest_no_neighbour_index(int no_neighbours) {
+  if ( no_neighbours == 0 ) return 0;
   if ( no_neighbours > T2QM_MAX_INDEX_NO_NEIGHBORS )
     return T2QM_MAX_INDEX_NO_NEIGHBORS-1;
 

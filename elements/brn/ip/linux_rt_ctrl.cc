@@ -3,14 +3,14 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/userutils.hh>
+
 #include <unistd.h>
-
-#include <elements/brn/standard/brnaddressinfo.hh>
-#include "elements/brn/standard/brnlogger/brnlogger.hh"
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <elements/brn/standard/brnaddressinfo.hh>
+#include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "linux_rt_ctrl.hh"
 
@@ -18,7 +18,8 @@ CLICK_DECLS
 
 LinuxRTCtrl::LinuxRTCtrl():
   rt_sockfd(-1),
-  null_ip()
+  null_ip(),
+  uid(1)
 {
   BRNElement::init();
 }
@@ -48,6 +49,12 @@ LinuxRTCtrl::initialize(ErrorHandler *)
 
   if ( rt_sockfd == -1) {
     BRN_WARN("socket is -1\n");
+  }
+
+  uid = getuid();
+
+  if (uid != 0) {
+    BRN_WARN("Click is not running with root privilege. You will not be able to change routes!");
   }
 
   return 0;
@@ -98,10 +105,20 @@ LinuxRTCtrl::set_rt_entry(struct rtentry *rm, IPAddress &ip, IPAddress &mask, IP
   return 0;
 }
 
+
+int
+LinuxRTCtrl::set_rt_entry_metric(struct rtentry *rm, int metric)
+{
+  rm->rt_metric = metric + 1;
+  return 0;
+}
+
 int
 LinuxRTCtrl::add_rt_entry(struct rtentry *rm)
 {
   int err;
+
+  if ( uid != 0 ) return 0;
 
   if ((err = ioctl(rt_sockfd, SIOCADDRT, rm)) < 0) {
     BRN_ERROR("SIOCADDRT failed , ret->%d %d\n",err, errno);
@@ -129,9 +146,39 @@ LinuxRTCtrl::del_rt_entry(struct rtentry *rm)
 {
   int err;
 
+  if ( uid != 0 ) return 0;
+
   if ((err = ioctl(rt_sockfd, SIOCDELRT, rm)) < 0) {
     BRN_ERROR("SIOCDELRT failed , ret->%d\n",err);
         switch (errno) {
+      case EEXIST:
+        BRN_ERROR("EXIST");
+        break;
+      case ENETUNREACH:
+        BRN_ERROR("ENETUNREACH");
+        break;
+      case EPERM:
+        BRN_ERROR("EPERM");
+        break;
+      default:
+        BRN_ERROR("UNKNOWN");
+    }
+    return -1;
+  }
+
+  return 0;
+}
+
+int
+LinuxRTCtrl::update_rt_entry(struct rtentry *rm)
+{
+  int err;
+
+  if ( uid != 0 ) return 0;
+
+  if ((err = ioctl(rt_sockfd, SIOCADDRT, rm)) < 0) {
+    BRN_ERROR("SIOCADDRT failed , ret->%d %d\n",err, errno);
+    switch (errno) {
       case EEXIST:
         BRN_ERROR("EXIST");
         break;

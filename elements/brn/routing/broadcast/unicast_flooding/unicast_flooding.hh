@@ -132,6 +132,7 @@ class UnicastFlooding : public BRNElement {
   BRN2NodeIdentity *_me;
   Flooding *_flooding;
   FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
 
  private:
   int _max_metric_to_neighbor;         // max. metric towards a neighbor

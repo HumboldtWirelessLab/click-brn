@@ -156,6 +156,16 @@ extern "C" {
   }
 }
 
+extern "C" {
+  static inline void str_replace(String &s, char c, char replace) {
+    char *s_data = s.mutable_data();
+
+    for(int i = 0; i < s.length(); i++) {
+      if ( s_data[i] == c ) s_data[i] = replace;
+    }
+  }
+}
+
 const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
 const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
 

@@ -44,10 +44,6 @@ int BoTargetPacketloss::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
-void BoTargetPacketloss::add_handlers()
-{
-}
-
 int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 {
   (void) tos;
@@ -88,17 +84,11 @@ int BoTargetPacketloss::get_cwmin(Packet *p, uint8_t tos)
 
 
   // Tests what is known
-  backoff_window_size = _backoff_matrix_tmt_backoff_4D[index_search_rate][index_search_msdu_size][index_no_neighbours][index_search_likelihood_collision];
+  backoff_window_size = _backoff_matrix_tmt_backoff_collision_probability[index_no_neighbours][index_search_likelihood_collision];
 
   BRN_DEBUG("    backoffwin: %d\n\n", backoff_window_size);
 
   return backoff_window_size;
-}
-
-
-void BoTargetPacketloss::handle_feedback(uint8_t retries)
-{
-  (void) retries;
 }
 
 CLICK_ENDDECLS
