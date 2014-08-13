@@ -110,7 +110,7 @@ Tos2QueueMapper::init_stats()
 
   _bo_exp = new uint16_t[no_queues];
 
-  /* "translates" queue to exponent, e.g. cwmin[0] = 32 -> _bo_exp[0] = 6 since 2⁶ = 32 */ 
+  /* "translates" queue to exponent, e.g. cwmin[0] = 32 -> _bo_exp[0] = 6 since 2⁶ = 32 */
   for ( int i = 0; i < no_queues; i++ )
     _bo_exp[i] = find_closest_backoff_exp(_cwmin[i]);
 
@@ -156,10 +156,16 @@ Tos2QueueMapper::set_backoff_strategy(uint32_t strategy)
 
   _current_scheme = get_bo_scheme(_bqs_strategy);
 
+  if (!_current_scheme) {
+    BRN_DEBUG("T2QM.set_bo_strat():");
+    BRN_DEBUG("  no scheme for strat: %d\n", _bqs_strategy);
+  }
+
   if ( _current_scheme ) {
     _current_scheme->set_conf(BACKOFF_SCHEME_MIN_CWMIN, BACKOFF_SCHEME_MAX_CWMAX);
     _current_scheme->set_strategy(_bqs_strategy);
   }
+
 }
 
 Packet *
@@ -174,6 +180,8 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   if (_current_scheme) {
     opt_cwmin = _current_scheme->get_cwmin(p, tos);
+    BRN_DEBUG("TosQM: opt_cwmin: %d\n", opt_cwmin);
+
   } else {
     switch (_bqs_strategy) {
       case BACKOFF_STRATEGY_OFF:
@@ -198,11 +206,13 @@ Tos2QueueMapper::simple_action(Packet *p)
   }
 
   BRN_DEBUG("optCW: %d",opt_cwmin);
+
   // handle trunc overflow
   if (need_recalc(opt_cwmin, tos)) {
     recalc_backoff_queues(opt_cwmin);
     set_backoff();
     if (BRN_DEBUG_LEVEL_DEBUG) print_queues();
+
   }
 
   opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
@@ -234,7 +244,7 @@ Tos2QueueMapper::simple_action(Packet *p)
 
   assert(_bo_exp[opt_queue] < _bo_usage_max_no);
   _bo_usage_usage[_bo_exp[opt_queue]]++;
-  _last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
+  //_last_bo_usage[_bo_exp[opt_queue]] = Timestamp::now();
 
   if (TOS2QM_ALL_BOS_STATS) {
     _all_bos[_all_bos_idx] = opt_cwmin;
@@ -248,8 +258,8 @@ Tos2QueueMapper::simple_action(Packet *p)
 void
 Tos2QueueMapper::handle_feedback(Packet *p)
 {
-
   struct click_wifi_extra *ceh = WIFI_EXTRA_ANNO(p);
+
   if (!(ceh->flags & WIFI_EXTRA_TX))
     return;
 
@@ -261,8 +271,40 @@ Tos2QueueMapper::handle_feedback(Packet *p)
   _feedback_cnt++;
   _tx_cnt += ceh->retries + 1;
 
-  if (_current_scheme)
-    _current_scheme->handle_feedback(ceh->retries);
+  BRN_DEBUG("Tos2QM::handle_feedback()");
+
+  if (_bqs_strategy == BACKOFF_STRATEGY_MEDIUMSHARE) {
+
+    int no_transmissions     = 1; /* for wired */
+    int no_rts_transmissions = 0;
+
+    if (ceh->flags & WIFI_EXTRA_TX_ABORT)
+      no_transmissions = (int)ceh->retries;
+    else
+      no_transmissions = (int)ceh->retries + 1;
+
+    if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
+      no_rts_transmissions = (int)(ceh->virt_col >> 4);
+      //assert(no_transmissions == (int)(ceh->virt_col & 15));
+      no_transmissions = (int)(ceh->virt_col & 15);
+    }
+
+    //BRN_DEBUG("  #trans: %d #RTS trans: %d\n", no_transmissions, no_rts_transmissions);
+
+    if (!_current_scheme) {
+      BRN_DEBUG("  no scheme!");
+    } else {
+      BRN_DEBUG("  there is a scheme");
+    }
+
+    if (no_rts_transmissions == 0)
+      _current_scheme->handle_feedback(no_transmissions);
+
+    if (no_rts_transmissions >= 0)
+      _current_scheme->handle_feedback(no_rts_transmissions);
+  }
+
+  return;
 }
 
 /* TODO: use gravitaion approach:
