@@ -25,6 +25,8 @@ BoNeighbours::BoNeighbours()
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
+
+  set_conf(32, 1024);
 }
 
 BoNeighbours::~BoNeighbours()
@@ -72,9 +74,10 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   if (_current_bo < (int)_min_cwmin)      _current_bo = _min_cwmin;
   else if (_current_bo > (int)_max_cwmin) _current_bo = _max_cwmin;
 
-  BRN_DEBUG("BoNeighbours.get_cwmin():");
-  BRN_DEBUG("    nbs: %d\n", nbs);
-  BRN_DEBUG("    cwmin: %d\n", _current_bo);
+  if (_current_bo < 0)
+    _current_bo = 32;
+
+  BRN_DEBUG("  cwmin: %d\n", _current_bo);
 
   return _current_bo;
 }
