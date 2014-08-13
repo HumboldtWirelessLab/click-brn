@@ -77,7 +77,7 @@ int BoMaxThroughput::get_cwmin(Packet *p, uint8_t tos)
 
   BRN_DEBUG("    backoffwin: %d offset: %d result: %d\n\n", backoff_window_size, _backoff_offset, backoff_window_size+_backoff_offset);
 
-  return backoff_window_size+_backoff_offset;
+  return MAX(2,((int32_t)backoff_window_size + _backoff_offset));
 }
 
 CLICK_ENDDECLS
