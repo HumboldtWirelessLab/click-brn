@@ -19,7 +19,9 @@ BoNeighbours::BoNeighbours()
   : _cst(NULL),
     _cst_sync(0),
     _last_id(9999),
-    _current_bo(BO_NEIGHBOURS_START_BO)
+    _current_bo(BO_NEIGHBOURS_START_BO),
+    _alpha(BO_NEIGHBOURS_ALPHA),
+    _beta(BO_NEIGHBOURS_BETA)
 {
   BRNElement::init();
   _default_strategy = BACKOFF_STRATEGY_NEIGHBOURS;
@@ -42,6 +44,8 @@ int BoNeighbours::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
       "CHANNELSTATS", cpkP+cpkM, cpElement, &_cst,
       "CST_SYNC", cpkP, cpInteger, &_cst_sync,
+      "ALPHA", cpkP, cpInteger, &_alpha,
+      "BETA", cpkP, cpInteger, &_beta,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0) return -1;
 
@@ -62,13 +66,11 @@ int BoNeighbours::get_cwmin(Packet *p, uint8_t tos)
   _last_id = as->stats_id;
   int32_t nbs = as->no_sources;
 
-  _current_bo = ((BO_NEIGHBOURS_ALPHA * nbs) - BO_NEIGHBOURS_BETA) / 10;
+  _current_bo = ((_alpha * nbs) - _beta) / 10;
   BRN_DEBUG("formular bo: %d\n", _current_bo);
 
-  if (_current_bo < (int)_min_cwmin)
-    _current_bo = _min_cwmin;
-  else if (_current_bo > (int)_max_cwmin)
-    _current_bo = _max_cwmin;
+  if (_current_bo < (int)_min_cwmin)      _current_bo = _min_cwmin;
+  else if (_current_bo > (int)_max_cwmin) _current_bo = _max_cwmin;
 
   BRN_DEBUG("BoNeighbours.get_cwmin():");
   BRN_DEBUG("    nbs: %d\n", nbs);
