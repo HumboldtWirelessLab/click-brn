@@ -72,6 +72,7 @@ private:
     BRN2NodeIdentity *_node_identity;
     TopologyInfo *_topoInfo;
     bool _is_detect_periodically;
+    double _probability_of_perriodically_detection;
     uint32_t _interval_ms;
     uint32_t _start_rand;
     
