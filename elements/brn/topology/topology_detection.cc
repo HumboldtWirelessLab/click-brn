@@ -44,6 +44,7 @@ TopologyDetection::TopologyDetection() :
 detection_id(0),
 dibadawnAlgo(this),
 _is_detect_periodically(false),
+_probability_of_perriodically_detection(1.0),
 _interval_ms(5 * 1000),
 _start_rand(1000),
 _timer(this)
@@ -80,6 +81,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
       "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
+      "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
@@ -112,6 +114,7 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
       "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
+      "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
@@ -170,11 +173,20 @@ void TopologyDetection::handle_detection(Packet *brn_packet)
 
 void TopologyDetection::run_timer(Timer *t)
 {
-  BRN_DEBUG("Run timer.");
   if (t == NULL)
     BRN_ERROR("Timer is NULL");
 
-  dibadawnAlgo.startNewSearch();
+  double threshold = _probability_of_perriodically_detection * 10000;
+  double rand = click_random() % 10000;
+  if( rand < threshold)
+  {
+    BRN_DEBUG("Timer: start search");
+    dibadawnAlgo.startNewSearch();
+  }
+  else
+  {
+    BRN_DEBUG("Timer: don't start search");
+  }
 
   if (_is_detect_periodically)
     _timer.schedule_after_msec(_interval_ms);
