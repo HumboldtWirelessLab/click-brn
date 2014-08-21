@@ -258,7 +258,7 @@ void DibadawnSearch::setParentNull()
 void DibadawnSearch::activateForwardPhaseEndTimer(DibadawnPacket &packet)
 {
   forwardPhaseEndTimer->initialize(this->brn_click_element, false);
-  forwardPhaseEndTimer->schedule_after_msec(config.maxTraversalTimeMs * (config.maxHops - packet.hops) + (config.maxHops * config.maxJitter));
+  forwardPhaseEndTimer->schedule_after_msec(2 * config.maxTraversalTimeMs * (config.maxHops - packet.hops));
 }
 
 void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
@@ -282,16 +282,19 @@ void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
 
 void DibadawnSearch::sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool markSearchAsFinished)
 {
+  uint16_t forwardJitter = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
+  uint16_t minDelay = config.maxTraversalTimeMs - packet.lastForwardDelay;
+  uint16_t delay = forwardJitter + minDelay;
+  packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
+  packet.lastForwardDelay = forwardJitter;
+  if(IS_DEBUG_ENABLED(config))
+    click_chatter("<DEBUG node='%s' txDelayMs='%d' minDelay='%d' jitter='%d' />", config.thisNodeAsCstr(), delay, minDelay, forwardJitter);
+  
   ForwardSendTimerParam *param = new ForwardSendTimerParam;
   param->packet = packet;
   param->search = this;
   param->destination = dest;
   param->setFinishedTrue = markSearchAsFinished;
-
-  uint16_t delay = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
-  packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
-  if(IS_DEBUG_ENABLED(config))
-    click_chatter("<DEBUG node='%s' txDelayMs='%d' />", config.thisNodeAsCstr(), delay);
   
   txDelayTimer->assign(txDelayCallback, (void*) param);
   txDelayTimer->initialize(this->brn_click_element, false);
