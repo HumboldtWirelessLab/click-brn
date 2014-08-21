@@ -34,8 +34,8 @@ public:
     EtherAddress thisNode;
     int debugLevel;
     bool useOriginForwardDelay;
-    uint32_t maxTraversalTimeMs;
-    uint32_t maxHops;
+    uint32_t maxTraversalTimeMs;   // maximal time for jitter + buffer
+    uint32_t maxHops;              // network diameter
     uint32_t votingRule;
     bool useLinkStatistic;
     uint32_t maxJitter;
