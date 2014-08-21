@@ -70,7 +70,7 @@ private:
     DibadawnTopologyInfoContainer searchResult;
 
     void initCommon(BRNElement *click_element);
-    void activateForwardPhaseEndTimer(DibadawnPacket &packet);
+    void activateForwardPhaseEndTimer(uint32_t ttl, uint32_t minDelay);
     void receiveForwardMessage(DibadawnPacket &packet);
     bool isValidCrossEdge(DibadawnPacket &rxPacket);
     void receiveBackMessage(DibadawnPacket &packet);

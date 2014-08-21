@@ -246,7 +246,9 @@ void DibadawnSearch::start_search()
         Timestamp::now().unparse().c_str(),
         searchId.asString().c_str());
   
-  activateForwardPhaseEndTimer(packet);
+  uint32_t ttl = config.maxHops - packet.hops;
+  activateForwardPhaseEndTimer(ttl, 0);
+  
   send(packet, packet.getBroadcastAddress());
 }
 
@@ -255,10 +257,18 @@ void DibadawnSearch::setParentNull()
   parentNode = EtherAddress();
 }
 
-void DibadawnSearch::activateForwardPhaseEndTimer(DibadawnPacket &packet)
+void DibadawnSearch::activateForwardPhaseEndTimer(uint32_t ttl, uint32_t minDelay)
 {
   forwardPhaseEndTimer->initialize(this->brn_click_element, false);
-  forwardPhaseEndTimer->schedule_after_msec(2 * config.maxTraversalTimeMs * (config.maxHops - packet.hops));
+  uint32_t timeoutMs = 2 * config.maxTraversalTimeMs * ttl + minDelay; 
+  click_chatter("<DEBUG node='%s' forwardPhaseEndTimeout='%d' time='%s' ttl='%d' minDelay='%d' maxTraversalTime='%d' />", 
+      config.thisNode.unparse().c_str(),
+      timeoutMs,
+      Timestamp::now().unparse().c_str(),
+      ttl,
+      minDelay,
+      config.maxTraversalTimeMs);
+  forwardPhaseEndTimer->schedule_after_msec(timeoutMs);
 }
 
 void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
@@ -283,10 +293,10 @@ void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
 void DibadawnSearch::sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool markSearchAsFinished)
 {
   uint16_t forwardJitter = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
-  uint16_t minDelay = config.maxTraversalTimeMs - packet.lastForwardDelay;
+  uint16_t minDelay = config.maxTraversalTimeMs - packet.lastForwardDelayMs;
   uint16_t delay = forwardJitter + minDelay;
   packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
-  packet.lastForwardDelay = forwardJitter;
+  packet.lastForwardDelayMs = forwardJitter;
   if(IS_DEBUG_ENABLED(config))
     click_chatter("<DEBUG node='%s' txDelayMs='%d' minDelay='%d' jitter='%d' />", config.thisNodeAsCstr(), delay, minDelay, forwardJitter);
   
@@ -362,7 +372,10 @@ void DibadawnSearch::receiveForwardMessage(DibadawnPacket &rxPacket)
       txPacket.treeParent = rxPacket.forwardedBy;
       sentForwardPacket = txPacket;
 
-      activateForwardPhaseEndTimer(txPacket);
+      uint32_t ttl = config.maxHops - txPacket.hops;
+      uint32_t minDelay = config.maxTraversalTimeMs - rxPacket.lastForwardDelayMs;
+      activateForwardPhaseEndTimer(ttl, minDelay);
+      
       sendDelayed(txPacket, txPacket.getBroadcastAddress(), false);
     }
     else
