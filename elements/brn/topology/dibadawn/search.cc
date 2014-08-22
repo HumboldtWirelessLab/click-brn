@@ -293,7 +293,9 @@ void DibadawnSearch::send(DibadawnPacket &packet, EtherAddress dest)
 void DibadawnSearch::sendDelayed(DibadawnPacket &packet, EtherAddress dest, bool markSearchAsFinished)
 {
   uint16_t forwardJitter = config.useOriginForwardDelay? calcForwardDelay(): calcForwardDelayImproved(packet);
-  uint16_t minDelay = config.maxTraversalTimeMs - packet.lastForwardDelayMs;
+  uint16_t minDelay = 0;
+  if(dest.is_broadcast())
+    minDelay = config.maxTraversalTimeMs - packet.lastForwardDelayMs;
   uint16_t delay = forwardJitter + minDelay;
   packet.sumForwardDelay = (packet.sumForwardDelay + delay) % 65535;
   packet.lastForwardDelayMs = forwardJitter;
