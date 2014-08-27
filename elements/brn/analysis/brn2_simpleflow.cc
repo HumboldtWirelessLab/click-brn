@@ -128,7 +128,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
   for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
 
-    BRN_DEBUG("Flow: Start: %s End: %s Active: %d",fl->_start_time.unparse().c_str(), fl->_end_time.unparse().c_str(), fl->_active?1:0);
+    BRN_DEBUG("Flow: Start: %s End: %s Active: %d Duration: %d",fl->_start_time.unparse().c_str(), fl->_end_time.unparse().c_str(), fl->_active?1:0,fl->_duration );
 
     BRN_DEBUG("Flow: Time to start: %d", (fl->_start_time-now).msecval());
     BRN_DEBUG("Flow: Time to end: %d", (fl->_end_time-now).msecval());
@@ -140,9 +140,10 @@ BRN2SimpleFlow::run_timer(Timer *t)
     }
 
     if ( !fl->_active ) {
-      if ( (fl->_start_time - now).msecval() <= 0 ) fl->_active = true; //start is in the past: flow is active
+      if ( (now - fl->_start_time).msecval() >= 0 ) fl->_active = true; //start is in the past: flow is active
+      else continue;                                                    //start is in the future
     } else {
-      if ( fl->_interval == 0 ) continue;                    //interval = 0 -> packet send on feedback
+      if ( fl->_interval == 0 ) continue;                               //interval = 0 -> packet send on feedback
     }
 
     active_flows++;
@@ -182,7 +183,8 @@ BRN2SimpleFlow::is_active(Flow *txFlow)
   if ( txFlow ) {
     Timestamp now = Timestamp::now();
     if ( txFlow->_active ) {
-      BRN_DEBUG("%s %s %d %d",now.unparse().c_str(), txFlow->_start_time.unparse().c_str(),(now - txFlow->_start_time).msecval(), txFlow->_duration);
+      BRN_DEBUG("Duration: %d",txFlow->_duration);
+      BRN_DEBUG("%s %s %s %d %d", now.unparse().c_str(), txFlow->_start_time.unparse().c_str(), txFlow->_end_time.unparse().c_str(), txFlow->_duration, (now - txFlow->_start_time).msecval());
       if ( (now <= txFlow->_end_time) || (txFlow->_duration == 0)/*endless*/ ) {
         return true;
       } else {
@@ -198,8 +200,8 @@ void
 BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
 {
   if ( is_active(fl) ) {
-    BRN_DEBUG("Flow (active): Src: %s Dst: %s ID: %d interval: %d burst: %d",
-               fl->_src.unparse().c_str(), fl->_dst.unparse().c_str(), fl->_id, fl->_interval, fl->_burst);
+    BRN_DEBUG("Flow (active): Src: %s Dst: %s ID: %d interval: %d burst: %d duration: %d",
+               fl->_src.unparse().c_str(), fl->_dst.unparse().c_str(), fl->_id, fl->_interval, fl->_burst, fl->_duration);
 
     for( uint32_t i = 0; i < fl->_burst; i++ ) {
       BRN_DEBUG("Send Next");
