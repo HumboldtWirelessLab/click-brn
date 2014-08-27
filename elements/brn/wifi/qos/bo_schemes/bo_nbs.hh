@@ -37,6 +37,9 @@ public:
   uint8_t _cst_sync;
   uint32_t _last_id;
   int32_t _current_bo;
+  
+  int32_t _alpha;
+  int32_t _beta;
 };
 
 
