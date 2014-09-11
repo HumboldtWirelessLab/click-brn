@@ -426,7 +426,15 @@ Flooding::push( int port, Packet *packet )
 
     } else {
       BRN_DEBUG("No forward: %s:%d",src.unparse().c_str(), p_bcast_id);
-      if (is_known) packet->kill();  //no forwarding and already known (no forward to client) , so kill it
+      if (is_known) {
+        /* We may already forward the packet but due to new info and new probabilities the
+         * scheduling may change and we should inform the passiv_ack element
+         */
+        if ( _flooding_passiveack != NULL )
+          _flooding_passiveack->update_flooding_info(packet, src, p_bcast_id);
+
+        packet->kill();  //no forwarding and already known (no forward to client) , so kill it
+      }
     }
 
     /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
@@ -633,7 +641,7 @@ Flooding::add_rx_probability(EtherAddress &fwd, EtherAddress &src, uint16_t id, 
 
   for( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
     int metric = cnml->get_metric(cnml->_neighbors[n_i]);
-    bcn->add_probability(id, &(cnml->_neighbors[n_i]), _fhelper->metric2pdr(metric), no_transmissions);
+    bcn->add_probability(id, &(cnml->_neighbors[n_i]), FloodingHelper::metric2pdr(metric), no_transmissions);
   }
 }
 
