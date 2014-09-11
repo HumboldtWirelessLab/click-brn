@@ -71,7 +71,7 @@ FloodingHelper::print_vector(NeighbourMetricList &nodes)
 }
 
 //TODO: more generic (not only ETX, use Linkstats instead or ask metric-class
-static uint32_t
+uint32_t
 FloodingHelper::metric2pdr(uint32_t metric)
 {
   assert( metric <= BRN_LT_INVALID_LINK_METRIC );
