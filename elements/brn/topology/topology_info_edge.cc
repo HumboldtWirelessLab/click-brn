@@ -31,7 +31,7 @@
 CLICK_DECLS
 
 
-TopologyInfoEdge::TopologyInfoEdge(EtherAddress *a, EtherAddress *b, float p=0.0)
+TopologyInfoEdge::TopologyInfoEdge(EtherAddress *a, EtherAddress *b, float p)
 :   time_of_last_detection(Timestamp::now()),
     probability(p)
 {
