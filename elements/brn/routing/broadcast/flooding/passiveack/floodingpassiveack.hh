@@ -132,6 +132,8 @@ private:
 
   void handle_feedback_packet(Packet *p, EtherAddress *src, uint16_t bcast_id, bool rejected, bool abort, uint8_t no_transmissions);
 
+  void update_flooding_info(Packet *p, EtherAddress &src, uint16_t bcast_id);
+
   int tx_delay(PassiveAckPacket *pap);
 
   String stats();
