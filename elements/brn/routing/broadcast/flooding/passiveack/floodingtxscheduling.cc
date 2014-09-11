@@ -174,7 +174,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
     }
   }
 
-  int delay = (higher_prio * 2) + (click_random() % (same_prio+1));
+  int delay = ((higher_prio * _dfl_interval) / 10) + (click_random() % (same_prio+1));
 
   benefits.clear();
   benefit_map.clear();
