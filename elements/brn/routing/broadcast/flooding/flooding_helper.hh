@@ -214,12 +214,12 @@ public:
 
   uint32_t *_pdr_cache;
 #define FLOODINGHELPER_PDR_CACHE_SHIFT 4
-  uint32_t _pdr_cache_shift; 
+  uint32_t _pdr_cache_shift;
   uint32_t _pdr_cache_size;
 
   void print_vector(Vector<EtherAddress> &eas);
   void print_vector(NeighbourMetricList &nodes);
-  uint32_t metric2pdr(uint32_t metric);
+  static uint32_t metric2pdr(uint32_t metric);
 
   uint32_t _better_link_min_ratio;
 
