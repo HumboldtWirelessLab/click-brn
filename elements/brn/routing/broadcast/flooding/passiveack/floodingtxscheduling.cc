@@ -134,18 +134,36 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
     for ( int x = own_cnml->_neighbors.size()-1; x >= 0; x-- ) {
       int neighbors_prob = bcn->get_probability(pap->_bcast_id, &(own_cnml->_neighbors[x]));
 
-      own_benefit += own_cnml->get_metric(own_cnml->_neighbors[x]) * (100-neighbors_prob);
+      own_benefit += FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])) * (100-neighbors_prob);
+
+      //BRN_ERROR("own metric: %d", FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])));
 
       CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(own_cnml->_neighbors[x]);
       benefit = 0;
 
-      for ( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
-        benefit += (neighbors_prob * cnml->get_metric(cnml->_neighbors[n_i])) * // P(tx neighbour to his n is successfull)
-                  (100 - bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
+      /*
+      BRN_ERROR("Neighbours Prob: %d own metric: %d b: %d", neighbors_prob, FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])),
+                                                      FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])) * (100-neighbors_prob));
+      */
+
+      if ( neighbors_prob > 20 ) {
+        for ( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
+
+          /*
+          BRN_ERROR("for metric: %d p: %d", FloodingHelper::metric2pdr(cnml->get_metric(cnml->_neighbors[n_i])),
+                                            bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
+          */
+
+          benefit += (neighbors_prob * FloodingHelper::metric2pdr(cnml->get_metric(cnml->_neighbors[n_i]))) * // P(tx neighbour to his n is successfull)
+                    (100 - bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
+        }
       }
 
-      BRN_ERROR("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(),benefit);
-      benefit_map.insert(own_cnml->_neighbors[x],benefit);
+      benefit /= 100;
+
+      BRN_ERROR("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(), benefit);
+
+      benefit_map.insert(own_cnml->_neighbors[x], benefit);
       benefits.push_back(benefit);
     }
 
@@ -156,7 +174,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
     }
   }
 
-  int delay = (higher_prio * 5) + (click_random() % (same_prio+1));
+  int delay = ((higher_prio * _dfl_interval) / 10) + (click_random() % (same_prio+1));
 
   benefits.clear();
   benefit_map.clear();

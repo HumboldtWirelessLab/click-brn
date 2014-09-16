@@ -185,6 +185,16 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
   }
 }
 
+void
+FloodingPassiveAck::update_flooding_info(Packet *p, EtherAddress &src, uint16_t bcast_id)
+{
+  (void)p;
+  (void)src;
+  (void)bcast_id;
+
+  return;
+}
+
 int
 FloodingPassiveAck::set_unfinished_neighbors(PassiveAckPacket *pap)
 {
