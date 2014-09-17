@@ -66,7 +66,7 @@ public:
 
 private:
     uint32_t detection_id;
-    //DibadawnAlgorithm dibadawnAlgo;
+    DibadawnAlgorithm dibadawnAlgo;
 
     Brn2LinkTable *_lt;
     BRN2NodeIdentity *_node_identity;

@@ -40,8 +40,8 @@
 
 CLICK_DECLS
 
-TopologyDetection::TopologyDetection() 
-//dibadawnAlgo(this),
+TopologyDetection::TopologyDetection() :
+dibadawnAlgo(this)
 {
   click_chatter("RDDBG: begin topodetection");
   BRNElement::init();
