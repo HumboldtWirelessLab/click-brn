@@ -63,6 +63,13 @@ int TopologyDetection::initialize(ErrorHandler *)
   click_chatter("RDDBG: begin init");
   click_srandom(_node_identity->getMasterAddress()->hashcode());
   
+  click_chatter("RDDBG: Pre1 identity pointer 0x%p", _node_identity);
+  const EtherAddress *node = _node_identity->getMasterAddress();
+  click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
+
+  click_chatter("RDDBG: %s", node->unparse().c_str());
+  //dibadawnAlgo.config.thisNode = *node;
+  
   //don't move this to configure, since BRNNodeIdenty is not configured
   //completely while configure this element, so set_active can cause
   //seg, fault, while calling BRN_DEBUG in set_active
@@ -93,12 +100,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return(-1);
 
-  click_chatter("RDDBG: Pre1 identity pointer 0x%p", _node_identity);
-  const EtherAddress *node = _node_identity->getMasterAddress();
-  click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
-
-  click_chatter("RDDBG: %s", node->unparse().c_str());
-  //dibadawnAlgo.config.thisNode = *node;
+ 
   //dibadawnAlgo.config.debugLevel = _debug;
   //dibadawnAlgo.setTopologyInfo(_topoInfo);
   click_chatter("RDDBG: Post");
