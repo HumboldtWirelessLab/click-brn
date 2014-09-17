@@ -37,7 +37,6 @@ DibadawnConfig::DibadawnConfig()
     votingRule(0),
     useLinkStatistic(false)
 {
-  click_chatter("RDDBG: DibadawnConfig");
   votingRule = 0;
   useOriginForwardDelay = true;
   maxHops = 255;

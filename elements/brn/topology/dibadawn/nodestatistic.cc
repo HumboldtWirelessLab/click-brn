@@ -27,7 +27,6 @@ CLICK_DECLS
 
 DibadawnNodeStatistic::DibadawnNodeStatistic()
 {
-  click_chatter("DibadawnNodeStatistic");
   maxMarkings = 3;
   topologyInfo = NULL;
   maxSearchResults = 3; // todo: use config

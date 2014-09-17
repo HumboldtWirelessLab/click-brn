@@ -44,8 +44,8 @@ class DibadawnAlgorithm
     DibadawnSearch* getResponsibleSearch(DibadawnPacket &packet);
 
 public:
-    //DibadawnNodeStatistic nodeStatistic;
-    //DibadawnLinkStatistic link_stat;
+    DibadawnNodeStatistic nodeStatistic;
+    DibadawnLinkStatistic link_stat;
     DibadawnConfig config;
 
     DibadawnAlgorithm(BRNElement *brn_click_element);
