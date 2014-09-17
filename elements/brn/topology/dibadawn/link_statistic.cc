@@ -35,7 +35,6 @@ CLICK_DECLS
 DibadawnLinkStatistic::DibadawnLinkStatistic()
 :   numTx(0)
 {
-  click_chatter("DibadawnLinkStatistic");
 }
 
 void DibadawnLinkStatistic::increaseTxCounter()

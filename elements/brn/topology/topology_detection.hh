@@ -66,7 +66,7 @@ public:
 
 private:
     uint32_t detection_id;
-    //DibadawnAlgorithm dibadawnAlgo;
+    DibadawnAlgorithm dibadawnAlgo;
 
     Brn2LinkTable *_lt;
     BRN2NodeIdentity *_node_identity;
@@ -78,7 +78,7 @@ private:
     
     Timestamp _start_time;
     Timestamp _next_time;
-    Timer *_timer;
+    Timer _timer;
 
     void handle_detection(Packet *brn_packet);
     void update_periodically_detection_setup();

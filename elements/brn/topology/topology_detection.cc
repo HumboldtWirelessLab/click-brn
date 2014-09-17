@@ -40,18 +40,16 @@
 
 CLICK_DECLS
 
-TopologyDetection::TopologyDetection() 
-//dibadawnAlgo(this),
+TopologyDetection::TopologyDetection() :
+detection_id(0),
+dibadawnAlgo(this),
+_is_detect_periodically(false),
+_probability_of_perriodically_detection(1.0),
+_interval_ms(5 * 1000),
+_start_rand(1000),
+_timer(this)
 {
-  click_chatter("RDDBG: begin topodetection");
   BRNElement::init();
-
-  detection_id = 0;
-  _is_detect_periodically = false;
-  _probability_of_perriodically_detection = 1.0;
-  _interval_ms = 5 * 1000;
-  _start_rand = 1000;
-  _timer = new Timer(this);
 }
 
 TopologyDetection::~TopologyDetection()
@@ -68,12 +66,12 @@ int TopologyDetection::initialize(ErrorHandler *)
   click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
 
   click_chatter("RDDBG: %s", node->unparse().c_str());
-  //dibadawnAlgo.config.thisNode = *node;
+  dibadawnAlgo.config.thisNode = *node;
   
   //don't move this to configure, since BRNNodeIdenty is not configured
   //completely while configure this element, so set_active can cause
   //seg, fault, while calling BRN_DEBUG in set_active
-  _timer->initialize(this);
+  _timer.initialize(this);
   update_periodically_detection_setup();
   
   return 0;
@@ -87,23 +85,23 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODE_IDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINK_TABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
-      //"ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      //"VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      //"MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      //"MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
- 
-  //dibadawnAlgo.config.debugLevel = _debug;
-  //dibadawnAlgo.setTopologyInfo(_topoInfo);
-  click_chatter("RDDBG: Post");
+  dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
+  dibadawnAlgo.config.debugLevel = _debug;
+  dibadawnAlgo.setTopologyInfo(_topoInfo);
+  
   return(0);
 }
 
@@ -120,25 +118,25 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "NODE_IDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
       "LINK_TABLE", 0, cpElement, &_lt,
       "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
-      //"ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      //"VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      //"MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      //"MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
-  //if(is_topologyinfo_configured)
-  //  dibadawnAlgo.setTopologyInfo(_topoInfo);
-  //if(is_nodeidentity_configured)
-  //  dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
-  //if(is_debug_configured)
-  //  dibadawnAlgo.config.debugLevel = _debug;
+  if(is_topologyinfo_configured)
+    dibadawnAlgo.setTopologyInfo(_topoInfo);
+  if(is_nodeidentity_configured)
+    dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
+  if(is_debug_configured)
+    dibadawnAlgo.config.debugLevel = _debug;
   if(is_periodicallyexec_configured || is_interval_configured)
     update_periodically_detection_setup();
   
@@ -147,14 +145,14 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
 
 void TopologyDetection::update_periodically_detection_setup()
 {
-  _timer->unschedule();
+  _timer.unschedule();
   
   if(! _is_detect_periodically)
     return;
   
   uint32_t start_delay = _start_rand > 0 ? click_random() % _start_rand : 0;
-  _timer->schedule_after_msec(start_delay);
-  BRN_DEBUG("Timer is new scheduled at %s", _timer->expiry().unparse().c_str());
+  _timer.schedule_after_msec(start_delay);
+  BRN_DEBUG("Timer is new scheduled at %s", _timer.expiry().unparse().c_str());
 }
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
@@ -179,7 +177,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
-  //dibadawnAlgo.receive(packet);
+  dibadawnAlgo.receive(packet);
 }
 
 void TopologyDetection::run_timer(Timer *t)
@@ -192,7 +190,7 @@ void TopologyDetection::run_timer(Timer *t)
   if( rand < threshold)
   {
     BRN_DEBUG("Timer: start search");
-    //dibadawnAlgo.startNewSearch();
+    dibadawnAlgo.startNewSearch();
   }
   else
   {
@@ -200,7 +198,7 @@ void TopologyDetection::run_timer(Timer *t)
   }
 
   if (_is_detect_periodically)
-    _timer->schedule_after_msec(_interval_ms);
+    _timer.schedule_after_msec(_interval_ms);
 }
 
 /*************************************************************************************************/
@@ -208,28 +206,28 @@ void TopologyDetection::run_timer(Timer *t)
 /*************************************************************************************************/
 void TopologyDetection::start_detection()
 {
-  //dibadawnAlgo.startNewSearch();
+  dibadawnAlgo.startNewSearch();
 }
 
 void TopologyDetection::stop_periodically_detection_after_next_run()
 {
   _is_detect_periodically = false;
-  BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer->expiry().unparse().c_str());
+  BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer.expiry().unparse().c_str());
 }
 
 void TopologyDetection::reset_link_stat()
 {
-  //dibadawnAlgo.link_stat.reset();
+  dibadawnAlgo.link_stat.reset();
 }
 
 String TopologyDetection::xml_link_stat()
 {
-  //if(!dibadawnAlgo.config.useLinkStatistic)
+  if(!dibadawnAlgo.config.useLinkStatistic)
     return("Warning: Please configure 'USE_LINK_STAT' with 'true'");
   
   StringAccum sa;
   sa << "<DibadawnLinkStat node='" << BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' >\n";
-  //sa << dibadawnAlgo.link_stat.asString();
+  sa << dibadawnAlgo.link_stat.asString();
   sa << "</DibadawnLinkStat>\n";
   
   return(sa.take_string());
@@ -242,7 +240,7 @@ String TopologyDetection::local_topology_info(void)
 
 String TopologyDetection::config()
 {
-  return(String(""));//dibadawnAlgo.config.asString());
+  return(dibadawnAlgo.config.asString());
 }
 
 enum
