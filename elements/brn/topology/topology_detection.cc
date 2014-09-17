@@ -93,7 +93,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return(-1);
 
-  click_chatter("RDDBG: Pre1");
+  click_chatter("RDDBG: Pre1 identity pointer 0x%p", _node_identity);
   const EtherAddress *node = _node_identity->getMasterAddress();
   click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
 
