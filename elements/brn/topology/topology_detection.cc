@@ -95,13 +95,13 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 
   click_chatter("RDDBG: Pre1");
   const EtherAddress *node = _node_identity->getMasterAddress();
-  click_chatter("RDDBG: Pre2");
+  click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
 
   click_chatter("RDDBG: %s", node->unparse().c_str());
   //dibadawnAlgo.config.thisNode = *node;
   //dibadawnAlgo.config.debugLevel = _debug;
   //dibadawnAlgo.setTopologyInfo(_topoInfo);
-  
+  click_chatter("RDDBG: Post");
   return(0);
 }
 
