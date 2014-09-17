@@ -88,8 +88,8 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
@@ -126,8 +126,8 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
