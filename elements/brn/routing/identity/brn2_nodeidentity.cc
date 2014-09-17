@@ -26,6 +26,7 @@ BRN2NodeIdentity::BRN2NodeIdentity()
     _instance_group("n/a")
 {
   BRNElement::init();
+  _master_device = NULL;
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -71,7 +72,6 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   }
 
   if ( _node_devices_size > 0 ) {
-    click_chatter("RDDBG: _master_device = _node_devices[0];");
     _master_device = _node_devices[0];
   }
 
@@ -87,7 +87,6 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     brn_device = _node_devices[i];
 
     if ( brn_device->is_master_device() ) {
-      click_chatter("RDDGB:_master_device = brn_device;");
       _master_device = brn_device;
       _master_device_id = brn_device->getDeviceNumber();
    }
@@ -99,7 +98,6 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
   }
 
   if ( _master_device_id == -1 ) {
-    click_chatter("RDDGB:");
     _master_device = _node_devices[0];
     _master_device_id = 0;
     //!! First set the device, than print debug !!//
@@ -120,12 +118,15 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_NAME, &buf, NAME_BUFFER_LEN );
     _nodename = String(buf);
 #else
+    assert(_master_device != NULL);
     _nodename = _master_device->getEtherAddress()->unparse();
 #endif
   }
 
+  assert(_master_device != NULL);
   BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
 
+  assert(_master_device != NULL);
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str(),
                     strlen((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str()), _node_id );
 
@@ -181,13 +182,13 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
 
 const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
-  click_chatter("RDDGB: used by getMainAddress() ");
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
 const EtherAddress *
 BRN2NodeIdentity::getMasterAddress() {
-  click_chatter("RDDGB: used by getMasterAddress() ");
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
