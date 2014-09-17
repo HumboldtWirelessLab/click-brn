@@ -40,8 +40,8 @@
 
 CLICK_DECLS
 
-TopologyDetection::TopologyDetection() :
-dibadawnAlgo(this)
+TopologyDetection::TopologyDetection() 
+//dibadawnAlgo(this),
 {
   click_chatter("RDDBG: begin topodetection");
   BRNElement::init();
@@ -80,16 +80,16 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODE_IDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINK_TABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
-      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      //"ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      //"VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      //"MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      //"MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
@@ -118,16 +118,16 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "NODE_IDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
       "LINK_TABLE", 0, cpElement, &_lt,
       "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
-      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
-      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
-      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
-      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      //"ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      //"VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      //"MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      //"MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
-      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
-      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      //"USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      //"PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
       cpEnd) < 0)
     return(-1);
 
