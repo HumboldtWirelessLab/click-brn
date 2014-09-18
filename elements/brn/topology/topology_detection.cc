@@ -98,7 +98,6 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       cpEnd) < 0)
     return(-1);
 
-  dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
   dibadawnAlgo.config.debugLevel = _debug;
   dibadawnAlgo.setTopologyInfo(_topoInfo);
   
