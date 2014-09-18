@@ -261,7 +261,8 @@ void DibadawnSearch::activateForwardPhaseEndTimer(uint32_t ttl, uint32_t minDela
 {
   forwardPhaseEndTimer->initialize(this->brn_click_element, false);
   uint32_t timeoutMs = 2 * config.maxTraversalTimeMs * ttl + minDelay; 
-  click_chatter("<DEBUG node='%s' forwardPhaseEndTimeout='%d' time='%s' ttl='%d' minDelay='%d' maxTraversalTime='%d' />", 
+  if(IS_DEBUG_ENABLED(config))
+    click_chatter("<DEBUG node='%s' forwardPhaseEndTimeout='%d' time='%s' ttl='%d' minDelay='%d' maxTraversalTime='%d' />", 
       config.thisNode.unparse().c_str(),
       timeoutMs,
       Timestamp::now().unparse().c_str(),
