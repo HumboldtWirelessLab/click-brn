@@ -30,7 +30,6 @@ CLICK_DECLS;
 
 DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element)
 {
-  click_chatter("RDBDG: DibadawnAlgorithm");
   brn_click_element = click_element;
 }
 
