@@ -26,6 +26,7 @@ BRN2NodeIdentity::BRN2NodeIdentity()
     _instance_group("n/a")
 {
   BRNElement::init();
+  _master_device = NULL;
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -117,12 +118,15 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_NAME, &buf, NAME_BUFFER_LEN );
     _nodename = String(buf);
 #else
+    assert(_master_device != NULL);
     _nodename = _master_device->getEtherAddress()->unparse();
 #endif
   }
 
+  assert(_master_device != NULL);
   BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
 
+  assert(_master_device != NULL);
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str(),
                     strlen((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str()), _node_id );
 
@@ -178,11 +182,13 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
 
 const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
 const EtherAddress *
 BRN2NodeIdentity::getMasterAddress() {
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
