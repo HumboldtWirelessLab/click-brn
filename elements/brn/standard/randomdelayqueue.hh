@@ -35,7 +35,6 @@ class RandomDelayQueue : public BRNElement
   private:
 
     PacketSendBuffer packetBuffer;
-    int _debug;
 
     int _min_delay, _delay, _min_diff_delay;
 
