@@ -175,11 +175,12 @@ class Flooding : public BRNElement {
 
   /** Abort stats **/
   /* Members and functions for tx abort */
-#define FLOODING_TXABORT_MODE_NONE         0
-#define FLOODING_TXABORT_MODE_ACKED        1
-#define FLOODING_TXABORT_MODE_ASSIGNED     2
-#define FLOODING_TXABORT_MODE_BETTER_LINK  4
-#define FLOODING_TXABORT_MODE_NEW_INFO     8
+#define FLOODING_TXABORT_MODE_NONE           0
+#define FLOODING_TXABORT_MODE_ACKED          1
+#define FLOODING_TXABORT_MODE_ASSIGNED       2
+#define FLOODING_TXABORT_MODE_BETTER_LINK    4
+#define FLOODING_TXABORT_MODE_NEW_INFO       8
+#define FLOODING_TXABORT_MODE_INCLUDE_QUEUE 16
 
 
 #define FLOODING_TXABORT_REASON_NONE                    FLOODING_TXABORT_MODE_NONE
@@ -218,6 +219,7 @@ class Flooding : public BRNElement {
     return ((_last_tx_dst_ea == dst) && is_last_tx_id(src, id));
   }
 
+  //TODO: abort also for bcast
   void abort_last_tx(EtherAddress &dst, uint32_t abort_reason) {
     if (((_abort_tx_mode & abort_reason) == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast()) return;
 
