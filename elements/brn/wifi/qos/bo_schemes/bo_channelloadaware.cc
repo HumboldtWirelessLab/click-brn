@@ -136,7 +136,7 @@ int BoChannelLoadAware::get_cwmin(Packet *p, uint8_t tos)
     if (as->no_sources == 0) break;
 
     uint32_t hw_tx = 1000 * as->frac_mac_tx;
-    uint32_t target_tx = 100000 / (as->no_sources);
+    uint32_t target_tx = 100000 / as->no_sources;
     uint32_t wiggle_room = target_tx / 10;
 
 
