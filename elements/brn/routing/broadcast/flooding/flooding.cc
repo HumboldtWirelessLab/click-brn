@@ -394,7 +394,7 @@ Flooding::push( int port, Packet *packet )
      *
      */
 
-    if ( is_known ) {
+    if ( is_known && ((_abort_tx_mode & FLOODING_TXABORT_MODE_INCLUDE_QUEUE) != 0)) {
 
       Packet *queue_packet = search_in_queue(src, p_bcast_id, true);
 
