@@ -27,6 +27,8 @@
 #include <click/confparse.hh>
 #include <click/straccum.hh>
 #include <click/etheraddress.hh>
+#include <click/bighashmap.hh>
+#include <click/hashmap.hh>
 
 #include "elements/brn/brn2.h"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
@@ -104,6 +106,10 @@ FloodingTxScheduling::tx_delay(PassiveAckPacket *pap)
   return delay;
 }
 
+/*
+ * TODO: knoten, die sicher sind, das andere knoten noch nicht wissen dass sie es haben sollten früher antworten
+ */
+
 int
 FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
 {
@@ -116,8 +122,10 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
    * */
   BroadcastNode *bcn = _flooding_db->get_broadcast_node(&(pap->_src));
   EtherAddress me = *_me->getMasterAddress();
-  HashMap<EtherAddress, int> benefit_map;
-  Vector<int> benefits;
+
+  BenefitMap benefit_map;
+
+  Vector<EtherAddress> same_prio_ea;
 
   //get all neighbors
   CachedNeighborsMetricList* own_cnml = _fhelper->get_filtered_neighbors(me);
@@ -163,21 +171,31 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
 
       BRN_ERROR("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(), benefit);
 
-      benefit_map.insert(own_cnml->_neighbors[x], benefit);
-      benefits.push_back(benefit);
+      benefit_map[own_cnml->_neighbors[x]] = benefit;
     }
 
     BRN_ERROR("Own benefit: %d",own_benefit);
-    for ( int x = 0; x < benefits.size(); x++ ) {
-      if ( benefits[x] > own_benefit ) higher_prio++; //node with more benefit, so my prio is less
-      else if ( benefits[x] == own_benefit ) same_prio++; //node with same benefit
+
+    BenefitMapIter bmIter = benefit_map.begin();
+
+    for( ; bmIter != benefit_map.end(); bmIter++) {
+      int32_t cur_benefits = bmIter.value();
+      if ( cur_benefits > own_benefit ) higher_prio++; //node with more benefit, so my prio is less
+      else if ( cur_benefits == own_benefit ) {        //node with same benefit
+        same_prio++;
+        same_prio_ea.push_back(bmIter.key());
+      }
     }
+  }
+
+  if ( same_prio != 0 ) {
+    BRN_ERROR("Same Prio %d Own benefit: %d", same_prio, own_benefit);
   }
 
   int delay = ((higher_prio * _dfl_interval) / 10) + (click_random() % (same_prio+1));
 
-  benefits.clear();
   benefit_map.clear();
+  same_prio_ea.clear();
 
   return delay;
 }

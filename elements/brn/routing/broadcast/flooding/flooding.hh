@@ -33,6 +33,7 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/standard/randomdelayqueue.hh"
 
 #include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
 #include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
@@ -179,7 +180,7 @@ class Flooding : public BRNElement {
 #define FLOODING_TXABORT_MODE_ASSIGNED     2
 #define FLOODING_TXABORT_MODE_BETTER_LINK  4
 #define FLOODING_TXABORT_MODE_NEW_INFO     8
-#define FLOODING_TXABORT_MODE_FINISHED    16
+
 
 #define FLOODING_TXABORT_REASON_NONE                    FLOODING_TXABORT_MODE_NONE
 #define FLOODING_TXABORT_REASON_ACKED                   FLOODING_TXABORT_MODE_ACKED
@@ -187,7 +188,6 @@ class Flooding : public BRNElement {
 #define FLOODING_TXABORT_REASON_BETTER_LINK             FLOODING_TXABORT_MODE_BETTER_LINK
 #define FLOODING_TXABORT_REASON_NEW_INFO                FLOODING_TXABORT_MODE_NEW_INFO
 #define FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY  FLOODING_TXABORT_MODE_ACKED       /* Take foreign resp. as acked */
-#define FLOODING_TXABORT_REASON_FINISHED                FLOODING_TXABORT_MODE_FINISHED    /* Can be used by other elements e.g. Policies */
 
   uint32_t _abort_tx_mode;
   uint32_t _tx_aborts;
@@ -262,6 +262,11 @@ class Flooding : public BRNElement {
 
   int parse_schemes(String s_schemes, ErrorHandler* errh);
   FloodingPolicy *get_flooding_scheme(uint32_t flooding_strategy);
+
+  /* Queue Handling: abort */
+
+  RandomDelayQueue *_rd_queue;
+  Packet *search_in_queue(EtherAddress &src, uint16_t id, bool del);
 
 };
 
