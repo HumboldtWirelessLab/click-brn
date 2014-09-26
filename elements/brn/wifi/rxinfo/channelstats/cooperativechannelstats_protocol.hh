@@ -25,6 +25,11 @@ CLICK_DECLS
 
 #define INCLUDES_NEIGHBOURS 1
 
+/**
+ * TODO: - queue size
+ *       - (diff between ctl, mngt, data frame)
+ *
+ */
 CLICK_SIZE_PACKED_STRUCTURE(,
 struct local_airtime_stats {
   uint32_t stats_id;
@@ -60,7 +65,7 @@ struct neighbour_airtime_stats {
   uint8_t _std_rssi;
 
   //TODO: relative values (percent) is better?
-  uint32_t _duration;
+  uint32_t _duration; //tx Duration??
 });
 
 struct cooperative_channel_stats_header {
