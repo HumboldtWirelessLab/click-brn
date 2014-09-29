@@ -173,8 +173,7 @@ FloodingHelper::init_graph(const EtherAddress &start_node, NetworkGraph &ng, int
 {
   clear_graph(ng);
 
-  ng.nml.push_back(new NeighbourMetric(start_node, src_metric, 0));
-  ng.nmm.insert(start_node,ng.nml[ng.nml.size()-1]);
+  ng.add_node(start_node, src_metric, 0);
 }
 
 /*
@@ -189,16 +188,15 @@ FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric
   CachedNeighborsMetricList* cnml = NULL;
   int ng_size = ng.nml.size();
 
-  for ( uint32_t h = 1; h <= hop_count; h++ ) {    
+  for ( uint32_t h = 1; h <= hop_count; h++ ) {
     for ( uint32_t n = new_nodes_start; n < new_nodes_end; n++ ) {
 
-      cnml = get_filtered_neighbors(ng.nml[n]->_ea/*, src_metric*/);     // get n of n
+      cnml = get_filtered_neighbors(ng.nml[n]->_ea /*, src_metric*/);     // get n of n
 
       for( int nn_i = cnml->_neighbors.size()-1; nn_i >= 0; nn_i--) {             //check all n of n 
         if ( ng.nmm.findp(cnml->_neighbors[nn_i]) == NULL ) {                     // if not in list
-          NeighbourMetric *new_nm = new NeighbourMetric(cnml->_neighbors[nn_i], 0, h);
-          ng.nml.push_back(new_nm);                                               // add 
-          ng.nmm.insert(cnml->_neighbors[nn_i],new_nm);
+          //BRN_DEBUG("ADD n to ng(%d): %s", h, cnml->_neighbors[nn_i].unparse().c_str());
+          ng.add_node(cnml->_neighbors[nn_i], 0, h);
           ng_size++;
         }
       }
@@ -321,11 +319,24 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
 
   if ( _pdr_cache == NULL ) _pdr_cache = new uint32_t[_pdr_cache_size << _pdr_cache_shift];
 
+  /*
+  const uint8_t tf[] = {0,0,0,0,0,100};
+  const EtherAddress t = EtherAddress(tf);
+  */
+
   for ( uint32_t src_node = 0; src_node < no_nodes; src_node++) {
     uint32_t pdr_cache_index = src_node << _pdr_cache_shift;
     for ( uint32_t dst_node = 0; dst_node < no_nodes; dst_node++, pdr_cache_index++) {
       if ( src_node == dst_node ) continue;
       _pdr_cache[pdr_cache_index] = metric2pdr(_link_table->get_link_metric(ng.nml[src_node]->_ea, ng.nml[dst_node]->_ea));
+      /*
+      if (( src_node == 0 ) && (dst_node < 6)) {
+        BRN_DEBUG("PDR (%d -> %d): %d",src_node,dst_node,_pdr_cache[pdr_cache_index]);
+      }
+      if ( (t == ng.nml[src_node]->_ea) || (t == ng.nml[dst_node]->_ea) ) {
+        BRN_DEBUG("PDR (%s -> %s): %d",ng.nml[src_node]->_ea.unparse().c_str(), ng.nml[dst_node]->_ea.unparse().c_str(),_pdr_cache[pdr_cache_index]);
+      }
+      */
     }
   }
 
@@ -342,9 +353,9 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
       int src_metric = ng.nml[src_node]->_metric;
       uint32_t pdr_cache_index = src_node << _pdr_cache_shift;
       for ( uint32_t dst_node = 0; dst_node < no_nodes; dst_node++, pdr_cache_index++) {
-        if ((dst_node == src_node) ||
-          (ng.nml[dst_node]->_predecessor != NULL) ||
-          (ng.nml[src_node]->_predecessor == NULL)) continue;
+        if ((dst_node == src_node) ||                         //src equals dst
+          (ng.nml[dst_node]->_predecessor != NULL) ||         //target already part of graph
+          (ng.nml[src_node]->_predecessor == NULL)) continue; //src not in the graph
 
         //_metric is not dived by 100. its not important to get the best metric (just compare)
         //move "*" . in this loop its enough to compore the pdr_cache stuff
@@ -358,7 +369,7 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
       }
     }
 
-    if ( best_metric_dst != best_metric_src ) {
+    if ( best_metric_dst != best_metric_src ) { //found new link
       metric_changed = true;
       ng.nml[best_metric_dst]->_metric = best_metric / 100;
       ng.nml[best_metric_dst]->_predecessor = ng.nml[best_metric_src];
