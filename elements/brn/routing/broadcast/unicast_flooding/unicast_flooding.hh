@@ -65,7 +65,7 @@ CLICK_DECLS
 
 #define UNICAST_FLOODING_STATS_TARGET_SIZE 16
 
-#define UNICAST_FLOODING_DIJKSTRA_PDR          111
+#define UNICAST_FLOODING_DIJKSTRA_PDR          112
 
 class UnicastFlooding : public BRNElement {
  public:
