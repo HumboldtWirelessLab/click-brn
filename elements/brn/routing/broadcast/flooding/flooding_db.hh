@@ -70,9 +70,9 @@ class BroadcastNode
   uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
   Timestamp _bcast_time_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];   //time
 
-#define FLOODING_FLAGS_ME_SRC           1
-#define FLOODING_FLAGS_TX_ABORT         2
-
+#define FLOODING_FLAGS_ME_SRC             1
+#define FLOODING_FLAGS_TX_ABORT           2
+#define FLOODING_FLAGS_ME_UNICAST_TARGET  4 /* as long as i'm not unicast target and did not forward, nobody knows that i have received it */
 
   Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
@@ -85,19 +85,22 @@ class BroadcastNode
 
     uint16_t flags;
 
-#define FLOODING_NODE_INFO_FLAGS_FORWARDED                  1
-#define FLOODING_NODE_INFO_FLAGS_FINISHED                   2
-#define FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY             4
-#define FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY     8
+#define FLOODING_NODE_INFO_FLAGS_FORWARDED                    1
+#define FLOODING_NODE_INFO_FLAGS_FINISHED                     2
+#define FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY               4
+#define FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY       8
 
-#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME            (FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
-#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN       (FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME              (FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN         (FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY | FLOODING_NODE_INFO_FLAGS_FINISHED)
 
-#define FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY   16
+#define FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY      16
 
-#define FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE          32
+#define FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE             32
 
-#define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY  64
+/* I'm already respon. but i received a packet with foreign_responsibility */
+#define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY 64
+
+#define FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET     128
   };
 
 
@@ -318,10 +321,15 @@ class BroadcastNode
                    ((fln->flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) != 0)) { //not set yet
 
                 if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN) == 0) {  //or i'm not respo and its not finished so
+
                   fln->flags |= FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY;          //set flag
                   result |= FLOODING_NODE_INFO_RESULT_IS_NEW_FOREIGN_RESPONSIBILITY;
-                } else if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) {       //its finished for foreign but not finished
+
+                } else if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) {       //its finished for foreign but not
+                                                                                          //finished, since i'm responsible
                   fln->flags |= FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY;    //set guess foreign resp
+                                                                                          //TODO: if no packet sent yet, we can remove our 
+                                                                                          //responsibility
                 }
         }
       }
@@ -502,6 +510,35 @@ class BroadcastNode
     if (_bcast_id_list[index] != id) return false;
 
     return ((_bcast_flags_list[index]&FLOODING_FLAGS_TX_ABORT) == FLOODING_FLAGS_TX_ABORT);
+  }
+
+  /**
+   *  Unicast target
+   */
+
+  void set_me_as_unicast_target(uint16_t id) {
+    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+    if (_bcast_id_list[index] != id) return;
+    _bcast_flags_list[index] |= FLOODING_FLAGS_ME_UNICAST_TARGET;
+  }
+
+
+  bool me_was_unicast_target(uint16_t id) {
+    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+    if (_bcast_id_list[index] != id) return false;
+    return ((_bcast_flags_list[index] & FLOODING_FLAGS_ME_UNICAST_TARGET) != 0);
+  }
+
+  void set_node_as_unicast_target(uint16_t id, EtherAddress *target) {
+    struct flooding_node_info* ln = get_node_info(id, target);
+    assert(ln!=NULL);
+    ln->flags |= FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET;
+  }
+
+  bool node_was_unicast_target(uint16_t id, EtherAddress *target) {
+    struct flooding_node_info* ln = get_node_info(id, target);
+    assert(ln!=NULL);
+    return ((ln->flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET)!=0);
   }
 
   /**
