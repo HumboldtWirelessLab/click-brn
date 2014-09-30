@@ -26,6 +26,12 @@
 
 CLICK_DECLS
 
+#define LINKMETRIC_ETX  1
+#define LINKMETRIC_ETT  2
+#define LINKMETRIC_PSR  3
+#define LINKMETRIC_SNR  4
+
+
 //
 // Common interface of all route metric elements.
 //
@@ -62,6 +68,10 @@ class BRN2GenericMetric : public BRNElement {
  public:
   virtual void update_link(const EtherAddress &from, EtherAddress &to,
                            Vector<BrnRateSize> &rs, Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq, uint8_t update_mode) = 0;
+
+/*  virtual void update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
+                           Vector<uint8_t> &fwd, Vector<uint8_t> &rev, Vector<uint8_t> &fwd_rssi, Vector<uint8_t> &rev_rssi,
+                           uint32_t seq, uint8_t update_mode) = 0;*/
 
 };
 

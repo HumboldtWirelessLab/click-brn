@@ -166,7 +166,9 @@ FloodingPassiveAck::handle_feedback_packet(Packet *p, EtherAddress *src, uint16_
         packet_is_finished(pap) ||                                                             //or packet is finished (all passiv ack nodes or cnt based
         pap->tx_timeout(now, _dfl_timeout)) {                                                  //or timeout
 
-    BRN_DEBUG("Finished with %d retries left! Reson: %d %d %d",pap->retries_left(),(rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 ))?1:0, packet_is_finished(pap)?1:0,pap->tx_timeout(now, _dfl_timeout)?1:0);
+    BRN_DEBUG("Finished with %d retries left! Reson: %d %d %d (reject pack-fin timeout)",pap->retries_left(), 
+                (rejected && ((bcast_header->flags & BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN) == 0 ))?1:0,
+                packet_is_finished(pap)?1:0, pap->tx_timeout(now, _dfl_timeout)?1:0);
     if ( pap->retries_left() != 0 ) _pre_removed_pkts++;
 
     _queued_pkts--;
@@ -212,24 +214,28 @@ FloodingPassiveAck::set_unfinished_neighbors(PassiveAckPacket *pap)
   uint32_t no_rx_nodes = 0;
 
   for ( int i = pap->_passiveack.size()-1; i >= 0; i--) {    //!! unfinished_neighbors will decreased in loop !!
-    for ( j = 0; j < last_nodes_size; j++) {
-      if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0) &&
-           ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) ) continue; //i'm responsible and it's not acked
 
-      //we not resp for node or it's finished! now check whether it is the right node
+    BRN_DEBUG("PACK: check addr: %s",pap->_passiveack[i].unparse().c_str());
+
+    for ( j = 0; j < last_nodes_size; j++) {
+      if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) continue; //it's not finished, so it doesn't matter
+                                                                                     //whether it is the searched node
+
+      //it's finished! now check whether it is the right node
       //break if node is found
       if ( memcmp(pap->_passiveack[i].data(), last_nodes[j].etheraddr, 6) == 0) {
 
-        //node is finished (?) and a passiveack node
-        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) no_rx_nodes++;
-
+        //node is finished and a passiveack node
+        no_rx_nodes++;
         break;
       }
     }
+
     if ( j == last_nodes_size ) { //passiv_ack_node not found in last node, so its unfinished
       pap->_unfinished_neighbors.push_back(pap->_passiveack[i]);
       pap->_unfinished_neighbors_rx_prob.push_back(bcn->get_probability(pap->_bcast_id, &(pap->_passiveack[i])));
     }
+
   }
 
   pap->_cnt_finished_passiveack_nodes = no_rx_nodes;
@@ -252,7 +258,9 @@ FloodingPassiveAck::packet_is_finished(PassiveAckPacket *pap)
 
   bool cnt_based_abort = ((_cntbased_min_neighbors_for_abort > 0) && (_cntbased_min_neighbors_for_abort <= pap->_cnt_finished_passiveack_nodes ));
 
-  BRN_DEBUG("Finished?: %d %d %d %d",pap->retries_left(),cnt_based_abort?1:0,_abort_on_finished,count_unfinished_neighbors(pap));
+  BRN_DEBUG("Finished?: Retries left: %d cnt_based_abort: %d abort_on_finished: %d count_finihsed_n: %d",
+                        pap->retries_left(), cnt_based_abort?1:0,
+                        _abort_on_finished,count_unfinished_neighbors(pap));
 
   return (_abort_on_finished && ((count_unfinished_neighbors(pap) == 0) || cnt_based_abort));
 }

@@ -308,16 +308,19 @@ FloodingDB::table()
       sa << (uint32_t)bcn->_bcast_fwd_succ_list[i] <<	"\" sent=\"";
       sa << (uint32_t)bcn->_bcast_snd_list[i] << "\" rts_sent=\"";
       sa << (uint32_t)bcn->_bcast_rts_snd_list[i] << "\" time=\"";
-      sa << bcn->_bcast_time_list[i].unparse() << "\" >\n";
+      sa << bcn->_bcast_time_list[i].unparse() << "\" unicast_target=\"";
+      sa << (uint32_t)(((bcn->_bcast_flags_list[i] & FLOODING_FLAGS_ME_UNICAST_TARGET) == 0)?0:1) << "\" >\n";
 
       for ( int j = 0; j < bcn->_flooding_node_info_list_size[i]; j++ ) {
-        sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse() << "\" forwarded=\"";
-        sa << (uint32_t)(flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FORWARDED) << "\" responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) == 0)?0:1) << "\" finished_responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1) << "\" foreign_responsible=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1) << "\" rx_acked=\"";
-        sa << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)?0:1) << "\" rcv_cnt=\"";
-        sa << (uint32_t)(flnl[j].received_cnt) <<"\" />\n";
+        sa << "\t\t\t<lastnode addr=\"" << EtherAddress(flnl[j].etheraddr).unparse();
+        sa << "\" forwarded=\"" << (uint32_t)(flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FORWARDED);
+        sa << "\" responsible=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) == 0)?0:1);
+        sa << "\" finished_responsible=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED_RESPONSIBILITY) == 0)?0:1);
+        sa << "\" foreign_responsible=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FOREIGN_RESPONSIBILITY) == 0)?0:1);
+        sa << "\" guess_foreign_responsible=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY) == 0)?0:1);
+        sa << "\" rx_acked=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)?0:1);
+        sa << "\" rcv_cnt=\"" << (uint32_t)(flnl[j].received_cnt);
+        sa << "\" unicast_target=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET) == 0)?0:1) << "\" />\n";
       }
 
       sa << "\t\t</id>\n";
