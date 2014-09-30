@@ -71,7 +71,9 @@ Flooding::Flooding()
     _flooding_rx_ack(0),
     _flooding_lower_layer_reject(0),
     _abort_tx_mode(0),
-    _scheme_array(NULL)
+    _scheme_array(NULL),
+
+    _rd_queue(NULL)
 {
   BRNElement::init();
   reset_last_tx();
@@ -93,6 +95,7 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "FLOODINGSTRATEGY", cpkP+cpkM, cpInteger, &_flooding_strategy,
       "FLOODINGPASSIVEACK", cpkP, cpElement, &_flooding_passiveack,
       "ABORTTX", cpkP, cpInteger, &_abort_tx_mode,
+      "QUEUE", cpkP, cpElement, &_rd_queue,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -338,7 +341,7 @@ Flooding::push( int port, Packet *packet )
      * Add Probability
      *
      */
-    // pakcet was sent by fwd, Source was src with p_bcast_id. just 1 try was received
+    // packet was sent by fwd, Source was src with p_bcast_id. just 1 try was received
     add_rx_probability(fwd, src, (int32_t)p_bcast_id, 1);
 
     /**
@@ -386,11 +389,29 @@ Flooding::push( int port, Packet *packet )
     }
 
     /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
+    /**
+     *                   R E M O V E   P A C K E T   F R O M   Q U E U E
+     *
+     */
 
+    if ( is_known && ((_abort_tx_mode & FLOODING_TXABORT_MODE_INCLUDE_QUEUE) != 0)) {
+
+      Packet *queue_packet = search_in_queue(src, p_bcast_id, true);
+
+      if ( queue_packet != NULL ) {
+        //BRN_DEBUG("Found p in queue %p",queue_packet);
+
+        _tx_aborts++;
+        _flooding_passiveack->handle_feedback_packet(BRNProtocol::pull_brn_header(queue_packet),
+                                                     &src, p_bcast_id, false, true, 0);
+      }
+    }
+
+    /** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ **/
     /**
      *                   F O R W A R D     or   kill
      *
-     * TODO: forward a known ( and maybe already forwarded) packet again ?
+     * Some schemes allow to forward a known ( and maybe already forwarded) packet again: e.g. MPR
      */
 
     if (forward) {
@@ -656,6 +677,40 @@ Flooding::reset()
   _flooding_node_info_new_finished_passive_src = _flooding_node_info_new_finished_passive_dst = 0;
 
   _flooding_db->reset();
+}
+
+Packet *
+Flooding::search_in_queue(EtherAddress &src, uint16_t id, bool del)
+{
+  Packet *p = NULL;
+  if (_rd_queue == NULL) return NULL;
+
+  int q_size = _rd_queue->size();
+
+  for ( int q_i = 0; q_i < q_size; q_i++) {
+    p = _rd_queue->get_packet(q_i);
+
+    struct click_brn_bcast *bcast_header = (struct click_brn_bcast *)(&(p->data()[sizeof(struct click_brn)]));
+    uint16_t p_bcast_id = ntohs(bcast_header->bcast_id);
+
+    if ( p_bcast_id == id ) {
+      EtherAddress p_src = EtherAddress((uint8_t*)&(p->data()[sizeof(struct click_brn) + sizeof(struct click_brn_bcast) + bcast_header->extra_data_size]));
+
+      if (p_src == src) {
+        if (del) _rd_queue->remove_packet(q_i);
+        break;
+      }
+    }
+    p = NULL;
+  }
+
+  if ( p != NULL ) {
+    BRN_ERROR("Packet found");
+  } else {
+    BRN_ERROR("Packet not found");
+  }
+
+  return p;
 }
 
 //-----------------------------------------------------------------------------

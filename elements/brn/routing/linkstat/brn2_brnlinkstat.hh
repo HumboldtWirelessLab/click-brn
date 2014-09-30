@@ -352,7 +352,6 @@ public:
   };
 
   typedef HashMap<EtherAddress, uint8_t> BadTable;
-  typedef BadTable::const_iterator BTIter;
 
  public:
 

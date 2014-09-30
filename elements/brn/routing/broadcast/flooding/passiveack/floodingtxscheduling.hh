@@ -26,6 +26,7 @@
 #include <click/vector.hh>
 #include <click/timestamp.hh>
 #include <click/timer.hh>
+#include <click/hashtable.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
@@ -61,6 +62,9 @@ CLICK_DECLS
   * 
   * 
   */
+
+typedef HashTable<EtherAddress, uint32_t> BenefitMap;
+typedef BenefitMap::const_iterator BenefitMapIter;
 
 class FloodingTxScheduling : public BRNElement {
 
