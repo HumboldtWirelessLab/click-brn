@@ -58,14 +58,9 @@ TopologyDetection::~TopologyDetection()
 
 int TopologyDetection::initialize(ErrorHandler *)
 {
-  click_chatter("RDDBG: begin init");
   click_srandom(_node_identity->getMasterAddress()->hashcode());
   
-  click_chatter("RDDBG: Pre1 identity pointer 0x%p", _node_identity);
   const EtherAddress *node = _node_identity->getMasterAddress();
-  click_chatter("RDDBG: Pre2  node pointer: 0x%p", node);
-
-  click_chatter("RDDBG: %s", node->unparse().c_str());
   dibadawnAlgo.config.thisNode = *node;
   
   //don't move this to configure, since BRNNodeIdenty is not configured
@@ -176,6 +171,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
+  click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
   dibadawnAlgo.receive(packet);
 }
 
