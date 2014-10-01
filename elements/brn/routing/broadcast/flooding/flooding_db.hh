@@ -399,14 +399,14 @@ class BroadcastNode
   }
 
   /**
-    * ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node
+    * ASSIGN: flags wHether the packet is transmited to a node A (LastNode) by another node
     */
 
   int assign_node(uint16_t id, EtherAddress *node) {
     int new_index = 0;
     struct flooding_node_info *fln = add_node_info(id, node, &new_index);
 
-    assert((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0);
+    if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) != 0) return 0; //node already finished
 
     fln->flags |= FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE;
 
