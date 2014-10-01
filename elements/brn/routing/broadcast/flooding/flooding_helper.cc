@@ -226,9 +226,7 @@ FloodingHelper::get_graph(NetworkGraph &ng, uint32_t hop_count, int /*src_metric
         if ((ng.nmm.findp(cnml->_neighbors[nn_i]) == NULL) &&
            (blacklist.findp(cnml->_neighbors[nn_i]) == NULL)) {                       // if not in list and not in blacklist
 
-          NeighbourMetric *new_nm = new NeighbourMetric(cnml->_neighbors[nn_i], 0, h);
-          ng.nml.push_back(new_nm);                                                   // add
-          ng.nmm.insert(cnml->_neighbors[nn_i],new_nm);
+          ng.add_node(cnml->_neighbors[nn_i], 0, h);                                  // add
           ng_size++;
         }
       }
@@ -281,8 +279,7 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
   //add known nodes if they are not included
   for ( int i = 0; i < known_neighbors.size(); i++ ) {
     if ( ng.nmm.findp(known_neighbors[i]) == NULL) {
-      ng.nml.push_back(new NeighbourMetric(known_neighbors[i], 0, 0));       // add 
-      ng.nmm.insert(known_neighbors[i],ng.nml[ng.nml.size()-1]);
+      ng.add_node(known_neighbors[i], 0, 0);                                 // add
     }
   }
 
