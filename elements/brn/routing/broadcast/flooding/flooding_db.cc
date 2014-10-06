@@ -182,6 +182,16 @@ FloodingDB::forward_done(EtherAddress *src, uint16_t id, bool success)
 }
 
 uint32_t
+FloodingDB::forward_done_cnt(EtherAddress *src, uint16_t id)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) return 0;
+
+  return bcn->forward_done_cnt(id);
+}
+
+uint32_t
 FloodingDB::unfinished_forward_attempts(EtherAddress *src, uint16_t id)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
