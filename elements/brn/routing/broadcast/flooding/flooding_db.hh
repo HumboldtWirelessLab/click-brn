@@ -210,12 +210,6 @@ class BroadcastNode
     }
   }
 
-  inline int forward_done_cnt(uint16_t id) {
-    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-    if (_bcast_id_list[index] == id) return _bcast_fwd_done_list[index];
-    return -1;
-  }
-
   inline uint8_t forward_attempts(uint16_t id) {
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     if (_bcast_id_list[index] == id) return _bcast_fwd_list[index];
@@ -226,6 +220,12 @@ class BroadcastNode
     uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
     if (_bcast_id_list[index] == id) return _bcast_fwd_list[index]-_bcast_fwd_done_list[index];
     return 0;
+  }
+
+  inline int forward_done_cnt(uint16_t id) {
+    uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
+    if (_bcast_id_list[index] == id) return _bcast_fwd_done_list[index];
+    return -1;
   }
 
   inline void sent(uint16_t id, uint32_t no_transmissions, uint32_t no_rts_transmissions) {
@@ -399,7 +399,7 @@ class BroadcastNode
   }
 
   /**
-    * ASSIGN: flags wHether the packet is transmited to a node A (LastNode) by another node
+    * ASSIGN: flags whether the packet is transmited to a node A (LastNode) by another node
     */
 
   int assign_node(uint16_t id, EtherAddress *node) {
@@ -598,6 +598,7 @@ class FloodingDB : public BRNElement {
   bool have_id(EtherAddress *src, uint16_t id, Timestamp *now, uint32_t *fwd_attempts);
 
   void forward_done(EtherAddress *src, uint16_t id, bool success);
+  uint32_t forward_done_cnt(EtherAddress *src, uint16_t id);
   void forward_attempt(EtherAddress *src, uint16_t id);
   uint32_t unfinished_forward_attempts(EtherAddress *src, uint16_t id);
   void sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint32_t no_rts_transmission);
