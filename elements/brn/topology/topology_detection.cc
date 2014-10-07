@@ -193,7 +193,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
-  //click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
+  click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
   dibadawnAlgo.receive(packet);
 }
 
