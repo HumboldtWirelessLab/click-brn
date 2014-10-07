@@ -277,7 +277,7 @@ Flooding::push( int port, Packet *packet )
 
     if ( is_known ) {
       /**  A B O R T **/
-      BRN_INFO("Port 1\nRX: %s %s %d (%s)\nTX: %s %s %d",fwd.unparse().c_str(), src.unparse().c_str(), p_bcast_id,
+      BRN_INFO("Port 1:  RX: %s %s %d (%s) TX: %s %s %d",fwd.unparse().c_str(), src.unparse().c_str(), p_bcast_id,
                                                          rx_node.unparse().c_str(), _last_tx_dst_ea.unparse().c_str(),
                                                          _last_tx_src_ea.unparse().c_str(),_last_tx_bcast_id);
 
@@ -304,6 +304,13 @@ Flooding::push( int port, Packet *packet )
     }
     _flooding_db->inc_received(&src,(uint32_t)p_bcast_id, &fwd);
 
+    /**
+     *
+     *                            M E   W A S   U N I C A S T   T A R G E T
+     *
+     */
+
+     if ( _me->isIdentical(&rx_node) ) new_bcn->set_me_as_unicast_target(p_bcast_id);
     /**
      * Handle                         P A S S I V
      *
@@ -515,6 +522,7 @@ Flooding::push( int port, Packet *packet )
 
     assert(bcn != NULL);
 
+    //TODO: maybe packet was not forwarded (no mac transmission) due to abort
     if (( bcn->forward_done_cnt(p_bcast_id) == 0 ) && (!_flooding_db->me_src(&src, p_bcast_id))) { //never fwd it it doesn't have to
       if ( no_transmissions > 0) {                                                                 //some transmission for that packet (abort)
         _flooding_fwd_new_id++;
@@ -563,7 +571,7 @@ Flooding::push( int port, Packet *packet )
       packet->kill();
 
   } else if ( port == 4 ) { //passive overhear
-    BRN_DEBUG("Flooding: Passive Overhear\nPort 4");
+    BRN_DEBUG("Flooding: Passive Overhear (Port 4)");
 
     _flooding_passive++;
     _passive_last_node = true;
