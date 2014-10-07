@@ -80,8 +80,13 @@ private:
     Timestamp _next_time;
     Timer _timer;
 
+    bool _info_timer_active;
+    Timer _info_timer;
+    uint32_t _info_counter;
+
     void handle_detection(Packet *brn_packet);
     void update_periodically_detection_setup();
+    void update_info_timer();
 };
 
 CLICK_ENDDECLS

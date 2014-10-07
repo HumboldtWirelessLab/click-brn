@@ -39,8 +39,8 @@ DibadawnConfig::DibadawnConfig()
 {
   votingRule = 0;
   useOriginForwardDelay = true;
-  maxHops = 11;
-  maxTraversalTimeMs = 40, 
+  maxHops = 14;
+  maxTraversalTimeMs = 52, 
   maxJitter = maxTraversalTimeMs / 4;
   isPrintResults = false;
 }
