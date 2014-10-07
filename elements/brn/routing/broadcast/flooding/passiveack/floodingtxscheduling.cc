@@ -101,6 +101,9 @@ FloodingTxScheduling::tx_delay(PassiveAckPacket *pap)
     case FLOODING_TXSCHEDULING_PRIO:
       delay = tx_delay_prio(pap);
       break;
+    case FLOODING_TXSCHEDULING_ACTIVE_PASSIVE_PRIO:
+      delay = tx_delay_prio(pap, true);
+      break;
   }
 
   return delay;
@@ -111,7 +114,7 @@ FloodingTxScheduling::tx_delay(PassiveAckPacket *pap)
  */
 
 int
-FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
+FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_prio)
 {
   /**
    * 1. Get all Neighbours
@@ -136,7 +139,11 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
   int higher_prio = 0; //0 -> highest prio ..... bigger -> lower prio
   int same_prio = 0;
 
-  BRN_ERROR("Neighbours: %d",own_cnml->_neighbors.size());
+  //TODO: what about "ME FINISHED FOR FOREIGN" and piggyback
+  bool me_can_be_known = ( (bcn->get_sent(pap->_bcast_id) == 0) ||        //i've sent the packetsize
+                           (bcn->me_was_unicast_target(pap->_bcast_id))); //i was target of unicast
+
+  BRN_DEBUG("Neighbours: %d",own_cnml->_neighbors.size());
   //get benefit
   if ( own_cnml->_neighbors.size() > 0 ) {
     for ( int x = own_cnml->_neighbors.size()-1; x >= 0; x-- ) {
@@ -169,29 +176,57 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap)
 
       benefit /= 100;
 
-      BRN_ERROR("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(), benefit);
+      BRN_DEBUG("Neighbour: %s Benefit: %d", own_cnml->_neighbors[x].unparse().c_str(), benefit);
 
       benefit_map[own_cnml->_neighbors[x]] = benefit;
     }
 
-    BRN_ERROR("Own benefit: %d",own_benefit);
+    BRN_DEBUG("Own benefit: %d",own_benefit);
 
     BenefitMapIter bmIter = benefit_map.begin();
 
     for( ; bmIter != benefit_map.end(); bmIter++) {
       int32_t cur_benefits = bmIter.value();
-      if ( cur_benefits > own_benefit ) higher_prio++; //node with more benefit, so my prio is less
-      else if ( cur_benefits == own_benefit ) {        //node with same benefit
-        same_prio++;
-        same_prio_ea.push_back(bmIter.key());
+
+      if (active_passive_prio) {
+        EtherAddress cur_ea = bmIter.key();
+        struct BroadcastNode::flooding_node_info* ni = bcn->get_node_info(pap->_bcast_id, &cur_ea);
+        bool node_can_be_known = false;
+
+        if ( ni != NULL ) {
+          //TODO: better: use rx count, but this doesn't include ack based
+          node_can_be_known = ((ni->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) != 0);
+        }
+
+        if ( me_can_be_known ) {
+          if ( (!node_can_be_known) || cur_benefits > own_benefit ) higher_prio++;
+          else if ( (node_can_be_known) && (cur_benefits == own_benefit) ) {
+            same_prio++;
+            same_prio_ea.push_back(bmIter.key());
+          }
+        } else {
+          if ((!node_can_be_known) && (cur_benefits > own_benefit) ) higher_prio++;
+          else if ( (!node_can_be_known) && (cur_benefits == own_benefit) ) {
+            same_prio++;
+            same_prio_ea.push_back(bmIter.key());
+          }
+        }
+      } else { // Don't considere wheter ack or not
+        if ( cur_benefits > own_benefit ) {
+          higher_prio++; //node with more benefit, so my prio is less
+        } else if ( cur_benefits == own_benefit ) {        //node with same benefit
+          same_prio++;
+          same_prio_ea.push_back(bmIter.key());
+        }
       }
     }
   }
 
   if ( same_prio != 0 ) {
-    BRN_ERROR("Same Prio %d Own benefit: %d", same_prio, own_benefit);
+    BRN_DEBUG("Same Prio %d Own benefit: %d", same_prio, own_benefit);
   }
 
+  //TODO: use same prio_ea-vector to sort node by mac
   int delay = ((higher_prio * _dfl_interval) / 10) + (click_random() % (same_prio+1));
 
   benefit_map.clear();

@@ -38,12 +38,13 @@
 
 CLICK_DECLS
 
-#define FLOODING_TXSCHEDULING_DEFAULT         0
-#define FLOODING_TXSCHEDULING_NEIGHBOURS_CNT  1
-#define FLOODING_TXSCHEDULING_MAX_DELAY       2
-#define FLOODING_TXSCHEDULING_PRIO            3
+#define FLOODING_TXSCHEDULING_DEFAULT             0
+#define FLOODING_TXSCHEDULING_NEIGHBOURS_CNT      1
+#define FLOODING_TXSCHEDULING_MAX_DELAY           2
+#define FLOODING_TXSCHEDULING_PRIO                3
+#define FLOODING_TXSCHEDULING_ACTIVE_PASSIVE_PRIO 4
 
-#define FLOODING_TXSCHEDULING_LAST            3
+#define FLOODING_TXSCHEDULING_LAST                4
 
 
 /*
@@ -102,7 +103,7 @@ public:
   uint32_t _tx_scheduling;
 
   int tx_delay(PassiveAckPacket *pap);
-  int tx_delay_prio(PassiveAckPacket *pap);
+  int tx_delay_prio(PassiveAckPacket *pap, bool active_passive_prio = false);
   int tx_delay_cnt_neighbors_delay(PassiveAckPacket *pap);
   int tx_delay_max_delay(PassiveAckPacket *pap);
 

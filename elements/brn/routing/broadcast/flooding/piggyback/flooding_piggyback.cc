@@ -198,6 +198,8 @@ FloodingPiggyback::bcast_header_add_node_infos(Flooding */*fl*/, FloodingDB *fl_
   uint32_t foreign_response_flags = 0;
 
   for ( uint32_t i = 0; (i < cnt) && (last_node_cnt >= 0); last_node_cnt--) {
+    //HINT: if someone or me said, that he will finished the node, for evry other node this target is finished
+    //but neither me nor the other node should revoe his responsibility
     if  ((lnl[last_node_cnt].flags & (FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME | FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_FOREIGN)) == 0)
       continue;
 
@@ -296,6 +298,8 @@ FloodingPiggyback::bcast_header_get_node_infos(Flooding *fl, FloodingDB *fl_db, 
               abort_reason |= FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY;
             }
           }
+        } else { //myself is part of piggyback infos
+          bcn->set_me_as_unicast_target(id);
         }
         cnt_node++;
       }
