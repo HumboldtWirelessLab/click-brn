@@ -112,6 +112,9 @@ void DibadawnSearch::onForwardPhaseTimeout()
   forwardMessages();
   detectArticulationPoints();
   voteForArticulaionPointsAndBridges();
+
+  if(config.isPrintResults)
+    commonStatistic.print(searchId.asString());
 }
 
 void DibadawnSearch::detectCycles()
@@ -226,8 +229,6 @@ void DibadawnSearch::voteForArticulaionPointsAndBridges()
 {
   commonStatistic.appendSearchResult(searchResult);
   commonStatistic.updateTopologyInfoByVoting();
-  if(config.isPrintResults)
-    commonStatistic.print(searchId.asString());
 }
 
 void DibadawnSearch::start_search()

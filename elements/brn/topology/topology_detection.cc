@@ -44,32 +44,19 @@ TopologyDetection::TopologyDetection() :
 detection_id(0),
 dibadawnAlgo(this),
 _is_detect_periodically(false),
-_probability_of_perriodically_detection(1.0),
-_interval_ms(5 * 1000),
-_start_rand(1000),
-_timer(this)
+_probability_of_perriodically_detection(0.8),
+_interval_ms(30 * 1000),
+_start_rand(20000),
+_timer(this),
+_info_timer_active(false),
+_info_timer(this),
+_info_counter(1)
 {
   BRNElement::init();
 }
 
 TopologyDetection::~TopologyDetection()
 {
-}
-
-int TopologyDetection::initialize(ErrorHandler *)
-{
-  click_srandom(_node_identity->getMasterAddress()->hashcode());
-  
-  const EtherAddress *node = _node_identity->getMasterAddress();
-  dibadawnAlgo.config.thisNode = *node;
-  
-  //don't move this to configure, since BRNNodeIdenty is not configured
-  //completely while configure this element, so set_active can cause
-  //seg, fault, while calling BRN_DEBUG in set_active
-  _timer.initialize(this);
-  update_periodically_detection_setup();
-  
-  return 0;
 }
 
 int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
@@ -90,6 +77,7 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
       "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "PRINT_INFO_PERIODICALLY", 0, cpBool, &_info_timer_active,
       cpEnd) < 0)
     return(-1);
 
@@ -99,6 +87,26 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
   return(0);
 }
 
+int TopologyDetection::initialize(ErrorHandler *)
+{
+  //don't move this to configure, since BRNNodeIdenty is not configured
+  //completely while configure this element, so set_active can cause
+  //seg, fault, while calling BRN_DEBUG in set_active
+  
+  click_srandom(_node_identity->getMasterAddress()->hashcode());
+  
+  const EtherAddress *node = _node_identity->getMasterAddress();
+  dibadawnAlgo.config.thisNode = *node;
+  
+  _timer.initialize(this);
+  update_periodically_detection_setup();
+
+  _info_timer.initialize(this);
+  update_info_timer();
+  
+  return 0;
+}
+
 int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
 {
   bool is_topologyinfo_configured;
@@ -106,6 +114,7 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
   bool is_debug_configured;
   bool is_periodicallyexec_configured;
   bool is_interval_configured;
+  bool is_info_timer_configured;
   
   if (cp_va_kparse(conf, this, errh,
       "TOPOLOGY_INFO", cpkC, &is_topologyinfo_configured, cpElement, &_topoInfo,
@@ -122,6 +131,7 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
       "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "PRINT_INFO_PERIODICALLY", cpkC, &is_info_timer_configured, cpBool, &_info_timer_active,
       cpEnd) < 0)
     return(-1);
 
@@ -133,7 +143,8 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
     dibadawnAlgo.config.debugLevel = _debug;
   if(is_periodicallyexec_configured || is_interval_configured)
     update_periodically_detection_setup();
-  
+  if(is_info_timer_configured)
+    update_info_timer();
   return(0);
 }
 
@@ -147,6 +158,17 @@ void TopologyDetection::update_periodically_detection_setup()
   uint32_t start_delay = _start_rand > 0 ? click_random() % _start_rand : 0;
   _timer.schedule_after_msec(start_delay);
   BRN_DEBUG("Timer is new scheduled at %s", _timer.expiry().unparse().c_str());
+}
+
+void TopologyDetection::update_info_timer()
+{
+  _info_timer.unschedule();
+  
+  if(!_info_timer_active)
+    return;
+
+  _info_timer.schedule_after_msec(_interval_ms);
+  BRN_DEBUG("Info Timer is new scheduled at %s", _info_timer.expiry().unparse().c_str());
 }
 
 void TopologyDetection::push(int /*port*/, Packet *packet)
@@ -171,7 +193,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
-  click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
+  //click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
   dibadawnAlgo.receive(packet);
 }
 
@@ -180,20 +202,32 @@ void TopologyDetection::run_timer(Timer *t)
   if (t == NULL)
     BRN_ERROR("Timer is NULL");
 
-  double threshold = _probability_of_perriodically_detection * 10000;
-  double rand = click_random() % 10000;
-  if( rand < threshold)
+  if(t == &_timer)
   {
-    BRN_DEBUG("Timer: start search");
-    dibadawnAlgo.startNewSearch();
-  }
-  else
-  {
-    BRN_DEBUG("Timer: don't start search");
-  }
+    double threshold = _probability_of_perriodically_detection * 10000;
+    double rand = click_random() % 10000;
+    if( rand < threshold)
+    {
+      BRN_DEBUG("Timer: start search");
+      dibadawnAlgo.startNewSearch();
+    }
+    else
+    {
+      BRN_DEBUG("Timer: don't start search");
+    }
 
-  if (_is_detect_periodically)
-    _timer.schedule_after_msec(_interval_ms);
+    if (_is_detect_periodically)
+      _timer.schedule_after_msec(_interval_ms);
+  }
+  else if(t == &_info_timer)
+  {
+    dibadawnAlgo.nodeStatistic.print(String(_info_counter));
+    _info_counter++;    
+
+    if(_info_timer_active)
+      _info_timer.schedule_after_msec(_interval_ms);
+  }
+  
 }
 
 /*************************************************************************************************/
