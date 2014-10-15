@@ -27,6 +27,7 @@
 
 #include "edgemarking.hh"
 #include "topology_info_container.hh"
+#include "config.hh"
 #include "../topology_info.hh"
 
 
@@ -35,30 +36,37 @@ CLICK_DECLS;
 class DibadawnNodeStatistic
 {
 public:
-    DibadawnNodeStatistic();
+    DibadawnNodeStatistic(DibadawnConfig &cfg);
     
     double competenceByUsedHops(uint8_t hops);
     double weightByCompetence(double competence);
     void setTopologyInfo(TopologyInfo *topoInfo);
     
-    bool isBridgeByUnanimousRule();
-    bool isBridgeByMajorityRule();
-    bool isBridgeBySingleForRule();
-    bool isBridgeByIntelligentMajorityRule();
-    bool isBridgeByTrustedNoBridgeRule();
-    bool isBridgeByWeightedRule();
-    void print(String extra_data);
-    String get(String extra_data);
+    bool isBridge(TopologyInfoEdge *edge);
+    bool isBridgeByUnanimousRule(TopologyInfoEdge* edge);
+    bool isBridgeByMajorityRule(TopologyInfoEdge* edgeA);
+    bool isBridgeBySingleForRule(TopologyInfoEdge* edgeA);
+    bool isBridgeByIntelligentMajorityRule(TopologyInfoEdge* edgeA);
+    bool isBridgeByTrustedNoBridgeRule(TopologyInfoEdge* edgeA);
+    bool isBridgeByWeightedRule(TopologyInfoEdge* edgeA);
+    double calcWeight(double p);
+    bool isBridgeByLastSet(TopologyInfoEdge* edgeA);
+    
+    void printFinalResult(String extra_data);
+    void printSearchResultSets(String extraData);
     void appendSearchResult(DibadawnTopologyInfoContainer &result);
     void updateTopologyInfoByVoting();
     
 private:
+    DibadawnConfig &config;
+    
     Spinlock lock;
     Vector<DibadawnEdgeMarking> edgeMarkings;
     int maxMarkings;
     
     Vector<DibadawnTopologyInfoContainer*> searchResults;
-    int maxSearchResults;
+    
+    void getListOfKnowEdges(DibadawnTopologyInfoContainer &result);
     
     TopologyInfo *topologyInfo;
 };

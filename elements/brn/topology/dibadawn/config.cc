@@ -34,15 +34,18 @@ CLICK_DECLS
 
 DibadawnConfig::DibadawnConfig()
 :   debugLevel(0), 
-    votingRule(0),
-    useLinkStatistic(false)
+    votingRule(6),
+    numOfVotingSets(5),
+    useLinkStatistic(false),
+    trustThreshold(0.90),
+    probabilityForABridgeAtNet(0.5)
 {
-  votingRule = 0;
   useOriginForwardDelay = true;
   maxHops = 14;
   maxTraversalTimeMs = 52, 
   maxJitter = maxTraversalTimeMs / 4;
   isPrintResults = false;
+  ;
 }
 
 const char* DibadawnConfig::thisNodeAsCstr()
@@ -69,6 +72,7 @@ String DibadawnConfig::asString()
   sa << "\t\t<rule number='3' name='Intelligent majority:' />\n";
   sa << "\t\t<rule number='4' name='Trusted non-bridge rule' />\n";
   sa << "\t\t<rule number='5' name='Weighted rule' />\n";
+  sa << "\t\t<rule number='6' name='last run' />\n";
   sa << "\t</votingRules>\n";
   
   sa << "</dibadawn_config>\n";

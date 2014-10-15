@@ -32,11 +32,20 @@ public:
     EtherAddress node;
     uint32_t countDetection;
     Timestamp time_of_last_detection;
+    enum 
+    {
+      eArticulationPoint, eNonArticulationPoint, eUnknown
+    } articulationPointState;
     float probability;
 
     TopologyInfoNode(EtherAddress *n, float probability = 0.0);
     void incDetection();
     bool equals(EtherAddress *a);
+    
+    void setArticulationPoint();
+    void setNonArticulationPoint();
+    bool isArticulationPoint();
+    bool isNonArticulationPoint();
 };
 
 CLICK_ENDDECLS

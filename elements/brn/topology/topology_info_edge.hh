@@ -35,11 +35,20 @@ public:
     EtherAddress node_b;
     uint32_t countDetection;
     Timestamp time_of_last_detection;
+    enum 
+    {
+      eBridge, eNonBridge, eUnknown
+    } bridgeState;
     float probability;
 
     TopologyInfoEdge(EtherAddress *a, EtherAddress *b, float probability = 0.0);
     void incDetection();
     bool equals(EtherAddress *a, EtherAddress *b);
+    bool equals(TopologyInfoEdge *e);
+    void setBridge();
+    void setNonBridge();
+    bool isBridge();
+    bool isNonBridge();
 };
 
 

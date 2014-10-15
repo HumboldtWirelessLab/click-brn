@@ -37,6 +37,7 @@ TopologyInfoNode::TopologyInfoNode(EtherAddress *n, float p)
 {
   node = EtherAddress(n->data());
   countDetection = 1;
+  articulationPointState = eUnknown;
 }
 
 void TopologyInfoNode::incDetection()
@@ -48,6 +49,26 @@ void TopologyInfoNode::incDetection()
 bool TopologyInfoNode::equals(EtherAddress *a)
 {
   return (*a == node);
+}
+
+void TopologyInfoNode::setArticulationPoint()
+{
+  articulationPointState = eArticulationPoint;
+}
+
+void TopologyInfoNode::setNonArticulationPoint()
+{
+  articulationPointState = eNonArticulationPoint;
+}
+
+bool TopologyInfoNode::isArticulationPoint()
+{
+  return(articulationPointState == eArticulationPoint);
+}
+
+bool TopologyInfoNode::isNonArticulationPoint()
+{
+  return(articulationPointState == eNonArticulationPoint);
 }
 
 

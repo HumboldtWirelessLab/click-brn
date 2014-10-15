@@ -28,7 +28,8 @@
 
 CLICK_DECLS;
 
-DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element)
+DibadawnAlgorithm::DibadawnAlgorithm(BRNElement *click_element):
+nodeStatistic(config)
 {
   brn_click_element = click_element;
 }
@@ -101,10 +102,10 @@ String DibadawnAlgorithm::getLinkStat()
 
 void DibadawnAlgorithm::clearFinischedSearches()
 {
-  bool isOneSearchRemoved;
-  do // Lists should be very short, so it will be ok, but its not the best solution
+  bool done;
+  do
   {
-    isOneSearchRemoved = false;
+    done = true;
     for (Vector<DibadawnSearch*>::iterator i = searches.begin(); i != searches.end(); i++)
     {
       DibadawnSearch *s = *i;
@@ -112,10 +113,10 @@ void DibadawnAlgorithm::clearFinischedSearches()
       {
         searches.erase(i);
         delete(s);
-        isOneSearchRemoved = true;
+        done = false;
       }
     }
-  }while (isOneSearchRemoved);
+  }while (!done);
 }
 
 
