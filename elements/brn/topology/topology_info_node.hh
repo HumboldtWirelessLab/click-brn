@@ -41,6 +41,7 @@ public:
     TopologyInfoNode(EtherAddress *n, float probability = 0.0);
     void incDetection();
     bool equals(EtherAddress *a);
+    bool equals(TopologyInfoNode *a);
     
     void setArticulationPoint();
     void setNonArticulationPoint();

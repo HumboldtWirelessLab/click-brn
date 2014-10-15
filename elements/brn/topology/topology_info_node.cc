@@ -51,6 +51,11 @@ bool TopologyInfoNode::equals(EtherAddress *a)
   return (*a == node);
 }
 
+bool TopologyInfoNode::equals(TopologyInfoNode *a)
+{
+  return (node == a->node);
+}
+
 void TopologyInfoNode::setArticulationPoint()
 {
   articulationPointState = eArticulationPoint;

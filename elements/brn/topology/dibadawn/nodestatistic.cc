@@ -37,17 +37,17 @@ bool DibadawnNodeStatistic::isBridge(TopologyInfoEdge* edge)
 {
   switch(config.votingRule)
   {
-  case 0: return(isBridgeByUnanimousRule(edge));
+  case 1: return(isBridgeByUnanimousRule(edge));
 
-  case 1: return(isBridgeByMajorityRule(edge));
+  case 2: return(isBridgeByMajorityRule(edge));
 
-  case 2: return(isBridgeBySingleForRule(edge));
+  case 3: return(isBridgeBySingleForRule(edge));
 
-  case 3: return(isBridgeByIntelligentMajorityRule(edge));
+  case 4: return(isBridgeByIntelligentMajorityRule(edge));
 
-  case 4: return(isBridgeByTrustedNoBridgeRule(edge));
+  case 5: return(isBridgeByTrustedNoBridgeRule(edge));
 
-  case 5: return(isBridgeByWeightedRule(edge));
+  case 6: return(isBridgeByWeightedRule(edge));
 
   default: return(isBridgeByLastSet(edge));
   }
@@ -206,7 +206,7 @@ bool DibadawnNodeStatistic::isBridgeByWeightedRule(TopologyInfoEdge * edgeA)
     }
   }
   
-  return(sumBridges - sumNoBridges > calcWeight(config.probabilityForABridgeAtNet));
+  return(sumBridges - sumNoBridges > calcWeight(config.probabilityForBridgeAtNet));
 }
 
 double DibadawnNodeStatistic::calcWeight(double p)
@@ -214,6 +214,211 @@ double DibadawnNodeStatistic::calcWeight(double p)
   return (log(p / (1 - p)));
 }
 
+bool DibadawnNodeStatistic::isBridgeByLastSet(TopologyInfoEdge* edgeA)
+{
+  DibadawnTopologyInfoContainer *container = searchResults.back();
+
+  for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); it2++)
+  {
+    TopologyInfoEdge *edgeB = *it2;
+
+    if (edgeA->equals(edgeB) && edgeB->isBridge())
+      return (true);
+  }
+
+  return (false);
+}
+
+bool DibadawnNodeStatistic::isAP(TopologyInfoNode* edge)
+{
+  switch(config.votingRule)
+  {
+  case 1: return(isAPByUnanimousRule(edge));
+
+  case 2: return(isAPByMajorityRule(edge));
+
+  case 3: return(isAPBySingleForRule(edge));
+
+  case 4: return(isAPByIntelligentMajorityRule(edge));
+
+  case 5: return(isAPByTrustedNoBridgeRule(edge));
+
+  case 6: return(isAPByWeightedRule(edge));
+
+  default: return(isAPByLastSet(edge));
+  }
+  
+  return(false);
+}
+
+bool DibadawnNodeStatistic::isAPByUnanimousRule(TopologyInfoNode* nodeA)
+{
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+      
+      if(nodeA->equals(nodeB) && nodeB->isNonArticulationPoint())
+        return(false);
+    }
+  }
+  
+  return (true);
+}
+
+bool DibadawnNodeStatistic::isAPByMajorityRule(TopologyInfoNode* nodeA)
+{
+  size_t numAP = 0;
+  size_t numNonAP = 0;
+
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+      
+      if(nodeA->equals(nodeB))
+      {
+        if(nodeB->isArticulationPoint())
+          numAP++;
+        else if(nodeB->isNonArticulationPoint())
+          numNonAP++;
+      }
+    }
+  }
+
+  return (numAP > numNonAP);
+}
+
+bool DibadawnNodeStatistic::isAPBySingleForRule(TopologyInfoNode* nodeA)
+{
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+      
+      if(nodeA->equals(nodeB) && nodeB->isArticulationPoint())
+        return(true);
+    }
+  }
+
+  return (false);
+}
+
+bool DibadawnNodeStatistic::isAPByIntelligentMajorityRule(TopologyInfoNode* nodeA)
+{
+  size_t numAP = 0;
+  size_t numNonAP = 0;
+  bool noBridgeHasTrustedVote = false;
+
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+      
+      if(nodeA->equals(nodeB))
+      {
+        if(nodeB->isArticulationPoint())
+          numAP++;
+        else if(nodeB->isNonArticulationPoint())
+        {
+          numNonAP++;
+          if(nodeB->probability > config.trustThreshold)
+            noBridgeHasTrustedVote = true;
+        }
+      }
+    }
+  }
+
+  bool result;
+  if(noBridgeHasTrustedVote)
+    result = false;
+  else
+    result = numAP > numNonAP;
+  
+  return (result);
+}
+
+bool DibadawnNodeStatistic::isAPByTrustedNoBridgeRule(TopologyInfoNode * nodeA)
+{
+  bool noBridgeHasTrustedVote = false;
+
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+      
+      if(nodeA->equals(nodeB))
+      {
+        if(nodeB->isNonArticulationPoint())
+        {
+          if(nodeB->probability > config.trustThreshold)
+            noBridgeHasTrustedVote = true;
+        }
+      }
+    }
+  }
+
+  bool result = true;
+  if (noBridgeHasTrustedVote)
+    result = false;
+  return (result);
+}
+
+bool DibadawnNodeStatistic::isAPByWeightedRule(TopologyInfoNode * nodeA)
+{
+  double sumAP = 0;
+  double sumNonAP = 0;
+
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+
+      if (nodeA->equals(nodeB))
+      {
+        if (nodeB->isArticulationPoint())
+          sumAP += calcWeight(nodeB->probability);
+        else if (nodeB->isNonArticulationPoint())
+          sumNonAP += calcWeight(nodeB->probability);
+      }
+    }
+  }
+  
+  return(sumAP - sumNonAP > calcWeight(config.probabilityForAAPAtNet));
+}
+
+bool DibadawnNodeStatistic::isAPByLastSet(TopologyInfoNode* nodeA)
+{
+  DibadawnTopologyInfoContainer *container = searchResults.back();
+
+  for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *nodeB = *it2;
+
+    if (nodeA->equals(nodeB) && nodeB->isArticulationPoint())
+      return (true);
+  }
+
+  return (false);
+}
 
 /*
  * These values are calculated by 1 - exp(x / 5 - 6) to get values close to the 
@@ -270,22 +475,6 @@ double DibadawnNodeStatistic::competenceByUsedHops(uint8_t hops)
 
   return (result);
 }
-
-bool DibadawnNodeStatistic::isBridgeByLastSet(TopologyInfoEdge* edgeA)
-{
-  DibadawnTopologyInfoContainer *container = searchResults.back();
-
-  for (Vector<TopologyInfoEdge*>::const_iterator it2 = container->_edges.begin(); it2 != container->_edges.end(); it2++)
-  {
-    TopologyInfoEdge *edgeB = *it2;
-
-    if (edgeA->equals(edgeB) && edgeB->isBridge())
-      return (true);
-  }
-
-  return (false);
-}
-
 
 double DibadawnNodeStatistic::weightByCompetence(double competence)
 {
@@ -357,10 +546,9 @@ void DibadawnNodeStatistic::updateTopologyInfoByVoting()
   DibadawnTopologyInfoContainer edgeList;
   lock.acquire();
   
-  printSearchResultSets("");
-  
   getListOfKnowEdges(edgeList);
-  edgeList.print(config.thisNode, "uniqie list");
+  getListOfKnowNodes(edgeList);
+  
   
    for (Vector<TopologyInfoEdge*>::const_iterator it = edgeList._edges.begin(); it !=  edgeList._edges.end(); it++)
    {
@@ -369,6 +557,21 @@ void DibadawnNodeStatistic::updateTopologyInfoByVoting()
      if(isBridge(edge))
        result.addBridge(&(edge->node_a), &(edge->node_b), edge->probability);
    }
+  
+  for (Vector<TopologyInfoNode*>::const_iterator it = edgeList._nodes.begin(); it !=  edgeList._nodes.end(); it++)
+   {
+     TopologyInfoNode *node = *it;
+     
+     if(isAP(node))
+       result.addArticulationPoint(&(node->node), node->probability);
+   }
+  
+  if (config.debugLevel > 4)
+  {
+    printSearchResultSets("");
+    edgeList.print(config.thisNode, "uniqie list");
+    result.print(config.thisNode, "Result");
+  }
   
   topologyInfo->reset();
   topologyInfo->setBridges(result._edges);
@@ -393,6 +596,21 @@ void DibadawnNodeStatistic::getListOfKnowEdges(DibadawnTopologyInfoContainer &re
   }
 }
 
+void DibadawnNodeStatistic::getListOfKnowNodes(DibadawnTopologyInfoContainer& result)
+{
+  for (Vector<DibadawnTopologyInfoContainer*>::const_iterator it = searchResults.begin(); it != searchResults.end(); it++)
+  {
+    DibadawnTopologyInfoContainer *container = *it;
+    
+    for (Vector<TopologyInfoNode*>::const_iterator it2 = container->_nodes.begin(); it2 !=  container->_nodes.end(); it2++)
+    {
+      TopologyInfoNode *node = *it2;
+      if(result.containsNode(node))
+        continue;
+      result.addNode(*node);
+    }
+  }
+}
 
 
 CLICK_ENDDECLS
