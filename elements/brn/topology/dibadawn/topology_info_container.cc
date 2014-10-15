@@ -140,6 +140,18 @@ DibadawnTopologyInfoContainer::removeNonBridge(EtherAddress* a, EtherAddress* b)
 }
 
 void
+DibadawnTopologyInfoContainer::addNode(TopologyInfoNode &n)
+{
+  TopologyInfoNode *ap = getNode(&(n.node));
+  if (ap == NULL)
+  {
+    _nodes.push_back(new TopologyInfoNode(n));
+  }
+  else
+    ap->incDetection();
+}
+
+void
 DibadawnTopologyInfoContainer::addArticulationPoint(EtherAddress *a, float probability)
 {
   TopologyInfoNode *ap = getArticulationPoint(a);
@@ -226,6 +238,18 @@ DibadawnTopologyInfoContainer::getNonBridge(EtherAddress *a, EtherAddress *b)
 }
 
 TopologyInfoNode*
+DibadawnTopologyInfoContainer::getNode(EtherAddress *a)
+{
+  for (int i = 0; i < _nodes.size(); i++)
+  {
+    if (_nodes[i]->equals(a))
+      return _nodes[i];
+  }
+
+  return NULL;
+}
+
+TopologyInfoNode*
 DibadawnTopologyInfoContainer::getArticulationPoint(EtherAddress *a)
 {
   for (int i = 0; i < _nodes.size(); i++)
@@ -253,6 +277,15 @@ bool DibadawnTopologyInfoContainer::containsEdge(TopologyInfoEdge* e)
 {
   for (int i = 0; i < _edges.size(); i++)
     if (_edges[i]->equals(e)) 
+      return true;
+  
+  return(false);
+}
+
+bool DibadawnTopologyInfoContainer::containsNode(TopologyInfoNode* e)
+{
+  for (int i = 0; i < _nodes.size(); i++)
+    if (_nodes[i]->equals(e)) 
       return true;
   
   return(false);

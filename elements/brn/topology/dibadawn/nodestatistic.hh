@@ -49,8 +49,18 @@ public:
     bool isBridgeByIntelligentMajorityRule(TopologyInfoEdge* edgeA);
     bool isBridgeByTrustedNoBridgeRule(TopologyInfoEdge* edgeA);
     bool isBridgeByWeightedRule(TopologyInfoEdge* edgeA);
-    double calcWeight(double p);
     bool isBridgeByLastSet(TopologyInfoEdge* edgeA);
+    
+    double calcWeight(double p);
+    
+    bool isAP(TopologyInfoNode *node);
+    bool isAPByUnanimousRule(TopologyInfoNode* node);
+    bool isAPByMajorityRule(TopologyInfoNode* nodeA);
+    bool isAPBySingleForRule(TopologyInfoNode* nodeA);
+    bool isAPByIntelligentMajorityRule(TopologyInfoNode* nodeA);
+    bool isAPByTrustedNoBridgeRule(TopologyInfoNode* nodeA);
+    bool isAPByWeightedRule(TopologyInfoNode* nodeA);
+    bool isAPByLastSet(TopologyInfoNode* nodeA);
     
     void printFinalResult(String extra_data);
     void printSearchResultSets(String extraData);
@@ -67,6 +77,7 @@ private:
     Vector<DibadawnTopologyInfoContainer*> searchResults;
     
     void getListOfKnowEdges(DibadawnTopologyInfoContainer &result);
+    void getListOfKnowNodes(DibadawnTopologyInfoContainer &result);
     
     TopologyInfo *topologyInfo;
 };

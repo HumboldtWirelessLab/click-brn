@@ -42,7 +42,8 @@ public:
     uint32_t maxJitter;
     bool isPrintResults;
     float trustThreshold;
-    float probabilityForABridgeAtNet;
+    float probabilityForBridgeAtNet;
+    float probabilityForAAPAtNet;
     
     DibadawnConfig();
     const char* thisNodeAsCstr();
