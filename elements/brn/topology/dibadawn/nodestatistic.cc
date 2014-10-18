@@ -211,6 +211,8 @@ bool DibadawnNodeStatistic::isBridgeByWeightedRule(TopologyInfoEdge * edgeA)
 
 double DibadawnNodeStatistic::calcWeight(double p)
 {
+  if(p > 0.999)
+    return(0.2);
   return (log(p / (1 - p)));
 }
 
