@@ -214,7 +214,7 @@ double DibadawnNodeStatistic::calcWeight(double p)
   if(p > 0.999)
     return(200);
   if(p <= 0.0)
-    return(200);
+    return(-200);
   return (log(p / (1 - p)));
 }
 
