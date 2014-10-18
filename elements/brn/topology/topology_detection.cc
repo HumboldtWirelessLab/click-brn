@@ -73,6 +73,8 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
       "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
+      "AP_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForAAPAtNet,
+      "BR_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForBridgeAtNet,
       "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
@@ -127,6 +129,8 @@ int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
       "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
       "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
       "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
+      "AP_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForAAPAtNet,
+      "BR_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForBridgeAtNet,
       "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
       "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
       "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
@@ -193,7 +197,7 @@ void TopologyDetection::push(int /*port*/, Packet *packet)
 void TopologyDetection::handle_detection(Packet *brn_packet)
 {
   DibadawnPacket packet(*brn_packet);
-  click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
+  //click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
   dibadawnAlgo.receive(packet);
 }
 
