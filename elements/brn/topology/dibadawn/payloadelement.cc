@@ -33,8 +33,9 @@
 
 CLICK_DECLS
 
-DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge)
-: cycle(id, nodeA, nodeB)
+DibadawnPayloadElement::DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge, uint8_t hops)
+:   hops(hops),
+    cycle(id, nodeA, nodeB)
 {
   this->isBridge = isBridge;
 }
@@ -43,18 +44,21 @@ DibadawnPayloadElement::DibadawnPayloadElement(DibadawnCycle& cycle)
 : cycle(cycle)
 {
   isBridge = false;
+  hops = 1;
 }
 
 DibadawnPayloadElement::DibadawnPayloadElement(const uint8_t *p)
 {
   isBridge = *p == 1;
-  cycle.setData(p + 1);
-}
+  hops = (uint8_t)*(p + 1);
+  cycle.setData(p + 2);
+ }
 
 uint8_t* DibadawnPayloadElement::getData()
 {
   mayInconsistentlyData[0] = isBridge;
-  memcpy(mayInconsistentlyData + 1, cycle.getData(), length - 1);
+  memcpy(mayInconsistentlyData + 1, &hops, length - 1);
+  memcpy(mayInconsistentlyData + 1 + sizeof(hops), cycle.getData(), length - (1 + sizeof(hops)));
   return (mayInconsistentlyData);
 }
 
@@ -69,6 +73,7 @@ StringAccum& operator <<(StringAccum &output, const DibadawnPayloadElement &payl
 {
   output << "<PayloadElem ";
   output << "isBridge='" << payload.isBridge << "' ";
+  output << "hops='" << int(payload.hops) << "' ";
   output << "cycleId='" << payload.cycle << "' ";
   output << "/>";
   
