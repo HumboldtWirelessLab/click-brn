@@ -151,7 +151,7 @@ void DibadawnSearch::forwardMessages()
     packet.hops = 1;
     packet.payload.push_back(bridge);
     
-    double competence = commonStatistic.competenceByUsedHops(packet.hops);
+    double competence = commonStatistic.competenceByUsedHops(1);
     rememberEdgeMarking(config.thisNode, parentNode, competence, "self");
     
     DibadawnNeighbor &parent = adjacents.getNeighbor(parentNode);
@@ -167,12 +167,20 @@ void DibadawnSearch::forwardMessages()
     for (int i = 0; i < messageBuffer.size(); i++)
     {
       DibadawnPayloadElement &payload = messageBuffer.at(i);
+      payload.hops++;
+      
       packet.copyPayloadIfNecessary(payload);
       neighbor.copyPayloadIfNecessary(payload);
 
-      // TODO votes; vote-branch
-
-      searchResult.addNonBridge(&config.thisNode, &parentNode, 1.0);
+      if(commonStatistic.competenceByUsedHops(payload.hops) >= config.trustThreshold)
+      {
+        searchResult.addNonBridge(&config.thisNode, &parentNode, 1.0);
+      }
+      else
+      {
+        searchResult.addNonBridge(&config.thisNode, &parentNode, commonStatistic.competenceByUsedHops(payload.hops));
+        searchResult.addNonBridge(&config.thisNode, &neighbor.address, commonStatistic.competenceByUsedHops(payload.hops));
+      }
     }
 
     messageBuffer.clear();

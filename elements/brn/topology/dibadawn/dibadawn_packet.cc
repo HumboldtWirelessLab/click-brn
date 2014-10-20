@@ -92,7 +92,7 @@ DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, 
   searchId = id;
   forwardedBy = sender_addr;
   isForward = is_forward;
-  hops = 255;
+  hops = 0;
   lastForwardDelayMs = 0;
   sumForwardDelay = 0;
 }
