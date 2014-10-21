@@ -14,6 +14,7 @@ CLICK_DECLS
 #define OPERATION_WRITE   8   /*BIT 3*/
 #define OPERATION_LOCK    16  /*BIT 4*/
 #define OPERATION_UNLOCK  32  /*BIT 5*/
+#define OPERATION_APPEND  64  /*BIT 6*/
 
 /*Lock and unlock: this can be 1 bit. but then the locker must set the lock bit for each operation until he wants to unlock*/
 
@@ -35,7 +36,7 @@ CLICK_DECLS
 #define DHT_DURATION_UNLIMITED 0
 
 /**
- * TODO: use replica as bitfield (max 8 replicas should be enough. replicas with the next equals hops can be pu together (split later)
+ * TODO: use replica as bitfield (max 8 replicas should be enough. replicas with the next equals hops can be put together (split later)
  * Etheraddress is remove from operation-header. Now the src-etheraddr in DHT-header is used instead.
  * for locking, the src-etheraddr is used. Maybe its better to use some id (this should add to the header (lockid))
  */
@@ -82,6 +83,7 @@ class DHTOperation {
     void read(uint8_t *key, uint16_t keylen);
     void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen);
     void write(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen, bool insert);
+    void append(uint8_t *key, uint16_t keylen, uint8_t *value, uint16_t valuelen);
     void lock(uint8_t *key, uint16_t keylen);
     void unlock(uint8_t *key, uint16_t keylen);
 
