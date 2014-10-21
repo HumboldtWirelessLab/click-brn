@@ -114,7 +114,7 @@ void DibadawnSearch::onForwardPhaseTimeout()
   voteForArticulaionPointsAndBridges();
 
   if(config.isPrintResults)
-    commonStatistic.print(searchId.asString());
+    commonStatistic.printFinalResult(searchId.asString());
 }
 
 void DibadawnSearch::detectCycles()

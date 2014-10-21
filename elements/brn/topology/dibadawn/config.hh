@@ -37,9 +37,13 @@ public:
     uint32_t maxTraversalTimeMs;   // maximal time for jitter + buffer
     uint32_t maxHops;              // network diameter
     uint32_t votingRule;
+    int numOfVotingSets;
     bool useLinkStatistic;
     uint32_t maxJitter;
     bool isPrintResults;
+    float trustThreshold;
+    float probabilityForBridgeAtNet;
+    float probabilityForAAPAtNet;
     
     DibadawnConfig();
     const char* thisNodeAsCstr();
