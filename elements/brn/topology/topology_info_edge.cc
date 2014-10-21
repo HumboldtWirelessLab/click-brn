@@ -38,6 +38,7 @@ TopologyInfoEdge::TopologyInfoEdge(EtherAddress *a, EtherAddress *b, float p)
   node_a = EtherAddress(a->data());
   node_b = EtherAddress(b->data());
   countDetection = 1;
+  bridgeState = eUnknown;
 }
 
 void TopologyInfoEdge::incDetection()
@@ -50,6 +51,33 @@ bool TopologyInfoEdge::equals(EtherAddress *a, EtherAddress *b)
 {
   return (((memcmp(node_a.data(), a->data(), 6) == 0) && (memcmp(node_b.data(), b->data(), 6) == 0)) ||
       ((memcmp(node_a.data(), b->data(), 6) == 0) && (memcmp(node_b.data(), a->data(), 6) == 0)));
+}
+
+bool TopologyInfoEdge::equals(TopologyInfoEdge* e)
+{
+  bool fwd = node_a == e->node_a && node_b == e->node_b;
+  bool rev = node_a == e->node_b && node_b == e->node_a;
+  return(fwd || rev);
+}
+
+void TopologyInfoEdge::setBridge()
+{
+  bridgeState = eBridge;
+}
+
+void TopologyInfoEdge::setNonBridge()
+{
+  bridgeState = eNonBridge;
+}
+
+bool TopologyInfoEdge::isBridge()
+{
+  return(bridgeState == eBridge);
+}
+
+bool TopologyInfoEdge::isNonBridge()
+{
+  return(bridgeState == eNonBridge);
 }
 
 

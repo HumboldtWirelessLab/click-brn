@@ -38,23 +38,34 @@ public:
     ~DibadawnTopologyInfoContainer();
     
     void addBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
+    void addEdge(TopologyInfoEdge &e);
     void removeBridge(EtherAddress *a, EtherAddress *b);
     void addNonBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
     void removeNonBridge(EtherAddress *a, EtherAddress *b);
+    
+    void addNode(TopologyInfoNode &n);
     void addArticulationPoint(EtherAddress *a, float probability=0.0);
     void removeArticulationPoint(EtherAddress *a);
     void addNonArticulationPoint(EtherAddress *a, float probability=0.0);
     void removeNonArticulationPoint(EtherAddress *a);
     
     TopologyInfoEdge* getBridge(EtherAddress *a, EtherAddress *b);
+    TopologyInfoEdge* getEdge(EtherAddress *a, EtherAddress *b);
     TopologyInfoEdge* getNonBridge(EtherAddress *a, EtherAddress *b);
+    
+    
+    TopologyInfoNode *getNode(EtherAddress *a);
     TopologyInfoNode *getArticulationPoint(EtherAddress *a);
     TopologyInfoNode *getNonArticulationPoint(EtherAddress *a);
+    
+    bool containsEdge(TopologyInfoEdge*);
+    bool containsNode(TopologyInfoNode*);
+    
+    void print(EtherAddress thisNode, String extraData);
+    void printContent(StringAccum &sa);
 
-    Vector<TopologyInfoEdge*> _bridges;
-    Vector<TopologyInfoNode*> _artpoints;
-    Vector<TopologyInfoEdge*> _non_bridges;
-    Vector<TopologyInfoNode*> _non_artpoints;
+    Vector<TopologyInfoEdge*> _edges;
+    Vector<TopologyInfoNode*> _nodes;
 };
 
 CLICK_ENDDECLS

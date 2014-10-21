@@ -38,64 +38,37 @@ DibadawnTopologyInfoContainer::DibadawnTopologyInfoContainer()
 
 DibadawnTopologyInfoContainer::DibadawnTopologyInfoContainer(const DibadawnTopologyInfoContainer& src)
 {
-  for (Vector<TopologyInfoEdge*>::const_iterator it = src._non_bridges.begin(); it != src._non_bridges.end(); it++)
+  
+  for (Vector<TopologyInfoEdge*>::const_iterator it = src._edges.begin(); it != src._edges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
     TopologyInfoEdge *elm_copy = new TopologyInfoEdge(*elem);
-    _non_bridges.push_back(elm_copy);
+    _edges.push_back(elm_copy);
   }
   
-  for (Vector<TopologyInfoEdge*>::const_iterator it = src._bridges.begin(); it != src._bridges.end(); it++)
-  {
-    TopologyInfoEdge* elem = *it;
-    TopologyInfoEdge *elm_copy = new TopologyInfoEdge(*elem);
-    _bridges.push_back(elm_copy);
-  }
-  
-  for (Vector<TopologyInfoNode*>::const_iterator it = src._non_artpoints.begin(); it != src._non_artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::const_iterator it = src._nodes.begin(); it != src._nodes.end(); it++)
   {
     TopologyInfoNode* elem = *it;
     TopologyInfoNode *elm_copy = new TopologyInfoNode(*elem);
-    _non_artpoints.push_back(elm_copy);
-  }
-  
-  for (Vector<TopologyInfoNode*>::const_iterator it = src._artpoints.begin(); it != src._artpoints.end(); it++)
-  {
-    TopologyInfoNode* elem = *it;
-    TopologyInfoNode *elm_copy = new TopologyInfoNode(*elem);
-    _artpoints.push_back(elm_copy);
+    _nodes.push_back(elm_copy);
   }
 }
 
 DibadawnTopologyInfoContainer::~DibadawnTopologyInfoContainer()
 {
-  for (Vector<TopologyInfoEdge*>::const_iterator it = _non_bridges.begin(); it != _non_bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::const_iterator it = _edges.begin(); it != _edges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
     delete(elem);
   }
-  _non_bridges.clear();
+  _edges.clear();
   
-  for (Vector<TopologyInfoEdge*>::const_iterator it = _bridges.begin(); it != _bridges.end(); it++)
-  {
-    TopologyInfoEdge* elem = *it;
-    delete(elem);
-  }
-  _bridges.clear();
-  
-  for (Vector<TopologyInfoNode*>::const_iterator it = _non_artpoints.begin(); it != _non_artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::const_iterator it = _nodes.begin(); it != _nodes.end(); it++)
   {
     TopologyInfoNode* elem = *it;
     delete(elem);
   }
-  _non_artpoints.clear();
-  
-  for (Vector<TopologyInfoNode*>::const_iterator it = _artpoints.begin(); it != _artpoints.end(); it++)
-  {
-    TopologyInfoNode* elem = *it;
-    delete(elem);
-  }
-  _artpoints.clear();
+  _nodes.clear();
 }
 
 void
@@ -103,7 +76,23 @@ DibadawnTopologyInfoContainer::addBridge(EtherAddress *a, EtherAddress *b, float
 {
   TopologyInfoEdge *br = getBridge(a, b);
   if (br == NULL)
-    _bridges.push_back(new TopologyInfoEdge(a, b, probability));
+  {
+    TopologyInfoEdge * edge = new TopologyInfoEdge(a, b, probability);
+    edge->setBridge();
+    _edges.push_back(edge);
+  }
+  else
+    br->incDetection();
+}
+
+void DibadawnTopologyInfoContainer::addEdge(TopologyInfoEdge &e)
+{
+  TopologyInfoEdge *br = getEdge(&(e.node_a), &(e.node_b));
+  if (br == NULL)
+  {
+    TopologyInfoEdge * edge = new TopologyInfoEdge(e);
+    _edges.push_back(edge);
+  }
   else
     br->incDetection();
 }
@@ -111,12 +100,12 @@ DibadawnTopologyInfoContainer::addBridge(EtherAddress *a, EtherAddress *b, float
 void
 DibadawnTopologyInfoContainer::removeBridge(EtherAddress* a, EtherAddress* b)
 {
-  for (Vector<TopologyInfoEdge*>::iterator it = _bridges.begin(); it != _bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::iterator it = _edges.begin(); it != _edges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
-    if (elem->equals(a, b))
+    if (elem->equals(a, b) && elem->isBridge())
     {
-      _bridges.erase(it);
+      _edges.erase(it);
       break; // After erasing an element, the iterator could not be used
     }
   }
@@ -126,8 +115,12 @@ void
 DibadawnTopologyInfoContainer::addNonBridge(EtherAddress *a, EtherAddress *b, float probability)
 {
   TopologyInfoEdge *nbr = getNonBridge(a, b);
-  if (nbr == NULL)
-    _non_bridges.push_back(new TopologyInfoEdge(a, b, probability));
+  if (nbr == NULL) 
+  {
+    TopologyInfoEdge *edge = new TopologyInfoEdge(a, b, probability);
+    edge->setNonBridge();
+    _edges.push_back(edge);
+  }
   else
     nbr->incDetection();
 }
@@ -135,15 +128,27 @@ DibadawnTopologyInfoContainer::addNonBridge(EtherAddress *a, EtherAddress *b, fl
 void
 DibadawnTopologyInfoContainer::removeNonBridge(EtherAddress* a, EtherAddress* b)
 {
-  for (Vector<TopologyInfoEdge*>::iterator it = _non_bridges.begin(); it != _non_bridges.end(); it++)
+  for (Vector<TopologyInfoEdge*>::iterator it = _edges.begin(); it != _edges.end(); it++)
   {
     TopologyInfoEdge* elem = *it;
-    if (elem->equals(a, b))
+    if (elem->equals(a, b) && elem->isNonBridge())
     {
-      _bridges.erase(it);
+      _edges.erase(it);
       break; // After erasing an element, the iterator could not be used
     }
   }
+}
+
+void
+DibadawnTopologyInfoContainer::addNode(TopologyInfoNode &n)
+{
+  TopologyInfoNode *ap = getNode(&(n.node));
+  if (ap == NULL)
+  {
+    _nodes.push_back(new TopologyInfoNode(n));
+  }
+  else
+    ap->incDetection();
 }
 
 void
@@ -151,7 +156,11 @@ DibadawnTopologyInfoContainer::addArticulationPoint(EtherAddress *a, float proba
 {
   TopologyInfoNode *ap = getArticulationPoint(a);
   if (ap == NULL)
-    _artpoints.push_back(new TopologyInfoNode(a, probability));
+  {
+    TopologyInfoNode *node = new TopologyInfoNode(a, probability);
+    node->setArticulationPoint();
+    _nodes.push_back(node);
+  }
   else
     ap->incDetection();
 }
@@ -159,12 +168,12 @@ DibadawnTopologyInfoContainer::addArticulationPoint(EtherAddress *a, float proba
 void
 DibadawnTopologyInfoContainer::removeArticulationPoint(EtherAddress* a)
 {
-  for (Vector<TopologyInfoNode*>::iterator it = _artpoints.begin(); it != _artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
   {
     TopologyInfoNode* elem = *it;
-    if (elem->equals(a))
+    if (elem->equals(a) && elem->isArticulationPoint())
     {
-      _artpoints.erase(it);
+      _nodes.erase(it);
       break; // After erasing an element, the iterator could not be used
     }
   }
@@ -175,7 +184,11 @@ DibadawnTopologyInfoContainer::addNonArticulationPoint(EtherAddress *a, float pr
 {
   TopologyInfoNode *nap = getNonArticulationPoint(a);
   if (nap == NULL)
-    _non_artpoints.push_back(new TopologyInfoNode(a, probability));
+  {
+    TopologyInfoNode *node = new TopologyInfoNode(a, probability);
+    node->setNonArticulationPoint();
+    _nodes.push_back(node);
+  }
   else
     nap->incDetection();
 }
@@ -183,24 +196,33 @@ DibadawnTopologyInfoContainer::addNonArticulationPoint(EtherAddress *a, float pr
 void
 DibadawnTopologyInfoContainer::removeNonArticulationPoint(EtherAddress* a)
 {
-  for (Vector<TopologyInfoNode*>::iterator it = _non_artpoints.begin(); it != _non_artpoints.end(); it++)
+  for (Vector<TopologyInfoNode*>::iterator it = _nodes.begin(); it != _nodes.end(); it++)
   {
     TopologyInfoNode* elem = *it;
-    if (elem->equals(a))
+    if (elem->equals(a) && elem->isNonArticulationPoint())
     {
-      _non_artpoints.erase(it);
+      _nodes.erase(it);
       break; // After erasing an element, the iterator could not be used
     }
   }
 }
 
-
 TopologyInfoEdge*
 DibadawnTopologyInfoContainer::getBridge(EtherAddress *a, EtherAddress *b)
 {
-  for (int i = 0; i < _bridges.size(); i++)
-    if (_bridges[i]->equals(a, b)) 
-      return _bridges[i];
+  for (int i = 0; i < _edges.size(); i++)
+    if (_edges[i]->equals(a, b) && _edges[i]->isBridge()) 
+      return _edges[i];
+
+  return NULL;
+}
+
+TopologyInfoEdge*
+DibadawnTopologyInfoContainer::getEdge(EtherAddress *a, EtherAddress *b)
+{
+  for (int i = 0; i < _edges.size(); i++)
+    if (_edges[i]->equals(a, b)) 
+      return _edges[i];
 
   return NULL;
 }
@@ -208,9 +230,21 @@ DibadawnTopologyInfoContainer::getBridge(EtherAddress *a, EtherAddress *b)
 TopologyInfoEdge*
 DibadawnTopologyInfoContainer::getNonBridge(EtherAddress *a, EtherAddress *b)
 {
-  for (int i = 0; i < _non_bridges.size(); i++)
-    if (_non_bridges[i]->equals(a, b)) 
-      return _non_bridges[i];
+  for (int i = 0; i < _edges.size(); i++)
+    if (_edges[i]->equals(a, b) && _edges[i]->isBridge()) 
+      return _edges[i];
+
+  return NULL;
+}
+
+TopologyInfoNode*
+DibadawnTopologyInfoContainer::getNode(EtherAddress *a)
+{
+  for (int i = 0; i < _nodes.size(); i++)
+  {
+    if (_nodes[i]->equals(a))
+      return _nodes[i];
+  }
 
   return NULL;
 }
@@ -218,10 +252,10 @@ DibadawnTopologyInfoContainer::getNonBridge(EtherAddress *a, EtherAddress *b)
 TopologyInfoNode*
 DibadawnTopologyInfoContainer::getArticulationPoint(EtherAddress *a)
 {
-  for (int i = 0; i < _artpoints.size(); i++)
+  for (int i = 0; i < _nodes.size(); i++)
   {
-    if (_artpoints[i]->equals(a))
-      return _artpoints[i];
+    if (_nodes[i]->equals(a) && _nodes[i]->isArticulationPoint())
+      return _nodes[i];
   }
 
   return NULL;
@@ -230,14 +264,77 @@ DibadawnTopologyInfoContainer::getArticulationPoint(EtherAddress *a)
 TopologyInfoNode*
 DibadawnTopologyInfoContainer::getNonArticulationPoint(EtherAddress *a)
 {
-  for (int i = 0; i < _non_artpoints.size(); i++)
+  for (int i = 0; i < _nodes.size(); i++)
   {
-    if (_non_artpoints[i]->equals(a))
-      return _non_artpoints[i];
+    if (_nodes[i]->equals(a) && _nodes[i]->isNonArticulationPoint())
+      return _nodes[i];
   }
 
   return NULL;
 }
+
+bool DibadawnTopologyInfoContainer::containsEdge(TopologyInfoEdge* e)
+{
+  for (int i = 0; i < _edges.size(); i++)
+    if (_edges[i]->equals(e)) 
+      return true;
+  
+  return(false);
+}
+
+bool DibadawnTopologyInfoContainer::containsNode(TopologyInfoNode* e)
+{
+  for (int i = 0; i < _nodes.size(); i++)
+    if (_nodes[i]->equals(e)) 
+      return true;
+  
+  return(false);
+}
+
+void DibadawnTopologyInfoContainer::print(EtherAddress thisNode, String extraData)
+{
+  StringAccum sa;
+
+  sa << "<DibadawnTopologyInfoContainer ";
+  sa << "node='" << thisNode.unparse() << "' ";
+  sa << "time='" << Timestamp::now() << "' ";
+  sa << "extra_data='" << extraData << "' ";
+  sa << ">\n";
+  
+  printContent(sa);
+  
+  sa << "</DibadawnTopologyInfoContainer>\n";
+  
+  click_chatter(sa.take_string().c_str());
+}
+
+void DibadawnTopologyInfoContainer::printContent(StringAccum& sa)
+{
+  for (int i = 0; i < _edges.size(); i++)
+  {
+    TopologyInfoEdge *e = _edges[i];
+    sa << "\t<edge ";
+    sa << "node_a='" << e->node_a << "' ";
+    sa << "node_b='" << e->node_b << "' ";
+    sa << "isBridge='" << e->isBridge() << "' ";
+    sa << "isNonBridge='" << e->isNonBridge() << "' ";
+    sa << "prob='" << e->probability << "' ";
+    sa << "/>\n";
+  }
+  
+  for (int i = 0; i < _nodes.size(); i++)
+  {
+    TopologyInfoNode *node = _nodes[i];
+    sa << "\t<node ";
+    sa << "node='" << node->node << "' ";
+    sa << "isAP='" << node->isArticulationPoint() << "' ";
+    sa << "isNonAP='" << node->isNonArticulationPoint() << "' ";
+    sa << "prob='" << node->probability << "' ";
+    sa << "/>\n";
+  }
+}
+
+
 
 CLICK_ENDDECLS
 ELEMENT_PROVIDES(DibadawnTopologyInfoContainer)

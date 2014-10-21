@@ -35,14 +35,18 @@ CLICK_DECLS
 DibadawnConfig::DibadawnConfig()
 :   debugLevel(0), 
     votingRule(0),
-    useLinkStatistic(false)
+    numOfVotingSets(5),
+    useLinkStatistic(false),
+    trustThreshold(0.90),
+    probabilityForBridgeAtNet(0.5),
+    probabilityForAAPAtNet(0.5)
 {
-  votingRule = 0;
   useOriginForwardDelay = true;
   maxHops = 14;
   maxTraversalTimeMs = 52, 
   maxJitter = maxTraversalTimeMs / 4;
   isPrintResults = false;
+  ;
 }
 
 const char* DibadawnConfig::thisNodeAsCstr()
@@ -63,12 +67,13 @@ String DibadawnConfig::asString()
   sa << "\t<MAXJITTERMS value='" << maxJitter << "' />\n";
   sa << "\t<VOTINGRULE value='" << votingRule << "' />\n";
   sa << "\t<votingRules>\n";
-  sa << "\t\t<rule number='0' name='Unanimous' />\n";
-  sa << "\t\t<rule number='1' name='Plain majority' />\n";
-  sa << "\t\t<rule number='2' name='Single-for' />\n";
-  sa << "\t\t<rule number='3' name='Intelligent majority:' />\n";
-  sa << "\t\t<rule number='4' name='Trusted non-bridge rule' />\n";
-  sa << "\t\t<rule number='5' name='Weighted rule' />\n";
+  sa << "\t\t<rule number='0' name='last run' />\n";
+  sa << "\t\t<rule number='1' name='Unanimous' />\n";
+  sa << "\t\t<rule number='2' name='Plain majority' />\n";
+  sa << "\t\t<rule number='3' name='Single-for' />\n";
+  sa << "\t\t<rule number='4' name='Intelligent majority:' />\n";
+  sa << "\t\t<rule number='5' name='Trusted non-bridge rule' />\n";
+  sa << "\t\t<rule number='6' name='Weighted rule' />\n";
   sa << "\t</votingRules>\n";
   
   sa << "</dibadawn_config>\n";
