@@ -22,6 +22,7 @@ class DHTOperationHandler
     int dht_test(DHTOperation *op);
     int dht_read(DHTOperation *op);
     int dht_write(DHTOperation *op);
+    int dht_append(DHTOperation *op);
     int dht_insert(DHTOperation *op);
     int dht_remove(DHTOperation *op);
     int dht_lock(DHTOperation *op);

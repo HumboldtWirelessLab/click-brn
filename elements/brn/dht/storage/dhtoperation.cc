@@ -108,6 +108,21 @@ DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _
 }
 
 void
+DHTOperation::append(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
+{
+  key = new uint8_t[_keylen];
+  memcpy(key, _key, _keylen);
+  header.keylen = _keylen;
+
+  value = new uint8_t[_valuelen];
+  memcpy(value, _value, _valuelen);
+  header.valuelen = _valuelen;
+
+  header.status = DHT_STATUS_UNKNOWN;
+  header.operation = (uint8_t)OPERATION_REQUEST | (uint8_t)OPERATION_APPEND;
+}
+
+void
 DHTOperation::write(uint8_t *_key, uint16_t _keylen, uint8_t *_value, uint16_t _valuelen)
 {
   write(_key, _keylen, _value, _valuelen, false);
