@@ -63,7 +63,8 @@ void DibadawnSearchId::set(Timestamp t, const EtherAddress& creator)
   memcpy(this->data, pmac, 6);
 
   uint32_t time = t.sec();
-  memcpy(this->data + 6, &time, sizeof (time));
+  uint32_t netTime = htonl(time);
+  memcpy(this->data + 6, &netTime, sizeof (netTime));
 }
 
 DibadawnSearchId & DibadawnSearchId::operator =(const DibadawnSearchId &id)
