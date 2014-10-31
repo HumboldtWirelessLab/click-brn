@@ -34,7 +34,7 @@ class DibadawnPayloadElement
 public:
     bool isBridge;
     uint8_t hops;
-    static const size_t length = DibadawnCycle::length + 1/* one byte for isBrigde */ + sizeof(hops);
+    static const size_t length = DibadawnCycle::length + 1/* one byte for isBrigde */ + sizeof(DibadawnPayloadElement::hops);
     DibadawnCycle cycle;
 
     DibadawnPayloadElement(DibadawnSearchId &id, EtherAddress &nodeA, EtherAddress &nodeB, bool isBridge, uint8_t hops = 1);
