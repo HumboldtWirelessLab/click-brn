@@ -57,8 +57,10 @@ public:
     void removeCycle(DibadawnPayloadElement &payload);
     bool hasBridgePayload();
     void copyPayloadIfNecessary(DibadawnPayloadElement &src);
+    size_t serialzeData(uint8_t *dest);
+    size_t deserialzeData(const uint8_t *dest);
 
-    uint32_t version;
+    uint8_t version;
     DibadawnSearchId searchId;
     EtherAddress forwardedBy;
     EtherAddress treeParent;

@@ -47,7 +47,7 @@ uint8_t* DibadawnSearchId::PointerTo10BytesOfData()
   return (data);
 }
 
-void DibadawnSearchId::setByPointerTo10BytesOfData(uint8_t *value)
+void DibadawnSearchId::setByPointerTo10BytesOfData(const uint8_t *value)
 {
   memcpy(data, value, sizeof (data));
 }

@@ -29,25 +29,10 @@
 #include "dibadawn_packet.hh"
 #include "searchid.hh"
 
+#define HEADER_SIZE 30
+
 CLICK_DECLS
 
-
-#pragma pack(1)
-struct DibadawnPacketStruct
-{
-  uint8_t version : 4;
-  uint8_t reserve : 2;
-  uint8_t type : 2;
-
-  uint8_t id[DibadawnSearchId::length];
-  uint8_t forwaredBy[6];
-  uint8_t treeParent[6];
-  uint8_t ttl;
-  uint16_t sumForwardDelay;
-  uint16_t lastForwardDelay;
-
-  uint8_t numPayloads;
-};
 
 DibadawnPacket::DibadawnPacket()
 {
@@ -66,24 +51,58 @@ DibadawnPacket::DibadawnPacket(Packet &brn_packet)
   }
   createdByInvalidPacket = false;
 
-  DibadawnPacketStruct *packet;
-  packet = (struct DibadawnPacketStruct *) brn_packet.data();
+  size_t n = deserialzeData(brn_packet.data());
+  assert(n >= HEADER_SIZE);
+}
 
-  forwardedBy = EtherAddress(packet->forwaredBy);
-  treeParent = EtherAddress(packet->treeParent);
-  hops = packet->ttl;
-  isForward = (packet->type & 0x03) != 0;
-  searchId.setByPointerTo10BytesOfData(packet->id);
-  version = packet->version;
-  sumForwardDelay = packet->sumForwardDelay;
-  lastForwardDelayMs = packet->lastForwardDelay;
+size_t DibadawnPacket::deserialzeData(const uint8_t *src)
+{
+  size_t offset = 0;  
+  
+  memcpy(&version, src + offset, sizeof(version));
+  offset += sizeof(version);
+  
+  uint8_t netIsForward;
+  memcpy(&netIsForward, src + offset, sizeof(netIsForward));
+  isForward = netIsForward != 0;
+  offset += sizeof(netIsForward);
 
-  const uint8_t* data = brn_packet.data() + sizeof (DibadawnPacketStruct);
-  for (int i = 0; i < packet->numPayloads; i++)
+  // @todo check serialization of ID
+  searchId.setByPointerTo10BytesOfData(src + offset);
+  offset += searchId.length;
+  
+  forwardedBy = EtherAddress(src + offset);
+  offset += 6;
+  
+  treeParent = EtherAddress(src + offset);
+  offset += 6;
+  
+  memcpy(&hops, src + offset, sizeof(hops));
+  offset += sizeof(hops);
+  
+  uint16_t netSumForwardDelay;
+  memcpy(&netSumForwardDelay, src + offset, sizeof(netSumForwardDelay));
+  sumForwardDelay = ntohs(netSumForwardDelay);
+  offset += sizeof(netSumForwardDelay);
+  
+  uint16_t netLastForwardDelayMs;
+  memcpy(&netLastForwardDelayMs, src + offset, sizeof(netLastForwardDelayMs));
+  lastForwardDelayMs = ntohs(netLastForwardDelayMs);
+  offset += sizeof(netLastForwardDelayMs);
+  
+  uint8_t numPayloads;
+  memcpy(&numPayloads, src + offset, sizeof(numPayloads));
+  offset += sizeof(numPayloads);
+  
+  assert(HEADER_SIZE == offset);
+  
+  for (int i = 0; i < numPayloads; i++)
   {
-    payload.push_back(DibadawnPayloadElement(data));
-    data += DibadawnPayloadElement::length;
+    payload.push_back(DibadawnPayloadElement(src + offset));
+    offset += DibadawnPayloadElement::length;
   }
+  
+  return(offset);
 }
 
 DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, bool is_forward)
@@ -99,9 +118,8 @@ DibadawnPacket::DibadawnPacket(DibadawnSearchId &id, EtherAddress &sender_addr, 
 
 bool DibadawnPacket::isValid(Packet &brn_packet)
 {
-  DibadawnPacketStruct *packet;
-  packet = (struct DibadawnPacketStruct *) brn_packet.data();
-  return (packet->version == 1);
+  uint8_t* version = (uint8_t*) brn_packet.data();
+  return (*version == 1);
 }
 
 bool DibadawnPacket::isInvalid()
@@ -137,26 +155,15 @@ EtherAddress DibadawnPacket::getBroadcastAddress()
 
 WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
 {
-  DibadawnPacketStruct content;
-  content.version = version & 0x0F;
-  content.type = isForward ? 1 : 0;
-  memcpy(content.id, searchId.PointerTo10BytesOfData(), sizeof (content.id));
-  memcpy(content.forwaredBy, forwardedBy.data(), sizeof (content.forwaredBy));
-  memcpy(content.treeParent, treeParent.data(), sizeof (content.treeParent));
-  content.ttl = hops;
-  content.sumForwardDelay = sumForwardDelay;
-  content.numPayloads = payload.size();
-  content.lastForwardDelay = lastForwardDelayMs;
-
-  size_t dibadawnPacketSize = sizeof (content) + payload.size() * DibadawnPayloadElement::length;
+  size_t dibadawnPacketSize = HEADER_SIZE + payload.size() * DibadawnPayloadElement::length;
   uint8_t* dibadawnPacket = (uint8_t*) malloc(dibadawnPacketSize);
-  memcpy(dibadawnPacket, &content, sizeof (content));
-  for (int i = 0; i < content.numPayloads; i++)
+  if(dibadawnPacket == NULL)
   {
-    memcpy(dibadawnPacket + sizeof (content) + i * DibadawnPayloadElement::length,
-        payload.at(i).getData(),
-        DibadawnPayloadElement::length);
+    click_chatter("<DibadawnError where='DibadawnPacket::getBrnPacket' reason='malloc failed' />");
+    return(NULL);
   }
+  
+  serialzeData(dibadawnPacket);
 
   uint32_t sizeof_head = 128;
   uint32_t sizeof_tail = 32;
@@ -184,6 +191,54 @@ WritablePacket* DibadawnPacket::getBrnPacket(EtherAddress &dest)
   return (brn_packet);
 }
 
+size_t DibadawnPacket::serialzeData(uint8_t* dest)
+{
+  size_t offset = 0;  
+  
+  memcpy(dest + offset, &version, sizeof(version));
+  offset += sizeof(version);
+  
+  uint8_t netIsForward = isForward? 1: 0;
+  memcpy(dest + offset, &netIsForward, sizeof(netIsForward));
+  offset += sizeof(netIsForward);
+
+  // @todo check serialization of ID
+  memcpy(dest + offset, searchId.PointerTo10BytesOfData(), searchId.length);
+  offset += searchId.length;
+  
+  memcpy(dest + offset, forwardedBy.data(), 6);
+  offset += 6;
+  
+  memcpy(dest + offset, treeParent.data(), 6);
+  offset += 6;
+  
+  memcpy(dest + offset, &hops, sizeof(hops));
+  offset += sizeof(hops);
+  
+  uint16_t netSumForwardDelay = htons(sumForwardDelay);
+  memcpy(dest + offset, &netSumForwardDelay, sizeof(netSumForwardDelay));
+  offset += sizeof(netSumForwardDelay);
+  
+  uint16_t netLastForwardDelayMs = htons(lastForwardDelayMs);
+  memcpy(dest + offset, &netLastForwardDelayMs, sizeof(netLastForwardDelayMs));
+  offset += sizeof(netLastForwardDelayMs);
+  
+  uint8_t netSize = (uint8_t)payload.size();
+  memcpy(dest + offset, &netSize, sizeof(netSize));
+  offset += sizeof(netSize);
+  
+  assert(HEADER_SIZE == offset);
+  
+  for (int i = 0; i < payload.size(); i++)
+  {
+    memcpy(dest + offset, payload.at(i).getData(), DibadawnPayloadElement::length);
+    offset += DibadawnPayloadElement::length;
+  }
+  
+  return(offset);
+}
+
+
 void DibadawnPacket::logTx(EtherAddress &thisNode, EtherAddress to)
 {
   String attr = "dest='" + to.unparse_dash() + "'";
@@ -205,7 +260,7 @@ void DibadawnPacket::log(String tag, EtherAddress &thisNode, String parent_src_a
   sa << "time='" << Timestamp::now().unparse() << "' ";
   sa << "searchId='" << searchId << "' ";
   sa << "forwardedBy='" << forwardedBy.unparse_dash() << "' ";
-  sa << "version='" << version << "' ";
+  sa << "version='" << (int)version << "' ";
   sa << "type='" << isForward << "' ";
   sa << "type_descr='" << (isForward ? "ForwardMsg" : "BackMsg") << "' ";
   sa << "hop='" << int(hops) << "' ";

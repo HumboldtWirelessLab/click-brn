@@ -33,7 +33,7 @@ public:
     DibadawnSearchId(Timestamp t, const EtherAddress &creator);
     DibadawnSearchId();
     uint8_t* PointerTo10BytesOfData();
-    void setByPointerTo10BytesOfData(uint8_t *value);
+    void setByPointerTo10BytesOfData(const uint8_t *value);
     void set(DibadawnSearchId &id);
     void set(Timestamp t, const EtherAddress &creator);
     bool isEqualTo(DibadawnSearchId &id);
