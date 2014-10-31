@@ -67,7 +67,6 @@ size_t DibadawnPacket::deserialzeData(const uint8_t *src)
   isForward = netIsForward != 0;
   offset += sizeof(netIsForward);
 
-  // @todo check serialization of ID
   searchId.setByPointerTo10BytesOfData(src + offset);
   offset += searchId.length;
   
@@ -202,7 +201,6 @@ size_t DibadawnPacket::serialzeData(uint8_t* dest)
   memcpy(dest + offset, &netIsForward, sizeof(netIsForward));
   offset += sizeof(netIsForward);
 
-  // @todo check serialization of ID
   memcpy(dest + offset, searchId.PointerTo10BytesOfData(), searchId.length);
   offset += searchId.length;
   
