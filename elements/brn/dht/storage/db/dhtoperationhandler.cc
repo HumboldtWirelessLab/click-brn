@@ -67,7 +67,7 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
       if ( ( op->header.operation & OPERATION_READ ) == OPERATION_READ )
       {
         CLASS_BRN_DEBUG("DHTOperationHandler: Read/write");
-        CLASS_BRN_DEBUG("DHTOperationHandler: this doesn't wort: read and write:chaeck");
+        CLASS_BRN_DEBUG("DHTOperationHandler: this doesn't work: read and write:check");
         result = dht_read(op);
         result = dht_write(op);
       }
@@ -101,6 +101,12 @@ DHTOperationHandler::handle_dht_operation(DHTOperation *op)
         }
       }
     }
+  }
+
+  if ( ( op->header.operation & OPERATION_APPEND ) == OPERATION_APPEND )
+  {
+    result = dht_append(op);
+    return result;
   }
 
   if ( ( op->header.operation & OPERATION_UNLOCK ) == OPERATION_UNLOCK)
@@ -153,6 +159,37 @@ DHTOperationHandler::dht_write(DHTOperation *op)
       memcpy(_row->value,op->value,op->header.valuelen);
       _row->valuelen = op->header.valuelen;
       op->header.status = DHT_STATUS_OK;
+    } else {
+      op->header.status = DHT_STATUS_KEY_IS_LOCKED;
+    }
+  }
+  else
+  {
+    op->header.status = DHT_STATUS_KEY_NOT_FOUND;
+  }
+
+  return 0;
+}
+
+int
+DHTOperationHandler::dht_append(DHTOperation *op)
+{
+  BRNDB::DBrow *_row;
+
+  _row = _db->getRow(op->header.key_digest);
+  if ( _row != NULL )
+  {
+    if ( ! _row->isLocked(&(op->src_of_operation)) ) {
+      uint8_t *new_value = new uint8_t[_row->valuelen + op->header.valuelen]; //create new row for old and new (append) value
+      if ( _row->value != NULL ) {
+        memcpy(new_value, _row->value, _row->valuelen);
+        delete[] _row->value;
+      }
+      _row->value = new_value;
+      memcpy(&(_row->value[_row->valuelen]),op->value,op->header.valuelen);
+      _row->valuelen += op->header.valuelen;
+      op->header.status = DHT_STATUS_OK;
+
     } else {
       op->header.status = DHT_STATUS_KEY_IS_LOCKED;
     }
