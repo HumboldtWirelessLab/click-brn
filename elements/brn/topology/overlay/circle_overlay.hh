@@ -32,8 +32,6 @@ CLICK_DECLS
 
 class CircleOverlay : public BRNElement {
 
-   
-
  public:
   CircleOverlay();
   ~CircleOverlay();
@@ -47,7 +45,7 @@ class CircleOverlay : public BRNElement {
   int initialize(ErrorHandler *);
 
   void add_handlers();
-  
+
   EtherAddress ID_to_MAC (int id);
   int MAC_to_ID(EtherAddress *add);
 

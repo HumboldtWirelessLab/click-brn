@@ -32,8 +32,6 @@ CLICK_DECLS
 
 class OverlayStructure : public BRNElement {
 
-   
-
  public:
   OverlayStructure();
   ~OverlayStructure();
@@ -52,15 +50,17 @@ class OverlayStructure : public BRNElement {
   Vector <EtherAddress> children; // Children of the node
   HashMap <EtherAddress, Vector <EtherAddress> > n_parents; // Parents of neighbouring nodes
   HashMap <EtherAddress, Vector <EtherAddress> > n_children; // Children of neighbouring nodes
-  
+
   bool _pre;
-  
+
+  void read_overlay_from_file(String path);
+
   void reset(); //Resets the Overlay Structure
   void addOwnParent (EtherAddress* add); //add - EtherAdress of new parent
   void addOwnChild (EtherAddress* add); //add - EtherAdress of new child
   void addParent (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of new parent, node - EtherAdress of node to get new parent
   void addChild (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of new child, node - EtherAdress of node to get new child
-  
+
   void removeOwnParent (EtherAddress* add); //add - EtherAdress of parent to delete
   void removeOwnChild (EtherAddress* add); //add - EtherAdress of child to delete
   void removeParent (EtherAddress* node, EtherAddress* add);  //add - EtherAdress of parent to delete, node - EtherAdress of node to remove parent from
