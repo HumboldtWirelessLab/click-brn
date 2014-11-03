@@ -123,7 +123,6 @@ GabrielGraph::initialize(ErrorHandler *)
 
 void GabrielGraph::add_handlers()
 {
-
 }
 
 CLICK_ENDDECLS

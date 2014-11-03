@@ -35,8 +35,6 @@ CLICK_DECLS
 
 class RNGraph : public BRNElement {
 
-   
-
  public:
   RNGraph();
   ~RNGraph();
@@ -48,9 +46,9 @@ class RNGraph : public BRNElement {
   int configure(Vector<String> &, ErrorHandler *);
   bool can_live_reconfigure() const	{ return false; }
   int initialize(ErrorHandler *);
-  
+
   void add_handlers();
-  
+
   void calc_neighbors();
   uint32_t metric2dist_sqr(uint32_t metric);
 

@@ -28,6 +28,7 @@
 #include <click/error.hh>
 #include <click/straccum.hh>
 #include <clicknet/ether.h>
+#include <click/userutils.hh>
 
 #include "elements/brn/brn2.h"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
@@ -48,12 +49,20 @@ OverlayStructure::~OverlayStructure()
 int
 OverlayStructure::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+  String overlayfilepath = "";
+
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+      "OVERLAYFILE", cpkP, cpString, &overlayfilepath,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
-  _pre=false;
+
+  _pre = false;
+
+  click_chatter("Filename(%d): %s",overlayfilepath.length(), overlayfilepath.c_str());
+  if ( overlayfilepath.length() > 0 )
+    read_overlay_from_file(overlayfilepath);
 
   return 0;
 }
@@ -61,8 +70,59 @@ OverlayStructure::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 OverlayStructure::initialize(ErrorHandler *)
 {
-  
   return 0;
+}
+
+void
+OverlayStructure::read_overlay_from_file(String path) {
+  String _data = file_string(path);
+  Vector<String> _data_vec;
+  cp_spacevec(_data, _data_vec);
+
+  EtherAddress act;
+  EtherAddress last = EtherAddress::make_broadcast();
+  EtherAddress first = EtherAddress::make_broadcast();
+  int i=0;
+
+  //click_chatter("Size: %d",_data_vec.size());
+
+  cp_ethernet_address(_data_vec[_data_vec.size()-1],&act); //read last int. if it is broadcast than its a circle file
+
+  if ( !act.is_broadcast() ) { //no broadcast -> no circle
+
+	while (i < _data_vec.size()) {
+		cp_ethernet_address(_data_vec[i++],&first);
+		cp_ethernet_address(_data_vec[i++],&last);
+		addChild(&first,&last);
+		addParent(&last,&first);
+	}
+  } else {
+	//Hier noch einfügen: Kreise zu Overlay (einfach jedes Paar einfügen, den Rest übernimmt overlay_structure)
+	/*Dateiformat:
+	* Jeder Kreis eine Zeile
+	* Zeilen terminiert durch -1
+	* Bsp:
+	* 1 2 3 -1
+	* 2 4 5 6 7 -1
+	*/
+
+	while (i < _data_vec.size()) {
+		cp_ethernet_address(_data_vec[i++],&act);
+		if (last.is_broadcast()) {
+			first=act;
+			last=act;
+		} else {
+			if (act.is_broadcast()) {
+				addChild(&last,&first);
+				addParent(&first,&last);
+			} else {
+				addChild(&last,&act);
+				addParent(&act,&last);
+			}
+			last=act;
+		}
+	}
+  }
 }
 
 void OverlayStructure::reset() {
@@ -105,7 +165,7 @@ void OverlayStructure::addParent (EtherAddress* node, EtherAddress* add) {
 }
 
 void OverlayStructure::addChild (EtherAddress* node, EtherAddress* add) {
-	BRN_DEBUG("Added Child");
+	//BRN_DEBUG("Added Child");
 	if (_me->isIdentical(node)) {
 		addOwnChild(add);
 		return;
@@ -427,7 +487,7 @@ static int set_pre (const String &in_s, Element *element, void */*thunk*/, Error
     //click_chatter("set_pre1: %s",s.c_str());
     Vector<String> args;
     cp_spacevec(s, args);
-    
+
     bool new_pre=false; 
 	//click_chatter("set_pre2: %s",s.c_str());
 	

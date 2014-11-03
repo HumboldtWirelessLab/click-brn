@@ -48,6 +48,8 @@ class OverlayFlooding : public FloodingPolicy
 
     BRN2NodeIdentity *_me;
     OverlayStructure *_ovl;
+    bool _opportunistic;
+    bool _responsable4parents;
 
 };
 
