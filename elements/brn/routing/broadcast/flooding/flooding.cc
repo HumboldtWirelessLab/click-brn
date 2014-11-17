@@ -399,6 +399,7 @@ Flooding::push( int port, Packet *packet )
     /**
      *                   R E M O V E   P A C K E T   F R O M   Q U E U E
      *
+     * TODO: use packet with shorter route
      */
 
     if ( is_known && ((_abort_tx_mode & FLOODING_TXABORT_MODE_INCLUDE_QUEUE) != 0)) {
@@ -407,6 +408,13 @@ Flooding::push( int port, Packet *packet )
 
       if ( queue_packet != NULL ) {
         //BRN_DEBUG("Found p in queue %p",queue_packet);
+
+        //TODO: i've to reset ttl from brn_header. why is ttl-anno == 0 ? which element reset the ttl to 0?
+        struct click_brn* brn_h = BRNProtocol::get_brnheader(queue_packet);
+        BRNPacketAnno::set_ttl_anno(queue_packet, brn_h->ttl);
+
+        //uint8_t qttl = BRNPacketAnno::ttl_anno(queue_packet);
+        //BRN_ERROR("queue TTL: %d",qttl);
 
         _tx_aborts++;
         _flooding_passiveack->handle_feedback_packet(BRNProtocol::pull_brn_header(queue_packet),

@@ -34,23 +34,6 @@ BRNProtocol::add_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint8
   return NULL;
 }
 
-int
-BRNProtocol::set_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
-  struct click_brn *brn_h;
-
-  if ( ( brn_h = get_brnheader(p) ) != NULL ) {
-    brn_h->dst_port = dst_port;
-    brn_h->src_port = src_port;
-    brn_h->body_length = htons(len);
-    brn_h->ttl = ttl;
-    brn_h->tos = tos;
-
-    return 1;
-  }
-
-  return 0;
-}
-
 void
 BRNProtocol::set_brn_header(uint8_t *data, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
   struct click_brn *brn_h = (struct click_brn *)data;
@@ -59,6 +42,18 @@ BRNProtocol::set_brn_header(uint8_t *data, uint8_t dst_port, uint8_t src_port, u
   brn_h->body_length = htons(len);
   brn_h->ttl = ttl;
   brn_h->tos = tos;
+}
+
+int
+BRNProtocol::set_brn_header(Packet *p, uint8_t dst_port, uint8_t src_port, uint16_t len, uint8_t ttl, uint8_t tos) {
+  struct click_brn *brn_h;
+
+  if ( ( brn_h = get_brnheader(p) ) != NULL ) {
+    set_brn_header((uint8_t*)brn_h, dst_port, src_port, len, ttl, tos);
+    return 1;
+  }
+
+  return 0;
 }
 
 struct click_brn*
