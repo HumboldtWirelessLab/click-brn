@@ -721,7 +721,7 @@ Flooding::search_in_queue(EtherAddress &src, uint16_t id, bool del)
   }
 
   if ( p != NULL ) {
-    BRN_ERROR("Packet found");
+    BRN_INFO("Packet found");
   } else {
     BRN_ERROR("Packet not found");
   }

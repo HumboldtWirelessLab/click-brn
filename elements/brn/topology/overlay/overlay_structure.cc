@@ -60,7 +60,7 @@ OverlayStructure::configure(Vector<String> &conf, ErrorHandler *errh)
 
   _pre = false;
 
-  click_chatter("Filename(%d): %s",overlayfilepath.length(), overlayfilepath.c_str());
+  //click_chatter("Filename(%d): %s",overlayfilepath.length(), overlayfilepath.c_str());
   if ( overlayfilepath.length() > 0 )
     read_overlay_from_file(overlayfilepath);
 
