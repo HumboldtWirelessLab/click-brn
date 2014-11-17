@@ -654,9 +654,8 @@ BRN2SimpleFlow::handle_routing_peek(Packet *p, EtherAddress */*src*/, EtherAddre
                                                       ,size);
 
   BRN_DEBUG("last hop: %s %s",psrc.unparse().c_str(),pdst.unparse().c_str());
-
   if ( (((uint32_t)header->flags & (uint32_t)SIMPLEFLOW_FLAGS_INCL_ROUTE) != 0) &&
-       ((header->flags | SIMPLEFLOW_FLAGS_IS_REPLY) == 0) &&                        // no reply
+       (((uint32_t)header->flags & (uint32_t)SIMPLEFLOW_FLAGS_IS_REPLY) == 0) &&                        // no reply
        (size >= (MINIMUM_FLOW_PACKET_SIZE + header->extra_data_size + sizeof(struct flowPacketRoute))) ) {
     struct flowPacketRoute *rh = (struct flowPacketRoute *)&(((uint8_t*)&header[1])[header->extra_data_size]);
 
