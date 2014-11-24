@@ -46,6 +46,7 @@ BRN2LinkStat::BRN2LinkStat()
     _tau(10000),
     _period(1000),
     _seq(0),
+    _metrics(NULL),
     _metrics_size(0),
     _next_neighbor_to_add(0),
     _timer(static_send_hook,this),
@@ -86,7 +87,6 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
               "DEBUG", cpkP, cpInteger, &_debug,
             cpEnd);
 
-
   if (res < 0) return res;
 
   res = update_probes(probes);
@@ -105,24 +105,7 @@ BRN2LinkStat::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2LinkStat::initialize(ErrorHandler *errh)
 {
-
-  Vector<String> metric_vec;
-  cp_spacevec(_metric_str, metric_vec);
-
-  _metrics = new BRN2GenericMetric*[metric_vec.size()];
-  _metrics_size = 0;
-
-  for (int i = 0; i < metric_vec.size(); i++) {
-    Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
-    if ( new_element != NULL ) {
-      //click_chatter("El-Name: %s", new_element->class_name());
-      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
-      if ( gm != NULL ) {
-        _metrics[_metrics_size] = gm;
-        _metrics_size++;
-      }
-    }
-  }
+  add_metric(_metric_str, errh);
 
   if (noutputs() > 0) {
     if (!_dev) return errh->error("Source Ethernet address (NodeIdentity) must be specified to send probes");
@@ -825,6 +808,15 @@ BRN2LinkStat::get_rev_rate(EtherAddress *ea)
   return ( probe->rev_rate(_start, rs._rate, rs._size, rs._power) ); // reverse delivery ratio
 }
 
+int
+BRN2LinkStat::get_fwd_rate(EtherAddress *ea)
+{
+  probe_list_t *probe = _bcast_stats.findp(*ea);
+
+  if ( ! probe )  return 0;
+  return probe->_fwd_rates[0];
+}
+
 int32_t
 BRN2LinkStat::registerHandler(void *element, int protocolId, int32_t (*tx_handler)(void* element, const EtherAddress *src, char *buffer, int32_t size),
                               int32_t (*rx_handler)(void* element, EtherAddress *src, char *buffer, int32_t size, bool is_neighbour, uint8_t fwd_rate, uint8_t rev_rate))
@@ -930,6 +922,38 @@ BRN2LinkStat::update_probes(String probes)
   return 0;
 }
 
+int
+BRN2LinkStat::add_metric(String metric_str, ErrorHandler *errh)
+{
+  String s = cp_uncomment(metric_str);
+
+  Vector<String> metric_vec;
+  cp_spacevec(metric_str, metric_vec);
+
+  BRN2GenericMetric **new_metrics = new BRN2GenericMetric*[_metrics_size + metric_vec.size()];
+  memcpy(new_metrics, _metrics, _metrics_size * sizeof(BRN2GenericMetric*));
+
+  if (_metrics) delete _metrics;
+
+  _metrics = new_metrics;
+
+  for (int i = 0; i < metric_vec.size(); i++) {
+    Element *new_element = cp_element(metric_vec[i] , this, errh, NULL);
+    if ( new_element != NULL ) {
+      //click_chatter("El-Name: %s", new_element->class_name());
+      BRN2GenericMetric *gm = (BRN2GenericMetric *)new_element->cast("BRN2GenericMetric");
+      if ( gm != NULL ) {
+        _metrics[_metrics_size] = gm;
+        _metrics_size++;
+      }
+    } else {
+      click_chatter("Error: Can't find Element with name: %s", new_element->class_name());
+    }
+  }
+
+  return 0;
+}
+
 /*************************************************************************/
 /************************ H A N D L E R **********************************/
 /*************************************************************************/
@@ -940,7 +964,8 @@ enum {
   H_BAD_VERSION,
   H_TAU,
   H_PERIOD,
-  H_PROBES
+  H_PROBES,
+  H_METRIC
 };
 
 static String
@@ -1015,6 +1040,10 @@ BRNLinkStat_write_param(const String &in_s, Element *e, void *vparam, ErrorHandl
       f->update_probes(s);
       break;
     }
+    case H_METRIC: {
+      f->add_metric(in_s, errh);
+      break;
+    }
   }
   return 0;
 }
@@ -1034,6 +1063,8 @@ BRN2LinkStat::add_handlers()
   add_write_handler("tau",    BRNLinkStat_write_param, (void *) H_TAU);
   add_write_handler("period", BRNLinkStat_write_param, (void *) H_PERIOD);
   add_write_handler("probes", BRNLinkStat_write_param, (void *) H_PROBES);
+
+  add_write_handler("add_metric", BRNLinkStat_write_param, (void *) H_METRIC);
 }
 
 CLICK_ENDDECLS

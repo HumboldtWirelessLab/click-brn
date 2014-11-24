@@ -9,9 +9,34 @@
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
+#include "flooding_db.hh"
+#include "floodinglinktable.hh"
+
 CLICK_DECLS
 
+/*
+ * Linkinformation
+ */
+struct fooding_linkinformation {
+  uint8_t src_ea[6]; //ids refers to this source
+  uint8_t src_ids;   //ids include in this packet
+  uint8_t rx_nodes;  //number of nodes, which rx infos is included
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+/*
+ * list of ids
+ *
+ * list of number of transmissions per id
+ */
+
+struct fooding_single_linkinformation {
+  uint8_t node[6];
+  uint8_t rx_pobability;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
+
+
 #define FLOODING_PRENEGOTIATION_STARTTIME 100000 /*ms (100s)*/
+
 class FloodingPrenegotiation : public BRNElement {
 
  public:
@@ -34,12 +59,11 @@ class FloodingPrenegotiation : public BRNElement {
 
   int lpSendHandler(char *buffer, int size);
   int lpReceiveHandler(char *buffer, int size);
-  
-  uint32_t _start_time;
-  Timestamp _start_ts;
-  bool _active;
 
   BRN2LinkStat *_linkstat;
+  FloodingLinktable *_link_table;
+  FloodingDB *_flooding_db;
+
 };
 
 CLICK_ENDDECLS

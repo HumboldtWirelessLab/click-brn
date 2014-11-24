@@ -37,9 +37,7 @@
 
 CLICK_DECLS
 
-FloodingPrenegotiation::FloodingPrenegotiation():
-  _start_time(FLOODING_PRENEGOTIATION_STARTTIME),
-  _active(false)
+FloodingPrenegotiation::FloodingPrenegotiation()
 {
   BRNElement::init();
 }
@@ -52,7 +50,10 @@ int
 FloodingPrenegotiation::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-//      "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+      "LINKSTAT", cpkP+cpkM , cpElement, &_linkstat,
+      "FLOODINGLINKTABLE", cpkP+cpkM , cpElement, &_link_table,
+      "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
@@ -78,8 +79,6 @@ rx_handler(void *element, EtherAddress */*ea*/, char *buffer, int size, bool /*i
 int
 FloodingPrenegotiation::initialize(ErrorHandler */*errh*/)
 {
-  _start_ts = Timestamp::now();
-
   _linkstat->registerHandler(this,BRN2_LINKSTAT_MINOR_TYPE_BROADCAST,&tx_handler,&rx_handler);
 
   return 0;
@@ -88,9 +87,10 @@ FloodingPrenegotiation::initialize(ErrorHandler */*errh*/)
 int
 FloodingPrenegotiation::lpSendHandler(char */*buffer*/, int /*size*/)
 {
-  if ( !_active ) {
-    _active = ((Timestamp::now() - _start_ts).msecval() > _start_time);
-    return 0;
+  if (_flooding_db->_recv_cnt.size() == 0) {
+    BRN_DEBUG("No Flooding");
+  } else {
+    BRN_DEBUG("Got some Flooding Info. Check age...");
   }
 
   return 0;

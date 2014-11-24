@@ -53,7 +53,7 @@ struct click_brn_bcast {
   uint16_t      bcast_id;
   uint8_t       flags;
   uint8_t       extra_data_size;
-} CLICK_SIZE_PACKED_ATTRIBUTE ;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define BCAST_HEADER_FLAGS_FORCE_DST           1 /* src is responsible for target */
 #define BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS  2 /* reason for reject was empty cs */

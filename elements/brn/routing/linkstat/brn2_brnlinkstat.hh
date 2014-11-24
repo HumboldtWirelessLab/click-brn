@@ -198,7 +198,6 @@ public:
 
     Timestamp _last_rx;
     Deque<probe_t> _probes;          // most recently received probes
-    //char *_probes;
 
     probe_list_t(const EtherAddress &et, unsigned int per, unsigned int t) :
         _ether(et),
@@ -389,6 +388,8 @@ public:
   /* just for metrics during configure/initialize*/
   String _metric_str;
 
+  int add_metric(String metric_str, ErrorHandler *errh);
+
   // record probes received from other hosts
   Vector <EtherAddress> _neighbors;
   // sometimes it is not possible to put the complete information of all my neighbors into the probe packets;
@@ -440,6 +441,7 @@ public:
 
   int32_t deregisterHandler(int32_t handle, int protocolId);
 
+  int get_fwd_rate(EtherAddress *ea);
   int get_rev_rate(EtherAddress *ea);
 
   uint32_t _stale;
