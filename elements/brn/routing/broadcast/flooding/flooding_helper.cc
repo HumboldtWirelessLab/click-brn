@@ -339,6 +339,11 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
 
   int best_metric, best_metric_src, best_metric_dst;
 
+  /*
+   * Dijkstra: get the shortest path to all known nodes
+   *
+   */
+
   do {
 
     metric_changed = false;
