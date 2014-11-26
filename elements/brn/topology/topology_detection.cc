@@ -63,9 +63,9 @@ int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
  click_chatter("RDDBG: begin configure"); 
   if (cp_va_kparse(conf, this, errh,
-      "TOPOLOGY_INFO", cpkP + cpkM, cpElement, &_topoInfo,
-      "NODE_IDENTITY", cpkP + cpkM, cpElement, &_node_identity,
-      "LINK_TABLE", cpkP, cpElement, &_lt,
+      "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoInfo,
+      "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
+      "LINKTABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
       "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
       "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
