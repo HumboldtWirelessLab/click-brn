@@ -149,7 +149,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
     for ( int x = own_cnml->_neighbors.size()-1; x >= 0; x-- ) {
       int neighbors_prob = bcn->get_probability(pap->_bcast_id, &(own_cnml->_neighbors[x]));
 
-      own_benefit += FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])) * (100-neighbors_prob);
+      own_benefit += own_cnml->get_metric(own_cnml->_neighbors[x]) * (100-neighbors_prob);
 
       //BRN_ERROR("own metric: %d", FloodingHelper::metric2pdr(own_cnml->get_metric(own_cnml->_neighbors[x])));
 
@@ -169,7 +169,7 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
                                             bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
           */
 
-          benefit += (neighbors_prob * FloodingHelper::metric2pdr(cnml->get_metric(cnml->_neighbors[n_i]))) * // P(tx neighbour to his n is successfull)
+          benefit += (neighbors_prob * cnml->get_metric(cnml->_neighbors[n_i])) * // P(tx neighbour to his n is successfull)
                     (100 - bcn->get_probability(pap->_bcast_id, &(cnml->_neighbors[n_i])));
         }
       }

@@ -83,7 +83,8 @@ class BroadcastNode
     uint8_t rx_probability;
     uint8_t received_cnt;
 
-    uint16_t flags;
+    uint8_t tx_count;
+    uint8_t flags;
 
 #define FLOODING_NODE_INFO_FLAGS_FORWARDED                    1
 #define FLOODING_NODE_INFO_FLAGS_FINISHED                     2
@@ -282,7 +283,7 @@ class BroadcastNode
      * Node not found, so add new_list
      */
     memcpy(flni[flni_s].etheraddr, node->data(),6);
-    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].flags = 0;
+    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].tx_count = flni[flni_s].flags = 0;
 
     _flooding_node_info_list_size[index]++;
     *new_index = _flooding_node_info_list_size[index]; //after inc to avoid return of 0 for the first node
@@ -396,6 +397,11 @@ class BroadcastNode
 
     if ( new_index ) return FLOODING_NODE_INFO_RESULT_IS_NEW;
     return 0;
+  }
+
+  inline void set_tx_count_last_node(uint16_t id, EtherAddress *last, uint8_t tx_count) {
+    struct flooding_node_info *fln = get_node_info(id, last);
+    if ( fln != NULL ) fln->tx_count = tx_count;
   }
 
   /**
@@ -606,6 +612,17 @@ class FloodingDB : public BRNElement {
   int add_node_info(EtherAddress *src, uint16_t id, EtherAddress *last_node, bool forwarded, bool rx_acked, bool responsibility, bool foreign_responsibility);
   int add_responsible_node(EtherAddress *src, uint16_t id, EtherAddress *last_node);
 
+  /**
+   * @brief Set the number of sent packets. This information is collected and send by by the node "last_node"
+   * 
+   * @param src source of the flooding (this information is about)
+   * @param id id of flooding (this information is about)
+   * @param last_node last node (the node sentthe flooding tx_count times)
+   * @param tx_count number of transmission by last_node
+   * @return void
+   */
+  void set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, uint8_t tx_count);
+
   struct BroadcastNode::flooding_node_info* get_node_infos(EtherAddress *src, uint16_t id, uint32_t *size);
   struct BroadcastNode::flooding_node_info* get_node_info(EtherAddress *src, uint16_t id, EtherAddress *last);
 
@@ -625,7 +642,6 @@ class FloodingDB : public BRNElement {
   //
   //member
   //
-  BRN2NodeIdentity *_me;
   BcastNodeMap _bcast_map;
 
   RecvCntMap _recv_cnt;

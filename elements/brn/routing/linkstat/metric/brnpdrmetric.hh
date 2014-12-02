@@ -61,7 +61,7 @@ public:
                    Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                    uint8_t update_mode);
 
-  static inline int get_pdr(uint32_t metric, uint8_t *fwd, uint8_t *rev) {
+  static inline void get_pdr(uint32_t metric, uint8_t *fwd, uint8_t *rev) {
     *fwd = metric >> 6;
     *rev = (metric & 127) << 1;
   }

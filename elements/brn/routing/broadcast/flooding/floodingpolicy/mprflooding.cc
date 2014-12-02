@@ -57,6 +57,10 @@ MPRFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
     cpEnd) < 0)
       return -1;
 
+  if ( _max_metric_to_neighbor == 0 ) _min_pdr_to_neighbor = 100;
+  else if ( _max_metric_to_neighbor == BRN_LT_INVALID_LINK_METRIC ) _min_pdr_to_neighbor = 0;
+  else _min_pdr_to_neighbor = (1000 / isqrt32(_max_metric_to_neighbor));
+
   return 0;
 }
 
@@ -223,7 +227,7 @@ MPRFlooding::set_mpr(HashMap<EtherAddress,EtherAddress> *known_nodes)
   //get neighbours
   //
   const EtherAddress *me = _me->getMasterAddress();
-  _fhelper->get_filtered_neighbors(*me, neighbors, _max_metric_to_neighbor);
+  _fhelper->get_filtered_neighbors(*me, neighbors, _min_pdr_to_neighbor);
   if ( known_nodes != NULL ) remove_finished_neighbours(&neighbors, known_nodes);
 
   if (neighbors.size() == 0) {
@@ -250,7 +254,7 @@ MPRFlooding::set_mpr(HashMap<EtherAddress,EtherAddress> *known_nodes)
   for( int n_i = 0; n_i < count_one_hop_nbs; n_i++) { // iterate over all my neighbors
 
     Vector<EtherAddress> nb_neighbors;               // the neighbors of my neighbors
-    _fhelper->get_filtered_neighbors(neighbors[n_i], nb_neighbors, _max_metric_to_neighbor);
+    _fhelper->get_filtered_neighbors(neighbors[n_i], nb_neighbors, _min_pdr_to_neighbor);
     if ( known_nodes != NULL ) remove_finished_neighbours(&nb_neighbors, known_nodes);
 
     for( int n_j = 0; n_j < nb_neighbors.size(); n_j++) { // iterate over all my neighbors neighbours

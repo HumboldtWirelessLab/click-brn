@@ -27,7 +27,7 @@
 #include <click/bighashmap.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
+#include "floodinglinktable.hh"
 
 CLICK_DECLS
 
@@ -113,18 +113,18 @@ class NetworkGraph {
 class CachedNeighborsMetricList {
  public:
   EtherAddress _node;
-  int _max_metric_to_neighbor;
+  uint8_t _min_pdr_to_neighbor; //pdr
 
   Vector<EtherAddress> _neighbors;
-  int *_metrics;
+  uint8_t *_metrics;
 
   Timestamp _last_update;
 
-  CachedNeighborsMetricList(EtherAddress ea, int metric) {
+  CachedNeighborsMetricList(EtherAddress ea, uint8_t metric) {
     _node = ea;
     _neighbors.clear();
     _metrics = NULL;
-    _max_metric_to_neighbor = metric;
+    _min_pdr_to_neighbor = metric;
   }
 
   ~CachedNeighborsMetricList() {
@@ -135,7 +135,7 @@ class CachedNeighborsMetricList {
     }
   }
 
-  void update(Brn2LinkTable *lt) {
+  void update(FloodingLinktable *lt) {
     _neighbors.clear();
     if ( _metrics != NULL ) {
       delete[] _metrics;
@@ -145,15 +145,15 @@ class CachedNeighborsMetricList {
     lt->get_neighbors(_node, _neighbors);
 
     int c_neighbors = _neighbors.size();
-    _metrics = new int[c_neighbors];
+    _metrics = new uint8_t[c_neighbors];
 
     for( int n_i = 0; n_i < c_neighbors;) {
       //calc metric between this neighbor and node to make sure that we are well-connected
       //BRN_DEBUG("Check Neighbour: %s",neighbors_tmp[n_i].unparse().c_str());
-      int metric_nb_node = lt->get_link_metric(_node, _neighbors[n_i]);
+      uint8_t metric_nb_node = lt->get_link_pdr(_node, _neighbors[n_i]);
 
       // skip to bad neighbors
-      if (metric_nb_node > _max_metric_to_neighbor) {
+      if (metric_nb_node < _min_pdr_to_neighbor) {
         //click_chatter("Skip bad neighbor %s (%d)", _neighbors[n_i].unparse().c_str(),metric_nb_node);
         c_neighbors--;
         _neighbors.erase(_neighbors.begin() + n_i);
@@ -170,7 +170,7 @@ class CachedNeighborsMetricList {
 
   inline int size() { return _neighbors.size(); }
 
-  int get_metric(EtherAddress &ea) {
+  uint8_t get_metric(EtherAddress &ea) {
     for( int i = 0; i < _neighbors.size();i++ )
       if ( _neighbors[i] == ea ) return _metrics[i];
     return -1;
@@ -205,10 +205,12 @@ public:
   //
   //member
   //
-  Brn2LinkTable *_link_table;
+  FloodingLinktable *_link_table;
 
   CachedNeighborsMetricListMap _cnmlmap;
   int _max_metric_to_neighbor; // max. metric towards a neighbor
+  int _min_pdr_to_neighbor;    // min. pdr towards a neighbor
+
 #define FLOODINGHELPER_DEFAULTTIMEOUT 10000
   int _cache_timeout;
 
@@ -219,13 +221,12 @@ public:
 
   void print_vector(Vector<EtherAddress> &eas);
   void print_vector(NeighbourMetricList &nodes);
-  static uint32_t metric2pdr(uint32_t metric);
 
   uint32_t _better_link_min_ratio;
 
   // helper
-  void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int max_metric = -1);
-  CachedNeighborsMetricList* get_filtered_neighbors(const EtherAddress &node, int max_metric = -1);
+  void get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int min_metric = 0);
+  CachedNeighborsMetricList* get_filtered_neighbors(const EtherAddress &node, int min_metric = 0);
 
   void init_graph(const EtherAddress &start_node, NetworkGraph &ng, int src_metric);
   void get_graph(NetworkGraph &net_graph, uint32_t hop_count, int src_metric);

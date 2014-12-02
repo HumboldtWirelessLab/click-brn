@@ -70,17 +70,6 @@ FloodingHelper::print_vector(NeighbourMetricList &nodes)
   }
 }
 
-//TODO: more generic (not only ETX, use Linkstats instead or ask metric-class
-uint32_t
-FloodingHelper::metric2pdr(uint32_t metric)
-{
-  assert( metric <= BRN_LT_INVALID_LINK_METRIC );
-  if ( metric == 0 ) return 100;
-  if ( metric == BRN_LT_INVALID_LINK_METRIC ) return 0;
-
-  return (1000 / isqrt32(metric));
-}
-
 /** --------------------------------------------------------------------------------------- **/
 
 FloodingHelper::FloodingHelper():
@@ -110,6 +99,10 @@ FloodingHelper::configure(Vector<String> &conf, ErrorHandler* errh)
       cpEnd) < 0)
     return -1;
 
+  if ( _max_metric_to_neighbor == 0 ) _min_pdr_to_neighbor = 100;
+  else if ( _max_metric_to_neighbor == BRN_LT_INVALID_LINK_METRIC ) _min_pdr_to_neighbor = 0;
+  else _min_pdr_to_neighbor = (1000 / isqrt32(_max_metric_to_neighbor));
+
   return 0;
 }
 
@@ -134,11 +127,11 @@ FloodingHelper::uninitialize()
  * 
  */
 void
-FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int max_metric)
+FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAddress> &out, int min_metric)
 {
   assert( out.size() == 0 );
 
-  CachedNeighborsMetricList* cnml = get_filtered_neighbors(node, max_metric);
+  CachedNeighborsMetricList* cnml = get_filtered_neighbors(node, min_metric);
 
   for( int n_i = 0; n_i < cnml->_neighbors.size(); n_i++) out.push_back(cnml->_neighbors[n_i]);
 }
@@ -148,18 +141,18 @@ FloodingHelper::get_filtered_neighbors(const EtherAddress &node, Vector<EtherAdd
  * 
  */
 CachedNeighborsMetricList* 
-FloodingHelper::get_filtered_neighbors(const EtherAddress &node, int max_metric)
+FloodingHelper::get_filtered_neighbors(const EtherAddress &node, int min_metric)
 {
   CachedNeighborsMetricList** cnmlp = _cnmlmap.findp(node);
   CachedNeighborsMetricList* cnml = NULL;
 
   if ( cnmlp != NULL ) cnml = *cnmlp;
 
-  if ( max_metric == -1 ) max_metric = _max_metric_to_neighbor;
+  if ( min_metric == -1 ) min_metric = _min_pdr_to_neighbor;
 
   if (( cnml == NULL ) || ( cnml->age() > _cache_timeout )) {
     if ( cnml == NULL ) {
-      cnml = new CachedNeighborsMetricList(node, max_metric);
+      cnml = new CachedNeighborsMetricList(node, min_metric);
       _cnmlmap.insert(node,cnml);
     }
     cnml->update(_link_table);
@@ -325,7 +318,7 @@ FloodingHelper::get_local_graph(const EtherAddress &node, Vector<EtherAddress> &
     uint32_t pdr_cache_index = src_node << _pdr_cache_shift;
     for ( uint32_t dst_node = 0; dst_node < no_nodes; dst_node++, pdr_cache_index++) {
       if ( src_node == dst_node ) continue;
-      _pdr_cache[pdr_cache_index] = metric2pdr(_link_table->get_link_metric(ng.nml[src_node]->_ea, ng.nml[dst_node]->_ea));
+      _pdr_cache[pdr_cache_index] = _link_table->get_link_pdr(ng.nml[src_node]->_ea, ng.nml[dst_node]->_ea);
       /*
       if (( src_node == 0 ) && (dst_node < 6)) {
         BRN_DEBUG("PDR (%d -> %d): %d",src_node,dst_node,_pdr_cache[pdr_cache_index]);
