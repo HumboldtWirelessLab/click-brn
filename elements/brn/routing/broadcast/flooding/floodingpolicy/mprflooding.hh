@@ -65,6 +65,7 @@ class MPRFlooding : public FloodingPolicy
     FloodingDB *_flooding_db;
 
     int _max_metric_to_neighbor;
+    int _min_pdr_to_neighbor;
 
     Timestamp _last_set_mpr_call;
     uint32_t _update_interval;

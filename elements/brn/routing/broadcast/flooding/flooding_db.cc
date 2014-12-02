@@ -51,7 +51,6 @@ int
 FloodingDB::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -210,6 +209,17 @@ FloodingDB::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint3
 
   bcn->sent(id, no_transmission, no_rts_transmissions);
 }
+
+void
+FloodingDB::set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, uint8_t tx_count)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+
+  if ( bcn == NULL ) return;
+
+  bcn->set_tx_count_last_node(id, last_node, tx_count);
+}
+
 
 bool
 FloodingDB::me_src(EtherAddress *src, uint16_t id)

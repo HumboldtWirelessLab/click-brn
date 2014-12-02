@@ -8,32 +8,29 @@
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
 #include "flooding_db.hh"
-#include "floodinglinktable.hh"
 
 CLICK_DECLS
 
 /*
  * Linkinformation
  */
-struct fooding_linkinformation {
-  uint8_t src_ea[6]; //ids refers to this source
-  uint8_t src_ids;   //ids include in this packet
-  uint8_t rx_nodes;  //number of nodes, which rx infos is included
+struct fooding_link_information {
+  uint8_t src_ea[6];   //ids refers to this source
+  uint8_t no_rx_nodes; //number of nodes, which rx infos is included
+  uint8_t no_src_ids;  //ids include in this packet
+  uint16_t sum_transmissions;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
 
 /*
- * list of ids
+ * list of ids  (uint16_t)
  *
- * list of number of transmissions per id
+ * list of macs (uint8_t[6])
+ *
+ * matrix (no_src_ids x no_rx_nodes) with rx probability
  */
-
-struct fooding_single_linkinformation {
-  uint8_t node[6];
-  uint8_t rx_pobability;
-} CLICK_SIZE_PACKED_ATTRIBUTE;
-
 
 #define FLOODING_PRENEGOTIATION_STARTTIME 100000 /*ms (100s)*/
 
@@ -58,11 +55,15 @@ class FloodingPrenegotiation : public BRNElement {
   void add_handlers();
 
   int lpSendHandler(char *buffer, int size);
-  int lpReceiveHandler(char *buffer, int size);
+  int lpReceiveHandler(EtherAddress *ea, char *buffer, int size);
 
   BRN2LinkStat *_linkstat;
-  FloodingLinktable *_link_table;
+  Brn2LinkTable *_link_table;
   FloodingDB *_flooding_db;
+
+  uint32_t _seq;
+
+  uint32_t _max_ids_per_packet;
 
 };
 

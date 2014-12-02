@@ -35,11 +35,14 @@ class FloodingLinktable : public BRNElement {
   BRN2LinkStat *_linkstat;
   Brn2LinkTable *_etxlinktable;
   Brn2LinkTable *_pdrlinktable;
+  Brn2LinkTable *_locallinktable;
 
   uint32_t etx_metric2pdr(uint32_t metric);
 
-  int get_pdr(EtherAddress &src, EtherAddress &dst);
+  void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
+  uint32_t get_link_metric(EtherAddress from, EtherAddress to);
 
+  uint32_t get_link_pdr(EtherAddress &src, EtherAddress &dst);
 };
 
 CLICK_ENDDECLS

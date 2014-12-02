@@ -50,7 +50,8 @@ FloodingLinktable::etx_metric2pdr(uint32_t metric)
 FloodingLinktable::FloodingLinktable():
     _linkstat(NULL),
     _etxlinktable(NULL),
-    _pdrlinktable(NULL)
+    _pdrlinktable(NULL),
+    _locallinktable(NULL)
 {
   BRNElement::init();
 }
@@ -66,6 +67,7 @@ FloodingLinktable::configure(Vector<String> &conf, ErrorHandler* errh)
       "LINKSTAT", cpkP, cpElement, &_linkstat,
       "ETXLINKTABLE", cpkP, cpElement, &_etxlinktable,
       "PDRLINKTABLE", cpkP, cpElement, &_pdrlinktable,
+      "LOCALTABLE", cpkP, cpElement, &_locallinktable,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
@@ -82,25 +84,47 @@ FloodingLinktable::initialize(ErrorHandler */*errh*/)
   return 0;
 }
 
-int
-FloodingLinktable::get_pdr(EtherAddress &src, EtherAddress &dst)
+void
+FloodingLinktable::get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors)
 {
+  if (_etxlinktable) _etxlinktable->get_neighbors(ethernet, neighbors);
+}
+
+uint32_t
+FloodingLinktable::get_link_metric(EtherAddress from, EtherAddress to)
+{
+  if (_etxlinktable) return _etxlinktable->get_link_metric(from, to);
+  return BRN_LT_INVALID_LINK_METRIC;
+}
+
+uint32_t
+FloodingLinktable::get_link_pdr(EtherAddress &src, EtherAddress &dst)
+{
+  if (_etxlinktable) return etx_metric2pdr(_etxlinktable->get_link_metric(src, dst));
+
   int metric = BRN_LT_INVALID_LINK_METRIC;
+
+  if ( _locallinktable ) {
+    metric = _pdrlinktable->get_link_metric(src, dst);
+    if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
+  };
+
+  /* if we don't have the pdr table we prefere linkstats (more precise)*/
+  if (_linkstat) {
+    if (*(_linkstat->_dev->getEtherAddress()) == dst) {
+      metric = _linkstat->get_rev_rate(&src);
+    } else if (*(_linkstat->_dev->getEtherAddress()) == src) {
+      metric = _linkstat->get_fwd_rate(&dst);
+    }
+  }
+
+  if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric;
+
   /* Since _pdrlinktable includes all links we prefere it */
   if ( _pdrlinktable ) {
     metric = _pdrlinktable->get_link_metric(src, dst);
-    return metric >> 6;
-  } else {
-    /* if we don't have the pdr table we prefere linkstats (more precise)*/
-    if (_linkstat) {
-      if (*(_linkstat->_dev->getEtherAddress()) == dst) {
-        metric = _linkstat->get_rev_rate(&src);
-      } else if (*(_linkstat->_dev->getEtherAddress()) == src) {
-        metric = _linkstat->get_fwd_rate(&dst);
-      }
-    }
-    if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric;
-  }
+    if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
+  };
 
   /* but if it is a nonlocal link we try the etxlinktable */
   if ( _etxlinktable ) {
@@ -111,6 +135,7 @@ FloodingLinktable::get_pdr(EtherAddress &src, EtherAddress &dst)
 
   return metric;
 }
+
 
 //-----------------------------------------------------------------------------
 // Handler

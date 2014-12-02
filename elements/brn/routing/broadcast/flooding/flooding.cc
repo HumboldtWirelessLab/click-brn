@@ -677,8 +677,8 @@ Flooding::add_rx_probability(EtherAddress &fwd, EtherAddress &src, uint16_t id, 
   CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(fwd);
 
   for( int n_i = cnml->_neighbors.size()-1; n_i >= 0; n_i--) {
-    int metric = cnml->get_metric(cnml->_neighbors[n_i]);
-    bcn->add_probability(id, &(cnml->_neighbors[n_i]), FloodingHelper::metric2pdr(metric), no_transmissions);
+    int pdr = cnml->get_metric(cnml->_neighbors[n_i]);
+    bcn->add_probability(id, &(cnml->_neighbors[n_i]), pdr, no_transmissions);
   }
 }
 
@@ -723,7 +723,7 @@ Flooding::search_in_queue(EtherAddress &src, uint16_t id, bool del)
   if ( p != NULL ) {
     BRN_INFO("Packet found");
   } else {
-    BRN_ERROR("Packet not found");
+    BRN_INFO("Packet not found");
   }
 
   return p;
