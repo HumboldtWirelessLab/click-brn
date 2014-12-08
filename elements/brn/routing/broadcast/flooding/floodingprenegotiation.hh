@@ -32,7 +32,11 @@ struct fooding_link_information {
  * matrix (no_src_ids x no_rx_nodes) with rx probability
  */
 
-#define FLOODING_PRENEGOTIATION_STARTTIME 100000 /*ms (100s)*/
+#define DEFAULT_MAX_FLOODING_IDS_PER_PACKET 8
+#define DEFAULT_FLOODING_NEIGHBOURS_TIMEOUT 5000
+
+typedef HashMap<EtherAddress, Timestamp> NodeAgeMap;
+typedef NodeAgeMap::const_iterator NodeAgeMapIter;
 
 class FloodingPrenegotiation : public BRNElement {
 
@@ -61,9 +65,12 @@ class FloodingPrenegotiation : public BRNElement {
   Brn2LinkTable *_link_table;
   FloodingDB *_flooding_db;
 
+  NodeAgeMap _neighbour_map;
+
   uint32_t _seq;
 
   uint32_t _max_ids_per_packet;
+  uint32_t _node_timeout;
 
 };
 
