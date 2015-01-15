@@ -104,7 +104,8 @@ HiddenNodeDetection::run_timer(Timer *)
 {
   Timestamp now = Timestamp::now();
 
-  _hn_del_timer.reschedule_after_msec(_hnd_del_interval); //reschedule first, so that long computation time has no impact on interval length
+  //reschedule first, so that long computation time has no impact on interval length
+  _hn_del_timer.schedule_after_msec(_hnd_del_interval);
 
   if ( _cocst != NULL ) handle_coop_channelstats();
   if ( _lt != NULL ) handle_linktable();
@@ -112,6 +113,11 @@ HiddenNodeDetection::run_timer(Timer *)
   for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
     NodeInfo *node = iter.value();
     EtherAddress node_ea = iter.key();
+
+    BRN_DEBUG("Check Node: %s active: %d passive: %d Timeout: %d",node_ea.unparse().c_str(),
+                                                                (int32_t)(now - node->_last_notice_active).msecval(),
+                                                                (int32_t)(now - node->_last_notice_passive).msecval(),
+                                                                _hnd_del_interval);
 
     /* check age of node! Is neighbour? does it still exists? */
     if ( (now - node->_last_notice_active).msecval() > _hnd_del_interval ) {
@@ -128,7 +134,9 @@ HiddenNodeDetection::run_timer(Timer *)
         if ( (now - last_use).msecval() > _hn_link_del_interval ) {         //link is to old, remove rev and fwd
           NodeInfo *neighbour_node = _nodeinfo_tab.find(neighbour_node_ea); //get nodeinfo from rev_node
           neighbour_node->_last_link_usage.remove(node_ea);                 //remove rev
+          neighbour_node->_links_to.remove(node_ea);
           node->_last_link_usage.remove(neighbour_node_ea);                 //remove fwd
+          node->_links_to.remove(neighbour_node_ea);
         }
       }
     }
@@ -196,29 +204,28 @@ HiddenNodeDetection::push(int port, Packet *p)
           BRN_DEBUG("New Dst");
 
           dst_ni = new NodeInfo();
+          dst_ni->_neighbour = false;
           _nodeinfo_tab.insert(dst,dst_ni);
         }
         dst_ni->update_passive();
-      }
 
-      switch (type) {
-        case WIFI_FC0_TYPE_MGT:
-        case WIFI_FC0_TYPE_DATA:
-        case WIFI_FC0_TYPE_CTL:
-          _last_data_dst = dst;
-          _last_data_seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
-          BRN_DEBUG("DATA");
+        switch (type) {
+            case WIFI_FC0_TYPE_MGT:
+            case WIFI_FC0_TYPE_DATA:
+            case WIFI_FC0_TYPE_CTL:
+                _last_data_dst = dst;
+                _last_data_seq = le16_to_cpu(w->i_seq) >> WIFI_SEQ_SEQ_SHIFT;
 
-          if (dst_ni) {
-            BRN_DEBUG("Dst");
+                BRN_DEBUG("DATA");
+                BRN_DEBUG("Dst");
 
-            Timestamp ts = Timestamp::now();
-            dst_ni->add_link(src, src_ni, &ts);
-            if ( dst != brn_etheraddress_broadcast ) src_ni->add_link(dst, dst_ni, &ts);
-          }
+                Timestamp ts = Timestamp::now();
+                dst_ni->add_link(src, src_ni, &ts);
+                src_ni->add_link(dst, dst_ni, &ts);
 
-          break;
+                break;
+        }
       }
 
       BRN_DEBUG("Fin");
@@ -252,6 +259,9 @@ HiddenNodeDetection::handle_coop_channelstats()
       EtherAddress src = *ea_iter;
       NodeChannelStats *nb_cst = nodeCstMap->find(src);
       NodeInfo *src_ni = _nodeinfo_tab.find(src);
+
+      assert(src_ni != NULL); //src_ni sould be there due to push
+
       src_ni->update_active();
       src_ni->_neighbour = true;
 
@@ -263,18 +273,19 @@ HiddenNodeDetection::handle_coop_channelstats()
 
           EtherAddress dst = nb_time_iter.key();
 
-          if (*_device->getEtherAddress() != dst) {
+          if ((dst != brn_etheraddress_broadcast) && (*_device->getEtherAddress() != dst)) {
             NodeInfo *dst_ni = _nodeinfo_tab.find(dst);
             if ( ! dst_ni ) {
               BRN_DEBUG("New Dst");
 
               dst_ni = new NodeInfo();
+              dst_ni->_neighbour = false;
               _nodeinfo_tab.insert(dst,dst_ni);
             }
 
             dst_ni->update_passive();
             dst_ni->add_link(src, src_ni, &now);
-            if ( dst != brn_etheraddress_broadcast ) src_ni->add_link(dst, dst_ni, &now);
+            src_ni->add_link(dst, dst_ni, &now);
           }
         }
       }
@@ -337,6 +348,7 @@ HiddenNodeDetection::handle_linktable()
               BRN_DEBUG("New Dst");
 
               dst_ni = new NodeInfo();
+              dst_ni->_neighbour = false;
               _nodeinfo_tab.insert(dst,dst_ni);
             }
 
@@ -365,7 +377,7 @@ HiddenNodeDetection::count_hidden_neighbours(const EtherAddress &ea)
   //TODO: use neighbour flag
   for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ ) {
     NodeInfo *node = _nodeinfo_tab.find(nt_iter.key());
-    if (!(node->_neighbour) && node->_exists) count_hn++;
+    if ((!node->_neighbour) && node->_exists) count_hn++;
   }
 
   return count_hn;
@@ -382,7 +394,7 @@ HiddenNodeDetection::get_hidden_neighbours(const EtherAddress &ea, Vector<EtherA
 
   for ( EtherTimestampMapIter nt_iter = ni->_last_link_usage.begin(); nt_iter != ni->_last_link_usage.end(); nt_iter++ ) {
     NodeInfo *node = _nodeinfo_tab.find(nt_iter.key());
-    if (!(node->_neighbour) && node->_exists) hns->push_back(nt_iter.key());
+    if ((!node->_neighbour) && node->_exists) hns->push_back(nt_iter.key());
   }
 
   return hns->size();
@@ -410,7 +422,7 @@ HiddenNodeDetection::stats_handler(int mode)
       else
         sa << BRN_NODE_NAME;
 
-      sa << "\" >\n\t<neighbour_nodes>\n";
+      sa << "\" time=\"" << Timestamp::now().unparse() << "\ >\n\t<neighbour_nodes>\n";
 
       for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
         NodeInfo *node = iter.value();
@@ -421,7 +433,7 @@ HiddenNodeDetection::stats_handler(int mode)
           for (NodeInfoTableIter link_iter = node->_links_to.begin(); link_iter.live(); link_iter++) {
             NodeInfo *l_node = link_iter.value();
             EtherAddress l_ea = link_iter.key();
-            if ( ! l_node->_neighbour && l_node->_exists ) {
+            if ( (!l_node->_neighbour) && l_node->_exists ) {
               Timestamp *ts = node->_last_link_usage.findp(l_ea);
               sa << "\t\t\t<hidden_node addr=\"" << l_ea.unparse() << "\" last_link_usage=\"" << ts->unparse() << "\" />\n";
             }
