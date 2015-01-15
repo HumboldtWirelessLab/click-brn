@@ -79,7 +79,7 @@ class HiddenNodeDetection : public BRNElement {
 
         inline void update_active() {
             _exists = true;
-            _last_notice_active = Timestamp::now();
+            _last_notice_passive = _last_notice_active = Timestamp::now();
         }
 
         inline void update_passive() {
