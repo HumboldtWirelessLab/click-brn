@@ -422,7 +422,7 @@ HiddenNodeDetection::stats_handler(int mode)
       else
         sa << BRN_NODE_NAME;
 
-      sa << "\" time=\"" << Timestamp::now().unparse() << "\ >\n\t<neighbour_nodes>\n";
+      sa << "\" time=\"" << Timestamp::now().unparse() << "\" >\n\t<neighbour_nodes>\n";
 
       for (NodeInfoTableIter iter = _nodeinfo_tab.begin(); iter.live(); iter++) {
         NodeInfo *node = iter.value();
