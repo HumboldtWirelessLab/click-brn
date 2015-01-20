@@ -239,7 +239,8 @@ FloodingPiggyback::bcast_header_get_node_infos(Flooding *fl, FloodingDB *fl_db, 
 
   BroadcastNode *bcn = fl_db->get_broadcast_node(src);
   if ( bcn == NULL ) {
-    //click_chatter("BCastNode %s is unknown. Discard extra info (bcastheader).",src->unparse().c_str());
+    click_chatter("BCastNode %s is unknown. Discard extra info (bcastheader).",src->unparse().c_str());
+    assert(bcn != NULL);
     return 0;
   }
 
@@ -309,7 +310,7 @@ FloodingPiggyback::bcast_header_get_node_infos(Flooding *fl, FloodingDB *fl_db, 
         fl->abort_last_tx(abort_reason);
       }
 
-      return new_last_node;
+      return abort_reason;
     } else i += extdat->size;
   }
 

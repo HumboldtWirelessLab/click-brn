@@ -12,6 +12,12 @@
 
 CLICK_DECLS
 
+#define FLOODING_LT_MODE_ETX       1
+#define FLOODING_LT_MODE_PDR       2
+#define FLOODING_LT_MODE_LINKSTATS 4
+#define FLOODING_LT_MODE_LOCAL     8
+
+
 class FloodingLinktable : public BRNElement {
 
  public:
@@ -40,9 +46,17 @@ class FloodingLinktable : public BRNElement {
   uint32_t etx_metric2pdr(uint32_t metric);
 
   void get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &neighbors);
-  uint32_t get_link_metric(EtherAddress from, EtherAddress to);
+  uint32_t get_link_metric(const EtherAddress from, const EtherAddress to);
 
-  uint32_t get_link_pdr(EtherAddress &src, EtherAddress &dst);
+  uint32_t get_link_pdr(const EtherAddress &src, const EtherAddress &dst);
+
+  void print_all_metrics(const EtherAddress src, const EtherAddress dst);
+
+  EtherAddress _linkstat_addr;
+
+  uint32_t _pref_mode;
+  uint32_t _used_mode;
+
 };
 
 CLICK_ENDDECLS

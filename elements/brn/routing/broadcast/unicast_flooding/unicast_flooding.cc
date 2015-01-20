@@ -462,8 +462,10 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     }
   }
 
-  //BRN_ERROR("Me: %s Dst: %s CSS: %d id: %d m: %d cm: %d", me->unparse().c_str(), next_hop.unparse().c_str(),candidate_set.size(),bcast_id,
-  //                                           _fhelper->_link_table->get_link_metric(*me,next_hop),
+  //BRN_ERROR("Me: %s Dst: %s CSS: %d id: %d m: %d cm: %d",
+  //                                           me->unparse().c_str(), next_hop.unparse().c_str(),
+  //                                           candidate_set.size(),bcast_id,
+  //                                           _fhelper->_link_table->get_link_pdr(*me,next_hop),
   //                                           _fhelper->_cnmlmap.find(*me)->get_metric(next_hop));
   add_rewrite(&src, bcast_id, &next_hop);
 
