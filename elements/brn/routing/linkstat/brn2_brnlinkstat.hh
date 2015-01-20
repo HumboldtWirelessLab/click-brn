@@ -441,8 +441,8 @@ public:
 
   int32_t deregisterHandler(int32_t handle, int protocolId);
 
-  int get_fwd_rate(EtherAddress *ea);
-  int get_rev_rate(EtherAddress *ea);
+  int get_fwd_rate(const EtherAddress *ea);
+  int get_rev_rate(const EtherAddress *ea);
 
   uint32_t _stale;
   void reset();

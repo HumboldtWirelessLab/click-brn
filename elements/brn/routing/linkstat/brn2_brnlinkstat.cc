@@ -797,7 +797,7 @@ BRN2LinkStat::reset()
 }
 
 int
-BRN2LinkStat::get_rev_rate(EtherAddress *ea)
+BRN2LinkStat::get_rev_rate(const EtherAddress *ea)
 {
   probe_list_t *probe = _bcast_stats.findp(*ea);
 
@@ -809,7 +809,7 @@ BRN2LinkStat::get_rev_rate(EtherAddress *ea)
 }
 
 int
-BRN2LinkStat::get_fwd_rate(EtherAddress *ea)
+BRN2LinkStat::get_fwd_rate(const EtherAddress *ea)
 {
   probe_list_t *probe = _bcast_stats.findp(*ea);
 
