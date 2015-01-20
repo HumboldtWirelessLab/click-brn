@@ -74,14 +74,26 @@ BRNPDRMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BRNPDRMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &,
+BRNPDRMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
                            Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                            uint8_t update_mode)
 {
-  int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
+  assert(fwd.size() && rev.size());
 
-  if (fwd.size() && rev.size() && fwd[0] && rev[0]) {
-    metric = ( (fwd[0] << 6) + (rev[0] >> 1)); // (fwd * 128 + rev) / 2 = fwd * 64 + rev/2
+  int lowest_rate_idx = 0;
+
+  for ( int i = 1; i < rs.size(); i++ )
+    if ( rs[i]._rate < rs[lowest_rate_idx]._rate ) lowest_rate_idx = i;
+
+  if ( rs[lowest_rate_idx]._rate != 2 )
+      BRN_WARN("Rate is not lowest");  
+
+  int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
+  int rev_metric = BRN_LT_INVALID_LINK_METRIC;
+
+  if (fwd[lowest_rate_idx] && rev[lowest_rate_idx]) {
+    metric = ( (fwd[lowest_rate_idx] << 6) + (rev[lowest_rate_idx] >> 1)); // (fwd * 128 + rev) / 2 = fwd * 64 + rev/2
+    rev_metric = ( (rev[lowest_rate_idx] << 6) + (fwd[lowest_rate_idx] >> 1)); // (fwd * 128 + rev) / 2 = fwd * 64 + rev/2
   }
 
   /*
@@ -95,8 +107,8 @@ BRNPDRMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<Brn
     if ( !_link_table->update_link(from, to, seq, 0, metric, update_mode) ) {
       BRN_WARN(" couldn't update link %s > %d > %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
     }
-    if (!_link_table->update_link(to, from, seq, 0, metric, update_mode)){
-      BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), metric, to.unparse().c_str());
+    if (!_link_table->update_link(to, from, seq, 0, rev_metric, update_mode)){
+      BRN_WARN(" couldn't update link %s < %d < %s\n", from.unparse().c_str(), rev_metric, to.unparse().c_str());
     }
   }
 }

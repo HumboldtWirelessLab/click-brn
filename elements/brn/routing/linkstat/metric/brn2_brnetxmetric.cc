@@ -75,13 +75,24 @@ BRN2ETXMetric::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BRN2ETXMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &,
+BRN2ETXMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
                            Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq,
                            uint8_t update_mode)
 {
+  assert(fwd.size() && rev.size());
+
+  int lowest_rate_idx = 0;
+
+  for ( int i = 1; i < rs.size(); i++ )
+    if ( rs[i]._rate < rs[lowest_rate_idx]._rate ) lowest_rate_idx = i;
+
+  if ( rs[lowest_rate_idx]._rate != 2 )
+    BRN_WARN("Rate is not lowest");
+
   int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
-  if (fwd.size() && rev.size() && fwd[0] && rev[0]) {
-    metric = /*100 * 100 * 100*/ 1000000 / (fwd[0] * rev[0]);
+
+  if ( fwd[lowest_rate_idx] && rev[lowest_rate_idx] ) {
+    metric = /*100 * 100 * 100*/ 1000000 / (fwd[lowest_rate_idx] * rev[lowest_rate_idx]);
   }
 
   /* update linktable */
