@@ -84,7 +84,11 @@ BRN2ETXMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<Br
   int lowest_rate_idx = 0;
 
   for ( int i = 1; i < rs.size(); i++ )
-    if ( rs[i]._rate < rs[lowest_rate_idx]._rate ) lowest_rate_idx = i;
+    if ( (rs[i]._rate < rs[lowest_rate_idx]._rate) ||
+         ((rs[i]._rate == rs[lowest_rate_idx]._rate) &&
+            ((rs[i]._power > rs[lowest_rate_idx]._power) ||
+             ((rs[i]._power == rs[lowest_rate_idx]._power) && (rs[i]._size < rs[lowest_rate_idx]._size)))) )
+        lowest_rate_idx = i;
 
   if ( rs[lowest_rate_idx]._rate != 2 )
     BRN_WARN("Rate is not lowest");

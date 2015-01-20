@@ -83,10 +83,14 @@ BRNPDRMetric::update_link(const EtherAddress &from, EtherAddress &to, Vector<Brn
   int lowest_rate_idx = 0;
 
   for ( int i = 1; i < rs.size(); i++ )
-    if ( rs[i]._rate < rs[lowest_rate_idx]._rate ) lowest_rate_idx = i;
+    if ( (rs[i]._rate < rs[lowest_rate_idx]._rate) ||
+         ((rs[i]._rate == rs[lowest_rate_idx]._rate) &&
+            ((rs[i]._power > rs[lowest_rate_idx]._power) ||
+             ((rs[i]._power == rs[lowest_rate_idx]._power) && (rs[i]._size < rs[lowest_rate_idx]._size)))) )
+        lowest_rate_idx = i;
 
   if ( rs[lowest_rate_idx]._rate != 2 )
-      BRN_WARN("Rate is not lowest");  
+      BRN_WARN("Rate is not lowest");
 
   int metric = BRN_LT_INVALID_LINK_METRIC; //BRN_LT_INVALID_LINK_METRIC = 9999 => rev-rate=10% fwd-rate=10%
   int rev_metric = BRN_LT_INVALID_LINK_METRIC;

@@ -87,6 +87,11 @@ FloodingLinktable::configure(Vector<String> &conf, ErrorHandler* errh)
     if (_pdrlinktable) _used_mode |= FLOODING_LT_MODE_PDR;
     if (_locallinktable) _used_mode |= FLOODING_LT_MODE_LOCAL;
   }
+
+  /*BRN_ERROR("MODE:\n ETX: %d\n PDR: %d\n LINKSTATS: %d\n LOCAL: %d\n", _used_mode & FLOODING_LT_MODE_ETX,
+                                                                       _used_mode & FLOODING_LT_MODE_PDR,
+                                                                       _used_mode & FLOODING_LT_MODE_LINKSTATS,
+                                                                       _used_mode & FLOODING_LT_MODE_LOCAL);*/
   return 0;
 }
 
@@ -115,7 +120,7 @@ FloodingLinktable::get_link_metric(const EtherAddress from, const EtherAddress t
 uint32_t
 FloodingLinktable::get_link_pdr(const EtherAddress &src, const EtherAddress &dst)
 {
-  print_all_metrics(src, dst);
+  //print_all_metrics(src, dst);
 
   int metric = BRN_LT_INVALID_LINK_METRIC;
 
@@ -131,7 +136,7 @@ FloodingLinktable::get_link_pdr(const EtherAddress &src, const EtherAddress &dst
     if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
   } else {
     /* if we don't have the pdr table we prefere linkstats (more precise)*/
-    if (_used_mode & FLOODING_LT_MODE_PDR) {
+    if (_used_mode & FLOODING_LT_MODE_LINKSTATS) {
       if (_linkstat_addr == dst) {
         return _linkstat->get_rev_rate(&src);
       } else if (_linkstat_addr == src) {
