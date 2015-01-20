@@ -51,7 +51,9 @@ FloodingLinktable::FloodingLinktable():
     _linkstat(NULL),
     _etxlinktable(NULL),
     _pdrlinktable(NULL),
-    _locallinktable(NULL)
+    _locallinktable(NULL),
+    _pref_mode(0),
+    _used_mode(0)
 {
   BRNElement::init();
 }
@@ -68,19 +70,32 @@ FloodingLinktable::configure(Vector<String> &conf, ErrorHandler* errh)
       "ETXLINKTABLE", cpkP, cpElement, &_etxlinktable,
       "PDRLINKTABLE", cpkP, cpElement, &_pdrlinktable,
       "LOCALTABLE", cpkP, cpElement, &_locallinktable,
+      "MODE", cpkP, cpInteger, &_pref_mode,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
 
-  if ( !_linkstat && !_etxlinktable && !_pdrlinktable )
-    return errh->error("FloodingLinktable requires at least LINKSTAT, ETXLINKTABLE or PDRLINKTABLE!");
-
+  if ( _pref_mode != 0 ) {      //User set pref-mode: remove what we can not provide
+    _used_mode = _pref_mode;
+    if (!_linkstat) _used_mode &= ~FLOODING_LT_MODE_LINKSTATS;
+    if (!_etxlinktable) _used_mode &= ~FLOODING_LT_MODE_ETX;
+    if (!_pdrlinktable) _used_mode &= ~FLOODING_LT_MODE_PDR;
+    if (!_locallinktable) _used_mode &= ~FLOODING_LT_MODE_LOCAL;
+  } else {                      //not prefs so we take whats there
+    if (_linkstat) _used_mode |= FLOODING_LT_MODE_LINKSTATS;
+    if (_etxlinktable) _used_mode |= FLOODING_LT_MODE_ETX;
+    if (_pdrlinktable) _used_mode |= FLOODING_LT_MODE_PDR;
+    if (_locallinktable) _used_mode |= FLOODING_LT_MODE_LOCAL;
+  }
   return 0;
 }
 
 int
 FloodingLinktable::initialize(ErrorHandler */*errh*/)
 {
+  if (_linkstat) {
+    _linkstat_addr = *(_linkstat->_dev->getEtherAddress());
+  }
   return 0;
 }
 
@@ -91,49 +106,61 @@ FloodingLinktable::get_neighbors(EtherAddress ethernet, Vector<EtherAddress> &ne
 }
 
 uint32_t
-FloodingLinktable::get_link_metric(EtherAddress from, EtherAddress to)
+FloodingLinktable::get_link_metric(const EtherAddress from, const EtherAddress to)
 {
   if (_etxlinktable) return _etxlinktable->get_link_metric(from, to);
   return BRN_LT_INVALID_LINK_METRIC;
 }
 
 uint32_t
-FloodingLinktable::get_link_pdr(EtherAddress &src, EtherAddress &dst)
+FloodingLinktable::get_link_pdr(const EtherAddress &src, const EtherAddress &dst)
 {
-  if (_etxlinktable) return etx_metric2pdr(_etxlinktable->get_link_metric(src, dst));
+  print_all_metrics(src, dst);
 
   int metric = BRN_LT_INVALID_LINK_METRIC;
 
-  if ( _locallinktable ) {
-    metric = _pdrlinktable->get_link_metric(src, dst);
+  if (_used_mode & FLOODING_LT_MODE_LOCAL) {
+    metric = _locallinktable->get_link_metric(src, dst);
     if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
+    //if metric is invalid, the reason is maybe less information (no flooding yet,...)
   };
 
-  /* if we don't have the pdr table we prefere linkstats (more precise)*/
-  if (_linkstat) {
-    if (*(_linkstat->_dev->getEtherAddress()) == dst) {
-      metric = _linkstat->get_rev_rate(&src);
-    } else if (*(_linkstat->_dev->getEtherAddress()) == src) {
-      metric = _linkstat->get_fwd_rate(&dst);
+  /* Since _pdrlinktable includes all local links we prefere it */
+  if (_used_mode & FLOODING_LT_MODE_PDR) {
+    metric = _pdrlinktable->get_link_metric(src, dst);
+    if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
+  } else {
+    /* if we don't have the pdr table we prefere linkstats (more precise)*/
+    if (_used_mode & FLOODING_LT_MODE_PDR) {
+      if (_linkstat_addr == dst) {
+        return _linkstat->get_rev_rate(&src);
+      } else if (_linkstat_addr == src) {
+        return _linkstat->get_fwd_rate(&dst);
+      }
     }
   }
 
-  if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric;
-
-  /* Since _pdrlinktable includes all links we prefere it */
-  if ( _pdrlinktable ) {
-    metric = _pdrlinktable->get_link_metric(src, dst);
-    if ( metric != BRN_LT_INVALID_LINK_METRIC ) return metric >> 6;
-  };
-
-  /* but if it is a nonlocal link we try the etxlinktable */
-  if ( _etxlinktable ) {
+  if (_used_mode & FLOODING_LT_MODE_ETX)
     return etx_metric2pdr(_etxlinktable->get_link_metric(src, dst));
-  }
 
   if ( metric == BRN_LT_INVALID_LINK_METRIC) return 0;
 
   return metric;
+}
+
+void
+FloodingLinktable::print_all_metrics(const EtherAddress src, const EtherAddress dst)
+{
+  if (_locallinktable) BRN_DEBUG("LOCAL: %d", _locallinktable->get_link_metric(src, dst));
+  if (_pdrlinktable) BRN_DEBUG("PDR: %d", _pdrlinktable->get_link_metric(src, dst));
+  if (_etxlinktable) BRN_DEBUG("ETX: %d", etx_metric2pdr(_etxlinktable->get_link_metric(src, dst)));
+  if (_linkstat) {
+    if (_linkstat_addr == dst) {
+      BRN_DEBUG("LINKSTATS: %d",_linkstat->get_rev_rate(&src));
+    } else if (_linkstat_addr == src) {
+      BRN_DEBUG("LINKSTATS: %d", _linkstat->get_fwd_rate(&dst));
+    }
+  }
 }
 
 

@@ -588,14 +588,14 @@ FloodingHelper::find_worst(const EtherAddress &src, Vector<EtherAddress> &neighb
 {
   if (neighbors.size() == 0) return -1;
 
-  int w_met = _link_table->get_link_metric(src, neighbors[0]);
+  int w_met = _link_table->get_link_pdr(src, neighbors[0]); // get pdr of first neighbour
   int w_ind = 0;
 
-  for( int i = 1; i < neighbors.size(); i++) { // loop over neighbors
-    int m = _link_table->get_link_metric(src, neighbors[i]);
+  for( int i = 1; i < neighbors.size(); i++) {              // loop over neighbors
+    int m = _link_table->get_link_pdr(src, neighbors[i]);   // get pdr of neighbour
 
-    if ( m > w_met ) {
-      w_met = m;
+    if ( m < w_met ) {                                      // neighbour has lower pdr (worst),...
+      w_met = m;                                            // take him (pdr, index)
       w_ind = i;
     }
   }
@@ -612,13 +612,13 @@ FloodingHelper::find_best(const EtherAddress &src, Vector<EtherAddress> &neighbo
 {
   if (neighbors.size() == 0) return -1;
 
-  int b_met = _link_table->get_link_metric(src, neighbors[0]);
+  int b_met = _link_table->get_link_pdr(src, neighbors[0]);
   int b_ind = 0;
 
-  for( int i = 1; i < neighbors.size(); i++) { // loop over neighbors
-    int m = _link_table->get_link_metric(src, neighbors[i]);
+  for( int i = 1; i < neighbors.size(); i++) {             // loop over neighbors
+    int m = _link_table->get_link_pdr(src, neighbors[i]);
 
-    if ( m < b_met ) {
+    if ( m > b_met ) {                                     // neighbour has better pdr
       b_met = m;
       b_ind = i;
     }
@@ -631,11 +631,11 @@ FloodingHelper::find_best(const EtherAddress &src, Vector<EtherAddress> &neighbo
 bool
 FloodingHelper::is_better_fwd(const EtherAddress &src, const EtherAddress &src2, const EtherAddress &dst, uint32_t min_ratio)
 {
-  int m1 = _link_table->get_link_metric(src, dst);  //default
-  int m2 = _link_table->get_link_metric(src2, dst); //competitor
+  int m1 = _link_table->get_link_pdr(src, dst);  //default
+  int m2 = _link_table->get_link_pdr(src2, dst); //competitor
 
   if ( min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)min_ratio)/100) < m1);
-  if ( _better_link_min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)_better_link_min_ratio)/100) < m1);
+  if ( _better_link_min_ratio != (uint32_t)100 ) return (((m2 * (int32_t)_better_link_min_ratio)/100) > m1);
 
   return (m2 < m1);
 }

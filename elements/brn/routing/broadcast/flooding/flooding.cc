@@ -64,7 +64,6 @@ Flooding::Flooding()
     _flooding_node_info_new_finished_piggyback_resp(0),
     _flooding_node_info_new_finished_passive_src(0),
     _flooding_node_info_new_finished_passive_dst(0),
-
     _flooding_src_new_id(0),
     _flooding_rx_new_id(0),
     _flooding_fwd_new_id(0),
@@ -72,7 +71,6 @@ Flooding::Flooding()
     _flooding_lower_layer_reject(0),
     _abort_tx_mode(0),
     _scheme_array(NULL),
-
     _rd_queue(NULL)
 {
   BRNElement::init();
@@ -103,12 +101,27 @@ Flooding::configure(Vector<String> &conf, ErrorHandler* errh)
   return 0;
 }
 
+/**
+ * @brief func is used to allow other element (passive ack,...) to retransmit a packet using flooding element
+ *
+ * @param e flooding element
+ * @param p bcast packet
+ * @param src src of bcast
+ * @param bcast_id is of bcast
+ * @return int error code
+ */
 static int
 static_retransmit_broadcast(BRNElement *e, Packet *p, EtherAddress *src, uint16_t bcast_id)
 {
   return ((Flooding*)e)->retransmit_broadcast(p, src, bcast_id);
 }
 
+/**
+* @brief init flooding element
+* 
+* @param errh handles errors
+* @return int error code
+*/
 int
 Flooding::initialize(ErrorHandler *errh)
 {
@@ -125,7 +138,14 @@ Flooding::initialize(ErrorHandler *errh)
 }
 
 /**
- *
+ * @brief The Flooding element has several inputs ( and outputs (2)
+ *  Inputs:
+ *   0: From Client and click internal packets (packets to flood)
+ *   1: BRN-Packet, sent by other nodes and received direct (broadcast or as destination)
+ *   2: Feedback failure (incl. broadcast and tx_abort)
+ *   3: Feedback success
+ *   4: passive overhear
+ *   5: low_layer_reject
  * @param port
  * @param packet
  */
@@ -180,6 +200,8 @@ Flooding::push( int port, Packet *packet )
     if ( ! is_local_addr(&src) )
       _flooding_db->add_node_info(&src,(int32_t)_bcast_id, &src, true, true, false, false);  //add src as last hop for src
 
+    // ask policy for init forwarding. this include nodelists for passive ack and forwarder selection (forced fwds)
+
     Vector<EtherAddress> forwarder;
     Vector<EtherAddress> passiveack;
     extra_data_size = BCAST_MAX_EXTRA_DATA_SIZE;
@@ -194,6 +216,7 @@ Flooding::push( int port, Packet *packet )
       }
     }
 
+    // prepare packet, including extra data
     if ( extra_data_size == BCAST_MAX_EXTRA_DATA_SIZE ) extra_data_size = 0;
 
     BRN_DEBUG("Extra Data Init: %d",extra_data_size);
@@ -211,7 +234,7 @@ Flooding::push( int port, Packet *packet )
 
     if ( ttl == 0 ) BRNPacketAnno::set_ttl_anno(packet,DEFAULT_TTL);
 
-    if ( _flooding_passiveack != NULL )                       //passiveack will also handle first transmit
+    if ( _flooding_passiveack != NULL )                   //passiveack will also handle first transmit
       _flooding_passiveack->packet_enqueue(packet, &src, _bcast_id, &passiveack, -1);
     else
       retransmit_broadcast(packet, &src, _bcast_id);      //send packet
@@ -267,7 +290,7 @@ Flooding::push( int port, Packet *packet )
     uint8_t *rxdata = NULL;
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
 
-    FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
+    int abort_reason = FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
 
     /**
      *            A D D   D A T A
@@ -282,11 +305,12 @@ Flooding::push( int port, Packet *packet )
                                                          _last_tx_src_ea.unparse().c_str(),_last_tx_bcast_id);
 
       //TODO: check, whether Piggyback already abort the transmission
-      if ( is_last_tx_id(src, p_bcast_id)) {
-        if ( is_last_tx(fwd, src, p_bcast_id) ) {             //my current target is src
+      if ( is_last_tx_id(src, p_bcast_id)) {                  //i try to forward this id/src too
+        if ( is_last_tx(fwd, src, p_bcast_id) ) {             //my current target is src (my target is the "fwd")
           BRN_DEBUG("current RX node already has the packet");
           abort_last_tx(fwd, FLOODING_TXABORT_REASON_ACKED);
         } else if (_flooding_passiveack->_fhelper->is_better_fwd(*(_me->getMasterAddress()), fwd, _last_tx_dst_ea)) {
+          //the fwd has a better link to my target
           BRN_DEBUG("fwd has better link to current target");
           abort_last_tx(FLOODING_TXABORT_REASON_BETTER_LINK);
         }

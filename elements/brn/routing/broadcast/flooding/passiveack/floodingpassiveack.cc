@@ -81,6 +81,7 @@ FloodingPassiveAck::configure(Vector<String> &conf, ErrorHandler* errh)
       "DEFAULTTIMEOUT", cpkP, cpInteger, &_dfl_timeout,
       "CNTNB2ABORT", cpkP, cpInteger, &_cntbased_min_neighbors_for_abort,
       "ABORTONFINISHED", cpkP, cpBool, &_abort_on_finished,
+      //"RETRIESPERNODE", cpkP, cpBool, &_retries_per_node,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
        return -1;
