@@ -44,6 +44,7 @@ UnicastFlooding::UnicastFlooding():
   _cand_selection_strategy(0),
   _pre_selection_mode(UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED),
   _ucast_peer_metric(0),
+  _ucast_per_node_limit(0),
   _reject_on_empty_cs(true),
   _force_responsibility(false),
   _use_assign_info(false),
@@ -83,6 +84,7 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "STATIC_DST", cpkP, cpEtherAddress, &static_dst_mac,
       "FIXCS", cpkP, cpBool, &_fix_candidate_set,
       "PDRCONFIG", cpkP, cpString, &pdr_config,
+      "UCASTPERNODELIMIT", cpkP, cpInteger, &_ucast_per_node_limit,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -274,6 +276,8 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
     /**
      * all_nodes get all_nodes except last_nodes
+     *
+     * _fix_target_set is true if the broadcast algorith has a fix target set (like mpr or mst)
      */
     if ( ! bcn->_fix_target_set ) {
 
@@ -394,6 +398,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   if ( candidate_set.size() > 1 ) {
     switch (_cand_selection_strategy) {
 
+      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
+        break;
+
       case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
 
         BRN_DEBUG("Send unicast to all neighbours");
@@ -422,6 +429,10 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         next_hop = candidate_set[candidate_set.size()-1];
         break;
 
+      case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
+        next_hop = candidate_set[_fhelper->find_best(*me, candidate_set)];
+        break;
+
       case UNICAST_FLOODING_TAKE_WORST:     // take node with lowest link quality
         next_hop = candidate_set[_fhelper->find_worst(*me, candidate_set)];
         break;
@@ -430,15 +441,12 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
         next_hop = algorithm_most_neighbours(candidate_set, 2);
         break;
 
-      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
-        break;
-
-      case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
-        next_hop = candidate_set[_fhelper->find_best(*me, candidate_set)];
-        break;
-
       case UNICAST_FLOODING_PRIO_LOW_BENEFIT:                           //
         next_hop = algorithm_less_neighbours(candidate_set, 2);
+        break;
+
+      case UNICAST_FLOODING_RANDOM:                                     //
+        next_hop = candidate_set[click_random() % candidate_set.size()];
         break;
 
       default:
@@ -535,6 +543,8 @@ UnicastFlooding::algorithm_neighbours(Vector<EtherAddress> &neighbors, int hops,
     //Estimate size etc...
 
     /**
+     * TODO: B1.1 & B1.2: warum nur durch grösse der einhap nachbarschaft teilen und nicht 2 hop?
+     *
      * B1.1. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | nb(c) n nb(x) |
      * B1.2. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | (nb(nb(c)) u nb(c)) n nb(x) |
      * B1.3. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) |

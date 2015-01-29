@@ -76,7 +76,7 @@ class BroadcastNode
 
   Timestamp _last_id_time;           //timeout for hole queue TODO: remove since its deprecated
 
-  //stats for last node of one packet
+  //stats for one node of one packet
   struct flooding_node_info {
     uint8_t etheraddr[6];
 
@@ -102,6 +102,9 @@ class BroadcastNode
 #define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY 64
 
 #define FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET     128
+
+    uint8_t tx_unicast_count;
+    uint8_t reserved;
   };
 
 
@@ -283,7 +286,7 @@ class BroadcastNode
      * Node not found, so add new_list
      */
     memcpy(flni[flni_s].etheraddr, node->data(),6);
-    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].tx_count = flni[flni_s].flags = 0;
+    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].tx_count = flni[flni_s].flags = flni[flni_s].tx_unicast_count= 0;
 
     _flooding_node_info_list_size[index]++;
     *new_index = _flooding_node_info_list_size[index]; //after inc to avoid return of 0 for the first node
@@ -329,8 +332,7 @@ class BroadcastNode
                 } else if ((fln->flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0) {       //its finished for foreign but not
                                                                                           //finished, since i'm responsible
                   fln->flags |= FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY;    //set guess foreign resp
-                                                                                          //TODO: if no packet sent yet, we can remove our 
-                                                                                          //responsibility
+                  /* if no packet sent yet, we can remove our responsibility. this is done after packet abort (queue or mac) */
                 }
         }
       }
@@ -567,6 +569,11 @@ class BroadcastNode
 
     return fln->rx_probability;
   }
+
+  /**
+   * Probability
+   */
+
 };
 
 typedef HashMap<EtherAddress, BroadcastNode*> BcastNodeMap;
