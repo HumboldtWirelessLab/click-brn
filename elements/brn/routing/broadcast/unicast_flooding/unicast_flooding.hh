@@ -54,53 +54,25 @@ CLICK_DECLS
 #define UNICAST_FLOODING_PRESELECTION_CHILD_ONLY        2
 
 #define UNICAST_FLOODING_NO_REWRITE              0
-#define UNICAST_FLOODING_STATIC_REWRITE          1
-#define UNICAST_FLOODING_ALL_UNICAST             2
-#define UNICAST_FLOODING_TAKE_WORST              3
-#define UNICAST_FLOODING_MOST_NEIGHBOURS         4
-#define UNICAST_FLOODING_BCAST_WITH_PRECHECK     5
-#define UNICAST_FLOODING_TAKE_BEST               6
+#define UNICAST_FLOODING_BCAST_WITH_PRECHECK     1
+#define UNICAST_FLOODING_STATIC_REWRITE          2
+#define UNICAST_FLOODING_ALL_UNICAST             3
+#define UNICAST_FLOODING_TAKE_BEST               4
+#define UNICAST_FLOODING_TAKE_WORST              5
+#define UNICAST_FLOODING_MOST_NEIGHBOURS         6
 #define UNICAST_FLOODING_PRIO_LOW_BENEFIT        7
+#define UNICAST_FLOODING_RANDOM                  8
 
-
-#define UNICAST_FLOODING_STATS_TARGET_SIZE 16
+#define UNICAST_FLOODING_STATS_TARGET_SIZE       8
 
 #define UNICAST_FLOODING_DIJKSTRA_PDR          112
 
 class UnicastFlooding : public BRNElement {
  public:
 
-  class UnicastRewrite {
-    struct rewrite_target {
-      uint8_t  ea[6];
-      uint16_t count;
-    };
-
-    uint16_t *id_list;
-    struct rewrite_target **target_list;
-    uint16_t *target_list_size;
-    uint16_t *target_list_max_size;
-
-    UnicastRewrite() {
-      id_list = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      target_list = new struct rewrite_target*[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      target_list_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      target_list_max_size = new uint16_t[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-
-      memset(id_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
-      memset(target_list,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(struct rewrite_target));
-      memset(target_list_size,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
-      memset(target_list_max_size,0,DEFAULT_MAX_BCAST_ID_QUEUE_SIZE * sizeof(uint16_t));
-    }
-  };
-
   typedef HashMap<EtherAddress, uint32_t> TargetRewriteCntMap;
   typedef TargetRewriteCntMap::const_iterator TargetRewriteCntMapIter;
 
-  typedef HashMap<EtherAddress, UnicastRewrite*> TargetRewriteMap;
-  typedef TargetRewriteMap::const_iterator TargetRewriteMapIter;
-
- public:
   //
   //methods
   //
@@ -122,7 +94,6 @@ class UnicastFlooding : public BRNElement {
   Packet *pull(int);
   Packet *smaction(Packet *p_in, bool is_push);
 
-
   int initialize(ErrorHandler *);
   void uninitialize();
   void add_handlers();
@@ -141,6 +112,7 @@ class UnicastFlooding : public BRNElement {
   int _cand_selection_strategy;        // the way we choose the candidate for unicast forwarding
   uint32_t _pre_selection_mode;
   uint32_t _ucast_peer_metric;
+  uint32_t _ucast_per_node_limit;
   bool _reject_on_empty_cs;
   EtherAddress static_dst_mac;
 

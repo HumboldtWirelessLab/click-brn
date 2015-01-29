@@ -293,9 +293,11 @@ Flooding::push( int port, Packet *packet )
     int abort_reason = FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
 
     /**
-     *            A D D   D A T A
+     *            A B O R T
      *
-     * -inc received
+     * mac abort
+     * 
+     * TODO: why abort here -> merge with queue abort
      */
 
     if ( is_known ) {
@@ -317,6 +319,11 @@ Flooding::push( int port, Packet *packet )
       }
     }
 
+    /**
+     *            A D D   D A T A
+     *
+     * -inc received
+     */
     BRN_DEBUG("Src: %s fwd: %s rxnode: %s Header: %d", src.unparse().c_str(), fwd.unparse().c_str(), rx_node.unparse().c_str(),
                                                        (uint32_t)(bcast_header->flags & BCAST_HEADER_FLAGS_FORCE_DST));
 
@@ -443,6 +450,8 @@ Flooding::push( int port, Packet *packet )
         _tx_aborts++;
         _flooding_passiveack->handle_feedback_packet(BRNProtocol::pull_brn_header(queue_packet),
                                                      &src, p_bcast_id, false, true, 0);
+
+        //TODO: clear_responsibility_target if sent == 0
       }
     }
 
