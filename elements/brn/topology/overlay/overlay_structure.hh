@@ -71,6 +71,8 @@ class OverlayStructure : public BRNElement {
   Vector <EtherAddress>* getParents(EtherAddress* node); //returns parents of the node specified in node; return 0 if node is not known
   Vector <EtherAddress>* getChildren(EtherAddress* node); //returns children of the node specified in node; return 0 if node is not known
 
+  String stats();
+
   String printOwnParents();
   String printOwnChildren();
   String printParents(const EtherAddress* add, const Vector<EtherAddress> *par);

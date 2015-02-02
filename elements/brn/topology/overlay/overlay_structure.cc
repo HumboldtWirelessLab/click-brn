@@ -84,7 +84,7 @@ OverlayStructure::read_overlay_from_file(String path) {
   EtherAddress first = EtherAddress::make_broadcast();
   int i=0;
 
-  //click_chatter("Size: %d",_data_vec.size());
+  click_chatter("Size: %d",_data_vec.size());
 
   cp_ethernet_address(_data_vec[_data_vec.size()-1],&act); //read last int. if it is broadcast than its a circle file
 
@@ -259,6 +259,28 @@ Vector <EtherAddress>* OverlayStructure::getChildren(EtherAddress* node) {
 	return n_children.findp(*node);
 }
 
+String OverlayStructure::stats() {
+    StringAccum sa;
+    sa << "<overlaystructure node=\"" << BRN_NODE_NAME << "\">\n";
+
+    sa << "\t<parents count=\"" << parents.size() << "\" >\n";
+    for (Vector<EtherAddress>::iterator i=parents.begin();i!=parents.end();++i) {
+        sa << "\t\t<parent name=\"" << i->unparse() << "\"/>\n";
+    }
+    sa << "\t</parents>\n";
+
+    sa << "\t<childrens count=\"" << children.size() << "\" >\n";
+    for (Vector<EtherAddress>::iterator i=children.begin();i!=children.end();++i) {
+        sa << "\t\t<children name=\"" << i->unparse() << "\"/>\n";
+    }
+    sa << "\t</childrens>\n";
+
+    sa << "</overlaystructure>\n";
+
+    return sa.take_string();
+}
+
+
 String OverlayStructure::printOwnParents() {
 	StringAccum sa;
 	sa << "<parents node=\"" << BRN_NODE_NAME << "\">\n";
@@ -334,8 +356,15 @@ String OverlayStructure::printPre() {
 
 enum {
   H_INFO,
-  H_DEBUG
+  H_DEBUG,
+  H_STATS
 };
+
+static String read_stats(Element *e, void */*thunk*/)
+{
+  OverlayStructure *ovl = (OverlayStructure *)e;
+  return ovl->stats();
+}
 
 static int add_own_parent (const String &in_s, Element *element, void */*thunk*/, ErrorHandler */*errh*/)
 {
@@ -510,6 +539,7 @@ read_own_parents(Element *e, void */*thunk*/)
 {
   OverlayStructure *ovl = (OverlayStructure *)e;
   return ovl->printOwnParents();
+;
 }
 
 static String
@@ -542,21 +572,24 @@ read_pre(Element *e, void */*thunk*/)
 
 void OverlayStructure::add_handlers()
 {
-  add_write_handler("add_own_parent", add_own_parent , (void *) H_DEBUG);
-  add_write_handler("add_own_child", add_own_child , (void *) H_DEBUG);
-  add_write_handler("add_parent", add_parent , (void *) H_DEBUG);
-  add_write_handler("add_child", add_child , (void *) H_DEBUG);
-  add_write_handler("remove_own_parent", remove_own_parent , (void *) H_DEBUG);
-  add_write_handler("remove_own_child", remove_own_child , (void *) H_DEBUG);
-  add_write_handler("remove_parent", remove_parent , (void *) H_DEBUG);
-  add_write_handler("remove_child", remove_child , (void *) H_DEBUG);
-  add_write_handler("set_pre", set_pre , (void *) H_DEBUG);
-  add_write_handler("reset", reset_all , (void *) H_DEBUG);
-  add_read_handler("read_own_parents", read_own_parents , (void *)H_INFO);
-  add_read_handler("read_own_children", read_own_children , (void *)H_INFO);
-  add_read_handler("read_all_parents", read_all_parents , (void *)H_INFO);
-  add_read_handler("read_all_children", read_all_children , (void *)H_INFO);
+  add_write_handler("add_own_parent", add_own_parent , (void *)0);
+  add_write_handler("add_own_child", add_own_child , (void *)0);
+  add_write_handler("add_parent", add_parent , (void *)0);
+  add_write_handler("add_child", add_child , (void *)0);
+  add_write_handler("remove_own_parent", remove_own_parent , (void *)0);
+  add_write_handler("remove_own_child", remove_own_child , (void *)0);
+  add_write_handler("remove_parent", remove_parent , (void *)0);
+  add_write_handler("remove_child", remove_child , (void *)0);
+  add_write_handler("set_pre", set_pre , (void *)0);
+  add_write_handler("reset", reset_all , (void *)0);
+  add_read_handler("read_own_parents", read_own_parents , (void *)0);
+  add_read_handler("read_own_children", read_own_children , (void *)0);
+  add_read_handler("read_all_parents", read_all_parents , (void *)0);
+  add_read_handler("read_all_children", read_all_children , (void *)0);
   add_read_handler("read_pre",read_pre, (void *)H_INFO);
+
+  add_read_handler("stats", read_stats, (void *)H_STATS);
+
 }
 
 CLICK_ENDDECLS
