@@ -84,7 +84,7 @@ OverlayStructure::read_overlay_from_file(String path) {
   EtherAddress first = EtherAddress::make_broadcast();
   int i=0;
 
-  click_chatter("Size: %d",_data_vec.size());
+  //click_chatter("Size: %d",_data_vec.size());
 
   cp_ethernet_address(_data_vec[_data_vec.size()-1],&act); //read last int. if it is broadcast than its a circle file
 
