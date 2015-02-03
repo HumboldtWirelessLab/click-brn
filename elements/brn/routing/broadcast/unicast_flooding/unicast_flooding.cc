@@ -118,8 +118,6 @@ UnicastFlooding::initialize(ErrorHandler *)
 
   last_unicast_used = EtherAddress::make_broadcast();
 
-  all_unicast_pkt_queue.clear();
-
   return 0;
 }
 
@@ -150,15 +148,10 @@ UnicastFlooding::pull(int)
 {
   Packet *p = NULL;
 
-  if ( all_unicast_pkt_queue.size() > 0 ) {                          //first take packets from packet queue
-    p = all_unicast_pkt_queue[0];                                    //take first
-    all_unicast_pkt_queue.erase(all_unicast_pkt_queue.begin());      //clear
-  } else {
-    do {
-      if ((p = input(0).pull()) == NULL) break;  //no packet from upper layer, so finished
-      p = smaction(p, false);                    //handle new packet
-    } while (p == NULL);                         //repeat 'til we have a packet for lower layer
-  }
+  do {
+    if ((p = input(0).pull()) == NULL) break;  //no packet from upper layer, so finished
+    p = smaction(p, false);                    //handle new packet
+  } while (p == NULL);                         //repeat 'til we have a packet for lower layer
 
   if ( p != NULL ) {
     BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
@@ -179,7 +172,7 @@ UnicastFlooding::pull(int)
  *
  */
 Packet *
-UnicastFlooding::smaction(Packet *p_in, bool is_push)
+UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
 {
   // next hop must be a broadcast
   EtherAddress next_hop = BRNPacketAnno::dst_ether_anno(p_in);
@@ -201,6 +194,9 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
   uint16_t assigned_nodes = 0;
 
   BroadcastNode *bcn = _flooding_db->get_broadcast_node(&src);
+
+   int min_tx_count;
+   int min_tx_count_index;
 
   /* check wether bcn-pkt mark as stopped (txabort) */
   if ( bcn->is_stopped(bcast_id) ) {
@@ -405,28 +401,17 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
         BRN_DEBUG("Send unicast to all neighbours");
 
-        //Set responseflag before copy (speedup ;) )
-        if (_force_responsibility) bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
+        min_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[0]);
+        min_tx_count_index = 0;
 
-        for ( int i = 0; i < candidate_set.size()-1; i++) {
-          Packet *p_copy = p_in->clone()->uniqueify();
-
-          BRNPacketAnno::set_dst_ether_anno(p_copy, candidate_set[i]);
-
-          if ( src != *me ) _flooding->_flooding_fwd++;
-          //TODO: inc src_fwd if i'm src of packet? 
-
-          _flooding_db->forward_attempt(&src, bcast_id);
-
-          add_rewrite(&src, bcast_id, &candidate_set[i]);
-
-          if (_force_responsibility) _flooding_db->set_responsibility_target(&src, bcast_id, &candidate_set[i]);
-
-          if (is_push) output(0).push(p_copy);           //push element: push all packets
-          else all_unicast_pkt_queue.push_back(p_copy);  //pull element: store packets for next pull
+        for ( int i = 1; i < candidate_set.size()-1; i++) {
+          int node_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[i]);
+          if (node_tx_count < min_tx_count) {
+            min_tx_count = node_tx_count;
+            min_tx_count_index = i;
+          }
         }
-
-        next_hop = candidate_set[candidate_set.size()-1];
+        next_hop = candidate_set[min_tx_count_index];
         break;
 
       case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
@@ -452,8 +437,10 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       default:
         BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
     }
-  } else if ((candidate_set.size() == 1) && (_cand_selection_strategy != UNICAST_FLOODING_BCAST_WITH_PRECHECK))
-           next_hop = candidate_set[0];
+  } else {
+    if ((candidate_set.size() == 1) && (_cand_selection_strategy != UNICAST_FLOODING_BCAST_WITH_PRECHECK))
+      next_hop = candidate_set[0];
+  }
 
   if ( next_hop.is_broadcast() ) {
     _cnt_bcasts++;
@@ -461,11 +448,14 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
     //TODO: clear assign nodes? or wait with clear until no nodes is left?
     BRNPacketAnno::set_dst_ether_anno(p_in, next_hop);
     last_unicast_used = next_hop;
+
     BRN_DEBUG("* UnicastFlooding: Destination address rewrote to %s", next_hop.unparse().c_str());
     _cnt_rewrites++;
 
+    _flooding_db->inc_unicast_tx_count(&src, ntohs(bcast_header->bcast_id), &next_hop);
+
     if (_force_responsibility) {
-      _flooding_db->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop); 
+      _flooding_db->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop);
       bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
     }
   }

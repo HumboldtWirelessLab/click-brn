@@ -83,7 +83,7 @@ class BroadcastNode
     uint8_t rx_probability;
     uint8_t received_cnt;
 
-    uint8_t tx_count;
+    uint8_t tx_count; //number of transmission by this node. this info is distributed by the node itself
     uint8_t flags;
 
 #define FLOODING_NODE_INFO_FLAGS_FORWARDED                    1
@@ -103,7 +103,7 @@ class BroadcastNode
 
 #define FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET     128
 
-    uint8_t tx_unicast_count;
+    uint8_t tx_unicast_count; //number of unicast transmission (no mac reties!!) to this node (set by floodunicast)
     uint8_t reserved;
   };
 
@@ -549,6 +549,18 @@ class BroadcastNode
     return ((ln->flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET)!=0);
   }
 
+  inline void inc_unicast_tx_count(uint16_t id, EtherAddress *last) {
+    struct flooding_node_info *fln = get_node_info(id, last);
+    if ( fln != NULL ) fln->tx_unicast_count++;
+  }
+
+  inline int get_unicast_tx_count(uint16_t id, EtherAddress *last) {
+    struct flooding_node_info *fln = get_node_info(id, last);
+    assert(fln != NULL);
+
+    return fln->tx_unicast_count;
+  }
+
   /**
    * Probability
    */
@@ -629,6 +641,8 @@ class FloodingDB : public BRNElement {
    * @return void
    */
   void set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, uint8_t tx_count);
+  void inc_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last);
+  int get_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last);
 
   struct BroadcastNode::flooding_node_info* get_node_infos(EtherAddress *src, uint16_t id, uint32_t *size);
   struct BroadcastNode::flooding_node_info* get_node_info(EtherAddress *src, uint16_t id, EtherAddress *last);
