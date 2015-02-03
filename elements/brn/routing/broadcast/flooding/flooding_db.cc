@@ -220,6 +220,23 @@ FloodingDB::set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress 
   bcn->set_tx_count_last_node(id, last_node, tx_count);
 }
 
+void
+FloodingDB::inc_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last_node)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  assert(bcn != NULL);
+
+  bcn->inc_unicast_tx_count(id, last_node);
+}
+
+int
+FloodingDB::get_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last)
+{
+  BroadcastNode *bcn = _bcast_map.find(*src);
+  assert(bcn != NULL);
+
+  return bcn->get_unicast_tx_count(id, last);
+}
 
 bool
 FloodingDB::me_src(EtherAddress *src, uint16_t id)
@@ -340,7 +357,9 @@ FloodingDB::table()
         sa << "\" guess_foreign_responsible=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY) == 0)?0:1);
         sa << "\" rx_acked=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)?0:1);
         sa << "\" rcv_cnt=\"" << (uint32_t)(flnl[j].received_cnt);
-        sa << "\" unicast_target=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET) == 0)?0:1) << "\" />\n";
+        sa << "\" unicast_target=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET) == 0)?0:1);
+        sa << "\" rx_probability=\"" << (uint32_t)(flnl[j].rx_probability) << "\" tx_count=\"" << (uint32_t)(flnl[j].tx_count);
+        sa << "\" tx_unicast=\"" <<  (uint32_t)(flnl[j].tx_unicast_count) << "\" />\n";
       }
 
       sa << "\t\t</id>\n";

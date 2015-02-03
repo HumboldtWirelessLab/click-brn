@@ -98,7 +98,7 @@ class UnicastFlooding : public BRNElement {
   void uninitialize();
   void add_handlers();
 
- public: 
+ public:
   //
   //member
   //
@@ -149,8 +149,6 @@ class UnicastFlooding : public BRNElement {
   uint32_t _cnt_reject_on_empty_cs;
 
   TargetRewriteCntMap rewrite_cnt_map;
-
-  Vector<Packet*> all_unicast_pkt_queue;
 
   EtherAddress _last_tx_dst_ea;
   EtherAddress _last_tx_src_ea;
