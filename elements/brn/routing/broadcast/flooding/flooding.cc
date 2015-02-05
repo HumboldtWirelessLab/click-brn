@@ -578,11 +578,18 @@ Flooding::push( int port, Packet *packet )
       }
     }
 
+    /**
+     * TODO: for speedup use bcn for the next lines !!
+     **/
     bool success = ((port == 3) && (!rx_node.is_broadcast()));
 
     _flooding_db->forward_done(&src, p_bcast_id, success);
     _flooding_sent += no_transmissions;
     _flooding_db->sent(&src, p_bcast_id, no_transmissions, no_rts_transmissions);
+
+    //if it was an unicast transmission with at least one transmission, than inc number of ucast transmission (net layer)
+    if ( (no_transmissions > 0) && (!rx_node.is_broadcast())) {
+      _flooding_db->inc_unicast_tx_count(&src, p_bcast_id, &rx_node);
 
     if ( success ) {    //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");

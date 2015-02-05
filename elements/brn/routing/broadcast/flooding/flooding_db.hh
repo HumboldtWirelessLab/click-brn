@@ -83,7 +83,8 @@ class BroadcastNode
     uint8_t rx_probability;
     uint8_t received_cnt;
 
-    uint8_t tx_count; //number of transmission by this node. this info is distributed by the node itself
+    uint8_t tx_unicast_count; //number of unicast transmission (no mac reties!!) to this node (set by floodunicast)
+
     uint8_t flags;
 
 #define FLOODING_NODE_INFO_FLAGS_FORWARDED                    1
@@ -102,9 +103,6 @@ class BroadcastNode
 #define FLOODING_NODE_INFO_FLAGS_GUESS_FOREIGN_RESPONSIBILITY 64
 
 #define FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET     128
-
-    uint8_t tx_unicast_count; //number of unicast transmission (no mac reties!!) to this node (set by floodunicast)
-    uint8_t reserved;
   };
 
 
@@ -286,7 +284,7 @@ class BroadcastNode
      * Node not found, so add new_list
      */
     memcpy(flni[flni_s].etheraddr, node->data(),6);
-    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].tx_count = flni[flni_s].flags = flni[flni_s].tx_unicast_count= 0;
+    flni[flni_s].received_cnt = flni[flni_s].rx_probability = flni[flni_s].flags = flni[flni_s].tx_unicast_count= 0;
 
     _flooding_node_info_list_size[index]++;
     *new_index = _flooding_node_info_list_size[index]; //after inc to avoid return of 0 for the first node
@@ -399,11 +397,6 @@ class BroadcastNode
 
     if ( new_index ) return FLOODING_NODE_INFO_RESULT_IS_NEW;
     return 0;
-  }
-
-  inline void set_tx_count_last_node(uint16_t id, EtherAddress *last, uint8_t tx_count) {
-    struct flooding_node_info *fln = get_node_info(id, last);
-    if ( fln != NULL ) fln->tx_count = tx_count;
   }
 
   /**
@@ -640,7 +633,6 @@ class FloodingDB : public BRNElement {
    * @param tx_count number of transmission by last_node
    * @return void
    */
-  void set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, uint8_t tx_count);
   void inc_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last);
   int get_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last);
 
