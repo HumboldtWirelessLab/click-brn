@@ -33,7 +33,6 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "flooding_db.hh"
-#include "../../identity/brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
@@ -211,16 +210,6 @@ FloodingDB::sent(EtherAddress *src, uint16_t id, uint32_t no_transmission, uint3
 }
 
 void
-FloodingDB::set_tx_count_last_node(EtherAddress *src, uint16_t id, EtherAddress *last_node, uint8_t tx_count)
-{
-  BroadcastNode *bcn = _bcast_map.find(*src);
-
-  if ( bcn == NULL ) return;
-
-  bcn->set_tx_count_last_node(id, last_node, tx_count);
-}
-
-void
 FloodingDB::inc_unicast_tx_count(EtherAddress *src, uint16_t id, EtherAddress *last_node)
 {
   BroadcastNode *bcn = _bcast_map.find(*src);
@@ -358,7 +347,7 @@ FloodingDB::table()
         sa << "\" rx_acked=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)?0:1);
         sa << "\" rcv_cnt=\"" << (uint32_t)(flnl[j].received_cnt);
         sa << "\" unicast_target=\"" << (uint32_t)(((flnl[j].flags & FLOODING_NODE_INFO_FLAGS_NODE_WAS_UNICAST_TARGET) == 0)?0:1);
-        sa << "\" rx_probability=\"" << (uint32_t)(flnl[j].rx_probability) << "\" tx_count=\"" << (uint32_t)(flnl[j].tx_count);
+        sa << "\" rx_probability=\"" << (uint32_t)(flnl[j].rx_probability);
         sa << "\" tx_unicast=\"" <<  (uint32_t)(flnl[j].tx_unicast_count) << "\" />\n";
       }
 

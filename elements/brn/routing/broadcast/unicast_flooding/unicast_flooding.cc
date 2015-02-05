@@ -452,8 +452,6 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
     BRN_DEBUG("* UnicastFlooding: Destination address rewrote to %s", next_hop.unparse().c_str());
     _cnt_rewrites++;
 
-    _flooding_db->inc_unicast_tx_count(&src, ntohs(bcast_header->bcast_id), &next_hop);
-
     if (_force_responsibility) {
       _flooding_db->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop);
       bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
