@@ -290,7 +290,7 @@ Flooding::push( int port, Packet *packet )
     uint8_t *rxdata = NULL;
     if ( rxdatasize > 0 ) rxdata = (uint8_t*)&(bcast_header[1]); 
 
-    int abort_reason = FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
+    /*int abort_reason = */FloodingPiggyback::bcast_header_get_node_infos(this, _flooding_db, &src, p_bcast_id, rxdata, rxdatasize);
 
     /**
      *            A B O R T
@@ -590,6 +590,7 @@ Flooding::push( int port, Packet *packet )
     //if it was an unicast transmission with at least one transmission, than inc number of ucast transmission (net layer)
     if ( (no_transmissions > 0) && (!rx_node.is_broadcast())) {
       _flooding_db->inc_unicast_tx_count(&src, p_bcast_id, &rx_node);
+    }
 
     if ( success ) {    //txfeedback success
       BRN_DEBUG("Flooding: TXFeedback success\n");
