@@ -456,7 +456,7 @@ write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh
   uint32_t power;
 
   if (!cp_integer(s, &power))
-   return errh->error("channel parameter must be integer");
+   return errh->error("power parameter must be integer");
 
   f->set_power_iwconfig(power, errh);
 
