@@ -140,7 +140,7 @@ SetTXPowerRate::handle_packet(int port, Packet *p)
    case 1:                                        // TXFEEDBACK
         {
           if (!dst.is_group()) {
-            dsti = getDstInfo(dst);  //dst of packet is other node (txfeedback)
+            dsti = getDstInfo(dst);               //dst of packet is other node (txfeedback)
 
             update_stats(&rs_pkt_info, dsti);
 
