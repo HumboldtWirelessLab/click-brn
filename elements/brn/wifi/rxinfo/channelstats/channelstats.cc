@@ -408,7 +408,7 @@ ChannelStats::push(int port, Packet *p)
         _rssiinfo_sum.add(ceh->rate,is_ht_rate,rssi);
 
         bool has_ext_rx_status = BrnWifi::hasExtRxStatus(ceh);
-        struct brn_click_wifi_extra_rx_status *ext_rx_status;
+        struct brn_click_wifi_extra_rx_status *ext_rx_status = NULL;
 
         if ( has_ext_rx_status ) {
           ext_rx_status = (struct brn_click_wifi_extra_rx_status *)BRNPacketAnno::get_brn_wifi_extra_rx_status_anno(p);
