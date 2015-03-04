@@ -463,7 +463,8 @@ ChannelStats::push(int port, Packet *p)
               }
               _small_stats_src_tab[_current_small_stats].insert(src, src_info);         //insert tab
             } else {
-                (*src_info_p)->add_packet_info(rssi,p_length + 4, duration, w->i_dur, seq);
+                src_info = *src_info_p;
+                src_info->add_packet_info(rssi,p_length + 4, duration, w->i_dur, seq);
             }
 
             if (has_ext_rx_status) src_info->add_ctl_ext_rssi(ext_rx_status);
