@@ -122,36 +122,45 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
   if ( t == NULL ) BRN_ERROR("Timer is NULL");
 
-  Timestamp now = Timestamp::now();
-  int active_flows = 0;
+  Timestamp now;
+  int active_flows;
+  int schedule_next_result;
 
-  for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
-    BRN2SimpleFlow::Flow *fl = fm.value();
+  do {
+    now = Timestamp::now();
+    active_flows = 0;
+    schedule_next_result = SIMPLEFLOW_SCHEDULE_NEXT_NONE;
 
-    BRN_DEBUG("Flow: Start: %s End: %s Active: %d Duration: %d",fl->_start_time.unparse().c_str(), fl->_end_time.unparse().c_str(), fl->_active?1:0,fl->_duration );
+    for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
+        BRN2SimpleFlow::Flow *fl = fm.value();
 
-    BRN_DEBUG("Flow: Time to start: %d", (fl->_start_time-now).msecval());
-    BRN_DEBUG("Flow: Time to end: %d", (fl->_end_time-now).msecval());
+        BRN_DEBUG("Flow: Start: %s End: %s Active: %d Duration: %d",fl->_start_time.unparse().c_str(), fl->_end_time.unparse().c_str(), fl->_active?1:0,fl->_duration );
 
-    if ( (fl->_end_time-now).msecval() <= 0 ) {
-      BRN_DEBUG("deactive flow");
-      fl->_active = false;                      //TODO: check earlier
-      continue;                                 //finished flow. so take next!!
+        BRN_DEBUG("Flow: Time to start: %d", (fl->_start_time-now).msecval());
+        BRN_DEBUG("Flow: Time to end: %d", (fl->_end_time-now).msecval());
+
+        if ( (fl->_end_time-now).msecval() <= 0 ) {
+        BRN_DEBUG("deactive flow");
+        fl->_active = false;                      //TODO: check earlier
+        continue;                                 //finished flow. so take next!!
+        }
+
+        if ( !fl->_active ) {
+        if ( (now - fl->_start_time).msecval() >= 0 ) fl->_active = true; //start is in the past: flow is active
+        else continue;                                                    //start is in the future
+        } else {
+        if ( fl->_interval == 0 ) continue;                               //interval = 0 -> packet send on feedback
+        }
+
+        active_flows++;
+
+        send_packets_for_flow(fl);
     }
 
-    if ( !fl->_active ) {
-      if ( (now - fl->_start_time).msecval() >= 0 ) fl->_active = true; //start is in the past: flow is active
-      else continue;                                                    //start is in the future
-    } else {
-      if ( fl->_interval == 0 ) continue;                               //interval = 0 -> packet send on feedback
+    if ( active_flows != 0 ) {
+      schedule_next_result = schedule_next();
     }
-
-    active_flows++;
-
-    send_packets_for_flow(fl);
-  }
-
-  if ( active_flows != 0 ) schedule_next();
+  } while((active_flows != 0) && (schedule_next_result == SIMPLEFLOW_SCHEDULE_NEXT_IMMEDITIATELY));
 
 }
 
@@ -213,7 +222,7 @@ BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
   }
 }
 
-void
+int
 BRN2SimpleFlow::schedule_next()
 {
   int shortest_next_time = -1;
@@ -241,6 +250,9 @@ BRN2SimpleFlow::schedule_next()
       BRN_DEBUG("Next Time: %d", next_time);
     }
 
+    //if sending the packets takes too long or is interrupted by other task, it is maybe necessary to schedule next paket immeditiately
+    if ( next_time < 0 ) return SIMPLEFLOW_SCHEDULE_NEXT_IMMEDITIATELY;
+
     if ( (shortest_next_time == -1) || ( next_time < shortest_next_time ) ) {
       shortest_next_time = next_time;
     }
@@ -259,7 +271,11 @@ BRN2SimpleFlow::schedule_next()
     }
 
     BRN_DEBUG("Timer is new scheduled at %s",_timer.expiry().unparse().c_str());
+
+    return SIMPLEFLOW_SCHEDULE_NEXT_OK;
   }
+
+  return SIMPLEFLOW_SCHEDULE_NEXT_NONE;
 }
 
 void

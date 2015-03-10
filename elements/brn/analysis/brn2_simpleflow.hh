@@ -253,6 +253,10 @@ class BRN2SimpleFlow : public BRNElement
 
   };
 
+#define SIMPLEFLOW_SCHEDULE_NEXT_NONE            0
+#define SIMPLEFLOW_SCHEDULE_NEXT_OK              1
+#define SIMPLEFLOW_SCHEDULE_NEXT_IMMEDITIATELY   2
+
     Timer _timer;
 
     typedef HashMap<FlowID, Flow*> FlowMap;
@@ -286,7 +290,7 @@ class BRN2SimpleFlow : public BRNElement
 
     void set_active(Flow *f, bool active);
     bool is_active(Flow *f);
-    void schedule_next();
+    int schedule_next();
 
     void add_flow(EtherAddress src, EtherAddress dst,
                   uint32_t size, uint32_t mode,
