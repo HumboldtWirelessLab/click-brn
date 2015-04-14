@@ -247,8 +247,12 @@ class BrnAvailableRates : public BRNElement { public:
   Vector<MCS> _default_rates;
   Timestamp _settime;
 
-  //HashMap<MCS> _default_rates_map;
+  int set_default_rates(Vector<MCS> rates);
 
+  uint16_t _max_txpower;
+
+  uint16_t get_max_txpower();
+  void set_max_txpower(uint16_t p);
 };
 
 CLICK_ENDDECLS

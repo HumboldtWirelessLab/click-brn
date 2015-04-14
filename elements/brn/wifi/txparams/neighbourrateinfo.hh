@@ -19,9 +19,9 @@ class NeighbourRateInfo {
     Vector<MCS> _rates;     // contains rates already devided by 10
 
     uint8_t _max_power;
-    uint8_t _power;
 
     void *_rs_data;         // pointer which can be used for the rateselection
+    void *_pc_data;         // pointer which can be used for the powercontrol
 
     static int _debug;
 

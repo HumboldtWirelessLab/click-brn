@@ -29,8 +29,8 @@ NeighbourRateInfo::NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_
   _eth = eth;
   _rates = rates;
   _max_power = max_power;
-  _power = max_power;
   _rs_data = NULL;
+  _pc_data = NULL;
 
   init_stamp = Timestamp::now();
 

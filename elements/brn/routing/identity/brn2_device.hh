@@ -10,6 +10,12 @@
 
 #include "elements/brn/brnelement.hh"
 
+#include "elements/brn/wifi/config/wificonfig.hh"
+
+#include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/availablechannels.hh"
+
+
 CLICK_DECLS
 
 /*
@@ -81,11 +87,10 @@ class BRN2Device : public BRNElement {
     inline bool allow_broadcast() { return _allow_broadcast; }
     inline void set_allow_broadcast(bool allow_bcast) { _allow_broadcast = allow_bcast; }
 
-    inline uint8_t getChannel() { return _channel; }
     inline void setChannel(uint8_t c) { _channel = c; }
+    inline uint8_t getChannel() { return _channel; }
 
-    int set_power_iwconfig(int power, ErrorHandler *errh);
-
+    int set_power(int power, ErrorHandler *errh);
     inline uint16_t get_power() { return _power;}
 
     String device_info();
@@ -125,9 +130,9 @@ class BRN2Device : public BRNElement {
      *
      */
 
-    /** QueueCtrl */
     uint8_t _channel;
 
+    /** QueueCtrl */
     uint8_t _no_queues; //number of queues
     uint32_t *_cwmin;   //Contention Window Minimum; Array (see: monitor)
     uint32_t *_cwmax;   //Contention Window Maximum; Array (see:monitor)
@@ -136,10 +141,17 @@ class BRN2Device : public BRNElement {
 
     uint16_t _power;
 
+    String _wireless_device_config_string;
+    BrnAvailableRates *_wireless_availablerates;
+    AvailableChannels *_wireless_availablechannels;
+
     /** CCA */
     int _rx_threshold;
     int _cs_threshold;
     int _cp_threshold;
+
+    /** Config **/
+    WifiConfig *_wificonfig;
 
   public:
 

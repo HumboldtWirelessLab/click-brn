@@ -26,7 +26,8 @@
 
 CLICK_DECLS
 
-BrnAvailableRates::BrnAvailableRates()
+BrnAvailableRates::BrnAvailableRates():
+  _max_txpower(0)
 {
   BRNElement::init();
   _settime = Timestamp::now();
@@ -191,7 +192,7 @@ BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
   }
   dst->_eth = eth;
   dst->_settime = Timestamp::now();
-  
+
   dst->_rates.clear();
   if (_default_rates.size()) {
     /* only add rates that are in the default rates */
@@ -208,6 +209,31 @@ BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
   return 0;
 }
 
+int
+BrnAvailableRates::set_default_rates(Vector<MCS> rates)
+{
+  _default_rates.clear();
+
+  for (int x = 0; x < rates.size(); x++) {
+    _default_rates.push_back(rates[x]);
+  }
+
+  return 0;
+}
+
+
+uint16_t
+BrnAvailableRates::get_max_txpower()
+{
+  return _max_txpower;
+}
+
+void
+BrnAvailableRates::set_max_txpower(uint16_t p)
+{
+  _max_txpower = p;
+}
+
 
 enum {H_INSERT, H_REMOVE, H_RATES};
 
@@ -218,7 +244,7 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
   case H_RATES: {
     StringAccum sa;
-    sa << "<available_rates>\n\t<default rates=\"";
+    sa << "<available_rates>\n\t<default max_txpower=\"" << td->_max_txpower << "\" rates=\"";
     if (td->_default_rates.size()) {
       for (int x = 0; x < td->_default_rates.size(); x++) {
         if ( x != 0 ) {

@@ -16,6 +16,10 @@
 
 #include "brn2_device.hh"
 
+#include "elements/brn/wifi/config/wificonfig_iwlib.hh"
+#include "elements/brn/wifi/config/wificonfig_sim.hh"
+
+
 CLICK_DECLS
 
 BRN2Device::BRN2Device()
@@ -29,7 +33,12 @@ BRN2Device::BRN2Device()
     _cwmin(NULL),
     _cwmax(NULL),
     _aifs(NULL),
-    _queue_info(NULL)
+    _queue_info(NULL),
+    _power(0),
+    _wireless_device_config_string(""),
+    _wireless_availablerates(NULL),
+    _wireless_availablechannels(NULL),
+    _wificonfig(NULL)
 {
   BRNElement::init();
 }
@@ -56,7 +65,9 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
       "MASTERDEVICE", cpkP, cpBool, &is_master_dev,
       "ROUTABLE", cpkP, cpBool, &_routable,
       "ALLOW_BROADCAST", cpkP, cpBool, &_allow_broadcast,
-      cpEnd) < 0)
+      "WIRELESSCONFIG", cpkP, cpString, &_wireless_device_config_string,
+      "DEBUG", cpkP, cpInteger, &_debug,
+       cpEnd) < 0)
     return -1;
 
   unsigned char en[6];
@@ -87,7 +98,54 @@ BRN2Device::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2Device::initialize(ErrorHandler *)
 {
-  get_cca();
+  Vector<String> wifi_cfg;
+
+  if (_wireless_device_config_string != "") {
+    cp_spacevec(_wireless_device_config_string, wifi_cfg);
+
+    for( int i = 0; i < wifi_cfg.size(); i++) {
+
+      Element* s_element = router()->find(wifi_cfg[i]);
+      if ( s_element != NULL ) {
+        if ( s_element->cast("BrnAvailableRates") != NULL ) {
+          _wireless_availablerates = (BrnAvailableRates*)s_element->cast("BrnAvailableRates");
+        } else if ( s_element->cast("AvailableChannels") != NULL ) {
+          _wireless_availablechannels = (AvailableChannels*)s_element->cast("AvailableChannels");
+        } else {
+          BRN_WARN("Unknown wifi_config: %s", wifi_cfg[i].c_str());
+        }
+      }
+    }
+  }
+
+  if ( device_type == DEVICETYPE_WIRELESS ) {
+#if CLICK_NS
+    _wificonfig = new WifiConfigSim(device_name,router());
+#else
+#if CLICK_USERLEVEL
+    _wificonfig = new WifiConfigIwLib(device_name);
+#endif
+#endif
+
+    _power = _wificonfig->get_txpower();
+
+    if ( _wireless_availablerates ) {
+      _wireless_availablerates->set_max_txpower(_wificonfig->get_max_txpower());
+
+      Vector<MCS> rates;
+      _wificonfig->get_rates(rates);
+
+      for(int r = 0; r < rates.size(); r++) {
+        BRN_INFO("Rate: %d",rates[r]._rate);
+      }
+
+      _wireless_availablerates->set_default_rates(rates);
+    }
+
+    BRN_INFO("Power: %d Max. Power: %d", _power, _wificonfig->get_max_txpower());
+
+    get_cca();
+  }
 
   return 0;
 }
@@ -360,32 +418,10 @@ BRN2Device::abort_transmission(EtherAddress &dst)
 }
 
 int
-BRN2Device::set_power_iwconfig(int power, ErrorHandler *errh)
+BRN2Device::set_power(int power, ErrorHandler*)
 {
-#if CLICK_USERLEVEL
-  StringAccum cmda;
-  if (access("/sbin/iwconfig", X_OK) == 0)
-    cmda << "/sbin/iwconfig";
-  else if (access("/usr/sbin/iwconfig", X_OK) == 0)
-    cmda << "/usr/sbin/iwconfig";
-  else
-    return 0;
-
-  cmda << " " << device_name;
-  cmda << " txpower " << power;
-  String cmd = cmda.take_string();
-
-  click_chatter("SetPower command: %s",cmd.c_str());
-
-  String out = shell_command_output_string(cmd, "", errh);
-  if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
-#else
-#if CLICK_NS
-
-#endif
-#endif
-
-  _power = power;
+  _wificonfig->set_txpower(power);
+  _power = _wificonfig->get_txpower();
 
   return 0;
 }
@@ -458,7 +494,7 @@ write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh
   if (!cp_integer(s, &power))
    return errh->error("power parameter must be integer");
 
-  f->set_power_iwconfig(power, errh);
+  f->set_power(power, errh);
 
   return 0;
 }

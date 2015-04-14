@@ -77,6 +77,10 @@ SetTXPowerRate::initialize(ErrorHandler *errh)
 
   if ( _rtable != NULL ) _rate_selection->init(_rtable);
 
+  if ( (_max_power == 0) || (_max_power > _rtable->get_max_txpower())) {
+    _max_power = _rtable->get_max_txpower();
+  }
+
   return 0;
 }
 
