@@ -153,6 +153,9 @@
 /* Define if you have -llwip */
 #undef HAVE_LWIP
 
+/* Define if you have -liw */
+#undef HAVE_LIBIW
+
 /* Define if you have a non-emulated <poll.h> header file. */
 #undef HAVE_POLL_H
 

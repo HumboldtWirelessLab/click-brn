@@ -1423,7 +1423,7 @@ if test "$lwipprefix" != no; then
 	test -n "$lwipprefix" && LWIP_INCLUDES="-I$lwipprefix/lib -I$lwipprefix/include -I$lwipprefix/include/ipv4 -I$lwipprefix/include/ipv6 -I$lwipprefix/include" && LWIP_LIBS="-L$lwipprefix/lib"
 	LWIP_LIBS="$LWIP_LIBS -llwip"
         AC_DEFINE([HAVE_LWIP], [1], [Define if you have -llwip and lwip/init.h.])
-	LIBS="$LIBS $LWIP_LIBS -llwip"
+	LIBS="$LIBS $LWIP_LIBS"
 	CPPFLAGS="$CPPFLAGS $LWIP_INCLUDES"
 	LDFLAGS="$LDFLAGS $LWIP_LIBS"
     else
@@ -1451,6 +1451,46 @@ fi
 AC_SUBST(LWIP_INCLUDES)
 AC_SUBST(LWIP_LIBS)
 
+dnl iw library
+
+explicit_libiw=no
+AC_ARG_WITH(libiw, [[  --with-libiw[=PREFIX]   locate iw library (optional)]],
+  [libiwprefix=$withval; if test -z "$withval" -o "$withval" = yes; then libiwprefix=; fi],
+  libiwprefix=; explicit_libiw=no)
+
+if test "$libiwprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$libiwprefix" && CPPFLAGS="$CPPFLAGS -I$libiwprefix/include"
+    AC_CHECK_HEADER(iwlib.h, have_libiw_h=yes, have_libiw_h=no)
+    CPPFLAGS="$saveflags"
+
+    AC_LANG_C
+    saveflags="$LDFLAGS"; test -n "$libiwprefix" && LDFLAGS="$LDFLAGS -L$libiwprefix/lib -liw"
+    AC_CHECK_LIB(iw, iw_sockets_open, have_libiw=yes, have_libiw=no)
+    LDFLAGS="$saveflags"
+
+    if test $have_libiw_h = yes -a $have_libiw = yes; then
+        test -n "$libiwprefix" && LIBIW_INCLUDES="-I$libiwprefix/include" && LIBIW_LIBS="-L$libiwprefix/lib"
+        LIBIW_LIBS="$LIBIW_LIBS -liw"
+        AC_DEFINE([HAVE_LIBIW], [1], [Define if you have -liw and iwlib.h.])
+        LIBS="$LIBS $LIBIW_LIBS"
+    else
+      if test $explicit_libiw = yes; then
+    LIBIW_INCLUDES= LIBIW_LIBS=
+    AC_MSG_ERROR([
+=========================================
+
+You explicitly specified --with-libiw, but the libiw headers and/or libraries
+are not where you said they would be.  Run again supplying --without-libiw
+or --with-libiw=PREFIX.
+
+=========================================])
+      fi
+
+      AC_SUBST([FINDELEMFLAGS])
+    fi
+fi
+AC_SUBST(LIBIW_INCLUDES)
+AC_SUBST(LIBIW_LIBS)
 
 dnl check linuxmodule for Linux
 

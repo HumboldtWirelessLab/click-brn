@@ -656,6 +656,8 @@ LINUX_DEBUG_FLAGS
 CLICKLINUX_FIXINCLUDES_PROGRAM
 LINUX_FIXINCLUDES_PROGRAM
 linux_makeargs
+LIBIW_LIBS
+LIBIW_INCLUDES
 LWIP_LIBS
 LWIP_INCLUDES
 TCC_LIBS
@@ -858,6 +860,7 @@ with_proper
 with_expat
 with_openssl
 with_tcc
+with_libiw
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1564,6 +1567,7 @@ Optional Packages:
   --with-openssl[=PREFIX]   locate openssl library (optional)
   --with-tcc[=PREFIX]   locate tcc library (optional)
   --with-lwip[=PREFIX]   locate lwip library (optional)
+  --with-libiw[=PREFIX]   locate iw library (optional)
 
 Some influential environment variables:
   CC          C compiler command
@@ -11294,7 +11298,7 @@ fi
 
 $as_echo "#define HAVE_LWIP 1" >>confdefs.h
 
-	LIBS="$LIBS $LWIP_LIBS -llwip"
+	LIBS="$LIBS $LWIP_LIBS"
 	CPPFLAGS="$CPPFLAGS $LWIP_INCLUDES"
 	LDFLAGS="$LDFLAGS $LWIP_LIBS"
     else
@@ -11320,6 +11324,105 @@ or --with-lwip=PREFIX.
     fi
 fi
 
+
+
+
+explicit_libiw=no
+
+# Check whether --with-libiw was given.
+if test "${with_libiw+set}" = set; then :
+  withval=$with_libiw; libiwprefix=$withval; if test -z "$withval" -o "$withval" = yes; then libiwprefix=; fi
+else
+  libiwprefix=; explicit_libiw=no
+fi
+
+
+if test "$libiwprefix" != no; then
+    saveflags="$CPPFLAGS"; test -n "$libiwprefix" && CPPFLAGS="$CPPFLAGS -I$libiwprefix/include"
+    ac_fn_c_check_header_mongrel "$LINENO" "iwlib.h" "ac_cv_header_iwlib_h" "$ac_includes_default"
+if test "x$ac_cv_header_iwlib_h" = xyes; then :
+  have_libiw_h=yes
+else
+  have_libiw_h=no
+fi
+
+
+    CPPFLAGS="$saveflags"
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    saveflags="$LDFLAGS"; test -n "$libiwprefix" && LDFLAGS="$LDFLAGS -L$libiwprefix/lib -liw"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for iw_sockets_open in -liw" >&5
+$as_echo_n "checking for iw_sockets_open in -liw... " >&6; }
+if ${ac_cv_lib_iw_iw_sockets_open+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-liw  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char iw_sockets_open ();
+int
+main ()
+{
+return iw_sockets_open ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_iw_iw_sockets_open=yes
+else
+  ac_cv_lib_iw_iw_sockets_open=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_iw_iw_sockets_open" >&5
+$as_echo "$ac_cv_lib_iw_iw_sockets_open" >&6; }
+if test "x$ac_cv_lib_iw_iw_sockets_open" = xyes; then :
+  have_libiw=yes
+else
+  have_libiw=no
+fi
+
+    LDFLAGS="$saveflags"
+
+    if test $have_libiw_h = yes -a $have_libiw = yes; then
+        test -n "$libiwprefix" && LIBIW_INCLUDES="-I$libiwprefix/include" && LIBIW_LIBS="-L$libiwprefix/lib"
+        LIBIW_LIBS="$LIBIW_LIBS -liw"
+
+$as_echo "#define HAVE_LIBIW 1" >>confdefs.h
+
+        LIBS="$LIBS $LIBIW_LIBS"
+    else
+      if test $explicit_libiw = yes; then
+    LIBIW_INCLUDES= LIBIW_LIBS=
+    as_fn_error $? "
+=========================================
+
+You explicitly specified --with-libiw, but the libiw headers and/or libraries
+are not where you said they would be.  Run again supplying --without-libiw
+or --with-libiw=PREFIX.
+
+=========================================" "$LINENO" 5
+      fi
+
+
+    fi
+fi
 
 
 
