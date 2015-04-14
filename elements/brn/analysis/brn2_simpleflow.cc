@@ -56,6 +56,7 @@ BRN2SimpleFlow::BRN2SimpleFlow()
     _headroom(128),
     _flow_id(0),
     _simpleflow_element_id(0),
+    _no_scheduled_immeditiately(0),
     _routing_peek(NULL),
     _link_table(NULL),
     _flow_start_rand(0)
@@ -159,6 +160,7 @@ BRN2SimpleFlow::run_timer(Timer *t)
 
     if ( active_flows != 0 ) {
       schedule_next_result = schedule_next();
+      if ( schedule_next_result == SIMPLEFLOW_SCHEDULE_NEXT_IMMEDITIATELY ) _no_scheduled_immeditiately++;
     }
   } while((active_flows != 0) && (schedule_next_result == SIMPLEFLOW_SCHEDULE_NEXT_IMMEDITIATELY));
 
@@ -786,7 +788,8 @@ BRN2SimpleFlow::xml_stats()
   StringAccum sa;
   Timestamp now = Timestamp::now();
 
-  sa << "<flowstats node=\"" << BRN_NODE_NAME << "\" time=\"" << now.unparse() << "\" sf_elem_id=\"" << _simpleflow_element_id << "\" >\n";
+  sa << "<flowstats node=\"" << BRN_NODE_NAME << "\" time=\"" << now.unparse() << "\" sf_elem_id=\"" << _simpleflow_element_id;
+  sa << "\" sched_immt=\"" << _no_scheduled_immeditiately << "\" >\n";
   for (BRN2SimpleFlow::FMIter fm = _tx_flowMap.begin(); fm.live(); ++fm) {
     BRN2SimpleFlow::Flow *fl = fm.value();
     sa << "\t<txflow src=\"" << fl->_src.unparse().c_str();

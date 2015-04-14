@@ -325,6 +325,8 @@ class BRN2SimpleFlow : public BRNElement
     uint32_t _flow_id;
     uint32_t _simpleflow_element_id;
 
+    uint32_t _no_scheduled_immeditiately;
+
     RoutingPeek *_routing_peek;
     Brn2LinkTable *_link_table;
 
