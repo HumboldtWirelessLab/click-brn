@@ -48,6 +48,8 @@ class BrnFloodingRate : public RateSelection
 
     void add_handlers();
 
+    bool controls_power() { return true; }
+
     void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
     void process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);

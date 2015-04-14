@@ -43,6 +43,8 @@ class RateSelection : public BRNElement, public Scheme
     virtual uint32_t get_strategy();
     virtual void set_strategy(uint32_t strategy);
 
+    virtual bool controls_power() { return false; }
+
     virtual void assign_rate(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
     virtual void process_feedback(struct rateselection_packet_info *, NeighbourRateInfo *) = 0;
 
