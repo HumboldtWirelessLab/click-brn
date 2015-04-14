@@ -120,6 +120,9 @@ int simclick_gettimeofday(struct timeval* tv);
 #define SIMCLICK_WIFI_TX_CONTROL         26 // int (operation) +  data //see elements/brn/sim/txcontrol.h
 #define SIMCLICK_WIFI_RX_CONTROL         27 // int (operation) +  data //see elements/brn/sim/txcontrol.h
 #define SIMCLICK_WIFI_GET_RXTXSTATS      28 // void *rxtxstats (struct rx_tx_stats*)
+#define SIMCLICK_WIFI_GET_TXPOWER        29 // int (txpower)
+#define SIMCLICK_WIFI_SET_TXPOWER        30 // int (txpower)
+#define SIMCLICK_WIFI_GET_RATES          31 // int no_rates, int* rates
 
 int simclick_sim_command(simclick_node_t *sim, int cmd, ...);
 int simclick_click_command(simclick_node_t *sim, int cmd, ...);
