@@ -73,7 +73,10 @@ public:
 	}
 
 	void refresh() {
-    //if ( conn != NULL ) SSL_free(conn);
+        /*if ( conn != NULL ) {
+            SSL_set_bio(conn,NULL,NULL);
+            SSL_free(conn);
+        }*/
 		conn = SSL_new(ctx);
 		SSL_set_bio(conn,bioIn,bioOut);
 		SSL_set_read_ahead(conn, 1);
