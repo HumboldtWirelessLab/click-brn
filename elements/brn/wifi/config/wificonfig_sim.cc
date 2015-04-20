@@ -4,7 +4,6 @@
 
 #include <click/router.hh>
 
-#include "iwlib.h"
 #include "wificonfig_sim.hh"
 
 CLICK_DECLS

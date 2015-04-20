@@ -27,6 +27,7 @@
 
 #include "elements/brn/brnelement.hh"
 #include <elements/brn/routing/identity/brn2_nodeidentity.hh>
+#include "overlay_structure.hh"
 
 CLICK_DECLS
 
