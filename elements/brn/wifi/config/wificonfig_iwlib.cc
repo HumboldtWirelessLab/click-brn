@@ -271,7 +271,6 @@ WifiConfigIwLib::get_channel()
     return 0;
 
   cmda << " " << device_name;
-  cmda << " channel " << channel;
   String cmd = cmda.take_string();
 
   click_chatter("GetChannel command: %s",cmd.c_str());
