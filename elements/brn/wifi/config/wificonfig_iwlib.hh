@@ -79,11 +79,19 @@ class WifiConfigIwLib: public WifiConfig
     WifiConfigIwLib(String dev_name);
     ~WifiConfigIwLib();
 
-    int get_info(struct wireless_info *info);
     int set_txpower(int txpower);
     int get_txpower();
     int get_max_txpower();
+
     int get_rates(Vector<MCS> &rates);
+
+    int get_channel();
+    int set_channel(int channel);
+
+  private:
+
+    int get_info(struct wireless_info *info);
+
 };
 
 CLICK_ENDDECLS

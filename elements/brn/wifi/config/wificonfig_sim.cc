@@ -13,6 +13,7 @@ WifiConfigSim::WifiConfigSim(String dev_name, Router *router)
 {
   device_name = dev_name;
   _router = router;
+  _ifid = simclick_sim_command(_router->simnode(), SIMCLICK_IFID_FROM_NAME, dev_name.c_str());
 }
 
 WifiConfigSim::~WifiConfigSim()
@@ -69,6 +70,26 @@ WifiConfigSim::get_rates(Vector<MCS> &rates)
 
   return 0;
 }
+
+int
+WifiConfigSim::get_channel()
+{
+  int channel = -1;
+
+  channel = simclick_sim_command(_router->simnode(), SIMCLICK_CHANGE_CHANNEL, _ifid, channel);
+
+  return channel;
+}
+
+int
+WifiConfigSim::set_channel(int channel)
+{
+  if (channel >= 0)
+    simclick_sim_command(_router->simnode(), SIMCLICK_CHANGE_CHANNEL, _ifid, channel);
+
+  return 0;
+}
+
 
 ELEMENT_PROVIDES(WifiConfigSimIwLib)
 ELEMENT_REQUIRES(ns)

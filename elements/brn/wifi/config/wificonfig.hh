@@ -17,7 +17,11 @@ class WifiConfig
     virtual int set_txpower(int txpower) = 0;
     virtual int get_txpower() = 0;
     virtual int get_max_txpower() = 0;
+
     virtual int get_rates(Vector<MCS> &rates) = 0;
+
+    virtual int get_channel() = 0;
+    virtual int set_channel(int channel) = 0;
 };
 
 CLICK_ENDDECLS

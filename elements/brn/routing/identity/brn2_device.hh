@@ -93,6 +93,8 @@ class BRN2Device : public BRNElement {
     int set_power(int power, ErrorHandler *errh);
     inline uint16_t get_power() { return _power;}
 
+    int set_channel(int channel, ErrorHandler *errh);
+
     String device_info();
 
   private:

@@ -239,6 +239,59 @@ WifiConfigIwLib::get_rates(Vector<MCS> &rates)
   return 0;
 }
 
+int
+WifiConfigIwLib::get_channel()
+{
+#ifdef HAVE_LIBIW
+#else
+  StringAccum cmda;
+  if (access("/sbin/iwconfig", X_OK) == 0)
+    cmda << "/sbin/iwconfig";
+  else if (access("/usr/sbin/iwconfig", X_OK) == 0)
+    cmda << "/usr/sbin/iwconfig";
+  else
+    return 0;
+
+  cmda << " " << device_name;
+  cmda << " channel " << channel;
+  String cmd = cmda.take_string();
+
+  click_chatter("GetChannel command: %s",cmd.c_str());
+
+  String out = shell_command_output_string(cmd, "", errh);
+  if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
+
+#endif
+  return 0;
+}
+
+int
+WifiConfigIwLib::set_channel(int channel)
+{
+#ifdef HAVE_LIBIW
+#else
+  StringAccum cmda;
+  if (access("/sbin/iwconfig", X_OK) == 0)
+    cmda << "/sbin/iwconfig";
+  else if (access("/usr/sbin/iwconfig", X_OK) == 0)
+    cmda << "/usr/sbin/iwconfig";
+  else
+    return 0;
+
+  cmda << " " << device_name;
+  cmda << " channel " << channel;
+  String cmd = cmda.take_string();
+
+  click_chatter("SetChannel command: %s",cmd.c_str());
+
+  String out = shell_command_output_string(cmd, "", errh);
+  if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
+
+#endif
+
+  return 0;
+}
+
 ELEMENT_PROVIDES(WifiConfigIwLibIwLib)
 ELEMENT_REQUIRES(userlevel|ns)
 CLICK_ENDDECLS

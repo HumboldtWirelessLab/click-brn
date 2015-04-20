@@ -142,6 +142,10 @@ BRN2Device::initialize(ErrorHandler *)
       _wireless_availablerates->set_default_rates(rates);
     }
 
+    BRN_INFO("Channel: %d",_wificonfig->get_channel());
+    BRN_INFO("Set Channel(1): %d",_wificonfig->set_channel(1));
+    BRN_INFO("Get Channel: %d",_wificonfig->get_channel());
+
     BRN_INFO("Power: %d Max. Power: %d", _power, _wificonfig->get_max_txpower());
 
     get_cca();
@@ -426,6 +430,15 @@ BRN2Device::set_power(int power, ErrorHandler*)
   return 0;
 }
 
+int
+BRN2Device::set_channel(int channel, ErrorHandler*)
+{
+  _wificonfig->set_channel(channel);
+  BRN_DEBUG("Set Channel to: %d", _wificonfig->get_channel());
+
+  return 0;
+}
+
 String
 BRN2Device::device_info()
 {
@@ -454,11 +467,12 @@ read_device_info(Element *e, void *)
   return dev->device_info();
 }
 
-static String
-read_device_address(Element *e, void *)
+static int
+write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
 {
   BRN2Device *dev = (BRN2Device *)e;
-  return dev->getEtherAddress()->unparse();
+  dev->setEtherAddress(dev->getEtherAddressFix());
+  return 0;
 }
 
 static int
@@ -477,14 +491,6 @@ write_address(const String &in_s, Element *e, void *, ErrorHandler *errh)
 }
 
 static int
-write_reset_address(const String &/*in_s*/, Element *e, void *, ErrorHandler */*errh*/)
-{
-  BRN2Device *dev = (BRN2Device *)e;
-  dev->setEtherAddress(dev->getEtherAddressFix());
-  return 0;
-}
-
-static int
 write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
   BRN2Device *f = (BRN2Device *)e;
@@ -499,11 +505,19 @@ write_power(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh
   return 0;
 }
 
-static String
-read_power(Element *e, void */*thunk*/)
+static int
+write_channel(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
 {
-  BRN2Device *dev = (BRN2Device *)e;
-  return String(dev->get_power());
+  BRN2Device *f = (BRN2Device *)e;
+  String s = cp_uncomment(in_s);
+  uint32_t channel;
+
+  if (!cp_integer(s, &channel))
+   return errh->error("channel parameter must be integer");
+
+  f->set_channel(channel, errh);
+
+  return 0;
 }
 
 static int
@@ -530,12 +544,11 @@ BRN2Device::add_handlers()
   BRNElement::add_handlers();
 
   add_read_handler("deviceinfo", read_device_info, 0);
-  add_read_handler("address", read_device_address, 0);
-  add_read_handler("power", read_power, 0);
 
   add_write_handler("reset_address", write_reset_address, 0);
   add_write_handler("address", write_address, 0);
   add_write_handler("power", write_power, 0);
+  add_write_handler("channel", write_channel, 0);
   add_write_handler("cca", write_cca, 0);
 }
 
