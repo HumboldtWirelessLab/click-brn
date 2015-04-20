@@ -1,6 +1,8 @@
 #include <click/config.h>
 #include <click/confparse.hh>
 #include <click/error.hh>
+#include <click/straccum.hh>
+#include <click/userutils.hh>
 
 #ifdef HAVE_LIBIW
 #include "iwlib.h"
@@ -214,7 +216,7 @@ WifiConfigIwLib::set_txpower(int power)
 
   click_chatter("SetPower command: %s",cmd.c_str());
 
-  String out = shell_command_output_string(cmd, "", errh);
+  String out = shell_command_output_string(cmd, "", NULL /*errh*/);
   if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
 
 #endif
@@ -270,7 +272,7 @@ WifiConfigIwLib::get_channel()
 
   click_chatter("GetChannel command: %s",cmd.c_str());
 
-  String out = shell_command_output_string(cmd, "", errh);
+  String out = shell_command_output_string(cmd, "", NULL /*errh*/));
   if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
 
 #endif
@@ -297,7 +299,7 @@ WifiConfigIwLib::set_channel(int channel)
 
   click_chatter("SetChannel command: %s",cmd.c_str());
 
-  String out = shell_command_output_string(cmd, "", errh);
+  String out = shell_command_output_string(cmd, "", NULL /*errh*/));
   if (out) click_chatter("%s: %s", cmd.c_str(), out.c_str());
 
 #endif
