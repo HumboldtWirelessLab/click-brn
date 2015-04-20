@@ -5,6 +5,8 @@
 
 CLICK_DECLS
 
+#ifdef HAVE_LIBIW
+
 /************************* SETTING ROUTINES **************************/
 
 /*------------------------------------------------------------------*/
@@ -67,6 +69,7 @@ CLICK_DECLS
         return(-6); \
     } } while(0)
 
+#endif
 
 class WifiConfigIwLib: public WifiConfig
 {
@@ -89,8 +92,9 @@ class WifiConfigIwLib: public WifiConfig
     int set_channel(int channel);
 
   private:
-
+#ifdef HAVE_LIBIW
     int get_info(struct wireless_info *info);
+#endif
 
 };
 

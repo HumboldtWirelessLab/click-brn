@@ -2,7 +2,10 @@
 #include <click/confparse.hh>
 #include <click/error.hh>
 
+#ifdef HAVE_LIBIW
 #include "iwlib.h"
+#endif
+
 #include "wificonfig_iwlib.hh"
 
 CLICK_DECLS
@@ -13,14 +16,17 @@ int WifiConfigIwLib::sock_iwconfig_refs = 0;
 WifiConfigIwLib::WifiConfigIwLib(String dev_name)
 {
   device_name = dev_name;
+#ifdef HAVE_LIBIW
   if (!sock_iwconfig) sock_iwconfig = iw_sockets_open();
 
   //TODO: locks?
   sock_iwconfig_refs++;
+#endif
 }
 
 WifiConfigIwLib::~WifiConfigIwLib()
 {
+#ifdef HAVE_LIBIW
   sock_iwconfig_refs--;
 
   if (!sock_iwconfig_refs) {
@@ -29,11 +35,14 @@ WifiConfigIwLib::~WifiConfigIwLib()
       sock_iwconfig = 0;
     }
   }
+#endif
 }
 
+#ifdef HAVE_LIBIW
 int
 WifiConfigIwLib::get_info(struct wireless_info *info)
 {
+
     struct iwreq wrq;
 
     memset((char *)info, 0, sizeof(struct wireless_info));
@@ -125,10 +134,12 @@ WifiConfigIwLib::get_info(struct wireless_info *info)
 
     return (0);
 }
+#endif
 
 int
 WifiConfigIwLib::get_txpower()
 {
+#ifdef HAVE_LIBIW
     wireless_info wi;
 
     if (get_info(&wi) != 0) {
@@ -138,6 +149,7 @@ WifiConfigIwLib::get_txpower()
     if (wi.has_txpower) {
         return wi.txpower.value;
     }
+#endif
 
     return -1;
 }
@@ -269,6 +281,7 @@ int
 WifiConfigIwLib::set_channel(int channel)
 {
 #ifdef HAVE_LIBIW
+  (void)channel;
 #else
   StringAccum cmda;
   if (access("/sbin/iwconfig", X_OK) == 0)
