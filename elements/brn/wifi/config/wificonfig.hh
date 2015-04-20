@@ -12,7 +12,7 @@ class WifiConfig
 
     WifiConfig();
     WifiConfig(String dev_name);
-    ~WifiConfig();
+    virtual ~WifiConfig();
 
     virtual int set_txpower(int txpower) = 0;
     virtual int get_txpower() = 0;
