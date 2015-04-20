@@ -92,6 +92,10 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_me || !_me->cast("BRN2NodeIdentity")) 
     return errh->error("NodeIdentity not specified");
 
+  if (_pre_selection_mode > UNICAST_FLOODING_PRESELECTION_LAST) {
+    return errh->error("Preselection is out of range: %d", _pre_selection_mode);
+  }
+
   if ((_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) &&
       (static_dst_mac.is_broadcast())) _cand_selection_strategy = UNICAST_FLOODING_NO_REWRITE;
 
@@ -329,7 +333,7 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
 
           //get candidateset
           _fhelper->get_candidate_set(net_graph, candidate_set);
-          BRN_DEBUG("Candset size: %d",candidate_set.size());
+          BRN_DEBUG("Candset size: %d PreSel: %d FinPreSel: %d",candidate_set.size(), _pre_selection_mode, final_pre_selection_mode);
 
           //clear unused stuff
           _fhelper->clear_graph(net_graph);
