@@ -261,11 +261,9 @@ int BoMediumShare::get_cwmin(Packet *p, uint8_t tos)
 
           struct neighbour_airtime_stats *nb_as = nb_stats_map_iter.value();
 
-          double dur_percent = nb_as->_duration / 1000000.0;
-          dur_percent *= 100;
-          dur_percent = (int) dur_percent;
+          int dur_percent = nb_as->_duration / 10000;
 
-          BRN_DEBUG("    2hop Nb: %s tx: %d\n", nb_ea.unparse().c_str(), (int) dur_percent);
+          BRN_DEBUG("    2hop Nb: %s tx: %d\n", nb_ea.unparse().c_str(), dur_percent);
 
           tx_sum += dur_percent;
           num_contenders++;
