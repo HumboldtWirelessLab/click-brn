@@ -183,7 +183,7 @@ TCPRewriter::TCPFlow::apply(WritablePacket *p, bool direction, unsigned annos)
 	_tflags |= s_forward_data << direction;
 
     // end if weird transport length
-    if (p->transport_length() < (tcph->th_off << 2))
+    if (p->transport_length() < ((int)tcph->th_off << 2))
 	return;
 
     // update sequence numbers
