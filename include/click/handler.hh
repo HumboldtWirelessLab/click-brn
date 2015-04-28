@@ -269,6 +269,7 @@ class Handler { public:
     enum {
 #else
     enum CLICK_DEPRECATED {
+#endif
 	EXCLUSIVE = f_exclusive,
 	NONEXCLUSIVE = f_nonexclusive
     };
