@@ -14,6 +14,8 @@
 
 #include "elements/brn/routing/routing_peek.hh"
 
+#include "brn2_modelflow.hh"
+
 CLICK_DECLS
 
 //#define SF_TX_ABORT
@@ -76,6 +78,7 @@ class BRN2SimpleFlow : public BRNElement
 
 #define SIMPLEFLOW_FLAGS_INCL_ROUTE (uint8_t)1
 #define SIMPLEFLOW_FLAGS_IS_REPLY   (uint8_t)2
+#define SIMPLEFLOW_FLAGS_MODELFLOW  (uint8_t)4 /* time and packetsize is variable */
 
   CLICK_SIZE_PACKED_STRUCTURE(
   struct flowPacketRoute {,
@@ -92,6 +95,9 @@ class BRN2SimpleFlow : public BRNElement
 
 #define SIMPLEFLOW_MAXHOPCOUNT   100
 #define MINIMUM_FLOW_PACKET_SIZE (sizeof(struct flowPacketHeader)+sizeof(struct click_brn))
+
+#define MAXIMUM_FLOW_PACKET_SIZE     0xFFFFFFFF
+#define MAXIMUM_FLOW_PACKET_INTERVAL 0xFFFFFFFF
 
   typedef enum flowType
   {
@@ -339,6 +345,8 @@ class BRN2SimpleFlow : public BRNElement
 #endif
 
     String _init_flow;
+
+    BRN2ModelFlow *_model_flow;
 };
 
 CLICK_ENDDECLS

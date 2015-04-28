@@ -16,7 +16,6 @@
 CLICK_DECLS
 
 BRN2ModelFlow::BRN2ModelFlow()
-  : _timer(this)
 {
   BRNElement::init();
 }
@@ -33,14 +32,8 @@ int BRN2ModelFlow::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
       "SIZE", cpkP+cpkM, cpString, &_size_distribution,
       "TIME", cpkP+cpkM, cpString, &_time_distribution,
-      "ACTIVE", cpkP+cpkM, cpBool, &_active,
       cpEnd) < 0)
     return -1;
-
-  if ( _active == 0 )
-    _active = false;
-  else
-    _active = true;
 
   Vector<String> _size_values;
   cp_spacevec(_size_distribution, _size_values);
@@ -110,44 +103,7 @@ int BRN2ModelFlow::initialize(ErrorHandler *)
 {
   click_brn_srandom();
 
-  _timer.initialize(this);
-  _timer.schedule_after_msec( getNextPacketTime() );
-
   return 0;
-}
-
-void
-BRN2ModelFlow::run_timer(Timer *t)
-{
-  Packet *packet_out;
-  int size;
-
-  if ( t == NULL ) click_chatter("Timer is NULL");
-
-  _timer.reschedule_after_msec(getNextPacketTime());
-
-  if ( _active ) {
-    size = getNextPacketSize();
-    packet_out = nextPacket(size);
-    output(0).push(packet_out);
-  }
-}
-
-void
-BRN2ModelFlow::push( int /*port*/, Packet *packet )
-{
-  packet->kill();
-}
-
-WritablePacket*
-BRN2ModelFlow::nextPacket(int size)
-{
-  WritablePacket *p;
-
-  p = WritablePacket::make(64 /*headroom*/,NULL /* *data*/, size, 32);
-//  struct flowPacketHeader *header = (struct flowPacketHeader *)p->data();
-
-  return p;
 }
 
 int
@@ -160,16 +116,8 @@ BRN2ModelFlow::getNextPacketTime() {
   return ( interpacket_time[ click_random() % packet_time_vector_len] );
 }
 
-void
-BRN2ModelFlow::set_active()
-{
-  click_chatter("Flow active");
-  _active = true;
-}
-
 enum {
   H_TXSTATS_SHOW,
-  H_FLOW_ACTIVE
 };
 
 static String
@@ -188,24 +136,9 @@ BRN2ModelFlow_read_param(Element */*e*/, void *thunk)
   }
 }
 
-static int 
-BRN2ModelFlow_write_param(const String &in_s, Element *e, void *vparam, ErrorHandler */*errh*/)
-{
-  BRN2ModelFlow *sf = (BRN2ModelFlow *)e;
-  String s = cp_uncomment(in_s);
-  switch((long)vparam) {
-    case H_FLOW_ACTIVE: {
-      sf->set_active();
-      break;
-    }
-  }
-  return 0;
-}
-
 void BRN2ModelFlow::add_handlers()
 {
   add_read_handler("txstats", BRN2ModelFlow_read_param, (void *)H_TXSTATS_SHOW);
-  add_write_handler("active", BRN2ModelFlow_write_param, (void *)H_FLOW_ACTIVE);
 }
 
 EXPORT_ELEMENT(BRN2ModelFlow)

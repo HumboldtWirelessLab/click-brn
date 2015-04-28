@@ -84,6 +84,7 @@ int BRN2SimpleFlow::configure(Vector<String> &conf, ErrorHandler *errh)
       "ROUTINGPEEK", cpkP, cpElement, &_routing_peek,
       "LT", cpkP, cpElement, &_link_table,
       "FLOWSTARTRANDOM", cpkP, cpInteger, &_flow_start_rand,
+      "MODELFLOW", cpkP, cpElement, &_model_flow,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -210,6 +211,8 @@ BRN2SimpleFlow::is_active(Flow *txFlow)
 void
 BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
 {
+  uint32_t interval;
+
   if ( is_active(fl) ) {
     BRN_DEBUG("Flow (active): Src: %s Dst: %s ID: %d interval: %d burst: %d duration: %d",
                fl->_src.unparse().c_str(), fl->_dst.unparse().c_str(), fl->_id, fl->_interval, fl->_burst, fl->_duration);
@@ -218,6 +221,12 @@ BRN2SimpleFlow::send_packets_for_flow(Flow *fl)
       BRN_DEBUG("Send Next");
       Packet *packet_out = nextPacketforFlow(fl);
       output(0).push(packet_out);
+    }
+
+    interval = fl->_interval;
+
+    if (interval == MAXIMUM_FLOW_PACKET_INTERVAL) {
+      interval = _model_flow->getNextPacketTime();
     }
 
     fl->_next_time = fl->_next_time + Timestamp::make_msec(fl->_interval/1000, fl->_interval%1000);
@@ -474,6 +483,8 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   WritablePacket *p_brn;
   uint32_t size = f->_size;
   uint16_t checksum;
+
+  if (( size == MAXIMUM_FLOW_PACKET_SIZE ) && ( _model_flow != NULL )) size = _model_flow->getNextPacketSize();
 
   if ( size < MINIMUM_FLOW_PACKET_SIZE )  //TODO: warn that we extend the packet
     size = MINIMUM_FLOW_PACKET_SIZE;
