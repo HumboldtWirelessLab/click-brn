@@ -6746,6 +6746,114 @@ fi
 
 
 
+# Check whether --enable-minios was given.
+if test "${enable_minios+set}" = set; then :
+  enableval=$enable_minios; :
+else
+  enable_minios=no
+fi
+
+
+
+# Check whether --with-xen was given.
+if test "${with_xen+set}" = set; then :
+  withval=$with_xen; xenpath=$withval
+else
+  xenpath=NONE
+fi
+
+
+# Check whether --with-minios was given.
+if test "${with_minios+set}" = set; then :
+  withval=$with_minios; miniospath=$withval
+else
+  miniospath=NONE
+fi
+
+
+# Check whether --with-newlib was given.
+if test "${with_newlib+set}" = set; then :
+  withval=$with_newlib; newlibpath=$withval
+else
+  newlibpath=NONE
+fi
+
+
+# Check whether --with-lwip was given.
+if test "${with_lwip+set}" = set; then :
+  withval=$with_lwip; lwippath=$withval
+else
+  lwippath=NONE
+fi
+
+
+if test "$enable_minios" = yes; then
+    if test "$xenpath" = NONE; then
+        xenpath="../xen"
+    fi
+    if test "$miniospath" = NONE; then
+        miniospath="../mini-os"
+    fi
+    if test "$newlibpath" = NONE; then
+        newlibpath="../toolchain/x86_64-root/x86_64-xen-elf"
+    fi
+    if test "$lwippath" = NONE; then
+        lwippath="../toolchain/x86_64-root/x86_64-xen-elf"
+    fi
+
+    xenpath="`readlink -f $xenpath`"
+    if test ! -d "$xenpath"; then
+        as_fn_error $? "
+=========================================
+
+Can't find $xenpath, so I can't compile the minios driver!
+(You may need the --with-xen=DIR option.)
+
+=========================================" "$LINENO" 5
+    fi
+    miniospath="`readlink -f $miniospath`"
+    if test ! -d "$miniospath"; then
+        as_fn_error $? "
+=========================================
+
+Can't find $miniospath, so I can't compile the minios driver!
+(You may need the --with-minios=DIR option.)
+
+=========================================" "$LINENO" 5
+    fi
+    newlibpath="`readlink -f $newlibpath`"
+    if test ! -d "$newlibpath"; then
+        as_fn_error $? "
+=========================================
+
+Can't find $newlibpath, so I can't compile the minios driver!
+(You may need the --with-newlib=DIR option.)
+
+=========================================" "$LINENO" 5
+    fi
+    lwippath="`readlink -f $lwippath`"
+    if test ! -d "$lwippath"; then
+        as_fn_error $? "
+=========================================
+
+Can't find $lwippath, so I can't compile the minios driver!
+(You may need the --with-lwip=DIR option.)
+
+=========================================" "$LINENO" 5
+    fi
+
+    xen_dir=$xenpath
+
+    minios_dir=$miniospath
+
+    newlib_dir=$newlibpath
+
+    lwip_dir=$lwippath
+
+fi
+
+
+
 
 # Check whether --with-linux was given.
 if test "${with_linux+set}" = set; then :
@@ -13122,6 +13230,15 @@ fi
 if test "x$enable_jistclick" = xyes; then
     DRIVERS="$DRIVERS jist"
 fi
+
+
+if test "x$enable_minios" = xyes; then
+    DRIVERS="$DRIVERS minios"
+    $as_echo "#define HAVE_MINIOS_DRIVER 1" >>confdefs.h
+
+    HAVE_MINIOS_DRIVER=1
+fi
+
 
 
 if test "x$enable_minios" = xyes; then

@@ -306,6 +306,91 @@ Can't find $lwippath, so I can't compile the minios driver!
 fi
 
 
+dnl minios driver
+
+AC_ARG_ENABLE([minios],
+     [AS_HELP_STRING([--enable-minios], [enable MiniOS application])],
+     [:], [enable_minios=no])
+
+AC_ARG_WITH([xen],
+    [AS_HELP_STRING([[--with-xen[=PATH]]], [Xen source code is in PATH])],
+    [xenpath=$withval], [xenpath=NONE])
+AC_ARG_WITH([minios],
+    [AS_HELP_STRING([[--with-minios[=PATH]]], [MiniOS source code is in PATH])],
+    [miniospath=$withval], [miniospath=NONE])
+AC_ARG_WITH([newlib],
+    [AS_HELP_STRING([[--with-newlib[=PATH]]], [Newlib is installed in PATH])],
+    [newlibpath=$withval], [newlibpath=NONE])
+AC_ARG_WITH([lwip],
+    [AS_HELP_STRING([[--with-lwip[=PATH]]], [Lwip is installed in PATH])],
+    [lwippath=$withval], [lwippath=NONE])
+
+if test "$enable_minios" = yes; then
+    if test "$xenpath" = NONE; then
+        xenpath="../xen"
+    fi
+    if test "$miniospath" = NONE; then
+        miniospath="../mini-os"
+    fi
+    if test "$newlibpath" = NONE; then
+        newlibpath="../toolchain/x86_64-root/x86_64-xen-elf"
+    fi
+    if test "$lwippath" = NONE; then
+        lwippath="../toolchain/x86_64-root/x86_64-xen-elf"
+    fi
+
+    xenpath="`readlink -f $xenpath`"
+    if test ! -d "$xenpath"; then
+        AC_MSG_ERROR([
+=========================================
+
+Can't find $xenpath, so I can't compile the minios driver!
+(You may need the --with-xen=DIR option.)
+
+=========================================])
+    fi
+    miniospath="`readlink -f $miniospath`"
+    if test ! -d "$miniospath"; then
+        AC_MSG_ERROR([
+=========================================
+
+Can't find $miniospath, so I can't compile the minios driver!
+(You may need the --with-minios=DIR option.)
+
+=========================================])
+    fi
+    newlibpath="`readlink -f $newlibpath`"
+    if test ! -d "$newlibpath"; then
+        AC_MSG_ERROR([
+=========================================
+
+Can't find $newlibpath, so I can't compile the minios driver!
+(You may need the --with-newlib=DIR option.)
+
+=========================================])
+    fi
+    lwippath="`readlink -f $lwippath`"
+    if test ! -d "$lwippath"; then
+        AC_MSG_ERROR([
+=========================================
+
+Can't find $lwippath, so I can't compile the minios driver!
+(You may need the --with-lwip=DIR option.)
+
+=========================================])
+    fi
+
+    xen_dir=$xenpath
+    AC_SUBST(xen_dir)
+    minios_dir=$miniospath
+    AC_SUBST(minios_dir)
+    newlib_dir=$newlibpath
+    AC_SUBST(newlib_dir)
+    lwip_dir=$lwippath
+    AC_SUBST(lwip_dir)
+fi
+
+
 dnl
 dnl How to build linuxmodule driver?
 dnl
@@ -2003,6 +2088,15 @@ dnl check jist
 if test "x$enable_jistclick" = xyes; then
     DRIVERS="$DRIVERS jist"
 fi
+
+dnl check minios
+
+if test "x$enable_minios" = xyes; then
+    DRIVERS="$DRIVERS minios"
+    AC_DEFINE(HAVE_MINIOS_DRIVER)
+    HAVE_MINIOS_DRIVER=1
+fi
+
 
 dnl check minios
 
