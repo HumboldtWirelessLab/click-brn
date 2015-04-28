@@ -404,8 +404,11 @@ ChannelStats::push(int port, Packet *p)
         small_stats->avg_rssi += rssi;
         small_stats->std_rssi += (rssi * rssi);
 
-        _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,is_ht_rate,rssi);
-        _rssiinfo_sum.add(ceh->rate,is_ht_rate,rssi);
+        /* collect information about rssi, needed to decode a packet correctly(STATE_OK) */
+        if ( state == STATE_OK ) {
+          _small_stats_rssiinfo[_current_small_stats].add(ceh->rate,is_ht_rate,rssi);
+          _rssiinfo_sum.add(ceh->rate,is_ht_rate,rssi);
+        }
 
         bool has_ext_rx_status = BrnWifi::hasExtRxStatus(ceh);
         struct brn_click_wifi_extra_rx_status *ext_rx_status = NULL;
