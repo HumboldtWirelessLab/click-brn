@@ -23,6 +23,7 @@
 #include <click/error.hh>
 #include <click/glue.hh>
 #include <click/standard/alignmentinfo.hh>
+CLICK_DECLS
 
 const unsigned FastTCPFlows::NO_LIMIT;
 
@@ -404,4 +405,5 @@ FastTCPFlows::add_handlers()
   add_write_handler("limit", FastTCPFlows_limit_write_handler, 0);
 }
 
+CLICK_ENDDECLS
 EXPORT_ELEMENT(FastTCPFlows)

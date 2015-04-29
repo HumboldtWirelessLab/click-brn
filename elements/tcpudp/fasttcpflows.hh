@@ -57,6 +57,8 @@
 #include <clicknet/ether.h>
 #include <clicknet/tcp.h>
 
+CLICK_DECLS
+
 class FastTCPFlows : public Element {
 
   bool _rate_limited;
@@ -110,5 +112,5 @@ class FastTCPFlows : public Element {
   click_jiffies_t last() { return _last; }
 };
 
-
+CLICK_ENDDECLS
 #endif

@@ -54,6 +54,7 @@
 #include <click/packet.hh>
 #include <clicknet/ether.h>
 #include <clicknet/udp.h>
+CLICK_DECLS
 
 class FastUDPFlows : public Element {
 
@@ -105,5 +106,5 @@ class FastUDPFlows : public Element {
   click_jiffies_t last() { return _last; }
 };
 
-
+CLICK_ENDDECLS
 #endif
