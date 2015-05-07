@@ -3,8 +3,8 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 
-#include "elements/brn/wifi/disttimesyncprotocol.hh"
-#include "elements/brn/wifi/disttimesync.hh"
+#include "disttimesyncprotocol.hh"
+#include "disttimesync.hh"
 
 CLICK_DECLS
 
