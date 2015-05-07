@@ -7,7 +7,7 @@
 CLICK_DECLS
 
 WifiConfig::WifiConfig():
-  device_name(NULL)
+  device_name()
 {
 }
 
