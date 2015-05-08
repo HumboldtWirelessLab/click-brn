@@ -5,7 +5,6 @@
 #include <clicknet/wifi.h>
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
