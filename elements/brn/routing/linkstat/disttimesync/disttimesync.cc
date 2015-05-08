@@ -13,8 +13,8 @@
 #include "elements/wifi/bitrate.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinkstat.hh"
 
-#include "elements/brn/wifi/disttimesync.hh"
-#include "elements/brn/wifi/disttimesyncprotocol.hh"
+#include "disttimesync.hh"
+#include "disttimesyncprotocol.hh"
 
 CLICK_DECLS
 

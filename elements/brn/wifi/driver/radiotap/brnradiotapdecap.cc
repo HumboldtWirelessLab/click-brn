@@ -345,4 +345,5 @@ BrnRadiotapDecap::add_handlers()
   add_write_handler("debug", BrnRadiotapDecap_write_param, (void *) H_DEBUG);
 }
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(BrnRadiotapDecap)

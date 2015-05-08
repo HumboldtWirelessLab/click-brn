@@ -56,5 +56,6 @@ CalradioEncap::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(CalradioEncap)
 ELEMENT_MT_SAFE(CalradioEncap)

@@ -5,7 +5,7 @@
 #include <click/packet.hh>
 #include <click/packet_anno.hh>
 
-#include "elements/brn/wifi/disttimesync.hh"
+#include "disttimesync.hh"
 
 #define BUNDLE_SIZE 5
 

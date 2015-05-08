@@ -85,5 +85,6 @@ OpenBeaconEncap::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(OpenBeaconEncap)
 ELEMENT_MT_SAFE(OpenBeaconEncap)

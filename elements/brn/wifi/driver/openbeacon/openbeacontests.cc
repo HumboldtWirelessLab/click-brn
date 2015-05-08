@@ -118,6 +118,6 @@ OpenBeaconTests::configure(Vector<String> &conf, ErrorHandler* errh)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(OpenBeaconTests)
 ELEMENT_MT_SAFE(OpenBeaconTests)
-

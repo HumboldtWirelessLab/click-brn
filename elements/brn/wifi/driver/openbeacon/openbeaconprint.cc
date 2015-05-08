@@ -60,5 +60,6 @@ OpenBeaconPrint::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(OpenBeaconPrint)
 ELEMENT_MT_SAFE(OpenBeaconPrint)

@@ -303,5 +303,6 @@ Ath2Print::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(Ath2Print)
 ELEMENT_MT_SAFE(Ath2Print)

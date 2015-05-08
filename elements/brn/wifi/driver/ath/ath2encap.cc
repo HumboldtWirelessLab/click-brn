@@ -131,4 +131,5 @@ Ath2Encap::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(Ath2Encap)

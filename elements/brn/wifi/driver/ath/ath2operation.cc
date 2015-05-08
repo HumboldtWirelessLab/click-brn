@@ -393,4 +393,5 @@ Ath2Operation::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(Ath2Operation)
