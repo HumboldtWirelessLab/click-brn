@@ -255,5 +255,6 @@ Ath2Decap::add_handlers()
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(Ath2Decap)
 ELEMENT_MT_SAFE(Ath2Decap)

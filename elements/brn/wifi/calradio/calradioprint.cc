@@ -42,5 +42,6 @@ CalradioPrint::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(CalradioPrint)
 ELEMENT_MT_SAFE(CalradioPrint)

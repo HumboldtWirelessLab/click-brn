@@ -78,5 +78,6 @@ OpenBeaconDecap::simple_action(Packet *p)
 }
 
 CLICK_ENDDECLS
+ELEMENT_REQUIRES(userlevel linux)
 EXPORT_ELEMENT(OpenBeaconDecap)
 ELEMENT_MT_SAFE(OpenBeaconDecap)
