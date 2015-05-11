@@ -310,6 +310,28 @@ WifiConfigIwLib::set_channel(int channel)
   return 0;
 }
 
+void
+WifiConfigIwLib::get_cca(int */*cs_threshold*/, int */*rx_threshold*/, int */*cp_threshold*/)
+{
+}
+
+void
+WifiConfigIwLib::set_cca(int /*cs_threshold*/, int /*rx_threshold*/, int /*cp_threshold*/)
+{
+}
+
+uint32_t
+WifiConfigIwLib::set_backoff(uint32_t */*_queue_info*/)
+{
+  return 0;
+}
+
+uint32_t
+WifiConfigIwLib::get_backoff(uint32_t **/*_queue_info*/)
+{
+  return 0;
+}
+
 ELEMENT_PROVIDES(WifiConfigIwLibIwLib)
 ELEMENT_REQUIRES(userlevel|ns)
 CLICK_ENDDECLS

@@ -301,19 +301,7 @@ BRN2Device::getTypeStringByInt(uint32_t type)
 void
 BRN2Device::get_cca()
 {
-  int cca[4];
-  cca[0] = 0; //command read
-  cca[1] = 0;
-  cca[2] = 0;
-  cca[3] = 0;
-
-#if CLICK_NS
-  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &cca);
-#endif
-
-  _rx_threshold = cca[1];
-  _cs_threshold = cca[2];
-  _cp_threshold = cca[3];
+  _wificonfig->get_cca(&_cs_threshold, &_rx_threshold, &_cp_threshold);
 }
 
 void
@@ -324,27 +312,13 @@ BRN2Device::set_cca(int cs_threshold, int rx_threshold, int cp_threshold)
   if ( rx_threshold != 0 ) _rx_threshold = rx_threshold;
   if ( cp_threshold != 0 ) _cp_threshold = cp_threshold;
 
-#if CLICK_NS
-  int cca[4];
-  cca[0] = 1; //command set
-  cca[1] = _cs_threshold;
-  cca[2] = _rx_threshold;
-  cca[3] = _cp_threshold;
-
-  simclick_sim_command(router()->simnode(), SIMCLICK_CCA_OPERATION, &cca);
-#else
-  (void)cs_threshold;
-  (void)rx_threshold;
-  (void)cp_threshold;
-#endif
+  _wificonfig->set_cca(_cs_threshold, _rx_threshold, _cp_threshold);
 }
 
 uint32_t
 BRN2Device::set_backoff()
 {
-#if CLICK_NS
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_SET_BACKOFF, _queue_info);
-#endif
+  _wificonfig->set_backoff(_queue_info);
 
   return 0;
 }
@@ -352,26 +326,13 @@ BRN2Device::set_backoff()
 uint32_t
 BRN2Device::get_backoff()
 {
-#if CLICK_NS
-  if ( _no_queues == 0 ) {
-    int boq_info[2];
-    boq_info[0] = 0;
-    simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, boq_info);
-    _no_queues = boq_info[1];
-    if ( _no_queues > 0 ) {
-      _queue_info = new uint32_t[2 + 3 * _no_queues];
-      memset(_queue_info,0, (2 + 3 * _no_queues)*sizeof(uint32_t));
-      _cwmin = &_queue_info[2];
-      _cwmax = &_queue_info[2+_no_queues];
-      _aifs = &_queue_info[2 + (2 * _no_queues)];
-    }
-  }
+  _wificonfig->get_backoff(&_queue_info);
 
-  _queue_info[0] = _no_queues;
-  _queue_info[1] = 0;
+  _no_queues = _queue_info[0];
+  _cwmin = &_queue_info[2];
+  _cwmax = &_queue_info[2+_no_queues];
+  _aifs = &_queue_info[2 + (2 * _no_queues)];
 
-  simclick_sim_command(router()->simnode(), SIMCLICK_WIFI_GET_BACKOFF, _queue_info);
-#endif
   return 0;
 }
 
@@ -538,6 +499,35 @@ write_cca(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
   return 0;
 }
 
+static int
+write_backoff(const String &in_s, Element *e, void */*vparam*/, ErrorHandler *errh)
+{
+  BRN2Device *f = (BRN2Device *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  if (f->get_no_queues() == 0) f->get_backoff();
+
+  if ((f->get_no_queues() * 3) != args.size()) {
+    return errh->error("No queues and #params (backoffs) doesn't fit.");
+  }
+
+  uint32_t *cwmin = f->get_cwmin();
+  uint32_t *cwmax = f->get_cwmax();
+  uint32_t *aifs = f->get_aifs();
+  int i = 0;
+  for ( int q = 0; q < f->get_no_queues(); q++ ) {
+    if (!cp_integer(args[i++], &(cwmin[q]))) return errh->error("cwmin parameter must be integer");
+    if (!cp_integer(args[i++], &(cwmax[q]))) return errh->error("cwmax parameter must be integer");
+    if (!cp_integer(args[i++], &(aifs[q]))) return errh->error("aifs parameter must be integer");
+  }
+
+  f->set_backoff();
+  //f->get_backoff(); //check, whether backoff is set in simulator
+
+  return 0;
+}
 void
 BRN2Device::add_handlers()
 {
@@ -550,6 +540,7 @@ BRN2Device::add_handlers()
   add_write_handler("power", write_power, 0);
   add_write_handler("channel", write_channel, 0);
   add_write_handler("cca", write_cca, 0);
+  add_write_handler("backoff", write_backoff, 0);
 }
 
 CLICK_ENDDECLS

@@ -91,6 +91,12 @@ class WifiConfigIwLib: public WifiConfig
     int get_channel();
     int set_channel(int channel);
 
+    void get_cca(int *cs_threshold, int *rx_threshold, int *cp_threshold);
+    void set_cca(int cs_threshold, int rx_threshold, int cp_threshold);
+
+    uint32_t set_backoff(uint32_t *_queue_info);
+    uint32_t get_backoff(uint32_t **_queue_info);
+
   private:
 #ifdef HAVE_LIBIW
     int get_info(struct wireless_info *info);

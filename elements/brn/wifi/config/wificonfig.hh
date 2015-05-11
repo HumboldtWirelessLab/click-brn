@@ -22,6 +22,12 @@ class WifiConfig
 
     virtual int get_channel() = 0;
     virtual int set_channel(int channel) = 0;
+
+    virtual void get_cca(int *cs_threshold, int *rx_threshold, int *cp_threshold) = 0;
+    virtual void set_cca(int cs_threshold, int rx_threshold, int cp_threshold) = 0;
+
+    virtual uint32_t set_backoff(uint32_t *_queue_info) = 0;
+    virtual uint32_t get_backoff(uint32_t **_queue_info) = 0;
 };
 
 CLICK_ENDDECLS
