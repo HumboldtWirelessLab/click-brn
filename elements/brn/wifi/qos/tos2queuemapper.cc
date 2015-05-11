@@ -178,62 +178,54 @@ Tos2QueueMapper::simple_action(Packet *p)
   int opt_cwmin = 31; //default
   int opt_queue = tos;
 
-  if (_current_scheme) {
-    opt_cwmin = _current_scheme->get_cwmin(p, tos);
-    BRN_DEBUG("TosQM: opt_cwmin: %d\n", opt_cwmin);
+  switch (_bqs_strategy) {
+    case BACKOFF_STRATEGY_OFF:
+        switch (tos) {
+          case 0: opt_queue  = 1; break;
+          case 1: opt_queue  = 0; break;
+          case 2: opt_queue  = 2; break;
+          case 3: opt_queue  = 3; break;
+          default: opt_queue = 1;
+        }
+    case BACKOFF_STRATEGY_DIRECT:            // parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
+        break;
+    default:
+        if (_current_scheme) {
+          opt_cwmin = _current_scheme->get_cwmin(p, tos);
+          BRN_DEBUG("TosQM: opt_cwmin: %d\n", opt_cwmin);
+        }
 
-  } else {
-    switch (_bqs_strategy) {
-      case BACKOFF_STRATEGY_OFF:
-          switch (tos) {
-            case 0: opt_queue  = 1; break;
-            case 1: opt_queue  = 0; break;
-            case 2: opt_queue  = 2; break;
-            case 3: opt_queue  = 3; break;
-            default: opt_queue = 1;
+        BRN_DEBUG("optCW: %d",opt_cwmin);
+
+        // handle trunc overflow
+        if (need_recalc(opt_cwmin, tos)) {
+          recalc_backoff_queues(opt_cwmin);
+          set_backoff();
+          if (BRN_DEBUG_LEVEL_DEBUG) print_queues();
+
+        }
+
+        opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
+
+        assert((0 <= opt_queue) && (opt_queue < no_queues));
+        BRN_DEBUG("optQueue: %d",opt_queue);
+
+        /**
+        * Apply tos;
+        */
+
+        switch (tos) {
+          case 0: break;
+          case 1: opt_queue--;    break;
+          case 2: opt_queue++;    break;
+          case 3: opt_queue +=2;  break;
+          default: {
+            BRN_ERROR("TOS value too big: %d",tos);
+            opt_queue += 2;
           }
-          BrnWifi::setTxQueue(ceh, opt_queue);
-      case BACKOFF_STRATEGY_DIRECT:            // parts also used for BACKOFF_STRATEGY_OFF (therefore no "break;"
-          _queue_usage[opt_queue]++;
-          _bo_usage_usage[_bo_exp[opt_queue]]++;
-          _pkt_in_q++;
+        }
+  } //end switch _bqs_strategy
 
-          _all_bos[_all_bos_idx] = opt_cwmin;
-          _all_bos_idx=(_all_bos_idx+1)%TOS2QM_BOBUF_SIZE;
-
-          return p;
-    }
-  }
-
-  BRN_DEBUG("optCW: %d",opt_cwmin);
-
-  // handle trunc overflow
-  if (need_recalc(opt_cwmin, tos)) {
-    recalc_backoff_queues(opt_cwmin);
-    set_backoff();
-    if (BRN_DEBUG_LEVEL_DEBUG) print_queues();
-
-  }
-
-  opt_queue = find_queue(opt_cwmin); // queues changed, find opt queue again
-
-  assert((0 <= opt_queue) && (opt_queue < no_queues));
-  BRN_DEBUG("optQueue: %d",opt_queue);
-
-  /**
-   * Apply tos;
-   */
-
-  switch (tos) {
-    case 0: break;
-    case 1: opt_queue--;    break;
-    case 2: opt_queue++;    break;
-    case 3: opt_queue +=2;  break;
-    default: {
-      BRN_ERROR("TOS value too big: %d",tos);
-      opt_queue += 2;
-    }
-  }
   opt_queue = MAX(0,MIN(opt_queue,no_queues-1));
 
   //set queue
@@ -252,6 +244,7 @@ Tos2QueueMapper::simple_action(Packet *p)
   }
 
   _pkt_in_q++;
+
   return p;
 }
 
