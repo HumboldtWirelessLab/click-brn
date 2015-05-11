@@ -148,10 +148,10 @@ BRN2SimpleFlow::run_timer(Timer *t)
         }
 
         if ( !fl->_active ) {
-        if ( (now - fl->_start_time).msecval() >= 0 ) fl->_active = true; //start is in the past: flow is active
-        else continue;                                                    //start is in the future
+          if ( (now - fl->_start_time).msecval() >= 0 ) fl->_active = true; //start is in the past: flow is active
+          else continue;                                                    //start is in the future
         } else {
-        if ( fl->_interval == 0 ) continue;                               //interval = 0 -> packet send on feedback
+          if ( fl->_interval == 0 ) continue;                               //interval = 0 -> packet send on feedback
         }
 
         active_flows++;
@@ -537,10 +537,10 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
     }
   }
 
+  if ( f->_duration == 0 ) p->set_timestamp_anno(Timestamp(0));
+  else p->set_timestamp_anno(f->_end_time);
+
   Timestamp ts = Timestamp::now();
-
-  p->set_timestamp_anno(ts);
-
   header->tv_sec = htonl(ts.sec());
   header->tv_usec = htonl(ts.nsec());
 
