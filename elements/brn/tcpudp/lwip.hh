@@ -94,6 +94,43 @@ class LwIP : public BRNElement
     typedef Vector<LwIPSocket*> LwIPSocketList;
     typedef LwIPSocketList::const_iterator LwIPSocketListIter;
 
+    class LwIPConnection {
+     public:
+      LwIPNetIf  *_dev;
+      LwIPSocket *_local_socket;
+
+      IPAddress _dst;
+      uint16_t  _port;
+
+      ip_addr  _lw_dst;
+
+      uint32_t _sent_bytes;
+      uint32_t _received_bytes;
+
+      uint32_t _flow_size;
+
+      bool _closed;
+
+      LwIPConnection(LwIPSocket *socket, IPAddress dst_addr, uint16_t dst_port) : _dev(NULL), _dst(dst_addr), _port(dst_port),
+                                                                                   _sent_bytes(0), _received_bytes(0), _flow_size(0),
+                                                                                   _closed(false)
+      {
+        _local_socket = socket;
+        _dev = _local_socket->_dev;
+        _lw_dst.addr = _dst.addr();
+      }
+
+      uint16_t bytes_left() { return _flow_size - _sent_bytes; }
+
+      void update_stats(uint32_t send_data_count, uint32_t recv_data_count) {
+        _sent_bytes += send_data_count;
+        _received_bytes += recv_data_count;
+      }
+    };
+
+    typedef Vector<LwIPConnection*> LwIPConnectionList;
+    typedef LwIPConnectionList::const_iterator LwIPConnectionListIter;
+
     /*****************/
     /** M E M B E R **/
     /*****************/
@@ -124,10 +161,11 @@ class LwIP : public BRNElement
 
     LwIPNetIf *new_netif(IPAddress addr, IPAddress gw, IPAddress mask);
     LwIPSocket *new_socket(LwIPNetIf *netif, uint16_t port);
-    LwIPSocket *new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port);
+    LwIPConnection *new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port);
 
     void sent_packet(WritablePacket *packet);
 
+    int client_add_flow(IPAddress dst_addr, uint32_t dst_port, int count);
     int client_task();
     int client_fill_buffer(LwIPSocket *sock, int count_bytes);
 
@@ -136,26 +174,16 @@ class LwIP : public BRNElement
     IPAddress _netmask;
 
     int32_t   _server_port;
-    IPAddress _dst_address;
-    int32_t   _dst_port;
 
     LwIPNetIf *_interface;
-    int _netif_id;
 
     LwIPSocketList _sockets;
-    uint32_t _socket_id;
-
-    bool _is_server;
-
-    int _client_send_data;
-    int _server_recv_data;
+    LwIPConnectionList _connections;
 
     Timer _timer;
     uint32_t _local_tmr_counter;
 
     Task _task;
-
-    uint32_t buf[SRC_BUFFERSIZE];
 
     struct pbuf *pbuf_in;
     Vector<WritablePacket *> packet_out_queue;
