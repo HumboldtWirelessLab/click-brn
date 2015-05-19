@@ -21,20 +21,24 @@
 
 CLICK_DECLS
 
-static Vector<void*> _netifs_list;
+static Vector<void*> _static_netifs_list;
+static int called_lwip_init = 0;
 
 LwIP::LwIP()
   : _timer(this),
+    _server_port(-1),
+    _dst_address(),
+    _dst_port(-1),
     _socket_id(0),
-    _client(false),
     _client_send_data(0),
     _server_recv_data(0),
     _task(this)
 {
   BRNElement::init();
 
-  memset(_netifs,0,sizeof(_netifs));
+  _interface = NULL;
   p_buf = NULL;
+  p_out = NULL;
 }
 
 LwIP::~LwIP()
@@ -44,33 +48,47 @@ LwIP::~LwIP()
 int LwIP::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "CLIENT", cpkP, cpBool, &_client,
+      "IP", cpkP+cpkM, cpIPAddress, &_ip_adress,
+      "GATEWAY", cpkP+cpkM, cpIPAddress, &_gateway,
+      "NETMASK", cpkP+cpkM, cpIPAddress, &_netmask,
+      "DSTIP", cpkP, cpIPAddress, &_dst_address,
+      "DSTPORT", cpkP, cpInteger, &_dst_port,
+      "SERVERPORT", cpkP, cpInteger, &_server_port,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _is_server = (_server_port != -1);
+
+  if ( called_lwip_init == 0 ) {
+    BRN_DEBUG("LWIP Init");
+    lwip_init();
+    called_lwip_init = 1;
+  }
 
   return 0;
 }
 
 int LwIP::initialize(ErrorHandler *errh)
 {
-  for ( int i = 0; i < 4000; i++) buf[i] = htonl(i);
+  for ( int i = 0; i < SRC_BUFFERSIZE; i++) buf[i] = htonl(i);
 
   click_brn_srandom();
 
   _timer.initialize(this);
-  _timer.schedule_after_msec(100);
+  _timer.schedule_after_msec(TCP_TMR_INTERVAL);
 
   ScheduleInfo::join_scheduler(this, &_task, errh);
 
-  if ( !_client) {
-    /* lwip: */
-    BRN_DEBUG("LWIP Init");
-    lwip_init();
+  BRN_DEBUG("New Device %p",this);
+  _interface = new_netif(_ip_adress, _gateway, _netmask);
 
+  if (_is_server) {
+    /* lwip: */
     BRN_DEBUG("New Server Socket %p",this);
-    int netif_id = new_netif(IPAddress("192.168.0.2"), IPAddress("192.168.0.1"), IPAddress("255.255.255.0"));
-    int socket_id = new_socket(_netifs[netif_id], 12345);
+    int socket_id = new_socket(_interface, _server_port);
+
+    BRN_DEBUG("Server Socket-ID: %d addr: %s",socket_id,_interface->_addr.unparse().c_str());
     if ( socket_id < 0 ) {
       BRN_ERROR("New socket failed");
     }
@@ -82,55 +100,47 @@ int LwIP::initialize(ErrorHandler *errh)
 void
 LwIP::run_timer(Timer */*t*/)
 {
-  BRN_DEBUG("Run timer.");
-  _timer.reschedule_after_msec(TCP_TMR_INTERVAL);
+  BRN_DEBUG("Run timer. #sockets: %d", _sockets.size());
+  _timer.schedule_after_msec(TCP_TMR_INTERVAL/10);
 
-  if ( _client ) {
-    if (_sockets.size() == 0) {
-      BRN_DEBUG("New client Socket %p",this);
-      int netif_id = new_netif(IPAddress("192.168.0.3"), IPAddress("192.168.0.1"), IPAddress("255.255.255.0"));
-      int socket_id = new_connection(_netifs[netif_id], IPAddress("192.168.0.2"), 12345);
-      if ( socket_id < 0 ) {
-        BRN_ERROR("New connection failed");
-      }
-    } else {
-      u16_t buf_size = tcp_sndbuf(_sockets[0]->_tcp_pcb);
-      click_chatter("Buffersize: %d", buf_size);
-      if ( _client_send_data < 625 ) {
-        err_t res = tcp_write(_sockets[0]->_tcp_pcb, &buf[_client_send_data*4], 375 * 4, TCP_WRITE_FLAG_COPY);
-        if ( res != ERR_OK ) {
-          BRN_ERROR("tcp_write failed");
-        } else {
-          _client_send_data += 375;
-        }
-      }
-    }
+  if (_is_server) {
+    BRN_DEBUG("server tmr");
+
+    //ip_reass_tmr();
+    tcp_tmr();
+    //sys_check_timeouts();
+
+    BRN_DEBUG("server tmr end");
+  } else {
+    BRN_DEBUG("client tmr");
+
+    client_task();
+
+    BRN_DEBUG("client tmr end");
   }
-
-  if ( _client ) click_chatter("client tmr");
-  else click_chatter("server tmr");
-
-  if ( !_client ) tcp_tmr();
-
-  if ( _client ) click_chatter("client tmr end");
-  else click_chatter("server tmr end");
-
 }
 
 bool
 LwIP::run_task(Task *)
 {
-  click_chatter("Run Task");
-  if ( p_buf == NULL ) return false;
+  BRN_DEBUG("Run Task: %s",Timestamp::now().unparse().c_str());
+  if (( p_buf == NULL ) && (p_out == NULL)) return false;
 
-  struct pbuf *local_pbuf = p_buf;
-  p_buf = NULL;
+  if ( p_out != NULL ) {
+    WritablePacket *p = p_out;
+    p_out = NULL;
+    output(LWIP_LOWER_LAYER_PORT).push(p);
+  }
 
-  struct netif *global_net_if = &(((LwIP::LwIPNetIf*)_netifs_list[_netifs_list.size()-1])->click_netif); //global
-  global_net_if = &_netifs[0]->click_netif;                                                              //local
+  if ( p_buf != NULL ) {
+    struct pbuf *local_pbuf = p_buf;
+    p_buf = NULL;
 
-  BRN_DEBUG("Input if: %p (%p)",global_net_if, global_net_if->state);
-  global_net_if->input(local_pbuf, global_net_if);
+    BRN_DEBUG("Netifs: %d",_static_netifs_list.size());
+    BRN_DEBUG("Input if: %p (%p)", &(_interface->click_netif), _interface->click_netif.state);
+
+    _interface->click_netif.input(local_pbuf, &(_interface->click_netif));
+  }
 
   return false;
 }
@@ -151,10 +161,86 @@ LwIP::push( int port, Packet *packet )
     if (p != NULL) {
       memcpy(p->payload, packet->data(), packet->length());
       p_buf = p;
+      click_chatter("Push: %s",Timestamp::now().unparse().c_str());
       _task.reschedule();
     }
   }
+}
 
+void
+LwIP::sent_packet(WritablePacket *packet)
+{
+  BRN_DEBUG("sent packet");
+  //assert(p_out == NULL);
+
+  if ( p_out != NULL ) output(LWIP_LOWER_LAYER_PORT).push(p_out);
+  p_out = packet;
+
+  _task.reschedule();
+}
+
+int
+LwIP::client_fill_buffer(LwIPSocket *sock, int count_bytes)
+{
+  int buf_size = (int)tcp_sndbuf(sock->_tcp_pcb);
+  int bytes_left = MIN(count_bytes,buf_size);
+
+  bytes_left -= (bytes_left%4);
+  int bytes_written = bytes_left;
+
+  BRN_DEBUG("Buffersize: %d Client_send_data: %d", buf_size, bytes_left);
+
+  int bytes_per_write = 100;
+  bytes_per_write = MIN(bytes_per_write,bytes_left);
+
+  while (bytes_left > 0) {
+    err_t res = tcp_write(sock->_tcp_pcb, buf, bytes_per_write, TCP_WRITE_FLAG_COPY);
+    if ( res != ERR_OK ) {
+      BRN_ERROR("tcp_write failed");
+    } else {
+      bytes_left -= bytes_per_write;
+      bytes_per_write = MIN(bytes_per_write,bytes_left);
+    }
+  }
+
+  return bytes_written;
+}
+
+int
+LwIP::client_task()
+{
+  if (_is_server ) return 0;
+
+  if (_sockets.size() == 0) {
+
+    BRN_DEBUG("New client Socket %p (%s -> %s:%d",this,_interface->_addr.unparse().c_str(),
+                                                  _dst_address.unparse().c_str(), _dst_port);
+    int socket_id = new_connection(_interface, _dst_address, _dst_port);
+
+    BRN_DEBUG("Client Socket-ID: %d", socket_id);
+    if ( socket_id < 0 ) {
+      BRN_ERROR("New connection failed");
+    }
+    _client_send_data = 100000;
+
+  }
+
+  BRN_DEBUG("Clientdata left: %d", _client_send_data);
+
+  if ( _client_send_data > 0 ) {
+    _client_send_data -= client_fill_buffer(_sockets[0], _client_send_data);
+  } else if (_client_send_data == 0) {
+    BRN_DEBUG("Close TCP-Connection");
+    err_t res = tcp_close(_sockets[0]->_tcp_pcb);
+    if ( res != ERR_OK ) {
+      BRN_ERROR("tcp_close failed");
+    } else {
+      BRN_ERROR("tcp_close ok");
+    }
+    _client_send_data--;
+  }
+
+  return 0;
 }
 
 /*************************************************************************************************/
@@ -170,24 +256,33 @@ click_lw_ip_if_link_output(struct netif *netif, struct pbuf *p)
 }
 
 static err_t
-click_lw_ip_if_output(struct netif *netif, struct pbuf *p, ip_addr* ip)
+click_lw_ip_if_output(struct netif *netif, struct pbuf *p, ip_addr* ip) //TODO: ip == dst ?
 {
-  if ( (netif != NULL) && (p != NULL) ) click_chatter("output: %s",IPAddress(ip->addr).unparse().c_str());
+  IPAddress param_addr = IPAddress(ip->addr);
+
+  if ( (netif != NULL) && (p != NULL) ) click_chatter("if output: Dst: %s",param_addr.unparse().c_str());
+  else click_chatter("if output with NULL-params");
 
   WritablePacket *p_out = WritablePacket::make(128, p->payload, p->len, 32);
+
   const click_ip *iph = (click_ip *)p_out->data();
   IPAddress src_addr = IPAddress(iph->ip_src);
+  IPAddress dst_addr = IPAddress(iph->ip_dst);
 
-  click_chatter("Have packet: %d State: %p Src: %s", p_out->length(), netif->state, src_addr.unparse().c_str());
+  click_chatter("Have packet: %d State: %p Src: %s Dst: %s Param: %s", p_out->length(), netif->state,
+                                                                       src_addr.unparse().c_str(),
+                                                                       dst_addr.unparse().c_str(),
+                                                                       param_addr.unparse().c_str());
 
-  for ( int i = 0; i < _netifs_list.size(); i++ ) {
-    if ( ((LwIP::LwIPNetIf*)_netifs_list[i])->_addr == src_addr ) {
-      ((LwIP*)(((LwIP::LwIPNetIf*)_netifs_list[i])->click_netif.state))->output(LWIP_LOWER_LAYER_PORT).push(p_out);
+  for ( int i = 0; i < _static_netifs_list.size(); i++ ) {
+    if ( ((LwIP::LwIPNetIf*)_static_netifs_list[i])->_addr == src_addr ) {
+      //((LwIP*)(((LwIP::LwIPNetIf*)_static_netifs_list[i])->click_netif.state))->output(LWIP_LOWER_LAYER_PORT).push(p_out);
+      ((LwIP*)(((LwIP::LwIPNetIf*)_static_netifs_list[i])->click_netif.state))->sent_packet(p_out);
       break;
     }
   }
 
-  click_chatter("p on the way");
+  click_chatter("packet is out %s -> %s", src_addr.unparse().c_str(), dst_addr.unparse().c_str());
 
   return ERR_OK;
 }
@@ -195,7 +290,7 @@ click_lw_ip_if_output(struct netif *netif, struct pbuf *p, ip_addr* ip)
 static err_t
 click_lw_ip_if_init(struct netif *netif)
 {
-  click_chatter("LWIP init: %p", netif->state);
+  click_chatter("LWIP Interface init: %p", netif->state);
 
   netif->name[0] = 'i';
   netif->name[1] = 'p';
@@ -220,37 +315,39 @@ click_lw_ip_tcp_connected(void */*arg*/, struct tcp_pcb */*tpcb*/, err_t /*err*/
 }
 
 static err_t
-click_lw_ip_tcp_sent(void */*arg*/, struct tcp_pcb */*tpcb*/, u16_t len)
+click_lw_ip_tcp_sent(void *arg, struct tcp_pcb */*tpcb*/, u16_t len)
 {
-  click_chatter("Sent %d Bytes", len);
-  return ERR_OK;
-}
+  click_chatter("Callback: Sent %d Bytes", len);
 
-err_t
-click_lw_ip_recv(void */*arg*/, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
-{
-  //LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
-  click_chatter("received");
-
-  if (err == ERR_OK && p != NULL) {
-    tcp_recved(pcb, p->tot_len);
-    pbuf_free(p);
-  } else {
-    pbuf_free(p);
-  }
-
-  if (err == ERR_OK && p == NULL) {
-    tcp_arg(pcb, NULL);
-    tcp_sent(pcb, NULL);
-    tcp_recv(pcb, NULL);
-    tcp_close(pcb);
-  }
+  LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
+  lwip_socket->_dev->_lwIP->client_task();
 
   return ERR_OK;
 }
 
+
 err_t
-click_lw_ip_accept(void *arg, struct tcp_pcb *new_tpcb, err_t /*err*/)
+click_lw_ip_tcp_recv(void */*arg*/, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
+{
+  if (err == ERR_OK ) {
+    if (p != NULL) {
+      click_chatter("Callback: received: %d bytes", p->tot_len);
+      tcp_recved(pcb, p->tot_len);
+      pbuf_free(p);
+    } else {
+      click_chatter("Callback: received: p == NULL");
+      tcp_arg(pcb, NULL);
+      tcp_sent(pcb, NULL);
+      tcp_recv(pcb, NULL);
+      tcp_close(pcb);
+    }
+  }
+
+  return ERR_OK;
+}
+
+err_t
+click_lw_ip_tcp_accept(void *arg, struct tcp_pcb *new_tpcb, err_t /*err*/)
 {
   LwIP::LwIPSocket *lwip_socket = (LwIP::LwIPSocket*)arg;
 
@@ -259,69 +356,61 @@ click_lw_ip_accept(void *arg, struct tcp_pcb *new_tpcb, err_t /*err*/)
   lwip_socket->add_client(new_tpcb);
   tcp_accepted(lwip_socket->_listen_tcp_pcb);
 
-  tcp_recv(new_tpcb, click_lw_ip_recv);
+  tcp_recv(new_tpcb, click_lw_ip_tcp_recv);
+  tcp_sent(new_tpcb, click_lw_ip_tcp_sent);
 
   return ERR_OK;
 }
+
 /***************************************************************************************************/
 /********************** LWIP W R A P P E R   F U N C T I O N S *************************************/
 /***************************************************************************************************/
 
-int
+LwIP::LwIPNetIf *
 LwIP::new_netif(IPAddress addr, IPAddress gw, IPAddress mask)
 {
-  uint16_t next_if_id = 0;
+  _netif_id = _static_netifs_list.size();
 
-  for (;next_if_id < LWIP_MAX_INTERFACES; next_if_id++) {
-    if ( _netifs[next_if_id] == NULL ) break;
-  }
-
-  if ( next_if_id == LWIP_MAX_INTERFACES ) {
-    BRN_WARN("No device left");
-    return -1;
-  }
-
-  LwIPNetIf *lwipnetif = new LwIPNetIf(next_if_id, addr, gw, mask);
+  LwIPNetIf *lwipnetif = new LwIPNetIf(_netif_id, addr, gw, mask);
   lwipnetif->_lwIP = this; //set to self to find object for interface //TODO: this should be done by lwip
 
-  ip_addr lw_gw, lw_addr, lw_mask;
-  lw_addr.addr = addr.addr();
-  lw_gw.addr = gw.addr();
-  lw_mask.addr = mask.addr();
 
-  lwipnetif->click_netif.num = next_if_id;
+  BRN_DEBUG("Netif add");
+  struct netif *res = netif_add(&lwipnetif->click_netif, &(lwipnetif->_lw_addr), &(lwipnetif->_lw_mask), &(lwipnetif->_lw_gw),
+                                (void*)this, click_lw_ip_if_init, ip_input);
 
-  click_chatter("Netif add");
-  struct netif *res = netif_add(&lwipnetif->click_netif, &lw_addr, &lw_mask, &lw_gw, (void*)this, click_lw_ip_if_init, ip_input);
+  BRN_DEBUG("RES: %p (org: %p)",res,&lwipnetif->click_netif);
 
-  click_chatter("RES: %p (org: %p)",res,&lwipnetif->click_netif);
+  netif_set_up(&(lwipnetif->click_netif));
 
-  netif_set_up(&lwipnetif->click_netif);
-  _netifs[next_if_id] = lwipnetif;
+  _static_netifs_list.push_back(lwipnetif);
 
-  _netifs_list.push_back(lwipnetif);
+  BRN_DEBUG("Finish: lwid: %d static_id: %d", lwipnetif->click_netif.num, _netif_id);
 
-  click_chatter("Finish");
-
-  return next_if_id;
+  return lwipnetif;
 }
 
 int
 LwIP::new_socket(LwIPNetIf *netif, uint16_t port)
 {
-  LwIPSocket *new_socket = new LwIPSocket(netif, netif->_addr, port);
+  LwIPSocket *new_socket = new LwIPSocket(netif, port);
   new_socket->_mode = LWIP_MODE_SERVER;
   new_socket->_id = _socket_id++;
 
   _sockets.push_back(new_socket);
 
-  err_t res = tcp_bind(new_socket->_tcp_pcb, &(new_socket->_lw_addr), port);
+  err_t res = tcp_bind(new_socket->_tcp_pcb, &(netif->_lw_addr), port);
+
   if ( res != ERR_OK ) {
     BRN_ERROR("Bind failed");
   }
+
+  //TODO: why a second interface?
   new_socket->_listen_tcp_pcb = tcp_listen(new_socket->_tcp_pcb);
 
-  tcp_accept(new_socket->_listen_tcp_pcb, click_lw_ip_accept);
+  click_chatter("Org pcb: %p new pcb: %p",new_socket->_tcp_pcb, new_socket->_listen_tcp_pcb);
+
+  tcp_accept(new_socket->_listen_tcp_pcb, click_lw_ip_tcp_accept);
 
   return(new_socket->_id);
 }
@@ -329,16 +418,41 @@ LwIP::new_socket(LwIPNetIf *netif, uint16_t port)
 int
 LwIP::new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port)
 {
-  LwIPSocket *new_socket = new LwIPSocket(netif, dst_addr, dst_port);
+  LwIPSocket *new_socket = new LwIPSocket(netif, 0);
   new_socket->_mode = LWIP_MODE_CLIENT;
   new_socket->_id = _socket_id++;
 
   ip_addr lw_dst_addr;
   lw_dst_addr.addr = dst_addr.addr();
-  err_t res = tcp_connect( new_socket->_tcp_pcb , &lw_dst_addr, (u16_t)dst_port, click_lw_ip_tcp_connected);
-  tcp_sent(new_socket->_tcp_pcb, click_lw_ip_tcp_sent);
 
-  if ( res == ERR_OK ) _sockets.push_back(new_socket);
+  ip_addr lw_src_addr;
+  lw_src_addr.addr = netif->_addr.addr();
+
+  BRN_DEBUG("Bind client socket");
+  err_t res = tcp_bind(new_socket->_tcp_pcb, &lw_src_addr, 0);
+
+  if ( res != ERR_OK ) {
+    BRN_ERROR("Bind error");
+  }
+
+  BRN_DEBUG("Start new tcp-connection %s -> %s", netif->_addr.unparse().c_str(), dst_addr.unparse().c_str());
+  res = tcp_connect( new_socket->_tcp_pcb , &lw_dst_addr, (u16_t)dst_port, click_lw_ip_tcp_connected);
+
+  BRN_DEBUG("pcb: %s:%d -> %s:%d", IPAddress(new_socket->_tcp_pcb->local_ip.addr).unparse().c_str(),
+                                   new_socket->_tcp_pcb->local_port,
+                                   IPAddress(new_socket->_tcp_pcb->remote_ip.addr).unparse().c_str(),
+                                   new_socket->_tcp_pcb->remote_port);
+  BRN_DEBUG("Set send funtion");
+  tcp_recv(new_socket->_tcp_pcb, click_lw_ip_tcp_recv);     //set "sent function"
+  tcp_sent(new_socket->_tcp_pcb, click_lw_ip_tcp_sent);     //set "recv function"
+
+  BRN_DEBUG("finished setup Connection %s -> %s", netif->_addr.unparse().c_str(), dst_addr.unparse().c_str());
+
+  if ( res == ERR_OK ) {
+    _sockets.push_back(new_socket);
+  } else {
+    BRN_ERROR("Connection err");
+  }
 
   return(new_socket->_id);
 }

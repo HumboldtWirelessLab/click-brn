@@ -18,6 +18,7 @@
 #undef IP_OFFMASK
 #undef TF_NODELAY
 
+//#include "lwipopts.h"
 #include "lwip/init.h"
 #include "lwip/opt.h"
 #include "lwip/debug.h"
@@ -32,12 +33,10 @@ CLICK_DECLS
 #define LWIP_MODE_CLIENT  1
 #define LWIP_MODE_SERVER  2
 
-#define LWIP_MAX_INTERFACES 16
-
 #define LWIP_LOWER_LAYER_PORT 0
 #define LWIP_UPPER_LAYER_PORT 1
-#define LWIP_MAX_INTERFACES 16
 
+#define SRC_BUFFERSIZE 65536
 
 class LwIP : public BRNElement
 {
@@ -45,16 +44,20 @@ class LwIP : public BRNElement
     class LwIPNetIf {
      public:
       uint16_t  _num;
-      IPAddress _addr;
-      IPAddress _gw;
-      IPAddress _mask;
+
+      IPAddress _addr, _gw, _mask;
+
+      ip_addr  _lw_addr, _lw_gw, _lw_mask;
 
       struct netif click_netif;
 
-      LwIP *_lwIP;
+      LwIP *_lwIP;     //ref to LwIP
 
-      LwIPNetIf(uint16_t num, IPAddress addr, IPAddress gw, IPAddress mask) : _num(num), _addr(addr), _gw(gw), _mask(mask)
+      LwIPNetIf(uint16_t num, IPAddress addr, IPAddress gw, IPAddress mask): _num(num), _addr(addr), _gw(gw), _mask(mask)
       {
+        _lw_addr.addr = _addr.addr();
+        _lw_gw.addr = _gw.addr();
+        _lw_mask.addr = _mask.addr();
       }
 
     };
@@ -62,8 +65,7 @@ class LwIP : public BRNElement
     class LwIPSocket {
      public:
       LwIPNetIf *_dev;
-      IPAddress _addr;
-      struct ip_addr _lw_addr;
+
       uint16_t  _port;
 
       struct tcp_pcb *_tcp_pcb;
@@ -75,12 +77,16 @@ class LwIP : public BRNElement
 
       uint32_t _id;
 
-      LwIPSocket(LwIPNetIf *dev, IPAddress addr, uint16_t port): _dev(dev), _addr(addr), _port(port)
+      LwIPSocket(LwIPNetIf *dev, uint16_t port): _dev(dev), _port(port)
       {
         _mode = LWIP_MODE_SERVER;
-        _lw_addr.addr = _addr.addr();
         _tcp_pcb = tcp_new();
-        tcp_arg(_tcp_pcb, (void*)this);
+
+        if ( _tcp_pcb != NULL ) {
+          tcp_arg(_tcp_pcb, (void*)this);
+        } else {
+          click_chatter("Couldn't get new tcp_pcb");
+        }
       }
 
       void add_client(struct tcp_pcb *new_tcp_pcb) {
@@ -105,7 +111,7 @@ class LwIP : public BRNElement
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "2/2"; }
+    const char *port_count() const  { return "2/2-3"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
@@ -113,32 +119,48 @@ class LwIP : public BRNElement
     int initialize(ErrorHandler *);
 
     void push(int port, Packet *packet);
+
     bool run_task(Task *);
+    void run_timer(Timer *t);
 
     void add_handlers();
 
-    void run_timer(Timer *t);
-
     String xml_stats();
 
-    int new_netif(IPAddress addr, IPAddress gw, IPAddress mask);
+    LwIPNetIf *new_netif(IPAddress addr, IPAddress gw, IPAddress mask);
     int new_socket(LwIPNetIf *netif, uint16_t port);
     int new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port);
 
-    LwIPNetIf *_netifs[LWIP_MAX_INTERFACES];
-    LwIPSocketList _sockets;
+    void sent_packet(WritablePacket *packet);
 
+    int client_task();
+    int client_fill_buffer(LwIPSocket *sock, int count_bytes);
+
+    IPAddress _ip_adress;
+    IPAddress _gateway;
+    IPAddress _netmask;
+
+    int32_t   _server_port;
+    IPAddress _dst_address;
+    int32_t   _dst_port;
+
+    LwIPNetIf *_interface;
+    int _netif_id;
+
+    LwIPSocketList _sockets;
     uint32_t _socket_id;
 
-    uint32_t buf[4000];
+    bool _is_server;
 
-    bool _client;
     int _client_send_data;
-
     int _server_recv_data;
 
     Task _task;
+
+    uint32_t buf[SRC_BUFFERSIZE];
+
     struct pbuf *p_buf;
+    WritablePacket *p_out;
 };
 
 CLICK_ENDDECLS
