@@ -69,13 +69,10 @@ class LwIP : public BRNElement
       uint16_t  _port;
 
       struct tcp_pcb *_tcp_pcb;
-      struct tcp_pcb *_listen_tcp_pcb;
 
       Vector<struct tcp_pcb *> _client_sockets;
 
       uint16_t  _mode;
-
-      uint32_t _id;
 
       LwIPSocket(LwIPNetIf *dev, uint16_t port): _dev(dev), _port(port)
       {
@@ -96,8 +93,6 @@ class LwIP : public BRNElement
 
     typedef Vector<LwIPSocket*> LwIPSocketList;
     typedef LwIPSocketList::const_iterator LwIPSocketListIter;
-
-    Timer _timer;
 
     /*****************/
     /** M E M B E R **/
@@ -128,8 +123,8 @@ class LwIP : public BRNElement
     String xml_stats();
 
     LwIPNetIf *new_netif(IPAddress addr, IPAddress gw, IPAddress mask);
-    int new_socket(LwIPNetIf *netif, uint16_t port);
-    int new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port);
+    LwIPSocket *new_socket(LwIPNetIf *netif, uint16_t port);
+    LwIPSocket *new_connection(LwIPNetIf *netif, IPAddress dst_addr, uint16_t dst_port);
 
     void sent_packet(WritablePacket *packet);
 
@@ -155,12 +150,15 @@ class LwIP : public BRNElement
     int _client_send_data;
     int _server_recv_data;
 
+    Timer _timer;
+    uint32_t _local_tmr_counter;
+
     Task _task;
 
     uint32_t buf[SRC_BUFFERSIZE];
 
-    struct pbuf *p_buf;
-    WritablePacket *p_out;
+    struct pbuf *pbuf_in;
+    Vector<WritablePacket *> packet_out_queue;
 };
 
 CLICK_ENDDECLS
