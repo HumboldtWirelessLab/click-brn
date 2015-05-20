@@ -19,7 +19,7 @@ int
 BRN2NBList::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "NODEIDENTITY", cpkP+cpkM , cpElement, &_nodeid,
       cpEnd) < 0)
           return -1;
 
@@ -130,7 +130,7 @@ BRN2NBList::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("neighbor", read_neighbor_param, 0);
+  add_read_handler("stats", read_neighbor_param, 0);
   //add_write_handler("insert", static_insert, 0);
 }
 
