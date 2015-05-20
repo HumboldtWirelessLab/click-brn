@@ -48,9 +48,8 @@ int
 BRN2SetSrcForNeighbor::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "LINKTABLE", cpkP+cpkM, cpElement, &_link_table,
+      "LINKTABLE", cpkP, cpElement, &_link_table,
       "NBLIST", cpkP, cpElement, &_nblist,
-      //"ETHERADDRESS", cpkP, cpEtherAddress, &_etheraddr,
       "USEANNO", cpkP, cpBool, &_use_anno,
       cpEnd) < 0)
     return -1;
@@ -83,7 +82,7 @@ Packet *
 BRN2SetSrcForNeighbor::pull(int)
 {
   Packet *p = NULL;
-  
+
   if ((p = input(0).pull()) != NULL) p = smaction(p); //new packet
 
   return p;
@@ -106,20 +105,20 @@ BRN2SetSrcForNeighbor::smaction(Packet *p_in)
 
     const EtherAddress *src = NULL;
 
-    if ( _nblist ) src = _nblist->getDeviceAddressForNeighbor(&dst);
-    else src = _link_table->get_neighbor(dst);  //return the local src addr for the (best) link
+    if ( _nblist )        src = _nblist->getDeviceAddressForNeighbor(&dst);
+    else if (_link_table) src = _link_table->get_neighbor(dst);  //return the local src addr for the (best) link
 
     if ( src == NULL ) {
       output(1).push(p_in);
-      p_in = NULL;          
+      p_in = NULL;
     } else {
       if ( _use_anno ) BRNPacketAnno::set_src_ether_anno(p_in, *src);
       else memcpy(ether->ether_shost, src->data(), 6);
     }
   }
- 
+
   return p_in;
- 
+
 }
 
 //-----------------------------------------------------------------------------
