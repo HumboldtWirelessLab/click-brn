@@ -25,8 +25,10 @@
 #include "lwip/stats.h"
 #include "lwip/tcp.h"
 #include "lwip/tcp_impl.h"
+#include "lwip/ip_addr.h"
+#include "lwip/netif.h"
+#include "lwip/ip.h"
 
-struct n;
 CLICK_DECLS
 
 #define LWIP_MODE_UNKNOWN 0

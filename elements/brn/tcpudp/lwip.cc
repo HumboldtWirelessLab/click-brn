@@ -6,14 +6,9 @@
 #include <click/glue.hh>
 #include <click/straccum.hh>
 #include <click/timer.hh>
-#include <click/nameinfo.hh>
 #include <click/packet.hh>
-#include <clicknet/wifi.h>
-#include <clicknet/llc.h>
 #include <click/standard/scheduleinfo.hh>
 
-#include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/brnprotocol/brnprotocol.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "lwip.hh"
