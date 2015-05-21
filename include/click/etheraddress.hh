@@ -74,6 +74,13 @@ class EtherAddress { public:
 #endif
     }
 
+    /** @brief Return true if @a is already set (address != 0).
+     *
+     * The unset address is 00-00-00-00-00-00. */
+    inline bool is_set() const {
+	return (_data[0] | _data[1] | _data[2]) != 0x0;
+    }
+
     /** @brief Return a pointer to the address data. */
     inline unsigned char *data() {
 	return reinterpret_cast<unsigned char *>(_data);
