@@ -37,6 +37,13 @@
 CLICK_DECLS
 
 BRN2EtherEncap::BRN2EtherEncap()
+ : _push_header(true),
+   _src(EtherAddress()),
+   _dst(EtherAddress()),
+   _ethertype(0),
+   _use_anno(false),
+   _set_src(false),
+   _set_dst(false)
 {
   BRNElement::init();
 }
@@ -48,13 +55,19 @@ BRN2EtherEncap::~BRN2EtherEncap()
 int
 BRN2EtherEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 {
-  _use_anno = false;
-
   if (cp_va_kparse(conf, this, errh,
+      "SRC", cpkP, cpEthernetAddress, &_src,
+      "DST", cpkP, cpEthernetAddress, &_dst,
+      "ETHERTYPE", cpkP, cpInteger, &_ethertype,
       "USEANNO", cpkP, cpBool, &_use_anno,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
+
+  _set_src = _src.is_set();
+  _set_dst = _dst.is_set();
+
+  _set_fixed_values = (_set_dst) || (_set_src) || (_ethertype!=0);
 
   return 0;
 }
@@ -62,51 +75,56 @@ BRN2EtherEncap::configure(Vector<String> &conf, ErrorHandler *errh)
 Packet *
 BRN2EtherEncap::smaction(Packet *p)
 {
-  if (WritablePacket *q = p->push(14)) {
+  WritablePacket *q = p->uniqueify();
 
-    click_ether *ether = (click_ether *) q->data();
-    click_ether *annotated_ether = (click_ether *)q->ether_header();
+  if (!q) {
+    p->kill();
+    return NULL;
+  }
 
-    if ( annotated_ether && (! _use_anno ) ) {  // are the mac annotations available?
+  if (_push_header) q = q->push(14);
 
+  click_ether *ether = (click_ether *) q->data();
+  click_ether *annotated_ether = (click_ether *)q->ether_header();
+
+  if (_set_fixed_values) {
+
+    BRN_DEBUG("Setting Etherheader: %s (%d) -> %s (%d) %d (%d).", _src.unparse().c_str(), (_set_src?1:0),
+                                                                  _dst.unparse().c_str(), (_set_dst?1:0),
+                                                                  ntohs(_ethertype),(_ethertype!=0)?1:0);
+
+    if (_set_src) memcpy(ether->ether_shost, _src.data(), 6);
+    if (_set_dst) memcpy(ether->ether_dhost, _dst.data(), 6);
+    if (_ethertype!=0) ether->ether_type = htons(_ethertype);
+
+  } else if (_use_anno) {  // are the mac annotations available?
+
+    BRN_INFO("Set Header: %s %s %d",(BRNPacketAnno::src_ether_anno(q)).unparse().c_str(),
+                                    (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str(),
+                                    htons(BRNPacketAnno::ethertype_anno(q)));
+
+    memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(q)).data(), 6);
+    memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
+    ether->ether_type = htons(BRNPacketAnno::ethertype_anno(q));
+
+  } else {
+
+    if ( annotated_ether == NULL ) {
+      BRN_ERROR("annotated_ether isn't set!");
+    } else {
       if ( (void*)annotated_ether != (void*)ether ) {
         memcpy(ether->ether_shost, annotated_ether->ether_shost, 6);
         memcpy(ether->ether_dhost, annotated_ether->ether_dhost, 6);
         ether->ether_type = annotated_ether->ether_type;
+      } else {
+        BRN_INFO("annotated_ether == ether! no copy required.");
       }
-
-      //debug  //TODO: Remove this
-      if ( memcmp((BRNPacketAnno::dst_ether_anno(q)).data(),annotated_ether->ether_dhost,6) != 0 ) {
-        BRN_INFO("Header is set, but DST Addresses differs ! Header: %s  Anno: %s",
-                      EtherAddress(annotated_ether->ether_dhost).unparse().c_str(),
-                      (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
-
-        memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
-      }
-
-    } else {
-      if ( ! _use_anno ) {
-        BRN_INFO("The mac header anno isn't set. Use annos: src: %s dst: %s type: %x\n",
-                                   (BRNPacketAnno::src_ether_anno(q)).unparse().c_str(),
-                                   (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str(),
-                                    htons((BRNPacketAnno::ethertype_anno(q)))); //TODO:
-      }
-
-      BRN_INFO("%s %s",(BRNPacketAnno::src_ether_anno(q)).unparse().c_str(), (BRNPacketAnno::dst_ether_anno(q)).unparse().c_str());
-
-      memcpy(ether->ether_shost, (BRNPacketAnno::src_ether_anno(q)).data(), 6);
-      memcpy(ether->ether_dhost, (BRNPacketAnno::dst_ether_anno(q)).data(), 6);
-      ether->ether_type = htons(BRNPacketAnno::ethertype_anno(q));
-
     }
-
-    q->set_ether_header(ether);
-    return q;
-
-  } else {
-    p->kill();
-    return 0;
   }
+
+  q->set_ether_header(ether);
+
+  return q;
 }
 
 void
