@@ -24,6 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <elements/ethernet/arptable.hh>
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 /*
@@ -33,7 +34,7 @@ CLICK_DECLS
  * restores the ethernet address from an incoming ip-packets and encapsulates packets in Ethernet header.
  * =d
  */
-class ResolveEthernet : public Element {
+class ResolveEthernet : public BRNElement {
 
  public:
   //
@@ -51,15 +52,8 @@ class ResolveEthernet : public Element {
 
   Packet *simple_action(Packet *);
 
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
-  static void print(Packet *p_in);
-
- public:
-  int _debug;
-
  private:
+
   EtherAddress _src;
   ARPTable *_arp_table;
 };

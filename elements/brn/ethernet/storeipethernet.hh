@@ -24,6 +24,7 @@
 #include <click/etheraddress.hh>
 #include <click/element.hh>
 #include <elements/ethernet/arptable.hh>
+#include "elements/brn/brnelement.hh"
 
 CLICK_DECLS
 /*
@@ -33,7 +34,7 @@ CLICK_DECLS
  * learns and stores ip/ethernet address combinations from incoming packets.
  * =d
  */
-class StoreIPEthernet : public Element {
+class StoreIPEthernet : public BRNElement {
 
  public:
   //
@@ -50,14 +51,6 @@ class StoreIPEthernet : public Element {
   bool can_live_reconfigure() const	{ return false; }
 
   Packet *simple_action(Packet *);
-
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
-  static void print(Packet *p_in);
-
- public:
-  int _debug;
 
  private:
   ARPTable *_arp_table;

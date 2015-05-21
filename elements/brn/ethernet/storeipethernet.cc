@@ -34,9 +34,9 @@
 CLICK_DECLS
 
 StoreIPEthernet::StoreIPEthernet()
-  : _debug(BrnLogger::DEFAULT),
-    _arp_table()
+  : _arp_table()
 {
+  BRNElement::init();
 }
 
 StoreIPEthernet::~StoreIPEthernet()
@@ -48,14 +48,9 @@ StoreIPEthernet::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "ARPTABLE", cpkP+cpkM, cpElement, &_arp_table,
+      "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
-  return 0;
-}
-
-int
-StoreIPEthernet::initialize(ErrorHandler *)
-{
   return 0;
 }
 
@@ -77,37 +72,6 @@ StoreIPEthernet::simple_action(Packet *p_in)
   }
 
   return p_in;
-}
-
-//-----------------------------------------------------------------------------
-// Handler
-//-----------------------------------------------------------------------------
-
-static String
-read_debug_param(Element *e, void *)
-{
-  StoreIPEthernet *ds = (StoreIPEthernet *)e;
-  return String(ds->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  StoreIPEthernet *ds = (StoreIPEthernet *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  ds->_debug = debug;
-  return 0;
-}
-
-void
-StoreIPEthernet::add_handlers()
-{
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
 }
 
 CLICK_ENDDECLS

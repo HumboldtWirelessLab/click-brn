@@ -34,9 +34,9 @@
 CLICK_DECLS
 
 ResolveEthernet::ResolveEthernet()
-  : _debug(BrnLogger::DEFAULT),
-    _arp_table()
+  : _arp_table()
 {
+  BRNElement::init();
 }
 
 ResolveEthernet::~ResolveEthernet()
@@ -49,18 +49,13 @@ ResolveEthernet::configure(Vector<String> &conf, ErrorHandler* errh)
   if (cp_va_kparse(conf, this, errh,
     "ETHERADDRESS", cpkP+cpkM, cpEthernetAddress, &_src,
     "ARPTABLE", cpkP+cpkM, cpElement, &_arp_table,
+    "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
 
   if (!_arp_table || !_arp_table->cast("ARPTable"))
     return errh->error("ARPTable not specified");
 
-  return 0;
-}
-
-int
-ResolveEthernet::initialize(ErrorHandler *)
-{
   return 0;
 }
 
@@ -90,41 +85,9 @@ ResolveEthernet::simple_action(Packet *p_in)
     q->set_ether_header(ether);
 
     return q;
-  } else {
-    return 0;
   }
-}
 
-
-//-----------------------------------------------------------------------------
-// Handler
-//-----------------------------------------------------------------------------
-
-static String
-read_debug_param(Element *e, void *)
-{
-  ResolveEthernet *ds = (ResolveEthernet *)e;
-  return String(ds->_debug) + "\n";
-}
-
-static int 
-write_debug_param(const String &in_s, Element *e, void *,
-		      ErrorHandler *errh)
-{
-  ResolveEthernet *ds = (ResolveEthernet *)e;
-  String s = cp_uncomment(in_s);
-  int debug;
-  if (!cp_integer(s, &debug)) 
-    return errh->error("debug parameter must be an integer value between 0 and 4");
-  ds->_debug = debug;
   return 0;
-}
-
-void
-ResolveEthernet::add_handlers()
-{
-  add_read_handler("debug", read_debug_param, 0);
-  add_write_handler("debug", write_debug_param, 0);
 }
 
 CLICK_ENDDECLS
