@@ -60,6 +60,7 @@ BRN2EtherEncap::configure(Vector<String> &conf, ErrorHandler *errh)
       "DST", cpkP, cpEthernetAddress, &_dst,
       "ETHERTYPE", cpkP, cpInteger, &_ethertype,
       "USEANNO", cpkP, cpBool, &_use_anno,
+      "PUSHHEADER", cpkP, cpBool, &_push_header,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
