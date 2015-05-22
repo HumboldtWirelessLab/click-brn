@@ -12,7 +12,6 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "lwip.hh"
-#include <netinet/ip.h>
 
 CLICK_DECLS
 
@@ -266,8 +265,21 @@ click_lw_ip_if_link_output(struct netif *netif, struct pbuf *p)
   return ERR_OK;
 }
 
+#ifdef NEW_LWIP
 static err_t
+click_lw_ip_if_link_input(struct pbuf */*p*/, struct netif */*netif*/)
+{
+  click_chatter("Link input");
+  return ERR_OK;
+}
+#endif
+
+static err_t
+#ifdef NEW_LWIP
+click_lw_ip_if_output(struct netif *netif, struct pbuf *p, const ip4_addr* ip) //TODO: ip == dst ?
+#else
 click_lw_ip_if_output(struct netif *netif, struct pbuf *p, ip_addr* ip) //TODO: ip == dst ?
+#endif
 {
   IPAddress param_addr = IPAddress(ip->addr);
 
@@ -373,6 +385,8 @@ click_lw_ip_tcp_accept(void *arg, struct tcp_pcb *new_tpcb, err_t /*err*/)
   return ERR_OK;
 }
 
+
+
 /***************************************************************************************************/
 /********************** LWIP W R A P P E R   F U N C T I O N S *************************************/
 /***************************************************************************************************/
@@ -385,7 +399,11 @@ LwIP::new_netif(IPAddress addr, IPAddress gw, IPAddress mask)
 
   BRN_INFO("Netif add");
   struct netif *res = netif_add(&lwipnetif->click_netif, &(lwipnetif->_lw_addr), &(lwipnetif->_lw_mask), &(lwipnetif->_lw_gw),
+#ifdef NEW_LWIP
+                                (void*)this, click_lw_ip_if_init, click_lw_ip_if_link_input);
+#else
                                 (void*)this, click_lw_ip_if_init, ip_input);
+#endif
 
   if ( res != &lwipnetif->click_netif ) {
     BRN_ERROR("netif_add failed: %p vs %p", res, &lwipnetif->click_netif);

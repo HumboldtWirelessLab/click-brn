@@ -18,7 +18,6 @@
 #undef IP_OFFMASK
 #undef TF_NODELAY
 
-//#include "lwipopts.h"
 #include "lwip/init.h"
 #include "lwip/opt.h"
 #include "lwip/debug.h"
@@ -40,6 +39,8 @@ CLICK_DECLS
 
 #define SRC_BUFFERSIZE 65536
 
+//#define NEW_LWIP
+
 class LwIP : public BRNElement
 {
   public:
@@ -49,7 +50,11 @@ class LwIP : public BRNElement
 
       IPAddress _addr, _gw, _mask;
 
+#ifdef NEW_LWIP
+      ip4_addr  _lw_addr, _lw_gw, _lw_mask;
+#else
       ip_addr  _lw_addr, _lw_gw, _lw_mask;
+#endif
 
       struct netif click_netif;
 
@@ -104,7 +109,11 @@ class LwIP : public BRNElement
       IPAddress _dst;
       uint16_t  _port;
 
+#ifdef NEW_LWIP
+      ip4_addr  _lw_dst;
+#else
       ip_addr  _lw_dst;
+#endif
 
       uint32_t _sent_bytes;
       uint32_t _received_bytes;
