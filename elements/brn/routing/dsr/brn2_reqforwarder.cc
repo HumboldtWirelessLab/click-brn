@@ -583,15 +583,9 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
   // set source and destination anno
   BRN_DEBUG("New SRC-Ether is: %s",indev->getEtherAddress()->unparse().c_str());
 
-  //TODO: ANNO or header ??
   BRNPacketAnno::set_src_ether_anno(p,EtherAddress(indev->getEtherAddress()->data()));
   BRNPacketAnno::set_dst_ether_anno(p,EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff"));
   BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
-
- // click_ether *annotated_ether = (click_ether *)p->ether_header();
-  memcpy(ether->ether_shost,indev->getEtherAddress()->data() , 6);
-  memcpy(ether->ether_dhost, EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff").data(), 6);
-  ether->ether_type = htons(ETHERTYPE_BRN);
 
   // copy device anno
   BRNPacketAnno::set_devicenumber_anno(p,devicenumber);
