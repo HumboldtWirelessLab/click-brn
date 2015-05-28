@@ -16,6 +16,8 @@ CLICK_DECLS
 #define DATATYPE_VOID_POINTER 4
 #define DATATYPE_CHAR_POINTER 5
 
+#define DATATYPE_COUNT        5
+
 typedef struct datatype {
   int type;
   union {
@@ -28,12 +30,17 @@ typedef struct datatype {
 
 typedef void (*WrapperFunction)(DataType *, DataType *);
 
-static uint8_t string_to_datatype(String _string_type) {
-  if ( _string_type == "void" ) return DATATYPE_VOID;
-  if ( _string_type == "char" ) return DATATYPE_CHAR;
-  if ( _string_type == "int" ) return DATATYPE_INT;
-  if ( _string_type == "void*" ) return DATATYPE_VOID_POINTER;
-  if ( _string_type == "char*" ) return DATATYPE_CHAR_POINTER;
+static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
+
+static uint8_t string2datatype(String _string_type) {
+  for ( int i = 0; i <= DATATYPE_COUNT; i++)
+    if ( _string_type == datatype_to_string[i] ) return i;
+
+  return DATATYPE_UNKNOWN;
+}
+
+static String datatype2string(uint8_t data_type) {
+  if ( data_type <= DATATYPE_COUNT ) return String(datatype_to_string[data_type]);
   return DATATYPE_UNKNOWN;
 }
 
@@ -60,11 +67,11 @@ class TCC : public BRNElement {
       String sresult = cp_uncomment(result);
 
       _name = name;
-      _result.type = string_to_datatype(sresult);
+      _result.type = string2datatype(sresult);
 
       for ( int i = 0; i < args.size(); i++ ) {
         DataType dt;
-        dt.type = string_to_datatype(args[i]);
+        dt.type = string2datatype(args[i]);
         _args.push_back(dt);
       }
 

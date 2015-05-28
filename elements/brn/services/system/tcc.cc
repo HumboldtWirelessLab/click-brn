@@ -10,7 +10,6 @@
 
 CLICK_DECLS
 
-static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
 static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp" };
 
 TCC::TCC():
@@ -301,6 +300,7 @@ TCC::stats()
   StringAccum sa;
 
   sa << "<tcc node=\"" << BRN_NODE_NAME << "\" >\n";
+  //TccFunction *tccf = _func_map.find(function);
   sa << "</tcc>\n";
 
   return sa.take_string();
