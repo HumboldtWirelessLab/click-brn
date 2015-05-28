@@ -1,0 +1,111 @@
+/* Copyright (C) 2005 BerlinRoofNet Lab
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA. 
+ *
+ * For additional licensing options, consult http://www.BerlinRoofNet.de 
+ * or contact brn@informatik.hu-berlin.de. 
+ */
+
+#ifndef CLICK_RPC_HH
+#define CLICK_RPC_HH
+#include <click/element.hh>
+#include <clicknet/ether.h>
+#include <click/vector.hh>
+#include <click/timer.hh>
+#include <click/etheraddress.hh>
+#include <click/ipaddress.hh>
+
+#include "elements/brn/brnelement.hh"
+#include "elements/brn/dht/storage/dhtstorage.hh"
+#include "elements/brn/services/system/tcc.hh"
+
+CLICK_DECLS
+
+struct rpc_dht_header {
+  uint8_t flags;
+  uint8_t result_type;
+  uint8_t args_count;
+  uint8_t compute_node_count;
+  uint16_t code_size;
+};
+
+#define RPC_TCC_DFLT_CHECK_TIMER_INTERVAL 5000
+
+class RPC : public BRNElement {
+
+  class RPCAddress {
+   public:
+
+    Timestamp _last_update;
+    String _uri;
+    Vector<EtherAddress> _node;
+  };
+
+  class RPCInfo {
+   public:
+    String _name;
+    RPCAddress _addr;
+    Element *_local_addr;
+  };
+
+ public:
+
+  //
+  //methods
+  //
+  RPC();
+  ~RPC();
+
+  const char *class_name() const	{ return "RPC"; }
+  const char *processing() const	{ return PUSH; }
+
+  const char *port_count() const  { return "1/1"; }
+
+  int configure(Vector<String> &, ErrorHandler *);
+  bool can_live_reconfigure() const	{ return false; }
+  void add_handlers();
+
+  void run_timer(Timer *t);
+
+  int initialize(ErrorHandler *);
+
+  void push( int port, Packet *packet );
+
+  int handle_dht_reply(DHTOperation *op);
+
+  int call_function(String params);
+  String get_result();
+
+ private:
+
+  Timer _tcc_check_timer;
+  uint32_t _tcc_check_interval;
+  HashMap<String, Timestamp> _known_tcc_function;
+
+  void dht_request(DHTOperation *op);
+
+  uint8_t *tcc2dht(String fname, int * vdata_size);
+  int dht2tcc(String fname, uint8_t *data, int data_size);
+
+  TCC *_tcc;
+  DHTStorage *_dht_storage;
+  
+  Vector<String> _pending_rpcs;
+
+  //int add_rpc(String object, String name, Vector<String> out, Vector<String> in, String config); //real function
+};
+
+CLICK_ENDDECLS
+#endif
