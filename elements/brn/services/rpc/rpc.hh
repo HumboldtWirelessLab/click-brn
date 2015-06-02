@@ -41,6 +41,20 @@ struct rpc_dht_header {
   uint16_t code_size;
 };
 
+#define RPC_FUNCTION_CALL_REQUEST  0
+#define RPC_FUNCTION_CALL_REPLY    1
+#define RPC_FUNCTION_DATA_CALL     2
+#define RPC_FUNCTION_FUNCTION_CALL 4
+
+
+struct rpc_function_call_header {
+  uint8_t flags;        //request/reply,....
+  uint8_t request_size; //size of request (function/handler name
+  uint16_t result_size;
+  uint16_t request_id;
+};
+
+
 #define RPC_TCC_DFLT_CHECK_TIMER_INTERVAL 5000
 
 class RPC : public BRNElement {
@@ -86,6 +100,12 @@ class RPC : public BRNElement {
   int handle_dht_reply(DHTOperation *op);
 
   int call_function(String params);
+  String get_handler_value(String full_handler_name);
+
+  void request_data(const EtherAddress ea, String handler);
+  void handle_request_data(Packet *p);
+  void handle_reply_data(Packet *p);
+
   String get_result();
 
  private:
@@ -101,8 +121,10 @@ class RPC : public BRNElement {
 
   TCC *_tcc;
   DHTStorage *_dht_storage;
-  
+
   Vector<String> _pending_rpcs;
+
+  HashMap<String, String> _pending_params;
 
   //int add_rpc(String object, String name, Vector<String> out, Vector<String> in, String config); //real function
 };

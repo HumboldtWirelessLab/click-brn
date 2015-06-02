@@ -10,7 +10,8 @@
 
 CLICK_DECLS
 
-static const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp" };
+const char *datatype_to_name[] = { "/*unknown*/", "/*void*/", "_char", "_int", "_voidp", "_charp", "_intp" };
+const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*", "int*" };
 
 TCC::TCC():
   _tcc_s(NULL),
@@ -158,7 +159,7 @@ TCC::add_function(String name, String result, Vector<String> args)
   /** ------------ DataType typedef ---------------- */
   wrapper_code << "typedef struct datatype {\n  char type;\n  union {\n";
 
-  for ( int i = 2; i < 6; i++)
+  for ( int i = 2; i <= DATATYPE_COUNT; i++)
     wrapper_code << "    " << datatype_to_string[i] << " " << datatype_to_name[i] << ";\n";
 
   wrapper_code << "  };\n} DataType;\n\n";
@@ -292,6 +293,20 @@ bool
 TCC::have_function(String function)
 {
   return (_func_map.findp(function) != NULL);
+}
+
+String
+TCC::datatype2string(uint8_t data_type) {
+  if ( data_type <= DATATYPE_COUNT ) return String(datatype_to_string[data_type]);
+  return DATATYPE_UNKNOWN;
+}
+
+uint8_t
+TCC::string2datatype(String _string_type) {
+  for ( int i = 0; i <= DATATYPE_COUNT; i++)
+    if ( _string_type == datatype_to_string[i] ) return i;
+
+  return DATATYPE_UNKNOWN;
 }
 
 String

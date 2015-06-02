@@ -9,14 +9,15 @@
 
 CLICK_DECLS
 
-#define DATATYPE_UNKNOWN      0
-#define DATATYPE_VOID         1
-#define DATATYPE_CHAR         2
-#define DATATYPE_INT          3
-#define DATATYPE_VOID_POINTER 4
-#define DATATYPE_CHAR_POINTER 5
+#define DATATYPE_UNKNOWN       0
+#define DATATYPE_VOID          1
+#define DATATYPE_CHAR          2
+#define DATATYPE_INT           3
+#define DATATYPE_VOID_POINTER  4
+#define DATATYPE_CHAR_POINTER  5
+#define DATATYPE_INT_POINTER   6
 
-#define DATATYPE_COUNT        5
+#define DATATYPE_COUNT         6
 
 typedef struct datatype {
   int type;
@@ -30,19 +31,7 @@ typedef struct datatype {
 
 typedef void (*WrapperFunction)(DataType *, DataType *);
 
-static const char *datatype_to_string[] = { "unknown", "void", "char", "int", "void*", "char*" };
-
-static uint8_t string2datatype(String _string_type) {
-  for ( int i = 0; i <= DATATYPE_COUNT; i++)
-    if ( _string_type == datatype_to_string[i] ) return i;
-
-  return DATATYPE_UNKNOWN;
-}
-
-static String datatype2string(uint8_t data_type) {
-  if ( data_type <= DATATYPE_COUNT ) return String(datatype_to_string[data_type]);
-  return DATATYPE_UNKNOWN;
-}
+extern const char *datatype_to_string[];
 
 class TCC : public BRNElement {
  public:
@@ -129,6 +118,9 @@ class TCC : public BRNElement {
   int add_code(String function, String code);
   int call_function(String function, Vector<String> args);
   bool have_function(String function);
+
+  static String datatype2string(uint8_t data_type);
+  static uint8_t string2datatype(String _string_type);
 
 };
 
