@@ -67,17 +67,21 @@ BRN2NBList::printNeighbors()
 {
   BRN2Device *dev;
   StringAccum sa;
+
+  sa << "<nblist node=\"" << BRN_NODE_NAME << "\" nb_count=\"" << _nb_list.size() << "\" >\n";
+
   for (NBMap::iterator i = _nb_list.begin(); i.live(); i++) {
     NeighborInfo &nb_info = i.value();
-    sa << " * nb: " << nb_info._eth.unparse() << " via device: ";
     for ( int d = 0; d < nb_info._devs.size(); d++ ) {
-     dev = nb_info._devs[d];
-     sa << dev->getDeviceName().c_str();
-     if ( (d + 1) != nb_info._devs.size() ) 
-       sa << ",";
+      sa << "\t<neighbour node=\"" << nb_info._eth.unparse() << "\" device=\"";
+      dev = nb_info._devs[d];
+      sa << dev->getDeviceName().c_str();
+      sa << "\" devaddr=\"" << dev->getEtherAddress()->unparse() << "\" />\n";
     }
-    sa << " reachable\n";
   }
+
+  sa << "</nblist>\n";
+
   return sa.take_string();
 }
 int
