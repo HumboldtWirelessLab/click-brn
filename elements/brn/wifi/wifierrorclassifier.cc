@@ -140,7 +140,7 @@ WifiErrorClassifier::print_stats()
 
   sa << "<wifierrorclassifier packets=\"" << _p_all << "\" ok=\"" << _p_ok << "\" crc=\"" << _p_crc;
   sa << "\" phy=\"" << _p_phy << "\" fifo=\"" << _p_fifo << "\" decrypt=\"" << _p_decrypt;
-  sa << "\" mic=\"" << _p_mic << "\" zerorate=\"" << _p_zerorate << "\"phantom=\"" << _p_phantom << "\" unknown=\"" << _p_unknown << "\" />\n";
+  sa << "\" mic=\"" << _p_mic << "\" zerorate=\"" << _p_zerorate << "\" phantom=\"" << _p_phantom << "\" unknown=\"" << _p_unknown << "\" />\n";
 
   return sa.take_string();
 }
