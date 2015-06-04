@@ -607,6 +607,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
     } else {
       rreq_retr_i = _rreq_retransmit_list[old_index];
       BRN_DEBUG("Alreday schedule this rreq %d", old_index);
+      //TODO: search for old request in queue
       if ( rreq_retr_i->_p == NULL ) {
         BRN_DEBUG("WTF! No packet");
       } else {
