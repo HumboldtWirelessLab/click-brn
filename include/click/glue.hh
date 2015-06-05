@@ -384,7 +384,7 @@ click_put_processor()
 extern __thread int click_current_thread_id;
 #endif
 
-#if CLICK_USERLEVEL
+#if CLICK_USERLEVEL && !CLICK_NS
 extern int click_nthreads;
 #endif
 
@@ -428,9 +428,9 @@ click_max_cpu_ids()
 {
 #if CLICK_LINUXMODULE
     return NR_CPUS;
-#elif CLICK_USERLEVEL
+#elif CLICK_USERLEVEL && !CLICK_NS
     return click_nthreads;
-#else //XXX BSDMODULE?
+#else //XXX BSDMODULE? NSCLICK?
     return 1;
 #endif
 }
