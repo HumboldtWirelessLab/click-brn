@@ -1,6 +1,5 @@
 #ifndef CPUQUEUE_HH
 #define CPUQUEUE_HH
-
 /*
  * =c
  * CPUQueue
@@ -18,6 +17,7 @@
  */
 
 #include <click/element.hh>
+CLICK_DECLS
 
 class CPUQueue : public Element {
   struct {
@@ -59,4 +59,5 @@ class CPUQueue : public Element {
   void add_handlers() CLICK_COLD;
 };
 
+CLICK_ENDDECLS
 #endif

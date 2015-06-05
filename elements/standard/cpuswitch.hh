@@ -1,7 +1,7 @@
 #ifndef CPUSWITCH_HH
 #define CPUSWITCH_HH
 #include <click/element.hh>
-
+CLICK_DECLS
 /*
  * =c
  * CPUSwitch()
@@ -29,4 +29,5 @@ class CPUSwitch : public Element {
 
 };
 
+CLICK_ENDDECLS
 #endif
