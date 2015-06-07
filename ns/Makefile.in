@@ -159,5 +159,8 @@ clean:
 distclean: clean
 	-rm -f Makefile
 
+linkerconfig:
+	@echo $(LIBS)
+
 .PHONY: all clean distclean elemlist \
 	install install-include uninstall
