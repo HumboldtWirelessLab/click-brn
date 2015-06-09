@@ -182,7 +182,7 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
   EtherAddress next_hop = BRNPacketAnno::dst_ether_anno(p_in);
   assert(next_hop.is_broadcast());
 
-  const EtherAddress *me;
+  const EtherAddress *me = _me->getMasterAddress();
   Vector<EtherAddress> candidate_set;
   candidate_set.clear();
 
@@ -225,9 +225,6 @@ UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
       * In all cases all nodes which have already the message are removed.
       *
       * */
-
-    //src mac
-    me = _me->getMasterAddress();
 
     //filter packet src
     BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), bcast_id);

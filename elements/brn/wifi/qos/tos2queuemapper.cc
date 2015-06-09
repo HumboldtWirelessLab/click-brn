@@ -405,7 +405,7 @@ Tos2QueueMapper::need_recalc(uint32_t bo, uint32_t /*tos*/)
 uint32_t
 Tos2QueueMapper::recalc_backoff_queues(uint32_t backoff)
 {
-  int cwmin_tos_0;
+  int cwmin_tos_0 = 0;
   int cwmin_tos_1 = (backoff>0)?backoff:1;
   uint32_t fib_0 = 0;
 

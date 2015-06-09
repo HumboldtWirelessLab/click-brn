@@ -140,8 +140,8 @@ FloodingTxScheduling::tx_delay_prio(PassiveAckPacket *pap, bool active_passive_p
   int same_prio = 0;
 
   //TODO: what about "ME FINISHED FOR FOREIGN" and piggyback
-  bool me_can_be_known = ( (bcn->get_sent(pap->_bcast_id) == 0) ||        //i've sent the packetsize
-                           (bcn->me_was_unicast_target(pap->_bcast_id))); //i was target of unicast
+  bool me_can_be_known = ( (bcn->get_sent(pap->_bcast_id) == 0) ||        //i've sent the packet
+                           (bcn->me_was_unicast_target(pap->_bcast_id))); //i was target of unicast (sent ack)
 
   BRN_DEBUG("Neighbours: %d",own_cnml->_neighbors.size());
   //get benefit
