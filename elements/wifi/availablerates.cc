@@ -66,7 +66,7 @@ AvailableRates::parse_and_insert(String s, ErrorHandler *errh)
   }
 
   for (int x = 1; x< args.size(); x++) {
-    int r;
+    int r = 0;
     IntArg().parse(args[x], r);
     if (default_rates) {
       _default_rates.push_back(r);
