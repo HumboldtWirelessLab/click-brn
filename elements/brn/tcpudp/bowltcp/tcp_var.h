@@ -57,7 +57,9 @@ struct tcpcb {
 
 #define	TF_ACKNOW	0x0001		/* ack peer immediately */
 #define	TF_DELACK	0x0002		/* ack, but try to delay it */
+#ifndef TF_NODELAY
 #define	TF_NODELAY	0x0004		/* don't delay packets to coalesce */
+#endif
 #define	TF_NOOPT	0x0008		/* don't use tcp options */
 #define	TF_SENTFIN	0x0010		/* have sent FIN */
 #define	TF_REQ_SCALE	0x0020		/* have/will request window scaling */

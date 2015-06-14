@@ -55,6 +55,24 @@ CLICK_CXX_PROTECT
 CLICK_CXX_UNPROTECT
 # include <click/cxxunprotect.h>
 
+#elif CLICK_MINIOS
+
+# include <click/cxxprotect.h>
+CLICK_CXX_PROTECT
+# include <stdio.h>
+# include <stdlib.h>
+# include <stddef.h>
+# include <string.h>
+# include <ctype.h>
+# include <errno.h>
+# include <limits.h>
+# include <time.h>
+# include <sys/socket.h>
+# include <netinet/in.h>
+# include <sys/time.h>
+CLICK_CXX_UNPROTECT
+# include <click/cxxunprotect.h>
+
 #else /* CLICK_USERLEVEL */
 
 # include <stdio.h>
@@ -73,6 +91,7 @@ extern "C" int simclick_gettimeofday(struct timeval *);
 # endif
 # if HAVE_MULTITHREAD
 #  include <pthread.h>
+#  include <sched.h>
 # endif
 
 #endif
@@ -86,7 +105,7 @@ void click_chatter(const char *fmt, ...);
 
 // DEBUG MALLOC
 
-#if CLICK_DMALLOC && (CLICK_LINUXMODULE || CLICK_BSDMODULE)
+#if CLICK_DMALLOC && (CLICK_LINUXMODULE || CLICK_BSDMODULE || CLICK_MINIOS)
 extern uint32_t click_dmalloc_where;
 # define CLICK_DMALLOC_REG(s) do { const unsigned char *__str = reinterpret_cast<const unsigned char *>(s); click_dmalloc_where = (__str[0]<<24) | (__str[1]<<16) | (__str[2]<<8) | __str[3]; } while (0)
 #else
@@ -148,6 +167,8 @@ inline uint32_t click_random() {
 # elif CLICK_LINUXMODULE
     click_random_seed = click_random_seed * 69069L + 5;
     return (click_random_seed ^ jiffies) & CLICK_RAND_MAX; // XXX jiffies??
+#elif CLICK_MINIOS
+    return rand();
 # elif HAVE_RANDOM && CLICK_RAND_MAX == RAND_MAX
     // See also click_random() in ns/nsclick.cc
     return random();
@@ -162,6 +183,8 @@ inline void click_srandom(uint32_t seed) {
     srandom(seed);
 #elif CLICK_LINUXMODULE
     click_random_seed = seed;
+#elif CLICK_MINIOS
+    srand(seed);
 #elif CLICK_NS
     (void) seed; /* XXX */
 #elif HAVE_RANDOM && CLICK_RAND_MAX == RAND_MAX
@@ -305,7 +328,7 @@ typedef struct device net_device;
 
 // COMPILE-TIME ASSERTION CHECKING
 
-#if !defined(__cplusplus) || !HAVE_CXX_STATIC_ASSERT
+#if (!defined(__cplusplus) || !HAVE_CXX_STATIC_ASSERT) && !defined(static_assert)
 # define static_assert(x, ...) switch ((int) (x)) case 0: case !!((int) (x)):
 #endif
 
@@ -314,10 +337,17 @@ typedef struct device net_device;
 
 #if CLICK_LINUXMODULE
 typedef uint32_t click_processor_t;
+#  define CLICK_CPU_MAX NR_CPUS
 #elif CLICK_USERLEVEL && HAVE_MULTITHREAD
 typedef pthread_t click_processor_t;
+#  define CLICK_CPU_MAX 256
 #else
 typedef int8_t click_processor_t;
+#  if HAVE_MULTITHREAD
+#    define CLICK_CPU_MAX 256
+#  else
+#    define CLICK_CPU_MAX 1
+#  endif
 #endif
 
 inline click_processor_t
@@ -350,6 +380,14 @@ click_put_processor()
 #endif
 }
 
+#if CLICK_USERLEVEL && HAVE_MULTITHREAD && HAVE___THREAD_STORAGE_CLASS
+extern __thread int click_current_thread_id;
+#endif
+
+#if CLICK_USERLEVEL && !CLICK_NS
+extern int click_nthreads;
+#endif
+
 inline click_processor_t
 click_current_processor()
 {
@@ -366,6 +404,38 @@ click_current_processor()
 #endif
 }
 
+inline unsigned
+click_current_cpu_id()
+{
+#if !HAVE_MULTITHREAD
+    return 0;
+#elif CLICK_USERLEVEL
+#  if HAVE___THREAD_STORAGE_CLASS
+    return click_current_thread_id & 0xffff;
+#  else
+    return sched_getcpu();
+#  endif
+#else
+    return click_current_processor();
+#endif
+}
+
+/**
+ * Return an upper bound to click_current_cpu_id()
+ */
+inline unsigned
+click_max_cpu_ids()
+{
+#if CLICK_LINUXMODULE
+    return NR_CPUS;
+#elif CLICK_USERLEVEL && !CLICK_NS
+    return click_nthreads;
+#else //XXX BSDMODULE? NSCLICK?
+    return 1;
+#endif
+}
+
+
 inline click_processor_t
 click_invalid_processor()
 {
@@ -377,11 +447,6 @@ click_invalid_processor()
     return -1;
 #endif
 }
-
-#if CLICK_USERLEVEL && HAVE_MULTITHREAD && HAVE___THREAD_STORAGE_CLASS
-extern __thread int click_current_thread_id;
-#endif
-
 
 // TIMEVALS AND JIFFIES
 // click_jiffies_t is the type of click_jiffies() and must be unsigned.
@@ -621,6 +686,9 @@ click_get_cycles()
     uint32_t xlo, xhi;
     __asm__ __volatile__ ("rdtsc" : "=a" (xlo), "=d" (xhi));
     return xlo;
+#elif CLICK_MINIOS
+    /* FIXME: Implement click_get_cycles for MiniOS */
+    return 0;
 #else
     // add other architectures here
     return 0;

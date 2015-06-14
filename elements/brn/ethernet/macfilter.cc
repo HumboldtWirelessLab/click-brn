@@ -23,6 +23,7 @@
 #include <click/element.hh>
 #include <click/confparse.hh>
 #include <clicknet/wifi.h>
+#include <click/string.hh>
 
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
@@ -31,7 +32,7 @@
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
 #include "macfilter.hh"
-#include "../../../include/click/string.hh"
+
 #include "elements/brn/routing/identity/brn2_device.hh"
 
 CLICK_DECLS
@@ -97,8 +98,7 @@ MacFilter::configure(Vector<String> &conf, ErrorHandler *errh)
 	return 0;
 }
 
-int MacFilter::initialize() {
-
+int MacFilter::initialize(ErrorHandler *) {
 	return 0;
 }
 

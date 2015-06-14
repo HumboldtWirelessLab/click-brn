@@ -87,7 +87,7 @@ BRN2DHCPClient::initialize(ErrorHandler *)
   BRN_DEBUG("BRN2DHCPClient: Initialize");
   BRN_DEBUG("BRN2DHCPClient: Interval: %d", _interval);
 
-  click_random_srandom();
+  click_brn_srandom();
 
   init_state();
   _timer.initialize(this);

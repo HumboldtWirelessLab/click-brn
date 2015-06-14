@@ -36,11 +36,10 @@
 #include <elements/wifi/station/openauthrequester.hh>
 
 #include "elements/brn/wifi/brnavailablerates.hh"
-#include "elements/brn/routing/identity/brn2_nodeidentity.hh"
+#include "elements/brn/routing/identity/brn2_device.hh"
 #include "elements/brn/wifi/station/brn2assocrequester.hh"
 #include "elements/brn/wifi/station/brn2proberequester.hh"
 #include "elements/brn/wifi/availablechannels.hh"
-#include "elements/brn/wifi/ath/ath2operation.hh"
 
 #include "brn2beaconscanner.hh"
 
@@ -79,7 +78,9 @@ public:
 
   String wireless_info();
   String print_assoc();
-
+  
+  BRN2Device *_device;
+  
   WirelessInfo *_wireless_info;
   BrnAvailableRates *_rtable;
   BRN2BeaconScanner *_beaconscanner;
@@ -104,7 +105,6 @@ public:
   int _channel_index;
   AvailableChannels *_channellist;
   int _channel_is_set;
-  Ath2Operation *_athop;
 
   int _minChannelScanTime;
   int _maxChannelScanTime;

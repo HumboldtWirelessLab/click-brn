@@ -6,6 +6,7 @@
 #include <click/error.hh>
 #include <click/straccum.hh>
 
+#include "../flooding.hh"
 #include "floodingpolicy.hh"
 #include "probabilityflooding.hh"
 
@@ -13,8 +14,7 @@ CLICK_DECLS
 
 ProbabilityFlooding::ProbabilityFlooding():
   _min_no_neighbors(0),
-  _fwd_probability(100),
-  _max_metric_to_neighbor(5000)
+  _fwd_probability(100)
 {
   BRNElement::init();
 }
@@ -41,9 +41,9 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
   if (cp_va_kparse(conf, this, errh,
     "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
     "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+    "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
     "MINNEIGHBOURS", cpkP+cpkM, cpInteger, &_min_no_neighbors,
     "FWDPROBALILITY", cpkP+cpkM, cpInteger, &_fwd_probability,
-    "MAXNBMETRIC", cpkP+cpkM, cpInteger, &_max_metric_to_neighbor,
     "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
@@ -54,7 +54,7 @@ ProbabilityFlooding::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 ProbabilityFlooding::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
   return 0;
 }
 
@@ -64,18 +64,27 @@ ProbabilityFlooding::do_forward(EtherAddress *, EtherAddress *, const EtherAddre
 {
   *tx_data_size = 0;
 
+  if (is_known) return false;
+
+  /**  ----------  Probability stuff -----------
+   *
+   * Check no. neighbours (NON)
+   * if NON > threshhold ) send with P()
+   * else send;
+   *
+   */
   const EtherAddress *me = _me->getMasterAddress();
   CachedNeighborsMetricList* cnml = _fhelper->get_filtered_neighbors(*me);
-  
+
   BRN_DEBUG("NBs: %d min: %d",cnml->_neighbors.size(),(int32_t)_min_no_neighbors);
-  
-  if ( cnml->_neighbors.size() <= (int32_t)_min_no_neighbors ) return !is_known;
+
+  if ( cnml->_neighbors.size() <= (int32_t)_min_no_neighbors ) return true;;
 
   uint32_t r = (click_random() % 100);
-  
+
   BRN_DEBUG("Known: %d prob: %d",(is_known?(int)1:(int)0),r);
-  
-  return !is_known && (r < _fwd_probability);
+
+  return (r < _fwd_probability);
 }
 
 int

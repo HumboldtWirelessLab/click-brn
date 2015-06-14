@@ -28,6 +28,8 @@ class BRNCorrelatedDrop : public Element {
 
   Packet *simple_action(Packet *);
 
+  EtherAddress _dropped_source;
+
   int _drop_pattern;
   int _packet;
   int _skew;

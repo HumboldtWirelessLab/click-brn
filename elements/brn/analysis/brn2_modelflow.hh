@@ -7,9 +7,11 @@
 #include <click/straccum.hh>
 #include <click/timer.hh>
 
+#include "elements/brn/brnelement.hh"
+
 CLICK_DECLS
 
-class BRN2ModelFlow : public Element
+class BRN2ModelFlow : public BRNElement
 {
   public:
 
@@ -21,27 +23,18 @@ class BRN2ModelFlow : public Element
 
     const char *processing() const  { return PUSH; }
 
-    const char *port_count() const  { return "0/1"; }
+    const char *port_count() const  { return "0/0"; }
 
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
 
     int initialize(ErrorHandler *);
 
-    void push( int port, Packet *packet );
-
     void add_handlers();
-
-    void run_timer(Timer *t);
-    Timer _timer;
-
-    void set_active();
-
-    bool _active;
 
     int getNextPacketSize();
     int32_t getNextPacketTime();
-    WritablePacket *nextPacket(int size);
+
   private:
 
     uint32_t packet_size_vector_len;

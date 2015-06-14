@@ -29,14 +29,22 @@
 #include <click/hashmap.hh>
 #include <click/timestamp.hh>
 
+#include "elements/brn/brn2.h"
 #include "elements/brn/brnelement.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-#include "floodingpolicy/floodingpolicy.hh"
-#include "floodingpassiveack.hh"
+#include "elements/brn/standard/randomdelayqueue.hh"
+
+#include "elements/brn/routing/broadcast/flooding/flooding_db.hh"
+#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "elements/brn/routing/broadcast/flooding/floodingpolicy/floodingpolicy.hh"
+#include "elements/brn/routing/broadcast/flooding/passiveack/floodingpassiveack.hh"
 
 CLICK_DECLS
 
+/**  TODO:
+ * forward a known packet again? ask   policy if the packet is known ?
+ */
 /*
  * !!! BROADCAST ID -> 0 is never used !!! Don't use 0 as bcastid !!
  */
@@ -45,11 +53,12 @@ struct click_brn_bcast {
   uint16_t      bcast_id;
   uint8_t       flags;
   uint8_t       extra_data_size;
-} CLICK_SIZE_PACKED_ATTRIBUTE ;
+} CLICK_SIZE_PACKED_ATTRIBUTE;
 
 #define BCAST_HEADER_FLAGS_FORCE_DST           1 /* src is responsible for target */
 #define BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS  2 /* reason for reject was empty cs */
 #define BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN  4 /* reason for reject was empty cs with assigned nodes*/
+#define BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED  8 /* reason for reject was the stopped transmission*/
 
 #define BCAST_MAX_EXTRA_DATA_SIZE            255
 
@@ -59,7 +68,7 @@ struct click_brn_bcast_extra_data {
 } CLICK_SIZE_PACKED_ATTRIBUTE ;
 
 #define BCAST_EXTRA_DATA_MPR                    1
-#define BCAST_EXTRA_DATA_LASTNODE               2
+#define BCAST_EXTRA_DATA_NODEINFO               2
 
 /*
  * =c
@@ -79,330 +88,6 @@ struct click_brn_bcast_extra_data {
 class Flooding : public BRNElement {
 
  public:
-
-   class BroadcastNode
-   {
-#if CLICK_NS
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS 16
-#else
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS  8
-#endif
-
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE (1 << DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_BITS)
-#define DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK (DEFAULT_MAX_BCAST_ID_QUEUE_SIZE - 1)
-
-#define DEFAULT_MAX_BCAST_ID_TIMEOUT       10000
-#define FLOODING_LAST_NODE_LIST_DFLT_SIZE     16
-
-     public:
-      EtherAddress  _src;
-
-      uint32_t _bcast_id_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      uint8_t _bcast_fwd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no fwd paket
-      uint8_t _bcast_fwd_done_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no fwd done paket (fwd-fwd_done=no_queued_packets
-      uint8_t _bcast_fwd_succ_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE]; //no packet recv by at least on node
-      uint8_t _bcast_snd_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];      //no transmission (incl. retries for unicast)
-      uint8_t _bcast_flags_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];    //flags
-
-#define FLOODING_FLAGS_ME_SRC           1
-
-      Timestamp _last_id_time;
-
-      //stats for last node of one packet
-      struct flooding_last_node {
-        uint8_t etheraddr[6];
-        uint8_t received_cnt;
-        uint8_t flags;
-#define FLOODING_LAST_NODE_FLAGS_FORWARDED       1
-#define FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY  2
-
-#define FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN   4        
-
-#define FLOODING_LAST_NODE_FLAGS_RX_ACKED        8       
-      };
-
-      struct flooding_last_node *_last_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      uint8_t _last_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      uint8_t _last_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-
-      struct flooding_last_node *_assigned_node_list[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      uint8_t _assigned_node_list_size[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-      uint8_t _assigned_node_list_maxsize[DEFAULT_MAX_BCAST_ID_QUEUE_SIZE];
-
-      BroadcastNode()
-      {
-        _src = EtherAddress::make_broadcast();
-        init();
-      }
-
-      BroadcastNode( EtherAddress *src )
-      {
-        _src = *src;
-        init();
-      }
-
-      ~BroadcastNode()
-      {}
-
-      void init() {
-        _last_id_time = Timestamp::now();
-        reset_queue();
-	
-	memset(_last_node_list,0,sizeof(_last_node_list));
-        memset(_last_node_list_maxsize,0,sizeof(_last_node_list_maxsize));
-        memset(_assigned_node_list,0,sizeof(_assigned_node_list));
-        memset(_assigned_node_list_maxsize,0,sizeof(_assigned_node_list_maxsize));
-      }
-
-      void reset_queue() {
-        memset(_bcast_id_list, 0, sizeof(_bcast_id_list));
-        memset(_bcast_fwd_list, 0, sizeof(_bcast_fwd_list));
-        memset(_bcast_fwd_done_list, 0, sizeof(_bcast_fwd_done_list));
-        memset(_bcast_fwd_succ_list, 0, sizeof(_bcast_fwd_succ_list));
-        memset(_bcast_snd_list, 0, sizeof(_bcast_snd_list));
-        memset(_bcast_flags_list, 0, sizeof(_bcast_flags_list));
-
-        memset(_last_node_list_size,0,sizeof(_last_node_list_size));          //all entries are invalid
-	memset(_assigned_node_list_size,0,sizeof(_assigned_node_list_size));  //all entries are invalid
-      }
-
-      inline bool have_id(uint32_t id) {
-        return (_bcast_id_list[id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK] == id );
-      }
-
-      inline bool have_id(uint32_t id, Timestamp now) {
-        if ( is_outdated(now) ) {
-          reset_queue();
-          return false;
-        }
-
-        return have_id(id);
-      }
-
-      inline bool is_outdated(Timestamp now) {
-        return ((now-_last_id_time).msecval() > DEFAULT_MAX_BCAST_ID_TIMEOUT);
-      }
-
-      /**
-       * TODO: timeout for ids
-       **/
-      void add_id(uint32_t id, Timestamp now, bool me_src) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-
-        if (_bcast_id_list[index] != id) {
-          _bcast_id_list[index] = id;
-          _bcast_fwd_list[index] = 0;
-          _bcast_fwd_done_list[index] = 0;
-          _bcast_fwd_succ_list[index] = 0;
-	  _bcast_snd_list[index] = 0;
-	  _bcast_flags_list[index] = (me_src)?1:0;
-	  
-	  _last_node_list_size[index] = 0;
-          _assigned_node_list_size[index] = 0;
-        }
-        _last_id_time = now;
-      }
-
-      inline bool me_src(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) 
-	  return ((_bcast_flags_list[index]&FLOODING_FLAGS_ME_SRC) == FLOODING_FLAGS_ME_SRC);
-	return false;
-      }
-
-      inline void forward_attempt(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id)
-	  _bcast_fwd_list[index]++;
-      }
-
-      inline void forward_done(uint32_t id, bool success) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) {
-	  _bcast_fwd_done_list[index]++;
-	  if (success) _bcast_fwd_succ_list[index]++;
-	}
-      }
-      
-      inline int forward_done_cnt(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) return _bcast_fwd_done_list[index];
-        return -1;
-      }
-      
-      inline uint32_t forward_attempts(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) return _bcast_fwd_list[index];
-        return 0;
-      }
-
-      inline uint32_t unfinished_forward_attempts(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) return _bcast_fwd_list[index]-_bcast_fwd_done_list[index];
-        return 0;
-      }
-
-      inline void sent(uint32_t id, uint32_t no_transmissions) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id) _bcast_snd_list[index] += no_transmissions;
-      }
-
-      int add_last_node(uint32_t id, EtherAddress *node, bool forwarded, bool rx_acked) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] != id) return -1;
-
-        if (_last_node_list[index] == NULL) {
-          _last_node_list[index] = new struct flooding_last_node[FLOODING_LAST_NODE_LIST_DFLT_SIZE];
-          _last_node_list_size[index] = 0;
-          _last_node_list_maxsize[index] = FLOODING_LAST_NODE_LIST_DFLT_SIZE;
-        } else {
-          if ( _last_node_list_size[index] == _last_node_list_maxsize[index] ) {
-            _last_node_list_maxsize[index] *= 2; //double
-            struct flooding_last_node *new_list = new struct flooding_last_node[_last_node_list_maxsize[index]]; //new list
-            memcpy(new_list,_last_node_list[index], _last_node_list_size[index] * sizeof(struct flooding_last_node)); //copy
-            delete[] _last_node_list[index]; //delete old
-            _last_node_list[index] = new_list; //set new
-          }
-        }
-
-        struct flooding_last_node *fln = _last_node_list[index];
-        int fln_i = _last_node_list_size[index];
-
-        //search for node
-        for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {
-            if ( rx_acked ) {
-              fln[i].flags &= !((uint8_t)FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY);
-              fln[i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
-            }
-            return 0;
-          }
-
-        memcpy(fln[fln_i].etheraddr, node->data(),6);
-	fln[fln_i].received_cnt = fln[fln_i].flags = 0;
-        
-	if ( forwarded ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_FORWARDED;
-        if ( rx_acked ) fln[fln_i].flags |= FLOODING_LAST_NODE_FLAGS_RX_ACKED;
-        
-        _last_node_list_size[index]++;
-        
-        /* revoke assignment */
-        revoke_assigned_node(id, node);
-        
-        return _last_node_list_size[index];
-      }
-
-      struct flooding_last_node* get_last_node(uint32_t id, EtherAddress *last) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-
-        if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
-	
-	struct flooding_last_node *fln = _last_node_list[index];
-	int fln_i = _last_node_list_size[index];
-
-        //search for node
-        for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(last->data(), fln[i].etheraddr, 6) == 0 ) return &fln[i];
-
-	return NULL;
-      }
-      
-      struct flooding_last_node* get_last_nodes(uint32_t id, uint32_t *size) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-
-	*size = 0;
-        if ((_last_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
-	*size = (uint32_t)( _last_node_list_size[index]);
-        return _last_node_list[index];
-      }
-    
-      inline void add_recv_last_node(uint32_t id, EtherAddress *last) {
-        struct flooding_last_node *fln = get_last_node(id, last);
-	if ( fln != NULL ) fln->received_cnt++;
-      }
-
-      /** ASSIGN: flags wether the packet is transmited to a node A (LastNode) by another node */ 
-      
-      int assign_node(uint32_t id, EtherAddress *node) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] != id) return -1;
-        
-        if (_assigned_node_list[index] == NULL) {
-          _assigned_node_list[index] = new struct flooding_last_node[FLOODING_LAST_NODE_LIST_DFLT_SIZE];
-          _assigned_node_list_size[index] = 0;
-          _assigned_node_list_maxsize[index] = FLOODING_LAST_NODE_LIST_DFLT_SIZE;
-        } else {
-          if ( _assigned_node_list_size[index] == _assigned_node_list_maxsize[index] ) {
-            _assigned_node_list_maxsize[index] *= 2; //double
-            struct flooding_last_node *new_list = new struct flooding_last_node[_assigned_node_list_maxsize[index]]; //new list
-            memcpy(new_list,_assigned_node_list[index], _assigned_node_list_size[index] * sizeof(struct flooding_last_node)); //copy
-            delete[] _assigned_node_list[index]; //delete old
-            _assigned_node_list[index] = new_list; //set new
-          }
-        }
-
-        struct flooding_last_node *fln = _assigned_node_list[index];
-        int fln_i = _assigned_node_list_size[index];
-
-        //search for node
-        for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) return 0;
-
-        memcpy(fln[fln_i].etheraddr, node->data(),6);
-        fln[fln_i].received_cnt = fln[fln_i].flags = 0;
-       
-        _assigned_node_list_size[index]++;
-        
-        return _assigned_node_list_size[index];
-      }
-
-      struct flooding_last_node* get_assigned_nodes(uint32_t id, uint32_t *size) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-
-        *size = 0;
-        if ((_assigned_node_list[index] == NULL) || (_bcast_id_list[index] != id)) return NULL;
-        *size = (uint32_t)( _assigned_node_list_size[index]);
-        return _assigned_node_list[index];
-      }
-     
-      void clear_assigned_nodes(uint32_t id) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        if (_bcast_id_list[index] == id)
-          _assigned_node_list_size[index] = 0;
-      }
-
-      void revoke_assigned_node(uint32_t id, EtherAddress *node) {
-        uint16_t index = id & DEFAULT_MAX_BCAST_ID_QUEUE_SIZE_MASK;
-        struct flooding_last_node *fln = _assigned_node_list[index];
-
-        if ((fln == NULL) || (_bcast_id_list[index] != id)) return;
-
-        int fln_i = _assigned_node_list_size[index];
-
-        //search for node
-        for ( int i = 0; i < fln_i; i++ )
-          if ( memcmp(node->data(), fln[i].etheraddr, 6) == 0 ) {
-            fln[i].flags &= !((uint8_t)FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN);
-            break;
-          }
-      }
-
-      /**
-       * Responsibility
-       */
-      
-      void set_responsibility_target(uint32_t id, EtherAddress *target) {
-        struct flooding_last_node* ln = get_last_node(id, target);
-        if ( ln != NULL ) ln->flags |= FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY;
-      }
-
-      bool is_responsibility_target(uint32_t id, EtherAddress *target) {
-        struct flooding_last_node* ln = get_last_node(id, target);
-        if ( ln == NULL ) return false;
-        
-        return ((ln->flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) != 0);
-      }
-    };
 
   //
   //methods
@@ -432,35 +117,9 @@ class Flooding : public BRNElement {
   int initialize(ErrorHandler *);
   void add_handlers();
 
-  void add_broadcast_node(EtherAddress *src);
-  BroadcastNode *get_broadcast_node(EtherAddress *src);
-
-  void add_id(EtherAddress* src, uint32_t id, Timestamp* now, bool = false);
-  void inc_received(EtherAddress *src, uint32_t id, EtherAddress *last_node);
-  bool have_id(EtherAddress *src, uint32_t id, Timestamp *now, uint32_t *fwd_attempts);
-  
-  void forward_done(EtherAddress *src, uint32_t id, bool success, bool new_node = false);
-  void forward_attempt(EtherAddress *src, uint32_t id);  
-  uint32_t unfinished_forward_attempts(EtherAddress *src, uint32_t id);  
-  void sent(EtherAddress *src, uint32_t id, uint32_t no_transmission);
-  
-  int add_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node, bool forwarded, bool rx_acked);
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
-  struct Flooding::BroadcastNode::flooding_last_node* get_last_node(EtherAddress *src, uint32_t id, EtherAddress *last);
-
-  bool me_src(EtherAddress *src, uint32_t id);
-
-  void assign_last_node(EtherAddress *src, uint32_t id, EtherAddress *last_node);
-  struct Flooding::BroadcastNode::flooding_last_node* get_assigned_nodes(EtherAddress *src, uint32_t id, uint32_t *size);
-  void clear_assigned_nodes(EtherAddress *src, uint32_t id);
-  
-  void set_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target);
-  bool is_responsibility_target(EtherAddress *src, uint32_t id, EtherAddress *target);
-
   int retransmit_broadcast(Packet *p, EtherAddress *src, uint16_t bcast_id);
 
   String stats();
-  String table();
   void reset();
 
  private:
@@ -469,47 +128,147 @@ class Flooding : public BRNElement {
   //
   BRN2NodeIdentity *_me;
 
+  FloodingHelper *_fhelper;
+  FloodingDB *_flooding_db;
   FloodingPolicy *_flooding_policy;
   FloodingPassiveAck *_flooding_passiveack;
 
   uint16_t _bcast_id;
 
-  typedef HashMap<EtherAddress, BroadcastNode*> BcastNodeMap;
-  typedef BcastNodeMap::const_iterator BcastNodeMapIter;
-
-  BcastNodeMap _bcast_map;
-
-  typedef HashMap<EtherAddress, uint32_t> RecvCntMap;
-  typedef RecvCntMap::const_iterator RecvCntMapIter;
-  RecvCntMap _recv_cnt;
-
   uint8_t extra_data[BCAST_MAX_EXTRA_DATA_SIZE];
   uint32_t extra_data_size;
 
-  uint16_t _passive_id;
-  bool _passive_last_node_new;
+  /** infos about passive packet (port 4) which will be handled by port 1 (like rx) mostly **/
+  bool _passive_last_node;
   bool _passive_last_node_rx_acked;
   bool _passive_last_node_assign;
+  bool _passive_last_node_foreign_responsibility;
 
  public:
 
   bool is_local_addr(EtherAddress *ea) { return _me->isIdentical(ea);}
 
-  uint32_t _flooding_src;
-  uint32_t _flooding_rx;
-  uint32_t _flooding_sent;
-  uint32_t _flooding_fwd;
-  uint32_t _flooding_passive;
-  uint32_t _flooding_passive_not_acked_dst;
-  uint32_t _flooding_passive_not_acked_force_dst;
-  uint32_t _flooding_last_node_due_to_passive;
-  uint32_t _flooding_last_node_due_to_ack;
-  uint32_t _flooding_last_node_due_to_piggyback;
-  uint32_t _flooding_lower_layer_reject;
+  /** stats **/
+  uint32_t _flooding_src;                                  // node was src of paket (including retransmit)
+  uint32_t _flooding_rx;                                   // node receives a broadcast (includes passive packets)
+  uint32_t _flooding_sent;                                 // node sents a packet (MAC-layer)
+  uint32_t _flooding_fwd;                                  // node forwards a paket (net layer)
+  uint32_t _flooding_passive;                              // node receives passive a packet
+  uint32_t _flooding_passive_acked_dst;                    // dst of passive was acked
+  uint32_t _flooding_passive_not_acked_dst;                // dst of passive was not acked (incl forced dst)
+  uint32_t _flooding_passive_not_acked_force_dst;          // dst of passive was not acked but forced
+  uint32_t _flooding_node_info_new_finished;               // new fin node
+  uint32_t _flooding_node_info_new_finished_src;           // new fin node (src of rx packet)
+  uint32_t _flooding_node_info_new_finished_dst;           // new fin node (dst of tx packet)
+  uint32_t _flooding_node_info_new_finished_piggyback;     // new fin node (piggyback)
+  uint32_t _flooding_node_info_new_finished_piggyback_resp;// new fin node (piggyback)
+  uint32_t _flooding_node_info_new_finished_passive_src;   // new fin node (src of passive)
+  uint32_t _flooding_node_info_new_finished_passive_dst;   // new fin node (dst of passive)
+
   uint32_t _flooding_src_new_id;
   uint32_t _flooding_rx_new_id;
   uint32_t _flooding_fwd_new_id;
-  uint32_t _flooding_rx_ack;
+
+  uint32_t _flooding_rx_ack;                             // receive an ack for tx-packet (MAC-Layer)
+
+  uint32_t _flooding_lower_layer_reject;
+
+  /** Abort stats **/
+  /* Members and functions for tx abort */
+#define FLOODING_TXABORT_MODE_NONE           0
+#define FLOODING_TXABORT_MODE_ACKED          1
+#define FLOODING_TXABORT_MODE_ASSIGNED       2
+#define FLOODING_TXABORT_MODE_BETTER_LINK    4
+#define FLOODING_TXABORT_MODE_NEW_INFO       8
+#define FLOODING_TXABORT_MODE_INCLUDE_QUEUE 16
+
+
+#define FLOODING_TXABORT_REASON_NONE                    FLOODING_TXABORT_MODE_NONE
+#define FLOODING_TXABORT_REASON_ACKED                   FLOODING_TXABORT_MODE_ACKED
+#define FLOODING_TXABORT_REASON_ASSIGNED                FLOODING_TXABORT_MODE_ASSIGNED
+#define FLOODING_TXABORT_REASON_BETTER_LINK             FLOODING_TXABORT_MODE_BETTER_LINK
+#define FLOODING_TXABORT_REASON_NEW_INFO                FLOODING_TXABORT_MODE_NEW_INFO
+#define FLOODING_TXABORT_REASON_FOREIGN_RESPONSIBILITY  FLOODING_TXABORT_MODE_ACKED       /* Take foreign resp. as acked */
+
+  uint32_t _abort_tx_mode;
+  uint32_t _tx_aborts;
+  uint32_t _tx_aborts_errors;
+
+ private:
+
+  EtherAddress _last_tx_dst_ea;
+  EtherAddress _last_tx_src_ea;
+  uint16_t _last_tx_bcast_id;
+  bool _last_tx_abort;
+
+ public:
+
+  inline void set_last_tx(EtherAddress dst, EtherAddress src, uint16_t id) {
+    _last_tx_dst_ea = dst;
+    _last_tx_src_ea = src;
+    _last_tx_bcast_id = id;
+  };
+
+  void reset_last_tx() { set_last_tx(EtherAddress(), EtherAddress(), 0); _last_tx_abort = false; }
+
+  inline bool is_last_tx_id(EtherAddress &src, uint16_t id) {
+    return (_last_tx_src_ea == src) && (_last_tx_bcast_id == id);
+  }
+
+  bool is_last_tx(EtherAddress &dst, EtherAddress &src, uint16_t id) {
+    return ((_last_tx_dst_ea == dst) && is_last_tx_id(src, id));
+  }
+
+  //TODO: abort also for bcast
+  void abort_last_tx(EtherAddress &dst, uint32_t abort_reason) {
+    if (((_abort_tx_mode & abort_reason) == FLOODING_TXABORT_MODE_NONE) || dst.is_broadcast()) return;
+
+    BRN_DEBUG("Abort: %s %s %d (%s)", _last_tx_dst_ea.unparse().c_str(),
+                                      _last_tx_src_ea.unparse().c_str(),
+                                      _last_tx_bcast_id, dst.unparse().c_str());
+
+    if (_last_tx_abort ) {
+      BRN_WARN("Abort already running");
+      return;
+    }
+
+    bool failure = false;
+    for (int devs = 0; devs < _me->countDevices(); devs++)
+      failure |= (_me->getDeviceByIndex(devs)->abort_transmission(dst) != 0);
+
+    if ( failure ) {
+      _tx_aborts_errors++;
+    } else {
+      BRN_DEBUG("Abort last TX");
+      _tx_aborts++;
+      _last_tx_abort = true;
+    }
+  }
+
+  inline void abort_last_tx(uint32_t abort_reason) {
+    abort_last_tx(_last_tx_dst_ea, abort_reason);
+  }
+
+  inline EtherAddress *get_last_tx(uint16_t *id) {
+    *id = _last_tx_bcast_id;
+    return &_last_tx_src_ea;
+  }
+
+  void add_rx_probability(EtherAddress &fwd, EtherAddress &src, uint16_t id, uint32_t no_transmissions);
+
+  Vector<FloodingPolicy *> _schemes;
+  FloodingPolicy **_scheme_array;
+  uint32_t _max_scheme_id;
+  String _scheme_string;
+  uint32_t _flooding_strategy;
+
+  int parse_schemes(String s_schemes, ErrorHandler* errh);
+  FloodingPolicy *get_flooding_scheme(uint32_t flooding_strategy);
+
+  /* Queue Handling: abort */
+
+  RandomDelayQueue *_rd_queue;
+  Packet *search_in_queue(EtherAddress &src, uint16_t id, bool del);
 
 };
 

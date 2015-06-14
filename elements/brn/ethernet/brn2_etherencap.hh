@@ -55,7 +55,18 @@ class BRN2EtherEncap : public BRNElement {
   void push(int, Packet *);
   Packet *pull(int);
 
+  bool _push_header;
+
+  EtherAddress _src;
+  EtherAddress _dst;
+
+  uint16_t _ethertype;
+
   bool _use_anno;
+
+  bool _set_src;
+  bool _set_dst;
+  bool _set_fixed_values;
 
   /*static functions*/
   static Packet *push_ether_header(Packet *p, uint8_t *src, uint8_t *dst, uint16_t ethertype);

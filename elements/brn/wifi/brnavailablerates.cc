@@ -26,9 +26,11 @@
 
 CLICK_DECLS
 
-BrnAvailableRates::BrnAvailableRates()
+BrnAvailableRates::BrnAvailableRates():
+  _max_txpower(0)
 {
   BRNElement::init();
+  _settime = Timestamp::now();
 }
 
 BrnAvailableRates::~BrnAvailableRates()
@@ -71,8 +73,9 @@ BrnAvailableRates::parse_and_insert(String s, ErrorHandler *errh)
      return errh->error("error param %s: must start with ethernet address", s.c_str());
   }
 
+  int r = 0;
+
   for (int x = 1; x < args.size(); x++) {
-    int r;
     if (args[x] == "HT20") {
       ht_rate = RATE_HT20;
       sgi = false;
@@ -109,7 +112,10 @@ BrnAvailableRates::parse_and_insert(String s, ErrorHandler *errh)
     DstInfo d = DstInfo(e);
     d._rates = rates;
     d._eth = e;
+    d._settime = Timestamp::now();
     _rtable.insert(e, d);
+  } else {
+    _settime = Timestamp::now();
   }
 
   return 0;
@@ -160,6 +166,17 @@ BrnAvailableRates::lookup(EtherAddress eth)
   return Vector<MCS>();
 }
 
+Timestamp
+BrnAvailableRates::get_timestamp(EtherAddress eth)
+{
+  if (eth) {
+    DstInfo *dst = _rtable.findp(eth);
+    if (dst) return dst->_settime;
+  }
+
+  return _settime;
+}
+
 int
 BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
 {
@@ -174,6 +191,8 @@ BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
     dst = _rtable.findp(eth);
   }
   dst->_eth = eth;
+  dst->_settime = Timestamp::now();
+
   dst->_rates.clear();
   if (_default_rates.size()) {
     /* only add rates that are in the default rates */
@@ -190,6 +209,31 @@ BrnAvailableRates::insert(EtherAddress eth, Vector<MCS> rates)
   return 0;
 }
 
+int
+BrnAvailableRates::set_default_rates(Vector<MCS> rates)
+{
+  _default_rates.clear();
+
+  for (int x = 0; x < rates.size(); x++) {
+    _default_rates.push_back(rates[x]);
+  }
+
+  return 0;
+}
+
+
+uint16_t
+BrnAvailableRates::get_max_txpower()
+{
+  return _max_txpower;
+}
+
+void
+BrnAvailableRates::set_max_txpower(uint16_t p)
+{
+  _max_txpower = p;
+}
+
 
 enum {H_INSERT, H_REMOVE, H_RATES};
 
@@ -200,13 +244,13 @@ BrnAvailableRates_read_param(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
   case H_RATES: {
     StringAccum sa;
-    sa << "<available_rates>\n\t<default rates=\"";
+    sa << "<available_rates>\n\t<default max_txpower=\"" << td->_max_txpower << "\" rates=\"";
     if (td->_default_rates.size()) {
       for (int x = 0; x < td->_default_rates.size(); x++) {
-        if ( x != 0 )
-            sa << ",";
-        if (x % 20 == 0)
-            sa << "\n\t\t\t";
+        if ( x != 0 ) {
+          sa << ",";
+          if (x % 20 == 0) sa << "\n\t\t\t";
+        }
 
         sa << td->_default_rates[x]._data_rate;
       }

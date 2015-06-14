@@ -39,6 +39,7 @@ TopologyDetectionProtocol::new_detection_packet(const EtherAddress *src, uint32_
   memcpy(tdh->src,src->data(),6);
   tdh->entries = 0;
   tdh->ttl = ttl;
+  tdh->type = 3;
 
   WritablePacket *brn_p = BRNProtocol::add_brn_header(td_packet, BRN_PORT_TOPOLOGY_DETECTION,
                                                                  BRN_PORT_TOPOLOGY_DETECTION, 128, 0);
@@ -71,7 +72,7 @@ TopologyDetectionProtocol::fwd_packet(Packet *p, const EtherAddress *src, EtherA
 }
 
 uint8_t*
-TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl)
+TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl, uint8_t *type)
 {
   struct td_header *tdh;
 
@@ -80,12 +81,13 @@ TopologyDetectionProtocol::get_info(Packet *p, EtherAddress *src, uint32_t *id, 
   *n_entries = tdh->entries;
   *src = EtherAddress(tdh->src);
   *ttl = tdh->ttl;
+  *type = tdh->type;
 
   return (uint8_t*)&tdh[1];
 }
 
 WritablePacket *
-TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfo::Bridge> */*brigdes*/)
+TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfoEdge> */*brigdes*/)
 {
   struct td_header *tdh;
   WritablePacket *td_packet = WritablePacket::make( 128, NULL, sizeof(struct td_header), 32);
@@ -105,7 +107,7 @@ TopologyDetectionProtocol::new_backwd_packet(EtherAddress *td_src, uint32_t td_i
 }
 
 void
-TopologyDetectionProtocol::get_info_backwd_packet(Packet */*p*/, Vector<TopologyInfo::Bridge> */*brigdes*/)
+TopologyDetectionProtocol::get_info_backwd_packet(Packet */*p*/, Vector<TopologyInfoEdge> */*brigdes*/)
 {
 
 }

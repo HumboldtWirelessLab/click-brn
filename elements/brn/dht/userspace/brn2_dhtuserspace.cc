@@ -41,8 +41,8 @@
 
 CLICK_DECLS
 
-DHTUserspace::DHTUserspace() :
-  _debug(Brn2Logger::DEFAULT)
+DHTUserspace::DHTUserspace()
+  //_debug(Brn2Logger::DEFAULT)
 {
 }
 
@@ -64,17 +64,11 @@ DHTUserspace::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   BRN_DEBUG("DHTUserspace: Configure");
 
-  int port;
-
   if (cp_va_kparse(conf, this, errh,
-      "DHTSTORAGE", cpkN, cpElement, &_dht_storage,
-      "SERVERIP", cpkP+cpkM, cpIPAddress, &_dht_ip,
-      "SERVERPORT", cpkP+cpkM, cpInteger, &port,
+      "DHTSTORAGE", cpkP, cpElement, &_dht_storage,
       "DEBUG", cpkP, cpInteger, &_debug,
     cpEnd) < 0)
       return -1;
-
-  _dht_port = (uint16_t)port;
 
   return 0;
 }
@@ -115,9 +109,9 @@ DHTUserspace::dht_request(UserspaceClientInfo *client_info, DHTOperation *op)
 void
 DHTUserspace::handle_dht_reply(UserspaceClientInfo *client_info, DHTOperation *op)
 {
-//  int result;
+  //int result;
 
-  BRN_DEBUG("DHTUserspace: Handle DHT-Answer");
+  //BRN_DEBUG("DHTUserspace: Handle DHT-Answer");
   if ( op->header.status == DHT_STATUS_KEY_NOT_FOUND )
   {
     WritablePacket *ans = WritablePacket::make( 128, NULL, 100   , 32);
@@ -236,5 +230,4 @@ DHTUserspace::add_handlers()
 template class Vector<DHTUserspace::UserspaceClientInfo *>;
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(brn_common)
 EXPORT_ELEMENT(DHTUserspace)

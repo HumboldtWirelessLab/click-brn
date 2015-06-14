@@ -7,7 +7,9 @@
 
 CLICK_DECLS
 
-GPSMap::GPSMap()
+GPSMap::GPSMap():
+  _timeout(GPSMAP_DEFAULT_TIMEOUT),
+  _timeout_timer(this)
 {
   BRNElement::init();
 }
@@ -20,6 +22,7 @@ int
 GPSMap::configure( Vector<String> &conf, ErrorHandler *errh )
 {
   if (cp_va_kparse(conf, this, errh,
+      "TIMEOUT", cpkP, cpInteger, &_timeout,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0 ) {
       return -1;
@@ -35,6 +38,28 @@ GPSMap::cast(const char *n)
   return 0;
 }
 
+int
+GPSMap::initialize(ErrorHandler *)
+{
+  _timeout_timer.initialize(this);
+  _timeout_timer.schedule_after_msec(_timeout);
+
+  return 0;
+}
+
+void
+GPSMap::run_timer(Timer*)
+{
+  _timeout_timer.schedule_after_msec(_timeout);
+
+  Timestamp now = Timestamp::now();
+
+  for (TimestampMapIter iter = _time_map.begin(); iter.live(); iter++) {
+    BRN_DEBUG("remove due to timeout: %s",iter.key().unparse().c_str());
+    if ( (now-iter.value()).msecval() > _timeout ) remove(iter.key());
+  }
+}
+
 GPSPosition *
 GPSMap::lookup(EtherAddress eth)
 {
@@ -45,11 +70,13 @@ void
 GPSMap::remove(EtherAddress eth)
 {
   _map.erase(eth);
+  _time_map.erase(eth);
 }
 
 void
 GPSMap::insert(EtherAddress eth, GPSPosition gps) {
   _map.insert(eth, gps);
+  _time_map.insert(eth,Timestamp::now());
 }
 
 enum {H_MAP, H_INSERT};
@@ -61,10 +88,11 @@ GPSMap::read_handler(Element *e, void *thunk)
   switch ((uintptr_t) thunk) {
     case H_MAP: {
       StringAccum sa;
-      sa << "<gps_map count=\"" << gpsmap->_map.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
+      sa << "<gps_map id=\"" << gpsmap->get_node_name() << "\" count=\"" << gpsmap->_map.size() << "\" time=\"" << Timestamp::now().unparse() << "\" >\n";
       for (EtherGPSMapIter iter = gpsmap->_map.begin(); iter.live(); iter++) {
         GPSPosition gps = iter.value();
         EtherAddress ea = iter.key();
+        Timestamp ts = gpsmap->_time_map.find(ea);
 #ifdef CLICK_NS
         sa << "\t<node mac=\"" << ea.unparse() << "\" lat=\"" << gps._x;
         sa << "\" long=\"" << gps._y << "\" alt=\"" << gps._z;
@@ -72,7 +100,7 @@ GPSMap::read_handler(Element *e, void *thunk)
         sa << "\t<node mac=\"" << ea.unparse() << "\" lat=\"" << gps._latitude.unparse();
         sa << "\" long=\"" << gps._longitude.unparse() << "\" alt=\"" << gps._altitude.unparse();
 #endif
-        sa << "\" speed=\"" << gps._speed.unparse() << "\" />\n";
+        sa << "\" speed=\"" << gps._speed.unparse() << "\" time=\"" << ts.unparse() << "\" />\n";
       }
       sa << "</gps_map>\n";
       return sa.take_string();

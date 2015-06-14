@@ -80,13 +80,17 @@ void
 CPUStats::calc_cpu_usage_int(struct pstat* cur_usage, struct pstat* last_usage,
                              uint32_t* ucpu_usage, uint32_t* scpu_usage, uint32_t* cpu_usage, uint32_t accuracy_factor ) {
   uint32_t time_diff = (uint32_t)(cur_usage->cpu_total_time - last_usage->cpu_total_time);
-  *ucpu_usage = (accuracy_factor * 100 * ((cur_usage->utime_ticks + cur_usage->cutime_ticks) -
+  if ( time_diff == 0 ) {
+    *ucpu_usage = *scpu_usage = *cpu_usage = 0;
+  } else {
+    *ucpu_usage = (accuracy_factor * 100 * ((cur_usage->utime_ticks + cur_usage->cutime_ticks) -
                                          (last_usage->utime_ticks + last_usage->cutime_ticks)));
-  *scpu_usage = (accuracy_factor * 100 * ((cur_usage->stime_ticks + cur_usage->cstime_ticks) -
+    *scpu_usage = (accuracy_factor * 100 * ((cur_usage->stime_ticks + cur_usage->cstime_ticks) -
                                          (last_usage->stime_ticks + last_usage->cstime_ticks)));
-  *cpu_usage = (*ucpu_usage + *scpu_usage) / time_diff;
-  *ucpu_usage /= time_diff;
-  *scpu_usage /= time_diff;
+    *cpu_usage = (*ucpu_usage + *scpu_usage) / time_diff;
+    *ucpu_usage /= time_diff;
+    *scpu_usage /= time_diff;
+  }
 }
 
 CLICK_ENDDECLS

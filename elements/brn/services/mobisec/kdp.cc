@@ -63,5 +63,5 @@ WritablePacket *KDP::kdp_reply_msg(enum proto_type type, crypto_ctrl_data *hdr, 
 
 
 CLICK_ENDDECLS
-ELEMENT_REQUIRES(userlevel|ns FakeOpenSSL)
+ELEMENT_REQUIRES(userlevel|ns TLS)
 ELEMENT_PROVIDES(KDP)

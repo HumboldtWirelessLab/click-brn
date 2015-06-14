@@ -56,7 +56,7 @@ AgeFilter::simple_action(Packet *p)
   int age = ((Timestamp::now() - tv).msecval());
 
   BRN_INFO("Age of Packet: %d ms Max %d ms", age, maxage.msecval());
-  if ( maxage.msecval() < ((Timestamp::now() - tv).msecval()) )
+  if ( maxage.msecval() < age )
     return kill(p);
 
   return p;

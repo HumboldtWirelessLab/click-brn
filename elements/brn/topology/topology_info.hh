@@ -22,47 +22,63 @@
 
 #include <click/element.hh>
 #include <click/vector.hh>
+#include <click/timestamp.hh>
+#include <click/sync.hh>
 
 #include "elements/brn/brnelement.hh"
+#include "topology_info_edge.hh"
+#include "topology_info_node.hh"
 
 CLICK_DECLS
 
-class TopologyInfo : public BRNElement
+class TopologyInfo :  public BRNElement
 {
- public:
-    class Bridge {
-     public:
-      EtherAddress node_a;
-      EtherAddress node_b;
-    };
+private:
+    void nonthreadsafe_addBridge(const TopologyInfoEdge &bridge);
+    void nonthreadsafe_addArticulationPoint(const TopologyInfoNode &ap);
+    
+public:   
+    TopologyInfo();
+    ~TopologyInfo();
+    
+    int configure(Vector<String> &, ErrorHandler *);
+    int initialize(ErrorHandler *);
+    void add_handlers();
+    
+    const char *class_name() const { return "TopologyInfo";}
+    const char *processing() const { return AGNOSTIC;}
+    
+    const char *port_count() const
+    {
+        return "0/0";
+    }
 
-    class ArticulationPoint {
-     public:
-      EtherAddress node;
-    };
+    void incNoDetection();
+    
+    void addBridge(EtherAddress *a, EtherAddress *b, float probability=0.0);
+    void removeBridge(EtherAddress *a, EtherAddress *b);
+    void setBridges(Vector<TopologyInfoEdge*> &new_bridges);
+    
+    void addArticulationPoint(EtherAddress *a, float probability=0.0);
+    void removeArticulationPoint(EtherAddress *a);
+    void setArticulationPoints(Vector<TopologyInfoNode*> &new_artpoints);
+    
+    void reset();
+    
+    TopologyInfoEdge* getBridge(EtherAddress *a, EtherAddress *b);
+    TopologyInfoNode *getArticulationPoint(EtherAddress *a);
+    
+    String topology_info(void);
+    String topology_info(String extra_data);
 
- public:
-  TopologyInfo();
-  ~TopologyInfo();
-
-  const char *class_name() const  { return "TopologyInfo"; }
-
-  const char *processing() const  { return AGNOSTIC; }
-
-  const char *port_count() const  { return "0/0"; }
-
-  int configure(Vector<String> &, ErrorHandler *);
-  int initialize(ErrorHandler *);
-  void add_handlers();
-
- private:
-  Vector<Bridge*> _bridges;
-  Vector<ArticulationPoint*> _artpoints;
-
- public:
-
-  String topology_info(void);
-
+protected:
+    Vector<TopologyInfoEdge*> _bridges;
+    Vector<TopologyInfoNode*> _artpoints;
+    Vector<TopologyInfoEdge*> _non_bridges;
+    Vector<TopologyInfoNode*> _non_artpoints;
+    int number_of_detections;
+    
+    Spinlock lock;
 };
 
 CLICK_ENDDECLS

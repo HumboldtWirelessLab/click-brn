@@ -28,9 +28,9 @@ class BrnAutoRateFallback : public RateSelection
 
     void add_handlers();
 
-    void assign_rate(click_wifi_extra *, NeighbourRateInfo *);
+    void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
-    void process_feedback(click_wifi_extra *, NeighbourRateInfo *);
+    void process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 

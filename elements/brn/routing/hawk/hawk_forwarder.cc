@@ -89,7 +89,7 @@ void
 HawkForwarder::push(int port, Packet *p_in)
 {
 
-  uint32_t metric ; 
+  uint32_t metric = 0; //TODO: better Invalid_lt_metric 
   uint32_t last_metric ; 
   BRN_DEBUG("push(): %d",p_in->length());
 

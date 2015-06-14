@@ -22,6 +22,7 @@ BrnAutoRateFallback::BrnAutoRateFallback()
     _stepdown(1)
 {
   mcs_zero = MCS(0);
+  _default_strategy = RATESELECTION_AUTORATEFALLBACK;
 }
 
 BrnAutoRateFallback::~BrnAutoRateFallback()
@@ -33,10 +34,8 @@ BrnAutoRateFallback::cast(const char *name)
 {
   if (strcmp(name, "BrnAutoRateFallback") == 0)
     return (BrnAutoRateFallback *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 int
@@ -53,8 +52,10 @@ BrnAutoRateFallback::configure(Vector<String> &conf, ErrorHandler *errh)
 }
 
 void
-BrnAutoRateFallback::process_feedback(click_wifi_extra *eh, NeighbourRateInfo *nri)
+BrnAutoRateFallback::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *eh = rs_pkt_info->ceh;
+
   bool success = !(eh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = (eh->flags & WIFI_EXTRA_TX_USED_ALT_RATE);
 
@@ -117,8 +118,10 @@ BrnAutoRateFallback::process_feedback(click_wifi_extra *eh, NeighbourRateInfo *n
 }
 
 void
-BrnAutoRateFallback::assign_rate(click_wifi_extra *eh, NeighbourRateInfo *nri)
+BrnAutoRateFallback::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *eh = rs_pkt_info->ceh;
+
   if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {
       nri->_rates[0].setWifiRate(eh,0);
@@ -177,13 +180,13 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
   uint32_t rate_l = rate % 10;
   uint32_t rate_h = rate / 10;
 
-  sa << "<neighbour addr=\"" << nri->_eth.unparse() << "\" rate=\"" << rate_h << "." << rate_l;
+  sa << "<rsinfo rs=\"autoratefallback\" rate=\"" << rate_h << "." << rate_l;
   sa << "\" successes=\"" << (int)nfo->_successes << "\" stepup=\"" << (int)nfo->_stepup;
-  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" >\n";
+  sa << "\" wentup=\"" << (int)nfo->_wentup << "\" />\n";
 
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
 
-  sa << "\t<rates>";
+  sa << "<rates>";
 
   for ( int i = 0; i < nri->_rates.size(); i++) {
     if (i > 0)
@@ -194,10 +197,9 @@ BrnAutoRateFallback::print_neighbour_info(NeighbourRateInfo *nri, int tabs)
     sa << nri->_rates[i]._data_rate;
   }
 
-  sa << "\n\t\t\t</rates>\n";
-
+  sa << "\n";
   for ( int i = 0; i < tabs; i++ ) sa << "\t";
-  sa << "</neighbour>\n";
+  sa << "</rates>\n";
 
   return sa.take_string();
 }

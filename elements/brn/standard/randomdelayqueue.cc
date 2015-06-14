@@ -22,6 +22,7 @@ RandomDelayQueue::RandomDelayQueue():
   _sendbuffer_timer(static_lookup_timer_hook,(void*)this),
   _usetsanno(false)
 {
+  BRNElement::init();
 }
 
 RandomDelayQueue::~RandomDelayQueue()
@@ -49,7 +50,7 @@ RandomDelayQueue::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 RandomDelayQueue::initialize(ErrorHandler *)
 {
-  click_random_srandom();
+  click_brn_srandom();
 
   _sendbuffer_timer.initialize(this);
   return 0;
@@ -77,12 +78,12 @@ RandomDelayQueue::queue_timer_hook()
   }
 
   if (nextTime < 0) return;
-  
+
   if (nextTime < _min_diff_delay) nextTime = _min_diff_delay;
 
   if ( _sendbuffer_timer.scheduled() )
     _sendbuffer_timer.reschedule_after_msec(nextTime);
-  else  
+  else
     _sendbuffer_timer.schedule_after_msec(nextTime);
 }
 
@@ -109,7 +110,7 @@ RandomDelayQueue::push( int /*port*/, Packet *packet )
 
   if ( _sendbuffer_timer.scheduled() )
     _sendbuffer_timer.reschedule_after_msec(nextTime);
-  else  
+  else
     _sendbuffer_timer.schedule_after_msec(nextTime);
 }
 
@@ -123,7 +124,19 @@ RandomDelayQueue::get_packet(int index)
 void
 RandomDelayQueue::remove_packet(int index)
 {
-  if (index < packetBuffer.size()) packetBuffer.del(index);
+  if (index < packetBuffer.size()) {
+    packetBuffer.del(index);
+
+    int nextTime = packetBuffer.getTimeToNext();
+
+    if (nextTime < 0) return;
+    if (nextTime == 0) queue_timer_hook();
+
+    if (_sendbuffer_timer.scheduled())
+      _sendbuffer_timer.reschedule_after_msec(nextTime);
+    else
+      _sendbuffer_timer.schedule_after_msec(nextTime);
+  }
 }
 
 /*******************************************************************************************/

@@ -2,7 +2,9 @@
 #define PROBABILITYFLOODING_HH
 #include <click/timer.hh>
 
-#include "elements/brn/routing/broadcast/flooding/flooding_helper.hh"
+#include "../flooding_helper.hh"
+#include "../flooding_db.hh"
+
 #include "floodingpolicy.hh"
 
 CLICK_DECLS
@@ -31,6 +33,8 @@ class ProbabilityFlooding : public FloodingPolicy
     void add_handlers();
 
     const char *floodingpolicy_name() const { return "ProbabilityFlooding"; }
+    int floodingpolicy_id() const { return POLICY_ID_PROBABILITY; }
+
     bool do_forward(EtherAddress *src, EtherAddress *fwd, const EtherAddress *rcv, uint32_t id, bool is_known, uint32_t forward_count,
                     uint32_t rx_data_size, uint8_t *rxdata, uint32_t *tx_data_size, uint8_t *txdata,
                     Vector<EtherAddress> *unicast_dst, Vector<EtherAddress> *passiveack);
@@ -44,10 +48,11 @@ class ProbabilityFlooding : public FloodingPolicy
 
     BRN2NodeIdentity *_me;
     FloodingHelper *_fhelper;
+    FloodingDB *_flooding_db;
 
     uint32_t _min_no_neighbors;
     uint32_t _fwd_probability;
-    int _max_metric_to_neighbor;
+    uint32_t _cntbased_min_neighbors_for_abort;
 };
 
 CLICK_ENDDECLS

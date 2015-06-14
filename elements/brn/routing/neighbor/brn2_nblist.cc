@@ -19,7 +19,7 @@ int
 BRN2NBList::configure(Vector<String> &conf, ErrorHandler* errh)
 {
   if (cp_va_kparse(conf, this, errh,
-      "NODEID", cpkP+cpkM , cpElement, &_nodeid,
+      "NODEIDENTITY", cpkP+cpkM , cpElement, &_nodeid,
       cpEnd) < 0)
           return -1;
 
@@ -67,17 +67,21 @@ BRN2NBList::printNeighbors()
 {
   BRN2Device *dev;
   StringAccum sa;
+
+  sa << "<nblist node=\"" << BRN_NODE_NAME << "\" nb_count=\"" << _nb_list.size() << "\" >\n";
+
   for (NBMap::iterator i = _nb_list.begin(); i.live(); i++) {
     NeighborInfo &nb_info = i.value();
-    sa << " * nb: " << nb_info._eth.unparse() << " via device: ";
     for ( int d = 0; d < nb_info._devs.size(); d++ ) {
-     dev = nb_info._devs[d];
-     sa << dev->getDeviceName().c_str();
-     if ( (d + 1) != nb_info._devs.size() ) 
-       sa << ",";
+      sa << "\t<neighbour node=\"" << nb_info._eth.unparse() << "\" device=\"";
+      dev = nb_info._devs[d];
+      sa << dev->getDeviceName().c_str();
+      sa << "\" devaddr=\"" << dev->getEtherAddress()->unparse() << "\" />\n";
     }
-    sa << " reachable\n";
   }
+
+  sa << "</nblist>\n";
+
   return sa.take_string();
 }
 int
@@ -130,7 +134,7 @@ BRN2NBList::add_handlers()
 {
   BRNElement::add_handlers();
 
-  add_read_handler("neighbor", read_neighbor_param, 0);
+  add_read_handler("stats", read_neighbor_param, 0);
   //add_write_handler("insert", static_insert, 0);
 }
 

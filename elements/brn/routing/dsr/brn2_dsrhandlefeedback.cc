@@ -16,7 +16,8 @@
 CLICK_DECLS
 
 DSRHandleFeedback::DSRHandleFeedback():
-  _me()
+  _me(),
+  _link_table(NULL)
 {
   BRNElement::init();
 }
@@ -29,6 +30,7 @@ int DSRHandleFeedback::configure(Vector<String> &conf, ErrorHandler *errh)
 {
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
+      "LINKTABLE", cpkP, cpElement, &_link_table,
       "DEBUG", cpkN, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -52,19 +54,28 @@ DSRHandleFeedback::push( int port, Packet *packet )
     return;
   }
 
+  EtherAddress ether_src(BRNPacketAnno::src_ether_anno(packet));
+  EtherAddress ether_dst(BRNPacketAnno::dst_ether_anno(packet));
+
   EtherAddress src(brn_dsr->dsr_src.data);
   EtherAddress dst(brn_dsr->dsr_dst.data);
 
-  BRN_DEBUG("Found DSR-Header: Src %s Dst: %s",src.unparse().c_str(),dst.unparse().c_str());
+  int metric = (_link_table)?_link_table->get_link_metric(ether_src, ether_dst):9999;
+
+  if ( port == 1 ) { //Failed
+    BRN_DEBUG("TXFailed: Found DSR-Header: Route : %s -> %s Link: %s -> %s (%d)",src.unparse().c_str(),dst.unparse().c_str(),ether_src.unparse().c_str(),ether_dst.unparse().c_str(),metric);
+  } else {
+    BRN_DEBUG("TXSuccess: Found DSR-Header: Route : %s -> %s Link: %s -> %s (%d)",src.unparse().c_str(),dst.unparse().c_str(),ether_src.unparse().c_str(),ether_dst.unparse().c_str(),metric);
+  }
 
   if ( _me->isIdentical(&src) ) { 
 
     if ( port == 1 ) output(0).push(packet->clone()->uniqueify()); //packet for dsr (route error)
-    
+
     packet = BRN2SrcForwarder::strip_all_headers(packet);
 
     output(1).push(packet);
-  
+
   } else {
     if ( port == 1 ) { //errors are fwd to dsr (route error)
       output(0).push(packet);

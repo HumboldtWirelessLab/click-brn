@@ -74,6 +74,13 @@ class EtherAddress { public:
 #endif
     }
 
+    /** @brief Return true if @a is already set (address != 0).
+     *
+     * The unset address is 00-00-00-00-00-00. */
+    inline bool is_set() const {
+	return (_data[0] | _data[1] | _data[2]) != 0x0;
+    }
+
     /** @brief Return a pointer to the address data. */
     inline unsigned char *data() {
 	return reinterpret_cast<unsigned char *>(_data);
@@ -92,8 +99,12 @@ class EtherAddress { public:
 
     /** @brief Hash function. */
     inline size_t hashcode() const {
+#if CLICK_NS
+  return _data[2] << 8;
+#else
 	return (_data[2] | ((size_t) _data[1] << 16))
 	    ^ ((size_t) _data[0] << 9);
+#endif
     }
 
     // bool operator==(EtherAddress, EtherAddress);
@@ -168,9 +179,13 @@ EtherAddress::s() const
 inline bool
 operator==(const EtherAddress &a, const EtherAddress &b)
 {
+#if CLICK_NS
+    return (a.sdata()[2] == b.sdata()[2]);
+#else
     return (a.sdata()[2] == b.sdata()[2]
 	    && a.sdata()[1] == b.sdata()[1]
 	    && a.sdata()[0] == b.sdata()[0]);
+#endif
 }
 
 /** @relates EtherAddress
@@ -204,14 +219,23 @@ extern const ArgContext blank_args;
   @endcode */
 class EtherAddressArg { public:
     typedef void enable_direct_parse;
-    static bool parse(const String &str, EtherAddress &value, const ArgContext &args = blank_args);
-    static bool parse(const String &str, unsigned char *value, const ArgContext &args = blank_args) {
+    EtherAddressArg(int flags = 0) : flags_(flags) {}
+    inline bool parse(const String& str, EtherAddress& value, const ArgContext& args = blank_args) {
+        return parse(str, value, args, flags_);
+    }
+    inline bool parse(const String& str, unsigned char* value, const ArgContext& args = blank_args) {
 	return parse(str, *reinterpret_cast<EtherAddress *>(value), args);
     }
-    static bool direct_parse(const String &str, EtherAddress &value, Args &args);
-    static bool direct_parse(const String &str, unsigned char *value, Args &args) {
+    inline bool direct_parse(const String& str, EtherAddress& value, Args& args) {
+        return direct_parse(str, value, args, flags_);
+    }
+    inline bool direct_parse(const String& str, unsigned char* value, Args& args) {
 	return direct_parse(str, *reinterpret_cast<EtherAddress *>(value), args);
     }
+  private:
+    int flags_;
+    static bool parse(const String& str, EtherAddress& value, const ArgContext& args, int flags);
+    static bool direct_parse(const String& str, EtherAddress& value, Args& args, int flags);
 };
 
 template<> struct DefaultArg<EtherAddress> : public EtherAddressArg {};

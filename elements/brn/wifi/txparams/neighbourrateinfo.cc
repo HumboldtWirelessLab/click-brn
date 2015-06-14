@@ -16,9 +16,6 @@ NeighbourRateInfo::NeighbourRateInfo()
   _rs_data = NULL;
 
   init_stamp     = Timestamp::now();
-  curr_timeslot  = 0;
-  timeslots      = new NeighbourRateStats[NUM_TIME_SLOTS];
-  time_intervall = 100;
 }
 
 
@@ -27,21 +24,20 @@ NeighbourRateInfo::~NeighbourRateInfo()
 {
 }
 
-
-
-
 NeighbourRateInfo::NeighbourRateInfo(EtherAddress eth, Vector<MCS> rates, uint8_t max_power)
 {
-  _eth           = eth;
-  _rates         = rates;
-  _max_power     = max_power;
-  _power         = max_power;
-  _rs_data       = NULL;
+  _eth = eth;
+  _rates = rates;
+  _max_power = max_power;
+  _rs_data = NULL;
+  _pc_data = NULL;
 
-  init_stamp     = Timestamp::now();
-  curr_timeslot  = 0;
-  timeslots      = new NeighbourRateStats[NUM_TIME_SLOTS];
-  time_intervall = 100;
+  init_stamp = Timestamp::now();
+
+  stats.no_timeslots = 10;
+  stats.curr_timeslot = 0;
+  stats.last_timeslot = 0;
+
 }
 
 
@@ -107,39 +103,6 @@ NeighbourRateInfo::is_ht(uint32_t rate)
   return false;
 }
 
-
-
-int
-NeighbourRateInfo::get_current_timeslot()
-{
-  Timestamp current_stamp;
-  Timestamp diff_stamp;
-
-
-  int32_t time_diff;
-  int new_timeslot;
-
-
-  current_stamp = Timestamp::now();
-  diff_stamp    = current_stamp - init_stamp;
-
-
-  /* get time diff in milsec */
-  time_diff = diff_stamp.msecval();
-
-
-  /* calculate new time slot based on the time diff, the time slot intervall size
-   * and the number of timeslots we are using */
-  new_timeslot = time_diff / time_intervall;
-  new_timeslot = ((int) new_timeslot) % NUM_TIME_SLOTS;
-
-  curr_timeslot = new_timeslot;
-
-  return curr_timeslot;
-}
-
-
-
 int
 NeighbourRateInfo::get_rate_index(uint32_t rate)
 {
@@ -153,25 +116,13 @@ NeighbourRateInfo::get_rate_index(uint32_t rate)
   return ndx;
 }
 
-
-
 void
 NeighbourRateInfo::print_mcs_vector()
 {
-
-  for (int i = 0; i < _rates.size(); i++) {
-    click_chatter("%d", _rates[i]._data_rate);
-    click_chatter("%d", _rates[i]._is_ht);
-    click_chatter("%d", i);
-    click_chatter("\n");
-  }
+  click_chatter("Index\tRate\tHT");
+  for (int i = 0; i < _rates.size(); i++)
+    click_chatter("%d\t%d\t%d", i, _rates[i]._data_rate, _rates[i]._is_ht);
 }
-
-
-
-
-
-
 
 ELEMENT_PROVIDES(NeighbourRateInfo)
 ELEMENT_REQUIRES(NeighbourRateStats)

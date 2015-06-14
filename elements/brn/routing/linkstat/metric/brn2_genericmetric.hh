@@ -26,6 +26,12 @@
 
 CLICK_DECLS
 
+#define LINKMETRIC_ETX  1
+#define LINKMETRIC_ETT  2
+#define LINKMETRIC_PSR  3
+#define LINKMETRIC_SNR  4
+
+
 //
 // Common interface of all route metric elements.
 //
@@ -34,14 +40,26 @@ class BrnRateSize {
   public:
     uint16_t _rate; //Rate of Linkprobe //for n use packed_16
     uint16_t _size; //Size of Linkprobe
-    BrnRateSize(uint16_t r, uint16_t s): _rate(r), _size(s) {};
+    uint8_t _power;
+
+    size_t _hashcode;
+
+    BrnRateSize(): _rate(0), _size(0), _power(0), _hashcode(0) {};
+
+    BrnRateSize(uint16_t r, uint16_t s, uint16_t p): _rate(r), _size(s), _power(p) {
+      _hashcode = (((uint32_t)_rate) << 16) + (((uint32_t)_size) << 2) + _power;
+    };
 
     inline bool operator==(BrnRateSize other)
     {
-      return (other._rate == _rate && other._size == _size);
+      if ( _hashcode != other._hashcode ) return false;
+      return (other._rate == _rate && other._size == _size && other._power == _power);
     }
 };
 
+inline unsigned hashcode(BrnRateSize brn_rs) {
+  return brn_rs._hashcode;
+}
 #define METRIC_UPDATE_ACTIVE  LINK_UPDATE_LOCAL_ACTIVE
 #define METRIC_UPDATE_PASSIVE LINK_UPDATE_LOCAL_PASSIVE
 
@@ -50,6 +68,10 @@ class BRN2GenericMetric : public BRNElement {
  public:
   virtual void update_link(const EtherAddress &from, EtherAddress &to,
                            Vector<BrnRateSize> &rs, Vector<uint8_t> &fwd, Vector<uint8_t> &rev, uint32_t seq, uint8_t update_mode) = 0;
+
+/*  virtual void update_link(const EtherAddress &from, EtherAddress &to, Vector<BrnRateSize> &rs,
+                           Vector<uint8_t> &fwd, Vector<uint8_t> &rev, Vector<uint8_t> &fwd_rssi, Vector<uint8_t> &rev_rssi,
+                           uint32_t seq, uint8_t update_mode) = 0;*/
 
 };
 

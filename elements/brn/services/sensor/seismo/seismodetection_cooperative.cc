@@ -383,7 +383,7 @@ write_handler(const String &in_s, Element *e, void */*thunk*/, ErrorHandler */*e
 
   uint32_t alarmtime;
   cp_integer(args[1], &alarmtime);
-  Timestamp alarmts = Timestamp::make_msec(alarmtime);
+  Timestamp alarmts = Timestamp::make_msec(alarmtime,0);
 
   uint32_t id;
   cp_integer(args[2], &id);

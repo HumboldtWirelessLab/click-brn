@@ -36,15 +36,15 @@ class String { public:
     typedef uintmax_t uint_large_t;
 
     inline String();
-    inline String(const String &x);
+    inline String(const String& x);
 #if HAVE_CXX_RVALUE_REFERENCES
-    inline String(String &&x);
+    inline String(String&& x);
 #endif
-    inline String(const char *cstr);
-    inline String(const char *s, int len);
-    inline String(const unsigned char *s, int len);
-    inline String(const char *first, const char *last);
-    inline String(const unsigned char *first, const unsigned char *last);
+    inline String(const char* cstr);
+    inline String(const char* s, int len);
+    inline String(const unsigned char* s, int len);
+    inline String(const char* first, const char* last);
+    inline String(const unsigned char* first, const unsigned char* last);
     explicit inline String(bool x);
     explicit inline String(char c);
     explicit inline String(unsigned char c);
@@ -65,16 +65,16 @@ class String { public:
 #endif
     inline ~String();
 
-    static inline const String &make_empty();
+    static inline const String& make_empty();
     static inline String make_uninitialized(int len);
     static inline String make_garbage(int len) CLICK_DEPRECATED;
-    static inline String make_stable(const char *cstr);
-    static inline String make_stable(const char *s, int len);
-    static inline String make_stable(const char *first, const char *last);
+    static inline String make_stable(const char* cstr);
+    static inline String make_stable(const char* s, int len);
+    static inline String make_stable(const char* first, const char* last);
     static String make_numeric(intmax_t x, int base = 10, bool uppercase = true);
     static String make_numeric(uintmax_t x, int base = 10, bool uppercase = true);
 
-    inline const char *data() const;
+    inline const char* data() const;
     inline int length() const;
 
     inline const char *c_str() const;
@@ -108,6 +108,7 @@ class String { public:
     int compare(const char *s, int len) const;
     inline bool starts_with(const String &x) const;
     bool starts_with(const char *s, int len) const;
+    bool glob_match(const String& pattern) const;
 
     // bool operator==(const String &, const String &);
     // bool operator==(const String &, const char *);
@@ -155,9 +156,13 @@ class String { public:
     // String operator+(String, const char *);
     // String operator+(const char *, const String &);
 
+    inline bool is_shared() const;
+    inline bool is_stable() const;
+
+    inline String unique() const CLICK_DEPRECATED;
+    inline String unshared() const;
     inline String compact() const;
 
-    inline bool data_shared() const;
     char *mutable_data();
     char *mutable_c_str();
 
@@ -263,8 +268,12 @@ class String { public:
     }
 
     inline void deref() const {
-	if (_r.memo && atomic_uint32_t::dec_and_test(_r.memo->refcount))
-	    delete_memo(_r.memo);
+	if (_r.memo) {
+	    assert(_r.memo->refcount);
+	    if (atomic_uint32_t::dec_and_test(_r.memo->refcount))
+		delete_memo(_r.memo);
+	    _r.memo = 0;
+	}
     }
 
     void assign(const char *s, int len, bool need_deref);
@@ -761,13 +770,36 @@ inline String &String::operator+=(char c) {
 }
 
 /** @brief Test if the String's data is shared or immutable. */
-inline bool String::data_shared() const {
+inline bool String::is_shared() const {
     return !_r.memo || _r.memo->refcount != 1;
+}
+
+/** @brief Test if the String's data is immutable. */
+inline bool String::is_stable() const {
+    return !_r.memo;
+}
+
+/** @brief Return an unshared version of this String.
+
+    The return value shares no data with any other non-stable String. */
+inline String String::unshared() const {
+    if (!_r.memo || _r.memo->refcount == 1)
+	return *this;
+    else
+	return String(_r.data, _r.data + _r.length);
+}
+
+/** @brief Return an unshared version of this String.
+    @deprecated Use String::unshared() instead.
+
+    The return value shares no data with any other non-stable String. */
+inline String String::unique() const {
+    return unshared();
 }
 
 /** @brief Return a compact version of this String.
 
-    The compact version shares no more than 256 bytes of data with any other
+    The return value shares no more than 256 bytes of data with any other
     non-stable String. */
 inline String String::compact() const {
     if (!_r.memo || _r.memo->refcount == 1

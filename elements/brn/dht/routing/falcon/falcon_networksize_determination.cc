@@ -89,7 +89,7 @@ FalconNetworkSizeDetermination::request_nws()
   } else {
     next = get_responsibly_node_FT( _frt->_me->_md5_digest, &position);
 
-    if ( (next == NULL) ) {
+    if (next == NULL) {
       BRN_ERROR("Next is NULL.");
       _networksize = 1;
       return;

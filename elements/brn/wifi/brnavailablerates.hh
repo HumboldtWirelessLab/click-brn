@@ -63,7 +63,7 @@ class MCS {
     uint8_t _ht40;
 
     uint8_t _ridx;
-    
+
     uint8_t _packed8;
     uint16_t _packed16;
 
@@ -131,7 +131,7 @@ class MCS {
       }
     }
 
-    bool equals(MCS mcs) {
+    inline bool equals(MCS mcs) {
       return ((mcs._is_ht == _is_ht) && (mcs._rate == _rate));
     }
 
@@ -187,7 +187,15 @@ class MCS {
       return sa.take_string();
     }
 
+    inline bool operator==(MCS mcs) {
+       return equals(mcs);
+    }
+
 };
+
+inline unsigned hashcode(MCS mcs){
+  return (unsigned)mcs.get_packed_16();
+}
 
 class BrnAvailableRates : public BRNElement { public:
 
@@ -206,16 +214,16 @@ class BrnAvailableRates : public BRNElement { public:
 
   class DstInfo {
    public:
+    Timestamp _settime;
     EtherAddress _eth;
     Vector<MCS> _rates;
 
-    DstInfo() {
-      memset(this, 0, sizeof(*this));
+    DstInfo(): _settime(Timestamp::now()), _eth() {
+      _rates.clear();
     }
 
-    DstInfo(EtherAddress eth) {
-      memset(this, 0, sizeof(*this));
-      _eth = eth;
+    DstInfo(EtherAddress eth): _settime(Timestamp::now()), _eth(eth)  {
+      _rates.clear();
     }
 
     ~DstInfo() {
@@ -228,6 +236,8 @@ class BrnAvailableRates : public BRNElement { public:
   typedef RTable::const_iterator RIter;
 
   Vector<MCS> lookup(EtherAddress eth);
+  Timestamp get_timestamp(EtherAddress eth);
+
   int insert(EtherAddress eth, Vector<MCS>);
   bool includes_node(EtherAddress eth) { return _rtable.findp(eth) != NULL; };
 
@@ -235,8 +245,14 @@ class BrnAvailableRates : public BRNElement { public:
 
   RTable _rtable;
   Vector<MCS> _default_rates;
-  //HashMap<MCS> _default_rates_map;
+  Timestamp _settime;
 
+  int set_default_rates(Vector<MCS> rates);
+
+  uint16_t _max_txpower;
+
+  uint16_t get_max_txpower();
+  void set_max_txpower(uint16_t p);
 };
 
 CLICK_ENDDECLS

@@ -24,14 +24,14 @@ class BrnMadwifiRate : public RateSelection
     int configure(Vector<String> &, ErrorHandler *);
     bool can_live_reconfigure() const  { return false; }
 
+    void add_handlers();
+
     void adjust_all(NeighborTable *nt);
     void adjust(NeighborTable *nt, EtherAddress);
 
-    void add_handlers();
+    void assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
-    void assign_rate(click_wifi_extra *, NeighbourRateInfo *);
-
-    void process_feedback(click_wifi_extra *, NeighbourRateInfo *);
+    void process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *);
 
     String print_neighbour_info(NeighbourRateInfo *nri, int tabs);
 

@@ -51,9 +51,13 @@ CLICK_DECLS
 #define BRN_LT_STATION_METRIC            100  ///< metric for assoc'd stations
 #define BRN_LT_ROAMED_STATION_METRIC    5000  ///< metric for roamed stations
 #define BRN_LT_INVALID_LINK_METRIC      9999  ///< metric for invalid/broken links
-#define BRN_LT_INVALID_ROUTE_METRIC    65534  ///< metric for invalid/broken routes
+#define BRN_LT_INVALID_ROUTE_METRIC    65535  ///< metric for invalid/broken routes
 
 #define BRN_LT_DEFAULT_MIN_METRIC_IN_ROUTE    4000  ///< metric for invalid/broken routes
+
+#define BRN_ROUTING_MAX_HOP_COUNT        100
+
+#define BRN_MAX_ETHER_LENGTH 1500
 
 class StringTokenizer {
   public:
@@ -152,10 +156,31 @@ extern "C" {
   }
 }
 
+extern "C" {
+  static inline void str_replace(String &s, char c, char replace) {
+    char *s_data = s.mutable_data();
+
+    for(int i = 0; i < s.length(); i++) {
+      if ( s_data[i] == c ) s_data[i] = replace;
+    }
+  }
+}
+
 const uint8_t brn_ethernet_broadcast[] = { 255,255,255,255,255,255 };
 const EtherAddress brn_etheraddress_broadcast = EtherAddress(brn_ethernet_broadcast);
 
 #define ETHERADDRESS_BROADCAST brn_etheraddress_broadcast
+
+#define BRN_NOT_IP_NOT_AVAILABLE "0.0.0.0"
+#define BRN_INTERNAL_NODE_IP "254.1.1.1"
+
+/**
+ * BRN Typedefs
+ */
+
+typedef HashMap<EtherAddress, Timestamp> EtherTimestampMap;
+typedef EtherTimestampMap::const_iterator EtherTimestampMapIter;
+
 
 CLICK_ENDDECLS
 

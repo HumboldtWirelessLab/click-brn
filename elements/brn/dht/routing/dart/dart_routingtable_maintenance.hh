@@ -3,6 +3,8 @@
 #include <click/element.hh>
 #include <click/timer.hh>
 
+#include "elements/brn/brnelement.hh"
+
 #include "dart_routingtable.hh"
 CLICK_DECLS
 
@@ -10,7 +12,7 @@ CLICK_DECLS
 #define FALCON_DEFAULT_START_TIME      10000
 
 
-class DartRoutingTableMaintenance : public Element
+class DartRoutingTableMaintenance : public BRNElement
 {
   public:
     DartRoutingTableMaintenance();

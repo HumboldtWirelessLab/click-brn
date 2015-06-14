@@ -28,6 +28,7 @@ FalconSuccessorMaintenance::FalconSuccessorMaintenance():
   _rfrt(NULL),
   _opti(FALCON_OPTIMAZATION_NONE)
 {
+  BRNElement::init();
 }
 
 FalconSuccessorMaintenance::~FalconSuccessorMaintenance()
@@ -58,7 +59,7 @@ static void notify_callback_func(void *e, int status)
 int FalconSuccessorMaintenance::initialize(ErrorHandler *)
 {
   _frt->add_update_callback(notify_callback_func,(void*)this);
-  click_srandom(_frt->_me->_ether_addr.hashcode());
+  click_brn_srandom();
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _start + click_random() % _update_interval );
   return 0;

@@ -94,6 +94,8 @@ class BRN2LinkStat : public BRNElement {
 
 public:
 
+  typedef HashMap<BrnRateSize, int> BrnRateSizeIndexMap;
+
   // Packet formats:
 
   // BRN2LinkStat packets have a link_probe header immediately following
@@ -112,15 +114,22 @@ public:
 
     uint16_t _cksum;       // internet checksum
 
-    uint16_t _rate;        // rate //for n use packed_16
-    uint16_t _size;        // size
     uint32_t _seq;         // sequence number
     uint32_t _tau;         // this node's loss-rate averaging period, in msecs
     uint16_t _period;      // period of this node's probe broadcasts, in msecs
-    uint8_t _num_probes;   // number of probes monitored by this node
-    uint8_t _num_links;    // number of wifi_link_entry entries following
+    uint8_t  _num_probes;  // number of probes monitored by this node
+    uint8_t  _num_links;   // number of wifi_link_entry entries following
+
+    uint8_t _brn_rate_size_index;
+    uint8_t _num_incl_probes;
 
     link_probe() { memset(this, 0x0, sizeof(struct link_probe)); }
+  } CLICK_SIZE_PACKED_ATTRIBUTE;
+
+  struct probe_params {
+    uint16_t _rate; //for n use packed_16
+    uint16_t _size;
+    uint8_t _power;
   } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   struct link_entry {
@@ -138,10 +147,10 @@ public:
   } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   struct link_info {
-    uint16_t _size;   //linkprobe size
-    uint16_t _rate;   //linkprobe rate //for n use packed_16
-    uint8_t _fwd;     //fwd ratio
-    uint8_t _rev;     //rev ratio
+    uint8_t _rate_index; //linkprobe size
+    uint8_t _min_power;
+    uint8_t _fwd;        //fwd ratio
+    uint8_t _rev;        //rev ratio
   } CLICK_SIZE_PACKED_ATTRIBUTE;
 
   /**************** PROBELIST ********************/
@@ -152,11 +161,17 @@ public:
     uint32_t _seq;
     uint16_t _rate; //for n use packed_16
     uint16_t _size;
+    uint8_t _power;
+    uint8_t _rx_power;
+    uint8_t _brn_rate_size_index;
+    uint8_t _reserved;
 
     probe_t(const Timestamp &t,
             uint32_t s,
             uint16_t r,
-            uint16_t sz) : _when(t), _seq(s), _rate(r), _size(sz) { }
+            uint16_t sz,
+            uint8_t p,
+            uint8_t rx_p) : _when(t), _seq(s), _rate(r), _size(sz), _power(p), _rx_power(rx_p) { }
   };
 
 
@@ -164,15 +179,22 @@ public:
     EtherAddress _ether;
     uint32_t _period;     // period of this node's probes, as reported by the node
     uint32_t _tau;        // this node's stats averaging period, as reported by the node
+    Timestamp _tau_ts;    // timestamp of tau
     uint8_t  _num_probes; // number of probes_types sent by the node
     uint32_t _seq;        //highest sequence numbers
 
     /*
      * Information about probes
      */
+    BrnRateSizeIndexMap _probe_types_map;
     Vector<BrnRateSize> _probe_types;
 
-    Vector<uint8_t> _fwd_rates;  //psr (packet success rate)
+    Vector<uint8_t> _fwd_rates;          //psr (packet success rate)
+    Vector<uint8_t> _fwd_min_rx_powers;  //min rssi
+
+    Vector<uint16_t> _rev_no_probes;     //psr (packet success rate)
+    Vector<uint16_t> _rev_min_rssi;
+    Vector<int16_t> _rev_min_rssi_index;
 
     Timestamp _last_rx;
     Deque<probe_t> _probes;          // most recently received probes
@@ -182,25 +204,52 @@ public:
         _period(per),
         _tau(t),
         _seq(0)
-    { }
+    {
+      _tau_ts = Timestamp::make_msec(_tau);
+    }
 
-    probe_list_t() : _period(0), _tau(0), _seq(0) { }
+    probe_list_t() : _period(0), _tau(0), _seq(0) {
+      _tau_ts = Timestamp::make_msec(_tau);
+    }
 
-    uint8_t rev_rate(Timestamp start, int rate, int size) {
+    inline void remove_old_probes(Timestamp &earliest) {
+      // keep stats for at least the averaging period; kick old probes
+      int no_rm_probes = 0;
+      while ((unsigned)_probes.size() && (_probes[0]._when < earliest)) {
+        _rev_no_probes[_probes[0]._brn_rate_size_index]--;
+        _probes.pop_front();
+        no_rm_probes++;
+      }
+
+      if ( no_rm_probes != 0 ) {
+        for ( int i = _rev_min_rssi_index.size()-1; i >= 0; i--)
+          if ( _rev_min_rssi_index[i] >= 0 )
+            _rev_min_rssi_index[i] -= no_rm_probes;
+      }
+    }
+
+    uint8_t rev_rate(Timestamp start, BrnRateSize &rs) {
+      int *i_p = _probe_types_map.findp(rs);
+      if (i_p == NULL) return 0;
+      uint8_t rs_index = (uint8_t)*i_p;
+
       Timestamp now = Timestamp::now();
-      Timestamp p = Timestamp::make_msec(_tau);
-      Timestamp earliest = now - p;
+      Timestamp earliest = now - _tau_ts;
 
       if (_period == 0) {
         click_chatter("period is 0\n");
         return 0;
       }
 
-      uint32_t num = 0;
-      for (int i = _probes.size() - 1; i >= 0; i--) {
-        if ( earliest > _probes[i]._when ) break;
-        if ( _probes[i]._size == size && _probes[i]._rate == rate) num++;
-      }
+      remove_old_probes(earliest);
+
+      /*
+       * uint32_t num = 0;
+       * for (int i = _probes.size() - 1; i >= 0; i--)
+       *   if ( _probes[i]._brn_rate_size_index == rs_index ) num++;
+       *
+       * click_chatter("calc: %d sum: %d diff: %d", num, _rev_no_probes[rs_index], (num==_rev_no_probes[rs_index])?(uint32_t)0:(uint32_t)1);
+       */
 
       Timestamp since_start = now - start;
 
@@ -209,7 +258,61 @@ public:
       assert(_probe_types.size());
       uint32_t num_expected = MAX(1,MIN((fake_tau / _period),(_seq / _num_probes)));
 
-      return (uint8_t)(MIN(100, (100 * num) / num_expected));
+      return (uint8_t)(MIN(100, (100 * _rev_no_probes[rs_index]/*num*/) / num_expected));
+    }
+
+    uint8_t rev_rate(Timestamp start, int rate, int size, int power) {
+      BrnRateSize rs = BrnRateSize(rate, size, power);
+      return rev_rate(start, rs);
+    }
+
+    uint8_t get_min_rx_power(BrnRateSize &rs) {
+      int *i_p = _probe_types_map.findp(rs);
+      if (i_p == NULL) return 0;
+      uint8_t rs_index = (uint8_t)*i_p;
+
+      if ( _rev_min_rssi_index[rs_index] >= 0 ) return _rev_min_rssi[rs_index];
+
+      Timestamp earliest = Timestamp::now() - _tau_ts;
+
+      remove_old_probes(earliest);
+
+      uint32_t min_rx_power = 255;
+      uint16_t min_rx_power_index = -1;
+      for (int i = _probes.size() - 1; i >= 0; i--)
+        if ((_probes[i]._brn_rate_size_index == rs_index) && (_probes[i]._rx_power < min_rx_power)) {
+          min_rx_power = _probes[i]._rx_power;
+          min_rx_power_index = i;
+        }
+
+      if ( min_rx_power == 255 ) return 0;
+
+      _rev_min_rssi[rs_index] = min_rx_power;
+      _rev_min_rssi_index[rs_index] = min_rx_power_index;
+
+      return min_rx_power;
+    }
+
+    uint8_t get_min_rx_power(int rate, int size, int power) {
+      BrnRateSize rs = BrnRateSize(rate, size, power);
+      return get_min_rx_power(rs);
+    }
+
+    void push_back_probe(const Timestamp &now, uint32_t s, BrnRateSize &rs, uint8_t rx_p) {
+      assert(_probe_types_map.findp(rs) != NULL);
+      probe_t probe(now, s, rs._rate, rs._size, rs._power, rx_p);
+      probe._brn_rate_size_index = _probe_types_map.find(rs);
+
+      if ( (rx_p <= _rev_min_rssi[probe._brn_rate_size_index]) || (_rev_min_rssi_index[probe._brn_rate_size_index] < 0) ) {
+        _rev_min_rssi[probe._brn_rate_size_index] = rx_p;
+        _rev_min_rssi_index[probe._brn_rate_size_index] = _probes.size();
+      }
+
+      _probes.push_back(probe);
+      _rev_no_probes[probe._brn_rate_size_index]++; //new probe
+
+      Timestamp earliest = now - _tau_ts;
+      remove_old_probes(earliest);
     }
 
     void clear() {
@@ -248,7 +351,6 @@ public:
   };
 
   typedef HashMap<EtherAddress, uint8_t> BadTable;
-  typedef BadTable::const_iterator BTIter;
 
  public:
 
@@ -273,7 +375,7 @@ public:
   String read_schema();
   String read_bcast_stats();
   String bad_nodes();
-  int update_probes(String probes, ErrorHandler *errh);
+  int update_probes(String probes);
 
   BRN2Device *_dev;
 
@@ -281,11 +383,12 @@ public:
   uint32_t _period;    // msecs (time between 2 linkprobes
   uint32_t _seq;       // sequence number
 
-  //Vector<BRN2GenericMetric *> _metrics;
   BRN2GenericMetric **_metrics;
   int _metrics_size;
   /* just for metrics during configure/initialize*/
   String _metric_str;
+
+  int add_metric(String metric_str, ErrorHandler *errh);
 
   // record probes received from other hosts
   Vector <EtherAddress> _neighbors;
@@ -320,6 +423,11 @@ public:
   Vector <BrnRateSize> _ads_rs;
   int _ads_rs_index;
 
+  uint8_t *_brn_rsp_packet_buf;
+  uint32_t _brn_rsp_packet_buf_size;
+  BrnRateSizeIndexMap _brn_rsp_imap;
+
+  /* supported rates */
   BrnAvailableRates *_rtable;
 
   /* keeps track of neighbors nodes with wrong protocol */
@@ -333,11 +441,18 @@ public:
 
   int32_t deregisterHandler(int32_t handle, int protocolId);
 
-  int get_rev_rate(EtherAddress *ea);
+  int get_fwd_rate(const EtherAddress *ea);
+  int get_rev_rate(const EtherAddress *ea);
 
   uint32_t _stale;
   void reset();
   void clear_stale();
+
+ private:
+  Vector<BrnRateSize> _rates_v;
+  Vector<uint8_t> _fwd_v;
+  Vector<uint8_t> _rev_v;
+
 
 };
 

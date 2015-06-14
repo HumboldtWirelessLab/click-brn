@@ -254,14 +254,14 @@ RouterThread::client_update_pass(int client, const Timestamp &t_before)
 {
     Client &c = _clients[client];
     Timestamp t_now = Timestamp::now();
-    Timestamp::seconds_type elapsed = (t_now - t_before).usec1();
+    Timestamp::value_type elapsed = (t_now - t_before).usecval();
     if (elapsed > 0)
 	c.pass += (c.stride * elapsed) / DRIVER_QUANTUM;
     else
 	c.pass += c.stride;
 
     // check_restride
-    Timestamp::seconds_type elapsed = (t_now - _adaptive_restride_timestamp).usec1();
+    elapsed = (t_now - _adaptive_restride_timestamp).usecval();
     if (elapsed > DRIVER_RESTRIDE_INTERVAL || elapsed < 0) {
 	// mark new measurement period
 	_adaptive_restride_timestamp = t_now;
@@ -504,6 +504,12 @@ RouterThread::run_os()
 
 #if CLICK_USERLEVEL
     select_set().run_selects(this);
+#elif CLICK_MINIOS
+    /*
+     * MiniOS uses a cooperative scheduler. By schedule() we'll give a chance
+     * to the OS threads to run.
+     */
+    schedule();
 #elif CLICK_LINUXMODULE		/* Linux kernel module */
     if (_greedy) {
 	if (time_after(jiffies, greedy_schedule_jiffies + 5 * CLICK_HZ)) {
@@ -587,7 +593,7 @@ RouterThread::driver()
 # if CLICK_USERLEVEL && HAVE_MULTITHREAD
     _running_processor = click_current_processor();
 #  if HAVE___THREAD_STORAGE_CLASS
-    click_current_thread_id = _id;
+    click_current_thread_id = _id | 0x40000000;
 #  endif
 # endif
 #endif

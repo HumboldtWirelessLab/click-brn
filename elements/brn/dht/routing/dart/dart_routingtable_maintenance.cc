@@ -31,6 +31,7 @@ DartRoutingTableMaintenance::DartRoutingTableMaintenance():
   _update_interval(FALCON_DEFAULT_UPDATE_INTERVAL),
   _debug(BrnLogger::DEFAULT)
 {
+  BRNElement::init();
 }
 
 DartRoutingTableMaintenance::~DartRoutingTableMaintenance()
@@ -53,7 +54,7 @@ int DartRoutingTableMaintenance::configure(Vector<String> &conf, ErrorHandler *e
 
 int DartRoutingTableMaintenance::initialize(ErrorHandler *)
 {
-  click_srandom(_drt->_me->_ether_addr.hashcode());
+  click_brn_srandom();
 
   _lookup_timer.initialize(this);
   _lookup_timer.schedule_after_msec( _starttime + click_random() % _update_interval );

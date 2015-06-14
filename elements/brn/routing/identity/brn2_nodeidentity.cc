@@ -1,14 +1,18 @@
 #include <click/config.h>
-
-#include "brn2_nodeidentity.hh"
 #include <click/error.hh>
 #include <click/confparse.hh>
 #include <click/straccum.hh>
+
+#if CLICK_NS
+#include <click/router.hh>
+#endif
 
 #include <elements/brn/brn2.h>
 #include <elements/brn/version.h>
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
+
+#include "brn2_nodeidentity.hh"
 
 CLICK_DECLS
 
@@ -16,9 +20,13 @@ BRN2NodeIdentity::BRN2NodeIdentity()
   : _node_devices_size(0),
     _node_id_32(0),
     _master_device_id(-1),
-    _service_device_id(-1)
+    _service_device_id(-1),
+    _instance_id("n/a"),
+    _instance_owner("n/a"),
+    _instance_group("n/a")
 {
   BRNElement::init();
+  _master_device = NULL;
 }
 
 BRN2NodeIdentity::~BRN2NodeIdentity()
@@ -33,11 +41,15 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
   String dev_string;
   Vector<String> devices;
 
-  _nodename="";
+  _nodename="auto";
 
   if (cp_va_kparse(conf, this, errh,
-      "NAME", cpkP+cpkM, cpString, &_nodename,
       "DEVICES", cpkP+cpkM, cpString, &dev_string,
+#if CLICK_NS
+      "NAME", cpkP, cpString, &_nodename,
+#else
+      "NAME", cpkP+cpkM, cpString, &_nodename,
+#endif
       cpEnd) < 0)
     return -1;
 
@@ -46,7 +58,7 @@ BRN2NodeIdentity::configure(Vector<String> &conf, ErrorHandler* errh)
 
   _node_devices_size = 0;
   _node_devices = new BRN2Device*[devices.size()];
-  
+
   for (int slot = 0; slot < devices.size(); slot++) {
     Element *e = cp_element(devices[slot], this, errh);
     BRN2Device *brn_device = (BRN2Device *)e->cast("BRN2Device");
@@ -99,11 +111,22 @@ BRN2NodeIdentity::initialize(ErrorHandler *)
     BRN_DEBUG("No service device: use 0 for service");
   }
 
-  if ( _nodename == "" )
-    _nodename = brn_device->getEtherAddress()->unparse();
+  if ( (_nodename == "") || (_nodename == "auto") ) {
+#if CLICK_NS
+#define NAME_BUFFER_LEN 256
+    char buf[NAME_BUFFER_LEN];
+    simclick_sim_command(router()->simnode(), SIMCLICK_GET_NODE_NAME, &buf, NAME_BUFFER_LEN );
+    _nodename = String(buf);
+#else
+    assert(_master_device != NULL);
+    _nodename = _master_device->getEtherAddress()->unparse();
+#endif
+  }
 
+  assert(_master_device != NULL);
   BRN_INFO("MasterDevice: %s",_master_device->getEtherAddress()->unparse().c_str());
 
+  assert(_master_device != NULL);
   MD5::calculate_md5((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str(),
                     strlen((const char*)MD5::convert_ether2hex(_master_device->getEtherAddress()->data()).c_str()), _node_id );
 
@@ -121,7 +144,7 @@ BRN2NodeIdentity::isIdentical(EtherAddress *e)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(e->data(), _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
-   
+
   return false;
 }
 
@@ -130,7 +153,7 @@ BRN2NodeIdentity::isIdentical(uint8_t *data)
 {
   for ( uint32_t i = 0; i < _node_devices_size; i++ )
     if ( memcmp(data, _node_devices[i]->getEtherAddress()->data(),6) == 0 ) return true;
-   
+
   return false;
 }
 
@@ -159,11 +182,13 @@ BRN2NodeIdentity::getDeviceByIndex(uint8_t index) {
 
 const EtherAddress *
 BRN2NodeIdentity::getMainAddress() {
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
 const EtherAddress *
 BRN2NodeIdentity::getMasterAddress() {
+  assert(_master_device != NULL);
   return _master_device->getEtherAddress();
 }
 
@@ -226,6 +251,8 @@ read_version_param(Element *e, void *)
 #endif
   sa << " md5_id=\"" << click_binary_digest << "\" git_version=\"" << BRN_GIT_VERSION << "\" />\n";
   sa << "\t<click_script md5_id=\"" << click_script_digest << "\" />\n";
+  sa << "\t<instance id=\"" << id->_instance_id << "\"  owner=\"" << id->_instance_owner << "\" group=\"";
+  sa << id->_instance_group << "\" />\n";
   sa << "</version>\n";
 
   return sa.take_string();
@@ -243,6 +270,22 @@ write_nodename_param(const String &in_s, Element *e, void *, ErrorHandler *errh)
   return 0;
 }
 
+static int
+write_instance_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
+{
+  BRN2NodeIdentity *id = (BRN2NodeIdentity *)e;
+  String s = cp_uncomment(in_s);
+  Vector<String> args;
+  cp_spacevec(s, args);
+
+  if ( args.size() >= 3 ) {
+    id->_instance_id = args[0];
+    id->_instance_owner = args[1];
+    id->_instance_group = args[2];
+  }
+
+  return 0;
+}
 static int
 write_version_param(const String &in_s, Element *e, void *, ErrorHandler */*errh*/)
 {
@@ -267,6 +310,7 @@ BRN2NodeIdentity::add_handlers()
 
   add_read_handler("info", read_devinfo_param, 0);
   add_write_handler("nodename", write_nodename_param, 0);
+  add_write_handler("instance", write_instance_param, 0);
 
   add_read_handler("version", read_version_param, 0);
   add_write_handler("version", write_version_param, 0);

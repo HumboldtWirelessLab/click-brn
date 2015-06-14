@@ -41,6 +41,9 @@ class NHopNeighbouringProtocol {
   static WritablePacket *new_ping(const EtherAddress *src, uint16_t no_neighbours, uint8_t hop_limit);
 
   static void unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit, uint8_t *hops);
+
+  //static void unpack_ping(Packet *p, EtherAddress *src, uint16_t *no_neighbours, uint8_t *hop_limit);
+  //static void unpack_nhop(Packet *p, EtherAddress *src, uint8_t *hop_limit, NHopNeighbouringInfo *nhopi);
 };
 
 CLICK_ENDDECLS

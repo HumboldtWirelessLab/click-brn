@@ -79,6 +79,8 @@ SystemInfo::initialize(ErrorHandler */*errh*/)
 {
 #ifdef CLICK_USERLEVEL
 #ifndef CLICK_NS
+  CPUStats::get_usage(click_pid, &_cpu_stats[_cpu_stats_index]);
+
   _cpu_timer.initialize(this);
   if ( _cpu_timer_interval > 0 ) {
     _cpu_timer.schedule_after_msec(_cpu_timer_interval);

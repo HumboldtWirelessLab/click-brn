@@ -14,9 +14,6 @@
 #ifndef MAC_FILTER_HH_
 #define MAC_FILTER_HH_
 
-
-#include <string>
-
 #include <click/vector.hh>
 #include <click/element.hh>
 #include <click/confparse.hh>
@@ -38,13 +35,13 @@ public:
 
 	int configure(Vector<String> &conf, ErrorHandler *errh);
 	bool can_live_reconfigure() const	{ return false; }
-	int initialize();
+	int initialize(ErrorHandler *);
 
 	bool add(EtherAddress addr);
 	bool del(EtherAddress addr);
 
 	HashMap<EtherAddress, int> macFilterList;
-        
+
         String stats();
 
 private:

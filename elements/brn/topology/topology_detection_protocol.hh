@@ -30,6 +30,7 @@
 CLICK_DECLS
 
 struct td_header {
+  uint8_t type;
   uint32_t id;
   uint8_t src[6];
   uint8_t ttl;
@@ -66,7 +67,7 @@ class TopologyDetectionLink {
       memcpy(tdl->src,_a.data(),6);
       memcpy(tdl->dst,_b.data(),6);
       if ( _is_bridge ) tdl->flags = tdl->flags | TD_LINK_FLAG_IS_BRIGDE;
-      else tdl->flags = tdl->flags & (!TD_LINK_FLAG_IS_BRIGDE);
+      else tdl->flags = tdl->flags & (~TD_LINK_FLAG_IS_BRIGDE);
     }
 
     void unserialize(struct td_link *tdl) {
@@ -83,10 +84,10 @@ class TopologyDetectionProtocol {
 
     static WritablePacket *new_detection_packet(const EtherAddress *src, uint32_t id, uint8_t ttl);
     static WritablePacket *fwd_packet(Packet *p, const EtherAddress *src, EtherAddress *new_node);
-    static uint8_t* get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl );
+    static uint8_t* get_info(Packet *p, EtherAddress *src, uint32_t *id, uint8_t *n_entries, uint8_t *ttl, uint8_t *type);
 
-    static WritablePacket *new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfo::Bridge> *brigdes);
-    static void get_info_backwd_packet(Packet *p, Vector<TopologyInfo::Bridge> *brigdes);
+    static WritablePacket *new_backwd_packet(EtherAddress *td_src, uint32_t td_id, const EtherAddress *src, EtherAddress *dst, Vector<TopologyInfoEdge> *brigdes);
+    static void get_info_backwd_packet(Packet *p, Vector<TopologyInfoEdge> *brigdes);
 
 };
 

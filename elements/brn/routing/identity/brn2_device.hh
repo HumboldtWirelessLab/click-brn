@@ -10,6 +10,12 @@
 
 #include "elements/brn/brnelement.hh"
 
+#include "elements/brn/wifi/config/wificonfig.hh"
+
+#include "elements/brn/wifi/brnavailablerates.hh"
+#include "elements/brn/wifi/availablechannels.hh"
+
+
 CLICK_DECLS
 
 /*
@@ -81,8 +87,13 @@ class BRN2Device : public BRNElement {
     inline bool allow_broadcast() { return _allow_broadcast; }
     inline void set_allow_broadcast(bool allow_bcast) { _allow_broadcast = allow_bcast; }
 
-    inline uint8_t getChannel() { return _channel; }
     inline void setChannel(uint8_t c) { _channel = c; }
+    inline uint8_t getChannel() { return _channel; }
+
+    int set_power(int power, ErrorHandler *errh);
+    inline uint16_t get_power() { return _power;}
+
+    int set_channel(int channel, ErrorHandler *errh);
 
     String device_info();
 
@@ -116,21 +127,50 @@ class BRN2Device : public BRNElement {
 
     bool _allow_broadcast;
 
-    /* wireless device */
+    /**
+     * WIRELESS DEVICES
+     *
+     */
+
     uint8_t _channel;
 
-    uint8_t no_queues;//number of queues
-    uint16_t *_cwmin;//Contention Window Minimum; Array (see: monitor)
-    uint16_t *_cwmax;//Contention Window Maximum; Array (see:monitor)
-    uint16_t *_aifs;//Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+    /** QueueCtrl */
+    uint8_t _no_queues; //number of queues
+    uint32_t *_cwmin;   //Contention Window Minimum; Array (see: monitor)
+    uint32_t *_cwmax;   //Contention Window Maximum; Array (see:monitor)
+    uint32_t *_aifs;    //Arbitration Inter Frame Space;Array (see 802.11e Wireless Lan for QoS)
+    uint32_t *_queue_info;
+
+    uint16_t _power;
+
+    String _wireless_device_config_string;
+    BrnAvailableRates *_wireless_availablerates;
+    AvailableChannels *_wireless_availablechannels;
+
+    /** CCA */
+    int _rx_threshold;
+    int _cs_threshold;
+    int _cp_threshold;
+
+    /** Config **/
+    WifiConfig *_wificonfig;
 
   public:
 
-    uint8_t get_no_queues() { return no_queues; }
-    uint16_t *get_cwmin() { return _cwmin; }
-    uint16_t *get_cwmax() { return _cwmax; }
-    uint16_t *get_aifs() { return _aifs; }
+    uint32_t set_backoff();
+    uint32_t get_backoff();
+    int set_backoff_scheme(uint32_t scheme);
 
+    uint8_t get_no_queues() { return _no_queues; }
+    uint32_t *get_cwmin() { return _cwmin; }
+    uint32_t *get_cwmax() { return _cwmax; }
+    uint32_t *get_aifs() { return _aifs; }
+
+    /** TX CONTROL **/
+    int abort_transmission(EtherAddress &dst);
+
+    void set_cca(int cs_threshold, int rx_threshold, int cp_threshold);
+    void get_cca();
 };
 
 CLICK_ENDDECLS

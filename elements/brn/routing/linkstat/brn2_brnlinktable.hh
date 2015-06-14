@@ -74,8 +74,12 @@ class EthernetPair {
     bool other(EtherAddress foo) { return ((_to == foo) ? _from : _to); }
 
     inline bool operator==(EthernetPair other) {
+#if CLICK_NS
+      return _hashcode == other._hashcode;
+#else
       if ( _hashcode != other._hashcode ) return false;
       return (other._to == _to && other._from == _from);
+#endif
     }
 };
 
@@ -176,6 +180,8 @@ typedef LTable::const_iterator LTIter;
 
 class BrnLinkTableChangeInformant {
  public:
+  virtual ~BrnLinkTableChangeInformant() {};
+
   virtual void add_node(BrnHostInfo *) = 0;
   virtual void remove_node(BrnHostInfo *) = 0;
   //virtual void update_node(BrnHostInfo *) const = 0;
@@ -225,8 +231,8 @@ class Brn2LinkTable: public BRNElement {
                          uint32_t metric, uint8_t link_update_mode, bool permanent=false) {
     if (update_link(a, b, seq, age, metric, link_update_mode, permanent))
       return update_link(b, a, seq, age, metric, link_update_mode, permanent);
-    
-    return false;      
+
+    return false;
   }
 
   /* other public functions */

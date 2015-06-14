@@ -107,7 +107,7 @@ BRN2RouteQuerier::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 BRN2RouteQuerier::initialize(ErrorHandler */*errh*/)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _rreq_id = click_random() % 0xffff;
 
@@ -169,7 +169,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   }
 
   if ( _me->isIdentical(&dst_addr) || _link_table->is_associated(dst_addr) ) {
-    BRN_DEBUG("Dest is me or associated client (should never happend ?)");
+    BRN_ERROR("Dest is me or associated client (should never happend ?)");
     output(2).push(p_in);
     return;
   }
@@ -177,7 +177,7 @@ BRN2RouteQuerier::push(int, Packet *p_in)
   uint16_t last_hop_metric = _link_table->get_host_metric_to_me(src_addr);
   if ( !(_me->isIdentical(&src_addr) || _link_table->is_associated(src_addr) || (last_hop_metric > 0) ) ) {
     //TODO: fix it
-    BRN_INFO(" unknown src of packet; kill packet.");
+    BRN_ERROR(" unknown src of packet; kill packet.");
     p_in->kill();
     return;
   }
@@ -1009,7 +1009,7 @@ BRN2RouteQuerier::add_route_to_link_table(const BRN2RouteQuerierRoute &route, in
 
     ea_route.push_back(ether1);
 
-    uint16_t metric;
+    uint16_t metric = BRN_DSR_INVALID_HOP_METRIC;
 
     switch ( dsr_element ) {
       case DSR_ELEMENT_REQ_FORWARDER: {

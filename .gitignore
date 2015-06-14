@@ -1,5 +1,6 @@
 +*
 .dotest
+.*.cmd
 Makefile
 autom4te*
 bin
@@ -10,9 +11,11 @@ config.h
 config.log
 config.mk
 config.status
+configure.lineno
 depcomp
 elementmap
 elementmap.xml
+etc/pkg-config.mk
 installch
 *~
 *.so
@@ -30,6 +33,9 @@ local/*
 click_install/
 click_install/*
 man
+share/click/config.mk
+share/click/elementmap.xml
+share/click/pkg-config.mk
 stamp-egroup
 stamp-h
 include/tinyxml
@@ -43,6 +49,7 @@ elements/brnold
 elements/brn/version.h
 linuxmodule/elements.csmk
 bsdmodule/elements.csmk
-*kdev4
 nbproject
 jist/elements.csmk
+userlevel/elements-good.mk
+.conftest.o.cmd

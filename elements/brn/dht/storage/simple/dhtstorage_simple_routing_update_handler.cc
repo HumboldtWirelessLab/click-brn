@@ -291,7 +291,7 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
 
   DHTMovedDataInfo *mdi;
   Timestamp now = Timestamp::now();
-  BRNDB::DBrow *_row;
+  BRNDB::DBrow *_row = NULL;
   int timediff;
 /*  int a = 0;
   while(a < _md_queue.size())

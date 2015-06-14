@@ -41,15 +41,14 @@
 
 #include "elements/brn/wifi/station/brn2assocrequester.hh"
 #include "elements/brn/wifi/availablechannels.hh"
-#include "elements/brn/wifi/ath/ath2operation.hh"
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 CLICK_DECLS
 
 BRN2InfrastructureClient::BRN2InfrastructureClient()
-:   request_timer(this),
+:   _device(NULL),
+    request_timer(this),
     _active_scan_mode(false),
-    _athop(NULL),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -68,6 +67,7 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
   _c_min = _c_max = 0;
 
   if (cp_va_kparse(conf, this, errh,
+      "DEVICE", cpkP+cpkM, cpElement, &_device,
       "WIRELESS_INFO", cpkP+cpkM, cpElement, /*"Wirelessinfo",*/ &_wireless_info,
       "RT", cpkP+cpkM, cpElement, /*"BrnAvailabeRates",*/ &_rtable,
       "BEACONSCANNER", cpkP+cpkM, cpElement, /*"Beaconscanner",*/ &_beaconscanner,
@@ -77,7 +77,6 @@ BRN2InfrastructureClient::configure(Vector<String> &conf, ErrorHandler* errh)
       "WIFIENCAP", cpkP+cpkM, cpElement, /*"Wifiencap",*/ &_wifiencap,
       "ACTIVESCAN", cpkP, cpBool, /*"debug",*/ &_active_scan_mode,
       "CHANNELLIST", cpkP, cpElement, /*"Channellist",*/ &_channellist,
-      "ATHOPERATION", cpkP, cpElement, /*"AthOperation",*/ &_athop,
       "CMIN", cpkP, cpInteger, &_c_min,
       "CMAX", cpkP, cpInteger, &_c_max,
       "DEBUG", cpkP, cpInteger, /*"debug",*/ &_debug,
@@ -141,8 +140,8 @@ BRN2InfrastructureClient::run_timer(Timer* )
   if ( _wireless_info->_channel == 0 ) {
     if ( ! _scan_all_channels ) {
       BRN_DEBUG("set next chanel");
-      if ( _athop != NULL && _channellist != NULL ) {
-        _athop->set_channel(_channellist->get(_channel_index));
+      if ( _channellist != NULL ) {
+        _device->set_channel(_channellist->get(_channel_index),NULL);
 
         _channel_index = ( _channel_index + 1 ) % _channellist->size();
 
@@ -160,8 +159,7 @@ BRN2InfrastructureClient::run_timer(Timer* )
   } else {
     if ( ! _channel_is_set ) {
       BRN_DEBUG("Set wanted channel");
-      if ( _athop != NULL )
-        _athop->set_channel(_wireless_info->_channel);
+      _device->set_channel(_wireless_info->_channel,NULL);
 
       _channel_is_set = true;
 

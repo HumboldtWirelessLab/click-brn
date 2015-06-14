@@ -395,6 +395,7 @@ BRN2PrintWifi::simple_action(Packet *p)
   sa.adjust_length(len);
 
   uint8_t mcs_index, bandwidth, guard_interval;
+  mcs_index = bandwidth = guard_interval = 0;
 
   if ( (ceh->flags & WIFI_EXTRA_TX) && _print_used_rate ) {
     uint8_t used_rate = ceh->rate;
@@ -775,14 +776,17 @@ BRN2PrintWifi::simple_action(Packet *p)
   } else {
     sa << "seq: 65565 ";
   }
-    
 
   sa << "[";
   if (ceh->flags & WIFI_EXTRA_TX) {
     sa << " tx";
   }
   if (ceh->flags & WIFI_EXTRA_TX_FAIL) {
-    sa << " fail";
+    if (ceh->flags & WIFI_EXTRA_TX_ABORT) {
+      sa << " abort";
+    } else {
+      sa << " fail";
+    }
   }
   if (ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE) {
     sa << " alt_rate";
@@ -803,6 +807,9 @@ BRN2PrintWifi::simple_action(Packet *p)
 
   if (ceh->flags & WIFI_EXTRA_TX) {
     sa << " retries " << (int) ceh->retries;
+  }
+  if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) {
+    sa << " rts/data " << (int)(ceh->virt_col >> 4) << "/" << (int)(ceh->virt_col & 15) << " " << (int)ceh->virt_col;
   }
 
  done:

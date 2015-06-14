@@ -34,7 +34,9 @@ CLICK_DECLS
  *
  * Word. Defines the method ToDevice will use to write packets to the
  * device. Linux targets generally support PCAP and LINUX; other targets
- * support PCAP or, occasionally, other methods. Generally defaults to PCAP.
+ * support PCAP or, occasionally, other methods. Defaults to the method
+ * specified for a matching L<FromDevice(n)>, or the first supported
+ * method among NETMAP, PCAP, DEVBPF, LINUX and PCAPFD otherwise.
  *
  * =item DEBUG
  *
@@ -116,8 +118,7 @@ class ToDevice : public Element { public:
     int _fd;
 #endif
 #if TODEVICE_ALLOW_NETMAP
-    NetmapInfo::ring _netmap;
-    int netmap_send_packet(Packet *p);
+    NetmapInfo _netmap;
 #endif
     enum { method_default, method_netmap, method_linux, method_pcap, method_devbpf, method_pcapfd };
     int _method;

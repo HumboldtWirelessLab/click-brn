@@ -5,7 +5,6 @@
 #include <clicknet/wifi.h>
 
 #include "elements/brn/brnprotocol/brnpacketanno.hh"
-#include "elements/brn/wifi/ath/ieee80211_monitor_ath2.h"
 
 CLICK_DECLS
 
@@ -33,7 +32,10 @@ enum {
   WIFI_EXTRA_RX_HN           = (1<<13),
   WIFI_EXTRA_RX_NOWIFI       = (1<<12),
 
-  WIFI_EXTRA_RX_PHANTOM_ERR  = (WIFI_EXTRA_RX_ZERORATE_ERR | WIFI_EXTRA_RX_PHY_ERR)
+  WIFI_EXTRA_RX_PHANTOM_ERR  = (WIFI_EXTRA_RX_ZERORATE_ERR | WIFI_EXTRA_RX_PHY_ERR),
+
+  WIFI_EXTRA_TX_ABORT        = (1<<11),
+  WIFI_EXTRA_EXT_RETRY_INFO  = (1<<10)
 };
 
 #define WIFI_EXTRA_FLAG_MCS_RATE_START 21
@@ -149,7 +151,6 @@ struct wifi_n_msdu_header {
   uint8_t  sa[6];
   uint16_t len;
 } CLICK_SIZE_PACKED_ATTRIBUTE;
-
 
 #define EXTRA_HEADER_OFFSET 14
 
@@ -361,14 +362,22 @@ class BrnWifi
   }
 
 
-  static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh)
-  {
+  static inline int get_rts_sent_count(click_wifi_extra *ceh) {
+    if ( (ceh->flags & WIFI_EXTRA_DO_RTS_CTS) == 0 ) return 0;
+    if (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO) return (int)(ceh->virt_col >> 4);
+    return 0;
+  }
+
+  static inline int get_data_sent_count(click_wifi_extra *ceh) {
+    return (ceh->flags & WIFI_EXTRA_EXT_RETRY_INFO)?(int)(ceh->virt_col & 15):((int)ceh->retries + ((ceh->flags & WIFI_EXTRA_TX_ABORT)?0:1));
+  }
+
+  static inline void set_host_time(u_int64_t hosttime, click_wifi_extra *eh) {
     memcpy(((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, &hosttime, sizeof(hosttime));
   }
 
 
-  static inline u_int64_t get_host_time(click_wifi_extra *eh)
-  {
+  static inline u_int64_t get_host_time(click_wifi_extra *eh) {
     u_int64_t hosttime;
     memcpy(&hosttime, ((u_int8_t *)eh)+EXTRA_HEADER_OFFSET, sizeof(hosttime));
 
@@ -379,5 +388,29 @@ class BrnWifi
 };
 
 CLICK_ENDDECLS
+
+#ifdef CLICK_NS
+
+struct rx_tx_stats {
+  int tx_no_rts_;
+  int tx_no_cts_;
+  int tx_no_data_;
+  int tx_no_unic_;
+  int tx_no_bcast_;
+  int tx_no_ack_;
+
+  int rx_no_rts_;
+  int rx_no_cts_;
+  int rx_no_data_;
+  int rx_no_unic_;
+  int rx_no_bcast_;
+  int rx_no_ack_;
+
+  int no_nodes_col_;
+  int no_packets_col_;
+  int no_cap_;
+};
+
+#endif
 
 #endif /* !_BRNWIFI_H_ */

@@ -2,12 +2,13 @@
 #define CLICK_SETTXPOWERRATE_HH
 #include <click/element.hh>
 #include <clicknet/ether.h>
+#include <click/timer.hh>
 
 #include "elements/brn/brnelement.hh"
-#include "elements/brn/wifi/channelstats.hh"
 #include "elements/brn/wifi/brnavailablerates.hh"
 
 #include "elements/brn/wifi/txparams/neighbourrateinfo.hh"
+
 #include "rateselection/rateselection.hh"
 
 CLICK_DECLS
@@ -24,6 +25,8 @@ CLICK_DECLS
  * 2 : received packets
  */
 
+#define SETTXPOWERRATE_DEFAULT_STATS_TIMER_INTERVAL 1000
+
 class SetTXPowerRate : public BRNElement {
 
 public:
@@ -32,7 +35,7 @@ public:
   ~SetTXPowerRate();
 
   const char *class_name() const  { return "SetTXPowerRate"; }
-  const char *port_count() const  { return "2-3/2-3"; }
+  const char *port_count() const  { return "1-3/1-3"; }
 
   const char *processing() const  { return AGNOSTIC; }
 
@@ -51,24 +54,29 @@ public:
 
   String getInfo();
 
-private:
+ private:
 
+  void update_stats(struct rateselection_packet_info *rs_pi, NeighbourRateInfo *dsti);
   NeighbourRateInfo* getDstInfo(EtherAddress ea);
 
   BrnAvailableRates *_rtable;
+
   RateSelection *_rate_selection;
+  RateSelection *get_rateselection(uint32_t rateselection_strategy);
+  int _rate_selection_strategy;
 
-  int _max_power;
-
-  ChannelStats *_cst;
+  SchemeList _scheme_list;
 
   NeighborTable _neighbors;
+  uint32_t _max_power;
 
   Timer _timer;
+  Timer _stats_timer;
 
-  unsigned _packet_size_threshold;
+  uint32_t _stats_timer_interval;
 
   int _offset;
+  bool _has_wifi_header;
 
 };
 

@@ -77,6 +77,12 @@ if [ ! "x$WALL" = "x0" ]; then
   XCFLAGS="$XCFLAGS -Wall -Wextra -fpermissive"
 fi
 
+if [ "x$CLANG" = "x1" ]; then
+  XCFLAGS="$XCFLAGS -Qunused-arguments"
+fi
+
+XCFLAGS="$XCFLAGS -L$BRN_TOOLS_PATH/click-brn-libs/lib -I$BRN_TOOLS_PATH/click-brn-libs/include"
+
 for op in $@; do
 
     case "$op" in
@@ -149,7 +155,7 @@ case "x$TARGET" in
 *)
 	if [ "x$CLANG" = "x1" ]; then
 		echo "CXX=clang++ CC=clang ./configure $CONFOPTION"
-		eval CXX=clang++ CC=clang  ./configure $CONFOPTION
+		eval CXX=clang++ CC=clang ./configure $CONFOPTION
 	else 
 		echo "./configure $CONFOPTION"
 		eval ./configure $CONFOPTION

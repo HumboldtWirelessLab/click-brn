@@ -20,7 +20,7 @@
 
 /*
  * unicast_flooding.{cc,hh} -- converts a broadcast packet into a unicast packet
- * A. Zubow
+ * R. Sombrutzki
  */
 
 #include <click/config.h>
@@ -33,7 +33,6 @@
 #include "elements/brn/brn2.h"
 
 #include "unicast_flooding.hh"
-#include "../../../../userlevel/socket.hh"
 
 CLICK_DECLS
 
@@ -41,12 +40,18 @@ UnicastFlooding::UnicastFlooding():
   _me(NULL),
   _flooding(NULL),
   _fhelper(NULL),
+  _flooding_db(NULL),
   _cand_selection_strategy(0),
   _pre_selection_mode(UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED),
   _ucast_peer_metric(0),
+  _ucast_per_node_limit(0),
   _reject_on_empty_cs(true),
   _force_responsibility(false),
   _use_assign_info(false),
+  _fix_candidate_set(false),
+  _self_pdr(UNICAST_FLOODING_DIJKSTRA_PDR),
+  _self_pdr_steps(0),
+  _self_pdr_limit(UNICAST_FLOODING_DIJKSTRA_PDR),
   _cnt_rewrites(0),
   _cnt_bcasts(0),
   _cnt_bcasts_empty_cs(0),
@@ -63,10 +68,13 @@ UnicastFlooding::~UnicastFlooding()
 int
 UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
 {
+  String pdr_config = "";
+
   if (cp_va_kparse(conf, this, errh,
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "FLOODING", cpkP+cpkM, cpElement, &_flooding,
       "FLOODINGHELPER", cpkP+cpkM, cpElement, &_fhelper,
+      "FLOODINGDB", cpkP+cpkM, cpElement, &_flooding_db,
       "PRESELECTIONSTRATEGY", cpkP, cpInteger, &_pre_selection_mode,
       "REJECTONEMPTYCS", cpkP, cpBool, &_reject_on_empty_cs,
       "CANDSELECTIONSTRATEGY", cpkP, cpInteger, &_cand_selection_strategy,
@@ -74,6 +82,9 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
       "FORCERESPONSIBILITY", cpkP, cpBool, &_force_responsibility,
       "USEASSIGNINFO", cpkP, cpBool, &_use_assign_info,
       "STATIC_DST", cpkP, cpEtherAddress, &static_dst_mac,
+      "FIXCS", cpkP, cpBool, &_fix_candidate_set,
+      "PDRCONFIG", cpkP, cpString, &pdr_config,
+      "UCASTPERNODELIMIT", cpkP, cpInteger, &_ucast_per_node_limit,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -81,8 +92,25 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
   if (!_me || !_me->cast("BRN2NodeIdentity")) 
     return errh->error("NodeIdentity not specified");
 
+  if (_pre_selection_mode > UNICAST_FLOODING_PRESELECTION_LAST) {
+    return errh->error("Preselection is out of range: %d", _pre_selection_mode);
+  }
+
   if ((_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) &&
       (static_dst_mac.is_broadcast())) _cand_selection_strategy = UNICAST_FLOODING_NO_REWRITE;
+
+  String pdr_config_unc = cp_uncomment(pdr_config);
+
+  Vector<String> args;
+  cp_spacevec(pdr_config_unc, args);
+
+  if ( args.size() != 0 ) {
+    cp_integer(args[0], &_self_pdr);
+    if ( args.size() == 3 ) {
+      cp_integer(args[1], &_self_pdr_steps);
+      cp_integer(args[2], &_self_pdr_limit);
+    }
+  }
 
   return 0;
 }
@@ -90,11 +118,9 @@ UnicastFlooding::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 UnicastFlooding::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
-  
-  last_unicast_used = EtherAddress::make_broadcast();
+  click_brn_srandom();
 
-  all_unicast_pkt_queue.clear();
+  last_unicast_used = EtherAddress::make_broadcast();
 
   return 0;
 }
@@ -110,7 +136,15 @@ void
 UnicastFlooding::push(int, Packet *p)
 {
   //port 0: transmit to other brn nodes; rewrite from broadcast to unicast
-  if (Packet *q = smaction(p, true)) output(0).push(q);
+  if (Packet *q = smaction(p, true)) {
+
+    if ( q != NULL ) {
+      BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
+      _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
+    }
+
+    output(0).push(q);
+  }
 }
 
 Packet *
@@ -118,28 +152,37 @@ UnicastFlooding::pull(int)
 {
   Packet *p = NULL;
 
-  if ( all_unicast_pkt_queue.size() > 0 ) {                          //first take packets from packet queue
-    p = all_unicast_pkt_queue[0];                                    //take first
-    all_unicast_pkt_queue.erase(all_unicast_pkt_queue.begin());      //clear
-  } else if ((p = input(0).pull()) != NULL) p = smaction(p, false); //new packet
+  do {
+    if ((p = input(0).pull()) == NULL) break;  //no packet from upper layer, so finished
+    p = smaction(p, false);                    //handle new packet
+  } while (p == NULL);                         //repeat 'til we have a packet for lower layer
+
+  if ( p != NULL ) {
+    BRN_DEBUG("Set Last: %s %s %d",_last_tx_dst_ea.unparse().c_str(), _last_tx_src_ea.unparse().c_str(), _last_tx_bcast_id);
+    _flooding->set_last_tx(_last_tx_dst_ea, _last_tx_src_ea, _last_tx_bcast_id);
+  }
 
   return p;
 }
 
-/* 
+/*
  * process an incoming broadcast/unicast packet:
  * in[0] : // received from other brn node; rewrite from unicast to broadcast
  * in[1] : // transmit to other brn nodes; rewrite from broadcast to unicast
  * out: the rewroted or restored packet
+ *
+ * return NULL if packet was rejected (and push the packet to 1
+ * function should recall smaction with another packet
+ *
  */
 Packet *
-UnicastFlooding::smaction(Packet *p_in, bool is_push)
+UnicastFlooding::smaction(Packet *p_in, bool /*is_push*/)
 {
   // next hop must be a broadcast
   EtherAddress next_hop = BRNPacketAnno::dst_ether_anno(p_in);
   assert(next_hop.is_broadcast());
-  
-  const EtherAddress *me;
+
+  const EtherAddress *me = _me->getMasterAddress();
   Vector<EtherAddress> candidate_set;
   candidate_set.clear();
 
@@ -149,126 +192,179 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 
   uint16_t bcast_id = ntohs(bcast_header->bcast_id);
   //clear responseflag for the case that broadcast is used
-  bcast_header->flags &= !BCAST_HEADER_FLAGS_FORCE_DST;
+  bcast_header->flags &= ~(BCAST_HEADER_FLAGS_FORCE_DST & BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS &
+                           BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN & BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED);
 
   uint16_t assigned_nodes = 0;
-      
-  if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
+
+  BroadcastNode *bcn = _flooding_db->get_broadcast_node(&src);
+
+   int min_tx_count;
+   int min_tx_count_index;
+
+  /* check wether bcn-pkt mark as stopped (txabort) */
+  if ( bcn->is_stopped(bcast_id) ) {
+    bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_DUE_STOPPED;
+    output(1).push(p_in);
+    return NULL;
+  }
+
+  if ( _cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE ) {
+    candidate_set.push_back(static_dst_mac);
+  } else if ( _cand_selection_strategy != UNICAST_FLOODING_NO_REWRITE ) {
 
     /**
-      * 
+      *
       * PRE SELECTION
-      * 
+      *
       * Candidate Selection
-      * 1. All neighbours                                                        (All nodes)
-      * 2. Neighbour (best set) which covers all n-hop neighbours (use dijkstra) (Strong connected)
-      * 
+      * 0. All neighbours                                                        (All nodes)
+      * 1. Neighbour (best set) which covers all n-hop neighbours (use dijkstra) (Strong connected)
+      * 2. Child only: nodes, which covers other (2-n)-hop nodes alone. There is no other node in my neighbourhood
+      *
       * In all cases all nodes which have already the message are removed.
-      * 
+      *
       * */
-    
-    //src mac
-    me = _me->getMasterAddress();
 
     //filter packet src
     BRN_DEBUG("Src %s id: %d",src.unparse().c_str(), bcast_id);
 
     //get all known nodes
-    struct Flooding::BroadcastNode::flooding_last_node *last_nodes;
+    struct BroadcastNode::flooding_node_info *last_nodes;
     uint32_t last_nodes_size;
-    last_nodes = _flooding->get_last_nodes(&src, bcast_id, &last_nodes_size);
-    
+    last_nodes = _flooding_db->get_node_infos(&src, bcast_id, &last_nodes_size);
+
     Vector<EtherAddress> known_neighbors;
 
-    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                               //add node to known_nodes if
-      if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_RESPONSIBILITY) == 0) {    //2. i'm not responsible
-        known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
-      } else {
+    /**
+     * First, check for responsible nodes
+     * If we have such nodes than we already have a candidate set
+     */
+
+    for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                                       //add node to candidate set if
+      if ( ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_RESPONSIBILITY) != 0) &&         //1. i'm responsible (due unicast before or fix set)
+           ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED) == 0)) {               //2. is not acked
         candidate_set.push_back(EtherAddress(last_nodes[j].etheraddr));
+      } else {
+        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_FINISHED_FOR_ME) != 0)           //is known as acked or foreign response
+          known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
+        /*else {
+          BRN_DEBUG("Not finished: %s" , EtherAddress(last_nodes[j].etheraddr).unparse().c_str());
+        }*/
       }
     }
 
+    //BRN_DEBUG("Known neighbours: %d CS: %d", known_neighbors.size(), candidate_set.size());
+
     if ( _use_assign_info ) {
-      last_nodes = _flooding->get_assigned_nodes(&src, bcast_id, &last_nodes_size);
+      /**
+       * a nother node try to reach the node
+       */
       BRN_DEBUG("Assigned node size: %d", last_nodes_size);
       for ( uint32_t j = 0; j < last_nodes_size; j++ ) {                           //add node to known_nodes if
-        if ((last_nodes[j].flags & FLOODING_LAST_NODE_FLAGS_REVOKE_ASSIGN) == 0) { //1. it is assigned and this is not revoked
-          BRN_DEBUG("Add assigned node");
+        if ((last_nodes[j].flags & FLOODING_NODE_INFO_FLAGS_IS_ASSIGNED_NODE) != 0) { //1. it is assigned
+          //TODO: Debug: check whether node is already in known_neighbours
+          //BRN_DEBUG("Add assigned node");
           known_neighbors.push_back(EtherAddress(last_nodes[j].etheraddr));
           assigned_nodes++;
         }
       }
-    } 
+    }
 
     /**
      * all_nodes get all_nodes except last_nodes
+     *
+     * _fix_target_set is true if the broadcast algorith has a fix target set (like mpr or mst)
      */
-    if ( (_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_ALL_NODES) ||
-         (_cand_selection_strategy == UNICAST_FLOODING_STATIC_REWRITE) || 
-         ( candidate_set.size() != 0) ) {
-      
-      if ( candidate_set.size() == 0 ) {
-        if (_cand_selection_strategy != UNICAST_FLOODING_STATIC_REWRITE)
-          _fhelper->get_filtered_neighbors(*me, candidate_set);
-        else 
-          candidate_set.push_back(static_dst_mac);
-      }
-      
-      for ( int i = candidate_set.size()-1; i >= 0; i--) {
-        for ( int j = 0; j < known_neighbors.size(); j++) {
-          if ( candidate_set[i] == known_neighbors[j] ) {
-            candidate_set.erase(candidate_set.begin() + i);
-            break;
+    if ( ! bcn->_fix_target_set ) {
+
+      /** we use all nodes (neighbors) or we have a candidate set (due responsibility) */
+      if ( (_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_ALL_NODES) ||
+           ( candidate_set.size() != 0) ) {
+
+        /* if we have no cands take all neighbors */
+        if ( candidate_set.size() == 0 ) _fhelper->get_filtered_neighbors(*me, candidate_set);
+
+        /* delete all known neighbours */ /* could improve performance if necessary: sort both vectors before and create new array instead of using erase */
+        for ( int i = candidate_set.size()-1; i >= 0; i--) {
+          for ( int j = 0; j < known_neighbors.size(); j++) {
+            if ( candidate_set[i] == known_neighbors[j] ) {
+              candidate_set.erase(candidate_set.begin() + i);
+              break;
+            }
           }
         }
-      }
 
-    } else {
+      } else {
 
-      //get local graph info
-      NetworkGraph net_graph;
+        //get local graph info
+        NetworkGraph net_graph;
 
-      uint32_t final_pre_selection_mode = _pre_selection_mode;
+        uint32_t final_pre_selection_mode = _pre_selection_mode;
 
-      do {
-        if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
-          _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, 110);
-        } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
-          _fhelper->get_local_childs(*me, net_graph, 3);
-  
-          for ( int i = 0; i < known_neighbors.size(); i++) {
-            _fhelper->remove_node(known_neighbors[i], net_graph);
-          }
+        //init with startpdr
+        uint32_t selfpdr = _self_pdr;
 
-          BRN_DEBUG("NET_GRAPH size: %d",net_graph.size());
-          _fhelper->print_vector(net_graph.nml);
-  
+        if ( _self_pdr_steps > 0 ) {
+          //got number of real forwards
+          //TODO: use only number of mac-forwards (sent-count)
+          uint32_t no_fwds = _flooding_db->forward_done_cnt(&src, bcast_id);
+
+          selfpdr = MIN(selfpdr + (no_fwds * _self_pdr_steps), _self_pdr_limit);
         }
 
-        //get candidateset
-        _fhelper->get_candidate_set(net_graph, candidate_set);
-        BRN_DEBUG("Candset size: %d",candidate_set.size());
-
-        //clear unused stuff
-        _fhelper->clear_graph(net_graph);
-
-        if ( candidate_set.size() == 0 ) {
+        do {
           if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
-            break;
+            _fhelper->get_local_graph(*me, known_neighbors, net_graph, 2, selfpdr);
           } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
-            BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
-            final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
-          } 
+            _fhelper->get_local_childs(*me, net_graph, 3);
+
+            for ( int i = 0; i < known_neighbors.size(); i++) {
+              _fhelper->remove_node(known_neighbors[i], net_graph);
+            }
+
+            BRN_DEBUG("NET_GRAPH size: %d",net_graph.size());
+            _fhelper->print_vector(net_graph.nml);
+
+          }
+
+          //get candidateset
+          _fhelper->get_candidate_set(net_graph, candidate_set);
+          BRN_DEBUG("Candset size: %d PreSel: %d FinPreSel: %d",candidate_set.size(), _pre_selection_mode, final_pre_selection_mode);
+
+          //clear unused stuff
+          _fhelper->clear_graph(net_graph);
+
+          if ( candidate_set.size() == 0 ) {
+            if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED ) {
+              break;
+            } else if ( final_pre_selection_mode == UNICAST_FLOODING_PRESELECTION_CHILD_ONLY ) {
+              /* We have to switch to avoid, that no node sends a packet in e.g. a full connected network */
+              BRN_DEBUG("Preselection: Switch to UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED");
+              final_pre_selection_mode = UNICAST_FLOODING_PRESELECTION_STRONG_CONNECTED;
+            }
+          }
+
+        } while (candidate_set.empty());
+
+
+        /* We have a candidate set. We fix it now*/
+        if ( _fix_candidate_set && (!candidate_set.empty()) ) {
+          for (Vector<EtherAddress>::iterator i = candidate_set.begin(); i != candidate_set.end(); ++i) {
+            _flooding_db->add_node_info(&src, bcast_id, i, false, false, true, false);
+            //BRN_DEBUG("Add node %s %d %s", i->unparse().c_str(), bcast_id, src.unparse().c_str());
+          }
         }
 
-      } while ( candidate_set.size() == 0 );
+        /* print result */
+        _fhelper->print_vector(candidate_set);
+      }
 
-      _fhelper->print_vector(candidate_set);
-    }
+    }  //end fix_target
 
     //clear known neighbours1
     known_neighbors.clear();
-     
+
     /**
      * Finished first step of preselection
      */
@@ -277,54 +373,50 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       if ( _reject_on_empty_cs ) {
         BRN_DEBUG("We have only weak or no neighbors. Reject!");
         _cnt_reject_on_empty_cs++;
-        _flooding->clear_assigned_nodes(&src, bcast_id);
-        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;
+        _flooding_db->clear_assigned_nodes(&src, bcast_id);                     //clear all assignment (temporaly mark as "the node has the paket"
+        bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_ON_EMPTY_CS;           //reject and assign nodes are part of decision
         if ( assigned_nodes > 0 ) bcast_header->flags |= BCAST_HEADER_FLAGS_REJECT_WITH_ASSIGN;
         output(1).push(p_in);
         return NULL;
       }
-      
+
       BRN_DEBUG("We have only weak or no neighbors. Keep Bcast!");
       _cnt_bcasts_empty_cs++;
     }
-  } // end preselection strong connected
-  
-  
+  } // end of !"no rewrite"
+
+
   /**
-    * 
+    *
     * FINAL SELECTION
-    * 
+    *
     * */
 
-  if ( candidate_set.size() > 1 ) { 
+  if ( candidate_set.size() > 1 ) {
     switch (_cand_selection_strategy) {
 
+      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing (just reject if no node left (see up))
+        break;
+
       case UNICAST_FLOODING_ALL_UNICAST:    // static rewriting
-  
+
         BRN_DEBUG("Send unicast to all neighbours");
 
-        //Set responseflag before copy (speedup ;) )
-        if (_force_responsibility) bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
-          
-        for ( int i = 0; i < candidate_set.size()-1; i++) {
-          Packet *p_copy = p_in->clone()->uniqueify();
+        min_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[0]);
+        min_tx_count_index = 0;
 
-          BRNPacketAnno::set_dst_ether_anno(p_copy, candidate_set[i]);
-  
-          if ( src != *me ) _flooding->_flooding_fwd++;
-          //TODO: inc src_fwd if i'm src of packet? 
-
-          _flooding->forward_attempt(&src, bcast_id);
-
-          add_rewrite(&src, bcast_id, &candidate_set[i]);
-          
-          if (_force_responsibility) _flooding->set_responsibility_target(&src, bcast_id, &candidate_set[i]);
- 
-          if (is_push) output(0).push(p_copy);           //push element: push all packets
-          else all_unicast_pkt_queue.push_back(p_copy);  //pull element: store packets for next pull
+        for ( int i = 1; i < candidate_set.size()-1; i++) {
+          int node_tx_count = _flooding_db->get_unicast_tx_count(&src, bcast_id, &candidate_set[i]);
+          if (node_tx_count < min_tx_count) {
+            min_tx_count = node_tx_count;
+            min_tx_count_index = i;
+          }
         }
-        
-        next_hop = candidate_set[candidate_set.size()-1];
+        next_hop = candidate_set[min_tx_count_index];
+        break;
+
+      case UNICAST_FLOODING_TAKE_BEST:     // take node with highest link quality
+        next_hop = candidate_set[_fhelper->find_best(*me, candidate_set)];
         break;
 
       case UNICAST_FLOODING_TAKE_WORST:     // take node with lowest link quality
@@ -334,36 +426,54 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
       case UNICAST_FLOODING_MOST_NEIGHBOURS:                           // algo 1 - choose the neighbor with the largest neighborhood minus our own neighborhood
         next_hop = algorithm_most_neighbours(candidate_set, 2);
         break;
-     
-      case UNICAST_FLOODING_BCAST_WITH_PRECHECK:                       //Do nothing
+
+      case UNICAST_FLOODING_PRIO_LOW_BENEFIT:                           //
+        next_hop = algorithm_less_neighbours(candidate_set, 2);
         break;
-     
+
+      case UNICAST_FLOODING_RANDOM:                                     //
+        next_hop = candidate_set[click_random() % candidate_set.size()];
+        break;
+
       default:
         BRN_WARN("* UnicastFlooding: Unknown candidate selection strategy; keep as broadcast.");
     }
-  } else if ((candidate_set.size() == 1) && (_cand_selection_strategy != UNICAST_FLOODING_BCAST_WITH_PRECHECK))
-           next_hop = candidate_set[0];       
+  } else {
+    if ((candidate_set.size() == 1) && (_cand_selection_strategy != UNICAST_FLOODING_BCAST_WITH_PRECHECK))
+      next_hop = candidate_set[0];
+  }
 
   if ( next_hop.is_broadcast() ) {
     _cnt_bcasts++;
   } else {
+    //TODO: clear assign nodes? or wait with clear until no nodes is left?
     BRNPacketAnno::set_dst_ether_anno(p_in, next_hop);
     last_unicast_used = next_hop;
+
     BRN_DEBUG("* UnicastFlooding: Destination address rewrote to %s", next_hop.unparse().c_str());
     _cnt_rewrites++;
 
     if (_force_responsibility) {
-      _flooding->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop); 
+      _flooding_db->set_responsibility_target(&src, ntohs(bcast_header->bcast_id), &next_hop);
       bcast_header->flags |= BCAST_HEADER_FLAGS_FORCE_DST;
     }
   }
 
+  //BRN_ERROR("Me: %s Dst: %s CSS: %d id: %d m: %d cm: %d",
+  //                                           me->unparse().c_str(), next_hop.unparse().c_str(),
+  //                                           candidate_set.size(),bcast_id,
+  //                                           _fhelper->_link_table->get_link_pdr(*me,next_hop),
+  //                                           _fhelper->_cnmlmap.find(*me)->get_metric(next_hop));
   add_rewrite(&src, bcast_id, &next_hop);
 
-  _flooding->clear_assigned_nodes(&src, bcast_id);
-  
+  _flooding_db->clear_assigned_nodes(&src, bcast_id);
+
+  _last_tx_dst_ea = next_hop;
+  _last_tx_src_ea = src;
+  _last_tx_bcast_id = bcast_id;
+
   candidate_set.clear();
-  
+
   return p_in;
 }
 
@@ -374,6 +484,18 @@ UnicastFlooding::smaction(Packet *p_in, bool is_push)
 EtherAddress
 UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int hops)
 {
+  return algorithm_neighbours(neighbors, hops, true);
+}
+
+EtherAddress
+UnicastFlooding::algorithm_less_neighbours(Vector<EtherAddress> &neighbors, int hops)
+{
+  return algorithm_neighbours(neighbors, hops, false);
+}
+
+EtherAddress
+UnicastFlooding::algorithm_neighbours(Vector<EtherAddress> &neighbors, int hops, bool most)
+{
   const EtherAddress *me = _me->getMasterAddress();
 
   //local Graph
@@ -383,17 +505,17 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
 
   Vector<EtherAddress> local_neighbours;
   _fhelper->get_filtered_neighbors(*me, local_neighbours);
-  
+
   // search for the best nb
   int32_t best_new_metric = -1;
   EtherAddress best_nb;
- 
+
   //start node is blacklist node
   HashMap<EtherAddress, EtherAddress> blacklist;
   blacklist.insert(*me, *me);
 
   NetworkGraph *ng_list = new NetworkGraph[neighbors.size()];
-    
+
   /**
    * get neighbours of neighbours without start node
    * x 2-hop neighbourhood
@@ -408,8 +530,10 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
 
   for( int x = 0; x < neighbors.size(); x++) {
     //Estimate size etc...
-    
+
     /**
+     * TODO: B1.1 & B1.2: warum nur durch grösse der einhap nachbarschaft teilen und nicht 2 hop?
+     *
      * B1.1. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | nb(c) n nb(x) |
      * B1.2. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) | / | (nb(nb(c)) u nb(c)) n nb(x) |
      * B1.3. | nb(c) \ (nb(nb(x)\{c}) U nb(x)) |
@@ -419,22 +543,23 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
      * B2.3. | nb(c) \ nb(x) |
      * 
      **/
-   
+
     /** nb(c) \ (nb(nb(x)\{c}) U nb(x)) **/
+    /* Neighbours only coverd by c */
     uint32_t foreign_exclusive_nb_hood = _fhelper->graph_diff_size(local_neighbours, ng_list[x]);
-    
+
     /** nb(c) \ nb(x) **/
     Vector<EtherAddress> x_neighbours;
     _fhelper->get_filtered_neighbors(neighbors[x], x_neighbours); //nb(x)
 
     uint32_t foreign_exclusive_nb = _fhelper->graph_diff_size(local_neighbours, x_neighbours);
-    
+
     /** nb(c) n nb(x)  **/
     uint32_t cut_nb_c_nb_x = _fhelper->graph_cut_size(x_neighbours, local_neighbours);
-    
+
     /** (nb(nb(c)) u nb(c)) n nb(x) **/
     uint32_t cut_local_graph_nb_x = _fhelper->graph_cut_size(x_neighbours, local_graph);
- 
+
     int32_t new_metric = 0;
 
     switch (_ucast_peer_metric) {
@@ -453,11 +578,18 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
     }
 
     BRN_DEBUG("MostNeighbours: NODE: %s Value: %d", neighbors[x].unparse().c_str(), new_metric);
-    if (new_metric > best_new_metric) {
-      best_new_metric = new_metric;
-      best_nb = neighbors[x];
+    if (most) {
+      if (new_metric > best_new_metric) {
+        best_new_metric = new_metric;
+        best_nb = neighbors[x];
+      }
+    } else {
+      if ((new_metric < best_new_metric) || (x == 0)) {
+        best_new_metric = new_metric;
+        best_nb = neighbors[x];
+      }
     }
-        
+
     x_neighbours.clear();
     _fhelper->clear_graph(ng_list[x]);
   }
@@ -466,7 +598,7 @@ UnicastFlooding::algorithm_most_neighbours(Vector<EtherAddress> &neighbors, int 
   local_neighbours.clear();
   _fhelper->clear_graph(local_graph);
   delete[] ng_list;
-  
+
   BRN_DEBUG("Best: %s Metric: %d",best_nb.unparse().c_str(), best_new_metric);
 
   // check if we found a candidate and rewrite packet
@@ -498,7 +630,7 @@ UnicastFlooding::get_strategy_string(uint32_t id)
     case UNICAST_FLOODING_BCAST_WITH_PRECHECK: return "bcast_with_precheck";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 
 String
@@ -510,7 +642,7 @@ UnicastFlooding::get_preselection_string(uint32_t id)
     case UNICAST_FLOODING_PRESELECTION_CHILD_ONLY: return "child_only";
   }
 
-  return "unknown"; 
+  return "unknown";
 }
 //-----------------------------------------------------------------------------
 // Handler
@@ -531,23 +663,25 @@ read_param(Element *e, void *thunk)
       sa << "<unicast_rewriter node=\"" << rewriter->get_node_name() << "\" strategy=\"" << rewriter->get_strategy();
       sa << "\" strategy_string=\"" << rewriter->get_strategy_string(rewriter->get_strategy()) << "\" preselection=\"";
       sa << rewriter->get_preselection() << "\" preselection_string=\"" << rewriter->get_preselection_string(rewriter->get_preselection()); 
-      sa << "\" ucast_peer_metric=\"" << rewriter->get_ucast_peer_metric() << "\" reject_on_empty_cs=\"" << rewriter->get_reject_on_empty_cs();
+      sa << "\" ucast_peer_metric=\"" << rewriter->get_ucast_peer_metric() << "\" reject_on_empty_cs=\"" << (int)(rewriter->get_reject_on_empty_cs()?1:0);
+      sa << "\" fix_cs=\"" << (int)(rewriter->_fix_candidate_set?1:0) << "\" force_response=\"" << (int)(rewriter->_force_responsibility?1:0);
+      sa << "\" use_assign=\"" << (int)(rewriter->_use_assign_info?1:0);
       sa << "\" static_mac=\"" << rewriter->get_static_mac()->unparse() << "\" last_rewrite=\"" << rewriter->last_unicast_used;
       sa << "\" rewrites=\"" << rewriter->_cnt_rewrites << "\" bcast=\"" << rewriter->_cnt_bcasts;
       sa << "\" empty_cs_reject=\"" << rewriter->_cnt_reject_on_empty_cs;
       sa << "\" empty_cs_bcast=\"" << rewriter->_cnt_bcasts_empty_cs << "\" >\n";
-      
+
       sa << "\t<rewrite_cnt targets=\"" << rewriter->rewrite_cnt_map.size() << "\" >\n";
-      
+
       for ( UnicastFlooding::TargetRewriteCntMapIter trcm = rewriter->rewrite_cnt_map.begin(); trcm.live(); ++trcm) {
         uint32_t cnt = trcm.value();
         EtherAddress addr = trcm.key();
-        
+
         sa << "\t\t<rewrite_cnt_node node=\"" << addr.unparse() << "\" cnt=\"" << cnt << "\" />\n";
       }
 
       sa << "\t</rewrite_cnt>\n";
-      
+
       sa << "</unicast_rewriter>\n";
       break;
     }

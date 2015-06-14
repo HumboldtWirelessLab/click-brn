@@ -15,6 +15,8 @@
 
 #define MODE_INSERT 0
 #define MODE_READ   1
+#define MODE_APPEND 2
+
 
 
 CLICK_DECLS
@@ -73,12 +75,15 @@ class DHTStorageTest : public BRNElement
     int write_rep;
     int read_req;
     int read_rep;
+    int append_req;
+    int append_rep;
     int not_found;
     int no_timeout;
 
     uint32_t op_time;
     uint32_t write_time;
     uint32_t read_time;
+    uint32_t append_time;
     uint32_t notfound_time;
     uint32_t timeout_time;
     uint32_t max_timeout_time;

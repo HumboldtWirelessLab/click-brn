@@ -35,13 +35,22 @@
 
 #include "topology_detection.hh"
 #include "topology_detection_protocol.hh"
+#include "dibadawn/dibadawn_packet.hh"
+#include "dibadawn/nodestatistic.hh"
 
 CLICK_DECLS
 
 TopologyDetection::TopologyDetection() :
-  _detection_timer(static_detection_timer_hook,this),
-  _response_timer(static_response_timer_hook,this),
-  detection_id(0)
+detection_id(0),
+dibadawnAlgo(this),
+_is_detect_periodically(false),
+_probability_of_perriodically_detection(0.8),
+_interval_ms(30 * 1000),
+_start_rand(20000),
+_timer(this),
+_info_timer_active(false),
+_info_timer(this),
+_info_counter(1)
 {
   BRNElement::init();
 }
@@ -50,288 +59,291 @@ TopologyDetection::~TopologyDetection()
 {
 }
 
-int
-TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
+int TopologyDetection::configure(Vector<String> &conf, ErrorHandler *errh)
 {
+ click_chatter("RDDBG: begin configure"); 
   if (cp_va_kparse(conf, this, errh,
-      "TOPOLOGYINFO", cpkP+cpkM, cpElement, &_topoi,
-      "NODEIDENTITY", cpkP+cpkM, cpElement, &_node_identity,
+      "TOPOLOGYINFO", cpkP + cpkM, cpElement, &_topoInfo,
+      "NODEIDENTITY", cpkP + cpkM, cpElement, &_node_identity,
       "LINKTABLE", cpkP, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "IS_DETECTION_PERIODICALLY", 0, cpBool, &_is_detect_periodically,
+      "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
+      "AP_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForAAPAtNet,
+      "BR_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForBridgeAtNet,
+      "DETECTION_INTERVAL_MS", 0, cpInteger, &_interval_ms,
+      "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "PRINT_INFO_PERIODICALLY", 0, cpBool, &_info_timer_active,
       cpEnd) < 0)
-    return -1;
+    return(-1);
 
-  return 0;
+  dibadawnAlgo.config.debugLevel = _debug;
+  dibadawnAlgo.setTopologyInfo(_topoInfo);
+  
+  return(0);
 }
 
-int
-TopologyDetection::initialize(ErrorHandler *)
+int TopologyDetection::initialize(ErrorHandler *)
 {
+  //don't move this to configure, since BRNNodeIdenty is not configured
+  //completely while configure this element, so set_active can cause
+  //seg, fault, while calling BRN_DEBUG in set_active
+  
   click_srandom(_node_identity->getMasterAddress()->hashcode());
+  
+  const EtherAddress *node = _node_identity->getMasterAddress();
+  dibadawnAlgo.config.thisNode = *node;
+  
+  _timer.initialize(this);
+  update_periodically_detection_setup();
 
-  _detection_timer.initialize(this);
-  _response_timer.initialize(this);
+  _info_timer.initialize(this);
+  update_info_timer();
+  
   return 0;
 }
 
-
-void
-TopologyDetection::push( int /*port*/, Packet *packet )
+int TopologyDetection::reconfigure(String &conf, ErrorHandler *errh)
 {
-  click_ether *ether_h = (click_ether *)packet->ether_header();
+  bool is_topologyinfo_configured;
+  bool is_nodeidentity_configured;
+  bool is_debug_configured;
+  bool is_periodicallyexec_configured;
+  bool is_interval_configured;
+  bool is_info_timer_configured;
+  
+  if (cp_va_kparse(conf, this, errh,
+      "TOPOLOGY_INFO", cpkC, &is_topologyinfo_configured, cpElement, &_topoInfo,
+      "NODE_IDENTITY", cpkC, &is_nodeidentity_configured, cpElement, &_node_identity,
+      "LINK_TABLE", 0, cpElement, &_lt,
+      "DEBUG", cpkC, &is_debug_configured, cpInteger, &_debug,
+      "ORIGIN_FORWARD_DELAY", 0, cpBool, &dibadawnAlgo.config.useOriginForwardDelay,
+      "VOTING_RULE", 0, cpInteger, &dibadawnAlgo.config.votingRule,
+      "MAX_HOPS", 0, cpInteger, &dibadawnAlgo.config.maxHops,
+      "MAX_TRAVERSAL_TIME_MS", 0, cpInteger, &dibadawnAlgo.config.maxTraversalTimeMs,
+      "IS_DETECTION_PERIODICALLY", cpkC, &is_periodicallyexec_configured, cpBool, &_is_detect_periodically,
+      "POBABILITY_OF_PREIODICALLY_DETECTION", 0, cpDouble, &_probability_of_perriodically_detection,
+      "AP_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForAAPAtNet,
+      "BR_POBABILITY", 0, cpDouble, &dibadawnAlgo.config.probabilityForBridgeAtNet,
+      "DETECTION_INTERVAL_MS", cpkC, &is_interval_configured, cpInteger, &_interval_ms,
+      "RANDOM_START_DELAY_MS", 0, cpInteger, &_start_rand,
+      "USE_LINK_STAT", 0, cpBool, &dibadawnAlgo.config.useLinkStatistic,
+      "PRINT_AFTER_RUN", 0, cpBool, &dibadawnAlgo.config.isPrintResults,
+      "PRINT_INFO_PERIODICALLY", cpkC, &is_info_timer_configured, cpBool, &_info_timer_active,
+      cpEnd) < 0)
+    return(-1);
 
-  BRN_DEBUG("Etherheader: Src: %s Dst: %s", EtherAddress(ether_h->ether_shost).unparse().c_str(),
-                                            EtherAddress(ether_h->ether_dhost).unparse().c_str());
+  if(is_topologyinfo_configured)
+    dibadawnAlgo.setTopologyInfo(_topoInfo);
+  if(is_nodeidentity_configured)
+    dibadawnAlgo.config.thisNode = *_node_identity->getMasterAddress();
+  if(is_debug_configured)
+    dibadawnAlgo.config.debugLevel = _debug;
+  if(is_periodicallyexec_configured || is_interval_configured)
+    update_periodically_detection_setup();
+  if(is_info_timer_configured)
+    update_info_timer();
+  return(0);
+}
 
-  if ( memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0 ) {
-    handle_detection_forward(packet);
-  } else {
+void TopologyDetection::update_periodically_detection_setup()
+{
+  _timer.unschedule();
+  
+  if(! _is_detect_periodically)
+    return;
+  
+  uint32_t start_delay = _start_rand > 0 ? click_random() % _start_rand : 0;
+  _timer.schedule_after_msec(start_delay);
+  BRN_DEBUG("Timer is new scheduled at %s", _timer.expiry().unparse().c_str());
+}
+
+void TopologyDetection::update_info_timer()
+{
+  _info_timer.unschedule();
+  
+  if(!_info_timer_active)
+    return;
+
+  _info_timer.schedule_after_msec(_interval_ms);
+  BRN_DEBUG("Info Timer is new scheduled at %s", _info_timer.expiry().unparse().c_str());
+}
+
+void TopologyDetection::push(int /*port*/, Packet *packet)
+{
+  click_ether *ether_h = (click_ether *) packet->ether_header();
+  if (memcmp(brn_ethernet_broadcast, ether_h->ether_dhost, 6) == 0)
+  {
+    handle_detection(packet);
+  }
+  else
+  {
     EtherAddress dst = EtherAddress(ether_h->ether_dhost);
-    if ( _node_identity->isIdentical(&dst) ) {
-      handle_detection_backward(packet);
-    } else {
-      BRN_DEBUG("Destination is neither me nor broadcast.");
-      packet->kill();
+    if (_node_identity->isIdentical(&dst))
+    {
+      handle_detection(packet);
     }
   }
+
+  packet->kill();
 }
 
-void
-TopologyDetection::handle_detection_forward(Packet *packet)
+void TopologyDetection::handle_detection(Packet *brn_packet)
 {
-  uint32_t id;
-  uint8_t entries;
-  uint8_t ttl;
-  uint8_t *path;
-  EtherAddress src;
-  click_ether *ether_h = (click_ether *)packet->ether_header();
-  bool new_td = false;
+  DibadawnPacket packet(*brn_packet);
+  //click_chatter("<DEBUG name='%s' addr='%s' />", BRN_NODE_ADDRESS.c_str(), BRN_NODE_NAME.c_str());
+  dibadawnAlgo.receive(packet);
+}
 
-  path = TopologyDetectionProtocol::get_info(packet, &src, &id, &entries, &ttl);
+void TopologyDetection::run_timer(Timer *t)
+{
+  if (t == NULL)
+    BRN_ERROR("Timer is NULL");
 
-  TopologyDetectionForwardInfo *tdi = get_forward_info(&src, id);
-
-  if ( tdi == NULL ) {
-    BRN_DEBUG("Unknown topology detection request. Src: %s Id: %d Entries: %d TTL: %d",src.unparse().c_str(),id,entries,ttl);
-    tdfi_list.push_back(new TopologyDetectionForwardInfo(&src, id, (ttl-1)));
-    tdi = get_forward_info(&src, id);
-    new_td = true;
-  }
-
-  EtherAddress last_hop = EtherAddress(ether_h->ether_shost);
-
-  bool incl_me = path_include_node(path, entries, _node_identity->getMasterAddress());
-
-  tdi->add_last_hop(&last_hop,ttl,incl_me);
-
-  if ( new_td ) {
-    WritablePacket *fwd_p = TopologyDetectionProtocol::fwd_packet(packet, _node_identity->getMasterAddress(), &last_hop);
-
-    _detection_timer.schedule_after_msec( /*click_random() %*/ 100 );  //wait for forward of an descendant
-
-    output(0).push(fwd_p);
-
-  } else {
-    BRN_DEBUG("I know the request. Discard Packet.");
-
-    if ( (( tdi->_ttl - 1 ) == ttl) && incl_me ) { //is my descendants (nachkomme)
-      BRN_DEBUG("It's my descendants.");
-      tdi->set_descendant(&last_hop,true);
-      tdi->_num_descendant++;
-      _detection_timer.unschedule();
-      _response_timer.unschedule();
-      _response_timer.schedule_after_msec( /*click_random() %*/ (tdi->_ttl * tdi->_ttl) );
+  if(t == &_timer)
+  {
+    double threshold = _probability_of_perriodically_detection * 10000;
+    double rand = click_random() % 10000;
+    if( rand < threshold)
+    {
+      BRN_DEBUG("Timer: start search");
+      dibadawnAlgo.startNewSearch();
+    }
+    else
+    {
+      BRN_DEBUG("Timer: don't start search");
     }
 
-    packet->kill();
+    if (_is_detect_periodically)
+      _timer.schedule_after_msec(_interval_ms);
   }
-}
-
-bool
-TopologyDetection::path_include_node(uint8_t *path, uint32_t path_len, const EtherAddress *node )
-{
-  uint8_t *lpath = path;
-
-  for ( uint32_t i = 0,pindex = 0; i < path_len; i++, pindex+=6)
-    if ( memcmp(&(lpath[pindex]), node->data(), 6 ) == 0 ) return true;
-  return false;
-}
-
-void
-TopologyDetection::handle_detection_backward(Packet *packet)
-{
-  BRN_DEBUG("Handle backward");
-
-  click_ether *ether_h = (click_ether *)packet->ether_header();
-
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-  tdi->_get_backward++;
-
-  BRN_DEBUG("Src: %s Back: %d of %d",EtherAddress(ether_h->ether_shost).unparse().c_str(),tdi->_get_backward, tdi->_num_descendant);
-
-  if ( tdi->_get_backward == tdi->_num_descendant )
+  else if(t == &_info_timer)
   {
-    BRN_DEBUG("Got infos off all descendant");
-    _response_timer.unschedule();
-    _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
+    dibadawnAlgo.nodeStatistic.printFinalResult(String(_info_counter));
+    _info_counter++;    
+
+    if(_info_timer_active)
+      _info_timer.schedule_after_msec(_interval_ms);
   }
-
-  if ( tdi->_get_backward > tdi->_num_descendant )
-  {
-    BRN_ERROR("Got more back than wanted");
-    _response_timer.unschedule();
-    _response_timer.schedule_after_msec( /*click_random() % */100 );  //wait only small time for additional response
-  }
-}
-
-void
-TopologyDetection::start_detection()
-{
-  detection_id++;
-  WritablePacket *p = TopologyDetectionProtocol::new_detection_packet(_node_identity->getMasterAddress(), detection_id, 128);
-
-  tdfi_list.push_back(new TopologyDetectionForwardInfo(_node_identity->getMasterAddress(), detection_id, 128));
-  _detection_timer.schedule_after_msec( /*click_random() % */100 );  //wait for descendant
-
-  output(0).push(p);
-
-}
-
-void
-TopologyDetection::static_detection_timer_hook(Timer *t, void *f)
-{
-  if ( t == NULL ) click_chatter("Time is NULL");
-  ((TopologyDetection*)f)->handle_detection_timeout();
-}
-
-void
-TopologyDetection::static_response_timer_hook(Timer *t, void *f)
-{
-  if ( t == NULL ) click_chatter("Time is NULL");
-  ((TopologyDetection*)f)->handle_response_timeout();
-}
-
-void
-TopologyDetection::handle_detection_timeout(void)
-{
-  BRN_DEBUG("Detection Timeout. No descendant.");
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-
-  if ( tdi->_src != *(_node_identity->getMasterAddress()) )
-    send_response();
-  else
-    BRN_DEBUG("Source of request. Detection timeout");
-}
-
-void
-TopologyDetection::handle_response_timeout(void)
-{
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-
-  if ( tdi->_get_backward < tdi->_num_descendant )
-    BRN_DEBUG("Missing response from descendant ( %d of %d ).",tdi->_get_backward, tdi->_num_descendant);
-
-  BRN_DEBUG("Test of src is me");
-//  TODO: the next test failed (looks like that)
-  if ( tdi->_src != *(_node_identity->getMasterAddress()) ) //i'm the source of the request. Time to check the result
-    send_response();                                        //send response
-  else
-    BRN_DEBUG("Source of request. Response timeout");
-
-}
-
-void
-TopologyDetection::send_response(void)
-{
-  TopologyDetection::TopologyDetectionForwardInfo *tdi = tdfi_list[0];
-  TopologyDetection::TopologyDetectionReceivedInfo *tdri = &(tdi->_last_hops[0]);
-
-  BRN_DEBUG("Send Response to %s.",tdri->_addr.unparse().c_str());
-
-  WritablePacket *p = TopologyDetectionProtocol::new_backwd_packet(&(tdi->_src), tdi->_id, _node_identity->getMasterAddress(), &(tdri->_addr), NULL);
-  output(0).push(p);
-}
-
-TopologyDetection::TopologyDetectionForwardInfo *
-TopologyDetection::get_forward_info(EtherAddress *src, uint32_t id)
-{
-  for ( int i = 0; i < tdfi_list.size(); i++ ) {
-    if ( tdfi_list[i]->equals(src,id) ) return tdfi_list[i];
-  }
-
-  return NULL;
+  
 }
 
 /*************************************************************************************************/
 /***************************************** H A N D L E R *****************************************/
 /*************************************************************************************************/
-
-String
-TopologyDetection::local_topology_info(void)
+void TopologyDetection::start_detection()
 {
-  StringAccum sa;
-  TopologyDetection::TopologyDetectionForwardInfo *tdfi;
-  TopologyDetectionReceivedInfo *tdri;
-
-  sa << "Node: " << _node_identity->getMasterAddress()->unparse() << "\n";
-
-  for( int i = 0; i < tdfi_list.size(); i++ )
-  {
-    tdfi = tdfi_list[i];
-    sa << i <<  "\t" << tdfi->_src.unparse() << " - " << tdfi->_id << " Send-TTL: " << (uint32_t)tdfi->_ttl << "\n";
-    sa << "\tLast Hops:\n";
-    for( int j = 0; j < tdfi->_last_hops.size(); j++ ) {
-      tdri = &(tdfi->_last_hops[j]);
-      sa << "\t\t" << tdri->_addr.unparse() << " TTL: " << tdri->_ttl << " Over Me: " << tdri->_over_me;
-      sa << " Descendant: " << tdri->_descendant << "\n";
-    }
-  }
-
-  sa << "\n";
-
-  return sa.take_string();
+  dibadawnAlgo.startNewSearch();
 }
 
-
-enum { H_START_DETECTION, H_TOPOLOGY_INFO };
-
-static int
-write_param(const String &in_s, Element *e, void *vparam, ErrorHandler *errh)
+void TopologyDetection::stop_periodically_detection_after_next_run()
 {
-  TopologyDetection *f = (TopologyDetection *)e;
-  String s = cp_uncomment(in_s);
-  switch((intptr_t)vparam) {
-    case H_START_DETECTION: {    //debug
-      int start;
-      if (!cp_integer(s, &start))
-        return errh->error("start parameter must be boolean");
-      f->start_detection();
-      break;
-    }
+  _is_detect_periodically = false;
+  BRN_DEBUG("Timer will stop after next scheduled run at %s", _timer.expiry().unparse().c_str());
+}
+
+void TopologyDetection::reset_link_stat()
+{
+  dibadawnAlgo.link_stat.reset();
+}
+
+String TopologyDetection::xml_link_stat()
+{
+  if(!dibadawnAlgo.config.useLinkStatistic)
+    return("Warning: Please configure 'USE_LINK_STAT' with 'true'");
+  
+  StringAccum sa;
+  sa << "<DibadawnLinkStat node='" << BRN_NODE_NAME << "' time='" << Timestamp::now().unparse() << "' >\n";
+  sa << dibadawnAlgo.link_stat.asString();
+  sa << "</DibadawnLinkStat>\n";
+  
+  return(sa.take_string());
+}
+
+String TopologyDetection::local_topology_info(void)
+{
+  return(_topoInfo->topology_info());
+}
+
+String TopologyDetection::config()
+{
+  return(dibadawnAlgo.config.asString());
+}
+
+enum
+{
+  H_START_DETECTION, H_TOPOLOGY_INFO, H_CONFIG, H_STOP_SMOOTHLY, H_STAT
+};
+
+static int write_param(const String& click_script_parameter, Element *element, void *vparam, ErrorHandler* errh)
+{
+  TopologyDetection *topo = (TopologyDetection *) element;
+  switch ((intptr_t) vparam)
+  {
+  case H_START_DETECTION:
+    topo->start_detection();
+    break;
+    
+  case H_CONFIG:
+  {
+    String s = cp_uncomment(click_script_parameter);
+    topo->reconfigure(s, errh);
+    break;
+  }
+    
+  case H_STOP_SMOOTHLY:
+    topo->stop_periodically_detection_after_next_run();
+    break;
+    
+  case H_STAT:
+    topo->reset_link_stat();
+    break;
   }
   return 0;
 }
 
-static String
-read_param(Element *e, void *thunk)
+static String read_param(Element *e, void *thunk)
 {
-  TopologyDetection *t_detect = (TopologyDetection *)e;
+  TopologyDetection *topo = (TopologyDetection *) e;
 
-  switch ((uintptr_t) thunk)
-  {
-    case H_TOPOLOGY_INFO : return ( t_detect->local_topology_info() );
-    default: return String();
+  switch ((uintptr_t) thunk) {
+  case H_TOPOLOGY_INFO:
+    return ( topo->local_topology_info());
+    break;
+  
+  case H_CONFIG:
+    return(topo->config());
+    break;
+    
+  case H_STAT:
+    return(topo->xml_link_stat());
+    break;
+    
+  default: return String();
   }
 }
 
-void
-TopologyDetection::add_handlers()
+void TopologyDetection::add_handlers()
 {
   BRNElement::add_handlers();
 
   add_write_handler("detect", write_param, (void *) H_START_DETECTION);
-
+  
+  add_write_handler("config", write_param, (void *) H_CONFIG);
+  add_read_handler("config", read_param, (void *) H_CONFIG);
+  
   add_read_handler("local_topo_info", read_param, (void *) H_TOPOLOGY_INFO);
+  
+  add_write_handler("stop_periotically_detection_smoothly", write_param, (void *) H_STOP_SMOOTHLY);
+  
+  add_read_handler("link_stat", read_param, (void *) H_STAT);
+  add_write_handler("reset_link_stat", write_param, (void *) H_STAT);
 }
 
 CLICK_ENDDECLS

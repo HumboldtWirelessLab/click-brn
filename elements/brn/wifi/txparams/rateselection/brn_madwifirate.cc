@@ -22,6 +22,7 @@ BrnMadwifiRate::BrnMadwifiRate()
     _stepdown(0)
 {
   mcs_zero = MCS(0);
+  _default_strategy = RATESELECTION_MADWIFI;
 }
 
 void *
@@ -29,10 +30,8 @@ BrnMadwifiRate::cast(const char *name)
 {
   if (strcmp(name, "BrnMadwifiRate") == 0)
     return (BrnMadwifiRate *) this;
-  else if (strcmp(name, "RateSelection") == 0)
-    return (RateSelection *) this;
-  else
-    return NULL;
+
+  return RateSelection::cast(name);
 }
 
 BrnMadwifiRate::~BrnMadwifiRate()
@@ -127,8 +126,10 @@ BrnMadwifiRate::adjust(NeighborTable *neighbors, EtherAddress dst)
 }
 
 void
-BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMadwifiRate::process_feedback(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   bool success = !(ceh->flags & WIFI_EXTRA_TX_FAIL);
   bool used_alt_rate = ceh->flags & WIFI_EXTRA_TX_USED_ALT_RATE;
 
@@ -157,8 +158,10 @@ BrnMadwifiRate::process_feedback(click_wifi_extra *ceh, NeighbourRateInfo *nri)
 }
 
 void
-BrnMadwifiRate::assign_rate(click_wifi_extra *ceh, NeighbourRateInfo *nri)
+BrnMadwifiRate::assign_rate(struct rateselection_packet_info *rs_pkt_info, NeighbourRateInfo *nri)
 {
+  click_wifi_extra *ceh = rs_pkt_info->ceh;
+
   if (nri->_eth.is_group()) {
     if (nri->_rates.size()) {
       nri->_rates[0].setWifiRate(ceh,0);

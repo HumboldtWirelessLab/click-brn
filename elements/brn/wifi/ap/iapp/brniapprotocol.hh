@@ -43,12 +43,10 @@ struct click_brn_iapp {
 #define CLICK_BRN_IAPP_PAYLOAD_GATEWAY  1  ///< payload from gateway
 };
 
-class BRNIAPProtocol : public Element { public:
+class BRNIAPProtocol { public:
 
   BRNIAPProtocol();
   ~BRNIAPProtocol();
-
-  const char *class_name() const	{ return "BRNIAPProtocol"; }
 
 };
 

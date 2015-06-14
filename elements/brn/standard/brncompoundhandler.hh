@@ -109,7 +109,7 @@ class BrnCompoundHandler : public BRNElement
       String *new_rec = new String[max_records];
       Timestamp *new_rec_times = new Timestamp[max_records];
 
-      int start_index, max_index;
+      int start_index = 0, max_index = 0;
 
       if (overflow()) {
         start_index = _rec_index%_rec_max;

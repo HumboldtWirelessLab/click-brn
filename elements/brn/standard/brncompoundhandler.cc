@@ -99,7 +99,7 @@ BrnCompoundHandler::initialize(ErrorHandler *errh)
   int last_slash = element_name.find_right('/',element_name.length());
   if ( last_slash > 0 ) _element_class_prefix = element_name.substring(0,last_slash+1);
   
-  BRN_DEBUG("PRefix: %s",_element_class_prefix.c_str());
+  BRN_DEBUG("Prefix: %s",_element_class_prefix.c_str());
   
   _lzw_buffer = new unsigned char[_lzw_buffer_size];
   _base64_buffer = new unsigned char[_base64_buffer_size];
@@ -252,7 +252,8 @@ BrnCompoundHandler::read_handler()
 {
   StringAccum sa;
 
-  sa << "<compoundhandler time=\"" << Timestamp::now().unparse().c_str() << "\" recordmode=\"" << _record_mode << "\" updatemode=\"" << _update_mode << "\" >\n";
+  sa << "<compoundhandler node=\"" << BRN_NODE_NAME << "\" time=\"" << Timestamp::now().unparse().c_str();
+  sa << "\" recordmode=\"" << _record_mode << "\" updatemode=\"" << _update_mode << "\" >\n";
 
   if ( _record_mode == RECORDMODE_LAST_ONLY ) {
     for ( int j = 0; j < _vec_handlers.size(); j++) {

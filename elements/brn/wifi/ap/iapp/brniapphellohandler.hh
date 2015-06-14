@@ -26,6 +26,7 @@
 #include <click/timer.hh>
 #include <click/deque.hh>
 
+#include "elements/brn/brnelement.hh"
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
 #include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 
@@ -42,7 +43,7 @@ class BrnIappEncap;
  * =d
  * input 0: brn iapp hello packets for this node
  */
-class BrnIappHelloHandler : public Element
+class BrnIappHelloHandler : public BRNElement
 {
 //------------------------------------------------------------------------------
 // Construction

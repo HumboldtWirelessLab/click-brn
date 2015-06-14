@@ -106,7 +106,7 @@ BRN2RequestForwarder::configure(Vector<String> &conf, ErrorHandler* errh)
 int
 BRN2RequestForwarder::initialize(ErrorHandler *)
 {
-  click_srandom(_me->getMasterAddress()->hashcode());
+  click_brn_srandom();
 
   _sendbuffer_timer.initialize(this);
 
@@ -257,7 +257,7 @@ BRN2RequestForwarder::push(int, Packet *p_in)
 
   //Route improvements
   EtherAddress *detour_nb = NULL;
-  int detour_metric_last_nb;
+  int detour_metric_last_nb = BRN_DSR_INVALID_ROUTE_METRIC; //start with worst metric
 
   /* Route Optimization */
   if ( _enable_last_hop_optimization && (brn->ttl > 1) ) {
@@ -583,15 +583,9 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
   // set source and destination anno
   BRN_DEBUG("New SRC-Ether is: %s",indev->getEtherAddress()->unparse().c_str());
 
-  //TODO: ANNO or header ??
   BRNPacketAnno::set_src_ether_anno(p,EtherAddress(indev->getEtherAddress()->data()));
   BRNPacketAnno::set_dst_ether_anno(p,EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff"));
   BRNPacketAnno::set_ethertype_anno(p,ETHERTYPE_BRN);
-
- // click_ether *annotated_ether = (click_ether *)p->ether_header();
-  memcpy(ether->ether_shost,indev->getEtherAddress()->data() , 6);
-  memcpy(ether->ether_dhost, EtherAddress((const unsigned char *)"\xff\xff\xff\xff\xff\xff").data(), 6);
-  ether->ether_type = htons(ETHERTYPE_BRN);
 
   // copy device anno
   BRNPacketAnno::set_devicenumber_anno(p,devicenumber);
@@ -613,6 +607,7 @@ BRN2RequestForwarder::forward_rreq(Packet *p_in, EtherAddress *detour_nb, int de
     } else {
       rreq_retr_i = _rreq_retransmit_list[old_index];
       BRN_DEBUG("Alreday schedule this rreq %d", old_index);
+      //TODO: search for old request in queue
       if ( rreq_retr_i->_p == NULL ) {
         BRN_DEBUG("WTF! No packet");
       } else {

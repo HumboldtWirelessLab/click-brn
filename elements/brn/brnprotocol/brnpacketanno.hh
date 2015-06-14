@@ -7,6 +7,32 @@
 
 CLICK_DECLS
 
+/* ANNOS Overview (Tbd.)
+
+ 0                   1                   2                   3                   4                   5                   6                   7
+|             BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET                               |                BRN_WIFI_EXTRA_RX_STATUS_ANNO_OFFSET       |
+                                                                                 |                DST_ETHER_ANNO_OFFSET(2)                 ...
+
+ 8                   9                   10                  11                  12                  13                  14                  15
+            DST_ETHER_ANNO_OFFSET(2)     |                                    SRC_ETHER_ANNO_OFFSET                                          |
+
+
+ 16                  17                  18                  19                  20                  21                  22                  23
+
+
+
+ 24                  25                  26                  27                  28                  29                  30                  31
+
+
+
+ 32                  33                  34                  35                  36                  37                  38                  39
+
+
+
+ 40                  41                  42                  43                  44                  45                  46                  47
+
+*/
+
 /* next annos ( byte 0-4) overwrites IPv64-annos which are not used for MAC-layer and lower */
 
 #define BRN_WIFI_EXTRA_EXTENTION_ANNO_OFFSET    0
@@ -26,9 +52,9 @@ CLICK_DECLS
 #define TTL_ANNO_OFFSET         27
 #define TTL_ANNO_SIZE            1
 
-/* next annos ( byte 36-37 ) overwrites SEQUENCE_NUMBER_ANNO and IPSEC_SA_DATA_REFERENCE_ANNO  */
+/* next annos ( byte 38-39 ) overwrites SEQUENCE_NUMBER_ANNO and IPSEC_SA_DATA_REFERENCE_ANNO  */
 
-#define PULLED_BYTES_ANNO_OFFSET 36
+#define PULLED_BYTES_ANNO_OFFSET 38
 #define PULLED_BYTES_ANNO_SIZE    2
 
 #define FLOW_CONTROL_FLAGS_ANNO_OFFSET 38

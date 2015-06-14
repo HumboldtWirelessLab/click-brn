@@ -20,16 +20,16 @@
 
 #ifndef TOPOLOGY_DETECTION_HH
 #define TOPOLOGY_DETECTION_HH
+
 #include <click/element.hh>
 #include <click/timer.hh>
 #include <click/vector.hh>
 #include <clicknet/ether.h>
 
-#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
-
 #include "elements/brn/brnelement.hh"
-
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "topology_info.hh"
+#include "dibadawn/dibadawn.hh"
 
 CLICK_DECLS
 
@@ -37,158 +37,56 @@ CLICK_DECLS
  *=c
  *TopologyDetection()
  *=s
-*/
-class TopologyDetection : public BRNElement {
+ */
+class TopologyDetection : public BRNElement
+{
+public:
 
- public:
+    TopologyDetection();
+    ~TopologyDetection();
 
-   class TopologyDetectionReceivedInfo {
-    public:
-     EtherAddress _addr;
-     uint32_t _ttl;
-     bool _over_me;
-     bool _descendant;
+    const char *class_name()    const  { return "TopologyDetection"; }
+    const char *port_count()    const  { return "1/1"; }
+    const char *processing()    const  { return AGNOSTIC; }
+    bool can_live_reconfigure() const  { return false; }
+    
+    int configure(Vector<String> &, ErrorHandler *);
+    int reconfigure(String &, ErrorHandler *);
+    
+    int initialize(ErrorHandler *);
+    void add_handlers();
+    void push(int port, Packet *packet);
+    void start_detection();
+    String local_topology_info(void);
+    String config();
+    void run_timer(Timer *t);
+    void stop_periodically_detection_after_next_run();
+    String xml_link_stat();
+    void reset_link_stat();
 
-     TopologyDetectionReceivedInfo(EtherAddress *addr, uint32_t ttl, bool over_me) {
-       _addr = EtherAddress(addr->data());
-       _ttl = ttl;
-       _over_me = over_me;
-       _descendant = false;
-     }
-   };
+private:
+    uint32_t detection_id;
+    DibadawnAlgorithm dibadawnAlgo;
 
-   class TopologyDetectionForwardInfo {
-    public:
-      EtherAddress _src;
-      uint32_t _id;
-      Timestamp _first_seen;
-      Timestamp _last_seen;
-      uint32_t _get_backward;
-      uint32_t _num_descendant;
-      uint8_t _ttl;
+    Brn2LinkTable *_lt;
+    BRN2NodeIdentity *_node_identity;
+    TopologyInfo *_topoInfo;
+    bool _is_detect_periodically;
+    double _probability_of_perriodically_detection;
+    uint32_t _interval_ms;
+    uint32_t _start_rand;
+    
+    Timestamp _start_time;
+    Timestamp _next_time;
+    Timer _timer;
 
-      Vector<TopologyDetectionReceivedInfo> _last_hops;
+    bool _info_timer_active;
+    Timer _info_timer;
+    uint32_t _info_counter;
 
-      TopologyDetectionForwardInfo(uint8_t *src_p, uint32_t id) {
-        _id = id;
-        _last_seen = Timestamp::now();
-        _src = EtherAddress(src_p);
-        _get_backward = 0;
-        _num_descendant = 0;
-      }
-
-      TopologyDetectionForwardInfo(const EtherAddress *src, uint32_t id, uint8_t ttl) {
-        _id = id;
-        _last_seen = Timestamp::now();
-        _src = *src;
-        _get_backward = 0;
-        _num_descendant = 0;
-        _ttl = ttl;
-      }
-
-      void update() {
-        _last_seen = Timestamp::now();
-      }
-
-      bool equals(const EtherAddress *src, uint32_t id) {
-        return ( (_src == *src) && (_id==id));
-      }
-
-      /* since each node forward each message only one time, this function
-         doesn't have to check, whether node is already in list */
-      void add_last_hop(EtherAddress *lh, uint32_t ttl, bool over_me) {
-        _last_hops.push_back(TopologyDetectionReceivedInfo(lh,ttl,over_me));
-      }
-
-      bool include_last_hop(EtherAddress *lh) {
-        for( int i = 0; i < _last_hops.size(); i++ )
-          if ( _last_hops[i]._addr == *lh ) return true;
-        return false;
-      }
-
-      void set_descendant(EtherAddress *lh, bool desc) {
-        for( int i = 0; i < _last_hops.size(); i++ )
-          if ( _last_hops[i]._addr == *lh ) {
-            _last_hops[i]._descendant = desc;
-            return;
-          }
-      }
-
-      /*node receives only one message
-        -link to parent is bridge */
-      bool pendant_node() {
-        return (_num_descendant == 0);
-      }
-
-      /*node recieves msg with same ttl as sending ttl
-        - links to node with same ttl are non-bridges */
-      bool odd_loop(Vector<EtherAddress> */*loop_nodes*/) {
-        return false;
-      }
-
-      /*node receives two or more message with same ttl which is higher than sending ttl
-        - nodes are non-bridges*/
-      bool even_loop(Vector<EtherAddress> */*loop_nodes*/) {
-        return false;
-      }
-
-  };
-
-  typedef Vector<TopologyDetectionForwardInfo*> TDFIList;
-
- public:
-  //
-  //methods
-  //
-  TopologyDetection();
-  ~TopologyDetection();
-
-  const char *class_name() const  { return "TopologyDetection"; }
-  const char *port_count() const  { return "1/1"; }
-  const char *processing() const  { return AGNOSTIC; }
-
-  int configure(Vector<String> &, ErrorHandler *);
-  bool can_live_reconfigure() const	{ return false; }
-  int initialize(ErrorHandler *);
-
-  void add_handlers();
-
-  void push( int port, Packet *packet );
-
-  static void static_detection_timer_hook(Timer *t, void *f);
-  static void static_response_timer_hook(Timer *t, void *f);
-
-  void start_detection();
-
-  Timer _detection_timer;
-  Timer _response_timer;
-
-  TDFIList tdfi_list;
-
- private:
-  //
-  //member
-  //
-
-  uint32_t detection_id;
-
-  Brn2LinkTable *_lt;
-  BRN2NodeIdentity *_node_identity;
-  TopologyInfo *_topoi;
-
-  void handle_detection_backward(Packet *packet);
-  void handle_detection_forward(Packet *packet);
-
-  void handle_detection_timeout(void);
-  void handle_response_timeout(void);
-
-  void send_response(void);
-
-  TopologyDetectionForwardInfo *get_forward_info(EtherAddress *src, uint32_t id);
-  bool path_include_node(uint8_t *path, uint32_t path_len, const EtherAddress *node );
-
- public:
-  String local_topology_info(void);
+    void handle_detection(Packet *brn_packet);
+    void update_periodically_detection_setup();
+    void update_info_timer();
 };
 
 CLICK_ENDDECLS

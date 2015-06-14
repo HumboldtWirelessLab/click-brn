@@ -28,11 +28,14 @@ DHTStorageTest::DHTStorageTest():
   write_rep(0),
   read_req(0),
   read_rep(0),
+  append_req(0),
+  append_rep(0),
   not_found(0),
   no_timeout(0),
   op_time(0),
   write_time(0),
   read_time(0),
+  append_time(0),
   notfound_time(0),
   timeout_time(0),
   max_timeout_time(0),
@@ -77,7 +80,7 @@ int DHTStorageTest::configure(Vector<String> &conf, ErrorHandler *errh)
 
 int DHTStorageTest::initialize(ErrorHandler *)
 {
-  click_srandom(_dht_storage->_dht_routing->_me->_ether_addr.hashcode());
+  click_brn_srandom();
 
   _request_timer.initialize(this);
 
@@ -130,10 +133,14 @@ DHTStorageTest::callback(DHTOperation *op) {
         write_rep++;
         write_time += op->request_duration;
         last_read = false;
-      } else {
+      } else if ( (op->header.operation & ( (uint8_t)~((uint8_t)OPERATION_REPLY))) == OPERATION_READ ) {
         read_rep++;
         read_time += op->request_duration;
         last_read = true;
+      } else {
+        append_rep++;
+        append_time += op->request_duration;
+        last_read = false;
       }
 
       last_timeout = false;
@@ -229,13 +236,26 @@ DHTStorageTest::request(String key, String value, uint8_t mode)
 
     last_read = false;
   }
-  else
+  else if ( mode == MODE_READ )
   {
     BRN_DEBUG("Read Key: %s",key.c_str());
 
     read_req++;
 
     req->read((uint8_t*)key.data(), key.length());
+    req->max_retries = _retries;
+    req->set_replica(_replica);
+
+    last_read = true;
+    last_value = "n/a";
+  }
+  else //APPEND
+  {
+    BRN_DEBUG("Append Key: %s",key.c_str());
+
+    append_req++;
+
+    req->append((uint8_t*)key.data(), key.length(), (uint8_t*)value.data(), value.length());
     req->max_retries = _retries;
     req->set_replica(_replica);
 
@@ -269,12 +289,13 @@ DHTStorageTest::print_stats()
 {
   StringAccum sa;
 
-  int avg_op_time, avg_read_time, avg_write_time, avg_notf_time, avg_to_time;
-  avg_op_time = avg_read_time = avg_write_time = avg_notf_time = avg_to_time = 0;
+  int avg_op_time, avg_read_time, avg_write_time, avg_append_time, avg_notf_time, avg_to_time;
+  avg_op_time = avg_read_time = avg_write_time = avg_append_time = avg_notf_time = avg_to_time = 0;
 
   if ( op_rep != 0 ) avg_op_time = op_time/op_rep;
   if ( read_rep != 0 ) avg_read_time = read_time/read_rep;
   if ( write_rep != 0 ) avg_write_time = write_time/write_rep;
+  if ( append_rep != 0 ) avg_append_time = append_time/append_rep;
   if ( not_found != 0 ) avg_notf_time = notfound_time/not_found;
   if ( no_timeout != 0 ) avg_to_time = timeout_time/no_timeout;
 
@@ -284,6 +305,8 @@ DHTStorageTest::print_stats()
   sa << "\" avg_time=\"" << avg_read_time << "\" />\n";
   sa << "\t<write requests=\"" << write_req << "\" replies=\"" << write_rep;
   sa << "\" avg_time=\"" << avg_write_time << "\" />\n";
+  sa << "\t<append requests=\"" << append_req << "\" replies=\"" << append_rep;
+  sa << "\" avg_time=\"" << avg_append_time << "\" />\n";
   sa << "\t<not_found count=\"" << not_found << "\" avg_time=\"" << avg_notf_time << "\" />\n";
   sa << "\t<timeout count=\"" << no_timeout << "\" avg_time=\"" << avg_to_time << "\"  max_time=\"";
   sa << max_timeout_time << "\" />\n</dhtstoragetest>\n";
@@ -341,7 +364,8 @@ write_param(const String &in_s, Element *e, void *thunk, ErrorHandler *errh)
 
       if ( args.size() > 1 ) {
         if ( args[0] == String("write") ) mode = MODE_INSERT;
-        else mode = MODE_READ;
+        else if (args[0] == String("read")) mode = MODE_READ;
+        else mode = MODE_APPEND;
         key = args[1];
         if ( args.size() > 2 ) value = args[2];
         else value = ">" + args[1] + "<"; //=key
