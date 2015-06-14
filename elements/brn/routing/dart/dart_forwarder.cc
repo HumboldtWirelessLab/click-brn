@@ -105,6 +105,8 @@ BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(hea
                                  DartFunctions::print_id(header->_dst_nodeid, ntohl(header->_dst_nodeid_length)).c_str(),
                                                           (int)ttl,port);
 
+ //if ( memcmp(header->ident,_drt->_ident,6)!= 0) p_in->kill();
+//else{ 
   if ( _idcache->getEntry(&dst_addr) == NULL ) _idcache->addEntry(&dst_addr, header->_dst_nodeid, ntohl(header->_dst_nodeid_length));
   if ( _idcache->getEntry(&src_addr) == NULL ) _idcache->addEntry(&src_addr, header->_src_nodeid, ntohl(header->_src_nodeid_length));
 
@@ -154,6 +156,7 @@ BRN_DEBUG("Src ID: %s,Dst ID: %s",String(header->_src_nodeid).c_str(),String(hea
       }
     }
   }
+//}
 }
 
 //-----------------------------------------------------------------------------

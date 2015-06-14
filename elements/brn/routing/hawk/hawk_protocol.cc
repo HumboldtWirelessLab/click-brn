@@ -12,6 +12,7 @@ HawkProtocol::add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid, Packet 
   return add_route_header(dst_nodeid, src_nodeid, dst_nodeid, NULL, p);
 }
 
+
 WritablePacket *
 HawkProtocol::add_route_header(uint8_t *dst_nodeid, uint8_t *src_nodeid,
                                uint8_t *next_nodeid, EtherAddress *_next, Packet *p)
@@ -81,6 +82,12 @@ HawkProtocol::add_metric(Packet *p,uint8_t metric)
   rh->_metric += metric;
 }
 
+void
+HawkProtocol::set_rew_metric(Packet *p,uint8_t metric)
+{
+  struct hawk_routing_header *rh = (struct hawk_routing_header *)p->data();
+  rh->_rew_metric = metric;
+}
 
 CLICK_ENDDECLS
 

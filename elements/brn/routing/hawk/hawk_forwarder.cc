@@ -108,16 +108,19 @@ HawkForwarder::push(int port, Packet *p_in)
                                                        dst_addr.unparse().c_str(),
                                                        last_addr.unparse().c_str(),
                                                        next.unparse().c_str());
-  BRN_DEBUG("entries=%i",_rt->_rt.size() );
+
+//if next is initial i am the sender and dont have to inc the metric
 if (memcmp(next.data(), EtherAddress().data(), 6) != 0){ 
      last_metric =  1 /*_rt->_link_table->get_host_metric_to_me(last_addr)*/;
      HawkProtocol::add_metric(p_in,last_metric);
      metric = header->_metric;
 }
-    
+BRN_DEBUG("got packet with metric %d", header->_metric);
+ if ( _me->isIdentical(&src_addr)) {header->_metric = 0; BRN_DEBUG("cleared metric");}  
+ 
 
   /*
-  HawkRoutingtable::RTEntry *entry;
+  
   for(int i = 0; i < _rt->_rt.size(); i++) {
     entry = _rt->_rt[i];
 
@@ -129,9 +132,10 @@ if (memcmp(next.data(), EtherAddress().data(), 6) != 0){
    * Here we are sure than the packet comes from the source over last hop,
    * so we add the entry (last hop as next hop to src
    */
-  
+  HawkRoutingtable::RTEntry *entry = _rt->getEntry(&src_addr);
   if ( memcmp(src_addr.data(), _falconrouting->_me->_ether_addr.data(), 6) != 0 
-	&& memcmp(next.data(), EtherAddress().data(), 6) != 0) {
+	&& memcmp(next.data(), EtherAddress().data(), 6) != 0 && 
+     (entry == NULL || !_rt->_use_metric || ( entry != NULL && ( header->_metric <= entry->_metric || memcmp(entry->_next_phy_hop.data(),last_addr.data(),6) == 0 )))) {
     BRN_DEBUG("Node on route, so add info for backward route");
     _rt->addEntry(&(src_addr), header->_src_nodeid, 16, &(last_addr),metric);
     //and do it also with last hop cause he must be a neighbour
@@ -144,23 +148,28 @@ if (memcmp(next.data(), EtherAddress().data(), 6) != 0){
   if (port == 0) ttl--;
 
         //check i have a successor request  then i have to save the route to the initialiser of the packet
-        if(_opt_successor_forward && !_me->isIdentical(&src_addr) && ether->ether_type == htons(ETHERTYPE_BRN) && memcmp(next.data(), EtherAddress().data(), 6) != 0){
+        if(_opt_successor_forward && !_me->isIdentical(&src_addr) && ether->ether_type == htons(ETHERTYPE_BRN) ){
          	struct click_brn* brn_p = (click_brn*)&(p_in->data()[sizeof(struct hawk_routing_header) + sizeof(click_ether)]);
          	if (brn_p->dst_port == BRN_PORT_DHTROUTING){
         	  struct dht_packet_header *dht_header = (dht_packet_header*)&(p_in->data()[sizeof(struct hawk_routing_header) + sizeof(struct click_brn) + sizeof(click_ether)]);
     		  //is not for me so check, if the packet is a successor request for somebody
-        	  if(dht_header->minor_type == FALCON_MINOR_REQUEST_SUCCESSOR){
-               	 BRN_DEBUG("I got a Successor-Request");
+        	  if(dht_header->minor_type == FALCON_MINOR_REQUEST_SUCCESSOR || dht_header->minor_type == FALCON_MINOR_UPDATE_SUCCESSOR){
+               	 BRN_DEBUG("I got a Successor-Request/Reply");
+
+			 if (memcmp(next.data(), EtherAddress().data(), 6) == 0){
  			 struct falcon_routing_packet *request = (struct falcon_routing_packet*)&(p_in->data()[sizeof(struct hawk_routing_header) + sizeof(click_ether) 
 															+ sizeof(struct click_brn) + sizeof(dht_packet_header)]);
 
-              	 DHTnode init;
-              	 init.set_etheraddress(dht_header->src);
-              	 init.set_nodeid(request->src_node_id);
-	
-             		 //save the sender of this packet who is next hop to the request-initialiser
-	         	       _rt->addEntry(&(init._ether_addr), init._md5_digest,init._digest_length,
-                    		&(last_addr),request->init_metric + metric);
+			//get the falcon metric and put it into hawk header
+					header->_metric = request->metric ;
+			}else{//Korrektur der Backward-Metrik
+				 HawkRoutingtable::RTEntry *e = _rt->getEntry(&src_addr);
+				if(_rt->_use_metric && e != NULL && header->_metric > e->_metric && memcmp(e->_next_phy_hop.data(),last_addr.data(),6) != 0 )
+				{
+					BRN_DEBUG("metric repair from %d to %d",header->_metric,e->_metric);
+					 header->_metric = e->_metric;
+				}
+			     }
 
 		}
 	    }
@@ -181,20 +190,33 @@ if (memcmp(next.data(), EtherAddress().data(), 6) != 0){
 	//i'm next overlay hop
       HawkProtocol::clear_next_hop(p_in);
     }
-
+    
+    HawkProtocol::set_rew_metric(p_in,header->_rew_metric - 1);
     //check first if i have a direct route in my routingtable and take this
     // before checking next link to next overlay
     if(!HawkProtocol::has_next_hop(p_in))
        next_phy_hop = _rt->getNextHop(&dst_addr);
+        if(_rt->_use_metric && next_phy_hop != NULL)HawkProtocol::set_rew_metric(p_in,(_rt->getEntry(&dst_addr))->_metric);
+	 if(next_phy_hop != NULL) header->_flags = 1;//mark direct route
     if (next_phy_hop == NULL && HawkProtocol::has_next_hop(p_in)){
         if(_opt_first_dst){
-          next_phy_hop = _rt->getDirectNextHop(&dst_addr);
-          if(next_phy_hop != NULL)  HawkProtocol::clear_next_hop(p_in);
+          next_phy_hop = _rt->getNextHop(&dst_addr);
+         if (next_phy_hop != NULL){
+ 	   if(_rt->_use_metric)
+	   {
+	    uint8_t rew = (_rt->getEntry(&dst_addr))->_metric;
+ 	    BRN_DEBUG("my rew: %d, received rew:%d",rew,header->_rew_metric);
+	    if( header->_rew_metric != 0 && rew >= header->_rew_metric)next_phy_hop = NULL; //bei metrik nur ersetzen wenn kürzerer Weg zu erwarten 
+	    else HawkProtocol::set_rew_metric(p_in,rew);
+          }
+	   else if(header->_flags == 1)next_phy_hop = NULL;
+          }
+	   if(next_phy_hop != NULL) { HawkProtocol::clear_next_hop(p_in); header->_flags = 1;}//mark direct route
         }
-       if(next_phy_hop == NULL && _opt_better_finger 
-          && ether->ether_type == htons(ETHERTYPE_BRN)) {
-         struct click_brn* brn_p = (click_brn*)&(p_in->data()[sizeof(struct hawk_routing_header) + sizeof(click_ether)]);
-         if (brn_p->dst_port == BRN_PORT_FLOW){
+       if(next_phy_hop == NULL && _opt_better_finger && header->_flags != 1
+         /* && ether->ether_type == htons(ETHERTYPE_BRN)*/) {
+         //struct click_brn* brn_p = (click_brn*)&(p_in->data()[sizeof(struct hawk_routing_header) + sizeof(click_ether)]);
+         //if (brn_p->dst_port == BRN_PORT_FLOW){
         	
 	   
           //when i have a better finger i should prefer it
@@ -231,14 +253,15 @@ if (memcmp(next.data(), EtherAddress().data(), 6) != 0){
          } 
         else next_phy_hop = NULL;
       }
-     }
+     //}
       //check wether i have direct link/path to next overlay
       if(next_phy_hop == NULL)next_phy_hop = _rt->getNextHop(&next);
     }
     if ( next_phy_hop == NULL ) {
     	BRN_DEBUG("No next physical hop known. Search for next overlay.");
     	//no, so i check for next hop in the overlay
-
+	if(_rt->_use_metric)HawkProtocol::set_rew_metric(p_in,0);
+	header->_flags = 0;//demark direct route 
     	DHTnode *n = NULL;
        n = _falconrouting->get_responsibly_node_for_key(header->_dst_nodeid, &(_rt->_known_hosts));
      	

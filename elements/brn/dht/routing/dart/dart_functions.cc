@@ -34,7 +34,7 @@ DartFunctions::print_id(md5_byte_t *digest, uint16_t len)
 {
   StringAccum sa;
 
-  sa << "->";
+  sa << "->"; 
 
   len = MIN(MAX_DIGEST_LENGTH,len);
   
@@ -146,8 +146,8 @@ int
 DartFunctions::position_last_1(DHTnode *a)
 {
   for ( int i = (a->_digest_length  - 1); i >= 0; i-- )
-    if ( (a->_md5_digest[i/8] & (1 << (i%8))) != 0 ) return i;
-  return -1;
+    if ( (a->_md5_digest[i/8] & (1 << (i%8))) != 0 ) return i + 1;
+  return 0;
 }
 
 int
@@ -156,6 +156,27 @@ DartFunctions::position_first_0(DHTnode *a)
   for ( int i = 0; i <= (a->_digest_length  - 1); i++ )
     if ( (a->_md5_digest[i/8] & ( 1 << (i%8))) == 0 ) return i;
   return a->_digest_length;
+}
+
+bool
+DartFunctions::is_lower(DHTnode *a, DHTnode* b)
+{
+  int minlen;
+  if ( a->_digest_length < b->_digest_length ) minlen = a->_digest_length;
+  else minlen = b->_digest_length;
+
+  for ( int i = 0; i < minlen; i++ ){
+    if ( (a->_md5_digest[i/8] & (1 << (i%8))) != (b->_md5_digest[i/8] & (1 << (i%8))))
+	{
+     	  if ( (a->_md5_digest[i/8] & (1 << (i%8))) == 0
+          &&  (b->_md5_digest[i/8] & (1 << (i%8))) != 0  ) 
+     			return true;
+     	  else return false;
+	}
+  }
+//should never come to this point cause every pair of addresses have a diffbit
+  if ( a->_digest_length < b->_digest_length ) return true;
+   else return false;
 }
 
 int

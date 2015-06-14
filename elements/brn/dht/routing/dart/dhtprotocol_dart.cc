@@ -35,19 +35,20 @@ DHTProtocolDart::max_no_nodes_in_lp(int32_t buffer_len)
 }
 
 int
-DHTProtocolDart::pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes)
+DHTProtocolDart::pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes,uint8_t* ident)
 {
 
-if ( (unsigned)buffer_len < sizeof(struct dht_dart_lp_node_entry) ) return 0;
-
-  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
+if ( (unsigned)buffer_len < (sizeof(struct dht_dart_lp_node_entry) + (sizeof(uint8_t) * 6))) return 0;
+  uint8_t* id =  (uint8_t*)buffer;
+  memcpy(id,ident,6);
+  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)&(buffer[6]);
   ne->status = me->_status;
   ne->id_size = me->_digest_length;
   ne->time = htonl(me->_age.sec());
   memcpy(ne->etheraddr, me->_ether_addr.data(), 6);
   memcpy(ne->id, me->_md5_digest, MAX_NODEID_LENTGH);
 
-  int32_t buffer_left = buffer_len - sizeof(struct dht_dart_lp_node_entry);
+  int32_t buffer_left = buffer_len - sizeof(struct dht_dart_lp_node_entry) - (sizeof(uint8_t)*6);
   int32_t node_index = 0;
 
   if ( nodes != NULL ) {
@@ -66,9 +67,13 @@ return sizeof(dht_dart_lp_node_entry) * (node_index + 1);
 }
 
 int
-DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes)
+DHTProtocolDart::unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes,EtherAddress* ident)
 {
-  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)buffer;
+
+ uint8_t* id =  (uint8_t*)buffer;
+  memcpy(ident->data(),id,6);
+
+  struct dht_dart_lp_node_entry *ne = (struct dht_dart_lp_node_entry*)&(buffer[6]);
 
   first->_age.assign(ntohl(ne->time),0);
   first->_status = ne->status;
@@ -122,6 +127,33 @@ DHTProtocolDart::new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, P
   return(brn_p);
 }
 
+WritablePacket *
+DHTProtocolDart::new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p,uint8_t* ident)
+{
+  WritablePacket *nid_p;
+
+  if ( p != NULL ) {
+    nid_p = p->uniqueify();
+    DHTProtocol::set_type(nid_p,type);
+  } else
+    nid_p = DHTProtocol::new_dht_packet(ROUTING_DART, type, sizeof(struct dht_dart_routing));
+
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(nid_p);
+
+  request->status = 0;
+
+  request->src_id_size = src->_digest_length;
+  memcpy(request->src_id, src->_md5_digest, MAX_NODEID_LENTGH);
+  memcpy(request->ident, ident, 6);
+  request->dst_id_size = dst->_digest_length;
+  memcpy(request->dst_id, dst->_md5_digest, MAX_NODEID_LENTGH); ;
+
+  DHTProtocol::set_src(nid_p, src->_ether_addr.data());
+
+  WritablePacket *brn_p = DHTProtocol::push_brn_ether_header(nid_p, &(src->_ether_addr), &(dst->_ether_addr), BRN_PORT_DHTROUTING);
+
+  return(brn_p);
+}
 
 WritablePacket *
 DHTProtocolDart::new_nodeid_request_packet( DHTnode *src, DHTnode *dst)
@@ -134,12 +166,16 @@ DHTProtocolDart::new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p
 {
   return new_dart_nodeid_packet( src, dst, DART_MINOR_ASSIGN_ID, p);
 }
-
+WritablePacket *
+DHTProtocolDart::new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p, uint8_t* ident)
+{
+  return new_dart_nodeid_packet( src, dst, DART_MINOR_ASSIGN_ID, p, ident);
+}
 void
 DHTProtocolDart::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status)
 {
   struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(p);
-
+ 
   *status = request->status;
 
   src->set_update_addr(DHTProtocol::get_src_data(p));
@@ -147,7 +183,19 @@ DHTProtocolDart::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *statu
 
   node->set_nodeid(request->dst_id,request->dst_id_size);
 }
+void
+DHTProtocolDart::get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status,EtherAddress * ident)
+{
+  struct dht_dart_routing *request = (struct dht_dart_routing*)DHTProtocol::get_payload(p);
+   memcpy(ident->data(),request->ident, 6);
+  *status = request->status;
+  
+  src->set_update_addr(DHTProtocol::get_src_data(p));
+  src->set_nodeid(request->src_id,request->src_id_size);
 
+  node->set_nodeid(request->dst_id,request->dst_id_size);
+}
+ 
 void
 DHTProtocolDart::get_info(Packet *p, DHTnode *src, uint8_t *status)
 {

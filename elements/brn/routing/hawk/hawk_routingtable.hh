@@ -23,7 +23,7 @@ class HawkRoutingtable : public BRNElement {
       int _dst_id_length;
       uint8_t _dst_id[MAX_NODEID_LENTGH];
       EtherAddress _dst;
-      uint32_t _metric;
+      uint8_t _metric;
       EtherAddress _next_phy_hop;
       EtherAddress _next_hop;
       bool _is_direct;

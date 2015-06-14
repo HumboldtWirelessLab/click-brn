@@ -12,6 +12,7 @@
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
 #include "elements/brn/brnprotocol/brnprotocol.hh"
 
+
 #include "dhtprotocol_falcon.hh"
 #include "falcon_functions.hh"
 #include "falcon_routingtable.hh"
@@ -195,10 +196,14 @@ else {
 
 	if ((_opti == FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) ) {
         	BRN_INFO("Fwd request");
-	 	WritablePacket* pack = DHTProtocolFalcon::new_route_request_packet(&src, _frt->_me,
+	 		WritablePacket* pack = DHTProtocolFalcon::new_route_request_packet(&src, _frt->_me,
                                                 FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
 			pack->pull(sizeof(struct click_brn) + sizeof(click_ether));
-	 	p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me,(_rfrt->getEntry(&(src._ether_addr)))->_metric, pack);  //recyl. packet
+		
+		 	p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, &src,(_rfrt->getEntry(&(src._ether_addr)))->_metric, pack);  //recyl. packet
+
+	
+
 	}
 	else
  		p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_UPDATE_SUCCESSOR,
@@ -229,6 +234,10 @@ else
  	 p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, posnode, position, packet);
   } else {
     BRN_DEBUG("HE wants to know a node that i didn't know. Send negative reply.");
+	//when i dont have a node another node ask me for, i have to check my fingers from the beginning 
+     // so stop passive monitoring when its on
+    if (_frt->is_passive_monitoring()) _frt->set_passive_monitoring(false);
+         _current_round2pm = 0;  //reset for nextToAsk
     node._status = STATUS_NONEXISTENT; //i don't have such node
     node.set_nodeid(NULL, 0);          //its and invalid node
     p = DHTProtocolFalcon::new_route_reply_packet(_frt->_me, &src, FALCON_MINOR_REPLY_POSITION, &node, position, packet);
@@ -278,6 +287,10 @@ else
   //TODO: make sure that we have to check, that node on new posotion p+1 is not the node on position p
   if ( ! ( FalconFunctions::is_in_between( _frt->_me, preposnode, &node) || _frt->_me->equals(&node) ||
          preposnode->equals(&node) ) ) {
+    if(_rounds_to_passive_monitoring > 0  && (_frt->_fingertable.get_dhtnode(position + 1) == NULL || ! nc->equals(_frt->_fingertable.get_dhtnode(position +1 )))){
+	 _current_round2pm = 0;  //reset for nextToAsk
+     _frt->set_passive_monitoring(false);
+    }
     _frt->add_node_in_FT(nc, position + 1); //add node to Fingertable. THis also handles, that the node is already in
                                             //the Fingertable, but on another position
     if ( nc->equals(_frt->predecessor) ) {    //in some cases the last node in the Fingertable is the predecessor.

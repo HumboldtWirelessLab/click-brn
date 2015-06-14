@@ -10,6 +10,8 @@
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
 #include "elements/brn/dht/protocol/dhtprotocol.hh"
+#include "elements/brn/brnprotocol/brnprotocol.hh"
+
 
 #include "dhtprotocol_falcon.hh"
 #include "falcon_routingtable.hh"
@@ -215,9 +217,22 @@ FalconSuccessorMaintenance::handle_request_succ(Packet *packet)
       BRN_DEBUG("i got new predecessor: %s, tell ist old one: %s",_frt->predecessor->_ether_addr.unparse().c_str(), old_pre->_ether_addr.unparse().c_str());
       //with fwd optimization send a succ request instead of the old predecesosr to be faster
       if (_opti ==  FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) {
-        WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(old_pre, _frt->predecessor,
-                                                                        FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
-      output(0).push(p);
+         
+
+		// from here i know a direct route to the new pred so i send a packet to old one therefore he gets the rest of the route
+		WritablePacket *p = DHTProtocolFalcon::new_route_reply_packet(_frt->predecessor, old_pre, FALCON_MINOR_UPDATE_SUCCESSOR,
+                                                                  _frt->predecessor, FALCON_RT_POSITION_SUCCESSOR,
+									   (_rfrt->getEntry(&((_frt->predecessor)->_ether_addr)))->_metric, NULL);
+	//WritablePacket *p = DHTProtocolFalcon::new_route_request_packet(old_pre, _frt->predecessor,
+        //                                                                FALCON_MINOR_REQUEST_SUCCESSOR, FALCON_RT_POSITION_SUCCESSOR);
+	//fwd it, to have the metric to old pre
+	//p->pull(sizeof(struct click_brn) + sizeof(click_ether));
+	//if(_rfrt != NULL)
+	// 	p = DHTProtocolFalcon::fwd_route_request_packet(old_pre, _frt->predecessor,old_pre,(_rfrt->getEntry(&(old_pre->_ether_addr)))->_metric, p);  //recyl. packet
+	//else 
+	// p = DHTProtocolFalcon::fwd_route_request_packet(old_pre, _frt->predecessor,old_pre, p);  //recyl. packet
+      BRN_DEBUG("send packet with metric %d",(_rfrt->getEntry(&(old_pre->_ether_addr)))->_metric);
+	output(0).push(p);
 
       } else {
 
@@ -293,7 +308,7 @@ WritablePacket *p = NULL;
       if (/* (_rfrt == NULL) && */ (_opti == FALCON_OPTIMAZATION_FWD_TO_BETTER_SUCC ) || (_opti == FALCON_OPT_FWD_SUCC_WITH_SUCC_HINT) ) {
         BRN_INFO("Fwd request");
 	if (_rfrt != NULL)
-	 p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me,(_rfrt->getEntry(&(src._ether_addr)))->_metric, packet);  //recyl. packet
+	 p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, &src,(_rfrt->getEntry(&(src._ether_addr)))->_metric, packet);  //recyl. packet
 	else
         p = DHTProtocolFalcon::fwd_route_request_packet(&src, best_succ, _frt->_me, packet);  //recyl. packet
       } else {  //otherwise send a reply with the better information

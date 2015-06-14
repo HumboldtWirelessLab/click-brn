@@ -76,6 +76,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len, EtherAddre
       _rt[i]->_time = Timestamp::now();
       if ( ! _rt[i]->nextHopIsNeighbour()  || 
            _rt[i]->_is_direct == false ||
+		( memcmp(ea->data(), next_phy->data(),6) == 0) ||
               (_use_metric && _rt[i]->_metric > metric) ) {
 	 BRN_DEBUG("CHANGE next hop, new metric:%d, old was:%d",metric,_rt[i]->_metric);
         _rt[i]->updateNextHop(next_phy);
@@ -152,7 +153,7 @@ HawkRoutingtable::addEntry(EtherAddress *ea, uint8_t *id, int id_len,
       /* update only if we don't know whether next_phy_hop knows the route
        * (incl. next hop)
        */
-      if ( ! _rt[i]->nextHopIsNeighbour() 
+      if ( ( ! _rt[i]->nextHopIsNeighbour() && memcmp(next_phy->data(),next->data(),6) == 0)
            || ( _use_metric && _rt[i]->_metric > metric) ) {
  	BRN_DEBUG("CHANGE next hop, new metric:%d, old was:%d",metric,_rt[i]->_metric);
         _rt[i]->updateNextHop(next);

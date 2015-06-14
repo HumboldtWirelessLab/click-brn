@@ -149,17 +149,22 @@ HawkRouteQuerier::push(int, Packet *p_in)
   click_ether *ether = (click_ether *)p_in->data();  //better to use this, since ether_header is not always set.it also can be overwriten
 
   EtherAddress dst_addr(ether->ether_dhost);
-
+  EtherAddress src_addr(ether->ether_shost);
   if (!dst_addr) {
     BRN_ERROR(" ethernet anno header is null; kill packet.");
     p_in->kill();
     return;
   }
 
-  BRN_DEBUG("Request for %s", dst_addr.unparse().c_str());
+  BRN_DEBUG("Request for %s from %s", dst_addr.unparse().c_str(),src_addr.unparse().c_str());
   BRN_INFO("currently we using MD5 to get the id of a node (MAC). Change in future");
 
   DHTnode n = DHTnode(dst_addr);
+char digest[16*2 + 1];
+char digest2[16*2 + 1];
+ MD5::printDigest(_dht_routing->_me->_md5_digest , digest);
+ MD5::printDigest(n._md5_digest, digest2);
+  BRN_DEBUG("from digest %s to digest %s", digest ,digest2);
   WritablePacket *pr = HawkProtocol::add_route_header(n._md5_digest,
                                                       _dht_routing->_me->_md5_digest,
                                                       p_in);

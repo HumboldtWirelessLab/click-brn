@@ -69,7 +69,6 @@ struct falcon_routing_packet {
   uint8_t node_status;
   uint8_t src_status;
   uint8_t metric;				    //metric to last overlay 
-  uint8_t init_metric;		           //metric to packet initilialiser 
   uint16_t table_position;
   uint8_t  etheraddr[6];                      //Etheraddress of the node on position "table_position" in the table
   md5_byte_t node_id[MAX_NODEID_LENTGH];      //Node-id of the node on position "table_position" in the table
@@ -146,6 +145,7 @@ class DHTProtocolFalcon {
 
     static WritablePacket *new_passive_monitor_leave_notification_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
     static WritablePacket *new_passive_monitor_leave_reply_packet(DHTnode *src, DHTnode *dst, DHTnode *leave_node);
+
 
 };
 

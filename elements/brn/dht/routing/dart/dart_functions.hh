@@ -44,7 +44,7 @@ class DartFunctions {
     static bool equals(DHTnode *node, md5_byte_t *key, uint16_t len);
     static bool equals(DHTnode *a, DHTnode *b, uint16_t len);
     static bool equalBit(DHTnode *a, DHTnode *b, uint16_t len);
-
+    static bool is_lower(DHTnode *a, DHTnode *b);
     static int diff_bit(DHTnode *a, md5_byte_t *key);
     static int position_last_1(DHTnode *a);
     static int position_first_0(DHTnode *a);

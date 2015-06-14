@@ -20,7 +20,7 @@ struct dht_nodeid_entry {
 struct dart_routing_header {
   uint16_t _dst_nodeid_length;
   uint8_t _dst_nodeid[MAX_NODEID_LENTGH];
-
+  uint8_t ident[6];
   uint16_t _src_nodeid_length;
   uint8_t _src_nodeid[MAX_NODEID_LENTGH];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
@@ -33,7 +33,7 @@ class DartProtocol {
   DartProtocol();
   ~DartProtocol();
 
-  static WritablePacket *add_route_header(uint8_t *dst_nodeid, uint16_t dst_nodeid_length, uint8_t *src_nodeid, uint16_t src_nodeid_length, Packet *p);
+  static WritablePacket *add_route_header(uint8_t *dst_nodeid, uint16_t dst_nodeid_length, uint8_t *src_nodeid, uint16_t src_nodeid_length,uint8_t* ident, Packet *p);
   static struct dart_routing_header *get_route_header(Packet *p);
   static click_ether *get_ether_header(Packet *p);
   static void strip_route_header(Packet *p);

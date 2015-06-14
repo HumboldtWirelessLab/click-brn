@@ -8,13 +8,13 @@ CLICK_DECLS
 
 
 WritablePacket *
-DartProtocol::add_route_header(uint8_t *dst_nodeid, uint16_t dst_nodeid_length, uint8_t *src_nodeid, uint16_t src_nodeid_length, Packet *p)
+DartProtocol::add_route_header(uint8_t *dst_nodeid, uint16_t dst_nodeid_length, uint8_t *src_nodeid, uint16_t src_nodeid_length,uint8_t* ident , Packet *p)
 {
   struct dart_routing_header *header;
   WritablePacket *route_p = p->push(sizeof(struct dart_routing_header));
-
+  
   header = (struct dart_routing_header *)route_p->data();
-
+  memcpy(header->ident,ident,6);
   memcpy( header->_dst_nodeid, dst_nodeid, MAX_NODEID_LENTGH);
   header->_dst_nodeid_length = htons(dst_nodeid_length);
 

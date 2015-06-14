@@ -55,7 +55,7 @@ struct dht_dart_routing {
   uint8_t  reserved;
   uint8_t  src_id_size;
   uint8_t  dst_id_size;
-
+  uint8_t ident[6];
   uint8_t  src_id[MD5_DIGEST_LENGTH];
   uint8_t  dst_id[MD5_DIGEST_LENGTH];
 } CLICK_SIZE_PACKED_ATTRIBUTE;
@@ -65,14 +65,17 @@ class DHTProtocolDart {
 
  public:
 
-  static int pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes);
-  static int unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes);
+  static int pack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *me, DHTnodelist *nodes,uint8_t* ident);
+  static int unpack_lp(uint8_t *buffer, int32_t buffer_len, DHTnode *first, DHTnodelist *nodes,EtherAddress* ident);
   static int32_t max_no_nodes_in_lp(int32_t buffer_len);
   static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status);
   static void get_info(Packet *p, DHTnode *src, uint8_t *status);
   static WritablePacket *new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p);
   static WritablePacket *new_nodeid_request_packet( DHTnode *src, DHTnode *dst);
   static WritablePacket *new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p);
+  static void get_info(Packet *p, DHTnode *src, DHTnode *node, uint8_t *status,EtherAddress *ident);
+  static WritablePacket *new_dart_nodeid_packet( DHTnode *src, DHTnode *dst, int type, Packet *p,uint8_t* ident);
+  static WritablePacket *new_nodeid_assign_packet( DHTnode *src, DHTnode *dst, Packet *p, uint8_t* ident);
 };
 
 CLICK_ENDDECLS

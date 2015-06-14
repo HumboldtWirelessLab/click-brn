@@ -4,11 +4,11 @@
 
 #include "elements/brn/dht/standard/dhtnode.hh"
 #include "elements/brn/dht/standard/dhtnodelist.hh"
-
+#include "elements/brn/routing/dart/dart_idstore.hh"
 CLICK_DECLS
 
 #define DART_UPDATE_ID   1
-
+#define DART_CLEAR_STORAGE   2
 class DartRoutingTable : public Element
 {
     class CallbackFunction {
@@ -85,12 +85,14 @@ class DartRoutingTable : public Element
     DHTnodelist _siblings;
 
     DHTnodelist _allnodes;
-
+    DartIDStore* _ds;
     //DHTnodelist _neighbours;
  
     Vector<DRTneighbour*> _neighbours;
-
+     uint8_t _ident[6];
     int _debug;
+public:
+void setDartIDStorage(DartIDStore* t){_ds = t;}
 };
 
 CLICK_ENDDECLS

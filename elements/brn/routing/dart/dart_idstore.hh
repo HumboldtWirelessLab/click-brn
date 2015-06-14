@@ -26,9 +26,9 @@
 #include <click/timer.hh>
 
 #include "elements/brn/routing/identity/brn2_nodeidentity.hh"
-
+#include "elements/brn/routing/linkstat/brn2_brnlinktable.hh"
 #include "elements/brn/dht/storage/dhtstorage.hh"
-#include "elements/brn/dht/routing/dart/dart_routingtable.hh"
+#include "elements/brn/dht/storage/simple/dhtstorage_simple.hh"
 
 CLICK_DECLS
 
@@ -55,6 +55,7 @@ class DartIDStore : public Element
 
   static void routingtable_callback_func(void *e, int status);
   void store_nodeid();
+  void clear_storage();
 
   static void callback_func(void *e, DHTOperation *op);
   void callback(DHTOperation *op);
@@ -67,11 +68,12 @@ class DartIDStore : public Element
   BRN2NodeIdentity *_me;
 
   DHTStorage *_dht_storage;
-  DartRoutingTable *_drt;
+  
 
  public:
   int _debug;
-
+  void *_drt;
+  Brn2LinkTable * _lt;
 };
 
 CLICK_ENDDECLS

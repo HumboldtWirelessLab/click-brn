@@ -293,7 +293,15 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
   Timestamp now = Timestamp::now();
   BRNDB::DBrow *_row;
   int timediff;
-
+/*  int a = 0;
+  while(a < _md_queue.size())
+{
+	 mdi = _md_queue[a];
+	timediff = (now - mdi->_move_time).msecval();
+	  if ( timediff >= 2000 && mdi->_tries > 3 ){ delete _md_queue[a];
+      _md_queue.erase(_md_queue.begin() + a);}
+	else a++;
+}*/
   for( int i = (_md_queue.size() - 1); i >= 0; i-- )
   {
     mdi = _md_queue[i];
@@ -313,10 +321,10 @@ DHTStorageSimpleRoutingUpdateHandler::check_moved_data()
 
         for ( int i = _db->size() - 1 ; i >= 0; i-- ) {
           _row = _db->getRow(i);
-
+		
           if ( _row->move_id == mdi->_movedID ) break;
         }
-
+   //     if (_db->size() == 0) return;
         //TODO search for better and move to this (maybe there was an update since last move
         WritablePacket *data_p = DHTProtocolStorageSimple::new_data_packet(&_dht_routing->_me->_ether_addr, _row->move_id, 1,
             _row->serializeSize());

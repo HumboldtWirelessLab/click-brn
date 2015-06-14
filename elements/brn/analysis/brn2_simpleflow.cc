@@ -252,7 +252,9 @@ BRN2SimpleFlow::push( int port, Packet *packet )
   }
 
   /*Handle Packet*/
+
   EtherAddress src_ea = EtherAddress(header->src);
+BRN_DEBUG("Got Flow-Packet from %s",src_ea.unparse().c_str());
   Flow *f = _rx_flowMap.find(src_ea);
   uint32_t packet_id = ntohl(header->packetID);
 
@@ -413,7 +415,7 @@ BRN2SimpleFlow::nextPacketforFlow(Flow *f)
   }
 
   f->_txPackets++;
-
+  BRN_DEBUG("Packet count: %d",f->_txPackets);
   header->rate = htonl(f->_rate);
   header->size = htons(f->_size);
   header->mode = f->_type;

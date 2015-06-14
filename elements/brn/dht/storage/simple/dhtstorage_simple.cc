@@ -332,7 +332,6 @@ void DHTStorageSimple::push( int port, Packet *packet )
 
               BRN_DEBUG("Forward operation.");
               BRN_DEBUG("Me: %s Dst: %s",_dht_routing->_me->_ether_addr.unparse().c_str(), next->_ether_addr.unparse().c_str());
-
               p = packet->uniqueify();
               DHTProtocolStorageSimple::inc_hops_of_dht_operation_packet(p, _add_node_id);  //inc the count of hops direct
               p = DHTProtocol::push_brn_ether_header(p,&(_dht_routing->_me->_ether_addr), &(next->_ether_addr), BRN_PORT_DHTSTORAGE);

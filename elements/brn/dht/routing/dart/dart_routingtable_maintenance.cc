@@ -110,6 +110,7 @@ DartRoutingTableMaintenance::table_maintenance()
     _drt->_me->set_nodeid(NULL, 0);             //I'm the first so set my ID
     _drt->_validID = true;
     BRN_DEBUG("Set my ID to 0");
+    memcpy(_drt->_ident,_drt->_me->_ether_addr.data(),6);
     _drt->update_callback(DART_UPDATE_ID);      //update my own id
 
   } else if ( _drt->_neighbours.size() > 0 ) {  //I've neighbours, so check
@@ -154,6 +155,7 @@ DartRoutingTableMaintenance::assign_id(DHTnode *newnode)
   DartFunctions::copy_id(newnode, _drt->_me);
   DartFunctions::append_id_bit(newnode, 1);
   DartFunctions::append_id_bit(_drt->_me, 0);
+  BRN_DEBUG("\n <update time=\"%s\"></update>",Timestamp::now().unparse().c_str());
 }
 
 void
@@ -170,13 +172,13 @@ DartRoutingTableMaintenance::handle_request(Packet *packet)
 
   if ( ! DartFunctions::has_max_id_length(_drt->_me) ) {
     assign_id(&src);
-    rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet); //reply, so change src and dst
+    rep  = DHTProtocolDart::new_nodeid_assign_packet( _drt->_me, &src, packet,_drt->_ident); //reply, so change src and dst
 
     src._neighbor = true;         //Request only comes from neighbouring nodes //TODO: check
 
     _drt->update_node(&src);      //update the new node (add if not exists)
 
-  BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
+  //BRN_DEBUG("MAIN: Routingtable:\n%s",_drt->routing_info().c_str());
 
     output(0).push(rep);
 
@@ -195,10 +197,11 @@ DartRoutingTableMaintenance::handle_assign(Packet *packet)
   DHTnode dst;
 
   uint8_t status;
-
+  EtherAddress ident = EtherAddress();
   BRN_DEBUG("GOT ID REPLY");
 
-  DHTProtocolDart::get_info(packet, &src, &dst, &status);
+  DHTProtocolDart::get_info(packet, &src, &dst, &status,&ident);
+  memcpy(_drt->_ident,ident.data(),6);
   DartFunctions::copy_id(_drt->_me, &dst);
   _drt->_validID = true;
 BRN_DEBUG("My new ID: %s ",DartFunctions::print_id(_drt->_me->_md5_digest,_drt->_me->_digest_length).c_str());

@@ -125,22 +125,41 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
 
   if ( ! _active ) {
     if ( (Timestamp::now() - _start).msecval() >= _delay ) _active = true;
-    else return len;
+    //else return len;
   }
 
   BRN_DEBUG("Send");
 
   DHTnodelist nodes;
   DHTnode* next;
+  DHTnode* highest;
   HawkRoutingtable::RTEntry* entry;
   Vector <uint8_t> mlist;
   
+  //send the highest node to avoid partitioning
+  if( DHTProtocolFalcon::max_no_nodes_in_lp(size) > 0 && _no_nodes_per_lp > 0 && _frt->_allnodes.size() > 0){
+	_frt->_allnodes.sort();
+	highest = _frt->_allnodes.get_dhtnode(_frt->_allnodes.size() - 1);
+	  if (_rfrt != NULL){
+ 	  	entry = NULL;
+		if((entry = _rfrt->getEntry(&(highest->_ether_addr))) != NULL){
+          		nodes.add_dhtnode(highest);	
+	 	 	mlist.push_back(entry->_metric );
+     			BRN_DEBUG("Send metric %d", mlist.at(mlist.size() - 1));
+	    	}
+             }
+	  else
+      		nodes.add_dhtnode(next);
+  }
   if ( _onlyfingertab ) {
     BRN_DEBUG("USE only fingertab");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_fingertable.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
-    for (int32_t i = 0; i < send_nodes; i++ ) {
+    if ( send_nodes > 0 && highest != NULL) send_nodes--;
+    for (int32_t i = 0; i < send_nodes ; i++ ) {
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_fingertable.size();
       next = _frt->_fingertable.get_dhtnode(_all_nodes_index);
+	if(highest != NULL && memcmp(highest->_ether_addr.data(),next->_ether_addr.data(),6) == 0)i--;//this one is in list 
+	else{
       //WHEN using hawk a route to the finger has to be known before sending it
       if (_rfrt != NULL){
  	  entry = NULL;
@@ -152,13 +171,16 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
         }else
       nodes.add_dhtnode(next);
     }    
+   }
   } else {
     BRN_DEBUG("use all nodes");
     send_nodes = MIN(MIN(_no_nodes_per_lp, _frt->_allnodes.size()),DHTProtocolFalcon::max_no_nodes_in_lp(size));
-
-    for (int32_t i = 0; i < send_nodes; i++ ) {
+	if ( send_nodes > 0 && highest != NULL) send_nodes--;
+    for (int32_t i = 0; i < send_nodes ; i++ ) {
       _all_nodes_index = ( _all_nodes_index + 1 ) % _frt->_allnodes.size();
       next = _frt->_allnodes.get_dhtnode(_all_nodes_index);
+	if(highest != NULL && memcmp(highest->_ether_addr.data(),next->_ether_addr.data(),6) == 0)i--;//this one is in list 
+	else{
       //WHEN using hawk a route to the finger has to be known before sending it
   if (_rfrt != NULL){
 	 entry = NULL;
@@ -171,6 +193,7 @@ FalconLinkProbeHandler::lpSendHandler(char *buffer, int32_t size)
       nodes.add_dhtnode(next);
     
     }
+  }
   }
   if (_rfrt != NULL)
    len = DHTProtocolFalcon::pack_lp((uint8_t*)buffer, size, _frt->_me,&nodes, &mlist);
@@ -208,7 +231,8 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
   if (_rfrt != NULL){
    len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes,&mlist);
    BRN_DEBUG("Metrik:%d", _rfrt->_link_table->get_host_metric_to_me(first._ether_addr));
-  }else
+   if ( _rfrt->_link_table->get_host_metric_to_me(first._ether_addr) < 300 ) is_neighbour = true; else is_neighbour = false; 
+   }else
    len = DHTProtocolFalcon::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
 
   if ( len == -1 ) BRN_WARN("Error on linkprobe unpack");
@@ -242,7 +266,7 @@ FalconLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neig
         _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(first._ether_addr),
 			   mlist.at(i) + 1 /*_rfrt->_link_table->get_host_metric_to_me(first._ether_addr)*/ );
 	//if I know a route to first I can build a route to next over it 
-         else _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(first._ether_addr),&(entry->_next_phy_hop),
+         else _rfrt->addEntry(&(next->_ether_addr),next->_md5_digest, next->_digest_length,&(entry->_next_phy_hop),&(first._ether_addr),
 			   mlist.at(i) + entry->_metric /*_rfrt->_link_table->get_host_metric_to_me(first._ether_addr)*/ );
       }
     }

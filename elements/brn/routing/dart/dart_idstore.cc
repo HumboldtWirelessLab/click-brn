@@ -42,6 +42,7 @@ DartIDStore::DartIDStore()
   : _me(NULL),
     _dht_storage(NULL),
     _drt(NULL),
+    _lt(NULL),
     _debug(BrnLogger::DEFAULT)
 {
 }
@@ -59,6 +60,7 @@ DartIDStore::configure(Vector<String> &conf, ErrorHandler *errh)
       "NODEIDENTITY", cpkP+cpkM, cpElement, &_me,
       "DHTSTORAGE", cpkP+cpkM, cpElement, &_dht_storage,
       "DRT", cpkP+cpkM, cpElement, &_drt,
+      "LT", cpkP+cpkM, cpElement, &_lt,
       "DEBUG", cpkP, cpInteger, &_debug,
       cpEnd) < 0)
     return -1;
@@ -72,7 +74,8 @@ DartIDStore::configure(Vector<String> &conf, ErrorHandler *errh)
 int
 DartIDStore::initialize(ErrorHandler */*errh*/)
 {
-  _drt->add_update_callback(routingtable_callback_func, this);
+  ((DartRoutingTable*)_drt)->setDartIDStorage(this);
+  ((DartRoutingTable*)_drt)->add_update_callback(routingtable_callback_func, this);
   return 0;
 }
 
@@ -86,12 +89,24 @@ DartIDStore::uninitialize()
 /*************************************************************************************************/
 
 void
-DartIDStore::routingtable_callback_func(void *e, int /*status*/)
+DartIDStore::routingtable_callback_func(void *e, int status)
 {
   DartIDStore *s = (DartIDStore *)e;
   s->store_nodeid();
+
 }
 
+void DartIDStore::clear_storage()
+{
+BRN_DEBUG("clear DHT-storage");
+while( ((DHTStorageSimple*)_dht_storage)->_db->size() != 0){
+((DHTStorageSimple*)_dht_storage)->_db->delRow(0);
+
+}
+
+
+
+}
 void
 DartIDStore::store_nodeid()
 {
@@ -100,8 +115,8 @@ DartIDStore::store_nodeid()
 
   struct dht_nodeid_entry id_entry;
 
-  id_entry._id_length = htonl(_drt->_me->_digest_length);
-  memcpy(id_entry._nodeid, _drt->_me->_md5_digest, MAX_NODEID_LENTGH);
+  id_entry._id_length = htonl(((DartRoutingTable*)_drt)->_me->_digest_length);
+  memcpy(id_entry._nodeid, ((DartRoutingTable*)_drt)->_me->_md5_digest, MAX_NODEID_LENTGH);
 
   dhtop = new DHTOperation();
 

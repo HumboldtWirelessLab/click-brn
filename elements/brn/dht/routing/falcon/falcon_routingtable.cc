@@ -226,7 +226,7 @@ FalconRoutingTable::add_node(DHTnode *node)
   }
 
   if ( isBetterSuccessor(n) ) {
-     BRN_DEBUG("UPDATE SUCC/PRE");
+     BRN_DEBUG("UPDATE");
     if ( predecessor == NULL ) {
       predecessor = n;
       update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
@@ -241,7 +241,7 @@ FalconRoutingTable::add_node(DHTnode *node)
                                                //      called by complex function, so it can result in problems
 
   } else if ( isBetterPredecessor(n) ) {
-    BRN_DEBUG("UPDATE SUCC/PRE");
+    BRN_DEBUG("UPDATE");
     predecessor = n;
     update_callback(RT_UPDATE_PREDECESSOR);  //TODO: place this anywhere else. the add_node-function is
                                              //      called by complex function, so it can result in problems
@@ -281,7 +281,6 @@ FalconRoutingTable::add_node_in_FT(DHTnode *node, int position)
 {
   int table;
   DHTnode *fn;
-BRN_DEBUG("UPDATE FINGER");
   if ( isSuccessor(node) && (position != 0) ) {
     BRN_DEBUG("Node is successor and so position should be 0 and not %d",position);
     return 0;
@@ -318,8 +317,10 @@ FalconRoutingTable::set_node_in_FT(DHTnode *node, int position)
     BRN_ERROR("FT too small. Discard Entry.");
   } else {
     if ( _fingertable.size() == position ) {
+	BRN_DEBUG("\n <update time=\"%s\"></update>",Timestamp::now().unparse().c_str());
       _fingertable.add_dhtnode(node);
     } else {
+	if (memcmp(node->_ether_addr.data(),(_fingertable.get_dhtnode(position))->_ether_addr.data(),6) != 0) BRN_DEBUG("\n <update time=\"%s\"></update>",Timestamp::now().unparse().c_str());
       _fingertable.swap_dhtnode(node, position);      //replace node in FT, but don't delete the old one, since it
                                                       //is in the all_nodes_table
     }

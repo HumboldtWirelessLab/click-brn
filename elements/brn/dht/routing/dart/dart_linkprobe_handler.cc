@@ -111,7 +111,7 @@ int send_nodes;
       nodes.add_dhtnode(next);
     }
 
-  len = DHTProtocolDart::pack_lp((uint8_t*)buffer, size, _drt->_me, &nodes);
+  len = DHTProtocolDart::pack_lp((uint8_t*)buffer, size, _drt->_me, &nodes, _drt->_ident);
   return len;
 }
 
@@ -122,12 +122,28 @@ DartLinkProbeHandler::lpReceiveHandler(char *buffer, int32_t size,bool is_neighb
   DHTnode first;
   DHTnode* node;
   DHTnodelist nodes;
-
+  EtherAddress ident = EtherAddress();
   BRN_DEBUG("Unpack Linkprobe data. Size: %d",size);
-  /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes);
+  /*len =*/ DHTProtocolDart::unpack_lp((uint8_t*)buffer, size, &first, &nodes,&ident);
+      if ( _drt->_ds->_lt->get_host_metric_to_me(first._ether_addr) < 300 ) is_neighbour = true; else is_neighbour = false; 
+ /*  if (is_neighbour && memcmp(_drt->_ident,ident.data(),6) != 0){
+   BRN_DEBUG("Receive ident : %s",ident.unparse().c_str());
+	EtherAddress my_ident = EtherAddress();
+       memcpy(my_ident.data(),_drt->_ident,6); 
+ if (my_ident.sdata()[0] > ident.sdata()[0] || 
+	( my_ident.sdata()[0] == ident.sdata()[0] && my_ident.sdata()[1] > ident.sdata()[1]) ||
+	( my_ident.sdata()[0] == ident.sdata()[0] && my_ident.sdata()[1] == ident.sdata()[1] && my_ident.sdata()[2] > ident.sdata()[2])
+	){
+       BRN_DEBUG("clear my tables ");
+	_drt->_validID = false;
+      memcpy(_drt->_ident,ident.data(),6);
+      _drt->_neighbours.clear();
+      _drt->_allnodes.clear();
+      _drt->update_callback(DART_CLEAR_STORAGE);
+ }
+}*/
 
-
-  if(is_neighbour){
+  if(is_neighbour /*&& memcmp(_drt->_ident,ident.data(),6) == 0*/){
   
   BRN_DEBUG("is neighbour: %s",String(is_neighbour).c_str());
   _drt->add_neighbour(&first);

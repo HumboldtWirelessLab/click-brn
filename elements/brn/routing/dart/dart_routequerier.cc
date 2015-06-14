@@ -178,7 +178,8 @@ DartRouteQuerier::push(int, Packet *p_in)
     BRN_DEBUG("Route querier: Has ID in Cache");
     BRN_DEBUG("Dst: %s (%s)", dst_addr.unparse().c_str(),
               DartFunctions::print_id(entry->_nodeid, entry->_id_length).c_str());
-    WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, p_in);
+    WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length,_drt->_ident, p_in);
+
     output(0).push(dart_p);
   }
 
@@ -195,7 +196,7 @@ DartRouteQuerier::send_packets(EtherAddress *dst, DartIDCache::IDCacheEntry *ent
     click_ether *ether = (click_ether *)buffp->_p->data();
 
     if ( memcmp(ether->ether_dhost, dst->data(),6) == 0 ) {
-      WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length, buffp->_p);
+      WritablePacket *dart_p = DartProtocol::add_route_header(entry->_nodeid, entry->_id_length, _drt->_me->_md5_digest, _drt->_me->_digest_length,_drt->_ident, buffp->_p);
 
       _packet_buffer.del(i);
 

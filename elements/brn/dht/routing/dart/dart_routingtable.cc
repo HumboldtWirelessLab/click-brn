@@ -12,6 +12,7 @@
 #include "dart_functions.hh"
 #include "dart_routingtable.hh"
 
+
 CLICK_DECLS
 
 DartRoutingTable::DartRoutingTable():
@@ -46,6 +47,7 @@ int
 DartRoutingTable::initialize(ErrorHandler *)
 {
   return 0;
+  memcpy(_ident,EtherAddress().data(),6);
 }
 
 /****************************************************************************************
@@ -98,8 +100,6 @@ DartRoutingTable::add_node(DHTnode *node)
   if ( n == NULL ) {
     n = node->clone();
     _allnodes.add_dhtnode(n);
- if ( n->_neighbor )// _neighbours.add_dhtnode(n);
- add_neighbour_entry(n);
   } else {
     	if(n->_age <= node->_age){
      DartFunctions::copy_id(n,node);
@@ -108,8 +108,16 @@ DartRoutingTable::add_node(DHTnode *node)
 
       //TODO: update rest of node
   }
-
-  return 0;
+ if ( n->_neighbor )// _neighbours.add_dhtnode(n);
+{
+ BRN_DEBUG("node is neihgbour: %s",n->_ether_addr.unparse().c_str());
+	if ( get_neighbour(&(n->_ether_addr)) == NULL)
+{
+ BRN_DEBUG("neihgbour not in list, so add him ");
+ add_neighbour_entry(n);
+}
+}  
+return 0;
 }
 
 int
@@ -193,8 +201,9 @@ String
 DartRoutingTable::routing_info(void)
 {
   StringAccum sa;
-
-  sa << "<dartroutinginfo addr=\"" << _me->_ether_addr.unparse() << "\" id=\"" << DartFunctions::print_raw_id(_me);
+  EtherAddress ident = EtherAddress();
+  memcpy(ident.data(),_ident,6);
+  sa << "<dartroutinginfo addr=\"" << _me->_ether_addr.unparse() << "\" id=\"" << DartFunctions::print_raw_id(_me) << "\" ident=\"" << ident.unparse();
   sa << "\" id_len=\"" << _me->_digest_length << "\" valid_id=\"" << String(_validID) << "\" >\n\t<neighbours count=\"";
   sa << _neighbours.size() << "\" >\n";
   for ( int n = 0; n < _neighbours.size(); n++ ) {

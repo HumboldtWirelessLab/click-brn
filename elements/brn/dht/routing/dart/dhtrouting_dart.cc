@@ -89,6 +89,7 @@ DHTRoutingDart::get_responsibly_node_for_key(md5_byte_t *key)
 {
 //  int diffbit;
   DHTnode *best_node = NULL;
+  DHTnode *best_father = NULL;
   int position_best_node = 0;
   DHTnode *acnode;
   int position_ac_node;
@@ -110,9 +111,13 @@ BRN_DEBUG("ID of me: %s",DartFunctions::print_id(_drt->_me->_md5_digest,128).c_s
     }
 
     position_ac_node = DartFunctions::position_last_1(acnode);
+	BRN_DEBUG("position until i copmare: %d",position_ac_node);
     if ( DartFunctions::equals(acnode, key, position_ac_node ) && ((best_node == NULL) || (position_best_node < position_ac_node) ) )     {
-      position_best_node = position_ac_node,
+      position_best_node = position_ac_node;
+	
       best_node = acnode;
+      BRN_DEBUG("Best node: %s, id: %s", acnode->_ether_addr.unparse().c_str(),DartFunctions::print_id(best_node).c_str());
+	
     }
 
   }
@@ -127,16 +132,19 @@ BRN_DEBUG("ID of me: %s",DartFunctions::print_id(_drt->_me->_md5_digest,128).c_s
     }
 
     // use also neighbours neighbour to find shorter routes
-          position_ac_node = DartFunctions::position_last_1(acnode);
+          position_ac_node = DartFunctions::position_last_1(acnode);	   
           if ( DartFunctions::equals(acnode, key, position_ac_node ) && ((best_node == NULL) || (position_best_node < position_ac_node) ) ) {
                  position_best_node = position_ac_node,
-                 best_node = _drt->_neighbours[n]->neighbour;
+                 best_node = acnode;
+		   best_father = _drt->_neighbours[n]->neighbour;
           }
 
    }
  }
 
 }
+if (best_father != NULL) return best_father;
+
   if ( best_node == NULL ) {
     BRN_DEBUG("Search for shortest");
     for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
@@ -167,6 +175,7 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
 {
 //  int diffbit;
   DHTnode *best_node = NULL;
+  DHTnode *best_father = NULL;
   int position_best_node;
   DHTnode *acnode;
   int position_ac_node;
@@ -197,9 +206,9 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
     }
     else{
 	if (diffbit_best_node == diffbit_ac_node){
-     	  position_ac_node = DartFunctions::position_first_0(acnode);
-     	  position_best_node = DartFunctions::position_first_0(best_node);
-     	  if (position_ac_node < position_best_node){
+     	//  position_ac_node = DartFunctions::position_first_0(acnode);
+     	 // position_best_node = DartFunctions::position_first_0(best_node);
+     	  if (DartFunctions::is_lower(acnode,best_node)){
 	 	diffbit_best_node = diffbit_ac_node;
 	 	best_node = acnode;
                BRN_DEBUG(" node has same length but is short so take him");
@@ -211,7 +220,9 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
  if (_expand_neighbourhood){
  for ( int n = 0; n < _drt->_neighbours.size(); n++ ) {
    for(int i = 0; i < _drt->_neighbours[n]->neighbours_neighbour->size(); i++){
+
     acnode = _drt->_neighbours[n]->neighbours_neighbour->get_dhtnode(i);
+    BRN_DEBUG("check neighbour neighbour:%s",acnode->_ether_addr.unparse().c_str());
     if ( DartFunctions::equals(acnode, key) ) {
       BRN_DEBUG("have full node");
       return _drt->_neighbours[n]->neighbour;
@@ -219,16 +230,20 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
 
   diffbit_ac_node = DartFunctions::diff_bit(acnode, key);
     if ( (best_node == NULL) || (diffbit_best_node < diffbit_ac_node)  ) {
-      diffbit_best_node = diffbit_ac_node,
-      best_node = _drt->_neighbours[n]->neighbour;
+      diffbit_best_node = diffbit_ac_node;
+      best_node = acnode;
+      best_father = _drt->_neighbours[n]->neighbour;
+	     BRN_DEBUG("node has longer prefix then last");
     }
     else{
         if (diffbit_best_node == diffbit_ac_node){
-          position_ac_node = DartFunctions::position_first_0(acnode);
-          position_best_node = DartFunctions::position_first_0(best_node);
-          if (position_ac_node < position_best_node){
+       //   position_ac_node = DartFunctions::position_first_0(acnode);
+       //   position_best_node = DartFunctions::position_first_0(best_node);
+          if (DartFunctions::is_lower(acnode,best_node)){
                 diffbit_best_node = diffbit_ac_node;
-                best_node = _drt->_neighbours[n]->neighbour;
+                best_node = acnode;
+		  best_father = _drt->_neighbours[n]->neighbour;
+     		BRN_DEBUG(" node has same length but is short so take him");
           }
         }
      }
@@ -236,6 +251,8 @@ DHTRoutingDart::get_responsibly_node_for_key_opt(md5_byte_t *key)
  }
 
 }
+if (best_father != NULL) return best_father; 
+
   //TODO: this should never happen so check it dispensable
   if ( best_node == NULL ) {
     BRN_WARN("No node for id found. So use default.");
