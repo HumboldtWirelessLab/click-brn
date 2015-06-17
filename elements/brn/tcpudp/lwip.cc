@@ -351,9 +351,13 @@ click_lw_ip_tcp_sent(void *arg, struct tcp_pcb */*tpcb*/, u16_t len)
 err_t
 click_lw_ip_tcp_recv(void */*arg*/, struct tcp_pcb *pcb, struct pbuf *p, err_t err)
 {
+  char foo[1024];
   if (err == ERR_OK ) {
     if (p != NULL) {
       click_chatter("Callback: received: %d bytes", p->tot_len);
+      memcpy(foo,p->payload,p->tot_len);
+      foo[p->tot_len+1]='\0';
+      click_chatter("Received: %s", foo);
       tcp_recved(pcb, p->tot_len);
       pbuf_free(p);
     } else {
