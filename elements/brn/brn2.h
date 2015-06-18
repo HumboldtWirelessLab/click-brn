@@ -9,6 +9,12 @@
 #include <click/string.hh>
 #include <click/straccum.hh>
 
+#include <elements/brn/version.h>
+
+#ifndef BRN_GIT_VERSION
+#define BRN_GIT_VERSION "n/a"
+#endif
+
 CLICK_DECLS
 
 #ifndef MIN

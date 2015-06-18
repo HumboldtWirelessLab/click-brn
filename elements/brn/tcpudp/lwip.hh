@@ -27,6 +27,7 @@
 #include "lwip/ip_addr.h"
 #include "lwip/netif.h"
 #include "lwip/ip.h"
+#include <sys/types.h>
 
 CLICK_DECLS
 
@@ -68,6 +69,16 @@ class LwIP : public BRNElement
       }
 
     };
+
+    class LwIPClient {
+      //uint32_t
+
+      struct tcp_pcb * _client_socket;
+
+      uint32_t _sent_bytes;
+      uint32_t _received_bytes;
+    };
+
 
     class LwIPSocket {
      public:

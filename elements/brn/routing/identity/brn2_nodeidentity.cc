@@ -8,7 +8,6 @@
 #endif
 
 #include <elements/brn/brn2.h>
-#include <elements/brn/version.h>
 #include <elements/brn/standard/brnaddressinfo.hh>
 #include "elements/brn/standard/brnlogger/brnlogger.hh"
 
